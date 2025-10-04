@@ -1,12 +1,7 @@
 // src/gameLogic/showdown.js
 import { evaluateBadugi } from "../utils/badugi";
+import { saveTournamentHistory } from "../utils/history"; // 🧩 追加
 
-/**
- * サイドポット込みのショーダウン処理（同点チョップあり）
- * - pots: [{ amount, eligible: [playerIdx...] }, ...]
- * - eligible 内のプレイヤーだけで勝敗を判定し、amount を山分け
- * - 終了後は「Next Hand」ボタンを表示し、10秒後に自動で次のハンドへ
- */
 export function runShowdown({
   players,
   setPlayers,
@@ -16,22 +11,20 @@ export function runShowdown({
   dealNewHand,
   setShowNextButton,
 }) {
-  // 全員のハンドを公開（フォールド者は表示でも勝負からは除外）
   let updated = players.map((p) => ({ ...p, showHand: !p.folded }));
 
   pots.forEach((pot) => {
     const eligibleIdx = pot.eligible.filter((i) => !updated[i].folded);
     if (eligibleIdx.length === 0) return;
 
-    // Badugi評価
     const evals = eligibleIdx.map((i) => ({
       idx: i,
       eval: evaluateBadugi(updated[i].hand),
     }));
+
     const maxScore = Math.max(...evals.map((e) => e.eval.score));
     const candidates = evals.filter((e) => e.eval.score === maxScore);
 
-    // 低い方が強い（ranksAsc）を高位から比較
     candidates.sort((a, b) => {
       const ra = a.eval.ranksAsc.slice().reverse();
       const rb = b.eval.ranksAsc.slice().reverse();
@@ -57,7 +50,6 @@ export function runShowdown({
       })
       .map((c) => c.idx);
 
-    // pot を山分け（端数は切り捨て）
     const share = Math.floor(pot.amount / winners.length);
     winners.forEach((idx) => {
       updated[idx].stack += share;
@@ -67,12 +59,29 @@ export function runShowdown({
   setPlayers(updated);
   setPots([]);
 
+  // 🧩 トーナメント履歴保存（暫定データ）
+  try {
+    const winner = updated.find((p) => !p.folded); // 最後まで残った人
+    saveTournamentHistory({
+      tsStart: Date.now() - 300000, // 仮: 開始から5分前
+      tsEnd: Date.now(),
+      tier: "store",
+      buyIn: 1000,
+      entries: players.length,
+      finish: 1,
+      prize: 5000,
+      hands: [], // 今は未連携
+    });
+    console.log("✅ Tournament saved to history");
+  } catch (err) {
+    console.warn("⚠ Failed to save tournament history:", err);
+  }
+
   // 「Next Hand」ボタン表示 & 10秒後に自動進行
   setShowNextButton(true);
   const nextDealer = (dealerIdx + 1) % players.length;
 
   setTimeout(() => {
-    // まだ次ハンドに行っていなければ自動進行
     setShowNextButton((visible) => {
       if (visible) {
         dealNewHand(nextDealer);

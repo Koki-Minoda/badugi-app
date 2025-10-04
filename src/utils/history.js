@@ -1,54 +1,56 @@
-// --- トーナメント開始時に新規作成 ---
-export function startTournament(tournamentInfo) {
-  const key = "badugi_tournaments";
-  const existing = JSON.parse(localStorage.getItem(key) || "[]");
+import { pushToArray, getJSON, remove } from "./storage";
 
-  const newTournament = {
-    tournamentId: tournamentInfo.id,
-    mode: tournamentInfo.mode || "HU",
-    players: tournamentInfo.players,
-    startedAt: new Date().toISOString(),
-    finishedAt: null,
-    hands: [],
-    result: null
+const HANDS_KEY = "history.hands";
+const TOURNEY_KEY = "history.tournaments";
+
+export function saveHandHistory(hand) {
+  if (!hand?.handId) hand.handId = crypto.randomUUID?.() ?? String(Date.now());
+  hand.ts ??= Date.now();
+  return pushToArray(HANDS_KEY, hand, { limit: 2000 });
+}
+
+export function saveTournamentHistory(t) {
+  if (!t?.tournamentId) t.tournamentId = crypto.randomUUID?.() ?? String(Date.now());
+  t.tsEnd ??= Date.now();
+  return pushToArray(TOURNEY_KEY, t, { limit: 500 });
+}
+
+export function getHands({ limit = 200, since, until } = {}) {
+  let arr = getJSON(HANDS_KEY, []);
+  if (since) arr = arr.filter((h) => h.ts >= since);
+  if (until) arr = arr.filter((h) => h.ts <= until);
+  return arr.slice(0, limit);
+}
+
+export function getTournaments({ limit = 200, since, until } = {}) {
+  let arr = getJSON(TOURNEY_KEY, []);
+  if (since) arr = arr.filter((t) => (t.tsEnd ?? t.tsStart) >= since);
+  if (until) arr = arr.filter((t) => (t.tsEnd ?? t.tsStart) <= until);
+  return arr.slice(0, limit);
+}
+
+export function computeBasicStats() {
+  const ts = getTournaments({ limit: 1000 });
+  const played = ts.length;
+  const itm = ts.filter((t) => t.prize > 0).length;
+  const totalBuyIn = ts.reduce((s, t) => s + (t.buyIn ?? 0), 0);
+  const totalPrize = ts.reduce((s, t) => s + (t.prize ?? 0), 0);
+  const roi = totalBuyIn ? (totalPrize - totalBuyIn) / totalBuyIn : 0;
+  const best = ts.reduce((b, t) => (t.finish && (!b || t.finish < b)) ? t.finish : b, null);
+  return {
+    tournaments: played,
+    itmCount: itm,
+    itmRate: played ? itm / played : 0,
+    totalBuyIn,
+    totalPrize,
+    roi,
+    bestFinish: best,
   };
-
-  existing.push(newTournament);
-  localStorage.setItem(key, JSON.stringify(existing));
 }
 
-// --- ハンド終了ごとに追加 ---
-export function addHandToTournament(tournamentId, handResult) {
-  const key = "badugi_tournaments";
-  const tournaments = JSON.parse(localStorage.getItem(key) || "[]");
-
-  const t = tournaments.find(t => t.tournamentId === tournamentId);
-  if (t) {
-    t.hands.push(handResult);
-    localStorage.setItem(key, JSON.stringify(tournaments));
-  }
+export function clearHands() {
+  remove(HANDS_KEY);
 }
-
-// --- トーナメント終了時に結果を更新 ---
-export function finishTournament(tournamentId, finalResult) {
-  const key = "badugi_tournaments";
-  const tournaments = JSON.parse(localStorage.getItem(key) || "[]");
-
-  const t = tournaments.find(t => t.tournamentId === tournamentId);
-  if (t) {
-    t.finishedAt = new Date().toISOString();
-    t.result = finalResult;
-    localStorage.setItem(key, JSON.stringify(tournaments));
-  }
-}
-
-// --- 全トーナメント履歴を取得 ---
-export function loadTournaments() {
-  const key = "badugi_tournaments";
-  return JSON.parse(localStorage.getItem(key) || "[]");
-}
-
-// --- 削除 ---
 export function clearTournaments() {
-  localStorage.removeItem("badugi_tournaments");
+  remove(TOURNEY_KEY);
 }

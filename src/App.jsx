@@ -209,8 +209,8 @@ export default function App() {
 
     if (phase === "DRAW") {
       // 全員ドロー済みなら BET ラウンドへ移行
-      const allDrawn = snap.every((pl) => pl.folded || pl.hasDrawn);
-      if (allDrawn) {
+      const allActiveDrawn = snap.every((p) => p.folded || p.hasDrawn);
+      if (allActiveDrawn) {
         const reset = snap.map((p) => ({
           ...p,
           betThisRound: 0,
@@ -225,17 +225,23 @@ export default function App() {
         return;
       }
 
-      // まだ全員ドローしてない → runDrawRound で次へ
-      runDrawRound({
-        players: snap,
-        turn,
-        deck,
-        setPlayers,
-        setDeck,
-        advanceAfterAction,
-      });
+       // 次の未ドローNPCを探して順番を渡す
+        const nextIdx = snap.findIndex(
+         (p, i) => !p.folded && !p.hasDrawn && i !== 0
+        );
+        if (nextIdx !== -1) {
+           setTurn(nextIdx);
+           runDrawRound({
+             players: snap,
+             turn: nextIdx,
+             deck,
+             setPlayers,
+             setDeck,
+             advanceAfterAction,
+           });
+        }
+      }
     }
-  }
 
   function finishDrawRound() {
     setDrawRound((prev) => prev + 1);
@@ -519,8 +525,10 @@ export default function App() {
       const pot =
         typeof potOverride === "number"
           ? potOverride
-          : (pots || []).reduce((s, p) => s + (p?.amount || 0), 0) +
-            (playersSnap || []).reduce((s, p) => s + (p?.betThisRound || 0), 0);
+          : Number(
+           ((pots || []).reduce((s, p) => s + (p?.amount || 0), 0) || 0) +
+           ((playersSnap || []).reduce((s, p) => s + (p?.betThisRound || 0), 0) || 0)
+          ) || 0;
 
       // 勝者推定（evaluateBadugi で最良スコアを持つ非フォールドの名前）
       const active = (playersSnap || []).filter((p) => !p.folded);

@@ -1,4 +1,4 @@
-import { pushToArray, getJSON, remove } from "./storage";
+import { pushToArray, getJSON, remove } from "../../utils/storage";
 
 const HANDS_KEY = "history.hands";
 const TOURNEY_KEY = "history.tournaments";

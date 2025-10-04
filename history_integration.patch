@@ -1,0 +1,250 @@
+diff --git a/src/utils/storage.js b/src/utils/storage.js
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/src/utils/storage.js
+@@
++// Lightweight localStorage helpers with JSON handling + array utils
++const PREFIX = "badugi.";
++
++const safeParse = (str, fallback) => {
++  try { return JSON.parse(str); } catch { return fallback; }
++};
++
++export function getJSON(key, fallback = null) {
++  const raw = localStorage.getItem(PREFIX + key);
++  if (raw == null) return fallback;
++  return safeParse(raw, fallback);
++}
++
++export function setJSON(key, value) {
++  localStorage.setItem(PREFIX + key, JSON.stringify(value));
++}
++
++export function pushToArray(key, item, { limit = 500 } = {}) {
++  const arr = getJSON(key, []);
++  arr.unshift(item);
++  if (arr.length > limit) arr.length = limit;
++  setJSON(key, arr);
++  return arr;
++}
++
++export function remove(key) {
++  localStorage.removeItem(PREFIX + key);
++}
++
++export function migrate(fromKey, toKey) {
++  const raw = localStorage.getItem(PREFIX + fromKey);
++  if (raw != null && localStorage.getItem(PREFIX + toKey) == null) {
++    localStorage.setItem(PREFIX + toKey, raw);
++  }
++}
++
++// Optional small KV with TTL (for caching derived stats)
++export function setWithTTL(key, value, ttlMs) {
++  setJSON(key, { v: value, e: Date.now() + ttlMs });
++}
++export function getWithTTL(key, fallback = null) {
++  const wrap = getJSON(key);
++  if (!wrap) return fallback;
++  if (Date.now() > wrap.e) return fallback;
++  return wrap.v;
++}
+diff --git a/src/utils/history.js b/src/utils/history.js
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/src/utils/history.js
+@@
++import { pushToArray, getJSON, setJSON, remove } from "./storage";
++
++const HANDS_KEY = "history.hands";
++const TOURNEY_KEY = "history.tournaments";
++
++export function saveHandHistory(hand) {
++  if (!hand?.handId) hand.handId = crypto.randomUUID?.() ?? String(Date.now());
++  hand.ts ??= Date.now();
++  return pushToArray(HANDS_KEY, hand, { limit: 2000 });
++}
++
++export function saveTournamentHistory(t) {
++  if (!t?.tournamentId) t.tournamentId = crypto.randomUUID?.() ?? String(Date.now());
++  t.tsEnd ??= Date.now();
++  return pushToArray(TOURNEY_KEY, t, { limit: 500 });
++}
++
++export function getHands({ limit = 200, since, until } = {}) {
++  let arr = getJSON(HANDS_KEY, []);
++  if (since) arr = arr.filter(h => h.ts >= since);
++  if (until) arr = arr.filter(h => h.ts <= until);
++  return arr.slice(0, limit);
++}
++
++export function getTournaments({ limit = 200, since, until } = {}) {
++  let arr = getJSON(TOURNEY_KEY, []);
++  if (since) arr = arr.filter(t => (t.tsEnd ?? t.tsStart) >= since);
++  if (until) arr = arr.filter(t => (t.tsEnd ?? t.tsStart) <= until);
++  return arr.slice(0, limit);
++}
++
++export function computeBasicStats() {
++  const ts = getTournaments({ limit: 1000 });
++  const played = ts.length;
++  const itm = ts.filter(t => t.prize > 0).length;
++  const totalBuyIn = ts.reduce((s, t) => s + (t.buyIn ?? 0), 0);
++  const totalPrize = ts.reduce((s, t) => s + (t.prize ?? 0), 0);
++  const roi = totalBuyIn ? (totalPrize - totalBuyIn) / totalBuyIn : 0;
++  const best = ts.reduce((b, t) => (t.finish && (!b || t.finish < b)) ? t.finish : b, null);
++  return {
++    tournaments: played,
++    itmCount: itm,
++    itmRate: played ? itm / played : 0,
++    totalBuyIn,
++    totalPrize,
++    roi,
++    bestFinish: best,
++  };
++}
++
++export function clearHands() { remove(HANDS_KEY); }
++export function clearTournaments() { remove(TOURNEY_KEY); }
+diff --git a/src/components/TournamentHistory.jsx b/src/components/TournamentHistory.jsx
+new file mode 100644
+index 0000000..3333333
+--- /dev/null
++++ b/src/components/TournamentHistory.jsx
+@@
++import { useMemo } from "react";
++import { getTournaments } from "../utils/history";
++
++export default function TournamentHistory() {
++  const rows = useMemo(() => getTournaments({ limit: 200 }), []);
++  if (!rows.length) {
++    return <div className="p-6 text-sm opacity-80">まだトーナメント履歴がありません。</div>;
++  }
++  return (
++    <div className="p-4">
++      <h2 className="text-xl font-bold mb-3">トーナメント履歴</h2>
++      <div className="overflow-x-auto rounded-2xl shadow">
++        <table className="min-w-full text-sm">
++          <thead className="bg-gray-100">
++            <tr>
++              <th className="text-left p-2">日時</th>
++              <th className="text-right p-2">Buy-in</th>
++              <th className="text-right p-2">参加数</th>
++              <th className="text-right p-2">着順</th>
++              <th className="text-right p-2">賞金</th>
++              <th className="text-left p-2">Tier</th>
++            </tr>
++          </thead>
++          <tbody>
++            {rows.map((t) => (
++              <tr key={t.tournamentId} className="border-t">
++                <td className="p-2">{new Date(t.tsEnd ?? t.tsStart).toLocaleString()}</td>
++                <td className="p-2 text-right">{t.buyIn?.toLocaleString?.() ?? "-"}</td>
++                <td className="p-2 text-right">{t.entries ?? "-"}</td>
++                <td className="p-2 text-right">{t.finish ?? "-"}</td>
++                <td className="p-2 text-right">{t.prize?.toLocaleString?.() ?? 0}</td>
++                <td className="p-2">{t.tier ?? "-"}</td>
++              </tr>
++            ))}
++          </tbody>
++        </table>
++      </div>
++    </div>
++  );
++}
+diff --git a/src/components/ProfileStats.jsx b/src/components/ProfileStats.jsx
+new file mode 100644
+index 0000000..4444444
+--- /dev/null
++++ b/src/components/ProfileStats.jsx
+@@
++import { computeBasicStats } from "../utils/history";
++
++export default function ProfileStats() {
++  const s = computeBasicStats();
++  return (
++    <div className="p-6 space-y-4">
++      <h2 className="text-xl font-bold">プロフィール・スタッツ（簡易）</h2>
++      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
++        <Stat label="トーナメント数" value={s.tournaments} />
++        <Stat label="ITM回数" value={s.itmCount} />
++        <Stat label="ITM率" value={(s.itmRate * 100).toFixed(1) + "%"} />
++        <Stat label="総バイイン" value={fmtJpy(s.totalBuyIn)} />
++        <Stat label="総賞金" value={fmtJpy(s.totalPrize)} />
++        <Stat label="ROI" value={(s.roi * 100).toFixed(1) + "%"} />
++        <Stat label="最高順位" value={s.bestFinish ?? "-"} />
++      </div>
++      <p className="text-xs opacity-70">
++        ここはまず最小限のKPI。後で VPIP/PFR/AGG/バドゥーギ固有KPI をハンド履歴から算出して拡張予定。
++      </p>
++    </div>
++  );
++}
++
++function Stat({ label, value }) {
++  return (
++    <div className="rounded-2xl border p-4 shadow-sm">
++      <div className="text-xs opacity-70">{label}</div>
++      <div className="text-lg font-semibold">{value}</div>
++    </div>
++  );
++}
++
++function fmtJpy(n) {
++  if (typeof n !== "number") return "-";
++  try { return n.toLocaleString("ja-JP", { style: "currency", currency: "JPY", maximumFractionDigits: 0 }); }
++  catch { return n.toLocaleString(); }
++}
+diff --git a/src/App.jsx b/src/App.jsx
+index abcdef0..5555555 100644
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -1,6 +1,14 @@
+-import React from 'react'
++import React from 'react'
++import TournamentHistory from './components/TournamentHistory'
++import ProfileStats from './components/ProfileStats'
+ 
+ export default function App() {
+   return (
+-    <div className="p-6">
+-      <h1 className="text-2xl font-bold">Badugi App</h1>
+-      {/* ここに既存のホームやゲーム画面への導線がある想定 */}
+-    </div>
++    <div className="p-6 space-y-6">
++      <header className="flex items-center justify-between">
++        <h1 className="text-2xl font-bold">Badugi App</h1>
++        <nav className="flex gap-2">
++          <a className="px-3 py-1.5 rounded-xl border hover:bg-gray-50" href="#home">Home</a>
++          <a className="px-3 py-1.5 rounded-xl border hover:bg-gray-50" href="#profile">Profile</a>
++          <a className="px-3 py-1.5 rounded-xl border hover:bg-gray-50" href="#history">History</a>
++        </nav>
++      </header>
++      <main>
++        {renderRoute()}
++      </main>
++    </div>
+   )
+ }
++
++function renderRoute() {
++  const hash = typeof window !== "undefined" ? window.location.hash : "#home";
++  switch (hash) {
++    case "#profile":
++      return <ProfileStats />;
++    case "#history":
++      return <TournamentHistory />;
++    default:
++      return (
++        <div className="space-y-3">
++          <p>ようこそ。上部ナビから「Profile」「History」を開いて履歴・KPIを確認できます。</p>
++          <ul className="list-disc pl-5 text-sm opacity-80">
++            <li>ショーダウン時に <code>saveHandHistory()</code> を呼び出し、ハンド履歴を保存</li>
++            <li>トナメ終了時に <code>saveTournamentHistory()</code> を呼び出し、成績を保存</li>
++          </ul>
++        </div>
++      );
++  }
++}

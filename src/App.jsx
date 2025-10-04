@@ -31,7 +31,10 @@ export default function App() {
   const [dealerIdx, setDealerIdx] = useState(0);
 
   const [phase, setPhase] = useState("BET"); // BET / DRAW / SHOWDOWN
+
+  // 新規追加：BETラウンド開始時の先頭プレイヤーを保持
   const [drawRound, setDrawRound] = useState(0); // 完了したDRAW数 0..3
+  
   const [pots, setPots] = useState([]);
 
   const [turn, setTurn] = useState(0);
@@ -39,7 +42,7 @@ export default function App() {
 
   // 再入防止：ラウンド遷移やNPC処理が二重発火しておかしくならないように
   const [transitioning, setTransitioning] = useState(false);
-
+  const [betHead, setBetHead] = useState(null);
   const [showNextButton, setShowNextButton] = useState(false);
 
   // ▼ 追記：このハンドを保存済みかどうか（多重保存防止）

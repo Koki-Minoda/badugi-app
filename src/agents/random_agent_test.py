@@ -2,7 +2,8 @@
 
 import numpy as np
 import random
-from badugi_env import BadugiEnv
+from env.badugi_env import BadugiEnv
+
 
 def run_episode(env, max_steps=100):
     obs, _ = env.reset()

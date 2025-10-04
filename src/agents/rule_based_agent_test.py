@@ -1,8 +1,9 @@
 import gymnasium as gym
 import numpy as np
 
-from badugi_env import BadugiEnv
-from hand_utils import decode_hand_from_obs, pretty_hand
+from src.env.badugi_env import BadugiEnv
+from src.utils.hand_utils import decode_hand_from_obs
+
 from utils import log_episode_result, log_step_info
 
 

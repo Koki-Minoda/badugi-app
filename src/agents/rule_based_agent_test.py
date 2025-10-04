@@ -1,70 +1,74 @@
-import gymnasium as gym
 import numpy as np
-
 from src.env.badugi_env import BadugiEnv
-from src.utils.hand_utils import decode_hand_from_obs
+from src.utils.hand_utils import decode_hand_from_obs, pretty_hand, hand_rank, evaluate_hand_strength
 
-from utils import log_episode_result, log_step_info
-
-
-def rule_based_policy(obs):
+def rule_based_action(obs, phase):
     """
-    シンプルなルールベースの方策
-    obs: 環境からの観測ベクトル
-    return: 行動 (0=Fold,1=Call,2=Raise,3+=Draw)
+    シンプルなルールベースエージェント。
+    手札の強さに応じて Fold / Call / Raise / Draw 枚数を決定。
     """
-    # 手札をデコード
     hand = decode_hand_from_obs(obs)
-    count = len(hand)
-    ranks = [r for r, _ in hand]
+    count, ranks = hand_rank(hand)
+    score = evaluate_hand_strength(hand)
 
-    # --- 簡易ルール ---
-    if count == 4:  # バドゥーギ完成
-        return 2  # Raise
-    elif count == 3:
-        if max(ranks) <= 7:
-            return 2  # 強い → Raise
+    # 状況を簡潔に評価
+    strength_label = (
+        "strong" if count == 4
+        else "medium" if count == 3
+        else "weak"
+    )
+    print(f"Player: {pretty_hand(hand)} [{count}バド, {strength_label}] → ", end="")
+
+    # --- BET フェーズ ---
+    if phase == "BET":
+        if count == 4:
+            print("action=2 (Raise)")
+            return 2
+        elif count == 3:
+            act = 1 if max(ranks) > 8 else 2
+            print(f"action={act} ({'Call' if act==1 else 'Raise'})")
+            return act
+        elif count == 2:
+            act = 1 if max(ranks) <= 7 else 0
+            print(f"action={act} ({'Call' if act==1 else 'Fold'})")
+            return act
         else:
-            return 1  # 中弱 → Call
-    elif count == 2:
-        if max(ranks) <= 6:
-            return 2  # A〜6の2枚 → Raise
-        else:
-            return 1  # 弱い → Call
-    elif count == 1:
-        if min(ranks) <= 3:
-            return 2  # A〜4の1バドは時々Raise
-        else:
-            return 0  # フォールド
-    else:
-        return 0  # 想定外はフォールド
+            print("action=0 (Fold)")
+            return 0
+
+    # --- DRAW フェーズ ---
+    elif phase == "DRAW":
+        n_draw = 4 - count
+        print(f"action={n_draw} (Draw {n_draw})")
+        return min(max(n_draw, 0), 3)
+
+    return 1  # fallback: Call
 
 
-def run_rule_based_test(num_episodes=3, num_players=2):
-    env = BadugiEnv()
-    env.num_players = num_players
+def run_episode(player_count=2):
+    env = BadugiEnv(player_count=player_count)
+    obs, info = env.reset()
+    total_reward = 0
+    done = False
 
-    for ep in range(1, num_episodes + 1):
-        obs, _ = env.reset()
-        done = False
-        total_reward = 0
+    print(f"\n=== {player_count}-MAX Rule-based Agent ===")
 
-        while not done:
-            action = rule_based_policy(obs)
+    while not done:
+        phase = "DRAW" if obs[17] == 1 else "BET"
+        action = rule_based_action(obs, phase)
+        obs, reward, done, _, _ = env.step(action)
+        total_reward += reward
 
-            # デコードして見やすく表示
-            hand = decode_hand_from_obs(obs)
-            log_step_info(env.round, env.phase, pretty_hand(hand), action, obs)
+        print(f"[CHECK] opp_last_draw={obs[-1]}, phase_flag={obs[17]} (0=BET,1=DRAW)\n")
 
-            obs, reward, done, _, _ = env.step(action)
-            total_reward += reward
-
-        log_episode_result(ep, total_reward)
+    print(f"Episode total reward: {total_reward:.3f}\n")
 
 
 if __name__ == "__main__":
     print("=== Heads-Up (2 players) / Rule-based agent ===")
-    run_rule_based_test(num_episodes=3, num_players=2)
+    for i in range(3):
+        run_episode(player_count=2)
 
     print("\n=== 6-Max (6 players) / Rule-based agent ===")
-    run_rule_based_test(num_episodes=3, num_players=6)
+    for i in range(3):
+        run_episode(player_count=6)

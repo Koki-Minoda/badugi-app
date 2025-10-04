@@ -7,18 +7,53 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Node.js
+node_modules/
+dist/
+dist-ssr/
 *.local
 
-# Editor directories and files
+# Editor
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual env (Python)
+venv/
+.venv/
+ENV/
+env/
+badugi-rl/venv/
+
+# Python build artifacts
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Coverage / test
+.coverage
+*.cover
+coverage/
+.pytest_cache/
+
+# React build artifacts
+*.tsbuildinfo
+.cache/
+out/
+
+# OS / misc
+Thumbs.db
+desktop.ini

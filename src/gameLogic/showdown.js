@@ -1,6 +1,6 @@
 // src/gameLogic/showdown.js
 import { evaluateBadugi } from "../utils/badugi";
-import { saveTournamentHistory } from "../utils/history"; // 🧩 追加
+import { saveTournamentHistory, saveHandHistory } from "../utils/history"; // ← 追加
 
 export function runShowdown({
   players,
@@ -59,28 +59,48 @@ export function runShowdown({
   setPlayers(updated);
   setPots([]);
 
-  // 🧩 トーナメント履歴保存（暫定データ）
+  // 🧩 ハンド履歴を保存
   try {
-    const winner = updated.find((p) => !p.folded); // 最後まで残った人
+    saveHandHistory({
+      ts: Date.now(),
+      tableSize: players.length,
+      dealerIdx,
+      players: updated.map((p, i) => ({
+        name: p.name,
+        seat: i,
+        stack: p.stack,
+        folded: p.folded,
+      })),
+      pot: pots.reduce((s, p) => s + p.amount, 0),
+      winner: updated.find((p) => !p.folded)?.name ?? "split",
+      actions: [], // 今後：BET/DRAWの履歴をここにpush予定
+    });
+    console.log("✅ Hand saved to history");
+  } catch (err) {
+    console.warn("⚠ Failed to save hand history:", err);
+  }
+
+  // 🧩 トーナメント履歴保存
+  try {
+    const winner = updated.find((p) => !p.folded);
     saveTournamentHistory({
-      tsStart: Date.now() - 300000, // 仮: 開始から5分前
+      tsStart: Date.now() - 300000,
       tsEnd: Date.now(),
       tier: "store",
       buyIn: 1000,
       entries: players.length,
       finish: 1,
       prize: 5000,
-      hands: [], // 今は未連携
+      hands: [], // ここで紐付けてもOK（後で再構築も可能）
     });
     console.log("✅ Tournament saved to history");
   } catch (err) {
     console.warn("⚠ Failed to save tournament history:", err);
   }
 
-  // 「Next Hand」ボタン表示 & 10秒後に自動進行
+  // 「Next Hand」ボタン表示 & 自動進行
   setShowNextButton(true);
   const nextDealer = (dealerIdx + 1) % players.length;
-
   setTimeout(() => {
     setShowNextButton((visible) => {
       if (visible) {

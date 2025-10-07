@@ -66,13 +66,49 @@ class BadugiEnv(gym.Env):
 
     def step(self, action):
         reward = 0
+
+        p_count, p_ranks, p_sum, p_min, is_nuts, one_away = self._hand_features(self.player_hand)
+
+        # --- Reward shaping start ---
+        base_reward = 0.0
+
+        if self.phase == "BET":
+            if action == 0:  # Fold
+                base_reward = -0.3
+            elif action == 1:  # Call / Check
+                base_reward = -0.05
+            elif action == 2:  # Raise
+                base_reward = +0.15  # 単独レイズには報酬なし（結果次第）
+                if one_away:
+                    base_reward += 0.25   # 3枚バドは攻めを後押し
+                    if p_count == 4 and (max(p_ranks) <= 8):
+                       base_reward += 0.30   # 強い4枚での値上げを推奨
+                    # 相手が直前ドロー多め（情報的優位）でのレイズは少しボーナス
+                    if self.opponent_last_draw >= 2:
+                       base_reward += 0.20
+
+        elif self.phase == "DRAW":
+            if action > 0:
+                base_reward = -0.05 * action  # 弱い手で多く引くのはリスク
+                # 3枚バドで1枚ドローは +0.05（前進の意図）
+                if one_away and action == 1:
+                    base_reward += 0.05
+            else:
+                base_reward = +0.05  # ドローなし＝強ハンド維持とみなす
+                if p_count == 4:
+                    base_reward += 0.10  # Pat Badugi はさらに加点
+
+        reward += base_reward
+
+        # --- Reward shaping end ---
+
         if self.phase == "BET":
             bet_size = self._bet_size()
 
             # --- Player action ---
             if action == 0:  # Fold
                 self.done = True
-                reward = -1
+                reward += -1
 
             elif action == 1:  # Call / Check
                 diff = self.current_bet - self.player_bet
@@ -101,7 +137,8 @@ class BadugiEnv(gym.Env):
                 if opp_action == "fold":
                     self.last_opp_action = 1
                     self.done = True
-                    reward = 1
+                    reward += 1
+                    reward += 0.6 if action == 2 else 0.3
 
                 elif opp_action == "call":
                     self.last_opp_action = 2
@@ -158,33 +195,35 @@ class BadugiEnv(gym.Env):
 
             if self.round >= self.max_rounds:
                 self.done = True
-                reward = self._judge()
+                reward += self._judge()
             else:
                 self.phase = "BET"
 
+            if self.round >= self.max_rounds:
+                self.done = True
+                final_result = self._judge()   # +1 / -1 / 0
+
+                # ★ 勝敗ベースの大報酬：勝ちを強く推奨
+                if final_result > 0:
+                    reward += 3.0     # ← ここを大きく
+                # 追加の質的ボーナス
+                if p_count == 4:
+                    reward += 0.6             # 4枚バドはさらに加点
+                    if is_nuts:
+                        reward += 1.0          # ナッツは特大ボーナス
+                    # ランク合計が低いほどボーナス（0〜0.6程度）
+                    reward += max(0.0, min(0.6, (20 - p_sum) * 0.05))
+                elif p_count == 3:
+                    reward += 0.2             # 3枚で勝ったのも少し褒める
+            elif final_result < 0:
+                reward -= 1.0     # 敗北の罰は控えめ（過度に臆病化しない）
+            else:
+                reward += 0.0     # 引き分け
+
+        else:
+            self.phase = "BET"
+
         return self._get_obs(), reward, self.done, False, {}
-
-    def _get_obs(self):
-        obs = []
-        for r, s in self.player_hand:
-            obs.extend([r, s])
-        obs += [0] * (8 - len(obs))
-
-        obs.append(self.round)
-        obs.append(self.player_stack)
-        obs.append(self.opponent_stack)
-        obs.append(self.pot)
-        obs.append(self.player_bet)
-        obs.append(self.opponent_bet)
-        obs.append(self.current_bet)
-        obs.append(self.bet_round)
-        obs.append(self.max_rounds - self.round)
-        obs.append(0 if self.phase == "BET" else 1)
-        obs.append(self.opponent_last_draw)
-        obs.append(self.is_button)
-        obs.append(self._player_is_first_to_act())
-        obs.append(self.last_opp_action)
-        return np.array(obs, dtype=np.float32)
 
     # -------------------------
     # 相手の戦略
@@ -309,3 +348,47 @@ class BadugiEnv(gym.Env):
                 used_ranks.add(r)
                 used_suits.add(s)
         return (len(best), best)
+    def _normalize(self, value, max_value=100):
+        return value / max_value
+
+    def _get_obs(self):
+        obs = []
+        for r, s in self.player_hand:
+            obs.extend([r/12, s/3])  # ランクとスートを正規化
+        obs += [0.0] * (8 - len(obs))
+
+        obs.extend([
+            self.round / self.max_rounds,
+            self._normalize(self.player_stack),
+            self._normalize(self.opponent_stack),
+            self._normalize(self.pot, 400),
+            self._normalize(self.player_bet, 10),
+            self._normalize(self.opponent_bet, 10),
+            self._normalize(self.current_bet, 10),
+            self.bet_round / self.max_bets,
+            (self.max_rounds - self.round) / self.max_rounds,
+            0.0 if self.phase == "BET" else 1.0,
+            self._normalize(self.opponent_last_draw, 4),
+            self.is_button,
+            self._player_is_first_to_act(),
+            self.last_opp_action / 4
+        ])
+        return np.array(obs, dtype=np.float32)
+        
+    def _hand_features(self, hand):
+         """
+         Badugi用の簡易特徴:
+         - count: バド枚数(1〜4)
+         - ranks_sorted: 使えるランク昇順
+         - rank_sum: 使えるランクの合計（小さいほど強い）
+         - min_rank: 最小ランク
+         - is_nuts: A234レインボー（[0,1,2,3]）
+         - one_away: 3枚バド（1枚で4枚完成の見込み）
+         """
+         count, ranks = self._hand_rank(hand)
+         ranks_sorted = sorted(ranks)
+         rank_sum = sum(ranks_sorted) if ranks_sorted else 99
+         min_rank = ranks_sorted[0] if ranks_sorted else 99
+         is_nuts = (count == 4 and ranks_sorted == [0, 1, 2, 3])
+         one_away = (count == 3)
+         return count, ranks_sorted, rank_sum, min_rank, is_nuts, one_away

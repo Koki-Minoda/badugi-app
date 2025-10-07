@@ -20,7 +20,12 @@ export default function Controls({ phase, currentBet, player, onFold, onCall, on
         </>
       )}
       {phase === "DRAW" && (
-        <button onClick={onDraw} className="px-3 py-2 rounded bg-green-600 text-white">Draw Selected</button>
+        <button
+        onClick={onDraw}
+        className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white font-bold whitespace-nowrap"
+        >
+          Draw Selected
+          </button>
       )}
     </div>
   );

@@ -3,7 +3,7 @@ import React from "react";
 import Card from "./Card";
 import { getPositionStyle } from "../utils/position";
 
-export default function Player({ player, index, selfIndex = 0, turn, dealerIdx, onCardClick }) {
+export default function Player({ player, index, selfIndex = 0, turn, dealerIdx, onCardClick, phase }) {
   const pos = getPositionStyle(index, selfIndex, 6);
 
   return (
@@ -24,7 +24,11 @@ export default function Player({ player, index, selfIndex = 0, turn, dealerIdx, 
   value={card}
   hidden={index !== selfIndex && !player.showHand}
   selected={index === selfIndex && (player.selected || []).includes(i)}
-  onClick={() => onCardClick && onCardClick(i)}
+  onClick={() => {
+    if (index === selfIndex && phase === "DRAW" && turn === 0 && onCardClick) {
+      onCardClick(i);
+    }
+  }}
   folded={player.folded}
 />
 

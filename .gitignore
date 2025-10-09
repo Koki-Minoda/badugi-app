@@ -55,3 +55,6 @@ out/
 # OS / misc
 Thumbs.db
 desktop.ini
+
+# add this to .gitignore
+runs/

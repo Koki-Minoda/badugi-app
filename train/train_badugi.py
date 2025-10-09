@@ -138,8 +138,12 @@ def train_q_learning(
     avg_r = evaluate_q(BadugiEnv(), Q, episodes=1000)
     print(f"🎯 Q-learning evaluation avg reward over 1000 eps: {avg_r:.3f}")
     print(f"💾 saved: {final_path}")
+ 
+    # 学習完了後に不要ファイル削除
+    from src.utils.cleanup import cleanup_intermediate_qtables
+    cleanup_intermediate_qtables("runs/q_learning_refine5", keep_pattern="final", remove_logs=False)
+    
     return final_path
-
 
 # ---------------------------
 # DQN（任意: SB3）
@@ -254,3 +258,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

@@ -12,7 +12,7 @@ from pathlib import Path
 
 # === 設定 ===
 TARGET_DIRS = [
-    "runs/q_learning_refine4"
+    "runs/q_learning_refine5"
 ]
 
 # === 関数 ===

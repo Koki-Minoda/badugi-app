@@ -128,7 +128,8 @@ def train_q_learning(
             ckpt_path = os.path.join(outdir, f"q_table_ep{ep:07d}.json")
             save_q_table(Q, ckpt_path)
             elapsed = (time.time() - t0) / 60
-            print(f"✅ ep={ep:,}  ε={epsilon:.4f}  avg_ep_reward≈{ep_r:.3f}  elapsed={elapsed:.1f} min")
+            print(f"[OK] ep={ep:,}  eps={epsilon:.4f}  avg_ep_reward≈{ep_r:.3f}  elapsed={elapsed:.1f} min")
+
 
     # 最終保存
     final_path = os.path.join(outdir, f"q_table_final_ep{episodes}.json")

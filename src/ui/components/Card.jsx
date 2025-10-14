@@ -1,4 +1,4 @@
-// src/components/Card.jsx
+// src/ui/components/Card.jsx
 import React from "react";
 
 export default function Card({ value, hidden, selected, onClick, folded }) {

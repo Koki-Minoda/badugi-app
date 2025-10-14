@@ -40,3 +40,31 @@
 .read-the-docs {
   color: #888;
 }
+/* ================================
+   🎯 Playerカード固定スタイル
+   ================================ */
+.player-cards,
+.player-cards img {
+  transform: none !important;
+  transition: none !important;
+}
+
+.player-cards {
+  position: relative !important;
+  top: 0 !important;
+  margin: 0 auto !important;
+}
+
+/* 各プレイヤーの位置揺れ防止 */
+.player-stable {
+  transform: none !important;
+  transition: none !important;
+  position: absolute;
+}
+
+/* Stackテキストを固定位置にする */
+.player-stack {
+  position: relative;
+  top: 0;
+  margin-top: 4px;
+}

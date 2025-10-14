@@ -1,26 +1,27 @@
-// src/App.jsx
+// src/ui/App.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Player from "./components/Player";
 import Controls from "./components/Controls";
-import { createDeck, shuffleDeck } from "./utils/deck";
-import { runDrawRound } from "./gameLogic/drawRound";
-import { runShowdown } from "./gameLogic/showdown";
-import { evaluateBadugi } from "./utils/badugi";
+import { DeckManager   } from "../games/badugi/utils/deck";
+import { runDrawRound } from "../games/badugi/logic/drawRound";
+import { runShowdown } from "../games/badugi/logic/showdown";
+import { evaluateBadugi, compareBadugi, getWinnersByBadugi } from "../games/badugi/utils/badugiEvaluator";
+
 import {
-  alivePlayers,
-  nextAliveFrom,
-  maxBetThisRound,
-  settleStreetToPots,
-  isBetRoundComplete,
-} from "./gameLogic/roundFlow";
+   alivePlayers,
+   nextAliveFrom,
+   maxBetThisRound,
+   settleStreetToPots,
+   isBetRoundComplete,
+   finishBetRoundFrom,
+} from "../games/badugi/logic/roundFlow.js"; 
 
 // 履歴保存API
 import {
   saveRLHandHistory,
   getAllRLHandHistories,
   exportRLHistoryAsJSONL,
-} from "./utils/history_rl";
-
+} from "../utils/history_rl";
 import { useNavigate } from "react-router-dom";
 
 
@@ -33,6 +34,9 @@ export default function App() {
   const betSize = BB;
   const MAX_DRAWS = 3; // DRAWは3回（= DRAW1,2,3）
 
+  // state定義の上部などに deckRef を設置
+  const deckRef = useRef(new DeckManager());
+
   /* --- states --- */
   const [players, setPlayers] = useState([]);
   const [deck, setDeck] = useState([]);
@@ -42,7 +46,7 @@ export default function App() {
 
   // 新規追加：BETラウンド開始時の先頭プレイヤーを保持
   const [drawRound, setDrawRound] = useState(0); // 完了したDRAW数 0..3
-  // states
+
   const [raisePerRound, setRaisePerRound] = useState([0, 0, 0, 0]); // 各BETラウンドの合計Raise回数
   const [raisePerSeatRound, setRaisePerSeatRound] = useState(
     () => Array(NUM_PLAYERS).fill(0).map(() => [0, 0, 0, 0]) // [seat][round]
@@ -82,7 +86,46 @@ export default function App() {
   function debugLog(...args) {
     if (debugMode) console.log(...args);
   }
+
+  const raiseCountRef = useRef(raiseCountThisRound);
+  useEffect(() => {
+    raiseCountRef.current = raiseCountThisRound;
+  }, [raiseCountThisRound]);
+
+  // === ポジション名を返す関数（Dealer基準） ===
+  // dealerIdx が「BTN（ディーラー）」なので、BTN → SB → BB → UTG → MP → CO の順で回す
+  function positionName(index, dealer = dealerIdx) {
+    const order = ["BTN", "SB", "BB", "UTG", "MP", "CO"];
+    const rel = (index - dealer + NUM_PLAYERS) % NUM_PLAYERS;
+    return order[rel] ?? `Seat${index}`;
+  }
   
+  // === 座席ヘルパー（SB起点の左回り順） ===
+  const sbIndex = (d = dealerIdx) => (d + 1) % NUM_PLAYERS;        // SB
+  const orderFromSB = (d = dealerIdx) =>
+    Array.from({ length: NUM_PLAYERS }, (_, k) => (sbIndex(d) + k) % NUM_PLAYERS);
+  const firstUndrawnFromSB = (snap) => {
+    const order = orderFromSB();
+    return order.find(
+      (i) => !snap[i]?.folded && !snap[i]?.allIn && !snap[i]?.hasDrawn
+    );
+  };
+
+  // === デバッグ: 現在のポジション順序確認 ===
+  useEffect(() => {
+    if (!debugMode) return;
+    console.table(
+      players.map((p, i) => ({
+        seat: i,
+        name: p.name,
+        folded: p.folded ? "✓" : "",
+        drawn: p.hasDrawn ? "✓" : "",
+        stack: p.stack,
+        bet: p.betThisRound,
+      }))
+    );
+  }, [players, dealerIdx, debugMode]);
+
   // ======== DEBUG LOGGER (add just under debugLog) ========
 const actionSeqRef = useRef(0); // 連番
 
@@ -118,6 +161,8 @@ function logState(tag, snap = players) {
       }))
     );
     console.log("pots:", pots, "totalPot:", totalPotForDisplay);
+    const potNow = (pots || []).reduce((s, p) => s + (p.amount || 0), 0);
+    console.log("pots:", pots, "totalPotNow:", potNow);
   } finally {
     console.groupEnd();
   }
@@ -127,7 +172,11 @@ function logAction(i, type, payload = {}) {
   if (!debugMode) return;
   const seq = ++actionSeqRef.current;
   const nm = players[i]?.name ?? `P${i}`;
-  console.log(`[${phaseTagLocal()}][#${seq}] ${nm} ${type}`, payload);
+  const pos = positionName(i);
+  console.log(
+    `[${phaseTagLocal()}][#${seq}] ${nm} (${pos}) → ${type}`,
+    payload
+  );
 }
 
 // === 新規: 行動記録をAI学習用ログに保存 ===
@@ -170,26 +219,96 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
     return settled + onStreet;
   }, [pots, players]);
 
-  /* --- phase helpers --- */
   function goShowdownNow(playersSnap) {
-    const { pots: newPots } = settleStreetToPots(playersSnap, pots);
-    setPots(newPots);
-    setPlayers(playersSnap.map((p) => ({ ...p, showHand: !p.folded })));
+    debugLog("[SHOWDOWN] goShowdownNow (All-in対応) called");
+
+    // 1️⃣ 有効プレイヤー（foldしていない人）
+    const active = playersSnap.filter((p) => !p.folded);
+    if (active.length === 0) return;
+
+    // 2️⃣ 現在のポットを安全に確定
+    const settledPots = settleStreetToPots(playersSnap, pots).pots;
+    const allPots =
+      settledPots && settledPots.length > 0
+        ? settledPots
+        : [
+            {
+              amount:
+                playersSnap.reduce(
+                  (sum, p) => sum + (p.betThisRound || 0),
+                  0
+                ) || 0,
+              eligible: active.map((p, i) => i),
+            },
+          ];
+
+    // === Badugi評価ロジックに統一 ===
+    console.log("[SHOWDOWN] === RESULTS (BADUGI) ===");
+    const newStacks = [...playersSnap.map((p) => p.stack)];
+    allPots.forEach((pot, potIdx) => {
+      const eligiblePlayers = pot.eligible
+        .map((i) => ({ seat: i, name: playersSnap[i].name, hand: playersSnap[i].hand }))
+        .filter((p) => !playersSnap[p.seat].folded);
+
+      if (eligiblePlayers.length === 0) return;
+
+      // getWinnersByBadugi で最強者群取得
+      const winners = getWinnersByBadugi(eligiblePlayers);
+      const share = Math.floor(pot.amount / winners.length);
+      let remainder = pot.amount % winners.length;
+
+      for (const w of winners) {
+        const idx = w.seat ?? playersSnap.findIndex(p => p.name === w.name);
+        if (idx >= 0) {
+          newStacks[idx] += share;
+          if (remainder > 0) {
+            newStacks[idx] += 1;
+            remainder -= 1;
+          }
+        }
+      }
+
+      console.log(
+        `[SHOWDOWN] Pot#${potIdx}: ${pot.amount} → ${winners
+          .map((w) => w.name)
+          .join(", ")}`
+      );
+    });
+
+    // 6️⃣ スタック更新・全員のハンド公開
+    const updated = playersSnap.map((p, i) => ({
+      ...p,
+      stack: newStacks[i],
+      showHand: true,
+      result: p.folded ? "FOLD" : "SHOW",
+    }));
+
+    // 7️⃣ 状態更新
+    setPots([]);
+    setShowNextButton(true);
+    setPlayers(updated);
     setPhase("SHOWDOWN");
 
-    setTimeout(
-      () =>
-        runShowdown({
-          players: playersSnap,
-          setPlayers,
-          pots: newPots,
-          setPots,
-          dealerIdx,
-          dealNewHand,
-          setShowNextButton,
-        }),
-      200
-    );
+    // 8️⃣ 履歴保存だけ実行（次ハンドはボタン押下で）
+    const totalPot = allPots.reduce((sum, p) => sum + (p.amount || 0), 0);
+    if (!handSavedRef.current) {
+      trySaveHandOnce({
+        playersSnap: updated,
+        dealerIdx,
+        pots: allPots,
+        potOverride: totalPot,
+      });
+    }
+
+    console.log("[SHOWDOWN] === STACKS AFTER ===");
+    updated.forEach((p) => {
+      if (p.folded) return;
+      const ev = evaluateBadugi(p.hand);
+      console.log(
+        `Seat ${p.name}: ${p.hand.join(" ")} | score=${ev.score}, unique=${ev.uniqueCount}`
+      );
+    });
+    console.log("🕒 Waiting for Next Hand button...");
   }
 
   function getNextAliveAfter(idx) {
@@ -212,11 +331,9 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
     if (active.length === 1) {
       const winnerIdx = players.findIndex((p) => !p.folded);
       const newPlayers = [...players];
-      const potSum = totalPotForDisplay;
-      newPlayers[winnerIdx] = {
-        ...newPlayers[winnerIdx],
-        stack: newPlayers[winnerIdx].stack + potSum,
-      };
+      const { pots: finalPots } = settleStreetToPots(players, pots);
+      const potSum = finalPots.reduce((acc, p) => acc + (p.amount || 0), 0);
+      newPlayers[winnerIdx].stack += potSum;
       setPlayers(newPlayers);
 
       // ハンド保存（フォールド勝ちの早期終了）
@@ -234,245 +351,253 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
     return false;
   }
 
-function finishBetRoundFrom(playersSnap) {
-  debugLog("[BET] Round complete → finishBetRoundFrom, drawRound(current)=", drawRound);
-
-  // 現在のストリートを清算
-  logState("BET round complete → settle", playersSnap);
-  const { pots: newPots, clearedPlayers } = settleStreetToPots(playersSnap, pots);
-  const reset = clearedPlayers.map((p) => ({
-    ...p,
-    hasDrawn: false,
-    lastDrawCount: 0,
-  }));
-
-  setPots(newPots);
-  setPlayers(reset);
-
-  // --- DRAWへ進行 ---
-   if (drawRound < MAX_DRAWS) {
-     const nextRound = drawRound + 1;
-     setDrawRound(nextRound); // ← ここで増加
-     setPhase("DRAW"); // ← phase更新を同期
-     setCurrentBet(0);
-     setBetHead(null);
-     setTurn((dealerIdx + 1) % NUM_PLAYERS);
-     debugLog(`[FLOW] → DRAW #${nextRound} start`);
-     setTimeout(() => logState(`→ ENTER DRAW#${nextRound}`, reset), 0);
-     return;
-  }
-
-  // ✅ 全ドロー完了 → SHOWDOWN
-  setTimeout(() => logState("→ ENTER SHOWDOWN", reset), 0);
-  setPhase("SHOWDOWN");
-  setTimeout(() => {
-    runShowdown({
-      players: playersSnap,
-      setPlayers,
-      pots: newPots,
-      setPots,
-      dealerIdx,
-      dealNewHand,
-      setShowNextButton,
-    });
-  }, 200);
-  debugLog("[BET] All draws done → SHOWDOWN");
-}
-
-
-
   function advanceAfterAction(updatedPlayers) {
-  debugLog("[FLOW] advanceAfterAction called");
-  const snap = updatedPlayers || players;
-  debugLog("[FLOW] phase:", phase, "drawRound:", drawRound);
+    debugLog("[FLOW] advanceAfterAction called");
+    const snap = updatedPlayers || players;
+    debugLog("[FLOW] phase:", phase, "drawRound:", drawRound);
 
-  // 勝負決まってたら終了
-  if (checkIfOneLeftThenEnd()) return;
+    // 勝負決まってたら終了
+    if (checkIfOneLeftThenEnd(snap)) return;
 
-  // ------------------------
-  // BETフェーズ中の進行
-  // ------------------------
-  if (phase === "BET") {
-    const next = getNextAliveAfter(turn);
-    if (next === null) return;
+    // 🆕 All-in含むショート状態の強制ショーダウン
+    const activeNoFold = (updatedPlayers || players).filter(p => !p.folded);
 
-    const active = snap.filter((p) => !p.folded);
-    const everyoneMatched = active.every((p) => p.betThisRound === currentBet);
+    const allInCount = activeNoFold.filter(p => p.allIn).length;
+    if (allInCount > 0 && activeNoFold.every(p => p.allIn || p.folded)) {
+      console.log("[ALL-IN] All remaining players all-in → goShowdownNow()");
+      goShowdownNow(updatedPlayers);
+      return;
+    }
 
-    // 💡 全員マッチしている場合 → BET終了
-   if (everyoneMatched) {
-    debugLog("[BET] ✅ Everyone matched → finishBetRoundFrom()");
-    setTransitioning(true);
-    setTimeout(() => {
-      finishBetRoundFrom(snap);
-      setTransitioning(false);
-    }, 100);
-    return;
-  }
+    // ------------------------
+    // BETフェーズ中
+    // ------------------------
+    if (phase === "BET") {
+      const active = snap.filter(p => !p.folded);
+      const maxNow = maxBetThisRound(snap);
+      const everyoneMatched = active.every(p => p.allIn || p.betThisRound === maxNow);
 
-  // それ以外 → 次プレイヤーへ
-  setTurn(next);
-  return;
-  }
+      const noOneBet = maxNow === 0; // 全員チェック状態（BETが発生していない）
+      const nextAlive = nextAliveFrom(snap, turn); // ← 定義を統一
 
-  // ------------------------
-  // DRAWフェーズ中の進行
-  // ------------------------
-  if (phase === "DRAW") {
-   debugLog("[DRAW] Checking if allActiveDrawn...");
- 
-   const activePlayers = snap.filter((p) => !p.folded && !p.allIn);
-   const allActiveDrawn = activePlayers.every((p) => p.hasDrawn);
+      const shouldEnd =
+        (maxNow > 0 && everyoneMatched) || (noOneBet && nextAlive === betHead);
 
-   if (allActiveDrawn) {
-      // ✅ 二重呼び出し防止
-      if (!transitioning) {
+      if (shouldEnd) {
+        debugLog("[BET] ✅ Everyone matched — scheduling finishBetRoundFrom()");
         setTransitioning(true);
-        debugLog("[DRAW] ✅ allActiveDrawn → finishDrawRound()");
         setTimeout(() => {
-          finishDrawRound();
+          finishBetRoundFrom({
+            players: snap,
+            pots,
+            setPlayers,
+            setPots,
+            drawRound,
+            setDrawRound,
+            setPhase,
+            setTurn,
+            dealerIdx,
+            NUM_PLAYERS,
+            MAX_DRAWS,
+            runShowdown,
+            dealNewHand,
+            setShowNextButton,
+            setTransitioning,
+          });
           setTransitioning(false);
-        }, 200);
+        }, 100);
+        return;
       }
       return;
     }
 
-    // 次の未ドロー者を探す
-    const nextIdx = snap.findIndex((p, i) => !p.folded && !p.hasDrawn);
-    if (nextIdx !== -1) {
-      setTurn(nextIdx);
+    // ------------------------
+    // DRAWフェーズ中
+    // ------------------------
+    if (phase === "DRAW") {
+      const actives = snap.filter(p => !p.folded && !p.allIn);
+      const allDrawn = actives.every(p => p.hasDrawn);
+
+      // ✅ 全員ドロー完了 → 一度だけBETへ遷移
+      if (allDrawn && !transitioning) {
+        debugLog("[DRAW] ✅ All active players have drawn — finishDrawRound()");
+        setTransitioning(true);
+        setTimeout(() => {
+          finishDrawRound(snap);
+          setTransitioning(false);
+        }, 200);
+        return;
+      }
+      /*
+
+      // 未ドロー者を左回りで選択
+      const nextIdx = actives.findIndex(p => !p.hasDrawn);
+      if (nextIdx === -1) {
+        console.warn("[DRAW] No undrawn player found — waiting for sync");
+        return;
+      }
+
+      const absIdx = players.findIndex(
+        p => p.name && actives[nextIdx] && p.name === actives[nextIdx].name
+      );
+      if (absIdx < 0 || Number.isNaN(absIdx)) {
+        console.warn("[DRAW] Invalid absIdx (", absIdx, ") — skipping draw step");
+        return;
+      }
+
+      setTurn(absIdx);
       runDrawRound({
         players: snap,
-        turn: nextIdx,
-        deck,
+        turn: absIdx,
+        deckManager: deckRef.current,
         setPlayers,
-        setDeck,
-         advanceAfterAction,
+        drawRound,
+        setTurn,
+        dealerIdx,
+        NUM_PLAYERS,
       });
+      */
+     // DRAWは afterBetActionWithSnapshot に一本化
+      debugLog("[DRAW] advanceAfterAction called, skipping (handled elsewhere)");
+      return;
+    }
    }
+
+  function finishDrawRound(snapOpt) {
+    const base = snapOpt ?? players; // 最新スナップを優先
+    // DRAW を引き終えた瞬間に「完了したドロー回数」を +1 する（上限 3）
+    const completed = Math.min(drawRound + 1, MAX_DRAWS);
+    setDrawRound(completed);
+
+    // ベットラウンドを開始する（3回目のドロー後も必ずベット！）
+    setRaiseCountThisRound(0);
+
+    // Pre-draw だけは UTG（dealer+3）、それ以降のベットは常に SB（dealer+1）
+    const firstToAct =
+      completed === 0
+        ? (dealerIdx + 3) % NUM_PLAYERS // ここには来ないが保険
+        : (dealerIdx + 1) % NUM_PLAYERS;
+
+    const reset = base.map((p) => ({
+      ...p,
+      betThisRound: 0,
+      lastAction: "",
+      hasDrawn: false, // 次のドローに備えて戻す
+    }));
+
+    setPlayers(reset);
+    setCurrentBet(0);
+    setBetHead(firstToAct);
+    setTurn(firstToAct);
+    setPhase("BET");
+
+    debugLog(`[BET] === START BET (after DRAW#${completed}) firstToAct=${firstToAct} ===`);
+    setTimeout(() => logState(`ENTER BET(after DRAW#${completed})`), 0);
   }
-}
-
-
-function finishDrawRound() {
-  const nextRound = drawRound + 1;
-  if (nextRound > MAX_DRAWS) {
-    debugLog("[DRAW] Max draws reached → skipping");
-    return;
-  }
-
-  setRaiseCountThisRound(0);
-
-  const firstToAct =
-    drawRound === 0
-      ? (dealerIdx + 3) % NUM_PLAYERS // 最初だけUTG
-      : (dealerIdx + 1) % NUM_PLAYERS; // 以降はSB
-
-  setDrawRound(nextRound); // ✅ ここでのみ進行
-
-  // BET準備
-  const reset = players.map((p) => ({
-    ...p,
-    betThisRound: 0,
-    lastAction: "",
-    hasDrawn: false,
-  }));
-  setPlayers(reset);
-  setCurrentBet(0);
-  setBetHead(firstToAct);
-  setTurn(firstToAct);
-  setRaiseCountThisRound(0);
-  setPhase("BET");
-
-  debugLog(`[BET] === START BET #${nextRound} (after DRAW #${drawRound}) ===`);
-  setTimeout(() => logState(`ENTER BET#${nextRound}`), 0);
-}
-
 
 
   /* --- dealing --- */
-  function dealNewHand(nextDealerIdx = 0) {
-  debugLog(`[HAND] dealNewHand start → dealer=${nextDealerIdx}`);
-  const deckSrc = createDeck();
-  const newDeck = shuffleDeck([...deckSrc]); // ← clone して確実に独立参照に
+  function dealNewHand(nextDealerIdx = 0, prevPlayers = null) {
+    debugLog(`[HAND] dealNewHand start → dealer=${nextDealerIdx}`);
+    // ✅ DeckManager でリセットして1デッキ管理
+    deckRef.current.reset();
+    const newDeck = deckRef.current; // ← createShuffledDeckは使わない
 
-  // 🧱 既存プレイヤーからスタックと名前を引き継ぐ（座席固定）
-  const prev = players.length === NUM_PLAYERS ? players : makeEmptyPlayers();
+    // ✅ スタック引き継ぎ優先順位：
+    //  1. prevPlayers（showdownから渡された最新状態）
+    //  2. 現在のplayers（テーブルに残っている状態）
+    //  3. デフォルト初期値
+    const prev = Array.from({ length: NUM_PLAYERS }, (_, i) => ({
+      name:
+        prevPlayers?.[i]?.name ??
+        players?.[i]?.name ??
+        `P${i + 1}`,
+      stack:
+        prevPlayers?.[i]?.stack ??
+        players?.[i]?.stack ??
+        1000,
+    }));
 
-  // 🆕 完全新規配列を生成
-  const newPlayers = Array.from({ length: NUM_PLAYERS }, (_, i) => ({
-    name: prev[i].name ?? `P${i + 1}`,
-    stack: prev[i].stack ?? 1000,
-    hand: newDeck.splice(0, 4),
-    folded: false,
-    allIn: false,
-    betThisRound: 0,
-    hasDrawn: false,
-    lastDrawCount: 0,
-    selected: [],
-    showHand: false,
-    isDealer: i === nextDealerIdx,
-    lastAction: "",
-  }));
 
-  // SB/BB のブラインド支払い
-  const sbIdx = (nextDealerIdx + 1) % NUM_PLAYERS;
-  const bbIdx = (nextDealerIdx + 2) % NUM_PLAYERS;
-  newPlayers[sbIdx].stack -= SB;
-  newPlayers[sbIdx].betThisRound = SB;
-  newPlayers[bbIdx].stack -= BB;
-  newPlayers[bbIdx].betThisRound = BB;
+    // 🆕 プレイヤー配列を生成
+    const newPlayers = Array.from({ length: NUM_PLAYERS }, (_, i) => ({
+      name: prev[i].name ?? `P${i + 1}`,
+      stack: prev[i].stack ?? 1000,
+      hand: deckRef.current.draw(4), 
+      folded: false,
+      allIn: false,
+      betThisRound: 0,
+      hasDrawn: false,
+      lastDrawCount: 0,
+      selected: [],
+      showHand: false,
+      isDealer: i === nextDealerIdx,
+      lastAction: "",
+    }));
 
-  // --- 状態更新 ---
-  setPlayers(newPlayers);
-  setDeck([...newDeck]);
-  setPots([{ amount: SB + BB, eligible: [...Array(NUM_PLAYERS).keys()] }]);
-  setCurrentBet(BB);
-  setDealerIdx(nextDealerIdx);
-  setDrawRound(0);
-  setPhase("BET");
-  setTurn((nextDealerIdx + 3) % NUM_PLAYERS); // UTG
-  setBetHead((nextDealerIdx + 3) % NUM_PLAYERS);
-  setShowNextButton(false);
-  setTransitioning(false);
+    // SB/BB のブラインド支払い
+    const sbIdx = (nextDealerIdx + 1) % NUM_PLAYERS;
+    const bbIdx = (nextDealerIdx + 2) % NUM_PLAYERS;
+    newPlayers[sbIdx].stack -= SB;
+    newPlayers[sbIdx].betThisRound = SB;
+    newPlayers[bbIdx].stack -= BB;
+    newPlayers[bbIdx].betThisRound = BB;
 
-  // Raiseカウンタ・学習ログ初期化
-  setRaiseCountThisRound(0);
-  setRaisePerRound([0, 0, 0, 0]);
-  setRaisePerSeatRound(Array(NUM_PLAYERS).fill(0).map(() => [0, 0, 0, 0]));
-  setActionLog([]);
+    // --- 状態更新 ---
+    setPlayers(newPlayers);
+    setDeck([]);
+    setPots([{ amount: SB + BB, eligible: [...Array(NUM_PLAYERS).keys()] }]);
+    setCurrentBet(BB);
+    setDealerIdx(nextDealerIdx);
+    setDrawRound(0);
+    setPhase("BET");
+    setTurn((nextDealerIdx + 3) % NUM_PLAYERS); // UTG
+    setBetHead((nextDealerIdx + 3) % NUM_PLAYERS);
+    setShowNextButton(false);
+    setTransitioning(false);
 
-  // 次ハンド準備
-  handSavedRef.current = false;
-  handIdRef.current = `${nextDealerIdx}-${Date.now()}`;
+    // Raiseカウンタ・学習ログ初期化
+    setRaiseCountThisRound(0);
+    setRaisePerRound([0, 0, 0, 0]);
+    setRaisePerSeatRound(
+      Array(NUM_PLAYERS)
+        .fill(0)
+        .map(() => [0, 0, 0, 0])
+    );
+    setActionLog([]);
 
-  debugLog("[HAND] New players dealt:", newPlayers.map(p => p.name));
-  debugLog(`[STATE] phase=BET, drawRound=0, turn=${(nextDealerIdx + 3) % NUM_PLAYERS}, currentBet=${BB}`);
+    // 次ハンド準備
+    handSavedRef.current = false;
+    handIdRef.current = `${nextDealerIdx}-${Date.now()}`;
 
-  setTimeout(() => logState("NEW HAND"), 0);
+    debugLog("[HAND] New players dealt:", newPlayers.map((p) => p.name));
+    debugLog(
+      `[STATE] phase=BET, drawRound=0, turn=${
+        (nextDealerIdx + 3) % NUM_PLAYERS
+      }, currentBet=${BB}`
+    );
 
-  // 🧩 deckが正しく更新された後にNPCターンなどの自動処理が走るように短遅延を入れる
-  setTimeout(() => {
-    setPlayers([...newPlayers]);
-    setDeck([...newDeck]);
-  }, 10);
-}
+    setTimeout(() => logState("NEW HAND"), 0);
 
+    // 🧩 deck更新後に自動処理が安全に走るように短遅延
+    setTimeout(() => {
+      setPlayers([...newPlayers]);
+    }, 20);
+  }
 
   useEffect(() => {
     dealNewHand(0);
   }, []);
 
   // ▼ 状態変化を監視してログ出力
-useEffect(() => {
-  debugLog(
-    `[STATE] phase=${phase}, drawRound=${drawRound}, turn=${turn}, currentBet=${currentBet}`
-  );
-}, [phase, drawRound, turn, currentBet]);
+  useEffect(() => {
+    debugLog(
+      `[STATE] phase=${phase}, drawRound=${drawRound}, turn=${turn}, currentBet=${currentBet}`
+    );
+  }, [phase, drawRound, turn, currentBet]);
 
 
   /* --- common: after BET action (snapshot-based) --- */
-    /* --- common: after BET action (snapshot-based) --- */
   function afterBetActionWithSnapshot(snap, actedIndex) {
     if (transitioning) {
       setPlayers(snap);
@@ -500,8 +625,7 @@ useEffect(() => {
     // 次のアクティブ
     const next = nextAliveFrom(snap, actedIndex);
     setPlayers(snap);
-    if (next === null) return;
-
+    
     // ------------------------
     // BETフェーズ中
     // ------------------------
@@ -510,22 +634,44 @@ useEffect(() => {
       const everyoneMatched = active.every(
         (p) => p.allIn || p.betThisRound === maxNow
       );
+      const noOneBet = maxNow === 0;
+      const nextAlive = nextAliveFrom(snap, actedIndex);
 
       debugLog(
         `[BET] Check status: everyoneMatched=${everyoneMatched}, next=${next}, betHead=${betHead}`
       );
 
-      if (everyoneMatched && next === betHead) {
-        debugLog(`[BET] ✅ Round complete! → finishBetRoundFrom(drawRound=${drawRound})`);
+      // Raiseがあるときは everyoneMatched だけで終了
+      const shouldEnd =
+        (maxNow > 0 && everyoneMatched) || (noOneBet && nextAlive === betHead);
+
+
+      if (shouldEnd) {
+        debugLog(`[BET] ✅ Round complete (everyone matched) → schedule finishBetRoundFrom()`);
         setTransitioning(true);
         setTimeout(() => {
-          finishBetRoundFrom(snap);
+          finishBetRoundFrom({
+            players: snap,
+            pots,
+            setPlayers,
+            setPots,
+            drawRound,
+            setDrawRound,
+            setPhase,
+            setTurn,
+            dealerIdx,
+            NUM_PLAYERS,
+            MAX_DRAWS,
+            runShowdown,
+            dealNewHand,
+            setShowNextButton,
+          });
           setTransitioning(false);
-        }, 50); // ← 少しディレイを入れる
+        }, 100);
         return;
       }
-
-      setTurn(next);
+      if (next === null) return;
+      if (nextAlive !== null) setTurn(nextAlive);
       return;
     }
 
@@ -533,23 +679,23 @@ useEffect(() => {
     // DRAWフェーズ中
     // ------------------------
     if (phase === "DRAW") {
-      const allActiveDrawn = snap.every((p) => p.folded || p.hasDrawn);
-      debugLog(`[DRAW] Check: allActiveDrawn=${allActiveDrawn}`);
+      debugLog("[DRAW] Checking if allActiveDrawn (SB-first)...");
+      const actives = snap.filter((p) => !p.folded && !p.allIn);
+      const allActiveDrawn = actives.every((p) => p.hasDrawn);
 
       if (allActiveDrawn) {
-        finishDrawRound();
+        finishDrawRound(snap);
         return;
       }
 
-      const nextIdx = snap.findIndex(
-        (p, i) => !p.folded && !p.hasDrawn && i !== 0
-      );
+      const nextIdx = firstUndrawnFromSB(snap);
+
       if (nextIdx !== -1) {
         setTurn(nextIdx);
         runDrawRound({
           players: snap,
           turn: nextIdx,
-          deck,
+          deckManager: deckRef.current,
           setPlayers,
           setDeck,
           advanceAfterAction,
@@ -558,8 +704,29 @@ useEffect(() => {
     }
   }
 
+  // App() 内に追加
+  function recycleFoldedAndDiscardsBeforeCurrent(snap, currentIdx) {
+    const order = orderFromSB();
+    const pos = order.indexOf(currentIdx);
+    if (pos <= 0) return;
 
+    // 直前までのフォールドプレイヤーの手札を回収
+    const toCheck = order.slice(0, pos);
+    const muck = [];
+    toCheck.forEach(i => {
+      const pl = snap[i];
+      if (pl?.folded && Array.isArray(pl.hand)) {
+        muck.push(...pl.hand);
+      }
+    });
 
+    // 捨て札（deckManager.discardPile）も再利用
+    const dm = deckRef.current;
+    if (muck.length || (dm.discardPile && dm.discardPile.length)) {
+      dm.recycleNow(muck);
+      debugLog(`[RECYCLE] +${muck.length} cards (folded) + existing discard → new deck=${dm.deck.length}`);
+    }
+  }
 
   /* --- actions: BET --- */
   function playerFold() {
@@ -710,63 +877,67 @@ useEffect(() => {
 
   function drawSelected() {
     debugLog(`[CHECK] phase=${phase}, drawRound=${drawRound}, MAX_DRAWS=${MAX_DRAWS}`);
-    if (phase !== "DRAW" || drawRound >= MAX_DRAWS) return;
-    // 🔧 Deckもplayersも完全deepコピー（Reactが変更を検知できるように）
-    const newDeck = [...deck];
+    if (phase !== "DRAW" || turn !== 0) return;
+
+    const deckManager = deckRef.current;
     const newPlayers = players.map(p => ({ ...p, hand: [...p.hand] }));
     const p = { ...newPlayers[0], hand: [...newPlayers[0].hand] };
+
     const sel = p.selected || [];
-    
+
     if (sel.length > 0) {
-      // --- 交換前の手札を保持 ---
       const oldHand = [...p.hand];
-      const replaced = []; // [ { index, oldCard, newCard } ] ログ用
+      const replaced = [];
       const newHand = [...p.hand];
+
       sel.forEach((i) => {
-        if (newDeck.length > 0) {
-          const newCard = newDeck.pop();
-          replaced.push({ index: i, oldCard: newHand[i], newCard }); // 交換情報を保存
+        let pack = deckManager.draw(1);
+        if (!pack || pack.length === 0) {
+          recycleFoldedAndDiscardsBeforeCurrent(newPlayers, 0);
+          pack = deckManager.draw(1);
+        }
+
+        if (pack && pack.length > 0) {
+          const newCard = pack[0];
+          deckManager.discard([newHand[i]]); // ← 交換前カードを捨て札に
+          replaced.push({ index: i, oldCard: newHand[i], newCard });
           newHand[i] = newCard;
+        } else {
+          debugLog(`[DRAW] No card for slot[${i}] → keep`);
         }
       });
-      p.hand = newHand;
-      // --- デバッグログ出力 ---
-      console.log(`[DRAW] You exchanged ${sel.length} card(s):`);
+
+      p.hand = [...newHand];
+
+      console.log(`[DRAW] You exchanged ${replaced.length} card(s):`);
       replaced.forEach(({ index, oldCard, newCard }) =>
         console.log(`   slot[${index}] ${oldCard} → ${newCard}`)
-    );
+      );
 
-    // --- 学習ログに追加 ---
-    recordActionToLog({
-      round: currentBetRoundIndex(),
-      seat: 0,
-      type: `DRAW (${sel.length})`,
-      stackBefore: p.stack,
-      betAfter: p.betThisRound,
-      raiseCountTable: raiseCountThisRound,
-      drawInfo: {
-        drawCount: sel.length,
-        replacedCards: replaced,
-        before: oldHand,
-        after: p.hand,
-      },
-    });
+      recordActionToLog({
+        round: currentBetRoundIndex(),
+        seat: 0,
+        type: `DRAW (${replaced.length})`,
+        stackBefore: p.stack,
+        betAfter: p.betThisRound,
+        raiseCountTable: raiseCountThisRound,
+        drawInfo: {
+          drawCount: replaced.length,
+          replacedCards: replaced,
+          before: oldHand,
+          after: p.hand,
+        },
+      });
+    }
+
+    p.selected = [];
+    p.hasDrawn = true;
+    p.lastDrawCount = sel.length;
+    newPlayers[0] = p;
+
+    setPlayers(newPlayers.map(pl => ({ ...pl })));
+    setTimeout(() => advanceAfterAction([...newPlayers]), 0);
   }
-
-  p.selected = [];
-  p.hasDrawn = true;
-  p.lastDrawCount = sel.length;
-  newPlayers[0] = p;
-
-    // ✅ 新しい参照を持ったstateを確実に反映させる
-   setDeck([...newDeck]);
-  setPlayers([...newPlayers]);
-
-  // advanceAfterAction に最新 players を渡す
-  setTimeout(() => {
-    advanceAfterAction(newPlayers);
-  }, 100);
-}
 
   /* --- NPC auto --- */
   useEffect(() => {
@@ -786,7 +957,7 @@ useEffect(() => {
       const me = { ...snap[turn] };
       const maxNow = maxBetThisRound(snap);
       const toCall = Math.max(0, maxNow - me.betThisRound);
-      const score = evaluateBadugi(me.hand).score;
+      const { score } = evaluateBadugi(me.hand); // 役評価をそのまま強さスコアとして使用
       const r = Math.random();
 
       if (toCall > 0 && r < 0.15 && score > 5) {
@@ -805,7 +976,7 @@ useEffect(() => {
         me.stack -= add;
         me.betThisRound += add;
         me.lastAction = "Raise";
-        setRaiseCountThisRound((c) => c + 1);
+        setRaiseCountThisRound(c => c + 1);
         setBetHead(turn);
       }
 
@@ -832,7 +1003,7 @@ useEffect(() => {
       if (!transitioning) {
         setTransitioning(true);
         setTimeout(() => {
-          finishDrawRound();
+          finishDrawRound(snap);
           setTransitioning(false);
         }, 50);
       }
@@ -840,13 +1011,13 @@ useEffect(() => {
     }
 
     // 3) 次にドローすべき人（hasDrawn=false の最初の人）を固定
-    const nextToDraw = snap.findIndex(p => !p.folded && !p.allIn && !p.hasDrawn);
+    const nextToDraw = firstUndrawnFromSB(snap);
     if (nextToDraw === -1) {
       // 念のための保険（理論上ここには来ない）
       if (!transitioning) {
         setTransitioning(true);
         setTimeout(() => {
-          finishDrawRound();
+          finishDrawRound(snap);
           setTransitioning(false);
         }, 50);
       }
@@ -863,10 +1034,20 @@ useEffect(() => {
     const me = { ...snap[nextToDraw] };
     const { score } = evaluateBadugi(me.hand);
     const drawCount = score > 8 ? 3 : score > 5 ? 2 : score > 3 ? 1 : 0;
-    const newDeck = [...deck];
+    const deckManager = deckRef.current;
     const newHand = [...me.hand];
     for (let i = 0; i < drawCount; i++) {
-      if (newDeck.length > 0) newHand[i] = newDeck.pop();
+      let pack = deckManager.draw(1);
+      if (!pack || pack.length === 0) {
+        recycleFoldedAndDiscardsBeforeCurrent(snap, nextToDraw);
+        pack = deckManager.draw(1);
+      }
+      if (pack && pack.length > 0) {
+        deckManager.discard([newHand[i]]);
+        newHand[i] = pack[0];
+      } else {
+        debugLog(`[DRAW][NPC seat=${nextToDraw}] no card for slot[${i}] → keep`);
+      }
     }
     me.hand = newHand;
     me.hasDrawn = true;
@@ -874,7 +1055,7 @@ useEffect(() => {
     me.lastAction = `DRAW(${drawCount})`;
     snap[nextToDraw] = me;
 
-    setDeck(newDeck);
+    setDeck([]);
     setPlayers(snap);
     logAction(nextToDraw, me.lastAction);
     recordActionToLog({
@@ -887,14 +1068,14 @@ useEffect(() => {
     });
 
     // 6) 次の未ドロー者へ。いなければBETへ
-    const nextAfter = snap.findIndex(p => !p.folded && !p.allIn && !p.hasDrawn);
+    const nextAfter = firstUndrawnFromSB(snap);
     if (nextAfter !== -1) {
       setTurn(nextAfter);
     } else {
       if (!transitioning) {
         setTransitioning(true);
         setTimeout(() => {
-          finishDrawRound();
+          finishDrawRound(snap);
           setTransitioning(false);
         }, 50);
       }
@@ -907,19 +1088,12 @@ useEffect(() => {
 }, [
   turn,
   phase,
-  players,
   deck,
   currentBet,
   transitioning,
   raiseCountThisRound,
   dealerIdx,
   betSize,
-  nextAliveFrom,
-  evaluateBadugi,
-  afterBetActionWithSnapshot,
-  finishDrawRound,
-  logAction,
-  recordActionToLog,
 ]);
 
 
@@ -949,17 +1123,14 @@ useEffect(() => {
 
       // 勝者推定（evaluateBadugi で最良スコアを持つ非フォールドの名前）
       const active = (playersSnap || []).filter((p) => !p.folded);
-      let bestScore = Infinity;
-      let winners = [];
-      active.forEach((p) => {
-        const sc = evaluateBadugi(p.hand).score; // あなたの評価関数を利用
-        if (sc < bestScore) {
-          bestScore = sc;
-          winners = [p.name];
-        } else if (sc === bestScore) {
-          winners.push(p.name);
-        }
-      });
+      if (active.length === 0) return;
+      let best = active[0];
+      for (const p of active) {
+        if (compareBadugi(p.hand, best.hand) < 0) best = p;
+      }
+      const winners = active
+        .filter((p) => compareBadugi(p.hand, best.hand) === 0)
+        .map((p) => p.name);
 
       const record = {
         handId,
@@ -975,7 +1146,41 @@ useEffect(() => {
         })),
         actions: [], // 今は未集計。将来: ベット/ドローのログを詰める
         pot,
-        winner: winners.length > 1 ? "split" : winners[0] ?? "-",
+        // === Badugi評価ロジックを使って勝敗結果を保存 ===
+        showdown: playersSnap.map(p => ({
+          name: p.name,
+          hand: p.hand,
+          folded: !!p.folded,
+          badugiEval: evaluateBadugi(p.hand),
+        })),
+        winners: (() => {
+          const active = playersSnap.filter(p => !p.folded);
+          if (active.length === 0) return [];
+          // 最良Badugiを決定
+          let best = active[0];
+          for (const p of active) {
+            if (compareBadugi(p.hand, best.hand) < 0) best = p;
+          }
+          return active
+            .filter(p => compareBadugi(p.hand, best.hand) === 0)
+            .map(p => p.name);
+        })(),
+        winner: (() => {
+          const w = (() => {
+            const active = playersSnap.filter(p => !p.folded);
+            if (active.length === 0) return [];
+            let best = active[0];
+            for (const p of active) {
+              if (compareBadugi(p.hand, best.hand) < 0) best = p;
+            }
+            return active
+              .filter(p => compareBadugi(p.hand, best.hand) === 0)
+              .map(p => p.name);
+          })();
+          return w.length > 1 ? "split" : w[0] ?? "-";
+        })(),
+
+
         raiseStats: {
           perRound: raisePerRound,                 // 例: [2,0,3,1]
           perSeatPerRound: raisePerSeatRound,      // 例: [[1,0,1,0],[1,0,2,1],...]
@@ -1080,15 +1285,19 @@ function handleCardClick(i) {
         {players.map((p, i) => (
           <Player
             key={i}
-            player={p}
+            player={{
+              ...p,
+              name: `${p.name} (${positionName(i)})`,
+            }}    
             index={i}
             selfIndex={0}
-            phase={phase} 
+            phase={phase}
             turn={turn}
             dealerIdx={dealerIdx}
             onCardClick={handleCardClick}
           />
         ))}
+
         {/* controls：BET時 or DRAW時 いずれか一方だけ */}
         {turn === 0 && players[0] && !players[0].folded && (
         <div className="absolute bottom-8 right-8 z-50 flex flex-col items-end space-y-2">

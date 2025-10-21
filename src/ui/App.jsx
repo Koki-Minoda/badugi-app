@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Player from "./components/Player";
 import Controls from "./components/Controls";
 import { DeckManager   } from "../games/badugi/utils/deck";
+import { debugLog } from "../utils/debugLog";
 import { runDrawRound } from "../games/badugi/logic/drawRound";
 import { runShowdown } from "../games/badugi/logic/showdown";
 import { evaluateBadugi, compareBadugi, getWinnersByBadugi } from "../games/badugi/utils/badugiEvaluator";
@@ -24,6 +25,14 @@ import {
 } from "../utils/history_rl";
 import { useNavigate } from "react-router-dom";
 
+// === TRACE HELPER (デバッグ用) ===
+function trace(tag, extra = {}) {
+  const now = new Date().toISOString().split("T")[1].split(".")[0]; // 時:分:秒
+  const hand = typeof handIdRef !== "undefined" && handIdRef?.current
+    ? handIdRef.current
+    : "-";
+  console.log(`[TRACE ${now}] [HAND ${hand}] [${typeof phase !== "undefined" ? phase : "-"}] ${tag}`, extra);
+}
 
 export default function App() {
   const navigate = useNavigate();
@@ -104,11 +113,14 @@ export default function App() {
   const sbIndex = (d = dealerIdx) => (d + 1) % NUM_PLAYERS;        // SB
   const orderFromSB = (d = dealerIdx) =>
     Array.from({ length: NUM_PLAYERS }, (_, k) => (sbIndex(d) + k) % NUM_PLAYERS);
+  // 見つからなければ必ず -1 を返す（呼び出し側と契約を合わせる）
   const firstUndrawnFromSB = (snap) => {
     const order = orderFromSB();
-    return order.find(
-      (i) => !snap[i]?.folded && !snap[i]?.allIn && !snap[i]?.hasDrawn
-    );
+    for (const i of order) {
+      const p = snap[i];
+      if (!p?.folded && !p?.hasDrawn) return i;
+    }
+    return -1;
   };
 
   // === デバッグ: 現在のポジション順序確認 ===
@@ -122,12 +134,28 @@ export default function App() {
         drawn: p.hasDrawn ? "✓" : "",
         stack: p.stack,
         bet: p.betThisRound,
+        allIn: p.allIn,
+        lastAction: p.lastAction
       }))
     );
   }, [players, dealerIdx, debugMode]);
 
   // ======== DEBUG LOGGER (add just under debugLog) ========
 const actionSeqRef = useRef(0); // 連番
+
+// 🧩 スタックを監視して 0 以下を allIn 扱いに補正
+function sanitizeStacks(snap, setPlayers) {
+  const corrected = snap.map(p => {
+    if (p.stack <= 0 && !p.allIn) {
+      console.warn(`[SANITIZE] ${p.name} stack=${p.stack} → allIn`);
+      return { ...p, stack: 0, allIn: true };
+    }
+    return p;
+  });
+  if (setPlayers) setPlayers(corrected);
+  return corrected;
+}
+
 
 function betRoundNo() {
   // BET の回数は「完了した DRAW 数」に一致（0..3）
@@ -167,6 +195,12 @@ function logState(tag, snap = players) {
     console.groupEnd();
   }
 }
+
+function logPhaseState(tag="") {
+  const msg = `[STATECHK] ${tag} → phase=${phase}, drawRound=${drawRound}, transitioning=${transitioning}, turn=${turn}`;
+  console.log(msg);
+}
+
 
 function logAction(i, type, payload = {}) {
   if (!debugMode) return;
@@ -351,10 +385,39 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
     return false;
   }
 
+  // 🩵 SHOWDOWN後に dealNewHand 二重呼び出し防止フラグ
+  const dealingRef = useRef(false);
+
+  function safeDealNewHand(nextDealer) {
+    if (dealingRef.current) {
+      debugLog("[HAND] dealNewHand skipped (already in progress)");
+      return;
+    }
+    dealingRef.current = true;
+    dealNewHand(nextDealer);
+    setTimeout(() => (dealingRef.current = false), 800);
+  }
+
   function advanceAfterAction(updatedPlayers) {
+    trace("advanceAfterAction()", { phase, drawRound, turn, transitioning });
+    logPhaseState("[ADVANCE]")
     debugLog("[FLOW] advanceAfterAction called");
     const snap = updatedPlayers || players;
     debugLog("[FLOW] phase:", phase, "drawRound:", drawRound);
+
+    // 🧩 デバッグ出力：全員の hasDrawn 状態を毎回表示
+    if (phase === "DRAW") {
+      console.table(
+        snap.map((p, i) => ({
+          seat: i,
+          name: p.name,
+          folded: p.folded ? "✓" : "",
+          drawn: p.hasDrawn ? "✓" : "",
+          stack: p.stack,
+          bet: p.betThisRound,
+        }))
+      );
+    }
 
     // 勝負決まってたら終了
     if (checkIfOneLeftThenEnd(snap)) return;
@@ -375,16 +438,93 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
     if (phase === "BET") {
       const active = snap.filter(p => !p.folded);
       const maxNow = maxBetThisRound(snap);
+
+      // 🔧 actedIndex 未定義バグ修正：turn を使用
+      const nextAlive = nextAliveFrom(snap, turn);
+
+      // === BB 情報 ===
+      const bbIndex = (dealerIdx + 2) % NUM_PLAYERS;
+      const bb = snap[bbIndex];
+
+      // === BB が「行動済み」と見なせる条件 ===
+      let isBBActed = true;
+
+      if (phase === "BET") {
+        // ドロー後BETなら常にtrue
+        if (drawRound === 0) {
+          // プリドローBETのみBB行動を厳密に判定
+          if (bb) {
+            const acted = ["Bet", "Call", "Raise", "Check"].includes(bb.lastAction);
+            // Fold, All-in, Action済みなら行動済み扱い
+            isBBActed = bb.folded || bb.allIn || acted;
+          } else {
+          // ドロー後BETは常にtrue（BTN先行 or HU判定で十分）
+          isBBActed = true;
+          }
+        }
+      }
+
+      if (bb) {
+        isBBActed = bb.folded || ["Bet", "Call", "Raise", "Check"].includes(bb.lastAction);
+      }
+      if (drawRound > 0) isBBActed = true;
+
+      // === ラウンド完了判定 ===
       const everyoneMatched = active.every(p => p.allIn || p.betThisRound === maxNow);
+      const allChecked = (maxNow === 0) && active.every(p => p.lastAction === "Check");
 
-      const noOneBet = maxNow === 0; // 全員チェック状態（BETが発生していない）
-      const nextAlive = nextAliveFrom(snap, turn); // ← 定義を統一
+      // HU（2人）かどうか
+      const isHU = active.length === 2;
 
-      const shouldEnd =
-        (maxNow > 0 && everyoneMatched) || (noOneBet && nextAlive === betHead);
+      // デバッグ出力
+      console.groupCollapsed("[DEBUG][BET_CONDITION_CHECK]");
+      console.table(active.map((p, i) => ({
+        seat: i,
+        name: p.name,
+        lastAction: p.lastAction,
+        folded: p.folded,
+        allIn: p.allIn,
+        betThisRound: p.betThisRound,
+        stack: p.stack,
+      })));
+      console.log("[BET_STATE]", {
+        phase, drawRound, dealerIdx, bbIndex,
+        isBBActed, isHU, everyoneMatched, allChecked,
+        betHead, actedIndex, nextAlive, maxNow
+      });
+      console.groupEnd();
+
+      let shouldEnd = false;
+
+      if (maxNow > 0) {
+        // ベットあり → 全員が最大額に一致（コール済み）で終了
+        shouldEnd = everyoneMatched && isBBActed;
+      } else if (isHU) {
+        // HU特例：
+        // プリドロー(HUでBB行動必須) → BBが行動済ならOK
+        // ドロー後BET(HUでBTN先行) → 両者行動済でOK
+        if (drawRound === 0) {
+          shouldEnd = allChecked && isBBActed;
+        } else {
+          const bothActed = active.every(p => !!p.lastAction);
+          shouldEnd = bothActed && everyoneMatched;
+        }
+      } else {
+        // 通常ラウンド：全員Check済みで終了
+        shouldEnd = allChecked;
+      }
+
+      // HUは両者が何らかの行動を終え、かつ everyoneMatched なら必ず閉じる
+      if (isHU && everyoneMatched && active.every(p => !!p.lastAction)) {
+        shouldEnd = true;
+      }
+
+      console.log("[BET][RESULT]", {
+        shouldEnd, everyoneMatched, allChecked,
+        isBBActed, isHU, drawRound, nextAlive, betHead
+      });
 
       if (shouldEnd) {
-        debugLog("[BET] ✅ Everyone matched — scheduling finishBetRoundFrom()");
         setTransitioning(true);
         setTimeout(() => {
           finishBetRoundFrom({
@@ -402,68 +542,91 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
             runShowdown,
             dealNewHand,
             setShowNextButton,
-            setTransitioning,
           });
           setTransitioning(false);
-        }, 100);
+        }, 80);
         return;
       }
+
+      // 次の手番へ
+      if (nextAlive !== null) setTurn(nextAlive);
       return;
     }
 
+
+
     // ------------------------
-    // DRAWフェーズ中
+    // 🟨 DRAWフェーズ中
     // ------------------------
-    if (phase === "DRAW") {
-      const actives = snap.filter(p => !p.folded && !p.allIn);
+    if (phase === "DRAW" && !transitioning) {
+        console.groupCollapsed("[DEBUG][DRAW_START_STATE]");
+        console.table(
+          snap.map((p, i) => ({
+            seat: i,
+            name: p.name,
+            folded: p.folded,
+            hasDrawn: p.hasDrawn,
+            allIn: p.allIn,
+            stack: p.stack,
+          }))
+        );
+        console.log("[DRAW STATE]", {
+          drawRound,
+          turn,
+          transitioning,
+          activesCount: snap.filter(p => !p.folded).length,
+        });
+        console.groupEnd();
+
+      const actives = snap.filter(p => !p.folded);
       const allDrawn = actives.every(p => p.hasDrawn);
 
-      // ✅ 全員ドロー完了 → 一度だけBETへ遷移
-      if (allDrawn && !transitioning) {
-        debugLog("[DRAW] ✅ All active players have drawn — finishDrawRound()");
+      if (allDrawn) {
+        debugLog("[DRAW] ✅ All active drawn → finishDrawRound()");
         setTransitioning(true);
-        setTimeout(() => {
-          finishDrawRound(snap);
-          setTransitioning(false);
-        }, 200);
-        return;
-      }
-      /*
-
-      // 未ドロー者を左回りで選択
-      const nextIdx = actives.findIndex(p => !p.hasDrawn);
-      if (nextIdx === -1) {
-        console.warn("[DRAW] No undrawn player found — waiting for sync");
+        finishDrawRound(snap);
+        setTimeout(() => setTransitioning(false), 400);
         return;
       }
 
-      const absIdx = players.findIndex(
-        p => p.name && actives[nextIdx] && p.name === actives[nextIdx].name
-      );
-      if (absIdx < 0 || Number.isNaN(absIdx)) {
-        console.warn("[DRAW] Invalid absIdx (", absIdx, ") — skipping draw step");
-        return;
+      // 👇 ここが復活ポイント：次の未ドロー者へ進める（SB起点の左回り）
+      const nextToDraw = firstUndrawnFromSB(snap);
+      console.log("[DRAW][NEXT_TO_DRAW]", nextToDraw);
+      if (nextToDraw !== -1) {
+        if (turn !== nextToDraw) {
+          setTurn(nextToDraw);
+          return;
+        }
+        // 今がNPCの番なら即ドローを自動実行（プレイヤー番ならUI待ち）
+        if (nextToDraw !== 0) {
+          console.log("[DRAW][RUNNING]", { nextToDraw, phase, drawRound });
+          runDrawRound({
+            players: snap,
+            turn: nextToDraw,
+            deckManager: deckRef.current,
+            setPlayers,
+            drawRound,
+            setTurn,
+            dealerIdx,
+            NUM_PLAYERS,
+          });
+          console.log("[DRAW][RUNNING]", { nextToDraw, phase, drawRound });
+        }
       }
-
-      setTurn(absIdx);
-      runDrawRound({
-        players: snap,
-        turn: absIdx,
-        deckManager: deckRef.current,
-        setPlayers,
-        drawRound,
-        setTurn,
-        dealerIdx,
-        NUM_PLAYERS,
-      });
-      */
-     // DRAWは afterBetActionWithSnapshot に一本化
-      debugLog("[DRAW] advanceAfterAction called, skipping (handled elsewhere)");
       return;
     }
-   }
+
+    // 💡 保険：ドロー対象がゼロの場合は即遷移（全folded扱い）
+    if (actives.length === 0) {
+      debugLog("[DRAW] ⚠️ No active players left — skipping to finishDrawRound()");
+      finishDrawRound(snap);
+      return;
+    }
+    return;
+  }
 
   function finishDrawRound(snapOpt) {
+    logPhaseState("[ADVANCE]")
     const base = snapOpt ?? players; // 最新スナップを優先
     // DRAW を引き終えた瞬間に「完了したドロー回数」を +1 する（上限 3）
     const completed = Math.min(drawRound + 1, MAX_DRAWS);
@@ -498,6 +661,12 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
 
   /* --- dealing --- */
   function dealNewHand(nextDealerIdx = 0, prevPlayers = null) {
+    trace("🆕 dealNewHand START", { nextDealerIdx, prevPlayersCount: prevPlayers?.length ?? 0 });
+    if (dealingRef.current) {
+      debugLog("[HAND] dealNewHand skipped (already in progress)");
+      return;
+    }
+    dealingRef.current = true;
     debugLog(`[HAND] dealNewHand start → dealer=${nextDealerIdx}`);
     // ✅ DeckManager でリセットして1デッキ管理
     deckRef.current.reset();
@@ -518,11 +687,20 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
         1000,
     }));
 
+    // 💥 シートアウト判定
+    const filteredPrev = prev.map((p) => {
+      if (p.stack <= 0) {
+        console.warn(`[SEAT-OUT] ${p.name} is out (stack=${p.stack})`);
+        return { ...p, stack: 0, folded: true, allIn: true, seatOut: true };
+      }
+      return { ...p, seatOut: false };
+    });
 
     // 🆕 プレイヤー配列を生成
     const newPlayers = Array.from({ length: NUM_PLAYERS }, (_, i) => ({
-      name: prev[i].name ?? `P${i + 1}`,
-      stack: prev[i].stack ?? 1000,
+      name: filteredPrev[i].name ?? `P${i + 1}`,
+      stack: Math.max(filteredPrev[i].stack ?? 1000, 0),
+      seatOut: filteredPrev[i].seatOut ?? false,
       hand: deckRef.current.draw(4), 
       folded: false,
       allIn: false,
@@ -534,6 +712,31 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
       isDealer: i === nextDealerIdx,
       lastAction: "",
     }));
+
+    // シートアウトは即fold扱い
+    for (const p of newPlayers) {
+      if (p.seatOut) {
+        p.folded = true;
+        p.allIn = true;
+        p.hand = [];
+      }
+    }
+
+    // 🧩 アクティブ人数判定
+    const activeCount = newPlayers.filter(p => !p.seatOut).length;
+    if (activeCount === 2) {
+      console.log("[FINALS] Start heads-up match!");
+      setPlayers(newPlayers);
+      setPhase("TOURNAMENT_FINAL");
+      setTimeout(() => dealHeadsUpFinal(newPlayers), 800);
+      return;
+    } else if (activeCount < 2) {
+      console.warn(`[TOURNAMENT END] Only ${activeCount} active players remain.`);
+      setPlayers(newPlayers);
+      setShowNextButton(false);
+      setPhase("TOURNAMENT_END");
+      return;
+    }
 
     // SB/BB のブラインド支払い
     const sbIdx = (nextDealerIdx + 1) % NUM_PLAYERS;
@@ -577,13 +780,81 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
       }, currentBet=${BB}`
     );
 
+    // 🧩 追加: デバッグ検証用に「新ハンド全プレイヤー状態」をコンソール出力
+    console.groupCollapsed(`[DEBUG][NEW HAND] Dealer=${nextDealerIdx}`);
+    newPlayers.forEach((p, i) => {
+      console.log(
+        `Seat ${i}: ${p.name}`,
+        {
+          stack: p.stack,
+          folded: p.folded,
+          allIn: p.allIn,
+          hasDrawn: p.hasDrawn,
+          betThisRound: p.betThisRound,
+          lastAction: p.lastAction,
+        }
+      );
+    });
+    console.groupEnd();
+
+    // 🧩 参照チェックは prevPlayers だけに限定（players は更新前参照なので誤警告の原因）
+    if (Array.isArray(prevPlayers) && prevPlayers.some(p => p?.hasDrawn || p?.showHand)) {
+      console.warn("[INFO] previous hand snapshot had SHOWDOWN flags (expected):", prevPlayers);
+    }
+
     setTimeout(() => logState("NEW HAND"), 0);
 
-    // 🧩 deck更新後に自動処理が安全に走るように短遅延
-    setTimeout(() => {
-      setPlayers([...newPlayers]);
-    }, 20);
+    // 再入防止フラグを短時間で解除
+    setTimeout(() => { dealingRef.current = false; }, 100);
+     trace("🆗 dealNewHand END", { dealerIdx: nextDealerIdx });
   }
+
+  // === 🏁 ヘッズアップ決勝戦用 ===
+  function dealHeadsUpFinal(prevPlayers) {
+    debugLog("[FINALS] dealHeadsUpFinal start");
+
+    const heads = prevPlayers.filter(p => !p.seatOut);
+    if (heads.length !== 2) {
+      console.warn("[FINALS] Cannot start: not exactly 2 active players");
+      setPhase("TOURNAMENT_END");
+      return;
+    }
+
+    const nextDealerIdx = 0; // BTN固定
+    deckRef.current.reset();
+
+    const newPlayers = heads.map((p, i) => ({
+      ...p,
+      folded: false,
+      allIn: false,
+      seatOut: false,
+      hand: deckRef.current.draw(4),
+      betThisRound: 0,
+      hasDrawn: false,
+      lastAction: "",
+      isDealer: i === nextDealerIdx,
+    }));
+
+    // Small blind / big blind設定
+    newPlayers[0].stack -= SB;
+    newPlayers[0].betThisRound = SB;
+    newPlayers[1].stack -= BB;
+    newPlayers[1].betThisRound = BB;
+
+    setPlayers(newPlayers);
+    setPots([{ amount: SB + BB, eligible: [0, 1] }]);
+    setCurrentBet(BB);
+    setDealerIdx(nextDealerIdx);
+    setDrawRound(0);
+    setPhase("BET");
+    setTurn(1); // UTG = BB
+    setBetHead(1);
+    setShowNextButton(false);
+    setTransitioning(false);
+
+    console.log("[FINALS] Heads-up match started:", newPlayers.map(p => p.name));
+  }
+
 
   useEffect(() => {
     dealNewHand(0);
@@ -599,6 +870,15 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
 
   /* --- common: after BET action (snapshot-based) --- */
   function afterBetActionWithSnapshot(snap, actedIndex) {
+    // --- オールインプレイヤーはBETフェーズでスキップ ---
+    if (snap[turn]?.allIn) {
+      console.log(`[SKIP] Player ${snap[turn].name} is all-in → skip action`);
+      const nxt = nextAliveFrom(snap, turn);
+      if (nxt !== null) setTurn(nxt);
+      return;
+    }
+
+    trace("afterBetActionWithSnapshot()", { phase, drawRound, actedIndex });
     if (transitioning) {
       setPlayers(snap);
       return;
@@ -625,6 +905,9 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
     // 次のアクティブ
     const next = nextAliveFrom(snap, actedIndex);
     setPlayers(snap);
+
+    // 💡 追加：現在アクションしたプレイヤーを明示的に取得
+    const me = { ...snap[actedIndex] };
     
     // ------------------------
     // BETフェーズ中
@@ -641,10 +924,55 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
         `[BET] Check status: everyoneMatched=${everyoneMatched}, next=${next}, betHead=${betHead}`
       );
 
-      // Raiseがあるときは everyoneMatched だけで終了
-      const shouldEnd =
-        (maxNow > 0 && everyoneMatched) || (noOneBet && nextAlive === betHead);
+      // 💡 BBがまだアクションしていない場合は絶対に終了させない
+      const bbIndex = (dealerIdx + 2) % NUM_PLAYERS;
+      const isBBActed = !!snap[bbIndex]?.lastAction;
+      let shouldEnd = false;
+      const allChecked = active.every(p => p.lastAction === "Check");
 
+      // 🧠 BET終了条件の詳細ログ出力（検証用）
+      console.groupCollapsed("[DEBUG][BET_CONDITION_CHECK]");
+      try {
+        console.table(active.map((p, i) => ({
+          seat: i,
+          name: p.name,
+          lastAction: p.lastAction,
+          folded: p.folded,
+          allIn: p.allIn,
+          betThisRound: p.betThisRound,
+          stack: p.stack,
+        })));
+
+        console.log("[BET_CONDITION]", {
+          phase,
+          drawRound,
+          turn,
+          betHead,
+          dealerIdx,
+          bbIndex,
+          everyoneMatched,
+          noOneBet,
+          allChecked,
+          nextAlive,
+          isBBActed,
+          maxNow,
+          activeCount: active.length,
+          transitioning,
+        });
+      } finally {
+        console.groupEnd();
+      }
+
+      if (maxNow > 0) {
+        shouldEnd = everyoneMatched && isBBActed;
+      } else if (active.length === 2) {
+        const bothActed = active.every(p => !!p.lastAction);
+        shouldEnd = bothActed && everyoneMatched;
+      } else {
+        shouldEnd = allChecked;
+      }
+
+      console.log("[BET][RESULT]", { shouldEnd, everyoneMatched, allChecked, isBBActed, nextAlive, betHead });
 
       if (shouldEnd) {
         debugLog(`[BET] ✅ Round complete (everyone matched) → schedule finishBetRoundFrom()`);
@@ -679,8 +1007,12 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
     // DRAWフェーズ中
     // ------------------------
     if (phase === "DRAW") {
-      debugLog("[DRAW] Checking if allActiveDrawn (SB-first)...");
-      const actives = snap.filter((p) => !p.folded && !p.allIn);
+      const nextIdx = firstUndrawnFromSB(snap);
+      console.log("[TRACE][DRAW] acted=", actedIndex, 
+            "nextIdx=", nextIdx, typeof nextIdx, 
+            "drawRound=", drawRound);
+
+      const actives = snap.filter((p) => !p.folded);
       const allActiveDrawn = actives.every((p) => p.hasDrawn);
 
       if (allActiveDrawn) {
@@ -688,19 +1020,18 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
         return;
       }
 
-      const nextIdx = firstUndrawnFromSB(snap);
-
-      if (nextIdx !== -1) {
-        setTurn(nextIdx);
-        runDrawRound({
-          players: snap,
-          turn: nextIdx,
-          deckManager: deckRef.current,
-          setPlayers,
-          setDeck,
-          advanceAfterAction,
-        });
+      if (nextIdx === -1) {
+        // 全員（fold/all-in 以外）が引き終わり
+        finishDrawRound(snap);
+        return;
       }
+      if (turn !== nextIdx) {
+        setTurn(nextIdx);
+        return;
+      }
+      // ここまで来たら「今がその人の番」。
+      // 人間(0)ならUI待ち、NPCなら useEffect 側が自動ドロー。
+
     }
   }
 
@@ -753,6 +1084,13 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
     if (phase !== "BET") return;
     const snap = [...players];
     const me = { ...snap[0] };
+    
+    // 💥 スタックが無い場合は何もしない
+    if (me.stack <= 0) {
+      console.warn("[BLOCK] Player has no stack — cannot act");
+      return;
+    }
+
     const maxNow = maxBetThisRound(snap);
     const toCall = Math.max(0, maxNow - me.betThisRound);
     const pay = Math.min(me.stack, toCall);
@@ -806,6 +1144,12 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
      if (phase !== "BET") return;
      const snap = [...players];
      const me = { ...snap[0] };
+
+     // 💥 スタックが無い場合は Raise 不可
+     if (me.stack <= 0) {
+       console.warn("[BLOCK] Player has no stack — cannot raise");
+       return;
+     }
 
     // ✅ 5betキャップ判定（Raise上限4回）
      if (raiseCountThisRound >= 4) {
@@ -936,7 +1280,7 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
     newPlayers[0] = p;
 
     setPlayers(newPlayers.map(pl => ({ ...pl })));
-    setTimeout(() => advanceAfterAction([...newPlayers]), 0);
+    setTimeout(() => afterBetActionWithSnapshot([...newPlayers], 0), 0);
   }
 
   /* --- NPC auto --- */
@@ -946,6 +1290,13 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
 
   const p = players[turn];
   if (!p || p.folded) {
+    const nxt = nextAliveFrom(players, turn);
+    if (nxt !== null) setTurn(nxt);
+    return;
+  }
+
+  // 💥 All-in は行動スキップ
+  if (p.allIn || p.stack <= 0) {
     const nxt = nextAliveFrom(players, turn);
     if (nxt !== null) setTurn(nxt);
     return;
@@ -995,7 +1346,7 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
     const snap = [...players];
 
     // 1) 有効プレイヤー（フォールド/オールイン以外）
-    const actives = snap.filter(p => !p.folded && !p.allIn);
+    const actives = snap.filter(p => !p.folded);
     const everyoneDrawn = actives.every(p => p.hasDrawn);
 
     // 2) 全員ドロー済みなら一回だけBETへ遷移
@@ -1012,14 +1363,11 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
 
     // 3) 次にドローすべき人（hasDrawn=false の最初の人）を固定
     const nextToDraw = firstUndrawnFromSB(snap);
+    console.log("[DRAW][NEXT_TO_DRAW]", nextToDraw);
     if (nextToDraw === -1) {
-      // 念のための保険（理論上ここには来ない）
       if (!transitioning) {
         setTransitioning(true);
-        setTimeout(() => {
-          finishDrawRound(snap);
-          setTransitioning(false);
-        }, 50);
+        setTimeout(() => { finishDrawRound(snap); setTransitioning(false); }, 50);
       }
       return;
     }
@@ -1340,6 +1688,22 @@ function handleCardClick(i) {
           </button>
         </div>
       )}
+
+      {phase === "TOURNAMENT_END" && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-70 z-50">
+          <h2 className="text-4xl font-bold text-yellow-400 mb-4">🏆 TOURNAMENT FINISHED 🏆</h2>
+          <p className="text-lg mb-6 text-white">
+            Congratulations to the Champion!
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 bg-yellow-500 text-black font-bold rounded shadow-lg hover:bg-yellow-400"
+          >
+            Return to Home
+          </button>
+        </div>
+      )}
+
 
       {/* ▼ デバッグトグルスイッチ */}
       <div className="absolute bottom-4 left-4 z-50">

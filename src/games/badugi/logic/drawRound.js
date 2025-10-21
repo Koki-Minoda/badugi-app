@@ -16,7 +16,9 @@ export function runDrawRound({
   setTurn,
   dealerIdx,
   NUM_PLAYERS,
+  advanceAfterAction, 
 }) {
+  console.log(`[TRACE ${new Date().toISOString()}] runDrawRound START turn=${turn}, drawRound=${drawRound}`);
   const actor = players?.[turn];
   if (!actor) return;
 
@@ -76,6 +78,59 @@ export function runDrawRound({
     debugLog(`[DRAW] All active players have drawn (round=${drawRound}).`);
     // App 側の finishDrawRound() がBETへ遷移する
   }
+  console.log(`[TRACE ${new Date().toISOString()}] runDrawRound END turn=${turn}`);
+}
+
+/**
+ * 💡 markPlayerDrew()
+ * - プレイヤーがドローを終えたことを明示的にマークするだけ。
+ * - App 側で finishDrawRound() を呼ぶ前提で、即遷移しない。
+ */
+export function markPlayerDrew(setPlayers, playerIdx, numCards = 0) {
+  setPlayers((prev) =>
+    prev.map((p, i) =>
+      i === playerIdx
+        ? {
+            ...p,
+            hasDrawn: true,
+            lastDrawCount: numCards,
+            lastAction: numCards === 0 ? "Pat" : `DRAW(${numCards})`,
+          }
+        : p
+    )
+  );
+  debugLog(`[DRAW] markPlayerDrew(): seat=${playerIdx}, count=${numCards}`);
+}
+
+
+/**
+ * 🧩 runDrawRoundSafe()
+ * - runDrawRound() の軽量ラッパ。
+ * - まだhasDrawn=falseのプレイヤーのみ処理。
+ * - DRAW#1 スキップを防ぐため、Appからの明示呼び出し向け。
+ */
+export function runDrawRoundSafe({
+  players,
+  turn,
+  deckManager,
+  setPlayers,
+  drawRound,
+  setTurn,
+  dealerIdx,
+  NUM_PLAYERS,
+}) {
+  const actor = players?.[turn];
+  if (!actor || actor.hasDrawn || actor.folded || actor.allIn) return;
+  runDrawRound({
+    players,
+    turn,
+    deckManager,
+    setPlayers,
+    drawRound,
+    setTurn,
+    dealerIdx,
+    NUM_PLAYERS,
+  });
 }
 
 /** CPUの簡易ドローロジック（重複スーツ/ランクの数だけ最大3枚） */

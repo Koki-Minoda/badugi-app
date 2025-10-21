@@ -1,6 +1,20 @@
 // src/games/badugi/logic/roundFlow.js
 import { debugLog } from "../../../utils/debugLog";
 
+// --- sanitizeStacks: プレイヤーのスタックを補正して all-in化 ---
+function sanitizeStacks(snap, setPlayers) {
+  const corrected = snap.map(p => {
+    if (p.stack <= 0 && !p.allIn) {
+      console.warn(`[SANITIZE] ${p.name} stack=${p.stack} → allIn`);
+      return { ...p, stack: 0, allIn: true };
+    }
+    return p;
+  });
+  if (setPlayers) setPlayers(corrected);
+  return corrected;
+}
+
+
 // === 基本ユーティリティ ===
 export const alivePlayers = arr =>
   Array.isArray(arr) ? arr.filter(p => !p.folded && !p.allIn) : [];
@@ -67,6 +81,7 @@ export function finishBetRoundFrom({
   setShowNextButton,
   setTransitioning,
 }) {
+  console.log(`[TRACE ${new Date().toISOString()}] ▶ finishBetRoundFrom START`, { drawRound });
   debugLog(`[🏁 BET] finishBetRoundFrom start — drawRound=${drawRound}`);
 
   // 1️⃣ BET清算
@@ -94,16 +109,62 @@ export function finishBetRoundFrom({
 
   // 3️⃣ 次はDRAW（左回り：SBスタート）
   const firstToDraw = (dealerIdx + 1) % NUM_PLAYERS; // SB
+
+  // --- 🧩 hasDrawnを必ずfalseに初期化（DRAW#1スキップ防止）---
+  const resetPlayers = clearedPlayers.map(p => ({
+    ...p,
+    hasDrawn: p.folded ? true : false,  // ← foldedは即draw済みに扱う
+    lastAction: "",
+  }));
+  setPlayers(resetPlayers);
+
   debugLog(`➡️ [FLOW] → DRAW #${nextRound} (SB=${firstToDraw})`);
 
   // --- 💡 遷移中ブロックをセットして二重発火防止 ---
   if (setTransitioning) {
     setTransitioning(true);
-    setTimeout(() => setTransitioning(false), 300);
+    // DRAW開始直後の誤判定防止のため、解除を少し遅らせる
+    setTimeout(() => setTransitioning(false), 500);
   }
 
-  setDrawRound(nextRound);
+  //setDrawRound(nextRound);
   setTurn(firstToDraw);
   setPhase("DRAW");
   debugLog(`[SYNC] Phase=DRAW, round=${nextRound}, start=${firstToDraw}`);
+  console.table(
+    clearedPlayers.map((p,i)=>({
+      seat:i, name:p.name, folded:p.folded?'✓':'', drawn:p.hasDrawn?'✓':''
+    }))
+  );
+  console.log(`[TRACE ${new Date().toISOString()}] ✅ finishBetRoundFrom END → nextPhase=DRAW`);
+  // 🩵 全員のスタックを最終確認・補正
+  sanitizeStacks(clearedPlayers, setPlayers);
 }
+
+
+// === DRAW開始ヘルパ（App.jsx側からも利用可能） ===
+export function startDrawRound({
+  players,
+  dealerIdx,
+  NUM_PLAYERS,
+  setPlayers,
+  setPhase,
+  setDrawRound,
+  setTurn,
+  onAfter,
+}) {
+  const reset = players.map(p => ({
+    ...p,
+    hasDrawn: false,
+    lastAction: "",
+    betThisRound: 0,
+  }));
+  setPlayers(reset);
+  const next = (dealerIdx + 1) % NUM_PLAYERS; // SB開始
+  setDrawRound(r => r + 1);
+  setPhase("DRAW");
+  setTurn(next);
+  debugLog(`[FLOW] startDrawRound → turn=${next}`);
+  if (onAfter) onAfter();
+}
+

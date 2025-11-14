@@ -1,5 +1,5 @@
 // src/games/badugi/logic/drawRound.js
-import { nextAliveFrom } from "./roundFlow";
+import { nextAliveFrom, aliveDrawPlayers } from "./roundFlow";
 import { debugLog } from "../../../utils/debugLog";
 
 /**
@@ -66,10 +66,11 @@ export function runDrawRound({
   setPlayers([...updatedPlayers]);
 
   // --- 次の未ドロー者を「SB起点の左回り」で探索 ---
+  const activeForDraw = aliveDrawPlayers(updatedPlayers);
   const sb = (dealerIdx + 1) % NUM_PLAYERS;
   const order = Array.from({ length: NUM_PLAYERS }, (_, k) => (sb + k) % NUM_PLAYERS);
   const nextIdx = order.find(
-    (i) => !updatedPlayers[i]?.folded && !updatedPlayers[i]?.allIn && !updatedPlayers[i]?.hasDrawn
+    (i) => activeForDraw.some(p => updatedPlayers.indexOf(p) === i && !p.hasDrawn)
   );
 
   if (nextIdx !== -1) {

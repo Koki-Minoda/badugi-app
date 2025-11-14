@@ -6,18 +6,36 @@ function sanitizeStacks(snap, setPlayers) {
   const corrected = snap.map(p => {
     if (p.stack <= 0 && !p.allIn) {
       console.warn(`[SANITIZE] ${p.name} stack=${p.stack} → allIn`);
-      return { ...p, stack: 0, allIn: true };
+      return { ...p, stack: 0, allIn: true, hasDrawn: true };
     }
     return p;
   });
   if (setPlayers) setPlayers(corrected);
+
+  // ★ デバッグ出力
+  console.table(corrected.map((p, i) => ({
+    i,
+    name: p.name,
+    allIn: p.allIn,
+    hasDrawn: p.hasDrawn,
+    stack: p.stack,
+    folded: p.folded,
+  })));
   return corrected;
 }
 
 
 // === 基本ユーティリティ ===
-export const alivePlayers = arr =>
+// --- BET用（all-in除外）---
+export const aliveBetPlayers = arr =>
   Array.isArray(arr) ? arr.filter(p => !p.folded && !p.allIn) : [];
+
+// --- DRAW用（all-in含む）---
+export const aliveDrawPlayers = arr =>
+  Array.isArray(arr) ? arr.filter(p => !p.folded) : [];
+
+// 互換用（App.jsx が alivePlayers を import している）
+export const alivePlayers = aliveBetPlayers;
 
 export const nextAliveFrom = (arr, idx) => {
   const n = arr.length;
@@ -31,7 +49,7 @@ export const nextAliveFrom = (arr, idx) => {
 };
 
 export const maxBetThisRound = arr => {
-  const alive = alivePlayers(arr);
+  const alive = aliveBetPlayers(arr);
   return alive.length ? Math.max(...alive.map(p => p.betThisRound)) : 0;
 };
 
@@ -57,7 +75,7 @@ export function settleStreetToPots(playersSnap = [], prevPots = []) {
 
 // === BET終了判定 ===
 export const isBetRoundComplete = players => {
-  const alive = alivePlayers(players);
+  const alive = aliveBetPlayers(players);
   if (alive.length <= 1) return true;
   const maxNow = maxBetThisRound(players);
   return alive.every(p => p.betThisRound === maxNow || p.allIn);
@@ -81,6 +99,26 @@ export function finishBetRoundFrom({
   setShowNextButton,
   setTransitioning,
 }) {
+  console.log("[DEBUG][finishBetRoundFrom args]", {
+    phaseBefore: "BET",
+    dealerIdx,
+    drawRound,
+    typeofDrawRound: typeof drawRound,
+    MAX_DRAWS,
+    playerStates: players.map((p, i) => ({
+      i,
+      name: p.name,
+      folded: p.folded,
+      allIn: p.allIn,
+      betThisRound: p.betThisRound,
+    })),
+  });
+
+  if (typeof drawRound === "undefined" || isNaN(drawRound)) {
+    console.warn("[finishBetRoundFrom] drawRound undefined, defaulting to 0");
+    drawRound = 0;
+
+  }
   console.log(`[TRACE ${new Date().toISOString()}] ▶ finishBetRoundFrom START`, { drawRound });
   debugLog(`[🏁 BET] finishBetRoundFrom start — drawRound=${drawRound}`);
 
@@ -108,12 +146,26 @@ export function finishBetRoundFrom({
   }
 
   // 3️⃣ 次はDRAW（左回り：SBスタート）
-  const firstToDraw = (dealerIdx + 1) % NUM_PLAYERS; // SB
+  let firstToDraw = (dealerIdx + 1) % NUM_PLAYERS;
+  const n = NUM_PLAYERS;
+  for (let i = 0; i < n; i++) {
+    const idx = (firstToDraw + i) % n;
+    const p = clearedPlayers[idx];
+    if (!p.folded) {
+      firstToDraw = idx;
+      break;
+    }
+    if (i === n - 1) {
+      console.error("[finishBetRoundFrom] No non-folded players found — abort");
+      return;
+    }
+  }
 
   // --- 🧩 hasDrawnを必ずfalseに初期化（DRAW#1スキップ防止）---
   const resetPlayers = clearedPlayers.map(p => ({
     ...p,
     hasDrawn: p.folded ? true : false,  // ← foldedは即draw済みに扱う
+    canDraw: !p.folded,
     lastAction: "",
   }));
   setPlayers(resetPlayers);
@@ -127,18 +179,32 @@ export function finishBetRoundFrom({
     setTimeout(() => setTransitioning(false), 500);
   }
 
-  //setDrawRound(nextRound);
   setTurn(firstToDraw);
   setPhase("DRAW");
   debugLog(`[SYNC] Phase=DRAW, round=${nextRound}, start=${firstToDraw}`);
   console.table(
-    clearedPlayers.map((p,i)=>({
+    resetPlayers.map((p,i)=>({
       seat:i, name:p.name, folded:p.folded?'✓':'', drawn:p.hasDrawn?'✓':''
     }))
   );
   console.log(`[TRACE ${new Date().toISOString()}] ✅ finishBetRoundFrom END → nextPhase=DRAW`);
+
+  // finishBetRoundFrom の末尾、sanitizeStacks の直前に追加
+  console.groupCollapsed("[DEBUG][AFTER ROUND TRANSITION]");
+  console.table(resetPlayers.map((p, i) => ({
+    seat: i,
+    name: p.name,
+    folded: p.folded,
+    allIn: p.allIn,
+    hasDrawn: p.hasDrawn,
+    canDraw: p.canDraw,
+    stack: p.stack,
+    lastAction: p.lastAction,
+  })));
+  console.groupEnd();
+
   // 🩵 全員のスタックを最終確認・補正
-  sanitizeStacks(clearedPlayers, setPlayers);
+  sanitizeStacks(resetPlayers, setPlayers);
 }
 
 

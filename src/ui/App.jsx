@@ -144,12 +144,24 @@ export default function App() {
   // ======== DEBUG LOGGER (add just under debugLog) ========
 const actionSeqRef = useRef(0); // 連番
 
+function setHasActedFlag(snap, seat, value = true) {
+  const target = snap[seat];
+  if (!target || target.hasActedThisRound === value) return;
+  snap[seat] = { ...target, hasActedThisRound: value };
+}
+
 // 🧩 スタックを監視して 0 以下を allIn 扱いに補正
 function sanitizeStacks(snap, setPlayers) {
   const corrected = snap.map(p => {
     if (p.stack <= 0 && !p.allIn) {
-      console.warn(`[SANITIZE] ${p.name} stack=${p.stack} → allIn`);
-      return { ...p, stack: 0, allIn: true };
+      console.warn(`[SANITIZE] ${p.name} stack=${p.stack} ?EallIn`);
+      return { ...p, stack: 0, allIn: true, hasDrawn: true, isBusted: true, hasActedThisRound: true };
+    }
+    if (p.stack <= 0 && p.isBusted !== true) {
+      return { ...p, isBusted: true, hasActedThisRound: true };
+    }
+    if (p.stack > 0 && p.isBusted) {
+      return { ...p, isBusted: false };
     }
     return p;
   });
@@ -239,6 +251,7 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
       folded: false,
       allIn: false,
       isBusted: false,
+      hasActedThisRound: false,
       stack: 100,
       betThisRound: 0,
       selected: [],
@@ -445,97 +458,91 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
     // BETフェーズ中
     // ------------------------
     if (phase === "BET") {
-      const active = snap.filter(p => !p.folded);
-      const maxNow = maxBetThisRound(snap);
+      const active = snap.filter((p) => !p.folded);
+      const everyoneMatched = active.every(
+        (p) => p.allIn || p.betThisRound === maxNow
+      );
+      const noOneBet = maxNow === 0;
+      const nextAlive = nextAliveFrom(snap, actedIndex);
+      const betRoundSatisfied = isBetRoundComplete(snap);
 
-      // 🔧 actedIndex 未定義バグ修正：turn を使用
-      const nextAlive = nextAliveFrom(snap, turn);
+      debugLog(
+        `[BET] Check status: everyoneMatched=${everyoneMatched}, next=${next}, betHead=${betHead}`
+      );
 
-      // === BB 情報 ===
+      // 💡 BBがまだアクションしていない場合は絶対に終わらせない
       const bbIndex = (dealerIdx + 2) % NUM_PLAYERS;
-      const bb = snap[bbIndex];
-
-      // === BB が「行動済み」と見なせる条件 ===
       let isBBActed = true;
 
-      if (phase === "BET") {
-        // ドロー後BETなら常にtrue
-        if (drawRound === 0) {
-          // プリドローBETのみBB行動を厳密に判定
-          if (bb) {
-            const acted = ["Bet", "Call", "Raise", "Check"].includes(bb.lastAction);
-            // Fold, All-in, Action済みなら行動済み扱い
-            isBBActed = bb.folded || bb.allIn || acted;
-          } else {
-          // ドロー後BETは常にtrue（BTN先行 or HU判定で十分）
-          isBBActed = true;
-          }
+      // 💡 プリドロー(BET#0)のみBB行動必須
+      if (drawRound === 0) {
+        const bb = snap[bbIndex];
+        if (bb) {
+          const acted = ["Bet", "Call", "Raise", "Check"].includes(bb.lastAction);
+          isBBActed = bb.folded || bb.allIn || acted;
         }
       }
-
-      if (bb) {
-        isBBActed = bb.folded || ["Bet", "Call", "Raise", "Check"].includes(bb.lastAction);
-      }
-      if (drawRound > 0) isBBActed = true;
-
-      // === ラウンド完了判定 ===
-      // ✅ Fold済プレイヤーを除外して厳密に判定
-      const nonFolded = snap.filter(p => !p.folded);
-      const everyoneMatched = nonFolded.every(p => p.allIn || p.betThisRound === maxNow);
-      const allChecked = (maxNow === 0) && nonFolded.every(p => p.lastAction === "Check" || p.allIn);
-
-      // HU（2人）かどうか
+ 
+      const allChecked = (maxNow === 0) && active.every(p => p.lastAction === "Check");
       const isHU = active.length === 2;
+      let shouldEnd = betRoundSatisfied;
 
-      // デバッグ出力
+      // 🧠 BET終了条件の詳細ログ出力（検証用）
       console.groupCollapsed("[DEBUG][BET_CONDITION_CHECK]");
-      console.table(active.map((p, i) => ({
-        seat: i,
-        name: p.name,
-        lastAction: p.lastAction,
-        folded: p.folded,
-        allIn: p.allIn,
-        betThisRound: p.betThisRound,
-        stack: p.stack,
-      })));
-      console.log("[BET_STATE]", {
-        phase, drawRound, dealerIdx, bbIndex,
-        isBBActed, isHU, everyoneMatched, allChecked,
-        betHead, actedIndex, nextAlive, maxNow
-      });
-      console.groupEnd();
+      try {
+        console.table(active.map((p, i) => ({
+          seat: i,
+          name: p.name,
+          lastAction: p.lastAction,
+          folded: p.folded,
+          allIn: p.allIn,
+          betThisRound: p.betThisRound,
+          stack: p.stack,
+        })));
 
-      let shouldEnd = false;
+        console.log("[BET_CONDITION]", {
+          phase,
+          drawRound,
+          turn,
+          betHead,
+          dealerIdx,
+          bbIndex,
+          everyoneMatched,
+          noOneBet,
+          allChecked,
+          nextAlive,
+          isBBActed,
+          betRoundSatisfied,
+          maxNow,
+          activeCount: active.length,
+          transitioning,
+        });
+      } finally {
+        console.groupEnd();
+      }
 
-      if (maxNow > 0) {
-        // ベットあり → 全員が最大額に一致（コール済み）で終了
-        shouldEnd = everyoneMatched && isBBActed;
-      } else if (isHU) {
-        // HU特例：
-        // プリドロー(HUでBB行動必須) → BBが行動済ならOK
-        // ドロー後BET(HUでBTN先行) → 両者行動済でOK
-        if (drawRound === 0) {
-          shouldEnd = allChecked && isBBActed;
-        } else {
+      if (!shouldEnd) {
+        if (maxNow > 0) {
+          // ベットやレイズがあれば→全員コール一致で終わり（プリのみBB行動必須）
+          shouldEnd = everyoneMatched && isBBActed;
+        } else if (isHU) {
+          // HUのチェックアラウンド：両者行動済みなら終わり
           const bothActed = active.every(p => !!p.lastAction);
-          shouldEnd = bothActed && everyoneMatched;
+          shouldEnd = bothActed;
+        } else {
+          // マルチウェイ：全員Checkで終了
+          shouldEnd = allChecked;
         }
-      } else {
-        // 通常ラウンド：全員Check済みで終了
-        shouldEnd = allChecked;
       }
-
-      // HUは両者が何らかの行動を終え、かつ everyoneMatched なら必ず閉じる
-      if (isHU && everyoneMatched && active.every(p => !!p.lastAction)) {
-        shouldEnd = true;
-      }
-
-      console.log("[BET][RESULT]", {
-        shouldEnd, everyoneMatched, allChecked,
-        isBBActed, isHU, drawRound, nextAlive, betHead
-      });
+      console.log("[BET][RESULT]", { shouldEnd, everyoneMatched, allChecked, isBBActed, nextAlive, betHead });
 
       if (shouldEnd) {
+        debugLog(`[BET] ラウンド完了 (everyone matched) → schedule finishBetRoundFrom()`);
+        if (checkIfOneLeftThenEnd(snap)) {
+          debugLog("[FORCE_END] Only one active player remains → goShowdownNow()");
+          return;
+        }
+
         setTransitioning(true);
         setTimeout(() => {
           finishBetRoundFrom({
@@ -555,14 +562,15 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
             setShowNextButton,
           });
           setTransitioning(false);
-        }, 80);
+        }, 100);
         return;
       }
-
-      // 次の手番へ
+      if (next === null) return;
       if (nextAlive !== null) setTurn(nextAlive);
       return;
     }
+
+
 
 
 
@@ -628,6 +636,7 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
             setTurn,
             dealerIdx,
             NUM_PLAYERS,
+            onActionLog: recordActionToLog,
           });
           console.log("[DRAW][RUNNING]", { nextToDraw, phase, drawRound });
         }
@@ -665,6 +674,7 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
       betThisRound: 0,
       lastAction: "",
       hasDrawn: false, // 次のドローに備えて戻す
+       hasActedThisRound: p.folded ? true : false,
     }));
 
     setPlayers(reset);
@@ -735,6 +745,7 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
       selected: [],
       showHand: false,
       isDealer: i === nextDealerIdx,
+      hasActedThisRound: false,
       lastAction: "",
     }));
 
@@ -745,6 +756,7 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
         p.allIn = true;
         p.hand = [];
         p.isBusted = true;
+        p.hasActedThisRound = true;
       }
     }
 
@@ -772,12 +784,14 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
     newPlayers[sbIdx].betThisRound = sbPay;
     if (newPlayers[sbIdx].stack === 0) {
       newPlayers[sbIdx].allIn = true;
+      newPlayers[sbIdx].hasActedThisRound = true;
     }
     const bbPay = Math.min(newPlayers[bbIdx].stack, BB);
     newPlayers[bbIdx].stack -= bbPay;
     newPlayers[bbIdx].betThisRound = bbPay;
     if (newPlayers[bbIdx].stack === 0) {
       newPlayers[bbIdx].allIn = true;
+      newPlayers[bbIdx].hasActedThisRound = true;
     }
     // --- 状態更新 ---
     const initialPot = sbPay + bbPay;
@@ -869,6 +883,7 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
       hasDrawn: false,
       lastAction: "",
       isDealer: i === nextDealerIdx,
+      hasActedThisRound: false,
     }));
 
     // Small blind / big blind設定
@@ -877,12 +892,14 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
     newPlayers[0].betThisRound = sbPay;
     if (newPlayers[0].stack === 0) {
       newPlayers[0].allIn = true;
+      newPlayers[0].hasActedThisRound = true;
     }
     const bbPay = Math.min(newPlayers[1].stack, BB);
     newPlayers[1].stack -= bbPay;
     newPlayers[1].betThisRound = bbPay;
     if (newPlayers[1].stack === 0) {
       newPlayers[1].allIn = true;
+      newPlayers[1].hasActedThisRound = true;
     }
 
     setPlayers(newPlayers);
@@ -916,6 +933,7 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
   function afterBetActionWithSnapshot(snap, actedIndex) {
     // --- オールインプレイヤーはBETフェーズでスキップ ---
     if (snap[turn]?.allIn) {
+      setHasActedFlag(snap, turn);
       console.log(`[SKIP] Player ${snap[turn].name} is all-in → skip action`);
       const nxt = nextAliveFrom(snap, turn);
       if (nxt !== null) setTurn(nxt);
@@ -1138,6 +1156,7 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
     const me = { ...snap[0] };
     me.folded = true;
     me.lastAction = "Fold";
+    me.hasActedThisRound = true;
     logAction(0, "Fold");
     snap[0] = me;
     recordActionToLog({
@@ -1172,6 +1191,7 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
     me.lastAction = toCall === 0 ? "Check" : pay < toCall ? "Call (All-in)" : "Call";
     logAction(0, me.lastAction, { toCall, pay, newBet: me.betThisRound });
     if (me.stack === 0) me.allIn = true;
+    me.hasActedThisRound = true;
 
     snap[0] = me;
     afterBetActionWithSnapshot(snap, 0);
@@ -1195,6 +1215,7 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
     if (me.betThisRound === maxNow || me.allIn) {
       me.lastAction = "Check";
       logAction(0, "Check");
+      me.hasActedThisRound = true;
       snap[0] = me;
       recordActionToLog({
         round: currentBetRoundIndex(),
@@ -1244,6 +1265,7 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
     me.lastAction = pay < total ? "Raise (All-in)" : "Raise";
     
     if (me.stack === 0) me.allIn = true;
+    me.hasActedThisRound = true;
 
     snap[0] = me;
 
@@ -1378,12 +1400,14 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
     if (phase === "BET") {
       const snap = [...players];
       const me = { ...snap[turn] };
+      const stackBefore = me.stack;
       const maxNow = maxBetThisRound(snap);
       const toCall = Math.max(0, maxNow - me.betThisRound);
-      const { score } = evaluateBadugi(me.hand); // 役評価をそのまま強さスコアとして使用
+      const evalResult = evaluateBadugi(me.hand);
+      const madeCards = evalResult.ranks.length;
       const r = Math.random();
 
-      if (toCall > 0 && r < 0.15 && score > 5) {
+      if (toCall > 0 && r < 0.15 && madeCards < 3) {
         me.folded = true;
         me.lastAction = "Fold";
       } else {
@@ -1394,7 +1418,7 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
       }
 
       // たまにRaise
-      if (!me.allIn && Math.random() > 0.9 && raiseCountThisRound < 4) {
+      if (!me.allIn && Math.random() > 0.9 && raiseCountThisRound < 4 && madeCards >= 3) {
         const add = Math.min(me.stack, betSize);
         me.stack -= add;
         me.betThisRound += add;
@@ -1402,6 +1426,7 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
         setRaiseCountThisRound(c => c + 1);
         setBetHead(turn);
       }
+      me.hasActedThisRound = true;
 
       snap[turn] = me;
       logAction(turn, me.lastAction);
@@ -1409,7 +1434,7 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
         round: currentBetRoundIndex(),
         seat: turn,
         type: me.lastAction,
-        stackBefore: me.stack,
+        stackBefore,
         betAfter: me.betThisRound,
         raiseCountTable: raiseCountThisRound,
       });

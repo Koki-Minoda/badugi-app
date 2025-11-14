@@ -13,8 +13,9 @@
    - **Bug-02/04**: `hasActedThisRound`, `lastAggressor` を必ず同期させる。BET 終了判定を変更したら、その条件と理由を `docs/bug_fixes.md` に記載。  
    - **Bug-05**: Badugi 評価は `games/badugi/utils/badugiEvaluator.js` を唯一のソースとする。UI で表示する際も `rankType` / `ranks` を使用し、`score` は利用しない。  
    - **Bug-06/07**: Player レイアウトを変更する場合は、各デバイス幅でのスクリーンショット or 期待図を添付し、必要なら `specs/` にモックを追加。  
-   - **Bug-08**: アクションログを追加したら `recordActionToLog` / `utils/history_rl` の仕様（フィールド一覧）を更新し、保存形式を明記する。
+- **Bug-08**: アクションログを追加したら `recordActionToLog` / `utils/history_rl` の仕様（フィールド一覧）を更新し、保存形式を明記する。
 
 4. **未完了タスクの扱い**
    - 実装途中で終了する場合、`docs/bug_fixes.md` の該当 Bug に「残作業」と「担当ファイル」を必ず追記。  
    - 作業ブランチに未反映の修正は `git status` で確認し、必要に応じて `TODO:` コメントで根拠を残す。
+   - バグ修正を終えたら、`git add` → `git commit` → `git push origin <branch>` までを必ず実施する（push 忘れを防ぐため、`docs/bug_fixes.md` 更新後に再確認すること）。

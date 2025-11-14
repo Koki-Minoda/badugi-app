@@ -1,66 +1,57 @@
 # Bug Fixes / Progress Log
 
-> 状態凡例: ✅ 完了 / 🟡 進行中 / ⛔ 未着手
+> Legend: ✅ Done / 🟡 In progress / ⛔ Not started
 
-## Bug-01: All-in 後にスタックが負になる
-- **状態**: ✅ 完了  
-- **対応**:
-  - `ui/App.jsx`: ブラインド支払いを `Math.min` で制限し、`isBusted` フラグを追加。単独勝利・ショーダウン終了時にも bust 状態を更新。
-  - `games/badugi/logic/roundFlow.js`: `sanitizeStacks` で 0 スタックを bust 扱いに。  
-  - `games/badugi/logic/showdown.js`: 配当後にも `isBusted` を再計算。
+## Bug-01 — Negative stacks after all-in
+- **Status**: ✅  
+- **Notes**: SB/BB payments are clamped, `isBusted` flag added (`ui/App.jsx`, `roundFlow.js`, `showdown.js`).
 
-## Bug-02: All-in 状態でベットラウンドが完了しない
-- **状態**: 🟡 対応中  
-- **現状**: `maxBetThisRound` / `isBetRoundComplete` を見直したが、`hasActedThisRound` / `lastAggressor` の運用は App 側に未実装。BB 行動判定は暫定ロジックのまま。
+## Bug-02 — Bet round never finishes when multiple players are all-in
+- **Status**: ✅  
+- **What changed**  
+  - `ui/App.jsx`: introduced `hasActedThisRound` state for every player, set/reset across fold/call/raise/NPC actions, and short-circuited BET flow using the new `isBetRoundComplete` result.  
+  - `games/badugi/logic/roundFlow.js`: `isBetRoundComplete` now checks both “matched bet size” and “has acted (or all-in)”.  
+  - `games/badugi/logic/drawRound.js`: optional `onActionLog` callback wired in (keeps action log in sync with the new BET flow).  
+- **Follow-up**: Bug-04 still plans to add `lastAggressor`, but Bug-02’s acceptance condition is satisfied.
 
-## Bug-03: DRAW 開始座席がズレる
-- **状態**: ✅ 完了  
-- **対応**: `calcDrawStartIndex` で常に SB（ディーラー左）を起点にするよう統一。
+## Bug-03 — Wrong DRAW start seat
+- **Status**: ✅ (`calcDrawStartIndex`).
 
-## Bug-04: ベットラウンド終了条件が曖昧
-- **状態**: 🟡 準備のみ  
-- **現状**: `hasActedThisRound` / `lastAggressor` のステート追加は済みだが、各アクションでの更新・リセット処理が未実装。
+## Bug-04 — Ambiguous BET termination
+- **Status**: 🟡 (prepare-only) — `hasActedThisRound` is now available, but `lastAggressor` logic is still TBD.
 
-## Bug-05: UI 表示と Badugi 評価の不一致
-- **状態**: 🟡 進行中  
-- **対応**: `games/badugi/utils/badugiEvaluator.js` を再実装し、返り値を `{ rankType, ranks, kicker, isBadugi }` へ統一。  
-- **残課題**: `ui/App.jsx` ではまだ `evaluateBadugi(...).score` を参照しており、新フォーマットの表示/ログ出力に置き換えが必要。
+## Bug-05 — UI vs evaluator mismatch
+- **Status**: 🟡 — canonical evaluator is done (`games/badugi/utils/badugiEvaluator.js` / `utils/badugi.js`), UI still reads `ev.score`.
 
-## Bug-06: CPU の stack/bet が見にくい
-- **状態**: 🟡 進行中  
-- **対応**: `ui/components/Player.jsx` をカード型 UI に刷新。  
-- **残課題**: テーブル配置（`ui/App.jsx`）は従来の絶対配置のままで、レスポンシブ対応はこれから。
+## Bug-06 — CPU stack/bet hard to read
+- **Status**: 🟡 — player card component refreshed, table layout pending.
 
-## Bug-07: 画面リサイズで座席が崩れる
-- **状態**: ⛔ 未着手  
-- **メモ**: Player パネル刷新は前提作業。レイアウト自体の Grid/Flex 化は未実装。
+## Bug-07 — Seats break on resize
+- **Status**: ⛔ — waiting for table layout rewrite.
 
-## Bug-08: 行動ログに途中経過が残らない
-- **状態**: 🟡 進行中  
-- **対応**: `games/badugi/logic/drawRound.js` から `recordActionToLog` を呼び出せるようになり、DRAW アクションを記録可能に。`utils/history_rl.js` も JSONL append 方式へ変更。  
-- **残課題**: `recordActionToLog` のフォーマット拡張（`stackAfter` や DRAW の詳細）と、App 側のアクションログ整備がまだ。
+## Bug-08 — Hand history misses intermediate actions
+- **Status**: 🟡 — DRAW actions can now be logged; action format unification remains.
 
 ---
 
-## 変更ファイル一覧と状態
-
-| ファイル | 内容 | 状態 |
+## Changed Files / Status
+| File | Summary | Status |
 | --- | --- | --- |
-| `gameLogic/betRound.js` | NPC の意思決定ロジックを新 Badugi 評価に合わせて調整 | ✅ |
-| `games/badugi/logic/drawRound.js` | DRAW アクションをログ出力できるよう `onActionLog` を追加 | 🟡 |
-| `games/badugi/logic/roundFlow.js` | BET→DRAW フロー、`calcDrawStartIndex`、スタック補正を改修 | 🟡 |
-| `games/badugi/logic/showdown.js` | 評価ログの整備と bust フラグ更新 | ✅ |
-| `games/badugi/utils/badugiEvaluator.js` | Badugi 評価ロジックの再設計 | ✅ |
-| `games/badugi/utils/handRankings.js` | 未対応ゲームのデフォルト返り値を新フォーマットへ | ✅ |
-| `ui/App.jsx` | Bust 管理／ブラインド支払いの修正（Bug-01 分） | ✅（Bug-02/04/08 は未完） |
-| `ui/components/Player.jsx` | プレイヤーパネルを情報カード化 | 🟡 |
-| `utils/badugi.js` | 旧 Badugi 評価をラッパー化して canonical evaluator を利用 | ✅ |
-| `utils/history_rl.js` | JSONL 追記方式で履歴を保存・エクスポート | 🟡 |
+| `ui/App.jsx` | Bust handling (Bug-01) + BET flow (`hasActedThisRound`, forced round completion) | ✅ |
+| `gameLogic/betRound.js` | Legacy NPC logic updated to new evaluator | ✅ |
+| `games/badugi/logic/drawRound.js` | Added `onActionLog` hook | 🟡 (caller wiring ongoing) |
+| `games/badugi/logic/roundFlow.js` | BET/DRAW orchestration, `calcDrawStartIndex`, improved `isBetRoundComplete` | 🟡 |
+| `games/badugi/logic/showdown.js` | Logs + bust flag refresh | ✅ |
+| `games/badugi/utils/badugiEvaluator.js` | Canonical Badugi evaluator | ✅ |
+| `games/badugi/utils/handRankings.js` | Default return format updated | ✅ |
+| `ui/components/Player.jsx` | Player panel redesign | 🟡 |
+| `utils/badugi.js` | Legacy wrapper -> canonical evaluator | ✅ |
+| `utils/history_rl.js` | JSONL append/save/export | 🟡 |
 
 ---
 
 ## Pending / Follow-up Tasks
-1. `recordActionToLog` のインターフェースを拡張し、DRAW から渡された `stackAfter` や `drawInfo` を永続化する。  
-2. `hasActedThisRound` / `lastAggressor` を App の各アクションで更新し、BET 終了条件を正しく判定する。  
-3. メインテーブル UI を Grid/Flex レイアウトへ刷新し、Player カードと整合させる。  
-4. Badugi 評価表示 (`ev.score` 依存) を全て新フォーマットへ差し替える。
+1. Extend `recordActionToLog` + JSONL schema to preserve `stackAfter` / DRAW info.
+2. Implement `lastAggressor` handling (Bug-04) now that `hasActedThisRound` exists.
+3. Rebuild the table UI (Grid/Flex) so the new Player cards survive resize (Bug-06/07).
+4. Replace every `evaluateBadugi(...).score` usage in UI/logs with `rankType` / `ranks`.

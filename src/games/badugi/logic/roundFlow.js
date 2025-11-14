@@ -93,7 +93,11 @@ export const isBetRoundComplete = players => {
   const active = players.filter(p => !p.folded);
   if (active.length <= 1) return true;
   const maxNow = Math.max(...active.map(p => p.betThisRound || 0));
-  return active.every(p => p.allIn || (p.betThisRound || 0) === maxNow);
+  return active.every(p => {
+    const matched = p.allIn || (p.betThisRound || 0) === maxNow;
+    const acted = p.allIn || p.hasActedThisRound === true;
+    return matched && acted;
+  });
 };
 
 // === BET → DRAW/SHOWDOWN ===

@@ -3,6 +3,13 @@
 const RANKS = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
 const RVAL = Object.fromEntries(RANKS.map((r, i) => [r, i + 1])); // A=1 ... K=13
 
+const RANK_TYPE = {
+  4: "BADUGI",
+  3: "THREE_CARD",
+  2: "TWO_CARD",
+  1: "ONE_CARD",
+};
+
 function uniqueRankSuit(cards) {
   const rs = new Set();
   const ss = new Set();
@@ -70,21 +77,17 @@ function bestBadugiSubset(hand) {
  */
 export function evaluateBadugi(hand) {
   const best = bestBadugiSubset(hand);
-  const ranksAsc = [...best.key].sort((a, b) => a - b); // 小さい順（A=1）
-  const base = (4 - best.size) * 1e8;
-  const score = base +
-    (ranksAsc[0] ?? 0) * 1_000_000 +
-    (ranksAsc[1] ?? 0) * 10_000 +
-    (ranksAsc[2] ?? 0) * 100 +
-    (ranksAsc[3] ?? 0);
+  const ranksAsc = [...best.key].sort((a, b) => a - b);
+  const madeSize = ranksAsc.length;
 
   return {
-    size: best.size,
-    cards: best.cards,
-    ranks: ranksAsc, // ←ここも昇順に統一
-    score,           // 小さいほど強い
+    rankType: RANK_TYPE[madeSize] ?? "ONE_CARD",
+    ranks: ranksAsc,
+    kicker: ranksAsc[ranksAsc.length - 1] ?? 0,
+    isBadugi: madeSize === 4,
   };
 }
+
 
 
 
@@ -94,26 +97,9 @@ export function evaluateBadugi(hand) {
  */
 /** 2ハンド比較（Aが強ければ負） */
 export function compareBadugi(handA, handB) {
-  const evA = evaluateBadugi(handA);
-  const evB = evaluateBadugi(handB);
-
-  // 1️⃣ Badugi枚数
-  if (evA.size !== evB.size) {
-    return evA.size > evB.size ? -1 : 1; // 大きい方が強い
-  }
-
-  // 2️⃣ ランク比較（A=1が最強）
-  for (let i = 0; i < Math.min(evA.ranks.length, evB.ranks.length); i++) {
-    if (evA.ranks[i] !== evB.ranks[i]) {
-      return evA.ranks[i] < evB.ranks[i] ? -1 : 1;
-    }
-  }
-
-  // 3️⃣ 完全一致のみチョップ
-  const same = evA.cards.length === evB.cards.length &&
-               evA.cards.every(c => evB.cards.includes(c));
-  return same ? 0 : evA.score < evB.score ? -1 : 1;
+  return compareEvalResults(evaluateBadugi(handA), evaluateBadugi(handB));
 }
+
 
 
 /** 🔹 複数プレイヤーから最強1人を決定 */
@@ -130,39 +116,37 @@ export function getBestBadugiPlayer(players) {
 export function getWinnersByBadugi(players) {
   if (!players || players.length === 0) return [];
 
-  // 各プレイヤーを評価
   const evaluated = players.map(p => ({
     ...p,
     eval: evaluateBadugi(p.hand),
   }));
 
-  // Badugiルール：枚数 > ランク(昇順)
-  evaluated.sort((a, b) => {
-    if (a.eval.size !== b.eval.size) return b.eval.size - a.eval.size; // 大きい方が強い
-    const len = Math.min(a.eval.ranks.length, b.eval.ranks.length);
-    for (let i = len - 1; i >= 0; i--) {
-      if (a.eval.ranks[i] !== b.eval.ranks[i])
-        return a.eval.ranks[i] - b.eval.ranks[i]; // 小さいカード（=強い）が勝ち
-    }
-    return 0;
-  });
+  evaluated.sort((a, b) => compareEvalResults(a.eval, b.eval));
 
-  const best = evaluated[0];
+  const bestEval = evaluated[0].eval;
   const winners = evaluated.filter(
-    p =>
-      p.eval.size === best.eval.size &&
-      p.eval.ranks.length === best.eval.ranks.length &&
-      p.eval.ranks.every((r, i) => r === best.eval.ranks[i])
+    (p) => compareEvalResults(p.eval, bestEval) === 0
   );
 
-  // 🧩 デバッグ出力
   console.log("[SHOWDOWN] Evaluated order:", evaluated.map(p =>
-    `${p.name} size=${p.eval.size} ranks=${p.eval.ranks.join("-")}`));
+    `${p.name} type=${p.eval.rankType} ranks=${p.eval.ranks.join("-")}`));
   console.log("[SHOWDOWN] Winners:", winners.map(p => p.name));
 
   return winners;
 }
 
-
-
+function compareEvalResults(evA, evB) {
+  const sizeA = evA.ranks.length;
+  const sizeB = evB.ranks.length;
+  if (sizeA !== sizeB) {
+    return sizeA > sizeB ? -1 : 1;
+  }
+  for (let i = sizeA - 1; i >= 0; i--) {
+    const diff = (evA.ranks[i] ?? 0) - (evB.ranks[i] ?? 0);
+    if (diff !== 0) {
+      return diff < 0 ? -1 : 1;
+    }
+  }
+  return 0;
+}
 

@@ -238,6 +238,7 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
       hand: [],
       folded: false,
       allIn: false,
+      isBusted: false,
       stack: 100,
       betThisRound: 0,
       selected: [],
@@ -316,6 +317,7 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
       stack: newStacks[i],
       showHand: true,
       result: p.folded ? "FOLD" : "SHOW",
+      isBusted: newStacks[i] <= 0,
     }));
 
     // 7️⃣ 状態更新
@@ -368,10 +370,13 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
 
     if (active.length === 1) {
       const winnerIdx = snap.findIndex(p => !p.folded && !p.allIn);
-      const newPlayers = [...snap];
+      const newPlayers = snap.map(p => ({ ...p }));
       const { pots: finalPots } = settleStreetToPots(snap, pots);
       const potSum = finalPots.reduce((acc, p) => acc + (p.amount || 0), 0);
       newPlayers[winnerIdx].stack += potSum;
+      newPlayers.forEach((pl) => {
+        pl.isBusted = pl.stack <= 0;
+      });
       setPlayers(newPlayers);
 
       trySaveHandOnce({
@@ -699,15 +704,20 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
         prevPlayers?.[i]?.stack ??
         players?.[i]?.stack ??
         100,
+      isBusted:
+        prevPlayers?.[i]?.isBusted ??
+        players?.[i]?.isBusted ??
+        false,
     }));
 
     // 💥 シートアウト判定
     const filteredPrev = prev.map((p) => {
-      if (p.stack <= 0) {
+      const busted = p.isBusted || p.stack <= 0;
+      if (busted) {
         console.warn(`[SEAT-OUT] ${p.name} is out (stack=${p.stack})`);
-        return { ...p, stack: 0, folded: true, allIn: true, seatOut: true };
+        return { ...p, stack: 0, folded: true, allIn: true, seatOut: true, isBusted: true };
       }
-      return { ...p, seatOut: false };
+      return { ...p, seatOut: false, isBusted: false };
     });
 
     // 🆕 プレイヤー配列を生成
@@ -715,6 +725,7 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
       name: filteredPrev[i].name ?? `P${i + 1}`,
       stack: Math.max(filteredPrev[i].stack ?? 100, 0),
       seatOut: filteredPrev[i].seatOut ?? false,
+      isBusted: filteredPrev[i].isBusted ?? false,
       hand: deckRef.current.draw(4), 
       folded: false,
       allIn: false,
@@ -733,6 +744,7 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
         p.folded = true;
         p.allIn = true;
         p.hand = [];
+        p.isBusted = true;
       }
     }
 
@@ -755,16 +767,25 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
     // SB/BB のブラインド支払い
     const sbIdx = (nextDealerIdx + 1) % NUM_PLAYERS;
     const bbIdx = (nextDealerIdx + 2) % NUM_PLAYERS;
-    newPlayers[sbIdx].stack -= SB;
-    newPlayers[sbIdx].betThisRound = SB;
-    newPlayers[bbIdx].stack -= BB;
-    newPlayers[bbIdx].betThisRound = BB;
-
+    const sbPay = Math.min(newPlayers[sbIdx].stack, SB);
+    newPlayers[sbIdx].stack -= sbPay;
+    newPlayers[sbIdx].betThisRound = sbPay;
+    if (newPlayers[sbIdx].stack === 0) {
+      newPlayers[sbIdx].allIn = true;
+    }
+    const bbPay = Math.min(newPlayers[bbIdx].stack, BB);
+    newPlayers[bbIdx].stack -= bbPay;
+    newPlayers[bbIdx].betThisRound = bbPay;
+    if (newPlayers[bbIdx].stack === 0) {
+      newPlayers[bbIdx].allIn = true;
+    }
     // --- 状態更新 ---
+    const initialPot = sbPay + bbPay;
+    const initialCurrentBet = Math.max(sbPay, bbPay);
     setPlayers(newPlayers);
     setDeck([]);
-    setPots([{ amount: SB + BB, eligible: [...Array(NUM_PLAYERS).keys()] }]);
-    setCurrentBet(BB);
+    setPots([{ amount: initialPot, eligible: [...Array(NUM_PLAYERS).keys()] }]);
+    setCurrentBet(initialCurrentBet);
     setDealerIdx(nextDealerIdx);
     setDrawRound(0);
     setPhase("BET");
@@ -791,7 +812,7 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
     debugLog(
       `[STATE] phase=BET, drawRound=0, turn=${
         (nextDealerIdx + 3) % NUM_PLAYERS
-      }, currentBet=${BB}`
+      }, currentBet=${initialCurrentBet}`
     );
 
     // 🧩 追加: デバッグ検証用に「新ハンド全プレイヤー状態」をコンソール出力
@@ -842,6 +863,7 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
       folded: false,
       allIn: false,
       seatOut: false,
+      isBusted: false,
       hand: deckRef.current.draw(4),
       betThisRound: 0,
       hasDrawn: false,
@@ -850,14 +872,22 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
     }));
 
     // Small blind / big blind設定
-    newPlayers[0].stack -= SB;
-    newPlayers[0].betThisRound = SB;
-    newPlayers[1].stack -= BB;
-    newPlayers[1].betThisRound = BB;
+    const sbPay = Math.min(newPlayers[0].stack, SB);
+    newPlayers[0].stack -= sbPay;
+    newPlayers[0].betThisRound = sbPay;
+    if (newPlayers[0].stack === 0) {
+      newPlayers[0].allIn = true;
+    }
+    const bbPay = Math.min(newPlayers[1].stack, BB);
+    newPlayers[1].stack -= bbPay;
+    newPlayers[1].betThisRound = bbPay;
+    if (newPlayers[1].stack === 0) {
+      newPlayers[1].allIn = true;
+    }
 
     setPlayers(newPlayers);
-    setPots([{ amount: SB + BB, eligible: [0, 1] }]);
-    setCurrentBet(BB);
+    setPots([{ amount: sbPay + bbPay, eligible: [0, 1] }]);
+    setCurrentBet(Math.max(sbPay, bbPay));
     setDealerIdx(nextDealerIdx);
     setDrawRound(0);
     setPhase("BET");

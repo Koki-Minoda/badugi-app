@@ -29,11 +29,11 @@ export function runShowdown({
     }));
 
     // === ログ出力 ===
-    console.groupCollapsed(`[SHOWDOWN LOG] Pot ${pot.amount} — Evaluation`);
+    console.groupCollapsed(`[SHOWDOWN LOG] Pot ${pot.amount} → Evaluation`);
     for (const e of evals) {
       const p = updated[e.idx];
       console.log(
-        `🃏 ${p.name}: ${p.hand.join(" ")} | size=${e.eval.size} | score=${e.eval.score}`
+        `🃏 ${p.name}: ${p.hand.join(" ")} | type=${e.eval.rankType} | ranks=${e.eval.ranks.join("-")}`
       );
     }
     console.groupEnd();
@@ -64,6 +64,11 @@ export function runShowdown({
       `[SHOWDOWN] pot=${pot.amount} → winners=[${winners.join(", ")}], share=${share}`
     );
   });
+
+  updated = updated.map((p) => ({
+    ...p,
+    isBusted: p.stack <= 0,
+  }));
 
   // --- 状態更新 ---
   setPlayers([...updated]);

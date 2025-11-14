@@ -59,9 +59,10 @@ export function runBetRound({
     const stillActiveBefore = newPlayers.filter((pl) => !pl.folded);
     const maxBet = Math.max(...stillActiveBefore.map((pl) => pl.betThisRound));
     const toCall = Math.max(0, maxBet - p.betThisRound);
-    const score = evaluateBadugi(p.hand).score;
+    const evalResult = evaluateBadugi(p.hand);
+    const madeCards = evalResult.ranks.length;
 
-    if (score >= 3 || Math.random() > 0.45) {
+    if (evalResult.isBadugi || madeCards >= 3 || Math.random() > 0.45) {
       // Call / Check
       if (toCall > 0) {
         const pay = Math.min(p.stack, toCall); // All-in 対応
@@ -74,7 +75,7 @@ export function runBetRound({
       }
 
       // 小確率で Raise（残スタックがあれば）
-      if (!p.allIn && Math.random() > 0.85) {
+      if (!p.allIn && Math.random() > 0.85 && madeCards >= 3) {
         const raiseAmt = betSize; // ★ 固定リミット
         const pay = Math.min(p.stack, raiseAmt);
         p.stack -= pay;

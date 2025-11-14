@@ -20,7 +20,7 @@ export function evaluateHand(gameType, hand) {
 
     default:
       console.warn(`[WARN] evaluateHand: Unsupported game type "${gameType}"`);
-      return { score: 999999999, size: 0, ranks: [] };
+      return { rankType: "UNKNOWN", ranks: [], kicker: 0, isBadugi: false };
   }
 }
 

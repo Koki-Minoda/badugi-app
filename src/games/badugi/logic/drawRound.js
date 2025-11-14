@@ -17,6 +17,7 @@ export function runDrawRound({
   dealerIdx,
   NUM_PLAYERS,
   advanceAfterAction, 
+  onActionLog,
 }) {
   console.log(`[TRACE ${new Date().toISOString()}] runDrawRound START turn=${turn}, drawRound=${drawRound}`);
   const actor = players?.[turn];
@@ -38,6 +39,7 @@ export function runDrawRound({
 
   // --- デッキから安全にカードを引く ---
   const newHand = [...actor.hand];
+  const stackBefore = actor.stack;
   const discardIndexes = pickDiscardIndexes(actor.hand, drawCount);
 
   const drawnCards = deckManager.draw(drawCount); // ✅ DeckManager管理
@@ -64,6 +66,25 @@ export function runDrawRound({
   );
 
   setPlayers([...updatedPlayers]);
+
+  if (typeof onActionLog === "function") {
+    onActionLog({
+      round: drawRound,
+      seat: turn,
+      type: drawCount === 0 ? "Pat" : `DRAW(${drawCount})`,
+      stackBefore,
+      stackAfter: stackBefore,
+      betAfter: actor.betThisRound,
+      extra: {
+        drawInfo: {
+          drawCount,
+          replacedCards: discardIndexes,
+          before: actor.hand,
+          after: newHand,
+        },
+      },
+    });
+  }
 
   // --- 次の未ドロー者を「SB起点の左回り」で探索 ---
   const activeForDraw = aliveDrawPlayers(updatedPlayers);

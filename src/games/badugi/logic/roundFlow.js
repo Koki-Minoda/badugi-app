@@ -6,7 +6,13 @@ function sanitizeStacks(snap, setPlayers) {
   const corrected = snap.map(p => {
     if (p.stack <= 0 && !p.allIn) {
       console.warn(`[SANITIZE] ${p.name} stack=${p.stack} → allIn`);
-      return { ...p, stack: 0, allIn: true, hasDrawn: true };
+      return { ...p, stack: 0, allIn: true, hasDrawn: true, isBusted: true };
+    }
+    if (p.stack <= 0 && p.isBusted !== true) {
+      return { ...p, isBusted: true };
+    }
+    if (p.stack > 0 && p.isBusted) {
+      return { ...p, isBusted: false };
     }
     return p;
   });
@@ -49,8 +55,16 @@ export const nextAliveFrom = (arr, idx) => {
 };
 
 export const maxBetThisRound = arr => {
-  const alive = aliveBetPlayers(arr);
-  return alive.length ? Math.max(...alive.map(p => p.betThisRound)) : 0;
+  if (!Array.isArray(arr)) return 0;
+  const eligible = arr.filter(p => !p.folded);
+  if (!eligible.length) return 0;
+  return Math.max(...eligible.map(p => p.betThisRound || 0));
+};
+
+export const calcDrawStartIndex = (dealerIdx = 0, streetIndex = 0, numPlayers = 6) => {
+  // DRAWは常にSB（ディーラー左）から開始。streetIndexは拡張用に保持。
+  void streetIndex;
+  return (dealerIdx + 1) % numPlayers;
 };
 
 // === ポット清算 ===
@@ -75,10 +89,11 @@ export function settleStreetToPots(playersSnap = [], prevPots = []) {
 
 // === BET終了判定 ===
 export const isBetRoundComplete = players => {
-  const alive = aliveBetPlayers(players);
-  if (alive.length <= 1) return true;
-  const maxNow = maxBetThisRound(players);
-  return alive.every(p => p.betThisRound === maxNow || p.allIn);
+  if (!Array.isArray(players)) return false;
+  const active = players.filter(p => !p.folded);
+  if (active.length <= 1) return true;
+  const maxNow = Math.max(...active.map(p => p.betThisRound || 0));
+  return active.every(p => p.allIn || (p.betThisRound || 0) === maxNow);
 };
 
 // === BET → DRAW/SHOWDOWN ===
@@ -145,22 +160,24 @@ export function finishBetRoundFrom({
     return;
   }
 
-  // 3️⃣ 次はDRAW（左回り：SBスタート）
-  let firstToDraw = (dealerIdx + 1) % NUM_PLAYERS;
-  const n = NUM_PLAYERS;
-  for (let i = 0; i < n; i++) {
-    const idx = (firstToDraw + i) % n;
-    const p = clearedPlayers[idx];
-    if (!p.folded) {
-      firstToDraw = idx;
-      break;
-    }
-    if (i === n - 1) {
-      console.error("[finishBetRoundFrom] No non-folded players found — abort");
-      return;
-    }
-  }
-
+  // 3️⃣ 次はDRAWへ。calcDrawStartIndexで起点を統一
+  const baseDrawStart = calcDrawStartIndex(dealerIdx, nextRound, NUM_PLAYERS);
+  let firstToDraw = baseDrawStart;
+  let found = false;
+  for (let i = 0; i < NUM_PLAYERS; i++) {
+    const idx = (baseDrawStart + i) % NUM_PLAYERS;
+    const p = clearedPlayers[idx];
+    if (!p.folded) {
+      firstToDraw = idx;
+      found = true;
+      break;
+    }
+  }
+  if (!found) {
+    console.error("[finishBetRoundFrom] No non-folded players found → abort");
+    return;
+  }
+
   // --- 🧩 hasDrawnを必ずfalseに初期化（DRAW#1スキップ防止）---
   const resetPlayers = clearedPlayers.map(p => ({
     ...p,

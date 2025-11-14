@@ -18,7 +18,8 @@
 - **Status**: ✅ (`calcDrawStartIndex`).
 
 ## Bug-04 — Ambiguous BET termination
-- **Status**: 🟡 (prepare-only) — `hasActedThisRound` is now available, but `lastAggressor` logic is still TBD.
+- **Status**: ✅  
+- **Fix**: `lastAggressor` を state 化。BET ラウンド開始時／強制ブラインド／Raise ごとに更新し、`closingSeatForAggressor`（新規ヘルパ）と `hasActedThisRound` を組み合わせて「レイザーに戻るまで」を正しく判定するようにした。
 
 ## Bug-05 — UI vs evaluator mismatch
 - **Status**: 🟡 — canonical evaluator is done (`games/badugi/utils/badugiEvaluator.js` / `utils/badugi.js`), UI still reads `ev.score`.

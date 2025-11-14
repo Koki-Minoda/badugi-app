@@ -100,6 +100,20 @@ export const isBetRoundComplete = players => {
   });
 };
 
+export const closingSeatForAggressor = (players, lastAggressorIdx) => {
+  if (!Array.isArray(players)) return null;
+  if (lastAggressorIdx === null || typeof lastAggressorIdx === "undefined") {
+    return null;
+  }
+  const agg = players[lastAggressorIdx];
+  if (!agg || agg.folded) return null;
+  if (agg.allIn) {
+    const next = nextAliveFrom(players, lastAggressorIdx);
+    return next ?? lastAggressorIdx;
+  }
+  return lastAggressorIdx;
+};
+
 // === BET → DRAW/SHOWDOWN ===
 export function finishBetRoundFrom({
   players,

@@ -1,4 +1,4 @@
-{
+﻿{
   "Badugi Bug & Roadmap Doc": {
     "scope": "markdown",
     "prefix": "badugi-bugs",
@@ -134,9 +134,6 @@
       "- [ ] HandRecord / TournamentRecord 実装  ",
       "- [ ] プレイヤースタッツ表示  ",
       "- [ ] AI 難易度 4段階  ",
-      "- [ ] キャラクタ20体作成  ",
-      "- [ ] キャラクタの強さ別戦略設定  ",
-      "- [ ] ライバルキャラクタ（GTOライクだが、プレイヤの履歴を読みエクスプロイトする）作成  ",
       "- [ ] Python RL → Q-table / ONNX 読み込み  ",
       "- [ ] ハンド毎の AI フィードバック（リーク検出）",
       "",
@@ -173,3 +170,4 @@
     "description": "Badugi アプリのバグ一覧・改修方針・ロードマップ（最新版）を Markdown として一括挿入するスニペット"
   }
 }
+

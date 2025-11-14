@@ -7,9 +7,9 @@
 | Bug-03 | Wrong DRAW start seat | DONE | Uses `calcDrawStartIndex` |
 | Bug-04 | Ambiguous BET termination | DONE | `lastAggressor` + closing-seat logic landed |
 | Bug-05 | UI vs evaluator mismatch | DONE | UI logs & NPC draws now read `{ rankType, ranks, kicker }` |
-| Bug-06 | CPU stack/bet visibility | IN PROGRESS | Player card updated; table layout pending |
-| Bug-07 | Seats break on resize | NOT STARTED | Requires Grid/Flex layout |
-| Bug-08 | Hand history misses intermediate actions | IN PROGRESS | DRAW logs ready; format unification outstanding |
+| Bug-06 | CPU stack/bet visibility | DONE | New `PlayerStatusBoard` HUD lists every stack/bet/status |
+| Bug-07 | Seats break on resize | DONE | Responsive grid + absolute layout landed (`ui/App.jsx`, `Player.jsx`) |
+| Bug-08 | Hand history misses intermediate actions | DONE | RecordAction now logs every BET/DRAW/SHOWDOWN step with stack/bet snapshots |
 
 ## TODO
 - Finalize `recordActionToLog` / JSONL schema (stackAfter, drawInfo, etc.).

@@ -3,9 +3,9 @@ import { nextAliveFrom, aliveDrawPlayers } from "./roundFlow";
 import { debugLog } from "../../../utils/debugLog";
 
 /**
- * DRAWラウンド制御（DeckManager対応版）
- * - デッキを deckManager インスタンスで一元管理
- * - setDeck は不要（App 側で保持しない）
+ * DRAW round controller (DeckManager aware).
+ * - Uses the provided deckManager instance as the single source of truth.
+ * - App no longer needs to keep its own deck copy.
  */
 export function runDrawRound({
   players,
@@ -23,7 +23,7 @@ export function runDrawRound({
   const actor = players?.[turn];
   if (!actor) return;
 
-  // 既にドロー済み / 無効プレイヤーならスキップ
+  // Skip folded / all-in / already-drawn players.
   if (actor.folded || actor.allIn || actor.hasDrawn) {
     debugLog(`[DRAW] skip ${actor?.name} (folded/all-in/already drawn)`);
     const next = nextAliveFrom(players, turn);
@@ -31,28 +31,30 @@ export function runDrawRound({
     return;
   }
 
-  // CPUの場合：簡易ドロー数決定
+  // Decide how many cards an NPC draws.
   let drawCount = actor.drawRequest ?? 0;
   if (turn !== 0 && drawCount === 0) {
     drawCount = decideCpuDraw(actor.hand);
   }
 
-  // --- デッキから安全にカードを引く ---
+  // --- Pull cards from the deck safely ---
   const newHand = [...actor.hand];
   const stackBefore = actor.stack;
+  const betBefore = actor.betThisRound;
+  const originalHand = [...actor.hand];
   const discardIndexes = pickDiscardIndexes(actor.hand, drawCount);
 
-  const drawnCards = deckManager.draw(drawCount); // ✅ DeckManager管理
+  const drawnCards = deckManager.draw(drawCount); // DeckManager controls the deck state
   discardIndexes.forEach((idx, j) => {
     const newCard = drawnCards[j];
     newHand[idx] = newCard;
   });
 
   debugLog(
-    `[DRAW] ${actor.name} exchanged ${drawCount} card(s) → ${newHand.join(", ")}`
+    `[DRAW] ${actor.name} exchanged ${drawCount} card(s) -> ${newHand.join(", ")}`
   );
 
-  // --- プレイヤー更新 ---
+  // --- Update player state ---
   const updatedPlayers = players.map((p, i) =>
     i === turn
       ? {
@@ -68,25 +70,32 @@ export function runDrawRound({
   setPlayers([...updatedPlayers]);
 
   if (typeof onActionLog === "function") {
+    const replacedCards = discardIndexes.map((idx, j) => ({
+      index: idx,
+      oldCard: originalHand[idx],
+      newCard: drawnCards?.[j] ?? originalHand[idx],
+    }));
     onActionLog({
-      round: drawRound,
+      phase: "DRAW",
+      round: drawRound + 1,
       seat: turn,
       type: drawCount === 0 ? "Pat" : `DRAW(${drawCount})`,
       stackBefore,
       stackAfter: stackBefore,
+      betBefore,
       betAfter: actor.betThisRound,
-      extra: {
+      metadata: {
         drawInfo: {
           drawCount,
-          replacedCards: discardIndexes,
-          before: actor.hand,
+          replacedCards,
+          before: originalHand,
           after: newHand,
         },
       },
     });
   }
 
-  // --- 次の未ドロー者を「SB起点の左回り」で探索 ---
+  // --- Find the next player who still needs to draw (SB-first order) ---
   const activeForDraw = aliveDrawPlayers(updatedPlayers);
   const sb = (dealerIdx + 1) % NUM_PLAYERS;
   const order = Array.from({ length: NUM_PLAYERS }, (_, k) => (sb + k) % NUM_PLAYERS);
@@ -98,15 +107,15 @@ export function runDrawRound({
     setTurn(nextIdx);
   } else {
     debugLog(`[DRAW] All active players have drawn (round=${drawRound}).`);
-    // App 側の finishDrawRound() がBETへ遷移する
+    // App.finishDrawRound() will advance to the next betting street.
   }
   console.log(`[TRACE ${new Date().toISOString()}] runDrawRound END turn=${turn}`);
 }
 
 /**
- * 💡 markPlayerDrew()
- * - プレイヤーがドローを終えたことを明示的にマークするだけ。
- * - App 側で finishDrawRound() を呼ぶ前提で、即遷移しない。
+ * markPlayerDrew()
+ * - Marks the given player as done drawing.
+ * - Does not advance the round; App calls finishDrawRound() explicitly.
  */
 export function markPlayerDrew(setPlayers, playerIdx, numCards = 0) {
   setPlayers((prev) =>
@@ -126,10 +135,10 @@ export function markPlayerDrew(setPlayers, playerIdx, numCards = 0) {
 
 
 /**
- * 🧩 runDrawRoundSafe()
- * - runDrawRound() の軽量ラッパ。
- * - まだhasDrawn=falseのプレイヤーのみ処理。
- * - DRAW#1 スキップを防ぐため、Appからの明示呼び出し向け。
+ * runDrawRoundSafe()
+ * - Thin wrapper around runDrawRound().
+ * - Only processes players who still have `hasDrawn=false`.
+ * - Useful for preventing DRAW#1 skips when manually stepping.
  */
 export function runDrawRoundSafe({
   players,
@@ -155,7 +164,7 @@ export function runDrawRoundSafe({
   });
 }
 
-/** CPUの簡易ドローロジック（重複スーツ/ランクの数だけ最大3枚） */
+/** NPC draw heuristic (max 3 cards, based on duplicate ranks/suits). */
 function decideCpuDraw(hand) {
   const suits = new Set();
   const ranks = new Set();
@@ -170,9 +179,9 @@ function decideCpuDraw(hand) {
   return Math.min(drawCount, 3);
 }
 
-/** 捨てるカードのインデックス（Badugi的に弱い順） */
+/** Pick discard indexes (badugi-weaker cards first). */
 function pickDiscardIndexes(hand, drawCount) {
-  // ♠ > ♥ > ♦ > ♣ の順でランク重複・スーツ重複を優先除去
+  // Prioritize removing rank/suit duplicates (spades > hearts > diamonds > clubs fallback)
   const rankCount = {};
   const suitCount = {};
   hand.forEach((c) => {
@@ -186,16 +195,16 @@ function pickDiscardIndexes(hand, drawCount) {
   const scored = hand.map((c, i) => {
     const r = c.slice(0, -1);
     const s = c.slice(-1);
-    // ペアやスーツ重複を優先的に落とす
+    // Prefer dropping duplicate rank/suit cards first
     let score = 0;
     if (rankCount[r] > 1) score += 2;
     if (suitCount[s] > 1) score += 1;
-    // 数字の高さで加点（Aが最良、Kが最悪）
+    // Higher ranks are worse (A best -> K worst)
     score += rankOrder.indexOf(r) / 13;
     return { i, score };
   });
 
-  // スコア高い順に捨てる
+  // Discard highest scores first
   scored.sort((a, b) => b.score - a.score);
   return scored.slice(0, drawCount).map(x => x.i);
 }

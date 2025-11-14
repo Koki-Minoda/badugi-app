@@ -24,11 +24,11 @@ function uniqueRankSuit(cards) {
 }
 
 function handKey(cards) {
-  // 役比較用キー：ランクの数値を「高い順」に並べ、配列を小さい方が強い比較に使う
-  // （= 最高位が小さいほど良い → その要素で先に小さくなる方が勝ち）
+  // 
+  //  
   const valsDesc = cards
     .map(c => RVAL[c.slice(0, -1)])
-    .sort((a, b) => b - a); // 高い→低い
+    .sort((a, b) => b - a); // 
   return valsDesc;
 }
 
@@ -37,13 +37,13 @@ function cmpKeys(a, b) {
   for (let i = 0; i < n; i++) {
     const av = a[i] ?? 0;
     const bv = b[i] ?? 0;
-    if (av !== bv) return av - bv; // 小さい方が強い
+    if (av !== bv) return av - bv; // 
   }
   return 0;
 }
 
 function bestBadugiSubset(hand) {
-  // 4→3→2→1 の順で、ランク/スーツ重複なしサブセットの中から最良を取る
+  // 4 /
   const cards = [...hand];
   for (let size = 4; size >= 1; size--) {
     let best = null;
@@ -66,13 +66,13 @@ function bestBadugiSubset(hand) {
     choose(0, []);
     if (best) return { size, cards: best.cards, key: best.key };
   }
-  // 理論上ここには来ない
+  // 
   return { size: 1, cards: [cards[0]], key: handKey([cards[0]]) };
 }
 
 /**
- * 役評価（小さい score ほど強い）
- * @param {string[]} hand - ["A♣","7♦","2♠","K♥"] など
+ * score 
+ * @param {string[]} hand - ["A","7","2","K"] 
  * @returns {{size:number, cards:string[], ranks:number[], score:number}}
  */
 export function evaluateBadugi(hand) {
@@ -91,18 +91,18 @@ export function evaluateBadugi(hand) {
 
 
 
-/** 2ハンド比較
- * Aが強ければ負、Bが強ければ正、同点なら0を返す
- * （sort関数などでも使える）
+/** 2
+ * A
+ * ort
  */
-/** 2ハンド比較（Aが強ければ負） */
+/** 2*/
 export function compareBadugi(handA, handB) {
   return compareEvalResults(evaluateBadugi(handA), evaluateBadugi(handB));
 }
 
 
 
-/** 🔹 複数プレイヤーから最強1人を決定 */
+/**  1*/
 export function getBestBadugiPlayer(players) {
   if (!players || players.length === 0) return null;
   let best = players[0];
@@ -149,4 +149,5 @@ function compareEvalResults(evA, evB) {
   }
   return 0;
 }
+
 

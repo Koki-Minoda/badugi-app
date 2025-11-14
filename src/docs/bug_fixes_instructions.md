@@ -9,7 +9,7 @@
    - Bug-02 / Bug-04: keep `hasActedThisRound` and `lastAggressor` in sync. If BET completion conditions change, describe the rule and affected files in `docs/bug_fixes.md`.
    - Bug-05: `games/badugi/utils/badugiEvaluator.js` is the single source of truth. UI/logs must use `{ rankType, ranks, kicker, isBadugi }`; do not resurrect the old `score` field.
    - Bug-06 / Bug-07: attach screenshots or short notes when table/player layout changes, and capture the outcome under `specs/`.
-   - Bug-08: whenever you add history fields, update the schema description (field list + format) in this file and `docs/bug_fixes.md`.
+- Bug-08: the action-log schema (see `specs/08_action_log_schema.md`) must always include `phase`, `round`, `seatName`, `stackBefore/After`, `betBefore/After`, `potAfter`, and any `metadata` such as `drawInfo`. Update this file and `docs/bug_fixes.md` if the schema changes.
 4. Handling unfinished work
    - If a fix spans multiple commits, keep the remaining items listed under the corresponding Bug entry with explicit file names.
    - Always double-check `git status` and leave `TODO:` comments in code when you have to pause mid-feature.

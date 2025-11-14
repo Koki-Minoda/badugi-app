@@ -17,4 +17,4 @@
 ## Continue 実行指示
 - docs/badugi_bugs_and_roadmap.md の Bug-01〜08 を順番に処理
 - 各バグごとに 上記テンプレを埋めて diff を生成
-- Apply 前に必ず diff を提示
+- Apply を自動化

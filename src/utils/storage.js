@@ -1,5 +1,5 @@
 // src/utils/storage.js
-// --- 既存: VPIP, PFR などのプレイヤー統計管理 -----------------------------
+// --- Legacy player stat helpers (VPIP, PFR, winnings) ---
 
 const STATS_KEY = "badugi_player_stats_v1";
 
@@ -19,7 +19,7 @@ export function saveStats(stats) {
 }
 
 /**
- * ハンド終了時に統計を更新
+ * Update aggregate stats at the end of a hand.
  */
 export function updateStats({ vpip, pfr, winnings }) {
   const stats = loadStats();
@@ -30,7 +30,7 @@ export function updateStats({ vpip, pfr, winnings }) {
   saveStats(stats);
 }
 
-// --- 追加: 汎用 localStorage JSON ヘルパ & 配列ユーティリティ ---------------
+// --- Generic localStorage JSON helpers ------------------------------------
 
 const PREFIX = "badugi.";
 
@@ -43,7 +43,7 @@ const safeParse = (str, fallback) => {
 };
 
 /**
- * JSON値を取得。存在しなければ fallback を返す
+ * Read a JSON value or return the fallback.
  */
 export function getJSON(key, fallback = null) {
   const raw = localStorage.getItem(PREFIX + key);
@@ -52,14 +52,14 @@ export function getJSON(key, fallback = null) {
 }
 
 /**
- * JSON値を保存
+ * Save a JSON value.
  */
 export function setJSON(key, value) {
   localStorage.setItem(PREFIX + key, JSON.stringify(value));
 }
 
 /**
- * 先頭に要素を追加（上限付き）
+ * Prepend an item and trim by limit.
  */
 export function pushToArray(key, item, { limit = 500 } = {}) {
   const arr = getJSON(key, []);
@@ -70,14 +70,14 @@ export function pushToArray(key, item, { limit = 500 } = {}) {
 }
 
 /**
- * キー削除
+ * Remove a key.
  */
 export function remove(key) {
   localStorage.removeItem(PREFIX + key);
 }
 
 /**
- * キー移行（from → to）: 既に to があれば何もしない
+ * Migrate one key to another if the destination is empty.
  */
 export function migrate(fromKey, toKey) {
   const raw = localStorage.getItem(PREFIX + fromKey);
@@ -87,7 +87,7 @@ export function migrate(fromKey, toKey) {
 }
 
 /**
- * TTL付きキャッシュ
+ * TTL-aware setters/getters.
  */
 export function setWithTTL(key, value, ttlMs) {
   setJSON(key, { v: value, e: Date.now() + ttlMs });
@@ -99,3 +99,4 @@ export function getWithTTL(key, fallback = null) {
   if (Date.now() > wrap.e) return fallback;
   return wrap.v;
 }
+

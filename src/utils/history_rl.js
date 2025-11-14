@@ -1,4 +1,4 @@
-﻿const STORAGE_KEY = "rl_hand_histories_v1";
+const STORAGE_KEY = "rl_hand_histories_v1";
 
 export function saveRLHandHistory(record) {
   try {
@@ -43,3 +43,4 @@ export function exportRLHistoryAsJSONL() {
     console.error("[SAVE_RL] export failed:", e);
   }
 }
+

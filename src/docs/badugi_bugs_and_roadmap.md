@@ -39,18 +39,18 @@ Internal tracker for known issues, fixes, and upcoming work across gameplay, UI,
 ### 1-4. UI / Layout
 
 #### Bug-06: CPU stack/bet info is hard to read
-- Status: IN PROGRESS
-- Fix (partial): `Player.jsx` always shows name/stack/currentBet/status. Table layout refresh pending.
+- Status: DONE
+- Fix: Added the left-column `PlayerStatusBoard` HUD (`ui/components/PlayerStatusBoard.jsx`) that lists every seat's name, position label, stack, current bet, and badges (YOU / ALL-IN / FOLDED / BUSTED / ACTING). The board references `specs/06_player_status_board.md` and keeps CPU stacks visible even when their cards are face down.
 
 #### Bug-07: Seat layout breaks on resize
-- Status: NOT STARTED
-- Plan: Move to Tailwind Grid/Flex and drop absolute positioning.
+- Status: DONE
+- Fix: `ui/App.jsx` now renders seats via a responsive grid (mobile) and Tailwind `lg:absolute` anchors (desktop). `Player.jsx` gained BTN badges and ASCII-only status chips so resizing no longer corrupts layout.
 
 ### 1-5. History Log
 
 #### Bug-08: Action history misses intermediate steps
-- Status: IN PROGRESS
-- Fix (partial): DRAW actions can be logged through `onActionLog`. Need to unify BET/DRAW/SHOWDOWN records into a single JSONL schema.
+- Status: DONE
+- Fix: `recordActionToLog` now writes a normalized entry (`phase`, `round`, `seatName`, `stackBefore/After`, `betBefore/After`, `potAfter`, `metadata`) for every BET/DRAW/SHOWDOWN action, including NPC moves and pot distribution. Draw metadata includes `drawInfo` snapshots, and the JSONL exported via `utils/history_rl.js` now contains every intermediate step.
 
 ---
 
@@ -59,6 +59,22 @@ Internal tracker for known issues, fixes, and upcoming work across gameplay, UI,
 - Test automation: extend `npm test` with UI snapshots / scraping diff checks.
 - Core game: tournament structure (blind level, starting stack), side pots, seat state (Human / CPU / Empty) auto rotation.
 - AI / Learning: HandRecord and TournamentRecord, 4 AI difficulty presets, Python RL (Q-table / ONNX) ingestion.
+## Reinforcement Learning (Badugi)
+
+Goal: train self-play agents for 6-max Badugi and use them as CPU opponents (including "iron-strong" boss characters).
+
+### Current status
+
+- [x] Implemented `rl/env/badugi_env.py` as a Gym-style environment for Badugi.
+
+### Next steps
+
+- [ ] Add DQN agent implementation in `rl/agents/dqn_agent.py` and replay buffer in `rl/utils/replay_buffer.py`.
+- [ ] Implement the self-play training script `rl/training/train_dqn.py` and verify that episodes run end-to-end without crashes.
+- [ ] Connect the existing hand history / JSONL logging so that Badugi games played in the app can be reused as offline RL data.
+- [ ] Train a baseline DQN model on CPU and save checkpoints under `rl/models/`.
+- [ ] Export a compact model (e.g. via ONNX or a light-weight policy format) so that the React frontend can load it and use it for different AI difficulty tiers.
+- [ ] Tune rewards and observation/action spaces to make the agent strong but still "human-like" and fun to play against.
 - UI / Effects: Tailwind plus Framer Motion refresh, chip animations, win/lose effects, card squeeze.
 - Platform: PWA plus FastAPI layering, auth and history APIs, E2E + unit suites, keep this spec in sync for Codex/Continue.
 

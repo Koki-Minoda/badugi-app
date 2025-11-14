@@ -1,10 +1,10 @@
-# src/utils/hand_utils.py
+﻿# src/utils/hand_utils.py
 import numpy as np
 
 # =============================
-# 定数・共通設定
+# 螳壽焚繝ｻ蜈ｱ騾夊ｨｭ螳・
 # =============================
-SUIT_SYMBOLS = ["♠", "♥", "♦", "♣"]
+SUIT_SYMBOLS = ["笙", "笙･", "笙ｦ", "笙｣"]
 RANK_NAMES = {
     1: "A", 2: "2", 3: "3", 4: "4", 5: "5",
     6: "6", 7: "7", 8: "8", 9: "9", 10: "T",
@@ -12,14 +12,14 @@ RANK_NAMES = {
 }
 
 # =============================
-# 観測デコード関連
+# 隕ｳ貂ｬ繝・さ繝ｼ繝蛾未騾｣
 # =============================
 def decode_hand_from_obs(obs):
     """
-    観測ベクトルからプレイヤーの手札を復元する。
-    obs: np.ndarray または list
+    隕ｳ貂ｬ繝吶け繝医Ν縺九ｉ繝励Ξ繧､繝､繝ｼ縺ｮ謇区惆繧貞ｾｩ蜈・☆繧九・
+    obs: np.ndarray 縺ｾ縺溘・ list
         0..7 = [rank1, suit1, rank2, suit2, rank3, suit3, rank4, suit4]
-    戻り値: [(rank, suit), ...]
+    謌ｻ繧雁､: [(rank, suit), ...]
     """
     obs = np.asarray(obs).tolist()
     hand = []
@@ -32,10 +32,10 @@ def decode_hand_from_obs(obs):
 
 
 # =============================
-# 可視化系
+# 蜿ｯ隕門喧邉ｻ
 # =============================
 def pretty_card(card):
-    """(rank, suit) → 'A♠' のように整形"""
+    """(rank, suit) 竊・'A笙' 縺ｮ繧医≧縺ｫ謨ｴ蠖｢"""
     if not card:
         return "--"
     r, s = card
@@ -45,23 +45,23 @@ def pretty_card(card):
 
 
 def pretty_hand(hand):
-    """手札リストを 'A♠ 7♥ 9♦ K♣' のような文字列に整形"""
+    """謇区惆繝ｪ繧ｹ繝医ｒ 'A笙 7笙･ 9笙ｦ K笙｣' 縺ｮ繧医≧縺ｪ譁・ｭ怜・縺ｫ謨ｴ蠖｢"""
     return " ".join([pretty_card(c) for c in hand]) if hand else "(empty)"
 
 
 # =============================
-# 役判定ロジック
+# 蠖ｹ蛻､螳壹Ο繧ｸ繝・け
 # =============================
 def hand_rank(hand):
     """
-    Badugi の役判定（重複スート/ランクを排して残る有効カード数とランクリスト）。
-    小さいランクが強い。
-    返り値: (有効カード枚数, [r1, r2, ...])
+    Badugi 縺ｮ蠖ｹ蛻､螳夲ｼ磯㍾隍・せ繝ｼ繝・繝ｩ繝ｳ繧ｯ繧呈賜縺励※谿九ｋ譛牙柑繧ｫ繝ｼ繝画焚縺ｨ繝ｩ繝ｳ繧ｯ繝ｪ繧ｹ繝茨ｼ峨・
+    蟆上＆縺・Λ繝ｳ繧ｯ縺悟ｼｷ縺・・
+    霑斐ｊ蛟､: (譛牙柑繧ｫ繝ｼ繝画椢謨ｰ, [r1, r2, ...])
     """
     best = []
     used_suits = set()
     used_ranks = set()
-    for r, s in sorted(hand, key=lambda x: x[0]):  # ランク昇順
+    for r, s in sorted(hand, key=lambda x: x[0]):  # 繝ｩ繝ｳ繧ｯ譏・・
         if r not in used_ranks and s not in used_suits:
             best.append(r)
             used_ranks.add(r)
@@ -71,8 +71,8 @@ def hand_rank(hand):
 
 def evaluate_hand_strength(hand):
     """
-    Badugi の強さを数値化（大きいほど強い）。
-    有効カード枚数を優先し、同枚数ならランク合計が小さいほど高評価。
+    Badugi 縺ｮ蠑ｷ縺輔ｒ謨ｰ蛟､蛹厄ｼ亥､ｧ縺阪＞縺ｻ縺ｩ蠑ｷ縺・ｼ峨・
+    譛牙柑繧ｫ繝ｼ繝画椢謨ｰ繧貞━蜈医＠縲∝酔譫壽焚縺ｪ繧峨Λ繝ｳ繧ｯ蜷郁ｨ医′蟆上＆縺・⊇縺ｩ鬮倩ｩ穂ｾ｡縲・
     """
     count, ranks = hand_rank(hand)
     if not ranks:
@@ -82,32 +82,32 @@ def evaluate_hand_strength(hand):
 
 def compare_hands(hand_a, hand_b):
     """
-    2つのハンドを比較して結果を返す。
-      > 0 → hand_a 勝ち
-      < 0 → hand_b 勝ち
-      = 0 → 引き分け
+    2縺､縺ｮ繝上Φ繝峨ｒ豈碑ｼ・＠縺ｦ邨先棡繧定ｿ斐☆縲・
+      > 0 竊・hand_a 蜍昴■
+      < 0 竊・hand_b 蜍昴■
+      = 0 竊・蠑輔″蛻・￠
     """
     count_a, ranks_a = hand_rank(hand_a)
     count_b, ranks_b = hand_rank(hand_b)
 
-    # 枚数優先
+    # 譫壽焚蜆ｪ蜈・
     if count_a != count_b:
         return count_a - count_b
 
-    # ランク比較（昇順で1つずつ）
+    # 繝ｩ繝ｳ繧ｯ豈碑ｼ・ｼ域・鬆・〒1縺､縺壹▽・・
     for ra, rb in zip(sorted(ranks_a), sorted(ranks_b)):
         if ra != rb:
-            return rb - ra  # 小さい方が強いので逆転
+            return rb - ra  # 蟆上＆縺・婿縺悟ｼｷ縺・・縺ｧ騾・ｻ｢
     return 0
 
 
 # =============================
-# 統計・レンジ分析補助
+# 邨ｱ險医・繝ｬ繝ｳ繧ｸ蛻・梵陬懷勧
 # =============================
 def classify_strength(hand):
     """
-    ハンドをカテゴリ化して強弱ラベルを返す。
-    'strong' / 'medium' / 'weak' の3段階
+    繝上Φ繝峨ｒ繧ｫ繝・ざ繝ｪ蛹悶＠縺ｦ蠑ｷ蠑ｱ繝ｩ繝吶Ν繧定ｿ斐☆縲・
+    'strong' / 'medium' / 'weak' 縺ｮ3谿ｵ髫・
     """
     count, ranks = hand_rank(hand)
     if count >= 4 and max(ranks) <= 8:
@@ -120,7 +120,7 @@ def classify_strength(hand):
 
 def calc_hand_features(hand):
     """
-    機械学習・統計用に特徴量ベクトルを返す。
+    讖滓｢ｰ蟄ｦ鄙偵・邨ｱ險育畑縺ｫ迚ｹ蠕ｴ驥上・繧ｯ繝医Ν繧定ｿ斐☆縲・
     """
     count, ranks = hand_rank(hand)
     avg_rank = np.mean(ranks) if ranks else 13
@@ -133,3 +133,4 @@ def calc_hand_features(hand):
         "low": low,
         "strength": evaluate_hand_strength(hand)
     }
+

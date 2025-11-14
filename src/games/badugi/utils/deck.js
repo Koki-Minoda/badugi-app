@@ -1,20 +1,20 @@
 /**
  * DeckManager
- * - 52枚デッキを1インスタンスで管理
- * - draw(n)で安全にカードを引き、残りが尽きたら discardPile＋回収分を再シャッフル
- * - reset()で完全リセット
+ * - 52
+ * - draw(n)discardPile
+ * - reset()
  */
 export class DeckManager {
   constructor(debug = false) {
     this.debug = debug;
     this.fullDeck = this.#createDeck();
     this.deck = this.#shuffle([...this.fullDeck]);
-    this.discardPile = []; // 捨て札（交換された古カード）
+    this.discardPile = []; // 
     this.drawCount = 0;
   }
 
   #createDeck() {
-    const suits = ["♠", "♥", "♦", "♣"];
+    const suits = ["", "", "", ""];
     const ranks = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
     const deck = [];
     for (const s of suits) {
@@ -43,7 +43,7 @@ export class DeckManager {
     if (this.debug) console.log(`[DeckManager] reset`);
   }
 
-  /** 捨て札を即リサイクルして山へ戻す */
+  /** */
   recycleNow(extra = []) {
     if (extra && extra.length) this.discardPile.push(...extra);
     if (this.discardPile.length > 0) {
@@ -54,13 +54,13 @@ export class DeckManager {
     }
   }
 
-  /** カードをn枚引く（必要なら再シャッフル） */
+  /** n*/
   draw(n = 1) {
     const drawn = [];
     for (let i = 0; i < n; i++) {
       if (this.deck.length === 0) {
         if (this.discardPile.length === 0) {
-          console.warn("[DeckManager] Deck empty, no discard to recycle → returning partial draw");
+          console.warn("[DeckManager] Deck empty, no discard to recycle returning partial draw");
           break;
         }
         this.recycleNow();
@@ -72,16 +72,17 @@ export class DeckManager {
       }
     }
     if (this.debug) {
-      console.log(`[DeckManager] draw(${n}) → ${drawn.join(", ") || "(none)"} [remain=${this.deck.length}]`);
+      console.log(`[DeckManager] draw(${n}) ${drawn.join(", ") || "(none)"} [remain=${this.deck.length}]`);
     }
     return drawn;
   }
 
-  /** 捨て札登録 */
+  /**  */
   discard(cards) {
     if (!cards || !cards.length) return;
     this.discardPile.push(...cards);
     if (this.debug)
-      console.log(`[DeckManager] discard +${cards.length} → total=${this.discardPile.length}`);
+      console.log(`[DeckManager] discard +${cards.length} total=${this.discardPile.length}`);
   }
 }
+

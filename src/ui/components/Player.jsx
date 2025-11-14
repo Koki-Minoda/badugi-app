@@ -30,15 +30,18 @@ export default function Player({
       } ${isActive ? "ring-2 ring-yellow-400" : ""}`}
     >
       <div className="flex items-center justify-between">
-        <div className="font-semibold text-white">
-          {player.name} {index === dealerIdx ? "⬤ BTN" : ""}
+        <div className="font-semibold text-white flex items-center gap-2">
+          <span>{player.name}</span>
+          {index === dealerIdx && (
+            <span className="text-xs text-yellow-300 uppercase tracking-wide">(BTN)</span>
+          )}
         </div>
         {isActive && <span className="text-xs text-lime-300 font-bold">ACTING</span>}
       </div>
 
       {statusBadges.length > 0 && (
         <div className="text-xs uppercase tracking-wide text-yellow-300">
-          {statusBadges.join(" • ")}
+          {statusBadges.join(" · ")}
         </div>
       )}
 

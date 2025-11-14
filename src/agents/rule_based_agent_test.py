@@ -1,25 +1,25 @@
-import numpy as np
+﻿import numpy as np
 from src.env.badugi_env import BadugiEnv
 from src.utils.hand_utils import decode_hand_from_obs, pretty_hand, hand_rank, evaluate_hand_strength
 
 def rule_based_action(obs, phase):
     """
-    シンプルなルールベースエージェント。
-    手札の強さに応じて Fold / Call / Raise / Draw 枚数を決定。
+    繧ｷ繝ｳ繝励Ν縺ｪ繝ｫ繝ｼ繝ｫ繝吶・繧ｹ繧ｨ繝ｼ繧ｸ繧ｧ繝ｳ繝医・
+    謇区惆縺ｮ蠑ｷ縺輔↓蠢懊§縺ｦ Fold / Call / Raise / Draw 譫壽焚繧呈ｱｺ螳壹・
     """
     hand = decode_hand_from_obs(obs)
     count, ranks = hand_rank(hand)
     score = evaluate_hand_strength(hand)
 
-    # 状況を簡潔に評価
+    # 迥ｶ豕√ｒ邁｡貎斐↓隧穂ｾ｡
     strength_label = (
         "strong" if count == 4
         else "medium" if count == 3
         else "weak"
     )
-    print(f"Player: {pretty_hand(hand)} [{count}バド, {strength_label}] → ", end="")
+    print(f"Player: {pretty_hand(hand)} [{count}繝舌ラ, {strength_label}] 竊・", end="")
 
-    # --- BET フェーズ ---
+    # --- BET 繝輔ぉ繝ｼ繧ｺ ---
     if phase == "BET":
         if count == 4:
             print("action=2 (Raise)")
@@ -36,7 +36,7 @@ def rule_based_action(obs, phase):
             print("action=0 (Fold)")
             return 0
 
-    # --- DRAW フェーズ ---
+    # --- DRAW 繝輔ぉ繝ｼ繧ｺ ---
     elif phase == "DRAW":
         n_draw = 4 - count
         print(f"action={n_draw} (Draw {n_draw})")
@@ -72,3 +72,4 @@ if __name__ == "__main__":
     print("\n=== 6-Max (6 players) / Rule-based agent ===")
     for i in range(3):
         run_episode(player_count=6)
+

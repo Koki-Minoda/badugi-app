@@ -25,13 +25,16 @@
 - Fix: Removed every `ev.score` usage. `ui/App.jsx` now logs showdown hands with `{ rankType, ranks }` and NPC draws route through the new `npcAutoDrawCount()` helper that reads `kicker`. CPU draw heuristics no longer rely on the removed `score` field.
 
 ## Bug-06 - CPU stack/bet hard to read
-- Status: IN_PROGRESS (player card refresh is live; table layout update pending).
+- Status: DONE
+- Fix: Added the persistent `PlayerStatusBoard` HUD (top-left overlay) that shows every seat's name, position, stack, current bet, and badges (YOU / ALL-IN / FOLDED / BUSTED / ACTING). The UX spec lives in `specs/06_player_status_board.md`. This keeps CPU information visible without hovering over their cards.
 
 ## Bug-07 - Seats break on resize
-- Status: NOT_STARTED (Grid/Flex rewrite queued).
+- Status: DONE
+- Fix: The table view now uses a responsive dual-mode layout. Small screens render the players in a grid, while large screens anchor each seat via Tailwind’s `lg:absolute` helpers so BTN / SB / BB positioning survives window resizing. `ui/components/Player.jsx` also exposes BTN badges and ASCII-only status text to avoid glyph corruption that previously broke layout calculations.
 
 ## Bug-08 - Hand history misses intermediate actions
-- Status: IN_PROGRESS (DRAW actions log correctly; JSONL unification remains).
+- Status: DONE
+- Fix: `recordActionToLog` now captures every BET/DRAW/SHOWDOWN event with `{ phase, round, seatName, stackBefore/After, betBefore/After, potAfter, metadata }`. Draw events include `drawInfo` snapshots (before/after hands, replaced cards), and showdown payouts record pot splits per seat. `games/badugi/logic/drawRound.js` forwards its `onActionLog` payload in the same format so JSONL exports consistently contain all intermediate actions.
 
 ---
 
@@ -40,20 +43,20 @@
 | --- | --- | --- |
 | `ui/App.jsx` | Bust handling (Bug-01) + BET flow (`hasActedThisRound`, forced round completion) + Bug-05 evaluator sync | DONE |
 | `gameLogic/betRound.js` | Legacy NPC logic updated to new evaluator | DONE |
-| `games/badugi/logic/drawRound.js` | Added `onActionLog` hook | IN_PROGRESS (callers still being wired) |
+| `games/badugi/logic/drawRound.js` | Added `onActionLog` hook | DONE |
 | `games/badugi/logic/roundFlow.js` | BET/DRAW orchestration, `calcDrawStartIndex`, improved `isBetRoundComplete` | IN_PROGRESS |
 | `games/badugi/logic/showdown.js` | Logs + bust flag refresh | DONE |
 | `games/badugi/utils/badugiEvaluator.js` | Canonical Badugi evaluator | DONE |
 | `games/badugi/utils/handRankings.js` | Default return format updated | DONE |
-| `ui/components/Player.jsx` | Player panel redesign | IN_PROGRESS |
+| `ui/components/Player.jsx` | Player panel redesign + BTN/status badges | DONE |
+| `ui/components/PlayerStatusBoard.jsx` | New HUD for Bug-06 stack/bet visibility | DONE |
 | `utils/badugi.js` | Legacy wrapper -> canonical evaluator | DONE |
-| `utils/history_rl.js` | JSONL append/save/export | IN_PROGRESS |
+| `utils/history_rl.js` | JSONL append/save/export | DONE |
 
 ---
 
 ## Pending / Follow-up Tasks
-1. Extend `recordActionToLog` + JSONL schema to preserve `stackAfter` and DRAW metadata.
-2. Finish wiring `onActionLog` (Bug-08) everywhere BET/DRAW/SHOWDOWN transitions happen.
-3. Rebuild the table UI (Grid/Flex) so the new Player cards survive resize (Bug-06/07).
+1. Add automated tests that verify the action-log schema (JSON round-trip + required fields).
+2. Capture responsive layout screenshots (desktop/mobile) for the PlayerStatusBoard / seat grid and archive them under `specs/`.
 
 

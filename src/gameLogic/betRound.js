@@ -2,12 +2,11 @@
 import { evaluateBadugi } from "../utils/badugi";
 
 /**
- * BETラウンド進行（NPC用）
- * - 次アクターは必ず「現在 turn の次」（親から getNextAliveAfter を受け取る）
- * - Fixed Limit：raiseAmt は betSize に固定
- * - All-in 対応：支払いは stack を超えない。stack が 0 になったら allIn=true
- * - 終了条件：「アクティブ全員の betThisRound が同額」かつ「全員 actedThisRound=true」
- *   → 即 DRAW へ（SB から）
+ * BET round driver for the legacy NPC flow.
+ * - Next actor is always the next alive seat after `turn` (provided by the parent via getNextAliveAfter).
+ * - Fixed limit: every raise uses `betSize`.
+ * - All-in aware: payments never exceed the stack; reaching zero stack sets `allIn=true`.
+ * - Completion: all active players must have matching `betThisRound` and `actedThisRound=true`, then we move to DRAW (starting from SB).
  */
 export function runBetRound({
   players,
@@ -18,7 +17,7 @@ export function runBetRound({
   setCurrentBet,
   setPhase,
   setTurn,
-  getNextAliveAfter, // 親(App)から渡す
+  getNextAliveAfter, // Provided by App
 }) {
   const active = players.filter((p) => !p.folded);
   if (active.length <= 1) {
@@ -34,7 +33,7 @@ export function runBetRound({
     return;
   }
 
-  // 自分(0)の手番ではここではアクションをしない（App 側が既に処理）
+  // Hero actions are handled in App.jsx, so this branch just advances the turn.
   if (turn === 0) {
     const stillActive = players.filter((pl) => !pl.folded);
     const maxNow = Math.max(...stillActive.map((pl) => pl.betThisRound));
@@ -51,7 +50,7 @@ export function runBetRound({
     return;
   }
 
-  // --- NPC 自動アクション ---
+  // --- NPC auto action ---
   setTimeout(() => {
     const newPlayers = [...players];
     const p = { ...newPlayers[turn] };
@@ -65,7 +64,7 @@ export function runBetRound({
     if (evalResult.isBadugi || madeCards >= 3 || Math.random() > 0.45) {
       // Call / Check
       if (toCall > 0) {
-        const pay = Math.min(p.stack, toCall); // All-in 対応
+        const pay = Math.min(p.stack, toCall); // All-in aware
         p.stack -= pay;
         p.betThisRound += pay;
         p.lastAction = pay < toCall ? "Call (All-in)" : "Call";
@@ -74,9 +73,9 @@ export function runBetRound({
         p.lastAction = "Check";
       }
 
-      // 小確率で Raise（残スタックがあれば）
+      // Occasionally raise if there is stack left.
       if (!p.allIn && Math.random() > 0.85 && madeCards >= 3) {
-        const raiseAmt = betSize; // ★ 固定リミット
+        const raiseAmt = betSize; // fixed limit
         const pay = Math.min(p.stack, raiseAmt);
         p.stack -= pay;
         p.betThisRound += pay;
@@ -93,13 +92,13 @@ export function runBetRound({
     newPlayers[turn] = p;
     setPlayers(newPlayers);
 
-    // 終了条件
+    // Completion check
     const stillActive = newPlayers.filter((pl) => !pl.folded);
     const maxNow = Math.max(...stillActive.map((pl) => pl.betThisRound));
     const everyoneMatched = stillActive.every((pl) => pl.betThisRound === maxNow);
     const everyoneActed = stillActive.every((pl) => pl.actedThisRound);
 
-    // UI用 currentBet を更新（最大額）
+    // Keep UI in sync with the current max bet
     setCurrentBet(maxNow);
 
     if (everyoneMatched && everyoneActed) {

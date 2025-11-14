@@ -1,5 +1,5 @@
 // src/utils/history.js
-// --- アプリ用：トーナメント／ハンド履歴管理ユーティリティ ---
+// --- App-facing tournament / hand history helpers ---
 
 import { pushToArray, getJSON, remove } from "./storage";
 
@@ -7,7 +7,7 @@ const HANDS_KEY = "history.hands";
 const TOURNEY_KEY = "history.tournaments";
 
 /**
- * 1ハンドの履歴を保存
+ * Persist a single-hand snapshot.
  * @param {Object} hand - { handId, ts, players, pot, ... }
  */
 export function saveHandHistory(hand) {
@@ -17,7 +17,7 @@ export function saveHandHistory(hand) {
 }
 
 /**
- * トーナメント履歴を保存
+ * Persist a tournament result.
  * @param {Object} t - { tournamentId, buyIn, prize, finish, ... }
  */
 export function saveTournamentHistory(t) {
@@ -27,7 +27,7 @@ export function saveTournamentHistory(t) {
 }
 
 /**
- * ハンド履歴を取得
+ * Retrieve hand history records.
  */
 export function getHands({ limit = 200, since, until } = {}) {
   let arr = getJSON(HANDS_KEY, []);
@@ -37,7 +37,7 @@ export function getHands({ limit = 200, since, until } = {}) {
 }
 
 /**
- * トーナメント履歴を取得
+ * Retrieve tournament history records.
  */
 export function getTournaments({ limit = 200, since, until } = {}) {
   let arr = getJSON(TOURNEY_KEY, []);
@@ -47,7 +47,7 @@ export function getTournaments({ limit = 200, since, until } = {}) {
 }
 
 /**
- * トーナメント統計（ROI, ITM率など）を算出
+ * Compute basic tournament stats (ROI, ITM rate, etc.).
  */
 export function computeBasicStats() {
   const ts = getTournaments({ limit: 1000 });
@@ -69,7 +69,7 @@ export function computeBasicStats() {
 }
 
 /**
- * 履歴削除系
+ * Clear stored history.
  */
 export function clearHands() {
   remove(HANDS_KEY);

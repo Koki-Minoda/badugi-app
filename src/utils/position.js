@@ -7,7 +7,7 @@ export function getPositionStyle(index, selfIndex = 0, totalPlayers = 6) {
   const radiusY = 220;
 
   const posIndex = (index - selfIndex + totalPlayers) % totalPlayers;
-  const angle = (posIndex / totalPlayers) * 2 * Math.PI + Math.PI / 2; // posIndex 0 -> bottom (π/2)
+  const angle = (posIndex / totalPlayers) * 2 * Math.PI + Math.PI / 2; // posIndex 0 -> bottom (pi/2)
 
   const x = centerX + radiusX * Math.cos(angle);
   const y = centerY + radiusY * Math.sin(angle);

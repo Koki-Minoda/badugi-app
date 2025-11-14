@@ -2,17 +2,17 @@
 import { evaluateBadugi, compareBadugi, getWinnersByBadugi } from "./badugiEvaluator";
 
 /**
- * 統一的な役評価ディスパッチャ
+ * 
  * @param {string} gameType - "badugi" | "holdem" | "plo" | ...
- * @param {string[]} hand - ["A♠","2♥","3♦","4♣"]
- * @returns {object} - { score: number, size, ranks } など evaluateXXX の結果
+ * @param {string[]} hand - ["A","2","3","4"]
+ * @returns {object} - { score: number, size, ranks }  evaluateXXX 
  */
 export function evaluateHand(gameType, hand) {
   switch (gameType) {
     case "badugi":
       return evaluateBadugi(hand);
 
-    // 将来的に他ゲームを追加
+    // 
     // case "holdem":
     //   return evaluateHoldem(hand);
     // case "plo":
@@ -25,14 +25,14 @@ export function evaluateHand(gameType, hand) {
 }
 
 /**
- * 統一的な2ハンド比較
- * Aが強ければ負、Bが強ければ正、同点なら0を返す
+ * 2
+ * AB0
  */
 export function compareHands(gameType, handA, handB) {
   switch (gameType) {
     case "badugi":
       return compareBadugi(handA, handB);
-    // 例：将来対応
+    // 
     // case "holdem": return compareHoldem(handA, handB);
     // case "plo": return comparePLO(handA, handB);
     default:
@@ -42,13 +42,13 @@ export function compareHands(gameType, handA, handB) {
 }
 
 /**
- * 複数プレイヤーから勝者を決定
+ * 
  */
 export function getWinners(gameType, players) {
   switch (gameType) {
     case "badugi":
       return getWinnersByBadugi(players);
-    // 例：将来対応
+    // 
     // case "holdem": return getWinnersByHoldem(players);
     // case "plo": return getWinnersByPLO(players);
     default:

@@ -1,175 +1,71 @@
-{
-  "Badugi Bug & Roadmap Doc": {
-    "scope": "markdown",
-    "prefix": "badugi-bugs",
-    "body": [
-      "# Badugi App – バグ一覧・改修方針・ロードマップ",
-      "",
-      "Badugi アプリのバグ追跡・改修方針・今後の機能開発をまとめた技術ドキュメントです。",
-      "ゲームロジック、UI、学習用ログ、AI、インフラなど全領域を横断して管理します。",
-      "",
-      "---",
-      "",
-      "## 📌 目次",
-      "- [1. バグ一覧と改修方針](#1-バグ一覧と改修方針)",
-      "  - [1-1. スタック／ベット周り](#1-1-スタックベット周り)",
-      "  - [1-2. ラウンド遷移・ターン順](#1-2-ラウンド遷移ターン順)",
-      "  - [1-3. ショーダウン関連](#1-3-ショーダウン関連)",
-      "  - [1-4. UI / レイアウト](#1-4-ui--レイアウト)",
-      "  - [1-5. 履歴ログ](#1-5-履歴ログ)",
-      "- [2. 今後実装する機能](#2-今後実装する機能)",
-      "- [3. 運用ルール](#3-運用ルール)",
-      "",
-      "---",
-      "",
-      "# 1. バグ一覧と改修方針",
-      "",
-      "## 1-1. スタック／ベット周り",
-      "",
-      "### **Bug-01: 飛んだプレイヤーのスタックがマイナスになる**",
-      "**現象**  ",
-      "- All-in 後にスタックが負数（例: `-10`）になる。",
-      "",
-      "**原因**  ",
-      "- 支払い処理後に 0 クリップされていない。",
-      "",
-      "**改修方針**",
-      "```js",
-      "newStack = Math.max(0, oldStack - pay)",
-      "```",
-      "- `isBusted` 管理を追加し、次ハンドから確実に除外。",
-      "",
-      "---",
-      "",
-      "### **Bug-02: 複数プレイヤーがオールインするとドローに進まない**",
-      "**原因**  ",
-      "- `isBetRoundComplete` の条件が不十分。",
-      "",
-      "**改修方針**  ",
-      "- 全アクティブプレイヤーが  ",
-      "  - `bet === currentBet` または `allIn === true`  ",
-      "  を満たしたらラウンド終了。",
-      "",
-      "---",
-      "",
-      "## 1-2. ラウンド遷移・ターン順",
-      "",
-      "### **Bug-03: ドロー開始位置が間違っている**",
-      "**原因**  ",
-      "- ベットとドローで起点が混在。",
-      "",
-      "**改修方針**  ",
-      "- `calcDrawStartIndex(dealer, streetIndex)` を統一的に使用。  ",
-      "- `runDrawRound(startIndex)` へ引き渡す。",
-      "",
-      "---",
-      "",
-      "### **Bug-04: ベットラウンドの終了条件が曖昧**",
-      "**原因**  ",
-      "- `lastAggressor`／`hasActedThisRound` 管理の漏れ。",
-      "",
-      "**改修方針**",
-      "- 正しく「レイザーに戻るまで」を判定。  ",
-      "- 行動不能（fold / all-in）も `hasActedThisRound=true` 扱い。",
-      "",
-      "---",
-      "",
-      "## 1-3. ショーダウン関連",
-      "",
-      "### **Bug-05: UI 表示と Badugi 評価がズレる**",
-      "**原因**  ",
-      "- `evaluateBadugi` / `compareBadugi` の返り値構造が統一されていない。",
-      "",
-      "**改修方針**",
-      "- 評価フォーマットを固定：",
-      "```ts",
-      "{",
-      "  rankType,",
-      "  ranks,",
-      "  kicker,",
-      "  isBadugi",
-      "}",
-      "```",
-      "- 比較関数の再構築＋テスト作成。",
-      "",
-      "---",
-      "",
-      "## 1-4. UI / レイアウト",
-      "",
-      "### **Bug-06: CPU の stack/bet が分かりづらい**",
-      "**改修方針**",
-      "- Player コンポーネントに以下を常表示：  ",
-      "  `name / stack / currentBet / status(all-in, fold, busted)`",
-      "",
-      "---",
-      "",
-      "### **Bug-07: 画面サイズ変更で座席レイアウトが崩れる**",
-      "**改修方針**",
-      "- Tailwind の Grid / Flex ベースへ全面移行し、絶対配置を排除。",
-      "",
-      "---",
-      "",
-      "## 1-5. 履歴ログ",
-      "",
-      "### **Bug-08: ハンド履歴に途中のアクションが残らない**",
-      "**改修方針**",
-      "- **毎アクションごと**に記録するよう変更。  ",
-      "- 出力形式は最終的に JSONL に統一。",
-      "",
-      "---",
-      "",
-      "# 2. 今後実装する機能",
-      "",
-      "## 🧪 **最優先タスク**",
-      "- [ ] **マークダウン（この仕様書）を必ず確認し、バグ修正のたびに更新する運用フローを徹底**",
-      "- [ ] **スクレイピング＋テスト自動化（DOMスナップショット／UIパス検出／ロジック比較）**",
-      "",
-      "## 🎮 コアゲーム",
-      "- [ ] トーナメントモード（blind level / starting stack / structure）",
-      "- [ ] サイドポット完全対応  ",
-      "- [ ] シート状態管理（Human / CPU / Empty）",
-      "- [ ] バストプレイヤー自動除外",
-      "",
-      "## 🤖 AI・分析",
-      "- [ ] HandRecord / TournamentRecord 実装  ",
-      "- [ ] プレイヤースタッツ表示  ",
-      "- [ ] AI 難易度 4段階  ",
-      "- [ ] キャラクタ20体作成  ",
-      "- [ ] キャラクタの強さ別戦略設定  ",
-      "- [ ] ライバルキャラクタ（GTOライクだが、プレイヤの履歴を読みエクスプロイトする）作成  ",
-      "- [ ] Python RL → Q-table / ONNX 読み込み  ",
-      "- [ ] ハンド毎の AI フィードバック（リーク検出）",
-      "",
-      "## 🎨 UI / 演出",
-      "- [ ] モダンUI（Tailwind + Framer Motion）  ",
-      "- [ ] タイトル画面の実装  ",
-      "- [ ] ゲーム選択画面（Badugi / 追加予定ゲーム切替）  ",
-      "- [ ] 設定画面（BGM, SE, アニメON/OFF・難易度など）  ",
-      "- [ ] カードスクイーズ  ",
-      "- [ ] チップアニメーション  ",
-      "- [ ] 勝者エフェクト  ",
-      "",
-      "## 🏗 インフラ / 技術基盤",
-      "- [ ] PWA + FastAPI（2層構成）  ",
-      "- [ ] 認証・認可（ログイン）  ",
-      "- [ ] 履歴API / AI推論API  ",
-      "- [ ] E2E / Unit テスト  ",
-      "- [ ] Codex / Continue 用 `.md` 仕様の常時更新",
-      "",
-      "## 🔚 最後に着手するタスク",
-      "- [ ] **レンタルサーバーへの完全移植**",
-      "- [ ] **iOS アプリ化（Capacitor / Expo / PWA wrapper）**",
-      "",
-      "---",
-      "",
-      "# 3. 運用ルール",
-      "",
-      "- 新しいバグ → **1 に追加**  ",
-      "- 修正したら → 対応項目に **“修正済み”** と commit を追記  ",
-      "- 新機能 → **2 にチェックボックス付きで追加**  ",
-      "- GitHub Issue と紐づけることを推奨",
-      ""
-    ],
-    "description": "Badugi アプリのバグ一覧・改修方針・ロードマップ（最新版）を Markdown として一括挿入するスニペット"
-  }
-}
+# Badugi App - Bug List & Roadmap
+
+Internal tracker for known issues, fixes, and upcoming work across gameplay, UI, logging, AI, and infrastructure.
+
+---
+
+## 1. Bugs & Fix Plans
+
+### 1-1. Stack / Betting Flow
+
+#### Bug-01: Busted player stack becomes negative
+- Status: DONE
+- Cause: Blind payments were not clamped to 0 and `isBusted` stayed false after all-in.
+- Fix: Clamp via `Math.max(0, stack - pay)` and persist `isBusted` between streets.
+
+#### Bug-02: Multi-player all-in never closes the BET round
+- Status: DONE
+- Cause: `isBetRoundComplete` only compared bet sizes.
+- Fix: Track `hasActedThisRound` for every action (fold/all-in included) and share the same check in UI + engine so action automatically jumps to DRAW.
+
+### 1-2. Round Transitions / Turn Order
+
+#### Bug-03: DRAW start seat is wrong
+- Status: DONE
+- Fix: Single source of truth via `calcDrawStartIndex(dealer, streetIndex)` and feeding it to `runDrawRound`.
+
+#### Bug-04: BET termination ambiguous
+- Status: DONE
+- Fix: Added `lastAggressor` plus `closingSeatForAggressor` to detect when the raiser is reached again, together with `hasActedThisRound` to close streets deterministically.
+
+### 1-3. Showdown / Evaluator
+
+#### Bug-05: UI display vs Badugi evaluator mismatch
+- Status: DONE
+- Cause: UI still referenced the deprecated `ev.score` / `uniqueCount` fields although `evaluateBadugi` now returns `{ rankType, ranks, kicker, isBadugi }`.
+- Fix: `ui/App.jsx` now logs hands via `rankType` + `ranks` and NPC draws rely on the new `npcAutoDrawCount()` helper that reads `kicker`. `score` was fully removed.
+- Tests: Run `npm test` (Vitest) focusing on `games/badugi/logic/__tests__/roundFlow.test.js`, then manual sanity-check NPC draws (4-card pat, 3-card draws).
+
+### 1-4. UI / Layout
+
+#### Bug-06: CPU stack/bet info is hard to read
+- Status: IN PROGRESS
+- Fix (partial): `Player.jsx` always shows name/stack/currentBet/status. Table layout refresh pending.
+
+#### Bug-07: Seat layout breaks on resize
+- Status: NOT STARTED
+- Plan: Move to Tailwind Grid/Flex and drop absolute positioning.
+
+### 1-5. History Log
+
+#### Bug-08: Action history misses intermediate steps
+- Status: IN PROGRESS
+- Fix (partial): DRAW actions can be logged through `onActionLog`. Need to unify BET/DRAW/SHOWDOWN records into a single JSONL schema.
+
+---
+
+## 2. Upcoming Work (short list)
+
+- Test automation: extend `npm test` with UI snapshots / scraping diff checks.
+- Core game: tournament structure (blind level, starting stack), side pots, seat state (Human / CPU / Empty) auto rotation.
+- AI / Learning: HandRecord and TournamentRecord, 4 AI difficulty presets, Python RL (Q-table / ONNX) ingestion.
+- UI / Effects: Tailwind plus Framer Motion refresh, chip animations, win/lose effects, card squeeze.
+- Platform: PWA plus FastAPI layering, auth and history APIs, E2E + unit suites, keep this spec in sync for Codex/Continue.
+
+---
+
+## 3. Operating Rules
+
+1. Bug fix checklist: update `docs/bug_fixes*.md`, `docs/known_bugs.md`, and the snippet -> run `npm test` -> `git add -p` -> `git commit -m "fix: Bug-XX ..."` -> `git push origin bug-fix`. Always push right after the fix (user handles credentials if needed).
+2. Recording: add every new bug to Section 1, flip the Status to DONE once finished, and note the verification steps.
+3. Spec hygiene: new features go to Section 2 with bullets; process changes must be reflected in Section 3.

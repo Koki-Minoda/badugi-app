@@ -1,21 +1,18 @@
-# Bug Fixes Instructions
+# Bug Fix Instructions
 
-1. **修正着手前に `docs/bug_fixes.md` を更新すること**  
-   - 対象 Bug ID、対応内容、関係ファイル、状態（✅/🟡/⛔）を追記・更新する。  
-   - 途中の場合は「Pending / Follow-up」にタスクを残す。
+1. Update `docs/bug_fixes.md` before writing code. List the Bug ID, scope, touched files, and one of {DONE / IN_PROGRESS / NOT_STARTED}. Leave entries in "Pending / Follow-up" while work is in flight.
+2. Coding guidelines
+   - Follow the spec mirrored in `specs/.vscode/badugi-bugs.code-snippets` and add root-cause / fix notes there when possible.
+   - When introducing or extending shared flags such as `isBusted` or `hasActedThisRound`, make sure init/reset logic stays consistent across BET/DRAW/SHOWDOWN.
+   - Any change to `recordActionToLog` / `utils/history_rl` must be documented in this file and in `docs/bug_fixes.md`.
+3. Bug-specific notes
+   - Bug-02 / Bug-04: keep `hasActedThisRound` and `lastAggressor` in sync. If BET completion conditions change, describe the rule and affected files in `docs/bug_fixes.md`.
+   - Bug-05: `games/badugi/utils/badugiEvaluator.js` is the single source of truth. UI/logs must use `{ rankType, ranks, kicker, isBadugi }`; do not resurrect the old `score` field.
+   - Bug-06 / Bug-07: attach screenshots or short notes when table/player layout changes, and capture the outcome under `specs/`.
+   - Bug-08: whenever you add history fields, update the schema description (field list + format) in this file and `docs/bug_fixes.md`.
+4. Handling unfinished work
+   - If a fix spans multiple commits, keep the remaining items listed under the corresponding Bug entry with explicit file names.
+   - Always double-check `git status` and leave `TODO:` comments in code when you have to pause mid-feature.
+   - Every bug fix ends with `git add`, `git commit`, and `git push origin <branch>`. Pushing immediately after the fix is now part of the spec - call it out in `docs/bug_fixes.md` if skipping for any reason.
 
-2. **コード変更時の共通ルール**
-   - 仕様書（`specs/.vscode/badugi-bugs.code-snippets`）に沿って原因・対策を整理し、可能なら該当セクションへも追記する。  
-   - 既存フラグ（例: `isBusted`, `hasActedThisRound`）を追加・拡張した際は、初期化ロジックと state リセットを忘れず調整する。  
-   - ログや履歴 (`recordActionToLog`, `utils/history_rl`) を触る場合は、必ずフォーマット変更内容をこのファイルと `docs/bug_fixes.md` 双方へ反映させる。
 
-3. **Bug ごとの特記事項**
-   - **Bug-02/04**: `hasActedThisRound`, `lastAggressor` を必ず同期させる。BET 終了判定を変更したら、その条件と理由を `docs/bug_fixes.md` に記載。  
-   - **Bug-05**: Badugi 評価は `games/badugi/utils/badugiEvaluator.js` を唯一のソースとする。UI で表示する際も `rankType` / `ranks` を使用し、`score` は利用しない。  
-   - **Bug-06/07**: Player レイアウトを変更する場合は、各デバイス幅でのスクリーンショット or 期待図を添付し、必要なら `specs/` にモックを追加。  
-- **Bug-08**: アクションログを追加したら `recordActionToLog` / `utils/history_rl` の仕様（フィールド一覧）を更新し、保存形式を明記する。
-
-4. **未完了タスクの扱い**
-   - 実装途中で終了する場合、`docs/bug_fixes.md` の該当 Bug に「残作業」と「担当ファイル」を必ず追記。  
-   - 作業ブランチに未反映の修正は `git status` で確認し、必要に応じて `TODO:` コメントで根拠を残す。
-   - バグ修正を終えたら、`git add` → `git commit` → `git push origin <branch>` までを必ず実施する（push 忘れを防ぐため、`docs/bug_fixes.md` 更新後に再確認すること）。

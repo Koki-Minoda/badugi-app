@@ -36,6 +36,27 @@ function trace(tag, extra = {}) {
   console.log(`[TRACE ${now}] [HAND ${hand}] [${typeof phase !== "undefined" ? phase : "-"}] ${tag}`, extra);
 }
 
+function npcAutoDrawCount(evalResult = {}) {
+  const ranks = evalResult.ranks ?? [];
+  const kicker = evalResult.kicker ?? 13;
+  const uniqueCount = ranks.length;
+
+  if (uniqueCount <= 1) {
+    return 3;
+  }
+  if (uniqueCount === 2) {
+    if (kicker >= 10) return 3;
+    if (kicker >= 7) return 2;
+    return 1;
+  }
+  if (uniqueCount === 3) {
+    if (kicker >= 10) return 2;
+    if (kicker >= 7) return 1;
+    return 0;
+  }
+  return kicker >= 11 ? 1 : 0;
+}
+
 export default function App() {
   const navigate = useNavigate();
   /* --- constants --- */
@@ -356,8 +377,11 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
     updated.forEach((p) => {
       if (p.folded) return;
       const ev = evaluateBadugi(p.hand);
+      const rankLabel = ev.rankType ?? "UNKNOWN";
+      const rankValues =
+        ev.ranks && ev.ranks.length > 0 ? ev.ranks.join("-") : "-";
       console.log(
-        `Seat ${p.name}: ${p.hand.join(" ")} | score=${ev.score}, unique=${ev.uniqueCount}`
+        `Seat ${p.name}: ${p.hand.join(" ")} | type=${rankLabel} ranks=${rankValues}`
       );
     });
     console.log("葡 Waiting for Next Hand button...");
@@ -1477,8 +1501,8 @@ function recordActionToLog({ round, seat, type, stackBefore, betAfter, raiseCoun
 
     // 5) 螳滄圀縺ｮ繝峨Ο繝ｼ・井ｻ翫′逡ｪ縺ｮ繝励Ξ繧､繝､繝ｼ縺縺托ｼ・
     const me = { ...snap[nextToDraw] };
-    const { score } = evaluateBadugi(me.hand);
-    const drawCount = score > 8 ? 3 : score > 5 ? 2 : score > 3 ? 1 : 0;
+    const evaluation = evaluateBadugi(me.hand);
+    const drawCount = npcAutoDrawCount(evaluation);
     const deckManager = deckRef.current;
     const newHand = [...me.hand];
     for (let i = 0; i < drawCount; i++) {

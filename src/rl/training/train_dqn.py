@@ -7,7 +7,7 @@ import torch
 
 from rl.agents.dqn_agent import DQNAgent, DQNHyperParams
 from rl.utils.replay_buffer import ReplayBuffer
-from rl.env.badugi_env import BadugiEnv  # existing env
+from rl.env.badugi_env import BadugiEnv
 
 
 @dataclass

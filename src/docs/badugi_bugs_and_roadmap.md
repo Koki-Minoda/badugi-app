@@ -56,9 +56,12 @@ Internal tracker for known issues, fixes, and upcoming work across gameplay, UI,
 
 ## 2. Upcoming Work (short list)
 
-- Test automation: extend `npm test` with UI snapshots / scraping diff checks.
-- Core game: tournament structure (blind level, starting stack), side pots, seat state (Human / CPU / Empty) auto rotation.
-- AI / Learning: HandRecord and TournamentRecord, 4 AI difficulty presets, Python RL (Q-table / ONNX) ingestion.
+- [x] Test automation: extend `npm test` with UI snapshots / scraping diff checks (Playwright harness lives under `tests/scraping/`).
+- [ ] Core game: tournament structure (blind level, starting stack), side pots, seat state (Human / CPU / Empty) auto rotation.
+- [ ] AI / Learning: HandRecord and TournamentRecord, 4 AI difficulty presets, Python RL (Q-table / ONNX) ingestion.
+- [ ] UI / Effects: Tailwind plus Framer Motion refresh, chip animations, win/lose effects, card squeeze.
+- [ ] Platform: PWA plus FastAPI layering, auth and history APIs, E2E + unit suites, keep this spec in sync for Codex/Continue.
+
 ## Reinforcement Learning (Badugi)
 
 Goal: train self-play agents for 6-max Badugi and use them as CPU opponents (including "iron-strong" boss characters).
@@ -67,10 +70,10 @@ Goal: train self-play agents for 6-max Badugi and use them as CPU opponents (inc
 
 - [x] Implemented `rl/env/badugi_env.py` as a Gym-style environment for Badugi.
 
-### Next steps
-
-- [ ] Add DQN agent implementation in `rl/agents/dqn_agent.py` and replay buffer in `rl/utils/replay_buffer.py`.
-- [ ] Implement the self-play training script `rl/training/train_dqn.py` and verify that episodes run end-to-end without crashes.
+- [x] Add DQN agent implementation in `rl/agents/dqn_agent.py` and replay buffer in `rl/utils/replay_buffer.py`.
+- [x] Implement the self-play training script `rl/training/train_dqn.py` and verify that episodes run end-to-end without crashes.
+- [x] Move `badugi_env.py` under `rl/env/`, normalize the observation vector, and convert the implementation/comments to ASCII.
+- [x] Add `rl/requirements.txt` and `rl/README.md` so numpy/torch/gymnasium installs are one command away.
 - [ ] Connect the existing hand history / JSONL logging so that Badugi games played in the app can be reused as offline RL data.
 - [ ] Train a baseline DQN model on CPU and save checkpoints under `rl/models/`.
 - [ ] Export a compact model (e.g. via ONNX or a light-weight policy format) so that the React frontend can load it and use it for different AI difficulty tiers.

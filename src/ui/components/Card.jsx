@@ -33,13 +33,18 @@ export default function Card({ value, hidden, selected, onClick, folded }) {
   // ------------------------------
   // 2️⃣ 表面カード（クリック選択可能）
   // ------------------------------
-  const suit = value.slice(-1);
-  const rank = value.slice(0, -1);
+  const normalized = typeof value === "string" ? value.trim() : "";
+  const rawSuit = normalized.slice(-1).toUpperCase();
+  const rank = normalized.slice(0, -1);
 
-  let color = "text-black";
-  if (suit === "♥") color = "text-red-600";
-  if (suit === "♦") color = "text-blue-600";
-  if (suit === "♣") color = "text-green-600";
+  const suitMap = {
+    S: { symbol: "♠", color: "text-gray-900" },
+    H: { symbol: "♥", color: "text-red-600" },
+    D: { symbol: "♦", color: "text-blue-600" },
+    C: { symbol: "♣", color: "text-green-600" },
+  };
+  const fallbackSuit = { symbol: rawSuit || "?", color: "text-black" };
+  const { symbol, color } = suitMap[rawSuit] || fallbackSuit;
 
   return (
     <div
@@ -54,7 +59,7 @@ export default function Card({ value, hidden, selected, onClick, folded }) {
     >
       <span className={color}>
         {rank}
-        {suit}
+        {symbol}
       </span>
     </div>
   );

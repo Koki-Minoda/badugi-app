@@ -140,33 +140,36 @@ export const calcDrawStartIndex = (dealerIdx = 0, streetIndex = 0, numPlayers = 
 
 export function settleStreetToPots(playersSnap = [], prevPots = []) {
 
-  debugLog(" [SETTLE] start");
+  debugLog("[SETTLE] start");
 
-  const contrib = playersSnap.map(p => (p.folded ? 0 : Math.max(0, p.betThisRound || 0)));
-
+  const contributions = playersSnap.map(p => Math.max(0, p.betThisRound || 0));
   const pots = [...prevPots];
 
-
-
   while (true) {
+    const positive = contributions
+      .map((amount, seat) => ({ amount, seat }))
+      .filter(entry => entry.amount > 0);
+    if (!positive.length) break;
 
-    const pos = contrib.map((v, i) => ({ v, i })).filter(o => o.v > 0 && !playersSnap[o.i].folded);
+    const minContribution = Math.min(...positive.map(p => p.amount));
+    const involvedSeats = positive.map(p => p.seat);
+    const amount = minContribution * involvedSeats.length;
+    const eligibleBase = involvedSeats.filter(
+      seat => !playersSnap[seat]?.folded && !playersSnap[seat]?.seatOut
+    );
+    const eligible =
+      eligibleBase.length > 0
+        ? eligibleBase
+        : playersSnap
+            .map((player, seat) => (!player?.folded && !player?.seatOut ? seat : null))
+            .filter(seat => seat !== null);
 
-    if (!pos.length) break;
+    pots.push({ amount, eligible });
 
-    const min = Math.min(...pos.map(p => p.v));
-
-    const part = pos.map(p => p.i);
-
-    const amount = min * part.length;
-
-    pots.push({ amount, eligible: part });
-
-    part.forEach(i => (contrib[i] -= min));
-
+    involvedSeats.forEach(seat => {
+      contributions[seat] -= minContribution;
+    });
   }
-
-
 
   const cleared = playersSnap.map(p => ({ ...p, betThisRound: 0 }));
 

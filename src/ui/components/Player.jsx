@@ -39,15 +39,13 @@ export default function Player({
         {isActive && <span className="text-xs text-lime-300 font-bold">ACTING</span>}
       </div>
 
-      {statusBadges.length > 0 && (
-        <div className="text-xs uppercase tracking-wide text-yellow-300">
-          {statusBadges.join(" · ")}
-        </div>
-      )}
+      <div className="text-xs uppercase tracking-wide text-yellow-300 h-4 flex items-center">
+        {statusBadges.length > 0 ? statusBadges.join(" · ") : ""}
+      </div>
 
-      {player.lastAction && (
-        <div className="text-sm text-slate-200 italic">[{player.lastAction}]</div>
-      )}
+      <div className="text-sm text-slate-200 italic min-h-[1.25rem] flex items-center">
+        {player.lastAction ? `[${player.lastAction}]` : ""}
+      </div>
 
       <div className="grid grid-cols-2 gap-2 text-sm text-gray-300">
         <div>
@@ -59,7 +57,7 @@ export default function Player({
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 justify-center">
+      <div className="grid grid-cols-4 gap-3 justify-items-center w-full max-w-[280px] mx-auto">
         {player.hand.map((card, i) => (
           <Card
             key={`${card}-${i}`}

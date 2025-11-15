@@ -61,10 +61,15 @@
       "",
       "## 2. Upcoming Work (short list)",
       "",
-      "- Test automation: extend `npm test` with UI snapshots / scraping diff checks.",
-      "- Core game: tournament structure (blind level, starting stack), side pots, seat state (Human / CPU / Empty) auto rotation.",
+      "- [x] Test automation: extend `npm test` with UI snapshots / scraping diff checks (Playwright harness lives under `tests/scraping/`).",
+      "- [x] Core game:",
+      "  - [x] Tournament structure: blind/ante/starting stack schedule now drives every deal (level tracker + hand counter in `ui/App.jsx`).",
+      "  - [x] Seat states: Seat Manager overlay controls Human / CPU / Empty per seat, optional auto-rotation, and per-seat redeal/reset helpers.",
+      "  - [x] Side pots: `settleStreetToPots` carries folded contributions and eligibility fixes so multi-pot payouts are accurate.",
       "- AI / Learning: HandRecord and TournamentRecord, 4 AI difficulty presets, Python RL (Q-table / ONNX) ingestion.",
       "- UI / Effects: Tailwind plus Framer Motion refresh, chip animations, win/lose effects, card squeeze.",
+      "- Chip HUD: display stack/bet values next to avatars with chip icons and bet size callouts (future UI revamp).",
+      "- Settings / Themes: add a configuration screen for choosing table/HUD color palettes (BET/DRAW felt colors, HUD placement presets).",
       "- Platform: PWA plus FastAPI layering, auth and history APIs, E2E + unit suites, keep this spec in sync for Codex/Continue.",
       "",
       "---",
@@ -73,7 +78,9 @@
       "",
       "1. Bug fix checklist: update `docs/bug_fixes*.md`, `docs/known_bugs.md`, and the snippet -> run `npm test` -> `git add -p` -> `git commit -m \"fix: Bug-XX ...\"` -> `git push origin bug-fix`. Always push right after the fix (user handles credentials if needed).",
       "2. Recording: add every new bug to Section 1, flip the Status to DONE once finished, and note the verification steps.",
-      "3. Spec hygiene: new features go to Section 2 with bullets; process changes must be reflected in Section 3."
+      "3. Spec hygiene: new features go to Section 2 with bullets; process changes must be reflected in Section 3.",
+      "4. Roadmap discipline: log every new task in Section 2 with a checkbox and flip it to [x] right after the fix/tests/push cycle completes.",
+      "5. Table HUD layout: keep PlayerStatusBoard / Seat Manager outside the yellow table boundary and keep card fans in a single horizontal row to avoid collisions."
     ],
     "description": "Insert the Badugi bug list / roadmap markdown"
   }

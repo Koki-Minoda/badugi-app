@@ -36,6 +36,20 @@
 - Status: DONE
 - Fix: `recordActionToLog` now captures every BET/DRAW/SHOWDOWN event with `{ phase, round, seatName, stackBefore/After, betBefore/After, potAfter, metadata }`. Draw events include `drawInfo` snapshots (before/after hands, replaced cards), and showdown payouts record pot splits per seat. `games/badugi/logic/drawRound.js` forwards its `onActionLog` payload in the same format so JSONL exports consistently contain all intermediate actions.
 
+## Core Game - Tournament structure / seats / side pots
+- Status: DONE
+- Notes:
+  - `ui/App.jsx`: blind/ante schedule now advances per hand (level counter + HUD), blinds/antes post directly into `betThisRound`, and the new Seat Manager overlay (starting stack input, seat-type selectors, auto-rotation toggle) feeds `dealNewHand`. Initial pots are no longer double-counted and a live hand/level badge is shown beside the phase info.
+  - `games/badugi/logic/roundFlow.js`: `settleStreetToPots` records folded contributions and cleans up eligibility lists so side pots remain correct even when players bust or fold mid-street.
+- Tests: `npm test`
+
+## Table HUD / Card layout spacing
+- Status: DONE
+- Notes:
+  - `ui/App.jsx`: PlayerStatusBoard と Seat Manager をテーブル枠外の専用レイアウトに移動し、座席の絶対位置/幅をポーカー卓ライクに再配置して CPU 5/6 などが干渉しないよう間隔を拡張。テーブル自体も 16:9・最大 1400px まで広げ、BET(緑)/DRAW(赤)でフェルト色を切り替え、アクション/ドローボタンはテーブル下の専用レーンへ移動した。
+  - `ui/components/Player.jsx`: カード一覧を余裕のある 4 枚横並びグリッド（広めのギャップ付き）に変更し、クリックミスを防止。
+- Tests: `npm test`
+
 ---
 
 ## Changed Files / Status

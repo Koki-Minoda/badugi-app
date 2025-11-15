@@ -58,4 +58,13 @@ desktop.ini
 
 # add this to .gitignore
 runs/
-structure.txt
+structure.txt# RL artifacts
+rl/models/*
+!rl/models/.gitkeep
+
+# Playwright / scraping logs
+ms-playwright/
+playwright/.cache/
+tests/scraping/logs/*
+!tests/scraping/logs/.gitkeep
+!tests/scraping/logs/screenshots/.gitkeep

@@ -31,12 +31,17 @@ export default function Player({
     >
       <div className="flex items-center justify-between">
         <div className="font-semibold text-white flex items-center gap-2">
+          {player.avatar && <span className="text-2xl">{player.avatar}</span>}
           <span>{player.name}</span>
           {index === dealerIdx && (
             <span className="text-xs text-yellow-300 uppercase tracking-wide">(BTN)</span>
           )}
         </div>
         {isActive && <span className="text-xs text-lime-300 font-bold">ACTING</span>}
+      </div>
+
+      <div className="text-[11px] uppercase tracking-wide text-emerald-300 h-4 flex items-center">
+        {player.titleBadge || ""}
       </div>
 
       <div className="text-xs uppercase tracking-wide text-yellow-300 h-4 flex items-center">
@@ -47,14 +52,14 @@ export default function Player({
         {player.lastAction ? `[${player.lastAction}]` : ""}
       </div>
 
-      <div className="grid grid-cols-2 gap-2 text-sm text-gray-300">
-        <div>
+      <div className="flex justify-between text-sm text-gray-300 gap-4">
+        <span>
           Stack: <span className="font-semibold text-white">{player.stack}</span>
-        </div>
-        <div>
+        </span>
+        <span>
           Current Bet:{" "}
           <span className="font-semibold text-white">{player.betThisRound ?? 0}</span>
-        </div>
+        </span>
       </div>
 
       <div className="grid grid-cols-4 gap-3 justify-items-center w-full max-w-[280px] mx-auto">

@@ -7,57 +7,28 @@ import { debugLog } from "../../../utils/debugLog";
 // --- sanitizeStacks:  all-in---
 
 function sanitizeStacks(snap, setPlayers) {
-
   const corrected = snap.map(p => {
-
     if (p.stack <= 0 && !p.allIn) {
-
-      console.warn(`[SANITIZE] ${p.name} stack=${p.stack} allIn`);
-
-      return { ...p, stack: 0, allIn: true, hasDrawn: true, isBusted: true };
-
+      console.warn(`[SANITIZE] ${p.name} stack=${p.stack} -> mark all-in`);
+      return { ...p, stack: 0, allIn: true };
     }
-
-    if (p.stack <= 0 && p.isBusted !== true) {
-
-      return { ...p, isBusted: true };
-
-    }
-
-    if (p.stack > 0 && p.isBusted) {
-
-      return { ...p, isBusted: false };
-
-    }
-
     return p;
-
   });
 
   if (setPlayers) setPlayers(corrected);
 
-
-
-  // 
-
-  console.table(corrected.map((p, i) => ({
-
-    i,
-
-    name: p.name,
-
-    allIn: p.allIn,
-
-    hasDrawn: p.hasDrawn,
-
-    stack: p.stack,
-
-    folded: p.folded,
-
-  })));
-
+  console.table(
+    corrected.map((p, i) => ({
+      i,
+      name: p.name,
+      allIn: p.allIn,
+      hasDrawn: p.hasDrawn,
+      stack: p.stack,
+      folded: p.folded,
+      isBusted: p.isBusted,
+    }))
+  );
   return corrected;
-
 }
 
 
@@ -217,14 +188,12 @@ export const closingSeatForAggressor = (players, lastAggressorIdx) => {
 
   const agg = players[lastAggressorIdx];
 
-  if (!agg || agg.folded) return null;
+  if (!agg) return null;
 
-  if (agg.allIn) {
-
+  if (agg.folded || agg.allIn) {
     const next = nextAliveFrom(players, lastAggressorIdx);
-
-    return next ?? lastAggressorIdx;
-
+    if (next === null) return null;
+    return next;
   }
 
   return lastAggressorIdx;

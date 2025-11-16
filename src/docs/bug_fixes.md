@@ -50,6 +50,41 @@
   - `ui/components/Player.jsx`: カード一覧を余裕のある 4 枚横並びグリッド（広めのギャップ付き）に変更し、クリックミスを防止。
 - Tests: `npm test`
 
+## Title / Settings Screen
+- Status: DONE
+- Notes:
+  - 新しい `/` ランディング画面（`ui/screens/TitleScreen.jsx`）と `/settings` 画面（`ui/screens/TitleSettingsScreen.jsx` + `TitleForm`）を追加。プレイヤー名・タイトル・アバターをローカル保存し、`App.jsx` のヒーロー座席に自動反映する。
+  - ルーティングを `RootApp.jsx` へ移し、`main.jsx` から共通タイトル/ゲーム/履歴/プロフィールを切り替え可能にした。
+- Tests: `npm test`
+
+## Bet flow - all-check after folds/all-ins
+- Status: DONE
+- Notes:
+  - `ui/App.jsx`: BETラウンドで誰もベットしておらず、折りたたみ済み/オールイン席が含まれる場合に、全員が「チェック済み」と判断されずラウンドが進まないバグを修正。`allChecked` 判定は `folded`/`allIn` 座席を満たしたものとして扱う。
+- Tests: `npm test`
+
+## Bet flow - folded SB after all-in aggressor
+- Status: DONE
+- Notes:
+  - `games/badugi/logic/roundFlow.js`: `closingSeatForAggressor` が最後のアグレッサーがフォールドした時に `null` を返していたため、SB がフォールドするとラウンドが進まないケースがあった。アグレッサーがフォールド/オールインでも次の生存者を closing seat として扱うように修正。
+  - `ui/App.jsx`: draw 順序はオールイン済みでも継続できるよう `firstUndrawnFromSB` を戻しつつ BET 判定側で補正。
+- Tests: `npm test`
+
+## All-in players incorrectly marked BUSTED during hand
+- Status: DONE
+- Notes:
+  - `games/badugi/logic/roundFlow.js`: `sanitizeStacks` previously forced `hasDrawn=true` と `isBusted=true` when stack reached 0, causing all-in players to be treated as folded/busted before showdown。スタックが 0 になった時点では `allIn` フラグのみに留めるよう修正し、バースト判定はショーダウン時 (`showdown.js`) のみに限定。
+- Tests: `npm test`
+
+## Bet flow - folding seat still tracked as aggressor
+- Status: DONE
+- Notes:
+  - ui/App.jsx: added shiftAggressorsAfterFold so when SB（含む他席）がフォールドした場合でも lastAggressor / etHead が次の生存席に渡り、BET ラウンド停止を防止。
+- Tests: 
+pm test
+
+
+
 ---
 
 ## Changed Files / Status

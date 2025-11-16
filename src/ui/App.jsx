@@ -28,6 +28,7 @@ import {
   exportRLHistoryAsJSONL,
 } from "../utils/history_rl";
 import { useNavigate } from "react-router-dom";
+import { loadTitleSettings } from "./utils/titleSettings";
 
 // === TRACE HELPER (debug only) ===
 function trace(tag, extra = {}) {
@@ -82,6 +83,30 @@ export default function App() {
     autoRotateSeatsRef.current = autoRotateSeats;
   }, [autoRotateSeats]);
 
+  const [titleSettings, setTitleSettings] = useState(() => loadTitleSettings());
+  const heroProfile = useMemo(
+    () => ({
+      name: titleSettings.playerName?.trim() || "You",
+      titleBadge: titleSettings.playerTitle?.trim() || "",
+      avatar: titleSettings.avatar || "♦️",
+    }),
+    [titleSettings]
+  );
+  useEffect(() => {
+    function handleTitleUpdate() {
+      setTitleSettings(loadTitleSettings());
+    }
+    if (typeof window !== "undefined") {
+      window.addEventListener("badugi:titleSettings-updated", handleTitleUpdate);
+      window.addEventListener("storage", handleTitleUpdate);
+      return () => {
+        window.removeEventListener("badugi:titleSettings-updated", handleTitleUpdate);
+        window.removeEventListener("storage", handleTitleUpdate);
+      };
+    }
+    return undefined;
+  }, []);
+
   const [blindLevelIndex, setBlindLevelIndex] = useState(0);
   const [handsInLevel, setHandsInLevel] = useState(0);
   const currentStructure =
@@ -108,7 +133,10 @@ export default function App() {
   const deckRef = useRef(new DeckManager());
 
   const [players, setPlayers] = useState(() =>
-    buildPlayersFromSeatTypes(seatConfigRef.current, startingStackRef.current)
+    applyHeroProfile(
+      buildPlayersFromSeatTypes(seatConfigRef.current, startingStackRef.current, heroProfile),
+      heroProfile
+    )
   );
   const [deck, setDeck] = useState([]);
   const [dealerIdx, setDealerIdx] = useState(0);
@@ -173,6 +201,19 @@ export default function App() {
     }
     return -1;
   };
+
+  function shiftAggressorsAfterFold(snap, foldIdx) {
+    if (!Array.isArray(snap) || typeof foldIdx !== "number") return;
+    const next = nextAliveFrom(snap, foldIdx);
+    if (lastAggressor === foldIdx) {
+      setLastAggressor(
+        typeof next === "number" && next !== foldIdx ? next : null
+      );
+    }
+    if (betHead === foldIdx) {
+      setBetHead(typeof next === "number" && next !== foldIdx ? next : null);
+    }
+  }
 
   useEffect(() => {
     if (!debugMode) return;
@@ -346,12 +387,27 @@ function recordActionToLog({
     return [head, ...rotatedRest];
   }
 
-  function buildPlayersFromSeatTypes(seatConfig, stackValue = DEFAULT_STARTING_STACK) {
+  function applyHeroProfile(list = [], profile) {
+    if (!profile) return list;
+    return list.map((player, idx) =>
+      idx === 0
+        ? {
+            ...player,
+            name: profile.name,
+            titleBadge: profile.titleBadge,
+            avatar: profile.avatar,
+          }
+        : player
+    );
+  }
+
+  function buildPlayersFromSeatTypes(seatConfig, stackValue = DEFAULT_STARTING_STACK, profile = heroProfile) {
     return seatConfig.map((seatType, idx) => {
       const isHuman = seatType === "HUMAN";
       const isEmpty = seatType === "EMPTY";
+      const heroName = profile?.name ?? "You";
       return {
-        name: isHuman ? "You" : `CPU ${idx + 1}`,
+        name: isHuman ? heroName : `CPU ${idx + 1}`,
         seatType,
         isCPU: !isHuman && !isEmpty,
         hand: [],
@@ -367,6 +423,8 @@ function recordActionToLog({
         lastAction: "",
         hasDrawn: false,
         lastDrawCount: 0,
+        titleBadge: isHuman ? profile?.titleBadge ?? "" : "",
+        avatar: isHuman ? profile?.avatar ?? "♦️" : undefined,
       };
     });
   }
@@ -648,7 +706,7 @@ function recordActionToLog({
         `[BET] Check status: everyoneMatched=${everyoneMatched}, next=${nextAlive}, betHead=${betHead}, lastAgg=${lastAggressor}`
       );
 
-      const allChecked = noOneBet && active.every((p) => p.lastAction === "Check");
+      const allChecked = noOneBet && active.every((p) => p.folded || p.allIn || p.lastAction === "Check");
       const isHU = active.length === 2;
       let shouldEnd = betRoundSatisfied && returnedToAggressor;
 
@@ -956,6 +1014,14 @@ function recordActionToLog({
       lastAction: "",
       isCPU: (filteredPrev[i].seatType ?? effectiveSeatConfig[i]) === "CPU",
     }));
+    if (newPlayers[0]) {
+      newPlayers[0] = {
+        ...newPlayers[0],
+        name: heroProfile.name,
+        titleBadge: heroProfile.titleBadge,
+        avatar: heroProfile.avatar,
+      };
+    }
 
     for (const p of newPlayers) {
       if (p.seatOut) {
@@ -1104,6 +1170,14 @@ function recordActionToLog({
       isDealer: i === nextDealerIdx,
       hasActedThisRound: false,
     }));
+    if (newPlayers[0]) {
+      newPlayers[0] = {
+        ...newPlayers[0],
+        name: heroProfile.name,
+        titleBadge: heroProfile.titleBadge,
+        avatar: heroProfile.avatar,
+      };
+    }
 
     if (anteValue > 0) {
       newPlayers.forEach((pl) => {
@@ -1158,6 +1232,10 @@ function recordActionToLog({
       `[STATE] phase=${phase}, drawRound=${drawRound}, turn=${turn}, currentBet=${currentBet}`
     );
   }, [phase, drawRound, turn, currentBet]);
+
+  useEffect(() => {
+    setPlayers((prev) => applyHeroProfile(prev, heroProfile));
+  }, [heroProfile]);
 
 
   /* --- common: after BET action (snapshot-based) --- */
@@ -1227,7 +1305,7 @@ function recordActionToLog({
         }
       }
  
-      const allChecked = (maxNow === 0) && active.every(p => p.lastAction === "Check");
+      const allChecked = (maxNow === 0) && active.every(p => p.folded || p.allIn || p.lastAction === "Check");
       const isHU = active.length === 2;
       let shouldEnd = false;
 
@@ -1369,6 +1447,7 @@ function recordActionToLog({
     me.hasActedThisRound = true;
     logAction(0, "Fold");
     snap[0] = me;
+    shiftAggressorsAfterFold(snap, 0);
     recordActionToLog({
       phase: "BET",
       round: currentBetRoundIndex(),
@@ -1389,6 +1468,8 @@ function recordActionToLog({
     if (phase !== "BET") return;
     const snap = [...players];
     const me = { ...snap[0] };
+    const stackBefore = me.stack;
+    const betBefore = me.betThisRound;
     
     if (me.stack <= 0) {
       console.warn("[BLOCK] Player has no stack -> cannot act");
@@ -1457,6 +1538,8 @@ function recordActionToLog({
      if (phase !== "BET") return;
      const snap = [...players];
      const me = { ...snap[0] };
+     const stackBefore = me.stack;
+     const betBefore = me.betThisRound;
 
      if (me.stack <= 0) {
        console.warn("[BLOCK] Player has no stack -> cannot raise");
@@ -1678,6 +1761,9 @@ function recordActionToLog({
       me.hasActedThisRound = true;
 
       snap[turn] = me;
+      if (me.folded) {
+        shiftAggressorsAfterFold(snap, turn);
+      }
       logAction(turn, me.lastAction);
       recordActionToLog({
         phase: "BET",
@@ -1915,11 +2001,11 @@ function recordActionToLog({
 
   const seatLayouts = [
     "lg:absolute lg:bottom-[6%] lg:left-1/2 lg:-translate-x-1/2 lg:w-[320px]", // Hero (BTN)
-    "lg:absolute lg:bottom-[14%] lg:left-[8%] lg:w-[320px]", // Seat 1 (SB) - slightly lower
-    "lg:absolute lg:top-[15%] lg:left-[8%] lg:w-[320px]", // Seat 2 (BB) - higher
-    "lg:absolute lg:top-[6%] lg:left-1/2 lg:-translate-x-1/2 lg:w-[320px]", // Seat 3 (UTG)
-    "lg:absolute lg:top-[15%] lg:right-[8%] lg:w-[320px]", // Seat 4 (MP) - higher
-    "lg:absolute lg:bottom-[14%] lg:right-[8%] lg:w-[320px]", // Seat 5 (CO) - slightly lower
+    "lg:absolute lg:bottom-[18%] lg:left-[12%] lg:w-[300px]", // SB
+    "lg:absolute lg:top-[8%] lg:left-[12%] lg:w-[300px]", // BB
+    "lg:absolute lg:top-[2%] lg:left-1/2 lg:-translate-x-1/2 lg:w-[300px]", // UTG
+    "lg:absolute lg:top-[8%] lg:right-[12%] lg:w-[300px]", // MP
+    "lg:absolute lg:bottom-[18%] lg:right-[12%] lg:w-[300px]", // CO
   ];
 
   const isDrawPhase = phase === "DRAW";
@@ -1973,10 +2059,16 @@ function handleCardClick(i) {
 
       <nav className="flex gap-4">
         <button
-          onClick={() => navigate("/home")}
+          onClick={() => navigate("/")}
           className="hover:text-yellow-400 transition"
         >
-          Home
+          Title
+        </button>
+        <button
+          onClick={() => navigate("/settings")}
+          className="hover:text-yellow-400 transition"
+        >
+          Settings
         </button>
         <button
           onClick={() => navigate("/profile")}

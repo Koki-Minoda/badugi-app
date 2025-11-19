@@ -30,7 +30,7 @@
 
 ## Bug-07 - Seats break on resize
 - Status: DONE
-- Fix: The table view now uses a responsive dual-mode layout. Small screens render the players in a grid, while large screens anchor each seat via Tailwind’s `lg:absolute` helpers so BTN / SB / BB positioning survives window resizing. `ui/components/Player.jsx` also exposes BTN badges and ASCII-only status text to avoid glyph corruption that previously broke layout calculations.
+- Fix: The table view now uses a responsive dual-mode layout. Small screens render the players in a grid, while large screens anchor each seat via Tailwind窶冱 `lg:absolute` helpers so BTN / SB / BB positioning survives window resizing. `ui/components/Player.jsx` also exposes BTN badges and ASCII-only status text to avoid glyph corruption that previously broke layout calculations.
 
 ## Bug-08 - Hand history misses intermediate actions
 - Status: DONE
@@ -46,40 +46,45 @@
 ## Table HUD / Card layout spacing
 - Status: DONE
 - Notes:
-  - `ui/App.jsx`: PlayerStatusBoard と Seat Manager をテーブル枠外の専用レイアウトに移動し、座席の絶対位置/幅をポーカー卓ライクに再配置して CPU 5/6 などが干渉しないよう間隔を拡張。テーブル自体も 16:9・最大 1400px まで広げ、BET(緑)/DRAW(赤)でフェルト色を切り替え、アクション/ドローボタンはテーブル下の専用レーンへ移動した。
-  - `ui/components/Player.jsx`: カード一覧を余裕のある 4 枚横並びグリッド（広めのギャップ付き）に変更し、クリックミスを防止。
+  - `ui/App.jsx`: PlayerStatusBoard 縺ｨ Seat Manager 繧偵ユ繝ｼ繝悶Ν譫螟悶・蟆ら畑繝ｬ繧､繧｢繧ｦ繝医↓遘ｻ蜍輔＠縲∝ｺｧ蟶ｭ縺ｮ邨ｶ蟇ｾ菴咲ｽｮ/蟷・ｒ繝昴・繧ｫ繝ｼ蜊薙Λ繧､繧ｯ縺ｫ蜀埼・鄂ｮ縺励※ CPU 5/6 縺ｪ縺ｩ縺悟ｹｲ貂峨＠縺ｪ縺・ｈ縺・俣髫斐ｒ諡｡蠑ｵ縲ゅユ繝ｼ繝悶Ν閾ｪ菴薙ｂ 16:9繝ｻ譛螟ｧ 1400px 縺ｾ縺ｧ蠎・￡縲。ET(邱・/DRAW(襍､)縺ｧ繝輔ぉ繝ｫ繝郁牡繧貞・繧頑崛縺医√い繧ｯ繧ｷ繝ｧ繝ｳ/繝峨Ο繝ｼ繝懊ち繝ｳ縺ｯ繝・・繝悶Ν荳九・蟆ら畑繝ｬ繝ｼ繝ｳ縺ｸ遘ｻ蜍輔＠縺溘・
+  - `ui/components/Player.jsx`: 繧ｫ繝ｼ繝我ｸ隕ｧ繧剃ｽ呵｣輔・縺ゅｋ 4 譫壽ｨｪ荳ｦ縺ｳ繧ｰ繝ｪ繝・ラ・亥ｺ・ａ縺ｮ繧ｮ繝｣繝・・莉倥″・峨↓螟画峩縺励√け繝ｪ繝・け繝溘せ繧帝亟豁｢縲・
 - Tests: `npm test`
 
 ## Title / Settings Screen
 - Status: DONE
 - Notes:
-  - 新しい `/` ランディング画面（`ui/screens/TitleScreen.jsx`）と `/settings` 画面（`ui/screens/TitleSettingsScreen.jsx` + `TitleForm`）を追加。プレイヤー名・タイトル・アバターをローカル保存し、`App.jsx` のヒーロー座席に自動反映する。
-  - ルーティングを `RootApp.jsx` へ移し、`main.jsx` から共通タイトル/ゲーム/履歴/プロフィールを切り替え可能にした。
+  - 譁ｰ縺励＞ `/` 繝ｩ繝ｳ繝・ぅ繝ｳ繧ｰ逕ｻ髱｢・・ui/screens/TitleScreen.jsx`・峨→ `/settings` 逕ｻ髱｢・・ui/screens/TitleSettingsScreen.jsx` + `TitleForm`・峨ｒ霑ｽ蜉縲ゅ・繝ｬ繧､繝､繝ｼ蜷阪・繧ｿ繧､繝医Ν繝ｻ繧｢繝舌ち繝ｼ繧偵Ο繝ｼ繧ｫ繝ｫ菫晏ｭ倥＠縲～App.jsx` 縺ｮ繝偵・繝ｭ繝ｼ蠎ｧ蟶ｭ縺ｫ閾ｪ蜍募渚譏縺吶ｋ縲・
+  - 繝ｫ繝ｼ繝・ぅ繝ｳ繧ｰ繧・`RootApp.jsx` 縺ｸ遘ｻ縺励～main.jsx` 縺九ｉ蜈ｱ騾壹ち繧､繝医Ν/繧ｲ繝ｼ繝/螻･豁ｴ/繝励Ο繝輔ぅ繝ｼ繝ｫ繧貞・繧頑崛縺亥庄閭ｽ縺ｫ縺励◆縲・
 - Tests: `npm test`
 
 ## Bet flow - all-check after folds/all-ins
 - Status: DONE
 - Notes:
-  - `ui/App.jsx`: BETラウンドで誰もベットしておらず、折りたたみ済み/オールイン席が含まれる場合に、全員が「チェック済み」と判断されずラウンドが進まないバグを修正。`allChecked` 判定は `folded`/`allIn` 座席を満たしたものとして扱う。
+  - `ui/App.jsx`: BET繝ｩ繧ｦ繝ｳ繝峨〒隱ｰ繧ゅ・繝・ヨ縺励※縺翫ｉ縺壹∵釜繧翫◆縺溘∩貂医∩/繧ｪ繝ｼ繝ｫ繧､繝ｳ蟶ｭ縺悟性縺ｾ繧後ｋ蝣ｴ蜷医↓縲∝・蜩｡縺後後メ繧ｧ繝・け貂医∩縲阪→蛻､譁ｭ縺輔ｌ縺壹Λ繧ｦ繝ｳ繝峨′騾ｲ縺ｾ縺ｪ縺・ヰ繧ｰ繧剃ｿｮ豁｣縲ＡallChecked` 蛻､螳壹・ `folded`/`allIn` 蠎ｧ蟶ｭ繧呈ｺ縺溘＠縺溘ｂ縺ｮ縺ｨ縺励※謇ｱ縺・・
 - Tests: `npm test`
+
+## Bug-09 - All-in players skip DRAW
+- Status: DONE
+- Notes:
+  - `games/badugi/logic/drawRound.js`: `actor.allIn` 縺ｧ縺ｯ DRAW 繧偵せ繧ｭ繝・・縺励↑縺・ｈ縺・↓縺励∝ｺｧ蟶ｭ縺後が繝ｼ繝ｫ繧､繝ｳ縺ｧ繧・`lastAction: DRAW(n)` 縺梧ｮ九ｋ繧医≧縺ｫ縺励◆縲・  - `games/badugi/logic/roundFlow.js`: `aliveDrawPlayers` 縺・seatOut 縺縺代ｒ髯､螟悶＠縲∥ll-in 蟶ｭ繧・DRAW 鬆・分縺ｸ谿九☆繧医≧縺ｫ隱ｿ謨ｴ縲・  - `games/badugi/logic/__tests__/drawRound.test.js`: 譁ｰ隕上ユ繧ｹ繝医〒 all-in 蟶ｭ縺・DRAW 繧｢繧ｯ繧ｷ繝ｧ繝ｳ繧貞ｮ溯｡後☆繧九％縺ｨ繧剃ｿ晁ｨｼ縲・- Tests: `npm test`
 
 ## Bet flow - folded SB after all-in aggressor
 - Status: DONE
 - Notes:
-  - `games/badugi/logic/roundFlow.js`: `closingSeatForAggressor` が最後のアグレッサーがフォールドした時に `null` を返していたため、SB がフォールドするとラウンドが進まないケースがあった。アグレッサーがフォールド/オールインでも次の生存者を closing seat として扱うように修正。
-  - `ui/App.jsx`: draw 順序はオールイン済みでも継続できるよう `firstUndrawnFromSB` を戻しつつ BET 判定側で補正。
+  - `games/badugi/logic/roundFlow.js`: `closingSeatForAggressor` 縺梧怙蠕後・繧｢繧ｰ繝ｬ繝・し繝ｼ縺後ヵ繧ｩ繝ｼ繝ｫ繝峨＠縺滓凾縺ｫ `null` 繧定ｿ斐＠縺ｦ縺・◆縺溘ａ縲ヾB 縺後ヵ繧ｩ繝ｼ繝ｫ繝峨☆繧九→繝ｩ繧ｦ繝ｳ繝峨′騾ｲ縺ｾ縺ｪ縺・こ繝ｼ繧ｹ縺後≠縺｣縺溘ゅい繧ｰ繝ｬ繝・し繝ｼ縺後ヵ繧ｩ繝ｼ繝ｫ繝・繧ｪ繝ｼ繝ｫ繧､繝ｳ縺ｧ繧よｬ｡縺ｮ逕溷ｭ倩・ｒ closing seat 縺ｨ縺励※謇ｱ縺・ｈ縺・↓菫ｮ豁｣縲・
+  - `ui/App.jsx`: draw 鬆・ｺ上・繧ｪ繝ｼ繝ｫ繧､繝ｳ貂医∩縺ｧ繧らｶ咏ｶ壹〒縺阪ｋ繧医≧ `firstUndrawnFromSB` 繧呈綾縺励▽縺､ BET 蛻､螳壼・縺ｧ陬懈ｭ｣縲・
 - Tests: `npm test`
 
 ## All-in players incorrectly marked BUSTED during hand
 - Status: DONE
 - Notes:
-  - `games/badugi/logic/roundFlow.js`: `sanitizeStacks` previously forced `hasDrawn=true` と `isBusted=true` when stack reached 0, causing all-in players to be treated as folded/busted before showdown。スタックが 0 になった時点では `allIn` フラグのみに留めるよう修正し、バースト判定はショーダウン時 (`showdown.js`) のみに限定。
+  - `games/badugi/logic/roundFlow.js`: `sanitizeStacks` previously forced `hasDrawn=true` 縺ｨ `isBusted=true` when stack reached 0, causing all-in players to be treated as folded/busted before showdown縲ゅせ繧ｿ繝・け縺・0 縺ｫ縺ｪ縺｣縺滓凾轤ｹ縺ｧ縺ｯ `allIn` 繝輔Λ繧ｰ縺ｮ縺ｿ縺ｫ逡吶ａ繧九ｈ縺・ｿｮ豁｣縺励√ヰ繝ｼ繧ｹ繝亥愛螳壹・繧ｷ繝ｧ繝ｼ繝繧ｦ繝ｳ譎・(`showdown.js`) 縺ｮ縺ｿ縺ｫ髯仙ｮ壹・
 - Tests: `npm test`
 
 ## Bet flow - folding seat still tracked as aggressor
 - Status: DONE
 - Notes:
-  - ui/App.jsx: added shiftAggressorsAfterFold so when SB（含む他席）がフォールドした場合でも lastAggressor / etHead が次の生存席に渡り、BET ラウンド停止を防止。
+  - ui/App.jsx: added shiftAggressorsAfterFold so when SB・亥性繧莉門ｸｭ・峨′繝輔か繝ｼ繝ｫ繝峨＠縺溷ｴ蜷医〒繧・lastAggressor / etHead 縺梧ｬ｡縺ｮ逕溷ｭ伜ｸｭ縺ｫ貂｡繧翫。ET 繝ｩ繧ｦ繝ｳ繝牙●豁｢繧帝亟豁｢縲・
 - Tests: 
 pm test
 
@@ -109,3 +114,9 @@ pm test
 2. Capture responsive layout screenshots (desktop/mobile) for the PlayerStatusBoard / seat grid and archive them under `specs/`.
 
 
+## Tournament hand review logging
+- Status: DONE
+- Notes:
+  - `ui/App.jsx`: �V���[�_�E�����Ƃ� `history.tournamentHands` �փ|�b�g�E���ҁE�e�v���C���[�̃x�b�g/�h���[����ۑ����A�g�[�i�����g������ʂ���U��Ԃ�\�ɂ����B
+  - `components/TournamentHistory.jsx`: �g�[�i�����g�ꗗ�ɉ����ăn���h�P�ʂ̏ڍ׃e�[�u���ƃA�N�V�������O��\���B
+- Tests: `npm test`

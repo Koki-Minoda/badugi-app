@@ -5,6 +5,7 @@ import { pushToArray, getJSON, remove } from "./storage";
 
 const HANDS_KEY = "history.hands";
 const TOURNEY_KEY = "history.tournaments";
+const TOURNEY_HANDS_KEY = "history.tournamentHands";
 
 /**
  * Persist a single-hand snapshot.
@@ -26,6 +27,12 @@ export function saveTournamentHistory(t) {
   return pushToArray(TOURNEY_KEY, t, { limit: 500 });
 }
 
+export function saveTournamentHandHistory(hand) {
+  if (!hand?.handId) hand.handId = crypto.randomUUID?.() ?? String(Date.now());
+  hand.ts ??= Date.now();
+  return pushToArray(TOURNEY_HANDS_KEY, hand, { limit: 2000 });
+}
+
 /**
  * Retrieve hand history records.
  */
@@ -43,6 +50,14 @@ export function getTournaments({ limit = 200, since, until } = {}) {
   let arr = getJSON(TOURNEY_KEY, []);
   if (since) arr = arr.filter((t) => (t.tsEnd ?? t.tsStart) >= since);
   if (until) arr = arr.filter((t) => (t.tsEnd ?? t.tsStart) <= until);
+  return arr.slice(0, limit);
+}
+
+export function getTournamentHands({ tournamentId, limit = 200, since, until } = {}) {
+  let arr = getJSON(TOURNEY_HANDS_KEY, []);
+  if (tournamentId) arr = arr.filter((h) => h.tournamentId === tournamentId);
+  if (since) arr = arr.filter((h) => h.ts >= since);
+  if (until) arr = arr.filter((h) => h.ts <= until);
   return arr.slice(0, limit);
 }
 
@@ -77,4 +92,8 @@ export function clearHands() {
 
 export function clearTournaments() {
   remove(TOURNEY_KEY);
+}
+
+export function clearTournamentHands() {
+  remove(TOURNEY_HANDS_KEY);
 }

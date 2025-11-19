@@ -49,7 +49,7 @@ export const aliveBetPlayers = arr =>
 
 export const aliveDrawPlayers = arr =>
 
-  Array.isArray(arr) ? arr.filter(p => !p.folded) : [];
+  Array.isArray(arr) ? arr.filter(p => !p.folded && !p.seatOut) : [];
 
 
 
@@ -236,6 +236,8 @@ export function finishBetRoundFrom({
 
   setTransitioning,
 
+  onShowdownComplete,
+
 }) {
 
   console.log("[DEBUG][finishBetRoundFrom args]", {
@@ -321,6 +323,8 @@ export function finishBetRoundFrom({
       dealNewHand,
 
       setShowNextButton,
+
+      onShowdownComplete,
 
     });
 

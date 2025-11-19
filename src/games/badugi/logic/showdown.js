@@ -15,6 +15,7 @@ export function runShowdown({
   setTurn,
   setTransitioning,
   setCurrentBet,   
+  onShowdownComplete,
 }) {
   let updated = players.map((p) => ({ ...p, showHand: !p.folded }));
   const totalPot = pots.reduce((s, p) => s + p.amount, 0);
@@ -103,6 +104,14 @@ export function runShowdown({
     });
   } catch (err) {
     console.warn(" Failed to save tournament history:", err);
+  }
+
+  if (typeof onShowdownComplete === "function") {
+    try {
+      onShowdownComplete(updated, totalPot);
+    } catch (err) {
+      console.warn("onShowdownComplete failed:", err);
+    }
   }
 
   // ---  ---

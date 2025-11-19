@@ -1,0 +1,238 @@
+# Spec 13 – Codex Automated Development Pipeline  
+(Nightly Auto-PR / auto_tasks.yaml / codex_worker.js)
+
+## 1. Purpose
+
+This spec defines the full automated development workflow using Codex and GitHub.
+The goal is that the app continues to improve automatically while the user sleeps,
+and the user only approves PRs in the morning and updates specifications at night.
+
+Key goals:
+
+- Codex automatically performs development tasks each night.
+- auto_tasks.yaml defines a queue of tasks.
+- codex_worker.js consumes tasks and produces commits/PRs.
+- GitHub Actions triggers the worker on schedule.
+- The user’s responsibility is only:
+  - Approve PRs in the morning
+  - Add/edit tasks at night
+  - Update specs when needed
+
+This allows continuous development of:
+- Badugi fixes
+- Multi-game engines
+- UI components
+- Evaluators
+- Mixed game logic
+- Logging
+- Anything else defined in specs
+
+---
+
+## 2. File Structure
+
+The following dev files must exist:
+
+- .devtools/auto_tasks.yaml  
+- .devtools/codex_worker.js  
+- .devtools/codex_prompt_template.txt  
+- .github/workflows/codex_nightly.yml  
+
+This folder structure is mandatory so the pipeline is consistent.
+
+---
+
+## 3. auto_tasks.yaml Specification
+
+auto_tasks.yaml is the list of tasks Codex must process.
+
+Each task entry has:
+
+- id  
+  Unique string, e.g. "BG-001" or "ENG-024".
+- title  
+  Short description.
+- file  
+  The target file to generate or modify.
+- spec  
+  Reference to a spec document, e.g. "specs/09_game_engine_architecture.md".
+- status  
+  One of:
+    - pending
+    - in_progress
+    - done
+    - skipped
+- notes (optional)  
+  Extra constraints or comments.
+- priority (optional)  
+  Lower number = processed earlier.
+
+Example conceptual fields:
+
+id: string  
+title: string  
+file: string  
+spec: string  
+status: "pending" | "in_progress" | "done"  
+priority: number (optional)  
+notes: string (optional)
+
+Codex worker processes tasks strictly in the order:
+1) Lowest priority number  
+2) Order in the file
+
+Once status becomes done, the task will never be executed again.
+
+---
+
+## 4. codex_prompt_template.txt
+
+This file contains the template for all prompts sent to Codex.
+It must include:
+
+- Task ID
+- Task title
+- Full contents of the target file (before modification)
+- The referenced spec document
+- Instruction to output the full file after applying changes
+- Instruction to avoid commentary outside code content
+
+Template must include these replace tokens:
+
+{{TASK_ID}}  
+{{TASK_TITLE}}  
+{{SPEC_CONTENTS}}  
+{{FILE_PATH}}  
+{{FILE_CONTENTS}}  
+
+Codex worker replaces these tokens before sending prompt to Codex.
+
+---
+
+## 5. codex_worker.js Specification
+
+codex_worker.js performs the following operations:
+
+1) Load auto_tasks.yaml.
+2) Pick the next task with status "pending".
+3) Load the file specified in the task into memory.
+4) Load the spec file referenced in the task.
+5) Load codex_prompt_template.txt.
+6) Generate the prompt by replacing tokens.
+7) Call Codex API with:
+   - model = GPT-5.1-Codex (or future codex model)
+   - temperature = 0
+8) Receive the output (full file content).
+9) Write the new file to disk.
+10) Update task status to "done" in auto_tasks.yaml.
+11) Commit changes using GitHub CLI or Actions workspace git.
+12) Create a pull request.
+
+codex_worker.js must ensure:
+
+- If Codex output is empty or malformed, mark task as "skipped".
+- If file path does not exist, create it.
+- If PR already exists with same task ID, skip creating a duplicate.
+- If error occurs, fail gracefully and stop execution.
+
+The worker processes exactly 1 task per run to keep PRs atomic.
+
+---
+
+## 6. Nightly GitHub Action (codex_nightly.yml)
+
+Workflow:
+
+Trigger:
+- schedule: every day at 03:00 local (or equivalent UTC)
+- manual dispatch allowed
+
+Steps:
+1) Checkout repository.
+2) Setup NodeJS.
+3) Install dependencies.
+4) Run codex_worker.js.
+5) If changes exist:
+   - Create commit with message: "Codex: Task {{TASK_ID}} completed"
+   - Open PR: "Codex AutoPR – {{TASK_ID}} {{TASK_TITLE}}"
+6) If no tasks, exit silently.
+
+Environment:
+- CODENEX_API_KEY is stored in GitHub Secrets.
+- GitHub Token is provided via workflow.
+
+Behavior:
+- Exactly one task per night.
+- If many tasks remain, they will be processed over multiple days.
+- The user approves PRs manually for safety.
+
+---
+
+## 7. Daily Human Workflow
+
+Morning (7:00):
+
+- Check the new PR.
+- Test or verify changes.
+- If good → Merge.
+- If wrong → Comment or close PR.
+
+Evening (23:00):
+
+- Update specs as needed (Spec 01〜15).
+- Add tasks to auto_tasks.yaml (pending state).
+- Push changes to main branch.
+- Sleep; Codex runs automatically at night.
+
+This workflow ensures continuous progress with minimal human effort.
+
+---
+
+## 8. Safety Constraints
+
+The worker must enforce:
+
+- Never modify files outside src/, specs/, ui/, utils/, games/ without explicit task.
+- Never delete files unless the task explicitly instructs it.
+- PR must include:
+  - Modified file
+  - Updated auto_tasks.yaml
+- Codex must never access internet URLs.
+- Codex must base decisions solely on local spec documents.
+
+If Codex produces invalid code, the PR must still be created so the user can inspect it.
+
+---
+
+## 9. Error Handling
+
+codex_worker.js must handle:
+
+- Network errors → stop and retry next day.
+- Empty output → mark task as skipped.
+- YAML parse errors → stop and require manual fix.
+- Missing target file → create the file newly.
+
+Failures must not corrupt auto_tasks.yaml.
+
+---
+
+## 10. Acceptance Criteria
+
+Spec 13 is considered complete when:
+
+1. auto_tasks.yaml exists with at least 5 example tasks.
+2. codex_prompt_template.txt is functional and tokens replace correctly.
+3. codex_worker.js can:
+   - load tasks
+   - load spec docs
+   - load target file
+   - call Codex
+   - write new file
+4. codex_worker.js successfully pushes an AutoPR.
+5. Nightly GitHub Action runs automatically.
+6. User can:
+   - Approve PR in the morning
+   - Add tasks at night
+7. The system reliably processes tasks one-by-one every night.
+

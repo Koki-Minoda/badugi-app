@@ -23,9 +23,9 @@ export function runDrawRound({
   const actor = players?.[turn];
   if (!actor) return;
 
-  // Skip folded / all-in / already-drawn players.
-  if (actor.folded || actor.allIn || actor.hasDrawn) {
-    debugLog(`[DRAW] skip ${actor?.name} (folded/all-in/already drawn)`);
+  // Skip folded / seat-out / already-drawn players.
+  if (actor.folded || actor.seatOut || actor.hasDrawn) {
+    debugLog(`[DRAW] skip ${actor?.name} (folded/seat-out/already drawn)`);
     const next = nextAliveFrom(players, turn);
     if (next !== null) setTurn(next);
     return;
@@ -151,7 +151,7 @@ export function runDrawRoundSafe({
   NUM_PLAYERS,
 }) {
   const actor = players?.[turn];
-  if (!actor || actor.hasDrawn || actor.folded || actor.allIn) return;
+  if (!actor || actor.hasDrawn || actor.folded || actor.seatOut) return;
   runDrawRound({
     players,
     turn,

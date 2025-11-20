@@ -21,3 +21,13 @@ python rl/training/train_dqn.py
 ```
 
 Set `PYTHONPATH=.` when running from the repo root so that `rl.*` imports resolve correctly.
+
+## Building datasets from the app
+
+Export the in-app RL logs (`JSONL`) and convert them into a dataset:
+
+```bash
+python rl/tools/export_dataset.py --input ~/Downloads/badugi_rl.jsonl --output rl/datasets/badugi_dataset.json
+```
+
+The resulting JSON stores `observation`, `actions`, and `reward` entries for each record so that trainers can load them directly.

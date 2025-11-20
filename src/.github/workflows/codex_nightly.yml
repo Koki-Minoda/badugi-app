@@ -1,0 +1,28 @@
+name: Codex Nightly
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  codex-dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm ci
+      - name: Dry run Codex worker
+        run: node .devtools/codex_worker.js run --dry-run
+      - name: Upload Codex logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-logs
+          path: .devtools/logs
+          if-no-files-found: ignore

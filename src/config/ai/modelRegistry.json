@@ -1,0 +1,26 @@
+[
+  {
+    "id": "model-nlh-v1",
+    "variantIds": ["B01", "B02"],
+    "tier": "worldmaster",
+    "onnx": "models/nlh_worldmaster.onnx",
+    "inputShape": [128],
+    "outputShape": [8]
+  },
+  {
+    "id": "model-badugi-v2",
+    "variantIds": ["D03"],
+    "tier": "iron",
+    "onnx": "models/badugi_iron.onnx",
+    "inputShape": [96],
+    "outputShape": [6]
+  },
+  {
+    "id": "model-generic-v1",
+    "variantIds": [],
+    "tier": "standard",
+    "onnx": "models/generic_standard.onnx",
+    "inputShape": [64],
+    "outputShape": [5]
+  }
+]

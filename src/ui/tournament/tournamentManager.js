@@ -1,5 +1,6 @@
 import { getStageById } from "../../config/tournamentStages";
 import { TOURNAMENT_OPPONENTS } from "../../config/tournamentOpponents";
+import { disableDealerChoiceMode } from "../dealersChoice/dealerChoiceManager.js";
 
 const SESSION_KEY = "session.tournament.active";
 export const ACTIVE_TOURNAMENT_SESSION_KEY = SESSION_KEY;
@@ -155,6 +156,7 @@ export function clearActiveTournamentSession() {
 export function createTournamentSession(stageId, heroProfile) {
   const stage = getStageById(stageId);
   if (!stage) throw new Error(`Unknown stage: ${stageId}`);
+  disableDealerChoiceMode("tournament");
 
   const totalEntrants = randomInt(stage.participantsRange[0], stage.participantsRange[1]);
   const cpuNeeded = Math.max(0, totalEntrants - 1);
@@ -201,6 +203,7 @@ export function createTournamentSession(stageId, heroProfile) {
     id: randomId("tournament"),
     stageId: stage.id,
     stageLabel: stage.label,
+    blindSheetId: stage.blindSheetId,
     entryFee: stage.entryFee,
     startingStack: stage.startingStack,
     totalEntrants,
@@ -294,4 +297,24 @@ export function finalizeSessionResult({ placement, prize = 0, reason, feedback }
   };
   saveActiveTournamentSession(session);
   return session;
+}
+
+export function persistMixedGameState(state) {
+  const session = loadActiveTournamentSession();
+  if (!session) return null;
+  if (!state) {
+    delete session.mixedState;
+  } else {
+    session.mixedState = {
+      ...session.mixedState,
+      ...state,
+      updatedAt: Date.now(),
+    };
+  }
+  return saveActiveTournamentSession(session);
+}
+
+export function loadMixedGameStateFromSession() {
+  const session = loadActiveTournamentSession();
+  return session?.mixedState ?? null;
 }

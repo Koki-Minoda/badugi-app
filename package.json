@@ -9,15 +9,19 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:scrape": "python -m tests.scraping.runner smoke"
+    "test:scrape": "python -m tests.scraping.runner smoke",
+    "variants:export": "node --experimental-json-modules scripts/exportVariants.mjs"
   },
   "dependencies": {
+    "onnxruntime-web": "^1.18.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
+    "@playwright/test": "^1.56.1",
+    "@types/node": "^24.10.1",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.3",
@@ -32,4 +36,3 @@
     "vitest": "^4.0.9"
   }
 }
-

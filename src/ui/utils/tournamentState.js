@@ -1,4 +1,5 @@
 import { getStageById, TOURNAMENT_STAGES } from "../../config/tournamentStages";
+import { recordStageWin, updateProgressAfterWorldChampClear } from "./playerProgress";
 
 const PROGRESS_KEY = "progress.tournament";
 const HISTORY_KEY = "history.tournaments";
@@ -147,6 +148,10 @@ export function applyTournamentResult({ stageId, placement, prize = 0, feedback,
   const wins = { ...progress.wins };
   if (placement === 1 && wins[stageId] !== undefined) {
     wins[stageId] = (wins[stageId] ?? 0) + 1;
+    recordStageWin(stageId);
+    if (stageId === "world") {
+      updateProgressAfterWorldChampClear();
+    }
   }
   const bankroll = Math.max(0, (progress.bankroll ?? 0) + (prize ?? 0));
   const lastResult = {
@@ -170,6 +175,7 @@ export function applyTournamentResult({ stageId, placement, prize = 0, feedback,
     bankrollAfter: bankroll,
     feedback,
     reason,
+    unlockedAdvancedModes: stageId === "world" && placement === 1,
   });
   return next;
 }

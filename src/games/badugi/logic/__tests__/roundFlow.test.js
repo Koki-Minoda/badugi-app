@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isBetRoundComplete, closingSeatForAggressor } from "../roundFlow.js";
+import { isBetRoundComplete, closingSeatForAggressor } from "../../engine/roundFlow.js";
 
 const makePlayer = ({
   folded = false,

@@ -1,0 +1,64 @@
+[
+  {
+    "phase": 1,
+    "label": "Draw engines",
+    "variantIds": [
+      "D01",
+      "D02",
+      "S03",
+      "S01",
+      "S02",
+      "D04",
+      "D05",
+      "D06",
+      "D07",
+      "S05",
+      "S06",
+      "S07"
+    ],
+    "notes": "Core draw games plus split variants."
+  },
+  {
+    "phase": 2,
+    "label": "Board games",
+    "variantIds": [
+      "B01",
+      "B02",
+      "B03",
+      "B04",
+      "B05",
+      "B06",
+      "B07",
+      "B08",
+      "B09"
+    ],
+    "notes": "Hold'em and Omaha styles."
+  },
+  {
+    "phase": 3,
+    "label": "Dramaha",
+    "variantIds": [
+      "H01",
+      "H02",
+      "H03",
+      "H04",
+      "H05",
+      "H06"
+    ],
+    "notes": "Hybrid flop + draw games."
+  },
+  {
+    "phase": 4,
+    "label": "Stud family",
+    "variantIds": [
+      "ST1",
+      "ST2",
+      "ST3",
+      "ST4",
+      "ST5",
+      "ST6"
+    ],
+    "notes": "Seven-card stud + split offshoots."
+  }
+]
+

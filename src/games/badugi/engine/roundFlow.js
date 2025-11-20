@@ -1,4 +1,4 @@
-// src/games/badugi/logic/roundFlow.js
+﻿// src/games/badugi/logic/roundFlow.js
 
 import { debugLog } from "../../../utils/debugLog";
 
@@ -200,6 +200,67 @@ export const closingSeatForAggressor = (players, lastAggressorIdx) => {
 
 };
 
+export function analyzeBetSnapshot({
+  players = [],
+  actedIndex = 0,
+  dealerIdx = 0,
+  drawRound = 0,
+  numPlayers = players.length || 6,
+  betHead = null,
+  lastAggressorIdx = null,
+}) {
+  const snap = players.map((p) => ({ ...p }));
+  const maxNow = maxBetThisRound(snap);
+  const active = snap.filter((p) => !p.folded);
+  const everyoneMatched = active.every((p) => p.allIn || p.betThisRound === maxNow);
+  const allChecked =
+    maxNow === 0 &&
+    active.every((p) => p.folded || p.allIn || p.lastAction === "Check");
+  const betRoundSatisfied = isBetRoundComplete(snap);
+  const nextAlive = typeof actedIndex === "number" ? nextAliveFrom(snap, actedIndex) : null;
+  const closingSeatCandidate = closingSeatForAggressor(snap, lastAggressorIdx);
+  const fallbackSeat = typeof betHead === "number" ? betHead : null;
+  const closingSeat = closingSeatCandidate ?? fallbackSeat;
+  const returnedToAggressor =
+    typeof closingSeat === "number" && nextAlive === closingSeat;
+
+  const bbIndex = (dealerIdx + 2) % (numPlayers || snap.length || 1);
+  const bbSeat = snap[bbIndex];
+  let isBBActed = true;
+  if (drawRound === 0 && bbSeat) {
+    const acted = ["Bet", "Call", "Raise", "Check"].includes(bbSeat.lastAction);
+    isBBActed = bbSeat.folded || bbSeat.allIn || acted;
+  }
+
+  const isHeadsUp = active.length <= 2;
+  let shouldAdvance = betRoundSatisfied && returnedToAggressor;
+
+  if (!shouldAdvance) {
+    if (maxNow > 0) {
+      shouldAdvance = everyoneMatched && isBBActed;
+    } else if (isHeadsUp) {
+      const bothActed = active.every((p) => !!p.lastAction);
+      shouldAdvance = bothActed;
+    } else {
+      shouldAdvance = allChecked;
+    }
+  }
+
+  return {
+    playersSnapshot: snap,
+    nextTurn: nextAlive,
+    maxBet: maxNow,
+    everyoneMatched,
+    allChecked,
+    betRoundSatisfied,
+    closingSeat,
+    returnedToAggressor,
+    shouldAdvance,
+    isHeadsUp,
+    isBBActed,
+  };
+}
+
 
 
 // === BET DRAW/SHOWDOWN ===
@@ -237,6 +298,16 @@ export function finishBetRoundFrom({
   setTransitioning,
 
   onShowdownComplete,
+
+  onEngineSync,
+
+  engineAdvance,
+
+  engineResolveShowdown,
+
+  recordActionToLog,
+
+  onHandFinished,
 
 }) {
 
@@ -281,10 +352,73 @@ export function finishBetRoundFrom({
   }
 
   console.log(`[TRACE ${new Date().toISOString()}]  finishBetRoundFrom START`, { drawRound });
-
   debugLog(`[ BET] finishBetRoundFrom start drawRound=${drawRound}`);
 
+  if (typeof engineAdvance === "function") {
+    try {
+      const outcome = engineAdvance({
+        drawRound,
+        dealerIndex: dealerIdx,
+        maxDraws: MAX_DRAWS,
+        numPlayers: NUM_PLAYERS,
+      });
+      if (outcome?.state) {
+        const nextPlayers = outcome.players ?? outcome.state.players ?? players;
+        const nextPots = outcome.pots ?? outcome.state.pots ?? pots;
 
+        if (outcome.showdown || outcome.street === "SHOWDOWN") {
+          let showdownResult = null;
+          if (typeof engineResolveShowdown === "function") {
+            showdownResult = engineResolveShowdown(nextPlayers, nextPots);
+          }
+          const showdownPlayers = showdownResult?.players ?? nextPlayers;
+          const showdownPots = showdownResult?.pots ?? nextPots;
+          if (showdownResult?.players) {
+            setPlayers(showdownResult.players);
+          } else {
+            setPlayers(nextPlayers);
+          }
+          setPots(showdownPots ?? []);
+          setPhase("SHOWDOWN");
+          runShowdown?.({
+            players: showdownPlayers,
+            setPlayers,
+            pots: showdownPots,
+            setPots,
+            dealerIdx,
+            dealNewHand,
+            setShowNextButton,
+            onShowdownComplete,
+            engineResolveShowdown,
+            precomputedResult: showdownResult,
+            recordActionToLog,
+            drawRound,
+            onHandFinished,
+          });
+          return;
+        }
+
+        setPlayers(nextPlayers);
+        setPots(nextPots);
+
+        const nextRound = outcome.drawRoundIndex ?? drawRound + 1;
+        setDrawRound(nextRound);
+        setPhase("DRAW");
+        const nextTurn =
+          typeof outcome.actingPlayerIndex === "number"
+            ? outcome.actingPlayerIndex
+            : calcDrawStartIndex(dealerIdx, nextRound, NUM_PLAYERS);
+        setTurn(nextTurn);
+        if (setTransitioning) {
+          setTransitioning(true);
+          setTimeout(() => setTransitioning(false), 500);
+        }
+        return;
+      }
+    } catch (err) {
+      console.error("[ENGINE] advanceAfterBet failed, using legacy round flow", err);
+    }
+  }
 
   // 1 BET
 
@@ -293,6 +427,14 @@ export function finishBetRoundFrom({
   setPots(newPots);
 
   setPlayers(clearedPlayers);
+  onEngineSync?.({
+    reason: "roundFlow:settle",
+    playersSnapshot: clearedPlayers,
+    potsSnapshot: newPots,
+    street: "BET",
+    drawRoundIndex: drawRound,
+    actingIndex: dealerIdx,
+  });
 
 
 
@@ -307,25 +449,28 @@ export function finishBetRoundFrom({
     debugLog(" Final betting complete SHOWDOWN");
 
     setPhase("SHOWDOWN");
+    onEngineSync?.({
+      reason: "roundFlow:showdown",
+      playersSnapshot: clearedPlayers,
+      potsSnapshot: newPots,
+      street: "SHOWDOWN",
+      drawRoundIndex: drawRound,
+      actingIndex: dealerIdx,
+    });
 
     runShowdown?.({
-
       players: clearedPlayers,
-
       setPlayers,
-
       pots: newPots,
-
       setPots,
-
       dealerIdx,
-
       dealNewHand,
-
       setShowNextButton,
-
       onShowdownComplete,
-
+      engineResolveShowdown,
+      recordActionToLog,
+      drawRound,
+      onHandFinished,
     });
 
     return;
@@ -445,6 +590,14 @@ export function finishBetRoundFrom({
   setTurn(firstToDraw);
 
   setPhase("DRAW");
+  onEngineSync?.({
+    reason: "roundFlow:draw-transition",
+    playersSnapshot: resetPlayers,
+    potsSnapshot: newPots,
+    street: "DRAW",
+    drawRoundIndex: nextRound,
+    actingIndex: firstToDraw,
+  });
 
   debugLog(`[SYNC] Phase=DRAW, round=${nextRound}, start=${firstToDraw}`);
 
@@ -549,6 +702,9 @@ export function startDrawRound({
   if (onAfter) onAfter();
 
 }
+
+
+
 
 
 

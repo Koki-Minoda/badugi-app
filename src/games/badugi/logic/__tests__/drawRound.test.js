@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { runDrawRound } from "../drawRound.js";
+import { runDrawRound } from "../../engine/drawRound.js";
 
 function makePlayer(overrides = {}) {
   return {

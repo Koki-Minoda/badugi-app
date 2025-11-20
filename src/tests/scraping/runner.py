@@ -1,10 +1,18 @@
 import argparse
 from playwright.sync_api import sync_playwright
 
-from .scenarios import smoke_test
+from .scenarios import (
+    dealers_choice_smoke,
+    mixed_rotation_smoke,
+    pro_rules_smoke,
+    smoke_test,
+)
 
 SCENARIOS = {
     "smoke": smoke_test,
+    "dealers-choice": dealers_choice_smoke,
+    "mixed-rotation": mixed_rotation_smoke,
+    "pro-rules": pro_rules_smoke,
 }
 
 

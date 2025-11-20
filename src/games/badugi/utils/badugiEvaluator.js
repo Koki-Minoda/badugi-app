@@ -1,153 +1,73 @@
-// src/games/badugi/utils/badugiEvaluator.js
+import { evaluateHand, compareEvaluations } from "../../evaluators/registry.js";
 
-const RANKS = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
-const RVAL = Object.fromEntries(RANKS.map((r, i) => [r, i + 1])); // A=1 ... K=13
-
-const RANK_TYPE = {
-  4: "BADUGI",
-  3: "THREE_CARD",
-  2: "TWO_CARD",
-  1: "ONE_CARD",
-};
-
-function uniqueRankSuit(cards) {
-  const rs = new Set();
-  const ss = new Set();
-  for (const c of cards) {
-    const r = c.slice(0, -1);
-    const s = c.slice(-1);
-    if (rs.has(r) || ss.has(s)) return false;
-    rs.add(r);
-    ss.add(s);
-  }
-  return true;
-}
-
-function handKey(cards) {
-  // 
-  //  
-  const valsDesc = cards
-    .map(c => RVAL[c.slice(0, -1)])
-    .sort((a, b) => b - a); // 
-  return valsDesc;
-}
-
-function cmpKeys(a, b) {
-  const n = Math.max(a.length, b.length);
-  for (let i = 0; i < n; i++) {
-    const av = a[i] ?? 0;
-    const bv = b[i] ?? 0;
-    if (av !== bv) return av - bv; // 
-  }
-  return 0;
-}
-
-function bestBadugiSubset(hand) {
-  // 4 /
-  const cards = [...hand];
-  for (let size = 4; size >= 1; size--) {
-    let best = null;
-    const m = cards.length;
-    const choose = (start, acc) => {
-      if (acc.length === size) {
-        if (!uniqueRankSuit(acc)) return;
-        const key = handKey(acc);
-        if (!best || cmpKeys(key, best.key) < 0) {
-          best = { cards: [...acc], key };
-        }
-        return;
-      }
-      for (let i = start; i < m; i++) {
-        acc.push(cards[i]);
-        choose(i + 1, acc);
-        acc.pop();
-      }
-    };
-    choose(0, []);
-    if (best) return { size, cards: best.cards, key: best.key };
-  }
-  // 
-  return { size: 1, cards: [cards[0]], key: handKey([cards[0]]) };
-}
-
-/**
- * score 
- * @param {string[]} hand - ["A","7","2","K"] 
- * @returns {{size:number, cards:string[], ranks:number[], score:number}}
- */
-export function evaluateBadugi(hand) {
-  const best = bestBadugiSubset(hand);
-  const ranksAsc = [...best.key].sort((a, b) => a - b);
-  const madeSize = ranksAsc.length;
-
+function convertResult(result) {
+  const metadata = result?.metadata ?? {};
+  const ranks = metadata.ranks ?? [];
   return {
-    rankType: RANK_TYPE[madeSize] ?? "ONE_CARD",
-    ranks: ranksAsc,
-    kicker: ranksAsc[ranksAsc.length - 1] ?? 0,
-    isBadugi: madeSize === 4,
+    rankType:
+      metadata.size === 4
+        ? "BADUGI"
+        : metadata.size === 3
+        ? "THREE_CARD"
+        : metadata.size === 2
+        ? "TWO_CARD"
+        : "ONE_CARD",
+    ranks,
+    kicker: ranks[ranks.length - 1] ?? 0,
+    isBadugi: metadata.size === 4,
+    metadata,
   };
 }
 
-
-
-
-/** 2
- * A
- * ort
- */
-/** 2*/
-export function compareBadugi(handA, handB) {
-  return compareEvalResults(evaluateBadugi(handA), evaluateBadugi(handB));
+export function evaluateBadugi(hand) {
+  const result = evaluateHand({ cards: hand, gameType: "badugi" });
+  return convertResult(result);
 }
 
+export function compareBadugi(handA, handB) {
+  const evA = evaluateHand({ cards: handA, gameType: "badugi" });
+  const evB = evaluateHand({ cards: handB, gameType: "badugi" });
+  return compareEvaluations(evA, evB);
+}
 
-
-/**  1*/
 export function getBestBadugiPlayer(players) {
-  if (!players || players.length === 0) return null;
+  if (!Array.isArray(players) || players.length === 0) return null;
   let best = players[0];
-  for (const p of players) {
-    if (compareBadugi(p.hand, best.hand) < 0) best = p;
+  for (const player of players) {
+    if (compareBadugi(player.hand, best.hand) < 0) {
+      best = player;
+    }
   }
   return best;
 }
 
-// utils/badugiEvaluator.js
 export function getWinnersByBadugi(players) {
-  if (!players || players.length === 0) return [];
-
-  const evaluated = players.map(p => ({
-    ...p,
-    eval: evaluateBadugi(p.hand),
-  }));
-
-  evaluated.sort((a, b) => compareEvalResults(a.eval, b.eval));
-
-  const bestEval = evaluated[0].eval;
+  if (!players || !players.length) return [];
+  const evaluated = players.map((player) => {
+    const result = evaluateHand({ cards: player.hand, gameType: "badugi" });
+    return {
+      ...player,
+      eval: result,
+    };
+  });
+  evaluated.sort((a, b) => compareEvaluations(a.eval, b.eval));
+  const bestEval = evaluated[0]?.eval;
   const winners = evaluated.filter(
-    (p) => compareEvalResults(p.eval, bestEval) === 0
+    (entry) => compareEvaluations(entry.eval, bestEval) === 0
   );
-
-  console.log("[SHOWDOWN] Evaluated order:", evaluated.map(p =>
-    `${p.name} type=${p.eval.rankType} ranks=${p.eval.ranks.join("-")}`));
-  console.log("[SHOWDOWN] Winners:", winners.map(p => p.name));
-
-  return winners;
+  console.log(
+    "[SHOWDOWN] Evaluated order:",
+    evaluated.map(
+      (entry) =>
+        `${entry.name} ${entry.eval.metadata.size}-card ${entry.eval.metadata.ranks.join("-")}`
+    )
+  );
+  console.log("[SHOWDOWN] Winners:", winners.map((entry) => entry.name));
+  return winners.map((winner) => ({
+    seat: winner.seat ?? winner.seatIndex,
+    seatIndex: winner.seatIndex ?? winner.seat,
+    name: winner.name,
+    hand: winner.hand,
+    evaluation: winner.eval,
+  }));
 }
-
-function compareEvalResults(evA, evB) {
-  const sizeA = evA.ranks.length;
-  const sizeB = evB.ranks.length;
-  if (sizeA !== sizeB) {
-    return sizeA > sizeB ? -1 : 1;
-  }
-  for (let i = sizeA - 1; i >= 0; i--) {
-    const diff = (evA.ranks[i] ?? 0) - (evB.ranks[i] ?? 0);
-    if (diff !== 0) {
-      return diff < 0 ? -1 : 1;
-    }
-  }
-  return 0;
-}
-
-

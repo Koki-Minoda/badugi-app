@@ -1,0 +1,860 @@
+{
+  "generatedAt": "2025-11-19T11:27:02.796Z",
+  "total": 35,
+  "variants": [
+    {
+      "id": "B01",
+      "name": "NL Hold'em",
+      "category": "board",
+      "holeCards": 2,
+      "drawRounds": 0,
+      "board": {
+        "type": "flop-turn-river",
+        "cardsByStreet": [
+          3,
+          1,
+          1
+        ]
+      },
+      "betting": "no-limit",
+      "evaluators": [
+        "high"
+      ],
+      "features": [],
+      "tags": [
+        "holdem",
+        "nl",
+        "board"
+      ],
+      "priorityPhase": 2,
+      "description": "Standard NL Hold'em."
+    },
+    {
+      "id": "B02",
+      "name": "FL Hold'em",
+      "category": "board",
+      "holeCards": 2,
+      "drawRounds": 0,
+      "board": {
+        "type": "flop-turn-river",
+        "cardsByStreet": [
+          3,
+          1,
+          1
+        ]
+      },
+      "betting": "fixed-limit",
+      "evaluators": [
+        "high"
+      ],
+      "features": [],
+      "tags": [
+        "holdem",
+        "fixed"
+      ],
+      "priorityPhase": 2,
+      "description": "Fixed-limit Hold'em."
+    },
+    {
+      "id": "B03",
+      "name": "NL Super Hold'em",
+      "category": "board",
+      "holeCards": 3,
+      "drawRounds": 0,
+      "board": {
+        "type": "flop-turn-river",
+        "cardsByStreet": [
+          3,
+          1,
+          1
+        ]
+      },
+      "betting": "no-limit",
+      "evaluators": [
+        "high"
+      ],
+      "features": [],
+      "tags": [
+        "holdem",
+        "nl",
+        "three-card"
+      ],
+      "priorityPhase": 2,
+      "description": "Three hole cards, discard to two by showdown."
+    },
+    {
+      "id": "B04",
+      "name": "FL Super Hold'em",
+      "category": "board",
+      "holeCards": 3,
+      "drawRounds": 0,
+      "board": {
+        "type": "flop-turn-river",
+        "cardsByStreet": [
+          3,
+          1,
+          1
+        ]
+      },
+      "betting": "fixed-limit",
+      "evaluators": [
+        "high"
+      ],
+      "features": [],
+      "tags": [
+        "holdem",
+        "fixed",
+        "three-card"
+      ],
+      "priorityPhase": 2,
+      "description": "Three-card Hold'em played fixed-limit."
+    },
+    {
+      "id": "B05",
+      "name": "Pot-Limit Omaha",
+      "category": "board",
+      "holeCards": 4,
+      "drawRounds": 0,
+      "board": {
+        "type": "flop-turn-river",
+        "cardsByStreet": [
+          3,
+          1,
+          1
+        ]
+      },
+      "betting": "pot-limit",
+      "evaluators": [
+        "high"
+      ],
+      "features": [
+        "must-use-two"
+      ],
+      "tags": [
+        "omaha",
+        "pl"
+      ],
+      "priorityPhase": 2,
+      "description": "Pot-limit Omaha with exact two hole requirement."
+    },
+    {
+      "id": "B06",
+      "name": "PLO8",
+      "category": "board",
+      "holeCards": 4,
+      "drawRounds": 0,
+      "board": {
+        "type": "flop-turn-river",
+        "cardsByStreet": [
+          3,
+          1,
+          1
+        ]
+      },
+      "betting": "pot-limit",
+      "evaluators": [
+        "high",
+        "hi-lo-8-split"
+      ],
+      "features": [
+        "must-use-two",
+        "hi-lo"
+      ],
+      "tags": [
+        "omaha",
+        "hi-lo"
+      ],
+      "priorityPhase": 2,
+      "description": "PLO Hi-Lo split."
+    },
+    {
+      "id": "B07",
+      "name": "Big-O",
+      "category": "board",
+      "holeCards": 5,
+      "drawRounds": 0,
+      "board": {
+        "type": "flop-turn-river",
+        "cardsByStreet": [
+          3,
+          1,
+          1
+        ]
+      },
+      "betting": "pot-limit",
+      "evaluators": [
+        "high"
+      ],
+      "features": [
+        "must-use-two"
+      ],
+      "tags": [
+        "omaha",
+        "five-card"
+      ],
+      "priorityPhase": 2,
+      "description": "Five-card Omaha (pot-limit)."
+    },
+    {
+      "id": "B08",
+      "name": "5-Card PLO",
+      "category": "board",
+      "holeCards": 5,
+      "drawRounds": 0,
+      "board": {
+        "type": "flop-turn-river",
+        "cardsByStreet": [
+          3,
+          1,
+          1
+        ]
+      },
+      "betting": "pot-limit",
+      "evaluators": [
+        "high"
+      ],
+      "features": [
+        "must-use-two"
+      ],
+      "tags": [
+        "omaha",
+        "five-card"
+      ],
+      "priorityPhase": 2,
+      "description": "Five-card PLO high only."
+    },
+    {
+      "id": "B09",
+      "name": "FLO8",
+      "category": "board",
+      "holeCards": 2,
+      "drawRounds": 0,
+      "board": {
+        "type": "flop-turn-river",
+        "cardsByStreet": [
+          3,
+          1,
+          1
+        ]
+      },
+      "betting": "fixed-limit",
+      "evaluators": [
+        "high",
+        "hi-lo-8-split"
+      ],
+      "features": [],
+      "tags": [
+        "holdem",
+        "hi-lo"
+      ],
+      "priorityPhase": 2,
+      "description": "Fixed-limit Hold'em Hi-Lo."
+    },
+    {
+      "id": "D01",
+      "name": "2-7 Triple Draw",
+      "category": "triple-draw",
+      "holeCards": 5,
+      "drawRounds": 3,
+      "board": null,
+      "betting": "fixed-limit",
+      "evaluators": [
+        "low-27"
+      ],
+      "features": [],
+      "tags": [
+        "triple",
+        "lowball"
+      ],
+      "priorityPhase": 1,
+      "status": "planned",
+      "description": ""
+    },
+    {
+      "id": "D02",
+      "name": "A-5 Triple Draw",
+      "category": "triple-draw",
+      "holeCards": 5,
+      "drawRounds": 3,
+      "board": null,
+      "betting": "fixed-limit",
+      "evaluators": [
+        "low-a5"
+      ],
+      "features": [],
+      "tags": [
+        "triple",
+        "lowball"
+      ],
+      "priorityPhase": 1,
+      "status": "planned",
+      "description": ""
+    },
+    {
+      "id": "D03",
+      "name": "Badugi",
+      "category": "triple-draw",
+      "holeCards": 4,
+      "drawRounds": 3,
+      "board": null,
+      "betting": "fixed-limit",
+      "evaluators": [
+        "badugi-low"
+      ],
+      "features": [],
+      "tags": [
+        "badugi"
+      ],
+      "priorityPhase": 1,
+      "status": "live",
+      "description": "",
+      "engineKey": "badugi"
+    },
+    {
+      "id": "D04",
+      "name": "Badeucey TD",
+      "category": "triple-draw",
+      "holeCards": 4,
+      "drawRounds": 3,
+      "board": null,
+      "betting": "fixed-limit",
+      "evaluators": [
+        "split-badugi-27"
+      ],
+      "features": [],
+      "tags": [
+        "split",
+        "badugi"
+      ],
+      "priorityPhase": 1,
+      "status": "planned",
+      "description": ""
+    },
+    {
+      "id": "D05",
+      "name": "Badacey TD",
+      "category": "triple-draw",
+      "holeCards": 4,
+      "drawRounds": 3,
+      "board": null,
+      "betting": "fixed-limit",
+      "evaluators": [
+        "split-badugi-a5"
+      ],
+      "features": [],
+      "tags": [
+        "split",
+        "badugi"
+      ],
+      "priorityPhase": 1,
+      "status": "planned",
+      "description": ""
+    },
+    {
+      "id": "D06",
+      "name": "Hidugi TD",
+      "category": "triple-draw",
+      "holeCards": 4,
+      "drawRounds": 3,
+      "board": null,
+      "betting": "fixed-limit",
+      "evaluators": [
+        "badugi-high"
+      ],
+      "features": [],
+      "tags": [
+        "reverse-badugi"
+      ],
+      "priorityPhase": 1,
+      "status": "planned",
+      "description": ""
+    },
+    {
+      "id": "D07",
+      "name": "Archie TD",
+      "category": "triple-draw",
+      "holeCards": 5,
+      "drawRounds": 3,
+      "board": null,
+      "betting": "fixed-limit",
+      "evaluators": [
+        "archie"
+      ],
+      "features": [],
+      "tags": [
+        "archie"
+      ],
+      "priorityPhase": 1,
+      "status": "planned",
+      "description": ""
+    },
+    {
+      "id": "S01",
+      "name": "2-7 Single Draw",
+      "category": "single-draw",
+      "holeCards": 5,
+      "drawRounds": 1,
+      "board": null,
+      "betting": "fixed-limit",
+      "evaluators": [
+        "low-27"
+      ],
+      "features": [],
+      "tags": [
+        "single",
+        "lowball"
+      ],
+      "priorityPhase": 1,
+      "description": ""
+    },
+    {
+      "id": "S02",
+      "name": "A-5 Single Draw",
+      "category": "single-draw",
+      "holeCards": 5,
+      "drawRounds": 1,
+      "board": null,
+      "betting": "fixed-limit",
+      "evaluators": [
+        "low-a5"
+      ],
+      "features": [],
+      "tags": [
+        "single",
+        "lowball"
+      ],
+      "priorityPhase": 1,
+      "description": ""
+    },
+    {
+      "id": "S03",
+      "name": "5-Card Single Draw",
+      "category": "single-draw",
+      "holeCards": 5,
+      "drawRounds": 1,
+      "board": null,
+      "betting": "fixed-limit",
+      "evaluators": [
+        "high"
+      ],
+      "features": [],
+      "tags": [
+        "single",
+        "high"
+      ],
+      "priorityPhase": 1,
+      "description": "Classic five-card draw."
+    },
+    {
+      "id": "S04",
+      "name": "Badugi SD",
+      "category": "single-draw",
+      "holeCards": 4,
+      "drawRounds": 1,
+      "board": null,
+      "betting": "fixed-limit",
+      "evaluators": [
+        "badugi-low"
+      ],
+      "features": [],
+      "tags": [
+        "badugi",
+        "single"
+      ],
+      "priorityPhase": 1,
+      "description": ""
+    },
+    {
+      "id": "S05",
+      "name": "Badeucey SD",
+      "category": "single-draw",
+      "holeCards": 4,
+      "drawRounds": 1,
+      "board": null,
+      "betting": "fixed-limit",
+      "evaluators": [
+        "split-badugi-27"
+      ],
+      "features": [],
+      "tags": [
+        "split",
+        "single"
+      ],
+      "priorityPhase": 1,
+      "description": ""
+    },
+    {
+      "id": "S06",
+      "name": "Badacey SD",
+      "category": "single-draw",
+      "holeCards": 4,
+      "drawRounds": 1,
+      "board": null,
+      "betting": "fixed-limit",
+      "evaluators": [
+        "split-badugi-a5"
+      ],
+      "features": [],
+      "tags": [
+        "split",
+        "single"
+      ],
+      "priorityPhase": 1,
+      "description": ""
+    },
+    {
+      "id": "S07",
+      "name": "Hidugi SD",
+      "category": "single-draw",
+      "holeCards": 4,
+      "drawRounds": 1,
+      "board": null,
+      "betting": "fixed-limit",
+      "evaluators": [
+        "badugi-high"
+      ],
+      "features": [],
+      "tags": [
+        "reverse-badugi",
+        "single"
+      ],
+      "priorityPhase": 1,
+      "description": ""
+    },
+    {
+      "id": "H01",
+      "name": "Dramaha Hi",
+      "category": "dramaha",
+      "holeCards": 5,
+      "drawRounds": 1,
+      "board": {
+        "type": "flop-only",
+        "cardsByStreet": [
+          3
+        ]
+      },
+      "betting": "fixed-limit",
+      "evaluators": [
+        "high"
+      ],
+      "features": [
+        "flop-board"
+      ],
+      "tags": [
+        "dramaha",
+        "high"
+      ],
+      "priorityPhase": 3
+    },
+    {
+      "id": "H02",
+      "name": "Dramaha 2-7",
+      "category": "dramaha",
+      "holeCards": 5,
+      "drawRounds": 1,
+      "board": {
+        "type": "flop-only",
+        "cardsByStreet": [
+          3
+        ]
+      },
+      "betting": "fixed-limit",
+      "evaluators": [
+        "low-27"
+      ],
+      "features": [
+        "flop-board"
+      ],
+      "tags": [
+        "dramaha",
+        "lowball"
+      ],
+      "priorityPhase": 3
+    },
+    {
+      "id": "H03",
+      "name": "Dramaha A-5",
+      "category": "dramaha",
+      "holeCards": 5,
+      "drawRounds": 1,
+      "board": {
+        "type": "flop-only",
+        "cardsByStreet": [
+          3
+        ]
+      },
+      "betting": "fixed-limit",
+      "evaluators": [
+        "low-a5"
+      ],
+      "features": [
+        "flop-board"
+      ],
+      "tags": [
+        "dramaha",
+        "lowball"
+      ],
+      "priorityPhase": 3
+    },
+    {
+      "id": "H04",
+      "name": "Dramaha Zero",
+      "category": "dramaha",
+      "holeCards": 5,
+      "drawRounds": 1,
+      "board": {
+        "type": "flop-only",
+        "cardsByStreet": [
+          3
+        ]
+      },
+      "betting": "fixed-limit",
+      "evaluators": [
+        "zero"
+      ],
+      "features": [
+        "flop-board"
+      ],
+      "tags": [
+        "dramaha",
+        "zero"
+      ],
+      "priorityPhase": 3
+    },
+    {
+      "id": "H05",
+      "name": "Dramaha Hidugi",
+      "category": "dramaha",
+      "holeCards": 5,
+      "drawRounds": 1,
+      "board": {
+        "type": "flop-only",
+        "cardsByStreet": [
+          3
+        ]
+      },
+      "betting": "fixed-limit",
+      "evaluators": [
+        "badugi-high"
+      ],
+      "features": [
+        "flop-board"
+      ],
+      "tags": [
+        "dramaha",
+        "reverse-badugi"
+      ],
+      "priorityPhase": 3
+    },
+    {
+      "id": "H06",
+      "name": "Dramaha Badugi",
+      "category": "dramaha",
+      "holeCards": 5,
+      "drawRounds": 1,
+      "board": {
+        "type": "flop-only",
+        "cardsByStreet": [
+          3
+        ]
+      },
+      "betting": "fixed-limit",
+      "evaluators": [
+        "badugi-low"
+      ],
+      "features": [
+        "flop-board"
+      ],
+      "tags": [
+        "dramaha",
+        "badugi"
+      ],
+      "priorityPhase": 3
+    },
+    {
+      "id": "ST1",
+      "name": "Stud",
+      "category": "stud",
+      "holeCards": 7,
+      "drawRounds": 0,
+      "board": null,
+      "stud": {
+        "thirdStreet": {
+          "down": 2,
+          "up": 1
+        },
+        "middleStreets": 4,
+        "river": {
+          "down": 1
+        }
+      },
+      "betting": "fixed-limit",
+      "evaluators": [
+        "high"
+      ],
+      "features": [
+        "bring-in"
+      ],
+      "tags": [
+        "stud",
+        "high"
+      ],
+      "priorityPhase": 4
+    },
+    {
+      "id": "ST2",
+      "name": "Stud 8",
+      "category": "stud",
+      "holeCards": 7,
+      "drawRounds": 0,
+      "board": null,
+      "stud": {
+        "thirdStreet": {
+          "down": 2,
+          "up": 1
+        },
+        "middleStreets": 4,
+        "river": {
+          "down": 1
+        }
+      },
+      "betting": "fixed-limit",
+      "evaluators": [
+        "high",
+        "hi-lo-8-split"
+      ],
+      "features": [
+        "bring-in"
+      ],
+      "tags": [
+        "stud",
+        "hi-lo"
+      ],
+      "priorityPhase": 4
+    },
+    {
+      "id": "ST3",
+      "name": "Razz",
+      "category": "stud",
+      "holeCards": 7,
+      "drawRounds": 0,
+      "board": null,
+      "stud": {
+        "thirdStreet": {
+          "down": 2,
+          "up": 1
+        },
+        "middleStreets": 4,
+        "river": {
+          "down": 1
+        }
+      },
+      "betting": "fixed-limit",
+      "evaluators": [
+        "low-a5"
+      ],
+      "features": [
+        "bring-in",
+        "low-bring"
+      ],
+      "tags": [
+        "razz",
+        "lowball"
+      ],
+      "priorityPhase": 4
+    },
+    {
+      "id": "ST4",
+      "name": "Razzdugi",
+      "category": "stud",
+      "holeCards": 7,
+      "drawRounds": 0,
+      "board": null,
+      "stud": {
+        "thirdStreet": {
+          "down": 2,
+          "up": 1
+        },
+        "middleStreets": 4,
+        "river": {
+          "down": 1
+        }
+      },
+      "betting": "fixed-limit",
+      "evaluators": [
+        "split-badugi-a5"
+      ],
+      "features": [
+        "bring-in",
+        "split"
+      ],
+      "tags": [
+        "razz",
+        "badugi"
+      ],
+      "priorityPhase": 4
+    },
+    {
+      "id": "ST5",
+      "name": "Razzducey",
+      "category": "stud",
+      "holeCards": 7,
+      "drawRounds": 0,
+      "board": null,
+      "stud": {
+        "thirdStreet": {
+          "down": 2,
+          "up": 1
+        },
+        "middleStreets": 4,
+        "river": {
+          "down": 1
+        }
+      },
+      "betting": "fixed-limit",
+      "evaluators": [
+        "split-badugi-27"
+      ],
+      "features": [
+        "bring-in",
+        "split"
+      ],
+      "tags": [
+        "razz",
+        "split"
+      ],
+      "priorityPhase": 4
+    },
+    {
+      "id": "ST6",
+      "name": "2-7 Razz",
+      "category": "stud",
+      "holeCards": 7,
+      "drawRounds": 0,
+      "board": null,
+      "stud": {
+        "thirdStreet": {
+          "down": 2,
+          "up": 1
+        },
+        "middleStreets": 4,
+        "river": {
+          "down": 1
+        }
+      },
+      "betting": "fixed-limit",
+      "evaluators": [
+        "low-27"
+      ],
+      "features": [
+        "bring-in",
+        "high-bring"
+      ],
+      "tags": [
+        "razz",
+        "low-27"
+      ],
+      "priorityPhase": 4
+    }
+  ]
+}

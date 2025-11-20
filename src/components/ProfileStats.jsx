@@ -1,31 +1,36 @@
+import React, { useMemo } from "react";
 import { computeBasicStats } from "../utils/history";
 
-export default function ProfileStats() {
-  const s = computeBasicStats();
+function StatCard({ label, value }) {
   return (
-    <div className="p-6 space-y-4">
-      <h2 className="text-xl font-bold">プロフィール・スタッツ（簡易）</h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        <Stat label="トーナメント数" value={s.tournaments} />
-        <Stat label="ITM回数" value={s.itmCount} />
-        <Stat label="ITM率" value={(s.itmRate * 100).toFixed(1) + "%"} />
-        <Stat label="総バイイン" value={fmtJpy(s.totalBuyIn)} />
-        <Stat label="総賞金" value={fmtJpy(s.totalPrize)} />
-        <Stat label="ROI" value={(s.roi * 100).toFixed(1) + "%"} />
-        <Stat label="最高順位" value={s.bestFinish ?? "-"} />
-      </div>
-      <p className="text-xs opacity-70">
-        ここはまず最小限のKPI。後で VPIP/PFR/AGG/バドゥーギ固有KPI をハンド履歴から算出して拡張予定。
-      </p>
+    <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-4 shadow-inner">
+      <div className="text-xs uppercase tracking-widest text-slate-400">{label}</div>
+      <div className="text-2xl font-bold text-white mt-1">{value}</div>
     </div>
   );
 }
 
-function Stat({ label, value }) {
+export default function ProfileStats() {
+  const stats = useMemo(() => computeBasicStats(), []);
   return (
-    <div className="rounded-2xl border p-4 shadow-sm">
-      <div className="text-xs opacity-70">{label}</div>
-      <div className="text-lg font-semibold">{value}</div>
+    <div className="min-h-screen bg-slate-950 text-white">
+      <div className="max-w-4xl mx-auto px-6 py-10 space-y-6">
+        <header>
+          <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">Profile Stats</p>
+          <h1 className="text-3xl font-extrabold mt-2">トーナメントKPI</h1>
+        </header>
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+          <StatCard label="トーナメント数" value={stats.tournaments} />
+          <StatCard label="ITM回数" value={stats.itmCount} />
+          <StatCard label="ITM率" value={`${(stats.itmRate * 100).toFixed(1)}%`} />
+          <StatCard label="総バイイン" value={fmtJpy(stats.totalBuyIn)} />
+          <StatCard label="総賞金" value={fmtJpy(stats.totalPrize)} />
+          <StatCard label="ROI" value={`${(stats.roi * 100).toFixed(1)}%`} />
+        </div>
+        <p className="text-xs text-slate-400">
+          今後は VPIP / PFR / Aggression 等の詳細指標も追加予定です。
+        </p>
+      </div>
     </div>
   );
 }

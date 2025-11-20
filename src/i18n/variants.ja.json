@@ -1,0 +1,142 @@
+{
+  "B01": {
+    "name": "NL Hold'em",
+    "description": "Standard NL Hold'em."
+  },
+  "B02": {
+    "name": "FL Hold'em",
+    "description": "Fixed-limit Hold'em."
+  },
+  "B03": {
+    "name": "NL Super Hold'em",
+    "description": "Three hole cards, discard to two by showdown."
+  },
+  "B04": {
+    "name": "FL Super Hold'em",
+    "description": "Three-card Hold'em played fixed-limit."
+  },
+  "B05": {
+    "name": "Pot-Limit Omaha",
+    "description": "Pot-limit Omaha with exact two hole requirement."
+  },
+  "B06": {
+    "name": "PLO8",
+    "description": "PLO Hi-Lo split."
+  },
+  "B07": {
+    "name": "Big-O",
+    "description": "Five-card Omaha (pot-limit)."
+  },
+  "B08": {
+    "name": "5-Card PLO",
+    "description": "Five-card PLO high only."
+  },
+  "B09": {
+    "name": "FLO8",
+    "description": "Fixed-limit Hold'em Hi-Lo."
+  },
+  "D01": {
+    "name": "2-7 Triple Draw",
+    "description": ""
+  },
+  "D02": {
+    "name": "A-5 Triple Draw",
+    "description": ""
+  },
+  "D03": {
+    "name": "Badugi",
+    "description": ""
+  },
+  "D04": {
+    "name": "Badeucey TD",
+    "description": ""
+  },
+  "D05": {
+    "name": "Badacey TD",
+    "description": ""
+  },
+  "D06": {
+    "name": "Hidugi TD",
+    "description": ""
+  },
+  "D07": {
+    "name": "Archie TD",
+    "description": ""
+  },
+  "S01": {
+    "name": "2-7 Single Draw",
+    "description": ""
+  },
+  "S02": {
+    "name": "A-5 Single Draw",
+    "description": ""
+  },
+  "S03": {
+    "name": "5-Card Single Draw",
+    "description": "Classic five-card draw."
+  },
+  "S04": {
+    "name": "Badugi SD",
+    "description": ""
+  },
+  "S05": {
+    "name": "Badeucey SD",
+    "description": ""
+  },
+  "S06": {
+    "name": "Badacey SD",
+    "description": ""
+  },
+  "S07": {
+    "name": "Hidugi SD",
+    "description": ""
+  },
+  "H01": {
+    "name": "Dramaha Hi",
+    "description": ""
+  },
+  "H02": {
+    "name": "Dramaha 2-7",
+    "description": ""
+  },
+  "H03": {
+    "name": "Dramaha A-5",
+    "description": ""
+  },
+  "H04": {
+    "name": "Dramaha Zero",
+    "description": ""
+  },
+  "H05": {
+    "name": "Dramaha Hidugi",
+    "description": ""
+  },
+  "H06": {
+    "name": "Dramaha Badugi",
+    "description": ""
+  },
+  "ST1": {
+    "name": "Stud",
+    "description": ""
+  },
+  "ST2": {
+    "name": "Stud 8",
+    "description": ""
+  },
+  "ST3": {
+    "name": "Razz",
+    "description": ""
+  },
+  "ST4": {
+    "name": "Razzdugi",
+    "description": ""
+  },
+  "ST5": {
+    "name": "Razzducey",
+    "description": ""
+  },
+  "ST6": {
+    "name": "2-7 Razz",
+    "description": ""
+  }
+}

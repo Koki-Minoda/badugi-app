@@ -1,0 +1,44 @@
+{
+  "tasks": [
+    {
+      "id": "SPEC13-001",
+      "title": "Create Codex task catalog",
+      "status": "completed",
+      "owner": "codex",
+      "path": "docs/codex_pipeline.md",
+      "summary": "Author the initial Codex pipeline doc and seed workflow metadata."
+    },
+    {
+      "id": "SPEC13-002",
+      "title": "Implement codex_worker CLI",
+      "status": "completed",
+      "owner": "codex",
+      "path": ".devtools/codex_worker.js",
+      "summary": "Provide task selection, prompt generation, response validation, and logging."
+    },
+    {
+      "id": "SPEC13-003",
+      "title": "Add Codex prompt template",
+      "status": "completed",
+      "owner": "codex",
+      "path": ".devtools/codex_prompt_template.txt",
+      "summary": "Centralize reusable system/user instructions for Codex runs."
+    },
+    {
+      "id": "SPEC13-004",
+      "title": "Write Codex pipeline tests",
+      "status": "completed",
+      "owner": "codex",
+      "path": "scripts/__tests__/codex_worker.test.js",
+      "summary": "Cover YAML parse errors, empty outputs, and duplicate PR name validation."
+    },
+    {
+      "id": "SPEC13-005",
+      "title": "Configure nightly workflow",
+      "status": "completed",
+      "owner": "codex",
+      "path": ".github/workflows/codex_nightly.yml",
+      "summary": "Schedule dry-run execution and upload worker logs as artifacts."
+    }
+  ]
+}

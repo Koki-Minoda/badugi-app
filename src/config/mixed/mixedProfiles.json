@@ -1,0 +1,22 @@
+[
+  {
+    "id": "mix-badugi-classic",
+    "name": "Badugi Classic",
+    "selectedGameIds": ["D03"],
+    "selectionMode": "FIXED",
+    "handsPerGame": 4,
+    "allowDuplicates": true,
+    "createdAt": 0,
+    "updatedAt": 0
+  },
+  {
+    "id": "mix-triple-starter",
+    "name": "Triple Draw Sampler",
+    "selectedGameIds": ["D01", "D02", "D03", "D05"],
+    "selectionMode": "FIXED",
+    "handsPerGame": 2,
+    "allowDuplicates": false,
+    "createdAt": 0,
+    "updatedAt": 0
+  }
+]

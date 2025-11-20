@@ -19,7 +19,7 @@ import {
    isBetRoundComplete,
    finishBetRoundFrom,
    closingSeatForAggressor,
-} from "../games/badugi/logic/roundFlow.js"; 
+ } from "../games/badugi/logic/roundFlow.js"; 
 
 // History persistence helpers
 import {
@@ -29,6 +29,20 @@ import {
 } from "../utils/history_rl";
 import { useNavigate } from "react-router-dom";
 import { loadTitleSettings } from "./utils/titleSettings";
+import { useRatingState } from "./hooks/useRatingState.js";
+import {
+  applyMatchRatings,
+  computeRankFromRating,
+  exportP2PMatchesAsJSONL,
+} from "./utils/ratingState.js";
+import {
+  loadAiTierOverride,
+  persistAiTierOverride,
+  loadP2pCaptureFlag,
+  persistP2pCaptureFlag,
+  DEV_EVENTS,
+} from "./utils/devOverrides.js";
+import { listTierIds, getTierById } from "../ai/tierManager.js";
 
 // === TRACE HELPER (debug only) ===
 function trace(tag, extra = {}) {
@@ -107,6 +121,26 @@ export default function App() {
     return undefined;
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const handleTierEvent = (event) => {
+      setDevTierOverride(event?.detail ?? loadAiTierOverride());
+    };
+    const handleP2pEvent = (event) => {
+      if (typeof event?.detail === "boolean") {
+        setP2pCaptureEnabled(event.detail);
+      } else {
+        setP2pCaptureEnabled(loadP2pCaptureFlag());
+      }
+    };
+    window.addEventListener(DEV_EVENTS.tierOverrideChanged, handleTierEvent);
+    window.addEventListener(DEV_EVENTS.p2pCaptureChanged, handleP2pEvent);
+    return () => {
+      window.removeEventListener(DEV_EVENTS.tierOverrideChanged, handleTierEvent);
+      window.removeEventListener(DEV_EVENTS.p2pCaptureChanged, handleP2pEvent);
+    };
+  }, []);
+
   const [blindLevelIndex, setBlindLevelIndex] = useState(0);
   const [handsInLevel, setHandsInLevel] = useState(0);
   const currentStructure =
@@ -129,6 +163,31 @@ export default function App() {
   const [seatManagerOpen, setSeatManagerOpen] = useState(false);
   const [statusBoardOpen, setStatusBoardOpen] = useState(true);
   const MAX_DRAWS = 3;
+  const ratingState = useRatingState();
+  const rankInfo = useMemo(
+    () => computeRankFromRating(ratingState.globalRating),
+    [ratingState.globalRating]
+  );
+  const [heroTracker, setHeroTracker] = useState(() => ({
+    wins: 0,
+    losses: 0,
+    draws: 0,
+    streak: 0,
+    lastOutcome: null,
+    history: [],
+    lastRatingDelta: 0,
+  }));
+  const heroHistoryLimit = 4;
+  const [devTierOverride, setDevTierOverride] = useState(() => loadAiTierOverride());
+  const [p2pCaptureEnabled, setP2pCaptureEnabled] = useState(() => loadP2pCaptureFlag());
+  const tierOptions = useMemo(
+    () =>
+      listTierIds().map((tierId) => ({
+        id: tierId,
+        label: getTierById(tierId)?.label ?? tierId,
+      })),
+    []
+  );
 
   const deckRef = useRef(new DeckManager());
 
@@ -372,6 +431,80 @@ function recordActionToLog({
     },
   ]);
 }
+
+  const handleTierOverrideChange = (event) => {
+    const nextTier = event.target.value || null;
+    const stored = persistAiTierOverride(nextTier);
+    setDevTierOverride(stored);
+  };
+
+  const clearTierOverride = () => {
+    persistAiTierOverride(null);
+    setDevTierOverride(null);
+  };
+
+  const toggleP2pCapture = () => {
+    const next = persistP2pCaptureFlag(!p2pCaptureEnabled);
+    setP2pCaptureEnabled(next);
+  };
+
+  const handleExportP2pMatches = () => {
+    exportP2PMatchesAsJSONL();
+  };
+
+  function deriveHeroOutcome(record) {
+    const hero = record.players?.[0];
+    if (!hero) return null;
+    const winners = Array.isArray(record.winners) ? record.winners : [];
+    const heroWon = hero.name ? winners.includes(hero.name) : false;
+    const isSplit = heroWon && winners.length > 1;
+    const value = heroWon ? (isSplit ? 0.5 : 1) : 0;
+    const label = heroWon
+      ? isSplit
+        ? "Split pot"
+        : "Win"
+      : hero.folded
+      ? "Fold"
+      : "Loss";
+    return { label, value };
+  }
+
+  function recordHeroTracker(record, outcome, ratingAfter, ratingDelta) {
+    if (!outcome) return;
+    setHeroTracker((prev) => {
+      const entry = {
+        id: record.handId,
+        ts: record.ts,
+        outcome: outcome.label,
+        resultValue: outcome.value,
+        pot: record.pot,
+        stack: record.players?.[0]?.stack ?? 0,
+        ratingAfter: ratingAfter?.globalRating ?? ratingState.globalRating,
+        ratingDelta: typeof ratingDelta === "number" ? ratingDelta : 0,
+      };
+      const nextHistory = [entry, ...prev.history].slice(0, heroHistoryLimit);
+      const nextStreak =
+        outcome.value === 1
+          ? prev.streak >= 0
+            ? prev.streak + 1
+            : 1
+          : outcome.value === 0
+          ? prev.streak <= 0
+            ? prev.streak - 1
+            : -1
+          : 0;
+      return {
+        ...prev,
+        wins: prev.wins + (outcome.value === 1 ? 1 : 0),
+        losses: prev.losses + (outcome.value === 0 ? 1 : 0),
+        draws: prev.draws + (outcome.value === 0.5 ? 1 : 0),
+        streak: nextStreak,
+        lastOutcome: outcome.label,
+        history: nextHistory,
+        lastRatingDelta: typeof ratingDelta === "number" ? ratingDelta : prev.lastRatingDelta,
+      };
+    });
+  }
 
   /* --- utils --- */
   function rotateSeatBlueprint(config = [], direction = 1) {
@@ -1986,6 +2119,25 @@ function recordActionToLog({
       saveRLHandHistory(record);
       console.log("[HISTORY] saveRLHandHistory() called successfully");
       debugLog("[HISTORY] saved:", record.handId, record.winner);
+      const heroOutcome = deriveHeroOutcome(record);
+      const ratingMode = phase?.includes("TOURNAMENT") ? "tournament" : "ring";
+      const stageId = phase?.includes("TOURNAMENT")
+        ? `stage-${currentStructure?.level ?? blindLevelIndex + 1}`
+        : "ring";
+      const preGlobal = ratingState.globalRating ?? 1500;
+      const ratingAfter = applyMatchRatings({
+        result: heroOutcome?.value ?? 0,
+        opponentRating: ratingState.skillRating,
+        mixedResult: heroOutcome?.value ?? 0,
+        mode: ratingMode,
+        stageId,
+        metadata: {
+          tableSize: record.tableSize,
+          blindLevel: blindLevelIndex,
+        },
+      });
+      const ratingDelta = (ratingAfter.globalRating ?? preGlobal) - preGlobal;
+      recordHeroTracker(record, heroOutcome, ratingAfter, ratingDelta);
       handSavedRef.current = true;
       // console.debug("Hand saved:", record);
     } catch (e) {
@@ -1994,6 +2146,10 @@ function recordActionToLog({
   }
 
   /* --- UI --- */
+  const heroTrackerTotal = heroTracker.wins + heroTracker.losses + heroTracker.draws;
+  const heroWinRate = heroTrackerTotal
+    ? Math.round(((heroTracker.wins + heroTracker.draws * 0.5) / heroTrackerTotal) * 100)
+    : 0;
   const centerX = typeof window !== "undefined" ? window.innerWidth / 2 : 400;
   const centerY = typeof window !== "undefined" ? window.innerHeight / 2 : 300;
   const radiusX = 350;
@@ -2054,31 +2210,52 @@ function handleCardClick(i) {
   return (
   <div className="flex flex-col h-screen bg-gray-900 text-white">
     {/* -------- Header -------- */}
-    <header className="flex justify-between items-center px-6 py-3 bg-gray-800 shadow-md fixed top-0 left-0 right-0 z-50">
-      <h1 className="text-2xl font-bold text-white">Badugi App</h1>
-
+    <header className="flex flex-col gap-3 px-6 py-3 bg-gray-800 shadow-md fixed top-0 left-0 right-0 z-50">
+      <div className="flex items-center justify-between gap-6">
+        <h1 className="text-2xl font-bold text-white">Badugi App</h1>
+        <div className="flex items-center gap-4 text-xs text-slate-200">
+          <div className="text-right">
+            <p className="text-[10px] uppercase tracking-widest text-slate-400">Global Rating</p>
+            <strong className="text-lg text-white">
+              {Math.round(ratingState.globalRating ?? 1500)}
+            </strong>
+          </div>
+          <div className="px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-semibold uppercase tracking-wider">
+            {rankInfo.label}
+          </div>
+          <div className="text-[11px] text-slate-300">
+            Skill {Math.round(ratingState.skillRating ?? 1500)} · Mixed {Math.round(ratingState.mixedRating ?? 1500)}
+          </div>
+          <button
+            onClick={() => navigate("/leaderboard")}
+            className="px-3 py-1 rounded-full border border-white/30 text-[11px] font-semibold uppercase tracking-wide hover:border-emerald-300 transition"
+          >
+            Leaderboard
+          </button>
+        </div>
+      </div>
       <nav className="flex gap-4">
         <button
           onClick={() => navigate("/")}
-          className="hover:text-yellow-400 transition"
+          className="hover:text-yellow-400 transition text-[13px]"
         >
           Title
         </button>
         <button
           onClick={() => navigate("/settings")}
-          className="hover:text-yellow-400 transition"
+          className="hover:text-yellow-400 transition text-[13px]"
         >
           Settings
         </button>
         <button
           onClick={() => navigate("/profile")}
-          className="hover:text-yellow-400 transition"
+          className="hover:text-yellow-400 transition text-[13px]"
         >
           Profile
         </button>
         <button
           onClick={() => navigate("/history")}
-          className="hover:text-yellow-400 transition"
+          className="hover:text-yellow-400 transition text-[13px]"
         >
           History
         </button>
@@ -2197,6 +2374,102 @@ function handleCardClick(i) {
             </>
           )}
         </div>
+
+        <div className="pointer-events-auto bg-black/70 text-white text-xs rounded-lg p-3 shadow-lg space-y-3">
+          <div className="flex items-center justify-between text-sm font-semibold">
+            <span>Hero Tracker</span>
+            <span className="text-[11px] text-slate-400">
+              {heroTracker.lastOutcome ?? "-"}
+              {heroTracker.streak
+                ? ` - ${heroTracker.streak > 0 ? "+" : ""}${heroTracker.streak}`
+                : ""}
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-[11px] text-slate-400">
+            <div className="text-center">
+              <p className="text-[9px] uppercase tracking-[0.35em] text-slate-500">Wins</p>
+              <strong className="text-emerald-400 text-base">{heroTracker.wins}</strong>
+            </div>
+            <div className="text-center">
+              <p className="text-[9px] uppercase tracking-[0.35em] text-slate-500">Draws</p>
+              <strong className="text-yellow-300 text-base">{heroTracker.draws}</strong>
+            </div>
+            <div className="text-center">
+              <p className="text-[9px] uppercase tracking-[0.35em] text-slate-500">Losses</p>
+              <strong className="text-red-400 text-base">{heroTracker.losses}</strong>
+            </div>
+          </div>
+          <div className="text-[11px] text-slate-400">
+            Win rate: {heroTrackerTotal ? `${heroWinRate}%` : "-"}
+          </div>
+          {heroTracker.history.length ? (
+            <div className="space-y-1">
+              {heroTracker.history.map((entry) => (
+                <div
+                  key={entry.id ?? entry.ts}
+                  className="flex items-center justify-between text-[11px] text-slate-200"
+                >
+                  <span>{entry.outcome}</span>
+                  <span>Pot {entry.pot}</span>
+                  <span className="text-[10px] text-emerald-300">
+                    {entry.ratingDelta >= 0 ? `+${entry.ratingDelta}` : entry.ratingDelta}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[10px] uppercase tracking-[0.35em] text-slate-500">No hero history yet</p>
+          )}
+        </div>
+
+        <div className="pointer-events-auto bg-black/70 text-white text-xs rounded-lg p-3 shadow-lg space-y-3">
+          <div className="flex items-center justify-between text-sm font-semibold">
+            <span>Developer Panel</span>
+            <span className="text-[11px] text-slate-400">AI / P2P</span>
+          </div>
+          <label className="flex flex-col gap-1 text-[10px] uppercase tracking-[0.35em] text-slate-400">
+            Tier Override
+            <select
+              value={devTierOverride ?? ""}
+              onChange={handleTierOverrideChange}
+              className="rounded-full bg-slate-900/70 border border-white/20 px-2 py-1 text-[12px]"
+            >
+              <option value="">Auto (game decides)</option>
+              {tierOptions.map((tier) => (
+                <option key={tier.id} value={tier.id}>
+                  {tier.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="flex flex-wrap gap-2 text-[11px]">
+            <button
+              type="button"
+              onClick={clearTierOverride}
+              className="flex-1 rounded-full border border-red-400/60 px-3 py-1 text-xs font-semibold text-red-200 hover:bg-red-500/10 transition"
+            >
+              Clear Override
+            </button>
+            <button
+              type="button"
+              onClick={toggleP2pCapture}
+              className={`flex-1 rounded-full px-3 py-1 text-xs font-semibold transition ${
+                p2pCaptureEnabled
+                  ? "bg-emerald-500 text-slate-900"
+                  : "border border-white/20 text-white"
+              }`}
+            >
+              P2P Capture {p2pCaptureEnabled ? "Enabled" : "Disabled"}
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={handleExportP2pMatches}
+            className="w-full rounded-full border border-white/30 px-3 py-1 text-[11px] font-semibold hover:bg-white/10 transition"
+          >
+            Export P2P JSONL
+          </button>
+        </div>
       </div>
 
       {/* Core game surface */}
@@ -2299,6 +2572,7 @@ function handleCardClick(i) {
           )}
         </div>
       </div>
+
     </div>
   </div>
 );

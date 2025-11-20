@@ -68,3 +68,10 @@ playwright/.cache/
 tests/scraping/logs/*
 !tests/scraping/logs/.gitkeep
 !tests/scraping/logs/screenshots/.gitkeep
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

@@ -17,6 +17,8 @@ export default function PlayerStatusBoard({
   turn = null,
   totalPot = 0,
   positionLabels = [],
+  aiTierLabel = null,
+  aiTierDescriptor = null,
 }) {
   if (!players || players.length === 0) return null;
 
@@ -38,6 +40,7 @@ export default function PlayerStatusBoard({
         {players.map((player, idx) => {
           const badges = statusBadges(player, idx === heroIndex, turn === idx);
           const seatLabel = positionLabels[idx] ?? `Seat ${idx + 1}`;
+          const showTierBadge = idx !== heroIndex && aiTierLabel;
           return (
             <div
               key={`${player.name}-${idx}`}
@@ -64,6 +67,14 @@ export default function PlayerStatusBoard({
                 </div>
               </div>
               <div className="mt-1 flex flex-wrap gap-1 text-[0.65rem] uppercase tracking-wide">
+                {showTierBadge && (
+                  <span
+                    className="rounded-full bg-indigo-900/70 px-2 py-0.5 text-indigo-100"
+                    title={aiTierDescriptor ?? "AI tier target ranges"}
+                  >
+                    TIER: {aiTierLabel}
+                  </span>
+                )}
                 {badges.length === 0 ? (
                   <span className="rounded-full bg-slate-700/80 px-2 py-0.5 text-slate-200">
                     READY

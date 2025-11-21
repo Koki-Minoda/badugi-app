@@ -82,6 +82,7 @@ export const TOURNAMENT_STAGES = [
       requires: { localWins: 1 },
       text: "地方優勝が1回以上で参加可能",
     },
+    proBlindSheetId: "national-premier-pro",
   },
   {
     id: "world",
@@ -112,6 +113,7 @@ export const TOURNAMENT_STAGES = [
       requires: { nationalWins: 2 },
       text: "全国優勝が2回以上で参加可能",
     },
+    proBlindSheetId: "world-championship-pro",
   },
 ];
 

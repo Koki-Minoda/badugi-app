@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useRatingState, exportP2PMatchesAsJSONL } from "../utils/ratingState.js";
+import { useRatingState } from "../hooks/useRatingState.js";
 import { loadTitleSettings } from "../utils/titleSettings";
 import { computeRankFromRating } from "../utils/ratingState.js";
+import { exportP2PMatchesAsJSONL } from "../utils/ratingState.js";
 
 const MODE_LABELS = {
   all: "全モード",

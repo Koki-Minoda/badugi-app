@@ -3,23 +3,23 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Player from "./components/Player";
 import Controls from "./components/Controls";
 import PlayerStatusBoard from "./components/PlayerStatusBoard";
-import { DEFAULT_SEAT_TYPES, DEFAULT_STARTING_STACK, TOURNAMENT_STRUCTURE } from "../src/config/tournamentStructure";
-import { DeckManager   } from "../games/badugi/utils/deck";
+import { DEFAULT_SEAT_TYPES, DEFAULT_STARTING_STACK, TOURNAMENT_STRUCTURE } from "../config/tournamentStructure";
+import { DeckManager } from "../games/badugi/utils/deck";
 import { debugLog } from "../utils/debugLog";
-import { runDrawRound } from "../games/badugi/logic/drawRound";
-import { runShowdown } from "../games/badugi/logic/showdown";
+import { runDrawRound } from "../games/badugi/engine/drawRound";
+import { runShowdown } from "../games/badugi/engine/showdown";
 import { evaluateBadugi, compareBadugi, getWinnersByBadugi } from "../games/badugi/utils/badugiEvaluator";
 
 import {
-   aliveBetPlayers,
-   aliveDrawPlayers,
-   nextAliveFrom,
-   maxBetThisRound,
-   settleStreetToPots,
-   isBetRoundComplete,
-   finishBetRoundFrom,
-   closingSeatForAggressor,
- } from "../games/badugi/logic/roundFlow.js"; 
+  aliveBetPlayers,
+  aliveDrawPlayers,
+  nextAliveFrom,
+  maxBetThisRound,
+  settleStreetToPots,
+  isBetRoundComplete,
+  finishBetRoundFrom,
+  closingSeatForAggressor,
+} from "../games/badugi/engine/roundFlow.js";
 
 // History persistence helpers
 import {
@@ -43,6 +43,8 @@ import {
   DEV_EVENTS,
 } from "./utils/devOverrides.js";
 import { listTierIds, getTierById } from "../ai/tierManager.js";
+import { useGameEngine } from "./engine/GameEngineContext";
+import { mergeEngineSnapshot } from "./utils/engineSnapshotUtils.js";
 
 // === TRACE HELPER (debug only) ===
 function trace(tag, extra = {}) {
@@ -102,7 +104,7 @@ export default function App() {
     () => ({
       name: titleSettings.playerName?.trim() || "You",
       titleBadge: titleSettings.playerTitle?.trim() || "",
-      avatar: titleSettings.avatar || "♦️",
+      avatar: titleSettings.avatar || "default_avatar",
     }),
     [titleSettings]
   );
@@ -198,6 +200,9 @@ export default function App() {
     )
   );
   const [deck, setDeck] = useState([]);
+  const [engineState, setEngineState] = useState(null);
+  const engineStateRef = useRef(null);
+  const { engine } = useGameEngine();
   const [dealerIdx, setDealerIdx] = useState(0);
 
   const [phase, setPhase] = useState("BET"); // BET / DRAW / SHOWDOWN
@@ -232,6 +237,42 @@ export default function App() {
 
   const handSavedRef = useRef(false);
   const handIdRef = useRef(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const helper = {
+      simulateBust(seatIndex = 3) {
+        setPlayers((prev) =>
+          prev.map((player, idx) =>
+            idx === seatIndex
+              ? {
+                  ...player,
+                  stack: 0,
+                  betThisRound: 0,
+                  folded: true,
+                  allIn: true,
+                  isBusted: true,
+                  seatOut: true,
+                  hasActedThisRound: true,
+                  lastAction: "BUSTED",
+                }
+              : player
+          )
+        );
+      },
+      setDealerIndex(next) {
+        if (typeof next !== "number") return;
+        const normalized = Math.max(0, Math.min(NUM_PLAYERS - 1, Math.floor(next)));
+        setDealerIdx(normalized);
+      },
+    };
+    window.__BADUGI_E2E__ = helper;
+    return () => {
+      if (window.__BADUGI_E2E__ === helper) {
+        delete window.__BADUGI_E2E__;
+      }
+    };
+  }, []);
 
   const [debugMode, setDebugMode] = useState(false);
   function debugLog(...args) {
@@ -557,7 +598,7 @@ function recordActionToLog({
         hasDrawn: false,
         lastDrawCount: 0,
         titleBadge: isHuman ? profile?.titleBadge ?? "" : "",
-        avatar: isHuman ? profile?.avatar ?? "♦️" : undefined,
+        avatar: isHuman ? profile?.avatar ?? "default_avatar" : undefined,
       };
     });
   }
@@ -621,6 +662,10 @@ function recordActionToLog({
 
   function goShowdownNow(playersSnap) {
     debugLog("[SHOWDOWN] goShowdownNow (All-in shortcut) called");
+
+    if (engine && handleEngineShowdown(drawRound)) {
+      return;
+    }
 
     const active = playersSnap.filter((p) => !p.folded);
     if (active.length === 0) return;
@@ -907,23 +952,26 @@ function recordActionToLog({
 
         setTransitioning(true);
         setTimeout(() => {
-          finishBetRoundFrom({
-            players: snap,
-            pots,
-            setPlayers,
-            setPots,
-            drawRound,
-            setDrawRound,
-            setPhase,
-            setTurn,
-            dealerIdx,
-            NUM_PLAYERS,
-            MAX_DRAWS,
-            runShowdown,
-            dealNewHand,
-            setShowNextButton,
-          });
-          setTransitioning(false);
+          const handled = handleEngineRoundTransition(drawRound, dealerIdx);
+          if (!handled) {
+            finishBetRoundFrom({
+              players: snap,
+              pots,
+              setPlayers,
+              setPots,
+              drawRound,
+              setDrawRound,
+              setPhase,
+              setTurn,
+              dealerIdx,
+              NUM_PLAYERS,
+              MAX_DRAWS,
+              runShowdown,
+              dealNewHand,
+              setShowNextButton,
+            });
+            setTransitioning(false);
+          }
         }, 100);
         return;
       }
@@ -1412,6 +1460,28 @@ function recordActionToLog({
 
     const next = nextAliveFrom(snap, actedIndex);
     setPlayers(snap);
+    function scheduleFinish() {
+      setTransitioning(true);
+      setTimeout(() => {
+        finishBetRoundFrom({
+          players: snap,
+          pots,
+          setPlayers,
+          setPots,
+          drawRound,
+          setDrawRound,
+          setPhase,
+          setTurn,
+          dealerIdx,
+          NUM_PLAYERS,
+          MAX_DRAWS,
+          runShowdown,
+          dealNewHand,
+          setShowNextButton,
+        });
+        setTransitioning(false);
+      }, 100);
+    }
     
     // ------------------------
     // ------------------------
@@ -1492,30 +1562,16 @@ function recordActionToLog({
             return;
           }
 
-        setTransitioning(true);
-        setTimeout(() => {
-          finishBetRoundFrom({
-            players: snap,
-            pots,
-            setPlayers,
-            setPots,
-            drawRound,
-            setDrawRound,
-            setPhase,
-            setTurn,
-            dealerIdx,
-            NUM_PLAYERS,
-            MAX_DRAWS,
-            runShowdown,
-            dealNewHand,
-            setShowNextButton,
-          });
-          setTransitioning(false);
-        }, 100);
+        scheduleFinish();
+        return;
+      }
+      if (nextAlive === null) {
+        debugLog("[BET] No next alive player, forcing finish");
+        scheduleFinish();
         return;
       }
       if (next === null) return;
-      if (nextAlive !== null) setTurn(nextAlive);
+      setTurn(nextAlive);
       return;
     }
 
@@ -1569,32 +1625,186 @@ function recordActionToLog({
   }
 
   /* --- actions: BET --- */
+  function syncEngineSnapshot(snapshot) {
+    if (!snapshot) return;
+    const merged = mergeEngineSnapshot(
+      {
+        players,
+        pots,
+        metadata: {
+          currentBet,
+          betHead,
+          lastAggressor,
+          actingPlayerIndex: turn,
+        },
+        currentBet,
+        betHead,
+        lastAggressor,
+        turn,
+        deck,
+      },
+      snapshot
+    );
+
+    setPlayers(merged.players);
+    setPots(merged.pots);
+    setCurrentBet(merged.metadata.currentBet);
+    setBetHead(merged.metadata.betHead);
+    setLastAggressor(merged.metadata.lastAggressor);
+    setTurn(merged.metadata.actingPlayerIndex);
+    setDeck(merged.deck);
+    const normalizedSnapshot = {
+      ...snapshot,
+      players: merged.players,
+      pots: merged.pots,
+      deck: merged.deck,
+      metadata: merged.metadata,
+    };
+    engineStateRef.current = normalizedSnapshot;
+    setEngineState(normalizedSnapshot);
+  }
+
+  function handleHeroAction(type, metadata = {}) {
+    if (!engine) return;
+    const baseState = engineStateRef.current ?? {
+      players,
+      pots,
+      metadata: { currentBet },
+    };
+    const nextState = engine.applyPlayerAction(baseState, {
+      seatIndex: 0,
+      type,
+      metadata,
+    });
+    if (nextState) {
+      syncEngineSnapshot(nextState);
+      recordActionToLog({
+        phase: "BET",
+        round: currentBetRoundIndex(),
+        seat: 0,
+        playerState: nextState.players?.[0] ?? players[0],
+        type,
+        metadata,
+      });
+      saveRLHandHistory(nextState);
+    }
+  }
+
   function playerFold() {
     if (phase !== "BET") return;
-    const snap = [...players];
-    const me = { ...snap[0] };
-    const stackBefore = me.stack;
-    const betBefore = me.betThisRound;
-    me.folded = true;
-    me.lastAction = "Fold";
-    me.hasActedThisRound = true;
-    logAction(0, "Fold");
-    snap[0] = me;
-    shiftAggressorsAfterFold(snap, 0);
-    recordActionToLog({
-      phase: "BET",
-      round: currentBetRoundIndex(),
-      seat: 0,
-      playerState: me,
-      type: me.lastAction,
-      stackBefore,
-      stackAfter: me.stack,
-      betBefore,
-      betAfter: me.betThisRound,
-      raiseCountTable: raiseCountThisRound,
+    handleHeroAction("Fold");
+  }
+
+  function getEngineBaseState() {
+    return engineStateRef.current ?? {
+      players,
+      pots,
+      metadata: {
+        currentBet,
+        betHead,
+        lastAggressor,
+        actingPlayerIndex: turn,
+      },
+      deck,
+    };
+  }
+
+  function handleEngineShowdown(drawRoundParam = drawRound) {
+    if (!engine) return false;
+    const baseState = getEngineBaseState();
+    const outcome = engine.resolveShowdown(baseState, { cloneState: false });
+    if (!outcome?.state) return false;
+    syncEngineSnapshot({
+      players: outcome.state.players,
+      pots: outcome.state.pots,
+      metadata: outcome.state.metadata,
+      deck: outcome.state.deck ?? deck,
+    });
+    runShowdown({
+      players: outcome.state.players,
+      setPlayers,
+      pots: outcome.state.pots,
+      setPots,
+      dealerIdx,
+      dealNewHand,
+      setShowNextButton,
+      setPhase,
+      setDrawRound,
+      setTurn,
+      setTransitioning,
+      setCurrentBet,
+      recordActionToLog,
+      drawRound: drawRoundParam,
+      onHandFinished,
+      precomputedResult: {
+        summary: outcome.summary ?? [],
+        totalPot: outcome.totalPot ?? 0,
+        players: outcome.state.players,
+        pots: outcome.state.pots,
+      },
+      engineResolveShowdown: () => outcome,
+    });
+    return true;
+  }
+
+  function handleEngineRoundTransition(drawRoundValue, dealerIndexValue) {
+    if (!engine) return false;
+    const baseState = getEngineBaseState();
+    const outcome = engine.advanceAfterBet(baseState, {
+      drawRound: drawRoundValue,
+      maxDraws: MAX_DRAWS,
+      dealerIndex: dealerIndexValue,
+      numPlayers: NUM_PLAYERS,
+    });
+    if (!outcome?.state) return false;
+    const state = outcome.state;
+    syncEngineSnapshot({
+      players: state.players,
+      pots: state.pots,
+      metadata: state.metadata ?? outcome.metadata ?? baseState.metadata,
+      deck: state.deck ?? deck,
     });
 
-    afterBetActionWithSnapshot(snap, 0);
+    if (outcome.showdown || outcome.street === "SHOWDOWN") {
+      runShowdown({
+        players: state.players,
+        setPlayers,
+        pots: state.pots,
+        setPots,
+        dealerIdx: dealerIndexValue,
+        dealNewHand,
+        setShowNextButton,
+        setPhase,
+        setDrawRound,
+        setTurn,
+        setTransitioning,
+        setCurrentBet,
+        recordActionToLog,
+        drawRound: drawRoundValue,
+        onHandFinished,
+        precomputedResult: {
+          summary: outcome.showdownSummary ?? [],
+          totalPot: outcome.showdownTotal ?? 0,
+          players: state.players,
+          pots: state.pots,
+        },
+        engineResolveShowdown: () => outcome,
+      });
+      return true;
+    }
+
+    if (outcome.street === "DRAW") {
+      const nextDraw = outcome.drawRoundIndex ?? drawRoundValue + 1;
+      setDrawRound(nextDraw);
+      setPhase("DRAW");
+      const nextActing =
+        outcome.actingPlayerIndex ??
+        calcDrawStartIndex(dealerIndexValue, nextDraw, NUM_PLAYERS);
+      setTurn(nextActing);
+      return true;
+    }
+
+    return false;
   }
 
   function playerCall() {
@@ -2224,7 +2434,7 @@ function handleCardClick(i) {
             {rankInfo.label}
           </div>
           <div className="text-[11px] text-slate-300">
-            Skill {Math.round(ratingState.skillRating ?? 1500)} · Mixed {Math.round(ratingState.mixedRating ?? 1500)}
+            Skill {Math.round(ratingState.skillRating ?? 1500)} | Mixed {Math.round(ratingState.mixedRating ?? 1500)}
           </div>
           <button
             onClick={() => navigate("/leaderboard")}
@@ -2481,25 +2691,31 @@ function handleCardClick(i) {
 
         {/* Player seats */}
         <div className="players-grid grid grid-cols-1 gap-4 px-6 sm:grid-cols-2 lg:block lg:px-0">
-          {players.map((p, i) => (
-            <div
-              key={`seat-${i}`}
-              className={`mb-4 lg:mb-0 ${seatLayouts[i] ?? ""}`}
-            >
-              <Player
-                player={{
-                  ...p,
-                  name: `${p.name} (${positionName(i)})`,
-                }}
-                index={i}
-                selfIndex={0}
-                phase={phase}
-                turn={turn}
-                dealerIdx={dealerIdx}
-                onCardClick={handleCardClick}
-              />
-            </div>
-          ))}
+          {players.map((p, i) => {
+            const seatLabel = positionName(i);
+            const seatTestId = seatLabel === "SB" ? "seat-sb" : undefined;
+            return (
+              <div
+                key={`seat-${i}`}
+                className={`mb-4 lg:mb-0 ${seatLayouts[i] ?? ""}`}
+                data-testid={seatTestId}
+              >
+                <Player
+                  player={{
+                    ...p,
+                    name: `${p.name} (${seatLabel})`,
+                  }}
+                  index={i}
+                  selfIndex={0}
+                  phase={phase}
+                  turn={turn}
+                  dealerIdx={dealerIdx}
+                  onCardClick={handleCardClick}
+                  positionLabel={seatLabel}
+                />
+              </div>
+            );
+          })}
         </div>
 
       {phase === "TOURNAMENT_END" && (

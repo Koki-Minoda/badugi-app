@@ -1,5 +1,5 @@
-import tiers from "../../config/ai/tiers.json" assert { type: "json" };
-import { getStageById } from "../../config/tournamentStages.js";
+import tiers from "../config/ai/tiers.json";
+import { getStageById } from "../config/tournamentStages.js";
 import { selectModelForVariant } from "./modelRouter.js";
 
 const TIER_MAP = new Map(tiers.map((tier) => [tier.id, Object.freeze(tier)]));

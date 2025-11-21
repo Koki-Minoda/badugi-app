@@ -1,3 +1,5 @@
+import re
+
 from playwright.sync_api import Page, expect
 
 from .config import CONFIG
@@ -11,6 +13,80 @@ def _wait_ms():
 def _goto(page: Page, path: str) -> None:
     base_url = CONFIG.base_url.rstrip("/")
     page.goto(f"{base_url}{path}", wait_until="domcontentloaded")
+
+
+def start_flow_smoke(page: Page) -> None:
+    _goto(page, "/")
+    heading = page.get_by_role("heading", name=re.compile("badugi", re.IGNORECASE))
+    expect(heading).to_be_visible(timeout=_wait_ms())
+
+    start_button = page.get_by_role("button", name=re.compile("start", re.IGNORECASE))
+    expect(start_button).to_be_enabled(timeout=_wait_ms())
+    start_button.click()
+
+    page.wait_for_url("**/game*", timeout=_wait_ms())
+    stack_nodes = page.locator("text=Stack")
+    expect(stack_nodes).to_have_count(4, timeout=_wait_ms())
+
+    action_button = page.get_by_role("button", name=re.compile("call|check|raise|fold", re.IGNORECASE))
+    expect(action_button).to_be_visible(timeout=_wait_ms())
+
+    page.screenshot(path=str(CONFIG.screenshot_dir / "start-flow.png"))
+
+
+def hand_completion_flow(page: Page) -> None:
+    _goto(page, "/game")
+    action_button = page.get_by_role("button", name=re.compile("call|check|raise|fold", re.IGNORECASE))
+    expect(action_button).to_be_visible(timeout=_wait_ms() * 2)
+
+    stacks = page.locator("text=Stack")
+    expect(stacks).to_have_count(4, timeout=_wait_ms())
+
+    action_button.click()
+    page.wait_for_timeout(500)
+
+    draw_button = page.get_by_role("button", name=re.compile("draw|stand pat", re.IGNORECASE))
+    expect(draw_button).to_be_visible(timeout=_wait_ms())
+    draw_button.click()
+
+    confirm_button = page.get_by_role("button", name=re.compile("confirm|finish draw", re.IGNORECASE))
+    if confirm_button.count():
+        confirm_button.click()
+
+    showdown_heading = page.get_by_role("heading", name=re.compile("showdown", re.IGNORECASE))
+    expect(showdown_heading).to_be_visible(timeout=_wait_ms() * 3)
+
+    winner_badge = page.get_by_text(re.compile("winner", re.IGNORECASE))
+    expect(winner_badge).to_be_visible(timeout=_wait_ms())
+
+    pot_info = page.get_by_text(re.compile("pot", re.IGNORECASE))
+    expect(pot_info).to_be_visible(timeout=_wait_ms())
+
+    next_hand = page.get_by_role("button", name=re.compile("next hand", re.IGNORECASE))
+    expect(next_hand).to_be_visible(timeout=_wait_ms() * 3)
+    next_hand.click()
+
+    hero_stack = page.get_by_text(re.compile("stack", re.IGNORECASE)).first
+    expect(hero_stack).to_contain_text(re.compile(r"\d+"), timeout=_wait_ms())
+
+    page.screenshot(path=str(CONFIG.screenshot_dir / "hand-completion.png"))
+
+
+def player_bust_flow(page: Page) -> None:
+    _goto(page, "/game")
+    page.wait_for_timeout(500)
+    page.evaluate("window.__BADUGI_E2E__?.simulateBust?.(3)")
+
+    busted_badge = page.get_by_text(re.compile("busted", re.IGNORECASE))
+    expect(busted_badge).to_be_visible(timeout=_wait_ms())
+
+    stack_zero = page.get_by_text(re.compile(r"Stack\\s+0"), exact=False)
+    expect(stack_zero).to_be_visible(timeout=_wait_ms())
+
+    action_button = page.get_by_role("button", name=re.compile("call|check|raise|fold", re.IGNORECASE))
+    expect(action_button).to_be_visible(timeout=_wait_ms())
+
+    page.screenshot(path=str(CONFIG.screenshot_dir / "player-bust.png"))
 
 
 def _unlock_progress(page: Page) -> None:

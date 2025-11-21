@@ -34,6 +34,7 @@ export default function Player({
   onCardClick,
   phase,
   isWinner = false,
+  positionLabel,
 }) {
   const isHero = index === selfIndex;
   const isActive = turn === index;
@@ -54,6 +55,7 @@ export default function Player({
 
   return (
     <div
+      data-testid={positionLabel ? `seat-${positionLabel.toLowerCase()}` : undefined}
       className={`relative rounded-2xl border border-white/10 bg-gray-900/80 p-3 shadow-lg backdrop-blur flex flex-col gap-2 ${
         player.folded ? "opacity-60" : ""
       } ${isActive ? "ring-2 ring-yellow-400" : ""} ${isWinner ? "ring-4 ring-emerald-400 animate-pulse" : ""}`}

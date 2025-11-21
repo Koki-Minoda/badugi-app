@@ -3,7 +3,7 @@ import {
   getVariantById,
   getEngineTemplateContext,
 } from "../../games/config/variantCatalog.js";
-import defaultProfiles from "../../config/mixed/mixedProfiles.json" assert { type: "json" };
+import defaultProfiles from "../../config/mixed/mixedProfiles.json";
 import { PRO_MIXED_PRESETS } from "../../config/mixed/proPresets.js";
 import { listEngines } from "../../games/core/engineRegistry.js";
 import {

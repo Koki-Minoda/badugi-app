@@ -1,4 +1,4 @@
-import registry from "../../config/ai/modelRegistry.json" assert { type: "json" };
+import registry from "../config/ai/modelRegistry.json";
 
 const REGISTRY = registry.map((entry) => ({
   ...entry,

@@ -1,3 +1,5 @@
+import proBlindSheets from "./tournament/proBlindSheets.json";
+
 const level = (lvl, sb, bb, ante = 0) => ({ level: lvl, sb, bb, ante });
 
 export const TOURNAMENT_BLIND_SHEETS = {
@@ -116,6 +118,25 @@ export function getBlindSheetForStage(stageId) {
   if (direct) return direct;
   return (
     Object.values(TOURNAMENT_BLIND_SHEETS).find((sheet) =>
+      Array.isArray(sheet.stageIds) && sheet.stageIds.includes(stageId)
+    ) ?? null
+  );
+}
+
+const PRO_BLIND_SHEET_MAP = proBlindSheets.reduce((acc, sheet) => {
+  acc[sheet.id] = { ...sheet, isPro: true };
+  return acc;
+}, {});
+
+export function getProBlindSheetById(sheetId) {
+  if (!sheetId) return null;
+  return PRO_BLIND_SHEET_MAP[sheetId] ?? null;
+}
+
+export function getProBlindSheetForStage(stageId) {
+  if (!stageId) return null;
+  return (
+    Object.values(PRO_BLIND_SHEET_MAP).find((sheet) =>
       Array.isArray(sheet.stageIds) && sheet.stageIds.includes(stageId)
     ) ?? null
   );

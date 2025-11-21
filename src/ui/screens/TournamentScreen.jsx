@@ -1,7 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { TOURNAMENT_STAGES } from "../../config/tournamentStages";
-import { getBlindSheetForStage } from "../../config/tournamentBlindSheets";
+import {
+  getBlindSheetForStage,
+  getProBlindSheetById,
+  getProBlindSheetForStage,
+} from "../../config/tournamentBlindSheets";
 import {
   loadTournamentProgress,
   getStageEligibility,
@@ -143,6 +147,7 @@ export default function TournamentScreen() {
             トレーニングへ
           </button>
         </div>
+        </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-6 pb-16 space-y-8">
@@ -246,7 +251,11 @@ export default function TournamentScreen() {
             const locked = !eligibility.eligible;
             const disabled = locked || (!afford.ok && stage.entryFee > 0);
             const primaryPrize = stage.prizeTable[0];
-            const sheet = getBlindSheetForStage(stage.id);
+            const proSheet =
+              stage.proBlindSheetId
+                ? getProBlindSheetById(stage.proBlindSheetId)
+                : getProBlindSheetForStage(stage.id);
+            const sheet = proSheet ?? getBlindSheetForStage(stage.id);
             const breakInfo = formatBreakInfo(sheet);
             const previewLevels = sheet?.levels?.slice(0, BLIND_PREVIEW_ROWS) ?? [];
             return (
@@ -291,13 +300,18 @@ export default function TournamentScreen() {
                         バンクロールが不足しています。
                       </p>
                     )}
+                    {sheet.notes && (
+                      <p className="mt-2 text-[12px] text-slate-300">{sheet.notes}</p>
+                    )}
                   </div>
                 </div>
 
                 {sheet && (
                   <div className="rounded-2xl border border-white/5 bg-slate-950/50 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400 uppercase tracking-widest">
-                      <span>Blind Structure Preview</span>
+                      <span>
+                        {proSheet ? "Pro Blind Structure" : "Blind Structure Preview"}
+                      </span>
                       <span>
                         {sheet.levelDurationMinutes}分 / LEVEL
                         {breakInfo ? ` ・ ${breakInfo}` : ""}

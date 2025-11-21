@@ -1,4 +1,4 @@
-import { getVariantById } from "../../games/config/variantCatalog.js";
+import { getVariantById } from "../games/config/variantCatalog.js";
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));

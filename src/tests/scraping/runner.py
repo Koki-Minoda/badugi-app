@@ -1,15 +1,24 @@
+import sys
+print("runner sys.executable:", sys.executable)
+
 import argparse
 from playwright.sync_api import sync_playwright
 
 from .scenarios import (
     dealers_choice_smoke,
+    hand_completion_flow,
     mixed_rotation_smoke,
+    player_bust_flow,
     pro_rules_smoke,
     smoke_test,
+    start_flow_smoke,
 )
 
 SCENARIOS = {
     "smoke": smoke_test,
+    "start-flow": start_flow_smoke,
+    "hand-completion": hand_completion_flow,
+    "player-bust": player_bust_flow,
     "dealers-choice": dealers_choice_smoke,
     "mixed-rotation": mixed_rotation_smoke,
     "pro-rules": pro_rules_smoke,

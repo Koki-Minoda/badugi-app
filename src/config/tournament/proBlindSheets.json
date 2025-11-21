@@ -1,0 +1,70 @@
+[
+  {
+    "id": "national-premier-pro",
+    "stageIds": ["national"],
+    "label": "National Pro Championship",
+    "type": "pro",
+    "levelDurationMinutes": 12,
+    "breakEveryLevels": 4,
+    "breakDurationMinutes": 10,
+    "levels": [
+      { "level": 1, "sb": 100, "bb": 200 },
+      { "level": 2, "sb": 150, "bb": 300 },
+      { "level": 3, "sb": 200, "bb": 400, "ante": 25 },
+      { "level": 4, "sb": 300, "bb": 600, "ante": 25 },
+      { "level": 5, "sb": 400, "bb": 800, "ante": 50 },
+      { "level": 6, "sb": 600, "bb": 1200, "ante": 75 },
+      { "level": 7, "sb": 800, "bb": 1600, "ante": 100 },
+      { "level": 8, "sb": 1000, "bb": 2000, "ante": 150 },
+      { "level": 9, "sb": 1250, "bb": 2500, "ante": 200 },
+      { "level": 10, "sb": 1500, "bb": 3000, "ante": 250 },
+      { "level": 11, "sb": 2000, "bb": 4000, "ante": 300 },
+      { "level": 12, "sb": 2500, "bb": 5000, "ante": 400 },
+      { "level": 13, "sb": 3000, "bb": 6000, "ante": 500 },
+      { "level": 14, "sb": 4000, "bb": 8000, "ante": 600 },
+      { "level": 15, "sb": 5000, "bb": 10000, "ante": 750 }
+    ],
+    "finalTable": {
+      "maxPlayers": 9,
+      "specialRounds": ["Final Table opening ceremony", "Banner introduction"]
+    },
+    "notes": "Level-up speed and antes mirror a live pro regional final."
+  },
+  {
+    "id": "world-championship-pro",
+    "stageIds": ["world"],
+    "label": "World Championship Pro Sheet",
+    "type": "pro",
+    "levelDurationMinutes": 15,
+    "breakEveryLevels": 3,
+    "breakDurationMinutes": 12,
+    "levels": [
+      { "level": 1, "sb": 250, "bb": 500 },
+      { "level": 2, "sb": 400, "bb": 800 },
+      { "level": 3, "sb": 600, "bb": 1200, "ante": 50 },
+      { "level": 4, "sb": 800, "bb": 1600, "ante": 75 },
+      { "level": 5, "sb": 1000, "bb": 2000, "ante": 100 },
+      { "level": 6, "sb": 1500, "bb": 3000, "ante": 150 },
+      { "level": 7, "sb": 2000, "bb": 4000, "ante": 200 },
+      { "level": 8, "sb": 2500, "bb": 5000, "ante": 250 },
+      { "level": 9, "sb": 3500, "bb": 7000, "ante": 300 },
+      { "level": 10, "sb": 5000, "bb": 10000, "ante": 400 },
+      { "level": 11, "sb": 7000, "bb": 14000, "ante": 500 },
+      { "level": 12, "sb": 10000, "bb": 20000, "ante": 600 },
+      { "level": 13, "sb": 15000, "bb": 30000, "ante": 750 },
+      { "level": 14, "sb": 20000, "bb": 40000, "ante": 1000 },
+      { "level": 15, "sb": 30000, "bb": 60000, "ante": 1200 },
+      { "level": 16, "sb": 40000, "bb": 80000, "ante": 1500 },
+      { "level": 17, "sb": 60000, "bb": 120000, "ante": 2000 },
+      { "level": 18, "sb": 80000, "bb": 160000, "ante": 3000 },
+      { "level": 19, "sb": 100000, "bb": 200000, "ante": 4000 },
+      { "level": 20, "sb": 150000, "bb": 300000, "ante": 5000 },
+      { "level": 21, "sb": 200000, "bb": 400000, "ante": 6000 }
+    ],
+    "finalTable": {
+      "maxPlayers": 9,
+      "specialRounds": ["Final Table banner", "Winner trophy pass"]
+    },
+    "notes": "Broken-break intervals and deep stacks reflect the World Championship format."
+  }
+]

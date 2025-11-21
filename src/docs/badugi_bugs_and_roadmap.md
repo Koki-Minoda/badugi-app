@@ -107,7 +107,7 @@ All spec documents from 09 onward are still unimplemented. The following task li
 - [x] Dealer's Choice roulette queue links `/game?mode=dealers-choice` and ships with `tests/scraping/scenarios/dealers_choice.md`.
 
 ### Spec 17: Pro Tournament System
-- [ ] Define pro blind sheets (`config/tournament/proBlindSheets.json`).
+- [x] Define pro blind sheets (`config/tournament/proBlindSheets.json`).
 - [ ] Implement advanced multi-table balancing and logs.
 - [ ] Add a break system with timers and UI countdown.
 - [ ] Implement final-table presentations (animations, banners, camera zoom).
@@ -164,3 +164,8 @@ All spec documents from 09 onward are still unimplemented. The following task li
 - [ ] Stub spectator mode and WebRTC direct mode for future work.
 - [ ] Publish REST + WebSocket API docs (OpenAPI/AsyncAPI).
 - [ ] Add anti-cheat / fairness monitoring for online games.
+
+### Spec 23: App.jsx State Restoration
+- [ ] Reconcile `ui/App.jsx`’s documented behaviors (seat manager/hero tracker/rating HUD/developer panel, SB/BB clamp guards, draw/bet transitions, logging hooks, and engine metadata sync) with the descriptions in `docs/bug_fixes.md`/`docs/engine_migration.md` to confirm nothing was lost during the rollback.
+- [ ] Re-implement or verify the App helpers named in those docs (`hasActedThisRound`, `shiftAggressorsAfterFold`, `recordActionToLog` wiring, hero tracker storage, developer panel toggles) and note any gaps in this Spec23 entry so there is a clear follow-up if the codebase deviates again.
+- [ ] After the above is confirmed, capture the updated checklist details for Spec23 (marking each item as complete) so future roadmap audits can rely on this record before closing the spec.

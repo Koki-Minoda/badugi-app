@@ -1,8 +1,7 @@
-// @ts-check
-const { defineConfig } = require('@playwright/test');
+import { defineConfig } from '@playwright/test';
 
-module.exports = defineConfig({
-  testDir: './tests',
+export default defineConfig({
+  testDir: './e2e',
   timeout: 30000,
   use: {
     headless: true,
@@ -10,8 +9,9 @@ module.exports = defineConfig({
   },
 
   webServer: {
-    command: 'npm start',
+    command: 'npm run dev -- --host 127.0.0.1 --port 3000',
     port: 3000,
+    timeout: 120000,
     reuseExistingServer: true,
   },
 });

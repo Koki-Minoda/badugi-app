@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "P2P Sync Message Schema",
+  "description": "Defines every WebSocket event that can flow over /ws/room/{roomId}/play.",
+  "type": "object",
+  "properties": {
+    "event": {
+      "type": "string",
+      "enum": [
+        "join_room",
+        "leave_room",
+        "action",
+        "reaction",
+        "updated_state",
+        "secure_deal",
+        "discard",
+        "showdown",
+        "heartbeat",
+        "room_state",
+        "error",
+        "history"
+      ]
+    },
+    "payload": {
+      "type": "object",
+      "description": "The payload differs per event type; see event-specific definitions.",
+      "properties": {
+        "roomId": { "type": "string" },
+        "playerId": { "type": "string" },
+        "displayName": { "type": "string" },
+        "type": { "type": "string" },
+        "amount": { "type": "integer", "minimum": 0 },
+        "sequenceId": { "type": "integer" },
+        "handId": { "type": "string" },
+        "pot": { "type": "integer" },
+        "bets": {
+          "type": "object",
+          "additionalProperties": { "type": "integer" }
+        },
+        "stacks": {
+          "type": "object",
+          "additionalProperties": { "type": "integer" }
+        },
+        "cards": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "playerId": { "type": "string" },
+              "cardToken": {
+                "type": "object",
+                "required": ["keyId", "iv", "tag", "ciphertext", "slot"],
+                "properties": {
+                  "keyId": { "type": "string" },
+                  "iv": { "type": "string" },
+                  "tag": { "type": "string" },
+                  "ciphertext": { "type": "string" },
+                  "slot": { "type": "string" }
+                }
+              }
+            },
+            "required": ["playerId", "cardToken"]
+          }
+        },
+        "message": { "type": "string" },
+        "code": { "type": "string" },
+        "recoverable": { "type": "boolean" },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "events": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
+      }
+    }
+  },
+  "required": ["event", "payload"]
+}

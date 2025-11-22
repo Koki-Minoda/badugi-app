@@ -11,6 +11,9 @@ export function mergeEngineSnapshot(currentState, snapshot) {
         actingPlayerIndex: defaultMeta.actingPlayerIndex ?? 0,
       },
       deck: currentState?.deck ?? null,
+      gameId: currentState?.gameId ?? null,
+      engineId:
+        currentState?.engineId ?? currentState?.gameId ?? null,
     };
   }
 
@@ -18,11 +21,17 @@ export function mergeEngineSnapshot(currentState, snapshot) {
   const nextPots = snapshot.pots ?? currentState?.pots ?? [];
   const nextDeck = snapshot.deck ?? currentState?.deck ?? null;
   const incomingMeta = snapshot.metadata ?? {};
+  const nextGameId =
+    snapshot.gameId ?? currentState?.gameId ?? currentState?.engineId ?? null;
+  const nextEngineId =
+    snapshot.engineId ?? currentState?.engineId ?? nextGameId;
 
   return {
     players: nextPlayers,
     pots: nextPots,
     deck: nextDeck,
+    gameId: nextGameId,
+    engineId: nextEngineId,
     metadata: {
       currentBet:
         typeof incomingMeta.currentBet === "number"

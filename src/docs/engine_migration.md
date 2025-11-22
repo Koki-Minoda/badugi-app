@@ -26,3 +26,10 @@ Spec 09 の移行作業を番号付きで管理するためのメモ。完了済
    - 本メモと `docs/badugi_bugs_and_roadmap.md` を更新し、`npm test` 実行を移行ステップの一部に含める。
 2. **UI 側のエンジン同期仕上げ**
    - `afterBetActionWithSnapshot` など legacy ヘルパーを段階的に縮小し、RoundFlow のみが UI state を mutate する形へ寄せる。
+
+## 3. Current App.jsx status
+
+- `ui/App.jsx` now delegates every hero/NPC action to `BadugiEngine.applyPlayerAction`/`advanceAfterBet` through `handleHeroAction`, `handleEngineRoundTransition`, and `handleEngineShowdown`. Logging helpers (`recordActionToLog`, `saveRLHandHistory`) run immediately after `syncEngineSnapshot()` merges the engine snapshot via `mergeEngineSnapshot()` so the UI never mutates the canonical table state.
+- `mergeEngineSnapshot()` tracks `currentBet`, `betHead`, `lastAggressor`, turn, deck, and the `gameId/engineId` pair so `engineStateRef.current` is always a fully normalized snapshot and new hands reset the same fields before any animation helpers run.
+- Legacy helpers such as `afterBetActionWithSnapshot`/`finishBetRoundFrom` now only coordinate fallbacks or animation transitions, while the primary progression path is the engine workflow.
+- Added `ui/utils/__tests__/engineSnapshotUtils.test.js` to document the metadata contract and guard future refactors.

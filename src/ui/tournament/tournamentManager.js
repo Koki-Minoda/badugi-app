@@ -97,6 +97,7 @@ function ensureTableAssignments(session) {
   if (!session) return session;
   session.tableAssignments = Array.isArray(session.tableAssignments) ? [...session.tableAssignments] : [];
   session.waitingQueue = Array.isArray(session.waitingQueue) ? [...session.waitingQueue] : [];
+  session.tableBalanceLog = Array.isArray(session.tableBalanceLog) ? [...session.tableBalanceLog] : [];
 
   const stage = getStageById(session.stageId);
   const tableSize = stage?.tableSize ?? 6;
@@ -128,6 +129,19 @@ function ensureTableAssignments(session) {
   }
 
   session.tableAssignments = session.tableAssignments.slice(0, desiredSeats);
+  const assignmentSnapshot = session.tableAssignments.join(",");
+  const queueSnapshot = session.waitingQueue.join(",");
+  const previousLog = session.tableBalanceLog.length
+    ? session.tableBalanceLog[session.tableBalanceLog.length - 1]
+    : null;
+  if (!previousLog || previousLog.assignmentSnapshot !== assignmentSnapshot) {
+    session.tableBalanceLog.push({
+      timestamp: Date.now(),
+      message: "Table reassigned",
+      assignmentSnapshot,
+      queueSnapshot,
+    });
+  }
   return session;
 }
 
@@ -204,6 +218,7 @@ export function createTournamentSession(stageId, heroProfile) {
     stageId: stage.id,
     stageLabel: stage.label,
     blindSheetId: stage.blindSheetId,
+    gameId: stage.gameId ?? "D03",
     entryFee: stage.entryFee,
     startingStack: stage.startingStack,
     totalEntrants,

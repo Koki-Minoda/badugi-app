@@ -3,7 +3,12 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Player from "./components/Player";
 import Controls from "./components/Controls";
 import PlayerStatusBoard from "./components/PlayerStatusBoard";
-import { DEFAULT_SEAT_TYPES, DEFAULT_STARTING_STACK, TOURNAMENT_STRUCTURE } from "../config/tournamentStructure";
+import Modal from "./components/Modal";
+import Notification from "./components/Notification";
+import TableSummaryPanel from "./components/TableSummaryPanel";
+import HandResultOverlay from "./components/HandResultOverlay";
+import { DEFAULT_SEAT_TYPES, DEFAULT_STARTING_STACK, TOURNAMENT_STRUCTURE } from "../tournament/tournamentStructure";
+import { formatComment } from "./utils/commentCatalog.js";
 import { DeckManager } from "../games/badugi/utils/deck";
 import { debugLog } from "../utils/debugLog";
 import { runDrawRound } from "../games/badugi/engine/drawRound";
@@ -45,6 +50,9 @@ import {
 import { listTierIds, getTierById } from "../ai/tierManager.js";
 import { useGameEngine } from "./engine/GameEngineContext";
 import { mergeEngineSnapshot } from "./utils/engineSnapshotUtils.js";
+import { loadActiveTournamentSession } from "./tournament/tournamentManager";
+
+const DEFAULT_GAME_ID = "D03";
 
 // === TRACE HELPER (debug only) ===
 function trace(tag, extra = {}) {
@@ -77,6 +85,24 @@ function npcAutoDrawCount(evalResult = {}) {
 }
 
 export default function App() {
+  const [tournamentSession, setTournamentSession] = useState(
+    () => loadActiveTournamentSession()
+  );
+  const stageGameId = useMemo(
+    () => tournamentSession?.gameId ?? DEFAULT_GAME_ID,
+    [tournamentSession]
+  );
+
+  useEffect(() => {
+    const handler = () => {
+      setTournamentSession(loadActiveTournamentSession());
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("storage", handler);
+      return () => window.removeEventListener("storage", handler);
+    }
+    return undefined;
+  }, []);
   const navigate = useNavigate();
   const NUM_PLAYERS = 6;
   const lastStructureIndex = TOURNAMENT_STRUCTURE.length - 1;
@@ -165,12 +191,75 @@ export default function App() {
   const [seatManagerOpen, setSeatManagerOpen] = useState(false);
   const [statusBoardOpen, setStatusBoardOpen] = useState(true);
   const MAX_DRAWS = 3;
+  const [uiPerf, setUiPerf] = useState({
+    loadTime: null,
+    lastInteractionDuration: null,
+    lastInteractionLabel: "",
+  });
+  const interactionStartRef = useRef(null);
+  const [locale, setLocale] = useState(() => {
+    if (typeof navigator === "undefined") return "en";
+    return navigator.language ?? "en";
+  });
+  const performanceSupported =
+    typeof window !== "undefined" && typeof performance !== "undefined";
+  useEffect(() => {
+    if (!performanceSupported) return undefined;
+    const start = performance.now();
+    const handleLoad = () => {
+      setUiPerf((prev) => ({
+        ...prev,
+        loadTime: Math.round(performance.now() - start),
+      }));
+    };
+    if (typeof document !== "undefined" && document.readyState === "complete") {
+      handleLoad();
+      return undefined;
+    }
+    window.addEventListener("load", handleLoad);
+    return () => window.removeEventListener("load", handleLoad);
+  }, [performanceSupported]);
   const ratingState = useRatingState();
   const rankInfo = useMemo(
     () => computeRankFromRating(ratingState.globalRating),
     [ratingState.globalRating]
   );
-  const [heroTracker, setHeroTracker] = useState(() => ({
+  const heroHistoryLimit = 4;
+  const HERO_TRACKER_STORAGE_KEY = "badugi.heroTracker";
+
+  function getHeroTrackerStorage() {
+    if (typeof window === "undefined" || !window.localStorage) return null;
+    return window.localStorage;
+  }
+
+  function loadHeroTrackerState() {
+    const storage = getHeroTrackerStorage();
+    if (!storage) return null;
+    try {
+      const raw = storage.getItem(HERO_TRACKER_STORAGE_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (err) {
+      console.warn("Failed to parse hero tracker state", err);
+      return null;
+    }
+  }
+
+  function persistHeroTrackerState(state) {
+    const storage = getHeroTrackerStorage();
+    if (!storage) return;
+    try {
+      if (state) {
+        storage.setItem(HERO_TRACKER_STORAGE_KEY, JSON.stringify(state));
+      } else {
+        storage.removeItem(HERO_TRACKER_STORAGE_KEY);
+      }
+    } catch (err) {
+      console.warn("Failed to persist hero tracker state", err);
+    }
+  }
+
+  const [heroTracker, setHeroTracker] = useState(() => loadHeroTrackerState() ?? ({
     wins: 0,
     losses: 0,
     draws: 0,
@@ -179,7 +268,11 @@ export default function App() {
     history: [],
     lastRatingDelta: 0,
   }));
-  const heroHistoryLimit = 4;
+  useEffect(() => {
+    persistHeroTrackerState(heroTracker);
+  }, [heroTracker]);
+  const [handResultSummary, setHandResultSummary] = useState(null);
+  const [handResultVisible, setHandResultVisible] = useState(false);
   const [devTierOverride, setDevTierOverride] = useState(() => loadAiTierOverride());
   const [p2pCaptureEnabled, setP2pCaptureEnabled] = useState(() => loadP2pCaptureFlag());
   const tierOptions = useMemo(
@@ -199,6 +292,10 @@ export default function App() {
       heroProfile
     )
   );
+  const playersRef = useRef(players);
+  useEffect(() => {
+    playersRef.current = players;
+  }, [players]);
   const [deck, setDeck] = useState([]);
   const [engineState, setEngineState] = useState(null);
   const engineStateRef = useRef(null);
@@ -400,6 +497,42 @@ export default function App() {
   function logPhaseState(tag = "") {
     const msg = `[STATECHK] ${tag} -> phase=${phase}, drawRound=${drawRound}, transitioning=${transitioning}, turn=${turn}`;
     console.log(msg);
+  }
+
+  function buildHandResultSummary({ players = [], summary = [], totalPot }) {
+    const payouts = (summary || []).flatMap((pot) => pot?.payouts ?? []);
+    const payoutSum = payouts.reduce((acc, entry) => acc + (entry.payout ?? 0), 0);
+    const potAmountFallback = (summary || []).reduce(
+      (acc, pot) => acc + (pot?.potAmount ?? pot?.amount ?? 0),
+      0
+    );
+    const resolvedTotal =
+      typeof totalPot === "number" && !Number.isNaN(totalPot)
+        ? totalPot
+        : potAmountFallback || payoutSum;
+    const winnerMap = new Map();
+    payouts.forEach((entry) => {
+      const seatKey = entry.seatIndex ?? entry.seat;
+      if (typeof seatKey !== "number") return;
+      const existing = winnerMap.get(seatKey) ?? { payout: 0 };
+      winnerMap.set(seatKey, {
+        seatIndex: seatKey,
+        name: entry.name,
+        payout: (existing.payout ?? 0) + (entry.payout ?? 0),
+      });
+    });
+    const winners = Array.from(winnerMap.values()).map((entry) => ({
+      ...entry,
+      hand: players?.[entry.seatIndex]?.hand ?? [],
+      label: players?.[entry.seatIndex]?.lastAction ?? "Badugi",
+      stack: players?.[entry.seatIndex]?.stack,
+      payout: entry.payout ?? 0,
+    }));
+    return {
+      handId: handIdRef.current,
+      pot: resolvedTotal,
+      winners,
+    };
   }
 
   function logAction(i, type, payload = {}) {
@@ -950,29 +1083,7 @@ function recordActionToLog({
           return;
         }
 
-        setTransitioning(true);
-        setTimeout(() => {
-          const handled = handleEngineRoundTransition(drawRound, dealerIdx);
-          if (!handled) {
-            finishBetRoundFrom({
-              players: snap,
-              pots,
-              setPlayers,
-              setPots,
-              drawRound,
-              setDrawRound,
-              setPhase,
-              setTurn,
-              dealerIdx,
-              NUM_PLAYERS,
-              MAX_DRAWS,
-              runShowdown,
-              dealNewHand,
-              setShowNextButton,
-            });
-            setTransitioning(false);
-          }
-        }, 100);
+        scheduleFinish();
         return;
       }
       if (next === null) return;
@@ -1055,8 +1166,10 @@ function recordActionToLog({
   }
 
   function finishDrawRound(snapOpt) {
-    logPhaseState("[ADVANCE]")
-    const base = snapOpt ?? players;
+    logPhaseState("[ADVANCE]");
+    const latestPlayers = playersRef.current ?? players;
+    const baseCandidate = Array.isArray(snapOpt) ? snapOpt : latestPlayers;
+    const base = Array.isArray(baseCandidate) ? baseCandidate : latestPlayers;
     const completed = Math.min(drawRound + 1, MAX_DRAWS);
     setDrawRound(completed);
 
@@ -1095,6 +1208,8 @@ function recordActionToLog({
     }
     dealingRef.current = true;
     debugLog(`[HAND] dealNewHand start -> dealer=${nextDealerIdx}`);
+    setHandResultVisible(false);
+    setHandResultSummary(null);
 
     const isFreshStart = !prevPlayers;
     let resolvedBlindIdx = isFreshStart ? 0 : blindLevelIndex;
@@ -1316,7 +1431,30 @@ function recordActionToLog({
     setTimeout(() => logState("NEW HAND"), 0);
 
     setTimeout(() => { dealingRef.current = false; }, 100);
+    syncEngineSnapshot({
+      players: newPlayers,
+      pots: [],
+      deck: [],
+      metadata: {
+        currentBet: initialCurrentBet,
+        betHead: (nextDealerIdx + 3) % NUM_PLAYERS,
+        actingPlayerIndex: (nextDealerIdx + 3) % NUM_PLAYERS,
+        lastAggressor: bbIdx,
+      },
+      gameId: stageGameId,
+      engineId: stageGameId,
+    });
     trace("dealNewHand END", { dealerIdx: nextDealerIdx });
+  }
+
+  function startNextHand() {
+    if (!handSavedRef.current) {
+      trySaveHandOnce({ playersSnap: players, dealerIdx, pots });
+    }
+    const nextDealer = (dealerIdx + 1) % NUM_PLAYERS;
+    setShowNextButton(false);
+    setHandResultVisible(false);
+    dealNewHand(nextDealer);
   }
 
   function dealHeadsUpFinal(prevPlayers) {
@@ -1419,8 +1557,27 @@ function recordActionToLog({
   }, [heroProfile]);
 
 
+  function ensureLastActionLabelsForSnapshot(snapshotPlayers = []) {
+    const base = Array.isArray(snapshotPlayers) ? snapshotPlayers : [];
+    return base.map((player, idx) => {
+      if (!player) return player;
+      if (typeof player.lastAction === "string" && player.lastAction.trim().length > 0) {
+        return player;
+      }
+      const previous = players[idx];
+      if (previous?.lastAction) {
+        return { ...player, lastAction: previous.lastAction };
+      }
+      if (player.folded) {
+        return { ...player, lastAction: "Fold" };
+      }
+      return player;
+    });
+  }
+
   /* --- common: after BET action (snapshot-based) --- */
   function afterBetActionWithSnapshot(snap, actedIndex) {
+    snap = ensureLastActionLabelsForSnapshot(snap);
     if (snap[turn]?.allIn) {
       setHasActedFlag(snap, turn);
       console.log(`[SKIP] Player ${snap[turn].name} is all-in -> skip action`);
@@ -1463,22 +1620,25 @@ function recordActionToLog({
     function scheduleFinish() {
       setTransitioning(true);
       setTimeout(() => {
-        finishBetRoundFrom({
-          players: snap,
-          pots,
-          setPlayers,
-          setPots,
-          drawRound,
-          setDrawRound,
-          setPhase,
-          setTurn,
-          dealerIdx,
-          NUM_PLAYERS,
-          MAX_DRAWS,
-          runShowdown,
-          dealNewHand,
-          setShowNextButton,
-        });
+        const handled = handleEngineRoundTransition(drawRound, dealerIdx);
+        if (!handled) {
+          finishBetRoundFrom({
+            players: snap,
+            pots,
+            setPlayers,
+            setPots,
+            drawRound,
+            setDrawRound,
+            setPhase,
+            setTurn,
+            dealerIdx,
+            NUM_PLAYERS,
+            MAX_DRAWS,
+            runShowdown,
+            dealNewHand,
+            setShowNextButton,
+          });
+        }
         setTransitioning(false);
       }, 100);
     }
@@ -1642,11 +1802,14 @@ function recordActionToLog({
         lastAggressor,
         turn,
         deck,
+        gameId: stageGameId,
+        engineId: stageGameId,
       },
       snapshot
     );
 
-    setPlayers(merged.players);
+    const normalizedPlayers = ensureLastActionLabelsForSnapshot(merged.players);
+    setPlayers(normalizedPlayers);
     setPots(merged.pots);
     setCurrentBet(merged.metadata.currentBet);
     setBetHead(merged.metadata.betHead);
@@ -1655,17 +1818,34 @@ function recordActionToLog({
     setDeck(merged.deck);
     const normalizedSnapshot = {
       ...snapshot,
-      players: merged.players,
+      players: normalizedPlayers,
       pots: merged.pots,
       deck: merged.deck,
       metadata: merged.metadata,
+      gameId: merged.gameId ?? stageGameId,
+      engineId: merged.engineId ?? stageGameId,
     };
     engineStateRef.current = normalizedSnapshot;
     setEngineState(normalizedSnapshot);
   }
 
+  function recordInteractionPerformance(label) {
+    if (!performanceSupported || !interactionStartRef.current) return;
+    const duration = Math.round(performance.now() - interactionStartRef.current.startedAt);
+    interactionStartRef.current = null;
+    setUiPerf((prev) => ({
+      ...prev,
+      lastInteractionDuration: duration,
+      lastInteractionLabel: label,
+    }));
+  }
+
   function handleHeroAction(type, metadata = {}) {
     if (!engine) return;
+    const interactionLabel = metadata?.label ?? type ?? "action";
+    if (performanceSupported) {
+      interactionStartRef.current = { label: interactionLabel, startedAt: performance.now() };
+    }
     const baseState = engineStateRef.current ?? {
       players,
       pots,
@@ -1687,6 +1867,7 @@ function recordActionToLog({
         metadata,
       });
       saveRLHandHistory(nextState);
+      recordInteractionPerformance(interactionLabel);
     }
   }
 
@@ -1696,7 +1877,11 @@ function recordActionToLog({
   }
 
   function getEngineBaseState() {
-    return engineStateRef.current ?? {
+    if (engineStateRef.current) {
+      return engineStateRef.current;
+    }
+    const fallbackGameId = stageGameId;
+    return {
       players,
       pots,
       metadata: {
@@ -1706,7 +1891,24 @@ function recordActionToLog({
         actingPlayerIndex: turn,
       },
       deck,
+      gameId: fallbackGameId,
+      engineId: fallbackGameId,
     };
+  }
+
+  function onHandFinished() {
+    debugLog("[HAND] onHandFinished triggered");
+  }
+
+  function handleShowdownResult(updatedPlayers, totalPot, summary) {
+    const result = buildHandResultSummary({
+      players: updatedPlayers,
+      summary,
+      totalPot,
+    });
+    setHandResultSummary(result);
+    setHandResultVisible(true);
+    setShowNextButton(false);
   }
 
   function handleEngineShowdown(drawRoundParam = drawRound) {
@@ -1736,6 +1938,7 @@ function recordActionToLog({
       recordActionToLog,
       drawRound: drawRoundParam,
       onHandFinished,
+      onShowdownComplete: handleShowdownResult,
       precomputedResult: {
         summary: outcome.summary ?? [],
         totalPot: outcome.totalPot ?? 0,
@@ -1758,10 +1961,19 @@ function recordActionToLog({
     });
     if (!outcome?.state) return false;
     const state = outcome.state;
+    const mergedMetadata = {
+      ...(state.metadata ?? outcome.metadata ?? baseState.metadata ?? {}),
+    };
+    if (!mergedMetadata.gameId) {
+      mergedMetadata.gameId = stageGameId;
+    }
+    if (!mergedMetadata.engineId) {
+      mergedMetadata.engineId = stageGameId;
+    }
     syncEngineSnapshot({
       players: state.players,
       pots: state.pots,
-      metadata: state.metadata ?? outcome.metadata ?? baseState.metadata,
+      metadata: mergedMetadata,
       deck: state.deck ?? deck,
     });
 
@@ -1782,6 +1994,7 @@ function recordActionToLog({
         recordActionToLog,
         drawRound: drawRoundValue,
         onHandFinished,
+        onShowdownComplete: handleShowdownResult,
         precomputedResult: {
           summary: outcome.showdownSummary ?? [],
           totalPot: outcome.showdownTotal ?? 0,
@@ -2183,8 +2396,24 @@ function recordActionToLog({
     me.lastAction = drawCount === 0 ? "Pat" : `DRAW(${drawCount})`;
     snap[nextToDraw] = me;
 
+    console.log(
+      `[DRAW] player=${nextToDraw} draw=${drawCount} replaced`,
+      replacedCards
+    );
+
     setDeck([]);
     setPlayers(snap);
+    syncEngineSnapshot({
+      players: snap,
+      pots,
+      metadata: {
+        currentBet,
+        betHead,
+        lastAggressor,
+        actingPlayerIndex: firstUndrawnFromSB(snap) ?? nextToDraw,
+      },
+      deck: deckRef.current.deck,
+    });
     logAction(nextToDraw, me.lastAction);
     recordActionToLog({
       phase: "DRAW",
@@ -2379,24 +2608,6 @@ function recordActionToLog({
   const tableSurfaceBg = isDrawPhase ? "bg-red-800" : "bg-green-700";
   const tableBorderColor = isDrawPhase ? "border-red-400" : "border-yellow-600";
 
-  const PhaseSummaryPanel = ({ className = "" }) => (
-    <div className={`text-white font-bold space-y-1 ${className}`}>
-      <div>Phase: {phaseTagLocal()}</div>
-      <div>Draw Progress: {drawRound}/{MAX_DRAWS}</div>
-      <div>
-        Level {currentStructure.level ?? blindLevelIndex + 1}: {SB}/{BB} (Ante {currentAnte})
-      </div>
-      <div>
-        Hand {handsInLevelDisplay}/{handsCapDisplay}
-      </div>
-      <div>Starting Stack: {startingStack}</div>
-      {phase === "BET" && (
-        <div>Raise Count (Table): {raiseCountThisRound} / 4</div>
-      )}
-      <div>Dealer: {players[dealerIdx]?.name ?? "-"}</div>
-    </div>
-  );
-
 function handleCardClick(i) {
   setPlayers((prev) => {
     return prev.map((p, idx) => {
@@ -2416,6 +2627,41 @@ function handleCardClick(i) {
   });
 }
 
+
+  const tableSummaryProps = {
+    phaseTag: phaseTagLocal(),
+    drawRound,
+    maxDraws: MAX_DRAWS,
+    levelNumber: currentStructure.level ?? blindLevelIndex + 1,
+    sbValue: SB,
+    bbValue: BB,
+    anteValue: currentAnte,
+    handCount: handsInLevelDisplay,
+    handsCap: handsCapDisplay,
+    startingStack,
+    showRaiseCount: phase === "BET",
+    raiseCount: raiseCountThisRound,
+    dealerName: players[dealerIdx]?.name ?? "-",
+  };
+
+  const loadWarning = uiPerf.loadTime != null && uiPerf.loadTime > 3000;
+  const interactionWarning =
+    uiPerf.lastInteractionDuration != null && uiPerf.lastInteractionDuration > 100;
+  const notificationVariant = loadWarning || interactionWarning
+    ? "warning"
+    : uiPerf.loadTime == null
+      ? "info"
+      : "success";
+  const loadStatus = uiPerf.loadTime == null ? "measuring..." : `${uiPerf.loadTime}ms`;
+  const interactionStatus = uiPerf.lastInteractionDuration == null
+    ? "waiting..."
+    : `${uiPerf.lastInteractionDuration}ms${uiPerf.lastInteractionLabel ? ` (${uiPerf.lastInteractionLabel})` : ""}`;
+  const notificationMessage = formatComment(
+    "uiPerfNotification",
+    { load: loadStatus, interaction: interactionStatus },
+    locale
+  );
+  const nextHandLabel = formatComment("nextHandButton", {}, locale);
 
   return (
   <div className="flex flex-col h-screen bg-gray-900 text-white">
@@ -2500,90 +2746,92 @@ function handleCardClick(i) {
           )}
         </div>
 
-        <div className="pointer-events-auto bg-black/70 text-white text-xs rounded-lg p-3 shadow-lg space-y-3">
+        <Notification
+          variant={notificationVariant}
+          message={notificationMessage}
+        />
+        <div className="pointer-events-auto bg-black/70 text-white text-xs rounded-lg p-3 shadow-lg">
           <div className="flex items-center justify-between text-sm font-semibold">
             <span>Seat Manager</span>
             <button
               type="button"
-              onClick={() => setSeatManagerOpen((v) => !v)}
+              onClick={() => setSeatManagerOpen(true)}
               className="text-[11px] font-semibold text-yellow-300 hover:text-yellow-200 transition"
             >
-              {seatManagerOpen ? "Hide" : "Show"}
+              Open
             </button>
           </div>
-          {seatManagerOpen && (
-            <>
-              <label className="flex items-center space-x-1 text-[11px] font-normal">
-                <input
-                  type="checkbox"
-                  className="accent-yellow-400"
-                  checked={autoRotateSeats}
-                  onChange={(e) => setAutoRotateSeats(e.target.checked)}
-                />
-                <span>Auto rotate</span>
-              </label>
-              <p className="text-[11px] text-gray-300 leading-snug">
-                Seat / stack changes apply to the next hand. Use the reset button to redeal immediately when testing layouts.
-              </p>
-              <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto pr-1">
-                {seatConfig.map((type, idx) => (
-                  <label key={`seat-config-${idx}`} className="flex flex-col space-y-1">
-                    <span className="text-[11px] font-semibold">
-                      Seat {idx + 1}
-                      {idx === 0 ? " (You)" : ""}
-                    </span>
-                    <select
-                      value={type}
-                      disabled={idx === 0}
-                      onChange={(event) => handleSeatTypeChange(idx, event.target.value)}
-                      className="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-yellow-400 disabled:opacity-50"
-                    >
-                      {seatTypeOptions.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ))}
-              </div>
-              <label className="flex flex-col space-y-1">
-                <span className="text-[11px] font-semibold">Starting stack</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="25"
-                  value={startingStack}
-                  onChange={(event) => handleStartingStackChange(event.target.value)}
-                  className="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-yellow-400"
-                />
-              </label>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => rotateSeatConfigOnce(1)}
-                  className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs font-semibold"
-                >
-                  Rotate once
-                </button>
-                <button
-                  type="button"
-                  onClick={resetSeatConfigToDefault}
-                  className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs font-semibold"
-                >
-                  Default seats
-                </button>
-                <button
-                  type="button"
-                  onClick={() => dealNewHand(0)}
-                  className="px-3 py-1 bg-yellow-500 hover:bg-yellow-400 text-black rounded text-xs font-semibold"
-                >
-                  Reset & Redeal
-                </button>
-              </div>
-            </>
-          )}
         </div>
+        <Modal title="Seat Manager" open={seatManagerOpen} onClose={() => setSeatManagerOpen(false)}>
+          <label className="flex items-center space-x-1 text-[11px] font-normal">
+            <input
+              type="checkbox"
+              className="accent-yellow-400"
+              checked={autoRotateSeats}
+              onChange={(e) => setAutoRotateSeats(e.target.checked)}
+            />
+            <span>Auto rotate</span>
+          </label>
+          <p className="text-[11px] text-gray-300 leading-snug">
+            Seat / stack changes apply to the next hand. Use the reset button to redeal immediately when testing layouts.
+          </p>
+          <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto pr-1">
+            {seatConfig.map((type, idx) => (
+              <label key={`seat-config-${idx}`} className="flex flex-col space-y-1">
+                <span className="text-[11px] font-semibold">
+                  Seat {idx + 1}
+                  {idx === 0 ? " (You)" : ""}
+                </span>
+                <select
+                  value={type}
+                  disabled={idx === 0}
+                  onChange={(event) => handleSeatTypeChange(idx, event.target.value)}
+                  className="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-yellow-400 disabled:opacity-50"
+                >
+                  {seatTypeOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ))}
+          </div>
+          <label className="flex flex-col space-y-1">
+            <span className="text-[11px] font-semibold">Starting stack</span>
+            <input
+              type="number"
+              min="0"
+              step="25"
+              value={startingStack}
+              onChange={(event) => handleStartingStackChange(event.target.value)}
+              className="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-yellow-400"
+            />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => rotateSeatConfigOnce(1)}
+              className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs font-semibold"
+            >
+              Rotate once
+            </button>
+            <button
+              type="button"
+              onClick={resetSeatConfigToDefault}
+              className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs font-semibold"
+            >
+              Default seats
+            </button>
+            <button
+              type="button"
+              onClick={() => dealNewHand(0)}
+              className="px-3 py-1 bg-yellow-500 hover:bg-yellow-400 text-black rounded text-xs font-semibold"
+            >
+              Reset & Redeal
+            </button>
+          </div>
+        </Modal>
 
         <div className="pointer-events-auto bg-black/70 text-white text-xs rounded-lg p-3 shadow-lg space-y-3">
           <div className="flex items-center justify-between text-sm font-semibold">
@@ -2686,8 +2934,14 @@ function handleCardClick(i) {
       <div className={`relative w-[92%] max-w-[1400px] aspect-[16/9] ${tableSurfaceBg} border-4 ${tableBorderColor} rounded-3xl shadow-inner transition-colors duration-300`}>
 
         {/* Phase summary: inline for mobile, fixed side for desktop */}
-        <PhaseSummaryPanel className="lg:hidden absolute top-4 right-4 text-right bg-black/70 rounded-lg px-3 py-2 shadow-lg" />
-        <PhaseSummaryPanel className="hidden lg:block fixed top-28 right-8 text-right bg-black/70 rounded-lg px-4 py-3 shadow-lg z-40 w-64" />
+        <TableSummaryPanel
+          {...tableSummaryProps}
+          className="lg:hidden absolute top-4 right-4 text-right bg-black/70 rounded-lg px-3 py-2 shadow-lg"
+        />
+        <TableSummaryPanel
+          {...tableSummaryProps}
+          className="hidden lg:block fixed top-28 right-8 text-right bg-black/70 rounded-lg px-4 py-3 shadow-lg z-40 w-64"
+        />
 
         {/* Player seats */}
         <div className="players-grid grid grid-cols-1 gap-4 px-6 sm:grid-cols-2 lg:block lg:px-0">
@@ -2737,6 +2991,13 @@ function handleCardClick(i) {
       </div>
     </main>
 
+    <HandResultOverlay
+      visible={handResultVisible}
+      summary={handResultSummary}
+      onNext={startNextHand}
+      buttonLabel={nextHandLabel}
+    />
+
     <div className="w-full flex justify-center mt-6">
       <div className="w-[92%] max-w-[1400px] flex flex-col gap-4">
         <div className="flex items-center justify-between flex-wrap gap-4">
@@ -2771,19 +3032,12 @@ function handleCardClick(i) {
             ) : null
           ) : null}
 
-          {showNextButton && (
+          {showNextButton && !handResultVisible && (
             <button
-              onClick={() => {
-                if (!handSavedRef.current) {
-                  trySaveHandOnce({ playersSnap: players, dealerIdx, pots });
-                }
-                const nextDealer = (dealerIdx + 1) % NUM_PLAYERS;
-                dealNewHand(nextDealer);
-                setShowNextButton(false);
-              }}
+              onClick={startNextHand}
               className="px-6 py-3 bg-yellow-500 text-black font-bold rounded shadow-lg"
             >
-              Next Hand
+              {nextHandLabel}
             </button>
           )}
         </div>

@@ -5,6 +5,8 @@ describe("mergeEngineSnapshot", () => {
   const baseState = {
     players: [{ id: 1 }],
     pots: [{ total: 100 }],
+    gameId: "badugi",
+    engineId: "badugi",
     metadata: {
       currentBet: 25,
       betHead: 25,
@@ -60,5 +62,18 @@ describe("mergeEngineSnapshot", () => {
     expect(merged.metadata.betHead).toBe(baseState.metadata.betHead);
     expect(merged.metadata.lastAggressor).toBe(baseState.metadata.lastAggressor);
     expect(merged.metadata.actingPlayerIndex).toBe(baseState.metadata.actingPlayerIndex);
+  });
+
+  it("keeps gameId/engineId from snapshot and falls back to base", () => {
+    const snapshot = {
+      gameId: "badugi",
+      engineId: "badugi",
+    };
+    const merged = mergeEngineSnapshot(baseState, snapshot);
+    expect(merged.gameId).toBe("badugi");
+    expect(merged.engineId).toBe("badugi");
+    const merged2 = mergeEngineSnapshot(baseState, {});
+    expect(merged2.gameId).toBe("badugi");
+    expect(merged2.engineId).toBe("badugi");
   });
 });

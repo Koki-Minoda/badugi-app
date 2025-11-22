@@ -60,5 +60,33 @@ class RLBufferEntry(BaseModel):
   payload: dict
 
 
+class RoomCreateRequest(BaseModel):
+  owner_id: str
+  max_players: int = 6
+  mode: str = "ring"
+  metadata: dict = Field(default_factory=dict)
+
+
+class RoomJoinRequest(BaseModel):
+  room_id: str
+  player_id: str
+  display_name: str
+  seat_hint: Optional[str] = None
+  role: str = "player"
+
+
+class RoomLeaveRequest(BaseModel):
+  room_id: str
+  player_id: str
+
+
+class RoomInfoResponse(BaseModel):
+  room_id: str
+  phase: str
+  players: List[dict]
+  spectators: List[dict]
+  metadata: dict
+  sequence_id: int
+
 def ok(data: Any):
   return {"status": "ok", "data": data}

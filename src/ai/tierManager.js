@@ -1,6 +1,6 @@
 import tiers from "../config/ai/tiers.json";
 import { getStageById } from "../config/tournamentStages.js";
-import { selectModelForVariant } from "./modelRouter.js";
+import { getModelEntry, selectModelForVariant } from "./modelRouter.js";
 
 const TIER_MAP = new Map(tiers.map((tier) => [tier.id, Object.freeze(tier)]));
 const TIER_ORDER = tiers.map((tier) => tier.id);
@@ -60,7 +60,14 @@ export function resolveTierForContext({
 }
 
 export function resolveTierModelInfo({ variantId, tierId }) {
-  const entry = selectModelForVariant({ variantId, tierId });
+  const tierConfig = getTierById(tierId);
+  const modelFromTier = tierConfig?.modelId ? getModelEntry(tierConfig.modelId) : null;
+  const entry =
+    modelFromTier ??
+    selectModelForVariant({
+      variantId,
+      tierId,
+    });
   if (!entry) return null;
   return {
     modelId: entry.id,

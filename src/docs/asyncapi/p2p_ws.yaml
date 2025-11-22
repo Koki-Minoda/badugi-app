@@ -1,0 +1,75 @@
+asyncapi: 2.6.0
+info:
+  title: Badugi P2P Sync
+  version: "0.1.0"
+  description: >
+    WebSocket synchronization channel used for Spec22 P2P matches.
+servers:
+  production:
+    url: ws://localhost:3000
+    protocol: wss
+channels:
+  /ws/room/{roomId}/play:
+    parameters:
+      roomId:
+        schema:
+          type: string
+    subscribe:
+      summary: Badugi clients receive engine deltas and room state.
+      message:
+        $ref: '#/components/messages/updatedState'
+    publish:
+      summary: Clients emit actions and lifecycle signals.
+      message:
+        $ref: '#/components/messages/action'
+components:
+  messages:
+    action:
+      name: action
+      payload:
+        type: object
+        required:
+          - event
+        properties:
+          event:
+            type: string
+            enum: [join_room, leave_room, action, reaction, heartbeat]
+          payload:
+            type: object
+            properties:
+              playerId:
+                type: string
+              displayName:
+                type: string
+              type:
+                type: string
+                enum: [fold, call, raise, draw]
+              amount:
+                type: integer
+    updatedState:
+      name: updated_state
+      payload:
+        type: object
+        properties:
+          event:
+            type: string
+            const: updated_state
+          payload:
+            type: object
+            properties:
+              sequenceId:
+                type: integer
+              handId:
+                type: string
+              phase:
+                type: string
+              pot:
+                type: integer
+              bets:
+                type: object
+                additionalProperties:
+                  type: integer
+              stacks:
+                type: object
+                additionalProperties:
+                  type: integer

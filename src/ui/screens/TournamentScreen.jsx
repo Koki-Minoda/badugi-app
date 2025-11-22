@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { TOURNAMENT_STAGES } from "../../config/tournamentStages";
+import { TOURNAMENT_STAGES, getStageById } from "../../config/tournamentStages";
 import {
   getBlindSheetForStage,
   getProBlindSheetById,
@@ -21,6 +21,7 @@ import { usePlayerProgress } from "../hooks/usePlayerProgress.js";
 import { computeUnlockState } from "../utils/playerProgress.js";
 import { useRatingState } from "../hooks/useRatingState.js";
 import { computeRankFromRating } from "../utils/ratingState.js";
+import FinalTableOverlay from "../components/FinalTableOverlay.jsx";
 
 const BLIND_PREVIEW_ROWS = 6;
 
@@ -59,6 +60,39 @@ export default function TournamentScreen() {
   const nextTier = rankInfo.nextTier;
   const nextTierLabel = nextTier ? nextTier.label : "Legend";
   const progressPercent = Math.round((rankInfo.progress ?? 0) * 100);
+  const currentStage = activeSession ? getStageById(activeSession.stageId) : null;
+  const currentBreakSheet = currentStage ? getBlindSheetForStage(currentStage.id) : null;
+  const [breakCountdown, setBreakCountdown] = useState(
+    currentBreakSheet?.breakDurationMinutes ? currentBreakSheet.breakDurationMinutes * 60 : null
+  );
+  const [finalTableOpen, setFinalTableOpen] = useState(false);
+  const [breakRunning, setBreakRunning] = useState(false);
+
+  useEffect(() => {
+    if (!currentBreakSheet?.breakDurationMinutes) {
+      setBreakCountdown(null);
+      return undefined;
+    }
+    const resetSeconds = currentBreakSheet.breakDurationMinutes * 60;
+    setBreakCountdown(resetSeconds);
+    const interval = setInterval(() => {
+      setBreakCountdown((prev) => {
+        if (prev == null) return resetSeconds;
+        if (prev <= 1) {
+          setBreakRunning((run) => !run);
+          return resetSeconds;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [currentBreakSheet]);
+
+  useEffect(() => {
+    if (!currentStage || !activeSession) return;
+    const shouldShow = activeSession.remainingPlayers <= currentStage.tableSize && activeSession.remainingPlayers > 1;
+    setFinalTableOpen(shouldShow);
+  }, [activeSession, currentStage]);
 
   useEffect(() => {
     function handleStorage(event) {
@@ -104,6 +138,16 @@ export default function TournamentScreen() {
     navigate(`/game?tournament=${session.id}`);
   }
 
+  const formatSeconds = (value) => {
+    if (value == null) return "waiting...";
+    const minutes = Math.floor(value / 60);
+    const seconds = value % 60;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  };
+
+  const nextBreakLevels =
+    currentBreakSheet?.breakEveryLevels ?? currentStage?.breakEveryLevels ?? null;
+
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <header className="max-w-6xl mx-auto px-6 py-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -148,6 +192,20 @@ export default function TournamentScreen() {
           </button>
         </div>
         </div>
+        {currentStage && currentBreakSheet && (
+          <div className="flex flex-col gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-200">
+            <div className="flex items-center justify-between">
+              <span>Break timer</span>
+              <span>{nextBreakLevels ? `Every ${nextBreakLevels} levels` : "Break schedule"}</span>
+            </div>
+            <div className="text-3xl font-semibold">
+              {breakRunning ? "Running break" : "Next break in"} {formatSeconds(breakCountdown)}
+            </div>
+            <p className="text-xs text-emerald-100/80">
+              Duration {currentBreakSheet.breakDurationMinutes} min · {currentBreakSheet.breakEveryLevels} levels between breaks
+            </p>
+          </div>
+        )}
       </header>
 
       <main className="max-w-6xl mx-auto px-6 pb-16 space-y-8">
@@ -353,7 +411,34 @@ export default function TournamentScreen() {
             );
           })}
         </section>
+        {activeSession?.tableBalanceLog?.length ? (
+          <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-5 space-y-3">
+            <div className="flex items-center justify-between text-sm text-slate-400">
+              <p className="font-semibold text-white">Table Balancing Log</p>
+              <span className="text-xs uppercase tracking-widest">Multi-table</span>
+            </div>
+            <div className="space-y-2 text-xs text-slate-300">
+              {activeSession.tableBalanceLog.slice(-3).reverse().map((entry, index) => (
+                <div key={`${entry.timestamp}-${index}`} className="flex items-center justify-between bg-white/5 px-3 py-2 rounded-lg">
+                  <span>{new Date(entry.timestamp).toLocaleTimeString("ja-JP")}</span>
+                  <span className="text-emerald-300">{entry.message}</span>
+                  <span className="text-[11px] truncate max-w-[160px]">
+                    Seats: {entry.assignmentSnapshot || "n/a"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
       </main>
+      <FinalTableOverlay
+        open={finalTableOpen}
+        stageLabel={currentStage?.label ?? "Tournament"}
+        remainingPlayers={activeSession?.remainingPlayers ?? 0}
+        totalEntrants={activeSession?.totalEntrants ?? 0}
+        balancedLogs={activeSession?.tableBalanceLog ?? []}
+        onClose={() => setFinalTableOpen(false)}
+      />
     </div>
   );
 }

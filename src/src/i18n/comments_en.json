@@ -1,0 +1,4 @@
+{
+  "nextHandButton": "Next hand",
+  "uiPerfNotification": "Load {load} (<3s target) · Interaction {interaction} (<100ms target)"
+}

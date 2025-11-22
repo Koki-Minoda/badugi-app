@@ -9,7 +9,9 @@ from server.routers import (
   ai_models,
   auth,
   rating,
+  rooms,
 )
+from server.p2p_sync import websocket_endpoint
 
 app = FastAPI(title="Badugi App API", version="0.1.0", docs_url="/api/docs")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
@@ -45,3 +47,6 @@ app.include_router(history.router, prefix="/api/history", tags=["history"])
 app.include_router(tournament.router, prefix="/api/tournament", tags=["tournament"])
 app.include_router(tasks.router, prefix="/api/tasks", tags=["tasks"])
 app.include_router(ai_models.router, prefix="/api/ai", tags=["ai"])
+app.include_router(rooms.router, prefix="/api/rooms", tags=["rooms"])
+
+app.add_api_websocket_route("/ws/room/{room_id}/play", websocket_endpoint)

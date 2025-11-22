@@ -68,15 +68,23 @@ export function evaluateHand({ cards, gameType, tags, ...rest }) {
 }
 
 export function compareEvaluations(a, b) {
+  const metadataA = a?.metadata ?? {};
+  const metadataB = b?.metadata ?? {};
+  const sizeA = typeof metadataA.size === "number" ? metadataA.size : 0;
+  const sizeB = typeof metadataB.size === "number" ? metadataB.size : 0;
+  if (sizeA !== sizeB) {
+    return sizeB - sizeA;
+  }
   if (a.rankPrimary !== b.rankPrimary) {
     return a.rankPrimary - b.rankPrimary;
   }
-  const secondaryA =
-    typeof a.rankSecondary === "number" ? a.rankSecondary : Number.POSITIVE_INFINITY;
-  const secondaryB =
-    typeof b.rankSecondary === "number" ? b.rankSecondary : Number.POSITIVE_INFINITY;
-  if (secondaryA !== secondaryB) {
-    return secondaryA - secondaryB;
+  const ranksA = Array.isArray(metadataA.ranks) ? metadataA.ranks : [];
+  const ranksB = Array.isArray(metadataB.ranks) ? metadataB.ranks : [];
+  const len = Math.max(ranksA.length, ranksB.length);
+  for (let i = 0; i < len; i += 1) {
+    const va = ranksA[i] ?? Number.MAX_SAFE_INTEGER;
+    const vb = ranksB[i] ?? Number.MAX_SAFE_INTEGER;
+    if (va !== vb) return va - vb;
   }
   return 0;
 }

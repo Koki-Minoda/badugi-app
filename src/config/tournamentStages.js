@@ -27,6 +27,7 @@ export const TOURNAMENT_STAGES = [
     eligibility: {
       requires: null,
       text: "エントリー無料（いつでも参加可能）",
+    gameId: "D03",
     },
   },
   {
@@ -53,6 +54,7 @@ export const TOURNAMENT_STAGES = [
     eligibility: {
       requires: { storeWins: 1 },
       text: "店舗優勝が1回以上で参加可能",
+    gameId: "D03",
     },
   },
   {
@@ -81,6 +83,7 @@ export const TOURNAMENT_STAGES = [
     eligibility: {
       requires: { localWins: 1 },
       text: "地方優勝が1回以上で参加可能",
+    gameId: "D03",
     },
     proBlindSheetId: "national-premier-pro",
   },
@@ -112,6 +115,7 @@ export const TOURNAMENT_STAGES = [
     eligibility: {
       requires: { nationalWins: 2 },
       text: "全国優勝が2回以上で参加可能",
+    gameId: "D03",
     },
     proBlindSheetId: "world-championship-pro",
   },

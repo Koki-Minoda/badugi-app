@@ -51,6 +51,12 @@ export function getWinnersByBadugi(players) {
     };
   });
   evaluated.sort((a, b) => compareEvaluations(a.eval, b.eval));
+  evaluated.forEach((entry) => {
+    const meta = entry.eval.metadata ?? {};
+    console.log(
+      `[SHOWDOWN] ${entry.name} size=${meta.size ?? 0} ranks=${meta.ranks?.join("-") ?? ""} cards=${meta.cards?.join(",") ?? ""}`
+    );
+  });
   const bestEval = evaluated[0]?.eval;
   const winners = evaluated.filter(
     (entry) => compareEvaluations(entry.eval, bestEval) === 0

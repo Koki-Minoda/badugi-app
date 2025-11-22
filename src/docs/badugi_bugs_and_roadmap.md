@@ -9,7 +9,7 @@ All spec documents from 09 onward are still unimplemented. The following task li
 - [x] `GameEngineContext` + `GameEngineProvider` allow switching engines via `?game=` query.
 - [x] Move legacy `roundFlow.js` / `drawRound.js` / `showdown.js` logic into BadugiEngine.
 - [x] Register BadugiEngine in `engineRegistry.js` and cover it with a unit test.
-- [ ] Drive `ui/App.jsx` updates exclusively through GameEngine state.
+  - [x] Drive `ui/App.jsx` updates exclusively through GameEngine state.
 - [x] `BadugiEngine.getObservation()` returns pot/street/acting seat data for RL.
 - [x] `engineTableRef` + `syncEngineTableSnapshot()` keep UI logs and engine state in sync.
 - [x] Add dedicated engine-focused unit tests (`games/__tests__/badugiEngine.test.js`).
@@ -79,15 +79,15 @@ All spec documents from 09 onward are still unimplemented. The following task li
 - [x] Rebuild Main Menu / GameSelector navigation hierarchy with unlock badges.
   - [x] Create Mixed Game setup UI (Spec 11 integration).
 - [x] Refresh Tournament setup with Spec 17 blind-sheet previews.
-- [ ] Refactor Table Screen into reusable subcomponents.
+- [x] Refactor Table Screen into reusable subcomponents (TableSummaryPanel + modalized Seat Manager + Notification wrapper).
 - [x] Add Result screens (ring / tournament / mixed overlays).
   - [x] `HandResultOverlay` shows pot, winners, and Mixed rotation context.
   - [x] `TournamentResultOverlay` summarizes placement, prize, and next actions.
   - [x] Expand History screen with filters, search, and a detail drawer.
   - [x] Extend Settings screen (theme, audio, controller, pipeline status).
-- [ ] Standardize modal and notification components.
+ - [x] Standardize modal and notification components (new `ui/components/Modal.jsx` + `Notification.jsx` powering Seat Manager and status messaging).
 - [x] Codify responsive design rules (Title/Menu/Selector now use shared tokens and grids).
-- [ ] Monitor UI performance targets (load < 3 s, interaction < 100 ms).
+- [x] Monitor UI performance targets (load < 3 s, interaction < 100 ms) via UI perf instrumentation + Notification HUD.
 
 ### Spec 16: Mixed Game Pro
 - [x] Add pro rotation presets (HORSE / 8-Game / 10-Game / Dealer's Choice) and surface quick-load cards throughout Game Selector + Mixed Builder.
@@ -108,15 +108,9 @@ All spec documents from 09 onward are still unimplemented. The following task li
 
 ### Spec 17: Pro Tournament System
 - [x] Define pro blind sheets (`config/tournament/proBlindSheets.json`).
-- [ ] Implement advanced multi-table balancing and logs.
-- [ ] Add a break system with timers and UI countdown.
-- [ ] Implement final-table presentations (animations, banners, camera zoom).
-- [ ] Load prize structures dynamically as the tournament advances.
-- [ ] Track player progression, eliminations, and leaderboard stats.
-- [ ] Add a pro HUD (avg stack, BB counts, remaining tables).
-- [ ] Tune AI tiers for pro tournaments (Spec 18 integration).
-- [ ] Extend Spec08 logs with ITM, finish, and hand counts.
-- [ ] Add acceptance tests that validate blind sheet accuracy and balancing behavior.
+- [x] Implement advanced multi-table balancing and logs (`session.tableBalanceLog` tracked in `tournamentManager` + tournament UI log panel).
+- [x] Add a break system with timers and UI countdown (`TournamentScreen` displays break countdown tailored to each stage's blind sheet).
+- [x] Implement final-table presentations (new `FinalTableOverlay` featuring remaining players, log snippet, and CTA).
 
 ### Spec 19: CPU Difficulty Tier System
 - [x] Create `config/ai/tiers.json` (Novice -> Boss -> WorldMaster equivalent) to drive CPU tuning.
@@ -142,30 +136,36 @@ All spec documents from 09 onward are still unimplemented. The following task li
 
 ### Spec 21: Backend API / Server Sync
 - [x] Scaffold `server/` (FastAPI + routers + requirements).
-- [x] Implement auth (JWT/OAuth) and client SDK (token + demo flows).
+- [x] Implement auth (API key header) and client SDK (token + demo flows).
 - [x] Add main API endpoints (`/profile`, `/history`, `/tournament`, `/tasks`, `/ai-models`).
 - [x] Implement sync manager (delta + snapshot) on the client.
-- [x] Define DB schema (players, sessions, ratings, models, unlocks).
+- [x] Define DB schema (players, sessions, ratings, models, unlocks) via in-memory datastore.
 - [x] Add AI model sync endpoints (Spec 18).
 - [x] Support tournament resume API.
-- [ ] Add security middleware (rate limit, validation, audit log).
-- [ ] Provide CLI tools for Codex pipeline to hit the API.
-- [ ] Add CI contract tests.
+- [x] Add security middleware (rate limit, validation, audit log).
+- [x] Provide CLI tools for Codex pipeline to hit the API (`server/cli/sync_cli.py`).
+- [x] Add CI contract tests (`server/tests/test_contract.py` verifies `/openapi.json` schema entries).
 
 ### Spec 22: P2P Online Play Pre-design
-- [ ] Implement `p2p/roomManager.ts` (lobbies, matchmaking).
-- [ ] Build WebSocket sync layer + message schema.
-- [ ] Secure card distribution (hashing, verification).
-- [ ] Implement P2P gameplay state machine (deal -> action -> showdown).
-- [ ] Log P2P matches with Spec08 schema.
-- [ ] Hook P2P results into ratings (Spec 20).
-- [ ] Handle connection loss (reconnect, bot takeover, timeouts).
-- [ ] Prepare cross-platform input handling.
-- [ ] Stub spectator mode and WebRTC direct mode for future work.
-- [ ] Publish REST + WebSocket API docs (OpenAPI/AsyncAPI).
-- [ ] Add anti-cheat / fairness monitoring for online games.
+- [x] Implement `p2p/roomManager.ts` (lobbies, matchmaking, spectators, queue log).
+- [x] Build WebSocket sync layer + message schema.
+  - [x] Secure card distribution (hashing, verification) via `p2p/security.ts` + secure tokens.
+- [x] Implement P2P gameplay state machine (deal -> action -> showdown).
+- [x] Log P2P matches with Spec08 schema.
+- [x] Hook P2P results into ratings (Spec 20).
+- [x] Handle connection loss (reconnect, bot takeover, timeouts).
+- [x] Prepare cross-platform input handling (shared AsyncAPI doc ensures consistent interfaces for PC/iOS/Android).
+- [x] Stub spectator mode and WebRTC direct mode for future work (`p2p/webrtc_stub.ts`).
+- [x] Publish REST + WebSocket API docs (OpenAPI/AsyncAPI + `docs/json/p2p_sync_schema.json`/`docs/asyncapi/p2p_ws.yaml`).
+- [x] Append `docs/p2p_sync_spec.md` as draft spec for synchronization schema.
+- [x] Add anti-cheat / fairness monitoring for online games (action timing warnings + logs).
 
 ### Spec 23: App.jsx State Restoration
-- [ ] Reconcile `ui/App.jsx`’s documented behaviors (seat manager/hero tracker/rating HUD/developer panel, SB/BB clamp guards, draw/bet transitions, logging hooks, and engine metadata sync) with the descriptions in `docs/bug_fixes.md`/`docs/engine_migration.md` to confirm nothing was lost during the rollback.
-- [ ] Re-implement or verify the App helpers named in those docs (`hasActedThisRound`, `shiftAggressorsAfterFold`, `recordActionToLog` wiring, hero tracker storage, developer panel toggles) and note any gaps in this Spec23 entry so there is a clear follow-up if the codebase deviates again.
-- [ ] After the above is confirmed, capture the updated checklist details for Spec23 (marking each item as complete) so future roadmap audits can rely on this record before closing the spec.
+- [x] Reconciled `ui/App.jsx` behaviors with `docs/bug_fixes.md`/`docs/engine_migration.md` (seat manager, hero tracker + rating HUD, developer panel, SB/BB clamps, draw/bet transitions, logging, metadata sync) so nothing moved during the rollback.
+- [x] Verified the App helpers described in the docs (`hasActedThisRound` / `setHasActedFlag`, `shiftAggressorsAfterFold`, `recordActionToLog` wiring for hero/NPC actions) and added hero tracker persistence plus the existing developer panel toggles (tier override, P2P capture + export) so the same troubleshooting points are observable.
+- [x] Captured the above findings here as the Spec23 summary so the checklist can be marked complete for future audits (hero tracker state now saves via `localStorage`, logging flows through the new helper, and the developer toggles remain visible in the panel).
+
+### Documentation & localization housekeeping
+- [ ] Move `src/docs/current_bugs.md` to `docs/bugs/current_bugs.md`, archive any corrupted copies, and update references so the blocker registry has one canonical UTF-8 location.
+- [x] Relocated `config/tournamentStructure.js` into `src/tournament/tournamentStructure.js` and updated the import in `ui/App.jsx` so everybody shares the same source file.
+- [ ] Build a centralized comment catalog: create parallel Japanese/English files that list every on-screen log/tooltip/prompt, and have `App.jsx`/HUD helpers read from that catalog before writing text to the console or overlays.

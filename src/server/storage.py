@@ -31,6 +31,7 @@ class InMemoryStore:
     }
     self.snapshots: Dict[str, Dict[str, Any]] = {}
     self.rl_buffer: List[Dict[str, Any]] = []
+    self.p2p_history: List[Dict[str, Any]] = []
     self.ai_models: Dict[str, Dict[str, Any]] = {
       "badugi_v2": {"version": "badugi_v2", "tier": "iron", "size": "12MB"},
       "generic_v1": {"version": "generic_v1", "tier": "standard", "size": "8MB"},

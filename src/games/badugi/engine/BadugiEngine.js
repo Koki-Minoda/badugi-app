@@ -208,7 +208,7 @@ export class BadugiEngine extends DrawEngineBase {
       ...p,
       hasDrawn: p.folded ? true : false,
       canDraw: !p.folded,
-      lastAction: "",
+      lastAction: p.folded ? p.lastAction || metadata?.actionLabel || "Fold" : "",
     }));
 
     working.players = resetPlayers;
@@ -489,13 +489,21 @@ function applyCallState(table, seatIndex, metadata = {}) {
   }
   applyStackAndBetSync(player, workingMeta, table);
   player.hasActedThisRound = true;
-  player.lastAction =
-    workingMeta.actionLabel ??
-    ((workingMeta.toCall ?? 0) > 0
-      ? workingMeta.paid < (workingMeta.toCall ?? 0)
-        ? "Call (All-in)"
-        : "Call"
-      : "Check");
+  const toCallValue = workingMeta.toCall ?? 0;
+  const paidValue = workingMeta.paid ?? 0;
+  if (typeof workingMeta.actionLabel === "string") {
+    player.lastAction = workingMeta.actionLabel;
+  } else if (paidValue > 0) {
+    if (toCallValue > 0 && paidValue < toCallValue) {
+      player.lastAction = "Call (All-in)";
+    } else {
+      player.lastAction = "Call";
+    }
+  } else if (toCallValue > 0) {
+    player.lastAction = "Call";
+  } else {
+    player.lastAction = "Check";
+  }
   const meta = (table.metadata = { ...(table.metadata ?? {}) });
   meta.currentBet = computeCurrentBet(table.players);
 }

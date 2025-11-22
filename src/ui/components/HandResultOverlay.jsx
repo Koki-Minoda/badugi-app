@@ -31,7 +31,13 @@ function WinnerCard({ winner }) {
   );
 }
 
-export default function HandResultOverlay({ visible, summary, mixedInfo, onNext }) {
+export default function HandResultOverlay({
+  visible,
+  summary,
+  mixedInfo,
+  onNext,
+  buttonLabel,
+}) {
   if (!visible || !summary) return null;
   const winners = summary.winners ?? [];
   return (
@@ -42,8 +48,10 @@ export default function HandResultOverlay({ visible, summary, mixedInfo, onNext 
           {summary.handId && <span>#{summary.handId}</span>}
         </div>
         <div className="flex items-baseline justify-between">
-          <h2 className="text-3xl font-bold text-white">Pot ¥{formatAmount(summary.pot ?? 0)}</h2>
-          <span className="text-sm text-slate-400">次のハンドを準備中</span>
+          <h2 className="text-3xl font-bold text-white">
+            Pot ¥{formatAmount(summary.pot ?? 0)}
+          </h2>
+          <span className="text-sm text-slate-400">Preparing next hand</span>
         </div>
         <ul className="space-y-3 text-sm text-slate-200">
           {winners.map((winner) => (
@@ -61,11 +69,11 @@ export default function HandResultOverlay({ visible, summary, mixedInfo, onNext 
               <strong className="text-sm text-white">{mixedInfo.formatLabel ?? "-"}</strong>
             </div>
             <div className="flex justify-between">
-              <span>現在</span>
+              <span>Current</span>
               <strong className="text-sm text-white">{mixedInfo.currentLabel}</strong>
             </div>
             <div className="flex justify-between">
-              <span>次のゲーム</span>
+              <span>Next</span>
               <strong className="text-sm text-white">{mixedInfo.nextLabel}</strong>
             </div>
             <div className="flex justify-between">
@@ -74,7 +82,7 @@ export default function HandResultOverlay({ visible, summary, mixedInfo, onNext 
             </div>
             {mixedInfo.handsRemainingText && (
               <div className="flex justify-between text-slate-300">
-                <span>残りハンド</span>
+                <span>Remaining</span>
                 <span>{mixedInfo.handsRemainingText}</span>
               </div>
             )}
@@ -85,7 +93,7 @@ export default function HandResultOverlay({ visible, summary, mixedInfo, onNext 
           onClick={onNext}
           className="w-full rounded-2xl bg-emerald-500 py-3 text-slate-900 font-semibold hover:bg-emerald-400 transition"
         >
-          次のハンドへ
+          {buttonLabel ?? "Next hand"}
         </button>
       </div>
     </div>

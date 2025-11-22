@@ -76,6 +76,7 @@ All spec documents from 09 onward are still unimplemented. The following task li
 ### Spec 15: UI / UX Flow
 - [x] Move design tokens (color, spacing, typography) into `styles/designTokens.js`.
 - [x] Redesign Title Screen per Spec 15 (hero copy + START to Main Menu flow).
+- [ ] Further evolve the Title/Main Menu flow to match the requested "ジャン魂" style: separate Tournament vs Ring unlock lanes, embed the ring/dan game picker (Badugi / PLO / 2-7) inside the Ring entry, expose gear/settings and ?/rules affordances, and gate P2P (friend match) sessions behind a pre-game configuration screen so the Title screen can act as the central hub mentioned in the roadmap.
 - [x] Rebuild Main Menu / GameSelector navigation hierarchy with unlock badges.
   - [x] Create Mixed Game setup UI (Spec 11 integration).
 - [x] Refresh Tournament setup with Spec 17 blind-sheet previews.
@@ -168,4 +169,4 @@ All spec documents from 09 onward are still unimplemented. The following task li
 ### Documentation & localization housekeeping
 - [ ] Move `src/docs/current_bugs.md` to `docs/bugs/current_bugs.md`, archive any corrupted copies, and update references so the blocker registry has one canonical UTF-8 location.
 - [x] Relocated `config/tournamentStructure.js` into `src/tournament/tournamentStructure.js` and updated the import in `ui/App.jsx` so everybody shares the same source file.
-- [ ] Build a centralized comment catalog: create parallel Japanese/English files that list every on-screen log/tooltip/prompt, and have `App.jsx`/HUD helpers read from that catalog before writing text to the console or overlays.
+- [ ] Build a centralized comment catalog: create parallel Japanese/English resources (e.g., `src/i18n/comments_ja.json` and `src/i18n/comments_en.json` plus `ui/utils/commentCatalog.js`) that describe every HUD prompt/logging string, and have `App.jsx`/HUD helpers read from that catalog before emitting console output or overlay text so that comment localization and E2E debugging remain synchronized.

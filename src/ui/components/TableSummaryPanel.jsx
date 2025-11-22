@@ -14,12 +14,17 @@ export default function TableSummaryPanel({
   showRaiseCount,
   raiseCount,
   dealerName,
+  betRoundIndex,
   className = "",
 }) {
   return (
     <div className={`text-white font-bold space-y-1 ${className}`}>
       <div>Phase: {phaseTag}</div>
-      <div>Draw Progress: {drawRound}/{maxDraws}</div>
+      {phaseTag?.startsWith("BET") ? (
+        <div>Bet Round: {Math.min((betRoundIndex ?? 0) + 1, maxDraws + 1)}/{maxDraws + 1}</div>
+      ) : (
+        <div>Draw Progress: {drawRound}/{maxDraws}</div>
+      )}
       <div>
         Level {levelNumber}: {sbValue}/{bbValue} (Ante {anteValue})
       </div>

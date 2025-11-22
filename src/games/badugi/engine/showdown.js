@@ -138,15 +138,23 @@ function resolveShowdownLegacy(players = [], pots = []) {
       : Array.isArray(pot?.eligibleSeats)
       ? pot.eligibleSeats
       : [];
-    const contenders = eligibleSeats
-      .map((seatIndex) => ({
-        seatIndex,
-        player: workingPlayers[seatIndex],
-      }))
-      .filter(
-        (entry) =>
-          entry.player && !entry.player.folded && !entry.player.seatOut
-      );
+      const contenders = eligibleSeats
+        .map((seatIndex) => ({
+          seatIndex,
+          player: workingPlayers[seatIndex],
+        }))
+        .filter(
+          (entry) =>
+            entry.player && !entry.player.folded && !entry.player.seatOut
+        );
+
+      // ensure hero (non folded) always eligible when no contenders found
+      if (!contenders.length) {
+        const fallback = workingPlayers
+          .map((player, idx) => ({ seatIndex: idx, player }))
+          .filter(({ player }) => player && !player.folded && !player.seatOut);
+        if (fallback.length) contenders.push(fallback[0]);
+      }
 
     if (!contenders.length) {
       summary.push({ potIndex, potAmount: amount, payouts: [] });

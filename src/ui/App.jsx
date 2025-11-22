@@ -306,6 +306,7 @@ export default function App() {
 
   // Number of completed draw rounds (0..3).
   const [drawRound, setDrawRound] = useState(0);
+  const [betRoundIndex, setBetRoundIndex] = useState(0);
 
   // Track raise counts per street (table + seat granularity).
   const [raisePerRound, setRaisePerRound] = useState([0, 0, 0, 0]);
@@ -315,7 +316,7 @@ export default function App() {
   const [actionLog, setActionLog] = useState([]); // RL/action log feed
 
   function currentBetRoundIndex() {
-    return Math.min(drawRound, 3);
+    return Math.min(betRoundIndex, MAX_DRAWS);
   }
 
   
@@ -335,8 +336,12 @@ export default function App() {
   const handSavedRef = useRef(false);
   const handIdRef = useRef(null);
 
+  const consoleLogBuffer = useRef([]);
+  const e2eLogEnabledRef = useRef(false);
+
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
+    const drainConsole = () => consoleLogBuffer.current.splice(0);
     const helper = {
       simulateBust(seatIndex = 3) {
         setPlayers((prev) =>
@@ -362,12 +367,58 @@ export default function App() {
         const normalized = Math.max(0, Math.min(NUM_PLAYERS - 1, Math.floor(next)));
         setDealerIdx(normalized);
       },
+      getPhaseState() {
+        const snapshot = (playersRef.current ?? []).map((player, idx) => ({
+          seat: typeof player?.seat === "number" ? player.seat : idx,
+          name: player?.name,
+          folded: Boolean(player?.folded),
+          stack: player?.stack,
+          betThisRound: player?.betThisRound,
+          lastAction: player?.lastAction,
+        }));
+        return {
+          phase,
+          drawRound,
+          betRoundIndex,
+          turn,
+          players: snapshot,
+        };
+      },
+      drainLogs: drainConsole,
+      captureConsole: drainConsole,
     };
+    e2eLogEnabledRef.current = true;
     window.__BADUGI_E2E__ = helper;
     return () => {
       if (window.__BADUGI_E2E__ === helper) {
         delete window.__BADUGI_E2E__;
       }
+      e2eLogEnabledRef.current = false;
+    };
+  }, [phase, drawRound, betRoundIndex, turn]);
+
+  useEffect(() => {
+    const original = {
+      log: console.log,
+      warn: console.warn,
+      error: console.error,
+    };
+    console.log = (...args) => {
+      consoleLogBuffer.current.push(formatConsole("LOG", args));
+      original.log(...args);
+    };
+    console.warn = (...args) => {
+      consoleLogBuffer.current.push(formatConsole("WARN", args));
+      original.warn(...args);
+    };
+    console.error = (...args) => {
+      consoleLogBuffer.current.push(formatConsole("ERROR", args));
+      original.error(...args);
+    };
+    return () => {
+      console.log = original.log;
+      console.warn = original.warn;
+      console.error = original.error;
     };
   }, []);
 
@@ -380,6 +431,30 @@ export default function App() {
   useEffect(() => {
     raiseCountRef.current = raiseCountThisRound;
   }, [raiseCountThisRound]);
+
+  function clonePlayerState(player) {
+    if (!player) return null;
+    return {
+      ...player,
+      hand: Array.isArray(player.hand) ? [...player.hand] : player.hand,
+      selected: Array.isArray(player.selected) ? [...player.selected] : player.selected,
+    };
+  }
+
+  function formatConsole(level, args) {
+    const payload = args
+      .map((arg) => (typeof arg === "object" ? JSON.stringify(arg) : `${arg}`))
+      .join(" ");
+    return `[${level}] phase=${phase} drawRound=${drawRound} betRound=${betRoundIndex} turn=${turn} ${payload}`;
+  }
+
+  function setPlayerSnapshot(snap) {
+    const normalized = Array.isArray(snap)
+      ? snap.map(clonePlayerState).filter(Boolean)
+      : [];
+    setPlayers(normalized);
+    return normalized;
+  }
 
   function positionName(index, dealer = dealerIdx) {
     const order = ["BTN", "SB", "BB", "UTG", "MP", "CO"];
@@ -410,6 +485,19 @@ export default function App() {
     if (betHead === foldIdx) {
       setBetHead(typeof next === "number" && next !== foldIdx ? next : null);
     }
+  }
+  
+  function findNextAliveAfter(snap, index) {
+    if (!Array.isArray(snap) || snap.length === 0) return null;
+    const n = snap.length;
+    for (let offset = 1; offset < n; offset += 1) {
+      const candidate = (index + offset) % n;
+      const player = snap[candidate];
+      if (player && !player.folded && !player.seatOut) {
+        return candidate;
+      }
+    }
+    return null;
   }
 
   useEffect(() => {
@@ -456,7 +544,7 @@ export default function App() {
   }
 
   function betRoundNo() {
-    return Math.min(drawRound, MAX_DRAWS);
+    return Math.min(betRoundIndex, MAX_DRAWS);
   }
 
   function drawRoundNo() {
@@ -500,53 +588,114 @@ export default function App() {
   }
 
   function buildHandResultSummary({ players = [], summary = [], totalPot }) {
-    const payouts = (summary || []).flatMap((pot) => pot?.payouts ?? []);
-    const payoutSum = payouts.reduce((acc, entry) => acc + (entry.payout ?? 0), 0);
-    const potAmountFallback = (summary || []).reduce(
-      (acc, pot) => acc + (pot?.potAmount ?? pot?.amount ?? 0),
-      0
-    );
+    const potEntries = Array.isArray(summary) ? summary : [];
+    const potDetails = potEntries.map((pot) => {
+      const potAmount = Math.max(0, pot?.potAmount ?? pot?.amount ?? 0);
+      const payouts = Array.isArray(pot?.payouts) ? pot.payouts : [];
+      const winners = payouts.map((entry) => {
+        const seatKey =
+          typeof entry?.seatIndex === "number"
+            ? entry.seatIndex
+            : typeof entry?.seat === "number"
+            ? entry.seat
+            : null;
+        return {
+          seatIndex: seatKey,
+          name: entry?.name ?? (typeof seatKey === "number" ? `Seat ${seatKey}` : "Unknown"),
+          payout: Math.max(0, entry?.payout ?? 0),
+          stack: players?.[seatKey]?.stack,
+          hand: players?.[seatKey]?.hand ?? [],
+          label: players?.[seatKey]?.lastAction ?? "Badugi",
+        };
+      });
+      return {
+        potIndex: typeof pot?.potIndex === "number" ? pot.potIndex : null,
+        potAmount,
+        winners,
+      };
+    });
+    const payoutSum = potDetails
+      .flatMap((pot) => pot.winners)
+      .reduce((acc, entry) => acc + (entry.payout ?? 0), 0);
+    const potAmountFallback = potDetails.reduce((acc, pot) => acc + (pot.potAmount ?? 0), 0);
     const resolvedTotal =
       typeof totalPot === "number" && !Number.isNaN(totalPot)
         ? totalPot
-        : potAmountFallback || payoutSum;
+        : Math.max(potAmountFallback, payoutSum);
     const winnerMap = new Map();
-    payouts.forEach((entry) => {
-      const seatKey = entry.seatIndex ?? entry.seat;
-      if (typeof seatKey !== "number") return;
-      const existing = winnerMap.get(seatKey) ?? { payout: 0 };
-      winnerMap.set(seatKey, {
-        seatIndex: seatKey,
+    potDetails.flatMap((pot) => pot.winners).forEach((entry) => {
+      if (typeof entry.seatIndex !== "number") return;
+      const existing = winnerMap.get(entry.seatIndex) ?? { payout: 0 };
+      winnerMap.set(entry.seatIndex, {
+        seatIndex: entry.seatIndex,
         name: entry.name,
         payout: (existing.payout ?? 0) + (entry.payout ?? 0),
+        hand: entry.hand,
+        label: entry.label,
+        stack: entry.stack,
       });
     });
     const winners = Array.from(winnerMap.values()).map((entry) => ({
       ...entry,
-      hand: players?.[entry.seatIndex]?.hand ?? [],
-      label: players?.[entry.seatIndex]?.lastAction ?? "Badugi",
-      stack: players?.[entry.seatIndex]?.stack,
       payout: entry.payout ?? 0,
     }));
     return {
       handId: handIdRef.current,
       pot: resolvedTotal,
       winners,
+      potDetails: potDetails.filter(
+        (pot) => pot.potAmount > 0 || (pot.winners ?? []).length > 0
+      ),
     };
   }
 
   function logAction(i, type, payload = {}) {
-    if (!debugMode) return;
-    const seq = ++actionSeqRef.current;
-    const nm = players[i]?.name ?? `P${i}`;
-    const pos = positionName(i);
-    console.log(
-      `[${phaseTagLocal()}][#${seq}] ${nm} (${pos}) -> ${type}`,
-      payload
-    );
-  }
-
-function recordActionToLog({
+  if (!debugMode) return;
+  const seq = ++actionSeqRef.current;
+  const nm = players[i]?.name ?? `P${i}`;
+  const pos = positionName(i);
+  console.log(
+    `[${phaseTagLocal()}][#${seq}] ${nm} (${pos}) -> ${type}`,
+    payload
+  );
+  const hand = Array.isArray(players[i]?.hand)
+    ? players[i].hand.join(" ")
+    : "";
+  console.log(
+    `[HANDSTATE] phase=${phaseTagLocal()} turn=${turn} seat=${i} hand=${hand} folded=${players[i]?.folded} stack=${players[i]?.stack}`
+  );
+}
+  function emitE2EActionTrace(entry, playerSnapshot) {
+  if (!e2eLogEnabledRef.current) return;
+  const seatIdx = typeof entry.seat === "number" ? entry.seat : null;
+  const seatState =
+    playerSnapshot ?? (seatIdx !== null ? playersRef.current?.[seatIdx] : null);
+  const hand = Array.isArray(seatState?.hand) ? seatState.hand.join(" ") : "";
+  const metaString =
+    entry.metadata && Object.keys(entry.metadata).length
+      ? JSON.stringify(entry.metadata)
+      : "{}";
+  const stackBefore =
+    entry.stackBefore ??
+    (seatState && typeof seatState.stack === "number" ? seatState.stack : "?");
+  const stackAfter =
+    entry.stackAfter ??
+    (seatState && typeof seatState.stack === "number" ? seatState.stack : "?");
+  const betBefore =
+    entry.betBefore ??
+    (seatState && typeof seatState.betThisRound === "number"
+      ? seatState.betThisRound
+      : "?");
+  const betAfter =
+    entry.betAfter ??
+    (seatState && typeof seatState.betThisRound === "number"
+      ? seatState.betThisRound
+      : "?");
+  console.log(
+    `[E2E-ACTION] phase=${entry.phase} round=${entry.round} seat=${seatIdx ?? "-"} name=${entry.seatName} action=${entry.action} stackBefore=${stackBefore} stackAfter=${stackAfter} betBefore=${betBefore} betAfter=${betAfter} hand=${hand} turn=${turn} drawRound=${drawRound} betRound=${betRoundIndex} metadata=${metaString}`
+  );
+}
+  function recordActionToLog({
   phase: phaseOverride,
   round,
   seat,
@@ -581,9 +730,7 @@ function recordActionToLog({
     mergedMeta.extra = extra;
   }
 
-  setActionLog((prev) => [
-    ...prev,
-    {
+    const nextEntry = {
       phase: phaseLabel,
       round: resolvedRound,
       seat: idx,
@@ -602,9 +749,10 @@ function recordActionToLog({
       raiseCountTable,
       metadata: Object.keys(mergedMeta).length ? mergedMeta : undefined,
       ts: Date.now(),
-    },
-  ]);
-}
+    };
+    emitE2EActionTrace(nextEntry, seatSnapshot);
+    setActionLog((prev) => [...prev, nextEntry]);
+  }
 
   const handleTierOverrideChange = (event) => {
     const nextTier = event.target.value || null;
@@ -1159,6 +1307,7 @@ function recordActionToLog({
 
     if (actives.length === 0) {
       debugLog("[DRAW] No active players left -> skipping to finishDrawRound()");
+      console.log("[TRACE] about to call finishDrawRound from draw loop", { drawRound, snapSize: snap.length });
       finishDrawRound(snap);
       return;
     }
@@ -1171,7 +1320,13 @@ function recordActionToLog({
     const baseCandidate = Array.isArray(snapOpt) ? snapOpt : latestPlayers;
     const base = Array.isArray(baseCandidate) ? baseCandidate : latestPlayers;
     const completed = Math.min(drawRound + 1, MAX_DRAWS);
-    setDrawRound(completed);
+    console.log("[TRACE] finishDrawRound start", {
+      drawRound,
+      completed,
+      snapSeats: base.map((p) => ({ seat: p.seat, hasDrawn: p.hasDrawn })),
+    });
+    setDrawRound((prev) => Math.min(prev + 1, MAX_DRAWS));
+    setBetRoundIndex((prev) => Math.min(prev + 1, MAX_DRAWS));
 
     setRaiseCountThisRound(0);
 
@@ -1180,13 +1335,20 @@ function recordActionToLog({
         ? (dealerIdx + 3) % NUM_PLAYERS
         : (dealerIdx + 1) % NUM_PLAYERS;
 
-    const reset = base.map((p) => ({
-      ...p,
-      betThisRound: 0,
-      lastAction: "",
-      hasDrawn: false,
-    }));
+    const reset = base.map((p) => {
+      const cloned = clonePlayerState(p);
+      if (!cloned) return null;
+      return {
+        ...cloned,
+        betThisRound: 0,
+        lastAction: "",
+        hasDrawn: false,
+      };
+    }).filter(Boolean);
 
+    console.log("[STATE] finishDrawRound RESET snapshot", reset.map((p) => ({
+      seat: p.seat ?? "?", name: p.name, folded: p.folded, hasDrawn: p.hasDrawn,
+    })));
     setPlayers(reset);
     setCurrentBet(0);
     setBetHead(firstToAct);
@@ -1382,6 +1544,8 @@ function recordActionToLog({
     setCurrentBet(initialCurrentBet);
     setDealerIdx(nextDealerIdx);
     setDrawRound(0);
+    setBetRoundIndex(0);
+    setBetRoundIndex(0);
     setPhase("BET");
     setTurn((nextDealerIdx + 3) % NUM_PLAYERS); // UTG
     setBetHead((nextDealerIdx + 3) % NUM_PLAYERS);
@@ -1588,7 +1752,7 @@ function recordActionToLog({
 
     trace("afterBetActionWithSnapshot()", { phase, drawRound, actedIndex });
     if (transitioning) {
-      setPlayers(snap);
+      setPlayerSnapshot(snap);
       return;
     }
 
@@ -1616,7 +1780,7 @@ function recordActionToLog({
     if (currentBet !== maxNow) setCurrentBet(maxNow);
 
     const next = nextAliveFrom(snap, actedIndex);
-    setPlayers(snap);
+    setPlayerSnapshot(snap);
     function scheduleFinish() {
       setTransitioning(true);
       setTimeout(() => {
@@ -1725,11 +1889,17 @@ function recordActionToLog({
         scheduleFinish();
         return;
       }
-      if (nextAlive === null) {
-        debugLog("[BET] No next alive player, forcing finish");
-        scheduleFinish();
+    if (nextAlive === null) {
+      const fallbackAlive = findNextAliveAfter(snap, actedIndex);
+      if (fallbackAlive !== null) {
+        console.log("[BET] fallback next alive after SB fold", { fallbackAlive });
+        setTurn(fallbackAlive);
         return;
       }
+      debugLog("[BET] No next alive player, forcing finish");
+      scheduleFinish();
+      return;
+    }
       if (next === null) return;
       setTurn(nextAlive);
       return;
@@ -2009,6 +2179,7 @@ function recordActionToLog({
     if (outcome.street === "DRAW") {
       const nextDraw = outcome.drawRoundIndex ?? drawRoundValue + 1;
       setDrawRound(nextDraw);
+      setBetRoundIndex(nextDraw);
       setPhase("DRAW");
       const nextActing =
         outcome.actingPlayerIndex ??
@@ -2402,7 +2573,7 @@ function recordActionToLog({
     );
 
     setDeck([]);
-    setPlayers(snap);
+    setPlayerSnapshot(snap);
     syncEngineSnapshot({
       players: snap,
       pots,
@@ -2632,6 +2803,7 @@ function handleCardClick(i) {
     phaseTag: phaseTagLocal(),
     drawRound,
     maxDraws: MAX_DRAWS,
+    betRoundIndex,
     levelNumber: currentStructure.level ?? blindLevelIndex + 1,
     sbValue: SB,
     bbValue: BB,

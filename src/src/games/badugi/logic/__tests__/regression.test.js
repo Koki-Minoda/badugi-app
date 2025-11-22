@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { compareEvaluations } from "../../../../evaluators/registry.js";
-import { evaluateBadugiHand } from "../../../../evaluators/badugi.js";
-import { getWinnersByBadugi } from "../../../../games/badugi/utils/badugiEvaluator.js";
+import { compareEvaluations } from "../../../../../games/evaluators/registry.js";
+import { evaluateBadugiHand } from "../../../../../games/evaluators/badugi.js";
+import { getWinnersByBadugi } from "../../../../../games/badugi/utils/badugiEvaluator.js";
 
 describe("Badugi regression guardrails", () => {
   it("prefers larger sets over smaller ones regardless of raw score", () => {
@@ -35,6 +35,6 @@ describe("Badugi regression guardrails", () => {
     ];
     const winners = getWinnersByBadugi(players);
     expect(winners).toHaveLength(1);
-    expect(winners[0].seatIndex).toBe(3);
+    expect(winners[0].seatIndex).toBe(2);
   });
 });

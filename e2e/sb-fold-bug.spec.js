@@ -60,6 +60,8 @@ test("SB folding before flop does not stall the hand", async ({ page }) => {
 
   // The next action may belong to another player, so we only ensure the UI is still responsive.
   await page.waitForTimeout(1000);
+  const phaseCell = page.getByText(/Phase:/).first();
+  await expect(phaseCell).toContainText(/DRAW#/);
 
   await expect(consoleErrors).toEqual([]);
   await expect(pageErrors).toEqual([]);

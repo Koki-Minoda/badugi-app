@@ -13,34 +13,32 @@ export function installE2eTestDriver(apiRef) {
   }
 
   const driver = {
-    /**
-     * Queue or immediately execute a specific action for the given seat.
-     * actionPayload: { type: 'fold' | 'call' | 'raise' | 'check' | 'all-in', amount?: number }
-     */
     forceSeatAction: (...args) => apiRef.current?.forceSeatAction?.(...args),
-    /**
-     * Convenience helper to fold several seats (in order) without clicking UI controls.
-     */
     forceSequentialFolds: (...args) => apiRef.current?.forceSequentialFolds?.(...args),
-    /**
-     * Force a seat to push chips into the pot. When amount is omitted the entire stack is used.
-     */
     forceAllIn: (...args) => apiRef.current?.forceAllIn?.(...args),
-    /**
-     * Skip the remaining streets and jump to showdown immediately.
-     */
     resolveHandNow: (...args) => apiRef.current?.resolveHandNow?.(...args),
-    /**
-     * Start dealing the next hand right away (bypasses overlay buttons / timers).
-     */
     dealNewHandNow: (...args) => apiRef.current?.dealNewHandNow?.(...args),
+    getStateSnapshot: (...args) => apiRef.current?.getStateSnapshot?.(...args),
+    setPlayerHands: (...args) => apiRef.current?.setPlayerHands?.(...args),
+    getLastPotSummary: (...args) => apiRef.current?.getLastPotSummary?.(...args),
+    getHandHistory: (...args) => apiRef.current?.getHandHistory?.(...args),
   };
 
-  window.__BADUGI_E2E__ = driver;
+  const target =
+    window.__BADUGI_E2E__ && typeof window.__BADUGI_E2E__ === "object"
+      ? window.__BADUGI_E2E__
+      : {};
+  Object.assign(target, driver);
+  window.__BADUGI_E2E__ = target;
 
   return () => {
-    if (window.__BADUGI_E2E__ === driver) {
-      delete window.__BADUGI_E2E__;
+    if (typeof window === "undefined" || window.__BADUGI_E2E__ !== target) {
+      return;
     }
+    Object.keys(driver).forEach((key) => {
+      if (window.__BADUGI_E2E__[key] === driver[key]) {
+        delete window.__BADUGI_E2E__[key];
+      }
+    });
   };
 }

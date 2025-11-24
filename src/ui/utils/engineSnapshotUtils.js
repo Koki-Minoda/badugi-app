@@ -46,8 +46,13 @@ export function mergeEngineSnapshot(currentState, snapshot) {
   const nextEngineId =
     snapshot.engineId ?? currentState?.engineId ?? nextGameId;
 
+  const shouldReuseSnapshotPlayers =
+    Array.isArray(snapshot.players) &&
+    nextPlayers.length === snapshot.players.length &&
+    nextPlayers.every((player, idx) => player === snapshot.players[idx]);
+
   return {
-    players: nextPlayers,
+    players: shouldReuseSnapshotPlayers ? snapshot.players : nextPlayers,
     pots: nextPots,
     deck: nextDeck,
     gameId: nextGameId,

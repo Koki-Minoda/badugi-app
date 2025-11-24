@@ -1,4 +1,9 @@
 import { test, expect, Page } from "@playwright/test";
+import {
+  evaluateBadugi,
+  compareBadugi,
+  getWinnersByBadugi,
+} from "../../src/games/badugi/utils/badugiEvaluator.js";
 
 const APP_URL = "http://127.0.0.1:3000/";
 
@@ -9,7 +14,7 @@ function setupE2ELogCapture(page: Page) {
   const logs: string[] = [];
   page.on("console", (msg) => {
     const text = msg.text();
-    if (text.includes("[E2E-")) {
+    if (text.includes("[E2E-") || text.includes("[SHOWDOWN]")) {
       logs.push(text);
     }
   });
@@ -113,6 +118,22 @@ function extractCards(line: string, key: "before" | "after"): string[] {
   return Array.isArray(arr) ? [...arr] : [];
 }
 
+async function getLastPotSummary(page: Page) {
+  return page.evaluate(() => window.__BADUGI_E2E__?.getLastPotSummary?.() ?? []);
+}
+
+async function waitForPotSummary(page: Page, minLength = 1, timeout = 60000) {
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    const summary = await getLastPotSummary(page);
+    if (summary.length >= minLength) {
+      return summary;
+    }
+    await page.waitForTimeout(200);
+  }
+  throw new Error("Timed out waiting for pot summary");
+}
+
 async function playHandWithoutFolding(page: Page) {
   const deadline = Date.now() + 45000;
   while (Date.now() < deadline) {
@@ -188,6 +209,11 @@ const lineHasHandId = (line: string, handId: string | null) =>
 const seatRegexCache = new Map<number, RegExp>();
 const seatAnyRegexCache = new Map<number, RegExp>();
 const PRE_FLOP_ORDER = [3, 4, 5, 0, 1, 2];
+const ZERO_INVEST_OVERRIDES = [
+  { seat: 3, cards: ["7C", "8D", "9H", "JS"], totalInvested: 0 },
+  { seat: 4, cards: ["5C", "6D", "7H", "8S"], totalInvested: 0 },
+  { seat: 5, cards: ["9C", "10D", "JH", "QS"], totalInvested: 0 },
+];
 
 function seatEqualsRegex(seat: number) {
   if (!seatRegexCache.has(seat)) {
@@ -201,6 +227,22 @@ function seatAnyRegex(seat: number) {
     seatAnyRegexCache.set(seat, new RegExp(`seat(?:=|:)\\s*${seat}\\b`));
   }
   return seatAnyRegexCache.get(seat)!;
+}
+
+function extractWinnerNames(logs: string[], startIndex = 0) {
+  const line = logs.slice(startIndex).find((entry) => entry.includes("[SHOWDOWN] Winners:"));
+  if (!line) return [];
+  const match = line.match(/\[SHOWDOWN\] Winners:\s*\[(.*)\]/);
+  if (!match) return [];
+  return match[1]
+    .split(",")
+    .map((segment) => segment.replace(/[\[\]'"]/g, "").trim())
+    .filter((token) => token.length > 0);
+}
+
+async function waitForWinnersLog(logs: string[], startIndex = 0, timeout = 60000) {
+  await waitForCondition(() => extractWinnerNames(logs, startIndex).length > 0, timeout);
+  return extractWinnerNames(logs, startIndex);
 }
 
 function firstActiveBetSeat(
@@ -255,6 +297,22 @@ function findHandId(lines: string[]): string | null {
   return null;
 }
 
+function computeExpectedWinners(players: Array<Record<string, any>>) {
+  if (!Array.isArray(players) || players.length === 0) return [];
+  const eligible = players
+    .map((player, idx) => ({
+      seat: idx,
+      seatIndex: idx,
+      name: player?.name ?? `Seat ${idx}`,
+      hand: player?.hand ?? [],
+      seatOut: player?.seatOut,
+      folded: player?.folded,
+    }))
+    .filter((entry) => !entry.seatOut && !entry.folded && Array.isArray(entry.hand) && entry.hand.length);
+  if (!eligible.length) return [];
+  return getWinnersByBadugi(eligible).map((winner) => winner.name);
+}
+
 async function waitForE2EDriver(page: Page) {
   const REQUIRED_METHODS = [
     "forceSeatAction",
@@ -270,6 +328,34 @@ async function waitForE2EDriver(page: Page) {
       return expected.every((key) => typeof api[key] === "function");
     },
     REQUIRED_METHODS,
+    { timeout: 20000 },
+  );
+}
+
+async function waitForE2EHelper(page: Page, helperName: string) {
+  await page.waitForFunction(
+    (method) => typeof window.__BADUGI_E2E__?.[method] === "function",
+    helperName,
+    { timeout: 20000 },
+  );
+}
+
+async function waitForHandsApplied(
+  page: Page,
+  overrides: Array<{ seat: number; cards: string[] }>,
+) {
+  await page.waitForFunction(
+    (config) => {
+      const state = window.__BADUGI_E2E__?.getPhaseState?.();
+      if (!state || !Array.isArray(state.players)) return false;
+      return config.every(({ seat, cards }) => {
+        const player = state.players?.[seat];
+        if (!player || !Array.isArray(player.hand)) return false;
+        if (player.hand.length !== cards.length) return false;
+        return player.hand.every((card, idx) => card === String(cards[idx]).toUpperCase());
+      });
+    },
+    overrides,
     { timeout: 20000 },
   );
 }
@@ -309,10 +395,20 @@ async function waitForSeatActionLog(
   });
 }
 
+async function waitForHandResultPots(page: Page) {
+  await page.waitForSelector('[data-testid="hand-result-pot"]:visible', { timeout: 20000 });
+  return page.locator('[data-testid="hand-result-pot"]:visible');
+}
+
+async function getHandHistoryRecords(page: Page) {
+  return page.evaluate(() => window.__BADUGI_E2E__?.getHandHistory?.() ?? []);
+}
+
 test.describe("Badugi flow regressions", () => {
   test("Hero fold is terminal within the same hand", async ({ page }) => {
     const logs = setupE2ELogCapture(page);
     await openGame(page);
+    await waitForE2EDriver(page);
     logs.length = 0;
 
     const foldButton = page.getByRole("button", { name: /^Fold$/i }).first();
@@ -504,19 +600,10 @@ test.describe("Badugi flow regressions", () => {
     const cpuSeats = [1, 2, 3, 4];
     const startIdx = logs.length;
     await invokeE2E(page, "forceSequentialFolds", cpuSeats);
-    await waitForCondition(
-      () =>
-        cpuSeats.every((seat) =>
-          logs
-            .slice(startIdx)
-            .some(
-              (line) =>
-                line.includes("[E2E-ACTION]") &&
-                seatEqualsRegex(seat).test(line) &&
-                line.includes("action=Fold"),
-            ),
-        ),
-      30000,
+    await Promise.all(
+      cpuSeats.map((seat) =>
+        waitForSeatActionLog(logs, seat, startIdx, (line) => line.includes("action=Fold")),
+      ),
     );
     await invokeE2E(page, "resolveHandNow");
     await waitForHandResolution(page, logs, startIdx);
@@ -623,12 +710,314 @@ test.describe("Badugi flow regressions", () => {
       const foldEvents = getSeatEventLines(handLogs, handId, 0, "EVENT");
       expect(foldEvents).toHaveLength(1);
 
-      if (handIdx < handsToPlay - 1) {
-        await invokeE2E(page, "dealNewHandNow");
-        await foldButton.waitFor({ state: "visible", timeout: 30000 });
-      }
+    if (handIdx < handsToPlay - 1) {
+      await invokeE2E(page, "dealNewHandNow");
+      await foldButton.waitFor({ state: "visible", timeout: 30000 });
     }
+  }
 
-    expect(seenHandIds.size).toBe(handsToPlay);
+  expect(seenHandIds.size).toBe(handsToPlay);
+});
+
+  test("Folded seats never appear among showdown winners", async ({ page }) => {
+    const logs = setupE2ELogCapture(page);
+    await openGame(page);
+    await waitForE2EDriver(page);
+    logs.length = 0;
+    await invokeE2E(page, "dealNewHandNow");
+    const foldButton = page.getByRole("button", { name: /^Fold$/i }).first();
+    await foldButton.waitFor({ state: "visible", timeout: 30000 });
+    const startIdx = logs.length;
+    const foldedSeats = [1, 2];
+    await invokeE2E(page, "forceSequentialFolds", foldedSeats);
+    await Promise.all(
+      foldedSeats.map((seat) =>
+        waitForSeatActionLog(logs, seat, startIdx, (line) => line.includes("action=Fold")),
+      ),
+    );
+    const heroStartIdx = logs.length;
+    await invokeE2E(page, "forceSeatAction", 0, { type: "check" });
+    await waitForSeatActionLog(logs, 0, heroStartIdx);
+    await invokeE2E(page, "resolveHandNow");
+    await waitForHandResolution(page, logs, startIdx);
+    const winners = await waitForWinnersLog(logs, startIdx);
+    ["CPU 2", "CPU 3"].forEach((name) => expect(winners).not.toContain(name));
+  });
+
+  test("Showdown logs every tied winner", async ({ page }) => {
+    const logs = setupE2ELogCapture(page);
+    await openGame(page);
+    await waitForE2EDriver(page);
+    logs.length = 0;
+    await invokeE2E(page, "dealNewHandNow");
+    await page.getByRole("button", { name: /^Fold$/i }).first().waitFor({ state: "visible", timeout: 30000 });
+    const startIdx = logs.length;
+    const tieHandHero = ["AC", "2D", "3H", "4S"];
+    const tieHandCpu = ["AS", "2C", "3D", "4H"];
+    expect(compareBadugi(tieHandHero, tieHandCpu)).toBe(0);
+    await waitForE2EHelper(page, "setPlayerHands");
+    const tieOverrides = [
+      { seat: 0, cards: tieHandHero, totalInvested: 200 },
+      { seat: 1, cards: ["8C", "9D", "10H", "QS"], totalInvested: 0 },
+      { seat: 2, cards: tieHandCpu, totalInvested: 200 },
+      ...ZERO_INVEST_OVERRIDES,
+    ];
+    await invokeE2E(page, "setPlayerHands", tieOverrides);
+    await waitForHandsApplied(page, tieOverrides);
+    await invokeE2E(page, "forceSequentialFolds", [1, 3, 4, 5]);
+    await invokeE2E(page, "forceSeatAction", 0, { type: "check" });
+    await invokeE2E(page, "forceSeatAction", 2, { type: "check" });
+    await invokeE2E(page, "resolveHandNow");
+    await waitForHandResolution(page, logs, startIdx);
+    const winners = await waitForWinnersLog(logs, startIdx);
+    expect(new Set(winners)).toEqual(new Set(["You", "CPU 3"]));
+    const potSections = await waitForHandResultPots(page);
+    await expect(potSections).toHaveCount(1);
+    const winnerRows = potSections.first().locator('[data-testid="hand-result-winner-row"]');
+    await expect(winnerRows).toHaveCount(2);
+    await expect(
+      winnerRows.first().locator('[data-testid="hand-result-winner-hand-label"]'),
+    ).toHaveText(/Badugi 4-card/i);
+    const ranksText = await winnerRows
+      .first()
+      .locator('[data-testid="hand-result-winner-ranks"]')
+      .innerText();
+    expect(ranksText).toBe("A-2-3-4");
+  });
+
+  test("Four-card Badugi beats any three-card hand at showdown", async ({ page }) => {
+    const logs = setupE2ELogCapture(page);
+    await openGame(page);
+    await waitForE2EDriver(page);
+    logs.length = 0;
+    await invokeE2E(page, "dealNewHandNow");
+    await page.getByRole("button", { name: /^Fold$/i }).first().waitFor({ state: "visible", timeout: 30000 });
+    const startIdx = logs.length;
+    const fourCard = ["2C", "4D", "6H", "8S"];
+    const threeCard = ["AC", "2C", "3D", "4H"];
+    expect(compareBadugi(fourCard, threeCard)).toBeLessThan(0);
+    await waitForE2EHelper(page, "setPlayerHands");
+    const fourVsThreeOverrides = [
+      { seat: 0, cards: fourCard, totalInvested: 200 },
+      { seat: 1, cards: threeCard, totalInvested: 200 },
+      { seat: 2, cards: ["KD", "QD", "JS", "10H"], totalInvested: 200 },
+      ...ZERO_INVEST_OVERRIDES,
+    ];
+    await invokeE2E(page, "setPlayerHands", fourVsThreeOverrides);
+    await waitForHandsApplied(page, fourVsThreeOverrides);
+    await invokeE2E(page, "forceSeatAction", 0, { type: "check" });
+    await invokeE2E(page, "forceSeatAction", 1, { type: "check" });
+    await invokeE2E(page, "resolveHandNow");
+    await waitForHandResolution(page, logs, startIdx);
+    const winners = await waitForWinnersLog(logs, startIdx);
+    const winnerSet = new Set(winners);
+    expect(winnerSet.has("You")).toBe(true);
+    expect(winnerSet.has("CPU 2")).toBe(false);
+    const potSections = await waitForHandResultPots(page);
+    const potCount = await potSections.count();
+    expect(potCount).toBeGreaterThanOrEqual(1);
+    const potTitles = await potSections
+      .locator('[data-testid="hand-result-pot-title"]')
+      .allTextContents();
+    expect(potTitles[0]).toMatch(/pot/i);
+    const winnerRow = potSections.first().locator('[data-testid="hand-result-winner-row"]').first();
+    await expect(
+      winnerRow.locator('[data-testid="hand-result-winner-hand-label"]'),
+    ).toHaveText(/Badugi 4-card/i);
+    await expect(
+      winnerRow.locator('[data-testid="hand-result-winner-ranks"]'),
+    ).toHaveText("2-4-6-8");
+    await expect(
+      winnerRow.locator('[data-testid="hand-result-winner-active-cards"]'),
+    ).toHaveText(/2C 4D 6H 8S/);
+    await expect(
+      winnerRow.locator('[data-testid="hand-result-winner-dead-cards"]'),
+    ).toHaveCount(0);
+  });
+
+  test("UI shows single pot summary when no player is all-in", async ({ page }) => {
+    const logs = setupE2ELogCapture(page);
+    await openGame(page);
+    await waitForE2EDriver(page);
+    logs.length = 0;
+    await invokeE2E(page, "dealNewHandNow");
+    await page.getByRole("button", { name: /^Fold$/i }).first().waitFor({ state: "visible", timeout: 30000 });
+    await waitForE2EHelper(page, "setPlayerHands");
+    const singlePotOverrides = [
+      { seat: 0, cards: ["AC", "2D", "3H", "4S"], totalInvested: 120 },
+      { seat: 1, cards: ["5C", "6D", "7H", "8S"], totalInvested: 120 },
+      ...ZERO_INVEST_OVERRIDES,
+    ];
+    await invokeE2E(page, "setPlayerHands", singlePotOverrides);
+    await waitForHandsApplied(page, singlePotOverrides);
+    await invokeE2E(page, "forceSeatAction", 0, { type: "check" });
+    await invokeE2E(page, "forceSeatAction", 1, { type: "check" });
+    await invokeE2E(page, "resolveHandNow");
+    await waitForHandResolution(page, logs, 0);
+    const potSections = await waitForHandResultPots(page);
+    const potCount = await potSections.count();
+    expect(potCount).toBeGreaterThanOrEqual(1);
+    await expect(
+      potSections.first().locator('[data-testid="hand-result-pot-title"]'),
+    ).toHaveText(/pot/i);
+  });
+
+  test("Side-pot summary appears only when an all-in is covered by deeper stacks", async ({ page }) => {
+    const logs = setupE2ELogCapture(page);
+    await openGame(page);
+    await waitForE2EDriver(page);
+    logs.length = 0;
+    await invokeE2E(page, "dealNewHandNow");
+    await page.getByRole("button", { name: /^Fold$/i }).first().waitFor({ state: "visible", timeout: 30000 });
+    const sideOverrides = [
+      { seat: 0, cards: ["AC", "2D", "3H", "4S"], totalInvested: 100, stack: 0, allIn: true },
+      { seat: 1, cards: ["5C", "6D", "7H", "8S"], totalInvested: 300, stack: 0, allIn: true },
+      { seat: 2, cards: ["9C", "10D", "JH", "QS"], totalInvested: 300, stack: 0, allIn: true },
+      ...ZERO_INVEST_OVERRIDES,
+    ];
+    await waitForE2EHelper(page, "setPlayerHands");
+    await invokeE2E(page, "setPlayerHands", sideOverrides);
+    await waitForHandsApplied(page, sideOverrides);
+    const foldedSideSeats = [3, 4, 5];
+    const foldStartIdx = logs.length;
+    await invokeE2E(page, "forceSequentialFolds", foldedSideSeats);
+    await Promise.all(
+      foldedSideSeats.map((seat) =>
+        waitForSeatActionLog(logs, seat, foldStartIdx, (line) => line.includes("action=Fold")),
+      ),
+    );
+    const startIdx = logs.length;
+    await invokeE2E(page, "resolveHandNow");
+    await waitForHandResolution(page, logs, startIdx);
+    const summary = await waitForPotSummary(page, 1);
+    expect(summary.length).toBeGreaterThanOrEqual(2);
+    const mainPot = summary[0];
+    const sidePot = summary[1];
+    expect(mainPot.amount).toBeGreaterThan(0);
+    expect(sidePot.amount).toBeGreaterThan(0);
+    expect(mainPot.eligible.includes(0)).toBe(true);
+    const heroFreeSidePot = summary.find(
+      (pot: any, idx: number) => idx > 0 && Array.isArray(pot.eligible) && !pot.eligible.includes(0),
+    );
+    expect(heroFreeSidePot).toBeTruthy();
+    const potSections = await waitForHandResultPots(page);
+    const potCount = await potSections.count();
+    expect(potCount).toBeGreaterThanOrEqual(2);
+    await expect(
+      potSections.nth(0).locator('[data-testid="hand-result-pot-title"]'),
+    ).toHaveText("Main Pot");
+    await expect(
+      potSections.nth(1).locator('[data-testid="hand-result-pot-title"]'),
+    ).toHaveText("Side Pot #2");
+    const sideWinnerNames = await potSections
+      .nth(1)
+      .locator('[data-testid="hand-result-winner-name"]')
+      .allTextContents();
+    expect(sideWinnerNames).not.toContain("You");
+  });
+
+  test("Hand history captures single-pot showdown metadata", async ({ page }) => {
+    const logs = setupE2ELogCapture(page);
+    await openGame(page);
+    await waitForE2EDriver(page);
+    logs.length = 0;
+    const historyBefore = await getHandHistoryRecords(page);
+    await invokeE2E(page, "dealNewHandNow");
+    await page.getByRole("button", { name: /^Fold$/i }).first().waitFor({ state: "visible", timeout: 30000 });
+    const heroHand = ["2C", "4D", "6H", "8S"];
+    const villainHand = ["AC", "2C", "3D", "4H"];
+    await waitForE2EHelper(page, "setPlayerHands");
+    const overrides = [
+      { seat: 0, cards: heroHand, totalInvested: 200 },
+      { seat: 1, cards: villainHand, totalInvested: 200 },
+      ...ZERO_INVEST_OVERRIDES,
+    ];
+    await invokeE2E(page, "setPlayerHands", overrides);
+    await waitForHandsApplied(page, overrides);
+    const foldedHistorySeats = [2, 3, 4, 5];
+    const foldStartIdx = logs.length;
+    await invokeE2E(page, "forceSequentialFolds", foldedHistorySeats);
+    await Promise.all(
+      foldedHistorySeats.map((seat) =>
+        waitForSeatActionLog(logs, seat, foldStartIdx, (line) => line.includes("action=Fold")),
+      ),
+    );
+    const startIdx = logs.length;
+    await invokeE2E(page, "forceSeatAction", 0, { type: "check" });
+    await waitForSeatActionLog(logs, 0, startIdx, (line) => line.includes("action=Check"));
+    await invokeE2E(page, "forceSeatAction", 1, { type: "check" });
+    await waitForSeatActionLog(logs, 1, startIdx, (line) => line.includes("action=Check"));
+    await invokeE2E(page, "resolveHandNow");
+    await waitForHandResolution(page, logs, startIdx);
+    const history = await getHandHistoryRecords(page);
+    expect(history.length).toBe(historyBefore.length + 1);
+    const record = history[history.length - 1];
+    expect(record.pots.length).toBe(1);
+    expect(record.pots[0].winners[0].seat).toBe(0);
+    const heroSeat = record.seats.find((seat) => seat.seat === 0);
+    expect(heroSeat.hand).toEqual(heroHand);
+    const expectedEval = evaluateBadugi(heroHand);
+    expect(heroSeat.evaluation).toEqual(expectedEval);
+  });
+
+  test("Hand history records side-pot breakdown", async ({ page }) => {
+    const logs = setupE2ELogCapture(page);
+    await openGame(page);
+    await waitForE2EDriver(page);
+    logs.length = 0;
+    const historyBefore = await getHandHistoryRecords(page);
+    await invokeE2E(page, "dealNewHandNow");
+    await page.getByRole("button", { name: /^Fold$/i }).first().waitFor({ state: "visible", timeout: 30000 });
+    const sideOverrides = [
+      { seat: 0, cards: ["AC", "2D", "3H", "4S"], totalInvested: 100 },
+      { seat: 1, cards: ["5C", "6D", "7H", "8S"], totalInvested: 300 },
+      { seat: 2, cards: ["9C", "10D", "JH", "QS"], totalInvested: 300 },
+      ...ZERO_INVEST_OVERRIDES,
+    ];
+    await waitForE2EHelper(page, "setPlayerHands");
+    await invokeE2E(page, "setPlayerHands", sideOverrides);
+    await waitForHandsApplied(page, sideOverrides);
+    await invokeE2E(page, "forceSequentialFolds", [3, 4, 5]);
+    const startIdx = logs.length;
+    await invokeE2E(page, "forceSeatAction", 0, { type: "check" });
+    await invokeE2E(page, "forceSeatAction", 1, { type: "check" });
+    await invokeE2E(page, "forceSeatAction", 2, { type: "check" });
+    await invokeE2E(page, "resolveHandNow");
+    await waitForHandResolution(page, logs, startIdx);
+    const history = await getHandHistoryRecords(page);
+    expect(history.length).toBe(historyBefore.length + 1);
+    const record = history[history.length - 1];
+    expect(record.pots.length).toBeGreaterThanOrEqual(2);
+    expect(record.pots[0].eligibleSeats).toEqual([0, 1, 2]);
+    expect(record.pots[1].eligibleSeats).toEqual([1, 2]);
+  });
+
+  test("Hand history marks fold-only winners", async ({ page }) => {
+    const logs = setupE2ELogCapture(page);
+    await openGame(page);
+    await waitForE2EDriver(page);
+    logs.length = 0;
+    const historyBefore = await getHandHistoryRecords(page);
+    await invokeE2E(page, "dealNewHandNow");
+    await page.getByRole("button", { name: /^Fold$/i }).first().waitFor({ state: "visible", timeout: 30000 });
+    const startIdx = logs.length;
+    await invokeE2E(page, "forceSeatAction", 0, { type: "fold" });
+    await waitForSeatActionLog(logs, 0, startIdx, (line) => line.includes("action=Fold"));
+    const foldedSeats = [1, 2, 3, 4];
+    await invokeE2E(page, "forceSequentialFolds", foldedSeats);
+    await Promise.all(
+      foldedSeats.map((seat) =>
+        waitForSeatActionLog(logs, seat, startIdx, (line) => line.includes("action=Fold")),
+      ),
+    );
+    await invokeE2E(page, "resolveHandNow");
+    await waitForHandResolution(page, logs, startIdx);
+    const history = await getHandHistoryRecords(page);
+    expect(history.length).toBe(historyBefore.length + 1);
+    const record = history[history.length - 1];
+    const heroSeat = record.seats.find((seat) => seat.seat === 0);
+    expect(heroSeat.finalAction).toBe("fold");
+    const winnerSeat = record.seats.find((seat) => seat.seat === 5);
+    expect(winnerSeat.finalAction === "win" || winnerSeat.finalAction === "showdown").toBe(true);
   });
 });

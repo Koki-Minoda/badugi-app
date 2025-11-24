@@ -119,40 +119,83 @@ export const calcDrawStartIndex = (dealerIdx = 0, streetIndex = 0, numPlayers = 
 // === ===
 
 export function settleStreetToPots(playersSnap = [], prevPots = []) {
-
   debugLog("[SETTLE] start");
+  const cleared = playersSnap.map((p) => ({
+    ...p,
+    betThisRound: 0,
+  }));
+  const pots = buildSidePots(cleared);
+  return {
+    pots: pots.length ? pots : prevPots,
+    clearedPlayers: cleared,
+  };
+}
 
-  const contributions = playersSnap.map(p => Math.max(0, p.betThisRound || 0));
-  const pots = [...prevPots];
+export function buildSidePots(playersSnap = []) {
+  const working = playersSnap.map((player, seat) => ({
+    seat,
+    committed: Math.max(
+      0,
+      typeof player?.totalInvested === "number"
+        ? player.totalInvested
+        : player?.betThisRound ?? 0
+    ),
+    folded: isFoldedOrOut(player),
+  }));
+
+  const rawPots = [];
 
   while (true) {
-    const positive = contributions
-      .map((amount, seat) => ({ amount, seat }))
-      .filter(entry => entry.amount > 0);
-    if (!positive.length) break;
+    const active = working.filter((entry) => entry.committed > 0);
+    if (!active.length) break;
+    const minContribution = Math.min(...active.map((entry) => entry.committed));
+    if (!Number.isFinite(minContribution) || minContribution <= 0) break;
 
-    const minContribution = Math.min(...positive.map(p => p.amount));
-    const involvedSeats = positive.map(p => p.seat);
-    const amount = minContribution * involvedSeats.length;
-    const eligibleBase = involvedSeats.filter(
-      (seat) => !isFoldedOrOut(playersSnap[seat])
-    );
-    const activeSeats = playersSnap
-      .map((player, seat) => (!isFoldedOrOut(player) ? seat : null))
-      .filter((seat) => seat !== null);
-    const eligible = Array.from(new Set([...eligibleBase, ...activeSeats]));
+    const amount = minContribution * active.length;
+    const eligible = active
+      .filter((entry) => !entry.folded)
+      .map((entry) => entry.seat);
 
-    pots.push({ amount, eligible });
+    rawPots.push({
+      amount,
+      eligible,
+    });
 
-    involvedSeats.forEach(seat => {
-      contributions[seat] -= minContribution;
+    active.forEach((entry) => {
+      entry.committed = Math.max(0, entry.committed - minContribution);
     });
   }
 
-  const cleared = playersSnap.map(p => ({ ...p, betThisRound: 0 }));
+  return mergeEquivalentPots(rawPots);
+}
 
-  return { pots, clearedPlayers: cleared };
-
+function mergeEquivalentPots(pots = []) {
+  const merged = [];
+  pots.forEach((pot) => {
+    if (!pot || pot.amount <= 0) return;
+    const eligibleSorted = Array.from(new Set(pot.eligible ?? [])).sort(
+      (a, b) => a - b
+    );
+    if (!eligibleSorted.length) {
+      merged.push({ amount: pot.amount, eligible: eligibleSorted });
+      return;
+    }
+    if (eligibleSorted.length <= 1 && merged.length) {
+      merged[merged.length - 1].amount += pot.amount;
+      return;
+    }
+    const last = merged[merged.length - 1];
+    if (
+      last &&
+      last.eligible.length === eligibleSorted.length &&
+      last.eligible.every((seat, idx) => seat === eligibleSorted[idx])
+    ) {
+      last.amount += pot.amount;
+    } else {
+      merged.push({ amount: pot.amount, eligible: eligibleSorted });
+    }
+  });
+  return merged;
 }
 
 

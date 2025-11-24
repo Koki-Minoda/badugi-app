@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { isBetRoundComplete, closingSeatForAggressor } from "../../engine/roundFlow.js";
+import {
+  isBetRoundComplete,
+  closingSeatForAggressor,
+  buildSidePots,
+} from "../../engine/roundFlow.js";
 
 const makePlayer = ({
   folded = false,
@@ -70,5 +74,55 @@ describe("isBetRoundComplete", () => {
       makePlayer({ folded: true }),
     ];
     expect(isBetRoundComplete(players)).toBe(true);
+  });
+});
+
+describe("buildSidePots", () => {
+  const basePlayer = (overrides = {}) => ({
+    name: overrides.name ?? "Seat",
+    totalInvested: overrides.totalInvested ?? 0,
+    betThisRound: overrides.betThisRound ?? 0,
+    folded: overrides.folded ?? false,
+    hasFolded: overrides.hasFolded ?? false,
+    seatOut: overrides.seatOut ?? false,
+  });
+
+  it("returns single main pot when everyone has equal committed chips", () => {
+    const players = [
+      basePlayer({ totalInvested: 120 }),
+      basePlayer({ totalInvested: 120 }),
+      basePlayer({ totalInvested: 120 }),
+    ];
+    expect(buildSidePots(players)).toEqual([{ amount: 360, eligible: [0, 1, 2] }]);
+  });
+
+  it("creates side pot only when higher stacks invest beyond an all-in threshold", () => {
+    const players = [
+      basePlayer({ totalInvested: 100 }),
+      basePlayer({ totalInvested: 300 }),
+      basePlayer({ totalInvested: 300 }),
+    ];
+    expect(buildSidePots(players)).toEqual([
+      { amount: 300, eligible: [0, 1, 2] },
+      { amount: 400, eligible: [1, 2] },
+    ]);
+  });
+
+  it("keeps folded chips in the pot but excludes them from eligibility", () => {
+    const players = [
+      basePlayer({ totalInvested: 120 }),
+      basePlayer({ totalInvested: 120 }),
+      basePlayer({ totalInvested: 80, folded: true, hasFolded: true }),
+    ];
+    expect(buildSidePots(players)).toEqual([{ amount: 320, eligible: [0, 1] }]);
+  });
+
+  it("produces a single pot when everyone folds except one player", () => {
+    const players = [
+      basePlayer({ totalInvested: 150 }),
+      basePlayer({ totalInvested: 60, folded: true, hasFolded: true }),
+      basePlayer({ totalInvested: 40, folded: true, hasFolded: true }),
+    ];
+    expect(buildSidePots(players)).toEqual([{ amount: 250, eligible: [0] }]);
   });
 });

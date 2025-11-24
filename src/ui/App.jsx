@@ -14,6 +14,14 @@ import { debugLog } from "../utils/debugLog";
 import { runDrawRound } from "../games/badugi/engine/drawRound";
 import { runShowdown } from "../games/badugi/engine/showdown";
 import { evaluateBadugi, compareBadugi, getWinnersByBadugi } from "../games/badugi/utils/badugiEvaluator";
+import {
+  startHandHistoryRecord,
+  appendHandHistoryAction,
+  updateHandHistorySeat,
+  finalizeHandHistoryRecord,
+  getCurrentHandHistoryRecord,
+  resetHandHistoryRecord,
+} from "./utils/handHistory";
 
 import {
   aliveBetPlayers,
@@ -401,6 +409,8 @@ export default function App() {
   const handSavedRef = useRef(false);
   const handIdRef = useRef(null);
   const handStartStacksRef = useRef([]);
+  const handHistoryRef = useRef([]);
+  const currentHandHistoryRef = useRef(null);
 
   const forcedSeatActionsRef = useRef(new Map());
   const e2eDriverApiRef = useRef({});
@@ -410,7 +420,38 @@ export default function App() {
   const recentE2eActionIdsRef = useRef(new Set());
   const recentE2eActionQueueRef = useRef([]);
   const MAX_RECENT_E2E_ACTIONS = 128;
+  const BADUGI_RANK_SYMBOLS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+
+  function resolveEvaluationCount(evaluation) {
+    if (evaluation && typeof evaluation.count === "number") return evaluation.count;
+    switch (evaluation?.rankType) {
+      case "BADUGI":
+        return 4;
+      case "THREE_CARD":
+        return 3;
+      case "TWO_CARD":
+        return 2;
+      case "ONE_CARD":
+      default:
+        return 1;
+    }
+  }
+
+  function formatBadugiHandLabel(evaluation) {
+    const count = Math.max(0, resolveEvaluationCount(evaluation));
+    if (count >= 4) return "Badugi 4-card";
+    if (count > 0) return `Badugi ${count}-card`;
+    return "Badugi";
+  }
+
+  function formatBadugiRanksLabel(evaluation) {
+    if (!evaluation || !Array.isArray(evaluation.ranks) || evaluation.ranks.length === 0) return "-";
+    return evaluation.ranks
+      .map((value) => BADUGI_RANK_SYMBOLS[value] ?? `${value}`)
+      .join("-");
+  }
   const e2eErrorLogRef = useRef(new Set());
+  const lastPotSummaryRef = useRef([]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -441,19 +482,30 @@ export default function App() {
         setDealerIdx(normalized);
       },
       getPhaseState() {
-        const snapshot = (playersRef.current ?? []).map((player, idx) => ({
-          seat: typeof player?.seat === "number" ? player.seat : idx,
-          name: player?.name,
-          folded: Boolean(player?.folded),
-          stack: player?.stack,
-          betThisRound: player?.betThisRound,
-          lastAction: player?.lastAction,
-        }));
+        const snapshot = (playersRef.current ?? []).map((player, idx) => {
+          const seatIndex = typeof player?.seat === "number" ? player.seat : idx;
+          return {
+            seat: seatIndex,
+            name: player?.name,
+            stack: player?.stack,
+            betThisRound: player?.betThisRound,
+            totalInvested: player?.totalInvested ?? 0,
+            lastAction: player?.lastAction,
+            folded: Boolean(player?.folded),
+            hasFolded: Boolean(player?.hasFolded),
+            allIn: Boolean(player?.allIn),
+            seatOut: Boolean(player?.seatOut),
+            hand: Array.isArray(player?.hand) ? [...player.hand] : [],
+          };
+        });
         return {
           phase,
           drawRound,
           betRoundIndex,
+          betRound: betRoundIndex,
           turn,
+          dealerIdx,
+          handId: handIdRef.current,
           players: snapshot,
         };
       },
@@ -472,18 +524,19 @@ export default function App() {
 
     return () => {
       if (typeof window === "undefined") return;
-      if (createdNew && window.__BADUGI_E2E__ === target) {
-        delete window.__BADUGI_E2E__;
-      } else if (window.__BADUGI_E2E__ && window.__BADUGI_E2E__ === target) {
+      if (window.__BADUGI_E2E__ && window.__BADUGI_E2E__ === target) {
         Object.entries(helperMethods).forEach(([key, fn]) => {
           if (window.__BADUGI_E2E__?.[key] === fn) {
             delete window.__BADUGI_E2E__[key];
           }
         });
+        if (Object.keys(window.__BADUGI_E2E__).length === 0) {
+          delete window.__BADUGI_E2E__;
+        }
       }
       e2eLogEnabledRef.current = false;
     };
-  }, [phase, drawRound, betRoundIndex, turn]);
+  }, [phase, drawRound, betRoundIndex, turn, dealerIdx]);
 
   useEffect(() => {
     const original = {
@@ -688,7 +741,43 @@ export default function App() {
 
   function buildHandResultSummary({ players = [], summary = [], totalPot }) {
     const potEntries = Array.isArray(summary) ? summary : [];
-    const potDetails = potEntries.map((pot) => {
+    const hydrateWinnerEntry = (entry, explicitSeat = null) => {
+      const seatIndex =
+        typeof explicitSeat === "number"
+          ? explicitSeat
+          : typeof entry?.seatIndex === "number"
+          ? entry.seatIndex
+          : typeof entry?.seat === "number"
+          ? entry.seat
+          : null;
+      const playerState = typeof seatIndex === "number" ? players?.[seatIndex] : null;
+      const playerHand = playerState?.hand ?? entry?.hand ?? [];
+      const evaluation =
+        entry?.evaluation && typeof entry.evaluation === "object"
+          ? entry.evaluation
+          : playerHand.length
+          ? evaluateBadugi(playerHand)
+          : null;
+      const activeCards =
+        evaluation?.activeCards && evaluation.activeCards.length
+          ? evaluation.activeCards
+          : playerHand;
+      const deadCards = evaluation?.deadCards ?? [];
+
+      return {
+        seatIndex,
+        name: entry?.name ?? (typeof seatIndex === "number" ? `Seat ${seatIndex}` : "Unknown"),
+        payout: Math.max(0, entry?.payout ?? 0),
+        stack: playerState?.stack,
+        hand: playerHand,
+        handLabel: formatBadugiHandLabel(evaluation),
+        ranksLabel: formatBadugiRanksLabel(evaluation),
+        activeCards,
+        deadCards,
+      };
+    };
+
+    const rawPotDetails = potEntries.map((pot) => {
       const potAmount = Math.max(0, pot?.potAmount ?? pot?.amount ?? 0);
       const payouts = Array.isArray(pot?.payouts) ? pot.payouts : [];
       const winners = payouts.map((entry) => {
@@ -698,14 +787,7 @@ export default function App() {
             : typeof entry?.seat === "number"
             ? entry.seat
             : null;
-        return {
-          seatIndex: seatKey,
-          name: entry?.name ?? (typeof seatKey === "number" ? `Seat ${seatKey}` : "Unknown"),
-          payout: Math.max(0, entry?.payout ?? 0),
-          stack: players?.[seatKey]?.stack,
-          hand: players?.[seatKey]?.hand ?? [],
-          label: players?.[seatKey]?.lastAction ?? "Badugi",
-        };
+        return hydrateWinnerEntry(entry, seatKey);
       });
       return {
         potIndex: typeof pot?.potIndex === "number" ? pot.potIndex : null,
@@ -713,6 +795,12 @@ export default function App() {
         winners,
       };
     });
+
+    const filteredPotDetails = rawPotDetails.filter(
+      (pot) => pot.potAmount > 0 || (pot.winners ?? []).length > 0
+    );
+    const potDetails = filteredPotDetails.length ? filteredPotDetails : rawPotDetails;
+
     const payoutSum = potDetails
       .flatMap((pot) => pot.winners)
       .reduce((acc, entry) => acc + (entry.payout ?? 0), 0);
@@ -724,15 +812,14 @@ export default function App() {
     const winnerMap = new Map();
     potDetails.flatMap((pot) => pot.winners).forEach((entry) => {
       if (typeof entry.seatIndex !== "number") return;
-      const existing = winnerMap.get(entry.seatIndex) ?? { payout: 0 };
-      winnerMap.set(entry.seatIndex, {
-        seatIndex: entry.seatIndex,
-        name: entry.name,
-        payout: (existing.payout ?? 0) + (entry.payout ?? 0),
-        hand: entry.hand,
-        label: entry.label,
-        stack: entry.stack,
-      });
+      const existing = winnerMap.get(entry.seatIndex);
+      const merged = existing
+        ? {
+            ...existing,
+            payout: (existing.payout ?? 0) + (entry.payout ?? 0),
+          }
+        : { ...entry };
+      winnerMap.set(entry.seatIndex, merged);
     });
     const winners = Array.from(winnerMap.values()).map((entry) => ({
       ...entry,
@@ -742,9 +829,17 @@ export default function App() {
       handId: handIdRef.current,
       pot: resolvedTotal,
       winners,
-      potDetails: potDetails.filter(
-        (pot) => pot.potAmount > 0 || (pot.winners ?? []).length > 0
-      ),
+      potDetails: potDetails.length
+        ? potDetails
+        : winners.length
+        ? [
+            {
+              potIndex: 0,
+              potAmount: resolvedTotal,
+              winners,
+            },
+          ]
+        : [],
     };
   }
 
@@ -935,6 +1030,22 @@ export default function App() {
     );
     return true;
   }
+  function normalizeHandHistoryType(label) {
+    if (!label) return "action";
+    const lower = label.toLowerCase();
+    if (lower.includes("all-in")) return "all-in";
+    if (lower.startsWith("raise")) return "raise";
+    if (lower.startsWith("bet")) return "bet";
+    if (lower.startsWith("call")) return "call";
+    if (lower.startsWith("check")) return "check";
+    if (lower.startsWith("fold")) return "fold";
+    if (lower.startsWith("draw")) return "draw";
+    if (lower.startsWith("collect")) return "collect";
+    if (lower.startsWith("ante")) return "ante";
+    if (lower.startsWith("blind")) return "blind";
+    return lower.trim() || "action";
+  }
+
   function recordActionToLog({
   phase: phaseOverride,
   round,
@@ -1045,6 +1156,28 @@ export default function App() {
     betRound: resolvedBetRound,
     ts: Date.now(),
   };
+  if (idx !== null && currentHandHistoryRef.current) {
+    const historyType = normalizeHandHistoryType(type);
+    const amountDelta = Math.max(0, (resolvedBetAfter ?? 0) - (resolvedBetBefore ?? 0));
+    const totalInvestedValue =
+      seatSnapshot?.totalInvested ??
+      playerState?.totalInvested ??
+      sourcePlayers?.[idx]?.totalInvested ??
+      resolvedBetAfter ??
+      0;
+    const historyMetadata = normalizedDrawInfo ? { drawInfo: normalizedDrawInfo } : undefined;
+    appendHandHistoryAction({
+      seat: idx,
+      street: phaseLabel,
+      type: historyType,
+      amount: amountDelta,
+      totalInvested: totalInvestedValue,
+      metadata: historyMetadata,
+    });
+    if (historyType === "fold") {
+      updateHandHistorySeat(idx, { finalAction: "fold" });
+    }
+  }
   setActionLog((prev) => [...prev, nextEntry]);
   if (shouldEmitE2EAction(nextActionId)) {
     emitE2EActionTrace(nextEntry, seatSnapshot);
@@ -1103,6 +1236,9 @@ export default function App() {
         const applied = Math.min(actor.stack, chips);
         actor.stack -= applied;
         actor.betThisRound += applied;
+        if (applied > 0) {
+          actor.totalInvested = (actor.totalInvested ?? 0) + applied;
+        }
         if (actor.stack === 0) {
           actor.allIn = true;
           actor.hasActedThisRound = true;
@@ -1158,6 +1294,7 @@ export default function App() {
       }
 
       snap[seat] = actor;
+      playersRef.current = snap;
       forcedSeatActionsRef.current.delete(seat);
 
       logAction(seat, actor.lastAction || actionType.toUpperCase(), { forced: true });
@@ -1194,6 +1331,60 @@ export default function App() {
       setLastAggressor,
       turn,
     ]
+  );
+
+  const applyCustomHands = useCallback(
+    (overrides = []) => {
+      if (!Array.isArray(overrides) || overrides.length === 0) return;
+      setPlayers((prev) => {
+        if (!Array.isArray(prev) || prev.length === 0) return prev;
+        const snap = prev.map(clonePlayerState).filter(Boolean);
+        let mutated = false;
+        overrides.forEach(
+          ({ seat, cards, totalInvested, betThisRound: betOverride, stack, allIn }) => {
+          if (
+            typeof seat !== "number" ||
+            seat < 0 ||
+            seat >= snap.length ||
+            !Array.isArray(cards) ||
+            cards.length === 0
+          ) {
+            return;
+          }
+          const normalizedHand = cards.map((card) => String(card).toUpperCase());
+          snap[seat] = {
+            ...snap[seat],
+            hand: normalizedHand,
+            folded: false,
+            hasFolded: false,
+            allIn: Boolean(allIn),
+          };
+          if (typeof totalInvested === "number") {
+            snap[seat].totalInvested = Math.max(0, totalInvested);
+          }
+          if (typeof betOverride === "number") {
+            snap[seat].betThisRound = Math.max(0, betOverride);
+          }
+          if (typeof stack === "number") {
+            snap[seat].stack = Math.max(0, stack);
+          }
+          mutated = true;
+        });
+        if (!mutated) return prev;
+        syncEngineSnapshot({
+          players: snap,
+          pots,
+          metadata: {
+            currentBet,
+            betHead,
+            lastAggressor,
+            actingPlayerIndex: turn,
+          },
+        });
+        return snap;
+      });
+    },
+    [pots, currentBet, betHead, lastAggressor, turn, syncEngineSnapshot]
   );
 
   const queueForcedSeatAction = useCallback(
@@ -1421,7 +1612,7 @@ export default function App() {
     debugLog("[SHOWDOWN] goShowdownNow (All-in shortcut) called");
     const forceShowdown = options.force === true;
 
-    if (engine && handleEngineShowdown(drawRound)) {
+    if (engine && !forceShowdown && handleEngineShowdown(drawRound)) {
       return;
     }
 
@@ -1436,51 +1627,18 @@ export default function App() {
     const workingPlayers = Array.isArray(clearedPlayers) && clearedPlayers.length
       ? clearedPlayers
       : playersSnap.map(clonePlayerState).filter(Boolean);
-    const potFallbackAmount =
-      playersSnap.reduce((sum, p) => sum + (p.betThisRound || 0), 0) || 0;
-    const potFallbackEligible = playersSnap
-      .map((p, seatIdx) => (!isFoldedOrOut(p) ? seatIdx : null))
-      .filter((seatIdx) => seatIdx !== null);
-    let allPots =
-      settledPots && settledPots.length > 0
-        ? settledPots
-        : potFallbackAmount > 0
-        ? [
-            {
-              amount: potFallbackAmount,
-              eligible: potFallbackEligible,
-            },
-          ]
-        : [];
-
     const activeSeats = workingPlayers
       .map((p, seatIdx) => (!isFoldedOrOut(p) ? seatIdx : null))
       .filter((seatIdx) => seatIdx !== null);
-    const normalizedActiveSignature = [...activeSeats].sort((a, b) => a - b).join(",");
-    const normalizeEligibleSignature = (pot) =>
-      (pot?.eligible ?? [])
-        .map((seat) => (typeof seat === "number" ? seat : null))
-        .filter((seat) => seat !== null && !isFoldedOrOut(workingPlayers[seat]))
-        .sort((a, b) => a - b)
-        .join(",");
-
-    const shouldCollapsePots =
-      allPots.length > 1 &&
-      normalizedActiveSignature.length > 0 &&
-      allPots.every((pot) => normalizeEligibleSignature(pot) === normalizedActiveSignature);
-
-    if (shouldCollapsePots) {
-      const totalAmount = allPots.reduce((sum, pot) => sum + Math.max(0, pot?.amount ?? 0), 0);
-      allPots =
-        totalAmount > 0
-          ? [
-              {
-                amount: totalAmount,
-                eligible: [...activeSeats],
-              },
-            ]
-          : [];
-    }
+    const allPots =
+      settledPots && settledPots.length > 0
+        ? settledPots
+        : [
+            {
+              amount: 0,
+              eligible: activeSeats,
+            },
+          ];
 
     console.log("[SHOWDOWN] === RESULTS (BADUGI) ===");
     const newStacks = workingPlayers.map((p) => p.stack);
@@ -1501,8 +1659,12 @@ export default function App() {
       }
 
       const winners = getWinnersByBadugi(eligiblePlayers);
+      const evaluationBySeat = new Map(
+        winners.map((entry) => [typeof entry.seat === "number" ? entry.seat : entry.seatIndex, entry])
+      );
       const share = Math.floor(pot.amount / winners.length);
       let remainder = pot.amount % winners.length;
+      const payouts = [];
 
       for (const w of winners) {
         const idx = w.seat ?? playersSnap.findIndex(p => p.name === w.name);
@@ -1514,6 +1676,15 @@ export default function App() {
             remainder -= 1;
           }
           newStacks[idx] += payout;
+          payouts.push({
+            seat: idx,
+            name: workingPlayers[idx]?.name ?? w.name,
+            amount: payout,
+            stackBefore,
+            stackAfter: newStacks[idx],
+            hand: workingPlayers[idx]?.hand ?? [],
+            evaluation: evaluationBySeat.get(idx)?.evaluation ?? evaluateBadugi(workingPlayers[idx]?.hand ?? []),
+          });
           recordActionToLog({
             phase: "SHOWDOWN",
             round: drawRound + 1,
@@ -1550,6 +1721,7 @@ export default function App() {
         potIndex: potIdx,
         potAmount: pot.amount ?? 0,
         payouts: payouts.map((entry) => ({ ...entry })),
+        eligible: Array.isArray(pot.eligible) ? [...pot.eligible] : [],
       });
     });
 
@@ -1583,35 +1755,52 @@ export default function App() {
         isBusted: player.isBusted,
       }))
     );
-    console.log(
-      "[SHOWDOWN] POT SUMMARY ->",
-      allPots.map((pot, potIdx) => ({
-        potIndex: pot.potIndex ?? potIdx,
-        amount: pot.amount,
-        winners: pot.eligible
-          .filter((seat) => !workingPlayers[seat]?.folded)
-          .map((seat) => ({
-            seat,
-            name: workingPlayers[seat]?.name,
-            hand: Array.isArray(workingPlayers[seat]?.hand)
-              ? workingPlayers[seat].hand.join(" ")
-              : "",
-          })),
-      }))
-    );
+    const potSnapshot = showdownSummary.map((pot, potIdx) => ({
+      potIndex: pot.potIndex ?? potIdx,
+      amount: pot.potAmount ?? 0,
+      eligible: Array.isArray(pot.eligible) ? [...pot.eligible] : [],
+      winners: (pot.payouts ?? []).map((entry) => ({
+        seat: entry.seat ?? entry.seatIndex,
+        name: entry.name,
+        payout: entry.payout,
+        hand: Array.isArray(entry.hand) ? entry.hand.join(" ") : "",
+        evaluation: entry.evaluation,
+        activeCards: entry.evaluation?.activeCards ?? [],
+        deadCards: entry.evaluation?.deadCards ?? [],
+      })),
+    }));
+    console.log("[SHOWDOWN] POT SUMMARY ->", potSnapshot);
+    lastPotSummaryRef.current = potSnapshot.map((entry) => ({
+      potIndex: entry.potIndex,
+      amount: entry.amount,
+      eligible: [...entry.eligible],
+      winners: entry.winners.map((winner) => ({ ...winner })),
+    }));
 
     setPots([]);
     setShowNextButton(true);
     setPlayers(updated);
     setPhase("SHOWDOWN");
     setHandResultVisible(true);
-    setHandResultSummary(
-      buildHandResultSummary({
-        players: updated,
-        summary: showdownSummary,
-        totalPot: totalPotAmount,
-      })
-    );
+    const handSummaryPayload = buildHandResultSummary({
+      players: updated,
+      summary: showdownSummary,
+      totalPot: totalPotAmount,
+    });
+    setHandResultSummary(handSummaryPayload);
+    const finalizedRecord = finalizeHandHistoryRecord({
+      players: updated,
+      pots: showdownSummary,
+      uiSummary: handSummaryPayload,
+      endedAt: Date.now(),
+    });
+    if (finalizedRecord) {
+      const snapshot = JSON.parse(JSON.stringify(finalizedRecord));
+      handHistoryRef.current = [...handHistoryRef.current, snapshot];
+      console.log("[HAND_HISTORY]", JSON.stringify(snapshot));
+      resetHandHistoryRecord();
+      currentHandHistoryRef.current = null;
+    }
 
     const totalPot = totalPotAmount;
     if (!handSavedRef.current) {
@@ -1702,6 +1891,7 @@ export default function App() {
       return;
     }
     dealingRef.current = true;
+    lastPotSummaryRef.current = [];
     debugLog(`[HAND] dealNewHand start -> dealer=${nextDealerIdx}`);
     setHandResultVisible(false);
     setHandResultSummary(null);
@@ -1817,6 +2007,7 @@ export default function App() {
       hasFolded: filteredPrev[i].seatOut ?? false,
       allIn: filteredPrev[i].seatOut ?? false,
       betThisRound: 0,
+      totalInvested: 0,
       hasDrawn: false,
       lastDrawCount: 0,
       selected: [],
@@ -1863,14 +2054,39 @@ export default function App() {
       return;
     }
 
+    handSavedRef.current = false;
+    handIdRef.current = `${nextDealerIdx}-${Date.now()}`;
+    currentHandHistoryRef.current = startHandHistoryRecord({
+      handId: handIdRef.current,
+      dealer: nextDealerIdx,
+      level: { sb: sbValue, bb: bbValue, ante: anteValue },
+      seats: newPlayers.map((player, seat) => ({
+        seat,
+        name: player.name,
+        startStack: player.stack,
+      })),
+      startedAt: Date.now(),
+    });
+
     const sbIdx = (nextDealerIdx + 1) % NUM_PLAYERS;
     const bbIdx = (nextDealerIdx + 2) % NUM_PLAYERS;
     if (anteValue > 0) {
-      newPlayers.forEach((pl) => {
+      newPlayers.forEach((pl, idx) => {
         if (pl.seatOut) return;
         const antePay = Math.min(pl.stack, anteValue);
         pl.stack -= antePay;
         pl.betThisRound += antePay;
+        if (antePay > 0) {
+          pl.totalInvested = (pl.totalInvested ?? 0) + antePay;
+          appendHandHistoryAction({
+            seat: idx,
+            street: "BET",
+            type: "ante",
+            amount: antePay,
+            totalInvested: pl.totalInvested ?? antePay,
+            metadata: { ante: anteValue },
+          });
+        }
         if (antePay > 0) pl.lastAction = `ANTE(${antePay})`;
         if (pl.stack === 0) {
           pl.allIn = true;
@@ -1882,6 +2098,17 @@ export default function App() {
     const sbPay = Math.min(newPlayers[sbIdx].stack, sbValue);
     newPlayers[sbIdx].stack -= sbPay;
     newPlayers[sbIdx].betThisRound += sbPay;
+    if (sbPay > 0) {
+      newPlayers[sbIdx].totalInvested = (newPlayers[sbIdx].totalInvested ?? 0) + sbPay;
+      appendHandHistoryAction({
+        seat: sbIdx,
+        street: "BET",
+        type: "blind",
+        amount: sbPay,
+        totalInvested: newPlayers[sbIdx].totalInvested ?? sbPay,
+        metadata: { blind: "SB" },
+      });
+    }
     if (newPlayers[sbIdx].stack === 0) {
       newPlayers[sbIdx].allIn = true;
       newPlayers[sbIdx].hasActedThisRound = true;
@@ -1889,6 +2116,17 @@ export default function App() {
     const bbPay = Math.min(newPlayers[bbIdx].stack, bbValue);
     newPlayers[bbIdx].stack -= bbPay;
     newPlayers[bbIdx].betThisRound += bbPay;
+    if (bbPay > 0) {
+      newPlayers[bbIdx].totalInvested = (newPlayers[bbIdx].totalInvested ?? 0) + bbPay;
+      appendHandHistoryAction({
+        seat: bbIdx,
+        street: "BET",
+        type: "blind",
+        amount: bbPay,
+        totalInvested: newPlayers[bbIdx].totalInvested ?? bbPay,
+        metadata: { blind: "BB" },
+      });
+    }
     if (newPlayers[bbIdx].stack === 0) {
       newPlayers[bbIdx].allIn = true;
       newPlayers[bbIdx].hasActedThisRound = true;
@@ -1919,9 +2157,6 @@ export default function App() {
         .map(() => [0, 0, 0, 0])
     );
     setActionLog([]);
-
-    handSavedRef.current = false;
-    handIdRef.current = `${nextDealerIdx}-${Date.now()}`;
 
     debugLog("[HAND] New players dealt:", newPlayers.map((p) => p.name));
     debugLog(
@@ -2001,6 +2236,7 @@ export default function App() {
       forceAllIn: forceAllInAction,
       resolveHandNow: resolveHandImmediately,
       dealNewHandNow: startNextHand,
+      setPlayerHands: applyCustomHands,
       getStateSnapshot: () => ({
         phase,
         turn,
@@ -2009,6 +2245,8 @@ export default function App() {
         dealerIdx,
         handId: handIdRef.current,
       }),
+      getHandHistory: () => [...handHistoryRef.current],
+      getLastPotSummary: () => lastPotSummaryRef.current,
     };
   }, [
     queueForcedSeatAction,
@@ -2016,6 +2254,7 @@ export default function App() {
     forceAllInAction,
     resolveHandImmediately,
     startNextHand,
+    applyCustomHands,
     phase,
     turn,
     drawRound,
@@ -2603,6 +2842,19 @@ export default function App() {
     setHandResultSummary(result);
     setHandResultVisible(true);
     setShowNextButton(false);
+    const finalizedRecord = finalizeHandHistoryRecord({
+      players: updatedPlayers,
+      pots: summary,
+      uiSummary: result,
+      endedAt: Date.now(),
+    });
+    if (finalizedRecord) {
+      const snapshot = JSON.parse(JSON.stringify(finalizedRecord));
+      handHistoryRef.current = [...handHistoryRef.current, snapshot];
+      console.log("[HAND_HISTORY]", JSON.stringify(snapshot));
+      resetHandHistoryRecord();
+      currentHandHistoryRef.current = null;
+    }
     console.log(
       "[SHOWDOWN] DETAILS FULL ->",
       updatedPlayers.map((p, idx) => ({

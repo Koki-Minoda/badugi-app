@@ -1,4 +1,5 @@
 import { evaluateBadugi, getWinnersByBadugi } from "../utils/badugiEvaluator.js";
+import { buildSidePots } from "./roundFlow.js";
 import { saveTournamentHistory, saveHandHistory } from "../../../utils/history.js";
 
 export function runShowdown({
@@ -242,26 +243,17 @@ function resolveShowdownLegacy(players = [], pots = []) {
 }
 
 function buildFallbackPots(players = []) {
-  const total = players.reduce(
-    (sum, player) => sum + Math.max(0, player.betThisRound ?? 0),
-    0
-  );
-  if (total <= 0) {
-    return [
-      {
-        amount: 0,
-        eligible: players
-          .map((_, idx) => idx)
-          .filter((seatIndex) => !players[seatIndex]?.folded),
-      },
-    ];
+  const pots = buildSidePots(players);
+  if (pots.length) {
+    return pots;
   }
+  const eligible = players
+    .map((_, idx) => idx)
+    .filter((seatIndex) => !players[seatIndex]?.folded);
   return [
     {
-      amount: total,
-      eligible: players
-        .map((_, idx) => idx)
-        .filter((seatIndex) => !players[seatIndex]?.folded),
+      amount: 0,
+      eligible,
     },
   ];
 }

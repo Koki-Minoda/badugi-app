@@ -46,6 +46,7 @@ export default function HandResultOverlay({
   if (!visible || !summary) return null;
   const winners = summary.winners ?? [];
   const potDetails = summary.potDetails ?? [];
+  const showPotBreakdown = potDetails.length > 1;
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 px-4">
       <div className="w-full max-w-xl bg-slate-900 rounded-3xl border border-emerald-400/40 p-6 space-y-4 shadow-2xl">
@@ -59,7 +60,7 @@ export default function HandResultOverlay({
           </h2>
           <span className="text-sm text-slate-400">Preparing next hand</span>
         </div>
-        {potDetails.length > 0 ? (
+        {showPotBreakdown ? (
           <div className="space-y-4 text-sm text-slate-200">
             {potDetails.map((pot, idx) => (
               <div

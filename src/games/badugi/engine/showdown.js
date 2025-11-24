@@ -1,4 +1,4 @@
-import { getWinnersByBadugi } from "../utils/badugiEvaluator.js";
+import { evaluateBadugi, getWinnersByBadugi } from "../utils/badugiEvaluator.js";
 import { saveTournamentHistory, saveHandHistory } from "../../../utils/history.js";
 
 export function runShowdown({
@@ -33,6 +33,28 @@ export function runShowdown({
     showHand: !p.folded,
     betThisRound: 0,
   }));
+
+  console.log(
+    "[SHOWDOWN] Players entering showdown:",
+    updatedPlayers.map((player, seat) => ({
+      seat,
+      name: player.name,
+      folded: Boolean(player.folded),
+      seatOut: Boolean(player.seatOut),
+      stack: player.stack,
+      hand: (player.hand ?? []).join(" "),
+      evaluation: evaluateBadugi(player.hand ?? []).rankType,
+    }))
+  );
+
+  console.log(
+    "[SHOWDOWN] Pots snapshot:",
+    (pots ?? []).map((pot, index) => ({
+      potIndex: index,
+      amount: pot?.amount ?? 0,
+      eligible: pot?.eligible ?? pot?.eligibleSeats ?? [],
+    }))
+  );
 
   const totalPot =
     resolution?.totalPot ?? computeTotalPot(pots ?? resolution?.pots ?? []);
@@ -138,23 +160,29 @@ function resolveShowdownLegacy(players = [], pots = []) {
       : Array.isArray(pot?.eligibleSeats)
       ? pot.eligibleSeats
       : [];
-      const contenders = eligibleSeats
-        .map((seatIndex) => ({
-          seatIndex,
-          player: workingPlayers[seatIndex],
-        }))
-        .filter(
-          (entry) =>
-            entry.player && !entry.player.folded && !entry.player.seatOut
-        );
+    let contenders = eligibleSeats
+      .map((seatIndex) => ({
+        seatIndex,
+        player: workingPlayers[seatIndex],
+      }))
+      .filter(
+        (entry) =>
+          entry.player && !entry.player.folded && !entry.player.seatOut
+      );
 
-      // ensure hero (non folded) always eligible when no contenders found
-      if (!contenders.length) {
-        const fallback = workingPlayers
-          .map((player, idx) => ({ seatIndex: idx, player }))
-          .filter(({ player }) => player && !player.folded && !player.seatOut);
-        if (fallback.length) contenders.push(fallback[0]);
+    if (!contenders.length) {
+      const fallback = workingPlayers
+        .map((player, idx) => ({ seatIndex: idx, player }))
+        .filter(({ player }) => player && !player.folded && !player.seatOut);
+      if (fallback.length) {
+        contenders = fallback;
+        console.warn(
+          `[SHOWDOWN] pot ${potIndex} eligible list empty — falling back to active seats [${fallback
+            .map((entry) => entry.seatIndex)
+            .join(", ")}]`
+        );
       }
+    }
 
     if (!contenders.length) {
       summary.push({ potIndex, potAmount: amount, payouts: [] });

@@ -17,7 +17,27 @@ export function mergeEngineSnapshot(currentState, snapshot) {
     };
   }
 
-  const nextPlayers = snapshot.players ?? currentState?.players ?? [];
+  const currentPlayers = Array.isArray(currentState?.players)
+    ? currentState.players
+    : [];
+  const incomingPlayers = Array.isArray(snapshot.players)
+    ? snapshot.players
+    : currentPlayers;
+  const nextPlayers = incomingPlayers.map((incoming, idx) => {
+    const fallback = currentPlayers[idx];
+    if (!incoming && fallback) return fallback;
+    if (!incoming) return incoming;
+    const prior = currentPlayers[idx];
+    if (prior && (prior.folded || prior.hasFolded || prior.seatOut)) {
+      return {
+        ...incoming,
+        folded: true,
+        hasFolded: true,
+        seatOut: prior.seatOut || incoming.seatOut,
+      };
+    }
+    return incoming;
+  });
   const nextPots = snapshot.pots ?? currentState?.pots ?? [];
   const nextDeck = snapshot.deck ?? currentState?.deck ?? null;
   const incomingMeta = snapshot.metadata ?? {};

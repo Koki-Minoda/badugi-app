@@ -2,6 +2,11 @@
 
 import { debugLog } from "../../../utils/debugLog";
 
+// Canonical folded indicator: once set, the player is excluded from any future action/draw this hand.
+export function isFoldedOrOut(player) {
+  return Boolean(player?.folded || player?.hasFolded || player?.seatOut);
+}
+
 
 
 // --- sanitizeStacks:  all-in---
@@ -41,7 +46,9 @@ function sanitizeStacks(snap, setPlayers) {
 
 export const aliveBetPlayers = arr =>
 
-  Array.isArray(arr) ? arr.filter(p => !p.folded && !p.allIn) : [];
+  Array.isArray(arr)
+    ? arr.filter((p) => !isFoldedOrOut(p) && !p.allIn)
+    : [];
 
 
 
@@ -49,7 +56,9 @@ export const aliveBetPlayers = arr =>
 
 export const aliveDrawPlayers = arr =>
 
-  Array.isArray(arr) ? arr.filter(p => !p.folded && !p.seatOut) : [];
+  Array.isArray(arr)
+    ? arr.filter((p) => !isFoldedOrOut(p))
+    : [];
 
 
 
@@ -67,7 +76,7 @@ export const nextAliveFrom = (arr, idx) => {
 
   let loop = 0;
 
-  while (arr[next]?.folded || arr[next]?.allIn) {
+  while (isFoldedOrOut(arr[next]) || arr[next]?.allIn) {
 
     next = (next + 1) % n;
 
@@ -85,7 +94,7 @@ export const maxBetThisRound = arr => {
 
   if (!Array.isArray(arr)) return 0;
 
-  const eligible = arr.filter(p => !p.folded);
+  const eligible = arr.filter((p) => !isFoldedOrOut(p));
 
   if (!eligible.length) return 0;
 
@@ -126,14 +135,12 @@ export function settleStreetToPots(playersSnap = [], prevPots = []) {
     const involvedSeats = positive.map(p => p.seat);
     const amount = minContribution * involvedSeats.length;
     const eligibleBase = involvedSeats.filter(
-      seat => !playersSnap[seat]?.folded && !playersSnap[seat]?.seatOut
+      (seat) => !isFoldedOrOut(playersSnap[seat])
     );
-    const eligible =
-      eligibleBase.length > 0
-        ? eligibleBase
-        : playersSnap
-            .map((player, seat) => (!player?.folded && !player?.seatOut ? seat : null))
-            .filter(seat => seat !== null);
+    const activeSeats = playersSnap
+      .map((player, seat) => (!isFoldedOrOut(player) ? seat : null))
+      .filter((seat) => seat !== null);
+    const eligible = Array.from(new Set([...eligibleBase, ...activeSeats]));
 
     pots.push({ amount, eligible });
 
@@ -156,7 +163,7 @@ export const isBetRoundComplete = players => {
 
   if (!Array.isArray(players)) return false;
 
-  const active = players.filter(p => !p.folded);
+  const active = players.filter((p) => !isFoldedOrOut(p));
 
   if (active.length <= 1) return true;
 
@@ -186,11 +193,11 @@ export const closingSeatForAggressor = (players, lastAggressorIdx) => {
 
   }
 
-  const agg = players[lastAggressorIdx];
+    const agg = players[lastAggressorIdx];
 
   if (!agg) return null;
 
-  if (agg.folded || agg.allIn) {
+  if (isFoldedOrOut(agg) || agg.allIn) {
     const next = nextAliveFrom(players, lastAggressorIdx);
     if (next === null) return null;
     return next;
@@ -211,11 +218,15 @@ export function analyzeBetSnapshot({
 }) {
   const snap = players.map((p) => ({ ...p }));
   const maxNow = maxBetThisRound(snap);
-  const active = snap.filter((p) => !p.folded);
-  const everyoneMatched = active.every((p) => p.allIn || p.betThisRound === maxNow);
+  const active = snap.filter((p) => !isFoldedOrOut(p));
+  const everyoneMatched = active.every(
+    (p) => p.allIn || (p.betThisRound || 0) === maxNow
+  );
   const allChecked =
     maxNow === 0 &&
-    active.every((p) => p.folded || p.allIn || p.lastAction === "Check");
+    active.every(
+      (p) => isFoldedOrOut(p) || p.allIn || p.lastAction === "Check"
+    );
   const betRoundSatisfied = isBetRoundComplete(snap);
   const nextAlive = typeof actedIndex === "number" ? nextAliveFrom(snap, actedIndex) : null;
   const closingSeatCandidate = closingSeatForAggressor(snap, lastAggressorIdx);
@@ -282,6 +293,8 @@ export function finishBetRoundFrom({
   setPhase,
 
   setTurn,
+
+  setBetHead,
 
   dealerIdx,
 
@@ -366,7 +379,15 @@ export function finishBetRoundFrom({
         const nextPlayers = outcome.players ?? outcome.state.players ?? players;
         const nextPots = outcome.pots ?? outcome.state.pots ?? pots;
 
-        if (outcome.showdown || outcome.street === "SHOWDOWN") {
+        const activeNonAllIn = (nextPlayers || []).filter(
+          (p) => p && !p.folded && !p.allIn
+        );
+        const earlyShowdown =
+          (outcome.showdown || outcome.street === "SHOWDOWN") &&
+          activeNonAllIn.length > 0 &&
+          drawRound < MAX_DRAWS;
+
+        if (!earlyShowdown && (outcome.showdown || outcome.street === "SHOWDOWN")) {
           let showdownResult = null;
           if (typeof engineResolveShowdown === "function") {
             showdownResult = engineResolveShowdown(nextPlayers, nextPots);
@@ -427,6 +448,25 @@ export function finishBetRoundFrom({
   setPots(newPots);
 
   setPlayers(clearedPlayers);
+  const actionablePlayers = clearedPlayers.filter(
+    (p) => p && !p.folded && !p.allIn && !p.seatOut
+  );
+  const incomplete = actionablePlayers.filter((p) => !p.hasActedThisRound);
+  if (incomplete.length > 0) {
+    console.warn(
+      "[finishBetRoundFrom] action list incomplete, forcing continuation:",
+      incomplete.map((p) => ({
+        seat: p.seat ?? null,
+        name: p.name,
+      }))
+    );
+    const nextSeat = incomplete[0].seat ?? 0;
+    setTurn(nextSeat);
+    if (typeof setBetHead === "function") {
+      setBetHead(nextSeat);
+    }
+    return;
+  }
   onEngineSync?.({
     reason: "roundFlow:settle",
     playersSnapshot: clearedPlayers,
@@ -507,7 +547,7 @@ export function finishBetRoundFrom({
 
 
 
-    if (!p.folded) {
+    if (!isFoldedOrOut(p)) {
 
 
 
@@ -553,18 +593,16 @@ export function finishBetRoundFrom({
 
   // ---  hasDrawnfalseRAW#1--
 
-  const resetPlayers = clearedPlayers.map(p => ({
-
+  const resetPlayers = clearedPlayers.map((p) => ({
     ...p,
-
-    hasDrawn: p.folded ? true : false,  // foldeddraw
-
-    canDraw: !p.folded,
-
     lastAction: "",
-
+    hasDrawn: isFoldedOrOut(p) ? true : false,
+    canDraw: !isFoldedOrOut(p),
   }));
 
+  if (typeof setDrawRound === "function") {
+    setDrawRound(nextRound);
+  }
   setPlayers(resetPlayers);
 
 
@@ -588,6 +626,9 @@ export function finishBetRoundFrom({
 
 
   setTurn(firstToDraw);
+  if (typeof setBetHead === "function") {
+    setBetHead(firstToDraw);
+  }
 
   setPhase("DRAW");
   onEngineSync?.({
@@ -675,17 +716,16 @@ export function startDrawRound({
 
 }) {
 
-  const reset = players.map(p => ({
-
-    ...p,
-
-    hasDrawn: false,
-
-    lastAction: "",
-
-    betThisRound: 0,
-
-  }));
+  const reset = players.map((p) => {
+    const out = isFoldedOrOut(p);
+    return {
+      ...p,
+      betThisRound: 0,
+      lastAction: "",
+      hasDrawn: out ? true : false,
+      canDraw: !out,
+    };
+  });
 
   setPlayers(reset);
 

@@ -1,0 +1,23 @@
+models:
+  - title: Reasoner
+    provider: openai
+    model: chatGPT5.1
+    apiKey: ${OPENAI_API_KEY}
+    apiBase: ${OPENAI_API_BASE}
+  - title: GPT-5.1-Codex
+    provider: openai
+    model: gpt-5.1-codex
+    apiKey: ${OPENAI_API_KEY}
+    apiBase: ${OPENAI_API_BASE}
+
+tabAutocompleteModel:
+  title: GPT-5.1-Codex
+  provider: openai
+  model: gpt-5.1-codex
+  apiKey: ${OPENAI_API_KEY}
+  apiBase: ${OPENAI_API_BASE}
+
+experimental:
+  modelRoles:
+    inlineEdit: GPT-5.1-Codex
+    applyCodeBlock: GPT-5.1-Codex

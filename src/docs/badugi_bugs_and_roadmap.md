@@ -165,8 +165,36 @@ All spec documents from 09 onward are still unimplemented. The following task li
 - [x] Reconciled `ui/App.jsx` behaviors with `docs/bug_fixes.md`/`docs/engine_migration.md` (seat manager, hero tracker + rating HUD, developer panel, SB/BB clamps, draw/bet transitions, logging, metadata sync) so nothing moved during the rollback.
 - [x] Verified the App helpers described in the docs (`hasActedThisRound` / `setHasActedFlag`, `shiftAggressorsAfterFold`, `recordActionToLog` wiring for hero/NPC actions) and added hero tracker persistence plus the existing developer panel toggles (tier override, P2P capture + export) so the same troubleshooting points are observable.
 - [x] Captured the above findings here as the Spec23 summary so the checklist can be marked complete for future audits (hero tracker state now saves via `localStorage`, logging flows through the new helper, and the developer toggles remain visible in the panel).
+- [x] Expanded showdown logging / fallback handling to print every seat’s cards, evaluation, and pot eligibility before payouts so hero’s Badugi hand can’t be skipped and the new traces feed Playwright/QA.
+- [ ] Stabilize the draw→bet→draw transition path after SB folds by forcing `finishBetRoundFrom` to refresh `turn`/`betHead` and confirming the Playwright `draw-rollback` spec runs without hitting the third trace timeout.
+- [ ] Log active player lists at every `finishDrawRound`/`finishBetRoundFrom` boundary so we can compare them with Playwright traces and detect inconsistencies in the round-start/end active set, especially when someone folds mid-round.
+- [ ] Add a “all active seats have acted” check in `finishBetRoundFrom` so that Draw only begins when every remaining player has had a turn; warn/log when a player still needs action and continue from that seat instead of jumping ahead.
 
 ### Documentation & localization housekeeping
 - [ ] Move `src/docs/current_bugs.md` to `docs/bugs/current_bugs.md`, archive any corrupted copies, and update references so the blocker registry has one canonical UTF-8 location.
 - [x] Relocated `config/tournamentStructure.js` into `src/tournament/tournamentStructure.js` and updated the import in `ui/App.jsx` so everybody shares the same source file.
 - [ ] Build a centralized comment catalog: create parallel Japanese/English resources (e.g., `src/i18n/comments_ja.json` and `src/i18n/comments_en.json` plus `ui/utils/commentCatalog.js`) that describe every HUD prompt/logging string, and have `App.jsx`/HUD helpers read from that catalog before emitting console output or overlay text so that comment localization and E2E debugging remain synchronized.
+
+## 未完了のロードマップタスク（Phase 単位でのブレイクダウン）
+以下は現時点で実装が追いついていない大きなフェーズと、それぞれを進めるための分解タスクです。
+
+### Phase 0：マルチゲーム基盤構築
+- [ ] GameEngine 抽象クラスを `games/core` に実装し、`initGame`／`dealInitialCards`／`runBettingRound`／`runShowdown`／`evaluateHand` を定義、BadugiEngine ほかをこの基底から派生させる。
+- [ ] Player/Pot/Action データ構造を共通化し、今後のゲームが同じ API で動けるようにする。
+- [ ] GameSelector UI、カード描画コンポーネント、賭けコントロール UI を共通化して、各ゲーム固有 UI はモジュール化・差し替え可能に。
+- [ ] `bettingRules.js`／`drawRules.js`／`studRules.js`／`hiLoRules.js` を作り、各ゲームに適したフローをプラグインする仕組みを確立。
+- [ ] DeckManager を拡張し、Joker/ARCHIE 用セットやマルチドロー、シャッフル戦略をゲーム横断で利用できるように。
+- [ ] EvaluateHand を登録する evaluator registry を実装し、Badugi, Deuce-to-Seven, Ace-to-Five, Hold'em, Omaha, Stud, Hi/Lo を登録済みにする。
+
+### Phase 1〜4：Hold’em／Draw／Dramaha／Stud 系
+- [ ] NLH/FLH のプリフロップ〜ショーダウンのフロー（コミュニティカード、サイドポット、スタイル判定）を実装。
+- [ ] PLO/FLO8/PLO8/Big-O で必須の 2-from-hand 選択や Hi/Lo チェック、AI 用ハンドレンジをサポートする。
+- [ ] Draw Game（2-7, A-5, Badacey/Badeucey, ARCHIE, Hidugi）向けに 5 枚初期配布、Discard UI、マルチドロー制御、専用評価器、スプリット処理を組み込み。
+- [ ] Dramaha/Stud 系それぞれの配り方・ベットラウンド・評価器（High/2-7/Razz/Razzdugi/Razzdeucey など）を共通APIに追加。
+
+### Phase 5〜6：横断機能・配布準備
+- [ ] トーナメントのブラインド構造、Mixed rotation、チップ移動などを共通化し、全ゲームで同じトーナメントループを使えるように。
+- [ ] GameRecord/JSONL 履歴、EV・アクション分析、AI 用観測空間、Max-difficulty CPU（鉄強/キャラベース）を作り込み、共通AIパイプラインで活用。
+- [ ] チート対策、オフラインプレイ、PWA 化、各プラットフォーム（Windows/Mac/iOS/Android）で動作するインストーラ＆アップデートフローを整備。
+
+これらは全体ロードマップの中でも未着手の大きなブロックなので、優先度に応じて順次取り組む必要があります。

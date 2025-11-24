@@ -1,4 +1,4 @@
-import { evaluateHand, compareEvaluations } from "../../evaluators/registry.js";
+import { evaluateHand } from "../../evaluators/registry.js";
 
 function convertResult(result) {
   const metadata = result?.metadata ?? {};
@@ -25,9 +25,9 @@ export function evaluateBadugi(hand) {
 }
 
 export function compareBadugi(handA, handB) {
-  const evA = evaluateHand({ cards: handA, gameType: "badugi" });
-  const evB = evaluateHand({ cards: handB, gameType: "badugi" });
-  return compareEvaluations(evA, evB);
+  const evA = evaluateBadugi(handA);
+  const evB = evaluateBadugi(handB);
+  return compareEvalResults(evA, evB);
 }
 
 export function getBestBadugiPlayer(players) {
@@ -50,16 +50,23 @@ export function getWinnersByBadugi(players) {
       eval: result,
     };
   });
-  evaluated.sort((a, b) => compareEvaluations(a.eval, b.eval));
+  evaluated.sort((a, b) => {
+    console.log(
+      `[SHOWDOWN] Comparing ${a.name} (seat=${a.seat ?? a.seatIndex}) vs ${b.name} (seat=${b.seat ?? b.seatIndex}): ${a.eval.metadata.size ?? 0}-card ranks=${(
+        a.eval.metadata.ranks ?? []
+      ).join("-")} vs ${b.eval.metadata.size ?? 0}-card ranks=${(b.eval.metadata.ranks ?? []).join("-")}`
+    );
+    return compareEvalResults(a.eval, b.eval);
+  });
   evaluated.forEach((entry) => {
     const meta = entry.eval.metadata ?? {};
     console.log(
-      `[SHOWDOWN] ${entry.name} size=${meta.size ?? 0} ranks=${meta.ranks?.join("-") ?? ""} cards=${meta.cards?.join(",") ?? ""}`
+      `[SHOWDOWN] seat=${entry.seat ?? entry.seatIndex} ${entry.name} size=${meta.size ?? 0} ranks=${meta.ranks?.join("-") ?? ""} cards=${meta.cards?.join(",") ?? ""}`
     );
   });
   const bestEval = evaluated[0]?.eval;
   const winners = evaluated.filter(
-    (entry) => compareEvaluations(entry.eval, bestEval) === 0
+    (entry) => compareEvalResults(entry.eval, bestEval) === 0
   );
   console.log(
     "[SHOWDOWN] Evaluated order:",
@@ -76,4 +83,25 @@ export function getWinnersByBadugi(players) {
     hand: winner.hand,
     evaluation: winner.eval,
   }));
+}
+
+function compareEvalResults(evA, evB) {
+  const metaA = evA?.metadata ?? {};
+  const metaB = evB?.metadata ?? {};
+  const sizeA = typeof metaA.size === "number" ? metaA.size : 0;
+  const sizeB = typeof metaB.size === "number" ? metaB.size : 0;
+  if (sizeA !== sizeB) {
+    return sizeB - sizeA;
+  }
+  const ranksA = Array.isArray(metaA.ranks) ? metaA.ranks : [];
+  const ranksB = Array.isArray(metaB.ranks) ? metaB.ranks : [];
+  const maxLen = Math.max(ranksA.length, ranksB.length);
+  for (let i = maxLen - 1; i >= 0; i -= 1) {
+    const ra = ranksA[i] ?? 0;
+    const rb = ranksB[i] ?? 0;
+    if (ra !== rb) {
+      return rb - ra;
+    }
+  }
+  return 0;
 }

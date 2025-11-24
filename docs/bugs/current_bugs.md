@@ -25,6 +25,13 @@ title: Current blocker list
 5. **Draw hand rollback persists even after cards change.**  
    - When the hero swaps cards in Draw#2 the next draw round shows the pre-change hand, and the soon-after Showdown logs show `null` references. The new `[E2E-ACTION]` traces capture hand/stack metadata and should reveal which `setPlayers` call reverts the hand after `finishDrawRound`.
 
+6. **Playwright draw→bet spec still times out after a fold.**  
+   - Trace instrumentation now logs hero’s re-entry into the Draw phase, `finishBetRoundFrom`/`finishDrawRound` explicitly reset `turn`/`betHead` after SB folds, and the new showdown log dumps every seat’s cards before Next-hand, but the third `[TRACE] finishDrawRound start` still arrives too late. Playwright’s `finishPromise` thus never resolves before the 30 s browser timeout.
+7. **Fold-only loop spec never finds the Fold button.**  
+   - The repeated fold scenario still leaves the hero behind the hand-result overlay, so the Fold button never becomes visible and the spec times out after 15 s. `heroActionReadyRef` now primes hero to retake the button once a new hand deals, and the auto-Next-hand timer fires after the overlay appears, but the control still doesn’t show up before the spec gives up because we never leave `handResultVisible` early enough for Playwright to see the Fold button.
+8. **Result overlay should not duplicate Pot #2 when only the main pot exists.**  
+   - Even with a single pot, the overlay renders extra pot blocks. Only show `potDetails` when there are two or more positive pots and otherwise list the winners directly so the UI matches the actual pot structure.
+
 Document any further issues in this list so we can prioritize fixes in Spec order.
 
 ## Automation coverage
@@ -32,6 +39,7 @@ Document any further issues in this list so we can prioritize fixes in Spec orde
 * `e2e/sb-fold-bug.spec.js` already covers main menu→SB fold flow.
 * `e2e/draw-rollback.spec.js` now validates sequential `finishDrawRound` logs and asserts a hero Badugi win after all CPUs bust, so we can catch the rollback/role bugs automatically in the future.
 4. **Showdown pot eligibility excluded the real winner.**  
-   - The showdown summary logs kept selecting CPU seats while the hero’s Badugi never appeared in the winners list, even though Hero was eligible for the main pot. Added a fallback in `resolveShowdownLegacy` to include the first active seat whenever the regular eligible set comes back empty so the hero can no longer be skipped, and recorded this behavior in the doc.
+   - The showdown summary logs kept selecting CPU seats while the hero’s Badugi never appeared in the winners list, even though Hero was eligible for the main pot.  
+   - Fallback logic now pays attention to **every** active, non-folded seat, logs the seat indexes/pots it evaluates, and the showdown evaluator dumps each player’s hand plus Badugi evaluation so we can confirm hero is included when the winner is determined.
 5. **SB fold did not hand turn to the BB/UTG when someone else still has action.**  
    - After SB folds the next alive seat should always be BB if alive, otherwise UTG, but the previous `nextAliveFrom` path sometimes fell through and forced the hand to end. Added `findNextAliveAfter` as a fallback so the action carousel continues even without a full re-loop, keeping the postfold flow alive.

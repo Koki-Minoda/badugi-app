@@ -1,101 +1,104 @@
 import React from "react";
 
-function formatNumber(value) {
-  if (value == null) return "0";
-  if (typeof value.toLocaleString === "function") {
-    return value.toLocaleString("ja-JP");
-  }
-  return `${value}`;
-}
-
 export default function TournamentResultOverlay({
   visible,
-  result,
-  onReturnHome,
-  onReviewHistory,
-  onContinueTraining,
-  onReplayStage,
+  placements = [],
+  title = "Tournament Results",
+  onBackToMenu,
+  onPlayAgain,
 }) {
-  if (!visible || !result) return null;
-  const { stageLabel, placement, entrants, prize, feedback, reason } = result;
-  const placementText = placement === 1 ? "優勝" : `${placement}位`;
-  const statusLabel = reason === "champion" ? "Champion" : "Eliminated";
-
+  if (!visible) return null;
+  const sortedPlacements = [...placements].sort((a, b) => a.place - b.place);
+  const champion = sortedPlacements.find((entry) => entry.place === 1) ?? null;
+  const showPayoutColumn = sortedPlacements.length > 0;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
-      <div className="w-full max-w-2xl rounded-[2.5rem] bg-slate-950 border border-yellow-400/30 shadow-2xl p-8 space-y-6 text-white">
-        <div className="text-center space-y-2">
-          <p className="text-xs uppercase tracking-[0.4em] text-yellow-300">
-            Tournament Result
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+      <div
+        className="w-full max-w-2xl bg-slate-900 text-white rounded-3xl p-8 space-y-6 shadow-2xl border border-emerald-500/20"
+        data-testid="mtt-result-overlay"
+      >
+        <header className="text-center space-y-2">
+          <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">
+            Tournament Complete
           </p>
-          <h2 className="text-3xl font-extrabold">{stageLabel}</h2>
-          <p className="text-sm text-slate-300">
-            {entrants} エントリー中 {placementText} ({statusLabel})
-          </p>
+          <h2 className="text-3xl font-bold">{title}</h2>
+          {champion ? (
+            <p className="text-sm text-emerald-200" data-testid="mtt-result-champion">
+              Champion: <strong>{champion.name}</strong>
+            </p>
+          ) : null}
+        </header>
+        <div className="max-h-[420px] overflow-y-auto space-y-2">
+          {sortedPlacements.map((entry) => (
+            <div
+              key={entry.id ?? entry.place}
+              className={`flex items-center justify-between rounded-2xl border border-white/10 px-4 py-3 ${
+                entry.place === 1
+                  ? "bg-emerald-500/10 border-emerald-400/40"
+                  : "bg-white/5"
+              }`}
+              data-testid="mtt-result-row"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex flex-col items-center">
+                  <span
+                    className="text-xl font-bold text-emerald-300"
+                    data-testid="mtt-result-place"
+                  >
+                    {entry.place}
+                  </span>
+                  {entry.place === 1 ? (
+                    <span
+                      className="text-[10px] uppercase tracking-[0.3em] text-emerald-200"
+                      data-testid="mtt-result-champion-badge"
+                    >
+                      Champion
+                    </span>
+                  ) : null}
+                </div>
+                <div className="flex flex-col">
+                  <span
+                    className="text-base font-semibold"
+                    data-testid="mtt-result-name"
+                  >
+                    {entry.name}
+                  </span>
+                  <span
+                    className="text-sm text-slate-300"
+                    data-testid="mtt-result-stack"
+                  >
+                    Stack: {entry.stack}
+                  </span>
+                </div>
+              </div>
+              {showPayoutColumn ? (
+                <div
+                  className="text-right text-sm font-semibold text-yellow-300"
+                  data-testid="mtt-result-payout"
+                >
+                  {typeof entry.payout === "number" ? `Payout ${entry.payout}` : "Payout 0"}
+                </div>
+              ) : null}
+            </div>
+          ))}
         </div>
-
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
-            <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
-              Placement
-            </p>
-            <p className="text-2xl font-bold text-white mt-1">{placementText}</p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
-            <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
-              Prize
-            </p>
-            <p className="text-2xl font-bold text-emerald-300 mt-1">
-              ¥{formatNumber(prize ?? 0)}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
-            <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
-              Entrants
-            </p>
-            <p className="text-2xl font-bold text-white mt-1">
-              {formatNumber(entrants)}
-            </p>
-          </div>
-        </div>
-
-        {feedback && (
-          <div className="rounded-2xl border border-white/5 bg-slate-900/80 p-4 text-sm text-slate-200">
-            {feedback}
-          </div>
-        )}
-
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
           <button
             type="button"
-            onClick={onReturnHome}
-            className="rounded-2xl bg-yellow-400/90 text-slate-950 font-semibold py-3 hover:bg-yellow-300 transition"
+            onClick={onBackToMenu}
+            className="px-5 py-3 rounded-full bg-gray-700 text-white font-semibold hover:bg-gray-600 transition"
           >
-            トーナメントロビーへ
+            Back to Menu
           </button>
-          <button
-            type="button"
-            onClick={onReviewHistory}
-            className="rounded-2xl border border-white/20 text-white font-semibold py-3 hover:bg-white/10 transition"
-          >
-            ハンド履歴を見る
-          </button>
-          {onReplayStage && (
+          {typeof onPlayAgain === "function" ? (
             <button
               type="button"
-              onClick={onReplayStage}
-              className="rounded-2xl bg-indigo-500/90 text-slate-950 font-semibold py-3 hover:bg-indigo-400 transition"
+              onClick={onPlayAgain}
+              className="px-5 py-3 rounded-full bg-emerald-500 text-slate-900 font-semibold hover:bg-emerald-400 transition"
             >
-              同じステージで再挑戦
+              Play Again
             </button>
-          )}
-          <button
-            type="button"
-            onClick={onContinueTraining}
-            className="rounded-2xl bg-emerald-500/90 text-slate-950 font-semibold py-3 hover:bg-emerald-400 transition"
-          >
-            トレーニングに戻る
-          </button>
+          ) : null}
         </div>
       </div>
     </div>

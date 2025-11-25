@@ -2,6 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   timeout: 30000,
+  workers: 1,
   use: {
     headless: true,
     screenshot: 'only-on-failure',
@@ -20,6 +21,10 @@ export default defineConfig({
     {
       name: 'badugi-flow',
       testDir: './tests/e2e',
+    },
+    {
+      name: 'badugi-regression',
+      testDir: './tests/badugi-regression',
     },
   ],
 });

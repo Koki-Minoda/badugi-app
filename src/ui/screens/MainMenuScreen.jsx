@@ -23,6 +23,11 @@ const menuItems = [
     description: "Queue variants and let the dealer spin the wheel.",
     path: "/dealers-choice",
   },
+  {
+    label: "Store Tournament (MTT)",
+    description: "Multi-table Badugi event (3 tables × 6 seats).",
+    startTournament: true,
+  },
 ];
 
 export default function MainMenuScreen() {
@@ -53,7 +58,11 @@ export default function MainMenuScreen() {
             <button
               key={item.label}
               type="button"
-              onClick={() => navigate(item.path)}
+              onClick={() =>
+                item.startTournament
+                  ? navigate("/game", { state: { startTournamentMTT: true } })
+                  : navigate(item.path)
+              }
               className="group rounded-3xl border border-white/10 bg-slate-900/80 p-6 text-left transition hover:border-emerald-400/70 hover:bg-slate-800/90"
               style={{
                 boxShadow: designTokens.elevation.card,

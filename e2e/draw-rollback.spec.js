@@ -62,6 +62,9 @@ async function openGame(page) {
   await page.getByRole("button", { name: /Leaderboard/i }).first().waitFor({ state: "visible", timeout: 12000 });
 }
 
+test.describe.configure({ timeout: 90000 });
+
+test.describe.skip("Legacy draw rollback smoke tests (superseded by regression gallery)", () => {
 test("Draw progress never rolls back across successive draws", async ({ page }) => {
   const finishLogs = [];
   let finishResolver;
@@ -182,4 +185,5 @@ test("Repeated fold-only hands stay responsive", async ({ page }) => {
   } finally {
     await drainE2ETrace(page, "fold-loop");
   }
+});
 });

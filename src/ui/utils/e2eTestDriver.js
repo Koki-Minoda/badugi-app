@@ -22,6 +22,18 @@ export function installE2eTestDriver(apiRef) {
     setPlayerHands: (...args) => apiRef.current?.setPlayerHands?.(...args),
     getLastPotSummary: (...args) => apiRef.current?.getLastPotSummary?.(...args),
     getHandHistory: (...args) => apiRef.current?.getHandHistory?.(...args),
+    getTournamentHudState: (...args) => apiRef.current?.getTournamentHudState?.(...args),
+    getTournamentPlacements: (...args) => apiRef.current?.getTournamentPlacements?.(...args),
+    isTournamentOverlayVisible: (...args) =>
+      apiRef.current?.isTournamentOverlayVisible?.(...args),
+    startTournamentMTT: (...args) => apiRef.current?.startTournamentMTT?.(...args),
+    simulateTournamentBackground: (...args) =>
+      apiRef.current?.simulateTournamentBackground?.(...args),
+    completeHeroHands: (...args) => apiRef.current?.completeHeroHands?.(...args),
+    forceHeroBust: (...args) => apiRef.current?.forceHeroBust?.(...args),
+    fastForwardMTTComplete: (...args) =>
+      apiRef.current?.fastForwardMTTComplete?.(...args),
+    getTournamentReplay: (...args) => apiRef.current?.getTournamentReplay?.(...args),
   };
 
   const target =

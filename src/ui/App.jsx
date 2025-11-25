@@ -14,6 +14,7 @@ import { debugLog } from "../utils/debugLog";
 import { runDrawRound } from "../games/badugi/engine/drawRound";
 import { runShowdown } from "../games/badugi/engine/showdown";
 import { evaluateBadugi, compareBadugi, getWinnersByBadugi } from "../games/badugi/utils/badugiEvaluator";
+import { DEBUG_TOURNAMENT, logMTT } from "../config/debugFlags.js";
 import {
   startHandHistoryRecord,
   appendHandHistoryAction,
@@ -41,7 +42,7 @@ import {
   getAllRLHandHistories,
   exportRLHistoryAsJSONL,
 } from "../utils/history_rl";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { loadTitleSettings } from "./utils/titleSettings";
 import { useRatingState } from "./hooks/useRatingState.js";
 import {
@@ -61,8 +62,43 @@ import { useGameEngine } from "./engine/GameEngineContext";
 import { mergeEngineSnapshot } from "./utils/engineSnapshotUtils.js";
 import { loadActiveTournamentSession } from "./tournament/tournamentManager";
 import { installE2eTestDriver } from "./utils/e2eTestDriver.js";
+import {
+  initTournamentReplay,
+  appendTournamentReplayHand,
+  finalizeTournamentReplay,
+  getTournamentReplay as getStoredTournamentReplay,
+  resetTournamentReplay,
+} from "./utils/tournamentReplayStore.js";
+import TournamentHUD from "./components/TournamentHUD.jsx";
+import TournamentResultOverlay from "./components/TournamentResultOverlay.jsx";
+import HeroBustOverlay from "./components/HeroBustOverlay.jsx";
+import {
+  createMTTTournamentState,
+  onTableHandCompleted,
+  getCurrentLevel,
+  simulateBackgroundTables,
+  computePayouts,
+} from "../games/badugi/engine/tournamentMTT.js";
 
 const DEFAULT_GAME_ID = "D03";
+const HERO_TOURNAMENT_PLAYER_ID = "hero-player";
+const DEFAULT_STORE_TOURNAMENT_CONFIG = {
+  id: "store-mtt",
+  name: "Store Tournament",
+  tables: 3,
+  seatsPerTable: 6,
+  startingStack: 500,
+  levels: [
+    { levelIndex: 1, smallBlind: 5, bigBlind: 10, ante: 0, handsThisLevel: 5 },
+    { levelIndex: 2, smallBlind: 10, bigBlind: 20, ante: 1, handsThisLevel: 5 },
+    { levelIndex: 3, smallBlind: 20, bigBlind: 40, ante: 2, handsThisLevel: 999 },
+  ],
+  payouts: [
+    { place: 1, percent: 50 },
+    { place: 2, percent: 30 },
+    { place: 3, percent: 20 },
+  ],
+};
 
 // === TRACE HELPER (debug only) ===
 function trace(tag, extra = {}) {
@@ -98,6 +134,49 @@ export default function App() {
   const [tournamentSession, setTournamentSession] = useState(
     () => loadActiveTournamentSession()
   );
+  const [mode, setMode] = useState("cash");
+  const [tournamentHudState, setTournamentHudState] = useState(null);
+  const [tournamentOverlayVisible, setTournamentOverlayVisible] = useState(false);
+  const [tournamentPlacements, setTournamentPlacements] = useState([]);
+  const [tournamentTitle, setTournamentTitle] = useState("Tournament Results");
+  const [heroBustSummary, setHeroBustSummary] = useState(null);
+  const [heroBustOverlayVisible, setHeroBustOverlayVisible] = useState(false);
+  const tournamentStateRef = useRef(null);
+  const heroSeatMapRef = useRef([]);
+  const heroTableIdRef = useRef(null);
+  const heroTableMetaRef = useRef({ tableId: null, seatIndex: null });
+  const heroTournamentPlayerIdRef = useRef(HERO_TOURNAMENT_PLAYER_ID);
+  const handStartingStacksRef = useRef({});
+  const heroBustHandledRef = useRef(false);
+  const heroRenderTableIdRef = useRef(null);
+  const heroTableAnimTimerRef = useRef(null);
+  const animationsEnabledRef = useRef(
+    typeof process !== "undefined" ? process.env.NODE_ENV !== "test" : true,
+  );
+  const [heroTableAnimating, setHeroTableAnimating] = useState(false);
+  const fastForwardMTTCompleteRef = useRef(null);
+
+  const triggerHeroTableAnimation = useCallback(() => {
+    const e2eActive =
+      typeof window !== "undefined" && window.__BADUGI_E2E__;
+    if (!animationsEnabledRef.current || e2eActive) return;
+    if (heroTableAnimTimerRef.current) {
+      clearTimeout(heroTableAnimTimerRef.current);
+    }
+    setHeroTableAnimating(true);
+    heroTableAnimTimerRef.current = setTimeout(() => {
+      setHeroTableAnimating(false);
+    }, 260);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (heroTableAnimTimerRef.current) {
+        clearTimeout(heroTableAnimTimerRef.current);
+      }
+    },
+    [],
+  );
   const stageGameId = useMemo(
     () => tournamentSession?.gameId ?? DEFAULT_GAME_ID,
     [tournamentSession]
@@ -114,6 +193,7 @@ export default function App() {
     return undefined;
   }, []);
   const navigate = useNavigate();
+  const location = useLocation();
   const NUM_PLAYERS = 6;
   const lastStructureIndex = TOURNAMENT_STRUCTURE.length - 1;
 
@@ -201,6 +281,7 @@ export default function App() {
   const [seatManagerOpen, setSeatManagerOpen] = useState(false);
   const [statusBoardOpen, setStatusBoardOpen] = useState(true);
   const MAX_DRAWS = 3;
+  const FAST_FORWARD_SLEEP_MS = 5;
   const [uiPerf, setUiPerf] = useState({
     loadTime: null,
     lastInteractionDuration: null,
@@ -1547,8 +1628,329 @@ export default function App() {
         lastDrawCount: 0,
         titleBadge: isHuman ? profile?.titleBadge ?? "" : "",
         avatar: isHuman ? profile?.avatar ?? "default_avatar" : undefined,
+        tournamentPlayerId: null,
+        tournamentSeatIndex: null,
       };
     });
+  }
+
+  function buildTournamentEntrants(config) {
+    const totalPlayersForConfig =
+      Math.max(1, Number(config?.tables) || 1) *
+      Math.max(1, Number(config?.seatsPerTable) || NUM_PLAYERS);
+    return Array.from({ length: totalPlayersForConfig }, (_, idx) => {
+      if (idx === 0) {
+        return {
+          id: HERO_TOURNAMENT_PLAYER_ID,
+          name: heroProfile?.name ?? "You",
+        };
+      }
+      return {
+        id: `cpu-${idx}`,
+        name: `CPU ${idx + 1}`,
+      };
+    });
+  }
+
+  function hydrateHeroTableFromTournamentState(state) {
+    if (!state) return null;
+    const heroId = heroTournamentPlayerIdRef.current;
+    const heroPlayer = state.players?.[heroId];
+    if (!heroPlayer || !heroPlayer.tableId) return null;
+    const table = state.tables.find((t) => t.tableId === heroPlayer.tableId);
+    if (!table) return null;
+    const seats = table.seats ?? [];
+    if (!seats.length) return null;
+    const heroSeatIdx = seats.findIndex((seat) => seat.playerId === heroId);
+    const rotationStart = heroSeatIdx >= 0 ? heroSeatIdx : 0;
+    const orderedSeats = Array.from({ length: seats.length }, (_, offset) => {
+      const seat = seats[(rotationStart + offset) % seats.length];
+      return seat ?? { seatIndex: offset, playerId: null };
+    });
+    const seatMapping = orderedSeats.map((seat) =>
+      typeof seat?.seatIndex === "number" ? seat.seatIndex : null,
+    );
+    const basePlayers = buildPlayersFromSeatTypes(
+      seatConfigRef.current,
+      state.config?.startingStack ?? DEFAULT_STARTING_STACK,
+      heroProfile,
+    );
+    const tablePlayers = basePlayers.map((player, idx) => {
+      const seat = orderedSeats[idx];
+      if (!seat?.playerId) {
+        return {
+          ...player,
+          name: `(Empty Seat ${seat?.seatIndex ?? idx + 1})`,
+          stack: 0,
+          folded: true,
+          hasFolded: true,
+          seatOut: true,
+          isBusted: true,
+          tournamentPlayerId: null,
+          tournamentSeatIndex: seat?.seatIndex ?? idx,
+        };
+      }
+      const linkedPlayer = state.players[seat.playerId];
+      return {
+        ...player,
+        name: linkedPlayer?.name ?? player.name,
+        stack: linkedPlayer?.stack ?? 0,
+        seatOut: !!linkedPlayer?.busted,
+        isBusted: !!linkedPlayer?.busted,
+        folded: !!linkedPlayer?.busted,
+        hasFolded: !!linkedPlayer?.busted,
+        tournamentPlayerId: linkedPlayer?.id ?? null,
+        tournamentSeatIndex: seat.seatIndex,
+      };
+    });
+    return {
+      tablePlayers,
+      seatMapping,
+      tableId: table.tableId,
+      heroSeatIndex: heroSeatIdx,
+    };
+  }
+
+  function buildTournamentHudPayload(state) {
+    if (!state) return null;
+    const heroPlayer = state.players?.[heroTournamentPlayerIdRef.current];
+    const level = getCurrentLevel(state);
+    const levelIndexDisplay =
+      typeof level?.levelIndex === "number" ? level.levelIndex : state.levelIndex + 1;
+    const levelLabel = level
+      ? `Level ${levelIndexDisplay} — ${level.smallBlind}/${level.bigBlind} (Ante ${level.ante ?? 0})`
+      : "Level ?";
+    const tablesActive = state.tables.filter((table) => table.isActive).length;
+    const seatDisplay =
+      typeof heroPlayer?.seatIndex === "number" ? heroPlayer.seatIndex + 1 : "-";
+    const tableDisplay = heroPlayer?.tableId
+      ? heroPlayer.tableId.split("-")[1] ?? heroPlayer.tableId
+      : "-";
+    const tableLabel = tablesActive <= 1 ? "Final" : tableDisplay;
+    const isFinalTable =
+      tablesActive <= 1 &&
+      (state.playersRemaining ?? 0) <= (state.config?.seatsPerTable ?? NUM_PLAYERS);
+    const payoutCount = Array.isArray(state.config?.payouts)
+      ? state.config.payouts.length
+      : 0;
+    const payoutSummaryText =
+      payoutCount > 0 ? `Top ${payoutCount} paid` : null;
+    heroTableIdRef.current = heroPlayer?.tableId ?? null;
+    heroTableMetaRef.current = {
+      tableId: heroPlayer?.tableId ?? null,
+      seatIndex: heroPlayer?.seatIndex ?? null,
+    };
+    return {
+      levelLabel,
+      playersRemainingText: `Players Remaining: ${state.playersRemaining} / ${state.totalPlayers}`,
+      tablesActiveText: tablesActive <= 1 ? "Tables: Final" : `Tables: ${tablesActive}`,
+      heroPositionText: `Table ${tableLabel}  Seat ${seatDisplay}`,
+      isFinalTable,
+      payoutSummaryText,
+    };
+  }
+
+  function buildTournamentHandSummaryFromPlayers(playersSnapshot) {
+    if (!playersSnapshot || !heroSeatMapRef.current.length || !heroTableIdRef.current) {
+      return null;
+    }
+    const startingStacks = handStartingStacksRef.current ?? {};
+    const seatResults = playersSnapshot
+      .map((player, idx) => {
+        if (!player?.tournamentPlayerId) return null;
+        const seatIndex = heroSeatMapRef.current[idx];
+        if (typeof seatIndex !== "number") return null;
+        return {
+          seatIndex,
+          playerId: player.tournamentPlayerId,
+          stack: Math.max(0, Number(player.stack) || 0),
+          startingStack: Math.max(
+            0,
+            Number(startingStacks[player.tournamentPlayerId]) ?? Number(player.stack) ?? 0,
+          ),
+        };
+      })
+      .filter(Boolean);
+    if (!seatResults.length) return null;
+    return {
+      handId: handIdRef.current ?? null,
+      seatResults,
+    };
+  }
+
+  function buildTournamentPlacementsPayload(state) {
+    if (!state?.players) return [];
+    return Object.values(state.players)
+      .filter(
+        (player) =>
+          typeof player?.finishPlace === "number" &&
+          player.finishPlace > 0,
+      )
+      .sort((a, b) => a.finishPlace - b.finishPlace)
+      .map((player) => ({
+        id: player.id,
+        place: player.finishPlace,
+        name: player.name ?? player.id,
+        stack: Math.max(0, Number(player.stack) || 0),
+        payout: Math.max(0, Number(player.payout) || 0),
+      }));
+  }
+
+  const recordHeroHandForReplay = useCallback((tableId, summary) => {
+    if (!summary) return;
+    appendTournamentReplayHand({
+      handId: summary.handId ?? `hero-${Date.now()}`,
+      tableId,
+      seatResults: summary.seatResults,
+      source: "hero",
+    });
+  }, []);
+
+  const recordCpuHandForReplay = useCallback((handPacket) => {
+    if (!handPacket) return;
+    appendTournamentReplayHand({
+      handId:
+        handPacket.handId ??
+        `cpu-${handPacket.tableId ?? "unknown"}-${handPacket.handIndex ?? Date.now()}`,
+      tableId: handPacket.tableId ?? null,
+      seatResults: handPacket.seatResults,
+      source: "cpu",
+      meta: { handIndex: handPacket.handIndex ?? null },
+    });
+  }, []);
+
+  const applyTournamentStateUpdate = useCallback(
+    (nextState, { hydrate = true, suppressResultOverlay = false } = {}) => {
+      if (!nextState) return;
+      tournamentStateRef.current = nextState;
+      const hudPayload = buildTournamentHudPayload(nextState);
+      setTournamentHudState(hudPayload);
+      if (hydrate) {
+        const hydration = hydrateHeroTableFromTournamentState(nextState);
+        if (hydration) {
+          const prevTableId = heroRenderTableIdRef.current;
+          heroSeatMapRef.current = hydration.seatMapping;
+          heroTableIdRef.current = hydration.tableId;
+          playersRef.current = hydration.tablePlayers;
+          setPlayers(hydration.tablePlayers);
+          heroRenderTableIdRef.current = hydration.tableId;
+          if (prevTableId && hydration.tableId && prevTableId !== hydration.tableId) {
+            triggerHeroTableAnimation();
+          }
+        }
+      }
+      const publishHeroBustOverlay = (finalState, heroPlayerSnapshot) => {
+        if (!finalState || !heroPlayerSnapshot) return;
+        const placements = buildTournamentPlacementsPayload(finalState);
+        const heroPlacement =
+          placements.find((entry) => entry.id === heroPlayerSnapshot.id) ?? {
+            id: heroPlayerSnapshot.id,
+            place: heroPlayerSnapshot.finishPlace ?? placements.length + 1,
+            name: heroPlayerSnapshot.name ?? heroProfile.name ?? "You",
+            stack: heroPlayerSnapshot.stack ?? 0,
+            payout: heroPlayerSnapshot.payout ?? 0,
+          };
+        const inMoneyPlacements = placements.filter((entry) => (entry.payout ?? 0) > 0);
+        setHeroBustSummary({
+          title: finalState?.config?.name ?? "Tournament Results",
+          hero: heroPlacement,
+          inMoney: inMoneyPlacements,
+        });
+        setHeroBustOverlayVisible(true);
+        setTournamentOverlayVisible(false);
+      };
+
+      if (nextState.isFinished) {
+        if (DEBUG_TOURNAMENT) {
+          logMTT("PLACEMENT", {
+            event: "ui-finish",
+            championId: nextState.championId,
+          });
+        }
+        computePayouts(nextState);
+        const placements = buildTournamentPlacementsPayload(nextState);
+        setTournamentPlacements(placements);
+        setTournamentTitle(nextState?.config?.name ?? "Tournament Results");
+        setShowNextButton(false);
+        setHandResultVisible(false);
+        finalizeTournamentReplay(nextState, placements);
+        if (!suppressResultOverlay) {
+          setTournamentOverlayVisible(true);
+        } else {
+          setTournamentOverlayVisible(false);
+        }
+      }
+
+      const heroPlayer = nextState.players?.[heroTournamentPlayerIdRef.current];
+      if (!heroBustHandledRef.current && heroPlayer?.busted) {
+        heroBustHandledRef.current = true;
+        setShowNextButton(false);
+        setHandResultVisible(false);
+        const forwardPromise =
+          fastForwardMTTCompleteRef.current?.({ suppressResultOverlay: true }) ?? null;
+      if (forwardPromise) {
+        forwardPromise.then((finalState) => {
+          if (!finalState) return;
+          if (DEBUG_TOURNAMENT) {
+            logMTT("PLACEMENT", {
+              event: "hero-bust-detected",
+              playerId: heroPlayer.id,
+            });
+          }
+          publishHeroBustOverlay(finalState, {
+            id: heroPlayer.id ?? heroTournamentPlayerIdRef.current,
+            finishPlace: heroPlayer.finishPlace,
+            name: heroPlayer.name,
+            stack: heroPlayer.stack,
+            payout: heroPlayer.payout,
+          });
+        });
+      } else {
+        if (DEBUG_TOURNAMENT) {
+          logMTT("PLACEMENT", {
+            event: "hero-bust-detected",
+            playerId: heroPlayer.id,
+          });
+        }
+        publishHeroBustOverlay(nextState, heroPlayer);
+      }
+    }
+    },
+    [
+      setPlayers,
+      setTournamentHudState,
+      setTournamentPlacements,
+      setTournamentTitle,
+      setTournamentOverlayVisible,
+      setShowNextButton,
+      setHandResultVisible,
+      triggerHeroTableAnimation,
+      heroProfile,
+    ],
+  );
+
+  function getTournamentHudSnapshot() {
+    const state = tournamentStateRef.current;
+    if (!state) return null;
+    const heroPlayer = state.players?.[heroTournamentPlayerIdRef.current];
+    const tablesActive = Array.isArray(state.tables)
+      ? state.tables.filter((table) => table.isActive).length
+      : 0;
+    return {
+      levelLabel: tournamentHudState?.levelLabel ?? null,
+      playersRemaining: state.playersRemaining ?? 0,
+      totalPlayers: state.totalPlayers ?? 0,
+      tablesActive,
+      isFinished: Boolean(state.isFinished),
+      championId: state.championId ?? null,
+      overlayVisible: tournamentOverlayVisible,
+      heroTableId: heroPlayer?.tableId ?? null,
+      heroSeatIndex:
+        typeof heroPlayer?.seatIndex === "number" ? heroPlayer.seatIndex : null,
+      isFinalTable:
+        tablesActive <= 1 &&
+        (state.playersRemaining ?? 0) <= (state.config?.seatsPerTable ?? NUM_PLAYERS),
+    };
   }
 
   function handleSeatTypeChange(index, nextType) {
@@ -1823,6 +2225,25 @@ export default function App() {
         `Seat ${p.name}: ${p.hand.join(" ")} | type=${rankLabel} ranks=${rankValues}`
       );
     });
+    if (mode === "tournament-mtt" && tournamentStateRef.current) {
+      const tournamentSummary = buildTournamentHandSummaryFromPlayers(updated);
+      if (tournamentSummary) {
+        const tableId = heroTableIdRef.current ?? heroTableMetaRef.current.tableId;
+        recordHeroHandForReplay(tableId, tournamentSummary);
+        let nextState = onTableHandCompleted(
+          tournamentStateRef.current,
+          tableId,
+          tournamentSummary,
+        );
+        if (!nextState.isFinished) {
+          nextState = simulateBackgroundTables(nextState, tableId, {
+            maxHandsPerTable: 2,
+            onHandSimulated: recordCpuHandForReplay,
+          });
+        }
+        applyTournamentStateUpdate(nextState);
+      }
+    }
     console.log("[SHOWDOWN] Waiting for Next Hand button...");
   }
 
@@ -1867,6 +2288,88 @@ export default function App() {
     dealNewHand(nextDealer);
     setTimeout(() => (dealingRef.current = false), 800);
   }
+
+  const resetTournamentState = useCallback(() => {
+    tournamentStateRef.current = null;
+    heroSeatMapRef.current = [];
+    heroTableIdRef.current = null;
+    heroTableMetaRef.current = { tableId: null, seatIndex: null };
+    heroTournamentPlayerIdRef.current = HERO_TOURNAMENT_PLAYER_ID;
+    heroRenderTableIdRef.current = null;
+    heroBustHandledRef.current = false;
+    setTournamentHudState(null);
+    setTournamentPlacements([]);
+    setTournamentOverlayVisible(false);
+    setHeroBustSummary(null);
+    setHeroBustOverlayVisible(false);
+    setHeroTableAnimating(false);
+    resetTournamentReplay();
+  }, []);
+
+  const startTournamentMTT = useCallback(
+    (configOverride = DEFAULT_STORE_TOURNAMENT_CONFIG) => {
+      const config = { ...DEFAULT_STORE_TOURNAMENT_CONFIG, ...configOverride };
+      resetTournamentState();
+       initTournamentReplay(config);
+      const entrants = buildTournamentEntrants(config);
+      const tournamentState = createMTTTournamentState(config, entrants);
+      tournamentStateRef.current = tournamentState;
+      heroTournamentPlayerIdRef.current = entrants[0]?.id ?? HERO_TOURNAMENT_PLAYER_ID;
+      const hydration = hydrateHeroTableFromTournamentState(tournamentState);
+      if (hydration) {
+        heroSeatMapRef.current = hydration.seatMapping;
+        heroTableIdRef.current = hydration.tableId;
+        playersRef.current = hydration.tablePlayers;
+        setPlayers(hydration.tablePlayers);
+        heroRenderTableIdRef.current = hydration.tableId;
+      }
+      const hudPayload = buildTournamentHudPayload(tournamentState);
+      setTournamentHudState(hudPayload);
+      setTournamentTitle(config?.name ?? "Tournament Results");
+      handStartingStacksRef.current = {};
+      setMode("tournament-mtt");
+      setStartingStack(config.startingStack);
+      startingStackRef.current = config.startingStack;
+      setShowNextButton(false);
+      setHandResultVisible(false);
+      setPhase("BET");
+      setDrawRoundValue(0);
+      setBetRoundValue(0);
+      setHandsInLevel(0);
+      setBlindLevelIndex(0);
+      resetSeatConfigToDefault();
+      resetHandHistoryRecord();
+      handHistoryRef.current = [];
+      currentHandHistoryRef.current = null;
+      handSavedRef.current = false;
+      deckRef.current.reset();
+      if (hydration) {
+        dealNewHand(0, hydration.tablePlayers);
+      } else {
+        dealNewHand(0);
+      }
+    },
+    [dealNewHand, resetTournamentState],
+  );
+
+  const handleTournamentBackToMenu = useCallback(() => {
+    resetTournamentState();
+    setMode("cash");
+    navigate("/");
+  }, [navigate, resetTournamentState]);
+
+  const handleTournamentPlayAgain = useCallback(() => {
+    const config = tournamentStateRef.current?.config ?? DEFAULT_STORE_TOURNAMENT_CONFIG;
+    startTournamentMTT(config);
+  }, [startTournamentMTT]);
+
+  useEffect(() => {
+    if (!location?.state?.startTournamentMTT) return;
+    startTournamentMTT(DEFAULT_STORE_TOURNAMENT_CONFIG);
+    const nextState = { ...location.state };
+    delete nextState.startTournamentMTT;
+    navigate(location.pathname, { replace: true, state: nextState });
+  }, [location, navigate, startTournamentMTT]);
 
   // Legacy entry point kept for older callers（NPC auto-action 等）。
   // 実際の進行処理は afterBetActionWithSnapshot(...) に委譲する。
@@ -1964,6 +2467,14 @@ export default function App() {
           prevPlayers?.[i]?.seatOut ??
           players?.[i]?.seatOut ??
           seatType === "EMPTY",
+        tournamentPlayerId:
+          prevPlayers?.[i]?.tournamentPlayerId ??
+          players?.[i]?.tournamentPlayerId ??
+          null,
+        tournamentSeatIndex:
+          prevPlayers?.[i]?.tournamentSeatIndex ??
+          players?.[i]?.tournamentSeatIndex ??
+          null,
       };
     });
 
@@ -1981,6 +2492,8 @@ export default function App() {
           allIn: true,
           seatOut: true,
           isBusted: true,
+          tournamentPlayerId: p.tournamentPlayerId ?? null,
+          tournamentSeatIndex: p.tournamentSeatIndex ?? null,
         };
       }
       // 新しいハンドで座っているプレイヤーのフォールド状態は必ずリセットする。
@@ -1993,6 +2506,8 @@ export default function App() {
         hasFolded: false,
         folded: false,
         allIn: false,
+        tournamentPlayerId: p.tournamentPlayerId ?? null,
+        tournamentSeatIndex: p.tournamentSeatIndex ?? null,
       };
     });
 
@@ -2016,6 +2531,8 @@ export default function App() {
       hasActedThisRound: filteredPrev[i].seatOut ?? false,
       lastAction: "",
       isCPU: (filteredPrev[i].seatType ?? effectiveSeatConfig[i]) === "CPU",
+      tournamentPlayerId: filteredPrev[i].tournamentPlayerId ?? null,
+      tournamentSeatIndex: filteredPrev[i].tournamentSeatIndex ?? null,
     }));
     if (newPlayers[0]) {
       newPlayers[0] = {
@@ -2025,6 +2542,13 @@ export default function App() {
         avatar: heroProfile.avatar,
       };
     }
+
+    handStartingStacksRef.current = newPlayers.reduce((acc, player) => {
+      if (player?.tournamentPlayerId) {
+        acc[player.tournamentPlayerId] = player.stack;
+      }
+      return acc;
+    }, {});
 
     // keep seatOut players marked as folded/hasFolded for the new hand; folded flags
     // must only ever change at hand boundaries or when a seat actively folds.
@@ -2207,6 +2731,9 @@ export default function App() {
   }
 
   const startNextHand = useCallback(() => {
+    if (mode === "tournament-mtt" && tournamentStateRef.current?.isFinished) {
+      return;
+    }
     if (!handSavedRef.current) {
       trySaveHandOnce({
         playersSnap: playersRef.current ?? players,
@@ -2218,15 +2745,126 @@ export default function App() {
     setShowNextButton(false);
     setHandResultVisible(false);
     dealNewHand(nextDealer);
-  }, [dealerIdx, dealNewHand, trySaveHandOnce]);
+  }, [dealerIdx, mode, dealNewHand, trySaveHandOnce]);
+
+  const runTournamentBackgroundSimulation = useCallback(
+    (iterations = 1) => {
+      let nextState = tournamentStateRef.current;
+      if (!nextState) return null;
+      const heroTableId = heroTableIdRef.current ?? heroTableMetaRef.current.tableId;
+      const cycles = Math.max(1, Number(iterations) || 1);
+      for (let i = 0; i < cycles && nextState && !nextState.isFinished; i += 1) {
+        nextState = simulateBackgroundTables(nextState, heroTableId, {
+          maxHandsPerTable: 3,
+          onHandSimulated: recordCpuHandForReplay,
+        });
+      }
+      applyTournamentStateUpdate(nextState, { hydrate: true });
+      return nextState;
+    },
+    [applyTournamentStateUpdate, recordCpuHandForReplay],
+  );
+
+  const flushAsync = (delay = 0) =>
+    new Promise((resolve) => {
+      setTimeout(resolve, delay);
+    });
+
+  const runHeroHandsForE2E = useCallback(
+    async (hands = 1) => {
+      const loops = Math.max(1, Number(hands) || 1);
+      for (let i = 0; i < loops; i += 1) {
+        if (mode !== "tournament-mtt" || tournamentStateRef.current?.isFinished) break;
+        resolveHandImmediately();
+        await flushAsync(FAST_FORWARD_SLEEP_MS);
+        if (mode !== "tournament-mtt" || tournamentStateRef.current?.isFinished) break;
+        startNextHand();
+        await flushAsync(FAST_FORWARD_SLEEP_MS);
+      }
+      return tournamentStateRef.current;
+    },
+    [mode, resolveHandImmediately, startNextHand],
+  );
+
+  const forceHeroBustNow = useCallback(() => {
+    if (mode !== "tournament-mtt") return tournamentStateRef.current;
+    const state = tournamentStateRef.current;
+    if (!state) return null;
+    const heroId = heroTournamentPlayerIdRef.current;
+    const heroPlayer = state.players?.[heroId];
+    if (!heroPlayer || heroPlayer.busted || !heroPlayer.tableId) {
+      return state;
+    }
+    if (typeof heroPlayer.seatIndex !== "number") {
+      return state;
+    }
+    const summary = {
+      handId: handIdRef.current ?? null,
+      seatResults: [
+        {
+          seatIndex: heroPlayer.seatIndex,
+          playerId: heroPlayer.id,
+          stack: 0,
+          startingStack: Math.max(0, Number(heroPlayer.stack) || 0),
+        },
+      ],
+    };
+    if (DEBUG_TOURNAMENT) {
+      logMTT("PLACEMENT", { event: "hero-bust-forced", playerId: heroPlayer.id });
+    }
+    const nextState = onTableHandCompleted(state, heroPlayer.tableId, summary);
+    applyTournamentStateUpdate(nextState, { hydrate: true, suppressResultOverlay: true });
+    return nextState;
+  }, [mode, applyTournamentStateUpdate]);
+
+  const fastForwardMTTComplete = useCallback(
+    async ({ suppressResultOverlay = false } = {}) => {
+      if (mode !== "tournament-mtt") return tournamentStateRef.current;
+      let nextState = tournamentStateRef.current;
+      if (!nextState) return null;
+      const MAX_LOOPS = 256;
+      let loop = 0;
+      while (nextState && !nextState.isFinished && loop < MAX_LOOPS) {
+        nextState = simulateBackgroundTables(nextState, null, {
+          maxHandsPerTable: 6,
+          onHandSimulated: recordCpuHandForReplay,
+        });
+        loop += 1;
+      }
+      if (!nextState) {
+        return null;
+      }
+      if (!nextState.isFinished && loop >= MAX_LOOPS) {
+        if (DEBUG_TOURNAMENT) {
+          logMTT("CPU", { event: "fast-forward-loop-guard", loops: loop });
+        }
+      } else if (nextState.isFinished) {
+        computePayouts(nextState);
+      }
+      applyTournamentStateUpdate(nextState, {
+        hydrate: true,
+        suppressResultOverlay,
+      });
+      await flushAsync(FAST_FORWARD_SLEEP_MS);
+      return nextState;
+    },
+    [mode, applyTournamentStateUpdate, recordCpuHandForReplay],
+  );
+
+  useEffect(() => {
+    fastForwardMTTCompleteRef.current = fastForwardMTTComplete;
+  }, [fastForwardMTTComplete]);
 
   useEffect(() => {
     if (!handResultVisible) return undefined;
+    if (mode === "tournament-mtt" && tournamentStateRef.current?.isFinished) {
+      return undefined;
+    }
     const timer = setTimeout(() => {
       startNextHand();
     }, 5000);
     return () => clearTimeout(timer);
-  }, [handResultVisible, startNextHand]);
+  }, [handResultVisible, mode, startNextHand]);
 
   useEffect(() => {
     e2eDriverApiRef.current = {
@@ -2247,6 +2885,16 @@ export default function App() {
       }),
       getHandHistory: () => [...handHistoryRef.current],
       getLastPotSummary: () => lastPotSummaryRef.current,
+      getTournamentHudState: () => getTournamentHudSnapshot(),
+      getTournamentPlacements: () => [...tournamentPlacements],
+      isTournamentOverlayVisible: () => tournamentOverlayVisible,
+      startTournamentMTT: (config) => startTournamentMTT(config),
+      simulateTournamentBackground: (iterations = 1) =>
+        runTournamentBackgroundSimulation(iterations),
+      completeHeroHands: (hands = 1) => runHeroHandsForE2E(hands),
+      forceHeroBust: () => forceHeroBustNow(),
+      fastForwardMTTComplete: () => fastForwardMTTComplete(),
+      getTournamentReplay: () => getStoredTournamentReplay(),
     };
   }, [
     queueForcedSeatAction,
@@ -2260,6 +2908,15 @@ export default function App() {
     drawRound,
     betRoundIndex,
     dealerIdx,
+    tournamentHudState,
+    startTournamentMTT,
+    runTournamentBackgroundSimulation,
+    runHeroHandsForE2E,
+    forceHeroBustNow,
+    fastForwardMTTComplete,
+    tournamentPlacements,
+    tournamentOverlayVisible,
+    getStoredTournamentReplay,
   ]);
 
   useEffect(() => installE2eTestDriver(e2eDriverApiRef), []);
@@ -3990,8 +4647,16 @@ function handleCardClick(i) {
         </div>
       </div>
 
+      {mode === "tournament-mtt" && tournamentHudState && (
+        <TournamentHUD {...tournamentHudState} />
+      )}
+
       {/* Core game surface */}
-      <div className={`relative w-[92%] max-w-[1400px] aspect-[16/9] ${tableSurfaceBg} border-4 ${tableBorderColor} rounded-3xl shadow-inner transition-colors duration-300`}>
+      <div
+        className={`relative w-[92%] max-w-[1400px] aspect-[16/9] ${tableSurfaceBg} border-4 ${tableBorderColor} rounded-3xl shadow-inner transition-colors duration-300 ${
+          heroTableAnimating ? "table-switch-anim" : ""
+        }`}
+      >
 
         {/* Phase summary: inline for mobile, fixed side for desktop */}
         <TableSummaryPanel
@@ -4057,6 +4722,26 @@ function handleCardClick(i) {
       onNext={startNextHand}
       buttonLabel={nextHandLabel}
     />
+
+    {mode === "tournament-mtt" && (
+      <HeroBustOverlay
+        visible={heroBustOverlayVisible}
+        title={heroBustSummary?.title ?? tournamentTitle}
+        heroSummary={heroBustSummary?.hero}
+        inMoneyPlacements={heroBustSummary?.inMoney ?? []}
+        onBackToMenu={handleTournamentBackToMenu}
+      />
+    )}
+
+    {mode === "tournament-mtt" && (
+      <TournamentResultOverlay
+        visible={tournamentOverlayVisible}
+        title={tournamentTitle}
+        placements={tournamentPlacements}
+        onBackToMenu={handleTournamentBackToMenu}
+        onPlayAgain={handleTournamentPlayAgain}
+      />
+    )}
 
     <div className="w-full flex justify-center mt-6">
       <div className="w-[92%] max-w-[1400px] flex flex-col gap-4">

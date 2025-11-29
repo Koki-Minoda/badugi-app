@@ -3,6 +3,7 @@ import {
   isBetRoundComplete,
   closingSeatForAggressor,
   buildSidePots,
+  resetBetRoundFlags,
 } from "../../engine/roundFlow.js";
 
 const makePlayer = ({
@@ -124,5 +125,42 @@ describe("buildSidePots", () => {
       basePlayer({ totalInvested: 40, folded: true, hasFolded: true }),
     ];
     expect(buildSidePots(players)).toEqual([{ amount: 250, eligible: [0] }]);
+  });
+});
+
+describe("resetBetRoundFlags", () => {
+  it("resets hasActedThisRound for eligible players only", () => {
+    const players = [
+      {
+        name: "Hero",
+        folded: false,
+        allIn: false,
+        hasActedThisRound: true,
+      },
+      {
+        name: "Folded",
+        folded: true,
+        hasFolded: true,
+        hasActedThisRound: true,
+      },
+      {
+        name: "AllIn",
+        allIn: true,
+        hasActedThisRound: true,
+      },
+    ];
+    const reset = resetBetRoundFlags(players);
+    expect(reset[0].hasActedThisRound).toBe(false);
+    expect(reset[1]).toBe(players[1]);
+    expect(reset[2]).toBe(players[2]);
+  });
+
+  it("returns original array when no changes are required", () => {
+    const players = [
+      makePlayer({ hasActedThisRound: false }),
+      makePlayer({ folded: true, hasActedThisRound: true }),
+    ];
+    const result = resetBetRoundFlags(players);
+    expect(result).toBe(players);
   });
 });

@@ -35,6 +35,7 @@ export default function Player({
   phase,
   isWinner = false,
   positionLabel,
+  canSelectForDraw = false,
 }) {
   const isHero = index === selfIndex;
   const isActive = turn === index;
@@ -46,7 +47,7 @@ export default function Player({
   const betValue = typeof player.betThisRound === "number" ? player.betThisRound : 0;
 
   const handleCardClick = (cardIdx) => {
-    if (isHero && phase === "DRAW" && turn === 0 && onCardClick) {
+    if (isHero && phase === "DRAW" && canSelectForDraw && onCardClick) {
       onCardClick(cardIdx);
     }
   };
@@ -109,6 +110,7 @@ export default function Player({
             selected={isHero && (player.selected || []).includes(i)}
             onClick={() => handleCardClick(i)}
             folded={player.folded}
+            data-testid={`player-${index}-card-${i}`}
           />
         ))}
       </div>

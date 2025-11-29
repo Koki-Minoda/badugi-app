@@ -1,13 +1,54 @@
 ﻿// src/games/badugi/logic/roundFlow.js
 
 import { debugLog } from "../../../utils/debugLog";
+import {
+  isFoldedOrOut,
+  aliveBetPlayers,
+  aliveDrawPlayers,
+  nextAliveFrom,
+  maxBetThisRound,
+} from "../flow/actionUtils.js";
+import {
+  isBetRoundComplete,
+  closingSeatForAggressor,
+  analyzeBetSnapshot,
+} from "../flow/betRoundUtils.js";
 
-// Canonical folded indicator: once set, the player is excluded from any future action/draw this hand.
-export function isFoldedOrOut(player) {
-  return Boolean(player?.folded || player?.hasFolded || player?.seatOut);
+export {
+  isFoldedOrOut,
+  aliveBetPlayers,
+  aliveDrawPlayers,
+  nextAliveFrom,
+  maxBetThisRound,
+} from "../flow/actionUtils.js";
+export {
+  isBetRoundComplete,
+  closingSeatForAggressor,
+  analyzeBetSnapshot,
+} from "../flow/betRoundUtils.js";
+
+export function resetBetRoundFlags(players = []) {
+  if (!Array.isArray(players)) return [];
+  let changed = false;
+  const normalized = players.map((player) => {
+    if (!player) return player;
+    const skip =
+      isFoldedOrOut(player) ||
+      player.seatOut ||
+      player.isBusted ||
+      player.allIn;
+    if (skip) return player;
+    if (player.hasActedThisRound === false) {
+      return player;
+    }
+    changed = true;
+    return {
+      ...player,
+      hasActedThisRound: false,
+    };
+  });
+  return changed ? normalized : players;
 }
-
-
 
 // --- sanitizeStacks:  all-in---
 
@@ -43,66 +84,6 @@ function sanitizeStacks(snap, setPlayers) {
 // ===  ===
 
 // --- BETll-in--
-
-export const aliveBetPlayers = arr =>
-
-  Array.isArray(arr)
-    ? arr.filter((p) => !isFoldedOrOut(p) && !p.allIn)
-    : [];
-
-
-
-// --- DRAWll-in--
-
-export const aliveDrawPlayers = arr =>
-
-  Array.isArray(arr)
-    ? arr.filter((p) => !isFoldedOrOut(p))
-    : [];
-
-
-
-// pp.jsx alivePlayers import 
-
-export const alivePlayers = aliveBetPlayers;
-
-
-
-export const nextAliveFrom = (arr, idx) => {
-
-  const n = arr.length;
-
-  let next = (idx + 1) % n;
-
-  let loop = 0;
-
-  while (isFoldedOrOut(arr[next]) || arr[next]?.allIn) {
-
-    next = (next + 1) % n;
-
-    if (++loop > n) return null;
-
-  }
-
-  return next;
-
-};
-
-
-
-export const maxBetThisRound = arr => {
-
-  if (!Array.isArray(arr)) return 0;
-
-  const eligible = arr.filter((p) => !isFoldedOrOut(p));
-
-  if (!eligible.length) return 0;
-
-  return Math.max(...eligible.map(p => p.betThisRound || 0));
-
-};
-
-
 
 export const calcDrawStartIndex = (dealerIdx = 0, streetIndex = 0, numPlayers = 6) => {
 
@@ -196,123 +177,6 @@ function mergeEquivalentPots(pots = []) {
     }
   });
   return merged;
-}
-
-
-
-// === BET===
-
-export const isBetRoundComplete = players => {
-
-  if (!Array.isArray(players)) return false;
-
-  const active = players.filter((p) => !isFoldedOrOut(p));
-
-  if (active.length <= 1) return true;
-
-  const maxNow = Math.max(...active.map(p => p.betThisRound || 0));
-
-  return active.every(p => {
-
-    const matched = p.allIn || (p.betThisRound || 0) === maxNow;
-
-    const acted = p.allIn || p.hasActedThisRound === true;
-
-    return matched && acted;
-
-  });
-
-};
-
-
-
-export const closingSeatForAggressor = (players, lastAggressorIdx) => {
-
-  if (!Array.isArray(players)) return null;
-
-  if (lastAggressorIdx === null || typeof lastAggressorIdx === "undefined") {
-
-    return null;
-
-  }
-
-    const agg = players[lastAggressorIdx];
-
-  if (!agg) return null;
-
-  if (isFoldedOrOut(agg) || agg.allIn) {
-    const next = nextAliveFrom(players, lastAggressorIdx);
-    if (next === null) return null;
-    return next;
-  }
-
-  return lastAggressorIdx;
-
-};
-
-export function analyzeBetSnapshot({
-  players = [],
-  actedIndex = 0,
-  dealerIdx = 0,
-  drawRound = 0,
-  numPlayers = players.length || 6,
-  betHead = null,
-  lastAggressorIdx = null,
-}) {
-  const snap = players.map((p) => ({ ...p }));
-  const maxNow = maxBetThisRound(snap);
-  const active = snap.filter((p) => !isFoldedOrOut(p));
-  const everyoneMatched = active.every(
-    (p) => p.allIn || (p.betThisRound || 0) === maxNow
-  );
-  const allChecked =
-    maxNow === 0 &&
-    active.every(
-      (p) => isFoldedOrOut(p) || p.allIn || p.lastAction === "Check"
-    );
-  const betRoundSatisfied = isBetRoundComplete(snap);
-  const nextAlive = typeof actedIndex === "number" ? nextAliveFrom(snap, actedIndex) : null;
-  const closingSeatCandidate = closingSeatForAggressor(snap, lastAggressorIdx);
-  const fallbackSeat = typeof betHead === "number" ? betHead : null;
-  const closingSeat = closingSeatCandidate ?? fallbackSeat;
-  const returnedToAggressor =
-    typeof closingSeat === "number" && nextAlive === closingSeat;
-
-  const bbIndex = (dealerIdx + 2) % (numPlayers || snap.length || 1);
-  const bbSeat = snap[bbIndex];
-  let isBBActed = true;
-  if (drawRound === 0 && bbSeat) {
-    const acted = ["Bet", "Call", "Raise", "Check"].includes(bbSeat.lastAction);
-    isBBActed = bbSeat.folded || bbSeat.allIn || acted;
-  }
-
-  const isHeadsUp = active.length <= 2;
-  let shouldAdvance = betRoundSatisfied && returnedToAggressor;
-
-  if (!shouldAdvance) {
-    if (maxNow > 0) {
-      shouldAdvance = everyoneMatched && isBBActed;
-    } else if (isHeadsUp) {
-      const bothActed = active.every((p) => !!p.lastAction);
-      shouldAdvance = bothActed;
-    } else {
-      shouldAdvance = allChecked;
-    }
-  }
-
-  return {
-    playersSnapshot: snap,
-    nextTurn: nextAlive,
-    maxBet: maxNow,
-    everyoneMatched,
-    allChecked,
-    betRoundSatisfied,
-    closingSeat,
-    returnedToAggressor,
-    shouldAdvance,
-    isHeadsUp,
-    isBBActed,
-  };
 }
 
 

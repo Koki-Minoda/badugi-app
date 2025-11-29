@@ -38,10 +38,11 @@ export default function TitleForm({ initialValues, onSave, onReset }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div>
-        <label className="block text-sm font-semibold text-slate-700 mb-1">
+        <label htmlFor="title-player-name" className="block text-sm font-semibold text-slate-700 mb-1">
           プレイヤー名
         </label>
         <input
+          id="title-player-name"
           name="playerName"
           value={formState.playerName}
           onChange={handleChange}
@@ -52,10 +53,11 @@ export default function TitleForm({ initialValues, onSave, onReset }) {
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-slate-700 mb-1">
+        <label htmlFor="title-player-title" className="block text-sm font-semibold text-slate-700 mb-1">
           タイトル / バッジ
         </label>
         <input
+          id="title-player-title"
           name="playerTitle"
           value={formState.playerTitle}
           onChange={handleChange}
@@ -66,10 +68,11 @@ export default function TitleForm({ initialValues, onSave, onReset }) {
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-slate-700 mb-1">
+        <label htmlFor="title-avatar" className="block text-sm font-semibold text-slate-700 mb-1">
           アバター
         </label>
         <select
+          id="title-avatar"
           name="avatar"
           value={formState.avatar}
           onChange={handleChange}

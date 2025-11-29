@@ -1,13 +1,14 @@
 // src/ui/components/Card.jsx
 import React from "react";
 
-export default function Card({ value, hidden, selected, onClick, folded }) {
+export default function Card({ value, hidden, selected, onClick, folded, ...rest }) {
   // ------------------------------
   // 1️⃣ 非表示またはフォールド中カード（裏面）
   // ------------------------------
   if (hidden || folded) {
     return (
       <div
+        {...rest}
         className={`w-16 h-24 rounded-lg shadow-lg border-4 border-yellow-500 
         flex items-center justify-center 
         bg-gradient-to-br from-gray-900 via-black to-gray-800 
@@ -48,6 +49,7 @@ export default function Card({ value, hidden, selected, onClick, folded }) {
 
   return (
     <div
+      {...rest}
       onClick={onClick}
       className={`
         w-16 h-24 bg-white rounded-lg shadow-md 

@@ -33,6 +33,7 @@ describe("mergeEngineSnapshot", () => {
     const snapshot = {
       players: [{ id: 2 }],
       pots: [{ total: 200 }],
+      nextTurn: 3,
       metadata: {
         currentBet: 50,
         betHead: 50,
@@ -61,7 +62,7 @@ describe("mergeEngineSnapshot", () => {
     expect(merged.metadata.currentBet).toBe(60);
     expect(merged.metadata.betHead).toBe(baseState.metadata.betHead);
     expect(merged.metadata.lastAggressor).toBe(baseState.metadata.lastAggressor);
-    expect(merged.metadata.actingPlayerIndex).toBe(baseState.metadata.actingPlayerIndex);
+    expect(merged.metadata.actingPlayerIndex).toBeNull();
   });
 
   it("keeps gameId/engineId from snapshot and falls back to base", () => {

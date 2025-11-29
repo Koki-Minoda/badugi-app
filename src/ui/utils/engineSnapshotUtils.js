@@ -20,36 +20,59 @@ export function mergeEngineSnapshot(currentState, snapshot) {
   const currentPlayers = Array.isArray(currentState?.players)
     ? currentState.players
     : [];
-  const incomingPlayers = Array.isArray(snapshot.players)
-    ? snapshot.players
+  const hasIncomingPlayers = Array.isArray(snapshot.players);
+  const nextPlayers = hasIncomingPlayers
+    ? snapshot.players.map((incoming, idx) => {
+        if (!incoming) {
+          return currentPlayers[idx] ?? incoming;
+        }
+        const prior = currentPlayers[idx];
+        if (prior && (prior.folded || prior.hasFolded || prior.seatOut)) {
+          return {
+            ...incoming,
+            folded: true,
+            hasFolded: true,
+            seatOut: prior.seatOut || incoming.seatOut,
+          };
+        }
+        return incoming;
+      })
     : currentPlayers;
-  const nextPlayers = incomingPlayers.map((incoming, idx) => {
-    const fallback = currentPlayers[idx];
-    if (!incoming && fallback) return fallback;
-    if (!incoming) return incoming;
-    const prior = currentPlayers[idx];
-    if (prior && (prior.folded || prior.hasFolded || prior.seatOut)) {
-      return {
-        ...incoming,
-        folded: true,
-        hasFolded: true,
-        seatOut: prior.seatOut || incoming.seatOut,
-      };
-    }
-    return incoming;
-  });
   const nextPots = snapshot.pots ?? currentState?.pots ?? [];
   const nextDeck = snapshot.deck ?? currentState?.deck ?? null;
   const incomingMeta = snapshot.metadata ?? {};
+  const snapshotTurn =
+    typeof snapshot?.nextTurn === "number"
+      ? snapshot.nextTurn
+      : typeof snapshot?.turn === "number"
+      ? snapshot.turn
+      : undefined;
   const nextGameId =
     snapshot.gameId ?? currentState?.gameId ?? currentState?.engineId ?? null;
   const nextEngineId =
     snapshot.engineId ?? currentState?.engineId ?? nextGameId;
 
+  console.log("[MERGE][PLAYER_DEBUG]", {
+    idx: 5,
+    incoming: hasIncomingPlayers ? snapshot.players?.[5] : undefined,
+    merged: nextPlayers?.[5],
+  });
+
   const shouldReuseSnapshotPlayers =
-    Array.isArray(snapshot.players) &&
+    hasIncomingPlayers &&
     nextPlayers.length === snapshot.players.length &&
     nextPlayers.every((player, idx) => player === snapshot.players[idx]);
+
+  const actingPlayerIndex =
+    typeof snapshotTurn === "number"
+      ? snapshotTurn
+      : null;
+
+  console.log("[MERGE][TURN_DEBUG]", {
+    snapshotNextTurn: snapshot.nextTurn,
+    snapshotTurn,
+    metadataActing: actingPlayerIndex,
+  });
 
   return {
     players: shouldReuseSnapshotPlayers ? snapshot.players : nextPlayers,
@@ -70,10 +93,7 @@ export function mergeEngineSnapshot(currentState, snapshot) {
         typeof incomingMeta.lastAggressor === "number"
           ? incomingMeta.lastAggressor
           : defaultMeta.lastAggressor ?? currentState?.lastAggressor ?? null,
-      actingPlayerIndex:
-        typeof incomingMeta.actingPlayerIndex === "number"
-          ? incomingMeta.actingPlayerIndex
-          : defaultMeta.actingPlayerIndex ?? currentState?.turn ?? 0,
+      actingPlayerIndex,
     },
   };
 }

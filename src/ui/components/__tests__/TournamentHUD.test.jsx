@@ -9,27 +9,48 @@ describe("TournamentHUD", () => {
   });
 
   const baseProps = {
-    levelLabel: "Level 1 — 5/10 (Ante 0)",
-    playersRemainingText: "Players Remaining: 18 / 18",
-    tablesActiveText: "Tables: 3",
-    heroPositionText: "Table 1  Seat 1",
+    tournamentName: "Store Tournament",
+    prizePoolTotal: 54000,
+    payoutBreakdown: [
+      { place: 1, percent: 50, amount: 27000 },
+      { place: 2, percent: 30, amount: 16200 },
+      { place: 3, percent: 20, amount: 10800 },
+    ],
+    playersRemaining: 18,
+    totalEntrants: 18,
+    averageStack: 3000,
+    currentLevelNumber: 1,
+    levelLabel: "Level 1  5/10 (Ante 0)",
+    currentBlinds: { sb: 5, bb: 10, ante: 0 },
+    nextLevelBlinds: { sb: 10, bb: 20, ante: 1 },
+    handsPlayedThisLevel: 0,
+    handsThisLevel: 5,
+    nextBreakLabel: "--:--",
+    currentVariantLabel: "Badugi",
+    nextVariantLabel: "NLH",
   };
 
-  it("shows final table badge and payout summary when supplied", () => {
-    render(
-      <TournamentHUD
-        {...baseProps}
-        payoutSummaryText="Top 3 paid"
-        isFinalTable
-      />,
-    );
-    expect(screen.getByTestId("mtt-hud-final-table")).not.toBeNull();
-    expect(screen.getByTestId("mtt-hud-payout-summary").textContent).toBe("Top 3 paid");
+  it("renders prize pool and payout details", () => {
+    render(<TournamentHUD {...baseProps} />);
+    expect(screen.getByTestId("tournament-hud")).toBeTruthy();
+    expect(screen.getByText("Store Tournament")).toBeTruthy();
+    expect(screen.getByText("27,000")).toBeTruthy();
+    expect(screen.getByText(/50%/)).toBeTruthy();
   });
 
-  it("omits optional labels when not in final table mode", () => {
+  it("shows hands progress, blinds, ante, and next level info", () => {
     render(<TournamentHUD {...baseProps} />);
-    expect(screen.queryByTestId("mtt-hud-final-table")).toBeNull();
-    expect(screen.queryByTestId("mtt-hud-payout-summary")).toBeNull();
+    expect(screen.getByText("0 / 5")).toBeTruthy();
+    expect(screen.getByText("5 / 10")).toBeTruthy();
+    expect(screen.getByText("Ante 0")).toBeTruthy();
+    expect(screen.getByText("10 / 20 (Ante 1)")).toBeTruthy();
+  });
+
+  it("displays average stack, players, and variant metadata", () => {
+    render(<TournamentHUD {...baseProps} />);
+    expect(screen.getByText("3,000")).toBeTruthy();
+    expect(screen.getByText("18 / 18")).toBeTruthy();
+    expect(screen.getByText("Badugi")).toBeTruthy();
+    expect(screen.getByText(/Next: NLH/)).toBeTruthy();
   });
 });

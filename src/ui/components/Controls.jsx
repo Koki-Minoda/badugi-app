@@ -1,7 +1,17 @@
 // src/components/Controls.jsx
 import React from "react";
 
-export default function Controls({ phase, currentBet, player, onFold, onCall, onCheck, onRaise, onDraw }) {
+export default function Controls({
+  phase,
+  currentBet,
+  player,
+  onFold,
+  onCall,
+  onCheck,
+  onRaise,
+  onDraw,
+  canDraw = true,
+}) {
   if (!player) return null;
 
   return (
@@ -21,11 +31,16 @@ export default function Controls({ phase, currentBet, player, onFold, onCall, on
       )}
       {phase === "DRAW" && (
         <button
-        onClick={onDraw}
-        className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white font-bold whitespace-nowrap"
+          onClick={onDraw}
+          disabled={!canDraw}
+          className={`px-4 py-2 rounded-lg font-bold whitespace-nowrap ${
+            canDraw
+              ? "bg-green-600 hover:bg-green-500 text-white"
+              : "bg-slate-600 text-slate-300 cursor-not-allowed opacity-70"
+          }`}
         >
           Draw Selected
-          </button>
+        </button>
       )}
     </div>
   );

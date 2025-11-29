@@ -122,7 +122,7 @@ function ensureEvaluation(input) {
 
 function compareEvaluations(aEval, bEval) {
   if (aEval.count !== bEval.count) {
-    return bEval.count - aEval.count;
+    return aEval.count - bEval.count;
   }
   const ranksA = aEval.rankValuesDesc;
   const ranksB = bEval.rankValuesDesc;
@@ -195,7 +195,13 @@ export function evaluateBadugi(cards = []) {
 export function compareBadugi(handA, handB) {
   const evalA = ensureEvaluation(handA);
   const evalB = ensureEvaluation(handB);
-  return compareEvaluations(evalA, evalB);
+  const result = compareEvaluations(evalA, evalB);
+  console.log("[BADUGI][COMPARE]", {
+    a: evalA?.key,
+    b: evalB?.key,
+    result,
+  });
+  return result;
 }
 
 export function getBestBadugiPlayer(players = []) {

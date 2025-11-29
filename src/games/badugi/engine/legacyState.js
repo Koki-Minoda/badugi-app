@@ -63,6 +63,7 @@ export function createBadugiTableState({
     ante: structure.ante ?? 0,
     street: "BET",
     drawRoundIndex: 0,
+    betRoundIndex: 0,
     actingPlayerIndex: (dealerIndex + 1) % (players.length || 1),
   });
 }

@@ -1,3 +1,12 @@
+:root {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  background-color: #050507;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -15,4 +24,33 @@
     opacity: 1;
     transform: scale(1);
   }
+}
+
+@layer utilities {
+  .backdrop-blur,
+  .backdrop-blur-sm {
+    -webkit-backdrop-filter: var(--tw-backdrop-blur) var(--tw-backdrop-brightness)
+      var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate)
+      var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate)
+      var(--tw-backdrop-sepia);
+  }
+}
+
+@keyframes kitsune-glow {
+  0% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 0px rgba(255, 215, 0, 0));
+  }
+  50% {
+    transform: scale(1.03);
+    filter: drop-shadow(0 0 18px rgba(255, 215, 0, 0.5));
+  }
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 0px rgba(255, 215, 0, 0));
+  }
+}
+
+.kitsune-glow {
+  animation: kitsune-glow 3s ease-in-out infinite;
 }

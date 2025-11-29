@@ -1,0 +1,27 @@
+﻿[project]
+name = "badugi-backend"
+version = "0.1.0"
+description = "Backend skeleton for Badugi multi-game app"
+authors = [{ name = "Badugi Dev" }]
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.27.0",
+    "sqlalchemy>=2.0.0",
+    "pymysql>=1.1.0",
+    "psycopg[binary]>=3.1.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7.0", "httpx>=0.24"]
+
+[tool.uvicorn]
+app = "app.main:app"
+host = "127.0.0.1"
+port = 8000
+reload = true
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"

@@ -5,6 +5,7 @@ import { DeckManager } from "../utils/deck.js";
 import { getWinnersByBadugi } from "../utils/badugiEvaluator.js";
 import { createBadugiTableState } from "./legacyState.js";
 import { settleStreetToPots, calcDrawStartIndex, nextAliveFrom } from "./roundFlow.js";
+import { getFixedLimitBetSize } from "../logic/bettingRules.js";
 
 const SUPPORTED_ACTIONS = new Set(["FOLD", "CHECK", "CALL", "RAISE", "DRAW", "SHOW"]);
 
@@ -119,7 +120,31 @@ export class BadugiEngine extends DrawEngineBase {
       throw new IllegalActionError("Seat not found", { seatIndex, actionType: type });
     }
 
-    const metadata = action.metadata ?? {};
+    const metadata = {
+      ...(action.metadata ?? {}),
+    };
+    if (typeof metadata.betSize !== "number" || metadata.betSize <= 0) {
+      const baseBet =
+        Number(state?.bigBlind) ||
+        Number(state?.metadata?.bbValue) ||
+        Number(state?.metadata?.bigBlind) ||
+        (Number(state?.smallBlind) || 0) * 2;
+      metadata.betSize = getFixedLimitBetSize({
+        baseBet,
+        drawRound: state?.drawRoundIndex ?? 0,
+        betRound: state?.betRoundIndex ?? 0,
+      });
+    }
+    const tableMeta = ensureMetadata(next);
+    if (typeof metadata.betSize === "number" && metadata.betSize > 0) {
+      tableMeta.defaultRaiseSize = metadata.betSize;
+      tableMeta.betSize = metadata.betSize;
+    }
+    if (typeof next.bigBlind === "number") {
+      tableMeta.bbValue = next.bigBlind;
+    }
+    tableMeta.drawRoundIndex = next.drawRoundIndex ?? tableMeta.drawRoundIndex ?? 0;
+    tableMeta.betRoundIndex = next.betRoundIndex ?? tableMeta.betRoundIndex ?? 0;
 
     switch (normalizedType) {
       case "FOLD":
@@ -177,7 +202,10 @@ export class BadugiEngine extends DrawEngineBase {
       totalCommitted: 0,
       potAmount: sumPotAmounts(pots),
       currentBet: 0,
+      betRoundIndex: drawRound,
+      drawRoundIndex: drawRound,
     };
+    working.betRoundIndex = drawRound;
 
     const nextRound = drawRound + 1;
     if (nextRound > maxDraws) {
@@ -410,8 +438,18 @@ function resolveRaiseSize(table, metadata = {}) {
   if (typeof metadata.betSize === "number" && metadata.betSize > 0) return metadata.betSize;
   const defaultFromMeta = table?.metadata?.defaultRaiseSize;
   if (typeof defaultFromMeta === "number" && defaultFromMeta > 0) return defaultFromMeta;
-  if (typeof table?.bigBlind === "number" && table.bigBlind > 0) return table.bigBlind;
-  if (typeof table?.smallBlind === "number" && table.smallBlind > 0) return table.smallBlind * 2;
+  const baseBet =
+    Number(table?.bigBlind) ||
+    Number(table?.metadata?.bbValue) ||
+    Number(table?.metadata?.bigBlind) ||
+    (Number(table?.smallBlind) || 0) * 2;
+  if (baseBet > 0) {
+    return getFixedLimitBetSize({
+      baseBet,
+      drawRound: table?.drawRoundIndex ?? table?.metadata?.drawRoundIndex ?? 0,
+      betRound: table?.betRoundIndex ?? table?.metadata?.betRoundIndex ?? 0,
+    });
+  }
   const currentBet = Array.isArray(table?.players) ? computeCurrentBet(table.players) : 0;
   return Math.max(1, currentBet || 1);
 }

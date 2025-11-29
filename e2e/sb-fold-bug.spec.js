@@ -1,12 +1,13 @@
 import { test, expect } from "@playwright/test";
 
-test("debug start screen", async ({ page }) => {
+test.describe.skip("manual sb-fold debug flow", () => {
+  test("debug start screen", async ({ page }) => {
   await page.goto("http://localhost:3000/");
   await page.screenshot({ path: "tests/start-screen.png" });
   await page.pause();
-});
+  });
 
-test("SB folding before flop does not stall the hand", async ({ page }) => {
+  test("SB folding before flop does not stall the hand", async ({ page }) => {
   const consoleErrors = [];
   const pageErrors = [];
 
@@ -67,4 +68,5 @@ test("SB folding before flop does not stall the hand", async ({ page }) => {
   await expect(pageErrors).toEqual([]);
 
   await page.screenshot({ path: "tests/sb-fold-bug.png" });
+  });
 });

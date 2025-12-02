@@ -45,7 +45,10 @@ import {
   finishBetRoundFrom,
   resetBetRoundFlags,
 } from "../games/badugi/engine/roundFlow.js";
-import { analyzeBetSnapshot } from "../games/badugi/flow/betRoundUtils.js";
+import {
+  analyzeBetSnapshot,
+  needsActionForBet,
+} from "../games/badugi/flow/betRoundUtils.js";
 import BadugiGameController from "../games/badugi/BadugiGameController.js";
 import NLHGameController from "../games/nlh/NLHGameController.js";
 import {
@@ -118,6 +121,8 @@ import {
   LANGUAGE_STORAGE_KEY,
 } from "../config/mgxLocaleConfig.js";
 import { getFixedLimitBetSize } from "../games/badugi/logic/bettingRules.js";
+import { assertNoDuplicateCards } from "../games/badugi/utils/deck.js";
+import { dealInitialHands, validatePreflopState } from "../games/badugi/utils/deckHelpers.js";
 
 const DEFAULT_GAME_ID = "D03";
 const DEFAULT_GAME_VARIANT = "badugi";
@@ -801,22 +806,120 @@ export default function App() {
     []
   );
 
-  const deckRef = useRef(
-    gameDefinition?.createDeck ? gameDefinition.createDeck() : null,
-  );
+  const deckRef = useRef(null);
 
   useEffect(() => {
-    if (gameDefinition?.createDeck) {
+    if (engine?.getDeckManager) {
+      const shared = engine.getDeckManager();
+      if (shared) {
+        deckRef.current = shared;
+      }
+      return;
+    }
+    if (!deckRef.current && gameDefinition?.createDeck) {
       deckRef.current = gameDefinition.createDeck();
     }
-  }, [gameDefinition]);
+  }, [engine, gameDefinition]);
 
   const getDeckManager = useCallback(() => {
+    if (engine?.getDeckManager) {
+      const shared = engine.getDeckManager();
+      if (shared && deckRef.current !== shared) {
+        deckRef.current = shared;
+      }
+      return shared;
+    }
     if (!deckRef.current && gameDefinition?.createDeck) {
       deckRef.current = gameDefinition.createDeck();
     }
     return deckRef.current;
-  }, [gameDefinition]);
+  }, [engine, gameDefinition]);
+
+  const buildSeatCardBuckets = useCallback((snapshot) => {
+    const buckets = {};
+    (snapshot ?? []).forEach((player, idx) => {
+      buckets[`seat${idx}`] = player?.hand ?? [];
+    });
+    return buckets;
+  }, []);
+
+  const getDeckSnapshot = useCallback(() => {
+    const deckManager = getDeckManager();
+    if (deckManager && typeof deckManager.getState === "function") {
+      const state = deckManager.getState();
+      return {
+        deck: state.deck ?? [],
+        discard: state.discardPile ?? [],
+        burn: state.burnPile ?? [],
+      };
+    }
+    return { deck: [], discard: [], burn: [] };
+  }, [getDeckManager]);
+
+  const applyDeckSnapshot = useCallback(
+    (payload = {}) => {
+      const { deck, discard, burn } = getDeckSnapshot();
+      return {
+        ...payload,
+        deck,
+        discard,
+        burn,
+      };
+    },
+    [getDeckSnapshot]
+  );
+
+  const collectActiveCards = useCallback((snapshot) => {
+    const cards = [];
+    (snapshot ?? []).forEach((player) => {
+      if (Array.isArray(player?.hand) && player.hand.length) {
+        cards.push(...player.hand);
+      }
+    });
+    return cards;
+  }, []);
+
+  const snapshotSeatHands = useCallback((snapshotPlayers) => {
+    const source = Array.isArray(snapshotPlayers) ? snapshotPlayers : [];
+    return source.map((player) =>
+      Array.isArray(player?.hand) ? [...player.hand] : [],
+    );
+  }, []);
+
+  const verifyDeckIntegrityOrThrow = useCallback(
+    (contextLabel, seatSnapshot = null) => {
+      const deckManager = getDeckManager();
+      if (!deckManager || typeof deckManager.getState !== "function") return;
+      const state = deckManager.getState();
+      const seats = Array.isArray(seatSnapshot)
+        ? seatSnapshot
+        : playersRef.current ?? [];
+      const seatCards = seats.reduce(
+        (sum, player) => sum + (player?.hand?.length ?? 0),
+        0,
+      );
+      const deckCount = Array.isArray(state.deck) ? state.deck.length : 0;
+      const discardCount = Array.isArray(state.discardPile)
+        ? state.discardPile.length
+        : 0;
+      const burnCount = Array.isArray(state.burnPile)
+        ? state.burnPile.length
+        : 0;
+      const total = deckCount + discardCount + burnCount + seatCards;
+      if (total !== 52) {
+        console.error("[DECK][INTEGRITY_FAIL][UI]", {
+          context: contextLabel,
+          total,
+          deck: state.deck,
+          discard: state.discardPile,
+          burn: state.burnPile,
+          seats: seats.map((player) => player?.hand ?? []),
+        });
+        throw new Error("Badugi deck integrity violated (ui)");
+      }
+    },
+    [getDeckManager],
+  );
 
   const buildNlhTableConfig = useCallback(
     () => ({
@@ -1142,7 +1245,6 @@ export default function App() {
         player &&
         !isFoldedOrOut(player) &&
         !player.seatOut &&
-        !player.allIn &&
         !player.hasDrawn;
       console.log("[DRAW][CANDIDATE]", {
         seat,
@@ -1711,7 +1813,7 @@ export default function App() {
           mutated = true;
         });
         if (!mutated) return prev;
-        syncEngineSnapshot({
+        const forcedSnapshot = applyDeckSnapshot({
           players: snap,
           pots,
           nextTurn: turn,
@@ -1723,6 +1825,7 @@ export default function App() {
             actingPlayerIndex: turn,
           },
         });
+        syncEngineSnapshot(forcedSnapshot);
         return snap;
       });
     },
@@ -2849,7 +2952,29 @@ export default function App() {
     const effectiveSeatConfig = consumeSeatConfigForHand(shouldRotateSeats);
 
     const deckManager = getDeckManager();
-    deckManager?.reset();
+    if (deckManager) {
+      deckManager.reset();
+      if (typeof deckManager.shuffle === "function") {
+        deckManager.shuffle();
+      }
+      if (typeof deckManager.burnTopCards === "function") {
+        deckManager.burnTopCards(1);
+      }
+    }
+    let initialDealResult = null;
+    const assignInitialHands = (seat, seatPlayer, drawContext) => {
+      if (seatPlayer?.seatOut) return [];
+      if (!initialDealResult && deckManager) {
+        initialDealResult =
+          dealInitialHands({
+            deckManager,
+            seats: drawContext?.seats ?? [],
+            dealerIdx: drawContext?.dealerIdx ?? nextDealerIdx,
+            cardsPerPlayer: 4,
+          }) ?? { hands: [] };
+      }
+      return initialDealResult?.hands?.[seat] ?? [];
+    };
     const fallbackStack = startingStackRef.current;
     const blindLevelSnapshot = blindLevelIndexRef.current ?? 0;
     const handsInLevelSnapshot = handsInLevelRef.current ?? 0;
@@ -2869,11 +2994,26 @@ export default function App() {
         handsInLevel: handsInLevelSnapshot,
       },
       lastStructureIndex,
-      drawCardsForSeat: (seat, seatPlayer) => {
-        if (seatPlayer?.seatOut) return [];
-        return deckManager?.draw(4) ?? [];
-      },
+      drawCardsForSeat: assignInitialHands,
     });
+
+    if (deckManager) {
+      const preflopCheck = validatePreflopState({
+        deck: deckManager.deck,
+        burn: deckManager.burnPile,
+        discard: deckManager.discardPile,
+        players: nextHandState.players ?? [],
+      });
+      if (
+        !preflopCheck.isValidTotal ||
+        !preflopCheck.hasSingleBurn ||
+        !preflopCheck.hasEmptyDiscard
+      ) {
+        console.error("[DECK][PRE_FLOP_INVALID][UI]", preflopCheck);
+        throw new Error("Badugi deck integrity violated (ui-preflop)");
+      }
+      verifyDeckIntegrityOrThrow("[HAND][DEAL]", nextHandState.players ?? []);
+    }
 
     const {
       players: newPlayers,
@@ -2928,6 +3068,19 @@ export default function App() {
       startedAt: Date.now(),
     });
 
+    try {
+      assertNoDuplicateCards("[HAND][DEAL]", {
+        deck: deckManager?.deck,
+        discard: deckManager?.discardPile,
+        burn: deckManager?.burnPile,
+        ...buildSeatCardBuckets(newPlayers),
+      });
+    } catch (err) {
+      console.error(err);
+      throw err;
+    }
+    verifyDeckIntegrityOrThrow("[HAND][DEAL_POST_ASSERT]", newPlayers);
+
     if (blindValues.ante > 0 && anteEvents.length) {
       anteEvents.forEach(({ seat, amount }) => {
         appendHandHistoryAction({
@@ -2965,7 +3118,6 @@ export default function App() {
 
     setPlayers(newPlayers);
     handStartStacksRef.current = newPlayers.map((p) => p.stack);
-    setDeck([]);
     setPots([]);
     setCurrentBet(initialCurrentBet);
     setDealerIdx(nextDealerIdx);
@@ -3015,10 +3167,9 @@ export default function App() {
 
     releaseDealingLock();
     drawRoundLogCounter.current = 1;
-    const seedSnapshot = {
+    const seedSnapshot = applyDeckSnapshot({
       players: newPlayers.map(clonePlayerState).filter(Boolean),
       pots: [],
-      deck: getDeckManager()?.deck ?? [],
       nextTurn: resolvedTurn,
       turn: resolvedTurn,
       metadata: {
@@ -3029,7 +3180,7 @@ export default function App() {
       },
       gameId: stageGameId,
       engineId: stageGameId,
-    };
+    });
     syncEngineSnapshot(seedSnapshot, seedSnapshot);
     trace("dealNewHand END", { dealerIdx: nextDealerIdx });
   }
@@ -3383,9 +3534,11 @@ export default function App() {
   function afterBetActionWithSnapshot(snap, actedIndex) {
     snap = Array.isArray(snap) ? snap.map(clonePlayerState).filter(Boolean) : [];
     snap = ensureLastActionLabelsForSnapshot(snap);
-    if (snap[turn]?.allIn) {
+    const turnPlayer = snap[turn];
+    const isDrawPhase = phase === "DRAW";
+    if (turnPlayer?.allIn && !isDrawPhase) {
       setHasActedFlag(snap, turn);
-      console.log(`[SKIP] Player ${snap[turn].name} is all-in -> skip action`);
+      console.log(`[SKIP] Player ${turnPlayer.name} is all-in -> skip action`);
       const nxt = nextAliveFrom(snap, turn);
       if (nxt !== null) setTurn(nxt);
       return;
@@ -3394,7 +3547,7 @@ export default function App() {
     trace("afterBetActionWithSnapshot()", { phase, drawRound, actedIndex });
     if (transitioning) {
       const interimBet = maxBetThisRound(snap);
-      syncEngineSnapshot({
+      const transitionSnapshot = applyDeckSnapshot({
         players: snap,
         pots,
         nextTurn: turn,
@@ -3406,6 +3559,7 @@ export default function App() {
           actingPlayerIndex: turn,
         },
       });
+      syncEngineSnapshot(transitionSnapshot);
       return;
     }
 
@@ -3509,7 +3663,7 @@ export default function App() {
     const nextAlive =
       typeof analysisNext === "number" ? analysisNext : fallbackNext;
 
-    const snapshotForUi = {
+    const snapshotForUi = applyDeckSnapshot({
       players: snap,
       pots,
       nextTurn: typeof nextAlive === "number" ? nextAlive : null,
@@ -3521,7 +3675,7 @@ export default function App() {
         actingPlayerIndex:
           typeof nextAlive === "number" ? nextAlive : actedIndex,
       },
-    };
+    });
     console.log("[BET][SNAPSHOT_OUT]", {
       actedIndex,
       nextTurn: snapshotForUi.nextTurn,
@@ -3635,15 +3789,28 @@ export default function App() {
     const muck = [];
     toCheck.forEach(i => {
       const pl = snap[i];
-      if (pl?.folded && Array.isArray(pl.hand)) {
+      if (pl?.folded && Array.isArray(pl.hand) && pl.hand.length) {
         muck.push(...pl.hand);
+        pl.hand = [];
       }
     });
 
     const dm = getDeckManager();
+    if (!dm) return;
+    if (muck.length) {
+      dm.discard(muck);
+    }
     if (muck.length || (dm.discardPile && dm.discardPile.length)) {
-      dm.recycleNow(muck);
-      debugLog(`[RECYCLE] +${muck.length} cards (folded) + existing discard -> new deck=${dm.deck.length}`);
+      dm.recycleNow([], { activeCards: collectActiveCards(snap) });
+      debugLog(
+        `[RECYCLE] +${muck.length} cards (folded) + existing discard -> new deck=${dm.deck.length}`
+      );
+      assertNoDuplicateCards("[RECYCLE][FOLDED]", {
+        deck: dm.deck,
+        discard: dm.discardPile,
+        burn: dm.burnPile,
+        ...buildSeatCardBuckets(snap),
+      });
     }
   }
 
@@ -3654,6 +3821,20 @@ export default function App() {
     const snap = Array.isArray(basePlayers)
       ? basePlayers.map((p) => (p ? { ...p } : p))
       : [];
+    const streetLabel = phaseTagLocal();
+    console.log("[DRAW][ROUND_COMPLETE]", {
+      street: streetLabel,
+      nextStreet: "BET",
+      nextPhase: "BET",
+      drawRound,
+      players: snap.map((p, seat) => ({
+        seat,
+        name: p?.name,
+        folded: Boolean(p?.folded),
+        allIn: Boolean(p?.allIn),
+        hasDrawn: Boolean(p?.hasDrawn),
+      })),
+    });
     const betRoundReady = resetBetRoundFlags(snap);
     setPlayers(betRoundReady);
     const startSeat = (dealerIdx + 1) % NUM_PLAYERS;
@@ -3674,18 +3855,24 @@ export default function App() {
   /* --- actions: BET --- */
   function syncEngineSnapshot(snapshot, baseOverride = null) {
     if (!snapshot) return;
+    const snapshotWithDeck = {
+      ...snapshot,
+      deck: Array.isArray(snapshot.deck) ? snapshot.deck : [],
+      discard: Array.isArray(snapshot.discard) ? snapshot.discard : [],
+      burn: Array.isArray(snapshot.burn) ? snapshot.burn : [],
+    };
     const engineActingIndex =
-      typeof snapshot?.nextTurn === "number"
-        ? snapshot.nextTurn
-        : typeof snapshot?.turn === "number"
-        ? snapshot.turn
+      typeof snapshotWithDeck?.nextTurn === "number"
+        ? snapshotWithDeck.nextTurn
+        : typeof snapshotWithDeck?.turn === "number"
+        ? snapshotWithDeck.turn
         : null;
     const snapshotWithTurn = {
-      ...snapshot,
+      ...snapshotWithDeck,
       nextTurn: engineActingIndex,
       turn: engineActingIndex,
       metadata: {
-        ...(snapshot.metadata ?? {}),
+        ...(snapshotWithDeck.metadata ?? {}),
         actingPlayerIndex: engineActingIndex,
       },
     };
@@ -3704,7 +3891,9 @@ export default function App() {
         betHead,
         lastAggressor,
         turn,
-        deck,
+        deck: Array.isArray(deck) ? deck : snapshotWithDeck.deck,
+        discard: snapshotWithDeck.discard,
+        burn: snapshotWithDeck.burn,
         gameId: stageGameId,
         engineId: stageGameId,
       };
@@ -3719,16 +3908,30 @@ export default function App() {
     setTurn(merged.metadata.actingPlayerIndex);
     setDeck(merged.deck);
     const normalizedSnapshot = {
-      ...snapshot,
+      ...snapshotWithDeck,
       players: normalizedPlayers,
       pots: merged.pots,
       deck: merged.deck,
+      discard: merged.discard,
+      burn: merged.burn,
       metadata: merged.metadata,
       gameId: merged.gameId ?? stageGameId,
       engineId: merged.engineId ?? stageGameId,
     };
     engineStateRef.current = normalizedSnapshot;
     setEngineState(normalizedSnapshot);
+    console.log("[DECK][UI_AFTER_SYNC]", {
+      context: "[SYNC_ENGINE_SNAPSHOT]",
+      deck: normalizedSnapshot.deck,
+      discard: normalizedSnapshot.discard,
+      burn: normalizedSnapshot.burn,
+    });
+    console.log("[DECK][UI_AFTER_SYNC_FULL]", {
+      deck: normalizedSnapshot.deck,
+      discard: normalizedSnapshot.discard,
+      burn: normalizedSnapshot.burn,
+      seats: (normalizedSnapshot.players ?? []).map((player) => player?.hand ?? []),
+    });
   }
 
   function recordInteractionPerformance(label) {
@@ -3771,7 +3974,7 @@ export default function App() {
               nextTurn: null,
               turn: null,
             };
-      syncEngineSnapshot(ensuredNextState);
+      syncEngineSnapshot(applyDeckSnapshot(ensuredNextState));
       const postPlayers = playersRef.current ?? players;
       const heroAfter = postPlayers[0] ? { ...postPlayers[0] } : null;
       recordActionToLog({
@@ -3902,14 +4105,14 @@ export default function App() {
     const baseState = getEngineBaseState();
     const outcome = engine.resolveShowdown(baseState, { cloneState: false });
     if (!outcome?.state) return false;
-    syncEngineSnapshot({
+    const showdownSnapshot = applyDeckSnapshot({
       players: outcome.state.players,
       pots: outcome.state.pots,
       nextTurn: null,
       turn: null,
       metadata: outcome.state.metadata,
-      deck: outcome.state.deck ?? deck,
     });
+    syncEngineSnapshot(showdownSnapshot);
     runShowdown({
       players: outcome.state.players,
       setPlayers,
@@ -3964,14 +4167,14 @@ export default function App() {
         : typeof state.turn === "number"
         ? state.turn
         : null;
-    syncEngineSnapshot({
+    const transitionSnapshot = applyDeckSnapshot({
       players: state.players,
       pots: state.pots,
       nextTurn: nextTurnValue,
       turn: nextTurnValue,
       metadata: mergedMetadata,
-      deck: state.deck ?? deck,
     });
+    syncEngineSnapshot(transitionSnapshot);
 
     if (outcome.showdown || outcome.street === "SHOWDOWN") {
       runShowdown({
@@ -4200,6 +4403,7 @@ export default function App() {
     if (!p) return;
 
     const sel = heroDrawSelection.slice(0, MAX_DRAW_SELECTION);
+    const activeCardsBeforeDraw = collectActiveCards(basePlayers);
     const stackBefore = p.stack;
     const betBefore = p.betThisRound;
     debugLog("[HERO][DRAW_REQUEST]", {
@@ -4209,16 +4413,39 @@ export default function App() {
       phase: controlsPhase,
     });
 
+    try {
+      assertNoDuplicateCards("[DRAW][HERO][BEFORE]", {
+        deck: deckManager?.deck,
+        discard: deckManager?.discardPile,
+        burn: deckManager?.burnPile,
+        ...buildSeatCardBuckets(basePlayers),
+      });
+    } catch (err) {
+      console.error(err);
+      throw err;
+    }
+
+    const heroSeatHandsBefore = snapshotSeatHands(basePlayers);
+    const heroDeckSnapshotBefore =
+      typeof deckManager?.snapshot === "function" ? deckManager.snapshot() : null;
+    if (heroDeckSnapshotBefore) {
+      console.log("[DECK][UI_BEFORE_DRAW]", {
+        context: "[DRAW][HERO]",
+        snapshot: heroDeckSnapshotBefore,
+        seats: heroSeatHandsBefore,
+      });
+    }
+
     if (sel.length > 0) {
       const beforeHand = [...p.hand];
       const replaced = [];
       const newHand = [...p.hand];
 
       sel.forEach((i) => {
-        let pack = deckManager.draw(1);
+        let pack = deckManager.draw(1, { activeCards: activeCardsBeforeDraw });
         if (!pack || pack.length === 0) {
           recycleFoldedAndDiscardsBeforeCurrent(newPlayers, 0);
-          pack = deckManager.draw(1);
+          pack = deckManager.draw(1, { activeCards: collectActiveCards(newPlayers) });
         }
 
         if (pack && pack.length > 0) {
@@ -4231,9 +4458,9 @@ export default function App() {
         }
       });
 
-      p.hand = [...newHand];
+    p.hand = [...newHand];
 
-      console.log(`[DRAW] You exchanged ${replaced.length} card(s):`);
+    console.log(`[DRAW] You exchanged ${replaced.length} card(s):`);
       replaced.forEach(({ index, oldCard, newCard }) =>
         console.log(`   slot[${index}] ${oldCard} -> ${newCard}`)
       );
@@ -4284,17 +4511,41 @@ export default function App() {
       });
     }
 
+    const heroDeckSnapshotAfter =
+      typeof deckManager?.snapshot === "function" ? deckManager.snapshot() : null;
+    if (heroDeckSnapshotAfter) {
+      console.log("[DECK][UI_AFTER_DRAW]", {
+        context: "[DRAW][HERO]",
+        snapshot: heroDeckSnapshotAfter,
+        seats: snapshotSeatHands(newPlayers),
+      });
+    }
+
+    verifyDeckIntegrityOrThrow("[DRAW][HERO][AFTER]", newPlayers);
+
     p.selected = [];
     p.hasDrawn = true;
     p.lastDrawCount = sel.length;
     newPlayers[0] = p;
     setHeroDrawSelection([]);
 
+    try {
+      const deckManagerState = getDeckManager();
+      assertNoDuplicateCards("[DRAW][HERO]", {
+        deck: deckManagerState?.deck,
+        discard: deckManagerState?.discardPile,
+        burn: deckManagerState?.burnPile,
+        ...buildSeatCardBuckets(newPlayers),
+      });
+    } catch (err) {
+      console.error(err);
+      throw err;
+    }
+
     const committedSnapshot = newPlayers.map(clonePlayerState).filter(Boolean);
-    setDeck([]);
     setPlayerSnapshot(committedSnapshot);
     const nextHeroTurn = findNextDrawActorSeat(committedSnapshot, 1);
-    syncEngineSnapshot({
+    const heroDrawSnapshot = applyDeckSnapshot({
       players: committedSnapshot,
       pots,
       nextTurn: nextHeroTurn ?? null,
@@ -4305,8 +4556,8 @@ export default function App() {
         lastAggressor,
         actingPlayerIndex: nextHeroTurn ?? null,
       },
-      deck: getDeckManager()?.deck,
     });
+    syncEngineSnapshot(heroDrawSnapshot);
     setTimeout(
       () => afterBetActionWithSnapshot(committedSnapshot.map(clonePlayerState).filter(Boolean), 0),
       0
@@ -4356,7 +4607,7 @@ export default function App() {
       return;
     }
 
-    if (p.allIn || p.stack <= 0) {
+    if (phase === "BET" && (p.allIn || p.stack <= 0)) {
       const nxt = nextAliveFrom(players, turn);
       if (nxt !== null) setTurn(nxt);
       return;
@@ -4464,12 +4715,34 @@ export default function App() {
     const evaluation = evaluateBadugi(me.hand);
     const drawCount = npcAutoDrawCount(evaluation);
     const deckManager = getDeckManager();
+    const npcSeatHandsBefore = snapshotSeatHands(snap);
+    const npcDeckSnapshotBefore =
+      typeof deckManager?.snapshot === "function" ? deckManager.snapshot() : null;
+    if (npcDeckSnapshotBefore) {
+      console.log("[DECK][UI_BEFORE_DRAW]", {
+        context: `[DRAW][NPC seat=${nextToDraw}]`,
+        snapshot: npcDeckSnapshotBefore,
+        seats: npcSeatHandsBefore,
+      });
+    }
+    try {
+      assertNoDuplicateCards(`[DRAW][NPC seat=${nextToDraw}][BEFORE]`, {
+        deck: deckManager?.deck,
+        discard: deckManager?.discardPile,
+        burn: deckManager?.burnPile,
+        ...buildSeatCardBuckets(snap),
+      });
+    } catch (err) {
+      console.error(err);
+      throw err;
+    }
+    const npcActiveCards = collectActiveCards(snap);
     const newHand = [...me.hand];
     for (let i = 0; i < drawCount; i++) {
-      let pack = deckManager.draw(1);
+      let pack = deckManager.draw(1, { activeCards: npcActiveCards });
       if (!pack || pack.length === 0) {
         recycleFoldedAndDiscardsBeforeCurrent(snap, nextToDraw);
-        pack = deckManager.draw(1);
+        pack = deckManager.draw(1, { activeCards: collectActiveCards(snap) });
       }
       if (pack && pack.length > 0) {
         const outgoing = newHand[i];
@@ -4486,15 +4759,41 @@ export default function App() {
     me.lastAction = drawCount === 0 ? "Pat" : `DRAW(${drawCount})`;
     snap[nextToDraw] = me;
 
+    try {
+      const dmState = getDeckManager();
+      assertNoDuplicateCards(`[DRAW][NPC seat=${nextToDraw}]`, {
+        deck: dmState?.deck,
+        discard: dmState?.discardPile,
+        burn: dmState?.burnPile,
+        ...buildSeatCardBuckets(snap),
+      });
+    } catch (err) {
+      console.error(err);
+      throw err;
+    }
+
+    const npcDeckSnapshotAfter =
+      typeof deckManager?.snapshot === "function" ? deckManager.snapshot() : null;
+    if (npcDeckSnapshotAfter) {
+      console.log("[DECK][UI_AFTER_DRAW]", {
+        context: `[DRAW][NPC seat=${nextToDraw}]`,
+        snapshot: npcDeckSnapshotAfter,
+        seats: snapshotSeatHands(snap),
+      });
+    }
+
     console.log(
       `[DRAW] player=${nextToDraw} draw=${drawCount} replaced`,
       replacedCards
     );
 
-    setDeck([]);
     setPlayerSnapshot(snap);
+    verifyDeckIntegrityOrThrow(
+      `[DRAW][NPC seat=${nextToDraw}][AFTER]`,
+      snap,
+    );
     const nextDrawSeat = findNextDrawActorSeat(snap, nextToDraw + 1);
-    syncEngineSnapshot({
+    const npcDrawSnapshot = applyDeckSnapshot({
       players: snap,
       pots,
       nextTurn: nextDrawSeat ?? null,
@@ -4505,8 +4804,8 @@ export default function App() {
         lastAggressor,
         actingPlayerIndex: nextDrawSeat ?? null,
       },
-      deck: getDeckManager()?.deck,
     });
+    syncEngineSnapshot(npcDrawSnapshot);
       logAction(nextToDraw, me.lastAction);
       recordActionToLog({
         phase: "DRAW",
@@ -4768,13 +5067,6 @@ export default function App() {
   const isActionPhase =
     controlsPhase === "BET" || controlsPhase === "DRAW";
 
-  // Hero is allowed to act during BET/DRAW when engine turn points to hero
-  // (or adapter explicitly forces heroTurn) and hero is still eligible.
-  const heroCanAct =
-    isActionPhase &&
-    heroEligible &&
-    (controllerTurn === heroSeatIndex || explicitHeroTurn);
-
   const enginePlayersSnapshot = Array.isArray(engineState?.players)
     ? engineState.players
     : players;
@@ -4786,12 +5078,30 @@ export default function App() {
       : null;
   const heroHasDrawn = Boolean(heroEngineSeat?.hasDrawn);
   const heroAllIn = Boolean(heroEngineSeat?.allIn);
+  const heroMaxBetThisRound = maxBetThisRound(enginePlayersSnapshot ?? players ?? []);
+  const heroNeedsBetAction =
+    controlsPhase === "BET" &&
+    heroEligible &&
+    needsActionForBet(heroEngineSeat ?? players[heroSeatIndex], heroMaxBetThisRound);
   const heroDrawAllowedByEngine =
     controlsPhase === "DRAW" &&
     heroEligible &&
-    !heroHasDrawn &&
-    !heroAllIn;
-  const heroCanDraw = heroCanAct && heroDrawAllowedByEngine;
+    !heroHasDrawn;
+  const heroPhaseNeedsAction =
+    controlsPhase === "BET"
+      ? heroNeedsBetAction
+      : controlsPhase === "DRAW"
+      ? heroDrawAllowedByEngine
+      : false;
+
+  // Hero is allowed to act during BET/DRAW when engine turn points to hero
+  // (or adapter explicitly forces heroTurn) and the phase still requires action.
+  const heroCanAct =
+    isActionPhase &&
+    heroEligible &&
+    heroPhaseNeedsAction &&
+    (controllerTurn === heroSeatIndex || explicitHeroTurn);
+  const heroCanDraw = controlsPhase === "DRAW" && heroCanAct;
 
   useEffect(() => {
     if (!heroCanDraw && heroDrawSelection.length > 0) {
@@ -4823,6 +5133,8 @@ export default function App() {
       controllerTurn,
       heroEligible,
       heroCanAct,
+      heroNeedsBetAction,
+      heroPhaseNeedsAction,
       heroDrawAllowedByEngine,
       heroHasDrawn,
       heroAllIn,
@@ -4835,6 +5147,8 @@ export default function App() {
     controllerTurn,
     heroEligible,
     heroCanAct,
+    heroNeedsBetAction,
+    heroPhaseNeedsAction,
     heroDrawAllowedByEngine,
     heroHasDrawn,
     heroAllIn,

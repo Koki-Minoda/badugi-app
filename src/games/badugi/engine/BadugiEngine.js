@@ -2,6 +2,7 @@ import { DrawEngineBase } from "../../core/drawEngineBase.js";
 import { cloneTableState } from "../../core/models.js";
 import { IllegalActionError, assertSeatIsActive } from "../../core/errors.js";
 import { DeckManager } from "../utils/deck.js";
+import { dealInitialHands, validatePreflopState } from "../utils/deckHelpers.js";
 import { getWinnersByBadugi } from "../utils/badugiEvaluator.js";
 import { createBadugiTableState } from "./legacyState.js";
 import { settleStreetToPots, calcDrawStartIndex, nextAliveFrom } from "./roundFlow.js";
@@ -22,8 +23,56 @@ export class BadugiEngine extends DrawEngineBase {
   }
 
   initHand(ctx = {}) {
-    this.getDeckManager().reset();
-    return createBadugiTableState(ctx);
+    const deckManager = this.getDeckManager();
+    deckManager.reset();
+    if (typeof deckManager.shuffle === "function") {
+      deckManager.shuffle();
+    }
+    if (typeof deckManager.burnTopCards === "function") {
+      deckManager.burnTopCards(1);
+    }
+    const state = createBadugiTableState(ctx);
+    const seatsForDeal = (state.players ?? []).map((player, seatIndex) => ({
+      seatIndex,
+      seatOut: Boolean(player?.seatOut),
+      seatType: player?.seatType,
+    }));
+    const dealerIdx = ctx?.dealerIndex ?? state.dealerIndex ?? 0;
+    const dealResult = dealInitialHands({
+      deckManager,
+      seats: seatsForDeal,
+      dealerIdx,
+      cardsPerPlayer: 4,
+    });
+    state.players = (state.players ?? []).map((player, idx) => ({
+      ...player,
+      hand: dealResult?.hands?.[idx] ?? [],
+    }));
+    const preflopCheck = validatePreflopState({
+      deck: deckManager.deck,
+      burn: deckManager.burnPile,
+      discard: deckManager.discardPile,
+      players: state.players,
+    });
+    if (
+      !preflopCheck.isValidTotal ||
+      !preflopCheck.hasSingleBurn ||
+      !preflopCheck.hasEmptyDiscard
+    ) {
+      console.error("[DECK][PRE_FLOP_INVALID]", preflopCheck);
+      throw new Error("Badugi deck integrity violated (engine)");
+    }
+    if (preflopCheck.total !== 52) {
+      console.error("[DECK][INTEGRITY_FAIL][ENGINE]", {
+        deck: deckManager.deck,
+        discard: deckManager.discardPile,
+        burn: deckManager.burnPile,
+        total: preflopCheck.total,
+        players: state.players?.map((p) => p?.hand ?? []),
+      });
+      throw new Error("Badugi deck integrity violated (engine-total)");
+    }
+    return state;
   }
 
   applyForcedBets(state) {
@@ -67,6 +116,12 @@ export class BadugiEngine extends DrawEngineBase {
       bbPay = paid;
       players[bbIndex] = updated;
     }
+
+    players.forEach((player) => {
+      if (isSeatEligible(player) && !player.allIn) {
+        player.hasActedThisRound = false;
+      }
+    });
 
     const actingPlayerIndex = findNextActiveSeat(
       players,
@@ -397,11 +452,14 @@ function payContribution(player, amount) {
     ...player,
     stack: stack - pay,
     betThisRound: (player.betThisRound ?? 0) + pay,
+    totalInvested: (player.totalInvested ?? 0) + pay,
   };
 
   if (updated.stack === 0) {
     updated.allIn = true;
     updated.hasActedThisRound = true;
+  } else {
+    updated.hasActedThisRound = false;
   }
 
   return { updated, paid: pay };

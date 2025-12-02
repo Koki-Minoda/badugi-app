@@ -22,6 +22,9 @@ export function runShowdown({
   drawRound = 0,
   onHandFinished,
 }) {
+  const startStacks = Array.isArray(players)
+    ? players.map((p) => (p == null ? 0 : p.stack ?? 0))
+    : [];
   const resolution =
     precomputedResult ??
     (typeof engineResolveShowdown === "function"
@@ -60,6 +63,37 @@ export function runShowdown({
   const totalPot =
     resolution?.totalPot ?? computeTotalPot(pots ?? resolution?.pots ?? []);
   const summary = resolution?.summary ?? [];
+  const resolvedPots = Array.isArray(resolution?.pots)
+    ? resolution.pots
+    : Array.isArray(pots)
+    ? pots
+    : [];
+
+  const endStacks = updatedPlayers.map((p) => (p == null ? 0 : p.stack ?? 0));
+  const stackDelta = endStacks.map((value, idx) => value - (startStacks[idx] ?? 0));
+  const sumStart = startStacks.reduce((sum, value) => sum + value, 0);
+  const sumEnd = endStacks.reduce((sum, value) => sum + value, 0);
+  const totalCollect = summary.reduce(
+    (acc, potSummary) =>
+      acc +
+      (potSummary?.payouts ?? []).reduce(
+        (inner, payout) => inner + Math.max(0, payout?.payout ?? 0),
+        0
+      ),
+    0
+  );
+
+  console.log("[POT_CHECK][SUMMARY]", {
+    handId: resolution?.handId ?? null,
+    sumStart,
+    sumEnd,
+    startStacks,
+    endStacks,
+    stackDelta,
+    totalPotAmount: computeTotalPot(resolvedPots),
+    totalCollect,
+    pots: resolvedPots,
+  });
 
   if (typeof recordActionToLog === "function" && summary.length > 0) {
     logPayoutSummary(recordActionToLog, summary, drawRound, updatedPlayers);

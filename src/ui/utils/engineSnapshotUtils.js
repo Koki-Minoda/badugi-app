@@ -10,12 +10,19 @@ export function mergeEngineSnapshot(currentState, snapshot) {
         lastAggressor: defaultMeta.lastAggressor ?? null,
         actingPlayerIndex: defaultMeta.actingPlayerIndex ?? 0,
       },
-      deck: currentState?.deck ?? null,
+      deck: Array.isArray(currentState?.deck) ? currentState.deck : [],
+      discard: Array.isArray(currentState?.discard) ? currentState.discard : [],
+      burn: Array.isArray(currentState?.burn) ? currentState.burn : [],
       gameId: currentState?.gameId ?? null,
       engineId:
         currentState?.engineId ?? currentState?.gameId ?? null,
     };
   }
+
+  console.log("[MERGE][DECK_STATUS]", {
+    incomingDeck: Array.isArray(snapshot?.deck) ? snapshot.deck.length : null,
+    currentDeck: Array.isArray(currentState?.deck) ? currentState.deck.length : null,
+  });
 
   const currentPlayers = Array.isArray(currentState?.players)
     ? currentState.players
@@ -39,7 +46,9 @@ export function mergeEngineSnapshot(currentState, snapshot) {
       })
     : currentPlayers;
   const nextPots = snapshot.pots ?? currentState?.pots ?? [];
-  const nextDeck = snapshot.deck ?? currentState?.deck ?? null;
+  const nextDeck = Array.isArray(snapshot.deck) ? [...snapshot.deck] : [];
+  const nextDiscard = Array.isArray(snapshot.discard) ? [...snapshot.discard] : [];
+  const nextBurn = Array.isArray(snapshot.burn) ? [...snapshot.burn] : [];
   const incomingMeta = snapshot.metadata ?? {};
   const snapshotTurn =
     typeof snapshot?.nextTurn === "number"
@@ -78,6 +87,8 @@ export function mergeEngineSnapshot(currentState, snapshot) {
     players: shouldReuseSnapshotPlayers ? snapshot.players : nextPlayers,
     pots: nextPots,
     deck: nextDeck,
+    discard: nextDiscard,
+    burn: nextBurn,
     gameId: nextGameId,
     engineId: nextEngineId,
     metadata: {

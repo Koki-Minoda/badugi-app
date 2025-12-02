@@ -12,6 +12,7 @@ import {
   isBetRoundComplete,
   closingSeatForAggressor,
   analyzeBetSnapshot,
+  needsActionForBet,
 } from "../flow/betRoundUtils.js";
 
 export {
@@ -25,6 +26,7 @@ export {
   isBetRoundComplete,
   closingSeatForAggressor,
   analyzeBetSnapshot,
+  needsActionForBet,
 } from "../flow/betRoundUtils.js";
 
 export function resetBetRoundFlags(players = []) {
@@ -358,7 +360,10 @@ export function finishBetRoundFrom({
   const actionablePlayers = clearedPlayers.filter(
     (p) => p && !p.folded && !p.allIn && !p.seatOut
   );
-  const incomplete = actionablePlayers.filter((p) => !p.hasActedThisRound);
+  const maxOutstandingBet = maxBetThisRound(clearedPlayers);
+  const incomplete = actionablePlayers.filter((p) =>
+    needsActionForBet(p, maxOutstandingBet)
+  );
   if (incomplete.length > 0) {
     console.warn(
       "[finishBetRoundFrom] action list incomplete, forcing continuation:",

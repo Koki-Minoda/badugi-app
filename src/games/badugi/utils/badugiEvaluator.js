@@ -122,7 +122,7 @@ function ensureEvaluation(input) {
 
 function compareEvaluations(aEval, bEval) {
   if (aEval.count !== bEval.count) {
-    return aEval.count - bEval.count;
+    return bEval.count - aEval.count;
   }
   const ranksA = aEval.rankValuesDesc;
   const ranksB = bEval.rankValuesDesc;

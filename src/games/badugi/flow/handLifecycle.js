@@ -125,6 +125,16 @@ export function buildNextHandState({
     };
   });
 
+  const drawContext = {
+    dealerIdx: nextDealerIdx,
+    seats: filteredPrev.map((seatState, seatIndex) => ({
+      seatIndex,
+      seatOut: seatState.seatOut,
+      seatType: seatState.seatType,
+      stack: seatState.stack,
+    })),
+  };
+
   const players = Array.from({ length: numSeats }, (_, seat) => {
     const base = filteredPrev[seat];
     const seatMeta = base.seatType ?? seatConfig[seat] ?? (seat === 0 ? "HUMAN" : "CPU");
@@ -153,7 +163,7 @@ export function buildNextHandState({
       tournamentSeatIndex: base.tournamentSeatIndex ?? null,
     };
     if (typeof drawCardsForSeat === "function" && !seatOut) {
-      player.hand = drawCardsForSeat(seat, player) ?? [];
+      player.hand = drawCardsForSeat(seat, player, drawContext) ?? [];
     } else {
       player.hand = seatOut ? [] : [];
     }

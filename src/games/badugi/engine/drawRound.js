@@ -1,6 +1,7 @@
 // src/games/badugi/engine/drawRound.js
-import { nextAliveFrom, aliveDrawPlayers } from "./roundFlow.js";
+import { aliveDrawPlayers } from "./roundFlow.js";
 import { debugLog } from "../../../utils/debugLog";
+import { assertNoDuplicateCards } from "../utils/deck.js";
 
 /**
  * Deck-managed DRAW round controller.
@@ -22,8 +23,12 @@ export function runDrawRound({
   console.log(`[TRACE ${new Date().toISOString()}] runDrawRound START turn=${turn}, drawRound=${drawRound}`);
   const actor = players[turn];
   if (!actor || actor.folded || actor.seatOut || actor.hasDrawn) {
-    const nxt = nextAliveFrom(players, turn);
-    if (nxt !== null) setTurn(nxt);
+    const nxt = findNextDrawableSeat(players, turn);
+    if (typeof nxt === "number") {
+      setTurn(nxt);
+    } else {
+      debugLog("[DRAW] No drawable seat found when skipping current actor.");
+    }
     return;
   }
 
@@ -37,7 +42,8 @@ export function runDrawRound({
   const betBefore = actor.betThisRound;
   const originalHand = [...actor.hand];
   const discardIndexes = pickDiscardIndexes(actor.hand, drawCount);
-  const drawnCards = deckManager.draw(drawCount);
+  const activeCards = collectActiveCards(players);
+  const drawnCards = deckManager.draw(drawCount, { activeCards });
 
   const replacedCards = discardIndexes.map((idx, j) => {
     const incoming = drawnCards?.[j];
@@ -64,6 +70,19 @@ export function runDrawRound({
   );
 
   setPlayers(updatedPlayers);
+  try {
+    if (deckManager) {
+      assertNoDuplicateCards("[DRAW_ROUND]", {
+        deck: deckManager.deck,
+        discard: deckManager.discardPile,
+        burn: deckManager.burnPile,
+        ...playersToSeatBuckets(updatedPlayers),
+      });
+    }
+  } catch (err) {
+    console.warn(err);
+    throw err;
+  }
   advanceAfterAction(updatedPlayers, turn, {
     drawCount,
     replacedCards,
@@ -94,11 +113,12 @@ export function runDrawRound({
   const sb = (dealerIdx + 1) % NUM_PLAYERS;
   const order = Array.from({ length: NUM_PLAYERS }, (_, k) => (sb + k) % NUM_PLAYERS);
   const active = aliveDrawPlayers(updatedPlayers);
-  const nextIdx = order.find((idx) => {
-    const pl = updatedPlayers[idx];
-    if (!pl || pl.folded || pl.seatOut) return false;
-    return !pl.hasDrawn && active.includes(pl);
-  });
+  const nextIdx =
+    order.find((idx) => {
+      const pl = updatedPlayers[idx];
+      if (!pl || pl.folded || pl.seatOut) return false;
+      return !pl.hasDrawn && active.includes(pl);
+    }) ?? findNextDrawableSeat(updatedPlayers, turn);
 
   if (typeof nextIdx === "number") {
     setTurn(nextIdx);
@@ -151,4 +171,40 @@ function pickDiscardIndexes(hand = [], drawCount = 0) {
     .sort((a, b) => b.score - a.score)
     .slice(0, drawCount)
     .map((entry) => entry.i);
+}
+
+function playersToSeatBuckets(players = []) {
+  return players.reduce((acc, player, idx) => {
+    acc[`seat${idx}`] = player?.hand ?? [];
+    return acc;
+  }, {});
+}
+
+function collectActiveCards(players = []) {
+  const cards = [];
+  players.forEach((player) => {
+    if (Array.isArray(player?.hand) && player.hand.length) {
+      cards.push(...player.hand);
+    }
+  });
+  return cards;
+}
+
+function findNextDrawableSeat(players = [], startIdx = 0) {
+  if (!Array.isArray(players) || players.length === 0) return null;
+  const n = players.length;
+  const base = typeof startIdx === "number" ? startIdx : -1;
+  for (let offset = 1; offset <= n; offset += 1) {
+    const idx = (base + offset + n) % n;
+    const candidate = players[idx];
+    if (
+      candidate &&
+      !candidate.folded &&
+      !candidate.seatOut &&
+      !candidate.hasDrawn
+    ) {
+      return idx;
+    }
+  }
+  return null;
 }

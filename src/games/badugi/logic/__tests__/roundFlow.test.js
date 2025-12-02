@@ -4,6 +4,7 @@ import {
   closingSeatForAggressor,
   buildSidePots,
   resetBetRoundFlags,
+  analyzeBetSnapshot,
 } from "../../engine/roundFlow.js";
 
 const makePlayer = ({
@@ -75,6 +76,47 @@ describe("isBetRoundComplete", () => {
       makePlayer({ folded: true }),
     ];
     expect(isBetRoundComplete(players)).toBe(true);
+  });
+
+  it("keeps limped big blind pending until they act", () => {
+    const players = [
+      makePlayer({ betThisRound: 10, hasActedThisRound: true }), // BTN
+      makePlayer({ betThisRound: 10, hasActedThisRound: true }), // SB completes
+      makePlayer({ betThisRound: 10, hasActedThisRound: false }), // BB hero
+      makePlayer({ betThisRound: 10, hasActedThisRound: true }),
+      makePlayer({ betThisRound: 10, hasActedThisRound: true }),
+      makePlayer({ betThisRound: 10, hasActedThisRound: true }),
+    ];
+    expect(isBetRoundComplete(players)).toBe(false);
+
+    const resolved = players.map((player, idx) =>
+      idx === 2 ? { ...player, hasActedThisRound: true, lastAction: "Check" } : player
+    );
+    expect(isBetRoundComplete(resolved)).toBe(true);
+  });
+
+  it("requires the big blind to respond after a raise", () => {
+    const players = [
+      makePlayer({ betThisRound: 20, hasActedThisRound: true }), // BTN
+      makePlayer({ betThisRound: 20, hasActedThisRound: true }), // SB
+      makePlayer({ betThisRound: 10, hasActedThisRound: false }), // BB hero
+      makePlayer({ betThisRound: 20, hasActedThisRound: true }), // UTG
+      makePlayer({ betThisRound: 20, hasActedThisRound: true }), // MP (raiser)
+      makePlayer({ betThisRound: 20, hasActedThisRound: true }), // CO
+    ];
+    expect(isBetRoundComplete(players)).toBe(false);
+
+    const heroMatched = players.map((player, idx) =>
+      idx === 2
+        ? {
+            ...player,
+            betThisRound: 20,
+            hasActedThisRound: true,
+            lastAction: "Call",
+          }
+        : player
+    );
+    expect(isBetRoundComplete(heroMatched)).toBe(true);
   });
 });
 
@@ -162,5 +204,65 @@ describe("resetBetRoundFlags", () => {
     ];
     const result = resetBetRoundFlags(players);
     expect(result).toBe(players);
+  });
+});
+
+describe("analyzeBetSnapshot", () => {
+  const basePlayer = (overrides = {}) => ({
+    name: overrides.name ?? "Seat",
+    folded: overrides.folded ?? false,
+    seatOut: overrides.seatOut ?? false,
+    allIn: overrides.allIn ?? false,
+    betThisRound: overrides.betThisRound ?? 0,
+    hasActedThisRound: overrides.hasActedThisRound ?? false,
+    lastAction: overrides.lastAction ?? "",
+  });
+
+  it("keeps big blind as a candidate when everyone limps", () => {
+    const players = [
+      basePlayer({ name: "BTN", betThisRound: 10, hasActedThisRound: true, lastAction: "Call" }),
+      basePlayer({ name: "SB", betThisRound: 10, hasActedThisRound: true, lastAction: "Call" }),
+      basePlayer({ name: "BB Hero", betThisRound: 10 }),
+      basePlayer({ name: "UTG", betThisRound: 10, hasActedThisRound: true, lastAction: "Call" }),
+      basePlayer({ name: "MP", betThisRound: 10, hasActedThisRound: true, lastAction: "Call" }),
+      basePlayer({ name: "CO", betThisRound: 10, hasActedThisRound: true, lastAction: "Call" }),
+    ];
+
+    const result = analyzeBetSnapshot({
+      players,
+      actedIndex: 1,
+      dealerIdx: 0,
+      drawRound: 0,
+      betHead: 2,
+      lastAggressorIdx: 2,
+    });
+
+    expect(result.maxBet).toBe(10);
+    expect(result.nextTurn).toBe(2);
+    expect(result.shouldAdvance).toBe(false);
+  });
+
+  it("forces the big blind to respond after a raise", () => {
+    const players = [
+      basePlayer({ name: "BTN", betThisRound: 20, hasActedThisRound: true, lastAction: "Call" }),
+      basePlayer({ name: "SB", betThisRound: 20, hasActedThisRound: true, lastAction: "Call" }),
+      basePlayer({ name: "BB Hero", betThisRound: 10 }),
+      basePlayer({ name: "UTG", betThisRound: 20, hasActedThisRound: true, lastAction: "Call" }),
+      basePlayer({ name: "MP", betThisRound: 20, hasActedThisRound: true, lastAction: "Raise" }),
+      basePlayer({ name: "CO", betThisRound: 20, hasActedThisRound: true, lastAction: "Call" }),
+    ];
+
+    const result = analyzeBetSnapshot({
+      players,
+      actedIndex: 1,
+      dealerIdx: 0,
+      drawRound: 0,
+      betHead: 4,
+      lastAggressorIdx: 4,
+    });
+
+    expect(result.maxBet).toBe(20);
+    expect(result.nextTurn).toBe(2);
+    expect(result.shouldAdvance).toBe(false);
   });
 });

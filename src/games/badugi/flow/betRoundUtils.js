@@ -1,15 +1,30 @@
 import { isFoldedOrOut, nextAliveFrom, maxBetThisRound } from "./actionUtils.js";
 
+export function needsActionForBet(player, maxBet = 0) {
+  if (!player || isFoldedOrOut(player) || player.allIn) return false;
+  const bet =
+    typeof player.betThisRound === "number"
+      ? player.betThisRound
+      : typeof player.bet === "number"
+      ? player.bet
+      : 0;
+  const hasActed =
+    typeof player.hasActedThisRound === "boolean"
+      ? player.hasActedThisRound
+      : Boolean(player.lastAction || player.lastAct);
+  return bet < maxBet || !hasActed;
+}
+
 export function isBetRoundComplete(players) {
   if (!Array.isArray(players)) return false;
-  const active = players.filter((p) => !isFoldedOrOut(p));
-  if (active.length <= 1) return true;
-  const maxNow = Math.max(...active.map((p) => p.betThisRound || 0));
-  return active.every((p) => {
-    const matched = p.allIn || (p.betThisRound || 0) === maxNow;
-    const acted = p.allIn || p.hasActedThisRound === true;
-    return matched && acted;
-  });
+  const eligible = players.filter(
+    (player) => player && !isFoldedOrOut(player) && !player.allIn
+  );
+  if (eligible.length <= 1) {
+    return true;
+  }
+  const maxNow = maxBetThisRound(players);
+  return !players.some((player) => needsActionForBet(player, maxNow));
 }
 
 export function closingSeatForAggressor(players, lastAggressorIdx) {
@@ -45,8 +60,8 @@ export function analyzeBetSnapshot({
   const allChecked =
     maxNow === 0 &&
     active.every((p) => isFoldedOrOut(p) || p.allIn || p.lastAction === "Check");
-  const betRoundSatisfied = isBetRoundComplete(snap);
   const searchStart = typeof actedIndex === "number" ? actedIndex + 1 : 0;
+  const hasPendingAction = snap.some((player) => needsActionForBet(player, maxNow));
 
   // Debug: snapshot of players prior to selecting nextTurn
   console.log("[BET][PLAYERS]", {
@@ -64,7 +79,7 @@ export function analyzeBetSnapshot({
     })),
   });
 
-  const nextTurn = findNextBetActorSeat(snap, searchStart, maxNow);
+  const nextTurn = hasPendingAction ? findNextBetActorSeat(snap, searchStart, maxNow) : null;
   const closingSeatCandidate = closingSeatForAggressor(snap, lastAggressorIdx);
   const fallbackSeat = typeof betHead === "number" ? betHead : null;
   const closingSeat = closingSeatCandidate ?? fallbackSeat;
@@ -80,23 +95,8 @@ export function analyzeBetSnapshot({
   }
 
   const isHeadsUp = active.length <= 2;
-  let shouldAdvance = betRoundSatisfied && returnedToAggressor;
-
-  if (!shouldAdvance) {
-    if (maxNow > 0) {
-      shouldAdvance = everyoneMatched && isBBActed;
-    } else if (isHeadsUp) {
-      const bothActed = active.every((p) => !!p.lastAction);
-      shouldAdvance = bothActed;
-    } else {
-      shouldAdvance = allChecked;
-    }
-  }
-
-  if (!shouldAdvance && nextTurn === null) {
-    // Nothing left to act -> advance
-    shouldAdvance = true;
-  }
+  const betRoundSatisfied = !hasPendingAction;
+  const shouldAdvance = betRoundSatisfied;
 
   return {
     playersSnapshot: snap,
@@ -114,7 +114,7 @@ export function analyzeBetSnapshot({
 }
 
 function findNextBetActorSeat(snapshotOrPlayers, startIdx = 0, maxBet = 0) {
-  // snapshot でも players 配列でも動くようにする
+  // Works with either a snapshot object or raw players array
   const players = Array.isArray(snapshotOrPlayers)
     ? snapshotOrPlayers
     : snapshotOrPlayers && Array.isArray(snapshotOrPlayers.players)
@@ -131,41 +131,24 @@ function findNextBetActorSeat(snapshotOrPlayers, startIdx = 0, maxBet = 0) {
     const player = players[seat];
     if (!player || isFoldedOrOut(player) || player.allIn) continue;
 
-    // betThisRound が無ければ bet を見る
-    const bet =
-      typeof player.betThisRound === "number"
-        ? player.betThisRound
-        : typeof player.bet === "number"
-        ? player.bet
-        : 0;
+    const needsAction = needsActionForBet(player, maxBet);
 
-    // hasActedThisRound が無ければ lastAction/lastAct から推測
-    const hasActed =
-      typeof player.hasActedThisRound === "boolean"
-        ? player.hasActedThisRound
-        : Boolean(player.lastAction || player.lastAct);
-
-    console.log("[BET][CANDIDATE]", {
+    console.log('[BET][CANDIDATE]', {
       seat,
       name: player.name,
-      bet,
+      bet: player.betThisRound ?? player.bet ?? 0,
       maxBet,
-      hasActed,
+      hasActed: player.hasActedThisRound,
       folded: player.folded,
       allIn: player.allIn,
-      eligible: maxBet > 0 ? bet < maxBet : !hasActed,
+      needsAction,
     });
 
-    if (maxBet > 0) {
-      // まだ maxBet に届いてないプレイヤーだけがアクション対象
-      if (bet < maxBet) {
-        return seat;
-      }
-    } else if (!hasActed) {
-      // オープニングラウンドで誰もベットしていない場合など
+    if (needsAction) {
       return seat;
     }
   }
 
   return null;
 }
+

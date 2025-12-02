@@ -59,7 +59,6 @@ function buildControlsConfig(snapshot, tableConfig) {
       phase === "DRAW" &&
       !hero?.folded &&
       !hero?.seatOut &&
-      !hero?.allIn &&
       hasCardsToDraw,
   );
   const drawRound = snapshot.drawRound ?? 0;

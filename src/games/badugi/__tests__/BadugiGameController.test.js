@@ -7,6 +7,17 @@ const BLIND_STRUCTURE = [
   { sb: 10, bb: 20, ante: 0, hands: 999 },
 ];
 
+const seatPlayer = (overrides = {}) => ({
+  name: overrides.name ?? "Seat",
+  folded: overrides.folded ?? false,
+  seatOut: overrides.seatOut ?? false,
+  allIn: overrides.allIn ?? false,
+  betThisRound: overrides.betThisRound ?? 0,
+  hasActedThisRound: overrides.hasActedThisRound ?? false,
+  lastAction: overrides.lastAction ?? "",
+  stack: overrides.stack ?? 500,
+});
+
 function createController(overrides = {}) {
   return new BadugiGameController({
     numSeats: 3,
@@ -72,7 +83,7 @@ describe("BadugiGameController", () => {
       dealerIdx: snapshot.dealerIdx,
       drawRound: snapshot.drawRound,
     });
-    expect(analysis.nextTurn).toBe(0);
+    expect(analysis.nextTurn).toBe(2);
   });
 
   it("resolveShowdown returns summarized results with handId", () => {
@@ -175,5 +186,118 @@ describe("BadugiGameController", () => {
       lastAggressorIdx: null,
     });
     expect(after.nextTurn).toBe(0);
+  });
+
+  it("keeps the big blind as the last actor when everyone limps", () => {
+    const controller = new BadugiGameController({
+      numSeats: 6,
+      blindStructure: BLIND_STRUCTURE,
+      lastStructureIndex: BLIND_STRUCTURE.length - 1,
+    });
+    const limpedPlayers = [
+      seatPlayer({ name: "BTN", betThisRound: 10, hasActedThisRound: true, lastAction: "Call" }),
+      seatPlayer({ name: "SB", betThisRound: 10, hasActedThisRound: true, lastAction: "Call" }),
+      seatPlayer({ name: "Hero BB", betThisRound: 10, hasActedThisRound: false }),
+      seatPlayer({ name: "UTG", betThisRound: 10, hasActedThisRound: true, lastAction: "Call" }),
+      seatPlayer({ name: "MP", betThisRound: 10, hasActedThisRound: true, lastAction: "Call" }),
+      seatPlayer({ name: "CO", betThisRound: 10, hasActedThisRound: true, lastAction: "Call" }),
+    ];
+
+    controller.syncExternalState({
+      players: limpedPlayers,
+      dealerIdx: 0,
+      drawRound: 0,
+      betHead: 2,
+      lastAggressorIdx: 2,
+    });
+
+    const beforeHero = controller.advanceStreet({
+      players: limpedPlayers,
+      actedIndex: 5,
+      dealerIdx: 0,
+      drawRound: 0,
+      betHead: 2,
+      lastAggressorIdx: 2,
+    });
+
+    expect(beforeHero.nextTurn).toBe(2);
+    expect(beforeHero.shouldAdvance).toBe(false);
+
+    const heroChecked = limpedPlayers.map((player, idx) =>
+      idx === 2
+        ? { ...player, hasActedThisRound: true, lastAction: "Check" }
+        : player
+    );
+
+    const afterHero = controller.advanceStreet({
+      players: heroChecked,
+      actedIndex: 2,
+      dealerIdx: 0,
+      drawRound: 0,
+      betHead: 2,
+      lastAggressorIdx: 2,
+    });
+
+    expect(afterHero.shouldAdvance).toBe(true);
+    expect(afterHero.nextTurn).toBeNull();
+  });
+
+  it("forces the big blind to respond when action reopens with a raise", () => {
+    const controller = new BadugiGameController({
+      numSeats: 6,
+      blindStructure: BLIND_STRUCTURE,
+      lastStructureIndex: BLIND_STRUCTURE.length - 1,
+    });
+    const raisedPlayers = [
+      seatPlayer({ name: "BTN", betThisRound: 20, hasActedThisRound: true, lastAction: "Call" }),
+      seatPlayer({ name: "SB", betThisRound: 20, hasActedThisRound: true, lastAction: "Call" }),
+      seatPlayer({ name: "Hero BB", betThisRound: 10, hasActedThisRound: false }),
+      seatPlayer({ name: "UTG", betThisRound: 20, hasActedThisRound: true, lastAction: "Call" }),
+      seatPlayer({ name: "MP", betThisRound: 20, hasActedThisRound: true, lastAction: "Raise" }),
+      seatPlayer({ name: "CO", betThisRound: 20, hasActedThisRound: true, lastAction: "Call" }),
+    ];
+
+    controller.syncExternalState({
+      players: raisedPlayers,
+      dealerIdx: 0,
+      drawRound: 0,
+      betHead: 4,
+      lastAggressorIdx: 4,
+    });
+
+    const beforeHero = controller.advanceStreet({
+      players: raisedPlayers,
+      actedIndex: 5,
+      dealerIdx: 0,
+      drawRound: 0,
+      betHead: 4,
+      lastAggressorIdx: 4,
+    });
+
+    expect(beforeHero.nextTurn).toBe(2);
+    expect(beforeHero.shouldAdvance).toBe(false);
+
+    const heroCalls = raisedPlayers.map((player, idx) =>
+      idx === 2
+        ? {
+            ...player,
+            betThisRound: 20,
+            hasActedThisRound: true,
+            lastAction: "Call",
+          }
+        : player
+    );
+
+    const afterHero = controller.advanceStreet({
+      players: heroCalls,
+      actedIndex: 2,
+      dealerIdx: 0,
+      drawRound: 0,
+      betHead: 4,
+      lastAggressorIdx: 4,
+    });
+
+    expect(afterHero.shouldAdvance).toBe(true);
+    expect(afterHero.nextTurn).toBeNull();
   });
 });

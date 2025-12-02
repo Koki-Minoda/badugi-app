@@ -1,10 +1,36 @@
 import { describe, expect, it } from "vitest";
 import { BadugiEngine } from "../badugi/engine/BadugiEngine.js";
+import { validatePreflopState } from "../badugi/utils/deckHelpers.js";
 import { IllegalActionError } from "../core/errors.js";
 
 describe("BadugiEngine", () => {
   const engine = new BadugiEngine();
   const seatConfig = ["HUMAN", "CPU", "CPU", "EMPTY", "EMPTY", "EMPTY"];
+
+  it("deals single-deck hands with one burn card", () => {
+    const fullSeats = ["HUMAN", "CPU", "CPU", "CPU", "CPU", "CPU"];
+    const state = engine.initHand({
+      seatConfig: fullSeats,
+      startingStack: 500,
+      dealerIndex: 0,
+    });
+    state.players.forEach((player, idx) => {
+      if (fullSeats[idx] === "EMPTY") {
+        expect(player.hand).toHaveLength(0);
+      } else {
+        expect(player.hand).toHaveLength(4);
+      }
+    });
+    const validation = validatePreflopState({
+      deck: engine.getDeckManager().deck,
+      burn: engine.getDeckManager().burnPile,
+      discard: engine.getDeckManager().discardPile,
+      players: state.players,
+    });
+    expect(validation.isValidTotal).toBe(true);
+    expect(validation.hasSingleBurn).toBe(true);
+    expect(validation.hasEmptyDiscard).toBe(true);
+  });
 
   it("initializes a table with the requested seats", () => {
     const state = engine.initHand({

@@ -17,7 +17,7 @@ describe("mergeEngineSnapshot", () => {
     betHead: 25,
     lastAggressor: 1,
     turn: 0,
-    deck: { deck: [1, 2] },
+    deck: [1, 2],
   };
 
   it("returns the current view when snapshot is empty", () => {
@@ -40,12 +40,12 @@ describe("mergeEngineSnapshot", () => {
         lastAggressor: 2,
         actingPlayerIndex: 3,
       },
-      deck: { deck: [3, 4, 5] },
+      deck: [3, 4, 5],
     };
     const merged = mergeEngineSnapshot(baseState, snapshot);
     expect(merged.players).toBe(snapshot.players);
     expect(merged.pots).toBe(snapshot.pots);
-    expect(merged.deck).toBe(snapshot.deck);
+    expect(merged.deck).toEqual(snapshot.deck);
     expect(merged.metadata.currentBet).toBe(50);
     expect(merged.metadata.betHead).toBe(50);
     expect(merged.metadata.lastAggressor).toBe(2);
@@ -63,6 +63,7 @@ describe("mergeEngineSnapshot", () => {
     expect(merged.metadata.betHead).toBe(baseState.metadata.betHead);
     expect(merged.metadata.lastAggressor).toBe(baseState.metadata.lastAggressor);
     expect(merged.metadata.actingPlayerIndex).toBeNull();
+    expect(merged.deck).toEqual([]);
   });
 
   it("keeps gameId/engineId from snapshot and falls back to base", () => {

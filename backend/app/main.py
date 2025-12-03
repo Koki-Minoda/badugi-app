@@ -12,6 +12,7 @@ from .core.config import get_settings
 from .core.db import engine
 from .models import Base
 
+
 settings = get_settings()
 logger = logging.getLogger(__name__)
 

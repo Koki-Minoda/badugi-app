@@ -1,4 +1,5 @@
-﻿[project]
+# [tournament-feedback] Ensure this file stays UTF-8 without BOM for tooling compatibility.
+[project]
 name = "badugi-backend"
 version = "0.1.0"
 description = "Backend skeleton for Badugi multi-game app"

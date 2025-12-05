@@ -8,6 +8,8 @@ from .api.badugi_log import router as badugi_log_router
 from .api.badugi_rl import router as badugi_rl_router
 from .api.health import router as health_router
 from .api.user import router as user_router
+from .api.tournament_state import router as tournament_state_router
+from .api.analysis_chatgpt import router as analysis_router  # [tournament-feedback]
 from .core.config import get_settings
 from .core.db import engine
 from .models import Base
@@ -30,6 +32,8 @@ app.include_router(health_router, prefix="/api")
 app.include_router(user_router, prefix="/api")
 app.include_router(badugi_rl_router, prefix="/api")
 app.include_router(badugi_log_router, prefix="/api")
+app.include_router(tournament_state_router, prefix="/api")
+app.include_router(analysis_router, prefix="/api/analysis", tags=["analysis"])  # [tournament-feedback]
 
 
 @app.on_event("startup")

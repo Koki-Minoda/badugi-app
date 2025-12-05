@@ -10,5 +10,13 @@ class Base(DeclarativeBase):
 
 from .user import User  # noqa: E402  (import after Base definition)
 from .hand_log import HandAction, HandLog, HandResult  # noqa: E402
+from .tournament_snapshot import TournamentSnapshot  # noqa: E402
 
-__all__ = ("Base", "User", "HandLog", "HandAction", "HandResult")
+__all__ = (
+    "Base",
+    "User",
+    "HandLog",
+    "HandAction",
+    "HandResult",
+    "TournamentSnapshot",
+)

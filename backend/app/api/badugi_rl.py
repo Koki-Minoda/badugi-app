@@ -25,7 +25,7 @@ class BadugiRLRequest(BaseModel):
             raise ValueError(f"Unsupported actions: {invalid}")
         return value
 
-    @root_validator
+    @root_validator(skip_on_failure=True)  # [tournament-feedback]
     def _validate_state_vector(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         vector = values.get("state_vector") or []
         if len(vector) != STATE_VECTOR_SIZE:

@@ -3,9 +3,10 @@ import { cloneTableState } from "../../core/models.js";
 import { IllegalActionError, assertSeatIsActive } from "../../core/errors.js";
 import { DeckManager } from "../utils/deck.js";
 import { dealInitialHands, validatePreflopState } from "../utils/deckHelpers.js";
-import { getWinnersByBadugi } from "../utils/badugiEvaluator.js";
+import { resolveBadugiWinners } from "./badugiComparison.js";
 import { createBadugiTableState } from "./legacyState.js";
 import { settleStreetToPots, calcDrawStartIndex, nextAliveFrom } from "./roundFlow.js";
+import { normalizePotsWithContributions } from "./potIntegrity.js";
 import { getFixedLimitBetSize } from "../logic/bettingRules.js";
 
 const SUPPORTED_ACTIONS = new Set(["FOLD", "CHECK", "CALL", "RAISE", "DRAW", "SHOW"]);
@@ -330,13 +331,15 @@ export class BadugiEngine extends DrawEngineBase {
     }
     const working = cloneState ? cloneTableState(state) : state;
     const players = working.players ?? [];
-    const pots = working.pots ?? [];
+    const { pots, totalPot: reconciledPotTotal } = normalizePotsWithContributions(
+      players,
+      working.pots ?? []
+    );
     const summary = [];
-    let totalPot = 0;
+    let totalPot = reconciledPotTotal;
 
     pots.forEach((pot, potIndex) => {
       const amount = Math.max(0, pot?.amount ?? 0);
-      totalPot += amount;
       if (amount <= 0) {
         summary.push({
           potIndex,
@@ -368,7 +371,7 @@ export class BadugiEngine extends DrawEngineBase {
         return;
       }
 
-      const winners = getWinnersByBadugi(contenders);
+      const winners = resolveBadugiWinners(contenders);
       if (!winners.length) {
         summary.push({
           potIndex,

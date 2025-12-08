@@ -1,0 +1,25 @@
+# Template for the MGX backend service.
+# - Replace <USER> with the actual Unix user.
+# - MGX_LOG_LEVEL typically stays "info" but can be changed to "debug"/"warning" for troubleshooting.
+# - Copy to /etc/systemd/system/mgx-backend.service
+# - Then run:
+#     sudo systemctl daemon-reload
+#     sudo systemctl enable mgx-backend.service
+#     sudo systemctl start mgx-backend.service
+# - After tweaking MGX_LOG_LEVEL remember to daemon-reload + restart.
+
+[Unit]
+Description=MGX Badugi FastAPI backend
+After=network.target
+
+[Service]
+Type=simple
+User=<USER>
+WorkingDirectory=/home/<USER>/badugi-app/backend
+Environment=PYTHONUNBUFFERED=1
+Environment=MGX_LOG_LEVEL=info
+ExecStart=/home/<USER>/badugi-app/backend/.venv/bin/uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --log-level ${MGX_LOG_LEVEL}
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

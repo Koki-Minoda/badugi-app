@@ -114,18 +114,25 @@ function buildRankType(count) {
 }
 
 function ensureEvaluation(input) {
-  if (input && typeof input === "object" && Array.isArray(input.activeCards) && typeof input.count === "number") {
+  if (
+    input &&
+    typeof input === "object" &&
+    Array.isArray(input.activeCards) &&
+    typeof input.count === "number"
+  ) {
     return input;
   }
   return evaluateBadugi(input);
 }
 
-function compareEvaluations(aEval, bEval) {
+export function compareBadugiEvaluations(leftEval, rightEval) {
+  const aEval = ensureEvaluation(leftEval);
+  const bEval = ensureEvaluation(rightEval);
   if (aEval.count !== bEval.count) {
     return bEval.count - aEval.count;
   }
-  const ranksA = aEval.rankValuesDesc;
-  const ranksB = bEval.rankValuesDesc;
+  const ranksA = aEval.rankValuesDesc ?? [];
+  const ranksB = bEval.rankValuesDesc ?? [];
   const len = Math.max(ranksA.length, ranksB.length);
   for (let i = 0; i < len; i += 1) {
     const va = ranksA[i] ?? Number.POSITIVE_INFINITY;
@@ -167,9 +174,9 @@ export function evaluateBadugi(cards = []) {
   const ranksDesc = activeDesc.map((card) => card.rankValue);
   const activeLabels = activeAsc.map((card) => card.raw);
   const deadLabels = dead.map((card) => card.raw);
-  const key = `${count}|${activeDesc
-    .map((card) => `${card.rankValue.toString().padStart(2, "0")}${card.suitValue}`)
-    .join("")}`;
+  const sizeRank = Math.max(0, 4 - Math.min(4, count));
+  const rankKey = ranksDesc.map((value) => `${value}`).join("");
+  const key = `${sizeRank}|${rankKey}`;
   const rankType = buildRankType(count);
   return {
     rankType,
@@ -195,7 +202,7 @@ export function evaluateBadugi(cards = []) {
 export function compareBadugi(handA, handB) {
   const evalA = ensureEvaluation(handA);
   const evalB = ensureEvaluation(handB);
-  const result = compareEvaluations(evalA, evalB);
+  const result = compareBadugiEvaluations(evalA, evalB);
   console.log("[BADUGI][COMPARE]", {
     a: evalA?.key,
     b: evalB?.key,
@@ -210,7 +217,7 @@ export function getBestBadugiPlayer(players = []) {
   for (const player of players) {
     if (!player || !player.hand) continue;
     const evaluation = evaluateBadugi(player.hand);
-    if (!bestEntry || compareEvaluations(evaluation, bestEntry.evaluation) < 0) {
+    if (!bestEntry || compareBadugiEvaluations(evaluation, bestEntry.evaluation) < 0) {
       bestEntry = { player, evaluation };
     }
   }
@@ -229,9 +236,11 @@ export function getWinnersByBadugi(players = []) {
       evaluation: evaluateBadugi(player.hand),
     }));
   if (!evaluated.length) return [];
-  evaluated.sort((a, b) => compareEvaluations(a.evaluation, b.evaluation));
+  evaluated.sort((a, b) => compareBadugiEvaluations(a.evaluation, b.evaluation));
   const bestEval = evaluated[0].evaluation;
-  const winners = evaluated.filter((entry) => compareEvaluations(entry.evaluation, bestEval) === 0);
+  const winners = evaluated.filter(
+    (entry) => compareBadugiEvaluations(entry.evaluation, bestEval) === 0,
+  );
   console.log(
     "[SHOWDOWN] Evaluated order:",
     evaluated.map((entry) => describeEvaluation(entry.name, entry.evaluation))

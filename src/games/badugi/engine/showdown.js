@@ -1,4 +1,5 @@
-import { evaluateBadugi, getWinnersByBadugi } from "../utils/badugiEvaluator.js";
+import { evaluateBadugi } from "../utils/badugiEvaluator.js";
+import { resolveBadugiWinners } from "./badugiComparison.js";
 import { buildSidePots } from "./roundFlow.js";
 import { saveTournamentHistory, saveHandHistory } from "../../../utils/history.js";
 
@@ -224,7 +225,7 @@ function resolveShowdownLegacy(players = [], pots = []) {
       return;
     }
 
-    const winners = getWinnersByBadugi(
+    const winners = resolveBadugiWinners(
       contenders.map(({ seatIndex, player }) => ({
         seat: seatIndex,
         name: player.name,

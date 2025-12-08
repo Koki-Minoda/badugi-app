@@ -34,6 +34,8 @@ class Settings(BaseSettings):
         validation_alias="CORS_ORIGINS",
     )
 
+    secret_key: str = Field("change-me", validation_alias="SECRET_KEY")
+
     model_config = SettingsConfigDict(  # [tournament-feedback]
         env_file=ENV_PATH,
         env_file_encoding="utf-8",

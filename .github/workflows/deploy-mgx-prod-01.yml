@@ -1,0 +1,31 @@
+name: Deploy mgx-prod-01
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (optional)
+        uses: actions/checkout@v4
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "$MGX_PROD_SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan "$MGX_PROD_HOST" >> ~/.ssh/known_hosts
+        env:
+          MGX_PROD_SSH_KEY: ${{ secrets.MGX_PROD_SSH_KEY }}
+          MGX_PROD_HOST: ${{ secrets.MGX_PROD_HOST }}
+
+      - name: Deploy to mgx-prod-01
+        run: |
+          ssh "${MGX_PROD_USER}@${MGX_PROD_HOST}" 'cd ~/badugi-app && scripts/deploy/mgx-prod-01.sh'
+        env:
+          MGX_PROD_HOST: ${{ secrets.MGX_PROD_HOST }}
+          MGX_PROD_USER: ${{ secrets.MGX_PROD_USER }}

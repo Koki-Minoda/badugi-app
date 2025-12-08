@@ -75,3 +75,4 @@ tests/scraping/logs/*
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+.env

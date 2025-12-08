@@ -1,6 +1,5 @@
 const STORAGE_KEY = "sync.queue.v1";
 const API_BASE = import.meta.env?.VITE_API_BASE ?? "http://127.0.0.1:8000/api";
-const DEFAULT_TOKEN = "demo-token";
 
 let flushing = false;
 let timer = null;
@@ -25,11 +24,14 @@ function saveQueue(queue) {
   }
 }
 
-function authHeaders() {
-  return {
+function authHeaders(accessToken) {
+  const headers = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${DEFAULT_TOKEN}`,
   };
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
+  return headers;
 }
 
 function enqueueJob(type, payload) {
@@ -38,10 +40,10 @@ function enqueueJob(type, payload) {
   saveQueue(queue);
 }
 
-async function postJson(path, body) {
+async function postJson(path, body, options = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
-    headers: authHeaders(),
+    headers: authHeaders(options.accessToken),
     body: JSON.stringify(body),
   });
   if (!res.ok) {
@@ -51,26 +53,26 @@ async function postJson(path, body) {
   return res.json();
 }
 
-async function sendJob(job) {
+async function sendJob(job, options = {}) {
   switch (job.type) {
     case "hand-history":
-      await postJson("/history/hand", job.payload);
+      await postJson("/history/hand", job.payload, options);
       break;
     case "rating-update":
-      await postJson("/rating/update", job.payload);
+      await postJson("/rating/update", job.payload, options);
       break;
     case "tournament-snapshot":
-      await postJson("/tournament/snapshot", job.payload);
+      await postJson("/tournament/snapshot", job.payload, options);
       break;
     case "rl-buffer":
-      await postJson("/ai/rl/buffer", job.payload);
+      await postJson("/ai/rl/buffer", job.payload, options);
       break;
     default:
       console.warn("[sync] unknown job type", job.type);
   }
 }
 
-export async function flushQueue() {
+export async function flushQueue(options = {}) {
   if (flushing) return;
   const queue = loadQueue();
   if (queue.length === 0) return;
@@ -78,7 +80,7 @@ export async function flushQueue() {
   const remaining = [];
   for (const job of queue) {
     try {
-      await sendJob(job);
+      await sendJob(job, options);
     } catch (err) {
       console.warn("[sync] job failed", job.type, err);
       remaining.push(job);
@@ -89,14 +91,27 @@ export async function flushQueue() {
   flushing = false;
 }
 
-export function startAutoSync(intervalMs = 30000) {
+// startAutoSync must be called with the latest JWT (if available). The caller
+// is responsible for stopping the returned cleanup function when the token
+// changes or the component unmounts.
+export function startAutoSync(intervalMs = 30000, options = {}) {
   if (typeof window === "undefined") {
     return () => {};
   }
-  flushQueue();
-  const onlineHandler = () => flushQueue();
+  flushQueue(options).catch((err) => {
+    console.warn("[sync] auto flush failed", err);
+  });
+  const onlineHandler = () => {
+    flushQueue(options).catch((err) => {
+      console.warn("[sync] auto flush (online) failed", err);
+    });
+  };
   window.addEventListener("online", onlineHandler);
-  timer = window.setInterval(flushQueue, intervalMs);
+  timer = window.setInterval(() => {
+    flushQueue(options).catch((err) => {
+      console.warn("[sync] scheduled flush failed", err);
+    });
+  }, intervalMs);
   return () => {
     window.removeEventListener("online", onlineHandler);
     if (timer) {

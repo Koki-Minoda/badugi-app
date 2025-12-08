@@ -12,11 +12,21 @@ function clone(obj) {
   return obj == null ? obj : JSON.parse(JSON.stringify(obj));
 }
 
-export function startHandHistoryRecord({ handId, dealer, level, seats, startedAt }) {
+export function startHandHistoryRecord({
+  handId,
+  dealer,
+  level,
+  seats,
+  startedAt,
+  userId = null,
+}) {
+  // userId allows the backend to associate logs with a specific player but
+  // remains optional so offline sessions continue to work.
   currentRecord = {
     handId: handId ?? `unknown-${Date.now()}`,
     dealer: typeof dealer === "number" ? dealer : null,
     level: level ?? { sb: 0, bb: 0, ante: 0 },
+    userId: userId ?? null,
     seats: Array.isArray(seats)
       ? seats.map((seat) => ({
           seat: seat?.seat ?? seat?.seatIndex ?? 0,
@@ -45,6 +55,7 @@ export function appendHandHistoryAction({
   amount = 0,
   totalInvested = 0,
   metadata,
+  userId = null,
 }) {
   if (!currentRecord || typeof seat !== "number") return;
   const seatEntry = findSeatEntry(seat);
@@ -59,6 +70,7 @@ export function appendHandHistoryAction({
     totalInvested: Math.round(totalInvested ?? 0),
     timestamp: Date.now(),
     metadata: metadata ? clone(metadata) : undefined,
+    userId: userId ?? currentRecord?.userId ?? null,
   });
 }
 

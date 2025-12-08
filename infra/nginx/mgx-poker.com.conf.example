@@ -1,0 +1,37 @@
+# Example nginx configuration for mgx-poker.com.
+# Copy or symlink this file into /etc/nginx/sites-available and then create a symlink
+# in /etc/nginx/sites-enabled. Certbot/SSL automation can build on top of this template.
+
+upstream mgx_backend {
+    server 127.0.0.1:8000;
+}
+
+server {
+    listen 80;
+    server_name mgx-poker.com;
+
+    root /var/www/mgx-poker;
+    index index.html;
+
+    access_log /var/log/nginx/mgx-poker.access.log;
+    error_log  /var/log/nginx/mgx-poker.error.log;
+
+    # Serve the Vite-built SPA
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Proxy API traffic to FastAPI backend
+    location /api/ {
+        proxy_pass http://mgx_backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Optional health endpoint passthrough
+    location /healthz {
+        proxy_pass http://mgx_backend/health;
+    }
+}

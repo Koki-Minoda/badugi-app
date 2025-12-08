@@ -1,0 +1,9 @@
+# Example journald limits for mgx-prod-01.
+# Copy to /etc/systemd/journald.conf.d/mgx-logging.conf, adjust values as needed,
+# then run: sudo systemctl restart systemd-journald
+# These values are conservative defaults to keep disk usage predictable.
+
+[Journal]
+SystemMaxUse=500M
+SystemMaxFileSize=50M
+MaxRetentionSec=1month

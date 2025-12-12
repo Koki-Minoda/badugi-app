@@ -66,9 +66,13 @@ describe("Badugi payout integrity", () => {
       totalPot: showdown.totalPot,
       evaluateHand: evaluateBadugi,
       handId: "integrity-1",
+      buttonSeat: 0,
+      sbSeat: 1,
+      bbSeat: 2,
     });
 
     expect(uiSummary.potDetails[0].winners).toHaveLength(1);
     expect(uiSummary.potDetails[0].winners[0]).toMatchObject({ seatIndex: 2, payout: 120 });
+    expect(uiSummary).toMatchObject({ buttonSeat: 0, sbSeat: 1, bbSeat: 2 });
   });
 });

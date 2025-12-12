@@ -609,6 +609,26 @@ export default function GameScreen({
           </div>
         </div>
       )}
+
+      {debugMode && (
+        <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 text-[11px] text-slate-100">
+          {/* NOTE (G-10): Emergency reset is debug-only to recover from inconsistent tables. */}
+          <button
+            type="button"
+            onClick={onEmergencyReset}
+            className="rounded-full bg-red-500/80 px-4 py-2 font-semibold uppercase tracking-[0.3em] hover:bg-red-500 transition"
+          >
+            Reset Table
+          </button>
+          <button
+            type="button"
+            onClick={onToggleDebugMode}
+            className="rounded-full border border-white/40 px-4 py-1 font-semibold uppercase tracking-[0.3em] hover:bg-white/10 transition"
+          >
+            Hide Debug UI
+          </button>
+        </div>
+      )}
     </div>
   );
 }

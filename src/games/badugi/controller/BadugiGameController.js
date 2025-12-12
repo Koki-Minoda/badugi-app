@@ -2,7 +2,11 @@
 import { GameController } from "../../core/GameController.js";
 import LegacyBadugiController from "../BadugiGameController.js";
 import { analyzeBetSnapshot } from "../flow/betRoundUtils.js";
-import { maxBetThisRound, isFoldedOrOut } from "../flow/actionUtils.js";
+import {
+  maxBetThisRound,
+  isFoldedOrOut,
+  findNextDrawActorSeat,
+} from "../flow/actionUtils.js";
 import { getWinnersByBadugi } from "../utils/badugiEvaluator.js";
 
 const DEFAULT_SEAT_CONFIG = ["HUMAN", "CPU", "CPU", "CPU", "CPU", "CPU"];
@@ -52,24 +56,11 @@ function normalizeSeatIndex(idx, total) {
 function findNextDrawableSeat(players = [], { startIndex = null, dealerIdx = 0 } = {}) {
   const seatCount = Array.isArray(players) ? players.length : 0;
   if (!seatCount) return null;
-  const base =
+  const normalizedBase =
     typeof startIndex === "number"
-      ? normalizeSeatIndex(startIndex, seatCount)
-      : normalizeSeatIndex((dealerIdx ?? 0) + 1, seatCount);
-  if (base == null) return null;
-  for (let offset = 0; offset < seatCount; offset += 1) {
-    const idx = (base + offset) % seatCount;
-    const player = players[idx];
-    const needsAction =
-      player &&
-      !isFoldedOrOut(player) &&
-      !player.seatOut &&
-      !player.hasDrawn;
-    if (needsAction) {
-      return idx;
-    }
-  }
-  return null;
+      ? startIndex
+      : ((dealerIdx ?? 0) + 1) % seatCount;
+  return findNextDrawActorSeat(players, normalizedBase);
 }
 
 function deriveLegalActions(snapshot, seatIndex) {

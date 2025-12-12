@@ -7,6 +7,9 @@ import {
   aliveDrawPlayers,
   nextAliveFrom,
   maxBetThisRound,
+  isSeatEligibleForBet,
+  isSeatEligibleForDraw,
+  findNextDrawActorSeat,
 } from "../flow/actionUtils.js";
 import {
   isBetRoundComplete,
@@ -21,6 +24,8 @@ export {
   aliveDrawPlayers,
   nextAliveFrom,
   maxBetThisRound,
+  isSeatEligibleForBet,
+  findNextDrawActorSeat,
 } from "../flow/actionUtils.js";
 export {
   isBetRoundComplete,
@@ -34,12 +39,7 @@ export function resetBetRoundFlags(players = []) {
   let changed = false;
   const normalized = players.map((player) => {
     if (!player) return player;
-    const skip =
-      isFoldedOrOut(player) ||
-      player.seatOut ||
-      player.isBusted ||
-      player.allIn;
-    if (skip) return player;
+    if (!isSeatEligibleForBet(player)) return player;
     if (player.hasActedThisRound === false) {
       return player;
     }
@@ -50,6 +50,151 @@ export function resetBetRoundFlags(players = []) {
     };
   });
   return changed ? normalized : players;
+}
+
+export function shouldSkipDrawRound(state = {}) {
+  if (state?.meta?.forceDrawRound) return false;
+  const players = Array.isArray(state?.players) ? state.players : [];
+  for (const player of players) {
+    if (!isSeatEligibleForDraw(player)) continue;
+    if ((player?.drawRequest ?? 0) > 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// NOTE (G-08):
+// Phase transitions must go through the helpers below so every BET/DRAW/SHOWDOWN
+// entry point shares the same side effects (flag resets, seat selection,
+// showdown wiring). Do not call setPhase("BET"/"DRAW"/"SHOWDOWN") directly
+// when advancing a hand; use these helpers instead.
+export function transitionToShowdownPhase({
+  players = [],
+  pots = [],
+  setPlayers,
+  setPots,
+  setPhase,
+  dealerIdx = 0,
+  drawRound = 0,
+  runShowdown,
+  dealNewHand,
+  setShowNextButton,
+  onShowdownComplete,
+  engineResolveShowdown,
+  recordActionToLog,
+  onHandFinished,
+  precomputedResult = null,
+  fromPhase = null,
+  onPhaseTransition,
+  onShowdownEntered,
+} = {}) {
+  if (typeof setPlayers === "function" && players) {
+    setPlayers(players);
+  }
+  if (typeof setPots === "function" && pots) {
+    setPots(pots);
+  }
+  if (typeof setPhase === "function") {
+    setPhase("SHOWDOWN");
+  }
+  onPhaseTransition?.(fromPhase, "SHOWDOWN");
+  onShowdownEntered?.();
+  runShowdown?.({
+    players,
+    setPlayers,
+    pots,
+    setPots,
+    dealerIdx,
+    dealNewHand,
+    setShowNextButton,
+    onShowdownComplete,
+    engineResolveShowdown,
+    precomputedResult,
+    recordActionToLog,
+    drawRound,
+    onHandFinished,
+  });
+}
+
+export function transitionToDrawPhase({
+  players = [],
+  pots = [],
+  setPlayers,
+  setPots,
+  setPhase,
+  setDrawRound,
+  setTurn,
+  dealerIdx = 0,
+  nextRound = 0,
+  actingPlayerIndex = null,
+  NUM_PLAYERS = players.length || 6,
+  setTransitioning,
+  fromPhase = null,
+  onPhaseTransition,
+  meta = null,
+  onSkipDrawRound,
+  forceDrawRound = false,
+} = {}) {
+  if (!forceDrawRound && shouldSkipDrawRound({ players, meta })) {
+    debugLog(`[FLOW] skip DRAW round ${nextRound} (no draw requests)`);
+    onPhaseTransition?.(fromPhase, "DRAW_SKIPPED");
+    onSkipDrawRound?.({
+      players,
+      pots,
+      nextRound,
+      actingPlayerIndex,
+      dealerIdx,
+      NUM_PLAYERS,
+    });
+    return false;
+  }
+  if (typeof setDrawRound === "function") {
+    setDrawRound(nextRound);
+  }
+  if (typeof setPlayers === "function" && players) {
+    setPlayers(players);
+  }
+  if (typeof setPots === "function" && pots) {
+    setPots(pots);
+  }
+  const fallbackSeat = calcDrawStartIndex(dealerIdx, nextRound, NUM_PLAYERS);
+  const resolvedTurn =
+    typeof actingPlayerIndex === "number" ? actingPlayerIndex : fallbackSeat;
+  setTurn?.(resolvedTurn);
+  setPhase?.("DRAW");
+  onPhaseTransition?.(fromPhase, "DRAW");
+  if (typeof setTransitioning === "function") {
+    setTransitioning(true);
+    setTimeout(() => setTransitioning(false), 500);
+  }
+  return true;
+}
+
+export function transitionToBetPhase({
+  players = [],
+  setPlayers,
+  setPhase,
+  setTurn,
+  turnSeat = null,
+  setBetHead,
+  betHeadSeat = null,
+  fromPhase = null,
+  onPhaseTransition,
+} = {}) {
+  if (typeof setPlayers === "function" && players) {
+    setPlayers(players);
+  }
+  setPhase?.("BET");
+  onPhaseTransition?.(fromPhase, "BET");
+  if (typeof turnSeat === "number") {
+    setTurn?.(turnSeat);
+  }
+  if (typeof setBetHead === "function") {
+    const resolvedHead =
+      typeof betHeadSeat === "number" ? betHeadSeat : turnSeat ?? null;
+    setBetHead(resolvedHead);
+  }
 }
 
 // --- sanitizeStacks:  all-in---
@@ -185,6 +330,11 @@ function mergeEquivalentPots(pots = []) {
 
 // === BET DRAW/SHOWDOWN ===
 
+// ANALYSIS: (A)(B) BETの決着は shouldAdvance / maxDraws 判定から到達し、
+//           needsActionForBet() が false になれば DRAW へ進む。
+//           全員 all-in や残存プレイヤー1名の場合でも
+//           activeNonAllIn/nextRound > MAX_DRAWS の条件で SHOWDOWN にフォールバックし、
+//           DRAW を勝手にスキップする分岐は存在しない。
 export function finishBetRoundFrom({
 
   players,
@@ -231,6 +381,10 @@ export function finishBetRoundFrom({
 
   onHandFinished,
 
+  onPhaseTransition,
+
+  onShowdownEntered,
+
 }) {
 
   console.log("[DEBUG][finishBetRoundFrom args]", {
@@ -276,6 +430,50 @@ export function finishBetRoundFrom({
   console.log(`[TRACE ${new Date().toISOString()}]  finishBetRoundFrom START`, { drawRound });
   debugLog(`[ BET] finishBetRoundFrom start drawRound=${drawRound}`);
 
+  const handleDrawRoundSkipped = ({
+    players: skipPlayers = [],
+    pots: skipPots = [],
+    nextRoundIndex = drawRound + 1,
+    actingPlayerIndex = null,
+  } = {}) => {
+    const betReady = resetBetRoundFlags(skipPlayers);
+    const playerCount = NUM_PLAYERS || betReady.length || 1;
+    const startSeat = ((dealerIdx + 1) % playerCount + playerCount) % playerCount;
+    const resolvedTurn =
+      typeof actingPlayerIndex === "number"
+        ? actingPlayerIndex
+        : findNextDrawActorSeat(betReady, startSeat) ?? startSeat;
+    if (typeof setDrawRound === "function") {
+      setDrawRound(nextRoundIndex);
+    }
+    transitionToBetPhase({
+      players: betReady,
+      setPlayers,
+      setPhase,
+      setTurn,
+      setBetHead,
+      turnSeat: resolvedTurn,
+      betHeadSeat: startSeat,
+      fromPhase: "DRAW",
+      onPhaseTransition,
+    });
+    debugLog(`[FLOW] DRAW round ${nextRoundIndex} skipped (no draw requests)`);
+    recordActionToLog?.({
+      type: "SKIP_DRAW_ROUND",
+      round: nextRoundIndex,
+      phase: "DRAW",
+      at: Date.now(),
+    });
+    onEngineSync?.({
+      reason: "roundFlow:draw-skipped",
+      playersSnapshot: betReady,
+      potsSnapshot: skipPots ?? [],
+      street: "BET",
+      drawRoundIndex: nextRoundIndex,
+      actingIndex: resolvedTurn,
+    });
+  };
+
   if (typeof engineAdvance === "function") {
     try {
       const outcome = engineAdvance({
@@ -303,45 +501,56 @@ export function finishBetRoundFrom({
           }
           const showdownPlayers = showdownResult?.players ?? nextPlayers;
           const showdownPots = showdownResult?.pots ?? nextPots;
-          if (showdownResult?.players) {
-            setPlayers(showdownResult.players);
-          } else {
-            setPlayers(nextPlayers);
-          }
-          setPots(showdownPots ?? []);
-          setPhase("SHOWDOWN");
-          runShowdown?.({
+          transitionToShowdownPhase({
             players: showdownPlayers,
+            pots: showdownPots ?? [],
             setPlayers,
-            pots: showdownPots,
             setPots,
+            setPhase,
             dealerIdx,
             dealNewHand,
             setShowNextButton,
             onShowdownComplete,
             engineResolveShowdown,
+            runShowdown,
             precomputedResult: showdownResult,
             recordActionToLog,
             drawRound,
             onHandFinished,
+            fromPhase: "BET",
+            onPhaseTransition,
+            onShowdownEntered,
           });
           return;
         }
 
-        setPlayers(nextPlayers);
-        setPots(nextPots);
-
         const nextRound = outcome.drawRoundIndex ?? drawRound + 1;
-        setDrawRound(nextRound);
-        setPhase("DRAW");
-        const nextTurn =
-          typeof outcome.actingPlayerIndex === "number"
-            ? outcome.actingPlayerIndex
-            : calcDrawStartIndex(dealerIdx, nextRound, NUM_PLAYERS);
-        setTurn(nextTurn);
-        if (setTransitioning) {
-          setTransitioning(true);
-          setTimeout(() => setTransitioning(false), 500);
+        const enteredDraw = transitionToDrawPhase({
+          players: nextPlayers,
+          pots: nextPots,
+          setPlayers,
+          setPots,
+          setPhase,
+          setDrawRound,
+          setTurn,
+          dealerIdx,
+          nextRound,
+          actingPlayerIndex: outcome.actingPlayerIndex,
+          NUM_PLAYERS,
+          setTransitioning,
+          fromPhase: "BET",
+          onPhaseTransition,
+          meta: outcome?.state?.metadata ?? outcome?.metadata ?? null,
+          onSkipDrawRound: ({ players: skipPlayers, pots: skipPots }) =>
+            handleDrawRoundSkipped({
+              players: skipPlayers ?? nextPlayers,
+              pots: skipPots ?? nextPots,
+              nextRoundIndex: nextRound,
+              actingPlayerIndex: outcome.actingPlayerIndex,
+            }),
+        });
+        if (enteredDraw === false) {
+          return;
         }
         return;
       }
@@ -397,10 +606,7 @@ export function finishBetRoundFrom({
 
 
   if (nextRound > MAX_DRAWS) {
-
     debugLog(" Final betting complete SHOWDOWN");
-
-    setPhase("SHOWDOWN");
     onEngineSync?.({
       reason: "roundFlow:showdown",
       playersSnapshot: clearedPlayers,
@@ -410,23 +616,27 @@ export function finishBetRoundFrom({
       actingIndex: dealerIdx,
     });
 
-    runShowdown?.({
+    transitionToShowdownPhase({
       players: clearedPlayers,
-      setPlayers,
       pots: newPots,
+      setPlayers,
       setPots,
+      setPhase,
       dealerIdx,
       dealNewHand,
       setShowNextButton,
       onShowdownComplete,
       engineResolveShowdown,
+      runShowdown,
       recordActionToLog,
       drawRound,
       onHandFinished,
+      fromPhase: "BET",
+      onPhaseTransition,
+      onShowdownEntered,
     });
 
     return;
-
   }
 
 
@@ -505,44 +715,50 @@ export function finishBetRoundFrom({
 
   // ---  hasDrawnfalseRAW#1--
 
-  const resetPlayers = clearedPlayers.map((p) => ({
-    ...p,
-    lastAction: "",
-    hasDrawn: isFoldedOrOut(p) ? true : false,
-    canDraw: !isFoldedOrOut(p),
-  }));
+  const resetPlayers = clearedPlayers.map((p) => {
+    const out = isFoldedOrOut(p);
+    return {
+      ...p,
+      lastAction: "",
+      hasDrawn: out ? true : false,
+      canDraw: !out,
+      hasActedThisRound: out ? true : false,
+    };
+  });
 
-  if (typeof setDrawRound === "function") {
-    setDrawRound(nextRound);
+  const enteredDraw = transitionToDrawPhase({
+    players: resetPlayers,
+    pots: newPots,
+    setPlayers,
+    setPots,
+    setPhase,
+    setDrawRound,
+    setTurn,
+    dealerIdx,
+    nextRound,
+    actingPlayerIndex: firstToDraw,
+    NUM_PLAYERS,
+    setTransitioning,
+    fromPhase: "BET",
+    onPhaseTransition,
+    onSkipDrawRound: ({ players: skipPlayers, pots: skipPots }) =>
+      handleDrawRoundSkipped({
+        players: skipPlayers ?? resetPlayers,
+        pots: skipPots ?? newPots,
+        nextRoundIndex: nextRound,
+        actingPlayerIndex: firstToDraw,
+      }),
+  });
+
+  if (enteredDraw === false) {
+    return;
   }
-  setPlayers(resetPlayers);
-
-
 
   debugLog(`[FLOW] DRAW #${nextRound} (SB=${firstToDraw})`);
 
-
-
-  // ---   ---
-
-  if (setTransitioning) {
-
-    setTransitioning(true);
-
-    // DRAW
-
-    setTimeout(() => setTransitioning(false), 500);
-
-  }
-
-
-
-  setTurn(firstToDraw);
   if (typeof setBetHead === "function") {
     setBetHead(firstToDraw);
   }
-
-  setPhase("DRAW");
   onEngineSync?.({
     reason: "roundFlow:draw-transition",
     playersSnapshot: resetPlayers,
@@ -555,13 +771,12 @@ export function finishBetRoundFrom({
   debugLog(`[SYNC] Phase=DRAW, round=${nextRound}, start=${firstToDraw}`);
 
   console.table(
-
-    resetPlayers.map((p,i)=>({
-
-      seat:i, name:p.name, folded:p.folded?'Y':'', drawn:p.hasDrawn?'Y':''
-
-    }))
-
+    resetPlayers.map((p, i) => ({
+      seat: i,
+      name: p.name,
+      folded: p.folded ? "Y" : "",
+      drawn: p.hasDrawn ? "Y" : "",
+    })),
   );
 
   console.log(`[TRACE ${new Date().toISOString()}] finishBetRoundFrom END nextPhase=DRAW`);
@@ -609,25 +824,16 @@ export function finishBetRoundFrom({
 // === DRAWpp.jsx===
 
 export function startDrawRound({
-
   players,
-
   dealerIdx,
-
   NUM_PLAYERS,
-
   setPlayers,
-
   setPhase,
-
   setDrawRound,
-
   setTurn,
-
   onAfter,
-
+  drawRoundIndex = 0,
 }) {
-
   const reset = players.map((p) => {
     const out = isFoldedOrOut(p);
     return {
@@ -636,27 +842,28 @@ export function startDrawRound({
       lastAction: "",
       hasDrawn: out ? true : false,
       canDraw: !out,
+      hasActedThisRound: out ? true : false,
     };
   });
 
-  setPlayers(reset);
+  const actingSeat = (dealerIdx + 1) % NUM_PLAYERS;
+  transitionToDrawPhase({
+    players: reset,
+    setPlayers,
+    setPhase,
+    setDrawRound: () =>
+      setDrawRound((value) =>
+        typeof value === "number" ? value + 1 : drawRoundIndex + 1
+      ),
+    setTurn,
+    dealerIdx,
+    nextRound: drawRoundIndex + 1,
+    actingPlayerIndex: actingSeat,
+    NUM_PLAYERS,
+    forceDrawRound: true,
+  });
 
-  const next = (dealerIdx + 1) % NUM_PLAYERS; // SB
-
-  setDrawRound(r => r + 1);
-
-  setPhase("DRAW");
-
-  setTurn(next);
-
-  debugLog(`[FLOW] startDrawRound turn=${next}`);
+  debugLog(`[FLOW] startDrawRound turn=${actingSeat}`);
 
   if (onAfter) onAfter();
-
 }
-
-
-
-
-
-

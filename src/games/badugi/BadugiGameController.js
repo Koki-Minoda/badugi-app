@@ -42,6 +42,8 @@ export class BadugiGameController {
       phase: "BET",
       handId: null,
       nextTurn: null,
+      sbIndex: null,
+      bbIndex: null,
     };
   }
 
@@ -104,6 +106,8 @@ export class BadugiGameController {
 
     this.state.players = nextHandState.players.map(clonePlayer);
     this.state.dealerIdx = nextDealerIdx;
+    this.state.sbIndex = nextHandState.sbIdx ?? null;
+    this.state.bbIndex = nextHandState.bbIdx ?? null;
     this.state.blindLevelIndex = nextHandState.blindLevelIndex;
     this.state.handsInLevel = nextHandState.handsInLevel;
     this.state.betHead = nextHandState.resolvedTurn;
@@ -190,6 +194,9 @@ export class BadugiGameController {
       totalPot,
       handId,
       evaluateHand,
+      buttonSeat: this.state.dealerIdx ?? null,
+      sbSeat: this.state.sbIndex ?? null,
+      bbSeat: this.state.bbIndex ?? null,
     });
     this.state.lastHandResult = result;
     return result;

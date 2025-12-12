@@ -1,7 +1,12 @@
-import { isFoldedOrOut, nextAliveFrom, maxBetThisRound } from "./actionUtils.js";
+import {
+  isFoldedOrOut,
+  nextAliveFrom,
+  maxBetThisRound,
+  isPlayerInBetRound,
+} from "./actionUtils.js";
 
 export function needsActionForBet(player, maxBet = 0) {
-  if (!player || isFoldedOrOut(player) || player.allIn) return false;
+  if (!player || !isPlayerInBetRound(player)) return false;
   const bet =
     typeof player.betThisRound === "number"
       ? player.betThisRound
@@ -15,16 +20,33 @@ export function needsActionForBet(player, maxBet = 0) {
   return bet < maxBet || !hasActed;
 }
 
-export function isBetRoundComplete(players) {
-  if (!Array.isArray(players)) return false;
-  const eligible = players.filter(
-    (player) => player && !isFoldedOrOut(player) && !player.allIn
-  );
-  if (eligible.length <= 1) {
-    return true;
+export function isBetRoundComplete(stateOrPlayers) {
+  if (!stateOrPlayers) return false;
+  const players = Array.isArray(stateOrPlayers)
+    ? stateOrPlayers
+    : Array.isArray(stateOrPlayers.players)
+    ? stateOrPlayers.players
+    : [];
+  const currentBet =
+    typeof stateOrPlayers?.currentBet === "number"
+      ? stateOrPlayers.currentBet
+      : maxBetThisRound(players);
+  let hasParticipant = false;
+  for (const player of players) {
+    if (!isPlayerInBetRound(player)) {
+      continue;
+    }
+    hasParticipant = true;
+    if (!player?.hasActedThisRound) return false;
+    const bet =
+      typeof player?.betThisRound === "number"
+        ? player.betThisRound
+        : typeof player?.bet === "number"
+        ? player.bet
+        : 0;
+    if (bet !== currentBet) return false;
   }
-  const maxNow = maxBetThisRound(players);
-  return !players.some((player) => needsActionForBet(player, maxNow));
+  return true;
 }
 
 export function closingSeatForAggressor(players, lastAggressorIdx) {
@@ -95,7 +117,7 @@ export function analyzeBetSnapshot({
   }
 
   const isHeadsUp = active.length <= 2;
-  const betRoundSatisfied = !hasPendingAction;
+  const betRoundSatisfied = isBetRoundComplete({ players: snap, currentBet: maxNow });
   const shouldAdvance = betRoundSatisfied;
 
   return {
@@ -151,4 +173,3 @@ function findNextBetActorSeat(snapshotOrPlayers, startIdx = 0, maxBet = 0) {
 
   return null;
 }
-

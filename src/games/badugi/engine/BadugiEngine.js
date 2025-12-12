@@ -5,7 +5,16 @@ import { DeckManager } from "../utils/deck.js";
 import { dealInitialHands, validatePreflopState } from "../utils/deckHelpers.js";
 import { resolveBadugiWinners } from "./badugiComparison.js";
 import { createBadugiTableState } from "./legacyState.js";
-import { settleStreetToPots, calcDrawStartIndex, nextAliveFrom } from "./roundFlow.js";
+import {
+  settleStreetToPots,
+  calcDrawStartIndex,
+  nextAliveFrom,
+} from "./roundFlow.js";
+import {
+  isSeatEligibleForBet,
+  markPlayerFolded,
+  findNextDrawActorSeat,
+} from "../flow/actionUtils.js";
 import { normalizePotsWithContributions } from "./potIntegrity.js";
 import { getFixedLimitBetSize } from "../logic/bettingRules.js";
 
@@ -119,7 +128,7 @@ export class BadugiEngine extends DrawEngineBase {
     }
 
     players.forEach((player) => {
-      if (isSeatEligible(player) && !player.allIn) {
+      if (isSeatEligibleForBet(player)) {
         player.hasActedThisRound = false;
       }
     });
@@ -265,46 +274,20 @@ export class BadugiEngine extends DrawEngineBase {
 
     const nextRound = drawRound + 1;
     if (nextRound > maxDraws) {
-      working.street = "SHOWDOWN";
-      working.isHandOver = true;
-      working.actingPlayerIndex = dealerIndex;
-      const showdownResult = this.resolveShowdown(working, { cloneState: false });
-      return {
-        state: showdownResult?.state ?? working,
-        street: "SHOWDOWN",
-        drawRoundIndex: drawRound,
-        showdown: true,
-        players: showdownResult?.state?.players ?? working.players,
-        pots: showdownResult?.state?.pots ?? working.pots,
-        showdownSummary: showdownResult?.summary,
-        totalPot: showdownResult?.totalPot,
-      };
+      return transitionEngineToShowdown(this, working, dealerIndex, drawRound);
     }
 
-    const drawStartBase = calcDrawStartIndex(
+    transitionEngineToDrawState(working, {
       dealerIndex,
       nextRound,
-      numPlayers || working.players.length || 6
-    );
-    const firstToDraw = findDrawableSeat(working.players, drawStartBase);
-
-    const resetPlayers = working.players.map((p) => ({
-      ...p,
-      hasDrawn: p.folded ? true : false,
-      canDraw: !p.folded,
-      lastAction: p.folded ? p.lastAction || metadata?.actionLabel || "Fold" : "",
-    }));
-
-    working.players = resetPlayers;
-    working.drawRoundIndex = nextRound;
-    working.street = "DRAW";
-    working.actingPlayerIndex = firstToDraw;
+      numPlayers: numPlayers || working.players.length || 6,
+    });
 
     return {
       state: working,
       street: "DRAW",
       drawRoundIndex: nextRound,
-      actingPlayerIndex: firstToDraw,
+      actingPlayerIndex: working.actingPlayerIndex,
       players: working.players,
       pots: working.pots,
     };
@@ -353,7 +336,13 @@ export class BadugiEngine extends DrawEngineBase {
       const contenders = eligibleSeats
         .map((seatIndex) => {
           const player = players[seatIndex];
-          if (!player || player.folded || player.seatOut) return null;
+          if (
+            !player ||
+            player.folded ||
+            player.seatOut ||
+            player.isActiveInGame === false
+          )
+            return null;
           return {
             seatIndex,
             name: player.name,
@@ -475,7 +464,7 @@ function findNextActiveSeat(players, startIndex, skipIndex) {
   for (let step = 0; step < n; step += 1) {
     const seat = (idx + step) % n;
     if (seat === skipIndex) continue;
-    if (isSeatEligible(players[seat])) return seat;
+    if (isSeatEligibleForBet(players[seat])) return seat;
   }
   return -1;
 }
@@ -516,16 +505,10 @@ function resolveRaiseSize(table, metadata = {}) {
 }
 
 function findDrawableSeat(players = [], startIndex = 0) {
-  if (!players.length) return 0;
-  const n = players.length;
-  let idx = ((startIndex % n) + n) % n;
-  for (let step = 0; step < n; step += 1) {
-    const seat = (idx + step) % n;
-    const pl = players[seat];
-    if (!pl || pl.folded || pl.seatOut) continue;
-    return seat;
-  }
-  return startIndex % n;
+  if (!Array.isArray(players) || players.length === 0) return 0;
+  const seat = findNextDrawActorSeat(players, startIndex);
+  if (typeof seat === "number") return seat;
+  return ((startIndex % players.length) + players.length) % players.length;
 }
 
 function applyDrawState(target, metadata = {}) {
@@ -540,8 +523,50 @@ function applyDrawState(target, metadata = {}) {
     : [];
   target.hand = handAfter;
   target.hasDrawn = true;
+  target.hasActedThisRound = true;
   target.lastDrawCount = drawCount;
   target.lastAction = metadata.actionLabel ?? (drawCount > 0 ? `DRAW(${drawCount})` : "Pat");
+}
+
+function transitionEngineToDrawState(table, { dealerIndex = 0, nextRound = 0, numPlayers = 6 } = {}) {
+  const players = table.players ?? [];
+  const drawStartBase = calcDrawStartIndex(
+    dealerIndex,
+    nextRound,
+    numPlayers || players.length || 6,
+  );
+  const firstToDraw = findDrawableSeat(players, drawStartBase);
+  const resetPlayers = players.map((p) => {
+    const out = isSeatEligibleForBet(p) ? false : true;
+    return {
+      ...p,
+      hasDrawn: out ? true : false,
+      canDraw: !out,
+      hasActedThisRound: out ? true : false,
+      lastAction: out ? p?.lastAction || "Fold" : p?.lastAction ?? "",
+    };
+  });
+  table.players = resetPlayers;
+  table.drawRoundIndex = nextRound;
+  table.street = "DRAW";
+  table.actingPlayerIndex = firstToDraw;
+}
+
+function transitionEngineToShowdown(engine, table, dealerIndex, drawRound) {
+  table.street = "SHOWDOWN";
+  table.isHandOver = true;
+  table.actingPlayerIndex = dealerIndex;
+  const showdownResult = engine.resolveShowdown(table, { cloneState: false });
+  return {
+    state: showdownResult?.state ?? table,
+    street: "SHOWDOWN",
+    drawRoundIndex: drawRound,
+    showdown: true,
+    players: showdownResult?.state?.players ?? table.players,
+    pots: showdownResult?.state?.pots ?? table.pots,
+    showdownSummary: showdownResult?.summary,
+    totalPot: showdownResult?.totalPot,
+  };
 }
 
 function applyFoldState(table, seatIndex, metadata = {}) {
@@ -556,8 +581,7 @@ function applyFoldState(table, seatIndex, metadata = {}) {
   if (typeof workingMeta.betAfter !== "number") workingMeta.betAfter = betBefore;
   player.stack = workingMeta.stackAfter;
   player.betThisRound = workingMeta.betAfter;
-  player.folded = true;
-  player.hasActedThisRound = true;
+  markPlayerFolded(player);
   player.lastAction = workingMeta.actionLabel ?? "Fold";
   const nextSeat = nextAliveFrom(table.players, seatIndex);
   const meta = (table.metadata = { ...(table.metadata ?? {}) });
@@ -659,13 +683,43 @@ function updateActingSeat(table, seatIndex, metadata = {}) {
     table.actingPlayerIndex = metadata.nextActingIndex;
     return metadata.nextActingIndex;
   }
-  const nextSeat = nextAliveFrom(table.players, seatIndex);
+  const nextSeat = findNextBetActor(table, seatIndex);
   if (typeof nextSeat === "number") {
     table.actingPlayerIndex = nextSeat;
     return nextSeat;
   }
-  table.actingPlayerIndex = seatIndex;
-  return seatIndex;
+  forceFinishCurrentRound(table);
+  return table.actingPlayerIndex ?? null;
+}
+
+function findNextBetActor(table, currentSeat) {
+  const players = table?.players ?? [];
+  const n = players.length;
+  if (!n || typeof currentSeat !== "number" || currentSeat < 0 || currentSeat >= n) {
+    return null;
+  }
+  let cursor = currentSeat;
+  for (let step = 0; step < n; step += 1) {
+    cursor = (cursor + 1) % n;
+    const candidate = players[cursor];
+    if (isSeatEligibleForBet(candidate) && !candidate.hasActedThisRound) {
+      return cursor;
+    }
+  }
+  return null;
+}
+
+function forceFinishCurrentRound(table) {
+  if (!table || table.phase !== "BET") return null;
+  // NOTE (H-01-3 / G-11c): After closing a BET round via this helper we
+  // intentionally clear actingPlayerIndex/betHead. The next phase helper
+  // (transitionToBetPhase/transitionToDrawPhase/transitionToShowdownPhase)
+  // must elect a fresh acting seat; actingPlayerIndex is meaningless between
+  // phases.
+  table.actingPlayerIndex = null;
+  const meta = ensureMetadata(table);
+  meta.betHead = null;
+  return null;
 }
 
 function updateBettingMetadata(table, seatIndex, actionType, metadata = {}) {
@@ -734,9 +788,9 @@ function applyStackAndBetSync(player, metadata = {}, table = null) {
     player.totalInvested = (player.totalInvested ?? 0) + contribution;
   }
 
+  player.hasActedThisRound = true;
   if (player.stack === 0) {
     player.allIn = true;
-    player.hasActedThisRound = true;
   }
 
   return {

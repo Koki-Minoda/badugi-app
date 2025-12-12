@@ -2,14 +2,39 @@ export function isFoldedOrOut(player) {
   return Boolean(player?.folded || player?.hasFolded || player?.seatOut);
 }
 
+// NOTE (H-01-2):
+//   - BTN/SB/BB candidates must satisfy isPlayerSeated && isPlayerActiveInGame.
+//   - BET/DRAW actors use isSeatEligibleForBet / isSeatEligibleForDraw,
+//     which add !folded && !allIn on top of the above conditions.
+//   - Showdown contenders are filtered by isPlayerActiveInGame && !folded.
+// All seat-selection helpers (nextAliveFrom, assignBlinds, controller actor search,
+// and showdown code) MUST call these helpers instead of duplicating predicates.
+export function isPlayerSeated(player) {
+  if (!player) return false;
+  if (typeof player.isSeated === "boolean") return player.isSeated;
+  if (player.seatType && typeof player.seatType === "string") {
+    if (player.seatType.toUpperCase() === "EMPTY") return false;
+  }
+  return !player.seatOut;
+}
+
+export function isPlayerActiveInGame(player) {
+  if (!player) return false;
+  if (typeof player.isActiveInGame === "boolean") return player.isActiveInGame;
+  if (player.seatOut || player.isBusted) return false;
+  return true;
+}
+
+export function isPlayerEligibleForBlinds(player) {
+  return isPlayerSeated(player) && isPlayerActiveInGame(player);
+}
+
 export function aliveBetPlayers(arr) {
-  return Array.isArray(arr)
-    ? arr.filter((p) => !isFoldedOrOut(p) && !p?.allIn)
-    : [];
+  return Array.isArray(arr) ? arr.filter((p) => isSeatEligibleForBet(p)) : [];
 }
 
 export function aliveDrawPlayers(arr) {
-  return Array.isArray(arr) ? arr.filter((p) => !isFoldedOrOut(p)) : [];
+  return Array.isArray(arr) ? arr.filter((p) => isSeatEligibleForDraw(p)) : [];
 }
 
 export function nextAliveFrom(arr, idx) {
@@ -17,7 +42,7 @@ export function nextAliveFrom(arr, idx) {
   const n = arr.length;
   let next = ((idx ?? 0) + 1) % n;
   let loop = 0;
-  while (isFoldedOrOut(arr[next]) || arr[next]?.allIn) {
+  while (!isSeatEligibleForBet(arr[next])) {
     next = (next + 1) % n;
     if (++loop > n) return null;
   }
@@ -37,7 +62,7 @@ export function findNextActiveSeat(players, startIdx = 0) {
   for (let offset = 0; offset < n; offset += 1) {
     const candidate = (startIdx + offset) % n;
     const player = players[candidate];
-    if (player && !isFoldedOrOut(player) && !player.allIn) {
+    if (isSeatEligibleForBet(player)) {
       return candidate;
     }
   }
@@ -51,7 +76,7 @@ export function firstBetterAfterBlinds(players, dealerIdx = 0) {
   for (let offset = 0; offset < n; offset += 1) {
     const seat = (start + offset) % n;
     const player = players[seat];
-    if (player && !isFoldedOrOut(player) && !player.allIn) {
+    if (isSeatEligibleForBet(player)) {
       return seat;
     }
   }
@@ -79,6 +104,53 @@ export function sanitizeStacks(players) {
     }
     return next;
   });
+}
+
+export function isPlayerInBetRound(player) {
+  if (!isPlayerEligibleForBlinds(player)) return false;
+  if (isFoldedOrOut(player)) return false;
+  if (player?.allIn) return false;
+  return true;
+}
+
+export function isSeatEligibleForBet(player) {
+  return isPlayerInBetRound(player);
+}
+
+export function isSeatEligibleForDraw(player) {
+  if (!isPlayerInBetRound(player)) return false;
+  if (player?.canDraw === false) return false;
+  return true;
+}
+
+// NOTE (G-07): Draw actor search mirrors BET actor search.
+// We rely on isSeatEligibleForDraw (folded/all-in are skipped) and
+// hasActedThisRound to decide who still needs to draw. Returning null means
+// the draw round is complete and callers must advance the phase safely.
+export function findNextDrawActorSeat(players = [], startIdx = 0) {
+  if (!Array.isArray(players) || players.length === 0) return null;
+  const n = players.length;
+  const normalized =
+    typeof startIdx === "number" && Number.isFinite(startIdx)
+      ? ((Math.trunc(startIdx) % n) + n) % n
+      : 0;
+  for (let offset = 0; offset < n; offset += 1) {
+    const seat = (normalized + offset) % n;
+    const player = players[seat];
+    if (isSeatEligibleForDraw(player) && !player?.hasActedThisRound) {
+      return seat;
+    }
+  }
+  return null;
+}
+
+// NOTE (G-06): Folded players must be completely skipped for BET/DRAW/showdown logic.
+export function markPlayerFolded(player) {
+  if (!player) return player;
+  player.folded = true;
+  player.hasFolded = true;
+  player.hasActedThisRound = true;
+  return player;
 }
 
 export function queueForcedSeatAction(map, seat, payload = {}) {
@@ -147,10 +219,8 @@ export function applyForcedBetActionSnapshot({ players, seat, payload = {}, betS
 
   switch (actionType) {
     case "fold":
-      actor.folded = true;
-      actor.hasFolded = true;
+      markPlayerFolded(actor);
       actor.lastAction = "Fold";
-      actor.hasActedThisRound = true;
       break;
     case "check":
       if (toCall > 0) {

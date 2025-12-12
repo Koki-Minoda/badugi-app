@@ -6,12 +6,12 @@ import {
   resetBetRoundFlags,
   analyzeBetSnapshot,
   isSeatEligibleForBet,
-  findNextDrawActorSeat,
   transitionToDrawPhase,
   transitionToShowdownPhase,
   transitionToBetPhase,
   shouldSkipDrawRound,
 } from "../../engine/roundFlow.js";
+import { findNextActorSeatForPhase } from "../../flow/nextActorUtils.js";
 
 const makePlayer = ({
   folded = false,
@@ -24,6 +24,9 @@ const makePlayer = ({
   betThisRound,
   hasActedThisRound,
 });
+
+const findNextDrawSeat = (players, startIdx = 0) =>
+  findNextActorSeatForPhase({ phase: "DRAW", players, startIdx });
 
 describe("shouldSkipDrawRound", () => {
   const seat = (overrides = {}) => ({
@@ -307,7 +310,7 @@ describe("draw lifecycle integration", () => {
     expect(setTurn).toHaveBeenCalledWith(1);
 
     const visited = [];
-    let cursor = findNextDrawActorSeat(players, 0);
+    let cursor = findNextDrawSeat(players, 0);
     while (typeof cursor === "number") {
       visited.push(cursor);
       players[cursor] = {
@@ -315,10 +318,10 @@ describe("draw lifecycle integration", () => {
         hasDrawn: true,
         hasActedThisRound: true,
       };
-      cursor = findNextDrawActorSeat(players, cursor + 1);
+      cursor = findNextDrawSeat(players, cursor + 1);
     }
     expect(visited).toEqual([1, 2, 3, 4, 5]);
-    expect(findNextDrawActorSeat(players, 0)).toBeNull();
+    expect(findNextDrawSeat(players, 0)).toBeNull();
 
     const setTurnBet = vi.fn();
     const setBetHead = vi.fn();
@@ -562,7 +565,7 @@ describe("preflop and draw integration snapshots", () => {
   });
 });
 
-describe("findNextDrawActorSeat", () => {
+describe("findNextActorSeatForPhase (DRAW)", () => {
   const drawSeat = (overrides = {}) => ({
     name: overrides.name ?? "Seat",
     folded: overrides.folded ?? false,
@@ -581,9 +584,9 @@ describe("findNextDrawActorSeat", () => {
       drawSeat({ name: "MP" }),
     ];
 
-    expect(findNextDrawActorSeat(players, 0)).toBe(3);
+    expect(findNextDrawSeat(players, 0)).toBe(3);
     players[3].hasActedThisRound = true;
-    expect(findNextDrawActorSeat(players, 3)).toBe(4);
+    expect(findNextDrawSeat(players, 3)).toBe(4);
   });
 
   it("returns null when all eligible seats have acted", () => {
@@ -593,7 +596,7 @@ describe("findNextDrawActorSeat", () => {
       drawSeat({ hasActedThisRound: true }),
     ];
 
-    expect(findNextDrawActorSeat(players, 0)).toBeNull();
+    expect(findNextDrawSeat(players, 0)).toBeNull();
   });
 });
 

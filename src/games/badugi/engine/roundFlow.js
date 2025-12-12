@@ -9,7 +9,6 @@ import {
   maxBetThisRound,
   isSeatEligibleForBet,
   isSeatEligibleForDraw,
-  findNextDrawActorSeat,
 } from "../flow/actionUtils.js";
 import {
   isBetRoundComplete,
@@ -17,6 +16,7 @@ import {
   analyzeBetSnapshot,
   needsActionForBet,
 } from "../flow/betRoundUtils.js";
+import { findNextActorSeatForPhase } from "../flow/nextActorUtils.js";
 
 export {
   isFoldedOrOut,
@@ -25,7 +25,6 @@ export {
   nextAliveFrom,
   maxBetThisRound,
   isSeatEligibleForBet,
-  findNextDrawActorSeat,
 } from "../flow/actionUtils.js";
 export {
   isBetRoundComplete,
@@ -442,7 +441,12 @@ export function finishBetRoundFrom({
     const resolvedTurn =
       typeof actingPlayerIndex === "number"
         ? actingPlayerIndex
-        : findNextDrawActorSeat(betReady, startSeat) ?? startSeat;
+        :
+          findNextActorSeatForPhase({
+            phase: "DRAW",
+            players: betReady,
+            startIdx: startSeat,
+          }) ?? startSeat;
     if (typeof setDrawRound === "function") {
       setDrawRound(nextRoundIndex);
     }

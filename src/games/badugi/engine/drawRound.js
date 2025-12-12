@@ -1,5 +1,5 @@
 // src/games/badugi/engine/drawRound.js
-import { findNextDrawActorSeat } from "../flow/actionUtils.js";
+import { findNextActorSeatForPhase } from "../flow/nextActorUtils.js";
 import { debugLog } from "../../../utils/debugLog";
 import { assertNoDuplicateCards } from "../utils/deck.js";
 
@@ -21,7 +21,11 @@ export function runDrawRound({
   console.log(`[TRACE ${new Date().toISOString()}] runDrawRound START turn=${turn}, drawRound=${drawRound}`);
   const actor = players[turn];
   if (!actor || actor.folded || actor.seatOut || actor.hasDrawn) {
-    const nxt = findNextDrawActorSeat(players, (turn ?? 0) + 1);
+    const nxt = findNextActorSeatForPhase({
+      phase: "DRAW",
+      players,
+      startIdx: (turn ?? 0) + 1,
+    });
     if (typeof nxt === "number") {
       setTurn(nxt);
     } else {
@@ -109,7 +113,11 @@ export function runDrawRound({
     });
   }
 
-  const nextIdx = findNextDrawActorSeat(updatedPlayers, (turn ?? 0) + 1);
+  const nextIdx = findNextActorSeatForPhase({
+    phase: "DRAW",
+    players: updatedPlayers,
+    startIdx: (turn ?? 0) + 1,
+  });
 
   if (typeof nextIdx === "number") {
     setTurn(nextIdx);

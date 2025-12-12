@@ -135,7 +135,7 @@ export function analyzeBetSnapshot({
   };
 }
 
-function findNextBetActorSeat(snapshotOrPlayers, startIdx = 0, maxBet = 0) {
+export function findNextBetActorSeat(snapshotOrPlayers, startIdx = 0, maxBet = 0) {
   // Works with either a snapshot object or raw players array
   const players = Array.isArray(snapshotOrPlayers)
     ? snapshotOrPlayers

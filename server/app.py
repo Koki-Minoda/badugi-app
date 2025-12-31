@@ -23,3 +23,7 @@ app.include_router(sync.router)
 @app.get("/health", tags=["health"])
 async def health_check():
     return {"status": "ok", "timestamp": datetime.now(timezone.utc).isoformat()}
+
+@app.get("/api/health", tags=["health"])
+async def health_check_api():
+    return await health_check()

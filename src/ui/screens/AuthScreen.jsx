@@ -1,14 +1,17 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { useAuth } from "../state/authStore.js";
+import { useAuth } from "../state/authStore.jsx";
 
-const API_BASE = import.meta.env?.VITE_API_BASE ?? "http://127.0.0.1:8000/api";
+const API_BASE_RAW = import.meta.env?.VITE_API_BASE ?? "/api";
+const API_BASE = API_BASE_RAW.endsWith("/api")
+  ? API_BASE_RAW
+  : `${API_BASE_RAW.replace(/\/$/, "")}/api`;
 
 async function postJson(path, payload, token) {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(token ? { "x-api-key": token } : {}),
     },
     body: JSON.stringify(payload),
   });
@@ -27,7 +30,7 @@ async function postJson(path, payload, token) {
 async function fetchCurrentUser(token) {
   const res = await fetch(`${API_BASE}/auth/me`, {
     headers: {
-      Authorization: `Bearer ${token}`,
+      "x-api-key": token,
     },
   });
   if (!res.ok) {
@@ -73,6 +76,7 @@ export default function AuthScreen({ onAuthenticated }) {
           await postJson("/auth/signup", {
             email: trimmedEmail,
             password,
+            confirmPassword,
           });
           setInfo("Signup successful. Please login.");
           // TODO: automatically sign in once email verification is implemented.
@@ -91,14 +95,15 @@ export default function AuthScreen({ onAuthenticated }) {
           email: trimmedEmail,
           password,
         });
-        const token = loginPayload?.access_token;
+        const token = loginPayload?.apiKey;
         if (!token) {
           throw new Error("Invalid login response");
         }
-        const userProfile = await fetchCurrentUser(token);
+        const userProfile = loginPayload?.user ?? (await fetchCurrentUser(token));
         const user = {
           id: userProfile?.id ?? null,
           username: userProfile?.username ?? trimmedEmail,
+          email: userProfile?.email ?? trimmedEmail,
         };
         loginSuccess({ accessToken: token, user });
         if (onAuthenticated) {

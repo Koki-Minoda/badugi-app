@@ -37,6 +37,7 @@ export default function Player({
   positionLabel,
   canSelectForDraw = false,
 }) {
+  const seatIndex = typeof index === "number" ? index : 0;
   const isHero = index === selfIndex;
   const isActive = turn === index;
   const statusBadges = [];
@@ -56,11 +57,19 @@ export default function Player({
 
   return (
     <div
-      data-testid={positionLabel ? `seat-${positionLabel.toLowerCase()}` : undefined}
+      data-testid={`seat-${seatIndex}`}
       className={`relative rounded-2xl border border-white/10 bg-gray-900/80 p-3 shadow-lg backdrop-blur flex flex-col gap-2 ${
         player.folded ? "opacity-60" : ""
       } ${isActive ? "ring-2 ring-yellow-400" : ""} ${isWinner ? "ring-4 ring-emerald-400 animate-pulse" : ""}`}
     >
+      {positionLabel && (
+        <div
+          data-testid={`seat-${seatIndex}-pos`}
+          className="absolute top-2 left-2 rounded-md bg-black/40 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-100/90"
+        >
+          {positionLabel}
+        </div>
+      )}
       {betValue > 0 && !chipBelow && (
         <BetChip amount={betValue} className="absolute -top-14 left-1/2 -translate-x-1/2" />
       )}

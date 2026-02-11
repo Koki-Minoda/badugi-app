@@ -1,5 +1,8 @@
 const STORAGE_KEY = "sync.queue.v1";
-const API_BASE = import.meta.env?.VITE_API_BASE ?? "http://127.0.0.1:8000/api";
+const API_BASE_RAW = import.meta.env?.VITE_API_BASE ?? "/api";
+const API_BASE = API_BASE_RAW.endsWith("/api")
+  ? API_BASE_RAW
+  : `${API_BASE_RAW.replace(/\/$/, "")}/api`;
 
 let flushing = false;
 let timer = null;
@@ -24,12 +27,15 @@ function saveQueue(queue) {
   }
 }
 
-function authHeaders(accessToken) {
+function authHeaders(accessToken, useApiKey = false) {
   const headers = {
     "Content-Type": "application/json",
   };
   if (accessToken) {
     headers.Authorization = `Bearer ${accessToken}`;
+    if (useApiKey) {
+      headers["x-api-key"] = accessToken;
+    }
   }
   return headers;
 }
@@ -43,7 +49,7 @@ function enqueueJob(type, payload) {
 async function postJson(path, body, options = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
-    headers: authHeaders(options.accessToken),
+    headers: authHeaders(options.accessToken, options.useApiKey),
     body: JSON.stringify(body),
   });
   if (!res.ok) {
@@ -53,19 +59,140 @@ async function postJson(path, body, options = {}) {
   return res.json();
 }
 
+function normalizeHandLogPayload(payload) {
+  const record = payload?.data ?? payload ?? {};
+  const handId = record.handId ?? record.hand_id ?? record.id ?? null;
+  if (!handId) {
+    console.warn("[sync] hand-history missing handId", record);
+    return null;
+  }
+  const createdAt =
+    record.created_at ??
+    (Number.isFinite(record.endedAt) ? new Date(record.endedAt).toISOString() : null) ??
+    (Number.isFinite(record.startedAt) ? new Date(record.startedAt).toISOString() : null) ??
+    (Number.isFinite(record.ts) ? new Date(record.ts).toISOString() : new Date().toISOString());
+  const seats = Array.isArray(record.seats) ? record.seats : [];
+  const pots = Array.isArray(record.pots) ? record.pots : [];
+  const winners = [
+    ...new Set(
+      pots
+        .flatMap((pot) => (Array.isArray(pot?.winners) ? pot.winners : []))
+        .map((winner) =>
+          typeof winner?.seat === "number"
+            ? winner.seat
+            : typeof winner?.seatIndex === "number"
+            ? winner.seatIndex
+            : null,
+        )
+        .filter((seat) => seat !== null),
+    ),
+  ];
+  const pot = pots.reduce((sum, potEntry) => sum + (potEntry?.amount ?? 0), 0);
+  // Example: seats=[...], pots=[{amount:50,winners:[{seat:1,collect:50}]}] -> winners=[1], pot=50.
+  const actions = seats.flatMap((seatEntry) => {
+    const seatIndex = seatEntry?.seat ?? seatEntry?.seatIndex;
+    if (!Number.isFinite(seatIndex)) {
+      console.warn("[sync] hand-history action missing seatIndex", seatEntry);
+      return [];
+    }
+    const playerId =
+      seatEntry?.player_id ??
+      seatEntry?.playerId ??
+      seatEntry?.name ??
+      `seat-${seatIndex}`;
+    const seatActions = Array.isArray(seatEntry?.actions) ? seatEntry.actions : [];
+    return seatActions.map((entry) => ({
+      seat_index: seatIndex,
+      player_id: playerId,
+      action: entry?.type ?? entry?.action ?? "action",
+      amount: Number.isFinite(entry?.amount) ? entry.amount : null,
+      round: Number.isFinite(entry?.round) ? entry.round : 0,
+      seq: Number.isFinite(entry?.seq) ? entry.seq : null,
+      phase: entry?.street ?? entry?.phase ?? "BET",
+      ts: entry?.timestamp ?? entry?.ts ?? null,
+      meta: entry?.metadata ?? null,
+    }));
+  });
+  const results = seats.reduce((acc, seatEntry) => {
+    const seatIndex = seatEntry?.seat ?? seatEntry?.seatIndex;
+    if (!Number.isFinite(seatIndex)) {
+      console.warn("[sync] hand-history result missing seatIndex", seatEntry);
+      return acc;
+    }
+    const playerId =
+      seatEntry?.player_id ??
+      seatEntry?.playerId ??
+      seatEntry?.name ??
+      `seat-${seatIndex}`;
+    const collected = pots.reduce((sum, potEntry) => {
+      const payouts = Array.isArray(potEntry?.winners) ? potEntry.winners : [];
+      const seatTotal = payouts.reduce((acc, payout) => {
+        const winnerSeat =
+          typeof payout?.seat === "number"
+            ? payout.seat
+            : typeof payout?.seatIndex === "number"
+            ? payout.seatIndex
+            : null;
+        if (winnerSeat !== seatIndex) return acc;
+        return acc + (payout?.collect ?? 0);
+      }, 0);
+      return sum + seatTotal;
+    }, 0);
+    acc.push({
+      seat_index: seatIndex,
+      player_id: playerId,
+      final_stack: Number.isFinite(seatEntry?.endStack) ? seatEntry.endStack : 0,
+      hand_label: seatEntry?.evaluation?.label ?? null,
+      is_winner: winners.includes(seatIndex),
+      pot_share: collected,
+    });
+    return acc;
+  }, []);
+  const metadata = {
+    source: "syncManager",
+    gameId: record.gameId ?? record.variantId ?? null,
+    tableSize: record.tableSize ?? null,
+    pot,
+    winners,
+    winner: record.winner ?? null,
+  };
+  return {
+    hand_id: handId,
+    table_id: record.tableId ?? record.table_id ?? null,
+    tournament_id: record.tournamentId ?? record.tournament_id ?? null,
+    level: Number.isFinite(record.level) ? record.level : null,
+    created_at: createdAt,
+    actions,
+    results,
+    metadata,
+  };
+}
+
+function normalizeTournamentSavePayload(payload) {
+  if (payload?.snapshot) return payload;
+  return { snapshot: payload };
+}
+
 async function sendJob(job, options = {}) {
   switch (job.type) {
     case "hand-history":
-      await postJson("/history/hand", job.payload, options);
+      {
+        const payload = normalizeHandLogPayload(job.payload);
+        if (!payload) return;
+        await postJson("/badugi/hands", payload, options);
+      }
       break;
     case "rating-update":
-      await postJson("/rating/update", job.payload, options);
+      console.warn("[sync] rating-update skipped (backend not wired yet)");
       break;
     case "tournament-snapshot":
-      await postJson("/tournament/snapshot", job.payload, options);
+      {
+        const payload = normalizeTournamentSavePayload(job.payload);
+        await postJson("/tournament/save", payload, options);
+      }
       break;
     case "rl-buffer":
-      await postJson("/ai/rl/buffer", job.payload, options);
+      console.warn("[sync] rl-buffer skipped (backend not wired yet)");
       break;
     default:
       console.warn("[sync] unknown job type", job.type);
@@ -121,13 +248,18 @@ export function startAutoSync(intervalMs = 30000, options = {}) {
   };
 }
 
-export function enqueueHandRecord(record) {
+export function enqueueHandRecord(record, options = {}) {
   enqueueJob("hand-history", {
     handId: record.handId,
     winner: record.winner,
     variantId: record.gameId,
     data: record,
   });
+  if (options.flushNow && import.meta.env?.DEV) {
+    flushQueue(options).catch((err) => {
+      console.warn("[sync] flushNow failed", err);
+    });
+  }
 }
 
 export function enqueueRatingUpdate(payload) {

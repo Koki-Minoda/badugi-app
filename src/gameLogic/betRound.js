@@ -1,5 +1,6 @@
 // src/gameLogic/betRound.js
 import { evaluateBadugi } from "../utils/badugi";
+import { applyChips } from "../games/core/applyChips.js";
 
 /**
  * BET round driver for the legacy NPC flow.
@@ -64,10 +65,9 @@ export function runBetRound({
     if (evalResult.isBadugi || madeCards >= 3 || Math.random() > 0.45) {
       // Call / Check
       if (toCall > 0) {
-        const pay = Math.min(p.stack, toCall); // All-in aware
-        p.stack -= pay;
-        p.betThisRound += pay;
-        p.lastAction = pay < toCall ? "Call (All-in)" : "Call";
+        const applied = applyChips(p, toCall); // All-in aware
+        p.betThisRound += applied;
+        p.lastAction = applied < toCall ? "Call (All-in)" : "Call";
         if (p.stack === 0) p.allIn = true;
       } else {
         p.lastAction = "Check";
@@ -76,10 +76,9 @@ export function runBetRound({
       // Occasionally raise if there is stack left.
       if (!p.allIn && Math.random() > 0.85 && madeCards >= 3) {
         const raiseAmt = betSize; // fixed limit
-        const pay = Math.min(p.stack, raiseAmt);
-        p.stack -= pay;
-        p.betThisRound += pay;
-        p.lastAction = pay < raiseAmt ? "Raise (All-in)" : "Raise";
+        const appliedRaise = applyChips(p, raiseAmt);
+        p.betThisRound += appliedRaise;
+        p.lastAction = appliedRaise < raiseAmt ? "Raise (All-in)" : "Raise";
         if (p.stack === 0) p.allIn = true;
       }
     } else {

@@ -1,5 +1,6 @@
 // src/components/Controls.jsx
-import React from "react";
+import React, { useMemo } from "react";
+import getAvailableActions from "../utils/getAvailableActions.js";
 
 export default function Controls({
   phase,
@@ -16,6 +17,15 @@ export default function Controls({
 }) {
   if (!player) return null;
 
+  const betActions = useMemo(() => {
+    if (phase !== "BET") return [];
+    return getAvailableActions({ currentBet, player });
+  }, [phase, currentBet, player]);
+
+  if (phase === "BET" && betActions.length === 0) {
+    return null;
+  }
+
   const isMobile = layoutMode === "mobile";
   const containerClass =
     className ??
@@ -28,49 +38,57 @@ export default function Controls({
 
   return (
     <div className={containerClass}>
-      {phase === "BET" && (
+      {phase === "BET" && betActions.length > 0 && (
         <div
           className={`flex ${
             isMobile ? "gap-3 w-full flex-col sm:flex-row" : "gap-2"
           }`}
         >
-          <button
-            onClick={onFold}
-            className={`${buttonBase} ${
-              isMobile
-                ? "bg-slate-800 text-white border border-white/10"
-                : "bg-gray-700 text-white"
-            }`}
-          >
-            Fold
-          </button>
-          {currentBet > player.betThisRound ? (
-            <button
-              onClick={onCall}
-              className={`${buttonBase} ${
-                isMobile ? "bg-blue-600 text-white" : "bg-blue-600 text-white"
-              }`}
-            >
-              Call
-            </button>
-          ) : (
-            <button
-              onClick={onCheck}
-              className={`${buttonBase} ${
-                isMobile ? "bg-yellow-400 text-black" : "bg-yellow-500 text-black"
-              }`}
-            >
-              Check
-            </button>
-          )}
-          <button
-            onClick={onRaise}
-            className={`${buttonBase} ${
-              isMobile ? "bg-red-600 text-white" : "bg-red-600 text-white"
-            }`}
-          >
-            Raise
-          </button>
+          {betActions.map((action) => {
+            const handlerMap = {
+              onFold,
+              onCall,
+              onCheck,
+              onRaise,
+            };
+            const handleClick = handlerMap[action.handler];
+            if (!handleClick) return null;
+
+            let variantClass = "";
+            switch (action.variant) {
+              case "fold":
+                variantClass = isMobile
+                  ? "bg-slate-800 text-white border border-white/10"
+                  : "bg-gray-700 text-white";
+                break;
+              case "call":
+                variantClass = "bg-blue-600 text-white";
+                break;
+              case "allin":
+                variantClass = "bg-purple-600 text-white";
+                break;
+              case "check":
+                variantClass = isMobile
+                  ? "bg-yellow-400 text-black"
+                  : "bg-yellow-500 text-black";
+                break;
+              case "raise":
+                variantClass = "bg-red-600 text-white";
+                break;
+              default:
+                variantClass = "bg-slate-700 text-white";
+            }
+
+            return (
+              <button
+                key={action.key}
+                onClick={handleClick}
+                className={`${buttonBase} ${variantClass}`}
+              >
+                {action.label}
+              </button>
+            );
+          })}
         </div>
       )}
       {phase === "DRAW" && (

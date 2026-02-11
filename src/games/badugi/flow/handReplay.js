@@ -1,4 +1,5 @@
 // src/games/badugi/flow/handReplay.js
+import { applyChips } from "./actionUtils.js";
 
 function clonePlayers(players = []) {
   return players.map((player) => ({
@@ -17,9 +18,7 @@ function applyBlindPayment(players, seat, amount) {
   const target = players[seat];
   if (!target) return 0;
   const resolved = Math.max(0, Number(amount) || 0);
-  target.stack = Math.max(0, target.stack - resolved);
-  target.totalInvested += resolved;
-  return resolved;
+  return applyChips(target, resolved);
 }
 
 export function replayHandFromHistory(history) {
@@ -60,9 +59,8 @@ export function replayHandFromHistory(history) {
               target.folded = true;
             }
             const pay = Math.max(0, Number(event.amount) || 0);
-            target.stack = Math.max(0, target.stack - pay);
-            target.totalInvested += pay;
-            pot += pay;
+            const applied = applyChips(target, pay);
+            pot += applied;
           }
         }
         break;

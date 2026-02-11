@@ -3,6 +3,7 @@
 import NLHGameDefinition from "./NLHGameDefinition.js";
 import { evaluateNlhHand, compareNlhHands } from "./utils/nlhEvaluator.js";
 import { DeckManager } from "../badugi/utils/deck.js";
+import { applyChips } from "../core/applyChips.js";
 
 function clonePlayer(player) {
   if (!player) return player;
@@ -208,10 +209,8 @@ export class NLHGameController {
   }
 
   commitChips(player, amount) {
-    const pay = Math.min(player.stack, amount);
-    player.stack -= pay;
-    player.betThisStreet = (player.betThisStreet ?? 0) + pay;
-    player.totalInvested = (player.totalInvested ?? 0) + pay;
+    const applied = applyChips(player, amount);
+    player.betThisStreet = (player.betThisStreet ?? 0) + applied;
     if (player.stack === 0) {
       player.allIn = true;
     }

@@ -1,6 +1,6 @@
 import { evaluateBadugi } from "../utils/badugiEvaluator.js";
 import { resolveBadugiWinners } from "./badugiComparison.js";
-import { buildSidePots } from "./roundFlow.js";
+import { buildSidePots } from "./roundFlow.jsx";
 import { saveTournamentHistory, saveHandHistory } from "../../../utils/history.js";
 
 export function runShowdown({

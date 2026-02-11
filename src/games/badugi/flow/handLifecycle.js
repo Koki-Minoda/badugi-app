@@ -1,4 +1,5 @@
 import {
+  applyChips,
   firstBetterAfterBlinds,
   isPlayerSeated,
   isPlayerActiveInGame,
@@ -198,13 +199,11 @@ export function buildNextHandState({
   if (anteValue > 0) {
     players.forEach((player, seat) => {
       if (player.seatOut) return;
-      const antePay = Math.min(player.stack, anteValue);
-      if (antePay > 0) {
-        player.stack -= antePay;
-        player.betThisRound += antePay;
-        player.totalInvested = (player.totalInvested ?? 0) + antePay;
-        player.lastAction = `ANTE(${antePay})`;
-        anteEvents.push({ seat, amount: antePay });
+      const applied = applyChips(player, anteValue);
+      if (applied > 0) {
+        player.betThisRound += applied;
+        player.lastAction = `ANTE(${applied})`;
+        anteEvents.push({ seat, amount: applied });
       }
       if (player.stack === 0) {
         player.allIn = true;
@@ -290,13 +289,10 @@ function applyBlindPayment(players = [], seatIndex = null, amount = 0) {
   if (!Array.isArray(players) || typeof seatIndex !== "number") return 0;
   const player = players[seatIndex];
   if (!player || amount <= 0) return 0;
-  const stack = Math.max(0, player.stack ?? 0);
-  const pay = Math.min(stack, amount);
+  const pay = applyChips(player, amount);
   if (pay <= 0) return 0;
 
-  player.stack = stack - pay;
   player.betThisRound = (player.betThisRound ?? 0) + pay;
-  player.totalInvested = (player.totalInvested ?? 0) + pay;
   if (player.stack === 0) {
     player.allIn = true;
     player.hasActedThisRound = true;

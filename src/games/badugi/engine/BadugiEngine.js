@@ -9,12 +9,13 @@ import {
   settleStreetToPots,
   calcDrawStartIndex,
   nextAliveFrom,
-} from "./roundFlow.js";
+} from "./roundFlow.jsx";
 import {
   isSeatEligibleForBet,
   markPlayerFolded,
   findNextDrawActorSeat,
 } from "../flow/actionUtils.js";
+import { applyChips } from "../flow/actionUtils.js";
 import { normalizePotsWithContributions } from "./potIntegrity.js";
 import { getFixedLimitBetSize } from "../logic/bettingRules.js";
 
@@ -436,16 +437,10 @@ function isSeatEligible(player) {
 
 function payContribution(player, amount) {
   if (!player || amount <= 0) return { updated: player, paid: 0 };
-  const stack = Math.max(0, player.stack ?? 0);
-  const pay = Math.min(stack, amount);
-  if (pay <= 0) return { updated: player, paid: 0 };
-
-  const updated = {
-    ...player,
-    stack: stack - pay,
-    betThisRound: (player.betThisRound ?? 0) + pay,
-    totalInvested: (player.totalInvested ?? 0) + pay,
-  };
+  const updated = { ...player };
+  const pay = applyChips(updated, amount);
+  if (pay <= 0) return { updated, paid: 0 };
+  updated.betThisRound = (updated.betThisRound ?? 0) + pay;
 
   if (updated.stack === 0) {
     updated.allIn = true;
@@ -457,6 +452,10 @@ function payContribution(player, amount) {
   return { updated, paid: pay };
 }
 
+/**
+ * ENGINE-LEGACY helper: scoped to internal table state.
+ * External layers must not import this (use flow/nextActorUtils).
+ */
 function findNextActiveSeat(players, startIndex, skipIndex) {
   if (!Array.isArray(players) || players.length === 0) return -1;
   const n = players.length;
@@ -504,6 +503,10 @@ function resolveRaiseSize(table, metadata = {}) {
   return Math.max(1, currentBet || 1);
 }
 
+/**
+ * ENGINE-LEGACY: DRAW actor helper for engine-managed tables only.
+ * FLOW/UI must rely on flow/nextActorUtils instead of invoking this directly.
+ */
 function findDrawableSeat(players = [], startIndex = 0) {
   if (!Array.isArray(players) || players.length === 0) return 0;
   const seat = findNextDrawActorSeat(players, startIndex);
@@ -692,6 +695,10 @@ function updateActingSeat(table, seatIndex, metadata = {}) {
   return table.actingPlayerIndex ?? null;
 }
 
+/**
+ * ENGINE-LEGACY: next BET actor search limited to BadugiEngine state.
+ * FLOW/UI must NOT import this helper; use flow/nextActorUtils instead.
+ */
 function findNextBetActor(table, currentSeat) {
   const players = table?.players ?? [];
   const n = players.length;
@@ -760,33 +767,22 @@ function applyStackAndBetSync(player, metadata = {}, table = null) {
   const betBefore =
     typeof metadata.betBefore === "number" ? metadata.betBefore : player.betThisRound ?? 0;
 
-  let stackAfter =
-    typeof metadata.stackAfter === "number" ? metadata.stackAfter : undefined;
-  let betAfter = typeof metadata.betAfter === "number" ? metadata.betAfter : undefined;
   let paid = typeof metadata.paid === "number" ? metadata.paid : undefined;
-
-  if (typeof betAfter !== "number" || typeof stackAfter !== "number") {
-    if (typeof paid !== "number") {
-      const target =
-        typeof metadata.toCall === "number"
-          ? metadata.toCall + Math.max(0, metadata.raise ?? 0)
-          : Math.max(
-              0,
-              (table ? computeCurrentBet(table.players) : betBefore) - betBefore
-            );
-      paid = Math.min(stackBefore, target);
-    }
-    betAfter = betBefore + paid;
-    stackAfter = Math.max(0, stackBefore - paid);
+  if (typeof paid !== "number") {
+    const target =
+      typeof metadata.toCall === "number"
+        ? metadata.toCall + Math.max(0, metadata.raise ?? 0)
+        : Math.max(
+            0,
+            (table ? computeCurrentBet(table.players) : betBefore) - betBefore
+          );
+    paid = target;
   }
-
-  player.stack = stackAfter;
-  player.betThisRound = betAfter;
-
+  const applied = applyChips(player, paid);
+  player.betThisRound = betBefore + applied;
+  const stackAfter = player.stack;
+  const betAfter = player.betThisRound;
   const contribution = Math.max(0, betAfter - betBefore);
-  if (contribution > 0) {
-    player.totalInvested = (player.totalInvested ?? 0) + contribution;
-  }
 
   player.hasActedThisRound = true;
   if (player.stack === 0) {

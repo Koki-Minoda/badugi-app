@@ -1,5 +1,6 @@
 import { GameEngine } from "./gameEngine.js";
 import { cloneTableState } from "./models.js";
+import { applyChips } from "./applyChips.js";
 
 /**
  * Base helper for flop/board games (NLH, PLO, Dramaha board partなど)。
@@ -18,10 +19,8 @@ export class BoardEngineBase extends GameEngine {
     const applyBlind = (seatIdx, amount, label) => {
       const seat = next.players[seatIdx];
       if (!seat || seat.sittingOut) return;
-      const pay = Math.min(seat.stack, amount);
-      seat.stack -= pay;
-      seat.bet = (seat.bet ?? 0) + pay;
-      seat.totalInvested = (seat.totalInvested ?? 0) + pay;
+      const applied = applyChips(seat, amount);
+      seat.bet = (seat.bet ?? 0) + applied;
       seat.lastAction = label;
       if (seat.stack === 0) seat.allIn = true;
     };

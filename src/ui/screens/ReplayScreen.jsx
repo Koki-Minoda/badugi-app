@@ -552,72 +552,75 @@ export default function ReplayScreen({ handId = null, onClose = () => {}, onBack
             </button>
           </div>
           {showAnalysis && (
-          <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-white/80">
-            <div className="flex items-center justify-between">
-              <p className="text-xs uppercase tracking-[0.4em] text-slate-400">Analysis</p>
-              <span className="text-xs text-slate-400">
-                Frame {frames.length === 0 ? 0 : clampedIndex + 1} / {frames.length || 0}
-              </span>
-            </div>
-            {!analysis && (
-              <div className="mt-4 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/70">
-                No analysis available for this frame.
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-white/80">
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-[0.4em] text-slate-400">Analysis</p>
+                <span className="text-xs text-slate-400">
+                  Frame {frames.length === 0 ? 0 : clampedIndex + 1} / {frames.length || 0}
+                </span>
               </div>
-            )}
-            {analysis && (
-              <>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Phase</p>
-                    <p className="text-base text-white">{analysis.phase ?? "N/A"}</p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
-                      Acting Seat
-                    </p>
-                    <p className="text-base text-white">
-                      {Number.isInteger(analysis.actorSeat ?? analysis.actingSeat)
-                        ? analysis.actorSeat ?? analysis.actingSeat
-                        : "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
-                      Position
-                    </p>
-                    <p className="text-base text-white">{analysis.positionBucket ?? "N/A"}</p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Pot</p>
-                    <p className="text-base text-white">
-                      {formatChips(analysis.pot) ?? analysis.potBucket ?? "N/A"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
-                      To call
-                    </p>
-                    <p className="text-base text-white">
-                      {Number.isFinite(analysis.toCall)
-                        ? `${formatChips(analysis.toCall)}`
-                        : analysis.toCallBucket ?? "N/A"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
-                      Stack buckets
-                    </p>
-                    <p className="text-base text-white">
-                      {Array.isArray(analysis.stackBuckets) && analysis.stackBuckets.length
-                        ? analysis.stackBuckets.join(", ")
-                        : "N/A"}
-                    </p>
-                  </div>
+
+              {!analysis && (
+                <div className="mt-4 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/70">
+                  No analysis available for this frame.
                 </div>
-                <div className="mt-2 text-xs text-slate-400">
-                  Training data:{" "}
-                  {trainingState.status === "building"
-                    ? "Building index…"
+              )}
+
+              {analysis && (
+                <>
+                  {/* 既存の analysis UI をこの枠内で維持 */}
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Phase</p>
+                      <p className="text-base text-white">{analysis.phase ?? "N/A"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
+                        Acting Seat
+                      </p>
+                      <p className="text-base text-white">
+                        {Number.isInteger(analysis.actorSeat ?? analysis.actingSeat)
+                          ? analysis.actorSeat ?? analysis.actingSeat
+                          : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
+                        Position
+                      </p>
+                      <p className="text-base text-white">{analysis.positionBucket ?? "N/A"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Pot</p>
+                      <p className="text-base text-white">
+                        {formatChips(analysis.pot) ?? analysis.potBucket ?? "N/A"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
+                        To call
+                      </p>
+                      <p className="text-base text-white">
+                        {Number.isFinite(analysis.toCall)
+                          ? `${formatChips(analysis.toCall)}`
+                          : analysis.toCallBucket ?? "N/A"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
+                        Stack buckets
+                      </p>
+                      <p className="text-base text-white">
+                        {Array.isArray(analysis.stackBuckets) && analysis.stackBuckets.length
+                          ? analysis.stackBuckets.join(", ")
+                          : "N/A"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-2 text-xs text-slate-400">
+                    Training data:{" "}
+                    {trainingState.status === "building"
+                      ? "Building index…"
                     : trainingState.metadata
                     ? `${trainingState.metadata.sampleCount} samples from ${trainingState.metadata.usableHands}/${trainingState.metadata.totalHands} hands`
                     : "Not available"}
@@ -725,8 +728,7 @@ export default function ReplayScreen({ handId = null, onClose = () => {}, onBack
               </>
             )}
           </div>
-        </div>
-        </div>
+          )}
 
         <ReplayTableView frame={currentFrame} flashSeat={flashSeat} hoverSeat={hoverSeat} />
 
@@ -783,5 +785,6 @@ export default function ReplayScreen({ handId = null, onClose = () => {}, onBack
         </div>
       </div>
     </div>
+  </div>
   );
 }

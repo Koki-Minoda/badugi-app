@@ -28,6 +28,15 @@ export default function RootApp() {
             </GameEngineProvider>
           }
         />
+        <Route path="/dev" element={<Navigate to="/dev/" replace />} />
+        <Route
+          path="/dev/*"
+          element={
+            <GameEngineProvider gameId="badugi">
+              <App />
+            </GameEngineProvider>
+          }
+        />
         <Route path="/menu" element={<MainMenuScreen />} />
         <Route path="/friend-match" element={<FriendMatchSetupScreen />} />
         <Route path="/mixed" element={<MixedGameScreen />} />

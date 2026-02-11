@@ -1,3 +1,7 @@
+import { applyChips } from "../../core/applyChips.js";
+
+export { applyChips };
+
 export function isFoldedOrOut(player) {
   return Boolean(player?.folded || player?.hasFolded || player?.seatOut);
 }
@@ -204,12 +208,8 @@ export function applyForcedBetActionSnapshot({ players, seat, payload = {}, betS
 
   const invest = (chips) => {
     if (chips <= 0) return 0;
-    const applied = Math.min(actor.stack, chips);
-    actor.stack -= applied;
+    const applied = applyChips(actor, chips);
     actor.betThisRound += applied;
-    if (applied > 0) {
-      actor.totalInvested = (actor.totalInvested ?? 0) + applied;
-    }
     if (actor.stack === 0) {
       actor.allIn = true;
       actor.hasActedThisRound = true;

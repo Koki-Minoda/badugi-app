@@ -30,6 +30,7 @@ import {
   isSeatEligibleForDraw,
   isPlayerSeated,
   isPlayerActiveInGame,
+  applyChips,
   queueForcedSeatAction as queueForcedSeatActionMap,
   forceSequentialFolds as forceSequentialFoldsMap,
   forceAllInAction as forceAllInActionMap,
@@ -44,7 +45,7 @@ import {
   transitionToBetPhase,
   transitionToDrawPhase,
   transitionToShowdownPhase,
-} from "../games/badugi/engine/roundFlow.js";
+} from "../games/badugi/engine/roundFlow.jsx";
 import {
   analyzeBetSnapshot,
   needsActionForBet,
@@ -115,8 +116,8 @@ import ReplayScreen from "./screens/ReplayScreen.jsx";
 import { useGameSessionState } from "./hooks/useGameSessionState.js";
 import MobileOrientationGate from "./components/MobileOrientationGate.jsx";
 import { useDeviceProfile } from "./hooks/useDeviceProfile.js";
-import { AuthProvider, useAuth } from "./state/authStore.js";
-import { startAutoSync } from "./utils/syncManager.js";
+import { AuthProvider, useAuth } from "./state/authStore.jsx";
+import { enqueueHandRecord, startAutoSync } from "./utils/syncManager.js";
 import {
   createMTTTournamentState,
   onTableHandCompleted,
@@ -189,7 +190,10 @@ const DEFAULT_STORE_TOURNAMENT_CONFIG = {
   ],
 };
 
-const API_BASE = import.meta.env?.VITE_API_BASE ?? "http://127.0.0.1:8000/api";
+const API_BASE_RAW = import.meta.env?.VITE_API_BASE ?? "/api";
+const API_BASE = API_BASE_RAW.endsWith("/api")
+  ? API_BASE_RAW
+  : `${API_BASE_RAW.replace(/\/$/, "")}/api`;
 
 function getRequestedVariantIdFromURL() {
   if (typeof window === "undefined") return DEFAULT_GAME_VARIANT;
@@ -217,6 +221,29 @@ function getRequestedModeFromURL() {
     console.warn("mode detection failed", err);
   }
   return "cash";
+}
+
+function readDebugMetrics() {
+  if (typeof window === "undefined") {
+    return {
+      href: "",
+      innerWidth: 0,
+      innerHeight: 0,
+      visualViewportWidth: null,
+      visualViewportHeight: null,
+      rootChildCount: 0,
+    };
+  }
+  const vv = window.visualViewport;
+  const root = document.getElementById("root");
+  return {
+    href: window.location.href,
+    innerWidth: window.innerWidth,
+    innerHeight: window.innerHeight,
+    visualViewportWidth: vv ? Math.round(vv.width) : null,
+    visualViewportHeight: vv ? Math.round(vv.height) : null,
+    rootChildCount: root?.children?.length ?? 0,
+  };
 }
 
 
@@ -258,293 +285,7 @@ function getInitialLanguage() {
   } catch (err) {
     console.warn("language detection failed", err);
   }
-
-  const resolvingDrawRef = useRef(false);
-  const scheduledFinishDrawRef = useRef(false);
-  // NOTE (G-11e): CPU draw actions run through this helper so DRAW phase always
-  // advances via the canonical lifecycle. It returns true when it consumed the
-  // acting seat (to avoid duplicate work in callers).
-  // ANALYSIS: (C) 全員がAIでもここで順番に draw を実行し、全席 hasDrawn=true に
-  //           なるまで finishDrawRound() を呼ばないため DRAW ラウンドは省略されない。
-  const autoResolveCpuDrawIfNeeded = useCallback(() => {
-    if (phase !== "DRAW") return false;
-    if (resolvingDrawRef.current) return false;
-    resolvingDrawRef.current = true;
-    try {
-    const basePlayers = playersRef.current ?? players;
-    if (!Array.isArray(basePlayers) || basePlayers.length === 0) return false;
-    const seatCount = basePlayers.length;
-    const ensureNextSeat = () => {
-      const fallback = findNextDrawActorSeat(basePlayers);
-      if (fallback === null) {
-        if (!transitioningRef.current && !transitioning) {
-          if (scheduledFinishDrawRef.current) return true;
-          scheduledFinishDrawRef.current = true;
-          setTransitioning(true);
-          setTimeout(() => {
-            try {
-              const freshSnapshot = playersRef.current ?? basePlayers;
-              forceFinishRound({
-                reason: "auto-draw-no-actor",
-                phaseOverride: "DRAW",
-                playersSnapshot: freshSnapshot,
-              });
-            } finally {
-              scheduledFinishDrawRef.current = false;
-              setTransitioning(false);
-            }
-          }, 50);
-        }
-        return true;
-      }
-      setTurn(fallback);
-      return true;
-    };
-      if (!Number.isInteger(turn) || turn < 0 || turn >= seatCount) {
-        return ensureNextSeat() || false;
-      }
-      if (turn === 0) {
-        // Hero acts manually; nothing to do.
-        return false;
-      }
-    const snapshot = basePlayers.map(clonePlayerState).filter(Boolean);
-    const currentSeat = snapshot[turn];
-      if (!currentSeat || isFoldedOrOut(currentSeat)) {
-        const nxt = findNextDrawActorSeat(snapshot, turn);
-        if (nxt !== null) {
-          setTurn(nxt);
-        } else {
-          forceFinishRound({
-            reason: "auto-draw-seat-missing",
-            phaseOverride: "DRAW",
-            playersSnapshot: snapshot,
-          });
-        }
-        return true;
-      }
-      if (currentSeat.hasDrawn || currentSeat.allIn) {
-        const nxt = findNextDrawActorSeat(snapshot, turn + 1);
-        if (nxt !== null) {
-          setTurn(nxt);
-        } else {
-          forceFinishRound({
-            reason: "auto-draw-already-acted",
-            phaseOverride: "DRAW",
-            playersSnapshot: snapshot,
-          });
-        }
-        return true;
-      }
-    const seatToAct = turn;
-    const me = snapshot[seatToAct]
-      ? {
-          ...snapshot[seatToAct],
-          hand: Array.isArray(snapshot[seatToAct].hand) ? [...snapshot[seatToAct].hand] : [],
-        }
-      : null;
-      if (!me) return false;
-    const deckManager = getDeckManager();
-    const drawEvaluator = evaluateBadugi(me.hand);
-    const drawCount = npcAutoDrawCount(drawEvaluator);
-    const replacedCards = [];
-    const oldHand = [...me.hand];
-    const npcActiveCards = collectActiveCards(snapshot);
-    const deckBefore =
-      typeof deckManager?.snapshot === "function" ? deckManager.snapshot() : null;
-    if (debugMode && deckBefore) {
-      console.debug("[DRAW][AUTO][BEFORE]", {
-        seat: seatToAct,
-        drawCount,
-        deck: deckBefore,
-        hand: [...oldHand],
-      });
-    }
-    try {
-      assertNoDuplicateCards(`[DRAW][AUTO seat=${seatToAct}][BEFORE]`, {
-        deck: deckManager?.deck,
-        discard: deckManager?.discardPile,
-        burn: deckManager?.burnPile,
-        ...buildSeatCardBuckets(snapshot),
-      });
-    } catch (err) {
-      console.error(err);
-      throw err;
-    }
-    const newHand = [...me.hand];
-    for (let i = 0; i < drawCount; i += 1) {
-      let drawn = deckManager?.draw?.(1, { activeCards: npcActiveCards }) ?? [];
-      if (!drawn.length) {
-        recycleFoldedAndDiscardsBeforeCurrent(snapshot, seatToAct);
-        drawn = deckManager?.draw?.(1, { activeCards: collectActiveCards(snapshot) }) ?? [];
-      }
-      if (!drawn.length) continue;
-      const outgoing = newHand[i];
-      deckManager?.discard?.([outgoing]);
-      newHand[i] = drawn[0];
-      replacedCards.push({ index: i, oldCard: outgoing, newCard: drawn[0] });
-    }
-    me.hand = newHand;
-    me.hasDrawn = true;
-    me.hasActedThisRound = true;
-    me.lastDrawCount = drawCount;
-    me.lastAction = drawCount === 0 ? "Pat" : `DRAW(${drawCount})`;
-    snapshot[seatToAct] = me;
-    if (debugMode) {
-      console.debug("[DRAW][AUTO][ACTION]", {
-        seat: seatToAct,
-        drawCount,
-        replacedCards,
-        before: oldHand,
-        after: [...newHand],
-      });
-    }
-    try {
-      assertNoDuplicateCards(`[DRAW][AUTO seat=${seatToAct}][AFTER]`, {
-        deck: deckManager?.deck,
-        discard: deckManager?.discardPile,
-        burn: deckManager?.burnPile,
-        ...buildSeatCardBuckets(snapshot),
-      });
-    } catch (err) {
-      console.error(err);
-      throw err;
-    }
-    const npcControllerMetadata = {
-      drawCount,
-      replacedCards: replacedCards.map((entry) => ({ ...entry })),
-      handAfter: [...me.hand],
-      drawIndexes: replacedCards.map((entry) => entry.index),
-      drawRound,
-      actionLabel: me.lastAction,
-    };
-    const controllerOutcome = tryControllerBetAction({
-      actionType: "draw",
-      seatIndex: seatToAct,
-      metadata: npcControllerMetadata,
-    });
-      if (controllerOutcome?.snapshot) {
-      const controllerPlayers = controllerOutcome.snapshot.players ?? [];
-      const actorAfter = controllerPlayers[seatToAct] ?? me;
-      logAction(seatToAct, actorAfter.lastAction ?? me.lastAction);
-      recordActionToLog({
-        phase: "DRAW",
-        round: drawRound + 1,
-        seat: seatToAct,
-        playerState: actorAfter,
-        type: actorAfter.lastAction ?? me.lastAction,
-        stackBefore: actorAfter.stack,
-        stackAfter: actorAfter.stack,
-        betBefore: actorAfter.betThisRound,
-        betAfter: actorAfter.betThisRound,
-        raiseCountTable: raiseCountThisRound,
-        metadata: { drawInfo: npcControllerMetadata },
-      });
-      const legacyFanout = syncLegacyFromControllerSnapshot(controllerOutcome.snapshot);
-      const normalizedPlayers = legacyFanout?.normalizedPlayers ?? controllerPlayers;
-      const nextSeat =
-        legacyFanout?.nextTurn ??
-        (typeof controllerOutcome.snapshot.turn === "number"
-          ? controllerOutcome.snapshot.turn
-          : typeof controllerOutcome.snapshot.nextTurn === "number"
-          ? controllerOutcome.snapshot.nextTurn
-          : null);
-      if (nextSeat !== null && nextSeat !== undefined) {
-        if (debugMode) {
-          console.debug("[DRAW][AUTO][NEXT]", { from: seatToAct, to: nextSeat });
-        }
-        setTurn(nextSeat);
-      } else if (!transitioning) {
-        setTransitioning(true);
-        setTimeout(() => {
-          forceFinishRound({
-            reason: "auto-draw-controller-finish",
-            phaseOverride: "DRAW",
-            playersSnapshot: playersRef.current ?? normalizedPlayers,
-          });
-          setTransitioning(false);
-        }, 50);
-      }
-      return true;
-    }
-    setPlayerSnapshot(snapshot);
-    const snapshotAfter = applyDeckSnapshot({
-      players: snapshot,
-      pots,
-      nextTurn: null,
-      turn: null,
-      metadata: {
-        currentBet,
-        betHead,
-        lastAggressor,
-        actingPlayerIndex: null,
-      },
-    });
-    syncEngineSnapshot(snapshotAfter);
-    logAction(seatToAct, me.lastAction);
-    recordActionToLog({
-      phase: "DRAW",
-      round: drawRound + 1,
-      seat: seatToAct,
-      playerState: me,
-      type: me.lastAction,
-      stackBefore: me.stack,
-      stackAfter: me.stack,
-      betBefore: me.betThisRound,
-      betAfter: me.betThisRound,
-      raiseCountTable: raiseCountThisRound,
-      metadata: { drawInfo: npcControllerMetadata },
-    });
-    const nextAfter = findNextDrawActorSeat(snapshot, seatToAct + 1);
-    if (debugMode) {
-      console.debug("[DRAW][AUTO][NEXT]", { from: seatToAct, to: nextAfter });
-    }
-    if (nextAfter !== null) {
-      setTurn(nextAfter);
-    } else if (!transitioning) {
-      if (scheduledFinishDrawRef.current) return true;
-      scheduledFinishDrawRef.current = true;
-      setTransitioning(true);
-      setTimeout(() => {
-        try {
-          forceFinishRound({
-            reason: "auto-draw-finished",
-            phaseOverride: "DRAW",
-            playersSnapshot: playersRef.current ?? snapshot,
-          });
-        } finally {
-          scheduledFinishDrawRef.current = false;
-          setTransitioning(false);
-        }
-      }, 50);
-    }
-    return true;
-    } finally {
-      resolvingDrawRef.current = false;
-    }
-  }, [
-    phase,
-    players,
-    turn,
-    transitioning,
-    drawRound,
-    debugMode,
-    raiseCountThisRound,
-    pots,
-    dealerIdx,
-    currentBet,
-    forceFinishRound,
-  ]);
-
   return MGX_DEFAULT_LOCALE;
-}
-
-// === TRACE HELPER (debug only) ===
-function trace(tag, extra = {}) {
-  const now = new Date().toISOString().split("T")[1].split(".")[0];
-  const hand = typeof handIdRef !== "undefined" && handIdRef?.current
-    ? handIdRef.current
-    : "-";
-  console.log(`[TRACE ${now}] [HAND ${hand}] [${typeof phase !== "undefined" ? phase : "-"}] ${tag}`, extra);
 }
 
 function npcAutoDrawCount(evalResult = {}) {
@@ -577,6 +318,8 @@ export default function App() {
   const [language, setLanguage] = useState(() => getInitialLanguage());
   // MGX branding: kitsune title screen + title → menu → game flow (2025-11-28)
   const [currentScreen, setCurrentScreen] = useState("title");
+  const [debugScale, setDebugScale] = useState(null);
+  const [authIsAuthenticated, setAuthIsAuthenticated] = useState(null);
   const [replayHandId, setReplayHandId] = useState(null);
   const isTournament = mode === "tournament-mtt";
   const initialVariantIdRef = useRef(getRequestedVariantIdFromURL());
@@ -753,6 +496,24 @@ export default function App() {
   }, []);
   const navigate = useNavigate();
   const location = useLocation();
+  const isDev = import.meta.env?.DEV;
+  const debugFlags = useMemo(() => {
+    if (!isDev) {
+      return {
+        enabled: false,
+        noscale: false,
+        nofixed: false,
+        novh: false,
+      };
+    }
+    const params = new URLSearchParams(location.search ?? "");
+    return {
+      enabled: params.get("debug") === "1",
+      noscale: params.get("noscale") === "1",
+      nofixed: params.get("nofixed") === "1",
+      novh: params.get("novh") === "1",
+    };
+  }, [isDev, location.search]);
   const ensureURLModeParam = useCallback(
     (modeValue) => {
       const params = new URLSearchParams(location.search ?? "");
@@ -899,6 +660,18 @@ const SAFE_RESET_PHASE = "IDLE";
   );
   const playersRef = useRef(players);
   playersRef.current = players;
+  const [pots, setPots] = useState([]);
+  const potsRef = useRef(pots);
+  useEffect(() => {
+    potsRef.current = pots;
+  }, [pots]);
+  // Track raise counts per street (table + seat granularity).
+  const [raisePerRound, setRaisePerRound] = useState([0, 0, 0, 0]);
+  const [raisePerSeatRound, setRaisePerSeatRound] = useState(
+    () => Array(NUM_PLAYERS).fill(0).map(() => [0, 0, 0, 0]) // [seat][round]
+  );
+  const [raiseCountThisRound, setRaiseCountThisRound] = useState(0);
+  const [actionLog, setActionLog] = useState([]); // RL/action log feed
   const resetInitialButtonState = useCallback(() => {
     handCountRef.current = 0;
     tableMetadataRef.current = {};
@@ -1109,6 +882,16 @@ const SAFE_RESET_PHASE = "IDLE";
   const isSingleTableBadugi = mode !== "tournament-mtt" && gameVariant === "badugi";
   const isMobileDevice = deviceProfile.isMobile;
   const layoutMode = isMobileDevice ? "mobile" : "desktop";
+  const shouldGateOrientation = isMobileDevice && mode !== "tournament-mtt";
+  const screenLabel = useMemo(() => {
+    if (authIsAuthenticated === false) return "Auth";
+    if (currentScreen === "title") return "Title";
+    if (currentScreen === "menu") return "Menu";
+    if (currentScreen === "settings") return "Settings";
+    if (currentScreen === "handHistory") return "HandHistory";
+    if (currentScreen === "handReplay") return "Replay";
+    return "Game";
+  }, [authIsAuthenticated, currentScreen]);
 
   const tryControllerBetAction = useCallback(
     ({ actionType, amount = 0, seatIndex = 0, metadata = {} }) => {
@@ -1596,23 +1379,10 @@ const SAFE_RESET_PHASE = "IDLE";
     return Math.max(0, Number(betRoundTracker.current) || 0);
   }
 
-  // Track raise counts per street (table + seat granularity).
-  const [raisePerRound, setRaisePerRound] = useState([0, 0, 0, 0]);
-  const [raisePerSeatRound, setRaisePerSeatRound] = useState(
-    () => Array(NUM_PLAYERS).fill(0).map(() => [0, 0, 0, 0]) // [seat][round]
-  );
-  const [actionLog, setActionLog] = useState([]); // RL/action log feed
-
   function currentBetRoundIndex() {
     return Math.min(betRoundIndex, MAX_DRAWS);
   }
 
-  const [pots, setPots] = useState([]);
-  const potsRef = useRef(pots);
-  useEffect(() => {
-    potsRef.current = pots;
-  }, [pots]);
-  const [raiseCountThisRound, setRaiseCountThisRound] = useState(0);
   const [transitioning, setTransitioning] = useState(false);
   const transitioningRef = useRef(transitioning);
   useEffect(() => {
@@ -1621,6 +1391,7 @@ const SAFE_RESET_PHASE = "IDLE";
   const [showNextButton, setShowNextButton] = useState(false);
 
   const handSavedRef = useRef(false);
+  const sentHandIdsRef = useRef(new Set());
   const handIdRef = useRef(null);
   const handStartStacksRef = useRef([]);
   const handHistoryRef = useRef(null);
@@ -1876,6 +1647,297 @@ const SAFE_RESET_PHASE = "IDLE";
   useEffect(() => {
     raiseCountRef.current = raiseCountThisRound;
   }, [raiseCountThisRound]);
+
+  const resolvingDrawRef = useRef(false);
+  const scheduledFinishDrawRef = useRef(false);
+  // NOTE (G-11e): CPU draw actions run through this helper so DRAW phase always
+  // advances via the canonical lifecycle. It returns true when it consumed the
+  // acting seat (to avoid duplicate work in callers).
+  // ANALYSIS: (C) 全員がAIでもここで順番に draw を実行し、全席 hasDrawn=true に
+  //           なるまで finishDrawRound() を呼ばないため DRAW ラウンドは省略されない。
+  const autoResolveCpuDrawIfNeeded = useCallback(() => {
+    if (phase !== "DRAW") return false;
+    if (resolvingDrawRef.current) return false;
+    resolvingDrawRef.current = true;
+    try {
+      const basePlayers = playersRef.current ?? players;
+      if (!Array.isArray(basePlayers) || basePlayers.length === 0) return false;
+      const seatCount = basePlayers.length;
+      const ensureNextSeat = () => {
+        const fallback = findNextDrawActorSeat(basePlayers);
+        if (fallback === null) {
+          if (!transitioningRef.current && !transitioning) {
+            if (scheduledFinishDrawRef.current) return true;
+            scheduledFinishDrawRef.current = true;
+            setTransitioning(true);
+            setTimeout(() => {
+              try {
+                const freshSnapshot = playersRef.current ?? basePlayers;
+                forceFinishRound({
+                  reason: "auto-draw-no-actor",
+                  phaseOverride: "DRAW",
+                  playersSnapshot: freshSnapshot,
+                });
+              } finally {
+                scheduledFinishDrawRef.current = false;
+                setTransitioning(false);
+              }
+            }, 50);
+          }
+          return true;
+        }
+        setTurn(fallback);
+        return true;
+      };
+      if (!Number.isInteger(turn) || turn < 0 || turn >= seatCount) {
+        return ensureNextSeat() || false;
+      }
+      if (turn === 0) {
+        // Hero acts manually; nothing to do.
+        return false;
+      }
+      const snapshot = basePlayers.map(clonePlayerState).filter(Boolean);
+      const currentSeat = snapshot[turn];
+      if (!currentSeat || isFoldedOrOut(currentSeat)) {
+        const nxt = findNextDrawActorSeat(snapshot, turn);
+        if (nxt !== null) {
+          setTurn(nxt);
+        } else {
+          forceFinishRound({
+            reason: "auto-draw-seat-missing",
+            phaseOverride: "DRAW",
+            playersSnapshot: snapshot,
+          });
+        }
+        return true;
+      }
+      if (currentSeat.hasDrawn || currentSeat.allIn) {
+        const nxt = findNextDrawActorSeat(snapshot, turn + 1);
+        if (nxt !== null) {
+          setTurn(nxt);
+        } else {
+          forceFinishRound({
+            reason: "auto-draw-already-acted",
+            phaseOverride: "DRAW",
+            playersSnapshot: snapshot,
+          });
+        }
+        return true;
+      }
+      const seatToAct = turn;
+      const me = snapshot[seatToAct]
+        ? {
+            ...snapshot[seatToAct],
+            hand: Array.isArray(snapshot[seatToAct].hand)
+              ? [...snapshot[seatToAct].hand]
+              : [],
+          }
+        : null;
+      if (!me) return false;
+      const deckManager = getDeckManager();
+      const drawEvaluator = evaluateBadugi(me.hand);
+      const drawCount = npcAutoDrawCount(drawEvaluator);
+      const replacedCards = [];
+      const oldHand = [...me.hand];
+      const npcActiveCards = collectActiveCards(snapshot);
+      const deckBefore =
+        typeof deckManager?.snapshot === "function" ? deckManager.snapshot() : null;
+      if (debugMode && deckBefore) {
+        console.debug("[DRAW][AUTO][BEFORE]", {
+          seat: seatToAct,
+          drawCount,
+          deck: deckBefore,
+          hand: [...oldHand],
+        });
+      }
+      try {
+        assertNoDuplicateCards(`[DRAW][AUTO seat=${seatToAct}][BEFORE]`, {
+          deck: deckManager?.deck,
+          discard: deckManager?.discardPile,
+          burn: deckManager?.burnPile,
+          ...buildSeatCardBuckets(snapshot),
+        });
+      } catch (err) {
+        console.error(err);
+        throw err;
+      }
+      const newHand = [...me.hand];
+      for (let i = 0; i < drawCount; i += 1) {
+        let drawn = deckManager?.draw?.(1, { activeCards: npcActiveCards }) ?? [];
+        if (!drawn.length) {
+          recycleFoldedAndDiscardsBeforeCurrent(snapshot, seatToAct);
+          drawn =
+            deckManager?.draw?.(1, { activeCards: collectActiveCards(snapshot) }) ??
+            [];
+        }
+        if (!drawn.length) continue;
+        const outgoing = newHand[i];
+        deckManager?.discard?.([outgoing]);
+        newHand[i] = drawn[0];
+        replacedCards.push({ index: i, oldCard: outgoing, newCard: drawn[0] });
+      }
+      me.hand = newHand;
+      me.hasDrawn = true;
+      me.hasActedThisRound = true;
+      me.lastDrawCount = drawCount;
+      me.lastAction = drawCount === 0 ? "Pat" : `DRAW(${drawCount})`;
+      snapshot[seatToAct] = me;
+      if (debugMode) {
+        console.debug("[DRAW][AUTO][ACTION]", {
+          seat: seatToAct,
+          drawCount,
+          replacedCards,
+          before: oldHand,
+          after: [...newHand],
+        });
+      }
+      try {
+        assertNoDuplicateCards(`[DRAW][AUTO seat=${seatToAct}][AFTER]`, {
+          deck: deckManager?.deck,
+          discard: deckManager?.discardPile,
+          burn: deckManager?.burnPile,
+          ...buildSeatCardBuckets(snapshot),
+        });
+      } catch (err) {
+        console.error(err);
+        throw err;
+      }
+      const npcControllerMetadata = {
+        drawCount,
+        replacedCards: replacedCards.map((entry) => ({ ...entry })),
+        handAfter: [...me.hand],
+        drawIndexes: replacedCards.map((entry) => entry.index),
+        drawRound,
+        actionLabel: me.lastAction,
+      };
+      const controllerOutcome = tryControllerBetAction({
+        actionType: "draw",
+        seatIndex: seatToAct,
+        metadata: npcControllerMetadata,
+      });
+      if (controllerOutcome?.snapshot) {
+        const controllerPlayers = controllerOutcome.snapshot.players ?? [];
+        const actorAfter = controllerPlayers[seatToAct] ?? me;
+        logAction(seatToAct, actorAfter.lastAction ?? me.lastAction);
+        recordActionToLog({
+          phase: "DRAW",
+          round: drawRound + 1,
+          seat: seatToAct,
+          playerState: actorAfter,
+          type: actorAfter.lastAction ?? me.lastAction,
+          stackBefore: actorAfter.stack,
+          stackAfter: actorAfter.stack,
+          betBefore: actorAfter.betThisRound,
+          betAfter: actorAfter.betThisRound,
+          raiseCountTable: raiseCountThisRound,
+          metadata: { drawInfo: npcControllerMetadata },
+        });
+        const legacyFanout = syncLegacyFromControllerSnapshot(
+          controllerOutcome.snapshot,
+        );
+        const normalizedPlayers =
+          legacyFanout?.normalizedPlayers ?? controllerPlayers;
+        const nextSeat =
+          legacyFanout?.nextTurn ??
+          (typeof controllerOutcome.snapshot.turn === "number"
+            ? controllerOutcome.snapshot.turn
+            : typeof controllerOutcome.snapshot.nextTurn === "number"
+            ? controllerOutcome.snapshot.nextTurn
+            : null);
+        if (nextSeat !== null && nextSeat !== undefined) {
+          if (debugMode) {
+            console.debug("[DRAW][AUTO][NEXT]", { from: seatToAct, to: nextSeat });
+          }
+          setTurn(nextSeat);
+        } else if (!transitioning) {
+          setTransitioning(true);
+          setTimeout(() => {
+            forceFinishRound({
+              reason: "auto-draw-controller-finish",
+              phaseOverride: "DRAW",
+              playersSnapshot: playersRef.current ?? normalizedPlayers,
+            });
+            setTransitioning(false);
+          }, 50);
+        }
+        return true;
+      }
+      setPlayerSnapshot(snapshot);
+      const snapshotAfter = applyDeckSnapshot({
+        players: snapshot,
+        pots,
+        nextTurn: null,
+        turn: null,
+        metadata: {
+          currentBet,
+          betHead,
+          lastAggressor,
+          actingPlayerIndex: null,
+        },
+      });
+      syncEngineSnapshot(snapshotAfter);
+      logAction(seatToAct, me.lastAction);
+      recordActionToLog({
+        phase: "DRAW",
+        round: drawRound + 1,
+        seat: seatToAct,
+        playerState: me,
+        type: me.lastAction,
+        stackBefore: me.stack,
+        stackAfter: me.stack,
+        betBefore: me.betThisRound,
+        betAfter: me.betThisRound,
+        raiseCountTable: raiseCountThisRound,
+        metadata: { drawInfo: npcControllerMetadata },
+      });
+      const nextAfter = findNextDrawActorSeat(snapshot, seatToAct + 1);
+      if (debugMode) {
+        console.debug("[DRAW][AUTO][NEXT]", { from: seatToAct, to: nextAfter });
+      }
+      if (nextAfter !== null) {
+        setTurn(nextAfter);
+      } else if (!transitioning) {
+        if (scheduledFinishDrawRef.current) return true;
+        scheduledFinishDrawRef.current = true;
+        setTransitioning(true);
+        setTimeout(() => {
+          try {
+            forceFinishRound({
+              reason: "auto-draw-finished",
+              phaseOverride: "DRAW",
+              playersSnapshot: playersRef.current ?? snapshot,
+            });
+          } finally {
+            scheduledFinishDrawRef.current = false;
+            setTransitioning(false);
+          }
+        }, 50);
+      }
+      return true;
+    } finally {
+      resolvingDrawRef.current = false;
+    }
+  }, [
+    phase,
+    players,
+    turn,
+    transitioning,
+    drawRound,
+    debugMode,
+    raiseCountThisRound,
+    pots,
+    dealerIdx,
+    currentBet,
+    forceFinishRound,
+  ]);
+
+  // === TRACE HELPER (debug only) ===
+  function trace(tag, extra = {}) {
+    const now = new Date().toISOString().split("T")[1].split(".")[0];
+    const hand = handIdRef?.current ?? "-";
+    const phaseLabel = phase ?? "-";
+    console.log(`[TRACE ${now}] [HAND ${hand}] [${phaseLabel}] ${tag}`, extra);
+  }
 
   function clonePlayerState(player) {
     if (!player) return null;
@@ -4570,9 +4632,8 @@ const SAFE_RESET_PHASE = "IDLE";
     if (anteValue > 0) {
       newPlayers.forEach((pl) => {
         if (pl.stack <= 0) return;
-        const antePay = Math.min(pl.stack, anteValue);
-        pl.stack -= antePay;
-        pl.betThisRound += antePay;
+        const applied = applyChips(pl, anteValue);
+        pl.betThisRound += applied;
         if (pl.stack === 0) {
           pl.allIn = true;
           pl.hasActedThisRound = true;
@@ -4580,15 +4641,13 @@ const SAFE_RESET_PHASE = "IDLE";
       });
     }
 
-    const sbPay = Math.min(newPlayers[0].stack, sbValue);
-    newPlayers[0].stack -= sbPay;
+    const sbPay = applyChips(newPlayers[0], sbValue);
     newPlayers[0].betThisRound += sbPay;
     if (newPlayers[0].stack === 0) {
       newPlayers[0].allIn = true;
       newPlayers[0].hasActedThisRound = true;
     }
-    const bbPay = Math.min(newPlayers[1].stack, bbValue);
-    newPlayers[1].stack -= bbPay;
+    const bbPay = applyChips(newPlayers[1], bbValue);
     newPlayers[1].betThisRound += bbPay;
     if (newPlayers[1].stack === 0) {
       newPlayers[1].allIn = true;
@@ -5732,7 +5791,7 @@ const SAFE_RESET_PHASE = "IDLE";
 
     const maxNow = maxBetThisRound(snap);
     const toCall = Math.max(0, maxNow - me.betThisRound);
-    const pay = Math.min(me.stack, toCall);
+    const pay = toCall;
     const controllerOutcome = tryControllerBetAction({
       actionType: toCall === 0 ? "check" : "call",
       amount: toCall,
@@ -5768,10 +5827,10 @@ const SAFE_RESET_PHASE = "IDLE";
       warnLegacySingleTablePath("hero-call/check fallback");
     }
 
-    me.stack -= pay;
-    me.betThisRound += pay;
-    me.lastAction = toCall === 0 ? "Check" : pay < toCall ? "Call (All-in)" : "Call";
-    logAction(0, me.lastAction, { toCall, pay, newBet: me.betThisRound });
+    const applied = applyChips(me, pay);
+    me.betThisRound += applied;
+    me.lastAction = toCall === 0 ? "Check" : applied < toCall ? "Call (All-in)" : "Call";
+    logAction(0, me.lastAction, { toCall, pay: applied, newBet: me.betThisRound });
     if (me.stack === 0) me.allIn = true;
     me.hasActedThisRound = true;
 
@@ -5926,10 +5985,10 @@ const SAFE_RESET_PHASE = "IDLE";
       warnLegacySingleTablePath("hero-raise fallback");
     }
 
-    const pay = Math.min(me.stack, total);
-    me.stack -= pay;
-    me.betThisRound += pay;
-    me.lastAction = pay < total ? "Raise (All-in)" : "Raise";
+    const pay = total;
+    const applied = applyChips(me, pay);
+    me.betThisRound += applied;
+    me.lastAction = applied < total ? "Raise (All-in)" : "Raise";
     
     if (me.stack === 0) me.allIn = true;
     me.hasActedThisRound = true;
@@ -5944,7 +6003,7 @@ const SAFE_RESET_PHASE = "IDLE";
      logAction(0, me.lastAction, {
        toCall,
        raise: raiseAmt,
-       pay,
+       pay: applied,
        newBet: me.betThisRound,
        raiseCount: raiseCountThisRound + 1,
     });
@@ -6271,16 +6330,14 @@ const SAFE_RESET_PHASE = "IDLE";
         markPlayerFolded(me);
         me.lastAction = "Fold";
       } else {
-        const pay = Math.min(me.stack, toCall);
-        me.stack -= pay;
-        me.betThisRound += pay;
+        const applied = applyChips(me, toCall);
+        me.betThisRound += applied;
         me.lastAction = toCall === 0 ? "Check" : "Call";
       }
 
       if (!me.allIn && Math.random() > 0.9 && raiseCountThisRound < 4 && madeCards >= 3) {
-        const add = Math.min(me.stack, betSize);
-        me.stack -= add;
-        me.betThisRound += add;
+        const appliedRaise = applyChips(me, betSize);
+        me.betThisRound += appliedRaise;
         me.lastAction = "Raise";
         setRaiseCountThisRound(c => c + 1);
         setBetHead(turn);
@@ -6463,6 +6520,18 @@ const SAFE_RESET_PHASE = "IDLE";
       };
 
       saveRLHandHistory(record);
+      // Hand completion trigger: trySaveHandOnce runs after SHOWDOWN and builds the final record.
+      const sendId = record.handId ?? record.hand_id ?? record.id;
+      if (!sendId) {
+        console.warn("[sync] hand-history missing handId", record);
+      } else if (!sentHandIdsRef.current.has(sendId)) {
+        try {
+          enqueueHandRecord(record, { flushNow: true });
+          sentHandIdsRef.current.add(sendId);
+        } catch (err) {
+          console.warn("[sync] hand-history enqueue failed", err);
+        }
+      }
       console.log("[HISTORY] saveRLHandHistory() called successfully");
       debugLog("[HISTORY] saved:", record.handId, record.winner);
       const heroOutcome = deriveHeroOutcome(record);
@@ -6701,81 +6770,137 @@ const SAFE_RESET_PHASE = "IDLE";
     locale
   );
   const nextHandLabel = formatComment("nextHandButton", {}, locale);
+  function handleAuthSuccess() {
+    setCurrentScreen("menu");
+  }
+  function handleAuthStateChange(state) {
+    authUserIdRef.current = state?.user?.id ?? null;
+    if (typeof state?.isAuthenticated === "boolean") {
+      setAuthIsAuthenticated(state.isAuthenticated);
+    }
+  }
 
   if (currentScreen === "title") {
-    return <TitleScreen onEnter={handleEnterFromTitle} />;
+    return (
+      <>
+        <TitleScreen onEnter={handleEnterFromTitle} />
+        <DebugHud
+          enabled={debugFlags.enabled}
+          deviceProfile={deviceProfile}
+          shouldGateOrientation={shouldGateOrientation}
+          debugScale={debugScale}
+          screenLabel={screenLabel}
+        />
+      </>
+    );
   }
 
   if (currentScreen === "menu") {
     return (
-      <AuthProvider>
-        <AuthGate
-          onAuthenticated={handleAuthSuccess}
-          onAuthStateChange={handleAuthStateChange}
-        >
-          <MenuScreenWithLogout
-            language={language}
-            onChangeLanguage={(nextLanguage) => {
-              const next =
-                nextLanguage && MGX_LOCALES[nextLanguage]
-                  ? nextLanguage
-                  : MGX_DEFAULT_LOCALE;
-              setLanguage(next);
-              if (typeof window !== "undefined") {
-                try {
-                  window.localStorage.setItem(LANGUAGE_STORAGE_KEY, next);
-                } catch (err) {
-                  console.warn("language persistence failed", err);
+      <>
+        <AuthProvider>
+          <AuthGate
+            onAuthenticated={handleAuthSuccess}
+            onAuthStateChange={handleAuthStateChange}
+          >
+            <MenuScreenWithLogout
+              language={language}
+              onChangeLanguage={(nextLanguage) => {
+                const next =
+                  nextLanguage && MGX_LOCALES[nextLanguage]
+                    ? nextLanguage
+                    : MGX_DEFAULT_LOCALE;
+                setLanguage(next);
+                if (typeof window !== "undefined") {
+                  try {
+                    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, next);
+                  } catch (err) {
+                    console.warn("language persistence failed", err);
+                  }
                 }
-              }
-            }}
-            onSelectRing={handleSelectRing}
-            onSelectTournament={handleSelectTournament}
-            onSelectSettings={handleSelectSettings}
-            onSelectHandHistory={handleOpenHandHistoryScreen}
-            onLogoutComplete={handleNavigateToTitle}
-          />
-        </AuthGate>
-      </AuthProvider>
+              }}
+              onSelectRing={handleSelectRing}
+              onSelectTournament={handleSelectTournament}
+              onSelectSettings={handleSelectSettings}
+              onSelectHandHistory={handleOpenHandHistoryScreen}
+              onLogoutComplete={handleNavigateToTitle}
+            />
+          </AuthGate>
+        </AuthProvider>
+        <DebugHud
+          enabled={debugFlags.enabled}
+          deviceProfile={deviceProfile}
+          shouldGateOrientation={shouldGateOrientation}
+          debugScale={debugScale}
+          screenLabel={screenLabel}
+        />
+      </>
     );
   }
 
   if (currentScreen === "settings") {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 px-6 text-center text-slate-100">
-        <p className="text-xs uppercase tracking-[0.4em] text-amber-400">MGX</p>
-        <h2 className="mt-2 text-4xl font-semibold">Settings (Coming Soon)</h2>
-        <p className="mt-4 max-w-xl text-sm text-slate-400">
-          Table themes, HUD presets, and audio layers will land here shortly. For now, return to the
-          main menu to jump into your preferred mode.
-        </p>
-        <button
-          type="button"
-          onClick={handleBackToMenu}
-          className="mt-8 rounded-full border border-amber-300/60 px-8 py-3 text-xs uppercase tracking-[0.4em] text-amber-100 hover:bg-amber-300/10"
-        >
-          Back to Menu
-        </button>
-      </div>
+      <>
+        <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 px-6 text-center text-slate-100">
+          <p className="text-xs uppercase tracking-[0.4em] text-amber-400">MGX</p>
+          <h2 className="mt-2 text-4xl font-semibold">Settings (Coming Soon)</h2>
+          <p className="mt-4 max-w-xl text-sm text-slate-400">
+            Table themes, HUD presets, and audio layers will land here shortly. For now, return to the
+            main menu to jump into your preferred mode.
+          </p>
+          <button
+            type="button"
+            onClick={handleBackToMenu}
+            className="mt-8 rounded-full border border-amber-300/60 px-8 py-3 text-xs uppercase tracking-[0.4em] text-amber-100 hover:bg-amber-300/10"
+          >
+            Back to Menu
+          </button>
+        </div>
+        <DebugHud
+          enabled={debugFlags.enabled}
+          deviceProfile={deviceProfile}
+          shouldGateOrientation={shouldGateOrientation}
+          debugScale={debugScale}
+          screenLabel={screenLabel}
+        />
+      </>
     );
   }
 
   if (currentScreen === "handHistory") {
     return (
-      <HandHistoryScreen
-        onClose={handleCloseHandHistoryScreen}
-        onReplay={handleOpenReplayFromHistory}
-      />
+      <>
+        <HandHistoryScreen
+          onClose={handleCloseHandHistoryScreen}
+          onReplay={handleOpenReplayFromHistory}
+        />
+        <DebugHud
+          enabled={debugFlags.enabled}
+          deviceProfile={deviceProfile}
+          shouldGateOrientation={shouldGateOrientation}
+          debugScale={debugScale}
+          screenLabel={screenLabel}
+        />
+      </>
     );
   }
 
   if (currentScreen === "handReplay") {
     return (
-      <ReplayScreen
-        handId={replayHandId}
-        onBack={handleBackFromReplayToHistory}
-        onClose={handleExitReplayToMenu}
-      />
+      <>
+        <ReplayScreen
+          handId={replayHandId}
+          onBack={handleBackFromReplayToHistory}
+          onClose={handleExitReplayToMenu}
+        />
+        <DebugHud
+          enabled={debugFlags.enabled}
+          deviceProfile={deviceProfile}
+          shouldGateOrientation={shouldGateOrientation}
+          debugScale={debugScale}
+          screenLabel={screenLabel}
+        />
+      </>
     );
   }
 
@@ -6907,32 +7032,94 @@ const SAFE_RESET_PHASE = "IDLE";
       overlaysProps={overlaysProps}
       controlsProps={controlsProps}
       debugProps={debugProps}
+      debugFlags={debugFlags}
+      onDebugScale={setDebugScale}
       layoutMode={layoutMode}
     />
   );
 
-  const shouldGateOrientation = isMobileDevice && mode !== "tournament-mtt";
-  const handleAuthSuccess = useCallback(() => {
-    setCurrentScreen("menu");
-  }, [setCurrentScreen]);
-  const handleAuthStateChange = useCallback((state) => {
-    authUserIdRef.current = state?.user?.id ?? null;
-  }, []);
+  return (
+    <>
+      <AuthProvider>
+        <AuthGate
+          onAuthenticated={handleAuthSuccess}
+          onAuthStateChange={handleAuthStateChange}
+        >
+          <MobileOrientationGate
+            enabled={shouldGateOrientation}
+            isPortrait={deviceProfile.isPortrait}
+            debugFlags={debugFlags}
+          >
+            {gameScreen}
+          </MobileOrientationGate>
+        </AuthGate>
+      </AuthProvider>
+      <DebugHud
+        enabled={debugFlags.enabled}
+        deviceProfile={deviceProfile}
+        shouldGateOrientation={shouldGateOrientation}
+        debugScale={debugScale}
+        screenLabel={screenLabel}
+      />
+    </>
+  );
+}
+
+function DebugHud({
+  enabled,
+  deviceProfile,
+  shouldGateOrientation,
+  debugScale,
+  screenLabel,
+}) {
+  const [metrics, setMetrics] = useState(() => readDebugMetrics());
+
+  useEffect(() => {
+    if (!enabled) return undefined;
+    const update = () => setMetrics(readDebugMetrics());
+    update();
+    const interval = window.setInterval(update, 500);
+    window.addEventListener("resize", update);
+    window.addEventListener("orientationchange", update);
+    const vv = window.visualViewport;
+    if (vv) {
+      vv.addEventListener("resize", update);
+      vv.addEventListener("scroll", update);
+    }
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("resize", update);
+      window.removeEventListener("orientationchange", update);
+      if (vv) {
+        vv.removeEventListener("resize", update);
+        vv.removeEventListener("scroll", update);
+      }
+    };
+  }, [enabled]);
+
+  if (!enabled) return null;
+
+  const vvText =
+    metrics.visualViewportWidth != null && metrics.visualViewportHeight != null
+      ? `${metrics.visualViewportWidth}x${metrics.visualViewportHeight}`
+      : "n/a";
+  const scaleText =
+    typeof debugScale === "number" && Number.isFinite(debugScale)
+      ? debugScale.toFixed(3)
+      : "n/a";
 
   return (
-    <AuthProvider>
-      <AuthGate
-        onAuthenticated={handleAuthSuccess}
-        onAuthStateChange={handleAuthStateChange}
-      >
-        <MobileOrientationGate
-          enabled={shouldGateOrientation}
-          isPortrait={deviceProfile.isPortrait}
-        >
-          {gameScreen}
-        </MobileOrientationGate>
-      </AuthGate>
-    </AuthProvider>
+    <div className="pointer-events-none fixed top-2 left-2 z-[9999] max-w-[92vw] rounded bg-black/70 px-2 py-1 text-[10px] leading-tight text-white shadow">
+      <div>href: {metrics.href}</div>
+      <div>inner: {metrics.innerWidth}x{metrics.innerHeight}</div>
+      <div>vv: {vvText}</div>
+      <div>
+        flags: mobile={String(deviceProfile.isMobile)} portrait={String(deviceProfile.isPortrait)} gate={String(shouldGateOrientation)}
+      </div>
+      <div>scale: {scaleText}</div>
+      <div>root children: {metrics.rootChildCount}</div>
+      <div>screen: {screenLabel}</div>
+    </div>
   );
 }
 
@@ -6944,9 +7131,6 @@ function AuthGate({ children, onAuthenticated, onAuthStateChange }) {
     }
   }, [authState, onAuthStateChange]);
   useEffect(() => {
-    if (!authState.accessToken) {
-      return undefined;
-    }
     const stopAutoSync = startAutoSync(30000, {
       accessToken: authState.accessToken,
     });
@@ -6978,7 +7162,7 @@ function MenuScreenWithLogout({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(token ? { "x-api-key": token } : {}),
         },
       });
     } catch (err) {

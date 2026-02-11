@@ -1,6 +1,6 @@
-﻿// src/games/badugi/logic/roundFlow.js
+﻿// src/games/badugi/logic/roundFlow.jsx
 
-import { debugLog } from "../../../utils/debugLog";
+import { debugLog } from "../../../utils/debugLog.js";
 import {
   isFoldedOrOut,
   aliveBetPlayers,

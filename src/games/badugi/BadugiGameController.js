@@ -111,6 +111,7 @@ export class BadugiGameController {
     this.state.blindLevelIndex = nextHandState.blindLevelIndex;
     this.state.handsInLevel = nextHandState.handsInLevel;
     this.state.betHead = nextHandState.resolvedTurn;
+    this.state.nextTurn = nextHandState.resolvedTurn;
     this.state.lastAggressorIdx = nextHandState.bbIdx ?? null;
     this.state.currentBet = nextHandState.initialCurrentBet ?? 0;
     this.state.drawRound = 0;

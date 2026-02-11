@@ -56,6 +56,7 @@ export function shouldSkipDrawRound(state = {}) {
   const players = Array.isArray(state?.players) ? state.players : [];
   for (const player of players) {
     if (!isSeatEligibleForDraw(player)) continue;
+    if (player?.allIn) continue;
     if ((player?.drawRequest ?? 0) > 0) {
       return false;
     }

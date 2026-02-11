@@ -33,7 +33,7 @@ export default function Controls({
       ? "w-full flex flex-col gap-3"
       : "flex flex-col gap-2 bg-gray-800/90 p-2 rounded shadow-lg");
   const buttonBase = isMobile
-    ? "flex-1 py-3 rounded-2xl text-base font-semibold tracking-wide"
+    ? "flex-1 py-[clamp(10px,3vw,14px)] rounded-2xl text-[clamp(12px,3vw,16px)] font-semibold tracking-wide"
     : "px-3 py-2 rounded text-sm font-medium";
 
   return (
@@ -97,7 +97,7 @@ export default function Controls({
           disabled={!canDraw}
           className={`${
             isMobile
-              ? "w-full py-3 rounded-2xl font-semibold text-base"
+              ? "w-full py-[clamp(10px,3vw,14px)] rounded-2xl font-semibold text-[clamp(12px,3vw,16px)]"
               : "px-4 py-2 rounded-lg font-bold whitespace-nowrap"
           } ${
             canDraw

@@ -1,17 +1,17 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { useAuth } from "../state/authStore.jsx";
+import { normalizeTokenType } from "../utils/auth.js";
 
 const API_BASE_RAW = import.meta.env?.VITE_API_BASE ?? "/api";
 const API_BASE = API_BASE_RAW.endsWith("/api")
   ? API_BASE_RAW
   : `${API_BASE_RAW.replace(/\/$/, "")}/api`;
 
-async function postJson(path, payload, token) {
+async function postJson(path, payload) {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { "x-api-key": token } : {}),
     },
     body: JSON.stringify(payload),
   });
@@ -27,10 +27,11 @@ async function postJson(path, payload, token) {
   return data;
 }
 
-async function fetchCurrentUser(token) {
+async function fetchCurrentUser(token, tokenType) {
+  const scheme = normalizeTokenType(tokenType);
   const res = await fetch(`${API_BASE}/auth/me`, {
     headers: {
-      "x-api-key": token,
+      Authorization: `${scheme} ${token}`,
     },
   });
   if (!res.ok) {
@@ -76,7 +77,6 @@ export default function AuthScreen({ onAuthenticated }) {
           await postJson("/auth/signup", {
             email: trimmedEmail,
             password,
-            confirmPassword,
           });
           setInfo("Signup successful. Please login.");
           // TODO: automatically sign in once email verification is implemented.
@@ -95,17 +95,18 @@ export default function AuthScreen({ onAuthenticated }) {
           email: trimmedEmail,
           password,
         });
-        const token = loginPayload?.apiKey;
+        const token = loginPayload?.access_token;
         if (!token) {
           throw new Error("Invalid login response");
         }
-        const userProfile = loginPayload?.user ?? (await fetchCurrentUser(token));
+        const tokenType = normalizeTokenType(loginPayload?.token_type);
+        const userProfile = loginPayload?.user ?? (await fetchCurrentUser(token, tokenType));
         const user = {
           id: userProfile?.id ?? null,
           username: userProfile?.username ?? trimmedEmail,
           email: userProfile?.email ?? trimmedEmail,
         };
-        loginSuccess({ accessToken: token, user });
+        loginSuccess({ accessToken: token, tokenType, user });
         if (onAuthenticated) {
           onAuthenticated(user);
         }

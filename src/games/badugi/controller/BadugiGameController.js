@@ -359,6 +359,9 @@ export class BadugiGameController extends GameController {
     if (!merged.blindStructure || merged.blindStructure.length === 0) {
       merged.blindStructure = DEFAULT_BLINDS;
     }
+    if (partial.seatConfig && partial.numSeats == null) {
+      merged.numSeats = merged.seatConfig.length;
+    }
     merged.numSeats = merged.numSeats ?? merged.seatConfig.length;
     merged.lastStructureIndex =
       merged.lastStructureIndex ?? Math.max(0, merged.blindStructure.length - 1);
@@ -375,6 +378,9 @@ export class BadugiGameController extends GameController {
       return options.nextDealerIdx;
     }
     const prevDealer = prevState?.snapshot?.dealerIdx ?? this.legacy.state.dealerIdx ?? 0;
+    if ((prevState?.handIndex ?? 0) === 0 && !prevState?.context) {
+      return prevDealer;
+    }
     const seats = this.config.numSeats ?? DEFAULT_SEAT_CONFIG.length;
     return (prevDealer + 1) % seats;
   }

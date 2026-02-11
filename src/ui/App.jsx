@@ -116,6 +116,7 @@ import ReplayScreen from "./screens/ReplayScreen.jsx";
 import { useGameSessionState } from "./hooks/useGameSessionState.js";
 import MobileOrientationGate from "./components/MobileOrientationGate.jsx";
 import { useDeviceProfile } from "./hooks/useDeviceProfile.js";
+import { computeSeatStats } from "./utils/stats.js";
 import { AuthProvider, useAuth } from "./state/authStore.jsx";
 import { enqueueHandRecord, startAutoSync } from "./utils/syncManager.js";
 import {
@@ -314,6 +315,7 @@ export default function App() {
     () => loadActiveTournamentSession()
   );
   const initialModeRef = useRef(getRequestedModeFromURL());
+  const authUserIdRef = useRef(null);
   const [mode, setMode] = useState(initialModeRef.current);
   const [language, setLanguage] = useState(() => getInitialLanguage());
   // MGX branding: kitsune title screen + title → menu → game flow (2025-11-28)
@@ -672,6 +674,10 @@ const SAFE_RESET_PHASE = "IDLE";
   );
   const [raiseCountThisRound, setRaiseCountThisRound] = useState(0);
   const [actionLog, setActionLog] = useState([]); // RL/action log feed
+  const seatStatsByPlayerId = useMemo(
+    () => computeSeatStats(actionLog, { keyBy: "playerId" }),
+    [actionLog],
+  );
   const resetInitialButtonState = useCallback(() => {
     handCountRef.current = 0;
     tableMetadataRef.current = {};
@@ -752,7 +758,6 @@ const SAFE_RESET_PHASE = "IDLE";
     updateShowdown,
   } = useGameSessionState();
   const deviceProfile = useDeviceProfile();
-  const authUserIdRef = useRef(null);
 
   const uiFromSession = useMemo(() => {
     if (!gameSession) return null;
@@ -939,8 +944,18 @@ const SAFE_RESET_PHASE = "IDLE";
     // まずは常に「players ベースの seat 情報」を組み立てる
     const baseSeats = playersSrc.map((player, idx) => {
       const clone = player ? clonePlayerState(player) : {};
+      const playerId =
+        clone?.playerId ??
+        clone?.tournamentPlayerId ??
+        (idx === 0 && authUserIdRef.current != null
+          ? `user-${authUserIdRef.current}`
+          : `seat-${idx}`);
+      const stats =
+        seatStatsByPlayerId[playerId] ?? seatStatsByPlayerId[`seat-${idx}`];
       return {
         ...clone,
+        playerId,
+        stats,
         seatIndex: idx,
         label: positionName(idx, dealerSeatSrc),
         isDealer: idx === dealerSeatSrc,
@@ -988,6 +1003,7 @@ const SAFE_RESET_PHASE = "IDLE";
     dealerSeatSrc,
     controllerTurn,
     isTableActionPhase,
+    seatStatsByPlayerId,
   ]);
 
   const seatLabels = useMemo(
@@ -2468,6 +2484,18 @@ const SAFE_RESET_PHASE = "IDLE";
       : seatSnapshot && typeof seatSnapshot.betThisRound === "number"
       ? seatSnapshot.betThisRound
       : 0;
+  const normalizedActionLabel = String(type ?? "").toLowerCase();
+  const resolvedIsForced =
+    typeof metadata?.isForced === "boolean"
+      ? metadata.isForced
+      : normalizedActionLabel.includes("blind") || normalizedActionLabel.includes("ante");
+  const resolvedPaid =
+    Number.isFinite(resolvedStackBefore) && Number.isFinite(resolvedStackAfter)
+      ? Math.max(0, (resolvedStackBefore ?? 0) - (resolvedStackAfter ?? 0))
+      : Number.isFinite(metadata?.paid)
+      ? metadata.paid
+      : Math.max(0, (resolvedBetAfter ?? 0) - (resolvedBetBefore ?? 0));
+  const resolvedToCall = Number.isFinite(metadata?.toCall) ? metadata.toCall : null;
 
   console.assert(
     typeof resolvedStackBefore === "number" && typeof resolvedStackAfter === "number",
@@ -2476,6 +2504,11 @@ const SAFE_RESET_PHASE = "IDLE";
   );
 
   const nextEntry = {
+    handId: handIdRef.current ?? metadata?.handId ?? null,
+    playerId:
+      seatSnapshot?.playerId ??
+      seatSnapshot?.tournamentPlayerId ??
+      (idx !== null ? `seat-${idx}` : null),
     phase: phaseLabel,
     phaseSnapshot,
     round: resolvedRound,
@@ -2488,6 +2521,9 @@ const SAFE_RESET_PHASE = "IDLE";
     stackAfter: resolvedStackAfter,
     betBefore: resolvedBetBefore,
     betAfter: resolvedBetAfter,
+    paid: resolvedPaid,
+    isForced: resolvedIsForced,
+    toCall: resolvedToCall,
     potAfter: potAfter ?? totalPotRef.current,
     raiseCountTable,
     metadata: Object.keys(mergedMeta).length ? mergedMeta : undefined,
@@ -2885,7 +2921,17 @@ const SAFE_RESET_PHASE = "IDLE";
       const isHuman = seatType === "HUMAN";
       const isEmpty = seatType === "EMPTY";
       const heroName = profile?.name ?? "You";
+      const heroPlayerId =
+        authUserIdRef.current != null
+          ? `user-${authUserIdRef.current}`
+          : "hero";
+      const playerId = isHuman
+        ? heroPlayerId
+        : isEmpty
+        ? `empty-${idx}`
+        : `cpu-${idx + 1}`;
       return {
+        playerId,
         name: isHuman ? heroName : `CPU ${idx + 1}`,
         seatType,
         isCPU: !isHuman && !isEmpty,
@@ -7133,6 +7179,7 @@ function AuthGate({ children, onAuthenticated, onAuthStateChange }) {
   useEffect(() => {
     const stopAutoSync = startAutoSync(30000, {
       accessToken: authState.accessToken,
+      tokenType: authState.tokenType,
     });
     return () => {
       if (typeof stopAutoSync === "function") {
@@ -7157,12 +7204,13 @@ function MenuScreenWithLogout({
     if (pending) return;
     setPending(true);
     const token = authState?.accessToken;
+    const tokenType = authState?.tokenType ?? "Bearer";
     try {
       await fetch(`${API_BASE}/auth/logout`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { "x-api-key": token } : {}),
+          ...(token ? { Authorization: `${tokenType} ${token}` } : {}),
         },
       });
     } catch (err) {

@@ -1,3 +1,5 @@
+import { normalizeTokenType } from "./auth.js";
+
 const STORAGE_KEY = "sync.queue.v1";
 const API_BASE_RAW = import.meta.env?.VITE_API_BASE ?? "/api";
 const API_BASE = API_BASE_RAW.endsWith("/api")
@@ -27,15 +29,13 @@ function saveQueue(queue) {
   }
 }
 
-function authHeaders(accessToken, useApiKey = false) {
+function authHeaders(accessToken, tokenType) {
   const headers = {
     "Content-Type": "application/json",
   };
   if (accessToken) {
-    headers.Authorization = `Bearer ${accessToken}`;
-    if (useApiKey) {
-      headers["x-api-key"] = accessToken;
-    }
+    const scheme = normalizeTokenType(tokenType);
+    headers.Authorization = `${scheme} ${accessToken}`;
   }
   return headers;
 }
@@ -49,7 +49,7 @@ function enqueueJob(type, payload) {
 async function postJson(path, body, options = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
-    headers: authHeaders(options.accessToken, options.useApiKey),
+    headers: authHeaders(options.accessToken, options.tokenType),
     body: JSON.stringify(body),
   });
   if (!res.ok) {

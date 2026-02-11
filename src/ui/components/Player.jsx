@@ -1,5 +1,6 @@
 import React from "react";
 import Card from "./Card";
+import { formatStatAf, formatStatPercent } from "../utils/stats.js";
 
 function BetChip({ amount, className = "" }) {
   if (!amount || amount <= 0) return null;
@@ -46,6 +47,13 @@ export default function Player({
   if (player.isBusted || player.seatOut) statusBadges.push("BUSTED");
   const stackValue = typeof player.stack === "number" ? player.stack : 0;
   const betValue = typeof player.betThisRound === "number" ? player.betThisRound : 0;
+  const stats = player.stats;
+  const statsLine =
+    stats && Number.isFinite(stats.hands) && stats.hands > 0
+      ? `VPIP ${formatStatPercent(stats.vpipRate)} / PFR ${formatStatPercent(
+          stats.pfrRate
+        )} / AF ${formatStatAf(stats.af)} / H ${stats.hands}`
+      : "VPIP -- / PFR -- / AF -- / H --";
 
   const handleCardClick = (cardIdx) => {
     if (isHero && phase === "DRAW" && canSelectForDraw && onCardClick) {
@@ -93,6 +101,9 @@ export default function Player({
                 {statusBadges.join(" • ")}
               </div>
             )}
+            <div className="text-[10px] uppercase tracking-wide text-slate-300">
+              {statsLine}
+            </div>
           </div>
         </div>
         <div className="text-right text-xs text-slate-200 leading-tight">
@@ -110,7 +121,7 @@ export default function Player({
         {player.lastAction ? `[${player.lastAction}]` : "\u00A0"}
       </div>
 
-      <div className="grid grid-cols-4 gap-2 justify-items-center w-full max-w-[260px] mx-auto">
+      <div className="grid grid-cols-4 gap-2 justify-items-center w-full max-w-[clamp(200px,32vw,320px)] mx-auto">
         {player.hand.map((card, i) => (
           <Card
             key={`${card}-${i}`}

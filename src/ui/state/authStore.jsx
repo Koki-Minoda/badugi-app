@@ -8,6 +8,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { normalizeTokenType } from "../utils/auth.js";
 
 const AUTH_STORAGE_KEY = "mgx_auth";
 const API_BASE_RAW = import.meta.env?.VITE_API_BASE ?? "/api";
@@ -18,6 +19,7 @@ const API_BASE = API_BASE_RAW.endsWith("/api")
 const defaultState = {
   isAuthenticated: false,
   accessToken: null,
+  tokenType: null,
   user: null,
 };
 
@@ -34,8 +36,6 @@ function sanitizeStoredAuth(raw) {
   const accessToken =
     typeof raw.accessToken === "string" && raw.accessToken.length > 0
       ? raw.accessToken
-      : typeof raw.apiKey === "string" && raw.apiKey.length > 0
-      ? raw.apiKey
       : null;
   const user =
     raw.user && typeof raw.user === "object"
@@ -57,6 +57,10 @@ function sanitizeStoredAuth(raw) {
   if (!accessToken) return null;
   return {
     accessToken,
+    tokenType:
+      typeof raw.tokenType === "string" && raw.tokenType.length > 0
+        ? normalizeTokenType(raw.tokenType)
+        : null,
     user,
   };
 }
@@ -79,6 +83,7 @@ function writeStoredAuth(state) {
       AUTH_STORAGE_KEY,
       JSON.stringify({
         accessToken: state.accessToken,
+        tokenType: state.tokenType,
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
@@ -97,10 +102,11 @@ function clearStoredAuth() {
   }
 }
 
-async function fetchCurrentUserProfile(token) {
+async function fetchCurrentUserProfile(token, tokenType) {
+  const scheme = normalizeTokenType(tokenType);
   const res = await fetch(`${API_BASE}/auth/me`, {
     headers: {
-      "x-api-key": token,
+      Authorization: `${scheme} ${token}`,
     },
   });
   if (!res.ok) {
@@ -134,6 +140,7 @@ export function AuthProvider({ children }) {
       setAuthState({
         isAuthenticated: !!(stored.accessToken && stored.user),
         accessToken: stored.accessToken,
+        tokenType: normalizeTokenType(stored.tokenType),
         user: stored.user,
       });
     } else {
@@ -142,7 +149,7 @@ export function AuthProvider({ children }) {
     setHasHydrated(true);
   }, []);
 
-  const loginSuccess = useCallback(({ accessToken, user }) => {
+  const loginSuccess = useCallback(({ accessToken, tokenType, user }) => {
     if (!accessToken) {
       console.warn("[auth] loginSuccess missing accessToken");
       return;
@@ -150,6 +157,7 @@ export function AuthProvider({ children }) {
     const nextState = {
       isAuthenticated: !!user,
       accessToken,
+      tokenType: normalizeTokenType(tokenType),
       user: user ?? null,
     };
     setAuthState(nextState);
@@ -167,7 +175,7 @@ export function AuthProvider({ children }) {
     if (!token || validatingRef.current) return;
     validatingRef.current = true;
     try {
-      const profile = await fetchCurrentUserProfile(token);
+      const profile = await fetchCurrentUserProfile(token, authState.tokenType);
       const normalizedUser = normalizeUserProfile(profile);
       if (!normalizedUser) {
         throw new Error("Invalid profile payload");
@@ -175,6 +183,7 @@ export function AuthProvider({ children }) {
       const nextState = {
         isAuthenticated: true,
         accessToken: token,
+        tokenType: normalizeTokenType(authState.tokenType),
         user: normalizedUser,
       };
       setAuthState(nextState);

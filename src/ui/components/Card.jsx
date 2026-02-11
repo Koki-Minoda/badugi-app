@@ -9,7 +9,7 @@ export default function Card({ value, hidden, selected, onClick, folded, ...rest
     return (
       <div
         {...rest}
-        className={`w-16 h-24 rounded-lg shadow-lg border-4 border-yellow-500 
+        className={`w-[clamp(40px,6vw,64px)] h-[clamp(56px,9vw,96px)] rounded-lg shadow-lg border-4 border-yellow-500 
         flex items-center justify-center 
         bg-gradient-to-br from-gray-900 via-black to-gray-800 
         relative overflow-hidden 
@@ -20,12 +20,12 @@ export default function Card({ value, hidden, selected, onClick, folded, ...rest
           {Array.from({ length: 24 }).map((_, i) => (
             <div
               key={i}
-              className="w-2 h-2 bg-yellow-400 rounded-full mx-auto my-auto"
+              className="w-[clamp(6px,1vw,8px)] h-[clamp(6px,1vw,8px)] bg-yellow-400 rounded-full mx-auto my-auto"
             />
           ))}
         </div>
-        <div className="absolute w-10 h-10 rounded-full border-2 border-yellow-400 flex items-center justify-center">
-          <div className="w-4 h-4 rounded-full bg-yellow-500 shadow-inner" />
+        <div className="absolute w-[clamp(28px,4vw,40px)] h-[clamp(28px,4vw,40px)] rounded-full border-2 border-yellow-400 flex items-center justify-center">
+          <div className="w-[clamp(12px,2vw,16px)] h-[clamp(12px,2vw,16px)] rounded-full bg-yellow-500 shadow-inner" />
         </div>
       </div>
     );
@@ -52,9 +52,9 @@ export default function Card({ value, hidden, selected, onClick, folded, ...rest
       {...rest}
       onClick={onClick}
       className={`
-        w-16 h-24 bg-white rounded-lg shadow-md 
+        w-[clamp(40px,6vw,64px)] h-[clamp(56px,9vw,96px)] bg-white rounded-lg shadow-md 
         flex items-center justify-center 
-        font-bold text-lg select-none cursor-pointer transition-transform
+        font-bold text-[clamp(12px,2.5vw,18px)] select-none cursor-pointer transition-transform
         ${selected ? "border-4 border-blue-500 scale-105" : "border-4 border-gray-300"}
         hover:scale-105 active:scale-95
       `}

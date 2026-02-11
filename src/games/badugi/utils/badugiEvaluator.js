@@ -327,12 +327,55 @@ function selectBestLegacySubset(cards) {
     if (!valid) continue;
     const ranks = subset.map(({ card }) => card.rank).sort((a, b) => a - b);
     const evaluation = buildEvaluation(ranks);
-    if (!best || isBetter(evaluation, best.evaluation)) {
+    if (
+      !best ||
+      isBetter(evaluation, best.evaluation) ||
+      (isEquivalentEvaluation(evaluation, best.evaluation) &&
+        prefersSubsetSuits(subset, best.subset))
+    ) {
       best = { evaluation, subset };
       if (evaluation.count === 4) break;
     }
   }
   return best;
+}
+
+function isEquivalentEvaluation(left, right) {
+  if (!left || !right) return false;
+  if (left.count !== right.count) return false;
+  const leftKey = left.key ?? [];
+  const rightKey = right.key ?? [];
+  if (leftKey.length !== rightKey.length) return false;
+  for (let i = 0; i < leftKey.length; i += 1) {
+    if (leftKey[i] !== rightKey[i]) return false;
+  }
+  return true;
+}
+
+function prefersSubsetSuits(candidateSubset, currentSubset) {
+  const candidate = [...(candidateSubset ?? [])]
+    .map((entry) => entry.card)
+    .sort(sortLegacyAscending);
+  const current = [...(currentSubset ?? [])]
+    .map((entry) => entry.card)
+    .sort(sortLegacyAscending);
+  const len = Math.max(candidate.length, current.length);
+  for (let i = 0; i < len; i += 1) {
+    const cand = candidate[i];
+    const curr = current[i];
+    if (!cand && !curr) break;
+    if (!cand) return false;
+    if (!curr) return true;
+    if (cand.suitValue !== curr.suitValue) {
+      return cand.suitValue < curr.suitValue;
+    }
+    if (cand.rankValue !== curr.rankValue) {
+      return cand.rankValue < curr.rankValue;
+    }
+    const cmp = cand.raw.localeCompare(curr.raw);
+    if (cmp !== 0) return cmp < 0;
+  }
+  return false;
 }
 
 function buildLegacyEvaluation(cards, best) {

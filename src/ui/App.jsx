@@ -118,7 +118,7 @@ import MobileOrientationGate from "./components/MobileOrientationGate.jsx";
 import { useDeviceProfile } from "./hooks/useDeviceProfile.js";
 import { computeSeatStats } from "./utils/stats.js";
 import { AuthProvider, useAuth } from "./state/authStore.jsx";
-import { enqueueHandRecord, startAutoSync } from "./utils/syncManager.js";
+import { enqueueBadugiActions, enqueueHandRecord, startAutoSync } from "./utils/syncManager.js";
 import {
   createMTTTournamentState,
   onTableHandCompleted,
@@ -2575,6 +2575,9 @@ const SAFE_RESET_PHASE = "IDLE";
     }
   }
   setActionLog((prev) => [...prev, nextEntry]);
+  if (nextEntry.handId) {
+    enqueueBadugiActions([nextEntry]);
+  }
   if (shouldEmitE2EAction(nextActionId)) {
     emitE2EActionTrace(nextEntry, seatSnapshot);
   }

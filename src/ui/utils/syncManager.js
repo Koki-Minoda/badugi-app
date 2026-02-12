@@ -173,6 +173,39 @@ function normalizeTournamentSavePayload(payload) {
   return { snapshot: payload };
 }
 
+function normalizeActionLogPayload(actions = []) {
+  const list = Array.isArray(actions) ? actions : [];
+  return list
+    .map((entry) => {
+      if (!entry) return null;
+      const ts =
+        Number.isFinite(entry.ts) ? new Date(entry.ts).toISOString() : entry.ts ?? null;
+      return {
+        hand_id: entry.handId ?? entry.hand_id ?? null,
+        player_id: entry.playerId ?? entry.player_id ?? null,
+        seat_index: Number.isFinite(entry.seat) ? entry.seat : entry.seat_index ?? null,
+        phase: entry.phase ?? "BET",
+        round: Number.isFinite(entry.round) ? entry.round : 0,
+        action: entry.action ?? "action",
+        action_type: entry.actionType ?? entry.action_type ?? null,
+        paid: Number.isFinite(entry.paid) ? entry.paid : 0,
+        to_call: Number.isFinite(entry.toCall) ? entry.toCall : entry.to_call ?? null,
+        is_forced: Boolean(entry.isForced ?? entry.is_forced ?? false),
+        stack_before:
+          Number.isFinite(entry.stackBefore) ? entry.stackBefore : entry.stack_before ?? null,
+        stack_after:
+          Number.isFinite(entry.stackAfter) ? entry.stackAfter : entry.stack_after ?? null,
+        bet_before:
+          Number.isFinite(entry.betBefore) ? entry.betBefore : entry.bet_before ?? null,
+        bet_after: Number.isFinite(entry.betAfter) ? entry.betAfter : entry.bet_after ?? null,
+        seq: Number.isFinite(entry.seq) ? entry.seq : null,
+        ts,
+        metadata: entry.metadata ?? null,
+      };
+    })
+    .filter(Boolean);
+}
+
 async function sendJob(job, options = {}) {
   switch (job.type) {
     case "hand-history":
@@ -180,6 +213,13 @@ async function sendJob(job, options = {}) {
         const payload = normalizeHandLogPayload(job.payload);
         if (!payload) return;
         await postJson("/badugi/hands", payload, options);
+      }
+      break;
+    case "badugi.actions":
+      {
+        const payload = normalizeActionLogPayload(job.payload?.actions ?? job.payload ?? []);
+        if (!payload.length) return;
+        await postJson("/badugi/actions/batch", { actions: payload }, options);
       }
       break;
     case "rating-update":
@@ -255,6 +295,15 @@ export function enqueueHandRecord(record, options = {}) {
     variantId: record.gameId,
     data: record,
   });
+  if (options.flushNow && import.meta.env?.DEV) {
+    flushQueue(options).catch((err) => {
+      console.warn("[sync] flushNow failed", err);
+    });
+  }
+}
+
+export function enqueueBadugiActions(actions, options = {}) {
+  enqueueJob("badugi.actions", { actions });
   if (options.flushNow && import.meta.env?.DEV) {
     flushQueue(options).catch((err) => {
       console.warn("[sync] flushNow failed", err);

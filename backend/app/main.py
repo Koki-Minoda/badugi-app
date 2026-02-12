@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.exc import SQLAlchemyError
 
 from .api.badugi_log import router as badugi_log_router
+from .api.badugi_actions import router as badugi_actions_router
 from .api.badugi_rl import router as badugi_rl_router
 from .api.health import router as health_router
 from .api.user import router as user_router
@@ -33,6 +34,7 @@ app.include_router(health_router, prefix="/api")
 app.include_router(user_router, prefix="/api")
 app.include_router(badugi_rl_router, prefix="/api")
 app.include_router(badugi_log_router, prefix="/api")
+app.include_router(badugi_actions_router, prefix="/api")
 app.include_router(tournament_state_router, prefix="/api")
 app.include_router(analysis_router, prefix="/api/analysis", tags=["analysis"])  # [tournament-feedback]
 app.include_router(auth_router, prefix="/api")

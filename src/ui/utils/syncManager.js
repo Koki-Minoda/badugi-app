@@ -8,6 +8,7 @@ const API_BASE = API_BASE_RAW.endsWith("/api")
 
 let flushing = false;
 let timer = null;
+const ABSOLUTE_URL_REGEX = /^https?:\/\//i;
 
 function loadQueue() {
   if (typeof window === "undefined") return [];
@@ -40,6 +41,14 @@ function authHeaders(accessToken, tokenType) {
   return headers;
 }
 
+function buildApiBaseUrl() {
+  if (ABSOLUTE_URL_REGEX.test(API_BASE)) return API_BASE;
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return `${window.location.origin}${API_BASE}`;
+  }
+  return API_BASE;
+}
+
 function enqueueJob(type, payload) {
   const queue = loadQueue();
   queue.push({ id: `${type}-${Date.now()}`, type, payload, ts: Date.now() });
@@ -47,7 +56,7 @@ function enqueueJob(type, payload) {
 }
 
 async function postJson(path, body, options = {}) {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(`${buildApiBaseUrl()}${path}`, {
     method: "POST",
     headers: authHeaders(options.accessToken, options.tokenType),
     body: JSON.stringify(body),
@@ -57,6 +66,33 @@ async function postJson(path, body, options = {}) {
     throw new Error(`sync failed ${res.status}: ${text}`);
   }
   return res.json();
+}
+
+export async function fetchSeatStats({
+  playerId,
+  accessToken,
+  tokenType,
+  limitHands = 200,
+} = {}) {
+  if (!playerId) return null;
+  const baseUrl = buildApiBaseUrl();
+  if (!baseUrl) return null;
+  const params = new URLSearchParams({
+    player_id: playerId,
+    limit_hands: String(limitHands),
+  });
+  try {
+    const res = await fetch(`${baseUrl}/badugi/stats?${params.toString()}`, {
+      headers: authHeaders(accessToken, tokenType),
+    });
+    if (!res.ok) {
+      return null;
+    }
+    return res.json();
+  } catch (err) {
+    console.warn("[sync] fetchSeatStats failed", err);
+    return null;
+  }
 }
 
 function normalizeHandLogPayload(payload) {

@@ -118,7 +118,12 @@ import MobileOrientationGate from "./components/MobileOrientationGate.jsx";
 import { useDeviceProfile } from "./hooks/useDeviceProfile.js";
 import { computeSeatStats } from "./utils/stats.js";
 import { AuthProvider, useAuth } from "./state/authStore.jsx";
-import { enqueueBadugiActions, enqueueHandRecord, startAutoSync } from "./utils/syncManager.js";
+import {
+  enqueueBadugiActions,
+  enqueueHandRecord,
+  fetchSeatStats,
+  startAutoSync,
+} from "./utils/syncManager.js";
 import {
   createMTTTournamentState,
   onTableHandCompleted,
@@ -316,6 +321,9 @@ export default function App() {
   );
   const initialModeRef = useRef(getRequestedModeFromURL());
   const authUserIdRef = useRef(null);
+  const [authUserId, setAuthUserId] = useState(null);
+  const [authToken, setAuthToken] = useState(null);
+  const [authTokenType, setAuthTokenType] = useState(null);
   const [mode, setMode] = useState(initialModeRef.current);
   const [language, setLanguage] = useState(() => getInitialLanguage());
   // MGX branding: kitsune title screen + title → menu → game flow (2025-11-28)
@@ -678,6 +686,14 @@ const SAFE_RESET_PHASE = "IDLE";
     () => computeSeatStats(actionLog, { keyBy: "playerId" }),
     [actionLog],
   );
+  const [remoteSeatStatsByPlayerId, setRemoteSeatStatsByPlayerId] = useState({});
+  const mergedSeatStatsByPlayerId = useMemo(
+    () => ({
+      ...seatStatsByPlayerId,
+      ...remoteSeatStatsByPlayerId,
+    }),
+    [seatStatsByPlayerId, remoteSeatStatsByPlayerId],
+  );
   const resetInitialButtonState = useCallback(() => {
     handCountRef.current = 0;
     tableMetadataRef.current = {};
@@ -938,6 +954,65 @@ const SAFE_RESET_PHASE = "IDLE";
     [isSingleTableBadugi, updateAfterActionFromSnapshot],
   );
 
+  const seatPlayerIds = useMemo(() => {
+    return (playersSrc ?? [])
+      .map((player, idx) => {
+        if (!player) return null;
+        if (String(player.seatType ?? "").toUpperCase() === "EMPTY") return null;
+        const playerId =
+          player?.playerId ??
+          player?.tournamentPlayerId ??
+          (idx === 0 && authUserId != null ? `user-${authUserId}` : `seat-${idx}`);
+        return playerId;
+      })
+      .filter(Boolean);
+  }, [authUserId, playersSrc]);
+
+  const refreshSeatStats = useCallback(async () => {
+    if (!authToken) return;
+    const ids = [...new Set(seatPlayerIds.filter(Boolean))];
+    if (!ids.length) return;
+    const results = await Promise.all(
+      ids.map((playerId) =>
+        fetchSeatStats({
+          playerId,
+          accessToken: authToken,
+          tokenType: authTokenType,
+          limitHands: 200,
+        }),
+      ),
+    );
+    const next = {};
+    results.forEach((payload) => {
+      if (payload?.player_id) {
+        next[payload.player_id] = payload;
+      }
+    });
+    if (Object.keys(next).length > 0) {
+      setRemoteSeatStatsByPlayerId((prev) => ({
+        ...prev,
+        ...next,
+      }));
+    }
+  }, [authToken, authTokenType, seatPlayerIds]);
+
+  useEffect(() => {
+    if (!authToken) return undefined;
+    let active = true;
+    refreshSeatStats().catch((err) => {
+      if (active) console.warn("[stats] fetch failed", err);
+    });
+    const interval = window.setInterval(() => {
+      refreshSeatStats().catch((err) => {
+        if (active) console.warn("[stats] periodic fetch failed", err);
+      });
+    }, 30000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [authToken, refreshSeatStats]);
+
   const seatViews = useMemo(() => {
     const seatCount = playersSrc.length || NUM_PLAYERS;
 
@@ -947,11 +1022,11 @@ const SAFE_RESET_PHASE = "IDLE";
       const playerId =
         clone?.playerId ??
         clone?.tournamentPlayerId ??
-        (idx === 0 && authUserIdRef.current != null
-          ? `user-${authUserIdRef.current}`
+        (idx === 0 && authUserId != null
+          ? `user-${authUserId}`
           : `seat-${idx}`);
       const stats =
-        seatStatsByPlayerId[playerId] ?? seatStatsByPlayerId[`seat-${idx}`];
+        mergedSeatStatsByPlayerId[playerId] ?? mergedSeatStatsByPlayerId[`seat-${idx}`];
       return {
         ...clone,
         playerId,
@@ -1003,7 +1078,8 @@ const SAFE_RESET_PHASE = "IDLE";
     dealerSeatSrc,
     controllerTurn,
     isTableActionPhase,
-    seatStatsByPlayerId,
+    authUserId,
+    mergedSeatStatsByPlayerId,
   ]);
 
   const seatLabels = useMemo(
@@ -6824,6 +6900,9 @@ const SAFE_RESET_PHASE = "IDLE";
   }
   function handleAuthStateChange(state) {
     authUserIdRef.current = state?.user?.id ?? null;
+    setAuthUserId(state?.user?.id ?? null);
+    setAuthToken(state?.accessToken ?? null);
+    setAuthTokenType(state?.tokenType ?? null);
     if (typeof state?.isAuthenticated === "boolean") {
       setAuthIsAuthenticated(state.isAuthenticated);
     }

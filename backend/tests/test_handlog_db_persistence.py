@@ -4,7 +4,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import close_all_sessions, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app.core import db
 from app.main import app
@@ -15,13 +16,18 @@ client = TestClient(app)
 
 @pytest.fixture()
 def sqlite_db(monkeypatch):
-    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    engine = create_engine(
+        "sqlite+pysqlite://",
+        future=True,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     Base.metadata.create_all(bind=engine)
     SessionTesting = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
     monkeypatch.setattr(db, "engine", engine)
     monkeypatch.setattr(db, "SessionLocal", SessionTesting)
     yield engine
-    SessionTesting.close_all()
+    close_all_sessions()
     engine.dispose()
 
 
@@ -72,7 +78,6 @@ def test_post_handles_db_unreachable(monkeypatch):
     monkeypatch.setattr(db, "SessionLocal", _raise_session)
 
     response = client.post("/api/badugi/hands", json=_payload("fail-1"))
-    assert response.status_code == 200
+    assert response.status_code == 503
     body = response.json()
-    assert body["accepted"] is False
-    assert body["error"] == "db_unreachable"
+    assert body["detail"] == "db_unreachable"

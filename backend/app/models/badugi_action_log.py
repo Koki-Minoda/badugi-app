@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from sqlalchemy import BigInteger, Boolean, DateTime, Float, JSON, String, func
+from sqlalchemy import BigInteger, Integer, Boolean, DateTime, Float, JSON, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from . import Base
@@ -13,7 +13,11 @@ class BadugiHandAction(Base):
 
     __tablename__ = "badugi_action_logs"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"),
+        primary_key=True,
+        autoincrement=True,
+    )
     hand_id: Mapped[str] = mapped_column(String(64), index=True)
     player_id: Mapped[str] = mapped_column(String(64), index=True)
     seat_index: Mapped[Optional[int]] = mapped_column(nullable=True)

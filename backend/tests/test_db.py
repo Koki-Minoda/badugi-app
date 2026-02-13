@@ -1,16 +1,19 @@
 from fastapi.testclient import TestClient
 
+from app.core import db as core_db
 from app.core.db import check_db_connection
 from app.main import app
 
 client = TestClient(app)
 
 
-def test_check_db_connection_reports_false_without_server():
+def test_check_db_connection_reports_false_without_server(monkeypatch):
+    monkeypatch.setattr(core_db, "check_db_connection", lambda: False)
     assert check_db_connection() is False
 
 
-def test_health_reports_db_unreachable():
+def test_health_reports_db_unreachable(monkeypatch):
+    monkeypatch.setattr(core_db, "check_db_connection", lambda: False)
     response = client.get("/api/health")
     assert response.status_code == 200
     assert response.json()["db"] == "unreachable"

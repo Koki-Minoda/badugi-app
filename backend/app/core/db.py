@@ -1,4 +1,5 @@
 """Database session management."""
+import sys
 from urllib.parse import quote_plus
 
 from sqlalchemy import create_engine, text
@@ -59,9 +60,7 @@ def get_db():
         db.close()
 
 
-def check_db_connection() -> bool:
-    """Attempt a lightweight connection; never raise on failure."""
-
+def _check_db_connection_impl() -> bool:
     try:
         with engine.connect() as connection:
             connection.execute(text("SELECT 1"))
@@ -70,3 +69,22 @@ def check_db_connection() -> bool:
         return False
     except Exception:
         return False
+
+
+_CHECK_DB_CONNECTION_ENTRYPOINT = None
+
+
+def _resolve_db_connection_checker():
+    current = getattr(sys.modules[__name__], "check_db_connection")
+    if current is not _CHECK_DB_CONNECTION_ENTRYPOINT and callable(current):
+        return current
+    return _check_db_connection_impl
+
+
+def check_db_connection() -> bool:
+    """Attempt a lightweight connection; never raise on failure."""
+
+    return bool(_resolve_db_connection_checker()())
+
+
+_CHECK_DB_CONNECTION_ENTRYPOINT = check_db_connection

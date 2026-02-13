@@ -3,7 +3,8 @@ from datetime import datetime, timezone
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import close_all_sessions, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app.api.badugi_log import _reset_recent_logs
 from app.core import db
@@ -15,13 +16,18 @@ client = TestClient(app)
 
 @pytest.fixture()
 def sqlite_db(monkeypatch):
-    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    engine = create_engine(
+        "sqlite+pysqlite://",
+        future=True,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     Base.metadata.create_all(bind=engine)
     SessionTesting = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
     monkeypatch.setattr(db, "engine", engine)
     monkeypatch.setattr(db, "SessionLocal", SessionTesting)
     yield
-    SessionTesting.close_all()
+    close_all_sessions()
     engine.dispose()
 
 

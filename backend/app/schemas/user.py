@@ -1,7 +1,7 @@
 """Pydantic schemas for user payloads."""
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class UserPublic(BaseModel):
@@ -15,5 +15,4 @@ class UserPublic(BaseModel):
     username: str | None = None
     created_at: datetime | None = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

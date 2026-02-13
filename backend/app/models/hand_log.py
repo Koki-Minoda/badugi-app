@@ -13,7 +13,11 @@ class HandLog(Base):
 
     __tablename__ = "badugi_hand_logs"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"),
+        primary_key=True,
+        autoincrement=True,
+    )
     hand_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     table_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
     tournament_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
@@ -58,7 +62,11 @@ class HandAction(Base):
 
     __tablename__ = "badugi_hand_actions"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"),
+        primary_key=True,
+        autoincrement=True,
+    )
     hand_log_id: Mapped[int] = mapped_column(ForeignKey("badugi_hand_logs.id", ondelete="CASCADE"), index=True)
     seat_index: Mapped[int] = mapped_column(Integer)
     player_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
@@ -86,7 +94,11 @@ class HandResult(Base):
 
     __tablename__ = "badugi_hand_results"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"),
+        primary_key=True,
+        autoincrement=True,
+    )
     hand_log_id: Mapped[int] = mapped_column(ForeignKey("badugi_hand_logs.id", ondelete="CASCADE"), index=True)
     seat_index: Mapped[int] = mapped_column(Integer)
     player_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)

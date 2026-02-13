@@ -1,8 +1,12 @@
+from types import SimpleNamespace
+
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import close_all_sessions, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app.core import db
+from app.dependencies.auth import get_current_user
 from app.main import app
 from app.models import Base
 
@@ -36,7 +40,12 @@ def sample_snapshot():
 
 
 def setup_sqlite(monkeypatch):
-    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    engine = create_engine(
+        "sqlite+pysqlite://",
+        future=True,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     Base.metadata.create_all(bind=engine)
     SessionTesting = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
     monkeypatch.setattr(db, "engine", engine)
@@ -45,23 +54,26 @@ def setup_sqlite(monkeypatch):
 
 
 def teardown_sqlite(engine, session_factory):
-    session_factory.close_all()
+    close_all_sessions()
     engine.dispose()
 
 
 def test_resume_without_snapshot_returns_false(monkeypatch):
     engine, SessionTesting = setup_sqlite(monkeypatch)
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=1, name="demo")
     try:
         response = client.post("/api/tournament/resume", headers=auth_headers())
         assert response.status_code == 200
         payload = response.json()
         assert payload["hasSnapshot"] is False
     finally:
+        app.dependency_overrides.pop(get_current_user, None)
         teardown_sqlite(engine, SessionTesting)
 
 
 def test_save_resume_and_retire_flow(monkeypatch):
     engine, SessionTesting = setup_sqlite(monkeypatch)
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=1, name="demo")
     try:
         response = client.post(
             "/api/tournament/save",
@@ -87,5 +99,5 @@ def test_save_resume_and_retire_flow(monkeypatch):
         assert resume_after_retire.status_code == 200
         assert resume_after_retire.json()["hasSnapshot"] is False
     finally:
+        app.dependency_overrides.pop(get_current_user, None)
         teardown_sqlite(engine, SessionTesting)
-

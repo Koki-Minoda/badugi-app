@@ -7,6 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from .api.badugi_log import router as badugi_log_router
 from .api.badugi_actions import router as badugi_actions_router
 from .api.badugi_rl import router as badugi_rl_router
+from .api.badugi_stats import router as badugi_stats_router
 from .api.health import router as health_router
 from .api.user import router as user_router
 from .api.tournament_state import router as tournament_state_router
@@ -20,7 +21,18 @@ from .models import Base
 settings = get_settings()
 logger = logging.getLogger(__name__)
 
+
+def bootstrap_schema() -> None:
+    """Attempt to create database tables on startup (safe if DB is offline)."""
+
+    try:
+        Base.metadata.create_all(bind=engine)
+    except SQLAlchemyError as exc:
+        logger.warning("Skipping metadata bootstrap; database unreachable: %s", exc)
+
+
 app = FastAPI(title="Badugi Multi-Game Backend", version="0.1.0")
+app.add_event_handler("startup", bootstrap_schema)
 
 app.add_middleware(
     CORSMiddleware,
@@ -35,19 +47,10 @@ app.include_router(user_router, prefix="/api")
 app.include_router(badugi_rl_router, prefix="/api")
 app.include_router(badugi_log_router, prefix="/api")
 app.include_router(badugi_actions_router, prefix="/api")
+app.include_router(badugi_stats_router, prefix="/api")
 app.include_router(tournament_state_router, prefix="/api")
 app.include_router(analysis_router, prefix="/api/analysis", tags=["analysis"])  # [tournament-feedback]
 app.include_router(auth_router, prefix="/api")
-
-
-@app.on_event("startup")
-def bootstrap_schema() -> None:
-    """Attempt to create database tables on startup (safe if DB is offline)."""
-
-    try:
-        Base.metadata.create_all(bind=engine)
-    except SQLAlchemyError as exc:
-        logger.warning("Skipping metadata bootstrap; database unreachable: %s", exc)
 
 
 @app.get("/")

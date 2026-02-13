@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 from sqlalchemy import desc, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -59,11 +59,13 @@ class BadugiActionEntry(BaseModel):
     ts: Optional[datetime] = None
     metadata: Optional[Dict[str, Any]] = None
 
-    @validator("action_type", pre=True, always=True)
-    def _normalize_action_type(cls, value, values):  # noqa: N805
+    @field_validator("action_type", mode="before")
+    @classmethod
+    def _normalize_action_type(cls, value, info: ValidationInfo):
         if value:
             return normalize_action_type(value)
-        return normalize_action_type(values.get("action"))
+        action = info.data.get("action") if info.data else None
+        return normalize_action_type(action)
 
 
 class BadugiActionBatchRequest(BaseModel):

@@ -1,6 +1,6 @@
 # Badugi RL / Multi-Game 実行計画
 
-更新日: 2026-04-26  
+更新日: 2026-04-29  
 目的: この文書を、Badugi RL と Draw 系マルチゲーム実装の作業基準書として使う。
 
 ## 1. この文書の使い方
@@ -234,6 +234,82 @@ TODO:
 - `resolvePot` に side pot、board 別配分、hi/lo split の実配分ロジックを接続する。
 - `resolveShowdown` を evaluator registry と接続し、正規化済み評価結果を返す。
 
+### 6.6 Variant DB 基盤 Step 2
+
+目的:
+
+- Variant Definition を将来的に DB 管理できるように、DB 設計、SQLAlchemy モデル案、Pydantic schema 案を追加する。
+- 既存ゲーム進行、Badugi、MTT、RL API には接続しない。
+
+追加対象:
+
+- `docs/variant-db-design.md`
+- `backend/app/models/variant.py`
+- `backend/app/schemas/variant.py`
+- `backend/app/models/__init__.py`
+
+Step 2 完了条件:
+
+- [x] docs に Variant DB の ER 設計を追加する。
+- [x] SQLAlchemy モデル案を追加する。
+- [x] Pydantic schema 案を追加する。
+- [x] `variants` / `variant_rules` / `variant_modifiers` / `variant_evaluators` / `variant_betting_structures` の関係を表現する。
+- [x] 手動 `CREATE TABLE` ではなく Alembic 前提の設計にする。
+- [x] MySQL 固有設計にしない。
+- [x] 既存 backend 起動に悪影響がないことを import / metadata 登録で確認する。
+- [x] API route / seed / migration は Step 2 では追加しない。
+
+### 6.7 Variant DB API / Migration / Seed Step 4
+
+目的:
+
+- Step 2 の DB 設計を実際に使えるように、Alembic migration、seed、参照 API を追加する。
+- 管理系 POST / PUT / DELETE、frontend 接続、UI 接続、ゲーム進行接続は行わない。
+
+追加対象:
+
+- `backend/alembic/versions/20260429_01_add_variant_tables.py`
+- `backend/app/crud/variant.py`
+- `backend/app/db/seeds/variants.py`
+- `backend/app/api/variants.py`
+- `backend/tests/test_variants_api.py`
+- `backend/app/main.py` の variants router 登録
+
+Step 4 完了条件:
+
+- [x] Alembic migration を追加する。
+- [x] seed で 5 variant を登録できる。
+- [x] `GET /api/variants` を追加する。
+- [x] `GET /api/variants/{variant_key}` を追加する。
+- [x] `double_board_bomb_pot_omaha` を DB から復元できる。
+- [x] seed は冪等で重複登録しない。
+- [x] 既存 API、Badugi、MTT、RL API を壊していないことを backend test で確認する。
+- [x] backend tests が通る。
+
+### 6.8 Frontend Variant Loader Step 3
+
+目的:
+
+- `GET /api/variants` と `GET /api/variants/{variant_key}` を使い、フロント側で DB 由来の VariantDefinition を読めるようにする。
+- UI の本格接続、ゲーム起動接続、BadugiEngine 差し替え、RL / MTT 変更は行わない。
+
+追加対象:
+
+- `src/games/core/variantApi.js`
+- `src/games/core/variantLoader.js`
+- `src/games/core/__tests__/variantLoader.test.js`
+
+Step 3 完了条件:
+
+- [x] フロントから `/api/variants` を読める API util を追加する。
+- [x] フロントから `/api/variants/{variant_key}` を読める API util を追加する。
+- [x] DB レスポンスを VariantDefinition 形式へ変換できる。
+- [x] API 失敗時にローカル定義へ fallback する。
+- [x] `double_board_bomb_pot_omaha` を取得 / 復元 / fallback できる。
+- [x] 既存 Badugi 進行に接続せず、影響範囲を分離する。
+- [x] `App.jsx` を変更しない。
+- [x] Vitest で loader / core tests が通る。
+
 ## 7. ワークストリーム
 
 ## 7.0 WG-BADUGI-00 Badugi 完了優先フェーズ
@@ -244,15 +320,34 @@ TODO:
 
 タスク:
 
-- [ ] `WG-BADUGI-00-01` Badugi の完了条件を browser / mobile を含めて固定する。
-- [ ] `WG-BADUGI-00-02` Badugi bug tracker を正本として運用開始する。
-- [ ] `WG-BADUGI-00-03` 実ブラウザ / 実スマホでの再現確認フローを定義する。
-- [ ] `WG-BADUGI-00-04` `docs/bugs/current_bugs.md` と専用 bug tracker の役割分担を明記する。
+- [x] `WG-BADUGI-00-01` Badugi の完了条件を browser / mobile を含めて固定する。
+- [x] `WG-BADUGI-00-02` Badugi bug tracker を正本として運用開始する。
+- [x] `WG-BADUGI-00-03` 実ブラウザ / 実スマホでの再現確認フローを定義する。
+- [x] `WG-BADUGI-00-04` `docs/bugs/current_bugs.md` と専用 bug tracker の役割分担を明記する。
 
 完了条件:
 
 - Badugi を最優先に進めることが本文書上で明示されている。
 - バグ記録先と triage ルールが固定されている。
+
+Badugi 完了条件:
+
+- Ring game で 20 hand 連続して action deadlock なく完走する。
+- Tournament / MTT で bust、table state、次 hand 遷移が破綻しない。
+- Browser desktop で fold / call / raise / draw / pat / showdown / next hand が操作可能。
+- Mobile portrait / landscape で主要操作ボタン、card area、result overlay が重ならない。
+- Hand history と replay 用 action log に handId、seat、phase、action、amount、result が残る。
+- 既存 regression tests、Badugi engine tests、主要 UI tests が通る。
+- 未解決 bug は `docs/bugs/badugi_browser_mobile_bug_tracker.md` に ID、再現条件、残リスク付きで記録されている。
+
+実ブラウザ / 実スマホ再現確認フロー:
+
+1. 確認対象 bug または release check に `BG-###` を割り当てる。
+2. `npm run dev` または preview build を起動し、build 種別を bug tracker に記録する。
+3. Desktop Chrome で ring game を最低 5 hand、tournament を最低 1 table break / bust 相当まで確認する。
+4. iPhone Safari または Android Chrome で portrait / landscape を切り替え、主要操作と overlay を確認する。
+5. 発生した問題は browser、OS、device、orientation、input、handId、console log、screenshot / video を bug tracker に記録する。
+6. 修正後は同じ環境・同じ手順で再確認し、`Fixed Commit`、`Repro Closed Date`、`Residual Risk` を更新する。
 
 ## 7.1 WG-00 文書・正本整理
 
@@ -262,15 +357,31 @@ TODO:
 
 タスク:
 
-- [ ] `WG-00-01` 「30ゲーム」表記を「35 variants」に更新する。
-- [ ] `WG-00-02` 正本ファイルを本文書に明記し、生成物との関係を固定する。
-- [ ] `WG-00-03` `multiGameList.json` の `status` 値を棚卸しする。
+- [x] `WG-00-01` 「30ゲーム」表記を「35 variants」に更新する。
+- [x] `WG-00-02` 正本ファイルを本文書に明記し、生成物との関係を固定する。
+- [x] `WG-00-03` `multiGameList.json` の `status` 値を棚卸しする。
   - 候補: `live`, `wip`, `prototype`, `planned`
-- [ ] `WG-00-04` UI enabled 状態と engine 実装状態の差分表を作る。
+- [x] `WG-00-04` UI enabled 状態と engine 実装状態の差分表を作る。
   - 対象:
     - `src/ui/game/variants.js`
     - `src/games/core/variants.js`
     - `src/games/_core/GameRegistry.js`
+
+UI / engine registry 差分表:
+
+| Variant | `src/ui/game/variants.js` | `src/games/core/variants.js` | `src/games/_core/GameRegistry.js` | 判定 |
+| --- | --- | --- | --- | --- |
+| `badugi` | enabled | controller registered | definition registered | playable |
+| `nlh` / `nl_holdem` | `nlh` enabled | not registered | `NLHGameDefinition` registered | UI と controller registry の ID / 実装状態に差分あり |
+| `plo` | disabled | not registered | not registered | catalog / VariantDefinition のみ |
+| `27sd` | disabled | not registered | not registered | UI placeholder のみ |
+| `double_board_bomb_pot_omaha` | not listed | not registered | not registered | VariantDefinition / DB API / loader fallback のみ |
+
+運用メモ:
+
+- 現時点で実ゲーム起動の正本は既存 Badugi 経路を維持する。
+- DB 由来 VariantDefinition は `src/games/core/variantLoader.js` で読めるが、game launcher には未接続。
+- UI enabled と engine/controller 実装の差分を解消するまでは、新規 variant を playable 表示にしない。
 
 完了条件:
 
@@ -352,15 +463,15 @@ TODO:
 
 タスク:
 
-- [ ] `WG-BADUGI-01-01` bug ID 採番ルールを固定する。
+- [x] `WG-BADUGI-01-01` bug ID 採番ルールを固定する。
   - 推奨: `BG-###`
-- [ ] `WG-BADUGI-01-02` 再現環境の記録項目を固定する。
+- [x] `WG-BADUGI-01-02` 再現環境の記録項目を固定する。
   - browser
   - OS
   - device
   - orientation
   - input mode
-- [ ] `WG-BADUGI-01-03` 症状分類を固定する。
+- [x] `WG-BADUGI-01-03` 症状分類を固定する。
   - gameplay
   - ui-layout
   - input
@@ -368,10 +479,10 @@ TODO:
   - hand-history
   - performance
   - mobile-only
-- [ ] `WG-BADUGI-01-04` bug から test への逆引き欄を追加する。
+- [x] `WG-BADUGI-01-04` bug から test への逆引き欄を追加する。
   - existing test
   - missing test
-- [ ] `WG-BADUGI-01-05` 修正後に更新する欄を固定する。
+- [x] `WG-BADUGI-01-05` 修正後に更新する欄を固定する。
   - fixed commit
   - repro closed date
   - residual risk
@@ -836,9 +947,9 @@ AI / logging / replay タスク:
 
 優先順:
 
-- [ ] `WG-BADUGI-00-02` Badugi bug tracker を正本として運用開始
-- [ ] `WG-BADUGI-01-02` 再現環境の記録項目を固定
-- [ ] `WG-00-01` 「30ゲーム」表記を 35 variants に更新
+- [x] `WG-BADUGI-00-02` Badugi bug tracker を正本として運用開始
+- [x] `WG-BADUGI-01-02` 再現環境の記録項目を固定
+- [x] `WG-00-01` 「30ゲーム」表記を 35 variants に更新
 - [ ] `WG-01-01` Draw family state contract を固定
 - [ ] `WG-02-01` 2-7 lowball edge case テスト追加
 - [ ] `WG-07-01` RL 推論の主経路を確定

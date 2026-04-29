@@ -46,6 +46,8 @@
 - Fix Plan:
 - Verification Plan:
 - Resolution:
+- Fixed Commit:
+- Repro Closed Date:
 - Residual Risk:
 ```
 

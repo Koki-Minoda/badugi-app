@@ -72,6 +72,23 @@ describe("DeuceToSevenTripleDrawController", () => {
     ]);
   });
 
+  it("exposes legal DRAW action only for the current draw actor", () => {
+    const controller = buildController([
+      "2S", "3S", "4S", "5S", "7S",
+      "2H", "3H", "4H", "5H", "8H",
+    ]);
+    let state = controller.createNewHandState(controller.createInitialState());
+    state = controller.applyAction(state, { seatIndex: 1, type: "CALL" }).state;
+    state = controller.applyAction(state, { seatIndex: 0, type: "CHECK" }).state;
+
+    expect(state.snapshot.phase).toBe("DRAW");
+    expect(state.snapshot.turn).toBe(1);
+    expect(controller.getLegalActions(state, 0)).toEqual([]);
+    expect(controller.getLegalActions(state, 1)).toEqual([
+      { type: "DRAW", minDiscard: 0, maxDiscard: 5 },
+    ]);
+  });
+
   it("exposes the D01 rule-based CPU action through the controller", () => {
     const controller = buildController([
       "2S", "3S", "4S", "5S", "7S",
@@ -140,6 +157,28 @@ describe("DeuceToSevenTripleDrawController", () => {
     expect(result.state.snapshot.players[0].lastAction).toBe("Pat");
   });
 
+  it("returns invalidAction events without mutating state for bad controller input", () => {
+    const controller = buildController([
+      "2S", "3S", "4S", "5S", "7S",
+      "2H", "3H", "4H", "5H", "8H",
+    ]);
+    const state = controller.createNewHandState(controller.createInitialState());
+
+    const missingSeat = controller.applyAction(state, { type: "CALL" });
+    expect(missingSeat.events[0]).toMatchObject({
+      type: "invalidAction",
+      error: "seatIndex is required",
+    });
+    expect(missingSeat.state).toBe(state);
+
+    const outOfTurn = controller.applyAction(state, { seatIndex: 0, type: "CALL" });
+    expect(outOfTurn.events[0]).toMatchObject({
+      type: "invalidAction",
+    });
+    expect(outOfTurn.events[0].error).toMatch(/out of turn/);
+    expect(outOfTurn.state).toBe(state);
+  });
+
   it("returns overlay-ready 2-7 hand labels in lastHandResult", () => {
     const controller = buildController([
       "2S", "3S", "4S", "5S", "7S",
@@ -164,5 +203,31 @@ describe("DeuceToSevenTripleDrawController", () => {
       handLabel: "2-7 Low 7-5-4-3-2",
     });
     expect(snapshot.lastHandResult.winners[0].handLabel).toBe("2-7 Low 7-5-4-3-2");
+  });
+
+  it("emits handComplete and exposes winners after a fold win", () => {
+    const controller = buildController([
+      "2S", "3S", "4S", "5S", "7S",
+      "2H", "3H", "4H", "5H", "8H",
+    ]);
+    const state = controller.createNewHandState(controller.createInitialState());
+
+    const result = controller.applyAction(state, {
+      seatIndex: 1,
+      type: "FOLD",
+    });
+
+    expect(result.events[0]).toMatchObject({
+      type: "handComplete",
+      totalPot: 30,
+    });
+    expect(result.state.snapshot.phase).toBe("SHOWDOWN");
+    expect(controller.isHandFinished(result.state)).toBe(true);
+    expect(controller.getWinners(result.state)).toEqual([
+      expect.objectContaining({
+        seatIndex: 0,
+        payout: 30,
+      }),
+    ]);
   });
 });

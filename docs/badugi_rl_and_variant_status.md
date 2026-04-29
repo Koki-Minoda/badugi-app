@@ -901,7 +901,7 @@ AI / logging / replay タスク:
 
 - [x] `WG-03-19` evaluator regression テストを追加する。
 - [x] `WG-03-20` engine unit tests を追加する。
-- [ ] `WG-03-21` controller tests を追加する。
+- [x] `WG-03-21` controller tests を追加する。
 - [ ] `WG-03-22` e2e で 1 hand 完走テストを追加する。
 - [ ] `WG-03-23` side pot / fold win / pat win / draw-to-better-low をカバーする。
 
@@ -919,6 +919,12 @@ D01 engine unit coverage:
 - All-in seats are skipped when building draw order and cannot be selected as pending draw actors.
 - Fixed-limit raise cap enforcement is covered.
 - Tied 2-7 showdown pots split deterministically by seat order, including odd-chip remainder handling.
+
+D01 controller coverage:
+
+- `src/games/draw/__tests__/DeuceToSevenTripleDrawController.test.js` covers D01 hand start, UI-compatible snapshots, legal BET / DRAW actions, CPU action exposure, action application, and overlay-ready 2-7 result labels.
+- Controller input errors return `invalidAction` events without mutating the supplied state.
+- Fold-win completion emits `handComplete`, exposes `SHOWDOWN` snapshot state, and makes winners available through `getWinners(...)`.
 
 完了条件:
 

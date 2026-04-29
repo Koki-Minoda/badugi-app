@@ -182,10 +182,11 @@ export default function Player({
       </div>
 
       <div
-        className="grid grid-cols-4 justify-items-center w-full mx-auto"
+        className="grid justify-items-center w-full mx-auto"
         style={{
           gap: "var(--player-card-gap, 8px)",
           maxWidth: "var(--player-card-strip-maxw, 280px)",
+          gridTemplateColumns: `repeat(${Math.max(1, player.hand?.length ?? 4)}, minmax(0, 1fr))`,
         }}
       >
         {player.hand.map((card, i) => (

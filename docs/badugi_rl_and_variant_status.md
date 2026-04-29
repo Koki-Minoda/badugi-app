@@ -853,8 +853,8 @@ controller / UI タスク:
 
 - [x] `WG-03-11` `D01` 用 controller を追加する。
 - [x] `WG-03-12` hand snapshot を UI 互換形式で返す。
-- [ ] `WG-03-13` discard UI を 5 枚用に一般化する。
-- [ ] `WG-03-14` result overlay で 2-7 hand label を表示する。
+- [x] `WG-03-13` discard UI を 5 枚用に一般化する。
+- [x] `WG-03-14` result overlay で 2-7 hand label を表示する。
 - [ ] `WG-03-15` action log / hand history 表記を variant 対応にする。
 
 D01 controller initial implementation:
@@ -864,6 +864,9 @@ D01 controller initial implementation:
 - `createInitialState()`, `createNewHandState()`, `getUiSnapshot()`, `getLegalActions()`, `applyAction()`, `isHandFinished()`, and `getWinners()` are implemented.
 - UI snapshot exposes Badugi-compatible keys including `phase`, `drawRound`, `players[].hand`, `players[].selected`, `turn`, `nextTurn`, `pot`, `currentBet`, and `lastHandResult`.
 - D01-specific snapshot metadata includes `variantId: "D01"`, `maxDiscardCount: 5`, and `handCardCount: 5`.
+- Draw selection is generalized through `src/ui/game/drawSelection.js` so Badugi can cap at 4 discards while D01 can select 5.
+- Player card layout now derives its grid column count from hand size, so 5-card draw hands fit the existing player panel.
+- D01 `lastHandResult` is normalized to overlay-ready `potDetails[].winners[].handLabel`, allowing `2-7 Low 7-5-4-3-2` style labels in `HandResultOverlay`.
 
 AI / logging / replay タスク:
 

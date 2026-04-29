@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
 import Player from "../components/Player.jsx";
 import Controls from "../components/Controls.jsx";
+import { toggleDrawSelection } from "../game/drawSelection.js";
 
 afterEach(() => {
   cleanup();
@@ -15,6 +16,7 @@ function HeroDrawHarness({
   heroEligible = true,
   controllerTurn = 0,
   hand = ["AS", "KD", "QC", "JH"],
+  maxDiscardCount = 4,
 }) {
   const [players, setPlayers] = useState([
     {
@@ -44,8 +46,7 @@ function HeroDrawHarness({
       if (prev.includes(cardIdx)) {
         return prev.filter((idx) => idx !== cardIdx);
       }
-      if (prev.length >= 4) return prev;
-      return [...prev, cardIdx];
+      return toggleDrawSelection(prev, cardIdx, { hand, maxDiscardCount });
     });
   };
 
@@ -116,7 +117,7 @@ describe("Hero draw controls follow engine snapshot", () => {
     expect(screen.getByTestId("selection").textContent).toBe("");
   });
 
-  it("caps selection at four cards even if more choices are clicked", () => {
+  it("caps Badugi selection at four cards even if more choices are clicked", () => {
     render(<HeroDrawHarness hand={["AS", "KD", "QC", "JH", "9C"]} />);
     const selection = screen.getByTestId("selection");
     const click = (idx) => fireEvent.click(screen.getByTestId(`player-0-card-${idx}`));
@@ -126,6 +127,18 @@ describe("Hero draw controls follow engine snapshot", () => {
     click(3);
     click(4);
     expect(selection.textContent).toBe("0,1,2,3");
+  });
+
+  it("allows five-card draw selection when variant snapshot allows five discards", () => {
+    render(<HeroDrawHarness hand={["AS", "KD", "QC", "JH", "9C"]} maxDiscardCount={5} />);
+    const selection = screen.getByTestId("selection");
+    const click = (idx) => fireEvent.click(screen.getByTestId(`player-0-card-${idx}`));
+    click(0);
+    click(1);
+    click(2);
+    click(3);
+    click(4);
+    expect(selection.textContent).toBe("0,1,2,3,4");
   });
 
   it("disables draw when hero already drew according to engine state", () => {

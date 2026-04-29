@@ -123,4 +123,30 @@ describe("DeuceToSevenTripleDrawController", () => {
     expect(result.state.snapshot.phase).toBe("BET");
     expect(result.state.snapshot.players[0].lastAction).toBe("Pat");
   });
+
+  it("returns overlay-ready 2-7 hand labels in lastHandResult", () => {
+    const controller = buildController([
+      "2S", "3S", "4S", "5S", "7S",
+      "2H", "3H", "4H", "5H", "8H",
+    ]);
+    const state = controller.createNewHandState(controller.createInitialState());
+    state.engineState.players[0].hand = ["7S", "5D", "4C", "3H", "2S"];
+    state.engineState.players[1].hand = ["8S", "5H", "4D", "3C", "2D"];
+    state.engineState.players[0].bet = 0;
+    state.engineState.players[1].bet = 0;
+    state.engineState.players[0].totalInvested = 0;
+    state.engineState.players[1].totalInvested = 0;
+    state.engineState.pots = [{ amount: 100, eligiblePlayerIds: ["seat-0", "seat-1"] }];
+
+    const showdown = controller.engine.resolveShowdown(state.engineState).state;
+    const snapshot = controller.getUiSnapshot(showdown);
+
+    expect(snapshot.lastHandResult.pot).toBe(100);
+    expect(snapshot.lastHandResult.potDetails[0].winners[0]).toMatchObject({
+      seatIndex: 0,
+      payout: 100,
+      handLabel: "2-7 Low 7-5-4-3-2",
+    });
+    expect(snapshot.lastHandResult.winners[0].handLabel).toBe("2-7 Low 7-5-4-3-2");
+  });
 });

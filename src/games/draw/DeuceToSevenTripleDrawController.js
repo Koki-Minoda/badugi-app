@@ -38,6 +38,48 @@ function sumPots(pots = []) {
   return pots.reduce((sum, pot) => sum + Math.max(0, pot?.amount ?? 0), 0);
 }
 
+function buildHandResultSummary({ showdownSummary = [], totalPot = 0, handId = null } = {}) {
+  const potDetails = (Array.isArray(showdownSummary) ? showdownSummary : []).map((pot, potIndex) => {
+    const winners = (Array.isArray(pot?.payouts) ? pot.payouts : []).map((winner) => ({
+      seatIndex: winner.seatIndex,
+      name: winner.name,
+      payout: winner.payout ?? 0,
+      stack: winner.stackAfter,
+      handLabel: winner.handName ?? winner.handLabel ?? "2-7 Low",
+      ranksLabel: winner.ranksLabel ?? "",
+      hand: Array.isArray(winner.hand) ? [...winner.hand] : [],
+      activeCards: Array.isArray(winner.activeCards) ? [...winner.activeCards] : [],
+      deadCards: Array.isArray(winner.deadCards) ? [...winner.deadCards] : [],
+    }));
+    return {
+      potIndex: pot.potIndex ?? potIndex,
+      potAmount: Math.max(0, pot.potAmount ?? pot.amount ?? 0),
+      winners,
+    };
+  });
+  const winnersBySeat = new Map();
+  potDetails.flatMap((pot) => pot.winners).forEach((winner) => {
+    if (typeof winner.seatIndex !== "number") return;
+    const current = winnersBySeat.get(winner.seatIndex);
+    winnersBySeat.set(
+      winner.seatIndex,
+      current
+        ? {
+            ...current,
+            payout: (current.payout ?? 0) + (winner.payout ?? 0),
+          }
+        : { ...winner },
+    );
+  });
+  return {
+    handId,
+    pot: Math.max(0, totalPot ?? potDetails.reduce((sum, pot) => sum + pot.potAmount, 0)),
+    winners: Array.from(winnersBySeat.values()),
+    potDetails,
+    results: showdownSummary,
+  };
+}
+
 function normalizeAction(action = {}) {
   const payload = action.payload ?? action.metadata ?? action;
   const type = String(payload.type ?? action.type ?? "").toUpperCase();
@@ -195,6 +237,13 @@ export class DeuceToSevenTripleDrawController extends GameController {
     const cloned = cloneState(source);
     const metadata = { ...(cloned.metadata ?? {}) };
     const showdownSummary = metadata.showdownSummary ?? null;
+    const lastHandResult = showdownSummary
+      ? buildHandResultSummary({
+          showdownSummary,
+          totalPot: metadata.showdownTotal ?? 0,
+          handId: cloned.handId,
+        })
+      : null;
     return {
       ...cloned,
       gameId: cloned.gameId,
@@ -212,12 +261,7 @@ export class DeuceToSevenTripleDrawController extends GameController {
       currentBet: metadata.currentBet ?? 0,
       maxDiscardCount: 5,
       handCardCount: 5,
-      lastHandResult: showdownSummary
-        ? {
-            results: showdownSummary,
-            totalPot: metadata.showdownTotal ?? 0,
-          }
-        : null,
+      lastHandResult,
       metadata,
     };
   }
@@ -271,7 +315,7 @@ export class DeuceToSevenTripleDrawController extends GameController {
 
   getWinners(state = {}) {
     const snapshot = state?.snapshot ?? this.getUiSnapshot(state?.engineState ?? state);
-    return snapshot.lastHandResult?.results ?? [];
+    return snapshot.lastHandResult?.winners ?? [];
   }
 }
 

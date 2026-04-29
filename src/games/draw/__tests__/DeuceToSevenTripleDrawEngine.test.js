@@ -425,6 +425,41 @@ describe("DeuceToSevenTripleDrawEngine", () => {
     expect(result.state.players[1].stack).toBe(550);
   });
 
+  it("resolves side pots with each pot restricted to eligible D01 seats", () => {
+    const engine = new DeuceToSevenTripleDrawEngine();
+    const state = engine.initHand({
+      seatConfig: ["HUMAN", "CPU", "CPU"],
+      startingStack: 500,
+      dealerIndex: 0,
+    });
+    state.players[0].hand = ["7S", "5D", "4C", "3H", "2S"];
+    state.players[1].hand = ["8S", "6D", "5C", "3S", "2C"];
+    state.players[2].hand = ["9S", "6H", "5H", "3D", "2D"];
+    state.pots = [
+      { amount: 90, eligiblePlayerIds: ["seat-0", "seat-1", "seat-2"] },
+      { amount: 40, eligiblePlayerIds: ["seat-1", "seat-2"] },
+    ];
+
+    const result = engine.resolveShowdown(state);
+
+    expect(result.summary).toHaveLength(2);
+    expect(result.summary[0].payouts).toEqual([
+      expect.objectContaining({
+        seatIndex: 0,
+        payout: 90,
+        handName: "2-7 Low 7-5-4-3-2",
+      }),
+    ]);
+    expect(result.summary[1].payouts).toEqual([
+      expect.objectContaining({
+        seatIndex: 1,
+        payout: 40,
+        handName: "2-7 Low 8-6-5-3-2",
+      }),
+    ]);
+    expect(result.state.players.map((player) => player.stack)).toEqual([590, 540, 500]);
+  });
+
   it("awards the pot immediately when everyone else folds", () => {
     const engine = new DeuceToSevenTripleDrawEngine();
     const state = engine.applyForcedBets(

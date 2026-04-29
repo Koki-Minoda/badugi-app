@@ -903,7 +903,7 @@ AI / logging / replay タスク:
 - [x] `WG-03-20` engine unit tests を追加する。
 - [x] `WG-03-21` controller tests を追加する。
 - [x] `WG-03-22` e2e で 1 hand 完走テストを追加する。
-- [ ] `WG-03-23` side pot / fold win / pat win / draw-to-better-low をカバーする。
+- [x] `WG-03-23` side pot / fold win / pat win / draw-to-better-low をカバーする。
 
 D01 evaluator regression coverage:
 
@@ -919,6 +919,7 @@ D01 engine unit coverage:
 - All-in seats are skipped when building draw order and cannot be selected as pending draw actors.
 - Fixed-limit raise cap enforcement is covered.
 - Tied 2-7 showdown pots split deterministically by seat order, including odd-chip remainder handling.
+- Side-pot showdown payout is covered with each pot restricted to its eligible D01 seats.
 
 D01 controller coverage:
 
@@ -931,6 +932,7 @@ D01 e2e hand-flow coverage:
 - `src/games/draw/__tests__/DeuceToSevenTripleDrawE2E.test.js` drives the D01 controller from blind-posted hand start through three draw rounds and final showdown.
 - The test verifies `handStarted`, betting completion, draw completion, and `handComplete` events are emitted during a full hand.
 - The final snapshot is `SHOWDOWN`, preserves 5-card hands, exposes overlay-ready winner data, and keeps total table chips conserved.
+- Pat-win full-hand flow and one-card draw-to-better-low full-hand flow are both covered.
 
 完了条件:
 

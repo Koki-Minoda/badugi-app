@@ -19,14 +19,14 @@ class FakeDeckManager {
   }
 }
 
-function buildController() {
+function buildController(cards = [
+  "7S", "5D", "4C", "3H", "2S",
+  "8S", "6D", "5C", "3S", "2C",
+  "KS", "QS", "JS", "10S", "9S",
+]) {
   return new DeuceToSevenTripleDrawController({
     engine: new DeuceToSevenTripleDrawEngine({
-      deckManager: new FakeDeckManager([
-        "7S", "5D", "4C", "3H", "2S",
-        "8S", "6D", "5C", "3S", "2C",
-        "KS", "QS", "JS", "10S", "9S",
-      ]),
+      deckManager: new FakeDeckManager(cards),
     }),
     tableConfig: {
       seatConfig: ["HUMAN", "CPU"],
@@ -85,5 +85,51 @@ describe("D01 2-7 Triple Draw e2e hand flow", () => {
     });
     expect(state.snapshot.players.reduce((sum, player) => sum + player.stack, 0)).toBe(1000);
     expect(state.snapshot.players.every((player) => player.hand.length === 5)).toBe(true);
+  });
+
+  it("lets a one-card draw improve into the winning 2-7 low", () => {
+    const controller = buildController([
+      "KS", "5D", "4C", "3H", "2S",
+      "8S", "6D", "5C", "3S", "2C",
+      "7S",
+    ]);
+    let state = controller.createNewHandState(controller.createInitialState());
+    const events = [...state.lastEvents];
+
+    state = controller.applyAction(state, { seatIndex: 1, type: "CALL" }).state;
+    state = controller.applyAction(state, { seatIndex: 0, type: "CHECK" }).state;
+
+    let result = controller.applyAction(state, {
+      seatIndex: 1,
+      payload: { type: "DRAW", discardIndexes: [] },
+    });
+    events.push(...result.events);
+    state = result.state;
+
+    result = controller.applyAction(state, {
+      seatIndex: 0,
+      payload: { type: "DRAW", discardIndexes: [0] },
+    });
+    expect(result.events[0]).toMatchObject({ type: "drawRoundComplete", drawRound: 1 });
+    expect(result.state.snapshot.players[0].lastAction).toBe("DRAW(1)");
+    expect(result.state.engineState.metadata.discardCountBySeat[0]).toBe(1);
+    events.push(...result.events);
+    state = result.state;
+
+    while (!controller.isHandFinished(state)) {
+      result = controller.applyAction(state, chooseDeterministicAction(controller, state));
+      events.push(...result.events);
+      state = result.state;
+    }
+
+    expect(events).toEqual(expect.arrayContaining([expect.objectContaining({ type: "handComplete" })]));
+    expect(state.snapshot.players[0].hand).toEqual(["5D", "4C", "3H", "2S", "7S"]);
+    expect(controller.getWinners(state)).toEqual([
+      expect.objectContaining({
+        seatIndex: 0,
+        payout: 40,
+        handLabel: "2-7 Low 7-5-4-3-2",
+      }),
+    ]);
   });
 });

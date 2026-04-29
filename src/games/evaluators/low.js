@@ -93,11 +93,20 @@ export function evaluateLowHand({
 
   if (requireQualifier != null) {
     const highest = best.metadata.ranks[0];
+    const qualifies = highest <= requireQualifier;
+    best = {
+      ...best,
+      qualifies,
+      metadata: {
+        ...best.metadata,
+        qualifies,
+        qualifier: requireQualifier,
+      },
+    };
     if (highest > requireQualifier) {
       return {
         ...best,
         rankSecondary: Number.POSITIVE_INFINITY,
-        qualifies: false,
       };
     }
   }

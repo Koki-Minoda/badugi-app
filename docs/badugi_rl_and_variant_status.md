@@ -718,25 +718,25 @@ Observation rules:
 
 タスク:
 
-- [ ] `WG-02-01` 2-7 lowball の edge case テストを追加する。
+- [x] `WG-02-01` 2-7 lowball の edge case テストを追加する。
   - pair が負ける
   - straight が負ける
   - flush が負ける
   - wheel が最強ではない
   - 7-high vs 8-high の順序
   - 同ランク tie
-- [ ] `WG-02-02` A-5 lowball の edge case テストを追加する。
+- [x] `WG-02-02` A-5 lowball の edge case テストを追加する。
   - Ace low
   - straight 無視
   - flush 無視
   - wheel 最強
   - pair penalty
-- [ ] `WG-02-03` 6枚以上入力から最良 5 枚が選ばれることを保証する。
-- [ ] `WG-02-04` split evaluator の pot 分配前提テストを追加する。
+- [x] `WG-02-03` 6枚以上入力から最良 5 枚が選ばれることを保証する。
+- [x] `WG-02-04` split evaluator の pot 分配前提テストを追加する。
   - Badeucey
   - Badacey
   - Hi-Lo8
-- [ ] `WG-02-05` evaluator 出力の debug metadata を統一する。
+- [x] `WG-02-05` evaluator 出力の debug metadata を統一する。
   - `ranks`
   - `cards`
   - `penalty`

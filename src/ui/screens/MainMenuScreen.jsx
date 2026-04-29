@@ -73,6 +73,7 @@ export default function MainMenuScreen({
   onSelectTournament,
   onSelectSettings,
   onSelectFriendMatch,
+  onSelectHandHistory = () => {},
 }) {
   const navigate = useNavigate();
   const [isVariantModalOpen, setVariantModalOpen] = useState(false);
@@ -110,6 +111,12 @@ export default function MainMenuScreen({
     settings: {
       title: locale.info.settingsTitle,
       body: locale.info.settingsBody,
+    },
+    history: {
+      title: locale?.info?.historyTitle ?? "Hand History",
+      body:
+        locale?.info?.historyBody ??
+        "Review your latest hands, inspect blinds, and jump into replays.",
     },
   };
   const infoContent =
@@ -225,9 +232,21 @@ export default function MainMenuScreen({
               onBlur={resetInfoPanel}
             />
             <ModeButton
-              label={locale.menu.settings}
-              isActive={activeMode === "settings"}
-              testId="menu-settings"
+              label={locale.menu?.handHistory ?? "Hand History"}
+              isActive={activeMode === "history"}
+              testId="menu-history"
+              onClick={() => {
+                if (onSelectHandHistory) {
+                  onSelectHandHistory();
+                }
+              }}
+              onHover={() => setActiveMode("history")}
+              onBlur={resetInfoPanel}
+            />
+           <ModeButton
+             label={locale.menu.settings}
+             isActive={activeMode === "settings"}
+             testId="menu-settings"
               onClick={() => {
                 if (onSelectSettings) {
                   onSelectSettings();

@@ -53,6 +53,9 @@ export function buildHandResultSummary({
   totalPot,
   handId = null,
   evaluateHand,
+  buttonSeat = null,
+  sbSeat = null,
+  bbSeat = null,
 }) {
   const evaluate = typeof evaluateHand === "function" ? evaluateHand : null;
   const potEntries = Array.isArray(summary) ? summary : [];
@@ -155,5 +158,8 @@ export function buildHandResultSummary({
           },
         ]
       : [],
+    buttonSeat: Number.isInteger(buttonSeat) ? buttonSeat : null,
+    sbSeat: Number.isInteger(sbSeat) ? sbSeat : null,
+    bbSeat: Number.isInteger(bbSeat) ? bbSeat : null,
   };
 }

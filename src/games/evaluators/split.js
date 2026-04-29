@@ -10,7 +10,9 @@ export function evaluateSplitHand({
 } = {}) {
   const highResult = highEvaluator({ cards });
   const lowResult = lowEvaluator({ cards, ...lowOptions });
-  const qualifies = lowResult.rankPrimary !== Number.POSITIVE_INFINITY;
+  const qualifies =
+    lowResult.rankPrimary !== Number.POSITIVE_INFINITY &&
+    lowResult.qualifies !== false;
   return {
     rankPrimary: highResult.rankPrimary,
     rankSecondary: qualifies ? lowResult.rankPrimary : Number.POSITIVE_INFINITY,

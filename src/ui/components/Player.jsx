@@ -1,5 +1,6 @@
 import React from "react";
 import Card from "./Card";
+import { formatStatAf, formatStatPercent } from "../utils/stats.js";
 
 function BetChip({ amount, className = "" }) {
   if (!amount || amount <= 0) return null;
@@ -13,14 +14,28 @@ function BetChip({ amount, className = "" }) {
       : "from-yellow-400 to-yellow-500 border-yellow-100 text-gray-900";
   return (
     <div
-      className={`flex items-center gap-2 bg-black/70 px-3 py-1 rounded-xl border border-white/20 shadow-lg ${className}`}
+      className={`flex items-center gap-2 bg-black/70 rounded-xl border border-white/20 shadow-lg ${className}`}
+      style={{
+        paddingInline: "var(--player-chip-pad-x, 10px)",
+        paddingBlock: "var(--player-chip-pad-y, 6px)",
+      }}
     >
       <div
-        className={`w-8 h-8 rounded-full border-2 ${tier} text-xs font-bold flex items-center justify-center`}
+        className={`rounded-full border-2 ${tier} font-bold flex items-center justify-center`}
+        style={{
+          width: "var(--player-chip-bubble-size, 24px)",
+          height: "var(--player-chip-bubble-size, 24px)",
+          fontSize: "var(--player-chip-bubble-font-size, 10px)",
+        }}
       >
         {amount >= 1000 ? `${Math.floor(amount / 1000)}K` : amount}
       </div>
-      <span className="text-sm font-semibold text-white">{amount}</span>
+      <span
+        className="font-semibold text-white"
+        style={{ fontSize: "var(--player-chip-amount-size, 12px)" }}
+      >
+        {amount}
+      </span>
     </div>
   );
 }
@@ -37,6 +52,7 @@ export default function Player({
   positionLabel,
   canSelectForDraw = false,
 }) {
+  const seatIndex = typeof index === "number" ? index : 0;
   const isHero = index === selfIndex;
   const isActive = turn === index;
   const statusBadges = [];
@@ -45,6 +61,13 @@ export default function Player({
   if (player.isBusted || player.seatOut) statusBadges.push("BUSTED");
   const stackValue = typeof player.stack === "number" ? player.stack : 0;
   const betValue = typeof player.betThisRound === "number" ? player.betThisRound : 0;
+  const stats = player.stats;
+  const statsLine =
+    stats && Number.isFinite(stats.hands) && stats.hands > 0
+      ? `VPIP ${formatStatPercent(stats.vpipRate)} / PFR ${formatStatPercent(
+          stats.pfrRate
+        )} / AF ${formatStatAf(stats.af)} / H ${stats.hands}`
+      : "VPIP -- / PFR -- / AF -- / H --";
 
   const handleCardClick = (cardIdx) => {
     if (isHero && phase === "DRAW" && canSelectForDraw && onCardClick) {
@@ -56,52 +79,116 @@ export default function Player({
 
   return (
     <div
-      data-testid={positionLabel ? `seat-${positionLabel.toLowerCase()}` : undefined}
-      className={`relative rounded-2xl border border-white/10 bg-gray-900/80 p-3 shadow-lg backdrop-blur flex flex-col gap-2 ${
+      data-testid={`seat-${seatIndex}`}
+      className={`relative rounded-2xl border border-white/10 bg-gray-900/80 shadow-lg backdrop-blur flex flex-col ${
         player.folded ? "opacity-60" : ""
       } ${isActive ? "ring-2 ring-yellow-400" : ""} ${isWinner ? "ring-4 ring-emerald-400 animate-pulse" : ""}`}
+      style={{
+        padding: "var(--player-pad, 10px)",
+        gap: "var(--player-gap, 8px)",
+      }}
     >
+      {positionLabel && (
+        <div
+          data-testid={`seat-${seatIndex}-pos`}
+          className="absolute top-2 left-2 rounded-md bg-black/40 px-1.5 py-0.5 font-semibold uppercase tracking-wide text-slate-100/90"
+          style={{ fontSize: "var(--player-meta-size, 10px)" }}
+        >
+          {positionLabel}
+        </div>
+      )}
       {betValue > 0 && !chipBelow && (
         <BetChip amount={betValue} className="absolute -top-14 left-1/2 -translate-x-1/2" />
       )}
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 text-white font-semibold">
-          {player.avatar && <span className="text-xl leading-none">{player.avatar}</span>}
+          {player.avatar && (
+            <span
+              className="leading-none"
+              style={{ fontSize: "calc(var(--player-name-size, 14px) + 2px)" }}
+            >
+              {player.avatar}
+            </span>
+          )}
           <div className="leading-tight">
             <div className="flex items-center gap-1 flex-wrap">
-              <span>{player.name}</span>
+              <span style={{ fontSize: "var(--player-name-size, 14px)" }}>{player.name}</span>
               {index === dealerIdx && (
-                <span className="text-[10px] text-yellow-300 uppercase tracking-wide">(BTN)</span>
+                <span
+                  className="text-yellow-300 uppercase tracking-wide"
+                  style={{ fontSize: "var(--player-meta-size, 10px)" }}
+                >
+                  (BTN)
+                </span>
               )}
             </div>
             {player.titleBadge && (
-              <div className="text-[10px] uppercase tracking-wide text-emerald-300">
+              <div
+                className="uppercase tracking-wide text-emerald-300"
+                style={{ fontSize: "var(--player-meta-size, 10px)" }}
+              >
                 {player.titleBadge}
               </div>
             )}
             {statusBadges.length > 0 && (
-              <div className="text-[10px] uppercase tracking-wide text-yellow-300">
+              <div
+                className="uppercase tracking-wide text-yellow-300"
+                style={{ fontSize: "var(--player-meta-size, 10px)" }}
+              >
                 {statusBadges.join(" • ")}
               </div>
             )}
+            <div
+              className="uppercase tracking-wide text-slate-300 truncate"
+              style={{
+                fontSize: "var(--player-meta-size, 10px)",
+                maxWidth: "var(--player-card-strip-maxw, 240px)",
+              }}
+              title={statsLine}
+            >
+              {statsLine}
+            </div>
           </div>
         </div>
-        <div className="text-right text-xs text-slate-200 leading-tight">
+        <div
+          className="text-right text-slate-200 leading-tight"
+          style={{ fontSize: "var(--player-stack-size, 11px)" }}
+        >
           <div>
             Stack <span className="font-semibold text-white">{stackValue}</span>
           </div>
           <div>
             Bet <span className="font-semibold text-white">{betValue}</span>
           </div>
-          {isActive && <div className="text-lime-300 font-bold mt-1">ACTING</div>}
+          {isActive && (
+            <div
+              className="text-lime-300 font-bold mt-1"
+              style={{ fontSize: "var(--player-action-size, 11px)" }}
+            >
+              ACTING
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="text-xs text-slate-200 italic min-h-[18px] flex items-center">
+      <div
+        className="text-slate-200 italic flex items-center"
+        style={{
+          fontSize: "var(--player-stack-size, 11px)",
+          minHeight: "var(--player-action-min-h, 18px)",
+        }}
+      >
         {player.lastAction ? `[${player.lastAction}]` : "\u00A0"}
       </div>
 
-      <div className="grid grid-cols-4 gap-2 justify-items-center w-full max-w-[260px] mx-auto">
+      <div
+        className="grid justify-items-center w-full mx-auto"
+        style={{
+          gap: "var(--player-card-gap, 8px)",
+          maxWidth: "var(--player-card-strip-maxw, 280px)",
+          gridTemplateColumns: `repeat(${Math.max(1, player.hand?.length ?? 4)}, minmax(0, 1fr))`,
+        }}
+      >
         {player.hand.map((card, i) => (
           <Card
             key={`${card}-${i}`}

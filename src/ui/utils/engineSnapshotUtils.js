@@ -4,12 +4,13 @@ export function mergeEngineSnapshot(currentState, snapshot) {
     return {
       players: currentState?.players ?? [],
       pots: currentState?.pots ?? [],
-      metadata: {
-        currentBet: defaultMeta.currentBet ?? 0,
-        betHead: defaultMeta.betHead ?? 0,
-        lastAggressor: defaultMeta.lastAggressor ?? null,
-        actingPlayerIndex: defaultMeta.actingPlayerIndex ?? 0,
-      },
+    metadata: {
+      currentBet: defaultMeta.currentBet ?? 0,
+      betHead: defaultMeta.betHead ?? 0,
+      lastAggressor: defaultMeta.lastAggressor ?? null,
+      actingPlayerIndex: defaultMeta.actingPlayerIndex ?? 0,
+      handId: typeof defaultMeta.handId === "string" ? defaultMeta.handId : null,
+    },
       deck: Array.isArray(currentState?.deck) ? currentState.deck : [],
       discard: Array.isArray(currentState?.discard) ? currentState.discard : [],
       burn: Array.isArray(currentState?.burn) ? currentState.burn : [],
@@ -105,6 +106,14 @@ export function mergeEngineSnapshot(currentState, snapshot) {
           ? incomingMeta.lastAggressor
           : defaultMeta.lastAggressor ?? currentState?.lastAggressor ?? null,
       actingPlayerIndex,
+      handId:
+        typeof incomingMeta.handId === "string"
+          ? incomingMeta.handId
+          : typeof defaultMeta.handId === "string"
+          ? defaultMeta.handId
+          : typeof currentState?.metadata?.handId === "string"
+          ? currentState.metadata.handId
+          : null,
     },
   };
 }

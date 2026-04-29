@@ -1,5 +1,5 @@
 // src/games/badugi/engine/drawRound.js
-import { aliveDrawPlayers } from "./roundFlow.js";
+import { findNextActorSeatForPhase } from "../flow/nextActorUtils.js";
 import { debugLog } from "../../../utils/debugLog";
 import { assertNoDuplicateCards } from "../utils/deck.js";
 
@@ -14,8 +14,6 @@ export function runDrawRound({
   setPlayers,
   drawRound,
   setTurn,
-  dealerIdx,
-  NUM_PLAYERS,
   advanceAfterAction = () => {},
   onActionLog = () => {},
 }) {
@@ -23,7 +21,11 @@ export function runDrawRound({
   console.log(`[TRACE ${new Date().toISOString()}] runDrawRound START turn=${turn}, drawRound=${drawRound}`);
   const actor = players[turn];
   if (!actor || actor.folded || actor.seatOut || actor.hasDrawn) {
-    const nxt = findNextDrawableSeat(players, turn);
+    const nxt = findNextActorSeatForPhase({
+      phase: "DRAW",
+      players,
+      startIdx: (turn ?? 0) + 1,
+    });
     if (typeof nxt === "number") {
       setTurn(nxt);
     } else {
@@ -63,6 +65,7 @@ export function runDrawRound({
           ...p,
           hand: newHand,
           hasDrawn: true,
+          hasActedThisRound: true,
           lastDrawCount: drawCount,
           lastAction: drawCount === 0 ? "Pat" : `DRAW(${drawCount})`,
         }
@@ -110,15 +113,11 @@ export function runDrawRound({
     });
   }
 
-  const sb = (dealerIdx + 1) % NUM_PLAYERS;
-  const order = Array.from({ length: NUM_PLAYERS }, (_, k) => (sb + k) % NUM_PLAYERS);
-  const active = aliveDrawPlayers(updatedPlayers);
-  const nextIdx =
-    order.find((idx) => {
-      const pl = updatedPlayers[idx];
-      if (!pl || pl.folded || pl.seatOut) return false;
-      return !pl.hasDrawn && active.includes(pl);
-    }) ?? findNextDrawableSeat(updatedPlayers, turn);
+  const nextIdx = findNextActorSeatForPhase({
+    phase: "DRAW",
+    players: updatedPlayers,
+    startIdx: (turn ?? 0) + 1,
+  });
 
   if (typeof nextIdx === "number") {
     setTurn(nextIdx);
@@ -188,23 +187,4 @@ function collectActiveCards(players = []) {
     }
   });
   return cards;
-}
-
-function findNextDrawableSeat(players = [], startIdx = 0) {
-  if (!Array.isArray(players) || players.length === 0) return null;
-  const n = players.length;
-  const base = typeof startIdx === "number" ? startIdx : -1;
-  for (let offset = 1; offset <= n; offset += 1) {
-    const idx = (base + offset + n) % n;
-    const candidate = players[idx];
-    if (
-      candidate &&
-      !candidate.folded &&
-      !candidate.seatOut &&
-      !candidate.hasDrawn
-    ) {
-      return idx;
-    }
-  }
-  return null;
 }

@@ -1,4 +1,10 @@
-import { firstBetterAfterBlinds } from "./actionUtils.js";
+import {
+  applyChips,
+  firstBetterAfterBlinds,
+  isPlayerSeated,
+  isPlayerActiveInGame,
+  isPlayerEligibleForBlinds,
+} from "./actionUtils.js";
 
 export function computeNextBlindLevel({
   isFreshStart,
@@ -155,7 +161,6 @@ export function buildNextHandState({
       lastDrawCount: 0,
       selected: [],
       showHand: seatMeta === "HUMAN",
-      isDealer: seat === nextDealerIdx,
       hasActedThisRound: seatOut,
       lastAction: "",
       isCPU: seatMeta === "CPU",
@@ -177,6 +182,9 @@ export function buildNextHandState({
       player.isBusted = true;
       player.hasActedThisRound = true;
     }
+    player.isDealer = seat === nextDealerIdx;
+    player.isSeated = !seatOut;
+    player.isActiveInGame = !seatOut && !player.isBusted;
     return player;
   });
 
@@ -191,13 +199,11 @@ export function buildNextHandState({
   if (anteValue > 0) {
     players.forEach((player, seat) => {
       if (player.seatOut) return;
-      const antePay = Math.min(player.stack, anteValue);
-      if (antePay > 0) {
-        player.stack -= antePay;
-        player.betThisRound += antePay;
-        player.totalInvested = (player.totalInvested ?? 0) + antePay;
-        player.lastAction = `ANTE(${antePay})`;
-        anteEvents.push({ seat, amount: antePay });
+      const applied = applyChips(player, anteValue);
+      if (applied > 0) {
+        player.betThisRound += applied;
+        player.lastAction = `ANTE(${applied})`;
+        anteEvents.push({ seat, amount: applied });
       }
       if (player.stack === 0) {
         player.allIn = true;
@@ -206,37 +212,17 @@ export function buildNextHandState({
     });
   }
 
-  const sbIdx = (nextDealerIdx + 1) % numSeats;
-  const bbIdx = (nextDealerIdx + 2) % numSeats;
-  const sbPay = Math.min(players[sbIdx]?.stack ?? 0, sbValue);
-  if (players[sbIdx]) {
-    players[sbIdx].stack -= sbPay;
-    players[sbIdx].betThisRound += sbPay;
-    if (sbPay > 0) {
-      players[sbIdx].totalInvested = (players[sbIdx].totalInvested ?? 0) + sbPay;
-    }
-    if (players[sbIdx].stack === 0) {
-      players[sbIdx].allIn = true;
-      players[sbIdx].hasActedThisRound = true;
-    }
-  }
-
-  const bbPay = Math.min(players[bbIdx]?.stack ?? 0, bbValue);
-  if (players[bbIdx]) {
-    players[bbIdx].stack -= bbPay;
-    players[bbIdx].betThisRound += bbPay;
-    if (bbPay > 0) {
-      players[bbIdx].totalInvested = (players[bbIdx].totalInvested ?? 0) + bbPay;
-    }
-    if (players[bbIdx].stack === 0) {
-      players[bbIdx].allIn = true;
-      players[bbIdx].hasActedThisRound = true;
-    }
-  }
+  const {
+    sbIdx,
+    bbIdx,
+    sbPay,
+    bbPay,
+    numActivePlayers,
+  } = assignBlinds(players, nextDealerIdx, sbValue, bbValue);
 
   const initialCurrentBet = Math.max(sbPay, bbPay);
   const resolvedTurn = firstBetterAfterBlinds(players, nextDealerIdx);
-  const activeCount = players.filter((p) => !p.seatOut).length;
+  const activeCount = numActivePlayers;
 
   return {
     players,
@@ -255,4 +241,77 @@ export function buildNextHandState({
     handStartingStacksById,
     seatOutWarnings,
   };
+}
+
+function assignBlinds(players = [], dealerIdx = 0, smallBlind = 0, bigBlind = 0) {
+  const eligibleCount = players.reduce(
+    (count, player) => count + (isPlayerEligibleForBlinds(player) ? 1 : 0),
+    0,
+  );
+
+  if (eligibleCount < 2) {
+    return {
+      sbIdx: null,
+      bbIdx: null,
+      sbPay: 0,
+      bbPay: 0,
+      numActivePlayers: eligibleCount,
+    };
+  }
+
+  let sbIdx = null;
+  let bbIdx = null;
+
+  if (eligibleCount >= 3) {
+    sbIdx = nextAliveSeat(players, dealerIdx);
+    bbIdx = sbIdx != null ? nextAliveSeat(players, sbIdx) : null;
+  } else {
+    sbIdx = dealerIdx;
+    if (!isPlayerEligibleForBlinds(players[sbIdx])) {
+      sbIdx = nextAliveSeat(players, dealerIdx);
+    }
+    bbIdx = sbIdx != null ? nextAliveSeat(players, sbIdx) : null;
+  }
+
+  const sbPay = applyBlindPayment(players, sbIdx, smallBlind);
+  const bbPay = applyBlindPayment(players, bbIdx, bigBlind);
+
+  return {
+    sbIdx,
+    bbIdx,
+    sbPay,
+    bbPay,
+    numActivePlayers: eligibleCount,
+  };
+}
+
+function applyBlindPayment(players = [], seatIndex = null, amount = 0) {
+  if (!Array.isArray(players) || typeof seatIndex !== "number") return 0;
+  const player = players[seatIndex];
+  if (!player || amount <= 0) return 0;
+  const pay = applyChips(player, amount);
+  if (pay <= 0) return 0;
+
+  player.betThisRound = (player.betThisRound ?? 0) + pay;
+  if (player.stack === 0) {
+    player.allIn = true;
+    player.hasActedThisRound = true;
+  } else {
+    player.hasActedThisRound = false;
+  }
+  return pay;
+}
+
+function nextAliveSeat(players = [], fromSeat = 0) {
+  if (!Array.isArray(players) || players.length === 0) return null;
+  const n = players.length;
+  let cursor = typeof fromSeat === "number" ? fromSeat : 0;
+  for (let offset = 0; offset < n; offset += 1) {
+    cursor = (cursor + 1) % n;
+    const candidate = players[cursor];
+    if (isPlayerSeated(candidate) && isPlayerEligibleForBlinds(candidate)) {
+      return cursor;
+    }
+  }
+  return null;
 }

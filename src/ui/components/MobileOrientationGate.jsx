@@ -9,13 +9,16 @@ export default function MobileOrientationGate({
   if (!enabled || !isPortrait) return <>{children}</>;
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-b from-gray-900 via-black to-black text-center text-white px-6">
-      <div className="max-w-xs space-y-4">
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-gradient-to-br from-slate-950 via-black to-slate-900 px-6 text-center text-white">
+      <div className="max-w-sm space-y-4 rounded-2xl border border-white/15 bg-black/45 p-6 shadow-2xl backdrop-blur">
         <div className="text-4xl" aria-hidden="true">
           📱↻
         </div>
-        <h1 className="text-2xl font-semibold">Rotate to play</h1>
-        <p className="text-sm text-slate-200 leading-relaxed">{message}</p>
+        <h1 className="text-xl font-semibold">横向きでプレイしてください</h1>
+        <p className="text-sm leading-relaxed text-slate-200">{message}</p>
+        <p className="text-xs text-amber-200/90">
+          Landscape mode required on mobile.
+        </p>
       </div>
     </div>
   );

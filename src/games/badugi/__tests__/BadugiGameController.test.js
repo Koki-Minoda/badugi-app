@@ -96,6 +96,9 @@ describe("BadugiGameController", () => {
     });
     const controller = createController({ evaluateHand });
     controller.setHandContext({ handId: "hand-123" });
+    controller.state.dealerIdx = 3;
+    controller.state.sbIndex = 4;
+    controller.state.bbIndex = 5;
 
     const players = [
       {
@@ -133,6 +136,7 @@ describe("BadugiGameController", () => {
     expect(result.pot).toBe(100);
     expect(result.winners).toHaveLength(1);
     expect(result.potDetails[0].potAmount).toBe(100);
+    expect(result).toMatchObject({ buttonSeat: 3, sbSeat: 4, bbSeat: 5 });
   });
 
   it("resets bet-round acted flags before post-draw betting", () => {

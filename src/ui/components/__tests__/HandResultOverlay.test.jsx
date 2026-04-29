@@ -82,4 +82,28 @@ describe("HandResultOverlay", () => {
       "CPU 2",
     );
   });
+
+  test("renders 2-7 low hand labels for draw variants", () => {
+    render(
+      <HandResultOverlay
+        visible
+        summary={{
+          handId: "d01-hand-1",
+          pot: 100,
+          winners: [
+            {
+              seatIndex: 0,
+              name: "You",
+              handLabel: "2-7 Low 7-5-4-3-2",
+              payout: 100,
+            },
+          ],
+        }}
+      />
+    );
+
+    expect(screen.getByTestId("hand-result-winner-hand-label").textContent).toBe(
+      "2-7 Low 7-5-4-3-2",
+    );
+  });
 });

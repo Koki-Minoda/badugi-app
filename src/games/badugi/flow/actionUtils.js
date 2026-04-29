@@ -1,15 +1,45 @@
+import { applyChips } from "../../core/applyChips.js";
+import { normalizeBetActionAmount } from "../logic/actionAmount.js";
+
+export { applyChips };
+
 export function isFoldedOrOut(player) {
   return Boolean(player?.folded || player?.hasFolded || player?.seatOut);
 }
 
+// NOTE (H-01-2):
+//   - BTN/SB/BB candidates must satisfy isPlayerSeated && isPlayerActiveInGame.
+//   - BET/DRAW actors use isSeatEligibleForBet / isSeatEligibleForDraw,
+//     which add !folded && !allIn on top of the above conditions.
+//   - Showdown contenders are filtered by isPlayerActiveInGame && !folded.
+// All seat-selection helpers (nextAliveFrom, assignBlinds, controller actor search,
+// and showdown code) MUST call these helpers instead of duplicating predicates.
+export function isPlayerSeated(player) {
+  if (!player) return false;
+  if (typeof player.isSeated === "boolean") return player.isSeated;
+  if (player.seatType && typeof player.seatType === "string") {
+    if (player.seatType.toUpperCase() === "EMPTY") return false;
+  }
+  return !player.seatOut;
+}
+
+export function isPlayerActiveInGame(player) {
+  if (!player) return false;
+  if (typeof player.isActiveInGame === "boolean") return player.isActiveInGame;
+  if (player.seatOut || player.isBusted) return false;
+  return true;
+}
+
+export function isPlayerEligibleForBlinds(player) {
+  return isPlayerSeated(player) && isPlayerActiveInGame(player);
+}
+
 export function aliveBetPlayers(arr) {
-  return Array.isArray(arr)
-    ? arr.filter((p) => !isFoldedOrOut(p) && !p?.allIn)
-    : [];
+  return Array.isArray(arr) ? arr.filter((p) => isSeatEligibleForBet(p)) : [];
 }
 
 export function aliveDrawPlayers(arr) {
-  return Array.isArray(arr) ? arr.filter((p) => !isFoldedOrOut(p)) : [];
+  return Array.isArray(arr) ? arr.filter((p) => isSeatEligibleForDraw(p)) : [];
 }
 
 export function nextAliveFrom(arr, idx) {
@@ -17,7 +47,7 @@ export function nextAliveFrom(arr, idx) {
   const n = arr.length;
   let next = ((idx ?? 0) + 1) % n;
   let loop = 0;
-  while (isFoldedOrOut(arr[next]) || arr[next]?.allIn) {
+  while (!isSeatEligibleForBet(arr[next])) {
     next = (next + 1) % n;
     if (++loop > n) return null;
   }
@@ -37,7 +67,7 @@ export function findNextActiveSeat(players, startIdx = 0) {
   for (let offset = 0; offset < n; offset += 1) {
     const candidate = (startIdx + offset) % n;
     const player = players[candidate];
-    if (player && !isFoldedOrOut(player) && !player.allIn) {
+    if (isSeatEligibleForBet(player)) {
       return candidate;
     }
   }
@@ -51,7 +81,7 @@ export function firstBetterAfterBlinds(players, dealerIdx = 0) {
   for (let offset = 0; offset < n; offset += 1) {
     const seat = (start + offset) % n;
     const player = players[seat];
-    if (player && !isFoldedOrOut(player) && !player.allIn) {
+    if (isSeatEligibleForBet(player)) {
       return seat;
     }
   }
@@ -79,6 +109,54 @@ export function sanitizeStacks(players) {
     }
     return next;
   });
+}
+
+export function isPlayerInBetRound(player) {
+  if (!isPlayerEligibleForBlinds(player)) return false;
+  if (isFoldedOrOut(player)) return false;
+  if (player?.allIn) return false;
+  return true;
+}
+
+export function isSeatEligibleForBet(player) {
+  return isPlayerInBetRound(player);
+}
+
+export function isSeatEligibleForDraw(player) {
+  if (!isPlayerEligibleForBlinds(player)) return false;
+  if (isFoldedOrOut(player)) return false;
+  if (player?.canDraw === false) return false;
+  return true;
+}
+
+// NOTE (G-07): Draw actor search mirrors BET actor search.
+// We rely on isSeatEligibleForDraw (folded/all-in are skipped) and
+// hasActedThisRound to decide who still needs to draw. Returning null means
+// the draw round is complete and callers must advance the phase safely.
+export function findNextDrawActorSeat(players = [], startIdx = 0) {
+  if (!Array.isArray(players) || players.length === 0) return null;
+  const n = players.length;
+  const normalized =
+    typeof startIdx === "number" && Number.isFinite(startIdx)
+      ? ((Math.trunc(startIdx) % n) + n) % n
+      : 0;
+  for (let offset = 0; offset < n; offset += 1) {
+    const seat = (normalized + offset) % n;
+    const player = players[seat];
+    if (isSeatEligibleForDraw(player) && !player?.hasActedThisRound) {
+      return seat;
+    }
+  }
+  return null;
+}
+
+// NOTE (G-06): Folded players must be completely skipped for BET/DRAW/showdown logic.
+export function markPlayerFolded(player) {
+  if (!player) return player;
+  player.folded = true;
+  player.hasFolded = true;
+  player.hasActedThisRound = true;
+  return player;
 }
 
 export function queueForcedSeatAction(map, seat, payload = {}) {
@@ -122,22 +200,26 @@ export function applyForcedBetActionSnapshot({ players, seat, payload = {}, betS
     return { success: false };
   }
 
-  const stackBefore = actor.stack;
-  const betBefore = actor.betThisRound;
+  const stackBefore = Math.max(0, Number(actor.stack) || 0);
+  const betBefore = Math.max(0, Number(actor.betThisRound) || 0);
+  const totalInvestedBefore = Math.max(0, Number(actor.totalInvested) || 0);
+  actor.stack = stackBefore;
+  actor.betThisRound = betBefore;
+  actor.totalInvested = totalInvestedBefore;
   const maxNow = maxBetThisRound(snap);
-  const toCall = Math.max(0, maxNow - actor.betThisRound);
+  const toCall = Math.max(0, maxNow - betBefore);
   let actionType = (payload.type || "call").toLowerCase();
-  let raiseSize = Number.isFinite(payload.amount) ? Math.max(0, payload.amount) : betSize;
+  const unit = Math.max(1, Number(betSize) || 1);
   let raiseApplied = false;
+  let actionContribution = 0;
 
   const invest = (chips) => {
     if (chips <= 0) return 0;
-    const applied = Math.min(actor.stack, chips);
-    actor.stack -= applied;
+    const applied = applyChips(actor, chips);
     actor.betThisRound += applied;
-    if (applied > 0) {
-      actor.totalInvested = (actor.totalInvested ?? 0) + applied;
-    }
+    actionContribution += applied;
+    const expectedTotalInvested = totalInvestedBefore + actionContribution;
+    actor.totalInvested = Math.max(actor.totalInvested ?? 0, expectedTotalInvested);
     if (actor.stack === 0) {
       actor.allIn = true;
       actor.hasActedThisRound = true;
@@ -147,30 +229,40 @@ export function applyForcedBetActionSnapshot({ players, seat, payload = {}, betS
 
   switch (actionType) {
     case "fold":
-      actor.folded = true;
-      actor.hasFolded = true;
+      markPlayerFolded(actor);
       actor.lastAction = "Fold";
-      actor.hasActedThisRound = true;
       break;
     case "check":
-      if (toCall > 0) {
-        actionType = "call";
-      } else {
-        actor.lastAction = "Check";
-        actor.hasActedThisRound = true;
-        break;
-      }
-    // eslint-disable-next-line no-fallthrough
+      actor.lastAction = "Check";
+      actor.hasActedThisRound = true;
+      break;
     case "call": {
-      const paid = invest(toCall);
+      const amountModel = normalizeBetActionAmount({
+        actionType: "CALL",
+        amount: payload.amount,
+        toCall,
+        unit,
+      });
+      const requested = amountModel.isValid
+        ? amountModel.contribution
+        : (Number.isFinite(Number(payload.amount)) ? Number(payload.amount) : toCall);
+      const paid = invest(Math.max(0, requested));
       actor.lastAction = paid === 0 ? "Check" : "Call";
       actor.hasActedThisRound = true;
       break;
     }
     case "bet":
     case "raise": {
-      invest(toCall);
-      const paidRaise = invest(Math.max(raiseSize, betSize));
+      const amountModel = normalizeBetActionAmount({
+        actionType: "RAISE",
+        amount: payload.amount,
+        toCall,
+        unit,
+      });
+      const requested = amountModel.isValid
+        ? amountModel.contribution
+        : Math.max(0, toCall + unit);
+      const paidRaise = invest(requested);
       actor.lastAction = "Raise";
       actor.hasActedThisRound = true;
       raiseApplied = paidRaise > 0;
@@ -192,6 +284,14 @@ export function applyForcedBetActionSnapshot({ players, seat, payload = {}, betS
   }
 
   snap[seat] = actor;
+  if (raiseApplied) {
+    for (let i = 0; i < snap.length; i += 1) {
+      if (i === seat) continue;
+      const player = snap[i];
+      if (!player || isFoldedOrOut(player) || player.allIn) continue;
+      player.hasActedThisRound = false;
+    }
+  }
   return {
     success: true,
     updatedPlayers: snap,

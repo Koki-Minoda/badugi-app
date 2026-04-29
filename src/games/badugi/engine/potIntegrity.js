@@ -1,4 +1,4 @@
-import { buildSidePots, isFoldedOrOut } from "./roundFlow.js";
+import { buildSidePots, isFoldedOrOut } from "./roundFlow.jsx";
 
 function cloneEligibleSeats(pot = {}) {
   const eligible = Array.isArray(pot?.eligible)

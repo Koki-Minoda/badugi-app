@@ -210,8 +210,16 @@ export function useGameSessionState() {
   const resetForNewHandFromSnapshot = useCallback((snapshot = {}) => {
     setSession((prev) => {
       const mapped = mapSnapshotToSession(prev, snapshot);
+      const normalizedPhase = snapshot?.phase ?? snapshot?.metadata?.phase ?? "BET";
+      const normalizedDrawRound =
+        snapshot?.drawRound ?? snapshot?.drawRoundIndex ?? snapshot?.metadata?.drawRound ?? 0;
+      const normalizedBetRound =
+        snapshot?.betRoundIndex ?? snapshot?.drawRound ?? snapshot?.drawRoundIndex ?? 0;
       return {
         ...mapped,
+        phase: normalizedPhase,
+        drawRound: Number.isFinite(normalizedDrawRound) ? normalizedDrawRound : 0,
+        betRoundIndex: Number.isFinite(normalizedBetRound) ? normalizedBetRound : 0,
         overlays: { ...DEFAULT_OVERLAYS },
       };
     });

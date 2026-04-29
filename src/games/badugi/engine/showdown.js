@@ -1,6 +1,6 @@
 import { evaluateBadugi } from "../utils/badugiEvaluator.js";
 import { resolveBadugiWinners } from "./badugiComparison.js";
-import { buildSidePots } from "./roundFlow.js";
+import { buildSidePots } from "./roundFlow.jsx";
 import { saveTournamentHistory, saveHandHistory } from "../../../utils/history.js";
 
 export function runShowdown({
@@ -203,13 +203,22 @@ function resolveShowdownLegacy(players = [], pots = []) {
       }))
       .filter(
         (entry) =>
-          entry.player && !entry.player.folded && !entry.player.seatOut
+          entry.player &&
+          !entry.player.folded &&
+          !entry.player.seatOut &&
+          entry.player.isActiveInGame !== false
       );
 
     if (!contenders.length) {
       const fallback = workingPlayers
         .map((player, idx) => ({ seatIndex: idx, player }))
-        .filter(({ player }) => player && !player.folded && !player.seatOut);
+        .filter(
+          ({ player }) =>
+            player &&
+            !player.folded &&
+            !player.seatOut &&
+            player.isActiveInGame !== false
+        );
       if (fallback.length) {
         contenders = fallback;
         console.warn(

@@ -10,7 +10,13 @@ from .config import get_settings
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 settings = get_settings()
-SECRET_KEY = getattr(settings, "secret_key", None) or "change-me"
+if settings.backend_env == "test":
+    # Test-only fallback to keep isolated pytest runs working without real secrets.
+    SECRET_KEY = (getattr(settings, "secret_key", None) or "test-only-secret-key").strip()
+else:
+    SECRET_KEY = (getattr(settings, "secret_key", None) or "").strip()
+    if not SECRET_KEY:
+        raise RuntimeError("SECRET_KEY must be set.")
 ALGORITHM = "HS256"
 DEFAULT_EXPIRE_MINUTES = 60 * 24
 

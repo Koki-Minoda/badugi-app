@@ -64,7 +64,10 @@ def _reset_recent_logs() -> None:
 
 @router.post("/badugi/hands", response_model=BadugiHandLogResponse)
 def create_hand_log(payload: BadugiHandLogCreate) -> BadugiHandLogResponse:
-    session = db.SessionLocal()
+    try:
+        session = db.SessionLocal()
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail="db_unreachable")
     try:
         log = HandLog(
             hand_id=payload.hand_id,
@@ -102,26 +105,26 @@ def create_hand_log(payload: BadugiHandLogCreate) -> BadugiHandLogResponse:
         return BadugiHandLogResponse(hand_id=payload.hand_id, accepted=True)
     except SQLAlchemyError:
         session.rollback()
-        return BadugiHandLogResponse(hand_id=payload.hand_id, accepted=False, error="db_unreachable")
+        raise HTTPException(status_code=503, detail="db_unreachable")
     finally:
         session.close()
 
 
-@router.get("/badugi/hands/{hand_id}")
-def get_hand_log(hand_id: str):
+@router.get("/badugi/hands/recent")
+def list_recent_hand_logs(limit: int = 10):
     session = db.SessionLocal()
     try:
         stmt = (
             select(HandLog)
-            .options(selectinload(HandLog.actions), selectinload(HandLog.results))
-            .where(HandLog.hand_id == hand_id)
+            .order_by(desc(HandLog.created_at))
+            .limit(max(1, min(limit, MAX_RECENT_LOGS)))
         )
-        log = session.execute(stmt).scalar_one_or_none()
-        if not log:
-            raise HTTPException(status_code=404, detail="hand_not_found")
-        return log.to_dict(include_children=True)
+        logs = session.execute(stmt).scalars().all()
+        if logs:
+            return {"items": [log.to_dict(include_children=True) for log in logs]}
+        return {"items": list(_recent_logs)}
     except SQLAlchemyError:
-        raise HTTPException(status_code=503, detail="db_unreachable")
+        return {"items": list(_recent_logs)}
     finally:
         session.close()
 
@@ -145,6 +148,20 @@ def get_hands_by_table(table_id: str, limit: int = 5):
         session.close()
 
 
-@router.get("/badugi/hands/recent")
-def list_recent_hand_logs() -> Dict[str, List[BadugiHandLogCreate]]:
-    return {"items": list(_recent_logs)}
+@router.get("/badugi/hands/{hand_id}")
+def get_hand_log(hand_id: str):
+    session = db.SessionLocal()
+    try:
+        stmt = (
+            select(HandLog)
+            .options(selectinload(HandLog.actions), selectinload(HandLog.results))
+            .where(HandLog.hand_id == hand_id)
+        )
+        log = session.execute(stmt).scalar_one_or_none()
+        if not log:
+            raise HTTPException(status_code=404, detail="hand_not_found")
+        return log.to_dict(include_children=True)
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail="db_unreachable")
+    finally:
+        session.close()

@@ -5,9 +5,20 @@ import { DeckManager } from "../utils/deck.js";
 import { dealInitialHands, validatePreflopState } from "../utils/deckHelpers.js";
 import { resolveBadugiWinners } from "./badugiComparison.js";
 import { createBadugiTableState } from "./legacyState.js";
-import { settleStreetToPots, calcDrawStartIndex, nextAliveFrom } from "./roundFlow.js";
+import {
+  settleStreetToPots,
+  calcDrawStartIndex,
+  nextAliveFrom,
+} from "./roundFlow.jsx";
+import {
+  isSeatEligibleForBet,
+  markPlayerFolded,
+  findNextDrawActorSeat,
+} from "../flow/actionUtils.js";
+import { applyChips } from "../flow/actionUtils.js";
 import { normalizePotsWithContributions } from "./potIntegrity.js";
-import { getFixedLimitBetSize } from "../logic/bettingRules.js";
+import { getFixedLimitBetSize, getFixedLimitRaiseCap } from "../logic/bettingRules.js";
+import { normalizeBetActionAmount } from "../logic/actionAmount.js";
 
 const SUPPORTED_ACTIONS = new Set(["FOLD", "CHECK", "CALL", "RAISE", "DRAW", "SHOW"]);
 
@@ -119,7 +130,7 @@ export class BadugiEngine extends DrawEngineBase {
     }
 
     players.forEach((player) => {
-      if (isSeatEligible(player) && !player.allIn) {
+      if (isSeatEligibleForBet(player)) {
         player.hasActedThisRound = false;
       }
     });
@@ -139,6 +150,8 @@ export class BadugiEngine extends DrawEngineBase {
       lastBlinds: { sbIndex, sbPay, bbIndex, bbPay },
       currentBet: computeCurrentBet(players),
       betHead: next.actingPlayerIndex,
+      raiseCountThisRound: 0,
+      raiseCap: getFixedLimitRaiseCap(next?.metadata?.raiseCap),
       totalCommitted: committed,
       potAmount: committed + sumPotAmounts(next.pots),
     };
@@ -179,28 +192,30 @@ export class BadugiEngine extends DrawEngineBase {
     const metadata = {
       ...(action.metadata ?? {}),
     };
-    if (typeof metadata.betSize !== "number" || metadata.betSize <= 0) {
-      const baseBet =
-        Number(state?.bigBlind) ||
-        Number(state?.metadata?.bbValue) ||
-        Number(state?.metadata?.bigBlind) ||
-        (Number(state?.smallBlind) || 0) * 2;
-      metadata.betSize = getFixedLimitBetSize({
-        baseBet,
-        drawRound: state?.drawRoundIndex ?? 0,
-        betRound: state?.betRoundIndex ?? 0,
-      });
-    }
     const tableMeta = ensureMetadata(next);
-    if (typeof metadata.betSize === "number" && metadata.betSize > 0) {
-      tableMeta.defaultRaiseSize = metadata.betSize;
-      tableMeta.betSize = metadata.betSize;
-    }
     if (typeof next.bigBlind === "number") {
       tableMeta.bbValue = next.bigBlind;
     }
     tableMeta.drawRoundIndex = next.drawRoundIndex ?? tableMeta.drawRoundIndex ?? 0;
     tableMeta.betRoundIndex = next.betRoundIndex ?? tableMeta.betRoundIndex ?? 0;
+    tableMeta.raiseCap = resolveRaiseCap(next);
+
+    const validation = validateAction(next, seatIndex, {
+      type: normalizedType,
+      amount: metadata.amount,
+    });
+    if (!validation.isValid) {
+      throw new IllegalActionError(validation.message ?? "Invalid action", {
+        seatIndex,
+        actionType: normalizedType,
+        ...(validation.context ?? {}),
+      });
+    }
+    metadata.toCall = validation.toCall;
+    metadata.unit = validation.unit;
+    metadata.normalizedContribution = validation.expectedContribution;
+    metadata.raiseIncrement = validation.raiseIncrement;
+    metadata.amountSchema = validation.amountSchema;
 
     switch (normalizedType) {
       case "FOLD":
@@ -258,6 +273,8 @@ export class BadugiEngine extends DrawEngineBase {
       totalCommitted: 0,
       potAmount: sumPotAmounts(pots),
       currentBet: 0,
+      raiseCountThisRound: 0,
+      raiseCap: getFixedLimitRaiseCap(working?.metadata?.raiseCap),
       betRoundIndex: drawRound,
       drawRoundIndex: drawRound,
     };
@@ -265,46 +282,20 @@ export class BadugiEngine extends DrawEngineBase {
 
     const nextRound = drawRound + 1;
     if (nextRound > maxDraws) {
-      working.street = "SHOWDOWN";
-      working.isHandOver = true;
-      working.actingPlayerIndex = dealerIndex;
-      const showdownResult = this.resolveShowdown(working, { cloneState: false });
-      return {
-        state: showdownResult?.state ?? working,
-        street: "SHOWDOWN",
-        drawRoundIndex: drawRound,
-        showdown: true,
-        players: showdownResult?.state?.players ?? working.players,
-        pots: showdownResult?.state?.pots ?? working.pots,
-        showdownSummary: showdownResult?.summary,
-        totalPot: showdownResult?.totalPot,
-      };
+      return transitionEngineToShowdown(this, working, dealerIndex, drawRound);
     }
 
-    const drawStartBase = calcDrawStartIndex(
+    transitionEngineToDrawState(working, {
       dealerIndex,
       nextRound,
-      numPlayers || working.players.length || 6
-    );
-    const firstToDraw = findDrawableSeat(working.players, drawStartBase);
-
-    const resetPlayers = working.players.map((p) => ({
-      ...p,
-      hasDrawn: p.folded ? true : false,
-      canDraw: !p.folded,
-      lastAction: p.folded ? p.lastAction || metadata?.actionLabel || "Fold" : "",
-    }));
-
-    working.players = resetPlayers;
-    working.drawRoundIndex = nextRound;
-    working.street = "DRAW";
-    working.actingPlayerIndex = firstToDraw;
+      numPlayers: numPlayers || working.players.length || 6,
+    });
 
     return {
       state: working,
       street: "DRAW",
       drawRoundIndex: nextRound,
-      actingPlayerIndex: firstToDraw,
+      actingPlayerIndex: working.actingPlayerIndex,
       players: working.players,
       pots: working.pots,
     };
@@ -353,7 +344,13 @@ export class BadugiEngine extends DrawEngineBase {
       const contenders = eligibleSeats
         .map((seatIndex) => {
           const player = players[seatIndex];
-          if (!player || player.folded || player.seatOut) return null;
+          if (
+            !player ||
+            player.folded ||
+            player.seatOut ||
+            player.isActiveInGame === false
+          )
+            return null;
           return {
             seatIndex,
             name: player.name,
@@ -447,16 +444,10 @@ function isSeatEligible(player) {
 
 function payContribution(player, amount) {
   if (!player || amount <= 0) return { updated: player, paid: 0 };
-  const stack = Math.max(0, player.stack ?? 0);
-  const pay = Math.min(stack, amount);
-  if (pay <= 0) return { updated: player, paid: 0 };
-
-  const updated = {
-    ...player,
-    stack: stack - pay,
-    betThisRound: (player.betThisRound ?? 0) + pay,
-    totalInvested: (player.totalInvested ?? 0) + pay,
-  };
+  const updated = { ...player };
+  const pay = applyChips(updated, amount);
+  if (pay <= 0) return { updated, paid: 0 };
+  updated.betThisRound = (updated.betThisRound ?? 0) + pay;
 
   if (updated.stack === 0) {
     updated.allIn = true;
@@ -468,6 +459,10 @@ function payContribution(player, amount) {
   return { updated, paid: pay };
 }
 
+/**
+ * ENGINE-LEGACY helper: scoped to internal table state.
+ * External layers must not import this (use flow/nextActorUtils).
+ */
 function findNextActiveSeat(players, startIndex, skipIndex) {
   if (!Array.isArray(players) || players.length === 0) return -1;
   const n = players.length;
@@ -475,7 +470,7 @@ function findNextActiveSeat(players, startIndex, skipIndex) {
   for (let step = 0; step < n; step += 1) {
     const seat = (idx + step) % n;
     if (seat === skipIndex) continue;
-    if (isSeatEligible(players[seat])) return seat;
+    if (isSeatEligibleForBet(players[seat])) return seat;
   }
   return -1;
 }
@@ -493,12 +488,7 @@ function computeToCall(table, seatIndex) {
   return Math.max(0, currentBet - (player.betThisRound ?? 0));
 }
 
-function resolveRaiseSize(table, metadata = {}) {
-  if (typeof metadata.raise === "number" && metadata.raise > 0) return metadata.raise;
-  if (typeof metadata.raiseSize === "number" && metadata.raiseSize > 0) return metadata.raiseSize;
-  if (typeof metadata.betSize === "number" && metadata.betSize > 0) return metadata.betSize;
-  const defaultFromMeta = table?.metadata?.defaultRaiseSize;
-  if (typeof defaultFromMeta === "number" && defaultFromMeta > 0) return defaultFromMeta;
+function resolveRaiseSize(table) {
   const baseBet =
     Number(table?.bigBlind) ||
     Number(table?.metadata?.bbValue) ||
@@ -515,17 +505,148 @@ function resolveRaiseSize(table, metadata = {}) {
   return Math.max(1, currentBet || 1);
 }
 
-function findDrawableSeat(players = [], startIndex = 0) {
-  if (!players.length) return 0;
-  const n = players.length;
-  let idx = ((startIndex % n) + n) % n;
-  for (let step = 0; step < n; step += 1) {
-    const seat = (idx + step) % n;
-    const pl = players[seat];
-    if (!pl || pl.folded || pl.seatOut) continue;
-    return seat;
+function resolveFixedLimitUnit(table) {
+  return Math.max(1, Math.trunc(resolveRaiseSize(table)));
+}
+
+function resolveRaiseCount(table) {
+  return Math.max(0, Math.trunc(table?.metadata?.raiseCountThisRound ?? 0));
+}
+
+function resolveRaiseCap(table) {
+  const candidates = [
+    table?.metadata?.raiseCap,
+    table?.raiseCap,
+    table?.level?.raiseCap,
+    table?.config?.raiseCap,
+  ];
+  for (const value of candidates) {
+    const normalized = getFixedLimitRaiseCap(value);
+    if (typeof normalized === "number") {
+      return normalized;
+    }
   }
-  return startIndex % n;
+  return null;
+}
+
+function resolveValidatedAmount({ type, amount, toCall, unit }) {
+  return normalizeBetActionAmount({
+    actionType: type,
+    amount,
+    toCall,
+    unit,
+  });
+}
+
+export function validateAction(table, seatIndex, actionPayload = {}) {
+  const normalizedType = String(actionPayload?.type ?? "").toUpperCase();
+  const player = table?.players?.[seatIndex];
+  if (!player) {
+    return {
+      isValid: false,
+      code: "SEAT_NOT_FOUND",
+      message: "Seat not found",
+      context: { seatIndex, actionType: normalizedType },
+    };
+  }
+
+  const toCall = computeToCall(table, seatIndex);
+  const unit = resolveFixedLimitUnit(table);
+  const raiseCount = resolveRaiseCount(table);
+  const raiseCap = resolveRaiseCap(table);
+  const stack = Math.max(0, Number(player?.stack) || 0);
+  const normalizedAmount = resolveValidatedAmount({
+    type: normalizedType,
+    amount: actionPayload?.amount,
+    toCall,
+    unit,
+  });
+
+  if (normalizedType === "CHECK" && toCall > 0) {
+    return {
+      isValid: false,
+      code: "FL_CHECK_TO_CALL",
+      message: "Check is only legal when to-call is zero",
+      context: { seatIndex, toCall },
+    };
+  }
+
+  if (normalizedType === "CALL" && !normalizedAmount.isValid && stack >= toCall) {
+    return {
+      isValid: false,
+      code: normalizedAmount.code ?? "FL_CALL_MISMATCH",
+      message: normalizedAmount.message,
+      context: {
+        seatIndex,
+        toCall,
+        requestedAmount: normalizedAmount.requestedAmount,
+      },
+    };
+  }
+
+  if (normalizedType === "RAISE") {
+    if (typeof raiseCap === "number" && raiseCount >= raiseCap) {
+      return {
+        isValid: false,
+        code: "FL_RAISE_CAP",
+        message: "Raise cap reached for this betting round",
+        context: { seatIndex, raiseCount, raiseCap },
+      };
+    }
+    if (!normalizedAmount.isValid && stack >= toCall + unit) {
+      return {
+        isValid: false,
+        code: normalizedAmount.code ?? "FL_RAISE_AMOUNT",
+        message: normalizedAmount.message,
+        context: {
+          seatIndex,
+          toCall,
+          unit,
+          requestedAmount: normalizedAmount.requestedAmount,
+          expectedAmount: normalizedAmount.expectedContribution,
+        },
+      };
+    }
+    if (normalizedAmount.isValid && normalizedAmount.raiseIncrement !== unit) {
+      return {
+        isValid: false,
+        code: "FL_RAISE_UNIT",
+        message: "Raise increment must equal fixed-limit unit",
+        context: {
+          seatIndex,
+          raiseIncrement: normalizedAmount.raiseIncrement,
+          unit,
+        },
+      };
+    }
+  }
+
+  return {
+    isValid: true,
+    toCall,
+    unit,
+    raiseCount,
+    raiseCap,
+    expectedContribution:
+      normalizedType === "CALL"
+        ? toCall
+        : normalizedType === "RAISE" || normalizedType === "BET"
+        ? toCall + unit
+        : Math.max(0, normalizedAmount.contribution ?? 0),
+    raiseIncrement: Math.max(0, normalizedAmount.raiseIncrement ?? 0),
+    amountSchema: normalizedAmount.schema ?? "none",
+  };
+}
+
+/**
+ * ENGINE-LEGACY: DRAW actor helper for engine-managed tables only.
+ * FLOW/UI must rely on flow/nextActorUtils instead of invoking this directly.
+ */
+function findDrawableSeat(players = [], startIndex = 0) {
+  if (!Array.isArray(players) || players.length === 0) return 0;
+  const seat = findNextDrawActorSeat(players, startIndex);
+  if (typeof seat === "number") return seat;
+  return ((startIndex % players.length) + players.length) % players.length;
 }
 
 function applyDrawState(target, metadata = {}) {
@@ -540,8 +661,50 @@ function applyDrawState(target, metadata = {}) {
     : [];
   target.hand = handAfter;
   target.hasDrawn = true;
+  target.hasActedThisRound = true;
   target.lastDrawCount = drawCount;
   target.lastAction = metadata.actionLabel ?? (drawCount > 0 ? `DRAW(${drawCount})` : "Pat");
+}
+
+function transitionEngineToDrawState(table, { dealerIndex = 0, nextRound = 0, numPlayers = 6 } = {}) {
+  const players = table.players ?? [];
+  const drawStartBase = calcDrawStartIndex(
+    dealerIndex,
+    nextRound,
+    numPlayers || players.length || 6,
+  );
+  const firstToDraw = findDrawableSeat(players, drawStartBase);
+  const resetPlayers = players.map((p) => {
+    const out = isSeatEligibleForBet(p) ? false : true;
+    return {
+      ...p,
+      hasDrawn: out ? true : false,
+      canDraw: !out,
+      hasActedThisRound: out ? true : false,
+      lastAction: out ? p?.lastAction || "Fold" : p?.lastAction ?? "",
+    };
+  });
+  table.players = resetPlayers;
+  table.drawRoundIndex = nextRound;
+  table.street = "DRAW";
+  table.actingPlayerIndex = firstToDraw;
+}
+
+function transitionEngineToShowdown(engine, table, dealerIndex, drawRound) {
+  table.street = "SHOWDOWN";
+  table.isHandOver = true;
+  table.actingPlayerIndex = dealerIndex;
+  const showdownResult = engine.resolveShowdown(table, { cloneState: false });
+  return {
+    state: showdownResult?.state ?? table,
+    street: "SHOWDOWN",
+    drawRoundIndex: drawRound,
+    showdown: true,
+    players: showdownResult?.state?.players ?? table.players,
+    pots: showdownResult?.state?.pots ?? table.pots,
+    showdownSummary: showdownResult?.summary,
+    totalPot: showdownResult?.totalPot,
+  };
 }
 
 function applyFoldState(table, seatIndex, metadata = {}) {
@@ -556,8 +719,7 @@ function applyFoldState(table, seatIndex, metadata = {}) {
   if (typeof workingMeta.betAfter !== "number") workingMeta.betAfter = betBefore;
   player.stack = workingMeta.stackAfter;
   player.betThisRound = workingMeta.betAfter;
-  player.folded = true;
-  player.hasActedThisRound = true;
+  markPlayerFolded(player);
   player.lastAction = workingMeta.actionLabel ?? "Fold";
   const nextSeat = nextAliveFrom(table.players, seatIndex);
   const meta = (table.metadata = { ...(table.metadata ?? {}) });
@@ -576,10 +738,12 @@ function applyCallState(table, seatIndex, metadata = {}) {
   const workingMeta = { ...(metadata ?? {}) };
   const stackBefore = player.stack ?? 0;
   const betBefore = player.betThisRound ?? 0;
+  const toCall = Number.isFinite(workingMeta.toCall)
+    ? Math.max(0, Number(workingMeta.toCall) || 0)
+    : computeToCall(table, seatIndex);
   if (typeof workingMeta.stackBefore !== "number") workingMeta.stackBefore = stackBefore;
   if (typeof workingMeta.betBefore !== "number") workingMeta.betBefore = betBefore;
   if (typeof workingMeta.stackAfter !== "number" || typeof workingMeta.betAfter !== "number") {
-    const toCall = computeToCall(table, seatIndex);
     const pay = Math.min(stackBefore, toCall);
     workingMeta.toCall = typeof workingMeta.toCall === "number" ? workingMeta.toCall : toCall;
     workingMeta.paid = typeof workingMeta.paid === "number" ? workingMeta.paid : pay;
@@ -620,26 +784,43 @@ function applyRaiseState(table, seatIndex, metadata = {}) {
   const workingMeta = { ...(metadata ?? {}) };
   const stackBefore = player.stack ?? 0;
   const betBefore = player.betThisRound ?? 0;
+  const toCall = Number.isFinite(workingMeta.toCall)
+    ? Math.max(0, Number(workingMeta.toCall) || 0)
+    : computeToCall(table, seatIndex);
+  const unit = Number.isFinite(workingMeta.unit)
+    ? Math.max(1, Math.trunc(Number(workingMeta.unit) || 1))
+    : resolveFixedLimitUnit(table);
+  const expectedContribution = Number.isFinite(workingMeta.normalizedContribution)
+    ? Math.max(0, Number(workingMeta.normalizedContribution) || 0)
+    : toCall + unit;
   if (typeof workingMeta.stackBefore !== "number") workingMeta.stackBefore = stackBefore;
   if (typeof workingMeta.betBefore !== "number") workingMeta.betBefore = betBefore;
   if (typeof workingMeta.stackAfter !== "number" || typeof workingMeta.betAfter !== "number") {
-    const toCall = computeToCall(table, seatIndex);
-    const raiseSize = resolveRaiseSize(table, workingMeta);
-    const total = toCall + raiseSize;
-    const pay = Math.min(stackBefore, total);
+    const pay = Math.min(stackBefore, expectedContribution);
     workingMeta.toCall = typeof workingMeta.toCall === "number" ? workingMeta.toCall : toCall;
-    workingMeta.raise = typeof workingMeta.raise === "number" ? workingMeta.raise : raiseSize;
+    workingMeta.raise = typeof workingMeta.raise === "number" ? workingMeta.raise : unit;
     workingMeta.paid = typeof workingMeta.paid === "number" ? workingMeta.paid : pay;
     workingMeta.betAfter = betBefore + workingMeta.paid;
     workingMeta.stackAfter = Math.max(0, stackBefore - workingMeta.paid);
   }
-  applyStackAndBetSync(player, workingMeta, table);
+  const syncResult = applyStackAndBetSync(player, workingMeta, table);
   player.hasActedThisRound = true;
   player.lastAction =
     workingMeta.actionLabel ??
     (workingMeta.paid < ((workingMeta.toCall ?? 0) + (workingMeta.raise ?? 0))
       ? "Raise (All-in)"
       : "Raise");
+  const reopenedAction =
+    Number(syncResult?.contribution ?? 0) >
+    Math.max(0, Number(workingMeta.toCall ?? toCall) || 0);
+  if (reopenedAction) {
+    for (let i = 0; i < (table.players?.length ?? 0); i += 1) {
+      if (i === seatIndex) continue;
+      const other = table.players[i];
+      if (!other || !isSeatEligibleForBet(other) || other.allIn) continue;
+      other.hasActedThisRound = false;
+    }
+  }
   const meta = (table.metadata = { ...(table.metadata ?? {}) });
   meta.currentBet = computeCurrentBet(table.players);
   meta.betHead = seatIndex;
@@ -659,13 +840,47 @@ function updateActingSeat(table, seatIndex, metadata = {}) {
     table.actingPlayerIndex = metadata.nextActingIndex;
     return metadata.nextActingIndex;
   }
-  const nextSeat = nextAliveFrom(table.players, seatIndex);
+  const nextSeat = findNextBetActor(table, seatIndex);
   if (typeof nextSeat === "number") {
     table.actingPlayerIndex = nextSeat;
     return nextSeat;
   }
-  table.actingPlayerIndex = seatIndex;
-  return seatIndex;
+  forceFinishCurrentRound(table);
+  return table.actingPlayerIndex ?? null;
+}
+
+/**
+ * ENGINE-LEGACY: next BET actor search limited to BadugiEngine state.
+ * FLOW/UI must NOT import this helper; use flow/nextActorUtils instead.
+ */
+function findNextBetActor(table, currentSeat) {
+  const players = table?.players ?? [];
+  const n = players.length;
+  if (!n || typeof currentSeat !== "number" || currentSeat < 0 || currentSeat >= n) {
+    return null;
+  }
+  let cursor = currentSeat;
+  for (let step = 0; step < n; step += 1) {
+    cursor = (cursor + 1) % n;
+    const candidate = players[cursor];
+    if (isSeatEligibleForBet(candidate) && !candidate.hasActedThisRound) {
+      return cursor;
+    }
+  }
+  return null;
+}
+
+function forceFinishCurrentRound(table) {
+  if (!table || table.phase !== "BET") return null;
+  // NOTE (H-01-3 / G-11c): After closing a BET round via this helper we
+  // intentionally clear actingPlayerIndex/betHead. The next phase helper
+  // (transitionToBetPhase/transitionToDrawPhase/transitionToShowdownPhase)
+  // must elect a fresh acting seat; actingPlayerIndex is meaningless between
+  // phases.
+  table.actingPlayerIndex = null;
+  const meta = ensureMetadata(table);
+  meta.betHead = null;
+  return null;
 }
 
 function updateBettingMetadata(table, seatIndex, actionType, metadata = {}) {
@@ -673,9 +888,14 @@ function updateBettingMetadata(table, seatIndex, actionType, metadata = {}) {
   meta.currentBet = computeCurrentBet(table.players);
   meta.totalCommitted = sumCommitted(table.players);
   meta.potAmount = sumPotAmounts(table.pots) + meta.totalCommitted;
+  meta.raiseCap = resolveRaiseCap(table);
+  if (typeof meta.raiseCountThisRound !== "number") {
+    meta.raiseCountThisRound = 0;
+  }
 
   if (actionType === "RAISE") {
     meta.betHead = seatIndex;
+    meta.raiseCountThisRound += 1;
     table.lastAggressorIndex = seatIndex;
   } else if (actionType === "FOLD" && meta.betHead === seatIndex) {
     const nextSeat = nextAliveFrom(table.players, seatIndex);
@@ -706,37 +926,26 @@ function applyStackAndBetSync(player, metadata = {}, table = null) {
   const betBefore =
     typeof metadata.betBefore === "number" ? metadata.betBefore : player.betThisRound ?? 0;
 
-  let stackAfter =
-    typeof metadata.stackAfter === "number" ? metadata.stackAfter : undefined;
-  let betAfter = typeof metadata.betAfter === "number" ? metadata.betAfter : undefined;
   let paid = typeof metadata.paid === "number" ? metadata.paid : undefined;
-
-  if (typeof betAfter !== "number" || typeof stackAfter !== "number") {
-    if (typeof paid !== "number") {
-      const target =
-        typeof metadata.toCall === "number"
-          ? metadata.toCall + Math.max(0, metadata.raise ?? 0)
-          : Math.max(
-              0,
-              (table ? computeCurrentBet(table.players) : betBefore) - betBefore
-            );
-      paid = Math.min(stackBefore, target);
-    }
-    betAfter = betBefore + paid;
-    stackAfter = Math.max(0, stackBefore - paid);
+  if (typeof paid !== "number") {
+    const target =
+      typeof metadata.toCall === "number"
+        ? metadata.toCall + Math.max(0, metadata.raise ?? 0)
+        : Math.max(
+            0,
+            (table ? computeCurrentBet(table.players) : betBefore) - betBefore
+          );
+    paid = target;
   }
-
-  player.stack = stackAfter;
-  player.betThisRound = betAfter;
-
+  const applied = applyChips(player, paid);
+  player.betThisRound = betBefore + applied;
+  const stackAfter = player.stack;
+  const betAfter = player.betThisRound;
   const contribution = Math.max(0, betAfter - betBefore);
-  if (contribution > 0) {
-    player.totalInvested = (player.totalInvested ?? 0) + contribution;
-  }
 
+  player.hasActedThisRound = true;
   if (player.stack === 0) {
     player.allIn = true;
-    player.hasActedThisRound = true;
   }
 
   return {

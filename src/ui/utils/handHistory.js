@@ -1,4 +1,5 @@
 import { evaluateBadugi } from "../../games/badugi/utils/badugiEvaluator.js";
+import { evaluateLowHand, formatLowHandLabel } from "../../games/evaluators/low.js";
 
 let currentRecord = null;
 let seqCounter = 0;
@@ -12,6 +13,35 @@ function clone(obj) {
   return obj == null ? obj : JSON.parse(JSON.stringify(obj));
 }
 
+function normalizeVariantId(value) {
+  return typeof value === "string" && value.trim() ? value.trim() : "badugi";
+}
+
+function isDeuceToSevenVariant(variantId) {
+  const normalized = normalizeVariantId(variantId);
+  return normalized === "D01" || normalized === "deuce_to_seven_triple_draw";
+}
+
+function evaluateVariantHand(hand = [], variantId = "badugi") {
+  if (isDeuceToSevenVariant(variantId)) {
+    const evaluation = evaluateLowHand({ cards: hand, lowType: "27" });
+    return {
+      ...evaluation,
+      handName: formatLowHandLabel(evaluation, { lowType: "27" }),
+    };
+  }
+  return evaluateBadugi(hand);
+}
+
+function getEvaluationLabel(evaluation, variantId = "badugi") {
+  if (!evaluation) return null;
+  if (evaluation.handName) return evaluation.handName;
+  if (isDeuceToSevenVariant(variantId)) {
+    return formatLowHandLabel(evaluation, { lowType: "27" });
+  }
+  return null;
+}
+
 export function startHandHistoryRecord({
   handId,
   dealer,
@@ -19,11 +49,15 @@ export function startHandHistoryRecord({
   seats,
   startedAt,
   userId = null,
+  variantId = "badugi",
+  variantName = null,
 }) {
   // userId allows the backend to associate logs with a specific player but
   // remains optional so offline sessions continue to work.
   currentRecord = {
     handId: handId ?? `unknown-${Date.now()}`,
+    variantId: normalizeVariantId(variantId),
+    variantName: variantName ?? null,
     dealer: typeof dealer === "number" ? dealer : null,
     level: level ?? { sb: 0, bb: 0, ante: 0 },
     userId: userId ?? null,
@@ -62,12 +96,26 @@ export function appendHandHistoryAction({
   if (!seatEntry) return;
   const normalizedStreet = (street ?? "BET").toUpperCase();
   const normalizedType = typeof type === "string" ? type.toLowerCase() : "unknown";
+  const drawInfo = metadata?.drawInfo;
+  const drawCount = Number.isInteger(drawInfo?.drawCount)
+    ? drawInfo.drawCount
+    : Array.isArray(drawInfo?.drawIndexes)
+    ? drawInfo.drawIndexes.length
+    : Array.isArray(drawInfo?.replacedCards)
+    ? drawInfo.replacedCards.length
+    : undefined;
   seatEntry.actions.push({
     seq: ++seqCounter,
     street: normalizedStreet,
     type: normalizedType,
     amount: Math.round(amount ?? 0),
     totalInvested: Math.round(totalInvested ?? 0),
+    drawCount,
+    discarded: Array.isArray(drawInfo?.drawIndexes) ? [...drawInfo.drawIndexes] : undefined,
+    replacedCards: Array.isArray(drawInfo?.replacedCards)
+      ? clone(drawInfo.replacedCards)
+      : undefined,
+    keptCards: Array.isArray(drawInfo?.keptCards) ? [...drawInfo.keptCards] : undefined,
     timestamp: Date.now(),
     metadata: metadata ? clone(metadata) : undefined,
     userId: userId ?? currentRecord?.userId ?? null,
@@ -82,6 +130,7 @@ export function updateHandHistorySeat(seat, updates = {}) {
 }
 
 function buildPotEntries(pots = []) {
+  const variantId = currentRecord?.variantId ?? "badugi";
   return pots.map((pot, idx) => {
     const potIndex = typeof pot?.potIndex === "number" ? pot.potIndex : idx;
     return {
@@ -100,11 +149,22 @@ function buildPotEntries(pots = []) {
                 : typeof entry?.seatIndex === "number"
                 ? entry.seatIndex
                 : null;
-            const evaluation = entry?.evaluation ?? (entry?.hand ? evaluateBadugi(entry.hand) : null);
+            const evaluation =
+              entry?.evaluation ?? (entry?.hand ? evaluateVariantHand(entry.hand, variantId) : null);
             return {
               seat,
               collect: Math.max(0, entry?.payout ?? 0),
               evaluation: evaluation ? clone(evaluation) : null,
+              handLabel:
+                entry?.handLabel ??
+                entry?.handName ??
+                getEvaluationLabel(evaluation, variantId),
+              finalLowRanks:
+                Array.isArray(entry?.finalLowRanks)
+                  ? [...entry.finalLowRanks]
+                  : isDeuceToSevenVariant(variantId) && Array.isArray(evaluation?.metadata?.ranks)
+                  ? [...evaluation.metadata.ranks]
+                  : undefined,
             };
           })
         : [],
@@ -134,7 +194,14 @@ export function finalizeHandHistoryRecord({ players = [], pots = [], uiSummary =
       const hand = Array.isArray(player.hand) ? [...player.hand] : null;
       if (hand && hand.length) {
         seatEntry.hand = hand;
-        seatEntry.evaluation = clone(evaluateBadugi(hand));
+        seatEntry.evaluation = clone(evaluateVariantHand(hand, currentRecord.variantId));
+        seatEntry.handLabel = getEvaluationLabel(seatEntry.evaluation, currentRecord.variantId);
+        if (
+          isDeuceToSevenVariant(currentRecord.variantId) &&
+          Array.isArray(seatEntry.evaluation?.metadata?.ranks)
+        ) {
+          seatEntry.finalLowRanks = [...seatEntry.evaluation.metadata.ranks];
+        }
       }
       if (player.folded) {
         seatEntry.finalAction = seatEntry.finalAction ?? "fold";

@@ -851,11 +851,19 @@ D01 engine initial implementation:
 
 controller / UI タスク:
 
-- [ ] `WG-03-11` `D01` 用 controller を追加する。
-- [ ] `WG-03-12` hand snapshot を UI 互換形式で返す。
+- [x] `WG-03-11` `D01` 用 controller を追加する。
+- [x] `WG-03-12` hand snapshot を UI 互換形式で返す。
 - [ ] `WG-03-13` discard UI を 5 枚用に一般化する。
 - [ ] `WG-03-14` result overlay で 2-7 hand label を表示する。
 - [ ] `WG-03-15` action log / hand history 表記を variant 対応にする。
+
+D01 controller initial implementation:
+
+- Controller file: `src/games/draw/DeuceToSevenTripleDrawController.js`.
+- Wraps `DeuceToSevenTripleDrawEngine` without changing `App.jsx` or existing Badugi controller paths.
+- `createInitialState()`, `createNewHandState()`, `getUiSnapshot()`, `getLegalActions()`, `applyAction()`, `isHandFinished()`, and `getWinners()` are implemented.
+- UI snapshot exposes Badugi-compatible keys including `phase`, `drawRound`, `players[].hand`, `players[].selected`, `turn`, `nextTurn`, `pot`, `currentBet`, and `lastHandResult`.
+- D01-specific snapshot metadata includes `variantId: "D01"`, `maxDiscardCount: 5`, and `handCardCount: 5`.
 
 AI / logging / replay タスク:
 

@@ -826,13 +826,24 @@ D01 showdown label:
 
 engine 実装タスク:
 
-- [ ] `WG-03-04` `DeuceToSevenTripleDrawEngine` を追加する。
-- [ ] `WG-03-05` 初期配布 5 枚と blind posting を実装する。
+- [x] `WG-03-04` `DeuceToSevenTripleDrawEngine` を追加する。
+- [x] `WG-03-05` 初期配布 5 枚と blind posting を実装する。
 - [ ] `WG-03-06` 3 draw flow を実装する。
 - [ ] `WG-03-07` discard / replacement ロジックを実装する。
 - [ ] `WG-03-08` fixed-limit betting completion 条件を実装する。
 - [ ] `WG-03-09` showdown と pot awarding を実装する。
 - [ ] `WG-03-10` engine registry に登録する。
+
+D01 engine initial implementation:
+
+- Engine file: `src/games/draw/DeuceToSevenTripleDrawEngine.js`.
+- Engine id: `deuce_to_seven_triple_draw`.
+- Catalog variant id: `D01`.
+- `initHand(ctx)` creates draw-family table state with `street: "BET"`, `drawRoundIndex: 0`, and `maxDrawRounds: 3`.
+- Active seats receive 5 unique cards. Empty seats receive no cards and are marked folded / sitting out.
+- `applyForcedBets(state)` uses the draw-family forced-bet path and annotates `metadata.currentBet`.
+- `evaluateShowdownHand(cards)` uses `evaluateLowHand({ lowType: "27" })` and `formatLowHandLabel`.
+- Engine is intentionally not registered in `engineRegistry` yet; registration is tracked by `WG-03-10`.
 
 controller / UI タスク:
 

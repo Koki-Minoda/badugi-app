@@ -212,6 +212,62 @@ describe("DeuceToSevenTripleDrawEngine", () => {
     expect(afterCpu.metadata.discardCountBySeat[0]).toBe(0);
   });
 
+  it("rejects invalid discard indexes before mutating a draw hand", () => {
+    const engine = new DeuceToSevenTripleDrawEngine({
+      deckManager: new FakeDeckManager([
+        "2S", "3S", "4S", "5S", "7S",
+        "2H", "3H", "4H", "5H", "8H",
+        "9S", "10S", "JS",
+      ]),
+    });
+    const drawState = engine.transitionToDraw(
+      engine.initHand({
+        seatConfig: ["HUMAN", "CPU"],
+        startingStack: 500,
+        dealerIndex: 0,
+      }),
+      1,
+    );
+    const originalHand = [...drawState.players[1].hand];
+
+    expect(() =>
+      engine.applyDrawAction(drawState, {
+        seatIndex: 1,
+        type: "DRAW",
+        discardIndexes: [0, 0],
+      }),
+    ).toThrow(/unique/);
+    expect(() =>
+      engine.applyDrawAction(drawState, {
+        seatIndex: 1,
+        type: "DRAW",
+        discardIndexes: [5],
+      }),
+    ).toThrow(/out-of-range/);
+    expect(drawState.players[1].hand).toEqual(originalHand);
+  });
+
+  it("skips all-in seats when building draw order", () => {
+    const engine = new DeuceToSevenTripleDrawEngine();
+    const state = engine.initHand({
+      seatConfig: ["HUMAN", "CPU", "CPU"],
+      startingStack: 500,
+      dealerIndex: 0,
+    });
+    state.players[1].allIn = true;
+    state.players[1].stack = 0;
+
+    const drawState = engine.transitionToDraw(state, 1);
+
+    expect(drawState.players[1]).toMatchObject({
+      allIn: true,
+      canDraw: false,
+      hasDrawn: true,
+    });
+    expect(drawState.metadata.pendingDrawSeats).toEqual([0, 2]);
+    expect(drawState.actingPlayerIndex).toBe(2);
+  });
+
   it("moves to showdown after the third post-draw betting round", () => {
     const engine = new DeuceToSevenTripleDrawEngine();
     const state = engine.initHand({
@@ -302,6 +358,27 @@ describe("DeuceToSevenTripleDrawEngine", () => {
     expect(called.pots[0]).toMatchObject({ amount: 80 });
   });
 
+  it("enforces the fixed-limit raise cap", () => {
+    const engine = new DeuceToSevenTripleDrawEngine();
+    const state = engine.applyForcedBets(
+      engine.initHand({
+        seatConfig: ["HUMAN", "CPU"],
+        startingStack: 500,
+        dealerIndex: 0,
+        structure: { sb: 10, bb: 20 },
+      }),
+    );
+    state.actingPlayerIndex = 1;
+    state.metadata.raiseCountThisRound = 3;
+
+    expect(() =>
+      engine.applyPlayerAction(state, {
+        seatIndex: 1,
+        type: "RAISE",
+      }),
+    ).toThrow(/raise cap/);
+  });
+
   it("resolves 2-7 showdown payouts", () => {
     const engine = new DeuceToSevenTripleDrawEngine();
     const state = engine.initHand({
@@ -325,6 +402,27 @@ describe("DeuceToSevenTripleDrawEngine", () => {
     expect(result.state.players[0].stack).toBe(600);
     expect(result.state.players[1].stack).toBe(500);
     expect(result.state.pots).toEqual([]);
+  });
+
+  it("splits tied 2-7 showdown pots by seat order with odd-chip remainder", () => {
+    const engine = new DeuceToSevenTripleDrawEngine();
+    const state = engine.initHand({
+      seatConfig: ["HUMAN", "CPU"],
+      startingStack: 500,
+      dealerIndex: 0,
+    });
+    state.players[0].hand = ["8S", "6D", "5C", "3H", "2S"];
+    state.players[1].hand = ["8C", "6H", "5D", "3S", "2C"];
+    state.pots = [{ amount: 101, eligiblePlayerIds: ["seat-0", "seat-1"] }];
+
+    const result = engine.resolveShowdown(state);
+
+    expect(result.summary[0].payouts).toEqual([
+      expect.objectContaining({ seatIndex: 0, payout: 51 }),
+      expect.objectContaining({ seatIndex: 1, payout: 50 }),
+    ]);
+    expect(result.state.players[0].stack).toBe(551);
+    expect(result.state.players[1].stack).toBe(550);
   });
 
   it("awards the pot immediately when everyone else folds", () => {

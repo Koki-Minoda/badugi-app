@@ -900,7 +900,7 @@ AI / logging / replay タスク:
 テストタスク:
 
 - [x] `WG-03-19` evaluator regression テストを追加する。
-- [ ] `WG-03-20` engine unit tests を追加する。
+- [x] `WG-03-20` engine unit tests を追加する。
 - [ ] `WG-03-21` controller tests を追加する。
 - [ ] `WG-03-22` e2e で 1 hand 完走テストを追加する。
 - [ ] `WG-03-23` side pot / fold win / pat win / draw-to-better-low をカバーする。
@@ -911,6 +911,14 @@ D01 evaluator regression coverage:
 - A-5 wheel / straight, paired hands, and flush hands are regression-tested as penalties in `lowType: "27"`.
 - Best-five selection from a six-card input confirms high-card discard behavior used by draw variants.
 - Equal 2-7 rank arrays across suits remain tied, preventing suit-order leakage into showdown comparisons.
+
+D01 engine unit coverage:
+
+- `src/games/draw/__tests__/DeuceToSevenTripleDrawEngine.test.js` covers D01 hand initialization, blind posting, fixed-limit betting, draw transitions, discard replacement, showdown, and fold-win payout.
+- Invalid duplicate / out-of-range `discardIndexes` are rejected before the draw hand is mutated.
+- All-in seats are skipped when building draw order and cannot be selected as pending draw actors.
+- Fixed-limit raise cap enforcement is covered.
+- Tied 2-7 showdown pots split deterministically by seat order, including odd-chip remainder handling.
 
 完了条件:
 

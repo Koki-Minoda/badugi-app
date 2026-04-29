@@ -27,6 +27,24 @@ function normalizeRankList(values) {
   return sorted;
 }
 
+function rankToDisplay(rank) {
+  if (rank === 14 || rank === 1) return "A";
+  if (rank === 13) return "K";
+  if (rank === 12) return "Q";
+  if (rank === 11) return "J";
+  if (rank === 10) return "10";
+  return String(rank);
+}
+
+export function formatLowHandLabel(evaluation, { lowType = "27" } = {}) {
+  const ranks = evaluation?.metadata?.ranks;
+  if (!Array.isArray(ranks) || ranks.length === 0) {
+    return lowType === "A5" || lowType === "a5" ? "A-5 Low Invalid" : "2-7 Low Invalid";
+  }
+  const prefix = lowType === "A5" || lowType === "a5" ? "A-5 Low" : "2-7 Low";
+  return `${prefix} ${ranks.map(rankToDisplay).join("-")}`;
+}
+
 export function evaluateLowHand({
   cards = [],
   lowType = "27",

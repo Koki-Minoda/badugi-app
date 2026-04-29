@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { evaluateHighHand } from "../../evaluators/high.js";
-import { evaluateLowHand } from "../../evaluators/low.js";
+import { evaluateLowHand, formatLowHandLabel } from "../../evaluators/low.js";
 import { evaluateBadugiHand } from "../../evaluators/badugi.js";
 import { evaluateHand, compareEvaluations } from "../../evaluators/registry.js";
 import {
@@ -154,6 +154,15 @@ describe("Lowball evaluator", () => {
     expect(nonQualifying.qualifies).toBe(false);
     expect(nonQualifying.metadata.qualifies).toBe(false);
     expect(nonQualifying.rankSecondary).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it("formats 2-7 showdown labels for D01", () => {
+    const result = evaluateLowHand({
+      cards: ["7S", "5D", "4C", "3H", "2S"],
+      lowType: "27",
+    });
+
+    expect(formatLowHandLabel(result, { lowType: "27" })).toBe("2-7 Low 7-5-4-3-2");
   });
 });
 

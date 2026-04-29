@@ -767,14 +767,62 @@ Observation rules:
 
 ルール凍結タスク:
 
-- [ ] `WG-03-01` `D01` のベット構造を固定する。
+- [x] `WG-03-01` `D01` のベット構造を固定する。
   - small bet / big bet
   - draw round ごとの bet size
   - raise cap
-- [ ] `WG-03-02` draw 交換枚数の上限と UI 表現を固定する。
+- [x] `WG-03-02` draw 交換枚数の上限と UI 表現を固定する。
   - 推奨: 0-5 枚交換
-- [ ] `WG-03-03` showdown 表記を固定する。
+- [x] `WG-03-03` showdown 表記を固定する。
   - 例: `2-7 Low 7-5-4-3-2`
+
+D01 rule freeze:
+
+| Item | Decision |
+| --- | --- |
+| Variant id | `D01` in catalog, engine key should be `deuce_to_seven_triple_draw` when implemented. |
+| Public label | `2-7 Triple Draw` |
+| Base family | Draw / lowball |
+| Hole cards | 5 |
+| Draw rounds | 3 |
+| Board | none |
+| Evaluator | `low-27` / `evaluateLowHand({ lowType: "27" })` |
+| Betting | fixed-limit |
+| Forced bets | blinds |
+| Players | 2-6 initially, may expand to 7 if table layout supports it |
+
+D01 fixed-limit betting structure:
+
+| Street | Phase | Bet size | Notes |
+| --- | --- | --- | --- |
+| Pre-draw | `BET`, `drawRoundIndex=0` | small bet = 1 BB | Starts after blinds. BB action closes the opening round when matched. |
+| After draw 1 | `BET`, `drawRoundIndex=1` | small bet = 1 BB | First post-draw betting round. |
+| After draw 2 | `BET`, `drawRoundIndex=2` | big bet = 2 BB | Big-bet street starts here. |
+| After draw 3 | `BET`, `drawRoundIndex=3` | big bet = 2 BB | Final betting round before showdown. |
+
+Raise rules:
+
+- Raise cap is 4 total bets per street by default: bet + 3 raises.
+- Heads-up may remain capped for first implementation; uncapped heads-up is deferred until the fixed-limit policy module exists.
+- All-in under-raise does not reopen action unless future betting policy explicitly supports it.
+- Bet / raise amounts must align to the street unit. Invalid partial raises are rejected or normalized by the fixed-limit policy layer.
+
+D01 draw UI contract:
+
+- Player can discard 0-5 cards.
+- `0` cards is displayed as `Pat`.
+- `1-5` cards are displayed as `Draw 1` through `Draw 5`.
+- UI sends `DRAW` with `discardIndexes` as the primary payload.
+- `drawCount` is derived from `discardIndexes.length`; it may be included only as redundant metadata.
+- Selected discard cards must be visually marked before submit. Submit is disabled while duplicate / out-of-range indexes exist.
+- CPU / replay may send only `drawCount` during early implementation, but controller must normalize to `discardIndexes` before engine mutation when card identity is known.
+
+D01 showdown label:
+
+- Primary format: `2-7 Low {ranks-desc}`.
+- Example: `2-7 Low 7-5-4-3-2`.
+- Paired / straight / flush penalties should still show the selected five ranks, with penalty detail available in metadata.
+- Formatter source: `formatLowHandLabel(evaluation, { lowType: "27" })`.
 
 engine 実装タスク:
 

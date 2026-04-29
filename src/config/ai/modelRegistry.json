@@ -8,10 +8,26 @@
     "outputShape": [8]
   },
   {
-    "id": "model-badugi-v2",
+    "id": "model-badugi-pro-v1",
+    "variantIds": ["D03"],
+    "tier": "pro",
+    "onnx": "models/badugi_pro_v1.onnx",
+    "inputShape": [96],
+    "outputShape": [6]
+  },
+  {
+    "id": "model-badugi-iron-v1",
     "variantIds": ["D03"],
     "tier": "iron",
-    "onnx": "models/badugi_iron.onnx",
+    "onnx": "models/badugi_iron_v1.onnx",
+    "inputShape": [96],
+    "outputShape": [6]
+  },
+  {
+    "id": "model-badugi-worldmaster-v1",
+    "variantIds": ["D03"],
+    "tier": "worldmaster",
+    "onnx": "models/badugi_worldmaster_v1.onnx",
     "inputShape": [96],
     "outputShape": [6]
   },

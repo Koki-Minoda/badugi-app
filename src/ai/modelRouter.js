@@ -10,6 +10,12 @@ export function getModelEntry(modelId) {
 }
 
 export function selectModelForVariant({ variantId, tierId }) {
+  if (variantId && tierId) {
+    const exactTier = REGISTRY.find(
+      (entry) => entry.variantIds.includes(variantId) && entry.tier === tierId,
+    );
+    if (exactTier) return exactTier;
+  }
   if (variantId) {
     const exact = REGISTRY.find((entry) => entry.variantIds.includes(variantId));
     if (exact) return exact;

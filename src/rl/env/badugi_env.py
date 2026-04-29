@@ -11,6 +11,8 @@ import numpy as np
 from gymnasium import spaces
 
 Card = Tuple[int, int]  # (rank, suit)
+BADUGI_OBSERVATION_SCHEMA_VERSION = "badugi-observation-v1"
+BADUGI_OBSERVATION_VECTOR_SIZE = 96
 
 
 def build_deck() -> List[Card]:
@@ -51,9 +53,10 @@ class BadugiEnv(gym.Env):
     self.max_rounds = 3  # number of draw streets
     self.starting_stack = 100
 
-    # Observation: 4 cards * 2 features + table features
+    # Observation schema v1: first 22 slots remain compatible with the legacy
+    # training env, then the vector is padded to the frontend ONNX shape.
     self.observation_space = spaces.Box(
-      low=-1.0, high=1.0, shape=(22,), dtype=np.float32
+      low=-1.0, high=1.0, shape=(BADUGI_OBSERVATION_VECTOR_SIZE,), dtype=np.float32
     )
     # 0: Fold, 1: Check/Call, 2: Raise, 3: Draw count indicator (0..3)
     self.action_space = spaces.Discrete(5)
@@ -330,6 +333,8 @@ class BadugiEnv(gym.Env):
         self.last_opp_action / 4.0,
       ]
     )
+    while len(obs) < BADUGI_OBSERVATION_VECTOR_SIZE:
+      obs.append(0.0)
     return np.array(obs, dtype=np.float32)
 
   def _hand_features(self, hand: Sequence[Card]) -> HandFeature:

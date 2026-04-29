@@ -1,6 +1,10 @@
 import { DrawEngineBase } from "../../core/drawEngineBase.js";
 import { cloneTableState } from "../../core/models.js";
 import { IllegalActionError, assertSeatIsActive } from "../../core/errors.js";
+import {
+  buildBadugiObservationPayload,
+  buildBadugiObservationVector,
+} from "../../../rl/badugiObservationSchema.js";
 import { DeckManager } from "../utils/deck.js";
 import { dealInitialHands, validatePreflopState } from "../utils/deckHelpers.js";
 import { resolveBadugiWinners } from "./badugiComparison.js";
@@ -304,8 +308,22 @@ export class BadugiEngine extends DrawEngineBase {
   getObservation(state, playerId) {
     const base = super.getObservation(state, playerId);
     const potTotal = (state.pots ?? []).reduce((sum, pot) => sum + (pot.amount ?? 0), 0);
+    const seatIndex = (state.players ?? []).findIndex(
+      (player) =>
+        player?.id === playerId ||
+        player?.playerId === playerId ||
+        player?.tournamentPlayerId === playerId,
+    );
+    const observation = buildBadugiObservationPayload({
+      state,
+      seatIndex: seatIndex >= 0 ? seatIndex : null,
+      playerId,
+    });
     return {
       ...base,
+      schemaVersion: observation.schemaVersion,
+      observation,
+      stateVector: buildBadugiObservationVector(observation),
       info: {
         street: state.street,
         drawRoundIndex: state.drawRoundIndex ?? 0,

@@ -61,8 +61,8 @@
   - `backend/app/api/badugi_rl.py`
 - 実 `.onnx` モデルはリポジトリ内で未確認。
 - 学習入力が不整合。
-  - backend API: 22-dim
-  - model registry: `badugi_iron.onnx` は `[96]`
+  - backend API: schema v1 / 96-dim
+  - model registry: Badugi Pro / Iron / WorldMaster は `[96]`
 
 ### 2.3 2-7 / A-5 系の現状
 
@@ -1120,44 +1120,67 @@ Split / special draw test coverage:
 
 タスク:
 
-- [ ] `WG-07-01` RL 推論の主経路を確定する。
+- [x] `WG-07-01` RL 推論の主経路を確定する。
   - frontend ONNX を正式採用
   - backend inference は比較検証と将来拡張用
-- [ ] `WG-07-02` observation schema v1 を固定する。
+- [x] `WG-07-02` observation schema v1 を固定する。
   - hand features
   - betting context
   - draw context
   - position
   - stack / pot
   - opponent summary
-- [ ] `WG-07-03` `BadugiEngine.getObservation()` と RL schema を一致させる。
-- [ ] `WG-07-04` `recordActionToLog(...)` の RL 用必須項目を固定する。
-- [ ] `WG-07-05` `export_dataset.py` を transition 形式に拡張する。
+- [x] `WG-07-03` `BadugiEngine.getObservation()` と RL schema を一致させる。
+- [x] `WG-07-04` `recordActionToLog(...)` の RL 用必須項目を固定する。
+- [x] `WG-07-05` `export_dataset.py` を transition 形式に拡張する。
   - observation
   - action
   - reward
   - next_observation
   - done
   - legal_actions
-- [ ] `WG-07-06` `badugi_env.py` を現行ルールに寄せるか、差分を明記する。
-- [ ] `WG-07-07` 実 `.onnx` モデル配置の運用を決める。
+- [x] `WG-07-06` `badugi_env.py` を現行ルールに寄せるか、差分を明記する。
+- [x] `WG-07-07` 実 `.onnx` モデル配置の運用を決める。
   - 格納先
   - バージョン命名
   - registry 更新手順
-- [ ] `WG-07-08` `backend/app/api/badugi_rl.py` の stub を置換する。
-- [ ] `WG-07-09` `onnxPolicyAdapter.js` の feature builder を schema v1 に揃える。
-- [ ] `WG-07-10` tier ごとの model 割り当てを整理する。
+- [x] `WG-07-08` `backend/app/api/badugi_rl.py` の stub を置換する。
+- [x] `WG-07-09` `onnxPolicyAdapter.js` の feature builder を schema v1 に揃える。
+- [x] `WG-07-10` tier ごとの model 割り当てを整理する。
   - `pro`
   - `iron`
   - `worldmaster`
-- [ ] `WG-07-11` RL decision の fallback 優先順位を決める。
+- [x] `WG-07-11` RL decision の fallback 優先順位を決める。
   - ONNX
   - rule-based
   - deterministic safe fallback
-- [ ] `WG-07-12` inference integration tests を追加する。
+- [x] `WG-07-12` inference integration tests を追加する。
   - model あり
   - model なし
   - invalid shape
+
+Badugi RL implementation notes:
+
+- Primary inference path is frontend ONNX via `src/ai/onnxPolicyAdapter.js`.
+- Backend `/api/badugi/rl/decision` is now a schema v1 comparison/fallback endpoint, not the primary production inference path.
+- Observation schema v1 lives in `src/rl/badugiObservationSchema.js`.
+- Schema v1 vector size is `96`, matching Badugi ONNX model input shape.
+- The vector includes hand shape, betting context, draw context, position, stack/pot context, opponent summary, and legal-action mask.
+- `BadugiEngine.getObservation()` now returns `schemaVersion`, structured `observation`, and `stateVector`.
+- `recordActionToLog(...)` already captures the required RL fields: hand/seat/phase/action/stacks/bets/pot/draw info/metadata/action id; dataset export normalizes missing vectors to schema v1 shape.
+- `src/rl/tools/export_dataset.py` now emits transition records: `observation`, `action`, `reward`, `next_observation`, `done`, and `legal_actions`.
+- `src/rl/env/badugi_env.py` keeps its lightweight training mechanics, but its observation space now pads the legacy first 22 slots to schema v1 `96`.
+- ONNX model files should be placed under `public/models/` and referenced from `src/config/ai/modelRegistry.json` as `models/<variant>_<tier>_vN.onnx`.
+- Badugi tier assignment is fixed as `model-badugi-pro-v1`, `model-badugi-iron-v1`, and `model-badugi-worldmaster-v1`.
+- Fallback priority is fixed as `ONNX -> rule-based -> deterministic safe`.
+
+Badugi RL test coverage:
+
+- `src/rl/__tests__/badugiObservationSchema.test.js` covers schema v1 vector shape, engine observation alignment, and deterministic fallback.
+- `src/ai/__tests__/onnxPolicyAdapter.test.js` covers Badugi ONNX feature shape and tier model assignment.
+- `src/ai/__tests__/onnxPolicyAdapterInference.test.js` covers model available, model missing, and invalid input shape paths.
+- `backend/tests/test_badugi_rl.py` covers schema v1 request validation and backend deterministic-safe response.
+- Dataset transition export was verified with a JSONL smoke command.
   - fallback
 
 完了条件:
@@ -1342,7 +1365,7 @@ Split / special draw test coverage:
 - [x] `WG-00-01` 「30ゲーム」表記を 35 variants に更新
 - [ ] `WG-01-01` Draw family state contract を固定
 - [ ] `WG-02-01` 2-7 lowball edge case テスト追加
-- [ ] `WG-07-01` RL 推論の主経路を確定
+- [x] `WG-07-01` RL 推論の主経路を確定
 
 ## 13. ひとことで言うと
 

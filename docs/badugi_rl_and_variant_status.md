@@ -899,11 +899,18 @@ AI / logging / replay タスク:
 
 テストタスク:
 
-- [ ] `WG-03-19` evaluator regression テストを追加する。
+- [x] `WG-03-19` evaluator regression テストを追加する。
 - [ ] `WG-03-20` engine unit tests を追加する。
 - [ ] `WG-03-21` controller tests を追加する。
 - [ ] `WG-03-22` e2e で 1 hand 完走テストを追加する。
 - [ ] `WG-03-23` side pot / fold win / pat win / draw-to-better-low をカバーする。
+
+D01 evaluator regression coverage:
+
+- `src/games/evaluators/__tests__/evaluator.test.js` covers 2-7 low ordering for clean 7-low vs worse 8-low.
+- A-5 wheel / straight, paired hands, and flush hands are regression-tested as penalties in `lowType: "27"`.
+- Best-five selection from a six-card input confirms high-card discard behavior used by draw variants.
+- Equal 2-7 rank arrays across suits remain tied, preventing suit-order leakage into showdown comparisons.
 
 完了条件:
 

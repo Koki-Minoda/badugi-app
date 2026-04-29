@@ -166,6 +166,67 @@ describe("Lowball evaluator", () => {
   });
 });
 
+describe("D01 2-7 Triple Draw evaluator regression", () => {
+  function d01(cards) {
+    return evaluateLowHand({ cards, lowType: "27" });
+  }
+
+  it.each([
+    {
+      label: "keeps 7-5-4-3-2 as the best made low",
+      best: ["7S", "5D", "4C", "3H", "2S"],
+      worse: ["8S", "5D", "4C", "3H", "2S"],
+      ranks: [7, 5, 4, 3, 2],
+      penalty: 0,
+    },
+    {
+      label: "penalizes the A-5 wheel because straights are bad in 2-7",
+      best: ["7S", "5D", "4C", "3H", "2S"],
+      worse: ["AS", "5D", "4C", "3H", "2S"],
+      ranks: [7, 5, 4, 3, 2],
+      penalty: 0,
+    },
+    {
+      label: "treats a clean ten-low as better than a paired seven-low",
+      best: ["10S", "8D", "6C", "4H", "2S"],
+      worse: ["7S", "7D", "5C", "4H", "2S"],
+      ranks: [10, 8, 6, 4, 2],
+      penalty: 0,
+    },
+    {
+      label: "treats a clean ten-low as better than a seven-high flush",
+      best: ["10S", "8D", "6C", "4H", "2S"],
+      worse: ["7S", "5S", "4S", "3S", "2S"],
+      ranks: [10, 8, 6, 4, 2],
+      penalty: 0,
+    },
+  ])("$label", ({ best, worse, ranks, penalty }) => {
+    const bestEval = d01(best);
+    const worseEval = d01(worse);
+
+    expect(compareEvaluations(bestEval, worseEval)).toBeLessThan(0);
+    expect(bestEval.metadata.ranks).toEqual(ranks);
+    expect(bestEval.metadata.penalty).toBe(penalty);
+  });
+
+  it("selects the best D01 five-card low and ignores a sixth high card", () => {
+    const result = d01(["KS", "7D", "5C", "4H", "3S", "2D"]);
+
+    expect(result.metadata.ranks).toEqual([7, 5, 4, 3, 2]);
+    expect(result.metadata.cards).toEqual(["7D", "5C", "4H", "3S", "2D"]);
+    expect(formatLowHandLabel(result, { lowType: "27" })).toBe("2-7 Low 7-5-4-3-2");
+  });
+
+  it("keeps equal D01 rank arrays tied across suits", () => {
+    const first = d01(["8S", "6D", "5C", "3H", "2S"]);
+    const second = d01(["8C", "6H", "5D", "3S", "2C"]);
+
+    expect(compareEvaluations(first, second)).toBe(0);
+    expect(first.metadata.penalty).toBe(0);
+    expect(second.metadata.penalty).toBe(0);
+  });
+});
+
 describe("Split evaluator", () => {
   it("returns Badugi and 2-7 low metadata for Badeucey", () => {
     const result = evaluateBadeucey({

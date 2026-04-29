@@ -1378,8 +1378,8 @@ Draw RL test coverage:
 - [x] `WG-BADUGI-00-02` Badugi bug tracker を正本として運用開始
 - [x] `WG-BADUGI-01-02` 再現環境の記録項目を固定
 - [x] `WG-00-01` 「30ゲーム」表記を 35 variants に更新
-- [ ] `WG-01-01` Draw family state contract を固定
-- [ ] `WG-02-01` 2-7 lowball edge case テスト追加
+- [x] `WG-01-01` Draw family state contract を固定
+- [x] `WG-02-01` 2-7 lowball edge case テスト追加
 - [x] `WG-07-01` RL 推論の主経路を確定
 
 ## 13. ひとことで言うと

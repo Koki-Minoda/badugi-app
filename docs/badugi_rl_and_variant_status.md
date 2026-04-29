@@ -426,18 +426,18 @@ UI / engine registry 差分表:
     - discard index array
     - 派生 metadata
     - 置換前後 hand snapshot
-- [ ] `WG-01-04` Badugi engine から draw family に切り出せる処理を抽出する。
+- [x] `WG-01-04` Badugi engine から draw family に切り出せる処理を抽出する。
   - forced bets
   - active seat progression
   - betting round completion
   - showdown 前遷移
-- [ ] `WG-01-05` Draw family 共通テスト雛形を作る。
+- [x] `WG-01-05` Draw family 共通テスト雛形を作る。
   - 全員 pat
   - 複数人 draw
   - fold で early finish
   - all-in で draw skip
-- [ ] `WG-01-06` Draw family 用 controller snapshot 形式を固定する。
-- [ ] `WG-01-07` Draw family observation schema の v1 を定める。
+- [x] `WG-01-06` Draw family 用 controller snapshot 形式を固定する。
+- [x] `WG-01-07` Draw family observation schema の v1 を定める。
   - RL / replay / debug 共通
 
 Draw family state contract v1:
@@ -531,6 +531,125 @@ Rules:
 - `beforeHand` / `discarded` / `drawn` / `afterHand` は replay / audit 用 metadata。engine の正規状態は `players[seatIndex].hand`。
 - replacement card の生成は deck manager の責務。UI / RL は `discardIndexes` または `drawCount` だけを送る。
 - action log では `DRAW_ACTION` として `discardCount`、`discarded`、`drawRoundIndex` を保存できる形にする。
+
+Badugi から draw family に切り出す処理:
+
+| Concern | Current source | Family boundary | Notes |
+| --- | --- | --- | --- |
+| forced bets | `DrawEngineBase.applyForcedBets`, `BadugiEngine.applyForcedBets` | `DrawEngineBase` に標準化 | Badugi 固有の all-in / fixed-limit metadata は派生 engine override で補完する。 |
+| active seat progression | `src/games/badugi/flow/actionUtils.js`, `roundFlow.jsx` | `findNextActor({ phase, players, startIndex })` 型 helper | folded / allIn / sittingOut の除外規則を family 共通にする。 |
+| betting round completion | `DrawEngineBase.shouldAdvanceStreet`, `betRoundUtils.js` | `shouldAdvanceStreet(state)` + variant betting policy | no-limit / pot-limit / fixed-limit の amount policy は別 module にする。 |
+| draw actor progression | `findNextDrawActorSeat`, `runDrawRound` | `pendingDrawSeats` と `hasActedThisRound` を正規状態にする | all-in でも draw 完了処理は許可する Badugi 互換を維持する。 |
+| showdown 前遷移 | `BadugiEngine.advanceAfterBet`, `roundFlow.jsx` | `advanceAfterBet({ drawRoundIndex, maxDrawRounds })` | `nextDrawRound > maxDrawRounds` で `SHOWDOWN` へ進む。 |
+| deck replacement | `DeckManager`, `runDrawRound` | `replaceByDiscardIndexes` style helper | UI / RL は discard intent のみ送る。deck mutation は engine 側で閉じる。 |
+| pot settlement | `settleStreetToPots`, `potIntegrity.js` | `settleStreetToPots(state)` | side pot 互換を崩さず board / split 系へ後で拡張する。 |
+
+Draw family 共通テスト雛形:
+
+| Scenario | Required assertion | Current coverage |
+| --- | --- | --- |
+| forced bets | ante / SB / BB が stack と bet に反映され、元 state を破壊しない | `src/games/core/__tests__/drawEngineBase.test.js` |
+| betting matched | active players の bet が揃うと street advance 可能 | `src/games/core/__tests__/drawEngineBase.test.js` |
+| all-in completion | active players が全員 all-in なら street advance 可能 | `src/games/core/__tests__/drawEngineBase.test.js` |
+| unmatched action | call 可能 seat が残る場合は street advance しない | `src/games/core/__tests__/drawEngineBase.test.js` |
+| draw round cap | `maxDrawRounds` を超えない | `src/games/core/__tests__/drawEngineBase.test.js` |
+| all pat | 全 seat の `discardIndexes: []` で draw round が完了する | next concrete draw engine test |
+| multiple draw | 複数 seat の discard / replacement が seat order 通り記録される | next concrete draw engine test |
+| fold early finish | remaining eligible player が 1 人なら showdown / award へ進む | next concrete draw engine test |
+| all-in draw skip | no actionable draw seat の場合だけ draw phase を skip する | `roundFlowDrawSkip.test.js` |
+
+Draw family controller snapshot v1:
+
+```js
+{
+  variantId: string,
+  handId: string,
+  phase: "BET" | "DRAW" | "SHOWDOWN" | "HAND_OVER",
+  street: string,
+  drawRound: number,
+  maxDrawRounds: number,
+  actingPlayerIndex: number | null,
+  heroSeatIndex: number | null,
+  players: [
+    {
+      seatIndex: number,
+      playerId?: string,
+      name?: string,
+      stack: number,
+      bet: number,
+      folded: boolean,
+      allIn: boolean,
+      sittingOut: boolean,
+      hand: string[],
+      handSize: number,
+      hasActedThisRound: boolean,
+      lastAction?: string,
+      lastDrawCount?: number
+    }
+  ],
+  pots: array,
+  availableActions: array,
+  pendingDrawSeats: number[],
+  discardCountBySeat: object,
+  result?: object,
+  metadata?: object
+}
+```
+
+Snapshot rules:
+
+- UI は controller snapshot のみを読む。engine 内部 state を直接参照しない。
+- `drawRound` は controller 互換名、`drawRoundIndex` は engine 互換名として扱い、境界で同期する。
+- hidden card 表示が必要な UI では `hand` を masking してもよいが、replay / debug snapshot は実 card を保持する。
+- `availableActions` は action contract v1 の `type` を返す。draw phase では `DRAW` を必ず含める。
+
+Draw family observation schema v1:
+
+```js
+{
+  schemaVersion: 1,
+  variantId: string,
+  playerId: string,
+  seatIndex: number,
+  phase: "BET" | "DRAW" | "SHOWDOWN" | "HAND_OVER",
+  street: string,
+  drawRoundIndex: number,
+  maxDrawRounds: number,
+  position: {
+    dealerIndex: number,
+    actingPlayerIndex: number | null,
+    lastAggressorIndex: number | null
+  },
+  hero: {
+    stack: number,
+    bet: number,
+    hand: string[],
+    handSize: number,
+    lastDrawCount?: number
+  },
+  table: {
+    pot: number,
+    currentBet: number,
+    minRaise?: number,
+    activeCount: number,
+    allInCount: number
+  },
+  draw: {
+    pendingDrawSeats: number[],
+    discardCountBySeat: object
+  },
+  legalActions: array,
+  actionMask?: object,
+  historySummary?: object
+}
+```
+
+Observation rules:
+
+- RL / replay / debug は同じ top-level key を使う。
+- numeric feature vector はこの schema から別 step で生成する。schema 自体は JSON-safe object とする。
+- variant 固有 feature は `historySummary` または future `variantFeatures` に追加し、共通 key を壊さない。
+- action mask は optional。未実装時は `legalActions` を正とする。
 
 完了条件:
 

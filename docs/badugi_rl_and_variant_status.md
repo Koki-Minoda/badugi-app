@@ -1064,12 +1064,30 @@ Single draw test coverage:
 
 タスク:
 
-- [ ] `WG-06-01` split pot awarding の engine contract を定義する。
-- [ ] `WG-06-02` half-pot rounding のルールを決める。
-- [ ] `WG-06-03` Badeucey / Badacey 用 showdown summary を設計する。
-- [ ] `WG-06-04` Hidugi の high-badugi 表示を設計する。
-- [ ] `WG-06-05` Archie の evaluator 仕様を確定する。
-- [ ] `WG-06-06` 4-card draw variants と 5-card draw variants の discard UI を共通化する。
+- [x] `WG-06-01` split pot awarding の engine contract を定義する。
+- [x] `WG-06-02` half-pot rounding のルールを決める。
+- [x] `WG-06-03` Badeucey / Badacey 用 showdown summary を設計する。
+- [x] `WG-06-04` Hidugi の high-badugi 表示を設計する。
+- [x] `WG-06-05` Archie の evaluator 仕様を確定する。
+- [x] `WG-06-06` 4-card draw variants と 5-card draw variants の discard UI を共通化する。
+
+Split / special draw implementation notes:
+
+- `src/games/core/splitPotContract.js` defines the extension contract used by future split/special draw engines.
+- Badeucey uses two ordered components: `badugiLow` and `deuceToSevenLow`.
+- Badacey uses two ordered components: `badugiLow` and `aceToFiveLow`.
+- Half-pot odd chips use deterministic component-order rounding; for example a 101-chip Badeucey pot becomes 51 / 50.
+- Component winners will later split their component amount by normal seat-order odd-chip rules.
+- Badeucey / Badacey showdown summaries are normalized as `componentShowdown` with per-component evaluations and winners.
+- Hidugi uses `High Badugi` display metadata and a `high-badugi` comparator contract while staying single-pot.
+- Archie is fixed as a component split contract: pair-or-better high half plus 8-or-better A-5 low half.
+- `resolvePot` and `resolveShowdown` now expose the same contract as TODO-ready integration points without changing active game flow.
+- 4-card and 5-card draw discard selection stays on the shared `drawSelection` helper and is covered for both hand sizes.
+
+Split / special draw test coverage:
+
+- `src/games/core/__tests__/splitPotContract.test.js` covers Badeucey, Badacey, Hidugi, Archie, half-pot rounding, component summaries, and resolver stubs.
+- `src/ui/game/__tests__/drawSelection.test.js` covers shared discard selection for 4-card and 5-card draw hands.
 
 完了条件:
 

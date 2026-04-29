@@ -129,7 +129,11 @@ function getStreetBetUnit(state) {
   const drawRoundIndex = Number(state.drawRoundIndex) || 0;
   const smallBetBB = Math.max(1, Number(state.metadata?.smallBetBB) || 1);
   const bigBetBB = Math.max(smallBetBB, Number(state.metadata?.bigBetBB) || 2);
-  return bigBlind * (drawRoundIndex >= 2 ? bigBetBB : smallBetBB);
+  const bigBetStartsAtDrawRound = Math.max(
+    1,
+    Number(state.metadata?.bigBetStartsAtDrawRound) || 2,
+  );
+  return bigBlind * (drawRoundIndex >= bigBetStartsAtDrawRound ? bigBetBB : smallBetBB);
 }
 
 function getRaiseCap(state) {
@@ -285,12 +289,15 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     evaluatorTag = "low-27",
     lowType = "27",
     cpuStrategy = "ruleBasedD01",
+    maxDrawRounds = 3,
+    bigBetStartsAtDrawRound = maxDrawRounds === 1 ? 1 : 2,
   } = {}) {
-    super({ gameId, displayName, maxDrawRounds: 3 });
+    super({ gameId, displayName, maxDrawRounds });
     this.variantId = variantId;
     this.evaluatorTag = evaluatorTag;
     this.lowType = lowType;
     this.cpuStrategy = cpuStrategy;
+    this.bigBetStartsAtDrawRound = bigBetStartsAtDrawRound;
     this.drawHeuristic = {
       aceLow: lowType === "A5" || lowType === "a5",
       penalizeStraightFlush: !(lowType === "A5" || lowType === "a5"),
@@ -343,6 +350,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
         maxDrawRounds: this.maxDrawRounds,
         smallBetBB: 1,
         bigBetBB: 2,
+        bigBetStartsAtDrawRound: this.bigBetStartsAtDrawRound,
         raiseCap: 4,
         pendingDrawSeats: [],
         discardCountBySeat: {},

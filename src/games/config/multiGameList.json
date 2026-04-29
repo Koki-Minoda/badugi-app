@@ -428,7 +428,9 @@
                      "lowball"
                  ],
         "priorityPhase":  1,
-        "description":  ""
+        "status":  "wip",
+        "engineKey":  "deuce_to_seven_single_draw",
+        "description":  "Single-draw 2-7 lowball using one draw and two fixed-limit betting streets."
     },
     {
         "id":  "S02",
@@ -449,7 +451,9 @@
                      "lowball"
                  ],
         "priorityPhase":  1,
-        "description":  ""
+        "status":  "wip",
+        "engineKey":  "ace_to_five_single_draw",
+        "description":  "Single-draw A-5 lowball using one draw and two fixed-limit betting streets."
     },
     {
         "id":  "S03",

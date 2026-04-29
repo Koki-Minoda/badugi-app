@@ -1015,14 +1015,29 @@ D02 test coverage:
 
 タスク:
 
-- [ ] `WG-05-01` single draw 用 street sequence を fixed する。
+- [x] `WG-05-01` single draw 用 street sequence を fixed する。
   - `BET -> DRAW -> BET -> SHOWDOWN`
-- [ ] `WG-05-02` `maxDrawRounds=1` の family 対応を追加する。
-- [ ] `WG-05-03` opening round / closing round の bet size と raise cap を定義する。
-- [ ] `WG-05-04` `S01` を `D01` から派生実装する。
-- [ ] `WG-05-05` `S02` を `D02` から派生実装する。
-- [ ] `WG-05-06` UI 表示で triple draw と single draw を誤認しないよう整理する。
-- [ ] `WG-05-07` Mixed / Dealer's Choice 用 metadata を追加する。
+- [x] `WG-05-02` `maxDrawRounds=1` の family 対応を追加する。
+- [x] `WG-05-03` opening round / closing round の bet size と raise cap を定義する。
+- [x] `WG-05-04` `S01` を `D01` から派生実装する。
+- [x] `WG-05-05` `S02` を `D02` から派生実装する。
+- [x] `WG-05-06` UI 表示で triple draw と single draw を誤認しないよう整理する。
+- [x] `WG-05-07` Mixed / Dealer's Choice 用 metadata を追加する。
+
+Single draw implementation notes:
+
+- Street sequence is fixed as `BET -> DRAW -> BET -> SHOWDOWN` by using `maxDrawRounds: 1` in the shared lowball draw engine.
+- Opening betting uses the small fixed-limit unit; closing betting after the single draw uses the big fixed-limit unit via `bigBetStartsAtDrawRound: 1`.
+- Raise cap remains the same fixed-limit cap as D01/D02: `raiseCap: 4`.
+- `DeuceToSevenSingleDrawEngine` / `DeuceToSevenSingleDrawController` add `S01` as a thin D01-derived wrapper.
+- `AceToFiveSingleDrawEngine` / `AceToFiveSingleDrawController` add `S02` as a thin D02-derived wrapper.
+- UI snapshots expose `variantId`, `gameId`, `maxDrawRounds`, `drawRound`, `maxDiscardCount`, and `handCardCount`, so single draw is distinguishable from triple draw without `App.jsx` changes.
+- Mixed / Dealer's Choice metadata now includes `engineKey` and `status: "wip"` for `S01` / `S02` in `multiGameList.json`.
+
+Single draw test coverage:
+
+- `src/games/draw/__tests__/SingleDrawEngine.test.js` covers S01/S02 initialization, one-draw street sequence, closing big bet, engine registry, and mixed metadata.
+- `src/games/draw/__tests__/SingleDrawE2E.test.js` covers S01/S02 controller full-hand completion through one draw and showdown.
 
 完了条件:
 

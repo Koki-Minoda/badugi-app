@@ -54,14 +54,7 @@ export function resetBetRoundFlags(players = []) {
 export function shouldSkipDrawRound(state = {}) {
   if (state?.meta?.forceDrawRound) return false;
   const players = Array.isArray(state?.players) ? state.players : [];
-  for (const player of players) {
-    if (!isSeatEligibleForDraw(player)) continue;
-    if (player?.allIn) continue;
-    if ((player?.drawRequest ?? 0) > 0) {
-      return false;
-    }
-  }
-  return true;
+  return !players.some((player) => isSeatEligibleForDraw(player) && !player?.allIn);
 }
 
 // NOTE (G-08):

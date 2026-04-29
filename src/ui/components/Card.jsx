@@ -2,30 +2,58 @@
 import React from "react";
 
 export default function Card({ value, hidden, selected, onClick, folded, ...rest }) {
+  const { style: restStyle, ...restProps } = rest;
+  const cardSizeStyle = {
+    width: "var(--card-w, clamp(40px, 6vw, 64px))",
+    height: "var(--card-h, clamp(56px, 9vw, 96px))",
+  };
+  const cardStyle = { ...cardSizeStyle, ...restStyle };
+  const cardFontStyle = {
+    ...cardStyle,
+    fontSize: "var(--card-font-size, clamp(12px, 2.5vw, 18px))",
+  };
+
   // ------------------------------
   // 1️⃣ 非表示またはフォールド中カード（裏面）
   // ------------------------------
   if (hidden || folded) {
     return (
       <div
-        {...rest}
-        className={`w-[clamp(40px,6vw,64px)] h-[clamp(56px,9vw,96px)] rounded-lg shadow-lg border-4 border-yellow-500 
+        {...restProps}
+        style={cardStyle}
+        className={`rounded-lg shadow-lg border-4 border-yellow-500 
         flex items-center justify-center 
         bg-gradient-to-br from-gray-900 via-black to-gray-800 
         relative overflow-hidden 
         ${folded ? "opacity-50" : ""} 
-        select-none`}
+        select-none touch-manipulation`}
       >
         <div className="absolute inset-0 grid grid-cols-4 grid-rows-6 gap-1 opacity-20">
           {Array.from({ length: 24 }).map((_, i) => (
             <div
               key={i}
-              className="w-[clamp(6px,1vw,8px)] h-[clamp(6px,1vw,8px)] bg-yellow-400 rounded-full mx-auto my-auto"
+              className="bg-yellow-400 rounded-full mx-auto my-auto"
+              style={{
+                width: "var(--card-dot-size, clamp(6px, 1vw, 8px))",
+                height: "var(--card-dot-size, clamp(6px, 1vw, 8px))",
+              }}
             />
           ))}
         </div>
-        <div className="absolute w-[clamp(28px,4vw,40px)] h-[clamp(28px,4vw,40px)] rounded-full border-2 border-yellow-400 flex items-center justify-center">
-          <div className="w-[clamp(12px,2vw,16px)] h-[clamp(12px,2vw,16px)] rounded-full bg-yellow-500 shadow-inner" />
+        <div
+          className="absolute rounded-full border-2 border-yellow-400 flex items-center justify-center"
+          style={{
+            width: "var(--card-center-size, clamp(28px, 4vw, 40px))",
+            height: "var(--card-center-size, clamp(28px, 4vw, 40px))",
+          }}
+        >
+          <div
+            className="rounded-full bg-yellow-500 shadow-inner"
+            style={{
+              width: "var(--card-center-inner-size, clamp(12px, 2vw, 16px))",
+              height: "var(--card-center-inner-size, clamp(12px, 2vw, 16px))",
+            }}
+          />
         </div>
       </div>
     );
@@ -49,12 +77,13 @@ export default function Card({ value, hidden, selected, onClick, folded, ...rest
 
   return (
     <div
-      {...rest}
+      {...restProps}
       onClick={onClick}
+      style={cardFontStyle}
       className={`
-        w-[clamp(40px,6vw,64px)] h-[clamp(56px,9vw,96px)] bg-white rounded-lg shadow-md 
+        bg-white rounded-lg shadow-md 
         flex items-center justify-center 
-        font-bold text-[clamp(12px,2.5vw,18px)] select-none cursor-pointer transition-transform
+        font-bold select-none cursor-pointer transition-transform touch-manipulation
         ${selected ? "border-4 border-blue-500 scale-105" : "border-4 border-gray-300"}
         hover:scale-105 active:scale-95
       `}

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import Player from "../../components/Player";
 import Controls from "../../components/Controls";
 import PlayerStatusBoard from "../../components/PlayerStatusBoard";
@@ -8,6 +8,34 @@ import TableSummaryPanel from "../../components/TableSummaryPanel";
 import HandResultOverlay from "../../components/HandResultOverlay";
 import HeroBustOverlay from "../../components/HeroBustOverlay.jsx";
 import TournamentResultOverlay from "../../components/TournamentResultOverlay.jsx";
+import useCardScaleVars from "../../hooks/useCardScaleVars.js";
+
+const MOBILE_SEAT_GRID_AREA = {
+  0: "hero",
+  1: "leftMid",
+  2: "topLeft",
+  3: "topCenter",
+  4: "topRight",
+  5: "rightMid",
+};
+
+const MOBILE_SEAT_ALIGN_CLASS = {
+  0: "items-center",
+  1: "items-start",
+  2: "items-start",
+  3: "items-center",
+  4: "items-end",
+  5: "items-end",
+};
+
+const MOBILE_TABLE_GRID_STYLE = {
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gridTemplateAreas: `
+    "topLeft topCenter topRight"
+    "leftMid . rightMid"
+    ". hero ."
+  `,
+};
 
 export default function GameLayoutBase({
   headerProps,
@@ -127,6 +155,11 @@ export default function GameLayoutBase({
 
   const { debugMode, onToggleDebugMode } = debugProps;
   const showDesktopSidePanel = showSidePanel && !isMobileLayout;
+  const layoutRootRef = useRef(null);
+  const cardScaleVars = useCardScaleVars(layoutRootRef);
+  const rootStyle = disableVh
+    ? cardScaleVars
+    : { ...cardScaleVars, minHeight: "100dvh" };
 
   const renderControlsContent = () => {
     if (heroCanAct && heroPlayerForControls) {
@@ -180,7 +213,11 @@ export default function GameLayoutBase({
     ) : null;
 
   return (
-    <div className={`flex flex-col ${disableVh ? "h-auto" : "h-screen"} bg-gray-900 text-white`}>
+    <div
+      ref={layoutRootRef}
+      className={`flex flex-col ${disableVh ? "h-auto" : "min-h-screen"} bg-gray-900 text-white`}
+      style={rootStyle}
+    >
       <header
         className={`flex flex-col gap-3 bg-gray-900/95 backdrop-blur-md shadow-md ${
           disableFixed ? "relative" : "fixed top-0 left-0 right-0"
@@ -310,21 +347,29 @@ export default function GameLayoutBase({
                 <div
                   className={`relative ${
                     isMobileLayout
-                      ? "grid grid-cols-2 gap-3"
-                      : "grid grid-cols-3 gap-6"
+                      ? "grid gap-3"
+                      : "min-h-[640px]"
                   }`}
+                  style={isMobileLayout ? MOBILE_TABLE_GRID_STYLE : undefined}
                 >
-                  {seatLayouts.map((layout, idx) => {
+                  {seatLayouts.map((_, idx) => {
                     const seat = tableSeatViews[idx];
                     if (!seat) return null;
-                    const isHero = idx === heroSeatIndex;
                     const seatPosition = positionNameFn(idx, controllerDealerIdx, seatLayouts.length);
+                    const seatAlignClass = isMobileLayout
+                      ? MOBILE_SEAT_ALIGN_CLASS[idx] ?? "items-center"
+                      : "items-center";
                     return (
                       <div
                         key={seat.seatIndex ?? idx}
-                        className={`flex flex-col ${
-                          layout.align === "center" ? "items-center" : layout.align === "left" ? "items-start" : "items-end"
-                        } gap-3`}
+                        className={`flex flex-col ${seatAlignClass} gap-3 ${
+                          isMobileLayout ? "" : seatLayouts[idx] ?? ""
+                        }`}
+                        style={
+                          isMobileLayout
+                            ? { gridArea: MOBILE_SEAT_GRID_AREA[idx] ?? "topCenter" }
+                            : undefined
+                        }
                       >
                         <Player
                           player={seat}
@@ -336,7 +381,7 @@ export default function GameLayoutBase({
                           positionLabel={seatPosition}
                           canSelectForDraw={tableHeroCanDraw && seat.seatIndex === heroSeatIndex}
                           isWinner={seat.winner}
-                          onCardClick={(cardIdx) => handleCardClick(idx, cardIdx)}
+                          onCardClick={(cardIdx) => handleCardClick(cardIdx)}
                         />
                       </div>
                     );

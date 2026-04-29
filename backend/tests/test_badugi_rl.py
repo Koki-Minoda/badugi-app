@@ -1,10 +1,23 @@
+from types import SimpleNamespace
+
+import pytest
 from fastapi.testclient import TestClient
 
+from app.dependencies.auth import get_current_user
 from app.main import app
 
 client = TestClient(app)
 
 VALID_VECTOR = [0.1 for _ in range(22)]
+
+
+@pytest.fixture(autouse=True)
+def _auth_override():
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=1, name="demo")
+    try:
+        yield
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
 
 
 def test_badugi_rl_decision_returns_deterministic_action():

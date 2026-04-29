@@ -7,6 +7,7 @@ import {
 import { analyzeBetSnapshot } from "./flow/betRoundUtils.js";
 import { buildHandResultSummary } from "./flow/handResultUtils.js";
 import { getFixedLimitBetSize } from "./logic/bettingRules.js";
+import { validateAction } from "./engine/BadugiEngine.js";
 
 function clonePlayer(player) {
   if (!player) return player;
@@ -44,6 +45,8 @@ export class BadugiGameController {
       nextTurn: null,
       sbIndex: null,
       bbIndex: null,
+      raiseCountThisRound: 0,
+      raiseCap: null,
     };
   }
 
@@ -58,9 +61,19 @@ export class BadugiGameController {
     if (partial.players) {
       this.state.players = partial.players.map(clonePlayer);
     }
+    const nextRaiseCount =
+      partial.raiseCountThisRound ??
+      partial?.metadata?.raiseCountThisRound ??
+      this.state.raiseCountThisRound;
+    const nextRaiseCap =
+      partial.raiseCap ??
+      partial?.metadata?.raiseCap ??
+      this.state.raiseCap;
     this.state = {
       ...this.state,
       ...partial,
+      raiseCountThisRound: Math.max(0, Number(nextRaiseCount) || 0),
+      raiseCap: nextRaiseCap ?? null,
     };
   }
 
@@ -116,6 +129,7 @@ export class BadugiGameController {
     this.state.currentBet = nextHandState.initialCurrentBet ?? 0;
     this.state.drawRound = 0;
     this.state.phase = "BET";
+    this.state.raiseCountThisRound = 0;
     this.config.betSize = nextHandState.blindValues?.bb ?? this.config.betSize;
 
     return { ...nextHandState };
@@ -137,11 +151,54 @@ export class BadugiGameController {
       baseBet: betSize,
       drawRound: this.state.drawRound ?? 0,
     });
+    const normalizedType =
+      typeof payload?.type === "string" && payload.type.length
+        ? payload.type.toUpperCase()
+        : "CALL";
+    const validation = validateAction(
+      {
+        players: sourcePlayers,
+        bigBlind: Number(betSize) || Number(this.config.betSize) || 0,
+        smallBlind: Math.max(0, Math.floor((Number(betSize) || Number(this.config.betSize) || 0) / 2)),
+        drawRoundIndex: this.state.drawRound ?? 0,
+        betRoundIndex: this.state.drawRound ?? 0,
+        metadata: {
+          raiseCountThisRound: this.state.raiseCountThisRound ?? 0,
+          raiseCap: this.state.raiseCap ?? this.config.raiseCap ?? null,
+          bbValue: Number(betSize) || Number(this.config.betSize) || 0,
+        },
+      },
+      seatIndex,
+      {
+        type: normalizedType,
+        amount: payload?.amount,
+      },
+    );
+    if (!validation.isValid) {
+      return {
+        success: false,
+        error: validation.message ?? "invalid action",
+        code: validation.code ?? null,
+      };
+    }
+
+    const payloadForApply = {
+      ...(payload ?? {}),
+      type: String(normalizedType).toLowerCase(),
+    };
+    delete payloadForApply.raiseCap;
+    delete payloadForApply.raiseCountThisRound;
+    if (
+      (normalizedType === "CALL" || normalizedType === "RAISE" || normalizedType === "BET") &&
+      Number.isFinite(validation.expectedContribution)
+    ) {
+      payloadForApply.amount = validation.expectedContribution;
+    }
 
     const result = applyForcedBetActionSnapshot({
       players: sourcePlayers,
       seat: seatIndex,
-      payload,
+      payload: payloadForApply,
       betSize: streetBetSize,
     });
     if (!result.success) {
@@ -152,6 +209,10 @@ export class BadugiGameController {
     if (result.raiseApplied) {
       this.state.betHead = seatIndex;
       this.state.lastAggressorIdx = seatIndex;
+      this.state.raiseCountThisRound = Math.max(
+        0,
+        Number(this.state.raiseCountThisRound) || 0,
+      ) + 1;
     }
     return result;
   }
@@ -179,6 +240,9 @@ export class BadugiGameController {
       typeof lastAggressorIdx === "number" ? lastAggressorIdx : this.state.lastAggressorIdx;
     this.state.drawRound = drawRound;
     this.state.nextTurn = snapshot.nextTurn ?? null;
+    if (snapshot?.shouldAdvance) {
+      this.state.raiseCountThisRound = 0;
+    }
     return snapshot;
   }
 

@@ -143,9 +143,9 @@ export function compareBadugiEvaluations(left, right) {
   }
   const ranksA = Array.isArray(aEval.ranks) ? aEval.ranks : [];
   const ranksB = Array.isArray(bEval.ranks) ? bEval.ranks : [];
-  // Example check: 8-high (ranks [1,3,5,7]) beats K-high ([1,3,5,12]).
+  // Compare highest active rank first (lower is better in Badugi).
   const len = Math.max(ranksA.length, ranksB.length);
-  for (let i = 0; i < len; i += 1) {
+  for (let i = len - 1; i >= 0; i -= 1) {
     const diff =
       (ranksA[i] ?? Number.POSITIVE_INFINITY) - (ranksB[i] ?? Number.POSITIVE_INFINITY);
     if (diff !== 0) return diff;

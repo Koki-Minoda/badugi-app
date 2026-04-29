@@ -3,7 +3,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from dotenv import load_dotenv
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict  # [tournament-feedback]
 
 # プロジェクトのルート (/root/badugi-app) を特定
@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     db_host: str = Field("localhost", validation_alias="BACKEND_DB_HOST")  # [tournament-feedback]
     db_port: int = Field(3306, validation_alias="BACKEND_DB_PORT")  # [tournament-feedback]
     db_user: str = Field("mgx", validation_alias="BACKEND_DB_USER")  # [tournament-feedback]
-    db_password: str = Field("Km041221", validation_alias="BACKEND_DB_PASSWORD")  # [tournament-feedback]
+    db_password: str | None = Field(None, validation_alias="BACKEND_DB_PASSWORD")  # [tournament-feedback]
     db_name: str = Field("mgx_prod", validation_alias="BACKEND_DB_NAME")  # [tournament-feedback]
 
     # ---------- CORS ----------
@@ -34,12 +34,27 @@ class Settings(BaseSettings):
         validation_alias="CORS_ORIGINS",
     )
 
-    secret_key: str = Field("change-me", validation_alias="SECRET_KEY")
+    secret_key: str | None = Field(None, validation_alias="SECRET_KEY")
 
     model_config = SettingsConfigDict(  # [tournament-feedback]
         env_file=ENV_PATH,
         env_file_encoding="utf-8",
     )  # [tournament-feedback]
+
+    @model_validator(mode="after")
+    def validate_sensitive_config(self):
+        env = (self.backend_env or "local").lower()
+        if env == "test":
+            # Test-only relaxation so pytest can run without production secrets.
+            return self
+
+        if not (self.secret_key or "").strip():
+            raise ValueError("SECRET_KEY must be set.")
+
+        driver = (self.db_driver or "").lower()
+        if driver not in {"sqlite", "sqlite3"} and not (self.db_password or "").strip():
+            raise ValueError("BACKEND_DB_PASSWORD must be set for non-sqlite drivers.")
+        return self
 
 
 @lru_cache

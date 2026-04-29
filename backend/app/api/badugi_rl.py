@@ -1,8 +1,11 @@
 """Badugi RL decision endpoint."""
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator, model_validator
+
+from ..dependencies.auth import get_current_user
+from ..models import User
 
 VALID_ACTIONS = {"fold", "check", "call", "bet", "raise", "all_in"}
 STATE_VECTOR_SIZE = 22
@@ -55,7 +58,10 @@ def _deterministic_stub_policy(valid_actions: List[str]) -> BadugiRLResponse:
 
 
 @router.post("/badugi/rl/decision", response_model=BadugiRLResponse)
-def badugi_rl_decision(request: BadugiRLRequest) -> BadugiRLResponse:
+def badugi_rl_decision(
+    request: BadugiRLRequest,
+    _: User = Depends(get_current_user),
+) -> BadugiRLResponse:
     if not request.valid_actions:
         raise HTTPException(status_code=422, detail="valid_actions must not be empty.")
     return _deterministic_stub_policy(request.valid_actions)

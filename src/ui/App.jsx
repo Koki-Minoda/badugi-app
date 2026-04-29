@@ -116,6 +116,7 @@ import ReplayScreen from "./screens/ReplayScreen.jsx";
 import { useGameSessionState } from "./hooks/useGameSessionState.js";
 import MobileOrientationGate from "./components/MobileOrientationGate.jsx";
 import { useDeviceProfile } from "./hooks/useDeviceProfile.js";
+import { useDesktopCanvasScale } from "./hooks/useDesktopCanvasScale.js";
 import { computeSeatStats } from "./utils/stats.js";
 import { AuthProvider, useAuth } from "./state/authStore.jsx";
 import {
@@ -174,6 +175,8 @@ export function findHandHistoryById(handId) {
 
 const DEFAULT_GAME_ID = "D03";
 const DEFAULT_GAME_VARIANT = "badugi";
+const DESKTOP_CANVAS_BASE_WIDTH = 1600;
+const DESKTOP_CANVAS_BASE_HEIGHT = 900;
 const HERO_TOURNAMENT_PLAYER_ID = "hero-player";
 const DEFAULT_STORE_TOURNAMENT_CONFIG = {
   id: "store-mtt",
@@ -902,8 +905,21 @@ const SAFE_RESET_PHASE = "IDLE";
 
   const isSingleTableBadugi = mode !== "tournament-mtt" && gameVariant === "badugi";
   const isMobileDevice = deviceProfile.isMobile;
-  const layoutMode = isMobileDevice ? "mobile" : "desktop";
+  const layoutMode = "desktop";
+  const shouldUseDesktopCanvasScale = isMobileDevice && mode !== "tournament-mtt";
+  const desktopCanvasScale = useDesktopCanvasScale({
+    enabled: shouldUseDesktopCanvasScale,
+    baseWidth: DESKTOP_CANVAS_BASE_WIDTH,
+    baseHeight: DESKTOP_CANVAS_BASE_HEIGHT,
+  });
   const shouldGateOrientation = isMobileDevice && mode !== "tournament-mtt";
+  useEffect(() => {
+    if (!shouldUseDesktopCanvasScale) {
+      setDebugScale(1);
+      return;
+    }
+    setDebugScale(desktopCanvasScale.scale);
+  }, [shouldUseDesktopCanvasScale, desktopCanvasScale.scale]);
   const screenLabel = useMemo(() => {
     if (authIsAuthenticated === false) return "Auth";
     if (currentScreen === "title") return "Title";
@@ -925,17 +941,38 @@ const SAFE_RESET_PHASE = "IDLE";
           typeof actionType === "string" && actionType.length
             ? actionType.toLowerCase()
             : "call";
+        const sanitizedMetadata = { ...(metadata ?? {}) };
+        delete sanitizedMetadata.raiseCap;
+        delete sanitizedMetadata.raiseCountThisRound;
         const actionPayload = {
           seatIndex,
           payload: {
             type: normalizedType,
             amount,
-            ...metadata,
+            ...sanitizedMetadata,
           },
         };
         const result = controller.applyAction(controllerState, actionPayload);
         if (!result || !result.state) {
           return null;
+        }
+        const events = Array.isArray(result.events) ? result.events : [];
+        const rejectionEvent = events.find(
+          (event) => event?.type === "invalidAction" || event?.type === "error",
+        );
+        if (rejectionEvent) {
+          return {
+            rejected: true,
+            code:
+              rejectionEvent?.code ??
+              result?.code ??
+              null,
+            message:
+              rejectionEvent?.error ??
+              rejectionEvent?.message ??
+              "action rejected",
+            events,
+          };
         }
         sessionControllerStateRef.current = result.state;
         const snapshot = controller.getUiSnapshot(result.state);
@@ -944,7 +981,7 @@ const SAFE_RESET_PHASE = "IDLE";
         }
         return {
           snapshot,
-          events: Array.isArray(result.events) ? result.events : [],
+          events,
         };
       } catch (error) {
         console.warn("[CTRL][BET] applyAction failed", error);
@@ -1271,6 +1308,8 @@ const SAFE_RESET_PHASE = "IDLE";
         ? snapshot.turn
         : typeof snapshot.nextTurn === "number"
         ? snapshot.nextTurn
+        : typeof snapshot?.metadata?.actingPlayerIndex === "number"
+        ? snapshot.metadata.actingPlayerIndex
         : null;
     const resolvedCurrentBet =
       typeof snapshot.currentBet === "number"
@@ -1485,6 +1524,7 @@ const SAFE_RESET_PHASE = "IDLE";
   const handSavedRef = useRef(false);
   const sentHandIdsRef = useRef(new Set());
   const handIdRef = useRef(null);
+  const showdownTokenRef = useRef(0);
   const handStartStacksRef = useRef([]);
   const handHistoryRef = useRef(null);
   const handHistoryBufferRef = useRef([]);
@@ -1954,17 +1994,19 @@ const SAFE_RESET_PHASE = "IDLE";
         }
         return true;
       }
+      const nextAfter = findNextDrawActorSeat(snapshot, seatToAct + 1);
+      const safeTurnForDraw = typeof nextAfter === "number" ? nextAfter : seatToAct;
       setPlayerSnapshot(snapshot);
       const snapshotAfter = applyDeckSnapshot({
         players: snapshot,
         pots,
-        nextTurn: null,
-        turn: null,
+        nextTurn: safeTurnForDraw,
+        turn: safeTurnForDraw,
         metadata: {
           currentBet,
           betHead,
           lastAggressor,
-          actingPlayerIndex: null,
+          actingPlayerIndex: safeTurnForDraw,
         },
       });
       syncEngineSnapshot(snapshotAfter);
@@ -1982,7 +2024,6 @@ const SAFE_RESET_PHASE = "IDLE";
         raiseCountTable: raiseCountThisRound,
         metadata: { drawInfo: npcControllerMetadata },
       });
-      const nextAfter = findNextDrawActorSeat(snapshot, seatToAct + 1);
       if (debugMode) {
         console.debug("[DRAW][AUTO][NEXT]", { from: seatToAct, to: nextAfter });
       }
@@ -2272,10 +2313,24 @@ const SAFE_RESET_PHASE = "IDLE";
 
   useEffect(() => {
     if (phase !== "BET" && phase !== "DRAW") return;
+    if (transitioningRef.current || transitioning) return;
     const roster = playersRef.current ?? players;
     const seatCount = Array.isArray(roster) ? roster.length : 0;
     if (seatCount === 0) return;
     if (!Number.isInteger(turn) || turn < 0 || turn >= seatCount) {
+      if (phase === "DRAW") {
+        const drawFallback = findNextDrawActorSeat(roster);
+        if (typeof drawFallback === "number") {
+          setTurn(drawFallback);
+          return;
+        }
+      } else {
+        const betFallback = firstBetterAfterBlinds(roster, dealerIdx);
+        if (typeof betFallback === "number") {
+          setTurn(betFallback);
+          return;
+        }
+      }
       const handled = forceFinishRound({
         reason: "acting-seat-out-of-range",
         phaseOverride: phase,
@@ -2285,7 +2340,7 @@ const SAFE_RESET_PHASE = "IDLE";
         handleFatalTableError("acting-seat-out-of-range", { phase, turn, seatCount });
       }
     }
-  }, [phase, turn, players, handleFatalTableError, forceFinishRound]);
+  }, [phase, turn, players, dealerIdx, transitioning, handleFatalTableError, forceFinishRound]);
   function emitE2EActionTrace(entry, playerSnapshot) {
     if (!e2eLogEnabledRef.current) return;
     const seatIdx = typeof entry.seat === "number" ? entry.seat : null;
@@ -2718,6 +2773,10 @@ const SAFE_RESET_PHASE = "IDLE";
           });
           return true;
         }
+        if (controllerOutcome?.rejected) {
+          forcedSeatActionsRef.current.delete(seat);
+          return false;
+        }
         if (isSingleTableBadugi) {
           warnLegacySingleTablePath(`forced-bet fallback seat=${seat}`);
         }
@@ -3042,10 +3101,10 @@ const SAFE_RESET_PHASE = "IDLE";
       (player) =>
         player &&
         isPlayerSeated(player) &&
-        isPlayerActiveInGame(player) &&
+        !player.seatOut &&
+        !player.isBusted &&
         typeof player.stack === "number" &&
-        player.stack > 0 &&
-        !player.seatOut,
+        player.stack > 0,
     );
     return alive.length >= 2;
   }
@@ -3499,14 +3558,20 @@ const SAFE_RESET_PHASE = "IDLE";
     debugLog("[SHOWDOWN] goShowdownNow (All-in shortcut) called");
     const forceShowdown = options.force === true;
 
-    if (engine && !forceShowdown && handleEngineShowdown(drawRound)) {
-      return;
-    }
-
     const active = playersSnap.filter((p) => !isFoldedOrOut(p));
     if (active.length === 0) return;
     if (!forceShowdown && active.length > 1 && drawRound < MAX_DRAWS) {
       debugLog("[SHOWDOWN] skipping early showdown because multiple players remain");
+      return;
+    }
+
+    if (
+      engine &&
+      handleEngineShowdown(drawRound, {
+        playersOverride: Array.isArray(playersSnap) ? playersSnap : null,
+        potsOverride: Array.isArray(pots) ? pots : null,
+      })
+    ) {
       return;
     }
 
@@ -3570,7 +3635,7 @@ const SAFE_RESET_PHASE = "IDLE";
           payouts.push({
             seat: idx,
             name: workingPlayers[idx]?.name ?? w.name,
-            amount: payout,
+            payout,
             stackBefore,
             stackAfter: newStacks[idx],
             hand: workingPlayers[idx]?.hand ?? [],
@@ -3999,6 +4064,7 @@ const SAFE_RESET_PHASE = "IDLE";
       return false;
     }
     dealingRef.current = true;
+    showdownTokenRef.current += 1;
     lastPotSummaryRef.current = [];
     debugLog(`[HAND] dealNewHand start -> dealer=${nextDealerIdx}`);
     setHandResultVisible(false);
@@ -4410,13 +4476,35 @@ const SAFE_RESET_PHASE = "IDLE";
           gameId: stageGameId,
           engineId: stageGameId,
         });
+    const nextHandSnapshot = {
+      ...seedSnapshot,
+      phase: "BET",
+      drawRound: 0,
+      betRoundIndex: 0,
+      dealerSeat: nextDealerIdx,
+      currentBet: initialCurrentBet ?? 0,
+      betHead: resolvedTurn,
+      lastAggressor: bbIdx ?? null,
+      nextTurn: resolvedTurn,
+      turn: resolvedTurn,
+      metadata: {
+        ...(seedSnapshot?.metadata ?? {}),
+        phase: "BET",
+        drawRound: 0,
+        betRoundIndex: 0,
+        currentBet: initialCurrentBet ?? 0,
+        betHead: resolvedTurn,
+        lastAggressor: bbIdx ?? null,
+        actingPlayerIndex: resolvedTurn,
+      },
+    };
 
     if (!isTournament) {
       if (isSingleTableBadugi && controllerHandSnapshot) {
-        resetForNewHandFromSnapshot(controllerHandSnapshot);
+        resetForNewHandFromSnapshot(nextHandSnapshot);
       } else {
         const sessionUi =
-          syncSessionFromSnapshot(seedSnapshot, nextHandState, {
+          syncSessionFromSnapshot(nextHandSnapshot, nextHandState, {
             reason: "new-hand",
           });
         if (sessionUi) {
@@ -4460,7 +4548,7 @@ const SAFE_RESET_PHASE = "IDLE";
       }
     }
 
-    syncEngineSnapshot(seedSnapshot, seedSnapshot);
+    syncEngineSnapshot(nextHandSnapshot, nextHandSnapshot);
     trace("dealNewHand END", { dealerIdx: nextDealerIdx });
     return true;
   } catch (error) {
@@ -4476,6 +4564,30 @@ const SAFE_RESET_PHASE = "IDLE";
   // instead of calling dealNewHand directly so BTN/blinds/metadata stay in sync.
   const startNextHand = useCallback(
     ({ dealerOverride = null, prevPlayers = null } = {}) => {
+      if (dealingRef.current) {
+        console.warn("[HAND] dealNewHand busy; next request ignored");
+        return false;
+      }
+      const currentPhase = phaseRef.current ?? phase;
+      const allowedStartPhases = new Set([
+        SAFE_RESET_PHASE,
+        "INIT",
+        "HAND_RESULT",
+        "WAITING_NEXT_HAND",
+        "TABLE_FINISHED",
+        "TOURNAMENT_END",
+        "TOURNAMENT_FINAL",
+      ]);
+      if (
+        handCountRef.current > 0 &&
+        !allowedStartPhases.has(currentPhase)
+      ) {
+        console.warn("[HAND] stale next-hand trigger ignored", {
+          phase: currentPhase,
+          handId: handIdRef.current,
+        });
+        return false;
+      }
       if (mode === "tournament-mtt" && tournamentStateRef.current?.isFinished) {
         return false;
       }
@@ -4521,8 +4633,6 @@ const SAFE_RESET_PHASE = "IDLE";
           return false;
         }
       }
-      setShowNextButton(false);
-      setHandResultVisible(false);
       const nextHandNumber = handCountRef.current + 1;
       const success = dealNewHand(targetDealerIdx, prevPlayers, nextHandNumber);
       if (success) {
@@ -4530,7 +4640,7 @@ const SAFE_RESET_PHASE = "IDLE";
       }
       return success;
     },
-    [dealerIdx, mode, players, pots, trySaveHandOnce],
+    [dealerIdx, mode, phase, players, pots, trySaveHandOnce],
   );
   startNextHandRef.current = startNextHand;
 
@@ -5247,8 +5357,10 @@ const SAFE_RESET_PHASE = "IDLE";
 
     const currentDraw = Math.max(0, Math.min(Number(drawRoundTracker.current) || 0, MAX_DRAWS));
     setBetRoundValue(currentDraw);
+    setCurrentBet(0);
     setLastAggressor(null);
-    const nextTurn = findNextDrawActorSeat(betRoundReady, sbIndex());
+    setRaiseCountThisRound(0);
+    const nextTurn = findNextActiveSeat(betRoundReady, startSeat);
     const resolvedTurn = typeof nextTurn === "number" ? nextTurn : startSeat;
     transitionToBetPhase({
       players: betRoundReady,
@@ -5261,6 +5373,46 @@ const SAFE_RESET_PHASE = "IDLE";
       fromPhase: "DRAW",
       onPhaseTransition: logPhaseTransition,
     });
+    const betTransitionSnapshot = applyDeckSnapshot({
+      players: betRoundReady,
+      pots,
+      phase: "BET",
+      drawRound: currentDraw,
+      betRoundIndex: currentDraw,
+      nextTurn: resolvedTurn,
+      turn: resolvedTurn,
+      currentBet: 0,
+      betHead: startSeat,
+      lastAggressor: null,
+      metadata: {
+        ...(engineStateRef.current?.metadata ?? {}),
+        currentBet: 0,
+        betHead: startSeat,
+        lastAggressor: null,
+        actingPlayerIndex: resolvedTurn,
+        phase: "BET",
+        drawRoundIndex: currentDraw,
+        betRoundIndex: currentDraw,
+        raiseCountThisRound: 0,
+      },
+    });
+    syncEngineSnapshot(betTransitionSnapshot);
+    if (!isTournament) {
+      syncSessionFromSnapshot(
+        {
+          ...betTransitionSnapshot,
+          phase: "BET",
+          drawRound: currentDraw,
+          betRoundIndex: currentDraw,
+          dealerSeat: dealerIdx,
+          currentBet: 0,
+          betHead: startSeat,
+          lastAggressor: null,
+        },
+        null,
+        { reason: "action" },
+      );
+    }
   }
 
   function forceFinishRound({
@@ -5387,6 +5539,8 @@ const SAFE_RESET_PHASE = "IDLE";
         ? snapshotWithDeck.nextTurn
         : typeof snapshotWithDeck?.turn === "number"
         ? snapshotWithDeck.turn
+        : typeof snapshotWithDeck?.metadata?.actingPlayerIndex === "number"
+        ? snapshotWithDeck.metadata.actingPlayerIndex
         : null;
     const snapshotWithTurn = {
       ...snapshotWithDeck,
@@ -5487,14 +5641,20 @@ const SAFE_RESET_PHASE = "IDLE";
       metadata,
     });
     if (nextState) {
+      const fallbackTurn =
+        typeof baseState?.metadata?.actingPlayerIndex === "number"
+          ? baseState.metadata.actingPlayerIndex
+          : typeof turn === "number"
+          ? turn
+          : 0;
       const ensuredNextState =
         typeof nextState?.nextTurn === "number" ||
         typeof nextState?.turn === "number"
           ? nextState
           : {
               ...nextState,
-              nextTurn: null,
-              turn: null,
+              nextTurn: fallbackTurn,
+              turn: fallbackTurn,
             };
       syncEngineSnapshot(applyDeckSnapshot(ensuredNextState));
       const postPlayers = playersRef.current ?? players;
@@ -5548,6 +5708,13 @@ const SAFE_RESET_PHASE = "IDLE";
       });
       return;
     }
+    if (controllerHandled?.rejected) {
+      console.warn("[CTRL][BET] hero fold rejected", {
+        code: controllerHandled?.code ?? null,
+        message: controllerHandled?.message ?? "action rejected",
+      });
+      return;
+    }
     if (isSingleTableBadugi) {
       warnLegacySingleTablePath("hero-fold fallback");
     }
@@ -5598,6 +5765,58 @@ const SAFE_RESET_PHASE = "IDLE";
       gameId: fallbackGameId,
       engineId: fallbackGameId,
     };
+  }
+
+  function reconcilePlayersForShowdown(playersSnapshot = []) {
+    if (!Array.isArray(playersSnapshot)) return [];
+    const recordedSeats = currentHandHistoryRef.current?.seats ?? [];
+    const startStacksBySeat = Array.isArray(handStartStacksRef.current)
+      ? handStartStacksRef.current
+      : [];
+    const paidActionTypes = new Set(["blind", "ante", "call", "raise", "bet", "all-in"]);
+
+    return playersSnapshot.map((player, seatIndex) => {
+      if (!player) return player;
+      const stack = Math.max(0, Number(player.stack) || 0);
+      const existingInvested = Math.max(0, Number(player.totalInvested) || 0);
+      const historyStart = Number(recordedSeats?.[seatIndex]?.startStack);
+      const runtimeStart = Number(startStacksBySeat?.[seatIndex]);
+      const resolvedStart = Number.isFinite(historyStart)
+        ? historyStart
+        : Number.isFinite(runtimeStart)
+        ? runtimeStart
+        : null;
+      if (!Number.isFinite(resolvedStart)) {
+        const actionInvested =
+          (recordedSeats?.[seatIndex]?.actions ?? []).reduce((sum, action) => {
+            const type = String(action?.type ?? "").toLowerCase();
+            if (!paidActionTypes.has(type)) return sum;
+            return sum + Math.max(0, Number(action?.amount) || 0);
+          }, 0);
+        const reconciledInvested = Math.max(existingInvested, actionInvested);
+        if (reconciledInvested === existingInvested) return player;
+        return { ...player, totalInvested: reconciledInvested };
+      }
+      const inferredInvested = Math.max(0, Math.round(resolvedStart - stack));
+      const actionInvested =
+        (recordedSeats?.[seatIndex]?.actions ?? []).reduce((sum, action) => {
+          const type = String(action?.type ?? "").toLowerCase();
+          if (!paidActionTypes.has(type)) return sum;
+          return sum + Math.max(0, Number(action?.amount) || 0);
+        }, 0);
+      const reconciledInvested = Math.max(
+        existingInvested,
+        inferredInvested,
+        actionInvested,
+      );
+      if (reconciledInvested === existingInvested) {
+        return player;
+      }
+      return {
+        ...player,
+        totalInvested: reconciledInvested,
+      };
+    });
   }
 
   function onHandFinished() {
@@ -5718,7 +5937,18 @@ const SAFE_RESET_PHASE = "IDLE";
     return summaryWithContext;
   }
 
-  function handleShowdownResult(updatedPlayers, totalPot, summary) {
+  function handleShowdownResult(updatedPlayers, totalPot, summary, showdownToken = null) {
+    if (
+      typeof showdownToken === "number" &&
+      showdownToken !== showdownTokenRef.current
+    ) {
+      console.warn("[SHOWDOWN] stale completion ignored", {
+        token: showdownToken,
+        activeToken: showdownTokenRef.current,
+        handId: handIdRef.current,
+      });
+      return;
+    }
     finishHand({
       playersSnapshot: updatedPlayers,
       summary: Array.isArray(summary) ? summary : [],
@@ -5726,10 +5956,32 @@ const SAFE_RESET_PHASE = "IDLE";
     });
   }
 
-  function handleEngineShowdown(drawRoundParam = drawRound) {
+  function handleEngineShowdown(
+    drawRoundParam = drawRound,
+    { playersOverride = null, potsOverride = null } = {},
+  ) {
     if (!engine) return false;
     const baseState = getEngineBaseState();
-    const outcome = engine.resolveShowdown(baseState, { cloneState: false });
+    const candidatePlayers = Array.isArray(playersOverride)
+      ? playersOverride
+      : baseState?.players ?? [];
+    const candidatePots = Array.isArray(potsOverride) ? potsOverride : baseState?.pots ?? [];
+    const reconciledPlayers = reconcilePlayersForShowdown(
+      candidatePlayers.map(clonePlayerState).filter(Boolean),
+    );
+    const showdownState = {
+      ...baseState,
+      players: reconciledPlayers,
+      pots: candidatePots,
+      metadata: {
+        ...(baseState?.metadata ?? {}),
+        currentBet: baseState?.metadata?.currentBet ?? currentBet ?? 0,
+        betHead: baseState?.metadata?.betHead ?? betHead ?? null,
+        lastAggressor: baseState?.metadata?.lastAggressor ?? lastAggressor ?? null,
+        actingPlayerIndex: null,
+      },
+    };
+    const outcome = engine.resolveShowdown(showdownState, { cloneState: false });
     if (!outcome?.state) return false;
     const showdownSnapshot = applyDeckSnapshot({
       players: outcome.state.players,
@@ -5739,6 +5991,8 @@ const SAFE_RESET_PHASE = "IDLE";
       metadata: outcome.state.metadata,
     });
     syncEngineSnapshot(showdownSnapshot);
+    const showdownToken = showdownTokenRef.current + 1;
+    showdownTokenRef.current = showdownToken;
     runShowdown({
       players: outcome.state.players,
       setPlayers,
@@ -5759,7 +6013,8 @@ const SAFE_RESET_PHASE = "IDLE";
       recordActionToLog,
       drawRound: drawRoundParam,
       onHandFinished,
-      onShowdownComplete: handleShowdownResult,
+      onShowdownComplete: (updatedPlayers, totalPot, summary) =>
+        handleShowdownResult(updatedPlayers, totalPot, summary, showdownToken),
       precomputedResult: {
         summary: outcome.summary ?? [],
         totalPot: outcome.totalPot ?? 0,
@@ -5774,7 +6029,13 @@ const SAFE_RESET_PHASE = "IDLE";
   function handleEngineRoundTransition(drawRoundValue, dealerIndexValue) {
     if (!engine) return false;
     const baseState = getEngineBaseState();
-    const outcome = engine.advanceAfterBet(baseState, {
+    const reconciledBaseState = {
+      ...baseState,
+      players: reconcilePlayersForShowdown(
+        (baseState?.players ?? []).map(clonePlayerState).filter(Boolean),
+      ),
+    };
+    const outcome = engine.advanceAfterBet(reconciledBaseState, {
       drawRound: drawRoundValue,
       maxDraws: MAX_DRAWS,
       dealerIndex: dealerIndexValue,
@@ -5796,6 +6057,10 @@ const SAFE_RESET_PHASE = "IDLE";
         ? state.nextTurn
         : typeof state.turn === "number"
         ? state.turn
+        : typeof state.actingPlayerIndex === "number"
+        ? state.actingPlayerIndex
+        : typeof mergedMetadata.actingPlayerIndex === "number"
+        ? mergedMetadata.actingPlayerIndex
         : null;
     const transitionSnapshot = applyDeckSnapshot({
       players: state.players,
@@ -5805,8 +6070,38 @@ const SAFE_RESET_PHASE = "IDLE";
       metadata: mergedMetadata,
     });
     syncEngineSnapshot(transitionSnapshot);
+    if (!isTournament) {
+      const sessionPhase =
+        outcome.street === "DRAW"
+          ? "DRAW"
+          : outcome.street === "SHOWDOWN"
+          ? "SHOWDOWN"
+          : phaseRef.current ?? phase;
+      const sessionRound =
+        outcome.street === "DRAW"
+          ? Number.isFinite(outcome.drawRoundIndex)
+            ? outcome.drawRoundIndex
+            : drawRoundValue + 1
+          : drawRoundValue;
+      syncSessionFromSnapshot(
+        {
+          ...transitionSnapshot,
+          phase: sessionPhase,
+          drawRound: sessionRound,
+          betRoundIndex: sessionRound,
+          dealerSeat: dealerIndexValue,
+          currentBet: mergedMetadata.currentBet ?? 0,
+          betHead: mergedMetadata.betHead ?? null,
+          lastAggressor: mergedMetadata.lastAggressor ?? null,
+        },
+        null,
+        { reason: "action" },
+      );
+    }
 
     if (outcome.showdown || outcome.street === "SHOWDOWN") {
+      const showdownToken = showdownTokenRef.current + 1;
+      showdownTokenRef.current = showdownToken;
       transitionToShowdownPhase({
         players: state.players,
         pots: state.pots,
@@ -5822,11 +6117,16 @@ const SAFE_RESET_PHASE = "IDLE";
             prevPlayers: snapshot,
           }),
         setShowNextButton,
-        onShowdownComplete: handleShowdownResult,
+        onShowdownComplete: (updatedPlayers, totalPot, summary) =>
+          handleShowdownResult(updatedPlayers, totalPot, summary, showdownToken),
         engineResolveShowdown: () => outcome,
         precomputedResult: {
-          summary: outcome.showdownSummary ?? [],
-          totalPot: outcome.showdownTotal ?? 0,
+          summary: outcome.showdownSummary ?? outcome.summary ?? [],
+          totalPot:
+            outcome.totalPot ??
+            outcome.showdownTotal ??
+            outcome.state?.metadata?.showdownTotal ??
+            0,
           players: state.players,
           pots: state.pots,
         },
@@ -5854,10 +6154,12 @@ const SAFE_RESET_PHASE = "IDLE";
         const betReady = resetBetRoundFlags(skipPlayers ?? state.players ?? []);
         const startSeat = sbIndex(dealerIndexValue);
         const resolvedTurn =
-          findNextDrawActorSeat(betReady, startSeat) ?? startSeat;
+          findNextActiveSeat(betReady, startSeat) ?? startSeat;
         setDrawRoundValue(normalizedDraw);
         setBetRoundValue(normalizedDraw);
+        setCurrentBet(0);
         setLastAggressor(null);
+        setRaiseCountThisRound(0);
         transitionToBetPhase({
           players: betReady,
           setPlayers,
@@ -5869,6 +6171,33 @@ const SAFE_RESET_PHASE = "IDLE";
           fromPhase: "DRAW",
           onPhaseTransition: logPhaseTransition,
         });
+        if (!isTournament) {
+          syncSessionFromSnapshot(
+            applyDeckSnapshot({
+              players: betReady,
+              pots: state.pots ?? [],
+              phase: "BET",
+              drawRound: normalizedDraw,
+              betRoundIndex: normalizedDraw,
+              dealerSeat: dealerIndexValue,
+              nextTurn: resolvedTurn,
+              turn: resolvedTurn,
+              currentBet: 0,
+              betHead: startSeat,
+              lastAggressor: null,
+              metadata: {
+                ...(mergedMetadata ?? {}),
+                currentBet: 0,
+                betHead: startSeat,
+                lastAggressor: null,
+                actingPlayerIndex: resolvedTurn,
+                phase: "BET",
+              },
+            }),
+            null,
+            { reason: "action" },
+          );
+        }
       };
       const enteredDraw = transitionToDrawPhase({
         players: state.players,
@@ -5948,6 +6277,13 @@ const SAFE_RESET_PHASE = "IDLE";
       });
       return;
     }
+    if (controllerOutcome?.rejected) {
+      console.warn("[CTRL][BET] hero call/check rejected", {
+        code: controllerOutcome?.code ?? null,
+        message: controllerOutcome?.message ?? "action rejected",
+      });
+      return;
+    }
     if (isSingleTableBadugi) {
       warnLegacySingleTablePath("hero-call/check fallback");
     }
@@ -6011,6 +6347,13 @@ const SAFE_RESET_PHASE = "IDLE";
       });
       return;
     }
+    if (controllerOutcome?.rejected) {
+      console.warn("[CTRL][BET] hero check rejected", {
+        code: controllerOutcome?.code ?? null,
+        message: controllerOutcome?.message ?? "action rejected",
+      });
+      return;
+    }
     if (isSingleTableBadugi) {
       warnLegacySingleTablePath("hero-check fallback");
     }
@@ -6051,13 +6394,6 @@ const SAFE_RESET_PHASE = "IDLE";
     if (!ensureSeatCanAct(0, "playerRaise")) return;
     if (me.stack <= 0) {
        console.warn("[BLOCK] Player has no stack -> cannot raise");
-       return;
-     }
-
-     if (raiseCountThisRound >= 4) {
-       logAction(0, "Raise blocked (5-bet cap reached)", { raiseCountThisRound });
-       debugLog(`[CAP] 5-bet cap reached (Raise blocked after ${raiseCountThisRound})`);
-       playerCall();
        return;
      }
 
@@ -6103,6 +6439,17 @@ const SAFE_RESET_PHASE = "IDLE";
       });
       syncLegacyFromControllerSnapshot(controllerOutcome.snapshot, {
         seatIndex: 0,
+      });
+      return;
+    }
+    if (controllerOutcome?.rejected) {
+      if (controllerOutcome.code === "FL_RAISE_CAP") {
+        playerCall();
+        return;
+      }
+      console.warn("[CTRL][BET] hero raise rejected", {
+        code: controllerOutcome?.code ?? null,
+        message: controllerOutcome?.message ?? "action rejected",
       });
       return;
     }
@@ -6359,16 +6706,18 @@ const SAFE_RESET_PHASE = "IDLE";
     }
     setPlayerSnapshot(committedSnapshot);
     const nextHeroTurn = findNextDrawActorSeat(committedSnapshot, 1);
+    const safeHeroDrawTurn =
+      typeof nextHeroTurn === "number" ? nextHeroTurn : 0;
     const heroDrawSnapshot = applyDeckSnapshot({
       players: committedSnapshot,
       pots,
-      nextTurn: nextHeroTurn ?? null,
-      turn: nextHeroTurn ?? null,
+      nextTurn: safeHeroDrawTurn,
+      turn: safeHeroDrawTurn,
       metadata: {
         currentBet,
         betHead,
         lastAggressor,
-        actingPlayerIndex: nextHeroTurn ?? null,
+        actingPlayerIndex: safeHeroDrawTurn,
       },
     });
     syncEngineSnapshot(heroDrawSnapshot);
@@ -6433,61 +6782,56 @@ const SAFE_RESET_PHASE = "IDLE";
 
     const timer = setTimeout(() => {
       if (phase === "BET") {
-      const basePlayers = playersRef.current ?? players;
-      const snap = basePlayers.map(clonePlayerState).filter(Boolean);
-      const activeSeat = turn;
-      if (!ensureSeatCanAct(activeSeat, "npcBetAction")) {
-        const nxt = nextAliveFrom(snap, turn);
-        if (nxt !== null) setTurn(nxt);
-        return;
-      }
-      const me = snap[turn] ? { ...snap[turn] } : null;
-      if (!me) return;
-      const stackBefore = me.stack;
-      const betBefore = me.betThisRound;
-      const maxNow = maxBetThisRound(snap);
-      const toCall = Math.max(0, maxNow - me.betThisRound);
-      const evalResult = evaluateBadugi(me.hand);
-      const madeCards = evalResult.ranks.length;
-      const r = Math.random();
+        const basePlayers = playersRef.current ?? players;
+        const snap = basePlayers.map(clonePlayerState).filter(Boolean);
+        const activeSeat = turn;
+        if (!ensureSeatCanAct(activeSeat, "npcBetAction")) {
+          const nxt = nextAliveFrom(snap, turn);
+          if (nxt !== null) setTurn(nxt);
+          return;
+        }
+        const me = snap[turn] ? { ...snap[turn] } : null;
+        if (!me) return;
+        const maxNow = maxBetThisRound(snap);
+        const toCall = Math.max(0, maxNow - me.betThisRound);
+        const evalResult = evaluateBadugi(me.hand);
+        const madeCards = evalResult.ranks.length;
+        const r = Math.random();
+        let actionPayload = null;
 
-      if (toCall > 0 && r < 0.15 && madeCards < 3) {
-        markPlayerFolded(me);
-        me.lastAction = "Fold";
-      } else {
-        const applied = applyChips(me, toCall);
-        me.betThisRound += applied;
-        me.lastAction = toCall === 0 ? "Check" : "Call";
-      }
+        if (toCall > 0 && r < 0.15 && madeCards < 3) {
+          actionPayload = { type: "fold", __forceInstant: true };
+        } else if (!me.allIn && Math.random() > 0.9 && madeCards >= 3) {
+          actionPayload = {
+            type: "raise",
+            amount: betSize,
+            __forceInstant: true,
+          };
+        } else {
+          actionPayload = {
+            type: toCall === 0 ? "check" : "call",
+            amount: toCall,
+            __forceInstant: true,
+          };
+        }
 
-      if (!me.allIn && Math.random() > 0.9 && raiseCountThisRound < 4 && madeCards >= 3) {
-        const appliedRaise = applyChips(me, betSize);
-        me.betThisRound += appliedRaise;
-        me.lastAction = "Raise";
-        setRaiseCountThisRound(c => c + 1);
-        setBetHead(turn);
-        setLastAggressor(turn);
-      }
-      me.hasActedThisRound = true;
+        if (applyForcedBetAction(activeSeat, actionPayload)) {
+          return;
+        }
+        if (actionPayload?.type === "raise") {
+          const fallbackPayload = {
+            type: toCall === 0 ? "check" : "call",
+            amount: toCall,
+            __forceInstant: true,
+          };
+          if (applyForcedBetAction(activeSeat, fallbackPayload)) {
+            return;
+          }
+        }
 
-      snap[turn] = me;
-      if (me.folded) {
-        shiftAggressorsAfterFold(snap, turn);
-      }
-      logAction(turn, me.lastAction);
-      recordActionToLog({
-        phase: "BET",
-        round: currentBetRoundIndex(),
-        seat: turn,
-        playerState: me,
-        type: me.lastAction,
-        stackBefore,
-        stackAfter: me.stack,
-        betBefore,
-        betAfter: me.betThisRound,
-        raiseCountTable: raiseCountThisRound,
-      });
-      afterBetActionWithSnapshot(snap, turn);
+        if (isSingleTableBadugi) {
+          warnLegacySingleTablePath(`npc-bet fallback seat=${activeSeat}`);
+        }
       } else if (phase === "DRAW") {
         autoResolveCpuDrawIfNeeded();
         return;
@@ -6697,21 +7041,21 @@ const SAFE_RESET_PHASE = "IDLE";
 
   const seatLayouts = useMemo(() => {
     const cashLayouts = [
-      "lg:absolute lg:bottom-[6%] lg:left-1/2 lg:-translate-x-1/2 lg:w-[320px]", // Hero (BTN)
-      "lg:absolute lg:bottom-[18%] lg:left-[12%] lg:w-[300px]", // SB
-      "lg:absolute lg:top-[8%] lg:left-[12%] lg:w-[300px]", // BB
-      "lg:absolute lg:top-[2%] lg:left-1/2 lg:-translate-x-1/2 lg:w-[300px]", // UTG
-      "lg:absolute lg:top-[8%] lg:right-[12%] lg:w-[300px]", // MP
-      "lg:absolute lg:bottom-[18%] lg:right-[12%] lg:w-[300px]", // CO
+      "absolute bottom-[5%] left-1/2 -translate-x-1/2 w-[clamp(188px,29vw,300px)]", // Hero (BTN)
+      "absolute bottom-[10%] left-[6%] w-[clamp(158px,25vw,270px)]", // SB
+      "absolute top-[8%] left-[6%] w-[clamp(158px,25vw,270px)]", // BB
+      "absolute top-[1%] left-1/2 -translate-x-1/2 w-[clamp(168px,27vw,285px)]", // UTG
+      "absolute top-[8%] right-[6%] w-[clamp(158px,25vw,270px)]", // MP
+      "absolute bottom-[10%] right-[6%] w-[clamp(158px,25vw,270px)]", // CO
     ];
     // Tournament tables follow a fixed 6-max oval layout (BTN bottom-center, clockwise SB→CO).
     const tournamentLayouts = [
-      "lg:absolute lg:bottom-[14%] lg:left-1/2 lg:-translate-x-1/2 lg:w-[320px]", // Hero (BTN)
-      "lg:absolute lg:bottom-[28%] lg:left-[22%] lg:-translate-x-1/2 lg:w-[260px]", // SB
-      "lg:absolute lg:top-[24%] lg:left-[22%] lg:-translate-x-1/2 lg:w-[260px]", // BB
-      "lg:absolute lg:top-[12%] lg:left-1/2 lg:-translate-x-1/2 lg:w-[280px]", // UTG
-      "lg:absolute lg:top-[24%] lg:left-[78%] lg:-translate-x-1/2 lg:w-[260px]", // MP
-      "lg:absolute lg:bottom-[28%] lg:left-[78%] lg:-translate-x-1/2 lg:w-[260px]", // CO
+      "absolute bottom-[12%] left-1/2 -translate-x-1/2 w-[clamp(200px,30vw,320px)]", // Hero (BTN)
+      "absolute bottom-[26%] left-[22%] -translate-x-1/2 w-[clamp(160px,24vw,260px)]", // SB
+      "absolute top-[24%] left-[22%] -translate-x-1/2 w-[clamp(160px,24vw,260px)]", // BB
+      "absolute top-[12%] left-1/2 -translate-x-1/2 w-[clamp(170px,27vw,280px)]", // UTG
+      "absolute top-[24%] left-[78%] -translate-x-1/2 w-[clamp(160px,24vw,260px)]", // MP
+      "absolute bottom-[26%] left-[78%] -translate-x-1/2 w-[clamp(160px,24vw,260px)]", // CO
     ];
     return mode === "tournament-mtt" ? tournamentLayouts : cashLayouts;
   }, [mode]);
@@ -7165,6 +7509,29 @@ const SAFE_RESET_PHASE = "IDLE";
       layoutMode={layoutMode}
     />
   );
+  const renderedGameScreen = shouldUseDesktopCanvasScale ? (
+    <div
+      className="relative w-screen overflow-hidden bg-gray-900"
+      style={{ height: "100dvh" }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          width: `${desktopCanvasScale.baseWidth}px`,
+          height: `${desktopCanvasScale.baseHeight}px`,
+          transformOrigin: "top left",
+          transform: `translate(${desktopCanvasScale.offsetX}px, ${desktopCanvasScale.offsetY}px) scale(${desktopCanvasScale.scale})`,
+          willChange: "transform",
+        }}
+      >
+        {gameScreen}
+      </div>
+    </div>
+  ) : (
+    gameScreen
+  );
 
   return (
     <>
@@ -7178,7 +7545,7 @@ const SAFE_RESET_PHASE = "IDLE";
             isPortrait={deviceProfile.isPortrait}
             debugFlags={debugFlags}
           >
-            {gameScreen}
+            {renderedGameScreen}
           </MobileOrientationGate>
         </AuthGate>
       </AuthProvider>

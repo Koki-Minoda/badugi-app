@@ -1,0 +1,850 @@
+# Badugi RL / Multi-Game 実行計画
+
+更新日: 2026-04-26  
+目的: この文書を、Badugi RL と Draw 系マルチゲーム実装の作業基準書として使う。
+
+## 1. この文書の使い方
+
+- 仕様メモではなく、実装順・依存関係・完了条件を持つ実行計画として扱う。
+- 新規タスクを起こすときは、まずこの文書のタスク ID を参照する。
+- 迷ったときの優先順位は以下。
+  1. `src/games/config/multiGameList.json`
+  2. `src/games/config/variantCatalog.js`
+  3. `src/specs/09_game_engine_architecture.md`
+  4. `src/specs/10_multigame_list_and_requirements.md`
+  5. `src/specs/14_evaluator_architecture.md`
+  6. `src/specs/18_ai_rl_pro.md`
+  7. 本文書
+- `docs/game_catalog.md` と `src/docs/variant_metadata.json` は生成物として扱い、手修正しない。
+
+## 2. 現状サマリ
+
+### 2.1 いま確定していること
+
+- バリアント定義の正本は `src/games/config/multiGameList.json`。
+- 現行バリアント数は 35。
+- `live` 扱いは `D03 Badugi` のみ。
+- evaluator は以下が実装済み。
+  - High
+  - 2-7 Low
+  - A-5 Low
+  - Badugi Low
+  - Badugi High
+  - Hi-Lo8
+  - Badeucey / Badacey
+- draw family の共通土台として `src/games/core/drawEngineBase.js` がある。
+- 実 engine registry は `badugi` のみ。
+  - `src/games/core/engineRegistry.js`
+- 実 controller registry 相当もほぼ Badugi 中心。
+  - `src/games/core/variants.js`
+- UI の variant 選択は一部先行しており、`badugi` と `nlh` が enabled 扱い。
+  - `src/ui/game/variants.js`
+
+### 2.2 Badugi RL の現状
+
+- 学習用コードはある。
+  - `src/rl/env/badugi_env.py`
+  - `src/rl/agents/dqn_agent.py`
+  - `src/rl/training/train_dqn.py`
+- ログ出力と dataset 変換導線はある。
+  - `src/ui/App.jsx` の `recordActionToLog(...)`
+  - `src/rl/tools/export_dataset.py`
+- tier / model ルーティングはある。
+  - `src/config/ai/tiers.json`
+  - `src/config/ai/modelRegistry.json`
+  - `src/ai/modelRouter.js`
+  - `src/ai/tierManager.js`
+- ONNX 実行のフロント側ローダはある。
+  - `src/ai/onnxExecutor.js`
+  - `src/ai/onnxPolicyAdapter.js`
+- ただし backend の RL API は stub。
+  - `backend/app/api/badugi_rl.py`
+- 実 `.onnx` モデルはリポジトリ内で未確認。
+- 学習入力が不整合。
+  - backend API: 22-dim
+  - model registry: `badugi_iron.onnx` は `[96]`
+
+### 2.3 2-7 / A-5 系の現状
+
+- 仕様書と variant 定義はある。
+- evaluator はある。
+  - `src/games/evaluators/low.js`
+- pro AI profile の仮設定もある。
+  - `src/config/mixed/proAiProfiles.js`
+- しかし draw engine / controller / UI / logging / replay / RL は未実装。
+
+### 2.4 方針決定済み事項
+
+- 最初に完了させる対象は Badugi。
+- RL 推論の主経路は frontend ONNX。
+- バリアント件数の正式表記は 35 variants。
+- Badugi のバグは専用 `md` で継続管理する。
+- 実ブラウザ / 実スマホで再現した不具合を優先して記録する。
+
+## 3. 作業の前提
+
+この文書では、明示的な指示があるまで以下を暫定前提にする。
+
+- `multiGameList.json` を件数・ID・family の正本とする。
+- Draw 系は Board / Stud より先に進める。
+- 非 Badugi の最初の実装対象は `D01 2-7 Triple Draw`。
+- 次点は `D02 A-5 Triple Draw`。
+- `S01/S02` は `D01/D02` の draw 回数違いとして後追いする。
+- `D04/D05` は split pot 実装の上に乗せる。
+- `S03/S04-S07`、`Hxx`、`STx` は Draw family の共通部完成後に着手する。
+
+## 4. 決定ログ
+
+- `DEC-01`
+  - 最初に完了させる対象は Badugi。
+- `DEC-02`
+  - RL 推論の主経路は frontend ONNX。
+  - backend `/api/badugi/rl/decision` は比較検証・将来拡張用に残す。
+- `DEC-03`
+  - 件数表記は 35 variants で統一する。
+- `DEC-04`
+  - Badugi の不具合管理は専用 bug tracker `md` で行う。
+  - 実ブラウザ / 実スマホで再現した不具合を優先記録する。
+
+## 5. ゴール定義
+
+### 5.1 近距離ゴール
+
+- Badugi を browser / mobile を含めて安定完走できる状態にする。
+- Badugi の bug を `md` ベースで継続運用できるようにする。
+- Badugi RL を「stub ではなく実モデル接続済み」にする。
+- `D01 2-7 Triple Draw` を ring 対戦可能にする。
+- `D02 A-5 Triple Draw` を同じ draw family 上で追加する。
+- `S01/S02` を同 family の draw count 差分として追加する。
+
+### 5.2 中距離ゴール
+
+- `D04/D05/D06/D07` まで draw family を拡張する。
+- Draw 系で logging / replay / AI / Mixed rotation を横断対応させる。
+
+## 6. 実装戦略
+
+### 6.0 最優先
+
+- まず Badugi の完成度を上げる。
+- 新バリアント着手より前に、既存 Badugi の browser / mobile バグを継続的に潰す。
+- 2-7 系は Badugi の安定化と RL 接続方針の固定後に入る。
+
+### 6.1 先に family を作る
+
+Badugi の複製を variant ごとに増やすのではなく、以下の順で進める。
+
+1. Draw family 共通契約の固定
+2. Lowball evaluator の強化
+3. `D01`
+4. `D02`
+5. `S01/S02`
+6. split draw variants
+
+### 6.2 先にルールを固定する
+
+特に 2-7 は以下を先に明文化する。
+
+- fixed-limit ベットサイズ
+- raise cap
+- draw 選択 UI の契約
+- pat / 1 / 2 / 3 / 4 / 5 枚交換の扱い
+- showdown 表示文言
+- replay / RL 用 observation の shape
+
+### 6.3 evaluator と engine を分ける
+
+- evaluator は純関数として先に完成させる。
+- engine は evaluator を使うだけにする。
+- RL observation は engine が返す。
+
+### 6.4 バグ管理の原則
+
+- Badugi のバグ正本は [docs/bugs/badugi_browser_mobile_bug_tracker.md](/home/mgx/badugi-app/docs/bugs/badugi_browser_mobile_bug_tracker.md) とする。
+- `docs/bugs/current_bugs.md` は横断 blocker 一覧として残す。
+- Badugi の実ブラウザ / 実スマホ / UI / 操作 / 回帰系は専用 bug tracker に集約する。
+
+### 6.5 Frontend VariantDefinition 基盤 Step 1
+
+目的:
+
+- 30 種類以上のポーカーゲームを追加できるように、Badugi 実装とは独立した Variant Definition / Registry / Board helper の最小基盤を追加する。
+- 既存 Badugi 実装、UI、MTT、RL API、`App.jsx` には影響を与えない。
+
+追加対象:
+
+- `src/games/core/variantDefinition.js`
+- `src/games/core/variantRegistry.js`
+- `src/games/core/boardManager.js`
+- `src/games/core/potResolver.js`
+- `src/games/core/showdownResolver.js`
+- `src/games/core/__tests__/variantRegistry.test.js`
+- `src/games/core/__tests__/boardManager.test.js`
+- `src/games/core/__tests__/variantDefinition.test.js`
+
+`VariantDefinition` 必須フィールド:
+
+- `id`
+- `name`
+- `base`: `badugi` / `holdem` / `omaha` / `draw` / `stud`
+- `players`: `{ min, max }`
+- `deck`: `{ type }`
+- `holeCards`: `{ count, mustUse? }`
+- `boards`: `{ count, cardsPerBoard, streets }`
+- `betting`: `{ structure, streets, hasPreflop }`
+- `forcedBets`: `{ type, everyonePosts?, amountBB? }`
+- `showdown`: `{ evaluator, splitMode, scoopAllowed? }`
+- `modifiers`
+
+初期登録 variant:
+
+- `badugi`
+- `nl_holdem`
+- `limit_holdem`
+- `plo`
+- `double_board_bomb_pot_omaha`
+
+実装済み API:
+
+- `validateVariant(variant)`
+- `normalizeVariant(variant)`
+- `getVariant(id)`
+- `listVariants()`
+- `hasVariant(id)`
+- `registerVariant(variant)`
+- `createBoards(variant)`
+- `getBoardById(boards, boardId)`
+- `isDoubleBoardVariant(variant)`
+- `dealToBoards(boards, street, deckOrCards)`
+- `resolvePot({ variant, players, boards, evaluations, pot })`
+- `resolveShowdown({ variant, players, boards })`
+
+Step 1 完了条件:
+
+- [x] JS 側 Variant 基盤を追加する。
+- [x] 5 つの初期 variant を登録する。
+- [x] Double Board Bomb Pot Omaha を定義する。
+- [x] 単一ボード / ダブルボードを配列で扱えるようにする。
+- [x] 既存 Badugi のゲーム進行に接続せず、影響範囲を分離する。
+- [x] Vitest で最小テストを追加する。
+
+TODO:
+
+- `dealToBoards` を共通 deck manager / board engine と統合する。
+- `resolvePot` に side pot、board 別配分、hi/lo split の実配分ロジックを接続する。
+- `resolveShowdown` を evaluator registry と接続し、正規化済み評価結果を返す。
+
+## 7. ワークストリーム
+
+## 7.0 WG-BADUGI-00 Badugi 完了優先フェーズ
+
+目的:
+
+- 新規 variant 追加前に、Badugi を主力ゲームとして運用できる状態に引き上げる。
+
+タスク:
+
+- [ ] `WG-BADUGI-00-01` Badugi の完了条件を browser / mobile を含めて固定する。
+- [ ] `WG-BADUGI-00-02` Badugi bug tracker を正本として運用開始する。
+- [ ] `WG-BADUGI-00-03` 実ブラウザ / 実スマホでの再現確認フローを定義する。
+- [ ] `WG-BADUGI-00-04` `docs/bugs/current_bugs.md` と専用 bug tracker の役割分担を明記する。
+
+完了条件:
+
+- Badugi を最優先に進めることが本文書上で明示されている。
+- バグ記録先と triage ルールが固定されている。
+
+## 7.1 WG-00 文書・正本整理
+
+目的:
+
+- 件数・ID・status・UI 表示のズレをなくす。
+
+タスク:
+
+- [ ] `WG-00-01` 「30ゲーム」表記を「35 variants」に更新する。
+- [ ] `WG-00-02` 正本ファイルを本文書に明記し、生成物との関係を固定する。
+- [ ] `WG-00-03` `multiGameList.json` の `status` 値を棚卸しする。
+  - 候補: `live`, `wip`, `prototype`, `planned`
+- [ ] `WG-00-04` UI enabled 状態と engine 実装状態の差分表を作る。
+  - 対象:
+    - `src/ui/game/variants.js`
+    - `src/games/core/variants.js`
+    - `src/games/_core/GameRegistry.js`
+
+完了条件:
+
+- 文書上の件数・ID・status が全ファイルで矛盾しない。
+- どのファイルが人手編集、どのファイルが生成物か明示されている。
+
+## 7.2 WG-01 Draw family 基盤
+
+目的:
+
+- Badugi 以外の draw ゲームを同じ骨格で実装できるようにする。
+
+主要ファイル:
+
+- `src/games/core/drawEngineBase.js`
+- `src/games/core/gameEngine.js`
+- `src/games/core/engineRegistry.js`
+- `src/games/core/GameController.js`
+- `src/games/badugi/engine/BadugiEngine.js`
+- `src/games/badugi/controller/BadugiGameController.js`
+
+タスク:
+
+- [ ] `WG-01-01` Draw family の state contract を固定する。
+  - 必須項目:
+    - `drawRoundIndex`
+    - `maxDrawRounds`
+    - `actingPlayerIndex`
+    - `currentBet`
+    - `lastAggressorIndex`
+    - `pendingDrawSeats`
+    - `discardCountBySeat`
+- [ ] `WG-01-02` Draw family の action contract を固定する。
+  - `FOLD`
+  - `CHECK`
+  - `CALL`
+  - `BET`
+  - `RAISE`
+  - `DRAW`
+- [ ] `WG-01-03` `DRAW` action の payload 契約を決める。
+  - 推奨:
+    - discard index array
+    - 派生 metadata
+    - 置換前後 hand snapshot
+- [ ] `WG-01-04` Badugi engine から draw family に切り出せる処理を抽出する。
+  - forced bets
+  - active seat progression
+  - betting round completion
+  - showdown 前遷移
+- [ ] `WG-01-05` Draw family 共通テスト雛形を作る。
+  - 全員 pat
+  - 複数人 draw
+  - fold で early finish
+  - all-in で draw skip
+- [ ] `WG-01-06` Draw family 用 controller snapshot 形式を固定する。
+- [ ] `WG-01-07` Draw family observation schema の v1 を定める。
+  - RL / replay / debug 共通
+
+完了条件:
+
+- Badugi 固有ロジックと draw 共通ロジックの境界が明確。
+- 新規 draw variant の engine 雛形を 1 ファイルで起こせる。
+- snapshot / action / observation が文書化されている。
+
+依存:
+
+- `WG-BADUGI-00`
+- `WG-00`
+
+## 7.2A WG-BADUGI-01 Browser / Mobile バグ管理
+
+目的:
+
+- 実ブラウザ / 実スマホで出る Badugi 固有の不具合を、修正タスクに落とせる粒度で管理する。
+
+正本:
+
+- [docs/bugs/badugi_browser_mobile_bug_tracker.md](/home/mgx/badugi-app/docs/bugs/badugi_browser_mobile_bug_tracker.md)
+
+タスク:
+
+- [ ] `WG-BADUGI-01-01` bug ID 採番ルールを固定する。
+  - 推奨: `BG-###`
+- [ ] `WG-BADUGI-01-02` 再現環境の記録項目を固定する。
+  - browser
+  - OS
+  - device
+  - orientation
+  - input mode
+- [ ] `WG-BADUGI-01-03` 症状分類を固定する。
+  - gameplay
+  - ui-layout
+  - input
+  - animation
+  - hand-history
+  - performance
+  - mobile-only
+- [ ] `WG-BADUGI-01-04` bug から test への逆引き欄を追加する。
+  - existing test
+  - missing test
+- [ ] `WG-BADUGI-01-05` 修正後に更新する欄を固定する。
+  - fixed commit
+  - repro closed date
+  - residual risk
+
+完了条件:
+
+- Bug が「再現条件」「影響範囲」「対応タスク」「検証方法」まで一枚で追える。
+- 実機起因の再現性の低い不具合でも、次に何を確認すべきか残る。
+
+## 7.3 WG-02 Evaluator 強化
+
+目的:
+
+- 2-7 / A-5 / split 系を engine 実装前に固める。
+
+主要ファイル:
+
+- `src/games/evaluators/low.js`
+- `src/games/evaluators/split.js`
+- `src/games/evaluators/registry.js`
+- `src/games/evaluators/__tests__/evaluator.test.js`
+
+タスク:
+
+- [ ] `WG-02-01` 2-7 lowball の edge case テストを追加する。
+  - pair が負ける
+  - straight が負ける
+  - flush が負ける
+  - wheel が最強ではない
+  - 7-high vs 8-high の順序
+  - 同ランク tie
+- [ ] `WG-02-02` A-5 lowball の edge case テストを追加する。
+  - Ace low
+  - straight 無視
+  - flush 無視
+  - wheel 最強
+  - pair penalty
+- [ ] `WG-02-03` 6枚以上入力から最良 5 枚が選ばれることを保証する。
+- [ ] `WG-02-04` split evaluator の pot 分配前提テストを追加する。
+  - Badeucey
+  - Badacey
+  - Hi-Lo8
+- [ ] `WG-02-05` evaluator 出力の debug metadata を統一する。
+  - `ranks`
+  - `cards`
+  - `penalty`
+  - `qualifies`
+
+完了条件:
+
+- 2-7 / A-5 / split evaluator の比較順がテストで説明可能。
+- engine 実装側で evaluator の解釈に迷いがない。
+
+依存:
+
+- なし
+
+## 7.4 WG-03 D01 2-7 Triple Draw
+
+目的:
+
+- Badugi 以外で最初に実戦投入できる draw variant を作る。
+
+対象:
+
+- `D01`
+- fixed-limit
+- 5 hole cards
+- 3 draws
+- evaluator: `low-27`
+
+ルール凍結タスク:
+
+- [ ] `WG-03-01` `D01` のベット構造を固定する。
+  - small bet / big bet
+  - draw round ごとの bet size
+  - raise cap
+- [ ] `WG-03-02` draw 交換枚数の上限と UI 表現を固定する。
+  - 推奨: 0-5 枚交換
+- [ ] `WG-03-03` showdown 表記を固定する。
+  - 例: `2-7 Low 7-5-4-3-2`
+
+engine 実装タスク:
+
+- [ ] `WG-03-04` `DeuceToSevenTripleDrawEngine` を追加する。
+- [ ] `WG-03-05` 初期配布 5 枚と blind posting を実装する。
+- [ ] `WG-03-06` 3 draw flow を実装する。
+- [ ] `WG-03-07` discard / replacement ロジックを実装する。
+- [ ] `WG-03-08` fixed-limit betting completion 条件を実装する。
+- [ ] `WG-03-09` showdown と pot awarding を実装する。
+- [ ] `WG-03-10` engine registry に登録する。
+
+controller / UI タスク:
+
+- [ ] `WG-03-11` `D01` 用 controller を追加する。
+- [ ] `WG-03-12` hand snapshot を UI 互換形式で返す。
+- [ ] `WG-03-13` discard UI を 5 枚用に一般化する。
+- [ ] `WG-03-14` result overlay で 2-7 hand label を表示する。
+- [ ] `WG-03-15` action log / hand history 表記を variant 対応にする。
+
+AI / logging / replay タスク:
+
+- [ ] `WG-03-16` `recordActionToLog(...)` に `D01` 必須項目を追加する。
+  - discard count
+  - kept / replaced cards
+  - final low ranks
+- [ ] `WG-03-17` rule-based CPU の暫定戦略を入れる。
+  - pat threshold
+  - draw count heuristic
+  - raise heuristic
+- [ ] `WG-03-18` replay と hand history 復元に必要な最低項目を定義する。
+
+テストタスク:
+
+- [ ] `WG-03-19` evaluator regression テストを追加する。
+- [ ] `WG-03-20` engine unit tests を追加する。
+- [ ] `WG-03-21` controller tests を追加する。
+- [ ] `WG-03-22` e2e で 1 hand 完走テストを追加する。
+- [ ] `WG-03-23` side pot / fold win / pat win / draw-to-better-low をカバーする。
+
+完了条件:
+
+- ring game として `D01` を 1 hand 以上安定完走できる。
+- hand history に discard と最終評価が残る。
+- CPU が最低限破綻せず行動する。
+- replay で最終結果を追える。
+
+依存:
+
+- `WG-01`
+- `WG-02`
+
+## 7.5 WG-04 D02 A-5 Triple Draw
+
+目的:
+
+- `D01` の draw family を流用し、A-5 差分だけで variant を増やせる状態にする。
+
+差分:
+
+- evaluator: `low-a5`
+- straight / flush 無視
+- Ace low
+
+タスク:
+
+- [ ] `WG-04-01` `D01` と `D02` の差分仕様を 1 表にまとめる。
+- [ ] `WG-04-02` engine を variant param で切り替えるか、別 engine にするか決める。
+  - 推奨: 共通 draw-lowball engine + evaluator param
+- [ ] `WG-04-03` showdown label と debug metadata を A-5 用に調整する。
+- [ ] `WG-04-04` CPU draw heuristic を A-5 向けに調整する。
+- [ ] `WG-04-05` `D02` 用の unit/e2e を追加する。
+
+完了条件:
+
+- `D02` 実装で `D01` のコード複製を最小化できている。
+- evaluator 差分だけで結果の違いを説明できる。
+
+依存:
+
+- `WG-03`
+
+## 7.6 WG-05 S01 / S02 Single Draw
+
+目的:
+
+- triple draw family から single draw family を派生させる。
+
+対象:
+
+- `S01 2-7 Single Draw`
+- `S02 A-5 Single Draw`
+
+タスク:
+
+- [ ] `WG-05-01` single draw 用 street sequence を fixed する。
+  - `BET -> DRAW -> BET -> SHOWDOWN`
+- [ ] `WG-05-02` `maxDrawRounds=1` の family 対応を追加する。
+- [ ] `WG-05-03` opening round / closing round の bet size と raise cap を定義する。
+- [ ] `WG-05-04` `S01` を `D01` から派生実装する。
+- [ ] `WG-05-05` `S02` を `D02` から派生実装する。
+- [ ] `WG-05-06` UI 表示で triple draw と single draw を誤認しないよう整理する。
+- [ ] `WG-05-07` Mixed / Dealer's Choice 用 metadata を追加する。
+
+完了条件:
+
+- `D01/D02` の draw count 差分として `S01/S02` を自然に追加できる。
+
+依存:
+
+- `WG-03`
+- `WG-04`
+
+## 7.7 WG-06 Split / 特殊 Draw variants
+
+対象:
+
+- `D04` Badeucey TD
+- `D05` Badacey TD
+- `D06` Hidugi TD
+- `D07` Archie TD
+- `S05` Badeucey SD
+- `S06` Badacey SD
+- `S07` Hidugi SD
+- `S03` 5-Card Single Draw
+- `S04` Badugi SD
+
+タスク:
+
+- [ ] `WG-06-01` split pot awarding の engine contract を定義する。
+- [ ] `WG-06-02` half-pot rounding のルールを決める。
+- [ ] `WG-06-03` Badeucey / Badacey 用 showdown summary を設計する。
+- [ ] `WG-06-04` Hidugi の high-badugi 表示を設計する。
+- [ ] `WG-06-05` Archie の evaluator 仕様を確定する。
+- [ ] `WG-06-06` 4-card draw variants と 5-card draw variants の discard UI を共通化する。
+
+完了条件:
+
+- split / special variants が同 family 上で拡張できる。
+
+依存:
+
+- `WG-03`
+- `WG-04`
+- `WG-05`
+
+## 7.8 WG-07 Badugi RL 本番化
+
+目的:
+
+- Badugi RL を「学習用土台」から「実戦に使える接続済み機能」に上げる。
+
+主要ファイル:
+
+- `backend/app/api/badugi_rl.py`
+- `backend/tests/test_badugi_rl.py`
+- `src/rl/env/badugi_env.py`
+- `src/rl/training/train_dqn.py`
+- `src/rl/tools/export_dataset.py`
+- `src/ai/onnxExecutor.js`
+- `src/ai/onnxPolicyAdapter.js`
+- `src/config/ai/modelRegistry.json`
+- `src/config/ai/tiers.json`
+- `src/ui/App.jsx`
+
+タスク:
+
+- [ ] `WG-07-01` RL 推論の主経路を確定する。
+  - frontend ONNX を正式採用
+  - backend inference は比較検証と将来拡張用
+- [ ] `WG-07-02` observation schema v1 を固定する。
+  - hand features
+  - betting context
+  - draw context
+  - position
+  - stack / pot
+  - opponent summary
+- [ ] `WG-07-03` `BadugiEngine.getObservation()` と RL schema を一致させる。
+- [ ] `WG-07-04` `recordActionToLog(...)` の RL 用必須項目を固定する。
+- [ ] `WG-07-05` `export_dataset.py` を transition 形式に拡張する。
+  - observation
+  - action
+  - reward
+  - next_observation
+  - done
+  - legal_actions
+- [ ] `WG-07-06` `badugi_env.py` を現行ルールに寄せるか、差分を明記する。
+- [ ] `WG-07-07` 実 `.onnx` モデル配置の運用を決める。
+  - 格納先
+  - バージョン命名
+  - registry 更新手順
+- [ ] `WG-07-08` `backend/app/api/badugi_rl.py` の stub を置換する。
+- [ ] `WG-07-09` `onnxPolicyAdapter.js` の feature builder を schema v1 に揃える。
+- [ ] `WG-07-10` tier ごとの model 割り当てを整理する。
+  - `pro`
+  - `iron`
+  - `worldmaster`
+- [ ] `WG-07-11` RL decision の fallback 優先順位を決める。
+  - ONNX
+  - rule-based
+  - deterministic safe fallback
+- [ ] `WG-07-12` inference integration tests を追加する。
+  - model あり
+  - model なし
+  - invalid shape
+  - fallback
+
+完了条件:
+
+- stub ではなく実モデル推論が通る。
+- observation / model input / dataset schema の三者が一致する。
+- model 不在時も安全に fallback する。
+
+依存:
+
+- `WG-01`
+
+## 7.9 WG-08 Draw系 RL 拡張
+
+目的:
+
+- Badugi RL のあと、2-7 / A-5 系へ観測・行動・報酬設計を広げる。
+
+タスク:
+
+- [ ] `WG-08-01` draw family 共通 observation schema を定義する。
+- [ ] `WG-08-02` variant 固有 feature slot を定義する。
+  - badugi
+  - 2-7
+  - A-5
+- [ ] `WG-08-03` 2-7 draw heuristic から supervised bootstrap dataset を切り出す。
+- [ ] `WG-08-04` `D01/D02` の暫定 CPU を RL 置換可能な形で包む。
+- [ ] `WG-08-05` mixed profile が variant ごとにモデルを切り替えられるようにする。
+
+完了条件:
+
+- Draw 系の RL 接続が Badugi 専用実装でなくなる。
+
+依存:
+
+- `WG-03`
+- `WG-04`
+- `WG-07`
+
+## 7.10 WG-09 Board / Stud は後段
+
+この文書では詳細化しすぎず、着手条件だけ固定する。
+
+着手条件:
+
+- `WG-01` から `WG-08` までで Draw family の再利用構造が安定していること。
+- variant status と UI / engine registry の運用が定まっていること。
+
+## 8. D01 / D02 を詰めるときの確認観点
+
+### 8.1 ルール確認
+
+- limit structure は何段階か
+- raise cap は何回か
+- heads-up 時の blind / button 例外をどうするか
+- draw 時に全員 pat/all-in/fold のとき何を skip するか
+
+### 8.2 UI 確認
+
+- 5 枚 draw の discard 選択はモバイルでも成立するか
+- pat 表示は独立ボタンにするか
+- replaced cards を hand history でどこまで見せるか
+
+### 8.3 Logging / replay 確認
+
+- discard 前 hand と discard 後 hand の両方を保存するか
+- hand history には隠すが replay には使う情報をどう持つか
+- split pot のときどの evaluator 結果を winners に載せるか
+
+### 8.4 RL 確認
+
+- draw action は「discard index 配列」か「discard count」か
+- legal actions は action mask で持つか
+- reward は hand 終了時だけか、shape 付きか
+
+## 9. 推奨実装順
+
+### Phase A
+
+- `WG-BADUGI-00`
+- `WG-BADUGI-01`
+- `WG-00`
+- `WG-01`
+- `WG-02`
+
+### Phase B
+
+- `WG-07`
+- `WG-03`
+- `WG-04`
+
+### Phase C
+
+- `WG-05`
+- `WG-06`
+
+### Phase D
+
+- `WG-08`
+
+## 10. 1スプリント単位の着手案
+
+### Sprint 1
+
+- `WG-BADUGI-00-01` から `WG-BADUGI-00-04`
+- `WG-BADUGI-01-01` から `WG-BADUGI-01-05`
+- `WG-00-01` から `WG-00-04`
+- `WG-01-01` から `WG-01-03`
+- `WG-02-01` から `WG-02-03`
+
+成果物:
+
+- Badugi 優先方針の固定
+- Badugi bug tracker 運用開始
+- 正本整理
+- draw family contract 草案
+- 2-7 / A-5 evaluator 強化テスト
+
+### Sprint 2
+
+- `WG-01-04` から `WG-01-07`
+- `WG-07-01` から `WG-07-04`
+- `WG-03-01` から `WG-03-10`
+
+成果物:
+
+- draw family 共通基盤
+- Badugi RL schema 草案
+- `D01` engine 初版
+
+### Sprint 3
+
+- `WG-03-11` から `WG-03-23`
+- `WG-04-01` から `WG-04-05`
+
+成果物:
+
+- `D01` playable
+- `D02` playable
+
+### Sprint 4
+
+- `WG-05`
+- `WG-07-05` から `WG-07-12`
+
+成果物:
+
+- single draw family
+- Badugi RL 本番接続
+
+## 11. 完了の定義
+
+### variant 完了
+
+以下を満たしたら「実装済み」とする。
+
+- engine が registry に登録されている
+- controller が UI snapshot を返せる
+- evaluator が対応している
+- hand history に必要項目が残る
+- CPU が最低限行動できる
+- unit test がある
+- 1 本以上の e2e / integration テストがある
+- `multiGameList.json` の status が `live` または `wip` に更新されている
+
+### RL 完了
+
+以下を満たしたら「本番接続済み」とする。
+
+- stub ではない
+- schema が固定されている
+- model registry と実 asset が一致する
+- fallback が定義されている
+- inference integration test が通る
+
+## 12. 次に着手する具体タスク
+
+優先順:
+
+- [ ] `WG-BADUGI-00-02` Badugi bug tracker を正本として運用開始
+- [ ] `WG-BADUGI-01-02` 再現環境の記録項目を固定
+- [ ] `WG-00-01` 「30ゲーム」表記を 35 variants に更新
+- [ ] `WG-01-01` Draw family state contract を固定
+- [ ] `WG-02-01` 2-7 lowball edge case テスト追加
+- [ ] `WG-07-01` RL 推論の主経路を確定
+
+## 13. ひとことで言うと
+
+- 最優先は Badugi 完了と bug 管理の定着。
+- RL は frontend ONNX 主体で固める。
+- 35 variants を正式採用し、その後に `D01 -> D02 -> S01/S02` と進める。

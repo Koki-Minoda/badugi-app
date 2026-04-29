@@ -1,4 +1,5 @@
 import { applyChips } from "../../core/applyChips.js";
+import { normalizeBetActionAmount } from "../logic/actionAmount.js";
 
 export { applyChips };
 
@@ -199,18 +200,26 @@ export function applyForcedBetActionSnapshot({ players, seat, payload = {}, betS
     return { success: false };
   }
 
-  const stackBefore = actor.stack;
-  const betBefore = actor.betThisRound;
+  const stackBefore = Math.max(0, Number(actor.stack) || 0);
+  const betBefore = Math.max(0, Number(actor.betThisRound) || 0);
+  const totalInvestedBefore = Math.max(0, Number(actor.totalInvested) || 0);
+  actor.stack = stackBefore;
+  actor.betThisRound = betBefore;
+  actor.totalInvested = totalInvestedBefore;
   const maxNow = maxBetThisRound(snap);
-  const toCall = Math.max(0, maxNow - actor.betThisRound);
+  const toCall = Math.max(0, maxNow - betBefore);
   let actionType = (payload.type || "call").toLowerCase();
-  let raiseSize = Number.isFinite(payload.amount) ? Math.max(0, payload.amount) : betSize;
+  const unit = Math.max(1, Number(betSize) || 1);
   let raiseApplied = false;
+  let actionContribution = 0;
 
   const invest = (chips) => {
     if (chips <= 0) return 0;
     const applied = applyChips(actor, chips);
     actor.betThisRound += applied;
+    actionContribution += applied;
+    const expectedTotalInvested = totalInvestedBefore + actionContribution;
+    actor.totalInvested = Math.max(actor.totalInvested ?? 0, expectedTotalInvested);
     if (actor.stack === 0) {
       actor.allIn = true;
       actor.hasActedThisRound = true;
@@ -224,24 +233,36 @@ export function applyForcedBetActionSnapshot({ players, seat, payload = {}, betS
       actor.lastAction = "Fold";
       break;
     case "check":
-      if (toCall > 0) {
-        actionType = "call";
-      } else {
-        actor.lastAction = "Check";
-        actor.hasActedThisRound = true;
-        break;
-      }
-    // eslint-disable-next-line no-fallthrough
+      actor.lastAction = "Check";
+      actor.hasActedThisRound = true;
+      break;
     case "call": {
-      const paid = invest(toCall);
+      const amountModel = normalizeBetActionAmount({
+        actionType: "CALL",
+        amount: payload.amount,
+        toCall,
+        unit,
+      });
+      const requested = amountModel.isValid
+        ? amountModel.contribution
+        : (Number.isFinite(Number(payload.amount)) ? Number(payload.amount) : toCall);
+      const paid = invest(Math.max(0, requested));
       actor.lastAction = paid === 0 ? "Check" : "Call";
       actor.hasActedThisRound = true;
       break;
     }
     case "bet":
     case "raise": {
-      invest(toCall);
-      const paidRaise = invest(Math.max(raiseSize, betSize));
+      const amountModel = normalizeBetActionAmount({
+        actionType: "RAISE",
+        amount: payload.amount,
+        toCall,
+        unit,
+      });
+      const requested = amountModel.isValid
+        ? amountModel.contribution
+        : Math.max(0, toCall + unit);
+      const paidRaise = invest(requested);
       actor.lastAction = "Raise";
       actor.hasActedThisRound = true;
       raiseApplied = paidRaise > 0;
@@ -263,6 +284,14 @@ export function applyForcedBetActionSnapshot({ players, seat, payload = {}, betS
   }
 
   snap[seat] = actor;
+  if (raiseApplied) {
+    for (let i = 0; i < snap.length; i += 1) {
+      if (i === seat) continue;
+      const player = snap[i];
+      if (!player || isFoldedOrOut(player) || player.allIn) continue;
+      player.hasActedThisRound = false;
+    }
+  }
   return {
     success: true,
     updatedPlayers: snap,

@@ -17,7 +17,8 @@ import {
 } from "../flow/actionUtils.js";
 import { applyChips } from "../flow/actionUtils.js";
 import { normalizePotsWithContributions } from "./potIntegrity.js";
-import { getFixedLimitBetSize } from "../logic/bettingRules.js";
+import { getFixedLimitBetSize, getFixedLimitRaiseCap } from "../logic/bettingRules.js";
+import { normalizeBetActionAmount } from "../logic/actionAmount.js";
 
 const SUPPORTED_ACTIONS = new Set(["FOLD", "CHECK", "CALL", "RAISE", "DRAW", "SHOW"]);
 
@@ -149,6 +150,8 @@ export class BadugiEngine extends DrawEngineBase {
       lastBlinds: { sbIndex, sbPay, bbIndex, bbPay },
       currentBet: computeCurrentBet(players),
       betHead: next.actingPlayerIndex,
+      raiseCountThisRound: 0,
+      raiseCap: getFixedLimitRaiseCap(next?.metadata?.raiseCap),
       totalCommitted: committed,
       potAmount: committed + sumPotAmounts(next.pots),
     };
@@ -189,28 +192,30 @@ export class BadugiEngine extends DrawEngineBase {
     const metadata = {
       ...(action.metadata ?? {}),
     };
-    if (typeof metadata.betSize !== "number" || metadata.betSize <= 0) {
-      const baseBet =
-        Number(state?.bigBlind) ||
-        Number(state?.metadata?.bbValue) ||
-        Number(state?.metadata?.bigBlind) ||
-        (Number(state?.smallBlind) || 0) * 2;
-      metadata.betSize = getFixedLimitBetSize({
-        baseBet,
-        drawRound: state?.drawRoundIndex ?? 0,
-        betRound: state?.betRoundIndex ?? 0,
-      });
-    }
     const tableMeta = ensureMetadata(next);
-    if (typeof metadata.betSize === "number" && metadata.betSize > 0) {
-      tableMeta.defaultRaiseSize = metadata.betSize;
-      tableMeta.betSize = metadata.betSize;
-    }
     if (typeof next.bigBlind === "number") {
       tableMeta.bbValue = next.bigBlind;
     }
     tableMeta.drawRoundIndex = next.drawRoundIndex ?? tableMeta.drawRoundIndex ?? 0;
     tableMeta.betRoundIndex = next.betRoundIndex ?? tableMeta.betRoundIndex ?? 0;
+    tableMeta.raiseCap = resolveRaiseCap(next);
+
+    const validation = validateAction(next, seatIndex, {
+      type: normalizedType,
+      amount: metadata.amount,
+    });
+    if (!validation.isValid) {
+      throw new IllegalActionError(validation.message ?? "Invalid action", {
+        seatIndex,
+        actionType: normalizedType,
+        ...(validation.context ?? {}),
+      });
+    }
+    metadata.toCall = validation.toCall;
+    metadata.unit = validation.unit;
+    metadata.normalizedContribution = validation.expectedContribution;
+    metadata.raiseIncrement = validation.raiseIncrement;
+    metadata.amountSchema = validation.amountSchema;
 
     switch (normalizedType) {
       case "FOLD":
@@ -268,6 +273,8 @@ export class BadugiEngine extends DrawEngineBase {
       totalCommitted: 0,
       potAmount: sumPotAmounts(pots),
       currentBet: 0,
+      raiseCountThisRound: 0,
+      raiseCap: getFixedLimitRaiseCap(working?.metadata?.raiseCap),
       betRoundIndex: drawRound,
       drawRoundIndex: drawRound,
     };
@@ -481,12 +488,7 @@ function computeToCall(table, seatIndex) {
   return Math.max(0, currentBet - (player.betThisRound ?? 0));
 }
 
-function resolveRaiseSize(table, metadata = {}) {
-  if (typeof metadata.raise === "number" && metadata.raise > 0) return metadata.raise;
-  if (typeof metadata.raiseSize === "number" && metadata.raiseSize > 0) return metadata.raiseSize;
-  if (typeof metadata.betSize === "number" && metadata.betSize > 0) return metadata.betSize;
-  const defaultFromMeta = table?.metadata?.defaultRaiseSize;
-  if (typeof defaultFromMeta === "number" && defaultFromMeta > 0) return defaultFromMeta;
+function resolveRaiseSize(table) {
   const baseBet =
     Number(table?.bigBlind) ||
     Number(table?.metadata?.bbValue) ||
@@ -501,6 +503,139 @@ function resolveRaiseSize(table, metadata = {}) {
   }
   const currentBet = Array.isArray(table?.players) ? computeCurrentBet(table.players) : 0;
   return Math.max(1, currentBet || 1);
+}
+
+function resolveFixedLimitUnit(table) {
+  return Math.max(1, Math.trunc(resolveRaiseSize(table)));
+}
+
+function resolveRaiseCount(table) {
+  return Math.max(0, Math.trunc(table?.metadata?.raiseCountThisRound ?? 0));
+}
+
+function resolveRaiseCap(table) {
+  const candidates = [
+    table?.metadata?.raiseCap,
+    table?.raiseCap,
+    table?.level?.raiseCap,
+    table?.config?.raiseCap,
+  ];
+  for (const value of candidates) {
+    const normalized = getFixedLimitRaiseCap(value);
+    if (typeof normalized === "number") {
+      return normalized;
+    }
+  }
+  return null;
+}
+
+function resolveValidatedAmount({ type, amount, toCall, unit }) {
+  return normalizeBetActionAmount({
+    actionType: type,
+    amount,
+    toCall,
+    unit,
+  });
+}
+
+export function validateAction(table, seatIndex, actionPayload = {}) {
+  const normalizedType = String(actionPayload?.type ?? "").toUpperCase();
+  const player = table?.players?.[seatIndex];
+  if (!player) {
+    return {
+      isValid: false,
+      code: "SEAT_NOT_FOUND",
+      message: "Seat not found",
+      context: { seatIndex, actionType: normalizedType },
+    };
+  }
+
+  const toCall = computeToCall(table, seatIndex);
+  const unit = resolveFixedLimitUnit(table);
+  const raiseCount = resolveRaiseCount(table);
+  const raiseCap = resolveRaiseCap(table);
+  const stack = Math.max(0, Number(player?.stack) || 0);
+  const normalizedAmount = resolveValidatedAmount({
+    type: normalizedType,
+    amount: actionPayload?.amount,
+    toCall,
+    unit,
+  });
+
+  if (normalizedType === "CHECK" && toCall > 0) {
+    return {
+      isValid: false,
+      code: "FL_CHECK_TO_CALL",
+      message: "Check is only legal when to-call is zero",
+      context: { seatIndex, toCall },
+    };
+  }
+
+  if (normalizedType === "CALL" && !normalizedAmount.isValid && stack >= toCall) {
+    return {
+      isValid: false,
+      code: normalizedAmount.code ?? "FL_CALL_MISMATCH",
+      message: normalizedAmount.message,
+      context: {
+        seatIndex,
+        toCall,
+        requestedAmount: normalizedAmount.requestedAmount,
+      },
+    };
+  }
+
+  if (normalizedType === "RAISE") {
+    if (typeof raiseCap === "number" && raiseCount >= raiseCap) {
+      return {
+        isValid: false,
+        code: "FL_RAISE_CAP",
+        message: "Raise cap reached for this betting round",
+        context: { seatIndex, raiseCount, raiseCap },
+      };
+    }
+    if (!normalizedAmount.isValid && stack >= toCall + unit) {
+      return {
+        isValid: false,
+        code: normalizedAmount.code ?? "FL_RAISE_AMOUNT",
+        message: normalizedAmount.message,
+        context: {
+          seatIndex,
+          toCall,
+          unit,
+          requestedAmount: normalizedAmount.requestedAmount,
+          expectedAmount: normalizedAmount.expectedContribution,
+        },
+      };
+    }
+    if (normalizedAmount.isValid && normalizedAmount.raiseIncrement !== unit) {
+      return {
+        isValid: false,
+        code: "FL_RAISE_UNIT",
+        message: "Raise increment must equal fixed-limit unit",
+        context: {
+          seatIndex,
+          raiseIncrement: normalizedAmount.raiseIncrement,
+          unit,
+        },
+      };
+    }
+  }
+
+  return {
+    isValid: true,
+    toCall,
+    unit,
+    raiseCount,
+    raiseCap,
+    expectedContribution:
+      normalizedType === "CALL"
+        ? toCall
+        : normalizedType === "RAISE" || normalizedType === "BET"
+        ? toCall + unit
+        : Math.max(0, normalizedAmount.contribution ?? 0),
+    raiseIncrement: Math.max(0, normalizedAmount.raiseIncrement ?? 0),
+    amountSchema: normalizedAmount.schema ?? "none",
+  };
 }
 
 /**
@@ -603,10 +738,12 @@ function applyCallState(table, seatIndex, metadata = {}) {
   const workingMeta = { ...(metadata ?? {}) };
   const stackBefore = player.stack ?? 0;
   const betBefore = player.betThisRound ?? 0;
+  const toCall = Number.isFinite(workingMeta.toCall)
+    ? Math.max(0, Number(workingMeta.toCall) || 0)
+    : computeToCall(table, seatIndex);
   if (typeof workingMeta.stackBefore !== "number") workingMeta.stackBefore = stackBefore;
   if (typeof workingMeta.betBefore !== "number") workingMeta.betBefore = betBefore;
   if (typeof workingMeta.stackAfter !== "number" || typeof workingMeta.betAfter !== "number") {
-    const toCall = computeToCall(table, seatIndex);
     const pay = Math.min(stackBefore, toCall);
     workingMeta.toCall = typeof workingMeta.toCall === "number" ? workingMeta.toCall : toCall;
     workingMeta.paid = typeof workingMeta.paid === "number" ? workingMeta.paid : pay;
@@ -647,26 +784,43 @@ function applyRaiseState(table, seatIndex, metadata = {}) {
   const workingMeta = { ...(metadata ?? {}) };
   const stackBefore = player.stack ?? 0;
   const betBefore = player.betThisRound ?? 0;
+  const toCall = Number.isFinite(workingMeta.toCall)
+    ? Math.max(0, Number(workingMeta.toCall) || 0)
+    : computeToCall(table, seatIndex);
+  const unit = Number.isFinite(workingMeta.unit)
+    ? Math.max(1, Math.trunc(Number(workingMeta.unit) || 1))
+    : resolveFixedLimitUnit(table);
+  const expectedContribution = Number.isFinite(workingMeta.normalizedContribution)
+    ? Math.max(0, Number(workingMeta.normalizedContribution) || 0)
+    : toCall + unit;
   if (typeof workingMeta.stackBefore !== "number") workingMeta.stackBefore = stackBefore;
   if (typeof workingMeta.betBefore !== "number") workingMeta.betBefore = betBefore;
   if (typeof workingMeta.stackAfter !== "number" || typeof workingMeta.betAfter !== "number") {
-    const toCall = computeToCall(table, seatIndex);
-    const raiseSize = resolveRaiseSize(table, workingMeta);
-    const total = toCall + raiseSize;
-    const pay = Math.min(stackBefore, total);
+    const pay = Math.min(stackBefore, expectedContribution);
     workingMeta.toCall = typeof workingMeta.toCall === "number" ? workingMeta.toCall : toCall;
-    workingMeta.raise = typeof workingMeta.raise === "number" ? workingMeta.raise : raiseSize;
+    workingMeta.raise = typeof workingMeta.raise === "number" ? workingMeta.raise : unit;
     workingMeta.paid = typeof workingMeta.paid === "number" ? workingMeta.paid : pay;
     workingMeta.betAfter = betBefore + workingMeta.paid;
     workingMeta.stackAfter = Math.max(0, stackBefore - workingMeta.paid);
   }
-  applyStackAndBetSync(player, workingMeta, table);
+  const syncResult = applyStackAndBetSync(player, workingMeta, table);
   player.hasActedThisRound = true;
   player.lastAction =
     workingMeta.actionLabel ??
     (workingMeta.paid < ((workingMeta.toCall ?? 0) + (workingMeta.raise ?? 0))
       ? "Raise (All-in)"
       : "Raise");
+  const reopenedAction =
+    Number(syncResult?.contribution ?? 0) >
+    Math.max(0, Number(workingMeta.toCall ?? toCall) || 0);
+  if (reopenedAction) {
+    for (let i = 0; i < (table.players?.length ?? 0); i += 1) {
+      if (i === seatIndex) continue;
+      const other = table.players[i];
+      if (!other || !isSeatEligibleForBet(other) || other.allIn) continue;
+      other.hasActedThisRound = false;
+    }
+  }
   const meta = (table.metadata = { ...(table.metadata ?? {}) });
   meta.currentBet = computeCurrentBet(table.players);
   meta.betHead = seatIndex;
@@ -734,9 +888,14 @@ function updateBettingMetadata(table, seatIndex, actionType, metadata = {}) {
   meta.currentBet = computeCurrentBet(table.players);
   meta.totalCommitted = sumCommitted(table.players);
   meta.potAmount = sumPotAmounts(table.pots) + meta.totalCommitted;
+  meta.raiseCap = resolveRaiseCap(table);
+  if (typeof meta.raiseCountThisRound !== "number") {
+    meta.raiseCountThisRound = 0;
+  }
 
   if (actionType === "RAISE") {
     meta.betHead = seatIndex;
+    meta.raiseCountThisRound += 1;
     table.lastAggressorIndex = seatIndex;
   } else if (actionType === "FOLD" && meta.betHead === seatIndex) {
     const nextSeat = nextAliveFrom(table.players, seatIndex);

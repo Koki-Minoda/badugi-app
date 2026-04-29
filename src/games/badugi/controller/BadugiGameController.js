@@ -193,7 +193,11 @@ export class BadugiGameController extends GameController {
     });
     const events = [];
     if (!result?.success) {
-      events.push({ type: "invalidAction", error: result?.error ?? "action rejected" });
+      events.push({
+        type: "invalidAction",
+        error: result?.error ?? "action rejected",
+        code: result?.code ?? null,
+      });
       return { state, events };
     }
 
@@ -432,6 +436,16 @@ export class BadugiGameController extends GameController {
         metadata.currentBet ??
         this.legacy.state.currentBet ??
         0,
+      raiseCountThisRound:
+        normalized.raiseCountThisRound ??
+        metadata.raiseCountThisRound ??
+        this.legacy.state.raiseCountThisRound ??
+        0,
+      raiseCap:
+        normalized.raiseCap ??
+        metadata.raiseCap ??
+        this.legacy.state.raiseCap ??
+        null,
       phase: normalized.phase ?? metadata.phase ?? this.legacy.state.phase ?? "BET",
       drawRound:
         normalized.drawRound ??

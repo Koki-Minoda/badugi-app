@@ -32,6 +32,22 @@
     "outputShape": [6]
   },
   {
+    "id": "model-27draw-iron-v1",
+    "variantIds": ["D01", "S01"],
+    "tier": "iron",
+    "onnx": "models/27draw_iron_v1.onnx",
+    "inputShape": [96],
+    "outputShape": [11]
+  },
+  {
+    "id": "model-a5draw-iron-v1",
+    "variantIds": ["D02", "S02"],
+    "tier": "iron",
+    "onnx": "models/a5draw_iron_v1.onnx",
+    "inputShape": [96],
+    "outputShape": [11]
+  },
+  {
     "id": "model-generic-v1",
     "variantIds": [],
     "tier": "standard",

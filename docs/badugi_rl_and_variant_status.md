@@ -1201,14 +1201,29 @@ Badugi RL test coverage:
 
 タスク:
 
-- [ ] `WG-08-01` draw family 共通 observation schema を定義する。
-- [ ] `WG-08-02` variant 固有 feature slot を定義する。
+- [x] `WG-08-01` draw family 共通 observation schema を定義する。
+- [x] `WG-08-02` variant 固有 feature slot を定義する。
   - badugi
   - 2-7
   - A-5
-- [ ] `WG-08-03` 2-7 draw heuristic から supervised bootstrap dataset を切り出す。
-- [ ] `WG-08-04` `D01/D02` の暫定 CPU を RL 置換可能な形で包む。
-- [ ] `WG-08-05` mixed profile が variant ごとにモデルを切り替えられるようにする。
+- [x] `WG-08-03` 2-7 draw heuristic から supervised bootstrap dataset を切り出す。
+- [x] `WG-08-04` `D01/D02` の暫定 CPU を RL 置換可能な形で包む。
+- [x] `WG-08-05` mixed profile が variant ごとにモデルを切り替えられるようにする。
+
+Draw RL implementation notes:
+
+- `src/rl/drawObservationSchema.js` defines `draw-observation-v1` as a shared 96-slot schema for Badugi, 2-7, and A-5 draw families.
+- Variant-specific feature slots are fixed as `badugi`, `low27`, and `lowA5` one-hot channels.
+- `D01` / `S01` use the `low-27` family, and `D02` / `S02` use the `low-a5` family.
+- `src/rl/drawBootstrapDataset.js` converts the existing rule-based draw heuristic into supervised bootstrap records.
+- `wrapRuleBasedDrawDecision(...)` marks D01/D02 CPU choices with `replaceableByRl: true`, so ONNX can replace them later without changing the engine action contract.
+- `onnxPolicyAdapter` can now build exact-shape ONNX inputs for D01/D02/S01/S02 as well as Badugi.
+- `modelRegistry.json` includes variant-specific draw models for `D01/S01` and `D02/S02`, allowing mixed rotations to resolve models by variant id.
+
+Draw RL test coverage:
+
+- `src/rl/__tests__/drawObservationSchema.test.js` covers D01/D02 vectors, variant feature slots, fallback wrapping, and supervised bootstrap output.
+- `src/ai/__tests__/onnxPolicyAdapter.test.js` covers draw ONNX feature building and D01/D02 model selection.
 
 完了条件:
 

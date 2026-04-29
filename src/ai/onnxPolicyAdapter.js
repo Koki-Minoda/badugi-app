@@ -7,6 +7,11 @@ import {
   buildBadugiObservationVector,
   chooseDeterministicSafeAction,
 } from "../rl/badugiObservationSchema.js";
+import {
+  DRAW_OBSERVATION_VECTOR_SIZE,
+  buildDrawObservationVector,
+  isDrawRlVariant,
+} from "../rl/drawObservationSchema.js";
 
 function toFloat32Array(length, builder) {
   const vector = new Float32Array(length);
@@ -42,9 +47,22 @@ export function buildBadugiOnnxFeatures(entry, payload = {}) {
   return new Float32Array(vector);
 }
 
+export function buildDrawOnnxFeatures(entry, payload = {}) {
+  const vector = buildDrawObservationVector(payload.observation ?? payload);
+  const expectedLength = expectedInputLength(entry) || DRAW_OBSERVATION_VECTOR_SIZE;
+  if (vector.length !== expectedLength) {
+    throw new Error(`Draw ONNX feature length ${vector.length} does not match ${expectedLength}`);
+  }
+  return new Float32Array(vector);
+}
+
 function buildBetFeatures(entry, payload) {
-  if ((payload.variantId ?? payload.observation?.variantId) === "D03") {
+  const variantId = payload.variantId ?? payload.observation?.variantId;
+  if (variantId === "D03") {
     return buildBadugiOnnxFeatures(entry, payload);
+  }
+  if (isDrawRlVariant(variantId)) {
+    return buildDrawOnnxFeatures(entry, payload);
   }
   const length = expectedInputLength(entry) || 16;
   const maxStack = Math.max(1, payload.actor?.stack ?? 1);
@@ -94,8 +112,12 @@ function decodeBetOutput(result, payload) {
 }
 
 function buildDrawFeatures(entry, payload) {
-  if ((payload.variantId ?? payload.observation?.variantId) === "D03") {
+  const variantId = payload.variantId ?? payload.observation?.variantId;
+  if (variantId === "D03") {
     return buildBadugiOnnxFeatures(entry, payload);
+  }
+  if (isDrawRlVariant(variantId)) {
+    return buildDrawOnnxFeatures(entry, payload);
   }
   const length = expectedInputLength(entry) || 8;
   const buf = toFloat32Array(length, (idx) => {

@@ -902,7 +902,7 @@ AI / logging / replay タスク:
 - [x] `WG-03-19` evaluator regression テストを追加する。
 - [x] `WG-03-20` engine unit tests を追加する。
 - [x] `WG-03-21` controller tests を追加する。
-- [ ] `WG-03-22` e2e で 1 hand 完走テストを追加する。
+- [x] `WG-03-22` e2e で 1 hand 完走テストを追加する。
 - [ ] `WG-03-23` side pot / fold win / pat win / draw-to-better-low をカバーする。
 
 D01 evaluator regression coverage:
@@ -925,6 +925,12 @@ D01 controller coverage:
 - `src/games/draw/__tests__/DeuceToSevenTripleDrawController.test.js` covers D01 hand start, UI-compatible snapshots, legal BET / DRAW actions, CPU action exposure, action application, and overlay-ready 2-7 result labels.
 - Controller input errors return `invalidAction` events without mutating the supplied state.
 - Fold-win completion emits `handComplete`, exposes `SHOWDOWN` snapshot state, and makes winners available through `getWinners(...)`.
+
+D01 e2e hand-flow coverage:
+
+- `src/games/draw/__tests__/DeuceToSevenTripleDrawE2E.test.js` drives the D01 controller from blind-posted hand start through three draw rounds and final showdown.
+- The test verifies `handStarted`, betting completion, draw completion, and `handComplete` events are emitted during a full hand.
+- The final snapshot is `SHOWDOWN`, preserves 5-card hands, exposes overlay-ready winner data, and keeps total table chips conserved.
 
 完了条件:
 

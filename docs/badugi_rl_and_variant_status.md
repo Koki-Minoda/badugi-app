@@ -855,7 +855,7 @@ controller / UI タスク:
 - [x] `WG-03-12` hand snapshot を UI 互換形式で返す。
 - [x] `WG-03-13` discard UI を 5 枚用に一般化する。
 - [x] `WG-03-14` result overlay で 2-7 hand label を表示する。
-- [ ] `WG-03-15` action log / hand history 表記を variant 対応にする。
+- [x] `WG-03-15` action log / hand history 表記を variant 対応にする。
 
 D01 controller initial implementation:
 
@@ -867,13 +867,17 @@ D01 controller initial implementation:
 - Draw selection is generalized through `src/ui/game/drawSelection.js` so Badugi can cap at 4 discards while D01 can select 5.
 - Player card layout now derives its grid column count from hand size, so 5-card draw hands fit the existing player panel.
 - D01 `lastHandResult` is normalized to overlay-ready `potDetails[].winners[].handLabel`, allowing `2-7 Low 7-5-4-3-2` style labels in `HandResultOverlay`.
+- Hand history records now carry optional `variantId` / `variantName`; Badugi remains the default when callers do not pass a variant.
+- D01 hand history uses the 2-7 low evaluator for final hand labels and stores final low ranks separately from Badugi evaluation data.
 
 AI / logging / replay タスク:
 
-- [ ] `WG-03-16` `recordActionToLog(...)` に `D01` 必須項目を追加する。
+- [x] `WG-03-16` `recordActionToLog(...)` に `D01` 必須項目を追加する。
   - discard count
   - kept / replaced cards
   - final low ranks
+- `appendHandHistoryAction(...)` preserves draw metadata as `drawCount`, `discarded`, `keptCards`, and `replacedCards` when `recordActionToLog(...)` supplies normalized `drawInfo`.
+- Final D01 seats and pot winners include `handLabel` and `finalLowRanks`, which are enough for replay / hand history result restoration.
 - [ ] `WG-03-17` rule-based CPU の暫定戦略を入れる。
   - pat threshold
   - draw count heuristic

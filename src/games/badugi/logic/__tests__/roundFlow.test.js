@@ -39,12 +39,12 @@ describe("shouldSkipDrawRound", () => {
     ...overrides,
   });
 
-  it("returns true when no eligible players request cards", () => {
+  it("returns false when an eligible player can pat with zero requested cards", () => {
     expect(
       shouldSkipDrawRound({
         players: [seat({ drawRequest: 0 }), seat({ folded: true, drawRequest: 3 })],
       }),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("returns false when at least one eligible player requests a draw", () => {

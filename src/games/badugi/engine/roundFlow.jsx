@@ -130,7 +130,7 @@ export function transitionToDrawPhase({
   forceDrawRound = false,
 } = {}) {
   if (!forceDrawRound && shouldSkipDrawRound({ players, meta })) {
-    debugLog(`[FLOW] skip DRAW round ${nextRound} (no draw requests)`);
+    debugLog(`[FLOW] skip DRAW round ${nextRound} (no actionable draw seats)`);
     onPhaseTransition?.(fromPhase, "DRAW_SKIPPED");
     onSkipDrawRound?.({
       players,
@@ -455,7 +455,7 @@ export function finishBetRoundFrom({
       fromPhase: "DRAW",
       onPhaseTransition,
     });
-    debugLog(`[FLOW] DRAW round ${nextRoundIndex} skipped (no draw requests)`);
+    debugLog(`[FLOW] DRAW round ${nextRoundIndex} skipped (no actionable draw seats)`);
     recordActionToLog?.({
       type: "SKIP_DRAW_ROUND",
       round: nextRoundIndex,

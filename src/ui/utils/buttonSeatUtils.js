@@ -4,6 +4,7 @@
  * @returns {boolean}
  */
 import {
+  isPlayerActiveInGame as baseIsPlayerActiveInGame,
   isPlayerSeated as baseIsPlayerSeated,
 } from "../../games/badugi/flow/actionUtils.js";
 
@@ -18,8 +19,9 @@ export function isPlayerSeated(player) {
  */
 export function isPlayerActiveInGame(player) {
   if (!player) return false;
+  if (typeof player.isActiveInGame === "boolean") return player.isActiveInGame;
   if (!isPlayerSeated(player)) return false;
-  if (player.seatOut || player.isBusted) return false;
+  if (!baseIsPlayerActiveInGame(player)) return false;
   if (typeof player?.stack === "number" && player.stack <= 0) return false;
   return true;
 }

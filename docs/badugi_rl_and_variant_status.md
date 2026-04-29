@@ -405,7 +405,7 @@ UI / engine registry 差分表:
 
 タスク:
 
-- [ ] `WG-01-01` Draw family の state contract を固定する。
+- [x] `WG-01-01` Draw family の state contract を固定する。
   - 必須項目:
     - `drawRoundIndex`
     - `maxDrawRounds`
@@ -414,14 +414,14 @@ UI / engine registry 差分表:
     - `lastAggressorIndex`
     - `pendingDrawSeats`
     - `discardCountBySeat`
-- [ ] `WG-01-02` Draw family の action contract を固定する。
+- [x] `WG-01-02` Draw family の action contract を固定する。
   - `FOLD`
   - `CHECK`
   - `CALL`
   - `BET`
   - `RAISE`
   - `DRAW`
-- [ ] `WG-01-03` `DRAW` action の payload 契約を決める。
+- [x] `WG-01-03` `DRAW` action の payload 契約を決める。
   - 推奨:
     - discard index array
     - 派生 metadata
@@ -439,6 +439,98 @@ UI / engine registry 差分表:
 - [ ] `WG-01-06` Draw family 用 controller snapshot 形式を固定する。
 - [ ] `WG-01-07` Draw family observation schema の v1 を定める。
   - RL / replay / debug 共通
+
+Draw family state contract v1:
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `variantId` | string | yes | 例: `badugi`, `27td`, `a5td`。VariantDefinition の `id` と一致させる。 |
+| `phase` | string | yes | `BET` / `DRAW` / `SHOWDOWN` / `HAND_OVER`。既存 UI 互換のため大文字を正とする。 |
+| `street` | string | recommended | engine 内部の street 名。`phase` と同じでもよい。 |
+| `players` | array | yes | seat order を保持した player snapshot。folded / allIn / sittingOut / hand を含む。 |
+| `dealerIndex` | number | yes | button seat。draw 開始 seat と blind 計算の基準。 |
+| `actingPlayerIndex` | number \| null | yes | 次に action する seat。action 不要なら `null`。 |
+| `drawRoundIndex` | number | yes | 0-based。pre-draw betting は `0`、draw1 後 betting は `1`。 |
+| `maxDrawRounds` | number | yes | Badugi / triple draw は `3`、single draw は `1`。 |
+| `betRoundIndex` | number | recommended | fixed-limit bet size 判定用。未設定時は `drawRoundIndex` から派生可能。 |
+| `currentBet` | number | yes | 現 street の call 目標額。metadata に置く場合も top-level へ同期する。 |
+| `lastAggressorIndex` | number \| null | yes | bet / raise / blind の最後の aggressor。street completion 判定に使う。 |
+| `pendingDrawSeats` | number[] | yes | 現 draw round でまだ draw / pat を宣言していない seat。 |
+| `discardCountBySeat` | object | yes | `{ [seatIndex]: number }`。RL / replay / HUD 用の正規化済み discard count。 |
+| `pots` | array | recommended | pot / side pot snapshot。未対応 engine でも空配列を返す。 |
+| `metadata` | object | recommended | debug / migration 用。正規 field と重複する値は正規 field を優先する。 |
+
+Draw family player snapshot v1:
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `seatIndex` | number | yes | 配列 index と一致すること。 |
+| `playerId` | string \| null | recommended | replay / logging 用。 |
+| `name` | string | recommended | UI 表示用。 |
+| `hand` | array | yes | 現在の手札。hidden 表示時も engine snapshot では保持する。 |
+| `stack` | number | yes | 残 stack。 |
+| `bet` | number | yes | 現 street の投入額。 |
+| `folded` | boolean | yes | folded seat は BET / DRAW / showdown eligibility から除外する。 |
+| `allIn` | boolean | yes | all-in seat は追加 BET 不可。ただし既存 Badugi 互換で DRAW 完了処理は許可する。 |
+| `sittingOut` / `seatOut` | boolean | recommended | どちらかを正規化して扱う。新規実装は `sittingOut` を優先する。 |
+| `hasActedThisRound` | boolean | yes | BET / DRAW の round completion 判定に使う。 |
+| `lastAction` | string | recommended | UI / hand history 表示用。 |
+| `lastDrawCount` | number | recommended | 直近 draw / pat の枚数。 |
+
+Draw family action contract v1:
+
+共通 envelope:
+
+```js
+{
+  type: "FOLD" | "CHECK" | "CALL" | "BET" | "RAISE" | "DRAW",
+  seatIndex: number,
+  amount?: number,
+  metadata?: object
+}
+```
+
+Action semantics:
+
+| Action | Required payload | Notes |
+| --- | --- | --- |
+| `FOLD` | `seatIndex` | seat を folded にし、以後の BET / DRAW / showdown eligibility から外す。 |
+| `CHECK` | `seatIndex` | `currentBet` に対して追加支払いが不要な場合のみ合法。 |
+| `CALL` | `seatIndex` | `currentBet - player.bet` を最大 stack まで支払う。 |
+| `BET` | `seatIndex`, `amount` | bet がまだ無い street の open。fixed-limit 系は engine が単位へ正規化する。 |
+| `RAISE` | `seatIndex`, `amount` | call + raise increment。既存 Badugi 互換では `RAISE` が bet/raise を兼ねる箇所がある。 |
+| `DRAW` | `seatIndex`, `discardIndexes` または `drawCount` | discard と replacement を行う。0 枚は pat。 |
+
+`DRAW` payload contract v1:
+
+```js
+{
+  type: "DRAW",
+  seatIndex: number,
+  discardIndexes: number[],
+  drawCount?: number,
+  beforeHand?: string[],
+  discarded?: string[],
+  drawn?: string[],
+  afterHand?: string[],
+  metadata?: {
+    drawRoundIndex?: number,
+    actionLabel?: string,
+    source?: "human" | "cpu" | "replay" | "rl",
+    replaceMode?: "byIndex",
+    deckSnapshotId?: string
+  }
+}
+```
+
+Rules:
+
+- `discardIndexes` は 0-based hand index の昇順・重複なしを正とする。
+- `drawCount` がある場合は `discardIndexes.length` と一致させる。一致しない場合は `discardIndexes.length` を優先する。
+- `discardIndexes: []` は pat として扱う。
+- `beforeHand` / `discarded` / `drawn` / `afterHand` は replay / audit 用 metadata。engine の正規状態は `players[seatIndex].hand`。
+- replacement card の生成は deck manager の責務。UI / RL は `discardIndexes` または `drawCount` だけを送る。
+- action log では `DRAW_ACTION` として `discardCount`、`discarded`、`drawRoundIndex` を保存できる形にする。
 
 完了条件:
 

@@ -160,7 +160,132 @@ describe("DeuceToSevenTripleDrawEngine", () => {
 
     expect(showdownState.street).toBe("SHOWDOWN");
     expect(showdownState.isHandOver).toBe(true);
-    expect(showdownState.pots[0]).toMatchObject({ amount: 40 });
+    expect(showdownState.metadata.showdownSummary[0]).toMatchObject({ potAmount: 40 });
     expect(showdownState.actingPlayerIndex).toBeNull();
+  });
+
+  it("completes a fixed-limit betting round when all active players match", () => {
+    const engine = new DeuceToSevenTripleDrawEngine({
+      deckManager: new FakeDeckManager([
+        "2S", "3S", "4S", "5S", "7S",
+        "2H", "3H", "4H", "5H", "8H",
+      ]),
+    });
+    const state = engine.applyForcedBets(
+      engine.initHand({
+        seatConfig: ["HUMAN", "CPU"],
+        startingStack: 500,
+        dealerIndex: 0,
+        structure: { sb: 10, bb: 20 },
+      }),
+    );
+    state.actingPlayerIndex = 1;
+
+    const called = engine.applyPlayerAction(state, {
+      seatIndex: 1,
+      type: "CALL",
+    });
+    expect(called.street).toBe("BET");
+    expect(called.actingPlayerIndex).toBe(0);
+
+    const drawState = engine.applyPlayerAction(called, {
+      seatIndex: 0,
+      type: "CHECK",
+    });
+
+    expect(drawState.street).toBe("DRAW");
+    expect(drawState.drawRoundIndex).toBe(1);
+    expect(drawState.pots[0]).toMatchObject({ amount: 40 });
+    expect(drawState.players.map((player) => player.bet)).toEqual([0, 0]);
+    expect(drawState.metadata.raiseCountThisRound).toBe(0);
+  });
+
+  it("allows fixed-limit raises and resets action before advancing", () => {
+    const engine = new DeuceToSevenTripleDrawEngine({
+      deckManager: new FakeDeckManager([
+        "2S", "3S", "4S", "5S", "7S",
+        "2H", "3H", "4H", "5H", "8H",
+      ]),
+    });
+    const state = engine.applyForcedBets(
+      engine.initHand({
+        seatConfig: ["HUMAN", "CPU"],
+        startingStack: 500,
+        dealerIndex: 0,
+        structure: { sb: 10, bb: 20 },
+      }),
+    );
+    state.actingPlayerIndex = 1;
+
+    const raised = engine.applyPlayerAction(state, {
+      seatIndex: 1,
+      type: "RAISE",
+    });
+    expect(raised.street).toBe("BET");
+    expect(raised.metadata.currentBet).toBe(40);
+    expect(raised.metadata.raiseCountThisRound).toBe(1);
+    expect(raised.players[0].hasActedThisRound).toBe(false);
+    expect(raised.actingPlayerIndex).toBe(0);
+
+    const called = engine.applyPlayerAction(raised, {
+      seatIndex: 0,
+      type: "CALL",
+    });
+    expect(called.street).toBe("DRAW");
+    expect(called.pots[0]).toMatchObject({ amount: 80 });
+  });
+
+  it("resolves 2-7 showdown payouts", () => {
+    const engine = new DeuceToSevenTripleDrawEngine();
+    const state = engine.initHand({
+      seatConfig: ["HUMAN", "CPU"],
+      startingStack: 500,
+      dealerIndex: 0,
+    });
+    state.players[0].hand = ["7S", "5D", "4C", "3H", "2S"];
+    state.players[1].hand = ["8S", "5H", "4D", "3C", "2D"];
+    state.pots = [{ amount: 100, eligiblePlayerIds: ["seat-0", "seat-1"] }];
+
+    const result = engine.resolveShowdown(state);
+
+    expect(result.totalPot).toBe(100);
+    expect(result.summary[0].payouts).toHaveLength(1);
+    expect(result.summary[0].payouts[0]).toMatchObject({
+      seatIndex: 0,
+      payout: 100,
+      handName: "2-7 Low 7-5-4-3-2",
+    });
+    expect(result.state.players[0].stack).toBe(600);
+    expect(result.state.players[1].stack).toBe(500);
+    expect(result.state.pots).toEqual([]);
+  });
+
+  it("awards the pot immediately when everyone else folds", () => {
+    const engine = new DeuceToSevenTripleDrawEngine();
+    const state = engine.applyForcedBets(
+      engine.initHand({
+        seatConfig: ["HUMAN", "CPU"],
+        startingStack: 500,
+        dealerIndex: 0,
+        structure: { sb: 10, bb: 20 },
+      }),
+    );
+    state.actingPlayerIndex = 1;
+
+    const result = engine.applyPlayerAction(state, {
+      seatIndex: 1,
+      type: "FOLD",
+    });
+
+    expect(result.street).toBe("SHOWDOWN");
+    expect(result.isHandOver).toBe(true);
+    expect(result.metadata.showdownSummary[0]).toMatchObject({
+      potAmount: 30,
+      winType: "fold",
+    });
+    expect(result.metadata.showdownSummary[0].payouts[0]).toMatchObject({
+      seatIndex: 0,
+      payout: 30,
+    });
   });
 });

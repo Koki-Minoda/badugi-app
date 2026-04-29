@@ -1,6 +1,7 @@
 import { DrawEngineBase } from "../core/drawEngineBase.js";
 import { cloneTableState, createTableState } from "../core/models.js";
 import { IllegalActionError, assertSeatIsActive } from "../core/errors.js";
+import { applyChips } from "../core/applyChips.js";
 import { DeckManager } from "../badugi/utils/deck.js";
 import { evaluateLowHand, formatLowHandLabel } from "../evaluators/low.js";
 
@@ -39,6 +40,10 @@ function createPlayers({ seatConfig = DEFAULT_SEAT_CONFIG, startingStack = 500, 
 
 function getActivePlayers(players = []) {
   return players.filter((player) => !player.folded && !player.sittingOut);
+}
+
+function getBettingPlayers(players = []) {
+  return players.filter((player) => !player.folded && !player.sittingOut && !player.allIn);
 }
 
 function getActiveSeatIndexes(players = []) {
@@ -116,6 +121,70 @@ function settleCurrentBets(state) {
   return { players, pots: existingPots, committed };
 }
 
+function getStreetBetUnit(state) {
+  const bigBlind = Math.max(1, Number(state.bigBlind) || 1);
+  const drawRoundIndex = Number(state.drawRoundIndex) || 0;
+  const smallBetBB = Math.max(1, Number(state.metadata?.smallBetBB) || 1);
+  const bigBetBB = Math.max(smallBetBB, Number(state.metadata?.bigBetBB) || 2);
+  return bigBlind * (drawRoundIndex >= 2 ? bigBetBB : smallBetBB);
+}
+
+function getRaiseCap(state) {
+  const cap = Number(state.metadata?.raiseCap);
+  return Number.isFinite(cap) && cap > 0 ? Math.floor(cap) : 4;
+}
+
+function getCurrentBet(state) {
+  const activeBets = getActivePlayers(state.players).map((player) => player.bet ?? 0);
+  return Math.max(0, state.metadata?.currentBet ?? 0, ...activeBets);
+}
+
+function normalizeActionType(action = {}) {
+  return String(action.type ?? "").toUpperCase();
+}
+
+function hasBettingRoundCompleted(state) {
+  const bettingPlayers = getBettingPlayers(state.players);
+  if (bettingPlayers.length <= 1) return true;
+  const currentBet = getCurrentBet(state);
+  return bettingPlayers.every(
+    (player) => player.hasActedThisRound && (player.allIn || (player.bet ?? 0) === currentBet),
+  );
+}
+
+function getNextBettingSeat(state, fromSeatIndex) {
+  const players = state.players ?? [];
+  if (!players.length) return null;
+  for (let offset = 1; offset <= players.length; offset += 1) {
+    const seatIndex = (fromSeatIndex + offset) % players.length;
+    const player = players[seatIndex];
+    if (!player || player.folded || player.sittingOut || player.allIn) continue;
+    return seatIndex;
+  }
+  return null;
+}
+
+function normalizePotEligibleSeats(pot = {}, players = []) {
+  if (Array.isArray(pot.eligibleSeats)) return [...pot.eligibleSeats];
+  if (Array.isArray(pot.eligible)) return [...pot.eligible];
+  if (Array.isArray(pot.eligiblePlayerIds)) {
+    return pot.eligiblePlayerIds
+      .map((id) => players.findIndex((player) => player?.playerId === id || player?.id === id))
+      .filter((idx) => idx >= 0);
+  }
+  return getActivePlayers(players).map((player) => player.seatIndex);
+}
+
+function splitAmount(amount, winnerCount) {
+  const base = Math.floor(amount / winnerCount);
+  let remainder = amount % winnerCount;
+  return Array.from({ length: winnerCount }, () => {
+    const payout = base + (remainder > 0 ? 1 : 0);
+    remainder = Math.max(0, remainder - 1);
+    return payout;
+  });
+}
+
 export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
   constructor({ deckManager = null } = {}) {
     super({ gameId: "deuce_to_seven_triple_draw", displayName: "2-7 Triple Draw", maxDrawRounds: 3 });
@@ -190,6 +259,114 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     return next;
   }
 
+  applyBettingAction(state, action = {}) {
+    if (!state) {
+      throw new IllegalActionError("Table state is required");
+    }
+    if (state.street !== "BET") {
+      throw new IllegalActionError("Betting action is only allowed during BET street", {
+        street: state.street,
+      });
+    }
+
+    const next = cloneTableState(state);
+    const seatIndex = findSeatIndex(next, action);
+    const player = next.players[seatIndex];
+    const actionType = normalizeActionType(action);
+    assertSeatIsActive(player, { seatIndex, actionType });
+    if (next.actingPlayerIndex !== null && seatIndex !== next.actingPlayerIndex) {
+      throw new IllegalActionError("Betting action is out of turn", {
+        seatIndex,
+        actingPlayerIndex: next.actingPlayerIndex,
+      });
+    }
+
+    const currentBet = getCurrentBet(next);
+    const betUnit = getStreetBetUnit(next);
+    const raiseCount = Number(next.metadata?.raiseCountThisRound) || 0;
+    let nextCurrentBet = currentBet;
+    let nextRaiseCount = raiseCount;
+
+    switch (actionType) {
+      case "FOLD": {
+        player.folded = true;
+        player.hasActedThisRound = true;
+        player.lastAction = "Fold";
+        break;
+      }
+      case "CHECK": {
+        if ((player.bet ?? 0) !== currentBet) {
+          throw new IllegalActionError("Cannot check facing a bet", { seatIndex, currentBet });
+        }
+        player.hasActedThisRound = true;
+        player.lastAction = "Check";
+        break;
+      }
+      case "CALL": {
+        const toCall = Math.max(0, currentBet - (player.bet ?? 0));
+        const paid = applyChips(player, toCall);
+        player.bet = (player.bet ?? 0) + paid;
+        player.hasActedThisRound = true;
+        player.lastAction = paid > 0 ? "Call" : "Check";
+        if (player.stack === 0) player.allIn = true;
+        break;
+      }
+      case "BET":
+      case "RAISE": {
+        if (raiseCount >= getRaiseCap(next) - 1) {
+          throw new IllegalActionError("Fixed-limit raise cap reached", {
+            seatIndex,
+            raiseCount,
+            raiseCap: getRaiseCap(next),
+          });
+        }
+        const targetBet = currentBet + betUnit;
+        const toPay = Math.max(0, targetBet - (player.bet ?? 0));
+        if (toPay <= 0) {
+          throw new IllegalActionError("Raise target must exceed current bet", { seatIndex });
+        }
+        const paid = applyChips(player, toPay);
+        player.bet = (player.bet ?? 0) + paid;
+        player.hasActedThisRound = true;
+        player.lastAction = currentBet > 0 ? "Raise" : "Bet";
+        if (player.stack === 0) player.allIn = true;
+        nextCurrentBet = Math.max(currentBet, player.bet ?? 0);
+        nextRaiseCount += 1;
+        next.lastAggressorIndex = seatIndex;
+        next.players = next.players.map((entry, idx) =>
+          idx === seatIndex || entry.folded || entry.sittingOut || entry.allIn
+            ? entry
+            : { ...entry, hasActedThisRound: false },
+        );
+        break;
+      }
+      default:
+        throw new IllegalActionError(`${this.id}: unsupported betting action`, { actionType });
+    }
+
+    next.metadata = {
+      ...(next.metadata ?? {}),
+      currentBet: nextCurrentBet,
+      betUnit,
+      raiseCountThisRound: nextRaiseCount,
+      lastBettingAction: {
+        seatIndex,
+        type: actionType,
+        drawRoundIndex: next.drawRoundIndex ?? 0,
+      },
+    };
+
+    const active = getActivePlayers(next.players);
+    if (active.length === 1) {
+      return this.resolveFoldWin(next);
+    }
+    if (hasBettingRoundCompleted(next)) {
+      return this.advanceAfterBet(next);
+    }
+    next.actingPlayerIndex = getNextBettingSeat(next, seatIndex);
+    return next;
+  }
+
   advanceAfterBet(state) {
     if (!state) {
       throw new IllegalActionError("Table state is required");
@@ -203,15 +380,13 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     next.metadata = {
       ...(next.metadata ?? {}),
       currentBet: 0,
+      raiseCountThisRound: 0,
       lastCommittedToPot: committed,
       potAmount: pots.reduce((sum, pot) => sum + Math.max(0, pot.amount ?? 0), 0),
     };
 
     if (nextDrawRound > this.maxDrawRounds) {
-      next.street = "SHOWDOWN";
-      next.isHandOver = true;
-      next.actingPlayerIndex = null;
-      return next;
+      return this.resolveShowdown(next).state;
     }
 
     return this.transitionToDraw(next, nextDrawRound);
@@ -253,18 +428,19 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     next.metadata = {
       ...(next.metadata ?? {}),
       currentBet: 0,
+      betUnit: getStreetBetUnit(next),
+      raiseCountThisRound: 0,
       pendingDrawSeats: [],
     };
     return next;
   }
 
   applyPlayerAction(state, action = {}) {
-    if (action?.type !== "DRAW") {
-      throw new IllegalActionError(`${this.id}: only DRAW actions are implemented for this step`, {
-        actionType: action?.type,
-      });
+    const actionType = normalizeActionType(action);
+    if (actionType === "DRAW") {
+      return this.applyDrawAction(state, action);
     }
-    return this.applyDrawAction(state, action);
+    return this.applyBettingAction(state, { ...action, type: actionType });
   }
 
   applyDrawAction(state, action = {}) {
@@ -341,6 +517,155 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     return {
       ...evaluation,
       handName: formatLowHandLabel(evaluation, { lowType: "27" }),
+    };
+  }
+
+  resolveFoldWin(state) {
+    const next = cloneTableState(state);
+    const active = getActivePlayers(next.players);
+    const winner = active[0];
+    const winnerIndex = winner?.seatIndex;
+    const { players, pots, committed } = settleCurrentBets(next);
+    next.players = players;
+    next.pots = pots;
+    const totalPot = pots.reduce((sum, pot) => sum + Math.max(0, pot.amount ?? 0), 0);
+    const payouts = [];
+    if (winner && typeof winnerIndex === "number" && totalPot > 0) {
+      const target = next.players[winnerIndex];
+      const stackBefore = target.stack ?? 0;
+      target.stack = stackBefore + totalPot;
+      target.lastAction = `Collect ${totalPot}`;
+      payouts.push({
+        seatIndex: winnerIndex,
+        name: target.name,
+        payout: totalPot,
+        stackBefore,
+        stackAfter: target.stack,
+      });
+    }
+    next.street = "SHOWDOWN";
+    next.isHandOver = true;
+    next.actingPlayerIndex = null;
+    next.pots = [];
+    next.metadata = {
+      ...(next.metadata ?? {}),
+      currentBet: 0,
+      lastCommittedToPot: committed,
+      potAmount: 0,
+      showdownTotal: totalPot,
+      showdownSummary: [
+        {
+          potIndex: 0,
+          potAmount: totalPot,
+          payouts,
+          winType: "fold",
+        },
+      ],
+    };
+    return next;
+  }
+
+  resolveShowdown(state, { cloneState = true } = {}) {
+    if (!state) {
+      throw new IllegalActionError("Table state is required for showdown");
+    }
+    const working = cloneState ? cloneTableState(state) : state;
+    if ((working.players ?? []).some((player) => (player.bet ?? 0) > 0)) {
+      const settled = settleCurrentBets(working);
+      working.players = settled.players;
+      working.pots = settled.pots;
+    }
+    if (!working.pots?.length) {
+      const committed = working.players.reduce(
+        (sum, player) => sum + Math.max(0, player.totalInvested ?? 0),
+        0,
+      );
+      if (committed > 0) {
+        working.pots = [
+          {
+            amount: committed,
+            eligiblePlayerIds: getActivePlayers(working.players).map(
+              (player) => player.playerId ?? player.id,
+            ),
+          },
+        ];
+      }
+    }
+
+    const summary = [];
+    let totalPot = 0;
+    const evaluations = working.players.map((player, seatIndex) => {
+      if (!player || player.folded || player.sittingOut) return null;
+      return {
+        seatIndex,
+        name: player.name,
+        evaluation: this.evaluateShowdownHand(player.hand ?? []),
+      };
+    });
+
+    (working.pots ?? []).forEach((pot, potIndex) => {
+      const amount = Math.max(0, pot.amount ?? 0);
+      totalPot += amount;
+      const eligibleSeats = normalizePotEligibleSeats(pot, working.players).filter((seatIndex) => {
+        const player = working.players[seatIndex];
+        return player && !player.folded && !player.sittingOut;
+      });
+      const contenders = eligibleSeats
+        .map((seatIndex) => evaluations[seatIndex])
+        .filter((entry) => entry?.evaluation?.isValid);
+      if (!amount || !contenders.length) {
+        summary.push({ potIndex, potAmount: amount, payouts: [], evaluations: contenders });
+        return;
+      }
+      const bestScore = Math.min(...contenders.map((entry) => entry.evaluation.rankPrimary));
+      const winners = contenders.filter((entry) => entry.evaluation.rankPrimary === bestScore);
+      const shares = splitAmount(amount, winners.length);
+      const payouts = winners.map((winnerEntry, idx) => {
+        const player = working.players[winnerEntry.seatIndex];
+        const stackBefore = player.stack ?? 0;
+        const payout = shares[idx];
+        player.stack = stackBefore + payout;
+        player.lastAction = `Collect ${payout}`;
+        return {
+          seatIndex: winnerEntry.seatIndex,
+          name: player.name,
+          payout,
+          stackBefore,
+          stackAfter: player.stack,
+          handName: winnerEntry.evaluation.handName,
+        };
+      });
+      summary.push({
+        potIndex,
+        potAmount: amount,
+        payouts,
+        evaluations: contenders,
+      });
+    });
+
+    working.street = "SHOWDOWN";
+    working.isHandOver = true;
+    working.actingPlayerIndex = null;
+    working.pots = [];
+    working.players = working.players.map((player) => ({
+      ...player,
+      bet: 0,
+      hasActedThisRound: false,
+      canDraw: false,
+    }));
+    working.metadata = {
+      ...(working.metadata ?? {}),
+      currentBet: 0,
+      potAmount: 0,
+      showdownSummary: summary,
+      showdownTotal: totalPot,
+      evaluations,
+    };
+
+    return {
+      state: working,
+      summary,
+      totalPot,
     };
   }
 }

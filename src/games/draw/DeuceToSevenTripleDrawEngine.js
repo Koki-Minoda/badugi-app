@@ -6,9 +6,9 @@ import { DeckManager } from "../badugi/utils/deck.js";
 import { evaluateLowHand, formatLowHandLabel } from "../evaluators/low.js";
 
 const DEFAULT_SEAT_CONFIG = ["HUMAN", "CPU", "CPU", "CPU", "CPU", "CPU"];
-const D01_PAT_HIGH_RANK = 8;
-const D01_RAISE_HIGH_RANK = 7;
-const D01_DRAW_KEEP_MAX_RANK = 9;
+const DEFAULT_PAT_HIGH_RANK = 8;
+const DEFAULT_RAISE_HIGH_RANK = 7;
+const DEFAULT_DRAW_KEEP_MAX_RANK = 9;
 
 function isEmptySeat(seatType) {
   return seatType === "EMPTY";
@@ -146,11 +146,11 @@ function normalizeActionType(action = {}) {
   return String(action.type ?? "").toUpperCase();
 }
 
-function parseRank(card) {
+function parseRank(card, { aceLow = false } = {}) {
   const match = String(card ?? "").trim().toUpperCase().match(/^(10|[2-9TJQKA])/);
   if (!match) return Number.POSITIVE_INFINITY;
   const value = match[1];
-  if (value === "A") return 14;
+  if (value === "A") return aceLow ? 1 : 14;
   if (value === "K") return 13;
   if (value === "Q") return 12;
   if (value === "J") return 11;
@@ -172,15 +172,21 @@ function getHighestLowRank(evaluation) {
   return Array.isArray(ranks) && ranks.length ? ranks[0] : Number.POSITIVE_INFINITY;
 }
 
-function getDrawIndexesForD01(hand = [], evaluation = null) {
+function getDrawIndexesForLowball(hand = [], evaluation = null, options = {}) {
   if (!Array.isArray(hand) || hand.length === 0) return [];
-  if (isCleanLowEvaluation(evaluation) && getHighestLowRank(evaluation) <= D01_PAT_HIGH_RANK) {
+  const {
+    aceLow = false,
+    drawKeepMaxRank = DEFAULT_DRAW_KEEP_MAX_RANK,
+    patHighRank = DEFAULT_PAT_HIGH_RANK,
+    penalizeStraightFlush = true,
+  } = options;
+  if (isCleanLowEvaluation(evaluation) && getHighestLowRank(evaluation) <= patHighRank) {
     return [];
   }
 
   const rankCounts = new Map();
   hand.forEach((card) => {
-    const rank = parseRank(card);
+    const rank = parseRank(card, { aceLow });
     rankCounts.set(rank, (rankCounts.get(rank) ?? 0) + 1);
   });
   const suitCounts = new Map();
@@ -189,7 +195,7 @@ function getDrawIndexesForD01(hand = [], evaluation = null) {
     if (suit) suitCounts.set(suit, (suitCounts.get(suit) ?? 0) + 1);
   });
   const isFlush = suitCounts.size === 1 && hand.length >= 5;
-  const sortedRanks = hand.map(parseRank).sort((a, b) => a - b);
+  const sortedRanks = hand.map((card) => parseRank(card, { aceLow: false })).sort((a, b) => a - b);
   const uniqueRanks = new Set(sortedRanks);
   const isStraight =
     uniqueRanks.size >= 5 &&
@@ -198,9 +204,9 @@ function getDrawIndexesForD01(hand = [], evaluation = null) {
   const keptRanks = new Set();
   const discardIndexes = [];
   hand.forEach((card, index) => {
-    const rank = parseRank(card);
+    const rank = parseRank(card, { aceLow });
     const duplicated = (rankCounts.get(rank) ?? 0) > 1;
-    const tooHigh = rank > D01_DRAW_KEEP_MAX_RANK;
+    const tooHigh = rank > drawKeepMaxRank;
     if (duplicated && keptRanks.has(rank)) {
       discardIndexes.push(index);
       return;
@@ -212,16 +218,16 @@ function getDrawIndexesForD01(hand = [], evaluation = null) {
     keptRanks.add(rank);
   });
 
-  if ((isFlush || isStraight) && discardIndexes.length === 0) {
+  if (penalizeStraightFlush && (isFlush || isStraight) && discardIndexes.length === 0) {
     const highestIndex = hand.reduce((bestIndex, card, index) => {
-      return parseRank(card) > parseRank(hand[bestIndex]) ? index : bestIndex;
+      return parseRank(card, { aceLow }) > parseRank(hand[bestIndex], { aceLow }) ? index : bestIndex;
     }, 0);
     discardIndexes.push(highestIndex);
   }
 
   if (discardIndexes.length === 0 && !isCleanLowEvaluation(evaluation)) {
     const highestIndex = hand.reduce((bestIndex, card, index) => {
-      return parseRank(card) > parseRank(hand[bestIndex]) ? index : bestIndex;
+      return parseRank(card, { aceLow }) > parseRank(hand[bestIndex], { aceLow }) ? index : bestIndex;
     }, 0);
     discardIndexes.push(highestIndex);
   }
@@ -271,10 +277,27 @@ function splitAmount(amount, winnerCount) {
 }
 
 export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
-  constructor({ deckManager = null } = {}) {
-    super({ gameId: "deuce_to_seven_triple_draw", displayName: "2-7 Triple Draw", maxDrawRounds: 3 });
-    this.variantId = "D01";
-    this.evaluatorTag = "low-27";
+  constructor({
+    deckManager = null,
+    gameId = "deuce_to_seven_triple_draw",
+    displayName = "2-7 Triple Draw",
+    variantId = "D01",
+    evaluatorTag = "low-27",
+    lowType = "27",
+    cpuStrategy = "ruleBasedD01",
+  } = {}) {
+    super({ gameId, displayName, maxDrawRounds: 3 });
+    this.variantId = variantId;
+    this.evaluatorTag = evaluatorTag;
+    this.lowType = lowType;
+    this.cpuStrategy = cpuStrategy;
+    this.drawHeuristic = {
+      aceLow: lowType === "A5" || lowType === "a5",
+      penalizeStraightFlush: !(lowType === "A5" || lowType === "a5"),
+      patHighRank: DEFAULT_PAT_HIGH_RANK,
+      raiseHighRank: DEFAULT_RAISE_HIGH_RANK,
+      drawKeepMaxRank: DEFAULT_DRAW_KEEP_MAX_RANK,
+    };
     this.deckManager = deckManager ?? new DeckManager();
   }
 
@@ -598,10 +621,10 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
   }
 
   evaluateShowdownHand(cards = []) {
-    const evaluation = evaluateLowHand({ cards, lowType: "27" });
+    const evaluation = evaluateLowHand({ cards, lowType: this.lowType });
     return {
       ...evaluation,
-      handName: formatLowHandLabel(evaluation, { lowType: "27" }),
+      handName: formatLowHandLabel(evaluation, { lowType: this.lowType }),
     };
   }
 
@@ -614,7 +637,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
       return null;
     }
     const evaluation = this.evaluateShowdownHand(player.hand ?? []);
-    const drawIndexes = getDrawIndexesForD01(player.hand ?? [], evaluation);
+    const drawIndexes = getDrawIndexesForLowball(player.hand ?? [], evaluation, this.drawHeuristic);
     const drawCount = drawIndexes.length;
     const highestRank = getHighestLowRank(evaluation);
     const cleanLow = isCleanLowEvaluation(evaluation);
@@ -625,7 +648,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
         type: "DRAW",
         discardIndexes: drawIndexes,
         metadata: {
-          strategy: "ruleBasedD01",
+          strategy: this.cpuStrategy,
           drawCount,
           pat: drawCount === 0,
           highestRank,
@@ -639,8 +662,8 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     const facingBet = currentBet > playerBet;
     const raiseCount = Number(state.metadata?.raiseCountThisRound) || 0;
     const canRaise = (player.stack ?? 0) > 0 && raiseCount < getRaiseCap(state) - 1;
-    const strongPat = cleanLow && highestRank <= D01_RAISE_HIGH_RANK;
-    const strongOneDraw = drawCount <= 1 && highestRank <= D01_PAT_HIGH_RANK;
+    const strongPat = cleanLow && highestRank <= this.drawHeuristic.raiseHighRank;
+    const strongOneDraw = drawCount <= 1 && highestRank <= this.drawHeuristic.patHighRank;
     const weakLateDraw = drawCount >= 3 && (state.drawRoundIndex ?? 0) >= 2;
 
     if (canRaise && (strongPat || (!facingBet && strongOneDraw))) {
@@ -648,7 +671,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
         seatIndex,
         type: currentBet > 0 ? "RAISE" : "BET",
         metadata: {
-          strategy: "ruleBasedD01",
+          strategy: this.cpuStrategy,
           drawCount,
           highestRank,
           raiseReason: strongPat ? "strongPat" : "strongOneDraw",
@@ -660,7 +683,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
         seatIndex,
         type: weakLateDraw ? "FOLD" : "CALL",
         metadata: {
-          strategy: "ruleBasedD01",
+          strategy: this.cpuStrategy,
           drawCount,
           highestRank,
           foldReason: weakLateDraw ? "weakLateDraw" : undefined,
@@ -671,7 +694,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
       seatIndex,
       type: "CHECK",
       metadata: {
-        strategy: "ruleBasedD01",
+        strategy: this.cpuStrategy,
         drawCount,
         highestRank,
       },

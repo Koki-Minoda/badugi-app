@@ -1,4 +1,5 @@
 import { BadugiEngine } from "../badugi/engine/BadugiEngine.js";
+import { AceToFiveTripleDrawEngine } from "../draw/AceToFiveTripleDrawEngine.js";
 import { DeuceToSevenTripleDrawEngine } from "../draw/DeuceToSevenTripleDrawEngine.js";
 
 const registry = new Map();
@@ -25,3 +26,4 @@ export function listEngines() {
 // Pre-register Badugi engine factory (logic migrating in Spec09)
 registerEngine("badugi", () => new BadugiEngine());
 registerEngine("deuce_to_seven_triple_draw", () => new DeuceToSevenTripleDrawEngine());
+registerEngine("ace_to_five_triple_draw", () => new AceToFiveTripleDrawEngine());

@@ -45,7 +45,7 @@ function buildHandResultSummary({ showdownSummary = [], totalPot = 0, handId = n
       name: winner.name,
       payout: winner.payout ?? 0,
       stack: winner.stackAfter,
-      handLabel: winner.handName ?? winner.handLabel ?? "2-7 Low",
+      handLabel: winner.handName ?? winner.handLabel ?? "Low",
       ranksLabel: winner.ranksLabel ?? "",
       hand: Array.isArray(winner.hand) ? [...winner.hand] : [],
       activeCards: Array.isArray(winner.activeCards) ? [...winner.activeCards] : [],
@@ -165,6 +165,14 @@ export class DeuceToSevenTripleDrawController extends GameController {
     this._handCounter = 0;
   }
 
+  get variantId() {
+    return this.engine?.variantId ?? "D01";
+  }
+
+  get gameId() {
+    return this.engine?.id ?? "deuce_to_seven_triple_draw";
+  }
+
   createInitialState(tableConfig = {}) {
     this.config = {
       ...this.config,
@@ -189,7 +197,7 @@ export class DeuceToSevenTripleDrawController extends GameController {
     };
     this.config = config;
     this._handCounter += 1;
-    const handId = options.handId ?? `d01-hand-${this._handCounter}`;
+    const handId = options.handId ?? `${String(this.variantId).toLowerCase()}-hand-${this._handCounter}`;
     const raw = this.engine.initHand({
       handId,
       seatConfig: config.seatConfig,
@@ -216,8 +224,8 @@ export class DeuceToSevenTripleDrawController extends GameController {
     const source = state?.engineState ?? state ?? this._lastState?.engineState ?? null;
     if (!source) {
       return {
-        gameId: "deuce_to_seven_triple_draw",
-        variantId: "D01",
+        gameId: this.gameId,
+        variantId: this.variantId,
         phase: "IDLE",
         street: "IDLE",
         drawRound: 0,
@@ -247,7 +255,7 @@ export class DeuceToSevenTripleDrawController extends GameController {
     return {
       ...cloned,
       gameId: cloned.gameId,
-      variantId: metadata.variantId ?? "D01",
+      variantId: metadata.variantId ?? this.variantId,
       phase: cloned.street,
       street: cloned.street,
       drawRound: cloned.drawRoundIndex ?? 0,

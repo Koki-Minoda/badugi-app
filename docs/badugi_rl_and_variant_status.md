@@ -960,12 +960,38 @@ D01 e2e hand-flow coverage:
 
 タスク:
 
-- [ ] `WG-04-01` `D01` と `D02` の差分仕様を 1 表にまとめる。
-- [ ] `WG-04-02` engine を variant param で切り替えるか、別 engine にするか決める。
+- [x] `WG-04-01` `D01` と `D02` の差分仕様を 1 表にまとめる。
+- [x] `WG-04-02` engine を variant param で切り替えるか、別 engine にするか決める。
   - 推奨: 共通 draw-lowball engine + evaluator param
-- [ ] `WG-04-03` showdown label と debug metadata を A-5 用に調整する。
-- [ ] `WG-04-04` CPU draw heuristic を A-5 向けに調整する。
-- [ ] `WG-04-05` `D02` 用の unit/e2e を追加する。
+- [x] `WG-04-03` showdown label と debug metadata を A-5 用に調整する。
+- [x] `WG-04-04` CPU draw heuristic を A-5 向けに調整する。
+- [x] `WG-04-05` `D02` 用の unit/e2e を追加する。
+
+D01 / D02 diff table:
+
+| Item | D01 2-7 Triple Draw | D02 A-5 Triple Draw |
+| --- | --- | --- |
+| Engine key | `deuce_to_seven_triple_draw` | `ace_to_five_triple_draw` |
+| Variant id | `D01` | `D02` |
+| Evaluator tag | `low-27` | `low-a5` |
+| Lowball rule | Ace high; straights / flushes are bad | Ace low; straights / flushes ignored |
+| Best wheel treatment | `A-2-3-4-5` is penalized as a straight | `A-2-3-4-5` is the best low |
+| Label prefix | `2-7 Low ...` | `A-5 Low ...` |
+| CPU strategy marker | `ruleBasedD01` | `ruleBasedD02` |
+
+D02 implementation notes:
+
+- `DeuceToSevenTripleDrawEngine` is now the configurable shared triple-draw lowball engine.
+- `AceToFiveTripleDrawEngine` is a thin variant wrapper that sets `variantId: "D02"`, `evaluatorTag: "low-a5"`, `lowType: "A5"`, and `gameId: "ace_to_five_triple_draw"`.
+- `AceToFiveTripleDrawController` reuses the D01 controller surface and supplies the D02 engine, avoiding `App.jsx` changes.
+- A-5 showdown labels use `A-5 Low 5-4-3-2-A` style output and preserve evaluator metadata ranks / penalty.
+- The D02 CPU heuristic treats ace as low and ignores straight / flush escape logic, so made wheels pat naturally.
+- D02 is registered in `src/games/core/engineRegistry.js` for future engine lookup.
+
+D02 test coverage:
+
+- `src/games/draw/__tests__/AceToFiveTripleDrawEngine.test.js` covers initialization, A-5 label / metadata, wheel-over-six showdown, and A-5 CPU pat decisions.
+- `src/games/draw/__tests__/AceToFiveTripleDrawE2E.test.js` covers full-hand completion and one-card draw-to-wheel improvement through the controller.
 
 完了条件:
 

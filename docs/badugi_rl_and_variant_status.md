@@ -887,7 +887,15 @@ AI / logging / replay タスク:
   - discard duplicate ranks and high cards, with straight / flush escape for made-but-bad lows
   - raise strong pat 7-low or better, call normal draws, and fold weak late 3-card draws facing a bet
 - D01 controller exposes `getCpuAction(state, seatIndex)` for future UI / simulation loops without changing the current Badugi CPU path.
-- [ ] `WG-03-18` replay と hand history 復元に必要な最低項目を定義する。
+- [x] `WG-03-18` replay と hand history 復元に必要な最低項目を定義する。
+- D01 replay minimum field contract is defined in `src/ui/utils/handHistoryReplayRequirements.js`.
+- Required D01 restoration fields:
+  - top level: `handId`, `variantId`, `variantName`, `seats`, `pots`
+  - seat: `seat`, `name`, `startStack`, `endStack`, `actions`
+  - draw action: `seq`, `street`, `type`, `drawCount`, `discarded`, `keptCards`, `replacedCards`
+  - final seat result: `handLabel`, `finalLowRanks` when a final hand is present
+  - pot winner: `seat`, `collect`, `handLabel`, `finalLowRanks`
+- `validateReplayReadyHandHistory(record, { variantId: "D01" })` reports missing replay fields before a D01 record is used by replay / restoration tooling.
 
 テストタスク:
 

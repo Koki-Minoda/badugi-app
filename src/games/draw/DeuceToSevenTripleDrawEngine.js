@@ -6,6 +6,9 @@ import { DeckManager } from "../badugi/utils/deck.js";
 import { evaluateLowHand, formatLowHandLabel } from "../evaluators/low.js";
 
 const DEFAULT_SEAT_CONFIG = ["HUMAN", "CPU", "CPU", "CPU", "CPU", "CPU"];
+const D01_PAT_HIGH_RANK = 8;
+const D01_RAISE_HIGH_RANK = 7;
+const D01_DRAW_KEEP_MAX_RANK = 9;
 
 function isEmptySeat(seatType) {
   return seatType === "EMPTY";
@@ -141,6 +144,88 @@ function getCurrentBet(state) {
 
 function normalizeActionType(action = {}) {
   return String(action.type ?? "").toUpperCase();
+}
+
+function parseRank(card) {
+  const match = String(card ?? "").trim().toUpperCase().match(/^(10|[2-9TJQKA])/);
+  if (!match) return Number.POSITIVE_INFINITY;
+  const value = match[1];
+  if (value === "A") return 14;
+  if (value === "K") return 13;
+  if (value === "Q") return 12;
+  if (value === "J") return 11;
+  if (value === "T" || value === "10") return 10;
+  return Number(value);
+}
+
+function parseSuit(card) {
+  const match = String(card ?? "").trim().toUpperCase().match(/[CDHS]$/);
+  return match ? match[0] : "";
+}
+
+function isCleanLowEvaluation(evaluation) {
+  return Boolean(evaluation?.isValid && (evaluation?.metadata?.penalty ?? 0) === 0);
+}
+
+function getHighestLowRank(evaluation) {
+  const ranks = evaluation?.metadata?.ranks;
+  return Array.isArray(ranks) && ranks.length ? ranks[0] : Number.POSITIVE_INFINITY;
+}
+
+function getDrawIndexesForD01(hand = [], evaluation = null) {
+  if (!Array.isArray(hand) || hand.length === 0) return [];
+  if (isCleanLowEvaluation(evaluation) && getHighestLowRank(evaluation) <= D01_PAT_HIGH_RANK) {
+    return [];
+  }
+
+  const rankCounts = new Map();
+  hand.forEach((card) => {
+    const rank = parseRank(card);
+    rankCounts.set(rank, (rankCounts.get(rank) ?? 0) + 1);
+  });
+  const suitCounts = new Map();
+  hand.forEach((card) => {
+    const suit = parseSuit(card);
+    if (suit) suitCounts.set(suit, (suitCounts.get(suit) ?? 0) + 1);
+  });
+  const isFlush = suitCounts.size === 1 && hand.length >= 5;
+  const sortedRanks = hand.map(parseRank).sort((a, b) => a - b);
+  const uniqueRanks = new Set(sortedRanks);
+  const isStraight =
+    uniqueRanks.size >= 5 &&
+    sortedRanks[sortedRanks.length - 1] - sortedRanks[0] === sortedRanks.length - 1;
+
+  const keptRanks = new Set();
+  const discardIndexes = [];
+  hand.forEach((card, index) => {
+    const rank = parseRank(card);
+    const duplicated = (rankCounts.get(rank) ?? 0) > 1;
+    const tooHigh = rank > D01_DRAW_KEEP_MAX_RANK;
+    if (duplicated && keptRanks.has(rank)) {
+      discardIndexes.push(index);
+      return;
+    }
+    if (tooHigh) {
+      discardIndexes.push(index);
+      return;
+    }
+    keptRanks.add(rank);
+  });
+
+  if ((isFlush || isStraight) && discardIndexes.length === 0) {
+    const highestIndex = hand.reduce((bestIndex, card, index) => {
+      return parseRank(card) > parseRank(hand[bestIndex]) ? index : bestIndex;
+    }, 0);
+    discardIndexes.push(highestIndex);
+  }
+
+  if (discardIndexes.length === 0 && !isCleanLowEvaluation(evaluation)) {
+    const highestIndex = hand.reduce((bestIndex, card, index) => {
+      return parseRank(card) > parseRank(hand[bestIndex]) ? index : bestIndex;
+    }, 0);
+    discardIndexes.push(highestIndex);
+  }
+  return [...new Set(discardIndexes)].sort((a, b) => a - b);
 }
 
 function hasBettingRoundCompleted(state) {
@@ -517,6 +602,79 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     return {
       ...evaluation,
       handName: formatLowHandLabel(evaluation, { lowType: "27" }),
+    };
+  }
+
+  chooseCpuAction(state, seatIndex = state?.actingPlayerIndex) {
+    const player = state?.players?.[seatIndex];
+    if (!state || typeof seatIndex !== "number" || !player || player.folded || player.sittingOut) {
+      return null;
+    }
+    if (state.actingPlayerIndex !== null && state.actingPlayerIndex !== seatIndex) {
+      return null;
+    }
+    const evaluation = this.evaluateShowdownHand(player.hand ?? []);
+    const drawIndexes = getDrawIndexesForD01(player.hand ?? [], evaluation);
+    const drawCount = drawIndexes.length;
+    const highestRank = getHighestLowRank(evaluation);
+    const cleanLow = isCleanLowEvaluation(evaluation);
+
+    if (state.street === "DRAW") {
+      return {
+        seatIndex,
+        type: "DRAW",
+        discardIndexes: drawIndexes,
+        metadata: {
+          strategy: "ruleBasedD01",
+          drawCount,
+          pat: drawCount === 0,
+          highestRank,
+        },
+      };
+    }
+
+    if (state.street !== "BET") return null;
+    const currentBet = getCurrentBet(state);
+    const playerBet = player.bet ?? 0;
+    const facingBet = currentBet > playerBet;
+    const raiseCount = Number(state.metadata?.raiseCountThisRound) || 0;
+    const canRaise = (player.stack ?? 0) > 0 && raiseCount < getRaiseCap(state) - 1;
+    const strongPat = cleanLow && highestRank <= D01_RAISE_HIGH_RANK;
+    const strongOneDraw = drawCount <= 1 && highestRank <= D01_PAT_HIGH_RANK;
+    const weakLateDraw = drawCount >= 3 && (state.drawRoundIndex ?? 0) >= 2;
+
+    if (canRaise && (strongPat || (!facingBet && strongOneDraw))) {
+      return {
+        seatIndex,
+        type: currentBet > 0 ? "RAISE" : "BET",
+        metadata: {
+          strategy: "ruleBasedD01",
+          drawCount,
+          highestRank,
+          raiseReason: strongPat ? "strongPat" : "strongOneDraw",
+        },
+      };
+    }
+    if (facingBet) {
+      return {
+        seatIndex,
+        type: weakLateDraw ? "FOLD" : "CALL",
+        metadata: {
+          strategy: "ruleBasedD01",
+          drawCount,
+          highestRank,
+          foldReason: weakLateDraw ? "weakLateDraw" : undefined,
+        },
+      };
+    }
+    return {
+      seatIndex,
+      type: "CHECK",
+      metadata: {
+        strategy: "ruleBasedD01",
+        drawCount,
+        highestRank,
+      },
     };
   }
 

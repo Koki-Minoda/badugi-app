@@ -878,10 +878,15 @@ AI / logging / replay タスク:
   - final low ranks
 - `appendHandHistoryAction(...)` preserves draw metadata as `drawCount`, `discarded`, `keptCards`, and `replacedCards` when `recordActionToLog(...)` supplies normalized `drawInfo`.
 - Final D01 seats and pot winners include `handLabel` and `finalLowRanks`, which are enough for replay / hand history result restoration.
-- [ ] `WG-03-17` rule-based CPU の暫定戦略を入れる。
+- [x] `WG-03-17` rule-based CPU の暫定戦略を入れる。
   - pat threshold
   - draw count heuristic
   - raise heuristic
+- D01 engine exposes `chooseCpuAction(state, seatIndex)` with a temporary rule-based strategy:
+  - pat on clean 8-low or better
+  - discard duplicate ranks and high cards, with straight / flush escape for made-but-bad lows
+  - raise strong pat 7-low or better, call normal draws, and fold weak late 3-card draws facing a bet
+- D01 controller exposes `getCpuAction(state, seatIndex)` for future UI / simulation loops without changing the current Badugi CPU path.
 - [ ] `WG-03-18` replay と hand history 復元に必要な最低項目を定義する。
 
 テストタスク:

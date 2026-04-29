@@ -272,6 +272,14 @@ export class DeuceToSevenTripleDrawController extends GameController {
     return deriveLegalActions(engineState ?? {}, seatIndex);
   }
 
+  getCpuAction(state = {}, seatIndex = null) {
+    const engineState = state?.engineState ?? this._lastState?.engineState ?? state;
+    const targetSeat = typeof seatIndex === "number" ? seatIndex : engineState?.actingPlayerIndex;
+    const player = engineState?.players?.[targetSeat];
+    if (!player?.isCPU) return null;
+    return this.engine.chooseCpuAction(engineState, targetSeat);
+  }
+
   applyAction(state = {}, action = {}) {
     const engineState = cloneState(state?.engineState ?? this._lastState?.engineState ?? {});
     const normalizedAction = normalizeAction(action);

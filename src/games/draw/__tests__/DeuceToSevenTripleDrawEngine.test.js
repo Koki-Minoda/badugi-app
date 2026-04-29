@@ -78,6 +78,73 @@ describe("DeuceToSevenTripleDrawEngine", () => {
     expect(result.metadata.ranks).toEqual([7, 5, 4, 3, 2]);
   });
 
+  it("chooses pat for made 8-low CPU draw decisions", () => {
+    const engine = new DeuceToSevenTripleDrawEngine();
+    const state = engine.transitionToDraw(
+      engine.initHand({ seatConfig: ["HUMAN", "CPU"], dealerIndex: 0 }),
+      1,
+    );
+    state.actingPlayerIndex = 1;
+    state.players[1].hand = ["8S", "7D", "5C", "3H", "2S"];
+
+    const action = engine.chooseCpuAction(state, 1);
+
+    expect(action).toMatchObject({
+      seatIndex: 1,
+      type: "DRAW",
+      discardIndexes: [],
+      metadata: { strategy: "ruleBasedD01", pat: true, drawCount: 0 },
+    });
+  });
+
+  it("uses a lowball draw-count heuristic for weak CPU hands", () => {
+    const engine = new DeuceToSevenTripleDrawEngine();
+    const state = engine.transitionToDraw(
+      engine.initHand({ seatConfig: ["HUMAN", "CPU"], dealerIndex: 0 }),
+      1,
+    );
+    state.actingPlayerIndex = 1;
+    state.players[1].hand = ["2S", "2H", "9C", "KD", "QS"];
+
+    const action = engine.chooseCpuAction(state, 1);
+
+    expect(action).toMatchObject({
+      seatIndex: 1,
+      type: "DRAW",
+      discardIndexes: [1, 3, 4],
+      metadata: { strategy: "ruleBasedD01", drawCount: 3 },
+    });
+  });
+
+  it("raises strong pat lows and folds weak late draws facing a bet", () => {
+    const engine = new DeuceToSevenTripleDrawEngine();
+    const state = engine.applyForcedBets(
+      engine.initHand({
+        seatConfig: ["HUMAN", "CPU"],
+        startingStack: 500,
+        dealerIndex: 0,
+        structure: { sb: 10, bb: 20 },
+      }),
+    );
+    state.actingPlayerIndex = 1;
+    state.players[1].hand = ["7S", "5D", "4C", "3H", "2S"];
+
+    expect(engine.chooseCpuAction(state, 1)).toMatchObject({
+      seatIndex: 1,
+      type: "RAISE",
+      metadata: { raiseReason: "strongPat" },
+    });
+
+    state.metadata.raiseCountThisRound = 3;
+    state.drawRoundIndex = 2;
+    state.players[1].hand = ["2S", "2H", "QC", "KD", "JS"];
+    expect(engine.chooseCpuAction(state, 1)).toMatchObject({
+      seatIndex: 1,
+      type: "FOLD",
+      metadata: { foldReason: "weakLateDraw" },
+    });
+  });
+
   it("advances from an opening bet round into draw round 1", () => {
     const engine = new DeuceToSevenTripleDrawEngine({
       deckManager: new FakeDeckManager([

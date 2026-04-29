@@ -72,6 +72,22 @@ describe("DeuceToSevenTripleDrawController", () => {
     ]);
   });
 
+  it("exposes the D01 rule-based CPU action through the controller", () => {
+    const controller = buildController([
+      "2S", "3S", "4S", "5S", "7S",
+      "2H", "3H", "4H", "5H", "8H",
+    ]);
+    const state = controller.createNewHandState(controller.createInitialState());
+    state.engineState.players[1].hand = ["7S", "5D", "4C", "3H", "2S"];
+
+    expect(controller.getCpuAction(state, 1)).toMatchObject({
+      seatIndex: 1,
+      type: "RAISE",
+      metadata: { strategy: "ruleBasedD01", raiseReason: "strongPat" },
+    });
+    expect(controller.getCpuAction(state, 0)).toBeNull();
+  });
+
   it("applies betting actions and emits a bet-round completion event", () => {
     const controller = buildController([
       "2S", "3S", "4S", "5S", "7S",

@@ -1508,7 +1508,7 @@ Draw RL test coverage:
     - [x] `LINT-C03` custom hand injection: `applyDeckSnapshot` 依存を整理し、showdown / hand-history 注入テストを付ける。
     - [x] `LINT-C04` showdown callback: `goShowdownNow` の最新参照を ref 化し、`resolveHandImmediately` との deps を整理する。
     - [x] `LINT-C05` tournament start / hydration: `buildTournamentEntrants` / deck / HUD hydration deps を整理し、MTT smoke を付ける。
-    - [ ] `LINT-D01` debug-only effects: `debugLog` / `phaseTagLocal` を ref または guarded helper に寄せ、挙動差分を出さない。
+    - [x] `LINT-D01` debug-only effects: `debugLog` / `phaseTagLocal` を ref または guarded helper に寄せ、挙動差分を出さない。
     - [ ] `LINT-D02` E2E driver helper: `drawSelected` / tournament HUD deps を整理し、authenticated Playwright smoke を付ける。
     - [ ] `LINT-D03` NPC action timer: turn progression deps を整理し、Badugi flow Playwright を付ける。
     - 2026-04-30 確認: `LINT-A01` - `LINT-A03` 対応後、repository-wide lint は `0 errors / 16 warnings`。
@@ -1520,6 +1520,7 @@ Draw RL test coverage:
     - 2026-04-30 確認: `LINT-C03` 対応後、App hook warning は `12` から `11` へ減少。Vitest 3 files / 51 tests、`npm run build`、Badugi Playwright 16 tests は通過。
     - 2026-04-30 確認: `LINT-C04` 対応後、App hook warning は `11` から `10` へ減少。Vitest 3 files / 51 tests、`npm run build`、Badugi Playwright 16 tests は通過。全体実行時に競合していた E2E forced fold log は `__forceInstant` 経路に限定して安定化。
     - 2026-04-30 確認: `LINT-C05` 対応後、App hook warning は `10` から `8` へ減少。Vitest 2 files / 24 tests、`npm run build`、MTT Playwright 2 tests、Badugi fold Playwright 4 tests は通過。Badugi / D01 の fixed-limit raise cap と、hero fold 後の追加行動防止 / folded winner 除外を確認。
+    - 2026-04-30 確認: `LINT-D01` 対応後、App hook warning は `8` から `3` へ減少。Vitest 2 files / 6 tests、`npm run build`、authenticated Playwright 1 test は通過。debug-only log と controller sync phaseTag は ref 経由にし、effect の実行条件は変更しない。
 - [ ] `OP-12` D01 / D02 / S01 / S02 を Badugi と同等の browser smoke 対象に引き上げる。
   - [x] engine / controller / controller e2e が各 draw variant で通ることを確認。
   - [x] 5-card draw snapshot を UI table props に変換する `DrawLowballUIAdapter` を追加。

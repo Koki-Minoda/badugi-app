@@ -1911,6 +1911,8 @@ const SAFE_RESET_PHASE = "IDLE";
   function debugLog(...args) {
     if (debugMode) console.log(...args);
   }
+  const debugLogRef = useRef(() => {});
+  debugLogRef.current = debugLog;
 
   const raiseCountRef = useRef(raiseCountThisRound);
   useEffect(() => {
@@ -2366,6 +2368,8 @@ const SAFE_RESET_PHASE = "IDLE";
     if (currentPhase === "DRAW") return `DRAW#${drawRoundSrc + 1}`;
     return "SHOWDOWN";
   }
+  const phaseTagLocalRef = useRef(() => "SHOWDOWN");
+  phaseTagLocalRef.current = phaseTagLocal;
 
   function logState(tag, snap = playersSrc) {
     if (!debugMode) return;
@@ -4218,7 +4222,10 @@ const SAFE_RESET_PHASE = "IDLE";
     if (autoModeInitRef.current) return;
     if (initialModeRef.current === "tournament-mtt") {
       autoModeInitRef.current = true;
-      debugLog("[MODE]", { source: "url-param", requestedMode: "tournament-mtt" });
+      debugLogRef.current("[MODE]", {
+        source: "url-param",
+        requestedMode: "tournament-mtt",
+      });
       startTournamentMTT(DEFAULT_STORE_TOURNAMENT_CONFIG);
       setCurrentScreen("gameTournament");
     }
@@ -5237,7 +5244,7 @@ const SAFE_RESET_PHASE = "IDLE";
   }, [resetInitialButtonState]);
 
   useEffect(() => {
-    debugLog(
+    debugLogRef.current(
       `[STATE] phase=${phase}, drawRound=${drawRound}, turn=${turn}, currentBet=${currentBet}`
     );
   }, [phase, drawRound, turn, currentBet]);
@@ -5245,7 +5252,7 @@ const SAFE_RESET_PHASE = "IDLE";
   useEffect(() => {
     if (!gameControllerRef.current) return;
     if (typeof gameControllerRef.current.syncExternalState !== "function") return;
-    const phaseTag = phaseTagLocal();
+    const phaseTag = phaseTagLocalRef.current();
     gameControllerRef.current.syncExternalState({
       players: playersRef.current ?? players,
       dealerIdx,
@@ -7500,7 +7507,7 @@ const SAFE_RESET_PHASE = "IDLE";
 
   useEffect(() => {
     if (!isActionPhase) return;
-    debugLog("[HERO][TURN_FLAGS]", {
+    debugLogRef.current("[HERO][TURN_FLAGS]", {
       phase: controlsPhase,
       heroSeatIndex,
       controllerTurn,
@@ -7530,7 +7537,7 @@ const SAFE_RESET_PHASE = "IDLE";
 
   useEffect(() => {
     if (controlsPhase !== "BET" && controlsPhase !== "DRAW") return;
-    debugLog("[TURN_SYNC]", {
+    debugLogRef.current("[TURN_SYNC]", {
       phase: controlsPhase,
       controllerTurn,
       heroSeatIndex,

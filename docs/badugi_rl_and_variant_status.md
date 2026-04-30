@@ -1507,14 +1507,19 @@ Draw RL test coverage:
       - public room / invite link / reconnect / timeout / result sync は後続の P2P-03 以降で段階実装する。
     - [x] `P2P-02` server session model と persistence 方針を設計する。
       - `docs/p2p-session-model.md` に runtime state / DB-backed target tables / conflict rules / current implementation status を固定。
-    - [ ] `P2P-03` client state sync と conflict resolution を実装する。
+    - [x] `P2P-03` client state sync と conflict resolution を実装する。
       - [x] `P2P-03a` frontend room API util と Friend Match create/join 導線を `/api/rooms` へ接続する。
       - [x] `P2P-03b` join by room code と WebSocket receive loop を UI state に接続する。
       - [x] `P2P-03c` sequenceId による stale event discard / reconnect replay を実装する。
         - Friend Match preview は最新 `sequenceId` より古いイベントを破棄し、`history` event を replay entry として展開する。
-      - [ ] `P2P-03d` WebSocket event を実ゲーム table state へ接続する。
+      - [x] `P2P-03d` WebSocket event を実ゲーム table state へ接続する。
+        - 2026-05-01 更新: Friend Match 画面で `room_state` / `updated_state` / `secure_deal` / `showdown` を live table state に反映し、phase / pot / handId / player stack / bet / ready / folded / showdown winner を表示する。
+        - `Ready` / `Call` / `Draw` / `Fold` を WebSocket `reaction` / `action` として送信できるようにし、P2P専用画面内で同期状態を操作できる。
+        - server 側は duplicate reconnect join を安全に扱い、room metadata の `startingStack` を初期 stack に反映する。
     - [ ] `P2P-04` Badugi 2人対戦 smoke: login -> room -> ready -> hand -> draw -> showdown -> next hand。
+      - 2026-05-01 部分完了: `src/server/tests/test_p2p_sync.py` で room -> ready -> hand -> draw -> showdown -> next hand の WebSocket server smoke を追加。認証付きブラウザ2画面 smoke は未実施。
     - [ ] `P2P-05` disconnect / reconnect / browser refresh の復帰 smoke を追加する。
+      - 2026-05-01 部分完了: WebSocket reconnect 後に recent history が replay され、直前 action を復元できる server smoke を追加。browser refresh で UI が復帰する実ブラウザ smoke は未実施。
   - CPU 対戦後フォローアップ:
     - history / replay / EV estimator / feature extraction の基盤はある。
     - CPU 戦終了後にミスプレイ候補を自動抽出し、振り返り画面へ誘導する UX は未完成。

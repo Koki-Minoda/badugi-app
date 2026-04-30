@@ -57,6 +57,83 @@ function normalizeRoomEvent(entry) {
   return [entry];
 }
 
+const EMPTY_TABLE_STATE = {
+  phase: "waiting",
+  handId: null,
+  players: [],
+  playerStates: [],
+  pot: 0,
+  bets: {},
+  stacks: {},
+  lastAction: null,
+  secureDeals: [],
+  showdown: null,
+};
+
+function mergePlayerStates(players = [], playerStates = [], stacks = {}, bets = {}) {
+  const byId = new Map(playerStates.map((player) => [player.id, player]));
+  return players.map((playerId) => {
+    const state = byId.get(playerId) ?? {};
+    return {
+      id: playerId,
+      displayName: state.displayName ?? playerId,
+      ready: Boolean(state.ready),
+      stack: Number(stacks[playerId] ?? state.stack ?? 0),
+      bet: Number(bets[playerId] ?? state.bet ?? 0),
+      folded: Boolean(state.folded),
+    };
+  });
+}
+
+function applyRoomEventToTableState(current, entry) {
+  const payload = entry?.payload ?? {};
+  if (entry?.event === "room_state") {
+    const players = payload.players ?? current.players;
+    return {
+      ...current,
+      roomId: payload.roomId ?? current.roomId,
+      phase: payload.phase ?? current.phase,
+      handId: payload.handId ?? current.handId,
+      players,
+      playerStates: mergePlayerStates(players, payload.playerStates, current.stacks, current.bets),
+      warnings: payload.warnings ?? current.warnings,
+      showdown: payload.phase === "playing" ? null : current.showdown,
+    };
+  }
+  if (entry?.event === "updated_state") {
+    const players = current.players.length > 0 ? current.players : Object.keys(payload.stacks ?? {});
+    return {
+      ...current,
+      phase: payload.phase ?? current.phase,
+      handId: payload.handId ?? current.handId,
+      pot: Number(payload.pot ?? current.pot ?? 0),
+      bets: payload.bets ?? current.bets,
+      stacks: payload.stacks ?? current.stacks,
+      lastAction: payload.lastAction ?? current.lastAction,
+      players,
+      playerStates: mergePlayerStates(players, current.playerStates, payload.stacks, payload.bets),
+    };
+  }
+  if (entry?.event === "secure_deal") {
+    return {
+      ...current,
+      handId: payload.handId ?? current.handId,
+      secureDeals: payload.cards ?? [],
+      showdown: null,
+    };
+  }
+  if (entry?.event === "showdown") {
+    return {
+      ...current,
+      phase: "showdown",
+      handId: payload.handId ?? current.handId,
+      pot: Number(payload.pot ?? current.pot ?? 0),
+      showdown: payload,
+    };
+  }
+  return current;
+}
+
 export default function FriendMatchSetupScreen() {
   const navigate = useNavigate();
   const enabledVariants = useMemo(() => getEnabledVariants(), []);
@@ -73,6 +150,7 @@ export default function FriendMatchSetupScreen() {
   const [isJoining, setIsJoining] = useState(false);
   const [syncStatus, setSyncStatus] = useState("idle");
   const [roomEvents, setRoomEvents] = useState([]);
+  const [p2pTableState, setP2pTableState] = useState(EMPTY_TABLE_STATE);
   const [latestSequenceId, setLatestSequenceId] = useState(0);
   const [staleEventCount, setStaleEventCount] = useState(0);
   const socketRef = useRef(null);
@@ -85,6 +163,14 @@ export default function FriendMatchSetupScreen() {
 
     setSyncStatus("connecting");
     setRoomEvents([]);
+    setP2pTableState({
+      ...EMPTY_TABLE_STATE,
+      roomId: createdRoom.roomId,
+      phase: createdRoom.phase ?? "waiting",
+      handId: createdRoom.handId ?? null,
+      players: createdRoom.players ?? [],
+      playerStates: mergePlayerStates(createdRoom.players ?? [], [], {}, {}),
+    });
     setLatestSequenceId(0);
     setStaleEventCount(0);
     latestSequenceRef.current = 0;
@@ -130,6 +216,9 @@ export default function FriendMatchSetupScreen() {
         setStaleEventCount((count) => count + staleCount);
       }
       if (accepted.length > 0) {
+        setP2pTableState((current) =>
+          accepted.reduce((nextState, entry) => applyRoomEventToTableState(nextState, entry), current),
+        );
         setRoomEvents((prev) => [...accepted.reverse(), ...prev].slice(0, 8));
       }
     });
@@ -223,6 +312,33 @@ export default function FriendMatchSetupScreen() {
 
   const handleBackToMenu = () => {
     navigate("/menu");
+  };
+
+  const sendRoomMessage = (event, payload) => {
+    const socket = socketRef.current;
+    const openState = typeof WebSocket !== "undefined" && WebSocket.OPEN ? WebSocket.OPEN : 1;
+    if (!socket || socket.readyState !== openState) {
+      setStatusMessage("Room socket is not connected yet.");
+      return;
+    }
+    socket.send(JSON.stringify({ event, payload }));
+  };
+
+  const sendReady = () => {
+    if (!createdRoom?.ownerId) return;
+    sendRoomMessage("reaction", {
+      playerId: createdRoom.ownerId,
+      type: "ready",
+    });
+  };
+
+  const sendAction = (type, amount = 0) => {
+    if (!createdRoom?.ownerId) return;
+    sendRoomMessage("action", {
+      playerId: createdRoom.ownerId,
+      type,
+      amount,
+    });
   };
 
   return (
@@ -397,15 +513,6 @@ export default function FriendMatchSetupScreen() {
           </div>
         </form>
 
-        <section className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300 space-y-2">
-          <p>Next live-match work:</p>
-          <ul className="list-disc pl-5 space-y-1">
-            <li>Join by room code and synchronize the table screen.</li>
-            <li>Reconnect to an existing room after refresh.</li>
-            <li>Broadcast showdown and next-hand state to both players.</li>
-          </ul>
-        </section>
-
         {createdRoom && (
           <section className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300 space-y-3">
             <div className="flex items-center justify-between gap-3">
@@ -421,6 +528,80 @@ export default function FriendMatchSetupScreen() {
               <div className="rounded-2xl border border-white/10 bg-slate-950/60 px-3 py-2">
                 Stale ignored: {staleEventCount}
               </div>
+            </div>
+            <div className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-4 text-emerald-50">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.25em] text-emerald-300">
+                    Live Table State
+                  </p>
+                  <p className="text-lg font-semibold text-white">
+                    {p2pTableState.phase.toUpperCase()} / Pot {p2pTableState.pot}
+                  </p>
+                  {p2pTableState.handId ? (
+                    <p className="text-xs text-emerald-100/70">Hand {p2pTableState.handId}</p>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={sendReady}
+                    className="rounded-xl border border-emerald-300/60 px-3 py-2 text-xs font-semibold text-emerald-50 hover:bg-emerald-300/10"
+                  >
+                    Ready
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => sendAction("call", bigBlind)}
+                    className="rounded-xl border border-sky-300/60 px-3 py-2 text-xs font-semibold text-sky-50 hover:bg-sky-300/10"
+                  >
+                    Call {bigBlind}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => sendAction("draw", 0)}
+                    className="rounded-xl border border-amber-300/60 px-3 py-2 text-xs font-semibold text-amber-50 hover:bg-amber-300/10"
+                  >
+                    Draw
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => sendAction("fold", 0)}
+                    className="rounded-xl border border-rose-300/60 px-3 py-2 text-xs font-semibold text-rose-50 hover:bg-rose-300/10"
+                  >
+                    Fold
+                  </button>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-2 md:grid-cols-2">
+                {p2pTableState.playerStates.length === 0 ? (
+                  <p className="text-sm text-emerald-100/70">Waiting for players...</p>
+                ) : (
+                  p2pTableState.playerStates.map((player) => (
+                    <div
+                      key={player.id}
+                      className="rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <strong className="text-white">{player.displayName}</strong>
+                        <span className="text-xs text-emerald-100/70">
+                          {player.ready ? "ready" : "not ready"}
+                          {player.folded ? " / folded" : ""}
+                        </span>
+                      </div>
+                      <p className="text-xs text-emerald-100/70">
+                        Stack {player.stack} / Bet {player.bet}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+              {p2pTableState.showdown ? (
+                <p className="mt-3 rounded-xl border border-yellow-300/40 bg-yellow-300/10 px-3 py-2 text-yellow-100">
+                  Showdown winner: {p2pTableState.showdown.winner ?? "none"} / Pot{" "}
+                  {p2pTableState.showdown.pot ?? 0}
+                </p>
+              ) : null}
             </div>
             <div className="space-y-2">
               {roomEvents.length === 0 ? (

@@ -119,6 +119,7 @@ describe("FriendMatchSetupScreen", () => {
       constructor(url) {
         this.url = url;
         this.listeners = {};
+        this.readyState = 1;
         this.send = vi.fn();
         this.close = vi.fn();
         sockets.push(this);
@@ -151,11 +152,81 @@ describe("FriendMatchSetupScreen", () => {
     expect(sockets[0].send).toHaveBeenCalledWith(expect.stringContaining("join_room"));
   });
 
+  it("projects websocket events into live table state and sends player actions", async () => {
+    const sockets = [];
+    class MockWebSocket {
+      constructor() {
+        this.listeners = {};
+        this.readyState = 1;
+        this.send = vi.fn();
+        this.close = vi.fn();
+        sockets.push(this);
+      }
+
+      addEventListener(type, handler) {
+        this.listeners[type] = handler;
+      }
+    }
+    globalThis.WebSocket = MockWebSocket;
+
+    render(<FriendMatchSetupScreen />);
+    fireEvent.click(screen.getByRole("button", { name: /create room/i }));
+    expect(await screen.findByText(/room created/i)).toBeTruthy();
+
+    await act(async () => {
+      sockets[0].listeners.open();
+      sockets[0].listeners.message({
+        data: JSON.stringify({
+          event: "room_state",
+          payload: {
+            roomId: "room-test",
+            phase: "playing",
+            sequenceId: 2,
+            handId: "hand-1",
+            players: ["local-player", "guest-player"],
+            playerStates: [
+              { id: "local-player", displayName: "Host", ready: true, stack: 1980, bet: 20 },
+              { id: "guest-player", displayName: "Guest", ready: false, stack: 2000, bet: 0 },
+            ],
+          },
+        }),
+      });
+      sockets[0].listeners.message({
+        data: JSON.stringify({
+          event: "updated_state",
+          payload: {
+            sequenceId: 3,
+            handId: "hand-1",
+            phase: "draw",
+            pot: 40,
+            stacks: { "local-player": 1980, "guest-player": 1980 },
+            bets: { "local-player": 20, "guest-player": 20 },
+            lastAction: { playerId: "guest-player", action: "call", amount: 20 },
+          },
+        }),
+      });
+    });
+
+    expect(screen.getByText(/DRAW \/ Pot 40/i)).toBeTruthy();
+    expect(screen.getByText("Host")).toBeTruthy();
+    expect(screen.getByText("Guest")).toBeTruthy();
+    expect(screen.getAllByText(/Stack 1980 \/ Bet 20/i)).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole("button", { name: /^ready$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^draw$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^fold$/i }));
+
+    expect(sockets[0].send).toHaveBeenCalledWith(expect.stringContaining('"event":"reaction"'));
+    expect(sockets[0].send).toHaveBeenCalledWith(expect.stringContaining('"type":"draw"'));
+    expect(sockets[0].send).toHaveBeenCalledWith(expect.stringContaining('"type":"fold"'));
+  });
+
   it("ignores stale sequence events and expands history replay entries", async () => {
     const sockets = [];
     class MockWebSocket {
       constructor() {
         this.listeners = {};
+        this.readyState = 1;
         this.send = vi.fn();
         this.close = vi.fn();
         sockets.push(this);

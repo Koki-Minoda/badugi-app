@@ -1428,6 +1428,58 @@ Draw RL test coverage:
   - nginx / backend / frontend の reverse proxy 経路で確認する。
   - local TestClient smoke is verified by `backend/tests/test_variants_api.py` and `backend/tests/test_badugi_rl.py`.
   - production reverse proxy は稼働環境で別途確認する。
+- [ ] `QA-08` Badugi を完了扱いにするための最終テストを実施する。
+  - 目的: 自動テスト上は主要導線が通っているため、最後は運用目線の実機 / 長時間 / 回帰確認で完了判定する。
+  - 完了条件:
+    - Desktop Chrome 実ブラウザで login -> ring game -> 5 hands 以上を連続プレイできる。
+    - 5 hands 内で bet / call / raise / fold / draw selected / pat / showdown / next hand を最低 1 回ずつ確認する。
+    - hero fold 後に追加操作ができないこと、folded player が winner にならないことを確認する。
+    - fixed-limit raise cap 到達後に追加 raise / bet が出ない、または押しても無効であることを確認する。
+    - hand result overlay、hand history、next hand 後の folded / selected / lastAction reset を確認する。
+    - Mobile Safari または Android Chrome 実機 landscape でカードが隠れず、select -> Draw Selected / pat / overlay / next hand ができる。
+    - portrait では orientation gate が出て、対応ブラウザでは landscape lock を試行し、非対応環境では手動回転案内に落ちる。
+    - 確認結果を `docs/bugs/badugi_browser_mobile_bug_tracker.md` に pass / fail と端末情報付きで記録する。
+  - 完了後:
+    - Badugi は本文書上で `manual QA complete` として扱う。
+    - 未修正の実機 bug がある場合は Badugi 完了扱いにせず、bug tracker の修正タスクを優先する。
+- [ ] `QA-09` D01 / D02 / S01 / S02 を Badugi と同等レベルの自動テスト対象に引き上げる。
+  - 目的: 2-7 だけでなく A-5 / single draw も、Badugi と同じ観点で壊れていないことを担保する。
+  - 対象:
+    - `D01` 2-7 Triple Draw
+    - `D02` A-5 Triple Draw
+    - `S01` 2-7 Single Draw
+    - `S02` A-5 Single Draw
+  - 必須自動テスト観点:
+    - title -> auth -> variant picker -> ring game 起動。
+    - URL alias 起動。
+    - bet / call / raise / fold の action progression。
+    - raise cap 到達後の追加 bet / raise 抑止。
+    - hero fold 後の追加操作抑止、folded winner 除外。
+    - draw selected / pat / max discard count。
+    - D01 / D02 は 3 draw round、S01 / S02 は 1 draw round で showdown へ進む。
+    - D01 / S01 は 2-7 low label、D02 / S02 は A-5 low label が result / history に出る。
+    - hand result -> next hand 後に selected / folded / lastAction が reset される。
+    - mobile landscape で 5-card hand が footer に隠れず、select -> Draw Selected ができる。
+  - 必須確認コマンド:
+    - `npm test -- --run src/games/draw`
+    - `npm test -- --run src/ui/game/draw src/ui/game/__tests__/appVariantRouting.test.js`
+    - `npx playwright test tests/e2e/draw-lowball-app-smoke.spec.ts --project=badugi-flow`
+    - `npx playwright test tests/e2e/mobile-app-smoke.spec.ts --project=badugi-flow`
+  - 完了後:
+    - `D01` / `D02` / `S01` / `S02` の catalog status を `wip` から上げるかは、実機 smoke と hand history / replay の完了後に判断する。
+- [ ] `QA-10` CPU 強さ / P2P / CPU対戦後フォローアップの未完成範囲を実装タスクへ分解する。
+  - CPU 強さ:
+    - tier config / policy routing / model routing / ONNX adapter は実装済み。
+    - production `.onnx` asset が未配置のため、現状は fallback / rule-based / tier parameter 主体。
+    - 次タスクは production model 配置、model checksum、実戦 smoke、tier ごとの挙動差確認。
+  - P2P:
+    - data capture / export / sync / security test の部品はある。
+    - player-facing lobby / match session / realtime turn sync / reconnect / result sync は未完成。
+    - 次タスクは MVP 仕様、server session model、client state sync、P2P smoke の順で切る。
+  - CPU 対戦後フォローアップ:
+    - history / replay / EV estimator / feature extraction の基盤はある。
+    - CPU 戦終了後にミスプレイ候補を自動抽出し、振り返り画面へ誘導する UX は未完成。
+    - 次タスクは post-match summary、EV delta threshold、draw mistake detection、action suggestion、ReplayScreen link の順で切る。
 
 ## 12.2 Playwright / Auth / Operational QA
 
@@ -1552,6 +1604,11 @@ Draw RL test coverage:
     - D01 mobile landscape で `player-0-card-4` が viewport 内に収まり、card select / Draw Selected が通る。
     - portrait は game 開始後に orientation gate を表示する現仕様を確認。
   - 注意: 2026-04-30 時点で headless desktop / mobile emulation smoke は通過。実スマホ / 実機ブラウザ手動確認は OP-10 / QA-05 の残件。
+  - 残件:
+    - D01 / D02 / S01 / S02 それぞれで fold / folded winner 除外 / raise cap / next hand reset を Badugi と同等に Playwright で固定する。
+    - D02 / S02 の A-5 label と low metadata を App result / history 経由で確認する。
+    - D01 / D02 / S01 / S02 の mobile landscape smoke を、D01 代表確認から全 variant 代表確認へ広げる。
+    - hand history / replay で `variantId`、final low ranks、pot winners が復元できることを確認する。
 - [x] `OP-13` draw family の App 接続を段階実装する。
   - 目的:
     - D01 / D02 / S01 / S02 を Badugi と同じ「Title -> Auth -> Menu -> Ring game -> action -> draw -> result」導線で検証できる状態にする。

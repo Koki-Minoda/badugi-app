@@ -1490,6 +1490,10 @@ Draw RL test coverage:
     - [x] `AI-02` Badugi の App CPU DRAW を `policyRouter` に接続し、deadCards 優先で交換 index を選ぶ。
     - [x] `AI-03` `drawAggression` の符号を整理し、強い tier が不要な overdraw をしないようにする。
     - [ ] `AI-04` production `.onnx` asset を配置し、model registry の checksum / version と一致させる。
+      - 2026-05-01 更新: `src/config/ai/modelRegistry.json` に `version` / `checksumSha256` / `productionRequired` を追加し、Badugi Pro / Iron / WorldMaster を production-required として明示。
+      - 2026-05-01 更新: `scripts/verifyAiModelAssets.mjs` と `npm run ai:verify-models` を追加。実 `.onnx` 配置後は SHA-256 と registry checksum が一致しない限り失敗する。
+      - 2026-05-01 更新: repo には実 `.onnx` asset が未供給のため、AI-04 は未完了。ローカル fallback smoke は `npm run ai:verify-models -- --allow-missing` で不足を記録しつつ通す。
+      - 完了に必要な外部入力: `public/models/badugi_pro_v1.onnx` / `badugi_iron_v1.onnx` / `badugi_worldmaster_v1.onnx` と各 SHA-256 checksum。
     - [x] `AI-05` ONNX unavailable 時の fallback smoke と、ONNX available 時の推論 smoke を分けて記録する。
       - `src/ai/__tests__/onnxFallbackSmoke.test.js` は missing ONNX session -> `policy-router` -> deterministic-safe の fallback 順を確認。
       - `src/ai/__tests__/onnxPolicyAdapterInference.test.js` は mock ONNX session available 時の推論 decode を確認。

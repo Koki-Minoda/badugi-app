@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:scrape": "python -m tests.scraping.runner smoke",
-    "variants:export": "node --experimental-json-modules scripts/exportVariants.mjs"
+    "variants:export": "node --experimental-json-modules scripts/exportVariants.mjs",
+    "ai:verify-models": "node scripts/verifyAiModelAssets.mjs"
   },
   "dependencies": {
     "onnxruntime-web": "^1.18.0",

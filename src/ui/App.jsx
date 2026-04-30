@@ -565,6 +565,48 @@ export default function App() {
     }),
     [titleSettings]
   );
+  const buildPlayersFromSeatTypes = useCallback(
+    (seatConfig, stackValue = DEFAULT_STARTING_STACK, profile = heroProfile) =>
+      seatConfig.map((seatType, idx) => {
+        const isHuman = seatType === "HUMAN";
+        const isEmpty = seatType === "EMPTY";
+        const heroName = profile?.name ?? "You";
+        const heroPlayerId =
+          authUserIdRef.current != null
+            ? `user-${authUserIdRef.current}`
+            : "hero";
+        const playerId = isHuman
+          ? heroPlayerId
+          : isEmpty
+          ? `empty-${idx}`
+          : `cpu-${idx + 1}`;
+        return {
+          playerId,
+          name: isHuman ? heroName : `CPU ${idx + 1}`,
+          seatType,
+          isCPU: !isHuman && !isEmpty,
+          hand: [],
+          folded: isEmpty,
+          hasFolded: isEmpty,
+          allIn: false,
+          isBusted: isEmpty,
+          hasActedThisRound: false,
+          seatOut: isEmpty,
+          stack: isEmpty ? 0 : stackValue,
+          betThisRound: 0,
+          selected: [],
+          showHand: isHuman,
+          lastAction: "",
+          hasDrawn: false,
+          lastDrawCount: 0,
+          titleBadge: isHuman ? profile?.titleBadge ?? "" : "",
+          avatar: isHuman ? profile?.avatar ?? "default_avatar" : undefined,
+          tournamentPlayerId: null,
+          tournamentSeatIndex: null,
+        };
+      }),
+    [heroProfile],
+  );
   useEffect(() => {
     function handleTitleUpdate() {
       setTitleSettings(loadTitleSettings());
@@ -2246,16 +2288,18 @@ const SAFE_RESET_PHASE = "IDLE";
   const sbIndex = (d = dealerSeatSrc) => (d + 1) % NUM_PLAYERS; // SB
   const orderFromSB = (d = dealerSeatSrc) =>
     Array.from({ length: NUM_PLAYERS }, (_, k) => (sbIndex(d) + k) % NUM_PLAYERS);
-  const findNextDrawActorSeat = (snap, startIdx = null) => {
+  const findNextDrawActorSeat = useCallback((snap, startIdx = null) => {
     if (!Array.isArray(snap) || snap.length === 0) return null;
     const base =
       typeof startIdx === "number"
         ? startIdx
-        : sbIndex();
+        : (dealerSeatSrc + 1) % NUM_PLAYERS;
     const seat = findNextDrawActorSeatHelper(snap, base);
-    debugLog("[DRAW][NEXT_ACTOR]", { base, seat });
+    if (debugMode) {
+      console.log("[DRAW][NEXT_ACTOR]", { base, seat });
+    }
     return typeof seat === "number" ? seat : null;
-  };
+  }, [dealerSeatSrc, debugMode, NUM_PLAYERS]);
 
   function shiftAggressorsAfterFold(snap, foldIdx) {
     if (!Array.isArray(snap) || typeof foldIdx !== "number") return;
@@ -2429,7 +2473,7 @@ const SAFE_RESET_PHASE = "IDLE";
         setCurrentScreen(navigateTo);
       }
     },
-    [heroProfile, setCurrentScreen],
+    [buildPlayersFromSeatTypes, heroProfile, setCurrentScreen],
   );
 
   const handleFatalTableError = useCallback(
@@ -2443,6 +2487,11 @@ const SAFE_RESET_PHASE = "IDLE";
     [resetTableStateToSafeDefaults],
   );
 
+  const findNextDrawActorSeatRef = useRef(findNextDrawActorSeat);
+  findNextDrawActorSeatRef.current = findNextDrawActorSeat;
+  const forceFinishRoundRef = useRef(forceFinishRound);
+  forceFinishRoundRef.current = forceFinishRound;
+
   useEffect(() => {
     if (phase !== "BET" && phase !== "DRAW") return;
     if (transitioningRef.current || transitioning) return;
@@ -2451,7 +2500,7 @@ const SAFE_RESET_PHASE = "IDLE";
     if (seatCount === 0) return;
     if (!Number.isInteger(turn) || turn < 0 || turn >= seatCount) {
       if (phase === "DRAW") {
-        const drawFallback = findNextDrawActorSeat(roster);
+        const drawFallback = findNextDrawActorSeatRef.current(roster);
         if (typeof drawFallback === "number") {
           setTurn(drawFallback);
           return;
@@ -2463,7 +2512,7 @@ const SAFE_RESET_PHASE = "IDLE";
           return;
         }
       }
-      const handled = forceFinishRound({
+      const handled = forceFinishRoundRef.current({
         reason: "acting-seat-out-of-range",
         phaseOverride: phase,
         playersSnapshot: roster,
@@ -2479,7 +2528,6 @@ const SAFE_RESET_PHASE = "IDLE";
     dealerIdx,
     transitioning,
     handleFatalTableError,
-    forceFinishRound,
   ]);
   function emitE2EActionTrace(entry, playerSnapshot) {
     if (!e2eLogEnabledRef.current) return;
@@ -3234,47 +3282,6 @@ const SAFE_RESET_PHASE = "IDLE";
           }
         : player
     );
-  }
-
-  function buildPlayersFromSeatTypes(seatConfig, stackValue = DEFAULT_STARTING_STACK, profile = heroProfile) {
-    return seatConfig.map((seatType, idx) => {
-      const isHuman = seatType === "HUMAN";
-      const isEmpty = seatType === "EMPTY";
-      const heroName = profile?.name ?? "You";
-      const heroPlayerId =
-        authUserIdRef.current != null
-          ? `user-${authUserIdRef.current}`
-          : "hero";
-      const playerId = isHuman
-        ? heroPlayerId
-        : isEmpty
-        ? `empty-${idx}`
-        : `cpu-${idx + 1}`;
-      return {
-        playerId,
-        name: isHuman ? heroName : `CPU ${idx + 1}`,
-        seatType,
-        isCPU: !isHuman && !isEmpty,
-        hand: [],
-      folded: isEmpty,
-      hasFolded: isEmpty,
-        allIn: false,
-        isBusted: isEmpty,
-        hasActedThisRound: false,
-        seatOut: isEmpty,
-        stack: isEmpty ? 0 : stackValue,
-        betThisRound: 0,
-        selected: [],
-        showHand: isHuman,
-        lastAction: "",
-        hasDrawn: false,
-        lastDrawCount: 0,
-        titleBadge: isHuman ? profile?.titleBadge ?? "" : "",
-        avatar: isHuman ? profile?.avatar ?? "default_avatar" : undefined,
-        tournamentPlayerId: null,
-        tournamentSeatIndex: null,
-      };
-    });
   }
 
   function canContinueGame(snapshot) {

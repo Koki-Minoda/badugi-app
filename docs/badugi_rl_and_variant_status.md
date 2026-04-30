@@ -1497,6 +1497,22 @@ Draw RL test coverage:
     - MixedGameContext の provider API 関数を `useCallback` 化し、hook deps warning を解消。
     - repository-wide lint は `0 errors / 20 warnings` で exit 0。残りは App.jsx の hook deps のみ。
     - 確認: 関連 Vitest 7 files / 72 tests、`npm run build`、`tests/e2e/authenticated-game-smoke.spec.ts --project=badugi-flow` は通過。
+  - 残り 20 warning の分割対応計画:
+    - [x] `LINT-A01` controller snapshot memo: 不要 deps を削除し、controller ref 由来 snapshot を毎 render 安全に読む形へ寄せる。
+    - [x] `LINT-A02` seat label memo: `positionName` 依存を純粋 helper 化して seatViews / seatLabels の deps を安定させる。
+    - [x] `LINT-A03` console capture: `formatConsole` 依存を ref 化し、console hook を再登録せず最新 phase context を記録する。
+    - [ ] `LINT-B01` safe reset callback: `buildPlayersFromSeatTypes` 依存を追加または stable helper 化する。
+    - [ ] `LINT-B02` acting-seat guard: `findNextDrawActorSeat` 依存を stable 化する。
+    - [ ] `LINT-C01` auto CPU draw callback: draw / deck / logging / sync helper deps を整理し、DRAW 進行の regression を付ける。
+    - [ ] `LINT-C02` forced bet callback: bet action log / controller sync deps を整理し、BET action smoke を付ける。
+    - [ ] `LINT-C03` custom hand injection: `applyDeckSnapshot` 依存を整理し、showdown / hand-history 注入テストを付ける。
+    - [ ] `LINT-C04` showdown callback: `goShowdownNow` を `useCallback` 化し、`resolveHandImmediately` との deps を整理する。
+    - [ ] `LINT-C05` tournament start / hydration: `buildTournamentEntrants` / deck / HUD hydration deps を整理し、MTT smoke を付ける。
+    - [ ] `LINT-D01` debug-only effects: `debugLog` / `phaseTagLocal` を ref または guarded helper に寄せ、挙動差分を出さない。
+    - [ ] `LINT-D02` E2E driver helper: `drawSelected` / tournament HUD deps を整理し、authenticated Playwright smoke を付ける。
+    - [ ] `LINT-D03` NPC action timer: turn progression deps を整理し、Badugi flow Playwright を付ける。
+    - 2026-04-30 確認: `LINT-A01` - `LINT-A03` 対応後、repository-wide lint は `0 errors / 16 warnings`。
+    - 2026-04-30 確認: Vitest 4 files / 57 tests、`npm run build`、`tests/e2e/authenticated-game-smoke.spec.ts --project=badugi-flow` は通過。
 - [ ] `OP-12` D01 / D02 / S01 / S02 を Badugi と同等の browser smoke 対象に引き上げる。
   - [x] engine / controller / controller e2e が各 draw variant で通ることを確認。
   - [x] 5-card draw snapshot を UI table props に変換する `DrawLowballUIAdapter` を追加。

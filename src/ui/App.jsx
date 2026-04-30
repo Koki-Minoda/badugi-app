@@ -165,6 +165,11 @@ const DEFAULT_GAME_VARIANT = "badugi";
 const DESKTOP_CANVAS_BASE_WIDTH = 1600;
 const DESKTOP_CANVAS_BASE_HEIGHT = 900;
 const HERO_TOURNAMENT_PLAYER_ID = "hero-player";
+function getPositionName(index, dealer, seatCount = 6) {
+  const order = ["BTN", "SB", "BB", "UTG", "MP", "CO"];
+  const rel = (index - dealer + seatCount) % seatCount;
+  return order[rel] ?? `Seat${index}`;
+}
 const DEFAULT_STORE_TOURNAMENT_CONFIG = {
   id: "store-mtt",
   name: "Store Tournament",
@@ -717,7 +722,7 @@ const SAFE_RESET_PHASE = "IDLE";
       MAX_DRAWS,
     ]
   );
-  const controllerSnapshot = useMemo(() => {
+  const controllerSnapshot = (() => {
     const controller = gameControllerRef.current;
     if (!controller) return null;
     try {
@@ -732,19 +737,7 @@ const SAFE_RESET_PHASE = "IDLE";
       console.warn("[UI-ADAPTER] controller snapshot failed", err);
       return null;
     }
-  }, [
-    players,
-    dealerIdx,
-    blindLevelIndex,
-    handsInLevel,
-    betHead,
-    lastAggressor,
-    currentBet,
-    phase,
-    drawRound,
-    turn,
-    betRoundIndex,
-  ]);
+  })();
   const adapterViewProps = useMemo(() => {
     const adapter = uiAdapterRef.current;
     if (!adapter || !controllerSnapshot) return null;
@@ -1089,7 +1082,7 @@ const SAFE_RESET_PHASE = "IDLE";
         playerId,
         stats,
         seatIndex: idx,
-        label: positionName(idx, dealerSeatSrc),
+        label: getPositionName(idx, dealerSeatSrc, NUM_PLAYERS),
         isDealer: idx === dealerSeatSrc,
         isSB: seatCount ? idx === ((dealerSeatSrc + 1) % seatCount) : false,
         isBB: seatCount ? idx === ((dealerSeatSrc + 2) % seatCount) : false,
@@ -1142,7 +1135,12 @@ const SAFE_RESET_PHASE = "IDLE";
   const seatLabels = useMemo(
     () =>
       seatViews.map((seat, idx) =>
-        seat?.label ?? positionName(typeof seat?.seatIndex === "number" ? seat.seatIndex : idx, dealerSeatSrc)
+        seat?.label ??
+          getPositionName(
+            typeof seat?.seatIndex === "number" ? seat.seatIndex : idx,
+            dealerSeatSrc,
+            NUM_PLAYERS
+          )
       ),
     [seatViews, dealerSeatSrc]
   );
@@ -1731,6 +1729,12 @@ const SAFE_RESET_PHASE = "IDLE";
   const e2eDriverApiRef = useRef({});
 
   const consoleLogBuffer = useRef([]);
+  const consoleContextRef = useRef({
+    phase: phaseSrc,
+    drawRound: drawRoundSrc,
+    betRoundIndex: betRoundIndexSrc,
+    turn: turnSeatSrc,
+  });
   const e2eLogEnabledRef = useRef(false);
   const recentE2eActionIdsRef = useRef(new Set());
   const recentE2eActionQueueRef = useRef([]);
@@ -1821,21 +1825,37 @@ const SAFE_RESET_PHASE = "IDLE";
   }, [phase, drawRound, betRoundIndex, turn, dealerIdx]);
 
   useEffect(() => {
+    consoleContextRef.current = {
+      phase: phaseSrc,
+      drawRound: drawRoundSrc,
+      betRoundIndex: betRoundIndexSrc,
+      turn: turnSeatSrc,
+    };
+  }, [phaseSrc, drawRoundSrc, betRoundIndexSrc, turnSeatSrc]);
+
+  useEffect(() => {
     const original = {
       log: console.log,
       warn: console.warn,
       error: console.error,
     };
+    const formatConsoleEntry = (level, args) => {
+      const context = consoleContextRef.current;
+      const payload = args
+        .map((arg) => (typeof arg === "object" ? JSON.stringify(arg) : `${arg}`))
+        .join(" ");
+      return `[${level}] phase=${context.phase} drawRound=${context.drawRound} betRound=${context.betRoundIndex} turn=${context.turn} ${payload}`;
+    };
     console.log = (...args) => {
-      consoleLogBuffer.current.push(formatConsole("LOG", args));
+      consoleLogBuffer.current.push(formatConsoleEntry("LOG", args));
       original.log(...args);
     };
     console.warn = (...args) => {
-      consoleLogBuffer.current.push(formatConsole("WARN", args));
+      consoleLogBuffer.current.push(formatConsoleEntry("WARN", args));
       original.warn(...args);
     };
     console.error = (...args) => {
-      consoleLogBuffer.current.push(formatConsole("ERROR", args));
+      consoleLogBuffer.current.push(formatConsoleEntry("ERROR", args));
       original.error(...args);
     };
     return () => {
@@ -2211,13 +2231,6 @@ const SAFE_RESET_PHASE = "IDLE";
     };
   }
 
-  function formatConsole(level, args) {
-    const payload = args
-      .map((arg) => (typeof arg === "object" ? JSON.stringify(arg) : `${arg}`))
-      .join(" ");
-    return `[${level}] phase=${phaseSrc} drawRound=${drawRoundSrc} betRound=${betRoundIndexSrc} turn=${turnSeatSrc} ${payload}`;
-  }
-
   function setPlayerSnapshot(snap) {
     const normalized = Array.isArray(snap)
       ? snap.map(clonePlayerState).filter(Boolean)
@@ -2227,9 +2240,7 @@ const SAFE_RESET_PHASE = "IDLE";
   }
 
   function positionName(index, dealer = dealerSeatSrc) {
-    const order = ["BTN", "SB", "BB", "UTG", "MP", "CO"];
-    const rel = (index - dealer + NUM_PLAYERS) % NUM_PLAYERS;
-    return order[rel] ?? `Seat${index}`;
+    return getPositionName(index, dealer, NUM_PLAYERS);
   }
   
   const sbIndex = (d = dealerSeatSrc) => (d + 1) % NUM_PLAYERS; // SB
@@ -2461,7 +2472,15 @@ const SAFE_RESET_PHASE = "IDLE";
         handleFatalTableError("acting-seat-out-of-range", { phase, turn, seatCount });
       }
     }
-  }, [phase, turn, players, dealerIdx, transitioning, handleFatalTableError, forceFinishRound]);
+  }, [
+    phase,
+    turn,
+    players,
+    dealerIdx,
+    transitioning,
+    handleFatalTableError,
+    forceFinishRound,
+  ]);
   function emitE2EActionTrace(entry, playerSnapshot) {
     if (!e2eLogEnabledRef.current) return;
     const seatIdx = typeof entry.seat === "number" ? entry.seat : null;

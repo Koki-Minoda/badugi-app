@@ -120,6 +120,7 @@ export default function GameLayoutBase({
     handResultSummary,
     onNextHand,
     nextHandLabel,
+    onReplayTarget,
     mode,
     heroBustOverlayVisible,
     heroBustSummary,
@@ -579,8 +580,9 @@ export default function GameLayoutBase({
       <HandResultOverlay
         visible={handResultVisible}
         summary={handResultSummary}
-        onNextHand={onNextHand}
-        nextHandLabel={nextHandLabel}
+        onNext={onNextHand}
+        buttonLabel={nextHandLabel}
+        onReplayTarget={onReplayTarget}
       />
       <HeroBustOverlay
         visible={heroBustOverlayVisible}

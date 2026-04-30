@@ -129,7 +129,7 @@ export function appendHandHistoryAction({
     : Array.isArray(drawInfo?.replacedCards)
     ? drawInfo.replacedCards.length
     : undefined;
-  seatEntry.actions.push({
+  const action = {
     seq: ++seqCounter,
     street: normalizedStreet,
     type: normalizedType,
@@ -144,7 +144,9 @@ export function appendHandHistoryAction({
     timestamp: Date.now(),
     metadata: metadata ? clone(metadata) : undefined,
     userId: userId ?? currentRecord?.userId ?? null,
-  });
+  };
+  seatEntry.actions.push(action);
+  return action;
 }
 
 export function updateHandHistorySeat(seat, updates = {}) {

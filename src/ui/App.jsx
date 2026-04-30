@@ -18,6 +18,7 @@ import {
   finalizeHandHistoryRecord,
   resetHandHistoryRecord,
 } from "./utils/handHistory";
+import { buildPostMatchFollowUpSummary } from "../games/badugi/analysis/followUpAnalyzer.js";
 
 import {
   nextAliveFrom,
@@ -336,6 +337,7 @@ export default function App() {
   const [debugScale, setDebugScale] = useState(null);
   const [authIsAuthenticated, setAuthIsAuthenticated] = useState(null);
   const [replayHandId, setReplayHandId] = useState(null);
+  const [replayTarget, setReplayTarget] = useState(null);
   const isTournament = mode === "tournament-mtt";
   const initialVariantIdRef = useRef(getRequestedVariantIdFromURL());
   const [gameVariant, setGameVariant] = useState(() => initialVariantIdRef.current);
@@ -2921,6 +2923,7 @@ const SAFE_RESET_PHASE = "IDLE";
     betRound: resolvedBetRound,
     ts: Date.now(),
   };
+  let historyAction = null;
   if (idx !== null && currentHandHistoryRef.current) {
     const historyType = normalizeHandHistoryType(type);
     const amountDelta = Math.max(0, (resolvedBetAfter ?? 0) - (resolvedBetBefore ?? 0));
@@ -2930,8 +2933,27 @@ const SAFE_RESET_PHASE = "IDLE";
       sourcePlayers?.[idx]?.totalInvested ??
       resolvedBetAfter ??
       0;
-    const historyMetadata = normalizedDrawInfo ? { drawInfo: normalizedDrawInfo } : undefined;
-    appendHandHistoryAction({
+    const betInfo =
+      normalizedDrawInfo
+        ? null
+        : {
+            before: Array.isArray(seatSnapshot?.hand)
+              ? [...seatSnapshot.hand]
+              : Array.isArray(playerState?.hand)
+              ? [...playerState.hand]
+              : undefined,
+            toCall: resolvedToCall ?? 0,
+            raiseCountTable: Number.isFinite(raiseCountTable) ? raiseCountTable : 0,
+            capReached: Number.isFinite(raiseCountTable) ? raiseCountTable >= 4 : false,
+            canRaise:
+              Number.isFinite(raiseCountTable) &&
+              raiseCountTable < 4 &&
+              (seatSnapshot?.allIn ?? playerState?.allIn) !== true,
+          };
+    const historyMetadata = normalizedDrawInfo
+      ? { drawInfo: normalizedDrawInfo }
+      : { betInfo };
+    historyAction = appendHandHistoryAction({
       seat: idx,
       street: phaseLabel,
       type: historyType,
@@ -2949,6 +2971,7 @@ const SAFE_RESET_PHASE = "IDLE";
       appendCanonicalHandEvent({
         type: "DRAW_ACTION",
         seat: idx,
+        actionSeq: historyAction?.seq ?? null,
         discarded: Array.isArray(normalizedDrawInfo.drawIndexes)
           ? normalizedDrawInfo.drawIndexes.filter((val) => Number.isInteger(val))
           : [],
@@ -2960,6 +2983,7 @@ const SAFE_RESET_PHASE = "IDLE";
         type: "BET_ACTION",
         seat: idx,
         action: normalizedType,
+        actionSeq: historyAction?.seq ?? null,
         amount: amountDelta,
       });
     }
@@ -4396,10 +4420,11 @@ const SAFE_RESET_PHASE = "IDLE";
 
   const handleCloseHandHistoryScreen = useCallback(() => {
     setReplayHandId(null);
+    setReplayTarget(null);
     setCurrentScreen("menu");
   }, []);
 
-  const handleOpenReplayFromHistory = useCallback((handId) => {
+  const handleOpenReplayFromHistory = useCallback((handId, target = null) => {
     if (!handId) return;
     const snapshot = findHandHistoryById(handId);
     if (!snapshot) {
@@ -4407,8 +4432,18 @@ const SAFE_RESET_PHASE = "IDLE";
       return;
     }
     setReplayHandId(handId);
+    setReplayTarget(target);
     setCurrentScreen("handReplay");
   }, []);
+
+  const handleOpenReplayTarget = useCallback(
+    (target = null) => {
+      const handId = target?.handId ?? replayHandId;
+      if (!handId) return;
+      handleOpenReplayFromHistory(handId, target);
+    },
+    [handleOpenReplayFromHistory, replayHandId],
+  );
 
   const handleBackFromReplayToHistory = useCallback(() => {
     setCurrentScreen("handHistory");
@@ -4416,6 +4451,7 @@ const SAFE_RESET_PHASE = "IDLE";
 
   const handleExitReplayToMenu = useCallback(() => {
     setReplayHandId(null);
+    setReplayTarget(null);
     setCurrentScreen("menu");
   }, []);
 
@@ -6323,6 +6359,25 @@ const SAFE_RESET_PHASE = "IDLE";
       legacySnapshot = cloneHandHistory(finalizedRecord);
       if (legacySnapshot) {
         console.log("[HAND_HISTORY]", JSON.stringify(legacySnapshot));
+        const followUpSummary = buildPostMatchFollowUpSummary(legacySnapshot);
+        if (!isTournament && followUpSummary.issueCount > 0) {
+          const summaryWithFollowUp = {
+            ...summaryWithContext,
+            followUpSummary,
+          };
+          setHandResultSummary((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  followUpSummary,
+                }
+              : prev,
+          );
+          updateShowdown({
+            handResultVisible: true,
+            handResultSummary: summaryWithFollowUp,
+          });
+        }
         if (isSingleTableDrawLowball) {
           saveRLHandHistory(legacySnapshot);
           const sendId = legacySnapshot.handId ?? legacySnapshot.hand_id ?? legacySnapshot.id;
@@ -7898,6 +7953,7 @@ const SAFE_RESET_PHASE = "IDLE";
       <>
         <ReplayScreen
           handId={replayHandId}
+          target={replayTarget}
           onBack={handleBackFromReplayToHistory}
           onClose={handleExitReplayToMenu}
         />
@@ -8004,6 +8060,7 @@ const SAFE_RESET_PHASE = "IDLE";
       sessionSnapshot?.overlays?.handResult?.summary ?? handResultSummary,
     onNextHand: startNextHand,
     nextHandLabel,
+    onReplayTarget: handleOpenReplayTarget,
     mode,
     heroBustOverlayVisible,
     heroBustSummary,

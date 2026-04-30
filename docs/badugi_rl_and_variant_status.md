@@ -1514,7 +1514,8 @@ Draw RL test coverage:
       - `analyzeBadugiDrawMistakes(...)` と `buildPostMatchFollowUpSummary(...)` を追加。
     - [x] `FOLLOW-04` BET mistake detection: weak call / missed value raise / unnecessary bluff / cap 到達時の誤操作。
       - `analyzeBadugiBetMistakes()` で `metadata.betInfo` の hand / toCall / canRaise / cap 情報から weak call、missed value raise、unnecessary bluff、cap 到達後の攻撃を検出する。
-    - [ ] `FOLLOW-05` ReplayScreen へ該当 hand / street / action に直接戻る link を追加する。
+    - [x] `FOLLOW-05` ReplayScreen へ該当 hand / street / action に直接戻る link を追加する。
+      - hand history action の `seq` を canonical replay event の `actionSeq` として保持し、Hand Result の Follow-up から該当フレームへジャンプできる。
 
 ## 12.2 Playwright / Auth / Operational QA
 

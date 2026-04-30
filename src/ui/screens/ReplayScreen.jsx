@@ -10,6 +10,7 @@ import {
   findHandHistoryById,
   getHandHistoryBufferSnapshot,
 } from "../state/handHistoryStore.js";
+import { findReplayFrameIndex } from "./replayFrameUtils.js";
 
 function formatTimestamp(ts) {
   if (!Number.isFinite(ts)) return "–";
@@ -27,9 +28,13 @@ function eventToLabel(event = {}) {
     case "BLINDS_POSTED":
       return `Blinds · SB ${event.sbSeat}(${event.sbAmount}) · BB ${event.bbSeat}(${event.bbAmount})`;
     case "BET_ACTION":
-      return `Seat ${event.seat} ${event.action} Δ${event.amount}`;
+      return `Seat ${event.seat} ${event.action} Δ${event.amount}${
+        event.actionSeq ? ` · #${event.actionSeq}` : ""
+      }`;
     case "DRAW_ACTION":
-      return `Seat ${event.seat} draw discarding ${(event.discarded ?? []).join(", ") || "—"}`;
+      return `Seat ${event.seat} draw discarding ${(event.discarded ?? []).join(", ") || "—"}${
+        event.actionSeq ? ` · #${event.actionSeq}` : ""
+      }`;
     case "PHASE_TRANSITION":
       return `${event.from ?? "?"} → ${event.to ?? "?"}`;
     case "SHOWDOWN":
@@ -248,7 +253,12 @@ function ReplayTableView({ frame, flashSeat = null, hoverSeat = null }) {
   );
 }
 
-export default function ReplayScreen({ handId = null, onClose = () => {}, onBack = () => {} }) {
+export default function ReplayScreen({
+  handId = null,
+  target = null,
+  onClose = () => {},
+  onBack = () => {},
+}) {
   const [handSnapshot, setHandSnapshot] = useState(() =>
     handId ? findHandHistoryById(handId) ?? null : null,
   );
@@ -386,6 +396,16 @@ export default function ReplayScreen({ handId = null, onClose = () => {}, onBack
       return Number.isFinite(normalized) ? normalized : 0;
     });
   }, [maxFrameIndex]);
+
+  useEffect(() => {
+    const targetIndex = findReplayFrameIndex(frames, target);
+    if (targetIndex < 0) return;
+    setFrameIndex(targetIndex);
+    const seat = getSeatFromFrameEvent(frames[targetIndex]);
+    if (seat != null) {
+      triggerSeatFlash(seat);
+    }
+  }, [frames, target, triggerSeatFlash]);
 
   const goToIndex = useCallback(
     (next) => {

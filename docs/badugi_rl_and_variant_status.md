@@ -1411,6 +1411,7 @@ Draw RL test coverage:
   - Badugi は `badugi-flow` / authenticated smoke / MTT smoke の Playwright 自動確認済み。
   - D01 / D02 / S01 / S02 は engine / controller / Vitest e2e までは確認済みだが、2026-04-30 時点の App route / menu は `badugi` / `nlh` のみを有効化しているため、実ブラウザ UI smoke は未接続。
   - D01 / D02 / S01 / S02 用の `DrawLowballUIAdapter` と adapter registry alias を追加し、5-card draw snapshot を table props へ変換できることを確認済み。
+  - 2026-04-30 更新: `?variant=D01` / `?variant=D02` の App routing から ring game を起動し、5-card 表示、BET進行、DRAW control、カード選択、Draw Selected 実行まで Playwright smoke 済み。
   - Desktop Chrome: ring game 5 hand 以上。
   - Mobile Safari または Android Chrome: portrait / landscape で discard、pat、overlay、hand result を確認。
   - 結果は `docs/bugs/badugi_browser_mobile_bug_tracker.md` または別 QA 記録へ残す。
@@ -1462,16 +1463,65 @@ Draw RL test coverage:
   - [x] 5-card draw snapshot を UI table props に変換する `DrawLowballUIAdapter` を追加。
   - [x] D01 / D02 / S01 / S02 と engine key alias を `GameUIAdapterRegistry` に登録できる helper を追加。
   - [x] `DrawLowballUIAdapter` が D01 / D02 / S01 / S02 snapshot の phase、seat、pot、HUD、controls を構築できることを Vitest で確認。
-  - [ ] `src/ui/game/variants.js` の enabled variant と App URL variant detection に draw family を安全に追加する。
-  - [ ] `App.jsx` の `isSingleTableBadugi` 前提を draw family 用の controller session path へ広げる。
-  - [ ] D01 / D02 の Playwright smoke を追加する。
-    - title -> auth -> menu -> variant select -> ring game
-    - bet / call / raise / fold
+  - [x] App URL variant detection に draw family alias を追加する。
+    - `D01` / `27td` -> `deuce_to_seven_triple_draw`
+    - `D02` / `a5td` -> `ace_to_five_triple_draw`
+    - `S01` / `27sd` -> `deuce_to_seven_single_draw`
+    - `S02` / `a5sd` -> `ace_to_five_single_draw`
+  - [x] App の controller session path に D01 / D02 の最小接続を追加する。
+    - draw controller snapshot を session / table props 正本にする。
+    - draw controller 管理 variant では Badugi deck integrity check を誤適用しない。
+    - NPC BET / DRAW は draw controller の `getCpuAction` / `applyAction` を通す。
+  - [x] D01 / D02 の Playwright smoke を追加する。
+    - title -> auth -> URL alias -> menu -> ring game
+    - bet / call / raise の進行
     - 5-card selection -> Draw Selected / pat
-    - hand result / next hand / hand history
+    - hand result / next hand / hand history は継続確認対象
   - [ ] S01 / S02 の Playwright smoke を追加する。
+  - [ ] `src/ui/game/variants.js` の enabled variant と Main Menu variant selection に draw family を安全に追加する。
   - [ ] mobile portrait / landscape で 5-card hand と footer overlap を確認する。
-  - 注意: 2026-04-30 時点で App は `badugi` / `nlh` のみを実ブラウザ entry として扱う。D01 / D02 を表示だけ enabled にするとゲーム導線が壊れるため、App controller path と Playwright を同じ章で進める。
+  - 注意: 2026-04-30 時点で D01 / D02 は URL query entry の smoke 済み。Main Menu variant picker からの選択導線は未接続。
+- [ ] `OP-13` draw family の App 接続を段階実装する。
+  - 目的:
+    - D01 / D02 / S01 / S02 を Badugi と同じ「Title -> Auth -> Menu -> Ring game -> action -> draw -> result」導線で検証できる状態にする。
+    - Badugi / MTT / RL API の既存挙動を壊さず、App.jsx の変更は最小単位に分ける。
+  - 実装順:
+    1. [x] App variant routing helper を追加する。
+       - `badugi` / `nlh` / `deuce_to_seven_triple_draw` / `ace_to_five_triple_draw` / `deuce_to_seven_single_draw` / `ace_to_five_single_draw` を正規 ID とする。
+       - `D01` / `D02` / `S01` / `S02` / `27td` / `a5td` / `27sd` / `a5sd` の alias を正規 ID に変換する。
+       - URL query、menu selection、Playwright helper が同じ normalize 関数を使えるようにする。
+    2. [x] App の controller 生成を variant catalog へ寄せる。
+       - `badugi` は既存 Badugi session controller のまま。
+       - `nlh` は既存 NLH controller のまま。
+       - draw family は `src/games/core/variants.js` の `controllerFactory` を使う。
+       - controller snapshot は `getSnapshot()` または `getUiSnapshot()` のどちらでも読めるようにする。
+    3. [x] draw family の新ハンド開始を controller snapshot 正本にする。
+       - 5枚手札、blind、pot、turn、currentBet は draw controller snapshot から App session へ反映する。
+       - App deck manager と draw engine deck manager の二重管理を避ける。接続初期は draw controller 側を正本にし、Badugi の deck integrity check を draw family に誤適用しない。
+    4. [x] hero BET / CHECK / CALL / RAISE / FOLD / DRAW を draw controller に通す。
+       - draw action は `discardIndexes` を渡す。
+       - Badugi 既存の `afterBetActionWithSnapshot` fallback を draw family に誤適用しない。
+       - controller snapshot から App state、session state、engine snapshot を同期する。
+    5. [x] NPC action loop を draw controller に通す。
+       - `getCpuAction(state, seatIndex)` が返す action を使う。
+       - action deadlock を避けるため、turn と phase の待機条件を Playwright で確認する。
+    6. [ ] variant modal で D01 / D02 を enabled にする。
+       - S01 / S02 は D01 / D02 smoke 後に enabled 化する。
+       - 表示だけ enabled にする変更は禁止。controller path と同じ commit で有効化する。
+    7. [x] Playwright smoke を追加する。
+       - D01: login -> URL alias -> ring -> call/check -> draw/pat。
+       - D02: login -> URL alias -> ring -> call/check -> draw/pat。
+       - 失敗時は phase、turn、variant、handId、console log を取得する。
+       - Menu variant selection、result / next hand / hand history は OP-12 残件として継続。
+  - 受け入れ条件:
+    - Badugi Playwright `badugi-flow` / authenticated smoke / MTT smoke が継続して通る。
+    - D01 / D02 の controller Vitest と App接続テストが通る。
+    - D01 / D02 Playwright smoke が headless Chromium で通る。
+    - `npm run build` が通る。
+  - 今回の最初の実装単位:
+    - routing helper と alias 正規化。
+    - App URL / menu selection の normalize 適用。
+    - draw controller snapshot を UI adapter に渡せる入口の整備。
 
 ## 13. ひとことで言うと
 

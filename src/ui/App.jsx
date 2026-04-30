@@ -2939,7 +2939,10 @@ const SAFE_RESET_PHASE = "IDLE";
     afterBetActionWithSnapshot,
     currentBetRoundIndex,
     emitE2EActionTrace,
+    ensureSeatCanAct,
+    evaluateBadugi,
     logAction,
+    logE2ESkip,
     recordActionToLog,
     shiftAggressorsAfterFold,
     syncLegacyFromControllerSnapshot,
@@ -7043,8 +7046,11 @@ const SAFE_RESET_PHASE = "IDLE";
 
   /* --- NPC auto --- */
   useEffect(() => {
-    if (!players || players.length === 0) return;
-    const seatCount = players.length;
+    const activePlayers = playersRef.current ?? [];
+    if (!Array.isArray(activePlayers) || activePlayers.length === 0) return;
+    const betHelpers = forcedBetHelpersRef.current;
+    const drawHelpers = autoDrawHelpersRef.current;
+    const seatCount = activePlayers.length;
 
     if (
       typeof turn !== "number" ||
@@ -7053,18 +7059,18 @@ const SAFE_RESET_PHASE = "IDLE";
       turn >= seatCount
     ) {
       if (phase === "DRAW") {
-        const drawFallback = findNextDrawActorSeat(players);
+        const drawFallback = drawHelpers.findNextDrawActorSeat?.(activePlayers) ?? null;
         if (drawFallback === null) {
-          forceFinishRound({
+          forceFinishRoundRef.current({
             reason: "draw-invalid-turn",
             phaseOverride: "DRAW",
-            playersSnapshot: players,
+            playersSnapshot: activePlayers,
           });
         } else {
           setTurn(drawFallback);
         }
       } else {
-        const nextBetSeat = firstBetterAfterBlinds(players, dealerIdx);
+        const nextBetSeat = firstBetterAfterBlinds(activePlayers, dealerIdx);
         setTurn(nextBetSeat);
       }
       return;
@@ -7080,26 +7086,26 @@ const SAFE_RESET_PHASE = "IDLE";
     }
     if (turn === 0) return;
 
-    const p = players[turn];
+    const p = activePlayers[turn];
     if (!p || isFoldedOrOut(p)) {
-      logE2ESkip(turn, "folded_or_out");
-      const nxt = nextAliveFrom(players, turn);
+      betHelpers.logE2ESkip?.(turn, "folded_or_out");
+      const nxt = nextAliveFrom(activePlayers, turn);
       if (nxt !== null) setTurn(nxt);
       return;
     }
 
     if (phase === "BET" && (p.allIn || p.stack <= 0)) {
-      const nxt = nextAliveFrom(players, turn);
+      const nxt = nextAliveFrom(activePlayers, turn);
       if (nxt !== null) setTurn(nxt);
       return;
     }
 
     const timer = setTimeout(() => {
       if (phase === "BET") {
-        const basePlayers = playersRef.current ?? players;
+        const basePlayers = playersRef.current ?? activePlayers;
         const snap = basePlayers.map(clonePlayerState).filter(Boolean);
         const activeSeat = turn;
-        if (!ensureSeatCanAct(activeSeat, "npcBetAction")) {
+        if (!betHelpers.ensureSeatCanAct?.(activeSeat, "npcBetAction")) {
           const nxt = nextAliveFrom(snap, turn);
           if (nxt !== null) setTurn(nxt);
           return;
@@ -7127,10 +7133,10 @@ const SAFE_RESET_PHASE = "IDLE";
           });
           if (controllerOutcome?.snapshot) {
             const actorAfter = controllerOutcome.snapshot.players?.[activeSeat] ?? me;
-            logAction(activeSeat, actorAfter?.lastAction ?? actionType, { controller: true });
-            recordActionToLog({
+            betHelpers.logAction?.(activeSeat, actorAfter?.lastAction ?? actionType, { controller: true });
+            betHelpers.recordActionToLog?.({
               phase: "BET",
-              round: currentBetRoundIndex(),
+              round: betHelpers.currentBetRoundIndex?.() ?? betRoundTracker.current,
               seat: activeSeat,
               playerState: actorAfter,
               type: actorAfter?.lastAction ?? actionType,
@@ -7140,7 +7146,7 @@ const SAFE_RESET_PHASE = "IDLE";
               betAfter: actorAfter?.betThisRound ?? me.betThisRound ?? 0,
               raiseCountTable: raiseCountThisRound,
             });
-            syncLegacyFromControllerSnapshot(controllerOutcome.snapshot, {
+            betHelpers.syncLegacyFromControllerSnapshot?.(controllerOutcome.snapshot, {
               seatIndex: activeSeat,
             });
             return;
@@ -7148,7 +7154,7 @@ const SAFE_RESET_PHASE = "IDLE";
         }
         const maxNow = maxBetThisRound(snap);
         const toCall = Math.max(0, maxNow - me.betThisRound);
-        const evalResult = evaluateBadugi(me.hand);
+        const evalResult = betHelpers.evaluateBadugi?.(me.hand) ?? { ranks: [] };
         const madeCards = evalResult.ranks.length;
         const r = Math.random();
         let actionPayload = null;
@@ -7204,7 +7210,7 @@ const SAFE_RESET_PHASE = "IDLE";
     betSize,
     applyForcedBetAction,
     autoResolveCpuDrawIfNeeded,
-    forceFinishRound,
+    isSingleTableBadugi,
     isSingleTableDrawLowball,
     tryControllerBetAction,
   ]);

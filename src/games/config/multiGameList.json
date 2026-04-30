@@ -276,8 +276,9 @@
                      "lowball"
                  ],
         "priorityPhase":  1,
-        "status":  "planned",
-        "description":  ""
+        "status":  "wip",
+        "engineKey":  "deuce_to_seven_triple_draw",
+        "description":  "Triple-draw 2-7 lowball using three draws and fixed-limit betting streets."
     },
     {
         "id":  "D02",
@@ -298,8 +299,9 @@
                      "lowball"
                  ],
         "priorityPhase":  1,
-        "status":  "planned",
-        "description":  ""
+        "status":  "wip",
+        "engineKey":  "ace_to_five_triple_draw",
+        "description":  "Triple-draw A-5 lowball using three draws and fixed-limit betting streets."
     },
     {
         "id":  "D03",

@@ -1,6 +1,6 @@
 # Badugi RL / Multi-Game 実行計画
 
-更新日: 2026-04-29  
+更新日: 2026-04-30
 目的: この文書を、Badugi RL と Draw 系マルチゲーム実装の作業基準書として使う。
 
 ## 1. この文書の使い方
@@ -24,6 +24,8 @@
 - バリアント定義の正本は `src/games/config/multiGameList.json`。
 - 現行バリアント数は 35。
 - `live` 扱いは `D03 Badugi` のみ。
+- `D01` / `D02` / `S01` / `S02` の engine / controller / test は実装済みで、catalog status は `wip`。
+- Draw 系の UI 本格接続と production smoke は別途確認対象。
 - evaluator は以下が実装済み。
   - High
   - 2-7 Low
@@ -33,9 +35,9 @@
   - Hi-Lo8
   - Badeucey / Badacey
 - draw family の共通土台として `src/games/core/drawEngineBase.js` がある。
-- 実 engine registry は `badugi` のみ。
+- 実 engine registry は `badugi` / `D01` / `D02` / `S01` / `S02` 相当を登録済み。
   - `src/games/core/engineRegistry.js`
-- 実 controller registry 相当もほぼ Badugi 中心。
+- 実 controller registry 相当は Badugi / D01 / D02 / S01 / S02 の factory を登録済み。
   - `src/games/core/variants.js`
 - UI の variant 選択は一部先行しており、`badugi` と `nlh` が enabled 扱い。
   - `src/ui/game/variants.js`
@@ -57,12 +59,13 @@
 - ONNX 実行のフロント側ローダはある。
   - `src/ai/onnxExecutor.js`
   - `src/ai/onnxPolicyAdapter.js`
-- ただし backend の RL API は stub。
+- backend の RL API は frontend ONNX の比較検証 / 将来拡張用 endpoint として残っており、現在は deterministic-safe fallback を返す。
   - `backend/app/api/badugi_rl.py`
 - 実 `.onnx` モデルはリポジトリ内で未確認。
-- 学習入力が不整合。
-  - backend API: schema v1 / 96-dim
-  - model registry: Badugi Pro / Iron / WorldMaster は `[96]`
+- Badugi / Draw 系の observation と model registry は 96-dim schema に揃えている。
+  - backend API: Badugi schema v1 / 96-dim
+  - frontend ONNX: Badugi / Draw schema v1 / 96-dim
+  - model registry: Badugi / Draw model entries は `[96]`
 
 ### 2.3 2-7 / A-5 系の現状
 
@@ -71,7 +74,8 @@
   - `src/games/evaluators/low.js`
 - pro AI profile の仮設定もある。
   - `src/config/mixed/proAiProfiles.js`
-- しかし draw engine / controller / UI / logging / replay / RL は未実装。
+- `D01` / `D02` / `S01` / `S02` の draw engine / controller / unit / e2e / RL observation 基盤は実装済み。
+- UI 本格接続、実ブラウザ / 実スマホでの通し確認、catalog status の最終整理は追加確認対象。
 
 ### 2.4 方針決定済み事項
 
@@ -1171,6 +1175,7 @@ Badugi RL implementation notes:
 - `src/rl/tools/export_dataset.py` now emits transition records: `observation`, `action`, `reward`, `next_observation`, `done`, and `legal_actions`.
 - `src/rl/env/badugi_env.py` keeps its lightweight training mechanics, but its observation space now pads the legacy first 22 slots to schema v1 `96`.
 - ONNX model files should be placed under `public/models/` and referenced from `src/config/ai/modelRegistry.json` as `models/<variant>_<tier>_vN.onnx`.
+- Repo-local production `.onnx` asset presence is not guaranteed by this WG; verify it under `QA-03` before release.
 - Badugi tier assignment is fixed as `model-badugi-pro-v1`, `model-badugi-iron-v1`, and `model-badugi-worldmaster-v1`.
 - Fallback priority is fixed as `ONNX -> rule-based -> deterministic safe`.
 
@@ -1185,7 +1190,7 @@ Badugi RL test coverage:
 
 完了条件:
 
-- stub ではなく実モデル推論が通る。
+- frontend ONNX 主経路で実モデル推論に接続できる adapter / registry / fallback contract が揃う。
 - observation / model input / dataset schema の三者が一致する。
 - model 不在時も安全に fallback する。
 
@@ -1381,6 +1386,41 @@ Draw RL test coverage:
 - [x] `WG-01-01` Draw family state contract を固定
 - [x] `WG-02-01` 2-7 lowball edge case テスト追加
 - [x] `WG-07-01` RL 推論の主経路を確定
+
+## 12.1 追加監査で見つかった確認項目
+
+チェックリスト上の WG / Step タスクは完了している。ただし「本番投入前の確認」または「文書と実装の整合性」として、以下を追う。
+
+- [x] `QA-01` `multiGameList.json` の `D01` / `D02` status を実装状況に合わせて `wip` へ更新する。
+  - `D01`: `engineKey: "deuce_to_seven_triple_draw"`
+  - `D02`: `engineKey: "ace_to_five_triple_draw"`
+  - `live` 判定は UI 本格接続と実機 smoke 完了後に行う。
+- [x] `QA-02` `src/games/core/variants.js` の controller registry 方針を確認する。
+  - Badugi に加え、`D01` / `D02` / `S01` / `S02` 相当の controller factory を登録済み。
+  - UI の variant picker への本格接続は別フェーズ。
+- [x] `QA-03` model registry と実 `.onnx` asset の一致を確認する。
+  - `modelRegistry.json` に Badugi / draw 系モデル定義はあるが、production `.onnx` asset は repo 内に未配置。
+  - `public/models/README.md` に fallback 前提と release checklist を明記。
+- [x] `QA-04` backend `/api/badugi/rl/decision` の位置付けを確認する。
+  - frontend ONNX を主経路とする。
+  - backend endpoint は schema v1 validation と deterministic-safe fallback を持つ比較検証 / 将来拡張 endpoint とする。
+- [ ] `QA-05` 実ブラウザ / 実スマホで Badugi / D01 / D02 / S01 / S02 の smoke test を実施する。
+  - Automated desktop smoke: title screen -> login screen is verified with headless Chromium.
+  - Current Playwright Badugi flow specs stop at the title screen because the tests still look for the old `/start/i` button while the current UI shows `Press Enter`.
+  - Authenticated game smoke remains manual / test-driver follow-up.
+  - Desktop Chrome: ring game 5 hand 以上。
+  - Mobile Safari または Android Chrome: portrait / landscape で discard、pat、overlay、hand result を確認。
+  - 結果は `docs/bugs/badugi_browser_mobile_bug_tracker.md` または別 QA 記録へ残す。
+- [x] `QA-06` `dealToBoards` / `resolvePot` / `resolveShowdown` の TODO-ready stub を、次フェーズで実ロジックへ接続する範囲を決める。
+  - Step 1 の完成条件では入口作成までが対象。
+  - Double Board / hi-lo / split pot を実ゲーム接続する前に、evaluator registry、side pot、board-by-board award を同時に接続する。
+- [ ] `QA-07` production API smoke を確認する。
+  - `/api/variants`
+  - `/api/variants/double_board_bomb_pot_omaha`
+  - `/api/badugi/rl/decision`
+  - nginx / backend / frontend の reverse proxy 経路で確認する。
+  - local TestClient smoke is verified by `backend/tests/test_variants_api.py` and `backend/tests/test_badugi_rl.py`.
+  - production reverse proxy は稼働環境で別途確認する。
 
 ## 13. ひとことで言うと
 

@@ -42,6 +42,17 @@ describe("variantCatalog", () => {
     expect(badugi.regenerationEligible).toBe(false);
   });
 
+  it("marks implemented lowball draw variants as wip with engine keys", () => {
+    expect(getVariantById("D01")).toMatchObject({
+      status: "wip",
+      engineKey: "deuce_to_seven_triple_draw",
+    });
+    expect(getVariantById("D02")).toMatchObject({
+      status: "wip",
+      engineKey: "ace_to_five_triple_draw",
+    });
+  });
+
   it("produces engine template context", () => {
     const ctx = getEngineTemplateContext("D04");
     expect(ctx).toMatchObject({

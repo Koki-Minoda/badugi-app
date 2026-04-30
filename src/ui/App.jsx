@@ -79,6 +79,7 @@ import {
 import { useLocation, useNavigate } from "react-router-dom";
 import { loadTitleSettings } from "./utils/titleSettings";
 import { useRatingState } from "./hooks/useRatingState.js";
+import { summarizeAiDecisionLog } from "./utils/aiDecisionLog.js";
 import {
   applyMatchRatings,
   computeRankFromRating,
@@ -730,6 +731,10 @@ const SAFE_RESET_PHASE = "IDLE";
   const [actionLog, setActionLog] = useState([]); // RL/action log feed
   const seatStatsByPlayerId = useMemo(
     () => computeSeatStats(actionLog, { keyBy: "playerId" }),
+    [actionLog],
+  );
+  const aiDecisionSummary = useMemo(
+    () => summarizeAiDecisionLog(actionLog, { limit: 5 }),
     [actionLog],
   );
   const [remoteSeatStatsByPlayerId, setRemoteSeatStatsByPlayerId] = useState({});
@@ -7960,6 +7965,7 @@ const SAFE_RESET_PHASE = "IDLE";
     p2pCaptureEnabled,
     onToggleP2pCapture: toggleP2pCapture,
     onExportP2pMatches: handleExportP2pMatches,
+    aiDecisionSummary,
   };
 
   const tablePlayers = playersSrc;

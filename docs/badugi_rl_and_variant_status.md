@@ -1482,7 +1482,7 @@ Draw RL test coverage:
     - [ ] `AI-04` production `.onnx` asset を配置し、model registry の checksum / version と一致させる。
     - [ ] `AI-05` ONNX unavailable 時の fallback smoke と、ONNX available 時の推論 smoke を分けて記録する。
     - [ ] `AI-06` tier ごとの実戦 smoke を行い、Beginner / Standard / Pro / WorldMaster で VPIP / PFR / drawCount / showdown 勝率の差を見る。
-    - [ ] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
+    - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
   - P2P:
     - data capture / export / sync / security test の部品はある。
     - player-facing lobby / match session / realtime turn sync / reconnect / result sync は未完成。

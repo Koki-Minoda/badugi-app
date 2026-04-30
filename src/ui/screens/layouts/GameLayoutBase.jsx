@@ -89,6 +89,7 @@ export default function GameLayoutBase({
     p2pCaptureEnabled,
     onToggleP2pCapture,
     onExportP2pMatches,
+    aiDecisionSummary,
   } = sidePanelProps;
 
   const {
@@ -315,6 +316,47 @@ export default function GameLayoutBase({
                 ))}
               </div>
             </div>
+            {aiDecisionSummary?.total > 0 && (
+              <div className="pointer-events-auto bg-black/70 rounded-lg p-3 text-xs space-y-3 shadow-lg">
+                <div className="flex items-center justify-between text-[11px] uppercase tracking-wide text-slate-400">
+                  <span>CPU Decisions</span>
+                  <strong className="text-emerald-300">{aiDecisionSummary.total}</strong>
+                </div>
+                <div className="flex flex-wrap gap-2 text-[11px] text-slate-300">
+                  {Object.entries(aiDecisionSummary.byTier ?? {}).map(([tier, count]) => (
+                    <span key={tier} className="rounded bg-slate-800/80 px-2 py-1">
+                      {tier}: {count}
+                    </span>
+                  ))}
+                </div>
+                <div className="space-y-1">
+                  {(aiDecisionSummary.recent ?? []).map((entry, index) => (
+                    <div
+                      key={`${entry.handId ?? "hand"}-${entry.seat ?? "seat"}-${entry.ts}-${index}`}
+                      className="rounded border border-white/10 bg-slate-950/70 px-2 py-1"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-slate-100 truncate">
+                          {entry.seatName}
+                        </span>
+                        <span className="text-[10px] uppercase text-slate-400">
+                          {entry.tierId ?? "tier?"}
+                        </span>
+                      </div>
+                      <div className="text-slate-300">
+                        {entry.phase} {entry.action}
+                        {entry.reason ? ` (${entry.reason})` : ""}
+                      </div>
+                      {entry.discardIndexes?.length > 0 && (
+                        <div className="text-[10px] text-slate-400">
+                          discard: {entry.discardIndexes.join(", ")}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

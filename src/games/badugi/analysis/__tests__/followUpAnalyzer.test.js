@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  analyzeBadugiBetMistakes,
   analyzeBadugiDrawMistakes,
   buildPostMatchFollowUpSummary,
   FOLLOW_UP_THRESHOLDS,
@@ -14,6 +15,20 @@ function recordWithAction(action) {
         seat: 0,
         name: "Hero",
         actions: [action],
+      },
+    ],
+  };
+}
+
+function recordWithActions(actions) {
+  return {
+    handId: "hand-follow-bet",
+    variantId: "badugi",
+    seats: [
+      {
+        seat: 0,
+        name: "Hero",
+        actions,
       },
     ],
   };
@@ -135,6 +150,95 @@ describe("followUpAnalyzer", () => {
         actionSeq: 5,
         seat: 0,
       },
+    });
+  });
+
+  it("detects weak calls and missed value raises", () => {
+    const issues = analyzeBadugiBetMistakes(
+      recordWithActions([
+        {
+          seq: 6,
+          street: "BET",
+          type: "call",
+          amount: 20,
+          metadata: {
+            betInfo: {
+              before: ["AC", "2C", "9C", "KH"],
+              toCall: 20,
+              canRaise: true,
+            },
+          },
+        },
+        {
+          seq: 7,
+          street: "BET",
+          type: "check",
+          amount: 0,
+          metadata: {
+            betInfo: {
+              before: ["AC", "2D", "3H", "4S"],
+              toCall: 0,
+              canRaise: true,
+            },
+          },
+        },
+      ]),
+    );
+
+    expect(issues.map((issue) => issue.type)).toEqual(
+      expect.arrayContaining(["weak_call", "missed_value_raise"]),
+    );
+  });
+
+  it("detects unnecessary bluffs and cap blocked aggression", () => {
+    const issues = analyzeBadugiBetMistakes(
+      recordWithActions([
+        {
+          seq: 8,
+          street: "BET",
+          type: "raise",
+          amount: 20,
+          metadata: {
+            betInfo: {
+              before: ["AC", "2C", "9C", "KH"],
+              toCall: 0,
+              raiseCountTable: 4,
+              capReached: true,
+            },
+          },
+        },
+      ]),
+    );
+
+    expect(issues.map((issue) => issue.type)).toEqual(
+      expect.arrayContaining(["unnecessary_bluff", "cap_reached_raise"]),
+    );
+  });
+
+  it("includes bet issues in post-match summary ranking", () => {
+    const summary = buildPostMatchFollowUpSummary(
+      recordWithActions([
+        {
+          seq: 9,
+          street: "BET",
+          type: "call",
+          amount: 20,
+          metadata: {
+            betInfo: {
+              before: ["AC", "2C", "9C", "KH"],
+              toCall: 20,
+            },
+          },
+        },
+      ]),
+    );
+
+    expect(summary.betIssues).toHaveLength(1);
+    expect(summary.issues[0].type).toBe("weak_call");
+    expect(summary.replayTarget).toMatchObject({
+      handId: "hand-follow-bet",
+      actionSeq: 9,
+      seat: 0,
     });
   });
 });

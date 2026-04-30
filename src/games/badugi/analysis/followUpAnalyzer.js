@@ -15,6 +15,15 @@ function getActionBeforeHand(action = {}) {
   return normalizeCards(drawInfo.before);
 }
 
+function getBetActionBeforeHand(action = {}) {
+  return normalizeCards(
+    action.metadata?.betInfo?.before ??
+      action.metadata?.handBefore ??
+      action.metadata?.beforeHand ??
+      action.metadata?.hand,
+  );
+}
+
 function getDiscardedIndexes(action = {}) {
   const indexes = action.discarded ?? action.metadata?.drawInfo?.drawIndexes ?? [];
   return Array.isArray(indexes)
@@ -126,15 +135,103 @@ export function analyzeBadugiDrawMistakes(record = {}, { heroOnly = true } = {})
   return issues.sort((a, b) => b.score - a.score || (a.actionSeq ?? 0) - (b.actionSeq ?? 0));
 }
 
+export function analyzeBadugiBetMistakes(record = {}, { heroOnly = true, raiseCap = 4 } = {}) {
+  const variantId = record?.variantId ?? "badugi";
+  if (variantId !== "badugi" && variantId !== "D03") return [];
+  const seats = Array.isArray(record?.seats) ? record.seats : [];
+  const issues = [];
+
+  seats.forEach((seatEntry) => {
+    if (heroOnly && seatEntry?.seat !== 0) return;
+    const actions = Array.isArray(seatEntry?.actions) ? seatEntry.actions : [];
+    actions
+      .filter((action) => action?.street === "BET" || action?.street === "SHOWDOWN")
+      .forEach((action) => {
+        const actionType = String(action?.type ?? "").toLowerCase();
+        if (!["call", "check", "bet", "raise"].includes(actionType)) return;
+        const beforeHand = getBetActionBeforeHand(action);
+        if (!beforeHand.length) return;
+        const beforeEvaluation = evaluateBadugi(beforeHand);
+        const betInfo = action.metadata?.betInfo ?? {};
+        const toCall = Number(betInfo.toCall ?? action.metadata?.toCall ?? action.amount ?? 0);
+        const raiseCountTable = Number(
+          betInfo.raiseCountTable ?? action.metadata?.raiseCountTable ?? action.raiseCountTable ?? 0,
+        );
+        const capReached =
+          betInfo.capReached === true ||
+          action.metadata?.capReached === true ||
+          raiseCountTable >= raiseCap;
+        const canRaise = betInfo.canRaise !== false && !capReached;
+
+        if (actionType === "call" && toCall > 0 && beforeEvaluation.count <= 2) {
+          issues.push(
+            buildIssue({
+              type: "weak_call",
+              seat: seatEntry.seat,
+              action,
+              beforeEvaluation,
+              score: beforeEvaluation.count <= 1 ? 3 : 2,
+              detail: `Called ${toCall} with ${beforeEvaluation.rankType}.`,
+            }),
+          );
+        }
+        if ((actionType === "check" || actionType === "call") && beforeEvaluation.count === 4 && canRaise) {
+          issues.push(
+            buildIssue({
+              type: "missed_value_raise",
+              seat: seatEntry.seat,
+              action,
+              beforeEvaluation,
+              score: beforeEvaluation.kicker <= 7 ? 3 : 2,
+              detail: `Strong Badugi was played passively (${actionType}).`,
+            }),
+          );
+        }
+        if ((actionType === "bet" || actionType === "raise") && beforeEvaluation.count <= 2) {
+          issues.push(
+            buildIssue({
+              type: "unnecessary_bluff",
+              seat: seatEntry.seat,
+              action,
+              beforeEvaluation,
+              score: beforeEvaluation.count <= 1 ? 3 : 2,
+              detail: `Aggressive action with ${beforeEvaluation.rankType}.`,
+            }),
+          );
+        }
+        if ((actionType === "bet" || actionType === "raise") && capReached) {
+          issues.push(
+            buildIssue({
+              type: "cap_reached_raise",
+              seat: seatEntry.seat,
+              action,
+              beforeEvaluation,
+              score: 2,
+              detail: `Attempted aggression after raise cap (${raiseCountTable}/${raiseCap}).`,
+            }),
+          );
+        }
+      });
+  });
+
+  return issues.sort((a, b) => b.score - a.score || (a.actionSeq ?? 0) - (b.actionSeq ?? 0));
+}
+
 export function buildPostMatchFollowUpSummary(record = {}, options = {}) {
   const drawIssues = analyzeBadugiDrawMistakes(record, options);
-  const topIssue = drawIssues[0] ?? null;
+  const betIssues = analyzeBadugiBetMistakes(record, options);
+  const allIssues = [...drawIssues, ...betIssues].sort(
+    (a, b) => b.score - a.score || (a.actionSeq ?? 0) - (b.actionSeq ?? 0),
+  );
+  const topIssue = allIssues[0] ?? null;
   return {
     handId: record?.handId ?? null,
-    issueCount: drawIssues.length,
+    issueCount: allIssues.length,
     highestSeverity: topIssue?.severity ?? "none",
     topIssue,
     drawIssues,
+    betIssues,
+    issues: allIssues,
     replayTarget:
       topIssue && record?.handId
         ? {

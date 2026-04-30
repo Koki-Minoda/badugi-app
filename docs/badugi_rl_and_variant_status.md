@@ -1408,6 +1408,9 @@ Draw RL test coverage:
   - Automated desktop smoke: title screen -> signup -> login -> ring game -> bet action -> card select -> draw is verified with headless Chromium.
   - Playwright entry helpers now use the current `Press Enter` title button and authenticated menu flow.
   - Local API / DB health was verified through `/api/health` via both frontend proxy and backend direct path.
+  - Badugi は `badugi-flow` / authenticated smoke / MTT smoke の Playwright 自動確認済み。
+  - D01 / D02 / S01 / S02 は engine / controller / Vitest e2e までは確認済みだが、2026-04-30 時点の App route / menu は `badugi` / `nlh` のみを有効化しているため、実ブラウザ UI smoke は未接続。
+  - D01 / D02 / S01 / S02 用の `DrawLowballUIAdapter` と adapter registry alias を追加し、5-card draw snapshot を table props へ変換できることを確認済み。
   - Desktop Chrome: ring game 5 hand 以上。
   - Mobile Safari または Android Chrome: portrait / landscape で discard、pat、overlay、hand result を確認。
   - 結果は `docs/bugs/badugi_browser_mobile_bug_tracker.md` または別 QA 記録へ残す。
@@ -1454,6 +1457,21 @@ Draw RL test coverage:
 - [ ] `OP-11` repository-wide lint の既存エラーを整理する。
   - `npm run lint` は 2026-04-30 時点で既存の `process` / unused / duplicate member / App.jsx 未整理などにより fail。
   - 2026-04-30 更新: `src/ui/App.jsx` / `GameLayoutBase.jsx` など既存 lint error が残存。今回の対象では build と関連 unit / E2E を優先。
+- [ ] `OP-12` D01 / D02 / S01 / S02 を Badugi と同等の browser smoke 対象に引き上げる。
+  - [x] engine / controller / controller e2e が各 draw variant で通ることを確認。
+  - [x] 5-card draw snapshot を UI table props に変換する `DrawLowballUIAdapter` を追加。
+  - [x] D01 / D02 / S01 / S02 と engine key alias を `GameUIAdapterRegistry` に登録できる helper を追加。
+  - [x] `DrawLowballUIAdapter` が D01 / D02 / S01 / S02 snapshot の phase、seat、pot、HUD、controls を構築できることを Vitest で確認。
+  - [ ] `src/ui/game/variants.js` の enabled variant と App URL variant detection に draw family を安全に追加する。
+  - [ ] `App.jsx` の `isSingleTableBadugi` 前提を draw family 用の controller session path へ広げる。
+  - [ ] D01 / D02 の Playwright smoke を追加する。
+    - title -> auth -> menu -> variant select -> ring game
+    - bet / call / raise / fold
+    - 5-card selection -> Draw Selected / pat
+    - hand result / next hand / hand history
+  - [ ] S01 / S02 の Playwright smoke を追加する。
+  - [ ] mobile portrait / landscape で 5-card hand と footer overlap を確認する。
+  - 注意: 2026-04-30 時点で App は `badugi` / `nlh` のみを実ブラウザ entry として扱う。D01 / D02 を表示だけ enabled にするとゲーム導線が壊れるため、App controller path と Playwright を同じ章で進める。
 
 ## 13. ひとことで言うと
 

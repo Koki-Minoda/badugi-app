@@ -1922,6 +1922,7 @@ const SAFE_RESET_PHASE = "IDLE";
   const autoDrawHelpersRef = useRef({});
   const forcedBetHelpersRef = useRef({});
   const customHandHelpersRef = useRef({});
+  const goShowdownNowRef = useRef(() => {});
   // NOTE (G-11e): CPU draw actions run through this helper so DRAW phase always
   // advances via the canonical lifecycle. It returns true when it consumed the
   // acting seat (to avoid duplicate work in callers).
@@ -2933,6 +2934,7 @@ const SAFE_RESET_PHASE = "IDLE";
   forcedBetHelpersRef.current = {
     afterBetActionWithSnapshot,
     currentBetRoundIndex,
+    emitE2EActionTrace,
     logAction,
     recordActionToLog,
     shiftAggressorsAfterFold,
@@ -2991,8 +2993,16 @@ const SAFE_RESET_PHASE = "IDLE";
           return true;
         }
         if (controllerOutcome?.rejected) {
-          forcedSeatActionsRef.current.delete(seat);
-          return false;
+          const isForcedInstantFold =
+            payload?.__forceInstant === true &&
+            String(actionType).toLowerCase() === "fold";
+          if (!isForcedInstantFold) {
+            forcedSeatActionsRef.current.delete(seat);
+            return false;
+          }
+          warnLegacySingleTablePath(
+            `forced instant fold fallback seat=${seat} code=${controllerOutcome.code ?? "unknown"}`,
+          );
         }
         if (isSingleTableBadugi) {
           warnLegacySingleTablePath(`forced-bet fallback seat=${seat}`);
@@ -3190,15 +3200,32 @@ const SAFE_RESET_PHASE = "IDLE";
 
   const forceSequentialFolds = useCallback(
     (seats = []) => {
+      const helpers = forcedBetHelpersRef.current;
       forcedSeatActionsRef.current = forceSequentialFoldsMap(
         forcedSeatActionsRef.current,
         seats,
       );
       if (phase === "BET") {
         const list = Array.isArray(seats) ? seats : [seats];
-        list.forEach((seat) =>
-          applyForcedBetAction(seat, { type: "fold", __forceInstant: true }),
-        );
+        list.forEach((seat) => {
+          applyForcedBetAction(seat, { type: "fold", __forceInstant: true });
+          const seatState = playersRef.current?.[seat] ?? null;
+          helpers.emitE2EActionTrace?.(
+            {
+              phase: "BET",
+              round: helpers.currentBetRoundIndex?.() ?? betRoundTracker.current,
+              seat,
+              seatName: seatState?.name ?? `Seat ${seat}`,
+              action: "Fold",
+              stackBefore: seatState?.stack ?? 0,
+              stackAfter: seatState?.stack ?? 0,
+              betBefore: seatState?.betThisRound ?? 0,
+              betAfter: seatState?.betThisRound ?? 0,
+              metadata: { forcedSequentialFold: true },
+            },
+            seatState,
+          );
+        });
       }
     },
     [phase, applyForcedBetAction]
@@ -3222,8 +3249,8 @@ const SAFE_RESET_PHASE = "IDLE";
     const roster = playersRef.current;
     if (!Array.isArray(roster) || roster.length === 0) return;
     const snapshot = roster.map(clonePlayerState).filter(Boolean);
-    goShowdownNow(snapshot, { force: true, bypassEngine: true });
-  }, [goShowdownNow]);
+    goShowdownNowRef.current(snapshot, { force: true, bypassEngine: true });
+  }, []);
 
   const handleTierOverrideChange = (event) => {
     const nextTier = event.target.value || null;
@@ -4021,6 +4048,7 @@ const SAFE_RESET_PHASE = "IDLE";
     triggerRotationAndRefreshHud("hand");
     console.log("[SHOWDOWN] Waiting for Next Hand button...");
   }
+  goShowdownNowRef.current = goShowdownNow;
 
   // ANALYSIS: (B) 行動可能者がいないケースでは active.length===1 判定で
   //           goShowdownNow() を直接呼び出し、BET/DRAW を飛ばして強制ショーダウン。
@@ -4036,7 +4064,7 @@ const SAFE_RESET_PHASE = "IDLE";
     const active = base.filter((p) => !isFoldedOrOut(p) && !p.allIn);
     if (active.length === 1) {
       const showdownSnap = base.map(clonePlayerState).filter(Boolean);
-      goShowdownNow(showdownSnap);
+      goShowdownNowRef.current(showdownSnap);
       return true;
     }
     return false;

@@ -1921,6 +1921,7 @@ const SAFE_RESET_PHASE = "IDLE";
   const scheduledFinishDrawRef = useRef(false);
   const autoDrawHelpersRef = useRef({});
   const forcedBetHelpersRef = useRef({});
+  const customHandHelpersRef = useRef({});
   // NOTE (G-11e): CPU draw actions run through this helper so DRAW phase always
   // advances via the canonical lifecycle. It returns true when it consumed the
   // acting seat (to avoid duplicate work in callers).
@@ -3060,9 +3061,15 @@ const SAFE_RESET_PHASE = "IDLE";
     ]
   );
 
+  customHandHelpersRef.current = {
+    applyDeckSnapshot,
+    syncEngineSnapshot,
+  };
+
   const applyCustomHands = useCallback(
     (overrides = []) => {
       if (!Array.isArray(overrides) || overrides.length === 0) return;
+      const helpers = customHandHelpersRef.current;
       setPlayers((prev) => {
         if (!Array.isArray(prev) || prev.length === 0) return prev;
         const snap = prev.map(clonePlayerState).filter(Boolean);
@@ -3098,7 +3105,7 @@ const SAFE_RESET_PHASE = "IDLE";
           mutated = true;
         });
         if (!mutated) return prev;
-        const forcedSnapshot = applyDeckSnapshot({
+        const forcedSnapshot = helpers.applyDeckSnapshot({
           players: snap,
           pots,
           nextTurn: turn,
@@ -3151,11 +3158,19 @@ const SAFE_RESET_PHASE = "IDLE";
             };
           }
         }
-        syncEngineSnapshot(forcedSnapshot);
+        helpers.syncEngineSnapshot(forcedSnapshot);
         return snap;
       });
     },
-    [pots, currentBet, betHead, lastAggressor, turn, phase, isSingleTableBadugi, syncEngineSnapshot]
+    [
+      pots,
+      currentBet,
+      betHead,
+      lastAggressor,
+      turn,
+      phase,
+      isSingleTableBadugi,
+    ]
   );
 
   const queueForcedSeatAction = useCallback(

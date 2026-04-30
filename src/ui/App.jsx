@@ -1920,6 +1920,7 @@ const SAFE_RESET_PHASE = "IDLE";
   const resolvingDrawRef = useRef(false);
   const scheduledFinishDrawRef = useRef(false);
   const autoDrawHelpersRef = useRef({});
+  const forcedBetHelpersRef = useRef({});
   // NOTE (G-11e): CPU draw actions run through this helper so DRAW phase always
   // advances via the canonical lifecycle. It returns true when it consumed the
   // acting seat (to avoid duplicate work in callers).
@@ -2928,10 +2929,20 @@ const SAFE_RESET_PHASE = "IDLE";
     }
     return true;
   }
+  forcedBetHelpersRef.current = {
+    afterBetActionWithSnapshot,
+    currentBetRoundIndex,
+    logAction,
+    recordActionToLog,
+    shiftAggressorsAfterFold,
+    syncLegacyFromControllerSnapshot,
+    tryControllerBetAction,
+  };
 
   const applyForcedBetAction = useCallback(
     (seat, payload = {}) => {
       if (phase !== "BET") return false;
+      const helpers = forcedBetHelpersRef.current;
       const roster = playersRef.current;
       if (!Array.isArray(roster) || seat < 0 || seat >= roster.length) return false;
       const snap = roster.map(clonePlayerState).filter(Boolean);
@@ -2949,7 +2960,7 @@ const SAFE_RESET_PHASE = "IDLE";
                 forcedCurrentBet - Math.max(0, Number(seatBefore?.betThisRound) || 0),
               )
             : payload?.amount ?? 0;
-        const controllerOutcome = tryControllerBetAction({
+        const controllerOutcome = helpers.tryControllerBetAction({
           actionType,
           amount: callAmount,
           seatIndex: seat,
@@ -2957,10 +2968,12 @@ const SAFE_RESET_PHASE = "IDLE";
         });
         if (controllerOutcome?.snapshot) {
           const actorAfter = controllerOutcome.snapshot.players?.[seat] ?? seatBefore;
-          logAction(seat, actorAfter?.lastAction ?? payload?.type ?? "call", { forced: true });
-          recordActionToLog({
+          helpers.logAction(seat, actorAfter?.lastAction ?? payload?.type ?? "call", {
+            forced: true,
+          });
+          helpers.recordActionToLog({
             phase: "BET",
-            round: currentBetRoundIndex(),
+            round: helpers.currentBetRoundIndex(),
             seat,
             playerState: actorAfter,
             type: actorAfter?.lastAction ?? payload?.type ?? "call",
@@ -2971,7 +2984,7 @@ const SAFE_RESET_PHASE = "IDLE";
             raiseCountTable: raiseCountThisRound,
           });
           forcedSeatActionsRef.current.delete(seat);
-          syncLegacyFromControllerSnapshot(controllerOutcome.snapshot, {
+          helpers.syncLegacyFromControllerSnapshot(controllerOutcome.snapshot, {
             seatIndex: seat,
           });
           return true;
@@ -3010,10 +3023,10 @@ const SAFE_RESET_PHASE = "IDLE";
       playersRef.current = updatedPlayers;
       forcedSeatActionsRef.current.delete(seat);
 
-      logAction(seat, actionLabel, { forced: true });
-      recordActionToLog({
+      helpers.logAction(seat, actionLabel, { forced: true });
+      helpers.recordActionToLog({
         phase: "BET",
-        round: currentBetRoundIndex(),
+        round: helpers.currentBetRoundIndex(),
         seat,
         playerState: actor,
         type: actor.lastAction,
@@ -3025,21 +3038,20 @@ const SAFE_RESET_PHASE = "IDLE";
       });
 
       if (actor.folded) {
-        shiftAggressorsAfterFold(updatedPlayers, seat);
+        helpers.shiftAggressorsAfterFold(updatedPlayers, seat);
       } else if (raiseApplied) {
         setRaiseCountThisRound((count) => count + 1);
         setBetHead(seat);
         setLastAggressor(seat);
       }
 
-      afterBetActionWithSnapshot(updatedPlayers, seat);
+      helpers.afterBetActionWithSnapshot(updatedPlayers, seat);
       return true;
     },
     [
       phase,
       betSize,
       raiseCountThisRound,
-      afterBetActionWithSnapshot,
       setBetHead,
       setLastAggressor,
       ensureGameController,

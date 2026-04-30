@@ -38,6 +38,7 @@ export default function RootApp() {
         />
         <Route path="/menu" element={<MainMenuScreen />} />
         <Route path="/friend-match" element={<FriendMatchSetupScreen />} />
+        <Route path="/dev/friend-match" element={<FriendMatchSetupScreen />} />
         <Route path="/mixed" element={<MixedGameScreen />} />
         <Route path="/games" element={<GameSelectorScreen />} />
         <Route path="/multigame" element={<MultiGameScreen />} />

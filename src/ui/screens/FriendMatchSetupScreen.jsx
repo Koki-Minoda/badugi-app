@@ -4,6 +4,27 @@ import { designTokens } from "../../styles/designTokens.js";
 import { getEnabledVariants } from "../game/variants.js";
 import { buildRoomWebSocketUrl, createRoom, getRoomInfo, joinRoom } from "../utils/roomApi.js";
 
+const ACTIVE_ROOM_STORAGE_KEY = "mgx_friend_match_active_room_v1";
+
+function loadStoredActiveRoom() {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(ACTIVE_ROOM_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistActiveRoom(room) {
+  if (typeof window === "undefined") return;
+  if (!room) {
+    window.sessionStorage.removeItem(ACTIVE_ROOM_STORAGE_KEY);
+    return;
+  }
+  window.sessionStorage.setItem(ACTIVE_ROOM_STORAGE_KEY, JSON.stringify(room));
+}
+
 function VariantOption({ variant, isSelected, onSelect }) {
   return (
     <label
@@ -144,7 +165,7 @@ export default function FriendMatchSetupScreen() {
   const [bigBlind, setBigBlind] = useState(20);
   const [ante, setAnte] = useState(0);
   const [statusMessage, setStatusMessage] = useState("");
-  const [createdRoom, setCreatedRoom] = useState(null);
+  const [createdRoom, setCreatedRoom] = useState(() => loadStoredActiveRoom());
   const [isCreating, setIsCreating] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [isJoining, setIsJoining] = useState(false);
@@ -155,6 +176,10 @@ export default function FriendMatchSetupScreen() {
   const [staleEventCount, setStaleEventCount] = useState(0);
   const socketRef = useRef(null);
   const latestSequenceRef = useRef(0);
+
+  useEffect(() => {
+    persistActiveRoom(createdRoom);
+  }, [createdRoom]);
 
   useEffect(() => {
     if (!createdRoom?.roomId || typeof WebSocket === "undefined") return undefined;
@@ -264,9 +289,10 @@ export default function FriendMatchSetupScreen() {
         ...room,
         ownerId,
         displayName: "Host",
+        players: [ownerId],
         websocketUrl: buildRoomWebSocketUrl(room.roomId),
       });
-      setStatusMessage("Room created. Share the room code when the live match screen is enabled.");
+      setStatusMessage("Room created. Share the room code and use Ready when both players join.");
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : "Failed to create room.");
     } finally {
@@ -300,9 +326,10 @@ export default function FriendMatchSetupScreen() {
         maxPlayers: info.maxPlayers ?? info.metadata?.maxPlayers,
         ownerId: playerId,
         displayName: "Guest",
+        players: info.players?.map((player) => player.id) ?? [playerId],
         websocketUrl: buildRoomWebSocketUrl(roomId),
       });
-      setStatusMessage("Joined room. Live table synchronization is the next step.");
+      setStatusMessage("Joined room. Waiting for live table synchronization.");
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : "Failed to join room.");
     } finally {
@@ -478,7 +505,7 @@ export default function FriendMatchSetupScreen() {
                 <span className="text-xs uppercase tracking-[0.25em] text-emerald-300">
                   Room Code
                 </span>
-                <strong className="text-lg text-white">{createdRoom.roomId}</strong>
+              <strong className="text-lg text-white">{createdRoom.roomId}</strong>
               </div>
               <p className="text-xs text-emerald-200/80">
                 WebSocket: {createdRoom.websocketUrl}
@@ -545,6 +572,7 @@ export default function FriendMatchSetupScreen() {
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
+                    data-testid="p2p-ready"
                     onClick={sendReady}
                     className="rounded-xl border border-emerald-300/60 px-3 py-2 text-xs font-semibold text-emerald-50 hover:bg-emerald-300/10"
                   >
@@ -552,6 +580,7 @@ export default function FriendMatchSetupScreen() {
                   </button>
                   <button
                     type="button"
+                    data-testid="p2p-call"
                     onClick={() => sendAction("call", bigBlind)}
                     className="rounded-xl border border-sky-300/60 px-3 py-2 text-xs font-semibold text-sky-50 hover:bg-sky-300/10"
                   >
@@ -559,6 +588,7 @@ export default function FriendMatchSetupScreen() {
                   </button>
                   <button
                     type="button"
+                    data-testid="p2p-draw"
                     onClick={() => sendAction("draw", 0)}
                     className="rounded-xl border border-amber-300/60 px-3 py-2 text-xs font-semibold text-amber-50 hover:bg-amber-300/10"
                   >
@@ -566,6 +596,7 @@ export default function FriendMatchSetupScreen() {
                   </button>
                   <button
                     type="button"
+                    data-testid="p2p-fold"
                     onClick={() => sendAction("fold", 0)}
                     className="rounded-xl border border-rose-300/60 px-3 py-2 text-xs font-semibold text-rose-50 hover:bg-rose-300/10"
                   >
@@ -580,6 +611,7 @@ export default function FriendMatchSetupScreen() {
                   p2pTableState.playerStates.map((player) => (
                     <div
                       key={player.id}
+                      data-testid={`p2p-player-${player.id}`}
                       className="rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2"
                     >
                       <div className="flex items-center justify-between gap-2">

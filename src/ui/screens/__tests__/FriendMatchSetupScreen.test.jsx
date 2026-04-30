@@ -27,6 +27,7 @@ describe("FriendMatchSetupScreen", () => {
   const originalWebSocket = globalThis.WebSocket;
 
   beforeEach(() => {
+    window.sessionStorage.clear();
     mockNavigate.mockClear();
     mockCreateRoom.mockReset();
     mockJoinRoom.mockReset();
@@ -219,6 +220,56 @@ describe("FriendMatchSetupScreen", () => {
     expect(sockets[0].send).toHaveBeenCalledWith(expect.stringContaining('"event":"reaction"'));
     expect(sockets[0].send).toHaveBeenCalledWith(expect.stringContaining('"type":"draw"'));
     expect(sockets[0].send).toHaveBeenCalledWith(expect.stringContaining('"type":"fold"'));
+  });
+
+  it("restores the active room after refresh and reconnects websocket", async () => {
+    window.sessionStorage.setItem(
+      "mgx_friend_match_active_room_v1",
+      JSON.stringify({
+        roomId: "room-restored",
+        phase: "waiting",
+        ownerId: "local-restored",
+        displayName: "Host",
+        players: ["local-restored"],
+        websocketUrl: "ws://localhost/ws/room/room-restored/play",
+      }),
+    );
+    const sockets = [];
+    class MockWebSocket {
+      constructor(url) {
+        this.url = url;
+        this.listeners = {};
+        this.readyState = 1;
+        this.send = vi.fn();
+        this.close = vi.fn();
+        sockets.push(this);
+      }
+
+      addEventListener(type, handler) {
+        this.listeners[type] = handler;
+      }
+    }
+    globalThis.WebSocket = MockWebSocket;
+
+    render(<FriendMatchSetupScreen />);
+    expect(screen.getByText("room-restored")).toBeTruthy();
+    expect(sockets).toHaveLength(1);
+
+    await act(async () => {
+      sockets[0].listeners.open();
+      sockets[0].listeners.message({
+        data: JSON.stringify({
+          event: "history",
+          payload: {
+            events: [{ event: "action", sequenceId: 8, action: "call", amount: 20 }],
+          },
+        }),
+      });
+    });
+
+    expect(sockets[0].send).toHaveBeenCalledWith(expect.stringContaining("local-restored"));
+    expect(screen.getByText("action (replay)")).toBeTruthy();
+    expect(screen.getByText(/latest sequence: 8/i)).toBeTruthy();
   });
 
   it("ignores stale sequence events and expands history replay entries", async () => {

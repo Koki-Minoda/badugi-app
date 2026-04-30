@@ -1516,10 +1516,13 @@ Draw RL test coverage:
         - 2026-05-01 更新: Friend Match 画面で `room_state` / `updated_state` / `secure_deal` / `showdown` を live table state に反映し、phase / pot / handId / player stack / bet / ready / folded / showdown winner を表示する。
         - `Ready` / `Call` / `Draw` / `Fold` を WebSocket `reaction` / `action` として送信できるようにし、P2P専用画面内で同期状態を操作できる。
         - server 側は duplicate reconnect join を安全に扱い、room metadata の `startingStack` を初期 stack に反映する。
-    - [ ] `P2P-04` Badugi 2人対戦 smoke: login -> room -> ready -> hand -> draw -> showdown -> next hand。
+    - [x] `P2P-04` Badugi 2人対戦 smoke: login -> room -> ready -> hand -> draw -> showdown -> next hand。
       - 2026-05-01 部分完了: `src/server/tests/test_p2p_sync.py` で room -> ready -> hand -> draw -> showdown -> next hand の WebSocket server smoke を追加。認証付きブラウザ2画面 smoke は未実施。
-    - [ ] `P2P-05` disconnect / reconnect / browser refresh の復帰 smoke を追加する。
+      - 2026-05-01 更新: `tests/e2e/p2p-friend-match-smoke.spec.ts` で authenticated menu -> Friend Match -> create room -> Ready -> Draw -> showdown -> next hand をブラウザ smoke 化。guest は mock WebSocket event で再現し、UI の live table state 表示を確認する。
+      - Vite dev server に `/ws` proxy を追加し、実 backend WebSocket へ接続する次段階の土台を用意。
+    - [x] `P2P-05` disconnect / reconnect / browser refresh の復帰 smoke を追加する。
       - 2026-05-01 部分完了: WebSocket reconnect 後に recent history が replay され、直前 action を復元できる server smoke を追加。browser refresh で UI が復帰する実ブラウザ smoke は未実施。
+      - 2026-05-01 更新: Friend Match の active room を `sessionStorage` に保存し、browser refresh 後に同じ room へ reconnect して history replay を表示できることを Playwright で確認。
   - CPU 対戦後フォローアップ:
     - history / replay / EV estimator / feature extraction の基盤はある。
     - CPU 戦終了後にミスプレイ候補を自動抽出し、振り返り画面へ誘導する UX は未完成。

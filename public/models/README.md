@@ -12,9 +12,11 @@ Current repository state:
 
 Release checklist:
 
-- Add the `.onnx` file under `public/models/`.
-- Compute its SHA-256 checksum and set `checksumSha256` in
-  `src/config/ai/modelRegistry.json`.
+- Install supplied `.onnx` files with one of these commands:
+  - `npm run ai:install-models -- --model model-badugi-pro-v1=/path/badugi_pro_v1.onnx`
+  - `npm run ai:install-models -- --source-dir /path/mgx-models --required-only`
+- The install command copies files into `public/models/`, computes SHA-256, and
+  updates `checksumSha256` in `src/config/ai/modelRegistry.json`.
 - Keep `version` in the registry aligned with the filename and release tag.
 - Set `productionRequired: true` only for models that must be live in production.
 - Verify every required registry entry has a matching `.onnx` file:

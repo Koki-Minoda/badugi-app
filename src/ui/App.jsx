@@ -806,6 +806,8 @@ const SAFE_RESET_PHASE = "IDLE";
     updateAfterActionFromSnapshot,
     updateShowdown,
   } = useGameSessionState();
+  const updateShowdownRef = useRef(() => {});
+  updateShowdownRef.current = updateShowdown;
   const deviceProfile = useDeviceProfile();
 
   const uiFromSession = useMemo(() => {
@@ -4880,6 +4882,10 @@ const SAFE_RESET_PHASE = "IDLE";
     return false;
   }
   }
+  const dealNewHandRef = useRef(() => false);
+  dealNewHandRef.current = dealNewHand;
+  const trySaveHandOnceRef = useRef(() => {});
+  trySaveHandOnceRef.current = trySaveHandOnce;
 
   // NOTE (G-11a): startNextHand is the single canonical entry for dealing a new
   // hand. Any UI/controller path that needs a new hand must invoke this helper
@@ -4914,7 +4920,7 @@ const SAFE_RESET_PHASE = "IDLE";
       setShowNextButton(false);
       setHandResultVisible(false);
       setHandResultSummary(null);
-      updateShowdown({
+      updateShowdownRef.current({
         phase: "BET",
         handResultVisible: false,
         handResultSummary: null,
@@ -4935,7 +4941,7 @@ const SAFE_RESET_PHASE = "IDLE";
         return false;
       }
       if (!handSavedRef.current) {
-        trySaveHandOnce({
+        trySaveHandOnceRef.current({
           playersSnap: playersRef.current ?? players,
           dealerIdx,
           pots: potsRef.current ?? pots,
@@ -4966,13 +4972,17 @@ const SAFE_RESET_PHASE = "IDLE";
         }
       }
       const nextHandNumber = handCountRef.current + 1;
-      const success = dealNewHand(targetDealerIdx, prevPlayers, nextHandNumber);
+      const success = dealNewHandRef.current(
+        targetDealerIdx,
+        prevPlayers,
+        nextHandNumber,
+      );
       if (success) {
         handCountRef.current = nextHandNumber;
       }
       return success;
     },
-    [dealerIdx, mode, phase, players, pots, trySaveHandOnce],
+    [dealerIdx, mode, phase, players, pots],
   );
   startNextHandRef.current = startNextHand;
 

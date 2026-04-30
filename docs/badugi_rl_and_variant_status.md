@@ -1523,6 +1523,7 @@ Draw RL test coverage:
     - 2026-04-30 確認: `LINT-D01` 対応後、App hook warning は `8` から `3` へ減少。Vitest 2 files / 6 tests、`npm run build`、authenticated Playwright 1 test は通過。debug-only log と controller sync phaseTag は ref 経由にし、effect の実行条件は変更しない。
     - 2026-04-30 確認: `LINT-D02` 対応後、App hook warning は `3` から `2` へ減少。Vitest 1 file / 1 test、`npm run build`、authenticated Playwright 1 test、MTT Playwright 2 tests は通過。E2E driver の draw / tournament HUD getter は ref 経由で最新実装を読む。
     - 2026-04-30 確認: `LINT-D03` 対応後、App hook warning は `2` から `1` へ減少。Vitest 3 files / 51 tests、`npm run build`、Badugi Playwright 16 tests は通過。NPC timer は players / action helpers を ref 経由にし、BET / DRAW turn progression の timer 条件は維持。
+    - 2026-04-30 確認: 最後の `startNextHand` warning を解消し、App hook warning は `1` から `0` へ減少。repository-wide `npm run lint` は `0 errors / 0 warnings`。Vitest 3 files / 51 tests、`npm run build`、Badugi Playwright 16 tests は通過。
 - [ ] `OP-12` D01 / D02 / S01 / S02 を Badugi と同等の browser smoke 対象に引き上げる。
   - [x] engine / controller / controller e2e が各 draw variant で通ることを確認。
   - [x] 5-card draw snapshot を UI table props に変換する `DrawLowballUIAdapter` を追加。

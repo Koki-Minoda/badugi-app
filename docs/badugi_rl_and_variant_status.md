@@ -1490,6 +1490,13 @@ Draw RL test coverage:
     - App.jsx の未参照 state / ref / helper を削除し、`npx eslint src/ui/App.jsx` は `42 warnings` から `23 warnings` へ減少。
     - repository-wide lint は `0 errors / 70 warnings` で exit 0。
     - 残る App.jsx hook deps は、依存追加で game progression / E2E driver / console capture の実行タイミングが変わる可能性があるため、個別の挙動テストを添えて段階整理する。
+  - 2026-04-30 小 warning 整理:
+    - unused props / imports / helper / catch binding を GameLayoutBase、NLH adapter、draw / badugi tests、evaluator registry、dealer choice / dev overrides から削除。
+    - Provider と hook の同居による Fast Refresh warning を `AuthProvider` / `GameEngineProvider` / `MixedGameProvider` で分離し、ChipStack の utility export も別ファイルへ移動。
+    - App.jsx から hand history getter export を `src/ui/state/handHistoryStore.js` へ移動し、Fast Refresh warning を削減。
+    - MixedGameContext の provider API 関数を `useCallback` 化し、hook deps warning を解消。
+    - repository-wide lint は `0 errors / 20 warnings` で exit 0。残りは App.jsx の hook deps のみ。
+    - 確認: 関連 Vitest 7 files / 72 tests、`npm run build`、`tests/e2e/authenticated-game-smoke.spec.ts --project=badugi-flow` は通過。
 - [ ] `OP-12` D01 / D02 / S01 / S02 を Badugi と同等の browser smoke 対象に引き上げる。
   - [x] engine / controller / controller e2e が各 draw variant で通ることを確認。
   - [x] 5-card draw snapshot を UI table props に変換する `DrawLowballUIAdapter` を追加。

@@ -31,12 +31,10 @@ export function isBetRoundComplete(stateOrPlayers) {
     typeof stateOrPlayers?.currentBet === "number"
       ? stateOrPlayers.currentBet
       : maxBetThisRound(players);
-  let hasParticipant = false;
   for (const player of players) {
     if (!isPlayerInBetRound(player)) {
       continue;
     }
-    hasParticipant = true;
     if (!player?.hasActedThisRound) return false;
     const bet =
       typeof player?.betThisRound === "number"

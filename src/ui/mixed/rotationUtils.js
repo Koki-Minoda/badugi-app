@@ -1,7 +1,6 @@
 import {
   GAME_VARIANTS,
   GAME_VARIANT_CATEGORIES,
-  getVariantById,
 } from "../../games/config/variantCatalog.js";
 
 const CATEGORY_KEYS = Object.values(GAME_VARIANT_CATEGORIES);

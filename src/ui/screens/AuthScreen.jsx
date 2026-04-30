@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { useAuth } from "../state/authStore.jsx";
+import { useAuth } from "../state/useAuth.js";
 import { normalizeTokenType } from "../utils/auth.js";
 
 const API_BASE_RAW = import.meta.env?.VITE_API_BASE ?? "/api";

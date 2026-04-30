@@ -1,35 +1,19 @@
 // src/ui/state/authStore.jsx
 import React, {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 import { normalizeTokenType } from "../utils/auth.js";
+import { AuthContext, defaultAuthState } from "./authContext.js";
 
 const AUTH_STORAGE_KEY = "mgx_auth";
 const API_BASE_RAW = import.meta.env?.VITE_API_BASE ?? "/api";
 const API_BASE = API_BASE_RAW.endsWith("/api")
   ? API_BASE_RAW
   : `${API_BASE_RAW.replace(/\/$/, "")}/api`;
-
-const defaultState = {
-  isAuthenticated: false,
-  accessToken: null,
-  tokenType: null,
-  user: null,
-};
-
-const AuthContext = createContext({
-  authState: defaultState,
-  loginSuccess: () => {},
-  logout: () => {},
-  hydrateFromStorage: () => {},
-  validateToken: async () => {},
-});
 
 function sanitizeStoredAuth(raw) {
   if (!raw || typeof raw !== "object") return null;
@@ -126,7 +110,7 @@ function normalizeUserProfile(payload) {
 }
 
 export function AuthProvider({ children }) {
-  const [authState, setAuthState] = useState(defaultState);
+  const [authState, setAuthState] = useState(defaultAuthState);
   const hydratedRef = useRef(false);
   const [hasHydrated, setHasHydrated] = useState(false);
   const validatingRef = useRef(false);
@@ -144,7 +128,7 @@ export function AuthProvider({ children }) {
         user: stored.user,
       });
     } else {
-      setAuthState(defaultState);
+      setAuthState(defaultAuthState);
     }
     setHasHydrated(true);
   }, []);
@@ -165,7 +149,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(() => {
-    setAuthState(defaultState);
+    setAuthState(defaultAuthState);
     clearStoredAuth();
   }, []);
 
@@ -194,7 +178,7 @@ export function AuthProvider({ children }) {
     } finally {
       validatingRef.current = false;
     }
-  }, [authState.accessToken, logout]);
+  }, [authState.accessToken, authState.tokenType, logout]);
 
   useEffect(() => {
     hydrateFromStorage();
@@ -227,12 +211,4 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return ctx;
 }

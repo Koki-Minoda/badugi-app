@@ -50,6 +50,7 @@ describe("Single draw lowball engines", () => {
       dealerIndex: 0,
     });
 
+    expect(state.players).toHaveLength(2);
     expect(engine.id).toBe("ace_to_five_single_draw");
     expect(engine.variantId).toBe("S02");
     expect(engine.maxDrawRounds).toBe(1);

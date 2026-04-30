@@ -17,7 +17,7 @@ function dispatchDevEvent(name, detail) {
   if (typeof window === "undefined" || typeof window.dispatchEvent !== "function") return;
   try {
     window.dispatchEvent(new CustomEvent(name, { detail }));
-  } catch (err) {
+  } catch {
     // ignore
   }
 }
@@ -28,7 +28,7 @@ export function loadAiTierOverride() {
   try {
     const value = storage.getItem(TIER_OVERRIDE_KEY);
     return value || null;
-  } catch (err) {
+  } catch {
     return null;
   }
 }
@@ -42,7 +42,7 @@ export function persistAiTierOverride(nextTierId) {
     } else {
       storage.removeItem(TIER_OVERRIDE_KEY);
     }
-  } catch (err) {
+  } catch {
     return null;
   }
   dispatchDevEvent(DEV_EVENTS.tierOverrideChanged, nextTierId || null);
@@ -56,7 +56,7 @@ export function loadLastAiKpiSnapshot() {
     const raw = storage.getItem(KPI_SNAPSHOT_KEY);
     if (!raw) return null;
     return JSON.parse(raw);
-  } catch (err) {
+  } catch {
     return null;
   }
 }
@@ -67,7 +67,7 @@ export function persistAiKpiSnapshot(snapshot) {
   if (!storage) return;
   try {
     storage.setItem(KPI_SNAPSHOT_KEY, JSON.stringify(snapshot));
-  } catch (err) {
+  } catch {
     return;
   }
   dispatchDevEvent(DEV_EVENTS.kpiSnapshot, snapshot);
@@ -78,7 +78,7 @@ export function loadP2pCaptureFlag() {
   if (!storage) return false;
   try {
     return storage.getItem(P2P_CAPTURE_KEY) === "1";
-  } catch (err) {
+  } catch {
     return false;
   }
 }
@@ -92,7 +92,7 @@ export function persistP2pCaptureFlag(enabled) {
     } else {
       storage.removeItem(P2P_CAPTURE_KEY);
     }
-  } catch (err) {
+  } catch {
     return false;
   }
   dispatchDevEvent(DEV_EVENTS.p2pCaptureChanged, enabled);

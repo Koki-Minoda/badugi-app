@@ -92,7 +92,7 @@ import {
   DEV_EVENTS,
 } from "./utils/devOverrides.js";
 import { listTierIds, getTierById } from "../ai/tierManager.js";
-import { useGameEngine } from "./engine/GameEngineContext";
+import { useGameEngine } from "./engine/useGameEngine";
 import { mergeEngineSnapshot } from "./utils/engineSnapshotUtils.js";
 import { loadActiveTournamentSession } from "./tournament/tournamentManager";
 import { installE2eTestDriver } from "./utils/e2eTestDriver.js";
@@ -116,7 +116,14 @@ import MobileOrientationGate from "./components/MobileOrientationGate.jsx";
 import { useDeviceProfile } from "./hooks/useDeviceProfile.js";
 import { useDesktopCanvasScale } from "./hooks/useDesktopCanvasScale.js";
 import { computeSeatStats } from "./utils/stats.js";
-import { AuthProvider, useAuth } from "./state/authStore.jsx";
+import { AuthProvider } from "./state/authStore.jsx";
+import { useAuth } from "./state/useAuth.js";
+import {
+  findHandHistoryById,
+  getCurrentHandHistorySnapshot,
+  getHandHistoryBufferSnapshot,
+  setHandHistoryAccessors,
+} from "./state/handHistoryStore.js";
 import {
   enqueueBadugiActions,
   enqueueHandRecord,
@@ -139,12 +146,6 @@ import { getFixedLimitBetSize } from "../games/badugi/logic/bettingRules.js";
 import { assertNoDuplicateCards } from "../games/badugi/utils/deck.js";
 import { dealInitialHands, validatePreflopState } from "../games/badugi/utils/deckHelpers.js";
 
-const handHistoryAccessors = {
-  readCurrent: () => null,
-  readBuffer: () => [],
-  findById: () => null,
-};
-
 function cloneHandHistory(value) {
   if (value == null) return null;
   try {
@@ -157,18 +158,6 @@ function cloneHandHistory(value) {
     console.warn("Failed to clone hand history snapshot", error);
     return null;
   }
-}
-
-export function getCurrentHandHistorySnapshot() {
-  return handHistoryAccessors.readCurrent();
-}
-
-export function getHandHistoryBufferSnapshot() {
-  return handHistoryAccessors.readBuffer();
-}
-
-export function findHandHistoryById(handId) {
-  return handHistoryAccessors.findById(handId);
 }
 
 const DEFAULT_GAME_ID = "D03";
@@ -1607,20 +1596,22 @@ const SAFE_RESET_PHASE = "IDLE";
   const handHistoryRef = useRef(null);
   const handHistoryBufferRef = useRef([]);
   const currentHandHistoryRef = useRef(null);
-  handHistoryAccessors.readCurrent = () => cloneHandHistory(handHistoryRef.current);
-  handHistoryAccessors.readBuffer = () =>
-    Array.isArray(handHistoryBufferRef.current)
-      ? handHistoryBufferRef.current.filter((entry) => entry != null).map(cloneHandHistory)
-      : [];
-  handHistoryAccessors.findById = (handId) => {
-    if (!handId) return null;
-    if (handHistoryRef.current?.handId === handId) {
-      return cloneHandHistory(handHistoryRef.current);
-    }
-    const buffer = handHistoryBufferRef.current ?? [];
-    const match = buffer.find((entry) => entry?.handId === handId);
-    return match ? cloneHandHistory(match) : null;
-  };
+  setHandHistoryAccessors({
+    readCurrent: () => cloneHandHistory(handHistoryRef.current),
+    readBuffer: () =>
+      Array.isArray(handHistoryBufferRef.current)
+        ? handHistoryBufferRef.current.filter((entry) => entry != null).map(cloneHandHistory)
+        : [],
+    findById: (handId) => {
+      if (!handId) return null;
+      if (handHistoryRef.current?.handId === handId) {
+        return cloneHandHistory(handHistoryRef.current);
+      }
+      const buffer = handHistoryBufferRef.current ?? [];
+      const match = buffer.find((entry) => entry?.handId === handId);
+      return match ? cloneHandHistory(match) : null;
+    },
+  });
   const appendCanonicalHandEvent = useCallback((event) => {
     if (!handHistoryRef.current || !event) return null;
     const payload = {

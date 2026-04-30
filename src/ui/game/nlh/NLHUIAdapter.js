@@ -14,7 +14,7 @@ function shouldRevealCards(player, snapshot) {
   return (snapshot.street ?? "").toUpperCase() === "SHOWDOWN";
 }
 
-function mapSeatViews(snapshot = {}, tableConfig = {}) {
+function mapSeatViews(snapshot = {}) {
   const players = snapshot.players ?? [];
   const dealerIdx = snapshot.dealerIndex ?? 0;
   const sbIdx = snapshot.smallBlindIndex ?? null;

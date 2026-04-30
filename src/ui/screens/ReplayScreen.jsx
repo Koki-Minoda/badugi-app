@@ -6,7 +6,10 @@ import {
   generateDrawCandidates,
 } from "../../games/badugi/analysis/featureExtract.js";
 import { buildTrainingIndex, estimateEvForAction } from "../../games/badugi/analysis/evEstimator.js";
-import { findHandHistoryById, getHandHistoryBufferSnapshot } from "../App.jsx";
+import {
+  findHandHistoryById,
+  getHandHistoryBufferSnapshot,
+} from "../state/handHistoryStore.js";
 
 function formatTimestamp(ts) {
   if (!Number.isFinite(ts)) return "–";

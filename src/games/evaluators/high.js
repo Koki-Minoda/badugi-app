@@ -1,7 +1,6 @@
 import {
   combinations,
   detectStraight,
-  encodeRanksDescending,
   generateScore,
   parseCards,
 } from "./core.js";

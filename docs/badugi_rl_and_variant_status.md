@@ -1506,9 +1506,12 @@ Draw RL test coverage:
   - CPU 対戦後フォローアップ:
     - history / replay / EV estimator / feature extraction の基盤はある。
     - CPU 戦終了後にミスプレイ候補を自動抽出し、振り返り画面へ誘導する UX は未完成。
-    - [ ] `FOLLOW-01` post-match summary の表示位置と導線を決める。
-    - [ ] `FOLLOW-02` EV delta threshold と mistake severity を定義する。
-    - [ ] `FOLLOW-03` Badugi draw mistake detection: dead card を残した / made hand を崩した / overdraw / underdraw。
+    - [x] `FOLLOW-01` post-match summary の表示位置と導線を決める。
+      - summary は hand 終了後の review entry point と ReplayScreen link の間に置き、実表示接続は `FOLLOW-05` で行う。
+    - [x] `FOLLOW-02` EV delta threshold と mistake severity を定義する。
+      - `src/games/badugi/analysis/followUpAnalyzer.js` の `FOLLOW_UP_THRESHOLDS` で low / medium / high を固定。
+    - [x] `FOLLOW-03` Badugi draw mistake detection: dead card を残した / made hand を崩した / overdraw / underdraw。
+      - `analyzeBadugiDrawMistakes(...)` と `buildPostMatchFollowUpSummary(...)` を追加。
     - [ ] `FOLLOW-04` BET mistake detection: weak call / missed value raise / unnecessary bluff / cap 到達時の誤操作。
     - [ ] `FOLLOW-05` ReplayScreen へ該当 hand / street / action に直接戻る link を追加する。
 

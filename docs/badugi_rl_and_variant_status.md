@@ -1413,6 +1413,7 @@ Draw RL test coverage:
   - D01 / D02 / S01 / S02 用の `DrawLowballUIAdapter` と adapter registry alias を追加し、5-card draw snapshot を table props へ変換できることを確認済み。
   - 2026-04-30 更新: `?variant=D01` / `?variant=D02` の App routing から ring game を起動し、5-card 表示、BET進行、DRAW control、カード選択、Draw Selected 実行まで Playwright smoke 済み。
   - 2026-04-30 更新: `D01` / `D02` / `S01` / `S02` は App route から hand result / next hand まで Playwright smoke 済み。`D01` は Main Menu variant picker からの起動も確認済み。
+  - 2026-04-30 更新: mobile emulation smoke を追加。portrait は game 起動時に orientation gate、landscape は Badugi / D01 の card select -> Draw Selected を確認済み。
   - Desktop Chrome: ring game 5 hand 以上。
   - Mobile Safari または Android Chrome: portrait / landscape で discard、pat、overlay、hand result を確認。
   - 結果は `docs/bugs/badugi_browser_mobile_bug_tracker.md` または別 QA 記録へ残す。
@@ -1456,9 +1457,26 @@ Draw RL test coverage:
 - [ ] `OP-10` 実ブラウザ手動 smoke を実施する。
   - Desktop Chrome: login、ring game 5 hands、bet/call/raise/fold、draw/pat、hand result、history。
   - Mobile Safari または Android Chrome: portrait / landscape でカード選択、Draw Selected、overlay、footer overlap を確認。
+  - 2026-04-30 自動確認:
+    - `tests/e2e/mobile-app-smoke.spec.ts` を追加。
+    - mobile portrait: Title -> Menu -> Ring start 後に orientation gate が表示されることを確認。
+    - mobile landscape: Badugi / D01 で hero card が viewport 内にあり、card select -> Draw Selected が実行できることを確認。
+  - 残件:
+    - 実機 Safari / Android Chrome の手動確認。
+    - mobile landscape で hand result / next hand / history までの長時間操作確認。
 - [ ] `OP-11` repository-wide lint の既存エラーを整理する。
   - `npm run lint` は 2026-04-30 時点で既存の `process` / unused / duplicate member / App.jsx 未整理などにより fail。
   - 2026-04-30 更新: `src/ui/App.jsx` / `GameLayoutBase.jsx` など既存 lint error が残存。今回の対象では build と関連 unit / E2E を優先。
+  - 2026-04-30 再採取: `npm run lint` は `132 problems (106 errors, 26 warnings)` で fail。
+  - 主な分類:
+    - 環境定義不足: `process` / `global` / `__dirname` の `no-undef`。
+    - parser / import assertion: `difficultyAdjuster.js` / `variantCatalog.js` の `Unexpected token assert`。
+    - App.jsx 既存負債: unused、`phaseSnapshot` undefined、`logE2EError` redeclare、hook deps warning。
+    - shared component lint: Fast Refresh rule、unused props。
+    - test lint: unused vars、test globals。
+  - 方針:
+    - lint は App 実装と別章で、設定系、テスト系、App.jsx 実バグ候補の順に分割して直す。
+    - `phaseSnapshot` undefined / `logE2EError` redeclare は runtime risk があるため優先候補。
 - [ ] `OP-12` D01 / D02 / S01 / S02 を Badugi と同等の browser smoke 対象に引き上げる。
   - [x] engine / controller / controller e2e が各 draw variant で通ることを確認。
   - [x] 5-card draw snapshot を UI table props に変換する `DrawLowballUIAdapter` を追加。
@@ -1483,8 +1501,10 @@ Draw RL test coverage:
   - [x] `src/ui/game/variants.js` の enabled variant と Main Menu variant selection に draw family を安全に追加する。
     - `menu-ring` は既存 Badugi 即開始導線として維持。
     - `menu-variant-select` を追加し、variant picker から D01 / D02 / S01 / S02 を選べるようにした。
-  - [ ] mobile portrait / landscape で 5-card hand と footer overlap を確認する。
-  - 注意: 2026-04-30 時点で headless desktop smoke は通過。実スマホ / 実機ブラウザ手動確認は OP-10 / QA-05 の残件。
+  - [x] automated mobile viewport で 5-card hand と footer overlap の代表確認を追加する。
+    - D01 mobile landscape で `player-0-card-4` が viewport 内に収まり、card select / Draw Selected が通る。
+    - portrait は game 開始後に orientation gate を表示する現仕様を確認。
+  - 注意: 2026-04-30 時点で headless desktop / mobile emulation smoke は通過。実スマホ / 実機ブラウザ手動確認は OP-10 / QA-05 の残件。
 - [x] `OP-13` draw family の App 接続を段階実装する。
   - 目的:
     - D01 / D02 / S01 / S02 を Badugi と同じ「Title -> Auth -> Menu -> Ring game -> action -> draw -> result」導線で検証できる状態にする。
@@ -1527,6 +1547,7 @@ Draw RL test coverage:
   - 2026-04-30 確認:
     - `npm test -- --run src/ui/components/__tests__/VariantSelectModal.test.jsx src/ui/screens/__tests__/MainMenuScreen.test.jsx src/ui/game/__tests__/appVariantRouting.test.js src/ui/game/draw/__tests__/DrawLowballUIAdapter.test.js` は `4 passed / 18 passed`。
     - `npx playwright test tests/e2e/draw-lowball-app-smoke.spec.ts --project=badugi-flow` は `5 passed`。
+    - `npx playwright test tests/e2e/mobile-app-smoke.spec.ts --project=badugi-flow` は `3 passed`。
     - `npx playwright test tests/e2e/authenticated-game-smoke.spec.ts --project=badugi-flow` は `1 passed`。
     - `npm run build` は成功。chunk size warning は残るが build 失敗ではない。
     - App URL / menu selection の normalize 適用。

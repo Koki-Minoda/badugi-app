@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { designTokens } from "../../styles/designTokens.js";
 import { getEnabledVariants } from "../game/variants.js";
-import { buildRoomWebSocketUrl, createRoom, joinRoom } from "../utils/roomApi.js";
+import { buildRoomWebSocketUrl, createRoom, getRoomInfo, joinRoom } from "../utils/roomApi.js";
 
 function VariantOption({ variant, isSelected, onSelect }) {
   return (
@@ -47,6 +47,56 @@ export default function FriendMatchSetupScreen() {
   const [statusMessage, setStatusMessage] = useState("");
   const [createdRoom, setCreatedRoom] = useState(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [joinCode, setJoinCode] = useState("");
+  const [isJoining, setIsJoining] = useState(false);
+  const [syncStatus, setSyncStatus] = useState("idle");
+  const [roomEvents, setRoomEvents] = useState([]);
+  const socketRef = useRef(null);
+
+  useEffect(() => {
+    if (!createdRoom?.roomId || typeof WebSocket === "undefined") return undefined;
+    const url = buildRoomWebSocketUrl(createdRoom.roomId);
+    if (!url) return undefined;
+
+    setSyncStatus("connecting");
+    setRoomEvents([]);
+    const socket = new WebSocket(url);
+    socketRef.current = socket;
+
+    socket.addEventListener("open", () => {
+      setSyncStatus("connected");
+      socket.send(
+        JSON.stringify({
+          event: "join_room",
+          payload: {
+            playerId: createdRoom.ownerId,
+            displayName: createdRoom.displayName ?? "Host",
+          },
+        }),
+      );
+    });
+    socket.addEventListener("message", (event) => {
+      const parsed = (() => {
+        try {
+          return JSON.parse(event.data);
+        } catch {
+          return { event: "message", payload: event.data };
+        }
+      })();
+      setRoomEvents((prev) => [parsed, ...prev].slice(0, 6));
+    });
+    socket.addEventListener("close", () => {
+      setSyncStatus("closed");
+    });
+    socket.addEventListener("error", () => {
+      setSyncStatus("error");
+    });
+
+    return () => {
+      socketRef.current = null;
+      socket.close();
+    };
+  }, [createdRoom]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -76,6 +126,7 @@ export default function FriendMatchSetupScreen() {
       setCreatedRoom({
         ...room,
         ownerId,
+        displayName: "Host",
         websocketUrl: buildRoomWebSocketUrl(room.roomId),
       });
       setStatusMessage("Room created. Share the room code when the live match screen is enabled.");
@@ -83,6 +134,42 @@ export default function FriendMatchSetupScreen() {
       setStatusMessage(error instanceof Error ? error.message : "Failed to create room.");
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleJoinExistingRoom = async (event) => {
+    event.preventDefault();
+    const roomId = joinCode.trim();
+    if (!roomId) {
+      setStatusMessage("Enter a room code.");
+      return;
+    }
+    setIsJoining(true);
+    setStatusMessage("");
+    setCreatedRoom(null);
+    const playerId = `guest-${Date.now().toString(36)}`;
+    try {
+      const info = await getRoomInfo(roomId);
+      await joinRoom({
+        roomId,
+        playerId,
+        displayName: "Guest",
+        seatHint: String(info.players?.length ?? 0),
+      });
+      setCreatedRoom({
+        roomId,
+        phase: info.phase,
+        metadata: info.metadata,
+        maxPlayers: info.maxPlayers ?? info.metadata?.maxPlayers,
+        ownerId: playerId,
+        displayName: "Guest",
+        websocketUrl: buildRoomWebSocketUrl(roomId),
+      });
+      setStatusMessage("Joined room. Live table synchronization is the next step.");
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Failed to join room.");
+    } finally {
+      setIsJoining(false);
     }
   };
 
@@ -236,6 +323,32 @@ export default function FriendMatchSetupScreen() {
           )}
         </form>
 
+        <form
+          onSubmit={handleJoinExistingRoom}
+          className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 space-y-4"
+        >
+          <div>
+            <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">Join Room</p>
+            <h2 className="text-xl font-semibold text-white">Enter a room code</h2>
+          </div>
+          <div className="flex flex-col gap-3 md:flex-row">
+            <input
+              aria-label="Room code"
+              value={joinCode}
+              onChange={(event) => setJoinCode(event.target.value)}
+              placeholder="room-..."
+              className="flex-1 rounded-2xl border border-white/15 bg-slate-950/60 px-4 py-3 text-white"
+            />
+            <button
+              type="submit"
+              disabled={isJoining}
+              className="rounded-2xl border border-emerald-400/50 px-6 py-3 font-semibold text-emerald-100 hover:bg-emerald-400/10"
+            >
+              {isJoining ? "Joining..." : "Join"}
+            </button>
+          </div>
+        </form>
+
         <section className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300 space-y-2">
           <p>Next live-match work:</p>
           <ul className="list-disc pl-5 space-y-1">
@@ -244,6 +357,38 @@ export default function FriendMatchSetupScreen() {
             <li>Broadcast showdown and next-hand state to both players.</li>
           </ul>
         </section>
+
+        {createdRoom && (
+          <section className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">
+                Sync Status
+              </p>
+              <strong className="text-white">{syncStatus}</strong>
+            </div>
+            <div className="space-y-2">
+              {roomEvents.length === 0 ? (
+                <p>No room events received yet.</p>
+              ) : (
+                roomEvents.map((entry, index) => (
+                  <div
+                    key={`${entry.event ?? "event"}-${entry.sequenceId ?? index}-${index}`}
+                    className="rounded-2xl border border-white/10 bg-slate-950/60 px-3 py-2"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold text-white">{entry.event ?? "event"}</span>
+                      {entry.payload?.sequenceId || entry.sequenceId ? (
+                        <span className="text-xs text-slate-500">
+                          seq {entry.payload?.sequenceId ?? entry.sequenceId}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );

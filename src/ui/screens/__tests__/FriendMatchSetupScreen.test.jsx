@@ -1,11 +1,12 @@
 import React from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import FriendMatchSetupScreen from "../FriendMatchSetupScreen.jsx";
 
 const mockNavigate = vi.fn();
 const mockCreateRoom = vi.fn();
 const mockJoinRoom = vi.fn();
+const mockGetRoomInfo = vi.fn();
 
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
@@ -18,24 +19,36 @@ vi.mock("react-router-dom", async () => {
 vi.mock("../../utils/roomApi.js", () => ({
   buildRoomWebSocketUrl: (roomId) => `ws://localhost/ws/room/${roomId}/play`,
   createRoom: (...args) => mockCreateRoom(...args),
+  getRoomInfo: (...args) => mockGetRoomInfo(...args),
   joinRoom: (...args) => mockJoinRoom(...args),
 }));
 
 describe("FriendMatchSetupScreen", () => {
+  const originalWebSocket = globalThis.WebSocket;
+
   beforeEach(() => {
     mockNavigate.mockClear();
     mockCreateRoom.mockReset();
     mockJoinRoom.mockReset();
+    mockGetRoomInfo.mockReset();
     mockCreateRoom.mockResolvedValue({
       roomId: "room-test",
       phase: "waiting",
       metadata: {},
       maxPlayers: 4,
     });
+    mockGetRoomInfo.mockResolvedValue({
+      room_id: "room-test",
+      phase: "waiting",
+      players: [{ id: "host" }],
+      metadata: {},
+      sequence_id: 1,
+    });
     mockJoinRoom.mockResolvedValue({ roomId: "room-test", players: ["host"] });
   });
 
   afterEach(() => {
+    globalThis.WebSocket = originalWebSocket;
     cleanup();
   });
 
@@ -80,5 +93,61 @@ describe("FriendMatchSetupScreen", () => {
     render(<FriendMatchSetupScreen />);
     fireEvent.click(screen.getByRole("button", { name: /back to menu/i }));
     expect(mockNavigate).toHaveBeenCalledWith("/menu");
+  });
+
+  it("joins an existing room code", async () => {
+    render(<FriendMatchSetupScreen />);
+    fireEvent.change(screen.getByLabelText(/room code/i), {
+      target: { value: "room-test" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^join$/i }));
+
+    expect(await screen.findByText(/joined room/i)).toBeTruthy();
+    expect(mockGetRoomInfo).toHaveBeenCalledWith("room-test");
+    expect(mockJoinRoom).toHaveBeenCalledWith(
+      expect.objectContaining({
+        roomId: "room-test",
+        displayName: "Guest",
+        seatHint: "1",
+      }),
+    );
+  });
+
+  it("connects to room websocket and displays received room events", async () => {
+    const sockets = [];
+    class MockWebSocket {
+      constructor(url) {
+        this.url = url;
+        this.listeners = {};
+        this.send = vi.fn();
+        this.close = vi.fn();
+        sockets.push(this);
+      }
+
+      addEventListener(type, handler) {
+        this.listeners[type] = handler;
+      }
+    }
+    globalThis.WebSocket = MockWebSocket;
+
+    render(<FriendMatchSetupScreen />);
+    fireEvent.click(screen.getByRole("button", { name: /create room/i }));
+    expect(await screen.findByText(/room created/i)).toBeTruthy();
+    expect(sockets).toHaveLength(1);
+
+    await act(async () => {
+      sockets[0].listeners.open();
+      sockets[0].listeners.message({
+        data: JSON.stringify({
+          event: "room_state",
+          payload: { sequenceId: 3 },
+        }),
+      });
+    });
+
+    expect(screen.getByText("connected")).toBeTruthy();
+    expect(screen.getByText("room_state")).toBeTruthy();
+    expect(screen.getByText(/seq 3/i)).toBeTruthy();
+    expect(sockets[0].send).toHaveBeenCalledWith(expect.stringContaining("join_room"));
   });
 });

@@ -1493,10 +1493,11 @@ Draw RL test coverage:
     - [x] `P2P-01` MVP 仕様を固定する: private room / public room / invite / reconnect / timeout / result sync。
       - MVP は Friend Match から private room を作成し、host を join 済みにして room code / WebSocket URL を表示する。
       - public room / invite link / reconnect / timeout / result sync は後続の P2P-03 以降で段階実装する。
-    - [ ] `P2P-02` server session model と persistence 方針を設計する。
+    - [x] `P2P-02` server session model と persistence 方針を設計する。
+      - `docs/p2p-session-model.md` に runtime state / DB-backed target tables / conflict rules / current implementation status を固定。
     - [ ] `P2P-03` client state sync と conflict resolution を実装する。
       - [x] `P2P-03a` frontend room API util と Friend Match create/join 導線を `/api/rooms` へ接続する。
-      - [ ] `P2P-03b` join by room code と WebSocket receive loop を UI state に接続する。
+      - [x] `P2P-03b` join by room code と WebSocket receive loop を UI state に接続する。
       - [ ] `P2P-03c` sequenceId による stale event discard / reconnect replay を実装する。
     - [ ] `P2P-04` Badugi 2人対戦 smoke: login -> room -> ready -> hand -> draw -> showdown -> next hand。
     - [ ] `P2P-05` disconnect / reconnect / browser refresh の復帰 smoke を追加する。

@@ -2,40 +2,20 @@ import React from "react";
 import Card from "./Card";
 import { formatStatAf, formatStatPercent } from "../utils/stats.js";
 
-function BetChip({ amount, className = "" }) {
-  if (!amount || amount <= 0) return null;
-  const tier =
-    amount >= 500
-      ? "from-red-500 to-red-700 border-red-200"
-      : amount >= 100
-      ? "from-blue-500 to-blue-700 border-blue-200"
-      : amount >= 25
-      ? "from-green-500 to-green-700 border-green-200"
-      : "from-yellow-400 to-yellow-500 border-yellow-100 text-gray-900";
+function BetStatus({ amount }) {
+  const hasBet = Number(amount) > 0;
   return (
     <div
-      className={`flex items-center gap-2 bg-black/70 rounded-xl border border-white/20 shadow-lg ${className}`}
-      style={{
-        paddingInline: "var(--player-chip-pad-x, 10px)",
-        paddingBlock: "var(--player-chip-pad-y, 6px)",
-      }}
+      data-testid="player-bet-status"
+      className={`mt-1 flex items-center justify-end gap-1.5 rounded-md border px-2 py-1 font-bold uppercase tracking-wide ${
+        hasBet
+          ? "border-amber-300/80 bg-amber-400 text-slate-950 shadow-sm"
+          : "border-white/10 bg-black/25 text-slate-400"
+      }`}
+      style={{ fontSize: "var(--player-stack-size, 11px)" }}
     >
-      <div
-        className={`rounded-full border-2 ${tier} font-bold flex items-center justify-center`}
-        style={{
-          width: "var(--player-chip-bubble-size, 24px)",
-          height: "var(--player-chip-bubble-size, 24px)",
-          fontSize: "var(--player-chip-bubble-font-size, 10px)",
-        }}
-      >
-        {amount >= 1000 ? `${Math.floor(amount / 1000)}K` : amount}
-      </div>
-      <span
-        className="font-semibold text-white"
-        style={{ fontSize: "var(--player-chip-amount-size, 12px)" }}
-      >
-        {amount}
-      </span>
+      <span>Bet</span>
+      <span data-testid="player-bet-amount">{amount}</span>
     </div>
   );
 }
@@ -75,8 +55,6 @@ export default function Player({
     }
   };
 
-  const chipBelow = index >= 2 && index <= 4;
-
   return (
     <div
       data-testid={`seat-${seatIndex}`}
@@ -96,9 +74,6 @@ export default function Player({
         >
           {positionLabel}
         </div>
-      )}
-      {betValue > 0 && !chipBelow && (
-        <BetChip amount={betValue} className="absolute -top-14 left-1/2 -translate-x-1/2" />
       )}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 text-white font-semibold">
@@ -157,9 +132,7 @@ export default function Player({
           <div>
             Stack <span className="font-semibold text-white">{stackValue}</span>
           </div>
-          <div>
-            Bet <span className="font-semibold text-white">{betValue}</span>
-          </div>
+          <BetStatus amount={betValue} />
           {isActive && (
             <div
               className="text-lime-300 font-bold mt-1"
@@ -201,9 +174,6 @@ export default function Player({
           />
         ))}
       </div>
-      {betValue > 0 && chipBelow && (
-        <BetChip amount={betValue} className="absolute left-1/2 -translate-x-1/2 top-full mt-2" />
-      )}
     </div>
   );
 }

@@ -119,10 +119,10 @@ export default function TitleSettingsScreen() {
         <div className="flex gap-3">
           <button
             type="button"
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/menu")}
             className="px-4 py-2 rounded-lg border border-white/30 hover:bg-white/10 transition"
           >
-            Back to Title
+            ゲーム選択へ戻る
           </button>
           <button
             type="button"

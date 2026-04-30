@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef } from "react";
 import { GAME_VARIANTS } from "../game/variants.js";
 
-function VariantButton({ variant, onSelect }) {
+function VariantButton({ variant, onSelect, labels }) {
   const disabled = !variant.enabled;
   return (
     <button
@@ -19,18 +19,27 @@ function VariantButton({ variant, onSelect }) {
     >
       <div className="flex items-center justify-between">
         <p className="text-lg font-semibold text-white">{variant.label}</p>
-        {!disabled && <span className="text-xs uppercase text-emerald-300">Available</span>}
+        {!disabled && (
+          <span className="text-xs uppercase text-emerald-300">
+            {labels.available}
+          </span>
+        )}
       </div>
       {disabled ? (
-        <p className="text-sm text-amber-300 mt-1">Coming soon</p>
+        <p className="text-sm text-amber-300 mt-1">{labels.comingSoon}</p>
       ) : (
-        <p className="text-sm text-slate-300 mt-1">Jump in immediately</p>
+        <p className="text-sm text-slate-300 mt-1">{labels.jumpIn}</p>
       )}
     </button>
   );
 }
 
-export default function VariantSelectModal({ isOpen, onClose, onSelectVariant }) {
+export default function VariantSelectModal({
+  isOpen,
+  onClose,
+  onSelectVariant,
+  labels = {},
+}) {
   const modalRef = useRef(null);
   const headingId = "variant-select-title";
 
@@ -85,6 +94,15 @@ export default function VariantSelectModal({ isOpen, onClose, onSelectVariant })
     }
     onClose?.();
   };
+  const copy = {
+    variantEyebrow: "Cash Game",
+    variantTitle: "Select a Variant",
+    available: "Available",
+    comingSoon: "Coming soon",
+    jumpIn: "Jump in immediately",
+    close: "Close",
+    ...labels,
+  };
 
   return (
     <div
@@ -102,9 +120,11 @@ export default function VariantSelectModal({ isOpen, onClose, onSelectVariant })
       >
         <div className="flex items-center justify-between gap-4 mb-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">Cash Game</p>
+            <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">
+              {copy.variantEyebrow}
+            </p>
             <h2 id={headingId} className="text-2xl font-semibold text-white">
-              Select a Variant
+              {copy.variantTitle}
             </h2>
           </div>
           <button
@@ -112,12 +132,17 @@ export default function VariantSelectModal({ isOpen, onClose, onSelectVariant })
             onClick={onClose}
             className="rounded-full border border-white/20 px-3 py-1 text-sm text-white hover:bg-white/10 transition focus-visible:ring-2 focus-visible:ring-white/70"
           >
-            Close
+            {copy.close}
           </button>
         </div>
         <div className="space-y-3">
           {GAME_VARIANTS.map((variant) => (
-            <VariantButton key={variant.id} variant={variant} onSelect={handleVariantSelection} />
+            <VariantButton
+              key={variant.id}
+              variant={variant}
+              onSelect={handleVariantSelection}
+              labels={copy}
+            />
           ))}
         </div>
       </div>

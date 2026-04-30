@@ -7731,17 +7731,19 @@ const SAFE_RESET_PHASE = "IDLE";
       <>
         <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 px-6 text-center text-slate-100">
           <p className="text-xs uppercase tracking-[0.4em] text-amber-400">MGX</p>
-          <h2 className="mt-2 text-4xl font-semibold">Settings (Coming Soon)</h2>
+          <h2 className="mt-2 text-4xl font-semibold">
+            {MGX_LOCALES[language]?.modal?.settingsTitle ?? "Settings"}
+          </h2>
           <p className="mt-4 max-w-xl text-sm text-slate-400">
-            Table themes, HUD presets, and audio layers will land here shortly. For now, return to the
-            main menu to jump into your preferred mode.
+            {MGX_LOCALES[language]?.modal?.settingsBody ??
+              "Settings will be added later. Return to the main menu to jump into your preferred mode."}
           </p>
           <button
             type="button"
             onClick={handleBackToMenu}
             className="mt-8 rounded-full border border-amber-300/60 px-8 py-3 text-xs uppercase tracking-[0.4em] text-amber-100 hover:bg-amber-300/10"
           >
-            Back to Menu
+            {MGX_LOCALES[language]?.common?.backToMenu ?? "Back to Menu"}
           </button>
         </div>
         <DebugHud
@@ -7761,6 +7763,7 @@ const SAFE_RESET_PHASE = "IDLE";
         <HandHistoryScreen
           onClose={handleCloseHandHistoryScreen}
           onReplay={handleOpenReplayFromHistory}
+          language={language}
         />
         <DebugHud
           enabled={debugFlags.enabled}
@@ -8110,7 +8113,13 @@ function MenuScreenWithLogout({
           disabled={pending}
           className="pointer-events-auto rounded-full border border-white/30 bg-black/60 px-4 py-2 text-xs font-semibold uppercase tracking-[0.4em] text-white backdrop-blur transition hover:border-emerald-400/60 hover:text-emerald-200 disabled:opacity-50"
         >
-          {pending ? "Logging out..." : "Logout"}
+          {pending
+            ? menuProps.language === "ja"
+              ? "ログアウト中..."
+              : "Logging out..."
+            : menuProps.language === "ja"
+            ? "ログアウト"
+            : "Logout"}
         </button>
       </div>
     </div>

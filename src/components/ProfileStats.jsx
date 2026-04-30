@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { computeBasicStats } from "../utils/history";
 
 function StatCard({ label, value }) {
@@ -11,13 +12,23 @@ function StatCard({ label, value }) {
 }
 
 export default function ProfileStats() {
+  const navigate = useNavigate();
   const stats = useMemo(() => computeBasicStats(), []);
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <div className="max-w-4xl mx-auto px-6 py-10 space-y-6">
-        <header>
-          <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">Profile Stats</p>
-          <h1 className="text-3xl font-extrabold mt-2">トーナメントKPI</h1>
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">プロフィール</p>
+            <h1 className="text-3xl font-extrabold mt-2">トーナメントKPI</h1>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate("/menu")}
+            className="rounded-full border border-white/25 px-5 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-white/90 transition hover:border-emerald-300/70 hover:text-emerald-200"
+          >
+            ゲーム選択へ戻る
+          </button>
         </header>
         <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
           <StatCard label="トーナメント数" value={stats.tournaments} />

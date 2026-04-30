@@ -86,6 +86,16 @@ describe("MainMenuScreen", () => {
     expect(screen.getByTestId("language-select").value).toBe("ja");
   });
 
+  it("uses Japanese labels for variant selection and hand history", () => {
+    render(<MainMenuScreen language="ja" />);
+    expect(screen.getByRole("button", { name: "ゲームを選択" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "ハンド履歴" })).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId("menu-variant-select"));
+    expect(screen.getByText("ゲームを選択")).toBeTruthy();
+    expect(screen.getByTestId("variant-select-modal")).toBeTruthy();
+  });
+
   it("notifies when language changes", () => {
     const handleChange = vi.fn();
     render(<MainMenuScreen language="en" onChangeLanguage={handleChange} />);

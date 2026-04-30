@@ -1919,6 +1919,7 @@ const SAFE_RESET_PHASE = "IDLE";
 
   const resolvingDrawRef = useRef(false);
   const scheduledFinishDrawRef = useRef(false);
+  const autoDrawHelpersRef = useRef({});
   // NOTE (G-11e): CPU draw actions run through this helper so DRAW phase always
   // advances via the canonical lifecycle. It returns true when it consumed the
   // acting seat (to avoid duplicate work in callers).
@@ -1928,12 +1929,13 @@ const SAFE_RESET_PHASE = "IDLE";
     if (phase !== "DRAW") return false;
     if (resolvingDrawRef.current) return false;
     resolvingDrawRef.current = true;
+    const helpers = autoDrawHelpersRef.current;
     try {
       const basePlayers = playersRef.current ?? players;
       if (!Array.isArray(basePlayers) || basePlayers.length === 0) return false;
       const seatCount = basePlayers.length;
       const ensureNextSeat = () => {
-        const fallback = findNextDrawActorSeat(basePlayers);
+        const fallback = helpers.findNextDrawActorSeat(basePlayers);
         if (fallback === null) {
           if (!transitioningRef.current && !transitioning) {
             if (scheduledFinishDrawRef.current) return true;
@@ -1942,7 +1944,7 @@ const SAFE_RESET_PHASE = "IDLE";
             setTimeout(() => {
               try {
                 const freshSnapshot = playersRef.current ?? basePlayers;
-                forceFinishRound({
+                forceFinishRoundRef.current({
                   reason: "auto-draw-no-actor",
                   phaseOverride: "DRAW",
                   playersSnapshot: freshSnapshot,
@@ -1968,11 +1970,11 @@ const SAFE_RESET_PHASE = "IDLE";
       const snapshot = basePlayers.map(clonePlayerState).filter(Boolean);
       const currentSeat = snapshot[turn];
       if (!currentSeat || isFoldedOrOut(currentSeat)) {
-        const nxt = findNextDrawActorSeat(snapshot, turn);
+        const nxt = helpers.findNextDrawActorSeat(snapshot, turn);
         if (nxt !== null) {
           setTurn(nxt);
         } else {
-          forceFinishRound({
+          forceFinishRoundRef.current({
             reason: "auto-draw-seat-missing",
             phaseOverride: "DRAW",
             playersSnapshot: snapshot,
@@ -1981,11 +1983,11 @@ const SAFE_RESET_PHASE = "IDLE";
         return true;
       }
       if (currentSeat.hasDrawn || currentSeat.allIn) {
-        const nxt = findNextDrawActorSeat(snapshot, turn + 1);
+        const nxt = helpers.findNextDrawActorSeat(snapshot, turn + 1);
         if (nxt !== null) {
           setTurn(nxt);
         } else {
-          forceFinishRound({
+          forceFinishRoundRef.current({
             reason: "auto-draw-already-acted",
             phaseOverride: "DRAW",
             playersSnapshot: snapshot,
@@ -2030,8 +2032,8 @@ const SAFE_RESET_PHASE = "IDLE";
         });
         if (controllerOutcome?.snapshot) {
           const actorAfter = controllerOutcome.snapshot.players?.[seatToAct] ?? me;
-          logAction(seatToAct, actorAfter.lastAction ?? "DRAW");
-          recordActionToLog({
+          helpers.logAction(seatToAct, actorAfter.lastAction ?? "DRAW");
+          helpers.recordActionToLog({
             phase: "DRAW",
             round: drawRound + 1,
             seat: seatToAct,
@@ -2051,17 +2053,17 @@ const SAFE_RESET_PHASE = "IDLE";
               },
             },
           });
-          syncLegacyFromControllerSnapshot(controllerOutcome.snapshot);
+          helpers.syncLegacyFromControllerSnapshot(controllerOutcome.snapshot);
           return true;
         }
         return false;
       }
-      const deckManager = getDeckManager();
-      const drawEvaluator = evaluateBadugi(me.hand);
+      const deckManager = helpers.getDeckManager();
+      const drawEvaluator = helpers.evaluateBadugi(me.hand);
       const drawCount = npcAutoDrawCount(drawEvaluator);
       const replacedCards = [];
       const oldHand = [...me.hand];
-      const npcActiveCards = collectActiveCards(snapshot);
+      const npcActiveCards = helpers.collectActiveCards(snapshot);
       const deckBefore =
         typeof deckManager?.snapshot === "function" ? deckManager.snapshot() : null;
       if (debugMode && deckBefore) {
@@ -2077,7 +2079,7 @@ const SAFE_RESET_PHASE = "IDLE";
           deck: deckManager?.deck,
           discard: deckManager?.discardPile,
           burn: deckManager?.burnPile,
-          ...buildSeatCardBuckets(snapshot),
+          ...helpers.buildSeatCardBuckets(snapshot),
         });
       } catch (err) {
         console.error(err);
@@ -2087,9 +2089,9 @@ const SAFE_RESET_PHASE = "IDLE";
       for (let i = 0; i < drawCount; i += 1) {
         let drawn = deckManager?.draw?.(1, { activeCards: npcActiveCards }) ?? [];
         if (!drawn.length) {
-          recycleFoldedAndDiscardsBeforeCurrent(snapshot, seatToAct);
+          helpers.recycleFoldedAndDiscardsBeforeCurrent(snapshot, seatToAct);
           drawn =
-            deckManager?.draw?.(1, { activeCards: collectActiveCards(snapshot) }) ??
+            deckManager?.draw?.(1, { activeCards: helpers.collectActiveCards(snapshot) }) ??
             [];
         }
         if (!drawn.length) continue;
@@ -2118,7 +2120,7 @@ const SAFE_RESET_PHASE = "IDLE";
           deck: deckManager?.deck,
           discard: deckManager?.discardPile,
           burn: deckManager?.burnPile,
-          ...buildSeatCardBuckets(snapshot),
+          ...helpers.buildSeatCardBuckets(snapshot),
         });
       } catch (err) {
         console.error(err);
@@ -2140,8 +2142,8 @@ const SAFE_RESET_PHASE = "IDLE";
       if (controllerOutcome?.snapshot) {
         const controllerPlayers = controllerOutcome.snapshot.players ?? [];
         const actorAfter = controllerPlayers[seatToAct] ?? me;
-        logAction(seatToAct, actorAfter.lastAction ?? me.lastAction);
-        recordActionToLog({
+        helpers.logAction(seatToAct, actorAfter.lastAction ?? me.lastAction);
+        helpers.recordActionToLog({
           phase: "DRAW",
           round: drawRound + 1,
           seat: seatToAct,
@@ -2154,7 +2156,7 @@ const SAFE_RESET_PHASE = "IDLE";
           raiseCountTable: raiseCountThisRound,
           metadata: { drawInfo: npcControllerMetadata },
         });
-        const legacyFanout = syncLegacyFromControllerSnapshot(
+        const legacyFanout = helpers.syncLegacyFromControllerSnapshot(
           controllerOutcome.snapshot,
         );
         const normalizedPlayers =
@@ -2174,7 +2176,7 @@ const SAFE_RESET_PHASE = "IDLE";
         } else if (!transitioning) {
           setTransitioning(true);
           setTimeout(() => {
-            forceFinishRound({
+            forceFinishRoundRef.current({
               reason: "auto-draw-controller-finish",
               phaseOverride: "DRAW",
               playersSnapshot: playersRef.current ?? normalizedPlayers,
@@ -2184,10 +2186,10 @@ const SAFE_RESET_PHASE = "IDLE";
         }
         return true;
       }
-      const nextAfter = findNextDrawActorSeat(snapshot, seatToAct + 1);
+      const nextAfter = helpers.findNextDrawActorSeat(snapshot, seatToAct + 1);
       const safeTurnForDraw = typeof nextAfter === "number" ? nextAfter : seatToAct;
-      setPlayerSnapshot(snapshot);
-      const snapshotAfter = applyDeckSnapshot({
+      helpers.setPlayerSnapshot(snapshot);
+      const snapshotAfter = helpers.applyDeckSnapshot({
         players: snapshot,
         pots,
         nextTurn: safeTurnForDraw,
@@ -2199,9 +2201,9 @@ const SAFE_RESET_PHASE = "IDLE";
           actingPlayerIndex: safeTurnForDraw,
         },
       });
-      syncEngineSnapshot(snapshotAfter);
-      logAction(seatToAct, me.lastAction);
-      recordActionToLog({
+      helpers.syncEngineSnapshot(snapshotAfter);
+      helpers.logAction(seatToAct, me.lastAction);
+      helpers.recordActionToLog({
         phase: "DRAW",
         round: drawRound + 1,
         seat: seatToAct,
@@ -2225,7 +2227,7 @@ const SAFE_RESET_PHASE = "IDLE";
         setTransitioning(true);
         setTimeout(() => {
           try {
-            forceFinishRound({
+            forceFinishRoundRef.current({
               reason: "auto-draw-finished",
               phaseOverride: "DRAW",
               playersSnapshot: playersRef.current ?? snapshot,
@@ -2249,9 +2251,9 @@ const SAFE_RESET_PHASE = "IDLE";
     debugMode,
     raiseCountThisRound,
     pots,
-    dealerIdx,
     currentBet,
-    forceFinishRound,
+    betHead,
+    lastAggressor,
     isSingleTableDrawLowball,
     tryControllerBetAction,
   ]);
@@ -2300,6 +2302,20 @@ const SAFE_RESET_PHASE = "IDLE";
     }
     return typeof seat === "number" ? seat : null;
   }, [dealerSeatSrc, debugMode, NUM_PLAYERS]);
+  autoDrawHelpersRef.current = {
+    applyDeckSnapshot,
+    buildSeatCardBuckets,
+    collectActiveCards,
+    evaluateBadugi,
+    findNextDrawActorSeat,
+    getDeckManager,
+    logAction,
+    recordActionToLog,
+    recycleFoldedAndDiscardsBeforeCurrent,
+    setPlayerSnapshot,
+    syncEngineSnapshot,
+    syncLegacyFromControllerSnapshot,
+  };
 
   function shiftAggressorsAfterFold(snap, foldIdx) {
     if (!Array.isArray(snap) || typeof foldIdx !== "number") return;

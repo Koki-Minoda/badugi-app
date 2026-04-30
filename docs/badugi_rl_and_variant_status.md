@@ -1503,7 +1503,7 @@ Draw RL test coverage:
     - [x] `LINT-A03` console capture: `formatConsole` 依存を ref 化し、console hook を再登録せず最新 phase context を記録する。
     - [x] `LINT-B01` safe reset callback: `buildPlayersFromSeatTypes` 依存を追加または stable helper 化する。
     - [x] `LINT-B02` acting-seat guard: `findNextDrawActorSeat` 依存を stable 化する。
-    - [ ] `LINT-C01` auto CPU draw callback: draw / deck / logging / sync helper deps を整理し、DRAW 進行の regression を付ける。
+    - [x] `LINT-C01` auto CPU draw callback: draw / deck / logging / sync helper deps を整理し、DRAW 進行の regression を付ける。
     - [ ] `LINT-C02` forced bet callback: bet action log / controller sync deps を整理し、BET action smoke を付ける。
     - [ ] `LINT-C03` custom hand injection: `applyDeckSnapshot` 依存を整理し、showdown / hand-history 注入テストを付ける。
     - [ ] `LINT-C04` showdown callback: `goShowdownNow` を `useCallback` 化し、`resolveHandImmediately` との deps を整理する。
@@ -1515,6 +1515,7 @@ Draw RL test coverage:
     - 2026-04-30 確認: Vitest 4 files / 57 tests、`npm run build`、`tests/e2e/authenticated-game-smoke.spec.ts --project=badugi-flow` は通過。
     - 2026-04-30 確認: `LINT-B01` / `LINT-B02` 対応後、App hook warning は `16` から `14` へ減少。
     - 2026-04-30 確認: `npm run lint` は `0 errors / 14 warnings`、Vitest 5 files / 61 tests、`npm run build`、Badugi Playwright 17 tests は通過。
+    - 2026-04-30 確認: `LINT-C01` 対応後、App hook warning は `14` から `13` へ減少。Vitest 4 files / 55 tests、`npm run build`、Badugi Playwright 17 tests は通過。
 - [ ] `OP-12` D01 / D02 / S01 / S02 を Badugi と同等の browser smoke 対象に引き上げる。
   - [x] engine / controller / controller e2e が各 draw variant で通ることを確認。
   - [x] 5-card draw snapshot を UI table props に変換する `DrawLowballUIAdapter` を追加。

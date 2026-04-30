@@ -92,6 +92,11 @@ import {
   DEV_EVENTS,
 } from "./utils/devOverrides.js";
 import { listTierIds, getTierById } from "../ai/tierManager.js";
+import {
+  buildAiContext,
+  computeBetDecision,
+  computeDrawDecision,
+} from "../ai/policyRouter.js";
 import { useGameEngine } from "./engine/useGameEngine";
 import { mergeEngineSnapshot } from "./utils/engineSnapshotUtils.js";
 import { loadActiveTournamentSession } from "./tournament/tournamentManager";
@@ -1260,6 +1265,19 @@ const SAFE_RESET_PHASE = "IDLE";
   const [handResultSummary, setHandResultSummary] = useState(null);
   const [handResultVisible, setHandResultVisible] = useState(false);
   const [devTierOverride, setDevTierOverride] = useState(() => loadAiTierOverride());
+  const activeAiTierConfig = useMemo(
+    () => getTierById(devTierOverride ?? "standard"),
+    [devTierOverride],
+  );
+  const aiDecisionContext = useMemo(
+    () =>
+      buildAiContext({
+        variantId: normalizedGameVariant,
+        tierConfig: activeAiTierConfig,
+        opponentStats: {},
+      }),
+    [activeAiTierConfig, normalizedGameVariant],
+  );
   const [p2pCaptureEnabled, setP2pCaptureEnabled] = useState(() => loadP2pCaptureFlag());
   const tierOptions = useMemo(
     () =>
@@ -2063,7 +2081,30 @@ const SAFE_RESET_PHASE = "IDLE";
       }
       const deckManager = helpers.getDeckManager();
       const drawEvaluator = helpers.evaluateBadugi(me.hand);
-      const drawCount = npcAutoDrawCount(drawEvaluator);
+      const aiDrawDecision = computeDrawDecision({
+        context: aiDecisionContext,
+        evaluation: drawEvaluator,
+        hand: me.hand,
+      });
+      const fallbackDrawCount = npcAutoDrawCount(drawEvaluator);
+      const requestedDrawCount = Number.isInteger(aiDrawDecision?.drawCount)
+        ? aiDrawDecision.drawCount
+        : fallbackDrawCount;
+      const discardIndexes = Array.isArray(aiDrawDecision?.discardIndexes)
+        ? aiDrawDecision.discardIndexes
+            .filter((index) => Number.isInteger(index) && index >= 0 && index < me.hand.length)
+            .slice(0, requestedDrawCount)
+        : [];
+      for (
+        let fallbackIndex = 0;
+        discardIndexes.length < requestedDrawCount && fallbackIndex < me.hand.length;
+        fallbackIndex += 1
+      ) {
+        if (!discardIndexes.includes(fallbackIndex)) {
+          discardIndexes.push(fallbackIndex);
+        }
+      }
+      const drawCount = discardIndexes.length;
       const replacedCards = [];
       const oldHand = [...me.hand];
       const npcActiveCards = helpers.collectActiveCards(snapshot);
@@ -2089,7 +2130,7 @@ const SAFE_RESET_PHASE = "IDLE";
         throw err;
       }
       const newHand = [...me.hand];
-      for (let i = 0; i < drawCount; i += 1) {
+      discardIndexes.forEach((cardIndex) => {
         let drawn = deckManager?.draw?.(1, { activeCards: npcActiveCards }) ?? [];
         if (!drawn.length) {
           helpers.recycleFoldedAndDiscardsBeforeCurrent(snapshot, seatToAct);
@@ -2097,12 +2138,12 @@ const SAFE_RESET_PHASE = "IDLE";
             deckManager?.draw?.(1, { activeCards: helpers.collectActiveCards(snapshot) }) ??
             [];
         }
-        if (!drawn.length) continue;
-        const outgoing = newHand[i];
+        if (!drawn.length) return;
+        const outgoing = newHand[cardIndex];
         deckManager?.discard?.([outgoing]);
-        newHand[i] = drawn[0];
-        replacedCards.push({ index: i, oldCard: outgoing, newCard: drawn[0] });
-      }
+        newHand[cardIndex] = drawn[0];
+        replacedCards.push({ index: cardIndex, oldCard: outgoing, newCard: drawn[0] });
+      });
       me.hand = newHand;
       me.hasDrawn = true;
       me.hasActedThisRound = true;
@@ -2136,6 +2177,8 @@ const SAFE_RESET_PHASE = "IDLE";
         drawIndexes: replacedCards.map((entry) => entry.index),
         drawRound,
         actionLabel: me.lastAction,
+        decisionSource: aiDrawDecision?.source ?? "npcAutoDrawCount",
+        tierId: aiDrawDecision?.tierId ?? activeAiTierConfig?.id,
       };
       const controllerOutcome = tryControllerBetAction({
         actionType: "draw",
@@ -2257,6 +2300,8 @@ const SAFE_RESET_PHASE = "IDLE";
     currentBet,
     betHead,
     lastAggressor,
+    aiDecisionContext,
+    activeAiTierConfig,
     isSingleTableDrawLowball,
     tryControllerBetAction,
   ]);
@@ -7262,24 +7307,33 @@ const SAFE_RESET_PHASE = "IDLE";
         const toCall = Math.max(0, maxNow - me.betThisRound);
         const evalResult = betHelpers.evaluateBadugi?.(me.hand) ?? { ranks: [] };
         const madeCards = evalResult.ranks.length;
-        const r = Math.random();
-        let actionPayload = null;
-
-        if (toCall > 0 && r < 0.15 && madeCards < 3) {
-          actionPayload = { type: "fold", __forceInstant: true };
-        } else if (!me.allIn && Math.random() > 0.9 && madeCards >= 3) {
-          actionPayload = {
-            type: "raise",
-            amount: betSize,
-            __forceInstant: true,
-          };
-        } else {
-          actionPayload = {
-            type: toCall === 0 ? "check" : "call",
-            amount: toCall,
-            __forceInstant: true,
-          };
-        }
+        const canRaise = !me.allIn && raiseCountThisRound < 4;
+        const betDecision = computeBetDecision({
+          context: aiDecisionContext,
+          toCall,
+          canRaise,
+          madeCards,
+          betSize,
+          actor: me,
+          evaluation: evalResult,
+        });
+        const decisionAction = String(betDecision?.action ?? "").toLowerCase();
+        const actionPayload = {
+          type:
+            decisionAction === "fold" || decisionAction === "raise"
+              ? decisionAction
+              : toCall === 0
+              ? "check"
+              : "call",
+          amount:
+            decisionAction === "raise"
+              ? betSize
+              : toCall,
+          __forceInstant: true,
+          decisionSource: betDecision?.source ?? "policy-router",
+          tierId: betDecision?.tierId ?? activeAiTierConfig?.id,
+          decisionReason: betDecision?.reason,
+        };
 
         if (applyForcedBetAction(activeSeat, actionPayload)) {
           return;
@@ -7314,6 +7368,8 @@ const SAFE_RESET_PHASE = "IDLE";
     raiseCountThisRound,
     dealerIdx,
     betSize,
+    aiDecisionContext,
+    activeAiTierConfig,
     applyForcedBetAction,
     autoResolveCpuDrawIfNeeded,
     isSingleTableBadugi,

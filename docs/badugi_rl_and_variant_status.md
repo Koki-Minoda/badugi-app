@@ -1472,19 +1472,33 @@ Draw RL test coverage:
     - `npx playwright test tests/e2e/mobile-app-smoke.spec.ts --project=badugi-flow`
   - 完了後:
     - `D01` / `D02` / `S01` / `S02` の catalog status を `wip` から上げるかは、実機 smoke と hand history / replay の完了後に判断する。
-- [ ] `QA-10` CPU 強さ / P2P / CPU対戦後フォローアップの未完成範囲を実装タスクへ分解する。
+- [x] `QA-10` CPU 強さ / P2P / CPU対戦後フォローアップの未完成範囲を実装タスクへ分解する。
   - CPU 強さ:
     - tier config / policy routing / model routing / ONNX adapter は実装済み。
     - production `.onnx` asset が未配置のため、現状は fallback / rule-based / tier parameter 主体。
-    - 次タスクは production model 配置、model checksum、実戦 smoke、tier ごとの挙動差確認。
+    - [x] `AI-01` Badugi の App CPU BET を `policyRouter` に接続し、tier ごとの fold / call / raise 差分を使う。
+    - [x] `AI-02` Badugi の App CPU DRAW を `policyRouter` に接続し、deadCards 優先で交換 index を選ぶ。
+    - [x] `AI-03` `drawAggression` の符号を整理し、強い tier が不要な overdraw をしないようにする。
+    - [ ] `AI-04` production `.onnx` asset を配置し、model registry の checksum / version と一致させる。
+    - [ ] `AI-05` ONNX unavailable 時の fallback smoke と、ONNX available 時の推論 smoke を分けて記録する。
+    - [ ] `AI-06` tier ごとの実戦 smoke を行い、Beginner / Standard / Pro / WorldMaster で VPIP / PFR / drawCount / showdown 勝率の差を見る。
+    - [ ] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
   - P2P:
     - data capture / export / sync / security test の部品はある。
     - player-facing lobby / match session / realtime turn sync / reconnect / result sync は未完成。
-    - 次タスクは MVP 仕様、server session model、client state sync、P2P smoke の順で切る。
+    - [ ] `P2P-01` MVP 仕様を固定する: private room / public room / invite / reconnect / timeout / result sync。
+    - [ ] `P2P-02` server session model と persistence 方針を設計する。
+    - [ ] `P2P-03` client state sync と conflict resolution を実装する。
+    - [ ] `P2P-04` Badugi 2人対戦 smoke: login -> room -> ready -> hand -> draw -> showdown -> next hand。
+    - [ ] `P2P-05` disconnect / reconnect / browser refresh の復帰 smoke を追加する。
   - CPU 対戦後フォローアップ:
     - history / replay / EV estimator / feature extraction の基盤はある。
     - CPU 戦終了後にミスプレイ候補を自動抽出し、振り返り画面へ誘導する UX は未完成。
-    - 次タスクは post-match summary、EV delta threshold、draw mistake detection、action suggestion、ReplayScreen link の順で切る。
+    - [ ] `FOLLOW-01` post-match summary の表示位置と導線を決める。
+    - [ ] `FOLLOW-02` EV delta threshold と mistake severity を定義する。
+    - [ ] `FOLLOW-03` Badugi draw mistake detection: dead card を残した / made hand を崩した / overdraw / underdraw。
+    - [ ] `FOLLOW-04` BET mistake detection: weak call / missed value raise / unnecessary bluff / cap 到達時の誤操作。
+    - [ ] `FOLLOW-05` ReplayScreen へ該当 hand / street / action に直接戻る link を追加する。
 
 ## 12.2 Playwright / Auth / Operational QA
 

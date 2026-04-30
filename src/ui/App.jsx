@@ -1382,18 +1382,33 @@ const SAFE_RESET_PHASE = "IDLE";
       setTurn(snapshotNextTurn);
       const drawResultSummary = snapshot.lastHandResult ?? null;
       if (drawResultSummary) {
-        setHandResultSummary(drawResultSummary);
-        setHandResultVisible(true);
-        setShowNextButton(true);
-        setPhase("HAND_RESULT");
-        updateShowdown({
-          phase: "SHOWDOWN",
-          players: normalizedPlayers,
-          pots: Array.isArray(snapshot.pots) ? snapshot.pots : [],
-          handResultVisible: true,
-          handResultSummary: drawResultSummary,
-          showNextButton: true,
-        });
+        if (!handSavedRef.current) {
+          finishHand({
+            playersSnapshot: normalizedPlayers,
+            summary:
+              snapshot.metadata?.showdownSummary ??
+              drawResultSummary.results ??
+              [],
+            totalPot:
+              snapshot.metadata?.showdownTotal ??
+              drawResultSummary.pot ??
+              0,
+            precomputedResult: drawResultSummary,
+          });
+        } else {
+          setHandResultSummary(drawResultSummary);
+          setHandResultVisible(true);
+          setShowNextButton(true);
+          setPhase("HAND_RESULT");
+          updateShowdown({
+            phase: "SHOWDOWN",
+            players: normalizedPlayers,
+            pots: Array.isArray(snapshot.pots) ? snapshot.pots : [],
+            handResultVisible: true,
+            handResultSummary: drawResultSummary,
+            showNextButton: true,
+          });
+        }
       } else if (snapshot.phase) {
         setPhase(snapshot.phase);
       }
@@ -4641,6 +4656,8 @@ const SAFE_RESET_PHASE = "IDLE";
     if (typeof legacyGameController?.setHandContext === "function") {
       legacyGameController.setHandContext({ handId: newHandId });
     }
+    const normalizedHandVariant = normalizeAppVariantId(gameVariantRef.current);
+    const handVariantProfile = GAME_VARIANTS[normalizedHandVariant] ?? null;
     currentHandHistoryRef.current = startHandHistoryRecord({
       handId: handIdRef.current,
       dealer: nextDealerIdx,
@@ -4652,6 +4669,8 @@ const SAFE_RESET_PHASE = "IDLE";
       })),
       startedAt: Date.now(),
       userId: authUserIdRef.current,
+      variantId: handVariantProfile?.variantId ?? normalizedHandVariant,
+      variantName: handVariantProfile?.label ?? formatVariantLabel(normalizedHandVariant),
     });
     beginCanonicalHandHistory({
       handId: newHandId,
@@ -6254,6 +6273,19 @@ const SAFE_RESET_PHASE = "IDLE";
       legacySnapshot = cloneHandHistory(finalizedRecord);
       if (legacySnapshot) {
         console.log("[HAND_HISTORY]", JSON.stringify(legacySnapshot));
+        if (isSingleTableDrawLowball) {
+          saveRLHandHistory(legacySnapshot);
+          const sendId = legacySnapshot.handId ?? legacySnapshot.hand_id ?? legacySnapshot.id;
+          if (sendId && !sentHandIdsRef.current.has(sendId)) {
+            try {
+              enqueueHandRecord(legacySnapshot, { flushNow: true });
+              sentHandIdsRef.current.add(sendId);
+            } catch (err) {
+              console.warn("[sync] draw hand-history enqueue failed", err);
+            }
+          }
+          handSavedRef.current = true;
+        }
       } else {
         console.warn("[HAND_HISTORY] Failed to clone legacy hand history record");
       }

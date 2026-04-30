@@ -59,6 +59,16 @@ async function playUntilHandResult(page: Page) {
   throw new Error("Timed out waiting for hand result");
 }
 
+async function readLatestRlRecord(page: Page) {
+  return page.evaluate(() => {
+    const raw = window.localStorage.getItem("rl_hand_histories_v1");
+    if (!raw) return null;
+    const lines = raw.split("\n").map((line) => line.trim()).filter(Boolean);
+    if (!lines.length) return null;
+    return JSON.parse(lines[lines.length - 1]);
+  });
+}
+
 async function openVariantFromMenu(page: Page, variantName: RegExp) {
   await openAuthenticatedMenu(page);
   await page.getByTestId("menu-ring").click();
@@ -113,6 +123,12 @@ test.describe("draw lowball App smoke", () => {
 
       await playUntilHandResult(page);
       await expect(page.getByTestId("hand-result-pot").first()).toBeVisible({ timeout: 10000 });
+      const latestRecord = await readLatestRlRecord(page);
+      expect(latestRecord?.variantId).toBe(variantAlias);
+      expect(latestRecord?.pots?.[0]?.winners?.[0]?.handLabel).toMatch(
+        variantAlias === "D01" || variantAlias === "S01" ? /^2-7 Low/ : /^A-5 Low/,
+      );
+      expect(latestRecord?.pots?.[0]?.winners?.[0]?.finalLowRanks?.length).toBe(5);
       await page.getByRole("button", { name: /next hand/i }).click();
       await expect(page.getByText("Hand Result").first()).toBeHidden({ timeout: 10000 });
       await expect(page.getByTestId("player-0-card-4")).toBeVisible({ timeout: 20000 });

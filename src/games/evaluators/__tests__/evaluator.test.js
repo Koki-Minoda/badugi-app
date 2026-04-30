@@ -225,6 +225,40 @@ describe("D01 2-7 Triple Draw evaluator regression", () => {
     expect(first.metadata.penalty).toBe(0);
     expect(second.metadata.penalty).toBe(0);
   });
+
+  it("orders every common 2-7 made class behind a clean 7-low", () => {
+    const sevenLow = d01(["7S", "5D", "4C", "3H", "2S"]);
+    const weakerHands = [
+      ["8S", "5D", "4C", "3H", "2S"],
+      ["4S", "4D", "7C", "3H", "2S"],
+      ["6S", "5D", "4C", "3H", "2S"],
+      ["7S", "5S", "4S", "3S", "2S"],
+      ["AS", "5D", "4C", "3H", "2S"],
+    ];
+
+    for (const cards of weakerHands) {
+      expect(compareEvaluations(sevenLow, d01(cards))).toBeLessThan(0);
+    }
+  });
+});
+
+describe("A-5 lowball evaluator regression", () => {
+  function a5(cards) {
+    return evaluateLowHand({ cards, lowType: "A5" });
+  }
+
+  it("orders wheel, six-low, king-low, then paired lows", () => {
+    const wheel = a5(["AS", "2S", "3S", "4S", "5S"]);
+    const sixLow = a5(["6D", "4C", "3H", "2D", "AC"]);
+    const kingLow = a5(["KS", "9D", "7C", "4H", "2S"]);
+    const pairedAces = a5(["AS", "AD", "5C", "4H", "2S"]);
+
+    expect(compareEvaluations(wheel, sixLow)).toBeLessThan(0);
+    expect(compareEvaluations(sixLow, kingLow)).toBeLessThan(0);
+    expect(compareEvaluations(kingLow, pairedAces)).toBeLessThan(0);
+    expect(wheel.metadata.penalty).toBe(0);
+    expect(pairedAces.metadata.penalty).toBeGreaterThan(0);
+  });
 });
 
 describe("Split evaluator", () => {

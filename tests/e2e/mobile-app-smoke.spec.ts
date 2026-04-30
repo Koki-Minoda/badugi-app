@@ -76,6 +76,7 @@ test.describe("mobile App smoke", () => {
       await gotoWithRetry(page, APP_URL);
       await enterTitleIfPresent(page);
       await page.getByTestId("menu-ring").click();
+      await page.getByTestId("game-selector-play-badugi").click();
       await expect(page.getByText("Landscape mode required")).toBeVisible({ timeout: 20000 });
     } finally {
       await closeContext(context);

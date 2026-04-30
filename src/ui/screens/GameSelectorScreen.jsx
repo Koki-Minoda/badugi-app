@@ -7,10 +7,12 @@ import {
   searchVariantProfiles,
   variantStatusBadge,
 } from "../../games/config/variantProfiles.js";
+import { isControllerBackedAppVariant } from "../game/appVariantRouting.js";
 import { usePlayerProgress } from "../hooks/usePlayerProgress.js";
 import { computeUnlockState } from "../utils/playerProgress.js";
 import { designTokens } from "../../styles/designTokens.js";
 import { PRO_MIXED_PRESETS } from "../../config/mixed/proPresets.js";
+import { MGX_DEFAULT_LOCALE, MGX_LOCALES } from "../../config/mgxLocaleConfig.js";
 
 const CATEGORY_ORDER = [
   GAME_VARIANT_CATEGORIES.BOARD,
@@ -46,11 +48,17 @@ function RequirementChips({ requirements }) {
   );
 }
 
-function VariantCard({ profile, onLaunch }) {
+function VariantCard({ profile, onLaunch, copy }) {
   const badge = variantStatusBadge(profile);
-  const canLaunch = profile.status === "live" && profile.engineKey;
+  const launchVariantId = profile.engineKey ?? profile.id;
+  const canLaunch = Boolean(launchVariantId && isControllerBackedAppVariant(launchVariantId));
   return (
-    <div className="p-4 bg-slate-900/80 border border-white/10 rounded-2xl flex flex-col gap-3">
+    <div
+      className={`p-4 bg-slate-900/80 border rounded-2xl flex flex-col gap-3 ${
+        canLaunch ? "border-emerald-400/30" : "border-white/10"
+      }`}
+      data-testid={`game-selector-card-${launchVariantId}`}
+    >
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs text-slate-400">{profile.id}</p>
@@ -72,26 +80,32 @@ function VariantCard({ profile, onLaunch }) {
       <p className="text-sm text-slate-300">{profile.description || profile.summary}</p>
       <RequirementChips requirements={profile.requirements} />
       <div className="flex items-center justify-between text-xs text-slate-400">
-        <span>Betting: {profile.betting}</span>
-        <span>Priority: Phase {profile.priorityPhase || "-"}</span>
+        <span>{copy.betting}: {profile.betting}</span>
+        <span>{copy.priority}: {profile.priorityPhase || "-"}</span>
       </div>
       <button
         type="button"
         onClick={() => canLaunch && onLaunch(profile)}
         disabled={!canLaunch}
+        aria-label={`${copy.play}: ${profile.name}`}
+        data-testid={`game-selector-play-${launchVariantId}`}
         className={`mt-1 px-4 py-2 rounded-lg font-semibold transition ${
           canLaunch
             ? "bg-emerald-500 text-slate-900 hover:bg-emerald-400"
             : "bg-slate-800 text-slate-500 cursor-not-allowed"
         }`}
       >
-        {canLaunch ? "Play in Dev Table" : "Coming Soon"}
+        {canLaunch ? copy.play : copy.comingSoon}
       </button>
     </div>
   );
 }
 
-export default function GameSelectorScreen() {
+export default function GameSelectorScreen({
+  language = MGX_DEFAULT_LOCALE,
+  onBack = null,
+  onLaunchVariant = null,
+}) {
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState(CATEGORY_ORDER[0]);
   const [search, setSearch] = useState("");
@@ -130,6 +144,44 @@ export default function GameSelectorScreen() {
     ],
     [navigate, pendingStep, unlockState]
   );
+  const isJapanese = language === "ja";
+  const copy = isJapanese
+    ? {
+        eyebrow: "キャッシュゲーム",
+        title: "ゲームを選択",
+        description:
+          "遊びたいゲームを選ぶと、そのままキャッシュゲームを開始します。現在プレイ可能なゲームは緑のボタンで表示されます。",
+        mainMenu: "ゲーム選択へ戻る",
+        mixedBuilder: "ミックスビルダー",
+        advancedMode: "拡張モード",
+        launch: "開く",
+        mixedLoad: "Mixed Builderで読み込む",
+        search: "ゲームを検索...",
+        clear: "クリア",
+        showing: (count) => `${count}件のゲームを表示中`,
+        play: "このゲームで開始",
+        comingSoon: "準備中",
+        betting: "ベット",
+        priority: "優先フェーズ",
+      }
+    : {
+        eyebrow: "Cash Game",
+        title: "Select Your Variant",
+        description:
+          "Choose a game to start a cash table. Playable variants are shown with green action buttons.",
+        mainMenu: "Game Select",
+        mixedBuilder: "Mixed Builder",
+        advancedMode: "Advanced Mode",
+        launch: "Launch",
+        mixedLoad: "Load in Mixed Builder",
+        search: "Search variants...",
+        clear: "Clear",
+        showing: (count) => `Showing ${count} variant${count === 1 ? "" : "s"}`,
+        play: "Start This Game",
+        comingSoon: "Coming Soon",
+        betting: "Betting",
+        priority: "Priority Phase",
+      };
 
 const variants = useMemo(() => {
   if (search.trim()) {
@@ -138,10 +190,22 @@ const variants = useMemo(() => {
   return listVariantProfiles({ category: activeCategory });
 }, [activeCategory, search]);
 
+const playableProfiles = useMemo(
+  () =>
+    listVariantProfiles()
+      .filter((profile) => isControllerBackedAppVariant(profile.engineKey ?? profile.id))
+      .sort((a, b) => (a.priorityPhase ?? 99) - (b.priorityPhase ?? 99)),
+  [],
+);
+
 const handleLaunch = (profile) => {
-  if (profile.engineKey) {
-    navigate(`/game?game=${profile.engineKey}`);
+  const variantId = profile.engineKey ?? profile.id;
+  if (!variantId || !isControllerBackedAppVariant(variantId)) return;
+  if (typeof onLaunchVariant === "function") {
+    onLaunchVariant(variantId);
+    return;
   }
+  navigate(`/game?variant=${variantId}`);
 };
 
 const quickLoadPreset = (presetId) => {
@@ -158,26 +222,48 @@ const quickLoadPreset = (presetId) => {
     >
       <header className="max-w-6xl mx-auto px-6 py-8 flex items-center justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.25em] text-emerald-300">Game Catalog</p>
-          <h1 className="text-3xl font-extrabold">Select Your Variant</h1>
+          <p className="text-xs uppercase tracking-[0.25em] text-emerald-300">{copy.eyebrow}</p>
+          <h1 className="text-3xl font-extrabold">{copy.title}</h1>
+          <p className="mt-2 max-w-2xl text-sm text-slate-300">{copy.description}</p>
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => navigate("/menu")}
+            onClick={() => (typeof onBack === "function" ? onBack() : navigate("/menu"))}
             className="px-4 py-2 rounded-full border border-white/20 hover:bg-white/10 transition text-sm"
           >
-            Main Menu
+            {copy.mainMenu}
           </button>
           <button
             onClick={() => navigate("/mixed")}
             className="px-4 py-2 rounded-full border border-emerald-400/40 text-emerald-200 hover:bg-emerald-400/10 transition text-sm"
           >
-            Mixed Builder
+            {copy.mixedBuilder}
           </button>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-6 pb-16 space-y-8">
+        <section className="rounded-3xl border border-emerald-400/25 bg-emerald-500/5 p-6 space-y-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.3em] text-emerald-300">
+              {isJapanese ? "プレイ可能" : "Playable Now"}
+            </p>
+            <h2 className="text-2xl font-bold">
+              {isJapanese ? "すぐに開始できるゲーム" : "Start a Cash Game"}
+            </h2>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {playableProfiles.map((profile) => (
+              <VariantCard
+                key={`playable-${profile.id}`}
+                profile={profile}
+                onLaunch={handleLaunch}
+                copy={copy}
+              />
+            ))}
+          </div>
+        </section>
+
         <section className="grid gap-4 lg:grid-cols-3">
           {advancedModes.map((mode) => {
             const disabled = mode.locked || !mode.action;
@@ -191,7 +277,7 @@ const quickLoadPreset = (presetId) => {
                 }`}
               >
                 <p className="text-xs uppercase tracking-widest text-slate-400">
-                  Advanced Mode
+                  {copy.advancedMode}
                 </p>
                 <h3 className="text-2xl font-semibold mt-1">{mode.title}</h3>
                 <p className="text-sm text-slate-300 mt-2">{mode.description}</p>
@@ -205,7 +291,7 @@ const quickLoadPreset = (presetId) => {
                       : "bg-emerald-500 text-slate-900 hover:bg-emerald-400"
                   }`}
                 >
-                  {disabled ? "COMING SOON" : "Launch"}
+                  {disabled ? copy.comingSoon : copy.launch}
                 </button>
                 <p className="text-xs text-amber-300 mt-2">{mode.hint}</p>
               </div>
@@ -239,7 +325,7 @@ const quickLoadPreset = (presetId) => {
                 onClick={() => quickLoadPreset(preset.id)}
                 className="mt-1 px-4 py-2 rounded-xl bg-emerald-500 text-slate-900 font-semibold hover:bg-emerald-400 transition text-sm"
               >
-                Mixed Builderで読み込む
+                {copy.mixedLoad}
               </button>
             </div>
           ))}
@@ -265,7 +351,7 @@ const quickLoadPreset = (presetId) => {
           <div className="relative">
             <input
               type="search"
-              placeholder="Search variants..."
+              placeholder={copy.search}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full rounded-2xl bg-slate-950/60 border border-white/10 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -275,18 +361,18 @@ const quickLoadPreset = (presetId) => {
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"
                 onClick={() => setSearch("")}
               >
-                Clear
+                {copy.clear}
               </button>
             )}
           </div>
           <p className="text-xs text-slate-400">
-            Showing {variants.length} variant{variants.length === 1 ? "" : "s"}
+            {copy.showing(variants.length)}
           </p>
         </section>
 
         <section className="grid gap-4 md:grid-cols-2">
           {variants.map((profile) => (
-            <VariantCard key={profile.id} profile={profile} onLaunch={handleLaunch} />
+            <VariantCard key={profile.id} profile={profile} onLaunch={handleLaunch} copy={copy} />
           ))}
         </section>
       </main>

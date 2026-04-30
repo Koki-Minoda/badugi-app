@@ -61,7 +61,7 @@ async function playUntilHandResult(page: Page) {
 
 async function openVariantFromMenu(page: Page, variantName: RegExp) {
   await openAuthenticatedMenu(page);
-  await page.getByTestId("menu-variant-select").click();
+  await page.getByTestId("menu-ring").click();
   await page.getByRole("button", { name: variantName }).click();
   await page
     .getByRole("button", { name: /Leaderboard|ランキング/i })

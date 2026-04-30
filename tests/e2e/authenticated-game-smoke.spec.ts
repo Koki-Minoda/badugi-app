@@ -80,6 +80,7 @@ test.describe("authenticated player smoke", () => {
 
     await page.getByTestId("menu-ring").waitFor({ state: "visible", timeout: 20000 });
     await page.getByTestId("menu-ring").click();
+    await page.getByTestId("game-selector-play-badugi").click();
     await page
       .getByRole("button", { name: /Leaderboard|ランキング/i })
       .first()

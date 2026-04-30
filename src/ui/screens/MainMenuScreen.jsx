@@ -86,10 +86,6 @@ export default function MainMenuScreen({
   const handleVariantSelected = (variantId) => {
     setVariantModalOpen(false);
     if (!variantId) return;
-    if (onSelectRing) {
-      onSelectRing(variantId);
-      return;
-    }
     const search = variantId ? `?variant=${variantId}` : "";
     navigate(`/game${search}`);
   };
@@ -197,7 +193,7 @@ export default function MainMenuScreen({
                   onSelectRing();
                   return;
                 }
-                setVariantModalOpen(true);
+                navigate("/games?mode=cash");
               }}
               onHover={() => setActiveMode("cash")}
               onBlur={resetInfoPanel}
@@ -205,7 +201,13 @@ export default function MainMenuScreen({
             <button
               type="button"
               data-testid="menu-variant-select"
-              onClick={() => setVariantModalOpen(true)}
+              onClick={() => {
+                if (onSelectRing) {
+                  onSelectRing();
+                  return;
+                }
+                navigate("/games?mode=cash");
+              }}
               onMouseEnter={() => setActiveMode("cash")}
               onBlur={resetInfoPanel}
               className="rounded-2xl border border-emerald-300/35 bg-emerald-400/10 px-5 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100 transition hover:border-emerald-200/70 hover:bg-emerald-300/15"

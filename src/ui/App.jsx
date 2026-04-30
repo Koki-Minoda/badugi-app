@@ -111,6 +111,7 @@ import GameScreen from "./screens/GameScreen.jsx";
 import AuthScreen from "./screens/AuthScreen.jsx";
 import HandHistoryScreen from "./screens/HandHistoryScreen.jsx";
 import ReplayScreen from "./screens/ReplayScreen.jsx";
+import GameSelectorScreen from "./screens/GameSelectorScreen.jsx";
 import { useGameSessionState } from "./hooks/useGameSessionState.js";
 import { mergeSeatViewsForDisplay } from "./utils/seatViewMerge.js";
 import MobileOrientationGate from "./components/MobileOrientationGate.jsx";
@@ -4294,6 +4295,10 @@ const SAFE_RESET_PHASE = "IDLE";
     setCurrentScreen("menu");
   };
 
+  const handleOpenGameSelector = () => {
+    setCurrentScreen("gameSelector");
+  };
+
   const handleSelectSettings = () => {
     setCurrentScreen("settings");
   };
@@ -7707,7 +7712,7 @@ const SAFE_RESET_PHASE = "IDLE";
                   }
                 }
               }}
-              onSelectRing={handleSelectRing}
+              onSelectRing={handleOpenGameSelector}
               onSelectTournament={handleSelectTournament}
               onSelectSettings={handleSelectSettings}
               onSelectHandHistory={handleOpenHandHistoryScreen}
@@ -7746,6 +7751,25 @@ const SAFE_RESET_PHASE = "IDLE";
             {MGX_LOCALES[language]?.common?.backToMenu ?? "Back to Menu"}
           </button>
         </div>
+        <DebugHud
+          enabled={debugFlags.enabled}
+          deviceProfile={deviceProfile}
+          shouldGateOrientation={shouldGateOrientation}
+          debugScale={debugScale}
+          screenLabel={screenLabel}
+        />
+      </>
+    );
+  }
+
+  if (currentScreen === "gameSelector") {
+    return (
+      <>
+        <GameSelectorScreen
+          language={language}
+          onBack={handleBackToMenu}
+          onLaunchVariant={handleSelectRing}
+        />
         <DebugHud
           enabled={debugFlags.enabled}
           deviceProfile={deviceProfile}

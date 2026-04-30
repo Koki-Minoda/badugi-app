@@ -16,6 +16,7 @@ export function installE2eTestDriver(apiRef) {
     forceSeatAction: (...args) => apiRef.current?.forceSeatAction?.(...args),
     forceSequentialFolds: (...args) => apiRef.current?.forceSequentialFolds?.(...args),
     forceAllIn: (...args) => apiRef.current?.forceAllIn?.(...args),
+    forceHeroDraw: (...args) => apiRef.current?.forceHeroDraw?.(...args),
     resolveHandNow: (...args) => apiRef.current?.resolveHandNow?.(...args),
     dealNewHandNow: (...args) => apiRef.current?.dealNewHandNow?.(...args),
     getStateSnapshot: (...args) => apiRef.current?.getStateSnapshot?.(...args),

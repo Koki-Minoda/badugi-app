@@ -1435,13 +1435,19 @@ Draw RL test coverage:
 - [x] `OP-06` DRAW phase でヒーローカードを選択し、選択状態が table card の visual / `aria-pressed` に反映され、`Draw Selected` を実行できる。
 - [x] `OP-07` desktop 1280x720 相当で、ヒーローカードが右下席や fixed footer に覆われてクリック不能にならない。
 - [x] `OP-08` 既存 Badugi / MTT / gallery Playwright の game entry helper を、旧 `/start/i` 前提から authenticated flow へ更新。
-- [ ] `OP-09` Badugi regression Playwright の残失敗を個別修正する。
+- [x] `OP-09` Badugi regression Playwright の残失敗を個別修正する。
   - `npx playwright test tests/e2e --project=badugi-flow` は entry/auth では止まらない。
   - 2026-04-30 更新: MTT bust/result overlay の props 配線不整合を修正し、MTT 2 tests は通過。
   - 2026-04-30 更新: canonical hand history へ legacy `seats` / `pots` / `uiSummary` を反映し、fold-only `finalAction` 欠落を改善。
-  - 2026-04-30 現在: `10 passed / 9 failed`。
-  - 残失敗: forced action 系の hand resolution timeout、tie winner の片側欠落、hand history single-pot timeout、side-pot eligibleSeats 欠落。
-  - 次の優先: forced action helper が現在 bet 額と矛盾した `check` を投げるケースを洗い出し、実ルール上は `call` / `fold` / `raise` に正規化する。
+  - 2026-04-30 更新: ヒーローのターン外でも操作ボタンが表示される問題を修正。UI の `heroCanAct` は action handler と同じ `turn` / session turn を正本にする。
+  - 2026-04-30 更新: E2E forced action の `call` amount を controller と同じ現在 bet 基準で算出し、to-call がある場面の `check` 強制を排除。
+  - 2026-04-30 更新: `setPlayerHands` が session controller / legacy controller snapshot にも反映されるようにし、showdown / side-pot / hand history 検証で注入手札が上書きされないようにした。
+  - 2026-04-30 更新: 新ハンド seed は `buildNextHandState` の `newPlayers` を正本にし、前ハンドの folded / lastAction が残るケースを修正。
+  - 2026-04-30 更新: Playwright helper をボタン可視性待ちから phase / turn / handId 状態待ちへ寄せ、人工的な複数 seat 同時 fold 待ちを削減。
+  - 2026-04-30 確認: `npx playwright test tests/e2e/badugi-flow.spec.ts --project=badugi-flow` は `16 passed`。
+  - 2026-04-30 確認: `npx playwright test tests/e2e/authenticated-game-smoke.spec.ts --project=badugi-flow` は `1 passed`。
+  - 2026-04-30 確認: `npx playwright test tests/e2e/badugi-mtt-flow.spec.ts --project=badugi-flow` は `2 passed`。
+  - 2026-04-30 確認: `npm run build` は成功。chunk size warning は残るが build 失敗ではない。
 - [ ] `OP-10` 実ブラウザ手動 smoke を実施する。
   - Desktop Chrome: login、ring game 5 hands、bet/call/raise/fold、draw/pat、hand result、history。
   - Mobile Safari または Android Chrome: portrait / landscape でカード選択、Draw Selected、overlay、footer overlap を確認。

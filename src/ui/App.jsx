@@ -889,7 +889,9 @@ const SAFE_RESET_PHASE = "IDLE";
     tablePhase === "BET" || tablePhase === "DRAW";
   const safeEngineState = engineState ?? {};
   const snapshotTurn =
-    typeof safeEngineState?.metadata?.actingPlayerIndex === "number"
+    typeof turnSeatSrc === "number"
+      ? turnSeatSrc
+      : typeof safeEngineState?.metadata?.actingPlayerIndex === "number"
       ? safeEngineState.metadata.actingPlayerIndex
       : typeof safeEngineState?.nextTurn === "number"
       ? safeEngineState.nextTurn
@@ -2755,9 +2757,21 @@ const SAFE_RESET_PHASE = "IDLE";
       const snap = roster.map(clonePlayerState).filter(Boolean);
       const seatBefore = snap[seat] ? { ...snap[seat] } : null;
       if (isSingleTableBadugi) {
+        const actionType = payload?.type ?? "call";
+        const forcedCurrentBet = snap.reduce(
+          (max, player) => Math.max(max, Number(player?.betThisRound) || 0),
+          0,
+        );
+        const callAmount =
+          String(actionType).toLowerCase() === "call" && payload?.amount == null
+            ? Math.max(
+                0,
+                forcedCurrentBet - Math.max(0, Number(seatBefore?.betThisRound) || 0),
+              )
+            : payload?.amount ?? 0;
         const controllerOutcome = tryControllerBetAction({
-          actionType: payload?.type ?? "call",
-          amount: payload?.amount ?? 0,
+          actionType,
+          amount: callAmount,
           seatIndex: seat,
           metadata: payload,
         });
@@ -2902,11 +2916,52 @@ const SAFE_RESET_PHASE = "IDLE";
             actingPlayerIndex: turn,
           },
         });
+        if (isSingleTableBadugi) {
+          const controllerSnapshot = {
+            ...forcedSnapshot,
+            phase,
+            players: snap.map(clonePlayerState).filter(Boolean),
+            pots: Array.isArray(pots) ? pots.map((pot) => ({ ...pot })) : [],
+            currentBet,
+            betHead,
+            lastAggressor,
+            nextTurn: turn,
+            turn,
+            metadata: {
+              ...(forcedSnapshot.metadata ?? {}),
+              currentBet,
+              betHead,
+              lastAggressor,
+              actingPlayerIndex: turn,
+            },
+          };
+          if (sessionControllerStateRef.current) {
+            sessionControllerStateRef.current = {
+              ...sessionControllerStateRef.current,
+              snapshot: controllerSnapshot,
+            };
+          }
+          const sessionController = sessionControllerRef.current;
+          if (sessionController?.legacy?.state) {
+            sessionController.legacy.state.players = controllerSnapshot.players.map(clonePlayerState);
+            sessionController.legacy.state.pots = controllerSnapshot.pots.map((pot) => ({ ...pot }));
+            sessionController.legacy.state.phase = phase;
+            sessionController.legacy.state.currentBet = currentBet;
+            sessionController.legacy.state.betHead = betHead;
+            sessionController.legacy.state.lastAggressorIdx = lastAggressor;
+            sessionController.legacy.state.nextTurn = turn;
+            sessionController.legacy.state.turn = turn;
+            sessionController.legacy.state.metadata = {
+              ...(sessionController.legacy.state.metadata ?? {}),
+              ...(controllerSnapshot.metadata ?? {}),
+            };
+          }
+        }
         syncEngineSnapshot(forcedSnapshot);
         return snap;
       });
     },
-    [pots, currentBet, betHead, lastAggressor, turn, syncEngineSnapshot]
+    [pots, currentBet, betHead, lastAggressor, turn, phase, isSingleTableBadugi, syncEngineSnapshot]
   );
 
   const queueForcedSeatAction = useCallback(
@@ -4450,6 +4505,7 @@ const SAFE_RESET_PHASE = "IDLE";
     const seedSnapshot = controllerHandSnapshot
       ? applyDeckSnapshot({
           ...controllerHandSnapshot,
+          players: newPlayers.map(clonePlayerState).filter(Boolean),
           nextTurn:
             typeof controllerHandSnapshot.turn === "number"
               ? controllerHandSnapshot.turn
@@ -4584,6 +4640,7 @@ const SAFE_RESET_PHASE = "IDLE";
         SAFE_RESET_PHASE,
         "INIT",
         "HAND_RESULT",
+        "SHOWDOWN",
         "WAITING_NEXT_HAND",
         "TABLE_FINISHED",
         "TOURNAMENT_END",
@@ -4780,6 +4837,7 @@ const SAFE_RESET_PHASE = "IDLE";
         queueForcedSeatAction(seat, { ...payload, __forceInstant: true }),
       forceSequentialFolds,
       forceAllIn: forceAllInAction,
+      forceHeroDraw: () => drawSelected(),
       resolveHandNow: resolveHandImmediately,
       dealNewHandNow: startNextHand,
       setPlayerHands: applyCustomHands,
@@ -4966,14 +5024,10 @@ const SAFE_RESET_PHASE = "IDLE";
 
   function ensureLastActionLabelsForSnapshot(snapshotPlayers = []) {
     const base = Array.isArray(snapshotPlayers) ? snapshotPlayers : [];
-    return base.map((player, idx) => {
+    return base.map((player) => {
       if (!player) return player;
       if (typeof player.lastAction === "string" && player.lastAction.trim().length > 0) {
         return player;
-      }
-      const previous = players[idx];
-      if (previous?.lastAction) {
-        return { ...player, lastAction: previous.lastAction };
       }
       if (player.folded) {
         return { ...player, lastAction: "Fold" };
@@ -7107,18 +7161,12 @@ const SAFE_RESET_PHASE = "IDLE";
   const controlsPhase = controlsConfig?.phase ?? tablePhase;
   const controlsCurrentBet = controlsConfig?.currentBet ?? currentBetSrc;
 
-  // Whether the adapter explicitly marks heroTurn
-  const hasExplicitHeroTurnFlag =
-    controlsConfig && typeof controlsConfig.heroTurn === "boolean";
-
   const heroSeatIndex =
     typeof heroSeatView?.seatIndex === "number" ? heroSeatView.seatIndex : 0;
   const heroEligible =
     heroPlayerForControls &&
     !heroPlayerForControls.folded &&
     !heroPlayerForControls.seatOut;
-  const explicitHeroTurn =
-    hasExplicitHeroTurnFlag && Boolean(controlsConfig.heroTurn);
   const isActionPhase =
     controlsPhase === "BET" || controlsPhase === "DRAW";
 
@@ -7149,13 +7197,12 @@ const SAFE_RESET_PHASE = "IDLE";
       ? heroDrawAllowedByEngine
       : false;
 
-  // Hero is allowed to act during BET/DRAW when engine turn points to hero
-  // (or adapter explicitly forces heroTurn) and the phase still requires action.
+  // Hero controls must follow the same acting seat used by action handlers.
   const heroCanAct =
     isActionPhase &&
     heroEligible &&
     heroPhaseNeedsAction &&
-    (controllerTurn === heroSeatIndex || explicitHeroTurn);
+    controllerTurn === heroSeatIndex;
   const heroCanDraw = controlsPhase === "DRAW" && heroCanAct;
 
   useEffect(() => {

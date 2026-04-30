@@ -545,11 +545,17 @@ export default function GameLayoutBase({
         onNextHand={onNextHand}
         nextHandLabel={nextHandLabel}
       />
-      <HeroBustOverlay visible={heroBustOverlayVisible} summary={heroBustSummary} />
+      <HeroBustOverlay
+        visible={heroBustOverlayVisible}
+        title={heroBustSummary?.title}
+        heroSummary={heroBustSummary?.hero}
+        inMoneyPlacements={heroBustSummary?.inMoney ?? []}
+        onBackToMenu={onTournamentBackToMenu}
+      />
       <TournamentResultOverlay
         visible={tournamentOverlayVisible}
         placements={tournamentPlacements}
-        tournamentTitle={tournamentTitle}
+        title={tournamentTitle}
         onBackToMenu={onTournamentBackToMenu}
         onPlayAgain={onTournamentPlayAgain}
       />

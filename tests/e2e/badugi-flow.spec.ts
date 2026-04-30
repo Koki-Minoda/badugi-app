@@ -298,24 +298,37 @@ async function waitForE2EHelper(page: Page, helperName: string) {
   );
 }
 
-async function waitForHandsApplied(
-  page: Page,
-  overrides: Array<{ seat: number; cards: string[] }>,
-) {
+async function waitForHandsApplied(page: Page, overrides: Array<Record<string, any>>) {
   await page.waitForFunction(
     (config) => {
       const state = window.__BADUGI_E2E__?.getPhaseState?.();
       if (!state || !Array.isArray(state.players)) return false;
-      return config.every(({ seat, cards }) => {
+      return config.every(({ seat, cards, totalInvested, stack, allIn }) => {
         const player = state.players?.[seat];
         if (!player || !Array.isArray(player.hand)) return false;
         if (player.hand.length !== cards.length) return false;
-        return player.hand.every((card, idx) => card === String(cards[idx]).toUpperCase());
+        if (!player.hand.every((card, idx) => card === String(cards[idx]).toUpperCase())) {
+          return false;
+        }
+        if (typeof totalInvested === "number" && player.totalInvested !== totalInvested) {
+          return false;
+        }
+        if (typeof stack === "number" && player.stack !== stack) {
+          return false;
+        }
+        if (typeof allIn === "boolean" && Boolean(player.allIn) !== allIn) {
+          return false;
+        }
+        return true;
       });
     },
     overrides,
     { timeout: 20000 },
   );
+}
+
+async function getPhaseState(page: Page) {
+  return page.evaluate(() => window.__BADUGI_E2E__?.getPhaseState?.() ?? null);
 }
 
 async function invokeE2E(page: Page, method: string, ...args: unknown[]) {
@@ -329,6 +342,20 @@ async function invokeE2E(page: Page, method: string, ...args: unknown[]) {
     },
     { methodName: method, params: args },
   );
+}
+
+async function forceContinueAction(page: Page, seat: number) {
+  const state = await getPhaseState(page);
+  const players = Array.isArray(state?.players) ? state.players : [];
+  const currentBet = players.reduce(
+    (max: number, player: any) =>
+      Math.max(max, typeof player?.betThisRound === "number" ? player.betThisRound : 0),
+    0,
+  );
+  const seatBet = typeof players?.[seat]?.betThisRound === "number" ? players[seat].betThisRound : 0;
+  const type = currentBet > seatBet ? "call" : "check";
+  await invokeE2E(page, "forceSeatAction", seat, { type });
+  return type;
 }
 
 async function waitForSeatActionLog(
@@ -403,7 +430,7 @@ test.describe("Badugi flow regressions", () => {
     await invokeE2E(page, "dealNewHandNow");
     await page.getByRole("button", { name: /^Fold$/i }).first().waitFor({ state: "visible", timeout: 30000 });
     const secondHandActionIdx = logs.length;
-    await invokeE2E(page, "forceSeatAction", 0, { type: "check" });
+    await forceContinueAction(page, 0);
     await waitForSeatActionLog(logs, 0, secondHandActionIdx);
     const heroSecondAction = logs
       .slice(secondHandActionIdx)
@@ -552,7 +579,7 @@ test.describe("Badugi flow regressions", () => {
     await foldButton.waitFor({ state: "visible", timeout: 30000 });
 
     const heroActionIdx = logs.length;
-    await invokeE2E(page, "forceSeatAction", 0, { type: "check" });
+    await forceContinueAction(page, 0);
     await waitForSeatActionLog(logs, 0, heroActionIdx);
 
     const cpuSeats = [1, 2, 3, 4];
@@ -723,8 +750,8 @@ test.describe("Badugi flow regressions", () => {
     await invokeE2E(page, "setPlayerHands", tieOverrides);
     await waitForHandsApplied(page, tieOverrides);
     await invokeE2E(page, "forceSequentialFolds", [1, 3, 4, 5]);
-    await invokeE2E(page, "forceSeatAction", 0, { type: "check" });
-    await invokeE2E(page, "forceSeatAction", 2, { type: "check" });
+    await forceContinueAction(page, 0);
+    await forceContinueAction(page, 2);
     await invokeE2E(page, "resolveHandNow");
     await waitForHandResolution(page, logs, startIdx);
     const winners = await waitForWinnersLog(logs, startIdx);
@@ -763,8 +790,8 @@ test.describe("Badugi flow regressions", () => {
     ];
     await invokeE2E(page, "setPlayerHands", fourVsThreeOverrides);
     await waitForHandsApplied(page, fourVsThreeOverrides);
-    await invokeE2E(page, "forceSeatAction", 0, { type: "check" });
-    await invokeE2E(page, "forceSeatAction", 1, { type: "check" });
+    await forceContinueAction(page, 0);
+    await forceContinueAction(page, 1);
     await invokeE2E(page, "resolveHandNow");
     await waitForHandResolution(page, logs, startIdx);
     const winners = await waitForWinnersLog(logs, startIdx);
@@ -808,8 +835,8 @@ test.describe("Badugi flow regressions", () => {
     ];
     await invokeE2E(page, "setPlayerHands", singlePotOverrides);
     await waitForHandsApplied(page, singlePotOverrides);
-    await invokeE2E(page, "forceSeatAction", 0, { type: "check" });
-    await invokeE2E(page, "forceSeatAction", 1, { type: "check" });
+    await forceContinueAction(page, 0);
+    await forceContinueAction(page, 1);
     await invokeE2E(page, "resolveHandNow");
     await waitForHandResolution(page, logs, 0);
     const potSections = await waitForHandResultPots(page);
@@ -901,10 +928,10 @@ test.describe("Badugi flow regressions", () => {
       ),
     );
     const startIdx = logs.length;
-    await invokeE2E(page, "forceSeatAction", 0, { type: "check" });
-    await waitForSeatActionLog(logs, 0, startIdx, (line) => line.includes("action=Check"));
-    await invokeE2E(page, "forceSeatAction", 1, { type: "check" });
-    await waitForSeatActionLog(logs, 1, startIdx, (line) => line.includes("action=Check"));
+    await forceContinueAction(page, 0);
+    await waitForSeatActionLog(logs, 0, startIdx, (line) => /action=(Check|Call)/.test(line));
+    await forceContinueAction(page, 1);
+    await waitForSeatActionLog(logs, 1, startIdx, (line) => /action=(Check|Call)/.test(line));
     await invokeE2E(page, "resolveHandNow");
     await waitForHandResolution(page, logs, startIdx);
     const history = await getHandHistoryRecords(page);
@@ -935,11 +962,18 @@ test.describe("Badugi flow regressions", () => {
     await waitForE2EHelper(page, "setPlayerHands");
     await invokeE2E(page, "setPlayerHands", sideOverrides);
     await waitForHandsApplied(page, sideOverrides);
-    await invokeE2E(page, "forceSequentialFolds", [3, 4, 5]);
+    const foldedSideHistorySeats = [3, 4, 5];
+    const foldStartIdx = logs.length;
+    await invokeE2E(page, "forceSequentialFolds", foldedSideHistorySeats);
+    await Promise.all(
+      foldedSideHistorySeats.map((seat) =>
+        waitForSeatActionLog(logs, seat, foldStartIdx, (line) => line.includes("action=Fold")),
+      ),
+    );
     const startIdx = logs.length;
-    await invokeE2E(page, "forceSeatAction", 0, { type: "check" });
-    await invokeE2E(page, "forceSeatAction", 1, { type: "check" });
-    await invokeE2E(page, "forceSeatAction", 2, { type: "check" });
+    await forceContinueAction(page, 0);
+    await forceContinueAction(page, 1);
+    await forceContinueAction(page, 2);
     await invokeE2E(page, "resolveHandNow");
     await waitForHandResolution(page, logs, startIdx);
     const history = await getHandHistoryRecords(page);

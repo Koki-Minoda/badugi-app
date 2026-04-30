@@ -140,6 +140,10 @@ function buildPotEntries(pots = []) {
         ? pot.eligible.map((seat) => (typeof seat === "number" ? seat : null)).filter(
             (seat) => seat !== null,
           )
+        : Array.isArray(pot?.eligibleSeats)
+        ? pot.eligibleSeats.map((seat) => (typeof seat === "number" ? seat : null)).filter(
+            (seat) => seat !== null,
+          )
         : [],
       winners: Array.isArray(pot?.payouts)
         ? pot.payouts.map((entry) => {

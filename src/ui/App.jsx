@@ -1636,6 +1636,15 @@ const SAFE_RESET_PHASE = "IDLE";
       handHistoryRef.current.endedAt = Date.now();
       if (legacyRecord) {
         handHistoryRef.current.legacyRecord = legacyRecord;
+        handHistoryRef.current.seats = Array.isArray(legacyRecord.seats)
+          ? legacyRecord.seats.map((seat) => ({ ...seat }))
+          : handHistoryRef.current.seats;
+        handHistoryRef.current.pots = Array.isArray(legacyRecord.pots)
+          ? legacyRecord.pots.map((pot) => ({ ...pot }))
+          : [];
+        handHistoryRef.current.uiSummary = legacyRecord.uiSummary
+          ? { ...legacyRecord.uiSummary }
+          : null;
       }
       const snapshot = cloneHandHistory(handHistoryRef.current);
       if (!snapshot) {
@@ -2949,7 +2958,7 @@ const SAFE_RESET_PHASE = "IDLE";
     const roster = playersRef.current;
     if (!Array.isArray(roster) || roster.length === 0) return;
     const snapshot = roster.map(clonePlayerState).filter(Boolean);
-    goShowdownNow(snapshot, { force: true });
+    goShowdownNow(snapshot, { force: true, bypassEngine: true });
   }, [goShowdownNow]);
 
   const handleTierOverrideChange = (event) => {
@@ -3557,6 +3566,7 @@ const SAFE_RESET_PHASE = "IDLE";
   function goShowdownNow(playersSnap, options = {}) {
     debugLog("[SHOWDOWN] goShowdownNow (All-in shortcut) called");
     const forceShowdown = options.force === true;
+    const bypassEngine = options.bypassEngine === true;
 
     const active = playersSnap.filter((p) => !isFoldedOrOut(p));
     if (active.length === 0) return;
@@ -3566,6 +3576,7 @@ const SAFE_RESET_PHASE = "IDLE";
     }
 
     if (
+      !bypassEngine &&
       engine &&
       handleEngineShowdown(drawRound, {
         playersOverride: Array.isArray(playersSnap) ? playersSnap : null,

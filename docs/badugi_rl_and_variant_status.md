@@ -1436,14 +1436,18 @@ Draw RL test coverage:
 - [x] `OP-07` desktop 1280x720 相当で、ヒーローカードが右下席や fixed footer に覆われてクリック不能にならない。
 - [x] `OP-08` 既存 Badugi / MTT / gallery Playwright の game entry helper を、旧 `/start/i` 前提から authenticated flow へ更新。
 - [ ] `OP-09` Badugi regression Playwright の残失敗を個別修正する。
-  - `npx playwright test tests/e2e --project=badugi-flow` は entry/auth では止まらないが、2026-04-30 時点で 12 failed / 7 passed。
-  - 主な残件: forced action 系の hand resolution timeout、hand history canonical record の `pots` / `finalAction` 欠落、MTT bust/result overlay の期待値不整合。
+  - `npx playwright test tests/e2e --project=badugi-flow` は entry/auth では止まらない。
+  - 2026-04-30 更新: MTT bust/result overlay の props 配線不整合を修正し、MTT 2 tests は通過。
+  - 2026-04-30 更新: canonical hand history へ legacy `seats` / `pots` / `uiSummary` を反映し、fold-only `finalAction` 欠落を改善。
+  - 2026-04-30 現在: `10 passed / 9 failed`。
+  - 残失敗: forced action 系の hand resolution timeout、tie winner の片側欠落、hand history single-pot timeout、side-pot eligibleSeats 欠落。
+  - 次の優先: forced action helper が現在 bet 額と矛盾した `check` を投げるケースを洗い出し、実ルール上は `call` / `fold` / `raise` に正規化する。
 - [ ] `OP-10` 実ブラウザ手動 smoke を実施する。
   - Desktop Chrome: login、ring game 5 hands、bet/call/raise/fold、draw/pat、hand result、history。
   - Mobile Safari または Android Chrome: portrait / landscape でカード選択、Draw Selected、overlay、footer overlap を確認。
 - [ ] `OP-11` repository-wide lint の既存エラーを整理する。
   - `npm run lint` は 2026-04-30 時点で既存の `process` / unused / duplicate member / App.jsx 未整理などにより fail。
-  - 今回変更した主要ファイルの targeted ESLint は error なし。
+  - 2026-04-30 更新: `src/ui/App.jsx` / `GameLayoutBase.jsx` など既存 lint error が残存。今回の対象では build と関連 unit / E2E を優先。
 
 ## 13. ひとことで言うと
 

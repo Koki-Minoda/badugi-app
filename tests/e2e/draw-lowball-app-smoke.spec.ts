@@ -64,7 +64,7 @@ async function openVariantFromMenu(page: Page, variantName: RegExp) {
   await page.getByTestId("menu-variant-select").click();
   await page.getByRole("button", { name: variantName }).click();
   await page
-    .getByRole("button", { name: /Leaderboard/i })
+    .getByRole("button", { name: /Leaderboard|ランキング/i })
     .first()
     .waitFor({ state: "visible", timeout: 20000 });
 }

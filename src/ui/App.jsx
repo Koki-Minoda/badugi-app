@@ -112,6 +112,7 @@ import AuthScreen from "./screens/AuthScreen.jsx";
 import HandHistoryScreen from "./screens/HandHistoryScreen.jsx";
 import ReplayScreen from "./screens/ReplayScreen.jsx";
 import { useGameSessionState } from "./hooks/useGameSessionState.js";
+import { mergeSeatViewsForDisplay } from "./utils/seatViewMerge.js";
 import MobileOrientationGate from "./components/MobileOrientationGate.jsx";
 import { useDeviceProfile } from "./hooks/useDeviceProfile.js";
 import { useDesktopCanvasScale } from "./hooks/useDesktopCanvasScale.js";
@@ -1135,33 +1136,11 @@ const SAFE_RESET_PHASE = "IDLE";
       };
     });
 
-    // adapter が seatViews を提供していれば、それを「差分」としてマージする
-    if (adapterViewProps?.seatViews?.length) {
-      return baseSeats.map((base, idx) => {
-        const override = adapterViewProps.seatViews[idx];
-        if (!override) return base;
-
-        return {
-          ...base,
-          ...override,
-          // cards は必ずどちらかから埋まるようにしておく
-          cards: override.cards ?? base.cards ?? [],
-        };
-      });
-    }
-
-    // なければベースそのまま
-    const normalized = adapterViewProps?.seatViews?.length
-      ? baseSeats.map((base, idx) => {
-          const override = adapterViewProps.seatViews[idx];
-          if (!override) return base;
-          return {
-            ...base,
-            ...override,
-            cards: override.cards ?? base.cards ?? [],
-          };
-        })
-      : baseSeats;
+    const normalized = mergeSeatViewsForDisplay({
+      baseSeats,
+      adapterSeatViews: adapterViewProps?.seatViews ?? [],
+      phase,
+    });
     return normalized.map((seat, idx) => ({
       ...seat,
       isTurn: isTableActionPhase && idx === controllerTurn,
@@ -1174,6 +1153,7 @@ const SAFE_RESET_PHASE = "IDLE";
     isTableActionPhase,
     authUserId,
     mergedSeatStatsByPlayerId,
+    phase,
   ]);
 
   const seatLabels = useMemo(
@@ -3377,6 +3357,74 @@ const SAFE_RESET_PHASE = "IDLE";
     return alive.length >= 2;
   }
 
+  const buildCashNextHandSnapshot = useCallback(
+    (snapshot = []) => {
+      const configuredPlayers = applyHeroProfile(
+        buildPlayersFromSeatTypes(
+          seatConfigRef.current,
+          startingStackRef.current ?? DEFAULT_STARTING_STACK,
+          heroProfile,
+        ),
+        heroProfile,
+      );
+      const source =
+        Array.isArray(snapshot) && snapshot.length ? snapshot : configuredPlayers;
+      const rebuyStack = startingStackRef.current ?? DEFAULT_STARTING_STACK;
+
+      return configuredPlayers.map((baseline, idx) => {
+        const player = source[idx] ? clonePlayerState(source[idx]) : baseline;
+        const seatType = player?.seatType ?? baseline?.seatType ?? seatConfigRef.current?.[idx];
+        const isEmptySeat = String(seatType ?? "").toUpperCase() === "EMPTY";
+        if (isEmptySeat) {
+          return {
+            ...baseline,
+            ...player,
+            seatType,
+            stack: 0,
+            folded: true,
+            hasFolded: true,
+            allIn: false,
+            isBusted: true,
+            seatOut: true,
+            hand: [],
+            selected: [],
+            showHand: false,
+            betThisRound: 0,
+            totalInvested: 0,
+            lastAction: "",
+          };
+        }
+
+        const stack =
+          Number.isFinite(player?.stack) && player.stack > 0
+            ? player.stack
+            : rebuyStack;
+        const isHeroSeat = idx === 0 && String(seatType ?? "").toUpperCase() === "HUMAN";
+        return {
+          ...baseline,
+          ...player,
+          seatType,
+          stack,
+          hand: [],
+          selected: [],
+          folded: false,
+          hasFolded: false,
+          allIn: false,
+          isBusted: false,
+          seatOut: false,
+          hasActedThisRound: false,
+          betThisRound: 0,
+          totalInvested: 0,
+          lastAction: "",
+          hasDrawn: false,
+          lastDrawCount: 0,
+          showHand: isHeroSeat,
+        };
+      });
+    },
+    [buildPlayersFromSeatTypes, heroProfile],
+  );
+
   const buildTournamentEntrants = useCallback((config) => {
     const totalPlayersForConfig =
       Math.max(1, Number(config?.tables) || 1) *
@@ -4929,16 +4977,27 @@ const SAFE_RESET_PHASE = "IDLE";
       if (mode === "tournament-mtt" && tournamentStateRef.current?.isFinished) {
         return false;
       }
-      const snapshot =
+      let snapshot =
         Array.isArray(prevPlayers) && prevPlayers.length
           ? prevPlayers
           : playersRef.current ?? players;
       if (!canContinueGame(snapshot)) {
-        console.warn("[HAND] Unable to continue – not enough active players.");
-        setPhase("TABLE_FINISHED");
-        setShowNextButton(false);
-        setHandResultVisible(false);
-        return false;
+        if (mode !== "tournament-mtt") {
+          const recoveredSnapshot = buildCashNextHandSnapshot(snapshot);
+          if (canContinueGame(recoveredSnapshot)) {
+            console.warn("[HAND] cash table recovered with rebuy stacks for next hand.");
+            snapshot = recoveredSnapshot;
+            setPlayers(recoveredSnapshot);
+            playersRef.current = recoveredSnapshot;
+          }
+        }
+        if (!canContinueGame(snapshot)) {
+          console.warn("[HAND] Unable to continue – not enough active players.");
+          setPhase("TABLE_FINISHED");
+          setShowNextButton(false);
+          setHandResultVisible(false);
+          return false;
+        }
       }
       if (!handSavedRef.current) {
         trySaveHandOnceRef.current({
@@ -4974,7 +5033,7 @@ const SAFE_RESET_PHASE = "IDLE";
       const nextHandNumber = handCountRef.current + 1;
       const success = dealNewHandRef.current(
         targetDealerIdx,
-        prevPlayers,
+        snapshot,
         nextHandNumber,
       );
       if (success) {
@@ -4982,7 +5041,7 @@ const SAFE_RESET_PHASE = "IDLE";
       }
       return success;
     },
-    [dealerIdx, mode, phase, players, pots],
+    [buildCashNextHandSnapshot, dealerIdx, mode, phase, players, pots],
   );
   startNextHandRef.current = startNextHand;
 
@@ -7733,12 +7792,20 @@ const SAFE_RESET_PHASE = "IDLE";
     );
   }
 
+  const headerLabels = MGX_LOCALES[language]?.header ?? MGX_LOCALES[MGX_DEFAULT_LOCALE].header;
+  const currentGameTitle =
+    GAME_VARIANTS[gameVariant]?.label ??
+    GAME_VARIANTS[gameVariantRef.current]?.label ??
+    "MGX Poker";
+
   const headerProps = {
     ratingState,
     rankInfo,
-    onNavigateTitle: handleNavigateToTitle,
+    gameTitle: currentGameTitle,
+    labels: headerLabels,
+    onNavigateTitle: handleBackToMenu,
     onNavigateLeaderboard: () => navigate("/leaderboard"),
-    onNavigateSettings: () => navigate("/settings"),
+    onNavigateSettings: handleSelectSettings,
     onNavigateProfile: () => navigate("/profile"),
     onNavigateHistory: () => navigate("/history"),
   };
@@ -7983,6 +8050,9 @@ function AuthGate({ children, onAuthenticated, onAuthStateChange }) {
     }
   }, [authState, onAuthStateChange]);
   useEffect(() => {
+    if (!authState.isAuthenticated || !authState.accessToken) {
+      return undefined;
+    }
     const stopAutoSync = startAutoSync(30000, {
       accessToken: authState.accessToken,
       tokenType: authState.tokenType,
@@ -7992,7 +8062,7 @@ function AuthGate({ children, onAuthenticated, onAuthStateChange }) {
         stopAutoSync();
       }
     };
-  }, [authState.accessToken, authState.tokenType]);
+  }, [authState.accessToken, authState.isAuthenticated, authState.tokenType]);
   if (!authState.isAuthenticated) {
     return <AuthScreen onAuthenticated={onAuthenticated} />;
   }

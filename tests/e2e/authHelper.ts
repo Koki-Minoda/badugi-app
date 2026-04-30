@@ -116,7 +116,7 @@ export async function openAuthenticatedGame(page: Page, url = APP_URL) {
   await openAuthenticatedMenu(page, url);
   await page.getByTestId("menu-ring").click();
   await page
-    .getByRole("button", { name: /Leaderboard/i })
+    .getByRole("button", { name: /Leaderboard|ランキング/i })
     .first()
     .waitFor({ state: "visible", timeout: 20000 });
 }

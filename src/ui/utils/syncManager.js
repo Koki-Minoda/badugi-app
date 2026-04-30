@@ -277,6 +277,7 @@ async function sendJob(job, options = {}) {
 
 export async function flushQueue(options = {}) {
   if (flushing) return;
+  if (!options.accessToken) return;
   const queue = loadQueue();
   if (queue.length === 0) return;
   flushing = true;

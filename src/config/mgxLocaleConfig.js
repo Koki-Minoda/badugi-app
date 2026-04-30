@@ -16,6 +16,16 @@ export const MGX_LOCALES = {
       friend: "FRIEND MATCH",
       settings: "SETTINGS",
     },
+    header: {
+      mainMenu: "Game Select",
+      settings: "Settings",
+      profile: "Profile",
+      history: "History",
+      leaderboard: "Leaderboard",
+      globalRating: "Global Rating",
+      skill: "Skill",
+      mixed: "Mixed",
+    },
     info: {
       defaultTitle: "Need a refresher?",
       defaultBody:
@@ -42,6 +52,16 @@ export const MGX_LOCALES = {
       tournament: "トーナメント",
       friend: "フレンドマッチ",
       settings: "設定",
+    },
+    header: {
+      mainMenu: "ゲーム選択",
+      settings: "設定",
+      profile: "プロフィール",
+      history: "履歴",
+      leaderboard: "ランキング",
+      globalRating: "総合レート",
+      skill: "スキル",
+      mixed: "ミックス",
     },
     info: {
       defaultTitle: "ヘルプ",

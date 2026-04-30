@@ -53,6 +53,8 @@ export default function GameLayoutBase({
   const {
     ratingState,
     rankInfo,
+    gameTitle = "Badugi App",
+    labels = {},
     onNavigateTitle,
     onNavigateLeaderboard,
     onNavigateSettings,
@@ -220,7 +222,7 @@ export default function GameLayoutBase({
             isMobileLayout ? "justify-between" : "justify-between gap-6"
           }`}
         >
-          <h1 className={`font-bold ${isMobileLayout ? "text-xl" : "text-2xl"}`}>Badugi App</h1>
+          <h1 className={`font-bold ${isMobileLayout ? "text-xl" : "text-2xl"}`}>{gameTitle}</h1>
           <div
             className={`flex ${
               isMobileLayout
@@ -229,7 +231,9 @@ export default function GameLayoutBase({
             }`}
           >
             <div className="text-right">
-              <p className="text-[10px] uppercase tracking-widest text-slate-400">Global Rating</p>
+              <p className="text-[10px] uppercase tracking-widest text-slate-400">
+                {labels.globalRating ?? "Global Rating"}
+              </p>
               <strong className="text-lg text-white">
                 {Math.round(ratingState.globalRating ?? 1500)}
               </strong>
@@ -239,7 +243,8 @@ export default function GameLayoutBase({
             </div>
             {!isMobileLayout && (
               <div className="text-[11px] text-slate-300">
-                Skill {Math.round(ratingState.skillRating ?? 1500)} | Mixed{" "}
+                {labels.skill ?? "Skill"} {Math.round(ratingState.skillRating ?? 1500)} |{" "}
+                {labels.mixed ?? "Mixed"}{" "}
                 {Math.round(ratingState.mixedRating ?? 1500)}
               </div>
             )}
@@ -249,7 +254,7 @@ export default function GameLayoutBase({
                 isMobileLayout ? "px-2 py-1 text-[10px]" : "px-3 py-1 text-[11px]"
               }`}
             >
-              Leaderboard
+              {labels.leaderboard ?? "Leaderboard"}
             </button>
           </div>
         </div>
@@ -259,16 +264,16 @@ export default function GameLayoutBase({
           }`}
         >
           <button type="button" onClick={onNavigateTitle} className="hover:text-yellow-400 transition">
-            Title
+            {labels.mainMenu ?? "Title"}
           </button>
           <button onClick={onNavigateSettings} className="hover:text-yellow-400 transition">
-            Settings
+            {labels.settings ?? "Settings"}
           </button>
           <button onClick={onNavigateProfile} className="hover:text-yellow-400 transition">
-            Profile
+            {labels.profile ?? "Profile"}
           </button>
           <button onClick={onNavigateHistory} className="hover:text-yellow-400 transition">
-            History
+            {labels.history ?? "History"}
           </button>
         </nav>
       </header>

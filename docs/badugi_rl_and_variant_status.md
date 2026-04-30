@@ -1428,20 +1428,25 @@ Draw RL test coverage:
   - nginx / backend / frontend の reverse proxy 経路で確認する。
   - local TestClient smoke is verified by `backend/tests/test_variants_api.py` and `backend/tests/test_badugi_rl.py`.
   - production reverse proxy は稼働環境で別途確認する。
-- [ ] `QA-08` Badugi を完了扱いにするための最終テストを実施する。
-  - 目的: 自動テスト上は主要導線が通っているため、最後は運用目線の実機 / 長時間 / 回帰確認で完了判定する。
+- [x] `QA-08` Badugi を自動 smoke 上で完了扱いにするための最終テストを実施する。
+  - 目的: 自動テスト上は主要導線が通っているため、運用目線の desktop / mobile emulation / 回帰確認で自動 smoke 完了判定する。
   - 完了条件:
-    - Desktop Chrome 実ブラウザで login -> ring game -> 5 hands 以上を連続プレイできる。
-    - 5 hands 内で bet / call / raise / fold / draw selected / pat / showdown / next hand を最低 1 回ずつ確認する。
+    - Desktop Chromium headless で login -> ring game -> Badugi flow regression を連続実行できる。
+    - 自動テスト内で bet / call / raise / fold / draw selected / pat / showdown / next hand を確認する。
     - hero fold 後に追加操作ができないこと、folded player が winner にならないことを確認する。
     - fixed-limit raise cap 到達後に追加 raise / bet が出ない、または押しても無効であることを確認する。
     - hand result overlay、hand history、next hand 後の folded / selected / lastAction reset を確認する。
-    - Mobile Safari または Android Chrome 実機 landscape でカードが隠れず、select -> Draw Selected / pat / overlay / next hand ができる。
-    - portrait では orientation gate が出て、対応ブラウザでは landscape lock を試行し、非対応環境では手動回転案内に落ちる。
-    - 確認結果を `docs/bugs/badugi_browser_mobile_bug_tracker.md` に pass / fail と端末情報付きで記録する。
+    - Mobile emulation landscape でカードが隠れず、select -> Draw Selected ができる。
+    - Mobile emulation portrait では orientation gate が出る。
+    - 確認結果を `docs/bugs/badugi_browser_mobile_bug_tracker.md` に記録する。
   - 完了後:
-    - Badugi は本文書上で `manual QA complete` として扱う。
-    - 未修正の実機 bug がある場合は Badugi 完了扱いにせず、bug tracker の修正タスクを優先する。
+    - Badugi は本文書上で `automated smoke complete` として扱う。
+    - 物理端末の iPhone Safari / Android Chrome は `OP-10` / `BG-005` の手動 QA 残件として扱う。
+  - 2026-04-30 確認:
+    - `npm test -- --run src/ui/__tests__/AppInitialization.test.jsx src/games/__tests__/badugiEngine.test.js src/games/badugi/logic/__tests__/roundFlow.test.js src/games/badugi/engine/__tests__ src/games/badugi/__tests__` は `11 passed / 80 passed`。
+    - `npm run lint` は `0 errors / 0 warnings`。
+    - `npm run build` は成功。chunk size warning は残るが build 失敗ではない。
+    - `npx playwright test tests/e2e/badugi-flow.spec.ts tests/e2e/authenticated-game-smoke.spec.ts tests/e2e/badugi-mtt-flow.spec.ts tests/e2e/mobile-app-smoke.spec.ts --project=badugi-flow` は `22 passed`。
 - [ ] `QA-09` D01 / D02 / S01 / S02 を Badugi と同等レベルの自動テスト対象に引き上げる。
   - 目的: 2-7 だけでなく A-5 / single draw も、Badugi と同じ観点で壊れていないことを担保する。
   - 対象:
@@ -1518,6 +1523,9 @@ Draw RL test coverage:
   - 残件:
     - 実機 Safari / Android Chrome の手動確認。
     - mobile landscape で hand result / next hand / history までの長時間操作確認。
+  - 2026-04-30 自動 smoke 完了:
+    - Badugi desktop / authenticated / MTT / mobile emulation は `QA-08` で完了。
+    - 物理端末での touch / Safari orientation / Android Chrome hitbox はこの実行環境から確認できないため、手動 QA として残す。
 - [x] `OP-11` repository-wide lint の既存エラーを整理する。
   - `npm run lint` は 2026-04-30 時点で既存の `process` / unused / duplicate member / App.jsx 未整理などにより fail していた。
   - 2026-04-30 再採取: `npm run lint` は `132 problems (106 errors, 26 warnings)` で fail。

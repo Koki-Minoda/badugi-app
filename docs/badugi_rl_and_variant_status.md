@@ -1486,6 +1486,10 @@ Draw RL test coverage:
     - App.jsx の runtime risk だった `phaseSnapshot` undefined と `logE2EError` redeclare を修正。
     - 既存の unused / Fast Refresh / hook deps は warning として残し、今後の安全な小分け整理対象にする。
   - 2026-04-30 確認: `npm run lint` は `0 errors / 89 warnings` で exit 0。
+  - 2026-04-30 追加整理:
+    - App.jsx の未参照 state / ref / helper を削除し、`npx eslint src/ui/App.jsx` は `42 warnings` から `23 warnings` へ減少。
+    - repository-wide lint は `0 errors / 70 warnings` で exit 0。
+    - 残る App.jsx hook deps は、依存追加で game progression / E2E driver / console capture の実行タイミングが変わる可能性があるため、個別の挙動テストを添えて段階整理する。
 - [ ] `OP-12` D01 / D02 / S01 / S02 を Badugi と同等の browser smoke 対象に引き上げる。
   - [x] engine / controller / controller e2e が各 draw variant で通ることを確認。
   - [x] 5-card draw snapshot を UI table props に変換する `DrawLowballUIAdapter` を追加。

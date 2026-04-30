@@ -1159,7 +1159,6 @@ const SAFE_RESET_PHASE = "IDLE";
   );
   const hudInfo = adapterViewProps?.hudInfo ?? null;
   const controlsConfig = adapterViewProps?.controlsConfig ?? null;
-  const potView = adapterViewProps?.potView ?? null;
   const controllerDealerIdx = controllerSnapshot?.dealerIdx ?? dealerIdx;
   const tournamentHud =
     isTournament && tournamentHudState ? (
@@ -1172,8 +1171,7 @@ const SAFE_RESET_PHASE = "IDLE";
     lastInteractionDuration: null,
     lastInteractionLabel: "",
   });
-  const interactionStartRef = useRef(null);
-  const [locale, setLocale] = useState(() => {
+  const [locale] = useState(() => {
     if (typeof navigator === "undefined") return "en";
     return navigator.language ?? "en";
   });
@@ -1221,7 +1219,7 @@ const SAFE_RESET_PHASE = "IDLE";
     }
   }
 
-  function persistHeroTrackerState(state) {
+  const persistHeroTrackerState = useCallback((state) => {
     const storage = getHeroTrackerStorage();
     if (!storage) return;
     try {
@@ -1233,7 +1231,7 @@ const SAFE_RESET_PHASE = "IDLE";
     } catch (err) {
       console.warn("Failed to persist hero tracker state", err);
     }
-  }
+  }, []);
 
   const [heroTracker, setHeroTracker] = useState(() => loadHeroTrackerState() ?? ({
     wins: 0,
@@ -1246,7 +1244,7 @@ const SAFE_RESET_PHASE = "IDLE";
   }));
   useEffect(() => {
     persistHeroTrackerState(heroTracker);
-  }, [heroTracker]);
+  }, [heroTracker, persistHeroTrackerState]);
   const [handResultSummary, setHandResultSummary] = useState(null);
   const [handResultVisible, setHandResultVisible] = useState(false);
   const [devTierOverride, setDevTierOverride] = useState(() => loadAiTierOverride());
@@ -1746,7 +1744,6 @@ const SAFE_RESET_PHASE = "IDLE";
   const recentE2eActionIdsRef = useRef(new Set());
   const recentE2eActionQueueRef = useRef([]);
   const MAX_RECENT_E2E_ACTIONS = 128;
-  const e2eErrorLogRef = useRef(new Set());
   const lastPotSummaryRef = useRef([]);
 
   useEffect(() => {
@@ -1812,8 +1809,6 @@ const SAFE_RESET_PHASE = "IDLE";
     const existing = window.__BADUGI_E2E__;
     const target =
       existing && typeof existing === "object" ? existing : {};
-    const createdNew = !existing || typeof existing !== "object";
-
     Object.assign(target, helperMethods);
     window.__BADUGI_E2E__ = target;
     e2eLogEnabledRef.current = true;
@@ -2301,10 +2296,6 @@ const SAFE_RESET_PHASE = "IDLE";
     return Math.min(value, MAX_DRAWS);
   }
 
-  function drawRoundNo(value = drawRoundSrc) {
-    return Math.min(value + 1, MAX_DRAWS);
-  }
-
   function phaseTagLocal(currentPhase = phaseSrc) {
     if (currentPhase === "BET") return `BET#${betRoundNo()}`;
     if (currentPhase === "DRAW") return `DRAW#${drawRoundSrc + 1}`;
@@ -2334,11 +2325,6 @@ const SAFE_RESET_PHASE = "IDLE";
     } finally {
       console.groupEnd();
     }
-  }
-
-  function logPhaseState(tag = "") {
-    const msg = `[STATECHK] ${tag} -> phase=${phaseSrc}, drawRound=${drawRoundSrc}, transitioning=${transitioning}, turn=${turnSeatSrc}`;
-    console.log(msg);
   }
 
   function logAction(i, type, payload = {}) {
@@ -3976,19 +3962,6 @@ const SAFE_RESET_PHASE = "IDLE";
     console.log("[SHOWDOWN] Waiting for Next Hand button...");
   }
 
-  function getNextAliveAfter(idx) {
-    if (!players || players.length === 0) return null;
-    const n = players.length;
-    let next = (idx + 1) % n;
-    let safety = 0;
-    while (isFoldedOrOut(players[next])) {
-      next = (next + 1) % n;
-      safety++;
-      if (safety > n) return null;
-    }
-    return next;
-  }
-
   // ANALYSIS: (B) 行動可能者がいないケースでは active.length===1 判定で
   //           goShowdownNow() を直接呼び出し、BET/DRAW を飛ばして強制ショーダウン。
   //           all-in プレイヤーは active フィルタから外れるため、
@@ -4223,21 +4196,6 @@ const SAFE_RESET_PHASE = "IDLE";
     setCurrentScreen("title");
     navigate("/");
   }, [navigate, resetTournamentState]);
-
-  // Legacy entry point kept for older callers（NPC auto-action 等）。
-  // 実際の進行処理は afterBetActionWithSnapshot(...) に委譲する。
-  function advanceAfterAction(updatedPlayers, actedIndex) {
-    const snap = Array.isArray(updatedPlayers)
-      ? [...updatedPlayers]
-      : [...players];
-
-    const idx =
-      typeof actedIndex === "number"
-        ? actedIndex
-        : turn;
-
-    afterBetActionWithSnapshot(snap, idx);
-  }
 
   /* --- dealing --- */
   function dealNewHand(initialDealerIdx = 0, prevPlayers = null, handNumberOverride = null) {
@@ -5092,9 +5050,6 @@ const SAFE_RESET_PHASE = "IDLE";
 
   useEffect(() => installE2eTestDriver(e2eDriverApiRef), []);
 
-  const heroFolded = players[0]?.folded ?? false;
-  const foldButtonVisible = phase === "BET" && turn === 0 && !heroFolded;
-
   function dealHeadsUpFinal(prevPlayers) {
     debugLog("[FINALS] dealHeadsUpFinal start");
 
@@ -5878,72 +5833,6 @@ const SAFE_RESET_PHASE = "IDLE";
       burn: normalizedSnapshot.burn,
       seats: (normalizedSnapshot.players ?? []).map((player) => player?.hand ?? []),
     });
-  }
-
-  function recordInteractionPerformance(label) {
-    if (!performanceSupported || !interactionStartRef.current) return;
-    const duration = Math.round(performance.now() - interactionStartRef.current.startedAt);
-    interactionStartRef.current = null;
-    setUiPerf((prev) => ({
-      ...prev,
-      lastInteractionDuration: duration,
-      lastInteractionLabel: label,
-    }));
-  }
-
-  function handleHeroAction(type, metadata = {}) {
-    if (!engine) return;
-    const interactionLabel = metadata?.label ?? type ?? "action";
-    if (performanceSupported) {
-      interactionStartRef.current = { label: interactionLabel, startedAt: performance.now() };
-    }
-    const baseState = engineStateRef.current ?? {
-      players,
-      pots,
-      metadata: { currentBet },
-    };
-    const prePlayers = playersRef.current ?? players;
-    const beforeSnap = prePlayers.map(clonePlayerState).filter(Boolean);
-    const heroBefore = beforeSnap[0] ? { ...beforeSnap[0] } : null;
-    const nextState = engine.applyPlayerAction(baseState, {
-      seatIndex: 0,
-      type,
-      metadata,
-    });
-    if (nextState) {
-      const fallbackTurn =
-        typeof baseState?.metadata?.actingPlayerIndex === "number"
-          ? baseState.metadata.actingPlayerIndex
-          : typeof turn === "number"
-          ? turn
-          : 0;
-      const ensuredNextState =
-        typeof nextState?.nextTurn === "number" ||
-        typeof nextState?.turn === "number"
-          ? nextState
-          : {
-              ...nextState,
-              nextTurn: fallbackTurn,
-              turn: fallbackTurn,
-            };
-      syncEngineSnapshot(applyDeckSnapshot(ensuredNextState));
-      const postPlayers = playersRef.current ?? players;
-      const heroAfter = postPlayers[0] ? { ...postPlayers[0] } : null;
-      recordActionToLog({
-        phase: phase,
-        round: currentBetRoundIndex(),
-        seat: 0,
-        playerState: heroAfter,
-        type,
-        stackBefore: heroBefore?.stack,
-        stackAfter: heroAfter?.stack,
-        betBefore: heroBefore?.betThisRound,
-        betAfter: heroAfter?.betThisRound,
-        metadata,
-      });
-      saveRLHandHistory(nextState);
-      recordInteractionPerformance(interactionLabel);
-    }
   }
 
   function playerFold() {
@@ -7277,9 +7166,6 @@ const SAFE_RESET_PHASE = "IDLE";
       for (const p of active) {
         if (compareBadugi(p.hand, best.hand) < 0) best = p;
       }
-      const winners = active
-        .filter((p) => compareBadugi(p.hand, best.hand) === 0)
-        .map((p) => p.name);
 
       // NOTE (G-09): Persist the same identifiers/seat metadata that drive
       // action logs so backend HandLog payloads stay aligned with UI history.
@@ -7382,7 +7268,7 @@ const SAFE_RESET_PHASE = "IDLE";
       recordHeroTracker(record, heroOutcome, ratingAfter, ratingDelta);
       handSavedRef.current = true;
       // console.debug("Hand saved:", record);
-    } catch (e) {
+    } catch {
       // console.error("save hand failed", e);
     }
   }
@@ -7392,11 +7278,6 @@ const SAFE_RESET_PHASE = "IDLE";
   const heroWinRate = heroTrackerTotal
     ? Math.round(((heroTracker.wins + heroTracker.draws * 0.5) / heroTrackerTotal) * 100)
     : 0;
-  const centerX = typeof window !== "undefined" ? window.innerWidth / 2 : 400;
-  const centerY = typeof window !== "undefined" ? window.innerHeight / 2 : 300;
-  const radiusX = 350;
-  const radiusY = 220;
-
   const seatLayouts = useMemo(() => {
     const cashLayouts = [
       "absolute bottom-[4%] left-1/2 -translate-x-1/2 w-[clamp(188px,29vw,300px)]", // Hero (BTN)
@@ -7986,7 +7867,7 @@ function AuthGate({ children, onAuthenticated, onAuthStateChange }) {
         stopAutoSync();
       }
     };
-  }, [authState.accessToken]);
+  }, [authState.accessToken, authState.tokenType]);
   if (!authState.isAuthenticated) {
     return <AuthScreen onAuthenticated={onAuthenticated} />;
   }
@@ -8022,7 +7903,7 @@ function MenuScreenWithLogout({
       }
       setPending(false);
     }
-  }, [authState?.accessToken, logout, onLogoutComplete, pending]);
+  }, [authState?.accessToken, authState?.tokenType, logout, onLogoutComplete, pending]);
 
   return (
     <div className="relative min-h-screen">

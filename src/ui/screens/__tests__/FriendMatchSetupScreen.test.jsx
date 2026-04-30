@@ -150,4 +150,59 @@ describe("FriendMatchSetupScreen", () => {
     expect(screen.getByText(/seq 3/i)).toBeTruthy();
     expect(sockets[0].send).toHaveBeenCalledWith(expect.stringContaining("join_room"));
   });
+
+  it("ignores stale sequence events and expands history replay entries", async () => {
+    const sockets = [];
+    class MockWebSocket {
+      constructor() {
+        this.listeners = {};
+        this.send = vi.fn();
+        this.close = vi.fn();
+        sockets.push(this);
+      }
+
+      addEventListener(type, handler) {
+        this.listeners[type] = handler;
+      }
+    }
+    globalThis.WebSocket = MockWebSocket;
+
+    render(<FriendMatchSetupScreen />);
+    fireEvent.click(screen.getByRole("button", { name: /create room/i }));
+    expect(await screen.findByText(/room created/i)).toBeTruthy();
+
+    await act(async () => {
+      sockets[0].listeners.open();
+      sockets[0].listeners.message({
+        data: JSON.stringify({
+          event: "updated_state",
+          payload: { sequenceId: 5 },
+        }),
+      });
+      sockets[0].listeners.message({
+        data: JSON.stringify({
+          event: "room_state",
+          payload: { sequenceId: 4 },
+        }),
+      });
+      sockets[0].listeners.message({
+        data: JSON.stringify({
+          event: "history",
+          payload: {
+            events: [
+              { event: "action", sequenceId: 6 },
+              { event: "showdown", sequenceId: 7 },
+            ],
+          },
+        }),
+      });
+    });
+
+    expect(screen.getByText(/latest sequence: 7/i)).toBeTruthy();
+    expect(screen.getByText(/stale ignored: 1/i)).toBeTruthy();
+    expect(screen.getByText("updated_state")).toBeTruthy();
+    expect(screen.queryByText("room_state")).toBeNull();
+    expect(screen.getByText("action (replay)")).toBeTruthy();
+    expect(screen.getByText("showdown (replay)")).toBeTruthy();
+  });
 });

@@ -35,6 +35,28 @@ function VariantOption({ variant, isSelected, onSelect }) {
   );
 }
 
+function getEventSequenceId(entry) {
+  const raw =
+    entry?.sequenceId ??
+    entry?.payload?.sequenceId ??
+    entry?.payload?.delta?.sequenceId ??
+    entry?.payload?.roomState?.sequenceId;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : null;
+}
+
+function normalizeRoomEvent(entry) {
+  if (entry?.event === "history" && Array.isArray(entry?.payload?.events)) {
+    return entry.payload.events.map((historyEntry, index) => ({
+      event: historyEntry.event ?? historyEntry.type ?? "history",
+      payload: historyEntry,
+      sequenceId: getEventSequenceId(historyEntry) ?? index,
+      replayed: true,
+    }));
+  }
+  return [entry];
+}
+
 export default function FriendMatchSetupScreen() {
   const navigate = useNavigate();
   const enabledVariants = useMemo(() => getEnabledVariants(), []);
@@ -51,7 +73,10 @@ export default function FriendMatchSetupScreen() {
   const [isJoining, setIsJoining] = useState(false);
   const [syncStatus, setSyncStatus] = useState("idle");
   const [roomEvents, setRoomEvents] = useState([]);
+  const [latestSequenceId, setLatestSequenceId] = useState(0);
+  const [staleEventCount, setStaleEventCount] = useState(0);
   const socketRef = useRef(null);
+  const latestSequenceRef = useRef(0);
 
   useEffect(() => {
     if (!createdRoom?.roomId || typeof WebSocket === "undefined") return undefined;
@@ -60,6 +85,9 @@ export default function FriendMatchSetupScreen() {
 
     setSyncStatus("connecting");
     setRoomEvents([]);
+    setLatestSequenceId(0);
+    setStaleEventCount(0);
+    latestSequenceRef.current = 0;
     const socket = new WebSocket(url);
     socketRef.current = socket;
 
@@ -83,7 +111,27 @@ export default function FriendMatchSetupScreen() {
           return { event: "message", payload: event.data };
         }
       })();
-      setRoomEvents((prev) => [parsed, ...prev].slice(0, 6));
+      const normalizedEvents = normalizeRoomEvent(parsed);
+      const accepted = [];
+      let staleCount = 0;
+      normalizedEvents.forEach((entry) => {
+        const sequenceId = getEventSequenceId(entry);
+        if (sequenceId !== null && sequenceId < latestSequenceRef.current) {
+          staleCount += 1;
+          return;
+        }
+        if (sequenceId !== null) {
+          latestSequenceRef.current = sequenceId;
+          setLatestSequenceId(sequenceId);
+        }
+        accepted.push(entry);
+      });
+      if (staleCount > 0) {
+        setStaleEventCount((count) => count + staleCount);
+      }
+      if (accepted.length > 0) {
+        setRoomEvents((prev) => [...accepted.reverse(), ...prev].slice(0, 8));
+      }
     });
     socket.addEventListener("close", () => {
       setSyncStatus("closed");
@@ -366,6 +414,14 @@ export default function FriendMatchSetupScreen() {
               </p>
               <strong className="text-white">{syncStatus}</strong>
             </div>
+            <div className="grid gap-2 text-xs text-slate-400 md:grid-cols-2">
+              <div className="rounded-2xl border border-white/10 bg-slate-950/60 px-3 py-2">
+                Latest sequence: {latestSequenceId}
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-slate-950/60 px-3 py-2">
+                Stale ignored: {staleEventCount}
+              </div>
+            </div>
             <div className="space-y-2">
               {roomEvents.length === 0 ? (
                 <p>No room events received yet.</p>
@@ -376,7 +432,10 @@ export default function FriendMatchSetupScreen() {
                     className="rounded-2xl border border-white/10 bg-slate-950/60 px-3 py-2"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-semibold text-white">{entry.event ?? "event"}</span>
+                      <span className="font-semibold text-white">
+                        {entry.event ?? "event"}
+                        {entry.replayed ? " (replay)" : ""}
+                      </span>
                       {entry.payload?.sequenceId || entry.sequenceId ? (
                         <span className="text-xs text-slate-500">
                           seq {entry.payload?.sequenceId ?? entry.sequenceId}

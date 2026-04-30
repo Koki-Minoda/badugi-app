@@ -1498,7 +1498,9 @@ Draw RL test coverage:
     - [ ] `P2P-03` client state sync と conflict resolution を実装する。
       - [x] `P2P-03a` frontend room API util と Friend Match create/join 導線を `/api/rooms` へ接続する。
       - [x] `P2P-03b` join by room code と WebSocket receive loop を UI state に接続する。
-      - [ ] `P2P-03c` sequenceId による stale event discard / reconnect replay を実装する。
+      - [x] `P2P-03c` sequenceId による stale event discard / reconnect replay を実装する。
+        - Friend Match preview は最新 `sequenceId` より古いイベントを破棄し、`history` event を replay entry として展開する。
+      - [ ] `P2P-03d` WebSocket event を実ゲーム table state へ接続する。
     - [ ] `P2P-04` Badugi 2人対戦 smoke: login -> room -> ready -> hand -> draw -> showdown -> next hand。
     - [ ] `P2P-05` disconnect / reconnect / browser refresh の復帰 smoke を追加する。
   - CPU 対戦後フォローアップ:

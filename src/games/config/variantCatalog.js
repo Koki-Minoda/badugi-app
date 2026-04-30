@@ -1,5 +1,5 @@
-import rawVariants from "./multiGameList.json" assert { type: "json" };
-import rawPriority from "./variantPriority.data.json" assert { type: "json" };
+import rawVariants from "./multiGameList.json";
+import rawPriority from "./variantPriority.data.json";
 
 export const GAME_VARIANT_CATEGORIES = Object.freeze({
   BOARD: "board",

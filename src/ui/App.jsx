@@ -9,7 +9,6 @@ import React, {
 } from "react";
 import { DEFAULT_SEAT_TYPES, DEFAULT_STARTING_STACK, TOURNAMENT_STRUCTURE } from "../tournament/tournamentStructure";
 import { formatComment } from "./utils/commentCatalog.js";
-import { debugLog } from "../utils/debugLog";
 import GameRegistry from "../games/_core/GameRegistry";
 import { DEBUG_TOURNAMENT, logMTT } from "../config/debugFlags.js";
 import {
@@ -17,19 +16,15 @@ import {
   appendHandHistoryAction,
   updateHandHistorySeat,
   finalizeHandHistoryRecord,
-  getCurrentHandHistoryRecord,
   resetHandHistoryRecord,
 } from "./utils/handHistory";
 
 import {
-  aliveBetPlayers,
   nextAliveFrom,
   maxBetThisRound,
   isFoldedOrOut,
   markPlayerFolded,
-  isSeatEligibleForDraw,
   isPlayerSeated,
-  isPlayerActiveInGame,
   applyChips,
   queueForcedSeatAction as queueForcedSeatActionMap,
   forceSequentialFolds as forceSequentialFoldsMap,
@@ -54,8 +49,6 @@ import BadugiGameController from "../games/badugi/BadugiGameController.js";
 import NLHGameController from "../games/nlh/NLHGameController.js";
 import { GAME_VARIANTS } from "../games/core/variants.js";
 import {
-  formatBadugiHandLabel,
-  formatBadugiRanksLabel,
   buildHandResultSummary,
 } from "../games/badugi/flow/handResultUtils.js";
 import { getGameUIAdapter } from "./game/GameUIAdapterRegistry.js";
@@ -82,8 +75,6 @@ import {
 // History persistence helpers
 import {
   saveRLHandHistory,
-  getAllRLHandHistories,
-  exportRLHistoryAsJSONL,
 } from "../utils/history_rl";
 import { useLocation, useNavigate } from "react-router-dom";
 import { loadTitleSettings } from "./utils/titleSettings";
@@ -2498,7 +2489,7 @@ const SAFE_RESET_PHASE = "IDLE";
     if (!e2eLogEnabledRef.current) return;
     const seatIdx = typeof entry.seat === "number" ? entry.seat : null;
     const handId = handIdRef.current ?? "unknown-hand";
-    const phaseForStreet = entry.phase ?? phaseSnapshot ?? phase;
+    const phaseForStreet = entry.phase ?? phase;
     const street =
       entry.street ??
       (phaseForStreet === "DRAW"
@@ -2866,19 +2857,6 @@ const SAFE_RESET_PHASE = "IDLE";
     emitE2EActionTrace(nextEntry, seatSnapshot);
   }
   }
-  function logE2EError(message, extra = {}) {
-    const handId = handIdRef.current ?? "unknown-hand";
-    const payload = {
-      handId,
-      phase,
-      drawRound,
-      betRound: betRoundIndex,
-      turn,
-      ...extra,
-    };
-    console.error(`[E2E-ERROR] ${message}`, payload);
-  }
-
   function shouldEmitE2EAction(actionId) {
     const recent = recentE2eActionIdsRef.current;
     if (recent.has(actionId)) return false;
@@ -3410,7 +3388,9 @@ const SAFE_RESET_PHASE = "IDLE";
           stack: Math.max(0, Number(player.stack) || 0),
           startingStack: Math.max(
             0,
-            Number(startingStacks[player.tournamentPlayerId]) ?? Number(player.stack) ?? 0,
+            Number.isFinite(Number(startingStacks[player.tournamentPlayerId]))
+              ? Number(startingStacks[player.tournamentPlayerId])
+              : Number(player.stack) || 0,
           ),
         };
       })

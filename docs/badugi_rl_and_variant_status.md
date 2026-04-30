@@ -1414,6 +1414,7 @@ Draw RL test coverage:
   - 2026-04-30 更新: `?variant=D01` / `?variant=D02` の App routing から ring game を起動し、5-card 表示、BET進行、DRAW control、カード選択、Draw Selected 実行まで Playwright smoke 済み。
   - 2026-04-30 更新: `D01` / `D02` / `S01` / `S02` は App route から hand result / next hand まで Playwright smoke 済み。`D01` は Main Menu variant picker からの起動も確認済み。
   - 2026-04-30 更新: mobile emulation smoke を追加。portrait は game 起動時に orientation gate、landscape は Badugi / D01 の card select -> Draw Selected を確認済み。
+  - 2026-04-30 更新: orientation gate に `横向き表示を試す` ボタンを追加。対応ブラウザでは fullscreen + `screen.orientation.lock("landscape")` を試行し、iOS Safari など非対応環境では手動回転案内に fallback する。
   - Desktop Chrome: ring game 5 hand 以上。
   - Mobile Safari または Android Chrome: portrait / landscape で discard、pat、overlay、hand result を確認。
   - 結果は `docs/bugs/badugi_browser_mobile_bug_tracker.md` または別 QA 記録へ残す。
@@ -1461,12 +1462,12 @@ Draw RL test coverage:
     - `tests/e2e/mobile-app-smoke.spec.ts` を追加。
     - mobile portrait: Title -> Menu -> Ring start 後に orientation gate が表示されることを確認。
     - mobile landscape: Badugi / D01 で hero card が viewport 内にあり、card select -> Draw Selected が実行できることを確認。
+    - orientation gate の landscape lock は best-effort。Android Chrome / installed PWA では効く可能性があるが、iOS Safari はブラウザ制約で手動回転が必要。
   - 残件:
     - 実機 Safari / Android Chrome の手動確認。
     - mobile landscape で hand result / next hand / history までの長時間操作確認。
-- [ ] `OP-11` repository-wide lint の既存エラーを整理する。
-  - `npm run lint` は 2026-04-30 時点で既存の `process` / unused / duplicate member / App.jsx 未整理などにより fail。
-  - 2026-04-30 更新: `src/ui/App.jsx` / `GameLayoutBase.jsx` など既存 lint error が残存。今回の対象では build と関連 unit / E2E を優先。
+- [x] `OP-11` repository-wide lint の既存エラーを整理する。
+  - `npm run lint` は 2026-04-30 時点で既存の `process` / unused / duplicate member / App.jsx 未整理などにより fail していた。
   - 2026-04-30 再採取: `npm run lint` は `132 problems (106 errors, 26 warnings)` で fail。
   - 主な分類:
     - 環境定義不足: `process` / `global` / `__dirname` の `no-undef`。
@@ -1477,6 +1478,14 @@ Draw RL test coverage:
   - 方針:
     - lint は App 実装と別章で、設定系、テスト系、App.jsx 実バグ候補の順に分割して直す。
     - `phaseSnapshot` undefined / `logE2EError` redeclare は runtime risk があるため優先候補。
+  - 2026-04-30 対応:
+    - ESLint globals を browser + node + vitest に拡張し、`process` / `global` / Node config の環境差分を吸収。
+    - JSON import assertion を通常 JSON import へ変更し、Espree parser error を解消。
+    - `vite.config.js` の `__dirname` を ESM 互換の `fileURLToPath(import.meta.url)` に変更。
+    - `DeckManager.shuffle` の重複 class member を解消。
+    - App.jsx の runtime risk だった `phaseSnapshot` undefined と `logE2EError` redeclare を修正。
+    - 既存の unused / Fast Refresh / hook deps は warning として残し、今後の安全な小分け整理対象にする。
+  - 2026-04-30 確認: `npm run lint` は `0 errors / 89 warnings` で exit 0。
 - [ ] `OP-12` D01 / D02 / S01 / S02 を Badugi と同等の browser smoke 対象に引き上げる。
   - [x] engine / controller / controller e2e が各 draw variant で通ることを確認。
   - [x] 5-card draw snapshot を UI table props に変換する `DrawLowballUIAdapter` を追加。

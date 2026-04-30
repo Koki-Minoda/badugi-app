@@ -7041,12 +7041,12 @@ const SAFE_RESET_PHASE = "IDLE";
 
   const seatLayouts = useMemo(() => {
     const cashLayouts = [
-      "absolute bottom-[5%] left-1/2 -translate-x-1/2 w-[clamp(188px,29vw,300px)]", // Hero (BTN)
-      "absolute bottom-[10%] left-[6%] w-[clamp(158px,25vw,270px)]", // SB
+      "absolute bottom-[4%] left-1/2 -translate-x-1/2 w-[clamp(188px,29vw,300px)]", // Hero (BTN)
+      "absolute bottom-[30%] left-[6%] w-[clamp(158px,24vw,250px)]", // SB
       "absolute top-[8%] left-[6%] w-[clamp(158px,25vw,270px)]", // BB
       "absolute top-[1%] left-1/2 -translate-x-1/2 w-[clamp(168px,27vw,285px)]", // UTG
       "absolute top-[8%] right-[6%] w-[clamp(158px,25vw,270px)]", // MP
-      "absolute bottom-[10%] right-[6%] w-[clamp(158px,25vw,270px)]", // CO
+      "absolute bottom-[30%] right-[6%] w-[clamp(158px,24vw,250px)]", // CO
     ];
     // Tournament tables follow a fixed 6-max oval layout (BTN bottom-center, clockwise SB→CO).
     const tournamentLayouts = [

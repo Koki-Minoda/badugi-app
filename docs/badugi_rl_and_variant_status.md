@@ -1405,9 +1405,9 @@ Draw RL test coverage:
   - frontend ONNX を主経路とする。
   - backend endpoint は schema v1 validation と deterministic-safe fallback を持つ比較検証 / 将来拡張 endpoint とする。
 - [ ] `QA-05` 実ブラウザ / 実スマホで Badugi / D01 / D02 / S01 / S02 の smoke test を実施する。
-  - Automated desktop smoke: title screen -> login screen is verified with headless Chromium.
-  - Current Playwright Badugi flow specs stop at the title screen because the tests still look for the old `/start/i` button while the current UI shows `Press Enter`.
-  - Authenticated game smoke remains manual / test-driver follow-up.
+  - Automated desktop smoke: title screen -> signup -> login -> ring game -> bet action -> card select -> draw is verified with headless Chromium.
+  - Playwright entry helpers now use the current `Press Enter` title button and authenticated menu flow.
+  - Local API / DB health was verified through `/api/health` via both frontend proxy and backend direct path.
   - Desktop Chrome: ring game 5 hand 以上。
   - Mobile Safari または Android Chrome: portrait / landscape で discard、pat、overlay、hand result を確認。
   - 結果は `docs/bugs/badugi_browser_mobile_bug_tracker.md` または別 QA 記録へ残す。
@@ -1421,6 +1421,29 @@ Draw RL test coverage:
   - nginx / backend / frontend の reverse proxy 経路で確認する。
   - local TestClient smoke is verified by `backend/tests/test_variants_api.py` and `backend/tests/test_badugi_rl.py`.
   - production reverse proxy は稼働環境で別途確認する。
+
+## 12.2 Playwright / Auth / Operational QA
+
+2026-04-30 時点の実運用目線チェック。
+
+- [x] `OP-01` frontend proxy と backend direct の `/api/health` が `db: ok` を返すことを確認。
+- [x] `OP-02` 実 DB に Playwright 用メールアドレスを signup し、login と `/auth/me` の認証 round trip が成立することを確認。
+  - `EmailStr` は `example.test` などの予約ドメインを拒否するため、E2E 用メールは `@mgx-e2e.com` 形式へ変更。
+- [x] `OP-03` Auth UI の validation error が `[object Object]` にならず、Pydantic detail を読めるメッセージとして表示される。
+- [x] `OP-04` 現行 UI の Title `Press Enter` -> Auth -> Menu -> Ring game 導線で Playwright が停止しない。
+- [x] `OP-05` player として ring game に入り、BET action button をクリックできる。
+- [x] `OP-06` DRAW phase でヒーローカードを選択し、選択状態が table card の visual / `aria-pressed` に反映され、`Draw Selected` を実行できる。
+- [x] `OP-07` desktop 1280x720 相当で、ヒーローカードが右下席や fixed footer に覆われてクリック不能にならない。
+- [x] `OP-08` 既存 Badugi / MTT / gallery Playwright の game entry helper を、旧 `/start/i` 前提から authenticated flow へ更新。
+- [ ] `OP-09` Badugi regression Playwright の残失敗を個別修正する。
+  - `npx playwright test tests/e2e --project=badugi-flow` は entry/auth では止まらないが、2026-04-30 時点で 12 failed / 7 passed。
+  - 主な残件: forced action 系の hand resolution timeout、hand history canonical record の `pots` / `finalAction` 欠落、MTT bust/result overlay の期待値不整合。
+- [ ] `OP-10` 実ブラウザ手動 smoke を実施する。
+  - Desktop Chrome: login、ring game 5 hands、bet/call/raise/fold、draw/pat、hand result、history。
+  - Mobile Safari または Android Chrome: portrait / landscape でカード選択、Draw Selected、overlay、footer overlap を確認。
+- [ ] `OP-11` repository-wide lint の既存エラーを整理する。
+  - `npm run lint` は 2026-04-30 時点で既存の `process` / unused / duplicate member / App.jsx 未整理などにより fail。
+  - 今回変更した主要ファイルの targeted ESLint は error なし。
 
 ## 13. ひとことで言うと
 

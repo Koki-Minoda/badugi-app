@@ -325,7 +325,7 @@ export default function GameLayoutBase({
 
         <section
           className={`flex h-full flex-col ${
-            isMobileLayout ? "px-3 pt-20 pb-10 gap-6" : "pl-[320px] pr-6 pt-24 pb-10 gap-8"
+            isMobileLayout ? "px-3 pt-20 pb-10 gap-6" : "pl-[320px] pr-6 pt-24 pb-24 gap-8"
           }`}
         >
           <div
@@ -356,6 +356,10 @@ export default function GameLayoutBase({
                     const seat = tableSeatViews[idx];
                     if (!seat) return null;
                     const seatPosition = positionNameFn(idx, controllerDealerIdx, seatLayouts.length);
+                    const renderedSeat =
+                      seat.seatIndex === heroSeatIndex
+                        ? { ...seat, selected: heroDrawSelection }
+                        : seat;
                     const seatAlignClass = isMobileLayout
                       ? MOBILE_SEAT_ALIGN_CLASS[idx] ?? "items-center"
                       : "items-center";
@@ -372,7 +376,7 @@ export default function GameLayoutBase({
                         }
                       >
                         <Player
-                          player={seat}
+                          player={renderedSeat}
                           index={idx}
                           selfIndex={heroSeatIndex}
                           dealerIdx={controllerDealerIdx}

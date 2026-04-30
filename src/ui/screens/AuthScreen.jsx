@@ -7,6 +7,19 @@ const API_BASE = API_BASE_RAW.endsWith("/api")
   ? API_BASE_RAW
   : `${API_BASE_RAW.replace(/\/$/, "")}/api`;
 
+function formatApiError(error) {
+  if (typeof error === "string") return error;
+  if (Array.isArray(error)) {
+    return error
+      .map((entry) => entry?.msg || entry?.message || JSON.stringify(entry))
+      .join(" ");
+  }
+  if (error && typeof error === "object") {
+    return error.msg || error.message || JSON.stringify(error);
+  }
+  return null;
+}
+
 async function postJson(path, payload) {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
@@ -18,9 +31,9 @@ async function postJson(path, payload) {
   const data = await res.json().catch(() => null);
   if (!res.ok) {
     const message =
-      data?.detail ||
-      data?.message ||
-      data?.error ||
+      formatApiError(data?.detail) ||
+      formatApiError(data?.message) ||
+      formatApiError(data?.error) ||
       `Request failed (${res.status})`;
     throw new Error(message);
   }
@@ -135,6 +148,7 @@ export default function AuthScreen({ onAuthenticated }) {
           <div className="flex gap-2 text-xs uppercase tracking-[0.3em]">
             <button
               type="button"
+              data-testid="auth-login-tab"
               onClick={() => setMode("login")}
               className={`rounded-full px-3 py-1 ${
                 mode === "login"
@@ -146,6 +160,7 @@ export default function AuthScreen({ onAuthenticated }) {
             </button>
             <button
               type="button"
+              data-testid="auth-signup-tab"
               onClick={() => setMode("signup")}
               className={`rounded-full px-3 py-1 ${
                 mode === "signup"
@@ -160,10 +175,15 @@ export default function AuthScreen({ onAuthenticated }) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-xs uppercase tracking-[0.3em] text-slate-400">
+            <label
+              htmlFor="auth-email"
+              className="text-xs uppercase tracking-[0.3em] text-slate-400"
+            >
               Email
             </label>
             <input
+              id="auth-email"
+              data-testid="auth-email"
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
@@ -173,10 +193,15 @@ export default function AuthScreen({ onAuthenticated }) {
             />
           </div>
           <div>
-            <label className="text-xs uppercase tracking-[0.3em] text-slate-400">
+            <label
+              htmlFor="auth-password"
+              className="text-xs uppercase tracking-[0.3em] text-slate-400"
+            >
               Password
             </label>
             <input
+              id="auth-password"
+              data-testid="auth-password"
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
@@ -187,10 +212,15 @@ export default function AuthScreen({ onAuthenticated }) {
           </div>
           {mode === "signup" && (
             <div>
-              <label className="text-xs uppercase tracking-[0.3em] text-slate-400">
+              <label
+                htmlFor="auth-confirm-password"
+                className="text-xs uppercase tracking-[0.3em] text-slate-400"
+              >
                 Confirm Password
               </label>
               <input
+                id="auth-confirm-password"
+                data-testid="auth-confirm-password"
                 type="password"
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
@@ -212,6 +242,7 @@ export default function AuthScreen({ onAuthenticated }) {
           )}
           <button
             type="submit"
+            data-testid="auth-submit"
             disabled={loading}
             className="w-full rounded-2xl border border-emerald-400/60 bg-emerald-500/20 px-4 py-3 text-sm font-semibold uppercase tracking-[0.4em] text-emerald-200 transition hover:bg-emerald-500/30 disabled:opacity-50"
           >

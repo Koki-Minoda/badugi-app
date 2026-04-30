@@ -78,7 +78,17 @@ export default function Card({ value, hidden, selected, onClick, folded, ...rest
   return (
     <div
       {...restProps}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      aria-pressed={onClick ? Boolean(selected) : undefined}
       onClick={onClick}
+      onKeyDown={(event) => {
+        if (!onClick) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onClick(event);
+        }
+      }}
       style={cardFontStyle}
       className={`
         bg-white rounded-lg shadow-md 

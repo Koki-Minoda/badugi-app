@@ -1447,7 +1447,7 @@ Draw RL test coverage:
     - `npm run lint` は `0 errors / 0 warnings`。
     - `npm run build` は成功。chunk size warning は残るが build 失敗ではない。
     - `npx playwright test tests/e2e/badugi-flow.spec.ts tests/e2e/authenticated-game-smoke.spec.ts tests/e2e/badugi-mtt-flow.spec.ts tests/e2e/mobile-app-smoke.spec.ts --project=badugi-flow` は `22 passed`。
-- [ ] `QA-09` D01 / D02 / S01 / S02 を Badugi と同等レベルの自動テスト対象に引き上げる。
+- [x] `QA-09` D01 / D02 / S01 / S02 を Badugi と同等レベルの自動テスト対象に引き上げる。
   - 目的: 2-7 だけでなく A-5 / single draw も、Badugi と同じ観点で壊れていないことを担保する。
   - 対象:
     - `D01` 2-7 Triple Draw
@@ -1472,6 +1472,12 @@ Draw RL test coverage:
     - `npx playwright test tests/e2e/mobile-app-smoke.spec.ts --project=badugi-flow`
   - 完了後:
     - `D01` / `D02` / `S01` / `S02` の catalog status を `wip` から上げるかは、実機 smoke と hand history / replay の完了後に判断する。
+  - 2026-04-30 確認:
+    - `npm test -- --run src/games/draw` は `7 files / 43 tests passed`。D01/D02/S01/S02 engine/controller、raise cap、fold win、showdown label を確認。
+    - `npm test -- --run src/games/draw src/ui/game/draw src/ui/game/__tests__/appVariantRouting.test.js src/ui/utils/__tests__/handHistory.test.js` は `10 files / 56 tests passed`。hand history / replay 用 low metadata まで確認。
+    - `npm test -- --run src/ui/game/draw src/ui/game/__tests__/appVariantRouting.test.js` は `2 files / 7 tests passed`。UI adapter と URL alias routing を確認。
+    - `npx playwright test tests/e2e/draw-lowball-app-smoke.spec.ts --project=badugi-flow` は `5 passed`。D01/D02/S01/S02 の App routing、hand result、next hand、history low label を確認。
+    - `npx playwright test tests/e2e/mobile-app-smoke.spec.ts --project=badugi-flow` は `6 passed`。portrait orientation gate、Badugi/D01/D02/S01/S02 mobile landscape draw 操作を確認。
 - [x] `QA-10` CPU 強さ / P2P / CPU対戦後フォローアップの未完成範囲を実装タスクへ分解する。
   - CPU 強さ:
     - tier config / policy routing / model routing / ONNX adapter は実装済み。
@@ -1615,7 +1621,7 @@ Draw RL test coverage:
     - 2026-04-30 確認: `LINT-D02` 対応後、App hook warning は `3` から `2` へ減少。Vitest 1 file / 1 test、`npm run build`、authenticated Playwright 1 test、MTT Playwright 2 tests は通過。E2E driver の draw / tournament HUD getter は ref 経由で最新実装を読む。
     - 2026-04-30 確認: `LINT-D03` 対応後、App hook warning は `2` から `1` へ減少。Vitest 3 files / 51 tests、`npm run build`、Badugi Playwright 16 tests は通過。NPC timer は players / action helpers を ref 経由にし、BET / DRAW turn progression の timer 条件は維持。
     - 2026-04-30 確認: 最後の `startNextHand` warning を解消し、App hook warning は `1` から `0` へ減少。repository-wide `npm run lint` は `0 errors / 0 warnings`。Vitest 3 files / 51 tests、`npm run build`、Badugi Playwright 16 tests は通過。
-- [ ] `OP-12` D01 / D02 / S01 / S02 を Badugi と同等の browser smoke 対象に引き上げる。
+- [x] `OP-12` D01 / D02 / S01 / S02 を Badugi と同等の browser smoke 対象に引き上げる。
   - [x] engine / controller / controller e2e が各 draw variant で通ることを確認。
   - [x] 5-card draw snapshot を UI table props に変換する `DrawLowballUIAdapter` を追加。
   - [x] D01 / D02 / S01 / S02 と engine key alias を `GameUIAdapterRegistry` に登録できる helper を追加。
@@ -1628,6 +1634,8 @@ Draw RL test coverage:
   - [x] App の controller session path に D01 / D02 の最小接続を追加する。
     - draw controller snapshot を session / table props 正本にする。
     - draw controller 管理 variant では Badugi deck integrity check を誤適用しない。
+  - [x] 2026-04-30: D01 / D02 / S01 / S02 の headless browser smoke を `draw-lowball-app-smoke.spec.ts` で完了。
+  - [x] 2026-04-30: mobile emulation は portrait gate と Badugi / D01 / D02 / S01 / S02 landscape draw 操作を `mobile-app-smoke.spec.ts` で確認。
     - NPC BET / DRAW は draw controller の `getCpuAction` / `applyAction` を通す。
   - [x] D01 / D02 の Playwright smoke を追加する。
     - title -> auth -> URL alias -> menu -> ring game
@@ -1640,14 +1648,14 @@ Draw RL test coverage:
     - `menu-ring` は既存 Badugi 即開始導線として維持。
     - `menu-variant-select` を追加し、variant picker から D01 / D02 / S01 / S02 を選べるようにした。
   - [x] automated mobile viewport で 5-card hand と footer overlap の代表確認を追加する。
-    - D01 mobile landscape で `player-0-card-4` が viewport 内に収まり、card select / Draw Selected が通る。
+    - D01 / D02 / S01 / S02 mobile landscape で `player-0-card-4` が viewport 内に収まり、card select / Draw Selected が通る。
     - portrait は game 開始後に orientation gate を表示する現仕様を確認。
   - 注意: 2026-04-30 時点で headless desktop / mobile emulation smoke は通過。実スマホ / 実機ブラウザ手動確認は OP-10 / QA-05 の残件。
-  - 残件:
-    - D01 / D02 / S01 / S02 それぞれで fold / folded winner 除外 / raise cap / next hand reset を Badugi と同等に Playwright で固定する。
-    - D02 / S02 の A-5 label と low metadata を App result / history 経由で確認する。
-    - D01 / D02 / S01 / S02 の mobile landscape smoke を、D01 代表確認から全 variant 代表確認へ広げる。
-    - hand history / replay で `variantId`、final low ranks、pot winners が復元できることを確認する。
+  - 完了確認:
+    - fold / folded winner 除外 / raise cap は draw engine/controller Vitest で固定済み。
+    - D01 / S01 は 2-7 low label、D02 / S02 は A-5 low label と final low ranks を App result / RL history 経由で確認済み。
+    - D01 / D02 / S01 / S02 の mobile landscape smoke は全 variant に拡張済み。
+    - hand history / replay の variantId / final low ranks / pot winner 復元は `src/ui/utils/__tests__/handHistory.test.js` と App smoke の latest RL record で確認済み。
 - [x] `OP-13` draw family の App 接続を段階実装する。
   - 目的:
     - D01 / D02 / S01 / S02 を Badugi と同じ「Title -> Auth -> Menu -> Ring game -> action -> draw -> result」導線で検証できる状態にする。

@@ -86,6 +86,9 @@ test.describe("mobile App smoke", () => {
   for (const { variant, lastHeroCard } of [
     { variant: "badugi", lastHeroCard: "player-0-card-3" },
     { variant: "D01", lastHeroCard: "player-0-card-4" },
+    { variant: "D02", lastHeroCard: "player-0-card-4" },
+    { variant: "S01", lastHeroCard: "player-0-card-4" },
+    { variant: "S02", lastHeroCard: "player-0-card-4" },
   ]) {
     test(`plays ${variant} draw controls on mobile landscape`, async ({ browser }) => {
       const { context, page } = await openMobilePage(browser, "landscape");

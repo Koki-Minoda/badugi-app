@@ -3766,6 +3766,8 @@ const SAFE_RESET_PHASE = "IDLE";
       nextBreakLabel: TOURNAMENT_CLOCK_PLACEHOLDER,
     };
   }
+  const getTournamentHudSnapshotRef = useRef(() => null);
+  getTournamentHudSnapshotRef.current = getTournamentHudSnapshot;
 
   function handleSeatTypeChange(index, nextType) {
     if (index === 0) return; // Seat 0 must remain the human hero.
@@ -5086,6 +5088,9 @@ const SAFE_RESET_PHASE = "IDLE";
     fastForwardMTTCompleteRef.current = fastForwardMTTComplete;
   }, [fastForwardMTTComplete]);
 
+  const drawSelectedRef = useRef(() => {});
+  drawSelectedRef.current = drawSelected;
+
   useEffect(() => {
     if (!handResultVisible) return undefined;
     if (mode === "tournament-mtt" && tournamentStateRef.current?.isFinished) {
@@ -5098,12 +5103,13 @@ const SAFE_RESET_PHASE = "IDLE";
   }, [handResultVisible, mode, startNextHand]);
 
   useEffect(() => {
+    const forceHeroDraw = () => drawSelectedRef.current();
     e2eDriverApiRef.current = {
       forceSeatAction: (seat, payload = {}) =>
         queueForcedSeatAction(seat, { ...payload, __forceInstant: true }),
       forceSequentialFolds,
       forceAllIn: forceAllInAction,
-      forceHeroDraw: () => drawSelected(),
+      forceHeroDraw,
       resolveHandNow: resolveHandImmediately,
       dealNewHandNow: startNextHand,
       setPlayerHands: applyCustomHands,
@@ -5118,7 +5124,7 @@ const SAFE_RESET_PHASE = "IDLE";
       getHandHistory: () => getHandHistoryBufferSnapshot(),
       getCurrentHandHistory: () => getCurrentHandHistorySnapshot(),
       getLastPotSummary: () => lastPotSummaryRef.current,
-      getTournamentHudState: () => getTournamentHudSnapshot(),
+      getTournamentHudState: () => getTournamentHudSnapshotRef.current(),
       getTournamentPlacements: () => [...tournamentPlacements],
       isTournamentOverlayVisible: () => tournamentOverlayVisible,
       startTournamentMTT: (config) => startTournamentMTT(config),
@@ -5149,7 +5155,6 @@ const SAFE_RESET_PHASE = "IDLE";
     fastForwardMTTComplete,
     tournamentPlacements,
     tournamentOverlayVisible,
-    getStoredTournamentReplay,
   ]);
 
   useEffect(() => installE2eTestDriver(e2eDriverApiRef), []);

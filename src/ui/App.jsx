@@ -3368,7 +3368,7 @@ const SAFE_RESET_PHASE = "IDLE";
     return alive.length >= 2;
   }
 
-  function buildTournamentEntrants(config) {
+  const buildTournamentEntrants = useCallback((config) => {
     const totalPlayersForConfig =
       Math.max(1, Number(config?.tables) || 1) *
       Math.max(1, Number(config?.seatsPerTable) || NUM_PLAYERS);
@@ -3384,9 +3384,9 @@ const SAFE_RESET_PHASE = "IDLE";
         name: `CPU ${idx + 1}`,
       };
     });
-  }
+  }, [heroProfile]);
 
-  function hydrateHeroTableFromTournamentState(state) {
+  const hydrateHeroTableFromTournamentState = useCallback((state) => {
     if (!state) return null;
     const heroId = heroTournamentPlayerIdRef.current;
     const heroPlayer = state.players?.[heroId];
@@ -3443,7 +3443,7 @@ const SAFE_RESET_PHASE = "IDLE";
       tableId: table.tableId,
       heroSeatIndex: heroSeatIdx,
     };
-  }
+  }, [buildPlayersFromSeatTypes, heroProfile]);
 
   function buildTournamentHandSummaryFromPlayers(playersSnapshot) {
     if (!playersSnapshot || !heroSeatMapRef.current.length || !heroTableIdRef.current) {
@@ -3647,6 +3647,7 @@ const SAFE_RESET_PHASE = "IDLE";
     [
       attachVariantLabels,
       handleVariantRotationTrigger,
+      hydrateHeroTableFromTournamentState,
       heroProfile,
       setHandResultVisible,
       setPlayers,
@@ -4179,7 +4180,15 @@ const SAFE_RESET_PHASE = "IDLE";
       }
     },
     // dealNewHand is a stable function declaration; no need to include in deps.
-    [attachVariantLabels, initializeVariantRotation, resetInitialButtonState, resetTournamentState],
+    [
+      attachVariantLabels,
+      buildTournamentEntrants,
+      getDeckManager,
+      hydrateHeroTableFromTournamentState,
+      initializeVariantRotation,
+      resetInitialButtonState,
+      resetTournamentState,
+    ],
   );
 
   const handleTournamentBackToMenu = useCallback(() => {

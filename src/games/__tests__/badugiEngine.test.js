@@ -391,7 +391,7 @@ describe("BadugiEngine", () => {
 
     const ready = {
       ...base,
-      players: base.players.map((p, idx) => ({
+      players: base.players.map((p) => ({
         ...p,
         holeCards: ["AS", "2H", "3D", "4C"],
         hand: ["AS", "2H", "3D", "4C"],

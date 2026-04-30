@@ -56,7 +56,7 @@ Available endpoints (always safe, even without a DB):
 
 - `GET /api/health` – reports backend environment & DB reachability (`db: "ok"` or `"unreachable"`).
 - `GET /api/users` – placeholder users API that returns an empty list when the DB is offline.
-- `POST /api/badugi/rl/decision` – deterministic RL stub that accepts a 22-dim state vector + valid actions and responds with a chosen action/scores.
+- `POST /api/badugi/rl/decision` – backend comparison fallback for Badugi RL schema v1. It accepts a 96-dim state vector + valid actions and responds with deterministic-safe action/scores while frontend ONNX remains the primary inference path.
 - `POST /api/badugi/hands` – validates Badugi hand-log payloads and persists them to the configured database (or returns `accepted:false` if the DB is unreachable).
 - `GET /api/badugi/hands/{hand_id}` – fetches a fully structured hand with actions/results.
 - `GET /api/badugi/hands/by-table/{table_id}` – returns the latest hands for a table (limit=5 by default).

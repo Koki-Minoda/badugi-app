@@ -2,7 +2,6 @@ import {
   applyChips,
   firstBetterAfterBlinds,
   isPlayerSeated,
-  isPlayerActiveInGame,
   isPlayerEligibleForBlinds,
 } from "./actionUtils.js";
 

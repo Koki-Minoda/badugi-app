@@ -1,5 +1,17 @@
 import { selectModelForVariant } from "./modelRouter.js";
 import { getOrCreateSession, getOrt } from "./onnxExecutor.js";
+import {
+  BADUGI_OBSERVATION_VECTOR_SIZE,
+  BADUGI_RL_ACTIONS,
+  BADUGI_RL_FALLBACK_PRIORITY,
+  buildBadugiObservationVector,
+  chooseDeterministicSafeAction,
+} from "../rl/badugiObservationSchema.js";
+import {
+  DRAW_OBSERVATION_VECTOR_SIZE,
+  buildDrawObservationVector,
+  isDrawRlVariant,
+} from "../rl/drawObservationSchema.js";
 
 function toFloat32Array(length, builder) {
   const vector = new Float32Array(length);
@@ -16,8 +28,43 @@ function flattenShape(shape) {
   return shape.reduce((acc, val) => acc * val, 1);
 }
 
+function expectedInputLength(entry) {
+  return flattenShape(entry?.inputShape) || BADUGI_OBSERVATION_VECTOR_SIZE;
+}
+
+function getLegalActions(payload = {}) {
+  return (Array.isArray(payload.legalActions) ? payload.legalActions : [])
+    .map((action) => String(action).toUpperCase())
+    .filter(Boolean);
+}
+
+export function buildBadugiOnnxFeatures(entry, payload = {}) {
+  const vector = buildBadugiObservationVector(payload.observation ?? payload);
+  const expectedLength = expectedInputLength(entry);
+  if (vector.length !== expectedLength) {
+    throw new Error(`Badugi ONNX feature length ${vector.length} does not match ${expectedLength}`);
+  }
+  return new Float32Array(vector);
+}
+
+export function buildDrawOnnxFeatures(entry, payload = {}) {
+  const vector = buildDrawObservationVector(payload.observation ?? payload);
+  const expectedLength = expectedInputLength(entry) || DRAW_OBSERVATION_VECTOR_SIZE;
+  if (vector.length !== expectedLength) {
+    throw new Error(`Draw ONNX feature length ${vector.length} does not match ${expectedLength}`);
+  }
+  return new Float32Array(vector);
+}
+
 function buildBetFeatures(entry, payload) {
-  const length = flattenShape(entry.inputShape) || 16;
+  const variantId = payload.variantId ?? payload.observation?.variantId;
+  if (variantId === "D03") {
+    return buildBadugiOnnxFeatures(entry, payload);
+  }
+  if (isDrawRlVariant(variantId)) {
+    return buildDrawOnnxFeatures(entry, payload);
+  }
+  const length = expectedInputLength(entry) || 16;
   const maxStack = Math.max(1, payload.actor?.stack ?? 1);
   const buf = toFloat32Array(length, (idx) => {
     switch (idx) {
@@ -47,7 +94,10 @@ function decodeBetOutput(result, payload) {
       maxIdx = i;
     }
   }
-  const actions = ["FOLD", "CALL", "RAISE", "CHECK"];
+  const legalActions = getLegalActions(payload);
+  const actions = legalActions.length
+    ? legalActions
+    : BADUGI_RL_ACTIONS.map((action) => action.toUpperCase());
   const action = actions[maxIdx % actions.length];
   let raiseSize = payload.betSize;
   if (action === "RAISE" && data.length > 4) {
@@ -62,7 +112,14 @@ function decodeBetOutput(result, payload) {
 }
 
 function buildDrawFeatures(entry, payload) {
-  const length = flattenShape(entry.inputShape) || 8;
+  const variantId = payload.variantId ?? payload.observation?.variantId;
+  if (variantId === "D03") {
+    return buildBadugiOnnxFeatures(entry, payload);
+  }
+  if (isDrawRlVariant(variantId)) {
+    return buildDrawOnnxFeatures(entry, payload);
+  }
+  const length = expectedInputLength(entry) || 8;
   const buf = toFloat32Array(length, (idx) => {
     switch (idx) {
       case 0:
@@ -99,8 +156,14 @@ export async function inferBetActionWithOnnx(payload) {
   if (!entry) return null;
   const session = await getOrCreateSession(entry);
   if (!session) return null;
-  const totalLength = flattenShape(entry.inputShape) || 16;
-  const tensorData = buildBetFeatures(entry, payload);
+  const totalLength = expectedInputLength(entry);
+  let tensorData;
+  try {
+    tensorData = buildBetFeatures(entry, payload);
+  } catch (err) {
+    console.warn("[ONNX] invalid bet feature shape", err);
+    return null;
+  }
   const inputName = session.inputNames[0];
   const ort = await getOrt();
   if (!ort) return null;
@@ -123,8 +186,14 @@ export async function inferDrawDecisionWithOnnx(payload) {
   if (!entry) return null;
   const session = await getOrCreateSession(entry);
   if (!session) return null;
-  const totalLength = flattenShape(entry.inputShape) || 8;
-  const tensorData = buildDrawFeatures(entry, payload);
+  const totalLength = expectedInputLength(entry);
+  let tensorData;
+  try {
+    tensorData = buildDrawFeatures(entry, payload);
+  } catch (err) {
+    console.warn("[ONNX] invalid draw feature shape", err);
+    return null;
+  }
   const inputName = session.inputNames[0];
   const ort = await getOrt();
   if (!ort) return null;
@@ -137,4 +206,17 @@ export async function inferDrawDecisionWithOnnx(payload) {
     console.warn("[ONNX] draw inference failed", err);
     return null;
   }
+}
+
+export function getRlDecisionFallbackPriority() {
+  return [...BADUGI_RL_FALLBACK_PRIORITY];
+}
+
+export function buildDeterministicSafeDecision(validActions = []) {
+  const action = chooseDeterministicSafeAction(validActions);
+  if (!action) return null;
+  return {
+    action: action.toUpperCase(),
+    source: "deterministic-safe",
+  };
 }

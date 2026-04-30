@@ -46,13 +46,6 @@ function clonePlayers(players = []) {
   );
 }
 
-function normalizeSeatIndex(idx, total) {
-  if (!Number.isFinite(idx) || !Number.isFinite(total) || total <= 0) {
-    return null;
-  }
-  return ((idx % total) + total) % total;
-}
-
 function findNextDrawableSeat(players = [], { startIndex = null, dealerIdx = 0 } = {}) {
   const seatCount = Array.isArray(players) ? players.length : 0;
   if (!seatCount) return null;

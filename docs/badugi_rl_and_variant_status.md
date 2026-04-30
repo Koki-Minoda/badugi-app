@@ -1,6 +1,6 @@
 # Badugi RL / Multi-Game 実行計画
 
-更新日: 2026-04-29  
+更新日: 2026-04-30
 目的: この文書を、Badugi RL と Draw 系マルチゲーム実装の作業基準書として使う。
 
 ## 1. この文書の使い方
@@ -24,6 +24,8 @@
 - バリアント定義の正本は `src/games/config/multiGameList.json`。
 - 現行バリアント数は 35。
 - `live` 扱いは `D03 Badugi` のみ。
+- `D01` / `D02` / `S01` / `S02` の engine / controller / test は実装済みで、catalog status は `wip`。
+- Draw 系の UI 本格接続と production smoke は別途確認対象。
 - evaluator は以下が実装済み。
   - High
   - 2-7 Low
@@ -33,9 +35,9 @@
   - Hi-Lo8
   - Badeucey / Badacey
 - draw family の共通土台として `src/games/core/drawEngineBase.js` がある。
-- 実 engine registry は `badugi` のみ。
+- 実 engine registry は `badugi` / `D01` / `D02` / `S01` / `S02` 相当を登録済み。
   - `src/games/core/engineRegistry.js`
-- 実 controller registry 相当もほぼ Badugi 中心。
+- 実 controller registry 相当は Badugi / D01 / D02 / S01 / S02 の factory を登録済み。
   - `src/games/core/variants.js`
 - UI の variant 選択は一部先行しており、`badugi` と `nlh` が enabled 扱い。
   - `src/ui/game/variants.js`
@@ -57,12 +59,13 @@
 - ONNX 実行のフロント側ローダはある。
   - `src/ai/onnxExecutor.js`
   - `src/ai/onnxPolicyAdapter.js`
-- ただし backend の RL API は stub。
+- backend の RL API は frontend ONNX の比較検証 / 将来拡張用 endpoint として残っており、現在は deterministic-safe fallback を返す。
   - `backend/app/api/badugi_rl.py`
 - 実 `.onnx` モデルはリポジトリ内で未確認。
-- 学習入力が不整合。
-  - backend API: 22-dim
-  - model registry: `badugi_iron.onnx` は `[96]`
+- Badugi / Draw 系の observation と model registry は 96-dim schema に揃えている。
+  - backend API: Badugi schema v1 / 96-dim
+  - frontend ONNX: Badugi / Draw schema v1 / 96-dim
+  - model registry: Badugi / Draw model entries は `[96]`
 
 ### 2.3 2-7 / A-5 系の現状
 
@@ -71,7 +74,8 @@
   - `src/games/evaluators/low.js`
 - pro AI profile の仮設定もある。
   - `src/config/mixed/proAiProfiles.js`
-- しかし draw engine / controller / UI / logging / replay / RL は未実装。
+- `D01` / `D02` / `S01` / `S02` の draw engine / controller / unit / e2e / RL observation 基盤は実装済み。
+- UI 本格接続、実ブラウザ / 実スマホでの通し確認、catalog status の最終整理は追加確認対象。
 
 ### 2.4 方針決定済み事項
 
@@ -1015,14 +1019,29 @@ D02 test coverage:
 
 タスク:
 
-- [ ] `WG-05-01` single draw 用 street sequence を fixed する。
+- [x] `WG-05-01` single draw 用 street sequence を fixed する。
   - `BET -> DRAW -> BET -> SHOWDOWN`
-- [ ] `WG-05-02` `maxDrawRounds=1` の family 対応を追加する。
-- [ ] `WG-05-03` opening round / closing round の bet size と raise cap を定義する。
-- [ ] `WG-05-04` `S01` を `D01` から派生実装する。
-- [ ] `WG-05-05` `S02` を `D02` から派生実装する。
-- [ ] `WG-05-06` UI 表示で triple draw と single draw を誤認しないよう整理する。
-- [ ] `WG-05-07` Mixed / Dealer's Choice 用 metadata を追加する。
+- [x] `WG-05-02` `maxDrawRounds=1` の family 対応を追加する。
+- [x] `WG-05-03` opening round / closing round の bet size と raise cap を定義する。
+- [x] `WG-05-04` `S01` を `D01` から派生実装する。
+- [x] `WG-05-05` `S02` を `D02` から派生実装する。
+- [x] `WG-05-06` UI 表示で triple draw と single draw を誤認しないよう整理する。
+- [x] `WG-05-07` Mixed / Dealer's Choice 用 metadata を追加する。
+
+Single draw implementation notes:
+
+- Street sequence is fixed as `BET -> DRAW -> BET -> SHOWDOWN` by using `maxDrawRounds: 1` in the shared lowball draw engine.
+- Opening betting uses the small fixed-limit unit; closing betting after the single draw uses the big fixed-limit unit via `bigBetStartsAtDrawRound: 1`.
+- Raise cap remains the same fixed-limit cap as D01/D02: `raiseCap: 4`.
+- `DeuceToSevenSingleDrawEngine` / `DeuceToSevenSingleDrawController` add `S01` as a thin D01-derived wrapper.
+- `AceToFiveSingleDrawEngine` / `AceToFiveSingleDrawController` add `S02` as a thin D02-derived wrapper.
+- UI snapshots expose `variantId`, `gameId`, `maxDrawRounds`, `drawRound`, `maxDiscardCount`, and `handCardCount`, so single draw is distinguishable from triple draw without `App.jsx` changes.
+- Mixed / Dealer's Choice metadata now includes `engineKey` and `status: "wip"` for `S01` / `S02` in `multiGameList.json`.
+
+Single draw test coverage:
+
+- `src/games/draw/__tests__/SingleDrawEngine.test.js` covers S01/S02 initialization, one-draw street sequence, closing big bet, engine registry, and mixed metadata.
+- `src/games/draw/__tests__/SingleDrawE2E.test.js` covers S01/S02 controller full-hand completion through one draw and showdown.
 
 完了条件:
 
@@ -1049,12 +1068,30 @@ D02 test coverage:
 
 タスク:
 
-- [ ] `WG-06-01` split pot awarding の engine contract を定義する。
-- [ ] `WG-06-02` half-pot rounding のルールを決める。
-- [ ] `WG-06-03` Badeucey / Badacey 用 showdown summary を設計する。
-- [ ] `WG-06-04` Hidugi の high-badugi 表示を設計する。
-- [ ] `WG-06-05` Archie の evaluator 仕様を確定する。
-- [ ] `WG-06-06` 4-card draw variants と 5-card draw variants の discard UI を共通化する。
+- [x] `WG-06-01` split pot awarding の engine contract を定義する。
+- [x] `WG-06-02` half-pot rounding のルールを決める。
+- [x] `WG-06-03` Badeucey / Badacey 用 showdown summary を設計する。
+- [x] `WG-06-04` Hidugi の high-badugi 表示を設計する。
+- [x] `WG-06-05` Archie の evaluator 仕様を確定する。
+- [x] `WG-06-06` 4-card draw variants と 5-card draw variants の discard UI を共通化する。
+
+Split / special draw implementation notes:
+
+- `src/games/core/splitPotContract.js` defines the extension contract used by future split/special draw engines.
+- Badeucey uses two ordered components: `badugiLow` and `deuceToSevenLow`.
+- Badacey uses two ordered components: `badugiLow` and `aceToFiveLow`.
+- Half-pot odd chips use deterministic component-order rounding; for example a 101-chip Badeucey pot becomes 51 / 50.
+- Component winners will later split their component amount by normal seat-order odd-chip rules.
+- Badeucey / Badacey showdown summaries are normalized as `componentShowdown` with per-component evaluations and winners.
+- Hidugi uses `High Badugi` display metadata and a `high-badugi` comparator contract while staying single-pot.
+- Archie is fixed as a component split contract: pair-or-better high half plus 8-or-better A-5 low half.
+- `resolvePot` and `resolveShowdown` now expose the same contract as TODO-ready integration points without changing active game flow.
+- 4-card and 5-card draw discard selection stays on the shared `drawSelection` helper and is covered for both hand sizes.
+
+Split / special draw test coverage:
+
+- `src/games/core/__tests__/splitPotContract.test.js` covers Badeucey, Badacey, Hidugi, Archie, half-pot rounding, component summaries, and resolver stubs.
+- `src/ui/game/__tests__/drawSelection.test.js` covers shared discard selection for 4-card and 5-card draw hands.
 
 完了条件:
 
@@ -1087,49 +1124,73 @@ D02 test coverage:
 
 タスク:
 
-- [ ] `WG-07-01` RL 推論の主経路を確定する。
+- [x] `WG-07-01` RL 推論の主経路を確定する。
   - frontend ONNX を正式採用
   - backend inference は比較検証と将来拡張用
-- [ ] `WG-07-02` observation schema v1 を固定する。
+- [x] `WG-07-02` observation schema v1 を固定する。
   - hand features
   - betting context
   - draw context
   - position
   - stack / pot
   - opponent summary
-- [ ] `WG-07-03` `BadugiEngine.getObservation()` と RL schema を一致させる。
-- [ ] `WG-07-04` `recordActionToLog(...)` の RL 用必須項目を固定する。
-- [ ] `WG-07-05` `export_dataset.py` を transition 形式に拡張する。
+- [x] `WG-07-03` `BadugiEngine.getObservation()` と RL schema を一致させる。
+- [x] `WG-07-04` `recordActionToLog(...)` の RL 用必須項目を固定する。
+- [x] `WG-07-05` `export_dataset.py` を transition 形式に拡張する。
   - observation
   - action
   - reward
   - next_observation
   - done
   - legal_actions
-- [ ] `WG-07-06` `badugi_env.py` を現行ルールに寄せるか、差分を明記する。
-- [ ] `WG-07-07` 実 `.onnx` モデル配置の運用を決める。
+- [x] `WG-07-06` `badugi_env.py` を現行ルールに寄せるか、差分を明記する。
+- [x] `WG-07-07` 実 `.onnx` モデル配置の運用を決める。
   - 格納先
   - バージョン命名
   - registry 更新手順
-- [ ] `WG-07-08` `backend/app/api/badugi_rl.py` の stub を置換する。
-- [ ] `WG-07-09` `onnxPolicyAdapter.js` の feature builder を schema v1 に揃える。
-- [ ] `WG-07-10` tier ごとの model 割り当てを整理する。
+- [x] `WG-07-08` `backend/app/api/badugi_rl.py` の stub を置換する。
+- [x] `WG-07-09` `onnxPolicyAdapter.js` の feature builder を schema v1 に揃える。
+- [x] `WG-07-10` tier ごとの model 割り当てを整理する。
   - `pro`
   - `iron`
   - `worldmaster`
-- [ ] `WG-07-11` RL decision の fallback 優先順位を決める。
+- [x] `WG-07-11` RL decision の fallback 優先順位を決める。
   - ONNX
   - rule-based
   - deterministic safe fallback
-- [ ] `WG-07-12` inference integration tests を追加する。
+- [x] `WG-07-12` inference integration tests を追加する。
   - model あり
   - model なし
   - invalid shape
+
+Badugi RL implementation notes:
+
+- Primary inference path is frontend ONNX via `src/ai/onnxPolicyAdapter.js`.
+- Backend `/api/badugi/rl/decision` is now a schema v1 comparison/fallback endpoint, not the primary production inference path.
+- Observation schema v1 lives in `src/rl/badugiObservationSchema.js`.
+- Schema v1 vector size is `96`, matching Badugi ONNX model input shape.
+- The vector includes hand shape, betting context, draw context, position, stack/pot context, opponent summary, and legal-action mask.
+- `BadugiEngine.getObservation()` now returns `schemaVersion`, structured `observation`, and `stateVector`.
+- `recordActionToLog(...)` already captures the required RL fields: hand/seat/phase/action/stacks/bets/pot/draw info/metadata/action id; dataset export normalizes missing vectors to schema v1 shape.
+- `src/rl/tools/export_dataset.py` now emits transition records: `observation`, `action`, `reward`, `next_observation`, `done`, and `legal_actions`.
+- `src/rl/env/badugi_env.py` keeps its lightweight training mechanics, but its observation space now pads the legacy first 22 slots to schema v1 `96`.
+- ONNX model files should be placed under `public/models/` and referenced from `src/config/ai/modelRegistry.json` as `models/<variant>_<tier>_vN.onnx`.
+- Repo-local production `.onnx` asset presence is not guaranteed by this WG; verify it under `QA-03` before release.
+- Badugi tier assignment is fixed as `model-badugi-pro-v1`, `model-badugi-iron-v1`, and `model-badugi-worldmaster-v1`.
+- Fallback priority is fixed as `ONNX -> rule-based -> deterministic safe`.
+
+Badugi RL test coverage:
+
+- `src/rl/__tests__/badugiObservationSchema.test.js` covers schema v1 vector shape, engine observation alignment, and deterministic fallback.
+- `src/ai/__tests__/onnxPolicyAdapter.test.js` covers Badugi ONNX feature shape and tier model assignment.
+- `src/ai/__tests__/onnxPolicyAdapterInference.test.js` covers model available, model missing, and invalid input shape paths.
+- `backend/tests/test_badugi_rl.py` covers schema v1 request validation and backend deterministic-safe response.
+- Dataset transition export was verified with a JSONL smoke command.
   - fallback
 
 完了条件:
 
-- stub ではなく実モデル推論が通る。
+- frontend ONNX 主経路で実モデル推論に接続できる adapter / registry / fallback contract が揃う。
 - observation / model input / dataset schema の三者が一致する。
 - model 不在時も安全に fallback する。
 
@@ -1145,14 +1206,29 @@ D02 test coverage:
 
 タスク:
 
-- [ ] `WG-08-01` draw family 共通 observation schema を定義する。
-- [ ] `WG-08-02` variant 固有 feature slot を定義する。
+- [x] `WG-08-01` draw family 共通 observation schema を定義する。
+- [x] `WG-08-02` variant 固有 feature slot を定義する。
   - badugi
   - 2-7
   - A-5
-- [ ] `WG-08-03` 2-7 draw heuristic から supervised bootstrap dataset を切り出す。
-- [ ] `WG-08-04` `D01/D02` の暫定 CPU を RL 置換可能な形で包む。
-- [ ] `WG-08-05` mixed profile が variant ごとにモデルを切り替えられるようにする。
+- [x] `WG-08-03` 2-7 draw heuristic から supervised bootstrap dataset を切り出す。
+- [x] `WG-08-04` `D01/D02` の暫定 CPU を RL 置換可能な形で包む。
+- [x] `WG-08-05` mixed profile が variant ごとにモデルを切り替えられるようにする。
+
+Draw RL implementation notes:
+
+- `src/rl/drawObservationSchema.js` defines `draw-observation-v1` as a shared 96-slot schema for Badugi, 2-7, and A-5 draw families.
+- Variant-specific feature slots are fixed as `badugi`, `low27`, and `lowA5` one-hot channels.
+- `D01` / `S01` use the `low-27` family, and `D02` / `S02` use the `low-a5` family.
+- `src/rl/drawBootstrapDataset.js` converts the existing rule-based draw heuristic into supervised bootstrap records.
+- `wrapRuleBasedDrawDecision(...)` marks D01/D02 CPU choices with `replaceableByRl: true`, so ONNX can replace them later without changing the engine action contract.
+- `onnxPolicyAdapter` can now build exact-shape ONNX inputs for D01/D02/S01/S02 as well as Badugi.
+- `modelRegistry.json` includes variant-specific draw models for `D01/S01` and `D02/S02`, allowing mixed rotations to resolve models by variant id.
+
+Draw RL test coverage:
+
+- `src/rl/__tests__/drawObservationSchema.test.js` covers D01/D02 vectors, variant feature slots, fallback wrapping, and supervised bootstrap output.
+- `src/ai/__tests__/onnxPolicyAdapter.test.js` covers draw ONNX feature building and D01/D02 model selection.
 
 完了条件:
 
@@ -1307,9 +1383,215 @@ D02 test coverage:
 - [x] `WG-BADUGI-00-02` Badugi bug tracker を正本として運用開始
 - [x] `WG-BADUGI-01-02` 再現環境の記録項目を固定
 - [x] `WG-00-01` 「30ゲーム」表記を 35 variants に更新
-- [ ] `WG-01-01` Draw family state contract を固定
-- [ ] `WG-02-01` 2-7 lowball edge case テスト追加
-- [ ] `WG-07-01` RL 推論の主経路を確定
+- [x] `WG-01-01` Draw family state contract を固定
+- [x] `WG-02-01` 2-7 lowball edge case テスト追加
+- [x] `WG-07-01` RL 推論の主経路を確定
+
+## 12.1 追加監査で見つかった確認項目
+
+チェックリスト上の WG / Step タスクは完了している。ただし「本番投入前の確認」または「文書と実装の整合性」として、以下を追う。
+
+- [x] `QA-01` `multiGameList.json` の `D01` / `D02` status を実装状況に合わせて `wip` へ更新する。
+  - `D01`: `engineKey: "deuce_to_seven_triple_draw"`
+  - `D02`: `engineKey: "ace_to_five_triple_draw"`
+  - `live` 判定は UI 本格接続と実機 smoke 完了後に行う。
+- [x] `QA-02` `src/games/core/variants.js` の controller registry 方針を確認する。
+  - Badugi に加え、`D01` / `D02` / `S01` / `S02` 相当の controller factory を登録済み。
+  - UI の variant picker への本格接続は別フェーズ。
+- [x] `QA-03` model registry と実 `.onnx` asset の一致を確認する。
+  - `modelRegistry.json` に Badugi / draw 系モデル定義はあるが、production `.onnx` asset は repo 内に未配置。
+  - `public/models/README.md` に fallback 前提と release checklist を明記。
+- [x] `QA-04` backend `/api/badugi/rl/decision` の位置付けを確認する。
+  - frontend ONNX を主経路とする。
+  - backend endpoint は schema v1 validation と deterministic-safe fallback を持つ比較検証 / 将来拡張 endpoint とする。
+- [ ] `QA-05` 実ブラウザ / 実スマホで Badugi / D01 / D02 / S01 / S02 の smoke test を実施する。
+  - Automated desktop smoke: title screen -> signup -> login -> ring game -> bet action -> card select -> draw is verified with headless Chromium.
+  - Playwright entry helpers now use the current `Press Enter` title button and authenticated menu flow.
+  - Local API / DB health was verified through `/api/health` via both frontend proxy and backend direct path.
+  - Badugi は `badugi-flow` / authenticated smoke / MTT smoke の Playwright 自動確認済み。
+  - D01 / D02 / S01 / S02 は engine / controller / Vitest e2e / App URL route / headless desktop browser smoke まで確認済み。
+  - D01 / D02 / S01 / S02 用の `DrawLowballUIAdapter` と adapter registry alias を追加し、5-card draw snapshot を table props へ変換できることを確認済み。
+  - 2026-04-30 更新: `?variant=D01` / `?variant=D02` の App routing から ring game を起動し、5-card 表示、BET進行、DRAW control、カード選択、Draw Selected 実行まで Playwright smoke 済み。
+  - 2026-04-30 更新: `D01` / `D02` / `S01` / `S02` は App route から hand result / next hand まで Playwright smoke 済み。`D01` は Main Menu variant picker からの起動も確認済み。
+  - 2026-04-30 更新: mobile emulation smoke を追加。portrait は game 起動時に orientation gate、landscape は Badugi / D01 の card select -> Draw Selected を確認済み。
+  - 2026-04-30 更新: orientation gate に `横向き表示を試す` ボタンを追加。対応ブラウザでは fullscreen + `screen.orientation.lock("landscape")` を試行し、iOS Safari など非対応環境では手動回転案内に fallback する。
+  - Desktop Chrome: ring game 5 hand 以上。
+  - Mobile Safari または Android Chrome: portrait / landscape で discard、pat、overlay、hand result を確認。
+  - 結果は `docs/bugs/badugi_browser_mobile_bug_tracker.md` または別 QA 記録へ残す。
+- [x] `QA-06` `dealToBoards` / `resolvePot` / `resolveShowdown` の TODO-ready stub を、次フェーズで実ロジックへ接続する範囲を決める。
+  - Step 1 の完成条件では入口作成までが対象。
+  - Double Board / hi-lo / split pot を実ゲーム接続する前に、evaluator registry、side pot、board-by-board award を同時に接続する。
+- [ ] `QA-07` production API smoke を確認する。
+  - `/api/variants`
+  - `/api/variants/double_board_bomb_pot_omaha`
+  - `/api/badugi/rl/decision`
+  - nginx / backend / frontend の reverse proxy 経路で確認する。
+  - local TestClient smoke is verified by `backend/tests/test_variants_api.py` and `backend/tests/test_badugi_rl.py`.
+  - production reverse proxy は稼働環境で別途確認する。
+
+## 12.2 Playwright / Auth / Operational QA
+
+2026-04-30 時点の実運用目線チェック。
+
+- [x] `OP-01` frontend proxy と backend direct の `/api/health` が `db: ok` を返すことを確認。
+- [x] `OP-02` 実 DB に Playwright 用メールアドレスを signup し、login と `/auth/me` の認証 round trip が成立することを確認。
+  - `EmailStr` は `example.test` などの予約ドメインを拒否するため、E2E 用メールは `@mgx-e2e.com` 形式へ変更。
+- [x] `OP-03` Auth UI の validation error が `[object Object]` にならず、Pydantic detail を読めるメッセージとして表示される。
+- [x] `OP-04` 現行 UI の Title `Press Enter` -> Auth -> Menu -> Ring game 導線で Playwright が停止しない。
+- [x] `OP-05` player として ring game に入り、BET action button をクリックできる。
+- [x] `OP-06` DRAW phase でヒーローカードを選択し、選択状態が table card の visual / `aria-pressed` に反映され、`Draw Selected` を実行できる。
+- [x] `OP-07` desktop 1280x720 相当で、ヒーローカードが右下席や fixed footer に覆われてクリック不能にならない。
+- [x] `OP-08` 既存 Badugi / MTT / gallery Playwright の game entry helper を、旧 `/start/i` 前提から authenticated flow へ更新。
+- [x] `OP-09` Badugi regression Playwright の残失敗を個別修正する。
+  - `npx playwright test tests/e2e --project=badugi-flow` は entry/auth では止まらない。
+  - 2026-04-30 更新: MTT bust/result overlay の props 配線不整合を修正し、MTT 2 tests は通過。
+  - 2026-04-30 更新: canonical hand history へ legacy `seats` / `pots` / `uiSummary` を反映し、fold-only `finalAction` 欠落を改善。
+  - 2026-04-30 更新: ヒーローのターン外でも操作ボタンが表示される問題を修正。UI の `heroCanAct` は action handler と同じ `turn` / session turn を正本にする。
+  - 2026-04-30 更新: E2E forced action の `call` amount を controller と同じ現在 bet 基準で算出し、to-call がある場面の `check` 強制を排除。
+  - 2026-04-30 更新: `setPlayerHands` が session controller / legacy controller snapshot にも反映されるようにし、showdown / side-pot / hand history 検証で注入手札が上書きされないようにした。
+  - 2026-04-30 更新: 新ハンド seed は `buildNextHandState` の `newPlayers` を正本にし、前ハンドの folded / lastAction が残るケースを修正。
+  - 2026-04-30 更新: Playwright helper をボタン可視性待ちから phase / turn / handId 状態待ちへ寄せ、人工的な複数 seat 同時 fold 待ちを削減。
+  - 2026-04-30 確認: `npx playwright test tests/e2e/badugi-flow.spec.ts --project=badugi-flow` は `16 passed`。
+  - 2026-04-30 確認: `npx playwright test tests/e2e/authenticated-game-smoke.spec.ts --project=badugi-flow` は `1 passed`。
+  - 2026-04-30 確認: `npx playwright test tests/e2e/badugi-mtt-flow.spec.ts --project=badugi-flow` は `2 passed`。
+  - 2026-04-30 確認: `npm run build` は成功。chunk size warning は残るが build 失敗ではない。
+- [ ] `OP-10` 実ブラウザ手動 smoke を実施する。
+  - Desktop Chrome: login、ring game 5 hands、bet/call/raise/fold、draw/pat、hand result、history。
+  - Mobile Safari または Android Chrome: portrait / landscape でカード選択、Draw Selected、overlay、footer overlap を確認。
+  - 2026-04-30 自動確認:
+    - `tests/e2e/mobile-app-smoke.spec.ts` を追加。
+    - mobile portrait: Title -> Menu -> Ring start 後に orientation gate が表示されることを確認。
+    - mobile landscape: Badugi / D01 で hero card が viewport 内にあり、card select -> Draw Selected が実行できることを確認。
+    - orientation gate の landscape lock は best-effort。Android Chrome / installed PWA では効く可能性があるが、iOS Safari はブラウザ制約で手動回転が必要。
+  - 残件:
+    - 実機 Safari / Android Chrome の手動確認。
+    - mobile landscape で hand result / next hand / history までの長時間操作確認。
+- [x] `OP-11` repository-wide lint の既存エラーを整理する。
+  - `npm run lint` は 2026-04-30 時点で既存の `process` / unused / duplicate member / App.jsx 未整理などにより fail していた。
+  - 2026-04-30 再採取: `npm run lint` は `132 problems (106 errors, 26 warnings)` で fail。
+  - 主な分類:
+    - 環境定義不足: `process` / `global` / `__dirname` の `no-undef`。
+    - parser / import assertion: `difficultyAdjuster.js` / `variantCatalog.js` の `Unexpected token assert`。
+    - App.jsx 既存負債: unused、`phaseSnapshot` undefined、`logE2EError` redeclare、hook deps warning。
+    - shared component lint: Fast Refresh rule、unused props。
+    - test lint: unused vars、test globals。
+  - 方針:
+    - lint は App 実装と別章で、設定系、テスト系、App.jsx 実バグ候補の順に分割して直す。
+    - `phaseSnapshot` undefined / `logE2EError` redeclare は runtime risk があるため優先候補。
+  - 2026-04-30 対応:
+    - ESLint globals を browser + node + vitest に拡張し、`process` / `global` / Node config の環境差分を吸収。
+    - JSON import assertion を通常 JSON import へ変更し、Espree parser error を解消。
+    - `vite.config.js` の `__dirname` を ESM 互換の `fileURLToPath(import.meta.url)` に変更。
+    - `DeckManager.shuffle` の重複 class member を解消。
+    - App.jsx の runtime risk だった `phaseSnapshot` undefined と `logE2EError` redeclare を修正。
+    - 既存の unused / Fast Refresh / hook deps は warning として残し、今後の安全な小分け整理対象にする。
+  - 2026-04-30 確認: `npm run lint` は `0 errors / 89 warnings` で exit 0。
+  - 2026-04-30 追加整理:
+    - App.jsx の未参照 state / ref / helper を削除し、`npx eslint src/ui/App.jsx` は `42 warnings` から `23 warnings` へ減少。
+    - repository-wide lint は `0 errors / 70 warnings` で exit 0。
+    - 残る App.jsx hook deps は、依存追加で game progression / E2E driver / console capture の実行タイミングが変わる可能性があるため、個別の挙動テストを添えて段階整理する。
+  - 2026-04-30 小 warning 整理:
+    - unused props / imports / helper / catch binding を GameLayoutBase、NLH adapter、draw / badugi tests、evaluator registry、dealer choice / dev overrides から削除。
+    - Provider と hook の同居による Fast Refresh warning を `AuthProvider` / `GameEngineProvider` / `MixedGameProvider` で分離し、ChipStack の utility export も別ファイルへ移動。
+    - App.jsx から hand history getter export を `src/ui/state/handHistoryStore.js` へ移動し、Fast Refresh warning を削減。
+    - MixedGameContext の provider API 関数を `useCallback` 化し、hook deps warning を解消。
+    - repository-wide lint は `0 errors / 20 warnings` で exit 0。残りは App.jsx の hook deps のみ。
+    - 確認: 関連 Vitest 7 files / 72 tests、`npm run build`、`tests/e2e/authenticated-game-smoke.spec.ts --project=badugi-flow` は通過。
+  - 残り 20 warning の分割対応計画:
+    - [x] `LINT-A01` controller snapshot memo: 不要 deps を削除し、controller ref 由来 snapshot を毎 render 安全に読む形へ寄せる。
+    - [x] `LINT-A02` seat label memo: `positionName` 依存を純粋 helper 化して seatViews / seatLabels の deps を安定させる。
+    - [x] `LINT-A03` console capture: `formatConsole` 依存を ref 化し、console hook を再登録せず最新 phase context を記録する。
+    - [x] `LINT-B01` safe reset callback: `buildPlayersFromSeatTypes` 依存を追加または stable helper 化する。
+    - [x] `LINT-B02` acting-seat guard: `findNextDrawActorSeat` 依存を stable 化する。
+    - [x] `LINT-C01` auto CPU draw callback: draw / deck / logging / sync helper deps を整理し、DRAW 進行の regression を付ける。
+    - [x] `LINT-C02` forced bet callback: bet action log / controller sync deps を整理し、BET action smoke を付ける。
+    - [ ] `LINT-C03` custom hand injection: `applyDeckSnapshot` 依存を整理し、showdown / hand-history 注入テストを付ける。
+    - [ ] `LINT-C04` showdown callback: `goShowdownNow` を `useCallback` 化し、`resolveHandImmediately` との deps を整理する。
+    - [ ] `LINT-C05` tournament start / hydration: `buildTournamentEntrants` / deck / HUD hydration deps を整理し、MTT smoke を付ける。
+    - [ ] `LINT-D01` debug-only effects: `debugLog` / `phaseTagLocal` を ref または guarded helper に寄せ、挙動差分を出さない。
+    - [ ] `LINT-D02` E2E driver helper: `drawSelected` / tournament HUD deps を整理し、authenticated Playwright smoke を付ける。
+    - [ ] `LINT-D03` NPC action timer: turn progression deps を整理し、Badugi flow Playwright を付ける。
+    - 2026-04-30 確認: `LINT-A01` - `LINT-A03` 対応後、repository-wide lint は `0 errors / 16 warnings`。
+    - 2026-04-30 確認: Vitest 4 files / 57 tests、`npm run build`、`tests/e2e/authenticated-game-smoke.spec.ts --project=badugi-flow` は通過。
+    - 2026-04-30 確認: `LINT-B01` / `LINT-B02` 対応後、App hook warning は `16` から `14` へ減少。
+    - 2026-04-30 確認: `npm run lint` は `0 errors / 14 warnings`、Vitest 5 files / 61 tests、`npm run build`、Badugi Playwright 17 tests は通過。
+    - 2026-04-30 確認: `LINT-C01` 対応後、App hook warning は `14` から `13` へ減少。Vitest 4 files / 55 tests、`npm run build`、Badugi Playwright 17 tests は通過。
+    - 2026-04-30 確認: `LINT-C02` 対応後、App hook warning は `13` から `12` へ減少。Vitest 3 files / 51 tests、`npm run build`、authenticated Playwright 1 test、Badugi Playwright 16 tests は通過。
+- [ ] `OP-12` D01 / D02 / S01 / S02 を Badugi と同等の browser smoke 対象に引き上げる。
+  - [x] engine / controller / controller e2e が各 draw variant で通ることを確認。
+  - [x] 5-card draw snapshot を UI table props に変換する `DrawLowballUIAdapter` を追加。
+  - [x] D01 / D02 / S01 / S02 と engine key alias を `GameUIAdapterRegistry` に登録できる helper を追加。
+  - [x] `DrawLowballUIAdapter` が D01 / D02 / S01 / S02 snapshot の phase、seat、pot、HUD、controls を構築できることを Vitest で確認。
+  - [x] App URL variant detection に draw family alias を追加する。
+    - `D01` / `27td` -> `deuce_to_seven_triple_draw`
+    - `D02` / `a5td` -> `ace_to_five_triple_draw`
+    - `S01` / `27sd` -> `deuce_to_seven_single_draw`
+    - `S02` / `a5sd` -> `ace_to_five_single_draw`
+  - [x] App の controller session path に D01 / D02 の最小接続を追加する。
+    - draw controller snapshot を session / table props 正本にする。
+    - draw controller 管理 variant では Badugi deck integrity check を誤適用しない。
+    - NPC BET / DRAW は draw controller の `getCpuAction` / `applyAction` を通す。
+  - [x] D01 / D02 の Playwright smoke を追加する。
+    - title -> auth -> URL alias -> menu -> ring game
+    - bet / call / raise の進行
+    - 5-card selection -> Draw Selected / pat
+    - hand result / next hand は確認済み。hand history は継続確認対象。
+  - [x] S01 / S02 の Playwright smoke を追加する。
+    - title/auth 済みの App URL entry から ring game、BET進行、draw/pat、hand result、next hand を確認。
+  - [x] `src/ui/game/variants.js` の enabled variant と Main Menu variant selection に draw family を安全に追加する。
+    - `menu-ring` は既存 Badugi 即開始導線として維持。
+    - `menu-variant-select` を追加し、variant picker から D01 / D02 / S01 / S02 を選べるようにした。
+  - [x] automated mobile viewport で 5-card hand と footer overlap の代表確認を追加する。
+    - D01 mobile landscape で `player-0-card-4` が viewport 内に収まり、card select / Draw Selected が通る。
+    - portrait は game 開始後に orientation gate を表示する現仕様を確認。
+  - 注意: 2026-04-30 時点で headless desktop / mobile emulation smoke は通過。実スマホ / 実機ブラウザ手動確認は OP-10 / QA-05 の残件。
+- [x] `OP-13` draw family の App 接続を段階実装する。
+  - 目的:
+    - D01 / D02 / S01 / S02 を Badugi と同じ「Title -> Auth -> Menu -> Ring game -> action -> draw -> result」導線で検証できる状態にする。
+    - Badugi / MTT / RL API の既存挙動を壊さず、App.jsx の変更は最小単位に分ける。
+  - 実装順:
+    1. [x] App variant routing helper を追加する。
+       - `badugi` / `nlh` / `deuce_to_seven_triple_draw` / `ace_to_five_triple_draw` / `deuce_to_seven_single_draw` / `ace_to_five_single_draw` を正規 ID とする。
+       - `D01` / `D02` / `S01` / `S02` / `27td` / `a5td` / `27sd` / `a5sd` の alias を正規 ID に変換する。
+       - URL query、menu selection、Playwright helper が同じ normalize 関数を使えるようにする。
+    2. [x] App の controller 生成を variant catalog へ寄せる。
+       - `badugi` は既存 Badugi session controller のまま。
+       - `nlh` は既存 NLH controller のまま。
+       - draw family は `src/games/core/variants.js` の `controllerFactory` を使う。
+       - controller snapshot は `getSnapshot()` または `getUiSnapshot()` のどちらでも読めるようにする。
+    3. [x] draw family の新ハンド開始を controller snapshot 正本にする。
+       - 5枚手札、blind、pot、turn、currentBet は draw controller snapshot から App session へ反映する。
+       - App deck manager と draw engine deck manager の二重管理を避ける。接続初期は draw controller 側を正本にし、Badugi の deck integrity check を draw family に誤適用しない。
+    4. [x] hero BET / CHECK / CALL / RAISE / FOLD / DRAW を draw controller に通す。
+       - draw action は `discardIndexes` を渡す。
+       - Badugi 既存の `afterBetActionWithSnapshot` fallback を draw family に誤適用しない。
+       - controller snapshot から App state、session state、engine snapshot を同期する。
+    5. [x] NPC action loop を draw controller に通す。
+       - `getCpuAction(state, seatIndex)` が返す action を使う。
+       - action deadlock を避けるため、turn と phase の待機条件を Playwright で確認する。
+    6. [x] variant modal で D01 / D02 を enabled にする。
+       - S01 / S02 も controller path / Playwright smoke と同じ範囲で enabled 化する。
+       - `menu-ring` の既存即開始は維持し、`menu-variant-select` で picker を開く。
+    7. [x] Playwright smoke を追加する。
+       - D01: login -> URL alias -> ring -> call/check -> draw/pat -> result -> next hand。
+       - D02: login -> URL alias -> ring -> call/check -> draw/pat -> result -> next hand。
+       - S01/S02: login -> URL alias -> ring -> call/check -> draw/pat -> result -> next hand。
+       - D01: login -> Main Menu variant picker -> ring -> 5-card hand 表示。
+       - 失敗時は phase、turn、variant、handId、console log を取得する。
+       - hand history は OP-12 残件として継続。
+  - 受け入れ条件:
+    - Badugi Playwright `badugi-flow` / authenticated smoke / MTT smoke が継続して通る。
+    - D01 / D02 / S01 / S02 の controller Vitest と App接続テストが通る。
+    - D01 / D02 / S01 / S02 Playwright smoke が headless Chromium で通る。
+    - `npm run build` が通る。
+  - 2026-04-30 確認:
+    - `npm test -- --run src/ui/components/__tests__/VariantSelectModal.test.jsx src/ui/screens/__tests__/MainMenuScreen.test.jsx src/ui/game/__tests__/appVariantRouting.test.js src/ui/game/draw/__tests__/DrawLowballUIAdapter.test.js` は `4 passed / 18 passed`。
+    - `npx playwright test tests/e2e/draw-lowball-app-smoke.spec.ts --project=badugi-flow` は `5 passed`。
+    - `npx playwright test tests/e2e/mobile-app-smoke.spec.ts --project=badugi-flow` は `3 passed`。
+    - `npx playwright test tests/e2e/authenticated-game-smoke.spec.ts --project=badugi-flow` は `1 passed`。
+    - `npm run build` は成功。chunk size warning は残るが build 失敗ではない。
+    - App URL / menu selection の normalize 適用。
+    - draw controller snapshot を UI adapter に渡せる入口の整備。
 
 ## 13. ひとことで言うと
 

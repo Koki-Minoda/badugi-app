@@ -201,6 +201,16 @@ export default function MainMenuScreen({
               onHover={() => setActiveMode("cash")}
               onBlur={resetInfoPanel}
             />
+            <button
+              type="button"
+              data-testid="menu-variant-select"
+              onClick={() => setVariantModalOpen(true)}
+              onMouseEnter={() => setActiveMode("cash")}
+              onBlur={resetInfoPanel}
+              className="rounded-2xl border border-emerald-300/35 bg-emerald-400/10 px-5 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100 transition hover:border-emerald-200/70 hover:bg-emerald-300/15"
+            >
+              Select Variant
+            </button>
             <ModeButton
               label={locale.menu.tournament}
               isActive={activeMode === "tournament"}

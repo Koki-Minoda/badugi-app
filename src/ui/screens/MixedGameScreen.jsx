@@ -6,7 +6,7 @@ import {
   listVariantProfiles,
   getVariantProfile,
 } from "../../games/config/variantProfiles.js";
-import { useMixedGame } from "../mixed/MixedGameContext.jsx";
+import { useMixedGame } from "../mixed/useMixedGame.js";
 import { usePlayerProgress } from "../hooks/usePlayerProgress.js";
 import { computeUnlockState } from "../utils/playerProgress.js";
 import { designTokens } from "../../styles/designTokens.js";

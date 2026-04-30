@@ -1,6 +1,9 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
+import { fileURLToPath } from "url";
+
+const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig(({ command }) => {
   const isDev = command === "serve";
@@ -10,11 +13,11 @@ export default defineConfig(({ command }) => {
     base: isDev ? "/dev/" : "/",
     resolve: {
       alias: {
-        "@core": path.resolve(__dirname, "src/core"),
-        "@games": path.resolve(__dirname, "src/games"),
-        "@ui": path.resolve(__dirname, "src/ui"),
-        "@utils": path.resolve(__dirname, "src/utils"),
-        "@audio": path.resolve(__dirname, "src/audio"),
+        "@core": path.resolve(projectRoot, "src/core"),
+        "@games": path.resolve(projectRoot, "src/games"),
+        "@ui": path.resolve(projectRoot, "src/ui"),
+        "@utils": path.resolve(projectRoot, "src/utils"),
+        "@audio": path.resolve(projectRoot, "src/audio"),
       },
     },
     server: {

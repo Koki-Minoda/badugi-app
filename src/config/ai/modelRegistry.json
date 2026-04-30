@@ -8,12 +8,44 @@
     "outputShape": [8]
   },
   {
-    "id": "model-badugi-v2",
+    "id": "model-badugi-pro-v1",
     "variantIds": ["D03"],
-    "tier": "iron",
-    "onnx": "models/badugi_iron.onnx",
+    "tier": "pro",
+    "onnx": "models/badugi_pro_v1.onnx",
     "inputShape": [96],
     "outputShape": [6]
+  },
+  {
+    "id": "model-badugi-iron-v1",
+    "variantIds": ["D03"],
+    "tier": "iron",
+    "onnx": "models/badugi_iron_v1.onnx",
+    "inputShape": [96],
+    "outputShape": [6]
+  },
+  {
+    "id": "model-badugi-worldmaster-v1",
+    "variantIds": ["D03"],
+    "tier": "worldmaster",
+    "onnx": "models/badugi_worldmaster_v1.onnx",
+    "inputShape": [96],
+    "outputShape": [6]
+  },
+  {
+    "id": "model-27draw-iron-v1",
+    "variantIds": ["D01", "S01"],
+    "tier": "iron",
+    "onnx": "models/27draw_iron_v1.onnx",
+    "inputShape": [96],
+    "outputShape": [11]
+  },
+  {
+    "id": "model-a5draw-iron-v1",
+    "variantIds": ["D02", "S02"],
+    "tier": "iron",
+    "onnx": "models/a5draw_iron_v1.onnx",
+    "inputShape": [96],
+    "outputShape": [11]
   },
   {
     "id": "model-generic-v1",

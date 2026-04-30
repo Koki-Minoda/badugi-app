@@ -157,22 +157,6 @@ test("Repeated fold-only hands stay responsive", async ({ page }) => {
   await openGame(page);
   const foldButton = page.getByRole("button", { name: /fold/i });
 
-  const waitForNextHandLog = (prevCount) =>
-    new Promise((resolve, reject) => {
-      const start = Date.now();
-      const interval = setInterval(() => {
-        if (handLogs.length > prevCount) {
-          clearInterval(interval);
-          resolve();
-          return;
-        }
-        if (Date.now() - start > 20000) {
-          clearInterval(interval);
-          reject(new Error("timeout waiting for new hand log"));
-        }
-      }, 250);
-    });
-
   try {
     for (let i = 0; i < 10; i += 1) {
       await foldButton.waitFor({ state: "visible", timeout: 15000 });

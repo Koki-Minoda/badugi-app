@@ -1,44 +1,8 @@
 import { test, expect, Page } from "@playwright/test";
-
-const APP_URL = "http://127.0.0.1:3000/";
-
-async function gotoWithRetry(page: Page, url: string, timeout = 60000) {
-  const deadline = Date.now() + timeout;
-  let lastError: unknown = null;
-  while (Date.now() < deadline) {
-    try {
-      await page.goto(url, { waitUntil: "load", timeout: Math.min(15000, timeout) });
-      return;
-    } catch (error) {
-      lastError = error;
-      await page.waitForTimeout(1000);
-    }
-  }
-  throw lastError ?? new Error(`Failed to load ${url} within ${timeout}ms`);
-}
-
-async function dismissTranslateOverlay(page: Page) {
-  const translateBubble = page.locator("text=Google Translate");
-  if (await translateBubble.count()) {
-    await translateBubble.click().catch(() => {});
-  }
-  const closeButtons = page.locator('button:has-text("\u9589\u3058\u308b")');
-  if (await closeButtons.count()) {
-    await closeButtons.first().click().catch(() => {});
-  }
-}
+import { openAuthenticatedGame } from "./authHelper";
 
 async function openGameSurface(page: Page) {
-  await gotoWithRetry(page, APP_URL);
-  await dismissTranslateOverlay(page);
-  const startButton = page.getByRole("button", { name: /start/i }).first();
-  try {
-    await startButton.waitFor({ state: "visible", timeout: 15000 });
-    await startButton.click();
-  } catch {
-    // already past the start screen
-  }
-  await page.goto(`${APP_URL}game`, { waitUntil: "load" });
+  await openAuthenticatedGame(page);
 }
 
 async function waitForE2EDriver(page: Page) {
@@ -88,7 +52,9 @@ async function startStoreTournament(page: Page) {
   await waitForE2EDriver(page);
   await waitForE2EHelper(page, "fastForwardMTTComplete");
   await invokeE2E(page, "startTournamentMTT");
-  await page.locator('[data-testid="mtt-hud"]').waitFor({ state: "visible", timeout: 15000 });
+  await page
+    .locator('[data-testid="tournament-hud"], [data-testid="mtt-hud"]')
+    .waitFor({ state: "visible", timeout: 15000 });
 }
 
 async function getHudSnapshot(page: Page) {

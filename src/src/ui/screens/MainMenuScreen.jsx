@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { designTokens } from "../../styles/designTokens.js";
-import { useMixedGame } from "../mixed/MixedGameContext.jsx";
+import { useMixedGame } from "../mixed/useMixedGame.js";
 import { usePlayerProgress } from "../hooks/usePlayerProgress.js";
 import { computeUnlockState } from "../utils/playerProgress.js";
 
@@ -37,7 +37,6 @@ const SECONDARY_ACTIONS = [
 ];
 
 function MenuCard({ item, locked, onClick }) {
-  const palette = designTokens.colors;
   return (
     <button
       type="button"

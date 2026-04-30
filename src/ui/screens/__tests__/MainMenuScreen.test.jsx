@@ -49,11 +49,23 @@ describe("MainMenuScreen", () => {
 
   it("navigates to variant when selection is made", () => {
     render(<MainMenuScreen language="en" />);
-    fireEvent.click(screen.getByRole("button", { name: /cash game/i }));
+    fireEvent.click(screen.getByTestId("menu-variant-select"));
     const modal = screen.getByTestId("variant-select-modal");
     const variantButton = within(modal).getAllByRole("button", { name: /badugi/i })[0];
     fireEvent.click(variantButton);
     expect(mockNavigate).toHaveBeenCalledWith("/game?variant=badugi");
+  });
+
+  it("keeps direct ring start and exposes variant selection separately when callback is provided", () => {
+    const handleSelectRing = vi.fn();
+    render(<MainMenuScreen language="en" onSelectRing={handleSelectRing} />);
+
+    fireEvent.click(screen.getByTestId("menu-ring"));
+    expect(handleSelectRing).toHaveBeenCalledWith();
+    expect(screen.queryByTestId("variant-select-modal")).toBeNull();
+
+    fireEvent.click(screen.getByTestId("menu-variant-select"));
+    expect(screen.getByTestId("variant-select-modal")).toBeTruthy();
   });
 
   it("routes to tournament and friend match flows", () => {

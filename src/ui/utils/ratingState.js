@@ -430,7 +430,6 @@ export function computeRankFromRating(globalRating = DEFAULT_SKILL) {
   const currentIndex = RANK_TIERS.findIndex((t) => t.id === tier.id);
   const nextTier = currentIndex > 0 ? RANK_TIERS[currentIndex - 1] : null;
   const floor = tier.min;
-  const ceiling = nextTier ? nextTier.min : value;
   const span = Math.max(1, (nextTier ? nextTier.min : floor + 200) - floor);
   const progress = clamp((value - floor) / span, 0, 1);
   return {

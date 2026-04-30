@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   getCurrentHandHistorySnapshot,
   getHandHistoryBufferSnapshot,
-} from "../App.jsx";
+} from "../state/handHistoryStore.js";
 
 function formatTimestamp(ts) {
   if (!Number.isFinite(ts)) return "–";

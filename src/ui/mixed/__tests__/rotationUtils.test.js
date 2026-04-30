@@ -23,7 +23,7 @@ describe("rotationUtils", () => {
       selectedGameIds: ["D01", "D02", "D03"],
       selectionMode: "RANDOM",
     });
-    const spy = vi.spyOn(Math, "random").mockReturnValue(0.6); // pick index 1
+    vi.spyOn(Math, "random").mockReturnValue(0.6); // pick index 1
     const resolved = resolveInitialGame(profile, null, playable);
     expect(resolved?.gameId).toBeDefined();
     vi.restoreAllMocks();
@@ -92,7 +92,7 @@ describe("rotationUtils", () => {
       handsPlayedInCurrentGame: 0,
       handsPerGame: 1,
     };
-    const spy = vi.spyOn(Math, "random").mockReturnValue(0.2);
+    vi.spyOn(Math, "random").mockReturnValue(0.2);
     const result = advanceRotationState(runtimeState, profile, playable);
     expect(result.rotated).toBe(true);
     expect(result.nextState.activeGameId).toBe("D04");

@@ -408,7 +408,7 @@ describe("analyzeBetSnapshot", () => {
     );
 
     const normalized = resetBetRoundFlags(players);
-    normalized.forEach((player, idx) => {
+    normalized.forEach((player) => {
       if (!player.folded && !player.allIn) {
         expect(player.hasActedThisRound).toBe(false);
       }

@@ -73,7 +73,6 @@ export default function GameLayoutBase({
     notificationVariant,
     notificationMessage,
     seatManagerOpen,
-    onOpenSeatManager,
     onCloseSeatManager,
     autoRotateSeats,
     onToggleAutoRotateSeats,
@@ -85,13 +84,6 @@ export default function GameLayoutBase({
     onRotateSeatConfig,
     onResetSeatConfig,
     onRedeal,
-    heroTracker,
-    heroTrackerTotal,
-    heroWinRate,
-    tierOptions,
-    devTierOverride,
-    onTierOverrideChange,
-    onClearTierOverride,
     p2pCaptureEnabled,
     onToggleP2pCapture,
     onExportP2pMatches,
@@ -107,14 +99,12 @@ export default function GameLayoutBase({
     tableSummaryProps,
     seatViews: tableSeatViews,
     seatLayouts,
-    players,
     heroSeatIndex,
     heroDrawSelection,
     heroCanDraw: tableHeroCanDraw,
     controllerTurn,
     controllerDealerIdx,
     positionNameFn,
-    clonePlayerStateFn,
     handleCardClick,
     tablePhase,
     phase,
@@ -325,7 +315,7 @@ export default function GameLayoutBase({
 
         <section
           className={`flex h-full flex-col ${
-            isMobileLayout ? "px-3 pt-20 pb-10 gap-6" : "pl-[320px] pr-6 pt-24 pb-10 gap-8"
+            isMobileLayout ? "px-3 pt-20 pb-10 gap-6" : "pl-[320px] pr-6 pt-24 pb-24 gap-8"
           }`}
         >
           <div
@@ -356,6 +346,10 @@ export default function GameLayoutBase({
                     const seat = tableSeatViews[idx];
                     if (!seat) return null;
                     const seatPosition = positionNameFn(idx, controllerDealerIdx, seatLayouts.length);
+                    const renderedSeat =
+                      seat.seatIndex === heroSeatIndex
+                        ? { ...seat, selected: heroDrawSelection }
+                        : seat;
                     const seatAlignClass = isMobileLayout
                       ? MOBILE_SEAT_ALIGN_CLASS[idx] ?? "items-center"
                       : "items-center";
@@ -372,7 +366,7 @@ export default function GameLayoutBase({
                         }
                       >
                         <Player
-                          player={seat}
+                          player={renderedSeat}
                           index={idx}
                           selfIndex={heroSeatIndex}
                           dealerIdx={controllerDealerIdx}
@@ -541,11 +535,17 @@ export default function GameLayoutBase({
         onNextHand={onNextHand}
         nextHandLabel={nextHandLabel}
       />
-      <HeroBustOverlay visible={heroBustOverlayVisible} summary={heroBustSummary} />
+      <HeroBustOverlay
+        visible={heroBustOverlayVisible}
+        title={heroBustSummary?.title}
+        heroSummary={heroBustSummary?.hero}
+        inMoneyPlacements={heroBustSummary?.inMoney ?? []}
+        onBackToMenu={onTournamentBackToMenu}
+      />
       <TournamentResultOverlay
         visible={tournamentOverlayVisible}
         placements={tournamentPlacements}
-        tournamentTitle={tournamentTitle}
+        title={tournamentTitle}
         onBackToMenu={onTournamentBackToMenu}
         onPlayAgain={onTournamentPlayAgain}
       />

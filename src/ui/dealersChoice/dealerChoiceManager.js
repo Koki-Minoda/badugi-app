@@ -90,7 +90,7 @@ export function isDealerChoiceModeActive() {
   if (typeof window === "undefined") return false;
   try {
     return window.localStorage.getItem(MODE_KEY) === "1";
-  } catch (err) {
+  } catch {
     return false;
   }
 }

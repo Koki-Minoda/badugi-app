@@ -15,12 +15,12 @@ export default function Controls({
   layoutMode = "desktop",
   className,
 }) {
-  if (!player) return null;
-
   const betActions = useMemo(() => {
     if (phase !== "BET") return [];
     return getAvailableActions({ currentBet, player });
   }, [phase, currentBet, player]);
+
+  if (!player) return null;
 
   if (phase === "BET" && betActions.length === 0) {
     return null;
@@ -83,6 +83,7 @@ export default function Controls({
               <button
                 key={action.key}
                 onClick={handleClick}
+                data-testid={`action-${action.key.toLowerCase()}`}
                 className={`${buttonBase} ${variantClass}`}
               >
                 {action.label}
@@ -94,6 +95,7 @@ export default function Controls({
       {phase === "DRAW" && (
         <button
           onClick={onDraw}
+          data-testid="action-draw-selected"
           disabled={!canDraw}
           className={`${
             isMobile

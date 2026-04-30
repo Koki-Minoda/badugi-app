@@ -5,8 +5,8 @@ import {
   getWinnersByBadugi,
 } from "../../src/games/badugi/utils/badugiEvaluator.js";
 import { buildSidePots } from "../../src/games/badugi/engine/roundFlow.js";
+import { openAuthenticatedGame } from "../e2e/authHelper";
 
-const APP_URL = "http://127.0.0.1:3000/";
 const HERO_SEAT = 0;
 const STARTING_STACK = 500;
 
@@ -77,46 +77,8 @@ function setupE2ELogCapture(page: Page) {
   return logs;
 }
 
-async function gotoWithRetry(page: Page, url: string, timeout = 60000) {
-  const deadline = Date.now() + timeout;
-  let lastError: unknown = null;
-  while (Date.now() < deadline) {
-    try {
-      await page.goto(url, { waitUntil: "load", timeout: Math.min(15000, timeout) });
-      return;
-    } catch (error) {
-      lastError = error;
-      await page.waitForTimeout(1000);
-    }
-  }
-  throw lastError ?? new Error(`Failed to load ${url} within ${timeout}ms`);
-}
-
 async function openGame(page: Page) {
-  await gotoWithRetry(page, APP_URL);
-  const translateBubble = page.locator("text=Google Translate");
-  if (await translateBubble.count()) {
-    await translateBubble.click().catch(() => {});
-  }
-  const closeButtons = page.locator('button:has-text("\u9589\u3058\u308b")');
-  if (await closeButtons.count()) {
-    await closeButtons.first().click().catch(() => {});
-  }
-  const startButton = page.getByRole("button", { name: /start/i }).first();
-  try {
-    await startButton.waitFor({ state: "visible", timeout: 15000 });
-    await startButton.click();
-  } catch {
-    // ignore if already on the game screen
-  }
-  const reachedGame = await Promise.race([
-    page.waitForURL("**/game*", { timeout: 10000 }).then(() => "game"),
-    page.waitForURL("**/menu*", { timeout: 10000 }).then(() => "menu"),
-  ]);
-  if (reachedGame === "menu") {
-    await page.goto(`${APP_URL}game`, { waitUntil: "load" });
-  }
-  await page.getByRole("button", { name: /Leaderboard/i }).first().waitFor({ state: "visible" });
+  await openAuthenticatedGame(page);
 }
 
 async function waitForE2EDriver(page: Page) {

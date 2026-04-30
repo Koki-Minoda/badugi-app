@@ -90,11 +90,6 @@ export class DeckManager {
     return this.deck.length;
   }
 
-  shuffle() {
-    this.deck = this.#shuffle([...this.deck]);
-    return this.deck.length;
-  }
-
   recycleNow(extra = [], options = {}) {
     this.logState("[RECYCLE][BEFORE]", {
       discardSnapshot: [...this.discardPile],

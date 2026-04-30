@@ -3,7 +3,6 @@ import { evaluateHighHand } from "./high.js";
 import { evaluateLowHand } from "./low.js";
 import { evaluateBadugiHand } from "./badugi.js";
 import {
-  evaluateSplitHand,
   evaluateBadeucey,
   evaluateBadacey,
   evaluateHiLoEight,

@@ -1421,13 +1421,17 @@ Draw RL test coverage:
 - [x] `QA-06` `dealToBoards` / `resolvePot` / `resolveShowdown` の TODO-ready stub を、次フェーズで実ロジックへ接続する範囲を決める。
   - Step 1 の完成条件では入口作成までが対象。
   - Double Board / hi-lo / split pot を実ゲーム接続する前に、evaluator registry、side pot、board-by-board award を同時に接続する。
-- [ ] `QA-07` production API smoke を確認する。
+- [x] `QA-07` production API smoke を確認する。
   - `/api/variants`
   - `/api/variants/double_board_bomb_pot_omaha`
   - `/api/badugi/rl/decision`
   - nginx / backend / frontend の reverse proxy 経路で確認する。
   - local TestClient smoke is verified by `backend/tests/test_variants_api.py` and `backend/tests/test_badugi_rl.py`.
-  - production reverse proxy は稼働環境で別途確認する。
+  - 2026-05-01 production reverse proxy smoke:
+    - `GET https://mgx-poker.com/api/health` は `200` / `{"status":"ok","env":"prod","db":"ok"}`。
+    - `GET https://mgx-poker.com/api/variants` は `200`。`badugi` / `nl_holdem` / `limit_holdem` / `plo` / `double_board_bomb_pot_omaha` を含む。
+    - `GET https://mgx-poker.com/api/variants/double_board_bomb_pot_omaha` は `200`。`boards.count=2`、`betting.hasPreflop=false`、`forced_bets.type=bombPot`。
+    - `POST https://mgx-poker.com/api/badugi/rl/decision` は未認証では `401`、production smoke 用 E2E user で signup/login 後 Bearer token 付きでは `200`。`action=call`、`source=deterministic-safe`、`vector_size=96`、`fallback_order=["onnx","ruleBased","deterministicSafe"]`。
 - [x] `QA-08` Badugi を自動 smoke 上で完了扱いにするための最終テストを実施する。
   - 目的: 自動テスト上は主要導線が通っているため、運用目線の desktop / mobile emulation / 回帰確認で自動 smoke 完了判定する。
   - 完了条件:

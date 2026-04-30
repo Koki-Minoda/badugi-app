@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { designTokens } from "../../styles/designTokens.js";
 import { getEnabledVariants } from "../game/variants.js";
+import { buildRoomWebSocketUrl, createRoom, joinRoom } from "../utils/roomApi.js";
 
 function VariantOption({ variant, isSelected, onSelect }) {
   return (
@@ -44,12 +45,45 @@ export default function FriendMatchSetupScreen() {
   const [bigBlind, setBigBlind] = useState(20);
   const [ante, setAnte] = useState(0);
   const [statusMessage, setStatusMessage] = useState("");
+  const [createdRoom, setCreatedRoom] = useState(null);
+  const [isCreating, setIsCreating] = useState(false);
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    setStatusMessage(
-      "Friend match lobbies are not implemented yet. This screen will later be used to create P2P rooms.",
-    );
+    setIsCreating(true);
+    setStatusMessage("");
+    setCreatedRoom(null);
+    const ownerId = `local-${Date.now().toString(36)}`;
+    try {
+      const room = await createRoom({
+        ownerId,
+        maxPlayers: seats,
+        mode: "friend",
+        metadata: {
+          variantId,
+          startingStack: String(stack),
+          smallBlind: String(smallBlind),
+          bigBlind: String(bigBlind),
+          ante: String(ante),
+        },
+      });
+      await joinRoom({
+        roomId: room.roomId,
+        playerId: ownerId,
+        displayName: "Host",
+        seatHint: "0",
+      });
+      setCreatedRoom({
+        ...room,
+        ownerId,
+        websocketUrl: buildRoomWebSocketUrl(room.roomId),
+      });
+      setStatusMessage("Room created. Share the room code when the live match screen is enabled.");
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Failed to create room.");
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const handleBackToMenu = () => {
@@ -168,9 +202,10 @@ export default function FriendMatchSetupScreen() {
           <div className="flex flex-col gap-3 md:flex-row md:items-center">
             <button
               type="submit"
+              disabled={isCreating}
               className="flex-1 rounded-3xl bg-emerald-500/90 px-6 py-3 text-lg font-semibold text-slate-950 hover:bg-emerald-400 transition"
             >
-              Create Room
+              {isCreating ? "Creating..." : "Create Room"}
             </button>
             <button
               type="button"
@@ -186,14 +221,27 @@ export default function FriendMatchSetupScreen() {
               {statusMessage}
             </p>
           )}
+          {createdRoom && (
+            <section className="rounded-2xl border border-emerald-400/40 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100 space-y-2">
+              <div className="flex flex-col gap-1">
+                <span className="text-xs uppercase tracking-[0.25em] text-emerald-300">
+                  Room Code
+                </span>
+                <strong className="text-lg text-white">{createdRoom.roomId}</strong>
+              </div>
+              <p className="text-xs text-emerald-200/80">
+                WebSocket: {createdRoom.websocketUrl}
+              </p>
+            </section>
+          )}
         </form>
 
         <section className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300 space-y-2">
-          <p>Features coming soon:</p>
+          <p>Next live-match work:</p>
           <ul className="list-disc pl-5 space-y-1">
-            <li>Room codes with spectator slots.</li>
-            <li>Invite links that pre-fill your preferred variant.</li>
-            <li>In-room chat and emote reactions.</li>
+            <li>Join by room code and synchronize the table screen.</li>
+            <li>Reconnect to an existing room after refresh.</li>
+            <li>Broadcast showdown and next-hand state to both players.</li>
           </ul>
         </section>
       </div>

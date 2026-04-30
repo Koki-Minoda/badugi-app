@@ -1409,9 +1409,10 @@ Draw RL test coverage:
   - Playwright entry helpers now use the current `Press Enter` title button and authenticated menu flow.
   - Local API / DB health was verified through `/api/health` via both frontend proxy and backend direct path.
   - Badugi は `badugi-flow` / authenticated smoke / MTT smoke の Playwright 自動確認済み。
-  - D01 / D02 / S01 / S02 は engine / controller / Vitest e2e までは確認済みだが、2026-04-30 時点の App route / menu は `badugi` / `nlh` のみを有効化しているため、実ブラウザ UI smoke は未接続。
+  - D01 / D02 / S01 / S02 は engine / controller / Vitest e2e / App URL route / headless desktop browser smoke まで確認済み。
   - D01 / D02 / S01 / S02 用の `DrawLowballUIAdapter` と adapter registry alias を追加し、5-card draw snapshot を table props へ変換できることを確認済み。
   - 2026-04-30 更新: `?variant=D01` / `?variant=D02` の App routing から ring game を起動し、5-card 表示、BET進行、DRAW control、カード選択、Draw Selected 実行まで Playwright smoke 済み。
+  - 2026-04-30 更新: `D01` / `D02` / `S01` / `S02` は App route から hand result / next hand まで Playwright smoke 済み。`D01` は Main Menu variant picker からの起動も確認済み。
   - Desktop Chrome: ring game 5 hand 以上。
   - Mobile Safari または Android Chrome: portrait / landscape で discard、pat、overlay、hand result を確認。
   - 結果は `docs/bugs/badugi_browser_mobile_bug_tracker.md` または別 QA 記録へ残す。
@@ -1476,12 +1477,15 @@ Draw RL test coverage:
     - title -> auth -> URL alias -> menu -> ring game
     - bet / call / raise の進行
     - 5-card selection -> Draw Selected / pat
-    - hand result / next hand / hand history は継続確認対象
-  - [ ] S01 / S02 の Playwright smoke を追加する。
-  - [ ] `src/ui/game/variants.js` の enabled variant と Main Menu variant selection に draw family を安全に追加する。
+    - hand result / next hand は確認済み。hand history は継続確認対象。
+  - [x] S01 / S02 の Playwright smoke を追加する。
+    - title/auth 済みの App URL entry から ring game、BET進行、draw/pat、hand result、next hand を確認。
+  - [x] `src/ui/game/variants.js` の enabled variant と Main Menu variant selection に draw family を安全に追加する。
+    - `menu-ring` は既存 Badugi 即開始導線として維持。
+    - `menu-variant-select` を追加し、variant picker から D01 / D02 / S01 / S02 を選べるようにした。
   - [ ] mobile portrait / landscape で 5-card hand と footer overlap を確認する。
-  - 注意: 2026-04-30 時点で D01 / D02 は URL query entry の smoke 済み。Main Menu variant picker からの選択導線は未接続。
-- [ ] `OP-13` draw family の App 接続を段階実装する。
+  - 注意: 2026-04-30 時点で headless desktop smoke は通過。実スマホ / 実機ブラウザ手動確認は OP-10 / QA-05 の残件。
+- [x] `OP-13` draw family の App 接続を段階実装する。
   - 目的:
     - D01 / D02 / S01 / S02 を Badugi と同じ「Title -> Auth -> Menu -> Ring game -> action -> draw -> result」導線で検証できる状態にする。
     - Badugi / MTT / RL API の既存挙動を壊さず、App.jsx の変更は最小単位に分ける。
@@ -1505,21 +1509,26 @@ Draw RL test coverage:
     5. [x] NPC action loop を draw controller に通す。
        - `getCpuAction(state, seatIndex)` が返す action を使う。
        - action deadlock を避けるため、turn と phase の待機条件を Playwright で確認する。
-    6. [ ] variant modal で D01 / D02 を enabled にする。
-       - S01 / S02 は D01 / D02 smoke 後に enabled 化する。
-       - 表示だけ enabled にする変更は禁止。controller path と同じ commit で有効化する。
+    6. [x] variant modal で D01 / D02 を enabled にする。
+       - S01 / S02 も controller path / Playwright smoke と同じ範囲で enabled 化する。
+       - `menu-ring` の既存即開始は維持し、`menu-variant-select` で picker を開く。
     7. [x] Playwright smoke を追加する。
-       - D01: login -> URL alias -> ring -> call/check -> draw/pat。
-       - D02: login -> URL alias -> ring -> call/check -> draw/pat。
+       - D01: login -> URL alias -> ring -> call/check -> draw/pat -> result -> next hand。
+       - D02: login -> URL alias -> ring -> call/check -> draw/pat -> result -> next hand。
+       - S01/S02: login -> URL alias -> ring -> call/check -> draw/pat -> result -> next hand。
+       - D01: login -> Main Menu variant picker -> ring -> 5-card hand 表示。
        - 失敗時は phase、turn、variant、handId、console log を取得する。
-       - Menu variant selection、result / next hand / hand history は OP-12 残件として継続。
+       - hand history は OP-12 残件として継続。
   - 受け入れ条件:
     - Badugi Playwright `badugi-flow` / authenticated smoke / MTT smoke が継続して通る。
-    - D01 / D02 の controller Vitest と App接続テストが通る。
-    - D01 / D02 Playwright smoke が headless Chromium で通る。
+    - D01 / D02 / S01 / S02 の controller Vitest と App接続テストが通る。
+    - D01 / D02 / S01 / S02 Playwright smoke が headless Chromium で通る。
     - `npm run build` が通る。
-  - 今回の最初の実装単位:
-    - routing helper と alias 正規化。
+  - 2026-04-30 確認:
+    - `npm test -- --run src/ui/components/__tests__/VariantSelectModal.test.jsx src/ui/screens/__tests__/MainMenuScreen.test.jsx src/ui/game/__tests__/appVariantRouting.test.js src/ui/game/draw/__tests__/DrawLowballUIAdapter.test.js` は `4 passed / 18 passed`。
+    - `npx playwright test tests/e2e/draw-lowball-app-smoke.spec.ts --project=badugi-flow` は `5 passed`。
+    - `npx playwright test tests/e2e/authenticated-game-smoke.spec.ts --project=badugi-flow` は `1 passed`。
+    - `npm run build` は成功。chunk size warning は残るが build 失敗ではない。
     - App URL / menu selection の normalize 適用。
     - draw controller snapshot を UI adapter に渡せる入口の整備。
 

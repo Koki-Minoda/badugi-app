@@ -36,6 +36,23 @@ describe("VariantSelectModal", () => {
     expect(handleClose).toHaveBeenCalled();
   });
 
+  it("allows draw lowball variants to be selected", () => {
+    const handleSelect = vi.fn();
+    render(<VariantSelectModal isOpen onClose={() => {}} onSelectVariant={handleSelect} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /2-7 triple draw/i }));
+    expect(handleSelect).toHaveBeenCalledWith("D01");
+
+    fireEvent.click(screen.getByRole("button", { name: /a-5 triple draw/i }));
+    expect(handleSelect).toHaveBeenCalledWith("D02");
+
+    fireEvent.click(screen.getByRole("button", { name: /2-7 single draw/i }));
+    expect(handleSelect).toHaveBeenCalledWith("S01");
+
+    fireEvent.click(screen.getByRole("button", { name: /a-5 single draw/i }));
+    expect(handleSelect).toHaveBeenCalledWith("S02");
+  });
+
   it("prevents selection of disabled variants", () => {
     const handleSelect = vi.fn();
     render(<VariantSelectModal isOpen onClose={() => {}} onSelectVariant={handleSelect} />);

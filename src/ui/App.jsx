@@ -339,6 +339,7 @@ export default function App() {
   const [language, setLanguage] = useState(() => getInitialLanguage());
   // MGX branding: kitsune title screen + title → menu → game flow (2025-11-28)
   const [currentScreen, setCurrentScreen] = useState("title");
+  const pendingRingStartRef = useRef(false);
   const [debugScale, setDebugScale] = useState(null);
   const [authIsAuthenticated, setAuthIsAuthenticated] = useState(null);
   const [replayHandId, setReplayHandId] = useState(null);
@@ -1378,7 +1379,23 @@ const SAFE_RESET_PHASE = "IDLE";
       setBetHead(resolvedBetHead ?? null);
       setLastAggressor(resolvedLastAggressor ?? null);
       setTurn(snapshotNextTurn);
-      if (snapshot.phase) setPhase(snapshot.phase);
+      const drawResultSummary = snapshot.lastHandResult ?? null;
+      if (drawResultSummary) {
+        setHandResultSummary(drawResultSummary);
+        setHandResultVisible(true);
+        setShowNextButton(true);
+        setPhase("HAND_RESULT");
+        updateShowdown({
+          phase: "SHOWDOWN",
+          players: normalizedPlayers,
+          pots: Array.isArray(snapshot.pots) ? snapshot.pots : [],
+          handResultVisible: true,
+          handResultSummary: drawResultSummary,
+          showNextButton: true,
+        });
+      } else if (snapshot.phase) {
+        setPhase(snapshot.phase);
+      }
       if (Number.isFinite(snapshot.drawRound ?? snapshot.drawRoundIndex)) {
         const nextDrawRound = snapshot.drawRound ?? snapshot.drawRoundIndex;
         setDrawRoundValue(nextDrawRound);
@@ -4177,7 +4194,12 @@ const SAFE_RESET_PHASE = "IDLE";
     }
     resetInitialButtonState();
     setMode("cash");
-    setCurrentScreen("gameRing");
+    pendingRingStartRef.current = true;
+    resetTableStateToSafeDefaults({
+      reason: "menu-ring-start",
+      preserveHandCount: false,
+      navigateTo: "gameRing",
+    });
   };
 
   const handleSelectTournament = (configOverride) => {
@@ -4842,6 +4864,15 @@ const SAFE_RESET_PHASE = "IDLE";
         });
         return false;
       }
+      setShowNextButton(false);
+      setHandResultVisible(false);
+      setHandResultSummary(null);
+      updateShowdown({
+        phase: "BET",
+        handResultVisible: false,
+        handResultSummary: null,
+        showNextButton: false,
+      });
       if (mode === "tournament-mtt" && tournamentStateRef.current?.isFinished) {
         return false;
       }
@@ -4897,6 +4928,13 @@ const SAFE_RESET_PHASE = "IDLE";
     [dealerIdx, mode, phase, players, pots, trySaveHandOnce],
   );
   startNextHandRef.current = startNextHand;
+
+  useEffect(() => {
+    if (!pendingRingStartRef.current) return;
+    if (currentScreen !== "gameRing") return;
+    pendingRingStartRef.current = false;
+    startNextHandRef.current({ dealerOverride: 0 });
+  }, [currentScreen, gameVariant]);
 
   const runTournamentBackgroundSimulation = useCallback(
     (iterations = 1) => {

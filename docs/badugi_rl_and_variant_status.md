@@ -1590,8 +1590,19 @@ Draw RL test coverage:
         - 2026-05-01 修正: `BadugiEnv.step()` で terminal reward と shaping reward を分離し、非終端shaping rewardを `[-1.0, 0.08]` にクリップ。勝敗・showdown結果を主報酬に戻す。
         - 2026-05-01 再評価: capped 10k probe でも `foldRate=1.000`。fold直前まで非終端加点を積む抜け道が残ったため、非終端shapingの正報酬を0上限にし、`player_fold` terminal rewardを明示的に負にする。
         - 2026-05-01 確認: terminal主導に戻した 3k probe は `foldRate=0.345` まで正常化し、fold exploit は解消。ただし `avgReward=-6.163`, `showdownWinRate=0.130` と弱いため、次は長期学習の前に warm start / behavior cloning / rule-based teacher を検討する。
-      - [ ] `AI-06i` terminal主導rewardで学習初期が弱くなりすぎる問題に対し、rule-based teacher / behavior cloning / expert replay を入れて、fold exploitなしでshowdownWinRateを立ち上げる。
+      - [x] `AI-06i` terminal主導rewardで学習初期が弱くなりすぎる問題に対し、rule-based teacher / behavior cloning / expert replay を入れて、fold exploitなしでshowdownWinRateを立ち上げる。
         - 方針: 現在の terminal主導rewardは安全だが sparse reward 寄りで3k時点が弱い。次は既存 policyRouter / Badugi evaluator から教師actionを作り、初期 replay buffer または imitation pretrain を入れる。
+        - 2026-05-01 更新: `npm run ai:train-badugi` に `--teacher-warmup-episodes` を追加。teacher policyの遷移を replay buffer に先に投入し、DQNの初期探索を補助する。
+        - 2026-05-01 確認: teacher warmup 1000 + DQN 3k probe は `foldRate=0.120` でfold exploitなし。ただし `showdownWinRate=0.097`, `recommendedTier=beginner` のため、現時点では上位CPUへ昇格しない。
+      - [x] `AI-06j` Badugi starting hand / opening range の基本条件を明文化し、teacher / warm start のルールに使う。
+        - 2026-05-01 調査: 旧 `rl/badugi_env_train.py` / `rl/train_agent.py` は残っているが、pot / bet / drawCount だけの簡易Q学習で、A27等の具体的な初動レンジ表は未実装。
+        - 2026-05-01 調査: 現行で近い実装は `src/rl/training/build_badugi_bootstrap_onnx.py` の starting strength / pot odds / position feature。これを teacher 生成に再利用する。
+        - 方針: 例として A-2-7 以上の3-card one-away / 低い3-card Badugi draw は heads-up では原則 open / bet 参加。K-high等の rough made Badugi は early street では参加可、final street では相手draw枚数とbet圧力で抑制。
+        - 方針: 全4枚初手の組み合わせを評価し、1回draw後に全初手分布の上位50%より強く進展する確率が50%以上ある hand class を heads-up continue range に入れる。first draw前の teacher action はこの range / position / price で決める。
+        - 2026-05-01 更新: `src/rl/training/badugi_starting_ranges.py` を追加。全初手分布の中央値、1ドロー後top-half到達確率、A-2-7-or-better判定、heads-up continue/open rule、teacher action を実装。
+        - 2026-05-01 修正: teacher warmup の実行速度を守るため、3-card one-away は exact enumeration、2枚以上drawの弱い形はレンジ表の軽量推定に分離。学習時に全探索で詰まらないようにした。
+        - 2026-05-01 確認: A-2-7 one-away は premium/open、弱い重複手は facing bet でfold、draw phase は手役形に応じたdraw countを返す unit test を追加。
+      - [ ] `AI-06k` teacher warmup 後のDQNが showdown に弱い問題を改善する。次は imitation loss / supervised pretrain / evaluator baseline の replay比率固定を入れ、3k-20k probeで `showdownWinRate >= 0.25` まで立ち上げてから長期学習へ進む。
       - [ ] `AI-06e` 2-7 / A-5 用の実ONNXを生成・配置する。現状は `model-27draw-iron-v1` (`D01/S01`) と `model-a5draw-iron-v1` (`D02/S02`) の registry / feature builder / routing test はあるが、実 `.onnx` は optional 未配置で、App draw CPU は rule-based fallback が主経路。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
   - P2P:

@@ -17,6 +17,7 @@ if str(SRC_ROOT) not in sys.path:
 from rl.agents.dqn_agent import DQNAgent, DQNHyperParams
 from rl.utils.replay_buffer import ReplayBuffer
 from rl.env.badugi_env import BadugiEnv
+from rl.training.badugi_starting_ranges import teacher_action
 
 
 @dataclass
@@ -37,6 +38,7 @@ class TrainConfig:
     learning_rate: float = 1e-4
     train_every_steps: int = 4
     opponent_profiles: tuple[str, ...] = ("balanced",)
+    teacher_warmup_episodes: int = 0
 
 
 def linear_epsilon_decay(
@@ -78,6 +80,36 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
 
     global_step = 0
     episode_rewards = []
+
+    if cfg.teacher_warmup_episodes > 0:
+        teacher_rewards = []
+        for episode in range(1, cfg.teacher_warmup_episodes + 1):
+            env.set_opponent_profile(cfg.opponent_profiles[(episode - 1) % len(cfg.opponent_profiles)])
+            obs, _ = env.reset()
+            total_reward = 0.0
+            for _step in range(cfg.max_steps_per_episode):
+                action = teacher_action(env)
+                next_obs, reward, terminated, truncated, _info = env.step(action)
+                done = terminated or truncated
+                replay_buffer.add(
+                    obs,
+                    action,
+                    reward,
+                    next_obs,
+                    done,
+                    next_action_mask=env.legal_action_mask(),
+                )
+                obs = next_obs
+                total_reward += float(reward)
+                if done:
+                    break
+            teacher_rewards.append(total_reward)
+        print(
+            "[Teacher warmup] "
+            f"episodes={cfg.teacher_warmup_episodes} "
+            f"buffer={len(replay_buffer)} "
+            f"avg_reward={sum(teacher_rewards) / max(1, len(teacher_rewards)):8.3f}"
+        )
 
     for episode in range(1, cfg.total_episodes + 1):
         env.set_opponent_profile(cfg.opponent_profiles[(episode - 1) % len(cfg.opponent_profiles)])
@@ -147,6 +179,7 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
         "obs_dim": int(obs_dim),
         "n_actions": int(n_actions),
         "opponent_profiles": list(cfg.opponent_profiles),
+        "teacher_warmup_episodes": cfg.teacher_warmup_episodes,
         "avg_reward_last_100": (
             sum(episode_rewards[-100:]) / max(1, len(episode_rewards[-100:]))
             if episode_rewards
@@ -183,6 +216,7 @@ def parse_args():
         default=",".join(TrainConfig.opponent_profiles),
         help="Comma-separated BadugiEnv opponent profiles for round-robin training.",
     )
+    parser.add_argument("--teacher-warmup-episodes", type=int, default=TrainConfig.teacher_warmup_episodes)
     parser.add_argument("--device", default=None)
     return parser.parse_args()
 
@@ -213,6 +247,7 @@ if __name__ == "__main__":
         learning_rate=args.learning_rate,
         train_every_steps=args.train_every_steps,
         opponent_profiles=parse_profile_csv(args.opponent_profiles),
+        teacher_warmup_episodes=args.teacher_warmup_episodes,
     )
     print(f"Using device: {device}")
     train_dqn(cfg=cfg, device=device)

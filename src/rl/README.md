@@ -73,6 +73,7 @@ npm run ai:train-badugi -- \
   --save-interval 1000 \
   --output-dir rl/models \
   --train-every-steps 4 \
+  --teacher-warmup-episodes 5000 \
   --opponent-profiles balanced,loose_passive,loose_aggressive,tight_passive,tight_aggressive \
   --device cpu
 
@@ -114,6 +115,16 @@ The Badugi DQN uses the frontend action order
 `fold, check, call, bet, raise, all_in`, but fixed-limit training masks illegal
 actions by street. Promotion candidates must be evaluated with the same action
 masking used during training.
+
+For non-smoke runs, prefer `--teacher-warmup-episodes` instead of starting from
+an empty replay buffer. The teacher uses explicit Badugi opening ranges:
+A-2-7-or-better one-card draws continue heads-up, rough made Badugis are street
+dependent, and hands whose one-draw equity reaches the top half of the starting
+hand distribution can continue at a fair fixed-limit price.
+The range helper enumerates the full 52C4 starting-hand distribution for the
+median strength table. During training, three-card one-away draws use exact
+one-draw enumeration, while two-card and weaker keeps use a fast range estimate
+so teacher warmup does not dominate runtime.
 
 ## Building datasets from the app
 

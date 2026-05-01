@@ -1485,7 +1485,7 @@ Draw RL test coverage:
 - [x] `QA-10` CPU 強さ / P2P / CPU対戦後フォローアップの未完成範囲を実装タスクへ分解する。
   - CPU 強さ:
     - tier config / policy routing / model routing / ONNX adapter は実装済み。
-    - production `.onnx` asset は bootstrap 版を配置済み。長時間RL学習済み checkpoint は、修正後環境で再学習・評価してから WorldMaster へ昇格する。
+    - production `.onnx` asset は Badugi Pro / Iron が bootstrap、WorldMaster が再設計後50k DQN。
     - [x] `AI-01` Badugi の App CPU BET を `policyRouter` に接続し、tier ごとの fold / call / raise 差分を使う。
     - [x] `AI-02` Badugi の App CPU DRAW を `policyRouter` に接続し、deadCards 優先で交換 index を選ぶ。
     - [x] `AI-03` `drawAggression` の符号を整理し、強い tier が不要な overdraw をしないようにする。
@@ -1495,7 +1495,7 @@ Draw RL test coverage:
       - 2026-05-01 更新: `scripts/installAiModelAssets.mjs` と `npm run ai:install-models` を追加。`--model model-id=/path/file.onnx` または `--source-dir /path/to/models --required-only` で供給された実 `.onnx` を `public/models/` へコピーし、registry checksum を自動更新できる。
       - 2026-05-01 更新: `src/rl/training/build_badugi_bootstrap_onnx.py` と `npm run ai:build-bootstrap-models` を追加し、Badugi Pro / Iron / WorldMaster の bootstrap ONNX を生成。
       - 2026-05-01 更新: `public/models/badugi_pro_v1.onnx` / `badugi_iron_v1.onnx` / `badugi_worldmaster_v1.onnx` を生成し、registry checksum と一致することを `npm run ai:verify-models` で確認。
-      - 注意: 現在の3モデルは長時間RL学習済みではなく、ONNX主経路を有効化するための heuristic bootstrap policy。強さ検証と長期 showdown simulation は `AI-06b` で継続する。
+      - 2026-05-01 更新: Badugi WorldMaster は `rl/models/badugi_masked_long_20260501/badugi_dqn_latest.pt` から export した50k DQNへ昇格。Pro / Iron は bootstrap のまま。
     - [x] `AI-05` ONNX unavailable 時の fallback smoke と、ONNX available 時の推論 smoke を分けて記録する。
       - `src/ai/__tests__/onnxFallbackSmoke.test.js` は missing ONNX session -> `policy-router` -> deterministic-safe の fallback 順を確認。
       - `src/ai/__tests__/onnxPolicyAdapterInference.test.js` は mock ONNX session available 時の推論 decode を確認。
@@ -1503,7 +1503,7 @@ Draw RL test coverage:
       - [x] `AI-06a` `src/ai/tierPolicySmoke.js` / `src/ai/__tests__/tierPolicySmoke.test.js` で raiseRate / averageDrawCount / madeBadugiPatRate の tier 差を確認。
       - [x] `AI-06 practice smoke` `runBadugiTierPracticeSmoke()` で短期 heads-up practice hand を回し、VPIP / PFR / averageDrawCount / showdownWinRate の tier 差を確認。
         - Beginner / Standard / Pro / WorldMaster の fallback/rule-based policy で、WorldMaster は Beginner より PFR と showdownWinRate が高く、Pro 以上は drawCount が増えすぎないことを固定。
-      - [ ] `AI-06b` showdown 勝率は production `.onnx` 配置後に長期 simulation として拡張する。
+      - [x] `AI-06b` showdown 勝率は production `.onnx` 配置後に長期 simulation として拡張する。
         - 2026-05-01 更新: `npm run ai:train-badugi` と `npm run ai:export-badugi-onnx` を追加。短時間DQN smokeで checkpoint 作成、ONNX export、`onnx.checker` 検証まで確認。
         - 2026-05-01 確認: `npm run ai:train-badugi -- --episodes 3 --max-steps 20 --warmup-steps 1 --batch-size 2 --log-interval 1 --save-interval 0 --output-dir /tmp/mgx-badugi-rl-smoke --device cpu` は成功。
         - 2026-05-01 確認: `npm run ai:export-badugi-onnx -- --checkpoint /tmp/mgx-badugi-rl-smoke/badugi_dqn_latest.pt --output /tmp/mgx-badugi-rl-smoke/badugi_worldmaster_smoke.onnx --no-update-registry` は成功し、出力ONNXは 96 input / 6 output。
@@ -1520,7 +1520,11 @@ Draw RL test coverage:
         - 2026-05-01 再設計: opponent model をランダム寄りからhand strength連動の call / raise / fold に変更し、showdown勝敗を重く、fold勝ちを軽めにするrewardへ調整。
         - 2026-05-01 確認: `npm run ai:train-badugi -- --episodes 5000 --max-steps 200 --warmup-steps 1000 --batch-size 64 --log-interval 1000 --save-interval 0 --output-dir rl/models/badugi_masked_probe_20260501 --train-every-steps 4 --device cpu` は成功。
         - 2026-05-01 確認: `npm run ai:evaluate-badugi-onnx -- --model /tmp/mgx-badugi-masked-probe.onnx --episodes 500 --max-steps 200 --seed 20260501` は `showdownWinRate=0.186`。前回50k DQNの `0.146` と bootstrap比較値 `0.157` を短期probeでは上回った。
-        - 残件: 再設計後の 50k+ 長期学習を実行し、bootstrap を安定して上回る長期評価基準を満たした checkpoint だけを WorldMaster registry へ反映する。
+        - 2026-05-01 確認: `npm run ai:train-badugi -- --episodes 50000 --max-steps 200 --warmup-steps 10000 --batch-size 64 --log-interval 1000 --save-interval 5000 --output-dir rl/models/badugi_masked_long_20260501 --train-every-steps 4 --device cpu` は完走。summary は `episodes=50000`, `global_steps=352089`, `avg_reward_last_100=-1.6120`。
+        - 2026-05-01 確認: `npm run ai:evaluate-badugi-onnx -- --model /tmp/mgx-badugi-masked-long-latest.onnx --episodes 2000 --max-steps 200 --seed 20260502` は `avgReward=-1.562`, `showdownWinRate=0.246`, `showdowns=1257`, `folds=743`。
+        - 2026-05-01 比較: 同条件の bootstrap WorldMaster は `avgReward=-1.750`, `showdownWinRate=0.157`, `showdowns=2000`, `folds=0`。avgReward と showdownWinRate が上回ったため、`public/models/badugi_worldmaster_v1.onnx` と registry checksum へ反映。
+        - 2026-05-01 確認: `npm run ai:verify-models` は Badugi Pro / Iron / WorldMaster required asset 全てOK。
+        - 残件: Pro / Iron も tier差が自然になるよう、WorldMasterとは別の軽量学習済みモデルまたは蒸留モデルを用意する。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
   - P2P:
     - data capture / export / sync / security test の部品はある。

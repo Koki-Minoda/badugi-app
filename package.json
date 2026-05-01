@@ -17,7 +17,8 @@
     "ai:train-badugi": "node scripts/runPythonTool.mjs src/rl/training/train_dqn.py",
     "ai:export-badugi-onnx": "node scripts/runPythonTool.mjs src/rl/training/export_badugi_dqn_onnx.py",
     "ai:evaluate-badugi-onnx": "node scripts/runPythonTool.mjs src/rl/training/evaluate_badugi_onnx.py",
-    "ai:gate-badugi-model": "node scripts/runPythonTool.mjs src/rl/training/gate_badugi_model.py"
+    "ai:gate-badugi-model": "node scripts/runPythonTool.mjs src/rl/training/gate_badugi_model.py",
+    "ai:evaluate-badugi-checkpoints": "node scripts/runPythonTool.mjs src/rl/training/evaluate_badugi_checkpoints.py"
   },
   "dependencies": {
     "onnxruntime-web": "^1.18.0",

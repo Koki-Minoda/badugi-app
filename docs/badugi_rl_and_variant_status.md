@@ -1571,6 +1571,16 @@ Draw RL test coverage:
       - [x] `AI-06d` gate PASS 時だけ beginner -> standard/pro/iron/worldmaster のどのtierへ入れるかを決める promotion report を生成する。
         - 2026-05-01 方針: standard / pro / iron / worldmaster の tier threshold を gate report に含め、最高到達tierだけを `recommendedTier` として出す。gate失敗時は `beginner` に留める。
         - 2026-05-01 更新: `npm run ai:gate-badugi-model` が `[BADUGI PROMOTION] recommendedTier=... eligibleTiers=...` を出力し、JSON report には `promotion.tierThresholds` / `failedTierChecks` も含める。
+      - [x] `AI-06f` standard v2 は standard全体ではなく、opponent reading 型の別CPUキャラクターへ割り当てる。standard v1 は beginner へ落とさず、standard baseline / fallback として残す。
+        - 2026-05-01 方針: `badugi-standard-reader` は `model-badugi-standard-dqn-v2` を使う。通常の D03 standard は `model-badugi-standard-dqn-v1` に戻し、beginner は `model-badugi-beginner-dqn-v1` のままにする。
+        - 2026-05-01 理由: standard v1 は「弱い」よりも「fold過多のstandard」であり、beginnerへ付けると初心者CPUとして不自然になる。beginnerは低tier専用DQN、standard v1は比較基準、standard readerはv2と分ける。
+        - 2026-05-01 更新: `src/config/ai/cpuCharacters.json` と `src/ai/cpuCharacters.js` を追加し、characterIdからmodel overrideを解決できるようにした。
+        - 2026-05-01 更新: `selectModelForVariant()` は character-specific model を characterId 指定時だけ返す。characterIdなしの D03 standard は v1、`badugi-standard-reader` 指定時だけ v2。
+      - [x] `AI-06g` 50k一括学習ではなく、20k前後のcheckpointごとに export / gate評価し、方針が悪ければそこで止める学習評価フローを作る。
+        - 2026-05-01 方針: `--save-interval 20000` で 20k / 40k / latest を保存し、各checkpointをONNX exportして standard baseline と比較する。
+        - 2026-05-01 方針: 判定は avgReward だけでなく showdownWinRate / foldRate / profile別の偏りを見る。Pro昇格は `showdownWinRate >= 0.35` を最低ラインにする。
+        - 2026-05-01 更新: `npm run ai:evaluate-badugi-checkpoints` を追加。checkpoint dir と pattern を指定し、各checkpointを一時ONNXへexportして baseline と gate比較し、promotion reportをJSON保存する。
+        - 2026-05-01 確認: `badugi_dqn_020000_*.pt` に対する smoke 評価は成功。短い2episode smokeでは `recommendedTier=beginner` を出力し、report JSONを生成した。
       - [ ] `AI-06e` 2-7 / A-5 用の実ONNXを生成・配置する。現状は `model-27draw-iron-v1` (`D01/S01`) と `model-a5draw-iron-v1` (`D02/S02`) の registry / feature builder / routing test はあるが、実 `.onnx` は optional 未配置で、App draw CPU は rule-based fallback が主経路。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
   - P2P:

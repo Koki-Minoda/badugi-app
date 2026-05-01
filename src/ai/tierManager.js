@@ -59,11 +59,13 @@ export function resolveTierForContext({
   return getTierById(tierId);
 }
 
-export function resolveTierModelInfo({ variantId, tierId }) {
+export function resolveTierModelInfo({ variantId, tierId, characterId, modelId }) {
   const tierConfig = getTierById(tierId);
   const exactVariantTier = selectModelForVariant({
     variantId,
     tierId: tierConfig?.id ?? tierId,
+    characterId,
+    modelId,
   });
   if (
     exactVariantTier?.tier === (tierConfig?.id ?? tierId) &&

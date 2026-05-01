@@ -164,6 +164,8 @@ export async function inferBetActionWithOnnx(payload) {
   const entry = selectModelForVariant({
     variantId: payload.variantId,
     tierId: payload.tierId,
+    characterId: payload.characterId,
+    modelId: payload.modelId,
   });
   if (!entry) return null;
   const session = await getOrCreateSession(entry);
@@ -194,6 +196,8 @@ export async function inferDrawDecisionWithOnnx(payload) {
   const entry = selectModelForVariant({
     variantId: payload.variantId,
     tierId: payload.tierId,
+    characterId: payload.characterId,
+    modelId: payload.modelId,
   });
   if (!entry) return null;
   const session = await getOrCreateSession(entry);

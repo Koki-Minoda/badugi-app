@@ -109,6 +109,23 @@ function evaluateBadugiShape(hand = []) {
   };
 }
 
+function streetAdjustedStrength(shape = {}, drawsRemaining = 0) {
+  const highRank = Number(shape.highestRank) || 13;
+  const lowQuality = Math.max(0, (13 - highRank) / 12);
+  if (shape.madeCards === 4) {
+    const earlyCredit = 0.18 * (Math.max(0, drawsRemaining) / 3);
+    const nutBonus = shape.rankSum === 10 && highRank === 4 ? 0.12 : 0;
+    return clamp01(0.54 + lowQuality * 0.34 + earlyCredit + nutBonus);
+  }
+  if (shape.madeCards === 3) {
+    return Math.min(0.72, 0.3 + lowQuality * 0.22 + 0.08 * Math.max(0, drawsRemaining));
+  }
+  if (shape.madeCards === 2) {
+    return Math.min(0.34, 0.12 + lowQuality * 0.1 + 0.04 * Math.max(0, drawsRemaining));
+  }
+  return 0.05;
+}
+
 function actionMask(legalActions = []) {
   const legal = new Set(
     (Array.isArray(legalActions) ? legalActions : []).map((action) => String(action).toLowerCase()),
@@ -136,10 +153,22 @@ export function buildBadugiObservationPayload({
   const drawRound = Number(state.drawRoundIndex ?? state.drawRound ?? state.round ?? 0) || 0;
   const maxDrawRounds = Number(state.maxDrawRounds ?? state.metadata?.maxDrawRounds ?? 3) || 3;
   const phase = String(state.street ?? state.phase ?? "BET").toUpperCase();
+  const drawsRemaining = Math.max(0, maxDrawRounds - drawRound);
   const activeOpponents = players.filter((player, index) => {
     const seat = getPlayerSeatIndex(player, index);
     return seat !== actorSeat && !player?.folded && !player?.sittingOut;
   });
+  const opponentLastDrawAverage =
+    activeOpponents.reduce((sum, player) => sum + (Number(player?.lastDrawCount) || 0), 0) /
+    Math.max(1, activeOpponents.length);
+  const isFinalBetRound = phase === "BET" && drawRound >= maxDrawRounds;
+  const opponentDrawPressure = isFinalBetRound
+    ? opponentLastDrawAverage >= 2
+      ? 0.16
+      : opponentLastDrawAverage >= 1
+      ? 0.06
+      : -0.08
+    : 0;
 
   return {
     schemaVersion: BADUGI_OBSERVATION_SCHEMA_VERSION,
@@ -156,7 +185,7 @@ export function buildBadugiObservationPayload({
       duplicateSuitCount: shape.duplicateSuitCount,
       drawRound,
       maxDrawRounds,
-      drawsRemaining: Math.max(0, maxDrawRounds - drawRound),
+      drawsRemaining,
       phase,
       pot,
       stack: Number(actor?.stack) || 0,
@@ -170,9 +199,11 @@ export function buildBadugiObservationPayload({
       opponentStackAverage:
         activeOpponents.reduce((sum, player) => sum + (Number(player?.stack) || 0), 0) /
         Math.max(1, activeOpponents.length),
-      opponentLastDrawAverage:
-        activeOpponents.reduce((sum, player) => sum + (Number(player?.lastDrawCount) || 0), 0) /
-        Math.max(1, activeOpponents.length),
+      opponentLastDrawAverage,
+      streetAdjustedStrength: streetAdjustedStrength(shape, drawsRemaining),
+      opponentDrawPressure,
+      isFinalBetRound: isFinalBetRound ? 1 : 0,
+      weakFinalBadugi: isFinalBetRound && shape.madeCards === 4 && shape.highestRank >= 11 ? 1 : 0,
       maxStack,
     },
   };
@@ -216,6 +247,12 @@ export function buildBadugiObservationVector(input = {}) {
   actionMask(payload.legalActions).forEach((value, index) => {
     vector[32 + index] = value;
   });
+  vector[38] = normalizeNumber(features.streetAdjustedStrength, 1);
+  vector[39] = Number.isFinite(Number(features.opponentDrawPressure))
+    ? Math.max(-1, Math.min(1, Number(features.opponentDrawPressure)))
+    : 0;
+  vector[40] = features.isFinalBetRound ? 1 : 0;
+  vector[41] = features.weakFinalBadugi ? 1 : 0;
 
   return vector;
 }

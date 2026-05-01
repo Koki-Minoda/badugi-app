@@ -76,6 +76,10 @@ def build_linear_weights(*, aggression: float, patience: float) -> tuple[List[fl
     late_position = 29
     to_call_amount = 30
     one_away = 31
+    street_strength = 38
+    opponent_draw_pressure = 39
+    final_bet = 40
+    weak_final_badugi = 41
     to_call = 13
     current_bet = 14
     raise_count = 15
@@ -120,6 +124,17 @@ def build_linear_weights(*, aggression: float, patience: float) -> tuple[List[fl
     weights[to_call_amount][4] = -0.18
     weights[one_away][2] = 0.18
     weights[one_away][4] = 0.12
+    weights[street_strength][0] = -0.50
+    weights[street_strength][2] = 0.28 + patience
+    weights[street_strength][3] = 0.26 + aggression
+    weights[street_strength][4] = 0.25 + aggression
+    weights[opponent_draw_pressure][3] = 0.18
+    weights[opponent_draw_pressure][4] = 0.18
+    weights[final_bet][3] = -0.08
+    weights[final_bet][4] = -0.12
+    weights[weak_final_badugi][1] = 0.24
+    weights[weak_final_badugi][3] = -0.35
+    weights[weak_final_badugi][4] = -0.45
 
     # Calling pressure and capped pots make fold/check/call safer.
     weights[to_call][0] = 0.45

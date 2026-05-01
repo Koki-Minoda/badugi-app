@@ -48,12 +48,12 @@ class BadugiEnvTest(unittest.TestCase):
     def test_showdown_result_is_returned_as_terminal_reward(self):
         env = BadugiEnv()
         env.reset(seed=1)
-        env.phase = "DRAW"
-        env.round = env.max_rounds - 1
+        env.phase = "BET"
+        env.round = env.max_rounds
         env.player_hand = [(0, 0), (1, 1), (2, 2), (3, 3)]
         env.opponent_hand = [(0, 0), (3, 1), (5, 2), (7, 3)]
 
-        _obs, reward, terminated, _truncated, _info = env.step(0)
+        _obs, reward, terminated, _truncated, _info = env.step(2)
 
         self.assertTrue(terminated)
         self.assertEqual(env.terminal_reason, "showdown")
@@ -184,6 +184,53 @@ class BadugiEnvTest(unittest.TestCase):
         call_reward = env._reward_shaping(features, 2)
 
         self.assertGreater(call_reward, fold_reward)
+
+    def test_final_bet_context_is_reached_after_third_draw(self):
+        env = BadugiEnv()
+        env.reset(seed=1)
+        env.phase = "DRAW"
+        env.round = env.max_rounds - 1
+
+        _reward = env._handle_draw_action(0)
+
+        self.assertFalse(env.done)
+        self.assertEqual(env.phase, "BET")
+        self.assertEqual(env.round, env.max_rounds)
+
+        env._maybe_advance_from_bet()
+
+        self.assertTrue(env.done)
+        self.assertEqual(env.terminal_reason, "showdown")
+
+    def test_k_badugi_is_worse_on_final_bet_than_early_street(self):
+        env = BadugiEnv()
+        env.reset(seed=1)
+        env.player_hand = [(0, 0), (5, 1), (9, 2), (12, 3)]
+        features = env._hand_features(env.player_hand)
+        env.round = 0
+        early_strength = env._street_adjusted_strength(features)
+        env.round = env.max_rounds
+        final_strength = env._street_adjusted_strength(features)
+
+        self.assertGreater(early_strength, final_strength)
+        self.assertTrue(env._is_weak_final_badugi(features))
+
+    def test_final_bet_bluff_is_better_after_opponent_two_card_draw(self):
+        env = BadugiEnv()
+        env.reset(seed=1)
+        env.phase = "BET"
+        env.round = env.max_rounds
+        env.current_bet = 2
+        env.player_bet = 0
+        env.player_hand = [(0, 0), (5, 1), (9, 2), (12, 3)]
+        features = env._hand_features(env.player_hand)
+
+        env.opponent_last_draw = 0
+        pat_reward = env._reward_shaping(features, 3)
+        env.opponent_last_draw = 2
+        two_draw_reward = env._reward_shaping(features, 3)
+
+        self.assertGreater(two_draw_reward, pat_reward)
 
 
 if __name__ == "__main__":

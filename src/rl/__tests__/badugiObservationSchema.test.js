@@ -41,6 +41,31 @@ describe("badugi observation schema v1", () => {
     expect(vector[36]).toBe(1); // raise mask
   });
 
+  it("exposes final-street Badugi context without moving action-mask slots", () => {
+    const observation = buildBadugiObservationPayload({
+      state: {
+        ...state,
+        drawRoundIndex: 3,
+        street: "BET",
+        players: [
+          { id: "seat-0", seatIndex: 0, stack: 480, hand: ["AS", "2D", "3C", "4H"], lastDrawCount: 2 },
+          { id: "seat-1", seatIndex: 1, stack: 420, hand: ["AS", "5D", "9C", "KH"] },
+        ],
+      },
+      seatIndex: 1,
+      legalActions: ["check", "bet"],
+    });
+    const vector = buildBadugiObservationVector(observation);
+
+    expect(vector[32]).toBe(0); // fold mask remains fixed
+    expect(vector[33]).toBe(1); // check mask remains fixed
+    expect(vector[35]).toBe(1); // bet mask remains fixed
+    expect(vector[38]).toBeGreaterThan(0); // street-adjusted strength
+    expect(vector[39]).toBeGreaterThan(0); // opponent drew 2 on final draw
+    expect(vector[40]).toBe(1); // final BET round
+    expect(vector[41]).toBe(1); // K-high Badugi is weak final value
+  });
+
   it("aligns BadugiEngine.getObservation with schema v1", () => {
     const engine = new BadugiEngine();
     const observation = engine.getObservation(state, "seat-1");

@@ -1546,6 +1546,13 @@ Draw RL test coverage:
         - 2026-05-01 更新: bootstrap ONNX generator も starting hand / pot odds / position feature を参照するようにした。既存 public model は gate PASS まで再生成しない。
         - 2026-05-01 確認: feature probe 1500 episodes は `avg_reward_last_100=-1.1723`。ONNX gate は現 beginner DQN比で `avgRewardDelta=+0.0646`, WorldMaster bootstrap比で `+0.1068` まで改善したが、`showdownWinRate=0.158` のため昇格しない。
         - 残件: 長期学習では `avgReward` だけでなく `showdownWinRate` を落とさないよう、showdown value / draw quality の reward を追加検討する。
+      - [x] `AI-06c-4` ドロー残り回数・最終bet・相手最終ドロー枚数で押し引き評価を変える。
+        - 2026-05-01 更新: 簡易 BadugiEnv に 3rd draw 後の final BET round を追加。final BET 後に showdown へ進む。
+        - 2026-05-01 更新: `street_adjusted_strength` を追加し、同じK-high Badugiでも early street では許容、final BETでは弱い値へ落とす。
+        - 2026-05-01 更新: opponent last draw pressure を追加。final street で相手が2枚以上交換していれば薄いvalue/protection betを許容し、相手patならK/Q-high Badugiのbet/raiseを減点。
+        - 2026-05-01 更新: observation 38-41 slot に street-adjusted strength / opponent draw pressure / final bet flag / weak final Badugi flag を追加。action mask 32-37 は維持。
+        - 2026-05-01 更新: frontend `badugiObservationSchema.js` も同じ 38-41 slot を埋めるようにし、training env と本番ONNX入力のズレを防止。
+        - 2026-05-01 更新: bootstrap ONNX generator も street context / opponent draw pressure / weak final Badugi feature を参照するようにした。public model は gate PASS まで再生成しない。
       - [ ] `AI-06d` gate PASS 時だけ beginner -> standard/pro/iron/worldmaster のどのtierへ入れるかを決める promotion report を生成する。
       - [ ] `AI-06e` 2-7 / A-5 用の実ONNXを生成・配置する。現状は `model-27draw-iron-v1` (`D01/S01`) と `model-a5draw-iron-v1` (`D02/S02`) の registry / feature builder / routing test はあるが、実 `.onnx` は optional 未配置で、App draw CPU は rule-based fallback が主経路。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。

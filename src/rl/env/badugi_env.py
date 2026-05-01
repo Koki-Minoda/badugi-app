@@ -366,13 +366,14 @@ class BadugiEnv(gym.Env):
     self.opponent_bet = 0
     self.current_bet = self._bet_size()
     self.bet_round = 0
-    if self.round >= self.max_rounds:
-      self._finish_showdown()
     return reward
 
   def _maybe_advance_from_bet(self):
     still_active = not self.done and self.player_stack > 0 and self.opponent_stack > 0
     if not still_active:
+      self._finish_showdown()
+      return
+    if self.round >= self.max_rounds:
       self._finish_showdown()
       return
     # simplistic transition after each BET action
@@ -527,18 +528,23 @@ class BadugiEnv(gym.Env):
   def _reward_shaping(self, features: HandFeature, action: int) -> float:
     reward = 0.0
     if self.phase == "BET":
-      strength = self._hand_strength(features)
+      strength = self._street_adjusted_strength(features)
       to_call = max(0, self.current_bet - self.player_bet)
       pot_odds = self._pot_odds(to_call)
       position_bonus = 0.08 if not self._player_is_first_to_act() else -0.04
       draw_equity = 0.06 * max(0, self.max_rounds - self.round) if features.one_away else 0.0
-      continue_value = min(1.0, strength + position_bonus + draw_equity)
+      opponent_draw_pressure = self._opponent_draw_pressure()
+      continue_value = min(1.0, strength + position_bonus + draw_equity + opponent_draw_pressure)
       if action == 4 and features.one_away:
         reward += 0.15
       if action == 4 and features.is_nuts:
         reward += 0.35
       if action in (3, 4) and features.count == 4 and strength >= 0.72:
         reward += 0.25
+      if action in (3, 4) and self.round >= self.max_rounds and self._is_weak_final_badugi(features):
+        reward += 0.18 if self.opponent_last_draw >= 2 else -0.55
+      if action in (3, 4) and self.round >= self.max_rounds and self.opponent_last_draw >= 2:
+        reward += 0.18
       if action in (3, 4) and strength < 0.35:
         reward -= 0.45
       if action in (3, 4) and to_call == 0 and not self._player_is_first_to_act() and strength >= 0.45:
@@ -572,6 +578,37 @@ class BadugiEnv(gym.Env):
     low_bonus = max(0.0, (12 - high_rank) / 12.0) * 0.2
     nut_bonus = 0.15 if features.is_nuts else 0.0
     return min(1.0, count_score + low_bonus + nut_bonus)
+
+  def _street_adjusted_strength(self, features: HandFeature) -> float:
+    draws_remaining = max(0, self.max_rounds - self.round)
+    if not features.ranks:
+      return 0.0
+    high_rank = max(features.ranks)
+    low_quality = max(0.0, (12 - high_rank) / 12.0)
+    if features.count == 4:
+      early_credit = 0.18 * (draws_remaining / max(1, self.max_rounds))
+      nut_bonus = 0.12 if features.is_nuts else 0.0
+      return min(1.0, 0.54 + low_quality * 0.34 + early_credit + nut_bonus)
+    if features.count == 3:
+      draw_equity = 0.08 * draws_remaining
+      return min(0.72, 0.30 + low_quality * 0.22 + draw_equity)
+    if features.count == 2:
+      return min(0.34, 0.12 + low_quality * 0.1 + 0.04 * draws_remaining)
+    return 0.05
+
+  def _is_weak_final_badugi(self, features: HandFeature) -> bool:
+    if features.count != 4 or not features.ranks:
+      return False
+    return self.round >= self.max_rounds and max(features.ranks) >= 10
+
+  def _opponent_draw_pressure(self) -> float:
+    if self.round < self.max_rounds:
+      return 0.0
+    if self.opponent_last_draw >= 2:
+      return 0.16
+    if self.opponent_last_draw == 1:
+      return 0.06
+    return -0.08
 
   def _pot_odds(self, to_call: int | float | None = None) -> float:
     call_amount = max(0.0, float(self.current_bet - self.player_bet if to_call is None else to_call))
@@ -640,6 +677,14 @@ class BadugiEnv(gym.Env):
     mask = self.legal_action_mask()
     for value in mask:
       obs.append(float(value))
+    obs.extend(
+      [
+        self._street_adjusted_strength(features),
+        self._opponent_draw_pressure(),
+        1.0 if self.round >= self.max_rounds else 0.0,
+        1.0 if self._is_weak_final_badugi(features) else 0.0,
+      ]
+    )
     while len(obs) < BADUGI_OBSERVATION_VECTOR_SIZE:
       obs.append(0.0)
     return np.array(obs[:BADUGI_OBSERVATION_VECTOR_SIZE], dtype=np.float32)

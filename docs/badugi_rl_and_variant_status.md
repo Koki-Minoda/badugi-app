@@ -1529,7 +1529,12 @@ Draw RL test coverage:
         - 2026-05-01 確認: `npm run ai:evaluate-badugi-onnx -- --model public/models/badugi_beginner_dqn_v1.onnx --episodes 500 --max-steps 200 --seed 20260502` は `avgReward=-1.507`, `showdownWinRate=0.254`, `showdowns=335`, `folds=165`。
         - 2026-05-01 確認: `npm run ai:evaluate-badugi-onnx -- --model public/models/badugi_worldmaster_v1.onnx --episodes 500 --max-steps 200 --seed 20260502` は bootstrap として `avgReward=-1.749`, `showdownWinRate=0.156`, `showdowns=500`, `folds=0`。
         - 2026-05-01 確認: AI routing tests / BadugiEnv unittest / `npm run lint` / `npm run build` は成功。
+        - 2026-05-01 追加: `npm run ai:gate-badugi-model` を追加し、候補ONNXが `avgReward`, `showdownWinRate`, `foldRate`, baseline差分の昇格ゲートを満たさなければ non-zero exit で止める。
+        - 2026-05-01 確認: `npm run ai:gate-badugi-model -- --candidate public/models/badugi_beginner_dqn_v1.onnx --baseline public/models/badugi_worldmaster_v1.onnx --episodes 200 --report-only` は FAIL。現DQNは次tier昇格不可。
         - 残件: Pro / Iron / WorldMaster へ昇格するには、複数 opponent profile で `avgReward >= 0` などの明確な昇格ゲートを満たす再学習済みモデルを用意する。
+      - [ ] `AI-06c` Badugi gate を複数 opponent profile 対応に拡張し、random / tight-passive / aggressive / pat-heavy / draw-heavy / rule-based baseline を同一CLIで評価する。
+      - [ ] `AI-06d` gate PASS 時だけ beginner -> standard/pro/iron/worldmaster のどのtierへ入れるかを決める promotion report を生成する。
+      - [ ] `AI-06e` 2-7 / A-5 用の実ONNXを生成・配置する。現状は `model-27draw-iron-v1` (`D01/S01`) と `model-a5draw-iron-v1` (`D02/S02`) の registry / feature builder / routing test はあるが、実 `.onnx` は optional 未配置で、App draw CPU は rule-based fallback が主経路。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
   - P2P:
     - data capture / export / sync / security test の部品はある。

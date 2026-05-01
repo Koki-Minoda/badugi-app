@@ -1624,6 +1624,8 @@ Draw RL test coverage:
         - 2026-05-02 追加監査: 2-7 / A-5 low evaluator は made low 同士の比較は正しかったが、ペア以上を一律 penalty に寄せており、1ペア / 2ペア / trips / full house / quads のカテゴリ差が不足していた。
         - 2026-05-02 修正: 2-7 は high-card -> one pair -> two pair -> trips -> straight -> flush -> full house -> quads -> straight flush の低い順、A-5 は straight / flush 無視で duplicate category を比較するように修正。2-7 の `A-2-3-4-5` は wheel straight ではなく Ace-high no-pair として扱う。
         - 2026-05-02 確認: Lowball / draw engine / single draw regression は 4 files / 58 tests pass。Badugi / 2-7 / A-5 / NLH を含む関連一式は 7 files / 85 tests pass。`npm run lint`, `npm run build`, Python RL 37 tests も pass。
+        - 2026-05-02 TDA照合: TDA 2024 Rule 12/16/20/21 を参照し、cards speak / all-in hand table / odd chip / side pots separate を確認。Badugi side pot で eligible が1人だけの side pot を前potへmergeしてしまう実装を修正し、短い all-in main pot winner が単独eligible side potを取らない回帰テストを追加。
+        - 2026-05-02 確認: Badugi roundFlow / BadugiEngine / payout integrity / D01-D02 draw engine regression は 6 files / 78 tests pass。`npm run lint`, `npm run build` も pass。
       - [ ] `AI-06n` Badugi evaluator / draw phase 修正後に、既存Badugi DQN checkpoint を無効扱いにし、新しいenvで teacher/imitation 3k -> 20k probe を再実行する。
       - [ ] `AI-06e` 2-7 / A-5 用の実ONNXを生成・配置する。現状は `model-27draw-iron-v1` (`D01/S01`) と `model-a5draw-iron-v1` (`D02/S02`) の registry / feature builder / routing test はあるが、実 `.onnx` は optional 未配置で、App draw CPU は rule-based fallback が主経路。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。

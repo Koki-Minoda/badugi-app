@@ -295,10 +295,6 @@ function mergeEquivalentPots(pots = []) {
       merged.push({ amount: pot.amount, eligible: eligibleSorted });
       return;
     }
-    if (eligibleSorted.length <= 1 && merged.length) {
-      merged[merged.length - 1].amount += pot.amount;
-      return;
-    }
     const last = merged[merged.length - 1];
     if (
       last &&

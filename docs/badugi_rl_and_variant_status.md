@@ -1538,7 +1538,11 @@ Draw RL test coverage:
         - 2026-05-01 更新: `npm run ai:evaluate-badugi-onnx` / `npm run ai:gate-badugi-model` も opponent profile 指定に対応。gate は複数 profile x 複数 seed で集計する。
         - 2026-05-01 更新: reward をチップEV寄りに調整。showdown / opponent fold は stack delta を加味し、弱手foldは軽罰、強手foldは重罰に分離。強い4-card Badugiのvalue bet/raiseを加点し、弱手raise/callを減点する。
         - 2026-05-01 確認: profile mix 10k probe は `avg_reward_last_100=-1.6143`。ONNX gate は現 beginner DQN比で `avgRewardDelta=+0.0979` だが `showdownWinRate=0.179` と低く、次tierへは昇格しない。
-      - [ ] `AI-06c-2` profile mix で 50k+ 再学習を回し、showdownWinRate を落とさず avgReward を改善する。候補は gate PASS まで public model へ反映しない。
+      - [x] `AI-06c-2` profile mix で 50k+ 再学習を回し、showdownWinRate を落とさず avgReward を改善する。候補は gate PASS まで public model へ反映しない。
+        - 2026-05-01 実行: `npm run ai:train-badugi -- --episodes 50000 --max-steps 160 --warmup-steps 10000 --batch-size 64 --epsilon-decay-episodes 35000 --epsilon-end 0.05 --log-interval 1000 --save-interval 10000 --output-dir rl/models/badugi_street_profile_50k_20260501 --train-every-steps 4 --opponent-profiles balanced,loose_passive,loose_aggressive,tight_passive,tight_aggressive,pat_heavy,draw_heavy --device cpu` は完走。
+        - 2026-05-01 結果: 50k 終盤は 45k 時点で `avg_reward=0.025`、50k 時点で `avg_reward=-0.163`、summary は `avg_reward_last_100=-0.6299`。
+        - 2026-05-01 評価: `/tmp/mgx-badugi-street-profile-50k.onnx` は multi-profile gate で `candidateAvgReward=1.633`, `showdownWinRate=0.283`, `foldRate=0.277`。beginner DQN比 `avgRewardDelta=0.7100`、WorldMaster bootstrap比 `0.8475`。
+        - 2026-05-01 判定: avgReward は勝ち越しだが showdownWinRate が Pro/Iron/WorldMaster gate の `0.35` 未満。`model-badugi-standard-dqn-v1` / `public/models/badugi_standard_dqn_v1.onnx` として standard tier にのみ昇格し、上位tierには入れない。
       - [x] `AI-06c-3` Badugi RL observation / reward に starting hand、position、fixed-limit pot odds を明示し、降りすぎ・押しすぎを抑える。
         - 2026-05-01 更新: `BadugiEnv._get_obs()` が frontend schema と同じ 22-31 slot に made cards / rank sum / high card / duplicate counts / startingHandStrength / potOdds / position / toCall / oneAway を出す。
         - 2026-05-01 更新: action mask も 32-37 slot に出すため、training env / frontend ONNX feature が揃う。

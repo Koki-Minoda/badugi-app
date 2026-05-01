@@ -35,8 +35,9 @@ Current blocker:
 - Bootstrap models are real ONNX files and exercise the frontend ONNX path, but
   they are heuristic initial policies and should later be replaced by trained
   RL checkpoints.
-- `badugi_beginner_dqn_v1.onnx` is a 50k DQN checkpoint that beat the bootstrap
-  baseline in the current simplified evaluator, but still has negative
-  avgReward. It is intentionally wired to the beginner tier only until stronger
-  evaluation gates are met.
+- `badugi_beginner_dqn_v1.onnx` is the first 50k DQN checkpoint and remains the
+  beginner-tier learned policy.
+- `badugi_standard_dqn_v1.onnx` is the street/context-aware 50k DQN checkpoint.
+  It clears a standard-tier avgReward gate across opponent profiles, but not the
+  stricter Pro/Iron/WorldMaster showdown gate.
 - Rebuild the bootstrap set when needed with `npm run ai:build-bootstrap-models`.

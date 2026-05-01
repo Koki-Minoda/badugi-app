@@ -22,6 +22,9 @@ describe("modelRouter", () => {
     const entry = resolveTierModelInfo({ variantId: "D03", tierId: "beginner" });
     expect(entry?.modelId).toBe("model-badugi-beginner-dqn-v1");
 
+    const standard = resolveTierModelInfo({ variantId: "D03", tierId: "standard" });
+    expect(standard?.modelId).toBe("model-badugi-standard-dqn-v1");
+
     const generic = resolveTierModelInfo({ variantId: "UNKNOWN", tierId: "beginner" });
     expect(generic?.modelId).toBe("model-generic-v1");
   });

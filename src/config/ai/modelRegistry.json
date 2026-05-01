@@ -69,6 +69,23 @@
     ]
   },
   {
+    "id": "model-badugi-standard-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "D03"
+    ],
+    "tier": "standard",
+    "onnx": "models/badugi_standard_dqn_v1.onnx",
+    "checksumSha256": "bb2613fbbf0848e741122bd8974599ea567b5650eb0f2801817ff24985ab114c",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
     "id": "model-badugi-beginner-dqn-v1",
     "version": "v1",
     "variantIds": [

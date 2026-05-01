@@ -29,6 +29,9 @@ Release checklist:
 
 Current blocker:
 
-- `model-badugi-pro-v1`, `model-badugi-iron-v1`, and
-  `model-badugi-worldmaster-v1` are marked production-required, but the real
-  `.onnx` files and checksums have not been supplied yet.
+- `badugi_pro_v1.onnx`, `badugi_iron_v1.onnx`, and
+  `badugi_worldmaster_v1.onnx` are currently generated bootstrap policies.
+- Bootstrap models are real ONNX files and exercise the frontend ONNX path, but
+  they are heuristic initial policies and should later be replaced by trained
+  RL checkpoints.
+- Rebuild the bootstrap set when needed with `npm run ai:build-bootstrap-models`.

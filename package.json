@@ -12,7 +12,8 @@
     "test:scrape": "python -m tests.scraping.runner smoke",
     "variants:export": "node --experimental-json-modules scripts/exportVariants.mjs",
     "ai:verify-models": "node scripts/verifyAiModelAssets.mjs",
-    "ai:install-models": "node scripts/installAiModelAssets.mjs"
+    "ai:install-models": "node scripts/installAiModelAssets.mjs",
+    "ai:build-bootstrap-models": "python3 src/rl/training/build_badugi_bootstrap_onnx.py"
   },
   "dependencies": {
     "onnxruntime-web": "^1.18.0",

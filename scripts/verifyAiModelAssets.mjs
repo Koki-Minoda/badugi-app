@@ -78,6 +78,7 @@ function verifyEntry(entry) {
 
 function isFailure(result, { allowMissing }) {
   if (result.status === "ok") return false;
+  if (result.status === "missing-optional") return false;
   if (allowMissing && ["missing-required", "missing-optional"].includes(result.status)) {
     return false;
   }

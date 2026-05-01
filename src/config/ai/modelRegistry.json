@@ -2,68 +2,107 @@
   {
     "id": "model-nlh-v1",
     "version": "v1",
-    "variantIds": ["B01", "B02"],
+    "variantIds": [
+      "B01",
+      "B02"
+    ],
     "tier": "worldmaster",
     "onnx": "models/nlh_worldmaster.onnx",
     "checksumSha256": null,
     "productionRequired": false,
-    "inputShape": [128],
-    "outputShape": [8]
+    "inputShape": [
+      128
+    ],
+    "outputShape": [
+      8
+    ]
   },
   {
     "id": "model-badugi-pro-v1",
     "version": "v1",
-    "variantIds": ["D03"],
+    "variantIds": [
+      "D03"
+    ],
     "tier": "pro",
     "onnx": "models/badugi_pro_v1.onnx",
-    "checksumSha256": null,
+    "checksumSha256": "78d43847ce8ba2bd3d07193c57c4acb8030530feb3dace1ba963722d2bb90dc2",
     "productionRequired": true,
-    "inputShape": [96],
-    "outputShape": [6]
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      6
+    ]
   },
   {
     "id": "model-badugi-iron-v1",
     "version": "v1",
-    "variantIds": ["D03"],
+    "variantIds": [
+      "D03"
+    ],
     "tier": "iron",
     "onnx": "models/badugi_iron_v1.onnx",
-    "checksumSha256": null,
+    "checksumSha256": "73bf81e5f993b0801f3588747e96447a8d03b09d0a9189eca77a135f4b98efdb",
     "productionRequired": true,
-    "inputShape": [96],
-    "outputShape": [6]
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      6
+    ]
   },
   {
     "id": "model-badugi-worldmaster-v1",
     "version": "v1",
-    "variantIds": ["D03"],
+    "variantIds": [
+      "D03"
+    ],
     "tier": "worldmaster",
     "onnx": "models/badugi_worldmaster_v1.onnx",
-    "checksumSha256": null,
+    "checksumSha256": "5be226ebed765ff6b018d3b5b798437498eb0f705b58c9e72c908e527e9b998c",
     "productionRequired": true,
-    "inputShape": [96],
-    "outputShape": [6]
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      6
+    ]
   },
   {
     "id": "model-27draw-iron-v1",
     "version": "v1",
-    "variantIds": ["D01", "S01"],
+    "variantIds": [
+      "D01",
+      "S01"
+    ],
     "tier": "iron",
     "onnx": "models/27draw_iron_v1.onnx",
     "checksumSha256": null,
     "productionRequired": false,
-    "inputShape": [96],
-    "outputShape": [11]
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      11
+    ]
   },
   {
     "id": "model-a5draw-iron-v1",
     "version": "v1",
-    "variantIds": ["D02", "S02"],
+    "variantIds": [
+      "D02",
+      "S02"
+    ],
     "tier": "iron",
     "onnx": "models/a5draw_iron_v1.onnx",
     "checksumSha256": null,
     "productionRequired": false,
-    "inputShape": [96],
-    "outputShape": [11]
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      11
+    ]
   },
   {
     "id": "model-generic-v1",
@@ -73,7 +112,11 @@
     "onnx": "models/generic_standard.onnx",
     "checksumSha256": null,
     "productionRequired": false,
-    "inputShape": [64],
-    "outputShape": [5]
+    "inputShape": [
+      64
+    ],
+    "outputShape": [
+      5
+    ]
   }
 ]

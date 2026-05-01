@@ -22,6 +22,22 @@ python rl/training/train_dqn.py
 
 Set `PYTHONPATH=.` when running from the repo root so that `rl.*` imports resolve correctly.
 
+## Building bootstrap ONNX models
+
+To create real ONNX files for the frontend inference path before long-running
+RL training is available:
+
+```bash
+source .venv/bin/activate
+python3 -m pip install -r src/rl/requirements.txt
+npm run ai:build-bootstrap-models
+npm run ai:verify-models
+```
+
+This writes Badugi Pro / Iron / WorldMaster bootstrap models to
+`public/models/` and updates `src/config/ai/modelRegistry.json` with SHA-256
+checksums. These are heuristic bootstrap policies, not final trained models.
+
 ## Building datasets from the app
 
 Export the in-app RL logs (`JSONL`) and convert them into a dataset:

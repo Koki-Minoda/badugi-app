@@ -1530,6 +1530,10 @@ Draw RL test coverage:
         - 2026-05-01 確認: `npm run ai:evaluate-badugi-onnx -- --model public/models/badugi_beginner_dqn_v1.onnx --episodes 500 --max-steps 200 --seed 20260502` は `avgReward=-1.507`, `showdownWinRate=0.254`, `showdowns=335`, `folds=165`。
         - 2026-05-02 再学習: evaluator / draw phase 修正後、`teacher_warmup=1000`, `imitation_pretrain=500`, `expert_replay_ratio=0.25` で 3k probe を実行。checkpoint評価は `avgReward=0.116`, `showdownWinRate=0.670`, `foldRate=0.190`, `recommendedTier=standard`。ただし段階導入のためまず beginner ONNX に反映。
         - 2026-05-02 確認: 更新後 `public/models/badugi_beginner_dqn_v1.onnx` は balanced 300 episodes で `avgReward=-0.181`, `showdownWinRate=0.600`, `showdowns=250`, `folds=50`。
+        - 2026-05-02 修正: `BadugiEnv._cap_shaping_reward()` が正の shaping reward を 0 に潰していたため、良いvalue bet / pat / call の学習信号が消えていた。上限を `[-1.0, 1.0]` に変更し、unit test を更新。
+        - 2026-05-02 確認: 修正後の `badugi_positive_shaping_probe_5k_20260502` は学習終盤 `avg_reward=0.661`、ONNX gate は短縮条件で PASS。ただし default gate は `avgRewardDeltaVsBaseline=0.2435` で `0.25` にわずかに届かず昇格保留。
+        - 2026-05-02 確認: 修正後の `badugi_positive_shaping_probe_10k_20260502` は学習終盤 `avg_reward=0.874`。default gate は `candidateAvgReward=0.717`, `showdownWinRate=0.612`, `foldRate=0.187`, `avgRewardDeltaVsBaseline=0.3133` で PASS、`recommendedTier=standard`。
+        - 2026-05-02 反映: `badugi_positive_shaping_probe_10k_20260502/badugi_dqn_latest.pt` を `/tmp/mgx-badugi-positive-shaping-10k.onnx` へ export し、`model-badugi-standard-dqn-v2` / `public/models/badugi_standard_dqn_v2.onnx` に反映。checksum は `22899fc71e9e48b345fa1ec1ec025bf0e71a7ea6f30d4c31f18e54d9f04b067c`。
         - 2026-05-01 確認: `npm run ai:evaluate-badugi-onnx -- --model public/models/badugi_worldmaster_v1.onnx --episodes 500 --max-steps 200 --seed 20260502` は bootstrap として `avgReward=-1.749`, `showdownWinRate=0.156`, `showdowns=500`, `folds=0`。
         - 2026-05-01 確認: AI routing tests / BadugiEnv unittest / `npm run lint` / `npm run build` は成功。
         - 2026-05-01 追加: `npm run ai:gate-badugi-model` を追加し、候補ONNXが `avgReward`, `showdownWinRate`, `foldRate`, baseline差分の昇格ゲートを満たさなければ non-zero exit で止める。

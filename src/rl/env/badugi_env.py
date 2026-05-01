@@ -597,7 +597,7 @@ class BadugiEnv(gym.Env):
     return 0.0
 
   def _cap_shaping_reward(self, reward: float) -> float:
-    return max(-1.0, min(0.0, reward))
+    return max(-1.0, min(1.0, reward))
 
   def _judge(self, hand: Sequence[Card]) -> Tuple[int, List[int]]:
     return evaluate_badugi(hand)

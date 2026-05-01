@@ -79,7 +79,7 @@
     ],
     "tier": "standard",
     "onnx": "models/badugi_standard_dqn_v2.onnx",
-    "checksumSha256": "3fba6d1e3aa371fd412694a069380af2ae3e482a537f9db96077dff80a91db5a",
+    "checksumSha256": "22899fc71e9e48b345fa1ec1ec025bf0e71a7ea6f30d4c31f18e54d9f04b067c",
     "productionRequired": true,
     "inputShape": [
       96

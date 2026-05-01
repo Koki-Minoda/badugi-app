@@ -381,7 +381,7 @@ class BadugiEnvTest(unittest.TestCase):
     def test_non_terminal_shaping_reward_is_capped(self):
         env = BadugiEnv()
 
-        self.assertEqual(env._cap_shaping_reward(10.0), 0.0)
+        self.assertEqual(env._cap_shaping_reward(10.0), 1.0)
         self.assertEqual(env._cap_shaping_reward(-10.0), -1.0)
 
     def test_player_fold_terminal_reward_is_negative(self):

@@ -13,7 +13,9 @@
     "variants:export": "node --experimental-json-modules scripts/exportVariants.mjs",
     "ai:verify-models": "node scripts/verifyAiModelAssets.mjs",
     "ai:install-models": "node scripts/installAiModelAssets.mjs",
-    "ai:build-bootstrap-models": "python3 src/rl/training/build_badugi_bootstrap_onnx.py"
+    "ai:build-bootstrap-models": "node scripts/runPythonTool.mjs src/rl/training/build_badugi_bootstrap_onnx.py",
+    "ai:train-badugi": "node scripts/runPythonTool.mjs src/rl/training/train_dqn.py",
+    "ai:export-badugi-onnx": "node scripts/runPythonTool.mjs src/rl/training/export_badugi_dqn_onnx.py"
   },
   "dependencies": {
     "onnxruntime-web": "^1.18.0",

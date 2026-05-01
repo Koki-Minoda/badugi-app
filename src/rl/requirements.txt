@@ -2,3 +2,4 @@ gymnasium>=0.29
 numpy>=1.26
 torch>=2.3
 onnx>=1.16
+onnxscript>=0.5

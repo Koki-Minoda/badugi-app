@@ -58,8 +58,9 @@ class BadugiEnv(gym.Env):
     self.observation_space = spaces.Box(
       low=-1.0, high=1.0, shape=(BADUGI_OBSERVATION_VECTOR_SIZE,), dtype=np.float32
     )
-    # 0: Fold, 1: Check/Call, 2: Raise, 3: Draw count indicator (0..3)
-    self.action_space = spaces.Discrete(5)
+    # 0: Fold/Pat, 1: Check/Call/Draw1, 2: Raise/Draw2,
+    # 3: Draw3, 4: Bet alias, 5: All-in alias.
+    self.action_space = spaces.Discrete(6)
 
     self.deck: List[Card] = []
     self.player_hand: List[Card] = []
@@ -152,9 +153,9 @@ class BadugiEnv(gym.Env):
         if self.player_stack == 0:
           self.player_all_in = True
       # check branch does nothing else
-    elif action == 2:  # Raise
+    elif action in (2, 4, 5):  # Raise / Bet alias / All-in alias
       if self.bet_round < self.max_bets:
-        self.current_bet += bet_size
+        self.current_bet += self.player_stack if action == 5 else bet_size
         diff = self.current_bet - self.player_bet
         payment = min(diff, self.player_stack)
         self.player_stack -= payment

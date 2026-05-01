@@ -1,9 +1,18 @@
+import argparse
+import json
 import os
+import sys
 import time
+from pathlib import Path
 from dataclasses import dataclass
 
 import numpy as np
 import torch
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+SRC_ROOT = PROJECT_ROOT / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
 
 from rl.agents.dqn_agent import DQNAgent, DQNHyperParams
 from rl.utils.replay_buffer import ReplayBuffer
@@ -24,6 +33,8 @@ class TrainConfig:
     log_interval: int = 100
     save_interval: int = 1_000
     output_dir: str = "rl/models"
+    hidden_dim: int = 256
+    learning_rate: float = 1e-4
 
 
 def linear_epsilon_decay(
@@ -38,8 +49,8 @@ def linear_epsilon_decay(
     return start_eps + frac * (end_eps - start_eps)
 
 
-def train_dqn(device: str | torch.device = "cpu"):
-    cfg = TrainConfig()
+def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"):
+    cfg = cfg or TrainConfig()
     os.makedirs(cfg.output_dir, exist_ok=True)
 
     env = BadugiEnv()
@@ -50,7 +61,7 @@ def train_dqn(device: str | torch.device = "cpu"):
 
     hyper = DQNHyperParams(
         gamma=0.99,
-        lr=1e-4,
+        lr=cfg.learning_rate,
         batch_size=cfg.batch_size,
         tau=5e-3,
     )
@@ -58,7 +69,7 @@ def train_dqn(device: str | torch.device = "cpu"):
         obs_dim=obs_dim,
         n_actions=n_actions,
         device=device,
-        hidden_dim=256,
+        hidden_dim=cfg.hidden_dim,
         hyperparams=hyper,
     )
     replay_buffer = ReplayBuffer(capacity=cfg.buffer_capacity)
@@ -102,7 +113,7 @@ def train_dqn(device: str | torch.device = "cpu"):
 
         episode_rewards.append(episode_reward)
 
-        if episode % cfg.log_interval == 0:
+        if cfg.log_interval > 0 and episode % cfg.log_interval == 0:
             recent_rewards = episode_rewards[-cfg.log_interval :]
             avg_reward = sum(recent_rewards) / len(recent_rewards)
             print(
@@ -114,7 +125,7 @@ def train_dqn(device: str | torch.device = "cpu"):
                 f"mean_q={mean_q:8.3f}"
             )
 
-        if episode % cfg.save_interval == 0:
+        if cfg.save_interval > 0 and episode % cfg.save_interval == 0:
             timestamp = time.strftime("%Y%m%d-%H%M%S")
             model_path = os.path.join(
                 cfg.output_dir, f"badugi_dqn_{episode:06d}_{timestamp}.pt"
@@ -122,10 +133,64 @@ def train_dqn(device: str | torch.device = "cpu"):
             agent.save(model_path)
             print(f"Saved model to {model_path}")
 
+    final_path = os.path.join(cfg.output_dir, "badugi_dqn_latest.pt")
+    agent.save(final_path)
+    summary = {
+        "episodes": cfg.total_episodes,
+        "global_steps": int(global_step),
+        "obs_dim": int(obs_dim),
+        "n_actions": int(n_actions),
+        "avg_reward_last_100": (
+            sum(episode_rewards[-100:]) / max(1, len(episode_rewards[-100:]))
+            if episode_rewards
+            else 0.0
+        ),
+        "checkpoint": final_path,
+    }
+    summary_path = os.path.join(cfg.output_dir, "badugi_dqn_latest_summary.json")
+    Path(summary_path).write_text(json.dumps(summary, indent=2) + "\n", encoding="utf8")
+    print(f"Saved latest model to {final_path}")
+    print(f"Saved summary to {summary_path}")
     env.close()
+    return summary
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Train a Badugi DQN checkpoint.")
+    parser.add_argument("--episodes", type=int, default=TrainConfig.total_episodes)
+    parser.add_argument("--max-steps", type=int, default=TrainConfig.max_steps_per_episode)
+    parser.add_argument("--buffer-capacity", type=int, default=TrainConfig.buffer_capacity)
+    parser.add_argument("--warmup-steps", type=int, default=TrainConfig.warmup_steps)
+    parser.add_argument("--batch-size", type=int, default=TrainConfig.batch_size)
+    parser.add_argument("--epsilon-start", type=float, default=TrainConfig.epsilon_start)
+    parser.add_argument("--epsilon-end", type=float, default=TrainConfig.epsilon_end)
+    parser.add_argument("--epsilon-decay-episodes", type=int, default=TrainConfig.epsilon_decay_episodes)
+    parser.add_argument("--log-interval", type=int, default=TrainConfig.log_interval)
+    parser.add_argument("--save-interval", type=int, default=TrainConfig.save_interval)
+    parser.add_argument("--output-dir", default=TrainConfig.output_dir)
+    parser.add_argument("--hidden-dim", type=int, default=TrainConfig.hidden_dim)
+    parser.add_argument("--learning-rate", type=float, default=TrainConfig.learning_rate)
+    parser.add_argument("--device", default=None)
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    args = parse_args()
+    device = args.device or ("cuda" if torch.cuda.is_available() else "cpu")
+    cfg = TrainConfig(
+        total_episodes=args.episodes,
+        max_steps_per_episode=args.max_steps,
+        buffer_capacity=args.buffer_capacity,
+        warmup_steps=args.warmup_steps,
+        batch_size=args.batch_size,
+        epsilon_start=args.epsilon_start,
+        epsilon_end=args.epsilon_end,
+        epsilon_decay_episodes=args.epsilon_decay_episodes,
+        log_interval=args.log_interval,
+        save_interval=args.save_interval,
+        output_dir=args.output_dir,
+        hidden_dim=args.hidden_dim,
+        learning_rate=args.learning_rate,
+    )
     print(f"Using device: {device}")
-    train_dqn(device=device)
+    train_dqn(cfg=cfg, device=device)

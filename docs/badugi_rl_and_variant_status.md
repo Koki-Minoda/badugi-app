@@ -1504,6 +1504,10 @@ Draw RL test coverage:
       - [x] `AI-06 practice smoke` `runBadugiTierPracticeSmoke()` で短期 heads-up practice hand を回し、VPIP / PFR / averageDrawCount / showdownWinRate の tier 差を確認。
         - Beginner / Standard / Pro / WorldMaster の fallback/rule-based policy で、WorldMaster は Beginner より PFR と showdownWinRate が高く、Pro 以上は drawCount が増えすぎないことを固定。
       - [ ] `AI-06b` showdown 勝率は production `.onnx` 配置後に長期 simulation として拡張する。
+        - 2026-05-01 更新: `npm run ai:train-badugi` と `npm run ai:export-badugi-onnx` を追加。短時間DQN smokeで checkpoint 作成、ONNX export、`onnx.checker` 検証まで確認。
+        - 2026-05-01 確認: `npm run ai:train-badugi -- --episodes 3 --max-steps 20 --warmup-steps 1 --batch-size 2 --log-interval 1 --save-interval 0 --output-dir /tmp/mgx-badugi-rl-smoke --device cpu` は成功。
+        - 2026-05-01 確認: `npm run ai:export-badugi-onnx -- --checkpoint /tmp/mgx-badugi-rl-smoke/badugi_dqn_latest.pt --output /tmp/mgx-badugi-rl-smoke/badugi_worldmaster_smoke.onnx --no-update-registry` は成功し、出力ONNXは 96 input / 6 output。
+        - 残件: 50k episodes 以上の長時間学習、bootstrap policy との勝率比較、WorldMaster registry への学習済みcheckpoint反映。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
   - P2P:
     - data capture / export / sync / security test の部品はある。

@@ -38,6 +38,47 @@ This writes Badugi Pro / Iron / WorldMaster bootstrap models to
 `public/models/` and updates `src/config/ai/modelRegistry.json` with SHA-256
 checksums. These are heuristic bootstrap policies, not final trained models.
 
+## Training and exporting a DQN checkpoint
+
+Short smoke run:
+
+```bash
+npm run ai:train-badugi -- \
+  --episodes 3 \
+  --max-steps 20 \
+  --warmup-steps 1 \
+  --batch-size 2 \
+  --output-dir /tmp/mgx-badugi-rl-smoke \
+  --device cpu
+
+npm run ai:export-badugi-onnx -- \
+  --checkpoint /tmp/mgx-badugi-rl-smoke/badugi_dqn_latest.pt \
+  --output /tmp/mgx-badugi-rl-smoke/badugi_worldmaster_smoke.onnx \
+  --no-update-registry
+```
+
+Longer run template:
+
+```bash
+npm run ai:train-badugi -- \
+  --episodes 50000 \
+  --max-steps 200 \
+  --warmup-steps 10000 \
+  --batch-size 64 \
+  --save-interval 1000 \
+  --output-dir rl/models \
+  --device cpu
+
+npm run ai:export-badugi-onnx -- \
+  --checkpoint rl/models/badugi_dqn_latest.pt \
+  --output public/models/badugi_worldmaster_v1.onnx \
+  --model-id model-badugi-worldmaster-v1
+
+npm run ai:verify-models
+```
+
+Use `--device cuda` only when the host has a compatible GPU setup.
+
 ## Building datasets from the app
 
 Export the in-app RL logs (`JSONL`) and convert them into a dataset:

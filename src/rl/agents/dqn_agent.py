@@ -139,7 +139,13 @@ class DQNAgent:
 
     @classmethod
     def load(cls, path: str, device: torch.device | str = "cpu") -> "DQNAgent":
-        payload = torch.load(path, map_location=device)
+        try:
+            payload = torch.load(path, map_location=device)
+        except Exception:
+            # Project-generated checkpoints include small Python metadata
+            # alongside tensor weights. Only use this fallback for trusted local
+            # training outputs.
+            payload = torch.load(path, map_location=device, weights_only=False)
         hyper = DQNHyperParams(**payload.get("hyper", {}))
         agent = cls(
             obs_dim=payload["obs_dim"],

@@ -35,6 +35,7 @@ class TrainConfig:
     output_dir: str = "rl/models"
     hidden_dim: int = 256
     learning_rate: float = 1e-4
+    train_every_steps: int = 4
 
 
 def linear_epsilon_decay(
@@ -104,6 +105,7 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
             if (
                 global_step >= cfg.warmup_steps
                 and len(replay_buffer) >= hyper.batch_size
+                and global_step % max(1, cfg.train_every_steps) == 0
             ):
                 batch = replay_buffer.sample(hyper.batch_size)
                 loss, mean_q = agent.update(batch)
@@ -170,6 +172,7 @@ def parse_args():
     parser.add_argument("--output-dir", default=TrainConfig.output_dir)
     parser.add_argument("--hidden-dim", type=int, default=TrainConfig.hidden_dim)
     parser.add_argument("--learning-rate", type=float, default=TrainConfig.learning_rate)
+    parser.add_argument("--train-every-steps", type=int, default=TrainConfig.train_every_steps)
     parser.add_argument("--device", default=None)
     return parser.parse_args()
 
@@ -191,6 +194,7 @@ if __name__ == "__main__":
         output_dir=args.output_dir,
         hidden_dim=args.hidden_dim,
         learning_rate=args.learning_rate,
+        train_every_steps=args.train_every_steps,
     )
     print(f"Using device: {device}")
     train_dqn(cfg=cfg, device=device)

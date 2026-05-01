@@ -67,8 +67,6 @@ def evaluate_model(
         for _ in range(max_steps):
             action = choose_action(session, obs, epsilon)
             action_counts[str(action)] += 1
-            if env.phase == "BET" and action == 0:
-                folds += 1
             obs, reward, terminated, truncated, _info = env.step(action)
             total_reward += float(reward)
             if getattr(env, "last_result", None) is not None:

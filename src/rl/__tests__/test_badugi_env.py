@@ -28,6 +28,7 @@ class BadugiEnvTest(unittest.TestCase):
         self.assertEqual(env.last_result, -1)
         self.assertEqual(env.terminal_reason, "player_fold")
         self.assertEqual(env.pot, 0)
+        self.assertLessEqual(_reward, -2.0)
 
     def test_reset_clears_terminal_state(self):
         env = BadugiEnv()
@@ -37,6 +38,45 @@ class BadugiEnvTest(unittest.TestCase):
 
         self.assertIsNone(env.last_result)
         self.assertIsNone(env.terminal_reason)
+
+    def test_showdown_result_is_returned_as_terminal_reward(self):
+        env = BadugiEnv()
+        env.reset(seed=1)
+        env.phase = "DRAW"
+        env.round = env.max_rounds - 1
+        env.player_hand = [(0, 0), (1, 1), (2, 2), (3, 3)]
+        env.opponent_hand = [(0, 0), (3, 1), (5, 2), (7, 3)]
+
+        _obs, reward, terminated, _truncated, _info = env.step(0)
+
+        self.assertTrue(terminated)
+        self.assertEqual(env.terminal_reason, "showdown")
+        self.assertEqual(env.last_result, 1)
+        self.assertGreaterEqual(reward, 2.0)
+
+    def test_action_five_is_limit_raise_alias_not_all_in(self):
+        env = BadugiEnv()
+        env.reset(seed=1)
+        starting_stack = env.player_stack
+        bet_size = env._bet_size()
+
+        env.step(5)
+
+        self.assertGreaterEqual(env.player_stack, starting_stack - bet_size * 2)
+        self.assertFalse(env.player_all_in)
+
+    def test_player_draw_keeps_low_unique_badugi_cards(self):
+        env = BadugiEnv()
+        env.reset(seed=1)
+        env.deck = [(9, 0), (10, 1), (11, 2), (12, 3)]
+        env.player_hand = [(0, 0), (5, 0), (1, 1), (8, 1)]
+
+        env._handle_draw_action(2)
+
+        self.assertIn((0, 0), env.player_hand)
+        self.assertIn((1, 1), env.player_hand)
+        self.assertNotIn((5, 0), env.player_hand)
+        self.assertNotIn((8, 1), env.player_hand)
 
 
 if __name__ == "__main__":

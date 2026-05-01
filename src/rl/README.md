@@ -72,6 +72,7 @@ npm run ai:train-badugi -- \
   --batch-size 64 \
   --save-interval 1000 \
   --output-dir rl/models \
+  --train-every-steps 4 \
   --device cpu
 
 npm run ai:export-badugi-onnx -- \
@@ -90,6 +91,9 @@ npm run ai:evaluate-badugi-onnx -- \
 Use `--device cuda` only when the host has a compatible GPU setup.
 Do not promote a checkpoint to `public/models/` unless it was trained after
 the latest `BadugiEnv` reward/showdown fixes and has passed ONNX evaluation.
+For current CPU training, keep `--train-every-steps 4` unless you are doing a
+small diagnostic run; updating every environment step is much slower and did not
+improve the short-run policy.
 
 ## Building datasets from the app
 

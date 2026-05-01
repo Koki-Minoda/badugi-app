@@ -1509,10 +1509,14 @@ Draw RL test coverage:
         - 2026-05-01 確認: `npm run ai:export-badugi-onnx -- --checkpoint /tmp/mgx-badugi-rl-smoke/badugi_dqn_latest.pt --output /tmp/mgx-badugi-rl-smoke/badugi_worldmaster_smoke.onnx --no-update-registry` は成功し、出力ONNXは 96 input / 6 output。
         - 2026-05-01 追加: `npm run ai:evaluate-badugi-onnx` を追加し、実 `.onnx` を ONNX Runtime でロードして Badugi 環境上の avgReward / showdownWinRate / actionCounts を記録できるようにした。
         - 2026-05-01 不具合修正: `BadugiEnv` の fold 終端、`last_result` reset、同枚数Badugiの低ランク比較を修正。旧環境で作った50k checkpointは本番昇格せず、修正後環境で再学習する。
-        - 2026-05-01 確認: `PYTHONPATH=src .venv/bin/python -m unittest src.rl.__tests__.test_badugi_env` は `4 tests passed`。
+        - 2026-05-01 確認: `PYTHONPATH=src .venv/bin/python -m unittest src.rl.__tests__.test_badugi_env` は `7 tests passed`。
         - 2026-05-01 確認: 旧50k checkpoint を export したONNXは `npm run ai:evaluate-badugi-onnx -- --model public/models/badugi_worldmaster_v1.onnx --episodes 500 --max-steps 200 --seed 20260501` で実ロードできたが、showdownWinRate が低く、修正前環境由来のため採用しない。
         - 2026-05-01 確認: 修正後環境の 300 episodes smoke training / ONNX export / `npm run ai:evaluate-badugi-onnx -- --model /tmp/mgx-badugi-rl-fixed-smoke/badugi_worldmaster_fixed_smoke.onnx --episodes 100 --max-steps 100 --seed 20260501` は成功。
-        - 残件: 修正後 `BadugiEnv` で 50k episodes 以上の長時間学習を再実行、bootstrap policy との勝率比較、WorldMaster registry への学習済みcheckpoint反映。
+        - 2026-05-01 追加修正: `BadugiEnv` の terminal showdown reward、fold罰、action 5 の limit raise alias 化、player draw の strategic discard、`train_every_steps` を追加。
+        - 2026-05-01 確認: `npm run ai:train-badugi -- --episodes 50000 --max-steps 200 --warmup-steps 10000 --batch-size 64 --log-interval 1000 --save-interval 5000 --output-dir rl/models/badugi_strategic_draw_fast_20260501 --train-every-steps 4 --device cpu` は完走。summary は `episodes=50000`, `global_steps=418846`, `avg_reward_last_100=-0.7625`。
+        - 2026-05-01 確認: 50k checkpoint export は成功。`npm run ai:evaluate-badugi-onnx -- --model /tmp/mgx-badugi-fast-latest.onnx --episodes 2000 --max-steps 200 --seed 20260502` は `showdownWinRate=0.146`。
+        - 2026-05-01 比較: 現行 bootstrap WorldMaster は同条件で `showdownWinRate=0.157`。50k DQN は bootstrap を上回らなかったため、`public/models/badugi_worldmaster_v1.onnx` へは昇格しない。
+        - 残件: reward / opponent model / action mask を再設計し、bootstrap を上回る長期評価基準を満たした checkpoint だけを WorldMaster registry へ反映する。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
   - P2P:
     - data capture / export / sync / security test の部品はある。

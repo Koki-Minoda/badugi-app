@@ -76,7 +76,7 @@ class BadugiEnv(gym.Env):
       low=-1.0, high=1.0, shape=(BADUGI_OBSERVATION_VECTOR_SIZE,), dtype=np.float32
     )
     # 0: Fold/Pat, 1: Check/Call/Draw1, 2: Raise/Draw2,
-    # 3: Draw3, 4: Bet alias, 5: All-in alias.
+    # 3: Draw3, 4: Bet alias, 5: Raise alias.
     self.action_space = spaces.Discrete(6)
 
     self.deck: List[Card] = []
@@ -129,8 +129,11 @@ class BadugiEnv(gym.Env):
     elif self.phase == "DRAW":
       reward += self._handle_draw_action(action)
 
-    if not self.done:
+    if self.done:
+      reward += self._terminal_reward()
+    else:
       self._opponent_turn()
+      reward += self._terminal_reward()
 
     terminated = self.done
     truncated = False
@@ -165,7 +168,7 @@ class BadugiEnv(gym.Env):
       self.last_result = -1
       self.opponent_stack += self.pot
       self.pot = 0
-      reward -= 1.0
+      reward -= 2.2
       return reward
     elif action == 1:  # Check / Call
       diff = self.current_bet - self.player_bet
@@ -177,9 +180,9 @@ class BadugiEnv(gym.Env):
         if self.player_stack == 0:
           self.player_all_in = True
       # check branch does nothing else
-    elif action in (2, 4, 5):  # Raise / Bet alias / All-in alias
+    elif action in (2, 4, 5):  # Raise / Bet alias / Raise alias
       if self.bet_round < self.max_bets:
-        self.current_bet += self.player_stack if action == 5 else bet_size
+        self.current_bet += bet_size
         diff = self.current_bet - self.player_bet
         payment = min(diff, self.player_stack)
         self.player_stack -= payment
@@ -199,13 +202,7 @@ class BadugiEnv(gym.Env):
     reward = 0.0
     draw_count = max(0, min(3, action))
     if draw_count > 0:
-      for _ in range(draw_count):
-        if not self.deck:
-          break
-        discard_idx = random.randrange(len(self.player_hand))
-        self.deck.append(self.player_hand[discard_idx])
-        random.shuffle(self.deck)
-        self.player_hand[discard_idx] = self.deck.pop()
+      self.player_hand = self._draw_toward_badugi(self.player_hand, draw_count)
       reward -= 0.05 * draw_count
     else:
       reward += 0.05  # pat bonus
@@ -279,27 +276,44 @@ class BadugiEnv(gym.Env):
     if features.count == 4:
       self.opponent_last_draw = 0
       return
-    keep: List[Card] = []
-    used_ranks: set[int] = set()
-    used_suits: set[int] = set()
-    for card in self.opponent_hand:
-      rank, suit = card
-      if rank not in used_ranks and suit not in used_suits:
-        keep.append(card)
-        used_ranks.add(rank)
-        used_suits.add(suit)
+    keep = self._best_badugi_keep(self.opponent_hand)
     draw_amount = max(0, 4 - len(keep))
-    for _ in range(draw_amount):
-      if not self.deck:
-        break
-      keep.append(self.deck.pop())
-    self.opponent_hand = keep[:4]
+    self.opponent_hand = self._draw_toward_badugi(self.opponent_hand, draw_amount)
     self.opponent_last_draw = draw_amount
     self.phase = "BET"
     self.player_bet = 0
     self.opponent_bet = 0
     self.current_bet = self._bet_size()
     self.bet_round = 0
+
+  def _best_badugi_keep(self, hand: Sequence[Card]) -> List[Card]:
+    keep: List[Card] = []
+    used_ranks: set[int] = set()
+    used_suits: set[int] = set()
+    for card in sorted(hand, key=lambda x: x[0]):
+      rank, suit = card
+      if rank not in used_ranks and suit not in used_suits:
+        keep.append(card)
+        used_ranks.add(rank)
+        used_suits.add(suit)
+    return keep
+
+  def _draw_toward_badugi(self, hand: Sequence[Card], draw_count: int) -> List[Card]:
+    keep = self._best_badugi_keep(hand)
+    draw_amount = min(max(0, draw_count), max(0, 4 - len(keep)))
+    if draw_amount <= 0:
+      return list(hand)
+    replacement_hand = keep[:]
+    for _ in range(draw_amount):
+      if not self.deck:
+        break
+      replacement_hand.append(self.deck.pop())
+    while len(replacement_hand) < 4:
+      remaining = [card for card in hand if card not in replacement_hand]
+      if not remaining:
+        break
+      replacement_hand.append(remaining[0])
+    return replacement_hand[:4]
 
   def _finish_showdown(self):
     player_score = self._judge(self.player_hand)
@@ -317,6 +331,18 @@ class BadugiEnv(gym.Env):
     self.done = True
     self.terminal_reason = "showdown"
     self.last_result = result
+
+  def _terminal_reward(self) -> float:
+    if not self.done:
+      return 0.0
+    if self.terminal_reason == "opponent_fold":
+      return 1.0
+    if self.terminal_reason == "showdown":
+      if self.last_result == 1:
+        return 2.0
+      if self.last_result == -1:
+        return -2.0
+    return 0.0
 
   def _judge(self, hand: Sequence[Card]) -> Tuple[int, List[int]]:
     return evaluate_badugi(hand)

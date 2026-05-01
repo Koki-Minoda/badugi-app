@@ -33,6 +33,23 @@ def evaluate_badugi(hand: Sequence[Card]) -> Tuple[int, List[int]]:
   return len(best), best
 
 
+def compare_badugi_scores(player_score: Tuple[int, List[int]], opp_score: Tuple[int, List[int]]) -> int:
+  """Return 1 if player wins, -1 if opponent wins, 0 for tie.
+
+  Badugi compares the number of valid cards first. With the same made-card
+  count, lower ranks are stronger, so Python's default tuple comparison cannot
+  be used directly.
+  """
+  player_count, player_ranks = player_score
+  opp_count, opp_ranks = opp_score
+  if player_count != opp_count:
+    return 1 if player_count > opp_count else -1
+  for player_rank, opp_rank in zip(player_ranks, opp_ranks):
+    if player_rank != opp_rank:
+      return 1 if player_rank < opp_rank else -1
+  return 0
+
+
 @dataclass
 class HandFeature:
   count: int
@@ -93,6 +110,8 @@ class BadugiEnv(gym.Env):
     self.is_button = 1
     self.opponent_last_draw = 0
     self.last_opp_action = 0
+    self.last_result = None
+    self.terminal_reason = None
     self.current_bet = self._bet_size()
     info: dict = {}
     return self._get_obs(), info
@@ -142,7 +161,12 @@ class BadugiEnv(gym.Env):
     self.player_all_in = False
     if action == 0:  # Fold
       self.done = True
+      self.terminal_reason = "player_fold"
+      self.last_result = -1
+      self.opponent_stack += self.pot
+      self.pot = 0
       reward -= 1.0
+      return reward
     elif action == 1:  # Check / Call
       diff = self.current_bet - self.player_bet
       if diff > 0:
@@ -245,6 +269,8 @@ class BadugiEnv(gym.Env):
 
   def opponent_fold(self):
     self.done = True
+    self.terminal_reason = "opponent_fold"
+    self.last_result = 1
     self.player_stack += self.pot
     self.pot = 0
 
@@ -278,19 +304,18 @@ class BadugiEnv(gym.Env):
   def _finish_showdown(self):
     player_score = self._judge(self.player_hand)
     opp_score = self._judge(self.opponent_hand)
-    if player_score > opp_score:
+    result = compare_badugi_scores(player_score, opp_score)
+    if result > 0:
       self.player_stack += self.pot
-      result = 1
-    elif player_score < opp_score:
+    elif result < 0:
       self.opponent_stack += self.pot
-      result = -1
     else:
       self.player_stack += self.pot // 2
       self.opponent_stack += self.pot - self.pot // 2
-      result = 0
     self.pot = 0
     self.round = self.max_rounds
     self.done = True
+    self.terminal_reason = "showdown"
     self.last_result = result
 
   def _judge(self, hand: Sequence[Card]) -> Tuple[int, List[int]]:

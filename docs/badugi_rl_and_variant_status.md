@@ -1485,7 +1485,7 @@ Draw RL test coverage:
 - [x] `QA-10` CPU 強さ / P2P / CPU対戦後フォローアップの未完成範囲を実装タスクへ分解する。
   - CPU 強さ:
     - tier config / policy routing / model routing / ONNX adapter は実装済み。
-    - production `.onnx` asset が未配置のため、現状は fallback / rule-based / tier parameter 主体。
+    - production `.onnx` asset は bootstrap 版を配置済み。長時間RL学習済み checkpoint は、修正後環境で再学習・評価してから WorldMaster へ昇格する。
     - [x] `AI-01` Badugi の App CPU BET を `policyRouter` に接続し、tier ごとの fold / call / raise 差分を使う。
     - [x] `AI-02` Badugi の App CPU DRAW を `policyRouter` に接続し、deadCards 優先で交換 index を選ぶ。
     - [x] `AI-03` `drawAggression` の符号を整理し、強い tier が不要な overdraw をしないようにする。
@@ -1507,7 +1507,12 @@ Draw RL test coverage:
         - 2026-05-01 更新: `npm run ai:train-badugi` と `npm run ai:export-badugi-onnx` を追加。短時間DQN smokeで checkpoint 作成、ONNX export、`onnx.checker` 検証まで確認。
         - 2026-05-01 確認: `npm run ai:train-badugi -- --episodes 3 --max-steps 20 --warmup-steps 1 --batch-size 2 --log-interval 1 --save-interval 0 --output-dir /tmp/mgx-badugi-rl-smoke --device cpu` は成功。
         - 2026-05-01 確認: `npm run ai:export-badugi-onnx -- --checkpoint /tmp/mgx-badugi-rl-smoke/badugi_dqn_latest.pt --output /tmp/mgx-badugi-rl-smoke/badugi_worldmaster_smoke.onnx --no-update-registry` は成功し、出力ONNXは 96 input / 6 output。
-        - 残件: 50k episodes 以上の長時間学習、bootstrap policy との勝率比較、WorldMaster registry への学習済みcheckpoint反映。
+        - 2026-05-01 追加: `npm run ai:evaluate-badugi-onnx` を追加し、実 `.onnx` を ONNX Runtime でロードして Badugi 環境上の avgReward / showdownWinRate / actionCounts を記録できるようにした。
+        - 2026-05-01 不具合修正: `BadugiEnv` の fold 終端、`last_result` reset、同枚数Badugiの低ランク比較を修正。旧環境で作った50k checkpointは本番昇格せず、修正後環境で再学習する。
+        - 2026-05-01 確認: `PYTHONPATH=src .venv/bin/python -m unittest src.rl.__tests__.test_badugi_env` は `4 tests passed`。
+        - 2026-05-01 確認: 旧50k checkpoint を export したONNXは `npm run ai:evaluate-badugi-onnx -- --model public/models/badugi_worldmaster_v1.onnx --episodes 500 --max-steps 200 --seed 20260501` で実ロードできたが、showdownWinRate が低く、修正前環境由来のため採用しない。
+        - 2026-05-01 確認: 修正後環境の 300 episodes smoke training / ONNX export / `npm run ai:evaluate-badugi-onnx -- --model /tmp/mgx-badugi-rl-fixed-smoke/badugi_worldmaster_fixed_smoke.onnx --episodes 100 --max-steps 100 --seed 20260501` は成功。
+        - 残件: 修正後 `BadugiEnv` で 50k episodes 以上の長時間学習を再実行、bootstrap policy との勝率比較、WorldMaster registry への学習済みcheckpoint反映。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
   - P2P:
     - data capture / export / sync / security test の部品はある。

@@ -75,7 +75,10 @@ def export_checkpoint(
         str(output),
         input_names=["input"],
         output_names=["output"],
-        opset_version=13,
+        opset_version=18,
+        # Keep production assets browser-friendly: one .onnx file under
+        # public/models instead of a model file plus external .onnx.data.
+        external_data=False,
     )
     checksum = sha256(output)
     if update_registry:

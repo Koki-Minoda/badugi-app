@@ -55,6 +55,11 @@ npm run ai:export-badugi-onnx -- \
   --checkpoint /tmp/mgx-badugi-rl-smoke/badugi_dqn_latest.pt \
   --output /tmp/mgx-badugi-rl-smoke/badugi_worldmaster_smoke.onnx \
   --no-update-registry
+
+npm run ai:evaluate-badugi-onnx -- \
+  --model /tmp/mgx-badugi-rl-smoke/badugi_worldmaster_smoke.onnx \
+  --episodes 100 \
+  --max-steps 100
 ```
 
 Longer run template:
@@ -75,9 +80,16 @@ npm run ai:export-badugi-onnx -- \
   --model-id model-badugi-worldmaster-v1
 
 npm run ai:verify-models
+
+npm run ai:evaluate-badugi-onnx -- \
+  --model public/models/badugi_worldmaster_v1.onnx \
+  --episodes 1000 \
+  --max-steps 200
 ```
 
 Use `--device cuda` only when the host has a compatible GPU setup.
+Do not promote a checkpoint to `public/models/` unless it was trained after
+the latest `BadugiEnv` reward/showdown fixes and has passed ONNX evaluation.
 
 ## Building datasets from the app
 

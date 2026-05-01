@@ -60,15 +60,120 @@ class HandFeature:
   one_away: bool
 
 
+@dataclass(frozen=True)
+class OpponentProfile:
+  name: str
+  fold_strength_threshold: float
+  fold_probability: float
+  raise_strength_threshold: float
+  raise_probability: float
+  open_strength_threshold: float
+  open_probability: float
+  draw_bias: int = 0
+
+
+OPPONENT_PROFILES = {
+  "random": OpponentProfile(
+    name="random",
+    fold_strength_threshold=0.75,
+    fold_probability=0.25,
+    raise_strength_threshold=0.0,
+    raise_probability=0.25,
+    open_strength_threshold=0.0,
+    open_probability=0.25,
+  ),
+  "balanced": OpponentProfile(
+    name="balanced",
+    fold_strength_threshold=0.35,
+    fold_probability=0.35,
+    raise_strength_threshold=0.78,
+    raise_probability=0.35,
+    open_strength_threshold=0.62,
+    open_probability=0.28,
+  ),
+  "loose_passive": OpponentProfile(
+    name="loose_passive",
+    fold_strength_threshold=0.24,
+    fold_probability=0.12,
+    raise_strength_threshold=0.9,
+    raise_probability=0.08,
+    open_strength_threshold=0.78,
+    open_probability=0.1,
+    draw_bias=1,
+  ),
+  "loose_aggressive": OpponentProfile(
+    name="loose_aggressive",
+    fold_strength_threshold=0.22,
+    fold_probability=0.08,
+    raise_strength_threshold=0.58,
+    raise_probability=0.55,
+    open_strength_threshold=0.44,
+    open_probability=0.55,
+    draw_bias=1,
+  ),
+  "tight_passive": OpponentProfile(
+    name="tight_passive",
+    fold_strength_threshold=0.48,
+    fold_probability=0.65,
+    raise_strength_threshold=0.92,
+    raise_probability=0.1,
+    open_strength_threshold=0.82,
+    open_probability=0.12,
+  ),
+  "tight_aggressive": OpponentProfile(
+    name="tight_aggressive",
+    fold_strength_threshold=0.45,
+    fold_probability=0.55,
+    raise_strength_threshold=0.72,
+    raise_probability=0.58,
+    open_strength_threshold=0.68,
+    open_probability=0.48,
+  ),
+  "pat_heavy": OpponentProfile(
+    name="pat_heavy",
+    fold_strength_threshold=0.3,
+    fold_probability=0.22,
+    raise_strength_threshold=0.7,
+    raise_probability=0.42,
+    open_strength_threshold=0.58,
+    open_probability=0.34,
+    draw_bias=-1,
+  ),
+  "draw_heavy": OpponentProfile(
+    name="draw_heavy",
+    fold_strength_threshold=0.32,
+    fold_probability=0.25,
+    raise_strength_threshold=0.8,
+    raise_probability=0.25,
+    open_strength_threshold=0.62,
+    open_probability=0.25,
+    draw_bias=1,
+  ),
+}
+
+
+def resolve_opponent_profile(profile: str | OpponentProfile | None) -> OpponentProfile:
+  if isinstance(profile, OpponentProfile):
+    return profile
+  profile_id = str(profile or "balanced")
+  if profile_id not in OPPONENT_PROFILES:
+    raise ValueError(
+      f"Unknown Badugi opponent profile '{profile_id}'. "
+      f"Available: {', '.join(sorted(OPPONENT_PROFILES))}"
+    )
+  return OPPONENT_PROFILES[profile_id]
+
+
 class BadugiEnv(gym.Env):
   """Lightweight fixed-limit Badugi environment for RL agents."""
 
   metadata = {"render.modes": ["human"]}
 
-  def __init__(self):
+  def __init__(self, opponent_profile: str | OpponentProfile | None = "balanced"):
     super().__init__()
     self.max_rounds = 3  # number of draw streets
     self.starting_stack = 100
+    self.opponent_profile = resolve_opponent_profile(opponent_profile)
 
     # Observation schema v1: first 22 slots remain compatible with the legacy
     # training env, then the vector is padded to the frontend ONNX shape.
@@ -84,6 +189,9 @@ class BadugiEnv(gym.Env):
     self.player_hand: List[Card] = []
     self.opponent_hand: List[Card] = []
     self.reset()
+
+  def set_opponent_profile(self, profile: str | OpponentProfile):
+    self.opponent_profile = resolve_opponent_profile(profile)
 
   # ---------------------------------------------------------------------------
   # Gym API
@@ -206,7 +314,13 @@ class BadugiEnv(gym.Env):
       self.last_result = -1
       self.opponent_stack += self.pot
       self.pot = 0
-      reward -= 2.2
+      strength = self._hand_strength(features)
+      if strength < 0.28:
+        reward -= 0.55
+      elif strength < 0.45:
+        reward -= 1.1
+      else:
+        reward -= 2.6
       return reward
     elif action in (1, 2):  # Check / Call
       diff = self.current_bet - self.player_bet
@@ -278,12 +392,17 @@ class BadugiEnv(gym.Env):
 
   def _opponent_bet_action(self):
     features = self._hand_features(self.opponent_hand)
+    profile = self.opponent_profile
     self.opponent_all_in = False
     bet_size = self._bet_size()
     r = random.random()
     strength = self._hand_strength(features)
     diff = self.current_bet - self.opponent_bet
-    if diff > 0 and strength < 0.35 and r < 0.35:
+    if (
+      diff > 0
+      and strength < profile.fold_strength_threshold
+      and r < profile.fold_probability
+    ):
       self.opponent_fold()
       return
     if diff > 0:
@@ -292,7 +411,11 @@ class BadugiEnv(gym.Env):
       self.opponent_bet += payment
       self.pot += payment
       self.last_opp_action = 1
-      if strength > 0.78 and r > 0.65 and self.bet_round < self.max_bets:
+      if (
+        strength > profile.raise_strength_threshold
+        and r < profile.raise_probability
+        and self.bet_round < self.max_bets
+      ):
         self.current_bet += bet_size
         payment = min(self.current_bet - self.opponent_bet, self.opponent_stack)
         self.opponent_stack -= payment
@@ -301,7 +424,8 @@ class BadugiEnv(gym.Env):
         self.bet_round += 1
         self.last_opp_action = 2
     elif self.bet_round < self.max_bets and (
-      strength > 0.82 or (strength > 0.62 and r > 0.72)
+      strength > profile.raise_strength_threshold
+      or (strength > profile.open_strength_threshold and r < profile.open_probability)
     ):
       self.current_bet += bet_size
       payment = min(self.current_bet - self.opponent_bet, self.opponent_stack)
@@ -328,7 +452,7 @@ class BadugiEnv(gym.Env):
       self.opponent_last_draw = 0
       return
     keep = self._best_badugi_keep(self.opponent_hand)
-    draw_amount = max(0, 4 - len(keep))
+    draw_amount = max(0, min(3, 4 - len(keep) + self.opponent_profile.draw_bias))
     self.opponent_hand = self._draw_toward_badugi(self.opponent_hand, draw_amount)
     self.opponent_last_draw = draw_amount
     self.phase = "BET"
@@ -386,13 +510,15 @@ class BadugiEnv(gym.Env):
   def _terminal_reward(self) -> float:
     if not self.done:
       return 0.0
+    stack_delta_reward = (self.player_stack - self.starting_stack) / 25.0
     if self.terminal_reason == "opponent_fold":
-      return 0.8
+      return 0.8 + stack_delta_reward
     if self.terminal_reason == "showdown":
       if self.last_result == 1:
-        return 3.0
+        return 2.6 + stack_delta_reward
       if self.last_result == -1:
-        return -3.0
+        return -2.6 + stack_delta_reward
+      return stack_delta_reward
     return 0.0
 
   def _judge(self, hand: Sequence[Card]) -> Tuple[int, List[int]]:
@@ -406,12 +532,16 @@ class BadugiEnv(gym.Env):
         reward += 0.15
       if action == 4 and features.is_nuts:
         reward += 0.35
+      if action in (3, 4) and features.count == 4 and strength >= 0.72:
+        reward += 0.25
       if action in (3, 4) and strength < 0.35:
-        reward -= 0.25
+        reward -= 0.45
       if action == 2 and strength >= 0.45:
         reward += 0.08
-      if action == 0:
-        reward -= 0.3
+      if action == 2 and strength < 0.25:
+        reward -= 0.18
+      if action == 0 and strength >= 0.45:
+        reward -= 0.35
     elif self.phase == "DRAW":
       if action == 0 and features.count == 4:
         reward += 0.1

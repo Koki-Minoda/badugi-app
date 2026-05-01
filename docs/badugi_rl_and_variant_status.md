@@ -1532,7 +1532,13 @@ Draw RL test coverage:
         - 2026-05-01 追加: `npm run ai:gate-badugi-model` を追加し、候補ONNXが `avgReward`, `showdownWinRate`, `foldRate`, baseline差分の昇格ゲートを満たさなければ non-zero exit で止める。
         - 2026-05-01 確認: `npm run ai:gate-badugi-model -- --candidate public/models/badugi_beginner_dqn_v1.onnx --baseline public/models/badugi_worldmaster_v1.onnx --episodes 200 --report-only` は FAIL。現DQNは次tier昇格不可。
         - 残件: Pro / Iron / WorldMaster へ昇格するには、複数 opponent profile で `avgReward >= 0` などの明確な昇格ゲートを満たす再学習済みモデルを用意する。
-      - [ ] `AI-06c` Badugi gate を複数 opponent profile 対応に拡張し、random / tight-passive / aggressive / pat-heavy / draw-heavy / rule-based baseline を同一CLIで評価する。
+      - [x] `AI-06c` Badugi gate を複数 opponent profile 対応に拡張し、random / tight-passive / aggressive / pat-heavy / draw-heavy / rule-based baseline を同一CLIで評価する。
+        - 2026-05-01 更新: `BadugiEnv` に opponent profile を追加。`random`, `balanced`, `loose_passive`, `loose_aggressive`, `tight_passive`, `tight_aggressive`, `pat_heavy`, `draw_heavy` を切り替えられる。
+        - 2026-05-01 更新: `npm run ai:train-badugi` は `--opponent-profiles` で profile round-robin 学習が可能。
+        - 2026-05-01 更新: `npm run ai:evaluate-badugi-onnx` / `npm run ai:gate-badugi-model` も opponent profile 指定に対応。gate は複数 profile x 複数 seed で集計する。
+        - 2026-05-01 更新: reward をチップEV寄りに調整。showdown / opponent fold は stack delta を加味し、弱手foldは軽罰、強手foldは重罰に分離。強い4-card Badugiのvalue bet/raiseを加点し、弱手raise/callを減点する。
+        - 2026-05-01 確認: profile mix 10k probe は `avg_reward_last_100=-1.6143`。ONNX gate は現 beginner DQN比で `avgRewardDelta=+0.0979` だが `showdownWinRate=0.179` と低く、次tierへは昇格しない。
+      - [ ] `AI-06c-2` profile mix で 50k+ 再学習を回し、showdownWinRate を落とさず avgReward を改善する。候補は gate PASS まで public model へ反映しない。
       - [ ] `AI-06d` gate PASS 時だけ beginner -> standard/pro/iron/worldmaster のどのtierへ入れるかを決める promotion report を生成する。
       - [ ] `AI-06e` 2-7 / A-5 用の実ONNXを生成・配置する。現状は `model-27draw-iron-v1` (`D01/S01`) と `model-a5draw-iron-v1` (`D02/S02`) の registry / feature builder / routing test はあるが、実 `.onnx` は optional 未配置で、App draw CPU は rule-based fallback が主経路。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。

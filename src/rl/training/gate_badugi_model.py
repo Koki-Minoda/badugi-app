@@ -32,6 +32,13 @@ def parse_seeds(value: str) -> list[int]:
     return seeds
 
 
+def parse_csv(value: str) -> list[str]:
+    items = [item.strip() for item in value.split(",") if item.strip()]
+    if not items:
+        raise argparse.ArgumentTypeError("at least one value is required")
+    return items
+
+
 def summarize_runs(runs: list[dict]) -> dict:
     episodes = sum(int(run["episodes"]) for run in runs)
     showdowns = sum(int(run["showdowns"]) for run in runs)
@@ -50,7 +57,14 @@ def summarize_runs(runs: list[dict]) -> dict:
     }
 
 
-def evaluate_across_seeds(model: Path, *, seeds: list[int], episodes: int, max_steps: int) -> dict:
+def evaluate_across_seeds(
+    model: Path,
+    *,
+    seeds: list[int],
+    opponent_profiles: list[str],
+    episodes: int,
+    max_steps: int,
+) -> dict:
     runs = [
         evaluate_model(
             model=model,
@@ -58,8 +72,10 @@ def evaluate_across_seeds(model: Path, *, seeds: list[int], episodes: int, max_s
             max_steps=max_steps,
             epsilon=0.0,
             seed=seed,
+            opponent_profile=profile,
         )
         for seed in seeds
+        for profile in opponent_profiles
     ]
     return {
         "model": str(model),
@@ -72,6 +88,7 @@ def build_gate_report(args) -> dict:
     candidate = evaluate_across_seeds(
         Path(args.candidate),
         seeds=args.seeds,
+        opponent_profiles=args.opponent_profiles,
         episodes=args.episodes,
         max_steps=args.max_steps,
     )
@@ -82,6 +99,7 @@ def build_gate_report(args) -> dict:
             baseline = evaluate_across_seeds(
                 baseline_path,
                 seeds=args.seeds,
+                opponent_profiles=args.opponent_profiles,
                 episodes=args.episodes,
                 max_steps=args.max_steps,
             )
@@ -124,6 +142,11 @@ def parse_args():
     parser.add_argument("--episodes", type=int, default=500)
     parser.add_argument("--max-steps", type=int, default=200)
     parser.add_argument("--seeds", type=parse_seeds, default=parse_seeds("20260502,20260503,20260504"))
+    parser.add_argument(
+        "--opponent-profiles",
+        type=parse_csv,
+        default=parse_csv("balanced,loose_passive,loose_aggressive,tight_passive,tight_aggressive"),
+    )
     parser.add_argument("--min-avg-reward", type=float, default=0.0)
     parser.add_argument("--min-showdown-win-rate", type=float, default=0.35)
     parser.add_argument("--max-fold-rate", type=float, default=0.45)

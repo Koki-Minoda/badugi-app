@@ -36,6 +36,7 @@ class TrainConfig:
     hidden_dim: int = 256
     learning_rate: float = 1e-4
     train_every_steps: int = 4
+    opponent_profiles: tuple[str, ...] = ("balanced",)
 
 
 def linear_epsilon_decay(
@@ -54,7 +55,7 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
     cfg = cfg or TrainConfig()
     os.makedirs(cfg.output_dir, exist_ok=True)
 
-    env = BadugiEnv()
+    env = BadugiEnv(opponent_profile=cfg.opponent_profiles[0])
     obs, _ = env.reset()
 
     obs_dim = int(np.prod(env.observation_space.shape))
@@ -79,6 +80,7 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
     episode_rewards = []
 
     for episode in range(1, cfg.total_episodes + 1):
+        env.set_opponent_profile(cfg.opponent_profiles[(episode - 1) % len(cfg.opponent_profiles)])
         obs, _ = env.reset()
         episode_reward = 0.0
 
@@ -144,6 +146,7 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
         "global_steps": int(global_step),
         "obs_dim": int(obs_dim),
         "n_actions": int(n_actions),
+        "opponent_profiles": list(cfg.opponent_profiles),
         "avg_reward_last_100": (
             sum(episode_rewards[-100:]) / max(1, len(episode_rewards[-100:]))
             if episode_rewards
@@ -175,8 +178,20 @@ def parse_args():
     parser.add_argument("--hidden-dim", type=int, default=TrainConfig.hidden_dim)
     parser.add_argument("--learning-rate", type=float, default=TrainConfig.learning_rate)
     parser.add_argument("--train-every-steps", type=int, default=TrainConfig.train_every_steps)
+    parser.add_argument(
+        "--opponent-profiles",
+        default=",".join(TrainConfig.opponent_profiles),
+        help="Comma-separated BadugiEnv opponent profiles for round-robin training.",
+    )
     parser.add_argument("--device", default=None)
     return parser.parse_args()
+
+
+def parse_profile_csv(value: str) -> tuple[str, ...]:
+    profiles = tuple(item.strip() for item in value.split(",") if item.strip())
+    if not profiles:
+        raise ValueError("At least one opponent profile is required")
+    return profiles
 
 
 if __name__ == "__main__":
@@ -197,6 +212,7 @@ if __name__ == "__main__":
         hidden_dim=args.hidden_dim,
         learning_rate=args.learning_rate,
         train_every_steps=args.train_every_steps,
+        opponent_profiles=parse_profile_csv(args.opponent_profiles),
     )
     print(f"Using device: {device}")
     train_dqn(cfg=cfg, device=device)

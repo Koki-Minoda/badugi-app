@@ -73,6 +73,7 @@ npm run ai:train-badugi -- \
   --save-interval 1000 \
   --output-dir rl/models \
   --train-every-steps 4 \
+  --opponent-profiles balanced,loose_passive,loose_aggressive,tight_passive,tight_aggressive \
   --device cpu
 
 npm run ai:export-badugi-onnx -- \
@@ -90,7 +91,8 @@ npm run ai:evaluate-badugi-onnx -- \
 npm run ai:gate-badugi-model -- \
   --candidate public/models/badugi_beginner_dqn_v1.onnx \
   --baseline public/models/badugi_worldmaster_v1.onnx \
-  --episodes 500
+  --episodes 500 \
+  --opponent-profiles balanced,loose_passive,loose_aggressive,tight_passive,tight_aggressive
 ```
 
 Use `--device cuda` only when the host has a compatible GPU setup.
@@ -101,6 +103,10 @@ evaluation. New DQN checkpoints should default to the beginner/experimental
 slot until those gates are met.
 `npm run ai:gate-badugi-model` exits non-zero unless the candidate clears the
 configured avgReward, showdown win-rate, fold-rate, and baseline-delta gates.
+Training and gate commands support opponent style mixes through
+`--opponent-profiles`; currently available profiles include `balanced`,
+`loose_passive`, `loose_aggressive`, `tight_passive`, `tight_aggressive`,
+`pat_heavy`, `draw_heavy`, and `random`.
 For current CPU training, keep `--train-every-steps 4` unless you are doing a
 small diagnostic run; updating every environment step is much slower and did not
 improve the short-run policy.

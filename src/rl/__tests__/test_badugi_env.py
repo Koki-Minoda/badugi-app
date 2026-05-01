@@ -1,6 +1,12 @@
 import unittest
 
-from rl.env.badugi_env import BadugiEnv, compare_badugi_scores, evaluate_badugi
+from rl.env.badugi_env import (
+    BadugiEnv,
+    OPPONENT_PROFILES,
+    compare_badugi_scores,
+    evaluate_badugi,
+    resolve_opponent_profile,
+)
 
 
 class BadugiEnvTest(unittest.TestCase):
@@ -28,7 +34,7 @@ class BadugiEnvTest(unittest.TestCase):
         self.assertEqual(env.last_result, -1)
         self.assertEqual(env.terminal_reason, "player_fold")
         self.assertEqual(env.pot, 0)
-        self.assertLessEqual(_reward, -2.0)
+        self.assertLess(_reward, 0)
 
     def test_reset_clears_terminal_state(self):
         env = BadugiEnv()
@@ -103,6 +109,46 @@ class BadugiEnvTest(unittest.TestCase):
         self.assertIn((1, 1), env.player_hand)
         self.assertNotIn((5, 0), env.player_hand)
         self.assertNotIn((8, 1), env.player_hand)
+
+    def test_weak_fold_is_penalized_less_than_strong_fold(self):
+        weak_env = BadugiEnv()
+        weak_env.reset(seed=1)
+        weak_env.player_hand = [(12, 0), (12, 1), (12, 2), (12, 3)]
+        _obs, weak_reward, _terminated, _truncated, _info = weak_env.step(0)
+
+        strong_env = BadugiEnv()
+        strong_env.reset(seed=1)
+        strong_env.player_hand = [(0, 0), (1, 1), (2, 2), (3, 3)]
+        _obs, strong_reward, _terminated, _truncated, _info = strong_env.step(0)
+
+        self.assertGreater(weak_reward, strong_reward)
+
+    def test_opponent_profiles_expose_play_styles(self):
+        self.assertLess(
+            OPPONENT_PROFILES["loose_aggressive"].fold_probability,
+            OPPONENT_PROFILES["tight_passive"].fold_probability,
+        )
+        self.assertGreater(
+            OPPONENT_PROFILES["loose_aggressive"].raise_probability,
+            OPPONENT_PROFILES["loose_passive"].raise_probability,
+        )
+        self.assertGreater(
+            OPPONENT_PROFILES["draw_heavy"].draw_bias,
+            OPPONENT_PROFILES["pat_heavy"].draw_bias,
+        )
+
+    def test_unknown_opponent_profile_fails_fast(self):
+        with self.assertRaises(ValueError):
+            resolve_opponent_profile("unknown-style")
+
+    def test_env_can_switch_opponent_profile(self):
+        env = BadugiEnv(opponent_profile="tight_passive")
+
+        self.assertEqual(env.opponent_profile.name, "tight_passive")
+
+        env.set_opponent_profile("loose_aggressive")
+
+        self.assertEqual(env.opponent_profile.name, "loose_aggressive")
 
 
 if __name__ == "__main__":

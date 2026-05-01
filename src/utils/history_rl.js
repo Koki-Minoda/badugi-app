@@ -6,7 +6,24 @@ export function saveRLHandHistory(record) {
     const line = JSON.stringify(record);
     const payload = existing && existing.length ? `${existing}\n${line}` : line;
     localStorage.setItem(STORAGE_KEY, payload);
-    console.log("[SAVE_RL] appended record");
+    const pots = Array.isArray(record?.pots) ? record.pots : [];
+    const winners = pots.flatMap((pot) =>
+      Array.isArray(pot?.winners)
+        ? pot.winners.map((winner) => ({
+            seat: winner.seat ?? winner.seatIndex ?? null,
+            collect: winner.collect ?? winner.payout ?? 0,
+            handLabel: winner.handLabel ?? winner.handName ?? null,
+            finalLowRanks: winner.finalLowRanks ?? winner.evaluation?.metadata?.ranks ?? null,
+          }))
+        : [],
+    );
+    console.log("[SAVE_RL] appended record", {
+      handId: record?.handId ?? record?.hand_id ?? record?.id ?? null,
+      variantId: record?.variantId ?? record?.gameId ?? null,
+      winner: record?.winner ?? null,
+      winners,
+      pot: record?.pot ?? pots.reduce((sum, pot) => sum + (pot?.amount ?? 0), 0),
+    });
   } catch (e) {
     console.error("[SAVE_RL] failed to save:", e);
   }
@@ -43,4 +60,3 @@ export function exportRLHistoryAsJSONL() {
     console.error("[SAVE_RL] export failed:", e);
   }
 }
-

@@ -2,7 +2,7 @@
 # Deployment helper for mgx-prod-01 VPS (make sure to `chmod +x scripts/deploy/mgx-prod-01.sh`)
 set -euo pipefail
 
-APP_DIR="$HOME/badugi-app"
+APP_DIR="${APP_DIR:-$HOME/badugi-app}"
 FRONTEND_DIST="$APP_DIR/dist"
 DEPLOY_TARGET="/var/www/mgx-poker"
 DEFAULT_BRANCH="main"
@@ -18,7 +18,7 @@ git checkout "$GIT_BRANCH"
 git pull "$GIT_REMOTE" "$GIT_BRANCH"
 
 echo "[mgx-deploy] installing frontend dependencies"
-npm install
+npm install --legacy-peer-deps
 
 echo "[mgx-deploy] building frontend"
 npm run build

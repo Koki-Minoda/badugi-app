@@ -114,6 +114,7 @@ export function AuthProvider({ children }) {
   const hydratedRef = useRef(false);
   const [hasHydrated, setHasHydrated] = useState(false);
   const validatingRef = useRef(false);
+  const validatedTokenRef = useRef(null);
 
   // hydrateFromStorage restores persisted credentials when the app boots.
   const hydrateFromStorage = useCallback(() => {
@@ -172,8 +173,10 @@ export function AuthProvider({ children }) {
       };
       setAuthState(nextState);
       writeStoredAuth(nextState);
+      validatedTokenRef.current = token;
     } catch (err) {
       console.warn("[auth] token validation failed", err);
+      validatedTokenRef.current = null;
       logout();
     } finally {
       validatingRef.current = false;
@@ -186,8 +189,17 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (!hasHydrated) return;
-    if (!authState.accessToken) return;
-    if (authState.isAuthenticated && authState.user) return;
+    if (!authState.accessToken) {
+      validatedTokenRef.current = null;
+      return;
+    }
+    if (
+      validatedTokenRef.current === authState.accessToken &&
+      authState.isAuthenticated &&
+      authState.user
+    ) {
+      return;
+    }
     validateToken();
   }, [
     authState.accessToken,

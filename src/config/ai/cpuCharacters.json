@@ -1,0 +1,20 @@
+[
+  {
+    "id": "badugi-standard-reader",
+    "label": "Reading Standard",
+    "variantIds": ["D03"],
+    "tierId": "standard",
+    "modelId": "model-badugi-standard-dqn-v2",
+    "style": "opponent-reading",
+    "notes": "Standard-strength Badugi CPU that uses opponent tendency features. Not promoted to Pro."
+  },
+  {
+    "id": "badugi-standard-balanced",
+    "label": "Balanced Standard",
+    "variantIds": ["D03"],
+    "tierId": "standard",
+    "modelId": "model-badugi-standard-dqn-v1",
+    "style": "baseline-balanced",
+    "notes": "Baseline standard Badugi DQN retained for comparison and fallback."
+  }
+]

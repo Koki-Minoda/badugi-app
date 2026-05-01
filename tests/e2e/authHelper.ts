@@ -4,6 +4,28 @@ export const APP_URL = "http://127.0.0.1:3000/";
 export const API_URL = `${APP_URL.replace(/\/$/, "")}/api`;
 
 const DEFAULT_PASSWORD = "MgxE2E!2026";
+const VARIANT_TEST_ID_BY_ALIAS: Record<string, string> = {
+  badugi: "badugi",
+  d03: "badugi",
+  d01: "deuce_to_seven_triple_draw",
+  deuce_to_seven_triple_draw: "deuce_to_seven_triple_draw",
+  d02: "ace_to_five_triple_draw",
+  ace_to_five_triple_draw: "ace_to_five_triple_draw",
+  s01: "deuce_to_seven_single_draw",
+  deuce_to_seven_single_draw: "deuce_to_seven_single_draw",
+  s02: "ace_to_five_single_draw",
+  ace_to_five_single_draw: "ace_to_five_single_draw",
+};
+
+function variantTestIdFromUrl(url: string) {
+  try {
+    const parsed = new URL(url);
+    const key = (parsed.searchParams.get("variant") ?? "badugi").toLowerCase();
+    return VARIANT_TEST_ID_BY_ALIAS[key] ?? "badugi";
+  } catch {
+    return "badugi";
+  }
+}
 
 export function uniqueE2eEmail(prefix = "mgx.e2e") {
   const nonce = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -115,8 +137,10 @@ export async function openAuthenticatedMenu(page: Page, url = APP_URL) {
 export async function openAuthenticatedGame(page: Page, url = APP_URL) {
   await openAuthenticatedMenu(page, url);
   await page.getByTestId("menu-ring").click();
+  const variantTestId = variantTestIdFromUrl(url);
+  await page.getByTestId(`game-selector-play-${variantTestId}`).click();
   await page
-    .getByRole("button", { name: /Leaderboard/i })
+    .getByRole("button", { name: /Leaderboard|ランキング/i })
     .first()
     .waitFor({ state: "visible", timeout: 20000 });
 }

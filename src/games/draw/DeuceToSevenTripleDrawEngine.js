@@ -4,6 +4,7 @@ import { IllegalActionError, assertSeatIsActive } from "../core/errors.js";
 import { applyChips } from "../core/applyChips.js";
 import { DeckManager } from "../badugi/utils/deck.js";
 import { evaluateLowHand, formatLowHandLabel } from "../evaluators/low.js";
+import { compareEvaluations } from "../evaluators/registry.js";
 
 const DEFAULT_SEAT_CONFIG = ["HUMAN", "CPU", "CPU", "CPU", "CPU", "CPU"];
 const DEFAULT_PAT_HIGH_RANK = 8;
@@ -278,6 +279,11 @@ function splitAmount(amount, winnerCount) {
     remainder = Math.max(0, remainder - 1);
     return payout;
   });
+}
+
+function formatLowRanksLabel(evaluation) {
+  const ranks = evaluation?.metadata?.ranks;
+  return Array.isArray(ranks) && ranks.length ? ranks.join("-") : "";
 }
 
 export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
@@ -806,8 +812,13 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
         summary.push({ potIndex, potAmount: amount, payouts: [], evaluations: contenders });
         return;
       }
-      const bestScore = Math.min(...contenders.map((entry) => entry.evaluation.rankPrimary));
-      const winners = contenders.filter((entry) => entry.evaluation.rankPrimary === bestScore);
+      const bestEvaluation = contenders.reduce((best, entry) => {
+        if (!best) return entry.evaluation;
+        return compareEvaluations(entry.evaluation, best) < 0 ? entry.evaluation : best;
+      }, null);
+      const winners = contenders.filter(
+        (entry) => compareEvaluations(entry.evaluation, bestEvaluation) === 0,
+      );
       const shares = splitAmount(amount, winners.length);
       const payouts = winners.map((winnerEntry, idx) => {
         const player = working.players[winnerEntry.seatIndex];
@@ -822,6 +833,13 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
           stackBefore,
           stackAfter: player.stack,
           handName: winnerEntry.evaluation.handName,
+          handLabel: winnerEntry.evaluation.handName,
+          ranksLabel: formatLowRanksLabel(winnerEntry.evaluation),
+          finalLowRanks: Array.isArray(winnerEntry.evaluation.metadata?.ranks)
+            ? [...winnerEntry.evaluation.metadata.ranks]
+            : [],
+          hand: Array.isArray(player.hand) ? [...player.hand] : [],
+          evaluation: winnerEntry.evaluation,
         };
       });
       summary.push({

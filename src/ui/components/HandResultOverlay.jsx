@@ -98,11 +98,19 @@ export default function HandResultOverlay({
   summary,
   mixedInfo,
   onNext,
+  onNextHand,
   buttonLabel,
+  nextHandLabel,
+  onReplayTarget,
 }) {
   if (!visible || !summary) return null;
   const winners = summary.winners ?? [];
   const potDetails = summary.potDetails ?? [];
+  const followUpSummary = summary.followUpSummary ?? null;
+  const topIssue = followUpSummary?.topIssue ?? null;
+  const replayTarget = followUpSummary?.replayTarget ?? null;
+  const handleNext = typeof onNext === "function" ? onNext : onNextHand;
+  const resolvedButtonLabel = buttonLabel ?? nextHandLabel ?? "Next hand";
   const potSections =
     potDetails.length > 0
       ? potDetails
@@ -164,12 +172,40 @@ export default function HandResultOverlay({
             )}
           </div>
         )}
+        {followUpSummary?.issueCount > 0 && topIssue && (
+          <div
+            className="rounded-2xl border border-amber-300/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-50"
+            data-testid="hand-result-follow-up"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-amber-200">
+                  Follow-up
+                </p>
+                <p className="mt-1 text-sm">
+                  {topIssue.type} · Seat {topIssue.seat ?? "-"} · {topIssue.street ?? "-"}
+                </p>
+                <p className="mt-1 text-xs text-amber-100/75">{topIssue.detail}</p>
+              </div>
+              {replayTarget && typeof onReplayTarget === "function" && (
+                <button
+                  type="button"
+                  className="rounded-xl border border-amber-200/50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-amber-100 transition hover:bg-amber-200/10"
+                  onClick={() => onReplayTarget(replayTarget)}
+                  data-testid="hand-result-follow-up-replay"
+                >
+                  Review
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         <button
           type="button"
-          onClick={onNext}
+          onClick={handleNext}
           className="w-full rounded-2xl bg-emerald-500 py-3 text-slate-900 font-semibold hover:bg-emerald-400 transition"
         >
-          {buttonLabel ?? "Next hand"}
+          {resolvedButtonLabel}
         </button>
       </div>
     </div>

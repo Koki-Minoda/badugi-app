@@ -86,19 +86,31 @@ function buildBetFeatures(entry, payload) {
 function decodeBetOutput(result, payload) {
   if (!result?.data || result.data.length === 0) return null;
   const data = Array.from(result.data);
-  let maxIdx = 0;
-  let maxVal = data[0];
-  for (let i = 1; i < data.length; i += 1) {
+  const indexActions = BADUGI_RL_ACTIONS.map((action) => action.toUpperCase());
+  const legalActions = getLegalActions(payload);
+  const legalSet = new Set(legalActions);
+  let maxIdx = -1;
+  let maxVal = -Infinity;
+  for (let i = 0; i < data.length; i += 1) {
+    const candidate = indexActions[i] ?? null;
+    if (legalSet.size > 0 && (!candidate || !legalSet.has(candidate))) {
+      continue;
+    }
     if (data[i] > maxVal) {
       maxVal = data[i];
       maxIdx = i;
     }
   }
-  const legalActions = getLegalActions(payload);
-  const actions = legalActions.length
-    ? legalActions
-    : BADUGI_RL_ACTIONS.map((action) => action.toUpperCase());
-  const action = actions[maxIdx % actions.length];
+  if (maxIdx < 0) {
+    const fallback = legalActions.find((action) => ["CALL", "CHECK", "FOLD"].includes(action));
+    if (!fallback) return null;
+    return {
+      action: fallback,
+      raiseSize: payload.betSize,
+      source: "onnx",
+    };
+  }
+  const action = indexActions[maxIdx];
   let raiseSize = payload.betSize;
   if (action === "RAISE" && data.length > 4) {
     const scale = Math.max(0.5, Math.min(2, data[4] || 1));
@@ -152,6 +164,8 @@ export async function inferBetActionWithOnnx(payload) {
   const entry = selectModelForVariant({
     variantId: payload.variantId,
     tierId: payload.tierId,
+    characterId: payload.characterId,
+    modelId: payload.modelId,
   });
   if (!entry) return null;
   const session = await getOrCreateSession(entry);
@@ -182,6 +196,8 @@ export async function inferDrawDecisionWithOnnx(payload) {
   const entry = selectModelForVariant({
     variantId: payload.variantId,
     tierId: payload.tierId,
+    characterId: payload.characterId,
+    modelId: payload.modelId,
   });
   if (!entry) return null;
   const session = await getOrCreateSession(entry);

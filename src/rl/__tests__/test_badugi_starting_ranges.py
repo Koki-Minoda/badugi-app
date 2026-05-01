@@ -1,0 +1,57 @@
+import unittest
+
+from rl.training.badugi_starting_ranges import (
+    classify_starting_hand,
+    median_starting_score_key,
+    teacher_action,
+)
+from rl.env.badugi_env import BadugiEnv
+
+
+class BadugiStartingRangesTest(unittest.TestCase):
+    def test_median_starting_score_is_available(self):
+        self.assertEqual(len(median_starting_score_key()), 5)
+
+    def test_a27_one_away_is_premium_heads_up_continue(self):
+        hand_range = classify_starting_hand([(0, 0), (1, 1), (6, 2), (12, 2)])
+
+        self.assertTrue(hand_range.is_a27_or_better)
+        self.assertTrue(hand_range.is_premium)
+        self.assertTrue(hand_range.should_continue_heads_up)
+
+    def test_weak_duplicates_are_not_automatic_continue(self):
+        hand_range = classify_starting_hand([(12, 0), (12, 1), (11, 0), (10, 0)])
+
+        self.assertFalse(hand_range.is_premium)
+        self.assertLess(hand_range.one_draw_top_half_probability, 0.5)
+
+    def test_teacher_opens_a27_and_folds_trash_when_facing_bet(self):
+        open_env = BadugiEnv()
+        open_env.reset(seed=1)
+        open_env.phase = "BET"
+        open_env.current_bet = 0
+        open_env.player_bet = 0
+        open_env.player_hand = [(0, 0), (1, 1), (6, 2), (12, 2)]
+
+        self.assertIn(teacher_action(open_env), (3, 4))
+
+        fold_env = BadugiEnv()
+        fold_env.reset(seed=1)
+        fold_env.phase = "BET"
+        fold_env.current_bet = 2
+        fold_env.player_bet = 0
+        fold_env.player_hand = [(12, 0), (12, 1), (11, 0), (10, 0)]
+
+        self.assertEqual(teacher_action(fold_env), 0)
+
+    def test_teacher_draw_count_matches_badugi_shape(self):
+        env = BadugiEnv()
+        env.reset(seed=1)
+        env.phase = "DRAW"
+        env.player_hand = [(0, 0), (1, 1), (6, 2), (12, 2)]
+
+        self.assertEqual(teacher_action(env), 1)
+
+
+if __name__ == "__main__":
+    unittest.main()

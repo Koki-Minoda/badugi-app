@@ -93,6 +93,55 @@ describe("handHistory", () => {
     expect(record.pots[0].winners[0].finalLowRanks).toEqual([7, 5, 4, 3, 2]);
   });
 
+  it.each([
+    {
+      variantId: "D02",
+      variantName: "A-5 Triple Draw",
+      hand: ["AS", "2S", "3S", "4S", "5S"],
+      label: "A-5 Low 5-4-3-2-A",
+      ranks: [5, 4, 3, 2, 1],
+    },
+    {
+      variantId: "S01",
+      variantName: "2-7 Single Draw",
+      hand: ["7S", "5D", "4C", "3H", "2S"],
+      label: "2-7 Low 7-5-4-3-2",
+      ranks: [7, 5, 4, 3, 2],
+    },
+    {
+      variantId: "S02",
+      variantName: "A-5 Single Draw",
+      hand: ["AS", "2S", "3S", "4S", "5S"],
+      label: "A-5 Low 5-4-3-2-A",
+      ranks: [5, 4, 3, 2, 1],
+    },
+  ])("records $variantId final lowball labels and ranks", ({ variantId, variantName, hand, label, ranks }) => {
+    startHandHistoryRecord({
+      handId: `${variantId}-hand`,
+      variantId,
+      variantName,
+      seats: [{ seat: 0, name: "Hero", startStack: 500 }],
+    });
+
+    const record = finalizeHandHistoryRecord({
+      players: [{ stack: 600, hand }],
+      pots: [
+        {
+          potIndex: 0,
+          potAmount: 100,
+          payouts: [{ seatIndex: 0, payout: 100, hand }],
+        },
+      ],
+    });
+
+    expect(record.variantId).toBe(variantId);
+    expect(record.variantName).toBe(variantName);
+    expect(record.seats[0].handLabel).toBe(label);
+    expect(record.seats[0].finalLowRanks).toEqual(ranks);
+    expect(record.pots[0].winners[0].handLabel).toBe(label);
+    expect(record.pots[0].winners[0].finalLowRanks).toEqual(ranks);
+  });
+
   it("defines and validates the minimum D01 replay fields", () => {
     const finalHand = ["7S", "5D", "4C", "3H", "2S"];
     startHandHistoryRecord({

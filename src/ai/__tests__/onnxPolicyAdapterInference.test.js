@@ -73,6 +73,22 @@ describe("onnxPolicyAdapter inference fallback", () => {
     expect(decision).toMatchObject({ action: "CALL", source: "onnx" });
   });
 
+  it("masks illegal ONNX bet outputs instead of remapping by modulo", async () => {
+    runMock.mockResolvedValueOnce({ output: { data: [0.1, 0.2, 0.3, 0.4, 0.7, 0.9] } });
+
+    const decision = await inferBetActionWithOnnx({
+      variantId: "D03",
+      tierId: "iron",
+      state: {
+        street: "BET",
+        players: [{ hand: ["AS", "2D", "3C", "4H"], stack: 500 }],
+      },
+      legalActions: ["fold", "call", "raise"],
+    });
+
+    expect(decision).toMatchObject({ action: "RAISE", source: "onnx" });
+  });
+
   it("returns null when no model session is available", async () => {
     await expect(
       inferBetActionWithOnnx({

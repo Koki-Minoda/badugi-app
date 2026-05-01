@@ -78,6 +78,11 @@ export function replayHandFromHistory(history) {
           }
         }
         break;
+      case "FOLLOW_UP_TARGET":
+        actingPlayerIndex =
+          Number.isInteger(event.seat) && event.seat >= 0 ? event.seat : null;
+        phase = event.street ?? phase;
+        break;
       case "PHASE_TRANSITION":
         phase = event?.to ?? phase;
         actingPlayerIndex = null;

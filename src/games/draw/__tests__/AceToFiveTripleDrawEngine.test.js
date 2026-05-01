@@ -71,6 +71,29 @@ describe("AceToFiveTripleDrawEngine", () => {
         seatIndex: 0,
         payout: 100,
         handName: "A-5 Low 5-4-3-2-A",
+        finalLowRanks: [5, 4, 3, 2, 1],
+      }),
+    ]);
+  });
+
+  it("does not let paired A-5 lows beat clean made lows", () => {
+    const engine = new AceToFiveTripleDrawEngine();
+    const state = engine.initHand({
+      seatConfig: ["HUMAN", "CPU"],
+      startingStack: 500,
+      dealerIndex: 0,
+    });
+    state.players[0].hand = ["6D", "4C", "3H", "2D", "AC"];
+    state.players[1].hand = ["AS", "AD", "5C", "4H", "2S"];
+    state.pots = [{ amount: 100, eligiblePlayerIds: ["seat-0", "seat-1"] }];
+
+    const result = engine.resolveShowdown(state);
+
+    expect(result.summary[0].payouts).toEqual([
+      expect.objectContaining({
+        seatIndex: 0,
+        payout: 100,
+        handName: "A-5 Low 6-4-3-2-A",
       }),
     ]);
   });

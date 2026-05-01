@@ -1,58 +1,176 @@
 [
   {
     "id": "model-nlh-v1",
-    "variantIds": ["B01", "B02"],
+    "version": "v1",
+    "variantIds": [
+      "B01",
+      "B02"
+    ],
     "tier": "worldmaster",
     "onnx": "models/nlh_worldmaster.onnx",
-    "inputShape": [128],
-    "outputShape": [8]
+    "checksumSha256": null,
+    "productionRequired": false,
+    "inputShape": [
+      128
+    ],
+    "outputShape": [
+      8
+    ]
   },
   {
     "id": "model-badugi-pro-v1",
-    "variantIds": ["D03"],
+    "version": "v1",
+    "variantIds": [
+      "D03"
+    ],
     "tier": "pro",
     "onnx": "models/badugi_pro_v1.onnx",
-    "inputShape": [96],
-    "outputShape": [6]
+    "checksumSha256": "78d43847ce8ba2bd3d07193c57c4acb8030530feb3dace1ba963722d2bb90dc2",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      6
+    ]
   },
   {
     "id": "model-badugi-iron-v1",
-    "variantIds": ["D03"],
+    "version": "v1",
+    "variantIds": [
+      "D03"
+    ],
     "tier": "iron",
     "onnx": "models/badugi_iron_v1.onnx",
-    "inputShape": [96],
-    "outputShape": [6]
+    "checksumSha256": "73bf81e5f993b0801f3588747e96447a8d03b09d0a9189eca77a135f4b98efdb",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      6
+    ]
   },
   {
     "id": "model-badugi-worldmaster-v1",
-    "variantIds": ["D03"],
+    "version": "v1",
+    "variantIds": [
+      "D03"
+    ],
     "tier": "worldmaster",
     "onnx": "models/badugi_worldmaster_v1.onnx",
-    "inputShape": [96],
-    "outputShape": [6]
+    "checksumSha256": "5be226ebed765ff6b018d3b5b798437498eb0f705b58c9e72c908e527e9b998c",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
+    "id": "model-badugi-standard-dqn-v2",
+    "version": "v2",
+    "variantIds": [
+      "D03"
+    ],
+    "characterIds": [
+      "badugi-standard-reader"
+    ],
+    "tier": "standard",
+    "onnx": "models/badugi_standard_dqn_v2.onnx",
+    "checksumSha256": "3fba6d1e3aa371fd412694a069380af2ae3e482a537f9db96077dff80a91db5a",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
+    "id": "model-badugi-standard-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "D03"
+    ],
+    "tier": "standard",
+    "onnx": "models/badugi_standard_dqn_v1.onnx",
+    "checksumSha256": "bb2613fbbf0848e741122bd8974599ea567b5650eb0f2801817ff24985ab114c",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
+    "id": "model-badugi-beginner-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "D03"
+    ],
+    "tier": "beginner",
+    "onnx": "models/badugi_beginner_dqn_v1.onnx",
+    "checksumSha256": "671f3ed8f6dceb0066ec772ac1e3a59b79b1bf9a48745827a560a388229d9439",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      6
+    ]
   },
   {
     "id": "model-27draw-iron-v1",
-    "variantIds": ["D01", "S01"],
+    "version": "v1",
+    "variantIds": [
+      "D01",
+      "S01"
+    ],
     "tier": "iron",
     "onnx": "models/27draw_iron_v1.onnx",
-    "inputShape": [96],
-    "outputShape": [11]
+    "checksumSha256": null,
+    "productionRequired": false,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      11
+    ]
   },
   {
     "id": "model-a5draw-iron-v1",
-    "variantIds": ["D02", "S02"],
+    "version": "v1",
+    "variantIds": [
+      "D02",
+      "S02"
+    ],
     "tier": "iron",
     "onnx": "models/a5draw_iron_v1.onnx",
-    "inputShape": [96],
-    "outputShape": [11]
+    "checksumSha256": null,
+    "productionRequired": false,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      11
+    ]
   },
   {
     "id": "model-generic-v1",
+    "version": "v1",
     "variantIds": [],
     "tier": "standard",
     "onnx": "models/generic_standard.onnx",
-    "inputShape": [64],
-    "outputShape": [5]
+    "checksumSha256": null,
+    "productionRequired": false,
+    "inputShape": [
+      64
+    ],
+    "outputShape": [
+      5
+    ]
   }
 ]

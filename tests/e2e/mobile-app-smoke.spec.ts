@@ -76,6 +76,7 @@ test.describe("mobile App smoke", () => {
       await gotoWithRetry(page, APP_URL);
       await enterTitleIfPresent(page);
       await page.getByTestId("menu-ring").click();
+      await page.getByTestId("game-selector-play-badugi").click();
       await expect(page.getByText("Landscape mode required")).toBeVisible({ timeout: 20000 });
     } finally {
       await closeContext(context);
@@ -85,6 +86,9 @@ test.describe("mobile App smoke", () => {
   for (const { variant, lastHeroCard } of [
     { variant: "badugi", lastHeroCard: "player-0-card-3" },
     { variant: "D01", lastHeroCard: "player-0-card-4" },
+    { variant: "D02", lastHeroCard: "player-0-card-4" },
+    { variant: "S01", lastHeroCard: "player-0-card-4" },
+    { variant: "S02", lastHeroCard: "player-0-card-4" },
   ]) {
     test(`plays ${variant} draw controls on mobile landscape`, async ({ browser }) => {
       const { context, page } = await openMobilePage(browser, "landscape");

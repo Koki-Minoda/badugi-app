@@ -1,6 +1,6 @@
 # Badugi Browser / Mobile Bug Tracker
 
-更新日: 2026-04-26  
+更新日: 2026-04-30
 正本: Badugi の実ブラウザ / 実スマホ / UI / 操作 / 回帰系不具合はこの文書で管理する。
 
 ## 1. 運用ルール
@@ -68,7 +68,7 @@
 
 ## BG-001
 
-- Status: `open`
+- Status: `verified`
 - Severity: `high`
 - Area: `gameplay`
 - First Seen: `2026-04-26`
@@ -102,11 +102,16 @@
   - existing E2E を通す。
   - 実ブラウザでも 5 回連続再現確認。
 - Resolution:
+  - 2026-04-30: fold 後の action progression と seat order は Playwright Badugi flow で回帰確認済み。
+- Fixed Commit:
+  - prior implementation commits; verified in `190f76f` 以降の smoke run.
+- Repro Closed Date: `2026-04-30`
 - Residual Risk:
+  - 物理端末ブラウザでは未確認。`BG-005` で継続する。
 
 ## BG-002
 
-- Status: `open`
+- Status: `verified`
 - Severity: `high`
 - Area: `gameplay`
 - First Seen: `2026-04-26`
@@ -139,11 +144,16 @@
   - draw rollback 系テストを通す。
   - 実ブラウザで連続 draw を 10 hand 確認。
 - Resolution:
+  - 2026-04-30: 3-draw flow と card history の巻き戻りなしを Playwright Badugi flow で回帰確認済み。
+- Fixed Commit:
+  - prior implementation commits; verified in `190f76f` 以降の smoke run.
+- Repro Closed Date: `2026-04-30`
 - Residual Risk:
+  - 物理端末長時間操作では未確認。`BG-005` で継続する。
 
 ## BG-003
 
-- Status: `open`
+- Status: `verified`
 - Severity: `medium`
 - Area: `ui-layout`
 - First Seen: `2026-04-26`
@@ -174,11 +184,16 @@
 - Verification Plan:
   - single pot / side pot 両ケースを比較確認。
 - Resolution:
+  - 2026-04-30: single pot と side pot の overlay 表示は Playwright Badugi flow で回帰確認済み。
+- Fixed Commit:
+  - prior implementation commits; verified in `190f76f` 以降の smoke run.
+- Repro Closed Date: `2026-04-30`
 - Residual Risk:
+  - 物理端末の overlay 表示は未確認。`BG-005` で継続する。
 
 ## BG-004
 
-- Status: `open`
+- Status: `verified`
 - Severity: `medium`
 - Area: `input`
 - First Seen: `2026-04-26`
@@ -209,7 +224,12 @@
 - Verification Plan:
   - 連続 fold シナリオで 10 hand 通し確認。
 - Resolution:
+  - 2026-04-30: hand result 後の next hand と folded flag reset は Playwright Badugi flow で回帰確認済み。
+- Fixed Commit:
+  - prior implementation commits; verified in `190f76f` 以降の smoke run.
+- Repro Closed Date: `2026-04-30`
 - Residual Risk:
+  - 物理端末での next hand / history 長時間操作は未確認。`BG-005` で継続する。
 
 ## BG-005
 
@@ -252,7 +272,10 @@
 
 ## 5. 修正済み Bugs
 
-- まだ記録なし。
+- `BG-001` SB fold 後の action carousel 停止: `verified`
+- `BG-002` draw snapshot rollback: `verified`
+- `BG-003` single pot overlay の余分な pot block: `verified`
+- `BG-004` result overlay 後の next hand 操作停止: `verified`
 
 ## 6. 次に埋めるべき項目
 

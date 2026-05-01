@@ -8,6 +8,7 @@ const API_BASE = API_BASE_RAW.endsWith("/api")
 
 let flushing = false;
 let timer = null;
+let authBlockedToken = null;
 const ABSOLUTE_URL_REGEX = /^https?:\/\//i;
 
 function loadQueue() {
@@ -63,7 +64,10 @@ async function postJson(path, body, options = {}) {
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`sync failed ${res.status}: ${text}`);
+    const error = new Error(`sync failed ${res.status}: ${text}`);
+    error.status = res.status;
+    error.body = text;
+    throw error;
   }
   return res.json();
 }
@@ -75,6 +79,7 @@ export async function fetchSeatStats({
   limitHands = 200,
 } = {}) {
   if (!playerId) return null;
+  if (!accessToken || authBlockedToken === accessToken) return null;
   const baseUrl = buildApiBaseUrl();
   if (!baseUrl) return null;
   const params = new URLSearchParams({
@@ -277,16 +282,28 @@ async function sendJob(job, options = {}) {
 
 export async function flushQueue(options = {}) {
   if (flushing) return;
+  if (!options.accessToken) return;
+  if (authBlockedToken === options.accessToken) return;
   const queue = loadQueue();
   if (queue.length === 0) return;
   flushing = true;
   const remaining = [];
-  for (const job of queue) {
+  for (let index = 0; index < queue.length; index += 1) {
+    const job = queue[index];
     try {
       await sendJob(job, options);
     } catch (err) {
+      if (err?.status === 401 || err?.status === 403) {
+        authBlockedToken = options.accessToken;
+        console.warn("[sync] authentication failed; queue retained until next login", {
+          status: err.status,
+          jobType: job.type,
+        });
+        remaining.push(job, ...queue.slice(index + 1));
+        break;
+      }
       console.warn("[sync] job failed", job.type, err);
-      remaining.push(job);
+      remaining.push(job, ...queue.slice(index + 1));
       break;
     }
   }

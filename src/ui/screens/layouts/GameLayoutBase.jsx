@@ -53,6 +53,8 @@ export default function GameLayoutBase({
   const {
     ratingState,
     rankInfo,
+    gameTitle = "Badugi App",
+    labels = {},
     onNavigateTitle,
     onNavigateLeaderboard,
     onNavigateSettings,
@@ -87,6 +89,7 @@ export default function GameLayoutBase({
     p2pCaptureEnabled,
     onToggleP2pCapture,
     onExportP2pMatches,
+    aiDecisionSummary,
   } = sidePanelProps;
 
   const {
@@ -117,6 +120,7 @@ export default function GameLayoutBase({
     handResultSummary,
     onNextHand,
     nextHandLabel,
+    onReplayTarget,
     mode,
     heroBustOverlayVisible,
     heroBustSummary,
@@ -220,7 +224,7 @@ export default function GameLayoutBase({
             isMobileLayout ? "justify-between" : "justify-between gap-6"
           }`}
         >
-          <h1 className={`font-bold ${isMobileLayout ? "text-xl" : "text-2xl"}`}>Badugi App</h1>
+          <h1 className={`font-bold ${isMobileLayout ? "text-xl" : "text-2xl"}`}>{gameTitle}</h1>
           <div
             className={`flex ${
               isMobileLayout
@@ -229,7 +233,9 @@ export default function GameLayoutBase({
             }`}
           >
             <div className="text-right">
-              <p className="text-[10px] uppercase tracking-widest text-slate-400">Global Rating</p>
+              <p className="text-[10px] uppercase tracking-widest text-slate-400">
+                {labels.globalRating ?? "Global Rating"}
+              </p>
               <strong className="text-lg text-white">
                 {Math.round(ratingState.globalRating ?? 1500)}
               </strong>
@@ -239,7 +245,8 @@ export default function GameLayoutBase({
             </div>
             {!isMobileLayout && (
               <div className="text-[11px] text-slate-300">
-                Skill {Math.round(ratingState.skillRating ?? 1500)} | Mixed{" "}
+                {labels.skill ?? "Skill"} {Math.round(ratingState.skillRating ?? 1500)} |{" "}
+                {labels.mixed ?? "Mixed"}{" "}
                 {Math.round(ratingState.mixedRating ?? 1500)}
               </div>
             )}
@@ -249,7 +256,7 @@ export default function GameLayoutBase({
                 isMobileLayout ? "px-2 py-1 text-[10px]" : "px-3 py-1 text-[11px]"
               }`}
             >
-              Leaderboard
+              {labels.leaderboard ?? "Leaderboard"}
             </button>
           </div>
         </div>
@@ -259,16 +266,16 @@ export default function GameLayoutBase({
           }`}
         >
           <button type="button" onClick={onNavigateTitle} className="hover:text-yellow-400 transition">
-            Title
+            {labels.mainMenu ?? "Title"}
           </button>
           <button onClick={onNavigateSettings} className="hover:text-yellow-400 transition">
-            Settings
+            {labels.settings ?? "Settings"}
           </button>
           <button onClick={onNavigateProfile} className="hover:text-yellow-400 transition">
-            Profile
+            {labels.profile ?? "Profile"}
           </button>
           <button onClick={onNavigateHistory} className="hover:text-yellow-400 transition">
-            History
+            {labels.history ?? "History"}
           </button>
         </nav>
       </header>
@@ -310,6 +317,47 @@ export default function GameLayoutBase({
                 ))}
               </div>
             </div>
+            {aiDecisionSummary?.total > 0 && (
+              <div className="pointer-events-auto bg-black/70 rounded-lg p-3 text-xs space-y-3 shadow-lg">
+                <div className="flex items-center justify-between text-[11px] uppercase tracking-wide text-slate-400">
+                  <span>CPU Decisions</span>
+                  <strong className="text-emerald-300">{aiDecisionSummary.total}</strong>
+                </div>
+                <div className="flex flex-wrap gap-2 text-[11px] text-slate-300">
+                  {Object.entries(aiDecisionSummary.byTier ?? {}).map(([tier, count]) => (
+                    <span key={tier} className="rounded bg-slate-800/80 px-2 py-1">
+                      {tier}: {count}
+                    </span>
+                  ))}
+                </div>
+                <div className="space-y-1">
+                  {(aiDecisionSummary.recent ?? []).map((entry, index) => (
+                    <div
+                      key={`${entry.handId ?? "hand"}-${entry.seat ?? "seat"}-${entry.ts}-${index}`}
+                      className="rounded border border-white/10 bg-slate-950/70 px-2 py-1"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-slate-100 truncate">
+                          {entry.seatName}
+                        </span>
+                        <span className="text-[10px] uppercase text-slate-400">
+                          {entry.tierId ?? "tier?"}
+                        </span>
+                      </div>
+                      <div className="text-slate-300">
+                        {entry.phase} {entry.action}
+                        {entry.reason ? ` (${entry.reason})` : ""}
+                      </div>
+                      {entry.discardIndexes?.length > 0 && (
+                        <div className="text-[10px] text-slate-400">
+                          discard: {entry.discardIndexes.join(", ")}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -532,8 +580,9 @@ export default function GameLayoutBase({
       <HandResultOverlay
         visible={handResultVisible}
         summary={handResultSummary}
-        onNextHand={onNextHand}
-        nextHandLabel={nextHandLabel}
+        onNext={onNextHand}
+        buttonLabel={nextHandLabel}
+        onReplayTarget={onReplayTarget}
       />
       <HeroBustOverlay
         visible={heroBustOverlayVisible}

@@ -77,7 +77,11 @@ function HandHistoryRow({ entry, onReplay }) {
   );
 }
 
-export default function HandHistoryScreen({ onClose = () => {}, onReplay = () => {} }) {
+export default function HandHistoryScreen({
+  onClose = () => {},
+  onReplay = () => {},
+  language = "ja",
+}) {
   const [filterMode, setFilterMode] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [liveHandSnapshot, setLiveHandSnapshot] = useState(null);
@@ -120,6 +124,38 @@ export default function HandHistoryScreen({ onClose = () => {}, onReplay = () =>
       return typeof id === "string" && id.toLowerCase().includes(normalizedQuery);
     });
   }, [rows, filterMode, searchQuery]);
+  const isJapanese = language === "ja";
+  const copy = isJapanese
+    ? {
+        title: "ハンド履歴",
+        description:
+          "現在進行中のハンドと直近の完了ハンドを確認できます。行を選ぶとリプレイを開きます。",
+        refresh: "更新",
+        back: "ゲーム選択へ戻る",
+        search: "検索",
+        searchPlaceholder: "handId を検索…",
+        filter: "絞り込み",
+        all: "すべて",
+        live: "進行中",
+        completed: "完了",
+        noHands: "まだハンドが記録されていません。1ハンドプレイしてから戻ると表示されます。",
+        noMatches: "検索条件に一致するハンドはありません。",
+      }
+    : {
+        title: "Hand History",
+        description:
+          "Review the live hand plus recently completed hands. Tap any row to open the replay.",
+        refresh: "Refresh",
+        back: "Back",
+        search: "Search",
+        searchPlaceholder: "Search handId…",
+        filter: "Filter",
+        all: "All",
+        live: "LIVE",
+        completed: "Completed",
+        noHands: "No hands recorded yet. Play a hand and return to see the history.",
+        noMatches: "No hands match your search/filter.",
+      };
 
   return (
     <div className="min-h-screen bg-slate-950 px-4 py-6 text-slate-100">
@@ -127,9 +163,9 @@ export default function HandHistoryScreen({ onClose = () => {}, onReplay = () =>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.4em] text-emerald-300/80">MGX</p>
-            <h1 className="text-2xl font-semibold text-white">Hand History</h1>
+            <h1 className="text-2xl font-semibold text-white">{copy.title}</h1>
             <p className="text-sm text-slate-300/80">
-              Review the live hand plus recently completed hands. Tap any row to open the replay.
+              {copy.description}
             </p>
           </div>
           <div className="flex gap-3">
@@ -138,32 +174,36 @@ export default function HandHistoryScreen({ onClose = () => {}, onReplay = () =>
               className="rounded-full border border-white/20 px-4 py-2 text-xs uppercase tracking-[0.35em] text-white/90 hover:border-emerald-300/70 hover:text-emerald-200"
               onClick={refreshSnapshots}
             >
-              Refresh
+              {copy.refresh}
             </button>
             <button
               type="button"
               className="rounded-full border border-white/30 px-4 py-2 text-xs uppercase tracking-[0.35em] text-white/90 hover:border-emerald-300/70 hover:text-emerald-200"
               onClick={onClose}
             >
-              Back
+              {copy.back}
             </button>
           </div>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex-1">
-            <label className="mb-1 block text-xs text-white/60">Search</label>
+            <label className="mb-1 block text-xs text-white/60">{copy.search}</label>
             <input
               type="search"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search handId…"
+              placeholder={copy.searchPlaceholder}
               className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder-white/40 outline-none focus:ring-2 focus:ring-white/20"
             />
           </div>
           <div>
-            <p className="mb-1 text-xs text-white/60">Filter</p>
+            <p className="mb-1 text-xs text-white/60">{copy.filter}</p>
             <div className="inline-flex rounded-xl border border-white/10 bg-black/20 p-1">
-              {[{ label: "All", value: "all" }, { label: "LIVE", value: "live" }, { label: "Completed", value: "completed" }].map((option) => (
+              {[
+                { label: copy.all, value: "all" },
+                { label: copy.live, value: "live" },
+                { label: copy.completed, value: "completed" },
+              ].map((option) => (
                 <button
                   key={option.value}
                   type="button"
@@ -185,8 +225,8 @@ export default function HandHistoryScreen({ onClose = () => {}, onReplay = () =>
           {filteredRows.length === 0 && (
             <div className="rounded-2xl border border-white/10 bg-black/20 p-6 text-center text-sm text-white/60">
               {rows.length === 0
-                ? "No hands recorded yet. Play a hand and return to see the history."
-                : "No hands match your search/filter."}
+                ? copy.noHands
+                : copy.noMatches}
             </div>
           )}
           {filteredRows.map((entry) => (

@@ -10,7 +10,15 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:scrape": "python -m tests.scraping.runner smoke",
-    "variants:export": "node --experimental-json-modules scripts/exportVariants.mjs"
+    "variants:export": "node --experimental-json-modules scripts/exportVariants.mjs",
+    "ai:verify-models": "node scripts/verifyAiModelAssets.mjs",
+    "ai:install-models": "node scripts/installAiModelAssets.mjs",
+    "ai:build-bootstrap-models": "node scripts/runPythonTool.mjs src/rl/training/build_badugi_bootstrap_onnx.py",
+    "ai:train-badugi": "node scripts/runPythonTool.mjs src/rl/training/train_dqn.py",
+    "ai:export-badugi-onnx": "node scripts/runPythonTool.mjs src/rl/training/export_badugi_dqn_onnx.py",
+    "ai:evaluate-badugi-onnx": "node scripts/runPythonTool.mjs src/rl/training/evaluate_badugi_onnx.py",
+    "ai:gate-badugi-model": "node scripts/runPythonTool.mjs src/rl/training/gate_badugi_model.py",
+    "ai:evaluate-badugi-checkpoints": "node scripts/runPythonTool.mjs src/rl/training/evaluate_badugi_checkpoints.py"
   },
   "dependencies": {
     "onnxruntime-web": "^1.18.0",

@@ -77,10 +77,18 @@ class InMemoryRoomManager:
     room = self.get_room(room_id)
     if not room:
       raise KeyError("room not found")
+    if participant.id in room.players:
+      existing = room.players[participant.id]
+      existing.display_name = participant.display_name or existing.display_name
+      existing.role = participant.role or existing.role
+      existing.seat = participant.seat or existing.seat
+      existing.last_seen = time.monotonic()
+      return room
     if len(room.players) >= room.max_players:
       raise RuntimeError("room full")
     room.players[participant.id] = participant
-    room.stacks.setdefault(participant.id, 1500)
+    starting_stack = int(room.metadata.get("startingStack") or 1500)
+    room.stacks.setdefault(participant.id, starting_stack)
     room.bets.setdefault(participant.id, 0)
     if participant.id not in room.turn_order:
       room.turn_order.append(participant.id)
@@ -123,6 +131,8 @@ class InMemoryRoomManager:
       room.phase = "playing"
       room.folded = set()
       room.anti_cheat_warnings.clear()
+      for player in room.players.values():
+        player.ready = False
       room.mark_action()
     return room
 

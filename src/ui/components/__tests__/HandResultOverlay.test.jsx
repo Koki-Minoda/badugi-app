@@ -1,6 +1,6 @@
 import React from "react";
-import { describe, test, expect, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { describe, test, expect, afterEach, vi } from "vitest";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import HandResultOverlay from "../HandResultOverlay.jsx";
 
 const baseWinner = {
@@ -105,5 +105,33 @@ describe("HandResultOverlay", () => {
     expect(screen.getByTestId("hand-result-winner-hand-label").textContent).toBe(
       "2-7 Low 7-5-4-3-2",
     );
+  });
+
+  test("opens follow-up replay targets from the result overlay", () => {
+    const onReplayTarget = vi.fn();
+    const replayTarget = { handId: "hand-1", actionSeq: 4, seat: 0 };
+    render(
+      <HandResultOverlay
+        visible
+        summary={{
+          ...baseSummary,
+          followUpSummary: {
+            issueCount: 1,
+            topIssue: {
+              type: "weak_call",
+              seat: 0,
+              street: "BET",
+              detail: "Called with a weak hand.",
+            },
+            replayTarget,
+          },
+        }}
+        onReplayTarget={onReplayTarget}
+      />,
+    );
+
+    expect(screen.getByTestId("hand-result-follow-up").textContent).toContain("weak_call");
+    fireEvent.click(screen.getByTestId("hand-result-follow-up-replay"));
+    expect(onReplayTarget).toHaveBeenCalledWith(replayTarget);
   });
 });

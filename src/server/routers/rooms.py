@@ -60,6 +60,8 @@ def get_room_info(room_id: str):
     metadata=room.metadata,
     sequence_id=room.sequence_id,
   )
+  if hasattr(response, "model_dump"):
+    return ok(response.model_dump())
   return ok(response.dict())
 
 

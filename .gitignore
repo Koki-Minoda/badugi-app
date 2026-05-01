@@ -61,6 +61,8 @@ runs/
 structure.txt# RL artifacts
 rl/models/*
 !rl/models/.gitkeep
+rl/evaluations/*
+!rl/evaluations/.gitkeep
 
 # Playwright / scraping logs
 ms-playwright/

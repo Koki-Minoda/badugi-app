@@ -1175,8 +1175,8 @@ Badugi RL implementation notes:
 - `src/rl/tools/export_dataset.py` now emits transition records: `observation`, `action`, `reward`, `next_observation`, `done`, and `legal_actions`.
 - `src/rl/env/badugi_env.py` keeps its lightweight training mechanics, but its observation space now pads the legacy first 22 slots to schema v1 `96`.
 - ONNX model files should be placed under `public/models/` and referenced from `src/config/ai/modelRegistry.json` as `models/<variant>_<tier>_vN.onnx`.
-- Repo-local production `.onnx` asset presence is not guaranteed by this WG; verify it under `QA-03` before release.
-- Badugi tier assignment is fixed as `model-badugi-pro-v1`, `model-badugi-iron-v1`, and `model-badugi-worldmaster-v1`.
+- Repo-local production `.onnx` assets are required for Badugi beginner DQN / Pro / Iron / WorldMaster and must pass checksum verification under `QA-03` before release.
+- Badugi tier assignment is `model-badugi-beginner-dqn-v1`, `model-badugi-pro-v1`, `model-badugi-iron-v1`, and `model-badugi-worldmaster-v1`; beginner DQN is an experimental low-tier slot, not a promotion candidate.
 - Fallback priority is fixed as `ONNX -> rule-based -> deterministic safe`.
 
 Badugi RL test coverage:
@@ -1421,13 +1421,227 @@ Draw RL test coverage:
 - [x] `QA-06` `dealToBoards` / `resolvePot` / `resolveShowdown` の TODO-ready stub を、次フェーズで実ロジックへ接続する範囲を決める。
   - Step 1 の完成条件では入口作成までが対象。
   - Double Board / hi-lo / split pot を実ゲーム接続する前に、evaluator registry、side pot、board-by-board award を同時に接続する。
-- [ ] `QA-07` production API smoke を確認する。
+- [x] `QA-07` production API smoke を確認する。
   - `/api/variants`
   - `/api/variants/double_board_bomb_pot_omaha`
   - `/api/badugi/rl/decision`
   - nginx / backend / frontend の reverse proxy 経路で確認する。
   - local TestClient smoke is verified by `backend/tests/test_variants_api.py` and `backend/tests/test_badugi_rl.py`.
-  - production reverse proxy は稼働環境で別途確認する。
+  - 2026-05-01 production reverse proxy smoke:
+    - `GET https://mgx-poker.com/api/health` は `200` / `{"status":"ok","env":"prod","db":"ok"}`。
+    - `GET https://mgx-poker.com/api/variants` は `200`。`badugi` / `nl_holdem` / `limit_holdem` / `plo` / `double_board_bomb_pot_omaha` を含む。
+    - `GET https://mgx-poker.com/api/variants/double_board_bomb_pot_omaha` は `200`。`boards.count=2`、`betting.hasPreflop=false`、`forced_bets.type=bombPot`。
+    - `POST https://mgx-poker.com/api/badugi/rl/decision` は未認証では `401`、production smoke 用 E2E user で signup/login 後 Bearer token 付きでは `200`。`action=call`、`source=deterministic-safe`、`vector_size=96`、`fallback_order=["onnx","ruleBased","deterministicSafe"]`。
+- [x] `QA-08` Badugi を自動 smoke 上で完了扱いにするための最終テストを実施する。
+  - 目的: 自動テスト上は主要導線が通っているため、運用目線の desktop / mobile emulation / 回帰確認で自動 smoke 完了判定する。
+  - 完了条件:
+    - Desktop Chromium headless で login -> ring game -> Badugi flow regression を連続実行できる。
+    - 自動テスト内で bet / call / raise / fold / draw selected / pat / showdown / next hand を確認する。
+    - hero fold 後に追加操作ができないこと、folded player が winner にならないことを確認する。
+    - fixed-limit raise cap 到達後に追加 raise / bet が出ない、または押しても無効であることを確認する。
+    - hand result overlay、hand history、next hand 後の folded / selected / lastAction reset を確認する。
+    - Mobile emulation landscape でカードが隠れず、select -> Draw Selected ができる。
+    - Mobile emulation portrait では orientation gate が出る。
+    - 確認結果を `docs/bugs/badugi_browser_mobile_bug_tracker.md` に記録する。
+  - 完了後:
+    - Badugi は本文書上で `automated smoke complete` として扱う。
+    - 物理端末の iPhone Safari / Android Chrome は `OP-10` / `BG-005` の手動 QA 残件として扱う。
+  - 2026-04-30 確認:
+    - `npm test -- --run src/ui/__tests__/AppInitialization.test.jsx src/games/__tests__/badugiEngine.test.js src/games/badugi/logic/__tests__/roundFlow.test.js src/games/badugi/engine/__tests__ src/games/badugi/__tests__` は `11 passed / 80 passed`。
+    - `npm run lint` は `0 errors / 0 warnings`。
+    - `npm run build` は成功。chunk size warning は残るが build 失敗ではない。
+    - `npx playwright test tests/e2e/badugi-flow.spec.ts tests/e2e/authenticated-game-smoke.spec.ts tests/e2e/badugi-mtt-flow.spec.ts tests/e2e/mobile-app-smoke.spec.ts --project=badugi-flow` は `22 passed`。
+- [x] `QA-09` D01 / D02 / S01 / S02 を Badugi と同等レベルの自動テスト対象に引き上げる。
+  - 目的: 2-7 だけでなく A-5 / single draw も、Badugi と同じ観点で壊れていないことを担保する。
+  - 対象:
+    - `D01` 2-7 Triple Draw
+    - `D02` A-5 Triple Draw
+    - `S01` 2-7 Single Draw
+    - `S02` A-5 Single Draw
+  - 必須自動テスト観点:
+    - title -> auth -> variant picker -> ring game 起動。
+    - URL alias 起動。
+    - bet / call / raise / fold の action progression。
+    - raise cap 到達後の追加 bet / raise 抑止。
+    - hero fold 後の追加操作抑止、folded winner 除外。
+    - draw selected / pat / max discard count。
+    - D01 / D02 は 3 draw round、S01 / S02 は 1 draw round で showdown へ進む。
+    - D01 / S01 は 2-7 low label、D02 / S02 は A-5 low label が result / history に出る。
+    - hand result -> next hand 後に selected / folded / lastAction が reset される。
+    - mobile landscape で 5-card hand が footer に隠れず、select -> Draw Selected ができる。
+  - 必須確認コマンド:
+    - `npm test -- --run src/games/draw`
+    - `npm test -- --run src/ui/game/draw src/ui/game/__tests__/appVariantRouting.test.js`
+    - `npx playwright test tests/e2e/draw-lowball-app-smoke.spec.ts --project=badugi-flow`
+    - `npx playwright test tests/e2e/mobile-app-smoke.spec.ts --project=badugi-flow`
+  - 完了後:
+    - `D01` / `D02` / `S01` / `S02` の catalog status を `wip` から上げるかは、実機 smoke と hand history / replay の完了後に判断する。
+  - 2026-04-30 確認:
+    - `npm test -- --run src/games/draw` は `7 files / 43 tests passed`。D01/D02/S01/S02 engine/controller、raise cap、fold win、showdown label を確認。
+    - `npm test -- --run src/games/draw src/ui/game/draw src/ui/game/__tests__/appVariantRouting.test.js src/ui/utils/__tests__/handHistory.test.js` は `10 files / 56 tests passed`。hand history / replay 用 low metadata まで確認。
+    - `npm test -- --run src/ui/game/draw src/ui/game/__tests__/appVariantRouting.test.js` は `2 files / 7 tests passed`。UI adapter と URL alias routing を確認。
+    - `npx playwright test tests/e2e/draw-lowball-app-smoke.spec.ts --project=badugi-flow` は `5 passed`。D01/D02/S01/S02 の App routing、hand result、next hand、history low label を確認。
+    - `npx playwright test tests/e2e/mobile-app-smoke.spec.ts --project=badugi-flow` は `6 passed`。portrait orientation gate、Badugi/D01/D02/S01/S02 mobile landscape draw 操作を確認。
+- [x] `QA-10` CPU 強さ / P2P / CPU対戦後フォローアップの未完成範囲を実装タスクへ分解する。
+  - CPU 強さ:
+    - tier config / policy routing / model routing / ONNX adapter は実装済み。
+    - production `.onnx` asset は Badugi Pro / Iron / WorldMaster が bootstrap。再設計後50k DQN は WorldMaster 相当とは判定せず、Badugi beginner DQN として最弱/実験枠に降格。
+    - [x] `AI-01` Badugi の App CPU BET を `policyRouter` に接続し、tier ごとの fold / call / raise 差分を使う。
+    - [x] `AI-02` Badugi の App CPU DRAW を `policyRouter` に接続し、deadCards 優先で交換 index を選ぶ。
+    - [x] `AI-03` `drawAggression` の符号を整理し、強い tier が不要な overdraw をしないようにする。
+    - [x] `AI-04` production `.onnx` asset を配置し、model registry の checksum / version と一致させる。
+      - 2026-05-01 更新: `src/config/ai/modelRegistry.json` に `version` / `checksumSha256` / `productionRequired` を追加し、Badugi Beginner DQN / Pro / Iron / WorldMaster を production-required として明示。
+      - 2026-05-01 更新: `scripts/verifyAiModelAssets.mjs` と `npm run ai:verify-models` を追加。実 `.onnx` 配置後は SHA-256 と registry checksum が一致しない限り失敗する。
+      - 2026-05-01 更新: `scripts/installAiModelAssets.mjs` と `npm run ai:install-models` を追加。`--model model-id=/path/file.onnx` または `--source-dir /path/to/models --required-only` で供給された実 `.onnx` を `public/models/` へコピーし、registry checksum を自動更新できる。
+      - 2026-05-01 更新: `src/rl/training/build_badugi_bootstrap_onnx.py` と `npm run ai:build-bootstrap-models` を追加し、Badugi Pro / Iron / WorldMaster の bootstrap ONNX を生成。
+      - 2026-05-01 更新: `public/models/badugi_pro_v1.onnx` / `badugi_iron_v1.onnx` / `badugi_worldmaster_v1.onnx` を生成し、registry checksum と一致することを `npm run ai:verify-models` で確認。
+      - 2026-05-01 更新: `public/models/badugi_beginner_dqn_v1.onnx` を追加。これは `rl/models/badugi_masked_long_20260501/badugi_dqn_latest.pt` から export した50k DQNだが、評価上は WorldMaster ではないため beginner tier のみに接続。
+    - [x] `AI-05` ONNX unavailable 時の fallback smoke と、ONNX available 時の推論 smoke を分けて記録する。
+      - `src/ai/__tests__/onnxFallbackSmoke.test.js` は missing ONNX session -> `policy-router` -> deterministic-safe の fallback 順を確認。
+      - `src/ai/__tests__/onnxPolicyAdapterInference.test.js` は mock ONNX session available 時の推論 decode を確認。
+    - [x] `AI-06` tier ごとの実戦 smoke を行い、Beginner / Standard / Pro / WorldMaster で VPIP / PFR / drawCount / showdown 勝率の差を見る。
+      - [x] `AI-06a` `src/ai/tierPolicySmoke.js` / `src/ai/__tests__/tierPolicySmoke.test.js` で raiseRate / averageDrawCount / madeBadugiPatRate の tier 差を確認。
+      - [x] `AI-06 practice smoke` `runBadugiTierPracticeSmoke()` で短期 heads-up practice hand を回し、VPIP / PFR / averageDrawCount / showdownWinRate の tier 差を確認。
+        - Beginner / Standard / Pro / WorldMaster の fallback/rule-based policy で、WorldMaster は Beginner より PFR と showdownWinRate が高く、Pro 以上は drawCount が増えすぎないことを固定。
+      - [x] `AI-06b` showdown 勝率は production `.onnx` 配置後に長期 simulation として拡張する。
+        - 2026-05-01 更新: `npm run ai:train-badugi` と `npm run ai:export-badugi-onnx` を追加。短時間DQN smokeで checkpoint 作成、ONNX export、`onnx.checker` 検証まで確認。
+        - 2026-05-01 確認: `npm run ai:train-badugi -- --episodes 3 --max-steps 20 --warmup-steps 1 --batch-size 2 --log-interval 1 --save-interval 0 --output-dir /tmp/mgx-badugi-rl-smoke --device cpu` は成功。
+        - 2026-05-01 確認: `npm run ai:export-badugi-onnx -- --checkpoint /tmp/mgx-badugi-rl-smoke/badugi_dqn_latest.pt --output /tmp/mgx-badugi-rl-smoke/badugi_worldmaster_smoke.onnx --no-update-registry` は成功し、出力ONNXは 96 input / 6 output。
+        - 2026-05-01 追加: `npm run ai:evaluate-badugi-onnx` を追加し、実 `.onnx` を ONNX Runtime でロードして Badugi 環境上の avgReward / showdownWinRate / actionCounts を記録できるようにした。
+        - 2026-05-01 不具合修正: `BadugiEnv` の fold 終端、`last_result` reset、同枚数Badugiの低ランク比較を修正。旧環境で作った50k checkpointは本番昇格せず、修正後環境で再学習する。
+        - 2026-05-01 確認: `PYTHONPATH=src .venv/bin/python -m unittest src.rl.__tests__.test_badugi_env` は `7 tests passed`。
+        - 2026-05-01 確認: 旧50k checkpoint を export したONNXは `npm run ai:evaluate-badugi-onnx -- --model public/models/badugi_worldmaster_v1.onnx --episodes 500 --max-steps 200 --seed 20260501` で実ロードできたが、showdownWinRate が低く、修正前環境由来のため採用しない。
+        - 2026-05-01 確認: 修正後環境の 300 episodes smoke training / ONNX export / `npm run ai:evaluate-badugi-onnx -- --model /tmp/mgx-badugi-rl-fixed-smoke/badugi_worldmaster_fixed_smoke.onnx --episodes 100 --max-steps 100 --seed 20260501` は成功。
+        - 2026-05-01 追加修正: `BadugiEnv` の terminal showdown reward、fold罰、action 5 の limit raise alias 化、player draw の strategic discard、`train_every_steps` を追加。
+        - 2026-05-01 確認: `npm run ai:train-badugi -- --episodes 50000 --max-steps 200 --warmup-steps 10000 --batch-size 64 --log-interval 1000 --save-interval 5000 --output-dir rl/models/badugi_strategic_draw_fast_20260501 --train-every-steps 4 --device cpu` は完走。summary は `episodes=50000`, `global_steps=418846`, `avg_reward_last_100=-0.7625`。
+        - 2026-05-01 確認: 50k checkpoint export は成功。`npm run ai:evaluate-badugi-onnx -- --model /tmp/mgx-badugi-fast-latest.onnx --episodes 2000 --max-steps 200 --seed 20260502` は `showdownWinRate=0.146`。
+        - 2026-05-01 比較: 現行 bootstrap WorldMaster は同条件で `showdownWinRate=0.157`。50k DQN は bootstrap を上回らなかったため、`public/models/badugi_worldmaster_v1.onnx` へは昇格しない。
+        - 2026-05-01 再設計: DQN action index を frontend `BADUGI_RL_ACTIONS` に揃え、BET/DRAW の `legal_action_mask()`、mask付きepsilon-greedy、mask付きDouble DQN target、ONNX評価時mask、frontend ONNX decode maskを追加。
+        - 2026-05-01 再設計: opponent model をランダム寄りからhand strength連動の call / raise / fold に変更し、showdown勝敗を重く、fold勝ちを軽めにするrewardへ調整。
+        - 2026-05-01 確認: `npm run ai:train-badugi -- --episodes 5000 --max-steps 200 --warmup-steps 1000 --batch-size 64 --log-interval 1000 --save-interval 0 --output-dir rl/models/badugi_masked_probe_20260501 --train-every-steps 4 --device cpu` は成功。
+        - 2026-05-01 確認: `npm run ai:evaluate-badugi-onnx -- --model /tmp/mgx-badugi-masked-probe.onnx --episodes 500 --max-steps 200 --seed 20260501` は `showdownWinRate=0.186`。前回50k DQNの `0.146` と bootstrap比較値 `0.157` を短期probeでは上回った。
+        - 2026-05-01 確認: `npm run ai:train-badugi -- --episodes 50000 --max-steps 200 --warmup-steps 10000 --batch-size 64 --log-interval 1000 --save-interval 5000 --output-dir rl/models/badugi_masked_long_20260501 --train-every-steps 4 --device cpu` は完走。summary は `episodes=50000`, `global_steps=352089`, `avg_reward_last_100=-1.6120`。
+        - 2026-05-01 確認: `npm run ai:evaluate-badugi-onnx -- --model /tmp/mgx-badugi-masked-long-latest.onnx --episodes 2000 --max-steps 200 --seed 20260502` は `avgReward=-1.562`, `showdownWinRate=0.246`, `showdowns=1257`, `folds=743`。
+        - 2026-05-01 比較: 同条件の bootstrap WorldMaster は `avgReward=-1.750`, `showdownWinRate=0.157`, `showdowns=2000`, `folds=0`。50k DQN は baseline を上回ったが、`avgReward=-1.562` と負け越しで、`folds=743/2000` も多い。WorldMaster / Iron / Pro へは不適切。
+        - 2026-05-01 是正: 50k DQN を `public/models/badugi_beginner_dqn_v1.onnx` / `model-badugi-beginner-dqn-v1` へ降格し、`public/models/badugi_worldmaster_v1.onnx` は bootstrap checksum `5be226...` に戻した。
+        - 2026-05-01 是正: `resolveTierModelInfo()` は variant+tier 完全一致を generic tier model より優先する。これにより D03 beginner だけ DQN を使い、他variantの beginner は従来どおり `model-generic-v1` を使う。
+        - 2026-05-01 確認: `npm run ai:verify-models` は Badugi Beginner DQN / Pro / Iron / WorldMaster required asset 全てOK。
+        - 2026-05-01 確認: `npm run ai:evaluate-badugi-onnx -- --model public/models/badugi_beginner_dqn_v1.onnx --episodes 500 --max-steps 200 --seed 20260502` は `avgReward=-1.507`, `showdownWinRate=0.254`, `showdowns=335`, `folds=165`。
+        - 2026-05-01 確認: `npm run ai:evaluate-badugi-onnx -- --model public/models/badugi_worldmaster_v1.onnx --episodes 500 --max-steps 200 --seed 20260502` は bootstrap として `avgReward=-1.749`, `showdownWinRate=0.156`, `showdowns=500`, `folds=0`。
+        - 2026-05-01 確認: AI routing tests / BadugiEnv unittest / `npm run lint` / `npm run build` は成功。
+        - 2026-05-01 追加: `npm run ai:gate-badugi-model` を追加し、候補ONNXが `avgReward`, `showdownWinRate`, `foldRate`, baseline差分の昇格ゲートを満たさなければ non-zero exit で止める。
+        - 2026-05-01 確認: `npm run ai:gate-badugi-model -- --candidate public/models/badugi_beginner_dqn_v1.onnx --baseline public/models/badugi_worldmaster_v1.onnx --episodes 200 --report-only` は FAIL。現DQNは次tier昇格不可。
+        - 残件: Pro / Iron / WorldMaster へ昇格するには、複数 opponent profile で `avgReward >= 0` などの明確な昇格ゲートを満たす再学習済みモデルを用意する。
+      - [x] `AI-06c` Badugi gate を複数 opponent profile 対応に拡張し、random / tight-passive / aggressive / pat-heavy / draw-heavy / rule-based baseline を同一CLIで評価する。
+        - 2026-05-01 更新: `BadugiEnv` に opponent profile を追加。`random`, `balanced`, `loose_passive`, `loose_aggressive`, `tight_passive`, `tight_aggressive`, `pat_heavy`, `draw_heavy` を切り替えられる。
+        - 2026-05-01 更新: `npm run ai:train-badugi` は `--opponent-profiles` で profile round-robin 学習が可能。
+        - 2026-05-01 更新: `npm run ai:evaluate-badugi-onnx` / `npm run ai:gate-badugi-model` も opponent profile 指定に対応。gate は複数 profile x 複数 seed で集計する。
+        - 2026-05-01 更新: reward をチップEV寄りに調整。showdown / opponent fold は stack delta を加味し、弱手foldは軽罰、強手foldは重罰に分離。強い4-card Badugiのvalue bet/raiseを加点し、弱手raise/callを減点する。
+        - 2026-05-01 確認: profile mix 10k probe は `avg_reward_last_100=-1.6143`。ONNX gate は現 beginner DQN比で `avgRewardDelta=+0.0979` だが `showdownWinRate=0.179` と低く、次tierへは昇格しない。
+      - [x] `AI-06c-2` profile mix で 50k+ 再学習を回し、showdownWinRate を落とさず avgReward を改善する。候補は gate PASS まで public model へ反映しない。
+        - 2026-05-01 実行: `npm run ai:train-badugi -- --episodes 50000 --max-steps 160 --warmup-steps 10000 --batch-size 64 --epsilon-decay-episodes 35000 --epsilon-end 0.05 --log-interval 1000 --save-interval 10000 --output-dir rl/models/badugi_street_profile_50k_20260501 --train-every-steps 4 --opponent-profiles balanced,loose_passive,loose_aggressive,tight_passive,tight_aggressive,pat_heavy,draw_heavy --device cpu` は完走。
+        - 2026-05-01 結果: 50k 終盤は 45k 時点で `avg_reward=0.025`、50k 時点で `avg_reward=-0.163`、summary は `avg_reward_last_100=-0.6299`。
+        - 2026-05-01 評価: `/tmp/mgx-badugi-street-profile-50k.onnx` は multi-profile gate で `candidateAvgReward=1.633`, `showdownWinRate=0.283`, `foldRate=0.277`。beginner DQN比 `avgRewardDelta=0.7100`、WorldMaster bootstrap比 `0.8475`。
+        - 2026-05-01 判定: avgReward は勝ち越しだが showdownWinRate が Pro/Iron/WorldMaster gate の `0.35` 未満。`model-badugi-standard-dqn-v1` / `public/models/badugi_standard_dqn_v1.onnx` として standard tier にのみ昇格し、上位tierには入れない。
+      - [x] `AI-06c-3` Badugi RL observation / reward に starting hand、position、fixed-limit pot odds を明示し、降りすぎ・押しすぎを抑える。
+        - 2026-05-01 更新: `BadugiEnv._get_obs()` が frontend schema と同じ 22-31 slot に made cards / rank sum / high card / duplicate counts / startingHandStrength / potOdds / position / toCall / oneAway を出す。
+        - 2026-05-01 更新: action mask も 32-37 slot に出すため、training env / frontend ONNX feature が揃う。
+        - 2026-05-01 更新: fixed-limit の薄い価格では marginal draw をcall寄りにし、強い手のfoldと弱手raiseをより重く減点する。
+        - 2026-05-01 更新: bootstrap ONNX generator も starting hand / pot odds / position feature を参照するようにした。既存 public model は gate PASS まで再生成しない。
+        - 2026-05-01 確認: feature probe 1500 episodes は `avg_reward_last_100=-1.1723`。ONNX gate は現 beginner DQN比で `avgRewardDelta=+0.0646`, WorldMaster bootstrap比で `+0.1068` まで改善したが、`showdownWinRate=0.158` のため昇格しない。
+        - 残件: 長期学習では `avgReward` だけでなく `showdownWinRate` を落とさないよう、showdown value / draw quality の reward を追加検討する。
+      - [x] `AI-06c-4` ドロー残り回数・最終bet・相手最終ドロー枚数で押し引き評価を変える。
+        - 2026-05-01 更新: 簡易 BadugiEnv に 3rd draw 後の final BET round を追加。final BET 後に showdown へ進む。
+        - 2026-05-01 更新: `street_adjusted_strength` を追加し、同じK-high Badugiでも early street では許容、final BETでは弱い値へ落とす。
+        - 2026-05-01 更新: opponent last draw pressure を追加。final street で相手が2枚以上交換していれば薄いvalue/protection betを許容し、相手patならK/Q-high Badugiのbet/raiseを減点。
+        - 2026-05-01 更新: observation 38-41 slot に street-adjusted strength / opponent draw pressure / final bet flag / weak final Badugi flag を追加。action mask 32-37 は維持。
+        - 2026-05-01 更新: frontend `badugiObservationSchema.js` も同じ 38-41 slot を埋めるようにし、training env と本番ONNX入力のズレを防止。
+        - 2026-05-01 更新: bootstrap ONNX generator も street context / opponent draw pressure / weak final Badugi feature を参照するようにした。public model は gate PASS まで再生成しない。
+      - [x] `AI-06c-5` 中間CPU向けに bluff frequency / 相手のbet-raise頻度 / passivity / pat率 / 平均draw枚数 / foldability を observation と reward に追加し、相手を見る押し引きを学習させる。
+        - 2026-05-01 方針: 96次元入力サイズは維持し、42-47 slot に opponent tendency を追加する。既存ONNXは壊さず、新規学習モデルだけが利用する。
+        - 2026-05-01 方針: loose-aggressive / tight-passive などの opponent profile に bluff 頻度を持たせ、ブラフに対する call down / value raise と、foldable相手への semi-bluff を reward で分離する。
+        - 2026-05-01 更新: `BadugiEnv` が opponent action / draw history を追跡し、observation 42-47 に aggression / passivity / pat pressure / average draw count / foldability / profile bluff frequency を出す。
+        - 2026-05-01 更新: frontend `badugiObservationSchema.js` も同じ 42-47 slot を埋める。App state に該当統計がない場合は0に落とし、既存ゲーム進行へ影響させない。
+        - 2026-05-01 更新: reward に foldable相手への semi-bluff、sticky相手への弱手bluff減点、bluffy/aggressive相手への強手call/raise加点、tight-pat圧力へのfold許容を追加。
+        - 2026-05-01 実行: `npm run ai:train-badugi -- --episodes 50000 --max-steps 180 --warmup-steps 10000 --batch-size 64 --epsilon-decay-episodes 35000 --epsilon-end 0.05 --log-interval 1000 --save-interval 10000 --output-dir rl/models/badugi_opponent_read_50k_20260501 --train-every-steps 4 --opponent-profiles balanced,loose_passive,loose_aggressive,tight_passive,tight_aggressive,pat_heavy,draw_heavy --device cpu` は完走。
+        - 2026-05-01 結果: 50k 終盤は 45k 時点で `avg_reward=0.501`、50k 時点で `avg_reward=0.077`、summary は `avg_reward_last_100=-0.0344`。
+        - 2026-05-01 評価: `/tmp/mgx-badugi-opponent-read-50k.onnx` は beginner DQN比で `candidateAvgReward=2.092`, `showdownWinRate=0.344`, `foldRate=0.402`, `avgRewardDelta=0.9104`。standard tier gate はPASS。
+        - 2026-05-01 評価: 現行 standard DQN比では `avgRewardDelta=0.3139`、showdownWinRate は `0.342 -> 0.344` と微増、foldRate は `0.499 -> 0.402` に改善。ただし Pro gate の `showdownWinRate >= 0.35` にわずかに届かないため、Pro/Iron/WorldMaster へは昇格しない。
+        - 2026-05-01 反映: `public/models/badugi_standard_dqn_v2.onnx` / `model-badugi-standard-dqn-v2` を追加し、D03 standard tier は v2 を優先する。
+      - [x] `AI-06d` gate PASS 時だけ beginner -> standard/pro/iron/worldmaster のどのtierへ入れるかを決める promotion report を生成する。
+        - 2026-05-01 方針: standard / pro / iron / worldmaster の tier threshold を gate report に含め、最高到達tierだけを `recommendedTier` として出す。gate失敗時は `beginner` に留める。
+        - 2026-05-01 更新: `npm run ai:gate-badugi-model` が `[BADUGI PROMOTION] recommendedTier=... eligibleTiers=...` を出力し、JSON report には `promotion.tierThresholds` / `failedTierChecks` も含める。
+      - [x] `AI-06f` standard v2 は standard全体ではなく、opponent reading 型の別CPUキャラクターへ割り当てる。standard v1 は beginner へ落とさず、standard baseline / fallback として残す。
+        - 2026-05-01 方針: `badugi-standard-reader` は `model-badugi-standard-dqn-v2` を使う。通常の D03 standard は `model-badugi-standard-dqn-v1` に戻し、beginner は `model-badugi-beginner-dqn-v1` のままにする。
+        - 2026-05-01 理由: standard v1 は「弱い」よりも「fold過多のstandard」であり、beginnerへ付けると初心者CPUとして不自然になる。beginnerは低tier専用DQN、standard v1は比較基準、standard readerはv2と分ける。
+        - 2026-05-01 更新: `src/config/ai/cpuCharacters.json` と `src/ai/cpuCharacters.js` を追加し、characterIdからmodel overrideを解決できるようにした。
+        - 2026-05-01 更新: `selectModelForVariant()` は character-specific model を characterId 指定時だけ返す。characterIdなしの D03 standard は v1、`badugi-standard-reader` 指定時だけ v2。
+      - [x] `AI-06g` 50k一括学習ではなく、20k前後のcheckpointごとに export / gate評価し、方針が悪ければそこで止める学習評価フローを作る。
+        - 2026-05-01 方針: `--save-interval 20000` で 20k / 40k / latest を保存し、各checkpointをONNX exportして standard baseline と比較する。
+        - 2026-05-01 方針: 判定は avgReward だけでなく showdownWinRate / foldRate / profile別の偏りを見る。Pro昇格は `showdownWinRate >= 0.35` を最低ラインにする。
+        - 2026-05-01 更新: `npm run ai:evaluate-badugi-checkpoints` を追加。checkpoint dir と pattern を指定し、各checkpointを一時ONNXへexportして baseline と gate比較し、promotion reportをJSON保存する。
+        - 2026-05-01 確認: `badugi_dqn_020000_*.pt` に対する smoke 評価は成功。短い2episode smokeでは `recommendedTier=beginner` を出力し、report JSONを生成した。
+        - 2026-05-01 評価: `badugi_opponent_read_50k_20260501` の 10k/20k/30k/40k/50k checkpoint を `episodes=100`, seeds `20260502,20260503`, 7 profilesで比較。40kは `showdownWinRate=0.406` だが `foldRate=0.461` でfold過多、50kは `foldRate=0.404` だが `showdownWinRate=0.330` に低下。次はfold勝ち偏重を抑えてshowdown価値を上げる20k probeで確認する。
+      - [ ] `AI-06h` Pro昇格候補向けに reward を showdown 重視へ再調整し、20k probeで `showdownWinRate >= 0.35` と `foldRate <= 0.40` を同時に狙う。
+        - 2026-05-01 方針: opponent fold の terminal reward を軽くし、showdown win reward を上げる。final street のmade Badugi / 安いone-away draw はfoldしすぎないよう call 側のrewardを強める。
+        - 2026-05-01 調査: 20k probe は `showdownWinRate=0.441` まで上がったが `foldRate=0.549` で不合格。profile別ログで `pat_heavy` のaction countが異常に多く、相手pat時に `DRAW` から `BET` へ戻らない学習環境バグを検出。
+        - 2026-05-01 修正: `BadugiEnv._opponent_draw_action()` で opponent pat 時も phase / bet state を reset して `BET` へ戻す。修正後に20k probeを再実行する。
+        - 2026-05-01 再評価: pat修正後20k probeは `showdownWinRate=0.000`, `foldRate=1.000` で失敗。ログ上、`CALL/DRAW2` 系の非終端shaping rewardを大量に積む抜け道を学習していた。
+        - 2026-05-01 修正: `BadugiEnv.step()` で terminal reward と shaping reward を分離し、非終端shaping rewardを `[-1.0, 0.08]` にクリップ。勝敗・showdown結果を主報酬に戻す。
+        - 2026-05-01 再評価: capped 10k probe でも `foldRate=1.000`。fold直前まで非終端加点を積む抜け道が残ったため、非終端shapingの正報酬を0上限にし、`player_fold` terminal rewardを明示的に負にする。
+        - 2026-05-01 確認: terminal主導に戻した 3k probe は `foldRate=0.345` まで正常化し、fold exploit は解消。ただし `avgReward=-6.163`, `showdownWinRate=0.130` と弱いため、次は長期学習の前に warm start / behavior cloning / rule-based teacher を検討する。
+      - [x] `AI-06i` terminal主導rewardで学習初期が弱くなりすぎる問題に対し、rule-based teacher / behavior cloning / expert replay を入れて、fold exploitなしでshowdownWinRateを立ち上げる。
+        - 方針: 現在の terminal主導rewardは安全だが sparse reward 寄りで3k時点が弱い。次は既存 policyRouter / Badugi evaluator から教師actionを作り、初期 replay buffer または imitation pretrain を入れる。
+        - 2026-05-01 更新: `npm run ai:train-badugi` に `--teacher-warmup-episodes` を追加。teacher policyの遷移を replay buffer に先に投入し、DQNの初期探索を補助する。
+        - 2026-05-01 確認: teacher warmup 1000 + DQN 3k probe は `foldRate=0.120` でfold exploitなし。ただし `showdownWinRate=0.097`, `recommendedTier=beginner` のため、現時点では上位CPUへ昇格しない。
+      - [x] `AI-06j` Badugi starting hand / opening range の基本条件を明文化し、teacher / warm start のルールに使う。
+        - 2026-05-01 調査: 旧 `rl/badugi_env_train.py` / `rl/train_agent.py` は残っているが、pot / bet / drawCount だけの簡易Q学習で、A27等の具体的な初動レンジ表は未実装。
+        - 2026-05-01 調査: 現行で近い実装は `src/rl/training/build_badugi_bootstrap_onnx.py` の starting strength / pot odds / position feature。これを teacher 生成に再利用する。
+        - 方針: 例として A-2-7 以上の3-card one-away / 低い3-card Badugi draw は heads-up では原則 open / bet 参加。K-high等の rough made Badugi は early street では参加可、final street では相手draw枚数とbet圧力で抑制。
+        - 方針: 全4枚初手の組み合わせを評価し、1回draw後に全初手分布の上位50%より強く進展する確率が50%以上ある hand class を heads-up continue range に入れる。first draw前の teacher action はこの range / position / price で決める。
+        - 2026-05-01 更新: `src/rl/training/badugi_starting_ranges.py` を追加。全初手分布の中央値、1ドロー後top-half到達確率、A-2-7-or-better判定、heads-up continue/open rule、teacher action を実装。
+        - 2026-05-01 修正: teacher warmup の実行速度を守るため、3-card one-away は exact enumeration、2枚以上drawの弱い形はレンジ表の軽量推定に分離。学習時に全探索で詰まらないようにした。
+        - 2026-05-01 確認: A-2-7 one-away は premium/open、弱い重複手は facing bet でfold、draw phase は手役形に応じたdraw countを返す unit test を追加。
+      - [ ] `AI-06k` teacher warmup 後のDQNが showdown に弱い問題を改善する。次は imitation loss / supervised pretrain / evaluator baseline の replay比率固定を入れ、3k-20k probeで `showdownWinRate >= 0.25` まで立ち上げてから長期学習へ進む。
+      - [ ] `AI-06e` 2-7 / A-5 用の実ONNXを生成・配置する。現状は `model-27draw-iron-v1` (`D01/S01`) と `model-a5draw-iron-v1` (`D02/S02`) の registry / feature builder / routing test はあるが、実 `.onnx` は optional 未配置で、App draw CPU は rule-based fallback が主経路。
+    - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
+  - P2P:
+    - data capture / export / sync / security test の部品はある。
+    - player-facing lobby / match session / realtime turn sync / reconnect / result sync は未完成。
+    - [x] `P2P-01` MVP 仕様を固定する: private room / public room / invite / reconnect / timeout / result sync。
+      - MVP は Friend Match から private room を作成し、host を join 済みにして room code / WebSocket URL を表示する。
+      - public room / invite link / reconnect / timeout / result sync は後続の P2P-03 以降で段階実装する。
+    - [x] `P2P-02` server session model と persistence 方針を設計する。
+      - `docs/p2p-session-model.md` に runtime state / DB-backed target tables / conflict rules / current implementation status を固定。
+    - [x] `P2P-03` client state sync と conflict resolution を実装する。
+      - [x] `P2P-03a` frontend room API util と Friend Match create/join 導線を `/api/rooms` へ接続する。
+      - [x] `P2P-03b` join by room code と WebSocket receive loop を UI state に接続する。
+      - [x] `P2P-03c` sequenceId による stale event discard / reconnect replay を実装する。
+        - Friend Match preview は最新 `sequenceId` より古いイベントを破棄し、`history` event を replay entry として展開する。
+      - [x] `P2P-03d` WebSocket event を実ゲーム table state へ接続する。
+        - 2026-05-01 更新: Friend Match 画面で `room_state` / `updated_state` / `secure_deal` / `showdown` を live table state に反映し、phase / pot / handId / player stack / bet / ready / folded / showdown winner を表示する。
+        - `Ready` / `Call` / `Draw` / `Fold` を WebSocket `reaction` / `action` として送信できるようにし、P2P専用画面内で同期状態を操作できる。
+        - server 側は duplicate reconnect join を安全に扱い、room metadata の `startingStack` を初期 stack に反映する。
+    - [x] `P2P-04` Badugi 2人対戦 smoke: login -> room -> ready -> hand -> draw -> showdown -> next hand。
+      - 2026-05-01 部分完了: `src/server/tests/test_p2p_sync.py` で room -> ready -> hand -> draw -> showdown -> next hand の WebSocket server smoke を追加。認証付きブラウザ2画面 smoke は未実施。
+      - 2026-05-01 更新: `tests/e2e/p2p-friend-match-smoke.spec.ts` で authenticated menu -> Friend Match -> create room -> Ready -> Draw -> showdown -> next hand をブラウザ smoke 化。guest は mock WebSocket event で再現し、UI の live table state 表示を確認する。
+      - Vite dev server に `/ws` proxy を追加し、実 backend WebSocket へ接続する次段階の土台を用意。
+    - [x] `P2P-05` disconnect / reconnect / browser refresh の復帰 smoke を追加する。
+      - 2026-05-01 部分完了: WebSocket reconnect 後に recent history が replay され、直前 action を復元できる server smoke を追加。browser refresh で UI が復帰する実ブラウザ smoke は未実施。
+      - 2026-05-01 更新: Friend Match の active room を `sessionStorage` に保存し、browser refresh 後に同じ room へ reconnect して history replay を表示できることを Playwright で確認。
+  - CPU 対戦後フォローアップ:
+    - history / replay / EV estimator / feature extraction の基盤はある。
+    - CPU 戦終了後にミスプレイ候補を自動抽出し、振り返り画面へ誘導する UX は未完成。
+    - [x] `FOLLOW-01` post-match summary の表示位置と導線を決める。
+      - summary は hand 終了後の review entry point と ReplayScreen link の間に置き、実表示接続は `FOLLOW-05` で行う。
+    - [x] `FOLLOW-02` EV delta threshold と mistake severity を定義する。
+      - `src/games/badugi/analysis/followUpAnalyzer.js` の `FOLLOW_UP_THRESHOLDS` で low / medium / high を固定。
+    - [x] `FOLLOW-03` Badugi draw mistake detection: dead card を残した / made hand を崩した / overdraw / underdraw。
+      - `analyzeBadugiDrawMistakes(...)` と `buildPostMatchFollowUpSummary(...)` を追加。
+    - [x] `FOLLOW-04` BET mistake detection: weak call / missed value raise / unnecessary bluff / cap 到達時の誤操作。
+      - `analyzeBadugiBetMistakes()` で `metadata.betInfo` の hand / toCall / canRaise / cap 情報から weak call、missed value raise、unnecessary bluff、cap 到達後の攻撃を検出する。
+    - [x] `FOLLOW-05` ReplayScreen へ該当 hand / street / action に直接戻る link を追加する。
+      - hand history action の `seq` を canonical replay event の `actionSeq` として保持し、Hand Result の Follow-up から該当フレームへジャンプできる。
 
 ## 12.2 Playwright / Auth / Operational QA
 
@@ -1466,6 +1680,9 @@ Draw RL test coverage:
   - 残件:
     - 実機 Safari / Android Chrome の手動確認。
     - mobile landscape で hand result / next hand / history までの長時間操作確認。
+  - 2026-04-30 自動 smoke 完了:
+    - Badugi desktop / authenticated / MTT / mobile emulation は `QA-08` で完了。
+    - 物理端末での touch / Safari orientation / Android Chrome hitbox はこの実行環境から確認できないため、手動 QA として残す。
 - [x] `OP-11` repository-wide lint の既存エラーを整理する。
   - `npm run lint` は 2026-04-30 時点で既存の `process` / unused / duplicate member / App.jsx 未整理などにより fail していた。
   - 2026-04-30 再採取: `npm run lint` は `132 problems (106 errors, 26 warnings)` で fail。
@@ -1505,19 +1722,26 @@ Draw RL test coverage:
     - [x] `LINT-B02` acting-seat guard: `findNextDrawActorSeat` 依存を stable 化する。
     - [x] `LINT-C01` auto CPU draw callback: draw / deck / logging / sync helper deps を整理し、DRAW 進行の regression を付ける。
     - [x] `LINT-C02` forced bet callback: bet action log / controller sync deps を整理し、BET action smoke を付ける。
-    - [ ] `LINT-C03` custom hand injection: `applyDeckSnapshot` 依存を整理し、showdown / hand-history 注入テストを付ける。
-    - [ ] `LINT-C04` showdown callback: `goShowdownNow` を `useCallback` 化し、`resolveHandImmediately` との deps を整理する。
-    - [ ] `LINT-C05` tournament start / hydration: `buildTournamentEntrants` / deck / HUD hydration deps を整理し、MTT smoke を付ける。
-    - [ ] `LINT-D01` debug-only effects: `debugLog` / `phaseTagLocal` を ref または guarded helper に寄せ、挙動差分を出さない。
-    - [ ] `LINT-D02` E2E driver helper: `drawSelected` / tournament HUD deps を整理し、authenticated Playwright smoke を付ける。
-    - [ ] `LINT-D03` NPC action timer: turn progression deps を整理し、Badugi flow Playwright を付ける。
+    - [x] `LINT-C03` custom hand injection: `applyDeckSnapshot` 依存を整理し、showdown / hand-history 注入テストを付ける。
+    - [x] `LINT-C04` showdown callback: `goShowdownNow` の最新参照を ref 化し、`resolveHandImmediately` との deps を整理する。
+    - [x] `LINT-C05` tournament start / hydration: `buildTournamentEntrants` / deck / HUD hydration deps を整理し、MTT smoke を付ける。
+    - [x] `LINT-D01` debug-only effects: `debugLog` / `phaseTagLocal` を ref または guarded helper に寄せ、挙動差分を出さない。
+    - [x] `LINT-D02` E2E driver helper: `drawSelected` / tournament HUD deps を整理し、authenticated Playwright smoke を付ける。
+    - [x] `LINT-D03` NPC action timer: turn progression deps を整理し、Badugi flow Playwright を付ける。
     - 2026-04-30 確認: `LINT-A01` - `LINT-A03` 対応後、repository-wide lint は `0 errors / 16 warnings`。
     - 2026-04-30 確認: Vitest 4 files / 57 tests、`npm run build`、`tests/e2e/authenticated-game-smoke.spec.ts --project=badugi-flow` は通過。
     - 2026-04-30 確認: `LINT-B01` / `LINT-B02` 対応後、App hook warning は `16` から `14` へ減少。
     - 2026-04-30 確認: `npm run lint` は `0 errors / 14 warnings`、Vitest 5 files / 61 tests、`npm run build`、Badugi Playwright 17 tests は通過。
     - 2026-04-30 確認: `LINT-C01` 対応後、App hook warning は `14` から `13` へ減少。Vitest 4 files / 55 tests、`npm run build`、Badugi Playwright 17 tests は通過。
     - 2026-04-30 確認: `LINT-C02` 対応後、App hook warning は `13` から `12` へ減少。Vitest 3 files / 51 tests、`npm run build`、authenticated Playwright 1 test、Badugi Playwright 16 tests は通過。
-- [ ] `OP-12` D01 / D02 / S01 / S02 を Badugi と同等の browser smoke 対象に引き上げる。
+    - 2026-04-30 確認: `LINT-C03` 対応後、App hook warning は `12` から `11` へ減少。Vitest 3 files / 51 tests、`npm run build`、Badugi Playwright 16 tests は通過。
+    - 2026-04-30 確認: `LINT-C04` 対応後、App hook warning は `11` から `10` へ減少。Vitest 3 files / 51 tests、`npm run build`、Badugi Playwright 16 tests は通過。全体実行時に競合していた E2E forced fold log は `__forceInstant` 経路に限定して安定化。
+    - 2026-04-30 確認: `LINT-C05` 対応後、App hook warning は `10` から `8` へ減少。Vitest 2 files / 24 tests、`npm run build`、MTT Playwright 2 tests、Badugi fold Playwright 4 tests は通過。Badugi / D01 の fixed-limit raise cap と、hero fold 後の追加行動防止 / folded winner 除外を確認。
+    - 2026-04-30 確認: `LINT-D01` 対応後、App hook warning は `8` から `3` へ減少。Vitest 2 files / 6 tests、`npm run build`、authenticated Playwright 1 test は通過。debug-only log と controller sync phaseTag は ref 経由にし、effect の実行条件は変更しない。
+    - 2026-04-30 確認: `LINT-D02` 対応後、App hook warning は `3` から `2` へ減少。Vitest 1 file / 1 test、`npm run build`、authenticated Playwright 1 test、MTT Playwright 2 tests は通過。E2E driver の draw / tournament HUD getter は ref 経由で最新実装を読む。
+    - 2026-04-30 確認: `LINT-D03` 対応後、App hook warning は `2` から `1` へ減少。Vitest 3 files / 51 tests、`npm run build`、Badugi Playwright 16 tests は通過。NPC timer は players / action helpers を ref 経由にし、BET / DRAW turn progression の timer 条件は維持。
+    - 2026-04-30 確認: 最後の `startNextHand` warning を解消し、App hook warning は `1` から `0` へ減少。repository-wide `npm run lint` は `0 errors / 0 warnings`。Vitest 3 files / 51 tests、`npm run build`、Badugi Playwright 16 tests は通過。
+- [x] `OP-12` D01 / D02 / S01 / S02 を Badugi と同等の browser smoke 対象に引き上げる。
   - [x] engine / controller / controller e2e が各 draw variant で通ることを確認。
   - [x] 5-card draw snapshot を UI table props に変換する `DrawLowballUIAdapter` を追加。
   - [x] D01 / D02 / S01 / S02 と engine key alias を `GameUIAdapterRegistry` に登録できる helper を追加。
@@ -1530,6 +1754,8 @@ Draw RL test coverage:
   - [x] App の controller session path に D01 / D02 の最小接続を追加する。
     - draw controller snapshot を session / table props 正本にする。
     - draw controller 管理 variant では Badugi deck integrity check を誤適用しない。
+  - [x] 2026-04-30: D01 / D02 / S01 / S02 の headless browser smoke を `draw-lowball-app-smoke.spec.ts` で完了。
+  - [x] 2026-04-30: mobile emulation は portrait gate と Badugi / D01 / D02 / S01 / S02 landscape draw 操作を `mobile-app-smoke.spec.ts` で確認。
     - NPC BET / DRAW は draw controller の `getCpuAction` / `applyAction` を通す。
   - [x] D01 / D02 の Playwright smoke を追加する。
     - title -> auth -> URL alias -> menu -> ring game
@@ -1542,9 +1768,14 @@ Draw RL test coverage:
     - `menu-ring` は既存 Badugi 即開始導線として維持。
     - `menu-variant-select` を追加し、variant picker から D01 / D02 / S01 / S02 を選べるようにした。
   - [x] automated mobile viewport で 5-card hand と footer overlap の代表確認を追加する。
-    - D01 mobile landscape で `player-0-card-4` が viewport 内に収まり、card select / Draw Selected が通る。
+    - D01 / D02 / S01 / S02 mobile landscape で `player-0-card-4` が viewport 内に収まり、card select / Draw Selected が通る。
     - portrait は game 開始後に orientation gate を表示する現仕様を確認。
   - 注意: 2026-04-30 時点で headless desktop / mobile emulation smoke は通過。実スマホ / 実機ブラウザ手動確認は OP-10 / QA-05 の残件。
+  - 完了確認:
+    - fold / folded winner 除外 / raise cap は draw engine/controller Vitest で固定済み。
+    - D01 / S01 は 2-7 low label、D02 / S02 は A-5 low label と final low ranks を App result / RL history 経由で確認済み。
+    - D01 / D02 / S01 / S02 の mobile landscape smoke は全 variant に拡張済み。
+    - hand history / replay の variantId / final low ranks / pot winner 復元は `src/ui/utils/__tests__/handHistory.test.js` と App smoke の latest RL record で確認済み。
 - [x] `OP-13` draw family の App 接続を段階実装する。
   - 目的:
     - D01 / D02 / S01 / S02 を Badugi と同じ「Title -> Auth -> Menu -> Ring game -> action -> draw -> result」導線で検証できる状態にする。

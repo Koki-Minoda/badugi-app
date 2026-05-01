@@ -19,7 +19,22 @@ function normalizeVariantId(value) {
 
 function isDeuceToSevenVariant(variantId) {
   const normalized = normalizeVariantId(variantId);
-  return normalized === "D01" || normalized === "deuce_to_seven_triple_draw";
+  return (
+    normalized === "D01" ||
+    normalized === "S01" ||
+    normalized === "deuce_to_seven_triple_draw" ||
+    normalized === "deuce_to_seven_single_draw"
+  );
+}
+
+function isAceToFiveVariant(variantId) {
+  const normalized = normalizeVariantId(variantId);
+  return (
+    normalized === "D02" ||
+    normalized === "S02" ||
+    normalized === "ace_to_five_triple_draw" ||
+    normalized === "ace_to_five_single_draw"
+  );
 }
 
 function evaluateVariantHand(hand = [], variantId = "badugi") {
@@ -30,6 +45,13 @@ function evaluateVariantHand(hand = [], variantId = "badugi") {
       handName: formatLowHandLabel(evaluation, { lowType: "27" }),
     };
   }
+  if (isAceToFiveVariant(variantId)) {
+    const evaluation = evaluateLowHand({ cards: hand, lowType: "A5" });
+    return {
+      ...evaluation,
+      handName: formatLowHandLabel(evaluation, { lowType: "A5" }),
+    };
+  }
   return evaluateBadugi(hand);
 }
 
@@ -38,6 +60,9 @@ function getEvaluationLabel(evaluation, variantId = "badugi") {
   if (evaluation.handName) return evaluation.handName;
   if (isDeuceToSevenVariant(variantId)) {
     return formatLowHandLabel(evaluation, { lowType: "27" });
+  }
+  if (isAceToFiveVariant(variantId)) {
+    return formatLowHandLabel(evaluation, { lowType: "A5" });
   }
   return null;
 }
@@ -104,7 +129,7 @@ export function appendHandHistoryAction({
     : Array.isArray(drawInfo?.replacedCards)
     ? drawInfo.replacedCards.length
     : undefined;
-  seatEntry.actions.push({
+  const action = {
     seq: ++seqCounter,
     street: normalizedStreet,
     type: normalizedType,
@@ -119,7 +144,9 @@ export function appendHandHistoryAction({
     timestamp: Date.now(),
     metadata: metadata ? clone(metadata) : undefined,
     userId: userId ?? currentRecord?.userId ?? null,
-  });
+  };
+  seatEntry.actions.push(action);
+  return action;
 }
 
 export function updateHandHistorySeat(seat, updates = {}) {
@@ -166,7 +193,8 @@ function buildPotEntries(pots = []) {
               finalLowRanks:
                 Array.isArray(entry?.finalLowRanks)
                   ? [...entry.finalLowRanks]
-                  : isDeuceToSevenVariant(variantId) && Array.isArray(evaluation?.metadata?.ranks)
+                  : (isDeuceToSevenVariant(variantId) || isAceToFiveVariant(variantId)) &&
+                    Array.isArray(evaluation?.metadata?.ranks)
                   ? [...evaluation.metadata.ranks]
                   : undefined,
             };
@@ -201,7 +229,8 @@ export function finalizeHandHistoryRecord({ players = [], pots = [], uiSummary =
         seatEntry.evaluation = clone(evaluateVariantHand(hand, currentRecord.variantId));
         seatEntry.handLabel = getEvaluationLabel(seatEntry.evaluation, currentRecord.variantId);
         if (
-          isDeuceToSevenVariant(currentRecord.variantId) &&
+          (isDeuceToSevenVariant(currentRecord.variantId) ||
+            isAceToFiveVariant(currentRecord.variantId)) &&
           Array.isArray(seatEntry.evaluation?.metadata?.ranks)
         ) {
           seatEntry.finalLowRanks = [...seatEntry.evaluation.metadata.ranks];

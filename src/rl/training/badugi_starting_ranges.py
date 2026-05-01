@@ -1,0 +1,197 @@
+"""Badugi starting-hand range and teacher policy helpers.
+
+The range logic is intentionally explicit: it gives the DQN a sane opening
+baseline before sparse terminal rewards take over. Ranks use the training env
+encoding: 0 = Ace, 12 = King.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from functools import lru_cache
+from itertools import combinations
+from typing import Iterable, Sequence
+
+from rl.env.badugi_env import Card, build_deck, evaluate_badugi
+
+
+@dataclass(frozen=True)
+class StartingHandRange:
+    made_cards: int
+    ranks: tuple[int, ...]
+    high_rank: int
+    rank_sum: int
+    draw_count: int
+    made_score_percentile: float
+    one_draw_top_half_probability: float
+    is_a27_or_better: bool
+    is_premium: bool
+    should_continue_heads_up: bool
+    recommended_draw_count: int
+
+
+def _score_key(score: tuple[int, list[int]] | tuple[int, tuple[int, ...]]) -> tuple[int, int, int, int, int]:
+    count, ranks_raw = score
+    ranks = tuple(ranks_raw)
+    padded = ranks + (13,) * (4 - len(ranks))
+    # Higher tuple is better: more made cards, then lower high card, etc.
+    return (count, *(13 - rank for rank in padded))
+
+
+def _hand_key(hand: Sequence[Card]) -> tuple[Card, ...]:
+    return tuple(sorted((int(rank), int(suit)) for rank, suit in hand))
+
+
+@lru_cache(maxsize=1)
+def all_starting_score_keys() -> tuple[tuple[int, int, int, int, int], ...]:
+    keys = [_score_key(evaluate_badugi(hand)) for hand in combinations(build_deck(), 4)]
+    return tuple(sorted(keys))
+
+
+@lru_cache(maxsize=1)
+def median_starting_score_key() -> tuple[int, int, int, int, int]:
+    keys = all_starting_score_keys()
+    return keys[len(keys) // 2]
+
+
+def score_percentile(score: tuple[int, Sequence[int]]) -> float:
+    keys = all_starting_score_keys()
+    key = _score_key((score[0], tuple(score[1])))
+    # Manual binary search avoids importing bisect in hot paths and keeps the
+    # "at least as strong" interpretation clear.
+    lo = 0
+    hi = len(keys)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if keys[mid] <= key:
+            lo = mid + 1
+        else:
+            hi = mid
+    return lo / max(1, len(keys))
+
+
+def best_badugi_keep(hand: Sequence[Card]) -> list[Card]:
+    keep: list[Card] = []
+    used_ranks: set[int] = set()
+    used_suits: set[int] = set()
+    for card in sorted(hand, key=lambda item: item[0]):
+        rank, suit = card
+        if rank in used_ranks or suit in used_suits:
+            continue
+        keep.append(card)
+        used_ranks.add(rank)
+        used_suits.add(suit)
+    return keep
+
+
+def _estimated_multi_draw_top_half_probability(count: int, ranks: Sequence[int]) -> float:
+    """Fast range-table estimate for hands drawing two or more cards.
+
+    Exact enumeration is reserved for three-card one-away hands, where the
+    decision changes materially. Two-card and one-card keeps are common during
+    teacher warmup, and exact C(48, 2/3) expansion per state is too slow for
+    training without adding much strategic signal.
+    """
+    if count <= 1 or not ranks:
+        return 0.05
+    high_rank = max(ranks)
+    rank_sum = sum(ranks)
+    if count == 2:
+        # Strong two-card lows can improve, but they are not automatic opens
+        # in fixed-limit Badugi unless price/position is favorable.
+        low_bonus = max(0.0, (8 - high_rank) * 0.045)
+        wheel_bonus = 0.08 if 0 in ranks and 1 in ranks else 0.0
+        compact_bonus = max(0.0, (10 - rank_sum) * 0.015)
+        return min(0.48, 0.16 + low_bonus + wheel_bonus + compact_bonus)
+    return 0.0
+
+
+@lru_cache(maxsize=200_000)
+def one_draw_top_half_probability_cached(hand_key: tuple[Card, ...]) -> float:
+    hand = list(hand_key)
+    keep = best_badugi_keep(hand)
+    draw_count = max(0, 4 - len(keep))
+    if draw_count <= 0:
+        return 1.0 if _score_key(evaluate_badugi(hand)) >= median_starting_score_key() else 0.0
+    if draw_count >= 2:
+        score = evaluate_badugi(keep)
+        return _estimated_multi_draw_top_half_probability(score[0], tuple(score[1]))
+    unavailable = set(hand)
+    deck = [card for card in build_deck() if card not in unavailable]
+    total = 0
+    top_half = 0
+    median_key = median_starting_score_key()
+    for draw_cards in combinations(deck, draw_count):
+        total += 1
+        next_hand = keep + list(draw_cards)
+        if _score_key(evaluate_badugi(next_hand)) >= median_key:
+            top_half += 1
+    return top_half / max(1, total)
+
+
+def one_draw_top_half_probability(hand: Sequence[Card]) -> float:
+    return one_draw_top_half_probability_cached(_hand_key(hand))
+
+
+def classify_starting_hand(hand: Sequence[Card]) -> StartingHandRange:
+    score = evaluate_badugi(hand)
+    count, ranks_raw = score
+    ranks = tuple(sorted(ranks_raw))
+    high_rank = max(ranks) if ranks else 12
+    rank_sum = sum(ranks) if ranks else 99
+    draw_count = max(0, 4 - count)
+    percentile = score_percentile((count, ranks))
+    improvement = one_draw_top_half_probability(hand)
+    is_a27_or_better = count >= 3 and high_rank <= 6 and 0 in ranks and 1 in ranks
+    is_premium = (
+        (count == 4 and high_rank <= 8)
+        or is_a27_or_better
+        or (count == 3 and improvement >= 0.62 and high_rank <= 8)
+    )
+    should_continue = (
+        is_premium
+        or percentile >= 0.5
+        or improvement >= 0.5
+        or (count == 4 and high_rank <= 11)
+    )
+    return StartingHandRange(
+        made_cards=count,
+        ranks=ranks,
+        high_rank=high_rank,
+        rank_sum=rank_sum,
+        draw_count=draw_count,
+        made_score_percentile=percentile,
+        one_draw_top_half_probability=improvement,
+        is_a27_or_better=is_a27_or_better,
+        is_premium=is_premium,
+        should_continue_heads_up=should_continue,
+        recommended_draw_count=min(3, draw_count),
+    )
+
+
+def teacher_action(env) -> int:
+    """Return a legal Badugi action index for the current training env state."""
+    hand_range = classify_starting_hand(env.player_hand)
+    mask = env.legal_action_mask()
+    if env.phase == "DRAW":
+        action = hand_range.recommended_draw_count
+        return action if action < len(mask) and mask[action] > 0 else env.safe_fallback_action()
+
+    to_call = max(0, env.current_bet - env.player_bet)
+    can_raise = env.bet_round < env.max_bets and env.player_stack > to_call
+    if to_call > 0:
+        if not hand_range.should_continue_heads_up and mask[0] > 0:
+            return 0
+        if hand_range.is_premium and can_raise and mask[4] > 0:
+            return 4
+        return 2 if mask[2] > 0 else env.safe_fallback_action()
+
+    if hand_range.is_premium and can_raise:
+        if mask[4] > 0:
+            return 4
+        if mask[3] > 0:
+            return 3
+    if hand_range.should_continue_heads_up and can_raise and hand_range.one_draw_top_half_probability >= 0.6:
+        if mask[3] > 0:
+            return 3
+    return 1 if mask[1] > 0 else env.safe_fallback_action()

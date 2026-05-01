@@ -404,6 +404,38 @@ describe("DeuceToSevenTripleDrawEngine", () => {
     expect(result.state.pots).toEqual([]);
   });
 
+  it("does not let paired, straight, flush, or ace-low hands beat a clean 2-7 low", () => {
+    const engine = new DeuceToSevenTripleDrawEngine();
+    const weakHands = [
+      ["4S", "4D", "7C", "3H", "2S"],
+      ["6S", "5D", "4C", "3H", "2S"],
+      ["7S", "5S", "4S", "3S", "2S"],
+      ["AS", "5D", "4C", "3H", "2S"],
+    ];
+
+    for (const weakHand of weakHands) {
+      const state = engine.initHand({
+        seatConfig: ["HUMAN", "CPU"],
+        startingStack: 500,
+        dealerIndex: 0,
+      });
+      state.players[0].hand = ["7S", "5D", "4C", "3H", "2S"];
+      state.players[1].hand = weakHand;
+      state.pots = [{ amount: 100, eligiblePlayerIds: ["seat-0", "seat-1"] }];
+
+      const result = engine.resolveShowdown(state);
+
+      expect(result.summary[0].payouts).toEqual([
+        expect.objectContaining({
+          seatIndex: 0,
+          payout: 100,
+          handName: "2-7 Low 7-5-4-3-2",
+          finalLowRanks: [7, 5, 4, 3, 2],
+        }),
+      ]);
+    }
+  });
+
   it("splits tied 2-7 showdown pots by seat order with odd-chip remainder", () => {
     const engine = new DeuceToSevenTripleDrawEngine();
     const state = engine.initHand({

@@ -52,7 +52,35 @@ describe("policyRouter", () => {
       context,
       evaluation: { ranks: [1, 2], kicker: 10 },
     });
-    expect(decision.drawCount).toBeGreaterThan(2);
+    expect(decision.drawCount).toBe(2);
     vi.restoreAllMocks();
+  });
+
+  it("loose tiers can overdraw weak made hands", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.05);
+    const looseContext = buildAiContext({
+      variantId: "D03",
+      tierConfig: { ...tier, id: "beginner", drawAggression: 0.2 },
+      opponentStats: {},
+    });
+    const decision = computeDrawDecision({
+      context: looseContext,
+      evaluation: { ranks: [1, 2], kicker: 10 },
+    });
+    expect(decision.drawCount).toBe(3);
+    vi.restoreAllMocks();
+  });
+
+  it("prefers dead cards when selecting discard indexes", () => {
+    const decision = computeDrawDecision({
+      context,
+      hand: ["A♣", "2♦", "K♣", "9♠"],
+      evaluation: {
+        ranks: [1, 2, 9],
+        deadCards: ["K♣"],
+      },
+    });
+    expect(decision.drawCount).toBe(1);
+    expect(decision.discardIndexes).toEqual([2]);
   });
 });

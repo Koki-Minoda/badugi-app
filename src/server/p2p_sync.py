@@ -91,6 +91,8 @@ class P2PSyncController:
       await self._handle_leave(session, payload)
     elif event == "action":
       await self._handle_action(session, payload, time.monotonic() - previous_seen)
+    elif event == "reaction":
+      await self._handle_reaction(session, payload)
     elif event == "heartbeat":
       await self.send_event(session, "heartbeat", {"timestamp": time.time(), "pendingActions": 0})
     else:
@@ -155,6 +157,8 @@ class P2PSyncController:
       room.anti_cheat_warnings.append(f"{player_id} action too fast ({delta:.3f}s)")
     if action_type == "fold":
       room.folded.add(player_id)
+    elif action_type == "draw":
+      room.phase = "draw"
     else:
       bet_amount = min(amount, room.stacks.get(player_id, 0))
       room.bets[player_id] = room.bets.get(player_id, 0) + bet_amount
@@ -173,6 +177,41 @@ class P2PSyncController:
     await self.broadcast_state(room)
     if self._is_showdown(room):
       await self._finalize_hand(room)
+
+  async def _handle_reaction(self, session: ClientSession, payload: dict):
+    room = room_manager.get_room(session.room_id)
+    if not room:
+      await self.send_event(session, "error", {"code": "room_missing", "message": "room gone", "recoverable": False})
+      return
+    player_id = session.player_id or payload.get("playerId")
+    participant = room.players.get(player_id or "")
+    reaction_type = (payload.get("type") or "").lower()
+    if not participant:
+      await self.send_event(
+        session,
+        "error",
+        {"code": "missing_player", "message": "player not registered", "recoverable": False},
+      )
+      return
+    if reaction_type == "ready":
+      participant.ready = True
+      room_manager.record_log(
+        room.id,
+        {
+          "playerId": participant.id,
+          "event": "ready",
+          "phase": room.phase,
+        },
+      )
+      await self.broadcast_room_state(room.id)
+      if room.phase == "waiting" and len(room.players) >= 2 and all(player.ready for player in room.players.values()):
+        await self._start_next_hand(room.id)
+    else:
+      await self.send_event(
+        session,
+        "error",
+        {"code": "invalid_reaction", "message": f"Unsupported reaction {reaction_type}", "recoverable": True},
+      )
 
   def _advance_turn(self, room):
     if not room.turn_order:
@@ -207,6 +246,19 @@ class P2PSyncController:
       "roomId": room.id,
       "phase": room.phase,
       "players": list(room.players.keys()),
+      "playerStates": [
+        {
+          "id": player.id,
+          "displayName": player.display_name,
+          "ready": player.ready,
+          "role": player.role,
+          "seat": player.seat,
+          "stack": room.stacks.get(player.id, 0),
+          "bet": room.bets.get(player.id, 0),
+          "folded": player.id in room.folded,
+        }
+        for player in room.players.values()
+      ],
       "spectators": list(room.spectators.keys()),
       "sequenceId": room.sequence_id,
       "handId": room.hand_id,

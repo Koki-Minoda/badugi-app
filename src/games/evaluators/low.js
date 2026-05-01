@@ -79,10 +79,6 @@ export function evaluateLowHand({
       if (straight) penalty += PENALTY_STRAIGHT;
       if (flush) penalty += PENALTY_FLUSH;
     }
-    if (variant === "a5" && unique.size < 5) {
-      penalty += PENALTY_PAIR;
-    }
-
     const score = penalty * 1_000_000 + encodeLowRanks(sortedRanks);
     if (!best || score < best.rankPrimary) {
       best = {

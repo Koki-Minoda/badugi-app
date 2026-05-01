@@ -46,7 +46,7 @@ function ModeButton({
   );
 }
 
-function SimpleModal({ title, children, onClose }) {
+function SimpleModal({ title, children, onClose, closeLabel = "Close" }) {
   return (
     <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/70 px-4 py-6">
       <div className="w-full max-w-md space-y-4 rounded-3xl border border-white/10 bg-slate-950/90 p-6">
@@ -57,7 +57,7 @@ function SimpleModal({ title, children, onClose }) {
             onClick={onClose}
             className="rounded-full border border-white/20 px-3 py-1 text-sm text-white hover:bg-white/10"
           >
-            Close
+            {closeLabel}
           </button>
         </div>
         {children}
@@ -81,14 +81,11 @@ export default function MainMenuScreen({
   const [showRules, setShowRules] = useState(false);
   const [activeMode, setActiveMode] = useState("default");
   const locale = MGX_LOCALES[language] ?? MGX_LOCALES[MGX_DEFAULT_LOCALE];
+  const modalCopy = locale.modal ?? MGX_LOCALES[MGX_DEFAULT_LOCALE].modal;
 
   const handleVariantSelected = (variantId) => {
     setVariantModalOpen(false);
     if (!variantId) return;
-    if (onSelectRing) {
-      onSelectRing(variantId);
-      return;
-    }
     const search = variantId ? `?variant=${variantId}` : "";
     navigate(`/game${search}`);
   };
@@ -161,7 +158,7 @@ export default function MainMenuScreen({
               </button>
               <button
                 type="button"
-                aria-label="Open Settings"
+              aria-label="Open Settings"
                 onClick={() => setShowSettings(true)}
                 className="h-10 w-10 rounded-full border border-white/20 text-lg text-white transition hover:border-emerald-300/60 hover:text-emerald-200"
               >
@@ -196,7 +193,7 @@ export default function MainMenuScreen({
                   onSelectRing();
                   return;
                 }
-                setVariantModalOpen(true);
+                navigate("/games?mode=cash");
               }}
               onHover={() => setActiveMode("cash")}
               onBlur={resetInfoPanel}
@@ -204,12 +201,18 @@ export default function MainMenuScreen({
             <button
               type="button"
               data-testid="menu-variant-select"
-              onClick={() => setVariantModalOpen(true)}
+              onClick={() => {
+                if (onSelectRing) {
+                  onSelectRing();
+                  return;
+                }
+                navigate("/games?mode=cash");
+              }}
               onMouseEnter={() => setActiveMode("cash")}
               onBlur={resetInfoPanel}
               className="rounded-2xl border border-emerald-300/35 bg-emerald-400/10 px-5 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100 transition hover:border-emerald-200/70 hover:bg-emerald-300/15"
             >
-              Select Variant
+              {locale.menu.variantSelect}
             </button>
             <ModeButton
               label={locale.menu.tournament}
@@ -242,7 +245,7 @@ export default function MainMenuScreen({
               onBlur={resetInfoPanel}
             />
             <ModeButton
-              label={locale.menu?.handHistory ?? "Hand History"}
+              label={locale.menu.handHistory}
               isActive={activeMode === "history"}
               testId="menu-history"
               onClick={() => {
@@ -279,17 +282,21 @@ export default function MainMenuScreen({
         isOpen={isVariantModalOpen}
         onClose={() => setVariantModalOpen(false)}
         onSelectVariant={handleVariantSelected}
+        labels={modalCopy}
       />
 
       {showSettings && (
-        <SimpleModal title={`Settings · ${language === "ja" ? "日本語" : "English"}`} onClose={() => setShowSettings(false)}>
+        <SimpleModal
+          title={`${modalCopy.settingsTitle} · ${language === "ja" ? "日本語" : "English"}`}
+          onClose={() => setShowSettings(false)}
+          closeLabel={modalCopy.close}
+        >
           <div className="space-y-4 text-sm text-slate-300">
             <p>
-              Settings will be added later. Use table overlays for quick toggles. Language switching is available
-              below.
+              {modalCopy.settingsBody}
             </p>
             <label className="flex items-center justify-between rounded-xl border border-slate-700/60 bg-slate-900/60 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-200">
-              <span>Language / 言語</span>
+              <span>{modalCopy.language}</span>
               <select
                 value={language}
                 onChange={(event) => {
@@ -309,9 +316,13 @@ export default function MainMenuScreen({
         </SimpleModal>
       )}
       {showRules && (
-        <SimpleModal title="Game Rules" onClose={() => setShowRules(false)}>
+        <SimpleModal
+          title={modalCopy.rulesTitle}
+          onClose={() => setShowRules(false)}
+          closeLabel={modalCopy.close}
+        >
           <p className="text-sm text-slate-300">
-            Detailed rules for each variant will appear here in a future update.
+            {modalCopy.rulesBody}
           </p>
         </SimpleModal>
       )}

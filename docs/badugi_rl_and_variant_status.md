@@ -1581,6 +1581,17 @@ Draw RL test coverage:
         - 2026-05-01 方針: 判定は avgReward だけでなく showdownWinRate / foldRate / profile別の偏りを見る。Pro昇格は `showdownWinRate >= 0.35` を最低ラインにする。
         - 2026-05-01 更新: `npm run ai:evaluate-badugi-checkpoints` を追加。checkpoint dir と pattern を指定し、各checkpointを一時ONNXへexportして baseline と gate比較し、promotion reportをJSON保存する。
         - 2026-05-01 確認: `badugi_dqn_020000_*.pt` に対する smoke 評価は成功。短い2episode smokeでは `recommendedTier=beginner` を出力し、report JSONを生成した。
+        - 2026-05-01 評価: `badugi_opponent_read_50k_20260501` の 10k/20k/30k/40k/50k checkpoint を `episodes=100`, seeds `20260502,20260503`, 7 profilesで比較。40kは `showdownWinRate=0.406` だが `foldRate=0.461` でfold過多、50kは `foldRate=0.404` だが `showdownWinRate=0.330` に低下。次はfold勝ち偏重を抑えてshowdown価値を上げる20k probeで確認する。
+      - [ ] `AI-06h` Pro昇格候補向けに reward を showdown 重視へ再調整し、20k probeで `showdownWinRate >= 0.35` と `foldRate <= 0.40` を同時に狙う。
+        - 2026-05-01 方針: opponent fold の terminal reward を軽くし、showdown win reward を上げる。final street のmade Badugi / 安いone-away draw はfoldしすぎないよう call 側のrewardを強める。
+        - 2026-05-01 調査: 20k probe は `showdownWinRate=0.441` まで上がったが `foldRate=0.549` で不合格。profile別ログで `pat_heavy` のaction countが異常に多く、相手pat時に `DRAW` から `BET` へ戻らない学習環境バグを検出。
+        - 2026-05-01 修正: `BadugiEnv._opponent_draw_action()` で opponent pat 時も phase / bet state を reset して `BET` へ戻す。修正後に20k probeを再実行する。
+        - 2026-05-01 再評価: pat修正後20k probeは `showdownWinRate=0.000`, `foldRate=1.000` で失敗。ログ上、`CALL/DRAW2` 系の非終端shaping rewardを大量に積む抜け道を学習していた。
+        - 2026-05-01 修正: `BadugiEnv.step()` で terminal reward と shaping reward を分離し、非終端shaping rewardを `[-1.0, 0.08]` にクリップ。勝敗・showdown結果を主報酬に戻す。
+        - 2026-05-01 再評価: capped 10k probe でも `foldRate=1.000`。fold直前まで非終端加点を積む抜け道が残ったため、非終端shapingの正報酬を0上限にし、`player_fold` terminal rewardを明示的に負にする。
+        - 2026-05-01 確認: terminal主導に戻した 3k probe は `foldRate=0.345` まで正常化し、fold exploit は解消。ただし `avgReward=-6.163`, `showdownWinRate=0.130` と弱いため、次は長期学習の前に warm start / behavior cloning / rule-based teacher を検討する。
+      - [ ] `AI-06i` terminal主導rewardで学習初期が弱くなりすぎる問題に対し、rule-based teacher / behavior cloning / expert replay を入れて、fold exploitなしでshowdownWinRateを立ち上げる。
+        - 方針: 現在の terminal主導rewardは安全だが sparse reward 寄りで3k時点が弱い。次は既存 policyRouter / Badugi evaluator から教師actionを作り、初期 replay buffer または imitation pretrain を入れる。
       - [ ] `AI-06e` 2-7 / A-5 用の実ONNXを生成・配置する。現状は `model-27draw-iron-v1` (`D01/S01`) と `model-a5draw-iron-v1` (`D02/S02`) の registry / feature builder / routing test はあるが、実 `.onnx` は optional 未配置で、App draw CPU は rule-based fallback が主経路。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
   - P2P:

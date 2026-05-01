@@ -206,6 +206,18 @@ class BadugiEnvTest(unittest.TestCase):
         self.assertTrue(env.done)
         self.assertEqual(env.terminal_reason, "showdown")
 
+    def test_opponent_pat_advances_draw_phase_to_bet(self):
+        env = BadugiEnv()
+        env.reset(seed=1)
+        env.phase = "DRAW"
+        env.opponent_hand = [(0, 0), (1, 1), (2, 2), (3, 3)]
+
+        env._opponent_draw_action()
+
+        self.assertEqual(env.opponent_last_draw, 0)
+        self.assertEqual(env.phase, "BET")
+        self.assertEqual(env.current_bet, env._bet_size())
+
     def test_k_badugi_is_worse_on_final_bet_than_early_street(self):
         env = BadugiEnv()
         env.reset(seed=1)
@@ -278,6 +290,53 @@ class BadugiEnvTest(unittest.TestCase):
             foldable_env._reward_shaping(foldable_features, 3),
             sticky_env._reward_shaping(sticky_features, 3),
         )
+
+    def test_showdown_ready_hand_prefers_call_over_fold(self):
+        env = BadugiEnv()
+        env.reset(seed=1)
+        env.phase = "BET"
+        env.round = env.max_rounds
+        env.pot = 18
+        env.current_bet = 2
+        env.player_bet = 0
+        env.player_hand = [(0, 0), (3, 1), (6, 2), (8, 3)]
+        features = env._hand_features(env.player_hand)
+
+        fold_reward = env._reward_shaping(features, 0)
+        call_reward = env._reward_shaping(features, 2)
+
+        self.assertGreater(call_reward, fold_reward)
+
+    def test_terminal_reward_values_showdown_more_than_fold_win(self):
+        fold_env = BadugiEnv()
+        fold_env.reset(seed=1)
+        fold_env.terminal_reason = "opponent_fold"
+        fold_env.done = True
+        fold_env.player_stack = fold_env.starting_stack + 4
+
+        showdown_env = BadugiEnv()
+        showdown_env.reset(seed=1)
+        showdown_env.terminal_reason = "showdown"
+        showdown_env.last_result = 1
+        showdown_env.done = True
+        showdown_env.player_stack = showdown_env.starting_stack + 4
+
+        self.assertGreater(showdown_env._terminal_reward(), fold_env._terminal_reward())
+
+    def test_non_terminal_shaping_reward_is_capped(self):
+        env = BadugiEnv()
+
+        self.assertEqual(env._cap_shaping_reward(10.0), 0.0)
+        self.assertEqual(env._cap_shaping_reward(-10.0), -1.0)
+
+    def test_player_fold_terminal_reward_is_negative(self):
+        env = BadugiEnv()
+        env.reset(seed=1)
+        env.done = True
+        env.terminal_reason = "player_fold"
+        env.player_stack = env.starting_stack
+
+        self.assertLess(env._terminal_reward(), 0)
 
 
 if __name__ == "__main__":

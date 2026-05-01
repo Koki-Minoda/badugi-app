@@ -252,28 +252,30 @@ class BadugiEnv(gym.Env):
     if self.done:
       return self._get_obs(), 0.0, True, False, {}
 
-    reward = 0.0
+    shaping_reward = 0.0
     features = self._hand_features(self.player_hand)
-    reward += self._reward_shaping(features, action)
+    shaping_reward += self._reward_shaping(features, action)
     if not self.is_legal_action(action):
       action = self.safe_fallback_action()
-      reward -= 1.0
+      shaping_reward -= 1.0
 
     if self.phase == "BET":
-      reward += self._handle_bet_action(action, features)
+      shaping_reward += self._handle_bet_action(action, features)
     elif self.phase == "DRAW":
-      reward += self._handle_draw_action(action)
+      shaping_reward += self._handle_draw_action(action)
 
+    terminal_reward = 0.0
     if self.done:
-      reward += self._terminal_reward()
+      terminal_reward = self._terminal_reward()
     else:
       self._opponent_turn()
-      reward += self._terminal_reward()
+      terminal_reward = self._terminal_reward()
 
     terminated = self.done
     truncated = False
     obs = self._get_obs()
     info = {}
+    reward = self._cap_shaping_reward(shaping_reward) + terminal_reward
     return obs, reward, terminated, truncated, info
 
   def render(self):
@@ -492,6 +494,11 @@ class BadugiEnv(gym.Env):
     if features.count == 4:
       self.opponent_last_draw = 0
       self._record_opponent_draw(0)
+      self.phase = "BET"
+      self.player_bet = 0
+      self.opponent_bet = 0
+      self.current_bet = self._bet_size()
+      self.bet_round = 0
       return
     keep = self._best_badugi_keep(self.opponent_hand)
     draw_amount = max(0, min(3, 4 - len(keep) + self.opponent_profile.draw_bias))
@@ -571,14 +578,19 @@ class BadugiEnv(gym.Env):
       return 0.0
     stack_delta_reward = (self.player_stack - self.starting_stack) / 25.0
     if self.terminal_reason == "opponent_fold":
-      return 0.8 + stack_delta_reward
+      return 0.45 + stack_delta_reward
     if self.terminal_reason == "showdown":
       if self.last_result == 1:
-        return 2.6 + stack_delta_reward
+        return 3.1 + stack_delta_reward
       if self.last_result == -1:
-        return -2.6 + stack_delta_reward
+        return -2.9 + stack_delta_reward
       return stack_delta_reward
+    if self.terminal_reason == "player_fold":
+      return -1.5 + stack_delta_reward
     return 0.0
+
+  def _cap_shaping_reward(self, reward: float) -> float:
+    return max(-1.0, min(0.0, reward))
 
   def _judge(self, hand: Sequence[Card]) -> Tuple[int, List[int]]:
     return evaluate_badugi(hand)
@@ -635,10 +647,21 @@ class BadugiEnv(gym.Env):
         reward -= 0.18
       if to_call > 0 and action == 0:
         tight_pat_raise_pressure = opponent_pat_pressure > 0.5 and opponent_aggression < 0.22
-        reward += 0.22 if continue_value < pot_odds + 0.03 or tight_pat_raise_pressure else -0.35
+        if features.count >= 4 and strength >= 0.54:
+          reward -= 0.5
+        elif features.one_away and self.round < self.max_rounds and pot_odds <= 0.25:
+          reward -= 0.3
+        else:
+          reward += 0.18 if continue_value < pot_odds + 0.03 or tight_pat_raise_pressure else -0.35
       if to_call > 0 and action == 2:
         call_edge = continue_value + (0.08 if opponent_aggression >= 0.38 and strength >= 0.42 else 0.0)
-        reward += 0.18 if call_edge >= pot_odds else -0.14
+        if features.count >= 4 and strength >= 0.54:
+          call_edge += 0.08
+        if features.one_away and self.round < self.max_rounds and pot_odds <= 0.25:
+          call_edge += 0.07
+        reward += 0.22 if call_edge >= pot_odds else -0.14
+      if to_call > 0 and action == 2 and self.round >= self.max_rounds and features.count >= 4:
+        reward += 0.12
       if to_call > 0 and action in (3, 4) and opponent_aggression >= 0.38 and strength >= 0.62:
         reward += 0.16
       if action == 0 and to_call == 0:

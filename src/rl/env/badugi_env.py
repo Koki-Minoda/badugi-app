@@ -528,6 +528,11 @@ class BadugiEnv(gym.Env):
     reward = 0.0
     if self.phase == "BET":
       strength = self._hand_strength(features)
+      to_call = max(0, self.current_bet - self.player_bet)
+      pot_odds = self._pot_odds(to_call)
+      position_bonus = 0.08 if not self._player_is_first_to_act() else -0.04
+      draw_equity = 0.06 * max(0, self.max_rounds - self.round) if features.one_away else 0.0
+      continue_value = min(1.0, strength + position_bonus + draw_equity)
       if action == 4 and features.one_away:
         reward += 0.15
       if action == 4 and features.is_nuts:
@@ -536,12 +541,20 @@ class BadugiEnv(gym.Env):
         reward += 0.25
       if action in (3, 4) and strength < 0.35:
         reward -= 0.45
+      if action in (3, 4) and to_call == 0 and not self._player_is_first_to_act() and strength >= 0.45:
+        reward += 0.12
+      if action in (3, 4) and to_call == 0 and self._player_is_first_to_act() and strength < 0.45:
+        reward -= 0.15
       if action == 2 and strength >= 0.45:
         reward += 0.08
       if action == 2 and strength < 0.25:
         reward -= 0.18
-      if action == 0 and strength >= 0.45:
-        reward -= 0.35
+      if to_call > 0 and action == 0:
+        reward += 0.15 if continue_value < pot_odds + 0.03 else -0.35
+      if to_call > 0 and action == 2:
+        reward += 0.16 if continue_value >= pot_odds else -0.12
+      if action == 0 and to_call == 0:
+        reward -= 0.2
     elif self.phase == "DRAW":
       if action == 0 and features.count == 4:
         reward += 0.1
@@ -559,6 +572,29 @@ class BadugiEnv(gym.Env):
     low_bonus = max(0.0, (12 - high_rank) / 12.0) * 0.2
     nut_bonus = 0.15 if features.is_nuts else 0.0
     return min(1.0, count_score + low_bonus + nut_bonus)
+
+  def _pot_odds(self, to_call: int | float | None = None) -> float:
+    call_amount = max(0.0, float(self.current_bet - self.player_bet if to_call is None else to_call))
+    if call_amount <= 0:
+      return 0.0
+    return min(1.0, call_amount / max(call_amount, self.pot + call_amount))
+
+  def _duplicate_counts(self, hand: Sequence[Card]) -> tuple[int, int]:
+    ranks = [rank for rank, _suit in hand]
+    suits = [suit for _rank, suit in hand]
+    return (
+      max(0, len(ranks) - len(set(ranks))),
+      max(0, len(suits) - len(set(suits))),
+    )
+
+  def _starting_hand_strength(self, features: HandFeature, hand: Sequence[Card] | None = None) -> float:
+    duplicate_rank_count, duplicate_suit_count = self._duplicate_counts(hand or self.player_hand)
+    made_component = features.count / 4.0
+    high_rank = max(features.ranks) if features.ranks else 12
+    low_component = max(0.0, (12 - high_rank) / 12.0) * 0.25
+    one_away_component = 0.12 if features.one_away else 0.0
+    duplicate_penalty = 0.06 * (duplicate_rank_count + duplicate_suit_count)
+    return min(1.0, max(0.0, made_component + low_component + one_away_component - duplicate_penalty))
 
   def _get_obs(self) -> np.ndarray:
     obs: List[float] = []
@@ -584,9 +620,29 @@ class BadugiEnv(gym.Env):
         self.last_opp_action / 4.0,
       ]
     )
+    features = self._hand_features(self.player_hand)
+    duplicate_rank_count, duplicate_suit_count = self._duplicate_counts(self.player_hand)
+    to_call = max(0, self.current_bet - self.player_bet)
+    obs.extend(
+      [
+        features.count / 4.0,
+        min(features.rank_sum, 40) / 40.0,
+        (max(features.ranks) if features.ranks else 13) / 13.0,
+        min(duplicate_rank_count, 3) / 3.0,
+        min(duplicate_suit_count, 3) / 3.0,
+        self._starting_hand_strength(features),
+        self._pot_odds(to_call),
+        0.0 if self._player_is_first_to_act() else 1.0,
+        min(to_call, 10) / 10.0,
+        1.0 if features.one_away else 0.0,
+      ]
+    )
+    mask = self.legal_action_mask()
+    for value in mask:
+      obs.append(float(value))
     while len(obs) < BADUGI_OBSERVATION_VECTOR_SIZE:
       obs.append(0.0)
-    return np.array(obs, dtype=np.float32)
+    return np.array(obs[:BADUGI_OBSERVATION_VECTOR_SIZE], dtype=np.float32)
 
   def _hand_features(self, hand: Sequence[Card]) -> HandFeature:
     count, ranks = evaluate_badugi(hand)

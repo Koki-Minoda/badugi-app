@@ -150,6 +150,41 @@ class BadugiEnvTest(unittest.TestCase):
 
         self.assertEqual(env.opponent_profile.name, "loose_aggressive")
 
+    def test_observation_exposes_hand_position_pot_odds_and_action_mask(self):
+        env = BadugiEnv()
+        env.reset(seed=1)
+        env.player_hand = [(0, 0), (1, 1), (8, 1), (12, 2)]
+        env.phase = "BET"
+        env.round = 1
+        env.pot = 12
+        env.current_bet = 2
+        env.player_bet = 0
+
+        obs = env._get_obs()
+
+        self.assertEqual(len(obs), 96)
+        self.assertGreater(obs[22], 0)  # made cards
+        self.assertGreater(obs[27], 0)  # starting hand strength
+        self.assertGreater(obs[28], 0)  # fixed-limit pot odds
+        self.assertIn(obs[29], (0.0, 1.0))  # position feature
+        self.assertEqual(obs[32:38].tolist(), env.legal_action_mask().tolist())
+
+    def test_fixed_limit_pot_odds_make_marginal_call_better_than_fold(self):
+        env = BadugiEnv()
+        env.reset(seed=1)
+        env.phase = "BET"
+        env.round = 1
+        env.pot = 40
+        env.current_bet = 1
+        env.player_bet = 0
+        env.player_hand = [(0, 0), (4, 1), (11, 1), (12, 2)]
+        features = env._hand_features(env.player_hand)
+
+        fold_reward = env._reward_shaping(features, 0)
+        call_reward = env._reward_shaping(features, 2)
+
+        self.assertGreater(call_reward, fold_reward)
+
 
 if __name__ == "__main__":
     unittest.main()

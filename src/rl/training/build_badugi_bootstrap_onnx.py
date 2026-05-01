@@ -71,6 +71,11 @@ def build_linear_weights(*, aggression: float, patience: float) -> tuple[List[fl
     highest_rank = 24
     duplicate_rank = 25
     duplicate_suit = 26
+    starting_strength = 27
+    pot_odds = 28
+    late_position = 29
+    to_call_amount = 30
+    one_away = 31
     to_call = 13
     current_bet = 14
     raise_count = 15
@@ -99,6 +104,22 @@ def build_linear_weights(*, aggression: float, patience: float) -> tuple[List[fl
     weights[duplicate_suit][0] = 0.35
     weights[duplicate_rank][4] = -0.25
     weights[duplicate_suit][4] = -0.25
+
+    # Starting-hand, position, and fixed-limit price features are explicit in
+    # the training env. Good starters and position can pressure; good pot odds
+    # favor continuing over folding.
+    weights[starting_strength][0] = -0.55
+    weights[starting_strength][2] = 0.35 + patience
+    weights[starting_strength][3] = 0.30 + aggression
+    weights[starting_strength][4] = 0.28 + aggression
+    weights[pot_odds][0] = -0.35
+    weights[pot_odds][2] = 0.32
+    weights[late_position][3] = 0.16
+    weights[late_position][4] = 0.16
+    weights[to_call_amount][0] = 0.18
+    weights[to_call_amount][4] = -0.18
+    weights[one_away][2] = 0.18
+    weights[one_away][4] = 0.12
 
     # Calling pressure and capped pots make fold/check/call safer.
     weights[to_call][0] = 0.45

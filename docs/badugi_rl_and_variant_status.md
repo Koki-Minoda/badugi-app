@@ -1621,6 +1621,9 @@ Draw RL test coverage:
         - 2026-05-02 修正: フロント Badugi shared evaluator の rank key が下位キッカーを過大評価していたため、高カードから辞書順比較できる encoding に修正。例: `Q-T-9-8` が `K-4-3-2` に正しく勝つ。
         - 2026-05-02 修正: Badugi legacy / split 用の 5枚以上入力時、最初に見つけた4-card Badugiで探索を止める可能性を除去。全subsetを評価し、5枚入力でも最良4枚を選ぶようにした。
         - 2026-05-02 確認: Badugi / 2-7 / A-5 / single draw / NLH evaluator regression をまとめて実行し、7 files / 82 tests pass。Python RL Badugi evaluator / starting range / DQN imitation tests は 37 tests pass。
+        - 2026-05-02 追加監査: 2-7 / A-5 low evaluator は made low 同士の比較は正しかったが、ペア以上を一律 penalty に寄せており、1ペア / 2ペア / trips / full house / quads のカテゴリ差が不足していた。
+        - 2026-05-02 修正: 2-7 は high-card -> one pair -> two pair -> trips -> straight -> flush -> full house -> quads -> straight flush の低い順、A-5 は straight / flush 無視で duplicate category を比較するように修正。2-7 の `A-2-3-4-5` は wheel straight ではなく Ace-high no-pair として扱う。
+        - 2026-05-02 確認: Lowball / draw engine / single draw regression は 4 files / 58 tests pass。Badugi / 2-7 / A-5 / NLH を含む関連一式は 7 files / 85 tests pass。`npm run lint`, `npm run build`, Python RL 37 tests も pass。
       - [ ] `AI-06n` Badugi evaluator / draw phase 修正後に、既存Badugi DQN checkpoint を無効扱いにし、新しいenvで teacher/imitation 3k -> 20k probe を再実行する。
       - [ ] `AI-06e` 2-7 / A-5 用の実ONNXを生成・配置する。現状は `model-27draw-iron-v1` (`D01/S01`) と `model-a5draw-iron-v1` (`D02/S02`) の registry / feature builder / routing test はあるが、実 `.onnx` は optional 未配置で、App draw CPU は rule-based fallback が主経路。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。

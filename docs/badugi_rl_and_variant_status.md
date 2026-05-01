@@ -1610,6 +1610,11 @@ Draw RL test coverage:
         - 2026-05-01 確認: street-aware teacher 後の1k probeも `showdownWinRate=0.075`, `foldRate=0.000` で未達。teacher / imitation だけでは改善せず、training env のbetting/draw進行とteacher品質の再設計が必要。
       - [ ] `AI-06l` imitation pretrain + expert replay の 3k/20k probe を評価し、`showdownWinRate >= 0.25`, `foldRate <= 0.40` を満たす checkpoint だけを beginner/standard候補へ進める。
       - [ ] `AI-06m` Badugi training env の betting/draw 進行を実ゲームに近づける。現状は player action 後に即DRAWへ進みやすく、opponent のbet応答・street内アクション交換が簡略化されすぎているため、teacherを真似ても実戦的な押し引きが育ちにくい。
+        - 2026-05-01 深掘り: `evaluate_badugi()` が低ランク貪欲選択になっており、`A A A 2` を 1-card A と誤判定していた。正しくは枚数最大化優先で 2-card `A2`。全 52C4 brute force 照合を追加し、mismatch 0 を確認。
+        - 2026-05-01 深掘り: `BadugiEnv.step()` が player BET action 後に `phase=DRAW` へ進めた直後、同一step内の `_opponent_turn()` で opponent DRAW を消費して `phase=BET` に戻していた。結果として player は学習上ほぼカードチェンジできず、showdownWinRate が極端に低下していた。
+        - 2026-05-01 修正: player BET後は `DRAW` phase を次stepへ残し、player DRAW 後に opponent draw を処理して次BETへ進めるようにした。
+        - 2026-05-01 確認: 修正後の簡易評価で `call + best draw` は balanced 相手に `showdownWinRate=0.523`, `foldRate=0.000`。teacher は `showdownWinRate=0.750` だが `foldRate=0.800` でタイトすぎるため、次は teacher の参加レンジとfold頻度を調整する。
+      - [ ] `AI-06n` Badugi evaluator / draw phase 修正後に、既存Badugi DQN checkpoint を無効扱いにし、新しいenvで teacher/imitation 3k -> 20k probe を再実行する。
       - [ ] `AI-06e` 2-7 / A-5 用の実ONNXを生成・配置する。現状は `model-27draw-iron-v1` (`D01/S01`) と `model-a5draw-iron-v1` (`D02/S02`) の registry / feature builder / routing test はあるが、実 `.onnx` は optional 未配置で、App draw CPU は rule-based fallback が主経路。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
   - P2P:

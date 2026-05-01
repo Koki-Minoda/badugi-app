@@ -12,7 +12,7 @@ from functools import lru_cache
 from itertools import combinations
 from typing import Iterable, Sequence
 
-from rl.env.badugi_env import Card, build_deck, evaluate_badugi
+from rl.env.badugi_env import Card, build_deck, compare_badugi_scores, evaluate_badugi
 
 
 @dataclass(frozen=True)
@@ -71,17 +71,19 @@ def score_percentile(score: tuple[int, Sequence[int]]) -> float:
 
 
 def best_badugi_keep(hand: Sequence[Card]) -> list[Card]:
-    keep: list[Card] = []
-    used_ranks: set[int] = set()
-    used_suits: set[int] = set()
-    for card in sorted(hand, key=lambda item: item[0]):
-        rank, suit = card
-        if rank in used_ranks or suit in used_suits:
-            continue
-        keep.append(card)
-        used_ranks.add(rank)
-        used_suits.add(suit)
-    return keep
+    best_subset: tuple[Card, ...] = ()
+    best_score: tuple[int, list[int]] = (0, [])
+    for subset_size in range(1, min(4, len(hand)) + 1):
+        for subset in combinations(hand, subset_size):
+            ranks = [rank for rank, _suit in subset]
+            suits = [suit for _rank, suit in subset]
+            if len(set(ranks)) != len(ranks) or len(set(suits)) != len(suits):
+                continue
+            score = (len(subset), sorted(ranks))
+            if compare_badugi_scores(score, best_score) > 0:
+                best_score = score
+                best_subset = subset
+    return list(best_subset)
 
 
 def _estimated_multi_draw_top_half_probability(count: int, ranks: Sequence[int]) -> float:

@@ -1,8 +1,10 @@
 import unittest
+from itertools import combinations
 
 from rl.env.badugi_env import (
     BadugiEnv,
     OPPONENT_PROFILES,
+    build_deck,
     compare_badugi_scores,
     evaluate_badugi,
     resolve_opponent_profile,
@@ -23,6 +25,29 @@ class BadugiEnvTest(unittest.TestCase):
 
         self.assertEqual(compare_badugi_scores(four_card, three_card), 1)
         self.assertEqual(compare_badugi_scores(three_card, four_card), -1)
+
+    def test_evaluator_prefers_more_cards_over_greedy_low_rank(self):
+        self.assertEqual(
+            evaluate_badugi([(0, 0), (0, 1), (0, 2), (1, 0)]),
+            (2, [0, 1]),
+        )
+
+    def test_evaluator_matches_bruteforce_for_all_starting_hands(self):
+        def brute_force_score(hand):
+            best = (0, [])
+            for subset_size in range(1, 5):
+                for subset in combinations(hand, subset_size):
+                    ranks = [rank for rank, _suit in subset]
+                    suits = [suit for _rank, suit in subset]
+                    if len(set(ranks)) != len(ranks) or len(set(suits)) != len(suits):
+                        continue
+                    candidate = (len(subset), sorted(ranks))
+                    if compare_badugi_scores(candidate, best) > 0:
+                        best = candidate
+            return best
+
+        for hand in combinations(build_deck(), 4):
+            self.assertEqual(evaluate_badugi(hand), brute_force_score(hand))
 
     def test_player_fold_ends_hand_without_showdown_override(self):
         env = BadugiEnv()
@@ -82,6 +107,36 @@ class BadugiEnvTest(unittest.TestCase):
 
         env.phase = "DRAW"
         self.assertEqual(env.legal_action_mask().tolist(), [1, 1, 1, 1, 0, 0])
+
+    def test_player_gets_draw_decision_after_betting_round(self):
+        env = BadugiEnv()
+        env.reset(seed=1)
+        env.phase = "BET"
+        env.current_bet = 1
+        env.player_bet = 0
+
+        env.step(2)
+
+        self.assertFalse(env.done)
+        self.assertEqual(env.phase, "DRAW")
+        self.assertEqual(env.legal_action_mask().tolist(), [1, 1, 1, 1, 0, 0])
+
+    def test_player_draw_and_opponent_draw_complete_before_next_bet_round(self):
+        env = BadugiEnv()
+        env.reset(seed=1)
+        env.phase = "DRAW"
+        env.round = 0
+        env.deck = [(9, 0), (10, 1), (11, 2), (12, 3), (8, 0), (7, 1)]
+        env.player_hand = [(0, 0), (5, 0), (1, 1), (8, 1)]
+        env.opponent_hand = [(0, 0), (6, 0), (2, 1), (9, 1)]
+
+        env.step(2)
+
+        self.assertEqual(env.phase, "BET")
+        self.assertEqual(env.round, 1)
+        self.assertIn((0, 0), env.player_hand)
+        self.assertIn((1, 1), env.player_hand)
+        self.assertEqual(env.opponent_last_draw, 2)
 
     def test_illegal_action_uses_safe_fallback_with_penalty(self):
         env = BadugiEnv()

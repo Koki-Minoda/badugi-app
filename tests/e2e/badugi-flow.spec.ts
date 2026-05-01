@@ -904,7 +904,7 @@ test.describe("Badugi flow regressions", () => {
     ).toHaveText("Main Pot");
     await expect(
       potSections.nth(1).locator('[data-testid="hand-result-pot-title"]'),
-    ).toHaveText("Side Pot #2");
+    ).toHaveText("Side Pot");
     const sideWinnerNames = await potSections
       .nth(1)
       .locator('[data-testid="hand-result-winner-name"]')

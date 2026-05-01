@@ -77,7 +77,7 @@ describe("HandResultOverlay", () => {
       />
     );
     const potTitles = screen.getAllByTestId("hand-result-pot-title").map((node) => node.textContent);
-    expect(potTitles).toEqual(["Main Pot", "Side Pot #2"]);
+    expect(potTitles).toEqual(["Main Pot", "Side Pot"]);
     expect(screen.getAllByTestId("hand-result-winner-name").map((node) => node.textContent)).toContain(
       "CPU 2",
     );

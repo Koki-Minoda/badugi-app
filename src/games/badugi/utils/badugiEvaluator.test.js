@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { evaluateHand, compareHands, evaluateAndCompare } from "./badugiEvaluator.js";
+import {
+  evaluateBadugi,
+  evaluateHand,
+  compareHands,
+  evaluateAndCompare,
+} from "./badugiEvaluator.js";
 
 const card = (rank, suit) => ({ rank, suit });
 
@@ -28,6 +33,29 @@ describe("evaluateHand", () => {
     expect(evaluated.count).toBe(3);
     expect(evaluated.ranks).toEqual([1, 4, 9]);
     expect(evaluated.key).toEqual([3, 1, 4, 9, 0]);
+  });
+
+  it("keeps exactly-four-card numeric API strict", () => {
+    expect(() =>
+      evaluateHand([
+        card(13, "C"),
+        card(12, "D"),
+        card(3, "H"),
+        card(2, "S"),
+        card(4, "C"),
+      ]),
+    ).toThrow(/exactly 4 cards/);
+  });
+});
+
+describe("evaluateBadugi legacy API", () => {
+  it("checks all subsets instead of stopping at the first 4-card candidate", () => {
+    const evaluated = evaluateBadugi(["KC", "QD", "3H", "2S", "4C"]);
+
+    expect(evaluated.count).toBe(4);
+    expect(evaluated.ranks).toEqual([1, 2, 3, 11]);
+    expect(evaluated.activeCards).toEqual(["2S", "3H", "4C", "QD"]);
+    expect(evaluated.deadCards).toEqual(["KC"]);
   });
 });
 

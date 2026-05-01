@@ -302,6 +302,22 @@ describe("Badugi evaluator", () => {
     const three = evaluateBadugiHand({ cards: ["AS", "AD", "3C", "4H"] });
     expect(compareEvaluations(four, three) < 0).toBe(true);
   });
+
+  it("compares high card before lower kickers for Badugi low", () => {
+    const queenHigh = evaluateBadugiHand({ cards: ["QC", "10D", "9H", "8S"] });
+    const kingHigh = evaluateBadugiHand({ cards: ["KC", "4D", "3H", "2S"] });
+
+    expect(compareEvaluations(queenHigh, kingHigh)).toBeLessThan(0);
+  });
+
+  it("selects the best 4-card Badugi subset from five cards", () => {
+    const result = evaluateBadugiHand({
+      cards: ["KC", "QD", "3H", "2S", "4C"],
+    });
+
+    expect(result.metadata.ranks).toEqual([1, 2, 3, 11]);
+    expect(result.metadata.cards).toEqual(["2S", "3H", "4C", "QD"]);
+  });
 });
 
 describe("Registry evaluateHand", () => {

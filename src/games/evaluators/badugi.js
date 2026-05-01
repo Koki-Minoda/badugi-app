@@ -12,7 +12,7 @@ const SIZE_WEIGHT = 1_000_000;
 const MAX_KEY = 20 ** 4;
 
 function encodeRankValues(values = []) {
-  return values.reduce((acc, val, idx) => acc + val * Math.pow(20, idx), 0);
+  return values.reduce((acc, val) => acc * 20 + val, 0);
 }
 
 export function evaluateBadugiHand({ cards = [], mode = "low" } = {}) {

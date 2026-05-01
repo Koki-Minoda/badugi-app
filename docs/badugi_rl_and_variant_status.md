@@ -1617,6 +1617,10 @@ Draw RL test coverage:
         - 2026-05-01 深掘り: `BadugiEnv.step()` が player BET action 後に `phase=DRAW` へ進めた直後、同一step内の `_opponent_turn()` で opponent DRAW を消費して `phase=BET` に戻していた。結果として player は学習上ほぼカードチェンジできず、showdownWinRate が極端に低下していた。
         - 2026-05-01 修正: player BET後は `DRAW` phase を次stepへ残し、player DRAW 後に opponent draw を処理して次BETへ進めるようにした。
         - 2026-05-01 確認: 修正後の簡易評価で `call + best draw` は balanced 相手に `showdownWinRate=0.523`, `foldRate=0.000`。teacher は `showdownWinRate=0.750` だが `foldRate=0.800` でタイトすぎるため、次は teacher の参加レンジとfold頻度を調整する。
+        - 2026-05-02 監査: 実装済み評価器を確認。対象は Badugi / 2-7 low / A-5 low / split evaluator / NLH high。Omaha/PLO は variant definition と seed/API はあるが、実ゲーム進行・showdown evaluator へは未接続のため「実装済みゲーム評価」としては未検証扱い。
+        - 2026-05-02 修正: フロント Badugi shared evaluator の rank key が下位キッカーを過大評価していたため、高カードから辞書順比較できる encoding に修正。例: `Q-T-9-8` が `K-4-3-2` に正しく勝つ。
+        - 2026-05-02 修正: Badugi legacy / split 用の 5枚以上入力時、最初に見つけた4-card Badugiで探索を止める可能性を除去。全subsetを評価し、5枚入力でも最良4枚を選ぶようにした。
+        - 2026-05-02 確認: Badugi / 2-7 / A-5 / single draw / NLH evaluator regression をまとめて実行し、7 files / 82 tests pass。Python RL Badugi evaluator / starting range / DQN imitation tests は 37 tests pass。
       - [ ] `AI-06n` Badugi evaluator / draw phase 修正後に、既存Badugi DQN checkpoint を無効扱いにし、新しいenvで teacher/imitation 3k -> 20k probe を再実行する。
       - [ ] `AI-06e` 2-7 / A-5 用の実ONNXを生成・配置する。現状は `model-27draw-iron-v1` (`D01/S01`) と `model-a5draw-iron-v1` (`D02/S02`) の registry / feature builder / routing test はあるが、実 `.onnx` は optional 未配置で、App draw CPU は rule-based fallback が主経路。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。

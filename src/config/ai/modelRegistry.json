@@ -113,7 +113,7 @@
     ],
     "tier": "beginner",
     "onnx": "models/badugi_beginner_dqn_v1.onnx",
-    "checksumSha256": "671f3ed8f6dceb0066ec772ac1e3a59b79b1bf9a48745827a560a388229d9439",
+    "checksumSha256": "c8a3bb1f0b178b071e12dd2fe52646d626d167c5f0138942c5f861a1be019907",
     "productionRequired": true,
     "inputShape": [
       96

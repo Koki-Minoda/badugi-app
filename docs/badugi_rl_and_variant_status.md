@@ -1496,6 +1496,7 @@ Draw RL test coverage:
       - 2026-05-01 更新: `src/rl/training/build_badugi_bootstrap_onnx.py` と `npm run ai:build-bootstrap-models` を追加し、Badugi Pro / Iron / WorldMaster の bootstrap ONNX を生成。
       - 2026-05-01 更新: `public/models/badugi_pro_v1.onnx` / `badugi_iron_v1.onnx` / `badugi_worldmaster_v1.onnx` を生成し、registry checksum と一致することを `npm run ai:verify-models` で確認。
       - 2026-05-01 更新: `public/models/badugi_beginner_dqn_v1.onnx` を追加。これは `rl/models/badugi_masked_long_20260501/badugi_dqn_latest.pt` から export した50k DQNだが、評価上は WorldMaster ではないため beginner tier のみに接続。
+      - 2026-05-02 更新: evaluator / draw phase 修正後の `badugi_envfix_beginner_probe_3k_20260502` を `public/models/badugi_beginner_dqn_v1.onnx` へ再export。`model-badugi-beginner-dqn-v1` checksum は `c8a3bb...`。
     - [x] `AI-05` ONNX unavailable 時の fallback smoke と、ONNX available 時の推論 smoke を分けて記録する。
       - `src/ai/__tests__/onnxFallbackSmoke.test.js` は missing ONNX session -> `policy-router` -> deterministic-safe の fallback 順を確認。
       - `src/ai/__tests__/onnxPolicyAdapterInference.test.js` は mock ONNX session available 時の推論 decode を確認。
@@ -1527,6 +1528,8 @@ Draw RL test coverage:
         - 2026-05-01 是正: `resolveTierModelInfo()` は variant+tier 完全一致を generic tier model より優先する。これにより D03 beginner だけ DQN を使い、他variantの beginner は従来どおり `model-generic-v1` を使う。
         - 2026-05-01 確認: `npm run ai:verify-models` は Badugi Beginner DQN / Pro / Iron / WorldMaster required asset 全てOK。
         - 2026-05-01 確認: `npm run ai:evaluate-badugi-onnx -- --model public/models/badugi_beginner_dqn_v1.onnx --episodes 500 --max-steps 200 --seed 20260502` は `avgReward=-1.507`, `showdownWinRate=0.254`, `showdowns=335`, `folds=165`。
+        - 2026-05-02 再学習: evaluator / draw phase 修正後、`teacher_warmup=1000`, `imitation_pretrain=500`, `expert_replay_ratio=0.25` で 3k probe を実行。checkpoint評価は `avgReward=0.116`, `showdownWinRate=0.670`, `foldRate=0.190`, `recommendedTier=standard`。ただし段階導入のためまず beginner ONNX に反映。
+        - 2026-05-02 確認: 更新後 `public/models/badugi_beginner_dqn_v1.onnx` は balanced 300 episodes で `avgReward=-0.181`, `showdownWinRate=0.600`, `showdowns=250`, `folds=50`。
         - 2026-05-01 確認: `npm run ai:evaluate-badugi-onnx -- --model public/models/badugi_worldmaster_v1.onnx --episodes 500 --max-steps 200 --seed 20260502` は bootstrap として `avgReward=-1.749`, `showdownWinRate=0.156`, `showdowns=500`, `folds=0`。
         - 2026-05-01 確認: AI routing tests / BadugiEnv unittest / `npm run lint` / `npm run build` は成功。
         - 2026-05-01 追加: `npm run ai:gate-badugi-model` を追加し、候補ONNXが `avgReward`, `showdownWinRate`, `foldRate`, baseline差分の昇格ゲートを満たさなければ non-zero exit で止める。

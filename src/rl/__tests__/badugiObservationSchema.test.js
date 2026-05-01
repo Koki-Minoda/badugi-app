@@ -48,7 +48,15 @@ describe("badugi observation schema v1", () => {
         drawRoundIndex: 3,
         street: "BET",
         players: [
-          { id: "seat-0", seatIndex: 0, stack: 480, hand: ["AS", "2D", "3C", "4H"], lastDrawCount: 2 },
+          {
+            id: "seat-0",
+            seatIndex: 0,
+            stack: 480,
+            hand: ["AS", "2D", "3C", "4H"],
+            lastDrawCount: 2,
+            stats: { aggressionRate: 0.4, foldRate: 0.35, patRate: 0.2 },
+            profile: { bluffFrequency: 0.12 },
+          },
           { id: "seat-1", seatIndex: 1, stack: 420, hand: ["AS", "5D", "9C", "KH"] },
         ],
       },
@@ -64,6 +72,10 @@ describe("badugi observation schema v1", () => {
     expect(vector[39]).toBeGreaterThan(0); // opponent drew 2 on final draw
     expect(vector[40]).toBe(1); // final BET round
     expect(vector[41]).toBe(1); // K-high Badugi is weak final value
+    expect(vector[42]).toBeGreaterThan(0); // opponent aggression
+    expect(vector[44]).toBeGreaterThan(0); // opponent pat rate
+    expect(vector[46]).toBeGreaterThan(0); // opponent foldability
+    expect(vector[47]).toBeGreaterThan(0); // opponent bluff frequency
   });
 
   it("aligns BadugiEngine.getObservation with schema v1", () => {

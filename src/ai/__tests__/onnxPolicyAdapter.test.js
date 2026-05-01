@@ -13,7 +13,7 @@ describe("onnxPolicyAdapter Badugi schema", () => {
       "model-badugi-beginner-dqn-v1",
     );
     expect(selectModelForVariant({ variantId: "D03", tierId: "standard" })?.id).toBe(
-      "model-badugi-standard-dqn-v1",
+      "model-badugi-standard-dqn-v2",
     );
     expect(selectModelForVariant({ variantId: "D03", tierId: "pro" })?.id).toBe(
       "model-badugi-pro-v1",

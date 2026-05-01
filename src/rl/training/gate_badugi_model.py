@@ -23,6 +23,36 @@ from rl.training.evaluate_badugi_onnx import evaluate_model
 
 DEFAULT_CANDIDATE = PROJECT_ROOT / "public/models/badugi_beginner_dqn_v1.onnx"
 DEFAULT_BASELINE = PROJECT_ROOT / "public/models/badugi_worldmaster_v1.onnx"
+PROMOTION_TIERS = [
+    {
+        "tier": "standard",
+        "minAvgReward": 0.0,
+        "minShowdownWinRate": 0.25,
+        "maxFoldRate": 0.45,
+        "minBaselineAvgDelta": 0.25,
+    },
+    {
+        "tier": "pro",
+        "minAvgReward": 0.5,
+        "minShowdownWinRate": 0.35,
+        "maxFoldRate": 0.40,
+        "minBaselineAvgDelta": 0.50,
+    },
+    {
+        "tier": "iron",
+        "minAvgReward": 1.0,
+        "minShowdownWinRate": 0.42,
+        "maxFoldRate": 0.35,
+        "minBaselineAvgDelta": 0.75,
+    },
+    {
+        "tier": "worldmaster",
+        "minAvgReward": 1.5,
+        "minShowdownWinRate": 0.50,
+        "maxFoldRate": 0.30,
+        "minBaselineAvgDelta": 1.00,
+    },
+]
 
 
 def parse_seeds(value: str) -> list[int]:
@@ -54,6 +84,31 @@ def summarize_runs(runs: list[dict]) -> dict:
         "showdowns": showdowns,
         "folds": folds,
         "wins": wins,
+    }
+
+
+def build_promotion_report(candidate_summary: dict, avg_delta: float | None) -> dict:
+    eligible = []
+    failed = {}
+    for tier in PROMOTION_TIERS:
+        checks = {
+            "avgReward": candidate_summary["avgReward"] >= tier["minAvgReward"],
+            "showdownWinRate": candidate_summary["showdownWinRate"] >= tier["minShowdownWinRate"],
+            "foldRate": candidate_summary["foldRate"] <= tier["maxFoldRate"],
+            "baselineAvgDelta": (
+                True if avg_delta is None else avg_delta >= tier["minBaselineAvgDelta"]
+            ),
+        }
+        if all(checks.values()):
+            eligible.append(tier["tier"])
+        else:
+            failed[tier["tier"]] = checks
+    recommended = eligible[-1] if eligible else "beginner"
+    return {
+        "recommendedTier": recommended,
+        "eligibleTiers": eligible,
+        "failedTierChecks": failed,
+        "tierThresholds": PROMOTION_TIERS,
     }
 
 
@@ -120,6 +175,7 @@ def build_gate_report(args) -> dict:
         ),
     }
     passed = all(checks.values())
+    promotion = build_promotion_report(candidate_summary, avg_delta)
     return {
         "passed": passed,
         "checks": checks,
@@ -130,6 +186,7 @@ def build_gate_report(args) -> dict:
             "minBaselineAvgDelta": args.min_baseline_avg_delta,
         },
         "avgRewardDeltaVsBaseline": avg_delta,
+        "promotion": promotion,
         "candidate": candidate,
         "baseline": baseline,
     }
@@ -180,6 +237,12 @@ def main():
                 f"foldRate={baseline['foldRate']:.3f}"
             )
         print(f"[BADUGI GATE CHECKS] {report['checks']}")
+        promotion = report["promotion"]
+        print(
+            "[BADUGI PROMOTION] "
+            f"recommendedTier={promotion['recommendedTier']} "
+            f"eligibleTiers={promotion['eligibleTiers']}"
+        )
     if not report["passed"] and not args.report_only:
         raise SystemExit(1)
 

@@ -1557,7 +1557,20 @@ Draw RL test coverage:
         - 2026-05-01 更新: observation 38-41 slot に street-adjusted strength / opponent draw pressure / final bet flag / weak final Badugi flag を追加。action mask 32-37 は維持。
         - 2026-05-01 更新: frontend `badugiObservationSchema.js` も同じ 38-41 slot を埋めるようにし、training env と本番ONNX入力のズレを防止。
         - 2026-05-01 更新: bootstrap ONNX generator も street context / opponent draw pressure / weak final Badugi feature を参照するようにした。public model は gate PASS まで再生成しない。
-      - [ ] `AI-06d` gate PASS 時だけ beginner -> standard/pro/iron/worldmaster のどのtierへ入れるかを決める promotion report を生成する。
+      - [x] `AI-06c-5` 中間CPU向けに bluff frequency / 相手のbet-raise頻度 / passivity / pat率 / 平均draw枚数 / foldability を observation と reward に追加し、相手を見る押し引きを学習させる。
+        - 2026-05-01 方針: 96次元入力サイズは維持し、42-47 slot に opponent tendency を追加する。既存ONNXは壊さず、新規学習モデルだけが利用する。
+        - 2026-05-01 方針: loose-aggressive / tight-passive などの opponent profile に bluff 頻度を持たせ、ブラフに対する call down / value raise と、foldable相手への semi-bluff を reward で分離する。
+        - 2026-05-01 更新: `BadugiEnv` が opponent action / draw history を追跡し、observation 42-47 に aggression / passivity / pat pressure / average draw count / foldability / profile bluff frequency を出す。
+        - 2026-05-01 更新: frontend `badugiObservationSchema.js` も同じ 42-47 slot を埋める。App state に該当統計がない場合は0に落とし、既存ゲーム進行へ影響させない。
+        - 2026-05-01 更新: reward に foldable相手への semi-bluff、sticky相手への弱手bluff減点、bluffy/aggressive相手への強手call/raise加点、tight-pat圧力へのfold許容を追加。
+        - 2026-05-01 実行: `npm run ai:train-badugi -- --episodes 50000 --max-steps 180 --warmup-steps 10000 --batch-size 64 --epsilon-decay-episodes 35000 --epsilon-end 0.05 --log-interval 1000 --save-interval 10000 --output-dir rl/models/badugi_opponent_read_50k_20260501 --train-every-steps 4 --opponent-profiles balanced,loose_passive,loose_aggressive,tight_passive,tight_aggressive,pat_heavy,draw_heavy --device cpu` は完走。
+        - 2026-05-01 結果: 50k 終盤は 45k 時点で `avg_reward=0.501`、50k 時点で `avg_reward=0.077`、summary は `avg_reward_last_100=-0.0344`。
+        - 2026-05-01 評価: `/tmp/mgx-badugi-opponent-read-50k.onnx` は beginner DQN比で `candidateAvgReward=2.092`, `showdownWinRate=0.344`, `foldRate=0.402`, `avgRewardDelta=0.9104`。standard tier gate はPASS。
+        - 2026-05-01 評価: 現行 standard DQN比では `avgRewardDelta=0.3139`、showdownWinRate は `0.342 -> 0.344` と微増、foldRate は `0.499 -> 0.402` に改善。ただし Pro gate の `showdownWinRate >= 0.35` にわずかに届かないため、Pro/Iron/WorldMaster へは昇格しない。
+        - 2026-05-01 反映: `public/models/badugi_standard_dqn_v2.onnx` / `model-badugi-standard-dqn-v2` を追加し、D03 standard tier は v2 を優先する。
+      - [x] `AI-06d` gate PASS 時だけ beginner -> standard/pro/iron/worldmaster のどのtierへ入れるかを決める promotion report を生成する。
+        - 2026-05-01 方針: standard / pro / iron / worldmaster の tier threshold を gate report に含め、最高到達tierだけを `recommendedTier` として出す。gate失敗時は `beginner` に留める。
+        - 2026-05-01 更新: `npm run ai:gate-badugi-model` が `[BADUGI PROMOTION] recommendedTier=... eligibleTiers=...` を出力し、JSON report には `promotion.tierThresholds` / `failedTierChecks` も含める。
       - [ ] `AI-06e` 2-7 / A-5 用の実ONNXを生成・配置する。現状は `model-27draw-iron-v1` (`D01/S01`) と `model-a5draw-iron-v1` (`D02/S02`) の registry / feature builder / routing test はあるが、実 `.onnx` は optional 未配置で、App draw CPU は rule-based fallback が主経路。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
   - P2P:

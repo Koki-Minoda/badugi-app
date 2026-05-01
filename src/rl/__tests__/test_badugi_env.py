@@ -136,6 +136,10 @@ class BadugiEnvTest(unittest.TestCase):
             OPPONENT_PROFILES["draw_heavy"].draw_bias,
             OPPONENT_PROFILES["pat_heavy"].draw_bias,
         )
+        self.assertGreater(
+            OPPONENT_PROFILES["loose_aggressive"].bluff_frequency,
+            OPPONENT_PROFILES["tight_passive"].bluff_frequency,
+        )
 
     def test_unknown_opponent_profile_fails_fast(self):
         with self.assertRaises(ValueError):
@@ -231,6 +235,49 @@ class BadugiEnvTest(unittest.TestCase):
         two_draw_reward = env._reward_shaping(features, 3)
 
         self.assertGreater(two_draw_reward, pat_reward)
+
+    def test_observation_exposes_opponent_tendency_features(self):
+        env = BadugiEnv(opponent_profile="loose_aggressive")
+        env.reset(seed=1)
+        env._record_opponent_action("raise")
+        env._record_opponent_action("check")
+        env._record_opponent_draw(0)
+        env._record_opponent_draw(2)
+
+        obs = env._get_obs()
+
+        self.assertGreater(obs[42], 0)  # observed aggression
+        self.assertGreater(obs[43], 0)  # observed passivity
+        self.assertGreater(obs[44], 0)  # pat pressure
+        self.assertGreater(obs[45], 0)  # average draw count
+        self.assertGreater(obs[46], 0)  # foldability estimate
+        self.assertGreater(obs[47], 0)  # profile bluff frequency
+
+    def test_bluff_opportunity_depends_on_opponent_foldability(self):
+        foldable_env = BadugiEnv(opponent_profile="tight_passive")
+        foldable_env.reset(seed=1)
+        foldable_env.phase = "BET"
+        foldable_env.round = 1
+        foldable_env.is_button = 0
+        foldable_env.current_bet = 0
+        foldable_env.player_bet = 0
+        foldable_env.player_hand = [(0, 0), (6, 1), (6, 2), (12, 3)]
+        foldable_features = foldable_env._hand_features(foldable_env.player_hand)
+
+        sticky_env = BadugiEnv(opponent_profile="loose_passive")
+        sticky_env.reset(seed=1)
+        sticky_env.phase = "BET"
+        sticky_env.round = 1
+        sticky_env.is_button = 0
+        sticky_env.current_bet = 0
+        sticky_env.player_bet = 0
+        sticky_env.player_hand = list(foldable_env.player_hand)
+        sticky_features = sticky_env._hand_features(sticky_env.player_hand)
+
+        self.assertGreater(
+            foldable_env._reward_shaping(foldable_features, 3),
+            sticky_env._reward_shaping(sticky_features, 3),
+        )
 
 
 if __name__ == "__main__":

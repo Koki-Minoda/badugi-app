@@ -69,6 +69,8 @@ class OpponentProfile:
   raise_probability: float
   open_strength_threshold: float
   open_probability: float
+  bluff_frequency: float = 0.0
+  bluff_raise_probability: float = 0.0
   draw_bias: int = 0
 
 
@@ -90,6 +92,8 @@ OPPONENT_PROFILES = {
     raise_probability=0.35,
     open_strength_threshold=0.62,
     open_probability=0.28,
+    bluff_frequency=0.06,
+    bluff_raise_probability=0.18,
   ),
   "loose_passive": OpponentProfile(
     name="loose_passive",
@@ -99,6 +103,8 @@ OPPONENT_PROFILES = {
     raise_probability=0.08,
     open_strength_threshold=0.78,
     open_probability=0.1,
+    bluff_frequency=0.02,
+    bluff_raise_probability=0.04,
     draw_bias=1,
   ),
   "loose_aggressive": OpponentProfile(
@@ -109,6 +115,8 @@ OPPONENT_PROFILES = {
     raise_probability=0.55,
     open_strength_threshold=0.44,
     open_probability=0.55,
+    bluff_frequency=0.18,
+    bluff_raise_probability=0.38,
     draw_bias=1,
   ),
   "tight_passive": OpponentProfile(
@@ -119,6 +127,8 @@ OPPONENT_PROFILES = {
     raise_probability=0.1,
     open_strength_threshold=0.82,
     open_probability=0.12,
+    bluff_frequency=0.01,
+    bluff_raise_probability=0.03,
   ),
   "tight_aggressive": OpponentProfile(
     name="tight_aggressive",
@@ -128,6 +138,8 @@ OPPONENT_PROFILES = {
     raise_probability=0.58,
     open_strength_threshold=0.68,
     open_probability=0.48,
+    bluff_frequency=0.08,
+    bluff_raise_probability=0.22,
   ),
   "pat_heavy": OpponentProfile(
     name="pat_heavy",
@@ -137,6 +149,8 @@ OPPONENT_PROFILES = {
     raise_probability=0.42,
     open_strength_threshold=0.58,
     open_probability=0.34,
+    bluff_frequency=0.07,
+    bluff_raise_probability=0.18,
     draw_bias=-1,
   ),
   "draw_heavy": OpponentProfile(
@@ -147,6 +161,8 @@ OPPONENT_PROFILES = {
     raise_probability=0.25,
     open_strength_threshold=0.62,
     open_probability=0.25,
+    bluff_frequency=0.05,
+    bluff_raise_probability=0.12,
     draw_bias=1,
   ),
 }
@@ -219,6 +235,13 @@ class BadugiEnv(gym.Env):
     self.is_button = 1
     self.opponent_last_draw = 0
     self.last_opp_action = 0
+    self.opponent_action_count = 0
+    self.opponent_aggressive_action_count = 0
+    self.opponent_passive_action_count = 0
+    self.opponent_fold_count = 0
+    self.opponent_pat_count = 0
+    self.opponent_draw_count = 0
+    self.opponent_total_draw_cards = 0
     self.last_result = None
     self.terminal_reason = None
     self.current_bet = self._bet_size()
@@ -397,8 +420,13 @@ class BadugiEnv(gym.Env):
     self.opponent_all_in = False
     bet_size = self._bet_size()
     r = random.random()
+    bluff_roll = random.random()
     strength = self._hand_strength(features)
     diff = self.current_bet - self.opponent_bet
+    should_bluff = (
+      strength < profile.open_strength_threshold
+      and bluff_roll < profile.bluff_frequency
+    )
     if (
       diff > 0
       and strength < profile.fold_strength_threshold
@@ -412,10 +440,17 @@ class BadugiEnv(gym.Env):
       self.opponent_bet += payment
       self.pot += payment
       self.last_opp_action = 1
+      self._record_opponent_action("call")
       if (
-        strength > profile.raise_strength_threshold
-        and r < profile.raise_probability
-        and self.bet_round < self.max_bets
+        (
+          strength > profile.raise_strength_threshold
+          and r < profile.raise_probability
+        )
+        or (
+          should_bluff
+          and r < profile.bluff_raise_probability
+        )
+      and self.bet_round < self.max_bets
       ):
         self.current_bet += bet_size
         payment = min(self.current_bet - self.opponent_bet, self.opponent_stack)
@@ -424,9 +459,11 @@ class BadugiEnv(gym.Env):
         self.pot += payment
         self.bet_round += 1
         self.last_opp_action = 2
+        self._record_opponent_action("raise")
     elif self.bet_round < self.max_bets and (
       strength > profile.raise_strength_threshold
       or (strength > profile.open_strength_threshold and r < profile.open_probability)
+      or should_bluff
     ):
       self.current_bet += bet_size
       payment = min(self.current_bet - self.opponent_bet, self.opponent_stack)
@@ -435,8 +472,10 @@ class BadugiEnv(gym.Env):
       self.pot += payment
       self.bet_round += 1
       self.last_opp_action = 2
+      self._record_opponent_action("raise")
     else:
       self.last_opp_action = 1
+      self._record_opponent_action("check")
     if self.opponent_stack == 0:
       self.opponent_all_in = True
 
@@ -444,6 +483,7 @@ class BadugiEnv(gym.Env):
     self.done = True
     self.terminal_reason = "opponent_fold"
     self.last_result = 1
+    self._record_opponent_action("fold")
     self.player_stack += self.pot
     self.pot = 0
 
@@ -451,16 +491,34 @@ class BadugiEnv(gym.Env):
     features = self._hand_features(self.opponent_hand)
     if features.count == 4:
       self.opponent_last_draw = 0
+      self._record_opponent_draw(0)
       return
     keep = self._best_badugi_keep(self.opponent_hand)
     draw_amount = max(0, min(3, 4 - len(keep) + self.opponent_profile.draw_bias))
     self.opponent_hand = self._draw_toward_badugi(self.opponent_hand, draw_amount)
     self.opponent_last_draw = draw_amount
+    self._record_opponent_draw(draw_amount)
     self.phase = "BET"
     self.player_bet = 0
     self.opponent_bet = 0
     self.current_bet = self._bet_size()
     self.bet_round = 0
+
+  def _record_opponent_action(self, action: str):
+    self.opponent_action_count += 1
+    if action in ("bet", "raise"):
+      self.opponent_aggressive_action_count += 1
+    elif action in ("check", "call"):
+      self.opponent_passive_action_count += 1
+    elif action == "fold":
+      self.opponent_fold_count += 1
+
+  def _record_opponent_draw(self, draw_count: int):
+    if draw_count <= 0:
+      self.opponent_pat_count += 1
+    else:
+      self.opponent_draw_count += 1
+      self.opponent_total_draw_cards += draw_count
 
   def _best_badugi_keep(self, hand: Sequence[Card]) -> List[Card]:
     keep: List[Card] = []
@@ -534,7 +592,21 @@ class BadugiEnv(gym.Env):
       position_bonus = 0.08 if not self._player_is_first_to_act() else -0.04
       draw_equity = 0.06 * max(0, self.max_rounds - self.round) if features.one_away else 0.0
       opponent_draw_pressure = self._opponent_draw_pressure()
+      opponent_aggression = self._opponent_aggression_rate()
+      opponent_foldability = self._opponent_foldability_estimate()
+      opponent_pat_pressure = self._opponent_pat_pressure()
       continue_value = min(1.0, strength + position_bonus + draw_equity + opponent_draw_pressure)
+      bluff_opportunity = (
+        to_call == 0
+        and not self._player_is_first_to_act()
+        and opponent_foldability >= 0.32
+        and self.bet_round < self.max_bets
+      )
+      semi_bluff_opportunity = (
+        bluff_opportunity
+        and features.one_away
+        and self.round < self.max_rounds
+      )
       if action == 4 and features.one_away:
         reward += 0.15
       if action == 4 and features.is_nuts:
@@ -545,6 +617,12 @@ class BadugiEnv(gym.Env):
         reward += 0.18 if self.opponent_last_draw >= 2 else -0.55
       if action in (3, 4) and self.round >= self.max_rounds and self.opponent_last_draw >= 2:
         reward += 0.18
+      if action in (3, 4) and semi_bluff_opportunity and strength >= 0.30:
+        reward += 0.16
+      if action in (3, 4) and bluff_opportunity and strength < 0.30:
+        reward += 0.08 if opponent_foldability >= 0.45 else -0.16
+      if action in (3, 4) and opponent_foldability < 0.18 and strength < 0.50:
+        reward -= 0.22
       if action in (3, 4) and strength < 0.35:
         reward -= 0.45
       if action in (3, 4) and to_call == 0 and not self._player_is_first_to_act() and strength >= 0.45:
@@ -556,9 +634,13 @@ class BadugiEnv(gym.Env):
       if action == 2 and strength < 0.25:
         reward -= 0.18
       if to_call > 0 and action == 0:
-        reward += 0.15 if continue_value < pot_odds + 0.03 else -0.35
+        tight_pat_raise_pressure = opponent_pat_pressure > 0.5 and opponent_aggression < 0.22
+        reward += 0.22 if continue_value < pot_odds + 0.03 or tight_pat_raise_pressure else -0.35
       if to_call > 0 and action == 2:
-        reward += 0.16 if continue_value >= pot_odds else -0.12
+        call_edge = continue_value + (0.08 if opponent_aggression >= 0.38 and strength >= 0.42 else 0.0)
+        reward += 0.18 if call_edge >= pot_odds else -0.14
+      if to_call > 0 and action in (3, 4) and opponent_aggression >= 0.38 and strength >= 0.62:
+        reward += 0.16
       if action == 0 and to_call == 0:
         reward -= 0.2
     elif self.phase == "DRAW":
@@ -609,6 +691,35 @@ class BadugiEnv(gym.Env):
     if self.opponent_last_draw == 1:
       return 0.06
     return -0.08
+
+  def _opponent_aggression_rate(self) -> float:
+    if self.opponent_action_count <= 0:
+      return self.opponent_profile.raise_probability
+    return min(1.0, self.opponent_aggressive_action_count / self.opponent_action_count)
+
+  def _opponent_passivity_rate(self) -> float:
+    if self.opponent_action_count <= 0:
+      return 1.0 - self.opponent_profile.raise_probability
+    return min(1.0, self.opponent_passive_action_count / self.opponent_action_count)
+
+  def _opponent_foldability_estimate(self) -> float:
+    observed = (
+      self.opponent_fold_count / self.opponent_action_count
+      if self.opponent_action_count > 0
+      else self.opponent_profile.fold_probability
+    )
+    return min(1.0, max(0.0, (observed + self.opponent_profile.fold_probability) / 2.0))
+
+  def _opponent_pat_pressure(self) -> float:
+    draw_decisions = self.opponent_pat_count + self.opponent_draw_count
+    if draw_decisions <= 0:
+      return 0.0
+    return min(1.0, self.opponent_pat_count / draw_decisions)
+
+  def _opponent_average_draw_count(self) -> float:
+    if self.opponent_draw_count <= 0:
+      return 0.0
+    return min(4.0, self.opponent_total_draw_cards / self.opponent_draw_count)
 
   def _pot_odds(self, to_call: int | float | None = None) -> float:
     call_amount = max(0.0, float(self.current_bet - self.player_bet if to_call is None else to_call))
@@ -683,6 +794,12 @@ class BadugiEnv(gym.Env):
         self._opponent_draw_pressure(),
         1.0 if self.round >= self.max_rounds else 0.0,
         1.0 if self._is_weak_final_badugi(features) else 0.0,
+        self._opponent_aggression_rate(),
+        self._opponent_passivity_rate(),
+        self._opponent_pat_pressure(),
+        self._opponent_average_draw_count() / 4.0,
+        self._opponent_foldability_estimate(),
+        self.opponent_profile.bluff_frequency,
       ]
     )
     while len(obs) < BADUGI_OBSERVATION_VECTOR_SIZE:

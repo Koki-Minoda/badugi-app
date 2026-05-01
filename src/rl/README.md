@@ -94,6 +94,10 @@ the latest `BadugiEnv` reward/showdown fixes and has passed ONNX evaluation.
 For current CPU training, keep `--train-every-steps 4` unless you are doing a
 small diagnostic run; updating every environment step is much slower and did not
 improve the short-run policy.
+The Badugi DQN uses the frontend action order
+`fold, check, call, bet, raise, all_in`, but fixed-limit training masks illegal
+actions by street. Promotion candidates must be evaluated with the same action
+masking used during training.
 
 ## Building datasets from the app
 

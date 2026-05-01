@@ -65,6 +65,32 @@ class BadugiEnvTest(unittest.TestCase):
         self.assertGreaterEqual(env.player_stack, starting_stack - bet_size * 2)
         self.assertFalse(env.player_all_in)
 
+    def test_legal_action_mask_matches_bet_and_draw_phases(self):
+        env = BadugiEnv()
+        env.reset(seed=1)
+        env.phase = "BET"
+        env.current_bet = 1
+        env.player_bet = 0
+
+        self.assertEqual(env.legal_action_mask().tolist(), [1, 0, 1, 0, 1, 0])
+
+        env.phase = "DRAW"
+        self.assertEqual(env.legal_action_mask().tolist(), [1, 1, 1, 1, 0, 0])
+
+    def test_illegal_action_uses_safe_fallback_with_penalty(self):
+        env = BadugiEnv()
+        env.reset(seed=1)
+        env.phase = "BET"
+        env.current_bet = 1
+        env.player_bet = 0
+        starting_stack = env.player_stack
+
+        _obs, reward, terminated, _truncated, _info = env.step(5)
+
+        self.assertFalse(terminated)
+        self.assertLess(reward, 0)
+        self.assertLess(env.player_stack, starting_stack)
+
     def test_player_draw_keeps_low_unique_badugi_cards(self):
         env = BadugiEnv()
         env.reset(seed=1)

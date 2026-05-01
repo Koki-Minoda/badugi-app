@@ -75,8 +75,9 @@ class BadugiEnv(gym.Env):
     self.observation_space = spaces.Box(
       low=-1.0, high=1.0, shape=(BADUGI_OBSERVATION_VECTOR_SIZE,), dtype=np.float32
     )
-    # 0: Fold/Pat, 1: Check/Call/Draw1, 2: Raise/Draw2,
-    # 3: Draw3, 4: Bet alias, 5: Raise alias.
+    # Output order mirrors BADUGI_RL_ACTIONS:
+    # 0: Fold/Pat, 1: Check/Draw1, 2: Call/Draw2,
+    # 3: Bet/Draw3, 4: Raise, 5: All-in (illegal in fixed-limit training).
     self.action_space = spaces.Discrete(6)
 
     self.deck: List[Card] = []
@@ -123,6 +124,9 @@ class BadugiEnv(gym.Env):
     reward = 0.0
     features = self._hand_features(self.player_hand)
     reward += self._reward_shaping(features, action)
+    if not self.is_legal_action(action):
+      action = self.safe_fallback_action()
+      reward -= 1.0
 
     if self.phase == "BET":
       reward += self._handle_bet_action(action, features)
@@ -158,6 +162,40 @@ class BadugiEnv(gym.Env):
   def _player_is_first_to_act(self) -> int:
     return 1 if (self.round % 2 == 0) else 0
 
+  def legal_action_mask(self) -> np.ndarray:
+    mask = np.zeros(self.action_space.n, dtype=np.float32)
+    if self.done:
+      return mask
+    if self.phase == "DRAW":
+      mask[0:4] = 1.0
+      return mask
+
+    to_call = max(0, self.current_bet - self.player_bet)
+    can_raise = self.bet_round < self.max_bets and self.player_stack > to_call
+    if to_call > 0:
+      mask[0] = 1.0  # fold
+      mask[2] = 1.0  # call
+      if can_raise:
+        mask[4] = 1.0  # raise
+    else:
+      mask[1] = 1.0  # check
+      if can_raise:
+        mask[3] = 1.0  # bet
+        mask[4] = 1.0  # raise alias for frontend compatibility
+    return mask
+
+  def is_legal_action(self, action: int) -> bool:
+    if action < 0 or action >= self.action_space.n:
+      return False
+    return bool(self.legal_action_mask()[action] > 0)
+
+  def safe_fallback_action(self) -> int:
+    mask = self.legal_action_mask()
+    for action in (2, 1, 0, 3, 4):
+      if action < len(mask) and mask[action] > 0:
+        return action
+    return 0
+
   def _handle_bet_action(self, action: int, features: HandFeature) -> float:
     bet_size = self._bet_size()
     reward = 0.0
@@ -170,7 +208,7 @@ class BadugiEnv(gym.Env):
       self.pot = 0
       reward -= 2.2
       return reward
-    elif action == 1:  # Check / Call
+    elif action in (1, 2):  # Check / Call
       diff = self.current_bet - self.player_bet
       if diff > 0:
         payment = min(diff, self.player_stack)
@@ -179,8 +217,10 @@ class BadugiEnv(gym.Env):
         self.player_bet += payment
         if self.player_stack == 0:
           self.player_all_in = True
+      if action == 1 and diff > 0:
+        reward -= 0.2
       # check branch does nothing else
-    elif action in (2, 4, 5):  # Raise / Bet alias / Raise alias
+    elif action in (3, 4):  # Bet / Raise
       if self.bet_round < self.max_bets:
         self.current_bet += bet_size
         diff = self.current_bet - self.player_bet
@@ -241,17 +281,28 @@ class BadugiEnv(gym.Env):
     self.opponent_all_in = False
     bet_size = self._bet_size()
     r = random.random()
-    if r < 0.1 and features.count < 3:
+    strength = self._hand_strength(features)
+    diff = self.current_bet - self.opponent_bet
+    if diff > 0 and strength < 0.35 and r < 0.35:
       self.opponent_fold()
       return
-    diff = self.current_bet - self.opponent_bet
     if diff > 0:
       payment = min(diff, self.opponent_stack)
       self.opponent_stack -= payment
       self.opponent_bet += payment
       self.pot += payment
       self.last_opp_action = 1
-    elif r > 0.85 and self.bet_round < self.max_bets:
+      if strength > 0.78 and r > 0.65 and self.bet_round < self.max_bets:
+        self.current_bet += bet_size
+        payment = min(self.current_bet - self.opponent_bet, self.opponent_stack)
+        self.opponent_stack -= payment
+        self.opponent_bet += payment
+        self.pot += payment
+        self.bet_round += 1
+        self.last_opp_action = 2
+    elif self.bet_round < self.max_bets and (
+      strength > 0.82 or (strength > 0.62 and r > 0.72)
+    ):
       self.current_bet += bet_size
       payment = min(self.current_bet - self.opponent_bet, self.opponent_stack)
       self.opponent_stack -= payment
@@ -336,12 +387,12 @@ class BadugiEnv(gym.Env):
     if not self.done:
       return 0.0
     if self.terminal_reason == "opponent_fold":
-      return 1.0
+      return 0.8
     if self.terminal_reason == "showdown":
       if self.last_result == 1:
-        return 2.0
+        return 3.0
       if self.last_result == -1:
-        return -2.0
+        return -3.0
     return 0.0
 
   def _judge(self, hand: Sequence[Card]) -> Tuple[int, List[int]]:
@@ -350,16 +401,34 @@ class BadugiEnv(gym.Env):
   def _reward_shaping(self, features: HandFeature, action: int) -> float:
     reward = 0.0
     if self.phase == "BET":
-      if action == 2 and features.one_away:
-        reward += 0.2
-      if action == 2 and features.is_nuts:
-        reward += 0.3
+      strength = self._hand_strength(features)
+      if action == 4 and features.one_away:
+        reward += 0.15
+      if action == 4 and features.is_nuts:
+        reward += 0.35
+      if action in (3, 4) and strength < 0.35:
+        reward -= 0.25
+      if action == 2 and strength >= 0.45:
+        reward += 0.08
       if action == 0:
         reward -= 0.3
     elif self.phase == "DRAW":
       if action == 0 and features.count == 4:
         reward += 0.1
+      if action == 0 and features.count < 4:
+        reward -= 0.2
+      if action > 0 and features.count == 4:
+        reward -= 0.25
     return reward
+
+  def _hand_strength(self, features: HandFeature) -> float:
+    count_score = features.count / 4.0
+    if not features.ranks:
+      return 0.0
+    high_rank = max(features.ranks)
+    low_bonus = max(0.0, (12 - high_rank) / 12.0) * 0.2
+    nut_bonus = 0.15 if features.is_nuts else 0.0
+    return min(1.0, count_score + low_bonus + nut_bonus)
 
   def _get_obs(self) -> np.ndarray:
     obs: List[float] = []

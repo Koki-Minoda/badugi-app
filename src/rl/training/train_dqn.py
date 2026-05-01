@@ -94,11 +94,13 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
         for step in range(cfg.max_steps_per_episode):
             global_step += 1
 
-            action = agent.act(obs, epsilon)
+            action_mask = env.legal_action_mask()
+            action = agent.act(obs, epsilon, action_mask=action_mask)
             next_obs, reward, terminated, truncated, info = env.step(action)
             done = terminated or truncated
+            next_action_mask = env.legal_action_mask()
 
-            replay_buffer.add(obs, action, reward, next_obs, done)
+            replay_buffer.add(obs, action, reward, next_obs, done, next_action_mask=next_action_mask)
             obs = next_obs
             episode_reward += float(reward)
 

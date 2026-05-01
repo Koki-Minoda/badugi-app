@@ -59,15 +59,27 @@ class DQNAgent:
         self.train_steps = 0
 
     @torch.no_grad()
-    def act(self, obs: np.ndarray, epsilon: float) -> int:
+    def act(self, obs: np.ndarray, epsilon: float, action_mask: np.ndarray | None = None) -> int:
         """Epsilon-greedy action selection."""
+        legal_actions = None
+        if action_mask is not None:
+            legal_actions = np.flatnonzero(np.asarray(action_mask) > 0)
+            if len(legal_actions) == 0:
+                legal_actions = None
         if random.random() < epsilon:
+            if legal_actions is not None:
+                return int(random.choice(legal_actions))
             return random.randrange(self.n_actions)
 
         obs_t = torch.as_tensor(
             obs, dtype=torch.float32, device=self.device
         ).unsqueeze(0)
         q_values = self.q_network(obs_t)
+        if action_mask is not None:
+            mask_t = torch.as_tensor(
+                action_mask, dtype=torch.bool, device=self.device
+            ).unsqueeze(0)
+            q_values = q_values.masked_fill(~mask_t, -1e9)
         action = int(torch.argmax(q_values, dim=1).item())
         return action
 
@@ -108,8 +120,16 @@ class DQNAgent:
         with torch.no_grad():
             # Double DQN style: action from online net, value from target net
             next_q_online = self.q_network(next_obs)
+            if "next_action_masks" in batch:
+                next_masks = torch.as_tensor(
+                    batch["next_action_masks"], dtype=torch.bool, device=self.device
+                )
+                next_q_online = next_q_online.masked_fill(~next_masks, -1e9)
             next_actions = torch.argmax(next_q_online, dim=1, keepdim=True)
-            next_q_target = self.target_network(next_obs).gather(1, next_actions)
+            next_q_target_all = self.target_network(next_obs)
+            if "next_action_masks" in batch:
+                next_q_target_all = next_q_target_all.masked_fill(~next_masks, -1e9)
+            next_q_target = next_q_target_all.gather(1, next_actions)
             target_q = rewards + self.hyper.gamma * (1.0 - dones) * next_q_target
 
         loss = self.loss_fn(q_values, target_q)

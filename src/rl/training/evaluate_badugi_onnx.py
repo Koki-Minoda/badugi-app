@@ -28,12 +28,27 @@ from rl.env.badugi_env import BadugiEnv
 DEFAULT_MODEL = PROJECT_ROOT / "public/models/badugi_worldmaster_v1.onnx"
 
 
-def choose_action(session: ort.InferenceSession, obs: np.ndarray, epsilon: float) -> int:
+def choose_action(
+    session: ort.InferenceSession,
+    obs: np.ndarray,
+    epsilon: float,
+    action_mask: np.ndarray | None = None,
+) -> int:
     output_name = session.get_outputs()[0].name
     input_name = session.get_inputs()[0].name
+    legal_actions = None
+    if action_mask is not None:
+        legal_actions = np.flatnonzero(np.asarray(action_mask) > 0)
+        if len(legal_actions) == 0:
+            legal_actions = None
     if random.random() < epsilon:
+        if legal_actions is not None:
+            return int(random.choice(legal_actions))
         return random.randrange(6)
     q_values = session.run([output_name], {input_name: obs.astype(np.float32)})[0]
+    if action_mask is not None:
+        q_values = np.array(q_values, copy=True)
+        q_values[np.asarray(action_mask) <= 0] = -1e9
     return int(np.argmax(q_values))
 
 
@@ -65,7 +80,7 @@ def evaluate_model(
         last_result = None
 
         for _ in range(max_steps):
-            action = choose_action(session, obs, epsilon)
+            action = choose_action(session, obs, epsilon, env.legal_action_mask())
             action_counts[str(action)] += 1
             obs, reward, terminated, truncated, _info = env.step(action)
             total_reward += float(reward)

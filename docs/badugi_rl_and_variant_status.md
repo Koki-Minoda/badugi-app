@@ -1516,7 +1516,11 @@ Draw RL test coverage:
         - 2026-05-01 確認: `npm run ai:train-badugi -- --episodes 50000 --max-steps 200 --warmup-steps 10000 --batch-size 64 --log-interval 1000 --save-interval 5000 --output-dir rl/models/badugi_strategic_draw_fast_20260501 --train-every-steps 4 --device cpu` は完走。summary は `episodes=50000`, `global_steps=418846`, `avg_reward_last_100=-0.7625`。
         - 2026-05-01 確認: 50k checkpoint export は成功。`npm run ai:evaluate-badugi-onnx -- --model /tmp/mgx-badugi-fast-latest.onnx --episodes 2000 --max-steps 200 --seed 20260502` は `showdownWinRate=0.146`。
         - 2026-05-01 比較: 現行 bootstrap WorldMaster は同条件で `showdownWinRate=0.157`。50k DQN は bootstrap を上回らなかったため、`public/models/badugi_worldmaster_v1.onnx` へは昇格しない。
-        - 残件: reward / opponent model / action mask を再設計し、bootstrap を上回る長期評価基準を満たした checkpoint だけを WorldMaster registry へ反映する。
+        - 2026-05-01 再設計: DQN action index を frontend `BADUGI_RL_ACTIONS` に揃え、BET/DRAW の `legal_action_mask()`、mask付きepsilon-greedy、mask付きDouble DQN target、ONNX評価時mask、frontend ONNX decode maskを追加。
+        - 2026-05-01 再設計: opponent model をランダム寄りからhand strength連動の call / raise / fold に変更し、showdown勝敗を重く、fold勝ちを軽めにするrewardへ調整。
+        - 2026-05-01 確認: `npm run ai:train-badugi -- --episodes 5000 --max-steps 200 --warmup-steps 1000 --batch-size 64 --log-interval 1000 --save-interval 0 --output-dir rl/models/badugi_masked_probe_20260501 --train-every-steps 4 --device cpu` は成功。
+        - 2026-05-01 確認: `npm run ai:evaluate-badugi-onnx -- --model /tmp/mgx-badugi-masked-probe.onnx --episodes 500 --max-steps 200 --seed 20260501` は `showdownWinRate=0.186`。前回50k DQNの `0.146` と bootstrap比較値 `0.157` を短期probeでは上回った。
+        - 残件: 再設計後の 50k+ 長期学習を実行し、bootstrap を安定して上回る長期評価基準を満たした checkpoint だけを WorldMaster registry へ反映する。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
   - P2P:
     - data capture / export / sync / security test の部品はある。

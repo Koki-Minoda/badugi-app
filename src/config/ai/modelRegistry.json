@@ -59,6 +59,23 @@
     ],
     "tier": "worldmaster",
     "onnx": "models/badugi_worldmaster_v1.onnx",
+    "checksumSha256": "5be226ebed765ff6b018d3b5b798437498eb0f705b58c9e72c908e527e9b998c",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
+    "id": "model-badugi-beginner-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "D03"
+    ],
+    "tier": "beginner",
+    "onnx": "models/badugi_beginner_dqn_v1.onnx",
     "checksumSha256": "671f3ed8f6dceb0066ec772ac1e3a59b79b1bf9a48745827a560a388229d9439",
     "productionRequired": true,
     "inputShape": [

@@ -61,6 +61,24 @@ export function resolveTierForContext({
 
 export function resolveTierModelInfo({ variantId, tierId }) {
   const tierConfig = getTierById(tierId);
+  const exactVariantTier = selectModelForVariant({
+    variantId,
+    tierId: tierConfig?.id ?? tierId,
+  });
+  if (
+    exactVariantTier?.tier === (tierConfig?.id ?? tierId) &&
+    exactVariantTier?.variantIds?.includes(variantId)
+  ) {
+    return {
+      modelId: exactVariantTier.id,
+      tierId: exactVariantTier.tier,
+      variantIds: exactVariantTier.variantIds,
+      onnx: exactVariantTier.onnx,
+      inputShape: exactVariantTier.inputShape,
+      outputShape: exactVariantTier.outputShape,
+    };
+  }
+
   const modelFromTier = tierConfig?.modelId ? getModelEntry(tierConfig.modelId) : null;
   const entry =
     modelFromTier ??

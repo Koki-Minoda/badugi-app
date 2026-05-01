@@ -8,7 +8,10 @@ import {
 } from "../onnxPolicyAdapter.js";
 
 describe("onnxPolicyAdapter Badugi schema", () => {
-  it("selects tier-specific Badugi models for Pro, Iron, and WorldMaster", () => {
+  it("selects tier-specific Badugi models for Beginner, Pro, Iron, and WorldMaster", () => {
+    expect(selectModelForVariant({ variantId: "D03", tierId: "beginner" })?.id).toBe(
+      "model-badugi-beginner-dqn-v1",
+    );
     expect(selectModelForVariant({ variantId: "D03", tierId: "pro" })?.id).toBe(
       "model-badugi-pro-v1",
     );

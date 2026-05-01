@@ -6,9 +6,10 @@ Place production ONNX policy files in this directory and reference them from
 Current repository state:
 
 - The registry contains Badugi and draw-family model entries.
-- Production `.onnx` assets are not committed here yet.
-- Runtime code must keep using the configured fallback path when a model file is
-  unavailable.
+- Badugi production-required `.onnx` assets are committed here so production can
+  verify checksums before using them.
+- Runtime code must keep using the configured fallback path when an optional
+  model file is unavailable.
 
 Release checklist:
 
@@ -34,4 +35,8 @@ Current blocker:
 - Bootstrap models are real ONNX files and exercise the frontend ONNX path, but
   they are heuristic initial policies and should later be replaced by trained
   RL checkpoints.
+- `badugi_beginner_dqn_v1.onnx` is a 50k DQN checkpoint that beat the bootstrap
+  baseline in the current simplified evaluator, but still has negative
+  avgReward. It is intentionally wired to the beginner tier only until stronger
+  evaluation gates are met.
 - Rebuild the bootstrap set when needed with `npm run ai:build-bootstrap-models`.

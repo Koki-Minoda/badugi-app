@@ -25,8 +25,8 @@ from rl.agents.dqn_agent import DQNAgent
 
 DEFAULT_REGISTRY_PATH = PROJECT_ROOT / "src/config/ai/modelRegistry.json"
 DEFAULT_CHECKPOINT = PROJECT_ROOT / "rl/models/badugi_dqn_latest.pt"
-DEFAULT_OUTPUT = PROJECT_ROOT / "public/models/badugi_worldmaster_v1.onnx"
-DEFAULT_MODEL_ID = "model-badugi-worldmaster-v1"
+DEFAULT_OUTPUT = PROJECT_ROOT / "public/models/badugi_beginner_dqn_v1.onnx"
+DEFAULT_MODEL_ID = "model-badugi-beginner-dqn-v1"
 INPUT_SIZE = 96
 OUTPUT_SIZE = 6
 

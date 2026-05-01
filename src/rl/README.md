@@ -77,20 +77,23 @@ npm run ai:train-badugi -- \
 
 npm run ai:export-badugi-onnx -- \
   --checkpoint rl/models/badugi_dqn_latest.pt \
-  --output public/models/badugi_worldmaster_v1.onnx \
-  --model-id model-badugi-worldmaster-v1
+  --output public/models/badugi_beginner_dqn_v1.onnx \
+  --model-id model-badugi-beginner-dqn-v1
 
 npm run ai:verify-models
 
 npm run ai:evaluate-badugi-onnx -- \
-  --model public/models/badugi_worldmaster_v1.onnx \
+  --model public/models/badugi_beginner_dqn_v1.onnx \
   --episodes 1000 \
   --max-steps 200
 ```
 
 Use `--device cuda` only when the host has a compatible GPU setup.
-Do not promote a checkpoint to `public/models/` unless it was trained after
-the latest `BadugiEnv` reward/showdown fixes and has passed ONNX evaluation.
+Do not promote a checkpoint to Pro / Iron / WorldMaster unless it was trained
+after the latest `BadugiEnv` reward/showdown fixes, has positive or clearly
+tier-appropriate avgReward across multiple opponent profiles, and passes ONNX
+evaluation. New DQN checkpoints should default to the beginner/experimental
+slot until those gates are met.
 For current CPU training, keep `--train-every-steps 4` unless you are doing a
 small diagnostic run; updating every environment step is much slower and did not
 improve the short-run policy.

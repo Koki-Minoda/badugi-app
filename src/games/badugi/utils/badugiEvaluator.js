@@ -66,7 +66,6 @@ export function evaluateHand(cards) {
 
     if (!best || isBetter(evaluation, best.evaluation)) {
       best = { evaluation };
-      if (evaluation.count === 4) break;
     }
   }
 
@@ -334,7 +333,6 @@ function selectBestLegacySubset(cards) {
         prefersSubsetSuits(subset, best.subset))
     ) {
       best = { evaluation, subset };
-      if (evaluation.count === 4) break;
     }
   }
   return best;

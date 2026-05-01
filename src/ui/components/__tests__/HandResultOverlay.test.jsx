@@ -77,10 +77,48 @@ describe("HandResultOverlay", () => {
       />
     );
     const potTitles = screen.getAllByTestId("hand-result-pot-title").map((node) => node.textContent);
-    expect(potTitles).toEqual(["Main Pot", "Side Pot #2"]);
+    expect(potTitles).toEqual(["Main Pot", "Side Pot"]);
     expect(screen.getAllByTestId("hand-result-winner-name").map((node) => node.textContent)).toContain(
       "CPU 2",
     );
+  });
+
+  test("labels three side pots in a way players can distinguish", () => {
+    const makeWinner = (seatIndex, name, payout) => ({
+      seatIndex,
+      name,
+      hand: ["AD", "4C", "7H", "KS"],
+      handLabel: "Badugi 4-card",
+      payout,
+    });
+
+    render(
+      <HandResultOverlay
+        visible
+        summary={{
+          handId: "multi-side",
+          pot: 1100,
+          potDetails: [
+            { potIndex: 0, potAmount: 400, winners: [makeWinner(2, "CPU 3", 400)] },
+            { potIndex: 1, potAmount: 300, winners: [makeWinner(2, "CPU 3", 300)] },
+            { potIndex: 2, potAmount: 200, winners: [makeWinner(2, "CPU 3", 200)] },
+            { potIndex: 3, potAmount: 200, winners: [makeWinner(3, "CPU 4", 200)] },
+          ],
+        }}
+      />
+    );
+
+    expect(screen.getAllByTestId("hand-result-pot-title").map((node) => node.textContent)).toEqual([
+      "Main Pot",
+      "Side Pot",
+      "Side Pot 2",
+      "Side Pot 3",
+    ]);
+    const sections = screen.getAllByTestId("hand-result-pot");
+    expect(sections[0].textContent).toContain("CPU 3");
+    expect(sections[1].textContent).toContain("CPU 3");
+    expect(sections[2].textContent).toContain("CPU 3");
+    expect(sections[3].textContent).toContain("CPU 4");
   });
 
   test("renders 2-7 low hand labels for draw variants", () => {

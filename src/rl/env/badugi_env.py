@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+from itertools import combinations
 from dataclasses import dataclass
 from typing import Iterable, List, Sequence, Tuple
 
@@ -21,16 +22,17 @@ def build_deck() -> List[Card]:
 
 def evaluate_badugi(hand: Sequence[Card]) -> Tuple[int, List[int]]:
   """Return (made_card_count, sorted ranks for the best subset)."""
-  best: List[int] = []
-  used_ranks: set[int] = set()
-  used_suits: set[int] = set()
-  for rank, suit in sorted(hand, key=lambda x: x[0]):
-    if rank in used_ranks or suit in used_suits:
-      continue
-    used_ranks.add(rank)
-    used_suits.add(suit)
-    best.append(rank)
-  return len(best), best
+  best: Tuple[int, List[int]] = (0, [])
+  for subset_size in range(1, min(4, len(hand)) + 1):
+    for subset in combinations(hand, subset_size):
+      ranks = [rank for rank, _suit in subset]
+      suits = [suit for _rank, suit in subset]
+      if len(set(ranks)) != len(ranks) or len(set(suits)) != len(suits):
+        continue
+      candidate = (len(subset), sorted(ranks))
+      if compare_badugi_scores(candidate, best) > 0:
+        best = candidate
+  return best
 
 
 def compare_badugi_scores(player_score: Tuple[int, List[int]], opp_score: Tuple[int, List[int]]) -> int:
@@ -253,6 +255,7 @@ class BadugiEnv(gym.Env):
       return self._get_obs(), 0.0, True, False, {}
 
     shaping_reward = 0.0
+    phase_before_action = self.phase
     features = self._hand_features(self.player_hand)
     shaping_reward += self._reward_shaping(features, action)
     if not self.is_legal_action(action):
@@ -267,7 +270,7 @@ class BadugiEnv(gym.Env):
     terminal_reward = 0.0
     if self.done:
       terminal_reward = self._terminal_reward()
-    else:
+    elif not (phase_before_action == "BET" and self.phase == "DRAW"):
       self._opponent_turn()
       terminal_reward = self._terminal_reward()
 
@@ -385,8 +388,9 @@ class BadugiEnv(gym.Env):
       reward -= 0.05 * draw_count
     else:
       reward += 0.05  # pat bonus
-    self.phase = "BET"
     self.round += 1
+    self._opponent_draw_action()
+    self.phase = "BET"
     self.player_bet = 0
     self.opponent_bet = 0
     self.current_bet = self._bet_size()
@@ -528,16 +532,19 @@ class BadugiEnv(gym.Env):
       self.opponent_total_draw_cards += draw_count
 
   def _best_badugi_keep(self, hand: Sequence[Card]) -> List[Card]:
-    keep: List[Card] = []
-    used_ranks: set[int] = set()
-    used_suits: set[int] = set()
-    for card in sorted(hand, key=lambda x: x[0]):
-      rank, suit = card
-      if rank not in used_ranks and suit not in used_suits:
-        keep.append(card)
-        used_ranks.add(rank)
-        used_suits.add(suit)
-    return keep
+    best_subset: tuple[Card, ...] = ()
+    best_score: Tuple[int, List[int]] = (0, [])
+    for subset_size in range(1, min(4, len(hand)) + 1):
+      for subset in combinations(hand, subset_size):
+        ranks = [rank for rank, _suit in subset]
+        suits = [suit for _rank, suit in subset]
+        if len(set(ranks)) != len(ranks) or len(set(suits)) != len(suits):
+          continue
+        score = (len(subset), sorted(ranks))
+        if compare_badugi_scores(score, best_score) > 0:
+          best_score = score
+          best_subset = subset
+    return list(best_subset)
 
   def _draw_toward_badugi(self, hand: Sequence[Card], draw_count: int) -> List[Card]:
     keep = self._best_badugi_keep(hand)

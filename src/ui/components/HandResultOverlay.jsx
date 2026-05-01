@@ -71,7 +71,13 @@ function WinnerCard({ winner }) {
 function PotSection({ pot, index, singlePot }) {
   const winners = Array.isArray(pot?.winners) ? pot.winners : [];
   const title =
-    singlePot || index === 0 ? (singlePot ? "Pot" : "Main Pot") : `Side Pot #${index + 1}`;
+    singlePot || index === 0
+      ? singlePot
+        ? "Pot"
+        : "Main Pot"
+      : index === 1
+      ? "Side Pot"
+      : `Side Pot ${index}`;
   return (
     <div
       className="rounded-2xl border border-white/10 bg-slate-950/40 p-4 space-y-3"

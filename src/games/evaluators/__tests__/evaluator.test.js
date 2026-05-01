@@ -87,6 +87,52 @@ describe("Lowball evaluator", () => {
     expect(compareEvaluations(sevenHigh, wheel) < 0).toBe(true);
   });
 
+  it("treats A-2-3-4-5 as ace-high, not a straight, in 2-7 lowball", () => {
+    const aceHigh = evaluateLowHand({
+      cards: ["AS", "5D", "4C", "3H", "2S"],
+      lowType: "27",
+    });
+    const kingHigh = evaluateLowHand({
+      cards: ["KS", "5D", "4C", "3H", "2S"],
+      lowType: "27",
+    });
+    const pairedDeuces = evaluateLowHand({
+      cards: ["2S", "2D", "5C", "4H", "3S"],
+      lowType: "27",
+    });
+
+    expect(aceHigh.metadata.category).toBe("highCard");
+    expect(compareEvaluations(kingHigh, aceHigh)).toBeLessThan(0);
+    expect(compareEvaluations(aceHigh, pairedDeuces)).toBeLessThan(0);
+  });
+
+  it("orders duplicate categories correctly in 2-7 lowball", () => {
+    const onePair = evaluateLowHand({
+      cards: ["2S", "2D", "9C", "7H", "5S"],
+      lowType: "27",
+    });
+    const twoPair = evaluateLowHand({
+      cards: ["3S", "3D", "2C", "2H", "5S"],
+      lowType: "27",
+    });
+    const trips = evaluateLowHand({
+      cards: ["2S", "2D", "2C", "7H", "5S"],
+      lowType: "27",
+    });
+    const straight = evaluateLowHand({
+      cards: ["7S", "6D", "5C", "4H", "3S"],
+      lowType: "27",
+    });
+
+    expect(compareEvaluations(onePair, twoPair)).toBeLessThan(0);
+    expect(compareEvaluations(twoPair, trips)).toBeLessThan(0);
+    expect(compareEvaluations(trips, straight)).toBeLessThan(0);
+    expect(onePair.metadata.category).toBe("onePair");
+    expect(twoPair.metadata.category).toBe("twoPair");
+    expect(trips.metadata.category).toBe("trips");
+    expect(straight.metadata.category).toBe("straight");
+  });
+
   it("keeps ties equal for identical 2-7 ranks", () => {
     const first = evaluateLowHand({
       cards: ["7S", "5D", "4C", "3H", "2S"],
@@ -124,6 +170,33 @@ describe("Lowball evaluator", () => {
     });
     expect(compareEvaluations(kingLow, pairedAces) < 0).toBe(true);
     expect(pairedAces.metadata.penalty).toBeGreaterThan(0);
+  });
+
+  it("orders duplicate categories correctly in A-5 lowball", () => {
+    const onePair = evaluateLowHand({
+      cards: ["AS", "AD", "5C", "4H", "2S"],
+      lowType: "A5",
+    });
+    const twoPair = evaluateLowHand({
+      cards: ["AS", "AD", "2C", "2H", "5S"],
+      lowType: "A5",
+    });
+    const trips = evaluateLowHand({
+      cards: ["AS", "AD", "AC", "4H", "2S"],
+      lowType: "A5",
+    });
+    const fullHouse = evaluateLowHand({
+      cards: ["AS", "AD", "AC", "2H", "2S"],
+      lowType: "A5",
+    });
+
+    expect(compareEvaluations(onePair, twoPair)).toBeLessThan(0);
+    expect(compareEvaluations(twoPair, trips)).toBeLessThan(0);
+    expect(compareEvaluations(trips, fullHouse)).toBeLessThan(0);
+    expect(onePair.metadata.category).toBe("onePair");
+    expect(twoPair.metadata.category).toBe("twoPair");
+    expect(trips.metadata.category).toBe("trips");
+    expect(fullHouse.metadata.category).toBe("fullHouse");
   });
 
   it("chooses the best five-card low from six or more cards", () => {
@@ -301,6 +374,22 @@ describe("Badugi evaluator", () => {
     const four = evaluateBadugiHand({ cards: ["AS", "2D", "3C", "4H"] });
     const three = evaluateBadugiHand({ cards: ["AS", "AD", "3C", "4H"] });
     expect(compareEvaluations(four, three) < 0).toBe(true);
+  });
+
+  it("compares high card before lower kickers for Badugi low", () => {
+    const queenHigh = evaluateBadugiHand({ cards: ["QC", "10D", "9H", "8S"] });
+    const kingHigh = evaluateBadugiHand({ cards: ["KC", "4D", "3H", "2S"] });
+
+    expect(compareEvaluations(queenHigh, kingHigh)).toBeLessThan(0);
+  });
+
+  it("selects the best 4-card Badugi subset from five cards", () => {
+    const result = evaluateBadugiHand({
+      cards: ["KC", "QD", "3H", "2S", "4C"],
+    });
+
+    expect(result.metadata.ranks).toEqual([1, 2, 3, 11]);
+    expect(result.metadata.cards).toEqual(["2S", "3H", "4C", "QD"]);
   });
 });
 

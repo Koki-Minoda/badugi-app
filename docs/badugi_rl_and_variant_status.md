@@ -1496,6 +1496,7 @@ Draw RL test coverage:
       - 2026-05-01 更新: `src/rl/training/build_badugi_bootstrap_onnx.py` と `npm run ai:build-bootstrap-models` を追加し、Badugi Pro / Iron / WorldMaster の bootstrap ONNX を生成。
       - 2026-05-01 更新: `public/models/badugi_pro_v1.onnx` / `badugi_iron_v1.onnx` / `badugi_worldmaster_v1.onnx` を生成し、registry checksum と一致することを `npm run ai:verify-models` で確認。
       - 2026-05-01 更新: `public/models/badugi_beginner_dqn_v1.onnx` を追加。これは `rl/models/badugi_masked_long_20260501/badugi_dqn_latest.pt` から export した50k DQNだが、評価上は WorldMaster ではないため beginner tier のみに接続。
+      - 2026-05-02 更新: evaluator / draw phase 修正後の `badugi_envfix_beginner_probe_3k_20260502` を `public/models/badugi_beginner_dqn_v1.onnx` へ再export。`model-badugi-beginner-dqn-v1` checksum は `c8a3bb...`。
     - [x] `AI-05` ONNX unavailable 時の fallback smoke と、ONNX available 時の推論 smoke を分けて記録する。
       - `src/ai/__tests__/onnxFallbackSmoke.test.js` は missing ONNX session -> `policy-router` -> deterministic-safe の fallback 順を確認。
       - `src/ai/__tests__/onnxPolicyAdapterInference.test.js` は mock ONNX session available 時の推論 decode を確認。
@@ -1527,6 +1528,8 @@ Draw RL test coverage:
         - 2026-05-01 是正: `resolveTierModelInfo()` は variant+tier 完全一致を generic tier model より優先する。これにより D03 beginner だけ DQN を使い、他variantの beginner は従来どおり `model-generic-v1` を使う。
         - 2026-05-01 確認: `npm run ai:verify-models` は Badugi Beginner DQN / Pro / Iron / WorldMaster required asset 全てOK。
         - 2026-05-01 確認: `npm run ai:evaluate-badugi-onnx -- --model public/models/badugi_beginner_dqn_v1.onnx --episodes 500 --max-steps 200 --seed 20260502` は `avgReward=-1.507`, `showdownWinRate=0.254`, `showdowns=335`, `folds=165`。
+        - 2026-05-02 再学習: evaluator / draw phase 修正後、`teacher_warmup=1000`, `imitation_pretrain=500`, `expert_replay_ratio=0.25` で 3k probe を実行。checkpoint評価は `avgReward=0.116`, `showdownWinRate=0.670`, `foldRate=0.190`, `recommendedTier=standard`。ただし段階導入のためまず beginner ONNX に反映。
+        - 2026-05-02 確認: 更新後 `public/models/badugi_beginner_dqn_v1.onnx` は balanced 300 episodes で `avgReward=-0.181`, `showdownWinRate=0.600`, `showdowns=250`, `folds=50`。
         - 2026-05-01 確認: `npm run ai:evaluate-badugi-onnx -- --model public/models/badugi_worldmaster_v1.onnx --episodes 500 --max-steps 200 --seed 20260502` は bootstrap として `avgReward=-1.749`, `showdownWinRate=0.156`, `showdowns=500`, `folds=0`。
         - 2026-05-01 確認: AI routing tests / BadugiEnv unittest / `npm run lint` / `npm run build` は成功。
         - 2026-05-01 追加: `npm run ai:gate-badugi-model` を追加し、候補ONNXが `avgReward`, `showdownWinRate`, `foldRate`, baseline差分の昇格ゲートを満たさなければ non-zero exit で止める。
@@ -1602,7 +1605,28 @@ Draw RL test coverage:
         - 2026-05-01 更新: `src/rl/training/badugi_starting_ranges.py` を追加。全初手分布の中央値、1ドロー後top-half到達確率、A-2-7-or-better判定、heads-up continue/open rule、teacher action を実装。
         - 2026-05-01 修正: teacher warmup の実行速度を守るため、3-card one-away は exact enumeration、2枚以上drawの弱い形はレンジ表の軽量推定に分離。学習時に全探索で詰まらないようにした。
         - 2026-05-01 確認: A-2-7 one-away は premium/open、弱い重複手は facing bet でfold、draw phase は手役形に応じたdraw countを返す unit test を追加。
-      - [ ] `AI-06k` teacher warmup 後のDQNが showdown に弱い問題を改善する。次は imitation loss / supervised pretrain / evaluator baseline の replay比率固定を入れ、3k-20k probeで `showdownWinRate >= 0.25` まで立ち上げてから長期学習へ進む。
+      - [x] `AI-06k` teacher warmup 後のDQNが showdown に弱い問題を改善する。次は imitation loss / supervised pretrain / evaluator baseline の replay比率固定を入れ、3k-20k probeで `showdownWinRate >= 0.25` まで立ち上げてから長期学習へ進む。
+        - 2026-05-01 更新: DQN agent に `imitation_update()` を追加し、teacher state/action に対する cross entropy pretrain を可能にした。
+        - 2026-05-01 更新: `npm run ai:train-badugi` に `--imitation-pretrain-steps`, `--expert-replay-ratio`, `--imitation-loss-weight` を追加。teacher replay を初期投入だけでなく、通常DQN更新中にも一定比率で維持する。
+        - 2026-05-01 修正: teacher の final street を street-aware にし、未完成 one-away は facing bet でfold、rough made Badugi は相手2枚替え以上のときだけ薄く打つ方針に変更。
+        - 2026-05-01 確認: 3k imitation probe は `bc_acc=1.000` までteacher actionを学習したが、評価は `showdownWinRate=0.099`, `foldRate=0.040`, `recommendedTier=beginner`。配線は機能しているが強さは未達。
+        - 2026-05-01 確認: street-aware teacher 後の1k probeも `showdownWinRate=0.075`, `foldRate=0.000` で未達。teacher / imitation だけでは改善せず、training env のbetting/draw進行とteacher品質の再設計が必要。
+      - [ ] `AI-06l` imitation pretrain + expert replay の 3k/20k probe を評価し、`showdownWinRate >= 0.25`, `foldRate <= 0.40` を満たす checkpoint だけを beginner/standard候補へ進める。
+      - [ ] `AI-06m` Badugi training env の betting/draw 進行を実ゲームに近づける。現状は player action 後に即DRAWへ進みやすく、opponent のbet応答・street内アクション交換が簡略化されすぎているため、teacherを真似ても実戦的な押し引きが育ちにくい。
+        - 2026-05-01 深掘り: `evaluate_badugi()` が低ランク貪欲選択になっており、`A A A 2` を 1-card A と誤判定していた。正しくは枚数最大化優先で 2-card `A2`。全 52C4 brute force 照合を追加し、mismatch 0 を確認。
+        - 2026-05-01 深掘り: `BadugiEnv.step()` が player BET action 後に `phase=DRAW` へ進めた直後、同一step内の `_opponent_turn()` で opponent DRAW を消費して `phase=BET` に戻していた。結果として player は学習上ほぼカードチェンジできず、showdownWinRate が極端に低下していた。
+        - 2026-05-01 修正: player BET後は `DRAW` phase を次stepへ残し、player DRAW 後に opponent draw を処理して次BETへ進めるようにした。
+        - 2026-05-01 確認: 修正後の簡易評価で `call + best draw` は balanced 相手に `showdownWinRate=0.523`, `foldRate=0.000`。teacher は `showdownWinRate=0.750` だが `foldRate=0.800` でタイトすぎるため、次は teacher の参加レンジとfold頻度を調整する。
+        - 2026-05-02 監査: 実装済み評価器を確認。対象は Badugi / 2-7 low / A-5 low / split evaluator / NLH high。Omaha/PLO は variant definition と seed/API はあるが、実ゲーム進行・showdown evaluator へは未接続のため「実装済みゲーム評価」としては未検証扱い。
+        - 2026-05-02 修正: フロント Badugi shared evaluator の rank key が下位キッカーを過大評価していたため、高カードから辞書順比較できる encoding に修正。例: `Q-T-9-8` が `K-4-3-2` に正しく勝つ。
+        - 2026-05-02 修正: Badugi legacy / split 用の 5枚以上入力時、最初に見つけた4-card Badugiで探索を止める可能性を除去。全subsetを評価し、5枚入力でも最良4枚を選ぶようにした。
+        - 2026-05-02 確認: Badugi / 2-7 / A-5 / single draw / NLH evaluator regression をまとめて実行し、7 files / 82 tests pass。Python RL Badugi evaluator / starting range / DQN imitation tests は 37 tests pass。
+        - 2026-05-02 追加監査: 2-7 / A-5 low evaluator は made low 同士の比較は正しかったが、ペア以上を一律 penalty に寄せており、1ペア / 2ペア / trips / full house / quads のカテゴリ差が不足していた。
+        - 2026-05-02 修正: 2-7 は high-card -> one pair -> two pair -> trips -> straight -> flush -> full house -> quads -> straight flush の低い順、A-5 は straight / flush 無視で duplicate category を比較するように修正。2-7 の `A-2-3-4-5` は wheel straight ではなく Ace-high no-pair として扱う。
+        - 2026-05-02 確認: Lowball / draw engine / single draw regression は 4 files / 58 tests pass。Badugi / 2-7 / A-5 / NLH を含む関連一式は 7 files / 85 tests pass。`npm run lint`, `npm run build`, Python RL 37 tests も pass。
+        - 2026-05-02 TDA照合: TDA 2024 Rule 12/16/20/21 を参照し、cards speak / all-in hand table / odd chip / side pots separate を確認。Badugi side pot で eligible が1人だけの side pot を前potへmergeしてしまう実装を修正し、短い all-in main pot winner が単独eligible side potを取らない回帰テストを追加。
+        - 2026-05-02 確認: Badugi roundFlow / BadugiEngine / payout integrity / D01-D02 draw engine regression は 6 files / 78 tests pass。`npm run lint`, `npm run build` も pass。
+      - [ ] `AI-06n` Badugi evaluator / draw phase 修正後に、既存Badugi DQN checkpoint を無効扱いにし、新しいenvで teacher/imitation 3k -> 20k probe を再実行する。
       - [ ] `AI-06e` 2-7 / A-5 用の実ONNXを生成・配置する。現状は `model-27draw-iron-v1` (`D01/S01`) と `model-a5draw-iron-v1` (`D02/S02`) の registry / feature builder / routing test はあるが、実 `.onnx` は optional 未配置で、App draw CPU は rule-based fallback が主経路。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
   - P2P:

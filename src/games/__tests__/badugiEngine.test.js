@@ -355,6 +355,80 @@ describe("BadugiEngine", () => {
     expect(result.state.players[1].stack).toBe(140);
   });
 
+  it("does not award a one-eligible side pot to a shorter all-in main-pot winner", () => {
+    const state = engine.initHand({
+      seatConfig: ["HUMAN", "CPU", "CPU"],
+      startingStack: 300,
+      dealerIndex: 0,
+    });
+
+    const table = {
+      ...state,
+      players: state.players.map((p, idx) => ({
+        ...p,
+        hand:
+          idx === 0
+            ? ["AS", "2H", "3D", "4C"]
+            : idx === 1
+            ? ["5S", "6H", "7D", "8C"]
+            : ["KS", "KD", "KH", "QC"],
+        totalInvested: idx === 0 ? 100 : 300,
+        stack: 0,
+        allIn: idx !== 2,
+        folded: idx === 2,
+      })),
+      pots: [],
+    };
+
+    const result = engine.resolveShowdown(table);
+    expect(result.summary).toHaveLength(2);
+    expect(result.summary[0]).toMatchObject({
+      potAmount: 300,
+      payouts: [expect.objectContaining({ seatIndex: 0, payout: 300 })],
+    });
+    expect(result.summary[1]).toMatchObject({
+      potAmount: 400,
+      payouts: [expect.objectContaining({ seatIndex: 1, payout: 400 })],
+    });
+    expect(result.state.players[0].stack).toBe(300);
+    expect(result.state.players[1].stack).toBe(400);
+  });
+
+  it("awards multiple side pots independently by eligibility", () => {
+    const state = engine.initHand({
+      seatConfig: ["HUMAN", "CPU", "CPU", "CPU"],
+      startingStack: 600,
+      dealerIndex: 0,
+    });
+
+    const hands = [
+      ["QH", "QD", "QC", "QS"], // worst, main pot only
+      ["8S", "7H", "6D", "5C"], // eligible through first side, loses to seat 2
+      ["AS", "2H", "3D", "4C"], // wins main through second side
+      ["9S", "10H", "JD", "KC"], // wins only final side pot
+    ];
+    const invested = [100, 200, 300, 500];
+    const table = {
+      ...state,
+      players: state.players.map((p, idx) => ({
+        ...p,
+        hand: hands[idx],
+        totalInvested: invested[idx],
+        stack: 0,
+        allIn: true,
+        folded: false,
+      })),
+      pots: [],
+    };
+
+    const result = engine.resolveShowdown(table);
+
+    expect(result.summary.map((pot) => pot.potAmount)).toEqual([400, 300, 200, 200]);
+    expect(result.summary.map((pot) => pot.payouts[0]?.seatIndex)).toEqual([2, 2, 2, 3]);
+    expect(result.summary.map((pot) => pot.payouts[0]?.payout)).toEqual([400, 300, 200, 200]);
+    expect(result.state.players.map((player) => player.stack)).toEqual([0, 0, 900, 200]);
+  });
+
   it("splits odd chips evenly among tied winners", () => {
     const state = engine.initHand({
       seatConfig: ["HUMAN", "CPU", "CPU"],

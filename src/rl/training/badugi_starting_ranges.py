@@ -12,7 +12,7 @@ from functools import lru_cache
 from itertools import combinations
 from typing import Iterable, Sequence
 
-from rl.env.badugi_env import Card, build_deck, evaluate_badugi
+from rl.env.badugi_env import Card, build_deck, compare_badugi_scores, evaluate_badugi
 
 
 @dataclass(frozen=True)
@@ -71,17 +71,19 @@ def score_percentile(score: tuple[int, Sequence[int]]) -> float:
 
 
 def best_badugi_keep(hand: Sequence[Card]) -> list[Card]:
-    keep: list[Card] = []
-    used_ranks: set[int] = set()
-    used_suits: set[int] = set()
-    for card in sorted(hand, key=lambda item: item[0]):
-        rank, suit = card
-        if rank in used_ranks or suit in used_suits:
-            continue
-        keep.append(card)
-        used_ranks.add(rank)
-        used_suits.add(suit)
-    return keep
+    best_subset: tuple[Card, ...] = ()
+    best_score: tuple[int, list[int]] = (0, [])
+    for subset_size in range(1, min(4, len(hand)) + 1):
+        for subset in combinations(hand, subset_size):
+            ranks = [rank for rank, _suit in subset]
+            suits = [suit for _rank, suit in subset]
+            if len(set(ranks)) != len(ranks) or len(set(suits)) != len(suits):
+                continue
+            score = (len(subset), sorted(ranks))
+            if compare_badugi_scores(score, best_score) > 0:
+                best_score = score
+                best_subset = subset
+    return list(best_subset)
 
 
 def _estimated_multi_draw_top_half_probability(count: int, ranks: Sequence[int]) -> float:
@@ -179,12 +181,35 @@ def teacher_action(env) -> int:
 
     to_call = max(0, env.current_bet - env.player_bet)
     can_raise = env.bet_round < env.max_bets and env.player_stack > to_call
+    is_final_bet = env.round >= env.max_rounds
+    made_badugi = hand_range.made_cards >= 4
+    rough_badugi = made_badugi and hand_range.high_rank >= 10
+    strong_made = made_badugi and hand_range.high_rank <= 8
+    opponent_drew_multiple = getattr(env, "opponent_last_draw", 0) >= 2
     if to_call > 0:
+        if is_final_bet:
+            if not made_badugi and mask[0] > 0:
+                return 0
+            if rough_badugi and not opponent_drew_multiple and mask[0] > 0:
+                return 0
+            if strong_made and can_raise and mask[4] > 0:
+                return 4
+            return 2 if mask[2] > 0 else env.safe_fallback_action()
         if not hand_range.should_continue_heads_up and mask[0] > 0:
             return 0
         if hand_range.is_premium and can_raise and mask[4] > 0:
             return 4
         return 2 if mask[2] > 0 else env.safe_fallback_action()
+
+    if is_final_bet:
+        if strong_made and can_raise:
+            if mask[4] > 0:
+                return 4
+            if mask[3] > 0:
+                return 3
+        if made_badugi and (not rough_badugi or opponent_drew_multiple) and mask[3] > 0:
+            return 3
+        return 1 if mask[1] > 0 else env.safe_fallback_action()
 
     if hand_range.is_premium and can_raise:
         if mask[4] > 0:

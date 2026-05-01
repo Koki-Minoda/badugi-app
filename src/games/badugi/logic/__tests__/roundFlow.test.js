@@ -219,6 +219,18 @@ describe("buildSidePots", () => {
     ]);
   });
 
+  it("keeps a heads-up side pot separate even when only one player remains eligible", () => {
+    const players = [
+      basePlayer({ totalInvested: 100 }),
+      basePlayer({ totalInvested: 300 }),
+      basePlayer({ totalInvested: 300, folded: true, hasFolded: true }),
+    ];
+    expect(buildSidePots(players)).toEqual([
+      { amount: 300, eligible: [0, 1] },
+      { amount: 400, eligible: [1] },
+    ]);
+  });
+
   it("keeps folded chips in the pot but excludes them from eligibility", () => {
     const players = [
       basePlayer({ totalInvested: 120 }),

@@ -6,6 +6,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.nn.functional as F
 
 
 class QNetwork(nn.Module):
@@ -146,6 +147,27 @@ class DQNAgent:
             mean_q = q_values.mean().item()
 
         return float(loss.item()), float(mean_q)
+
+    def imitation_update(self, batch, loss_weight: float = 1.0) -> Tuple[float, float]:
+        """Supervised behavior-cloning step over expert state/action pairs."""
+        obs = torch.as_tensor(batch["obs"], dtype=torch.float32, device=self.device)
+        actions = torch.as_tensor(batch["actions"], dtype=torch.int64, device=self.device)
+
+        logits = self.q_network(obs)
+        loss = F.cross_entropy(logits, actions) * float(loss_weight)
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        nn.utils.clip_grad_norm_(self.q_network.parameters(), max_norm=5.0)
+        self.optimizer.step()
+        self._soft_update_target()
+        self.train_steps += 1
+
+        with torch.no_grad():
+            predictions = torch.argmax(logits, dim=1)
+            accuracy = (predictions == actions).float().mean().item()
+
+        return float(loss.item()), float(accuracy)
 
     def save(self, path: str):
         payload = {

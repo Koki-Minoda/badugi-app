@@ -39,6 +39,9 @@ class TrainConfig:
     train_every_steps: int = 4
     opponent_profiles: tuple[str, ...] = ("balanced",)
     teacher_warmup_episodes: int = 0
+    imitation_pretrain_steps: int = 0
+    expert_replay_ratio: float = 0.0
+    imitation_loss_weight: float = 1.0
 
 
 def linear_epsilon_decay(
@@ -77,6 +80,7 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
         hyperparams=hyper,
     )
     replay_buffer = ReplayBuffer(capacity=cfg.buffer_capacity)
+    expert_buffer = ReplayBuffer(capacity=cfg.buffer_capacity)
 
     global_step = 0
     episode_rewards = []
@@ -99,6 +103,14 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
                     done,
                     next_action_mask=env.legal_action_mask(),
                 )
+                expert_buffer.add(
+                    obs,
+                    action,
+                    reward,
+                    next_obs,
+                    done,
+                    next_action_mask=env.legal_action_mask(),
+                )
                 obs = next_obs
                 total_reward += float(reward)
                 if done:
@@ -109,6 +121,27 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
             f"episodes={cfg.teacher_warmup_episodes} "
             f"buffer={len(replay_buffer)} "
             f"avg_reward={sum(teacher_rewards) / max(1, len(teacher_rewards)):8.3f}"
+        )
+
+    imitation_loss, imitation_accuracy = 0.0, 0.0
+    if cfg.imitation_pretrain_steps > 0:
+        if len(expert_buffer) < cfg.batch_size:
+            raise ValueError(
+                "--imitation-pretrain-steps requires enough teacher samples; "
+                "increase --teacher-warmup-episodes or reduce --batch-size"
+            )
+        for _step in range(cfg.imitation_pretrain_steps):
+            imitation_batch = expert_buffer.sample(cfg.batch_size)
+            imitation_loss, imitation_accuracy = agent.imitation_update(
+                imitation_batch,
+                loss_weight=cfg.imitation_loss_weight,
+            )
+        print(
+            "[Imitation pretrain] "
+            f"steps={cfg.imitation_pretrain_steps} "
+            f"expert_buffer={len(expert_buffer)} "
+            f"loss={imitation_loss:8.5f} "
+            f"accuracy={imitation_accuracy:5.3f}"
         )
 
     for episode in range(1, cfg.total_episodes + 1):
@@ -145,6 +178,13 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
             ):
                 batch = replay_buffer.sample(hyper.batch_size)
                 loss, mean_q = agent.update(batch)
+                expert_batch_size = int(round(hyper.batch_size * max(0.0, cfg.expert_replay_ratio)))
+                if expert_batch_size > 0 and len(expert_buffer) >= expert_batch_size:
+                    expert_batch = expert_buffer.sample(expert_batch_size)
+                    imitation_loss, imitation_accuracy = agent.imitation_update(
+                        expert_batch,
+                        loss_weight=cfg.imitation_loss_weight,
+                    )
 
             if done:
                 break
@@ -160,7 +200,9 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
                 f"epsilon={epsilon:5.3f} "
                 f"buffer={len(replay_buffer):7d} "
                 f"loss={loss:8.5f} "
-                f"mean_q={mean_q:8.3f}"
+                f"mean_q={mean_q:8.3f} "
+                f"bc_loss={imitation_loss:8.5f} "
+                f"bc_acc={imitation_accuracy:5.3f}"
             )
 
         if cfg.save_interval > 0 and episode % cfg.save_interval == 0:
@@ -180,6 +222,9 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
         "n_actions": int(n_actions),
         "opponent_profiles": list(cfg.opponent_profiles),
         "teacher_warmup_episodes": cfg.teacher_warmup_episodes,
+        "imitation_pretrain_steps": cfg.imitation_pretrain_steps,
+        "expert_replay_ratio": cfg.expert_replay_ratio,
+        "imitation_loss_weight": cfg.imitation_loss_weight,
         "avg_reward_last_100": (
             sum(episode_rewards[-100:]) / max(1, len(episode_rewards[-100:]))
             if episode_rewards
@@ -217,6 +262,9 @@ def parse_args():
         help="Comma-separated BadugiEnv opponent profiles for round-robin training.",
     )
     parser.add_argument("--teacher-warmup-episodes", type=int, default=TrainConfig.teacher_warmup_episodes)
+    parser.add_argument("--imitation-pretrain-steps", type=int, default=TrainConfig.imitation_pretrain_steps)
+    parser.add_argument("--expert-replay-ratio", type=float, default=TrainConfig.expert_replay_ratio)
+    parser.add_argument("--imitation-loss-weight", type=float, default=TrainConfig.imitation_loss_weight)
     parser.add_argument("--device", default=None)
     return parser.parse_args()
 
@@ -248,6 +296,9 @@ if __name__ == "__main__":
         train_every_steps=args.train_every_steps,
         opponent_profiles=parse_profile_csv(args.opponent_profiles),
         teacher_warmup_episodes=args.teacher_warmup_episodes,
+        imitation_pretrain_steps=args.imitation_pretrain_steps,
+        expert_replay_ratio=args.expert_replay_ratio,
+        imitation_loss_weight=args.imitation_loss_weight,
     )
     print(f"Using device: {device}")
     train_dqn(cfg=cfg, device=device)

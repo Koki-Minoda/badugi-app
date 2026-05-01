@@ -179,12 +179,35 @@ def teacher_action(env) -> int:
 
     to_call = max(0, env.current_bet - env.player_bet)
     can_raise = env.bet_round < env.max_bets and env.player_stack > to_call
+    is_final_bet = env.round >= env.max_rounds
+    made_badugi = hand_range.made_cards >= 4
+    rough_badugi = made_badugi and hand_range.high_rank >= 10
+    strong_made = made_badugi and hand_range.high_rank <= 8
+    opponent_drew_multiple = getattr(env, "opponent_last_draw", 0) >= 2
     if to_call > 0:
+        if is_final_bet:
+            if not made_badugi and mask[0] > 0:
+                return 0
+            if rough_badugi and not opponent_drew_multiple and mask[0] > 0:
+                return 0
+            if strong_made and can_raise and mask[4] > 0:
+                return 4
+            return 2 if mask[2] > 0 else env.safe_fallback_action()
         if not hand_range.should_continue_heads_up and mask[0] > 0:
             return 0
         if hand_range.is_premium and can_raise and mask[4] > 0:
             return 4
         return 2 if mask[2] > 0 else env.safe_fallback_action()
+
+    if is_final_bet:
+        if strong_made and can_raise:
+            if mask[4] > 0:
+                return 4
+            if mask[3] > 0:
+                return 3
+        if made_badugi and (not rough_badugi or opponent_drew_multiple) and mask[3] > 0:
+            return 3
+        return 1 if mask[1] > 0 else env.safe_fallback_action()
 
     if hand_range.is_premium and can_raise:
         if mask[4] > 0:

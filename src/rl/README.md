@@ -74,6 +74,8 @@ npm run ai:train-badugi -- \
   --output-dir rl/models \
   --train-every-steps 4 \
   --teacher-warmup-episodes 5000 \
+  --imitation-pretrain-steps 2000 \
+  --expert-replay-ratio 0.25 \
   --opponent-profiles balanced,loose_passive,loose_aggressive,tight_passive,tight_aggressive \
   --device cpu
 
@@ -125,6 +127,10 @@ The range helper enumerates the full 52C4 starting-hand distribution for the
 median strength table. During training, three-card one-away draws use exact
 one-draw enumeration, while two-card and weaker keeps use a fast range estimate
 so teacher warmup does not dominate runtime.
+`--imitation-pretrain-steps` runs supervised behavior cloning on the teacher
+states before DQN updates start, and `--expert-replay-ratio` keeps a fixed share
+of expert actions in later updates so the opening range is not immediately
+overwritten by sparse terminal rewards.
 
 ## Building datasets from the app
 

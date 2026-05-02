@@ -825,6 +825,8 @@ class BadugiEnv(gym.Env):
           call_edge += 0.07
         reward += 0.22 if call_edge >= pot_odds else -0.14
         reward += 0.18 if ev.call_ev >= ev.fold_ev else -0.12
+        if ev.call_ev > ev.fold_ev + 0.10:
+          reward += min(0.22, 0.08 + (ev.call_ev - ev.fold_ev) * 0.03)
         if ev.cheap_draw_continue_value > 0.35 and pot_odds <= 0.30 and self.round < self.max_rounds:
           reward += min(0.28, 0.10 + ev.cheap_draw_continue_value * 0.04)
         if multiway_pressure > 0 and features.one_away and pot_odds <= 0.20:

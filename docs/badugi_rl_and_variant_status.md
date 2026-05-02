@@ -1687,7 +1687,10 @@ Draw RL test coverage:
         - 2026-05-02 修正: call EV が fold EV を明確に上回る局面のfoldに追加ペナルティを入れ、teacherも3-card以上または安い発展drawでEVがあるならcallを選ぶようにした。
         - 2026-05-02 評価: `badugi_sixmax_iron_overfold_control_5k_20260502` は `avgReward=2.301`, `showdownWinRate=0.675`, `foldRate=0.158`, Pro比 `+0.021`。fold率は戻ったが差が小さいため昇格保留。
         - 2026-05-02 評価: 追加fine-tune `badugi_sixmax_iron_overfold_control_plus_10k_20260502` は5k Pro比 `-0.037`、10k Pro比 `+0.011`。現行Proを明確に超えないため Iron には未適用。
+        - 2026-05-02 追加検証: to-call raise にさらに強いedgeを要求する `badugi_sixmax_iron_call_edge_5k_20260502` を試したが、`showdownWinRate=0.717` まで上がる一方で `foldRate=0.233`, Pro比 `-0.099`。降り過ぎが悪化したため採用しない。
+        - 2026-05-02 追加検証: raise edge強化は戻し、call EV が fold EV を明確に上回る局面のcall rewardだけを厚くした `badugi_sixmax_iron_call_value_5k_20260502` を評価。`avgReward=2.665`, `showdownWinRate=0.700`, `foldRate=0.197`, Pro比 `+0.006`。negativeRaiseEVActions は `221 -> 103` に改善したが、profitableFoldMisses が `264 -> 349` に悪化したため昇格保留。
         - 次の打ち手: negative raise EV をさらに減らしつつ、profitableFoldMisses をPro以下に抑える。評価は Pro baseline 比 `avgRewardDelta >= +0.25`、`foldRate <= 0.17`、`showdownWinRate >= 0.69` を最低ラインにしてから registry 反映する。
+        - 次の具体策: fold miss 悪化はaction maskではなくpolicy選好の問題。次は teacher / reward の `profitable_continue` を「call」だけでなく、fold actionへの明確な教師損失として維持する。また draw-heavy / passive profile 別に profile-aware continue threshold を入れ、全profile平均だけでなく worst-profile avgReward を gate に入れる。
       - [ ] `AI-06e` 2-7 / A-5 用の実ONNXを生成・配置する。現状は `model-27draw-iron-v1` (`D01/S01`) と `model-a5draw-iron-v1` (`D02/S02`) の registry / feature builder / routing test はあるが、実 `.onnx` は optional 未配置で、App draw CPU は rule-based fallback が主経路。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
   - P2P:

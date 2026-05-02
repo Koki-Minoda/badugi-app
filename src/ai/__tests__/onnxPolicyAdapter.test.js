@@ -10,10 +10,10 @@ import {
 describe("onnxPolicyAdapter Badugi schema", () => {
   it("selects tier-specific Badugi models for Beginner, Standard, Pro, Iron, and WorldMaster", () => {
     expect(selectModelForVariant({ variantId: "D03", tierId: "beginner" })?.id).toBe(
-      "model-badugi-beginner-dqn-v1",
+      "model-generic-v1",
     );
     expect(selectModelForVariant({ variantId: "D03", tierId: "standard" })?.id).toBe(
-      "model-badugi-standard-dqn-v1",
+      "model-badugi-standard-dqn-v2",
     );
     expect(
       selectModelForVariant({
@@ -50,6 +50,35 @@ describe("onnxPolicyAdapter Badugi schema", () => {
 
     expect(tensor).toBeInstanceOf(Float32Array);
     expect(tensor).toHaveLength(96);
+  });
+
+  it("passes EV and range feature slots only to compatible Badugi models", () => {
+    const payload = {
+      variantId: "D03",
+      state: {
+        street: "BET",
+        drawRoundIndex: 1,
+        currentBet: 2,
+        pot: 24,
+        players: [{ hand: ["AS", "2D", "7C", "KC"], stack: 500, betThisRound: 0 }],
+      },
+      seatIndex: 0,
+      legalActions: ["fold", "call", "raise"],
+    };
+    const legacyEntry = { inputShape: [96], featureSet: "badugi-observation-v1" };
+    const evEntry = { inputShape: [96], featureSet: "badugi-observation-v1-ev" };
+    const evRangeEntry = { inputShape: [96], featureSet: "badugi-observation-v1-ev-range" };
+
+    expect(Array.from(buildBadugiOnnxFeatures(legacyEntry, payload).slice(48, 56))).toEqual([
+      0, 0, 0, 0, 0, 0, 0, 0,
+    ]);
+    expect(Array.from(buildBadugiOnnxFeatures(legacyEntry, payload).slice(58, 61))).toEqual([
+      0, 0, 0,
+    ]);
+    expect(buildBadugiOnnxFeatures(evEntry, payload)[48]).toBeGreaterThan(0);
+    expect(buildBadugiOnnxFeatures(evEntry, payload)[54]).toBeGreaterThan(0);
+    expect(buildBadugiOnnxFeatures(evEntry, payload)[58]).toBe(0);
+    expect(buildBadugiOnnxFeatures(evRangeEntry, payload)[58]).toBeGreaterThan(0);
   });
 
   it("builds exact-shape draw ONNX feature tensors and selects variant models", () => {

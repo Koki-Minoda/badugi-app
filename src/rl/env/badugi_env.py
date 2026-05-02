@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import random
 from itertools import combinations
+from functools import lru_cache
 from dataclasses import dataclass
 from typing import Iterable, List, Sequence, Tuple
 
@@ -52,6 +53,33 @@ def compare_badugi_scores(player_score: Tuple[int, List[int]], opp_score: Tuple[
   return 0
 
 
+def _score_key(score: Tuple[int, Sequence[int]]) -> tuple[int, int, int, int, int]:
+  count, ranks_raw = score
+  ranks = tuple(ranks_raw)
+  padded = ranks + (13,) * (4 - len(ranks))
+  return (count, *(13 - rank for rank in padded))
+
+
+@lru_cache(maxsize=1)
+def _all_starting_score_keys() -> tuple[tuple[int, int, int, int, int], ...]:
+  keys = [_score_key(evaluate_badugi(hand)) for hand in combinations(build_deck(), 4)]
+  return tuple(sorted(keys))
+
+
+def starting_score_percentile(score: Tuple[int, Sequence[int]]) -> float:
+  keys = _all_starting_score_keys()
+  key = _score_key(score)
+  lo = 0
+  hi = len(keys)
+  while lo < hi:
+    mid = (lo + hi) // 2
+    if keys[mid] <= key:
+      lo = mid + 1
+    else:
+      hi = mid
+  return lo / max(1, len(keys))
+
+
 @dataclass
 class HandFeature:
   count: int
@@ -60,6 +88,34 @@ class HandFeature:
   min_rank: int
   is_nuts: bool
   one_away: bool
+
+
+@dataclass(frozen=True)
+class BetEVDiagnostic:
+  estimated_equity: float
+  pot_odds: float
+  call_ev: float
+  raise_ev: float
+  fold_ev: float
+  draw_equity: float
+  future_street_value: float
+  cheap_draw_continue_value: float
+  fold_equity: float
+  to_call: float
+
+  def to_dict(self) -> dict:
+    return {
+      "estimatedEquity": self.estimated_equity,
+      "potOdds": self.pot_odds,
+      "callEV": self.call_ev,
+      "raiseEV": self.raise_ev,
+      "foldEV": self.fold_ev,
+      "drawEquity": self.draw_equity,
+      "futureStreetValue": self.future_street_value,
+      "cheapDrawContinueValue": self.cheap_draw_continue_value,
+      "foldEquity": self.fold_equity,
+      "toCall": self.to_call,
+    }
 
 
 @dataclass(frozen=True)
@@ -187,11 +243,18 @@ class BadugiEnv(gym.Env):
 
   metadata = {"render.modes": ["human"]}
 
-  def __init__(self, opponent_profile: str | OpponentProfile | None = "balanced"):
+  def __init__(
+    self,
+    opponent_profile: str | OpponentProfile | None = "balanced",
+    table_size: int = 2,
+    hero_position: int | None = None,
+  ):
     super().__init__()
     self.max_rounds = 3  # number of draw streets
     self.starting_stack = 100
     self.opponent_profile = resolve_opponent_profile(opponent_profile)
+    self.table_size = max(2, min(6, int(table_size)))
+    self.hero_position_override = hero_position
 
     # Observation schema v1: first 22 slots remain compatible with the legacy
     # training env, then the vector is padded to the frontend ONNX shape.
@@ -226,15 +289,16 @@ class BadugiEnv(gym.Env):
     self.opponent_stack = self.starting_stack
     self.player_all_in = False
     self.opponent_all_in = False
-    self.pot = 0
     self.player_bet = 0
     self.opponent_bet = 0
     self.bet_round = 0
     self.max_bets = 4
     self.round = 0
+    self.pot = self._multiway_dead_money()
     self.phase = "BET"
     self.done = False
-    self.is_button = 1
+    self.hero_position = self._sample_hero_position()
+    self.is_button = 1 if self.hero_position >= self.table_size - 1 else 0
     self.opponent_last_draw = 0
     self.last_opp_action = 0
     self.opponent_action_count = 0
@@ -245,8 +309,9 @@ class BadugiEnv(gym.Env):
     self.opponent_draw_count = 0
     self.opponent_total_draw_cards = 0
     self.last_result = None
+    self.last_ev_diagnostic = None
     self.terminal_reason = None
-    self.current_bet = self._bet_size()
+    self._start_betting_round()
     info: dict = {}
     return self._get_obs(), info
 
@@ -277,7 +342,13 @@ class BadugiEnv(gym.Env):
     terminated = self.done
     truncated = False
     obs = self._get_obs()
-    info = {}
+    info = {
+      "ev": self.last_ev_diagnostic.to_dict()
+      if self.last_ev_diagnostic is not None
+      else None
+    }
+    if info["ev"] is not None:
+      info["ev"]["phase"] = phase_before_action
     reward = self._cap_shaping_reward(shaping_reward) + terminal_reward
     return obs, reward, terminated, truncated, info
 
@@ -295,7 +366,58 @@ class BadugiEnv(gym.Env):
   def _bet_size(self) -> int:
     return 1 if self.round < 2 else 2
 
+  def _sample_hero_position(self) -> int:
+    if self.hero_position_override is not None:
+      return max(0, min(self.table_size - 1, int(self.hero_position_override)))
+    return random.randrange(self.table_size)
+
+  def _position_fraction(self) -> float:
+    return self.hero_position / max(1, self.table_size - 1)
+
+  def _active_opponent_count(self) -> int:
+    return max(1, self.table_size - 1)
+
+  def _multiway_dead_money(self) -> int:
+    if self.table_size <= 2:
+      return 0
+    return max(0, self.table_size - 2) * self._bet_size()
+
+  def _multiway_pressure(self) -> float:
+    if self.table_size <= 2:
+      return 0.0
+    early_position_pressure = max(0.0, 0.5 - self._position_fraction()) * 0.24
+    opponent_count_pressure = (self._active_opponent_count() - 1) * 0.035
+    return min(0.35, early_position_pressure + opponent_count_pressure)
+
+  def _start_betting_round(self):
+    self.player_bet = 0
+    self.opponent_bet = 0
+    self.current_bet = 0
+    self.bet_round = 0
+    if self._opponent_opens_before_hero():
+      bet_size = self._bet_size()
+      self.current_bet = bet_size
+      payment = min(bet_size, self.opponent_stack)
+      self.opponent_stack -= payment
+      self.opponent_bet = payment
+      self.pot += payment
+      self.bet_round = 1
+      self.last_opp_action = 2
+      self._record_opponent_action("bet")
+
+  def _opponent_opens_before_hero(self) -> bool:
+    if self.table_size <= 2 or self._player_is_first_to_act():
+      return False
+    features = self._hand_features(self.opponent_hand)
+    strength = self._hand_strength(features)
+    profile = self.opponent_profile
+    should_value_open = strength >= profile.open_strength_threshold and random.random() < profile.open_probability
+    should_bluff_open = strength < profile.open_strength_threshold and random.random() < profile.bluff_frequency
+    return should_value_open or should_bluff_open
+
   def _player_is_first_to_act(self) -> int:
+    if self.table_size > 2:
+      return 1 if self._position_fraction() <= 0.25 else 0
     return 1 if (self.round % 2 == 0) else 0
 
   def legal_action_mask(self) -> np.ndarray:
@@ -317,7 +439,6 @@ class BadugiEnv(gym.Env):
       mask[1] = 1.0  # check
       if can_raise:
         mask[3] = 1.0  # bet
-        mask[4] = 1.0  # raise alias for frontend compatibility
     return mask
 
   def is_legal_action(self, action: int) -> bool:
@@ -391,10 +512,7 @@ class BadugiEnv(gym.Env):
     self.round += 1
     self._opponent_draw_action()
     self.phase = "BET"
-    self.player_bet = 0
-    self.opponent_bet = 0
-    self.current_bet = self._bet_size()
-    self.bet_round = 0
+    self._start_betting_round()
     return reward
 
   def _maybe_advance_from_bet(self):
@@ -499,10 +617,7 @@ class BadugiEnv(gym.Env):
       self.opponent_last_draw = 0
       self._record_opponent_draw(0)
       self.phase = "BET"
-      self.player_bet = 0
-      self.opponent_bet = 0
-      self.current_bet = self._bet_size()
-      self.bet_round = 0
+      self._start_betting_round()
       return
     keep = self._best_badugi_keep(self.opponent_hand)
     draw_amount = max(0, min(3, 4 - len(keep) + self.opponent_profile.draw_bias))
@@ -510,10 +625,7 @@ class BadugiEnv(gym.Env):
     self.opponent_last_draw = draw_amount
     self._record_opponent_draw(draw_amount)
     self.phase = "BET"
-    self.player_bet = 0
-    self.opponent_bet = 0
-    self.current_bet = self._bet_size()
-    self.bet_round = 0
+    self._start_betting_round()
 
   def _record_opponent_action(self, action: str):
     self.opponent_action_count += 1
@@ -597,7 +709,7 @@ class BadugiEnv(gym.Env):
     return 0.0
 
   def _cap_shaping_reward(self, reward: float) -> float:
-    return max(-1.0, min(0.0, reward))
+    return max(-1.0, min(1.0, reward))
 
   def _judge(self, hand: Sequence[Card]) -> Tuple[int, List[int]]:
     return evaluate_badugi(hand)
@@ -614,7 +726,13 @@ class BadugiEnv(gym.Env):
       opponent_aggression = self._opponent_aggression_rate()
       opponent_foldability = self._opponent_foldability_estimate()
       opponent_pat_pressure = self._opponent_pat_pressure()
-      continue_value = min(1.0, strength + position_bonus + draw_equity + opponent_draw_pressure)
+      multiway_pressure = self._multiway_pressure()
+      ev = self._bet_ev_diagnostic(features, to_call)
+      self.last_ev_diagnostic = ev
+      continue_value = min(
+        1.0,
+        strength + position_bonus + draw_equity + opponent_draw_pressure - multiway_pressure,
+      )
       bluff_opportunity = (
         to_call == 0
         and not self._player_is_first_to_act()
@@ -626,12 +744,38 @@ class BadugiEnv(gym.Env):
         and features.one_away
         and self.round < self.max_rounds
       )
+      sixmax_value_bet = self._sixmax_value_bet_spot(features, to_call)
+      sixmax_late_semibluff = self._sixmax_late_semibluff_spot(features, to_call, ev)
+      sixmax_isolation_raise = self._sixmax_isolation_raise_spot(features, to_call, ev)
       if action == 4 and features.one_away:
         reward += 0.15
       if action == 4 and features.is_nuts:
         reward += 0.35
       if action in (3, 4) and features.count == 4 and strength >= 0.72:
         reward += 0.25
+      if sixmax_value_bet:
+        if action == 3:
+          reward += 0.34
+        elif action == 4:
+          reward += 0.22
+        elif action in (1, 2):
+          reward -= 0.18
+      if sixmax_late_semibluff:
+        if action == 3:
+          reward += 0.28
+        elif action == 4:
+          reward += 0.18
+        elif action == 1:
+          reward -= 0.12
+      if sixmax_isolation_raise:
+        if action == 4:
+          reward += 0.36
+        elif action == 2:
+          reward -= 0.10
+      if to_call > 0 and action == 4 and ev.raise_ev < ev.call_ev:
+        reward -= min(0.45, 0.18 + (ev.call_ev - ev.raise_ev) * 0.05)
+      if to_call == 0 and action == 4 and (sixmax_value_bet or sixmax_late_semibluff):
+        reward -= 0.12
       if action in (3, 4) and self.round >= self.max_rounds and self._is_weak_final_badugi(features):
         reward += 0.18 if self.opponent_last_draw >= 2 else -0.55
       if action in (3, 4) and self.round >= self.max_rounds and self.opponent_last_draw >= 2:
@@ -642,6 +786,13 @@ class BadugiEnv(gym.Env):
         reward += 0.08 if opponent_foldability >= 0.45 else -0.16
       if action in (3, 4) and opponent_foldability < 0.18 and strength < 0.50:
         reward -= 0.22
+      if (
+        action in (3, 4)
+        and multiway_pressure > 0
+        and strength < 0.58
+        and not sixmax_late_semibluff
+      ):
+        reward -= min(0.22, multiway_pressure * 0.55)
       if action in (3, 4) and strength < 0.35:
         reward -= 0.45
       if action in (3, 4) and to_call == 0 and not self._player_is_first_to_act() and strength >= 0.45:
@@ -654,6 +805,12 @@ class BadugiEnv(gym.Env):
         reward -= 0.18
       if to_call > 0 and action == 0:
         tight_pat_raise_pressure = opponent_pat_pressure > 0.5 and opponent_aggression < 0.22
+        if ev.call_ev > ev.fold_ev + 0.10:
+          reward -= min(0.55, 0.16 + (ev.call_ev - ev.fold_ev) * 0.08)
+        if ev.call_ev > ev.fold_ev and features.one_away and self.round < self.max_rounds:
+          reward -= min(0.75, 0.25 + ev.call_ev * 0.12)
+        if ev.cheap_draw_continue_value > 0.35 and pot_odds <= 0.30 and self.round < self.max_rounds:
+          reward -= min(0.65, 0.18 + ev.cheap_draw_continue_value * 0.10)
         if features.count >= 4 and strength >= 0.54:
           reward -= 0.5
         elif features.one_away and self.round < self.max_rounds and pot_odds <= 0.25:
@@ -667,10 +824,21 @@ class BadugiEnv(gym.Env):
         if features.one_away and self.round < self.max_rounds and pot_odds <= 0.25:
           call_edge += 0.07
         reward += 0.22 if call_edge >= pot_odds else -0.14
+        reward += 0.18 if ev.call_ev >= ev.fold_ev else -0.12
+        if ev.call_ev > ev.fold_ev + 0.10:
+          reward += min(0.22, 0.08 + (ev.call_ev - ev.fold_ev) * 0.03)
+        if ev.cheap_draw_continue_value > 0.35 and pot_odds <= 0.30 and self.round < self.max_rounds:
+          reward += min(0.28, 0.10 + ev.cheap_draw_continue_value * 0.04)
+        if multiway_pressure > 0 and features.one_away and pot_odds <= 0.20:
+          reward += min(0.12, ev.future_street_value * 0.03)
       if to_call > 0 and action == 2 and self.round >= self.max_rounds and features.count >= 4:
         reward += 0.12
       if to_call > 0 and action in (3, 4) and opponent_aggression >= 0.38 and strength >= 0.62:
         reward += 0.16
+      if to_call > 0 and action in (3, 4):
+        reward += 0.18 if ev.raise_ev >= ev.call_ev else -0.18
+        if self.table_size >= 6 and not sixmax_isolation_raise and strength < 0.58:
+          reward -= 0.24
       if action == 0 and to_call == 0:
         reward -= 0.2
     elif self.phase == "DRAW":
@@ -690,6 +858,165 @@ class BadugiEnv(gym.Env):
     low_bonus = max(0.0, (12 - high_rank) / 12.0) * 0.2
     nut_bonus = 0.15 if features.is_nuts else 0.0
     return min(1.0, count_score + low_bonus + nut_bonus)
+
+  def _is_late_position(self) -> bool:
+    return self._position_fraction() >= 0.6
+
+  def _sixmax_value_bet_spot(self, features: HandFeature, to_call: int | float) -> bool:
+    if self.table_size < 6 or to_call > 0 or self.bet_round >= self.max_bets:
+      return False
+    if features.count != 4 or not features.ranks:
+      return False
+    high_rank = max(features.ranks)
+    if high_rank <= 8:
+      return True
+    return self.round >= self.max_rounds and high_rank <= 10 and self.opponent_last_draw >= 2
+
+  def _sixmax_late_semibluff_spot(
+    self,
+    features: HandFeature,
+    to_call: int | float,
+    ev: BetEVDiagnostic,
+  ) -> bool:
+    if self.table_size < 6 or to_call > 0 or self.bet_round >= self.max_bets:
+      return False
+    if not self._is_late_position() or not features.one_away or self.round >= self.max_rounds:
+      return False
+    high_rank = max(features.ranks) if features.ranks else 12
+    return high_rank <= 8 and ev.future_street_value >= 0.45 and ev.fold_equity >= 0.12
+
+  def _sixmax_isolation_raise_spot(
+    self,
+    features: HandFeature,
+    to_call: int | float,
+    ev: BetEVDiagnostic,
+  ) -> bool:
+    if self.table_size < 6 or to_call <= 0 or self.bet_round >= self.max_bets:
+      return False
+    if not features.ranks:
+      return False
+    high_rank = max(features.ranks)
+    strong_made = features.count == 4 and high_rank <= 8
+    strong_one_away = features.one_away and high_rank <= 6 and ev.future_street_value >= 0.45
+    required_edge = 0.05 if strong_made else 0.12
+    return (strong_made or strong_one_away) and ev.raise_ev >= ev.call_ev + required_edge
+
+  def _draw_equity_estimate(self, features: HandFeature) -> float:
+    draws_remaining = max(0, self.max_rounds - self.round)
+    if draws_remaining <= 0:
+      return 0.0
+    if not features.ranks:
+      return 0.04
+    high_rank = max(features.ranks)
+    low_quality = max(0.0, (12 - high_rank) / 12.0)
+    if features.count >= 4:
+      return 0.0
+    if features.count == 3:
+      base = 0.16 + 0.08 * draws_remaining + 0.10 * low_quality
+      if features.min_rank <= 1 and high_rank <= 8:
+        base += 0.08
+      return min(0.48, base)
+    if features.count == 2:
+      base = 0.08 + 0.045 * draws_remaining + 0.08 * low_quality
+      if features.min_rank <= 1 and high_rank <= 7:
+        base += 0.06
+      return min(0.30, base)
+    return 0.05
+
+  def _estimated_equity(self, features: HandFeature) -> float:
+    strength = self._street_adjusted_strength(features)
+    draw_equity = self._draw_equity_estimate(features)
+    range_equity = self._range_equity_percentile(features)
+    position_bonus = 0.04 if not self._player_is_first_to_act() else -0.02
+    multiway_adjustment = -self._multiway_pressure()
+    opponent_adjustment = 0.0
+    if self.round >= self.max_rounds:
+      opponent_adjustment += self._opponent_draw_pressure()
+      opponent_adjustment -= 0.10 * self._opponent_pat_pressure()
+    if self._opponent_aggression_rate() >= 0.45 and features.count < 4:
+      opponent_adjustment -= 0.04
+    range_adjustment = (range_equity - 0.5) * 0.16
+    equity = (
+      strength
+      + draw_equity
+      + range_adjustment
+      + position_bonus
+      + opponent_adjustment
+      + multiway_adjustment
+    )
+    return min(0.95, max(0.03, equity))
+
+  def _bet_ev_diagnostic(self, features: HandFeature, to_call: int | float | None = None) -> BetEVDiagnostic:
+    call_amount = max(0.0, float(self.current_bet - self.player_bet if to_call is None else to_call))
+    equity = self._estimated_equity(features)
+    pot_after_call = float(self.pot) + call_amount
+    showdown_call_ev = equity * pot_after_call - call_amount if call_amount > 0 else equity * float(self.pot)
+    future_street_value = self._future_street_value(features, call_amount)
+    call_ev = showdown_call_ev + future_street_value
+    fold_ev = 0.0
+    isolation_pressure = self._sixmax_isolation_pressure(features, call_amount)
+    fold_equity = (
+      self._opponent_foldability_estimate() * (1.0 + isolation_pressure)
+    ) / max(1.0, self._active_opponent_count() ** 0.45)
+    fold_equity = min(0.65, max(0.0, fold_equity))
+    raise_cost = call_amount + float(self._bet_size())
+    raise_pot = float(self.pot) + raise_cost
+    raise_continue_ev = equity * raise_pot - raise_cost + future_street_value * 0.65
+    raise_ev = fold_equity * float(self.pot) + (1.0 - fold_equity) * raise_continue_ev
+    return BetEVDiagnostic(
+      estimated_equity=equity,
+      pot_odds=self._pot_odds(call_amount),
+      call_ev=call_ev,
+      raise_ev=raise_ev,
+      fold_ev=fold_ev,
+      draw_equity=self._draw_equity_estimate(features),
+      future_street_value=future_street_value,
+      cheap_draw_continue_value=max(0.0, call_ev - fold_ev),
+      fold_equity=fold_equity,
+      to_call=call_amount,
+    )
+
+  def _future_street_value(self, features: HandFeature, to_call: int | float | None = None) -> float:
+    draws_remaining = max(0, self.max_rounds - self.round)
+    call_amount = max(0.0, float(self.current_bet - self.player_bet if to_call is None else to_call))
+    if draws_remaining <= 0 or features.count >= 4:
+      return 0.0
+    draw_equity = self._draw_equity_estimate(features)
+    if draw_equity <= 0:
+      return 0.0
+    pot_after_call = float(self.pot) + call_amount
+    future_bet_size = float(2 if self.round + 1 >= 2 else 1)
+    implied_bets = future_bet_size * (1.0 + 0.35 * max(0, draws_remaining - 1))
+    position_bonus = 0.18 if not self._player_is_first_to_act() else 0.0
+    multiway_discount = 0.18 * max(0, self._active_opponent_count() - 1)
+    opponent_draw_bonus = 0.12 if self.opponent_last_draw >= 2 else 0.0
+    pat_pressure_discount = 0.18 * self._opponent_pat_pressure()
+    aggression_discount = 0.10 * self._opponent_aggression_rate() if features.count <= 2 else 0.0
+    price_discount = self._pot_odds(call_amount) * max(0.25, 1.0 - 0.14 * draws_remaining)
+    shape_multiplier = 1.25 if features.one_away else 0.75
+    raw_value = (
+      draw_equity
+      * shape_multiplier
+      * (pot_after_call + implied_bets)
+      * (1.0 + position_bonus + opponent_draw_bonus)
+    )
+    future_cost = call_amount * price_discount + aggression_discount + pat_pressure_discount + multiway_discount
+    return max(0.0, min(3.0, raw_value - future_cost))
+
+  def _range_equity_percentile(self, features: HandFeature) -> float:
+    return starting_score_percentile((features.count, tuple(features.ranks)))
+
+  def _sixmax_isolation_pressure(self, features: HandFeature, to_call: int | float) -> float:
+    if self.table_size < 6 or to_call <= 0 or self.bet_round >= self.max_bets:
+      return 0.0
+    if not features.ranks:
+      return 0.0
+    high_rank = max(features.ranks)
+    late_bonus = 0.12 if self._is_late_position() else 0.0
+    strong_made_bonus = 0.18 if features.count == 4 and high_rank <= 8 else 0.0
+    strong_draw_bonus = 0.10 if features.one_away and high_rank <= 6 else 0.0
+    pot_bonus = 0.05 if self.pot >= 12 else 0.0
+    return min(0.35, late_bonus + strong_made_bonus + strong_draw_bonus + pot_bonus)
 
   def _street_adjusted_strength(self, features: HandFeature) -> float:
     draws_remaining = max(0, self.max_rounds - self.round)
@@ -795,7 +1122,7 @@ class BadugiEnv(gym.Env):
         min(self.opponent_last_draw, 4) / 4.0,
         float(self.is_button),
         float(self._player_is_first_to_act()),
-        self.last_opp_action / 4.0,
+        self._position_fraction(),
       ]
     )
     features = self._hand_features(self.player_hand)
@@ -830,6 +1157,24 @@ class BadugiEnv(gym.Env):
         self._opponent_average_draw_count() / 4.0,
         self._opponent_foldability_estimate(),
         self.opponent_profile.bluff_frequency,
+      ]
+    )
+    ev = self._bet_ev_diagnostic(features, to_call)
+    obs.extend(
+      [
+        ev.estimated_equity,
+        ev.pot_odds,
+        max(-1.0, min(1.0, ev.call_ev / 10.0)),
+        max(-1.0, min(1.0, ev.raise_ev / 10.0)),
+        ev.draw_equity,
+        ev.fold_equity,
+        max(0.0, min(1.0, ev.future_street_value / 3.0)),
+        max(0.0, min(1.0, ev.cheap_draw_continue_value / 3.0)),
+        self._active_opponent_count() / 5.0,
+        self._multiway_pressure(),
+        self._range_equity_percentile(features),
+        self._sixmax_isolation_pressure(features, to_call),
+        1.0 if self._sixmax_late_semibluff_spot(features, to_call, ev) else 0.0,
       ]
     )
     while len(obs) < BADUGI_OBSERVATION_VECTOR_SIZE:

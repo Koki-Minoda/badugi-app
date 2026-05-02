@@ -21,10 +21,10 @@ describe("modelRouter", () => {
 
   it("uses exact variant-tier model before a generic tier model", () => {
     const entry = resolveTierModelInfo({ variantId: "D03", tierId: "beginner" });
-    expect(entry?.modelId).toBe("model-badugi-beginner-dqn-v1");
+    expect(entry?.modelId).toBe("model-generic-v1");
 
     const standard = resolveTierModelInfo({ variantId: "D03", tierId: "standard" });
-    expect(standard?.modelId).toBe("model-badugi-standard-dqn-v1");
+    expect(standard?.modelId).toBe("model-badugi-standard-dqn-v2");
 
     const generic = resolveTierModelInfo({ variantId: "UNKNOWN", tierId: "beginner" });
     expect(generic?.modelId).toBe("model-generic-v1");
@@ -32,7 +32,7 @@ describe("modelRouter", () => {
 
   it("supports character-specific standard Badugi model overrides", () => {
     expect(selectModelForVariant({ variantId: "D03", tierId: "standard" })?.id).toBe(
-      "model-badugi-standard-dqn-v1",
+      "model-badugi-standard-dqn-v2",
     );
     expect(
       selectModelForVariant({
@@ -53,5 +53,27 @@ describe("modelRouter", () => {
       modelId: "model-badugi-standard-dqn-v2",
       tierId: "standard",
     });
+  });
+
+  it("does not route legacy standard models to normal Badugi standard CPU", () => {
+    const legacy = getModelEntry("model-badugi-standard-dqn-v1");
+    expect(legacy?.trainingStatus).toBe("legacy");
+    expect(legacy?.productionRequired).toBe(false);
+
+    expect(resolveCpuCharacterModelInfo({
+      characterId: "badugi-standard-balanced",
+      variantId: "D03",
+      tierId: "standard",
+    })?.modelId).toBe("model-badugi-standard-dqn-v2");
+  });
+
+  it("does not route legacy beginner DQN to normal Badugi beginner CPU", () => {
+    const legacy = getModelEntry("model-badugi-beginner-dqn-v1");
+    expect(legacy?.trainingStatus).toBe("legacy");
+    expect(legacy?.productionRequired).toBe(false);
+
+    expect(selectModelForVariant({ variantId: "D03", tierId: "beginner" })?.id).not.toBe(
+      "model-badugi-beginner-dqn-v1",
+    );
   });
 });

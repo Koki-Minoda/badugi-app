@@ -75,6 +75,7 @@ import {
 
 // History persistence helpers
 import {
+  installHumanBenchmarkLogDevTools,
   saveRLHandHistory,
 } from "../utils/history_rl";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -94,6 +95,7 @@ import {
   DEV_EVENTS,
 } from "./utils/devOverrides.js";
 import { listTierIds, getTierById } from "../ai/tierManager.js";
+import { selectModelForVariant } from "../ai/modelRouter.js";
 import {
   buildAiContext,
   computeBetDecision,
@@ -1269,6 +1271,9 @@ const SAFE_RESET_PHASE = "IDLE";
   useEffect(() => {
     persistHeroTrackerState(heroTracker);
   }, [heroTracker, persistHeroTrackerState]);
+  useEffect(() => {
+    installHumanBenchmarkLogDevTools();
+  }, []);
   const [handResultSummary, setHandResultSummary] = useState(null);
   const [handResultVisible, setHandResultVisible] = useState(false);
   const [devTierOverride, setDevTierOverride] = useState(() => loadAiTierOverride());
@@ -7504,24 +7509,84 @@ const SAFE_RESET_PHASE = "IDLE";
         if (compareBadugi(p.hand, best.hand) < 0) best = p;
       }
 
+      const normalizedRecordVariant = normalizeAppVariantId(gameVariantRef.current);
+      const recordVariantProfile = GAME_VARIANTS[normalizedRecordVariant] ?? null;
+      const recordVariantId = recordVariantProfile?.variantId ?? normalizedRecordVariant;
+      const recordedSeats = currentHandHistoryRef.current?.seats ?? [];
+      const cpuModelEntry = selectModelForVariant({
+        variantId: recordVariantId,
+        tierId: activeAiTierConfig?.id ?? "standard",
+      });
+      const recordedActions = recordedSeats.flatMap((seatRecord) =>
+        (Array.isArray(seatRecord?.actions) ? seatRecord.actions : []).map((action) => ({
+          ...action,
+          seat: typeof action?.seat === "number" ? action.seat : seatRecord?.seat ?? null,
+        })),
+      );
+      const resolveStartStack = (seatIndex, player) => {
+        const historyStart = Number(recordedSeats?.[seatIndex]?.startStack);
+        if (Number.isFinite(historyStart)) return historyStart;
+        const runtimeStart = Number(handStartStacksRef.current?.[seatIndex]);
+        if (Number.isFinite(runtimeStart)) return runtimeStart;
+        const invested = Number(player?.totalInvested);
+        if (Number.isFinite(invested)) {
+          return Math.max(0, Number(player?.stack ?? 0) + invested);
+        }
+        return Number(player?.stack ?? 0);
+      };
+      const recordPlayers = (playersSnap || []).map((p, i) => {
+        const isCPU = i !== 0;
+        const startStack = resolveStartStack(i, p);
+        const endStack = Number(p?.stack ?? 0);
+        return {
+          name: p.name ?? `P${i + 1}`,
+          seat: i,
+          stack: endStack,
+          startStack,
+          endStack,
+          net: Math.round((endStack - startStack) * 1000) / 1000,
+          folded: !!p.folded,
+          isCPU,
+          cpuTier: isCPU ? activeAiTierConfig?.id ?? cpuModelEntry?.tier ?? null : null,
+          cpuModelId: isCPU ? cpuModelEntry?.id ?? cpuModelEntry?.modelId ?? null : null,
+          cpuModelVersion: isCPU ? cpuModelEntry?.version ?? null : null,
+          featureSet: isCPU ? cpuModelEntry?.featureSet ?? null : null,
+          trainingRun: isCPU ? cpuModelEntry?.trainingRun ?? null : null,
+          trainingCheckpoint: isCPU ? cpuModelEntry?.trainingCheckpoint ?? null : null,
+          trainingStatus: isCPU ? cpuModelEntry?.trainingStatus ?? null : null,
+        };
+      });
+      const heroPlayerRecord = recordPlayers[0] ?? null;
+      const heroNet = Number(heroPlayerRecord?.net);
+      const heroResult = Number.isFinite(heroNet)
+        ? heroNet > 0
+          ? "win"
+          : heroNet < 0
+          ? "loss"
+          : "tie"
+        : null;
+
       // NOTE (G-09): Persist the same identifiers/seat metadata that drive
       // action logs so backend HandLog payloads stay aligned with UI history.
       const record = {
         handId,
         ts: Date.now(),
+        variantId: recordVariantId,
+        variantName:
+          recordVariantProfile?.label ??
+          currentHandHistoryRef.current?.variantName ??
+          formatVariantLabel(normalizedRecordVariant),
         tableId: fallbackTableId,
-        tableSize: playersSnap.length,
+        tableSize: (playersSnap || []).length,
         dealerIdx,
         buttonSeat,
         sbSeat,
         bbSeat,
-        players: playersSnap.map((p, i) => ({
-          name: p.name ?? `P${i + 1}`,
-          seat: i,
-          stack: p.stack,
-          folded: !!p.folded,
-        })),
-        actions: [],
+        heroSeat: 0,
+        heroNet,
+        heroResult,
+        players: recordPlayers,
+        actions: recordedActions,
         pot,
         showdown: playersSnap.map(p => ({
           name: p.name,
@@ -7567,6 +7632,28 @@ const SAFE_RESET_PHASE = "IDLE";
           lastRoundIndex: Math.min(drawRound, 3),  // 0..3
           actionLog: actionLog,
           },
+        humanBenchmark: {
+          enabled: true,
+          schemaVersion: "human-benchmark-v1",
+          source: "cash-game",
+          heroSeat: 0,
+          heroStartStack: heroPlayerRecord?.startStack ?? null,
+          heroEndStack: heroPlayerRecord?.endStack ?? null,
+          heroNet,
+          heroResult,
+          variantId: recordVariantId,
+          variantName:
+            recordVariantProfile?.label ??
+            currentHandHistoryRef.current?.variantName ??
+            formatVariantLabel(normalizedRecordVariant),
+          cpuTier: activeAiTierConfig?.id ?? cpuModelEntry?.tier ?? null,
+          cpuModelId: cpuModelEntry?.id ?? cpuModelEntry?.modelId ?? null,
+          cpuModelVersion: cpuModelEntry?.version ?? null,
+          featureSet: cpuModelEntry?.featureSet ?? null,
+          trainingRun: cpuModelEntry?.trainingRun ?? null,
+          trainingCheckpoint: cpuModelEntry?.trainingCheckpoint ?? null,
+          trainingStatus: cpuModelEntry?.trainingStatus ?? null,
+        },
       };
 
       saveRLHandHistory(record);

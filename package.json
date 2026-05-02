@@ -18,6 +18,7 @@
     "ai:export-badugi-onnx": "node scripts/runPythonTool.mjs src/rl/training/export_badugi_dqn_onnx.py",
     "ai:evaluate-badugi-onnx": "node scripts/runPythonTool.mjs src/rl/training/evaluate_badugi_onnx.py",
     "ai:gate-badugi-model": "node scripts/runPythonTool.mjs src/rl/training/gate_badugi_model.py",
+    "ai:benchmark-badugi-human-practice": "node scripts/runPythonTool.mjs src/rl/training/benchmark_badugi_human_practice.py",
     "ai:evaluate-badugi-checkpoints": "node scripts/runPythonTool.mjs src/rl/training/evaluate_badugi_checkpoints.py"
   },
   "dependencies": {

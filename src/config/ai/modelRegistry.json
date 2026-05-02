@@ -19,13 +19,19 @@
   },
   {
     "id": "model-badugi-pro-v1",
-    "version": "v1",
+    "version": "v2",
     "variantIds": [
       "D03"
     ],
+    "characterIds": [],
     "tier": "pro",
     "onnx": "models/badugi_pro_v1.onnx",
-    "checksumSha256": "78d43847ce8ba2bd3d07193c57c4acb8030530feb3dace1ba963722d2bb90dc2",
+    "checksumSha256": "4325e670b9b0a4360060fa5285f372b6cb85d4264b49dc5ccd0d5f3ba8211b5d",
+    "trainingRun": "badugi_sixmax_open_spot_20k_20260502",
+    "trainingCheckpoint": "badugi_dqn_015000_20260502-145626.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "6-max open-spot/range-equity checkpoint selected for Pro. 7-profile x 2-seed checkpoint gate: avgReward 2.307, showdownWinRate 0.674, foldRate 0.159, Standard v3 delta +0.911. This is a synthetic RL gate result, not a verified 60%+ win rate against human players. Not promoted to Iron because negative raise-EV actions remain high.",
+    "featureSet": "badugi-observation-v1-ev-range",
     "productionRequired": true,
     "inputShape": [
       96
@@ -43,6 +49,8 @@
     "tier": "iron",
     "onnx": "models/badugi_iron_v1.onnx",
     "checksumSha256": "73bf81e5f993b0801f3588747e96447a8d03b09d0a9189eca77a135f4b98efdb",
+    "trainingStatus": "bootstrap",
+    "trainingNotes": "Bootstrap heuristic ONNX used to exercise the frontend ONNX path. Not validated as stronger than human players; replace with a trained checkpoint that clears Pro baseline, worst-profile, fold-rate, and human/practice gates.",
     "productionRequired": true,
     "inputShape": [
       96
@@ -60,6 +68,8 @@
     "tier": "worldmaster",
     "onnx": "models/badugi_worldmaster_v1.onnx",
     "checksumSha256": "5be226ebed765ff6b018d3b5b798437498eb0f705b58c9e72c908e527e9b998c",
+    "trainingStatus": "bootstrap",
+    "trainingNotes": "Bootstrap heuristic ONNX used to exercise the frontend ONNX path. Not validated as world-class or clearly stronger than human players; replace after full 6-max and human/practice benchmark gates pass.",
     "productionRequired": true,
     "inputShape": [
       96
@@ -70,16 +80,18 @@
   },
   {
     "id": "model-badugi-standard-dqn-v2",
-    "version": "v2",
+    "version": "v3",
     "variantIds": [
       "D03"
     ],
-    "characterIds": [
-      "badugi-standard-reader"
-    ],
+    "characterIds": [],
     "tier": "standard",
     "onnx": "models/badugi_standard_dqn_v2.onnx",
-    "checksumSha256": "3fba6d1e3aa371fd412694a069380af2ae3e482a537f9db96077dff80a91db5a",
+    "checksumSha256": "cf29ca060adfd73b5ec8f98f904280e285e60ef4d828db5d2a520cb40303fba6",
+    "trainingRun": "badugi_future_value_probe_5k_20260502",
+    "trainingStatus": "active",
+    "trainingNotes": "Trained with future street value and cheap developing draw continuation shaping. 7-profile gate recommended standard tier; not promoted above standard.",
+    "featureSet": "badugi-observation-v1-ev",
     "productionRequired": true,
     "inputShape": [
       96
@@ -97,7 +109,9 @@
     "tier": "standard",
     "onnx": "models/badugi_standard_dqn_v1.onnx",
     "checksumSha256": "bb2613fbbf0848e741122bd8974599ea567b5650eb0f2801817ff24985ab114c",
-    "productionRequired": true,
+    "trainingStatus": "legacy",
+    "trainingNotes": "Retained for historical comparison only. Do not route to live CPU; trained before the current positive shaping cap fix.",
+    "productionRequired": false,
     "inputShape": [
       96
     ],
@@ -111,10 +125,15 @@
     "variantIds": [
       "D03"
     ],
+    "characterIds": [
+      "legacy-badugi-beginner-dqn"
+    ],
     "tier": "beginner",
     "onnx": "models/badugi_beginner_dqn_v1.onnx",
     "checksumSha256": "c8a3bb1f0b178b071e12dd2fe52646d626d167c5f0138942c5f861a1be019907",
-    "productionRequired": true,
+    "trainingStatus": "legacy",
+    "trainingNotes": "Retained for offline comparison only. Normal beginner CPU falls back to the non-DQN policy until a current-env beginner-strength model is trained.",
+    "productionRequired": false,
     "inputShape": [
       96
     ],

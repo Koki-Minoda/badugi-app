@@ -30,11 +30,15 @@ Release checklist:
 
 Current blocker:
 
-- `badugi_pro_v1.onnx`, `badugi_iron_v1.onnx`, and
-  `badugi_worldmaster_v1.onnx` are currently generated bootstrap policies.
+- `badugi_pro_v1.onnx` is now the 6-max open-spot/range-equity 15k DQN
+  checkpoint from `badugi_sixmax_open_spot_20k_20260502`.
+- The current Pro result is a synthetic RL gate result against scripted profile
+  opponents. It does not yet prove a 60%+ win rate against real human players.
+- `badugi_iron_v1.onnx` and `badugi_worldmaster_v1.onnx` are currently
+  generated bootstrap policies.
 - Bootstrap models are real ONNX files and exercise the frontend ONNX path, but
-  they are heuristic initial policies and should later be replaced by trained
-  RL checkpoints.
+  they are heuristic initial policies, not validated high-tier opponents, and
+  should later be replaced by trained RL checkpoints.
 - `badugi_beginner_dqn_v1.onnx` is the evaluator/draw-phase fixed 3k DQN probe
   and is the beginner-tier learned policy while stronger tiers are re-trained.
 - `badugi_standard_dqn_v1.onnx` is the street/context-aware 50k DQN checkpoint.

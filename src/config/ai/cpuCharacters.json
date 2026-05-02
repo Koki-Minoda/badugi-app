@@ -6,15 +6,15 @@
     "tierId": "standard",
     "modelId": "model-badugi-standard-dqn-v2",
     "style": "opponent-reading",
-    "notes": "Standard-strength Badugi CPU that uses opponent tendency features. Not promoted to Pro."
+    "notes": "Current standard-strength Badugi CPU trained after evaluator, draw, and positive reward shaping fixes. Not promoted to Pro."
   },
   {
     "id": "badugi-standard-balanced",
     "label": "Balanced Standard",
     "variantIds": ["D03"],
     "tierId": "standard",
-    "modelId": "model-badugi-standard-dqn-v1",
+    "modelId": "model-badugi-standard-dqn-v2",
     "style": "baseline-balanced",
-    "notes": "Baseline standard Badugi DQN retained for comparison and fallback."
+    "notes": "Routes to the current standard DQN. Legacy v1 is retained only for offline comparison."
   }
 ]

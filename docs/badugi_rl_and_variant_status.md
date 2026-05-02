@@ -1530,6 +1530,13 @@ Draw RL test coverage:
         - 2026-05-01 確認: `npm run ai:evaluate-badugi-onnx -- --model public/models/badugi_beginner_dqn_v1.onnx --episodes 500 --max-steps 200 --seed 20260502` は `avgReward=-1.507`, `showdownWinRate=0.254`, `showdowns=335`, `folds=165`。
         - 2026-05-02 再学習: evaluator / draw phase 修正後、`teacher_warmup=1000`, `imitation_pretrain=500`, `expert_replay_ratio=0.25` で 3k probe を実行。checkpoint評価は `avgReward=0.116`, `showdownWinRate=0.670`, `foldRate=0.190`, `recommendedTier=standard`。ただし段階導入のためまず beginner ONNX に反映。
         - 2026-05-02 確認: 更新後 `public/models/badugi_beginner_dqn_v1.onnx` は balanced 300 episodes で `avgReward=-0.181`, `showdownWinRate=0.600`, `showdowns=250`, `folds=50`。
+        - 2026-05-02 修正: `BadugiEnv._cap_shaping_reward()` が正の shaping reward を 0 に潰していたため、良いvalue bet / pat / call の学習信号が消えていた。上限を `[-1.0, 1.0]` に変更し、unit test を更新。
+        - 2026-05-02 確認: 修正後の `badugi_positive_shaping_probe_5k_20260502` は学習終盤 `avg_reward=0.661`、ONNX gate は短縮条件で PASS。ただし default gate は `avgRewardDeltaVsBaseline=0.2435` で `0.25` にわずかに届かず昇格保留。
+        - 2026-05-02 確認: 修正後の `badugi_positive_shaping_probe_10k_20260502` は学習終盤 `avg_reward=0.874`。default gate は `candidateAvgReward=0.717`, `showdownWinRate=0.612`, `foldRate=0.187`, `avgRewardDeltaVsBaseline=0.3133` で PASS、`recommendedTier=standard`。
+        - 2026-05-02 反映: `badugi_positive_shaping_probe_10k_20260502/badugi_dqn_latest.pt` を `/tmp/mgx-badugi-positive-shaping-10k.onnx` へ export し、`model-badugi-standard-dqn-v2` / `public/models/badugi_standard_dqn_v2.onnx` に反映。checksum は `22899fc71e9e48b345fa1ec1ec025bf0e71a7ea6f30d4c31f18e54d9f04b067c`。
+        - 2026-05-02 ルーティング修正: 通常 `D03 + standard` が古い `model-badugi-standard-dqn-v1` を選ぶ可能性を排除し、`model-badugi-standard-dqn-v2` を通常Standard経路へ昇格。v1は `legacy` / optional とし、live CPU へはルートしない。
+        - 2026-05-02 ルーティング修正: `model-badugi-beginner-dqn-v1` は現行 evaluator/draw 修正後だが positive shaping cap 修正前の学習断面なので `legacy` / optional とし、通常Beginner CPUから外す。Beginnerは current-env beginner-strength model を別途作るまでは generic/rule-based fallback とする。
+        - 2026-05-02 方針: 今後は各ONNXに `trainingRun`, `trainingStatus`, `trainingNotes`, checksum を持たせ、どの評価器・報酬・opponent profile・gateで学習したかを追跡できるものだけを live route に入れる。
         - 2026-05-01 確認: `npm run ai:evaluate-badugi-onnx -- --model public/models/badugi_worldmaster_v1.onnx --episodes 500 --max-steps 200 --seed 20260502` は bootstrap として `avgReward=-1.749`, `showdownWinRate=0.156`, `showdowns=500`, `folds=0`。
         - 2026-05-01 確認: AI routing tests / BadugiEnv unittest / `npm run lint` / `npm run build` は成功。
         - 2026-05-01 追加: `npm run ai:gate-badugi-model` を追加し、候補ONNXが `avgReward`, `showdownWinRate`, `foldRate`, baseline差分の昇格ゲートを満たさなければ non-zero exit で止める。
@@ -1553,6 +1560,49 @@ Draw RL test coverage:
         - 2026-05-01 更新: bootstrap ONNX generator も starting hand / pot odds / position feature を参照するようにした。既存 public model は gate PASS まで再生成しない。
         - 2026-05-01 確認: feature probe 1500 episodes は `avg_reward_last_100=-1.1723`。ONNX gate は現 beginner DQN比で `avgRewardDelta=+0.0646`, WorldMaster bootstrap比で `+0.1068` まで改善したが、`showdownWinRate=0.158` のため昇格しない。
         - 残件: 長期学習では `avgReward` だけでなく `showdownWinRate` を落とさないよう、showdown value / draw quality の reward を追加検討する。
+      - [ ] `AI-06d` current-env Beginner DQN を作り直す。条件: Standardより明確に弱く、ただし破綻しない。古いDQN断面は使わない。
+      - [x] `AI-06e` current-env Standard 50k を回し、10k v2を上回るか評価する。条件: default gate PASS、Standard相当の体感強度、過剰fold/過剰bluffなし。
+        - 2026-05-02 実行: `badugi_positive_shaping_standard_50k_20260502` を `episodes=50000`, `teacher_warmup=1000`, `imitation_pretrain=500`, profile mix `balanced,loose_passive,loose_aggressive,tight_passive,tight_aggressive,pat_heavy,draw_heavy` で学習。
+        - 2026-05-02 結果: 50k学習は完走。学習ログは 30k `avg_reward=0.342`, 35k `0.505`, 47.5k `0.603`, 50k `0.362`。summary は `episodes=50000`, `global_steps=303090`, `avg_reward_last_100=0.7615`。
+        - 2026-05-02 checkpoint比較: 現行 `public/models/badugi_standard_dqn_v2.onnx` をbaselineに、10k/20k/30k/40k/50k checkpointをONNX exportして評価。短縮評価では10k checkpointが最良で `avgReward=0.857`, `showdownWinRate=0.570`, `foldRate=0.100`, `avgRewardDeltaVsBaseline=+0.084`。
+        - 2026-05-02 default gate: run内最良10k checkpointは `candidateAvgReward=0.787`, `showdownWinRate=0.571`, `foldRate=0.112`, `avgRewardDeltaVsBaseline=+0.0699` で baseline差分ゲート未達。50k checkpointは `candidateAvgReward=0.436`, `showdownWinRate=0.649`, `foldRate=0.306`, `avgRewardDeltaVsBaseline=-0.2808` で未達。
+        - 2026-05-02 判定: 50k run は現行 `standard-dqn-v2` を明確に上回らないため、public model へは反映しない。現行10k v2をStandardとして維持する。
+        - 2026-05-02 分析: 50k は `showdownWinRate` が上がる一方で `foldRate` も上がり、平均報酬が落ちた。これは「勝てるショーダウンだけ残す」方向へ寄りすぎ、fixed-limit の安い call / draw equity / fold equity をチップEVとして拾えていない可能性が高い。
+        - 2026-05-02 分析: 現在のEQは `_street_adjusted_strength`, `one_draw_top_half_probability`, `potOdds`, opponent tendency の proxy であり、hand vs range の明示的な equity / EV 計算ではない。次の改善では `callEV = equity * potAfterCall - callCost`、`raiseEV = foldEquity * pot + callContinueEV - extraCost` のような教師・reward・評価ログを追加する。
+        - 2026-05-02 分析: 30k以降は `showdownWinRate` が 0.67-0.69 まで上がったが foldRate も 0.27-0.33 まで悪化。特に tight profile 相手に fold が増えすぎているため、pat pressure / aggression に対する過剰foldを抑える reward と teacher correction が必要。
+      - [ ] `AI-06f` Pro以降は 6-max training / evaluation を追加し、position / multiway pot / FT chip pressure を含めて学習する。
+        - 2026-05-02 方針: Standard は現行 future value v3 で実装済み扱い。Pro以降は heads-up gate ではなく `--table-size 6` の6-max文脈で学習・評価する。
+        - 2026-05-02 更新: `BadugiEnv(table_size=6)` を追加。完全な6人個別showdownではなく、hero vs 主要相手に対して他4 seat の dead money / position pressure / reduced fold equity / tighter semi-bluff incentive を入れる aggregate 6-max 近似として開始する。
+        - 2026-05-02 更新: `train_dqn.py`, `evaluate_badugi_onnx.py`, `gate_badugi_model.py` に `--table-size` を追加。Pro候補は `--table-size 6` で学習・gateする。
+        - 2026-05-02 smoke: `badugi_sixmax_pro_probe_1k_20260502` は `--table-size 6` で完走し、学習ループ・ONNX入力・position/multiway pressure が動作することを確認。
+        - 2026-05-02 評価: `badugi_sixmax_pro_probe_10k_20260502` は6-max gateで現行Pro bootstrap比 `avgRewardDelta=+0.386` と改善。ただしtier promotion上のPro閾値 `+0.5` 未達。Standard v3比は `+0.168` で、Standardとの差も十分ではないためPro本番へ未反映。
+        - 2026-05-02 評価: `badugi_sixmax_pro_probe_20k_20260502` はStandard v3比 `avgRewardDelta=+0.060` まで低下。長く回すだけでは改善せず、actionCounts は bet がほぼ出ず call/check に寄る。Pro化には value bet / isolation raise / late-position semi-bluff の教師・reward強化が必要。
+        - 2026-05-02 更新: 6-max teacher/reward に「強いmade handのvalue bet」「late positionのsemi-bluff」「複数相手に対するisolation raise」を追加。初回10k評価後、no-call時は action 3 の bet を優先し、to-call時だけ action 4 の raise を使うように追加補正して、評価ログの actionCounts が読める形へ寄せた。
+        - 2026-05-02 評価: `badugi_sixmax_pro_value_probe_10k_20260502` を `--table-size 6`, profile mix, teacher warmup / imitation / expert replay 付きで10k学習。Standard v3比は `avgRewardDeltaVsBaseline=+0.180`, `avgReward=2.771`, `showdownWinRate=0.615`, `foldRate=0.178`。前回10kの `+0.168` から微改善したが、Pro昇格基準 `+0.25` 以上には届かないため public model へは未反映。bet/raise alias 補正後の長期probeは次回実行する。
+        - 残件: Pro候補は value bet / semi-bluff / isolation の行動頻度を増やせたかを actionCounts で確認し、20k checkpoint評価で Standard v3 に対して安定して `+0.25` 以上を取るまで昇格しない。
+        - 2026-05-02 原因対策: 6-maxで first-in の bet 学習サンプルが不足していた。training env が各BET streetを常に `current_bet = betSize` で始め、teacher warmup がほぼ facing-bet の call/fold/raise だけを学習していたため、value bet / semi-bluff を入れても open bet が育ちにくかった。
+        - 2026-05-02 更新: 6-max betting round 開始時に、hero position と opponent profile から「相手が先にopen済みの局面」と「heroにcheckで回った局面」を分岐する `_start_betting_round()` を追加。no-call時の legal action から raise alias を外し、check/bet のみにした。
+        - 2026-05-02 更新: range equity proxy / isolation pressure / late semibluff spot を observation slot 58-60 に追加。既存 `badugi-observation-v1-ev` モデルには slot 58-60 を渡さず、新feature set `badugi-observation-v1-ev-range` 候補だけが使うよう `onnxPolicyAdapter` / evaluator / gate に feature-set 指定を追加。
+        - 2026-05-02 smoke: `badugi_sixmax_open_spot_probe_2k_20260502` を2k学習。短縮6-max gateは Standard v3 比 `avgRewardDeltaVsBaseline=+0.710`, `avgReward=2.335`, `showdownWinRate=0.736`, `foldRate=0.218` で PASS、promotion report は `recommendedTier=pro`。actionCounts は各profileで `action 3` が出るよう改善。ただし2k短縮評価のため public model へはまだ未反映。次は20k checkpoint評価で再現性を確認する。
+        - 2026-05-02 学習: `badugi_sixmax_open_spot_20k_20260502` を20k episodesで実行。`save_interval=5000` により 5k / 10k / 15k / 20k checkpoint を保存。
+        - 2026-05-02 checkpoint評価: Standard v3 をbaselineに、6-max 7 profile x 2 seeds x 250 episodesで評価。5k `avgReward=2.170`, `showdownWinRate=0.678`, `foldRate=0.197`, delta `+0.773`; 10k `2.275`, `0.668`, `0.155`, delta `+0.879`; 15k `2.307`, `0.674`, `0.159`, delta `+0.911`; 20k `2.269`, `0.704`, `0.205`, delta `+0.873`。全checkpointがpromotion report上 `recommendedTier=iron`。
+        - 2026-05-02 判定: 15k checkpoint が avgReward / baseline delta / foldRate のバランスで最良。ただし negativeRaiseEVActions がまだ多く、Iron本番昇格は保留。次は15kをPro候補として長めのgateと実戦smokeにかける。
+        - 2026-05-02 Pro反映: 15k checkpointを `public/models/badugi_pro_v1.onnx` / `model-badugi-pro-v1` v2 に反映。featureSet は `badugi-observation-v1-ev-range`。checksum は `4325e670b9b0a4360060fa5285f372b6cb85d4264b49dc5ccd0d5f3ba8211b5d`。
+        - Iron / WorldMaster 強化方針: IronはPro 15kを基準に、negativeRaiseEVActionsを半減させつつ `avgRewardDeltaVsBaseline >= +1.0`, `foldRate <= 0.18`, `showdownWinRate >= 0.68` を狙う。WorldMasterは完全6-maxに近づけ、seat別 opponent range / pat pressure / blocker・dead-card aware draw equity / exploit memory を追加し、短期負けは許容しつつ長期で `avgRewardDeltaVsBaseline >= +1.3`, `foldRate <= 0.16`, profile別の最低avgRewardを底上げする。
+      - [x] `AI-06f-0` Badugi equity / EV diagnostic を追加する。各decision logに `estimatedEquity`, `potOdds`, `callEV`, `raiseEV`, `foldEV`, `drawEquity`, `opponentProfile` を保存し、勝率ではなくチップEVで失敗箇所を追えるようにする。
+        - 2026-05-02 更新: `BadugiEnv` に `BetEVDiagnostic` を追加し、BET action の `info.ev` と ONNX 評価ログへ `profitableFoldMisses`, positive/negative callEV/raiseEV action counts を出す。
+        - 2026-05-02 更新: Python学習環境と frontend `badugiObservationSchema.js` の slot 27-31 を再同期。startingHandStrength / potOdds / position / toCall / oneAway がフロントでも埋まるようにした。
+        - 2026-05-02 更新: EV特徴量 slot 48-53 を追加。ただし既存public ONNXはEV slotゼロ前提で学習されているため、`onnxPolicyAdapter` は `featureSet: "badugi-observation-v1-ev"` のモデルにだけEV slotを渡し、既存 `badugi-observation-v1` モデルでは 48-53 をゼロ化する。
+        - 2026-05-02 評価: EV rewardのみ 10k probe は default gate で `candidateAvgReward=1.068`, `showdownWinRate=0.591`, `foldRate=0.149`, baseline差分 `+0.0707`。改善したが昇格閾値未達。
+        - 2026-05-02 評価: EV feature 10k probe は balanced 1000 hand で現行v2より `avgReward=0.744 vs 0.542` と改善したが、default gate は baseline差分 `+0.0481` で未達。EV feature 20k probe は `showdownWinRate=0.682` まで上がる一方 `foldRate=0.312` と悪化し不採用。
+        - 2026-05-02 分析: 発展性ドローを降りる原因は一部が診断誤集計だった。action `0` は DRAW では pat なので、BET phase の fold のみ `profitableFoldMisses` に数えるよう修正。それでもEV上のfold漏れは残るため、次はcallEVだけでなく「fold後に失う将来street value」を教師側に入れる。
+        - 2026-05-02 更新: `futureStreetValue` / `cheapDrawContinueValue` を追加し、非最終streetの発展ドローで fold すると失う将来価値を callEV / reward / teacher action に反映。frontend schema も slot 54-55 を追加し、既存非EVモデルでは 48-55 をゼロ化する。
+        - 2026-05-02 学習: `badugi_future_value_probe_5k_20260502` を 5k episodes で実行。途中20k設定は teacher warmup の初回処理が重く進捗確認しにくかったため停止し、短縮probeで先に方針確認した。
+        - 2026-05-02 評価: future value 5k は default gate で `avgRewardDeltaVsBaseline=+0.361`, `candidateAvgReward=1.356`, `showdownWinRate=0.563`, `foldRate=0.182` で PASS。7 profile x 2 seed でも `avgReward=1.757`, `showdownWinRate=0.646`, `foldRate=0.190`, baseline差分 `+0.279` で PASS。
+        - 2026-05-02 反映: `public/models/badugi_standard_dqn_v2.onnx` を future value 5k checkpoint から更新し、registry version を `v3`, featureSet を `badugi-observation-v1-ev` に変更。昇格先は Standard までで、Pro/Iron/WorldMaster には未反映。
+      - [ ] `AI-06f-1` Badugi range equity table を作る。27万 starting hand 分布に加え、street / draw remaining / opponent draw count / opponent pat pressure を含む heads-up equity proxy を事前計算または高速近似する。
+      - [ ] `AI-06g` CPU性格別モデルまたはpolicy headを設計する。候補: loose-aggressive, tight-aggressive, tight-passive, exploit-reader, balanced。
+      - [ ] `AI-06h` Badugiプレイガイドを作成する。内容: ルール、基本戦略、position別参加レンジ、pat/draw判断、rough Badugiの扱い、初手Q-low Badugiなどの実戦例。
       - [x] `AI-06c-4` ドロー残り回数・最終bet・相手最終ドロー枚数で押し引き評価を変える。
         - 2026-05-01 更新: 簡易 BadugiEnv に 3rd draw 後の final BET round を追加。final BET 後に showdown へ進む。
         - 2026-05-01 更新: `street_adjusted_strength` を追加し、同じK-high Badugiでも early street では許容、final BETでは弱い値へ落とす。
@@ -1585,7 +1635,7 @@ Draw RL test coverage:
         - 2026-05-01 更新: `npm run ai:evaluate-badugi-checkpoints` を追加。checkpoint dir と pattern を指定し、各checkpointを一時ONNXへexportして baseline と gate比較し、promotion reportをJSON保存する。
         - 2026-05-01 確認: `badugi_dqn_020000_*.pt` に対する smoke 評価は成功。短い2episode smokeでは `recommendedTier=beginner` を出力し、report JSONを生成した。
         - 2026-05-01 評価: `badugi_opponent_read_50k_20260501` の 10k/20k/30k/40k/50k checkpoint を `episodes=100`, seeds `20260502,20260503`, 7 profilesで比較。40kは `showdownWinRate=0.406` だが `foldRate=0.461` でfold過多、50kは `foldRate=0.404` だが `showdownWinRate=0.330` に低下。次はfold勝ち偏重を抑えてshowdown価値を上げる20k probeで確認する。
-      - [ ] `AI-06h` Pro昇格候補向けに reward を showdown 重視へ再調整し、20k probeで `showdownWinRate >= 0.35` と `foldRate <= 0.40` を同時に狙う。
+      - [x] `AI-06h` Pro昇格候補向けに reward を showdown 重視へ再調整し、20k probeで `showdownWinRate >= 0.35` と `foldRate <= 0.40` を同時に狙う。
         - 2026-05-01 方針: opponent fold の terminal reward を軽くし、showdown win reward を上げる。final street のmade Badugi / 安いone-away draw はfoldしすぎないよう call 側のrewardを強める。
         - 2026-05-01 調査: 20k probe は `showdownWinRate=0.441` まで上がったが `foldRate=0.549` で不合格。profile別ログで `pat_heavy` のaction countが異常に多く、相手pat時に `DRAW` から `BET` へ戻らない学習環境バグを検出。
         - 2026-05-01 修正: `BadugiEnv._opponent_draw_action()` で opponent pat 時も phase / bet state を reset して `BET` へ戻す。修正後に20k probeを再実行する。
@@ -1593,6 +1643,7 @@ Draw RL test coverage:
         - 2026-05-01 修正: `BadugiEnv.step()` で terminal reward と shaping reward を分離し、非終端shaping rewardを `[-1.0, 0.08]` にクリップ。勝敗・showdown結果を主報酬に戻す。
         - 2026-05-01 再評価: capped 10k probe でも `foldRate=1.000`。fold直前まで非終端加点を積む抜け道が残ったため、非終端shapingの正報酬を0上限にし、`player_fold` terminal rewardを明示的に負にする。
         - 2026-05-01 確認: terminal主導に戻した 3k probe は `foldRate=0.345` まで正常化し、fold exploit は解消。ただし `avgReward=-6.163`, `showdownWinRate=0.130` と弱いため、次は長期学習の前に warm start / behavior cloning / rule-based teacher を検討する。
+        - 2026-05-02 完了: evaluator / draw phase 修正後の 6-max 20k checkpoint 評価で、15k checkpoint が `avgReward=2.307`, `showdownWinRate=0.674`, `foldRate=0.159` を記録。`badugi_pro_v1.onnx` として Pro に昇格済み。
       - [x] `AI-06i` terminal主導rewardで学習初期が弱くなりすぎる問題に対し、rule-based teacher / behavior cloning / expert replay を入れて、fold exploitなしでshowdownWinRateを立ち上げる。
         - 方針: 現在の terminal主導rewardは安全だが sparse reward 寄りで3k時点が弱い。次は既存 policyRouter / Badugi evaluator から教師actionを作り、初期 replay buffer または imitation pretrain を入れる。
         - 2026-05-01 更新: `npm run ai:train-badugi` に `--teacher-warmup-episodes` を追加。teacher policyの遷移を replay buffer に先に投入し、DQNの初期探索を補助する。
@@ -1611,8 +1662,9 @@ Draw RL test coverage:
         - 2026-05-01 修正: teacher の final street を street-aware にし、未完成 one-away は facing bet でfold、rough made Badugi は相手2枚替え以上のときだけ薄く打つ方針に変更。
         - 2026-05-01 確認: 3k imitation probe は `bc_acc=1.000` までteacher actionを学習したが、評価は `showdownWinRate=0.099`, `foldRate=0.040`, `recommendedTier=beginner`。配線は機能しているが強さは未達。
         - 2026-05-01 確認: street-aware teacher 後の1k probeも `showdownWinRate=0.075`, `foldRate=0.000` で未達。teacher / imitation だけでは改善せず、training env のbetting/draw進行とteacher品質の再設計が必要。
-      - [ ] `AI-06l` imitation pretrain + expert replay の 3k/20k probe を評価し、`showdownWinRate >= 0.25`, `foldRate <= 0.40` を満たす checkpoint だけを beginner/standard候補へ進める。
-      - [ ] `AI-06m` Badugi training env の betting/draw 進行を実ゲームに近づける。現状は player action 後に即DRAWへ進みやすく、opponent のbet応答・street内アクション交換が簡略化されすぎているため、teacherを真似ても実戦的な押し引きが育ちにくい。
+      - [x] `AI-06l` imitation pretrain + expert replay の 3k/20k probe を評価し、`showdownWinRate >= 0.25`, `foldRate <= 0.40` を満たす checkpoint だけを beginner/standard候補へ進める。
+        - 2026-05-02 完了: `--teacher-warmup-episodes`, `--imitation-pretrain-steps`, `--expert-replay-ratio`, `--imitation-loss-weight` を組み合わせた current-env 20k probe を評価し、Pro候補の15k checkpointを採用。古い評価器・draw phase時代のcheckpointは昇格対象外として扱う。
+      - [x] `AI-06m` Badugi training env の betting/draw 進行を実ゲームに近づける。現状は player action 後に即DRAWへ進みやすく、opponent のbet応答・street内アクション交換が簡略化されすぎているため、teacherを真似ても実戦的な押し引きが育ちにくい。
         - 2026-05-01 深掘り: `evaluate_badugi()` が低ランク貪欲選択になっており、`A A A 2` を 1-card A と誤判定していた。正しくは枚数最大化優先で 2-card `A2`。全 52C4 brute force 照合を追加し、mismatch 0 を確認。
         - 2026-05-01 深掘り: `BadugiEnv.step()` が player BET action 後に `phase=DRAW` へ進めた直後、同一step内の `_opponent_turn()` で opponent DRAW を消費して `phase=BET` に戻していた。結果として player は学習上ほぼカードチェンジできず、showdownWinRate が極端に低下していた。
         - 2026-05-01 修正: player BET後は `DRAW` phase を次stepへ残し、player DRAW 後に opponent draw を処理して次BETへ進めるようにした。
@@ -1626,7 +1678,32 @@ Draw RL test coverage:
         - 2026-05-02 確認: Lowball / draw engine / single draw regression は 4 files / 58 tests pass。Badugi / 2-7 / A-5 / NLH を含む関連一式は 7 files / 85 tests pass。`npm run lint`, `npm run build`, Python RL 37 tests も pass。
         - 2026-05-02 TDA照合: TDA 2024 Rule 12/16/20/21 を参照し、cards speak / all-in hand table / odd chip / side pots separate を確認。Badugi side pot で eligible が1人だけの side pot を前potへmergeしてしまう実装を修正し、短い all-in main pot winner が単独eligible side potを取らない回帰テストを追加。
         - 2026-05-02 確認: Badugi roundFlow / BadugiEngine / payout integrity / D01-D02 draw engine regression は 6 files / 78 tests pass。`npm run lint`, `npm run build` も pass。
-      - [ ] `AI-06n` Badugi evaluator / draw phase 修正後に、既存Badugi DQN checkpoint を無効扱いにし、新しいenvで teacher/imitation 3k -> 20k probe を再実行する。
+      - [x] `AI-06n` Badugi evaluator / draw phase 修正後に、既存Badugi DQN checkpoint を無効扱いにし、新しいenvで teacher/imitation 3k -> 20k probe を再実行する。
+        - 2026-05-02 完了: current-env `badugi_sixmax_open_spot_20k_20260502` を実行し、5k/10k/15k/20k checkpointを評価。15kを Pro (`public/models/badugi_pro_v1.onnx`) に採用。model registry に `trainingEnvVersion=current-env-20260502` / `featureSet=badugi-observation-v1-ev-range` / checksum を記録済み。
+      - [ ] `AI-06o` Proより上位の Iron 候補を作る。6-maxで「悪いto-call raiseを減らす」「発展性のあるdrawを降りすぎない」「value bet / late semi-bluff / isolation raise」を同時に満たし、現行Proに対して再現性ある差を出す。
+        - 2026-05-02 修正: `npm run ai:train-badugi` に `--resume-checkpoint` を追加し、tier昇格候補を既存checkpointからfine-tuneできるようにした。
+        - 2026-05-02 修正: 6-max isolation raise teacher/reward を、`raiseEV >= callEV + edge` の局面に絞った。negative raise EV の集計を bet と raise で分離し、checkpoint report summary に actionCounts / evDiagnostics を集約するようにした。
+        - 2026-05-02 評価: `badugi_sixmax_iron_raise_discipline_10k_20260502` は5k `avgReward=2.250`, `showdownWinRate=0.689`, `foldRate=0.192`, Pro比 `-0.031`、10k `avgReward=2.256`, `showdownWinRate=0.704`, `foldRate=0.209`, Pro比 `-0.025`。悪いraiseは減ったがfold過多になり、昇格不可。
+        - 2026-05-02 修正: call EV が fold EV を明確に上回る局面のfoldに追加ペナルティを入れ、teacherも3-card以上または安い発展drawでEVがあるならcallを選ぶようにした。
+        - 2026-05-02 評価: `badugi_sixmax_iron_overfold_control_5k_20260502` は `avgReward=2.301`, `showdownWinRate=0.675`, `foldRate=0.158`, Pro比 `+0.021`。fold率は戻ったが差が小さいため昇格保留。
+        - 2026-05-02 評価: 追加fine-tune `badugi_sixmax_iron_overfold_control_plus_10k_20260502` は5k Pro比 `-0.037`、10k Pro比 `+0.011`。現行Proを明確に超えないため Iron には未適用。
+        - 2026-05-02 追加検証: to-call raise にさらに強いedgeを要求する `badugi_sixmax_iron_call_edge_5k_20260502` を試したが、`showdownWinRate=0.717` まで上がる一方で `foldRate=0.233`, Pro比 `-0.099`。降り過ぎが悪化したため採用しない。
+        - 2026-05-02 追加検証: raise edge強化は戻し、call EV が fold EV を明確に上回る局面のcall rewardだけを厚くした `badugi_sixmax_iron_call_value_5k_20260502` を評価。`avgReward=2.665`, `showdownWinRate=0.700`, `foldRate=0.197`, Pro比 `+0.006`。negativeRaiseEVActions は `221 -> 103` に改善したが、profitableFoldMisses が `264 -> 349` に悪化したため昇格保留。
+        - 次の打ち手: negative raise EV をさらに減らしつつ、profitableFoldMisses をPro以下に抑える。評価は Pro baseline 比 `avgRewardDelta >= +0.25`、`foldRate <= 0.17`、`showdownWinRate >= 0.69` を最低ラインにしてから registry 反映する。
+        - 次の具体策: fold miss 悪化はaction maskではなくpolicy選好の問題。次は teacher / reward の `profitable_continue` を「call」だけでなく、fold actionへの明確な教師損失として維持する。また draw-heavy / passive profile 別に profile-aware continue threshold を入れ、全profile平均だけでなく worst-profile avgReward を gate に入れる。
+        - 2026-05-02 実装: `profitable_continue` teacher を profile-aware 化。`draw_heavy` / passive系では cheap draw と profitable continue の閾値を緩め、EVがある低コスト継続をfoldしにくくした。
+        - 2026-05-02 実装: gate / checkpoint summary に `profileSummaries`, `worstProfile`, `worstProfileAvgReward` を追加し、promotion tier と明示gateで worst-profile を評価対象にした。
+        - 2026-05-02 20k評価: `badugi_sixmax_iron_profile_continue_20k_20260502` を 5k/10k/15k/20k checkpoint で評価。最良10kは `avgReward=2.682`, `showdownWinRate=0.696`, `foldRate=0.194`, Pro比 `+0.023`, worstProfile=`loose_passive`, worstProfileAvgReward=`1.490`。negativeRaiseEVActions は `221 -> 13` まで改善したが、profitableFoldMisses は `264 -> 344`、foldRate は `0.159 -> 0.194` に悪化したため Iron 昇格は保留。
+        - 次の具体策: fold miss の主因は facing bet で action 0 を選ぶ頻度がまだ高いこと。次は teacher replay 内の `profitable_continue` サンプルを oversample し、DQN loss 側で fold action に対する margin loss を追加する。単純なreward追加だけではshowdown勝率は上がるがfoldRateが悪化する。
+        - 2026-05-02 強さ評価の現状: Pro v2 は synthetic 6-max gate で Standard v3 を大きく上回ったが、人間プレイヤー相手に勝率6割以上を保証する評価はまだない。現時点で言えるのは「scripted 7 profile x 2 seed の近似6-max環境で `avgReward=2.307`, `showdownWinRate=0.674`, `foldRate=0.159`」まで。
+        - 2026-05-02 注意: Iron / WorldMaster の production ONNX は現状 bootstrap heuristic。フロントONNX経路の動作確認用としては有効だが、「明らかに人より強い」ことは未検証。上位tierへ実装するには trained checkpoint への置換が必須。
+        - [x] `AI-06p` human/practice benchmark gate を追加する。最低限、手動または記録済み人間プレイログに対して Pro は実戦体感で少し勝ち越す、Iron は明確に勝ち越す、WorldMaster は短期以外ほぼ勝てない、という基準を別評価として記録する。現 synthetic gate だけで「人に6割勝つ」とは宣言しない。
+          - 2026-05-02 実装: `npm run ai:benchmark-badugi-human-practice` を追加。practice profile は recreational / solid_regular / aggressive_regular / pat_pressure に分け、practiceOnly と humanVerified を明示する。
+          - 2026-05-02 実装: `--human-log` で JSON/JSONL の人間プレイログを読み、`heroResult` または `heroNet` から win/loss/tie を集計する。`--require-human-logs` を付けた場合、十分なログがない限り gate は pass しない。
+          - 2026-05-02 方針: human log なしの benchmark は練習fixture評価であり、Pro/Iron/WorldMaster の人間相手勝率保証には使わない。
+          - 2026-05-02 実装: Badugi cash game の完了ハンドを `badugi_human_benchmark_logs_v1` に自動保存する。保存内容は `handId`, `variantId`, `heroSeat`, `heroNet`, `heroResult`, CPU tier/model/version/featureSet/trainingRun, actions, showdown, winners。
+          - 2026-05-02 実装: ブラウザコンソールから `window.MGX.getHumanBenchmarkLogs()` で確認、`window.MGX.exportHumanBenchmarkLogs()` で JSONL をダウンロードできる。通常プレイ後にエクスポートしたJSONLを `npm run ai:benchmark-badugi-human-practice -- --human-log <file> --require-human-logs` へ渡す。
+          - 2026-05-02 実装: benchmark parser は App 側の `humanBenchmark` ネスト形式も読み取れる。
       - [ ] `AI-06e` 2-7 / A-5 用の実ONNXを生成・配置する。現状は `model-27draw-iron-v1` (`D01/S01`) と `model-a5draw-iron-v1` (`D02/S02`) の registry / feature builder / routing test はあるが、実 `.onnx` は optional 未配置で、App draw CPU は rule-based fallback が主経路。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
   - P2P:

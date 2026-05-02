@@ -52,6 +52,15 @@ def choose_action(
     return int(np.argmax(q_values))
 
 
+def apply_badugi_feature_set(obs: np.ndarray, feature_set: str) -> np.ndarray:
+    vector = np.array(obs, copy=True)
+    if feature_set not in ("badugi-observation-v1-ev", "badugi-observation-v1-ev-range"):
+        vector[48:56] = 0.0
+    if feature_set != "badugi-observation-v1-ev-range":
+        vector[58:61] = 0.0
+    return vector
+
+
 def evaluate_model(
     *,
     model: Path,
@@ -60,6 +69,8 @@ def evaluate_model(
     epsilon: float,
     seed: int,
     opponent_profile: str = "balanced",
+    table_size: int = 2,
+    feature_set: str = "badugi-observation-v1-ev-range",
 ) -> dict:
     if not model.exists():
         raise FileNotFoundError(f"ONNX model not found: {model}")
@@ -70,9 +81,16 @@ def evaluate_model(
     input_shape = [dim if isinstance(dim, int) else None for dim in session.get_inputs()[0].shape]
     output_shape = [dim if isinstance(dim, int) else None for dim in session.get_outputs()[0].shape]
 
-    env = BadugiEnv(opponent_profile=opponent_profile)
+    env = BadugiEnv(opponent_profile=opponent_profile, table_size=table_size)
     rewards: list[float] = []
     wins = losses = ties = folds = opponent_folds = showdowns = 0
+    profitable_fold_misses = 0
+    positive_call_ev_actions = 0
+    negative_call_ev_actions = 0
+    positive_raise_ev_actions = 0
+    negative_raise_ev_actions = 0
+    positive_bet_ev_actions = 0
+    negative_bet_ev_actions = 0
     action_counts = {str(action): 0 for action in range(6)}
 
     for episode in range(episodes):
@@ -81,10 +99,34 @@ def evaluate_model(
         last_result = None
 
         for _ in range(max_steps):
-            action = choose_action(session, obs, epsilon, env.legal_action_mask())
+            policy_obs = apply_badugi_feature_set(obs, feature_set)
+            action = choose_action(session, policy_obs, epsilon, env.legal_action_mask())
             action_counts[str(action)] += 1
-            obs, reward, terminated, truncated, _info = env.step(action)
+            obs, reward, terminated, truncated, info = env.step(action)
             total_reward += float(reward)
+            ev = info.get("ev") if isinstance(info, dict) else None
+            if ev:
+                is_bet_phase = ev.get("phase") == "BET"
+                call_ev = float(ev.get("callEV", 0.0))
+                raise_ev = float(ev.get("raiseEV", 0.0))
+                fold_ev = float(ev.get("foldEV", 0.0))
+                if is_bet_phase and action == 0 and call_ev > fold_ev:
+                    profitable_fold_misses += 1
+                if is_bet_phase and action == 2:
+                    if call_ev >= fold_ev:
+                        positive_call_ev_actions += 1
+                    else:
+                        negative_call_ev_actions += 1
+                if is_bet_phase and action == 3:
+                    if raise_ev >= fold_ev:
+                        positive_bet_ev_actions += 1
+                    else:
+                        negative_bet_ev_actions += 1
+                if is_bet_phase and action == 4:
+                    if raise_ev >= call_ev:
+                        positive_raise_ev_actions += 1
+                    else:
+                        negative_raise_ev_actions += 1
             if getattr(env, "last_result", None) is not None:
                 last_result = env.last_result
             if terminated or truncated:
@@ -115,6 +157,8 @@ def evaluate_model(
         "epsilon": epsilon,
         "seed": seed,
         "opponentProfile": opponent_profile,
+        "tableSize": table_size,
+        "featureSet": feature_set,
         "inputShape": input_shape,
         "outputShape": output_shape,
         "avgReward": float(np.mean(rewards)) if rewards else 0.0,
@@ -128,6 +172,15 @@ def evaluate_model(
         "opponentFolds": opponent_folds,
         "showdownWinRate": wins / showdowns if showdowns else 0.0,
         "actionCounts": action_counts,
+        "evDiagnostics": {
+            "profitableFoldMisses": profitable_fold_misses,
+            "positiveCallEVActions": positive_call_ev_actions,
+            "negativeCallEVActions": negative_call_ev_actions,
+            "positiveRaiseEVActions": positive_raise_ev_actions,
+            "negativeRaiseEVActions": negative_raise_ev_actions,
+            "positiveBetEVActions": positive_bet_ev_actions,
+            "negativeBetEVActions": negative_bet_ev_actions,
+        },
     }
 
 
@@ -139,6 +192,12 @@ def parse_args():
     parser.add_argument("--epsilon", type=float, default=0.0)
     parser.add_argument("--seed", type=int, default=20260501)
     parser.add_argument("--opponent-profile", default="balanced")
+    parser.add_argument("--table-size", type=int, default=2)
+    parser.add_argument(
+        "--feature-set",
+        default="badugi-observation-v1-ev-range",
+        choices=["badugi-observation-v1", "badugi-observation-v1-ev", "badugi-observation-v1-ev-range"],
+    )
     parser.add_argument("--json", action="store_true")
     return parser.parse_args()
 
@@ -152,6 +211,8 @@ def main():
         epsilon=args.epsilon,
         seed=args.seed,
         opponent_profile=args.opponent_profile,
+        table_size=args.table_size,
+        feature_set=args.feature_set,
     )
     if args.json:
         print(json.dumps(result, indent=2))
@@ -164,7 +225,8 @@ def main():
         f"showdownWinRate={result['showdownWinRate']:.3f} "
         f"showdowns={result['showdowns']} folds={result['folds']} "
         f"opponentFolds={result['opponentFolds']} "
-        f"actions={result['actionCounts']}"
+        f"actions={result['actionCounts']} "
+        f"ev={result['evDiagnostics']}"
     )
 
 

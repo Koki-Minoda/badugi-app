@@ -30,8 +30,10 @@ Release checklist:
 
 Current blocker:
 
-- `badugi_pro_v1.onnx`, `badugi_iron_v1.onnx`, and
-  `badugi_worldmaster_v1.onnx` are currently generated bootstrap policies.
+- `badugi_pro_v1.onnx` is now the 6-max open-spot/range-equity 15k DQN
+  checkpoint from `badugi_sixmax_open_spot_20k_20260502`.
+- `badugi_iron_v1.onnx` and `badugi_worldmaster_v1.onnx` are currently
+  generated bootstrap policies.
 - Bootstrap models are real ONNX files and exercise the frontend ONNX path, but
   they are heuristic initial policies and should later be replaced by trained
   RL checkpoints.

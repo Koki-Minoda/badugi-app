@@ -19,13 +19,19 @@
   },
   {
     "id": "model-badugi-pro-v1",
-    "version": "v1",
+    "version": "v2",
     "variantIds": [
       "D03"
     ],
+    "characterIds": [],
     "tier": "pro",
     "onnx": "models/badugi_pro_v1.onnx",
-    "checksumSha256": "78d43847ce8ba2bd3d07193c57c4acb8030530feb3dace1ba963722d2bb90dc2",
+    "checksumSha256": "4325e670b9b0a4360060fa5285f372b6cb85d4264b49dc5ccd0d5f3ba8211b5d",
+    "trainingRun": "badugi_sixmax_open_spot_20k_20260502",
+    "trainingCheckpoint": "badugi_dqn_015000_20260502-145626.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "6-max open-spot/range-equity checkpoint selected for Pro. 7-profile x 2-seed checkpoint gate: avgReward 2.307, showdownWinRate 0.674, foldRate 0.159, Standard v3 delta +0.911. Not promoted to Iron because negative raise-EV actions remain high.",
+    "featureSet": "badugi-observation-v1-ev-range",
     "productionRequired": true,
     "inputShape": [
       96

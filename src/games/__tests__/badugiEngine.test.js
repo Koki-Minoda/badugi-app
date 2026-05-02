@@ -6,6 +6,18 @@ import { IllegalActionError } from "../core/errors.js";
 describe("BadugiEngine", () => {
   const engine = new BadugiEngine();
   const seatConfig = ["HUMAN", "CPU", "CPU", "EMPTY", "EMPTY", "EMPTY"];
+  const playerSeat = (overrides = {}) => ({
+    name: "Seat",
+    stack: 100,
+    betThisRound: 0,
+    totalInvested: 0,
+    folded: false,
+    allIn: false,
+    seatOut: false,
+    hasActedThisRound: false,
+    hand: ["AS", "2D", "3H", "4C"],
+    ...overrides,
+  });
 
   it("deals single-deck hands with one burn card", () => {
     const fullSeats = ["HUMAN", "CPU", "CPU", "CPU", "CPU", "CPU"];
@@ -270,6 +282,44 @@ describe("BadugiEngine", () => {
     expect(next.metadata.betHead).toBe(0);
     expect(next.lastAggressorIndex).toBe(0);
     expect(next.metadata.totalCommitted).toBeGreaterThanOrEqual(30);
+  });
+
+  it("does not reopen betting when a short stack tries to raise but only covers part of the call", () => {
+    const state = {
+      ...engine.initHand({ seatConfig: ["HUMAN", "CPU", "CPU"], startingStack: 100 }),
+      players: [
+        playerSeat({ name: "Hero", stack: 60, betThisRound: 40, hasActedThisRound: true }),
+        playerSeat({ name: "Short", stack: 20, betThisRound: 0, hasActedThisRound: false }),
+        playerSeat({ name: "Caller", stack: 60, betThisRound: 40, hasActedThisRound: true }),
+      ],
+      metadata: {
+        currentBet: 40,
+        betHead: 0,
+        raiseCountThisRound: 1,
+        raiseCap: 4,
+      },
+      lastAggressorIndex: 0,
+    };
+
+    const next = engine.applyPlayerAction(state, {
+      seatIndex: 1,
+      type: "RAISE",
+      metadata: { amount: 20 },
+    });
+
+    expect(next.players[1]).toMatchObject({
+      stack: 0,
+      betThisRound: 20,
+      allIn: true,
+      lastAction: "Call",
+      hasActedThisRound: true,
+    });
+    expect(next.metadata.currentBet).toBe(40);
+    expect(next.metadata.betHead).toBe(0);
+    expect(next.metadata.raiseCountThisRound).toBe(1);
+    expect(next.lastAggressorIndex).toBe(0);
+    expect(next.players[0].hasActedThisRound).toBe(true);
+    expect(next.players[2].hasActedThisRound).toBe(true);
   });
 
   it("resolves showdown payouts and summary", () => {

@@ -2,8 +2,9 @@ import React from "react";
 import Card from "./Card";
 import { formatStatAf, formatStatPercent } from "../utils/stats.js";
 
-function BetStatus({ amount }) {
+function BetStatus({ amount, allIn = false }) {
   const hasBet = Number(amount) > 0;
+  const label = allIn && hasBet ? "All-in" : "Bet";
   return (
     <div
       data-testid="player-bet-status"
@@ -14,7 +15,7 @@ function BetStatus({ amount }) {
       }`}
       style={{ fontSize: "var(--player-stack-size, 11px)" }}
     >
-      <span>Bet</span>
+      <span>{label}</span>
       <span data-testid="player-bet-amount">{amount}</span>
     </div>
   );
@@ -132,7 +133,7 @@ export default function Player({
           <div>
             Stack <span className="font-semibold text-white">{stackValue}</span>
           </div>
-          <BetStatus amount={betValue} />
+          <BetStatus amount={betValue} allIn={player.allIn} />
           {isActive && (
             <div
               className="text-lime-300 font-bold mt-1"

@@ -60,7 +60,9 @@ export default function PlayerStatusBoard({
                   <span className="font-semibold text-white">{player.stack}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Bet</span>
+                  <span className="text-slate-400">
+                    {player.allIn && Number(player.betThisRound ?? 0) > 0 ? "All-in" : "Bet"}
+                  </span>
                   <span className="font-semibold text-white">
                     {player.betThisRound ?? 0}
                   </span>
@@ -97,4 +99,3 @@ export default function PlayerStatusBoard({
     </div>
   );
 }
-

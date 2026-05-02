@@ -245,7 +245,7 @@ export function applyForcedBetActionSnapshot({ players, seat, payload = {}, betS
       });
       const requested = amountModel.isValid
         ? amountModel.contribution
-        : (Number.isFinite(Number(payload.amount)) ? Number(payload.amount) : toCall);
+        : toCall;
       const paid = invest(Math.max(0, requested));
       actor.lastAction = paid === 0 ? "Check" : "Call";
       actor.hasActedThisRound = true;
@@ -263,19 +263,29 @@ export function applyForcedBetActionSnapshot({ players, seat, payload = {}, betS
         ? amountModel.contribution
         : Math.max(0, toCall + unit);
       const paidRaise = invest(requested);
-      actor.lastAction = "Raise";
+      const fullRaiseBet = maxNow + unit;
+      const isFullFixedLimitRaise = actor.betThisRound >= fullRaiseBet;
+      const isOpeningAllIn = maxNow === 0 && paidRaise > 0 && actor.betThisRound < unit;
+      actor.lastAction = isFullFixedLimitRaise
+        ? "Raise"
+        : isOpeningAllIn
+        ? "All-in"
+        : paidRaise > 0
+        ? "Call"
+        : "Check";
       actor.hasActedThisRound = true;
-      raiseApplied = paidRaise > 0;
+      raiseApplied = isFullFixedLimitRaise;
       break;
     }
     case "all-in": {
       invest(toCall);
       const shoveTarget =
         payload.amount == null ? actor.stack : Math.max(0, payload.amount);
-      const paid = invest(shoveTarget);
-      actor.lastAction = "All-in";
+      invest(shoveTarget);
+      const fullRaiseBet = maxNow + unit;
+      raiseApplied = actor.betThisRound >= fullRaiseBet;
+      actor.lastAction = raiseApplied ? "Raise" : "All-in";
       actor.hasActedThisRound = true;
-      raiseApplied = paid > 0;
       break;
     }
     default:

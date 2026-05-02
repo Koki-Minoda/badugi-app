@@ -89,6 +89,8 @@ def evaluate_model(
     negative_call_ev_actions = 0
     positive_raise_ev_actions = 0
     negative_raise_ev_actions = 0
+    positive_bet_ev_actions = 0
+    negative_bet_ev_actions = 0
     action_counts = {str(action): 0 for action in range(6)}
 
     for episode in range(episodes):
@@ -115,7 +117,12 @@ def evaluate_model(
                         positive_call_ev_actions += 1
                     else:
                         negative_call_ev_actions += 1
-                if is_bet_phase and action in (3, 4):
+                if is_bet_phase and action == 3:
+                    if raise_ev >= fold_ev:
+                        positive_bet_ev_actions += 1
+                    else:
+                        negative_bet_ev_actions += 1
+                if is_bet_phase and action == 4:
                     if raise_ev >= call_ev:
                         positive_raise_ev_actions += 1
                     else:
@@ -171,6 +178,8 @@ def evaluate_model(
             "negativeCallEVActions": negative_call_ev_actions,
             "positiveRaiseEVActions": positive_raise_ev_actions,
             "negativeRaiseEVActions": negative_raise_ev_actions,
+            "positiveBetEVActions": positive_bet_ev_actions,
+            "negativeBetEVActions": negative_bet_ev_actions,
         },
     }
 

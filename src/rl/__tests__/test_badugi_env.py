@@ -314,7 +314,7 @@ class BadugiEnvTest(unittest.TestCase):
         env.reset(seed=1)
         env.phase = "BET"
         env.round = 1
-        env.pot = 18
+        env.pot = 40
         env.current_bet = 1
         env.player_bet = 0
         env.player_hand = [(0, 0), (1, 1), (3, 2), (7, 3)]
@@ -324,6 +324,22 @@ class BadugiEnvTest(unittest.TestCase):
         raise_reward = env._reward_shaping(features, 4)
 
         self.assertGreater(raise_reward, call_reward)
+
+    def test_sixmax_penalizes_negative_ev_isolation_raise(self):
+        env = BadugiEnv(table_size=6, hero_position=1)
+        env.reset(seed=1)
+        env.phase = "BET"
+        env.round = 1
+        env.pot = 6
+        env.current_bet = 1
+        env.player_bet = 0
+        env.player_hand = [(0, 0), (1, 1), (8, 2), (12, 2)]
+        features = env._hand_features(env.player_hand)
+
+        call_reward = env._reward_shaping(features, 2)
+        raise_reward = env._reward_shaping(features, 4)
+
+        self.assertLess(raise_reward, call_reward)
 
     def test_sixmax_isolation_pressure_raises_fold_equity_for_strong_late_spot(self):
         early = BadugiEnv(table_size=6, hero_position=0)
@@ -343,6 +359,8 @@ class BadugiEnvTest(unittest.TestCase):
         late.current_bet = early.current_bet
         late.player_bet = early.player_bet
         late.player_hand = list(early.player_hand)
+        late.opponent_action_count = early.opponent_action_count
+        late.opponent_fold_count = early.opponent_fold_count
 
         early_ev = early._bet_ev_diagnostic(early._hand_features(early.player_hand), to_call=1)
         late_ev = late._bet_ev_diagnostic(late._hand_features(late.player_hand), to_call=1)

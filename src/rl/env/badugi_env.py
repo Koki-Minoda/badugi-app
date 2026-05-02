@@ -772,6 +772,8 @@ class BadugiEnv(gym.Env):
           reward += 0.36
         elif action == 2:
           reward -= 0.10
+      if to_call > 0 and action == 4 and ev.raise_ev < ev.call_ev:
+        reward -= min(0.45, 0.18 + (ev.call_ev - ev.raise_ev) * 0.05)
       if to_call == 0 and action == 4 and (sixmax_value_bet or sixmax_late_semibluff):
         reward -= 0.12
       if action in (3, 4) and self.round >= self.max_rounds and self._is_weak_final_badugi(features):
@@ -803,6 +805,8 @@ class BadugiEnv(gym.Env):
         reward -= 0.18
       if to_call > 0 and action == 0:
         tight_pat_raise_pressure = opponent_pat_pressure > 0.5 and opponent_aggression < 0.22
+        if ev.call_ev > ev.fold_ev + 0.10:
+          reward -= min(0.55, 0.16 + (ev.call_ev - ev.fold_ev) * 0.08)
         if ev.call_ev > ev.fold_ev and features.one_away and self.round < self.max_rounds:
           reward -= min(0.75, 0.25 + ev.call_ev * 0.12)
         if ev.cheap_draw_continue_value > 0.35 and pot_odds <= 0.30 and self.round < self.max_rounds:
@@ -830,9 +834,9 @@ class BadugiEnv(gym.Env):
       if to_call > 0 and action in (3, 4) and opponent_aggression >= 0.38 and strength >= 0.62:
         reward += 0.16
       if to_call > 0 and action in (3, 4):
-        reward += 0.14 if ev.raise_ev >= ev.call_ev else -0.1
+        reward += 0.18 if ev.raise_ev >= ev.call_ev else -0.18
         if self.table_size >= 6 and not sixmax_isolation_raise and strength < 0.58:
-          reward -= 0.16
+          reward -= 0.24
       if action == 0 and to_call == 0:
         reward -= 0.2
     elif self.phase == "DRAW":
@@ -892,7 +896,8 @@ class BadugiEnv(gym.Env):
     high_rank = max(features.ranks)
     strong_made = features.count == 4 and high_rank <= 8
     strong_one_away = features.one_away and high_rank <= 6 and ev.future_street_value >= 0.45
-    return (strong_made or strong_one_away) and ev.raise_ev >= ev.call_ev - 0.25
+    required_edge = 0.05 if strong_made else 0.12
+    return (strong_made or strong_one_away) and ev.raise_ev >= ev.call_ev + required_edge
 
   def _draw_equity_estimate(self, features: HandFeature) -> float:
     draws_remaining = max(0, self.max_rounds - self.round)

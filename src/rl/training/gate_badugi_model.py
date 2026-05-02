@@ -74,6 +74,13 @@ def summarize_runs(runs: list[dict]) -> dict:
     showdowns = sum(int(run["showdowns"]) for run in runs)
     wins = sum(int(run["wins"]) for run in runs)
     folds = sum(int(run["folds"]) for run in runs)
+    action_counts: dict[str, int] = {}
+    ev_diagnostics: dict[str, int] = {}
+    for run in runs:
+        for action, count in run.get("actionCounts", {}).items():
+            action_counts[action] = action_counts.get(action, 0) + int(count)
+        for key, count in run.get("evDiagnostics", {}).items():
+            ev_diagnostics[key] = ev_diagnostics.get(key, 0) + int(count)
     return {
         "runs": len(runs),
         "episodes": episodes,
@@ -84,6 +91,8 @@ def summarize_runs(runs: list[dict]) -> dict:
         "showdowns": showdowns,
         "folds": folds,
         "wins": wins,
+        "actionCounts": action_counts,
+        "evDiagnostics": ev_diagnostics,
     }
 
 

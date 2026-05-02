@@ -201,6 +201,11 @@ def teacher_action(env) -> int:
             and ev.pot_odds <= 0.30
             and hand_range.made_cards >= 2
         )
+        profitable_continue = (
+            ev is not None
+            and ev.call_ev > ev.fold_ev + 0.10
+            and (hand_range.made_cards >= 3 or cheap_developing_call)
+        )
         isolation_raise = (
             is_sixmax
             and can_raise
@@ -213,7 +218,7 @@ def teacher_action(env) -> int:
                     and ev.future_street_value >= 0.45
                 )
             )
-            and ev.raise_ev >= ev.call_ev - 0.25
+            and ev.raise_ev >= ev.call_ev + (0.05 if strong_made else 0.12)
         )
         if is_final_bet:
             if not made_badugi and mask[0] > 0:
@@ -226,6 +231,8 @@ def teacher_action(env) -> int:
         if isolation_raise and mask[4] > 0:
             return 4
         if cheap_developing_call and mask[2] > 0:
+            return 2
+        if profitable_continue and mask[2] > 0:
             return 2
         if not hand_range.should_continue_heads_up and mask[0] > 0:
             return 0

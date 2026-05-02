@@ -43,6 +43,7 @@ class TrainConfig:
     expert_replay_ratio: float = 0.0
     imitation_loss_weight: float = 1.0
     table_size: int = 2
+    resume_checkpoint: str | None = None
 
 
 def linear_epsilon_decay(
@@ -73,13 +74,23 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
         batch_size=cfg.batch_size,
         tau=5e-3,
     )
-    agent = DQNAgent(
-        obs_dim=obs_dim,
-        n_actions=n_actions,
-        device=device,
-        hidden_dim=cfg.hidden_dim,
-        hyperparams=hyper,
-    )
+    if cfg.resume_checkpoint:
+        agent = DQNAgent.load(cfg.resume_checkpoint, device=device)
+        if agent.obs_dim != obs_dim or agent.n_actions != n_actions:
+            raise ValueError(
+                "--resume-checkpoint shape does not match environment: "
+                f"checkpoint=({agent.obs_dim},{agent.n_actions}) "
+                f"env=({obs_dim},{n_actions})"
+            )
+        print(f"[Resume] checkpoint={cfg.resume_checkpoint}")
+    else:
+        agent = DQNAgent(
+            obs_dim=obs_dim,
+            n_actions=n_actions,
+            device=device,
+            hidden_dim=cfg.hidden_dim,
+            hyperparams=hyper,
+        )
     replay_buffer = ReplayBuffer(capacity=cfg.buffer_capacity)
     expert_buffer = ReplayBuffer(capacity=cfg.buffer_capacity)
 
@@ -227,6 +238,7 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
         "expert_replay_ratio": cfg.expert_replay_ratio,
         "imitation_loss_weight": cfg.imitation_loss_weight,
         "table_size": cfg.table_size,
+        "resume_checkpoint": cfg.resume_checkpoint,
         "avg_reward_last_100": (
             sum(episode_rewards[-100:]) / max(1, len(episode_rewards[-100:]))
             if episode_rewards
@@ -268,6 +280,7 @@ def parse_args():
     parser.add_argument("--expert-replay-ratio", type=float, default=TrainConfig.expert_replay_ratio)
     parser.add_argument("--imitation-loss-weight", type=float, default=TrainConfig.imitation_loss_weight)
     parser.add_argument("--table-size", type=int, default=TrainConfig.table_size)
+    parser.add_argument("--resume-checkpoint", default=None)
     parser.add_argument("--device", default=None)
     return parser.parse_args()
 
@@ -303,6 +316,7 @@ if __name__ == "__main__":
         expert_replay_ratio=args.expert_replay_ratio,
         imitation_loss_weight=args.imitation_loss_weight,
         table_size=args.table_size,
+        resume_checkpoint=args.resume_checkpoint,
     )
     print(f"Using device: {device}")
     train_dqn(cfg=cfg, device=device)

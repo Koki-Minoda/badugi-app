@@ -61,6 +61,8 @@ def evaluate_checkpoint(
         opponent_profiles=args.opponent_profiles,
         episodes=args.episodes,
         max_steps=args.max_steps,
+        table_size=args.table_size,
+        feature_set=args.candidate_feature_set,
     )
     candidate_summary = candidate["summary"]
     avg_delta = (
@@ -86,6 +88,17 @@ def parse_args():
     parser.add_argument("--baseline", default=str(DEFAULT_BASELINE))
     parser.add_argument("--episodes", type=int, default=100)
     parser.add_argument("--max-steps", type=int, default=200)
+    parser.add_argument("--table-size", type=int, default=2)
+    parser.add_argument(
+        "--candidate-feature-set",
+        default="badugi-observation-v1-ev-range",
+        choices=["badugi-observation-v1", "badugi-observation-v1-ev", "badugi-observation-v1-ev-range"],
+    )
+    parser.add_argument(
+        "--baseline-feature-set",
+        default="badugi-observation-v1-ev",
+        choices=["badugi-observation-v1", "badugi-observation-v1-ev", "badugi-observation-v1-ev-range"],
+    )
     parser.add_argument("--seeds", type=parse_seeds, default=parse_seeds("20260502,20260503"))
     parser.add_argument(
         "--opponent-profiles",
@@ -117,6 +130,8 @@ def main():
             opponent_profiles=args.opponent_profiles,
             episodes=args.episodes,
             max_steps=args.max_steps,
+            table_size=args.table_size,
+            feature_set=args.baseline_feature_set,
         )
     baseline_summary = baseline["summary"] if baseline else None
 

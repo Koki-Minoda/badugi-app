@@ -36,6 +36,9 @@ describe("badugi observation schema v1", () => {
     expect(observation.features.madeCards).toBeGreaterThan(0);
     expect(vector).toHaveLength(BADUGI_OBSERVATION_VECTOR_SIZE);
     expect(isValidBadugiObservationVector(vector)).toBe(true);
+    expect(vector[27]).toBeGreaterThan(0); // starting hand strength
+    expect(vector[28]).toBeGreaterThanOrEqual(0); // pot odds
+    expect(vector[31]).toBeGreaterThanOrEqual(0); // one-away flag
     expect(vector[32]).toBe(1); // fold mask
     expect(vector[34]).toBe(1); // call mask
     expect(vector[36]).toBe(1); // raise mask
@@ -76,6 +79,10 @@ describe("badugi observation schema v1", () => {
     expect(vector[44]).toBeGreaterThan(0); // opponent pat rate
     expect(vector[46]).toBeGreaterThan(0); // opponent foldability
     expect(vector[47]).toBeGreaterThan(0); // opponent bluff frequency
+    expect(vector[48]).toBeGreaterThan(0); // estimated equity
+    expect(vector[49]).toBeGreaterThanOrEqual(0); // pot odds
+    expect(vector[50]).toBeGreaterThanOrEqual(-1); // call EV
+    expect(vector[52]).toBeGreaterThanOrEqual(0); // draw equity
   });
 
   it("aligns BadugiEngine.getObservation with schema v1", () => {

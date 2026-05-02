@@ -227,6 +227,10 @@ class BadugiEnvTest(unittest.TestCase):
         self.assertGreater(obs[28], 0)  # fixed-limit pot odds
         self.assertIn(obs[29], (0.0, 1.0))  # position feature
         self.assertEqual(obs[32:38].tolist(), env.legal_action_mask().tolist())
+        self.assertGreater(obs[48], 0)  # estimated equity
+        self.assertGreater(obs[49], 0)  # EV pot odds
+        self.assertGreaterEqual(obs[50], -1)  # call EV
+        self.assertGreater(obs[52], 0)  # draw equity
 
     def test_fixed_limit_pot_odds_make_marginal_call_better_than_fold(self):
         env = BadugiEnv()
@@ -243,6 +247,66 @@ class BadugiEnvTest(unittest.TestCase):
         call_reward = env._reward_shaping(features, 2)
 
         self.assertGreater(call_reward, fold_reward)
+
+    def test_ev_diagnostic_marks_one_away_draw_call_profitable_at_good_price(self):
+        env = BadugiEnv()
+        env.reset(seed=1)
+        env.phase = "BET"
+        env.round = 1
+        env.pot = 24
+        env.current_bet = 1
+        env.player_bet = 0
+        env.player_hand = [(0, 0), (1, 1), (6, 2), (12, 2)]
+        features = env._hand_features(env.player_hand)
+
+        ev = env._bet_ev_diagnostic(features, to_call=1)
+
+        self.assertGreater(ev.draw_equity, 0)
+        self.assertLess(ev.pot_odds, ev.estimated_equity)
+        self.assertGreater(ev.call_ev, ev.fold_ev)
+
+    def test_fold_penalty_is_higher_when_one_away_call_ev_is_positive(self):
+        good_price_env = BadugiEnv()
+        good_price_env.reset(seed=1)
+        good_price_env.phase = "BET"
+        good_price_env.round = 1
+        good_price_env.pot = 24
+        good_price_env.current_bet = 1
+        good_price_env.player_bet = 0
+        good_price_env.player_hand = [(0, 0), (1, 1), (6, 2), (12, 2)]
+        good_price_features = good_price_env._hand_features(good_price_env.player_hand)
+
+        bad_price_env = BadugiEnv()
+        bad_price_env.reset(seed=1)
+        bad_price_env.phase = "BET"
+        bad_price_env.round = 1
+        bad_price_env.pot = 2
+        bad_price_env.current_bet = 4
+        bad_price_env.player_bet = 0
+        bad_price_env.player_hand = list(good_price_env.player_hand)
+        bad_price_features = bad_price_env._hand_features(bad_price_env.player_hand)
+
+        self.assertLess(
+            good_price_env._reward_shaping(good_price_features, 0),
+            bad_price_env._reward_shaping(bad_price_features, 0),
+        )
+
+    def test_step_info_exposes_ev_diagnostic_for_betting_actions(self):
+        env = BadugiEnv()
+        env.reset(seed=1)
+        env.phase = "BET"
+        env.round = 1
+        env.pot = 12
+        env.current_bet = 1
+        env.player_bet = 0
+        env.player_hand = [(0, 0), (1, 1), (6, 2), (12, 2)]
+
+        _obs, _reward, _terminated, _truncated, info = env.step(2)
+
+        self.assertIsNotNone(info["ev"])
+        self.assertEqual(info["ev"]["phase"], "BET")
+        self.assertIn("callEV", info["ev"])
+        self.assertIn("estimatedEquity", info["ev"])
 
     def test_final_bet_context_is_reached_after_third_draw(self):
         env = BadugiEnv()

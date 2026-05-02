@@ -1572,6 +1572,12 @@ Draw RL test coverage:
         - 2026-05-02 分析: 30k以降は `showdownWinRate` が 0.67-0.69 まで上がったが foldRate も 0.27-0.33 まで悪化。特に tight profile 相手に fold が増えすぎているため、pat pressure / aggression に対する過剰foldを抑える reward と teacher correction が必要。
       - [ ] `AI-06f` Pro以降は 6-max training / evaluation を追加し、position / multiway pot / FT chip pressure を含めて学習する。
       - [ ] `AI-06f-0` Badugi equity / EV diagnostic を追加する。各decision logに `estimatedEquity`, `potOdds`, `callEV`, `raiseEV`, `foldEV`, `drawEquity`, `opponentProfile` を保存し、勝率ではなくチップEVで失敗箇所を追えるようにする。
+        - 2026-05-02 更新: `BadugiEnv` に `BetEVDiagnostic` を追加し、BET action の `info.ev` と ONNX 評価ログへ `profitableFoldMisses`, positive/negative callEV/raiseEV action counts を出す。
+        - 2026-05-02 更新: Python学習環境と frontend `badugiObservationSchema.js` の slot 27-31 を再同期。startingHandStrength / potOdds / position / toCall / oneAway がフロントでも埋まるようにした。
+        - 2026-05-02 更新: EV特徴量 slot 48-53 を追加。ただし既存public ONNXはEV slotゼロ前提で学習されているため、`onnxPolicyAdapter` は `featureSet: "badugi-observation-v1-ev"` のモデルにだけEV slotを渡し、既存 `badugi-observation-v1` モデルでは 48-53 をゼロ化する。
+        - 2026-05-02 評価: EV rewardのみ 10k probe は default gate で `candidateAvgReward=1.068`, `showdownWinRate=0.591`, `foldRate=0.149`, baseline差分 `+0.0707`。改善したが昇格閾値未達。
+        - 2026-05-02 評価: EV feature 10k probe は balanced 1000 hand で現行v2より `avgReward=0.744 vs 0.542` と改善したが、default gate は baseline差分 `+0.0481` で未達。EV feature 20k probe は `showdownWinRate=0.682` まで上がる一方 `foldRate=0.312` と悪化し不採用。
+        - 2026-05-02 分析: 発展性ドローを降りる原因は一部が診断誤集計だった。action `0` は DRAW では pat なので、BET phase の fold のみ `profitableFoldMisses` に数えるよう修正。それでもEV上のfold漏れは残るため、次はcallEVだけでなく「fold後に失う将来street value」を教師側に入れる。
       - [ ] `AI-06f-1` Badugi range equity table を作る。27万 starting hand 分布に加え、street / draw remaining / opponent draw count / opponent pat pressure を含む heads-up equity proxy を事前計算または高速近似する。
       - [ ] `AI-06g` CPU性格別モデルまたはpolicy headを設計する。候補: loose-aggressive, tight-aggressive, tight-passive, exploit-reader, balanced。
       - [ ] `AI-06h` Badugiプレイガイドを作成する。内容: ルール、基本戦略、position別参加レンジ、pat/draw判断、rough Badugiの扱い、初手Q-low Badugiなどの実戦例。

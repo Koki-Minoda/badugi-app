@@ -126,6 +126,65 @@ function streetAdjustedStrength(shape = {}, drawsRemaining = 0) {
   return 0.05;
 }
 
+function startingHandStrength(shape = {}) {
+  const madeComponent = (Number(shape.madeCards) || 0) / 4;
+  const highRank = Number(shape.highestRank) || 13;
+  const lowComponent = Math.max(0, (13 - highRank) / 12) * 0.25;
+  const oneAwayComponent = shape.madeCards === 3 ? 0.12 : 0;
+  const duplicatePenalty =
+    0.06 * ((Number(shape.duplicateRankCount) || 0) + (Number(shape.duplicateSuitCount) || 0));
+  return clamp01(madeComponent + lowComponent + oneAwayComponent - duplicatePenalty);
+}
+
+function potOdds(toCall = 0, pot = 0) {
+  const callAmount = Math.max(0, Number(toCall) || 0);
+  if (callAmount <= 0) return 0;
+  return clamp01(callAmount / Math.max(callAmount, (Number(pot) || 0) + callAmount));
+}
+
+function drawEquityEstimate(shape = {}, drawsRemaining = 0) {
+  const madeCards = Number(shape.madeCards) || 0;
+  const highRank = Number(shape.highestRank) || 13;
+  const lowQuality = Math.max(0, (13 - highRank) / 12);
+  const remaining = Math.max(0, Number(drawsRemaining) || 0);
+  if (remaining <= 0 || madeCards >= 4) return 0;
+  if (madeCards === 3) {
+    return Math.min(0.48, 0.16 + 0.08 * remaining + 0.10 * lowQuality);
+  }
+  if (madeCards === 2) {
+    return Math.min(0.30, 0.08 + 0.045 * remaining + 0.08 * lowQuality);
+  }
+  return 0.05;
+}
+
+function evFeatures({
+  shape = {},
+  features = {},
+  drawsRemaining = 0,
+  toCall = 0,
+  pot = 0,
+} = {}) {
+  const strength = streetAdjustedStrength(shape, drawsRemaining);
+  const drawEquity = drawEquityEstimate(shape, drawsRemaining);
+  const positionBonus = features.isButton ? 0.04 : -0.02;
+  const opponentPatAdjustment = -0.10 * (Number(features.opponentPatRate) || 0);
+  const estimatedEquity = clamp01(strength + drawEquity + positionBonus + opponentPatAdjustment);
+  const callAmount = Math.max(0, Number(toCall) || 0);
+  const foldEquity = clamp01(Number(features.opponentFoldability) || 0);
+  const callEV = callAmount > 0 ? estimatedEquity * ((Number(pot) || 0) + callAmount) - callAmount : estimatedEquity * (Number(pot) || 0);
+  const raiseCost = callAmount + 1;
+  const raisePot = (Number(pot) || 0) + raiseCost;
+  const raiseEV = foldEquity * (Number(pot) || 0) + (1 - foldEquity) * (estimatedEquity * raisePot - raiseCost);
+  return {
+    estimatedEquity,
+    potOdds: potOdds(callAmount, pot),
+    callEV,
+    raiseEV,
+    drawEquity,
+    foldEquity,
+  };
+}
+
 function average(values = []) {
   const numeric = values.map(Number).filter(Number.isFinite);
   if (!numeric.length) return 0;
@@ -160,6 +219,9 @@ export function buildBadugiObservationPayload({
   const maxDrawRounds = Number(state.maxDrawRounds ?? state.metadata?.maxDrawRounds ?? 3) || 3;
   const phase = String(state.street ?? state.phase ?? "BET").toUpperCase();
   const drawsRemaining = Math.max(0, maxDrawRounds - drawRound);
+  const betThisRound = Number(actor?.betThisRound ?? actor?.bet ?? 0) || 0;
+  const currentBet = Math.max(0, Number(state.currentBet ?? state.metadata?.currentBet ?? 0) || 0);
+  const toCall = Math.max(0, Number(state.toCall ?? state.metadata?.toCall ?? currentBet - betThisRound) || 0);
   const activeOpponents = players.filter((player, index) => {
     const seat = getPlayerSeatIndex(player, index);
     return seat !== actorSeat && !player?.folded && !player?.sittingOut;
@@ -216,9 +278,9 @@ export function buildBadugiObservationPayload({
       phase,
       pot,
       stack: Number(actor?.stack) || 0,
-      betThisRound: Number(actor?.betThisRound ?? actor?.bet ?? 0) || 0,
-      toCall: Math.max(0, Number(state.toCall ?? state.metadata?.toCall ?? 0) || 0),
-      currentBet: Math.max(0, Number(state.currentBet ?? state.metadata?.currentBet ?? 0) || 0),
+      betThisRound,
+      toCall,
+      currentBet,
       raiseCount: Math.max(0, Number(state.raiseCountTable ?? state.raiseCount ?? 0) || 0),
       isButton: actorSeat === state.dealerIndex || actorSeat === state.dealerIdx ? 1 : 0,
       isActing: actorSeat === state.actingPlayerIndex || actorSeat === state.turn ? 1 : 0,
@@ -228,6 +290,9 @@ export function buildBadugiObservationPayload({
         Math.max(1, activeOpponents.length),
       opponentLastDrawAverage,
       streetAdjustedStrength: streetAdjustedStrength(shape, drawsRemaining),
+      startingHandStrength: startingHandStrength(shape),
+      potOdds: potOdds(toCall, pot),
+      oneAway: shape.madeCards === 3 ? 1 : 0,
       opponentDrawPressure,
       isFinalBetRound: isFinalBetRound ? 1 : 0,
       weakFinalBadugi: isFinalBetRound && shape.madeCards === 4 && shape.highestRank >= 11 ? 1 : 0,
@@ -277,6 +342,11 @@ export function buildBadugiObservationVector(input = {}) {
   vector[24] = normalizeNumber(features.highestRank, 13);
   vector[25] = normalizeNumber(features.duplicateRankCount, 3);
   vector[26] = normalizeNumber(features.duplicateSuitCount, 3);
+  vector[27] = normalizeNumber(features.startingHandStrength, 1);
+  vector[28] = normalizeNumber(features.potOdds, 1);
+  vector[29] = features.isButton ? 0 : 1;
+  vector[30] = normalizeNumber(features.toCall, features.maxStack || 1);
+  vector[31] = features.oneAway ? 1 : 0;
   actionMask(payload.legalActions).forEach((value, index) => {
     vector[32 + index] = value;
   });
@@ -292,6 +362,24 @@ export function buildBadugiObservationVector(input = {}) {
   vector[45] = normalizeNumber(features.opponentAverageDrawCount, 4);
   vector[46] = normalizeNumber(features.opponentFoldability, 1);
   vector[47] = normalizeNumber(features.opponentBluffFrequency, 1);
+  const ev = evFeatures({
+    shape: {
+      madeCards: features.madeCards,
+      highestRank: features.highestRank,
+      duplicateRankCount: features.duplicateRankCount,
+      duplicateSuitCount: features.duplicateSuitCount,
+    },
+    features,
+    drawsRemaining: features.drawsRemaining,
+    toCall: features.toCall,
+    pot: features.pot,
+  });
+  vector[48] = normalizeNumber(ev.estimatedEquity, 1);
+  vector[49] = normalizeNumber(ev.potOdds, 1);
+  vector[50] = Math.max(-1, Math.min(1, ev.callEV / 10));
+  vector[51] = Math.max(-1, Math.min(1, ev.raiseEV / 10));
+  vector[52] = normalizeNumber(ev.drawEquity, 1);
+  vector[53] = normalizeNumber(ev.foldEquity, 1);
 
   return vector;
 }

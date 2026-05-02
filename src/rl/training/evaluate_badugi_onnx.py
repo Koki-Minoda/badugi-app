@@ -73,6 +73,11 @@ def evaluate_model(
     env = BadugiEnv(opponent_profile=opponent_profile)
     rewards: list[float] = []
     wins = losses = ties = folds = opponent_folds = showdowns = 0
+    profitable_fold_misses = 0
+    positive_call_ev_actions = 0
+    negative_call_ev_actions = 0
+    positive_raise_ev_actions = 0
+    negative_raise_ev_actions = 0
     action_counts = {str(action): 0 for action in range(6)}
 
     for episode in range(episodes):
@@ -83,8 +88,26 @@ def evaluate_model(
         for _ in range(max_steps):
             action = choose_action(session, obs, epsilon, env.legal_action_mask())
             action_counts[str(action)] += 1
-            obs, reward, terminated, truncated, _info = env.step(action)
+            obs, reward, terminated, truncated, info = env.step(action)
             total_reward += float(reward)
+            ev = info.get("ev") if isinstance(info, dict) else None
+            if ev:
+                is_bet_phase = ev.get("phase") == "BET"
+                call_ev = float(ev.get("callEV", 0.0))
+                raise_ev = float(ev.get("raiseEV", 0.0))
+                fold_ev = float(ev.get("foldEV", 0.0))
+                if is_bet_phase and action == 0 and call_ev > fold_ev:
+                    profitable_fold_misses += 1
+                if is_bet_phase and action == 2:
+                    if call_ev >= fold_ev:
+                        positive_call_ev_actions += 1
+                    else:
+                        negative_call_ev_actions += 1
+                if is_bet_phase and action in (3, 4):
+                    if raise_ev >= call_ev:
+                        positive_raise_ev_actions += 1
+                    else:
+                        negative_raise_ev_actions += 1
             if getattr(env, "last_result", None) is not None:
                 last_result = env.last_result
             if terminated or truncated:
@@ -128,6 +151,13 @@ def evaluate_model(
         "opponentFolds": opponent_folds,
         "showdownWinRate": wins / showdowns if showdowns else 0.0,
         "actionCounts": action_counts,
+        "evDiagnostics": {
+            "profitableFoldMisses": profitable_fold_misses,
+            "positiveCallEVActions": positive_call_ev_actions,
+            "negativeCallEVActions": negative_call_ev_actions,
+            "positiveRaiseEVActions": positive_raise_ev_actions,
+            "negativeRaiseEVActions": negative_raise_ev_actions,
+        },
     }
 
 
@@ -164,7 +194,8 @@ def main():
         f"showdownWinRate={result['showdownWinRate']:.3f} "
         f"showdowns={result['showdowns']} folds={result['folds']} "
         f"opponentFolds={result['opponentFolds']} "
-        f"actions={result['actionCounts']}"
+        f"actions={result['actionCounts']} "
+        f"ev={result['evDiagnostics']}"
     )
 
 

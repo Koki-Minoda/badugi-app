@@ -81,6 +81,7 @@
     "trainingRun": "badugi_positive_shaping_probe_10k_20260502",
     "trainingStatus": "active",
     "trainingNotes": "Trained after evaluator/draw phase fixes and positive shaping cap fix. Default multi-profile gate recommended standard tier.",
+    "featureSet": "badugi-observation-v1",
     "productionRequired": true,
     "inputShape": [
       96

@@ -40,6 +40,11 @@ function getLegalActions(payload = {}) {
 
 export function buildBadugiOnnxFeatures(entry, payload = {}) {
   const vector = buildBadugiObservationVector(payload.observation ?? payload);
+  if (entry?.featureSet !== "badugi-observation-v1-ev") {
+    for (let idx = 48; idx <= 53; idx += 1) {
+      vector[idx] = 0;
+    }
+  }
   const expectedLength = expectedInputLength(entry);
   if (vector.length !== expectedLength) {
     throw new Error(`Badugi ONNX feature length ${vector.length} does not match ${expectedLength}`);

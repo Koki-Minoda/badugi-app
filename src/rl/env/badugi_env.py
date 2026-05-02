@@ -63,6 +63,30 @@ class HandFeature:
 
 
 @dataclass(frozen=True)
+class BetEVDiagnostic:
+  estimated_equity: float
+  pot_odds: float
+  call_ev: float
+  raise_ev: float
+  fold_ev: float
+  draw_equity: float
+  fold_equity: float
+  to_call: float
+
+  def to_dict(self) -> dict:
+    return {
+      "estimatedEquity": self.estimated_equity,
+      "potOdds": self.pot_odds,
+      "callEV": self.call_ev,
+      "raiseEV": self.raise_ev,
+      "foldEV": self.fold_ev,
+      "drawEquity": self.draw_equity,
+      "foldEquity": self.fold_equity,
+      "toCall": self.to_call,
+    }
+
+
+@dataclass(frozen=True)
 class OpponentProfile:
   name: str
   fold_strength_threshold: float
@@ -245,6 +269,7 @@ class BadugiEnv(gym.Env):
     self.opponent_draw_count = 0
     self.opponent_total_draw_cards = 0
     self.last_result = None
+    self.last_ev_diagnostic = None
     self.terminal_reason = None
     self.current_bet = self._bet_size()
     info: dict = {}
@@ -277,7 +302,13 @@ class BadugiEnv(gym.Env):
     terminated = self.done
     truncated = False
     obs = self._get_obs()
-    info = {}
+    info = {
+      "ev": self.last_ev_diagnostic.to_dict()
+      if self.last_ev_diagnostic is not None
+      else None
+    }
+    if info["ev"] is not None:
+      info["ev"]["phase"] = phase_before_action
     reward = self._cap_shaping_reward(shaping_reward) + terminal_reward
     return obs, reward, terminated, truncated, info
 
@@ -614,6 +645,8 @@ class BadugiEnv(gym.Env):
       opponent_aggression = self._opponent_aggression_rate()
       opponent_foldability = self._opponent_foldability_estimate()
       opponent_pat_pressure = self._opponent_pat_pressure()
+      ev = self._bet_ev_diagnostic(features, to_call)
+      self.last_ev_diagnostic = ev
       continue_value = min(1.0, strength + position_bonus + draw_equity + opponent_draw_pressure)
       bluff_opportunity = (
         to_call == 0
@@ -654,6 +687,8 @@ class BadugiEnv(gym.Env):
         reward -= 0.18
       if to_call > 0 and action == 0:
         tight_pat_raise_pressure = opponent_pat_pressure > 0.5 and opponent_aggression < 0.22
+        if ev.call_ev > ev.fold_ev and features.one_away and self.round < self.max_rounds:
+          reward -= min(0.75, 0.25 + ev.call_ev * 0.12)
         if features.count >= 4 and strength >= 0.54:
           reward -= 0.5
         elif features.one_away and self.round < self.max_rounds and pot_odds <= 0.25:
@@ -667,10 +702,13 @@ class BadugiEnv(gym.Env):
         if features.one_away and self.round < self.max_rounds and pot_odds <= 0.25:
           call_edge += 0.07
         reward += 0.22 if call_edge >= pot_odds else -0.14
+        reward += 0.18 if ev.call_ev >= ev.fold_ev else -0.12
       if to_call > 0 and action == 2 and self.round >= self.max_rounds and features.count >= 4:
         reward += 0.12
       if to_call > 0 and action in (3, 4) and opponent_aggression >= 0.38 and strength >= 0.62:
         reward += 0.16
+      if to_call > 0 and action in (3, 4):
+        reward += 0.14 if ev.raise_ev >= ev.call_ev else -0.1
       if action == 0 and to_call == 0:
         reward -= 0.2
     elif self.phase == "DRAW":
@@ -690,6 +728,62 @@ class BadugiEnv(gym.Env):
     low_bonus = max(0.0, (12 - high_rank) / 12.0) * 0.2
     nut_bonus = 0.15 if features.is_nuts else 0.0
     return min(1.0, count_score + low_bonus + nut_bonus)
+
+  def _draw_equity_estimate(self, features: HandFeature) -> float:
+    draws_remaining = max(0, self.max_rounds - self.round)
+    if draws_remaining <= 0:
+      return 0.0
+    if not features.ranks:
+      return 0.04
+    high_rank = max(features.ranks)
+    low_quality = max(0.0, (12 - high_rank) / 12.0)
+    if features.count >= 4:
+      return 0.0
+    if features.count == 3:
+      base = 0.16 + 0.08 * draws_remaining + 0.10 * low_quality
+      if features.min_rank <= 1 and high_rank <= 8:
+        base += 0.08
+      return min(0.48, base)
+    if features.count == 2:
+      base = 0.08 + 0.045 * draws_remaining + 0.08 * low_quality
+      if features.min_rank <= 1 and high_rank <= 7:
+        base += 0.06
+      return min(0.30, base)
+    return 0.05
+
+  def _estimated_equity(self, features: HandFeature) -> float:
+    strength = self._street_adjusted_strength(features)
+    draw_equity = self._draw_equity_estimate(features)
+    position_bonus = 0.04 if not self._player_is_first_to_act() else -0.02
+    opponent_adjustment = 0.0
+    if self.round >= self.max_rounds:
+      opponent_adjustment += self._opponent_draw_pressure()
+      opponent_adjustment -= 0.10 * self._opponent_pat_pressure()
+    if self._opponent_aggression_rate() >= 0.45 and features.count < 4:
+      opponent_adjustment -= 0.04
+    equity = strength + draw_equity + position_bonus + opponent_adjustment
+    return min(0.95, max(0.03, equity))
+
+  def _bet_ev_diagnostic(self, features: HandFeature, to_call: int | float | None = None) -> BetEVDiagnostic:
+    call_amount = max(0.0, float(self.current_bet - self.player_bet if to_call is None else to_call))
+    equity = self._estimated_equity(features)
+    pot_after_call = float(self.pot) + call_amount
+    call_ev = equity * pot_after_call - call_amount if call_amount > 0 else equity * float(self.pot)
+    fold_ev = 0.0
+    fold_equity = self._opponent_foldability_estimate()
+    raise_cost = call_amount + float(self._bet_size())
+    raise_pot = float(self.pot) + raise_cost
+    raise_ev = fold_equity * float(self.pot) + (1.0 - fold_equity) * (equity * raise_pot - raise_cost)
+    return BetEVDiagnostic(
+      estimated_equity=equity,
+      pot_odds=self._pot_odds(call_amount),
+      call_ev=call_ev,
+      raise_ev=raise_ev,
+      fold_ev=fold_ev,
+      draw_equity=self._draw_equity_estimate(features),
+      fold_equity=fold_equity,
+      to_call=call_amount,
+    )
 
   def _street_adjusted_strength(self, features: HandFeature) -> float:
     draws_remaining = max(0, self.max_rounds - self.round)
@@ -830,6 +924,17 @@ class BadugiEnv(gym.Env):
         self._opponent_average_draw_count() / 4.0,
         self._opponent_foldability_estimate(),
         self.opponent_profile.bluff_frequency,
+      ]
+    )
+    ev = self._bet_ev_diagnostic(features, to_call)
+    obs.extend(
+      [
+        ev.estimated_equity,
+        ev.pot_odds,
+        max(-1.0, min(1.0, ev.call_ev / 10.0)),
+        max(-1.0, min(1.0, ev.raise_ev / 10.0)),
+        ev.draw_equity,
+        ev.fold_equity,
       ]
     )
     while len(obs) < BADUGI_OBSERVATION_VECTOR_SIZE:

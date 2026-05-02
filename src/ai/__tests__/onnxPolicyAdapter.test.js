@@ -52,6 +52,28 @@ describe("onnxPolicyAdapter Badugi schema", () => {
     expect(tensor).toHaveLength(96);
   });
 
+  it("passes EV feature slots only to EV-trained Badugi models", () => {
+    const payload = {
+      variantId: "D03",
+      state: {
+        street: "BET",
+        drawRoundIndex: 1,
+        currentBet: 2,
+        pot: 24,
+        players: [{ hand: ["AS", "2D", "7C", "KH"], stack: 500, betThisRound: 0 }],
+      },
+      seatIndex: 0,
+      legalActions: ["fold", "call", "raise"],
+    };
+    const legacyEntry = { inputShape: [96], featureSet: "badugi-observation-v1" };
+    const evEntry = { inputShape: [96], featureSet: "badugi-observation-v1-ev" };
+
+    expect(Array.from(buildBadugiOnnxFeatures(legacyEntry, payload).slice(48, 54))).toEqual([
+      0, 0, 0, 0, 0, 0,
+    ]);
+    expect(buildBadugiOnnxFeatures(evEntry, payload)[48]).toBeGreaterThan(0);
+  });
+
   it("builds exact-shape draw ONNX feature tensors and selects variant models", () => {
     expect(selectModelForVariant({ variantId: "D01", tierId: "iron" })?.id).toBe(
       "model-27draw-iron-v1",

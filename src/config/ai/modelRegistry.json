@@ -30,7 +30,7 @@
     "trainingRun": "badugi_sixmax_open_spot_20k_20260502",
     "trainingCheckpoint": "badugi_dqn_015000_20260502-145626.pt",
     "trainingStatus": "active",
-    "trainingNotes": "6-max open-spot/range-equity checkpoint selected for Pro. 7-profile x 2-seed checkpoint gate: avgReward 2.307, showdownWinRate 0.674, foldRate 0.159, Standard v3 delta +0.911. Not promoted to Iron because negative raise-EV actions remain high.",
+    "trainingNotes": "6-max open-spot/range-equity checkpoint selected for Pro. 7-profile x 2-seed checkpoint gate: avgReward 2.307, showdownWinRate 0.674, foldRate 0.159, Standard v3 delta +0.911. This is a synthetic RL gate result, not a verified 60%+ win rate against human players. Not promoted to Iron because negative raise-EV actions remain high.",
     "featureSet": "badugi-observation-v1-ev-range",
     "productionRequired": true,
     "inputShape": [
@@ -49,6 +49,8 @@
     "tier": "iron",
     "onnx": "models/badugi_iron_v1.onnx",
     "checksumSha256": "73bf81e5f993b0801f3588747e96447a8d03b09d0a9189eca77a135f4b98efdb",
+    "trainingStatus": "bootstrap",
+    "trainingNotes": "Bootstrap heuristic ONNX used to exercise the frontend ONNX path. Not validated as stronger than human players; replace with a trained checkpoint that clears Pro baseline, worst-profile, fold-rate, and human/practice gates.",
     "productionRequired": true,
     "inputShape": [
       96
@@ -66,6 +68,8 @@
     "tier": "worldmaster",
     "onnx": "models/badugi_worldmaster_v1.onnx",
     "checksumSha256": "5be226ebed765ff6b018d3b5b798437498eb0f705b58c9e72c908e527e9b998c",
+    "trainingStatus": "bootstrap",
+    "trainingNotes": "Bootstrap heuristic ONNX used to exercise the frontend ONNX path. Not validated as world-class or clearly stronger than human players; replace after full 6-max and human/practice benchmark gates pass.",
     "productionRequired": true,
     "inputShape": [
       96

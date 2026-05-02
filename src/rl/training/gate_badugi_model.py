@@ -308,6 +308,8 @@ def main():
             f"candidateAvgReward={candidate['avgReward']:.3f} "
             f"candidateShowdownWinRate={candidate['showdownWinRate']:.3f} "
             f"candidateFoldRate={candidate['foldRate']:.3f} "
+            f"candidateWorstProfile={candidate.get('worstProfile')} "
+            f"candidateWorstProfileAvgReward={candidate.get('worstProfileAvgReward', 0.0):.3f} "
             f"avgRewardDeltaVsBaseline={report['avgRewardDeltaVsBaseline']}"
         )
         if baseline:
@@ -315,7 +317,9 @@ def main():
                 "[BADUGI GATE BASELINE] "
                 f"avgReward={baseline['avgReward']:.3f} "
                 f"showdownWinRate={baseline['showdownWinRate']:.3f} "
-                f"foldRate={baseline['foldRate']:.3f}"
+                f"foldRate={baseline['foldRate']:.3f} "
+                f"worstProfile={baseline.get('worstProfile')} "
+                f"worstProfileAvgReward={baseline.get('worstProfileAvgReward', 0.0):.3f}"
             )
         print(f"[BADUGI GATE CHECKS] {report['checks']}")
         promotion = report["promotion"]

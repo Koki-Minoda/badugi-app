@@ -85,6 +85,9 @@ describe("badugi observation schema v1", () => {
     expect(vector[52]).toBeGreaterThanOrEqual(0); // draw equity
     expect(vector[54]).toBeGreaterThanOrEqual(0); // future street value
     expect(vector[55]).toBeGreaterThanOrEqual(0); // cheap draw continue value
+    expect(vector[56]).toBeGreaterThan(0); // active opponent count
+    expect(vector[57]).toBeGreaterThanOrEqual(0); // multiway pressure
+    expect(vector[58]).toBeGreaterThan(0); // range equity proxy
   });
 
   it("aligns BadugiEngine.getObservation with schema v1", () => {

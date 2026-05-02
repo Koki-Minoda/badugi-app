@@ -136,6 +136,24 @@ function startingHandStrength(shape = {}) {
   return clamp01(madeComponent + lowComponent + oneAwayComponent - duplicatePenalty);
 }
 
+function rangeEquityPercentile(shape = {}) {
+  const madeCards = Number(shape.madeCards) || 0;
+  const highRank = Number(shape.highestRank) || 13;
+  const rankSum = Number(shape.rankSum) || 99;
+  const duplicatePenalty =
+    0.05 * ((Number(shape.duplicateRankCount) || 0) + (Number(shape.duplicateSuitCount) || 0));
+  if (madeCards >= 4) {
+    return clamp01(0.62 + ((13 - highRank) / 12) * 0.30 + Math.max(0, 22 - rankSum) * 0.006);
+  }
+  if (madeCards === 3) {
+    return clamp01(0.36 + ((13 - highRank) / 12) * 0.28 + Math.max(0, 18 - rankSum) * 0.008 - duplicatePenalty);
+  }
+  if (madeCards === 2) {
+    return clamp01(0.14 + ((13 - highRank) / 12) * 0.15 - duplicatePenalty);
+  }
+  return 0.04;
+}
+
 function potOdds(toCall = 0, pot = 0) {
   const callAmount = Math.max(0, Number(toCall) || 0);
   if (callAmount <= 0) return 0;
@@ -166,9 +184,11 @@ function evFeatures({
 } = {}) {
   const strength = streetAdjustedStrength(shape, drawsRemaining);
   const drawEquity = drawEquityEstimate(shape, drawsRemaining);
+  const rangeEquity = rangeEquityPercentile(shape);
   const positionBonus = features.isButton ? 0.04 : -0.02;
   const opponentPatAdjustment = -0.10 * (Number(features.opponentPatRate) || 0);
-  const estimatedEquity = clamp01(strength + drawEquity + positionBonus + opponentPatAdjustment);
+  const rangeAdjustment = (rangeEquity - 0.5) * 0.16;
+  const estimatedEquity = clamp01(strength + drawEquity + rangeAdjustment + positionBonus + opponentPatAdjustment);
   const callAmount = Math.max(0, Number(toCall) || 0);
   const foldEquity = clamp01(Number(features.opponentFoldability) || 0);
   const futureStreetValue = futureStreetValueEstimate({
@@ -196,6 +216,7 @@ function evFeatures({
     futureStreetValue,
     cheapDrawContinueValue: Math.max(0, callEV),
     foldEquity,
+    rangeEquity,
   };
 }
 
@@ -304,6 +325,31 @@ export function buildBadugiObservationPayload({
       ? 0.06
       : -0.08
     : 0;
+  const positionFraction = Number.isInteger(actorSeat)
+    ? actorSeat / Math.max(1, players.length - 1)
+    : 0;
+  const activeOpponentCount = activeOpponents.length;
+  const multiwayPressure = players.length > 2
+    ? Math.min(0.35, Math.max(0, 0.5 - positionFraction) * 0.24 + Math.max(0, activeOpponentCount - 1) * 0.035)
+    : 0;
+  const isolationPressure = currentBet > betThisRound && players.length >= 6
+    ? Math.min(
+        0.35,
+        (positionFraction >= 0.6 ? 0.12 : 0) +
+          (shape.madeCards === 4 && shape.highestRank <= 9 ? 0.18 : 0) +
+          (shape.madeCards === 3 && shape.highestRank <= 7 ? 0.10 : 0) +
+          (pot >= 12 ? 0.05 : 0),
+      )
+    : 0;
+  const lateSemibluffSpot =
+    players.length >= 6 &&
+    currentBet <= betThisRound &&
+    positionFraction >= 0.6 &&
+    shape.madeCards === 3 &&
+    shape.highestRank <= 9 &&
+    drawsRemaining > 0
+      ? 1
+      : 0;
 
   return {
     schemaVersion: BADUGI_OBSERVATION_SCHEMA_VERSION,
@@ -330,7 +376,11 @@ export function buildBadugiObservationPayload({
       raiseCount: Math.max(0, Number(state.raiseCountTable ?? state.raiseCount ?? 0) || 0),
       isButton: actorSeat === state.dealerIndex || actorSeat === state.dealerIdx ? 1 : 0,
       isActing: actorSeat === state.actingPlayerIndex || actorSeat === state.turn ? 1 : 0,
-      activeOpponentCount: activeOpponents.length,
+      activeOpponentCount,
+      multiwayPressure,
+      rangeEquity: rangeEquityPercentile(shape),
+      isolationPressure,
+      lateSemibluffSpot,
       opponentStackAverage:
         activeOpponents.reduce((sum, player) => sum + (Number(player?.stack) || 0), 0) /
         Math.max(1, activeOpponents.length),
@@ -428,6 +478,11 @@ export function buildBadugiObservationVector(input = {}) {
   vector[53] = normalizeNumber(ev.foldEquity, 1);
   vector[54] = normalizeNumber(ev.futureStreetValue, 3);
   vector[55] = normalizeNumber(ev.cheapDrawContinueValue, 3);
+  vector[56] = normalizeNumber(features.activeOpponentCount, 5);
+  vector[57] = normalizeNumber(features.multiwayPressure, 1);
+  vector[58] = normalizeNumber(features.rangeEquity ?? ev.rangeEquity, 1);
+  vector[59] = normalizeNumber(features.isolationPressure, 1);
+  vector[60] = features.lateSemibluffSpot ? 1 : 0;
 
   return vector;
 }

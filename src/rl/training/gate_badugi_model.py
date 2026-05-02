@@ -120,6 +120,7 @@ def evaluate_across_seeds(
     episodes: int,
     max_steps: int,
     table_size: int,
+    feature_set: str,
 ) -> dict:
     runs = [
         evaluate_model(
@@ -130,6 +131,7 @@ def evaluate_across_seeds(
             seed=seed,
             opponent_profile=profile,
             table_size=table_size,
+            feature_set=feature_set,
         )
         for seed in seeds
         for profile in opponent_profiles
@@ -149,6 +151,7 @@ def build_gate_report(args) -> dict:
         episodes=args.episodes,
         max_steps=args.max_steps,
         table_size=args.table_size,
+        feature_set=args.candidate_feature_set,
     )
     baseline = None
     if args.baseline:
@@ -161,6 +164,7 @@ def build_gate_report(args) -> dict:
                 episodes=args.episodes,
                 max_steps=args.max_steps,
                 table_size=args.table_size,
+                feature_set=args.baseline_feature_set,
             )
 
     candidate_summary = candidate["summary"]
@@ -203,6 +207,16 @@ def parse_args():
     parser.add_argument("--episodes", type=int, default=500)
     parser.add_argument("--max-steps", type=int, default=200)
     parser.add_argument("--table-size", type=int, default=2)
+    parser.add_argument(
+        "--candidate-feature-set",
+        default="badugi-observation-v1-ev-range",
+        choices=["badugi-observation-v1", "badugi-observation-v1-ev", "badugi-observation-v1-ev-range"],
+    )
+    parser.add_argument(
+        "--baseline-feature-set",
+        default="badugi-observation-v1-ev",
+        choices=["badugi-observation-v1", "badugi-observation-v1-ev", "badugi-observation-v1-ev-range"],
+    )
     parser.add_argument("--seeds", type=parse_seeds, default=parse_seeds("20260502,20260503,20260504"))
     parser.add_argument(
         "--opponent-profiles",

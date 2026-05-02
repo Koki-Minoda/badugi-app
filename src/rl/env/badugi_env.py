@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import random
 from itertools import combinations
+from functools import lru_cache
 from dataclasses import dataclass
 from typing import Iterable, List, Sequence, Tuple
 
@@ -50,6 +51,33 @@ def compare_badugi_scores(player_score: Tuple[int, List[int]], opp_score: Tuple[
     if player_rank != opp_rank:
       return 1 if player_rank < opp_rank else -1
   return 0
+
+
+def _score_key(score: Tuple[int, Sequence[int]]) -> tuple[int, int, int, int, int]:
+  count, ranks_raw = score
+  ranks = tuple(ranks_raw)
+  padded = ranks + (13,) * (4 - len(ranks))
+  return (count, *(13 - rank for rank in padded))
+
+
+@lru_cache(maxsize=1)
+def _all_starting_score_keys() -> tuple[tuple[int, int, int, int, int], ...]:
+  keys = [_score_key(evaluate_badugi(hand)) for hand in combinations(build_deck(), 4)]
+  return tuple(sorted(keys))
+
+
+def starting_score_percentile(score: Tuple[int, Sequence[int]]) -> float:
+  keys = _all_starting_score_keys()
+  key = _score_key(score)
+  lo = 0
+  hi = len(keys)
+  while lo < hi:
+    mid = (lo + hi) // 2
+    if keys[mid] <= key:
+      lo = mid + 1
+    else:
+      hi = mid
+  return lo / max(1, len(keys))
 
 
 @dataclass
@@ -283,7 +311,7 @@ class BadugiEnv(gym.Env):
     self.last_result = None
     self.last_ev_diagnostic = None
     self.terminal_reason = None
-    self.current_bet = self._bet_size()
+    self._start_betting_round()
     info: dict = {}
     return self._get_obs(), info
 
@@ -361,6 +389,32 @@ class BadugiEnv(gym.Env):
     opponent_count_pressure = (self._active_opponent_count() - 1) * 0.035
     return min(0.35, early_position_pressure + opponent_count_pressure)
 
+  def _start_betting_round(self):
+    self.player_bet = 0
+    self.opponent_bet = 0
+    self.current_bet = 0
+    self.bet_round = 0
+    if self._opponent_opens_before_hero():
+      bet_size = self._bet_size()
+      self.current_bet = bet_size
+      payment = min(bet_size, self.opponent_stack)
+      self.opponent_stack -= payment
+      self.opponent_bet = payment
+      self.pot += payment
+      self.bet_round = 1
+      self.last_opp_action = 2
+      self._record_opponent_action("bet")
+
+  def _opponent_opens_before_hero(self) -> bool:
+    if self.table_size <= 2 or self._player_is_first_to_act():
+      return False
+    features = self._hand_features(self.opponent_hand)
+    strength = self._hand_strength(features)
+    profile = self.opponent_profile
+    should_value_open = strength >= profile.open_strength_threshold and random.random() < profile.open_probability
+    should_bluff_open = strength < profile.open_strength_threshold and random.random() < profile.bluff_frequency
+    return should_value_open or should_bluff_open
+
   def _player_is_first_to_act(self) -> int:
     if self.table_size > 2:
       return 1 if self._position_fraction() <= 0.25 else 0
@@ -385,7 +439,6 @@ class BadugiEnv(gym.Env):
       mask[1] = 1.0  # check
       if can_raise:
         mask[3] = 1.0  # bet
-        mask[4] = 1.0  # raise alias for frontend compatibility
     return mask
 
   def is_legal_action(self, action: int) -> bool:
@@ -459,10 +512,7 @@ class BadugiEnv(gym.Env):
     self.round += 1
     self._opponent_draw_action()
     self.phase = "BET"
-    self.player_bet = 0
-    self.opponent_bet = 0
-    self.current_bet = self._bet_size()
-    self.bet_round = 0
+    self._start_betting_round()
     return reward
 
   def _maybe_advance_from_bet(self):
@@ -567,10 +617,7 @@ class BadugiEnv(gym.Env):
       self.opponent_last_draw = 0
       self._record_opponent_draw(0)
       self.phase = "BET"
-      self.player_bet = 0
-      self.opponent_bet = 0
-      self.current_bet = self._bet_size()
-      self.bet_round = 0
+      self._start_betting_round()
       return
     keep = self._best_badugi_keep(self.opponent_hand)
     draw_amount = max(0, min(3, 4 - len(keep) + self.opponent_profile.draw_bias))
@@ -578,10 +625,7 @@ class BadugiEnv(gym.Env):
     self.opponent_last_draw = draw_amount
     self._record_opponent_draw(draw_amount)
     self.phase = "BET"
-    self.player_bet = 0
-    self.opponent_bet = 0
-    self.current_bet = self._bet_size()
-    self.bet_round = 0
+    self._start_betting_round()
 
   def _record_opponent_action(self, action: str):
     self.opponent_action_count += 1
@@ -875,6 +919,7 @@ class BadugiEnv(gym.Env):
   def _estimated_equity(self, features: HandFeature) -> float:
     strength = self._street_adjusted_strength(features)
     draw_equity = self._draw_equity_estimate(features)
+    range_equity = self._range_equity_percentile(features)
     position_bonus = 0.04 if not self._player_is_first_to_act() else -0.02
     multiway_adjustment = -self._multiway_pressure()
     opponent_adjustment = 0.0
@@ -883,7 +928,15 @@ class BadugiEnv(gym.Env):
       opponent_adjustment -= 0.10 * self._opponent_pat_pressure()
     if self._opponent_aggression_rate() >= 0.45 and features.count < 4:
       opponent_adjustment -= 0.04
-    equity = strength + draw_equity + position_bonus + opponent_adjustment + multiway_adjustment
+    range_adjustment = (range_equity - 0.5) * 0.16
+    equity = (
+      strength
+      + draw_equity
+      + range_adjustment
+      + position_bonus
+      + opponent_adjustment
+      + multiway_adjustment
+    )
     return min(0.95, max(0.03, equity))
 
   def _bet_ev_diagnostic(self, features: HandFeature, to_call: int | float | None = None) -> BetEVDiagnostic:
@@ -894,7 +947,11 @@ class BadugiEnv(gym.Env):
     future_street_value = self._future_street_value(features, call_amount)
     call_ev = showdown_call_ev + future_street_value
     fold_ev = 0.0
-    fold_equity = self._opponent_foldability_estimate() / max(1.0, self._active_opponent_count() ** 0.45)
+    isolation_pressure = self._sixmax_isolation_pressure(features, call_amount)
+    fold_equity = (
+      self._opponent_foldability_estimate() * (1.0 + isolation_pressure)
+    ) / max(1.0, self._active_opponent_count() ** 0.45)
+    fold_equity = min(0.65, max(0.0, fold_equity))
     raise_cost = call_amount + float(self._bet_size())
     raise_pot = float(self.pot) + raise_cost
     raise_continue_ev = equity * raise_pot - raise_cost + future_street_value * 0.65
@@ -938,6 +995,21 @@ class BadugiEnv(gym.Env):
     )
     future_cost = call_amount * price_discount + aggression_discount + pat_pressure_discount + multiway_discount
     return max(0.0, min(3.0, raw_value - future_cost))
+
+  def _range_equity_percentile(self, features: HandFeature) -> float:
+    return starting_score_percentile((features.count, tuple(features.ranks)))
+
+  def _sixmax_isolation_pressure(self, features: HandFeature, to_call: int | float) -> float:
+    if self.table_size < 6 or to_call <= 0 or self.bet_round >= self.max_bets:
+      return 0.0
+    if not features.ranks:
+      return 0.0
+    high_rank = max(features.ranks)
+    late_bonus = 0.12 if self._is_late_position() else 0.0
+    strong_made_bonus = 0.18 if features.count == 4 and high_rank <= 8 else 0.0
+    strong_draw_bonus = 0.10 if features.one_away and high_rank <= 6 else 0.0
+    pot_bonus = 0.05 if self.pot >= 12 else 0.0
+    return min(0.35, late_bonus + strong_made_bonus + strong_draw_bonus + pot_bonus)
 
   def _street_adjusted_strength(self, features: HandFeature) -> float:
     draws_remaining = max(0, self.max_rounds - self.round)
@@ -1093,6 +1165,9 @@ class BadugiEnv(gym.Env):
         max(0.0, min(1.0, ev.cheap_draw_continue_value / 3.0)),
         self._active_opponent_count() / 5.0,
         self._multiway_pressure(),
+        self._range_equity_percentile(features),
+        self._sixmax_isolation_pressure(features, to_call),
+        1.0 if self._sixmax_late_semibluff_spot(features, to_call, ev) else 0.0,
       ]
     )
     while len(obs) < BADUGI_OBSERVATION_VECTOR_SIZE:

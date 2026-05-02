@@ -4,6 +4,7 @@ import numpy as np
 import torch
 
 from rl.agents.dqn_agent import DQNAgent, DQNHyperParams
+from rl.training.evaluate_badugi_onnx import apply_badugi_feature_set
 
 
 class DQNImitationTest(unittest.TestCase):
@@ -30,6 +31,19 @@ class DQNImitationTest(unittest.TestCase):
         self.assertEqual(accuracy, 1.0)
         action = agent.act(batch["obs"][0], epsilon=0.0)
         self.assertEqual(action, 2)
+
+    def test_badugi_feature_set_masks_newer_slots_for_older_models(self):
+        obs = np.ones(96, dtype=np.float32)
+
+        legacy = apply_badugi_feature_set(obs, "badugi-observation-v1")
+        ev = apply_badugi_feature_set(obs, "badugi-observation-v1-ev")
+        ev_range = apply_badugi_feature_set(obs, "badugi-observation-v1-ev-range")
+
+        self.assertTrue(np.all(legacy[48:56] == 0))
+        self.assertTrue(np.all(legacy[58:61] == 0))
+        self.assertTrue(np.all(ev[48:56] == 1))
+        self.assertTrue(np.all(ev[58:61] == 0))
+        self.assertTrue(np.all(ev_range[58:61] == 1))
 
 
 if __name__ == "__main__":

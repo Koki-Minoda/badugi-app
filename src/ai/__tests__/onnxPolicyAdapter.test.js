@@ -52,7 +52,7 @@ describe("onnxPolicyAdapter Badugi schema", () => {
     expect(tensor).toHaveLength(96);
   });
 
-  it("passes EV feature slots only to EV-trained Badugi models", () => {
+  it("passes EV and range feature slots only to compatible Badugi models", () => {
     const payload = {
       variantId: "D03",
       state: {
@@ -67,12 +67,18 @@ describe("onnxPolicyAdapter Badugi schema", () => {
     };
     const legacyEntry = { inputShape: [96], featureSet: "badugi-observation-v1" };
     const evEntry = { inputShape: [96], featureSet: "badugi-observation-v1-ev" };
+    const evRangeEntry = { inputShape: [96], featureSet: "badugi-observation-v1-ev-range" };
 
     expect(Array.from(buildBadugiOnnxFeatures(legacyEntry, payload).slice(48, 56))).toEqual([
       0, 0, 0, 0, 0, 0, 0, 0,
     ]);
+    expect(Array.from(buildBadugiOnnxFeatures(legacyEntry, payload).slice(58, 61))).toEqual([
+      0, 0, 0,
+    ]);
     expect(buildBadugiOnnxFeatures(evEntry, payload)[48]).toBeGreaterThan(0);
     expect(buildBadugiOnnxFeatures(evEntry, payload)[54]).toBeGreaterThan(0);
+    expect(buildBadugiOnnxFeatures(evEntry, payload)[58]).toBe(0);
+    expect(buildBadugiOnnxFeatures(evRangeEntry, payload)[58]).toBeGreaterThan(0);
   });
 
   it("builds exact-shape draw ONNX feature tensors and selects variant models", () => {

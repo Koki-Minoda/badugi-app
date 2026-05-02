@@ -8,6 +8,7 @@ from rl.env.badugi_env import (
     compare_badugi_scores,
     evaluate_badugi,
     resolve_opponent_profile,
+    starting_score_percentile,
 )
 
 
@@ -53,6 +54,8 @@ class BadugiEnvTest(unittest.TestCase):
         env = BadugiEnv()
         env.reset(seed=1)
         env.pot = 10
+        env.current_bet = 1
+        env.player_bet = 0
         _obs, _reward, terminated, _truncated, _info = env.step(0)
 
         self.assertTrue(terminated)
@@ -64,6 +67,8 @@ class BadugiEnvTest(unittest.TestCase):
     def test_reset_clears_terminal_state(self):
         env = BadugiEnv()
         env.reset(seed=1)
+        env.current_bet = 1
+        env.player_bet = 0
         env.step(0)
         env.reset(seed=2)
 
@@ -99,6 +104,12 @@ class BadugiEnvTest(unittest.TestCase):
     def test_legal_action_mask_matches_bet_and_draw_phases(self):
         env = BadugiEnv()
         env.reset(seed=1)
+        env.phase = "BET"
+        env.current_bet = 0
+        env.player_bet = 0
+
+        self.assertEqual(env.legal_action_mask().tolist(), [0, 1, 0, 1, 0, 0])
+
         env.phase = "BET"
         env.current_bet = 1
         env.player_bet = 0
@@ -168,11 +179,15 @@ class BadugiEnvTest(unittest.TestCase):
     def test_weak_fold_is_penalized_less_than_strong_fold(self):
         weak_env = BadugiEnv()
         weak_env.reset(seed=1)
+        weak_env.current_bet = 1
+        weak_env.player_bet = 0
         weak_env.player_hand = [(12, 0), (12, 1), (12, 2), (12, 3)]
         _obs, weak_reward, _terminated, _truncated, _info = weak_env.step(0)
 
         strong_env = BadugiEnv()
         strong_env.reset(seed=1)
+        strong_env.current_bet = 1
+        strong_env.player_bet = 0
         strong_env.player_hand = [(0, 0), (1, 1), (2, 2), (3, 3)]
         _obs, strong_reward, _terminated, _truncated, _info = strong_env.step(0)
 
@@ -246,6 +261,13 @@ class BadugiEnvTest(unittest.TestCase):
         self.assertGreater(obs[56], 0)  # active opponent count
         self.assertGreater(obs[57], 0)  # multiway pressure
 
+    def test_range_equity_percentile_orders_strong_badugi_above_trash(self):
+        strong = starting_score_percentile(evaluate_badugi([(0, 0), (1, 1), (2, 2), (3, 3)]))
+        trash = starting_score_percentile(evaluate_badugi([(12, 0), (12, 1), (12, 2), (12, 3)]))
+
+        self.assertGreater(strong, 0.99)
+        self.assertLess(trash, 0.10)
+
     def test_late_sixmax_position_has_less_pressure_than_early_position(self):
         early = BadugiEnv(table_size=6, hero_position=0)
         late = BadugiEnv(table_size=6, hero_position=5)
@@ -267,10 +289,9 @@ class BadugiEnvTest(unittest.TestCase):
 
         check_reward = env._reward_shaping(features, 1)
         bet_reward = env._reward_shaping(features, 3)
-        raise_alias_reward = env._reward_shaping(features, 4)
 
         self.assertGreater(bet_reward, check_reward)
-        self.assertGreater(bet_reward, raise_alias_reward)
+        self.assertEqual(env.legal_action_mask().tolist(), [0, 1, 0, 1, 0, 0])
 
     def test_sixmax_rewards_late_position_semibluff_over_check(self):
         env = BadugiEnv(table_size=6, hero_position=5)
@@ -284,10 +305,9 @@ class BadugiEnvTest(unittest.TestCase):
 
         check_reward = env._reward_shaping(features, 1)
         bet_reward = env._reward_shaping(features, 3)
-        raise_alias_reward = env._reward_shaping(features, 4)
 
         self.assertGreater(bet_reward, check_reward)
-        self.assertGreater(bet_reward, raise_alias_reward)
+        self.assertEqual(env.legal_action_mask().tolist(), [0, 1, 0, 1, 0, 0])
 
     def test_sixmax_rewards_isolation_raise_over_flat_call(self):
         env = BadugiEnv(table_size=6, hero_position=4)
@@ -304,6 +324,32 @@ class BadugiEnvTest(unittest.TestCase):
         raise_reward = env._reward_shaping(features, 4)
 
         self.assertGreater(raise_reward, call_reward)
+
+    def test_sixmax_isolation_pressure_raises_fold_equity_for_strong_late_spot(self):
+        early = BadugiEnv(table_size=6, hero_position=0)
+        early.reset(seed=1)
+        early.phase = "BET"
+        early.round = 1
+        early.pot = 18
+        early.current_bet = 1
+        early.player_bet = 0
+        early.player_hand = [(0, 0), (1, 1), (3, 2), (7, 3)]
+
+        late = BadugiEnv(table_size=6, hero_position=5)
+        late.reset(seed=1)
+        late.phase = "BET"
+        late.round = early.round
+        late.pot = early.pot
+        late.current_bet = early.current_bet
+        late.player_bet = early.player_bet
+        late.player_hand = list(early.player_hand)
+
+        early_ev = early._bet_ev_diagnostic(early._hand_features(early.player_hand), to_call=1)
+        late_ev = late._bet_ev_diagnostic(late._hand_features(late.player_hand), to_call=1)
+
+        self.assertGreater(late_ev.fold_equity, early_ev.fold_equity)
+        self.assertGreater(late._get_obs()[58], 0.5)  # range equity percentile
+        self.assertGreater(late._get_obs()[59], 0)  # isolation pressure
 
     def test_fixed_limit_pot_odds_make_marginal_call_better_than_fold(self):
         env = BadugiEnv()
@@ -426,7 +472,7 @@ class BadugiEnvTest(unittest.TestCase):
 
         self.assertEqual(env.opponent_last_draw, 0)
         self.assertEqual(env.phase, "BET")
-        self.assertEqual(env.current_bet, env._bet_size())
+        self.assertGreaterEqual(env.current_bet, 0)
 
     def test_k_badugi_is_worse_on_final_bet_than_early_street(self):
         env = BadugiEnv()

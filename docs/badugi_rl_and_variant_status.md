@@ -1571,6 +1571,12 @@ Draw RL test coverage:
         - 2026-05-02 分析: 現在のEQは `_street_adjusted_strength`, `one_draw_top_half_probability`, `potOdds`, opponent tendency の proxy であり、hand vs range の明示的な equity / EV 計算ではない。次の改善では `callEV = equity * potAfterCall - callCost`、`raiseEV = foldEquity * pot + callContinueEV - extraCost` のような教師・reward・評価ログを追加する。
         - 2026-05-02 分析: 30k以降は `showdownWinRate` が 0.67-0.69 まで上がったが foldRate も 0.27-0.33 まで悪化。特に tight profile 相手に fold が増えすぎているため、pat pressure / aggression に対する過剰foldを抑える reward と teacher correction が必要。
       - [ ] `AI-06f` Pro以降は 6-max training / evaluation を追加し、position / multiway pot / FT chip pressure を含めて学習する。
+        - 2026-05-02 方針: Standard は現行 future value v3 で実装済み扱い。Pro以降は heads-up gate ではなく `--table-size 6` の6-max文脈で学習・評価する。
+        - 2026-05-02 更新: `BadugiEnv(table_size=6)` を追加。完全な6人個別showdownではなく、hero vs 主要相手に対して他4 seat の dead money / position pressure / reduced fold equity / tighter semi-bluff incentive を入れる aggregate 6-max 近似として開始する。
+        - 2026-05-02 更新: `train_dqn.py`, `evaluate_badugi_onnx.py`, `gate_badugi_model.py` に `--table-size` を追加。Pro候補は `--table-size 6` で学習・gateする。
+        - 2026-05-02 smoke: `badugi_sixmax_pro_probe_1k_20260502` は `--table-size 6` で完走し、学習ループ・ONNX入力・position/multiway pressure が動作することを確認。
+        - 2026-05-02 評価: `badugi_sixmax_pro_probe_10k_20260502` は6-max gateで現行Pro bootstrap比 `avgRewardDelta=+0.386` と改善。ただしtier promotion上のPro閾値 `+0.5` 未達。Standard v3比は `+0.168` で、Standardとの差も十分ではないためPro本番へ未反映。
+        - 2026-05-02 評価: `badugi_sixmax_pro_probe_20k_20260502` はStandard v3比 `avgRewardDelta=+0.060` まで低下。長く回すだけでは改善せず、actionCounts は bet がほぼ出ず call/check に寄る。Pro化には value bet / isolation raise / late-position semi-bluff の教師・reward強化が必要。
       - [x] `AI-06f-0` Badugi equity / EV diagnostic を追加する。各decision logに `estimatedEquity`, `potOdds`, `callEV`, `raiseEV`, `foldEV`, `drawEquity`, `opponentProfile` を保存し、勝率ではなくチップEVで失敗箇所を追えるようにする。
         - 2026-05-02 更新: `BadugiEnv` に `BetEVDiagnostic` を追加し、BET action の `info.ev` と ONNX 評価ログへ `profitableFoldMisses`, positive/negative callEV/raiseEV action counts を出す。
         - 2026-05-02 更新: Python学習環境と frontend `badugiObservationSchema.js` の slot 27-31 を再同期。startingHandStrength / potOdds / position / toCall / oneAway がフロントでも埋まるようにした。

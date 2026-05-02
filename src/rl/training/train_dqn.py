@@ -42,6 +42,7 @@ class TrainConfig:
     imitation_pretrain_steps: int = 0
     expert_replay_ratio: float = 0.0
     imitation_loss_weight: float = 1.0
+    table_size: int = 2
 
 
 def linear_epsilon_decay(
@@ -60,7 +61,7 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
     cfg = cfg or TrainConfig()
     os.makedirs(cfg.output_dir, exist_ok=True)
 
-    env = BadugiEnv(opponent_profile=cfg.opponent_profiles[0])
+    env = BadugiEnv(opponent_profile=cfg.opponent_profiles[0], table_size=cfg.table_size)
     obs, _ = env.reset()
 
     obs_dim = int(np.prod(env.observation_space.shape))
@@ -225,6 +226,7 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
         "imitation_pretrain_steps": cfg.imitation_pretrain_steps,
         "expert_replay_ratio": cfg.expert_replay_ratio,
         "imitation_loss_weight": cfg.imitation_loss_weight,
+        "table_size": cfg.table_size,
         "avg_reward_last_100": (
             sum(episode_rewards[-100:]) / max(1, len(episode_rewards[-100:]))
             if episode_rewards
@@ -265,6 +267,7 @@ def parse_args():
     parser.add_argument("--imitation-pretrain-steps", type=int, default=TrainConfig.imitation_pretrain_steps)
     parser.add_argument("--expert-replay-ratio", type=float, default=TrainConfig.expert_replay_ratio)
     parser.add_argument("--imitation-loss-weight", type=float, default=TrainConfig.imitation_loss_weight)
+    parser.add_argument("--table-size", type=int, default=TrainConfig.table_size)
     parser.add_argument("--device", default=None)
     return parser.parse_args()
 
@@ -299,6 +302,7 @@ if __name__ == "__main__":
         imitation_pretrain_steps=args.imitation_pretrain_steps,
         expert_replay_ratio=args.expert_replay_ratio,
         imitation_loss_weight=args.imitation_loss_weight,
+        table_size=args.table_size,
     )
     print(f"Using device: {device}")
     train_dqn(cfg=cfg, device=device)

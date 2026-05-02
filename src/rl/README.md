@@ -110,6 +110,11 @@ Training and gate commands support opponent style mixes through
 `--opponent-profiles`; currently available profiles include `balanced`,
 `loose_passive`, `loose_aggressive`, `tight_passive`, `tight_aggressive`,
 `pat_heavy`, `draw_heavy`, and `random`.
+Use `--table-size 6` for Pro-and-above Badugi candidates. The current 6-max
+environment is an aggregate approximation: the hero still compares against one
+showdown hand, while the other seats contribute position pressure, multiway dead
+money, reduced fold equity, and tighter semi-bluff incentives. Promote those
+models only against 6-max gates, not heads-up gates.
 For current CPU training, keep `--train-every-steps 4` unless you are doing a
 small diagnostic run; updating every environment step is much slower and did not
 improve the short-run policy.

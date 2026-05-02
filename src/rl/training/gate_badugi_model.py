@@ -119,6 +119,7 @@ def evaluate_across_seeds(
     opponent_profiles: list[str],
     episodes: int,
     max_steps: int,
+    table_size: int,
 ) -> dict:
     runs = [
         evaluate_model(
@@ -128,6 +129,7 @@ def evaluate_across_seeds(
             epsilon=0.0,
             seed=seed,
             opponent_profile=profile,
+            table_size=table_size,
         )
         for seed in seeds
         for profile in opponent_profiles
@@ -146,6 +148,7 @@ def build_gate_report(args) -> dict:
         opponent_profiles=args.opponent_profiles,
         episodes=args.episodes,
         max_steps=args.max_steps,
+        table_size=args.table_size,
     )
     baseline = None
     if args.baseline:
@@ -157,6 +160,7 @@ def build_gate_report(args) -> dict:
                 opponent_profiles=args.opponent_profiles,
                 episodes=args.episodes,
                 max_steps=args.max_steps,
+                table_size=args.table_size,
             )
 
     candidate_summary = candidate["summary"]
@@ -198,6 +202,7 @@ def parse_args():
     parser.add_argument("--baseline", default=str(DEFAULT_BASELINE))
     parser.add_argument("--episodes", type=int, default=500)
     parser.add_argument("--max-steps", type=int, default=200)
+    parser.add_argument("--table-size", type=int, default=2)
     parser.add_argument("--seeds", type=parse_seeds, default=parse_seeds("20260502,20260503,20260504"))
     parser.add_argument(
         "--opponent-profiles",

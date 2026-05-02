@@ -215,11 +215,18 @@ class BadugiEnv(gym.Env):
 
   metadata = {"render.modes": ["human"]}
 
-  def __init__(self, opponent_profile: str | OpponentProfile | None = "balanced"):
+  def __init__(
+    self,
+    opponent_profile: str | OpponentProfile | None = "balanced",
+    table_size: int = 2,
+    hero_position: int | None = None,
+  ):
     super().__init__()
     self.max_rounds = 3  # number of draw streets
     self.starting_stack = 100
     self.opponent_profile = resolve_opponent_profile(opponent_profile)
+    self.table_size = max(2, min(6, int(table_size)))
+    self.hero_position_override = hero_position
 
     # Observation schema v1: first 22 slots remain compatible with the legacy
     # training env, then the vector is padded to the frontend ONNX shape.
@@ -254,15 +261,16 @@ class BadugiEnv(gym.Env):
     self.opponent_stack = self.starting_stack
     self.player_all_in = False
     self.opponent_all_in = False
-    self.pot = 0
     self.player_bet = 0
     self.opponent_bet = 0
     self.bet_round = 0
     self.max_bets = 4
     self.round = 0
+    self.pot = self._multiway_dead_money()
     self.phase = "BET"
     self.done = False
-    self.is_button = 1
+    self.hero_position = self._sample_hero_position()
+    self.is_button = 1 if self.hero_position >= self.table_size - 1 else 0
     self.opponent_last_draw = 0
     self.last_opp_action = 0
     self.opponent_action_count = 0
@@ -330,7 +338,32 @@ class BadugiEnv(gym.Env):
   def _bet_size(self) -> int:
     return 1 if self.round < 2 else 2
 
+  def _sample_hero_position(self) -> int:
+    if self.hero_position_override is not None:
+      return max(0, min(self.table_size - 1, int(self.hero_position_override)))
+    return random.randrange(self.table_size)
+
+  def _position_fraction(self) -> float:
+    return self.hero_position / max(1, self.table_size - 1)
+
+  def _active_opponent_count(self) -> int:
+    return max(1, self.table_size - 1)
+
+  def _multiway_dead_money(self) -> int:
+    if self.table_size <= 2:
+      return 0
+    return max(0, self.table_size - 2) * self._bet_size()
+
+  def _multiway_pressure(self) -> float:
+    if self.table_size <= 2:
+      return 0.0
+    early_position_pressure = max(0.0, 0.5 - self._position_fraction()) * 0.24
+    opponent_count_pressure = (self._active_opponent_count() - 1) * 0.035
+    return min(0.35, early_position_pressure + opponent_count_pressure)
+
   def _player_is_first_to_act(self) -> int:
+    if self.table_size > 2:
+      return 1 if self._position_fraction() <= 0.25 else 0
     return 1 if (self.round % 2 == 0) else 0
 
   def legal_action_mask(self) -> np.ndarray:
@@ -649,9 +682,13 @@ class BadugiEnv(gym.Env):
       opponent_aggression = self._opponent_aggression_rate()
       opponent_foldability = self._opponent_foldability_estimate()
       opponent_pat_pressure = self._opponent_pat_pressure()
+      multiway_pressure = self._multiway_pressure()
       ev = self._bet_ev_diagnostic(features, to_call)
       self.last_ev_diagnostic = ev
-      continue_value = min(1.0, strength + position_bonus + draw_equity + opponent_draw_pressure)
+      continue_value = min(
+        1.0,
+        strength + position_bonus + draw_equity + opponent_draw_pressure - multiway_pressure,
+      )
       bluff_opportunity = (
         to_call == 0
         and not self._player_is_first_to_act()
@@ -679,6 +716,8 @@ class BadugiEnv(gym.Env):
         reward += 0.08 if opponent_foldability >= 0.45 else -0.16
       if action in (3, 4) and opponent_foldability < 0.18 and strength < 0.50:
         reward -= 0.22
+      if action in (3, 4) and multiway_pressure > 0 and strength < 0.58:
+        reward -= min(0.22, multiway_pressure * 0.55)
       if action in (3, 4) and strength < 0.35:
         reward -= 0.45
       if action in (3, 4) and to_call == 0 and not self._player_is_first_to_act() and strength >= 0.45:
@@ -711,6 +750,8 @@ class BadugiEnv(gym.Env):
         reward += 0.18 if ev.call_ev >= ev.fold_ev else -0.12
         if ev.cheap_draw_continue_value > 0.35 and pot_odds <= 0.30 and self.round < self.max_rounds:
           reward += min(0.28, 0.10 + ev.cheap_draw_continue_value * 0.04)
+        if multiway_pressure > 0 and features.one_away and pot_odds <= 0.20:
+          reward += min(0.12, ev.future_street_value * 0.03)
       if to_call > 0 and action == 2 and self.round >= self.max_rounds and features.count >= 4:
         reward += 0.12
       if to_call > 0 and action in (3, 4) and opponent_aggression >= 0.38 and strength >= 0.62:
@@ -763,13 +804,14 @@ class BadugiEnv(gym.Env):
     strength = self._street_adjusted_strength(features)
     draw_equity = self._draw_equity_estimate(features)
     position_bonus = 0.04 if not self._player_is_first_to_act() else -0.02
+    multiway_adjustment = -self._multiway_pressure()
     opponent_adjustment = 0.0
     if self.round >= self.max_rounds:
       opponent_adjustment += self._opponent_draw_pressure()
       opponent_adjustment -= 0.10 * self._opponent_pat_pressure()
     if self._opponent_aggression_rate() >= 0.45 and features.count < 4:
       opponent_adjustment -= 0.04
-    equity = strength + draw_equity + position_bonus + opponent_adjustment
+    equity = strength + draw_equity + position_bonus + opponent_adjustment + multiway_adjustment
     return min(0.95, max(0.03, equity))
 
   def _bet_ev_diagnostic(self, features: HandFeature, to_call: int | float | None = None) -> BetEVDiagnostic:
@@ -780,7 +822,7 @@ class BadugiEnv(gym.Env):
     future_street_value = self._future_street_value(features, call_amount)
     call_ev = showdown_call_ev + future_street_value
     fold_ev = 0.0
-    fold_equity = self._opponent_foldability_estimate()
+    fold_equity = self._opponent_foldability_estimate() / max(1.0, self._active_opponent_count() ** 0.45)
     raise_cost = call_amount + float(self._bet_size())
     raise_pot = float(self.pot) + raise_cost
     raise_continue_ev = equity * raise_pot - raise_cost + future_street_value * 0.65
@@ -810,6 +852,7 @@ class BadugiEnv(gym.Env):
     future_bet_size = float(2 if self.round + 1 >= 2 else 1)
     implied_bets = future_bet_size * (1.0 + 0.35 * max(0, draws_remaining - 1))
     position_bonus = 0.18 if not self._player_is_first_to_act() else 0.0
+    multiway_discount = 0.18 * max(0, self._active_opponent_count() - 1)
     opponent_draw_bonus = 0.12 if self.opponent_last_draw >= 2 else 0.0
     pat_pressure_discount = 0.18 * self._opponent_pat_pressure()
     aggression_discount = 0.10 * self._opponent_aggression_rate() if features.count <= 2 else 0.0
@@ -821,7 +864,7 @@ class BadugiEnv(gym.Env):
       * (pot_after_call + implied_bets)
       * (1.0 + position_bonus + opponent_draw_bonus)
     )
-    future_cost = call_amount * price_discount + aggression_discount + pat_pressure_discount
+    future_cost = call_amount * price_discount + aggression_discount + pat_pressure_discount + multiway_discount
     return max(0.0, min(3.0, raw_value - future_cost))
 
   def _street_adjusted_strength(self, features: HandFeature) -> float:
@@ -928,7 +971,7 @@ class BadugiEnv(gym.Env):
         min(self.opponent_last_draw, 4) / 4.0,
         float(self.is_button),
         float(self._player_is_first_to_act()),
-        self.last_opp_action / 4.0,
+        self._position_fraction(),
       ]
     )
     features = self._hand_features(self.player_hand)
@@ -976,6 +1019,8 @@ class BadugiEnv(gym.Env):
         ev.fold_equity,
         max(0.0, min(1.0, ev.future_street_value / 3.0)),
         max(0.0, min(1.0, ev.cheap_draw_continue_value / 3.0)),
+        self._active_opponent_count() / 5.0,
+        self._multiway_pressure(),
       ]
     )
     while len(obs) < BADUGI_OBSERVATION_VECTOR_SIZE:

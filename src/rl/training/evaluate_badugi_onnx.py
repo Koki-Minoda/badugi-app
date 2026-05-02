@@ -60,6 +60,7 @@ def evaluate_model(
     epsilon: float,
     seed: int,
     opponent_profile: str = "balanced",
+    table_size: int = 2,
 ) -> dict:
     if not model.exists():
         raise FileNotFoundError(f"ONNX model not found: {model}")
@@ -70,7 +71,7 @@ def evaluate_model(
     input_shape = [dim if isinstance(dim, int) else None for dim in session.get_inputs()[0].shape]
     output_shape = [dim if isinstance(dim, int) else None for dim in session.get_outputs()[0].shape]
 
-    env = BadugiEnv(opponent_profile=opponent_profile)
+    env = BadugiEnv(opponent_profile=opponent_profile, table_size=table_size)
     rewards: list[float] = []
     wins = losses = ties = folds = opponent_folds = showdowns = 0
     profitable_fold_misses = 0
@@ -138,6 +139,7 @@ def evaluate_model(
         "epsilon": epsilon,
         "seed": seed,
         "opponentProfile": opponent_profile,
+        "tableSize": table_size,
         "inputShape": input_shape,
         "outputShape": output_shape,
         "avgReward": float(np.mean(rewards)) if rewards else 0.0,
@@ -169,6 +171,7 @@ def parse_args():
     parser.add_argument("--epsilon", type=float, default=0.0)
     parser.add_argument("--seed", type=int, default=20260501)
     parser.add_argument("--opponent-profile", default="balanced")
+    parser.add_argument("--table-size", type=int, default=2)
     parser.add_argument("--json", action="store_true")
     return parser.parse_args()
 
@@ -182,6 +185,7 @@ def main():
         epsilon=args.epsilon,
         seed=args.seed,
         opponent_profile=args.opponent_profile,
+        table_size=args.table_size,
     )
     if args.json:
         print(json.dumps(result, indent=2))

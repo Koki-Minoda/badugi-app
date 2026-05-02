@@ -234,6 +234,27 @@ class BadugiEnvTest(unittest.TestCase):
         self.assertGreater(obs[54], 0)  # future street value
         self.assertGreater(obs[55], 0)  # cheap draw continue value
 
+    def test_sixmax_context_adds_dead_money_position_and_multiway_pressure(self):
+        env = BadugiEnv(table_size=6, hero_position=0)
+        obs, _info = env.reset(seed=1)
+
+        self.assertEqual(env.table_size, 6)
+        self.assertEqual(env.hero_position, 0)
+        self.assertGreater(env.pot, 0)
+        self.assertEqual(env._player_is_first_to_act(), 1)
+        self.assertGreater(env._multiway_pressure(), 0)
+        self.assertGreater(obs[56], 0)  # active opponent count
+        self.assertGreater(obs[57], 0)  # multiway pressure
+
+    def test_late_sixmax_position_has_less_pressure_than_early_position(self):
+        early = BadugiEnv(table_size=6, hero_position=0)
+        late = BadugiEnv(table_size=6, hero_position=5)
+        early.reset(seed=1)
+        late.reset(seed=1)
+
+        self.assertGreater(early._multiway_pressure(), late._multiway_pressure())
+        self.assertEqual(late.is_button, 1)
+
     def test_fixed_limit_pot_odds_make_marginal_call_better_than_fold(self):
         env = BadugiEnv()
         env.reset(seed=1)

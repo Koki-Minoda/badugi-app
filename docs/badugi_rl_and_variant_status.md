@@ -1561,7 +1561,12 @@ Draw RL test coverage:
         - 2026-05-01 確認: feature probe 1500 episodes は `avg_reward_last_100=-1.1723`。ONNX gate は現 beginner DQN比で `avgRewardDelta=+0.0646`, WorldMaster bootstrap比で `+0.1068` まで改善したが、`showdownWinRate=0.158` のため昇格しない。
         - 残件: 長期学習では `avgReward` だけでなく `showdownWinRate` を落とさないよう、showdown value / draw quality の reward を追加検討する。
       - [ ] `AI-06d` current-env Beginner DQN を作り直す。条件: Standardより明確に弱く、ただし破綻しない。古いDQN断面は使わない。
-      - [ ] `AI-06e` current-env Standard 50k を回し、10k v2を上回るか評価する。条件: default gate PASS、Standard相当の体感強度、過剰fold/過剰bluffなし。
+      - [x] `AI-06e` current-env Standard 50k を回し、10k v2を上回るか評価する。条件: default gate PASS、Standard相当の体感強度、過剰fold/過剰bluffなし。
+        - 2026-05-02 実行: `badugi_positive_shaping_standard_50k_20260502` を `episodes=50000`, `teacher_warmup=1000`, `imitation_pretrain=500`, profile mix `balanced,loose_passive,loose_aggressive,tight_passive,tight_aggressive,pat_heavy,draw_heavy` で学習。
+        - 2026-05-02 結果: 50k学習は完走。学習ログは 30k `avg_reward=0.342`, 35k `0.505`, 47.5k `0.603`, 50k `0.362`。summary は `episodes=50000`, `global_steps=303090`, `avg_reward_last_100=0.7615`。
+        - 2026-05-02 checkpoint比較: 現行 `public/models/badugi_standard_dqn_v2.onnx` をbaselineに、10k/20k/30k/40k/50k checkpointをONNX exportして評価。短縮評価では10k checkpointが最良で `avgReward=0.857`, `showdownWinRate=0.570`, `foldRate=0.100`, `avgRewardDeltaVsBaseline=+0.084`。
+        - 2026-05-02 default gate: run内最良10k checkpointは `candidateAvgReward=0.787`, `showdownWinRate=0.571`, `foldRate=0.112`, `avgRewardDeltaVsBaseline=+0.0699` で baseline差分ゲート未達。50k checkpointは `candidateAvgReward=0.436`, `showdownWinRate=0.649`, `foldRate=0.306`, `avgRewardDeltaVsBaseline=-0.2808` で未達。
+        - 2026-05-02 判定: 50k run は現行 `standard-dqn-v2` を明確に上回らないため、public model へは反映しない。現行10k v2をStandardとして維持する。
       - [ ] `AI-06f` Pro以降は 6-max training / evaluation を追加し、position / multiway pot / FT chip pressure を含めて学習する。
       - [ ] `AI-06g` CPU性格別モデルまたはpolicy headを設計する。候補: loose-aggressive, tight-aggressive, tight-passive, exploit-reader, balanced。
       - [ ] `AI-06h` Badugiプレイガイドを作成する。内容: ルール、基本戦略、position別参加レンジ、pat/draw判断、rough Badugiの扱い、初手Q-low Badugiなどの実戦例。

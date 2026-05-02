@@ -1691,6 +1691,10 @@ Draw RL test coverage:
         - 2026-05-02 追加検証: raise edge強化は戻し、call EV が fold EV を明確に上回る局面のcall rewardだけを厚くした `badugi_sixmax_iron_call_value_5k_20260502` を評価。`avgReward=2.665`, `showdownWinRate=0.700`, `foldRate=0.197`, Pro比 `+0.006`。negativeRaiseEVActions は `221 -> 103` に改善したが、profitableFoldMisses が `264 -> 349` に悪化したため昇格保留。
         - 次の打ち手: negative raise EV をさらに減らしつつ、profitableFoldMisses をPro以下に抑える。評価は Pro baseline 比 `avgRewardDelta >= +0.25`、`foldRate <= 0.17`、`showdownWinRate >= 0.69` を最低ラインにしてから registry 反映する。
         - 次の具体策: fold miss 悪化はaction maskではなくpolicy選好の問題。次は teacher / reward の `profitable_continue` を「call」だけでなく、fold actionへの明確な教師損失として維持する。また draw-heavy / passive profile 別に profile-aware continue threshold を入れ、全profile平均だけでなく worst-profile avgReward を gate に入れる。
+        - 2026-05-02 実装: `profitable_continue` teacher を profile-aware 化。`draw_heavy` / passive系では cheap draw と profitable continue の閾値を緩め、EVがある低コスト継続をfoldしにくくした。
+        - 2026-05-02 実装: gate / checkpoint summary に `profileSummaries`, `worstProfile`, `worstProfileAvgReward` を追加し、promotion tier と明示gateで worst-profile を評価対象にした。
+        - 2026-05-02 20k評価: `badugi_sixmax_iron_profile_continue_20k_20260502` を 5k/10k/15k/20k checkpoint で評価。最良10kは `avgReward=2.682`, `showdownWinRate=0.696`, `foldRate=0.194`, Pro比 `+0.023`, worstProfile=`loose_passive`, worstProfileAvgReward=`1.490`。negativeRaiseEVActions は `221 -> 13` まで改善したが、profitableFoldMisses は `264 -> 344`、foldRate は `0.159 -> 0.194` に悪化したため Iron 昇格は保留。
+        - 次の具体策: fold miss の主因は facing bet で action 0 を選ぶ頻度がまだ高いこと。次は teacher replay 内の `profitable_continue` サンプルを oversample し、DQN loss 側で fold action に対する margin loss を追加する。単純なreward追加だけではshowdown勝率は上がるがfoldRateが悪化する。
       - [ ] `AI-06e` 2-7 / A-5 用の実ONNXを生成・配置する。現状は `model-27draw-iron-v1` (`D01/S01`) と `model-a5draw-iron-v1` (`D02/S02`) の registry / feature builder / routing test はあるが、実 `.onnx` は optional 未配置で、App draw CPU は rule-based fallback が主経路。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
   - P2P:

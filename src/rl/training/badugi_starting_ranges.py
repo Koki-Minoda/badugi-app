@@ -190,21 +190,24 @@ def teacher_action(env) -> int:
     position_fraction = env._position_fraction() if hasattr(env, "_position_fraction") else 0.5
     is_sixmax = table_size >= 6
     late_position = position_fraction >= 0.6
+    opponent_profile = getattr(getattr(env, "opponent_profile", None), "name", "")
+    passive_or_draw_heavy = opponent_profile in {"loose_passive", "tight_passive", "draw_heavy"}
     if to_call > 0:
         ev = None
         if hasattr(env, "_bet_ev_diagnostic") and hasattr(env, "_hand_features"):
             ev = env._bet_ev_diagnostic(env._hand_features(env.player_hand), to_call)
+        profitable_continue_margin = 0.03 if passive_or_draw_heavy else 0.10
         cheap_developing_call = (
             ev is not None
             and not is_final_bet
-            and ev.cheap_draw_continue_value >= 0.35
-            and ev.pot_odds <= 0.30
+            and ev.cheap_draw_continue_value >= (0.26 if passive_or_draw_heavy else 0.35)
+            and ev.pot_odds <= (0.34 if passive_or_draw_heavy else 0.30)
             and hand_range.made_cards >= 2
         )
         profitable_continue = (
             ev is not None
-            and ev.call_ev > ev.fold_ev + 0.10
-            and (hand_range.made_cards >= 3 or cheap_developing_call)
+            and ev.call_ev > ev.fold_ev + profitable_continue_margin
+            and (hand_range.made_cards >= (2 if passive_or_draw_heavy else 3) or cheap_developing_call)
         )
         isolation_raise = (
             is_sixmax

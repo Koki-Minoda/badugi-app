@@ -10,6 +10,7 @@ from rl.env.badugi_env import (
     resolve_opponent_profile,
     starting_score_percentile,
 )
+from rl.training.gate_badugi_model import summarize_runs
 
 
 class BadugiEnvTest(unittest.TestCase):
@@ -74,6 +75,37 @@ class BadugiEnvTest(unittest.TestCase):
 
         self.assertIsNone(env.last_result)
         self.assertIsNone(env.terminal_reason)
+
+    def test_gate_summary_tracks_worst_profile(self):
+        summary = summarize_runs(
+            [
+                {
+                    "episodes": 10,
+                    "showdowns": 8,
+                    "wins": 4,
+                    "folds": 1,
+                    "avgReward": 1.5,
+                    "opponentProfile": "balanced",
+                    "actionCounts": {"0": 1},
+                    "evDiagnostics": {"profitableFoldMisses": 1},
+                },
+                {
+                    "episodes": 10,
+                    "showdowns": 5,
+                    "wins": 1,
+                    "folds": 4,
+                    "avgReward": -0.25,
+                    "opponentProfile": "draw_heavy",
+                    "actionCounts": {"0": 4},
+                    "evDiagnostics": {"profitableFoldMisses": 3},
+                },
+            ]
+        )
+
+        self.assertEqual(summary["worstProfile"], "draw_heavy")
+        self.assertEqual(summary["worstProfileAvgReward"], -0.25)
+        self.assertIn("draw_heavy", summary["profileSummaries"])
+        self.assertEqual(summary["evDiagnostics"]["profitableFoldMisses"], 4)
 
     def test_showdown_result_is_returned_as_terminal_reward(self):
         env = BadugiEnv()

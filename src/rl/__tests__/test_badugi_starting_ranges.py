@@ -75,6 +75,29 @@ class BadugiStartingRangesTest(unittest.TestCase):
 
         self.assertEqual(teacher_action(env), 2)
 
+    def test_teacher_profile_aware_continue_calls_draw_heavy_marginal_price(self):
+        hand = [(0, 0), (0, 1), (0, 2), (1, 0)]
+        balanced = BadugiEnv(opponent_profile="balanced", table_size=6, hero_position=1)
+        balanced.reset(seed=1)
+        balanced.phase = "BET"
+        balanced.round = 1
+        balanced.pot = 2
+        balanced.current_bet = 1
+        balanced.player_bet = 0
+        balanced.player_hand = hand
+
+        draw_heavy = BadugiEnv(opponent_profile="draw_heavy", table_size=6, hero_position=1)
+        draw_heavy.reset(seed=1)
+        draw_heavy.phase = "BET"
+        draw_heavy.round = 1
+        draw_heavy.pot = 2
+        draw_heavy.current_bet = 1
+        draw_heavy.player_bet = 0
+        draw_heavy.player_hand = hand
+
+        self.assertEqual(teacher_action(balanced), 0)
+        self.assertEqual(teacher_action(draw_heavy), 2)
+
     def test_sixmax_teacher_value_bets_strong_made_hand(self):
         env = BadugiEnv(table_size=6, hero_position=5)
         env.reset(seed=1)

@@ -30,6 +30,7 @@ PROMOTION_TIERS = [
         "minShowdownWinRate": 0.25,
         "maxFoldRate": 0.45,
         "minBaselineAvgDelta": 0.25,
+        "minWorstProfileAvgReward": -0.25,
     },
     {
         "tier": "pro",
@@ -37,6 +38,7 @@ PROMOTION_TIERS = [
         "minShowdownWinRate": 0.35,
         "maxFoldRate": 0.40,
         "minBaselineAvgDelta": 0.50,
+        "minWorstProfileAvgReward": 0.25,
     },
     {
         "tier": "iron",
@@ -44,6 +46,7 @@ PROMOTION_TIERS = [
         "minShowdownWinRate": 0.42,
         "maxFoldRate": 0.35,
         "minBaselineAvgDelta": 0.75,
+        "minWorstProfileAvgReward": 0.75,
     },
     {
         "tier": "worldmaster",
@@ -51,6 +54,7 @@ PROMOTION_TIERS = [
         "minShowdownWinRate": 0.50,
         "maxFoldRate": 0.30,
         "minBaselineAvgDelta": 1.00,
+        "minWorstProfileAvgReward": 1.00,
     },
 ]
 
@@ -76,11 +80,49 @@ def summarize_runs(runs: list[dict]) -> dict:
     folds = sum(int(run["folds"]) for run in runs)
     action_counts: dict[str, int] = {}
     ev_diagnostics: dict[str, int] = {}
+    profile_summaries: dict[str, dict] = {}
     for run in runs:
         for action, count in run.get("actionCounts", {}).items():
             action_counts[action] = action_counts.get(action, 0) + int(count)
         for key, count in run.get("evDiagnostics", {}).items():
             ev_diagnostics[key] = ev_diagnostics.get(key, 0) + int(count)
+        profile = str(run.get("opponentProfile", "unknown"))
+        summary = profile_summaries.setdefault(
+            profile,
+            {
+                "runs": 0,
+                "episodes": 0,
+                "avgRewards": [],
+                "showdowns": 0,
+                "wins": 0,
+                "folds": 0,
+            },
+        )
+        summary["runs"] += 1
+        summary["episodes"] += int(run["episodes"])
+        summary["avgRewards"].append(float(run["avgReward"]))
+        summary["showdowns"] += int(run["showdowns"])
+        summary["wins"] += int(run["wins"])
+        summary["folds"] += int(run["folds"])
+    normalized_profile_summaries = {}
+    for profile, summary in profile_summaries.items():
+        profile_episodes = int(summary["episodes"])
+        profile_showdowns = int(summary["showdowns"])
+        normalized_profile_summaries[profile] = {
+            "runs": int(summary["runs"]),
+            "episodes": profile_episodes,
+            "avgReward": statistics.fmean(summary["avgRewards"]),
+            "showdownWinRate": summary["wins"] / profile_showdowns if profile_showdowns else 0.0,
+            "foldRate": summary["folds"] / profile_episodes if profile_episodes else 0.0,
+            "showdowns": profile_showdowns,
+            "folds": int(summary["folds"]),
+            "wins": int(summary["wins"]),
+        }
+    worst_profile = min(
+        normalized_profile_summaries.items(),
+        key=lambda item: item[1]["avgReward"],
+        default=(None, {"avgReward": 0.0}),
+    )
     return {
         "runs": len(runs),
         "episodes": episodes,
@@ -93,6 +135,9 @@ def summarize_runs(runs: list[dict]) -> dict:
         "wins": wins,
         "actionCounts": action_counts,
         "evDiagnostics": ev_diagnostics,
+        "profileSummaries": normalized_profile_summaries,
+        "worstProfile": worst_profile[0],
+        "worstProfileAvgReward": worst_profile[1]["avgReward"],
     }
 
 
@@ -104,6 +149,10 @@ def build_promotion_report(candidate_summary: dict, avg_delta: float | None) -> 
             "avgReward": candidate_summary["avgReward"] >= tier["minAvgReward"],
             "showdownWinRate": candidate_summary["showdownWinRate"] >= tier["minShowdownWinRate"],
             "foldRate": candidate_summary["foldRate"] <= tier["maxFoldRate"],
+            "worstProfileAvgReward": (
+                candidate_summary.get("worstProfileAvgReward", 0.0)
+                >= tier["minWorstProfileAvgReward"]
+            ),
             "baselineAvgDelta": (
                 True if avg_delta is None else avg_delta >= tier["minBaselineAvgDelta"]
             ),
@@ -187,6 +236,8 @@ def build_gate_report(args) -> dict:
         "avgReward": candidate_summary["avgReward"] >= args.min_avg_reward,
         "showdownWinRate": candidate_summary["showdownWinRate"] >= args.min_showdown_win_rate,
         "foldRate": candidate_summary["foldRate"] <= args.max_fold_rate,
+        "worstProfileAvgReward": candidate_summary["worstProfileAvgReward"]
+        >= args.min_worst_profile_avg_reward,
         "baselineAvgDelta": (
             True if avg_delta is None else avg_delta >= args.min_baseline_avg_delta
         ),
@@ -200,6 +251,7 @@ def build_gate_report(args) -> dict:
             "minAvgReward": args.min_avg_reward,
             "minShowdownWinRate": args.min_showdown_win_rate,
             "maxFoldRate": args.max_fold_rate,
+            "minWorstProfileAvgReward": args.min_worst_profile_avg_reward,
             "minBaselineAvgDelta": args.min_baseline_avg_delta,
         },
         "avgRewardDeltaVsBaseline": avg_delta,
@@ -235,6 +287,7 @@ def parse_args():
     parser.add_argument("--min-avg-reward", type=float, default=0.0)
     parser.add_argument("--min-showdown-win-rate", type=float, default=0.35)
     parser.add_argument("--max-fold-rate", type=float, default=0.45)
+    parser.add_argument("--min-worst-profile-avg-reward", type=float, default=0.0)
     parser.add_argument("--min-baseline-avg-delta", type=float, default=0.25)
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--report-only", action="store_true")

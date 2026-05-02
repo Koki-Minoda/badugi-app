@@ -83,6 +83,8 @@ describe("badugi observation schema v1", () => {
     expect(vector[49]).toBeGreaterThanOrEqual(0); // pot odds
     expect(vector[50]).toBeGreaterThanOrEqual(-1); // call EV
     expect(vector[52]).toBeGreaterThanOrEqual(0); // draw equity
+    expect(vector[54]).toBeGreaterThanOrEqual(0); // future street value
+    expect(vector[55]).toBeGreaterThanOrEqual(0); // cheap draw continue value
   });
 
   it("aligns BadugiEngine.getObservation with schema v1", () => {

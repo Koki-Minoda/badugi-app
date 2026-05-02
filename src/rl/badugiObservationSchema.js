@@ -171,18 +171,64 @@ function evFeatures({
   const estimatedEquity = clamp01(strength + drawEquity + positionBonus + opponentPatAdjustment);
   const callAmount = Math.max(0, Number(toCall) || 0);
   const foldEquity = clamp01(Number(features.opponentFoldability) || 0);
-  const callEV = callAmount > 0 ? estimatedEquity * ((Number(pot) || 0) + callAmount) - callAmount : estimatedEquity * (Number(pot) || 0);
+  const futureStreetValue = futureStreetValueEstimate({
+    shape,
+    features,
+    drawsRemaining,
+    toCall: callAmount,
+    pot,
+  });
+  const showdownCallEV = callAmount > 0
+    ? estimatedEquity * ((Number(pot) || 0) + callAmount) - callAmount
+    : estimatedEquity * (Number(pot) || 0);
+  const callEV = showdownCallEV + futureStreetValue;
   const raiseCost = callAmount + 1;
   const raisePot = (Number(pot) || 0) + raiseCost;
-  const raiseEV = foldEquity * (Number(pot) || 0) + (1 - foldEquity) * (estimatedEquity * raisePot - raiseCost);
+  const raiseEV =
+    foldEquity * (Number(pot) || 0) +
+    (1 - foldEquity) * (estimatedEquity * raisePot - raiseCost + futureStreetValue * 0.65);
   return {
     estimatedEquity,
     potOdds: potOdds(callAmount, pot),
     callEV,
     raiseEV,
     drawEquity,
+    futureStreetValue,
+    cheapDrawContinueValue: Math.max(0, callEV),
     foldEquity,
   };
+}
+
+function futureStreetValueEstimate({
+  shape = {},
+  features = {},
+  drawsRemaining = 0,
+  toCall = 0,
+  pot = 0,
+} = {}) {
+  const madeCards = Number(shape.madeCards) || 0;
+  const remaining = Math.max(0, Number(drawsRemaining) || 0);
+  if (remaining <= 0 || madeCards >= 4) return 0;
+  const drawEquity = drawEquityEstimate(shape, remaining);
+  if (drawEquity <= 0) return 0;
+  const callAmount = Math.max(0, Number(toCall) || 0);
+  const potAfterCall = (Number(pot) || 0) + callAmount;
+  const futureBetSize = Number(features.drawRound) + 1 >= 2 ? 2 : 1;
+  const impliedBets = futureBetSize * (1 + 0.35 * Math.max(0, remaining - 1));
+  const positionBonus = features.isButton ? 0.18 : 0;
+  const opponentDrawBonus = Number(features.opponentLastDrawAverage) >= 2 ? 0.12 : 0;
+  const patPressureDiscount = 0.18 * (Number(features.opponentPatRate) || 0);
+  const aggressionDiscount =
+    madeCards <= 2 ? 0.10 * (Number(features.opponentAggressionRate) || 0) : 0;
+  const priceDiscount = potOdds(callAmount, pot) * Math.max(0.25, 1 - 0.14 * remaining);
+  const shapeMultiplier = madeCards === 3 ? 1.25 : 0.75;
+  const rawValue =
+    drawEquity *
+    shapeMultiplier *
+    (potAfterCall + impliedBets) *
+    (1 + positionBonus + opponentDrawBonus);
+  const futureCost = callAmount * priceDiscount + aggressionDiscount + patPressureDiscount;
+  return Math.max(0, Math.min(3, rawValue - futureCost));
 }
 
 function average(values = []) {
@@ -380,6 +426,8 @@ export function buildBadugiObservationVector(input = {}) {
   vector[51] = Math.max(-1, Math.min(1, ev.raiseEV / 10));
   vector[52] = normalizeNumber(ev.drawEquity, 1);
   vector[53] = normalizeNumber(ev.foldEquity, 1);
+  vector[54] = normalizeNumber(ev.futureStreetValue, 3);
+  vector[55] = normalizeNumber(ev.cheapDrawContinueValue, 3);
 
   return vector;
 }

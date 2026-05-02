@@ -60,7 +60,7 @@ describe("onnxPolicyAdapter Badugi schema", () => {
         drawRoundIndex: 1,
         currentBet: 2,
         pot: 24,
-        players: [{ hand: ["AS", "2D", "7C", "KH"], stack: 500, betThisRound: 0 }],
+        players: [{ hand: ["AS", "2D", "7C", "KC"], stack: 500, betThisRound: 0 }],
       },
       seatIndex: 0,
       legalActions: ["fold", "call", "raise"],
@@ -68,10 +68,11 @@ describe("onnxPolicyAdapter Badugi schema", () => {
     const legacyEntry = { inputShape: [96], featureSet: "badugi-observation-v1" };
     const evEntry = { inputShape: [96], featureSet: "badugi-observation-v1-ev" };
 
-    expect(Array.from(buildBadugiOnnxFeatures(legacyEntry, payload).slice(48, 54))).toEqual([
-      0, 0, 0, 0, 0, 0,
+    expect(Array.from(buildBadugiOnnxFeatures(legacyEntry, payload).slice(48, 56))).toEqual([
+      0, 0, 0, 0, 0, 0, 0, 0,
     ]);
     expect(buildBadugiOnnxFeatures(evEntry, payload)[48]).toBeGreaterThan(0);
+    expect(buildBadugiOnnxFeatures(evEntry, payload)[54]).toBeGreaterThan(0);
   });
 
   it("builds exact-shape draw ONNX feature tensors and selects variant models", () => {

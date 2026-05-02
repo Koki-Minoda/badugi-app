@@ -231,6 +231,8 @@ class BadugiEnvTest(unittest.TestCase):
         self.assertGreater(obs[49], 0)  # EV pot odds
         self.assertGreaterEqual(obs[50], -1)  # call EV
         self.assertGreater(obs[52], 0)  # draw equity
+        self.assertGreater(obs[54], 0)  # future street value
+        self.assertGreater(obs[55], 0)  # cheap draw continue value
 
     def test_fixed_limit_pot_odds_make_marginal_call_better_than_fold(self):
         env = BadugiEnv()
@@ -262,8 +264,26 @@ class BadugiEnvTest(unittest.TestCase):
         ev = env._bet_ev_diagnostic(features, to_call=1)
 
         self.assertGreater(ev.draw_equity, 0)
+        self.assertGreater(ev.future_street_value, 0)
+        self.assertGreater(ev.cheap_draw_continue_value, 0)
         self.assertLess(ev.pot_odds, ev.estimated_equity)
         self.assertGreater(ev.call_ev, ev.fold_ev)
+
+    def test_future_street_value_is_zero_on_final_betting_round(self):
+        env = BadugiEnv()
+        env.reset(seed=1)
+        env.phase = "BET"
+        env.round = env.max_rounds
+        env.pot = 24
+        env.current_bet = 2
+        env.player_bet = 0
+        env.player_hand = [(0, 0), (1, 1), (6, 2), (12, 2)]
+        features = env._hand_features(env.player_hand)
+
+        ev = env._bet_ev_diagnostic(features, to_call=2)
+
+        self.assertEqual(ev.future_street_value, 0)
+        self.assertGreaterEqual(ev.call_ev, -2)
 
     def test_fold_penalty_is_higher_when_one_away_call_ev_is_positive(self):
         good_price_env = BadugiEnv()

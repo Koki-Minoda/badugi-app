@@ -70,18 +70,18 @@
   },
   {
     "id": "model-badugi-standard-dqn-v2",
-    "version": "v2",
+    "version": "v3",
     "variantIds": [
       "D03"
     ],
     "characterIds": [],
     "tier": "standard",
     "onnx": "models/badugi_standard_dqn_v2.onnx",
-    "checksumSha256": "22899fc71e9e48b345fa1ec1ec025bf0e71a7ea6f30d4c31f18e54d9f04b067c",
-    "trainingRun": "badugi_positive_shaping_probe_10k_20260502",
+    "checksumSha256": "cf29ca060adfd73b5ec8f98f904280e285e60ef4d828db5d2a520cb40303fba6",
+    "trainingRun": "badugi_future_value_probe_5k_20260502",
     "trainingStatus": "active",
-    "trainingNotes": "Trained after evaluator/draw phase fixes and positive shaping cap fix. Default multi-profile gate recommended standard tier.",
-    "featureSet": "badugi-observation-v1",
+    "trainingNotes": "Trained with future street value and cheap developing draw continuation shaping. 7-profile gate recommended standard tier; not promoted above standard.",
+    "featureSet": "badugi-observation-v1-ev",
     "productionRequired": true,
     "inputShape": [
       96

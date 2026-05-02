@@ -70,6 +70,8 @@ class BetEVDiagnostic:
   raise_ev: float
   fold_ev: float
   draw_equity: float
+  future_street_value: float
+  cheap_draw_continue_value: float
   fold_equity: float
   to_call: float
 
@@ -81,6 +83,8 @@ class BetEVDiagnostic:
       "raiseEV": self.raise_ev,
       "foldEV": self.fold_ev,
       "drawEquity": self.draw_equity,
+      "futureStreetValue": self.future_street_value,
+      "cheapDrawContinueValue": self.cheap_draw_continue_value,
       "foldEquity": self.fold_equity,
       "toCall": self.to_call,
     }
@@ -689,6 +693,8 @@ class BadugiEnv(gym.Env):
         tight_pat_raise_pressure = opponent_pat_pressure > 0.5 and opponent_aggression < 0.22
         if ev.call_ev > ev.fold_ev and features.one_away and self.round < self.max_rounds:
           reward -= min(0.75, 0.25 + ev.call_ev * 0.12)
+        if ev.cheap_draw_continue_value > 0.35 and pot_odds <= 0.30 and self.round < self.max_rounds:
+          reward -= min(0.65, 0.18 + ev.cheap_draw_continue_value * 0.10)
         if features.count >= 4 and strength >= 0.54:
           reward -= 0.5
         elif features.one_away and self.round < self.max_rounds and pot_odds <= 0.25:
@@ -703,6 +709,8 @@ class BadugiEnv(gym.Env):
           call_edge += 0.07
         reward += 0.22 if call_edge >= pot_odds else -0.14
         reward += 0.18 if ev.call_ev >= ev.fold_ev else -0.12
+        if ev.cheap_draw_continue_value > 0.35 and pot_odds <= 0.30 and self.round < self.max_rounds:
+          reward += min(0.28, 0.10 + ev.cheap_draw_continue_value * 0.04)
       if to_call > 0 and action == 2 and self.round >= self.max_rounds and features.count >= 4:
         reward += 0.12
       if to_call > 0 and action in (3, 4) and opponent_aggression >= 0.38 and strength >= 0.62:
@@ -768,12 +776,15 @@ class BadugiEnv(gym.Env):
     call_amount = max(0.0, float(self.current_bet - self.player_bet if to_call is None else to_call))
     equity = self._estimated_equity(features)
     pot_after_call = float(self.pot) + call_amount
-    call_ev = equity * pot_after_call - call_amount if call_amount > 0 else equity * float(self.pot)
+    showdown_call_ev = equity * pot_after_call - call_amount if call_amount > 0 else equity * float(self.pot)
+    future_street_value = self._future_street_value(features, call_amount)
+    call_ev = showdown_call_ev + future_street_value
     fold_ev = 0.0
     fold_equity = self._opponent_foldability_estimate()
     raise_cost = call_amount + float(self._bet_size())
     raise_pot = float(self.pot) + raise_cost
-    raise_ev = fold_equity * float(self.pot) + (1.0 - fold_equity) * (equity * raise_pot - raise_cost)
+    raise_continue_ev = equity * raise_pot - raise_cost + future_street_value * 0.65
+    raise_ev = fold_equity * float(self.pot) + (1.0 - fold_equity) * raise_continue_ev
     return BetEVDiagnostic(
       estimated_equity=equity,
       pot_odds=self._pot_odds(call_amount),
@@ -781,9 +792,37 @@ class BadugiEnv(gym.Env):
       raise_ev=raise_ev,
       fold_ev=fold_ev,
       draw_equity=self._draw_equity_estimate(features),
+      future_street_value=future_street_value,
+      cheap_draw_continue_value=max(0.0, call_ev - fold_ev),
       fold_equity=fold_equity,
       to_call=call_amount,
     )
+
+  def _future_street_value(self, features: HandFeature, to_call: int | float | None = None) -> float:
+    draws_remaining = max(0, self.max_rounds - self.round)
+    call_amount = max(0.0, float(self.current_bet - self.player_bet if to_call is None else to_call))
+    if draws_remaining <= 0 or features.count >= 4:
+      return 0.0
+    draw_equity = self._draw_equity_estimate(features)
+    if draw_equity <= 0:
+      return 0.0
+    pot_after_call = float(self.pot) + call_amount
+    future_bet_size = float(2 if self.round + 1 >= 2 else 1)
+    implied_bets = future_bet_size * (1.0 + 0.35 * max(0, draws_remaining - 1))
+    position_bonus = 0.18 if not self._player_is_first_to_act() else 0.0
+    opponent_draw_bonus = 0.12 if self.opponent_last_draw >= 2 else 0.0
+    pat_pressure_discount = 0.18 * self._opponent_pat_pressure()
+    aggression_discount = 0.10 * self._opponent_aggression_rate() if features.count <= 2 else 0.0
+    price_discount = self._pot_odds(call_amount) * max(0.25, 1.0 - 0.14 * draws_remaining)
+    shape_multiplier = 1.25 if features.one_away else 0.75
+    raw_value = (
+      draw_equity
+      * shape_multiplier
+      * (pot_after_call + implied_bets)
+      * (1.0 + position_bonus + opponent_draw_bonus)
+    )
+    future_cost = call_amount * price_discount + aggression_discount + pat_pressure_discount
+    return max(0.0, min(3.0, raw_value - future_cost))
 
   def _street_adjusted_strength(self, features: HandFeature) -> float:
     draws_remaining = max(0, self.max_rounds - self.round)
@@ -935,6 +974,8 @@ class BadugiEnv(gym.Env):
         max(-1.0, min(1.0, ev.raise_ev / 10.0)),
         ev.draw_equity,
         ev.fold_equity,
+        max(0.0, min(1.0, ev.future_street_value / 3.0)),
+        max(0.0, min(1.0, ev.cheap_draw_continue_value / 3.0)),
       ]
     )
     while len(obs) < BADUGI_OBSERVATION_VECTOR_SIZE:

@@ -63,6 +63,18 @@ class BadugiStartingRangesTest(unittest.TestCase):
 
         self.assertEqual(teacher_action(env), 0)
 
+    def test_teacher_calls_cheap_developing_draw_before_final_street(self):
+        env = BadugiEnv()
+        env.reset(seed=1)
+        env.phase = "BET"
+        env.round = 1
+        env.pot = 24
+        env.current_bet = 1
+        env.player_bet = 0
+        env.player_hand = [(0, 0), (1, 1), (6, 2), (12, 2)]
+
+        self.assertEqual(teacher_action(env), 2)
+
     def test_teacher_does_not_value_bet_rough_final_badugi_without_draw_signal(self):
         env = BadugiEnv()
         env.reset(seed=1)

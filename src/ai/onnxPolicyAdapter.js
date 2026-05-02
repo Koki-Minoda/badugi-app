@@ -41,7 +41,7 @@ function getLegalActions(payload = {}) {
 export function buildBadugiOnnxFeatures(entry, payload = {}) {
   const vector = buildBadugiObservationVector(payload.observation ?? payload);
   if (entry?.featureSet !== "badugi-observation-v1-ev") {
-    for (let idx = 48; idx <= 53; idx += 1) {
+    for (let idx = 48; idx <= 55; idx += 1) {
       vector[idx] = 0;
     }
   }

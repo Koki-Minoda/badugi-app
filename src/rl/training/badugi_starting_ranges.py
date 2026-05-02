@@ -187,6 +187,16 @@ def teacher_action(env) -> int:
     strong_made = made_badugi and hand_range.high_rank <= 8
     opponent_drew_multiple = getattr(env, "opponent_last_draw", 0) >= 2
     if to_call > 0:
+        ev = None
+        if hasattr(env, "_bet_ev_diagnostic") and hasattr(env, "_hand_features"):
+            ev = env._bet_ev_diagnostic(env._hand_features(env.player_hand), to_call)
+        cheap_developing_call = (
+            ev is not None
+            and not is_final_bet
+            and ev.cheap_draw_continue_value >= 0.35
+            and ev.pot_odds <= 0.30
+            and hand_range.made_cards >= 2
+        )
         if is_final_bet:
             if not made_badugi and mask[0] > 0:
                 return 0
@@ -195,6 +205,8 @@ def teacher_action(env) -> int:
             if strong_made and can_raise and mask[4] > 0:
                 return 4
             return 2 if mask[2] > 0 else env.safe_fallback_action()
+        if cheap_developing_call and mask[2] > 0:
+            return 2
         if not hand_range.should_continue_heads_up and mask[0] > 0:
             return 0
         if hand_range.is_premium and can_raise and mask[4] > 0:

@@ -1,18 +1,14 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { GAME_VARIANT_CATEGORIES } from "../../games/config/variantCatalog.js";
-import {
-  VARIANT_CATEGORY_LABELS,
-  listVariantProfiles,
-  searchVariantProfiles,
-  variantStatusBadge,
-} from "../../games/config/variantProfiles.js";
+import { listVariantProfiles } from "../../games/config/variantProfiles.js";
 import { isControllerBackedAppVariant } from "../game/appVariantRouting.js";
 import { usePlayerProgress } from "../hooks/usePlayerProgress.js";
 import { computeUnlockState } from "../utils/playerProgress.js";
 import { designTokens } from "../../styles/designTokens.js";
 import { PRO_MIXED_PRESETS } from "../../config/mixed/proPresets.js";
-import { MGX_DEFAULT_LOCALE, MGX_LOCALES } from "../../config/mgxLocaleConfig.js";
+import { MGX_DEFAULT_LOCALE } from "../../config/mgxLocaleConfig.js";
+import variantJa from "../../i18n/variants.ja.json";
 
 const CATEGORY_ORDER = [
   GAME_VARIANT_CATEGORIES.BOARD,
@@ -22,17 +18,97 @@ const CATEGORY_ORDER = [
   GAME_VARIANT_CATEGORIES.STUD,
 ];
 
-function RequirementChips({ requirements }) {
+const EN_CATEGORY_LABELS = Object.freeze({
+  [GAME_VARIANT_CATEGORIES.BOARD]: "Board / Hold'em / Omaha",
+  [GAME_VARIANT_CATEGORIES.TRIPLE_DRAW]: "Triple Draw",
+  [GAME_VARIANT_CATEGORIES.SINGLE_DRAW]: "Single Draw",
+  [GAME_VARIANT_CATEGORIES.DRAMAHA]: "Dramaha",
+  [GAME_VARIANT_CATEGORIES.STUD]: "Stud",
+});
+
+const JA_CATEGORY_LABELS = Object.freeze({
+  [GAME_VARIANT_CATEGORIES.BOARD]: "ボード / ホールデム / オマハ",
+  [GAME_VARIANT_CATEGORIES.TRIPLE_DRAW]: "トリプルドロー",
+  [GAME_VARIANT_CATEGORIES.SINGLE_DRAW]: "シングルドロー",
+  [GAME_VARIANT_CATEGORIES.DRAMAHA]: "ドラマハ",
+  [GAME_VARIANT_CATEGORIES.STUD]: "スタッド",
+});
+
+const BETTING_LABELS = Object.freeze({
+  en: {
+    "no-limit": "No-limit",
+    "fixed-limit": "Fixed-limit",
+    "pot-limit": "Pot-limit",
+  },
+  ja: {
+    "no-limit": "ノーリミット",
+    "fixed-limit": "フィックスリミット",
+    "pot-limit": "ポットリミット",
+  },
+});
+
+const MIXED_PRESET_JA = Object.freeze({
+  "mix-horse-pro": {
+    name: "HORSE Pro",
+    description: "プロシリーズで使われる5ゲームのフィックスリミットローテーションです。",
+  },
+  "mix-8game-pro": {
+    name: "8-Game Pro",
+    description: "WSOP形式に近い8ゲームのミックスローテーションです。",
+  },
+  "mix-10game-pro": {
+    name: "10-Game Pro",
+    description: "BadugiとNL 2-7 SDを加えた上位ミックスです。",
+  },
+  "mix-pro-dealers-choice": {
+    name: "Dealer's Choice Pro",
+    description: "禁止ゲーム設定を含む重み付きディーラーズチョイスです。",
+  },
+  "mix-pro-category": {
+    name: "Category Rotation",
+    description: "カテゴリ単位でゲームプールを切り替えるディーラーズチョイスです。",
+  },
+});
+
+function localizeBettingLabel(value, language) {
+  return BETTING_LABELS[language]?.[value] ?? value;
+}
+
+function localizeVariantProfile(profile, language) {
+  if (!profile) return profile;
+  const translation = language === "ja" ? variantJa[profile.id] : null;
+  const name = translation?.name || profile.name;
+  const description = translation?.description || profile.description || profile.summary;
+  return {
+    ...profile,
+    name,
+    description,
+    bettingLabel: localizeBettingLabel(profile.betting, language),
+    searchText: `${profile.id} ${name} ${description} ${(profile.tags ?? []).join(" ")}`.toLowerCase(),
+  };
+}
+
+function localizeMixedPreset(preset, language) {
+  if (language !== "ja") return preset;
+  const translation = MIXED_PRESET_JA[preset.id];
+  return {
+    ...preset,
+    name: translation?.name ?? preset.name,
+    description: translation?.description ?? preset.description,
+  };
+}
+
+function RequirementChips({ requirements, labels }) {
   if (!requirements) return null;
   const chips = [];
-  if (requirements.needsBoardRenderer) chips.push("Board");
-  if (requirements.needsDrawEngine) chips.push("Draw");
-  if (requirements.needsStudEngine) chips.push("Stud");
-  if (requirements.needsSplitPot) chips.push("Split Pot");
-  if (requirements.needsBadugiEvaluator) chips.push("Badugi Eval");
-  if (requirements.needsHiLoEvaluator) chips.push("Hi-Lo Eval");
-  if (requirements.needsArchieEvaluator) chips.push("Archie Eval");
-  if (requirements.needsZeroEvaluator) chips.push("Zero Eval");
+  if (requirements.needsBoardRenderer) chips.push(labels.board);
+  if (requirements.needsDrawEngine) chips.push(labels.draw);
+  if (requirements.needsStudEngine) chips.push(labels.stud);
+  if (requirements.needsSplitPot) chips.push(labels.splitPot);
+  if (requirements.needsBadugiEvaluator) chips.push(labels.badugiEval);
+  if (requirements.needsHiLoEvaluator) chips.push(labels.hiLoEval);
+  if (requirements.needsArchieEvaluator) chips.push(labels.archieEval);
+  if (requirements.needsZeroEvaluator) chips.push(labels.zeroEval);
   if (chips.length === 0) return null;
   return (
     <div className="flex flex-wrap gap-2 text-xs">
@@ -48,8 +124,19 @@ function RequirementChips({ requirements }) {
   );
 }
 
+function getStatusBadge(profile, labels) {
+  if (!profile) return { label: labels.statusUnknown, tone: "neutral" };
+  if (profile.status === "live") {
+    return { label: labels.statusLive, tone: "success" };
+  }
+  if (profile.status === "wip") {
+    return { label: labels.statusWip, tone: "warning" };
+  }
+  return { label: labels.statusPlanned, tone: "muted" };
+}
+
 function VariantCard({ profile, onLaunch, copy }) {
-  const badge = variantStatusBadge(profile);
+  const badge = getStatusBadge(profile, copy);
   const launchVariantId = profile.engineKey ?? profile.id;
   const canLaunch = Boolean(launchVariantId && isControllerBackedAppVariant(launchVariantId));
   return (
@@ -78,9 +165,9 @@ function VariantCard({ profile, onLaunch, copy }) {
       </div>
 
       <p className="text-sm text-slate-300">{profile.description || profile.summary}</p>
-      <RequirementChips requirements={profile.requirements} />
+      <RequirementChips requirements={profile.requirements} labels={copy.requirements} />
       <div className="flex items-center justify-between text-xs text-slate-400">
-        <span>{copy.betting}: {profile.betting}</span>
+        <span>{copy.betting}: {profile.bettingLabel ?? profile.betting}</span>
         <span>{copy.priority}: {profile.priorityPhase || "-"}</span>
       </div>
       <button
@@ -113,40 +200,11 @@ export default function GameSelectorScreen({
   const unlockState = computeUnlockState(playerProgress);
   const pendingStep =
     unlockState.chain.find((step) => !step.complete) ?? null;
-  const advancedModes = useMemo(
-    () => [
-      {
-        id: "mixed",
-        title: "Mixed Game",
-        description: "Create up to 20-slot rotations with the Mixed builder.",
-        locked: unlockState.mixedGameLocked,
-        action: () => navigate("/mixed"),
-        hint: unlockState.mixedGameLocked
-          ? `Clear the world championship (remaining: ${pendingStep?.label ?? "world"})`
-          : "Available now",
-      },
-      {
-        id: "multigame",
-        title: "Multi-Game Tournament",
-        description: "Prototype lobby for multi-variant MTTs.",
-        locked: unlockState.multiGameLocked,
-        action: () => navigate("/multigame"),
-        hint: unlockState.multiGameLocked ? "Unlock by winning the world finals" : "Open prototype",
-      },
-      {
-        id: "dealers-choice",
-        title: "Dealer's Choice",
-        description: "Preview the roulette animation that picks the next variant each hand.",
-        locked: unlockState.dealerChoiceLocked,
-        action: () => navigate("/dealers-choice"),
-        hint: unlockState.dealerChoiceLocked ? "Unlock by winning the world finals" : "Try the roulette UI",
-      },
-    ],
-    [navigate, pendingStep, unlockState]
-  );
   const isJapanese = language === "ja";
-  const copy = isJapanese
-    ? {
+  const copy = useMemo(
+    () =>
+      isJapanese
+        ? {
         eyebrow: "キャッシュゲーム",
         title: "ゲームを選択",
         description:
@@ -163,8 +221,49 @@ export default function GameSelectorScreen({
         comingSoon: "準備中",
         betting: "ベット",
         priority: "優先フェーズ",
-      }
-    : {
+        availableNow: "利用可能",
+        lockedWorld: (label) => `世界大会クリアで解放（残り: ${label ?? "World"}）`,
+        unlockWorld: "世界大会優勝で解放",
+        openPrototype: "プロトタイプを開く",
+        rouletteUi: "ルーレットUIを試す",
+        advancedModes: {
+          mixed: {
+            title: "Mixed Game",
+            description: "最大20枠のゲームローテーションをミックスビルダーで作成します。",
+          },
+          multigame: {
+            title: "Multi-Game Tournament",
+            description: "複数ゲーム対応MTTのプロトタイプロビーです。",
+          },
+          dealersChoice: {
+            title: "Dealer's Choice",
+            description: "次のゲームをルーレットで選ぶディーラーズチョイスを確認できます。",
+          },
+        },
+        categoryLabels: JA_CATEGORY_LABELS,
+        requirements: {
+          board: "ボード",
+          draw: "ドロー",
+          stud: "スタッド",
+          splitPot: "スプリット",
+          badugiEval: "Badugi評価",
+          hiLoEval: "ハイロー評価",
+          archieEval: "Archie評価",
+          zeroEval: "Zero評価",
+        },
+        statusLive: "プレイ可能",
+        statusWip: "開発中",
+        statusPlanned: "予定",
+        statusUnknown: "不明",
+        mixedPro: "ミックスPro",
+        mode: "方式",
+        selectionModes: {
+          WEIGHTED: "重み付き",
+          CATEGORY: "カテゴリ",
+          FIXED: "固定",
+        },
+          }
+        : {
         eyebrow: "Cash Game",
         title: "Select Your Variant",
         description:
@@ -181,36 +280,122 @@ export default function GameSelectorScreen({
         comingSoon: "Coming Soon",
         betting: "Betting",
         priority: "Priority Phase",
-      };
+        availableNow: "Available now",
+        lockedWorld: (label) => `Clear the world championship (remaining: ${label ?? "world"})`,
+        unlockWorld: "Unlock by winning the world finals",
+        openPrototype: "Open prototype",
+        rouletteUi: "Try the roulette UI",
+        advancedModes: {
+          mixed: {
+            title: "Mixed Game",
+            description: "Create up to 20-slot rotations with the Mixed builder.",
+          },
+          multigame: {
+            title: "Multi-Game Tournament",
+            description: "Prototype lobby for multi-variant MTTs.",
+          },
+          dealersChoice: {
+            title: "Dealer's Choice",
+            description: "Preview the roulette animation that picks the next variant each hand.",
+          },
+        },
+        categoryLabels: EN_CATEGORY_LABELS,
+        requirements: {
+          board: "Board",
+          draw: "Draw",
+          stud: "Stud",
+          splitPot: "Split Pot",
+          badugiEval: "Badugi Eval",
+          hiLoEval: "Hi-Lo Eval",
+          archieEval: "Archie Eval",
+          zeroEval: "Zero Eval",
+        },
+        statusLive: "Live",
+        statusWip: "In Progress",
+        statusPlanned: "Planned",
+        statusUnknown: "Unknown",
+        mixedPro: "Mixed Pro",
+        mode: "Mode",
+        selectionModes: {
+          WEIGHTED: "Weighted",
+          CATEGORY: "Category",
+          FIXED: "Fixed",
+            },
+          },
+    [isJapanese],
+  );
 
-const variants = useMemo(() => {
-  if (search.trim()) {
-    return searchVariantProfiles(search);
-  }
-  return listVariantProfiles({ category: activeCategory });
-}, [activeCategory, search]);
+  const allProfiles = useMemo(
+    () => listVariantProfiles().map((profile) => localizeVariantProfile(profile, language)),
+    [language],
+  );
 
-const playableProfiles = useMemo(
-  () =>
-    listVariantProfiles()
-      .filter((profile) => isControllerBackedAppVariant(profile.engineKey ?? profile.id))
-      .sort((a, b) => (a.priorityPhase ?? 99) - (b.priorityPhase ?? 99)),
-  [],
-);
+  const variants = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (query) {
+      return allProfiles.filter((profile) => profile.searchText.includes(query));
+    }
+    return allProfiles.filter((profile) => profile.category === activeCategory);
+  }, [activeCategory, allProfiles, search]);
 
-const handleLaunch = (profile) => {
-  const variantId = profile.engineKey ?? profile.id;
-  if (!variantId || !isControllerBackedAppVariant(variantId)) return;
-  if (typeof onLaunchVariant === "function") {
-    onLaunchVariant(variantId);
-    return;
-  }
-  navigate(`/game?variant=${variantId}`);
-};
+  const playableProfiles = useMemo(
+    () =>
+      allProfiles
+        .filter((profile) => isControllerBackedAppVariant(profile.engineKey ?? profile.id))
+        .sort((a, b) => (a.priorityPhase ?? 99) - (b.priorityPhase ?? 99)),
+    [allProfiles],
+  );
 
-const quickLoadPreset = (presetId) => {
-  navigate(`/mixed?preset=${presetId}`);
-};
+  const advancedModes = useMemo(
+    () => [
+      {
+        id: "mixed",
+        title: copy.advancedModes.mixed.title,
+        description: copy.advancedModes.mixed.description,
+        locked: unlockState.mixedGameLocked,
+        action: () => navigate("/mixed"),
+        hint: unlockState.mixedGameLocked
+          ? copy.lockedWorld(pendingStep?.label)
+          : copy.availableNow,
+      },
+      {
+        id: "multigame",
+        title: copy.advancedModes.multigame.title,
+        description: copy.advancedModes.multigame.description,
+        locked: unlockState.multiGameLocked,
+        action: () => navigate("/multigame"),
+        hint: unlockState.multiGameLocked ? copy.unlockWorld : copy.openPrototype,
+      },
+      {
+        id: "dealers-choice",
+        title: copy.advancedModes.dealersChoice.title,
+        description: copy.advancedModes.dealersChoice.description,
+        locked: unlockState.dealerChoiceLocked,
+        action: () => navigate("/dealers-choice"),
+        hint: unlockState.dealerChoiceLocked ? copy.unlockWorld : copy.rouletteUi,
+      },
+    ],
+    [copy, navigate, pendingStep, unlockState],
+  );
+
+  const mixedPresets = useMemo(
+    () => PRO_MIXED_PRESETS.map((preset) => localizeMixedPreset(preset, language)),
+    [language],
+  );
+
+  const handleLaunch = (profile) => {
+    const variantId = profile.engineKey ?? profile.id;
+    if (!variantId || !isControllerBackedAppVariant(variantId)) return;
+    if (typeof onLaunchVariant === "function") {
+      onLaunchVariant(variantId);
+      return;
+    }
+    navigate(`/game?variant=${variantId}`);
+  };
+
+  const quickLoadPreset = (presetId) => {
+    navigate(`/mixed?preset=${presetId}`);
+  };
 
   return (
     <div
@@ -300,25 +485,20 @@ const quickLoadPreset = (presetId) => {
         </section>
 
         <section className="grid gap-4 md:grid-cols-3">
-          {PRO_MIXED_PRESETS.map((preset) => (
+          {mixedPresets.map((preset) => (
             <div
               key={preset.id}
               className="p-5 rounded-3xl border border-white/10 bg-slate-900/70 flex flex-col gap-3"
             >
               <div>
                 <p className="text-xs text-slate-400 uppercase tracking-[0.3em]">
-                  Mixed Pro
+                  {copy.mixedPro}
                 </p>
                 <h3 className="text-xl font-semibold text-white">{preset.name}</h3>
                 <p className="text-sm text-slate-300">{preset.description}</p>
               </div>
               <div className="text-xs text-slate-400">
-                Mode:{" "}
-                {preset.selectionMode === "WEIGHTED"
-                  ? "Weighted"
-                  : preset.selectionMode === "CATEGORY"
-                  ? "Category"
-                  : "Fixed"}
+                {copy.mode}: {copy.selectionModes[preset.selectionMode] ?? preset.selectionMode}
               </div>
               <button
                 type="button"
@@ -343,7 +523,7 @@ const quickLoadPreset = (presetId) => {
                     : "bg-slate-800 text-slate-300 hover:bg-slate-700"
                 }`}
               >
-                {VARIANT_CATEGORY_LABELS[category]}
+                {copy.categoryLabels[category]}
               </button>
             ))}
           </div>

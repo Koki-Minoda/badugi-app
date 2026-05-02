@@ -1567,7 +1567,12 @@ Draw RL test coverage:
         - 2026-05-02 checkpoint比較: 現行 `public/models/badugi_standard_dqn_v2.onnx` をbaselineに、10k/20k/30k/40k/50k checkpointをONNX exportして評価。短縮評価では10k checkpointが最良で `avgReward=0.857`, `showdownWinRate=0.570`, `foldRate=0.100`, `avgRewardDeltaVsBaseline=+0.084`。
         - 2026-05-02 default gate: run内最良10k checkpointは `candidateAvgReward=0.787`, `showdownWinRate=0.571`, `foldRate=0.112`, `avgRewardDeltaVsBaseline=+0.0699` で baseline差分ゲート未達。50k checkpointは `candidateAvgReward=0.436`, `showdownWinRate=0.649`, `foldRate=0.306`, `avgRewardDeltaVsBaseline=-0.2808` で未達。
         - 2026-05-02 判定: 50k run は現行 `standard-dqn-v2` を明確に上回らないため、public model へは反映しない。現行10k v2をStandardとして維持する。
+        - 2026-05-02 分析: 50k は `showdownWinRate` が上がる一方で `foldRate` も上がり、平均報酬が落ちた。これは「勝てるショーダウンだけ残す」方向へ寄りすぎ、fixed-limit の安い call / draw equity / fold equity をチップEVとして拾えていない可能性が高い。
+        - 2026-05-02 分析: 現在のEQは `_street_adjusted_strength`, `one_draw_top_half_probability`, `potOdds`, opponent tendency の proxy であり、hand vs range の明示的な equity / EV 計算ではない。次の改善では `callEV = equity * potAfterCall - callCost`、`raiseEV = foldEquity * pot + callContinueEV - extraCost` のような教師・reward・評価ログを追加する。
+        - 2026-05-02 分析: 30k以降は `showdownWinRate` が 0.67-0.69 まで上がったが foldRate も 0.27-0.33 まで悪化。特に tight profile 相手に fold が増えすぎているため、pat pressure / aggression に対する過剰foldを抑える reward と teacher correction が必要。
       - [ ] `AI-06f` Pro以降は 6-max training / evaluation を追加し、position / multiway pot / FT chip pressure を含めて学習する。
+      - [ ] `AI-06f-0` Badugi equity / EV diagnostic を追加する。各decision logに `estimatedEquity`, `potOdds`, `callEV`, `raiseEV`, `foldEV`, `drawEquity`, `opponentProfile` を保存し、勝率ではなくチップEVで失敗箇所を追えるようにする。
+      - [ ] `AI-06f-1` Badugi range equity table を作る。27万 starting hand 分布に加え、street / draw remaining / opponent draw count / opponent pat pressure を含む heads-up equity proxy を事前計算または高速近似する。
       - [ ] `AI-06g` CPU性格別モデルまたはpolicy headを設計する。候補: loose-aggressive, tight-aggressive, tight-passive, exploit-reader, balanced。
       - [ ] `AI-06h` Badugiプレイガイドを作成する。内容: ルール、基本戦略、position別参加レンジ、pat/draw判断、rough Badugiの扱い、初手Q-low Badugiなどの実戦例。
       - [x] `AI-06c-4` ドロー残り回数・最終bet・相手最終ドロー枚数で押し引き評価を変える。

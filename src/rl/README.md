@@ -115,6 +115,21 @@ environment is an aggregate approximation: the hero still compares against one
 showdown hand, while the other seats contribute position pressure, multiway dead
 money, reduced fold equity, and tighter semi-bluff incentives. Promote those
 models only against 6-max gates, not heads-up gates.
+Human/practice benchmark is intentionally separate from the synthetic promotion
+gate:
+
+```bash
+npm run ai:benchmark-badugi-human-practice -- \
+  --model public/models/badugi_pro_v1.onnx \
+  --tier pro \
+  --episodes 200 \
+  --report-only
+```
+
+Without `--human-log`, the result is `practiceOnly=true` and must not be used to
+claim a verified human win rate. To make a human-verified claim, provide
+JSON/JSONL hand logs and add `--require-human-logs`; records may use
+`heroResult` (`win`/`loss`/`tie`) or numeric `heroNet`.
 For current CPU training, keep `--train-every-steps 4` unless you are doing a
 small diagnostic run; updating every environment step is much slower and did not
 improve the short-run policy.

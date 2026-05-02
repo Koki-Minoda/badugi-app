@@ -10,6 +10,7 @@ from rl.env.badugi_env import (
     resolve_opponent_profile,
     starting_score_percentile,
 )
+from rl.training.benchmark_badugi_human_practice import summarize_human_logs
 from rl.training.gate_badugi_model import summarize_runs
 
 
@@ -106,6 +107,31 @@ class BadugiEnvTest(unittest.TestCase):
         self.assertEqual(summary["worstProfileAvgReward"], -0.25)
         self.assertIn("draw_heavy", summary["profileSummaries"])
         self.assertEqual(summary["evDiagnostics"]["profitableFoldMisses"], 4)
+
+    def test_human_practice_log_summary_marks_verified_logs(self):
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "human.jsonl"
+            path.write_text(
+                "\n".join(
+                    [
+                        '{"heroResult":"win"}',
+                        '{"heroResult":"loss"}',
+                        '{"heroNet":0}',
+                    ]
+                ),
+                encoding="utf8",
+            )
+
+            summary = summarize_human_logs(path, min_hands=3)
+
+        self.assertTrue(summary["verified"])
+        self.assertEqual(summary["hands"], 3)
+        self.assertEqual(summary["wins"], 1)
+        self.assertEqual(summary["losses"], 1)
+        self.assertEqual(summary["ties"], 1)
 
     def test_showdown_result_is_returned_as_terminal_reward(self):
         env = BadugiEnv()

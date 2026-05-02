@@ -1697,7 +1697,10 @@ Draw RL test coverage:
         - 次の具体策: fold miss の主因は facing bet で action 0 を選ぶ頻度がまだ高いこと。次は teacher replay 内の `profitable_continue` サンプルを oversample し、DQN loss 側で fold action に対する margin loss を追加する。単純なreward追加だけではshowdown勝率は上がるがfoldRateが悪化する。
         - 2026-05-02 強さ評価の現状: Pro v2 は synthetic 6-max gate で Standard v3 を大きく上回ったが、人間プレイヤー相手に勝率6割以上を保証する評価はまだない。現時点で言えるのは「scripted 7 profile x 2 seed の近似6-max環境で `avgReward=2.307`, `showdownWinRate=0.674`, `foldRate=0.159`」まで。
         - 2026-05-02 注意: Iron / WorldMaster の production ONNX は現状 bootstrap heuristic。フロントONNX経路の動作確認用としては有効だが、「明らかに人より強い」ことは未検証。上位tierへ実装するには trained checkpoint への置換が必須。
-        - [ ] `AI-06p` human/practice benchmark gate を追加する。最低限、手動または記録済み人間プレイログに対して Pro は実戦体感で少し勝ち越す、Iron は明確に勝ち越す、WorldMaster は短期以外ほぼ勝てない、という基準を別評価として記録する。現 synthetic gate だけで「人に6割勝つ」とは宣言しない。
+        - [x] `AI-06p` human/practice benchmark gate を追加する。最低限、手動または記録済み人間プレイログに対して Pro は実戦体感で少し勝ち越す、Iron は明確に勝ち越す、WorldMaster は短期以外ほぼ勝てない、という基準を別評価として記録する。現 synthetic gate だけで「人に6割勝つ」とは宣言しない。
+          - 2026-05-02 実装: `npm run ai:benchmark-badugi-human-practice` を追加。practice profile は recreational / solid_regular / aggressive_regular / pat_pressure に分け、practiceOnly と humanVerified を明示する。
+          - 2026-05-02 実装: `--human-log` で JSON/JSONL の人間プレイログを読み、`heroResult` または `heroNet` から win/loss/tie を集計する。`--require-human-logs` を付けた場合、十分なログがない限り gate は pass しない。
+          - 2026-05-02 方針: human log なしの benchmark は練習fixture評価であり、Pro/Iron/WorldMaster の人間相手勝率保証には使わない。
       - [ ] `AI-06e` 2-7 / A-5 用の実ONNXを生成・配置する。現状は `model-27draw-iron-v1` (`D01/S01`) と `model-a5draw-iron-v1` (`D02/S02`) の registry / feature builder / routing test はあるが、実 `.onnx` は optional 未配置で、App draw CPU は rule-based fallback が主経路。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
   - P2P:

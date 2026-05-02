@@ -1534,6 +1534,9 @@ Draw RL test coverage:
         - 2026-05-02 確認: 修正後の `badugi_positive_shaping_probe_5k_20260502` は学習終盤 `avg_reward=0.661`、ONNX gate は短縮条件で PASS。ただし default gate は `avgRewardDeltaVsBaseline=0.2435` で `0.25` にわずかに届かず昇格保留。
         - 2026-05-02 確認: 修正後の `badugi_positive_shaping_probe_10k_20260502` は学習終盤 `avg_reward=0.874`。default gate は `candidateAvgReward=0.717`, `showdownWinRate=0.612`, `foldRate=0.187`, `avgRewardDeltaVsBaseline=0.3133` で PASS、`recommendedTier=standard`。
         - 2026-05-02 反映: `badugi_positive_shaping_probe_10k_20260502/badugi_dqn_latest.pt` を `/tmp/mgx-badugi-positive-shaping-10k.onnx` へ export し、`model-badugi-standard-dqn-v2` / `public/models/badugi_standard_dqn_v2.onnx` に反映。checksum は `22899fc71e9e48b345fa1ec1ec025bf0e71a7ea6f30d4c31f18e54d9f04b067c`。
+        - 2026-05-02 ルーティング修正: 通常 `D03 + standard` が古い `model-badugi-standard-dqn-v1` を選ぶ可能性を排除し、`model-badugi-standard-dqn-v2` を通常Standard経路へ昇格。v1は `legacy` / optional とし、live CPU へはルートしない。
+        - 2026-05-02 ルーティング修正: `model-badugi-beginner-dqn-v1` は現行 evaluator/draw 修正後だが positive shaping cap 修正前の学習断面なので `legacy` / optional とし、通常Beginner CPUから外す。Beginnerは current-env beginner-strength model を別途作るまでは generic/rule-based fallback とする。
+        - 2026-05-02 方針: 今後は各ONNXに `trainingRun`, `trainingStatus`, `trainingNotes`, checksum を持たせ、どの評価器・報酬・opponent profile・gateで学習したかを追跡できるものだけを live route に入れる。
         - 2026-05-01 確認: `npm run ai:evaluate-badugi-onnx -- --model public/models/badugi_worldmaster_v1.onnx --episodes 500 --max-steps 200 --seed 20260502` は bootstrap として `avgReward=-1.749`, `showdownWinRate=0.156`, `showdowns=500`, `folds=0`。
         - 2026-05-01 確認: AI routing tests / BadugiEnv unittest / `npm run lint` / `npm run build` は成功。
         - 2026-05-01 追加: `npm run ai:gate-badugi-model` を追加し、候補ONNXが `avgReward`, `showdownWinRate`, `foldRate`, baseline差分の昇格ゲートを満たさなければ non-zero exit で止める。
@@ -1557,6 +1560,11 @@ Draw RL test coverage:
         - 2026-05-01 更新: bootstrap ONNX generator も starting hand / pot odds / position feature を参照するようにした。既存 public model は gate PASS まで再生成しない。
         - 2026-05-01 確認: feature probe 1500 episodes は `avg_reward_last_100=-1.1723`。ONNX gate は現 beginner DQN比で `avgRewardDelta=+0.0646`, WorldMaster bootstrap比で `+0.1068` まで改善したが、`showdownWinRate=0.158` のため昇格しない。
         - 残件: 長期学習では `avgReward` だけでなく `showdownWinRate` を落とさないよう、showdown value / draw quality の reward を追加検討する。
+      - [ ] `AI-06d` current-env Beginner DQN を作り直す。条件: Standardより明確に弱く、ただし破綻しない。古いDQN断面は使わない。
+      - [ ] `AI-06e` current-env Standard 50k を回し、10k v2を上回るか評価する。条件: default gate PASS、Standard相当の体感強度、過剰fold/過剰bluffなし。
+      - [ ] `AI-06f` Pro以降は 6-max training / evaluation を追加し、position / multiway pot / FT chip pressure を含めて学習する。
+      - [ ] `AI-06g` CPU性格別モデルまたはpolicy headを設計する。候補: loose-aggressive, tight-aggressive, tight-passive, exploit-reader, balanced。
+      - [ ] `AI-06h` Badugiプレイガイドを作成する。内容: ルール、基本戦略、position別参加レンジ、pat/draw判断、rough Badugiの扱い、初手Q-low Badugiなどの実戦例。
       - [x] `AI-06c-4` ドロー残り回数・最終bet・相手最終ドロー枚数で押し引き評価を変える。
         - 2026-05-01 更新: 簡易 BadugiEnv に 3rd draw 後の final BET round を追加。final BET 後に showdown へ進む。
         - 2026-05-01 更新: `street_adjusted_strength` を追加し、同じK-high Badugiでも early street では許容、final BETでは弱い値へ落とす。

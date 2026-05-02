@@ -33,14 +33,16 @@ export function selectModelForVariant({ variantId, tierId, characterId, modelId 
     );
     if (exactTier) return exactTier;
   }
-  if (variantId) {
+  if (variantId && !tierId) {
     const exact = REGISTRY.find(
       (entry) => entry.variantIds.includes(variantId) && entry.characterIds.length === 0,
     );
     if (exact) return exact;
   }
   if (tierId) {
-    const tierMatch = REGISTRY.find((entry) => entry.tier === tierId);
+    const tierMatch = REGISTRY.find(
+      (entry) => entry.tier === tierId && entry.characterIds.length === 0,
+    );
     if (tierMatch) return tierMatch;
   }
   return REGISTRY[REGISTRY.length - 1] ?? null;

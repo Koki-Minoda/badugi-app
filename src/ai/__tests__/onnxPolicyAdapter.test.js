@@ -10,10 +10,10 @@ import {
 describe("onnxPolicyAdapter Badugi schema", () => {
   it("selects tier-specific Badugi models for Beginner, Standard, Pro, Iron, and WorldMaster", () => {
     expect(selectModelForVariant({ variantId: "D03", tierId: "beginner" })?.id).toBe(
-      "model-badugi-beginner-dqn-v1",
+      "model-generic-v1",
     );
     expect(selectModelForVariant({ variantId: "D03", tierId: "standard" })?.id).toBe(
-      "model-badugi-standard-dqn-v1",
+      "model-badugi-standard-dqn-v2",
     );
     expect(
       selectModelForVariant({

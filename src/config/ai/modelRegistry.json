@@ -74,12 +74,13 @@
     "variantIds": [
       "D03"
     ],
-    "characterIds": [
-      "badugi-standard-reader"
-    ],
+    "characterIds": [],
     "tier": "standard",
     "onnx": "models/badugi_standard_dqn_v2.onnx",
     "checksumSha256": "22899fc71e9e48b345fa1ec1ec025bf0e71a7ea6f30d4c31f18e54d9f04b067c",
+    "trainingRun": "badugi_positive_shaping_probe_10k_20260502",
+    "trainingStatus": "active",
+    "trainingNotes": "Trained after evaluator/draw phase fixes and positive shaping cap fix. Default multi-profile gate recommended standard tier.",
     "productionRequired": true,
     "inputShape": [
       96
@@ -97,7 +98,9 @@
     "tier": "standard",
     "onnx": "models/badugi_standard_dqn_v1.onnx",
     "checksumSha256": "bb2613fbbf0848e741122bd8974599ea567b5650eb0f2801817ff24985ab114c",
-    "productionRequired": true,
+    "trainingStatus": "legacy",
+    "trainingNotes": "Retained for historical comparison only. Do not route to live CPU; trained before the current positive shaping cap fix.",
+    "productionRequired": false,
     "inputShape": [
       96
     ],
@@ -111,10 +114,15 @@
     "variantIds": [
       "D03"
     ],
+    "characterIds": [
+      "legacy-badugi-beginner-dqn"
+    ],
     "tier": "beginner",
     "onnx": "models/badugi_beginner_dqn_v1.onnx",
     "checksumSha256": "c8a3bb1f0b178b071e12dd2fe52646d626d167c5f0138942c5f861a1be019907",
-    "productionRequired": true,
+    "trainingStatus": "legacy",
+    "trainingNotes": "Retained for offline comparison only. Normal beginner CPU falls back to the non-DQN policy until a current-env beginner-strength model is trained.",
+    "productionRequired": false,
     "inputShape": [
       96
     ],

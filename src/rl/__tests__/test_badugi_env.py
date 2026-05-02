@@ -133,6 +133,30 @@ class BadugiEnvTest(unittest.TestCase):
         self.assertEqual(summary["losses"], 1)
         self.assertEqual(summary["ties"], 1)
 
+    def test_human_practice_log_summary_accepts_nested_human_benchmark_records(self):
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "human.jsonl"
+            path.write_text(
+                "\n".join(
+                    [
+                        '{"humanBenchmark":{"heroResult":"win"}}',
+                        '{"humanBenchmark":{"heroNet":-20}}',
+                        '{"heroNet":0}',
+                    ]
+                ),
+                encoding="utf8",
+            )
+
+            summary = summarize_human_logs(path, min_hands=3)
+
+        self.assertTrue(summary["verified"])
+        self.assertEqual(summary["wins"], 1)
+        self.assertEqual(summary["losses"], 1)
+        self.assertEqual(summary["ties"], 1)
+
     def test_showdown_result_is_returned_as_terminal_reward(self):
         env = BadugiEnv()
         env.reset(seed=1)

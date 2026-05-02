@@ -73,24 +73,30 @@ def iter_json_records(path: Path) -> list[dict[str, Any]]:
 
 
 def record_result(record: dict[str, Any]) -> str | None:
-    for key in ("heroResult", "result", "outcome"):
-        value = str(record.get(key, "")).lower()
-        if value in {"win", "won", "1"}:
-            return "win"
-        if value in {"loss", "lost", "-1"}:
-            return "loss"
-        if value in {"tie", "push", "0"}:
+    sources = [record]
+    if isinstance(record.get("humanBenchmark"), dict):
+        sources.insert(0, record["humanBenchmark"])
+    if isinstance(record.get("human_benchmark"), dict):
+        sources.insert(0, record["human_benchmark"])
+    for source in sources:
+        for key in ("heroResult", "result", "outcome"):
+            value = str(source.get(key, "")).lower()
+            if value in {"win", "won", "1"}:
+                return "win"
+            if value in {"loss", "lost", "-1"}:
+                return "loss"
+            if value in {"tie", "push", "0"}:
+                return "tie"
+        if "heroNet" in source:
+            try:
+                net = float(source["heroNet"])
+            except (TypeError, ValueError):
+                continue
+            if net > 0:
+                return "win"
+            if net < 0:
+                return "loss"
             return "tie"
-    if "heroNet" in record:
-        try:
-            net = float(record["heroNet"])
-        except (TypeError, ValueError):
-            return None
-        if net > 0:
-            return "win"
-        if net < 0:
-            return "loss"
-        return "tie"
     return None
 
 

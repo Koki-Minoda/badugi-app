@@ -255,6 +255,56 @@ class BadugiEnvTest(unittest.TestCase):
         self.assertGreater(early._multiway_pressure(), late._multiway_pressure())
         self.assertEqual(late.is_button, 1)
 
+    def test_sixmax_rewards_value_bet_over_check_with_strong_made_hand(self):
+        env = BadugiEnv(table_size=6, hero_position=5)
+        env.reset(seed=1)
+        env.phase = "BET"
+        env.round = 1
+        env.current_bet = 0
+        env.player_bet = 0
+        env.player_hand = [(0, 0), (1, 1), (3, 2), (7, 3)]
+        features = env._hand_features(env.player_hand)
+
+        check_reward = env._reward_shaping(features, 1)
+        bet_reward = env._reward_shaping(features, 3)
+        raise_alias_reward = env._reward_shaping(features, 4)
+
+        self.assertGreater(bet_reward, check_reward)
+        self.assertGreater(bet_reward, raise_alias_reward)
+
+    def test_sixmax_rewards_late_position_semibluff_over_check(self):
+        env = BadugiEnv(table_size=6, hero_position=5)
+        env.reset(seed=1)
+        env.phase = "BET"
+        env.round = 1
+        env.current_bet = 0
+        env.player_bet = 0
+        env.player_hand = [(0, 0), (1, 1), (6, 2), (12, 2)]
+        features = env._hand_features(env.player_hand)
+
+        check_reward = env._reward_shaping(features, 1)
+        bet_reward = env._reward_shaping(features, 3)
+        raise_alias_reward = env._reward_shaping(features, 4)
+
+        self.assertGreater(bet_reward, check_reward)
+        self.assertGreater(bet_reward, raise_alias_reward)
+
+    def test_sixmax_rewards_isolation_raise_over_flat_call(self):
+        env = BadugiEnv(table_size=6, hero_position=4)
+        env.reset(seed=1)
+        env.phase = "BET"
+        env.round = 1
+        env.pot = 18
+        env.current_bet = 1
+        env.player_bet = 0
+        env.player_hand = [(0, 0), (1, 1), (3, 2), (7, 3)]
+        features = env._hand_features(env.player_hand)
+
+        call_reward = env._reward_shaping(features, 2)
+        raise_reward = env._reward_shaping(features, 4)
+
+        self.assertGreater(raise_reward, call_reward)
+
     def test_fixed_limit_pot_odds_make_marginal_call_better_than_fold(self):
         env = BadugiEnv()
         env.reset(seed=1)

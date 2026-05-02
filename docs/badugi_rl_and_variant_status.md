@@ -1577,6 +1577,9 @@ Draw RL test coverage:
         - 2026-05-02 smoke: `badugi_sixmax_pro_probe_1k_20260502` は `--table-size 6` で完走し、学習ループ・ONNX入力・position/multiway pressure が動作することを確認。
         - 2026-05-02 評価: `badugi_sixmax_pro_probe_10k_20260502` は6-max gateで現行Pro bootstrap比 `avgRewardDelta=+0.386` と改善。ただしtier promotion上のPro閾値 `+0.5` 未達。Standard v3比は `+0.168` で、Standardとの差も十分ではないためPro本番へ未反映。
         - 2026-05-02 評価: `badugi_sixmax_pro_probe_20k_20260502` はStandard v3比 `avgRewardDelta=+0.060` まで低下。長く回すだけでは改善せず、actionCounts は bet がほぼ出ず call/check に寄る。Pro化には value bet / isolation raise / late-position semi-bluff の教師・reward強化が必要。
+        - 2026-05-02 更新: 6-max teacher/reward に「強いmade handのvalue bet」「late positionのsemi-bluff」「複数相手に対するisolation raise」を追加。初回10k評価後、no-call時は action 3 の bet を優先し、to-call時だけ action 4 の raise を使うように追加補正して、評価ログの actionCounts が読める形へ寄せた。
+        - 2026-05-02 評価: `badugi_sixmax_pro_value_probe_10k_20260502` を `--table-size 6`, profile mix, teacher warmup / imitation / expert replay 付きで10k学習。Standard v3比は `avgRewardDeltaVsBaseline=+0.180`, `avgReward=2.771`, `showdownWinRate=0.615`, `foldRate=0.178`。前回10kの `+0.168` から微改善したが、Pro昇格基準 `+0.25` 以上には届かないため public model へは未反映。bet/raise alias 補正後の長期probeは次回実行する。
+        - 残件: Pro候補は value bet / semi-bluff / isolation の行動頻度を増やせたかを actionCounts で確認し、20k checkpoint評価で Standard v3 に対して安定して `+0.25` 以上を取るまで昇格しない。
       - [x] `AI-06f-0` Badugi equity / EV diagnostic を追加する。各decision logに `estimatedEquity`, `potOdds`, `callEV`, `raiseEV`, `foldEV`, `drawEquity`, `opponentProfile` を保存し、勝率ではなくチップEVで失敗箇所を追えるようにする。
         - 2026-05-02 更新: `BadugiEnv` に `BetEVDiagnostic` を追加し、BET action の `info.ev` と ONNX 評価ログへ `profitableFoldMisses`, positive/negative callEV/raiseEV action counts を出す。
         - 2026-05-02 更新: Python学習環境と frontend `badugiObservationSchema.js` の slot 27-31 を再同期。startingHandStrength / potOdds / position / toCall / oneAway がフロントでも埋まるようにした。

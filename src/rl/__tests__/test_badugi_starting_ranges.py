@@ -75,6 +75,40 @@ class BadugiStartingRangesTest(unittest.TestCase):
 
         self.assertEqual(teacher_action(env), 2)
 
+    def test_sixmax_teacher_value_bets_strong_made_hand(self):
+        env = BadugiEnv(table_size=6, hero_position=5)
+        env.reset(seed=1)
+        env.phase = "BET"
+        env.round = 1
+        env.current_bet = 0
+        env.player_bet = 0
+        env.player_hand = [(0, 0), (1, 1), (3, 2), (7, 3)]
+
+        self.assertEqual(teacher_action(env), 3)
+
+    def test_sixmax_teacher_semibluffs_late_position_one_away(self):
+        env = BadugiEnv(table_size=6, hero_position=5)
+        env.reset(seed=1)
+        env.phase = "BET"
+        env.round = 1
+        env.current_bet = 0
+        env.player_bet = 0
+        env.player_hand = [(0, 0), (1, 1), (6, 2), (12, 2)]
+
+        self.assertEqual(teacher_action(env), 3)
+
+    def test_sixmax_teacher_isolation_raises_strong_hand_facing_bet(self):
+        env = BadugiEnv(table_size=6, hero_position=4)
+        env.reset(seed=1)
+        env.phase = "BET"
+        env.round = 1
+        env.pot = 18
+        env.current_bet = 1
+        env.player_bet = 0
+        env.player_hand = [(0, 0), (1, 1), (3, 2), (7, 3)]
+
+        self.assertEqual(teacher_action(env), 4)
+
     def test_teacher_does_not_value_bet_rough_final_badugi_without_draw_signal(self):
         env = BadugiEnv()
         env.reset(seed=1)

@@ -700,12 +700,36 @@ class BadugiEnv(gym.Env):
         and features.one_away
         and self.round < self.max_rounds
       )
+      sixmax_value_bet = self._sixmax_value_bet_spot(features, to_call)
+      sixmax_late_semibluff = self._sixmax_late_semibluff_spot(features, to_call, ev)
+      sixmax_isolation_raise = self._sixmax_isolation_raise_spot(features, to_call, ev)
       if action == 4 and features.one_away:
         reward += 0.15
       if action == 4 and features.is_nuts:
         reward += 0.35
       if action in (3, 4) and features.count == 4 and strength >= 0.72:
         reward += 0.25
+      if sixmax_value_bet:
+        if action == 3:
+          reward += 0.34
+        elif action == 4:
+          reward += 0.22
+        elif action in (1, 2):
+          reward -= 0.18
+      if sixmax_late_semibluff:
+        if action == 3:
+          reward += 0.28
+        elif action == 4:
+          reward += 0.18
+        elif action == 1:
+          reward -= 0.12
+      if sixmax_isolation_raise:
+        if action == 4:
+          reward += 0.36
+        elif action == 2:
+          reward -= 0.10
+      if to_call == 0 and action == 4 and (sixmax_value_bet or sixmax_late_semibluff):
+        reward -= 0.12
       if action in (3, 4) and self.round >= self.max_rounds and self._is_weak_final_badugi(features):
         reward += 0.18 if self.opponent_last_draw >= 2 else -0.55
       if action in (3, 4) and self.round >= self.max_rounds and self.opponent_last_draw >= 2:
@@ -716,7 +740,12 @@ class BadugiEnv(gym.Env):
         reward += 0.08 if opponent_foldability >= 0.45 else -0.16
       if action in (3, 4) and opponent_foldability < 0.18 and strength < 0.50:
         reward -= 0.22
-      if action in (3, 4) and multiway_pressure > 0 and strength < 0.58:
+      if (
+        action in (3, 4)
+        and multiway_pressure > 0
+        and strength < 0.58
+        and not sixmax_late_semibluff
+      ):
         reward -= min(0.22, multiway_pressure * 0.55)
       if action in (3, 4) and strength < 0.35:
         reward -= 0.45
@@ -758,6 +787,8 @@ class BadugiEnv(gym.Env):
         reward += 0.16
       if to_call > 0 and action in (3, 4):
         reward += 0.14 if ev.raise_ev >= ev.call_ev else -0.1
+        if self.table_size >= 6 and not sixmax_isolation_raise and strength < 0.58:
+          reward -= 0.16
       if action == 0 and to_call == 0:
         reward -= 0.2
     elif self.phase == "DRAW":
@@ -777,6 +808,47 @@ class BadugiEnv(gym.Env):
     low_bonus = max(0.0, (12 - high_rank) / 12.0) * 0.2
     nut_bonus = 0.15 if features.is_nuts else 0.0
     return min(1.0, count_score + low_bonus + nut_bonus)
+
+  def _is_late_position(self) -> bool:
+    return self._position_fraction() >= 0.6
+
+  def _sixmax_value_bet_spot(self, features: HandFeature, to_call: int | float) -> bool:
+    if self.table_size < 6 or to_call > 0 or self.bet_round >= self.max_bets:
+      return False
+    if features.count != 4 or not features.ranks:
+      return False
+    high_rank = max(features.ranks)
+    if high_rank <= 8:
+      return True
+    return self.round >= self.max_rounds and high_rank <= 10 and self.opponent_last_draw >= 2
+
+  def _sixmax_late_semibluff_spot(
+    self,
+    features: HandFeature,
+    to_call: int | float,
+    ev: BetEVDiagnostic,
+  ) -> bool:
+    if self.table_size < 6 or to_call > 0 or self.bet_round >= self.max_bets:
+      return False
+    if not self._is_late_position() or not features.one_away or self.round >= self.max_rounds:
+      return False
+    high_rank = max(features.ranks) if features.ranks else 12
+    return high_rank <= 8 and ev.future_street_value >= 0.45 and ev.fold_equity >= 0.12
+
+  def _sixmax_isolation_raise_spot(
+    self,
+    features: HandFeature,
+    to_call: int | float,
+    ev: BetEVDiagnostic,
+  ) -> bool:
+    if self.table_size < 6 or to_call <= 0 or self.bet_round >= self.max_bets:
+      return False
+    if not features.ranks:
+      return False
+    high_rank = max(features.ranks)
+    strong_made = features.count == 4 and high_rank <= 8
+    strong_one_away = features.one_away and high_rank <= 6 and ev.future_street_value >= 0.45
+    return (strong_made or strong_one_away) and ev.raise_ev >= ev.call_ev - 0.25
 
   def _draw_equity_estimate(self, features: HandFeature) -> float:
     draws_remaining = max(0, self.max_rounds - self.round)

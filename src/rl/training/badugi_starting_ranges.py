@@ -186,6 +186,10 @@ def teacher_action(env) -> int:
     rough_badugi = made_badugi and hand_range.high_rank >= 10
     strong_made = made_badugi and hand_range.high_rank <= 8
     opponent_drew_multiple = getattr(env, "opponent_last_draw", 0) >= 2
+    table_size = getattr(env, "table_size", 2)
+    position_fraction = env._position_fraction() if hasattr(env, "_position_fraction") else 0.5
+    is_sixmax = table_size >= 6
+    late_position = position_fraction >= 0.6
     if to_call > 0:
         ev = None
         if hasattr(env, "_bet_ev_diagnostic") and hasattr(env, "_hand_features"):
@@ -197,6 +201,20 @@ def teacher_action(env) -> int:
             and ev.pot_odds <= 0.30
             and hand_range.made_cards >= 2
         )
+        isolation_raise = (
+            is_sixmax
+            and can_raise
+            and ev is not None
+            and (
+                strong_made
+                or (
+                    hand_range.made_cards == 3
+                    and hand_range.high_rank <= 6
+                    and ev.future_street_value >= 0.45
+                )
+            )
+            and ev.raise_ev >= ev.call_ev - 0.25
+        )
         if is_final_bet:
             if not made_badugi and mask[0] > 0:
                 return 0
@@ -205,6 +223,8 @@ def teacher_action(env) -> int:
             if strong_made and can_raise and mask[4] > 0:
                 return 4
             return 2 if mask[2] > 0 else env.safe_fallback_action()
+        if isolation_raise and mask[4] > 0:
+            return 4
         if cheap_developing_call and mask[2] > 0:
             return 2
         if not hand_range.should_continue_heads_up and mask[0] > 0:
@@ -223,6 +243,23 @@ def teacher_action(env) -> int:
             return 3
         return 1 if mask[1] > 0 else env.safe_fallback_action()
 
+    if is_sixmax and strong_made and can_raise:
+        if mask[3] > 0:
+            return 3
+        if mask[4] > 0:
+            return 4
+    if (
+        is_sixmax
+        and late_position
+        and hand_range.made_cards == 3
+        and hand_range.high_rank <= 8
+        and hand_range.one_draw_top_half_probability >= 0.5
+        and can_raise
+    ):
+        if mask[3] > 0:
+            return 3
+        if mask[4] > 0:
+            return 4
     if hand_range.is_premium and can_raise:
         if mask[4] > 0:
             return 4

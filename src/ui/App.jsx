@@ -44,6 +44,7 @@ import {
 } from "../games/badugi/engine/roundFlow.jsx";
 import {
   analyzeBetSnapshot,
+  findNextBetActorSeat,
   needsActionForBet,
 } from "../games/badugi/flow/betRoundUtils.js";
 import BadugiGameController from "../games/badugi/BadugiGameController.js";
@@ -2407,12 +2408,6 @@ const SAFE_RESET_PHASE = "IDLE";
 
   // ======== DEBUG LOGGER (helpers) ========
   const actionSeqRef = useRef(0);
-
-  function setHasActedFlag(snap, seat, value = true) {
-    const target = snap[seat];
-    if (!target || target.hasActedThisRound === value) return;
-    snap[seat] = { ...target, hasActedThisRound: value };
-  }
 
   function betRoundNo(value = betRoundIndexSrc) {
     return Math.min(value, MAX_DRAWS);
@@ -5496,20 +5491,6 @@ const SAFE_RESET_PHASE = "IDLE";
   function afterBetActionWithSnapshot(snap, actedIndex) {
     snap = Array.isArray(snap) ? snap.map(clonePlayerState).filter(Boolean) : [];
     snap = ensureLastActionLabelsForSnapshot(snap);
-    const turnPlayer = snap[turn];
-    const isDrawPhase = phase === "DRAW";
-    // ANALYSIS: (A) BET 中に全員が all-in になると、この分岐で
-    //           それぞれ hasActed フラグだけ更新してターンを進める。
-    //           DRAW をスキップせず、残りの座席は scheduleFinish()/finishDrawRound()
-    //           へ到達するため、ラウンド自体は標準フローで閉じる。
-    if (turnPlayer?.allIn && !isDrawPhase) {
-      setHasActedFlag(snap, turn);
-      console.log(`[SKIP] Player ${turnPlayer.name} is all-in -> skip action`);
-      const nxt = nextAliveFrom(snap, turn);
-      if (nxt !== null) setTurn(nxt);
-      return;
-    }
-
     trace("afterBetActionWithSnapshot()", { phase, drawRound, actedIndex });
     if (transitioning) {
       const interimBet = maxBetThisRound(snap);
@@ -5582,8 +5563,7 @@ const SAFE_RESET_PHASE = "IDLE";
     const actedLabel = String(actedPlayer?.lastAction ?? "").toUpperCase();
     const actedAggressive =
       actedLabel.startsWith("RAISE") ||
-      actedLabel.startsWith("BET") ||
-      actedLabel.startsWith("ALL-IN");
+      actedLabel.startsWith("BET");
     if (actedAggressive) {
       resolvedBetHead = actedIndex;
       resolvedLastAggressor = actedIndex;
@@ -7311,8 +7291,17 @@ const SAFE_RESET_PHASE = "IDLE";
     }
 
     if (phase === "BET" && (p.allIn || p.stack <= 0)) {
-      const nxt = nextAliveFrom(activePlayers, turn);
-      if (nxt !== null) setTurn(nxt);
+      const maxNow = maxBetThisRound(activePlayers);
+      const nextActor = findNextBetActorSeat(activePlayers, turn + 1, maxNow);
+      if (nextActor !== null) {
+        setTurn(nextActor);
+        return;
+      }
+      forceFinishRoundRef.current({
+        reason: "bet-all-in-no-next-actor",
+        phaseOverride: "BET",
+        playersSnapshot: activePlayers,
+      });
       return;
     }
 

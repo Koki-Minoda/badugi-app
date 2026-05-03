@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { DeuceToSevenTripleDrawEngine } from "../DeuceToSevenTripleDrawEngine.js";
+import { AceToFiveTripleDrawEngine } from "../AceToFiveTripleDrawEngine.js";
+import { DeuceToSevenSingleDrawEngine } from "../DeuceToSevenSingleDrawEngine.js";
+import { AceToFiveSingleDrawEngine } from "../AceToFiveSingleDrawEngine.js";
 
 class FakeDeckManager {
   constructor(cards = []) {
@@ -20,6 +23,38 @@ class FakeDeckManager {
 
 function allCards(players) {
   return players.flatMap((player) => player.hand ?? []);
+}
+
+function bettingState(engine, playerOverrides = [], metadata = {}) {
+  const state = engine.initHand({
+    seatConfig: ["HUMAN", "CPU", "CPU", "CPU"],
+    startingStack: 500,
+    dealerIndex: 0,
+    structure: { sb: 10, bb: 20 },
+  });
+  state.street = "BET";
+  state.drawRoundIndex = 0;
+  state.actingPlayerIndex = 1;
+  state.players = state.players.map((player, seatIndex) => ({
+    ...player,
+    stack: 500,
+    bet: 40,
+    totalInvested: 0,
+    folded: false,
+    sittingOut: false,
+    seatOut: false,
+    allIn: false,
+    hasActedThisRound: true,
+    lastAction: "Call",
+    ...(playerOverrides[seatIndex] ?? {}),
+  }));
+  state.metadata = {
+    ...(state.metadata ?? {}),
+    currentBet: 40,
+    raiseCountThisRound: 1,
+    ...metadata,
+  };
+  return state;
 }
 
 describe("DeuceToSevenTripleDrawEngine", () => {
@@ -520,4 +555,69 @@ describe("DeuceToSevenTripleDrawEngine", () => {
       payout: 30,
     });
   });
+});
+
+describe("draw lowball fixed-limit all-in betting regressions", () => {
+  const variants = [
+    ["D01", () => new DeuceToSevenTripleDrawEngine()],
+    ["D02", () => new AceToFiveTripleDrawEngine()],
+    ["S01", () => new DeuceToSevenSingleDrawEngine()],
+    ["S02", () => new AceToFiveSingleDrawEngine()],
+  ];
+
+  it.each(variants)(
+    "%s treats a short all-in below the current bet as a non-reopening call",
+    (_, createEngine) => {
+      const engine = createEngine();
+      const state = bettingState(engine, [
+        { bet: 40, hasActedThisRound: true },
+        {
+          stack: 20,
+          bet: 0,
+          hasActedThisRound: false,
+          lastAction: "",
+        },
+        { bet: 40, hasActedThisRound: true },
+        { bet: 0, folded: true, hasActedThisRound: true, lastAction: "Fold" },
+      ]);
+
+      const next = engine.applyPlayerAction(state, {
+        seatIndex: 1,
+        type: "RAISE",
+      });
+
+      expect(next.street).toBe("DRAW");
+      expect(next.metadata.raiseCountThisRound).toBe(0);
+      expect(next.metadata.lastCommittedToPot).toBe(100);
+      expect(next.players[1]).toMatchObject({
+        stack: 0,
+        allIn: true,
+        bet: 0,
+        lastAction: "Call",
+      });
+    },
+  );
+
+  it.each(variants)(
+    "%s skips already matched seats and assigns the next genuinely pending actor",
+    (_, createEngine) => {
+      const engine = createEngine();
+      const state = bettingState(engine, [
+        { bet: 40, hasActedThisRound: true },
+        { bet: 40, hasActedThisRound: false, lastAction: "" },
+        { bet: 40, hasActedThisRound: true },
+        { bet: 40, hasActedThisRound: false, lastAction: "" },
+      ]);
+
+      const next = engine.applyPlayerAction(state, {
+        seatIndex: 1,
+        type: "CHECK",
+      });
+
+      expect(next.street).toBe("BET");
+      expect(next.actingPlayerIndex).toBe(3);
+      expect(next.players[2].hasActedThisRound).toBe(true);
+      expect(next.players[3].hasActedThisRound).toBe(false);
+    },
+  );
 });

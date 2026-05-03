@@ -248,14 +248,19 @@ function hasBettingRoundCompleted(state) {
   );
 }
 
+function needsBettingAction(player, currentBet = 0) {
+  if (!player || player.folded || player.sittingOut || player.allIn) return false;
+  return !player.hasActedThisRound || (player.bet ?? 0) < currentBet;
+}
+
 function getNextBettingSeat(state, fromSeatIndex) {
   const players = state.players ?? [];
   if (!players.length) return null;
+  const currentBet = getCurrentBet(state);
   for (let offset = 1; offset <= players.length; offset += 1) {
     const seatIndex = (fromSeatIndex + offset) % players.length;
     const player = players[seatIndex];
-    if (!player || player.folded || player.sittingOut || player.allIn) continue;
-    return seatIndex;
+    if (needsBettingAction(player, currentBet)) return seatIndex;
   }
   return null;
 }
@@ -450,16 +455,27 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
         const paid = applyChips(player, toPay);
         player.bet = (player.bet ?? 0) + paid;
         player.hasActedThisRound = true;
-        player.lastAction = currentBet > 0 ? "Raise" : "Bet";
         if (player.stack === 0) player.allIn = true;
-        nextCurrentBet = Math.max(currentBet, player.bet ?? 0);
-        nextRaiseCount += 1;
-        next.lastAggressorIndex = seatIndex;
-        next.players = next.players.map((entry, idx) =>
-          idx === seatIndex || entry.folded || entry.sittingOut || entry.allIn
-            ? entry
-            : { ...entry, hasActedThisRound: false },
-        );
+        const fullFixedLimitRaise = player.bet >= targetBet;
+        player.lastAction = fullFixedLimitRaise
+          ? currentBet > 0
+            ? "Raise"
+            : "Bet"
+          : player.bet > currentBet
+          ? "All-in"
+          : paid > 0
+          ? "Call"
+          : "Check";
+        if (fullFixedLimitRaise) {
+          nextCurrentBet = Math.max(currentBet, player.bet ?? 0);
+          nextRaiseCount += 1;
+          next.lastAggressorIndex = seatIndex;
+          next.players = next.players.map((entry, idx) =>
+            idx === seatIndex || entry.folded || entry.sittingOut || entry.allIn
+              ? entry
+              : { ...entry, hasActedThisRound: false },
+          );
+        }
         break;
       }
       default:

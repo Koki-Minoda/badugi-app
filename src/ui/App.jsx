@@ -206,6 +206,25 @@ const DEFAULT_STORE_TOURNAMENT_CONFIG = {
   ],
 };
 
+function normalizeTournamentBlindLevel(level = {}, index = 0) {
+  const levelNumber = level.level ?? level.levelIndex ?? index + 1;
+  return {
+    level: levelNumber,
+    levelIndex: levelNumber,
+    sb: level.sb ?? level.smallBlind ?? 0,
+    bb: level.bb ?? level.bigBlind ?? 0,
+    ante: level.ante ?? 0,
+    hands: level.hands ?? level.handsThisLevel ?? 999,
+    handsThisLevel: level.handsThisLevel ?? level.hands ?? 999,
+  };
+}
+
+function getBlindStructureForTournamentConfig(config) {
+  const levels = Array.isArray(config?.levels) ? config.levels : [];
+  if (!levels.length) return TOURNAMENT_STRUCTURE;
+  return levels.map((level, index) => normalizeTournamentBlindLevel(level, index));
+}
+
 const API_BASE_RAW = import.meta.env?.VITE_API_BASE ?? "/api";
 const API_BASE = API_BASE_RAW.endsWith("/api")
   ? API_BASE_RAW
@@ -377,6 +396,9 @@ export default function App() {
     [gameDefinition],
   );
   const [tournamentHudState, setTournamentHudState] = useState(null);
+  const [tournamentBlindStructure, setTournamentBlindStructure] = useState(() =>
+    getBlindStructureForTournamentConfig(DEFAULT_STORE_TOURNAMENT_CONFIG),
+  );
   const [tournamentOverlayVisible, setTournamentOverlayVisible] = useState(false);
   const [tournamentPlacements, setTournamentPlacements] = useState([]);
   const [tournamentTitle, setTournamentTitle] = useState("Tournament Results");
@@ -553,7 +575,6 @@ export default function App() {
     [location.pathname, location.search, navigate],
   );
   const NUM_PLAYERS = 6;
-  const lastStructureIndex = TOURNAMENT_STRUCTURE.length - 1;
 
   const [startingStack, setStartingStack] = useState(DEFAULT_STARTING_STACK);
   const startingStackRef = useRef(startingStack);
@@ -672,9 +693,15 @@ export default function App() {
   useEffect(() => {
     handsInLevelRef.current = handsInLevel;
   }, [handsInLevel]);
+  const activeBlindStructure = useMemo(() => {
+    if (!isTournament) return TOURNAMENT_STRUCTURE;
+    return tournamentBlindStructure;
+  }, [isTournament, tournamentBlindStructure]);
+  const lastStructureIndex = Math.max(0, activeBlindStructure.length - 1);
   const currentStructure =
-    TOURNAMENT_STRUCTURE[blindLevelIndex] ??
-    TOURNAMENT_STRUCTURE[lastStructureIndex];
+    activeBlindStructure[blindLevelIndex] ??
+    activeBlindStructure[lastStructureIndex] ??
+    TOURNAMENT_STRUCTURE[0];
   const SB = currentStructure.sb;
   const BB = currentStructure.bb;
   const currentAnte = currentStructure.ante ?? 0;
@@ -880,7 +907,7 @@ const SAFE_RESET_PHASE = "IDLE";
         seatConfig: seatBlueprint,
         startingStack: startingStackRef.current ?? DEFAULT_STARTING_STACK,
         heroProfile,
-        blindStructure: TOURNAMENT_STRUCTURE,
+        blindStructure: activeBlindStructure,
         lastStructureIndex,
         structure: { sb: SB, bb: BB, ante: currentAnte },
       };
@@ -902,7 +929,7 @@ const SAFE_RESET_PHASE = "IDLE";
         });
     }
     return sessionControllerRef.current;
-  }, [SB, BB, currentAnte, gameVariant, heroProfile, lastStructureIndex, mode]);
+  }, [SB, BB, activeBlindStructure, currentAnte, gameVariant, heroProfile, lastStructureIndex, mode]);
 
   const syncSessionFromSnapshot = useCallback(
     (snapshot, context = null, { reason = "action" } = {}) => {
@@ -1595,7 +1622,7 @@ const SAFE_RESET_PHASE = "IDLE";
       } else {
         gameControllerRef.current = new BadugiGameController({
           numSeats: NUM_PLAYERS,
-          blindStructure: TOURNAMENT_STRUCTURE,
+          blindStructure: activeBlindStructure,
           lastStructureIndex,
           evaluateHand: evaluateBadugi,
         });
@@ -1603,7 +1630,7 @@ const SAFE_RESET_PHASE = "IDLE";
       controllerVariantRef.current = variantId;
     } else if (variantId === APP_VARIANT_IDS.BADUGI) {
       gameControllerRef.current.updateConfig({
-        blindStructure: TOURNAMENT_STRUCTURE,
+        blindStructure: activeBlindStructure,
         lastStructureIndex,
         evaluateHand: evaluateBadugi,
       });
@@ -1622,6 +1649,7 @@ const SAFE_RESET_PHASE = "IDLE";
     SB,
     BB,
     currentAnte,
+    activeBlindStructure,
     evaluateBadugi,
     lastStructureIndex,
   ]);
@@ -4284,6 +4312,7 @@ const SAFE_RESET_PHASE = "IDLE";
     heroRenderTableIdRef.current = null;
     heroBustHandledRef.current = false;
     setTournamentHudState(null);
+    setTournamentBlindStructure(getBlindStructureForTournamentConfig(DEFAULT_STORE_TOURNAMENT_CONFIG));
     setTournamentPlacements([]);
     setTournamentOverlayVisible(false);
     setHeroBustSummary(null);
@@ -4301,6 +4330,7 @@ const SAFE_RESET_PHASE = "IDLE";
     (configOverride = DEFAULT_STORE_TOURNAMENT_CONFIG) => {
       const config = { ...DEFAULT_STORE_TOURNAMENT_CONFIG, ...configOverride };
       resetTournamentState();
+      setTournamentBlindStructure(getBlindStructureForTournamentConfig(config));
       initTournamentReplay(config);
       const entrants = buildTournamentEntrants(config);
       const tournamentState = createMTTTournamentState(config, entrants);
@@ -4579,6 +4609,12 @@ const SAFE_RESET_PHASE = "IDLE";
     const fallbackStack = startingStackRef.current;
     const blindLevelSnapshot = blindLevelIndexRef.current ?? 0;
     const handsInLevelSnapshot = handsInLevelRef.current ?? 0;
+    const handBlindStructure = isTournament
+      ? getBlindStructureForTournamentConfig(
+          tournamentStateRef.current?.config ?? DEFAULT_STORE_TOURNAMENT_CONFIG,
+        )
+      : activeBlindStructure;
+    const handLastStructureIndex = Math.max(0, handBlindStructure.length - 1);
 
     const legacyGameController = ensureGameController();
     let controllerHandSnapshot = null;
@@ -4598,12 +4634,12 @@ const SAFE_RESET_PHASE = "IDLE";
               startingStack: fallbackStack,
               heroProfile,
               nextDealerIdx,
-              blindStructure: TOURNAMENT_STRUCTURE,
+              blindStructure: handBlindStructure,
               blindState: {
                 blindLevelIndex: blindLevelSnapshot,
                 handsInLevel: handsInLevelSnapshot,
               },
-              lastStructureIndex,
+              lastStructureIndex: handLastStructureIndex,
               drawCardsForSeat: assignInitialHands,
             },
           );
@@ -4679,12 +4715,12 @@ const SAFE_RESET_PHASE = "IDLE";
         startingStack: fallbackStack,
         heroProfile,
         nextDealerIdx,
-        blindStructure: TOURNAMENT_STRUCTURE,
+        blindStructure: handBlindStructure,
         blindState: {
           blindLevelIndex: blindLevelSnapshot,
           handsInLevel: handsInLevelSnapshot,
         },
-        lastStructureIndex,
+        lastStructureIndex: handLastStructureIndex,
         drawCardsForSeat: assignInitialHands,
       });
     }
@@ -5415,8 +5451,9 @@ const SAFE_RESET_PHASE = "IDLE";
     const deckManager = getDeckManager();
     deckManager?.reset();
     const structure =
-      TOURNAMENT_STRUCTURE[blindLevelIndex] ??
-      TOURNAMENT_STRUCTURE[lastStructureIndex];
+      activeBlindStructure[blindLevelIndex] ??
+      activeBlindStructure[lastStructureIndex] ??
+      TOURNAMENT_STRUCTURE[0];
     const sbValue = structure.sb;
     const bbValue = structure.bb;
     const anteValue = structure.ante ?? 0;

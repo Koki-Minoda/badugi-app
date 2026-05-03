@@ -2026,6 +2026,8 @@ Draw RL test coverage:
   - 2026-05-03 対応: `positionLabels` helperを追加し、Badugi UI / App seat labels を生存seat基準に統一。DrawEngineBase / 2-7・A-5 draw base / NLH の blind assignment も busted seatをskipするテストを追加。
 - [x] `BUG-28` MTT で busted seat に古い `isActiveInGame=true` が残ると、SB/BB/UTG 圧縮と次アクター判定が壊れる。
   - 2026-05-03 対応: Badugi flow の seated / active 判定で `seatOut` / `isBusted` / stack 0 を優先。blind seat と first bettor を BB 後の live seat 基準へ統一し、BoardEngineBase も同じ busted skip を追加。MTT HUD は現在ハンド中の pending bust を `PLAYERS` に即時反映する。
+- [x] `BUG-29` MTT HUD の blind / ante 表示と実ハンド進行で使う blind structure を一致させる。
+  - 2026-05-03 対応: Store Tournament の `levels` から App 内 hand controller 用の blind structure を生成し、MTT では `TOURNAMENT_STRUCTURE` ではなく tournament config 由来の SB / BB / ante を使う。これにより HUD が `Ante 0` の level 1 で実卓だけ `[ANTE(5)]` を徴収する不整合を防止する。
 
 ## 15. Tournament UI / Friend Match UX 監査
 

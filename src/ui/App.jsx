@@ -7769,6 +7769,27 @@ const SAFE_RESET_PHASE = "IDLE";
 
   const controlsPhase = controlsConfig?.phase ?? tablePhase;
   const controlsCurrentBet = controlsConfig?.currentBet ?? currentBetSrc;
+  const heroBetThisRound = Math.max(0, Number(heroPlayerForControls?.betThisRound) || 0);
+  const heroToCall = Math.max(0, Number(controlsCurrentBet || 0) - heroBetThisRound);
+  const currentRaiseCount = Math.max(
+    0,
+    Number(raiseStatsSrc?.raiseCountThisRound ?? raiseCountThisRound) || 0,
+  );
+  const fixedLimitRaiseCap = 4;
+  const currentRaiseUnit = getFixedLimitBetSize({
+    baseBet: BB,
+    drawRound: drawRoundSrc,
+    betRound: betRoundIndexSrc,
+  });
+  const actionPanelInfo = {
+    currentBet: Math.max(0, Number(controlsCurrentBet) || 0),
+    heroBet: heroBetThisRound,
+    toCall: heroToCall,
+    raiseCount: currentRaiseCount,
+    raiseCap: fixedLimitRaiseCap,
+    raiseUnit: currentRaiseUnit,
+    capReached: currentRaiseCount >= fixedLimitRaiseCap,
+  };
 
   const heroSeatIndex =
     typeof heroSeatView?.seatIndex === "number" ? heroSeatView.seatIndex : 0;
@@ -8174,6 +8195,7 @@ const SAFE_RESET_PHASE = "IDLE";
     heroPlayerForControls,
     controlsPhase,
     controlsCurrentBet,
+    actionPanelInfo,
     playerFold,
     playerCall,
     playerCheck,

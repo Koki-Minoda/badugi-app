@@ -135,6 +135,7 @@ export default function GameLayoutBase({
     heroPlayerForControls,
     controlsPhase,
     controlsCurrentBet,
+    actionPanelInfo,
     playerFold,
     playerCall,
     playerCheck,
@@ -493,6 +494,35 @@ export default function GameLayoutBase({
                   <h2 className="text-xs font-semibold text-white uppercase tracking-wider">
                     Hero Controls
                   </h2>
+                  <div
+                    data-testid="action-context-panel"
+                    className="grid grid-cols-2 gap-2 text-[11px] text-slate-200"
+                  >
+                    <div className="rounded-xl border border-white/10 bg-black/30 px-2 py-1.5">
+                      <p className="uppercase tracking-wide text-slate-500">Current Bet</p>
+                      <p className="font-black text-white">{actionPanelInfo?.currentBet ?? 0}</p>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-black/30 px-2 py-1.5">
+                      <p className="uppercase tracking-wide text-slate-500">To Call</p>
+                      <p className="font-black text-yellow-200">{actionPanelInfo?.toCall ?? 0}</p>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-black/30 px-2 py-1.5">
+                      <p className="uppercase tracking-wide text-slate-500">Raise Unit</p>
+                      <p className="font-black text-white">{actionPanelInfo?.raiseUnit ?? 0}</p>
+                    </div>
+                    <div
+                      className={`rounded-xl border px-2 py-1.5 ${
+                        actionPanelInfo?.capReached
+                          ? "border-red-300/40 bg-red-500/15"
+                          : "border-white/10 bg-black/30"
+                      }`}
+                    >
+                      <p className="uppercase tracking-wide text-slate-500">Raise Cap</p>
+                      <p className="font-black text-white">
+                        {actionPanelInfo?.raiseCount ?? 0}/{actionPanelInfo?.raiseCap ?? 4}
+                      </p>
+                    </div>
+                  </div>
                   <div>{renderControlsContent()}</div>
                   {nextHandButton}
                 </div>

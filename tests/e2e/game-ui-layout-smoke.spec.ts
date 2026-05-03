@@ -11,6 +11,7 @@ test.describe("game UI layout smoke", () => {
     const ledger = page.getByTestId("table-status-ledger");
     const summary = page.getByTestId("table-summary-panel");
     const decisionPanel = page.getByTestId("decision-panel");
+    const actionContext = page.getByTestId("action-context-panel");
     const heroCard = page.getByTestId("player-0-card-0");
     const cpuSeat = page.getByTestId("seat-3");
     const cpuDetail = page.getByTestId("seat-3-detail");
@@ -18,6 +19,9 @@ test.describe("game UI layout smoke", () => {
     await expect(ledger).toBeVisible();
     await expect(summary).toBeVisible();
     await expect(decisionPanel).toBeVisible();
+    await expect(actionContext).toBeVisible();
+    await expect(actionContext.getByText(/To Call/i)).toBeVisible();
+    await expect(actionContext.getByText(/Raise Cap/i)).toBeVisible();
     await expect(heroCard).toBeVisible();
     await expect(ledger.getByText(/Total Pot/i)).toBeVisible();
 

@@ -2159,7 +2159,7 @@ Draw RL test coverage:
 - [x] `PUI-08` Hero / CPU seat header の stack/bet/action 表示を整理する。
 - [x] `PUI-09` folded/mucked の React test を追加し、folded seat が playable card を出さないことを確認する。
 - [ ] `PUI-10` 次候補: 4色デッキのまま suit ごとのコントラストと色覚バリアフリーを調整する。
-- [ ] `PUI-11` 次候補: action panel に to-call / pot odds / raise cap を常時表示する。
+- [x] `PUI-11` action panel に current bet / to-call / raise unit / raise cap を常時表示する。
 - [ ] `PUI-12` 次候補: showdown 時だけ seat card size を一段上げる reveal mode を追加する。
 
 ### 16.4 未対応タスク優先度
@@ -2171,6 +2171,7 @@ Draw RL test coverage:
   - 検証: helper unit test と Badugi/draw family smoke を実行する。
 - P1: `PUI-11` action panel に current bet / to-call / raise cap を常時表示する。
   - 理由: プレイヤーの判断に直結し、誤操作とストレスを減らす。
+  - 2026-05-03 対応: Hero Controls 上部に Current Bet / To Call / Raise Unit / Raise Cap を追加し、UI smoke で表示確認する。
 - P1: `UI-14` showdown / side-pot result を table 上 toast と overlay の両方で見せる。
   - 理由: メインポット/サイドポットの理解に直結する。
 - P2: `PUI-10` 4色デッキのまま suit コントラストと色覚バリアフリーを調整する。

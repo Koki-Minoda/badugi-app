@@ -57,6 +57,7 @@ export default function TournamentHUD({
   nextBreakLabel = null,
   currentVariantLabel = null,
   nextVariantLabel = null,
+  compact = false,
 }) {
   const displayPayouts = formatPayoutRows(payoutBreakdown);
   const prizePoolDisplay =
@@ -89,15 +90,25 @@ export default function TournamentHUD({
 
   return (
     <div
-      className="mx-auto max-w-[1400px] rounded-2xl border border-white/10 bg-slate-950/90 px-6 py-4 text-slate-50 shadow-xl"
+      className={`mx-auto rounded-2xl border border-white/10 bg-slate-950/90 text-slate-50 shadow-xl ${
+        compact ? "max-w-[1280px] px-3 py-2" : "max-w-[1400px] px-6 py-4"
+      }`}
       data-testid="tournament-hud"
     >
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-[1fr_1.2fr_1fr]">
-        <div className="flex flex-col justify-between border-b border-slate-800 pb-4 md:border-b-0 md:border-r md:pb-0 md:pr-4">
+      <div
+        className={
+          compact
+            ? "grid grid-cols-[0.8fr_1.2fr_1fr] gap-3"
+            : "grid grid-cols-1 gap-6 md:grid-cols-[1fr_1.2fr_1fr]"
+        }
+      >
+        <div className={`flex flex-col justify-between border-slate-800 ${
+          compact ? "border-r pr-3" : "border-b pb-4 md:border-b-0 md:border-r md:pb-0 md:pr-4"
+        }`}>
           <div className="text-[11px] font-semibold tracking-[0.3em] text-yellow-300">
             PRIZE POOL
           </div>
-          <div className="mt-3 space-y-2 text-xs text-slate-200">
+          <div className={`${compact ? "mt-1 space-y-0.5" : "mt-3 space-y-2"} text-xs text-slate-200`}>
             {displayPayouts.map((entry) => (
               <div
                 key={`payout-${entry.place}`}
@@ -115,17 +126,19 @@ export default function TournamentHUD({
               </div>
             ))}
           </div>
-          <div className="mt-4 text-2xl font-bold text-yellow-300">
+          <div className={`${compact ? "mt-1 text-lg" : "mt-4 text-2xl"} font-bold text-yellow-300`}>
             {prizePoolDisplay}
           </div>
         </div>
 
-        <div className="flex flex-col items-center justify-between border-b border-slate-800 pb-4 text-center md:border-b-0 md:border-r md:pb-0 md:px-4">
-          <div className="text-sm font-semibold tracking-wide text-yellow-300 mb-1">
+        <div className={`flex flex-col items-center justify-between border-slate-800 text-center ${
+          compact ? "border-r px-3" : "border-b pb-4 md:border-b-0 md:border-r md:pb-0 md:px-4"
+        }`}>
+          <div className={`${compact ? "text-xs" : "text-sm"} font-semibold tracking-wide text-yellow-300 mb-1`}>
             {tournamentName}
           </div>
-          <div className="text-lg font-semibold mb-1">{levelDisplay}</div>
-          <div className="text-5xl font-bold leading-none mb-3 text-white">
+          <div className={`${compact ? "text-sm" : "text-lg"} font-semibold mb-1`}>{levelDisplay}</div>
+          <div className={`${compact ? "text-3xl mb-1" : "text-5xl mb-3"} font-bold leading-none text-white`}>
             {progressDisplay}
           </div>
           <div className="w-full space-y-1 text-left text-xs">
@@ -144,27 +157,27 @@ export default function TournamentHUD({
           </div>
         </div>
 
-        <div className="flex flex-col justify-between pl-0 text-xs md:pl-4">
+        <div className={`flex ${compact ? "gap-3" : "flex-col justify-between pl-0 text-xs md:pl-4"} text-xs`}>
           <div>
             <div className="font-semibold tracking-wide text-yellow-300">
               NEXT BREAK IN
             </div>
-            <div className="text-2xl font-bold">{breakDisplay}</div>
+            <div className={`${compact ? "text-lg" : "text-2xl"} font-bold`}>{breakDisplay}</div>
           </div>
-          <div className="mt-4">
+          <div className={compact ? "" : "mt-4"}>
             <div className="font-semibold tracking-wide text-yellow-300">
               AVG STACK
             </div>
-            <div className="text-2xl font-bold">{avgStackDisplay}</div>
+            <div className={`${compact ? "text-lg" : "text-2xl"} font-bold`}>{avgStackDisplay}</div>
           </div>
-          <div className="mt-4">
+          <div className={compact ? "" : "mt-4"}>
             <div className="font-semibold tracking-wide text-yellow-300">
               PLAYERS
             </div>
-            <div className="text-2xl font-bold">{playersDisplay}</div>
+            <div className={`${compact ? "text-lg" : "text-2xl"} font-bold`}>{playersDisplay}</div>
           </div>
           {(currentVariantLabel || nextVariantLabel) && (
-            <div className="mt-4 text-left text-xs">
+            <div className={`${compact ? "" : "mt-4"} text-left text-xs`}>
               <div className="font-semibold tracking-wide text-yellow-300">
                 CURRENT GAME
               </div>

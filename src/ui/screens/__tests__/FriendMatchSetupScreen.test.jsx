@@ -54,7 +54,7 @@ describe("FriendMatchSetupScreen", () => {
   });
 
   it("renders form fields, defaults Badugi, and creates a room on submit", async () => {
-    render(<FriendMatchSetupScreen />);
+    render(<FriendMatchSetupScreen language="en" />);
 
     const badugiRadio = screen.getByRole("radio", { name: /badugi/i });
     expect(badugiRadio).toHaveProperty("checked", true);
@@ -82,7 +82,7 @@ describe("FriendMatchSetupScreen", () => {
   });
 
   it("allows switching variants", () => {
-    render(<FriendMatchSetupScreen />);
+    render(<FriendMatchSetupScreen language="en" />);
     const nlhRadio = screen.getByRole("radio", { name: /no-limit hold'em/i });
     fireEvent.click(nlhRadio);
     expect(nlhRadio).toHaveProperty("checked", true);
@@ -91,13 +91,22 @@ describe("FriendMatchSetupScreen", () => {
   });
 
   it("navigates back to menu", () => {
-    render(<FriendMatchSetupScreen />);
+    render(<FriendMatchSetupScreen language="en" />);
     fireEvent.click(screen.getByRole("button", { name: /back to menu/i }));
     expect(mockNavigate).toHaveBeenCalledWith("/menu");
   });
 
+  it("renders natural Japanese copy", () => {
+    render(<FriendMatchSetupScreen language="ja" />);
+    expect(screen.getByRole("heading", { name: "プライベート卓を作成" })).toBeTruthy();
+    expect(screen.getByText("人数・スタック・ブラインド")).toBeTruthy();
+    expect(screen.getByLabelText("席数")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "ルームを作成" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "ゲーム選択へ戻る" })).toBeTruthy();
+  });
+
   it("joins an existing room code", async () => {
-    render(<FriendMatchSetupScreen />);
+    render(<FriendMatchSetupScreen language="en" />);
     fireEvent.change(screen.getByLabelText(/room code/i), {
       target: { value: "room-test" },
     });
@@ -132,7 +141,7 @@ describe("FriendMatchSetupScreen", () => {
     }
     globalThis.WebSocket = MockWebSocket;
 
-    render(<FriendMatchSetupScreen />);
+    render(<FriendMatchSetupScreen language="en" />);
     fireEvent.click(screen.getByRole("button", { name: /create room/i }));
     expect(await screen.findByText(/room created/i)).toBeTruthy();
     expect(sockets).toHaveLength(1);
@@ -170,7 +179,7 @@ describe("FriendMatchSetupScreen", () => {
     }
     globalThis.WebSocket = MockWebSocket;
 
-    render(<FriendMatchSetupScreen />);
+    render(<FriendMatchSetupScreen language="en" />);
     fireEvent.click(screen.getByRole("button", { name: /create room/i }));
     expect(await screen.findByText(/room created/i)).toBeTruthy();
 
@@ -251,7 +260,7 @@ describe("FriendMatchSetupScreen", () => {
     }
     globalThis.WebSocket = MockWebSocket;
 
-    render(<FriendMatchSetupScreen />);
+    render(<FriendMatchSetupScreen language="en" />);
     expect(screen.getByText("room-restored")).toBeTruthy();
     expect(sockets).toHaveLength(1);
 
@@ -289,7 +298,7 @@ describe("FriendMatchSetupScreen", () => {
     }
     globalThis.WebSocket = MockWebSocket;
 
-    render(<FriendMatchSetupScreen />);
+    render(<FriendMatchSetupScreen language="en" />);
     fireEvent.click(screen.getByRole("button", { name: /create room/i }));
     expect(await screen.findByText(/room created/i)).toBeTruthy();
 

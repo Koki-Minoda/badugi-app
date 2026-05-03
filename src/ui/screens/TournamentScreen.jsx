@@ -150,7 +150,7 @@ export default function TournamentScreen() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
-      <header className="max-w-6xl mx-auto px-6 py-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <header className="max-w-6xl mx-auto px-6 py-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-2">
           <p className="text-sm uppercase tracking-widest text-emerald-300">
             Tournament Mode
@@ -184,11 +184,11 @@ export default function TournamentScreen() {
             >
               タイトルへ
           </button>
-          <button
-            onClick={() => navigate("/game")}
+            <button
+              onClick={() => navigate("/game")}
             className="px-4 py-2 rounded-lg bg-emerald-500 text-slate-900 font-semibold hover:bg-emerald-400 transition"
           >
-            トレーニングへ
+            練習卓へ
           </button>
         </div>
         </div>
@@ -208,8 +208,8 @@ export default function TournamentScreen() {
         )}
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 pb-16 space-y-8">
-        <section className="rounded-3xl bg-slate-900/80 border border-white/10 p-6 grid gap-6 md:grid-cols-3">
+      <main className="max-w-6xl mx-auto px-6 pb-10 space-y-5">
+        <section className="rounded-3xl bg-slate-900/80 border border-white/10 p-4 grid gap-4 md:grid-cols-3">
           <div>
             <p className="text-sm text-slate-400">バンクロール</p>
             <p className="text-3xl font-bold text-white">
@@ -248,7 +248,7 @@ export default function TournamentScreen() {
           )}
         </section>
 
-        <section className="rounded-3xl bg-slate-900/70 border border-white/10 p-6 space-y-4">
+        <section className="rounded-3xl bg-slate-900/70 border border-white/10 p-4 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-semibold">Unlock Progress</h2>
             <span className="text-xs text-amber-300">
@@ -302,7 +302,7 @@ export default function TournamentScreen() {
           </div>
         </section>
 
-        <section className="space-y-6">
+        <section className="grid gap-4 xl:grid-cols-2">
           {TOURNAMENT_STAGES.map((stage) => {
             const eligibility = getStageEligibility(stage.id, progress);
             const afford = canAffordEntry(stage.id, progress);
@@ -319,17 +319,17 @@ export default function TournamentScreen() {
             return (
               <article
                 key={stage.id}
-                className="rounded-3xl border border-white/10 bg-slate-900/80 p-5 space-y-4"
+                className="rounded-3xl border border-white/10 bg-slate-900/80 p-4 space-y-3"
               >
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <p className="text-sm uppercase tracking-widest text-emerald-300">
                       {stage.label}
                     </p>
-                    <h2 className="text-2xl font-bold text-white mt-1">
+                    <h2 className="text-xl font-bold text-white mt-1">
                       {stage.description}
                     </h2>
-                    <div className="mt-3 flex flex-wrap gap-3 text-sm text-slate-300">
+                    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-300">
                       <span>参加費: ¥{formatNumber(stage.entryFee)}</span>
                       <span>人数: {formatRange(stage.participantsRange)} 人</span>
                       <span>初期スタック: {stage.startingStack}</span>
@@ -337,11 +337,11 @@ export default function TournamentScreen() {
                         プライズ: 1位 ¥{formatNumber(primaryPrize?.payout ?? 0)}
                       </span>
                     </div>
-                    <p className="mt-2 text-xs text-slate-400">
+                    <p className="mt-1 text-xs text-slate-400">
                       {stage.eligibility?.text}
                     </p>
                   </div>
-                  <div className="flex flex-col gap-2 w-full lg:w-48">
+                  <div className="flex flex-col gap-2 w-full lg:w-44">
                     <button
                       className={`rounded-xl py-3 font-semibold ${
                         disabled
@@ -365,7 +365,7 @@ export default function TournamentScreen() {
                 </div>
 
                 {sheet && (
-                  <div className="rounded-2xl border border-white/5 bg-slate-950/50 p-4">
+                  <div className="rounded-2xl border border-white/5 bg-slate-950/50 p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400 uppercase tracking-widest">
                       <span>
                         {proSheet ? "Pro Blind Structure" : "Blind Structure Preview"}
@@ -375,7 +375,7 @@ export default function TournamentScreen() {
                         {breakInfo ? ` ・ ${breakInfo}` : ""}
                       </span>
                     </div>
-                    <div className="mt-3 max-h-52 overflow-y-auto">
+                    <div className="mt-2">
                       <table className="w-full text-left text-xs text-slate-200">
                         <thead className="text-[11px] text-slate-400 border-b border-white/5">
                           <tr>

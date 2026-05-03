@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { designTokens } from "../../styles/designTokens.js";
+import { LANGUAGE_STORAGE_KEY, MGX_DEFAULT_LOCALE } from "../../config/mgxLocaleConfig.js";
 import { getEnabledVariants } from "../game/variants.js";
 import { buildRoomWebSocketUrl, createRoom, getRoomInfo, joinRoom } from "../utils/roomApi.js";
 
@@ -25,7 +26,118 @@ function persistActiveRoom(room) {
   window.sessionStorage.setItem(ACTIVE_ROOM_STORAGE_KEY, JSON.stringify(room));
 }
 
-function VariantOption({ variant, isSelected, onSelect }) {
+function getInitialFriendMatchLanguage(language) {
+  if (language) return language;
+  if (typeof window === "undefined") return MGX_DEFAULT_LOCALE;
+  return window.localStorage.getItem(LANGUAGE_STORAGE_KEY) ?? MGX_DEFAULT_LOCALE;
+}
+
+const FRIEND_COPY = {
+  ja: {
+    eyebrow: "フレンドマッチ",
+    title: "プライベート卓を作成",
+    description:
+      "友人と遊ぶための専用ルームを作成します。ルームコードを共有すると、同じ卓へ参加できます。",
+    variant: "ゲーム",
+    chooseGame: "遊ぶゲームを選択",
+    enabled: "利用可能",
+    tableRules: "テーブル設定",
+    setParams: "人数・スタック・ブラインド",
+    seats: "席数",
+    startingStack: "開始スタック",
+    smallBlind: "スモールブラインド",
+    bigBlind: "ビッグブラインド",
+    ante: "アンティ（任意）",
+    creating: "作成中...",
+    createRoom: "ルームを作成",
+    backToMenu: "ゲーム選択へ戻る",
+    roomCode: "ルームコード",
+    joinRoom: "ルームに参加",
+    enterCode: "ルームコードを入力",
+    roomCodeAria: "ルームコード",
+    joining: "参加中...",
+    join: "参加",
+    syncStatus: "同期状態",
+    latestSequence: "最新番号",
+    staleIgnored: "破棄した古い通知",
+    liveTable: "現在の卓",
+    hand: "ハンド",
+    ready: "準備完了",
+    call: "コール",
+    draw: "ドロー",
+    fold: "フォールド",
+    waitingPlayers: "参加者を待っています...",
+    readyState: "準備済み",
+    notReadyState: "未準備",
+    foldedState: " / フォールド",
+    stack: "スタック",
+    bet: "ベット",
+    showdownWinner: "ショーダウン勝者",
+    noWinner: "なし",
+    noEvents: "まだ同期イベントはありません。",
+    roomCreated: "ルームを作成しました。ルームコードを共有し、全員が参加したら準備完了を押してください。",
+    roomCreateFailed: "ルーム作成に失敗しました。",
+    enterRoomCode: "ルームコードを入力してください。",
+    joinedRoom: "ルームに参加しました。卓の同期を待っています。",
+    joinFailed: "ルーム参加に失敗しました。",
+    socketNotConnected: "まだルームに接続できていません。",
+    hostName: "ホスト",
+    guestName: "ゲスト",
+  },
+  en: {
+    eyebrow: "Friend Match",
+    title: "Create a Room",
+    description:
+      "Configure a private table for friends. Share the room code so everyone can join the same table.",
+    variant: "Variant",
+    chooseGame: "Choose your game",
+    enabled: "Enabled",
+    tableRules: "Table Rules",
+    setParams: "Set table parameters",
+    seats: "Seats",
+    startingStack: "Starting Stack",
+    smallBlind: "Small Blind",
+    bigBlind: "Big Blind",
+    ante: "Ante (Optional)",
+    creating: "Creating...",
+    createRoom: "Create Room",
+    backToMenu: "Back to Menu",
+    roomCode: "Room Code",
+    joinRoom: "Join Room",
+    enterCode: "Enter a room code",
+    roomCodeAria: "Room code",
+    joining: "Joining...",
+    join: "Join",
+    syncStatus: "Sync Status",
+    latestSequence: "Latest sequence",
+    staleIgnored: "Stale ignored",
+    liveTable: "Live Table State",
+    hand: "Hand",
+    ready: "Ready",
+    call: "Call",
+    draw: "Draw",
+    fold: "Fold",
+    waitingPlayers: "Waiting for players...",
+    readyState: "ready",
+    notReadyState: "not ready",
+    foldedState: " / folded",
+    stack: "Stack",
+    bet: "Bet",
+    showdownWinner: "Showdown winner",
+    noWinner: "none",
+    noEvents: "No room events received yet.",
+    roomCreated: "Room created. Share the room code and use Ready when both players join.",
+    roomCreateFailed: "Failed to create room.",
+    enterRoomCode: "Enter a room code.",
+    joinedRoom: "Joined room. Waiting for live table synchronization.",
+    joinFailed: "Failed to join room.",
+    socketNotConnected: "Room socket is not connected yet.",
+    hostName: "Host",
+    guestName: "Guest",
+  },
+};
+
+function VariantOption({ variant, isSelected, onSelect, copy }) {
   return (
     <label
       className={`flex cursor-pointer items-center justify-between rounded-2xl border px-4 py-3 transition ${
@@ -36,7 +148,7 @@ function VariantOption({ variant, isSelected, onSelect }) {
     >
       <div className="flex flex-col">
         <span className="text-sm text-slate-300">{variant.label}</span>
-        <span className="text-xs text-slate-500">Enabled</span>
+        <span className="text-xs text-slate-500">{copy.enabled}</span>
       </div>
       <input
         type="radio"
@@ -155,8 +267,16 @@ function applyRoomEventToTableState(current, entry) {
   return current;
 }
 
-export default function FriendMatchSetupScreen() {
+export default function FriendMatchSetupScreen({ language = null } = {}) {
   const navigate = useNavigate();
+  const languageKey = getInitialFriendMatchLanguage(language);
+  const copy = useMemo(
+    () =>
+      FRIEND_COPY[languageKey] ??
+      FRIEND_COPY[MGX_DEFAULT_LOCALE] ??
+      FRIEND_COPY.en,
+    [languageKey],
+  );
   const enabledVariants = useMemo(() => getEnabledVariants(), []);
   const [variantId, setVariantId] = useState(enabledVariants[0]?.id ?? "badugi");
   const [seats, setSeats] = useState(4);
@@ -209,7 +329,7 @@ export default function FriendMatchSetupScreen() {
           event: "join_room",
           payload: {
             playerId: createdRoom.ownerId,
-            displayName: createdRoom.displayName ?? "Host",
+            displayName: createdRoom.displayName ?? copy.hostName,
           },
         }),
       );
@@ -258,7 +378,7 @@ export default function FriendMatchSetupScreen() {
       socketRef.current = null;
       socket.close();
     };
-  }, [createdRoom]);
+  }, [createdRoom, copy.hostName]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -282,19 +402,19 @@ export default function FriendMatchSetupScreen() {
       await joinRoom({
         roomId: room.roomId,
         playerId: ownerId,
-        displayName: "Host",
+        displayName: copy.hostName,
         seatHint: "0",
       });
       setCreatedRoom({
         ...room,
         ownerId,
-        displayName: "Host",
+        displayName: copy.hostName,
         players: [ownerId],
         websocketUrl: buildRoomWebSocketUrl(room.roomId),
       });
-      setStatusMessage("Room created. Share the room code and use Ready when both players join.");
+      setStatusMessage(copy.roomCreated);
     } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : "Failed to create room.");
+      setStatusMessage(error instanceof Error ? error.message : copy.roomCreateFailed);
     } finally {
       setIsCreating(false);
     }
@@ -304,7 +424,7 @@ export default function FriendMatchSetupScreen() {
     event.preventDefault();
     const roomId = joinCode.trim();
     if (!roomId) {
-      setStatusMessage("Enter a room code.");
+      setStatusMessage(copy.enterRoomCode);
       return;
     }
     setIsJoining(true);
@@ -316,7 +436,7 @@ export default function FriendMatchSetupScreen() {
       await joinRoom({
         roomId,
         playerId,
-        displayName: "Guest",
+        displayName: copy.guestName,
         seatHint: String(info.players?.length ?? 0),
       });
       setCreatedRoom({
@@ -325,13 +445,13 @@ export default function FriendMatchSetupScreen() {
         metadata: info.metadata,
         maxPlayers: info.maxPlayers ?? info.metadata?.maxPlayers,
         ownerId: playerId,
-        displayName: "Guest",
+        displayName: copy.guestName,
         players: info.players?.map((player) => player.id) ?? [playerId],
         websocketUrl: buildRoomWebSocketUrl(roomId),
       });
-      setStatusMessage("Joined room. Waiting for live table synchronization.");
+      setStatusMessage(copy.joinedRoom);
     } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : "Failed to join room.");
+      setStatusMessage(error instanceof Error ? error.message : copy.joinFailed);
     } finally {
       setIsJoining(false);
     }
@@ -345,7 +465,7 @@ export default function FriendMatchSetupScreen() {
     const socket = socketRef.current;
     const openState = typeof WebSocket !== "undefined" && WebSocket.OPEN ? WebSocket.OPEN : 1;
     if (!socket || socket.readyState !== openState) {
-      setStatusMessage("Room socket is not connected yet.");
+      setStatusMessage(copy.socketNotConnected);
       return;
     }
     socket.send(JSON.stringify({ event, payload }));
@@ -377,11 +497,10 @@ export default function FriendMatchSetupScreen() {
     >
       <div className="max-w-3xl mx-auto space-y-6">
         <header className="space-y-2">
-          <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">Friend Match</p>
-          <h1 className="text-3xl font-bold text-white">Create a Room</h1>
+          <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">{copy.eyebrow}</p>
+          <h1 className="text-3xl font-bold text-white">{copy.title}</h1>
           <p className="text-sm text-slate-300">
-            Configure a private table for friends. Networking will arrive soon; for now this is a
-            configuration preview.
+            {copy.description}
           </p>
         </header>
 
@@ -391,8 +510,8 @@ export default function FriendMatchSetupScreen() {
         >
           <section aria-label="Game variant" className="space-y-3">
             <div>
-              <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">Variant</p>
-              <h2 className="text-xl font-semibold text-white">Choose your game</h2>
+              <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">{copy.variant}</p>
+              <h2 className="text-xl font-semibold text-white">{copy.chooseGame}</h2>
             </div>
             <div className="space-y-3" role="radiogroup" aria-label="Game variant options">
               {enabledVariants.map((variant) => (
@@ -401,6 +520,7 @@ export default function FriendMatchSetupScreen() {
                   variant={variant}
                   isSelected={variantId === variant.id}
                   onSelect={setVariantId}
+                  copy={copy}
                 />
               ))}
             </div>
@@ -408,12 +528,12 @@ export default function FriendMatchSetupScreen() {
 
           <section className="space-y-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">Table Rules</p>
-              <h2 className="text-xl font-semibold text-white">Set table parameters</h2>
+              <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">{copy.tableRules}</p>
+              <h2 className="text-xl font-semibold text-white">{copy.setParams}</h2>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="flex flex-col text-sm text-slate-300 gap-1">
-                <label htmlFor="friend-seats">Seats</label>
+                <label htmlFor="friend-seats">{copy.seats}</label>
                 <input
                   id="friend-seats"
                   name="seats"
@@ -426,7 +546,7 @@ export default function FriendMatchSetupScreen() {
                 />
               </div>
               <div className="flex flex-col text-sm text-slate-300 gap-1">
-                <label htmlFor="friend-starting-stack">Starting Stack</label>
+                <label htmlFor="friend-starting-stack">{copy.startingStack}</label>
                 <input
                   id="friend-starting-stack"
                   name="startingStack"
@@ -439,7 +559,7 @@ export default function FriendMatchSetupScreen() {
                 />
               </div>
               <div className="flex flex-col text-sm text-slate-300 gap-1">
-                <label htmlFor="friend-small-blind">Small Blind</label>
+                <label htmlFor="friend-small-blind">{copy.smallBlind}</label>
                 <input
                   id="friend-small-blind"
                   name="smallBlind"
@@ -451,7 +571,7 @@ export default function FriendMatchSetupScreen() {
                 />
               </div>
               <div className="flex flex-col text-sm text-slate-300 gap-1">
-                <label htmlFor="friend-big-blind">Big Blind</label>
+                <label htmlFor="friend-big-blind">{copy.bigBlind}</label>
                 <input
                   id="friend-big-blind"
                   name="bigBlind"
@@ -463,7 +583,7 @@ export default function FriendMatchSetupScreen() {
                 />
               </div>
               <div className="flex flex-col text-sm text-slate-300 gap-1 md:col-span-2">
-                <label htmlFor="friend-ante">Ante (Optional)</label>
+                <label htmlFor="friend-ante">{copy.ante}</label>
                 <input
                   id="friend-ante"
                   name="ante"
@@ -483,14 +603,14 @@ export default function FriendMatchSetupScreen() {
               disabled={isCreating}
               className="flex-1 rounded-3xl bg-emerald-500/90 px-6 py-3 text-lg font-semibold text-slate-950 hover:bg-emerald-400 transition"
             >
-              {isCreating ? "Creating..." : "Create Room"}
+              {isCreating ? copy.creating : copy.createRoom}
             </button>
             <button
               type="button"
               onClick={handleBackToMenu}
               className="flex-1 rounded-3xl border border-white/20 px-6 py-3 text-lg font-semibold text-white hover:border-emerald-400/60 hover:text-emerald-200 transition"
             >
-              Back to Menu
+              {copy.backToMenu}
             </button>
           </div>
 
@@ -503,7 +623,7 @@ export default function FriendMatchSetupScreen() {
             <section className="rounded-2xl border border-emerald-400/40 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100 space-y-2">
               <div className="flex flex-col gap-1">
                 <span className="text-xs uppercase tracking-[0.25em] text-emerald-300">
-                  Room Code
+                  {copy.roomCode}
                 </span>
               <strong className="text-lg text-white">{createdRoom.roomId}</strong>
               </div>
@@ -519,12 +639,12 @@ export default function FriendMatchSetupScreen() {
           className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 space-y-4"
         >
           <div>
-            <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">Join Room</p>
-            <h2 className="text-xl font-semibold text-white">Enter a room code</h2>
+            <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">{copy.joinRoom}</p>
+            <h2 className="text-xl font-semibold text-white">{copy.enterCode}</h2>
           </div>
           <div className="flex flex-col gap-3 md:flex-row">
             <input
-              aria-label="Room code"
+              aria-label={copy.roomCodeAria}
               value={joinCode}
               onChange={(event) => setJoinCode(event.target.value)}
               placeholder="room-..."
@@ -535,7 +655,7 @@ export default function FriendMatchSetupScreen() {
               disabled={isJoining}
               className="rounded-2xl border border-emerald-400/50 px-6 py-3 font-semibold text-emerald-100 hover:bg-emerald-400/10"
             >
-              {isJoining ? "Joining..." : "Join"}
+              {isJoining ? copy.joining : copy.join}
             </button>
           </div>
         </form>
@@ -544,29 +664,29 @@ export default function FriendMatchSetupScreen() {
           <section className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300 space-y-3">
             <div className="flex items-center justify-between gap-3">
               <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">
-                Sync Status
+                {copy.syncStatus}
               </p>
               <strong className="text-white">{syncStatus}</strong>
             </div>
             <div className="grid gap-2 text-xs text-slate-400 md:grid-cols-2">
               <div className="rounded-2xl border border-white/10 bg-slate-950/60 px-3 py-2">
-                Latest sequence: {latestSequenceId}
+                {copy.latestSequence}: {latestSequenceId}
               </div>
               <div className="rounded-2xl border border-white/10 bg-slate-950/60 px-3 py-2">
-                Stale ignored: {staleEventCount}
+                {copy.staleIgnored}: {staleEventCount}
               </div>
             </div>
             <div className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-4 text-emerald-50">
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.25em] text-emerald-300">
-                    Live Table State
+                    {copy.liveTable}
                   </p>
                   <p className="text-lg font-semibold text-white">
                     {p2pTableState.phase.toUpperCase()} / Pot {p2pTableState.pot}
                   </p>
                   {p2pTableState.handId ? (
-                    <p className="text-xs text-emerald-100/70">Hand {p2pTableState.handId}</p>
+                    <p className="text-xs text-emerald-100/70">{copy.hand} {p2pTableState.handId}</p>
                   ) : null}
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -576,7 +696,7 @@ export default function FriendMatchSetupScreen() {
                     onClick={sendReady}
                     className="rounded-xl border border-emerald-300/60 px-3 py-2 text-xs font-semibold text-emerald-50 hover:bg-emerald-300/10"
                   >
-                    Ready
+                    {copy.ready}
                   </button>
                   <button
                     type="button"
@@ -584,7 +704,7 @@ export default function FriendMatchSetupScreen() {
                     onClick={() => sendAction("call", bigBlind)}
                     className="rounded-xl border border-sky-300/60 px-3 py-2 text-xs font-semibold text-sky-50 hover:bg-sky-300/10"
                   >
-                    Call {bigBlind}
+                    {copy.call} {bigBlind}
                   </button>
                   <button
                     type="button"
@@ -592,7 +712,7 @@ export default function FriendMatchSetupScreen() {
                     onClick={() => sendAction("draw", 0)}
                     className="rounded-xl border border-amber-300/60 px-3 py-2 text-xs font-semibold text-amber-50 hover:bg-amber-300/10"
                   >
-                    Draw
+                    {copy.draw}
                   </button>
                   <button
                     type="button"
@@ -600,13 +720,13 @@ export default function FriendMatchSetupScreen() {
                     onClick={() => sendAction("fold", 0)}
                     className="rounded-xl border border-rose-300/60 px-3 py-2 text-xs font-semibold text-rose-50 hover:bg-rose-300/10"
                   >
-                    Fold
+                    {copy.fold}
                   </button>
                 </div>
               </div>
               <div className="mt-4 grid gap-2 md:grid-cols-2">
                 {p2pTableState.playerStates.length === 0 ? (
-                  <p className="text-sm text-emerald-100/70">Waiting for players...</p>
+                  <p className="text-sm text-emerald-100/70">{copy.waitingPlayers}</p>
                 ) : (
                   p2pTableState.playerStates.map((player) => (
                     <div
@@ -617,12 +737,12 @@ export default function FriendMatchSetupScreen() {
                       <div className="flex items-center justify-between gap-2">
                         <strong className="text-white">{player.displayName}</strong>
                         <span className="text-xs text-emerald-100/70">
-                          {player.ready ? "ready" : "not ready"}
-                          {player.folded ? " / folded" : ""}
+                          {player.ready ? copy.readyState : copy.notReadyState}
+                          {player.folded ? copy.foldedState : ""}
                         </span>
                       </div>
                       <p className="text-xs text-emerald-100/70">
-                        Stack {player.stack} / Bet {player.bet}
+                        {copy.stack} {player.stack} / {copy.bet} {player.bet}
                       </p>
                     </div>
                   ))
@@ -630,14 +750,14 @@ export default function FriendMatchSetupScreen() {
               </div>
               {p2pTableState.showdown ? (
                 <p className="mt-3 rounded-xl border border-yellow-300/40 bg-yellow-300/10 px-3 py-2 text-yellow-100">
-                  Showdown winner: {p2pTableState.showdown.winner ?? "none"} / Pot{" "}
+                  {copy.showdownWinner}: {p2pTableState.showdown.winner ?? copy.noWinner} / Pot{" "}
                   {p2pTableState.showdown.pot ?? 0}
                 </p>
               ) : null}
             </div>
             <div className="space-y-2">
               {roomEvents.length === 0 ? (
-                <p>No room events received yet.</p>
+                <p>{copy.noEvents}</p>
               ) : (
                 roomEvents.map((entry, index) => (
                   <div

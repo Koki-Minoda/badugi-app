@@ -149,6 +149,25 @@ export default function GameLayoutBase({
 
   const { debugMode, onToggleDebugMode } = debugProps;
   const showDesktopSidePanel = showSidePanel && !isMobileLayout;
+  const desktopSectionClass = showDesktopSidePanel
+    ? "pl-[290px] pr-5 pt-[5.5rem] pb-[4.5rem] gap-6"
+    : isTournament
+      ? "px-4 pt-[5.25rem] pb-[3.5rem] gap-4"
+      : "px-5 pt-[5.5rem] pb-[4.5rem] gap-6";
+  const desktopGridClass = isTournament
+    ? "grid-cols-[minmax(820px,1fr)_clamp(230px,18vw,300px)] gap-3"
+    : "grid-cols-[minmax(720px,1fr)_clamp(260px,22vw,340px)] gap-4";
+  const desktopTableMinHeight = isTournament ? "min-h-[540px]" : "min-h-[600px]";
+  const mainLayoutClass = isMobileLayout
+    ? "mt-16 pb-36"
+    : isTournament
+      ? "h-screen overflow-hidden"
+      : "mt-20";
+  const rootSizingClass = !isMobileLayout && isTournament && !disableVh
+    ? "h-screen overflow-hidden"
+    : disableVh
+      ? "h-auto"
+      : "min-h-screen";
   const layoutRootRef = useRef(null);
   const cardScaleVars = useCardScaleVars(layoutRootRef);
   const rootStyle = disableVh
@@ -209,7 +228,7 @@ export default function GameLayoutBase({
   return (
     <div
       ref={layoutRootRef}
-      className={`flex flex-col ${disableVh ? "h-auto" : "min-h-screen"} bg-gray-900 text-white`}
+      className={`flex flex-col ${rootSizingClass} bg-gray-900 text-white`}
       style={rootStyle}
     >
       <header
@@ -281,7 +300,7 @@ export default function GameLayoutBase({
       </header>
 
       <main
-        className={`flex-1 ${isMobileLayout ? "mt-16 pb-36" : "mt-20"} relative ${tableOuterBg}`}
+        className={`flex-1 ${mainLayoutClass} relative ${tableOuterBg}`}
       >
         {showDesktopSidePanel && (
           <div className="absolute top-5 left-5 z-40 flex w-[250px] flex-col gap-3 pointer-events-none">
@@ -354,7 +373,7 @@ export default function GameLayoutBase({
 
         <section
           className={`flex h-full flex-col ${
-            isMobileLayout ? "px-3 pt-20 pb-10 gap-6" : "pl-[290px] pr-5 pt-[5.5rem] pb-[4.5rem] gap-6"
+            isMobileLayout ? "px-3 pt-20 pb-10 gap-6" : desktopSectionClass
           }`}
         >
           <div
@@ -366,7 +385,7 @@ export default function GameLayoutBase({
               className={`relative grid ${
                 isMobileLayout
                   ? "grid-cols-1 gap-4"
-                  : "grid-cols-[minmax(720px,1fr)_clamp(260px,22vw,340px)] gap-4"
+                  : desktopGridClass
               }`}
             >
               <div
@@ -379,7 +398,7 @@ export default function GameLayoutBase({
                   className={`relative ${
                     isMobileLayout
                       ? "grid gap-3"
-                      : "min-h-[600px]"
+                      : desktopTableMinHeight
                   }`}
                   style={isMobileLayout ? MOBILE_TABLE_GRID_STYLE : undefined}
                 >

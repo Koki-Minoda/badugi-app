@@ -24,11 +24,11 @@ export default function FinalTableOverlay({
             className="text-slate-200 hover:text-white text-sm"
             onClick={onClose}
           >
-            Close
+            閉じる
           </button>
         </div>
         <p className="text-sm text-slate-300">
-          {remainingPlayers} players remain out of {totalEntrants}. Table balancing logs capture recent rotations.
+          残り {remainingPlayers} / {totalEntrants} 人。ここからはファイナルテーブルです。
         </p>
         <div className="space-y-2 text-xs font-mono text-slate-200">
           {balancedLogs.slice(-3).map((entry, index) => (
@@ -37,7 +37,7 @@ export default function FinalTableOverlay({
               <span className="text-emerald-300">{entry.message}</span>
             </div>
           ))}
-          {!balancedLogs.length && <div>No table reassignments yet.</div>}
+          {!balancedLogs.length && <div>テーブル移動はまだありません。</div>}
         </div>
         <div className="flex gap-2 pt-3">
           <button
@@ -45,14 +45,14 @@ export default function FinalTableOverlay({
             className="flex-1 rounded-full bg-white/90 text-slate-900 font-semibold py-2"
             onClick={() => navigate("/leaderboard")}
           >
-            View Leaderboard
+            ランキングを見る
           </button>
           <button
             type="button"
             className="flex-1 rounded-full border border-white/30 text-white py-2"
             onClick={onClose}
           >
-            Continue
+            続ける
           </button>
         </div>
       </div>

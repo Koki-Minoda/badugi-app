@@ -2019,6 +2019,74 @@ Draw RL test coverage:
 - [ ] `UI-14` 追加 UX 候補: showdown / side-pot result を table 上の短い toast と result overlay の両方で確認できるようにする。
 - [ ] `UI-15` 追加 UX 候補: mobile landscape で右 panel を bottom sheet 化し、カードと action の距離をさらに短くする。
 
+## 15. Tournament UI / Friend Match UX 監査
+
+2026-05-03 時点のトーナメント画面レビュー。ゲームロジックは触らず、トーナメント中の表示密度、カード視認性、導線、フレンドマッチ日本語化を改善する。
+
+### 15.1 トーナメント UI 自己ダメ出し 30 項目
+
+1. トーナメント中のゲーム画面で左レールが無いのに左 padding が残り、テーブル領域が無駄に狭い。
+2. HUD が大きすぎ、低い viewport ではテーブルを見るためにスクロールが発生する。
+3. HUD の prize / level / players が横3カラムで情報量過多。
+4. HUD の重要度が「現在レベル・残り人数・平均スタック」より prize 表示に寄りすぎている。
+5. トーナメント中の右 action column が通常ゲームと同じ幅で、table を圧迫する。
+6. tournament seat layout の CPU 同士の距離が近く、showdown 時にカードが干渉する。
+7. top/bottom の seat が大きすぎ、カード公開時に横方向の余白が足りない。
+8. hero seat と footer が近く、低解像度で操作しづらい。
+9. tournament table で side panel 非表示なのに section grid が cash 前提の余白になっている。
+10. tournament HUD が table surface の内側にあり、seat area と縦方向で競合する。
+11. final table overlay が英語固定で、他の日本語UIと不整合。
+12. final table overlay の説明が長く、実プレイ中の確認として重い。
+13. tournament selection screen は縦に長く、ステージ選択にスクロールが多い。
+14. tournament selection の blind preview が各カードにあり、一覧性を下げている。
+15. stage card 内の説明・条件・blind table が同時に出て、どの大会に出るか判断しづらい。
+16. active tournament resume が目立つ一方、ステージ選択との差が曖昧。
+17. Break timer が大きく、トーナメントトップ画面の主導線より目立つ。
+18. unlock progress が大きく、エントリー導線より上にありすぎる。
+19. bankroll / wins / active session が3カラムで、狭い画面では縦に伸びる。
+20. stage card の button 幅が固定気味で、長い日本語に弱い。
+21. "Training" など英語混在が残っている。
+22. tournament HUD の ordinal が英語表記で、日本語設定と合わない。
+23. tournament HUD の "NEXT BREAK IN" 等が英語固定。
+24. table balancing log が通常ユーザーには技術的すぎる。
+25. showdown cards を見たい局面で HUD / right panel / seat overlap が邪魔になる。
+26. tournament game と cash game の表示優先順位が同じで、残り人数や平均 stack の緊張感が薄い。
+27. tournament result / bust overlay 以外の進行中情報が分散している。
+28. フレンドマッチが英語固定で、日本語設定時に非常に読みにくい。
+29. フレンドマッチの説明文が「まだ networking will arrive soon」と古く、現在の同期実装とズレている。
+30. フレンドマッチの live table / sync / room event の文言が開発者向けで、プレイヤー向けではない。
+
+### 15.2 改善方針
+
+- ゲームロジック、MTT進行、table balancing、showdown resolver には触らない。
+- トーナメント中のゲーム画面は「スクロールしない」を優先し、HUD を compact 表示へ寄せる。
+- side panel が無い時は左 padding を消し、テーブルを中央に広げる。
+- tournament seat は cash より小さく、上下左右の間隔を広げ、showdown 公開時のカード干渉を減らす。
+- HUD は残り人数 / level / blinds / average stack を主表示にし、prize pool は小さくする。
+- フレンドマッチは日本語設定では自然な日本語へ置き換え、英語設定時は従来通り英語で読めるようにする。
+- 開発者向けの sync / sequence 表示は残すが、日本語では「同期状態」「最新番号」「破棄した古い通知」などの意味が分かる表現にする。
+
+### 15.3 実装タスク
+
+- [x] `TUI-01` tournament game で side panel 非表示時の左余白を削除する。
+- [x] `TUI-02` tournament HUD を compact mode 対応にし、ゲーム中は高さを抑える。
+- [x] `TUI-03` tournament seat layout を縮小・再配置し、showdown card overlap を減らす。
+- [x] `TUI-04` tournament game の table min-height / padding を調整し、通常 viewport でスクロールしないようにする。
+- [x] `TUI-05` FinalTableOverlay の文言を日本語寄りにし、情報密度を下げる。
+- [x] `TUI-06` tournament top screen のステージカードを compact 化し、blind preview の縦スクロールを減らす。
+- [x] `TUI-07` FriendMatchSetupScreen を language 対応し、日本語設定時に自然な日本語を表示する。
+- [x] `TUI-08` friend match tests を日本語/英語の両方に対応する。
+- [x] `TUI-09` tournament layout smoke を追加し、HUD / hero card / showdown-visible seats の viewport 内表示を確認する。
+
+### 15.4 確認結果
+
+- [x] `npm run lint`: pass。
+- [x] `npm test -- --run src/ui/components/__tests__/TournamentHUD.test.jsx src/ui/screens/__tests__/FriendMatchSetupScreen.test.jsx`: 2 files / 12 tests pass。
+- [x] `npm run build`: pass。chunk size warning は既存警告。
+- [x] `npx playwright test tests/e2e/tournament-ui-layout-smoke.spec.ts --project=badugi-flow`: 1 passed。
+- [x] `npx playwright test tests/e2e/badugi-mtt-flow.spec.ts --project=badugi-flow`: 2 passed。
+- [x] `npx playwright test tests/e2e/p2p-friend-match-smoke.spec.ts --project=badugi-flow`: 1 passed。
+
 ### 14.4 確認結果
 
 - [x] `npm run lint`: pass。

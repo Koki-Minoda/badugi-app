@@ -1192,8 +1192,8 @@ const SAFE_RESET_PHASE = "IDLE";
   const controllerDealerIdx = controllerSnapshot?.dealerIdx ?? dealerIdx;
   const tournamentHud =
     isTournament && tournamentHudState ? (
-      <div className="w-full px-4 pt-4">
-        <TournamentHUD {...tournamentHudState} />
+      <div className="w-full px-2 pt-2">
+        <TournamentHUD {...tournamentHudState} compact />
       </div>
     ) : null;
   const [uiPerf, setUiPerf] = useState({
@@ -7714,12 +7714,12 @@ const SAFE_RESET_PHASE = "IDLE";
     ];
     // Tournament tables follow a fixed 6-max oval layout (BTN bottom-center, clockwise SB→CO).
     const tournamentLayouts = [
-      "absolute bottom-[12%] left-1/2 -translate-x-1/2 w-[clamp(200px,30vw,320px)]", // Hero (BTN)
-      "absolute bottom-[26%] left-[22%] -translate-x-1/2 w-[clamp(160px,24vw,260px)]", // SB
-      "absolute top-[24%] left-[22%] -translate-x-1/2 w-[clamp(160px,24vw,260px)]", // BB
-      "absolute top-[12%] left-1/2 -translate-x-1/2 w-[clamp(170px,27vw,280px)]", // UTG
-      "absolute top-[24%] left-[78%] -translate-x-1/2 w-[clamp(160px,24vw,260px)]", // MP
-      "absolute bottom-[26%] left-[78%] -translate-x-1/2 w-[clamp(160px,24vw,260px)]", // CO
+      "absolute bottom-[7%] left-1/2 -translate-x-1/2 w-[clamp(190px,24vw,270px)]", // Hero (BTN)
+      "absolute bottom-[8%] left-[18%] -translate-x-1/2 w-[clamp(135px,18vw,205px)]", // SB
+      "absolute top-[20%] left-[18%] -translate-x-1/2 w-[clamp(135px,18vw,205px)]", // BB
+      "absolute top-[10%] left-1/2 -translate-x-1/2 w-[clamp(150px,20vw,230px)]", // UTG
+      "absolute top-[20%] left-[82%] -translate-x-1/2 w-[clamp(135px,18vw,205px)]", // MP
+      "absolute bottom-[8%] left-[82%] -translate-x-1/2 w-[clamp(135px,18vw,205px)]", // CO
     ];
     return mode === "tournament-mtt" ? tournamentLayouts : cashLayouts;
   }, [mode]);

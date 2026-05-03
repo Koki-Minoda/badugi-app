@@ -395,10 +395,11 @@ export default function GameLayoutBase({
                 } p-4 shadow-[inset_0_0_45px_rgba(0,0,0,0.38),0_18px_42px_rgba(0,0,0,0.35)]`}
               >
                 <div
-                  className={`pointer-events-none absolute inset-x-[8%] inset-y-[8%] rounded-[50%] border-[10px] border-slate-950/80 ${tableSurfaceBg} shadow-[inset_0_0_65px_rgba(0,0,0,0.42)]`}
+                  data-testid="table-felt-oval"
+                  className={`pointer-events-none absolute inset-x-[10%] inset-y-[45%] rounded-[50%] border-[10px] border-slate-950/80 ${tableSurfaceBg} shadow-[inset_0_0_65px_rgba(0,0,0,0.42)]`}
                 />
-                <div className="pointer-events-none absolute inset-x-[10%] inset-y-[10%] rounded-[50%] border border-white/10" />
-                <div className="pointer-events-none absolute inset-x-[16%] inset-y-[18%] rounded-[50%] border border-white/5" />
+                <div className="pointer-events-none absolute inset-x-[12%] inset-y-[46%] rounded-[50%] border border-white/10" />
+                <div className="pointer-events-none absolute inset-x-[18%] inset-y-[48%] rounded-[50%] border border-white/5" />
                 {!isTournament && tournamentHud}
                 <div
                   className={`relative ${

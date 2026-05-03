@@ -4285,7 +4285,7 @@ const SAFE_RESET_PHASE = "IDLE";
   //           goShowdownNow() を直接呼び出し、BET/DRAW を飛ばして強制ショーダウン。
   //           all-in プレイヤーは active フィルタから外れるため、
   //           「全員 all-in」の場合はここを通らず scheduleFinish が DRAW→SHOWDOWN を選択する。
-  function checkIfOneLeftThenEnd(snapOpt) {
+  const checkIfOneLeftThenEnd = useCallback((snapOpt) => {
     const base =
       Array.isArray(snapOpt) && snapOpt.length > 0
         ? snapOpt
@@ -4299,7 +4299,7 @@ const SAFE_RESET_PHASE = "IDLE";
       return true;
     }
     return false;
-  }
+  }, [players]);
 
 
   const dealingRef = useRef(false);
@@ -7379,6 +7379,9 @@ const SAFE_RESET_PHASE = "IDLE";
         }
       }
     }
+    if (phase === "BET" && checkIfOneLeftThenEnd(activePlayers)) {
+      return;
+    }
     if (turn === 0) {
       if (shouldWaitForHeroDrawTurn({ phase, turn, players: activePlayers })) {
         return;
@@ -7421,6 +7424,16 @@ const SAFE_RESET_PHASE = "IDLE";
         if (!betHelpers.ensureSeatCanAct?.(activeSeat, "npcBetAction")) {
           const nxt = nextAliveFrom(snap, turn);
           if (nxt !== null) setTurn(nxt);
+          else {
+            forceFinishRoundRef.current({
+              reason: "npc-bet-seat-cannot-act-no-next",
+              phaseOverride: "BET",
+              playersSnapshot: snap,
+            });
+          }
+          return;
+        }
+        if (checkIfOneLeftThenEnd(snap)) {
           return;
         }
         const me = snap[turn] ? { ...snap[turn] } : null;
@@ -7534,6 +7547,7 @@ const SAFE_RESET_PHASE = "IDLE";
     activeAiTierConfig,
     applyForcedBetAction,
     autoResolveCpuDrawIfNeeded,
+    checkIfOneLeftThenEnd,
     isSingleTableBadugi,
     isSingleTableDrawLowball,
     tryControllerBetAction,
@@ -7801,19 +7815,19 @@ const SAFE_RESET_PHASE = "IDLE";
     : 0;
   const seatLayouts = useMemo(() => {
     const cashLayouts = [
-      "absolute bottom-[1%] left-1/2 -translate-x-1/2 w-[clamp(190px,24vw,270px)]", // Hero (BTN)
+      "absolute bottom-[-2%] left-1/2 -translate-x-1/2 w-[clamp(190px,24vw,270px)]", // Hero (BTN)
       "absolute bottom-[27%] left-[1.5%] w-[clamp(160px,20vw,240px)]", // SB
       "absolute top-[14%] left-[2%] w-[clamp(160px,21vw,250px)]", // BB
-      "absolute top-[1%] left-1/2 -translate-x-1/2 w-[clamp(170px,23vw,270px)]", // UTG
+      "absolute top-[0%] left-1/2 -translate-x-1/2 w-[clamp(170px,23vw,270px)]", // UTG
       "absolute top-[14%] right-[2%] w-[clamp(160px,21vw,250px)]", // MP
       "absolute bottom-[27%] right-[1.5%] w-[clamp(160px,20vw,240px)]", // CO
     ];
     // Tournament tables follow a fixed 6-max oval layout (BTN bottom-center, clockwise SB→CO).
     const tournamentLayouts = [
-      "absolute bottom-[2%] left-1/2 -translate-x-1/2 w-[clamp(190px,21vw,255px)]", // Hero (BTN)
+      "absolute bottom-[-2%] left-1/2 -translate-x-1/2 w-[clamp(190px,21vw,255px)]", // Hero (BTN)
       "absolute bottom-[10%] left-[14%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // SB
       "absolute top-[17%] left-[14%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // BB
-      "absolute top-[3%] left-1/2 -translate-x-1/2 w-[clamp(150px,18vw,220px)]", // UTG
+      "absolute top-[0%] left-1/2 -translate-x-1/2 w-[clamp(150px,18vw,220px)]", // UTG
       "absolute top-[17%] left-[86%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // MP
       "absolute bottom-[10%] left-[86%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // CO
     ];

@@ -34,6 +34,8 @@ test.describe("tournament UI layout smoke", () => {
     const hud = page.getByTestId("tournament-hud");
     const heroCard = page.locator('[data-testid="player-0-card-0"]:visible').first();
     const topSeat = page.getByTestId("seat-3");
+    const heroSeat = page.getByTestId("seat-0");
+    const tableFelt = page.getByTestId("table-felt-oval");
     const rightTopSeat = page.getByTestId("seat-4");
     const rightBottomSeat = page.getByTestId("seat-5");
     const rightTopDetail = page.getByTestId("seat-4-detail");
@@ -46,11 +48,14 @@ test.describe("tournament UI layout smoke", () => {
     await expect(rightTopSeat).toBeVisible();
     await expect(rightBottomSeat).toBeVisible();
 
-    const [hudBox, heroCardBox, rightTopBox, rightBottomBox] = await Promise.all([
+    const [hudBox, heroCardBox, rightTopBox, rightBottomBox, topSeatBox, heroSeatBox, feltBox] = await Promise.all([
       hud.boundingBox(),
       heroCard.boundingBox(),
       rightTopSeat.boundingBox(),
       rightBottomSeat.boundingBox(),
+      topSeat.boundingBox(),
+      heroSeat.boundingBox(),
+      tableFelt.boundingBox(),
     ]);
 
     expect(hudBox?.height ?? 999).toBeLessThanOrEqual(360);
@@ -60,6 +65,12 @@ test.describe("tournament UI layout smoke", () => {
 
     const rightTopBottom = (rightTopBox?.y ?? 0) + (rightTopBox?.height ?? 0);
     expect(rightTopBottom).toBeLessThan((rightBottomBox?.y ?? 0) + 10);
+    expect((topSeatBox?.y ?? 0) + (topSeatBox?.height ?? 0)).toBeLessThanOrEqual(
+      (feltBox?.y ?? 0) + 40,
+    );
+    expect(heroSeatBox?.y ?? 0).toBeGreaterThanOrEqual(
+      (feltBox?.y ?? 0) + (feltBox?.height ?? 0) - 42,
+    );
 
     const [heroAvatarBox, heroPositionBox] = await Promise.all([
       heroAvatar.boundingBox(),

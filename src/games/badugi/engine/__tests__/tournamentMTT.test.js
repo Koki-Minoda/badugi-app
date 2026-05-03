@@ -117,6 +117,28 @@ describe("tournamentMTT engine", () => {
     expect(state.tables.filter((t) => t.isActive)).toHaveLength(1);
   });
 
+  it("balances 14 remaining players across three tables as 5/5/4 instead of leaving a 3-way table", () => {
+    let state = createMTTTournamentState(BASE_CONFIG, entrants);
+    const playersToBust = Object.values(state.players).slice(0, 4);
+    state = onTableHandCompleted(state, playersToBust[0].tableId, {
+      handIndex: 12,
+      seatResults: playersToBust.map((player) => ({
+        seatIndex: player.seatIndex ?? 0,
+        playerId: player.id,
+        stack: 0,
+        startingStack: player.stack,
+      })),
+    });
+
+    expect(state.playersRemaining).toBe(14);
+    const activeCounts = state.tables
+      .filter((table) => table.isActive)
+      .map((table) => table.seats.filter((seat) => seat.playerId !== null).length)
+      .sort((a, b) => b - a);
+    expect(activeCounts).toEqual([5, 5, 4]);
+    expect(Math.max(...activeCounts) - Math.min(...activeCounts)).toBeLessThanOrEqual(1);
+  });
+
   it("completes the tournament and assigns champion", () => {
     let state = createMTTTournamentState(BASE_CONFIG, entrants);
     const survivor = state.tables[0].seats[0].playerId;

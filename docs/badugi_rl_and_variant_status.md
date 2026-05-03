@@ -2034,6 +2034,15 @@ Draw RL test coverage:
   - 2026-05-03 対応: ゲーム画面を「中央の楕円フェルト + 外周プレイヤーポッド」構成へ変更。pot / street は中央、プレイヤー名・stack・bet・カードは外周へ分離し、`default_avatar` 文字列を丸いアバターチップ表示へ置き換える。
 - [x] `UI-20` seat HUD の VPIP / PFR / street別頻度をスマートHUD風に読みやすくする。
   - 2026-05-03 対応: seat hover / focus 詳細を VPIP / PFR / ATS / 3BET のリング表示と、Flop / Turn / River 別の CB / FCB / CCB / RCB / WT / WSD / TAF バー表示へ変更。HUD内に All Games / NLH / PLO / Badugi / 2-7 の scope selector を追加し、将来variant別集計へ接続できる下地を作る。
+- [x] `UI-21` MTT で Hero / 対面 seat がフェルト内に入りすぎないよう、卓面と seat の境界を Playwright で確認する。
+  - 2026-05-03 対応: tournament / cash の Hero・対面 seat を外周寄りへ再配置し、中央フェルトの `data-testid` を追加。`tournament-ui-layout-smoke` で Hero / 対面 seat がフェルト境界に埋まらないことを bounding box で検証する。
+- [x] `BUG-30` BET 中に fold / all-in / busted が混在し、行動可能者が1人だけ残った状態で NPC auto loop が停止する。
+  - 症状: 複数CPUが飛び、1人だけ非all-inの active seat が残ると `Waiting for other players...` のまま進行しないことがある。
+  - 原因: `ensureSeatCanAct` が false の時に次アクターが存在しない経路、または強制action適用後に「残り行動可能者1人」を再判定しない経路があり、BET round 完了 / showdown へ抜けられなかった。
+  - 対応: forced bet action 後と NPC action 前に `checkIfOneLeftThenEnd()` を通し、次アクターが無い場合は `forceFinishRoundRef` へ明示的に送る。
+  - 補足: MTT のリシートはハンド完了後に実行する。今回の停止によりハンド完了へ到達せず、14/18でも見かけ上3way卓が残っていた。
+- [x] `MTT-04` 18人開始から4人 bust して14/18になった時、3卓を 5/5/4 にリバランスすることをテストで固定する。
+  - 2026-05-03 対応: `tournamentMTT.test.js` に 14 remaining の rebalance regression を追加。active table counts が `[5, 5, 4]` になり、最大差が1以内であることを確認する。
 
 ## 15. Tournament UI / Friend Match UX 監査
 

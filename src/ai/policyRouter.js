@@ -81,6 +81,9 @@ export function computeBetDecision({
   betSize = 20,
   actor,
   evaluation,
+  activeOpponents = 1,
+  drawRound = 0,
+  betRound = 0,
 }) {
   const tier = context.tier ?? {};
   const isWorld = tier.id === "worldmaster";
@@ -90,23 +93,52 @@ export function computeBetDecision({
   const foldThreshold = Math.max(0.03, (tier.foldThreshold ?? 0.2) - (isWorld ? 0.02 : 0));
   const raiseThreshold = clamp((tier.raiseThreshold ?? 0.85) - (isWorld ? 0.05 : 0), 0.55, 0.95);
 
-  const riskFactor = clamp((context.variant?.risk ?? 0.5) * 0.2, 0, 0.2);
-  const foldCutoff = clamp(foldThreshold + riskFactor, 0.05, 0.4);
+  const liveOpponents = Math.max(1, Number(activeOpponents) || 1);
+  const toCallUnits = betSize > 0 ? Math.max(0, Number(toCall) || 0) / betSize : 0;
+  const multiwayPressure =
+    liveOpponents >= 5 ? 0.26 : liveOpponents >= 4 ? 0.22 : liveOpponents >= 3 ? 0.14 : liveOpponents >= 2 ? 0.07 : 0;
+  const lateStreetPressure = Math.max(0, Number(drawRound) || 0) >= 2 || Math.max(0, Number(betRound) || 0) >= 2 ? 0.08 : 0;
+  const riskFactor = clamp((context.variant?.risk ?? 0.5) * 0.16, 0, 0.16);
   const raiseCutoff = clamp(raiseThreshold - aggression * 0.1, 0.6, 0.95);
   const lowballRanks = Array.isArray(evaluation?.ranks) ? evaluation.ranks : [];
   const highCard = lowballRanks.length ? Math.max(...lowballRanks) : 13;
+  const lowRanks = lowballRanks.filter((rank) => rank <= 7).length;
   const madeStrength =
     madeCards >= 4
       ? highCard <= 7
         ? 0.95
-        : 0.82
-      : madeCards === 3
-      ? highCard <= 8
+        : highCard <= 9
+        ? 0.84
+        : highCard <= 11
+        ? 0.72
+        : highCard <= 12
         ? 0.62
-        : 0.48
+        : 0.54
+      : madeCards === 3
+      ? highCard <= 6
+        ? 0.68
+        : highCard <= 8
+        ? 0.58
+        : highCard <= 10
+        ? 0.44
+        : 0.34
       : madeCards === 2
-      ? 0.28
+      ? lowRanks >= 2
+        ? 0.32
+        : 0.22
       : 0.08;
+  const drawPotentialCredit =
+    madeCards === 3 && lowRanks >= 3
+      ? 0.12
+      : madeCards === 2 && lowRanks >= 2 && liveOpponents <= 2
+      ? 0.08
+      : 0;
+  const callPressure = clamp(toCallUnits * 0.08, 0, 0.24);
+  const foldCutoff = clamp(
+    foldThreshold + riskFactor + multiwayPressure + callPressure + lateStreetPressure - drawPotentialCredit,
+    0.05,
+    tier.id === "beginner" ? 0.72 : 0.84,
+  );
 
   const roll = Math.random();
   let action = toCall === 0 ? "CHECK" : "CALL";
@@ -114,7 +146,13 @@ export function computeBetDecision({
 
   if (toCall > 0 && madeStrength < 0.35 && roll < foldCutoff) {
     action = "FOLD";
-    decisionReason = "weak-facing-bet";
+    decisionReason = liveOpponents >= 3 ? "weak-multiway-facing-bet" : "weak-facing-bet";
+  } else if (toCall > 0 && liveOpponents >= 3 && madeStrength < 0.5 && roll < clamp(foldCutoff + 0.16, 0, 0.9)) {
+    action = "FOLD";
+    decisionReason = "marginal-multiway-facing-bet";
+  } else if (toCall > 0 && liveOpponents >= 4 && madeStrength < 0.65 && roll < clamp(foldCutoff + 0.1, 0, 0.9)) {
+    action = "FOLD";
+    decisionReason = "rough-hand-crowded-pot";
   } else if (canRaise) {
     const valueRaise =
       madeStrength >= 0.9 ||

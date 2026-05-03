@@ -1350,6 +1350,7 @@ const SAFE_RESET_PHASE = "IDLE";
   }, []);
   const [handResultSummary, setHandResultSummary] = useState(null);
   const [handResultVisible, setHandResultVisible] = useState(false);
+  const [cashOutSummary, setCashOutSummary] = useState(null);
   const [devTierOverride, setDevTierOverride] = useState(() => loadAiTierOverride());
   const activeAiTierConfig = useMemo(
     () => getTierById(devTierOverride ?? "standard"),
@@ -4468,6 +4469,32 @@ const SAFE_RESET_PHASE = "IDLE";
     setCurrentScreen("menu");
   };
 
+  const handleCashOut = useCallback(() => {
+    if (mode !== "cash") return;
+    const hero = playersRef.current?.[0] ?? players?.[0] ?? null;
+    const buyIn = Number(startingStackRef.current ?? startingStack ?? DEFAULT_STARTING_STACK) || DEFAULT_STARTING_STACK;
+    const stack = Number(hero?.stack ?? 0) || 0;
+    setCashOutSummary({
+      variantName:
+        GAME_VARIANTS[gameVariantRef.current]?.label ??
+        GAME_VARIANTS[gameVariant]?.label ??
+        "Cash Game",
+      buyIn,
+      stack,
+      net: stack - buyIn,
+      hands: handCountRef.current,
+    });
+  }, [gameVariant, mode, players, startingStack]);
+
+  const handleCloseCashOut = useCallback(() => {
+    setCashOutSummary(null);
+  }, []);
+
+  const handleCashOutBackToMenu = () => {
+    setCashOutSummary(null);
+    handleBackToMenu();
+  };
+
   const handleOpenGameSelector = () => {
     setCurrentScreen("gameSelector");
   };
@@ -4498,6 +4525,11 @@ const SAFE_RESET_PHASE = "IDLE";
       preserveHandCount: false,
       navigateTo: "gameRing",
     });
+  };
+
+  const handleCashOutNewSession = () => {
+    setCashOutSummary(null);
+    handleSelectRing(gameVariantRef.current ?? DEFAULT_GAME_VARIANT);
   };
 
   const handleSelectTournament = (configOverride) => {
@@ -7483,6 +7515,9 @@ const SAFE_RESET_PHASE = "IDLE";
         const evalResult = betHelpers.evaluateBadugi?.(me.hand) ?? { ranks: [] };
         const madeCards = evalResult.ranks.length;
         const canRaise = !me.allIn && raiseCountThisRound < 4;
+        const activeOpponents = snap.filter(
+          (player, seatIndex) => seatIndex !== activeSeat && player && !isFoldedOrOut(player) && !player.allIn,
+        ).length;
         const betDecision = computeBetDecision({
           context: aiDecisionContext,
           toCall,
@@ -7491,6 +7526,9 @@ const SAFE_RESET_PHASE = "IDLE";
           betSize,
           actor: me,
           evaluation: evalResult,
+          activeOpponents,
+          drawRound,
+          betRound: betRoundIndex,
         });
         const decisionAction = String(betDecision?.action ?? "").toLowerCase();
         const actionPayload = {
@@ -7543,6 +7581,8 @@ const SAFE_RESET_PHASE = "IDLE";
     raiseCountThisRound,
     dealerIdx,
     betSize,
+    betRoundIndex,
+    drawRound,
     aiDecisionContext,
     activeAiTierConfig,
     applyForcedBetAction,
@@ -8306,6 +8346,8 @@ const SAFE_RESET_PHASE = "IDLE";
     heroCanDraw,
     nextHandLabel,
     onNextHand: startNextHand,
+    isCashGame: mode === "cash",
+    onCashOut: handleCashOut,
   };
 
   const debugProps = {
@@ -8379,11 +8421,19 @@ const SAFE_RESET_PHASE = "IDLE";
             isPortrait={deviceProfile.isPortrait}
             debugFlags={debugFlags}
           >
-            {renderedGameScreen}
-          </MobileOrientationGate>
-          {utilityModal}
-        </AuthGate>
-      </AuthProvider>
+          {renderedGameScreen}
+        </MobileOrientationGate>
+        {utilityModal}
+        {cashOutSummary && (
+          <CashOutResultModal
+            summary={cashOutSummary}
+            onClose={handleCloseCashOut}
+            onBackToMenu={handleCashOutBackToMenu}
+            onNewSession={handleCashOutNewSession}
+          />
+        )}
+      </AuthGate>
+    </AuthProvider>
       <DebugHud
         enabled={debugFlags.enabled}
         deviceProfile={deviceProfile}
@@ -8446,6 +8496,75 @@ function GameUtilityModal({ modalName, language, onClose, onReplay }) {
               onReplay={onReplay}
             />
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CashOutResultModal({ summary, onClose, onBackToMenu, onNewSession }) {
+  const net = Number(summary?.net ?? 0);
+  const netLabel = net >= 0 ? `+${net}` : `${net}`;
+  const netClass = net >= 0 ? "text-emerald-300" : "text-red-300";
+  return (
+    <div
+      className="fixed inset-0 z-[320] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Cash out result"
+    >
+      <div className="w-full max-w-md rounded-3xl border border-emerald-300/20 bg-slate-950 p-6 text-white shadow-2xl">
+        <div className="mb-5">
+          <p className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-300">
+            Cash Out
+          </p>
+          <h2 className="mt-2 text-2xl font-black">{summary?.variantName ?? "Cash Game"}</h2>
+          <p className="mt-1 text-sm text-slate-400">
+            今回のキャッシュゲーム結果です。続行するか、ゲーム選択へ戻れます。
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+            <p className="text-slate-500">Buy-in</p>
+            <p className="text-xl font-black">{summary?.buyIn ?? 0}</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+            <p className="text-slate-500">Cash out stack</p>
+            <p className="text-xl font-black">{summary?.stack ?? 0}</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+            <p className="text-slate-500">Hands</p>
+            <p className="text-xl font-black">{summary?.hands ?? 0}</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+            <p className="text-slate-500">Net</p>
+            <p className={`text-xl font-black ${netClass}`}>{netLabel}</p>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-2 sm:grid-cols-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-white/15 px-3 py-2 text-sm font-bold text-slate-200 hover:bg-white/10"
+          >
+            続行
+          </button>
+          <button
+            type="button"
+            onClick={onNewSession}
+            className="rounded-xl bg-emerald-500 px-3 py-2 text-sm font-black text-slate-950 hover:bg-emerald-400"
+          >
+            新しい卓
+          </button>
+          <button
+            type="button"
+            onClick={onBackToMenu}
+            className="rounded-xl bg-yellow-400 px-3 py-2 text-sm font-black text-slate-950 hover:bg-yellow-300"
+          >
+            ゲーム選択
+          </button>
         </div>
       </div>
     </div>

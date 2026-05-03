@@ -41,7 +41,21 @@ test.describe("game UI layout smoke", () => {
     await expect(cpuDetail.getByText(/Stack/i)).toBeVisible();
     await expect(cpuDetail.getByText(/^Bet$/i)).toBeVisible();
     await expect(cpuDetail.getByText("VPIP", { exact: true })).toBeVisible();
-    await expect(cpuDetail.getByLabel("HUD game scope")).toBeVisible();
+    const scopeSelector = cpuDetail.getByLabel("HUD game scope");
+    await expect(scopeSelector).toBeVisible();
+    await scopeSelector.selectOption("badugi");
+    await expect(scopeSelector).toHaveValue("badugi");
+    const detailBox = await cpuDetail.boundingBox();
+    expect(detailBox?.x ?? -1).toBeGreaterThanOrEqual(0);
+    expect(detailBox?.y ?? -1).toBeGreaterThanOrEqual(0);
+    expect((detailBox?.x ?? 0) + (detailBox?.width ?? 0)).toBeLessThanOrEqual(1440);
+    expect((detailBox?.y ?? 0) + (detailBox?.height ?? 0)).toBeLessThanOrEqual(900);
+
+    await page.getByRole("button", { name: /Cash Out/i }).click();
+    await expect(page.getByRole("dialog", { name: /Cash out result/i })).toBeVisible();
+    await expect(page.getByText(/Cash out stack/i)).toBeVisible();
+    await page.getByRole("button", { name: /続行/i }).click();
+    await expect(page.getByRole("dialog", { name: /Cash out result/i })).toBeHidden();
 
     await page.getByRole("button", { name: /設定|Settings/i }).click();
     await expect(page.getByTestId("game-utility-modal")).toBeVisible();

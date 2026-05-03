@@ -31,6 +31,43 @@ describe("policyRouter", () => {
     vi.restoreAllMocks();
   });
 
+  it("folds marginal three-card hands more often in crowded six-max pots", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.55);
+    const decision = computeBetDecision({
+      context,
+      toCall: 20,
+      canRaise: true,
+      madeCards: 3,
+      betSize: 20,
+      actor: { stack: 200, betThisRound: 0 },
+      evaluation: { ranks: [2, 9, 11] },
+      activeOpponents: 4,
+      drawRound: 0,
+      betRound: 0,
+    });
+    expect(decision.action).toBe("FOLD");
+    expect(decision.reason).toMatch(/multiway|crowded/);
+    vi.restoreAllMocks();
+  });
+
+  it("keeps strong three-card draws playable heads-up", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.55);
+    const decision = computeBetDecision({
+      context,
+      toCall: 20,
+      canRaise: true,
+      madeCards: 3,
+      betSize: 20,
+      actor: { stack: 200, betThisRound: 0 },
+      evaluation: { ranks: [1, 2, 5] },
+      activeOpponents: 1,
+      drawRound: 0,
+      betRound: 0,
+    });
+    expect(decision.action).toBe("CALL");
+    vi.restoreAllMocks();
+  });
+
   it("boosts raise size with tier multiplier", () => {
     vi.spyOn(Math, "random").mockReturnValue(0.99);
     const decision = computeBetDecision({

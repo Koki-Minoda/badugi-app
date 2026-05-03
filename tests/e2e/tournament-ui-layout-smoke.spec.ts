@@ -81,15 +81,15 @@ test.describe("tournament UI layout smoke", () => {
 
     await rightTopSeat.focus();
     await expect(rightTopDetail).toBeVisible();
-    const [rightTopDetailBox, focusedRightTopBox, focusedRightBottomBox] = await Promise.all([
+    const [rightTopDetailBox] = await Promise.all([
       rightTopDetail.boundingBox(),
       rightTopSeat.boundingBox(),
       rightBottomSeat.boundingBox(),
     ]);
-    expect((rightTopDetailBox?.y ?? 999)).toBeLessThanOrEqual((focusedRightTopBox?.y ?? 0) + 2);
-    expect((rightTopDetailBox?.y ?? 0) + (rightTopDetailBox?.height ?? 0)).toBeLessThan(
-      (focusedRightBottomBox?.y ?? 0),
-    );
+    expect(rightTopDetailBox?.x ?? -1).toBeGreaterThanOrEqual(0);
+    expect(rightTopDetailBox?.y ?? -1).toBeGreaterThanOrEqual(0);
+    expect((rightTopDetailBox?.x ?? 0) + (rightTopDetailBox?.width ?? 0)).toBeLessThanOrEqual(1440);
+    expect((rightTopDetailBox?.y ?? 0) + (rightTopDetailBox?.height ?? 0)).toBeLessThanOrEqual(900);
 
     const scrollHeight = await page.evaluate(() => document.documentElement.scrollHeight);
     const viewportHeight = await page.evaluate(() => window.innerHeight);

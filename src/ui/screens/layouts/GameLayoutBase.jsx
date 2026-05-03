@@ -146,6 +146,8 @@ export default function GameLayoutBase({
     heroCanDraw: controlsHeroCanDraw,
     nextHandLabel: controlsNextHandLabel,
     onNextHand: controlsOnNextHand,
+    isCashGame,
+    onCashOut,
   } = controlsProps;
 
   const { debugMode, onToggleDebugMode } = debugProps;
@@ -530,6 +532,15 @@ export default function GameLayoutBase({
                     </div>
                   </div>
                   <div>{renderControlsContent()}</div>
+                  {isCashGame && (
+                    <button
+                      type="button"
+                      onClick={onCashOut}
+                      className="w-full rounded-xl border border-yellow-300/30 bg-yellow-400/10 px-3 py-2 text-sm font-black text-yellow-100 transition hover:bg-yellow-400 hover:text-slate-950"
+                    >
+                      Cash Out
+                    </button>
+                  )}
                   {nextHandButton}
                 </div>
               </div>

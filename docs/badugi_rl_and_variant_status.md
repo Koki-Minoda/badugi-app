@@ -2043,6 +2043,22 @@ Draw RL test coverage:
   - 補足: MTT のリシートはハンド完了後に実行する。今回の停止によりハンド完了へ到達せず、14/18でも見かけ上3way卓が残っていた。
 - [x] `MTT-04` 18人開始から4人 bust して14/18になった時、3卓を 5/5/4 にリバランスすることをテストで固定する。
   - 2026-05-03 対応: `tournamentMTT.test.js` に 14 remaining の rebalance regression を追加。active table counts が `[5, 5, 4]` になり、最大差が1以内であることを確認する。
+- [x] `AI-08` 6max cash / MTT の CPU VPIP が高すぎる問題を調整する。
+  - 症状: 実プレイで VPIP 80% 台の CPU が多く、HU なら許容できても 6max では参加しすぎ。
+  - 方針: `policyRouter` の BET decision に active opponent 数、to-call unit、made hand の粗さを反映し、弱い2枚/粗い3枚ドロー facing bet は multiway で大きくfold寄りにする。Standard は 6max で概ね 30-45% 程度を目安にし、Beginner だけ少し緩く残す。
+  - 2026-05-03 対応: `computeBetDecision()` に `activeOpponents / drawRound / betRound` を追加し、multiway pressure / late street pressure / to-call units を fold cutoff に反映。粗い made badugi や marginal 3-card draw の評価も細分化した。
+- [x] `UI-22` CPU Smart HUD をクリック可能・画面内固定にする。
+  - 症状: HUD の `All Games` select を押そうとすると、seat からカーソルが外れてポップアップが消える。上側 seat は HUD が画面外へ出る。
+  - 方針: ネイティブ `title` tooltip を撤去し、Smart HUD を fixed overlay として viewport 内へ clamp する。HUD 自体は `pointer-events: auto` にし、select 操作中も閉じない。
+  - 2026-05-03 対応: Smart HUD を `document.body` へ portal し、viewport 内に clamp。native title tooltip を `aria-label` に置き換え、HUD select を Playwright で操作確認した。
+- [x] `UI-23` CPU seat 同士の干渉をさらに減らす。
+  - 症状: 右側/左側の上下 seat が近く、HUD やカード列が重なると読みづらい。
+  - 方針: HUD overlay は seat とは別レイヤーへ逃がし、seat の z-index は hover/focus 時だけ上げる。必要なら次段で seat width / vertical gap を再調整する。
+  - 2026-05-03 対応: HUD を seat DOM の外へ出し、隣 seat の背面に潜らないようにした。tournament layout smoke は HUD が viewport 内に収まることを確認する。
+- [x] `CASH-01` cash game の終了導線として Cash Out ボタンとリザルト確認を追加する。
+  - 症状: cash game を終える時に「戻る」以外の導線がなく、獲得/損失スタックの確認画面もない。
+  - 方針: cash game の右 action panel に Cash Out を追加し、Hero stack / buy-in / net / hand count を表示する result modal を出す。続行、ゲーム選択へ戻る、New cash session の3導線を用意する。
+  - 2026-05-03 対応: Hero Controls に `Cash Out` を追加。Cash Out result modal で buy-in / cash out stack / hand count / net を表示し、続行・新しい卓・ゲーム選択へ遷移できる。
 
 ## 15. Tournament UI / Friend Match UX 監査
 

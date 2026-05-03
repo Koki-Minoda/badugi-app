@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Card from "./Card";
 import { formatStatAf, formatStatPercent } from "../utils/stats.js";
 
@@ -216,6 +217,16 @@ export default function Player({
   positionLabel,
   canSelectForDraw = false,
 }) {
+  const seatRef = useRef(null);
+  const closeTimerRef = useRef(null);
+  const [hudOpen, setHudOpen] = useState(false);
+  const [hudStyle, setHudStyle] = useState(null);
+  useEffect(
+    () => () => {
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    },
+    [],
+  );
   const seatIndex = typeof index === "number" ? index : 0;
   const isHero = index === selfIndex;
   const isActive = turn === index;
@@ -252,9 +263,55 @@ export default function Player({
     statsLine,
   ].filter(Boolean);
   const playerDetailTitle = playerDetailLines.join("\n");
-  const detailPositionClass = isHero || seatIndex === 2 || seatIndex === 3 || seatIndex === 4
-    ? "bottom-full mb-2"
-    : "top-full mt-2";
+
+  const openHud = useCallback(() => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+    const rect = seatRef.current?.getBoundingClientRect?.();
+    if (!rect || typeof window === "undefined") {
+      setHudOpen(true);
+      return;
+    }
+    const width = Math.min(620, Math.max(320, window.innerWidth - 24));
+    const estimatedHeight = 318;
+    const margin = 12;
+    const preferredBelow = rect.bottom + margin;
+    const preferredAbove = rect.top - estimatedHeight - margin;
+    const hasRoomBelow = preferredBelow + estimatedHeight <= window.innerHeight - margin;
+    const rawTop = hasRoomBelow ? preferredBelow : preferredAbove;
+    const left = Math.min(
+      window.innerWidth - width - margin,
+      Math.max(margin, rect.left + rect.width / 2 - width / 2),
+    );
+    const top = Math.min(
+      window.innerHeight - estimatedHeight - margin,
+      Math.max(margin, rawTop),
+    );
+    setHudStyle({
+      position: "fixed",
+      left: `${left}px`,
+      top: `${top}px`,
+      width: `${width}px`,
+    });
+    setHudOpen(true);
+  }, []);
+
+  const scheduleCloseHud = useCallback(() => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = setTimeout(() => {
+      setHudOpen(false);
+      closeTimerRef.current = null;
+    }, 120);
+  }, []);
+
+  const keepHudOpen = useCallback(() => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  }, []);
 
   const handleCardClick = (cardIdx) => {
     if (isHero && phase === "DRAW" && canSelectForDraw && onCardClick) {
@@ -262,12 +319,42 @@ export default function Player({
     }
   };
 
+  const hudOverlay =
+    hudOpen && typeof document !== "undefined"
+      ? createPortal(
+          <div
+            data-testid={`seat-${seatIndex}-detail`}
+            onMouseEnter={keepHudOpen}
+            onMouseLeave={scheduleCloseHud}
+            className="z-[260] rounded-xl border border-white/15 bg-black/95 p-4 text-[11px] text-slate-200 shadow-2xl"
+            style={hudStyle ?? undefined}
+          >
+            <PlayerSmartHud
+              player={player}
+              positionLabel={positionLabel}
+              stats={stats}
+              statsLine={statsLine}
+              stackValue={stackValue}
+              betValue={betValue}
+              statusBadges={statusBadges}
+            />
+          </div>,
+          document.body,
+        )
+      : null;
+
   return (
+    <>
     <div
+      ref={seatRef}
       data-testid={`seat-${seatIndex}`}
       tabIndex={0}
-      title={playerDetailTitle}
-      className={`group relative overflow-visible rounded-[18px] border shadow-[0_10px_20px_rgba(0,0,0,0.35)] backdrop-blur flex flex-col outline-none transition hover:z-[80] focus:z-[80] focus-within:z-[80] focus-visible:ring-2 focus-visible:ring-sky-300 ${
+      aria-label={playerDetailTitle}
+      onMouseEnter={openHud}
+      onMouseLeave={scheduleCloseHud}
+      onFocus={openHud}
+      onBlur={scheduleCloseHud}
+      className={`relative overflow-visible rounded-[18px] border shadow-[0_10px_20px_rgba(0,0,0,0.35)] backdrop-blur flex flex-col outline-none transition hover:z-[80] focus:z-[80] focus-within:z-[80] focus-visible:ring-2 focus-visible:ring-sky-300 ${
         isFolded
           ? "border-slate-500/25 bg-slate-950/50 grayscale"
           : isHero
@@ -290,20 +377,6 @@ export default function Player({
               : "bg-gradient-to-b from-cyan-300/6 via-transparent to-black/25"
         }`}
       />
-      <div
-        data-testid={`seat-${seatIndex}-detail`}
-        className={`pointer-events-none absolute left-1/2 z-[220] hidden w-[min(620px,92vw)] -translate-x-1/2 rounded-xl border border-white/15 bg-black/95 p-4 text-[11px] text-slate-200 shadow-2xl group-hover:block group-focus:block ${detailPositionClass}`}
-      >
-        <PlayerSmartHud
-          player={player}
-          positionLabel={positionLabel}
-          stats={stats}
-          statsLine={statsLine}
-          stackValue={stackValue}
-          betValue={betValue}
-          statusBadges={statusBadges}
-        />
-      </div>
       <div className="relative z-10 flex items-start justify-between gap-2">
         <div className="min-w-0 flex items-center gap-2 text-white font-semibold">
           <AvatarChip
@@ -424,5 +497,7 @@ export default function Player({
         </div>
       )}
     </div>
+    {hudOverlay}
+    </>
   );
 }

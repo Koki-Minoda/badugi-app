@@ -2,6 +2,25 @@ import { GameEngine } from "./gameEngine.js";
 import { cloneTableState } from "./models.js";
 import { applyChips } from "./applyChips.js";
 
+function isForcedBetEligible(seat) {
+  if (!seat) return false;
+  if (seat.sittingOut || seat.seatOut || seat.isBusted) return false;
+  if (seat.seatType && String(seat.seatType).toUpperCase() === "EMPTY") return false;
+  if (typeof seat.stack === "number" && seat.stack <= 0) return false;
+  return true;
+}
+
+function nextForcedBetSeat(players = [], startIdx = 0, excludeIdx = null) {
+  if (!Array.isArray(players) || players.length === 0) return null;
+  const total = players.length;
+  for (let offset = 0; offset < total; offset += 1) {
+    const idx = (startIdx + offset + total) % total;
+    if (idx === excludeIdx) continue;
+    if (isForcedBetEligible(players[idx])) return idx;
+  }
+  return null;
+}
+
 /**
  * Utility base class for draw games (Badugi, 2-7, Dramahaなど)。
  * ここでは汎用的な SB/BB 処理や「全員がマッチしたか」の判定だけ提供し、
@@ -18,18 +37,23 @@ export class DrawEngineBase extends GameEngine {
     const anteValue = next.ante ?? 0;
     if (anteValue > 0) {
       next.players.forEach((seat) => {
-        if (!seat || seat.sittingOut) return;
+        if (!isForcedBetEligible(seat)) return;
         const applied = applyChips(seat, anteValue);
         seat.bet = (seat.bet ?? 0) + applied;
         seat.lastAction = "ANTE";
         if (seat.stack === 0) seat.allIn = true;
       });
     }
-    const sbIdx = (next.dealerIndex + 1) % next.players.length;
-    const bbIdx = (next.dealerIndex + 2) % next.players.length;
+    const sbIdx = nextForcedBetSeat(next.players, (next.dealerIndex + 1) % next.players.length);
+    const bbIdx = nextForcedBetSeat(
+      next.players,
+      ((sbIdx ?? next.dealerIndex) + 1) % next.players.length,
+      sbIdx,
+    );
     const applyBlind = (seatIdx, amount, label) => {
+      if (seatIdx == null) return;
       const seat = next.players[seatIdx];
-      if (!seat || seat.sittingOut) return;
+      if (!isForcedBetEligible(seat)) return;
       const applied = applyChips(seat, amount);
       seat.bet = (seat.bet ?? 0) + applied;
       seat.lastAction = label;
@@ -37,6 +61,10 @@ export class DrawEngineBase extends GameEngine {
     };
     applyBlind(sbIdx, next.smallBlind ?? 0, "SB");
     applyBlind(bbIdx, next.bigBlind ?? 0, "BB");
+    next.metadata = {
+      ...(next.metadata ?? {}),
+      lastBlinds: { sbIndex: sbIdx, bbIndex: bbIdx },
+    };
     return next;
   }
 

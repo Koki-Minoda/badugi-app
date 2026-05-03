@@ -105,6 +105,42 @@ describe("DeuceToSevenTripleDrawEngine", () => {
     expect(withBlinds.metadata.currentBet).toBe(20);
   });
 
+  it("skips busted blind seats and starts betting after the live big blind", () => {
+    const engine = new DeuceToSevenTripleDrawEngine();
+    const state = engine.initHand({
+      seatConfig: ["HUMAN", "CPU", "CPU", "CPU", "CPU", "CPU"],
+      startingStack: 500,
+      dealerIndex: 3,
+      structure: { sb: 15, bb: 30 },
+    });
+    state.players[2] = {
+      ...state.players[2],
+      stack: 0,
+      bet: 0,
+      seatOut: true,
+      sittingOut: true,
+      isBusted: true,
+      folded: true,
+    };
+    state.players[5] = {
+      ...state.players[5],
+      stack: 0,
+      bet: 0,
+      seatOut: true,
+      sittingOut: true,
+      isBusted: true,
+      folded: true,
+    };
+
+    const withBlinds = engine.applyForcedBets(state);
+
+    expect(withBlinds.players[4]).toMatchObject({ stack: 485, bet: 15, lastAction: "SB" });
+    expect(withBlinds.players[0]).toMatchObject({ stack: 470, bet: 30, lastAction: "BB" });
+    expect(withBlinds.players[5]).toMatchObject({ stack: 0, bet: 0 });
+    expect(withBlinds.actingPlayerIndex).toBe(1);
+    expect(withBlinds.lastAggressorIndex).toBe(0);
+  });
+
   it("formats 2-7 showdown labels from the evaluator", () => {
     const engine = new DeuceToSevenTripleDrawEngine();
     const result = engine.evaluateShowdownHand(["7S", "5D", "4C", "3H", "2S"]);

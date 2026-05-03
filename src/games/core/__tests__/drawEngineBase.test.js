@@ -45,6 +45,31 @@ describe("DrawEngineBase", () => {
     expect(next.players[2]).toMatchObject({ stack: 89, bet: 11, lastAction: "BB" });
   });
 
+  it("skips busted seats when posting blinds", () => {
+    const engine = new TestDrawEngine();
+    const state = createTableState({
+      gameId: "test_draw",
+      dealerIndex: 3,
+      smallBlind: 15,
+      bigBlind: 30,
+      players: [
+        player({ seatIndex: 0, stack: 1100 }),
+        player({ seatIndex: 1, stack: 230 }),
+        player({ seatIndex: 2, stack: 0, seatOut: true, isBusted: true }),
+        player({ seatIndex: 3, stack: 1350 }),
+        player({ seatIndex: 4, stack: 275 }),
+        player({ seatIndex: 5, stack: 0, seatOut: true, isBusted: true }),
+      ],
+    });
+
+    const next = engine.applyForcedBets(state);
+
+    expect(next.players[4]).toMatchObject({ stack: 260, bet: 15, lastAction: "SB" });
+    expect(next.players[0]).toMatchObject({ stack: 1070, bet: 30, lastAction: "BB" });
+    expect(next.players[5]).toMatchObject({ stack: 0, bet: 0 });
+    expect(next.metadata.lastBlinds).toEqual({ sbIndex: 4, bbIndex: 0 });
+  });
+
   it("detects betting street completion when active players are matched", () => {
     const engine = new TestDrawEngine();
     const state = createTableState({

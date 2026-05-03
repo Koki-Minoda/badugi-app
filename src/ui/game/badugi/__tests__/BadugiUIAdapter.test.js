@@ -113,4 +113,30 @@ describe("BadugiUIAdapter", () => {
     expect(postDraw.controlsConfig.betSize).toBe(mockTableConfig.bbValue * 2);
     expect(postDraw.controlsConfig.isBigBetStreet).toBe(true);
   });
+
+  it("compresses seat labels when busted seats are between blinds", () => {
+    const adapter = new BadugiUIAdapter({});
+    const props = adapter.buildViewProps({
+      controllerSnapshot: mockSnapshot({
+        dealerIdx: 3,
+        players: [
+          { name: "Hero", stack: 1100, betThisRound: 30, hand: ["AS", "2H", "3C", "4D"] },
+          { name: "CPU 2", stack: 230, betThisRound: 0, hand: ["5S", "6H", "7C", "8D"] },
+          { name: "CPU 3", stack: 0, betThisRound: 0, seatOut: true, isBusted: true, folded: true },
+          { name: "CPU 4", stack: 1350, betThisRound: 0, hand: ["9S", "TH", "JC", "QD"] },
+          { name: "CPU 5", stack: 275, betThisRound: 15, hand: ["KS", "AH", "2C", "3D"] },
+          { name: "CPU 6", stack: 0, betThisRound: 0, seatOut: true, isBusted: true, folded: true },
+        ],
+      }),
+      tableConfig: mockTableConfig,
+    });
+
+    expect(props.seatViews[3].label).toBe("BTN");
+    expect(props.seatViews[4].label).toBe("SB");
+    expect(props.seatViews[0].label).toBe("BB");
+    expect(props.seatViews[1].label).toBe("UTG");
+    expect(props.seatViews[5].label).toBe("OUT");
+    expect(props.seatViews[0].isBB).toBe(true);
+    expect(props.seatViews[4].isSB).toBe(true);
+  });
 });

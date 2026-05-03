@@ -64,6 +64,32 @@ describe("NLHGameController", () => {
     expect(snapshot.currentActor).toBe(0);
   });
 
+  it("skips busted seats when assigning blinds", () => {
+    const controller = createController({
+      seats: [
+        { name: "Hero", stack: 1000 },
+        { name: "Busted SB", stack: 0, seatOut: true, isBusted: true },
+        { name: "CPU 2", stack: 1000 },
+        { name: "CPU 3", stack: 1000 },
+      ],
+      deckCards: [
+        "AS", "KS", "QD", "JC",
+        "10H", "9D", "8C", "7S",
+        "2C", "2D", "2H", "2S", "3C", "3D",
+      ],
+      blinds,
+    });
+    controller.state.dealerIndex = 3;
+
+    const snapshot = controller.startNewHand();
+
+    expect(snapshot.smallBlindIndex).toBe(2);
+    expect(snapshot.bigBlindIndex).toBe(3);
+    expect(snapshot.players[1].betThisStreet).toBe(0);
+    expect(snapshot.players[2].betThisStreet).toBe(blinds.sb);
+    expect(snapshot.players[3].betThisStreet).toBe(blinds.bb);
+  });
+
   it("progresses streets and deals board cards", () => {
     const controller = createController({ seats, deckCards, blinds });
     controller.startNewHand();

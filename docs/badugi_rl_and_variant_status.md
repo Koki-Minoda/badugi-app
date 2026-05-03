@@ -2022,6 +2022,8 @@ Draw RL test coverage:
 - [x] `UI-17` MTT seat layout を外周寄りに逃がし、テーブル内のカード・pot・fold表示との干渉を減らす。
 - [x] `UI-18` CPU番号表示をキャラクター名へ変更し、CPU style / model / training run を seat detail に載せられる下地を作る。
   - 2026-05-03 対応: `src/ai/cpuRoster.js` に 18人分のCPU rosterを追加。MTT entrant / table seat は Akira, Mina, Ren... の表示名を使い、将来 `modelRegistry` / `cpuCharacters` と紐付けて学習断面一覧を拡張する。
+- [x] `BUG-27` busted / seatOut を挟む cash table で position label / blind label を詰める。例: dealer後にSB、その次の生存者がBBで、busted seatは `OUT` 表示にする。
+  - 2026-05-03 対応: `positionLabels` helperを追加し、Badugi UI / App seat labels を生存seat基準に統一。DrawEngineBase / 2-7・A-5 draw base / NLH の blind assignment も busted seatをskipするテストを追加。
 
 ## 15. Tournament UI / Friend Match UX 監査
 

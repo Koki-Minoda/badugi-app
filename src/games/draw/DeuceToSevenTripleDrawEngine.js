@@ -249,7 +249,17 @@ function hasBettingRoundCompleted(state) {
 }
 
 function needsBettingAction(player, currentBet = 0) {
-  if (!player || player.folded || player.sittingOut || player.allIn) return false;
+  if (
+    !player ||
+    player.folded ||
+    player.sittingOut ||
+    player.seatOut ||
+    player.isBusted ||
+    player.allIn ||
+    (typeof player.stack === "number" && player.stack <= 0)
+  ) {
+    return false;
+  }
   return !player.hasActedThisRound || (player.bet ?? 0) < currentBet;
 }
 
@@ -371,13 +381,22 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
 
   applyForcedBets(state) {
     const next = super.applyForcedBets(state);
-    const active = next.players.filter((player) => !player.folded && !player.sittingOut);
+    const active = next.players.filter(
+      (player) =>
+        player &&
+        !player.folded &&
+        !player.sittingOut &&
+        !player.seatOut &&
+        !player.isBusted &&
+        (typeof player.stack !== "number" || player.stack > 0 || player.allIn),
+    );
+    const bbIndex = next.metadata?.lastBlinds?.bbIndex;
+    const nextBettingSeat =
+      typeof bbIndex === "number" ? getNextBettingSeat(next, bbIndex) : null;
     next.actingPlayerIndex = active.length
-      ? (next.dealerIndex + 3) % next.players.length
+      ? nextBettingSeat ?? next.players.findIndex((player) => !player.folded && !player.sittingOut)
       : null;
-    next.lastAggressorIndex = active.length
-      ? (next.dealerIndex + 2) % next.players.length
-      : null;
+    next.lastAggressorIndex = typeof bbIndex === "number" ? bbIndex : null;
     next.metadata = {
       ...(next.metadata ?? {}),
       currentBet: Math.max(0, ...active.map((player) => player.bet ?? 0)),

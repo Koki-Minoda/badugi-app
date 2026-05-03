@@ -128,6 +128,7 @@ import TitleSettingsScreen from "./screens/TitleSettingsScreen.jsx";
 import ProfileStats from "../components/ProfileStats.jsx";
 import { useGameSessionState } from "./hooks/useGameSessionState.js";
 import { mergeSeatViewsForDisplay } from "./utils/seatViewMerge.js";
+import { getPositionNameForSeat } from "./utils/positionLabels.js";
 import MobileOrientationGate from "./components/MobileOrientationGate.jsx";
 import { useDeviceProfile } from "./hooks/useDeviceProfile.js";
 import { useDesktopCanvasScale } from "./hooks/useDesktopCanvasScale.js";
@@ -181,10 +182,8 @@ const DEFAULT_GAME_VARIANT = "badugi";
 const DESKTOP_CANVAS_BASE_WIDTH = 1600;
 const DESKTOP_CANVAS_BASE_HEIGHT = 900;
 const HERO_TOURNAMENT_PLAYER_ID = "hero-player";
-function getPositionName(index, dealer, seatCount = 6) {
-  const order = ["BTN", "SB", "BB", "UTG", "MP", "CO"];
-  const rel = (index - dealer + seatCount) % seatCount;
-  return order[rel] ?? `Seat${index}`;
+function getPositionName(index, dealer, players = []) {
+  return getPositionNameForSeat(index, dealer, players);
 }
 const DEFAULT_STORE_TOURNAMENT_CONFIG = {
   id: "store-mtt",
@@ -1151,7 +1150,7 @@ const SAFE_RESET_PHASE = "IDLE";
         playerId,
         stats,
         seatIndex: idx,
-        label: getPositionName(idx, dealerSeatSrc, NUM_PLAYERS),
+        label: getPositionName(idx, dealerSeatSrc, playersSrc),
         isDealer: idx === dealerSeatSrc,
         isSB: seatCount ? idx === ((dealerSeatSrc + 1) % seatCount) : false,
         isBB: seatCount ? idx === ((dealerSeatSrc + 2) % seatCount) : false,
@@ -1187,7 +1186,7 @@ const SAFE_RESET_PHASE = "IDLE";
           getPositionName(
             typeof seat?.seatIndex === "number" ? seat.seatIndex : idx,
             dealerSeatSrc,
-            NUM_PLAYERS
+            seatViews,
           )
       ),
     [seatViews, dealerSeatSrc]
@@ -2351,7 +2350,7 @@ const SAFE_RESET_PHASE = "IDLE";
   }
 
   function positionName(index, dealer = dealerSeatSrc) {
-    return getPositionName(index, dealer, NUM_PLAYERS);
+    return getPositionName(index, dealer, playersSrc);
   }
   
   const sbIndex = (d = dealerSeatSrc) => (d + 1) % NUM_PLAYERS; // SB

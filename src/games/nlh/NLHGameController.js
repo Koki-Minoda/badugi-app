@@ -227,7 +227,12 @@ export class NLHGameController {
     for (let offset = allowSame ? 0 : 1; offset <= total; offset += 1) {
       const idx = (start + offset + total) % total;
       const player = players[idx];
-      if (player && !player.seatOut) {
+      if (
+        player &&
+        !player.seatOut &&
+        !player.isBusted &&
+        (typeof player.stack !== "number" || player.stack > 0)
+      ) {
         return idx;
       }
     }

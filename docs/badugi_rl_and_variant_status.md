@@ -2130,7 +2130,7 @@ Draw RL test coverage:
 35. Table Status と table seat の表示が別物に見え、同じ状態を示していると理解しづらい。
 36. 画面左上のゲーム名以外に variant 状態の補助が少なく、2-7TD/A-5TD/Badugi の違いを table 内で追いづらい。
 37. スモール画面で table の「広さ」より左右 panel が目立つ。
-38. card face の suit 色がやや独自で、一般的なポーカーアプリの読みやすさに届いていない。
+38. card face は4色デッキを維持する。2色化は視認性を下げるため採用せず、4色のまま rank / suit のコントラストを磨く。
 39. folded seat のカードが deck に戻ったような表現がなく、muck されたことが伝わりづらい。
 40. UI regression test が card/mucked/pot badge まで見ておらず、見た目の退化を検知しにくい。
 
@@ -2158,9 +2158,29 @@ Draw RL test coverage:
 - [x] `PUI-07` table overflow を visible にして、seat hover detail が table edge で切れないようにする。
 - [x] `PUI-08` Hero / CPU seat header の stack/bet/action 表示を整理する。
 - [x] `PUI-09` folded/mucked の React test を追加し、folded seat が playable card を出さないことを確認する。
-- [ ] `PUI-10` 次候補: card face の suit 色を一般的な black/red 2色モードへ切り替える設定を追加する。
+- [ ] `PUI-10` 次候補: 4色デッキのまま suit ごとのコントラストと色覚バリアフリーを調整する。
 - [ ] `PUI-11` 次候補: action panel に to-call / pot odds / raise cap を常時表示する。
 - [ ] `PUI-12` 次候補: showdown 時だけ seat card size を一段上げる reveal mode を追加する。
+
+### 16.4 未対応タスク優先度
+
+- P0: `BUG-20260503-SB-FOLD-DRAW-FREEZE`
+  - 症状: SB/Hero が fold した後、DRAW フェーズで `Waiting for other players...` のまま進まない。
+  - 原因: UI auto actor loop が `turn === 0` を無条件に「Hero 手動操作待ち」と扱っていた。fold済み Hero でも draw actor として待ってしまい、CPU draw へ進まなかった。
+  - 対応: `shouldWaitForHeroDrawTurn()` を追加し、Hero が `DRAW` 可能な場合だけ手動待機する。folded / all-in / draw済み Hero は自動的に次 seat へ進める。
+  - 検証: helper unit test と Badugi/draw family smoke を実行する。
+- P1: `PUI-11` action panel に current bet / to-call / raise cap を常時表示する。
+  - 理由: プレイヤーの判断に直結し、誤操作とストレスを減らす。
+- P1: `UI-14` showdown / side-pot result を table 上 toast と overlay の両方で見せる。
+  - 理由: メインポット/サイドポットの理解に直結する。
+- P2: `PUI-10` 4色デッキのまま suit コントラストと色覚バリアフリーを調整する。
+  - 理由: 2色化はしない。4色の良さを維持して読みやすさだけ上げる。
+- P2: `PUI-12` showdown 時だけ seat card size を一段上げる reveal mode を追加する。
+  - 理由: ショーダウン確認の快適性を上げるが、進行バグ修正より優先度は低い。
+- P3: `UI-13` footer debug 表示を debug mode OFF 時は完全に隠す。
+  - 理由: 視認性改善には効くが、ゲーム進行には影響しない。
+- P3: `UI-15` mobile landscape で右 panel を bottom sheet 化する。
+  - 理由: モバイル改善として有効。ただし desktop の進行バグ修正後に扱う。
 
 ### 14.4 確認結果
 

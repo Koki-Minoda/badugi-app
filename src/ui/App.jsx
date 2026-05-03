@@ -57,6 +57,7 @@ import { getGameUIAdapter } from "./game/GameUIAdapterRegistry.js";
 import { ensureBadugiUIAdapterRegistered } from "./game/badugi/registerBadugiUIAdapter.js";
 import { ensureNLHUIAdapterRegistered } from "./game/nlh/registerNLHUIAdapter.js";
 import { ensureDrawLowballUIAdaptersRegistered } from "./game/draw/registerDrawLowballUIAdapters.js";
+import { shouldWaitForHeroDrawTurn } from "./game/drawActorUtils.js";
 import {
   APP_VARIANT_IDS,
   isControllerBackedAppVariant,
@@ -2000,11 +2001,11 @@ const SAFE_RESET_PHASE = "IDLE";
       if (!Number.isInteger(turn) || turn < 0 || turn >= seatCount) {
         return ensureNextSeat() || false;
       }
-      if (turn === 0) {
-        // Hero acts manually; nothing to do.
+      const snapshot = basePlayers.map(clonePlayerState).filter(Boolean);
+      if (turn === 0 && shouldWaitForHeroDrawTurn({ phase, turn, players: snapshot })) {
+        // Hero acts manually only while the hero is still an eligible draw actor.
         return false;
       }
-      const snapshot = basePlayers.map(clonePlayerState).filter(Boolean);
       const currentSeat = snapshot[turn];
       if (!currentSeat || isFoldedOrOut(currentSeat)) {
         const nxt = helpers.findNextDrawActorSeat(snapshot, turn);
@@ -7292,7 +7293,16 @@ const SAFE_RESET_PHASE = "IDLE";
         }
       }
     }
-    if (turn === 0) return;
+    if (turn === 0) {
+      if (shouldWaitForHeroDrawTurn({ phase, turn, players: activePlayers })) {
+        return;
+      }
+      if (phase === "DRAW") {
+        autoResolveCpuDrawIfNeeded();
+        return;
+      }
+      return;
+    }
 
     const p = activePlayers[turn];
     if (!p || isFoldedOrOut(p)) {

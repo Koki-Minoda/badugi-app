@@ -156,4 +156,10 @@ describe("Hero draw controls follow engine snapshot", () => {
     fireEvent.click(screen.getByTestId("player-0-card-1"));
     expect(screen.getByTestId("selection").textContent).toBe("");
   });
+
+  it("shows a folded seat as mucked instead of playable cards", () => {
+    render(<HeroDrawHarness heroEligible={false} />);
+    expect(screen.getByTestId("player-0-mucked").textContent).toMatch(/folded - mucked/i);
+    expect(screen.queryByTestId("player-0-card-0")).toBeNull();
+  });
 });

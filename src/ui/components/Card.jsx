@@ -21,7 +21,7 @@ export default function Card({ value, hidden, selected, onClick, folded, ...rest
       <div
         {...restProps}
         style={cardStyle}
-        className={`rounded-lg shadow-lg border-4 border-yellow-500 
+        className={`rounded-lg shadow-lg border-[3px] border-yellow-500 
         flex items-center justify-center 
         bg-gradient-to-br from-gray-900 via-black to-gray-800 
         relative overflow-hidden 
@@ -91,13 +91,19 @@ export default function Card({ value, hidden, selected, onClick, folded, ...rest
       }}
       style={cardFontStyle}
       className={`
-        bg-white rounded-lg shadow-md 
+        bg-gradient-to-br from-white via-slate-50 to-slate-200 rounded-lg shadow-[0_4px_0_rgba(15,23,42,0.35)] 
         flex items-center justify-center 
-        font-bold select-none cursor-pointer transition-transform touch-manipulation
-        ${selected ? "border-4 border-blue-500 scale-105" : "border-4 border-gray-300"}
+        font-black select-none cursor-pointer transition-transform touch-manipulation relative overflow-hidden
+        ${selected ? "border-[3px] border-sky-400 scale-105 ring-2 ring-sky-300/60" : "border-[3px] border-slate-300"}
         hover:scale-105 active:scale-95
       `}
     >
+      <span className={`absolute left-1 top-0.5 leading-none ${color}`} style={{ fontSize: "0.7em" }}>
+        {rank}
+      </span>
+      <span className={`absolute bottom-0.5 right-1 leading-none ${color}`} style={{ fontSize: "0.7em" }}>
+        {symbol}
+      </span>
       <span className={color}>
         {rank}
         {symbol}

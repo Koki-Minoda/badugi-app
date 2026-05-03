@@ -96,7 +96,6 @@ export default function GameLayoutBase({
     tableOuterBg,
     tournamentHud,
     tableSurfaceBg,
-    tableBorderColor,
     heroTableAnimating,
     isTournament,
     tableSummaryProps,
@@ -389,10 +388,12 @@ export default function GameLayoutBase({
               }`}
             >
               <div
-                className={`relative rounded-3xl border-2 ${tableBorderColor} ${
+                className={`relative overflow-visible rounded-[42%] border-[10px] border-slate-950/80 ${
                   heroTableAnimating ? "ring-2 ring-yellow-300 animate-pulse" : ""
-                } ${tableSurfaceBg} p-3 shadow-inner`}
+                } ${tableSurfaceBg} p-4 shadow-[inset_0_0_55px_rgba(0,0,0,0.42),0_18px_42px_rgba(0,0,0,0.35)]`}
               >
+                <div className="pointer-events-none absolute inset-[2.5%] rounded-[42%] border border-white/10" />
+                <div className="pointer-events-none absolute inset-[9%] rounded-[42%] border border-white/5" />
                 {tournamentHud}
                 <div
                   className={`relative ${
@@ -402,6 +403,19 @@ export default function GameLayoutBase({
                   }`}
                   style={isMobileLayout ? MOBILE_TABLE_GRID_STYLE : undefined}
                 >
+                  {!isMobileLayout && (
+                    <div className="pointer-events-none absolute left-1/2 top-[48%] z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1">
+                      <div className="rounded-full border border-yellow-200/45 bg-black/55 px-5 py-2 text-center shadow-lg backdrop-blur">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-yellow-100/80">
+                          Total Pot
+                        </p>
+                        <p className="text-lg font-black text-yellow-200">{totalPot}</p>
+                      </div>
+                      <div className="rounded-full bg-black/45 px-3 py-1 text-[11px] font-semibold text-slate-200">
+                        {tablePhase} · Draw {drawRoundValue + 1}
+                      </div>
+                    </div>
+                  )}
                   {seatLayouts.map((_, idx) => {
                     const seat = tableSeatViews[idx];
                     if (!seat) return null;

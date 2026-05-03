@@ -2087,6 +2087,81 @@ Draw RL test coverage:
 - [x] `npx playwright test tests/e2e/badugi-mtt-flow.spec.ts --project=badugi-flow`: 2 passed。
 - [x] `npx playwright test tests/e2e/p2p-friend-match-smoke.spec.ts --project=badugi-flow`: 1 passed。
 
+## 16. PokerStars / GGPoker 比較ベースのゲーム画面改善
+
+2026-05-03 追加。ユーザー提示の PokerStars 2-7TD / GGPoker PLO 画面を基準に、MGX のゲーム画面で「プレイヤーが一瞬で判断できない」点を洗い出す。ここではゲームロジックは触らず、座席、カード、ポット、ベット、フォールド表示、視線誘導だけを改善する。
+
+### 16.1 自己ダメ出し 40 項目
+
+1. テーブルが長方形に近く、ポーカー卓としての視線誘導が弱い。
+2. 中央に主ポット表示がなく、PokerStars/GG のように「いま場にいくらあるか」をすぐ把握できない。
+3. ポット表示が左レールに寄っており、視線がカードから外れる。
+4. ベット額が seat header 内に埋もれ、チップを出している感覚が薄い。
+5. ベット額 badge が小さく、20/40/ALL-IN の違いを瞬時に読みにくい。
+6. スタックとベットの視覚的優先順位が似ていて、現在の投資額が目立たない。
+7. フォールドした seat がカードを持っているように見え、まだ参加中に見える。
+8. フォールド seat のグレーアウトが弱く、参加中 seat との差が曖昧。
+9. all-in seat と folded seat の色分けが弱く、action 不要なのか負けて降りたのか分かりづらい。
+10. ACTING seat の ring はあるが、テーブル全体の中で主張が足りない。
+11. dealer button が `(BTN)` 文字列で、実アプリの dealer chip に比べて視認性が低い。
+12. プレイヤー名、VPIP/PFR、スタック、ベットが同じ header に詰まりすぎている。
+13. CPU 統計が常時長く表示され、通常プレイ中のノイズが多い。
+14. カード裏面が重く、folded / hidden / inactive の差が分かりにくい。
+15. 表カードがフラットで、PokerStars/GG のような rank corner がなくカードとして弱い。
+16. 選択中カードの境界は分かるが、ドロー前に「捨てるカード」を強く認識しづらい。
+17. Hero hand と table hand の情報が分散している。
+18. 右 decision panel がカードと離れすぎ、action の視線移動が大きい。
+19. Waiting 表示が大きく、ゲーム停止に見えやすい。
+20. table edge に立体感がなく、座席がどこに付いているか直感的に分かりづらい。
+21. seat の hover detail が table clipping で隠れる可能性がある。
+22. 右側 seat の hover detail が隣 seat と重なると読めないことがある。
+23. showdown で folded seat と showdown seat の差が弱い。
+24. pot と draw round の現在状態が中央にないため、ゲームの進行状況を追いにくい。
+25. 2-7TD / A-5TD の5枚カード時にカード列が細かくなり、表カードの rank が読みにくい。
+26. GGPoker のような board/pot/chip stack のまとまりがなく、場の情報が散らばる。
+27. seat card と chip badge の距離が近く、低解像度で干渉しやすい。
+28. Hero seat の stack/bet/action が他 seat と同じ強さで、主人公の情報が埋もれる。
+29. Folded の表示が英語でも日本語でも補助文なしで、初心者に分かりにくい。
+30. table center にブランド/透かし/基準線がなく、中央空間が空白に見える。
+31. action badge が `[Call]` のようなログ風で、実プレイ中の状態表示として弱い。
+32. seat の status badge が小さく、ALL-IN/FOLDED が左レールを見ないと分かりづらい。
+33. stack が丸 pill ではなくテキスト寄りで、PokerStars/GG の bankroll 表示に比べて弱い。
+34. ベット badge にチップの厚みがなく、金額変更が視覚的に残りにくい。
+35. Table Status と table seat の表示が別物に見え、同じ状態を示していると理解しづらい。
+36. 画面左上のゲーム名以外に variant 状態の補助が少なく、2-7TD/A-5TD/Badugi の違いを table 内で追いづらい。
+37. スモール画面で table の「広さ」より左右 panel が目立つ。
+38. card face の suit 色がやや独自で、一般的なポーカーアプリの読みやすさに届いていない。
+39. folded seat のカードが deck に戻ったような表現がなく、muck されたことが伝わりづらい。
+40. UI regression test が card/mucked/pot badge まで見ておらず、見た目の退化を検知しにくい。
+
+### 16.2 改善方針
+
+- engine/controller/action handler には触らない。表示 props を受けるコンポーネントだけで改善する。
+- テーブルを楕円形に寄せ、中央に `Total Pot` と現在 phase/draw を置く。
+- 各 seat は「名前 / 状態 / stack / bet / action / cards」の優先順位に整理する。
+- bet badge はチップ風の丸 pill にして、現在出している額をスタックより目立たせる。
+- folded seat はカードを表示せず、mucked 表示に差し替え、seat 全体をグレーアウトする。
+- all-in / folded / acting / dealer は badge で明確に色分けする。
+- カード表面は rank corner と suit marker を足し、5枚手札でも読みやすくする。
+- table center の pot 表示は pointer-events を切り、カード操作を妨げない。
+- hover/focus detail は table clipping で隠れないよう table surface を overflow visible にする。
+- 既存 Playwright に folded/mucked と pot/seat 可視性の観点を足す。
+
+### 16.3 実装タスク
+
+- [x] `PUI-01` table surface を楕円卓風にし、PokerStars/GG に近い中央視線へ寄せる。
+- [x] `PUI-02` table center に Total Pot / phase / draw round の compact badge を追加する。
+- [x] `PUI-03` bet badge をチップ風の丸 pill に変更し、金額を stack より目立たせる。
+- [x] `PUI-04` folded seat はカードを消し、`Folded - mucked` 表示へ差し替える。
+- [x] `PUI-05` folded / all-in / acting / dealer の badge 色と形を整理する。
+- [x] `PUI-06` card face に rank corner / suit marker を追加し、5枚手札でも読みやすくする。
+- [x] `PUI-07` table overflow を visible にして、seat hover detail が table edge で切れないようにする。
+- [x] `PUI-08` Hero / CPU seat header の stack/bet/action 表示を整理する。
+- [x] `PUI-09` folded/mucked の React test を追加し、folded seat が playable card を出さないことを確認する。
+- [ ] `PUI-10` 次候補: card face の suit 色を一般的な black/red 2色モードへ切り替える設定を追加する。
+- [ ] `PUI-11` 次候補: action panel に to-call / pot odds / raise cap を常時表示する。
+- [ ] `PUI-12` 次候補: showdown 時だけ seat card size を一段上げる reveal mode を追加する。
+
 ### 14.4 確認結果
 
 - [x] `npm run lint`: pass。

@@ -139,8 +139,11 @@ export async function openAuthenticatedGame(page: Page, url = APP_URL) {
   await page.getByTestId("menu-ring").click();
   const variantTestId = variantTestIdFromUrl(url);
   await page.getByTestId(`game-selector-play-${variantTestId}`).click();
-  await page
-    .getByRole("button", { name: /Leaderboard|ランキング/i })
-    .first()
-    .waitFor({ state: "visible", timeout: 20000 });
+  await Promise.race([
+    page
+      .getByRole("button", { name: /Leaderboard|ランキング/i })
+      .first()
+      .waitFor({ state: "visible", timeout: 20000 }),
+    page.getByTestId("decision-panel").waitFor({ state: "visible", timeout: 20000 }),
+  ]);
 }

@@ -1013,14 +1013,14 @@ const SAFE_RESET_PHASE = "IDLE";
   const isControllerDrivenSingleTable =
     isSingleTableBadugi || isSingleTableDrawLowball;
   const isMobileDevice = deviceProfile.isMobile;
-  const layoutMode = "desktop";
-  const shouldUseDesktopCanvasScale = isMobileDevice && mode !== "tournament-mtt";
+  const layoutMode = isMobileDevice ? "mobile" : "desktop";
+  const shouldUseDesktopCanvasScale = false;
   const desktopCanvasScale = useDesktopCanvasScale({
     enabled: shouldUseDesktopCanvasScale,
     baseWidth: DESKTOP_CANVAS_BASE_WIDTH,
     baseHeight: DESKTOP_CANVAS_BASE_HEIGHT,
   });
-  const shouldGateOrientation = isMobileDevice && mode !== "tournament-mtt";
+  const shouldGateOrientation = isMobileDevice;
   useEffect(() => {
     if (!shouldUseDesktopCanvasScale) {
       setDebugScale(1);

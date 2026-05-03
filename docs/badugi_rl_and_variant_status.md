@@ -2060,6 +2060,30 @@ Draw RL test coverage:
   - 方針: cash game の右 action panel に Cash Out を追加し、Hero stack / buy-in / net / hand count を表示する result modal を出す。続行、ゲーム選択へ戻る、New cash session の3導線を用意する。
   - 2026-05-03 対応: Hero Controls に `Cash Out` を追加。Cash Out result modal で buy-in / cash out stack / hand count / net を表示し、続行・新しい卓・ゲーム選択へ遷移できる。
 
+## 17. Mobile Browser Landscape Game UI
+
+2026-05-03 追加。実機スマホブラウザ横画面では PC 版を縮小表示せず、専用レイアウトでカードとアクションボタンをタップできるサイズにする。ゲームロジック、Badugi engine、turn制御、MTT処理には触らない。
+
+### 17.1 タスク
+
+- [x] `MOB-01` スマホ判定を幅だけに依存しない形へ変更する。
+  - 条件: `(pointer: coarse) and (hover: none)`、`navigator.maxTouchPoints`、UA、短辺 `<= 900` を組み合わせる。
+  - 目的: iPhone/Android横画面で `layoutMode="mobile"` を使い、PC desktop canvas scaling を使わない。
+- [x] `MOB-02` スマホ縦画面ではゲームUIを隠し、横向き案内だけを表示する。
+  - 文言: 「横向きでプレイしてください」「MGXはスマホ横画面に最適化されています」。
+- [x] `MOB-03` スマホ横画面では root を固定し、body/html/#root をスクロールさせない。
+  - `position: fixed; inset: 0; width: 100vw; height: 100dvh` を使い、fallback として `100vh` を残す。
+- [x] `MOB-04` PC用ヘッダー/ナビ/ランキング/左サイドバー/詳細ログをスマホ横画面では非表示または最小化する。
+  - 残す情報: pot / phase / draw round / current bet / to call / raise cap。
+- [x] `MOB-05` スマホ横画面を「左/中央テーブル 70-75% + 右操作 25-30%」へ再配置する。
+  - Hero 操作パネルは常時 viewport 内。safe-area を考慮する。
+- [x] `MOB-06` カードサイズと座席サイズをスマホ横画面用に上書きする。
+  - Hero card は `clamp(48px, 7.5dvw, 82px)` 相当、CPU card は少し小さくする。
+- [x] `MOB-07` アクションボタンを最低44px以上にし、2段gridでも viewport 内に収める。
+- [x] `MOB-08` Playwright mobile smoke を強化する。
+  - iPhone landscape / Android landscape、portrait warning、body非スクロール、Hero card viewport内、主要ボタン高さ44px以上を確認する。
+  - 2026-05-03 対応: `useDeviceProfile` で touch/short-side/orientation を判定し、game screen のみ `mobile` layout へ切替。スマホ横画面では `mgx-mobile-landscape` fixed root、PC header/nav/sidebar/footer/debug/ranking を非表示、table/action の2カラム配置、compact seat/card、44px以上の action button を適用。実効高390pxのiPhone landscape相当ではHeroカードのviewport内収まりを優先し、Hero cardはPC比で拡大しつつ実機高に収まるclampへ調整。
+
 ## 15. Tournament UI / Friend Match UX 監査
 
 2026-05-03 時点のトーナメント画面レビュー。ゲームロジックは触らず、トーナメント中の表示密度、カード視認性、導線、フレンドマッチ日本語化を改善する。

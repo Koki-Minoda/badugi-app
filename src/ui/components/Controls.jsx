@@ -33,15 +33,15 @@ export default function Controls({
       ? "w-full flex flex-col gap-3"
       : "flex flex-col gap-2 bg-gray-800/90 p-2 rounded shadow-lg");
   const buttonBase = isMobile
-    ? "flex-1 py-[clamp(10px,3vw,14px)] rounded-2xl text-[clamp(12px,3vw,16px)] font-semibold tracking-wide touch-manipulation"
+    ? "min-h-[44px] flex-1 py-[clamp(8px,2dvw,12px)] rounded-2xl text-[clamp(12px,2.1dvw,16px)] font-semibold tracking-wide touch-manipulation"
     : "px-3 py-2 rounded text-sm font-medium";
 
   return (
     <div className={containerClass}>
       {phase === "BET" && betActions.length > 0 && (
         <div
-          className={`flex ${
-            isMobile ? "gap-3 w-full flex-col sm:flex-row" : "gap-2"
+          className={`${
+            isMobile ? "grid w-full grid-cols-2 gap-2" : "flex gap-2"
           }`}
         >
           {betActions.map((action) => {
@@ -99,7 +99,7 @@ export default function Controls({
           disabled={!canDraw}
           className={`${
             isMobile
-              ? "w-full py-[clamp(10px,3vw,14px)] rounded-2xl font-semibold text-[clamp(12px,3vw,16px)] touch-manipulation"
+              ? "min-h-[44px] w-full py-[clamp(8px,2dvw,12px)] rounded-2xl font-semibold text-[clamp(12px,2.1dvw,16px)] touch-manipulation"
               : "px-4 py-2 rounded-lg font-bold whitespace-nowrap"
           } ${
             canDraw

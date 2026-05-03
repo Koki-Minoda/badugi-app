@@ -31,11 +31,33 @@ const MOBILE_SEAT_ALIGN_CLASS = {
 
 const MOBILE_TABLE_GRID_STYLE = {
   gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gridTemplateRows: "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.92fr)",
   gridTemplateAreas: `
     "topLeft topCenter topRight"
-    "leftMid . rightMid"
+    "leftMid pot rightMid"
     ". hero ."
   `,
+};
+
+const MOBILE_CARD_VARS = {
+  "--card-w": "clamp(30px, 4.4dvw, 42px)",
+  "--card-h": "clamp(42px, 6.2dvw, 59px)",
+  "--card-font-size": "clamp(12px, 2dvw, 18px)",
+  "--card-dot-size": "clamp(5px, 0.9dvw, 8px)",
+  "--card-center-size": "clamp(24px, 3.8dvw, 40px)",
+  "--card-center-inner-size": "clamp(10px, 1.6dvw, 16px)",
+  "--player-pad": "clamp(5px, 0.9dvw, 8px)",
+  "--player-gap": "clamp(4px, 0.7dvw, 7px)",
+  "--player-avatar-size": "clamp(22px, 3.4dvw, 32px)",
+  "--player-avatar-font-size": "clamp(10px, 1.5dvw, 13px)",
+  "--player-name-size": "clamp(11px, 1.55dvw, 14px)",
+  "--player-meta-size": "clamp(7px, 1.05dvw, 9px)",
+  "--player-stack-size": "clamp(8px, 1.1dvw, 10px)",
+  "--player-action-size": "clamp(8px, 1.15dvw, 10px)",
+  "--player-card-gap": "clamp(4px, 0.7dvw, 7px)",
+  "--player-card-strip-maxw": "clamp(138px, 22dvw, 190px)",
+  "--player-name-maxw": "clamp(72px, 12dvw, 130px)",
+  "--player-action-min-h": "clamp(10px, 1.8dvw, 16px)",
 };
 
 export default function GameLayoutBase({
@@ -161,21 +183,28 @@ export default function GameLayoutBase({
     ? "grid-cols-[minmax(820px,1fr)_clamp(280px,20vw,340px)] gap-3"
     : "grid-cols-[minmax(720px,1fr)_clamp(260px,22vw,340px)] gap-4";
   const desktopTableMinHeight = isTournament ? "min-h-[540px]" : "min-h-[600px]";
+  const mobileLandscapeClass = isMobileLayout
+    ? "mgx-mobile-landscape fixed inset-0 h-screen w-screen overflow-hidden"
+    : "";
   const mainLayoutClass = isMobileLayout
-    ? "mt-16 pb-36"
+    ? "h-full overflow-hidden"
     : isTournament
       ? "h-screen overflow-hidden"
       : "mt-20";
   const rootSizingClass = !isMobileLayout && isTournament && !disableVh
     ? "h-screen overflow-hidden"
+    : isMobileLayout
+      ? "h-screen overflow-hidden"
     : disableVh
       ? "h-auto"
       : "min-h-screen";
   const layoutRootRef = useRef(null);
   const cardScaleVars = useCardScaleVars(layoutRootRef);
-  const rootStyle = disableVh
-    ? cardScaleVars
-    : { ...cardScaleVars, minHeight: "100dvh" };
+  const rootStyle = isMobileLayout
+    ? { ...cardScaleVars, ...MOBILE_CARD_VARS, height: disableVh ? "100vh" : "100dvh" }
+    : disableVh
+      ? cardScaleVars
+      : { ...cardScaleVars, minHeight: "100dvh" };
 
   const renderControlsContent = () => {
     if (heroCanAct && heroPlayerForControls) {
@@ -231,11 +260,13 @@ export default function GameLayoutBase({
   return (
     <div
       ref={layoutRootRef}
-      className={`flex flex-col ${rootSizingClass} bg-gray-900 text-white`}
+      className={`flex flex-col ${rootSizingClass} ${mobileLandscapeClass} bg-gray-900 text-white`}
       style={rootStyle}
     >
       <header
-        className={`flex flex-col gap-3 bg-gray-900/95 backdrop-blur-md shadow-md ${
+        className={`${
+          isMobileLayout ? "hidden" : "flex"
+        } flex-col gap-3 bg-gray-900/95 backdrop-blur-md shadow-md ${
           disableFixed ? "relative" : "fixed top-0 left-0 right-0"
         } z-50 ${
           isMobileLayout ? "px-4 py-2" : "px-6 py-3"
@@ -376,25 +407,35 @@ export default function GameLayoutBase({
 
         <section
           className={`flex h-full flex-col ${
-            isMobileLayout ? "px-3 pt-20 pb-10 gap-6" : desktopSectionClass
+            isMobileLayout ? "gap-0 p-2" : desktopSectionClass
           }`}
+          style={
+            isMobileLayout
+              ? {
+                  paddingLeft: "max(8px, env(safe-area-inset-left))",
+                  paddingRight: "max(8px, env(safe-area-inset-right))",
+                  paddingTop: "max(6px, env(safe-area-inset-top))",
+                  paddingBottom: "max(6px, env(safe-area-inset-bottom))",
+                }
+              : undefined
+          }
         >
           <div
             className={`flex flex-col ${
-              isMobileLayout ? "gap-4" : "gap-5"
-            } rounded-3xl border border-white/10 bg-black/40 p-3 shadow-2xl`}
+              isMobileLayout ? "h-full min-h-0 gap-0 rounded-none border-0 bg-transparent p-0 shadow-none" : "gap-5 rounded-3xl border border-white/10 bg-black/40 p-3 shadow-2xl"
+            }`}
           >
             <div
               className={`relative grid ${
                 isMobileLayout
-                  ? "grid-cols-1 gap-4"
+                  ? "h-full min-h-0 grid-cols-[minmax(0,1fr)_clamp(218px,29dvw,286px)] gap-2"
                   : desktopGridClass
               }`}
             >
               <div
-                className={`relative overflow-visible rounded-[32px] border border-white/10 bg-slate-950/28 ${
+                className={`relative overflow-hidden rounded-[32px] border border-white/10 bg-slate-950/28 ${
                   heroTableAnimating ? "ring-2 ring-yellow-300 animate-pulse" : ""
-                } p-4 shadow-[inset_0_0_45px_rgba(0,0,0,0.38),0_18px_42px_rgba(0,0,0,0.35)]`}
+                } ${isMobileLayout ? "min-h-0 p-2" : "overflow-visible p-4"} shadow-[inset_0_0_45px_rgba(0,0,0,0.38),0_18px_42px_rgba(0,0,0,0.35)]`}
               >
                 <div
                   data-testid="table-felt-oval"
@@ -406,24 +447,29 @@ export default function GameLayoutBase({
                 <div
                   className={`relative ${
                     isMobileLayout
-                      ? "grid gap-3"
+                      ? "grid h-full min-h-0 gap-1"
                       : desktopTableMinHeight
                   }`}
                   style={isMobileLayout ? MOBILE_TABLE_GRID_STYLE : undefined}
                 >
-                  {!isMobileLayout && (
-                    <div className="pointer-events-none absolute left-1/2 top-[48%] z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1">
+                  <div
+                    className={`pointer-events-none ${
+                      isMobileLayout
+                        ? "z-10 flex items-center justify-center"
+                        : "absolute left-1/2 top-[48%] z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1"
+                    }`}
+                    style={isMobileLayout ? { gridArea: "pot" } : undefined}
+                  >
                       <div className="rounded-full border border-yellow-200/45 bg-black/55 px-5 py-2 text-center shadow-lg backdrop-blur">
                         <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-yellow-100/80">
                           Total Pot
                         </p>
                         <p className="text-lg font-black text-yellow-200">{totalPot}</p>
                       </div>
-                      <div className="rounded-full bg-black/45 px-3 py-1 text-[11px] font-semibold text-slate-200">
+                      <div className={`${isMobileLayout ? "ml-1" : ""} rounded-full bg-black/45 px-3 py-1 text-[11px] font-semibold text-slate-200`}>
                         {tablePhase} · Draw {drawRoundValue + 1}
                       </div>
-                    </div>
-                  )}
+                  </div>
                   {seatLayouts.map((_, idx) => {
                     const seat = tableSeatViews[idx];
                     if (!seat) return null;
@@ -435,10 +481,14 @@ export default function GameLayoutBase({
                     const seatAlignClass = isMobileLayout
                       ? MOBILE_SEAT_ALIGN_CLASS[idx] ?? "items-center"
                       : "items-center";
+                    const mobileSeatLiftClass =
+                      isMobileLayout && seat.seatIndex === heroSeatIndex
+                        ? "-translate-y-7"
+                        : "";
                     return (
                       <div
                         key={seat.seatIndex ?? idx}
-                        className={`flex flex-col ${seatAlignClass} gap-3 overflow-visible hover:z-[180] focus-within:z-[180] ${
+                        className={`flex flex-col ${seatAlignClass} ${mobileSeatLiftClass} ${isMobileLayout ? "gap-1" : "gap-3"} overflow-visible hover:z-[180] focus-within:z-[180] ${
                           isMobileLayout ? "" : seatLayouts[idx] ?? ""
                         }`}
                         style={
@@ -458,20 +508,21 @@ export default function GameLayoutBase({
                           canSelectForDraw={tableHeroCanDraw && seat.seatIndex === heroSeatIndex}
                           isWinner={seat.winner}
                           onCardClick={(cardIdx) => handleCardClick(cardIdx)}
+                          compact={isMobileLayout}
                         />
                       </div>
                     );
                   })}
                 </div>
               </div>
-              <div data-testid="decision-panel" className="flex flex-col gap-3">
+              <div data-testid="decision-panel" className={`flex min-h-0 flex-col ${isMobileLayout ? "gap-2 overflow-hidden" : "gap-3"}`}>
                 {isTournament && tournamentHud}
-                <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-900/85 p-3 shadow-lg">
+                <div className={`${isMobileLayout ? "p-2" : "p-3"} flex items-center justify-between rounded-2xl border border-white/10 bg-slate-900/85 shadow-lg`}>
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-slate-400">
                       Phase
                     </p>
-                    <p className="text-xl font-bold text-white">{tablePhase}</p>
+                    <p className={`${isMobileLayout ? "text-base" : "text-xl"} font-bold text-white`}>{tablePhase}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] uppercase tracking-wider text-slate-400">Draw</p>
@@ -480,7 +531,7 @@ export default function GameLayoutBase({
                     <p className="text-base font-semibold text-white">{betRoundValue + 1}</p>
                   </div>
                 </div>
-                <div className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-slate-900/85 p-3 shadow-lg">
+                <div className={`${isMobileLayout ? "hidden" : "flex"} flex-col gap-2 rounded-2xl border border-white/10 bg-slate-900/85 p-3 shadow-lg`}>
                   <h2 className="text-xs font-semibold text-white uppercase tracking-wider">
                     Hero Hand
                   </h2>
@@ -498,7 +549,7 @@ export default function GameLayoutBase({
                     Draw allowed: {tableHeroCanDraw ? "Yes" : "No"}
                   </div>
                 </div>
-                <div className="rounded-2xl border border-emerald-300/15 bg-slate-900/88 p-3 shadow-lg space-y-3">
+                <div className={`${isMobileLayout ? "min-h-0 flex-1 overflow-hidden p-2" : "p-3"} rounded-2xl border border-emerald-300/15 bg-slate-900/88 shadow-lg space-y-3`}>
                   <h2 className="text-xs font-semibold text-white uppercase tracking-wider">
                     Hero Controls
                   </h2>
@@ -550,9 +601,9 @@ export default function GameLayoutBase({
       </main>
 
       <footer
-        className={`${disableFixed ? "relative" : "fixed bottom-0 left-0 right-0"} bg-black/80 backdrop-blur border-t border-white/10 ${
+        className={`${isMobileLayout ? "hidden" : "flex"} ${disableFixed ? "relative" : "fixed bottom-0 left-0 right-0"} bg-black/80 backdrop-blur border-t border-white/10 ${
           isMobileLayout ? "p-3" : "p-4"
-        } flex items-center justify-between text-xs text-slate-300`}
+        } items-center justify-between text-xs text-slate-300`}
       >
         <div className="flex items-center gap-2">
           <span>Debug</span>
@@ -567,7 +618,7 @@ export default function GameLayoutBase({
         </div>
       </footer>
 
-      <Notification variant={notificationVariant} message={notificationMessage} />
+      {!isMobileLayout && <Notification variant={notificationVariant} message={notificationMessage} />}
 
       <Modal
         title="Seat Manager"

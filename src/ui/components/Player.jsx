@@ -216,6 +216,7 @@ export default function Player({
   isWinner = false,
   positionLabel,
   canSelectForDraw = false,
+  compact = false,
 }) {
   const seatRef = useRef(null);
   const closeTimerRef = useRef(null);
@@ -265,6 +266,11 @@ export default function Player({
   const playerDetailTitle = playerDetailLines.join("\n");
 
   const openHud = useCallback(() => {
+    const isCoarseTouch =
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(pointer: coarse) and (hover: none)").matches;
+    if (isCoarseTouch) return;
     if (closeTimerRef.current) {
       clearTimeout(closeTimerRef.current);
       closeTimerRef.current = null;
@@ -320,7 +326,7 @@ export default function Player({
   };
 
   const hudOverlay =
-    hudOpen && typeof document !== "undefined"
+    hudOpen && !compact && typeof document !== "undefined"
       ? createPortal(
           <div
             data-testid={`seat-${seatIndex}-detail`}
@@ -366,6 +372,19 @@ export default function Player({
       style={{
         padding: "var(--player-pad, 10px)",
         gap: "var(--player-gap, 8px)",
+        ...(compact && !isHero
+          ? {
+              "--card-w": "clamp(30px, 4.4dvw, 42px)",
+              "--card-h": "clamp(42px, 6.2dvw, 59px)",
+              "--card-font-size": "clamp(10px, 1.4dvw, 13px)",
+            }
+          : compact && isHero
+          ? {
+              "--card-w": "clamp(38px, 5.6dvw, 54px)",
+              "--card-h": "clamp(53px, 7.8dvw, 76px)",
+              "--card-font-size": "clamp(12px, 1.8dvw, 16px)",
+            }
+          : {}),
       }}
     >
       <div
@@ -406,7 +425,7 @@ export default function Player({
                 <StatusPill label="D" tone="yellow" />
               )}
             </div>
-            {player.titleBadge && (
+            {player.titleBadge && !compact && (
               <div
                 className="uppercase tracking-wide text-emerald-300"
                 style={{ fontSize: "var(--player-meta-size, 10px)" }}
@@ -425,7 +444,8 @@ export default function Player({
                 ))}
               </div>
             )}
-            <div
+            {!compact && (
+              <div
               className="uppercase tracking-wide text-slate-300 truncate"
               style={{
                 fontSize: "var(--player-meta-size, 10px)",
@@ -434,7 +454,8 @@ export default function Player({
               title={statsLine}
             >
               {compactStatsLine}
-            </div>
+              </div>
+            )}
           </div>
         </div>
         <div
@@ -446,7 +467,7 @@ export default function Player({
             <span className="text-white">{stackValue}</span>
           </div>
           <BetStatus amount={betValue} allIn={player.allIn} />
-          {isActive && (
+          {isActive && !compact && (
             <div
               className="text-lime-300 font-bold mt-1"
               style={{ fontSize: "var(--player-action-size, 11px)" }}
@@ -457,20 +478,26 @@ export default function Player({
         </div>
       </div>
 
-      <div
-        className="relative z-10 flex items-center text-slate-200 italic"
-        style={{
-          fontSize: "var(--player-stack-size, 11px)",
-          minHeight: "var(--player-action-min-h, 18px)",
-        }}
-      >
-        {player.lastAction ? `[${player.lastAction}]` : "\u00A0"}
-      </div>
+      {!compact && (
+        <div
+          className="relative z-10 flex items-center text-slate-200 italic"
+          style={{
+            fontSize: "var(--player-stack-size, 11px)",
+            minHeight: "var(--player-action-min-h, 18px)",
+          }}
+        >
+          {player.lastAction ? `[${player.lastAction}]` : "\u00A0"}
+        </div>
+      )}
 
       {isFolded ? (
         <div
           data-testid={`player-${index}-mucked`}
-          className="relative z-10 flex min-h-[calc(var(--card-h,56px)*0.72)] w-full items-center justify-center rounded-xl border border-slate-500/25 bg-slate-950/65 px-3 text-[11px] font-black uppercase tracking-[0.22em] text-slate-400"
+          className={`relative z-10 flex w-full items-center justify-center rounded-xl border border-slate-500/25 bg-slate-950/65 px-3 font-black uppercase text-slate-400 ${
+            compact
+              ? "min-h-[calc(var(--card-h,56px)*0.52)] text-[8px] tracking-[0.14em]"
+              : "min-h-[calc(var(--card-h,56px)*0.72)] text-[11px] tracking-[0.22em]"
+          }`}
         >
           Folded - mucked
         </div>

@@ -81,6 +81,7 @@ export default function HandHistoryScreen({
   onClose = () => {},
   onReplay = () => {},
   language = "ja",
+  embedded = false,
 }) {
   const [filterMode, setFilterMode] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -158,7 +159,7 @@ export default function HandHistoryScreen({
       };
 
   return (
-    <div className="min-h-screen bg-slate-950 px-4 py-6 text-slate-100">
+    <div className={`${embedded ? "bg-transparent" : "min-h-screen bg-slate-950"} px-4 py-6 text-slate-100`}>
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>

@@ -122,6 +122,8 @@ import AuthScreen from "./screens/AuthScreen.jsx";
 import HandHistoryScreen from "./screens/HandHistoryScreen.jsx";
 import ReplayScreen from "./screens/ReplayScreen.jsx";
 import GameSelectorScreen from "./screens/GameSelectorScreen.jsx";
+import TitleSettingsScreen from "./screens/TitleSettingsScreen.jsx";
+import ProfileStats from "../components/ProfileStats.jsx";
 import { useGameSessionState } from "./hooks/useGameSessionState.js";
 import { mergeSeatViewsForDisplay } from "./utils/seatViewMerge.js";
 import MobileOrientationGate from "./components/MobileOrientationGate.jsx";
@@ -336,6 +338,7 @@ export default function App() {
   const [language, setLanguage] = useState(() => getInitialLanguage());
   // MGX branding: kitsune title screen + title → menu → game flow (2025-11-28)
   const [currentScreen, setCurrentScreen] = useState("title");
+  const [gameUtilityModal, setGameUtilityModal] = useState(null);
   const pendingRingStartRef = useRef(false);
   const [debugScale, setDebugScale] = useState(null);
   const [authIsAuthenticated, setAuthIsAuthenticated] = useState(null);
@@ -4381,12 +4384,21 @@ const SAFE_RESET_PHASE = "IDLE";
   };
 
   const handleBackToMenu = () => {
+    setGameUtilityModal(null);
     setCurrentScreen("menu");
   };
 
   const handleOpenGameSelector = () => {
     setCurrentScreen("gameSelector");
   };
+
+  const handleOpenGameUtilityModal = useCallback((modalName) => {
+    setGameUtilityModal(modalName);
+  }, []);
+
+  const handleCloseGameUtilityModal = useCallback(() => {
+    setGameUtilityModal(null);
+  }, []);
 
   const handleSelectSettings = () => {
     setCurrentScreen("settings");
@@ -8057,9 +8069,9 @@ const SAFE_RESET_PHASE = "IDLE";
     labels: headerLabels,
     onNavigateTitle: handleBackToMenu,
     onNavigateLeaderboard: () => navigate("/leaderboard"),
-    onNavigateSettings: handleSelectSettings,
-    onNavigateProfile: () => navigate("/profile"),
-    onNavigateHistory: () => navigate("/history"),
+    onNavigateSettings: () => handleOpenGameUtilityModal("settings"),
+    onNavigateProfile: () => handleOpenGameUtilityModal("profile"),
+    onNavigateHistory: () => handleOpenGameUtilityModal("history"),
   };
 
   const sidePanelProps = {
@@ -8210,6 +8222,18 @@ const SAFE_RESET_PHASE = "IDLE";
   ) : (
     gameScreen
   );
+  const utilityModal =
+    gameUtilityModal ? (
+      <GameUtilityModal
+        modalName={gameUtilityModal}
+        language={language}
+        onClose={handleCloseGameUtilityModal}
+        onReplay={(handId, target) => {
+          handleCloseGameUtilityModal();
+          handleOpenReplayFromHistory(handId, target);
+        }}
+      />
+    ) : null;
 
   return (
     <>
@@ -8225,6 +8249,7 @@ const SAFE_RESET_PHASE = "IDLE";
           >
             {renderedGameScreen}
           </MobileOrientationGate>
+          {utilityModal}
         </AuthGate>
       </AuthProvider>
       <DebugHud
@@ -8235,6 +8260,63 @@ const SAFE_RESET_PHASE = "IDLE";
         screenLabel={screenLabel}
       />
     </>
+  );
+}
+
+function GameUtilityModal({ modalName, language, onClose, onReplay }) {
+  const titleByModal = {
+    settings: language === "ja" ? "設定" : "Settings",
+    profile: language === "ja" ? "プロフィール" : "Profile",
+    history: language === "ja" ? "履歴" : "History",
+  };
+  const title = titleByModal[modalName] ?? titleByModal.settings;
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 px-4 py-6 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      data-testid="game-utility-modal"
+    >
+      <div className="relative max-h-[88dvh] w-full max-w-6xl overflow-y-auto rounded-3xl border border-white/15 bg-slate-950/95 shadow-2xl">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/10 bg-slate-950/95 px-5 py-4 backdrop-blur">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.4em] text-emerald-300">MGX</p>
+            <h2 className="text-lg font-bold text-white">{title}</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full border border-white/25 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-white/90 transition hover:border-emerald-300/70 hover:text-emerald-200"
+          >
+            {language === "ja" ? "閉じる" : "Close"}
+          </button>
+        </div>
+        <div className="p-2 sm:p-4">
+          {modalName === "settings" && <TitleSettingsScreen embedded onClose={onClose} />}
+          {modalName === "profile" && <ProfileStats embedded onClose={onClose} />}
+          {modalName === "history" && (
+            <HandHistoryScreen
+              embedded
+              language={language}
+              onClose={onClose}
+              onReplay={onReplay}
+            />
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 

@@ -73,7 +73,7 @@ export default function Player({
       data-testid={`seat-${seatIndex}`}
       tabIndex={0}
       title={playerDetailTitle}
-      className={`group relative rounded-2xl border border-white/10 bg-gray-900/85 shadow-lg backdrop-blur flex flex-col outline-none transition focus-visible:ring-2 focus-visible:ring-sky-300 ${
+      className={`group relative rounded-2xl border border-white/10 bg-gray-900/85 shadow-lg backdrop-blur flex flex-col outline-none transition hover:z-[80] focus:z-[80] focus-within:z-[80] focus-visible:ring-2 focus-visible:ring-sky-300 ${
         player.folded ? "opacity-60" : ""
       } ${isActive ? "ring-2 ring-yellow-400" : ""} ${isWinner ? "ring-4 ring-emerald-400 animate-pulse" : ""}`}
       style={{

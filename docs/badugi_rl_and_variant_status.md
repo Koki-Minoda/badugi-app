@@ -2009,6 +2009,15 @@ Draw RL test coverage:
   - ledger / summary / decision panel / hero card / seat detail の可視性と panel 幅を確認。
 - [x] `UI-09` Vite dev server の watch 対象から `.venv` などを除外し、Playwright 中の `ENOSPC` を防止する。
   - `vite.config.js` に `server.watch.ignored` を追加。
+- [x] `UI-10` CPU5 など右側 seat の詳細 tooltip が隣 seat に隠れないようにする。
+  - hover / focus 中の seat を `z-[80]` へ引き上げ、詳細パネルを最前面に出す。
+- [x] `UI-11` ゲーム中の Settings / Profile / History を画面遷移ではなく modal 表示にする。
+  - ゲームから離脱せず、閉じればそのまま卓へ戻れる。
+  - History は現行ハンド履歴を modal 内で表示し、Replay を開く場合だけ modal を閉じて replay screen へ移る。
+- [ ] `UI-12` 追加 UX 候補: action panel に current bet / to-call / raise cap を明示する。
+- [ ] `UI-13` 追加 UX 候補: footer debug 表示を debug mode OFF 時は完全に隠す。
+- [ ] `UI-14` 追加 UX 候補: showdown / side-pot result を table 上の短い toast と result overlay の両方で確認できるようにする。
+- [ ] `UI-15` 追加 UX 候補: mobile landscape で右 panel を bottom sheet 化し、カードと action の距離をさらに短くする。
 
 ### 14.4 確認結果
 

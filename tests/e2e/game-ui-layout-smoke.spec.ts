@@ -36,5 +36,23 @@ test.describe("game UI layout smoke", () => {
     await expect(cpuDetail).toBeVisible();
     await expect(cpuDetail.getByText(/Stack/i)).toBeVisible();
     await expect(cpuDetail.getByText(/Bet|All-in/i)).toBeVisible();
+
+    await page.getByRole("button", { name: /設定|Settings/i }).click();
+    await expect(page.getByTestId("game-utility-modal")).toBeVisible();
+    await expect(page.getByTestId("game-utility-modal").getByText(/設定|Settings/i).first()).toBeVisible();
+    await page.getByRole("button", { name: /閉じる|Close/i }).click();
+    await expect(page.getByTestId("game-utility-modal")).toBeHidden();
+
+    await page.getByRole("button", { name: /プロフィール|Profile/i }).click();
+    await expect(page.getByTestId("game-utility-modal")).toBeVisible();
+    await expect(page.getByTestId("game-utility-modal").getByText(/プロフィール|Profile/i).first()).toBeVisible();
+    await page.getByRole("button", { name: /閉じる|Close/i }).click();
+    await expect(page.getByTestId("game-utility-modal")).toBeHidden();
+
+    await page.getByRole("button", { name: /履歴|History/i }).click();
+    await expect(page.getByTestId("game-utility-modal")).toBeVisible();
+    await expect(page.getByTestId("game-utility-modal").getByText(/履歴|History/i).first()).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("game-utility-modal")).toBeHidden();
   });
 });

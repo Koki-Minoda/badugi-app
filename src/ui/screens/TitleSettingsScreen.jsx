@@ -27,7 +27,7 @@ function formatPercent(value, digits = 1) {
   return `${(value * 100).toFixed(digits)}%`;
 }
 
-export default function TitleSettingsScreen() {
+export default function TitleSettingsScreen({ embedded = false, onClose = null } = {}) {
   const navigate = useNavigate();
   const [settings, setSettings] = useState(() => loadTitleSettings());
   const [devTierOverride, setDevTierOverride] = useState(() => loadAiTierOverride());
@@ -108,9 +108,16 @@ export default function TitleSettingsScreen() {
   const handleExportP2pMatches = () => {
     exportP2PMatchesAsJSONL();
   };
+  const handleBack = () => {
+    if (typeof onClose === "function") {
+      onClose();
+      return;
+    }
+    navigate("/menu");
+  };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
+    <div className={`${embedded ? "bg-transparent" : "min-h-screen bg-slate-950"} text-white`}>
       <header className="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
         <div>
           <p className="text-sm uppercase tracking-widest text-emerald-300">Settings</p>
@@ -119,18 +126,20 @@ export default function TitleSettingsScreen() {
         <div className="flex gap-3">
           <button
             type="button"
-            onClick={() => navigate("/menu")}
+            onClick={handleBack}
             className="px-4 py-2 rounded-lg border border-white/30 hover:bg-white/10 transition"
           >
-            ゲーム選択へ戻る
+            {embedded ? "ゲームへ戻る" : "ゲーム選択へ戻る"}
           </button>
-          <button
-            type="button"
-            onClick={() => navigate("/game")}
-            className="px-4 py-2 rounded-lg bg-emerald-500 text-slate-900 font-semibold hover:bg-emerald-400 transition"
-          >
-            Jump into Game
-          </button>
+          {!embedded && (
+            <button
+              type="button"
+              onClick={() => navigate("/game")}
+              className="px-4 py-2 rounded-lg bg-emerald-500 text-slate-900 font-semibold hover:bg-emerald-400 transition"
+            >
+              Jump into Game
+            </button>
+          )}
         </div>
       </header>
 

@@ -53,4 +53,14 @@ describe("TournamentHUD", () => {
     expect(screen.getByText("Badugi")).toBeTruthy();
     expect(screen.getByText(/Next: NLH/)).toBeTruthy();
   });
+
+  it("renders a side-panel layout for in-game tournament status", () => {
+    render(<TournamentHUD {...baseProps} compact placement="side" />);
+    expect(screen.getByTestId("tournament-hud")).toBeTruthy();
+    expect(screen.getByText("Tournament")).toBeTruthy();
+    expect(screen.getByText("Prize")).toBeTruthy();
+    expect(screen.getByText("Blinds")).toBeTruthy();
+    expect(screen.getByText("Players")).toBeTruthy();
+    expect(screen.getByText("Top Payouts")).toBeTruthy();
+  });
 });

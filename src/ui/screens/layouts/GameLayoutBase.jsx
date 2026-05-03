@@ -156,7 +156,7 @@ export default function GameLayoutBase({
       ? "px-4 pt-[5.25rem] pb-[3.5rem] gap-4"
       : "px-5 pt-[5.5rem] pb-[4.5rem] gap-6";
   const desktopGridClass = isTournament
-    ? "grid-cols-[minmax(820px,1fr)_clamp(230px,18vw,300px)] gap-3"
+    ? "grid-cols-[minmax(820px,1fr)_clamp(280px,20vw,340px)] gap-3"
     : "grid-cols-[minmax(720px,1fr)_clamp(260px,22vw,340px)] gap-4";
   const desktopTableMinHeight = isTournament ? "min-h-[540px]" : "min-h-[600px]";
   const mainLayoutClass = isMobileLayout
@@ -396,7 +396,7 @@ export default function GameLayoutBase({
               >
                 <div className="pointer-events-none absolute inset-[2.5%] rounded-[42%] border border-white/10" />
                 <div className="pointer-events-none absolute inset-[9%] rounded-[42%] border border-white/5" />
-                {tournamentHud}
+                {!isTournament && tournamentHud}
                 <div
                   className={`relative ${
                     isMobileLayout
@@ -459,6 +459,7 @@ export default function GameLayoutBase({
                 </div>
               </div>
               <div data-testid="decision-panel" className="flex flex-col gap-3">
+                {isTournament && tournamentHud}
                 <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-900/85 p-3 shadow-lg">
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-slate-400">

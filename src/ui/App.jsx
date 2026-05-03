@@ -98,6 +98,7 @@ import {
 } from "./utils/devOverrides.js";
 import { listTierIds, getTierById } from "../ai/tierManager.js";
 import { selectModelForVariant } from "../ai/modelRouter.js";
+import { getCpuCharacterForIndex, getCpuDisplayName } from "../ai/cpuRoster.js";
 import {
   buildAiContext,
   computeBetDecision,
@@ -597,9 +598,12 @@ export default function App() {
           : isEmpty
           ? `empty-${idx}`
           : `cpu-${idx + 1}`;
+        const cpuCharacter = !isHuman && !isEmpty ? getCpuCharacterForIndex(idx) : null;
         return {
           playerId,
-          name: isHuman ? heroName : `CPU ${idx + 1}`,
+          name: isHuman ? heroName : getCpuDisplayName(idx),
+          cpuCharacterId: cpuCharacter?.id ?? null,
+          cpuStyle: cpuCharacter?.style ?? null,
           seatType,
           isCPU: !isHuman && !isEmpty,
           hand: [],
@@ -1193,9 +1197,7 @@ const SAFE_RESET_PHASE = "IDLE";
   const controllerDealerIdx = controllerSnapshot?.dealerIdx ?? dealerIdx;
   const tournamentHud =
     isTournament && tournamentHudState ? (
-      <div className="w-full px-2 pt-2">
-        <TournamentHUD {...tournamentHudState} compact />
-      </div>
+      <TournamentHUD {...tournamentHudState} compact placement="side" />
     ) : null;
   const [uiPerf, setUiPerf] = useState({
     loadTime: null,
@@ -3530,9 +3532,12 @@ const SAFE_RESET_PHASE = "IDLE";
           name: heroProfile?.name ?? "You",
         };
       }
+      const cpuCharacter = getCpuCharacterForIndex(idx);
       return {
         id: `cpu-${idx}`,
-        name: `CPU ${idx + 1}`,
+        name: cpuCharacter.name,
+        cpuCharacterId: cpuCharacter.id,
+        cpuStyle: cpuCharacter.style,
       };
     });
   }, [heroProfile]);
@@ -3579,6 +3584,8 @@ const SAFE_RESET_PHASE = "IDLE";
       return {
         ...player,
         name: linkedPlayer?.name ?? player.name,
+        cpuCharacterId: linkedPlayer?.cpuCharacterId ?? player.cpuCharacterId ?? null,
+        cpuStyle: linkedPlayer?.cpuStyle ?? player.cpuStyle ?? null,
         stack: linkedPlayer?.stack ?? 0,
         seatOut: !!linkedPlayer?.busted,
         isBusted: !!linkedPlayer?.busted,
@@ -7724,12 +7731,12 @@ const SAFE_RESET_PHASE = "IDLE";
     ];
     // Tournament tables follow a fixed 6-max oval layout (BTN bottom-center, clockwise SB→CO).
     const tournamentLayouts = [
-      "absolute bottom-[7%] left-1/2 -translate-x-1/2 w-[clamp(190px,24vw,270px)]", // Hero (BTN)
-      "absolute bottom-[8%] left-[18%] -translate-x-1/2 w-[clamp(135px,18vw,205px)]", // SB
-      "absolute top-[20%] left-[18%] -translate-x-1/2 w-[clamp(135px,18vw,205px)]", // BB
-      "absolute top-[10%] left-1/2 -translate-x-1/2 w-[clamp(150px,20vw,230px)]", // UTG
-      "absolute top-[20%] left-[82%] -translate-x-1/2 w-[clamp(135px,18vw,205px)]", // MP
-      "absolute bottom-[8%] left-[82%] -translate-x-1/2 w-[clamp(135px,18vw,205px)]", // CO
+      "absolute bottom-[-2%] left-1/2 -translate-x-1/2 w-[clamp(190px,22vw,265px)]", // Hero (BTN)
+      "absolute bottom-[5%] left-[14%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // SB
+      "absolute top-[25%] left-[12%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // BB
+      "absolute top-[3%] left-1/2 -translate-x-1/2 w-[clamp(150px,18vw,220px)]", // UTG
+      "absolute top-[25%] left-[88%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // MP
+      "absolute bottom-[5%] left-[86%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // CO
     ];
     return mode === "tournament-mtt" ? tournamentLayouts : cashLayouts;
   }, [mode]);

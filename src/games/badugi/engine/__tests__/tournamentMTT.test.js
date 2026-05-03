@@ -46,6 +46,21 @@ describe("tournamentMTT engine", () => {
     expect(Object.keys(state.players)).toHaveLength(18);
   });
 
+  it("preserves CPU character metadata for tournament table display", () => {
+    const state = createMTTTournamentState(BASE_CONFIG, [
+      entrants[0],
+      {
+        id: "cpu-akira",
+        name: "Akira",
+        cpuCharacterId: "akira",
+        cpuStyle: "balanced",
+      },
+    ]);
+    expect(state.players["cpu-akira"].name).toBe("Akira");
+    expect(state.players["cpu-akira"].cpuCharacterId).toBe("akira");
+    expect(state.players["cpu-akira"].cpuStyle).toBe("balanced");
+  });
+
   it("advances levels once all active tables meet handsThisLevel", () => {
     let state = createMTTTournamentState(BASE_CONFIG, entrants);
     expect(getCurrentLevel(state).levelIndex).toBe(1);

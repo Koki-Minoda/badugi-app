@@ -76,8 +76,11 @@ export default function Player({
     `${player.allIn && betValue > 0 ? "All-in" : "Bet"}: ${betValue}`,
     `Status: ${statusBadges.length > 0 ? statusBadges.join(", ") : "Ready"}`,
     `Last action: ${player.lastAction || "-"}`,
+    player.cpuStyle ? `CPU style: ${player.cpuStyle}` : null,
+    player.cpuModelId ? `Model: ${player.cpuModelId}` : null,
+    player.trainingRun ? `Training: ${player.trainingRun}` : null,
     statsLine,
-  ];
+  ].filter(Boolean);
   const playerDetailTitle = playerDetailLines.join("\n");
   const detailPositionClass = isHero
     ? "bottom-full mb-2"
@@ -145,6 +148,28 @@ export default function Player({
           <span className="truncate text-right text-white">{player.lastAction || "-"}</span>
         </div>
         <div className="mt-2 border-t border-white/10 pt-2 text-slate-300">{statsLine}</div>
+        {(player.cpuStyle || player.cpuModelId || player.trainingRun) && (
+          <div className="mt-2 border-t border-white/10 pt-2 text-slate-300">
+            {player.cpuStyle && (
+              <div className="flex justify-between gap-2">
+                <span className="text-slate-400">Style</span>
+                <span className="truncate text-right text-white">{player.cpuStyle}</span>
+              </div>
+            )}
+            {player.cpuModelId && (
+              <div className="flex justify-between gap-2">
+                <span className="text-slate-400">Model</span>
+                <span className="truncate text-right text-white">{player.cpuModelId}</span>
+              </div>
+            )}
+            {player.trainingRun && (
+              <div className="flex justify-between gap-2">
+                <span className="text-slate-400">Run</span>
+                <span className="truncate text-right text-white">{player.trainingRun}</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
       <div className="relative z-10 flex items-start justify-between gap-2">
         <div className="min-w-0 flex items-center gap-2 text-white font-semibold">

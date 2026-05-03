@@ -2018,6 +2018,10 @@ Draw RL test coverage:
 - [ ] `UI-13` 追加 UX 候補: footer debug 表示を debug mode OFF 時は完全に隠す。
 - [x] `UI-14` showdown / side-pot result を table 上の短い toast と result overlay の両方で確認できるようにする。
 - [ ] `UI-15` 追加 UX 候補: mobile landscape で右 panel を bottom sheet 化し、カードと action の距離をさらに短くする。
+- [x] `UI-16` MTT HUD をテーブル内から右パネル上部へ移し、Prize / Blinds / Players / Next を PHASE の上で読めるようにする。
+- [x] `UI-17` MTT seat layout を外周寄りに逃がし、テーブル内のカード・pot・fold表示との干渉を減らす。
+- [x] `UI-18` CPU番号表示をキャラクター名へ変更し、CPU style / model / training run を seat detail に載せられる下地を作る。
+  - 2026-05-03 対応: `src/ai/cpuRoster.js` に 18人分のCPU rosterを追加。MTT entrant / table seat は Akira, Mina, Ren... の表示名を使い、将来 `modelRegistry` / `cpuCharacters` と紐付けて学習断面一覧を拡張する。
 
 ## 15. Tournament UI / Friend Match UX 監査
 

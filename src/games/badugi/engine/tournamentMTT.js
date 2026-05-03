@@ -38,6 +38,8 @@ export function createMTTTournamentState(config, entrants) {
     const player = {
       id: playerId,
       name: entry?.name ?? playerId,
+      cpuCharacterId: entry?.cpuCharacterId ?? null,
+      cpuStyle: entry?.cpuStyle ?? null,
       startingStack,
       stack: startingStack,
       busted: false,

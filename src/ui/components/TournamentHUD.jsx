@@ -58,6 +58,7 @@ export default function TournamentHUD({
   currentVariantLabel = null,
   nextVariantLabel = null,
   compact = false,
+  placement = "table",
 }) {
   const displayPayouts = formatPayoutRows(payoutBreakdown);
   const prizePoolDisplay =
@@ -87,6 +88,76 @@ export default function TournamentHUD({
   const levelDisplay =
     levelLabel ??
     (currentLevelNumber != null ? `Level ${currentLevelNumber}` : "Level —");
+
+  if (placement === "side") {
+    return (
+      <div
+        className="rounded-2xl border border-yellow-300/20 bg-slate-950/88 p-3 text-slate-50 shadow-xl"
+        data-testid="tournament-hud"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-[10px] font-black uppercase tracking-[0.24em] text-yellow-300">
+              Tournament
+            </div>
+            <div className="truncate text-sm font-black text-white">{tournamentName}</div>
+            <div className="mt-1 text-xs font-semibold text-slate-300">{levelDisplay}</div>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/35 px-3 py-2 text-center">
+            <div className="text-[10px] uppercase tracking-wide text-slate-400">Hands</div>
+            <div className="text-lg font-black text-white">{progressDisplay}</div>
+          </div>
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+          <div className="rounded-xl border border-white/10 bg-black/30 px-2 py-1.5">
+            <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400">Prize</p>
+            <p className="text-base font-black text-yellow-200">{prizePoolDisplay}</p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-2 py-1.5">
+            <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400">Blinds</p>
+            <p className="font-black text-white">{blindsDisplay}</p>
+            <p className="text-[10px] text-slate-400">{anteDisplay}</p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-2 py-1.5">
+            <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400">Players</p>
+            <p className="font-black text-white">{playersDisplay}</p>
+            <p className="text-[10px] text-slate-400">Avg {avgStackDisplay}</p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-2 py-1.5">
+            <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400">Next</p>
+            <p className="truncate font-black text-white">{nextLevelDisplay}</p>
+            <p className="text-[10px] text-slate-400">Break {breakDisplay}</p>
+          </div>
+        </div>
+
+        <div className="mt-3 rounded-xl border border-white/10 bg-black/25 px-2 py-1.5">
+          <div className="flex items-center justify-between gap-2 text-[10px] uppercase tracking-wide text-slate-400">
+            <span>Top Payouts</span>
+            <span>{currentVariantLabel ?? "-"}</span>
+          </div>
+          <div className="mt-1 space-y-1 text-[11px] text-slate-200">
+            {displayPayouts.map((entry) => (
+              <div key={`side-payout-${entry.place}`} className="flex justify-between gap-2">
+                <span>{formatOrdinal(entry.place)}</span>
+                <span className="text-right font-semibold">
+                  {entry.amount != null ? formatNumber(entry.amount) : "--"}
+                  {entry.percent != null ? (
+                    <span className="ml-1 text-slate-500">({entry.percent}%)</span>
+                  ) : null}
+                </span>
+              </div>
+            ))}
+          </div>
+          {nextVariantLabel ? (
+            <div className="mt-1 truncate text-[10px] text-slate-400">
+              Next game: {nextVariantLabel}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

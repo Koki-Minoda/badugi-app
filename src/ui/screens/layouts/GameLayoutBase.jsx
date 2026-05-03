@@ -284,8 +284,8 @@ export default function GameLayoutBase({
         className={`flex-1 ${isMobileLayout ? "mt-16 pb-36" : "mt-20"} relative ${tableOuterBg}`}
       >
         {showDesktopSidePanel && (
-          <div className="absolute top-6 left-6 z-40 flex flex-col gap-4 w-[280px] pointer-events-none">
-            <div className="pointer-events-auto bg-black/70 text-white text-xs rounded-lg p-3 shadow-lg space-y-3">
+          <div className="absolute top-5 left-5 z-40 flex w-[250px] flex-col gap-3 pointer-events-none">
+            <div className="pointer-events-auto rounded-2xl border border-white/10 bg-black/70 p-3 text-xs text-white shadow-xl backdrop-blur space-y-3">
               <div className="flex items-center justify-between text-sm font-semibold">
                 <span>Table Status</span>
                 <button
@@ -296,27 +296,18 @@ export default function GameLayoutBase({
                   {statusBoardOpen ? "Hide" : "Show"}
                 </button>
               </div>
-              <PlayerStatusBoard
-                players={statusSeatViews}
-                dealerIdx={statusDealerIdx}
-                heroIndex={statusHeroIndex}
-                currentTurn={statusTurn}
-              />
+              {statusBoardOpen && (
+                <PlayerStatusBoard
+                  players={statusSeatViews}
+                  dealerIdx={statusDealerIdx}
+                  heroIndex={statusHeroIndex}
+                  turn={statusTurn}
+                  totalPot={totalPot}
+                  positionLabels={seatLabels}
+                />
+              )}
             </div>
             <TableSummaryPanel {...tableSummaryProps} />
-            <div className="pointer-events-auto bg-black/70 rounded-lg p-3 text-xs space-y-3 shadow-lg">
-              <div className="flex items-center justify-between text-[11px] uppercase tracking-wide text-slate-400">
-                <span>Total Pot</span>
-                <strong className="text-yellow-300 text-lg">{totalPot}</strong>
-              </div>
-              <div className="space-y-1">
-                {seatLabels.map((label) => (
-                  <p key={label} className="text-slate-200">
-                    {label}
-                  </p>
-                ))}
-              </div>
-            </div>
             {aiDecisionSummary?.total > 0 && (
               <div className="pointer-events-auto bg-black/70 rounded-lg p-3 text-xs space-y-3 shadow-lg">
                 <div className="flex items-center justify-between text-[11px] uppercase tracking-wide text-slate-400">
@@ -363,30 +354,32 @@ export default function GameLayoutBase({
 
         <section
           className={`flex h-full flex-col ${
-            isMobileLayout ? "px-3 pt-20 pb-10 gap-6" : "pl-[320px] pr-6 pt-24 pb-24 gap-8"
+            isMobileLayout ? "px-3 pt-20 pb-10 gap-6" : "pl-[290px] pr-5 pt-[5.5rem] pb-[4.5rem] gap-6"
           }`}
         >
           <div
             className={`flex flex-col ${
-              isMobileLayout ? "gap-4" : "gap-6"
-            } rounded-3xl border border-white/10 bg-black/40 p-4 shadow-2xl`}
+              isMobileLayout ? "gap-4" : "gap-5"
+            } rounded-3xl border border-white/10 bg-black/40 p-3 shadow-2xl`}
           >
             <div
               className={`relative grid ${
-                isMobileLayout ? "grid-cols-1 gap-4" : "grid-cols-[3fr_2fr] gap-8"
+                isMobileLayout
+                  ? "grid-cols-1 gap-4"
+                  : "grid-cols-[minmax(720px,1fr)_clamp(260px,22vw,340px)] gap-4"
               }`}
             >
               <div
                 className={`relative rounded-3xl border-2 ${tableBorderColor} ${
                   heroTableAnimating ? "ring-2 ring-yellow-300 animate-pulse" : ""
-                } ${tableSurfaceBg} p-4 shadow-inner`}
+                } ${tableSurfaceBg} p-3 shadow-inner`}
               >
                 {tournamentHud}
                 <div
                   className={`relative ${
                     isMobileLayout
                       ? "grid gap-3"
-                      : "min-h-[640px]"
+                      : "min-h-[600px]"
                   }`}
                   style={isMobileLayout ? MOBILE_TABLE_GRID_STYLE : undefined}
                 >
@@ -430,23 +423,23 @@ export default function GameLayoutBase({
                   })}
                 </div>
               </div>
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between rounded-2xl bg-slate-900/80 p-4 shadow-lg">
+              <div data-testid="decision-panel" className="flex flex-col gap-3">
+                <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-900/85 p-3 shadow-lg">
                   <div>
-                    <p className="text-xs uppercase tracking-wider text-slate-400">
+                    <p className="text-[10px] uppercase tracking-wider text-slate-400">
                       Phase
                     </p>
-                    <p className="text-2xl font-bold text-white">{tablePhase}</p>
+                    <p className="text-xl font-bold text-white">{tablePhase}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs uppercase tracking-wider text-slate-400">Draw</p>
-                    <p className="text-lg text-white">{drawRoundValue + 1}</p>
-                    <p className="text-xs uppercase tracking-wider text-slate-400 mt-2">Bet Round</p>
-                    <p className="text-lg text-white">{betRoundValue + 1}</p>
+                    <p className="text-[10px] uppercase tracking-wider text-slate-400">Draw</p>
+                    <p className="text-base font-semibold text-white">{drawRoundValue + 1}</p>
+                    <p className="mt-1 text-[10px] uppercase tracking-wider text-slate-400">Bet Round</p>
+                    <p className="text-base font-semibold text-white">{betRoundValue + 1}</p>
                   </div>
                 </div>
-                <div className="flex flex-col gap-3 rounded-2xl bg-slate-900/80 p-4 shadow-lg">
-                  <h2 className="text-sm font-semibold text-white uppercase tracking-wider">
+                <div className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-slate-900/85 p-3 shadow-lg">
+                  <h2 className="text-xs font-semibold text-white uppercase tracking-wider">
                     Hero Hand
                   </h2>
                   <div className="flex flex-wrap gap-2 text-slate-200 text-sm">
@@ -459,12 +452,12 @@ export default function GameLayoutBase({
                       </span>
                     ))}
                   </div>
-                  <div className="text-xs text-slate-400">
+                  <div className="text-[11px] text-slate-400">
                     Draw allowed: {tableHeroCanDraw ? "Yes" : "No"}
                   </div>
                 </div>
-                <div className="rounded-2xl bg-slate-900/80 p-4 shadow-lg space-y-3">
-                  <h2 className="text-sm font-semibold text-white uppercase tracking-wider">
+                <div className="rounded-2xl border border-emerald-300/15 bg-slate-900/88 p-3 shadow-lg space-y-3">
+                  <h2 className="text-xs font-semibold text-white uppercase tracking-wider">
                     Hero Controls
                   </h2>
                   <div>{renderControlsContent()}</div>

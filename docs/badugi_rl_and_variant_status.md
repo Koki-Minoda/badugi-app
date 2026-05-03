@@ -1930,3 +1930,95 @@ Draw RL test coverage:
 - 最優先は Badugi 完了と bug 管理の定着。
 - RL は frontend ONNX 主体で固める。
 - 35 variants を正式採用し、その後に `D01 -> D02 -> S01/S02` と進める。
+
+## 14. Game UI / UX 改善監査
+
+2026-05-03 時点の実プレイ画面レビュー。ゲームロジックは触らず、表示レイヤーだけでストレスを減らす。
+
+### 14.1 自己ダメ出し 30 項目
+
+1. 左の Table Status が狭く、Total Pot / seat rows / 下部 pot summary が見切れる。
+2. 左レール内に `PlayerStatusBoard` の固定幅が重なっており、親幅と子幅が噛み合っていない。
+3. 左情報が常時大きく、テーブル領域を圧迫している。
+4. 左情報とテーブル HUD が重複し、どこを見ればよいか分かりにくい。
+5. スクロールしないと seat 情報の下部が見えず、現在の action 判断に必要な情報が隠れる。
+6. Total Pot が左下とボード内で分散しており、主表示が曖昧。
+7. プレイヤーカード上の chip / bet badge がプレイヤー名や stack と干渉しやすい。
+8. CPU の action / lastAction が小さすぎて、誰が何をしたか追いにくい。
+9. All-in / Folded / Acting の視覚差が弱く、状態を瞬時に判断しづらい。
+10. CPU の VPIP/PFR/AF/H が常時表示されるが小さく、通常プレイではノイズになっている。
+11. CPU 詳細情報を hover / focus で見られないため、テーブル上の情報密度調整ができない。
+12. プレイヤー seat の title 属性がなく、詳細確認の導線がない。
+13. 右の Phase / Hero Hand / Hero Controls が広すぎ、テーブルが横に圧迫される。
+14. Hero Controls が右カラム下段にあり、カード選択から action まで視線移動が大きい。
+15. Waiting 表示が広い空白を占有し、ゲームが止まっているように見える。
+16. Hero Hand パネルが実カードと重複した情報で、優先度が低い割に大きい。
+17. 画面幅が広い時でも右カラムが `2fr` で膨らみ、テーブルが相対的に狭くなる。
+18. テーブル外枠の padding / gap が大きく、実カード領域に使える面積が減っている。
+19. 6人卓で seat 間の余白と重なりのバランスが悪く、CPU 3/4/5 の密集が起きやすい。
+20. Hero seat と footer が近く、低い viewport で圧迫感がある。
+21. footer の Debug / Mode 表示が常時固定で、実プレイ中の重要度に対して主張が強い。
+22. header が固定で高さを取り、低解像度ではテーブルに使える縦幅が不足する。
+23. action button の説明や金額がボタン外に分散し、call amount / raise amount の把握がしにくい。
+24. raise cap / current bet / to-call の要点が action panel にまとまっていない。
+25. folded seat のカードが薄くなるだけで、fold 済みが視認しにくい。
+26. all-in seat が「もう action 不要」と分かりにくく、待機状態との区別が弱い。
+27. mobile / narrow desktop で左レールと右レールが残ると、横スクロールや見切れの原因になる。
+28. 日本語 UI でも一部の table label が英語固定で、認知負荷が残る。
+29. pot contribution と stack が同じ小サイズで、ベット額の確認が遅れる。
+30. QA 観点で UI regression を見る smoke が不足しており、見切れ・重なり・action panel 幅の再発を検知しにくい。
+
+### 14.2 改善方針
+
+- ゲームロジック、turn 進行、bet/draw action handler、engine/controller には触らない。
+- 左レールは「常時読む ledger」に縮小し、詳細は table seat の hover / focus tooltip に逃がす。
+- Total Pot / phase / current round / dealer は左レール上部に集約し、見切れない固定行にする。
+- seat row は `name / stack / bet / status` を一行で読める密度にし、スクロール対象は seat list だけにする。
+- table seat は player card と bet badge が重ならないよう、header と bet badge の幅・配置を整理する。
+- CPU stats は通常表示では短くし、詳細は `title` と hover tooltip で出す。
+- 右レールは `clamp(260px, 22vw, 340px)` 程度に制限し、action decision だけを優先表示する。
+- Hero Hand パネルは compact 化し、実カードと重複しすぎない要約にする。
+- footer は debug 表示を小さくし、テーブル操作を邪魔しない高さに抑える。
+- UI smoke は見切れ・重なり・主要ボタン可視性を最低限追加し、ゲーム進行テストとは分離する。
+
+### 14.3 実装タスク
+
+- [x] `UI-01` 左レールの固定幅 / 子幅不整合を解消し、Total Pot と seat rows が見切れないようにする。
+  - 左レールを 250px 台帳に整理し、`PlayerStatusBoard` の内部固定幅を撤去。
+  - Total Pot は ledger 上部に固定表示し、重複していた左下 pot list を削除。
+- [x] `UI-02` `PlayerStatusBoard` を compact ledger 化し、stack / bet / status を一画面で読めるようにする。
+  - seat row を `name / seat / stack / bet / status` の compact 表示へ変更。
+  - ACTING / ALL-IN / FOLDED の badge 色を分け、状態認識を早くする。
+- [x] `UI-03` `TableSummaryPanel` をカード化し、phase / round / level / dealer を読みやすくする。
+  - phase / bet round / draw progress を上段カードへ集約。
+  - level / hand / starting stack / dealer は下段の左右揃えにして見切れを防止。
+- [x] `UI-04` table seat に hover / focus 用の詳細 tooltip を追加する。
+  - seat に `title` と focus tooltip を追加し、stack / bet / last action / stats を確認できる。
+  - mouse hover と keyboard focus の両方で詳細確認できる方針。
+- [x] `UI-05` table seat の bet badge / stack / action 表示を整理し、カードや名前との干渉を減らす。
+  - name / avatar / stack の shrink / truncate を整理し、bet badge を header 内で読みやすくした。
+  - CPU stats は truncate し、詳細は tooltip に逃がす。
+- [x] `UI-06` 右 action column を縮小し、Hero Controls を compact decision panel にする。
+  - desktop grid を `table + clamp(260px, 22vw, 340px)` に変更し、右 panel の肥大化を抑制。
+  - phase / hero hand / controls の padding と heading を縮小。
+- [x] `UI-07` footer / header / table padding を調整し、低い viewport でもカードが操作しやすい余白にする。
+  - desktop section padding と table surface padding を削り、実テーブル領域を広げた。
+  - 既存 footer は維持しつつ、hero card が viewport 内に残ることを smoke で確認。
+- [x] `UI-08` UI regression smoke を追加し、Total Pot / action panel / hero cards / player tooltip の可視性を確認する。
+  - `tests/e2e/game-ui-layout-smoke.spec.ts` を追加。
+  - ledger / summary / decision panel / hero card / seat detail の可視性と panel 幅を確認。
+- [x] `UI-09` Vite dev server の watch 対象から `.venv` などを除外し、Playwright 中の `ENOSPC` を防止する。
+  - `vite.config.js` に `server.watch.ignored` を追加。
+
+### 14.4 確認結果
+
+- [x] `npm run lint`: pass。
+- [x] `npm test -- --run src/ui/components/__tests__ src/ui/screens/__tests__`: 9 files / 38 tests pass。
+- [x] `npm run build`: pass。chunk size warning は既存警告。
+- [x] `npx playwright test tests/e2e/game-ui-layout-smoke.spec.ts --project=badugi-flow`: 1 passed。
+- [x] `npx playwright test tests/e2e/authenticated-game-smoke.spec.ts --project=badugi-flow`: 1 passed。
+- [ ] `npx playwright test tests/e2e/badugi-flow.spec.ts --project=badugi-flow`: 13 passed / 3 failed。
+  - 失敗1: `All-in / bust-out flow guards against extra actions` が seat 1 action log 待ちで timeout。
+  - 失敗2: `Showdown logs every tied winner` が expected 1 pot に対して visible pot section 2 件。
+  - 失敗3: `Hand history captures single-pot showdown metadata` が expected 1 pot に対して record.pots 2 件。
+  - 今回の UI 差分は `GameLayoutBase` / `Player` / `PlayerStatusBoard` / `TableSummaryPanel` / Vite watch / UI smoke のみで、engine/controller/action handler は未変更。ゲームロジック系の別調査対象として残す。

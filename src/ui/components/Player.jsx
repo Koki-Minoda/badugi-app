@@ -49,6 +49,18 @@ export default function Player({
           stats.pfrRate
         )} / AF ${formatStatAf(stats.af)} / H ${stats.hands}`
       : "VPIP -- / PFR -- / AF -- / H --";
+  const playerDetailLines = [
+    `${player.name}${positionLabel ? ` (${positionLabel})` : ""}`,
+    `Stack: ${stackValue}`,
+    `${player.allIn && betValue > 0 ? "All-in" : "Bet"}: ${betValue}`,
+    `Status: ${statusBadges.length > 0 ? statusBadges.join(", ") : "Ready"}`,
+    `Last action: ${player.lastAction || "-"}`,
+    statsLine,
+  ];
+  const playerDetailTitle = playerDetailLines.join("\n");
+  const detailPositionClass = isHero
+    ? "bottom-full mb-2"
+    : "top-full mt-2";
 
   const handleCardClick = (cardIdx) => {
     if (isHero && phase === "DRAW" && canSelectForDraw && onCardClick) {
@@ -59,7 +71,9 @@ export default function Player({
   return (
     <div
       data-testid={`seat-${seatIndex}`}
-      className={`relative rounded-2xl border border-white/10 bg-gray-900/80 shadow-lg backdrop-blur flex flex-col ${
+      tabIndex={0}
+      title={playerDetailTitle}
+      className={`group relative rounded-2xl border border-white/10 bg-gray-900/85 shadow-lg backdrop-blur flex flex-col outline-none transition focus-visible:ring-2 focus-visible:ring-sky-300 ${
         player.folded ? "opacity-60" : ""
       } ${isActive ? "ring-2 ring-yellow-400" : ""} ${isWinner ? "ring-4 ring-emerald-400 animate-pulse" : ""}`}
       style={{
@@ -76,19 +90,47 @@ export default function Player({
           {positionLabel}
         </div>
       )}
+      <div
+        data-testid={`seat-${seatIndex}-detail`}
+        className={`pointer-events-none absolute left-1/2 z-30 hidden w-[min(260px,80vw)] -translate-x-1/2 rounded-xl border border-white/15 bg-slate-950/95 p-3 text-[11px] text-slate-200 shadow-2xl group-hover:block group-focus:block ${detailPositionClass}`}
+      >
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <strong className="truncate text-sm text-white">{player.name}</strong>
+          <span className="shrink-0 rounded bg-slate-800 px-1.5 py-0.5 text-[10px] uppercase text-slate-300">
+            {positionLabel ?? `Seat ${seatIndex + 1}`}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-1">
+          <span className="text-slate-400">Stack</span>
+          <span className="text-right font-semibold text-white">{stackValue}</span>
+          <span className="text-slate-400">{player.allIn && betValue > 0 ? "All-in" : "Bet"}</span>
+          <span className="text-right font-semibold text-white">{betValue}</span>
+          <span className="text-slate-400">Last</span>
+          <span className="truncate text-right text-white">{player.lastAction || "-"}</span>
+        </div>
+        <div className="mt-2 border-t border-white/10 pt-2 text-slate-300">{statsLine}</div>
+      </div>
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2 text-white font-semibold">
+        <div className="min-w-0 flex items-center gap-2 text-white font-semibold">
           {player.avatar && (
             <span
-              className="leading-none"
+              className="shrink-0 leading-none"
               style={{ fontSize: "calc(var(--player-name-size, 14px) + 2px)" }}
             >
               {player.avatar}
             </span>
           )}
-          <div className="leading-tight">
+          <div className="min-w-0 leading-tight">
             <div className="flex items-center gap-1 flex-wrap">
-              <span style={{ fontSize: "var(--player-name-size, 14px)" }}>{player.name}</span>
+              <span
+                className="truncate"
+                style={{
+                  fontSize: "var(--player-name-size, 14px)",
+                  maxWidth: "var(--player-name-maxw, 150px)",
+                }}
+              >
+                {player.name}
+              </span>
               {index === dealerIdx && (
                 <span
                   className="text-yellow-300 uppercase tracking-wide"
@@ -127,10 +169,10 @@ export default function Player({
           </div>
         </div>
         <div
-          className="text-right text-slate-200 leading-tight"
+          className="shrink-0 text-right text-slate-200 leading-tight"
           style={{ fontSize: "var(--player-stack-size, 11px)" }}
         >
-          <div>
+          <div className="rounded bg-black/25 px-1.5 py-0.5">
             Stack <span className="font-semibold text-white">{stackValue}</span>
           </div>
           <BetStatus amount={betValue} allIn={player.allIn} />

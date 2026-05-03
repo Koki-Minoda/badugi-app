@@ -76,6 +76,20 @@ describe("MainMenuScreen", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/friend-match");
   });
 
+  it("routes hand history when no in-app callback is provided", () => {
+    render(<MainMenuScreen language="ja" />);
+    fireEvent.click(screen.getByTestId("menu-history"));
+    expect(mockNavigate).toHaveBeenCalledWith("/history");
+  });
+
+  it("uses the provided hand history callback inside App flow", () => {
+    const handleHistory = vi.fn();
+    render(<MainMenuScreen language="ja" onSelectHandHistory={handleHistory} />);
+    fireEvent.click(screen.getByTestId("menu-history"));
+    expect(handleHistory).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).not.toHaveBeenCalledWith("/history");
+  });
+
   it("binds the language select value to props", () => {
     render(<MainMenuScreen language="ja" />);
     fireEvent.click(screen.getByRole("button", { name: /open settings/i }));
@@ -86,6 +100,8 @@ describe("MainMenuScreen", () => {
     render(<MainMenuScreen language="ja" />);
     expect(screen.getByRole("button", { name: "ゲームを選択" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "ハンド履歴" })).toBeTruthy();
+    expect(screen.getByText("キャッシュ・トナメ")).toBeTruthy();
+    expect(screen.getByText("保存対応")).toBeTruthy();
 
     fireEvent.click(screen.getByTestId("menu-variant-select"));
     expect(screen.getByText("ゲームを選択")).toBeTruthy();

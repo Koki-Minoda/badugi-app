@@ -8,7 +8,7 @@ export const MGX_LOCALES = {
       modeSelect: "Mode Select",
       heading: "Poker Platform",
       description:
-        "Choose a mode and dive into your preferred variant. MGX supports mixed formats, RL-ready CPUs, and store tournament ladders, so you can jump between ring, tournament, and sandbox modes in seconds.",
+        "Choose a mode and start playing. MGX supports cash games, tournaments, friend matches, mixed formats, and CPU practice.",
     },
     menu: {
       cash: "CASH GAME",
@@ -57,7 +57,7 @@ export const MGX_LOCALES = {
       defaultBody:
         "Rules and strategy tips will appear in the overlay accessible via the ? icon. Settings hold audio, table, and animation preferences.",
       cashTitle: "Cash Game",
-      cashBody: "Play ring games with multiple variants and stack-based formats.",
+      cashBody: "Play stack-based cash games and choose from supported variants.",
       tournamentTitle: "Tournament",
       tournamentBody: "Enter store tournament ladders starting with Badugi.",
       friendTitle: "Friend Match",
@@ -73,7 +73,7 @@ export const MGX_LOCALES = {
       modeSelect: "モード選択",
       heading: "ポーカープラットフォーム",
       description:
-        "遊びたいゲームモードを選択してください。MGX はミックスゲーム、RL 対応 CPU、店舗トーナメントなどに対応し、リング戦・トナメ・練習モードをシームレスに行き来できます。",
+        "遊びたいモードを選んでください。MGXではキャッシュゲーム、トーナメント、フレンドマッチ、ミックスゲーム、CPU練習を遊べます。",
     },
     menu: {
       cash: "キャッシュゲーム",
@@ -122,7 +122,7 @@ export const MGX_LOCALES = {
       defaultBody:
         "ルールや戦略のヒントは、左上の「?」アイコンから開くオーバーレイに表示されます。サウンドやテーブル、アニメーションなどは設定から変更できます。",
       cashTitle: "キャッシュゲーム",
-      cashBody: "スタック制のリングゲーム。複数のバリアントを切り替えてプレイできます。",
+      cashBody: "スタックを持って参加する通常卓です。対応済みのゲームを選んでプレイできます。",
       tournamentTitle: "トーナメント",
       tournamentBody: "Badugi を起点にした店舗トーナメントラダーに参加します。",
       friendTitle: "フレンドマッチ",

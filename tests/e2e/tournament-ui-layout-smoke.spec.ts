@@ -36,6 +36,9 @@ test.describe("tournament UI layout smoke", () => {
     const topSeat = page.getByTestId("seat-3");
     const rightTopSeat = page.getByTestId("seat-4");
     const rightBottomSeat = page.getByTestId("seat-5");
+    const rightTopDetail = page.getByTestId("seat-4-detail");
+    const heroAvatar = page.getByTestId("seat-0-avatar");
+    const heroPosition = page.getByTestId("seat-0-pos");
 
     await expect(hud).toBeVisible();
     await expect(heroCard).toBeVisible();
@@ -57,6 +60,25 @@ test.describe("tournament UI layout smoke", () => {
 
     const rightTopBottom = (rightTopBox?.y ?? 0) + (rightTopBox?.height ?? 0);
     expect(rightTopBottom).toBeLessThan((rightBottomBox?.y ?? 0) + 10);
+
+    const [heroAvatarBox, heroPositionBox] = await Promise.all([
+      heroAvatar.boundingBox(),
+      heroPosition.boundingBox(),
+    ]);
+    const avatarRight = (heroAvatarBox?.x ?? 0) + (heroAvatarBox?.width ?? 0);
+    expect(avatarRight).toBeLessThanOrEqual((heroPositionBox?.x ?? 0) + 2);
+
+    await rightTopSeat.focus();
+    await expect(rightTopDetail).toBeVisible();
+    const [rightTopDetailBox, focusedRightTopBox, focusedRightBottomBox] = await Promise.all([
+      rightTopDetail.boundingBox(),
+      rightTopSeat.boundingBox(),
+      rightBottomSeat.boundingBox(),
+    ]);
+    expect((rightTopDetailBox?.y ?? 999)).toBeLessThanOrEqual((focusedRightTopBox?.y ?? 0) + 2);
+    expect((rightTopDetailBox?.y ?? 0) + (rightTopDetailBox?.height ?? 0)).toBeLessThan(
+      (focusedRightBottomBox?.y ?? 0),
+    );
 
     const scrollHeight = await page.evaluate(() => document.documentElement.scrollHeight);
     const viewportHeight = await page.evaluate(() => window.innerHeight);

@@ -40,7 +40,7 @@ function StatusPill({ label, tone = "slate" }) {
   );
 }
 
-function AvatarChip({ avatar, name, isHero = false, isFolded = false }) {
+function AvatarChip({ avatar, name, isHero = false, isFolded = false, testId }) {
   const trimmedName = String(name ?? "").trim();
   const initials =
     trimmedName
@@ -54,6 +54,7 @@ function AvatarChip({ avatar, name, isHero = false, isFolded = false }) {
     !String(avatar).includes("_avatar");
   return (
     <span
+      data-testid={testId}
       className={`grid shrink-0 place-items-center rounded-full border font-black shadow-inner ${
         isFolded
           ? "border-slate-500/40 bg-slate-800 text-slate-400"
@@ -115,7 +116,7 @@ export default function Player({
     statsLine,
   ].filter(Boolean);
   const playerDetailTitle = playerDetailLines.join("\n");
-  const detailPositionClass = isHero
+  const detailPositionClass = isHero || seatIndex === 2 || seatIndex === 3 || seatIndex === 4
     ? "bottom-full mb-2"
     : "top-full mt-2";
 
@@ -153,18 +154,9 @@ export default function Player({
               : "bg-gradient-to-b from-cyan-300/6 via-transparent to-black/25"
         }`}
       />
-      {positionLabel && (
-        <div
-          data-testid={`seat-${seatIndex}-pos`}
-          className="absolute left-2 top-2 z-10 rounded-md border border-white/10 bg-black/60 px-1.5 py-0.5 font-semibold uppercase tracking-wide text-slate-100/90"
-          style={{ fontSize: "var(--player-meta-size, 10px)" }}
-        >
-          {positionLabel}
-        </div>
-      )}
       <div
         data-testid={`seat-${seatIndex}-detail`}
-        className={`pointer-events-none absolute left-1/2 z-30 hidden w-[min(260px,80vw)] -translate-x-1/2 rounded-xl border border-white/15 bg-slate-950/95 p-3 text-[11px] text-slate-200 shadow-2xl group-hover:block group-focus:block ${detailPositionClass}`}
+        className={`pointer-events-none absolute left-1/2 z-[220] hidden w-[min(260px,80vw)] -translate-x-1/2 rounded-xl border border-white/15 bg-slate-950/95 p-3 text-[11px] text-slate-200 shadow-2xl group-hover:block group-focus:block ${detailPositionClass}`}
       >
         <div className="mb-1 flex items-center justify-between gap-2">
           <strong className="truncate text-sm text-white">{player.name}</strong>
@@ -211,9 +203,15 @@ export default function Player({
             name={player.name}
             isHero={isHero}
             isFolded={isFolded}
+            testId={`seat-${seatIndex}-avatar`}
           />
           <div className="min-w-0 leading-tight">
             <div className="flex items-center gap-1 flex-wrap">
+              {positionLabel && (
+                <span data-testid={`seat-${seatIndex}-pos`}>
+                  <StatusPill label={positionLabel} tone="slate" />
+                </span>
+              )}
               <span
                 className="truncate"
                 style={{

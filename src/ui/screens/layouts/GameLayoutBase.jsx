@@ -435,7 +435,7 @@ export default function GameLayoutBase({
                     return (
                       <div
                         key={seat.seatIndex ?? idx}
-                        className={`flex flex-col ${seatAlignClass} gap-3 ${
+                        className={`flex flex-col ${seatAlignClass} gap-3 overflow-visible hover:z-[180] focus-within:z-[180] ${
                           isMobileLayout ? "" : seatLayouts[idx] ?? ""
                         }`}
                         style={

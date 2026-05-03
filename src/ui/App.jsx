@@ -1194,9 +1194,50 @@ const SAFE_RESET_PHASE = "IDLE";
   const hudInfo = adapterViewProps?.hudInfo ?? null;
   const controlsConfig = adapterViewProps?.controlsConfig ?? null;
   const controllerDealerIdx = controllerSnapshot?.dealerIdx ?? dealerIdx;
+  const liveTournamentHudState = useMemo(() => {
+    if (!isTournament || !tournamentHudState) return tournamentHudState;
+    const state = tournamentStateRef.current;
+    if (!state?.players || !Array.isArray(playersSrc)) return tournamentHudState;
+    const pendingBustedIds = new Set(
+      playersSrc
+        .filter(
+          (player) =>
+            player?.tournamentPlayerId &&
+            (player.seatOut || player.isBusted || Math.max(0, Number(player.stack) || 0) <= 0),
+        )
+        .map((player) => player.tournamentPlayerId),
+    );
+    if (!pendingBustedIds.size) return tournamentHudState;
+    const alreadyBusted = new Set(
+      Object.values(state.players)
+        .filter((player) => player?.busted)
+        .map((player) => player.id),
+    );
+    const pendingCount = [...pendingBustedIds].filter((id) => !alreadyBusted.has(id)).length;
+    if (pendingCount <= 0) return tournamentHudState;
+    const playersRemaining = Math.max(0, Number(tournamentHudState.playersRemaining) - pendingCount);
+    const totalEntrants =
+      tournamentHudState.totalEntrants ?? tournamentHudState.totalPlayers ?? state.totalPlayers ?? 0;
+    const liveStacksById = new Map(
+      playersSrc
+        .filter((player) => player?.tournamentPlayerId)
+        .map((player) => [player.tournamentPlayerId, Math.max(0, Number(player.stack) || 0)]),
+    );
+    const totalChipsInPlay = Object.values(state.players).reduce((sum, player) => {
+      if (!player || player.busted || pendingBustedIds.has(player.id)) return sum;
+      return sum + (liveStacksById.get(player.id) ?? Math.max(0, Number(player.stack) || 0));
+    }, 0);
+    const averageStack = playersRemaining > 0 ? Math.floor(totalChipsInPlay / playersRemaining) : null;
+    return {
+      ...tournamentHudState,
+      playersRemaining,
+      playersRemainingText: `Players Remaining: ${playersRemaining} / ${totalEntrants}`,
+      averageStack,
+    };
+  }, [isTournament, playersSrc, tournamentHudState]);
   const tournamentHud =
-    isTournament && tournamentHudState ? (
-      <TournamentHUD {...tournamentHudState} compact placement="side" />
+    isTournament && liveTournamentHudState ? (
+      <TournamentHUD {...liveTournamentHudState} compact placement="side" />
     ) : null;
   const [uiPerf, setUiPerf] = useState({
     loadTime: null,
@@ -7732,9 +7773,9 @@ const SAFE_RESET_PHASE = "IDLE";
     const tournamentLayouts = [
       "absolute bottom-[-2%] left-1/2 -translate-x-1/2 w-[clamp(190px,22vw,265px)]", // Hero (BTN)
       "absolute bottom-[5%] left-[14%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // SB
-      "absolute top-[25%] left-[12%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // BB
+      "absolute top-[18%] left-[12%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // BB
       "absolute top-[3%] left-1/2 -translate-x-1/2 w-[clamp(150px,18vw,220px)]", // UTG
-      "absolute top-[25%] left-[88%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // MP
+      "absolute top-[18%] left-[88%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // MP
       "absolute bottom-[5%] left-[86%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // CO
     ];
     return mode === "tournament-mtt" ? tournamentLayouts : cashLayouts;

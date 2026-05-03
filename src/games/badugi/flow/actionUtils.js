@@ -16,17 +16,20 @@ export function isFoldedOrOut(player) {
 // and showdown code) MUST call these helpers instead of duplicating predicates.
 export function isPlayerSeated(player) {
   if (!player) return false;
-  if (typeof player.isSeated === "boolean") return player.isSeated;
+  if (player.seatOut || player.isBusted) return false;
   if (player.seatType && typeof player.seatType === "string") {
     if (player.seatType.toUpperCase() === "EMPTY") return false;
   }
+  if (typeof player.stack === "number" && player.stack <= 0 && !player.allIn) return false;
+  if (typeof player.isSeated === "boolean") return player.isSeated;
   return !player.seatOut;
 }
 
 export function isPlayerActiveInGame(player) {
   if (!player) return false;
-  if (typeof player.isActiveInGame === "boolean") return player.isActiveInGame;
   if (player.seatOut || player.isBusted) return false;
+  if (typeof player.stack === "number" && player.stack <= 0 && !player.allIn) return false;
+  if (typeof player.isActiveInGame === "boolean") return player.isActiveInGame;
   return true;
 }
 
@@ -77,7 +80,11 @@ export function findNextActiveSeat(players, startIdx = 0) {
 export function firstBetterAfterBlinds(players, dealerIdx = 0) {
   if (!Array.isArray(players) || players.length === 0) return 0;
   const n = players.length;
-  const start = ((dealerIdx + 3) % n + n) % n;
+  const blindSeats = getBlindSeatsForPlayers(players, dealerIdx);
+  const start =
+    typeof blindSeats.bbIdx === "number"
+      ? (blindSeats.bbIdx + 1) % n
+      : ((dealerIdx + 1) % n + n) % n;
   for (let offset = 0; offset < n; offset += 1) {
     const seat = (start + offset) % n;
     const player = players[seat];
@@ -86,6 +93,36 @@ export function firstBetterAfterBlinds(players, dealerIdx = 0) {
     }
   }
   return start;
+}
+
+export function getBlindSeatsForPlayers(players = [], dealerIdx = 0) {
+  if (!Array.isArray(players) || players.length === 0) {
+    return { sbIdx: null, bbIdx: null };
+  }
+  const eligibleCount = players.reduce(
+    (count, player) => count + (isPlayerEligibleForBlinds(player) ? 1 : 0),
+    0,
+  );
+  if (eligibleCount < 2) {
+    return { sbIdx: null, bbIdx: null };
+  }
+  const firstAfter = (fromSeat) => {
+    const n = players.length;
+    let cursor = typeof fromSeat === "number" ? fromSeat : 0;
+    for (let offset = 0; offset < n; offset += 1) {
+      cursor = (cursor + 1) % n;
+      if (isPlayerEligibleForBlinds(players[cursor])) return cursor;
+    }
+    return null;
+  };
+  let sbIdx;
+  if (eligibleCount === 2) {
+    sbIdx = isPlayerEligibleForBlinds(players[dealerIdx]) ? dealerIdx : firstAfter(dealerIdx);
+  } else {
+    sbIdx = firstAfter(dealerIdx);
+  }
+  const bbIdx = typeof sbIdx === "number" ? firstAfter(sbIdx) : null;
+  return { sbIdx, bbIdx };
 }
 
 export function sanitizeStacks(players) {

@@ -2024,6 +2024,8 @@ Draw RL test coverage:
   - 2026-05-03 対応: `src/ai/cpuRoster.js` に 18人分のCPU rosterを追加。MTT entrant / table seat は Akira, Mina, Ren... の表示名を使い、将来 `modelRegistry` / `cpuCharacters` と紐付けて学習断面一覧を拡張する。
 - [x] `BUG-27` busted / seatOut を挟む cash table で position label / blind label を詰める。例: dealer後にSB、その次の生存者がBBで、busted seatは `OUT` 表示にする。
   - 2026-05-03 対応: `positionLabels` helperを追加し、Badugi UI / App seat labels を生存seat基準に統一。DrawEngineBase / 2-7・A-5 draw base / NLH の blind assignment も busted seatをskipするテストを追加。
+- [x] `BUG-28` MTT で busted seat に古い `isActiveInGame=true` が残ると、SB/BB/UTG 圧縮と次アクター判定が壊れる。
+  - 2026-05-03 対応: Badugi flow の seated / active 判定で `seatOut` / `isBusted` / stack 0 を優先。blind seat と first bettor を BB 後の live seat 基準へ統一し、BoardEngineBase も同じ busted skip を追加。MTT HUD は現在ハンド中の pending bust を `PLAYERS` に即時反映する。
 
 ## 15. Tournament UI / Friend Match UX 監査
 

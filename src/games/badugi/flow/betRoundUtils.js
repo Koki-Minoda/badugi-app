@@ -3,6 +3,7 @@ import {
   nextAliveFrom,
   maxBetThisRound,
   isPlayerInBetRound,
+  getBlindSeatsForPlayers,
 } from "./actionUtils.js";
 
 export function needsActionForBet(player, maxBet = 0) {
@@ -106,7 +107,9 @@ export function analyzeBetSnapshot({
   const returnedToAggressor =
     typeof closingSeat === "number" && nextTurn === closingSeat;
 
-  const bbIndex = (dealerIdx + 2) % (numPlayers || snap.length || 1);
+  const bbIndex =
+    getBlindSeatsForPlayers(snap, dealerIdx).bbIdx ??
+    (dealerIdx + 2) % (numPlayers || snap.length || 1);
   const bbSeat = snap[bbIndex];
   let isBBActed = true;
   if (drawRound === 0 && bbSeat) {

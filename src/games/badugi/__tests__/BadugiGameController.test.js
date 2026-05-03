@@ -52,6 +52,60 @@ describe("BadugiGameController", () => {
     expect(controller.getSnapshot().betHead).toBe(result.resolvedTurn);
   });
 
+  it("skips busted seats with stale active flags when assigning tournament blinds", () => {
+    const controller = new BadugiGameController({
+      numSeats: 6,
+      blindStructure: BLIND_STRUCTURE,
+      lastStructureIndex: BLIND_STRUCTURE.length - 1,
+    });
+    const prevPlayers = [
+      seatPlayer({ name: "Hero", stack: 880 }),
+      seatPlayer({ name: "Busted SB", stack: 0, seatOut: true, isBusted: true, isActiveInGame: true }),
+      seatPlayer({ name: "UTG", stack: 435 }),
+      seatPlayer({ name: "Button", stack: 105 }),
+      seatPlayer({ name: "Busted BB", stack: 0, seatOut: true, isBusted: true, isActiveInGame: true }),
+      seatPlayer({ name: "SB", stack: 945 }),
+    ];
+
+    const result = controller.startNewHand({
+      prevPlayers,
+      currentPlayers: prevPlayers,
+      numSeats: 6,
+      seatConfig: ["HUMAN", "CPU", "CPU", "CPU", "CPU", "CPU"],
+      startingStack: 500,
+      heroProfile: { name: "Hero" },
+      nextDealerIdx: 3,
+      blindStructure: BLIND_STRUCTURE,
+      blindState: { blindLevelIndex: 0, handsInLevel: 0 },
+      lastStructureIndex: BLIND_STRUCTURE.length - 1,
+      drawCardsForSeat: () => [],
+    });
+
+    expect(result.sbIdx).toBe(5);
+    expect(result.bbIdx).toBe(0);
+    expect(result.resolvedTurn).toBe(2);
+    expect(result.players[1]).toMatchObject({ seatOut: true, isBusted: true, betThisRound: 0 });
+    expect(result.players[4]).toMatchObject({ seatOut: true, isBusted: true, betThisRound: 0 });
+    expect(result.players[5].betThisRound).toBe(5);
+    expect(result.players[0].betThisRound).toBe(10);
+
+    const afterUtgFold = result.players.map((player, idx) =>
+      idx === 2
+        ? { ...player, folded: true, hasFolded: true, hasActedThisRound: true, lastAction: "Fold" }
+        : player,
+    );
+    const snapshot = controller.advanceStreet({
+      players: afterUtgFold,
+      actedIndex: 2,
+      dealerIdx: 3,
+      drawRound: 0,
+      betHead: result.resolvedTurn,
+      lastAggressorIdx: result.bbIdx,
+    });
+    expect(snapshot.nextTurn).toBe(3);
+    expect(snapshot.shouldAdvance).toBe(false);
+  });
+
   it("applyPlayerAction updates player state and pending turn", () => {
     const controller = createController();
     const { players } = controller.startNewHand({

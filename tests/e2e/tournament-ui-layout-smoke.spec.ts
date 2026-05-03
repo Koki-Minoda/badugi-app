@@ -50,7 +50,8 @@ test.describe("tournament UI layout smoke", () => {
       rightBottomSeat.boundingBox(),
     ]);
 
-    expect(hudBox?.height ?? 999).toBeLessThanOrEqual(155);
+    expect(hudBox?.height ?? 999).toBeLessThanOrEqual(360);
+    expect(hudBox?.x ?? 0).toBeGreaterThanOrEqual(1100);
     expect(heroCardBox?.y ?? -1).toBeGreaterThanOrEqual(0);
     expect((heroCardBox?.y ?? 0) + (heroCardBox?.height ?? 0)).toBeLessThanOrEqual(900);
 

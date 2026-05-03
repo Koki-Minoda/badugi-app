@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import Card from "./Card";
 import { formatStatAf, formatStatPercent } from "../utils/stats.js";
 
@@ -74,6 +74,136 @@ function AvatarChip({ avatar, name, isHero = false, isFolded = false, testId }) 
   );
 }
 
+function formatHudPercent(value) {
+  if (!Number.isFinite(value)) return "--";
+  return `${Math.round(value * 100)}%`;
+}
+
+function HudMetricRing({ label, value }) {
+  const numeric = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
+  const degrees = Math.round(numeric * 360);
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <span className="text-[10px] font-black uppercase tracking-wide text-slate-100">{label}</span>
+      <div
+        className="grid h-12 w-12 place-items-center rounded-full"
+        style={{
+          background: `conic-gradient(#f59e0b ${degrees}deg, rgba(255,255,255,0.12) 0deg)`,
+        }}
+      >
+        <div className="grid h-9 w-9 place-items-center rounded-full bg-slate-950 text-[12px] font-black text-white">
+          {formatHudPercent(value)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HudBar({ label, value, trailing = null }) {
+  const numeric = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : null;
+  return (
+    <div className="grid grid-cols-[38px_1fr_42px] items-center gap-2 text-[11px]">
+      <span className="font-black uppercase text-slate-200">{label}</span>
+      <div className="h-5 overflow-hidden rounded-sm bg-white/12">
+        <div
+          className="h-full bg-slate-400/80"
+          style={{ width: numeric === null ? "0%" : `${Math.round(numeric * 100)}%` }}
+        />
+      </div>
+      <span className="text-right font-black text-white">
+        {trailing ?? formatHudPercent(value)}
+      </span>
+    </div>
+  );
+}
+
+function PlayerSmartHud({ player, positionLabel, stats, statsLine, stackValue, betValue, statusBadges }) {
+  const [scope, setScope] = useState("all");
+  const street = stats?.street ?? {};
+  const hands = Number.isFinite(stats?.hands) ? stats.hands : 0;
+  return (
+    <div className="space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <AvatarChip
+            avatar={player.avatar}
+            name={player.name}
+            isHero={false}
+            isFolded={Boolean(player.folded)}
+          />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-black text-white">{player.name}</p>
+            <p className="text-[10px] uppercase tracking-wide text-slate-400">
+              {positionLabel ?? "Seat"} · Hands {hands}
+            </p>
+          </div>
+        </div>
+        <select
+          value={scope}
+          onChange={(event) => setScope(event.target.value)}
+          className="pointer-events-auto rounded bg-emerald-600 px-2 py-1 text-[11px] font-black text-white outline-none"
+          aria-label="HUD game scope"
+        >
+          <option value="all">All Games</option>
+          <option value="nlh">NLH</option>
+          <option value="plo">PLO</option>
+          <option value="badugi">Badugi</option>
+          <option value="deuce">2-7</option>
+        </select>
+      </div>
+
+      <div className="grid grid-cols-4 gap-2">
+        <HudMetricRing label="VPIP" value={stats?.vpipRate} />
+        <HudMetricRing label="PFR" value={stats?.pfrRate} />
+        <HudMetricRing label="ATS" value={stats?.atsRate} />
+        <HudMetricRing label="3BET" value={stats?.threeBetRate} />
+      </div>
+
+      <div className="grid grid-cols-3 gap-3">
+        <div>
+          <p className="mb-1 text-center text-[11px] font-black uppercase text-slate-200">Flop</p>
+          <HudBar label="CB" value={street.flop?.cb} />
+          <HudBar label="FCB" value={street.flop?.fcb} />
+          <HudBar label="CCB" value={street.flop?.ccb} />
+          <HudBar label="RCB" value={street.flop?.rcb} />
+        </div>
+        <div>
+          <p className="mb-1 text-center text-[11px] font-black uppercase text-slate-200">Turn</p>
+          <HudBar label="CB" value={street.turn?.cb} />
+          <HudBar label="FCB" value={street.turn?.fcb} />
+          <HudBar label="CCB" value={street.turn?.ccb} />
+          <HudBar label="RCB" value={street.turn?.rcb} />
+        </div>
+        <div>
+          <p className="mb-1 text-center text-[11px] font-black uppercase text-slate-200">River</p>
+          <HudBar label="WT" value={street.river?.wt} />
+          <HudBar label="WSD" value={street.river?.wsd} />
+          <HudBar label="TAF" value={street.river?.taf} />
+          <HudBar label="Hands" value={null} trailing={hands} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 border-t border-white/10 pt-2 text-[11px]">
+        <div>
+          <p className="text-slate-500">Stack</p>
+          <p className="font-black text-white">{stackValue}</p>
+        </div>
+        <div>
+          <p className="text-slate-500">Bet</p>
+          <p className="font-black text-white">{betValue}</p>
+        </div>
+        <div>
+          <p className="text-slate-500">Status</p>
+          <p className="truncate font-black text-white">
+            {statusBadges.length > 0 ? statusBadges.join(", ") : "Ready"}
+          </p>
+        </div>
+      </div>
+      <p className="truncate text-[10px] uppercase tracking-wide text-slate-400">{statsLine}</p>
+    </div>
+  );
+}
+
 export default function Player({
   player,
   index,
@@ -103,7 +233,13 @@ export default function Player({
       ? `VPIP ${formatStatPercent(stats.vpipRate)} / PFR ${formatStatPercent(
           stats.pfrRate
         )} / AF ${formatStatAf(stats.af)} / H ${stats.hands}`
-      : "VPIP -- / PFR -- / AF -- / H --";
+      : "VPIP -- / PFR -- / ATS -- / 3BET -- / H --";
+  const compactStatsLine =
+    stats && Number.isFinite(stats.hands) && stats.hands > 0
+      ? `VPIP ${formatStatPercent(stats.vpipRate)}%  PFR ${formatStatPercent(stats.pfrRate)}%  3B ${formatHudPercent(
+          stats.threeBetRate,
+        )}  H ${stats.hands}`
+      : "HUD --";
   const playerDetailLines = [
     `${player.name}${positionLabel ? ` (${positionLabel})` : ""}`,
     `Stack: ${stackValue}`,
@@ -156,45 +292,17 @@ export default function Player({
       />
       <div
         data-testid={`seat-${seatIndex}-detail`}
-        className={`pointer-events-none absolute left-1/2 z-[220] hidden w-[min(260px,80vw)] -translate-x-1/2 rounded-xl border border-white/15 bg-slate-950/95 p-3 text-[11px] text-slate-200 shadow-2xl group-hover:block group-focus:block ${detailPositionClass}`}
+        className={`pointer-events-none absolute left-1/2 z-[220] hidden w-[min(620px,92vw)] -translate-x-1/2 rounded-xl border border-white/15 bg-black/95 p-4 text-[11px] text-slate-200 shadow-2xl group-hover:block group-focus:block ${detailPositionClass}`}
       >
-        <div className="mb-1 flex items-center justify-between gap-2">
-          <strong className="truncate text-sm text-white">{player.name}</strong>
-          <span className="shrink-0 rounded bg-slate-800 px-1.5 py-0.5 text-[10px] uppercase text-slate-300">
-            {positionLabel ?? `Seat ${seatIndex + 1}`}
-          </span>
-        </div>
-        <div className="grid grid-cols-2 gap-1">
-          <span className="text-slate-400">Stack</span>
-          <span className="text-right font-semibold text-white">{stackValue}</span>
-          <span className="text-slate-400">{player.allIn && betValue > 0 ? "All-in" : "Bet"}</span>
-          <span className="text-right font-semibold text-white">{betValue}</span>
-          <span className="text-slate-400">Last</span>
-          <span className="truncate text-right text-white">{player.lastAction || "-"}</span>
-        </div>
-        <div className="mt-2 border-t border-white/10 pt-2 text-slate-300">{statsLine}</div>
-        {(player.cpuStyle || player.cpuModelId || player.trainingRun) && (
-          <div className="mt-2 border-t border-white/10 pt-2 text-slate-300">
-            {player.cpuStyle && (
-              <div className="flex justify-between gap-2">
-                <span className="text-slate-400">Style</span>
-                <span className="truncate text-right text-white">{player.cpuStyle}</span>
-              </div>
-            )}
-            {player.cpuModelId && (
-              <div className="flex justify-between gap-2">
-                <span className="text-slate-400">Model</span>
-                <span className="truncate text-right text-white">{player.cpuModelId}</span>
-              </div>
-            )}
-            {player.trainingRun && (
-              <div className="flex justify-between gap-2">
-                <span className="text-slate-400">Run</span>
-                <span className="truncate text-right text-white">{player.trainingRun}</span>
-              </div>
-            )}
-          </div>
-        )}
+        <PlayerSmartHud
+          player={player}
+          positionLabel={positionLabel}
+          stats={stats}
+          statsLine={statsLine}
+          stackValue={stackValue}
+          betValue={betValue}
+          statusBadges={statusBadges}
+        />
       </div>
       <div className="relative z-10 flex items-start justify-between gap-2">
         <div className="min-w-0 flex items-center gap-2 text-white font-semibold">
@@ -252,7 +360,7 @@ export default function Player({
               }}
               title={statsLine}
             >
-              {statsLine}
+              {compactStatsLine}
             </div>
           </div>
         </div>

@@ -2982,6 +2982,8 @@ const SAFE_RESET_PHASE = "IDLE";
     streetRound: resolvedStreetRound,
     seat: idx,
     seatName: seatName ?? seatSnapshot?.name ?? (idx === null ? "TABLE" : `Seat ${idx}`),
+    positionLabel:
+      idx !== null ? positionName(idx, dealerSeatSrc, playersRef.current?.length ?? NUM_PLAYERS) : null,
     action: type,
     stackBefore: resolvedStackBefore,
     stackAfter: resolvedStackAfter,

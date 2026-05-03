@@ -2032,6 +2032,8 @@ Draw RL test coverage:
   - 2026-05-03 確認: 現行実装の `ante` は全員アンティ。level が `ante: 0` の場合は誰もアンティを払わない。BB ante を採用する場合は、将来 `anteMode: "perPlayer" | "bigBlind"` のように構造上明示してから実装する。
 - [x] `UI-19` PokerStars風に、フェルト中央を空けてプレイヤーをテーブル外周へ逃がす。
   - 2026-05-03 対応: ゲーム画面を「中央の楕円フェルト + 外周プレイヤーポッド」構成へ変更。pot / street は中央、プレイヤー名・stack・bet・カードは外周へ分離し、`default_avatar` 文字列を丸いアバターチップ表示へ置き換える。
+- [x] `UI-20` seat HUD の VPIP / PFR / street別頻度をスマートHUD風に読みやすくする。
+  - 2026-05-03 対応: seat hover / focus 詳細を VPIP / PFR / ATS / 3BET のリング表示と、Flop / Turn / River 別の CB / FCB / CCB / RCB / WT / WSD / TAF バー表示へ変更。HUD内に All Games / NLH / PLO / Badugi / 2-7 の scope selector を追加し、将来variant別集計へ接続できる下地を作る。
 
 ## 15. Tournament UI / Friend Match UX 監査
 

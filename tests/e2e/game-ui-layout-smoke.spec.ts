@@ -39,7 +39,9 @@ test.describe("game UI layout smoke", () => {
     await cpuSeat.focus();
     await expect(cpuDetail).toBeVisible();
     await expect(cpuDetail.getByText(/Stack/i)).toBeVisible();
-    await expect(cpuDetail.getByText(/Bet|All-in/i)).toBeVisible();
+    await expect(cpuDetail.getByText(/^Bet$/i)).toBeVisible();
+    await expect(cpuDetail.getByText("VPIP", { exact: true })).toBeVisible();
+    await expect(cpuDetail.getByLabel("HUD game scope")).toBeVisible();
 
     await page.getByRole("button", { name: /設定|Settings/i }).click();
     await expect(page.getByTestId("game-utility-modal")).toBeVisible();

@@ -66,6 +66,62 @@ describe("computeSeatStats", () => {
     expect(s.af).toBeCloseTo(0); // 0 aggressive, 2 calls
   });
 
+  it("computes HUD rates for ATS, 3BET, and street actions when log context exists", () => {
+    const actionLog = [
+      {
+        handId: "h1",
+        playerId: "cpu-hud",
+        phase: "BET",
+        round: 0,
+        action: "Raise",
+        paid: 20,
+        positionLabel: "BTN",
+        raiseCountTable: 1,
+      },
+      {
+        handId: "h2",
+        playerId: "cpu-hud",
+        phase: "BET",
+        round: 0,
+        action: "Raise",
+        paid: 30,
+        positionLabel: "BTN",
+        raiseCountTable: 2,
+      },
+      {
+        handId: "h2",
+        playerId: "cpu-hud",
+        phase: "BET",
+        round: 1,
+        action: "Bet",
+        paid: 10,
+      },
+      {
+        handId: "h2",
+        playerId: "cpu-hud",
+        phase: "BET",
+        round: 2,
+        action: "Call",
+        paid: 10,
+      },
+      {
+        handId: "h2",
+        playerId: "cpu-hud",
+        phase: "BET",
+        round: 3,
+        action: "Bet",
+        paid: 20,
+      },
+    ];
+    const stats = computeSeatStats(actionLog, { keyBy: "playerId" });
+    const s = stats["cpu-hud"];
+    expect(s.atsRate).toBeCloseTo(1);
+    expect(s.threeBetRate).toBeCloseTo(0.5);
+    expect(s.street.flop.cb).toBeCloseTo(1);
+    expect(s.street.turn.ccb).toBeCloseTo(1);
+    expect(s.street.river.taf).toBeCloseTo(1);
+  });
+
   it("prefers stack delta for paid over bet delta", () => {
     const actionLog = [
       {

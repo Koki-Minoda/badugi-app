@@ -7799,21 +7799,21 @@ const SAFE_RESET_PHASE = "IDLE";
     : 0;
   const seatLayouts = useMemo(() => {
     const cashLayouts = [
-      "absolute bottom-[4%] left-1/2 -translate-x-1/2 w-[clamp(188px,29vw,300px)]", // Hero (BTN)
-      "absolute bottom-[30%] left-[6%] w-[clamp(158px,24vw,250px)]", // SB
-      "absolute top-[8%] left-[6%] w-[clamp(158px,25vw,270px)]", // BB
-      "absolute top-[1%] left-1/2 -translate-x-1/2 w-[clamp(168px,27vw,285px)]", // UTG
-      "absolute top-[8%] right-[6%] w-[clamp(158px,25vw,270px)]", // MP
-      "absolute bottom-[30%] right-[6%] w-[clamp(158px,24vw,250px)]", // CO
+      "absolute bottom-[1%] left-1/2 -translate-x-1/2 w-[clamp(190px,24vw,270px)]", // Hero (BTN)
+      "absolute bottom-[27%] left-[1.5%] w-[clamp(160px,20vw,240px)]", // SB
+      "absolute top-[14%] left-[2%] w-[clamp(160px,21vw,250px)]", // BB
+      "absolute top-[1%] left-1/2 -translate-x-1/2 w-[clamp(170px,23vw,270px)]", // UTG
+      "absolute top-[14%] right-[2%] w-[clamp(160px,21vw,250px)]", // MP
+      "absolute bottom-[27%] right-[1.5%] w-[clamp(160px,20vw,240px)]", // CO
     ];
     // Tournament tables follow a fixed 6-max oval layout (BTN bottom-center, clockwise SB→CO).
     const tournamentLayouts = [
-      "absolute bottom-[-2%] left-1/2 -translate-x-1/2 w-[clamp(190px,22vw,265px)]", // Hero (BTN)
-      "absolute bottom-[5%] left-[14%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // SB
-      "absolute top-[18%] left-[12%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // BB
+      "absolute bottom-[2%] left-1/2 -translate-x-1/2 w-[clamp(190px,21vw,255px)]", // Hero (BTN)
+      "absolute bottom-[10%] left-[14%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // SB
+      "absolute top-[17%] left-[14%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // BB
       "absolute top-[3%] left-1/2 -translate-x-1/2 w-[clamp(150px,18vw,220px)]", // UTG
-      "absolute top-[18%] left-[88%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // MP
-      "absolute bottom-[5%] left-[86%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // CO
+      "absolute top-[17%] left-[86%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // MP
+      "absolute bottom-[10%] left-[86%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // CO
     ];
     return mode === "tournament-mtt" ? tournamentLayouts : cashLayouts;
   }, [mode]);

@@ -40,6 +40,39 @@ function StatusPill({ label, tone = "slate" }) {
   );
 }
 
+function AvatarChip({ avatar, name, isHero = false, isFolded = false }) {
+  const trimmedName = String(name ?? "").trim();
+  const initials =
+    trimmedName
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part.charAt(0).toUpperCase())
+      .join("") || "?";
+  const shouldRenderAvatarText =
+    avatar &&
+    avatar !== "default_avatar" &&
+    !String(avatar).includes("_avatar");
+  return (
+    <span
+      className={`grid shrink-0 place-items-center rounded-full border font-black shadow-inner ${
+        isFolded
+          ? "border-slate-500/40 bg-slate-800 text-slate-400"
+          : isHero
+            ? "border-emerald-200/70 bg-gradient-to-b from-emerald-300 to-emerald-700 text-slate-950"
+            : "border-cyan-100/50 bg-gradient-to-b from-slate-200 to-slate-600 text-slate-950"
+      }`}
+      style={{
+        width: "var(--player-avatar-size, 34px)",
+        height: "var(--player-avatar-size, 34px)",
+        fontSize: "var(--player-avatar-font-size, 13px)",
+      }}
+      aria-hidden="true"
+    >
+      {shouldRenderAvatarText ? avatar : initials}
+    </span>
+  );
+}
+
 export default function Player({
   player,
   index,
@@ -99,10 +132,10 @@ export default function Player({
       title={playerDetailTitle}
       className={`group relative overflow-visible rounded-[18px] border shadow-[0_10px_20px_rgba(0,0,0,0.35)] backdrop-blur flex flex-col outline-none transition hover:z-[80] focus:z-[80] focus-within:z-[80] focus-visible:ring-2 focus-visible:ring-sky-300 ${
         isFolded
-          ? "border-slate-500/25 bg-slate-950/55 grayscale"
+          ? "border-slate-500/25 bg-slate-950/50 grayscale"
           : isHero
-            ? "border-emerald-200/45 bg-slate-950/92"
-            : "border-cyan-200/18 bg-slate-950/88"
+            ? "border-emerald-200/55 bg-slate-950/94"
+            : "border-cyan-200/24 bg-slate-950/90"
       } ${isActive ? "ring-2 ring-yellow-300 shadow-[0_0_24px_rgba(250,204,21,0.55)]" : ""} ${
         isWinner ? "ring-4 ring-emerald-400 animate-pulse" : ""
       }`}
@@ -173,14 +206,12 @@ export default function Player({
       </div>
       <div className="relative z-10 flex items-start justify-between gap-2">
         <div className="min-w-0 flex items-center gap-2 text-white font-semibold">
-          {player.avatar && (
-            <span
-              className="shrink-0 leading-none"
-              style={{ fontSize: "calc(var(--player-name-size, 14px) + 2px)" }}
-            >
-              {player.avatar}
-            </span>
-          )}
+          <AvatarChip
+            avatar={player.avatar}
+            name={player.name}
+            isHero={isHero}
+            isFolded={isFolded}
+          />
           <div className="min-w-0 leading-tight">
             <div className="flex items-center gap-1 flex-wrap">
               <span

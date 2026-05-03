@@ -390,12 +390,15 @@ export default function GameLayoutBase({
               }`}
             >
               <div
-                className={`relative overflow-visible rounded-[42%] border-[10px] border-slate-950/80 ${
+                className={`relative overflow-visible rounded-[32px] border border-white/10 bg-slate-950/28 ${
                   heroTableAnimating ? "ring-2 ring-yellow-300 animate-pulse" : ""
-                } ${tableSurfaceBg} p-4 shadow-[inset_0_0_55px_rgba(0,0,0,0.42),0_18px_42px_rgba(0,0,0,0.35)]`}
+                } p-4 shadow-[inset_0_0_45px_rgba(0,0,0,0.38),0_18px_42px_rgba(0,0,0,0.35)]`}
               >
-                <div className="pointer-events-none absolute inset-[2.5%] rounded-[42%] border border-white/10" />
-                <div className="pointer-events-none absolute inset-[9%] rounded-[42%] border border-white/5" />
+                <div
+                  className={`pointer-events-none absolute inset-x-[8%] inset-y-[8%] rounded-[50%] border-[10px] border-slate-950/80 ${tableSurfaceBg} shadow-[inset_0_0_65px_rgba(0,0,0,0.42)]`}
+                />
+                <div className="pointer-events-none absolute inset-x-[10%] inset-y-[10%] rounded-[50%] border border-white/10" />
+                <div className="pointer-events-none absolute inset-x-[16%] inset-y-[18%] rounded-[50%] border border-white/5" />
                 {!isTournament && tournamentHud}
                 <div
                   className={`relative ${

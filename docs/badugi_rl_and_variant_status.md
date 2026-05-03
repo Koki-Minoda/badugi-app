@@ -2014,9 +2014,9 @@ Draw RL test coverage:
 - [x] `UI-11` ゲーム中の Settings / Profile / History を画面遷移ではなく modal 表示にする。
   - ゲームから離脱せず、閉じればそのまま卓へ戻れる。
   - History は現行ハンド履歴を modal 内で表示し、Replay を開く場合だけ modal を閉じて replay screen へ移る。
-- [ ] `UI-12` 追加 UX 候補: action panel に current bet / to-call / raise cap を明示する。
+- [x] `UI-12` action panel に current bet / to-call / raise unit / raise cap を明示する。
 - [ ] `UI-13` 追加 UX 候補: footer debug 表示を debug mode OFF 時は完全に隠す。
-- [ ] `UI-14` 追加 UX 候補: showdown / side-pot result を table 上の短い toast と result overlay の両方で確認できるようにする。
+- [x] `UI-14` showdown / side-pot result を table 上の短い toast と result overlay の両方で確認できるようにする。
 - [ ] `UI-15` 追加 UX 候補: mobile landscape で右 panel を bottom sheet 化し、カードと action の距離をさらに短くする。
 
 ## 15. Tournament UI / Friend Match UX 監査
@@ -2158,7 +2158,7 @@ Draw RL test coverage:
 - [x] `PUI-07` table overflow を visible にして、seat hover detail が table edge で切れないようにする。
 - [x] `PUI-08` Hero / CPU seat header の stack/bet/action 表示を整理する。
 - [x] `PUI-09` folded/mucked の React test を追加し、folded seat が playable card を出さないことを確認する。
-- [ ] `PUI-10` 次候補: 4色デッキのまま suit ごとのコントラストと色覚バリアフリーを調整する。
+- [x] `PUI-10` 4色デッキのまま suit ごとのコントラストを調整する。
 - [x] `PUI-11` action panel に current bet / to-call / raise unit / raise cap を常時表示する。
 - [ ] `PUI-12` 次候補: showdown 時だけ seat card size を一段上げる reveal mode を追加する。
 
@@ -2174,8 +2174,10 @@ Draw RL test coverage:
   - 2026-05-03 対応: Hero Controls 上部に Current Bet / To Call / Raise Unit / Raise Cap を追加し、UI smoke で表示確認する。
 - P1: `UI-14` showdown / side-pot result を table 上 toast と overlay の両方で見せる。
   - 理由: メインポット/サイドポットの理解に直結する。
+  - 2026-05-03 対応: `ShowdownResultToast` を追加し、Pot / Side / Side 2 までの勝者と金額を短く表示する。
 - P2: `PUI-10` 4色デッキのまま suit コントラストと色覚バリアフリーを調整する。
   - 理由: 2色化はしない。4色の良さを維持して読みやすさだけ上げる。
+  - 2026-05-03 対応: 4色デッキを維持し、スペード/ダイヤ/クラブのコントラストを少し強めた。
 - P2: `PUI-12` showdown 時だけ seat card size を一段上げる reveal mode を追加する。
   - 理由: ショーダウン確認の快適性を上げるが、進行バグ修正より優先度は低い。
 - P3: `UI-13` footer debug 表示を debug mode OFF 時は完全に隠す。

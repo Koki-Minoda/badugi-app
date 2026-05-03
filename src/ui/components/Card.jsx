@@ -67,10 +67,10 @@ export default function Card({ value, hidden, selected, onClick, folded, ...rest
   const rank = normalized.slice(0, -1);
 
   const suitMap = {
-    S: { symbol: "♠", color: "text-gray-900" },
+    S: { symbol: "♠", color: "text-slate-950" },
     H: { symbol: "♥", color: "text-red-600" },
-    D: { symbol: "♦", color: "text-blue-600" },
-    C: { symbol: "♣", color: "text-green-600" },
+    D: { symbol: "♦", color: "text-blue-700" },
+    C: { symbol: "♣", color: "text-emerald-700" },
   };
   const fallbackSuit = { symbol: rawSuit || "?", color: "text-black" };
   const { symbol, color } = suitMap[rawSuit] || fallbackSuit;

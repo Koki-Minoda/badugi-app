@@ -6,6 +6,7 @@ import Modal from "../../components/Modal";
 import Notification from "../../components/Notification";
 import TableSummaryPanel from "../../components/TableSummaryPanel";
 import HandResultOverlay from "../../components/HandResultOverlay";
+import ShowdownResultToast from "../../components/ShowdownResultToast.jsx";
 import HeroBustOverlay from "../../components/HeroBustOverlay.jsx";
 import TournamentResultOverlay from "../../components/TournamentResultOverlay.jsx";
 import useCardScaleVars from "../../hooks/useCardScaleVars.js";
@@ -640,6 +641,7 @@ export default function GameLayoutBase({
         buttonLabel={nextHandLabel}
         onReplayTarget={onReplayTarget}
       />
+      <ShowdownResultToast visible={handResultVisible} summary={handResultSummary} />
       <HeroBustOverlay
         visible={heroBustOverlayVisible}
         title={heroBustSummary?.title}

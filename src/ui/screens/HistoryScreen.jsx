@@ -170,10 +170,10 @@ export default function HistoryScreen() {
         color: designTokens.colors.textStrong,
       }}
     >
-      <header className="max-w-6xl mx-auto px-6 py-8 flex items-center justify-between">
+      <header className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-emerald-300">History</p>
-          <h1 className="text-3xl font-extrabold">トーナメント & ハンド履歴</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold">トーナメント & ハンド履歴</h1>
         </div>
         <button
           type="button"
@@ -184,8 +184,8 @@ export default function HistoryScreen() {
         </button>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 pb-16 space-y-10">
-        <section className="rounded-3xl border border-emerald-400/20 bg-emerald-950/20 p-6 space-y-4">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 pb-16 space-y-8 sm:space-y-10">
+        <section className="rounded-3xl border border-emerald-400/20 bg-emerald-950/20 p-4 sm:p-6 space-y-4">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 className="text-lg font-semibold">プレイフィードバック</h2>
@@ -247,7 +247,7 @@ export default function HistoryScreen() {
           )}
         </section>
 
-        <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 space-y-4">
+        <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-4 sm:p-6 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold">キャッシュゲーム履歴</h2>
@@ -390,7 +390,7 @@ export default function HistoryScreen() {
           )}
         </section>
 
-        <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 space-y-4">
+        <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-4 sm:p-6 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-semibold">トーナメント一覧</h2>
             <input
@@ -442,7 +442,7 @@ export default function HistoryScreen() {
           )}
         </section>
 
-        <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 space-y-4">
+        <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-4 sm:p-6 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h3 className="text-lg font-semibold">ハンド振り返り</h3>
             {selectedId && (

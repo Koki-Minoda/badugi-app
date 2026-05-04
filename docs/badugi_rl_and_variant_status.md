@@ -2169,7 +2169,7 @@ Draw RL test coverage:
 | `BUG-34` | All-in / split pot flow | All | fixed | AI後、side pot / split pot / odd chip / all-in skipped actor が誤るとゲーム進行停止や誤配当につながる。 | NLH/PLO/Dramaha/PLO8/FLO8/Stud8/Razzdugi/Razzducey/ST6 fixtureと11controller invariant smokeを追加済み。 |
 | `BUG-35` | Play feedback pipeline | All | partial | Cash / tournament の30ハンド以上の履歴から、良かった点/悪かった点/ROI/参加条件/仮説をまとめるAI feedback APIが未実装。まずフロント側payload/gateを追加済み。 | 10-Game Beginner/Standard RL適用後にBadugi/2-7/A-5/Stud/Razz/NLH/PLOを対象にする。 |
 | `BUG-36` | All-in draw actor | Badugi / Draw | fixed | all-in後のCPU/Hero、またはall-in後にbusted seatが残った状態で、DRAWフェーズの交換対象が詰まりカード交換できなくなる。 | Badugiはactive all-in seatをDRAW可能、busted/seatOutはDRAW不可に分離。2-7/A-5 draw regressionも再実行する。 |
-| `BUG-37` | Hand history completeness | All | partial | ゲーム内履歴と `/history` 永続履歴が分断され、キャッシュゲーム履歴が見えにくい。hand history detail/replay/API送信の完成度が不足。 | Cash/Tournament両方で完了ハンドが保存・表示され、variant/evaluator/pot/action/replayが復元できることを横断確認する。 |
+| `BUG-37` | Hand history completeness | All | fixed | ゲーム内履歴と `/history` 永続履歴が分断され、キャッシュゲーム履歴が見えにくい。hand history detail/replay/API送信の完成度が不足。 | Cash/Tournament両方で完了ハンドが保存・表示され、variant/evaluator/pot/action/replayが復元できることを横断確認する。 |
 | `BUG-38` | Friend match playable QA | P2P | open | フレンドマッチがルーム作成/参加/ready/action/showdown/reconnectまで実運用レベルで壊れないか継続テストが必要。 | mocked browser smokeに加え、backend websocketありのhost/guest 2page smokeと手動確認を追加する。 |
 
 - [x] `BUG-31` Hero DRAW中はHero seat Smart HUDを開かず、カードクリックを最優先する。
@@ -2197,15 +2197,15 @@ Draw RL test coverage:
   - 2026-05-04 対応: `sanitizeStacks` は stack 0 のcurrent-hand all-inを即busted扱いにせず、`seatOut` のときだけbustedへ寄せる。
   - 2026-05-04 対応: Hero / CPU draw actor loop、Badugi controller legal action、DRAW round skip判定を同じdraw eligibilityへ統一。
   - 横断確認: Badugi unit、2-7/A-5 draw engine/controller、BadugiEngine regressionを実行して確認する。
-- [ ] `BUG-37` ハンド履歴を完成させる。
+- [x] `BUG-37` ハンド履歴を完成させる。
   - 2026-05-04 部分対応: 完了したcanonical hand historyをlocalStorageのcash/tournament履歴にも保存し、standalone `/history` でキャッシュゲーム履歴とトーナメント履歴を同時に確認できるようにする。
   - 2026-05-04 部分対応: cash履歴に席別サマリ、pot details、canonical event timelineを追加し、all-in / side pot / action countの調査入口を作る。
   - 2026-05-04 部分対応: ゲーム内`HandHistoryScreen`もlocalStorageのcash/tournament保存済み履歴をmemory bufferへ統合し、保存済みhandIdからreplayを開けるfallbackを追加。
   - 2026-05-04 部分対応: standalone `/history` のpot detailsにwinners/payoutを表示し、side/split potの配当確認入口を追加。
   - 2026-05-04 部分対応: standalone `/history` のcash/tournament hand detailへvariant名、evaluator、seat別hand/evaluation labelを追加し、Badugi/2-7/A-5などのmulti-game履歴を見分けられるようにする。
   - 2026-05-04 部分対応: backendに`POST/GET /api/history/hand`を追加し、フロントsync queueはcanonical hand recordを汎用履歴APIへupsert同期してから既存`/api/badugi/hands`構造化ログへ送る。
+  - 2026-05-04 対応: mobile viewport向けに`/history`のheader/section余白を調整し、Playwright mobile smokeで保存済みhand表示とページ水平scrollなしを確認。
   - 2026-05-04 確認: `HistoryScreen` unitでcash/tournament同時表示を固定。`main-menu-history-smoke`でstandalone menuから`/history`へ遷移できることを確認。
-  - 残TODO: スマホ履歴表示を追加する。
 - [ ] `BUG-38` フレンドマッチの実プレイQAを強化する。
   - 既存: `p2p-friend-match-smoke.spec.ts` はmock websocketでroom create / ready / draw / showdown / refresh restoreを確認済み。
   - 2026-05-04 確認: unitでcreate/join/websocket projection/action/reconnect/history replayを確認。Playwrightでlogin→room作成→ready→draw→showdown→refresh restoreを確認。

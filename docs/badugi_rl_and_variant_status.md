@@ -1723,7 +1723,46 @@ Draw RL test coverage:
           - 2026-05-04 20k結果: 5kは Pro比 `+0.061`, `showdownWinRate=0.652`, `foldRate=0.159`, `profitableFoldMisses=96`。10kは Pro比 `+0.093`, `showdownWinRate=0.680`, `foldRate=0.199`, `profitableFoldMisses=123`。15kは Pro比 `+0.086`, `showdownWinRate=0.697`, `foldRate=0.225`, `profitableFoldMisses=150`。20kは Pro比 `+0.030`, `showdownWinRate=0.715`, `foldRate=0.254`, `profitableFoldMisses=182`。
           - 2026-05-04 判定: draw quality / final fold discipline はshowdownWinRateを明確に押し上げるが、学習が進むほどfoldRateとprofitableFoldMissesが増える。最良バランスは10kだが、Iron条件の `baselineAvgDelta >= +0.75` には届かず、Iron本番昇格は保留。
           - 次の打ち手: 10k付近の方針は有効。次はfold disciplineをfinal street限定に閉じ込めたまま、early/mid streetのprofitable continue marginを強める。評価gateは `showdownWinRate >= 0.68`, `foldRate <= 0.19`, `profitableFoldMisses <= Pro + 20`, `baselineAvgDelta >= +0.25` を短期目標にする。
+          - [ ] `AI-06r-1` 10k checkpoint (`badugi_sixmax_iron_draw_final_20k_20260504/badugi_dqn_010000_20260504-120111.pt`) を起点に追加fine-tuneする。狙いは 10k の showdownWinRate `0.680` を維持しつつ、foldRate `0.199` と profitableFoldMisses `123` を下げること。
+          - [ ] `AI-06r-2` Iron短期gateを固定する。最低条件: Pro比 `avgRewardDelta >= +0.25`, `showdownWinRate >= 0.68`, `foldRate <= 0.19`, `profitableFoldMisses <= 105`, `negativeRaiseEVActions <= Pro`, `worstProfileAvgReward >= Pro`。
+          - [ ] `AI-06r-3` 追加fine-tune後、5k/10k checkpointをPro baselineと比較し、gate未達なら public model / registry へ反映しない。
+          - 2026-05-04 修正: `profitableFoldMisses` の評価から final street fold discipline spot を除外した。rough Badugi / unmade hand が最終streetでpat圧にfoldする局面は、EV近似上callEVが高く見えても戦略上のdisciplineとして扱う。
+          - 2026-05-04 再評価: 元10k checkpoint は新診断で Pro比 `+0.093`, `avgReward=2.793`, `showdownWinRate=0.680`, `foldRate=0.199`, `profitableFoldMisses=1`, `negativeRaiseEVActions=8`, `worstProfileAvgReward=1.975`。fold missとbad raiseは十分改善済みだが、foldRate が短期gate `<=0.19` を少し超え、Pro比 `+0.25` に届かない。
+          - 2026-05-04 追加fine-tune: `badugi_sixmax_iron_10k_brushup_10k_20260504` を元10kから実行。5kは Pro比 `+0.004`, `showdownWinRate=0.688`, `foldRate=0.217`, `profitableFoldMisses=0`, `negativeRaiseEVActions=98`。10kは Pro比 `+0.043`, `showdownWinRate=0.684`, `foldRate=0.204`, `profitableFoldMisses=0`, `negativeRaiseEVActions=80`。
+          - 2026-05-04 判定: 追加fine-tuneは元10kより悪化したため不採用。現時点の最良候補は元10k checkpoint だが、Ironとしてはまだ「Proより明確に強い」とまでは判定しない。
+          - 次の打ち手: 追加学習量を増やすより、`avgRewardDelta` を伸ばすための value bet / thin isolation / opponent exploit memory を入れる。fold discipline と negative raise は現状維持し、foldRateを上げる方向の追加margin学習は止める。
       - [ ] `AI-06e` 2-7 / A-5 用の実ONNXを生成・配置する。現状は `model-27draw-iron-v1` (`D01/S01`) と `model-a5draw-iron-v1` (`D02/S02`) の registry / feature builder / routing test はあるが、実 `.onnx` は optional 未配置で、App draw CPU は rule-based fallback が主経路。
+      - [ ] `AI-06e-1` 2-7 Triple / Single Draw の Pro までのRL学習を実施する。Badugiと別モデルとして `D01/S01` にroutingし、2-7 evaluator / discard heuristic / final street fold disciplineを使う。
+      - [ ] `AI-06e-2` A-5 Triple / Single Draw の Pro までのRL学習を実施する。`D02/S02` にroutingし、A-5 wheel / straight-flush無視 / pat判断をBadugi/2-7と混同しない。
+      - [ ] `AI-06e-3` 2-7 / A-5 Pro適用前に、hand evaluator regression / draw controller smoke / human-practice benchmark を最低50ハンド相当で通す。
+    - Board-game implementation roadmap:
+      - [ ] `BOARD-01` BoardEngineBase をNLHで実戦化する。hole 2 / community 5 / preflop-flop-turn-river / no-limit betting / high evaluator / side-pot表示をBadugi UIに接続する。
+      - [ ] `BOARD-02` NL Hold'em (`B01`) を playable にする。ゲーム選択、table state、showdown label、hand history、smoke test、mobile landscape UI を含める。
+      - [ ] `BOARD-03` FL Hold'em (`B02`) を playable にする。fixed-limit cap / street別bet size / raise capの表示とテストを含める。
+      - [ ] `BOARD-04` NL Super Hold'em (`B03`) を playable にする。3 hole cards / showdown時2枚選択またはbest two selection / discard requirement のUIと判定を実装する。
+      - [ ] `BOARD-05` FL Super Hold'em (`B04`) を playable にする。Super Hold'em差分をfixed-limitへ適用する。
+      - [ ] `BOARD-06` Pot-Limit Omaha (`B05`) を playable にする。must-use-two evaluator / pot-limit raise calculation / 4 hole card UI / hand history を実装する。
+      - [ ] `BOARD-07` PLO8 (`B06`) を playable にする。Hi-Lo 8-or-better split evaluator / no-low時scoop / odd chip / side pot splitを実装する。
+      - [ ] `BOARD-08` Big-O (`B07`) を playable にする。5 hole Omaha high / exact two requirement / pot-limit bettingを実装する。
+      - [ ] `BOARD-09` 5-Card PLO (`B08`) を playable にする。Big-Oとの差分をhigh-onlyとして整理する。
+      - [ ] `BOARD-10` FLO8 (`B09`) を playable にする。fixed-limit Omaha Hi-Lo / split pot / cap表示を実装する。
+    - Remaining 16+ game implementation roadmap:
+      - [ ] `MIX-16-01` Badeucey TD (`D04`) を実装する。Badugi half + 2-7 half のsplit evaluator、draw UI、pot split表示を追加する。
+      - [ ] `MIX-16-02` Badacey TD (`D05`) を実装する。Badugi half + A-5 half のsplit evaluatorを追加する。
+      - [ ] `MIX-16-03` Hidugi TD (`D06`) を実装する。Badugi high / reverse Badugi 系の評価とラベルを確定する。
+      - [ ] `MIX-16-04` Archie TD (`D07`) を実装する。pair-or-better high half + 8-or-better A-5 low half のsplit contractを実ゲームへ接続する。
+      - [ ] `MIX-16-05` 5-Card Single Draw (`S03`) を実装する。high draw evaluator / single draw / fixed-limitまたは指定bettingを確定する。
+      - [ ] `MIX-16-06` Badugi Single Draw (`S04`) を実装する。Badugi evaluatorをsingle draw familyへ接続する。
+      - [ ] `MIX-16-07` Badeucey Single Draw (`S05`) を実装する。
+      - [ ] `MIX-16-08` Badacey Single Draw (`S06`) を実装する。
+      - [ ] `MIX-16-09` Hidugi Single Draw (`S07`) を実装する。
+      - [ ] `MIX-16-10` Dramaha Hi (`H01`) を実装する。board high + draw hand half のsplit表示を作る。
+      - [ ] `MIX-16-11` Dramaha 2-7 (`H02`) を実装する。
+      - [ ] `MIX-16-12` Dramaha A-5 (`H03`) を実装する。
+      - [ ] `MIX-16-13` Dramaha Zero (`H04`) を実装する。
+      - [ ] `MIX-16-14` Dramaha Hidugi (`H05`) を実装する。
+      - [ ] `MIX-16-15` Dramaha Badugi (`H06`) を実装する。
+      - [ ] `MIX-16-16` Stud family (`ST1` Stud, `ST2` Stud 8, `ST3` Razz, `ST4` Razzdugi, `ST5` Razzducey, `ST6` 2-7 Razz) を段階実装する。street/deal visibility、bring-in/antes、stud evaluator、split variantsを別章で詳細化する。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
   - P2P:
     - data capture / export / sync / security test の部品はある。

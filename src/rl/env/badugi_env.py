@@ -310,6 +310,7 @@ class BadugiEnv(gym.Env):
     self.opponent_total_draw_cards = 0
     self.last_result = None
     self.last_ev_diagnostic = None
+    self.last_final_fold_discipline_spot = False
     self.terminal_reason = None
     self._start_betting_round()
     info: dict = {}
@@ -349,6 +350,7 @@ class BadugiEnv(gym.Env):
     }
     if info["ev"] is not None:
       info["ev"]["phase"] = phase_before_action
+      info["ev"]["finalFoldDisciplineSpot"] = self.last_final_fold_discipline_spot
     reward = self._cap_shaping_reward(shaping_reward) + terminal_reward
     return obs, reward, terminated, truncated, info
 
@@ -773,6 +775,7 @@ class BadugiEnv(gym.Env):
       multiway_pressure = self._multiway_pressure()
       ev = self._bet_ev_diagnostic(features, to_call)
       self.last_ev_diagnostic = ev
+      self.last_final_fold_discipline_spot = self._weak_final_showdown_call_spot(features, ev)
       continue_value = min(
         1.0,
         strength + position_bonus + draw_equity + opponent_draw_pressure - multiway_pressure,

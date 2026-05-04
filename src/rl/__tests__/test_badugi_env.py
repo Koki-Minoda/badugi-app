@@ -544,6 +544,7 @@ class BadugiEnvTest(unittest.TestCase):
         self.assertEqual(info["ev"]["phase"], "BET")
         self.assertIn("callEV", info["ev"])
         self.assertIn("estimatedEquity", info["ev"])
+        self.assertIn("finalFoldDisciplineSpot", info["ev"])
 
     def test_final_bet_context_is_reached_after_third_draw(self):
         env = BadugiEnv()

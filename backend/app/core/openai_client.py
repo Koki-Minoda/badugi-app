@@ -15,6 +15,17 @@ FALLBACK_ADVICE = {  # [tournament-feedback]
     "adviceJa": "解析中にエラーが発生しました。もう一度プレイしてみましょう。",  # [tournament-feedback]
     "adviceEn": "An error occurred during analysis. Please try another tournament.",  # [tournament-feedback]
 }  # [tournament-feedback]
+FALLBACK_PLAY_FEEDBACK = {
+    "adviceJa": (
+        "セッション解析は受け付けました。APIキー未設定または一時的な解析失敗のため、"
+        "今回は自動助言を返します。VPIP/PFR、ショーダウン率、オールイン頻度、"
+        "split pot結果を確認し、次回は大きな損失が出た局面を中心に復習してください。"
+    ),
+    "adviceEn": (
+        "Session feedback was accepted, but automated coaching used the fallback path. "
+        "Review VPIP/PFR, showdown rate, all-in frequency, and split-pot outcomes."
+    ),
+}
 
 logger = logging.getLogger(__name__)  # [tournament-feedback]
 
@@ -44,6 +55,35 @@ def _build_prompt(worst_spot: Dict[str, Any]) -> Dict[str, Any]:
             {
                 "role": "user",
                 "content": f"{summary_line}\nWorstSpot:\n{json.dumps(worst_spot or {}, ensure_ascii=False)}",
+            },
+        ],
+    }
+
+
+def _build_play_feedback_prompt(session_payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Compose chat messages for multi-hand cash/tournament feedback."""
+
+    return {
+        "model": DEFAULT_MODEL,
+        "temperature": 0.5,
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    "You are an MGX mixed-game poker coach. Analyze a session summary from cash "
+                    "or tournament play. Focus on actionable feedback, not generic encouragement. "
+                    "Use the supplied VPIP/PFR, ROI or net chips, showdown/all-in/split-pot rates, "
+                    "variant mix, and top issue list. Do not request personal information. "
+                    "Respond as JSON with adviceJa and adviceEn. Japanese should be natural and concise."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    "30ハンド以上のセッションサマリです。良かった点、悪かった点、"
+                    "ROI/獲得チップに影響した仮説、次回の具体方針を返してください。\n"
+                    f"Session:\n{json.dumps(session_payload or {}, ensure_ascii=False)}"
+                ),
             },
         ],
     }
@@ -113,3 +153,36 @@ def get_chatgpt_advice(worst_spot: Dict[str, Any]) -> Dict[str, str]:
     except Exception:  # pragma: no cover
         logger.exception("Unexpected error during OpenAI request.")
     return FALLBACK_ADVICE
+
+
+def get_play_feedback_advice(session_payload: Dict[str, Any]) -> Dict[str, str]:
+    """Call OpenAI API for session-level feedback and return structured advice."""
+
+    api_key = os.getenv("MGX_OPENAI_API_KEY")
+    if not api_key:
+        logger.warning("MGX_OPENAI_API_KEY is not set; returning fallback play feedback.")
+        return FALLBACK_PLAY_FEEDBACK
+
+    request_payload = _build_play_feedback_prompt(session_payload or {})
+    request_data = json.dumps(request_payload).encode("utf-8")
+    request = urllib.request.Request(
+        OPENAI_API_URL,
+        data=request_data,
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+    )
+
+    try:
+        with urllib.request.urlopen(request, timeout=25) as response:
+            raw_body = response.read().decode("utf-8")
+            parsed_body = json.loads(raw_body)
+            parsed = _parse_response(parsed_body)
+            return parsed if parsed != FALLBACK_ADVICE else FALLBACK_PLAY_FEEDBACK
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError) as exc:
+        logger.warning("OpenAI play feedback request failed: %s", exc)
+    except Exception:  # pragma: no cover
+        logger.exception("Unexpected error during OpenAI play feedback request.")
+    return FALLBACK_PLAY_FEEDBACK

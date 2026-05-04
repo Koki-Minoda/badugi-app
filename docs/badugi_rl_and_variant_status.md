@@ -2188,7 +2188,8 @@ Draw RL test coverage:
   - 2026-05-04 追加: 高役evaluatorのカテゴリ順位を監査。カテゴリ桁がrank桁数でずれる問題を固定長rank scoreに修正し、standard high category order / flush over two pair fixtureを追加。
 - [ ] `BUG-35` Cash / tournament のプレイフィードバック仕様とAPIを実装する。
   - 2026-05-04 部分対応: `playFeedbackPayload` を追加。30ハンド未満はAI feedback対象外にし、cash/tournamentのhand historyからvariant別hands、VPIP/PFR、showdown/all-in/split-pot率、net chips、tournament ROI、Badugi follow-up issueを要約するpayloadを生成する。
-  - 残TODO: OpenAI/ChatGPTへ送るbackend API route、認証、rate limit、PII除去、保存ポリシー、UI表示を追加する。
+  - 2026-05-04 部分対応: `POST /api/analysis/play-feedback` を追加。認証必須、30ハンド以上schema、簡易rate limit、PII除去、OpenAI未設定時fallback、OpenAI用session promptをbackendに追加。
+  - 残TODO: feedback結果の保存ポリシー/DB保存、フロントUI送信導線、セッション履歴画面での表示、実OpenAI APIキー環境での手動確認を追加する。
 - [x] `BUG-36` all-in後のDRAW停止を修正する。
   - 2026-05-04 対応: `isSeatEligibleForDraw` はcurrent handでactiveなall-in seatを交換対象に残し、BETだけall-inを除外するように整理。
   - 2026-05-04 対応: `sanitizeStacks` は stack 0 のcurrent-hand all-inを即busted扱いにせず、`seatOut` のときだけbustedへ寄せる。

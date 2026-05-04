@@ -192,10 +192,32 @@ def teacher_action(env) -> int:
     late_position = position_fraction >= 0.6
     opponent_profile = getattr(getattr(env, "opponent_profile", None), "name", "")
     passive_or_draw_heavy = opponent_profile in {"loose_passive", "tight_passive", "draw_heavy"}
+    exploit_opportunity = (
+        env._opponent_exploit_opportunity()
+        if hasattr(env, "_opponent_exploit_opportunity")
+        else 0.0
+    )
+    opponent_pat_pressure = (
+        env._opponent_pat_pressure()
+        if hasattr(env, "_opponent_pat_pressure")
+        else 0.0
+    )
     if to_call > 0:
         ev = None
         if hasattr(env, "_bet_ev_diagnostic") and hasattr(env, "_hand_features"):
             ev = env._bet_ev_diagnostic(env._hand_features(env.player_hand), to_call)
+        thin_exploit_made = (
+            made_badugi
+            and hand_range.high_rank <= 10
+            and exploit_opportunity >= 0.28
+            and opponent_pat_pressure <= 0.45
+        )
+        thin_exploit_draw = (
+            hand_range.made_cards == 3
+            and hand_range.high_rank <= 7
+            and exploit_opportunity >= 0.32
+            and opponent_pat_pressure <= 0.35
+        )
         profitable_continue_margin = 0.03 if passive_or_draw_heavy else 0.10
         cheap_developing_call = (
             ev is not None
@@ -207,7 +229,10 @@ def teacher_action(env) -> int:
         profitable_continue = (
             ev is not None
             and ev.call_ev > ev.fold_ev + profitable_continue_margin
-            and (hand_range.made_cards >= (2 if passive_or_draw_heavy else 3) or cheap_developing_call)
+            and (
+                hand_range.made_cards >= (2 if passive_or_draw_heavy else 3)
+                or cheap_developing_call
+            )
         )
         isolation_raise = (
             is_sixmax
@@ -220,8 +245,18 @@ def teacher_action(env) -> int:
                     and hand_range.high_rank <= 6
                     and ev.future_street_value >= 0.45
                 )
+                or thin_exploit_made
+                or (thin_exploit_draw and ev.future_street_value >= 0.38)
             )
-            and ev.raise_ev >= ev.call_ev + (0.05 if strong_made else 0.12)
+            and ev.raise_ev
+            >= ev.call_ev
+            + (
+                0.05
+                if strong_made
+                else max(0.02, 0.08 - exploit_opportunity * 0.18)
+                if thin_exploit_made
+                else max(0.05, 0.14 - exploit_opportunity * 0.18)
+            )
         )
         if is_final_bet:
             if not made_badugi and mask[0] > 0:
@@ -253,6 +288,18 @@ def teacher_action(env) -> int:
             return 3
         return 1 if mask[1] > 0 else env.safe_fallback_action()
 
+    if (
+        is_sixmax
+        and made_badugi
+        and hand_range.high_rank <= 10
+        and exploit_opportunity >= 0.26
+        and opponent_pat_pressure <= 0.45
+        and can_raise
+    ):
+        if mask[3] > 0:
+            return 3
+        if mask[4] > 0:
+            return 4
     if is_sixmax and strong_made and can_raise:
         if mask[3] > 0:
             return 3

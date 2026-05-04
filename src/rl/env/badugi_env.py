@@ -772,6 +772,7 @@ class BadugiEnv(gym.Env):
       opponent_aggression = self._opponent_aggression_rate()
       opponent_foldability = self._opponent_foldability_estimate()
       opponent_pat_pressure = self._opponent_pat_pressure()
+      opponent_exploit_opportunity = self._opponent_exploit_opportunity()
       multiway_pressure = self._multiway_pressure()
       ev = self._bet_ev_diagnostic(features, to_call)
       self.last_ev_diagnostic = ev
@@ -802,11 +803,11 @@ class BadugiEnv(gym.Env):
         reward += 0.25
       if sixmax_value_bet:
         if action == 3:
-          reward += 0.34
+          reward += 0.34 + min(0.16, opponent_exploit_opportunity * 0.35)
         elif action == 4:
           reward += 0.22
         elif action in (1, 2):
-          reward -= 0.18
+          reward -= 0.18 + min(0.10, opponent_exploit_opportunity * 0.22)
       if sixmax_late_semibluff:
         if action == 3:
           reward += 0.28
@@ -816,9 +817,9 @@ class BadugiEnv(gym.Env):
           reward -= 0.12
       if sixmax_isolation_raise:
         if action == 4:
-          reward += 0.36
+          reward += 0.36 + min(0.16, opponent_exploit_opportunity * 0.35)
         elif action == 2:
-          reward -= 0.10
+          reward -= 0.10 + min(0.08, opponent_exploit_opportunity * 0.18)
       if to_call > 0 and action == 4 and ev.raise_ev < ev.call_ev:
         reward -= min(0.45, 0.18 + (ev.call_ev - ev.raise_ev) * 0.05)
       if to_call == 0 and action == 4 and (sixmax_value_bet or sixmax_late_semibluff):
@@ -833,6 +834,14 @@ class BadugiEnv(gym.Env):
         reward += 0.08 if opponent_foldability >= 0.45 else -0.16
       if action in (3, 4) and opponent_foldability < 0.18 and strength < 0.50:
         reward -= 0.22
+      if (
+        action in (3, 4)
+        and opponent_exploit_opportunity >= 0.26
+        and opponent_pat_pressure <= 0.45
+        and features.count == 4
+        and not self._is_weak_final_badugi(features)
+      ):
+        reward += 0.10
       if (
         action in (3, 4)
         and multiway_pressure > 0
@@ -923,6 +932,12 @@ class BadugiEnv(gym.Env):
     high_rank = max(features.ranks)
     if high_rank <= 8:
       return True
+    if (
+      high_rank <= 10
+      and self._opponent_exploit_opportunity() >= 0.26
+      and self._opponent_pat_pressure() <= 0.45
+    ):
+      return True
     return self.round >= self.max_rounds and high_rank <= 10 and self.opponent_last_draw >= 2
 
   def _sixmax_late_semibluff_spot(
@@ -949,10 +964,37 @@ class BadugiEnv(gym.Env):
     if not features.ranks:
       return False
     high_rank = max(features.ranks)
+    exploit_opportunity = self._opponent_exploit_opportunity()
+    pat_pressure = self._opponent_pat_pressure()
     strong_made = features.count == 4 and high_rank <= 8
     strong_one_away = features.one_away and high_rank <= 6 and ev.future_street_value >= 0.45
-    required_edge = 0.05 if strong_made else 0.12
-    return (strong_made or strong_one_away) and ev.raise_ev >= ev.call_ev + required_edge
+    thin_made = (
+      features.count == 4
+      and high_rank <= 10
+      and exploit_opportunity >= 0.28
+      and pat_pressure <= 0.45
+    )
+    thin_one_away = (
+      features.one_away
+      and high_rank <= 7
+      and exploit_opportunity >= 0.32
+      and ev.future_street_value >= 0.38
+      and pat_pressure <= 0.35
+    )
+    if strong_made:
+      required_edge = 0.05
+    elif strong_one_away:
+      required_edge = 0.12
+    elif thin_made:
+      required_edge = max(0.02, 0.08 - exploit_opportunity * 0.18)
+    else:
+      required_edge = max(0.05, 0.14 - exploit_opportunity * 0.18)
+    return (
+      strong_made
+      or strong_one_away
+      or thin_made
+      or thin_one_away
+    ) and ev.raise_ev >= ev.call_ev + required_edge
 
   def _draw_equity_estimate(self, features: HandFeature) -> float:
     draws_remaining = max(0, self.max_rounds - self.round)
@@ -1068,8 +1110,9 @@ class BadugiEnv(gym.Env):
     late_bonus = 0.12 if self._is_late_position() else 0.0
     strong_made_bonus = 0.18 if features.count == 4 and high_rank <= 8 else 0.0
     strong_draw_bonus = 0.10 if features.one_away and high_rank <= 6 else 0.0
+    exploit_bonus = 0.08 if self._opponent_exploit_opportunity() >= 0.30 and self._opponent_pat_pressure() <= 0.45 else 0.0
     pot_bonus = 0.05 if self.pot >= 12 else 0.0
-    return min(0.35, late_bonus + strong_made_bonus + strong_draw_bonus + pot_bonus)
+    return min(0.40, late_bonus + strong_made_bonus + strong_draw_bonus + exploit_bonus + pot_bonus)
 
   def _street_adjusted_strength(self, features: HandFeature) -> float:
     draws_remaining = max(0, self.max_rounds - self.round)
@@ -1143,6 +1186,29 @@ class BadugiEnv(gym.Env):
     if self.opponent_draw_count <= 0:
       return 0.0
     return min(4.0, self.opponent_total_draw_cards / self.opponent_draw_count)
+
+  def _opponent_exploit_opportunity(self) -> float:
+    profile_hint = 0.0
+    if self.opponent_profile.name in {"loose_passive", "tight_passive", "draw_heavy"}:
+      profile_hint = 0.07
+    elif self.opponent_profile.name == "tight_aggressive":
+      profile_hint = 0.03
+    foldable = self._opponent_foldability_estimate()
+    passive = self._opponent_passivity_rate()
+    draw_heavy = min(1.0, self._opponent_average_draw_count() / 2.5)
+    pat_safe = max(0.0, 1.0 - self._opponent_pat_pressure())
+    aggression_safe = max(0.0, 1.0 - self._opponent_aggression_rate())
+    opportunity = (
+      foldable * 0.16
+      + passive * 0.14
+      + draw_heavy * 0.13
+      + pat_safe * 0.05
+      + aggression_safe * 0.05
+      + profile_hint
+    )
+    if self._active_opponent_count() >= 3:
+      opportunity -= 0.04
+    return min(0.45, max(0.0, opportunity))
 
   def _pot_odds(self, to_call: int | float | None = None) -> float:
     call_amount = max(0.0, float(self.current_bet - self.player_bet if to_call is None else to_call))

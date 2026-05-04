@@ -19,6 +19,12 @@ describe("appVariantRouting", () => {
     expect(normalizeAppVariantId("pot_limit_omaha")).toBe(APP_VARIANT_IDS.PLO);
     expect(normalizeAppVariantId("big-o")).toBe(APP_VARIANT_IDS.BIG_O);
     expect(normalizeAppVariantId("5-card-plo")).toBe(APP_VARIANT_IDS.FIVE_CARD_PLO);
+    expect(normalizeAppVariantId("dramaha")).toBe(APP_VARIANT_IDS.DRAMAHA_HI);
+    expect(normalizeAppVariantId("dramaha-27")).toBe(APP_VARIANT_IDS.DRAMAHA_27);
+    expect(normalizeAppVariantId("dramaha-a5")).toBe(APP_VARIANT_IDS.DRAMAHA_A5);
+    expect(normalizeAppVariantId("dramaha-zero")).toBe(APP_VARIANT_IDS.DRAMAHA_ZERO);
+    expect(normalizeAppVariantId("dramaha-hidugi")).toBe(APP_VARIANT_IDS.DRAMAHA_HIDUGI);
+    expect(normalizeAppVariantId("dramaha-badugi")).toBe(APP_VARIANT_IDS.DRAMAHA_BADUGI);
     expect(normalizeAppVariantId("unknown")).toBe(APP_VARIANT_IDS.BADUGI);
   });
 
@@ -32,5 +38,7 @@ describe("appVariantRouting", () => {
     expect(isControllerBackedAppVariant("plo")).toBe(true);
     expect(isControllerBackedAppVariant("big_o")).toBe(true);
     expect(isControllerBackedAppVariant("five_card_plo")).toBe(true);
+    expect(isControllerBackedAppVariant("dramaha")).toBe(true);
+    expect(isControllerBackedAppVariant("dramaha_27")).toBe(true);
   });
 });

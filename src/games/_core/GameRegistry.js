@@ -1,4 +1,5 @@
 import BadugiGameDefinition from "../badugi/BadugiGameDefinition";
+import { DRAMAHA_DEFINITIONS } from "../dramaha/DramahaVariants.js";
 import NLHGameDefinition from "../nlh/NLHGameDefinition.js";
 import BigOGameDefinition from "../plo/BigOGameDefinition.js";
 import FiveCardPLOGameDefinition from "../plo/FiveCardPLOGameDefinition.js";
@@ -39,5 +40,6 @@ registry.register(NLHGameDefinition);
 registry.register(PLOGameDefinition);
 registry.register(BigOGameDefinition);
 registry.register(FiveCardPLOGameDefinition);
+Object.values(DRAMAHA_DEFINITIONS).forEach((definition) => registry.register(definition));
 
 export default registry;

@@ -1771,13 +1771,19 @@ Draw RL test coverage:
       - [ ] `MIX-16-07` Badeucey Single Draw (`S05`) を実装する。
       - [ ] `MIX-16-08` Badacey Single Draw (`S06`) を実装する。
       - [ ] `MIX-16-09` Hidugi Single Draw (`S07`) を実装する。
-      - [ ] `MIX-16-10` Dramaha Hi (`H01`) を実装する。board high + draw hand half のsplit表示を作る。
-      - [ ] `MIX-16-11` Dramaha 2-7 (`H02`) を実装する。
-      - [ ] `MIX-16-12` Dramaha A-5 (`H03`) を実装する。
-      - [ ] `MIX-16-13` Dramaha Zero (`H04`) を実装する。
-      - [ ] `MIX-16-14` Dramaha Hidugi (`H05`) を実装する。
-      - [ ] `MIX-16-15` Dramaha Badugi (`H06`) を実装する。
+      - [x] `MIX-16-10` Dramaha Hi (`H01`) を実装する。board high + draw hand half のsplit表示を作る。
+      - [x] `MIX-16-11` Dramaha 2-7 (`H02`) を実装する。
+      - [x] `MIX-16-12` Dramaha A-5 (`H03`) を実装する。
+      - [x] `MIX-16-13` Dramaha Zero (`H04`) を実装する。
+      - [x] `MIX-16-14` Dramaha Hidugi (`H05`) を実装する。
+      - [x] `MIX-16-15` Dramaha Badugi (`H06`) を実装する。
+        - 2026-05-04 実装: `DramahaGameController` / `DramahaGameDefinition` / `dramahaEvaluator` / Dramaha UI adapter を追加し、H01-H06をGameRegistry・variant modal・Game Selector catalogへ `wip` route として接続した。
+        - 実装範囲: 5枚hole、flop-only 3枚board、1 draw、final bet、showdownでboard half（Omaha exactly 2 + board exactly 3）とdraw half（High / 2-7 / A-5 / Zero / Hidugi / Badugi）を分割評価する。
+        - 残TODO: Dramaha専用CPU discard strategy、split halfのUI詳細表示、odd chip ruleの運用仕様、Playwright smokeを追加する。
       - [ ] `MIX-16-16` Stud family (`ST1` Stud, `ST2` Stud 8, `ST3` Razz, `ST4` Razzdugi, `ST5` Razzducey, `ST6` 2-7 Razz) を段階実装する。street/deal visibility、bring-in/antes、stud evaluator、split variantsを別章で詳細化する。
+      - [x] `CHINESE-01` チャイポ / Chinese Poker / OFC の準備タスクを追加する。13枚配布、front/middle/back配置、royalty、foul判定、fantasyland、turn順の仕様を実装前提として整理する。
+        - 2026-05-04 実装: `src/games/chinese/chinesePokerPreparation.js` に alias と実装要件を固定。現時点ではゲーム進行へ接続しない準備ファイルのみ。
+      - [ ] `CHINESE-02` Chinese Poker / OFC の実ゲーム controller / layout UI / scorer / foul判定を実装する。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
   - P2P:
     - data capture / export / sync / security test の部品はある。

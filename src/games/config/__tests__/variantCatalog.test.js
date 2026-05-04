@@ -53,6 +53,21 @@ describe("variantCatalog", () => {
     });
   });
 
+  it("marks Dramaha family variants as wip with engine keys", () => {
+    expect(getVariantById("H01")).toMatchObject({
+      status: "wip",
+      engineKey: "dramaha_hi",
+    });
+    expect(getVariantById("H02")).toMatchObject({
+      status: "wip",
+      engineKey: "dramaha_27",
+    });
+    expect(getVariantById("H06")).toMatchObject({
+      status: "wip",
+      engineKey: "dramaha_badugi",
+    });
+  });
+
   it("produces engine template context", () => {
     const ctx = getEngineTemplateContext("D04");
     expect(ctx).toMatchObject({

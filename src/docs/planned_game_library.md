@@ -46,12 +46,12 @@ Each entry cites the current ID used in `docs/game_catalog.md` and `config/ai/mo
 
 | ID | Name | Status | Betting | Notes |
 | --- | --- | --- | --- | --- |
-| H01 | Dramaha Hi | planned | fixed-limit | 5 cards; fixed draw |
-| H02 | Dramaha 2-7 | planned | fixed-limit | deuce-to-seven rules |
-| H03 | Dramaha A-5 | planned | fixed-limit | ace-to-five rules |
-| H04 | Dramaha Zero | planned | fixed-limit | zero-based |
-| H05 | Dramaha Hidugi | planned | fixed-limit | mix of hidugi/badugi |
-| H06 | Dramaha Badugi | planned | fixed-limit | uses badugi-style evaluation |
+| H01 | Dramaha Hi | wip | fixed-limit | 5 cards; fixed draw |
+| H02 | Dramaha 2-7 | wip | fixed-limit | deuce-to-seven rules |
+| H03 | Dramaha A-5 | wip | fixed-limit | ace-to-five rules |
+| H04 | Dramaha Zero | wip | fixed-limit | zero-based |
+| H05 | Dramaha Hidugi | wip | fixed-limit | mix of hidugi/badugi |
+| H06 | Dramaha Badugi | wip | fixed-limit | uses badugi-style evaluation |
 
 ## Stud
 

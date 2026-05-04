@@ -573,6 +573,8 @@
     {
         "id":  "H01",
         "name":  "Dramaha Hi",
+        "status":  "wip",
+        "engineKey":  "dramaha_hi",
         "category":  "dramaha",
         "holeCards":  5,
         "drawRounds":  1,
@@ -598,6 +600,8 @@
     {
         "id":  "H02",
         "name":  "Dramaha 2-7",
+        "status":  "wip",
+        "engineKey":  "dramaha_27",
         "category":  "dramaha",
         "holeCards":  5,
         "drawRounds":  1,
@@ -623,6 +627,8 @@
     {
         "id":  "H03",
         "name":  "Dramaha A-5",
+        "status":  "wip",
+        "engineKey":  "dramaha_a5",
         "category":  "dramaha",
         "holeCards":  5,
         "drawRounds":  1,
@@ -648,6 +654,8 @@
     {
         "id":  "H04",
         "name":  "Dramaha Zero",
+        "status":  "wip",
+        "engineKey":  "dramaha_zero",
         "category":  "dramaha",
         "holeCards":  5,
         "drawRounds":  1,
@@ -673,6 +681,8 @@
     {
         "id":  "H05",
         "name":  "Dramaha Hidugi",
+        "status":  "wip",
+        "engineKey":  "dramaha_hidugi",
         "category":  "dramaha",
         "holeCards":  5,
         "drawRounds":  1,
@@ -698,6 +708,8 @@
     {
         "id":  "H06",
         "name":  "Dramaha Badugi",
+        "status":  "wip",
+        "engineKey":  "dramaha_badugi",
         "category":  "dramaha",
         "holeCards":  5,
         "drawRounds":  1,

@@ -30,7 +30,7 @@ describe("VariantSelectModal", () => {
     const dialog = screen.getByRole("dialog", { name: /select a variant/i });
     expect(dialog).toBeTruthy();
 
-    const badugiButton = screen.getByRole("button", { name: /badugi/i });
+    const badugiButton = screen.getByRole("button", { name: /^badugi\b/i });
     fireEvent.click(badugiButton);
     expect(handleSelect).toHaveBeenCalledWith("badugi");
     expect(handleClose).toHaveBeenCalled();
@@ -67,6 +67,20 @@ describe("VariantSelectModal", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /5-card plo/i }));
     expect(handleSelect).toHaveBeenCalledWith("five_card_plo");
+  });
+
+  it("allows Dramaha family variants to be selected", () => {
+    const handleSelect = vi.fn();
+    render(<VariantSelectModal isOpen onClose={() => {}} onSelectVariant={handleSelect} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /^dramaha hi\b/i }));
+    expect(handleSelect).toHaveBeenCalledWith("dramaha_hi");
+
+    fireEvent.click(screen.getByRole("button", { name: /dramaha 2-7/i }));
+    expect(handleSelect).toHaveBeenCalledWith("dramaha_27");
+
+    fireEvent.click(screen.getByRole("button", { name: /dramaha badugi/i }));
+    expect(handleSelect).toHaveBeenCalledWith("dramaha_badugi");
   });
 
   it("does not render when closed", () => {

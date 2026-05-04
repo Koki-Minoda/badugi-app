@@ -49,6 +49,7 @@ import {
   needsActionForBet,
 } from "../games/badugi/flow/betRoundUtils.js";
 import BadugiGameController from "../games/badugi/BadugiGameController.js";
+import DramahaGameController from "../games/dramaha/DramahaGameController.js";
 import NLHGameController from "../games/nlh/NLHGameController.js";
 import BigOGameController from "../games/plo/BigOGameController.js";
 import FiveCardPLOGameController from "../games/plo/FiveCardPLOGameController.js";
@@ -62,9 +63,11 @@ import { ensureBadugiUIAdapterRegistered } from "./game/badugi/registerBadugiUIA
 import { ensureNLHUIAdapterRegistered } from "./game/nlh/registerNLHUIAdapter.js";
 import { ensurePLOUIAdapterRegistered } from "./game/plo/registerPLOUIAdapter.js";
 import { ensureDrawLowballUIAdaptersRegistered } from "./game/draw/registerDrawLowballUIAdapters.js";
+import { ensureDramahaUIAdaptersRegistered } from "./game/dramaha/registerDramahaUIAdapter.js";
 import { shouldWaitForHeroDrawTurn } from "./game/drawActorUtils.js";
 import {
   APP_VARIANT_IDS,
+  DRAMAHA_APP_VARIANT_IDS,
   isControllerBackedAppVariant,
   isDrawLowballAppVariant,
   normalizeAppVariantId,
@@ -901,7 +904,8 @@ const SAFE_RESET_PHASE = "IDLE";
       normalizedVariant === APP_VARIANT_IDS.NLH ||
       normalizedVariant === APP_VARIANT_IDS.PLO ||
       normalizedVariant === APP_VARIANT_IDS.BIG_O ||
-      normalizedVariant === APP_VARIANT_IDS.FIVE_CARD_PLO;
+      normalizedVariant === APP_VARIANT_IDS.FIVE_CARD_PLO ||
+      DRAMAHA_APP_VARIANT_IDS.has(normalizedVariant);
     if (
       mode === "tournament-mtt" ||
       usesBoardController ||
@@ -1031,7 +1035,12 @@ const SAFE_RESET_PHASE = "IDLE";
     (normalizedGameVariant === APP_VARIANT_IDS.NLH ||
       normalizedGameVariant === APP_VARIANT_IDS.PLO ||
       normalizedGameVariant === APP_VARIANT_IDS.BIG_O ||
-      normalizedGameVariant === APP_VARIANT_IDS.FIVE_CARD_PLO);
+      normalizedGameVariant === APP_VARIANT_IDS.FIVE_CARD_PLO ||
+      DRAMAHA_APP_VARIANT_IDS.has(normalizedGameVariant));
+  const isSingleTableDramaha =
+    mode !== "tournament-mtt" && DRAMAHA_APP_VARIANT_IDS.has(normalizedGameVariant);
+  const isSingleTableControllerDrawGame =
+    isSingleTableDrawLowball || isSingleTableDramaha;
   const isControllerDrivenSingleTable =
     isSingleTableBadugi || isSingleTableDrawLowball || isSingleTableBoardGame;
   const isMobileDevice = deviceProfile.isMobile;
@@ -1074,6 +1083,7 @@ const SAFE_RESET_PHASE = "IDLE";
           seatIndex,
           action: normalizedType,
           amount,
+          metadata,
         });
         if (!result?.success) {
           return {
@@ -1680,6 +1690,11 @@ const SAFE_RESET_PHASE = "IDLE";
         gameControllerRef.current = new FiveCardPLOGameController({
           tableConfig: buildNlhTableConfig(),
         });
+      } else if (DRAMAHA_APP_VARIANT_IDS.has(variantId)) {
+        gameControllerRef.current = new DramahaGameController({
+          tableConfig: buildNlhTableConfig(),
+          variant: variantId,
+        });
       } else if (isDrawLowballAppVariant(variantId)) {
         gameControllerRef.current = GAME_VARIANTS[variantId]?.controllerFactory?.({
           seatConfig: Array.isArray(seatConfigRef.current)
@@ -1709,7 +1724,8 @@ const SAFE_RESET_PHASE = "IDLE";
       (variantId === APP_VARIANT_IDS.NLH ||
         variantId === APP_VARIANT_IDS.PLO ||
         variantId === APP_VARIANT_IDS.BIG_O ||
-        variantId === APP_VARIANT_IDS.FIVE_CARD_PLO) &&
+        variantId === APP_VARIANT_IDS.FIVE_CARD_PLO ||
+        DRAMAHA_APP_VARIANT_IDS.has(variantId)) &&
       typeof gameControllerRef.current.updateTableConfig === "function"
     ) {
       gameControllerRef.current.updateTableConfig(buildNlhTableConfig());
@@ -1739,6 +1755,8 @@ const SAFE_RESET_PHASE = "IDLE";
       normalizedVariant === APP_VARIANT_IDS.FIVE_CARD_PLO
     ) {
       ensurePLOUIAdapterRegistered();
+    } else if (DRAMAHA_APP_VARIANT_IDS.has(normalizedVariant)) {
+      ensureDramahaUIAdaptersRegistered();
     } else if (isDrawLowballAppVariant(normalizedVariant)) {
       ensureDrawLowballUIAdaptersRegistered();
     } else {
@@ -2193,11 +2211,11 @@ const SAFE_RESET_PHASE = "IDLE";
           }
         : null;
       if (!me) return false;
-      if (isSingleTableDrawLowball) {
+      if (isSingleTableControllerDrawGame) {
         const controller = sessionControllerRef.current;
         const controllerState = sessionControllerStateRef.current;
         const cpuAction =
-          typeof controller?.getCpuAction === "function"
+          isSingleTableDrawLowball && typeof controller?.getCpuAction === "function"
             ? controller.getCpuAction(controllerState, seatToAct)
             : null;
         const payload = cpuAction?.payload ?? cpuAction ?? {
@@ -2469,6 +2487,7 @@ const SAFE_RESET_PHASE = "IDLE";
     lastAggressor,
     aiDecisionContext,
     activeAiTierConfig,
+    isSingleTableControllerDrawGame,
     isSingleTableDrawLowball,
     tryControllerBetAction,
   ]);
@@ -4716,7 +4735,7 @@ const SAFE_RESET_PHASE = "IDLE";
     const effectiveSeatConfig = consumeSeatConfigForHand(shouldRotateSeats);
 
     const deckManager = getDeckManager();
-    if (deckManager && !isSingleTableDrawLowball) {
+    if (deckManager && !isSingleTableControllerDrawGame) {
       deckManager.reset();
       if (typeof deckManager.shuffle === "function") {
         deckManager.shuffle();
@@ -4911,7 +4930,7 @@ const SAFE_RESET_PHASE = "IDLE";
       };
     }
 
-    if (deckManager && !isSingleTableDrawLowball) {
+    if (deckManager && !isSingleTableControllerDrawGame) {
       const preflopCheck = validatePreflopState({
         deck: deckManager.deck,
         burn: deckManager.burnPile,
@@ -5043,7 +5062,7 @@ const SAFE_RESET_PHASE = "IDLE";
       seatsSnapshot: newPlayers,
     });
 
-    if (!isSingleTableDrawLowball) {
+    if (!isSingleTableControllerDrawGame) {
       try {
         assertNoDuplicateCards("[HAND][DEAL]", {
           deck: deckManager?.deck,
@@ -7266,8 +7285,11 @@ const SAFE_RESET_PHASE = "IDLE";
       : null;
     if (!p) return;
 
-    const sel = heroDrawSelection.slice(0, MAX_DRAW_SELECTION);
-    if (isSingleTableDrawLowball) {
+    const sel = heroDrawSelection.slice(
+      0,
+      isSingleTableDramaha ? 5 : MAX_DRAW_SELECTION,
+    );
+    if (isSingleTableControllerDrawGame) {
       const controllerDrawOutcome = tryControllerBetAction({
         actionType: "draw",
         seatIndex: 0,
@@ -8119,6 +8141,7 @@ const SAFE_RESET_PHASE = "IDLE";
     heroPhaseNeedsAction &&
     controllerTurn === heroSeatIndex;
   const heroCanDraw = controlsPhase === "DRAW" && heroCanAct;
+  const heroMaxDrawSelection = isSingleTableDramaha ? 5 : MAX_DRAW_SELECTION;
 
   useEffect(() => {
     if (!heroCanDraw && heroDrawSelection.length > 0) {
@@ -8133,13 +8156,13 @@ const SAFE_RESET_PHASE = "IDLE";
         let nextSelection = prev;
         if (prev.includes(cardIdx)) {
           nextSelection = prev.filter((idx) => idx !== cardIdx);
-        } else if (prev.length < MAX_DRAW_SELECTION) {
+        } else if (prev.length < heroMaxDrawSelection) {
           nextSelection = [...prev, cardIdx].sort((a, b) => a - b);
         }
         return nextSelection;
       });
     },
-    [heroCanDraw]
+    [heroCanDraw, heroMaxDrawSelection]
   );
 
   useEffect(() => {

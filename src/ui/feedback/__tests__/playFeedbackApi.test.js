@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { hasStoredFeedbackAuth, requestPlayFeedback } from "../playFeedbackApi.js";
+import { fetchPlayFeedbackResults, hasStoredFeedbackAuth, requestPlayFeedback } from "../playFeedbackApi.js";
 
 describe("playFeedbackApi", () => {
   afterEach(() => {
@@ -35,5 +35,28 @@ describe("playFeedbackApi", () => {
       }),
     );
     expect(hasStoredFeedbackAuth()).toBe(true);
+  });
+
+  it("fetches stored feedback results by session key", async () => {
+    window.localStorage.setItem(
+      "mgx_auth",
+      JSON.stringify({ accessToken: "token-2", tokenType: "Bearer" }),
+    );
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => [{ id: 1, response: { adviceJa: "保存済み" } }],
+    });
+
+    const result = await fetchPlayFeedbackResults({ sessionKey: "cash:cash:mixed", limit: 3 });
+
+    expect(result[0].response.adviceJa).toBe("保存済み");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/analysis/play-feedback/results?session_key=cash%3Acash%3Amixed&limit=3",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer token-2",
+        }),
+      }),
+    );
   });
 });

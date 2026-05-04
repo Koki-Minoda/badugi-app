@@ -73,3 +73,21 @@ class PlayFeedbackResponse(BaseModel):
     source: Literal["openai", "fallback"] = "fallback"
     acceptedHandCount: int
     piiRemoved: bool = True
+    feedbackId: Optional[int] = None
+    sessionKey: Optional[str] = None
+    storedAt: Optional[str] = None
+
+
+class PlayFeedbackStoredResult(BaseModel):
+    """Stored feedback result returned from history endpoints."""
+
+    id: int
+    sessionKey: str
+    mode: str
+    variantScope: str
+    tournamentId: Optional[str] = None
+    handCount: int
+    source: str
+    piiRemoved: bool = True
+    response: Dict[str, Any]
+    createdAt: Optional[str] = None

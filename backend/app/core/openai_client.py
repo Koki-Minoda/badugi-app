@@ -126,9 +126,9 @@ def _parse_response(payload: Dict[str, Any]) -> Dict[str, str]:
 def get_chatgpt_advice(worst_spot: Dict[str, Any]) -> Dict[str, str]:
     """Call OpenAI API and return structured advice."""  # [tournament-feedback]
 
-    api_key = os.getenv("MGX_OPENAI_API_KEY")
+    api_key = os.getenv("MGX_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
     if not api_key:
-        logger.warning("MGX_OPENAI_API_KEY is not set; returning fallback advice.")
+        logger.warning("MGX_OPENAI_API_KEY/OPENAI_API_KEY is not set; returning fallback advice.")
         return FALLBACK_ADVICE
 
     request_payload = _build_prompt(worst_spot or {})
@@ -158,9 +158,9 @@ def get_chatgpt_advice(worst_spot: Dict[str, Any]) -> Dict[str, str]:
 def get_play_feedback_advice(session_payload: Dict[str, Any]) -> Dict[str, str]:
     """Call OpenAI API for session-level feedback and return structured advice."""
 
-    api_key = os.getenv("MGX_OPENAI_API_KEY")
+    api_key = os.getenv("MGX_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
     if not api_key:
-        logger.warning("MGX_OPENAI_API_KEY is not set; returning fallback play feedback.")
+        logger.warning("MGX_OPENAI_API_KEY/OPENAI_API_KEY is not set; returning fallback play feedback.")
         return FALLBACK_PLAY_FEEDBACK
 
     request_payload = _build_play_feedback_prompt(session_payload or {})

@@ -2167,7 +2167,7 @@ Draw RL test coverage:
 | `BUG-32` | Smart HUD scope | PC / Mobile | fixed | HUD scope dropdown に Stud / Razz がなく、10-Game / Dealer's Choice の情報切替先が不足している。 | Stud/Razz実装時にvariant別stats集計へ接続する。 |
 | `BUG-33` | PC/Mobile layout separation | PC / Mobile | fixed | スマホ横画面対応がPC卓レイアウトへ影響しないことを継続確認する。 | PC desktop smoke と mobile landscape smoke を別々に維持する。 |
 | `BUG-34` | All-in / split pot flow | All | fixed | AI後、side pot / split pot / odd chip / all-in skipped actor が誤るとゲーム進行停止や誤配当につながる。 | NLH/PLO/Dramaha/PLO8/FLO8/Stud8/Razzdugi/Razzducey/ST6 fixtureと11controller invariant smokeを追加済み。 |
-| `BUG-35` | Play feedback pipeline | All | partial | Cash / tournament の30ハンド以上の履歴から、良かった点/悪かった点/ROI/参加条件/仮説をまとめるAI feedback APIが未実装。まずフロント側payload/gateを追加済み。 | 10-Game Beginner/Standard RL適用後にBadugi/2-7/A-5/Stud/Razz/NLH/PLOを対象にする。 |
+| `BUG-35` | Play feedback pipeline | All | fixed | Cash / tournament の30ハンド以上の履歴から、良かった点/悪かった点/ROI/参加条件/仮説をまとめるAI feedback API、DB保存、ゲーム内modal導線を追加済み。 | 10-Game Beginner/Standard RL適用後もBadugi/2-7/A-5/Stud/Razz/NLH/PLOを対象に継続回帰する。 |
 | `BUG-36` | All-in draw actor | Badugi / Draw | fixed | all-in後のCPU/Hero、またはall-in後にbusted seatが残った状態で、DRAWフェーズの交換対象が詰まりカード交換できなくなる。 | Badugiはactive all-in seatをDRAW可能、busted/seatOutはDRAW不可に分離。2-7/A-5 draw regressionも再実行する。 |
 | `BUG-37` | Hand history completeness | All | fixed | ゲーム内履歴と `/history` 永続履歴が分断され、キャッシュゲーム履歴が見えにくい。hand history detail/replay/API送信の完成度が不足。 | Cash/Tournament両方で完了ハンドが保存・表示され、variant/evaluator/pot/action/replayが復元できることを横断確認する。 |
 | `BUG-38` | Friend match playable QA | P2P | fixed | フレンドマッチがルーム作成/参加/ready/action/showdown/reconnectまで実運用レベルで壊れないか継続テストが必要だった。実WebSocket host/guest smokeとmobile landscape smokeを追加済み。 | mocked browser smoke、backend websocketありhost/guest 2page smoke、browser reconnect、mobile landscapeを継続回帰に入れる。 |
@@ -2186,12 +2186,16 @@ Draw RL test coverage:
   - 2026-05-04 追加: Stud8の複数side pot hi/lo fixture、Razzdugiのodd chip component split fixture、RazzduceyのBadugi+2-7 component split fixtureを追加。
   - 2026-05-04 追加: FLO8専用のodd split + side pot fixture、ST6 2-7 Razz単体showdown fixture、Stud/Razz bring-in fixture、Stud up/down card UI adapter fixtureを追加。
   - 2026-05-04 追加: 高役evaluatorのカテゴリ順位を監査。カテゴリ桁がrank桁数でずれる問題を固定長rank scoreに修正し、standard high category order / flush over two pair fixtureを追加。
-- [ ] `BUG-35` Cash / tournament のプレイフィードバック仕様とAPIを実装する。
+- [x] `BUG-35` Cash / tournament のプレイフィードバック仕様とAPIを実装する。
   - 2026-05-04 部分対応: `playFeedbackPayload` を追加。30ハンド未満はAI feedback対象外にし、cash/tournamentのhand historyからvariant別hands、VPIP/PFR、showdown/all-in/split-pot率、net chips、tournament ROI、Badugi follow-up issueを要約するpayloadを生成する。
   - 2026-05-04 部分対応: `POST /api/analysis/play-feedback` を追加。認証必須、30ハンド以上schema、簡易rate limit、PII除去、OpenAI未設定時fallback、OpenAI用session promptをbackendに追加。
   - 2026-05-04 部分対応: `/history` にAIフィードバック送信UIを追加。30ハンド以上かつログイン済みの場合だけ送信でき、結果を画面内に表示する。
   - 2026-05-04 部分対応: feedback結果をsession key単位でlocalStorageへ保存し、`/history`で直近結果を再表示できるようにする。DB保存前の暫定保存ポリシーとして最大20件に制限。
-  - 残TODO: feedback結果のDB保存、実OpenAI APIキー環境での手動確認、ゲーム内modal版への表示統合を追加する。
+  - 2026-05-04 対応: `play_feedback_results` DB table / SQLAlchemy model / Alembic migrationを追加し、`POST /api/analysis/play-feedback` がsanitize済みpayloadとresponseをDB保存して `feedbackId` / `sessionKey` / `storedAt` を返すようにした。
+  - 2026-05-04 対応: `GET /api/analysis/play-feedback/results` を追加し、ログインユーザー単位で保存済みfeedbackを取得できるようにした。
+  - 2026-05-04 対応: ゲーム内History modalにもプレイフィードバックパネルを追加し、30ハンド以上の履歴から同じAPIへ送信、localStorageにも再表示用保存できるようにした。
+  - 2026-05-04 対応: OpenAIキーは `MGX_OPENAI_API_KEY` と `OPENAI_API_KEY` の両方を受け付ける。`OPENAI_API_KEY` 経路はunitでHTTP request生成まで確認。
+  - 2026-05-04 確認: この実行環境では `MGX_OPENAI_API_KEY` / `OPENAI_API_KEY` が未設定のため、実OpenAI外部通信は未実施。productionではどちらかの環境変数を設定し、`POST /api/analysis/play-feedback` の `source=openai` を確認する。
 - [x] `BUG-36` all-in後のDRAW停止を修正する。
   - 2026-05-04 対応: `isSeatEligibleForDraw` はcurrent handでactiveなall-in seatを交換対象に残し、BETだけall-inを除外するように整理。
   - 2026-05-04 対応: `sanitizeStacks` は stack 0 のcurrent-hand all-inを即busted扱いにせず、`seatOut` のときだけbustedへ寄せる。

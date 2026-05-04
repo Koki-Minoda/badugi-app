@@ -54,6 +54,25 @@ export async function requestPlayFeedback(payload, authOverride = null) {
   return response.json();
 }
 
+export async function fetchPlayFeedbackResults({ sessionKey = null, limit = 20 } = {}, authOverride = null) {
+  const auth = authOverride ?? readStoredAuth();
+  if (!auth?.accessToken) {
+    throw new Error("login_required");
+  }
+  const params = new URLSearchParams();
+  if (sessionKey) params.set("session_key", sessionKey);
+  params.set("limit", String(limit));
+  const response = await fetch(`${API_BASE}/analysis/play-feedback/results?${params.toString()}`, {
+    headers: {
+      Authorization: `${normalizeTokenType(auth.tokenType)} ${auth.accessToken}`,
+    },
+  });
+  if (!response.ok) {
+    throw new Error(await parseError(response));
+  }
+  return response.json();
+}
+
 export function hasStoredFeedbackAuth() {
   return Boolean(readStoredAuth()?.accessToken);
 }

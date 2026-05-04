@@ -3,6 +3,12 @@ import {
   getCurrentHandHistorySnapshot,
   getHandHistoryBufferSnapshot,
 } from "../state/handHistoryStore.js";
+import { buildPlayFeedbackPayload, MIN_FEEDBACK_HANDS } from "../feedback/playFeedbackPayload.js";
+import { hasStoredFeedbackAuth, requestPlayFeedback } from "../feedback/playFeedbackApi.js";
+import {
+  getLatestPlayFeedbackResult,
+  savePlayFeedbackResult,
+} from "../feedback/playFeedbackStore.js";
 
 function formatTimestamp(ts) {
   if (!Number.isFinite(ts)) return "–";
@@ -87,6 +93,11 @@ export default function HandHistoryScreen({
   const [searchQuery, setSearchQuery] = useState("");
   const [liveHandSnapshot, setLiveHandSnapshot] = useState(null);
   const [completedSnapshotList, setCompletedSnapshotList] = useState([]);
+  const [feedbackState, setFeedbackState] = useState({
+    loading: false,
+    error: null,
+    response: null,
+  });
 
   const refreshSnapshots = useCallback(() => {
     setLiveHandSnapshot(getCurrentHandHistorySnapshot());
@@ -125,6 +136,19 @@ export default function HandHistoryScreen({
       return typeof id === "string" && id.toLowerCase().includes(normalizedQuery);
     });
   }, [rows, filterMode, searchQuery]);
+  const feedbackPayloadResult = useMemo(
+    () =>
+      buildPlayFeedbackPayload({
+        hands: completedSnapshotList,
+        mode: "cash",
+        variantScope: "mixed",
+      }),
+    [completedSnapshotList],
+  );
+  const savedFeedback = useMemo(
+    () => getLatestPlayFeedbackResult(feedbackPayloadResult.payload),
+    [feedbackPayloadResult.payload],
+  );
   const isJapanese = language === "ja";
   const copy = isJapanese
     ? {
@@ -141,6 +165,15 @@ export default function HandHistoryScreen({
         completed: "完了",
         noHands: "まだハンドが記録されていません。1ハンドプレイしてから戻ると表示されます。",
         noMatches: "検索条件に一致するハンドはありません。",
+        feedbackTitle: "プレイフィードバック",
+        feedbackBody:
+          "30ハンド以上の履歴から、良かった点、悪かった点、次回方針をAIフィードバックとして保存します。",
+        feedbackButton: "AIフィードバック作成",
+        feedbackLoading: "解析中...",
+        feedbackLogin: "ログインするとAIフィードバックを送信できます。",
+        feedbackNotReady: `${MIN_FEEDBACK_HANDS}ハンド以上プレイすると利用できます。`,
+        feedbackSource: "保存元",
+        savedFeedback: "保存済みフィードバック",
       }
     : {
         title: "Hand History",
@@ -156,7 +189,32 @@ export default function HandHistoryScreen({
         completed: "Completed",
         noHands: "No hands recorded yet. Play a hand and return to see the history.",
         noMatches: "No hands match your search/filter.",
+        feedbackTitle: "Play Feedback",
+        feedbackBody:
+          "Use 30+ completed hands to save AI feedback with strengths, leaks, and next-session goals.",
+        feedbackButton: "Create AI Feedback",
+        feedbackLoading: "Analyzing...",
+        feedbackLogin: "Log in to request AI feedback.",
+        feedbackNotReady: `Play at least ${MIN_FEEDBACK_HANDS} hands to enable feedback.`,
+        feedbackSource: "Source",
+        savedFeedback: "Saved feedback",
       };
+
+  async function handleRequestFeedback() {
+    if (!feedbackPayloadResult.eligible || !feedbackPayloadResult.payload) return;
+    setFeedbackState({ loading: true, error: null, response: null });
+    try {
+      const response = await requestPlayFeedback(feedbackPayloadResult.payload);
+      savePlayFeedbackResult({ payload: feedbackPayloadResult.payload, response });
+      setFeedbackState({ loading: false, error: null, response });
+    } catch (error) {
+      setFeedbackState({
+        loading: false,
+        error: error instanceof Error ? error.message : "feedback_failed",
+        response: null,
+      });
+    }
+  }
 
   return (
     <div className={`${embedded ? "bg-transparent" : "min-h-screen bg-slate-950"} px-4 py-6 text-slate-100`}>
@@ -221,6 +279,57 @@ export default function HandHistoryScreen({
             </div>
           </div>
         </div>
+
+        <section className="rounded-2xl border border-emerald-400/20 bg-emerald-950/20 p-4 text-sm text-slate-100">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="font-semibold text-white">{copy.feedbackTitle}</h2>
+              <p className="mt-1 text-slate-300/80">{copy.feedbackBody}</p>
+              <p className="mt-2 text-xs text-slate-400">
+                Hands: {feedbackPayloadResult.handCount} / Minimum: {MIN_FEEDBACK_HANDS}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleRequestFeedback}
+              disabled={
+                feedbackState.loading ||
+                !feedbackPayloadResult.eligible ||
+                !hasStoredFeedbackAuth()
+              }
+              className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-bold text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-300"
+            >
+              {feedbackState.loading ? copy.feedbackLoading : copy.feedbackButton}
+            </button>
+          </div>
+          {!hasStoredFeedbackAuth() && (
+            <p className="mt-3 rounded-xl border border-amber-300/20 bg-amber-300/10 p-3 text-amber-100">
+              {copy.feedbackLogin}
+            </p>
+          )}
+          {!feedbackPayloadResult.eligible && (
+            <p className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3 text-slate-300">
+              {copy.feedbackNotReady}
+            </p>
+          )}
+          {feedbackState.error && (
+            <p className="mt-3 rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-red-100">
+              {feedbackState.error}
+            </p>
+          )}
+          {(feedbackState.response || savedFeedback?.response) && (
+            <div className="mt-3 rounded-xl border border-white/10 bg-black/25 p-3">
+              <p className="mb-2 text-[11px] uppercase tracking-[0.25em] text-emerald-300">
+                {feedbackState.response
+                  ? `${copy.feedbackSource}: ${feedbackState.response.source ?? "-"}`
+                  : copy.savedFeedback}
+              </p>
+              <p className="whitespace-pre-wrap">
+                {(feedbackState.response ?? savedFeedback.response).adviceJa}
+              </p>
+            </div>
+          )}
+        </section>
 
         <div className="space-y-4">
           {filteredRows.length === 0 && (

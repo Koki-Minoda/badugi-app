@@ -1,17 +1,47 @@
 import os  # [tournament-feedback]
+import json
 from types import SimpleNamespace  # [tournament-feedback]
 
 os.environ.setdefault("BACKEND_DB_DRIVER", "sqlite")  # [tournament-feedback]
 os.environ.setdefault("BACKEND_DB_NAME", ":memory:")  # [tournament-feedback]
 
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
+from app.core.db import get_db
 from app.dependencies.auth import get_current_user  # [tournament-feedback]
 from app.main import app
 from app.api import analysis_chatgpt
+from app.models import Base, PlayFeedbackResult
 
 
 client = TestClient(app)
+feedback_engine = create_engine(
+    "sqlite+pysqlite:///:memory:",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
+FeedbackSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=feedback_engine)
+Base.metadata.create_all(bind=feedback_engine)
+
+
+def override_feedback_db():
+    db = FeedbackSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+app.dependency_overrides[get_db] = override_feedback_db
+
+
+def clear_feedback_results():
+    with FeedbackSessionLocal() as db:
+        db.query(PlayFeedbackResult).delete()
+        db.commit()
 
 
 def auth_headers():
@@ -103,6 +133,7 @@ def test_advice_endpoint_requires_auth():
 
 def test_play_feedback_endpoint_returns_sanitized_payload(monkeypatch):
     captured = {}
+    clear_feedback_results()
 
     def fake_get_play_feedback_advice(session_payload):
         captured["session_payload"] = session_payload
@@ -131,13 +162,30 @@ def test_play_feedback_endpoint_returns_sanitized_payload(monkeypatch):
     assert body["source"] == "openai"
     assert body["acceptedHandCount"] == 30
     assert body["piiRemoved"] is True
+    assert body["feedbackId"] is not None
+    assert body["sessionKey"] == "cash:cash:mixed"
+    assert body["storedAt"]
     assert captured["session_payload"]["promptContext"]["userName"] == "[redacted]"
     assert captured["session_payload"]["summary"]["topIssues"][0]["email"] == "[redacted]"
     assert captured["session_payload"]["summary"]["topIssues"][0]["displayName"] == "[redacted]"
 
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=2, name="demo")
+    try:
+        results_response = client.get(
+            "/api/analysis/play-feedback/results?session_key=cash:cash:mixed",
+            headers=auth_headers(),
+        )
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+    assert results_response.status_code == 200
+    results = results_response.json()
+    assert len(results) == 1
+    assert results[0]["response"]["adviceJa"] == "セッション助言"
+
 
 def test_play_feedback_endpoint_requires_minimum_hands(monkeypatch):
     analysis_chatgpt._feedback_rate_limit.clear()
+    clear_feedback_results()
     app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=3, name="demo")
     try:
         response = client.post(
@@ -158,6 +206,7 @@ def test_play_feedback_endpoint_rate_limits(monkeypatch):
         lambda session_payload: {"adviceJa": "ok", "adviceEn": "ok"},
     )
     analysis_chatgpt._feedback_rate_limit.clear()
+    clear_feedback_results()
     app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=4, name="demo")
     try:
         statuses = [
@@ -174,3 +223,48 @@ def test_play_feedback_endpoint_rate_limits(monkeypatch):
 
     assert statuses[:-1] == [200] * analysis_chatgpt.RATE_LIMIT_MAX_REQUESTS
     assert statuses[-1] == 429
+
+
+def test_play_feedback_accepts_standard_openai_api_key(monkeypatch):
+    from app.core import openai_client
+
+    captured = {}
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return json.dumps(
+                {
+                    "choices": [
+                        {
+                            "message": {
+                                "content": json.dumps(
+                                    {"adviceJa": "実キー経路", "adviceEn": "real key path"},
+                                    ensure_ascii=False,
+                                )
+                            }
+                        }
+                    ]
+                },
+                ensure_ascii=False,
+            ).encode("utf-8")
+
+    def fake_urlopen(request, timeout):
+        captured["authorization"] = request.headers.get("Authorization")
+        captured["timeout"] = timeout
+        return FakeResponse()
+
+    monkeypatch.delenv("MGX_OPENAI_API_KEY", raising=False)
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+
+    response = openai_client.get_play_feedback_advice(sample_play_feedback())
+
+    assert response["adviceJa"] == "実キー経路"
+    assert captured["authorization"] == "Bearer test-key"
+    assert captured["timeout"] == 25

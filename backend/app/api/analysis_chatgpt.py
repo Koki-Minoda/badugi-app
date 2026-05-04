@@ -5,11 +5,19 @@ import time
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
+from ..core.db import get_db
 from ..core.openai_client import get_chatgpt_advice, get_play_feedback_advice  # [tournament-feedback]
 from ..dependencies.auth import get_current_user
-from ..models import User
-from ..schemas.analysis import PlayFeedbackPayload, PlayFeedbackResponse, WorstSpotPayload
+from ..models import PlayFeedbackResult, User
+from ..schemas.analysis import (
+    PlayFeedbackPayload,
+    PlayFeedbackResponse,
+    PlayFeedbackStoredResult,
+    WorstSpotPayload,
+)
 
 
 router = APIRouter()  # [tournament-feedback]
@@ -67,6 +75,26 @@ def _scrub_pii(value: Any) -> Any:
     return value
 
 
+def _build_feedback_session_key(payload: PlayFeedbackPayload) -> str:
+    tournament = payload.summary.model_dump().get("tournament") or {}
+    tournament_id = tournament.get("tournamentId") if isinstance(tournament, dict) else None
+    return ":".join(
+        [
+            payload.mode,
+            str(tournament_id or "cash"),
+            payload.variantScope or "mixed",
+        ]
+    )
+
+
+def _extract_tournament_id(payload: PlayFeedbackPayload) -> str | None:
+    tournament = payload.summary.model_dump().get("tournament") or {}
+    if isinstance(tournament, dict):
+        value = tournament.get("tournamentId")
+        return str(value) if value else None
+    return None
+
+
 @router.post("/advice")
 def request_tournament_advice(
     payload: WorstSpotPayload,
@@ -83,6 +111,7 @@ def request_tournament_advice(
 def request_play_feedback(
     payload: PlayFeedbackPayload,
     current_user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
 ) -> PlayFeedbackResponse:
     """Return ChatGPT-style feedback for a 30+ hand cash or tournament session."""
 
@@ -99,11 +128,72 @@ def request_play_feedback(
     if advice.get("adviceJa") and advice.get("adviceEn"):
         fallback_prefix = "セッション解析は受け付けました。"
         source = "fallback" if advice["adviceJa"].startswith(fallback_prefix) else "openai"
-
-    return PlayFeedbackResponse(
+    response_payload = PlayFeedbackResponse(
         adviceJa=advice.get("adviceJa", ""),
         adviceEn=advice.get("adviceEn", ""),
         source=source,
         acceptedHandCount=payload.handCount,
         piiRemoved=True,
     )
+    session_key = _build_feedback_session_key(payload)
+    result = PlayFeedbackResult(
+        user_id=getattr(current_user, "id", None),
+        session_key=session_key,
+        mode=payload.mode,
+        variant_scope=payload.variantScope,
+        tournament_id=_extract_tournament_id(payload),
+        hand_count=payload.handCount,
+        source=source,
+        pii_removed=True,
+        payload=sanitized,
+        response=response_payload.model_dump(exclude_none=True),
+    )
+    try:
+        db.add(result)
+        db.commit()
+        db.refresh(result)
+        response_payload.feedbackId = result.id
+        response_payload.sessionKey = session_key
+        response_payload.storedAt = result.created_at.isoformat() if result.created_at else None
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Failed to store play feedback result.",
+        ) from exc
+    return response_payload
+
+
+@router.get("/play-feedback/results", response_model=list[PlayFeedbackStoredResult])
+def list_play_feedback_results(
+    session_key: str | None = None,
+    limit: int = 20,
+    current_user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> list[PlayFeedbackStoredResult]:
+    """Return stored feedback results for the authenticated user."""
+
+    safe_limit = max(1, min(limit, 100))
+    query = (
+        db.query(PlayFeedbackResult)
+        .filter(PlayFeedbackResult.user_id == getattr(current_user, "id", None))
+        .order_by(PlayFeedbackResult.created_at.desc(), PlayFeedbackResult.id.desc())
+    )
+    if session_key:
+        query = query.filter(PlayFeedbackResult.session_key == session_key)
+    rows = query.limit(safe_limit).all()
+    return [
+        PlayFeedbackStoredResult(
+            id=row.id,
+            sessionKey=row.session_key,
+            mode=row.mode,
+            variantScope=row.variant_scope,
+            tournamentId=row.tournament_id,
+            handCount=row.hand_count,
+            source=row.source,
+            piiRemoved=row.pii_removed,
+            response=row.response,
+            createdAt=row.created_at.isoformat() if row.created_at else None,
+        )
+        for row in rows
+    ]

@@ -50,6 +50,8 @@ import {
 } from "../games/badugi/flow/betRoundUtils.js";
 import BadugiGameController from "../games/badugi/BadugiGameController.js";
 import NLHGameController from "../games/nlh/NLHGameController.js";
+import BigOGameController from "../games/plo/BigOGameController.js";
+import FiveCardPLOGameController from "../games/plo/FiveCardPLOGameController.js";
 import PLOGameController from "../games/plo/PLOGameController.js";
 import { GAME_VARIANTS } from "../games/core/variants.js";
 import {
@@ -897,7 +899,9 @@ const SAFE_RESET_PHASE = "IDLE";
     const normalizedVariant = normalizeAppVariantId(gameVariant);
     const usesBoardController =
       normalizedVariant === APP_VARIANT_IDS.NLH ||
-      normalizedVariant === APP_VARIANT_IDS.PLO;
+      normalizedVariant === APP_VARIANT_IDS.PLO ||
+      normalizedVariant === APP_VARIANT_IDS.BIG_O ||
+      normalizedVariant === APP_VARIANT_IDS.FIVE_CARD_PLO;
     if (
       mode === "tournament-mtt" ||
       usesBoardController ||
@@ -1025,7 +1029,9 @@ const SAFE_RESET_PHASE = "IDLE";
   const isSingleTableBoardGame =
     mode !== "tournament-mtt" &&
     (normalizedGameVariant === APP_VARIANT_IDS.NLH ||
-      normalizedGameVariant === APP_VARIANT_IDS.PLO);
+      normalizedGameVariant === APP_VARIANT_IDS.PLO ||
+      normalizedGameVariant === APP_VARIANT_IDS.BIG_O ||
+      normalizedGameVariant === APP_VARIANT_IDS.FIVE_CARD_PLO);
   const isControllerDrivenSingleTable =
     isSingleTableBadugi || isSingleTableDrawLowball || isSingleTableBoardGame;
   const isMobileDevice = deviceProfile.isMobile;
@@ -1666,6 +1672,14 @@ const SAFE_RESET_PHASE = "IDLE";
         gameControllerRef.current = new PLOGameController({
           tableConfig: buildNlhTableConfig(),
         });
+      } else if (variantId === APP_VARIANT_IDS.BIG_O) {
+        gameControllerRef.current = new BigOGameController({
+          tableConfig: buildNlhTableConfig(),
+        });
+      } else if (variantId === APP_VARIANT_IDS.FIVE_CARD_PLO) {
+        gameControllerRef.current = new FiveCardPLOGameController({
+          tableConfig: buildNlhTableConfig(),
+        });
       } else if (isDrawLowballAppVariant(variantId)) {
         gameControllerRef.current = GAME_VARIANTS[variantId]?.controllerFactory?.({
           seatConfig: Array.isArray(seatConfigRef.current)
@@ -1692,7 +1706,10 @@ const SAFE_RESET_PHASE = "IDLE";
         evaluateHand: evaluateBadugi,
       });
     } else if (
-      (variantId === APP_VARIANT_IDS.NLH || variantId === APP_VARIANT_IDS.PLO) &&
+      (variantId === APP_VARIANT_IDS.NLH ||
+        variantId === APP_VARIANT_IDS.PLO ||
+        variantId === APP_VARIANT_IDS.BIG_O ||
+        variantId === APP_VARIANT_IDS.FIVE_CARD_PLO) &&
       typeof gameControllerRef.current.updateTableConfig === "function"
     ) {
       gameControllerRef.current.updateTableConfig(buildNlhTableConfig());
@@ -1716,7 +1733,11 @@ const SAFE_RESET_PHASE = "IDLE";
     const normalizedVariant = normalizeAppVariantId(gameVariant);
     if (normalizedVariant === APP_VARIANT_IDS.NLH) {
       ensureNLHUIAdapterRegistered();
-    } else if (normalizedVariant === APP_VARIANT_IDS.PLO) {
+    } else if (
+      normalizedVariant === APP_VARIANT_IDS.PLO ||
+      normalizedVariant === APP_VARIANT_IDS.BIG_O ||
+      normalizedVariant === APP_VARIANT_IDS.FIVE_CARD_PLO
+    ) {
       ensurePLOUIAdapterRegistered();
     } else if (isDrawLowballAppVariant(normalizedVariant)) {
       ensureDrawLowballUIAdaptersRegistered();

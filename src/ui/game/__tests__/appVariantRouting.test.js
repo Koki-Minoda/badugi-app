@@ -17,6 +17,8 @@ describe("appVariantRouting", () => {
     expect(normalizeAppVariantId("S02")).toBe(APP_VARIANT_IDS.S02);
     expect(normalizeAppVariantId("plo")).toBe(APP_VARIANT_IDS.PLO);
     expect(normalizeAppVariantId("pot_limit_omaha")).toBe(APP_VARIANT_IDS.PLO);
+    expect(normalizeAppVariantId("big-o")).toBe(APP_VARIANT_IDS.BIG_O);
+    expect(normalizeAppVariantId("5-card-plo")).toBe(APP_VARIANT_IDS.FIVE_CARD_PLO);
     expect(normalizeAppVariantId("unknown")).toBe(APP_VARIANT_IDS.BADUGI);
   });
 
@@ -28,5 +30,7 @@ describe("appVariantRouting", () => {
     expect(isControllerBackedAppVariant("D02")).toBe(true);
     expect(isControllerBackedAppVariant("nlh")).toBe(true);
     expect(isControllerBackedAppVariant("plo")).toBe(true);
+    expect(isControllerBackedAppVariant("big_o")).toBe(true);
+    expect(isControllerBackedAppVariant("five_card_plo")).toBe(true);
   });
 });

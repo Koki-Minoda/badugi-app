@@ -53,7 +53,7 @@ describe("VariantSelectModal", () => {
     expect(handleSelect).toHaveBeenCalledWith("S02");
   });
 
-  it("allows PLO to be selected", () => {
+  it("allows Omaha family variants to be selected", () => {
     const handleSelect = vi.fn();
     render(<VariantSelectModal isOpen onClose={() => {}} onSelectVariant={handleSelect} />);
 
@@ -61,6 +61,12 @@ describe("VariantSelectModal", () => {
     expect(ploButton.disabled).toBe(false);
     fireEvent.click(ploButton);
     expect(handleSelect).toHaveBeenCalledWith("plo");
+
+    fireEvent.click(screen.getByRole("button", { name: /big-o/i }));
+    expect(handleSelect).toHaveBeenCalledWith("big_o");
+
+    fireEvent.click(screen.getByRole("button", { name: /5-card plo/i }));
+    expect(handleSelect).toHaveBeenCalledWith("five_card_plo");
   });
 
   it("does not render when closed", () => {

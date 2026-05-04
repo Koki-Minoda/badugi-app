@@ -8,11 +8,12 @@ export class PLOGameController extends NLHGameController {
       ...options,
       gameDefinition: options.gameDefinition ?? PLOGameDefinition,
     });
+    this.holeCardCount = options.holeCardCount ?? 4;
   }
 
   dealHoleCards(players) {
     const activeSeats = players.filter((player) => !player.folded && !player.seatOut);
-    for (let round = 0; round < 4; round += 1) {
+    for (let round = 0; round < this.holeCardCount; round += 1) {
       activeSeats.forEach((player) => {
         const [card] = this.drawCards(1);
         if (card) {
@@ -61,7 +62,7 @@ export class PLOGameController extends NLHGameController {
         !player.folded &&
         !player.seatOut &&
         Array.isArray(player.holeCards) &&
-        player.holeCards.length === 4,
+        player.holeCards.length >= this.holeCardCount,
     );
     const board = [...this.state.boardCards];
     const evaluations = contenders.map((player) => ({

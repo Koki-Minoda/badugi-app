@@ -24,5 +24,11 @@ describe("GameRegistry", () => {
       mustUseHole: 2,
       mustUseBoard: 3,
     });
+    expect(GameRegistry.get("big_o")?.label).toBe("Big-O");
+    expect(GameRegistry.get("five_card_plo")?.handStructure).toMatchObject({
+      hole: 5,
+      mustUseHole: 2,
+      mustUseBoard: 3,
+    });
   });
 });

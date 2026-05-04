@@ -1754,8 +1754,12 @@ Draw RL test coverage:
         - 2026-05-04 実装: `PLOGameController` / `PLOGameDefinition` / `evaluatePloHand()` / PLO UI adapter registration を追加し、cash variant modalとGame SelectorからPLOを起動可能にした。showdown evaluatorはOmaha highの「hole exactly 2 + board exactly 3」をfixtureで固定し、controller側でPL上限をcapする。
         - 残TODO: pot-limit raise上限のUI表示、PLO専用hand history detail、PLO smokeをPlaywrightで追加する。
       - [ ] `BOARD-07` PLO8 (`B06`) を playable にする。Hi-Lo 8-or-better split evaluator / no-low時scoop / odd chip / side pot splitを実装する。
-      - [ ] `BOARD-08` Big-O (`B07`) を playable にする。5 hole Omaha high / exact two requirement / pot-limit bettingを実装する。
-      - [ ] `BOARD-09` 5-Card PLO (`B08`) を playable にする。Big-Oとの差分をhigh-onlyとして整理する。
+      - [x] `BOARD-08` Big-O (`B07`) を cash game route に接続する。5 hole Omaha high / exact two requirement / pot-limit bettingを実装する。
+        - 2026-05-04 実装: `BigOGameController` / `BigOGameDefinition` を追加し、5枚手札Omaha highとしてApp routing / Game Selector / variant modalへ接続。現catalogの `evaluators: ["high"]` に合わせ、Hi-Lo splitは未接続。
+        - 残TODO: Big-OをHi-Lo版として扱う場合はPLO8/Big-O split evaluatorとodd chipを別途実装する。
+      - [x] `BOARD-09` 5-Card PLO (`B08`) を cash game route に接続する。Big-Oとの差分をhigh-onlyとして整理する。
+        - 2026-05-04 実装: `FiveCardPLOGameController` / `FiveCardPLOGameDefinition` を追加。`evaluateFiveCardPloHand()` はPLO evaluatorを使い、5枚holeからexactly 2枚、boardからexactly 3枚を選ぶfixtureで固定。
+        - 残TODO: 5-Card PLO専用hand history detail、Playwright smoke、PL raise上限表示を追加する。
       - [ ] `BOARD-10` FLO8 (`B09`) を playable にする。fixed-limit Omaha Hi-Lo / split pot / cap表示を実装する。
     - Remaining 16+ game implementation roadmap:
       - [ ] `MIX-16-01` Badeucey TD (`D04`) を実装する。Badugi half + 2-7 half のsplit evaluator、draw UI、pot split表示を追加する。

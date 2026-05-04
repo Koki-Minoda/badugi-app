@@ -202,7 +202,9 @@
                      "five-card"
                  ],
         "priorityPhase":  2,
-        "description":  "Five-card Omaha (pot-limit)."
+        "description":  "Five-card Omaha (pot-limit).",
+        "status":  "live",
+        "engineKey":  "big_o"
     },
     {
         "id":  "B08",
@@ -230,7 +232,9 @@
                      "five-card"
                  ],
         "priorityPhase":  2,
-        "description":  "Five-card PLO high only."
+        "description":  "Five-card PLO high only.",
+        "status":  "live",
+        "engineKey":  "five_card_plo"
     },
     {
         "id":  "B09",

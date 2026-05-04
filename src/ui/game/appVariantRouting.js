@@ -2,6 +2,8 @@ export const APP_VARIANT_IDS = {
   BADUGI: "badugi",
   NLH: "nlh",
   PLO: "plo",
+  BIG_O: "big_o",
+  FIVE_CARD_PLO: "five_card_plo",
   D01: "deuce_to_seven_triple_draw",
   D02: "ace_to_five_triple_draw",
   S01: "deuce_to_seven_single_draw",
@@ -18,6 +20,13 @@ const VARIANT_ALIASES = new Map([
   ["pot_limit_omaha", APP_VARIANT_IDS.PLO],
   ["pot-limit-omaha", APP_VARIANT_IDS.PLO],
   ["omaha", APP_VARIANT_IDS.PLO],
+  ["big_o", APP_VARIANT_IDS.BIG_O],
+  ["big-o", APP_VARIANT_IDS.BIG_O],
+  ["bigo", APP_VARIANT_IDS.BIG_O],
+  ["five_card_plo", APP_VARIANT_IDS.FIVE_CARD_PLO],
+  ["five-card-plo", APP_VARIANT_IDS.FIVE_CARD_PLO],
+  ["5_card_plo", APP_VARIANT_IDS.FIVE_CARD_PLO],
+  ["5-card-plo", APP_VARIANT_IDS.FIVE_CARD_PLO],
   ["d01", APP_VARIANT_IDS.D01],
   ["27td", APP_VARIANT_IDS.D01],
   ["2-7-triple-draw", APP_VARIANT_IDS.D01],
@@ -59,6 +68,8 @@ export function isControllerBackedAppVariant(variantId) {
     normalized === APP_VARIANT_IDS.BADUGI ||
     normalized === APP_VARIANT_IDS.NLH ||
     normalized === APP_VARIANT_IDS.PLO ||
+    normalized === APP_VARIANT_IDS.BIG_O ||
+    normalized === APP_VARIANT_IDS.FIVE_CARD_PLO ||
     DRAW_LOWBALL_APP_VARIANTS.has(normalized)
   );
 }

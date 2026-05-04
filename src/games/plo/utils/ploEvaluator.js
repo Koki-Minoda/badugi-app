@@ -64,6 +64,10 @@ export function evaluatePloHand(input = {}) {
   };
 }
 
+export function evaluateFiveCardPloHand(input = {}) {
+  return evaluatePloHand(input);
+}
+
 export function comparePloHands(aEval, bEval) {
   return compareNlhHands(aEval, bEval);
 }

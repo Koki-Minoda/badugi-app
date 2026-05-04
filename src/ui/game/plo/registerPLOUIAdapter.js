@@ -12,6 +12,7 @@ export function ensurePLOUIAdapterRegistered(options = {}) {
   const ids = [
     APP_VARIANT_IDS.PLO,
     APP_VARIANT_IDS.PLO8,
+    APP_VARIANT_IDS.FLO8,
     APP_VARIANT_IDS.BIG_O,
     APP_VARIANT_IDS.FIVE_CARD_PLO,
   ];

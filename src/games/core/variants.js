@@ -17,10 +17,13 @@ import FLHGameController from "../nlh/FLHGameController.js";
 import NLHGameController from "../nlh/NLHGameController.js";
 import BigOGameController from "../plo/BigOGameController.js";
 import FiveCardPLOGameController from "../plo/FiveCardPLOGameController.js";
+import FLO8GameController from "../plo/FLO8GameController.js";
 import PLO8GameController from "../plo/PLO8GameController.js";
 import PLOGameController from "../plo/PLOGameController.js";
 import StudGameController, {
   RazzGameController,
+  RazzduceyGameController,
+  RazzdugiGameController,
   Stud8GameController,
 } from "../stud/StudGameController.js";
 
@@ -66,6 +69,13 @@ export const GAME_VARIANTS = {
     controllerFactory: (config = {}) =>
       new PLO8GameController({ tableConfig: config.tableConfig ?? config }),
   },
+  flo8: {
+    id: "flo8",
+    variantId: "B09",
+    label: "FLO8",
+    controllerFactory: (config = {}) =>
+      new FLO8GameController({ tableConfig: config.tableConfig ?? config }),
+  },
   big_o: {
     id: "big_o",
     variantId: "B07",
@@ -100,6 +110,20 @@ export const GAME_VARIANTS = {
     label: "Razz",
     controllerFactory: (config = {}) =>
       new RazzGameController({ tableConfig: config.tableConfig ?? config }),
+  },
+  razzdugi: {
+    id: "razzdugi",
+    variantId: "ST4",
+    label: "Razzdugi",
+    controllerFactory: (config = {}) =>
+      new RazzdugiGameController({ tableConfig: config.tableConfig ?? config }),
+  },
+  razzducey: {
+    id: "razzducey",
+    variantId: "ST5",
+    label: "Razzducey",
+    controllerFactory: (config = {}) =>
+      new RazzduceyGameController({ tableConfig: config.tableConfig ?? config }),
   },
   deuce_to_seven_triple_draw: {
     id: "deuce_to_seven_triple_draw",

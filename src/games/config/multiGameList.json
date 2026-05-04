@@ -3,7 +3,7 @@
         "id":  "B01",
         "name":  "NL Hold\u0027em",
         "category":  "board",
-        "holeCards":  2,
+        "holeCards":  4,
         "drawRounds":  0,
         "board":  {
                       "type":  "flop-turn-river",
@@ -267,7 +267,9 @@
                      "hi-lo"
                  ],
         "priorityPhase":  2,
-        "description":  "Fixed-limit Hold\u0027em Hi-Lo."
+        "description":  "Fixed-limit Omaha Hi-Lo.",
+        "status":  "live",
+        "engineKey":  "flo8"
     },
     {
         "id":  "D01",
@@ -863,7 +865,9 @@
                      "razz",
                      "badugi"
                  ],
-        "priorityPhase":  4
+        "priorityPhase":  4,
+        "status":  "live",
+        "engineKey":  "razzdugi"
     },
     {
         "id":  "ST5",
@@ -894,7 +898,9 @@
                      "razz",
                      "split"
                  ],
-        "priorityPhase":  4
+        "priorityPhase":  4,
+        "status":  "live",
+        "engineKey":  "razzducey"
     },
     {
         "id":  "ST6",

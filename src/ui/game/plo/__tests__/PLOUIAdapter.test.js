@@ -9,6 +9,7 @@ describe("PLOUIAdapter registration", () => {
 
     expect(getGameUIAdapter(APP_VARIANT_IDS.PLO)).toBe(adapter);
     expect(getGameUIAdapter(APP_VARIANT_IDS.PLO8)).toBe(adapter);
+    expect(getGameUIAdapter(APP_VARIANT_IDS.FLO8)).toBe(adapter);
     expect(getGameUIAdapter(APP_VARIANT_IDS.BIG_O)).toBe(adapter);
     expect(getGameUIAdapter(APP_VARIANT_IDS.FIVE_CARD_PLO)).toBe(adapter);
     expect(adapter.formatStreetLabel("FLOP")).toBe("Flop");

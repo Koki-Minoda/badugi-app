@@ -55,10 +55,13 @@ import FLHGameController from "../games/nlh/FLHGameController.js";
 import NLHGameController from "../games/nlh/NLHGameController.js";
 import BigOGameController from "../games/plo/BigOGameController.js";
 import FiveCardPLOGameController from "../games/plo/FiveCardPLOGameController.js";
+import FLO8GameController from "../games/plo/FLO8GameController.js";
 import PLO8GameController from "../games/plo/PLO8GameController.js";
 import PLOGameController from "../games/plo/PLOGameController.js";
 import StudGameController, {
   RazzGameController,
+  RazzduceyGameController,
+  RazzdugiGameController,
   Stud8GameController,
 } from "../games/stud/StudGameController.js";
 import { GAME_VARIANTS } from "../games/core/variants.js";
@@ -1617,6 +1620,10 @@ const SAFE_RESET_PHASE = "IDLE";
         gameControllerRef.current = new PLO8GameController({
           tableConfig: buildNlhTableConfig(),
         });
+      } else if (variantId === APP_VARIANT_IDS.FLO8) {
+        gameControllerRef.current = new FLO8GameController({
+          tableConfig: buildNlhTableConfig(),
+        });
       } else if (variantId === APP_VARIANT_IDS.BIG_O) {
         gameControllerRef.current = new BigOGameController({
           tableConfig: buildNlhTableConfig(),
@@ -1640,6 +1647,14 @@ const SAFE_RESET_PHASE = "IDLE";
         });
       } else if (variantId === APP_VARIANT_IDS.RAZZ) {
         gameControllerRef.current = new RazzGameController({
+          tableConfig: buildNlhTableConfig(),
+        });
+      } else if (variantId === APP_VARIANT_IDS.RAZZDUGI) {
+        gameControllerRef.current = new RazzdugiGameController({
+          tableConfig: buildNlhTableConfig(),
+        });
+      } else if (variantId === APP_VARIANT_IDS.RAZZDUCEY) {
+        gameControllerRef.current = new RazzduceyGameController({
           tableConfig: buildNlhTableConfig(),
         });
       } else if (isDrawLowballAppVariant(variantId)) {
@@ -1784,6 +1799,7 @@ const SAFE_RESET_PHASE = "IDLE";
     } else if (
       normalizedVariant === APP_VARIANT_IDS.PLO ||
       normalizedVariant === APP_VARIANT_IDS.PLO8 ||
+      normalizedVariant === APP_VARIANT_IDS.FLO8 ||
       normalizedVariant === APP_VARIANT_IDS.BIG_O ||
       normalizedVariant === APP_VARIANT_IDS.FIVE_CARD_PLO
     ) {

@@ -1,5 +1,6 @@
 import { evaluateHighHand } from "../evaluators/high.js";
 import { evaluateLowHand } from "../evaluators/low.js";
+import { evaluateBadugiHand } from "../evaluators/badugi.js";
 import { DeckManager } from "../badugi/utils/deck.js";
 import { applyChips } from "../core/applyChips.js";
 import {
@@ -12,6 +13,8 @@ import {
 import StudGameDefinition from "./StudGameDefinition.js";
 import Stud8GameDefinition from "./Stud8GameDefinition.js";
 import RazzGameDefinition from "./RazzGameDefinition.js";
+import RazzdugiGameDefinition from "./RazzdugiGameDefinition.js";
+import RazzduceyGameDefinition from "./RazzduceyGameDefinition.js";
 
 function clonePlayer(player) {
   if (!player) return player;
@@ -332,6 +335,15 @@ export class StudGameController {
       }),
     })).filter((entry) => this.variant !== "stud8" || entry.evaluation?.qualifies);
     const singleEvaluations = this.variant === "razz" ? lowEvaluations : highEvaluations;
+    const badugiEvaluations = contenders.map((player) => ({
+      player,
+      evaluation: evaluateBadugiHand({ cards: player.holeCards }),
+    }));
+    const splitLowType = this.variant === "razzducey" ? "27" : "A5";
+    const splitLowEvaluations = contenders.map((player) => ({
+      player,
+      evaluation: evaluateLowHand({ cards: player.holeCards, lowType: splitLowType }),
+    }));
     const resolvedPot = totalPot ?? this.calculatePot();
     const contributionPots = buildContributionPots(this.state.players);
     const potsToResolve = contributionPots.length
@@ -366,6 +378,29 @@ export class StudGameController {
           lowWinners: lowPayouts.map((winner) => ({ seatIndex: winner.player.seatIndex, payout: winner.payout, evaluation: winner.evaluation })),
         };
       }
+      if (this.variant === "razzdugi" || this.variant === "razzducey") {
+        const badugiAmount = Math.ceil(pot.amount / 2);
+        const lowAmount = pot.amount - badugiAmount;
+        const badugiPayouts = resolveEvaluationPot({
+          amount: badugiAmount,
+          eligibleSeatIndexes: pot.eligibleSeatIndexes,
+          evaluations: badugiEvaluations,
+          compareEvaluations: compareEval,
+        });
+        const lowPayouts = resolveEvaluationPot({
+          amount: lowAmount,
+          eligibleSeatIndexes: pot.eligibleSeatIndexes,
+          evaluations: splitLowEvaluations,
+          compareEvaluations: compareEval,
+        });
+        allPayouts.push(...badugiPayouts, ...lowPayouts);
+        return {
+          potIndex: pot.potIndex ?? potIndex,
+          amount: pot.amount,
+          badugiWinners: badugiPayouts.map((winner) => ({ seatIndex: winner.player.seatIndex, payout: winner.payout, evaluation: winner.evaluation })),
+          lowWinners: lowPayouts.map((winner) => ({ seatIndex: winner.player.seatIndex, payout: winner.payout, evaluation: winner.evaluation })),
+        };
+      }
       const payouts = resolveEvaluationPot({
         amount: pot.amount,
         eligibleSeatIndexes: pot.eligibleSeatIndexes,
@@ -386,7 +421,11 @@ export class StudGameController {
       totalPot: resolvedPot,
       winners: summarizePayouts(allPayouts),
       potDetails,
-      splitMode: this.variant === "stud8" ? "hiLo" : "single",
+      splitMode: this.variant === "stud8"
+        ? "hiLo"
+        : this.variant === "razzdugi" || this.variant === "razzducey"
+          ? "component"
+          : "single",
     };
     return this.state.lastHandResult;
   }
@@ -417,6 +456,18 @@ export class Stud8GameController extends StudGameController {
 export class RazzGameController extends StudGameController {
   constructor(options = {}) {
     super({ ...options, gameDefinition: options.gameDefinition ?? RazzGameDefinition, variant: "razz" });
+  }
+}
+
+export class RazzdugiGameController extends StudGameController {
+  constructor(options = {}) {
+    super({ ...options, gameDefinition: options.gameDefinition ?? RazzdugiGameDefinition, variant: "razzdugi" });
+  }
+}
+
+export class RazzduceyGameController extends StudGameController {
+  constructor(options = {}) {
+    super({ ...options, gameDefinition: options.gameDefinition ?? RazzduceyGameDefinition, variant: "razzducey" });
   }
 }
 

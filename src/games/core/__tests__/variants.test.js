@@ -5,9 +5,12 @@ describe("core controller variant registry", () => {
   it("registers playable draw-family controller factories", () => {
     expect(GAME_VARIANTS.flh?.variantId).toBe("B02");
     expect(GAME_VARIANTS.plo8?.variantId).toBe("B06");
+    expect(GAME_VARIANTS.flo8?.variantId).toBe("B09");
     expect(GAME_VARIANTS.stud?.variantId).toBe("ST1");
     expect(GAME_VARIANTS.stud8?.variantId).toBe("ST2");
     expect(GAME_VARIANTS.razz?.variantId).toBe("ST3");
+    expect(GAME_VARIANTS.razzdugi?.variantId).toBe("ST4");
+    expect(GAME_VARIANTS.razzducey?.variantId).toBe("ST5");
     expect(GAME_VARIANTS.deuce_to_seven_triple_draw?.variantId).toBe("D01");
     expect(GAME_VARIANTS.ace_to_five_triple_draw?.variantId).toBe("D02");
     expect(GAME_VARIANTS.deuce_to_seven_single_draw?.variantId).toBe("S01");

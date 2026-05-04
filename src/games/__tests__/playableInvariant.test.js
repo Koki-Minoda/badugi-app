@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import { FLHGameController } from "../nlh/FLHGameController.js";
 import { NLHGameController } from "../nlh/NLHGameController.js";
 import { PLO8GameController } from "../plo/PLO8GameController.js";
+import { FLO8GameController } from "../plo/FLO8GameController.js";
 import { PLOGameController } from "../plo/PLOGameController.js";
 import StudGameController, {
   RazzGameController,
+  RazzduceyGameController,
+  RazzdugiGameController,
   Stud8GameController,
 } from "../stud/StudGameController.js";
 
@@ -87,9 +90,12 @@ describe("playable invariant smoke", () => {
     ["flh", FLHGameController],
     ["plo", PLOGameController],
     ["plo8", PLO8GameController],
+    ["flo8", FLO8GameController],
     ["stud", StudGameController],
     ["stud8", Stud8GameController],
     ["razz", RazzGameController],
+    ["razzdugi", RazzdugiGameController],
+    ["razzducey", RazzduceyGameController],
   ];
 
   it.each(cases)("%s completes a hand without broken actors or chip drift", (_name, Controller) => {

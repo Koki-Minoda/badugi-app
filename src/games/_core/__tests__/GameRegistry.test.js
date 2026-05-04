@@ -21,6 +21,7 @@ describe("GameRegistry", () => {
     expect(GameRegistry.get("flh")?.label).toBe("Fixed-Limit Hold'em");
     expect(GameRegistry.get("plo")?.label).toBe("Pot-Limit Omaha");
     expect(GameRegistry.get("plo8")?.label).toBe("PLO8");
+    expect(GameRegistry.get("flo8")?.label).toBe("FLO8");
     expect(GameRegistry.get("plo")?.handStructure).toMatchObject({
       hole: 4,
       mustUseHole: 2,
@@ -42,5 +43,7 @@ describe("GameRegistry", () => {
     expect(GameRegistry.get("stud")?.label).toBe("Stud");
     expect(GameRegistry.get("stud8")?.label).toBe("Stud 8");
     expect(GameRegistry.get("razz")?.label).toBe("Razz");
+    expect(GameRegistry.get("razzdugi")?.label).toBe("Razzdugi");
+    expect(GameRegistry.get("razzducey")?.label).toBe("Razzducey");
   });
 });

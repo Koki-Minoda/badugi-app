@@ -4,9 +4,12 @@ import FLHGameDefinition from "../nlh/FLHGameDefinition.js";
 import NLHGameDefinition from "../nlh/NLHGameDefinition.js";
 import BigOGameDefinition from "../plo/BigOGameDefinition.js";
 import FiveCardPLOGameDefinition from "../plo/FiveCardPLOGameDefinition.js";
+import FLO8GameDefinition from "../plo/FLO8GameDefinition.js";
 import PLO8GameDefinition from "../plo/PLO8GameDefinition.js";
 import PLOGameDefinition from "../plo/PLOGameDefinition.js";
 import RazzGameDefinition from "../stud/RazzGameDefinition.js";
+import RazzduceyGameDefinition from "../stud/RazzduceyGameDefinition.js";
+import RazzdugiGameDefinition from "../stud/RazzdugiGameDefinition.js";
 import Stud8GameDefinition from "../stud/Stud8GameDefinition.js";
 import StudGameDefinition from "../stud/StudGameDefinition.js";
 
@@ -47,9 +50,12 @@ registry.register(PLOGameDefinition);
 registry.register(PLO8GameDefinition);
 registry.register(BigOGameDefinition);
 registry.register(FiveCardPLOGameDefinition);
+registry.register(FLO8GameDefinition);
 registry.register(StudGameDefinition);
 registry.register(Stud8GameDefinition);
 registry.register(RazzGameDefinition);
+registry.register(RazzdugiGameDefinition);
+registry.register(RazzduceyGameDefinition);
 Object.values(DRAMAHA_DEFINITIONS).forEach((definition) => registry.register(definition));
 
 export default registry;

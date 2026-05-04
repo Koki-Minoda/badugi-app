@@ -18,6 +18,7 @@ describe("appVariantRouting", () => {
     expect(normalizeAppVariantId("B02")).toBe(APP_VARIANT_IDS.FLH);
     expect(normalizeAppVariantId("plo")).toBe(APP_VARIANT_IDS.PLO);
     expect(normalizeAppVariantId("PLO8")).toBe(APP_VARIANT_IDS.PLO8);
+    expect(normalizeAppVariantId("FLO8")).toBe(APP_VARIANT_IDS.FLO8);
     expect(normalizeAppVariantId("pot_limit_omaha")).toBe(APP_VARIANT_IDS.PLO);
     expect(normalizeAppVariantId("big-o")).toBe(APP_VARIANT_IDS.BIG_O);
     expect(normalizeAppVariantId("5-card-plo")).toBe(APP_VARIANT_IDS.FIVE_CARD_PLO);
@@ -30,6 +31,8 @@ describe("appVariantRouting", () => {
     expect(normalizeAppVariantId("ST1")).toBe(APP_VARIANT_IDS.STUD);
     expect(normalizeAppVariantId("ST2")).toBe(APP_VARIANT_IDS.STUD8);
     expect(normalizeAppVariantId("ST3")).toBe(APP_VARIANT_IDS.RAZZ);
+    expect(normalizeAppVariantId("ST4")).toBe(APP_VARIANT_IDS.RAZZDUGI);
+    expect(normalizeAppVariantId("ST5")).toBe(APP_VARIANT_IDS.RAZZDUCEY);
     expect(normalizeAppVariantId("unknown")).toBe(APP_VARIANT_IDS.BADUGI);
   });
 
@@ -43,11 +46,14 @@ describe("appVariantRouting", () => {
     expect(isControllerBackedAppVariant("flh")).toBe(true);
     expect(isControllerBackedAppVariant("plo")).toBe(true);
     expect(isControllerBackedAppVariant("plo8")).toBe(true);
+    expect(isControllerBackedAppVariant("flo8")).toBe(true);
     expect(isControllerBackedAppVariant("big_o")).toBe(true);
     expect(isControllerBackedAppVariant("five_card_plo")).toBe(true);
     expect(isControllerBackedAppVariant("dramaha")).toBe(true);
     expect(isControllerBackedAppVariant("dramaha_27")).toBe(true);
     expect(isControllerBackedAppVariant("stud")).toBe(true);
     expect(isControllerBackedAppVariant("razz")).toBe(true);
+    expect(isControllerBackedAppVariant("razzdugi")).toBe(true);
+    expect(isControllerBackedAppVariant("razzducey")).toBe(true);
   });
 });

@@ -59,6 +59,8 @@ describe("NLHUIAdapter", () => {
     expect(getGameUIAdapter(APP_VARIANT_IDS.STUD)).toBe(adapter);
     expect(getGameUIAdapter(APP_VARIANT_IDS.STUD8)).toBe(adapter);
     expect(getGameUIAdapter(APP_VARIANT_IDS.RAZZ)).toBe(adapter);
+    expect(getGameUIAdapter(APP_VARIANT_IDS.RAZZDUGI)).toBe(adapter);
+    expect(getGameUIAdapter(APP_VARIANT_IDS.RAZZDUCEY)).toBe(adapter);
   });
 
   it("builds seat views and controls", () => {

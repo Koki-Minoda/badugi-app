@@ -1747,13 +1747,17 @@ Draw RL test coverage:
       - [x] `BOARD-02` NL Hold'em (`B01`) を cash game route に接続する。hole 2 / community board / preflop-flop-turn-river / high evaluator / App board-controller bridge を含める。
         - 2026-05-04 確認: 既存 `NLHGameController` / `NLHUIAdapter` / high evaluator をApp routingへ接続済み。今回のPLO追加に合わせてGameRegistry上のNLH定義、board controller新規ハンド開始、board controllerアクション適用を再確認。
         - 残TODO: NLH専用hand history detail、side-pot表示のboard game smoke、mobile landscape実機確認を追加する。
-      - [ ] `BOARD-03` FL Hold'em (`B02`) を playable にする。fixed-limit cap / street別bet size / raise capの表示とテストを含める。
+      - [x] `BOARD-03` FL Hold'em (`B02`) を playable にする。fixed-limit cap / street別bet size / raise capの表示とテストを含める。
+        - 2026-05-04 実装: `FLHGameController` / `FLHGameDefinition` を追加し、fixed-limitのstreet別bet size（preflop/flop small bet、turn/river big bet）とraise capをNLH controller差分として実装。GameRegistry / App routing / NLH UI adapter / Game Selector catalogへ接続。
+        - 2026-05-04 確認: playable invariant smokeで broken actor / chip drift / hand completion を検証。
       - [ ] `BOARD-04` NL Super Hold'em (`B03`) を playable にする。3 hole cards / showdown時2枚選択またはbest two selection / discard requirement のUIと判定を実装する。
       - [ ] `BOARD-05` FL Super Hold'em (`B04`) を playable にする。Super Hold'em差分をfixed-limitへ適用する。
       - [x] `BOARD-06` Pot-Limit Omaha (`B05`) を cash game route に接続する。must-use-two evaluator / pot-limit raise cap / 4 hole cards / App board-controller bridge を含める。
         - 2026-05-04 実装: `PLOGameController` / `PLOGameDefinition` / `evaluatePloHand()` / PLO UI adapter registration を追加し、cash variant modalとGame SelectorからPLOを起動可能にした。showdown evaluatorはOmaha highの「hole exactly 2 + board exactly 3」をfixtureで固定し、controller側でPL上限をcapする。
         - 残TODO: pot-limit raise上限のUI表示、PLO専用hand history detail、PLO smokeをPlaywrightで追加する。
-      - [ ] `BOARD-07` PLO8 (`B06`) を playable にする。Hi-Lo 8-or-better split evaluator / no-low時scoop / odd chip / side pot splitを実装する。
+      - [x] `BOARD-07` PLO8 (`B06`) を playable にする。Hi-Lo 8-or-better split evaluator / no-low時scoop / odd chip / side pot splitを実装する。
+        - 2026-05-04 実装: `PLO8GameController` / `PLO8GameDefinition` を追加し、Omaha exactly-two high と A-5 8-or-better low を分離評価。low qualifying時はhi/lo split、no-low時はhigh scoop。GameRegistry / App routing / PLO UI adapter / Game Selector catalogへ接続。
+        - 2026-05-04 確認: PLO8専用テストで qualifying low split と no-low scoop を固定。playable invariant smokeで all-in short stack / broken actor / chip drift を検証。
       - [x] `BOARD-08` Big-O (`B07`) を cash game route に接続する。5 hole Omaha high / exact two requirement / pot-limit bettingを実装する。
         - 2026-05-04 実装: `BigOGameController` / `BigOGameDefinition` を追加し、5枚手札Omaha highとしてApp routing / Game Selector / variant modalへ接続。現catalogの `evaluators: ["high"]` に合わせ、Hi-Lo splitは未接続。
         - 残TODO: Big-OをHi-Lo版として扱う場合はPLO8/Big-O split evaluatorとodd chipを別途実装する。
@@ -1781,6 +1785,9 @@ Draw RL test coverage:
         - 実装範囲: 5枚hole、flop-only 3枚board、1 draw、final bet、showdownでboard half（Omaha exactly 2 + board exactly 3）とdraw half（High / 2-7 / A-5 / Zero / Hidugi / Badugi）を分割評価する。
         - 残TODO: Dramaha専用CPU discard strategy、split halfのUI詳細表示、odd chip ruleの運用仕様、Playwright smokeを追加する。
       - [ ] `MIX-16-16` Stud family (`ST1` Stud, `ST2` Stud 8, `ST3` Razz, `ST4` Razzdugi, `ST5` Razzducey, `ST6` 2-7 Razz) を段階実装する。street/deal visibility、bring-in/antes、stud evaluator、split variantsを別章で詳細化する。
+        - 2026-05-04 部分実装: `StudGameController` / `Stud8GameController` / `RazzGameController` と各GameDefinitionを追加し、ST1/ST2/ST3をplayable化。7枚配布、up/down card保持、fixed-limit street進行、Stud high / Stud8 hi-lo / Razz A-5 low showdownを実装。
+        - 2026-05-04 修正: anteをtotalInvestedには残しつつstreet betから分離。anteが`betThisStreet`に残ると全員checkしてもTHIRD streetから進まないため、startNewHand後にstreet betをresetする。
+        - 残TODO: Stud専用UIでup/down cardを明確に表示する、bring-in順序を実ルールに寄せる、ST4/ST5/ST6を追加する。
       - [x] `CHINESE-01` チャイポ / Chinese Poker / OFC の準備タスクを追加する。13枚配布、front/middle/back配置、royalty、foul判定、fantasyland、turn順の仕様を実装前提として整理する。
         - 2026-05-04 実装: `src/games/chinese/chinesePokerPreparation.js` に alias と実装要件を固定。現時点ではゲーム進行へ接続しない準備ファイルのみ。
       - [ ] `CHINESE-02` Chinese Poker / OFC の実ゲーム controller / layout UI / scorer / foul判定を実装する。
@@ -2151,7 +2158,7 @@ Draw RL test coverage:
 | `BUG-31` | Badugi draw UI | PC | fixed | DRAW中にカードを押しても反応しないように見える。Smart HUDがHero席でも開き、固定レイヤーがカード操作を邪魔することがある。またHeroのドロー順でない時も無反応に見える。 | Draw系/DramahaでもHero操作時にHUDが入力を塞がないことを確認する。 |
 | `BUG-32` | Smart HUD scope | PC / Mobile | fixed | HUD scope dropdown に Stud / Razz がなく、10-Game / Dealer's Choice の情報切替先が不足している。 | Stud/Razz実装時にvariant別stats集計へ接続する。 |
 | `BUG-33` | PC/Mobile layout separation | PC / Mobile | open | スマホ横画面対応がPC卓レイアウトへ影響しないことを継続確認する。 | PC desktop smoke と mobile landscape smoke を別々に維持する。 |
-| `BUG-34` | All-in / split pot flow | All | partial | AI後、side pot / split pot / odd chip / all-in skipped actor が誤るとゲーム進行停止や誤配当につながる。 | NLH/PLO/Dramahaはmain/side pot fixture追加済み。PLO8/FLO8/Stud8/Razzdugi/Razzduceyはplayable化時にhi/lo・split fixtureを追加する。 |
+| `BUG-34` | All-in / split pot flow | All | partial | AI後、side pot / split pot / odd chip / all-in skipped actor が誤るとゲーム進行停止や誤配当につながる。 | NLH/PLO/Dramahaはmain/side pot fixture追加済み。PLO8 split fixtureと7controller invariant smokeを追加済み。FLO8/Stud8複数side pot/Razzdugi/Razzduceyは後続。 |
 | `BUG-35` | Play feedback pipeline | All | planned | Cash / tournament の30ハンド以上の履歴から、良かった点/悪かった点/ROI/参加条件/仮説をまとめるAI feedback APIが未実装。 | 10-Game Beginner/Standard RL適用後にBadugi/2-7/A-5/Stud/Razz/NLH/PLOを対象にする。 |
 | `BUG-36` | All-in draw actor | Badugi / Draw | fixed | all-in後のCPU/Hero、またはall-in後にbusted seatが残った状態で、DRAWフェーズの交換対象が詰まりカード交換できなくなる。 | Badugiはactive all-in seatをDRAW可能、busted/seatOutはDRAW不可に分離。2-7/A-5 draw regressionも再実行する。 |
 
@@ -2163,7 +2170,9 @@ Draw RL test coverage:
 - [ ] `BUG-34` all-in / side pot / split pot / odd chip のcross-game fixtureを追加する。
   - 2026-05-04 対応中: `sidePotResolver` を追加し、投資額からmain/side potを構築、fold済みは受賞対象外、odd chipはseat順で安定配分する共通helperを追加。
   - 2026-05-04 対応中: NLH/PLO/Dramahaのshowdownにside pot resolverを接続し、3人all-inでmain pot / side pot 1 / side pot 2のwinnerが別になるfixtureを追加。
-  - 残: PLO8/FLO8/Stud8/Razzdugi/RazzduceyはGAME-ALL playable化時にhi/lo split、no-low scoop、component別side pot、odd chip fixtureを追加する。
+  - 2026-05-04 追加: `playableInvariant.test.js` を追加し、NLH / FLH / PLO / PLO8 / Stud / Stud8 / Razz が1handを完走し、broken actor、all-in actorへの誤ターン、chip drift、negative stackを出さないことを横断検証する。
+  - 2026-05-04 追加: PLO8のqualifying low split / no-low high scoop fixtureを追加。
+  - 残: FLO8/Razzdugi/RazzduceyはGAME-ALL playable化時にhi/lo split、component別side pot、odd chip fixtureを追加する。Stud8はhi/lo smoke済みだが、複数side potを伴うhi/lo fixtureを追加する。
 - [ ] `BUG-35` Cash / tournament のプレイフィードバック仕様とAPIを実装する。
 - [x] `BUG-36` all-in後のDRAW停止を修正する。
   - 2026-05-04 対応: `isSeatEligibleForDraw` はcurrent handでactiveなall-in seatを交換対象に残し、BETだけall-inを除外するように整理。
@@ -2173,7 +2182,10 @@ Draw RL test coverage:
 
 ### 16.5 Full Game Implementation / RL / Feedback Order
 
-- [ ] `GAME-ALL-01` 10-Gameで使う未実装ゲームを先に playable にする: FLH (`B02`), PLO8 (`B06`), Stud (`ST1`), Stud8 (`ST2`), Razz (`ST3`)。
+- [x] `GAME-ALL-01` 10-Gameで使う未実装ゲームを先に playable にする: FLH (`B02`), PLO8 (`B06`), Stud (`ST1`), Stud8 (`ST2`), Razz (`ST3`)。
+  - 2026-05-04 実装: FLH / PLO8 / Stud / Stud8 / Razz の controller / definition / registry / App routing / UI adapter / Game Selector catalog を追加。
+  - 2026-05-04 テスト: playable invariant smokeで5種を含む7controllerを横断検証。PLO8専用split fixtureを追加。
+  - 残TODO: Stud系はplayable最小実装。bring-in順序、up/down card専用UI、Stud8複数side-pot split fixtureは後続で改善する。
 - [ ] `GAME-ALL-02` 残りBoard/Draw/Stud/Dramaha/Chinese Pokerを順次 playable 化し、各ゲームごとに evaluator / action mask / all-in / split pot / history smoke を追加する。
 - [ ] `GAME-ALL-03` Stud / Razz 実装後、10-Game対象のCPUを Beginner / Standard まで学習・適用する。
 - [ ] `GAME-ALL-04` 強化学習済みCPUを使った cash / tournament のプレイログ収集を行い、30ハンド以上のセッションだけAI feedback対象にする。

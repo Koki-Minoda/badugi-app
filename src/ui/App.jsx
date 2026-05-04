@@ -51,10 +51,16 @@ import {
 } from "../games/badugi/flow/betRoundUtils.js";
 import BadugiGameController from "../games/badugi/BadugiGameController.js";
 import DramahaGameController from "../games/dramaha/DramahaGameController.js";
+import FLHGameController from "../games/nlh/FLHGameController.js";
 import NLHGameController from "../games/nlh/NLHGameController.js";
 import BigOGameController from "../games/plo/BigOGameController.js";
 import FiveCardPLOGameController from "../games/plo/FiveCardPLOGameController.js";
+import PLO8GameController from "../games/plo/PLO8GameController.js";
 import PLOGameController from "../games/plo/PLOGameController.js";
+import StudGameController, {
+  RazzGameController,
+  Stud8GameController,
+} from "../games/stud/StudGameController.js";
 import { GAME_VARIANTS } from "../games/core/variants.js";
 import {
   buildHandResultSummary,
@@ -68,7 +74,9 @@ import { ensureDramahaUIAdaptersRegistered } from "./game/dramaha/registerDramah
 import { shouldWaitForHeroDrawTurn } from "./game/drawActorUtils.js";
 import {
   APP_VARIANT_IDS,
+  BOARD_APP_VARIANT_IDS,
   DRAMAHA_APP_VARIANT_IDS,
+  STUD_APP_VARIANT_IDS,
   isControllerBackedAppVariant,
   isDrawLowballAppVariant,
   normalizeAppVariantId,
@@ -902,10 +910,8 @@ const SAFE_RESET_PHASE = "IDLE";
   const ensureSessionController = useCallback(() => {
     const normalizedVariant = normalizeAppVariantId(gameVariant);
     const usesBoardController =
-      normalizedVariant === APP_VARIANT_IDS.NLH ||
-      normalizedVariant === APP_VARIANT_IDS.PLO ||
-      normalizedVariant === APP_VARIANT_IDS.BIG_O ||
-      normalizedVariant === APP_VARIANT_IDS.FIVE_CARD_PLO ||
+      BOARD_APP_VARIANT_IDS.has(normalizedVariant) ||
+      STUD_APP_VARIANT_IDS.has(normalizedVariant) ||
       DRAMAHA_APP_VARIANT_IDS.has(normalizedVariant);
     if (
       mode === "tournament-mtt" ||
@@ -1033,10 +1039,8 @@ const SAFE_RESET_PHASE = "IDLE";
     mode !== "tournament-mtt" && isDrawLowballAppVariant(normalizedGameVariant);
   const isSingleTableBoardGame =
     mode !== "tournament-mtt" &&
-    (normalizedGameVariant === APP_VARIANT_IDS.NLH ||
-      normalizedGameVariant === APP_VARIANT_IDS.PLO ||
-      normalizedGameVariant === APP_VARIANT_IDS.BIG_O ||
-      normalizedGameVariant === APP_VARIANT_IDS.FIVE_CARD_PLO ||
+    (BOARD_APP_VARIANT_IDS.has(normalizedGameVariant) ||
+      STUD_APP_VARIANT_IDS.has(normalizedGameVariant) ||
       DRAMAHA_APP_VARIANT_IDS.has(normalizedGameVariant));
   const isSingleTableDramaha =
     mode !== "tournament-mtt" && DRAMAHA_APP_VARIANT_IDS.has(normalizedGameVariant);
@@ -1069,89 +1073,6 @@ const SAFE_RESET_PHASE = "IDLE";
     if (currentScreen === "handReplay") return "Replay";
     return "Game";
   }, [authIsAuthenticated, currentScreen]);
-
-  const tryControllerBetAction = useCallback(
-    ({ actionType, amount = 0, seatIndex = 0, metadata = {} }) => {
-      if (!isControllerDrivenSingleTable) return null;
-      const normalizedType =
-        typeof actionType === "string" && actionType.length
-          ? actionType.toLowerCase()
-          : "call";
-      if (isSingleTableBoardGame) {
-        const controller = ensureGameController();
-        if (!controller || typeof controller.applyPlayerAction !== "function") return null;
-        const result = controller.applyPlayerAction({
-          seatIndex,
-          action: normalizedType,
-          amount,
-          metadata,
-        });
-        if (!result?.success) {
-          return {
-            rejected: true,
-            code: result?.reason ?? "board-action-rejected",
-            message: result?.reason ?? "action rejected",
-            events: [],
-          };
-        }
-        return {
-          snapshot: controller.getSnapshot(),
-          events: [],
-        };
-      }
-      const controller = sessionControllerRef.current;
-      const controllerState = sessionControllerStateRef.current;
-      if (!controller || !controllerState) return null;
-      try {
-        const sanitizedMetadata = { ...(metadata ?? {}) };
-        delete sanitizedMetadata.raiseCap;
-        delete sanitizedMetadata.raiseCountThisRound;
-        const actionPayload = {
-          seatIndex,
-          payload: {
-            type: normalizedType.toUpperCase() === "DRAW" ? "DRAW" : normalizedType,
-            amount,
-            ...sanitizedMetadata,
-          },
-        };
-        const result = controller.applyAction(controllerState, actionPayload);
-        if (!result || !result.state) {
-          return null;
-        }
-        const events = Array.isArray(result.events) ? result.events : [];
-        const rejectionEvent = events.find(
-          (event) => event?.type === "invalidAction" || event?.type === "error",
-        );
-        if (rejectionEvent) {
-          return {
-            rejected: true,
-            code:
-              rejectionEvent?.code ??
-              result?.code ??
-              null,
-            message:
-              rejectionEvent?.error ??
-              rejectionEvent?.message ??
-              "action rejected",
-            events,
-          };
-        }
-        sessionControllerStateRef.current = result.state;
-        const snapshot = controller.getUiSnapshot(result.state);
-        if (snapshot) {
-          updateAfterActionFromSnapshot(snapshot);
-        }
-        return {
-          snapshot,
-          events,
-        };
-      } catch (error) {
-        console.warn("[CTRL][BET] applyAction failed", error);
-        return null;
-      }
-    },
-    [ensureGameController, isControllerDrivenSingleTable, isSingleTableBoardGame, updateAfterActionFromSnapshot],
-  );
 
   const seatPlayerIds = useMemo(() => {
     return (playersSrc ?? [])
@@ -1684,8 +1605,16 @@ const SAFE_RESET_PHASE = "IDLE";
         gameControllerRef.current = new NLHGameController({
           tableConfig: buildNlhTableConfig(),
         });
+      } else if (variantId === APP_VARIANT_IDS.FLH) {
+        gameControllerRef.current = new FLHGameController({
+          tableConfig: buildNlhTableConfig(),
+        });
       } else if (variantId === APP_VARIANT_IDS.PLO) {
         gameControllerRef.current = new PLOGameController({
+          tableConfig: buildNlhTableConfig(),
+        });
+      } else if (variantId === APP_VARIANT_IDS.PLO8) {
+        gameControllerRef.current = new PLO8GameController({
           tableConfig: buildNlhTableConfig(),
         });
       } else if (variantId === APP_VARIANT_IDS.BIG_O) {
@@ -1700,6 +1629,18 @@ const SAFE_RESET_PHASE = "IDLE";
         gameControllerRef.current = new DramahaGameController({
           tableConfig: buildNlhTableConfig(),
           variant: variantId,
+        });
+      } else if (variantId === APP_VARIANT_IDS.STUD) {
+        gameControllerRef.current = new StudGameController({
+          tableConfig: buildNlhTableConfig(),
+        });
+      } else if (variantId === APP_VARIANT_IDS.STUD8) {
+        gameControllerRef.current = new Stud8GameController({
+          tableConfig: buildNlhTableConfig(),
+        });
+      } else if (variantId === APP_VARIANT_IDS.RAZZ) {
+        gameControllerRef.current = new RazzGameController({
+          tableConfig: buildNlhTableConfig(),
         });
       } else if (isDrawLowballAppVariant(variantId)) {
         gameControllerRef.current = GAME_VARIANTS[variantId]?.controllerFactory?.({
@@ -1727,10 +1668,8 @@ const SAFE_RESET_PHASE = "IDLE";
         evaluateHand: evaluateBadugi,
       });
     } else if (
-      (variantId === APP_VARIANT_IDS.NLH ||
-        variantId === APP_VARIANT_IDS.PLO ||
-        variantId === APP_VARIANT_IDS.BIG_O ||
-        variantId === APP_VARIANT_IDS.FIVE_CARD_PLO ||
+      (BOARD_APP_VARIANT_IDS.has(variantId) ||
+        STUD_APP_VARIANT_IDS.has(variantId) ||
         DRAMAHA_APP_VARIANT_IDS.has(variantId)) &&
       typeof gameControllerRef.current.updateTableConfig === "function"
     ) {
@@ -1750,13 +1689,101 @@ const SAFE_RESET_PHASE = "IDLE";
     lastStructureIndex,
   ]);
 
+  const tryControllerBetAction = useCallback(
+    ({ actionType, amount = 0, seatIndex = 0, metadata = {} }) => {
+      if (!isControllerDrivenSingleTable) return null;
+      const normalizedType =
+        typeof actionType === "string" && actionType.length
+          ? actionType.toLowerCase()
+          : "call";
+      if (isSingleTableBoardGame) {
+        const controller = ensureGameController();
+        if (!controller || typeof controller.applyPlayerAction !== "function") return null;
+        const result = controller.applyPlayerAction({
+          seatIndex,
+          action: normalizedType,
+          amount,
+          metadata,
+        });
+        if (!result?.success) {
+          return {
+            rejected: true,
+            code: result?.reason ?? "board-action-rejected",
+            message: result?.reason ?? "action rejected",
+            events: [],
+          };
+        }
+        return {
+          snapshot: controller.getSnapshot(),
+          events: [],
+        };
+      }
+      const controller = sessionControllerRef.current;
+      const controllerState = sessionControllerStateRef.current;
+      if (!controller || !controllerState) return null;
+      try {
+        const sanitizedMetadata = { ...(metadata ?? {}) };
+        delete sanitizedMetadata.raiseCap;
+        delete sanitizedMetadata.raiseCountThisRound;
+        const actionPayload = {
+          seatIndex,
+          payload: {
+            type: normalizedType.toUpperCase() === "DRAW" ? "DRAW" : normalizedType,
+            amount,
+            ...sanitizedMetadata,
+          },
+        };
+        const result = controller.applyAction(controllerState, actionPayload);
+        if (!result || !result.state) {
+          return null;
+        }
+        const events = Array.isArray(result.events) ? result.events : [];
+        const rejectionEvent = events.find(
+          (event) => event?.type === "invalidAction" || event?.type === "error",
+        );
+        if (rejectionEvent) {
+          return {
+            rejected: true,
+            code:
+              rejectionEvent?.code ??
+              result?.code ??
+              null,
+            message:
+              rejectionEvent?.error ??
+              rejectionEvent?.message ??
+              "action rejected",
+            events,
+          };
+        }
+        sessionControllerStateRef.current = result.state;
+        const snapshot = controller.getUiSnapshot(result.state);
+        if (snapshot) {
+          updateAfterActionFromSnapshot(snapshot);
+        }
+        return {
+          snapshot,
+          events,
+        };
+      } catch (error) {
+        console.warn("[CTRL][BET] applyAction failed", error);
+        return null;
+      }
+    },
+    [ensureGameController, isControllerDrivenSingleTable, isSingleTableBoardGame, updateAfterActionFromSnapshot],
+  );
+
   useEffect(() => {
     ensureGameController();
     const normalizedVariant = normalizeAppVariantId(gameVariant);
-    if (normalizedVariant === APP_VARIANT_IDS.NLH) {
+    if (
+      normalizedVariant === APP_VARIANT_IDS.NLH ||
+      normalizedVariant === APP_VARIANT_IDS.FLH ||
+      STUD_APP_VARIANT_IDS.has(normalizedVariant)
+    ) {
       ensureNLHUIAdapterRegistered();
     } else if (
       normalizedVariant === APP_VARIANT_IDS.PLO ||
+      normalizedVariant === APP_VARIANT_IDS.PLO8 ||
       normalizedVariant === APP_VARIANT_IDS.BIG_O ||
       normalizedVariant === APP_VARIANT_IDS.FIVE_CARD_PLO
     ) {

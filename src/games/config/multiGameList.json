@@ -56,7 +56,9 @@
                      "fixed"
                  ],
         "priorityPhase":  2,
-        "description":  "Fixed-limit Hold\u0027em."
+        "description":  "Fixed-limit Hold\u0027em.",
+        "status":  "live",
+        "engineKey":  "flh"
     },
     {
         "id":  "B03",
@@ -174,7 +176,9 @@
                      "hi-lo"
                  ],
         "priorityPhase":  2,
-        "description":  "PLO Hi-Lo split."
+        "description":  "PLO Hi-Lo split.",
+        "status":  "live",
+        "engineKey":  "plo8"
     },
     {
         "id":  "B07",
@@ -760,7 +764,9 @@
                      "stud",
                      "high"
                  ],
-        "priorityPhase":  4
+        "priorityPhase":  4,
+        "status":  "live",
+        "engineKey":  "stud"
     },
     {
         "id":  "ST2",
@@ -791,7 +797,9 @@
                      "stud",
                      "hi-lo"
                  ],
-        "priorityPhase":  4
+        "priorityPhase":  4,
+        "status":  "live",
+        "engineKey":  "stud8"
     },
     {
         "id":  "ST3",
@@ -822,7 +830,9 @@
                      "razz",
                      "lowball"
                  ],
-        "priorityPhase":  4
+        "priorityPhase":  4,
+        "status":  "live",
+        "engineKey":  "razz"
     },
     {
         "id":  "ST4",

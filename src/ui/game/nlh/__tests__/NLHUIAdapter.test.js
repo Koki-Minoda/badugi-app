@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { NLHUIAdapter } from "../NLHUIAdapter.js";
+import { ensureNLHUIAdapterRegistered } from "../registerNLHUIAdapter.js";
+import { getGameUIAdapter } from "../../GameUIAdapterRegistry.js";
+import { APP_VARIANT_IDS } from "../../appVariantRouting.js";
 
 function buildSnapshot(overrides = {}) {
   return {
@@ -48,6 +51,16 @@ const tableConfig = {
 };
 
 describe("NLHUIAdapter", () => {
+  it("registers board fixed-limit and stud-family aliases", () => {
+    const adapter = ensureNLHUIAdapterRegistered({ force: true });
+
+    expect(getGameUIAdapter(APP_VARIANT_IDS.NLH)).toBe(adapter);
+    expect(getGameUIAdapter(APP_VARIANT_IDS.FLH)).toBe(adapter);
+    expect(getGameUIAdapter(APP_VARIANT_IDS.STUD)).toBe(adapter);
+    expect(getGameUIAdapter(APP_VARIANT_IDS.STUD8)).toBe(adapter);
+    expect(getGameUIAdapter(APP_VARIANT_IDS.RAZZ)).toBe(adapter);
+  });
+
   it("builds seat views and controls", () => {
     const adapter = new NLHUIAdapter();
     const snapshot = buildSnapshot();

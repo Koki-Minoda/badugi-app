@@ -1,9 +1,14 @@
 import BadugiGameDefinition from "../badugi/BadugiGameDefinition";
 import { DRAMAHA_DEFINITIONS } from "../dramaha/DramahaVariants.js";
+import FLHGameDefinition from "../nlh/FLHGameDefinition.js";
 import NLHGameDefinition from "../nlh/NLHGameDefinition.js";
 import BigOGameDefinition from "../plo/BigOGameDefinition.js";
 import FiveCardPLOGameDefinition from "../plo/FiveCardPLOGameDefinition.js";
+import PLO8GameDefinition from "../plo/PLO8GameDefinition.js";
 import PLOGameDefinition from "../plo/PLOGameDefinition.js";
+import RazzGameDefinition from "../stud/RazzGameDefinition.js";
+import Stud8GameDefinition from "../stud/Stud8GameDefinition.js";
+import StudGameDefinition from "../stud/StudGameDefinition.js";
 
 class GameRegistryClass {
   constructor() {
@@ -37,9 +42,14 @@ class GameRegistryClass {
 const registry = new GameRegistryClass();
 registry.register(BadugiGameDefinition);
 registry.register(NLHGameDefinition);
+registry.register(FLHGameDefinition);
 registry.register(PLOGameDefinition);
+registry.register(PLO8GameDefinition);
 registry.register(BigOGameDefinition);
 registry.register(FiveCardPLOGameDefinition);
+registry.register(StudGameDefinition);
+registry.register(Stud8GameDefinition);
+registry.register(RazzGameDefinition);
 Object.values(DRAMAHA_DEFINITIONS).forEach((definition) => registry.register(definition));
 
 export default registry;

@@ -18,7 +18,9 @@ describe("GameRegistry", () => {
 
   it("returns NLH and PLO definitions by logical variant id", () => {
     expect(GameRegistry.get("nlh")?.label).toBe("No-Limit Hold'em");
+    expect(GameRegistry.get("flh")?.label).toBe("Fixed-Limit Hold'em");
     expect(GameRegistry.get("plo")?.label).toBe("Pot-Limit Omaha");
+    expect(GameRegistry.get("plo8")?.label).toBe("PLO8");
     expect(GameRegistry.get("plo")?.handStructure).toMatchObject({
       hole: 4,
       mustUseHole: 2,
@@ -37,5 +39,8 @@ describe("GameRegistry", () => {
       mustUseHole: 2,
       mustUseBoard: 3,
     });
+    expect(GameRegistry.get("stud")?.label).toBe("Stud");
+    expect(GameRegistry.get("stud8")?.label).toBe("Stud 8");
+    expect(GameRegistry.get("razz")?.label).toBe("Razz");
   });
 });

@@ -1,5 +1,5 @@
 import React from "react";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import FriendMatchSetupScreen from "../FriendMatchSetupScreen.jsx";
 
@@ -22,6 +22,12 @@ vi.mock("../../utils/roomApi.js", () => ({
   getRoomInfo: (...args) => mockGetRoomInfo(...args),
   joinRoom: (...args) => mockJoinRoom(...args),
 }));
+
+function getVariantRadio(value) {
+  const radio = screen.getAllByRole("radio").find((input) => input.value === value);
+  expect(radio, `variant radio ${value}`).toBeTruthy();
+  return radio;
+}
 
 describe("FriendMatchSetupScreen", () => {
   const originalWebSocket = globalThis.WebSocket;
@@ -56,7 +62,7 @@ describe("FriendMatchSetupScreen", () => {
   it("renders form fields, defaults Badugi, and creates a room on submit", async () => {
     render(<FriendMatchSetupScreen language="en" />);
 
-    const badugiRadio = screen.getByRole("radio", { name: /badugi/i });
+    const badugiRadio = getVariantRadio("badugi");
     expect(badugiRadio).toHaveProperty("checked", true);
 
     expect(screen.getByLabelText(/seats/i)).toBeTruthy();
@@ -86,7 +92,7 @@ describe("FriendMatchSetupScreen", () => {
     const nlhRadio = screen.getByRole("radio", { name: /no-limit hold'em/i });
     fireEvent.click(nlhRadio);
     expect(nlhRadio).toHaveProperty("checked", true);
-    const badugiRadio = screen.getByRole("radio", { name: /badugi/i });
+    const badugiRadio = getVariantRadio("badugi");
     expect(badugiRadio).toHaveProperty("checked", false);
   });
 
@@ -144,7 +150,7 @@ describe("FriendMatchSetupScreen", () => {
     render(<FriendMatchSetupScreen language="en" />);
     fireEvent.click(screen.getByRole("button", { name: /create room/i }));
     expect(await screen.findByText(/room created/i)).toBeTruthy();
-    expect(sockets).toHaveLength(1);
+    await waitFor(() => expect(sockets).toHaveLength(1));
 
     await act(async () => {
       sockets[0].listeners.open();

@@ -13,6 +13,16 @@ import { AceToFiveSingleDrawController } from "../draw/AceToFiveSingleDrawContro
 import { AceToFiveTripleDrawController } from "../draw/AceToFiveTripleDrawController.js";
 import { DeuceToSevenSingleDrawController } from "../draw/DeuceToSevenSingleDrawController.js";
 import { DeuceToSevenTripleDrawController } from "../draw/DeuceToSevenTripleDrawController.js";
+import FLHGameController from "../nlh/FLHGameController.js";
+import NLHGameController from "../nlh/NLHGameController.js";
+import BigOGameController from "../plo/BigOGameController.js";
+import FiveCardPLOGameController from "../plo/FiveCardPLOGameController.js";
+import PLO8GameController from "../plo/PLO8GameController.js";
+import PLOGameController from "../plo/PLOGameController.js";
+import StudGameController, {
+  RazzGameController,
+  Stud8GameController,
+} from "../stud/StudGameController.js";
 
 function drawControllerFactory(Controller) {
   return (config = {}) =>
@@ -27,6 +37,69 @@ export const GAME_VARIANTS = {
     variantId: "D03",
     label: "Badugi",
     controllerFactory: (config = {}) => new BadugiGameController(config),
+  },
+  nlh: {
+    id: "nlh",
+    variantId: "B01",
+    label: "No-Limit Hold'em",
+    controllerFactory: (config = {}) =>
+      new NLHGameController({ tableConfig: config.tableConfig ?? config }),
+  },
+  flh: {
+    id: "flh",
+    variantId: "B02",
+    label: "Fixed-Limit Hold'em",
+    controllerFactory: (config = {}) =>
+      new FLHGameController({ tableConfig: config.tableConfig ?? config }),
+  },
+  plo: {
+    id: "plo",
+    variantId: "B05",
+    label: "Pot-Limit Omaha",
+    controllerFactory: (config = {}) =>
+      new PLOGameController({ tableConfig: config.tableConfig ?? config }),
+  },
+  plo8: {
+    id: "plo8",
+    variantId: "B06",
+    label: "PLO8",
+    controllerFactory: (config = {}) =>
+      new PLO8GameController({ tableConfig: config.tableConfig ?? config }),
+  },
+  big_o: {
+    id: "big_o",
+    variantId: "B07",
+    label: "Big-O",
+    controllerFactory: (config = {}) =>
+      new BigOGameController({ tableConfig: config.tableConfig ?? config }),
+  },
+  five_card_plo: {
+    id: "five_card_plo",
+    variantId: "B08",
+    label: "5-Card PLO",
+    controllerFactory: (config = {}) =>
+      new FiveCardPLOGameController({ tableConfig: config.tableConfig ?? config }),
+  },
+  stud: {
+    id: "stud",
+    variantId: "ST1",
+    label: "Stud",
+    controllerFactory: (config = {}) =>
+      new StudGameController({ tableConfig: config.tableConfig ?? config }),
+  },
+  stud8: {
+    id: "stud8",
+    variantId: "ST2",
+    label: "Stud 8",
+    controllerFactory: (config = {}) =>
+      new Stud8GameController({ tableConfig: config.tableConfig ?? config }),
+  },
+  razz: {
+    id: "razz",
+    variantId: "ST3",
+    label: "Razz",
+    controllerFactory: (config = {}) =>
+      new RazzGameController({ tableConfig: config.tableConfig ?? config }),
   },
   deuce_to_seven_triple_draw: {
     id: "deuce_to_seven_triple_draw",

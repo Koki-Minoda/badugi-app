@@ -9,10 +9,21 @@ export class PLOUIAdapter extends NLHUIAdapter {
 }
 
 export function ensurePLOUIAdapterRegistered(options = {}) {
+  const ids = [
+    APP_VARIANT_IDS.PLO,
+    APP_VARIANT_IDS.PLO8,
+    APP_VARIANT_IDS.BIG_O,
+    APP_VARIANT_IDS.FIVE_CARD_PLO,
+  ];
   const existing = getGameUIAdapter(APP_VARIANT_IDS.PLO);
-  if (existing && !options.force) return existing;
+  if (existing && !options.force) {
+    ids.forEach((id) => {
+      if (!getGameUIAdapter(id)) registerGameUIAdapter(id, existing);
+    });
+    return existing;
+  }
   const adapter = new PLOUIAdapter(options);
-  registerGameUIAdapter(APP_VARIANT_IDS.PLO, adapter);
+  ids.forEach((id) => registerGameUIAdapter(id, adapter));
   return adapter;
 }
 

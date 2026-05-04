@@ -1,9 +1,14 @@
 export const APP_VARIANT_IDS = {
   BADUGI: "badugi",
   NLH: "nlh",
+  FLH: "flh",
   PLO: "plo",
+  PLO8: "plo8",
   BIG_O: "big_o",
   FIVE_CARD_PLO: "five_card_plo",
+  STUD: "stud",
+  STUD8: "stud8",
+  RAZZ: "razz",
   DRAMAHA_HI: "dramaha_hi",
   DRAMAHA_27: "dramaha_27",
   DRAMAHA_A5: "dramaha_a5",
@@ -22,10 +27,22 @@ const VARIANT_ALIASES = new Map([
   ["nlh", APP_VARIANT_IDS.NLH],
   ["nl_holdem", APP_VARIANT_IDS.NLH],
   ["holdem", APP_VARIANT_IDS.NLH],
+  ["b01", APP_VARIANT_IDS.NLH],
+  ["flh", APP_VARIANT_IDS.FLH],
+  ["limit_holdem", APP_VARIANT_IDS.FLH],
+  ["fixed_limit_holdem", APP_VARIANT_IDS.FLH],
+  ["limit-holdem", APP_VARIANT_IDS.FLH],
+  ["b02", APP_VARIANT_IDS.FLH],
   ["plo", APP_VARIANT_IDS.PLO],
   ["pot_limit_omaha", APP_VARIANT_IDS.PLO],
   ["pot-limit-omaha", APP_VARIANT_IDS.PLO],
   ["omaha", APP_VARIANT_IDS.PLO],
+  ["b05", APP_VARIANT_IDS.PLO],
+  ["plo8", APP_VARIANT_IDS.PLO8],
+  ["plo-8", APP_VARIANT_IDS.PLO8],
+  ["omaha8", APP_VARIANT_IDS.PLO8],
+  ["omaha_8", APP_VARIANT_IDS.PLO8],
+  ["b06", APP_VARIANT_IDS.PLO8],
   ["big_o", APP_VARIANT_IDS.BIG_O],
   ["big-o", APP_VARIANT_IDS.BIG_O],
   ["bigo", APP_VARIANT_IDS.BIG_O],
@@ -33,6 +50,16 @@ const VARIANT_ALIASES = new Map([
   ["five-card-plo", APP_VARIANT_IDS.FIVE_CARD_PLO],
   ["5_card_plo", APP_VARIANT_IDS.FIVE_CARD_PLO],
   ["5-card-plo", APP_VARIANT_IDS.FIVE_CARD_PLO],
+  ["b08", APP_VARIANT_IDS.FIVE_CARD_PLO],
+  ["stud", APP_VARIANT_IDS.STUD],
+  ["seven_card_stud", APP_VARIANT_IDS.STUD],
+  ["st1", APP_VARIANT_IDS.STUD],
+  ["stud8", APP_VARIANT_IDS.STUD8],
+  ["stud_8", APP_VARIANT_IDS.STUD8],
+  ["seven_card_stud_8", APP_VARIANT_IDS.STUD8],
+  ["st2", APP_VARIANT_IDS.STUD8],
+  ["razz", APP_VARIANT_IDS.RAZZ],
+  ["st3", APP_VARIANT_IDS.RAZZ],
   ["dramaha_hi", APP_VARIANT_IDS.DRAMAHA_HI],
   ["dramaha-hi", APP_VARIANT_IDS.DRAMAHA_HI],
   ["dramaha", APP_VARIANT_IDS.DRAMAHA_HI],
@@ -81,6 +108,21 @@ export const DRAMAHA_APP_VARIANT_IDS = new Set([
   APP_VARIANT_IDS.DRAMAHA_BADUGI,
 ]);
 
+export const BOARD_APP_VARIANT_IDS = new Set([
+  APP_VARIANT_IDS.NLH,
+  APP_VARIANT_IDS.FLH,
+  APP_VARIANT_IDS.PLO,
+  APP_VARIANT_IDS.PLO8,
+  APP_VARIANT_IDS.BIG_O,
+  APP_VARIANT_IDS.FIVE_CARD_PLO,
+]);
+
+export const STUD_APP_VARIANT_IDS = new Set([
+  APP_VARIANT_IDS.STUD,
+  APP_VARIANT_IDS.STUD8,
+  APP_VARIANT_IDS.RAZZ,
+]);
+
 export function normalizeAppVariantId(variantId, fallback = APP_VARIANT_IDS.BADUGI) {
   if (!variantId) return fallback;
   const key = String(variantId).trim().toLowerCase();
@@ -95,10 +137,8 @@ export function isControllerBackedAppVariant(variantId) {
   const normalized = normalizeAppVariantId(variantId, null);
   return (
     normalized === APP_VARIANT_IDS.BADUGI ||
-    normalized === APP_VARIANT_IDS.NLH ||
-    normalized === APP_VARIANT_IDS.PLO ||
-    normalized === APP_VARIANT_IDS.BIG_O ||
-    normalized === APP_VARIANT_IDS.FIVE_CARD_PLO ||
+    BOARD_APP_VARIANT_IDS.has(normalized) ||
+    STUD_APP_VARIANT_IDS.has(normalized) ||
     DRAMAHA_APP_VARIANT_IDS.has(normalized) ||
     DRAW_LOWBALL_APP_VARIANTS.has(normalized)
   );

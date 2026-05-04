@@ -153,6 +153,19 @@ class P2PSyncController:
         {"code": "missing_player", "message": "player not registered", "recoverable": False},
       )
       return
+    current_actor = self._current_actor(room)
+    if current_actor and player_id != current_actor:
+      await self.send_event(
+        session,
+        "error",
+        {
+          "code": "out_of_turn",
+          "message": f"waiting for {current_actor}",
+          "recoverable": True,
+          "currentTurnPlayerId": current_actor,
+        },
+      )
+      return
     if delta < 0.15:
       room.anti_cheat_warnings.append(f"{player_id} action too fast ({delta:.3f}s)")
     if action_type == "fold":
@@ -222,6 +235,15 @@ class P2PSyncController:
     room.current_turn_index = (room.current_turn_index + 1) % len(active)
     room.turn_order = active
 
+  def _current_actor(self, room):
+    if not room.turn_order:
+      return None
+    active = [pid for pid in room.turn_order if pid not in room.folded]
+    if not active:
+      return None
+    room.current_turn_index = room.current_turn_index % len(active)
+    return active[room.current_turn_index]
+
   def _is_showdown(self, room):
     active = [pid for pid in room.turn_order if pid not in room.folded]
     return len(active) <= 1
@@ -235,6 +257,7 @@ class P2PSyncController:
       "pot": room.pot,
       "stacks": room.stacks,
       "lastAction": room.history[-1] if room.history else {},
+      "currentTurnPlayerId": self._current_actor(room),
     }
     await self.broadcast(room.id, "updated_state", delta)
 
@@ -262,6 +285,7 @@ class P2PSyncController:
       "spectators": list(room.spectators.keys()),
       "sequenceId": room.sequence_id,
       "handId": room.hand_id,
+      "currentTurnPlayerId": self._current_actor(room),
       "warnings": room.anti_cheat_warnings[-5:],
     }
     await self.broadcast(room_id, "room_state", payload)

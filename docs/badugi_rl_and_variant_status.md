@@ -2207,7 +2207,8 @@ Draw RL test coverage:
   - 既存: `p2p-friend-match-smoke.spec.ts` はmock websocketでroom create / ready / draw / showdown / refresh restoreを確認済み。
   - 2026-05-04 確認: unitでcreate/join/websocket projection/action/reconnect/history replayを確認。Playwrightでlogin→room作成→ready→draw→showdown→refresh restoreを確認。
   - 2026-05-04 追加確認: join失敗時にroomを開かず、sessionStorageへ壊れたactive roomを残さないこと、websocket error/close状態がUIに出ることをunitで固定。
-  - 残TODO: backend websocketを実際に起動した2ページhost/guest smoke、切断後の再接続、action順序、showdown後の次ハンド、モバイル横画面確認を追加する。
+  - 2026-05-04 追加対応: backend WebSocketで現在手番以外のactionを`out_of_turn`として拒否し、`currentTurnPlayerId`をroom/state deltaへ配信。フロントは相手手番中のCall/Draw/Foldをdisabledにし、手番待ち表示を追加。
+  - 残TODO: backend websocketを実際に起動した2ページhost/guest smoke、ブラウザ切断後の再接続、モバイル横画面確認を追加する。
 
 ### 16.5 Full Game Implementation / RL / Feedback Order
 

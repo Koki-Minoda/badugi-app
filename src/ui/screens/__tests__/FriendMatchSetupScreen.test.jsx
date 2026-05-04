@@ -283,6 +283,51 @@ describe("FriendMatchSetupScreen", () => {
     expect(sockets[0].send).toHaveBeenCalledWith(expect.stringContaining('"type":"fold"'));
   });
 
+  it("disables room actions while waiting for another player turn", async () => {
+    const sockets = [];
+    class MockWebSocket {
+      constructor() {
+        this.listeners = {};
+        this.readyState = 1;
+        this.send = vi.fn();
+        this.close = vi.fn();
+        sockets.push(this);
+      }
+
+      addEventListener(type, handler) {
+        this.listeners[type] = handler;
+      }
+    }
+    globalThis.WebSocket = MockWebSocket;
+
+    render(<FriendMatchSetupScreen language="en" />);
+    fireEvent.click(screen.getByRole("button", { name: /create room/i }));
+    expect(await screen.findByText(/room created/i)).toBeTruthy();
+
+    await act(async () => {
+      sockets[0].listeners.open();
+      sockets[0].listeners.message({
+        data: JSON.stringify({
+          event: "updated_state",
+          payload: {
+            sequenceId: 2,
+            handId: "hand-1",
+            phase: "playing",
+            pot: 20,
+            stacks: { "local-player": 1980, "guest-player": 1980 },
+            bets: { "local-player": 20, "guest-player": 0 },
+            currentTurnPlayerId: "guest-player",
+          },
+        }),
+      });
+    });
+
+    expect(screen.getByText(/Waiting for opponent/i)).toBeTruthy();
+    expect(screen.getByTestId("p2p-call")).toHaveProperty("disabled", true);
+    expect(screen.getByTestId("p2p-draw")).toHaveProperty("disabled", true);
+    expect(screen.getByTestId("p2p-fold")).toHaveProperty("disabled", true);
+  });
+
   it("restores the active room after refresh and reconnects websocket", async () => {
     window.sessionStorage.setItem(
       "mgx_friend_match_active_room_v1",

@@ -194,7 +194,7 @@ export class StudGameController {
       player.betThisStreet = 0;
       player.hasActedThisStreet = false;
     });
-    this.dealStudCards(players);
+    this.dealInitialStudCards(players);
     const bringInIndex = this.findBringInSeat(players);
     const bringInAmount = bringInIndex == null ? 0 : Math.min(this.blinds.sb, players[bringInIndex]?.stack ?? 0);
     if (bringInIndex != null && bringInAmount > 0) {
@@ -213,17 +213,29 @@ export class StudGameController {
     return this.getSnapshot();
   }
 
-  dealStudCards(players) {
+  dealInitialStudCards(players) {
     const active = players.filter((player) => !player.folded && !player.seatOut);
-    for (let round = 0; round < 7; round += 1) {
+    for (let round = 0; round < 3; round += 1) {
       active.forEach((player) => {
         const [card] = this.drawCards(1);
         if (!card) return;
         player.holeCards.push(card);
-        if (round < 2 || round === 6) player.downCards.push(card);
+        if (round < 2) player.downCards.push(card);
         else player.upCards.push(card);
       });
     }
+  }
+
+  dealStreetCard(players, street) {
+    const active = players.filter((player) => player && !player.folded && !player.seatOut);
+    const isDownCard = street === "SEVENTH";
+    active.forEach((player) => {
+      const [card] = this.drawCards(1);
+      if (!card) return;
+      player.holeCards.push(card);
+      if (isDownCard) player.downCards.push(card);
+      else player.upCards.push(card);
+    });
   }
 
   findBringInSeat(players = this.state.players) {
@@ -277,6 +289,37 @@ export class StudGameController {
       return idx;
     }
     return null;
+  }
+
+  compareExposedBoards(a, b) {
+    const aCards = Array.isArray(a?.upCards) ? a.upCards : [];
+    const bCards = Array.isArray(b?.upCards) ? b.upCards : [];
+    const aRanks = aCards.map(parseRankValue).sort((left, right) => right - left);
+    const bRanks = bCards.map(parseRankValue).sort((left, right) => right - left);
+    const length = Math.max(aRanks.length, bRanks.length);
+    for (let idx = 0; idx < length; idx += 1) {
+      const aRank = aRanks[idx] ?? 0;
+      const bRank = bRanks[idx] ?? 0;
+      if (aRank !== bRank) return aRank - bRank;
+    }
+    const aSuit = Math.max(0, ...aCards.map(parseSuitValue));
+    const bSuit = Math.max(0, ...bCards.map(parseSuitValue));
+    return aSuit - bSuit;
+  }
+
+  findFirstActionSeatForStreet(players = this.state.players) {
+    const candidates = players.filter(
+      (player) => player && !player.folded && !player.seatOut && !player.allIn && player.stack > 0,
+    );
+    if (!candidates.length) return null;
+    candidates.sort((a, b) => {
+      const exposedComparison = this.compareExposedBoards(a, b);
+      if (exposedComparison !== 0) {
+        return this.isLowStudVariant ? exposedComparison : -exposedComparison;
+      }
+      return (a.seatIndex ?? 0) - (b.seatIndex ?? 0);
+    });
+    return candidates[0].seatIndex;
   }
 
   getLimitUnit() {
@@ -377,8 +420,14 @@ export class StudGameController {
     const nextStreet = this.getNextStreet(this.state.street);
     this.resetStreetBets();
     this.state.street = nextStreet;
-    this.state.currentActor = nextStreet === "SHOWDOWN" ? null : this.nextActiveSeat(this.state.dealerIndex);
-    if (nextStreet === "SHOWDOWN") this.resolveShowdown();
+    if (nextStreet === "SHOWDOWN") {
+      this.state.currentActor = null;
+      this.resolveShowdown();
+      return this.getSnapshot();
+    }
+    this.dealStreetCard(this.state.players, nextStreet);
+    this.state.currentActor = this.findFirstActionSeatForStreet(this.state.players);
+    if (this.state.currentActor == null) return this.advanceStreet();
     return this.getSnapshot();
   }
 

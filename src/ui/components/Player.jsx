@@ -98,6 +98,48 @@ function formatHudPercent(value) {
   return `${Math.round(value * 100)}%`;
 }
 
+const CARD_RANK_ORDER = {
+  A: 1,
+  2: 2,
+  3: 3,
+  4: 4,
+  5: 5,
+  6: 6,
+  7: 7,
+  8: 8,
+  9: 9,
+  T: 10,
+  J: 11,
+  Q: 12,
+  K: 13,
+};
+
+function parseCardRank(card) {
+  const match = String(card ?? "").trim().toUpperCase().match(/^(10|[2-9TJQKA])/);
+  if (!match) return Number.POSITIVE_INFINITY;
+  return CARD_RANK_ORDER[match[1] === "10" ? "T" : match[1]] ?? Number.POSITIVE_INFINITY;
+}
+
+function getDisplayCards(handCards = []) {
+  const rankCounts = new Map();
+  handCards.forEach((card) => {
+    const rank = parseCardRank(card);
+    rankCounts.set(rank, (rankCounts.get(rank) ?? 0) + 1);
+  });
+  return handCards
+    .map((card, sourceIndex) => ({
+      card,
+      sourceIndex,
+      rank: parseCardRank(card),
+      rankCount: rankCounts.get(parseCardRank(card)) ?? 1,
+    }))
+    .sort((left, right) => {
+      if (right.rankCount !== left.rankCount) return right.rankCount - left.rankCount;
+      if (left.rank !== right.rank) return left.rank - right.rank;
+      return left.sourceIndex - right.sourceIndex;
+    });
+}
+
 function HudMetricRing({ label, value }) {
   const numeric = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
   const degrees = Math.round(numeric * 360);
@@ -351,6 +393,7 @@ export default function Player({
       onCardClick(cardIdx);
     }
   };
+  const displayCards = getDisplayCards(handCards);
 
   const hudOverlay =
     hudOpen && !compact && typeof document !== "undefined"
@@ -543,18 +586,18 @@ export default function Player({
           style={{
             gap: "var(--player-card-gap, 8px)",
             maxWidth: "var(--player-card-strip-maxw, 280px)",
-            gridTemplateColumns: `repeat(${Math.max(1, handCards.length || 4)}, minmax(0, 1fr))`,
+            gridTemplateColumns: `repeat(${Math.max(1, displayCards.length || 4)}, minmax(0, 1fr))`,
           }}
         >
-          {handCards.map((card, i) => (
+          {displayCards.map(({ card, sourceIndex }) => (
             <Card
-              key={`${card}-${i}`}
+              key={`${card}-${sourceIndex}`}
               value={card}
-              hidden={!isHero && !player.showHand && player.cardVisibility?.[i] !== "up"}
-              selected={isHero && (player.selected || []).includes(i)}
-              onClick={() => handleCardClick(i)}
+              hidden={!isHero && !player.showHand && player.cardVisibility?.[sourceIndex] !== "up"}
+              selected={isHero && (player.selected || []).includes(sourceIndex)}
+              onClick={() => handleCardClick(sourceIndex)}
               folded={isFolded}
-              data-testid={`player-${index}-card-${i}`}
+              data-testid={`player-${index}-card-${sourceIndex}`}
             />
           ))}
         </div>

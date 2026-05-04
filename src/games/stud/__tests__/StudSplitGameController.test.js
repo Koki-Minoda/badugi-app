@@ -22,6 +22,58 @@ function createController(Controller, playerCount = 3) {
 }
 
 describe("Stud split controllers", () => {
+  it("deals Stud streets incrementally instead of pre-dealing seven cards", () => {
+    const controller = createController(StudGameController, 3);
+    let snapshot = controller.startNewHand();
+
+    snapshot.players.filter((player) => !player.folded && !player.seatOut).forEach((player) => {
+      expect(player.holeCards).toHaveLength(3);
+      expect(player.downCards).toHaveLength(2);
+      expect(player.upCards).toHaveLength(1);
+    });
+
+    const expectedLengths = [
+      ["FOURTH", 4, 2, 2],
+      ["FIFTH", 5, 2, 3],
+      ["SIXTH", 6, 2, 4],
+      ["SEVENTH", 7, 3, 4],
+    ];
+    expectedLengths.forEach(([street, totalCards, downCards, upCards]) => {
+      controller.advanceStreet();
+      snapshot = controller.getSnapshot();
+      expect(snapshot.street).toBe(street);
+      snapshot.players.filter((player) => !player.folded && !player.seatOut).forEach((player) => {
+        expect(player.holeCards).toHaveLength(totalCards);
+        expect(player.downCards).toHaveLength(downCards);
+        expect(player.upCards).toHaveLength(upCards);
+      });
+    });
+
+    controller.advanceStreet();
+    expect(controller.getSnapshot().street).toBe("SHOWDOWN");
+  });
+
+  it("continues dealing live all-in Stud hands through showdown without invalid actors", () => {
+    const controller = createController(StudGameController, 2);
+    controller.startNewHand();
+    controller.state.players = controller.state.players.map((player) => ({
+      ...player,
+      folded: false,
+      seatOut: false,
+      allIn: true,
+      stack: 0,
+      totalInvested: 100,
+      betThisStreet: 0,
+    }));
+
+    const snapshot = controller.advanceStreet();
+
+    expect(snapshot.street).toBe("SHOWDOWN");
+    snapshot.players.forEach((player) => {
+      expect(player.holeCards).toHaveLength(7);
+    });
+  });
+
   it("posts bring-in from the lowest up-card in Stud and next actor follows", () => {
     const controller = createController(StudGameController, 3);
     controller.startNewHand();

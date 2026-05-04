@@ -92,9 +92,9 @@ describe("NLHUIAdapter", () => {
           stack: 980,
           betThisStreet: 0,
           totalInvested: 0,
-          holeCards: ["AS", "KD", "2C", "3H", "4S", "5D", "6C"],
-          downCards: ["AS", "KD", "6C"],
-          upCards: ["2C", "3H", "4S", "5D"],
+          holeCards: ["AS", "KD", "2C"],
+          downCards: ["AS", "KD"],
+          upCards: ["2C"],
           folded: false,
         },
         {
@@ -103,9 +103,9 @@ describe("NLHUIAdapter", () => {
           stack: 990,
           betThisStreet: 0,
           totalInvested: 0,
-          holeCards: ["QS", "JD", "9C", "8H", "7S", "6D", "5C"],
-          downCards: ["QS", "JD", "5C"],
-          upCards: ["9C", "8H", "7S", "6D"],
+          holeCards: ["QS", "JD", "9C"],
+          downCards: ["QS", "JD"],
+          upCards: ["9C"],
           folded: false,
         },
       ],
@@ -113,8 +113,9 @@ describe("NLHUIAdapter", () => {
 
     const view = adapter.buildViewProps({ controllerSnapshot: snapshot, tableConfig });
 
-    expect(view.seatViews[1].cards).toEqual(["QS", "JD", "9C", "8H", "7S", "6D", "5C"]);
-    expect(view.seatViews[1].cardVisibility).toEqual(["down", "down", "up", "up", "up", "up", "down"]);
+    expect(view.seatViews[1].cards).toEqual(["QS", "JD", "9C"]);
+    expect(view.seatViews[1].hand).toEqual(["QS", "JD", "9C"]);
+    expect(view.seatViews[1].cardVisibility).toEqual(["down", "down", "up"]);
     expect(view.hudInfo.streetLabel).toBe("3rd Street");
   });
 

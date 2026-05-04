@@ -62,6 +62,29 @@ describe("Player", () => {
     expect(handleCardClick).toHaveBeenCalledWith(0);
   });
 
+  test("groups paired draw cards visually while preserving original discard indexes", () => {
+    const handleCardClick = vi.fn();
+    render(
+      <Player
+        player={{ ...basePlayer, hand: ["QS", "5D", "TC", "5H", "5C"], showHand: true }}
+        index={0}
+        selfIndex={0}
+        turn={0}
+        dealerIdx={1}
+        phase="DRAW"
+        positionLabel="SB"
+        canSelectForDraw
+        onCardClick={handleCardClick}
+      />,
+    );
+
+    const visibleCards = screen.getAllByRole("button").map((card) => card.textContent);
+    expect(visibleCards.slice(0, 3)).toEqual(["5♦5♦", "5♥5♥", "5♣5♣"]);
+
+    fireEvent.click(screen.getByTestId("player-0-card-3"));
+    expect(handleCardClick).toHaveBeenCalledWith(3);
+  });
+
   test("adds Stud and Razz scopes to the Smart HUD game selector", () => {
     render(
       <Player

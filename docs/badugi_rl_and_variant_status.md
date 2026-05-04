@@ -2466,6 +2466,27 @@ Draw RL test coverage:
 - [x] `npm run lint`: pass。
 - [x] `npm run build`: pass。chunk size warning は既存警告。
 
+### 16.3.4 2026-05-04 Stud / Ring Stack Regression
+
+- [x] `BUG-20260504-STUD-PREDEALT-7` Stud / Stud8 / Razz 系が開始時点で7枚を内部配布し、3rd street から全street分のカードを持ち得る問題を修正。
+  - 原因: `StudGameController.startNewHand()` が `dealStudCards()` で7枚すべてを先配りしていた。
+  - 対応: 初期配布を2枚down + 1枚upに限定し、4th/5th/6thでup card、7thでdown cardをstreet進行時に配る。
+  - 補足: all-in の live player はbet actorから外すが、showdownまでカードは配られる。
+- [x] `BUG-20260504-STUD-VISIBLE-HAND` Stud系UIがbase snapshotの `hand` を拾い、表示用カード枚数と可視/不可視状態がズレる問題を修正。
+  - 対応: `NLHUIAdapter` のseat viewで `hand` と `cardVisibility` をadapter由来に統一。
+- [x] `BUG-20260504-DRAW-CASH-STACK-RESET` 2-7/A-5/5-cardなどdraw-controller系リングゲームで、次ハンド開始時にスタックがstarting stackへ戻る問題を修正。
+  - 原因: `DeuceToSevenTripleDrawController.createNewHandState()` がengine初期化時の `startingStack` をそのまま使い、App側の現在スタックを反映していなかった。
+  - 対応: `currentPlayers` / `prevPlayers` / 前回snapshotから seat stack とavatar/nameを引き継いでからforced betを適用する。
+- [x] `UI-20260504-HAND-SORT` 5-card/draw handの視認性改善として、表示上は同rankをまとめて低い順に並べ、クリック時は元indexを維持する。
+  - 例: `Q,5,T,5,5` は表示上 `5,5,5,T,Q` に寄せる。discard indexは元のカード位置で送るためゲームロジックは変更しない。
+- [ ] `RL-10GAME-BEGINNER-STANDARD` 10-Game対象CPUのBeginner/Standard学習適用。
+  - 今回はゲーム進行バグ修正を優先。各ゲーム別RLモデルの学習・評価・適用は、Stud/draw/board系の進行fixtureが安定した後に実施する。
+- [x] `npm test -- --run src/games/stud/__tests__/StudSplitGameController.test.js src/ui/game/nlh/__tests__/NLHUIAdapter.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawController.test.js src/ui/components/__tests__/Player.test.jsx`: 4 files / 28 tests pass。
+- [x] `npm test -- --run src/games/__tests__/playableInvariant.test.js`: 1 file / 25 tests pass。NLH/FLH/PLO/PLO8/FLO8/Stud/Stud8/Razz/Razz27/Razzdugi/Razzducey/主要draw系のbroken actorとchip driftを横断確認。
+- [x] `npx playwright test tests/e2e/game-ui-layout-smoke.spec.ts --project=badugi-flow`: 1 passed。テーブルledger / decision panel / hero cards / seat detailの最低限操作性を確認。
+- [x] `npm run lint`: pass。
+- [x] `npm run build`: pass。chunk size warning は既存警告。
+
 ### 16.4 未対応タスク優先度
 
 - P0: `BUG-20260503-SB-FOLD-DRAW-FREEZE`

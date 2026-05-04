@@ -57,6 +57,37 @@ describe("DeuceToSevenTripleDrawController", () => {
     expect(snapshot.currentBet).toBe(20);
   });
 
+  it("preserves current ring-game stacks when starting the next hand", () => {
+    const controller = buildController([
+      "2S", "3S", "4S", "5S", "7S",
+      "2H", "3H", "4H", "5H", "8H",
+      "2C", "3C", "4C", "5C", "9C",
+      "2D", "3D", "4D", "5D", "9D",
+    ]);
+    const initial = controller.createInitialState();
+    const state = controller.createNewHandState(initial, {
+      currentPlayers: [
+        { playerId: "hero", name: "Hero", stack: 650, avatar: "/characters/01.png" },
+        { playerId: "villain", name: "Villain", stack: 350, avatar: "/characters/02.png" },
+      ],
+      structure: { sb: 0, bb: 0, ante: 0 },
+    });
+    const snapshot = controller.getUiSnapshot(state);
+
+    expect(snapshot.players[0]).toMatchObject({
+      playerId: "hero",
+      name: "Hero",
+      stack: 650,
+      avatar: "/characters/01.png",
+    });
+    expect(snapshot.players[1]).toMatchObject({
+      playerId: "villain",
+      name: "Villain",
+      stack: 350,
+      avatar: "/characters/02.png",
+    });
+  });
+
   it("exposes legal BET actions for the acting seat", () => {
     const controller = buildController([
       "2S", "3S", "4S", "5S", "7S",

@@ -41,6 +41,20 @@ function StatusPill({ label, tone = "slate" }) {
   );
 }
 
+function AvatarImage({ src, initials }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return initials;
+  return (
+    <img
+      src={src}
+      alt=""
+      className="h-full w-full rounded-full object-cover"
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 function AvatarChip({ avatar, name, isHero = false, isFolded = false, testId }) {
   const trimmedName = String(name ?? "").trim();
   const initials =
@@ -52,7 +66,9 @@ function AvatarChip({ avatar, name, isHero = false, isFolded = false, testId }) 
   const shouldRenderAvatarText =
     avatar &&
     avatar !== "default_avatar" &&
-    !String(avatar).includes("_avatar");
+    !String(avatar).includes("_avatar") &&
+    !String(avatar).startsWith("/");
+  const shouldRenderAvatarImage = avatar && String(avatar).startsWith("/");
   return (
     <span
       data-testid={testId}
@@ -70,7 +86,9 @@ function AvatarChip({ avatar, name, isHero = false, isFolded = false, testId }) 
       }}
       aria-hidden="true"
     >
-      {shouldRenderAvatarText ? avatar : initials}
+      {shouldRenderAvatarImage ? (
+        <AvatarImage src={avatar} initials={initials} />
+      ) : shouldRenderAvatarText ? avatar : initials}
     </span>
   );
 }
@@ -217,6 +235,7 @@ export default function Player({
   positionLabel,
   canSelectForDraw = false,
   compact = false,
+  revealMode = false,
 }) {
   const seatRef = useRef(null);
   const closeTimerRef = useRef(null);
@@ -232,6 +251,8 @@ export default function Player({
   const isHero = index === selfIndex;
   const isActive = turn === index;
   const isFolded = Boolean(player.folded);
+  const shouldRevealLarge =
+    revealMode && !compact && !isFolded && (isHero || player.showHand || isWinner);
   const statusBadges = [];
   if (player.allIn) statusBadges.push("ALL-IN");
   if (isFolded) statusBadges.push("FOLDED");
@@ -368,6 +389,8 @@ export default function Player({
             : "border-cyan-200/24 bg-slate-950/90"
       } ${isActive ? "ring-2 ring-yellow-300 shadow-[0_0_24px_rgba(250,204,21,0.55)]" : ""} ${
         isWinner ? "ring-4 ring-emerald-400 animate-pulse" : ""
+      } ${
+        shouldRevealLarge ? "z-[90] scale-[1.06]" : ""
       }`}
       style={{
         padding: "var(--player-pad, 10px)",
@@ -383,6 +406,13 @@ export default function Player({
               "--card-w": "clamp(38px, 5.6dvw, 54px)",
               "--card-h": "clamp(53px, 7.8dvw, 76px)",
               "--card-font-size": "clamp(12px, 1.8dvw, 16px)",
+            }
+          : shouldRevealLarge
+          ? {
+              "--card-w": "calc(var(--card-w, 56px) * 1.12)",
+              "--card-h": "calc(var(--card-h, 78px) * 1.12)",
+              "--card-font-size": "calc(var(--card-font-size, 22px) * 1.06)",
+              "--player-card-strip-maxw": "calc(var(--player-card-strip-maxw, 280px) * 1.12)",
             }
           : {}),
       }}

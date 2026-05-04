@@ -36,6 +36,7 @@ import {
 } from "../games/badugi/flow/actionUtils.js";
 import {
   settleStreetToPots,
+  buildSidePots,
   finishBetRoundFrom,
   resetBetRoundFlags,
   transitionToBetPhase,
@@ -642,6 +643,7 @@ export default function App() {
           lastDrawCount: 0,
           titleBadge: isHuman ? profile?.titleBadge ?? "" : "",
           avatar: isHuman ? profile?.avatar ?? "default_avatar" : undefined,
+          avatarUrl: isHuman ? null : cpuCharacter?.avatarUrl ?? null,
           tournamentPlayerId: null,
           tournamentSeatIndex: null,
         };
@@ -3240,6 +3242,7 @@ const SAFE_RESET_PHASE = "IDLE";
         if (!Array.isArray(prev) || prev.length === 0) return prev;
         const snap = prev.map(clonePlayerState).filter(Boolean);
         let mutated = false;
+        let hasTotalInvestedOverride = false;
         overrides.forEach(
           ({ seat, cards, totalInvested, betThisRound: betOverride, stack, allIn }) => {
           if (
@@ -3261,6 +3264,10 @@ const SAFE_RESET_PHASE = "IDLE";
           };
           if (typeof totalInvested === "number") {
             snap[seat].totalInvested = Math.max(0, totalInvested);
+            hasTotalInvestedOverride = true;
+            if (typeof betOverride !== "number") {
+              snap[seat].betThisRound = 0;
+            }
           }
           if (typeof betOverride === "number") {
             snap[seat].betThisRound = Math.max(0, betOverride);
@@ -3271,9 +3278,17 @@ const SAFE_RESET_PHASE = "IDLE";
           mutated = true;
         });
         if (!mutated) return prev;
+        const nextPots = hasTotalInvestedOverride
+          ? buildSidePots(snap)
+          : Array.isArray(pots)
+            ? pots.map((pot) => ({ ...pot }))
+            : [];
+        if (hasTotalInvestedOverride) {
+          setPots(nextPots.map((pot) => ({ ...pot })));
+        }
         const forcedSnapshot = helpers.applyDeckSnapshot({
           players: snap,
-          pots,
+          pots: nextPots,
           nextTurn: turn,
           turn,
           metadata: {
@@ -3288,7 +3303,7 @@ const SAFE_RESET_PHASE = "IDLE";
             ...forcedSnapshot,
             phase,
             players: snap.map(clonePlayerState).filter(Boolean),
-            pots: Array.isArray(pots) ? pots.map((pot) => ({ ...pot })) : [],
+            pots: nextPots.map((pot) => ({ ...pot })),
             currentBet,
             betHead,
             lastAggressor,
@@ -3609,6 +3624,7 @@ const SAFE_RESET_PHASE = "IDLE";
         name: cpuCharacter.name,
         cpuCharacterId: cpuCharacter.id,
         cpuStyle: cpuCharacter.style,
+        avatarUrl: cpuCharacter.avatarUrl,
       };
     });
   }, [heroProfile]);

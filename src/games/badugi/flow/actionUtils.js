@@ -321,7 +321,7 @@ export function applyForcedBetActionSnapshot({ players, seat, payload = {}, betS
       invest(shoveTarget);
       const fullRaiseBet = maxNow + unit;
       raiseApplied = actor.betThisRound >= fullRaiseBet;
-      actor.lastAction = raiseApplied ? "Raise" : "All-in";
+      actor.lastAction = "All-in";
       actor.hasActedThisRound = true;
       break;
     }

@@ -173,6 +173,7 @@ export default function GameLayoutBase({
   } = controlsProps;
 
   const { debugMode, onToggleDebugMode } = debugProps;
+  const isShowdownPhase = phase === "SHOWDOWN" || tablePhase === "SHOWDOWN";
   const showDesktopSidePanel = showSidePanel && !isMobileLayout;
   const desktopSectionClass = showDesktopSidePanel
     ? "pl-[290px] pr-5 pt-[5.5rem] pb-[4.5rem] gap-6"
@@ -509,13 +510,21 @@ export default function GameLayoutBase({
                           isWinner={seat.winner}
                           onCardClick={(cardIdx) => handleCardClick(cardIdx)}
                           compact={isMobileLayout}
+                          revealMode={isShowdownPhase}
                         />
                       </div>
                     );
                   })}
                 </div>
               </div>
-              <div data-testid="decision-panel" className={`flex min-h-0 flex-col ${isMobileLayout ? "gap-2 overflow-hidden" : "gap-3"}`}>
+              <div
+                data-testid="decision-panel"
+                className={`flex min-h-0 flex-col ${
+                  isMobileLayout
+                    ? "mgx-mobile-action-sheet gap-2 overflow-hidden pb-[max(0px,env(safe-area-inset-bottom))]"
+                    : "gap-3"
+                }`}
+              >
                 {isTournament && tournamentHud}
                 <div className={`${isMobileLayout ? "p-2" : "p-3"} flex items-center justify-between rounded-2xl border border-white/10 bg-slate-900/85 shadow-lg`}>
                   <div>
@@ -549,7 +558,7 @@ export default function GameLayoutBase({
                     Draw allowed: {tableHeroCanDraw ? "Yes" : "No"}
                   </div>
                 </div>
-                <div className={`${isMobileLayout ? "min-h-0 flex-1 overflow-hidden p-2" : "p-3"} rounded-2xl border border-emerald-300/15 bg-slate-900/88 shadow-lg space-y-3`}>
+                <div className={`${isMobileLayout ? "mt-auto min-h-0 overflow-hidden p-2" : "p-3"} rounded-2xl border border-emerald-300/15 bg-slate-900/88 shadow-lg space-y-3`}>
                   <h2 className="text-xs font-semibold text-white uppercase tracking-wider">
                     Hero Controls
                   </h2>
@@ -600,23 +609,23 @@ export default function GameLayoutBase({
         </section>
       </main>
 
-      <footer
-        className={`${isMobileLayout ? "hidden" : "flex"} ${disableFixed ? "relative" : "fixed bottom-0 left-0 right-0"} bg-black/80 backdrop-blur border-t border-white/10 ${
-          isMobileLayout ? "p-3" : "p-4"
-        } items-center justify-between text-xs text-slate-300`}
-      >
-        <div className="flex items-center gap-2">
-          <span>Debug</span>
-          <label className="inline-flex cursor-pointer items-center gap-2">
-            <span>Mode</span>
-            <input type="checkbox" checked={debugMode} onChange={onToggleDebugMode} />
-          </label>
-        </div>
-        <div className="flex items-center gap-3">
-          <p className="text-[11px] uppercase tracking-wider">Mode: {mode}</p>
-          <p className="text-[11px] uppercase tracking-wider">Tournament: {isTournament ? "Yes" : "No"}</p>
-        </div>
-      </footer>
+      {!isMobileLayout && debugMode && (
+        <footer
+          className={`${disableFixed ? "relative" : "fixed bottom-0 left-0 right-0"} flex items-center justify-between border-t border-white/10 bg-black/80 p-4 text-xs text-slate-300 backdrop-blur`}
+        >
+          <div className="flex items-center gap-2">
+            <span>Debug</span>
+            <label className="inline-flex cursor-pointer items-center gap-2">
+              <span>Mode</span>
+              <input type="checkbox" checked={debugMode} onChange={onToggleDebugMode} />
+            </label>
+          </div>
+          <div className="flex items-center gap-3">
+            <p className="text-[11px] uppercase tracking-wider">Mode: {mode}</p>
+            <p className="text-[11px] uppercase tracking-wider">Tournament: {isTournament ? "Yes" : "No"}</p>
+          </div>
+        </footer>
+      )}
 
       {!isMobileLayout && <Notification variant={notificationVariant} message={notificationMessage} />}
 

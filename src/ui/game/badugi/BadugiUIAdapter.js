@@ -116,7 +116,7 @@ function mapSeatViews(snapshot, structureMeta) {
       hasDrawn: Boolean(sanitizedPlayer.hasDrawn),
       hasActedThisRound: Boolean(sanitizedPlayer.hasActedThisRound),
       titleBadge: sanitizedPlayer.titleBadge ?? "",
-      avatar: sanitizedPlayer.avatar ?? "default_avatar",
+      avatar: sanitizedPlayer.avatarUrl ?? sanitizedPlayer.avatar ?? "default_avatar",
       structureMeta,
     };
   });

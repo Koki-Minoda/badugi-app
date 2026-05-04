@@ -2015,9 +2015,11 @@ Draw RL test coverage:
   - ゲームから離脱せず、閉じればそのまま卓へ戻れる。
   - History は現行ハンド履歴を modal 内で表示し、Replay を開く場合だけ modal を閉じて replay screen へ移る。
 - [x] `UI-12` action panel に current bet / to-call / raise unit / raise cap を明示する。
-- [ ] `UI-13` 追加 UX 候補: footer debug 表示を debug mode OFF 時は完全に隠す。
+- [x] `UI-13` 追加 UX 候補: footer debug 表示を debug mode OFF 時は完全に隠す。
+  - 2026-05-04 対応: desktop footer は `debugMode` ON の時だけ表示。通常プレイ中の下端余白と debug 表示を消し、モバイル横画面では引き続き非表示。
 - [x] `UI-14` showdown / side-pot result を table 上の短い toast と result overlay の両方で確認できるようにする。
-- [ ] `UI-15` 追加 UX 候補: mobile landscape で右 panel を bottom sheet 化し、カードと action の距離をさらに短くする。
+- [x] `UI-15` 追加 UX 候補: mobile landscape で右 panel を bottom sheet 化し、カードと action の距離をさらに短くする。
+  - 2026-05-04 対応: mobile landscape の右 decision panel に `mgx-mobile-action-sheet` を追加し、Hero Controls を下寄せの action sheet として固定。右panel内でsafe-area bottomを考慮し、カードとactionの距離を短縮した。
 - [x] `UI-16` MTT HUD をテーブル内から右パネル上部へ移し、Prize / Blinds / Players / Next を PHASE の上で読めるようにする。
 - [x] `UI-17` MTT seat layout を外周寄りに逃がし、テーブル内のカード・pot・fold表示との干渉を減らす。
 - [x] `UI-18` CPU番号表示をキャラクター名へ変更し、CPU style / model / training run を seat detail に載せられる下地を作る。
@@ -2225,7 +2227,22 @@ Draw RL test coverage:
 - [x] `PUI-09` folded/mucked の React test を追加し、folded seat が playable card を出さないことを確認する。
 - [x] `PUI-10` 4色デッキのまま suit ごとのコントラストを調整する。
 - [x] `PUI-11` action panel に current bet / to-call / raise unit / raise cap を常時表示する。
-- [ ] `PUI-12` 次候補: showdown 時だけ seat card size を一段上げる reveal mode を追加する。
+- [x] `PUI-12` 次候補: showdown 時だけ seat card size を一段上げる reveal mode を追加する。
+  - 2026-05-04 対応: `GameLayoutBase` から `revealMode` を渡し、showdown中に公開対象のHero / showHand / winner seatだけカードとseatを一段拡大。モバイルはviewport内操作性を優先し拡大対象外。
+
+### 16.3.1 Character Image Integration
+
+2026-05-04 追加。CPU / Hero キャラクター画像を `public/characters/` に置き、UIのavatar表示へ段階的に接続する。
+
+- [x] `CHAR-01` `public/characters/` に配置する画像命名規則を決める。
+  - 例: `kei.png`, `sora.png`, `hana.png`, `ren.png`。URL参照は `/characters/kei.png`。
+- [x] `CHAR-02` `src/ai/cpuRoster.js` または専用 `cpuCharacters` 定義に `avatarUrl` を追加し、CPU名と画像を紐付ける。
+  - 2026-05-04 対応: 18人分の CPU roster に `/characters/{id}.png` の `avatarUrl` を追加。
+- [x] `CHAR-03` `AvatarChip` / `PlayerSmartHud` / seat header で画像avatarを表示し、画像がない場合は現行initialsへfallbackする。
+  - 2026-05-04 対応: `AvatarChip` が `/characters/...` 形式を画像として表示し、読み込み失敗時は頭文字へfallbackする。Badugi UI adapter は `avatarUrl` を優先する。
+- [ ] `CHAR-04` 実画像配置後に、画像サイズ、丸抜き、folded時のgrayscale、active時のringをPC/モバイル両方で確認する。
+- [x] `CHAR-05` PlaywrightまたはReact testで、画像URLあり/なしのavatar fallbackを確認する。
+  - 2026-05-04 対応: `Player.test.jsx` で画像avatar表示と読み込み失敗時のinitial fallbackを確認。
 
 ### 16.4 未対応タスク優先度
 
@@ -2257,8 +2274,8 @@ Draw RL test coverage:
 - [x] `npm run build`: pass。chunk size warning は既存警告。
 - [x] `npx playwright test tests/e2e/game-ui-layout-smoke.spec.ts --project=badugi-flow`: 1 passed。
 - [x] `npx playwright test tests/e2e/authenticated-game-smoke.spec.ts --project=badugi-flow`: 1 passed。
-- [ ] `npx playwright test tests/e2e/badugi-flow.spec.ts --project=badugi-flow`: 13 passed / 3 failed。
-  - 失敗1: `All-in / bust-out flow guards against extra actions` が seat 1 action log 待ちで timeout。
-  - 失敗2: `Showdown logs every tied winner` が expected 1 pot に対して visible pot section 2 件。
-  - 失敗3: `Hand history captures single-pot showdown metadata` が expected 1 pot に対して record.pots 2 件。
-  - 今回の UI 差分は `GameLayoutBase` / `Player` / `PlayerStatusBoard` / `TableSummaryPanel` / Vite watch / UI smoke のみで、engine/controller/action handler は未変更。ゲームロジック系の別調査対象として残す。
+- [x] `npx playwright test tests/e2e/badugi-flow.spec.ts --project=badugi-flow`: 16 passed。
+  - 2026-05-04 対応:
+    - forced all-in action は full raise として機能しても表示/log action は `All-in` として残す。
+    - E2E `setPlayerHands` の `totalInvested` override 時は street bet を二重計上せず、side pot を `totalInvested` から再構築する。
+    - CPU名の期待値を現行キャラクター名へ更新。

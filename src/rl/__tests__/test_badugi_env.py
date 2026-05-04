@@ -604,6 +604,44 @@ class BadugiEnvTest(unittest.TestCase):
 
         self.assertGreater(two_draw_reward, pat_reward)
 
+    def test_draw_quality_rewards_improvement_to_made_badugi(self):
+        env = BadugiEnv()
+        env.reset(seed=1)
+        env.round = 2
+        before = env._hand_features([(0, 0), (1, 1), (6, 2), (12, 2)])
+        after = env._hand_features([(0, 0), (1, 1), (6, 2), (9, 3)])
+
+        reward = env._draw_quality_reward(before, after, 1)
+
+        self.assertGreater(reward, 0.3)
+
+    def test_draw_quality_penalizes_pat_with_unmade_final_draw(self):
+        env = BadugiEnv()
+        env.reset(seed=1)
+        env.round = env.max_rounds - 1
+        features = env._hand_features([(0, 0), (1, 1), (6, 2), (12, 2)])
+
+        reward = env._draw_quality_reward(features, features, 0)
+
+        self.assertLess(reward, 0)
+
+    def test_final_street_fold_is_better_than_call_for_rough_badugi_without_draw_signal(self):
+        env = BadugiEnv()
+        env.reset(seed=1)
+        env.phase = "BET"
+        env.round = env.max_rounds
+        env.pot = 18
+        env.current_bet = 2
+        env.player_bet = 0
+        env.opponent_last_draw = 0
+        env.player_hand = [(0, 0), (5, 1), (9, 2), (12, 3)]
+        features = env._hand_features(env.player_hand)
+
+        fold_reward = env._reward_shaping(features, 0)
+        call_reward = env._reward_shaping(features, 2)
+
+        self.assertGreater(fold_reward, call_reward)
+
     def test_observation_exposes_opponent_tendency_features(self):
         env = BadugiEnv(opponent_profile="loose_aggressive")
         env.reset(seed=1)

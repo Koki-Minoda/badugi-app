@@ -76,6 +76,9 @@ def profitable_continue_action(env) -> int | None:
     features = env._hand_features(env.player_hand)
     ev = env._bet_ev_diagnostic(features, to_call)
     is_final_bet = getattr(env, "round", 0) >= getattr(env, "max_rounds", 3)
+    if is_final_bet and hasattr(env, "_weak_final_showdown_call_spot"):
+        if env._weak_final_showdown_call_spot(features, ev):
+            return None
     clear_call_edge = ev.call_ev > ev.fold_ev + 0.08
     cheap_developing_draw = (
         not is_final_bet

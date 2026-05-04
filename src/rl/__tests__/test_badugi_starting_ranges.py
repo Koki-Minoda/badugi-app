@@ -111,6 +111,19 @@ class BadugiStartingRangesTest(unittest.TestCase):
 
         self.assertEqual(profitable_continue_action(env), 2)
 
+    def test_profitable_continue_action_skips_rough_final_payoff(self):
+        env = BadugiEnv(opponent_profile="balanced", table_size=6, hero_position=2)
+        env.reset(seed=1)
+        env.phase = "BET"
+        env.round = env.max_rounds
+        env.pot = 18
+        env.current_bet = 2
+        env.player_bet = 0
+        env.opponent_last_draw = 0
+        env.player_hand = [(0, 0), (5, 1), (9, 2), (12, 3)]
+
+        self.assertIsNone(profitable_continue_action(env))
+
     def test_sixmax_teacher_value_bets_strong_made_hand(self):
         env = BadugiEnv(table_size=6, hero_position=5)
         env.reset(seed=1)

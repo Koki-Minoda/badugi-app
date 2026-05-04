@@ -1716,7 +1716,13 @@ Draw RL test coverage:
           - 2026-05-04 実装: `DQNAgent.action_margin_update()` と `--profitable-continue-*` 学習オプションを追加。teacher warmup中のcontinue sampleに加え、online探索中のEV-positive facing-bet stateもcounterfactual callとしてmargin bufferへ入れる。
           - 2026-05-04 評価: `badugi_sixmax_iron_continue_margin_10k_20260504` はPro比 `+0.039/+0.013`。showdownWinRateは `0.673/0.691` まで上がったが、profitableFoldMissesが `119/140` に悪化して不採用。
           - 2026-05-04 評価: `badugi_sixmax_iron_online_continue_margin_5k_20260504` はPro比 `+0.046`, `avgReward=2.614`, `showdownWinRate=0.607`, `foldRate=0.093`, `profitableFoldMisses=27`。fold missはProの85から大きく改善したが、showdownWinRateがProの `0.648` を下回るためIron昇格不可。
-          - 次の打ち手: online continue margin はfold miss削減に効いたが、showdown勝率を落とす。次は「continue後のdraw quality / final street fold discipline」を追加し、安く継続するだけでなく勝てるshowdownへ到達するrewardを増やす。
+          - 2026-05-04 実装: `BadugiEnv` に continue後のdraw quality報酬を追加。drawでmade枚数が増える、one-awayから4-card Badugiに到達する、strengthが改善する場合を加点し、final直前のunmade patやmade Badugiの過剰drawを減点する。
+          - 2026-05-04 実装: final street fold disciplineを追加。最終streetで相手がpat/1draw相当かつHeroがunmadeまたはT/K/Q rough Badugiの場合、profitable continue margin bufferへ入れず、foldをcallより優先する報酬にした。相手が2枚以上drawした場合は従来通りthin value / callを許容する。
+          - 2026-05-04 評価: `badugi_sixmax_iron_draw_final_5k_20260504` はPro比 `+0.051`, `avgReward=2.751`, `showdownWinRate=0.644`, `foldRate=0.152`, `profitableFoldMisses=83`。avgReward/fold missは微改善したが、showdownWinRateがProの `0.648` をわずかに下回るため不採用。
+          - 2026-05-04 20k評価: `badugi_sixmax_iron_draw_final_20k_20260504` を 5k/10k/15k/20k checkpoint で評価。Pro baseline は `avgReward=2.700`, `showdownWinRate=0.648`, `foldRate=0.157`, `profitableFoldMisses=85`。
+          - 2026-05-04 20k結果: 5kは Pro比 `+0.061`, `showdownWinRate=0.652`, `foldRate=0.159`, `profitableFoldMisses=96`。10kは Pro比 `+0.093`, `showdownWinRate=0.680`, `foldRate=0.199`, `profitableFoldMisses=123`。15kは Pro比 `+0.086`, `showdownWinRate=0.697`, `foldRate=0.225`, `profitableFoldMisses=150`。20kは Pro比 `+0.030`, `showdownWinRate=0.715`, `foldRate=0.254`, `profitableFoldMisses=182`。
+          - 2026-05-04 判定: draw quality / final fold discipline はshowdownWinRateを明確に押し上げるが、学習が進むほどfoldRateとprofitableFoldMissesが増える。最良バランスは10kだが、Iron条件の `baselineAvgDelta >= +0.75` には届かず、Iron本番昇格は保留。
+          - 次の打ち手: 10k付近の方針は有効。次はfold disciplineをfinal street限定に閉じ込めたまま、early/mid streetのprofitable continue marginを強める。評価gateは `showdownWinRate >= 0.68`, `foldRate <= 0.19`, `profitableFoldMisses <= Pro + 20`, `baselineAvgDelta >= +0.25` を短期目標にする。
       - [ ] `AI-06e` 2-7 / A-5 用の実ONNXを生成・配置する。現状は `model-27draw-iron-v1` (`D01/S01`) と `model-a5draw-iron-v1` (`D02/S02`) の registry / feature builder / routing test はあるが、実 `.onnx` は optional 未配置で、App draw CPU は rule-based fallback が主経路。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
   - P2P:

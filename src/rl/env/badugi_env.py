@@ -504,15 +504,59 @@ class BadugiEnv(gym.Env):
   def _handle_draw_action(self, action: int) -> float:
     reward = 0.0
     draw_count = max(0, min(3, action))
+    before_features = self._hand_features(self.player_hand)
     if draw_count > 0:
       self.player_hand = self._draw_toward_badugi(self.player_hand, draw_count)
+      after_features = self._hand_features(self.player_hand)
+      reward += self._draw_quality_reward(before_features, after_features, draw_count)
       reward -= 0.05 * draw_count
     else:
+      after_features = before_features
       reward += 0.05  # pat bonus
+      reward += self._draw_quality_reward(before_features, after_features, draw_count)
     self.round += 1
     self._opponent_draw_action()
     self.phase = "BET"
     self._start_betting_round()
+    return reward
+
+  def _draw_quality_reward(
+    self,
+    before_features: HandFeature,
+    after_features: HandFeature,
+    draw_count: int,
+  ) -> float:
+    """Reward draws that produce playable showdown equity, not just continued pots."""
+    before_strength = self._street_adjusted_strength(before_features)
+    after_strength = self._street_adjusted_strength(after_features)
+    reward = 0.0
+    if draw_count <= 0:
+      if before_features.count == 4:
+        reward += 0.10
+      elif before_features.one_away and self.round >= self.max_rounds - 1:
+        reward -= 0.28
+      elif before_features.count < 3:
+        reward -= 0.18
+      return reward
+
+    if after_features.count > before_features.count:
+      reward += 0.24 * (after_features.count - before_features.count)
+    elif after_features.count < before_features.count:
+      reward -= 0.38 * (before_features.count - after_features.count)
+
+    if before_features.one_away and after_features.count == 4:
+      reward += 0.30
+    if before_features.count >= 3 and after_features.count >= 3:
+      strength_delta = after_strength - before_strength
+      if strength_delta > 0:
+        reward += min(0.24, strength_delta * 0.85)
+      elif strength_delta < -0.02:
+        reward -= min(0.28, abs(strength_delta) * 0.90)
+
+    if before_features.count == 4:
+      reward -= 0.32
+    if after_features.count <= 2 and self.round >= self.max_rounds - 1:
+      reward -= 0.24
     return reward
 
   def _maybe_advance_from_bet(self):
@@ -805,32 +849,38 @@ class BadugiEnv(gym.Env):
         reward -= 0.18
       if to_call > 0 and action == 0:
         tight_pat_raise_pressure = opponent_pat_pressure > 0.5 and opponent_aggression < 0.22
-        if ev.call_ev > ev.fold_ev + 0.10:
+        weak_final_showdown_spot = self._weak_final_showdown_call_spot(features, ev)
+        if not weak_final_showdown_spot and ev.call_ev > ev.fold_ev + 0.10:
           reward -= min(0.55, 0.16 + (ev.call_ev - ev.fold_ev) * 0.08)
-        if ev.call_ev > ev.fold_ev and features.one_away and self.round < self.max_rounds:
+        if not weak_final_showdown_spot and ev.call_ev > ev.fold_ev and features.one_away and self.round < self.max_rounds:
           reward -= min(0.75, 0.25 + ev.call_ev * 0.12)
-        if ev.cheap_draw_continue_value > 0.35 and pot_odds <= 0.30 and self.round < self.max_rounds:
+        if not weak_final_showdown_spot and ev.cheap_draw_continue_value > 0.35 and pot_odds <= 0.30 and self.round < self.max_rounds:
           reward -= min(0.65, 0.18 + ev.cheap_draw_continue_value * 0.10)
-        if features.count >= 4 and strength >= 0.54:
+        if weak_final_showdown_spot:
+          reward += 0.34
+        elif features.count >= 4 and strength >= 0.54:
           reward -= 0.5
         elif features.one_away and self.round < self.max_rounds and pot_odds <= 0.25:
           reward -= 0.3
         else:
           reward += 0.18 if continue_value < pot_odds + 0.03 or tight_pat_raise_pressure else -0.35
       if to_call > 0 and action == 2:
+        weak_final_showdown_spot = self._weak_final_showdown_call_spot(features, ev)
         call_edge = continue_value + (0.08 if opponent_aggression >= 0.38 and strength >= 0.42 else 0.0)
-        if features.count >= 4 and strength >= 0.54:
+        if features.count >= 4 and strength >= 0.54 and not weak_final_showdown_spot:
           call_edge += 0.08
         if features.one_away and self.round < self.max_rounds and pot_odds <= 0.25:
           call_edge += 0.07
         reward += 0.22 if call_edge >= pot_odds else -0.14
-        reward += 0.18 if ev.call_ev >= ev.fold_ev else -0.12
-        if ev.call_ev > ev.fold_ev + 0.10:
+        reward += 0.18 if ev.call_ev >= ev.fold_ev and not weak_final_showdown_spot else -0.12
+        if not weak_final_showdown_spot and ev.call_ev > ev.fold_ev + 0.10:
           reward += min(0.22, 0.08 + (ev.call_ev - ev.fold_ev) * 0.03)
         if ev.cheap_draw_continue_value > 0.35 and pot_odds <= 0.30 and self.round < self.max_rounds:
           reward += min(0.28, 0.10 + ev.cheap_draw_continue_value * 0.04)
         if multiway_pressure > 0 and features.one_away and pot_odds <= 0.20:
           reward += min(0.12, ev.future_street_value * 0.03)
+        if weak_final_showdown_spot:
+          reward -= 0.70
       if to_call > 0 and action == 2 and self.round >= self.max_rounds and features.count >= 4:
         reward += 0.12
       if to_call > 0 and action in (3, 4) and opponent_aggression >= 0.38 and strength >= 0.62:
@@ -1039,6 +1089,19 @@ class BadugiEnv(gym.Env):
     if features.count != 4 or not features.ranks:
       return False
     return self.round >= self.max_rounds and max(features.ranks) >= 10
+
+  def _weak_final_showdown_call_spot(
+    self,
+    features: HandFeature,
+    ev: BetEVDiagnostic,
+  ) -> bool:
+    if self.round < self.max_rounds:
+      return False
+    if self.opponent_last_draw >= 2:
+      return False
+    if features.count < 4:
+      return True
+    return self._is_weak_final_badugi(features)
 
   def _opponent_draw_pressure(self) -> float:
     if self.round < self.max_rounds:

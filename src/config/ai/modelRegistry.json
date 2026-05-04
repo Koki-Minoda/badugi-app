@@ -173,14 +173,16 @@
     ],
     "tier": "iron",
     "onnx": "models/27draw_iron_v1.onnx",
-    "checksumSha256": null,
+    "checksumSha256": "8393fcc21a07fa950126a223fffa46003f1ad44bde6752a9a591743bf889f0dc",
     "productionRequired": false,
     "inputShape": [
       96
     ],
     "outputShape": [
       11
-    ]
+    ],
+    "trainingStatus": "bootstrap",
+    "trainingNotes": "Teacher-initialized draw bootstrap ONNX. This is not a full self-play RL checkpoint; replace after variant-specific draw RL and human/practice gates pass."
   },
   {
     "id": "model-a5draw-iron-v1",
@@ -191,14 +193,16 @@
     ],
     "tier": "iron",
     "onnx": "models/a5draw_iron_v1.onnx",
-    "checksumSha256": null,
+    "checksumSha256": "1828def48d3fe3bb97fbb07abfb9da62697ec872b319499c31f17860df7ffc99",
     "productionRequired": false,
     "inputShape": [
       96
     ],
     "outputShape": [
       11
-    ]
+    ],
+    "trainingStatus": "bootstrap",
+    "trainingNotes": "Teacher-initialized draw bootstrap ONNX. This is not a full self-play RL checkpoint; replace after variant-specific draw RL and human/practice gates pass."
   },
   {
     "id": "model-generic-v1",

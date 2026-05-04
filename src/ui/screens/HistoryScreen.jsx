@@ -5,6 +5,10 @@ import { getHands, getTournaments, getTournamentHands } from "../../utils/histor
 import { getVariantProfile } from "../../games/config/variantProfiles.js";
 import { buildPlayFeedbackPayload, MIN_FEEDBACK_HANDS } from "../feedback/playFeedbackPayload.js";
 import { hasStoredFeedbackAuth, requestPlayFeedback } from "../feedback/playFeedbackApi.js";
+import {
+  getLatestPlayFeedbackResult,
+  savePlayFeedbackResult,
+} from "../feedback/playFeedbackStore.js";
 
 const fmt = new Intl.DateTimeFormat("ja-JP", {
   month: "2-digit",
@@ -137,12 +141,17 @@ export default function HistoryScreen() {
       tournament: selectedTournament,
     });
   }, [cashHands, hands, selectedId, selectedTournament]);
+  const savedFeedback = useMemo(
+    () => getLatestPlayFeedbackResult(feedbackPayloadResult.payload),
+    [feedbackPayloadResult.payload],
+  );
 
   async function handleRequestFeedback() {
     if (!feedbackPayloadResult.eligible || !feedbackPayloadResult.payload) return;
     setFeedbackState({ loading: true, error: null, response: null });
     try {
       const response = await requestPlayFeedback(feedbackPayloadResult.payload);
+      savePlayFeedbackResult({ payload: feedbackPayloadResult.payload, response });
       setFeedbackState({ loading: false, error: null, response });
     } catch (error) {
       setFeedbackState({
@@ -226,6 +235,14 @@ export default function HistoryScreen() {
               {feedbackState.response.adviceEn && (
                 <p className="mt-3 text-slate-400">{feedbackState.response.adviceEn}</p>
               )}
+            </div>
+          )}
+          {!feedbackState.response && savedFeedback?.response && (
+            <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4 text-sm text-slate-100">
+              <div className="mb-2 text-xs uppercase tracking-[0.25em] text-slate-400">
+                Saved feedback: {new Date(savedFeedback.createdAt).toLocaleString("ja-JP")}
+              </div>
+              <p className="whitespace-pre-wrap">{savedFeedback.response.adviceJa}</p>
             </div>
           )}
         </section>

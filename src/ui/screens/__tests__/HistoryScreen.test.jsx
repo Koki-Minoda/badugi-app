@@ -128,6 +128,7 @@ describe("HistoryScreen", () => {
     fireEvent.click(screen.getByRole("button", { name: "AIフィードバック作成" }));
 
     await waitFor(() => expect(screen.getByText("良い点と改善点")).toBeTruthy());
+    expect(window.localStorage.getItem("mgx.playFeedback.results.v1")).toContain("良い点と改善点");
     expect(globalThis.fetch).toHaveBeenCalledWith(
       "/api/analysis/play-feedback",
       expect.objectContaining({

@@ -5,6 +5,7 @@ from rl.training.badugi_starting_ranges import (
     median_starting_score_key,
     teacher_action,
 )
+from rl.training.train_dqn import profitable_continue_action
 from rl.env.badugi_env import BadugiEnv
 
 
@@ -97,6 +98,18 @@ class BadugiStartingRangesTest(unittest.TestCase):
 
         self.assertEqual(teacher_action(balanced), 0)
         self.assertEqual(teacher_action(draw_heavy), 2)
+
+    def test_profitable_continue_action_marks_ev_call_state_for_margin_training(self):
+        env = BadugiEnv(opponent_profile="balanced", table_size=6, hero_position=2)
+        env.reset(seed=1)
+        env.phase = "BET"
+        env.round = 1
+        env.pot = 24
+        env.current_bet = 1
+        env.player_bet = 0
+        env.player_hand = [(0, 0), (1, 1), (6, 2), (12, 2)]
+
+        self.assertEqual(profitable_continue_action(env), 2)
 
     def test_sixmax_teacher_value_bets_strong_made_hand(self):
         env = BadugiEnv(table_size=6, hero_position=5)

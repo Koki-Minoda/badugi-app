@@ -42,6 +42,9 @@ class TrainConfig:
     imitation_pretrain_steps: int = 0
     expert_replay_ratio: float = 0.0
     imitation_loss_weight: float = 1.0
+    profitable_continue_replay_ratio: float = 0.0
+    profitable_continue_margin: float = 0.25
+    profitable_continue_loss_weight: float = 0.5
     table_size: int = 2
     resume_checkpoint: str | None = None
 
@@ -56,6 +59,35 @@ def linear_epsilon_decay(
         return end_eps
     frac = episode / float(decay_episodes)
     return start_eps + frac * (end_eps - start_eps)
+
+
+def profitable_continue_action(env) -> int | None:
+    """Return a preferred call action when current facing-bet state has clear call EV."""
+    if getattr(env, "phase", None) != "BET":
+        return None
+    to_call = max(0, getattr(env, "current_bet", 0) - getattr(env, "player_bet", 0))
+    if to_call <= 0:
+        return None
+    mask = env.legal_action_mask()
+    if len(mask) <= 2 or mask[2] <= 0:
+        return None
+    if not hasattr(env, "_hand_features") or not hasattr(env, "_bet_ev_diagnostic"):
+        return None
+    features = env._hand_features(env.player_hand)
+    ev = env._bet_ev_diagnostic(features, to_call)
+    is_final_bet = getattr(env, "round", 0) >= getattr(env, "max_rounds", 3)
+    clear_call_edge = ev.call_ev > ev.fold_ev + 0.08
+    cheap_developing_draw = (
+        not is_final_bet
+        and features.count >= 2
+        and ev.cheap_draw_continue_value >= 0.30
+        and ev.pot_odds <= 0.30
+    )
+    strength = env._street_adjusted_strength(features) if hasattr(env, "_street_adjusted_strength") else 0.0
+    made_showdown_value = features.count >= 4 and strength >= 0.54
+    if clear_call_edge or cheap_developing_draw or made_showdown_value:
+        return 2
+    return None
 
 
 def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"):
@@ -93,6 +125,7 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
         )
     replay_buffer = ReplayBuffer(capacity=cfg.buffer_capacity)
     expert_buffer = ReplayBuffer(capacity=cfg.buffer_capacity)
+    profitable_continue_buffer = ReplayBuffer(capacity=cfg.buffer_capacity)
 
     global_step = 0
     episode_rewards = []
@@ -104,6 +137,7 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
             obs, _ = env.reset()
             total_reward = 0.0
             for _step in range(cfg.max_steps_per_episode):
+                to_call_before = max(0, env.current_bet - env.player_bet)
                 action = teacher_action(env)
                 next_obs, reward, terminated, truncated, _info = env.step(action)
                 done = terminated or truncated
@@ -123,6 +157,15 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
                     done,
                     next_action_mask=env.legal_action_mask(),
                 )
+                if to_call_before > 0 and action == 2:
+                    profitable_continue_buffer.add(
+                        obs,
+                        action,
+                        reward,
+                        next_obs,
+                        done,
+                        next_action_mask=env.legal_action_mask(),
+                    )
                 obs = next_obs
                 total_reward += float(reward)
                 if done:
@@ -132,10 +175,12 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
             "[Teacher warmup] "
             f"episodes={cfg.teacher_warmup_episodes} "
             f"buffer={len(replay_buffer)} "
+            f"continue_buffer={len(profitable_continue_buffer)} "
             f"avg_reward={sum(teacher_rewards) / max(1, len(teacher_rewards)):8.3f}"
         )
 
     imitation_loss, imitation_accuracy = 0.0, 0.0
+    continue_margin_loss, continue_margin_satisfied = 0.0, 0.0
     if cfg.imitation_pretrain_steps > 0:
         if len(expert_buffer) < cfg.batch_size:
             raise ValueError(
@@ -174,6 +219,16 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
             global_step += 1
 
             action_mask = env.legal_action_mask()
+            counterfactual_continue = profitable_continue_action(env)
+            if counterfactual_continue is not None:
+                profitable_continue_buffer.add(
+                    obs,
+                    counterfactual_continue,
+                    0.0,
+                    obs,
+                    False,
+                    next_action_mask=action_mask,
+                )
             action = agent.act(obs, epsilon, action_mask=action_mask)
             next_obs, reward, terminated, truncated, info = env.step(action)
             done = terminated or truncated
@@ -197,6 +252,17 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
                         expert_batch,
                         loss_weight=cfg.imitation_loss_weight,
                     )
+                continue_batch_size = int(
+                    round(hyper.batch_size * max(0.0, cfg.profitable_continue_replay_ratio))
+                )
+                if continue_batch_size > 0 and len(profitable_continue_buffer) >= continue_batch_size:
+                    continue_batch = profitable_continue_buffer.sample(continue_batch_size)
+                    continue_margin_loss, continue_margin_satisfied = agent.action_margin_update(
+                        continue_batch,
+                        avoid_action=0,
+                        margin=cfg.profitable_continue_margin,
+                        loss_weight=cfg.profitable_continue_loss_weight,
+                    )
 
             if done:
                 break
@@ -214,7 +280,9 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
                 f"loss={loss:8.5f} "
                 f"mean_q={mean_q:8.3f} "
                 f"bc_loss={imitation_loss:8.5f} "
-                f"bc_acc={imitation_accuracy:5.3f}"
+                f"bc_acc={imitation_accuracy:5.3f} "
+                f"cont_margin={continue_margin_loss:8.5f} "
+                f"cont_ok={continue_margin_satisfied:5.3f}"
             )
 
         if cfg.save_interval > 0 and episode % cfg.save_interval == 0:
@@ -237,6 +305,9 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
         "imitation_pretrain_steps": cfg.imitation_pretrain_steps,
         "expert_replay_ratio": cfg.expert_replay_ratio,
         "imitation_loss_weight": cfg.imitation_loss_weight,
+        "profitable_continue_replay_ratio": cfg.profitable_continue_replay_ratio,
+        "profitable_continue_margin": cfg.profitable_continue_margin,
+        "profitable_continue_loss_weight": cfg.profitable_continue_loss_weight,
         "table_size": cfg.table_size,
         "resume_checkpoint": cfg.resume_checkpoint,
         "avg_reward_last_100": (
@@ -279,6 +350,21 @@ def parse_args():
     parser.add_argument("--imitation-pretrain-steps", type=int, default=TrainConfig.imitation_pretrain_steps)
     parser.add_argument("--expert-replay-ratio", type=float, default=TrainConfig.expert_replay_ratio)
     parser.add_argument("--imitation-loss-weight", type=float, default=TrainConfig.imitation_loss_weight)
+    parser.add_argument(
+        "--profitable-continue-replay-ratio",
+        type=float,
+        default=TrainConfig.profitable_continue_replay_ratio,
+    )
+    parser.add_argument(
+        "--profitable-continue-margin",
+        type=float,
+        default=TrainConfig.profitable_continue_margin,
+    )
+    parser.add_argument(
+        "--profitable-continue-loss-weight",
+        type=float,
+        default=TrainConfig.profitable_continue_loss_weight,
+    )
     parser.add_argument("--table-size", type=int, default=TrainConfig.table_size)
     parser.add_argument("--resume-checkpoint", default=None)
     parser.add_argument("--device", default=None)
@@ -315,6 +401,9 @@ if __name__ == "__main__":
         imitation_pretrain_steps=args.imitation_pretrain_steps,
         expert_replay_ratio=args.expert_replay_ratio,
         imitation_loss_weight=args.imitation_loss_weight,
+        profitable_continue_replay_ratio=args.profitable_continue_replay_ratio,
+        profitable_continue_margin=args.profitable_continue_margin,
+        profitable_continue_loss_weight=args.profitable_continue_loss_weight,
         table_size=args.table_size,
         resume_checkpoint=args.resume_checkpoint,
     )

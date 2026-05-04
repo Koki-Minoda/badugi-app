@@ -1708,6 +1708,15 @@ Draw RL test coverage:
           - 2026-05-04 実装: `DEFAULT_AI_TIER_ID` を `pro` に変更。設定画面の開発者向け tier override が未設定の場合、通常CPUは Pro policy を使う。既にブラウザlocalStorageへ `dev.aiTierOverride` が保存されている場合は、その明示設定を優先する。
           - 2026-05-04 実装: Pro / Iron / WorldMaster の `policyRouter` に elite補正を追加。発展性の高い3-card low drawのsemi-bluff、rough made Badugiのthin value、強いmade handでのto-call punish raiseを増やす。Standard以下には同補正を入れない。
           - 2026-05-04 テスト: ProがStandardより強い3-card drawをopen semi-bluffしやすいこと、WorldMasterがProよりrough made Badugiをthin value raiseしやすいことを回帰テスト化。
+        - [ ] `AI-06r` Badugi Iron trained checkpoint を作る。
+          - 2026-05-04 人間ログ評価: `/tmp/badugi-human-log.lbUkIF.jsonl` は3ハンドのみ検出。`win=1/loss=1/tie=1` で、形式確認としては使えるが強さ判定には不足。実プレイ分はブラウザから `window.MGX.exportHumanBenchmarkLogs()` でJSONL出力し、最低50ハンド以上で再評価する。
+          - 2026-05-04 Pro評価: `npm run ai:benchmark-badugi-human-practice -- --model public/models/badugi_pro_v1.onnx --tier pro --episodes 200 --table-size 6 --human-log /tmp/badugi-human-log.lbUkIF.jsonl --min-human-log-hands 3 --require-human-logs` は PASS。practice summary は `avgReward=2.708`, `showdownWinRate=0.682`, `foldRate=0.163`, `worstProfileAvgReward=1.520`。
+          - 2026-05-04 既存Iron候補再評価: `badugi_sixmax_iron_profile_continue_20k_20260502` の5k/10k/15k/20k checkpointは Pro比 `+0.017/+0.019/-0.048/-0.030`。showdownWinRateは上がるがfoldRateも上がり、Iron昇格不可。
+          - 2026-05-04 実装方針: teacher が profitable continue と判断した facing-bet call サンプルを専用バッファへ分離し、DQN学習中に fold action より call action のQ値を一定margin上に押し上げる `profitable_continue` margin loss を追加する。狙いは profitableFoldMisses をPro以下へ下げながら、foldRateを上げすぎないこと。
+          - 2026-05-04 実装: `DQNAgent.action_margin_update()` と `--profitable-continue-*` 学習オプションを追加。teacher warmup中のcontinue sampleに加え、online探索中のEV-positive facing-bet stateもcounterfactual callとしてmargin bufferへ入れる。
+          - 2026-05-04 評価: `badugi_sixmax_iron_continue_margin_10k_20260504` はPro比 `+0.039/+0.013`。showdownWinRateは `0.673/0.691` まで上がったが、profitableFoldMissesが `119/140` に悪化して不採用。
+          - 2026-05-04 評価: `badugi_sixmax_iron_online_continue_margin_5k_20260504` はPro比 `+0.046`, `avgReward=2.614`, `showdownWinRate=0.607`, `foldRate=0.093`, `profitableFoldMisses=27`。fold missはProの85から大きく改善したが、showdownWinRateがProの `0.648` を下回るためIron昇格不可。
+          - 次の打ち手: online continue margin はfold miss削減に効いたが、showdown勝率を落とす。次は「continue後のdraw quality / final street fold discipline」を追加し、安く継続するだけでなく勝てるshowdownへ到達するrewardを増やす。
       - [ ] `AI-06e` 2-7 / A-5 用の実ONNXを生成・配置する。現状は `model-27draw-iron-v1` (`D01/S01`) と `model-a5draw-iron-v1` (`D02/S02`) の registry / feature builder / routing test はあるが、実 `.onnx` は optional 未配置で、App draw CPU は rule-based fallback が主経路。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
   - P2P:

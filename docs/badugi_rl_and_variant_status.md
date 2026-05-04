@@ -2153,6 +2153,7 @@ Draw RL test coverage:
 | `BUG-33` | PC/Mobile layout separation | PC / Mobile | open | スマホ横画面対応がPC卓レイアウトへ影響しないことを継続確認する。 | PC desktop smoke と mobile landscape smoke を別々に維持する。 |
 | `BUG-34` | All-in / split pot flow | All | partial | AI後、side pot / split pot / odd chip / all-in skipped actor が誤るとゲーム進行停止や誤配当につながる。 | NLH/PLO/Dramahaはmain/side pot fixture追加済み。PLO8/FLO8/Stud8/Razzdugi/Razzduceyはplayable化時にhi/lo・split fixtureを追加する。 |
 | `BUG-35` | Play feedback pipeline | All | planned | Cash / tournament の30ハンド以上の履歴から、良かった点/悪かった点/ROI/参加条件/仮説をまとめるAI feedback APIが未実装。 | 10-Game Beginner/Standard RL適用後にBadugi/2-7/A-5/Stud/Razz/NLH/PLOを対象にする。 |
+| `BUG-36` | All-in draw actor | Badugi / Draw | fixed | all-in後のCPU/Hero、またはall-in後にbusted seatが残った状態で、DRAWフェーズの交換対象が詰まりカード交換できなくなる。 | Badugiはactive all-in seatをDRAW可能、busted/seatOutはDRAW不可に分離。2-7/A-5 draw regressionも再実行する。 |
 
 - [x] `BUG-31` Hero DRAW中はHero seat Smart HUDを開かず、カードクリックを最優先する。
   - 2026-05-04 対応: `Player` componentでHeroかつ`phase === "DRAW"`の場合はSmart HUDを開かない。Player単体テストでHUDが出ず、Hero card clickが発火することを固定。
@@ -2164,6 +2165,11 @@ Draw RL test coverage:
   - 2026-05-04 対応中: NLH/PLO/Dramahaのshowdownにside pot resolverを接続し、3人all-inでmain pot / side pot 1 / side pot 2のwinnerが別になるfixtureを追加。
   - 残: PLO8/FLO8/Stud8/Razzdugi/RazzduceyはGAME-ALL playable化時にhi/lo split、no-low scoop、component別side pot、odd chip fixtureを追加する。
 - [ ] `BUG-35` Cash / tournament のプレイフィードバック仕様とAPIを実装する。
+- [x] `BUG-36` all-in後のDRAW停止を修正する。
+  - 2026-05-04 対応: `isSeatEligibleForDraw` はcurrent handでactiveなall-in seatを交換対象に残し、BETだけall-inを除外するように整理。
+  - 2026-05-04 対応: `sanitizeStacks` は stack 0 のcurrent-hand all-inを即busted扱いにせず、`seatOut` のときだけbustedへ寄せる。
+  - 2026-05-04 対応: Hero / CPU draw actor loop、Badugi controller legal action、DRAW round skip判定を同じdraw eligibilityへ統一。
+  - 横断確認: Badugi unit、2-7/A-5 draw engine/controller、BadugiEngine regressionを実行して確認する。
 
 ### 16.5 Full Game Implementation / RL / Feedback Order
 
@@ -2369,9 +2375,9 @@ Draw RL test coverage:
   - 対応: `GameLayoutBase` で felt / ring のinsetを `layoutMode` ごとに分離。
   - 横断影響: Badugiだけでなく同じshared layoutを使う2-7/A-5/今後のHold'em/Omahaにも影響し得るため、shared layout側で修正。
 - [x] `REG-20260504-ALLIN-DRAW-FREEZE` all-in後に進行停止する可能性を修正する。
-  - 原因: Badugiの `isSeatEligibleForDraw` が all-in seat をdraw actor候補に残していた。
-  - 対応: all-in seatをDRAW actorから除外し、pending flagが残っていてもskipするunit testを追加。
-  - 横断確認: 2-7/A-5系は別エンジンの all-in regression test を再実行して確認する。
+  - 2026-05-04 初期対応: all-in seatをDRAW actorから除外して待機停止を避けたが、実戦確認で「all-in後もdraw pokerでは交換権が残る」ケースを潰してしまうことが判明。
+  - 2026-05-04 再修正: BET eligibility と DRAW eligibility を分離し、current handでactiveなall-in seatはDRAW可能、busted/seatOut/folded seatだけDRAW不可に統一。
+  - 横断確認: Badugi unit と 2-7/A-5系の draw regression test を再実行して確認する。
 - [x] `BUG-TRACK-20260504` 新規バグを `docs/bugs/badugi_browser_mobile_bug_tracker.md` に追加し、他ゲーム影響欄を持たせる。
 - [x] `FB-POLICY-01` キャッシュ/トーナメントのプレイフィードバック運用方針を作成する。
   - 2026-05-04 対応: `docs/play-feedback-policy.md` に30ハンド以上の送信条件、ROI/良悪判断/ChatGPT API連携方針を記載。
@@ -2389,7 +2395,7 @@ Draw RL test coverage:
 - P0: `BUG-20260503-SB-FOLD-DRAW-FREEZE`
   - 症状: SB/Hero が fold した後、DRAW フェーズで `Waiting for other players...` のまま進まない。
   - 原因: UI auto actor loop が `turn === 0` を無条件に「Hero 手動操作待ち」と扱っていた。fold済み Hero でも draw actor として待ってしまい、CPU draw へ進まなかった。
-  - 対応: `shouldWaitForHeroDrawTurn()` を追加し、Hero が `DRAW` 可能な場合だけ手動待機する。folded / all-in / draw済み Hero は自動的に次 seat へ進める。
+  - 対応: `shouldWaitForHeroDrawTurn()` を追加し、Hero が `DRAW` 可能な場合だけ手動待機する。folded / busted / seatOut / draw済み Hero は自動的に次 seat へ進める。current hand の all-in Hero は交換権が残るため手動待機する。
   - 検証: helper unit test と Badugi/draw family smoke を実行する。
 - P1: `PUI-11` action panel に current bet / to-call / raise cap を常時表示する。
   - 理由: プレイヤーの判断に直結し、誤操作とストレスを減らす。

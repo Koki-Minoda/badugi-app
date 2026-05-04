@@ -6,6 +6,7 @@ import {
   maxBetThisRound,
   isFoldedOrOut,
   findNextDrawActorSeat,
+  isSeatEligibleForDraw,
 } from "../flow/actionUtils.js";
 import { getWinnersByBadugi } from "../utils/badugiEvaluator.js";
 
@@ -83,7 +84,7 @@ function deriveLegalActions(snapshot, seatIndex) {
   }
 
   const isDrawPhase = snapshot?.phase === "DRAW";
-  if (isDrawPhase && !player.hasDrawn && !player.allIn) {
+  if (isDrawPhase && isSeatEligibleForDraw(player) && !player.hasDrawn) {
     baseActions.push({ type: "DRAW" });
   }
 

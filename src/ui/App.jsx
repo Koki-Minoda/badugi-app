@@ -33,6 +33,7 @@ import {
   firstBetterAfterBlinds,
   findNextActiveSeat,
   findNextDrawActorSeat as findNextDrawActorSeatHelper,
+  isSeatEligibleForDraw,
 } from "../games/badugi/flow/actionUtils.js";
 import {
   settleStreetToPots,
@@ -2180,7 +2181,7 @@ const SAFE_RESET_PHASE = "IDLE";
         return false;
       }
       const currentSeat = snapshot[turn];
-      if (!currentSeat || isFoldedOrOut(currentSeat)) {
+      if (!currentSeat || !isSeatEligibleForDraw(currentSeat)) {
         const nxt = helpers.findNextDrawActorSeat(snapshot, turn);
         if (nxt !== null) {
           setTurn(nxt);
@@ -2193,7 +2194,7 @@ const SAFE_RESET_PHASE = "IDLE";
         }
         return true;
       }
-      if (currentSeat.hasDrawn || currentSeat.allIn) {
+      if (currentSeat.hasDrawn) {
         const nxt = helpers.findNextDrawActorSeat(snapshot, turn + 1);
         if (nxt !== null) {
           setTurn(nxt);
@@ -2947,6 +2948,27 @@ const SAFE_RESET_PHASE = "IDLE";
         folded: player?.folded,
       });
       logE2ESkip(seat, "folded");
+      return false;
+    }
+    if (phase === "DRAW" && !isSeatEligibleForDraw(player)) {
+      logE2EError("player not eligible to draw before action", {
+        seat,
+        context,
+        isBusted: player?.isBusted,
+        seatOut: player?.seatOut,
+        allIn: player?.allIn,
+      });
+      logE2ESkip(seat, "draw-ineligible");
+      return false;
+    }
+    if (phase === "BET" && (player.allIn || Math.max(0, Number(player.stack) || 0) <= 0)) {
+      logE2EError("player not eligible to bet before action", {
+        seat,
+        context,
+        allIn: player?.allIn,
+        stack: player?.stack,
+      });
+      logE2ESkip(seat, "bet-ineligible");
       return false;
     }
     console.assert(
@@ -6015,8 +6037,8 @@ const SAFE_RESET_PHASE = "IDLE";
             "nextIdx=", nextIdx, typeof nextIdx, 
             "drawRound=", drawRound);
 
-      const actives = snap.filter((p) => !isFoldedOrOut(p));
-      const allActiveDrawn = actives.every((p) => p.hasDrawn);
+      const drawEligible = snap.filter((p) => isSeatEligibleForDraw(p));
+      const allActiveDrawn = drawEligible.every((p) => p.hasDrawn || p.hasActedThisRound);
 
       if (allActiveDrawn || nextIdx === null) {
         forceFinishRound({
@@ -7273,8 +7295,8 @@ const SAFE_RESET_PHASE = "IDLE";
     if (phase !== "DRAW" || turn !== 0) return;
     const currentPlayers = playersRef.current ?? players;
     const player = currentPlayers?.[0];
-    if (!player || isFoldedOrOut(player)) {
-      logE2EError("Hero draw attempted while folded", {
+    if (!player || !isSeatEligibleForDraw(player)) {
+      logE2EError("Hero draw attempted while draw-ineligible", {
         seat: 0,
         context: "drawSelected",
       });

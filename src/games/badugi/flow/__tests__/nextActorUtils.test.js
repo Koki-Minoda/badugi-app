@@ -41,6 +41,16 @@ describe("findNextActorSeatForPhase", () => {
     expect(actual).toBe(expected);
   });
 
+  test("DRAW helper includes all-in seats that still need to exchange cards", () => {
+    const players = [
+      { name: "All-in", isSeated: true, isActiveInGame: true, stack: 0, allIn: true, folded: false, hasActedThisRound: false, hasDrawn: false },
+      { name: "Done", isSeated: true, isActiveInGame: true, stack: 100, allIn: false, folded: false, hasActedThisRound: true, hasDrawn: true },
+      { name: "Busted", isSeated: true, isActiveInGame: true, stack: 0, allIn: false, isBusted: true, seatOut: true, hasActedThisRound: false },
+    ];
+
+    expect(findNextDrawActorSeat(players, 0)).toBe(0);
+  });
+
   test("warns on unknown phase", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const result = findNextActorSeatForPhase({ phase: "SHOWDOWN", players: samplePlayers });

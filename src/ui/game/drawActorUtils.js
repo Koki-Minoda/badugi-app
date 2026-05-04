@@ -10,6 +10,6 @@ export function shouldWaitForHeroDrawTurn({
   if (turn !== heroIndex) return false;
   const hero = Array.isArray(players) ? players[heroIndex] : null;
   if (!isSeatEligibleForDraw(hero)) return false;
-  if (hero?.allIn || hero?.hasDrawn || hero?.hasActedThisRound) return false;
+  if (hero?.hasDrawn || hero?.hasActedThisRound) return false;
   return true;
 }

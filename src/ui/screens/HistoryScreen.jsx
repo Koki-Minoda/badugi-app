@@ -2,6 +2,8 @@ import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { designTokens } from "../../styles/designTokens.js";
 import { getHands, getTournaments, getTournamentHands } from "../../utils/history.js";
+import { buildPlayFeedbackPayload, MIN_FEEDBACK_HANDS } from "../feedback/playFeedbackPayload.js";
+import { hasStoredFeedbackAuth, requestPlayFeedback } from "../feedback/playFeedbackApi.js";
 
 const fmt = new Intl.DateTimeFormat("ja-JP", {
   month: "2-digit",
@@ -88,6 +90,11 @@ export default function HistoryScreen() {
   const tournaments = useMemo(() => getTournaments({ limit: 200 }), []);
   const [selectedId, setSelectedId] = useState(tournaments[0]?.tournamentId ?? null);
   const [search, setSearch] = useState("");
+  const [feedbackState, setFeedbackState] = useState({
+    loading: false,
+    error: null,
+    response: null,
+  });
   const filtered = tournaments.filter((entry) => {
     if (!search.trim()) return true;
     return (
@@ -99,6 +106,34 @@ export default function HistoryScreen() {
     () => (selectedId ? getTournamentHands({ tournamentId: selectedId, limit: 50 }) : []),
     [selectedId]
   );
+  const selectedTournament = useMemo(
+    () => tournaments.find((entry) => entry.tournamentId === selectedId) ?? null,
+    [selectedId, tournaments],
+  );
+  const feedbackPayloadResult = useMemo(() => {
+    const sourceHands = selectedId ? hands : cashHands;
+    return buildPlayFeedbackPayload({
+      hands: sourceHands,
+      mode: selectedId ? "tournament" : "cash",
+      variantScope: "mixed",
+      tournament: selectedTournament,
+    });
+  }, [cashHands, hands, selectedId, selectedTournament]);
+
+  async function handleRequestFeedback() {
+    if (!feedbackPayloadResult.eligible || !feedbackPayloadResult.payload) return;
+    setFeedbackState({ loading: true, error: null, response: null });
+    try {
+      const response = await requestPlayFeedback(feedbackPayloadResult.payload);
+      setFeedbackState({ loading: false, error: null, response });
+    } catch (error) {
+      setFeedbackState({
+        loading: false,
+        error: error instanceof Error ? error.message : "feedback_failed",
+        response: null,
+      });
+    }
+  }
 
   return (
     <div
@@ -123,6 +158,60 @@ export default function HistoryScreen() {
       </header>
 
       <main className="max-w-6xl mx-auto px-6 pb-16 space-y-10">
+        <section className="rounded-3xl border border-emerald-400/20 bg-emerald-950/20 p-6 space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold">プレイフィードバック</h2>
+              <p className="text-sm text-slate-300">
+                30ハンド以上のキャッシュゲームまたは選択中トーナメント履歴を使って、VPIP/PFR、ROI/チップ増減、
+                showdown/all-in/split potをまとめたフィードバックを作成します。
+              </p>
+              <p className="mt-2 text-xs text-slate-400">
+                対象: {selectedId ? `Tournament ${selectedId}` : "Cash game"} / Hands:{" "}
+                {feedbackPayloadResult.handCount} / Minimum: {MIN_FEEDBACK_HANDS}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleRequestFeedback}
+              disabled={
+                feedbackState.loading ||
+                !feedbackPayloadResult.eligible ||
+                !hasStoredFeedbackAuth()
+              }
+              className="rounded-full bg-emerald-400 px-4 py-2 text-sm font-bold text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-slate-300"
+            >
+              {feedbackState.loading ? "解析中..." : "AIフィードバック作成"}
+            </button>
+          </div>
+          {!hasStoredFeedbackAuth() && (
+            <p className="rounded-2xl border border-amber-300/20 bg-amber-300/10 p-3 text-sm text-amber-100">
+              ログインするとAIフィードバックを送信できます。
+            </p>
+          )}
+          {!feedbackPayloadResult.eligible && (
+            <p className="rounded-2xl border border-white/10 bg-slate-950/40 p-3 text-sm text-slate-300">
+              まだフィードバック対象外です。{MIN_FEEDBACK_HANDS}ハンド以上プレイしてください。
+            </p>
+          )}
+          {feedbackState.error && (
+            <p className="rounded-2xl border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-100">
+              {feedbackState.error}
+            </p>
+          )}
+          {feedbackState.response && (
+            <div className="rounded-2xl border border-emerald-300/20 bg-slate-950/50 p-4 text-sm text-slate-100">
+              <div className="mb-2 text-xs uppercase tracking-[0.25em] text-emerald-300">
+                Feedback source: {feedbackState.response.source ?? "-"}
+              </div>
+              <p className="whitespace-pre-wrap">{feedbackState.response.adviceJa}</p>
+              {feedbackState.response.adviceEn && (
+                <p className="mt-3 text-slate-400">{feedbackState.response.adviceEn}</p>
+              )}
+            </div>
+          )}
+        </section>
+
         <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>

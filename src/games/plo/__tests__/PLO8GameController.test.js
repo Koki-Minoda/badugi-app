@@ -80,6 +80,36 @@ describe("PLO8GameController", () => {
     expect(controller.state.players.map((player) => player.stack)).toEqual([1100, 900]);
   });
 
+  it("stores hi-lo result immediately when river betting completes", () => {
+    const controller = createController();
+    controller.startNewHand();
+    controller.state.street = "RIVER";
+    controller.state.boardCards = ["2S", "3S", "4H", "9S", "KC"];
+    controller.state.currentActor = 0;
+    controller.state.currentBet = 0;
+    controller.state.players = controller.state.players.map((player, idx) => ({
+      ...player,
+      folded: false,
+      seatOut: false,
+      allIn: false,
+      hasActedThisStreet: false,
+      betThisStreet: 0,
+      holeCards: idx === 0
+        ? ["AS", "QS", "KS", "QH"]
+        : ["AH", "5D", "7D", "8C"],
+      totalInvested: 100,
+      stack: 900,
+    }));
+
+    expect(controller.applyPlayerAction({ seatIndex: 0, action: "check" }).success).toBe(true);
+    expect(controller.applyPlayerAction({ seatIndex: 1, action: "check" }).success).toBe(true);
+
+    const snapshot = controller.getSnapshot();
+    expect(snapshot.street).toBe("SHOWDOWN");
+    expect(snapshot.lastHandResult).toMatchObject({ splitMode: "hiLo" });
+    expect(snapshot.lastHandResult.potDetails[0].highWinners.length).toBeGreaterThan(0);
+  });
+
   it("keeps odd chips stable inside the main pot before resolving side pots", () => {
     const controller = new PLO8GameController({
       tableConfig: {

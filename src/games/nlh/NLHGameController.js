@@ -418,6 +418,7 @@ export class NLHGameController {
     this.state.street = nextStreet;
     if (nextStreet === "SHOWDOWN") {
       this.state.currentActor = null;
+      this.resolveShowdown();
     } else if (nextStreet === "FLOP" || nextStreet === "TURN" || nextStreet === "RIVER") {
       this.state.currentActor = this.nextActiveSeat(this.state.dealerIndex);
     }

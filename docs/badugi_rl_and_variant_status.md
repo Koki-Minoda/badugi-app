@@ -2190,6 +2190,7 @@ Draw RL test coverage:
 | `BUG-36` | All-in draw actor | Badugi / Draw | fixed | all-in後のCPU/Hero、またはall-in後にbusted seatが残った状態で、DRAWフェーズの交換対象が詰まりカード交換できなくなる。 | Badugiはactive all-in seatをDRAW可能、busted/seatOutはDRAW不可に分離。2-7/A-5 draw regressionも再実行する。 |
 | `BUG-37` | Hand history completeness | All | fixed | ゲーム内履歴と `/history` 永続履歴が分断され、キャッシュゲーム履歴が見えにくい。hand history detail/replay/API送信の完成度が不足。 | Cash/Tournament両方で完了ハンドが保存・表示され、variant/evaluator/pot/action/replayが復元できることを横断確認する。 |
 | `BUG-38` | Friend match playable QA | P2P | fixed | フレンドマッチがルーム作成/参加/ready/action/showdown/reconnectまで実運用レベルで壊れないか継続テストが必要だった。実WebSocket host/guest smokeとmobile landscape smokeを追加済み。 | mocked browser smoke、backend websocketありhost/guest 2page smoke、browser reconnect、mobile landscapeを継続回帰に入れる。 |
+| `BUG-39` | Board-game showdown / board UI | PC / Mobile | fixed | PLOでRIVER後にSHOWDOWNへ入っても `lastHandResult` が無く、リザルト画面が出ず進行停止する。コミュニティカードとTotal Pot表示も重なり、boardが読みにくい。 | NLH/FLH/PLO/PLO8/FLO8/5-card PLOは同じboard controller経路のため、SHOWDOWN突入時に即 `resolveShowdown()` する regression と playable invariant を追加。 |
 
 - [x] `BUG-31` Hero DRAW中はHero seat Smart HUDを開かず、カードクリックを最優先する。
   - 2026-05-04 対応: `Player` componentでHeroかつ`phase === "DRAW"`の場合はSmart HUDを開かない。Player単体テストでHUDが出ず、Hero card clickが発火することを固定。

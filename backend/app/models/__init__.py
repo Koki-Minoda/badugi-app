@@ -12,6 +12,7 @@ from .user import User  # noqa: E402  (import after Base definition)
 from .hand_log import HandAction, HandLog, HandResult  # noqa: E402
 from .badugi_action_log import BadugiHandAction  # noqa: E402
 from .tournament_snapshot import TournamentSnapshot  # noqa: E402
+from .play_feedback import PlayFeedbackResult  # noqa: E402
 from .variant import (  # noqa: E402
     Variant,
     VariantBettingStructure,
@@ -29,6 +30,7 @@ __all__ = (
     "HandResult",
     "BadugiHandAction",
     "TournamentSnapshot",
+    "PlayFeedbackResult",
     "Variant",
     "VariantRule",
     "VariantModifier",

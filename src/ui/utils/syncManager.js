@@ -209,6 +209,18 @@ function normalizeHandLogPayload(payload) {
   };
 }
 
+function normalizeGenericHandHistoryPayload(payload) {
+  const handId = payload?.handId ?? payload?.data?.handId ?? payload?.data?.hand_id;
+  if (!handId) return null;
+  const data = payload?.data ?? payload;
+  return {
+    handId,
+    winner: payload?.winner ?? data?.winner ?? null,
+    variantId: payload?.variantId ?? data?.variantId ?? data?.gameId ?? null,
+    data,
+  };
+}
+
 function normalizeTournamentSavePayload(payload) {
   if (payload?.snapshot) return payload;
   return { snapshot: payload };
@@ -251,6 +263,12 @@ async function sendJob(job, options = {}) {
   switch (job.type) {
     case "hand-history":
       {
+        const genericPayload = normalizeGenericHandHistoryPayload(job.payload);
+        if (genericPayload) {
+          await postJson("/history/hand", genericPayload, options).catch((err) => {
+            console.warn("[sync] generic hand-history sync failed", err);
+          });
+        }
         const payload = normalizeHandLogPayload(job.payload);
         if (!payload) return;
         await postJson("/badugi/hands", payload, options);
@@ -345,7 +363,7 @@ export function enqueueHandRecord(record, options = {}) {
   enqueueJob("hand-history", {
     handId: record.handId,
     winner: record.winner,
-    variantId: record.gameId,
+    variantId: record.variantId ?? record.gameId,
     data: record,
   });
   if (options.flushNow && import.meta.env?.DEV) {

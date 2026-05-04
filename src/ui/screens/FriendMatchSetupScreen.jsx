@@ -72,6 +72,9 @@ const FRIEND_COPY = {
     foldedState: " / フォールド",
     stack: "スタック",
     bet: "ベット",
+    currentTurn: "現在の手番",
+    yourTurn: "あなたの手番です",
+    waitingTurn: "相手の手番を待っています",
     showdownWinner: "ショーダウン勝者",
     noWinner: "なし",
     noEvents: "まだ同期イベントはありません。",
@@ -123,6 +126,9 @@ const FRIEND_COPY = {
     foldedState: " / folded",
     stack: "Stack",
     bet: "Bet",
+    currentTurn: "Current turn",
+    yourTurn: "Your turn",
+    waitingTurn: "Waiting for opponent",
     showdownWinner: "Showdown winner",
     noWinner: "none",
     noEvents: "No room events received yet.",
@@ -201,6 +207,7 @@ const EMPTY_TABLE_STATE = {
   lastAction: null,
   secureDeals: [],
   showdown: null,
+  currentTurnPlayerId: null,
 };
 
 function mergePlayerStates(players = [], playerStates = [], stacks = {}, bets = {}) {
@@ -230,6 +237,7 @@ function applyRoomEventToTableState(current, entry) {
       players,
       playerStates: mergePlayerStates(players, payload.playerStates, current.stacks, current.bets),
       warnings: payload.warnings ?? current.warnings,
+      currentTurnPlayerId: payload.currentTurnPlayerId ?? current.currentTurnPlayerId,
       showdown: payload.phase === "playing" ? null : current.showdown,
     };
   }
@@ -243,6 +251,7 @@ function applyRoomEventToTableState(current, entry) {
       bets: payload.bets ?? current.bets,
       stacks: payload.stacks ?? current.stacks,
       lastAction: payload.lastAction ?? current.lastAction,
+      currentTurnPlayerId: payload.currentTurnPlayerId ?? current.currentTurnPlayerId,
       players,
       playerStates: mergePlayerStates(players, current.playerStates, payload.stacks, payload.bets),
     };
@@ -487,6 +496,10 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
       amount,
     });
   };
+  const canSendAction =
+    Boolean(createdRoom?.ownerId) &&
+    (!p2pTableState.currentTurnPlayerId ||
+      p2pTableState.currentTurnPlayerId === createdRoom.ownerId);
 
   return (
     <div
@@ -688,6 +701,13 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
                   {p2pTableState.handId ? (
                     <p className="text-xs text-emerald-100/70">{copy.hand} {p2pTableState.handId}</p>
                   ) : null}
+                  {p2pTableState.currentTurnPlayerId ? (
+                    <p className="text-xs text-emerald-100/80">
+                      {copy.currentTurn}: {p2pTableState.currentTurnPlayerId === createdRoom.ownerId
+                        ? copy.yourTurn
+                        : copy.waitingTurn}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -701,24 +721,27 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
                   <button
                     type="button"
                     data-testid="p2p-call"
+                    disabled={!canSendAction}
                     onClick={() => sendAction("call", bigBlind)}
-                    className="rounded-xl border border-sky-300/60 px-3 py-2 text-xs font-semibold text-sky-50 hover:bg-sky-300/10"
+                    className="rounded-xl border border-sky-300/60 px-3 py-2 text-xs font-semibold text-sky-50 hover:bg-sky-300/10 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {copy.call} {bigBlind}
                   </button>
                   <button
                     type="button"
                     data-testid="p2p-draw"
+                    disabled={!canSendAction}
                     onClick={() => sendAction("draw", 0)}
-                    className="rounded-xl border border-amber-300/60 px-3 py-2 text-xs font-semibold text-amber-50 hover:bg-amber-300/10"
+                    className="rounded-xl border border-amber-300/60 px-3 py-2 text-xs font-semibold text-amber-50 hover:bg-amber-300/10 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {copy.draw}
                   </button>
                   <button
                     type="button"
                     data-testid="p2p-fold"
+                    disabled={!canSendAction}
                     onClick={() => sendAction("fold", 0)}
-                    className="rounded-xl border border-rose-300/60 px-3 py-2 text-xs font-semibold text-rose-50 hover:bg-rose-300/10"
+                    className="rounded-xl border border-rose-300/60 px-3 py-2 text-xs font-semibold text-rose-50 hover:bg-rose-300/10 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {copy.fold}
                   </button>

@@ -55,12 +55,12 @@ describe("shouldSkipDrawRound", () => {
     ).toBe(false);
   });
 
-  it("ignores folded or all-in seats even if they request cards", () => {
+  it("ignores folded seats but keeps all-in seats drawable", () => {
     expect(
       shouldSkipDrawRound({
         players: [seat({ folded: true, drawRequest: 3 }), seat({ allIn: true, drawRequest: 2 })],
       }),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("respects force flag in metadata", () => {
@@ -622,7 +622,7 @@ describe("findNextActorSeatForPhase (DRAW)", () => {
     hasActedThisRound: overrides.hasActedThisRound ?? false,
   });
 
-  it("skips folded and all-in seats while searching", () => {
+  it("skips folded and already drawn all-in seats while searching", () => {
     const players = [
       drawSeat({ name: "BTN", folded: true, hasActedThisRound: true }),
       drawSeat({ name: "SB", allIn: true, hasActedThisRound: true }),
@@ -636,14 +636,14 @@ describe("findNextActorSeatForPhase (DRAW)", () => {
     expect(findNextDrawSeat(players, 3)).toBe(4);
   });
 
-  it("skips an all-in seat even when its draw flag is still pending", () => {
+  it("keeps an all-in seat drawable when its draw flag is still pending", () => {
     const players = [
       drawSeat({ name: "BTN", hasActedThisRound: true }),
       drawSeat({ name: "SB", allIn: true, hasActedThisRound: false }),
       drawSeat({ name: "BB", hasActedThisRound: false }),
     ];
 
-    expect(findNextDrawSeat(players, 1)).toBe(2);
+    expect(findNextDrawSeat(players, 1)).toBe(1);
   });
 
   it("returns null when all eligible seats have acted", () => {

@@ -9,8 +9,9 @@ export function isFoldedOrOut(player) {
 
 // NOTE (H-01-2):
 //   - BTN/SB/BB candidates must satisfy isPlayerSeated && isPlayerActiveInGame.
-//   - BET/DRAW actors use isSeatEligibleForBet / isSeatEligibleForDraw,
-//     which add !folded && !allIn on top of the above conditions.
+//   - BET actors use isSeatEligibleForBet, which adds !folded && !allIn.
+//   - DRAW actors use isSeatEligibleForDraw. All-in seats still draw in draw
+//     poker while they remain active in the current hand.
 //   - Showdown contenders are filtered by isPlayerActiveInGame && !folded.
 // All seat-selection helpers (nextAliveFrom, assignBlinds, controller actor search,
 // and showdown code) MUST call these helpers instead of duplicating predicates.
@@ -135,10 +136,7 @@ export function sanitizeStacks(players) {
       console.warn(`[SANITIZE] ${label} stack=${next.stack} -> force all-in`);
       next.stack = 0;
       next.allIn = true;
-      next.hasDrawn = true;
-      next.isBusted = true;
-      next.hasActedThisRound = true;
-    } else if (next.stack <= 0 && next.isBusted !== true) {
+    } else if (next.stack <= 0 && next.seatOut && next.isBusted !== true) {
       next.isBusted = true;
       next.hasActedThisRound = true;
     } else if (next.stack > 0 && next.isBusted) {
@@ -162,13 +160,12 @@ export function isSeatEligibleForBet(player) {
 export function isSeatEligibleForDraw(player) {
   if (!isPlayerEligibleForBlinds(player)) return false;
   if (isFoldedOrOut(player)) return false;
-  if (player?.allIn) return false;
   if (player?.canDraw === false) return false;
   return true;
 }
 
 // NOTE (G-07): Draw actor search mirrors BET actor search.
-// We rely on isSeatEligibleForDraw (folded/all-in are skipped) and
+// We rely on isSeatEligibleForDraw (folded/busted/seatOut are skipped) and
 // hasActedThisRound to decide who still needs to draw. Returning null means
 // the draw round is complete and callers must advance the phase safely.
 export function findNextDrawActorSeat(players = [], startIdx = 0) {

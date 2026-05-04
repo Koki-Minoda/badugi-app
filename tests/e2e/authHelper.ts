@@ -15,6 +15,54 @@ const VARIANT_TEST_ID_BY_ALIAS: Record<string, string> = {
   deuce_to_seven_single_draw: "deuce_to_seven_single_draw",
   s02: "ace_to_five_single_draw",
   ace_to_five_single_draw: "ace_to_five_single_draw",
+  d04: "badeucey_triple_draw",
+  badeucey_td: "badeucey_triple_draw",
+  badeucey_triple_draw: "badeucey_triple_draw",
+  d05: "badacey_triple_draw",
+  badacey_td: "badacey_triple_draw",
+  badacey_triple_draw: "badacey_triple_draw",
+  d06: "hidugi_triple_draw",
+  hidugi_td: "hidugi_triple_draw",
+  hidugi_triple_draw: "hidugi_triple_draw",
+  d07: "archie_triple_draw",
+  archie_td: "archie_triple_draw",
+  archie_triple_draw: "archie_triple_draw",
+  s03: "five_card_single_draw",
+  five_card_single_draw: "five_card_single_draw",
+  s04: "badugi_single_draw",
+  badugi_single_draw: "badugi_single_draw",
+  s05: "badeucey_single_draw",
+  badeucey_single_draw: "badeucey_single_draw",
+  s06: "badacey_single_draw",
+  badacey_single_draw: "badacey_single_draw",
+  s07: "hidugi_single_draw",
+  hidugi_single_draw: "hidugi_single_draw",
+  nlh: "nlh",
+  b01: "nlh",
+  flh: "flh",
+  b02: "flh",
+  plo: "plo",
+  b05: "plo",
+  plo8: "plo8",
+  b06: "plo8",
+  flo8: "flo8",
+  b09: "flo8",
+  big_o: "big_o",
+  b07: "big_o",
+  five_card_plo: "five_card_plo",
+  b08: "five_card_plo",
+  stud: "stud",
+  st1: "stud",
+  stud8: "stud8",
+  st2: "stud8",
+  razz: "razz",
+  st3: "razz",
+  razzdugi: "razzdugi",
+  st4: "razzdugi",
+  razzducey: "razzducey",
+  st5: "razzducey",
+  razz27: "razz27",
+  st6: "razz27",
 };
 
 function variantTestIdFromUrl(url: string) {
@@ -138,7 +186,7 @@ export async function openAuthenticatedGame(page: Page, url = APP_URL) {
   await openAuthenticatedMenu(page, url);
   await page.getByTestId("menu-ring").click();
   const variantTestId = variantTestIdFromUrl(url);
-  await page.getByTestId(`game-selector-play-${variantTestId}`).click();
+  await page.getByTestId(`game-selector-play-${variantTestId}`).first().click();
   await Promise.race([
     page
       .getByRole("button", { name: /Leaderboard|ランキング/i })

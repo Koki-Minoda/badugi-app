@@ -1,0 +1,142 @@
+import React from "react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import HistoryScreen from "../HistoryScreen.jsx";
+
+vi.mock("../../../utils/history.js", () => ({
+  getHands: () =>
+    Array.from({ length: 30 }, (_, index) => ({
+      handId: index === 0 ? "cash-hand-1" : `cash-hand-${index + 1}`,
+      startedAt: Date.UTC(2026, 4, 4, 8, 0),
+      endedAt: Date.UTC(2026, 4, 4, 8, 2),
+      variantId: index % 2 === 0 ? "badugi" : "D01",
+      heroNet: index % 3 === 0 ? 40 : -20,
+      buttonSeat: 2,
+      sbSeat: 3,
+      bbSeat: 4,
+      seats: [
+        {
+          seat: 0,
+          name: "Hero",
+          stackAfter: 620,
+          bet: 40,
+          action: "call",
+          handLabel: index % 2 === 0 ? "Badugi 8-4-3-A" : "2-7 Low 7-5-4-3-2",
+          actions: [{ street: "BET", type: "call" }],
+        },
+        { seat: 1, name: "CPU 1", stackAfter: 0, bet: 40, allIn: true, action: "all-in" },
+      ],
+      pots: [
+        {
+          label: "Main",
+          amount: 120,
+          eligibleSeats: [0, 1],
+          winners: [{ seat: 0, amount: 120, name: "Hero" }],
+        },
+      ],
+      events: [
+        { type: "HAND_START" },
+        { type: "ACTION", seat: 0, action: "call" },
+        { type: "SHOWDOWN" },
+        { type: "HAND_END", totalPot: 120, winners: [{ seat: 0, amount: 120 }] },
+      ],
+    })),
+  getTournaments: () => [
+    {
+      tournamentId: "tourney-1",
+      tsEnd: Date.UTC(2026, 4, 4, 9, 0),
+      buyIn: 1000,
+      entries: 18,
+      finish: 2,
+      prize: 2700,
+      tier: "Store",
+    },
+  ],
+  getTournamentHands: () =>
+    Array.from({ length: 30 }, (_, index) => ({
+      handId: index === 0 ? "tourney-hand-1" : `tourney-hand-${index + 1}`,
+      ts: Date.UTC(2026, 4, 4, 9, 5),
+      variantId: index % 2 === 0 ? "badugi" : "D01",
+      heroNet: index % 4 === 0 ? 80 : -30,
+      pot: 80,
+      winners: ["Hero"],
+      playerSummaries: [
+        {
+          seat: 0,
+          name: "Hero",
+          bet: 40,
+          stackBefore: 500,
+          stackAfter: 580,
+          drawCount: 1,
+          action: "Call",
+          handLabel: index % 2 === 0 ? "Badugi 8-4-3-A" : "2-7 Low 7-5-4-3-2",
+        },
+      ],
+      actionLog: [{ phase: "BET", seatName: "Hero", type: "call" }],
+    })),
+}));
+
+describe("HistoryScreen", () => {
+  afterEach(() => {
+    cleanup();
+    window.localStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  it("shows cash hand history alongside tournament history", () => {
+    render(
+      <MemoryRouter>
+        <HistoryScreen />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("heading", { name: "キャッシュゲーム履歴" })).toBeTruthy();
+    expect(screen.getByText("cash-hand-1")).toBeTruthy();
+    expect(screen.getAllByText(/Seat 0 \+120/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Action Timeline").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Pot details").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/winners: Hero \+120/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("CPU 1").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Badugi").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("2-7 Low 7-5-4-3-2").length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "トーナメント一覧" })).toBeTruthy();
+    expect(screen.getByText("tourney-1")).toBeTruthy();
+    expect(screen.getByText("tourney-hand-1")).toBeTruthy();
+  });
+
+  it("requests AI play feedback when enough hands and auth are available", async () => {
+    window.localStorage.setItem(
+      "mgx_auth",
+      JSON.stringify({ accessToken: "token-1", tokenType: "Bearer" }),
+    );
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        adviceJa: "良い点と改善点",
+        adviceEn: "Good points and improvements",
+        source: "fallback",
+      }),
+    });
+
+    render(
+      <MemoryRouter>
+        <HistoryScreen />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "AIフィードバック作成" }));
+
+    await waitFor(() => expect(screen.getByText("良い点と改善点")).toBeTruthy());
+    expect(window.localStorage.getItem("mgx.playFeedback.results.v1")).toContain("良い点と改善点");
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "/api/analysis/play-feedback",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          Authorization: "Bearer token-1",
+        }),
+      }),
+    );
+  });
+});

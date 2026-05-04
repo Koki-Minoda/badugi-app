@@ -34,6 +34,59 @@ function toUiPlayer(player) {
   };
 }
 
+function normalizeSeatOut(source = {}, generated = {}) {
+  return Boolean(
+    source.seatOut ||
+      source.sittingOut ||
+      source.isBusted ||
+      generated.seatOut ||
+      generated.sittingOut,
+  );
+}
+
+function hydratePlayersFromCurrentStacks(generatedPlayers = [], sourcePlayers = []) {
+  if (!Array.isArray(sourcePlayers) || sourcePlayers.length === 0) {
+    return generatedPlayers;
+  }
+  return generatedPlayers.map((player, seatIndex) => {
+    const source = sourcePlayers[seatIndex] ?? null;
+    if (!source) return player;
+    const seatOut = normalizeSeatOut(source, player);
+    const stackValue = Number(source.stack);
+    const stack = seatOut
+      ? 0
+      : Number.isFinite(stackValue)
+        ? Math.max(0, stackValue)
+        : player.stack;
+    return {
+      ...player,
+      id: source.id ?? player.id,
+      playerId: source.playerId ?? source.id ?? player.playerId,
+      name: source.name ?? player.name,
+      avatar: source.avatar ?? player.avatar,
+      avatarUrl: source.avatarUrl ?? player.avatarUrl,
+      cpuCharacterId: source.cpuCharacterId ?? player.cpuCharacterId,
+      cpuStyle: source.cpuStyle ?? player.cpuStyle,
+      cpuModelId: source.cpuModelId ?? player.cpuModelId,
+      trainingRun: source.trainingRun ?? player.trainingRun,
+      titleBadge: source.titleBadge ?? player.titleBadge,
+      stats: source.stats ?? player.stats,
+      stack,
+      bet: 0,
+      totalInvested: 0,
+      folded: seatOut || stack <= 0,
+      allIn: false,
+      sittingOut: seatOut,
+      seatOut,
+      isBusted: source.isBusted ?? player.isBusted,
+      hasActedThisRound: false,
+      hasDrawn: false,
+      lastDrawCount: 0,
+      lastAction: "",
+    };
+  });
+}
+
 function sumPots(pots = []) {
   return pots.reduce((sum, pot) => sum + Math.max(0, pot?.amount ?? 0), 0);
 }
@@ -127,7 +180,7 @@ function buildEvent(beforeState, afterState, action = {}) {
 
 function deriveLegalActions(state = {}, seatIndex) {
   const player = state.players?.[seatIndex];
-  if (!player || player.folded || player.sittingOut || player.seatOut || player.allIn) {
+  if (!player || player.folded || player.sittingOut || player.seatOut) {
     return [];
   }
   if (state.actingPlayerIndex !== null && state.actingPlayerIndex !== seatIndex) {
@@ -135,6 +188,9 @@ function deriveLegalActions(state = {}, seatIndex) {
   }
   if (state.street === "DRAW") {
     return player.hasDrawn ? [] : [{ type: "DRAW", minDiscard: 0, maxDiscard: 5 }];
+  }
+  if (player.allIn) {
+    return [];
   }
   if (state.street !== "BET") return [];
   const currentBet = Math.max(
@@ -209,6 +265,10 @@ export class DeuceToSevenTripleDrawController extends GameController {
           : config.dealerIndex,
       structure: config.structure,
     });
+    raw.players = hydratePlayersFromCurrentStacks(
+      raw.players,
+      options.currentPlayers ?? options.prevPlayers ?? prevState?.snapshot?.players ?? [],
+    );
     const engineState = this.engine.applyForcedBets(raw);
     const state = {
       handIndex: (prevState?.handIndex ?? 0) + 1,
@@ -236,8 +296,8 @@ export class DeuceToSevenTripleDrawController extends GameController {
         turn: null,
         nextTurn: null,
         actingPlayerIndex: null,
-        maxDiscardCount: 5,
-        handCardCount: 5,
+        maxDiscardCount: this.engine?.handCardCount ?? 5,
+        handCardCount: this.engine?.handCardCount ?? 5,
         lastHandResult: null,
         metadata: {},
       };
@@ -267,8 +327,8 @@ export class DeuceToSevenTripleDrawController extends GameController {
       nextTurn: cloned.actingPlayerIndex,
       actingPlayerIndex: cloned.actingPlayerIndex,
       currentBet: metadata.currentBet ?? 0,
-      maxDiscardCount: 5,
-      handCardCount: 5,
+      maxDiscardCount: this.engine?.handCardCount ?? metadata.handCardCount ?? 5,
+      handCardCount: this.engine?.handCardCount ?? metadata.handCardCount ?? 5,
       lastHandResult,
       metadata,
     };

@@ -3,7 +3,7 @@
         "id":  "B01",
         "name":  "NL Hold\u0027em",
         "category":  "board",
-        "holeCards":  2,
+        "holeCards":  4,
         "drawRounds":  0,
         "board":  {
                       "type":  "flop-turn-river",
@@ -56,7 +56,9 @@
                      "fixed"
                  ],
         "priorityPhase":  2,
-        "description":  "Fixed-limit Hold\u0027em."
+        "description":  "Fixed-limit Hold\u0027em.",
+        "status":  "live",
+        "engineKey":  "flh"
     },
     {
         "id":  "B03",
@@ -85,7 +87,9 @@
                      "three-card"
                  ],
         "priorityPhase":  2,
-        "description":  "Three hole cards, discard to two by showdown."
+        "description":  "Three hole cards; best five-card hand from hole cards and board.",
+        "status":  "live",
+        "engineKey":  "super_holdem"
     },
     {
         "id":  "B04",
@@ -114,7 +118,9 @@
                      "three-card"
                  ],
         "priorityPhase":  2,
-        "description":  "Three-card Hold\u0027em played fixed-limit."
+        "description":  "Three-card Hold\u0027em played fixed-limit.",
+        "status":  "live",
+        "engineKey":  "fl_super_holdem"
     },
     {
         "id":  "B05",
@@ -174,7 +180,9 @@
                      "hi-lo"
                  ],
         "priorityPhase":  2,
-        "description":  "PLO Hi-Lo split."
+        "description":  "PLO Hi-Lo split.",
+        "status":  "live",
+        "engineKey":  "plo8"
     },
     {
         "id":  "B07",
@@ -263,7 +271,9 @@
                      "hi-lo"
                  ],
         "priorityPhase":  2,
-        "description":  "Fixed-limit Hold\u0027em Hi-Lo."
+        "description":  "Fixed-limit Omaha Hi-Lo.",
+        "status":  "live",
+        "engineKey":  "flo8"
     },
     {
         "id":  "D01",
@@ -337,7 +347,7 @@
         "id":  "D04",
         "name":  "Badeucey TD",
         "category":  "triple-draw",
-        "holeCards":  4,
+        "holeCards":  5,
         "drawRounds":  3,
         "board":  null,
         "betting":  "fixed-limit",
@@ -352,14 +362,15 @@
                      "badugi"
                  ],
         "priorityPhase":  1,
-        "status":  "planned",
-        "description":  ""
+        "status":  "live",
+        "engineKey":  "badeucey_triple_draw",
+        "description":  "Triple-draw split pot between Badugi low and 2-7 lowball."
     },
     {
         "id":  "D05",
         "name":  "Badacey TD",
         "category":  "triple-draw",
-        "holeCards":  4,
+        "holeCards":  5,
         "drawRounds":  3,
         "board":  null,
         "betting":  "fixed-limit",
@@ -374,8 +385,9 @@
                      "badugi"
                  ],
         "priorityPhase":  1,
-        "status":  "planned",
-        "description":  ""
+        "status":  "live",
+        "engineKey":  "badacey_triple_draw",
+        "description":  "Triple-draw split pot between Badugi low and A-5 lowball."
     },
     {
         "id":  "D06",
@@ -395,8 +407,9 @@
                      "reverse-badugi"
                  ],
         "priorityPhase":  1,
-        "status":  "planned",
-        "description":  ""
+        "status":  "live",
+        "engineKey":  "hidugi_triple_draw",
+        "description":  "Triple-draw reverse Badugi where higher valid Badugi ranks win."
     },
     {
         "id":  "D07",
@@ -416,8 +429,9 @@
                      "archie"
                  ],
         "priorityPhase":  1,
-        "status":  "planned",
-        "description":  ""
+        "status":  "live",
+        "engineKey":  "archie_triple_draw",
+        "description":  "Triple-draw split pot between pair-or-better high and 8-or-better A-5 low."
     },
     {
         "id":  "S01",
@@ -484,6 +498,8 @@
                      "high"
                  ],
         "priorityPhase":  1,
+        "status":  "live",
+        "engineKey":  "five_card_single_draw",
         "description":  "Classic five-card draw."
     },
     {
@@ -505,13 +521,15 @@
                      "single"
                  ],
         "priorityPhase":  1,
-        "description":  ""
+        "status":  "live",
+        "engineKey":  "badugi_single_draw",
+        "description":  "Single-draw Badugi."
     },
     {
         "id":  "S05",
         "name":  "Badeucey SD",
         "category":  "single-draw",
-        "holeCards":  4,
+        "holeCards":  5,
         "drawRounds":  1,
         "board":  null,
         "betting":  "fixed-limit",
@@ -526,13 +544,15 @@
                      "single"
                  ],
         "priorityPhase":  1,
-        "description":  ""
+        "status":  "live",
+        "engineKey":  "badeucey_single_draw",
+        "description":  "Single-draw split pot between Badugi low and 2-7 lowball."
     },
     {
         "id":  "S06",
         "name":  "Badacey SD",
         "category":  "single-draw",
-        "holeCards":  4,
+        "holeCards":  5,
         "drawRounds":  1,
         "board":  null,
         "betting":  "fixed-limit",
@@ -547,7 +567,9 @@
                      "single"
                  ],
         "priorityPhase":  1,
-        "description":  ""
+        "status":  "live",
+        "engineKey":  "badacey_single_draw",
+        "description":  "Single-draw split pot between Badugi low and A-5 lowball."
     },
     {
         "id":  "S07",
@@ -568,7 +590,9 @@
                      "single"
                  ],
         "priorityPhase":  1,
-        "description":  ""
+        "status":  "live",
+        "engineKey":  "hidugi_single_draw",
+        "description":  "Single-draw reverse Badugi where higher valid Badugi ranks win."
     },
     {
         "id":  "H01",
@@ -760,7 +784,9 @@
                      "stud",
                      "high"
                  ],
-        "priorityPhase":  4
+        "priorityPhase":  4,
+        "status":  "live",
+        "engineKey":  "stud"
     },
     {
         "id":  "ST2",
@@ -791,7 +817,9 @@
                      "stud",
                      "hi-lo"
                  ],
-        "priorityPhase":  4
+        "priorityPhase":  4,
+        "status":  "live",
+        "engineKey":  "stud8"
     },
     {
         "id":  "ST3",
@@ -822,7 +850,9 @@
                      "razz",
                      "lowball"
                  ],
-        "priorityPhase":  4
+        "priorityPhase":  4,
+        "status":  "live",
+        "engineKey":  "razz"
     },
     {
         "id":  "ST4",
@@ -853,7 +883,9 @@
                      "razz",
                      "badugi"
                  ],
-        "priorityPhase":  4
+        "priorityPhase":  4,
+        "status":  "live",
+        "engineKey":  "razzdugi"
     },
     {
         "id":  "ST5",
@@ -884,7 +916,9 @@
                      "razz",
                      "split"
                  ],
-        "priorityPhase":  4
+        "priorityPhase":  4,
+        "status":  "live",
+        "engineKey":  "razzducey"
     },
     {
         "id":  "ST6",
@@ -915,6 +949,8 @@
                      "razz",
                      "low-27"
                  ],
-        "priorityPhase":  4
+        "priorityPhase":  4,
+        "status":  "live",
+        "engineKey":  "razz27"
     }
 ]

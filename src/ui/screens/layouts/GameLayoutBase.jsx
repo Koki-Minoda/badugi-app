@@ -138,6 +138,7 @@ export default function GameLayoutBase({
     betRoundValue,
     boardCards = [],
     streetLabel = "",
+    gameVariant = "badugi",
   } = tableProps;
 
   const {
@@ -536,6 +537,7 @@ export default function GameLayoutBase({
                           onCardClick={(cardIdx) => handleCardClick(cardIdx)}
                           compact={isMobileLayout}
                           revealMode={isShowdownPhase}
+                          displayVariant={gameVariant}
                         />
                       </div>
                     );

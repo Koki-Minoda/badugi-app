@@ -33,6 +33,7 @@ import {
   firstBetterAfterBlinds,
   findNextActiveSeat,
   findNextDrawActorSeat as findNextDrawActorSeatHelper,
+  isSeatEligibleForDraw,
 } from "../games/badugi/flow/actionUtils.js";
 import {
   settleStreetToPots,
@@ -50,10 +51,23 @@ import {
 } from "../games/badugi/flow/betRoundUtils.js";
 import BadugiGameController from "../games/badugi/BadugiGameController.js";
 import DramahaGameController from "../games/dramaha/DramahaGameController.js";
+import FLHGameController from "../games/nlh/FLHGameController.js";
 import NLHGameController from "../games/nlh/NLHGameController.js";
+import SuperHoldemGameController, {
+  FLSuperHoldemGameController,
+} from "../games/nlh/SuperHoldemGameController.js";
 import BigOGameController from "../games/plo/BigOGameController.js";
 import FiveCardPLOGameController from "../games/plo/FiveCardPLOGameController.js";
+import FLO8GameController from "../games/plo/FLO8GameController.js";
+import PLO8GameController from "../games/plo/PLO8GameController.js";
 import PLOGameController from "../games/plo/PLOGameController.js";
+import StudGameController, {
+  Razz27GameController,
+  RazzGameController,
+  RazzduceyGameController,
+  RazzdugiGameController,
+  Stud8GameController,
+} from "../games/stud/StudGameController.js";
 import { GAME_VARIANTS } from "../games/core/variants.js";
 import {
   buildHandResultSummary,
@@ -67,7 +81,9 @@ import { ensureDramahaUIAdaptersRegistered } from "./game/dramaha/registerDramah
 import { shouldWaitForHeroDrawTurn } from "./game/drawActorUtils.js";
 import {
   APP_VARIANT_IDS,
+  BOARD_APP_VARIANT_IDS,
   DRAMAHA_APP_VARIANT_IDS,
+  STUD_APP_VARIANT_IDS,
   isControllerBackedAppVariant,
   isDrawLowballAppVariant,
   normalizeAppVariantId,
@@ -88,6 +104,15 @@ import {
   installHumanBenchmarkLogDevTools,
   saveRLHandHistory,
 } from "../utils/history_rl";
+import {
+  saveHandHistory,
+  saveTournamentHandHistory,
+} from "../utils/history.js";
+import {
+  findPersistedHandHistoryById,
+  mergeHandHistoryLists,
+  readPersistedHandHistory,
+} from "./utils/persistedHandHistory.js";
 import { useLocation, useNavigate } from "react-router-dom";
 import { loadTitleSettings } from "./utils/titleSettings";
 import { useRatingState } from "./hooks/useRatingState.js";
@@ -901,10 +926,8 @@ const SAFE_RESET_PHASE = "IDLE";
   const ensureSessionController = useCallback(() => {
     const normalizedVariant = normalizeAppVariantId(gameVariant);
     const usesBoardController =
-      normalizedVariant === APP_VARIANT_IDS.NLH ||
-      normalizedVariant === APP_VARIANT_IDS.PLO ||
-      normalizedVariant === APP_VARIANT_IDS.BIG_O ||
-      normalizedVariant === APP_VARIANT_IDS.FIVE_CARD_PLO ||
+      BOARD_APP_VARIANT_IDS.has(normalizedVariant) ||
+      STUD_APP_VARIANT_IDS.has(normalizedVariant) ||
       DRAMAHA_APP_VARIANT_IDS.has(normalizedVariant);
     if (
       mode === "tournament-mtt" ||
@@ -1032,10 +1055,8 @@ const SAFE_RESET_PHASE = "IDLE";
     mode !== "tournament-mtt" && isDrawLowballAppVariant(normalizedGameVariant);
   const isSingleTableBoardGame =
     mode !== "tournament-mtt" &&
-    (normalizedGameVariant === APP_VARIANT_IDS.NLH ||
-      normalizedGameVariant === APP_VARIANT_IDS.PLO ||
-      normalizedGameVariant === APP_VARIANT_IDS.BIG_O ||
-      normalizedGameVariant === APP_VARIANT_IDS.FIVE_CARD_PLO ||
+    (BOARD_APP_VARIANT_IDS.has(normalizedGameVariant) ||
+      STUD_APP_VARIANT_IDS.has(normalizedGameVariant) ||
       DRAMAHA_APP_VARIANT_IDS.has(normalizedGameVariant));
   const isSingleTableDramaha =
     mode !== "tournament-mtt" && DRAMAHA_APP_VARIANT_IDS.has(normalizedGameVariant);
@@ -1068,89 +1089,6 @@ const SAFE_RESET_PHASE = "IDLE";
     if (currentScreen === "handReplay") return "Replay";
     return "Game";
   }, [authIsAuthenticated, currentScreen]);
-
-  const tryControllerBetAction = useCallback(
-    ({ actionType, amount = 0, seatIndex = 0, metadata = {} }) => {
-      if (!isControllerDrivenSingleTable) return null;
-      const normalizedType =
-        typeof actionType === "string" && actionType.length
-          ? actionType.toLowerCase()
-          : "call";
-      if (isSingleTableBoardGame) {
-        const controller = ensureGameController();
-        if (!controller || typeof controller.applyPlayerAction !== "function") return null;
-        const result = controller.applyPlayerAction({
-          seatIndex,
-          action: normalizedType,
-          amount,
-          metadata,
-        });
-        if (!result?.success) {
-          return {
-            rejected: true,
-            code: result?.reason ?? "board-action-rejected",
-            message: result?.reason ?? "action rejected",
-            events: [],
-          };
-        }
-        return {
-          snapshot: controller.getSnapshot(),
-          events: [],
-        };
-      }
-      const controller = sessionControllerRef.current;
-      const controllerState = sessionControllerStateRef.current;
-      if (!controller || !controllerState) return null;
-      try {
-        const sanitizedMetadata = { ...(metadata ?? {}) };
-        delete sanitizedMetadata.raiseCap;
-        delete sanitizedMetadata.raiseCountThisRound;
-        const actionPayload = {
-          seatIndex,
-          payload: {
-            type: normalizedType.toUpperCase() === "DRAW" ? "DRAW" : normalizedType,
-            amount,
-            ...sanitizedMetadata,
-          },
-        };
-        const result = controller.applyAction(controllerState, actionPayload);
-        if (!result || !result.state) {
-          return null;
-        }
-        const events = Array.isArray(result.events) ? result.events : [];
-        const rejectionEvent = events.find(
-          (event) => event?.type === "invalidAction" || event?.type === "error",
-        );
-        if (rejectionEvent) {
-          return {
-            rejected: true,
-            code:
-              rejectionEvent?.code ??
-              result?.code ??
-              null,
-            message:
-              rejectionEvent?.error ??
-              rejectionEvent?.message ??
-              "action rejected",
-            events,
-          };
-        }
-        sessionControllerStateRef.current = result.state;
-        const snapshot = controller.getUiSnapshot(result.state);
-        if (snapshot) {
-          updateAfterActionFromSnapshot(snapshot);
-        }
-        return {
-          snapshot,
-          events,
-        };
-      } catch (error) {
-        console.warn("[CTRL][BET] applyAction failed", error);
-        return null;
-      }
-    },
-    [ensureGameController, isControllerDrivenSingleTable, isSingleTableBoardGame, updateAfterActionFromSnapshot],
-  );
 
   const seatPlayerIds = useMemo(() => {
     return (playersSrc ?? [])
@@ -1683,8 +1621,28 @@ const SAFE_RESET_PHASE = "IDLE";
         gameControllerRef.current = new NLHGameController({
           tableConfig: buildNlhTableConfig(),
         });
+      } else if (variantId === APP_VARIANT_IDS.FLH) {
+        gameControllerRef.current = new FLHGameController({
+          tableConfig: buildNlhTableConfig(),
+        });
+      } else if (variantId === APP_VARIANT_IDS.SUPER_HOLDEM) {
+        gameControllerRef.current = new SuperHoldemGameController({
+          tableConfig: buildNlhTableConfig(),
+        });
+      } else if (variantId === APP_VARIANT_IDS.FL_SUPER_HOLDEM) {
+        gameControllerRef.current = new FLSuperHoldemGameController({
+          tableConfig: buildNlhTableConfig(),
+        });
       } else if (variantId === APP_VARIANT_IDS.PLO) {
         gameControllerRef.current = new PLOGameController({
+          tableConfig: buildNlhTableConfig(),
+        });
+      } else if (variantId === APP_VARIANT_IDS.PLO8) {
+        gameControllerRef.current = new PLO8GameController({
+          tableConfig: buildNlhTableConfig(),
+        });
+      } else if (variantId === APP_VARIANT_IDS.FLO8) {
+        gameControllerRef.current = new FLO8GameController({
           tableConfig: buildNlhTableConfig(),
         });
       } else if (variantId === APP_VARIANT_IDS.BIG_O) {
@@ -1699,6 +1657,30 @@ const SAFE_RESET_PHASE = "IDLE";
         gameControllerRef.current = new DramahaGameController({
           tableConfig: buildNlhTableConfig(),
           variant: variantId,
+        });
+      } else if (variantId === APP_VARIANT_IDS.STUD) {
+        gameControllerRef.current = new StudGameController({
+          tableConfig: buildNlhTableConfig(),
+        });
+      } else if (variantId === APP_VARIANT_IDS.STUD8) {
+        gameControllerRef.current = new Stud8GameController({
+          tableConfig: buildNlhTableConfig(),
+        });
+      } else if (variantId === APP_VARIANT_IDS.RAZZ) {
+        gameControllerRef.current = new RazzGameController({
+          tableConfig: buildNlhTableConfig(),
+        });
+      } else if (variantId === APP_VARIANT_IDS.RAZZ27) {
+        gameControllerRef.current = new Razz27GameController({
+          tableConfig: buildNlhTableConfig(),
+        });
+      } else if (variantId === APP_VARIANT_IDS.RAZZDUGI) {
+        gameControllerRef.current = new RazzdugiGameController({
+          tableConfig: buildNlhTableConfig(),
+        });
+      } else if (variantId === APP_VARIANT_IDS.RAZZDUCEY) {
+        gameControllerRef.current = new RazzduceyGameController({
+          tableConfig: buildNlhTableConfig(),
         });
       } else if (isDrawLowballAppVariant(variantId)) {
         gameControllerRef.current = GAME_VARIANTS[variantId]?.controllerFactory?.({
@@ -1726,10 +1708,8 @@ const SAFE_RESET_PHASE = "IDLE";
         evaluateHand: evaluateBadugi,
       });
     } else if (
-      (variantId === APP_VARIANT_IDS.NLH ||
-        variantId === APP_VARIANT_IDS.PLO ||
-        variantId === APP_VARIANT_IDS.BIG_O ||
-        variantId === APP_VARIANT_IDS.FIVE_CARD_PLO ||
+      (BOARD_APP_VARIANT_IDS.has(variantId) ||
+        STUD_APP_VARIANT_IDS.has(variantId) ||
         DRAMAHA_APP_VARIANT_IDS.has(variantId)) &&
       typeof gameControllerRef.current.updateTableConfig === "function"
     ) {
@@ -1749,13 +1729,102 @@ const SAFE_RESET_PHASE = "IDLE";
     lastStructureIndex,
   ]);
 
+  const tryControllerBetAction = useCallback(
+    ({ actionType, amount = 0, seatIndex = 0, metadata = {} }) => {
+      if (!isControllerDrivenSingleTable) return null;
+      const normalizedType =
+        typeof actionType === "string" && actionType.length
+          ? actionType.toLowerCase()
+          : "call";
+      if (isSingleTableBoardGame) {
+        const controller = ensureGameController();
+        if (!controller || typeof controller.applyPlayerAction !== "function") return null;
+        const result = controller.applyPlayerAction({
+          seatIndex,
+          action: normalizedType,
+          amount,
+          metadata,
+        });
+        if (!result?.success) {
+          return {
+            rejected: true,
+            code: result?.reason ?? "board-action-rejected",
+            message: result?.reason ?? "action rejected",
+            events: [],
+          };
+        }
+        return {
+          snapshot: controller.getSnapshot(),
+          events: [],
+        };
+      }
+      const controller = sessionControllerRef.current;
+      const controllerState = sessionControllerStateRef.current;
+      if (!controller || !controllerState) return null;
+      try {
+        const sanitizedMetadata = { ...(metadata ?? {}) };
+        delete sanitizedMetadata.raiseCap;
+        delete sanitizedMetadata.raiseCountThisRound;
+        const actionPayload = {
+          seatIndex,
+          payload: {
+            type: normalizedType.toUpperCase() === "DRAW" ? "DRAW" : normalizedType,
+            amount,
+            ...sanitizedMetadata,
+          },
+        };
+        const result = controller.applyAction(controllerState, actionPayload);
+        if (!result || !result.state) {
+          return null;
+        }
+        const events = Array.isArray(result.events) ? result.events : [];
+        const rejectionEvent = events.find(
+          (event) => event?.type === "invalidAction" || event?.type === "error",
+        );
+        if (rejectionEvent) {
+          return {
+            rejected: true,
+            code:
+              rejectionEvent?.code ??
+              result?.code ??
+              null,
+            message:
+              rejectionEvent?.error ??
+              rejectionEvent?.message ??
+              "action rejected",
+            events,
+          };
+        }
+        sessionControllerStateRef.current = result.state;
+        const snapshot = controller.getUiSnapshot(result.state);
+        if (snapshot) {
+          updateAfterActionFromSnapshot(snapshot);
+        }
+        return {
+          snapshot,
+          events,
+        };
+      } catch (error) {
+        console.warn("[CTRL][BET] applyAction failed", error);
+        return null;
+      }
+    },
+    [ensureGameController, isControllerDrivenSingleTable, isSingleTableBoardGame, updateAfterActionFromSnapshot],
+  );
+
   useEffect(() => {
     ensureGameController();
     const normalizedVariant = normalizeAppVariantId(gameVariant);
-    if (normalizedVariant === APP_VARIANT_IDS.NLH) {
+    if (
+      normalizedVariant === APP_VARIANT_IDS.NLH ||
+      normalizedVariant === APP_VARIANT_IDS.FLH ||
+      STUD_APP_VARIANT_IDS.has(normalizedVariant)
+    ) {
       ensureNLHUIAdapterRegistered();
     } else if (
       normalizedVariant === APP_VARIANT_IDS.PLO ||
+      normalizedVariant === APP_VARIANT_IDS.PLO8 ||
+      normalizedVariant === APP_VARIANT_IDS.FLO8 ||
       normalizedVariant === APP_VARIANT_IDS.BIG_O ||
       normalizedVariant === APP_VARIANT_IDS.FIVE_CARD_PLO
     ) {
@@ -1844,10 +1913,12 @@ const SAFE_RESET_PHASE = "IDLE";
   const currentHandHistoryRef = useRef(null);
   setHandHistoryAccessors({
     readCurrent: () => cloneHandHistory(handHistoryRef.current),
-    readBuffer: () =>
-      Array.isArray(handHistoryBufferRef.current)
+    readBuffer: () => {
+      const memoryHands = Array.isArray(handHistoryBufferRef.current)
         ? handHistoryBufferRef.current.filter((entry) => entry != null).map(cloneHandHistory)
-        : [],
+        : [];
+      return mergeHandHistoryLists(memoryHands, readPersistedHandHistory({ limit: 200 }));
+    },
     findById: (handId) => {
       if (!handId) return null;
       if (handHistoryRef.current?.handId === handId) {
@@ -1855,7 +1926,7 @@ const SAFE_RESET_PHASE = "IDLE";
       }
       const buffer = handHistoryBufferRef.current ?? [];
       const match = buffer.find((entry) => entry?.handId === handId);
-      return match ? cloneHandHistory(match) : null;
+      return match ? cloneHandHistory(match) : findPersistedHandHistoryById(handId);
     },
   });
   const appendCanonicalHandEvent = useCallback((event) => {
@@ -1967,10 +2038,22 @@ const SAFE_RESET_PHASE = "IDLE";
         return null;
       }
       handHistoryBufferRef.current = [...handHistoryBufferRef.current, snapshot];
+      try {
+        if (isTournament) {
+          saveTournamentHandHistory({
+            ...snapshot,
+            tournamentId: tournamentStateRef.current?.config?.id ?? "active-mtt",
+          });
+        } else {
+          saveHandHistory(snapshot);
+        }
+      } catch (error) {
+        console.warn("[HAND_HISTORY] Failed to persist finalized hand", error);
+      }
       handHistoryRef.current = null;
       return snapshot;
     },
-    [appendCanonicalHandEvent],
+    [appendCanonicalHandEvent, isTournament],
   );
 
   const forcedSeatActionsRef = useRef(new Map());
@@ -2180,7 +2263,7 @@ const SAFE_RESET_PHASE = "IDLE";
         return false;
       }
       const currentSeat = snapshot[turn];
-      if (!currentSeat || isFoldedOrOut(currentSeat)) {
+      if (!currentSeat || !isSeatEligibleForDraw(currentSeat)) {
         const nxt = helpers.findNextDrawActorSeat(snapshot, turn);
         if (nxt !== null) {
           setTurn(nxt);
@@ -2193,7 +2276,7 @@ const SAFE_RESET_PHASE = "IDLE";
         }
         return true;
       }
-      if (currentSeat.hasDrawn || currentSeat.allIn) {
+      if (currentSeat.hasDrawn) {
         const nxt = helpers.findNextDrawActorSeat(snapshot, turn + 1);
         if (nxt !== null) {
           setTurn(nxt);
@@ -2220,8 +2303,10 @@ const SAFE_RESET_PHASE = "IDLE";
         const controller = sessionControllerRef.current;
         const controllerState = sessionControllerStateRef.current;
         const cpuAction =
-          isSingleTableDrawLowball && typeof controller?.getCpuAction === "function"
-            ? controller.getCpuAction(controllerState, seatToAct)
+          typeof controller?.getCpuAction === "function"
+            ? controller.getCpuAction(controllerState, seatToAct, {
+                tierConfig: activeAiTierConfig,
+              })
             : null;
         const payload = cpuAction?.payload ?? cpuAction ?? {
           type: "DRAW",
@@ -2493,7 +2578,6 @@ const SAFE_RESET_PHASE = "IDLE";
     aiDecisionContext,
     activeAiTierConfig,
     isSingleTableControllerDrawGame,
-    isSingleTableDrawLowball,
     tryControllerBetAction,
   ]);
 
@@ -2947,6 +3031,27 @@ const SAFE_RESET_PHASE = "IDLE";
         folded: player?.folded,
       });
       logE2ESkip(seat, "folded");
+      return false;
+    }
+    if (phase === "DRAW" && !isSeatEligibleForDraw(player)) {
+      logE2EError("player not eligible to draw before action", {
+        seat,
+        context,
+        isBusted: player?.isBusted,
+        seatOut: player?.seatOut,
+        allIn: player?.allIn,
+      });
+      logE2ESkip(seat, "draw-ineligible");
+      return false;
+    }
+    if (phase === "BET" && (player.allIn || Math.max(0, Number(player.stack) || 0) <= 0)) {
+      logE2EError("player not eligible to bet before action", {
+        seat,
+        context,
+        allIn: player?.allIn,
+        stack: player?.stack,
+      });
+      logE2ESkip(seat, "bet-ineligible");
       return false;
     }
     console.assert(
@@ -4740,7 +4845,9 @@ const SAFE_RESET_PHASE = "IDLE";
     const effectiveSeatConfig = consumeSeatConfigForHand(shouldRotateSeats);
 
     const deckManager = getDeckManager();
-    if (deckManager && !isSingleTableControllerDrawGame) {
+    const usesAppDeckForCurrentHand =
+      !isSingleTableBoardGame && !isSingleTableControllerDrawGame;
+    if (deckManager && usesAppDeckForCurrentHand) {
       deckManager.reset();
       if (typeof deckManager.shuffle === "function") {
         deckManager.shuffle();
@@ -4935,7 +5042,7 @@ const SAFE_RESET_PHASE = "IDLE";
       };
     }
 
-    if (deckManager && !isSingleTableControllerDrawGame) {
+    if (deckManager && usesAppDeckForCurrentHand) {
       const preflopCheck = validatePreflopState({
         deck: deckManager.deck,
         burn: deckManager.burnPile,
@@ -5067,7 +5174,7 @@ const SAFE_RESET_PHASE = "IDLE";
       seatsSnapshot: newPlayers,
     });
 
-    if (!isSingleTableControllerDrawGame) {
+    if (usesAppDeckForCurrentHand) {
       try {
         assertNoDuplicateCards("[HAND][DEAL]", {
           deck: deckManager?.deck,
@@ -6015,8 +6122,8 @@ const SAFE_RESET_PHASE = "IDLE";
             "nextIdx=", nextIdx, typeof nextIdx, 
             "drawRound=", drawRound);
 
-      const actives = snap.filter((p) => !isFoldedOrOut(p));
-      const allActiveDrawn = actives.every((p) => p.hasDrawn);
+      const drawEligible = snap.filter((p) => isSeatEligibleForDraw(p));
+      const allActiveDrawn = drawEligible.every((p) => p.hasDrawn || p.hasActedThisRound);
 
       if (allActiveDrawn || nextIdx === null) {
         forceFinishRound({
@@ -7273,8 +7380,8 @@ const SAFE_RESET_PHASE = "IDLE";
     if (phase !== "DRAW" || turn !== 0) return;
     const currentPlayers = playersRef.current ?? players;
     const player = currentPlayers?.[0];
-    if (!player || isFoldedOrOut(player)) {
-      logE2EError("Hero draw attempted while folded", {
+    if (!player || !isSeatEligibleForDraw(player)) {
+      logE2EError("Hero draw attempted while draw-ineligible", {
         seat: 0,
         context: "drawSelected",
       });
@@ -7620,6 +7727,28 @@ const SAFE_RESET_PHASE = "IDLE";
       return;
     }
 
+    if (phase === "BET" && isSingleTableBoardGame) {
+      const seatToAct = turn;
+      const timer = setTimeout(() => {
+        const snap = (playersRef.current ?? activePlayers).map(clonePlayerState).filter(Boolean);
+        const actor = snap[seatToAct];
+        if (!actor || isFoldedOrOut(actor) || actor.allIn || actor.stack <= 0) {
+          const nextActor = nextAliveFrom(snap, seatToAct);
+          if (nextActor !== null) setTurn(nextActor);
+          return;
+        }
+        const maxNow = maxBetThisRound(snap);
+        const toCall = Math.max(0, maxNow - (Number(actor.betThisRound) || 0));
+        applyForcedBetAction(seatToAct, {
+          type: toCall === 0 ? "check" : "call",
+          amount: toCall,
+          __forceInstant: true,
+          decisionSource: "board-controller-auto",
+        });
+      }, 180);
+      return () => clearTimeout(timer);
+    }
+
     const timer = setTimeout(() => {
       if (phase === "BET") {
         const basePlayers = playersRef.current ?? activePlayers;
@@ -7642,12 +7771,17 @@ const SAFE_RESET_PHASE = "IDLE";
         }
         const me = snap[turn] ? { ...snap[turn] } : null;
         if (!me) return;
-        if (isSingleTableDrawLowball) {
+        if (
+          sessionControllerRef.current &&
+          typeof sessionControllerRef.current.getCpuAction === "function"
+        ) {
           const controller = sessionControllerRef.current;
           const controllerState = sessionControllerStateRef.current;
           const cpuAction =
             typeof controller?.getCpuAction === "function"
-              ? controller.getCpuAction(controllerState, activeSeat)
+              ? controller.getCpuAction(controllerState, activeSeat, {
+                  tierConfig: activeAiTierConfig,
+                })
               : null;
           const payload = cpuAction?.payload ?? cpuAction ?? null;
           const actionType = payload?.type ?? (maxBetThisRound(snap) > (me.betThisRound ?? 0) ? "CALL" : "CHECK");
@@ -7761,6 +7895,7 @@ const SAFE_RESET_PHASE = "IDLE";
     autoResolveCpuDrawIfNeeded,
     checkIfOneLeftThenEnd,
     isSingleTableBadugi,
+    isSingleTableBoardGame,
     isSingleTableDrawLowball,
     tryControllerBetAction,
   ]);
@@ -8485,6 +8620,7 @@ const SAFE_RESET_PHASE = "IDLE";
     betRoundValue: betRoundIndexSrc,
     boardCards: hudInfo?.boardCards ?? controllerSnapshot?.boardCards ?? [],
     streetLabel: hudInfo?.streetLabel ?? "",
+    gameVariant: normalizedGameVariant,
   };
 
   const overlaysProps = {

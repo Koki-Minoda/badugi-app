@@ -48,7 +48,10 @@ export function resetBetRoundFlags(players = []) {
 export function shouldSkipDrawRound(state = {}) {
   if (state?.meta?.forceDrawRound) return false;
   const players = Array.isArray(state?.players) ? state.players : [];
-  return !players.some((player) => isSeatEligibleForDraw(player) && !player?.allIn);
+  return !players.some(
+    (player) =>
+      isSeatEligibleForDraw(player) && !player?.hasDrawn && !player?.hasActedThisRound,
+  );
 }
 
 // NOTE (G-08):
@@ -704,7 +707,7 @@ export function finishBetRoundFrom({
   // ---  hasDrawnfalseRAW#1--
 
   const resetPlayers = clearedPlayers.map((p) => {
-    const out = isFoldedOrOut(p);
+    const out = isFoldedOrOut(p) || p?.isBusted || p?.isActiveInGame === false;
     return {
       ...p,
       lastAction: "",
@@ -823,7 +826,7 @@ export function startDrawRound({
   drawRoundIndex = 0,
 }) {
   const reset = players.map((p) => {
-    const out = isFoldedOrOut(p);
+    const out = isFoldedOrOut(p) || p?.isBusted || p?.isActiveInGame === false;
     return {
       ...p,
       betThisRound: 0,

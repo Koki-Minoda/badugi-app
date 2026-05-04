@@ -1739,6 +1739,7 @@ Draw RL test coverage:
           - 2026-05-04 fixture: `loose_passive` / draw-heavy傾向相手に T-low程度のmade Badugiをfirst-in value betするfixtureと、pat pressure相手には同じ手を打たないfixtureを追加。狙いはbet頻度だけを雑に増やさず、value betとして正しい局面だけを厚くすること。
           - 次の実験: Iron probeは `--first-in-value-bet-replay-ratio 0.20〜0.30` から開始し、actionCountsの`3: bet`増加、badRaises据え置き、foldRate非悪化を確認してから20kへ進める。
       - [ ] `AI-06e` 2-7 / A-5 用の実ONNXを生成・配置する。現状は `model-27draw-iron-v1` (`D01/S01`) と `model-a5draw-iron-v1` (`D02/S02`) の registry / feature builder / routing test はあるが、実 `.onnx` は optional 未配置で、App draw CPU は rule-based fallback が主経路。
+        - 2026-05-05 対応: Draw ONNX の出力decodeを `DRAW_RL_ACTIONS` label + legal action mask 基準に修正。従来は出力indexを直接draw枚数として扱っており、将来 `draw_4/5` や `fold/check/call` を含む11-actionモデルを入れた際にズレる危険があった。
       - [ ] `AI-06e-1` 2-7 Triple / Single Draw の Pro までのRL学習を実施する。Badugiと別モデルとして `D01/S01` にroutingし、2-7 evaluator / discard heuristic / final street fold disciplineを使う。
       - [ ] `AI-06e-2` A-5 Triple / Single Draw の Pro までのRL学習を実施する。`D02/S02` にroutingし、A-5 wheel / straight-flush無視 / pat判断をBadugi/2-7と混同しない。
       - [ ] `AI-06e-3` 2-7 / A-5 Pro適用前に、hand evaluator regression / draw controller smoke / human-practice benchmark を最低50ハンド相当で通す。
@@ -1747,30 +1748,52 @@ Draw RL test coverage:
       - [x] `BOARD-02` NL Hold'em (`B01`) を cash game route に接続する。hole 2 / community board / preflop-flop-turn-river / high evaluator / App board-controller bridge を含める。
         - 2026-05-04 確認: 既存 `NLHGameController` / `NLHUIAdapter` / high evaluator をApp routingへ接続済み。今回のPLO追加に合わせてGameRegistry上のNLH定義、board controller新規ハンド開始、board controllerアクション適用を再確認。
         - 残TODO: NLH専用hand history detail、side-pot表示のboard game smoke、mobile landscape実機確認を追加する。
-      - [ ] `BOARD-03` FL Hold'em (`B02`) を playable にする。fixed-limit cap / street別bet size / raise capの表示とテストを含める。
-      - [ ] `BOARD-04` NL Super Hold'em (`B03`) を playable にする。3 hole cards / showdown時2枚選択またはbest two selection / discard requirement のUIと判定を実装する。
-      - [ ] `BOARD-05` FL Super Hold'em (`B04`) を playable にする。Super Hold'em差分をfixed-limitへ適用する。
+      - [x] `BOARD-03` FL Hold'em (`B02`) を playable にする。fixed-limit cap / street別bet size / raise capの表示とテストを含める。
+        - 2026-05-04 実装: `FLHGameController` / `FLHGameDefinition` を追加し、fixed-limitのstreet別bet size（preflop/flop small bet、turn/river big bet）とraise capをNLH controller差分として実装。GameRegistry / App routing / NLH UI adapter / Game Selector catalogへ接続。
+        - 2026-05-04 確認: playable invariant smokeで broken actor / chip drift / hand completion を検証。
+      - [x] `BOARD-04` NL Super Hold'em (`B03`) を playable にする。3 hole cards / showdown時best five selection / UIと判定を実装する。
+        - 2026-05-04 実装: `SuperHoldemGameDefinition` / `SuperHoldemGameController` を追加。既存NLH controllerを拡張し、handStructureのhole数から3枚配布する。showdownは3 hole + communityからhigh evaluatorがbest fiveを選ぶ。
+        - 2026-05-04 確認: GameRegistry / core variant registry / App routing / Game Selector enabled listへ接続し、playable invariant smokeでbroken actor / chip drift / side-pot resolutionを確認。
+      - [x] `BOARD-05` FL Super Hold'em (`B04`) を playable にする。Super Hold'em差分をfixed-limitへ適用する。
+        - 2026-05-04 実装: `FLSuperHoldemGameDefinition` / `FLSuperHoldemGameController` を追加し、3 hole card + fixed-limit raise capをFLH controller差分で接続。
+        - 2026-05-04 確認: Super Hold'em専用fixtureで3 hole card配布とall-in/side-pot accountingを確認。
       - [x] `BOARD-06` Pot-Limit Omaha (`B05`) を cash game route に接続する。must-use-two evaluator / pot-limit raise cap / 4 hole cards / App board-controller bridge を含める。
         - 2026-05-04 実装: `PLOGameController` / `PLOGameDefinition` / `evaluatePloHand()` / PLO UI adapter registration を追加し、cash variant modalとGame SelectorからPLOを起動可能にした。showdown evaluatorはOmaha highの「hole exactly 2 + board exactly 3」をfixtureで固定し、controller側でPL上限をcapする。
         - 残TODO: pot-limit raise上限のUI表示、PLO専用hand history detail、PLO smokeをPlaywrightで追加する。
-      - [ ] `BOARD-07` PLO8 (`B06`) を playable にする。Hi-Lo 8-or-better split evaluator / no-low時scoop / odd chip / side pot splitを実装する。
+      - [x] `BOARD-07` PLO8 (`B06`) を playable にする。Hi-Lo 8-or-better split evaluator / no-low時scoop / odd chip / side pot splitを実装する。
+        - 2026-05-04 実装: `PLO8GameController` / `PLO8GameDefinition` を追加し、Omaha exactly-two high と A-5 8-or-better low を分離評価。low qualifying時はhi/lo split、no-low時はhigh scoop。GameRegistry / App routing / PLO UI adapter / Game Selector catalogへ接続。
+        - 2026-05-04 確認: PLO8専用テストで qualifying low split と no-low scoop を固定。playable invariant smokeで all-in short stack / broken actor / chip drift を検証。
+        - 2026-05-04 追加確認: odd chipを含むmain pot + side pot fixtureを追加し、high halfへ端数が安定配分されることを固定。
       - [x] `BOARD-08` Big-O (`B07`) を cash game route に接続する。5 hole Omaha high / exact two requirement / pot-limit bettingを実装する。
         - 2026-05-04 実装: `BigOGameController` / `BigOGameDefinition` を追加し、5枚手札Omaha highとしてApp routing / Game Selector / variant modalへ接続。現catalogの `evaluators: ["high"]` に合わせ、Hi-Lo splitは未接続。
         - 残TODO: Big-OをHi-Lo版として扱う場合はPLO8/Big-O split evaluatorとodd chipを別途実装する。
       - [x] `BOARD-09` 5-Card PLO (`B08`) を cash game route に接続する。Big-Oとの差分をhigh-onlyとして整理する。
         - 2026-05-04 実装: `FiveCardPLOGameController` / `FiveCardPLOGameDefinition` を追加。`evaluateFiveCardPloHand()` はPLO evaluatorを使い、5枚holeからexactly 2枚、boardからexactly 3枚を選ぶfixtureで固定。
         - 残TODO: 5-Card PLO専用hand history detail、Playwright smoke、PL raise上限表示を追加する。
-      - [ ] `BOARD-10` FLO8 (`B09`) を playable にする。fixed-limit Omaha Hi-Lo / split pot / cap表示を実装する。
+      - [x] `BOARD-10` FLO8 (`B09`) を playable にする。fixed-limit Omaha Hi-Lo / split pot / cap表示を実装する。
+        - 2026-05-04 実装: `FLO8GameController` / `FLO8GameDefinition` を追加。PLO8 evaluatorを継承しつつ、fixed-limitのstreet別bet sizeとraise capを適用。GameRegistry / App routing / PLO UI adapter / Game Selector catalogへ接続。
+        - 2026-05-04 確認: FLO8のfixed-limit unit fixtureとplayable invariant smokeを追加。
     - Remaining 16+ game implementation roadmap:
-      - [ ] `MIX-16-01` Badeucey TD (`D04`) を実装する。Badugi half + 2-7 half のsplit evaluator、draw UI、pot split表示を追加する。
-      - [ ] `MIX-16-02` Badacey TD (`D05`) を実装する。Badugi half + A-5 half のsplit evaluatorを追加する。
-      - [ ] `MIX-16-03` Hidugi TD (`D06`) を実装する。Badugi high / reverse Badugi 系の評価とラベルを確定する。
-      - [ ] `MIX-16-04` Archie TD (`D07`) を実装する。pair-or-better high half + 8-or-better A-5 low half のsplit contractを実ゲームへ接続する。
-      - [ ] `MIX-16-05` 5-Card Single Draw (`S03`) を実装する。high draw evaluator / single draw / fixed-limitまたは指定bettingを確定する。
-      - [ ] `MIX-16-06` Badugi Single Draw (`S04`) を実装する。Badugi evaluatorをsingle draw familyへ接続する。
-      - [ ] `MIX-16-07` Badeucey Single Draw (`S05`) を実装する。
-      - [ ] `MIX-16-08` Badacey Single Draw (`S06`) を実装する。
-      - [ ] `MIX-16-09` Hidugi Single Draw (`S07`) を実装する。
+      - [x] `MIX-16-01` Badeucey TD (`D04`) を実装する。Badugi half + 2-7 half のsplit evaluator、draw UI、pot split表示を追加する。
+        - 2026-05-04 実装: `SpecialDrawEngine` / controllerを追加し、5枚hole / 3 draw / fixed-limit / Badugi half + 2-7 half のcomponent splitをGameRegistry、App routing、draw UI adapter、Game Selector catalogへ接続。
+        - 2026-05-04 確認: Badeucey split pot fixture、engine registry smoke、playable invariant、hand history label smokeを追加。
+      - [x] `MIX-16-02` Badacey TD (`D05`) を実装する。Badugi half + A-5 half のsplit evaluatorを追加する。
+        - 2026-05-04 実装: D05を5枚hole / 3 draw / fixed-limit / Badugi half + A-5 half として接続。Badacey odd chip / scoop fixtureを追加。
+      - [x] `MIX-16-03` Hidugi TD (`D06`) を実装する。Badugi high / reverse Badugi 系の評価とラベルを確定する。
+        - 2026-05-04 実装: D06を4枚hole / 3 draw / Badugi high evaluatorとして接続し、history label smokeを追加。
+      - [x] `MIX-16-04` Archie TD (`D07`) を実装する。pair-or-better high half + 8-or-better A-5 low half のsplit contractを実ゲームへ接続する。
+        - 2026-05-04 実装: D07を5枚hole / 3 draw / High half + A-5 low half のcomponent splitとして接続。pair-or-better/8-or-betterの厳密ゲートは今後の公式ルール監査タスクに残す。
+      - [x] `MIX-16-05` 5-Card Single Draw (`S03`) を実装する。high draw evaluator / single draw / fixed-limitまたは指定bettingを確定する。
+        - 2026-05-04 実装: `FiveCardSingleDrawEngine` / controller / registry / App routing / UI adapter / Game Selector catalogを追加。5枚配布、1 draw、high hand showdown、hand history high-hand labelを確認。
+        - 残TODO: S03専用Playwright smoke、CPU discard strategyの精緻化、履歴detailの見せ方を追加する。
+      - [x] `MIX-16-06` Badugi Single Draw (`S04`) を実装する。Badugi evaluatorをsingle draw familyへ接続する。
+        - 2026-05-04 実装: S04を4枚hole / 1 draw / Badugi lowとして接続し、playable invariantとhand history Badugi labelを確認。
+      - [x] `MIX-16-07` Badeucey Single Draw (`S05`) を実装する。
+        - 2026-05-04 実装: S05を5枚hole / 1 draw / Badugi half + 2-7 halfとして接続。
+      - [x] `MIX-16-08` Badacey Single Draw (`S06`) を実装する。
+        - 2026-05-04 実装: S06を5枚hole / 1 draw / Badugi half + A-5 halfとして接続。
+      - [x] `MIX-16-09` Hidugi Single Draw (`S07`) を実装する。
+        - 2026-05-04 実装: S07を4枚hole / 1 draw / Badugi high evaluatorとして接続。
       - [x] `MIX-16-10` Dramaha Hi (`H01`) を実装する。board high + draw hand half のsplit表示を作る。
       - [x] `MIX-16-11` Dramaha 2-7 (`H02`) を実装する。
       - [x] `MIX-16-12` Dramaha A-5 (`H03`) を実装する。
@@ -1780,10 +1803,19 @@ Draw RL test coverage:
         - 2026-05-04 実装: `DramahaGameController` / `DramahaGameDefinition` / `dramahaEvaluator` / Dramaha UI adapter を追加し、H01-H06をGameRegistry・variant modal・Game Selector catalogへ `wip` route として接続した。
         - 実装範囲: 5枚hole、flop-only 3枚board、1 draw、final bet、showdownでboard half（Omaha exactly 2 + board exactly 3）とdraw half（High / 2-7 / A-5 / Zero / Hidugi / Badugi）を分割評価する。
         - 残TODO: Dramaha専用CPU discard strategy、split halfのUI詳細表示、odd chip ruleの運用仕様、Playwright smokeを追加する。
-      - [ ] `MIX-16-16` Stud family (`ST1` Stud, `ST2` Stud 8, `ST3` Razz, `ST4` Razzdugi, `ST5` Razzducey, `ST6` 2-7 Razz) を段階実装する。street/deal visibility、bring-in/antes、stud evaluator、split variantsを別章で詳細化する。
+      - [x] `MIX-16-16` Stud family (`ST1` Stud, `ST2` Stud 8, `ST3` Razz, `ST4` Razzdugi, `ST5` Razzducey, `ST6` 2-7 Razz) を段階実装する。street/deal visibility、bring-in/antes、stud evaluator、split variantsを別章で詳細化する。
+        - 2026-05-04 部分実装: `StudGameController` / `Stud8GameController` / `RazzGameController` と各GameDefinitionを追加し、ST1/ST2/ST3をplayable化。7枚配布、up/down card保持、fixed-limit street進行、Stud high / Stud8 hi-lo / Razz A-5 low showdownを実装。
+        - 2026-05-04 修正: anteをtotalInvestedには残しつつstreet betから分離。anteが`betThisStreet`に残ると全員checkしてもTHIRD streetから進まないため、startNewHand後にstreet betをresetする。
+        - 2026-05-04 追加実装: `RazzdugiGameDefinition` / `RazzduceyGameDefinition` とcontroller routeを追加し、ST4/ST5をplayable化。RazzdugiはBadugi half + A-5 low half、RazzduceyはBadugi half + 2-7 low halfとしてcomponent splitを解決する。
+        - 2026-05-04 追加確認: Stud8複数side pot hi/lo fixture、Razzdugi odd chip component split fixture、Razzducey component split fixture、Stud family invariant smokeを追加。
+        - 2026-05-04 追加実装: `Razz27GameDefinition` / `Razz27GameController` を追加し、ST6 2-7 Razzをplayable化。2-7 low単体showdown、GameRegistry、App routing、UI adapter、Game Selector catalogへ接続した。
+        - 2026-05-04 追加実装: Stud/Razz系のTHIRD street bring-inを追加。Stud/Stud8は最低up-card、Razz/Razz27/Razzdugi/Razzduceyは最高up-cardからbring-inを投稿し、次席へactionを渡す。
+        - 2026-05-04 追加実装: Stud/Razz系UIでdownCards/upCardsを区別し、showdown前は相手のup-cardだけを表向き、down-cardを伏せて表示する。street labelも3rd-7th Streetに対応。
+        - 残TODO: Stud専用テーブルレイアウトでup-card/down-cardの見せ方をさらに磨く、bring-in後のcomplete size/同ランクsuit tieの実運用をPlaywrightで確認する。
       - [x] `CHINESE-01` チャイポ / Chinese Poker / OFC の準備タスクを追加する。13枚配布、front/middle/back配置、royalty、foul判定、fantasyland、turn順の仕様を実装前提として整理する。
         - 2026-05-04 実装: `src/games/chinese/chinesePokerPreparation.js` に alias と実装要件を固定。現時点ではゲーム進行へ接続しない準備ファイルのみ。
       - [ ] `CHINESE-02` Chinese Poker / OFC の実ゲーム controller / layout UI / scorer / foul判定を実装する。
+        - 2026-05-04 部分対応: scorer foundationとしてfront/middle/back行評価、foul判定、最小royalty fixtureを追加。まだ実ゲーム進行・UI・fantasyland・turn orderには未接続。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
   - P2P:
     - data capture / export / sync / security test の部品はある。
@@ -2150,28 +2182,88 @@ Draw RL test coverage:
 | --- | --- | --- | --- | --- | --- |
 | `BUG-31` | Badugi draw UI | PC | fixed | DRAW中にカードを押しても反応しないように見える。Smart HUDがHero席でも開き、固定レイヤーがカード操作を邪魔することがある。またHeroのドロー順でない時も無反応に見える。 | Draw系/DramahaでもHero操作時にHUDが入力を塞がないことを確認する。 |
 | `BUG-32` | Smart HUD scope | PC / Mobile | fixed | HUD scope dropdown に Stud / Razz がなく、10-Game / Dealer's Choice の情報切替先が不足している。 | Stud/Razz実装時にvariant別stats集計へ接続する。 |
-| `BUG-33` | PC/Mobile layout separation | PC / Mobile | open | スマホ横画面対応がPC卓レイアウトへ影響しないことを継続確認する。 | PC desktop smoke と mobile landscape smoke を別々に維持する。 |
-| `BUG-34` | All-in / split pot flow | All | partial | AI後、side pot / split pot / odd chip / all-in skipped actor が誤るとゲーム進行停止や誤配当につながる。 | NLH/PLO/Dramahaはmain/side pot fixture追加済み。PLO8/FLO8/Stud8/Razzdugi/Razzduceyはplayable化時にhi/lo・split fixtureを追加する。 |
-| `BUG-35` | Play feedback pipeline | All | planned | Cash / tournament の30ハンド以上の履歴から、良かった点/悪かった点/ROI/参加条件/仮説をまとめるAI feedback APIが未実装。 | 10-Game Beginner/Standard RL適用後にBadugi/2-7/A-5/Stud/Razz/NLH/PLOを対象にする。 |
+| `BUG-33` | PC/Mobile layout separation | PC / Mobile | fixed | スマホ横画面対応がPC卓レイアウトへ影響しないことを継続確認する。 | PC desktop smoke と mobile landscape smoke を別々に維持する。 |
+| `BUG-34` | All-in / split pot flow | All | fixed | AI後、side pot / split pot / odd chip / all-in skipped actor が誤るとゲーム進行停止や誤配当につながる。 | NLH/PLO/Dramaha/PLO8/FLO8/Stud8/Razzdugi/Razzducey/ST6 fixtureと11controller invariant smokeを追加済み。 |
+| `BUG-35` | Play feedback pipeline | All | fixed | Cash / tournament の30ハンド以上の履歴から、良かった点/悪かった点/ROI/参加条件/仮説をまとめるAI feedback API、DB保存、ゲーム内modal導線を追加済み。 | 10-Game Beginner/Standard RL適用後もBadugi/2-7/A-5/Stud/Razz/NLH/PLOを対象に継続回帰する。 |
+| `BUG-36` | All-in draw actor | Badugi / Draw | fixed | all-in後のCPU/Hero、またはall-in後にbusted seatが残った状態で、DRAWフェーズの交換対象が詰まりカード交換できなくなる。 | Badugiはactive all-in seatをDRAW可能、busted/seatOutはDRAW不可に分離。2-7/A-5 draw regressionも再実行する。 |
+| `BUG-37` | Hand history completeness | All | fixed | ゲーム内履歴と `/history` 永続履歴が分断され、キャッシュゲーム履歴が見えにくい。hand history detail/replay/API送信の完成度が不足。 | Cash/Tournament両方で完了ハンドが保存・表示され、variant/evaluator/pot/action/replayが復元できることを横断確認する。 |
+| `BUG-38` | Friend match playable QA | P2P | fixed | フレンドマッチがルーム作成/参加/ready/action/showdown/reconnectまで実運用レベルで壊れないか継続テストが必要だった。実WebSocket host/guest smokeとmobile landscape smokeを追加済み。 | mocked browser smoke、backend websocketありhost/guest 2page smoke、browser reconnect、mobile landscapeを継続回帰に入れる。 |
 
 - [x] `BUG-31` Hero DRAW中はHero seat Smart HUDを開かず、カードクリックを最優先する。
   - 2026-05-04 対応: `Player` componentでHeroかつ`phase === "DRAW"`の場合はSmart HUDを開かない。Player単体テストでHUDが出ず、Hero card clickが発火することを固定。
 - [x] `BUG-32` Smart HUD scope selector に `Stud` / `Razz` を追加する。
   - 2026-05-04 対応: `PlayerSmartHud` の scope option を追加し、テストで存在確認。
-- [ ] `BUG-33` PC版とスマホ版のUI差分をPlaywrightで別々に検証し、片方の修正が片方を崩さないようにする。
-- [ ] `BUG-34` all-in / side pot / split pot / odd chip のcross-game fixtureを追加する。
+- [x] `BUG-33` PC版とスマホ版のUI差分をPlaywrightで別々に検証し、片方の修正が片方を崩さないようにする。
+  - 2026-05-04 対応: `responsive-layout-separation.spec.ts` を追加。Desktopではmobile rootが出ない、header/ledger/decision panelが見える、全体scrollが出ないことを確認。Mobile landscapeではfixed mobile root、desktop ledger非表示、body/html overflow hidden、decision panel / hero cardがviewport内に残ることを確認。Mobile portraitでは横向き案内のみを確認。
+- [x] `BUG-34` all-in / side pot / split pot / odd chip のcross-game fixtureを追加する。
   - 2026-05-04 対応中: `sidePotResolver` を追加し、投資額からmain/side potを構築、fold済みは受賞対象外、odd chipはseat順で安定配分する共通helperを追加。
   - 2026-05-04 対応中: NLH/PLO/Dramahaのshowdownにside pot resolverを接続し、3人all-inでmain pot / side pot 1 / side pot 2のwinnerが別になるfixtureを追加。
-  - 残: PLO8/FLO8/Stud8/Razzdugi/RazzduceyはGAME-ALL playable化時にhi/lo split、no-low scoop、component別side pot、odd chip fixtureを追加する。
-- [ ] `BUG-35` Cash / tournament のプレイフィードバック仕様とAPIを実装する。
+  - 2026-05-04 追加: `playableInvariant.test.js` を追加し、NLH / FLH / PLO / PLO8 / FLO8 / Stud / Stud8 / Razz / Razz27 / Razzdugi / Razzducey が1handを完走し、broken actor、all-in actorへの誤ターン、chip drift、negative stackを出さないことを横断検証する。
+  - 2026-05-04 追加: PLO8のqualifying low split / no-low high scoop / odd chip main+side pot fixtureを追加。
+  - 2026-05-04 追加: Stud8の複数side pot hi/lo fixture、Razzdugiのodd chip component split fixture、RazzduceyのBadugi+2-7 component split fixtureを追加。
+  - 2026-05-04 追加: FLO8専用のodd split + side pot fixture、ST6 2-7 Razz単体showdown fixture、Stud/Razz bring-in fixture、Stud up/down card UI adapter fixtureを追加。
+  - 2026-05-04 追加: 高役evaluatorのカテゴリ順位を監査。カテゴリ桁がrank桁数でずれる問題を固定長rank scoreに修正し、standard high category order / flush over two pair fixtureを追加。
+  - 2026-05-04 追加: Archieのpair-or-better high / 8-or-better lowで片側qualifier不成立時に半ポットが未配当になる問題を修正。no-low/no-high scoopと全員非qualify時の会計フォールバックfixtureを追加。
+- [x] `BUG-35` Cash / tournament のプレイフィードバック仕様とAPIを実装する。
+  - 2026-05-04 部分対応: `playFeedbackPayload` を追加。30ハンド未満はAI feedback対象外にし、cash/tournamentのhand historyからvariant別hands、VPIP/PFR、showdown/all-in/split-pot率、net chips、tournament ROI、Badugi follow-up issueを要約するpayloadを生成する。
+  - 2026-05-04 部分対応: `POST /api/analysis/play-feedback` を追加。認証必須、30ハンド以上schema、簡易rate limit、PII除去、OpenAI未設定時fallback、OpenAI用session promptをbackendに追加。
+  - 2026-05-04 部分対応: `/history` にAIフィードバック送信UIを追加。30ハンド以上かつログイン済みの場合だけ送信でき、結果を画面内に表示する。
+  - 2026-05-04 部分対応: feedback結果をsession key単位でlocalStorageへ保存し、`/history`で直近結果を再表示できるようにする。DB保存前の暫定保存ポリシーとして最大20件に制限。
+  - 2026-05-04 対応: `play_feedback_results` DB table / SQLAlchemy model / Alembic migrationを追加し、`POST /api/analysis/play-feedback` がsanitize済みpayloadとresponseをDB保存して `feedbackId` / `sessionKey` / `storedAt` を返すようにした。
+  - 2026-05-04 対応: `GET /api/analysis/play-feedback/results` を追加し、ログインユーザー単位で保存済みfeedbackを取得できるようにした。
+  - 2026-05-04 対応: ゲーム内History modalにもプレイフィードバックパネルを追加し、30ハンド以上の履歴から同じAPIへ送信、localStorageにも再表示用保存できるようにした。
+  - 2026-05-04 対応: OpenAIキーは `MGX_OPENAI_API_KEY` と `OPENAI_API_KEY` の両方を受け付ける。`OPENAI_API_KEY` 経路はunitでHTTP request生成まで確認。
+  - 2026-05-04 追記: キー配置ガイドを `backend/README.md` と `docs/play-feedback-policy.md` に追加。productionは `/etc/mgx/mgx-backend.env` を `EnvironmentFile` としてsystemd serviceへ読み込ませる方針にする。
+  - 2026-05-04 確認: `/etc/mgx/mgx-backend.env` の `MGX_OPENAI_API_KEY` を読み込み、OpenAI Responses API / `gpt-5.2` で実疎通を確認。Badugi 42hand相当payloadに対して、良かった点・悪かった点・ROI/獲得チップ仮説・次回改善方針が日本語/英語で返ることを確認した。
+  - 2026-05-04 対応: backend OpenAI clientの既定を `gpt-5.2` + Responses APIへ更新。`MGX_OPENAI_MODEL` / `MGX_OPENAI_API_MODE` / timeout / max output tokens / reasoning effortをenvで上書き可能にし、structured JSON output、fenced/nested response解析、429/502/503/504 retryを追加。
+- [x] `BUG-36` all-in後のDRAW停止を修正する。
+  - 2026-05-04 対応: `isSeatEligibleForDraw` はcurrent handでactiveなall-in seatを交換対象に残し、BETだけall-inを除外するように整理。
+  - 2026-05-04 対応: `sanitizeStacks` は stack 0 のcurrent-hand all-inを即busted扱いにせず、`seatOut` のときだけbustedへ寄せる。
+  - 2026-05-04 対応: Hero / CPU draw actor loop、Badugi controller legal action、DRAW round skip判定を同じdraw eligibilityへ統一。
+  - 2026-05-04 追加対応: 2-7/A-5/5-card draw controller系も同じ方針へ統一。live all-in seat はDRAW可能、BET actionは不可、全員all-inでBET streetが空になった場合は次draw/showdownへ自動進行する。
+  - 横断確認: `DeuceToSevenTripleDrawEngine` / `DeuceToSevenTripleDrawController` にall-in draw regressionを追加し、draw系とplayable invariantを再実行済み。
+- [x] `BUG-37` ハンド履歴を完成させる。
+  - 2026-05-04 部分対応: 完了したcanonical hand historyをlocalStorageのcash/tournament履歴にも保存し、standalone `/history` でキャッシュゲーム履歴とトーナメント履歴を同時に確認できるようにする。
+  - 2026-05-04 部分対応: cash履歴に席別サマリ、pot details、canonical event timelineを追加し、all-in / side pot / action countの調査入口を作る。
+  - 2026-05-04 部分対応: ゲーム内`HandHistoryScreen`もlocalStorageのcash/tournament保存済み履歴をmemory bufferへ統合し、保存済みhandIdからreplayを開けるfallbackを追加。
+  - 2026-05-04 部分対応: standalone `/history` のpot detailsにwinners/payoutを表示し、side/split potの配当確認入口を追加。
+  - 2026-05-04 部分対応: standalone `/history` のcash/tournament hand detailへvariant名、evaluator、seat別hand/evaluation labelを追加し、Badugi/2-7/A-5などのmulti-game履歴を見分けられるようにする。
+  - 2026-05-04 部分対応: backendに`POST/GET /api/history/hand`を追加し、フロントsync queueはcanonical hand recordを汎用履歴APIへupsert同期してから既存`/api/badugi/hands`構造化ログへ送る。
+  - 2026-05-04 対応: mobile viewport向けに`/history`のheader/section余白を調整し、Playwright mobile smokeで保存済みhand表示とページ水平scrollなしを確認。
+  - 2026-05-04 確認: `HistoryScreen` unitでcash/tournament同時表示を固定。`main-menu-history-smoke`でstandalone menuから`/history`へ遷移できることを確認。
+- [x] `BUG-38` フレンドマッチの実プレイQAを強化する。
+  - 既存: `p2p-friend-match-smoke.spec.ts` はmock websocketでroom create / ready / draw / showdown / refresh restoreを確認済み。
+  - 2026-05-04 確認: unitでcreate/join/websocket projection/action/reconnect/history replayを確認。Playwrightでlogin→room作成→ready→draw→showdown→refresh restoreを確認。
+  - 2026-05-04 追加確認: join失敗時にroomを開かず、sessionStorageへ壊れたactive roomを残さないこと、websocket error/close状態がUIに出ることをunitで固定。
+  - 2026-05-04 追加対応: backend WebSocketで現在手番以外のactionを`out_of_turn`として拒否し、`currentTurnPlayerId`をroom/state deltaへ配信。フロントは相手手番中のCall/Draw/Foldをdisabledにし、手番待ち表示を追加。
+  - 2026-05-04 追加確認: `p2p-friend-match-real-ws.spec.ts` を追加。`src/server`を8001で起動し、host/guest 2ページでroom作成、参加、実WebSocket同期、手番action、showdown、next handを確認する。
+  - 2026-05-04 対応: `src/server/requirements.txt` に `websockets` を明記し、uvicorn単体起動時にWebSocket Upgradeが404へ落ちる環境差を防ぐ。
+  - 2026-05-04 追加対応: WebSocket idle中にサーバーheartbeat timeoutで切断される問題を修正。通常の操作待ちで同期がclosedへ落ちないようにした。
+  - 2026-05-04 追加確認: 同じE2Eでhost reload後の再接続とmobile landscapeのFriend Match表示/水平scrollなしを確認。
 
 ### 16.5 Full Game Implementation / RL / Feedback Order
 
-- [ ] `GAME-ALL-01` 10-Gameで使う未実装ゲームを先に playable にする: FLH (`B02`), PLO8 (`B06`), Stud (`ST1`), Stud8 (`ST2`), Razz (`ST3`)。
+- [x] `GAME-ALL-01` 10-Gameで使う未実装ゲームを先に playable にする: FLH (`B02`), PLO8 (`B06`), Stud (`ST1`), Stud8 (`ST2`), Razz (`ST3`)。
+  - 2026-05-04 実装: FLH / PLO8 / Stud / Stud8 / Razz の controller / definition / registry / App routing / UI adapter / Game Selector catalog を追加。
+  - 2026-05-04 テスト: playable invariant smokeで5種を含む7controllerを横断検証。PLO8専用split fixtureを追加。
+  - 2026-05-04 追加対応: Stud/Razz bring-in順序、up/down card専用UI、Stud8複数side-pot split fixtureを追加済み。
 - [ ] `GAME-ALL-02` 残りBoard/Draw/Stud/Dramaha/Chinese Pokerを順次 playable 化し、各ゲームごとに evaluator / action mask / all-in / split pot / history smoke を追加する。
+  - 2026-05-04 部分対応: 残Board枠の `B03` NL Super Hold'em / `B04` FL Super Hold'em をplayable化し、routing / registry / 3-hole配布 / high evaluator / all-in side-pot invariantに追加。
+  - 2026-05-04 部分対応: `S03` 5-Card Single Drawをplayable化。high hand evaluator / 1 draw / controller / registry / App routing / UI adapter / game selector / playable smoke / hand history high-hand labelを追加。
+  - 2026-05-04 部分対応: Chinese Poker / OFC用のscorer foundationを追加。front / middle / backの行評価、foul判定、最小royalty fixtureをunitで固定。実ゲームcontroller / layout UI / fantasyland / turn順は未実装のまま `CHINESE-02` に残す。
+  - 2026-05-04 部分対応: `D04` Badeucey TD、`D05` Badacey TD、`D06` Hidugi TD、`D07` Archie TD をplayable化。Badugi half + 2-7/A-5/high系halfのcomponent split、odd chip fixture、registry/routing/UI adapter/history smokeを追加。
+  - 2026-05-04 部分対応: `S04-S07` single draw split/Badugi系をplayable化。S04 Badugi SD、S05 Badeucey SD、S06 Badacey SD、S07 Hidugi SDのcontroller/engine/routing/catalog/history smokeを追加。
+  - 残TODO: Chinese/OFC本体controller / layout UI / fantasyland / turn順、split draw系の公式ルール監査、component pot detail UI、Playwright replay smoke、CPU discard strategy精緻化を追加する。
 - [ ] `GAME-ALL-03` Stud / Razz 実装後、10-Game対象のCPUを Beginner / Standard まで学習・適用する。
+  - 2026-05-05 部分対応: NLH / FLH / PLO / PLO8 / FLO8 / Stud / Stud8 / Razz / Razz27 は、controller の `getCpuAction()` 経由で teacher-supervised CPU policy を実行できるようにした。
+  - 2026-05-05 部分対応: App のCPU action経路を draw-lowball 限定から controller-driven game 全体へ広げ、board/stud系がBadugi fallback policyへ落ちないようにした。
+  - 残TODO: これは runtime の Beginner/Standard teacher baseline 適用であり、各ゲーム専用DQN/ONNXの長期学習済みモデル適用ではない。D01/D02/Badugi以外の per-game RL dataset / reward / action mask / evaluation gate は継続。
 - [ ] `GAME-ALL-04` 強化学習済みCPUを使った cash / tournament のプレイログ収集を行い、30ハンド以上のセッションだけAI feedback対象にする。
 - [ ] `GAME-ALL-05` feedback API は hand history / position / stack / VPIP/PFR / ROI / showdown / all-in / split-pot結果を投げ、良かった点・悪かった点・次回方針・仮説を返す。
+  - 2026-05-05 追加調査: feedback上の `B-07` などのシチュエーションIDは、hand history内の `handId` / `actionSeq` / `street` / `seatIndex` / `position` と紐付ければ「どのハンドのどのアクションか」を明示できる。
+  - 実装方針: `playFeedbackPayload` で key hand ごとに `situationId`, `handId`, `actionSeqRange`, `variantId`, `street`, `heroAction`, `toCall`, `pot`, `stackDepth`, `resultDelta` を持たせ、backend保存結果にも同じ参照を残す。frontend modal は該当 hand history / replay frame へジャンプする導線を追加する。
+  - 2026-05-05 対応: feedback payload / local store / Hand History modal を `keyHands` に対応させ、`situationId` / `handId` / `actionSeqRange` から該当hand replayへ遷移できるようにした。
+  - 残TODO: backend保存済みfeedback取得結果にも `keyHands` を表示するため、DB保存payloadとresponseの統合表示をさらに強化する。
 
 ## 17. Mobile Browser Landscape Game UI
 
@@ -2369,9 +2461,9 @@ Draw RL test coverage:
   - 対応: `GameLayoutBase` で felt / ring のinsetを `layoutMode` ごとに分離。
   - 横断影響: Badugiだけでなく同じshared layoutを使う2-7/A-5/今後のHold'em/Omahaにも影響し得るため、shared layout側で修正。
 - [x] `REG-20260504-ALLIN-DRAW-FREEZE` all-in後に進行停止する可能性を修正する。
-  - 原因: Badugiの `isSeatEligibleForDraw` が all-in seat をdraw actor候補に残していた。
-  - 対応: all-in seatをDRAW actorから除外し、pending flagが残っていてもskipするunit testを追加。
-  - 横断確認: 2-7/A-5系は別エンジンの all-in regression test を再実行して確認する。
+  - 2026-05-04 初期対応: all-in seatをDRAW actorから除外して待機停止を避けたが、実戦確認で「all-in後もdraw pokerでは交換権が残る」ケースを潰してしまうことが判明。
+  - 2026-05-04 再修正: BET eligibility と DRAW eligibility を分離し、current handでactiveなall-in seatはDRAW可能、busted/seatOut/folded seatだけDRAW不可に統一。
+  - 横断確認: Badugi unit と 2-7/A-5系の draw regression test を再実行して確認する。
 - [x] `BUG-TRACK-20260504` 新規バグを `docs/bugs/badugi_browser_mobile_bug_tracker.md` に追加し、他ゲーム影響欄を持たせる。
 - [x] `FB-POLICY-01` キャッシュ/トーナメントのプレイフィードバック運用方針を作成する。
   - 2026-05-04 対応: `docs/play-feedback-policy.md` に30ハンド以上の送信条件、ROI/良悪判断/ChatGPT API連携方針を記載。
@@ -2384,12 +2476,77 @@ Draw RL test coverage:
 - [x] `npm run lint`: pass。
 - [x] `npm run build`: pass。chunk size warning は既存警告。
 
+### 16.3.4 2026-05-04 Stud / Ring Stack Regression
+
+- [x] `BUG-20260504-STUD-PREDEALT-7` Stud / Stud8 / Razz 系が開始時点で7枚を内部配布し、3rd street から全street分のカードを持ち得る問題を修正。
+  - 原因: `StudGameController.startNewHand()` が `dealStudCards()` で7枚すべてを先配りしていた。
+  - 対応: 初期配布を2枚down + 1枚upに限定し、4th/5th/6thでup card、7thでdown cardをstreet進行時に配る。
+  - 補足: all-in の live player はbet actorから外すが、showdownまでカードは配られる。
+- [x] `BUG-20260504-STUD-VISIBLE-HAND` Stud系UIがbase snapshotの `hand` を拾い、表示用カード枚数と可視/不可視状態がズレる問題を修正。
+  - 対応: `NLHUIAdapter` のseat viewで `hand` と `cardVisibility` をadapter由来に統一。
+- [x] `BUG-20260504-DRAW-CASH-STACK-RESET` 2-7/A-5/5-cardなどdraw-controller系リングゲームで、次ハンド開始時にスタックがstarting stackへ戻る問題を修正。
+  - 原因: `DeuceToSevenTripleDrawController.createNewHandState()` がengine初期化時の `startingStack` をそのまま使い、App側の現在スタックを反映していなかった。
+  - 対応: `currentPlayers` / `prevPlayers` / 前回snapshotから seat stack とavatar/nameを引き継いでからforced betを適用する。
+- [x] `BUG-20260504-DRAW-ALLIN-DRAW-RIGHT` 2-7/A-5/5-cardなどdraw-controller系で、all-in live player がDRAWできず進行/交換権がBadugiとズレる問題を修正。
+  - 原因: lowball draw engine が active betting seat と drawable seat を同じ判定で扱い、all-in seat をDRAW順から除外していた。
+  - 対応: `getDrawableSeatIndexes()` / `findFirstDrawableSeat()` を追加し、DRAWはfolded/sittingOut/seatOut/bustedのみ除外、BETは従来通りall-inも除外する。
+  - 補足: all-inだけが残ったBET streetは空streetとして即skipし、次drawまたはshowdownへ進める。
+- [x] `UI-20260504-HAND-SORT` 5-card/draw handの視認性改善として、表示上は同rankをまとめて低い順に並べ、クリック時は元indexを維持する。
+  - 例: `Q,5,T,5,5` は表示上 `5,5,5,T,Q` に寄せる。discard indexは元のカード位置で送るためゲームロジックは変更しない。
+- [ ] `RL-10GAME-BEGINNER-STANDARD` 10-Game対象CPUのBeginner/Standard学習適用。
+  - 2026-05-05 部分対応: `src/games/core/cpuTeacherPolicy.js` を追加し、board/stud系に Beginner/Standard 以上の tier threshold を使う teacher-supervised betting policy を導入。
+  - 2026-05-05 部分対応: NLH / FLH / PLO / PLO8 / FLO8 は hole/board/evaluator ベースの強度推定、Stud / Stud8 / Razz / Razz27 は up/down card と high/low evaluator ベースの強度推定で CPU action を返す。
+  - 2026-05-05 確認: targeted unit で NLH/PLO/Stud-family の `getCpuAction()` と teacher policy threshold を固定。
+  - 2026-05-05 学習: Badugi Standard向けに `badugi_10game_teacher_5k_20260505` を実行。`badugi_dqn_002500_20260505-005022.pt` を採用候補にし、`badugi_standard_dqn_v3.onnx` としてexport。
+  - 2026-05-05 評価: Standard v2比 6-profile x 2-seed gate で `avgReward 3.008 vs 1.902`、`worstProfileAvgReward 2.202 vs 1.064`、`negativeBetEVActions 0 vs 28`。Pro v1比は `avgReward 3.008 vs 2.912`、`showdownWinRate 0.674 vs 0.647` だが `minAvgReward 1.771 vs 1.855` のためPro昇格は保留。
+  - 2026-05-05 適用: `model-badugi-standard-dqn-v3` をregistryに追加し、Badugi Standardの通常routingをv3へ切替。旧v2は比較/rollback用に残す。
+  - 2026-05-05 Pro practice benchmark: `public/models/badugi_pro_v1.onnx` は practice-only 3200 episodes で `avgReward 2.827`, `showdownWinRate 0.683`, `foldRate 0.163`, `worstProfileAvgReward 1.988`。synthetic gate はpassだが human logなしのため人間相手60%超の保証には使わない。
+  - 2026-05-05 Pro probe: Standard v3採用checkpointから `badugi_pro_probe_from_standard_v3_10k_20260505` を10k継続学習。5k checkpoint は Pro v1比 `avgReward 3.128 vs 3.130`, `showdownWinRate 0.687 vs 0.682`, `worstProfileAvgReward 2.185 vs 2.079`, `negativeRaiseEVActions 29 vs 114` だが `minAvgReward 1.803 vs 1.855` で僅かに未達。10k/latest は `showdownWinRate 0.751` まで上がる一方 `foldRate 0.262` へ悪化したため不採用。
+  - 2026-05-05 判定: Pro v1置換は保留。5k方向は有望だが、次はfoldRateを上げずにminAvgRewardを改善する短期fine-tuneまたはgateを追加する。
+  - 残TODO: 10-Game全体の true RL 適用は未完。D01/D02/NLH/PLO/Stud/Razz系を「専用モデル」として名乗るには、variant別 dataset、action mask、reward、checkpoint評価、human/practice benchmark gate が必要。
+- [x] `npm test -- --run src/games/stud/__tests__/StudSplitGameController.test.js src/ui/game/nlh/__tests__/NLHUIAdapter.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawController.test.js src/ui/components/__tests__/Player.test.jsx`: 4 files / 28 tests pass。
+- [x] `npm test -- --run src/games/__tests__/playableInvariant.test.js`: 1 file / 25 tests pass。NLH/FLH/PLO/PLO8/FLO8/Stud/Stud8/Razz/Razz27/Razzdugi/Razzducey/主要draw系のbroken actorとchip driftを横断確認。
+- [x] `npm test -- --run src/games/draw/__tests__/DeuceToSevenTripleDrawEngine.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawController.test.js src/games/__tests__/playableInvariant.test.js`: 3 files / 65 tests pass。2-7/A-5/5-card draw系のall-in DRAW権、BET不可、空BET street skip、横断chip driftなしを確認。
+- [x] `npm test -- --run src/games/draw/__tests__/SpecialDrawEngine.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawEngine.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawController.test.js src/games/__tests__/playableInvariant.test.js`: 4 files / 79 tests pass。Archie qualifier scoop、all-in draw権、横断chip driftなしを確認。
+- [x] `npx playwright test tests/e2e/game-ui-layout-smoke.spec.ts --project=badugi-flow`: 1 passed。テーブルledger / decision panel / hero cards / seat detailの最低限操作性を確認。
+- [x] `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts --project=badugi-flow`: 22 passed。NLH/FLH/PLO/PLO8/Big-O/5-card PLO/Stud/Stud8/Razz/Razz27/Razzdugi/Razzducey/D04-D07/S03-S07/Badugi store tournament の起動、Hero card配布、actionable state到達を横断確認。
+- [x] `npm run lint`: pass。
+- [x] `npm run build`: pass。chunk size warning は既存警告。
+
+### 16.3.5 2026-05-04 Cross-Variant Operational QA Gap
+
+- [x] `QA-20260504-PLO-ACTION` PLO cash game でHeroカード4枚が配られ、CPU自動進行後にHero action buttonが表示・押下可能になることをPlaywrightで検知する。
+  - 背景: 既存 `playableInvariant` はcontroller完走を見ていたが、Game SelectorからPLOを起動してUI操作可能かまでは検証していなかった。
+  - 対応: App側Badugi deck integrityをboard-controller gameへ適用しないよう分離し、board-controller CPU actionをcontrollerへ直接流すE2E経路を追加。
+- [x] `QA-20260504-BADUGI-MTT-DEAL` Store Tournament Badugi でHeroカード4枚が配られ、Hero action/draw stateへ進むことをPlaywrightで検知する。
+  - 背景: トーナメントUI smokeはlayout中心で、カード配布・action到達を必須条件にしていなかった。
+  - 対応: `/menu` から `menu-tournament` を押し、MTT卓でHero cards/action buttonの存在を確認。
+- [x] `QA-20260504-CROSS-OPERATIONAL-SMOKE` 今後の回帰防止として、controller invariantだけでなく「variant選択 -> 実画面 -> card visible -> action visible」を主要variantへ広げる。
+  - 対応: NLH / FLH / PLO / PLO8 / Big-O / 5-card PLO / Stud / Razz / Badugi MTT を Playwright smoke に追加。
+  - 確認: `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts --project=badugi-flow`: 9 passed。
+  - 2026-05-05 追加対応: D04-D07 / S03-S07 / Stud8 / Razz27 / Razzdugi / Razzducey も Game Selector 経由の実画面 smoke 対象へ追加。Hidugi系は仕様通り4枚配布として固定。
+  - 2026-05-05 確認: `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts --project=badugi-flow`: 22 passed。
+
+### 16.3.6 2026-05-04 Variant Progression / Showdown Display QA Gap
+
+- [x] `QA-20260504-RAZZ-STREET-PROGRESSION` Razz/Razz27 が THIRD -> FOURTH -> FIFTH -> SIXTH -> SEVENTH -> SHOWDOWN まで正しい actor で進むことをunit fixtureで固定する。
+  - 背景: RazzがBadugi流用に見える状態があり、bring-in後のstreet進行と7枚配布がゲームとして成立しているかを明示的に保証する必要がある。
+- [x] `QA-20260504-STUD-DISPLAY-ORDER` Stud/Razz系のdown/up card順とcardVisibilityをPlayer表示ソートで壊さない。
+  - 背景: draw用の手札ソートをStud/Razzにそのまま適用すると、up-card/down-cardの対応が崩れてゲーム内容を誤認する。
+- [x] `QA-20260504-LOWBALL-SHOWDOWN-SORT` 2-7/A-5/Badugi/High系で、showdown時のカード表示順をvariant特性に合わせる。
+  - 2-7: Aは高いカードとして扱う。A-5/Badugi: Aは低いカードとして扱う。High: A/Kなど強いrankを左へ寄せる。
+- [x] `QA-20260504-SPLIT-RESULT-VISIBILITY` Stud8/PLO8/FLO8/Badeucey/Badacey/Razzdugi/Razzducey の hi/low/component pot を色・ラベルで分離して表示する。
+  - 背景: split potやcomponent splitで、誰がHigh/Low/Badugi側を取ったかが結果画面で判別しにくい。
+- [ ] `QA-20260504-ALL-VARIANT-OPERATIONAL-AUDIT` playable invariant を「初回action到達」だけでなく、street完走・showdown・all-in/split potまで段階的に拡張する。
+  - 背景: Razz/Stud/draw/board gameごとの進行差をテストで拾わないと、ゲームできると誤認する。
+  - 2026-05-04: Razz/Razz27 のfull street unit fixture、Player表示順unit、HandResultOverlay split/component表示unitを追加。全variantの完全手動/自動E2E完走監査は継続タスク。
+
 ### 16.4 未対応タスク優先度
 
 - P0: `BUG-20260503-SB-FOLD-DRAW-FREEZE`
   - 症状: SB/Hero が fold した後、DRAW フェーズで `Waiting for other players...` のまま進まない。
   - 原因: UI auto actor loop が `turn === 0` を無条件に「Hero 手動操作待ち」と扱っていた。fold済み Hero でも draw actor として待ってしまい、CPU draw へ進まなかった。
-  - 対応: `shouldWaitForHeroDrawTurn()` を追加し、Hero が `DRAW` 可能な場合だけ手動待機する。folded / all-in / draw済み Hero は自動的に次 seat へ進める。
+  - 対応: `shouldWaitForHeroDrawTurn()` を追加し、Hero が `DRAW` 可能な場合だけ手動待機する。folded / busted / seatOut / draw済み Hero は自動的に次 seat へ進める。current hand の all-in Hero は交換権が残るため手動待機する。
   - 検証: helper unit test と Badugi/draw family smoke を実行する。
 - P1: `PUI-11` action panel に current bet / to-call / raise cap を常時表示する。
   - 理由: プレイヤーの判断に直結し、誤操作とストレスを減らす。

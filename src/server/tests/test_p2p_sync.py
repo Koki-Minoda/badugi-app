@@ -24,7 +24,11 @@ def test_websocket_action_triggers_showdown():
   create_resp = client.post("/api/rooms/create", json={"owner_id": "tester", "max_players": 2, "mode": "ring"})
   assert create_resp.status_code == 200
   room_id = create_resp.json()["data"]["roomId"]
-  # Pre-join second player so that the controller has multiple actors.
+  # Pre-join both players in turn order so that the websocket actor is first to act.
+  client.post(
+    "/api/rooms/join",
+    json={"room_id": room_id, "player_id": "hero", "display_name": "Hero", "role": "player"},
+  )
   client.post(
     "/api/rooms/join",
     json={"room_id": room_id, "player_id": "villain", "display_name": "Villain", "role": "player"},
@@ -96,12 +100,23 @@ def test_websocket_ready_draw_showdown_and_next_hand():
     assert saw_ready_state
     assert saw_secure_deal
 
+    villain_ws.send_json({"event": "action", "payload": {"playerId": "villain", "type": "call", "amount": 20}})
+    saw_out_of_turn = False
+    for _ in range(10):
+      msg = villain_ws.receive_json()
+      if msg.get("event") == "error" and msg["payload"].get("code") == "out_of_turn":
+        saw_out_of_turn = True
+        assert msg["payload"].get("currentTurnPlayerId") == "hero"
+        break
+    assert saw_out_of_turn
+
     hero_ws.send_json({"event": "action", "payload": {"playerId": "hero", "type": "draw"}})
     saw_draw_state = False
     for _ in range(6):
       msg = hero_ws.receive_json()
       if msg.get("event") == "updated_state" and msg["payload"].get("phase") == "draw":
         saw_draw_state = True
+        assert msg["payload"].get("currentTurnPlayerId") == "villain"
         break
     assert saw_draw_state
 

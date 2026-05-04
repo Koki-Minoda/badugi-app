@@ -10,6 +10,10 @@ import {
   resolveEvaluationPot,
   summarizePayouts,
 } from "../core/sidePotResolver.js";
+import {
+  chooseTeacherBetAction,
+  estimateBoardHandStrength,
+} from "../core/cpuTeacherPolicy.js";
 
 function clonePlayer(player) {
   if (!player) return player;
@@ -78,6 +82,18 @@ export class NLHGameController {
     };
     this.deck = null;
     this.handCounter = 0;
+  }
+
+  get holeCardCount() {
+    if (Number.isFinite(this._holeCardCount) && this._holeCardCount > 0) {
+      return this._holeCardCount;
+    }
+    const count = this.config.gameDefinition?.handStructure?.hole;
+    return Number.isFinite(count) && count > 0 ? count : 2;
+  }
+
+  set holeCardCount(value) {
+    this._holeCardCount = value;
   }
 
   updateTableConfig(tableConfig = {}) {
@@ -194,7 +210,7 @@ export class NLHGameController {
 
   dealHoleCards(players) {
     const activeSeats = players.filter((p) => !p.folded && !p.seatOut);
-    for (let round = 0; round < 2; round += 1) {
+    for (let round = 0; round < this.holeCardCount; round += 1) {
       activeSeats.forEach((player) => {
         const [card] = this.drawCards(1);
         if (card) {
@@ -321,6 +337,61 @@ export class NLHGameController {
     return { success: true, player: clonePlayer(player) };
   }
 
+  evaluateCpuStrength(player) {
+    const board = [...(this.state.boardCards ?? [])];
+    let evaluation = null;
+    if (board.length >= 3 && Array.isArray(player?.holeCards) && player.holeCards.length) {
+      try {
+        evaluation = evaluateNlhHand({ cards: [...player.holeCards, ...board] });
+      } catch {
+        evaluation = null;
+      }
+    }
+    return estimateBoardHandStrength({
+      holeCards: player?.holeCards ?? [],
+      boardCards: board,
+      evaluation,
+      variantId: this.config.gameDefinition?.id ?? "B01",
+    });
+  }
+
+  getCpuAction(state = this.getSnapshot(), seatIndex = state?.currentActor, options = {}) {
+    const player = state?.players?.[seatIndex];
+    if (!state || typeof seatIndex !== "number" || !player || player.folded || player.seatOut || player.allIn) {
+      return null;
+    }
+    if (state.currentActor !== null && state.currentActor !== seatIndex) {
+      return null;
+    }
+    const currentBet = Number(state.currentBet ?? 0) || 0;
+    const playerBet = Number(player.betThisStreet ?? player.bet ?? 0) || 0;
+    const toCall = Math.max(0, currentBet - playerBet);
+    const strength = this.evaluateCpuStrength(player);
+    const betAmount =
+      this.config.gameDefinition?.betting?.structure === "fixed-limit" && typeof this.getLimitUnit === "function"
+        ? this.getLimitUnit()
+        : Math.max(this.blinds.bb ?? 2, toCall);
+    const decision = chooseTeacherBetAction({
+      strength,
+      toCall,
+      canRaise: !player.allIn && (player.stack ?? 0) > 0,
+      tierConfig: options.tierConfig,
+      betAmount,
+      currentBet,
+      playerBet,
+      street: state.street,
+    });
+    return {
+      seatIndex,
+      ...decision,
+      metadata: {
+        ...(decision.metadata ?? {}),
+        strength,
+        tierId: options.tierConfig?.id ?? "standard",
+      },
+    };
+  }
+
   isBettingRoundComplete() {
     const activePlayers = this.state.players.filter(
       (player) => player && !player.folded && !player.seatOut && !player.allIn,
@@ -387,7 +458,7 @@ export class NLHGameController {
         !player.folded &&
         !player.seatOut &&
         Array.isArray(player.holeCards) &&
-        player.holeCards.length === 2,
+        player.holeCards.length >= this.holeCardCount,
     );
     const board = [...this.state.boardCards];
     const evaluations = contenders.map((player) => {

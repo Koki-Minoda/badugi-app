@@ -26,10 +26,18 @@ describe("roundFlow draw skip guard", () => {
 
   it("skips draw round only when no actionable draw seat remains", () => {
     const players = [
-      player({ allIn: true }),
+      player({ allIn: true, hasDrawn: true, hasActedThisRound: true }),
       player({ folded: true, hasFolded: true }),
       player({ seatOut: true, isBusted: true }),
     ];
     expect(shouldSkipDrawRound({ players })).toBe(true);
+  });
+
+  it("does not skip draw round when all-in seats still need to draw", () => {
+    const players = [
+      player({ allIn: true, stack: 0, hasDrawn: false, hasActedThisRound: false }),
+      player({ folded: true, hasFolded: true }),
+    ];
+    expect(shouldSkipDrawRound({ players })).toBe(false);
   });
 });

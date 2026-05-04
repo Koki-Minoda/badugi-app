@@ -57,6 +57,37 @@ describe("DeuceToSevenTripleDrawController", () => {
     expect(snapshot.currentBet).toBe(20);
   });
 
+  it("preserves current ring-game stacks when starting the next hand", () => {
+    const controller = buildController([
+      "2S", "3S", "4S", "5S", "7S",
+      "2H", "3H", "4H", "5H", "8H",
+      "2C", "3C", "4C", "5C", "9C",
+      "2D", "3D", "4D", "5D", "9D",
+    ]);
+    const initial = controller.createInitialState();
+    const state = controller.createNewHandState(initial, {
+      currentPlayers: [
+        { playerId: "hero", name: "Hero", stack: 650, avatar: "/characters/01.png" },
+        { playerId: "villain", name: "Villain", stack: 350, avatar: "/characters/02.png" },
+      ],
+      structure: { sb: 0, bb: 0, ante: 0 },
+    });
+    const snapshot = controller.getUiSnapshot(state);
+
+    expect(snapshot.players[0]).toMatchObject({
+      playerId: "hero",
+      name: "Hero",
+      stack: 650,
+      avatar: "/characters/01.png",
+    });
+    expect(snapshot.players[1]).toMatchObject({
+      playerId: "villain",
+      name: "Villain",
+      stack: 350,
+      avatar: "/characters/02.png",
+    });
+  });
+
   it("exposes legal BET actions for the acting seat", () => {
     const controller = buildController([
       "2S", "3S", "4S", "5S", "7S",
@@ -87,6 +118,33 @@ describe("DeuceToSevenTripleDrawController", () => {
     expect(controller.getLegalActions(state, 1)).toEqual([
       { type: "DRAW", minDiscard: 0, maxDiscard: 5 },
     ]);
+  });
+
+  it("exposes DRAW, not betting actions, for an all-in live draw actor", () => {
+    const controller = buildController([
+      "2S", "3S", "4S", "5S", "7S",
+      "2H", "3H", "4H", "5H", "8H",
+    ]);
+    const state = controller.createNewHandState(controller.createInitialState());
+    state.engineState.street = "DRAW";
+    state.engineState.actingPlayerIndex = 1;
+    state.engineState.players[1] = {
+      ...state.engineState.players[1],
+      allIn: true,
+      stack: 0,
+      folded: false,
+      sittingOut: false,
+      seatOut: false,
+      hasDrawn: false,
+      canDraw: true,
+    };
+
+    expect(controller.getLegalActions(state, 1)).toEqual([
+      { type: "DRAW", minDiscard: 0, maxDiscard: 5 },
+    ]);
+
+    state.engineState.street = "BET";
+    expect(controller.getLegalActions(state, 1)).toEqual([]);
   });
 
   it("exposes the D01 rule-based CPU action through the controller", () => {

@@ -1,5 +1,5 @@
 import React from "react";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import FriendMatchSetupScreen from "../FriendMatchSetupScreen.jsx";
 
@@ -22,6 +22,12 @@ vi.mock("../../utils/roomApi.js", () => ({
   getRoomInfo: (...args) => mockGetRoomInfo(...args),
   joinRoom: (...args) => mockJoinRoom(...args),
 }));
+
+function getVariantRadio(value) {
+  const radio = screen.getAllByRole("radio").find((input) => input.value === value);
+  expect(radio, `variant radio ${value}`).toBeTruthy();
+  return radio;
+}
 
 describe("FriendMatchSetupScreen", () => {
   const originalWebSocket = globalThis.WebSocket;
@@ -56,7 +62,7 @@ describe("FriendMatchSetupScreen", () => {
   it("renders form fields, defaults Badugi, and creates a room on submit", async () => {
     render(<FriendMatchSetupScreen language="en" />);
 
-    const badugiRadio = screen.getByRole("radio", { name: /badugi/i });
+    const badugiRadio = getVariantRadio("badugi");
     expect(badugiRadio).toHaveProperty("checked", true);
 
     expect(screen.getByLabelText(/seats/i)).toBeTruthy();
@@ -86,7 +92,7 @@ describe("FriendMatchSetupScreen", () => {
     const nlhRadio = screen.getByRole("radio", { name: /no-limit hold'em/i });
     fireEvent.click(nlhRadio);
     expect(nlhRadio).toHaveProperty("checked", true);
-    const badugiRadio = screen.getByRole("radio", { name: /badugi/i });
+    const badugiRadio = getVariantRadio("badugi");
     expect(badugiRadio).toHaveProperty("checked", false);
   });
 
@@ -123,6 +129,52 @@ describe("FriendMatchSetupScreen", () => {
     );
   });
 
+  it("surfaces join failures without opening a websocket room", async () => {
+    mockGetRoomInfo.mockRejectedValueOnce(new Error("room not found"));
+    render(<FriendMatchSetupScreen language="en" />);
+
+    fireEvent.change(screen.getByLabelText(/room code/i), {
+      target: { value: "missing-room" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^join$/i }));
+
+    expect(await screen.findByText("room not found")).toBeTruthy();
+    expect(mockJoinRoom).not.toHaveBeenCalled();
+    expect(window.sessionStorage.getItem("mgx_friend_match_active_room_v1")).toBeNull();
+  });
+
+  it("shows websocket error and closed states for reconnect QA", async () => {
+    const sockets = [];
+    class MockWebSocket {
+      constructor() {
+        this.listeners = {};
+        this.readyState = 1;
+        this.send = vi.fn();
+        this.close = vi.fn();
+        sockets.push(this);
+      }
+
+      addEventListener(type, handler) {
+        this.listeners[type] = handler;
+      }
+    }
+    globalThis.WebSocket = MockWebSocket;
+
+    render(<FriendMatchSetupScreen language="en" />);
+    fireEvent.click(screen.getByRole("button", { name: /create room/i }));
+    expect(await screen.findByText(/room created/i)).toBeTruthy();
+
+    await act(async () => {
+      sockets[0].listeners.error();
+    });
+    expect(screen.getByText("error")).toBeTruthy();
+
+    await act(async () => {
+      sockets[0].listeners.close();
+    });
+    expect(screen.getByText("closed")).toBeTruthy();
+  });
+
   it("connects to room websocket and displays received room events", async () => {
     const sockets = [];
     class MockWebSocket {
@@ -144,7 +196,7 @@ describe("FriendMatchSetupScreen", () => {
     render(<FriendMatchSetupScreen language="en" />);
     fireEvent.click(screen.getByRole("button", { name: /create room/i }));
     expect(await screen.findByText(/room created/i)).toBeTruthy();
-    expect(sockets).toHaveLength(1);
+    await waitFor(() => expect(sockets).toHaveLength(1));
 
     await act(async () => {
       sockets[0].listeners.open();
@@ -229,6 +281,51 @@ describe("FriendMatchSetupScreen", () => {
     expect(sockets[0].send).toHaveBeenCalledWith(expect.stringContaining('"event":"reaction"'));
     expect(sockets[0].send).toHaveBeenCalledWith(expect.stringContaining('"type":"draw"'));
     expect(sockets[0].send).toHaveBeenCalledWith(expect.stringContaining('"type":"fold"'));
+  });
+
+  it("disables room actions while waiting for another player turn", async () => {
+    const sockets = [];
+    class MockWebSocket {
+      constructor() {
+        this.listeners = {};
+        this.readyState = 1;
+        this.send = vi.fn();
+        this.close = vi.fn();
+        sockets.push(this);
+      }
+
+      addEventListener(type, handler) {
+        this.listeners[type] = handler;
+      }
+    }
+    globalThis.WebSocket = MockWebSocket;
+
+    render(<FriendMatchSetupScreen language="en" />);
+    fireEvent.click(screen.getByRole("button", { name: /create room/i }));
+    expect(await screen.findByText(/room created/i)).toBeTruthy();
+
+    await act(async () => {
+      sockets[0].listeners.open();
+      sockets[0].listeners.message({
+        data: JSON.stringify({
+          event: "updated_state",
+          payload: {
+            sequenceId: 2,
+            handId: "hand-1",
+            phase: "playing",
+            pot: 20,
+            stacks: { "local-player": 1980, "guest-player": 1980 },
+            bets: { "local-player": 20, "guest-player": 0 },
+            currentTurnPlayerId: "guest-player",
+          },
+        }),
+      });
+    });
+
+    expect(screen.getByText(/Waiting for opponent/i)).toBeTruthy();
+    expect(screen.getByTestId("p2p-call")).toHaveProperty("disabled", true);
+    expect(screen.getByTestId("p2p-draw")).toHaveProperty("disabled", true);
+    expect(screen.getByTestId("p2p-fold")).toHaveProperty("disabled", true);
   });
 
   it("restores the active room after refresh and reconnects websocket", async () => {

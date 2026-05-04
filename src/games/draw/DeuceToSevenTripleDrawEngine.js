@@ -50,10 +50,10 @@ function getBettingPlayers(players = []) {
   return players.filter((player) => !player.folded && !player.sittingOut && !player.allIn);
 }
 
-function getActiveSeatIndexes(players = []) {
+function getDrawableSeatIndexes(players = []) {
   return players
     .map((player, seatIndex) => ({ player, seatIndex }))
-    .filter(({ player }) => !player.folded && !player.sittingOut && !player.allIn)
+    .filter(({ player }) => !player.folded && !player.sittingOut && !player.seatOut && !player.isBusted)
     .map(({ seatIndex }) => seatIndex);
 }
 
@@ -63,6 +63,18 @@ function findFirstActiveSeat(players = [], startIndex = 0) {
     const seatIndex = (startIndex + offset) % players.length;
     const player = players[seatIndex];
     if (player && !player.folded && !player.sittingOut && !player.allIn) {
+      return seatIndex;
+    }
+  }
+  return null;
+}
+
+function findFirstDrawableSeat(players = [], startIndex = 0) {
+  if (!players.length) return null;
+  for (let offset = 0; offset < players.length; offset += 1) {
+    const seatIndex = (startIndex + offset) % players.length;
+    const player = players[seatIndex];
+    if (player && !player.folded && !player.sittingOut && !player.seatOut && !player.isBusted) {
       return seatIndex;
     }
   }
@@ -312,6 +324,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     cpuStrategy = "ruleBasedD01",
     maxDrawRounds = 3,
     bigBetStartsAtDrawRound = maxDrawRounds === 1 ? 1 : 2,
+    handCardCount = 5,
   } = {}) {
     super({ gameId, displayName, maxDrawRounds });
     this.variantId = variantId;
@@ -319,6 +332,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     this.lowType = lowType;
     this.cpuStrategy = cpuStrategy;
     this.bigBetStartsAtDrawRound = bigBetStartsAtDrawRound;
+    this.handCardCount = handCardCount;
     this.drawHeuristic = {
       aceLow: lowType === "A5" || lowType === "a5",
       penalizeStraightFlush: !(lowType === "A5" || lowType === "a5"),
@@ -342,7 +356,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     const dealtCards = [];
     const players = createPlayers(ctx).map((player) => {
       if (player.sittingOut) return player;
-      const hand = deckManager.draw(5, { activeCards: dealtCards });
+      const hand = deckManager.draw(this.handCardCount, { activeCards: dealtCards });
       dealtCards.push(...hand);
       return {
         ...player,
@@ -369,6 +383,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
         bettingStructure: "fixed-limit",
         evaluator: this.evaluatorTag,
         maxDrawRounds: this.maxDrawRounds,
+        handCardCount: this.handCardCount,
         smallBetBB: 1,
         bigBetBB: 2,
         bigBetStartsAtDrawRound: this.bigBetStartsAtDrawRound,
@@ -554,7 +569,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     next.street = "DRAW";
     next.drawRoundIndex = drawRoundIndex;
     next.players = next.players.map((player) => {
-      const canDraw = !player.folded && !player.sittingOut && !player.allIn;
+      const canDraw = !player.folded && !player.sittingOut && !player.seatOut && !player.isBusted;
       return {
         ...player,
         hasDrawn: !canDraw,
@@ -562,10 +577,10 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
         hasActedThisRound: !canDraw,
       };
     });
-    next.actingPlayerIndex = findFirstActiveSeat(next.players, (next.dealerIndex ?? 0) + 1);
+    next.actingPlayerIndex = findFirstDrawableSeat(next.players, (next.dealerIndex ?? 0) + 1);
     next.metadata = {
       ...(next.metadata ?? {}),
-      pendingDrawSeats: getActiveSeatIndexes(next.players),
+      pendingDrawSeats: getDrawableSeatIndexes(next.players),
       discardCountBySeat: {},
     };
     return next;
@@ -589,6 +604,9 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
       raiseCountThisRound: 0,
       pendingDrawSeats: [],
     };
+    if (next.actingPlayerIndex == null) {
+      return this.advanceAfterBet(next);
+    }
     return next;
   }
 
@@ -614,7 +632,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     const seatIndex = findSeatIndex(next, action);
     const player = next.players[seatIndex];
     assertSeatIsActive(player, { seatIndex, actionType: "DRAW" });
-    if (player.folded || player.sittingOut || player.allIn || player.canDraw === false) {
+    if (player.folded || player.sittingOut || player.seatOut || player.isBusted || player.canDraw === false) {
       throw new IllegalActionError("Seat cannot draw in the current round", { seatIndex });
     }
     if (next.actingPlayerIndex !== null && seatIndex !== next.actingPlayerIndex) {
@@ -643,7 +661,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     player.lastDrawCount = discardedCards.length;
     player.lastAction = discardedCards.length === 0 ? "Pat" : `DRAW(${discardedCards.length})`;
 
-    const pendingDrawSeats = getActiveSeatIndexes(next.players).filter(
+    const pendingDrawSeats = getDrawableSeatIndexes(next.players).filter(
       (idx) => !next.players[idx]?.hasDrawn,
     );
     next.metadata = {

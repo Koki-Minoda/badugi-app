@@ -1,5 +1,8 @@
 import { evaluateBadugi } from "../../games/badugi/utils/badugiEvaluator.js";
+import { evaluateBadugiHand } from "../../games/evaluators/badugi.js";
+import { evaluateHighHand } from "../../games/evaluators/high.js";
 import { evaluateLowHand, formatLowHandLabel } from "../../games/evaluators/low.js";
+import { evaluateBadeucey, evaluateBadacey } from "../../games/evaluators/split.js";
 
 let currentRecord = null;
 let seqCounter = 0;
@@ -37,6 +40,46 @@ function isAceToFiveVariant(variantId) {
   );
 }
 
+function isFiveCardHighDrawVariant(variantId) {
+  const normalized = normalizeVariantId(variantId);
+  return normalized === "S03" || normalized === "five_card_single_draw";
+}
+
+function isBadugiDrawVariant(variantId) {
+  const normalized = normalizeVariantId(variantId);
+  return normalized === "S04" || normalized === "badugi_single_draw";
+}
+
+function isHidugiVariant(variantId) {
+  const normalized = normalizeVariantId(variantId);
+  return (
+    normalized === "D06" ||
+    normalized === "S07" ||
+    normalized === "hidugi_triple_draw" ||
+    normalized === "hidugi_single_draw"
+  );
+}
+
+function isBadeuceyVariant(variantId) {
+  const normalized = normalizeVariantId(variantId);
+  return (
+    normalized === "D04" ||
+    normalized === "S05" ||
+    normalized === "badeucey_triple_draw" ||
+    normalized === "badeucey_single_draw"
+  );
+}
+
+function isBadaceyVariant(variantId) {
+  const normalized = normalizeVariantId(variantId);
+  return (
+    normalized === "D05" ||
+    normalized === "S06" ||
+    normalized === "badacey_triple_draw" ||
+    normalized === "badacey_single_draw"
+  );
+}
+
 function evaluateVariantHand(hand = [], variantId = "badugi") {
   if (isDeuceToSevenVariant(variantId)) {
     const evaluation = evaluateLowHand({ cards: hand, lowType: "27" });
@@ -52,6 +95,21 @@ function evaluateVariantHand(hand = [], variantId = "badugi") {
       handName: formatLowHandLabel(evaluation, { lowType: "A5" }),
     };
   }
+  if (isFiveCardHighDrawVariant(variantId)) {
+    return evaluateHighHand({ cards: hand });
+  }
+  if (isBadugiDrawVariant(variantId)) {
+    return evaluateBadugi(hand);
+  }
+  if (isHidugiVariant(variantId)) {
+    return evaluateBadugiHand({ cards: hand, mode: "high" });
+  }
+  if (isBadeuceyVariant(variantId)) {
+    return evaluateBadeucey({ cards: hand });
+  }
+  if (isBadaceyVariant(variantId)) {
+    return evaluateBadacey({ cards: hand });
+  }
   return evaluateBadugi(hand);
 }
 
@@ -64,6 +122,9 @@ function getEvaluationLabel(evaluation, variantId = "badugi") {
   if (isAceToFiveVariant(variantId)) {
     return formatLowHandLabel(evaluation, { lowType: "A5" });
   }
+  if (evaluation.rankType === "BADUGI") return `Badugi ${evaluation.count ?? ""}-card`.trim();
+  if (evaluation.rankType) return evaluation.rankType;
+  if (typeof evaluation.count === "number") return `Badugi ${evaluation.count}-card`;
   return null;
 }
 

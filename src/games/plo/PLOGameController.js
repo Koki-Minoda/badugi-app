@@ -1,6 +1,7 @@
 import NLHGameController from "../nlh/NLHGameController.js";
 import PLOGameDefinition from "./PLOGameDefinition.js";
 import { evaluatePloHand, comparePloHands } from "./utils/ploEvaluator.js";
+import { estimateBoardHandStrength } from "../core/cpuTeacherPolicy.js";
 import {
   applyPayoutsToPlayers,
   buildContributionPots,
@@ -55,6 +56,24 @@ export class PLOGameController extends NLHGameController {
       seatIndex,
       action,
       amount: Math.min(requested, maxCommit),
+    });
+  }
+
+  evaluateCpuStrength(player) {
+    const board = [...(this.state.boardCards ?? [])];
+    let evaluation = null;
+    if (board.length >= 3 && Array.isArray(player?.holeCards) && player.holeCards.length >= this.holeCardCount) {
+      try {
+        evaluation = evaluatePloHand({ holeCards: player.holeCards, boardCards: board });
+      } catch {
+        evaluation = null;
+      }
+    }
+    return estimateBoardHandStrength({
+      holeCards: player?.holeCards ?? [],
+      boardCards: board,
+      evaluation,
+      variantId: this.config.gameDefinition?.id ?? "B05",
     });
   }
 

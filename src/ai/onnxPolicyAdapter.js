@@ -9,6 +9,7 @@ import {
 } from "../rl/badugiObservationSchema.js";
 import {
   DRAW_OBSERVATION_VECTOR_SIZE,
+  DRAW_RL_ACTIONS,
   buildDrawObservationVector,
   isDrawRlVariant,
 } from "../rl/drawObservationSchema.js";
@@ -155,18 +156,26 @@ function buildDrawFeatures(entry, payload) {
   return buf;
 }
 
-function decodeDrawOutput(result) {
+function decodeDrawOutput(result, payload = {}) {
   if (!result?.data || result.data.length === 0) return null;
   const data = Array.from(result.data);
-  let maxIdx = 0;
-  let maxVal = data[0];
-  for (let i = 1; i < data.length; i += 1) {
+  const legalActions = getLegalActions(payload).map((action) => action.toLowerCase());
+  const legalSet = new Set(legalActions);
+  let bestAction = null;
+  let maxVal = -Infinity;
+  for (let i = 0; i < data.length; i += 1) {
+    const action = DRAW_RL_ACTIONS[i] ?? `draw_${i}`;
+    if (legalSet.size > 0 && !legalSet.has(action.toLowerCase())) {
+      continue;
+    }
     if (data[i] > maxVal) {
       maxVal = data[i];
-      maxIdx = i;
+      bestAction = action;
     }
   }
-  const drawCount = Math.max(0, Math.min(3, maxIdx));
+  if (!bestAction) return null;
+  const drawCountMatch = bestAction.match(/^draw_(\d)$/);
+  const drawCount = drawCountMatch ? Number(drawCountMatch[1]) : 0;
   return { drawCount, source: "onnx" };
 }
 
@@ -227,7 +236,7 @@ export async function inferDrawDecisionWithOnnx(payload) {
   try {
     const outputs = await session.run({ [inputName]: tensor });
     const outputName = session.outputNames[0];
-    return decodeDrawOutput(outputs[outputName]);
+    return decodeDrawOutput(outputs[outputName], payload);
   } catch (err) {
     console.warn("[ONNX] draw inference failed", err);
     return null;

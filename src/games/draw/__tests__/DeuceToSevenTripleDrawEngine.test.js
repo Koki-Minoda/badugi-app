@@ -318,7 +318,7 @@ describe("DeuceToSevenTripleDrawEngine", () => {
     expect(drawState.players[1].hand).toEqual(originalHand);
   });
 
-  it("skips all-in seats when building draw order", () => {
+  it("keeps all-in live seats in draw order because they still exchange cards", () => {
     const engine = new DeuceToSevenTripleDrawEngine();
     const state = engine.initHand({
       seatConfig: ["HUMAN", "CPU", "CPU"],
@@ -332,11 +332,54 @@ describe("DeuceToSevenTripleDrawEngine", () => {
 
     expect(drawState.players[1]).toMatchObject({
       allIn: true,
-      canDraw: false,
-      hasDrawn: true,
+      canDraw: true,
+      hasDrawn: false,
     });
-    expect(drawState.metadata.pendingDrawSeats).toEqual([0, 2]);
-    expect(drawState.actingPlayerIndex).toBe(2);
+    expect(drawState.metadata.pendingDrawSeats).toEqual([0, 1, 2]);
+    expect(drawState.actingPlayerIndex).toBe(1);
+  });
+
+  it("lets an all-in live draw seat complete its draw and then skips empty betting streets", () => {
+    const engine = new DeuceToSevenTripleDrawEngine({
+      deckManager: new FakeDeckManager([
+        "2S", "3S", "4S", "5S", "7S",
+        "2H", "3H", "4H", "5H", "8H",
+        "9C", "TD", "JH", "QS", "KC",
+      ]),
+    });
+    const state = engine.initHand({
+      seatConfig: ["HUMAN", "CPU"],
+      startingStack: 500,
+      dealerIndex: 0,
+    });
+    state.players = state.players.map((player) => ({
+      ...player,
+      allIn: true,
+      stack: 0,
+      bet: 0,
+      totalInvested: 100,
+      hasActedThisRound: true,
+    }));
+    state.drawRoundIndex = 3;
+    const drawState = engine.transitionToDraw(state, 3);
+
+    const afterSeat1 = engine.applyDrawAction(drawState, {
+      seatIndex: 1,
+      type: "DRAW",
+      discardIndexes: [],
+    });
+    expect(afterSeat1.street).toBe("DRAW");
+    expect(afterSeat1.actingPlayerIndex).toBe(0);
+
+    const afterSeat0 = engine.applyDrawAction(afterSeat1, {
+      seatIndex: 0,
+      type: "DRAW",
+      discardIndexes: [],
+    });
+
+    expect(afterSeat0.street).toBe("SHOWDOWN");
+    expect(afterSeat0.isHandOver).toBe(true);
+    expect(afterSeat0.metadata.showdownTotal).toBe(200);
   });
 
   it("moves to showdown after the third post-draw betting round", () => {

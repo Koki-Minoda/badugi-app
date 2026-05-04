@@ -28,6 +28,30 @@ export function mergeEngineSnapshot(currentState, snapshot) {
   const currentPlayers = Array.isArray(currentState?.players)
     ? currentState.players
     : [];
+  const mergePlayerIdentity = (incoming, prior = {}) => {
+    if (!incoming) return incoming;
+    const priorAvatarUrl = prior?.avatarUrl ?? null;
+    const incomingAvatarUrl = incoming?.avatarUrl ?? null;
+    const priorAvatar = prior?.avatar ?? priorAvatarUrl ?? null;
+    const incomingAvatar = incoming?.avatar ?? null;
+    const shouldKeepPriorAvatar =
+      !incomingAvatar ||
+      incomingAvatar === "default_avatar" ||
+      incomingAvatar === "default";
+    const merged = { ...incoming };
+    if (incoming.playerId == null && prior?.playerId != null) merged.playerId = prior.playerId;
+    if (incoming.tournamentPlayerId == null && prior?.tournamentPlayerId != null) {
+      merged.tournamentPlayerId = prior.tournamentPlayerId;
+    }
+    if (incoming.cpuCharacterId == null && prior?.cpuCharacterId != null) {
+      merged.cpuCharacterId = prior.cpuCharacterId;
+    }
+    if (incoming.cpuStyle == null && prior?.cpuStyle != null) merged.cpuStyle = prior.cpuStyle;
+    if (incomingAvatarUrl == null && priorAvatarUrl != null) merged.avatarUrl = priorAvatarUrl;
+    if (shouldKeepPriorAvatar && priorAvatar != null) merged.avatar = priorAvatar;
+    if (incoming.titleBadge == null && prior?.titleBadge != null) merged.titleBadge = prior.titleBadge;
+    return merged;
+  };
   const hasIncomingPlayers = Array.isArray(snapshot.players);
   const nextPlayers = hasIncomingPlayers
     ? snapshot.players.map((incoming, idx) => {
@@ -37,13 +61,13 @@ export function mergeEngineSnapshot(currentState, snapshot) {
         const prior = currentPlayers[idx];
         if (prior && (prior.folded || prior.hasFolded || prior.seatOut)) {
           return {
-            ...incoming,
+            ...mergePlayerIdentity(incoming, prior),
             folded: true,
             hasFolded: true,
             seatOut: prior.seatOut || incoming.seatOut,
           };
         }
-        return incoming;
+        return mergePlayerIdentity(incoming, prior);
       })
     : currentPlayers;
   const nextPots = snapshot.pots ?? currentState?.pots ?? [];

@@ -34,12 +34,22 @@ describe("draw actor UI helpers", () => {
     ).toBe(false);
   });
 
-  it("does not wait on an all-in or already drawn hero during DRAW", () => {
+  it("waits on an all-in hero because draw poker still requires a draw decision", () => {
     expect(
       shouldWaitForHeroDrawTurn({
         phase: "DRAW",
         turn: 0,
         players: [hero({ allIn: true })],
+      }),
+    ).toBe(true);
+  });
+
+  it("does not wait on an already drawn hero during DRAW", () => {
+    expect(
+      shouldWaitForHeroDrawTurn({
+        phase: "DRAW",
+        turn: 0,
+        players: [hero({ hasDrawn: true, hasActedThisRound: true })],
       }),
     ).toBe(false);
 
@@ -47,7 +57,7 @@ describe("draw actor UI helpers", () => {
       shouldWaitForHeroDrawTurn({
         phase: "DRAW",
         turn: 0,
-        players: [hero({ hasDrawn: true, hasActedThisRound: true })],
+        players: [hero({ isBusted: true, seatOut: true })],
       }),
     ).toBe(false);
   });

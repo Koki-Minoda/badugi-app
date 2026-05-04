@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Card from "./Card";
 import { formatStatAf, formatStatPercent } from "../utils/stats.js";
+import { getDisplayCards } from "../utils/cardDisplayOrder.js";
 
 function BetStatus({ amount, allIn = false }) {
   const hasBet = Number(amount) > 0;
@@ -238,6 +239,7 @@ export default function Player({
   canSelectForDraw = false,
   compact = false,
   revealMode = false,
+  displayVariant = "badugi",
 }) {
   const seatRef = useRef(null);
   const closeTimerRef = useRef(null);
@@ -351,6 +353,7 @@ export default function Player({
       onCardClick(cardIdx);
     }
   };
+  const displayCards = getDisplayCards(handCards, { displayVariant });
 
   const hudOverlay =
     hudOpen && !compact && typeof document !== "undefined"
@@ -543,18 +546,18 @@ export default function Player({
           style={{
             gap: "var(--player-card-gap, 8px)",
             maxWidth: "var(--player-card-strip-maxw, 280px)",
-            gridTemplateColumns: `repeat(${Math.max(1, handCards.length || 4)}, minmax(0, 1fr))`,
+            gridTemplateColumns: `repeat(${Math.max(1, displayCards.length || 4)}, minmax(0, 1fr))`,
           }}
         >
-          {handCards.map((card, i) => (
+          {displayCards.map(({ card, sourceIndex }) => (
             <Card
-              key={`${card}-${i}`}
+              key={`${card}-${sourceIndex}`}
               value={card}
-              hidden={!isHero && !player.showHand}
-              selected={isHero && (player.selected || []).includes(i)}
-              onClick={() => handleCardClick(i)}
+              hidden={!isHero && !player.showHand && player.cardVisibility?.[sourceIndex] !== "up"}
+              selected={isHero && (player.selected || []).includes(sourceIndex)}
+              onClick={() => handleCardClick(sourceIndex)}
               folded={isFolded}
-              data-testid={`player-${index}-card-${i}`}
+              data-testid={`player-${index}-card-${sourceIndex}`}
             />
           ))}
         </div>

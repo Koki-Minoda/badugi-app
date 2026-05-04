@@ -28,6 +28,49 @@ BACKEND_DB_PASSWORD=badugi_pass
 BACKEND_DB_NAME=badugi_app
 ```
 
+Play feedback uses the OpenAI key only on the backend. Do not put this key in
+frontend `.env` files or any committed file.
+
+```
+MGX_OPENAI_API_KEY=sk-...     # preferred
+OPENAI_API_KEY=sk-...         # accepted fallback
+MGX_OPENAI_MODEL=gpt-4.1-mini # optional; default shown
+```
+
+For production systemd deployment, prefer an environment file instead of
+hard-coding the key in the service:
+
+```bash
+sudo install -d -m 750 /etc/mgx
+sudo install -m 640 /dev/null /etc/mgx/mgx-backend.env
+sudo nano /etc/mgx/mgx-backend.env
+```
+
+`/etc/mgx/mgx-backend.env`:
+
+```
+MGX_OPENAI_API_KEY=sk-...
+MGX_OPENAI_MODEL=gpt-4.1-mini
+```
+
+Then add this under `[Service]` in `/etc/systemd/system/mgx-backend.service`:
+
+```
+EnvironmentFile=/etc/mgx/mgx-backend.env
+```
+
+Reload and restart:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart mgx-backend.service
+sudo journalctl -u mgx-backend.service -n 100 --no-pager
+```
+
+When the key is active, `POST /api/analysis/play-feedback` should return
+`source: "openai"` and a persisted `feedbackId`. Without a key it returns a
+safe fallback response with `source: "fallback"`.
+
 To use SQLite locally (no external DB), set:
 
 ```

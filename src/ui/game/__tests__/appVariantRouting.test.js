@@ -16,6 +16,14 @@ describe("appVariantRouting", () => {
     expect(normalizeAppVariantId("S01")).toBe(APP_VARIANT_IDS.S01);
     expect(normalizeAppVariantId("S02")).toBe(APP_VARIANT_IDS.S02);
     expect(normalizeAppVariantId("S03")).toBe(APP_VARIANT_IDS.S03);
+    expect(normalizeAppVariantId("D04")).toBe(APP_VARIANT_IDS.D04);
+    expect(normalizeAppVariantId("badacey-triple-draw")).toBe(APP_VARIANT_IDS.D05);
+    expect(normalizeAppVariantId("hidugi_td")).toBe(APP_VARIANT_IDS.D06);
+    expect(normalizeAppVariantId("archie_triple_draw")).toBe(APP_VARIANT_IDS.D07);
+    expect(normalizeAppVariantId("S04")).toBe(APP_VARIANT_IDS.S04);
+    expect(normalizeAppVariantId("badeucey-single-draw")).toBe(APP_VARIANT_IDS.S05);
+    expect(normalizeAppVariantId("badacey_sd")).toBe(APP_VARIANT_IDS.S06);
+    expect(normalizeAppVariantId("hidugi_single_draw")).toBe(APP_VARIANT_IDS.S07);
     expect(normalizeAppVariantId("B02")).toBe(APP_VARIANT_IDS.FLH);
     expect(normalizeAppVariantId("B03")).toBe(APP_VARIANT_IDS.SUPER_HOLDEM);
     expect(normalizeAppVariantId("B04")).toBe(APP_VARIANT_IDS.FL_SUPER_HOLDEM);
@@ -47,6 +55,9 @@ describe("appVariantRouting", () => {
     expect(isControllerBackedAppVariant("badugi")).toBe(true);
     expect(isControllerBackedAppVariant("D02")).toBe(true);
     expect(isControllerBackedAppVariant("S03")).toBe(true);
+    expect(isControllerBackedAppVariant("D04")).toBe(true);
+    expect(isControllerBackedAppVariant("D07")).toBe(true);
+    expect(isControllerBackedAppVariant("S07")).toBe(true);
     expect(isControllerBackedAppVariant("nlh")).toBe(true);
     expect(isControllerBackedAppVariant("flh")).toBe(true);
     expect(isControllerBackedAppVariant("super_holdem")).toBe(true);

@@ -1773,17 +1773,26 @@ Draw RL test coverage:
         - 2026-05-04 実装: `FLO8GameController` / `FLO8GameDefinition` を追加。PLO8 evaluatorを継承しつつ、fixed-limitのstreet別bet sizeとraise capを適用。GameRegistry / App routing / PLO UI adapter / Game Selector catalogへ接続。
         - 2026-05-04 確認: FLO8のfixed-limit unit fixtureとplayable invariant smokeを追加。
     - Remaining 16+ game implementation roadmap:
-      - [ ] `MIX-16-01` Badeucey TD (`D04`) を実装する。Badugi half + 2-7 half のsplit evaluator、draw UI、pot split表示を追加する。
-      - [ ] `MIX-16-02` Badacey TD (`D05`) を実装する。Badugi half + A-5 half のsplit evaluatorを追加する。
-      - [ ] `MIX-16-03` Hidugi TD (`D06`) を実装する。Badugi high / reverse Badugi 系の評価とラベルを確定する。
-      - [ ] `MIX-16-04` Archie TD (`D07`) を実装する。pair-or-better high half + 8-or-better A-5 low half のsplit contractを実ゲームへ接続する。
+      - [x] `MIX-16-01` Badeucey TD (`D04`) を実装する。Badugi half + 2-7 half のsplit evaluator、draw UI、pot split表示を追加する。
+        - 2026-05-04 実装: `SpecialDrawEngine` / controllerを追加し、5枚hole / 3 draw / fixed-limit / Badugi half + 2-7 half のcomponent splitをGameRegistry、App routing、draw UI adapter、Game Selector catalogへ接続。
+        - 2026-05-04 確認: Badeucey split pot fixture、engine registry smoke、playable invariant、hand history label smokeを追加。
+      - [x] `MIX-16-02` Badacey TD (`D05`) を実装する。Badugi half + A-5 half のsplit evaluatorを追加する。
+        - 2026-05-04 実装: D05を5枚hole / 3 draw / fixed-limit / Badugi half + A-5 half として接続。Badacey odd chip / scoop fixtureを追加。
+      - [x] `MIX-16-03` Hidugi TD (`D06`) を実装する。Badugi high / reverse Badugi 系の評価とラベルを確定する。
+        - 2026-05-04 実装: D06を4枚hole / 3 draw / Badugi high evaluatorとして接続し、history label smokeを追加。
+      - [x] `MIX-16-04` Archie TD (`D07`) を実装する。pair-or-better high half + 8-or-better A-5 low half のsplit contractを実ゲームへ接続する。
+        - 2026-05-04 実装: D07を5枚hole / 3 draw / High half + A-5 low half のcomponent splitとして接続。pair-or-better/8-or-betterの厳密ゲートは今後の公式ルール監査タスクに残す。
       - [x] `MIX-16-05` 5-Card Single Draw (`S03`) を実装する。high draw evaluator / single draw / fixed-limitまたは指定bettingを確定する。
         - 2026-05-04 実装: `FiveCardSingleDrawEngine` / controller / registry / App routing / UI adapter / Game Selector catalogを追加。5枚配布、1 draw、high hand showdown、hand history high-hand labelを確認。
         - 残TODO: S03専用Playwright smoke、CPU discard strategyの精緻化、履歴detailの見せ方を追加する。
-      - [ ] `MIX-16-06` Badugi Single Draw (`S04`) を実装する。Badugi evaluatorをsingle draw familyへ接続する。
-      - [ ] `MIX-16-07` Badeucey Single Draw (`S05`) を実装する。
-      - [ ] `MIX-16-08` Badacey Single Draw (`S06`) を実装する。
-      - [ ] `MIX-16-09` Hidugi Single Draw (`S07`) を実装する。
+      - [x] `MIX-16-06` Badugi Single Draw (`S04`) を実装する。Badugi evaluatorをsingle draw familyへ接続する。
+        - 2026-05-04 実装: S04を4枚hole / 1 draw / Badugi lowとして接続し、playable invariantとhand history Badugi labelを確認。
+      - [x] `MIX-16-07` Badeucey Single Draw (`S05`) を実装する。
+        - 2026-05-04 実装: S05を5枚hole / 1 draw / Badugi half + 2-7 halfとして接続。
+      - [x] `MIX-16-08` Badacey Single Draw (`S06`) を実装する。
+        - 2026-05-04 実装: S06を5枚hole / 1 draw / Badugi half + A-5 halfとして接続。
+      - [x] `MIX-16-09` Hidugi Single Draw (`S07`) を実装する。
+        - 2026-05-04 実装: S07を4枚hole / 1 draw / Badugi high evaluatorとして接続。
       - [x] `MIX-16-10` Dramaha Hi (`H01`) を実装する。board high + draw hand half のsplit表示を作る。
       - [x] `MIX-16-11` Dramaha 2-7 (`H02`) を実装する。
       - [x] `MIX-16-12` Dramaha A-5 (`H03`) を実装する。
@@ -2239,8 +2248,9 @@ Draw RL test coverage:
   - 2026-05-04 部分対応: 残Board枠の `B03` NL Super Hold'em / `B04` FL Super Hold'em をplayable化し、routing / registry / 3-hole配布 / high evaluator / all-in side-pot invariantに追加。
   - 2026-05-04 部分対応: `S03` 5-Card Single Drawをplayable化。high hand evaluator / 1 draw / controller / registry / App routing / UI adapter / game selector / playable smoke / hand history high-hand labelを追加。
   - 2026-05-04 部分対応: Chinese Poker / OFC用のscorer foundationを追加。front / middle / backの行評価、foul判定、最小royalty fixtureをunitで固定。実ゲームcontroller / layout UI / fantasyland / turn順は未実装のまま `CHINESE-02` に残す。
-  - 残TODO: `D04` Badeucey TD、`D05` Badacey TD、`D06` Hidugi TD、`D07` Archie TD のsplit draw系playable化。Badugi half + 2-7/A-5/high系halfのsplit pot / odd chip / all-in fixtureを追加する。
-  - 残TODO: `S04-S07` single draw split/Badugi系、Chinese/OFC本体、各variantのhistory/replay smokeを順次追加する。
+  - 2026-05-04 部分対応: `D04` Badeucey TD、`D05` Badacey TD、`D06` Hidugi TD、`D07` Archie TD をplayable化。Badugi half + 2-7/A-5/high系halfのcomponent split、odd chip fixture、registry/routing/UI adapter/history smokeを追加。
+  - 2026-05-04 部分対応: `S04-S07` single draw split/Badugi系をplayable化。S04 Badugi SD、S05 Badeucey SD、S06 Badacey SD、S07 Hidugi SDのcontroller/engine/routing/catalog/history smokeを追加。
+  - 残TODO: Chinese/OFC本体controller / layout UI / fantasyland / turn順、split draw系の公式ルール監査、component pot detail UI、Playwright replay smoke、CPU discard strategy精緻化を追加する。
 - [ ] `GAME-ALL-03` Stud / Razz 実装後、10-Game対象のCPUを Beginner / Standard まで学習・適用する。
 - [ ] `GAME-ALL-04` 強化学習済みCPUを使った cash / tournament のプレイログ収集を行い、30ハンド以上のセッションだけAI feedback対象にする。
 - [ ] `GAME-ALL-05` feedback API は hand history / position / stack / VPIP/PFR / ROI / showdown / all-in / split-pot結果を投げ、良かった点・悪かった点・次回方針・仮説を返す。

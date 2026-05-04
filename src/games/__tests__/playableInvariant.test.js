@@ -8,6 +8,16 @@ import { PLO8GameController } from "../plo/PLO8GameController.js";
 import { FLO8GameController } from "../plo/FLO8GameController.js";
 import { PLOGameController } from "../plo/PLOGameController.js";
 import { FiveCardSingleDrawController } from "../draw/FiveCardSingleDrawController.js";
+import {
+  ArchieTripleDrawController,
+  BadaceySingleDrawController,
+  BadaceyTripleDrawController,
+  BadeuceySingleDrawController,
+  BadeuceyTripleDrawController,
+  BadugiSingleDrawController,
+  HidugiSingleDrawController,
+  HidugiTripleDrawController,
+} from "../draw/SpecialDrawController.js";
 import StudGameController, {
   Razz27GameController,
   RazzGameController,
@@ -172,7 +182,15 @@ describe("playable invariant smoke", () => {
     ["razz27", Razz27GameController],
     ["razzdugi", RazzdugiGameController],
     ["razzducey", RazzduceyGameController],
+    ["badeucey_triple_draw", BadeuceyTripleDrawController],
+    ["badacey_triple_draw", BadaceyTripleDrawController],
+    ["hidugi_triple_draw", HidugiTripleDrawController],
+    ["archie_triple_draw", ArchieTripleDrawController],
     ["five_card_single_draw", FiveCardSingleDrawController],
+    ["badugi_single_draw", BadugiSingleDrawController],
+    ["badeucey_single_draw", BadeuceySingleDrawController],
+    ["badacey_single_draw", BadaceySingleDrawController],
+    ["hidugi_single_draw", HidugiSingleDrawController],
   ];
 
   it.each(cases)("%s completes a hand without broken actors or chip drift", (_name, Controller) => {

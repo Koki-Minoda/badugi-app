@@ -14,6 +14,16 @@ import { AceToFiveTripleDrawController } from "../draw/AceToFiveTripleDrawContro
 import { DeuceToSevenSingleDrawController } from "../draw/DeuceToSevenSingleDrawController.js";
 import { DeuceToSevenTripleDrawController } from "../draw/DeuceToSevenTripleDrawController.js";
 import { FiveCardSingleDrawController } from "../draw/FiveCardSingleDrawController.js";
+import {
+  ArchieTripleDrawController,
+  BadaceySingleDrawController,
+  BadaceyTripleDrawController,
+  BadeuceySingleDrawController,
+  BadeuceyTripleDrawController,
+  BadugiSingleDrawController,
+  HidugiSingleDrawController,
+  HidugiTripleDrawController,
+} from "../draw/SpecialDrawController.js";
 import FLHGameController from "../nlh/FLHGameController.js";
 import NLHGameController from "../nlh/NLHGameController.js";
 import SuperHoldemGameController, {
@@ -163,6 +173,30 @@ export const GAME_VARIANTS = {
     label: "A-5 Triple Draw",
     controllerFactory: drawControllerFactory(AceToFiveTripleDrawController),
   },
+  badeucey_triple_draw: {
+    id: "badeucey_triple_draw",
+    variantId: "D04",
+    label: "Badeucey TD",
+    controllerFactory: drawControllerFactory(BadeuceyTripleDrawController),
+  },
+  badacey_triple_draw: {
+    id: "badacey_triple_draw",
+    variantId: "D05",
+    label: "Badacey TD",
+    controllerFactory: drawControllerFactory(BadaceyTripleDrawController),
+  },
+  hidugi_triple_draw: {
+    id: "hidugi_triple_draw",
+    variantId: "D06",
+    label: "Hidugi TD",
+    controllerFactory: drawControllerFactory(HidugiTripleDrawController),
+  },
+  archie_triple_draw: {
+    id: "archie_triple_draw",
+    variantId: "D07",
+    label: "Archie TD",
+    controllerFactory: drawControllerFactory(ArchieTripleDrawController),
+  },
   deuce_to_seven_single_draw: {
     id: "deuce_to_seven_single_draw",
     variantId: "S01",
@@ -180,6 +214,30 @@ export const GAME_VARIANTS = {
     variantId: "S03",
     label: "5-Card Single Draw",
     controllerFactory: drawControllerFactory(FiveCardSingleDrawController),
+  },
+  badugi_single_draw: {
+    id: "badugi_single_draw",
+    variantId: "S04",
+    label: "Badugi Single Draw",
+    controllerFactory: drawControllerFactory(BadugiSingleDrawController),
+  },
+  badeucey_single_draw: {
+    id: "badeucey_single_draw",
+    variantId: "S05",
+    label: "Badeucey Single Draw",
+    controllerFactory: drawControllerFactory(BadeuceySingleDrawController),
+  },
+  badacey_single_draw: {
+    id: "badacey_single_draw",
+    variantId: "S06",
+    label: "Badacey Single Draw",
+    controllerFactory: drawControllerFactory(BadaceySingleDrawController),
+  },
+  hidugi_single_draw: {
+    id: "hidugi_single_draw",
+    variantId: "S07",
+    label: "Hidugi Single Draw",
+    controllerFactory: drawControllerFactory(HidugiSingleDrawController),
   },
 };
 

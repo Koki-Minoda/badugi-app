@@ -174,6 +174,56 @@ describe("handHistory", () => {
     expect(record.pots[0].winners[0].finalLowRanks).toBeUndefined();
   });
 
+  it.each([
+    {
+      variantId: "D04",
+      variantName: "Badeucey TD",
+      hand: ["AS", "2D", "3C", "4H", "7S"],
+      labelPart: "2-7 Low",
+    },
+    {
+      variantId: "D05",
+      variantName: "Badacey TD",
+      hand: ["AS", "2D", "3C", "4H", "5S"],
+      labelPart: "A-5 Low",
+    },
+    {
+      variantId: "D06",
+      variantName: "Hidugi TD",
+      hand: ["KS", "QD", "JH", "10C"],
+      labelPart: "Badugi",
+    },
+    {
+      variantId: "S04",
+      variantName: "Badugi Single Draw",
+      hand: ["AS", "2D", "3C", "4H"],
+      labelPart: "Badugi",
+    },
+  ])("records $variantId special draw hand labels", ({ variantId, variantName, hand, labelPart }) => {
+    startHandHistoryRecord({
+      handId: `${variantId}-history`,
+      variantId,
+      variantName,
+      seats: [{ seat: 0, name: "Hero", startStack: 500 }],
+    });
+
+    const record = finalizeHandHistoryRecord({
+      players: [{ stack: 620, hand }],
+      pots: [
+        {
+          potIndex: 0,
+          potAmount: 120,
+          payouts: [{ seatIndex: 0, payout: 120, hand }],
+        },
+      ],
+    });
+
+    expect(record.variantId).toBe(variantId);
+    expect(record.variantName).toBe(variantName);
+    expect(record.seats[0].handLabel).toContain(labelPart);
+    expect(record.pots[0].winners[0].handLabel).toContain(labelPart);
+  });
+
   it("defines and validates the minimum D01 replay fields", () => {
     const finalHand = ["7S", "5D", "4C", "3H", "2S"];
     startHandHistoryRecord({

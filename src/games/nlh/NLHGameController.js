@@ -10,6 +10,10 @@ import {
   resolveEvaluationPot,
   summarizePayouts,
 } from "../core/sidePotResolver.js";
+import {
+  chooseTeacherBetAction,
+  estimateBoardHandStrength,
+} from "../core/cpuTeacherPolicy.js";
 
 function clonePlayer(player) {
   if (!player) return player;
@@ -331,6 +335,61 @@ export class NLHGameController {
       this.state.currentActor = this.nextActiveSeat(seatIndex);
     }
     return { success: true, player: clonePlayer(player) };
+  }
+
+  evaluateCpuStrength(player) {
+    const board = [...(this.state.boardCards ?? [])];
+    let evaluation = null;
+    if (board.length >= 3 && Array.isArray(player?.holeCards) && player.holeCards.length) {
+      try {
+        evaluation = evaluateNlhHand({ cards: [...player.holeCards, ...board] });
+      } catch {
+        evaluation = null;
+      }
+    }
+    return estimateBoardHandStrength({
+      holeCards: player?.holeCards ?? [],
+      boardCards: board,
+      evaluation,
+      variantId: this.config.gameDefinition?.id ?? "B01",
+    });
+  }
+
+  getCpuAction(state = this.getSnapshot(), seatIndex = state?.currentActor, options = {}) {
+    const player = state?.players?.[seatIndex];
+    if (!state || typeof seatIndex !== "number" || !player || player.folded || player.seatOut || player.allIn) {
+      return null;
+    }
+    if (state.currentActor !== null && state.currentActor !== seatIndex) {
+      return null;
+    }
+    const currentBet = Number(state.currentBet ?? 0) || 0;
+    const playerBet = Number(player.betThisStreet ?? player.bet ?? 0) || 0;
+    const toCall = Math.max(0, currentBet - playerBet);
+    const strength = this.evaluateCpuStrength(player);
+    const betAmount =
+      this.config.gameDefinition?.betting?.structure === "fixed-limit" && typeof this.getLimitUnit === "function"
+        ? this.getLimitUnit()
+        : Math.max(this.blinds.bb ?? 2, toCall);
+    const decision = chooseTeacherBetAction({
+      strength,
+      toCall,
+      canRaise: !player.allIn && (player.stack ?? 0) > 0,
+      tierConfig: options.tierConfig,
+      betAmount,
+      currentBet,
+      playerBet,
+      street: state.street,
+    });
+    return {
+      seatIndex,
+      ...decision,
+      metadata: {
+        ...(decision.metadata ?? {}),
+        strength,
+        tierId: options.tierConfig?.id ?? "standard",
+      },
+    };
   }
 
   isBettingRoundComplete() {

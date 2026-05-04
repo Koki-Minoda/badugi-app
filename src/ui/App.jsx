@@ -2303,8 +2303,10 @@ const SAFE_RESET_PHASE = "IDLE";
         const controller = sessionControllerRef.current;
         const controllerState = sessionControllerStateRef.current;
         const cpuAction =
-          isSingleTableDrawLowball && typeof controller?.getCpuAction === "function"
-            ? controller.getCpuAction(controllerState, seatToAct)
+          typeof controller?.getCpuAction === "function"
+            ? controller.getCpuAction(controllerState, seatToAct, {
+                tierConfig: activeAiTierConfig,
+              })
             : null;
         const payload = cpuAction?.payload ?? cpuAction ?? {
           type: "DRAW",
@@ -2576,7 +2578,6 @@ const SAFE_RESET_PHASE = "IDLE";
     aiDecisionContext,
     activeAiTierConfig,
     isSingleTableControllerDrawGame,
-    isSingleTableDrawLowball,
     tryControllerBetAction,
   ]);
 
@@ -7770,12 +7771,17 @@ const SAFE_RESET_PHASE = "IDLE";
         }
         const me = snap[turn] ? { ...snap[turn] } : null;
         if (!me) return;
-        if (isSingleTableDrawLowball) {
+        if (
+          sessionControllerRef.current &&
+          typeof sessionControllerRef.current.getCpuAction === "function"
+        ) {
           const controller = sessionControllerRef.current;
           const controllerState = sessionControllerStateRef.current;
           const cpuAction =
             typeof controller?.getCpuAction === "function"
-              ? controller.getCpuAction(controllerState, activeSeat)
+              ? controller.getCpuAction(controllerState, activeSeat, {
+                  tierConfig: activeAiTierConfig,
+                })
               : null;
           const payload = cpuAction?.payload ?? cpuAction ?? null;
           const actionType = payload?.type ?? (maxBetThisRound(snap) > (me.betThisRound ?? 0) ? "CALL" : "CHECK");

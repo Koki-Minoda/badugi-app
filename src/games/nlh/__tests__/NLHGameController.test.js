@@ -214,4 +214,31 @@ describe("NLHGameController", () => {
     expect(summary.potDetails[2].winnerSeatIndexes).toEqual([2]);
     expect(controller.state.players.map((player) => player.stack)).toEqual([150, 100, 100]);
   });
+
+  it("returns a teacher-supervised CPU action for board-game betting", () => {
+    const controller = createController({ seats, deckCards, blinds });
+    controller.startNewHand();
+    controller.state.currentActor = 0;
+    controller.state.currentBet = 20;
+    controller.state.players[0] = {
+      ...controller.state.players[0],
+      holeCards: ["AS", "AH"],
+      betThisStreet: 20,
+      stack: 980,
+      folded: false,
+      seatOut: false,
+      allIn: false,
+    };
+
+    const action = controller.getCpuAction(controller.getSnapshot(), 0, {
+      tierConfig: { id: "standard" },
+    });
+
+    expect(action).toMatchObject({
+      seatIndex: 0,
+      type: "BET",
+      metadata: expect.objectContaining({ strategy: "teacher-supervised" }),
+    });
+    expect(action.metadata.strength).toBeGreaterThan(0.8);
+  });
 });

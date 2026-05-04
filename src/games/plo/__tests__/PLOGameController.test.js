@@ -140,4 +140,43 @@ describe("PLOGameController", () => {
     expect(summary.potDetails[2].winnerSeatIndexes).toEqual([2]);
     expect(controller.state.players.map((player) => player.stack)).toEqual([150, 100, 100]);
   });
+
+  it("returns a teacher-supervised CPU action for coordinated Omaha starts", () => {
+    const controller = createController({
+      seats: [
+        { name: "Hero", stack: 1000 },
+        { name: "CPU 1", stack: 1000 },
+        { name: "CPU 2", stack: 1000 },
+      ],
+      deckCards: [
+        "AS", "KS", "QD",
+        "JC", "10H", "9D",
+        "8C", "7S", "6H",
+        "5C", "4D", "3S",
+      ],
+    });
+    controller.startNewHand();
+    controller.state.currentActor = 0;
+    controller.state.currentBet = 20;
+    controller.state.players[0] = {
+      ...controller.state.players[0],
+      holeCards: ["AS", "KS", "QD", "JD"],
+      betThisStreet: 20,
+      stack: 980,
+      folded: false,
+      seatOut: false,
+      allIn: false,
+    };
+
+    const action = controller.getCpuAction(controller.getSnapshot(), 0, {
+      tierConfig: { id: "standard" },
+    });
+
+    expect(action).toMatchObject({
+      seatIndex: 0,
+      type: "BET",
+      metadata: expect.objectContaining({ strategy: "teacher-supervised" }),
+    });
+    expect(action.metadata.strength).toBeGreaterThan(0.65);
+  });
 });

@@ -10,6 +10,10 @@ import {
   summarizePayouts,
   splitAmountBySeatOrder,
 } from "../core/sidePotResolver.js";
+import {
+  chooseTeacherBetAction,
+  estimateStudHandStrength,
+} from "../core/cpuTeacherPolicy.js";
 import StudGameDefinition from "./StudGameDefinition.js";
 import Stud8GameDefinition from "./Stud8GameDefinition.js";
 import Razz27GameDefinition from "./Razz27GameDefinition.js";
@@ -377,6 +381,59 @@ export class StudGameController {
       this.state.currentActor = this.nextActiveSeat(seatIndex);
     }
     return { success: true, player: clonePlayer(player) };
+  }
+
+  evaluateCpuStrength(player) {
+    let evaluation = null;
+    try {
+      if (this.variant === "stud" || this.variant === "stud8") {
+        evaluation = evaluateHighHand({ cards: player?.holeCards ?? [] });
+      } else if (this.variant === "razz27" || this.variant === "razzducey") {
+        evaluation = evaluateLowHand({ cards: player?.holeCards ?? [], lowType: "27" });
+      } else {
+        evaluation = evaluateLowHand({ cards: player?.holeCards ?? [], lowType: "A5" });
+      }
+    } catch {
+      evaluation = null;
+    }
+    return estimateStudHandStrength({
+      holeCards: player?.holeCards ?? [],
+      upCards: player?.upCards ?? [],
+      evaluation,
+      variant: this.variant,
+    });
+  }
+
+  getCpuAction(state = this.getSnapshot(), seatIndex = state?.currentActor, options = {}) {
+    const player = state?.players?.[seatIndex];
+    if (!state || typeof seatIndex !== "number" || !player || player.folded || player.seatOut || player.allIn) {
+      return null;
+    }
+    if (state.currentActor !== null && state.currentActor !== seatIndex) return null;
+    const currentBet = Number(state.currentBet ?? 0) || 0;
+    const playerBet = Number(player.betThisStreet ?? player.bet ?? 0) || 0;
+    const toCall = Math.max(0, currentBet - playerBet);
+    const strength = this.evaluateCpuStrength(player);
+    const decision = chooseTeacherBetAction({
+      strength,
+      toCall,
+      canRaise: !player.allIn && (player.stack ?? 0) > 0 && this.raiseCountThisStreet < this.raiseCap,
+      tierConfig: options.tierConfig,
+      betAmount: this.getLimitUnit(),
+      currentBet,
+      playerBet,
+      street: state.street,
+    });
+    return {
+      seatIndex,
+      ...decision,
+      metadata: {
+        ...(decision.metadata ?? {}),
+        strength,
+        tierId: options.tierConfig?.id ?? "standard",
+        variant: this.variant,
+      },
+    };
   }
 
   isBettingRoundComplete() {

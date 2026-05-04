@@ -150,6 +150,37 @@ describe("Stud split controllers", () => {
     expect(summary.splitMode).toBe("single");
   });
 
+  it("returns a teacher-supervised CPU action for Stud-family betting", () => {
+    const controller = createController(RazzGameController, 3);
+    controller.startNewHand();
+    controller.state.currentActor = 0;
+    controller.state.currentBet = 0;
+    controller.state.players[0] = {
+      ...controller.state.players[0],
+      holeCards: ["AS", "2D", "4C"],
+      downCards: ["AS", "2D"],
+      upCards: ["4C"],
+      betThisStreet: 0,
+      stack: 1000,
+      folded: false,
+      seatOut: false,
+      allIn: false,
+    };
+
+    const action = controller.getCpuAction(controller.getSnapshot(), 0, {
+      tierConfig: { id: "standard" },
+    });
+
+    expect(action).toMatchObject({
+      seatIndex: 0,
+      type: "BET",
+      metadata: expect.objectContaining({
+        strategy: "teacher-supervised",
+        variant: "razz",
+      }),
+    });
+  });
+
   it("plays Razz27 through every stud street to showdown with 2-7 low evaluation", () => {
     const controller = createController(Razz27GameController, 4);
     controller.startNewHand();

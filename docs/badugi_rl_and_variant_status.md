@@ -2254,8 +2254,14 @@ Draw RL test coverage:
   - 2026-05-04 部分対応: `S04-S07` single draw split/Badugi系をplayable化。S04 Badugi SD、S05 Badeucey SD、S06 Badacey SD、S07 Hidugi SDのcontroller/engine/routing/catalog/history smokeを追加。
   - 残TODO: Chinese/OFC本体controller / layout UI / fantasyland / turn順、split draw系の公式ルール監査、component pot detail UI、Playwright replay smoke、CPU discard strategy精緻化を追加する。
 - [ ] `GAME-ALL-03` Stud / Razz 実装後、10-Game対象のCPUを Beginner / Standard まで学習・適用する。
+  - 2026-05-05 部分対応: NLH / FLH / PLO / PLO8 / FLO8 / Stud / Stud8 / Razz / Razz27 は、controller の `getCpuAction()` 経由で teacher-supervised CPU policy を実行できるようにした。
+  - 2026-05-05 部分対応: App のCPU action経路を draw-lowball 限定から controller-driven game 全体へ広げ、board/stud系がBadugi fallback policyへ落ちないようにした。
+  - 残TODO: これは runtime の Beginner/Standard teacher baseline 適用であり、各ゲーム専用DQN/ONNXの長期学習済みモデル適用ではない。D01/D02/Badugi以外の per-game RL dataset / reward / action mask / evaluation gate は継続。
 - [ ] `GAME-ALL-04` 強化学習済みCPUを使った cash / tournament のプレイログ収集を行い、30ハンド以上のセッションだけAI feedback対象にする。
 - [ ] `GAME-ALL-05` feedback API は hand history / position / stack / VPIP/PFR / ROI / showdown / all-in / split-pot結果を投げ、良かった点・悪かった点・次回方針・仮説を返す。
+  - 2026-05-05 追加調査: feedback上の `B-07` などのシチュエーションIDは、hand history内の `handId` / `actionSeq` / `street` / `seatIndex` / `position` と紐付ければ「どのハンドのどのアクションか」を明示できる。
+  - 実装方針: `playFeedbackPayload` で key hand ごとに `situationId`, `handId`, `actionSeqRange`, `variantId`, `street`, `heroAction`, `toCall`, `pot`, `stackDepth`, `resultDelta` を持たせ、backend保存結果にも同じ参照を残す。frontend modal は該当 hand history / replay frame へジャンプする導線を追加する。
+  - 残TODO: 現状のAI feedbackはsession summary中心。学習しやすさを高めるには key hand extraction を「自然文」ではなく action timeline reference 付き構造データへ拡張する。
 
 ## 17. Mobile Browser Landscape Game UI
 
@@ -2486,7 +2492,10 @@ Draw RL test coverage:
 - [x] `UI-20260504-HAND-SORT` 5-card/draw handの視認性改善として、表示上は同rankをまとめて低い順に並べ、クリック時は元indexを維持する。
   - 例: `Q,5,T,5,5` は表示上 `5,5,5,T,Q` に寄せる。discard indexは元のカード位置で送るためゲームロジックは変更しない。
 - [ ] `RL-10GAME-BEGINNER-STANDARD` 10-Game対象CPUのBeginner/Standard学習適用。
-  - 今回はゲーム進行バグ修正を優先。各ゲーム別RLモデルの学習・評価・適用は、Stud/draw/board系の進行fixtureが安定した後に実施する。
+  - 2026-05-05 部分対応: `src/games/core/cpuTeacherPolicy.js` を追加し、board/stud系に Beginner/Standard 以上の tier threshold を使う teacher-supervised betting policy を導入。
+  - 2026-05-05 部分対応: NLH / FLH / PLO / PLO8 / FLO8 は hole/board/evaluator ベースの強度推定、Stud / Stud8 / Razz / Razz27 は up/down card と high/low evaluator ベースの強度推定で CPU action を返す。
+  - 2026-05-05 確認: targeted unit で NLH/PLO/Stud-family の `getCpuAction()` と teacher policy threshold を固定。
+  - 残TODO: true RL 適用は未完。10-Game全体の Beginner/Standard を「専用モデル」として名乗るには、variant別 dataset、action mask、reward、checkpoint評価、human/practice benchmark gate が必要。
 - [x] `npm test -- --run src/games/stud/__tests__/StudSplitGameController.test.js src/ui/game/nlh/__tests__/NLHUIAdapter.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawController.test.js src/ui/components/__tests__/Player.test.jsx`: 4 files / 28 tests pass。
 - [x] `npm test -- --run src/games/__tests__/playableInvariant.test.js`: 1 file / 25 tests pass。NLH/FLH/PLO/PLO8/FLO8/Stud/Stud8/Razz/Razz27/Razzdugi/Razzducey/主要draw系のbroken actorとchip driftを横断確認。
 - [x] `npm test -- --run src/games/draw/__tests__/DeuceToSevenTripleDrawEngine.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawController.test.js src/games/__tests__/playableInvariant.test.js`: 3 files / 65 tests pass。2-7/A-5/5-card draw系のall-in DRAW権、BET不可、空BET street skip、横断chip driftなしを確認。

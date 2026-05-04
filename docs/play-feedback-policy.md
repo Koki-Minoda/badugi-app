@@ -46,6 +46,21 @@
 - Next Drills: 次に練習すべき3項目。
 - Limitations: サンプル不足、相手profile偏り、短期分散の注意。
 
+## Hand History Linkage
+
+2026-05-05 追記。Feedback本文に `B-07` のようなシチュエーションIDだけが出ても、実プレイヤーは「どのハンドのどの判断か」をすぐ復習できない。AI feedback payload と保存結果は、重要ハンドごとに hand history 参照を持たせる。
+
+- `situationId`: `B-07`, `D01-12`, `PLO8-03` のようなfeedback内の安定ID。
+- `handId`: canonical hand history のID。
+- `variantId`: Badugi / D01 / PLO8 など。
+- `actionSeqRange`: 該当アクションの開始/終了sequence。単一判断なら同じ値。
+- `street`: preflop / flop / draw1 / seventh / showdown など。
+- `seatIndex`, `position`: Heroがどの席・ポジションで判断したか。
+- `heroAction`, `toCall`, `currentBet`, `pot`, `stackDepth`: 判断時点の主要条件。
+- `resultDelta`: そのhandまたは該当potでの増減。
+
+実装方針は、`playFeedbackPayload` の key hand extraction で上記参照を作り、backend の `play_feedback_results` に sanitize 済みpayloadとして保存する。frontend feedback modal は situation card から hand history / replay frame へジャンプできるようにする。これにより、AIの指摘を「抽象的な助言」ではなく「自分が押した具体ボタンと結果」に結び付けられる。
+
 ## 実装タスク
 
 - [x] `FB-01` hand history を session 単位で30ハンド以上集計できる frontend payload helper を追加する。
@@ -56,6 +71,7 @@
 - [x] `FB-06` 30ハンド未満のローカル簡易振り返りを実装する。
 - [x] `FB-07` OpenAI API のrate limit / cost / retry / privacy guardを設定する。
 - [x] `FB-08` cash / tournament / all-in / side pot を含む集計testを追加する。
+- [ ] `FB-09` feedback key hand に `situationId` / `handId` / `actionSeqRange` を付与し、modalから該当hand historyへ遷移できるようにする。
 
 ## 実キー確認手順
 

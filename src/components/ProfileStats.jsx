@@ -11,11 +11,18 @@ function StatCard({ label, value }) {
   );
 }
 
-export default function ProfileStats() {
+export default function ProfileStats({ embedded = false, onClose = null } = {}) {
   const navigate = useNavigate();
   const stats = useMemo(() => computeBasicStats(), []);
+  const handleBack = () => {
+    if (typeof onClose === "function") {
+      onClose();
+      return;
+    }
+    navigate("/menu");
+  };
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
+    <div className={`${embedded ? "bg-transparent" : "min-h-screen bg-slate-950"} text-white`}>
       <div className="max-w-4xl mx-auto px-6 py-10 space-y-6">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -24,10 +31,10 @@ export default function ProfileStats() {
           </div>
           <button
             type="button"
-            onClick={() => navigate("/menu")}
+            onClick={handleBack}
             className="rounded-full border border-white/25 px-5 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-white/90 transition hover:border-emerald-300/70 hover:text-emerald-200"
           >
-            ゲーム選択へ戻る
+            {embedded ? "ゲームへ戻る" : "ゲーム選択へ戻る"}
           </button>
         </header>
         <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">

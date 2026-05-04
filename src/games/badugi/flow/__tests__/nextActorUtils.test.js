@@ -1,5 +1,11 @@
 import { describe, expect, test, vi } from "vitest";
-import { findNextDrawActorSeat, findNextActiveSeat } from "../actionUtils.js";
+import {
+  findNextDrawActorSeat,
+  findNextActiveSeat,
+  firstBetterAfterBlinds,
+  getBlindSeatsForPlayers,
+  isPlayerActiveInGame,
+} from "../actionUtils.js";
 import { findNextBetActorSeat } from "../betRoundUtils.js";
 import {
   findNextActorSeatForPhase,
@@ -49,5 +55,25 @@ describe("findNextActiveSeatUnified", () => {
     const expected = findNextActiveSeat(samplePlayers, 0);
     const actual = findNextActiveSeatUnified(samplePlayers, 0);
     expect(actual).toBe(expected);
+  });
+});
+
+describe("blind and active-seat helpers", () => {
+  test("ignores stale active flags on busted seats", () => {
+    expect(isPlayerActiveInGame({ isActiveInGame: true, isBusted: true, stack: 0 })).toBe(false);
+    expect(isPlayerActiveInGame({ isActiveInGame: true, seatOut: true, stack: 0 })).toBe(false);
+  });
+
+  test("compresses blinds and first actor around busted seats", () => {
+    const players = [
+      { name: "Hero", isSeated: true, isActiveInGame: true, stack: 880, folded: false, allIn: false, hasActedThisRound: false },
+      { name: "Busted", isSeated: true, isActiveInGame: true, isBusted: true, seatOut: true, stack: 0 },
+      { name: "Seat2", isSeated: true, isActiveInGame: true, stack: 435, folded: false, allIn: false, hasActedThisRound: false },
+      { name: "Seat3", isSeated: true, isActiveInGame: true, stack: 105, folded: false, allIn: false, hasActedThisRound: false },
+      { name: "Seat4", isSeated: true, isActiveInGame: true, stack: 0, isBusted: true, seatOut: true },
+      { name: "Seat5", isSeated: true, isActiveInGame: true, stack: 945, folded: false, allIn: false, hasActedThisRound: false },
+    ];
+    expect(getBlindSeatsForPlayers(players, 3)).toEqual({ sbIdx: 5, bbIdx: 0 });
+    expect(firstBetterAfterBlinds(players, 3)).toBe(2);
   });
 });

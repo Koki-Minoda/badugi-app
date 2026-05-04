@@ -1,7 +1,7 @@
 import {
   applyChips,
   firstBetterAfterBlinds,
-  isPlayerSeated,
+  getBlindSeatsForPlayers,
   isPlayerEligibleForBlinds,
 } from "./actionUtils.js";
 
@@ -258,19 +258,7 @@ function assignBlinds(players = [], dealerIdx = 0, smallBlind = 0, bigBlind = 0)
     };
   }
 
-  let sbIdx = null;
-  let bbIdx = null;
-
-  if (eligibleCount >= 3) {
-    sbIdx = nextAliveSeat(players, dealerIdx);
-    bbIdx = sbIdx != null ? nextAliveSeat(players, sbIdx) : null;
-  } else {
-    sbIdx = dealerIdx;
-    if (!isPlayerEligibleForBlinds(players[sbIdx])) {
-      sbIdx = nextAliveSeat(players, dealerIdx);
-    }
-    bbIdx = sbIdx != null ? nextAliveSeat(players, sbIdx) : null;
-  }
+  const { sbIdx, bbIdx } = getBlindSeatsForPlayers(players, dealerIdx);
 
   const sbPay = applyBlindPayment(players, sbIdx, smallBlind);
   const bbPay = applyBlindPayment(players, bbIdx, bigBlind);
@@ -299,18 +287,4 @@ function applyBlindPayment(players = [], seatIndex = null, amount = 0) {
     player.hasActedThisRound = false;
   }
   return pay;
-}
-
-function nextAliveSeat(players = [], fromSeat = 0) {
-  if (!Array.isArray(players) || players.length === 0) return null;
-  const n = players.length;
-  let cursor = typeof fromSeat === "number" ? fromSeat : 0;
-  for (let offset = 0; offset < n; offset += 1) {
-    cursor = (cursor + 1) % n;
-    const candidate = players[cursor];
-    if (isPlayerSeated(candidate) && isPlayerEligibleForBlinds(candidate)) {
-      return cursor;
-    }
-  }
-  return null;
 }

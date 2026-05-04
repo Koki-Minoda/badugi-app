@@ -1,6 +1,6 @@
 # Badugi Browser / Mobile Bug Tracker
 
-更新日: 2026-04-30
+更新日: 2026-05-04
 正本: Badugi の実ブラウザ / 実スマホ / UI / 操作 / 回帰系不具合はこの文書で管理する。
 
 ## 1. 運用ルール
@@ -270,12 +270,126 @@
 - Resolution:
 - Residual Risk:
 
+## BG-006
+
+- Status: `fixed`
+- Severity: `high`
+- Area: `ui-layout`
+- First Seen: `2026-05-04`
+- Repro Rate: `always`
+- Environment:
+  - Browser: Chrome / desktop
+  - OS: Windows / Linux
+  - Device: desktop
+  - Orientation: landscape
+  - Input: mouse
+- Summary:
+  - スマホ横画面対応後、PC版の table felt が細い横帯に潰れ、seat / cards が卓の外に浮いて見える。
+- Expected:
+  - PC版は従来通り大きな楕円卓を表示し、モバイル専用レイアウトの圧縮値を受けない。
+- Actual:
+  - `table-felt-oval` の `inset-y-[45%]` がPCにも適用され、卓の高さが約10%になった。
+- Suspected Scope:
+  - Files:
+    - `src/ui/screens/layouts/GameLayoutBase.jsx`
+  - Cross-game:
+    - Badugi: affected
+    - 2-7 / A-5 draw: affected if same shared layout is used
+    - Hold'em / Omaha: affected if same shared layout is used
+- Fix Plan:
+  - `layoutMode === "mobile"` の時だけ圧縮insetを使い、desktopは大きな楕円卓insetへ戻す。
+- Verification Plan:
+  - `tests/e2e/tournament-ui-layout-smoke.spec.ts` で desktop felt の width / height 下限を検証する。
+- Resolution:
+  - 2026-05-04: `GameLayoutBase` の felt / ring class を mobile と desktop で分離。
+- Residual Risk:
+  - 実PCブラウザでの目視はデプロイ後に継続確認する。
+
+## BG-007
+
+- Status: `fixed`
+- Severity: `medium`
+- Area: `ui-layout`
+- First Seen: `2026-05-04`
+- Repro Rate: `often`
+- Environment:
+  - Browser: Chrome / desktop
+  - OS: Windows / Linux
+  - Device: desktop
+  - Orientation: landscape
+  - Input: mouse
+- Summary:
+  - `public/characters/` に画像を配置しても、CPU seat が画像ではなくinitial表示になることがある。
+- Expected:
+  - CPU roster の `avatarUrl` が table seat / HUD / tournament復元後の seat でも画像avatarとして表示される。
+- Actual:
+  - adapter の `default_avatar` が roster由来の `avatarUrl` を上書きする経路があった。
+- Suspected Scope:
+  - Files:
+    - `src/ui/App.jsx`
+    - `src/ui/utils/seatViewMerge.js`
+    - `src/ui/game/badugi/BadugiUIAdapter.js`
+  - Cross-game:
+    - Badugi: affected
+    - 2-7 / A-5 draw: possible if adapter merge path uses default avatar
+    - Hold'em / Omaha: possible if adapter merge path uses default avatar
+- Fix Plan:
+  - base seat の `avatarUrl` を `avatar` に正規化し、adapterの `default_avatar` では実画像URLを上書きしない。
+- Verification Plan:
+  - `seatViewMerge` unit test と Badugi UI adapter test で画像URL保持を確認する。
+- Resolution:
+  - 2026-05-04: base seat/tournament hydrate/seat merge を修正。
+- Residual Risk:
+  - draw系 adapter の専用avatar testは今後追加する。
+
+## BG-008
+
+- Status: `fixed`
+- Severity: `critical`
+- Area: `gameplay`
+- First Seen: `2026-05-04`
+- Repro Rate: `sometimes`
+- Environment:
+  - Browser: Chrome / desktop
+  - OS: Windows
+  - Device: desktop
+  - Orientation: landscape
+  - Input: mouse
+- Summary:
+  - Hero またはCPUが all-in した後、BET/DRAW進行が `Waiting for other players...` で止まることがある。
+- Expected:
+  - all-in seat は以後のBET/DRAW actorから除外され、残りのeligible seatだけで進行する。
+- Actual:
+  - Badugiの `isSeatEligibleForDraw` が all-in seat をdraw actor候補に残していた。
+- Suspected Scope:
+  - Files:
+    - `src/games/badugi/flow/actionUtils.js`
+    - `src/games/badugi/logic/__tests__/roundFlow.test.js`
+    - `src/games/draw/__tests__/DeuceToSevenTripleDrawEngine.test.js`
+  - Cross-game:
+    - Badugi: affected
+    - 2-7 Triple / A-5 Triple / 2-7 Single / A-5 Single: independent engine has all-in regression tests; re-run required
+    - Hold'em / Omaha: separate controller path, not covered by this Badugi fix
+- Fix Plan:
+  - Badugi draw eligibilityで `player.allIn` を明示除外する。
+  - all-inだが `hasActedThisRound=false` のseatをskipする回帰testを追加する。
+- Verification Plan:
+  - Badugi roundFlow unit test。
+  - draw lowball family all-in regression test。
+- Resolution:
+  - 2026-05-04: `isSeatEligibleForDraw` 修正と回帰test追加。
+- Residual Risk:
+  - 実ブラウザで hero all-in 後の長時間プレイを継続確認する。
+
 ## 5. 修正済み Bugs
 
 - `BG-001` SB fold 後の action carousel 停止: `verified`
 - `BG-002` draw snapshot rollback: `verified`
 - `BG-003` single pot overlay の余分な pot block: `verified`
 - `BG-004` result overlay 後の next hand 操作停止: `verified`
+- `BG-006` PC table felt collapse after mobile layout: `fixed`
+- `BG-007` character avatarUrl not applied consistently: `fixed`
+- `BG-008` all-in seat retained as draw actor: `fixed`
 
 ## 6. 次に埋めるべき項目
 

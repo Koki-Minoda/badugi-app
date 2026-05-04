@@ -15,6 +15,16 @@ describe("appVariantRouting", () => {
     expect(normalizeAppVariantId("a5td")).toBe(APP_VARIANT_IDS.D02);
     expect(normalizeAppVariantId("S01")).toBe(APP_VARIANT_IDS.S01);
     expect(normalizeAppVariantId("S02")).toBe(APP_VARIANT_IDS.S02);
+    expect(normalizeAppVariantId("plo")).toBe(APP_VARIANT_IDS.PLO);
+    expect(normalizeAppVariantId("pot_limit_omaha")).toBe(APP_VARIANT_IDS.PLO);
+    expect(normalizeAppVariantId("big-o")).toBe(APP_VARIANT_IDS.BIG_O);
+    expect(normalizeAppVariantId("5-card-plo")).toBe(APP_VARIANT_IDS.FIVE_CARD_PLO);
+    expect(normalizeAppVariantId("dramaha")).toBe(APP_VARIANT_IDS.DRAMAHA_HI);
+    expect(normalizeAppVariantId("dramaha-27")).toBe(APP_VARIANT_IDS.DRAMAHA_27);
+    expect(normalizeAppVariantId("dramaha-a5")).toBe(APP_VARIANT_IDS.DRAMAHA_A5);
+    expect(normalizeAppVariantId("dramaha-zero")).toBe(APP_VARIANT_IDS.DRAMAHA_ZERO);
+    expect(normalizeAppVariantId("dramaha-hidugi")).toBe(APP_VARIANT_IDS.DRAMAHA_HIDUGI);
+    expect(normalizeAppVariantId("dramaha-badugi")).toBe(APP_VARIANT_IDS.DRAMAHA_BADUGI);
     expect(normalizeAppVariantId("unknown")).toBe(APP_VARIANT_IDS.BADUGI);
   });
 
@@ -24,6 +34,11 @@ describe("appVariantRouting", () => {
     expect(isDrawLowballAppVariant("badugi")).toBe(false);
     expect(isControllerBackedAppVariant("badugi")).toBe(true);
     expect(isControllerBackedAppVariant("D02")).toBe(true);
-    expect(isControllerBackedAppVariant("nlh")).toBe(false);
+    expect(isControllerBackedAppVariant("nlh")).toBe(true);
+    expect(isControllerBackedAppVariant("plo")).toBe(true);
+    expect(isControllerBackedAppVariant("big_o")).toBe(true);
+    expect(isControllerBackedAppVariant("five_card_plo")).toBe(true);
+    expect(isControllerBackedAppVariant("dramaha")).toBe(true);
+    expect(isControllerBackedAppVariant("dramaha_27")).toBe(true);
   });
 });

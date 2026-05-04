@@ -4,12 +4,37 @@ import NLHGameDefinition from "./NLHGameDefinition.js";
 import { evaluateNlhHand, compareNlhHands } from "./utils/nlhEvaluator.js";
 import { DeckManager } from "../badugi/utils/deck.js";
 import { applyChips } from "../core/applyChips.js";
+import {
+  applyPayoutsToPlayers,
+  buildContributionPots,
+  resolveEvaluationPot,
+  summarizePayouts,
+} from "../core/sidePotResolver.js";
 
 function clonePlayer(player) {
   if (!player) return player;
   return {
     ...player,
     holeCards: Array.isArray(player.holeCards) ? [...player.holeCards] : [],
+  };
+}
+
+function buildPlayerFromSeat(seat, idx) {
+  return {
+    seatIndex: seat?.seatIndex ?? idx,
+    playerId: seat?.playerId ?? null,
+    name: seat?.name ?? `Seat ${idx + 1}`,
+    avatar: seat?.avatar ?? null,
+    avatarUrl: seat?.avatarUrl ?? null,
+    cpuCharacterId: seat?.cpuCharacterId ?? null,
+    cpuStyle: seat?.cpuStyle ?? null,
+    stack: seat?.stack ?? 0,
+    totalInvested: seat?.totalInvested ?? 0,
+    betThisStreet: 0,
+    folded: false,
+    allIn: seat?.stack <= 0,
+    seatOut: seat?.seatOut ?? false,
+    holeCards: [],
   };
 }
 
@@ -37,17 +62,7 @@ export class NLHGameController {
       gameDefinition,
       deckFactory,
     };
-    const seats = (tableConfig?.seats ?? []).map((seat, idx) => ({
-      seatIndex: seat?.seatIndex ?? idx,
-      name: seat?.name ?? `Seat ${idx + 1}`,
-      stack: seat?.stack ?? 0,
-      totalInvested: seat?.totalInvested ?? 0,
-      betThisStreet: 0,
-      folded: false,
-      allIn: seat?.stack <= 0,
-      seatOut: seat?.seatOut ?? false,
-      holeCards: [],
-    }));
+    const seats = (tableConfig?.seats ?? []).map(buildPlayerFromSeat);
     this.state = {
       players: seats,
       boardCards: [],
@@ -96,8 +111,13 @@ export class NLHGameController {
   }
 
   getSnapshot() {
+    const phase = this.state.street === "SHOWDOWN" ? "SHOWDOWN" : "BET";
     return {
       ...this.state,
+      phase,
+      turn: this.state.currentActor,
+      nextTurn: this.state.currentActor,
+      pots: [{ amount: this.calculatePot(), potAmount: this.calculatePot() }],
       players: this.state.players.map(clonePlayer),
       boardCards: [...this.state.boardCards],
     };
@@ -128,17 +148,7 @@ export class NLHGameController {
 
   startNewHand({ handId = null } = {}) {
     if (!this.state.players.length) {
-      this.state.players = (this.config.tableConfig?.seats ?? []).map((seat, idx) => ({
-        seatIndex: seat?.seatIndex ?? idx,
-        name: seat?.name ?? `Seat ${idx + 1}`,
-        stack: seat?.stack ?? 0,
-        totalInvested: seat?.totalInvested ?? 0,
-        betThisStreet: 0,
-        folded: false,
-        allIn: seat?.stack <= 0,
-        seatOut: seat?.seatOut ?? false,
-        holeCards: [],
-      }));
+      this.state.players = (this.config.tableConfig?.seats ?? []).map(buildPlayerFromSeat);
     }
     this.handCounter += 1;
     this.state.handId = handId ?? `nlh-hand-${this.handCounter}`;
@@ -147,6 +157,8 @@ export class NLHGameController {
       betThisStreet: 0,
       folded: player.stack <= 0 || player.seatOut,
       allIn: player.stack <= 0,
+      hasActedThisStreet: false,
+      lastAction: "",
       holeCards: [],
     }));
     this.state.boardCards = [];
@@ -227,7 +239,12 @@ export class NLHGameController {
     for (let offset = allowSame ? 0 : 1; offset <= total; offset += 1) {
       const idx = (start + offset + total) % total;
       const player = players[idx];
-      if (player && !player.seatOut) {
+      if (
+        player &&
+        !player.seatOut &&
+        !player.isBusted &&
+        (typeof player.stack !== "number" || player.stack > 0)
+      ) {
         return idx;
       }
     }
@@ -260,15 +277,19 @@ export class NLHGameController {
       return { success: false, reason: "Player cannot act" };
     }
 
-    switch ((action || "").toLowerCase()) {
+    const actionName = (action || "").toLowerCase();
+    switch (actionName) {
       case "fold":
         player.folded = true;
+        player.lastAction = "Fold";
         break;
       case "check":
+        player.lastAction = "Check";
         break;
       case "call": {
         const toCall = Math.max(0, this.state.currentBet - (player.betThisStreet ?? 0));
         this.commitChips(player, toCall);
+        player.lastAction = toCall > 0 ? "Call" : "Check";
         break;
       }
       case "bet":
@@ -277,16 +298,39 @@ export class NLHGameController {
         const raiseAmount = amount > 0 ? amount : player.stack;
         this.commitChips(player, raiseAmount);
         this.state.currentBet = Math.max(this.state.currentBet, player.betThisStreet ?? 0);
+        player.lastAction = actionName === "all-in" ? "All-in" : actionName === "raise" ? "Raise" : "Bet";
         break;
       }
       default:
         return { success: false, reason: "Unsupported action" };
     }
+    player.hasActedThisStreet = true;
 
     this.state.pot = this.calculatePot();
     this.state.players[seatIndex] = { ...player };
-    this.state.currentActor = this.nextActiveSeat(seatIndex);
+    const remainingContenders = this.state.players.filter(
+      (p) => p && !p.folded && !p.seatOut,
+    );
+    if (remainingContenders.length <= 1) {
+      this.resolveUncontested();
+    } else if (this.isBettingRoundComplete()) {
+      this.advanceStreet();
+    } else {
+      this.state.currentActor = this.nextActiveSeat(seatIndex);
+    }
     return { success: true, player: clonePlayer(player) };
+  }
+
+  isBettingRoundComplete() {
+    const activePlayers = this.state.players.filter(
+      (player) => player && !player.folded && !player.seatOut && !player.allIn,
+    );
+    if (activePlayers.length === 0) return true;
+    return activePlayers.every(
+      (player) =>
+        player.hasActedThisStreet === true &&
+        (player.betThisStreet ?? 0) === (this.state.currentBet ?? 0),
+    );
   }
 
   advanceStreet() {
@@ -313,6 +357,7 @@ export class NLHGameController {
     this.state.players = this.state.players.map((player) => ({
       ...player,
       betThisStreet: 0,
+      hasActedThisStreet: false,
     }));
     this.state.currentBet = 0;
   }
@@ -358,41 +403,92 @@ export class NLHGameController {
         best = entry;
       }
     });
+    const resolvedPot = totalPot ?? this.calculatePot();
+    if (!best) {
+      const summary = {
+        handId: this.state.handId,
+        board,
+        totalPot: resolvedPot,
+        winners: [],
+        potDetails: [],
+      };
+      this.state.lastHandResult = summary;
+      return summary;
+    }
     const winners = evaluations.filter(
       (entry) => compareNlhHands(entry.evaluation, best.evaluation) === 0,
     );
-    const resolvedPot = totalPot ?? this.calculatePot();
-    const basePayout = winners.length ? Math.floor(resolvedPot / winners.length) : 0;
-    let remainder = resolvedPot - basePayout * winners.length;
-    const winnerSummaries = winners.map((entry) => {
-      let payout = basePayout;
-      if (remainder > 0) {
-        payout += 1;
-        remainder -= 1;
-      }
-      entry.player.stack += payout;
+    const contributionPots = buildContributionPots(this.state.players);
+    const potsToResolve = contributionPots.length
+      ? contributionPots
+      : [
+          {
+            potIndex: 0,
+            amount: resolvedPot,
+            potAmount: resolvedPot,
+            eligibleSeatIndexes: winners.map((entry) => entry.player.seatIndex),
+          },
+        ];
+    const allPayouts = [];
+    const potDetails = potsToResolve.map((pot, potIndex) => {
+      const payouts = resolveEvaluationPot({
+        amount: pot.amount,
+        eligibleSeatIndexes: pot.eligibleSeatIndexes,
+        evaluations,
+        compareEvaluations: compareNlhHands,
+      });
+      allPayouts.push(...payouts);
       return {
-        seatIndex: entry.player.seatIndex,
-        name: entry.player.name,
-        payout,
-        evaluation: entry.evaluation,
+        potIndex: pot.potIndex ?? potIndex,
+        amount: pot.amount,
+        potAmount: pot.amount,
+        eligibleSeatIndexes: [...(pot.eligibleSeatIndexes ?? [])],
+        winnerSeatIndexes: payouts.map((winner) => winner.player.seatIndex),
+        winners: payouts.map((winner) => ({
+          seatIndex: winner.player.seatIndex,
+          name: winner.player.name,
+          payout: winner.payout,
+          evaluation: winner.evaluation,
+        })),
       };
     });
+    applyPayoutsToPlayers(this.state.players, allPayouts);
+    const winnerSummaries = summarizePayouts(allPayouts);
     const summary = {
       handId: this.state.handId,
       board,
       totalPot: resolvedPot,
       winners: winnerSummaries,
+      potDetails,
+    };
+    this.state.lastHandResult = summary;
+    return summary;
+  }
+
+  resolveUncontested() {
+    const winner = this.state.players.find((player) => player && !player.folded && !player.seatOut);
+    const resolvedPot = this.calculatePot();
+    if (winner) {
+      winner.stack += resolvedPot;
+    }
+    this.state.street = "SHOWDOWN";
+    this.state.currentActor = null;
+    this.state.lastHandResult = {
+      handId: this.state.handId,
+      board: [...this.state.boardCards],
+      totalPot: resolvedPot,
+      winners: winner
+        ? [{ seatIndex: winner.seatIndex, name: winner.name, payout: resolvedPot, evaluation: null }]
+        : [],
       potDetails: [
         {
           potIndex: 0,
           amount: resolvedPot,
-          winnerSeatIndexes: winnerSummaries.map((winner) => winner.seatIndex),
+          winnerSeatIndexes: winner ? [winner.seatIndex] : [],
         },
       ],
     };
-    this.state.lastHandResult = summary;
-    return summary;
+    return this.state.lastHandResult;
   }
 }
 

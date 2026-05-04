@@ -37,6 +37,7 @@ export default function RootApp() {
           }
         />
         <Route path="/menu" element={<MainMenuScreen />} />
+        <Route path="/dev/menu" element={<MainMenuScreen />} />
         <Route path="/friend-match" element={<FriendMatchSetupScreen />} />
         <Route path="/dev/friend-match" element={<FriendMatchSetupScreen />} />
         <Route path="/mixed" element={<MixedGameScreen />} />
@@ -56,6 +57,7 @@ export default function RootApp() {
         <Route path="/leaderboard" element={<LeaderboardScreen />} />
         <Route path="/profile" element={<ProfileStats />} />
         <Route path="/history" element={<HistoryScreen />} />
+        <Route path="/dev/history" element={<HistoryScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </MixedGameProvider>

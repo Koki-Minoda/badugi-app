@@ -16,17 +16,20 @@ export function isFoldedOrOut(player) {
 // and showdown code) MUST call these helpers instead of duplicating predicates.
 export function isPlayerSeated(player) {
   if (!player) return false;
-  if (typeof player.isSeated === "boolean") return player.isSeated;
+  if (player.seatOut || player.isBusted) return false;
   if (player.seatType && typeof player.seatType === "string") {
     if (player.seatType.toUpperCase() === "EMPTY") return false;
   }
+  if (typeof player.stack === "number" && player.stack <= 0 && !player.allIn) return false;
+  if (typeof player.isSeated === "boolean") return player.isSeated;
   return !player.seatOut;
 }
 
 export function isPlayerActiveInGame(player) {
   if (!player) return false;
-  if (typeof player.isActiveInGame === "boolean") return player.isActiveInGame;
   if (player.seatOut || player.isBusted) return false;
+  if (typeof player.stack === "number" && player.stack <= 0 && !player.allIn) return false;
+  if (typeof player.isActiveInGame === "boolean") return player.isActiveInGame;
   return true;
 }
 
@@ -77,7 +80,11 @@ export function findNextActiveSeat(players, startIdx = 0) {
 export function firstBetterAfterBlinds(players, dealerIdx = 0) {
   if (!Array.isArray(players) || players.length === 0) return 0;
   const n = players.length;
-  const start = ((dealerIdx + 3) % n + n) % n;
+  const blindSeats = getBlindSeatsForPlayers(players, dealerIdx);
+  const start =
+    typeof blindSeats.bbIdx === "number"
+      ? (blindSeats.bbIdx + 1) % n
+      : ((dealerIdx + 1) % n + n) % n;
   for (let offset = 0; offset < n; offset += 1) {
     const seat = (start + offset) % n;
     const player = players[seat];
@@ -86,6 +93,36 @@ export function firstBetterAfterBlinds(players, dealerIdx = 0) {
     }
   }
   return start;
+}
+
+export function getBlindSeatsForPlayers(players = [], dealerIdx = 0) {
+  if (!Array.isArray(players) || players.length === 0) {
+    return { sbIdx: null, bbIdx: null };
+  }
+  const eligibleCount = players.reduce(
+    (count, player) => count + (isPlayerEligibleForBlinds(player) ? 1 : 0),
+    0,
+  );
+  if (eligibleCount < 2) {
+    return { sbIdx: null, bbIdx: null };
+  }
+  const firstAfter = (fromSeat) => {
+    const n = players.length;
+    let cursor = typeof fromSeat === "number" ? fromSeat : 0;
+    for (let offset = 0; offset < n; offset += 1) {
+      cursor = (cursor + 1) % n;
+      if (isPlayerEligibleForBlinds(players[cursor])) return cursor;
+    }
+    return null;
+  };
+  let sbIdx;
+  if (eligibleCount === 2) {
+    sbIdx = isPlayerEligibleForBlinds(players[dealerIdx]) ? dealerIdx : firstAfter(dealerIdx);
+  } else {
+    sbIdx = firstAfter(dealerIdx);
+  }
+  const bbIdx = typeof sbIdx === "number" ? firstAfter(sbIdx) : null;
+  return { sbIdx, bbIdx };
 }
 
 export function sanitizeStacks(players) {
@@ -125,6 +162,7 @@ export function isSeatEligibleForBet(player) {
 export function isSeatEligibleForDraw(player) {
   if (!isPlayerEligibleForBlinds(player)) return false;
   if (isFoldedOrOut(player)) return false;
+  if (player?.allIn) return false;
   if (player?.canDraw === false) return false;
   return true;
 }
@@ -245,7 +283,7 @@ export function applyForcedBetActionSnapshot({ players, seat, payload = {}, betS
       });
       const requested = amountModel.isValid
         ? amountModel.contribution
-        : (Number.isFinite(Number(payload.amount)) ? Number(payload.amount) : toCall);
+        : toCall;
       const paid = invest(Math.max(0, requested));
       actor.lastAction = paid === 0 ? "Check" : "Call";
       actor.hasActedThisRound = true;
@@ -263,19 +301,29 @@ export function applyForcedBetActionSnapshot({ players, seat, payload = {}, betS
         ? amountModel.contribution
         : Math.max(0, toCall + unit);
       const paidRaise = invest(requested);
-      actor.lastAction = "Raise";
+      const fullRaiseBet = maxNow + unit;
+      const isFullFixedLimitRaise = actor.betThisRound >= fullRaiseBet;
+      const isOpeningAllIn = maxNow === 0 && paidRaise > 0 && actor.betThisRound < unit;
+      actor.lastAction = isFullFixedLimitRaise
+        ? "Raise"
+        : isOpeningAllIn
+        ? "All-in"
+        : paidRaise > 0
+        ? "Call"
+        : "Check";
       actor.hasActedThisRound = true;
-      raiseApplied = paidRaise > 0;
+      raiseApplied = isFullFixedLimitRaise;
       break;
     }
     case "all-in": {
       invest(toCall);
       const shoveTarget =
         payload.amount == null ? actor.stack : Math.max(0, payload.amount);
-      const paid = invest(shoveTarget);
+      invest(shoveTarget);
+      const fullRaiseBet = maxNow + unit;
+      raiseApplied = actor.betThisRound >= fullRaiseBet;
       actor.lastAction = "All-in";
       actor.hasActedThisRound = true;
-      raiseApplied = paid > 0;
       break;
     }
     default:

@@ -23,6 +23,15 @@ export default defineConfig(({ command }) => {
     server: {
       // ★ここが重要：Host ブロック回避
       allowedHosts: ["mgx-poker.com", "www.mgx-poker.com", "162.43.19.143"],
+      watch: {
+        ignored: [
+          "**/.venv/**",
+          "**/node_modules/**",
+          "**/rl/models/**",
+          "**/test-results/**",
+          "**/playwright-report/**",
+        ],
+      },
       // iPhoneから https 経由で /dev/ に来るので HMR も wss に寄せる（白画面/更新不能の回避）
       hmr: {
         protocol: "wss",

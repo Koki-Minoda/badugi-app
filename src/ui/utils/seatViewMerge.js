@@ -19,10 +19,21 @@ export function mergeSeatViewsForDisplay({
 } = {}) {
   return baseSeats.map((base, idx) => {
     const override = adapterSeatViews[idx];
+    const baseAvatarUrl = base?.avatarUrl ?? null;
+    const overrideAvatarUrl = override?.avatarUrl ?? null;
+    const baseAvatar = base?.avatar ?? baseAvatarUrl ?? null;
+    const overrideAvatar = override?.avatar ?? null;
+    const avatarUrl = overrideAvatarUrl ?? baseAvatarUrl;
+    const avatar =
+      overrideAvatar && overrideAvatar !== "default_avatar"
+        ? overrideAvatar
+        : baseAvatar ?? avatarUrl ?? "default_avatar";
     if (!override) {
       const reveal = Boolean(base?.showHand) || shouldRevealSeatHand(phase, base);
       return {
         ...base,
+        avatar,
+        avatarUrl,
         showHand: reveal,
       };
     }
@@ -30,6 +41,8 @@ export function mergeSeatViewsForDisplay({
     const merged = {
       ...base,
       ...override,
+      avatar,
+      avatarUrl,
       cards: override.cards ?? base.cards ?? [],
       hand: override.hand ?? base.hand ?? [],
     };

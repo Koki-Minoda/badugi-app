@@ -1,10 +1,12 @@
 const DEFAULT_SETTINGS = {
   playerName: "You",
   playerTitle: "Badugi Rookie",
-  avatar: "♦️",
+  avatar: "/characters/hero.png",
+  avatarSourceVersion: 2,
 };
 
 const STORAGE_KEY = "badugi.titleSettings";
+const LEGACY_DEFAULT_AVATARS = new Set(["♦️", "♦︎", "default_avatar"]);
 
 function safeWindow() {
   return typeof window !== "undefined" ? window : undefined;
@@ -16,7 +18,15 @@ export function loadTitleSettings() {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...DEFAULT_SETTINGS };
     const parsed = JSON.parse(raw);
-    return { ...DEFAULT_SETTINGS, ...parsed };
+    const migrated = { ...DEFAULT_SETTINGS, ...parsed };
+    if (
+      parsed.avatarSourceVersion == null &&
+      LEGACY_DEFAULT_AVATARS.has(parsed.avatar)
+    ) {
+      migrated.avatar = DEFAULT_SETTINGS.avatar;
+      migrated.avatarSourceVersion = DEFAULT_SETTINGS.avatarSourceVersion;
+    }
+    return migrated;
   } catch {
     return { ...DEFAULT_SETTINGS };
   }

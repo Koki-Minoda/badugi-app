@@ -544,6 +544,7 @@ class BadugiEnvTest(unittest.TestCase):
         self.assertEqual(info["ev"]["phase"], "BET")
         self.assertIn("callEV", info["ev"])
         self.assertIn("estimatedEquity", info["ev"])
+        self.assertIn("finalFoldDisciplineSpot", info["ev"])
 
     def test_final_bet_context_is_reached_after_third_draw(self):
         env = BadugiEnv()
@@ -604,6 +605,44 @@ class BadugiEnvTest(unittest.TestCase):
 
         self.assertGreater(two_draw_reward, pat_reward)
 
+    def test_draw_quality_rewards_improvement_to_made_badugi(self):
+        env = BadugiEnv()
+        env.reset(seed=1)
+        env.round = 2
+        before = env._hand_features([(0, 0), (1, 1), (6, 2), (12, 2)])
+        after = env._hand_features([(0, 0), (1, 1), (6, 2), (9, 3)])
+
+        reward = env._draw_quality_reward(before, after, 1)
+
+        self.assertGreater(reward, 0.3)
+
+    def test_draw_quality_penalizes_pat_with_unmade_final_draw(self):
+        env = BadugiEnv()
+        env.reset(seed=1)
+        env.round = env.max_rounds - 1
+        features = env._hand_features([(0, 0), (1, 1), (6, 2), (12, 2)])
+
+        reward = env._draw_quality_reward(features, features, 0)
+
+        self.assertLess(reward, 0)
+
+    def test_final_street_fold_is_better_than_call_for_rough_badugi_without_draw_signal(self):
+        env = BadugiEnv()
+        env.reset(seed=1)
+        env.phase = "BET"
+        env.round = env.max_rounds
+        env.pot = 18
+        env.current_bet = 2
+        env.player_bet = 0
+        env.opponent_last_draw = 0
+        env.player_hand = [(0, 0), (5, 1), (9, 2), (12, 3)]
+        features = env._hand_features(env.player_hand)
+
+        fold_reward = env._reward_shaping(features, 0)
+        call_reward = env._reward_shaping(features, 2)
+
+        self.assertGreater(fold_reward, call_reward)
+
     def test_observation_exposes_opponent_tendency_features(self):
         env = BadugiEnv(opponent_profile="loose_aggressive")
         env.reset(seed=1)
@@ -646,6 +685,64 @@ class BadugiEnvTest(unittest.TestCase):
             foldable_env._reward_shaping(foldable_features, 3),
             sticky_env._reward_shaping(sticky_features, 3),
         )
+
+    def test_exploit_memory_rewards_thin_value_bet_against_passive_drawer(self):
+        env = BadugiEnv(opponent_profile="loose_passive", table_size=6, hero_position=5)
+        env.reset(seed=1)
+        env.phase = "BET"
+        env.round = 1
+        env.current_bet = 0
+        env.player_bet = 0
+        env.player_hand = [(0, 0), (2, 1), (5, 2), (9, 3)]
+        env._record_opponent_action("call")
+        env._record_opponent_action("check")
+        env._record_opponent_draw(2)
+        env._record_opponent_draw(3)
+        features = env._hand_features(env.player_hand)
+
+        self.assertTrue(env._sixmax_value_bet_spot(features, 0))
+        self.assertGreater(
+            env._reward_shaping(features, 3),
+            env._reward_shaping(features, 1),
+        )
+
+    def test_exploit_memory_thin_isolation_requires_ev_edge(self):
+        env = BadugiEnv(opponent_profile="draw_heavy", table_size=6, hero_position=5)
+        env.reset(seed=1)
+        env.phase = "BET"
+        env.round = 1
+        env.pot = 40
+        env.current_bet = 1
+        env.player_bet = 0
+        env.player_hand = [(0, 0), (2, 1), (5, 2), (9, 3)]
+        env._record_opponent_action("call")
+        env._record_opponent_action("check")
+        env._record_opponent_draw(2)
+        env._record_opponent_draw(3)
+        features = env._hand_features(env.player_hand)
+        ev = env._bet_ev_diagnostic(features, 1)
+
+        self.assertTrue(env._sixmax_isolation_raise_spot(features, 1, ev))
+        self.assertGreater(
+            env._reward_shaping(features, 4),
+            env._reward_shaping(features, 2),
+        )
+
+    def test_exploit_memory_does_not_thin_value_into_pat_pressure(self):
+        env = BadugiEnv(opponent_profile="loose_passive", table_size=6, hero_position=5)
+        env.reset(seed=1)
+        env.phase = "BET"
+        env.round = 1
+        env.current_bet = 0
+        env.player_bet = 0
+        env.player_hand = [(0, 0), (2, 1), (5, 2), (9, 3)]
+        env._record_opponent_action("check")
+        env._record_opponent_action("call")
+        env._record_opponent_draw(0)
+        env._record_opponent_draw(0)
+        features = env._hand_features(env.player_hand)
+
+        self.assertFalse(env._sixmax_value_bet_spot(features, 0))
 
     def test_showdown_ready_hand_prefers_call_over_fold(self):
         env = BadugiEnv()

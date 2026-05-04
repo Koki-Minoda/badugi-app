@@ -9,6 +9,7 @@ import {
   getFixedLimitBetSize,
   isBigBetStreet,
 } from "../../../games/badugi/logic/bettingRules.js";
+import { getBlindSeatIndexes, getPositionNameForSeat } from "../../utils/positionLabels.js";
 
 function sumPotAmounts(pots = [], fallbackPlayers = []) {
   if (Array.isArray(pots) && pots.length) {
@@ -18,12 +19,6 @@ function sumPotAmounts(pots = [], fallbackPlayers = []) {
     return fallbackPlayers.reduce((acc, player) => acc + (player?.betThisRound ?? 0), 0);
   }
   return 0;
-}
-
-function positionName(index, dealerIdx = 0, seatCount = 6) {
-  const order = ["BTN", "SB", "BB", "UTG", "MP", "CO"];
-  const rel = ((index - dealerIdx) % seatCount + seatCount) % seatCount;
-  return order[rel] ?? `Seat ${index + 1}`;
 }
 
 function defaultStructureMeta(tableConfig = {}) {
@@ -93,16 +88,14 @@ function buildControlsConfig(snapshot, tableConfig) {
 function mapSeatViews(snapshot, structureMeta) {
   const players = snapshot.players ?? [];
   const dealerIdx = snapshot.dealerIdx ?? 0;
-  const seatCount = players.length || 6;
-  const sbIdx = seatCount > 0 ? (dealerIdx + 1) % seatCount : 0;
-  const bbIdx = seatCount > 0 ? (dealerIdx + 2) % seatCount : 0;
+  const { sbIdx, bbIdx } = getBlindSeatIndexes(players, dealerIdx);
 
   return players.map((player, idx) => {
     const sanitizedPlayer = player ? { ...player } : {};
     return {
       ...sanitizedPlayer,
       seatIndex: idx,
-      label: positionName(idx, dealerIdx, seatCount),
+      label: getPositionNameForSeat(idx, dealerIdx, players),
       isDealer: idx === dealerIdx,
       isSB: idx === sbIdx,
       isBB: idx === bbIdx,
@@ -123,7 +116,7 @@ function mapSeatViews(snapshot, structureMeta) {
       hasDrawn: Boolean(sanitizedPlayer.hasDrawn),
       hasActedThisRound: Boolean(sanitizedPlayer.hasActedThisRound),
       titleBadge: sanitizedPlayer.titleBadge ?? "",
-      avatar: sanitizedPlayer.avatar ?? "default_avatar",
+      avatar: sanitizedPlayer.avatarUrl ?? sanitizedPlayer.avatar ?? "default_avatar",
       structureMeta,
     };
   });

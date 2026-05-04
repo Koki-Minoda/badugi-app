@@ -26,7 +26,9 @@
                      "board"
                  ],
         "priorityPhase":  2,
-        "description":  "Standard NL Hold\u0027em."
+        "description":  "Standard NL Hold\u0027em.",
+        "status":  "live",
+        "engineKey":  "nlh"
     },
     {
         "id":  "B02",
@@ -140,7 +142,9 @@
                      "pl"
                  ],
         "priorityPhase":  2,
-        "description":  "Pot-limit Omaha with exact two hole requirement."
+        "description":  "Pot-limit Omaha with exact two hole requirement.",
+        "status":  "live",
+        "engineKey":  "plo"
     },
     {
         "id":  "B06",
@@ -198,7 +202,9 @@
                      "five-card"
                  ],
         "priorityPhase":  2,
-        "description":  "Five-card Omaha (pot-limit)."
+        "description":  "Five-card Omaha (pot-limit).",
+        "status":  "live",
+        "engineKey":  "big_o"
     },
     {
         "id":  "B08",
@@ -226,7 +232,9 @@
                      "five-card"
                  ],
         "priorityPhase":  2,
-        "description":  "Five-card PLO high only."
+        "description":  "Five-card PLO high only.",
+        "status":  "live",
+        "engineKey":  "five_card_plo"
     },
     {
         "id":  "B09",
@@ -565,6 +573,8 @@
     {
         "id":  "H01",
         "name":  "Dramaha Hi",
+        "status":  "wip",
+        "engineKey":  "dramaha_hi",
         "category":  "dramaha",
         "holeCards":  5,
         "drawRounds":  1,
@@ -590,6 +600,8 @@
     {
         "id":  "H02",
         "name":  "Dramaha 2-7",
+        "status":  "wip",
+        "engineKey":  "dramaha_27",
         "category":  "dramaha",
         "holeCards":  5,
         "drawRounds":  1,
@@ -615,6 +627,8 @@
     {
         "id":  "H03",
         "name":  "Dramaha A-5",
+        "status":  "wip",
+        "engineKey":  "dramaha_a5",
         "category":  "dramaha",
         "holeCards":  5,
         "drawRounds":  1,
@@ -640,6 +654,8 @@
     {
         "id":  "H04",
         "name":  "Dramaha Zero",
+        "status":  "wip",
+        "engineKey":  "dramaha_zero",
         "category":  "dramaha",
         "holeCards":  5,
         "drawRounds":  1,
@@ -665,6 +681,8 @@
     {
         "id":  "H05",
         "name":  "Dramaha Hidugi",
+        "status":  "wip",
+        "engineKey":  "dramaha_hidugi",
         "category":  "dramaha",
         "holeCards":  5,
         "drawRounds":  1,
@@ -690,6 +708,8 @@
     {
         "id":  "H06",
         "name":  "Dramaha Badugi",
+        "status":  "wip",
+        "engineKey":  "dramaha_badugi",
         "category":  "dramaha",
         "holeCards":  5,
         "drawRounds":  1,

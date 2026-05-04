@@ -742,7 +742,7 @@ test.describe("Badugi flow regressions", () => {
     await invokeE2E(page, "resolveHandNow");
     await waitForHandResolution(page, logs, startIdx);
     const winners = await waitForWinnersLog(logs, startIdx);
-    ["CPU 2", "CPU 3"].forEach((name) => expect(winners).not.toContain(name));
+    ["Mina", "Ren"].forEach((name) => expect(winners).not.toContain(name));
   });
 
   test("Showdown logs every tied winner", async ({ page }) => {
@@ -774,7 +774,7 @@ test.describe("Badugi flow regressions", () => {
     await invokeE2E(page, "resolveHandNow");
     await waitForHandResolution(page, logs, startIdx);
     const winners = await waitForWinnersLog(logs, startIdx);
-    expect(new Set(winners)).toEqual(new Set(["You", "CPU 3"]));
+    expect(new Set(winners)).toEqual(new Set(["You", "Ren"]));
     const potSections = await waitForHandResultPots(page);
     await expect(potSections).toHaveCount(1);
     const winnerRows = potSections.first().locator('[data-testid="hand-result-winner-row"]');

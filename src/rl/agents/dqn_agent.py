@@ -169,6 +169,38 @@ class DQNAgent:
 
         return float(loss.item()), float(accuracy)
 
+    def action_margin_update(
+        self,
+        batch,
+        avoid_action: int = 0,
+        margin: float = 0.25,
+        loss_weight: float = 1.0,
+    ) -> Tuple[float, float]:
+        """Push expert actions above a specific bad action by a Q-value margin."""
+        obs = torch.as_tensor(batch["obs"], dtype=torch.float32, device=self.device)
+        preferred_actions = torch.as_tensor(
+            batch["actions"], dtype=torch.int64, device=self.device
+        ).unsqueeze(-1)
+        avoid_actions = torch.full_like(preferred_actions, int(avoid_action))
+
+        q_values = self.q_network(obs)
+        preferred_q = q_values.gather(1, preferred_actions)
+        avoid_q = q_values.gather(1, avoid_actions)
+        margin_t = torch.as_tensor(float(margin), dtype=torch.float32, device=self.device)
+        loss = F.relu(margin_t - (preferred_q - avoid_q)).mean() * float(loss_weight)
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        nn.utils.clip_grad_norm_(self.q_network.parameters(), max_norm=5.0)
+        self.optimizer.step()
+        self._soft_update_target()
+        self.train_steps += 1
+
+        with torch.no_grad():
+            satisfied = ((preferred_q - avoid_q) >= margin_t).float().mean().item()
+
+        return float(loss.item()), float(satisfied)
+
     def save(self, path: str):
         payload = {
             "q_network": self.q_network.state_dict(),

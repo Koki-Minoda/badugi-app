@@ -1,142 +1,142 @@
 {
   "B01": {
     "name": "NL Hold'em",
-    "description": "Standard NL Hold'em."
+    "description": "最も標準的なノーリミット・ホールデム。2枚の手札と5枚のボードから最強の5枚を作ります。"
   },
   "B02": {
     "name": "FL Hold'em",
-    "description": "Fixed-limit Hold'em."
+    "description": "ベット額が固定されたリミット・ホールデム。ストリートごとの押し引きが重要です。"
   },
   "B03": {
     "name": "NL Super Hold'em",
-    "description": "Three hole cards, discard to two by showdown."
+    "description": "3枚の手札からショーダウンまでに2枚を使うホールデム系ゲームです。"
   },
   "B04": {
     "name": "FL Super Hold'em",
-    "description": "Three-card Hold'em played fixed-limit."
+    "description": "3枚手札のスーパー・ホールデムをフィックスリミットでプレイします。"
   },
   "B05": {
     "name": "Pot-Limit Omaha",
-    "description": "Pot-limit Omaha with exact two hole requirement."
+    "description": "4枚の手札から必ず2枚、ボードから3枚を使うポットリミット・オマハです。"
   },
   "B06": {
     "name": "PLO8",
-    "description": "PLO Hi-Lo split."
+    "description": "オマハのハイロー版。ハイと8以下のローでポットを分け合います。"
   },
   "B07": {
     "name": "Big-O",
-    "description": "Five-card Omaha (pot-limit)."
+    "description": "5枚手札のオマハ。手札2枚使用ルールはそのまま、より多くの組み合わせを扱います。"
   },
   "B08": {
     "name": "5-Card PLO",
-    "description": "Five-card PLO high only."
+    "description": "5枚手札のポットリミット・オマハ。ハイのみで勝負します。"
   },
   "B09": {
     "name": "FLO8",
-    "description": "Fixed-limit Hold'em Hi-Lo."
+    "description": "フィックスリミットのオマハ8。ハイと8以下のローでポットを分けます。"
   },
   "D01": {
     "name": "2-7 Triple Draw",
-    "description": ""
+    "description": "ストレートとフラッシュが弱点になる2-7ローのトリプルドローです。Aは高いカードとして扱います。"
   },
   "D02": {
     "name": "A-5 Triple Draw",
-    "description": ""
+    "description": "Aを低く扱い、ストレートとフラッシュを無視するA-5ローのトリプルドローです。"
   },
   "D03": {
     "name": "Badugi",
-    "description": ""
+    "description": "4枚の異なるスート・ランクで低い役を作るトリプルドローゲームです。"
   },
   "D04": {
     "name": "Badeucey TD",
-    "description": ""
+    "description": "Badugiと2-7ローの両方でポットを分け合うスプリットポットのトリプルドローです。"
   },
   "D05": {
     "name": "Badacey TD",
-    "description": ""
+    "description": "BadugiとA-5ローの両方でポットを分け合うスプリットポットのトリプルドローです。"
   },
   "D06": {
     "name": "Hidugi TD",
-    "description": ""
+    "description": "高いBadugiを目指す特殊なトリプルドローです。通常のBadugiとは逆方向の評価になります。"
   },
   "D07": {
     "name": "Archie TD",
-    "description": ""
+    "description": "ペアやホイール条件を含むArchie系のトリプルドローです。"
   },
   "S01": {
     "name": "2-7 Single Draw",
-    "description": ""
+    "description": "1回だけドローできる2-7ロー。パット判断とポジションがより重要です。"
   },
   "S02": {
     "name": "A-5 Single Draw",
-    "description": ""
+    "description": "1回だけドローできるA-5ロー。Aは低く、ストレートとフラッシュは無視します。"
   },
   "S03": {
     "name": "5-Card Single Draw",
-    "description": "Classic five-card draw."
+    "description": "クラシックな5カードドロー。1回の交換で通常のハイハンドを作ります。"
   },
   "S04": {
     "name": "Badugi SD",
-    "description": ""
+    "description": "1回だけドローできるBadugi。初手の完成度と交換枚数が勝敗を左右します。"
   },
   "S05": {
     "name": "Badeucey SD",
-    "description": ""
+    "description": "Badugiと2-7ローでポットを分けるシングルドロー形式です。"
   },
   "S06": {
     "name": "Badacey SD",
-    "description": ""
+    "description": "BadugiとA-5ローでポットを分けるシングルドロー形式です。"
   },
   "S07": {
     "name": "Hidugi SD",
-    "description": ""
+    "description": "高いBadugiを目指すシングルドロー形式です。"
   },
   "H01": {
     "name": "Dramaha Hi",
-    "description": ""
+    "description": "オマハボードと5カードドローの結果を組み合わせるDramaha系ゲームです。"
   },
   "H02": {
     "name": "Dramaha 2-7",
-    "description": ""
+    "description": "オマハ要素と2-7ローのドロー要素を組み合わせたDramahaです。"
   },
   "H03": {
     "name": "Dramaha A-5",
-    "description": ""
+    "description": "オマハ要素とA-5ローのドロー要素を組み合わせたDramahaです。"
   },
   "H04": {
     "name": "Dramaha Zero",
-    "description": ""
+    "description": "ドロー側でゼロに近い構成を目指す特殊なDramahaです。"
   },
   "H05": {
     "name": "Dramaha Hidugi",
-    "description": ""
+    "description": "Dramahaに高いBadugi評価を組み合わせたスプリット系ゲームです。"
   },
   "H06": {
     "name": "Dramaha Badugi",
-    "description": ""
+    "description": "Dramahaに通常のBadugi評価を組み合わせたスプリット系ゲームです。"
   },
   "ST1": {
     "name": "Stud",
-    "description": ""
+    "description": "コミュニティカードを使わず、表向きカードと伏せカードで作る7カードスタッドです。"
   },
   "ST2": {
     "name": "Stud 8",
-    "description": ""
+    "description": "7カードスタッドのハイロー版。8以下のローが成立するとポットを分けます。"
   },
   "ST3": {
     "name": "Razz",
-    "description": ""
+    "description": "スタッド形式のローゲーム。最も低い5枚の手を目指します。"
   },
   "ST4": {
     "name": "Razzdugi",
-    "description": ""
+    "description": "RazzとBadugiの評価を組み合わせるスプリット系スタッドです。"
   },
   "ST5": {
     "name": "Razzducey",
-    "description": ""
+    "description": "Razzと2-7系評価を組み合わせるスプリット系スタッドです。"
   },
   "ST6": {
     "name": "2-7 Razz",
-    "description": ""
+    "description": "2-7ローの考え方をスタッド形式に寄せた特殊ゲームです。"
   }
 }

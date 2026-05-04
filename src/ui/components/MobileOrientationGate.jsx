@@ -28,7 +28,10 @@ export default function MobileOrientationGate({
           📱↻
         </div>
         <h1 className="text-xl font-semibold">横向きでプレイしてください</h1>
-        <p className="text-sm leading-relaxed text-slate-200">{message}</p>
+        <p className="text-sm leading-relaxed text-slate-200">
+          MGXはスマホ横画面に最適化されています。
+        </p>
+        <p className="text-xs leading-relaxed text-slate-400">{message}</p>
         <p className="text-xs text-amber-200/90">
           Landscape mode required on mobile.
         </p>

@@ -1704,7 +1704,86 @@ Draw RL test coverage:
           - 2026-05-02 実装: Badugi cash game の完了ハンドを `badugi_human_benchmark_logs_v1` に自動保存する。保存内容は `handId`, `variantId`, `heroSeat`, `heroNet`, `heroResult`, CPU tier/model/version/featureSet/trainingRun, actions, showdown, winners。
           - 2026-05-02 実装: ブラウザコンソールから `window.MGX.getHumanBenchmarkLogs()` で確認、`window.MGX.exportHumanBenchmarkLogs()` で JSONL をダウンロードできる。通常プレイ後にエクスポートしたJSONLを `npm run ai:benchmark-badugi-human-practice -- --human-log <file> --require-human-logs` へ渡す。
           - 2026-05-02 実装: benchmark parser は App 側の `humanBenchmark` ネスト形式も読み取れる。
+        - [x] `AI-06q` 通常プレイの Auto CPU を Standard 基準から Pro 基準へ引き上げる。
+          - 2026-05-04 実装: `DEFAULT_AI_TIER_ID` を `pro` に変更。設定画面の開発者向け tier override が未設定の場合、通常CPUは Pro policy を使う。既にブラウザlocalStorageへ `dev.aiTierOverride` が保存されている場合は、その明示設定を優先する。
+          - 2026-05-04 実装: Pro / Iron / WorldMaster の `policyRouter` に elite補正を追加。発展性の高い3-card low drawのsemi-bluff、rough made Badugiのthin value、強いmade handでのto-call punish raiseを増やす。Standard以下には同補正を入れない。
+          - 2026-05-04 テスト: ProがStandardより強い3-card drawをopen semi-bluffしやすいこと、WorldMasterがProよりrough made Badugiをthin value raiseしやすいことを回帰テスト化。
+        - [ ] `AI-06r` Badugi Iron trained checkpoint を作る。
+          - 2026-05-04 人間ログ評価: `/tmp/badugi-human-log.lbUkIF.jsonl` は3ハンドのみ検出。`win=1/loss=1/tie=1` で、形式確認としては使えるが強さ判定には不足。実プレイ分はブラウザから `window.MGX.exportHumanBenchmarkLogs()` でJSONL出力し、最低50ハンド以上で再評価する。
+          - 2026-05-04 Pro評価: `npm run ai:benchmark-badugi-human-practice -- --model public/models/badugi_pro_v1.onnx --tier pro --episodes 200 --table-size 6 --human-log /tmp/badugi-human-log.lbUkIF.jsonl --min-human-log-hands 3 --require-human-logs` は PASS。practice summary は `avgReward=2.708`, `showdownWinRate=0.682`, `foldRate=0.163`, `worstProfileAvgReward=1.520`。
+          - 2026-05-04 既存Iron候補再評価: `badugi_sixmax_iron_profile_continue_20k_20260502` の5k/10k/15k/20k checkpointは Pro比 `+0.017/+0.019/-0.048/-0.030`。showdownWinRateは上がるがfoldRateも上がり、Iron昇格不可。
+          - 2026-05-04 実装方針: teacher が profitable continue と判断した facing-bet call サンプルを専用バッファへ分離し、DQN学習中に fold action より call action のQ値を一定margin上に押し上げる `profitable_continue` margin loss を追加する。狙いは profitableFoldMisses をPro以下へ下げながら、foldRateを上げすぎないこと。
+          - 2026-05-04 実装: `DQNAgent.action_margin_update()` と `--profitable-continue-*` 学習オプションを追加。teacher warmup中のcontinue sampleに加え、online探索中のEV-positive facing-bet stateもcounterfactual callとしてmargin bufferへ入れる。
+          - 2026-05-04 評価: `badugi_sixmax_iron_continue_margin_10k_20260504` はPro比 `+0.039/+0.013`。showdownWinRateは `0.673/0.691` まで上がったが、profitableFoldMissesが `119/140` に悪化して不採用。
+          - 2026-05-04 評価: `badugi_sixmax_iron_online_continue_margin_5k_20260504` はPro比 `+0.046`, `avgReward=2.614`, `showdownWinRate=0.607`, `foldRate=0.093`, `profitableFoldMisses=27`。fold missはProの85から大きく改善したが、showdownWinRateがProの `0.648` を下回るためIron昇格不可。
+          - 2026-05-04 実装: `BadugiEnv` に continue後のdraw quality報酬を追加。drawでmade枚数が増える、one-awayから4-card Badugiに到達する、strengthが改善する場合を加点し、final直前のunmade patやmade Badugiの過剰drawを減点する。
+          - 2026-05-04 実装: final street fold disciplineを追加。最終streetで相手がpat/1draw相当かつHeroがunmadeまたはT/K/Q rough Badugiの場合、profitable continue margin bufferへ入れず、foldをcallより優先する報酬にした。相手が2枚以上drawした場合は従来通りthin value / callを許容する。
+          - 2026-05-04 評価: `badugi_sixmax_iron_draw_final_5k_20260504` はPro比 `+0.051`, `avgReward=2.751`, `showdownWinRate=0.644`, `foldRate=0.152`, `profitableFoldMisses=83`。avgReward/fold missは微改善したが、showdownWinRateがProの `0.648` をわずかに下回るため不採用。
+          - 2026-05-04 20k評価: `badugi_sixmax_iron_draw_final_20k_20260504` を 5k/10k/15k/20k checkpoint で評価。Pro baseline は `avgReward=2.700`, `showdownWinRate=0.648`, `foldRate=0.157`, `profitableFoldMisses=85`。
+          - 2026-05-04 20k結果: 5kは Pro比 `+0.061`, `showdownWinRate=0.652`, `foldRate=0.159`, `profitableFoldMisses=96`。10kは Pro比 `+0.093`, `showdownWinRate=0.680`, `foldRate=0.199`, `profitableFoldMisses=123`。15kは Pro比 `+0.086`, `showdownWinRate=0.697`, `foldRate=0.225`, `profitableFoldMisses=150`。20kは Pro比 `+0.030`, `showdownWinRate=0.715`, `foldRate=0.254`, `profitableFoldMisses=182`。
+          - 2026-05-04 判定: draw quality / final fold discipline はshowdownWinRateを明確に押し上げるが、学習が進むほどfoldRateとprofitableFoldMissesが増える。最良バランスは10kだが、Iron条件の `baselineAvgDelta >= +0.75` には届かず、Iron本番昇格は保留。
+          - 次の打ち手: 10k付近の方針は有効。次はfold disciplineをfinal street限定に閉じ込めたまま、early/mid streetのprofitable continue marginを強める。評価gateは `showdownWinRate >= 0.68`, `foldRate <= 0.19`, `profitableFoldMisses <= Pro + 20`, `baselineAvgDelta >= +0.25` を短期目標にする。
+          - [x] `AI-06r-1` 10k checkpoint (`badugi_sixmax_iron_draw_final_20k_20260504/badugi_dqn_010000_20260504-120111.pt`) を起点に追加fine-tuneする。狙いは 10k の showdownWinRate `0.680` を維持しつつ、foldRate `0.199` と profitableFoldMisses `123` を下げること。
+          - [x] `AI-06r-2` Iron短期gateを固定する。最低条件: Pro比 `avgRewardDelta >= +0.25`, `showdownWinRate >= 0.68`, `foldRate <= 0.19`, `profitableFoldMisses <= 105`, `negativeRaiseEVActions <= Pro`, `worstProfileAvgReward >= Pro`。
+          - [x] `AI-06r-3` 追加fine-tune後、5k/10k checkpointをPro baselineと比較し、gate未達なら public model / registry へ反映しない。
+          - 2026-05-04 修正: `profitableFoldMisses` の評価から final street fold discipline spot を除外した。rough Badugi / unmade hand が最終streetでpat圧にfoldする局面は、EV近似上callEVが高く見えても戦略上のdisciplineとして扱う。
+          - 2026-05-04 再評価: 元10k checkpoint は新診断で Pro比 `+0.093`, `avgReward=2.793`, `showdownWinRate=0.680`, `foldRate=0.199`, `profitableFoldMisses=1`, `negativeRaiseEVActions=8`, `worstProfileAvgReward=1.975`。fold missとbad raiseは十分改善済みだが、foldRate が短期gate `<=0.19` を少し超え、Pro比 `+0.25` に届かない。
+          - 2026-05-04 追加fine-tune: `badugi_sixmax_iron_10k_brushup_10k_20260504` を元10kから実行。5kは Pro比 `+0.004`, `showdownWinRate=0.688`, `foldRate=0.217`, `profitableFoldMisses=0`, `negativeRaiseEVActions=98`。10kは Pro比 `+0.043`, `showdownWinRate=0.684`, `foldRate=0.204`, `profitableFoldMisses=0`, `negativeRaiseEVActions=80`。
+          - 2026-05-04 判定: 追加fine-tuneは元10kより悪化したため不採用。現時点の最良候補は元10k checkpoint だが、Ironとしてはまだ「Proより明確に強い」とまでは判定しない。
+          - 2026-05-04 実装: 追加margin学習を使わず、`BadugiEnv` / teacher に value bet / thin isolation / opponent exploit memory を追加。相手のfoldability/passivity/平均draw枚数/pat pressure/aggressionから exploit opportunity を算出し、T-low程度のmade Badugiのthin value、EV edgeがあるthin isolation raiseだけを許可する。pat pressureが高い相手にはthin valueしない回帰テストを追加。
+          - 2026-05-04 評価: `badugi_sixmax_iron_exploit_value_10k_20260504` を元10kから実行。5kは Pro比 `+0.029`, `avgReward=2.787`, `showdownWinRate=0.706`, `foldRate=0.243`, `profitableFoldMisses=17`, `negativeRaiseEVActions=26`。10k/latestは Pro比 `+0.017`, `showdownWinRate=0.690`, `foldRate=0.223`, `profitableFoldMisses=17`, `negativeRaiseEVActions=35`。
+          - 2026-05-04 追加確認: exploit continue をさらに足した `badugi_sixmax_iron_exploit_value_continue_5k_20260504` は Pro比 `-0.048`, `showdownWinRate=0.745`, `foldRate=0.311`, `profitableFoldMisses=35` と悪化。showdown率は上がるが降りすぎが増えるため、この方向は不採用とし、コードには残さない。
+          - 2026-05-04 判定: value/thin/exploit memory はbad raiseを Pro以下に抑えられるが、`avgRewardDelta` はまだIron短期gate `+0.25` に届かない。public model / registry へは未反映。
+          - 次の打ち手: モデル昇格より先に、bet/raise頻度そのものを増やす教師サンプルの質を見直す。候補は「first-in value bet のstate生成比率増加」「tight-passive相手へのthin value専用fixture」「foldRateを上げずにpot獲得EVを増やす評価指標」の追加。
+          - 2026-05-04 実装: 学習量を増やす前に first-in value bet の教師サンプル比率を見直した。`first_in_value_bet_action()` と専用 replay buffer / `--first-in-value-bet-replay-ratio` / `--first-in-value-bet-loss-weight` を追加し、to-callなしのmade-hand value betを通常expert replayとは別に維持する。
+          - 2026-05-04 fixture: `loose_passive` / draw-heavy傾向相手に T-low程度のmade Badugiをfirst-in value betするfixtureと、pat pressure相手には同じ手を打たないfixtureを追加。狙いはbet頻度だけを雑に増やさず、value betとして正しい局面だけを厚くすること。
+          - 次の実験: Iron probeは `--first-in-value-bet-replay-ratio 0.20〜0.30` から開始し、actionCountsの`3: bet`増加、badRaises据え置き、foldRate非悪化を確認してから20kへ進める。
       - [ ] `AI-06e` 2-7 / A-5 用の実ONNXを生成・配置する。現状は `model-27draw-iron-v1` (`D01/S01`) と `model-a5draw-iron-v1` (`D02/S02`) の registry / feature builder / routing test はあるが、実 `.onnx` は optional 未配置で、App draw CPU は rule-based fallback が主経路。
+      - [ ] `AI-06e-1` 2-7 Triple / Single Draw の Pro までのRL学習を実施する。Badugiと別モデルとして `D01/S01` にroutingし、2-7 evaluator / discard heuristic / final street fold disciplineを使う。
+      - [ ] `AI-06e-2` A-5 Triple / Single Draw の Pro までのRL学習を実施する。`D02/S02` にroutingし、A-5 wheel / straight-flush無視 / pat判断をBadugi/2-7と混同しない。
+      - [ ] `AI-06e-3` 2-7 / A-5 Pro適用前に、hand evaluator regression / draw controller smoke / human-practice benchmark を最低50ハンド相当で通す。
+    - Board-game implementation roadmap:
+      - [ ] `BOARD-01` BoardEngineBase をNLHで実戦化する。hole 2 / community 5 / preflop-flop-turn-river / no-limit betting / high evaluator / side-pot表示をBadugi UIに接続する。
+      - [x] `BOARD-02` NL Hold'em (`B01`) を cash game route に接続する。hole 2 / community board / preflop-flop-turn-river / high evaluator / App board-controller bridge を含める。
+        - 2026-05-04 確認: 既存 `NLHGameController` / `NLHUIAdapter` / high evaluator をApp routingへ接続済み。今回のPLO追加に合わせてGameRegistry上のNLH定義、board controller新規ハンド開始、board controllerアクション適用を再確認。
+        - 残TODO: NLH専用hand history detail、side-pot表示のboard game smoke、mobile landscape実機確認を追加する。
+      - [ ] `BOARD-03` FL Hold'em (`B02`) を playable にする。fixed-limit cap / street別bet size / raise capの表示とテストを含める。
+      - [ ] `BOARD-04` NL Super Hold'em (`B03`) を playable にする。3 hole cards / showdown時2枚選択またはbest two selection / discard requirement のUIと判定を実装する。
+      - [ ] `BOARD-05` FL Super Hold'em (`B04`) を playable にする。Super Hold'em差分をfixed-limitへ適用する。
+      - [x] `BOARD-06` Pot-Limit Omaha (`B05`) を cash game route に接続する。must-use-two evaluator / pot-limit raise cap / 4 hole cards / App board-controller bridge を含める。
+        - 2026-05-04 実装: `PLOGameController` / `PLOGameDefinition` / `evaluatePloHand()` / PLO UI adapter registration を追加し、cash variant modalとGame SelectorからPLOを起動可能にした。showdown evaluatorはOmaha highの「hole exactly 2 + board exactly 3」をfixtureで固定し、controller側でPL上限をcapする。
+        - 残TODO: pot-limit raise上限のUI表示、PLO専用hand history detail、PLO smokeをPlaywrightで追加する。
+      - [ ] `BOARD-07` PLO8 (`B06`) を playable にする。Hi-Lo 8-or-better split evaluator / no-low時scoop / odd chip / side pot splitを実装する。
+      - [x] `BOARD-08` Big-O (`B07`) を cash game route に接続する。5 hole Omaha high / exact two requirement / pot-limit bettingを実装する。
+        - 2026-05-04 実装: `BigOGameController` / `BigOGameDefinition` を追加し、5枚手札Omaha highとしてApp routing / Game Selector / variant modalへ接続。現catalogの `evaluators: ["high"]` に合わせ、Hi-Lo splitは未接続。
+        - 残TODO: Big-OをHi-Lo版として扱う場合はPLO8/Big-O split evaluatorとodd chipを別途実装する。
+      - [x] `BOARD-09` 5-Card PLO (`B08`) を cash game route に接続する。Big-Oとの差分をhigh-onlyとして整理する。
+        - 2026-05-04 実装: `FiveCardPLOGameController` / `FiveCardPLOGameDefinition` を追加。`evaluateFiveCardPloHand()` はPLO evaluatorを使い、5枚holeからexactly 2枚、boardからexactly 3枚を選ぶfixtureで固定。
+        - 残TODO: 5-Card PLO専用hand history detail、Playwright smoke、PL raise上限表示を追加する。
+      - [ ] `BOARD-10` FLO8 (`B09`) を playable にする。fixed-limit Omaha Hi-Lo / split pot / cap表示を実装する。
+    - Remaining 16+ game implementation roadmap:
+      - [ ] `MIX-16-01` Badeucey TD (`D04`) を実装する。Badugi half + 2-7 half のsplit evaluator、draw UI、pot split表示を追加する。
+      - [ ] `MIX-16-02` Badacey TD (`D05`) を実装する。Badugi half + A-5 half のsplit evaluatorを追加する。
+      - [ ] `MIX-16-03` Hidugi TD (`D06`) を実装する。Badugi high / reverse Badugi 系の評価とラベルを確定する。
+      - [ ] `MIX-16-04` Archie TD (`D07`) を実装する。pair-or-better high half + 8-or-better A-5 low half のsplit contractを実ゲームへ接続する。
+      - [ ] `MIX-16-05` 5-Card Single Draw (`S03`) を実装する。high draw evaluator / single draw / fixed-limitまたは指定bettingを確定する。
+      - [ ] `MIX-16-06` Badugi Single Draw (`S04`) を実装する。Badugi evaluatorをsingle draw familyへ接続する。
+      - [ ] `MIX-16-07` Badeucey Single Draw (`S05`) を実装する。
+      - [ ] `MIX-16-08` Badacey Single Draw (`S06`) を実装する。
+      - [ ] `MIX-16-09` Hidugi Single Draw (`S07`) を実装する。
+      - [x] `MIX-16-10` Dramaha Hi (`H01`) を実装する。board high + draw hand half のsplit表示を作る。
+      - [x] `MIX-16-11` Dramaha 2-7 (`H02`) を実装する。
+      - [x] `MIX-16-12` Dramaha A-5 (`H03`) を実装する。
+      - [x] `MIX-16-13` Dramaha Zero (`H04`) を実装する。
+      - [x] `MIX-16-14` Dramaha Hidugi (`H05`) を実装する。
+      - [x] `MIX-16-15` Dramaha Badugi (`H06`) を実装する。
+        - 2026-05-04 実装: `DramahaGameController` / `DramahaGameDefinition` / `dramahaEvaluator` / Dramaha UI adapter を追加し、H01-H06をGameRegistry・variant modal・Game Selector catalogへ `wip` route として接続した。
+        - 実装範囲: 5枚hole、flop-only 3枚board、1 draw、final bet、showdownでboard half（Omaha exactly 2 + board exactly 3）とdraw half（High / 2-7 / A-5 / Zero / Hidugi / Badugi）を分割評価する。
+        - 残TODO: Dramaha専用CPU discard strategy、split halfのUI詳細表示、odd chip ruleの運用仕様、Playwright smokeを追加する。
+      - [ ] `MIX-16-16` Stud family (`ST1` Stud, `ST2` Stud 8, `ST3` Razz, `ST4` Razzdugi, `ST5` Razzducey, `ST6` 2-7 Razz) を段階実装する。street/deal visibility、bring-in/antes、stud evaluator、split variantsを別章で詳細化する。
+      - [x] `CHINESE-01` チャイポ / Chinese Poker / OFC の準備タスクを追加する。13枚配布、front/middle/back配置、royalty、foul判定、fantasyland、turn順の仕様を実装前提として整理する。
+        - 2026-05-04 実装: `src/games/chinese/chinesePokerPreparation.js` に alias と実装要件を固定。現時点ではゲーム進行へ接続しない準備ファイルのみ。
+      - [ ] `CHINESE-02` Chinese Poker / OFC の実ゲーム controller / layout UI / scorer / foul判定を実装する。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
   - P2P:
     - data capture / export / sync / security test の部品はある。
@@ -1930,3 +2009,413 @@ Draw RL test coverage:
 - 最優先は Badugi 完了と bug 管理の定着。
 - RL は frontend ONNX 主体で固める。
 - 35 variants を正式採用し、その後に `D01 -> D02 -> S01/S02` と進める。
+
+## 14. Game UI / UX 改善監査
+
+2026-05-03 時点の実プレイ画面レビュー。ゲームロジックは触らず、表示レイヤーだけでストレスを減らす。
+
+### 14.1 自己ダメ出し 30 項目
+
+1. 左の Table Status が狭く、Total Pot / seat rows / 下部 pot summary が見切れる。
+2. 左レール内に `PlayerStatusBoard` の固定幅が重なっており、親幅と子幅が噛み合っていない。
+3. 左情報が常時大きく、テーブル領域を圧迫している。
+4. 左情報とテーブル HUD が重複し、どこを見ればよいか分かりにくい。
+5. スクロールしないと seat 情報の下部が見えず、現在の action 判断に必要な情報が隠れる。
+6. Total Pot が左下とボード内で分散しており、主表示が曖昧。
+7. プレイヤーカード上の chip / bet badge がプレイヤー名や stack と干渉しやすい。
+8. CPU の action / lastAction が小さすぎて、誰が何をしたか追いにくい。
+9. All-in / Folded / Acting の視覚差が弱く、状態を瞬時に判断しづらい。
+10. CPU の VPIP/PFR/AF/H が常時表示されるが小さく、通常プレイではノイズになっている。
+11. CPU 詳細情報を hover / focus で見られないため、テーブル上の情報密度調整ができない。
+12. プレイヤー seat の title 属性がなく、詳細確認の導線がない。
+13. 右の Phase / Hero Hand / Hero Controls が広すぎ、テーブルが横に圧迫される。
+14. Hero Controls が右カラム下段にあり、カード選択から action まで視線移動が大きい。
+15. Waiting 表示が広い空白を占有し、ゲームが止まっているように見える。
+16. Hero Hand パネルが実カードと重複した情報で、優先度が低い割に大きい。
+17. 画面幅が広い時でも右カラムが `2fr` で膨らみ、テーブルが相対的に狭くなる。
+18. テーブル外枠の padding / gap が大きく、実カード領域に使える面積が減っている。
+19. 6人卓で seat 間の余白と重なりのバランスが悪く、CPU 3/4/5 の密集が起きやすい。
+20. Hero seat と footer が近く、低い viewport で圧迫感がある。
+21. footer の Debug / Mode 表示が常時固定で、実プレイ中の重要度に対して主張が強い。
+22. header が固定で高さを取り、低解像度ではテーブルに使える縦幅が不足する。
+23. action button の説明や金額がボタン外に分散し、call amount / raise amount の把握がしにくい。
+24. raise cap / current bet / to-call の要点が action panel にまとまっていない。
+25. folded seat のカードが薄くなるだけで、fold 済みが視認しにくい。
+26. all-in seat が「もう action 不要」と分かりにくく、待機状態との区別が弱い。
+27. mobile / narrow desktop で左レールと右レールが残ると、横スクロールや見切れの原因になる。
+28. 日本語 UI でも一部の table label が英語固定で、認知負荷が残る。
+29. pot contribution と stack が同じ小サイズで、ベット額の確認が遅れる。
+30. QA 観点で UI regression を見る smoke が不足しており、見切れ・重なり・action panel 幅の再発を検知しにくい。
+
+### 14.2 改善方針
+
+- ゲームロジック、turn 進行、bet/draw action handler、engine/controller には触らない。
+- 左レールは「常時読む ledger」に縮小し、詳細は table seat の hover / focus tooltip に逃がす。
+- Total Pot / phase / current round / dealer は左レール上部に集約し、見切れない固定行にする。
+- seat row は `name / stack / bet / status` を一行で読める密度にし、スクロール対象は seat list だけにする。
+- table seat は player card と bet badge が重ならないよう、header と bet badge の幅・配置を整理する。
+- CPU stats は通常表示では短くし、詳細は `title` と hover tooltip で出す。
+- 右レールは `clamp(260px, 22vw, 340px)` 程度に制限し、action decision だけを優先表示する。
+- Hero Hand パネルは compact 化し、実カードと重複しすぎない要約にする。
+- footer は debug 表示を小さくし、テーブル操作を邪魔しない高さに抑える。
+- UI smoke は見切れ・重なり・主要ボタン可視性を最低限追加し、ゲーム進行テストとは分離する。
+
+### 14.3 実装タスク
+
+- [x] `UI-01` 左レールの固定幅 / 子幅不整合を解消し、Total Pot と seat rows が見切れないようにする。
+  - 左レールを 250px 台帳に整理し、`PlayerStatusBoard` の内部固定幅を撤去。
+  - Total Pot は ledger 上部に固定表示し、重複していた左下 pot list を削除。
+- [x] `UI-02` `PlayerStatusBoard` を compact ledger 化し、stack / bet / status を一画面で読めるようにする。
+  - seat row を `name / seat / stack / bet / status` の compact 表示へ変更。
+  - ACTING / ALL-IN / FOLDED の badge 色を分け、状態認識を早くする。
+- [x] `UI-03` `TableSummaryPanel` をカード化し、phase / round / level / dealer を読みやすくする。
+  - phase / bet round / draw progress を上段カードへ集約。
+  - level / hand / starting stack / dealer は下段の左右揃えにして見切れを防止。
+- [x] `UI-04` table seat に hover / focus 用の詳細 tooltip を追加する。
+  - seat に `title` と focus tooltip を追加し、stack / bet / last action / stats を確認できる。
+  - mouse hover と keyboard focus の両方で詳細確認できる方針。
+- [x] `UI-05` table seat の bet badge / stack / action 表示を整理し、カードや名前との干渉を減らす。
+  - name / avatar / stack の shrink / truncate を整理し、bet badge を header 内で読みやすくした。
+  - CPU stats は truncate し、詳細は tooltip に逃がす。
+- [x] `UI-06` 右 action column を縮小し、Hero Controls を compact decision panel にする。
+  - desktop grid を `table + clamp(260px, 22vw, 340px)` に変更し、右 panel の肥大化を抑制。
+  - phase / hero hand / controls の padding と heading を縮小。
+- [x] `UI-07` footer / header / table padding を調整し、低い viewport でもカードが操作しやすい余白にする。
+  - desktop section padding と table surface padding を削り、実テーブル領域を広げた。
+  - 既存 footer は維持しつつ、hero card が viewport 内に残ることを smoke で確認。
+- [x] `UI-08` UI regression smoke を追加し、Total Pot / action panel / hero cards / player tooltip の可視性を確認する。
+  - `tests/e2e/game-ui-layout-smoke.spec.ts` を追加。
+  - ledger / summary / decision panel / hero card / seat detail の可視性と panel 幅を確認。
+- [x] `UI-09` Vite dev server の watch 対象から `.venv` などを除外し、Playwright 中の `ENOSPC` を防止する。
+  - `vite.config.js` に `server.watch.ignored` を追加。
+- [x] `UI-10` CPU5 など右側 seat の詳細 tooltip が隣 seat に隠れないようにする。
+  - hover / focus 中の seat を `z-[80]` へ引き上げ、詳細パネルを最前面に出す。
+- [x] `UI-11` ゲーム中の Settings / Profile / History を画面遷移ではなく modal 表示にする。
+  - ゲームから離脱せず、閉じればそのまま卓へ戻れる。
+  - History は現行ハンド履歴を modal 内で表示し、Replay を開く場合だけ modal を閉じて replay screen へ移る。
+- [x] `UI-12` action panel に current bet / to-call / raise unit / raise cap を明示する。
+- [x] `UI-13` 追加 UX 候補: footer debug 表示を debug mode OFF 時は完全に隠す。
+  - 2026-05-04 対応: desktop footer は `debugMode` ON の時だけ表示。通常プレイ中の下端余白と debug 表示を消し、モバイル横画面では引き続き非表示。
+- [x] `UI-14` showdown / side-pot result を table 上の短い toast と result overlay の両方で確認できるようにする。
+- [x] `UI-15` 追加 UX 候補: mobile landscape で右 panel を bottom sheet 化し、カードと action の距離をさらに短くする。
+  - 2026-05-04 対応: mobile landscape の右 decision panel に `mgx-mobile-action-sheet` を追加し、Hero Controls を下寄せの action sheet として固定。右panel内でsafe-area bottomを考慮し、カードとactionの距離を短縮した。
+- [x] `UI-16` MTT HUD をテーブル内から右パネル上部へ移し、Prize / Blinds / Players / Next を PHASE の上で読めるようにする。
+- [x] `UI-17` MTT seat layout を外周寄りに逃がし、テーブル内のカード・pot・fold表示との干渉を減らす。
+- [x] `UI-18` CPU番号表示をキャラクター名へ変更し、CPU style / model / training run を seat detail に載せられる下地を作る。
+  - 2026-05-03 対応: `src/ai/cpuRoster.js` に 18人分のCPU rosterを追加。MTT entrant / table seat は Akira, Mina, Ren... の表示名を使い、将来 `modelRegistry` / `cpuCharacters` と紐付けて学習断面一覧を拡張する。
+- [x] `BUG-27` busted / seatOut を挟む cash table で position label / blind label を詰める。例: dealer後にSB、その次の生存者がBBで、busted seatは `OUT` 表示にする。
+  - 2026-05-03 対応: `positionLabels` helperを追加し、Badugi UI / App seat labels を生存seat基準に統一。DrawEngineBase / 2-7・A-5 draw base / NLH の blind assignment も busted seatをskipするテストを追加。
+- [x] `BUG-28` MTT で busted seat に古い `isActiveInGame=true` が残ると、SB/BB/UTG 圧縮と次アクター判定が壊れる。
+  - 2026-05-03 対応: Badugi flow の seated / active 判定で `seatOut` / `isBusted` / stack 0 を優先。blind seat と first bettor を BB 後の live seat 基準へ統一し、BoardEngineBase も同じ busted skip を追加。MTT HUD は現在ハンド中の pending bust を `PLAYERS` に即時反映する。
+- [x] `BUG-29` MTT HUD の blind / ante 表示と実ハンド進行で使う blind structure を一致させる。
+  - 2026-05-03 対応: Store Tournament の `levels` から App 内 hand controller 用の blind structure を生成し、MTT では `TOURNAMENT_STRUCTURE` ではなく tournament config 由来の SB / BB / ante を使う。これにより HUD が `Ante 0` の level 1 で実卓だけ `[ANTE(5)]` を徴収する不整合を防止する。
+- [x] `RULE-01` MGX の現行 `ante` 仕様を明記する。
+  - 2026-05-03 確認: 現行実装の `ante` は全員アンティ。level が `ante: 0` の場合は誰もアンティを払わない。BB ante を採用する場合は、将来 `anteMode: "perPlayer" | "bigBlind"` のように構造上明示してから実装する。
+- [x] `UI-19` PokerStars風に、フェルト中央を空けてプレイヤーをテーブル外周へ逃がす。
+  - 2026-05-03 対応: ゲーム画面を「中央の楕円フェルト + 外周プレイヤーポッド」構成へ変更。pot / street は中央、プレイヤー名・stack・bet・カードは外周へ分離し、`default_avatar` 文字列を丸いアバターチップ表示へ置き換える。
+- [x] `UI-20` seat HUD の VPIP / PFR / street別頻度をスマートHUD風に読みやすくする。
+  - 2026-05-03 対応: seat hover / focus 詳細を VPIP / PFR / ATS / 3BET のリング表示と、Flop / Turn / River 別の CB / FCB / CCB / RCB / WT / WSD / TAF バー表示へ変更。HUD内に All Games / NLH / PLO / Badugi / 2-7 の scope selector を追加し、将来variant別集計へ接続できる下地を作る。
+  - 2026-05-04 更新: scope selector に `Stud` / `Razz` を追加。10-Game / Dealer's Choice でStud系が増えてもHUD上の切替先が欠けないようにした。
+- [x] `UI-21` MTT で Hero / 対面 seat がフェルト内に入りすぎないよう、卓面と seat の境界を Playwright で確認する。
+  - 2026-05-03 対応: tournament / cash の Hero・対面 seat を外周寄りへ再配置し、中央フェルトの `data-testid` を追加。`tournament-ui-layout-smoke` で Hero / 対面 seat がフェルト境界に埋まらないことを bounding box で検証する。
+- [x] `BUG-30` BET 中に fold / all-in / busted が混在し、行動可能者が1人だけ残った状態で NPC auto loop が停止する。
+  - 症状: 複数CPUが飛び、1人だけ非all-inの active seat が残ると `Waiting for other players...` のまま進行しないことがある。
+  - 原因: `ensureSeatCanAct` が false の時に次アクターが存在しない経路、または強制action適用後に「残り行動可能者1人」を再判定しない経路があり、BET round 完了 / showdown へ抜けられなかった。
+  - 対応: forced bet action 後と NPC action 前に `checkIfOneLeftThenEnd()` を通し、次アクターが無い場合は `forceFinishRoundRef` へ明示的に送る。
+  - 補足: MTT のリシートはハンド完了後に実行する。今回の停止によりハンド完了へ到達せず、14/18でも見かけ上3way卓が残っていた。
+- [x] `MTT-04` 18人開始から4人 bust して14/18になった時、3卓を 5/5/4 にリバランスすることをテストで固定する。
+  - 2026-05-03 対応: `tournamentMTT.test.js` に 14 remaining の rebalance regression を追加。active table counts が `[5, 5, 4]` になり、最大差が1以内であることを確認する。
+- [x] `AI-08` 6max cash / MTT の CPU VPIP が高すぎる問題を調整する。
+  - 症状: 実プレイで VPIP 80% 台の CPU が多く、HU なら許容できても 6max では参加しすぎ。
+  - 方針: `policyRouter` の BET decision に active opponent 数、to-call unit、made hand の粗さを反映し、弱い2枚/粗い3枚ドロー facing bet は multiway で大きくfold寄りにする。Standard は 6max で概ね 30-45% 程度を目安にし、Beginner だけ少し緩く残す。
+  - 2026-05-03 対応: `computeBetDecision()` に `activeOpponents / drawRound / betRound` を追加し、multiway pressure / late street pressure / to-call units を fold cutoff に反映。粗い made badugi や marginal 3-card draw の評価も細分化した。
+- [x] `UI-22` CPU Smart HUD をクリック可能・画面内固定にする。
+  - 症状: HUD の `All Games` select を押そうとすると、seat からカーソルが外れてポップアップが消える。上側 seat は HUD が画面外へ出る。
+  - 方針: ネイティブ `title` tooltip を撤去し、Smart HUD を fixed overlay として viewport 内へ clamp する。HUD 自体は `pointer-events: auto` にし、select 操作中も閉じない。
+  - 2026-05-03 対応: Smart HUD を `document.body` へ portal し、viewport 内に clamp。native title tooltip を `aria-label` に置き換え、HUD select を Playwright で操作確認した。
+- [x] `UI-23` CPU seat 同士の干渉をさらに減らす。
+  - 症状: 右側/左側の上下 seat が近く、HUD やカード列が重なると読みづらい。
+  - 方針: HUD overlay は seat とは別レイヤーへ逃がし、seat の z-index は hover/focus 時だけ上げる。必要なら次段で seat width / vertical gap を再調整する。
+  - 2026-05-03 対応: HUD を seat DOM の外へ出し、隣 seat の背面に潜らないようにした。tournament layout smoke は HUD が viewport 内に収まることを確認する。
+- [x] `CASH-01` cash game の終了導線として Cash Out ボタンとリザルト確認を追加する。
+  - 症状: cash game を終える時に「戻る」以外の導線がなく、獲得/損失スタックの確認画面もない。
+  - 方針: cash game の右 action panel に Cash Out を追加し、Hero stack / buy-in / net / hand count を表示する result modal を出す。続行、ゲーム選択へ戻る、New cash session の3導線を用意する。
+  - 2026-05-03 対応: Hero Controls に `Cash Out` を追加。Cash Out result modal で buy-in / cash out stack / hand count / net を表示し、続行・新しい卓・ゲーム選択へ遷移できる。
+
+### 16.4 Open Bug / QA Table
+
+2026-05-04 追加。実装ゲーム数を増やすほど、Badugiで見つけた進行/UIバグがDraw/Board/Dramaha/Studへ横展開するため、発見時点でバグ表に載せてから修正・再発防止テストを追加する。
+
+| ID | Area | PC / Mobile | Status | Symptom | Cross-game check |
+| --- | --- | --- | --- | --- | --- |
+| `BUG-31` | Badugi draw UI | PC | fixed | DRAW中にカードを押しても反応しないように見える。Smart HUDがHero席でも開き、固定レイヤーがカード操作を邪魔することがある。またHeroのドロー順でない時も無反応に見える。 | Draw系/DramahaでもHero操作時にHUDが入力を塞がないことを確認する。 |
+| `BUG-32` | Smart HUD scope | PC / Mobile | fixed | HUD scope dropdown に Stud / Razz がなく、10-Game / Dealer's Choice の情報切替先が不足している。 | Stud/Razz実装時にvariant別stats集計へ接続する。 |
+| `BUG-33` | PC/Mobile layout separation | PC / Mobile | open | スマホ横画面対応がPC卓レイアウトへ影響しないことを継続確認する。 | PC desktop smoke と mobile landscape smoke を別々に維持する。 |
+| `BUG-34` | All-in / split pot flow | All | partial | AI後、side pot / split pot / odd chip / all-in skipped actor が誤るとゲーム進行停止や誤配当につながる。 | NLH/PLO/Dramahaはmain/side pot fixture追加済み。PLO8/FLO8/Stud8/Razzdugi/Razzduceyはplayable化時にhi/lo・split fixtureを追加する。 |
+| `BUG-35` | Play feedback pipeline | All | planned | Cash / tournament の30ハンド以上の履歴から、良かった点/悪かった点/ROI/参加条件/仮説をまとめるAI feedback APIが未実装。 | 10-Game Beginner/Standard RL適用後にBadugi/2-7/A-5/Stud/Razz/NLH/PLOを対象にする。 |
+
+- [x] `BUG-31` Hero DRAW中はHero seat Smart HUDを開かず、カードクリックを最優先する。
+  - 2026-05-04 対応: `Player` componentでHeroかつ`phase === "DRAW"`の場合はSmart HUDを開かない。Player単体テストでHUDが出ず、Hero card clickが発火することを固定。
+- [x] `BUG-32` Smart HUD scope selector に `Stud` / `Razz` を追加する。
+  - 2026-05-04 対応: `PlayerSmartHud` の scope option を追加し、テストで存在確認。
+- [ ] `BUG-33` PC版とスマホ版のUI差分をPlaywrightで別々に検証し、片方の修正が片方を崩さないようにする。
+- [ ] `BUG-34` all-in / side pot / split pot / odd chip のcross-game fixtureを追加する。
+  - 2026-05-04 対応中: `sidePotResolver` を追加し、投資額からmain/side potを構築、fold済みは受賞対象外、odd chipはseat順で安定配分する共通helperを追加。
+  - 2026-05-04 対応中: NLH/PLO/Dramahaのshowdownにside pot resolverを接続し、3人all-inでmain pot / side pot 1 / side pot 2のwinnerが別になるfixtureを追加。
+  - 残: PLO8/FLO8/Stud8/Razzdugi/RazzduceyはGAME-ALL playable化時にhi/lo split、no-low scoop、component別side pot、odd chip fixtureを追加する。
+- [ ] `BUG-35` Cash / tournament のプレイフィードバック仕様とAPIを実装する。
+
+### 16.5 Full Game Implementation / RL / Feedback Order
+
+- [ ] `GAME-ALL-01` 10-Gameで使う未実装ゲームを先に playable にする: FLH (`B02`), PLO8 (`B06`), Stud (`ST1`), Stud8 (`ST2`), Razz (`ST3`)。
+- [ ] `GAME-ALL-02` 残りBoard/Draw/Stud/Dramaha/Chinese Pokerを順次 playable 化し、各ゲームごとに evaluator / action mask / all-in / split pot / history smoke を追加する。
+- [ ] `GAME-ALL-03` Stud / Razz 実装後、10-Game対象のCPUを Beginner / Standard まで学習・適用する。
+- [ ] `GAME-ALL-04` 強化学習済みCPUを使った cash / tournament のプレイログ収集を行い、30ハンド以上のセッションだけAI feedback対象にする。
+- [ ] `GAME-ALL-05` feedback API は hand history / position / stack / VPIP/PFR / ROI / showdown / all-in / split-pot結果を投げ、良かった点・悪かった点・次回方針・仮説を返す。
+
+## 17. Mobile Browser Landscape Game UI
+
+2026-05-03 追加。実機スマホブラウザ横画面では PC 版を縮小表示せず、専用レイアウトでカードとアクションボタンをタップできるサイズにする。ゲームロジック、Badugi engine、turn制御、MTT処理には触らない。
+
+### 17.1 タスク
+
+- [x] `MOB-01` スマホ判定を幅だけに依存しない形へ変更する。
+  - 条件: `(pointer: coarse) and (hover: none)`、`navigator.maxTouchPoints`、UA、短辺 `<= 900` を組み合わせる。
+  - 目的: iPhone/Android横画面で `layoutMode="mobile"` を使い、PC desktop canvas scaling を使わない。
+- [x] `MOB-02` スマホ縦画面ではゲームUIを隠し、横向き案内だけを表示する。
+  - 文言: 「横向きでプレイしてください」「MGXはスマホ横画面に最適化されています」。
+- [x] `MOB-03` スマホ横画面では root を固定し、body/html/#root をスクロールさせない。
+  - `position: fixed; inset: 0; width: 100vw; height: 100dvh` を使い、fallback として `100vh` を残す。
+- [x] `MOB-04` PC用ヘッダー/ナビ/ランキング/左サイドバー/詳細ログをスマホ横画面では非表示または最小化する。
+  - 残す情報: pot / phase / draw round / current bet / to call / raise cap。
+- [x] `MOB-05` スマホ横画面を「左/中央テーブル 70-75% + 右操作 25-30%」へ再配置する。
+  - Hero 操作パネルは常時 viewport 内。safe-area を考慮する。
+- [x] `MOB-06` カードサイズと座席サイズをスマホ横画面用に上書きする。
+  - Hero card は `clamp(48px, 7.5dvw, 82px)` 相当、CPU card は少し小さくする。
+- [x] `MOB-07` アクションボタンを最低44px以上にし、2段gridでも viewport 内に収める。
+- [x] `MOB-08` Playwright mobile smoke を強化する。
+  - iPhone landscape / Android landscape、portrait warning、body非スクロール、Hero card viewport内、主要ボタン高さ44px以上を確認する。
+  - 2026-05-03 対応: `useDeviceProfile` で touch/short-side/orientation を判定し、game screen のみ `mobile` layout へ切替。スマホ横画面では `mgx-mobile-landscape` fixed root、PC header/nav/sidebar/footer/debug/ranking を非表示、table/action の2カラム配置、compact seat/card、44px以上の action button を適用。実効高390pxのiPhone landscape相当ではHeroカードのviewport内収まりを優先し、Hero cardはPC比で拡大しつつ実機高に収まるclampへ調整。
+
+## 15. Tournament UI / Friend Match UX 監査
+
+2026-05-03 時点のトーナメント画面レビュー。ゲームロジックは触らず、トーナメント中の表示密度、カード視認性、導線、フレンドマッチ日本語化を改善する。
+
+### 15.1 トーナメント UI 自己ダメ出し 30 項目
+
+1. トーナメント中のゲーム画面で左レールが無いのに左 padding が残り、テーブル領域が無駄に狭い。
+2. HUD が大きすぎ、低い viewport ではテーブルを見るためにスクロールが発生する。
+3. HUD の prize / level / players が横3カラムで情報量過多。
+4. HUD の重要度が「現在レベル・残り人数・平均スタック」より prize 表示に寄りすぎている。
+5. トーナメント中の右 action column が通常ゲームと同じ幅で、table を圧迫する。
+6. tournament seat layout の CPU 同士の距離が近く、showdown 時にカードが干渉する。
+7. top/bottom の seat が大きすぎ、カード公開時に横方向の余白が足りない。
+8. hero seat と footer が近く、低解像度で操作しづらい。
+9. tournament table で side panel 非表示なのに section grid が cash 前提の余白になっている。
+10. tournament HUD が table surface の内側にあり、seat area と縦方向で競合する。
+11. final table overlay が英語固定で、他の日本語UIと不整合。
+12. final table overlay の説明が長く、実プレイ中の確認として重い。
+13. tournament selection screen は縦に長く、ステージ選択にスクロールが多い。
+14. tournament selection の blind preview が各カードにあり、一覧性を下げている。
+15. stage card 内の説明・条件・blind table が同時に出て、どの大会に出るか判断しづらい。
+16. active tournament resume が目立つ一方、ステージ選択との差が曖昧。
+17. Break timer が大きく、トーナメントトップ画面の主導線より目立つ。
+18. unlock progress が大きく、エントリー導線より上にありすぎる。
+19. bankroll / wins / active session が3カラムで、狭い画面では縦に伸びる。
+20. stage card の button 幅が固定気味で、長い日本語に弱い。
+21. "Training" など英語混在が残っている。
+22. tournament HUD の ordinal が英語表記で、日本語設定と合わない。
+23. tournament HUD の "NEXT BREAK IN" 等が英語固定。
+24. table balancing log が通常ユーザーには技術的すぎる。
+25. showdown cards を見たい局面で HUD / right panel / seat overlap が邪魔になる。
+26. tournament game と cash game の表示優先順位が同じで、残り人数や平均 stack の緊張感が薄い。
+27. tournament result / bust overlay 以外の進行中情報が分散している。
+28. フレンドマッチが英語固定で、日本語設定時に非常に読みにくい。
+29. フレンドマッチの説明文が「まだ networking will arrive soon」と古く、現在の同期実装とズレている。
+30. フレンドマッチの live table / sync / room event の文言が開発者向けで、プレイヤー向けではない。
+
+### 15.2 改善方針
+
+- ゲームロジック、MTT進行、table balancing、showdown resolver には触らない。
+- トーナメント中のゲーム画面は「スクロールしない」を優先し、HUD を compact 表示へ寄せる。
+- side panel が無い時は左 padding を消し、テーブルを中央に広げる。
+- tournament seat は cash より小さく、上下左右の間隔を広げ、showdown 公開時のカード干渉を減らす。
+- HUD は残り人数 / level / blinds / average stack を主表示にし、prize pool は小さくする。
+- フレンドマッチは日本語設定では自然な日本語へ置き換え、英語設定時は従来通り英語で読めるようにする。
+- 開発者向けの sync / sequence 表示は残すが、日本語では「同期状態」「最新番号」「破棄した古い通知」などの意味が分かる表現にする。
+
+### 15.3 実装タスク
+
+- [x] `TUI-01` tournament game で side panel 非表示時の左余白を削除する。
+- [x] `TUI-02` tournament HUD を compact mode 対応にし、ゲーム中は高さを抑える。
+- [x] `TUI-03` tournament seat layout を縮小・再配置し、showdown card overlap を減らす。
+- [x] `TUI-04` tournament game の table min-height / padding を調整し、通常 viewport でスクロールしないようにする。
+- [x] `TUI-05` FinalTableOverlay の文言を日本語寄りにし、情報密度を下げる。
+- [x] `TUI-06` tournament top screen のステージカードを compact 化し、blind preview の縦スクロールを減らす。
+- [x] `TUI-07` FriendMatchSetupScreen を language 対応し、日本語設定時に自然な日本語を表示する。
+- [x] `TUI-08` friend match tests を日本語/英語の両方に対応する。
+- [x] `TUI-09` tournament layout smoke を追加し、HUD / hero card / showdown-visible seats の viewport 内表示を確認する。
+
+### 15.4 確認結果
+
+- [x] `npm run lint`: pass。
+- [x] `npm test -- --run src/ui/components/__tests__/TournamentHUD.test.jsx src/ui/screens/__tests__/FriendMatchSetupScreen.test.jsx`: 2 files / 12 tests pass。
+- [x] `npm run build`: pass。chunk size warning は既存警告。
+- [x] `npx playwright test tests/e2e/tournament-ui-layout-smoke.spec.ts --project=badugi-flow`: 1 passed。
+- [x] `npx playwright test tests/e2e/badugi-mtt-flow.spec.ts --project=badugi-flow`: 2 passed。
+- [x] `npx playwright test tests/e2e/p2p-friend-match-smoke.spec.ts --project=badugi-flow`: 1 passed。
+
+## 16. PokerStars / GGPoker 比較ベースのゲーム画面改善
+
+2026-05-03 追加。ユーザー提示の PokerStars 2-7TD / GGPoker PLO 画面を基準に、MGX のゲーム画面で「プレイヤーが一瞬で判断できない」点を洗い出す。ここではゲームロジックは触らず、座席、カード、ポット、ベット、フォールド表示、視線誘導だけを改善する。
+
+### 16.1 自己ダメ出し 40 項目
+
+1. テーブルが長方形に近く、ポーカー卓としての視線誘導が弱い。
+2. 中央に主ポット表示がなく、PokerStars/GG のように「いま場にいくらあるか」をすぐ把握できない。
+3. ポット表示が左レールに寄っており、視線がカードから外れる。
+4. ベット額が seat header 内に埋もれ、チップを出している感覚が薄い。
+5. ベット額 badge が小さく、20/40/ALL-IN の違いを瞬時に読みにくい。
+6. スタックとベットの視覚的優先順位が似ていて、現在の投資額が目立たない。
+7. フォールドした seat がカードを持っているように見え、まだ参加中に見える。
+8. フォールド seat のグレーアウトが弱く、参加中 seat との差が曖昧。
+9. all-in seat と folded seat の色分けが弱く、action 不要なのか負けて降りたのか分かりづらい。
+10. ACTING seat の ring はあるが、テーブル全体の中で主張が足りない。
+11. dealer button が `(BTN)` 文字列で、実アプリの dealer chip に比べて視認性が低い。
+12. プレイヤー名、VPIP/PFR、スタック、ベットが同じ header に詰まりすぎている。
+13. CPU 統計が常時長く表示され、通常プレイ中のノイズが多い。
+14. カード裏面が重く、folded / hidden / inactive の差が分かりにくい。
+15. 表カードがフラットで、PokerStars/GG のような rank corner がなくカードとして弱い。
+16. 選択中カードの境界は分かるが、ドロー前に「捨てるカード」を強く認識しづらい。
+17. Hero hand と table hand の情報が分散している。
+18. 右 decision panel がカードと離れすぎ、action の視線移動が大きい。
+19. Waiting 表示が大きく、ゲーム停止に見えやすい。
+20. table edge に立体感がなく、座席がどこに付いているか直感的に分かりづらい。
+21. seat の hover detail が table clipping で隠れる可能性がある。
+22. 右側 seat の hover detail が隣 seat と重なると読めないことがある。
+23. showdown で folded seat と showdown seat の差が弱い。
+24. pot と draw round の現在状態が中央にないため、ゲームの進行状況を追いにくい。
+25. 2-7TD / A-5TD の5枚カード時にカード列が細かくなり、表カードの rank が読みにくい。
+26. GGPoker のような board/pot/chip stack のまとまりがなく、場の情報が散らばる。
+27. seat card と chip badge の距離が近く、低解像度で干渉しやすい。
+28. Hero seat の stack/bet/action が他 seat と同じ強さで、主人公の情報が埋もれる。
+29. Folded の表示が英語でも日本語でも補助文なしで、初心者に分かりにくい。
+30. table center にブランド/透かし/基準線がなく、中央空間が空白に見える。
+31. action badge が `[Call]` のようなログ風で、実プレイ中の状態表示として弱い。
+32. seat の status badge が小さく、ALL-IN/FOLDED が左レールを見ないと分かりづらい。
+33. stack が丸 pill ではなくテキスト寄りで、PokerStars/GG の bankroll 表示に比べて弱い。
+34. ベット badge にチップの厚みがなく、金額変更が視覚的に残りにくい。
+35. Table Status と table seat の表示が別物に見え、同じ状態を示していると理解しづらい。
+36. 画面左上のゲーム名以外に variant 状態の補助が少なく、2-7TD/A-5TD/Badugi の違いを table 内で追いづらい。
+37. スモール画面で table の「広さ」より左右 panel が目立つ。
+38. card face は4色デッキを維持する。2色化は視認性を下げるため採用せず、4色のまま rank / suit のコントラストを磨く。
+39. folded seat のカードが deck に戻ったような表現がなく、muck されたことが伝わりづらい。
+40. UI regression test が card/mucked/pot badge まで見ておらず、見た目の退化を検知しにくい。
+
+### 16.2 改善方針
+
+- engine/controller/action handler には触らない。表示 props を受けるコンポーネントだけで改善する。
+- テーブルを楕円形に寄せ、中央に `Total Pot` と現在 phase/draw を置く。
+- 各 seat は「名前 / 状態 / stack / bet / action / cards」の優先順位に整理する。
+- bet badge はチップ風の丸 pill にして、現在出している額をスタックより目立たせる。
+- folded seat はカードを表示せず、mucked 表示に差し替え、seat 全体をグレーアウトする。
+- all-in / folded / acting / dealer は badge で明確に色分けする。
+- カード表面は rank corner と suit marker を足し、5枚手札でも読みやすくする。
+- table center の pot 表示は pointer-events を切り、カード操作を妨げない。
+- hover/focus detail は table clipping で隠れないよう table surface を overflow visible にする。
+- 既存 Playwright に folded/mucked と pot/seat 可視性の観点を足す。
+
+### 16.3 実装タスク
+
+- [x] `PUI-01` table surface を楕円卓風にし、PokerStars/GG に近い中央視線へ寄せる。
+- [x] `PUI-02` table center に Total Pot / phase / draw round の compact badge を追加する。
+- [x] `PUI-03` bet badge をチップ風の丸 pill に変更し、金額を stack より目立たせる。
+- [x] `PUI-04` folded seat はカードを消し、`Folded - mucked` 表示へ差し替える。
+- [x] `PUI-05` folded / all-in / acting / dealer の badge 色と形を整理する。
+- [x] `PUI-06` card face に rank corner / suit marker を追加し、5枚手札でも読みやすくする。
+- [x] `PUI-07` table overflow を visible にして、seat hover detail が table edge で切れないようにする。
+- [x] `PUI-08` Hero / CPU seat header の stack/bet/action 表示を整理する。
+- [x] `PUI-09` folded/mucked の React test を追加し、folded seat が playable card を出さないことを確認する。
+- [x] `PUI-10` 4色デッキのまま suit ごとのコントラストを調整する。
+- [x] `PUI-11` action panel に current bet / to-call / raise unit / raise cap を常時表示する。
+- [x] `PUI-12` 次候補: showdown 時だけ seat card size を一段上げる reveal mode を追加する。
+  - 2026-05-04 対応: `GameLayoutBase` から `revealMode` を渡し、showdown中に公開対象のHero / showHand / winner seatだけカードとseatを一段拡大。モバイルはviewport内操作性を優先し拡大対象外。
+
+### 16.3.1 Character Image Integration
+
+2026-05-04 追加。CPU / Hero キャラクター画像を `public/characters/` に置き、UIのavatar表示へ段階的に接続する。
+
+- [x] `CHAR-01` `public/characters/` に配置する画像命名規則を決める。
+  - 例: `kei.png`, `sora.png`, `hana.png`, `ren.png`。URL参照は `/characters/kei.png`。
+  - 2026-05-04 反映: ユーザー提供の `01.png`〜`20.png` を semantic filename に変更。`01` は `hero.png`、`20` はラスボス枠の `zen.png`、`02`〜`18` は既存CPU roster順、`19` は予備/Dealer用 `dealer.png` とする。
+- [x] `CHAR-02` `src/ai/cpuRoster.js` または専用 `cpuCharacters` 定義に `avatarUrl` を追加し、CPU名と画像を紐付ける。
+  - 2026-05-04 対応: 18人分の CPU roster に `/characters/{id}.png` の `avatarUrl` を追加。
+- [x] `CHAR-03` `AvatarChip` / `PlayerSmartHud` / seat header で画像avatarを表示し、画像がない場合は現行initialsへfallbackする。
+  - 2026-05-04 対応: `AvatarChip` が `/characters/...` 形式を画像として表示し、読み込み失敗時は頭文字へfallbackする。Badugi UI adapter は `avatarUrl` を優先する。
+- [x] `CHAR-04` 実画像配置後に、画像サイズ、丸抜き、folded時のgrayscale、active時のringをPC/モバイル両方で確認する。
+  - 2026-05-04 対応: 20枚のPNG実画像を `public/characters/` に配置。`file public/characters/*.png` で画像形式を確認し、AvatarChip の丸抜き/cover表示に接続。PC/モバイルの実機目視はデプロイ後の手動確認対象として残す。
+- [x] `CHAR-05` PlaywrightまたはReact testで、画像URLあり/なしのavatar fallbackを確認する。
+  - 2026-05-04 対応: `Player.test.jsx` で画像avatar表示と読み込み失敗時のinitial fallbackを確認。
+- [x] `CHAR-06` Hero のデフォルトavatarを `hero.png` にする。
+  - 2026-05-04 対応: `titleSettings` の初期avatarを `/characters/hero.png` に変更。旧デフォルトのダイヤ/`default_avatar` がlocalStorageに残る場合は初回ロード時にhero画像へ移行する。
+- [x] `CHAR-07` CPU画像が table seat / tournament復元後に initials へ落ちる経路を修正する。
+  - 2026-05-04 対応: `seatViewMerge` で adapter の `default_avatar` が roster の `avatarUrl` を上書きしないよう修正。`App.jsx` の base seat / tournament hydrate でも `avatarUrl` を `avatar` に正規化。
+  - 2026-05-04 追加対応: NLH/PLO/Dramahaなどboard-controller系で `tableConfig.seats` から `avatarUrl` / `cpuCharacterId` / `cpuStyle` が落ちる経路を修正。`NLHUIAdapter` でも snapshot 由来の `avatarUrl` をseat viewへ保持するテストを追加。
+
+### 16.3.2 Current Regression Fixes
+
+- [x] `REG-20260504-PC-FELT` スマホ横画面対応がPC版の楕円卓を潰す回帰を修正する。
+  - 原因: `table-felt-oval` のモバイル向け `inset-y-[45%]` がdesktopにも適用されていた。
+  - 対応: `GameLayoutBase` で felt / ring のinsetを `layoutMode` ごとに分離。
+  - 横断影響: Badugiだけでなく同じshared layoutを使う2-7/A-5/今後のHold'em/Omahaにも影響し得るため、shared layout側で修正。
+- [x] `REG-20260504-ALLIN-DRAW-FREEZE` all-in後に進行停止する可能性を修正する。
+  - 原因: Badugiの `isSeatEligibleForDraw` が all-in seat をdraw actor候補に残していた。
+  - 対応: all-in seatをDRAW actorから除外し、pending flagが残っていてもskipするunit testを追加。
+  - 横断確認: 2-7/A-5系は別エンジンの all-in regression test を再実行して確認する。
+- [x] `BUG-TRACK-20260504` 新規バグを `docs/bugs/badugi_browser_mobile_bug_tracker.md` に追加し、他ゲーム影響欄を持たせる。
+- [x] `FB-POLICY-01` キャッシュ/トーナメントのプレイフィードバック運用方針を作成する。
+  - 2026-05-04 対応: `docs/play-feedback-policy.md` に30ハンド以上の送信条件、ROI/良悪判断/ChatGPT API連携方針を記載。
+
+### 16.3.3 2026-05-04 Regression Verification
+
+- [x] `npm test -- --run src/ui/utils/__tests__/seatViewMerge.test.js src/ui/game/badugi/__tests__/BadugiUIAdapter.test.js src/games/badugi/engine/__tests__/tournamentMTT.test.js src/games/badugi/logic/__tests__/roundFlow.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawEngine.test.js`: 5 files / 92 tests pass。
+- [x] `npx playwright test tests/e2e/tournament-ui-layout-smoke.spec.ts --project=badugi-flow`: 1 passed。PC版 table felt が細い帯へ潰れないことをbounding boxで確認。
+- [x] `npx playwright test tests/e2e/mobile-app-smoke.spec.ts --project=badugi-flow`: 7 passed。Badugi / D01 / D02 / S01 / S02 のスマホ横画面操作を確認。
+- [x] `npm run lint`: pass。
+- [x] `npm run build`: pass。chunk size warning は既存警告。
+
+### 16.4 未対応タスク優先度
+
+- P0: `BUG-20260503-SB-FOLD-DRAW-FREEZE`
+  - 症状: SB/Hero が fold した後、DRAW フェーズで `Waiting for other players...` のまま進まない。
+  - 原因: UI auto actor loop が `turn === 0` を無条件に「Hero 手動操作待ち」と扱っていた。fold済み Hero でも draw actor として待ってしまい、CPU draw へ進まなかった。
+  - 対応: `shouldWaitForHeroDrawTurn()` を追加し、Hero が `DRAW` 可能な場合だけ手動待機する。folded / all-in / draw済み Hero は自動的に次 seat へ進める。
+  - 検証: helper unit test と Badugi/draw family smoke を実行する。
+- P1: `PUI-11` action panel に current bet / to-call / raise cap を常時表示する。
+  - 理由: プレイヤーの判断に直結し、誤操作とストレスを減らす。
+  - 2026-05-03 対応: Hero Controls 上部に Current Bet / To Call / Raise Unit / Raise Cap を追加し、UI smoke で表示確認する。
+- P1: `UI-14` showdown / side-pot result を table 上 toast と overlay の両方で見せる。
+  - 理由: メインポット/サイドポットの理解に直結する。
+  - 2026-05-03 対応: `ShowdownResultToast` を追加し、Pot / Side / Side 2 までの勝者と金額を短く表示する。
+- P2: `PUI-10` 4色デッキのまま suit コントラストと色覚バリアフリーを調整する。
+  - 理由: 2色化はしない。4色の良さを維持して読みやすさだけ上げる。
+  - 2026-05-03 対応: 4色デッキを維持し、スペード/ダイヤ/クラブのコントラストを少し強めた。
+- P2: `PUI-12` showdown 時だけ seat card size を一段上げる reveal mode を追加する。
+  - 理由: ショーダウン確認の快適性を上げるが、進行バグ修正より優先度は低い。
+- P3: `UI-13` footer debug 表示を debug mode OFF 時は完全に隠す。
+  - 理由: 視認性改善には効くが、ゲーム進行には影響しない。
+- P3: `UI-15` mobile landscape で右 panel を bottom sheet 化する。
+  - 理由: モバイル改善として有効。ただし desktop の進行バグ修正後に扱う。
+
+### 14.4 確認結果
+
+- [x] `npm run lint`: pass。
+- [x] `npm test -- --run src/ui/components/__tests__ src/ui/screens/__tests__`: 9 files / 38 tests pass。
+- [x] `npm run build`: pass。chunk size warning は既存警告。
+- [x] `npx playwright test tests/e2e/game-ui-layout-smoke.spec.ts --project=badugi-flow`: 1 passed。
+- [x] `npx playwright test tests/e2e/authenticated-game-smoke.spec.ts --project=badugi-flow`: 1 passed。
+- [x] `npx playwright test tests/e2e/badugi-flow.spec.ts --project=badugi-flow`: 16 passed。
+  - 2026-05-04 対応:
+    - forced all-in action は full raise として機能しても表示/log action は `All-in` として残す。
+    - E2E `setPlayerHands` の `totalInvested` override 時は street bet を二重計上せず、side pot を `totalInvested` から再構築する。
+    - CPU名の期待値を現行キャラクター名へ更新。

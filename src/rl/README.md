@@ -76,6 +76,8 @@ npm run ai:train-badugi -- \
   --teacher-warmup-episodes 5000 \
   --imitation-pretrain-steps 2000 \
   --expert-replay-ratio 0.25 \
+  --first-in-value-bet-replay-ratio 0.25 \
+  --first-in-value-bet-loss-weight 0.75 \
   --opponent-profiles balanced,loose_passive,loose_aggressive,tight_passive,tight_aggressive \
   --device cpu
 
@@ -133,6 +135,12 @@ JSON/JSONL hand logs and add `--require-human-logs`; records may use
 For current CPU training, keep `--train-every-steps 4` unless you are doing a
 small diagnostic run; updating every environment step is much slower and did not
 improve the short-run policy.
+For Iron-and-above Badugi probes, tune sample quality before increasing episode
+count. In particular, use `--first-in-value-bet-replay-ratio` to keep first-in
+made-hand value bet fixtures in the supervised mix. This is separate from
+`--profitable-continue-replay-ratio`: the former teaches open-bet frequency when
+no one has bet yet, while the latter protects EV-positive calls against facing
+bets.
 The Badugi DQN uses the frontend action order
 `fold, check, call, bet, raise, all_in`, but fixed-limit training masks illegal
 actions by street. Promotion candidates must be evaluated with the same action

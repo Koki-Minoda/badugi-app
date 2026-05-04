@@ -146,6 +146,18 @@ describe("isBetRoundComplete", () => {
     expect(isBetRoundComplete(players)).toBe(true);
   });
 
+  it("treats short all-in calls below the table bet as complete once covered players have acted", () => {
+    const players = [
+      makePlayer({ betThisRound: 40, hasActedThisRound: true }),
+      makePlayer({ betThisRound: 40, hasActedThisRound: true }),
+      makePlayer({ betThisRound: 20, allIn: true, hasActedThisRound: true }),
+      makePlayer({ betThisRound: 40, allIn: true, hasActedThisRound: true }),
+      makePlayer({ folded: true, hasActedThisRound: true }),
+      makePlayer({ betThisRound: 40, allIn: true, hasActedThisRound: true }),
+    ];
+    expect(isBetRoundComplete(players)).toBe(true);
+  });
+
   it("keeps limped big blind pending until they act", () => {
     const players = [
       makePlayer({ betThisRound: 10, hasActedThisRound: true }), // BTN
@@ -410,6 +422,29 @@ describe("analyzeBetSnapshot", () => {
     expect(result.shouldAdvance).toBe(false);
   });
 
+  it("advances when multiple AI seats are all-in and remaining active seats already matched", () => {
+    const players = [
+      basePlayer({ name: "Hero", betThisRound: 40, hasActedThisRound: true, lastAction: "Raise" }),
+      basePlayer({ name: "CPU 2", betThisRound: 40, allIn: true, hasActedThisRound: true, lastAction: "All-in" }),
+      basePlayer({ name: "CPU 3", betThisRound: 40, hasActedThisRound: true, lastAction: "Call" }),
+      basePlayer({ name: "CPU 4", betThisRound: 40, allIn: true, hasActedThisRound: true, lastAction: "All-in" }),
+      basePlayer({ name: "CPU 5", betThisRound: 20, folded: true, hasActedThisRound: true, lastAction: "Fold" }),
+      basePlayer({ name: "CPU 6", betThisRound: 40, allIn: true, hasActedThisRound: true, lastAction: "All-in" }),
+    ];
+
+    const result = analyzeBetSnapshot({
+      players,
+      actedIndex: 5,
+      dealerIdx: 2,
+      drawRound: 0,
+      betHead: 0,
+      lastAggressorIdx: 0,
+    });
+
+    expect(result.nextTurn).toBeNull();
+    expect(result.shouldAdvance).toBe(true);
+  });
+
   it("resets preflop BET flags after blinds are paid", () => {
     const players = Array.from({ length: 6 }, (_, idx) =>
       basePlayer({
@@ -599,6 +634,16 @@ describe("findNextActorSeatForPhase (DRAW)", () => {
     expect(findNextDrawSeat(players, 0)).toBe(3);
     players[3].hasActedThisRound = true;
     expect(findNextDrawSeat(players, 3)).toBe(4);
+  });
+
+  it("skips an all-in seat even when its draw flag is still pending", () => {
+    const players = [
+      drawSeat({ name: "BTN", hasActedThisRound: true }),
+      drawSeat({ name: "SB", allIn: true, hasActedThisRound: false }),
+      drawSeat({ name: "BB", hasActedThisRound: false }),
+    ];
+
+    expect(findNextDrawSeat(players, 1)).toBe(2);
   });
 
   it("returns null when all eligible seats have acted", () => {

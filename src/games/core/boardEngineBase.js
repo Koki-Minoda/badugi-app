@@ -2,6 +2,25 @@ import { GameEngine } from "./gameEngine.js";
 import { cloneTableState } from "./models.js";
 import { applyChips } from "./applyChips.js";
 
+function isBlindEligible(seat) {
+  if (!seat) return false;
+  if (seat.sittingOut || seat.seatOut || seat.isBusted) return false;
+  if (seat.seatType && String(seat.seatType).toUpperCase() === "EMPTY") return false;
+  if (typeof seat.stack === "number" && seat.stack <= 0) return false;
+  return true;
+}
+
+function nextBlindSeat(players = [], startIdx = 0, excludeIdx = null) {
+  if (!Array.isArray(players) || players.length === 0) return null;
+  const total = players.length;
+  for (let offset = 0; offset < total; offset += 1) {
+    const idx = (startIdx + offset + total) % total;
+    if (idx === excludeIdx) continue;
+    if (isBlindEligible(players[idx])) return idx;
+  }
+  return null;
+}
+
 /**
  * Base helper for flop/board games (NLH, PLO, Dramaha board partなど)。
  * 現状は forced bet と street helper だけを提供。
@@ -14,11 +33,16 @@ export class BoardEngineBase extends GameEngine {
 
   applyForcedBets(state) {
     const next = cloneTableState(state);
-    const sbIdx = (next.dealerIndex + 1) % next.players.length;
-    const bbIdx = (next.dealerIndex + 2) % next.players.length;
+    const sbIdx = nextBlindSeat(next.players, (next.dealerIndex + 1) % next.players.length);
+    const bbIdx = nextBlindSeat(
+      next.players,
+      ((sbIdx ?? next.dealerIndex) + 1) % next.players.length,
+      sbIdx,
+    );
     const applyBlind = (seatIdx, amount, label) => {
+      if (seatIdx == null) return;
       const seat = next.players[seatIdx];
-      if (!seat || seat.sittingOut) return;
+      if (!isBlindEligible(seat)) return;
       const applied = applyChips(seat, amount);
       seat.bet = (seat.bet ?? 0) + applied;
       seat.lastAction = label;
@@ -26,6 +50,10 @@ export class BoardEngineBase extends GameEngine {
     };
     applyBlind(sbIdx, next.smallBlind ?? 0, "SB");
     applyBlind(bbIdx, next.bigBlind ?? 0, "BB");
+    next.metadata = {
+      ...(next.metadata ?? {}),
+      lastBlinds: { sbIndex: sbIdx, bbIndex: bbIdx },
+    };
     return next;
   }
 

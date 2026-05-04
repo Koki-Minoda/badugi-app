@@ -110,7 +110,8 @@ def evaluate_model(
                 call_ev = float(ev.get("callEV", 0.0))
                 raise_ev = float(ev.get("raiseEV", 0.0))
                 fold_ev = float(ev.get("foldEV", 0.0))
-                if is_bet_phase and action == 0 and call_ev > fold_ev:
+                final_fold_discipline_spot = bool(ev.get("finalFoldDisciplineSpot", False))
+                if is_bet_phase and action == 0 and call_ev > fold_ev and not final_fold_discipline_spot:
                     profitable_fold_misses += 1
                 if is_bet_phase and action == 2:
                     if call_ev >= fold_ev:

@@ -822,15 +822,28 @@ function applyRaiseState(table, seatIndex, metadata = {}) {
     workingMeta.stackAfter = Math.max(0, stackBefore - workingMeta.paid);
   }
   const syncResult = applyStackAndBetSync(player, workingMeta, table);
+  const currentBetBefore = computeCurrentBet(
+    (table.players ?? []).map((entry, index) =>
+      index === seatIndex
+        ? { ...entry, betThisRound: betBefore, stack: stackBefore }
+        : entry,
+    ),
+  );
+  const fullRaiseBet = currentBetBefore + unit;
+  const reopenedAction = Number(syncResult?.betAfter ?? 0) >= fullRaiseBet;
+  workingMeta.reopenedAction = reopenedAction;
+  metadata.reopenedAction = reopenedAction;
   player.hasActedThisRound = true;
   player.lastAction =
     workingMeta.actionLabel ??
-    (workingMeta.paid < ((workingMeta.toCall ?? 0) + (workingMeta.raise ?? 0))
-      ? "Raise (All-in)"
-      : "Raise");
-  const reopenedAction =
-    Number(syncResult?.contribution ?? 0) >
-    Math.max(0, Number(workingMeta.toCall ?? toCall) || 0);
+    (reopenedAction
+      ? "Raise"
+      : currentBetBefore === 0 && Number(syncResult?.contribution ?? 0) > 0
+      ? "All-in"
+      : Number(syncResult?.contribution ?? 0) > 0
+      ? "Call"
+      : "Check");
+  metadata.actionLabel = player.lastAction;
   if (reopenedAction) {
     for (let i = 0; i < (table.players?.length ?? 0); i += 1) {
       if (i === seatIndex) continue;
@@ -841,8 +854,10 @@ function applyRaiseState(table, seatIndex, metadata = {}) {
   }
   const meta = (table.metadata = { ...(table.metadata ?? {}) });
   meta.currentBet = computeCurrentBet(table.players);
-  meta.betHead = seatIndex;
-  table.lastAggressorIndex = seatIndex;
+  if (reopenedAction) {
+    meta.betHead = seatIndex;
+    table.lastAggressorIndex = seatIndex;
+  }
 }
 
 function ensureMetadata(table) {
@@ -911,7 +926,7 @@ function updateBettingMetadata(table, seatIndex, actionType, metadata = {}) {
     meta.raiseCountThisRound = 0;
   }
 
-  if (actionType === "RAISE") {
+  if (actionType === "RAISE" && metadata?.reopenedAction !== false) {
     meta.betHead = seatIndex;
     meta.raiseCountThisRound += 1;
     table.lastAggressorIndex = seatIndex;
@@ -921,7 +936,7 @@ function updateBettingMetadata(table, seatIndex, actionType, metadata = {}) {
     if (table.lastAggressorIndex === seatIndex) {
       table.lastAggressorIndex = meta.betHead;
     }
-  } else if (typeof meta.betHead !== "number") {
+  } else if (actionType !== "RAISE" && typeof meta.betHead !== "number") {
     meta.betHead = seatIndex;
   }
 

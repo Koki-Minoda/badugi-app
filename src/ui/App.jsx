@@ -36,6 +36,7 @@ import {
 } from "../games/badugi/flow/actionUtils.js";
 import {
   settleStreetToPots,
+  buildSidePots,
   finishBetRoundFrom,
   resetBetRoundFlags,
   transitionToBetPhase,
@@ -44,10 +45,15 @@ import {
 } from "../games/badugi/engine/roundFlow.jsx";
 import {
   analyzeBetSnapshot,
+  findNextBetActorSeat,
   needsActionForBet,
 } from "../games/badugi/flow/betRoundUtils.js";
 import BadugiGameController from "../games/badugi/BadugiGameController.js";
+import DramahaGameController from "../games/dramaha/DramahaGameController.js";
 import NLHGameController from "../games/nlh/NLHGameController.js";
+import BigOGameController from "../games/plo/BigOGameController.js";
+import FiveCardPLOGameController from "../games/plo/FiveCardPLOGameController.js";
+import PLOGameController from "../games/plo/PLOGameController.js";
 import { GAME_VARIANTS } from "../games/core/variants.js";
 import {
   buildHandResultSummary,
@@ -55,9 +61,13 @@ import {
 import { getGameUIAdapter } from "./game/GameUIAdapterRegistry.js";
 import { ensureBadugiUIAdapterRegistered } from "./game/badugi/registerBadugiUIAdapter.js";
 import { ensureNLHUIAdapterRegistered } from "./game/nlh/registerNLHUIAdapter.js";
+import { ensurePLOUIAdapterRegistered } from "./game/plo/registerPLOUIAdapter.js";
 import { ensureDrawLowballUIAdaptersRegistered } from "./game/draw/registerDrawLowballUIAdapters.js";
+import { ensureDramahaUIAdaptersRegistered } from "./game/dramaha/registerDramahaUIAdapter.js";
+import { shouldWaitForHeroDrawTurn } from "./game/drawActorUtils.js";
 import {
   APP_VARIANT_IDS,
+  DRAMAHA_APP_VARIANT_IDS,
   isControllerBackedAppVariant,
   isDrawLowballAppVariant,
   normalizeAppVariantId,
@@ -96,6 +106,7 @@ import {
 } from "./utils/devOverrides.js";
 import { listTierIds, getTierById } from "../ai/tierManager.js";
 import { selectModelForVariant } from "../ai/modelRouter.js";
+import { getCpuCharacterForIndex, getCpuDisplayName } from "../ai/cpuRoster.js";
 import {
   buildAiContext,
   computeBetDecision,
@@ -121,8 +132,11 @@ import AuthScreen from "./screens/AuthScreen.jsx";
 import HandHistoryScreen from "./screens/HandHistoryScreen.jsx";
 import ReplayScreen from "./screens/ReplayScreen.jsx";
 import GameSelectorScreen from "./screens/GameSelectorScreen.jsx";
+import TitleSettingsScreen from "./screens/TitleSettingsScreen.jsx";
+import ProfileStats from "../components/ProfileStats.jsx";
 import { useGameSessionState } from "./hooks/useGameSessionState.js";
 import { mergeSeatViewsForDisplay } from "./utils/seatViewMerge.js";
+import { getPositionNameForSeat } from "./utils/positionLabels.js";
 import MobileOrientationGate from "./components/MobileOrientationGate.jsx";
 import { useDeviceProfile } from "./hooks/useDeviceProfile.js";
 import { useDesktopCanvasScale } from "./hooks/useDesktopCanvasScale.js";
@@ -173,13 +187,12 @@ function cloneHandHistory(value) {
 
 const DEFAULT_GAME_ID = "D03";
 const DEFAULT_GAME_VARIANT = "badugi";
+const DEFAULT_AI_TIER_ID = "pro";
 const DESKTOP_CANVAS_BASE_WIDTH = 1600;
 const DESKTOP_CANVAS_BASE_HEIGHT = 900;
 const HERO_TOURNAMENT_PLAYER_ID = "hero-player";
-function getPositionName(index, dealer, seatCount = 6) {
-  const order = ["BTN", "SB", "BB", "UTG", "MP", "CO"];
-  const rel = (index - dealer + seatCount) % seatCount;
-  return order[rel] ?? `Seat${index}`;
+function getPositionName(index, dealer, players = []) {
+  return getPositionNameForSeat(index, dealer, players);
 }
 const DEFAULT_STORE_TOURNAMENT_CONFIG = {
   id: "store-mtt",
@@ -201,6 +214,25 @@ const DEFAULT_STORE_TOURNAMENT_CONFIG = {
     { place: 3, percent: 20 },
   ],
 };
+
+function normalizeTournamentBlindLevel(level = {}, index = 0) {
+  const levelNumber = level.level ?? level.levelIndex ?? index + 1;
+  return {
+    level: levelNumber,
+    levelIndex: levelNumber,
+    sb: level.sb ?? level.smallBlind ?? 0,
+    bb: level.bb ?? level.bigBlind ?? 0,
+    ante: level.ante ?? 0,
+    hands: level.hands ?? level.handsThisLevel ?? 999,
+    handsThisLevel: level.handsThisLevel ?? level.hands ?? 999,
+  };
+}
+
+function getBlindStructureForTournamentConfig(config) {
+  const levels = Array.isArray(config?.levels) ? config.levels : [];
+  if (!levels.length) return TOURNAMENT_STRUCTURE;
+  return levels.map((level, index) => normalizeTournamentBlindLevel(level, index));
+}
 
 const API_BASE_RAW = import.meta.env?.VITE_API_BASE ?? "/api";
 const API_BASE = API_BASE_RAW.endsWith("/api")
@@ -335,6 +367,7 @@ export default function App() {
   const [language, setLanguage] = useState(() => getInitialLanguage());
   // MGX branding: kitsune title screen + title → menu → game flow (2025-11-28)
   const [currentScreen, setCurrentScreen] = useState("title");
+  const [gameUtilityModal, setGameUtilityModal] = useState(null);
   const pendingRingStartRef = useRef(false);
   const [debugScale, setDebugScale] = useState(null);
   const [authIsAuthenticated, setAuthIsAuthenticated] = useState(null);
@@ -372,6 +405,9 @@ export default function App() {
     [gameDefinition],
   );
   const [tournamentHudState, setTournamentHudState] = useState(null);
+  const [tournamentBlindStructure, setTournamentBlindStructure] = useState(() =>
+    getBlindStructureForTournamentConfig(DEFAULT_STORE_TOURNAMENT_CONFIG),
+  );
   const [tournamentOverlayVisible, setTournamentOverlayVisible] = useState(false);
   const [tournamentPlacements, setTournamentPlacements] = useState([]);
   const [tournamentTitle, setTournamentTitle] = useState("Tournament Results");
@@ -548,7 +584,6 @@ export default function App() {
     [location.pathname, location.search, navigate],
   );
   const NUM_PLAYERS = 6;
-  const lastStructureIndex = TOURNAMENT_STRUCTURE.length - 1;
 
   const [startingStack, setStartingStack] = useState(DEFAULT_STARTING_STACK);
   const startingStackRef = useRef(startingStack);
@@ -592,9 +627,12 @@ export default function App() {
           : isEmpty
           ? `empty-${idx}`
           : `cpu-${idx + 1}`;
+        const cpuCharacter = !isHuman && !isEmpty ? getCpuCharacterForIndex(idx) : null;
         return {
           playerId,
-          name: isHuman ? heroName : `CPU ${idx + 1}`,
+          name: isHuman ? heroName : getCpuDisplayName(idx),
+          cpuCharacterId: cpuCharacter?.id ?? null,
+          cpuStyle: cpuCharacter?.style ?? null,
           seatType,
           isCPU: !isHuman && !isEmpty,
           hand: [],
@@ -613,6 +651,7 @@ export default function App() {
           lastDrawCount: 0,
           titleBadge: isHuman ? profile?.titleBadge ?? "" : "",
           avatar: isHuman ? profile?.avatar ?? "default_avatar" : undefined,
+          avatarUrl: isHuman ? null : cpuCharacter?.avatarUrl ?? null,
           tournamentPlayerId: null,
           tournamentSeatIndex: null,
         };
@@ -664,9 +703,15 @@ export default function App() {
   useEffect(() => {
     handsInLevelRef.current = handsInLevel;
   }, [handsInLevel]);
+  const activeBlindStructure = useMemo(() => {
+    if (!isTournament) return TOURNAMENT_STRUCTURE;
+    return tournamentBlindStructure;
+  }, [isTournament, tournamentBlindStructure]);
+  const lastStructureIndex = Math.max(0, activeBlindStructure.length - 1);
   const currentStructure =
-    TOURNAMENT_STRUCTURE[blindLevelIndex] ??
-    TOURNAMENT_STRUCTURE[lastStructureIndex];
+    activeBlindStructure[blindLevelIndex] ??
+    activeBlindStructure[lastStructureIndex] ??
+    TOURNAMENT_STRUCTURE[0];
   const SB = currentStructure.sb;
   const BB = currentStructure.bb;
   const currentAnte = currentStructure.ante ?? 0;
@@ -855,7 +900,17 @@ const SAFE_RESET_PHASE = "IDLE";
 
   const ensureSessionController = useCallback(() => {
     const normalizedVariant = normalizeAppVariantId(gameVariant);
-    if (mode === "tournament-mtt" || !isControllerBackedAppVariant(normalizedVariant)) {
+    const usesBoardController =
+      normalizedVariant === APP_VARIANT_IDS.NLH ||
+      normalizedVariant === APP_VARIANT_IDS.PLO ||
+      normalizedVariant === APP_VARIANT_IDS.BIG_O ||
+      normalizedVariant === APP_VARIANT_IDS.FIVE_CARD_PLO ||
+      DRAMAHA_APP_VARIANT_IDS.has(normalizedVariant);
+    if (
+      mode === "tournament-mtt" ||
+      usesBoardController ||
+      !isControllerBackedAppVariant(normalizedVariant)
+    ) {
       sessionControllerRef.current = null;
       sessionControllerStateRef.current = null;
       return null;
@@ -872,7 +927,7 @@ const SAFE_RESET_PHASE = "IDLE";
         seatConfig: seatBlueprint,
         startingStack: startingStackRef.current ?? DEFAULT_STARTING_STACK,
         heroProfile,
-        blindStructure: TOURNAMENT_STRUCTURE,
+        blindStructure: activeBlindStructure,
         lastStructureIndex,
         structure: { sb: SB, bb: BB, ante: currentAnte },
       };
@@ -894,7 +949,7 @@ const SAFE_RESET_PHASE = "IDLE";
         });
     }
     return sessionControllerRef.current;
-  }, [SB, BB, currentAnte, gameVariant, heroProfile, lastStructureIndex, mode]);
+  }, [SB, BB, activeBlindStructure, currentAnte, gameVariant, heroProfile, lastStructureIndex, mode]);
 
   const syncSessionFromSnapshot = useCallback(
     (snapshot, context = null, { reason = "action" } = {}) => {
@@ -975,17 +1030,28 @@ const SAFE_RESET_PHASE = "IDLE";
     mode !== "tournament-mtt" && normalizedGameVariant === APP_VARIANT_IDS.BADUGI;
   const isSingleTableDrawLowball =
     mode !== "tournament-mtt" && isDrawLowballAppVariant(normalizedGameVariant);
+  const isSingleTableBoardGame =
+    mode !== "tournament-mtt" &&
+    (normalizedGameVariant === APP_VARIANT_IDS.NLH ||
+      normalizedGameVariant === APP_VARIANT_IDS.PLO ||
+      normalizedGameVariant === APP_VARIANT_IDS.BIG_O ||
+      normalizedGameVariant === APP_VARIANT_IDS.FIVE_CARD_PLO ||
+      DRAMAHA_APP_VARIANT_IDS.has(normalizedGameVariant));
+  const isSingleTableDramaha =
+    mode !== "tournament-mtt" && DRAMAHA_APP_VARIANT_IDS.has(normalizedGameVariant);
+  const isSingleTableControllerDrawGame =
+    isSingleTableDrawLowball || isSingleTableDramaha;
   const isControllerDrivenSingleTable =
-    isSingleTableBadugi || isSingleTableDrawLowball;
+    isSingleTableBadugi || isSingleTableDrawLowball || isSingleTableBoardGame;
   const isMobileDevice = deviceProfile.isMobile;
-  const layoutMode = "desktop";
-  const shouldUseDesktopCanvasScale = isMobileDevice && mode !== "tournament-mtt";
+  const layoutMode = isMobileDevice ? "mobile" : "desktop";
+  const shouldUseDesktopCanvasScale = false;
   const desktopCanvasScale = useDesktopCanvasScale({
     enabled: shouldUseDesktopCanvasScale,
     baseWidth: DESKTOP_CANVAS_BASE_WIDTH,
     baseHeight: DESKTOP_CANVAS_BASE_HEIGHT,
   });
-  const shouldGateOrientation = isMobileDevice && mode !== "tournament-mtt";
+  const shouldGateOrientation = isMobileDevice;
   useEffect(() => {
     if (!shouldUseDesktopCanvasScale) {
       setDebugScale(1);
@@ -1006,14 +1072,36 @@ const SAFE_RESET_PHASE = "IDLE";
   const tryControllerBetAction = useCallback(
     ({ actionType, amount = 0, seatIndex = 0, metadata = {} }) => {
       if (!isControllerDrivenSingleTable) return null;
+      const normalizedType =
+        typeof actionType === "string" && actionType.length
+          ? actionType.toLowerCase()
+          : "call";
+      if (isSingleTableBoardGame) {
+        const controller = ensureGameController();
+        if (!controller || typeof controller.applyPlayerAction !== "function") return null;
+        const result = controller.applyPlayerAction({
+          seatIndex,
+          action: normalizedType,
+          amount,
+          metadata,
+        });
+        if (!result?.success) {
+          return {
+            rejected: true,
+            code: result?.reason ?? "board-action-rejected",
+            message: result?.reason ?? "action rejected",
+            events: [],
+          };
+        }
+        return {
+          snapshot: controller.getSnapshot(),
+          events: [],
+        };
+      }
       const controller = sessionControllerRef.current;
       const controllerState = sessionControllerStateRef.current;
       if (!controller || !controllerState) return null;
       try {
-        const normalizedType =
-          typeof actionType === "string" && actionType.length
-            ? actionType.toLowerCase()
-            : "call";
         const sanitizedMetadata = { ...(metadata ?? {}) };
         delete sanitizedMetadata.raiseCap;
         delete sanitizedMetadata.raiseCountThisRound;
@@ -1061,7 +1149,7 @@ const SAFE_RESET_PHASE = "IDLE";
         return null;
       }
     },
-    [isControllerDrivenSingleTable, updateAfterActionFromSnapshot],
+    [ensureGameController, isControllerDrivenSingleTable, isSingleTableBoardGame, updateAfterActionFromSnapshot],
   );
 
   const seatPlayerIds = useMemo(() => {
@@ -1137,12 +1225,16 @@ const SAFE_RESET_PHASE = "IDLE";
           : `seat-${idx}`);
       const stats =
         mergedSeatStatsByPlayerId[playerId] ?? mergedSeatStatsByPlayerId[`seat-${idx}`];
+      const avatarUrl = clone?.avatarUrl ?? null;
+      const avatar = clone?.avatar ?? avatarUrl ?? "default_avatar";
       return {
         ...clone,
         playerId,
         stats,
+        avatar,
+        avatarUrl,
         seatIndex: idx,
-        label: getPositionName(idx, dealerSeatSrc, NUM_PLAYERS),
+        label: getPositionName(idx, dealerSeatSrc, playersSrc),
         isDealer: idx === dealerSeatSrc,
         isSB: seatCount ? idx === ((dealerSeatSrc + 1) % seatCount) : false,
         isBB: seatCount ? idx === ((dealerSeatSrc + 2) % seatCount) : false,
@@ -1178,7 +1270,7 @@ const SAFE_RESET_PHASE = "IDLE";
           getPositionName(
             typeof seat?.seatIndex === "number" ? seat.seatIndex : idx,
             dealerSeatSrc,
-            NUM_PLAYERS
+            seatViews,
           )
       ),
     [seatViews, dealerSeatSrc]
@@ -1186,11 +1278,50 @@ const SAFE_RESET_PHASE = "IDLE";
   const hudInfo = adapterViewProps?.hudInfo ?? null;
   const controlsConfig = adapterViewProps?.controlsConfig ?? null;
   const controllerDealerIdx = controllerSnapshot?.dealerIdx ?? dealerIdx;
+  const liveTournamentHudState = useMemo(() => {
+    if (!isTournament || !tournamentHudState) return tournamentHudState;
+    const state = tournamentStateRef.current;
+    if (!state?.players || !Array.isArray(playersSrc)) return tournamentHudState;
+    const pendingBustedIds = new Set(
+      playersSrc
+        .filter(
+          (player) =>
+            player?.tournamentPlayerId &&
+            (player.seatOut || player.isBusted || Math.max(0, Number(player.stack) || 0) <= 0),
+        )
+        .map((player) => player.tournamentPlayerId),
+    );
+    if (!pendingBustedIds.size) return tournamentHudState;
+    const alreadyBusted = new Set(
+      Object.values(state.players)
+        .filter((player) => player?.busted)
+        .map((player) => player.id),
+    );
+    const pendingCount = [...pendingBustedIds].filter((id) => !alreadyBusted.has(id)).length;
+    if (pendingCount <= 0) return tournamentHudState;
+    const playersRemaining = Math.max(0, Number(tournamentHudState.playersRemaining) - pendingCount);
+    const totalEntrants =
+      tournamentHudState.totalEntrants ?? tournamentHudState.totalPlayers ?? state.totalPlayers ?? 0;
+    const liveStacksById = new Map(
+      playersSrc
+        .filter((player) => player?.tournamentPlayerId)
+        .map((player) => [player.tournamentPlayerId, Math.max(0, Number(player.stack) || 0)]),
+    );
+    const totalChipsInPlay = Object.values(state.players).reduce((sum, player) => {
+      if (!player || player.busted || pendingBustedIds.has(player.id)) return sum;
+      return sum + (liveStacksById.get(player.id) ?? Math.max(0, Number(player.stack) || 0));
+    }, 0);
+    const averageStack = playersRemaining > 0 ? Math.floor(totalChipsInPlay / playersRemaining) : null;
+    return {
+      ...tournamentHudState,
+      playersRemaining,
+      playersRemainingText: `Players Remaining: ${playersRemaining} / ${totalEntrants}`,
+      averageStack,
+    };
+  }, [isTournament, playersSrc, tournamentHudState]);
   const tournamentHud =
-    isTournament && tournamentHudState ? (
-      <div className="w-full px-4 pt-4">
-        <TournamentHUD {...tournamentHudState} />
-      </div>
+    isTournament && liveTournamentHudState ? (
+      <TournamentHUD {...liveTournamentHudState} compact placement="side" />
     ) : null;
   const [uiPerf, setUiPerf] = useState({
     loadTime: null,
@@ -1276,9 +1407,10 @@ const SAFE_RESET_PHASE = "IDLE";
   }, []);
   const [handResultSummary, setHandResultSummary] = useState(null);
   const [handResultVisible, setHandResultVisible] = useState(false);
+  const [cashOutSummary, setCashOutSummary] = useState(null);
   const [devTierOverride, setDevTierOverride] = useState(() => loadAiTierOverride());
   const activeAiTierConfig = useMemo(
-    () => getTierById(devTierOverride ?? "standard"),
+    () => getTierById(devTierOverride ?? DEFAULT_AI_TIER_ID),
     [devTierOverride],
   );
   const aiDecisionContext = useMemo(
@@ -1373,7 +1505,17 @@ const SAFE_RESET_PHASE = "IDLE";
     { seatIndex = null, scheduleAfterBet = false } = {},
   ) => {
     if (!snapshot || !Array.isArray(snapshot.players)) return null;
-    const normalizedPlayers = setPlayerSnapshot(snapshot.players ?? []);
+    const sourcePlayers = (snapshot.players ?? []).map((player) => {
+      if (!player || !Array.isArray(player.holeCards)) return player;
+      return {
+        ...player,
+        hand: Array.isArray(player.hand) ? player.hand : [...player.holeCards],
+        betThisRound: player.betThisRound ?? player.betThisStreet ?? 0,
+        bet: player.bet ?? player.betThisStreet ?? 0,
+        totalInvested: player.totalInvested ?? 0,
+      };
+    });
+    const normalizedPlayers = setPlayerSnapshot(sourcePlayers);
     const snapshotNextTurn =
       typeof snapshot.turn === "number"
         ? snapshot.turn
@@ -1422,6 +1564,7 @@ const SAFE_RESET_PHASE = "IDLE";
             totalPot:
               snapshot.metadata?.showdownTotal ??
               drawResultSummary.pot ??
+              drawResultSummary.totalPot ??
               0,
             precomputedResult: drawResultSummary,
           });
@@ -1517,7 +1660,12 @@ const SAFE_RESET_PHASE = "IDLE";
     () => ({
       seats: players.map((player, idx) => ({
         seatIndex: idx,
+        playerId: player?.playerId ?? null,
         name: player?.name ?? `Seat ${idx + 1}`,
+        avatar: player?.avatar ?? null,
+        avatarUrl: player?.avatarUrl ?? null,
+        cpuCharacterId: player?.cpuCharacterId ?? null,
+        cpuStyle: player?.cpuStyle ?? null,
         stack: player?.stack ?? 0,
         seatOut: player?.seatOut ?? false,
       })),
@@ -1535,6 +1683,23 @@ const SAFE_RESET_PHASE = "IDLE";
         gameControllerRef.current = new NLHGameController({
           tableConfig: buildNlhTableConfig(),
         });
+      } else if (variantId === APP_VARIANT_IDS.PLO) {
+        gameControllerRef.current = new PLOGameController({
+          tableConfig: buildNlhTableConfig(),
+        });
+      } else if (variantId === APP_VARIANT_IDS.BIG_O) {
+        gameControllerRef.current = new BigOGameController({
+          tableConfig: buildNlhTableConfig(),
+        });
+      } else if (variantId === APP_VARIANT_IDS.FIVE_CARD_PLO) {
+        gameControllerRef.current = new FiveCardPLOGameController({
+          tableConfig: buildNlhTableConfig(),
+        });
+      } else if (DRAMAHA_APP_VARIANT_IDS.has(variantId)) {
+        gameControllerRef.current = new DramahaGameController({
+          tableConfig: buildNlhTableConfig(),
+          variant: variantId,
+        });
       } else if (isDrawLowballAppVariant(variantId)) {
         gameControllerRef.current = GAME_VARIANTS[variantId]?.controllerFactory?.({
           seatConfig: Array.isArray(seatConfigRef.current)
@@ -1548,7 +1713,7 @@ const SAFE_RESET_PHASE = "IDLE";
       } else {
         gameControllerRef.current = new BadugiGameController({
           numSeats: NUM_PLAYERS,
-          blindStructure: TOURNAMENT_STRUCTURE,
+          blindStructure: activeBlindStructure,
           lastStructureIndex,
           evaluateHand: evaluateBadugi,
         });
@@ -1556,12 +1721,16 @@ const SAFE_RESET_PHASE = "IDLE";
       controllerVariantRef.current = variantId;
     } else if (variantId === APP_VARIANT_IDS.BADUGI) {
       gameControllerRef.current.updateConfig({
-        blindStructure: TOURNAMENT_STRUCTURE,
+        blindStructure: activeBlindStructure,
         lastStructureIndex,
         evaluateHand: evaluateBadugi,
       });
     } else if (
-      variantId === APP_VARIANT_IDS.NLH &&
+      (variantId === APP_VARIANT_IDS.NLH ||
+        variantId === APP_VARIANT_IDS.PLO ||
+        variantId === APP_VARIANT_IDS.BIG_O ||
+        variantId === APP_VARIANT_IDS.FIVE_CARD_PLO ||
+        DRAMAHA_APP_VARIANT_IDS.has(variantId)) &&
       typeof gameControllerRef.current.updateTableConfig === "function"
     ) {
       gameControllerRef.current.updateTableConfig(buildNlhTableConfig());
@@ -1575,6 +1744,7 @@ const SAFE_RESET_PHASE = "IDLE";
     SB,
     BB,
     currentAnte,
+    activeBlindStructure,
     evaluateBadugi,
     lastStructureIndex,
   ]);
@@ -1584,6 +1754,14 @@ const SAFE_RESET_PHASE = "IDLE";
     const normalizedVariant = normalizeAppVariantId(gameVariant);
     if (normalizedVariant === APP_VARIANT_IDS.NLH) {
       ensureNLHUIAdapterRegistered();
+    } else if (
+      normalizedVariant === APP_VARIANT_IDS.PLO ||
+      normalizedVariant === APP_VARIANT_IDS.BIG_O ||
+      normalizedVariant === APP_VARIANT_IDS.FIVE_CARD_PLO
+    ) {
+      ensurePLOUIAdapterRegistered();
+    } else if (DRAMAHA_APP_VARIANT_IDS.has(normalizedVariant)) {
+      ensureDramahaUIAdaptersRegistered();
     } else if (isDrawLowballAppVariant(normalizedVariant)) {
       ensureDrawLowballUIAdaptersRegistered();
     } else {
@@ -1996,11 +2174,11 @@ const SAFE_RESET_PHASE = "IDLE";
       if (!Number.isInteger(turn) || turn < 0 || turn >= seatCount) {
         return ensureNextSeat() || false;
       }
-      if (turn === 0) {
-        // Hero acts manually; nothing to do.
+      const snapshot = basePlayers.map(clonePlayerState).filter(Boolean);
+      if (turn === 0 && shouldWaitForHeroDrawTurn({ phase, turn, players: snapshot })) {
+        // Hero acts manually only while the hero is still an eligible draw actor.
         return false;
       }
-      const snapshot = basePlayers.map(clonePlayerState).filter(Boolean);
       const currentSeat = snapshot[turn];
       if (!currentSeat || isFoldedOrOut(currentSeat)) {
         const nxt = helpers.findNextDrawActorSeat(snapshot, turn);
@@ -2038,11 +2216,11 @@ const SAFE_RESET_PHASE = "IDLE";
           }
         : null;
       if (!me) return false;
-      if (isSingleTableDrawLowball) {
+      if (isSingleTableControllerDrawGame) {
         const controller = sessionControllerRef.current;
         const controllerState = sessionControllerStateRef.current;
         const cpuAction =
-          typeof controller?.getCpuAction === "function"
+          isSingleTableDrawLowball && typeof controller?.getCpuAction === "function"
             ? controller.getCpuAction(controllerState, seatToAct)
             : null;
         const payload = cpuAction?.payload ?? cpuAction ?? {
@@ -2314,6 +2492,7 @@ const SAFE_RESET_PHASE = "IDLE";
     lastAggressor,
     aiDecisionContext,
     activeAiTierConfig,
+    isSingleTableControllerDrawGame,
     isSingleTableDrawLowball,
     tryControllerBetAction,
   ]);
@@ -2344,7 +2523,7 @@ const SAFE_RESET_PHASE = "IDLE";
   }
 
   function positionName(index, dealer = dealerSeatSrc) {
-    return getPositionName(index, dealer, NUM_PLAYERS);
+    return getPositionName(index, dealer, playersSrc);
   }
   
   const sbIndex = (d = dealerSeatSrc) => (d + 1) % NUM_PLAYERS; // SB
@@ -2407,12 +2586,6 @@ const SAFE_RESET_PHASE = "IDLE";
 
   // ======== DEBUG LOGGER (helpers) ========
   const actionSeqRef = useRef(0);
-
-  function setHasActedFlag(snap, seat, value = true) {
-    const target = snap[seat];
-    if (!target || target.hasActedThisRound === value) return;
-    snap[seat] = { ...target, hasActedThisRound: value };
-  }
 
   function betRoundNo(value = betRoundIndexSrc) {
     return Math.min(value, MAX_DRAWS);
@@ -2913,6 +3086,8 @@ const SAFE_RESET_PHASE = "IDLE";
     streetRound: resolvedStreetRound,
     seat: idx,
     seatName: seatName ?? seatSnapshot?.name ?? (idx === null ? "TABLE" : `Seat ${idx}`),
+    positionLabel:
+      idx !== null ? positionName(idx, dealerSeatSrc, playersRef.current?.length ?? NUM_PLAYERS) : null,
     action: type,
     stackBefore: resolvedStackBefore,
     stackAfter: resolvedStackAfter,
@@ -3168,6 +3343,7 @@ const SAFE_RESET_PHASE = "IDLE";
         if (!Array.isArray(prev) || prev.length === 0) return prev;
         const snap = prev.map(clonePlayerState).filter(Boolean);
         let mutated = false;
+        let hasTotalInvestedOverride = false;
         overrides.forEach(
           ({ seat, cards, totalInvested, betThisRound: betOverride, stack, allIn }) => {
           if (
@@ -3189,6 +3365,10 @@ const SAFE_RESET_PHASE = "IDLE";
           };
           if (typeof totalInvested === "number") {
             snap[seat].totalInvested = Math.max(0, totalInvested);
+            hasTotalInvestedOverride = true;
+            if (typeof betOverride !== "number") {
+              snap[seat].betThisRound = 0;
+            }
           }
           if (typeof betOverride === "number") {
             snap[seat].betThisRound = Math.max(0, betOverride);
@@ -3199,9 +3379,17 @@ const SAFE_RESET_PHASE = "IDLE";
           mutated = true;
         });
         if (!mutated) return prev;
+        const nextPots = hasTotalInvestedOverride
+          ? buildSidePots(snap)
+          : Array.isArray(pots)
+            ? pots.map((pot) => ({ ...pot }))
+            : [];
+        if (hasTotalInvestedOverride) {
+          setPots(nextPots.map((pot) => ({ ...pot })));
+        }
         const forcedSnapshot = helpers.applyDeckSnapshot({
           players: snap,
-          pots,
+          pots: nextPots,
           nextTurn: turn,
           turn,
           metadata: {
@@ -3216,7 +3404,7 @@ const SAFE_RESET_PHASE = "IDLE";
             ...forcedSnapshot,
             phase,
             players: snap.map(clonePlayerState).filter(Boolean),
-            pots: Array.isArray(pots) ? pots.map((pot) => ({ ...pot })) : [],
+            pots: nextPots.map((pot) => ({ ...pot })),
             currentBet,
             betHead,
             lastAggressor,
@@ -3531,9 +3719,13 @@ const SAFE_RESET_PHASE = "IDLE";
           name: heroProfile?.name ?? "You",
         };
       }
+      const cpuCharacter = getCpuCharacterForIndex(idx);
       return {
         id: `cpu-${idx}`,
-        name: `CPU ${idx + 1}`,
+        name: cpuCharacter.name,
+        cpuCharacterId: cpuCharacter.id,
+        cpuStyle: cpuCharacter.style,
+        avatarUrl: cpuCharacter.avatarUrl,
       };
     });
   }, [heroProfile]);
@@ -3580,6 +3772,14 @@ const SAFE_RESET_PHASE = "IDLE";
       return {
         ...player,
         name: linkedPlayer?.name ?? player.name,
+        cpuCharacterId: linkedPlayer?.cpuCharacterId ?? player.cpuCharacterId ?? null,
+        cpuStyle: linkedPlayer?.cpuStyle ?? player.cpuStyle ?? null,
+        avatarUrl: linkedPlayer?.avatarUrl ?? player.avatarUrl ?? null,
+        avatar:
+          linkedPlayer?.avatarUrl ??
+          player.avatar ??
+          player.avatarUrl ??
+          "default_avatar",
         stack: linkedPlayer?.stack ?? 0,
         seatOut: !!linkedPlayer?.busted,
         isBusted: !!linkedPlayer?.busted,
@@ -4209,7 +4409,7 @@ const SAFE_RESET_PHASE = "IDLE";
   //           goShowdownNow() を直接呼び出し、BET/DRAW を飛ばして強制ショーダウン。
   //           all-in プレイヤーは active フィルタから外れるため、
   //           「全員 all-in」の場合はここを通らず scheduleFinish が DRAW→SHOWDOWN を選択する。
-  function checkIfOneLeftThenEnd(snapOpt) {
+  const checkIfOneLeftThenEnd = useCallback((snapOpt) => {
     const base =
       Array.isArray(snapOpt) && snapOpt.length > 0
         ? snapOpt
@@ -4223,7 +4423,7 @@ const SAFE_RESET_PHASE = "IDLE";
       return true;
     }
     return false;
-  }
+  }, [players]);
 
 
   const dealingRef = useRef(false);
@@ -4238,6 +4438,7 @@ const SAFE_RESET_PHASE = "IDLE";
     heroRenderTableIdRef.current = null;
     heroBustHandledRef.current = false;
     setTournamentHudState(null);
+    setTournamentBlindStructure(getBlindStructureForTournamentConfig(DEFAULT_STORE_TOURNAMENT_CONFIG));
     setTournamentPlacements([]);
     setTournamentOverlayVisible(false);
     setHeroBustSummary(null);
@@ -4255,6 +4456,7 @@ const SAFE_RESET_PHASE = "IDLE";
     (configOverride = DEFAULT_STORE_TOURNAMENT_CONFIG) => {
       const config = { ...DEFAULT_STORE_TOURNAMENT_CONFIG, ...configOverride };
       resetTournamentState();
+      setTournamentBlindStructure(getBlindStructureForTournamentConfig(config));
       initTournamentReplay(config);
       const entrants = buildTournamentEntrants(config);
       const tournamentState = createMTTTournamentState(config, entrants);
@@ -4386,12 +4588,47 @@ const SAFE_RESET_PHASE = "IDLE";
   };
 
   const handleBackToMenu = () => {
+    setGameUtilityModal(null);
     setCurrentScreen("menu");
+  };
+
+  const handleCashOut = useCallback(() => {
+    if (mode !== "cash") return;
+    const hero = playersRef.current?.[0] ?? players?.[0] ?? null;
+    const buyIn = Number(startingStackRef.current ?? startingStack ?? DEFAULT_STARTING_STACK) || DEFAULT_STARTING_STACK;
+    const stack = Number(hero?.stack ?? 0) || 0;
+    setCashOutSummary({
+      variantName:
+        GAME_VARIANTS[gameVariantRef.current]?.label ??
+        GAME_VARIANTS[gameVariant]?.label ??
+        "Cash Game",
+      buyIn,
+      stack,
+      net: stack - buyIn,
+      hands: handCountRef.current,
+    });
+  }, [gameVariant, mode, players, startingStack]);
+
+  const handleCloseCashOut = useCallback(() => {
+    setCashOutSummary(null);
+  }, []);
+
+  const handleCashOutBackToMenu = () => {
+    setCashOutSummary(null);
+    handleBackToMenu();
   };
 
   const handleOpenGameSelector = () => {
     setCurrentScreen("gameSelector");
   };
+
+  const handleOpenGameUtilityModal = useCallback((modalName) => {
+    setGameUtilityModal(modalName);
+  }, []);
+
+  const handleCloseGameUtilityModal = useCallback(() => {
+    setGameUtilityModal(null);
+  }, []);
 
   const handleSelectSettings = () => {
     setCurrentScreen("settings");
@@ -4411,6 +4648,11 @@ const SAFE_RESET_PHASE = "IDLE";
       preserveHandCount: false,
       navigateTo: "gameRing",
     });
+  };
+
+  const handleCashOutNewSession = () => {
+    setCashOutSummary(null);
+    handleSelectRing(gameVariantRef.current ?? DEFAULT_GAME_VARIANT);
   };
 
   const handleSelectTournament = (configOverride) => {
@@ -4498,7 +4740,7 @@ const SAFE_RESET_PHASE = "IDLE";
     const effectiveSeatConfig = consumeSeatConfigForHand(shouldRotateSeats);
 
     const deckManager = getDeckManager();
-    if (deckManager && !isSingleTableDrawLowball) {
+    if (deckManager && !isSingleTableControllerDrawGame) {
       deckManager.reset();
       if (typeof deckManager.shuffle === "function") {
         deckManager.shuffle();
@@ -4524,10 +4766,62 @@ const SAFE_RESET_PHASE = "IDLE";
     const fallbackStack = startingStackRef.current;
     const blindLevelSnapshot = blindLevelIndexRef.current ?? 0;
     const handsInLevelSnapshot = handsInLevelRef.current ?? 0;
+    const handBlindStructure = isTournament
+      ? getBlindStructureForTournamentConfig(
+          tournamentStateRef.current?.config ?? DEFAULT_STORE_TOURNAMENT_CONFIG,
+        )
+      : activeBlindStructure;
+    const handLastStructureIndex = Math.max(0, handBlindStructure.length - 1);
 
     const legacyGameController = ensureGameController();
     let controllerHandSnapshot = null;
     let nextHandState = null;
+    if (isSingleTableBoardGame && legacyGameController?.startNewHand) {
+      try {
+        legacyGameController.updateTableConfig?.(buildNlhTableConfig());
+        controllerHandSnapshot = legacyGameController.startNewHand({
+          handId: `board-hand-${nextHandNumber}`,
+        });
+        const snapshotPlayers = (controllerHandSnapshot.players ?? []).map((player) => ({
+          ...clonePlayerState(player),
+          hand: Array.isArray(player.holeCards) ? [...player.holeCards] : [],
+          betThisRound: player.betThisStreet ?? 0,
+          bet: player.betThisStreet ?? 0,
+          totalInvested: player.totalInvested ?? 0,
+          hasActedThisRound: player.hasActedThisStreet ?? false,
+        }));
+        nextHandState = {
+          players: snapshotPlayers,
+          blindLevelIndex: blindLevelSnapshot,
+          handsInLevel: handsInLevelSnapshot,
+          blindValues: { sb: SB, bb: BB, ante: currentAnte },
+          sbIdx: controllerHandSnapshot.smallBlindIndex ?? null,
+          bbIdx: controllerHandSnapshot.bigBlindIndex ?? null,
+          sbPay:
+            snapshotPlayers[controllerHandSnapshot.smallBlindIndex]?.betThisRound ?? 0,
+          bbPay:
+            snapshotPlayers[controllerHandSnapshot.bigBlindIndex]?.betThisRound ?? 0,
+          anteEvents: [],
+          initialCurrentBet: controllerHandSnapshot.currentBet ?? BB,
+          resolvedTurn: controllerHandSnapshot.currentActor ?? 0,
+          activeCount: snapshotPlayers.filter((player) => !player?.seatOut).length,
+          handStartingStacksById: snapshotPlayers.map((player) =>
+            Math.max(
+              0,
+              Number(player?.stack) +
+                Math.max(
+                  Number(player?.totalInvested) || 0,
+                  Number(player?.betThisRound) || 0,
+                  Number(player?.bet) || 0,
+                ),
+            ),
+          ),
+          seatOutWarnings: [],
+        };
+      } catch (error) {
+        console.warn("[BOARD_CONTROLLER] startNewHand failed", error);
+      }
+    }
     if (isControllerDrivenSingleTable) {
       const sessionController = ensureSessionController();
       if (sessionController) {
@@ -4543,12 +4837,12 @@ const SAFE_RESET_PHASE = "IDLE";
               startingStack: fallbackStack,
               heroProfile,
               nextDealerIdx,
-              blindStructure: TOURNAMENT_STRUCTURE,
+              blindStructure: handBlindStructure,
               blindState: {
                 blindLevelIndex: blindLevelSnapshot,
                 handsInLevel: handsInLevelSnapshot,
               },
-              lastStructureIndex,
+              lastStructureIndex: handLastStructureIndex,
               drawCardsForSeat: assignInitialHands,
             },
           );
@@ -4624,12 +4918,12 @@ const SAFE_RESET_PHASE = "IDLE";
         startingStack: fallbackStack,
         heroProfile,
         nextDealerIdx,
-        blindStructure: TOURNAMENT_STRUCTURE,
+        blindStructure: handBlindStructure,
         blindState: {
           blindLevelIndex: blindLevelSnapshot,
           handsInLevel: handsInLevelSnapshot,
         },
-        lastStructureIndex,
+        lastStructureIndex: handLastStructureIndex,
         drawCardsForSeat: assignInitialHands,
       });
     }
@@ -4641,7 +4935,7 @@ const SAFE_RESET_PHASE = "IDLE";
       };
     }
 
-    if (deckManager && !isSingleTableDrawLowball) {
+    if (deckManager && !isSingleTableControllerDrawGame) {
       const preflopCheck = validatePreflopState({
         deck: deckManager.deck,
         burn: deckManager.burnPile,
@@ -4773,7 +5067,7 @@ const SAFE_RESET_PHASE = "IDLE";
       seatsSnapshot: newPlayers,
     });
 
-    if (!isSingleTableDrawLowball) {
+    if (!isSingleTableControllerDrawGame) {
       try {
         assertNoDuplicateCards("[HAND][DEAL]", {
           deck: deckManager?.deck,
@@ -5360,8 +5654,9 @@ const SAFE_RESET_PHASE = "IDLE";
     const deckManager = getDeckManager();
     deckManager?.reset();
     const structure =
-      TOURNAMENT_STRUCTURE[blindLevelIndex] ??
-      TOURNAMENT_STRUCTURE[lastStructureIndex];
+      activeBlindStructure[blindLevelIndex] ??
+      activeBlindStructure[lastStructureIndex] ??
+      TOURNAMENT_STRUCTURE[0];
     const sbValue = structure.sb;
     const bbValue = structure.bb;
     const anteValue = structure.ante ?? 0;
@@ -5496,20 +5791,6 @@ const SAFE_RESET_PHASE = "IDLE";
   function afterBetActionWithSnapshot(snap, actedIndex) {
     snap = Array.isArray(snap) ? snap.map(clonePlayerState).filter(Boolean) : [];
     snap = ensureLastActionLabelsForSnapshot(snap);
-    const turnPlayer = snap[turn];
-    const isDrawPhase = phase === "DRAW";
-    // ANALYSIS: (A) BET 中に全員が all-in になると、この分岐で
-    //           それぞれ hasActed フラグだけ更新してターンを進める。
-    //           DRAW をスキップせず、残りの座席は scheduleFinish()/finishDrawRound()
-    //           へ到達するため、ラウンド自体は標準フローで閉じる。
-    if (turnPlayer?.allIn && !isDrawPhase) {
-      setHasActedFlag(snap, turn);
-      console.log(`[SKIP] Player ${turnPlayer.name} is all-in -> skip action`);
-      const nxt = nextAliveFrom(snap, turn);
-      if (nxt !== null) setTurn(nxt);
-      return;
-    }
-
     trace("afterBetActionWithSnapshot()", { phase, drawRound, actedIndex });
     if (transitioning) {
       const interimBet = maxBetThisRound(snap);
@@ -5582,8 +5863,7 @@ const SAFE_RESET_PHASE = "IDLE";
     const actedLabel = String(actedPlayer?.lastAction ?? "").toUpperCase();
     const actedAggressive =
       actedLabel.startsWith("RAISE") ||
-      actedLabel.startsWith("BET") ||
-      actedLabel.startsWith("ALL-IN");
+      actedLabel.startsWith("BET");
     if (actedAggressive) {
       resolvedBetHead = actedIndex;
       resolvedLastAggressor = actedIndex;
@@ -7010,8 +7290,11 @@ const SAFE_RESET_PHASE = "IDLE";
       : null;
     if (!p) return;
 
-    const sel = heroDrawSelection.slice(0, MAX_DRAW_SELECTION);
-    if (isSingleTableDrawLowball) {
+    const sel = heroDrawSelection.slice(
+      0,
+      isSingleTableDramaha ? 5 : MAX_DRAW_SELECTION,
+    );
+    if (isSingleTableControllerDrawGame) {
       const controllerDrawOutcome = tryControllerBetAction({
         actionType: "draw",
         seatIndex: 0,
@@ -7300,7 +7583,19 @@ const SAFE_RESET_PHASE = "IDLE";
         }
       }
     }
-    if (turn === 0) return;
+    if (phase === "BET" && checkIfOneLeftThenEnd(activePlayers)) {
+      return;
+    }
+    if (turn === 0) {
+      if (shouldWaitForHeroDrawTurn({ phase, turn, players: activePlayers })) {
+        return;
+      }
+      if (phase === "DRAW") {
+        autoResolveCpuDrawIfNeeded();
+        return;
+      }
+      return;
+    }
 
     const p = activePlayers[turn];
     if (!p || isFoldedOrOut(p)) {
@@ -7311,8 +7606,17 @@ const SAFE_RESET_PHASE = "IDLE";
     }
 
     if (phase === "BET" && (p.allIn || p.stack <= 0)) {
-      const nxt = nextAliveFrom(activePlayers, turn);
-      if (nxt !== null) setTurn(nxt);
+      const maxNow = maxBetThisRound(activePlayers);
+      const nextActor = findNextBetActorSeat(activePlayers, turn + 1, maxNow);
+      if (nextActor !== null) {
+        setTurn(nextActor);
+        return;
+      }
+      forceFinishRoundRef.current({
+        reason: "bet-all-in-no-next-actor",
+        phaseOverride: "BET",
+        playersSnapshot: activePlayers,
+      });
       return;
     }
 
@@ -7324,6 +7628,16 @@ const SAFE_RESET_PHASE = "IDLE";
         if (!betHelpers.ensureSeatCanAct?.(activeSeat, "npcBetAction")) {
           const nxt = nextAliveFrom(snap, turn);
           if (nxt !== null) setTurn(nxt);
+          else {
+            forceFinishRoundRef.current({
+              reason: "npc-bet-seat-cannot-act-no-next",
+              phaseOverride: "BET",
+              playersSnapshot: snap,
+            });
+          }
+          return;
+        }
+        if (checkIfOneLeftThenEnd(snap)) {
           return;
         }
         const me = snap[turn] ? { ...snap[turn] } : null;
@@ -7373,6 +7687,9 @@ const SAFE_RESET_PHASE = "IDLE";
         const evalResult = betHelpers.evaluateBadugi?.(me.hand) ?? { ranks: [] };
         const madeCards = evalResult.ranks.length;
         const canRaise = !me.allIn && raiseCountThisRound < 4;
+        const activeOpponents = snap.filter(
+          (player, seatIndex) => seatIndex !== activeSeat && player && !isFoldedOrOut(player) && !player.allIn,
+        ).length;
         const betDecision = computeBetDecision({
           context: aiDecisionContext,
           toCall,
@@ -7381,6 +7698,9 @@ const SAFE_RESET_PHASE = "IDLE";
           betSize,
           actor: me,
           evaluation: evalResult,
+          activeOpponents,
+          drawRound,
+          betRound: betRoundIndex,
         });
         const decisionAction = String(betDecision?.action ?? "").toLowerCase();
         const actionPayload = {
@@ -7433,10 +7753,13 @@ const SAFE_RESET_PHASE = "IDLE";
     raiseCountThisRound,
     dealerIdx,
     betSize,
+    betRoundIndex,
+    drawRound,
     aiDecisionContext,
     activeAiTierConfig,
     applyForcedBetAction,
     autoResolveCpuDrawIfNeeded,
+    checkIfOneLeftThenEnd,
     isSingleTableBadugi,
     isSingleTableDrawLowball,
     tryControllerBetAction,
@@ -7704,21 +8027,21 @@ const SAFE_RESET_PHASE = "IDLE";
     : 0;
   const seatLayouts = useMemo(() => {
     const cashLayouts = [
-      "absolute bottom-[4%] left-1/2 -translate-x-1/2 w-[clamp(188px,29vw,300px)]", // Hero (BTN)
-      "absolute bottom-[30%] left-[6%] w-[clamp(158px,24vw,250px)]", // SB
-      "absolute top-[8%] left-[6%] w-[clamp(158px,25vw,270px)]", // BB
-      "absolute top-[1%] left-1/2 -translate-x-1/2 w-[clamp(168px,27vw,285px)]", // UTG
-      "absolute top-[8%] right-[6%] w-[clamp(158px,25vw,270px)]", // MP
-      "absolute bottom-[30%] right-[6%] w-[clamp(158px,24vw,250px)]", // CO
+      "absolute bottom-[-2%] left-1/2 -translate-x-1/2 w-[clamp(190px,24vw,270px)]", // Hero (BTN)
+      "absolute bottom-[27%] left-[1.5%] w-[clamp(160px,20vw,240px)]", // SB
+      "absolute top-[14%] left-[2%] w-[clamp(160px,21vw,250px)]", // BB
+      "absolute top-[0%] left-1/2 -translate-x-1/2 w-[clamp(170px,23vw,270px)]", // UTG
+      "absolute top-[14%] right-[2%] w-[clamp(160px,21vw,250px)]", // MP
+      "absolute bottom-[27%] right-[1.5%] w-[clamp(160px,20vw,240px)]", // CO
     ];
     // Tournament tables follow a fixed 6-max oval layout (BTN bottom-center, clockwise SB→CO).
     const tournamentLayouts = [
-      "absolute bottom-[12%] left-1/2 -translate-x-1/2 w-[clamp(200px,30vw,320px)]", // Hero (BTN)
-      "absolute bottom-[26%] left-[22%] -translate-x-1/2 w-[clamp(160px,24vw,260px)]", // SB
-      "absolute top-[24%] left-[22%] -translate-x-1/2 w-[clamp(160px,24vw,260px)]", // BB
-      "absolute top-[12%] left-1/2 -translate-x-1/2 w-[clamp(170px,27vw,280px)]", // UTG
-      "absolute top-[24%] left-[78%] -translate-x-1/2 w-[clamp(160px,24vw,260px)]", // MP
-      "absolute bottom-[26%] left-[78%] -translate-x-1/2 w-[clamp(160px,24vw,260px)]", // CO
+      "absolute bottom-[-2%] left-1/2 -translate-x-1/2 w-[clamp(190px,21vw,255px)]", // Hero (BTN)
+      "absolute bottom-[10%] left-[14%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // SB
+      "absolute top-[17%] left-[14%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // BB
+      "absolute top-[0%] left-1/2 -translate-x-1/2 w-[clamp(150px,18vw,220px)]", // UTG
+      "absolute top-[17%] left-[86%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // MP
+      "absolute bottom-[10%] left-[86%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // CO
     ];
     return mode === "tournament-mtt" ? tournamentLayouts : cashLayouts;
   }, [mode]);
@@ -7758,6 +8081,27 @@ const SAFE_RESET_PHASE = "IDLE";
 
   const controlsPhase = controlsConfig?.phase ?? tablePhase;
   const controlsCurrentBet = controlsConfig?.currentBet ?? currentBetSrc;
+  const heroBetThisRound = Math.max(0, Number(heroPlayerForControls?.betThisRound) || 0);
+  const heroToCall = Math.max(0, Number(controlsCurrentBet || 0) - heroBetThisRound);
+  const currentRaiseCount = Math.max(
+    0,
+    Number(raiseStatsSrc?.raiseCountThisRound ?? raiseCountThisRound) || 0,
+  );
+  const fixedLimitRaiseCap = 4;
+  const currentRaiseUnit = getFixedLimitBetSize({
+    baseBet: BB,
+    drawRound: drawRoundSrc,
+    betRound: betRoundIndexSrc,
+  });
+  const actionPanelInfo = {
+    currentBet: Math.max(0, Number(controlsCurrentBet) || 0),
+    heroBet: heroBetThisRound,
+    toCall: heroToCall,
+    raiseCount: currentRaiseCount,
+    raiseCap: fixedLimitRaiseCap,
+    raiseUnit: currentRaiseUnit,
+    capReached: currentRaiseCount >= fixedLimitRaiseCap,
+  };
 
   const heroSeatIndex =
     typeof heroSeatView?.seatIndex === "number" ? heroSeatView.seatIndex : 0;
@@ -7802,6 +8146,7 @@ const SAFE_RESET_PHASE = "IDLE";
     heroPhaseNeedsAction &&
     controllerTurn === heroSeatIndex;
   const heroCanDraw = controlsPhase === "DRAW" && heroCanAct;
+  const heroMaxDrawSelection = isSingleTableDramaha ? 5 : MAX_DRAW_SELECTION;
 
   useEffect(() => {
     if (!heroCanDraw && heroDrawSelection.length > 0) {
@@ -7816,13 +8161,13 @@ const SAFE_RESET_PHASE = "IDLE";
         let nextSelection = prev;
         if (prev.includes(cardIdx)) {
           nextSelection = prev.filter((idx) => idx !== cardIdx);
-        } else if (prev.length < MAX_DRAW_SELECTION) {
+        } else if (prev.length < heroMaxDrawSelection) {
           nextSelection = [...prev, cardIdx].sort((a, b) => a - b);
         }
         return nextSelection;
       });
     },
-    [heroCanDraw]
+    [heroCanDraw, heroMaxDrawSelection]
   );
 
   useEffect(() => {
@@ -8068,9 +8413,9 @@ const SAFE_RESET_PHASE = "IDLE";
     labels: headerLabels,
     onNavigateTitle: handleBackToMenu,
     onNavigateLeaderboard: () => navigate("/leaderboard"),
-    onNavigateSettings: handleSelectSettings,
-    onNavigateProfile: () => navigate("/profile"),
-    onNavigateHistory: () => navigate("/history"),
+    onNavigateSettings: () => handleOpenGameUtilityModal("settings"),
+    onNavigateProfile: () => handleOpenGameUtilityModal("profile"),
+    onNavigateHistory: () => handleOpenGameUtilityModal("history"),
   };
 
   const sidePanelProps = {
@@ -8138,6 +8483,8 @@ const SAFE_RESET_PHASE = "IDLE";
     phase: phaseSrc,
     drawRoundValue: drawRoundSrc,
     betRoundValue: betRoundIndexSrc,
+    boardCards: hudInfo?.boardCards ?? controllerSnapshot?.boardCards ?? [],
+    streetLabel: hudInfo?.streetLabel ?? "",
   };
 
   const overlaysProps = {
@@ -8163,6 +8510,7 @@ const SAFE_RESET_PHASE = "IDLE";
     heroPlayerForControls,
     controlsPhase,
     controlsCurrentBet,
+    actionPanelInfo,
     playerFold,
     playerCall,
     playerCheck,
@@ -8173,6 +8521,8 @@ const SAFE_RESET_PHASE = "IDLE";
     heroCanDraw,
     nextHandLabel,
     onNextHand: startNextHand,
+    isCashGame: mode === "cash",
+    onCashOut: handleCashOut,
   };
 
   const debugProps = {
@@ -8221,6 +8571,18 @@ const SAFE_RESET_PHASE = "IDLE";
   ) : (
     gameScreen
   );
+  const utilityModal =
+    gameUtilityModal ? (
+      <GameUtilityModal
+        modalName={gameUtilityModal}
+        language={language}
+        onClose={handleCloseGameUtilityModal}
+        onReplay={(handId, target) => {
+          handleCloseGameUtilityModal();
+          handleOpenReplayFromHistory(handId, target);
+        }}
+      />
+    ) : null;
 
   return (
     <>
@@ -8234,10 +8596,19 @@ const SAFE_RESET_PHASE = "IDLE";
             isPortrait={deviceProfile.isPortrait}
             debugFlags={debugFlags}
           >
-            {renderedGameScreen}
-          </MobileOrientationGate>
-        </AuthGate>
-      </AuthProvider>
+          {renderedGameScreen}
+        </MobileOrientationGate>
+        {utilityModal}
+        {cashOutSummary && (
+          <CashOutResultModal
+            summary={cashOutSummary}
+            onClose={handleCloseCashOut}
+            onBackToMenu={handleCashOutBackToMenu}
+            onNewSession={handleCashOutNewSession}
+          />
+        )}
+      </AuthGate>
+    </AuthProvider>
       <DebugHud
         enabled={debugFlags.enabled}
         deviceProfile={deviceProfile}
@@ -8246,6 +8617,132 @@ const SAFE_RESET_PHASE = "IDLE";
         screenLabel={screenLabel}
       />
     </>
+  );
+}
+
+function GameUtilityModal({ modalName, language, onClose, onReplay }) {
+  const titleByModal = {
+    settings: language === "ja" ? "設定" : "Settings",
+    profile: language === "ja" ? "プロフィール" : "Profile",
+    history: language === "ja" ? "履歴" : "History",
+  };
+  const title = titleByModal[modalName] ?? titleByModal.settings;
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 px-4 py-6 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      data-testid="game-utility-modal"
+    >
+      <div className="relative max-h-[88dvh] w-full max-w-6xl overflow-y-auto rounded-3xl border border-white/15 bg-slate-950/95 shadow-2xl">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/10 bg-slate-950/95 px-5 py-4 backdrop-blur">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.4em] text-emerald-300">MGX</p>
+            <h2 className="text-lg font-bold text-white">{title}</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full border border-white/25 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-white/90 transition hover:border-emerald-300/70 hover:text-emerald-200"
+          >
+            {language === "ja" ? "閉じる" : "Close"}
+          </button>
+        </div>
+        <div className="p-2 sm:p-4">
+          {modalName === "settings" && <TitleSettingsScreen embedded onClose={onClose} />}
+          {modalName === "profile" && <ProfileStats embedded onClose={onClose} />}
+          {modalName === "history" && (
+            <HandHistoryScreen
+              embedded
+              language={language}
+              onClose={onClose}
+              onReplay={onReplay}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CashOutResultModal({ summary, onClose, onBackToMenu, onNewSession }) {
+  const net = Number(summary?.net ?? 0);
+  const netLabel = net >= 0 ? `+${net}` : `${net}`;
+  const netClass = net >= 0 ? "text-emerald-300" : "text-red-300";
+  return (
+    <div
+      className="fixed inset-0 z-[320] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Cash out result"
+    >
+      <div className="w-full max-w-md rounded-3xl border border-emerald-300/20 bg-slate-950 p-6 text-white shadow-2xl">
+        <div className="mb-5">
+          <p className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-300">
+            Cash Out
+          </p>
+          <h2 className="mt-2 text-2xl font-black">{summary?.variantName ?? "Cash Game"}</h2>
+          <p className="mt-1 text-sm text-slate-400">
+            今回のキャッシュゲーム結果です。続行するか、ゲーム選択へ戻れます。
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+            <p className="text-slate-500">Buy-in</p>
+            <p className="text-xl font-black">{summary?.buyIn ?? 0}</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+            <p className="text-slate-500">Cash out stack</p>
+            <p className="text-xl font-black">{summary?.stack ?? 0}</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+            <p className="text-slate-500">Hands</p>
+            <p className="text-xl font-black">{summary?.hands ?? 0}</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+            <p className="text-slate-500">Net</p>
+            <p className={`text-xl font-black ${netClass}`}>{netLabel}</p>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-2 sm:grid-cols-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-white/15 px-3 py-2 text-sm font-bold text-slate-200 hover:bg-white/10"
+          >
+            続行
+          </button>
+          <button
+            type="button"
+            onClick={onNewSession}
+            className="rounded-xl bg-emerald-500 px-3 py-2 text-sm font-black text-slate-950 hover:bg-emerald-400"
+          >
+            新しい卓
+          </button>
+          <button
+            type="button"
+            onClick={onBackToMenu}
+            className="rounded-xl bg-yellow-400 px-3 py-2 text-sm font-black text-slate-950 hover:bg-yellow-300"
+          >
+            ゲーム選択
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

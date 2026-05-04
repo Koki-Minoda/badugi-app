@@ -32,6 +32,39 @@ class DQNImitationTest(unittest.TestCase):
         action = agent.act(batch["obs"][0], epsilon=0.0)
         self.assertEqual(action, 2)
 
+    def test_action_margin_update_pushes_preferred_action_above_fold(self):
+        torch.manual_seed(11)
+        np.random.seed(11)
+        agent = DQNAgent(
+            obs_dim=4,
+            n_actions=3,
+            hidden_dim=16,
+            hyperparams=DQNHyperParams(lr=0.05, batch_size=8),
+        )
+        batch = {
+            "obs": np.tile(np.array([0.0, 1.0, 0.0, 0.0], dtype=np.float32), (8, 1)),
+            "actions": np.full((8,), 2, dtype=np.int64),
+        }
+
+        first_loss, _first_satisfied = agent.action_margin_update(
+            batch,
+            avoid_action=0,
+            margin=0.2,
+            loss_weight=1.0,
+        )
+        loss = first_loss
+        satisfied = 0.0
+        for _ in range(80):
+            loss, satisfied = agent.action_margin_update(
+                batch,
+                avoid_action=0,
+                margin=0.2,
+                loss_weight=1.0,
+            )
+
+        self.assertLess(loss, first_loss)
+        self.assertGreaterEqual(satisfied, 0.9)
+
     def test_badugi_feature_set_masks_newer_slots_for_older_models(self):
         obs = np.ones(96, dtype=np.float32)
 

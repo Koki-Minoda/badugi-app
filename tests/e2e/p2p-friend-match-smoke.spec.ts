@@ -165,9 +165,9 @@ test.describe("P2P friend match browser smoke", () => {
     await enterTitleIfPresent(page);
     await page.getByTestId("menu-friend").click();
 
-    await page.getByRole("button", { name: /create room/i }).click();
+    await page.getByRole("button", { name: /create room|ルームを作成/i }).click();
     await expect(page.getByText("room-e2e", { exact: true })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText(/Latest sequence: 3/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Latest sequence: 3|最新番号: 3/i)).toBeVisible({ timeout: 15000 });
 
     await page.getByTestId("p2p-ready").click();
     await expect(page.getByText(/PLAYING \/ Pot 0/i)).toBeVisible({ timeout: 15000 });
@@ -177,7 +177,7 @@ test.describe("P2P friend match browser smoke", () => {
     await expect(page.getByTestId("p2p-player-guest-e2e")).toContainText("Guest");
 
     await page.getByTestId("p2p-fold").click();
-    await expect(page.getByText(/Showdown winner: guest-e2e/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Showdown winner: guest-e2e|ショーダウン勝者: guest-e2e/i)).toBeVisible({ timeout: 15000 });
 
     await page.evaluate(() => window.history.replaceState(null, "", "/dev/friend-match"));
     await page.reload({ waitUntil: "load" });

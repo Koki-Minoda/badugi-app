@@ -8,8 +8,9 @@ import {
 
 describe("buttonSeatUtils", () => {
   describe("isPlayerSeated", () => {
-    it("respects explicit isSeated flag", () => {
-      expect(isPlayerSeated({ isSeated: true, seatOut: true })).toBe(true);
+    it("does not let stale seated flags override busted/seatOut status", () => {
+      expect(isPlayerSeated({ isSeated: true, seatOut: true })).toBe(false);
+      expect(isPlayerSeated({ isSeated: true, isBusted: true })).toBe(false);
       expect(isPlayerSeated({ isSeated: false, seatOut: false })).toBe(false);
     });
 
@@ -21,8 +22,9 @@ describe("buttonSeatUtils", () => {
   });
 
   describe("isPlayerActiveInGame", () => {
-    it("prefers provided isActiveInGame flag", () => {
-      expect(isPlayerActiveInGame({ isActiveInGame: true, seatOut: true })).toBe(true);
+    it("does not let stale active flags override busted/seatOut status", () => {
+      expect(isPlayerActiveInGame({ isActiveInGame: true, seatOut: true })).toBe(false);
+      expect(isPlayerActiveInGame({ isActiveInGame: true, isBusted: true })).toBe(false);
       expect(isPlayerActiveInGame({ isActiveInGame: false, seatOut: false })).toBe(false);
     });
 

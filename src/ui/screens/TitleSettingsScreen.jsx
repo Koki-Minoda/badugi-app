@@ -27,7 +27,7 @@ function formatPercent(value, digits = 1) {
   return `${(value * 100).toFixed(digits)}%`;
 }
 
-export default function TitleSettingsScreen() {
+export default function TitleSettingsScreen({ embedded = false, onClose = null } = {}) {
   const navigate = useNavigate();
   const [settings, setSettings] = useState(() => loadTitleSettings());
   const [devTierOverride, setDevTierOverride] = useState(() => loadAiTierOverride());
@@ -49,10 +49,11 @@ export default function TitleSettingsScreen() {
     () => ({
       name: settings.playerName || "You",
       title: settings.playerTitle || "Badugi Rookie",
-      avatar: settings.avatar || "♦︎",
+      avatar: settings.avatar || "/characters/hero.png",
     }),
     [settings]
   );
+  const previewAvatarIsImage = String(preview.avatar ?? "").startsWith("/");
 
   const handleSave = (next) => {
     const saved = saveTitleSettings(next);
@@ -108,9 +109,16 @@ export default function TitleSettingsScreen() {
   const handleExportP2pMatches = () => {
     exportP2PMatchesAsJSONL();
   };
+  const handleBack = () => {
+    if (typeof onClose === "function") {
+      onClose();
+      return;
+    }
+    navigate("/menu");
+  };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
+    <div className={`${embedded ? "bg-transparent" : "min-h-screen bg-slate-950"} text-white`}>
       <header className="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
         <div>
           <p className="text-sm uppercase tracking-widest text-emerald-300">Settings</p>
@@ -119,25 +127,38 @@ export default function TitleSettingsScreen() {
         <div className="flex gap-3">
           <button
             type="button"
-            onClick={() => navigate("/menu")}
+            onClick={handleBack}
             className="px-4 py-2 rounded-lg border border-white/30 hover:bg-white/10 transition"
           >
-            ゲーム選択へ戻る
+            {embedded ? "ゲームへ戻る" : "ゲーム選択へ戻る"}
           </button>
-          <button
-            type="button"
-            onClick={() => navigate("/game")}
-            className="px-4 py-2 rounded-lg bg-emerald-500 text-slate-900 font-semibold hover:bg-emerald-400 transition"
-          >
-            Jump into Game
-          </button>
+          {!embedded && (
+            <button
+              type="button"
+              onClick={() => navigate("/game")}
+              className="px-4 py-2 rounded-lg bg-emerald-500 text-slate-900 font-semibold hover:bg-emerald-400 transition"
+            >
+              Jump into Game
+            </button>
+          )}
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-6 pb-16 grid gap-8 lg:grid-cols-2">
         <section className="bg-slate-900/80 border border-white/10 rounded-3xl p-6 shadow-2xl flex flex-col gap-6">
           <div className="flex items-center gap-4">
-            <div className="text-5xl">{preview.avatar}</div>
+            <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-full border border-emerald-300/50 bg-slate-950 text-5xl shadow-inner">
+              {previewAvatarIsImage ? (
+                <img
+                  src={preview.avatar}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
+              ) : (
+                preview.avatar
+              )}
+            </div>
             <div>
               <p className="text-sm uppercase tracking-widest text-emerald-300">Preview</p>
               <h2 className="text-2xl font-bold">{preview.name}</h2>
@@ -212,7 +233,7 @@ export default function TitleSettingsScreen() {
                   onChange={handleTierOverrideChange}
                   className="flex-1 rounded-2xl bg-slate-900/60 border border-white/20 px-3 py-2 text-sm"
                 >
-                  <option value="">自動 (コンテキスト依存)</option>
+                  <option value="">自動 (Pro基準)</option>
                   {tierOptions.map((tier) => (
                     <option key={tier.id} value={tier.id}>
                       {tier.label}
@@ -231,7 +252,7 @@ export default function TitleSettingsScreen() {
                 現在:{" "}
                 {devTierOverride
                   ? getTierById(devTierOverride)?.label ?? devTierOverride
-                  : "自動 (ゲーム状況で決定)"}
+                  : "自動 (Pro基準)"}
               </p>
             </div>
             <div className="space-y-3">

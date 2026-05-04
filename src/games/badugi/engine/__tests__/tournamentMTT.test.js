@@ -46,6 +46,23 @@ describe("tournamentMTT engine", () => {
     expect(Object.keys(state.players)).toHaveLength(18);
   });
 
+  it("preserves CPU character metadata for tournament table display", () => {
+    const state = createMTTTournamentState(BASE_CONFIG, [
+      entrants[0],
+      {
+        id: "cpu-akira",
+        name: "Akira",
+        cpuCharacterId: "akira",
+        cpuStyle: "balanced",
+        avatarUrl: "/characters/akira.png",
+      },
+    ]);
+    expect(state.players["cpu-akira"].name).toBe("Akira");
+    expect(state.players["cpu-akira"].cpuCharacterId).toBe("akira");
+    expect(state.players["cpu-akira"].cpuStyle).toBe("balanced");
+    expect(state.players["cpu-akira"].avatarUrl).toBe("/characters/akira.png");
+  });
+
   it("advances levels once all active tables meet handsThisLevel", () => {
     let state = createMTTTournamentState(BASE_CONFIG, entrants);
     expect(getCurrentLevel(state).levelIndex).toBe(1);
@@ -100,6 +117,28 @@ describe("tournamentMTT engine", () => {
     });
     state = rebalanceTables(state);
     expect(state.tables.filter((t) => t.isActive)).toHaveLength(1);
+  });
+
+  it("balances 14 remaining players across three tables as 5/5/4 instead of leaving a 3-way table", () => {
+    let state = createMTTTournamentState(BASE_CONFIG, entrants);
+    const playersToBust = Object.values(state.players).slice(0, 4);
+    state = onTableHandCompleted(state, playersToBust[0].tableId, {
+      handIndex: 12,
+      seatResults: playersToBust.map((player) => ({
+        seatIndex: player.seatIndex ?? 0,
+        playerId: player.id,
+        stack: 0,
+        startingStack: player.stack,
+      })),
+    });
+
+    expect(state.playersRemaining).toBe(14);
+    const activeCounts = state.tables
+      .filter((table) => table.isActive)
+      .map((table) => table.seats.filter((seat) => seat.playerId !== null).length)
+      .sort((a, b) => b - a);
+    expect(activeCounts).toEqual([5, 5, 4]);
+    expect(Math.max(...activeCounts) - Math.min(...activeCounts)).toBeLessThanOrEqual(1);
   });
 
   it("completes the tournament and assigns champion", () => {

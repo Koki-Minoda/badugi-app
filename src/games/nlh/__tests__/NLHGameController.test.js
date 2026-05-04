@@ -64,6 +64,67 @@ describe("NLHGameController", () => {
     expect(snapshot.currentActor).toBe(0);
   });
 
+  it("preserves character metadata from table config", () => {
+    const controller = createController({
+      seats: [
+        {
+          name: "Hero",
+          stack: 1000,
+          avatarUrl: "/characters/hero.png",
+          cpuCharacterId: null,
+        },
+        {
+          name: "Kei",
+          stack: 1000,
+          avatarUrl: "/characters/kei.png",
+          cpuCharacterId: "kei",
+          cpuStyle: "standard",
+        },
+      ],
+      deckCards,
+      blinds,
+    });
+
+    const snapshot = controller.startNewHand();
+
+    expect(snapshot.players[0]).toMatchObject({
+      name: "Hero",
+      avatarUrl: "/characters/hero.png",
+    });
+    expect(snapshot.players[1]).toMatchObject({
+      name: "Kei",
+      avatarUrl: "/characters/kei.png",
+      cpuCharacterId: "kei",
+      cpuStyle: "standard",
+    });
+  });
+
+  it("skips busted seats when assigning blinds", () => {
+    const controller = createController({
+      seats: [
+        { name: "Hero", stack: 1000 },
+        { name: "Busted SB", stack: 0, seatOut: true, isBusted: true },
+        { name: "CPU 2", stack: 1000 },
+        { name: "CPU 3", stack: 1000 },
+      ],
+      deckCards: [
+        "AS", "KS", "QD", "JC",
+        "10H", "9D", "8C", "7S",
+        "2C", "2D", "2H", "2S", "3C", "3D",
+      ],
+      blinds,
+    });
+    controller.state.dealerIndex = 3;
+
+    const snapshot = controller.startNewHand();
+
+    expect(snapshot.smallBlindIndex).toBe(2);
+    expect(snapshot.bigBlindIndex).toBe(3);
+    expect(snapshot.players[1].betThisStreet).toBe(0);
+    expect(snapshot.players[2].betThisStreet).toBe(blinds.sb);
+    expect(snapshot.players[3].betThisStreet).toBe(blinds.bb);
+  });
+
   it("progresses streets and deals board cards", () => {
     const controller = createController({ seats, deckCards, blinds });
     controller.startNewHand();
@@ -81,6 +142,19 @@ describe("NLHGameController", () => {
 
     controller.advanceStreet();
     expect(controller.state.street).toBe("SHOWDOWN");
+  });
+
+  it("advances to the flop when the preflop betting round completes", () => {
+    const controller = createController({ seats, deckCards, blinds });
+    controller.startNewHand();
+
+    controller.applyPlayerAction({ seatIndex: 0, action: "call" });
+    controller.applyPlayerAction({ seatIndex: 1, action: "call" });
+    controller.applyPlayerAction({ seatIndex: 2, action: "check" });
+
+    expect(controller.state.street).toBe("FLOP");
+    expect(controller.state.boardCards).toHaveLength(3);
+    expect(controller.state.currentBet).toBe(0);
   });
 
   it("resolves showdown and returns winning summary", () => {
@@ -104,5 +178,40 @@ describe("NLHGameController", () => {
     expect(summary.winners[0].seatIndex).toBe(0);
     expect(summary.winners[0].evaluation.category).toBe("FLUSH");
     expect(controller.state.players[0].stack).toBeGreaterThan(seats[0].stack);
+  });
+
+  it("resolves side pots with eligibility restricted by total investment", () => {
+    const controller = createController({
+      seats: [
+        { name: "Main Only", stack: 1000 },
+        { name: "Side One", stack: 1000 },
+        { name: "Deep Stack", stack: 1000 },
+      ],
+      deckCards,
+      blinds,
+    });
+    controller.startNewHand();
+    controller.state.street = "SHOWDOWN";
+    controller.state.boardCards = ["2C", "7D", "9H", "JS", "QC"];
+    controller.state.players = controller.state.players.map((player, idx) => ({
+      ...player,
+      folded: false,
+      seatOut: false,
+      holeCards: [
+        ["AS", "AD"],
+        ["KS", "KD"],
+        ["3S", "4D"],
+      ][idx],
+      totalInvested: [50, 100, 200][idx],
+      stack: 0,
+    }));
+
+    const summary = controller.resolveShowdown();
+
+    expect(summary.potDetails.map((pot) => pot.amount)).toEqual([150, 100, 100]);
+    expect(summary.potDetails[0].winnerSeatIndexes).toEqual([0]);
+    expect(summary.potDetails[1].winnerSeatIndexes).toEqual([1]);
+    expect(summary.potDetails[2].winnerSeatIndexes).toEqual([2]);
+    expect(controller.state.players.map((player) => player.stack)).toEqual([150, 100, 100]);
   });
 });

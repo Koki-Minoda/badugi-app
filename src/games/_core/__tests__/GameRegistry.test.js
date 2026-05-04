@@ -15,4 +15,27 @@ describe("GameRegistry", () => {
     const sampleHand = ["As", "2d", "3c", "4h"];
     expect(def.evaluateHand(sampleHand)).toEqual(evaluateBadugi(sampleHand));
   });
+
+  it("returns NLH and PLO definitions by logical variant id", () => {
+    expect(GameRegistry.get("nlh")?.label).toBe("No-Limit Hold'em");
+    expect(GameRegistry.get("plo")?.label).toBe("Pot-Limit Omaha");
+    expect(GameRegistry.get("plo")?.handStructure).toMatchObject({
+      hole: 4,
+      mustUseHole: 2,
+      mustUseBoard: 3,
+    });
+    expect(GameRegistry.get("big_o")?.label).toBe("Big-O");
+    expect(GameRegistry.get("five_card_plo")?.handStructure).toMatchObject({
+      hole: 5,
+      mustUseHole: 2,
+      mustUseBoard: 3,
+    });
+    expect(GameRegistry.get("dramaha_hi")?.label).toBe("Dramaha Hi");
+    expect(GameRegistry.get("dramaha_27")?.handStructure).toMatchObject({
+      hole: 5,
+      community: 3,
+      mustUseHole: 2,
+      mustUseBoard: 3,
+    });
+  });
 });

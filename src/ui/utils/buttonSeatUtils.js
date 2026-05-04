@@ -19,10 +19,10 @@ export function isPlayerSeated(player) {
  */
 export function isPlayerActiveInGame(player) {
   if (!player) return false;
-  if (typeof player.isActiveInGame === "boolean") return player.isActiveInGame;
   if (!isPlayerSeated(player)) return false;
   if (!baseIsPlayerActiveInGame(player)) return false;
   if (typeof player?.stack === "number" && player.stack <= 0) return false;
+  if (typeof player.isActiveInGame === "boolean") return player.isActiveInGame;
   return true;
 }
 

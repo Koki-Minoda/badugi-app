@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
 
-const MOBILE_MAX_WIDTH = 900;
-
 function computeProfile() {
   if (typeof window === "undefined") {
     return {
@@ -10,24 +8,35 @@ function computeProfile() {
       isPortrait: false,
       isMobile: false,
       isTouch: false,
+      isLandscape: true,
+      isPhoneLike: false,
+      shortSide: 768,
     };
   }
   const width = window.innerWidth;
   const height = window.innerHeight;
   const isPortrait = height >= width;
+  const isLandscape = width > height;
+  const shortSide = Math.min(width, height);
   const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+  const coarseNoHover =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(pointer: coarse) and (hover: none)").matches;
   const isTouch =
     typeof navigator !== "undefined" &&
-    (navigator.maxTouchPoints > 1 || "ontouchstart" in window);
-  const isMobileViewport = width <= MOBILE_MAX_WIDTH;
+    (navigator.maxTouchPoints > 1 || "ontouchstart" in window || coarseNoHover);
   const isMobileUA = /iphone|ipod|android|mobile/i.test(ua);
-  const isMobile = isMobileViewport && (isTouch || isMobileUA);
+  const isPhoneLike = (coarseNoHover || isTouch || isMobileUA) && shortSide <= 900;
+  const isMobile = isPhoneLike;
   return {
     width,
     height,
     isPortrait,
+    isLandscape,
     isMobile,
     isTouch,
+    isPhoneLike,
+    shortSide,
   };
 }
 

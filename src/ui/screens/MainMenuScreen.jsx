@@ -73,7 +73,7 @@ export default function MainMenuScreen({
   onSelectTournament,
   onSelectSettings,
   onSelectFriendMatch,
-  onSelectHandHistory = () => {},
+  onSelectHandHistory,
 }) {
   const navigate = useNavigate();
   const [isVariantModalOpen, setVariantModalOpen] = useState(false);
@@ -158,7 +158,7 @@ export default function MainMenuScreen({
               </button>
               <button
                 type="button"
-              aria-label="Open Settings"
+                aria-label="Open Settings"
                 onClick={() => setShowSettings(true)}
                 className="h-10 w-10 rounded-full border border-white/20 text-lg text-white transition hover:border-emerald-300/60 hover:text-emerald-200"
               >
@@ -167,16 +167,28 @@ export default function MainMenuScreen({
             </div>
             <div className="mt-4 rounded-2xl border border-slate-700/80 bg-black/60 px-5 py-3 text-[0.7rem] text-slate-200 lg:flex lg:items-center lg:justify-between lg:gap-4 lg:text-xs">
               <div>
-                <p className="uppercase tracking-wide text-slate-400">Mixed Formats</p>
-                <p className="font-semibold text-white">Ring · MTT</p>
+                <p className="uppercase tracking-wide text-slate-400">
+                  {language === "ja" ? "ゲーム形式" : "Game Modes"}
+                </p>
+                <p className="font-semibold text-white">
+                  {language === "ja" ? "キャッシュ・トナメ" : "Cash · MTT"}
+                </p>
               </div>
               <div>
-                <p className="uppercase tracking-wide text-slate-400">RL Capture</p>
-                <p className="font-semibold text-white">JSONL Ready</p>
+                <p className="uppercase tracking-wide text-slate-400">
+                  {language === "ja" ? "学習ログ" : "RL Capture"}
+                </p>
+                <p className="font-semibold text-white">
+                  {language === "ja" ? "保存対応" : "JSONL Ready"}
+                </p>
               </div>
               <div>
-                <p className="uppercase tracking-wide text-slate-400">Store Ladder</p>
-                <p className="font-semibold text-white">Season 02</p>
+                <p className="uppercase tracking-wide text-slate-400">
+                  {language === "ja" ? "トーナメント" : "Store Ladder"}
+                </p>
+                <p className="font-semibold text-white">
+                  {language === "ja" ? "シーズン 02" : "Season 02"}
+                </p>
               </div>
             </div>
           </div>
@@ -251,15 +263,17 @@ export default function MainMenuScreen({
               onClick={() => {
                 if (onSelectHandHistory) {
                   onSelectHandHistory();
+                  return;
                 }
+                navigate("/history");
               }}
               onHover={() => setActiveMode("history")}
               onBlur={resetInfoPanel}
             />
-           <ModeButton
-             label={locale.menu.settings}
-             isActive={activeMode === "settings"}
-             testId="menu-settings"
+            <ModeButton
+              label={locale.menu.settings}
+              isActive={activeMode === "settings"}
+              testId="menu-settings"
               onClick={() => {
                 if (onSelectSettings) {
                   onSelectSettings();

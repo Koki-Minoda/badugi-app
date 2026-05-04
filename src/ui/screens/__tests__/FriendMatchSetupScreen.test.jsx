@@ -129,6 +129,52 @@ describe("FriendMatchSetupScreen", () => {
     );
   });
 
+  it("surfaces join failures without opening a websocket room", async () => {
+    mockGetRoomInfo.mockRejectedValueOnce(new Error("room not found"));
+    render(<FriendMatchSetupScreen language="en" />);
+
+    fireEvent.change(screen.getByLabelText(/room code/i), {
+      target: { value: "missing-room" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^join$/i }));
+
+    expect(await screen.findByText("room not found")).toBeTruthy();
+    expect(mockJoinRoom).not.toHaveBeenCalled();
+    expect(window.sessionStorage.getItem("mgx_friend_match_active_room_v1")).toBeNull();
+  });
+
+  it("shows websocket error and closed states for reconnect QA", async () => {
+    const sockets = [];
+    class MockWebSocket {
+      constructor() {
+        this.listeners = {};
+        this.readyState = 1;
+        this.send = vi.fn();
+        this.close = vi.fn();
+        sockets.push(this);
+      }
+
+      addEventListener(type, handler) {
+        this.listeners[type] = handler;
+      }
+    }
+    globalThis.WebSocket = MockWebSocket;
+
+    render(<FriendMatchSetupScreen language="en" />);
+    fireEvent.click(screen.getByRole("button", { name: /create room/i }));
+    expect(await screen.findByText(/room created/i)).toBeTruthy();
+
+    await act(async () => {
+      sockets[0].listeners.error();
+    });
+    expect(screen.getByText("error")).toBeTruthy();
+
+    await act(async () => {
+      sockets[0].listeners.close();
+    });
+    expect(screen.getByText("closed")).toBeTruthy();
+  });
+
   it("connects to room websocket and displays received room events", async () => {
     const sockets = [];
     class MockWebSocket {

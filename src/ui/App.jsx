@@ -105,6 +105,11 @@ import {
   saveHandHistory,
   saveTournamentHandHistory,
 } from "../utils/history.js";
+import {
+  findPersistedHandHistoryById,
+  mergeHandHistoryLists,
+  readPersistedHandHistory,
+} from "./utils/persistedHandHistory.js";
 import { useLocation, useNavigate } from "react-router-dom";
 import { loadTitleSettings } from "./utils/titleSettings";
 import { useRatingState } from "./hooks/useRatingState.js";
@@ -1897,10 +1902,12 @@ const SAFE_RESET_PHASE = "IDLE";
   const currentHandHistoryRef = useRef(null);
   setHandHistoryAccessors({
     readCurrent: () => cloneHandHistory(handHistoryRef.current),
-    readBuffer: () =>
-      Array.isArray(handHistoryBufferRef.current)
+    readBuffer: () => {
+      const memoryHands = Array.isArray(handHistoryBufferRef.current)
         ? handHistoryBufferRef.current.filter((entry) => entry != null).map(cloneHandHistory)
-        : [],
+        : [];
+      return mergeHandHistoryLists(memoryHands, readPersistedHandHistory({ limit: 200 }));
+    },
     findById: (handId) => {
       if (!handId) return null;
       if (handHistoryRef.current?.handId === handId) {
@@ -1908,7 +1915,7 @@ const SAFE_RESET_PHASE = "IDLE";
       }
       const buffer = handHistoryBufferRef.current ?? [];
       const match = buffer.find((entry) => entry?.handId === handId);
-      return match ? cloneHandHistory(match) : null;
+      return match ? cloneHandHistory(match) : findPersistedHandHistoryById(handId);
     },
   });
   const appendCanonicalHandEvent = useCallback((event) => {

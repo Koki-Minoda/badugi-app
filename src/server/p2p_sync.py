@@ -47,18 +47,6 @@ class P2PSyncController:
     try:
       while True:
         await asyncio.sleep(3)
-        if time.monotonic() - session.last_seen > 10:
-          await self.send_event(
-            session,
-            "error",
-            {
-              "code": "timeout",
-              "message": "Heartbeat lost, applying AI fallback",
-              "recoverable": True,
-            },
-          )
-          await session.websocket.close(code=1011)
-          break
         await self.send_event(
           session,
           "heartbeat",

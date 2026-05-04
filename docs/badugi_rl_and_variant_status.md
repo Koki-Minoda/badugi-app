@@ -2170,7 +2170,7 @@ Draw RL test coverage:
 | `BUG-35` | Play feedback pipeline | All | partial | Cash / tournament の30ハンド以上の履歴から、良かった点/悪かった点/ROI/参加条件/仮説をまとめるAI feedback APIが未実装。まずフロント側payload/gateを追加済み。 | 10-Game Beginner/Standard RL適用後にBadugi/2-7/A-5/Stud/Razz/NLH/PLOを対象にする。 |
 | `BUG-36` | All-in draw actor | Badugi / Draw | fixed | all-in後のCPU/Hero、またはall-in後にbusted seatが残った状態で、DRAWフェーズの交換対象が詰まりカード交換できなくなる。 | Badugiはactive all-in seatをDRAW可能、busted/seatOutはDRAW不可に分離。2-7/A-5 draw regressionも再実行する。 |
 | `BUG-37` | Hand history completeness | All | fixed | ゲーム内履歴と `/history` 永続履歴が分断され、キャッシュゲーム履歴が見えにくい。hand history detail/replay/API送信の完成度が不足。 | Cash/Tournament両方で完了ハンドが保存・表示され、variant/evaluator/pot/action/replayが復元できることを横断確認する。 |
-| `BUG-38` | Friend match playable QA | P2P | open | フレンドマッチがルーム作成/参加/ready/action/showdown/reconnectまで実運用レベルで壊れないか継続テストが必要。 | mocked browser smokeに加え、backend websocketありのhost/guest 2page smokeと手動確認を追加する。 |
+| `BUG-38` | Friend match playable QA | P2P | fixed | フレンドマッチがルーム作成/参加/ready/action/showdown/reconnectまで実運用レベルで壊れないか継続テストが必要だった。実WebSocket host/guest smokeとmobile landscape smokeを追加済み。 | mocked browser smoke、backend websocketありhost/guest 2page smoke、browser reconnect、mobile landscapeを継続回帰に入れる。 |
 
 - [x] `BUG-31` Hero DRAW中はHero seat Smart HUDを開かず、カードクリックを最優先する。
   - 2026-05-04 対応: `Player` componentでHeroかつ`phase === "DRAW"`の場合はSmart HUDを開かない。Player単体テストでHUDが出ず、Hero card clickが発火することを固定。
@@ -2206,12 +2206,15 @@ Draw RL test coverage:
   - 2026-05-04 部分対応: backendに`POST/GET /api/history/hand`を追加し、フロントsync queueはcanonical hand recordを汎用履歴APIへupsert同期してから既存`/api/badugi/hands`構造化ログへ送る。
   - 2026-05-04 対応: mobile viewport向けに`/history`のheader/section余白を調整し、Playwright mobile smokeで保存済みhand表示とページ水平scrollなしを確認。
   - 2026-05-04 確認: `HistoryScreen` unitでcash/tournament同時表示を固定。`main-menu-history-smoke`でstandalone menuから`/history`へ遷移できることを確認。
-- [ ] `BUG-38` フレンドマッチの実プレイQAを強化する。
+- [x] `BUG-38` フレンドマッチの実プレイQAを強化する。
   - 既存: `p2p-friend-match-smoke.spec.ts` はmock websocketでroom create / ready / draw / showdown / refresh restoreを確認済み。
   - 2026-05-04 確認: unitでcreate/join/websocket projection/action/reconnect/history replayを確認。Playwrightでlogin→room作成→ready→draw→showdown→refresh restoreを確認。
   - 2026-05-04 追加確認: join失敗時にroomを開かず、sessionStorageへ壊れたactive roomを残さないこと、websocket error/close状態がUIに出ることをunitで固定。
   - 2026-05-04 追加対応: backend WebSocketで現在手番以外のactionを`out_of_turn`として拒否し、`currentTurnPlayerId`をroom/state deltaへ配信。フロントは相手手番中のCall/Draw/Foldをdisabledにし、手番待ち表示を追加。
-  - 残TODO: backend websocketを実際に起動した2ページhost/guest smoke、ブラウザ切断後の再接続、モバイル横画面確認を追加する。
+  - 2026-05-04 追加確認: `p2p-friend-match-real-ws.spec.ts` を追加。`src/server`を8001で起動し、host/guest 2ページでroom作成、参加、実WebSocket同期、手番action、showdown、next handを確認する。
+  - 2026-05-04 対応: `src/server/requirements.txt` に `websockets` を明記し、uvicorn単体起動時にWebSocket Upgradeが404へ落ちる環境差を防ぐ。
+  - 2026-05-04 追加対応: WebSocket idle中にサーバーheartbeat timeoutで切断される問題を修正。通常の操作待ちで同期がclosedへ落ちないようにした。
+  - 2026-05-04 追加確認: 同じE2Eでhost reload後の再接続とmobile landscapeのFriend Match表示/水平scrollなしを確認。
 
 ### 16.5 Full Game Implementation / RL / Feedback Order
 

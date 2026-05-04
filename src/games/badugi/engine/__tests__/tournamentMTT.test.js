@@ -54,11 +54,13 @@ describe("tournamentMTT engine", () => {
         name: "Akira",
         cpuCharacterId: "akira",
         cpuStyle: "balanced",
+        avatarUrl: "/characters/akira.png",
       },
     ]);
     expect(state.players["cpu-akira"].name).toBe("Akira");
     expect(state.players["cpu-akira"].cpuCharacterId).toBe("akira");
     expect(state.players["cpu-akira"].cpuStyle).toBe("balanced");
+    expect(state.players["cpu-akira"].avatarUrl).toBe("/characters/akira.png");
   });
 
   it("advances levels once all active tables meet handsThisLevel", () => {

@@ -78,6 +78,36 @@ describe("BadugiUIAdapter", () => {
     });
   });
 
+  it("uses player avatarUrl as the seat avatar when present", () => {
+    const adapter = new BadugiUIAdapter({});
+    const props = adapter.buildViewProps({
+      controllerSnapshot: mockSnapshot({
+        players: [
+          {
+            name: "Hero",
+            stack: 490,
+            betThisRound: 10,
+            hand: ["AS", "KH", "QC", "JD"],
+            selected: [0],
+          },
+          {
+            name: "Akira",
+            stack: 495,
+            betThisRound: 5,
+            hand: ["2S", "3H", "4C", "5D"],
+            avatarUrl: "/characters/akira.png",
+          },
+        ],
+      }),
+      tableConfig: mockTableConfig,
+    });
+
+    expect(props.seatViews[1]).toMatchObject({
+      avatar: "/characters/akira.png",
+      avatarUrl: "/characters/akira.png",
+    });
+  });
+
   it("formats street labels", () => {
     const adapter = new BadugiUIAdapter({});
     expect(adapter.formatStreetLabel("BET")).toBe("Betting");

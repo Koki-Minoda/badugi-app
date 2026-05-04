@@ -162,6 +162,7 @@ export function isSeatEligibleForBet(player) {
 export function isSeatEligibleForDraw(player) {
   if (!isPlayerEligibleForBlinds(player)) return false;
   if (isFoldedOrOut(player)) return false;
+  if (player?.allIn) return false;
   if (player?.canDraw === false) return false;
   return true;
 }

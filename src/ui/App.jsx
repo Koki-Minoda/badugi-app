@@ -1175,10 +1175,14 @@ const SAFE_RESET_PHASE = "IDLE";
           : `seat-${idx}`);
       const stats =
         mergedSeatStatsByPlayerId[playerId] ?? mergedSeatStatsByPlayerId[`seat-${idx}`];
+      const avatarUrl = clone?.avatarUrl ?? null;
+      const avatar = clone?.avatar ?? avatarUrl ?? "default_avatar";
       return {
         ...clone,
         playerId,
         stats,
+        avatar,
+        avatarUrl,
         seatIndex: idx,
         label: getPositionName(idx, dealerSeatSrc, playersSrc),
         isDealer: idx === dealerSeatSrc,
@@ -3674,6 +3678,12 @@ const SAFE_RESET_PHASE = "IDLE";
         name: linkedPlayer?.name ?? player.name,
         cpuCharacterId: linkedPlayer?.cpuCharacterId ?? player.cpuCharacterId ?? null,
         cpuStyle: linkedPlayer?.cpuStyle ?? player.cpuStyle ?? null,
+        avatarUrl: linkedPlayer?.avatarUrl ?? player.avatarUrl ?? null,
+        avatar:
+          linkedPlayer?.avatarUrl ??
+          player.avatar ??
+          player.avatarUrl ??
+          "default_avatar",
         stack: linkedPlayer?.stack ?? 0,
         seatOut: !!linkedPlayer?.busted,
         isBusted: !!linkedPlayer?.busted,

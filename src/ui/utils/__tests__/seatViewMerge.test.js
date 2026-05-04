@@ -40,4 +40,23 @@ describe("seatViewMerge", () => {
 
     expect(result[0].showHand).toBe(false);
   });
+
+  it("does not let an adapter default avatar overwrite a roster image", () => {
+    const result = mergeSeatViewsForDisplay({
+      phase: "BET",
+      baseSeats: [
+        {
+          seatIndex: 1,
+          avatarUrl: "/characters/akira.png",
+          avatar: "/characters/akira.png",
+        },
+      ],
+      adapterSeatViews: [{ seatIndex: 1, avatar: "default_avatar" }],
+    });
+
+    expect(result[0]).toMatchObject({
+      avatar: "/characters/akira.png",
+      avatarUrl: "/characters/akira.png",
+    });
+  });
 });

@@ -2309,6 +2309,30 @@ Draw RL test coverage:
   - 2026-05-04 対応: `Player.test.jsx` で画像avatar表示と読み込み失敗時のinitial fallbackを確認。
 - [x] `CHAR-06` Hero のデフォルトavatarを `hero.png` にする。
   - 2026-05-04 対応: `titleSettings` の初期avatarを `/characters/hero.png` に変更。旧デフォルトのダイヤ/`default_avatar` がlocalStorageに残る場合は初回ロード時にhero画像へ移行する。
+- [x] `CHAR-07` CPU画像が table seat / tournament復元後に initials へ落ちる経路を修正する。
+  - 2026-05-04 対応: `seatViewMerge` で adapter の `default_avatar` が roster の `avatarUrl` を上書きしないよう修正。`App.jsx` の base seat / tournament hydrate でも `avatarUrl` を `avatar` に正規化。
+
+### 16.3.2 Current Regression Fixes
+
+- [x] `REG-20260504-PC-FELT` スマホ横画面対応がPC版の楕円卓を潰す回帰を修正する。
+  - 原因: `table-felt-oval` のモバイル向け `inset-y-[45%]` がdesktopにも適用されていた。
+  - 対応: `GameLayoutBase` で felt / ring のinsetを `layoutMode` ごとに分離。
+  - 横断影響: Badugiだけでなく同じshared layoutを使う2-7/A-5/今後のHold'em/Omahaにも影響し得るため、shared layout側で修正。
+- [x] `REG-20260504-ALLIN-DRAW-FREEZE` all-in後に進行停止する可能性を修正する。
+  - 原因: Badugiの `isSeatEligibleForDraw` が all-in seat をdraw actor候補に残していた。
+  - 対応: all-in seatをDRAW actorから除外し、pending flagが残っていてもskipするunit testを追加。
+  - 横断確認: 2-7/A-5系は別エンジンの all-in regression test を再実行して確認する。
+- [x] `BUG-TRACK-20260504` 新規バグを `docs/bugs/badugi_browser_mobile_bug_tracker.md` に追加し、他ゲーム影響欄を持たせる。
+- [x] `FB-POLICY-01` キャッシュ/トーナメントのプレイフィードバック運用方針を作成する。
+  - 2026-05-04 対応: `docs/play-feedback-policy.md` に30ハンド以上の送信条件、ROI/良悪判断/ChatGPT API連携方針を記載。
+
+### 16.3.3 2026-05-04 Regression Verification
+
+- [x] `npm test -- --run src/ui/utils/__tests__/seatViewMerge.test.js src/ui/game/badugi/__tests__/BadugiUIAdapter.test.js src/games/badugi/engine/__tests__/tournamentMTT.test.js src/games/badugi/logic/__tests__/roundFlow.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawEngine.test.js`: 5 files / 92 tests pass。
+- [x] `npx playwright test tests/e2e/tournament-ui-layout-smoke.spec.ts --project=badugi-flow`: 1 passed。PC版 table felt が細い帯へ潰れないことをbounding boxで確認。
+- [x] `npx playwright test tests/e2e/mobile-app-smoke.spec.ts --project=badugi-flow`: 7 passed。Badugi / D01 / D02 / S01 / S02 のスマホ横画面操作を確認。
+- [x] `npm run lint`: pass。
+- [x] `npm run build`: pass。chunk size warning は既存警告。
 
 ### 16.4 未対応タスク優先度
 

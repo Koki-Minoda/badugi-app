@@ -201,6 +201,15 @@ export default function GameLayoutBase({
       : "min-h-screen";
   const layoutRootRef = useRef(null);
   const cardScaleVars = useCardScaleVars(layoutRootRef);
+  const feltOvalClass = isMobileLayout
+    ? "inset-x-[10%] inset-y-[35%] border-[8px]"
+    : "inset-x-[3%] inset-y-[26%] border-[10px]";
+  const feltInnerRingClass = isMobileLayout
+    ? "inset-x-[12%] inset-y-[38%]"
+    : "inset-x-[8%] inset-y-[30%]";
+  const feltInnerRingSoftClass = isMobileLayout
+    ? "inset-x-[18%] inset-y-[42%]"
+    : "inset-x-[14%] inset-y-[34%]";
   const rootStyle = isMobileLayout
     ? { ...cardScaleVars, ...MOBILE_CARD_VARS, height: disableVh ? "100vh" : "100dvh" }
     : disableVh
@@ -440,10 +449,10 @@ export default function GameLayoutBase({
               >
                 <div
                   data-testid="table-felt-oval"
-                  className={`pointer-events-none absolute inset-x-[10%] inset-y-[45%] rounded-[50%] border-[10px] border-slate-950/80 ${tableSurfaceBg} shadow-[inset_0_0_65px_rgba(0,0,0,0.42)]`}
+                  className={`pointer-events-none absolute ${feltOvalClass} rounded-[50%] border-slate-950/80 ${tableSurfaceBg} shadow-[inset_0_0_65px_rgba(0,0,0,0.42)]`}
                 />
-                <div className="pointer-events-none absolute inset-x-[12%] inset-y-[46%] rounded-[50%] border border-white/10" />
-                <div className="pointer-events-none absolute inset-x-[18%] inset-y-[48%] rounded-[50%] border border-white/5" />
+                <div className={`pointer-events-none absolute ${feltInnerRingClass} rounded-[50%] border border-white/10`} />
+                <div className={`pointer-events-none absolute ${feltInnerRingSoftClass} rounded-[50%] border border-white/5`} />
                 {!isTournament && tournamentHud}
                 <div
                   className={`relative ${

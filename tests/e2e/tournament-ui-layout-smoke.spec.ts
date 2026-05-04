@@ -62,15 +62,16 @@ test.describe("tournament UI layout smoke", () => {
     expect(hudBox?.x ?? 0).toBeGreaterThanOrEqual(1100);
     expect(heroCardBox?.y ?? -1).toBeGreaterThanOrEqual(0);
     expect((heroCardBox?.y ?? 0) + (heroCardBox?.height ?? 0)).toBeLessThanOrEqual(900);
+    expect(feltBox?.height ?? 0).toBeGreaterThan(320);
+    expect(feltBox?.width ?? 0).toBeGreaterThan(760);
 
     const rightTopBottom = (rightTopBox?.y ?? 0) + (rightTopBox?.height ?? 0);
     expect(rightTopBottom).toBeLessThan((rightBottomBox?.y ?? 0) + 10);
     expect((topSeatBox?.y ?? 0) + (topSeatBox?.height ?? 0)).toBeLessThanOrEqual(
       (feltBox?.y ?? 0) + 40,
     );
-    expect(heroSeatBox?.y ?? 0).toBeGreaterThanOrEqual(
-      (feltBox?.y ?? 0) + (feltBox?.height ?? 0) - 42,
-    );
+    expect(heroSeatBox?.y ?? 0).toBeGreaterThan((topSeatBox?.y ?? 0) + (topSeatBox?.height ?? 0));
+    expect((heroSeatBox?.y ?? 0) + (heroSeatBox?.height ?? 0)).toBeLessThanOrEqual(900);
 
     const [heroAvatarBox, heroPositionBox] = await Promise.all([
       heroAvatar.boundingBox(),

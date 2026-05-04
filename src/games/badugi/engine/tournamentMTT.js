@@ -40,6 +40,7 @@ export function createMTTTournamentState(config, entrants) {
       name: entry?.name ?? playerId,
       cpuCharacterId: entry?.cpuCharacterId ?? null,
       cpuStyle: entry?.cpuStyle ?? null,
+      avatarUrl: entry?.avatarUrl ?? null,
       startingStack,
       stack: startingStack,
       busted: false,

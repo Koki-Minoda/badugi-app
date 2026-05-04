@@ -636,6 +636,16 @@ describe("findNextActorSeatForPhase (DRAW)", () => {
     expect(findNextDrawSeat(players, 3)).toBe(4);
   });
 
+  it("skips an all-in seat even when its draw flag is still pending", () => {
+    const players = [
+      drawSeat({ name: "BTN", hasActedThisRound: true }),
+      drawSeat({ name: "SB", allIn: true, hasActedThisRound: false }),
+      drawSeat({ name: "BB", hasActedThisRound: false }),
+    ];
+
+    expect(findNextDrawSeat(players, 1)).toBe(2);
+  });
+
   it("returns null when all eligible seats have acted", () => {
     const players = [
       drawSeat({ hasActedThisRound: true }),

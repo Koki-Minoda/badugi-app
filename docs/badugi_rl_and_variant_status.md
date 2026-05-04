@@ -2500,6 +2500,7 @@ Draw RL test coverage:
   - 2026-05-05 学習: Badugi Standard向けに `badugi_10game_teacher_5k_20260505` を実行。`badugi_dqn_002500_20260505-005022.pt` を採用候補にし、`badugi_standard_dqn_v3.onnx` としてexport。
   - 2026-05-05 評価: Standard v2比 6-profile x 2-seed gate で `avgReward 3.008 vs 1.902`、`worstProfileAvgReward 2.202 vs 1.064`、`negativeBetEVActions 0 vs 28`。Pro v1比は `avgReward 3.008 vs 2.912`、`showdownWinRate 0.674 vs 0.647` だが `minAvgReward 1.771 vs 1.855` のためPro昇格は保留。
   - 2026-05-05 適用: `model-badugi-standard-dqn-v3` をregistryに追加し、Badugi Standardの通常routingをv3へ切替。旧v2は比較/rollback用に残す。
+  - 2026-05-05 Pro practice benchmark: `public/models/badugi_pro_v1.onnx` は practice-only 3200 episodes で `avgReward 2.827`, `showdownWinRate 0.683`, `foldRate 0.163`, `worstProfileAvgReward 1.988`。synthetic gate はpassだが human logなしのため人間相手60%超の保証には使わない。
   - 残TODO: 10-Game全体の true RL 適用は未完。D01/D02/NLH/PLO/Stud/Razz系を「専用モデル」として名乗るには、variant別 dataset、action mask、reward、checkpoint評価、human/practice benchmark gate が必要。
 - [x] `npm test -- --run src/games/stud/__tests__/StudSplitGameController.test.js src/ui/game/nlh/__tests__/NLHUIAdapter.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawController.test.js src/ui/components/__tests__/Player.test.jsx`: 4 files / 28 tests pass。
 - [x] `npm test -- --run src/games/__tests__/playableInvariant.test.js`: 1 file / 25 tests pass。NLH/FLH/PLO/PLO8/FLO8/Stud/Stud8/Razz/Razz27/Razzdugi/Razzducey/主要draw系のbroken actorとchip driftを横断確認。

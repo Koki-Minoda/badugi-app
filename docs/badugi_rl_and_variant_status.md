@@ -2495,7 +2495,10 @@ Draw RL test coverage:
   - 2026-05-05 部分対応: `src/games/core/cpuTeacherPolicy.js` を追加し、board/stud系に Beginner/Standard 以上の tier threshold を使う teacher-supervised betting policy を導入。
   - 2026-05-05 部分対応: NLH / FLH / PLO / PLO8 / FLO8 は hole/board/evaluator ベースの強度推定、Stud / Stud8 / Razz / Razz27 は up/down card と high/low evaluator ベースの強度推定で CPU action を返す。
   - 2026-05-05 確認: targeted unit で NLH/PLO/Stud-family の `getCpuAction()` と teacher policy threshold を固定。
-  - 残TODO: true RL 適用は未完。10-Game全体の Beginner/Standard を「専用モデル」として名乗るには、variant別 dataset、action mask、reward、checkpoint評価、human/practice benchmark gate が必要。
+  - 2026-05-05 学習: Badugi Standard向けに `badugi_10game_teacher_5k_20260505` を実行。`badugi_dqn_002500_20260505-005022.pt` を採用候補にし、`badugi_standard_dqn_v3.onnx` としてexport。
+  - 2026-05-05 評価: Standard v2比 6-profile x 2-seed gate で `avgReward 3.008 vs 1.902`、`worstProfileAvgReward 2.202 vs 1.064`、`negativeBetEVActions 0 vs 28`。Pro v1比は `avgReward 3.008 vs 2.912`、`showdownWinRate 0.674 vs 0.647` だが `minAvgReward 1.771 vs 1.855` のためPro昇格は保留。
+  - 2026-05-05 適用: `model-badugi-standard-dqn-v3` をregistryに追加し、Badugi Standardの通常routingをv3へ切替。旧v2は比較/rollback用に残す。
+  - 残TODO: 10-Game全体の true RL 適用は未完。D01/D02/NLH/PLO/Stud/Razz系を「専用モデル」として名乗るには、variant別 dataset、action mask、reward、checkpoint評価、human/practice benchmark gate が必要。
 - [x] `npm test -- --run src/games/stud/__tests__/StudSplitGameController.test.js src/ui/game/nlh/__tests__/NLHUIAdapter.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawController.test.js src/ui/components/__tests__/Player.test.jsx`: 4 files / 28 tests pass。
 - [x] `npm test -- --run src/games/__tests__/playableInvariant.test.js`: 1 file / 25 tests pass。NLH/FLH/PLO/PLO8/FLO8/Stud/Stud8/Razz/Razz27/Razzdugi/Razzducey/主要draw系のbroken actorとchip driftを横断確認。
 - [x] `npm test -- --run src/games/draw/__tests__/DeuceToSevenTripleDrawEngine.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawController.test.js src/games/__tests__/playableInvariant.test.js`: 3 files / 65 tests pass。2-7/A-5/5-card draw系のall-in DRAW権、BET不可、空BET street skip、横断chip driftなしを確認。

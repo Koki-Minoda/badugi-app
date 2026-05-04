@@ -79,6 +79,29 @@
     ]
   },
   {
+    "id": "model-badugi-standard-dqn-v3",
+    "version": "v4",
+    "variantIds": [
+      "D03"
+    ],
+    "characterIds": [],
+    "tier": "standard",
+    "onnx": "models/badugi_standard_dqn_v3.onnx",
+    "checksumSha256": "395768198302441362eb43aac4d3f50842c3a07e2e84483f97412b5348bdcaae",
+    "trainingRun": "badugi_10game_teacher_5k_20260505",
+    "trainingCheckpoint": "badugi_dqn_002500_20260505-005022.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "5k 6-max teacher-supervised brush-up with first-in value bet replay, profitable continue replay, and mixed opponent profiles. Selected 2.5k checkpoint for Standard because it beats Standard v2 on 6-profile x 2-seed gate: avgReward 3.008 vs 1.902, worstProfileAvgReward 2.202 vs 1.064, negativeBetEVActions 0 vs 28. It is near Pro v1 on avgReward but not promoted to Pro because minAvgReward is still lower than Pro v1.",
+    "featureSet": "badugi-observation-v1-ev-range",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
     "id": "model-badugi-standard-dqn-v2",
     "version": "v3",
     "variantIds": [

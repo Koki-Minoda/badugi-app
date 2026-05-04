@@ -53,15 +53,14 @@ describe("VariantSelectModal", () => {
     expect(handleSelect).toHaveBeenCalledWith("S02");
   });
 
-  it("prevents selection of disabled variants", () => {
+  it("allows PLO to be selected", () => {
     const handleSelect = vi.fn();
     render(<VariantSelectModal isOpen onClose={() => {}} onSelectVariant={handleSelect} />);
 
     const ploButton = screen.getByRole("button", { name: /pot-limit omaha/i });
-    expect(ploButton.disabled).toBe(true);
+    expect(ploButton.disabled).toBe(false);
     fireEvent.click(ploButton);
-    expect(handleSelect).not.toHaveBeenCalled();
-    expect(screen.getAllByText(/coming soon/i).length).toBeGreaterThan(0);
+    expect(handleSelect).toHaveBeenCalledWith("plo");
   });
 
   it("does not render when closed", () => {

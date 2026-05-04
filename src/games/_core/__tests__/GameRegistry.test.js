@@ -15,4 +15,14 @@ describe("GameRegistry", () => {
     const sampleHand = ["As", "2d", "3c", "4h"];
     expect(def.evaluateHand(sampleHand)).toEqual(evaluateBadugi(sampleHand));
   });
+
+  it("returns NLH and PLO definitions by logical variant id", () => {
+    expect(GameRegistry.get("nlh")?.label).toBe("No-Limit Hold'em");
+    expect(GameRegistry.get("plo")?.label).toBe("Pot-Limit Omaha");
+    expect(GameRegistry.get("plo")?.handStructure).toMatchObject({
+      hole: 4,
+      mustUseHole: 2,
+      mustUseBoard: 3,
+    });
+  });
 });

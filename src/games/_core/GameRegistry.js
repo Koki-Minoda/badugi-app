@@ -1,5 +1,6 @@
 import BadugiGameDefinition from "../badugi/BadugiGameDefinition";
 import NLHGameDefinition from "../nlh/NLHGameDefinition.js";
+import PLOGameDefinition from "../plo/PLOGameDefinition.js";
 
 class GameRegistryClass {
   constructor() {
@@ -33,5 +34,6 @@ class GameRegistryClass {
 const registry = new GameRegistryClass();
 registry.register(BadugiGameDefinition);
 registry.register(NLHGameDefinition);
+registry.register(PLOGameDefinition);
 
 export default registry;

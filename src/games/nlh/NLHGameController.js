@@ -96,8 +96,13 @@ export class NLHGameController {
   }
 
   getSnapshot() {
+    const phase = this.state.street === "SHOWDOWN" ? "SHOWDOWN" : "BET";
     return {
       ...this.state,
+      phase,
+      turn: this.state.currentActor,
+      nextTurn: this.state.currentActor,
+      pots: [{ amount: this.calculatePot(), potAmount: this.calculatePot() }],
       players: this.state.players.map(clonePlayer),
       boardCards: [...this.state.boardCards],
     };
@@ -147,6 +152,8 @@ export class NLHGameController {
       betThisStreet: 0,
       folded: player.stack <= 0 || player.seatOut,
       allIn: player.stack <= 0,
+      hasActedThisStreet: false,
+      lastAction: "",
       holeCards: [],
     }));
     this.state.boardCards = [];
@@ -265,15 +272,19 @@ export class NLHGameController {
       return { success: false, reason: "Player cannot act" };
     }
 
-    switch ((action || "").toLowerCase()) {
+    const actionName = (action || "").toLowerCase();
+    switch (actionName) {
       case "fold":
         player.folded = true;
+        player.lastAction = "Fold";
         break;
       case "check":
+        player.lastAction = "Check";
         break;
       case "call": {
         const toCall = Math.max(0, this.state.currentBet - (player.betThisStreet ?? 0));
         this.commitChips(player, toCall);
+        player.lastAction = toCall > 0 ? "Call" : "Check";
         break;
       }
       case "bet":
@@ -282,16 +293,39 @@ export class NLHGameController {
         const raiseAmount = amount > 0 ? amount : player.stack;
         this.commitChips(player, raiseAmount);
         this.state.currentBet = Math.max(this.state.currentBet, player.betThisStreet ?? 0);
+        player.lastAction = actionName === "all-in" ? "All-in" : actionName === "raise" ? "Raise" : "Bet";
         break;
       }
       default:
         return { success: false, reason: "Unsupported action" };
     }
+    player.hasActedThisStreet = true;
 
     this.state.pot = this.calculatePot();
     this.state.players[seatIndex] = { ...player };
-    this.state.currentActor = this.nextActiveSeat(seatIndex);
+    const remainingContenders = this.state.players.filter(
+      (p) => p && !p.folded && !p.seatOut,
+    );
+    if (remainingContenders.length <= 1) {
+      this.resolveUncontested();
+    } else if (this.isBettingRoundComplete()) {
+      this.advanceStreet();
+    } else {
+      this.state.currentActor = this.nextActiveSeat(seatIndex);
+    }
     return { success: true, player: clonePlayer(player) };
+  }
+
+  isBettingRoundComplete() {
+    const activePlayers = this.state.players.filter(
+      (player) => player && !player.folded && !player.seatOut && !player.allIn,
+    );
+    if (activePlayers.length === 0) return true;
+    return activePlayers.every(
+      (player) =>
+        player.hasActedThisStreet === true &&
+        (player.betThisStreet ?? 0) === (this.state.currentBet ?? 0),
+    );
   }
 
   advanceStreet() {
@@ -318,6 +352,7 @@ export class NLHGameController {
     this.state.players = this.state.players.map((player) => ({
       ...player,
       betThisStreet: 0,
+      hasActedThisStreet: false,
     }));
     this.state.currentBet = 0;
   }
@@ -398,6 +433,32 @@ export class NLHGameController {
     };
     this.state.lastHandResult = summary;
     return summary;
+  }
+
+  resolveUncontested() {
+    const winner = this.state.players.find((player) => player && !player.folded && !player.seatOut);
+    const resolvedPot = this.calculatePot();
+    if (winner) {
+      winner.stack += resolvedPot;
+    }
+    this.state.street = "SHOWDOWN";
+    this.state.currentActor = null;
+    this.state.lastHandResult = {
+      handId: this.state.handId,
+      board: [...this.state.boardCards],
+      totalPot: resolvedPot,
+      winners: winner
+        ? [{ seatIndex: winner.seatIndex, name: winner.name, payout: resolvedPot, evaluation: null }]
+        : [],
+      potDetails: [
+        {
+          potIndex: 0,
+          amount: resolvedPot,
+          winnerSeatIndexes: winner ? [winner.seatIndex] : [],
+        },
+      ],
+    };
+    return this.state.lastHandResult;
   }
 }
 

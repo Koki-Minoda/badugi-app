@@ -1,6 +1,7 @@
 export const APP_VARIANT_IDS = {
   BADUGI: "badugi",
   NLH: "nlh",
+  PLO: "plo",
   D01: "deuce_to_seven_triple_draw",
   D02: "ace_to_five_triple_draw",
   S01: "deuce_to_seven_single_draw",
@@ -13,6 +14,10 @@ const VARIANT_ALIASES = new Map([
   ["nlh", APP_VARIANT_IDS.NLH],
   ["nl_holdem", APP_VARIANT_IDS.NLH],
   ["holdem", APP_VARIANT_IDS.NLH],
+  ["plo", APP_VARIANT_IDS.PLO],
+  ["pot_limit_omaha", APP_VARIANT_IDS.PLO],
+  ["pot-limit-omaha", APP_VARIANT_IDS.PLO],
+  ["omaha", APP_VARIANT_IDS.PLO],
   ["d01", APP_VARIANT_IDS.D01],
   ["27td", APP_VARIANT_IDS.D01],
   ["2-7-triple-draw", APP_VARIANT_IDS.D01],
@@ -50,5 +55,10 @@ export function isDrawLowballAppVariant(variantId) {
 
 export function isControllerBackedAppVariant(variantId) {
   const normalized = normalizeAppVariantId(variantId, null);
-  return normalized === APP_VARIANT_IDS.BADUGI || DRAW_LOWBALL_APP_VARIANTS.has(normalized);
+  return (
+    normalized === APP_VARIANT_IDS.BADUGI ||
+    normalized === APP_VARIANT_IDS.NLH ||
+    normalized === APP_VARIANT_IDS.PLO ||
+    DRAW_LOWBALL_APP_VARIANTS.has(normalized)
+  );
 }

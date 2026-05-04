@@ -1744,11 +1744,15 @@ Draw RL test coverage:
       - [ ] `AI-06e-3` 2-7 / A-5 Pro適用前に、hand evaluator regression / draw controller smoke / human-practice benchmark を最低50ハンド相当で通す。
     - Board-game implementation roadmap:
       - [ ] `BOARD-01` BoardEngineBase をNLHで実戦化する。hole 2 / community 5 / preflop-flop-turn-river / no-limit betting / high evaluator / side-pot表示をBadugi UIに接続する。
-      - [ ] `BOARD-02` NL Hold'em (`B01`) を playable にする。ゲーム選択、table state、showdown label、hand history、smoke test、mobile landscape UI を含める。
+      - [x] `BOARD-02` NL Hold'em (`B01`) を cash game route に接続する。hole 2 / community board / preflop-flop-turn-river / high evaluator / App board-controller bridge を含める。
+        - 2026-05-04 確認: 既存 `NLHGameController` / `NLHUIAdapter` / high evaluator をApp routingへ接続済み。今回のPLO追加に合わせてGameRegistry上のNLH定義、board controller新規ハンド開始、board controllerアクション適用を再確認。
+        - 残TODO: NLH専用hand history detail、side-pot表示のboard game smoke、mobile landscape実機確認を追加する。
       - [ ] `BOARD-03` FL Hold'em (`B02`) を playable にする。fixed-limit cap / street別bet size / raise capの表示とテストを含める。
       - [ ] `BOARD-04` NL Super Hold'em (`B03`) を playable にする。3 hole cards / showdown時2枚選択またはbest two selection / discard requirement のUIと判定を実装する。
       - [ ] `BOARD-05` FL Super Hold'em (`B04`) を playable にする。Super Hold'em差分をfixed-limitへ適用する。
-      - [ ] `BOARD-06` Pot-Limit Omaha (`B05`) を playable にする。must-use-two evaluator / pot-limit raise calculation / 4 hole card UI / hand history を実装する。
+      - [x] `BOARD-06` Pot-Limit Omaha (`B05`) を cash game route に接続する。must-use-two evaluator / pot-limit raise cap / 4 hole cards / App board-controller bridge を含める。
+        - 2026-05-04 実装: `PLOGameController` / `PLOGameDefinition` / `evaluatePloHand()` / PLO UI adapter registration を追加し、cash variant modalとGame SelectorからPLOを起動可能にした。showdown evaluatorはOmaha highの「hole exactly 2 + board exactly 3」をfixtureで固定し、controller側でPL上限をcapする。
+        - 残TODO: pot-limit raise上限のUI表示、PLO専用hand history detail、PLO smokeをPlaywrightで追加する。
       - [ ] `BOARD-07` PLO8 (`B06`) を playable にする。Hi-Lo 8-or-better split evaluator / no-low時scoop / odd chip / side pot splitを実装する。
       - [ ] `BOARD-08` Big-O (`B07`) を playable にする。5 hole Omaha high / exact two requirement / pot-limit bettingを実装する。
       - [ ] `BOARD-09` 5-Card PLO (`B08`) を playable にする。Big-Oとの差分をhigh-onlyとして整理する。

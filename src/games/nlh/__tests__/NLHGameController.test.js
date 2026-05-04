@@ -109,6 +109,19 @@ describe("NLHGameController", () => {
     expect(controller.state.street).toBe("SHOWDOWN");
   });
 
+  it("advances to the flop when the preflop betting round completes", () => {
+    const controller = createController({ seats, deckCards, blinds });
+    controller.startNewHand();
+
+    controller.applyPlayerAction({ seatIndex: 0, action: "call" });
+    controller.applyPlayerAction({ seatIndex: 1, action: "call" });
+    controller.applyPlayerAction({ seatIndex: 2, action: "check" });
+
+    expect(controller.state.street).toBe("FLOP");
+    expect(controller.state.boardCards).toHaveLength(3);
+    expect(controller.state.currentBet).toBe(0);
+  });
+
   it("resolves showdown and returns winning summary", () => {
     const controller = createController({ seats, deckCards, blinds });
     controller.startNewHand();

@@ -1,5 +1,6 @@
 import React, { useRef } from "react";
 import Player from "../../components/Player";
+import Card from "../../components/Card";
 import Controls from "../../components/Controls";
 import PlayerStatusBoard from "../../components/PlayerStatusBoard";
 import Modal from "../../components/Modal";
@@ -135,6 +136,8 @@ export default function GameLayoutBase({
     phase,
     drawRoundValue,
     betRoundValue,
+    boardCards = [],
+    streetLabel = "",
   } = tableProps;
 
   const {
@@ -477,9 +480,22 @@ export default function GameLayoutBase({
                         <p className="text-lg font-black text-yellow-200">{totalPot}</p>
                       </div>
                       <div className={`${isMobileLayout ? "ml-1" : ""} rounded-full bg-black/45 px-3 py-1 text-[11px] font-semibold text-slate-200`}>
-                        {tablePhase} · Draw {drawRoundValue + 1}
+                        {boardCards.length > 0 || streetLabel
+                          ? `${tablePhase} · ${streetLabel || "Board"}`
+                          : `${tablePhase} · Draw ${drawRoundValue + 1}`}
                       </div>
                   </div>
+                  {boardCards.length > 0 && (
+                    <div
+                      className={`absolute left-1/2 z-20 flex -translate-x-1/2 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-black/35 px-3 py-2 shadow-xl backdrop-blur ${
+                        isMobileLayout ? "top-[44%]" : "top-[42%]"
+                      }`}
+                    >
+                      {boardCards.map((card, idx) => (
+                        <Card key={`${card}-${idx}`} value={card} />
+                      ))}
+                    </div>
+                  )}
                   {seatLayouts.map((_, idx) => {
                     const seat = tableSeatViews[idx];
                     if (!seat) return null;

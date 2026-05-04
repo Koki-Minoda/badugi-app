@@ -148,7 +148,7 @@ export class NLHUIAdapter extends BaseGameUIAdapter {
     const controlsConfig = buildControlsConfig(controllerSnapshot, tableConfig);
     const hudInfo = buildHudInfo(controllerSnapshot, tableConfig, potView.total);
     return {
-      tablePhase: controllerSnapshot.street ?? "PREFLOP",
+      tablePhase: controllerSnapshot.street === "SHOWDOWN" ? "SHOWDOWN" : "BET",
       seatViews,
       potView,
       controlsConfig,

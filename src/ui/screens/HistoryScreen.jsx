@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { designTokens } from "../../styles/designTokens.js";
-import { getTournaments, getTournamentHands } from "../../utils/history.js";
+import { getHands, getTournaments, getTournamentHands } from "../../utils/history.js";
 
 const fmt = new Intl.DateTimeFormat("ja-JP", {
   month: "2-digit",
@@ -10,8 +10,64 @@ const fmt = new Intl.DateTimeFormat("ja-JP", {
   minute: "2-digit",
 });
 
+function getCashHandEnd(hand) {
+  return Array.isArray(hand?.events)
+    ? [...hand.events].reverse().find((event) => event?.type === "HAND_END")
+    : null;
+}
+
+function getCashWinnersLabel(hand) {
+  const handEnd = getCashHandEnd(hand);
+  if (handEnd?.winners?.length) {
+    return handEnd.winners
+      .map((winner) => `Seat ${winner.seat} +${winner.amount}`)
+      .join(", ");
+  }
+  if (Array.isArray(hand?.winners) && hand.winners.length > 0) {
+    return hand.winners.join(", ");
+  }
+  return "-";
+}
+
+function getTotalPotLabel(hand) {
+  const handEnd = getCashHandEnd(hand);
+  return handEnd?.totalPot ?? hand?.pot ?? hand?.uiSummary?.pot ?? "-";
+}
+
+function getActionCount(hand) {
+  if (Array.isArray(hand?.events)) {
+    return hand.events.filter((event) => event?.type === "ACTION").length;
+  }
+  return hand?.legacyRecord?.seats?.reduce(
+    (sum, seat) => sum + (Array.isArray(seat.actions) ? seat.actions.length : 0),
+    0,
+  ) ?? 0;
+}
+
+function getPlayerRows(hand) {
+  const rows = Array.isArray(hand?.seats) ? hand.seats : hand?.legacyRecord?.seats;
+  return Array.isArray(rows) ? rows : [];
+}
+
+function formatEvent(event) {
+  if (!event?.type) return "Unknown event";
+  if (event.type === "ACTION") {
+    const label = event.action ?? event.actionType ?? event.decision ?? event.type;
+    const amount = event.amount ?? event.bet ?? event.toCall;
+    return `Seat ${event.seat ?? "-"} ${label}${amount != null ? ` ${amount}` : ""}`;
+  }
+  if (event.type === "PHASE_TRANSITION") {
+    return `${event.from ?? "-"} -> ${event.to ?? "-"}`;
+  }
+  if (event.type === "HAND_END") {
+    return `Hand end: pot ${event.totalPot ?? "-"}, winners ${getCashWinnersLabel({ events: [event] })}`;
+  }
+  return event.type;
+}
+
 export default function HistoryScreen() {
   const navigate = useNavigate();
+  const cashHands = useMemo(() => getHands({ limit: 100 }), []);
   const tournaments = useMemo(() => getTournaments({ limit: 200 }), []);
   const [selectedId, setSelectedId] = useState(tournaments[0]?.tournamentId ?? null);
   const [search, setSearch] = useState("");
@@ -50,6 +106,135 @@ export default function HistoryScreen() {
       </header>
 
       <main className="max-w-6xl mx-auto px-6 pb-16 space-y-10">
+        <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold">キャッシュゲーム履歴</h2>
+              <p className="text-sm text-slate-400">
+                直近の完了ハンドを確認できます。ポット、勝者、ショーダウン、アクション数を残します。
+              </p>
+            </div>
+            <span className="rounded-full border border-white/10 bg-slate-950/50 px-3 py-1 text-xs text-slate-300">
+              {cashHands.length} hands
+            </span>
+          </div>
+          {cashHands.length === 0 ? (
+            <div className="p-6 text-sm text-slate-400">まだキャッシュゲームのハンド履歴がありません。</div>
+          ) : (
+            <div className="space-y-3">
+              {cashHands.map((hand) => {
+                const winners = getCashWinnersLabel(hand);
+                const totalPot = getTotalPotLabel(hand);
+                const actionCount = getActionCount(hand);
+                const playerRows = getPlayerRows(hand);
+                const potRows = Array.isArray(hand.pots) ? hand.pots : [];
+                return (
+                  <details
+                    key={hand.handId}
+                    className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3"
+                  >
+                    <summary className="flex flex-col gap-3 cursor-pointer md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <span className="font-semibold">Hand ID:</span>{" "}
+                        <code>{hand.handId}</code>
+                        <span className="ml-3 text-xs text-slate-400">
+                          {fmt.format(new Date(hand.endedAt ?? hand.ts ?? hand.startedAt))}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-3 text-sm">
+                        <span>
+                          Pot: <b>{totalPot}</b>
+                        </span>
+                        <span>
+                          Winner: <b>{winners}</b>
+                        </span>
+                        <span>
+                          Actions: <b>{actionCount}</b>
+                        </span>
+                      </div>
+                    </summary>
+                    <div className="mt-3 grid gap-3 text-sm text-slate-200 md:grid-cols-2">
+                      <div className="rounded-xl border border-white/5 bg-slate-900/50 p-3">
+                        <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Table</p>
+                        <p>Button: {hand.buttonSeat ?? "-"}</p>
+                        <p>SB: {hand.sbSeat ?? "-"}</p>
+                        <p>BB: {hand.bbSeat ?? "-"}</p>
+                      </div>
+                      <div className="rounded-xl border border-white/5 bg-slate-900/50 p-3">
+                        <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Result</p>
+                        <p>Pot: {totalPot}</p>
+                        <p>Winner: {winners}</p>
+                        <p>Showdown: {hand.events?.some((event) => event?.type === "SHOWDOWN") ? "Yes" : "No"}</p>
+                      </div>
+                    </div>
+                    {playerRows.length > 0 && (
+                      <div className="mt-3 overflow-x-auto rounded-xl border border-white/5">
+                        <table className="min-w-full text-xs">
+                          <thead className="bg-slate-900/70 text-slate-400">
+                            <tr>
+                              <th className="p-2 text-left">Seat</th>
+                              <th className="p-2 text-left">Player</th>
+                              <th className="p-2 text-right">Stack</th>
+                              <th className="p-2 text-right">Bet</th>
+                              <th className="p-2 text-left">Status</th>
+                              <th className="p-2 text-left">Last action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {playerRows.map((player, idx) => (
+                              <tr key={`${hand.handId}-cash-seat-${player.seat ?? idx}`} className="border-t border-white/5">
+                                <td className="p-2">{player.seat ?? idx}</td>
+                                <td className="p-2">{player.name ?? `Seat ${player.seat ?? idx}`}</td>
+                                <td className="p-2 text-right">{player.stackAfter ?? player.stack ?? player.initialStack ?? "-"}</td>
+                                <td className="p-2 text-right">{player.bet ?? player.totalBet ?? 0}</td>
+                                <td className="p-2">
+                                  {player.folded ? "Folded" : player.allIn ? "All-in" : player.busted ? "Busted" : "Active"}
+                                </td>
+                                <td className="p-2">{player.action ?? player.lastAction ?? "-"}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    {potRows.length > 0 && (
+                      <div className="mt-3 rounded-xl border border-white/5 bg-slate-900/40 p-3 text-xs">
+                        <p className="mb-2 font-semibold text-slate-200">Pot details</p>
+                        <div className="grid gap-2 md:grid-cols-2">
+                          {potRows.map((pot, idx) => (
+                            <div key={`${hand.handId}-pot-${idx}`} className="rounded-lg bg-slate-950/50 p-2">
+                              <span className="text-slate-400">{pot.label ?? pot.type ?? `Pot ${idx + 1}`}</span>
+                              <b className="ml-2">{pot.amount ?? pot.value ?? "-"}</b>
+                              {Array.isArray(pot.eligibleSeats) && (
+                                <span className="ml-2 text-slate-400">
+                                  eligible: {pot.eligibleSeats.join(", ")}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {Array.isArray(hand.events) && hand.events.length > 0 && (
+                      <div className="mt-3 rounded-xl border border-white/5 bg-slate-900/40 p-3 text-xs">
+                        <div className="mb-2 flex items-center justify-between">
+                          <p className="font-semibold text-slate-200">Action Timeline</p>
+                          <span className="text-slate-500">{hand.events.length} events</span>
+                        </div>
+                        <ol className="max-h-48 list-decimal list-inside space-y-1 overflow-y-auto text-slate-300">
+                          {hand.events.map((event, idx) => (
+                            <li key={`${hand.handId}-event-${idx}`}>{formatEvent(event)}</li>
+                          ))}
+                        </ol>
+                      </div>
+                    )}
+                  </details>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
         <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-semibold">トーナメント一覧</h2>

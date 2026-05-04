@@ -101,6 +101,10 @@ import {
   installHumanBenchmarkLogDevTools,
   saveRLHandHistory,
 } from "../utils/history_rl";
+import {
+  saveHandHistory,
+  saveTournamentHandHistory,
+} from "../utils/history.js";
 import { useLocation, useNavigate } from "react-router-dom";
 import { loadTitleSettings } from "./utils/titleSettings";
 import { useRatingState } from "./hooks/useRatingState.js";
@@ -2016,10 +2020,22 @@ const SAFE_RESET_PHASE = "IDLE";
         return null;
       }
       handHistoryBufferRef.current = [...handHistoryBufferRef.current, snapshot];
+      try {
+        if (isTournament) {
+          saveTournamentHandHistory({
+            ...snapshot,
+            tournamentId: tournamentStateRef.current?.config?.id ?? "active-mtt",
+          });
+        } else {
+          saveHandHistory(snapshot);
+        }
+      } catch (error) {
+        console.warn("[HAND_HISTORY] Failed to persist finalized hand", error);
+      }
       handHistoryRef.current = null;
       return snapshot;
     },
-    [appendCanonicalHandEvent],
+    [appendCanonicalHandEvent, isTournament],
   );
 
   const forcedSeatActionsRef = useRef(new Map());

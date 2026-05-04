@@ -15,13 +15,14 @@ depends_on = None
 
 
 ID_TYPE = sa.BigInteger().with_variant(sa.Integer(), "sqlite")
+USER_ID_TYPE = sa.Integer()
 
 
 def upgrade() -> None:
     op.create_table(
         "play_feedback_results",
         sa.Column("id", ID_TYPE, primary_key=True, autoincrement=True),
-        sa.Column("user_id", ID_TYPE, nullable=True),
+        sa.Column("user_id", USER_ID_TYPE, nullable=True),
         sa.Column("session_key", sa.String(length=255), nullable=False),
         sa.Column("mode", sa.String(length=32), nullable=False),
         sa.Column("variant_scope", sa.String(length=64), nullable=False),

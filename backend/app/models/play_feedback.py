@@ -19,7 +19,7 @@ class PlayFeedbackResult(Base):
         autoincrement=True,
     )
     user_id: Mapped[Optional[int]] = mapped_column(
-        BigInteger().with_variant(Integer, "sqlite"),
+        Integer,
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
         index=True,

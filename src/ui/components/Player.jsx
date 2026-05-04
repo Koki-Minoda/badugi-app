@@ -168,6 +168,8 @@ function PlayerSmartHud({ player, positionLabel, stats, statsLine, stackValue, b
           <option value="plo">PLO</option>
           <option value="badugi">Badugi</option>
           <option value="deuce">2-7</option>
+          <option value="stud">Stud</option>
+          <option value="razz">Razz</option>
         </select>
       </div>
 
@@ -287,6 +289,10 @@ export default function Player({
   const playerDetailTitle = playerDetailLines.join("\n");
 
   const openHud = useCallback(() => {
+    if (isHero && phase === "DRAW") {
+      setHudOpen(false);
+      return;
+    }
     const isCoarseTouch =
       typeof window !== "undefined" &&
       typeof window.matchMedia === "function" &&
@@ -323,7 +329,7 @@ export default function Player({
       width: `${width}px`,
     });
     setHudOpen(true);
-  }, []);
+  }, [isHero, phase]);
 
   const scheduleCloseHud = useCallback(() => {
     if (closeTimerRef.current) clearTimeout(closeTimerRef.current);

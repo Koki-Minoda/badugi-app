@@ -2115,6 +2115,7 @@ Draw RL test coverage:
   - 2026-05-03 対応: ゲーム画面を「中央の楕円フェルト + 外周プレイヤーポッド」構成へ変更。pot / street は中央、プレイヤー名・stack・bet・カードは外周へ分離し、`default_avatar` 文字列を丸いアバターチップ表示へ置き換える。
 - [x] `UI-20` seat HUD の VPIP / PFR / street別頻度をスマートHUD風に読みやすくする。
   - 2026-05-03 対応: seat hover / focus 詳細を VPIP / PFR / ATS / 3BET のリング表示と、Flop / Turn / River 別の CB / FCB / CCB / RCB / WT / WSD / TAF バー表示へ変更。HUD内に All Games / NLH / PLO / Badugi / 2-7 の scope selector を追加し、将来variant別集計へ接続できる下地を作る。
+  - 2026-05-04 更新: scope selector に `Stud` / `Razz` を追加。10-Game / Dealer's Choice でStud系が増えてもHUD上の切替先が欠けないようにした。
 - [x] `UI-21` MTT で Hero / 対面 seat がフェルト内に入りすぎないよう、卓面と seat の境界を Playwright で確認する。
   - 2026-05-03 対応: tournament / cash の Hero・対面 seat を外周寄りへ再配置し、中央フェルトの `data-testid` を追加。`tournament-ui-layout-smoke` で Hero / 対面 seat がフェルト境界に埋まらないことを bounding box で検証する。
 - [x] `BUG-30` BET 中に fold / all-in / busted が混在し、行動可能者が1人だけ残った状態で NPC auto loop が停止する。
@@ -2140,6 +2141,34 @@ Draw RL test coverage:
   - 症状: cash game を終える時に「戻る」以外の導線がなく、獲得/損失スタックの確認画面もない。
   - 方針: cash game の右 action panel に Cash Out を追加し、Hero stack / buy-in / net / hand count を表示する result modal を出す。続行、ゲーム選択へ戻る、New cash session の3導線を用意する。
   - 2026-05-03 対応: Hero Controls に `Cash Out` を追加。Cash Out result modal で buy-in / cash out stack / hand count / net を表示し、続行・新しい卓・ゲーム選択へ遷移できる。
+
+### 16.4 Open Bug / QA Table
+
+2026-05-04 追加。実装ゲーム数を増やすほど、Badugiで見つけた進行/UIバグがDraw/Board/Dramaha/Studへ横展開するため、発見時点でバグ表に載せてから修正・再発防止テストを追加する。
+
+| ID | Area | PC / Mobile | Status | Symptom | Cross-game check |
+| --- | --- | --- | --- | --- | --- |
+| `BUG-31` | Badugi draw UI | PC | fixed | DRAW中にカードを押しても反応しないように見える。Smart HUDがHero席でも開き、固定レイヤーがカード操作を邪魔することがある。またHeroのドロー順でない時も無反応に見える。 | Draw系/DramahaでもHero操作時にHUDが入力を塞がないことを確認する。 |
+| `BUG-32` | Smart HUD scope | PC / Mobile | fixed | HUD scope dropdown に Stud / Razz がなく、10-Game / Dealer's Choice の情報切替先が不足している。 | Stud/Razz実装時にvariant別stats集計へ接続する。 |
+| `BUG-33` | PC/Mobile layout separation | PC / Mobile | open | スマホ横画面対応がPC卓レイアウトへ影響しないことを継続確認する。 | PC desktop smoke と mobile landscape smoke を別々に維持する。 |
+| `BUG-34` | All-in / split pot flow | All | open | AI後、side pot / split pot / odd chip / all-in skipped actor が誤るとゲーム進行停止や誤配当につながる。 | PLO8/FLO8/Dramaha/Stud8/Razzdugi/Razzduceyで追加fixtureを作る。 |
+| `BUG-35` | Play feedback pipeline | All | planned | Cash / tournament の30ハンド以上の履歴から、良かった点/悪かった点/ROI/参加条件/仮説をまとめるAI feedback APIが未実装。 | 10-Game Beginner/Standard RL適用後にBadugi/2-7/A-5/Stud/Razz/NLH/PLOを対象にする。 |
+
+- [x] `BUG-31` Hero DRAW中はHero seat Smart HUDを開かず、カードクリックを最優先する。
+  - 2026-05-04 対応: `Player` componentでHeroかつ`phase === "DRAW"`の場合はSmart HUDを開かない。Player単体テストでHUDが出ず、Hero card clickが発火することを固定。
+- [x] `BUG-32` Smart HUD scope selector に `Stud` / `Razz` を追加する。
+  - 2026-05-04 対応: `PlayerSmartHud` の scope option を追加し、テストで存在確認。
+- [ ] `BUG-33` PC版とスマホ版のUI差分をPlaywrightで別々に検証し、片方の修正が片方を崩さないようにする。
+- [ ] `BUG-34` all-in / side pot / split pot / odd chip のcross-game fixtureを追加する。
+- [ ] `BUG-35` Cash / tournament のプレイフィードバック仕様とAPIを実装する。
+
+### 16.5 Full Game Implementation / RL / Feedback Order
+
+- [ ] `GAME-ALL-01` 10-Gameで使う未実装ゲームを先に playable にする: FLH (`B02`), PLO8 (`B06`), Stud (`ST1`), Stud8 (`ST2`), Razz (`ST3`)。
+- [ ] `GAME-ALL-02` 残りBoard/Draw/Stud/Dramaha/Chinese Pokerを順次 playable 化し、各ゲームごとに evaluator / action mask / all-in / split pot / history smoke を追加する。
+- [ ] `GAME-ALL-03` Stud / Razz 実装後、10-Game対象のCPUを Beginner / Standard まで学習・適用する。
+- [ ] `GAME-ALL-04` 強化学習済みCPUを使った cash / tournament のプレイログ収集を行い、30ハンド以上のセッションだけAI feedback対象にする。
+- [ ] `GAME-ALL-05` feedback API は hand history / position / stack / VPIP/PFR / ROI / showdown / all-in / split-pot結果を投げ、良かった点・悪かった点・次回方針・仮説を返す。
 
 ## 17. Mobile Browser Landscape Game UI
 

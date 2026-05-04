@@ -49,10 +49,11 @@ export default function TitleSettingsScreen({ embedded = false, onClose = null }
     () => ({
       name: settings.playerName || "You",
       title: settings.playerTitle || "Badugi Rookie",
-      avatar: settings.avatar || "♦︎",
+      avatar: settings.avatar || "/characters/hero.png",
     }),
     [settings]
   );
+  const previewAvatarIsImage = String(preview.avatar ?? "").startsWith("/");
 
   const handleSave = (next) => {
     const saved = saveTitleSettings(next);
@@ -146,7 +147,18 @@ export default function TitleSettingsScreen({ embedded = false, onClose = null }
       <main className="max-w-6xl mx-auto px-6 pb-16 grid gap-8 lg:grid-cols-2">
         <section className="bg-slate-900/80 border border-white/10 rounded-3xl p-6 shadow-2xl flex flex-col gap-6">
           <div className="flex items-center gap-4">
-            <div className="text-5xl">{preview.avatar}</div>
+            <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-full border border-emerald-300/50 bg-slate-950 text-5xl shadow-inner">
+              {previewAvatarIsImage ? (
+                <img
+                  src={preview.avatar}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
+              ) : (
+                preview.avatar
+              )}
+            </div>
             <div>
               <p className="text-sm uppercase tracking-widest text-emerald-300">Preview</p>
               <h2 className="text-2xl font-bold">{preview.name}</h2>

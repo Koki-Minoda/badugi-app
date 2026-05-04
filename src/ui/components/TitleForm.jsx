@@ -1,7 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { getDefaultTitleSettings } from "../utils/titleSettings";
 
-const avatarChoices = ["♦️", "♠️", "♥️", "♣️", "★", "⚡️"];
+const avatarChoices = [
+  { value: "/characters/hero.png", label: "主人公" },
+  { value: "♦️", label: "♦️ Diamond" },
+  { value: "♠️", label: "♠️ Spade" },
+  { value: "♥️", label: "♥️ Heart" },
+  { value: "♣️", label: "♣️ Club" },
+  { value: "★", label: "★ Star" },
+  { value: "⚡️", label: "⚡️ Flash" },
+];
 
 export default function TitleForm({ initialValues, onSave, onReset }) {
   const [formState, setFormState] = useState(() => initialValues ?? getDefaultTitleSettings());
@@ -79,8 +87,8 @@ export default function TitleForm({ initialValues, onSave, onReset }) {
           className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
         >
           {avatarChoices.map((choice) => (
-            <option key={choice} value={choice}>
-              {choice}
+            <option key={choice.value} value={choice.value}>
+              {choice.label}
             </option>
           ))}
         </select>

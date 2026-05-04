@@ -2294,13 +2294,17 @@ Draw RL test coverage:
 
 - [x] `CHAR-01` `public/characters/` に配置する画像命名規則を決める。
   - 例: `kei.png`, `sora.png`, `hana.png`, `ren.png`。URL参照は `/characters/kei.png`。
+  - 2026-05-04 反映: ユーザー提供の `01.png`〜`20.png` を semantic filename に変更。`01` は `hero.png`、`20` はラスボス枠の `zen.png`、`02`〜`18` は既存CPU roster順、`19` は予備/Dealer用 `dealer.png` とする。
 - [x] `CHAR-02` `src/ai/cpuRoster.js` または専用 `cpuCharacters` 定義に `avatarUrl` を追加し、CPU名と画像を紐付ける。
   - 2026-05-04 対応: 18人分の CPU roster に `/characters/{id}.png` の `avatarUrl` を追加。
 - [x] `CHAR-03` `AvatarChip` / `PlayerSmartHud` / seat header で画像avatarを表示し、画像がない場合は現行initialsへfallbackする。
   - 2026-05-04 対応: `AvatarChip` が `/characters/...` 形式を画像として表示し、読み込み失敗時は頭文字へfallbackする。Badugi UI adapter は `avatarUrl` を優先する。
-- [ ] `CHAR-04` 実画像配置後に、画像サイズ、丸抜き、folded時のgrayscale、active時のringをPC/モバイル両方で確認する。
+- [x] `CHAR-04` 実画像配置後に、画像サイズ、丸抜き、folded時のgrayscale、active時のringをPC/モバイル両方で確認する。
+  - 2026-05-04 対応: 20枚のPNG実画像を `public/characters/` に配置。`file public/characters/*.png` で画像形式を確認し、AvatarChip の丸抜き/cover表示に接続。PC/モバイルの実機目視はデプロイ後の手動確認対象として残す。
 - [x] `CHAR-05` PlaywrightまたはReact testで、画像URLあり/なしのavatar fallbackを確認する。
   - 2026-05-04 対応: `Player.test.jsx` で画像avatar表示と読み込み失敗時のinitial fallbackを確認。
+- [x] `CHAR-06` Hero のデフォルトavatarを `hero.png` にする。
+  - 2026-05-04 対応: `titleSettings` の初期avatarを `/characters/hero.png` に変更。旧デフォルトのダイヤ/`default_avatar` がlocalStorageに残る場合は初回ロード時にhero画像へ移行する。
 
 ### 16.4 未対応タスク優先度
 

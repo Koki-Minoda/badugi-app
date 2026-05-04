@@ -43,13 +43,54 @@ describe("mergeEngineSnapshot", () => {
       deck: [3, 4, 5],
     };
     const merged = mergeEngineSnapshot(baseState, snapshot);
-    expect(merged.players).toBe(snapshot.players);
+    expect(merged.players).toEqual(snapshot.players);
     expect(merged.pots).toBe(snapshot.pots);
     expect(merged.deck).toEqual(snapshot.deck);
     expect(merged.metadata.currentBet).toBe(50);
     expect(merged.metadata.betHead).toBe(50);
     expect(merged.metadata.lastAggressor).toBe(2);
     expect(merged.metadata.actingPlayerIndex).toBe(3);
+  });
+
+  it("preserves character image metadata when engine snapshot omits UI-only fields", () => {
+    const currentState = {
+      ...baseState,
+      players: [
+        {
+          id: 1,
+          playerId: "cpu-akira",
+          name: "Akira",
+          cpuCharacterId: "akira",
+          cpuStyle: "balanced",
+          avatar: "/characters/akira.png",
+          avatarUrl: "/characters/akira.png",
+          titleBadge: "Iron",
+          stack: 500,
+        },
+      ],
+    };
+    const snapshot = {
+      players: [
+        {
+          id: 1,
+          name: "Akira",
+          avatar: "default_avatar",
+          stack: 480,
+        },
+      ],
+    };
+
+    const merged = mergeEngineSnapshot(currentState, snapshot);
+
+    expect(merged.players[0]).toMatchObject({
+      stack: 480,
+      playerId: "cpu-akira",
+      cpuCharacterId: "akira",
+      cpuStyle: "balanced",
+      avatar: "/characters/akira.png",
+      avatarUrl: "/characters/akira.png",
+      titleBadge: "Iron",
+    });
   });
 
   it("falls back to previous metadata when snapshot metadata partial", () => {

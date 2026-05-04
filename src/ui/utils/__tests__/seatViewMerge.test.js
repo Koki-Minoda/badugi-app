@@ -59,4 +59,31 @@ describe("seatViewMerge", () => {
       avatarUrl: "/characters/akira.png",
     });
   });
+
+  it("does not let an empty adapter hand erase cards dealt by the app state", () => {
+    const result = mergeSeatViewsForDisplay({
+      phase: "BET",
+      baseSeats: [
+        {
+          seatIndex: 0,
+          isHero: true,
+          hand: ["AS", "KS", "QS", "JS"],
+          cards: ["AS", "KS", "QS", "JS"],
+          showHand: true,
+        },
+      ],
+      adapterSeatViews: [
+        {
+          seatIndex: 0,
+          isHero: true,
+          hand: [],
+          cards: [],
+          showHand: true,
+        },
+      ],
+    });
+
+    expect(result[0].hand).toEqual(["AS", "KS", "QS", "JS"]);
+    expect(result[0].cards).toEqual(["AS", "KS", "QS", "JS"]);
+  });
 });

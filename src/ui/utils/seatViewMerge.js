@@ -19,6 +19,10 @@ export function mergeSeatViewsForDisplay({
 } = {}) {
   return baseSeats.map((base, idx) => {
     const override = adapterSeatViews[idx];
+    const baseHand = Array.isArray(base?.hand) ? base.hand : [];
+    const overrideHand = Array.isArray(override?.hand) ? override.hand : [];
+    const baseCards = Array.isArray(base?.cards) ? base.cards : baseHand;
+    const overrideCards = Array.isArray(override?.cards) ? override.cards : overrideHand;
     const baseAvatarUrl = base?.avatarUrl ?? null;
     const overrideAvatarUrl = override?.avatarUrl ?? null;
     const baseAvatar = base?.avatar ?? baseAvatarUrl ?? null;
@@ -43,8 +47,8 @@ export function mergeSeatViewsForDisplay({
       ...override,
       avatar,
       avatarUrl,
-      cards: override.cards ?? base.cards ?? [],
-      hand: override.hand ?? base.hand ?? [],
+      cards: overrideCards.length > 0 ? overrideCards : baseCards,
+      hand: overrideHand.length > 0 ? overrideHand : baseHand,
     };
     return {
       ...merged,

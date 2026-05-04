@@ -4844,7 +4844,9 @@ const SAFE_RESET_PHASE = "IDLE";
     const effectiveSeatConfig = consumeSeatConfigForHand(shouldRotateSeats);
 
     const deckManager = getDeckManager();
-    if (deckManager && !isSingleTableControllerDrawGame) {
+    const usesAppDeckForCurrentHand =
+      !isSingleTableBoardGame && !isSingleTableControllerDrawGame;
+    if (deckManager && usesAppDeckForCurrentHand) {
       deckManager.reset();
       if (typeof deckManager.shuffle === "function") {
         deckManager.shuffle();
@@ -5039,7 +5041,7 @@ const SAFE_RESET_PHASE = "IDLE";
       };
     }
 
-    if (deckManager && !isSingleTableControllerDrawGame) {
+    if (deckManager && usesAppDeckForCurrentHand) {
       const preflopCheck = validatePreflopState({
         deck: deckManager.deck,
         burn: deckManager.burnPile,
@@ -5171,7 +5173,7 @@ const SAFE_RESET_PHASE = "IDLE";
       seatsSnapshot: newPlayers,
     });
 
-    if (!isSingleTableControllerDrawGame) {
+    if (usesAppDeckForCurrentHand) {
       try {
         assertNoDuplicateCards("[HAND][DEAL]", {
           deck: deckManager?.deck,
@@ -7724,6 +7726,28 @@ const SAFE_RESET_PHASE = "IDLE";
       return;
     }
 
+    if (phase === "BET" && isSingleTableBoardGame) {
+      const seatToAct = turn;
+      const timer = setTimeout(() => {
+        const snap = (playersRef.current ?? activePlayers).map(clonePlayerState).filter(Boolean);
+        const actor = snap[seatToAct];
+        if (!actor || isFoldedOrOut(actor) || actor.allIn || actor.stack <= 0) {
+          const nextActor = nextAliveFrom(snap, seatToAct);
+          if (nextActor !== null) setTurn(nextActor);
+          return;
+        }
+        const maxNow = maxBetThisRound(snap);
+        const toCall = Math.max(0, maxNow - (Number(actor.betThisRound) || 0));
+        applyForcedBetAction(seatToAct, {
+          type: toCall === 0 ? "check" : "call",
+          amount: toCall,
+          __forceInstant: true,
+          decisionSource: "board-controller-auto",
+        });
+      }, 180);
+      return () => clearTimeout(timer);
+    }
+
     const timer = setTimeout(() => {
       if (phase === "BET") {
         const basePlayers = playersRef.current ?? activePlayers;
@@ -7865,6 +7889,7 @@ const SAFE_RESET_PHASE = "IDLE";
     autoResolveCpuDrawIfNeeded,
     checkIfOneLeftThenEnd,
     isSingleTableBadugi,
+    isSingleTableBoardGame,
     isSingleTableDrawLowball,
     tryControllerBetAction,
   ]);

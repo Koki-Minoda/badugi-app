@@ -2495,6 +2495,18 @@ Draw RL test coverage:
 - [x] `npm run lint`: pass。
 - [x] `npm run build`: pass。chunk size warning は既存警告。
 
+### 16.3.5 2026-05-04 Cross-Variant Operational QA Gap
+
+- [x] `QA-20260504-PLO-ACTION` PLO cash game でHeroカード4枚が配られ、CPU自動進行後にHero action buttonが表示・押下可能になることをPlaywrightで検知する。
+  - 背景: 既存 `playableInvariant` はcontroller完走を見ていたが、Game SelectorからPLOを起動してUI操作可能かまでは検証していなかった。
+  - 対応: App側Badugi deck integrityをboard-controller gameへ適用しないよう分離し、board-controller CPU actionをcontrollerへ直接流すE2E経路を追加。
+- [x] `QA-20260504-BADUGI-MTT-DEAL` Store Tournament Badugi でHeroカード4枚が配られ、Hero action/draw stateへ進むことをPlaywrightで検知する。
+  - 背景: トーナメントUI smokeはlayout中心で、カード配布・action到達を必須条件にしていなかった。
+  - 対応: `/menu` から `menu-tournament` を押し、MTT卓でHero cards/action buttonの存在を確認。
+- [x] `QA-20260504-CROSS-OPERATIONAL-SMOKE` 今後の回帰防止として、controller invariantだけでなく「variant選択 -> 実画面 -> card visible -> action visible」を主要variantへ広げる。
+  - 対応: NLH / FLH / PLO / PLO8 / Big-O / 5-card PLO / Stud / Razz / Badugi MTT を Playwright smoke に追加。
+  - 確認: `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts --project=badugi-flow`: 9 passed。
+
 ### 16.4 未対応タスク優先度
 
 - P0: `BUG-20260503-SB-FOLD-DRAW-FREEZE`

@@ -15,6 +15,26 @@ const VARIANT_TEST_ID_BY_ALIAS: Record<string, string> = {
   deuce_to_seven_single_draw: "deuce_to_seven_single_draw",
   s02: "ace_to_five_single_draw",
   ace_to_five_single_draw: "ace_to_five_single_draw",
+  nlh: "nlh",
+  b01: "nlh",
+  flh: "flh",
+  b02: "flh",
+  plo: "plo",
+  b05: "plo",
+  plo8: "plo8",
+  b06: "plo8",
+  flo8: "flo8",
+  b09: "flo8",
+  big_o: "big_o",
+  b07: "big_o",
+  five_card_plo: "five_card_plo",
+  b08: "five_card_plo",
+  stud: "stud",
+  st1: "stud",
+  stud8: "stud8",
+  st2: "stud8",
+  razz: "razz",
+  st3: "razz",
 };
 
 function variantTestIdFromUrl(url: string) {
@@ -138,7 +158,7 @@ export async function openAuthenticatedGame(page: Page, url = APP_URL) {
   await openAuthenticatedMenu(page, url);
   await page.getByTestId("menu-ring").click();
   const variantTestId = variantTestIdFromUrl(url);
-  await page.getByTestId(`game-selector-play-${variantTestId}`).click();
+  await page.getByTestId(`game-selector-play-${variantTestId}`).first().click();
   await Promise.race([
     page
       .getByRole("button", { name: /Leaderboard|ランキング/i })

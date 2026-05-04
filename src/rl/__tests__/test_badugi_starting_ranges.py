@@ -5,7 +5,7 @@ from rl.training.badugi_starting_ranges import (
     median_starting_score_key,
     teacher_action,
 )
-from rl.training.train_dqn import profitable_continue_action
+from rl.training.train_dqn import first_in_value_bet_action, profitable_continue_action
 from rl.env.badugi_env import BadugiEnv
 
 
@@ -173,6 +173,22 @@ class BadugiStartingRangesTest(unittest.TestCase):
 
         self.assertEqual(teacher_action(env), 3)
 
+    def test_first_in_value_bet_fixture_marks_passive_drawer_sample(self):
+        env = BadugiEnv(opponent_profile="loose_passive", table_size=6, hero_position=5)
+        env.reset(seed=1)
+        env.phase = "BET"
+        env.round = 1
+        env.current_bet = 0
+        env.player_bet = 0
+        env.player_hand = [(0, 0), (2, 1), (5, 2), (9, 3)]
+        env._record_opponent_action("call")
+        env._record_opponent_action("check")
+        env._record_opponent_draw(2)
+        env._record_opponent_draw(3)
+
+        self.assertEqual(first_in_value_bet_action(env), 3)
+        self.assertEqual(teacher_action(env), 3)
+
     def test_sixmax_teacher_thin_isolation_raises_exploitable_drawer(self):
         env = BadugiEnv(opponent_profile="draw_heavy", table_size=6, hero_position=5)
         env.reset(seed=1)
@@ -200,6 +216,21 @@ class BadugiStartingRangesTest(unittest.TestCase):
         env.player_hand = [(0, 0), (3, 1), (8, 2), (12, 3)]
 
         self.assertEqual(teacher_action(env), 1)
+
+    def test_first_in_value_bet_fixture_rejects_pat_pressure(self):
+        env = BadugiEnv(opponent_profile="loose_passive", table_size=6, hero_position=5)
+        env.reset(seed=1)
+        env.phase = "BET"
+        env.round = 1
+        env.current_bet = 0
+        env.player_bet = 0
+        env.player_hand = [(0, 0), (2, 1), (5, 2), (9, 3)]
+        env._record_opponent_action("check")
+        env._record_opponent_action("call")
+        env._record_opponent_draw(0)
+        env._record_opponent_draw(0)
+
+        self.assertIsNone(first_in_value_bet_action(env))
 
 
 if __name__ == "__main__":

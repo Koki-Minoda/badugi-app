@@ -1735,6 +1735,9 @@ Draw RL test coverage:
           - 2026-05-04 追加確認: exploit continue をさらに足した `badugi_sixmax_iron_exploit_value_continue_5k_20260504` は Pro比 `-0.048`, `showdownWinRate=0.745`, `foldRate=0.311`, `profitableFoldMisses=35` と悪化。showdown率は上がるが降りすぎが増えるため、この方向は不採用とし、コードには残さない。
           - 2026-05-04 判定: value/thin/exploit memory はbad raiseを Pro以下に抑えられるが、`avgRewardDelta` はまだIron短期gate `+0.25` に届かない。public model / registry へは未反映。
           - 次の打ち手: モデル昇格より先に、bet/raise頻度そのものを増やす教師サンプルの質を見直す。候補は「first-in value bet のstate生成比率増加」「tight-passive相手へのthin value専用fixture」「foldRateを上げずにpot獲得EVを増やす評価指標」の追加。
+          - 2026-05-04 実装: 学習量を増やす前に first-in value bet の教師サンプル比率を見直した。`first_in_value_bet_action()` と専用 replay buffer / `--first-in-value-bet-replay-ratio` / `--first-in-value-bet-loss-weight` を追加し、to-callなしのmade-hand value betを通常expert replayとは別に維持する。
+          - 2026-05-04 fixture: `loose_passive` / draw-heavy傾向相手に T-low程度のmade Badugiをfirst-in value betするfixtureと、pat pressure相手には同じ手を打たないfixtureを追加。狙いはbet頻度だけを雑に増やさず、value betとして正しい局面だけを厚くすること。
+          - 次の実験: Iron probeは `--first-in-value-bet-replay-ratio 0.20〜0.30` から開始し、actionCountsの`3: bet`増加、badRaises据え置き、foldRate非悪化を確認してから20kへ進める。
       - [ ] `AI-06e` 2-7 / A-5 用の実ONNXを生成・配置する。現状は `model-27draw-iron-v1` (`D01/S01`) と `model-a5draw-iron-v1` (`D02/S02`) の registry / feature builder / routing test はあるが、実 `.onnx` は optional 未配置で、App draw CPU は rule-based fallback が主経路。
       - [ ] `AI-06e-1` 2-7 Triple / Single Draw の Pro までのRL学習を実施する。Badugiと別モデルとして `D01/S01` にroutingし、2-7 evaluator / discard heuristic / final street fold disciplineを使う。
       - [ ] `AI-06e-2` A-5 Triple / Single Draw の Pro までのRL学習を実施する。`D02/S02` にroutingし、A-5 wheel / straight-flush無視 / pat判断をBadugi/2-7と混同しない。

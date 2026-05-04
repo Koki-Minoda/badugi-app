@@ -81,6 +81,18 @@ describe("playFeedbackPayload", () => {
     expect(result.payload.summary.vpip).toBeGreaterThan(0.9);
     expect(result.payload.summary.pfr).toBeGreaterThan(0);
     expect(result.payload.summary.topIssues.length).toBeGreaterThan(0);
+    expect(result.payload.keyHands[0]).toMatchObject({
+      situationId: expect.stringMatching(/^(B|D01)-\d{2}$/),
+      handId: expect.any(String),
+      actionSeqRange: { start: 1, end: 1 },
+      heroAction: expect.stringMatching(/^(call|raise)$/),
+      toCall: 20,
+    });
+    expect(result.payload.summary.topIssues[0]).toMatchObject({
+      handId: expect.any(String),
+      situationId: expect.any(String),
+      actionSeqRange: expect.objectContaining({ start: expect.any(Number) }),
+    });
     expect(result.payload.promptContext.constraints).toContain("30ハンド未満のセッションは評価しない");
   });
 

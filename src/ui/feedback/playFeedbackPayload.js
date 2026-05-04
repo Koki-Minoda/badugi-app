@@ -20,6 +20,18 @@ function normalizeActionType(action = {}) {
   return String(action.type ?? action.action ?? "").toLowerCase();
 }
 
+function normalizeVariantPrefix(variantId = "unknown") {
+  const value = String(variantId ?? "unknown").trim();
+  if (!value || value === "unknown") return "UNK";
+  if (value.toLowerCase() === "badugi") return "B";
+  return value.replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 8) || "UNK";
+}
+
+function actionSeq(action = {}) {
+  const seq = Number(action.actionSeq ?? action.seq ?? action.sequence);
+  return Number.isInteger(seq) && seq > 0 ? seq : null;
+}
+
 function collectHeroActions(hand = {}, heroSeat = 0) {
   const seatEntry = (Array.isArray(hand.seats) ? hand.seats : []).find((seat) =>
     isHeroSeat(seat, heroSeat),
@@ -62,6 +74,73 @@ function collectHeroResult(hand = {}, heroSeat = 0) {
   return { won, showdown, allIn, splitPot };
 }
 
+function buildSituationReference({
+  hand = {},
+  heroSeat = 0,
+  index = 0,
+  reason = "key-hand",
+} = {}) {
+  const variantId = hand.variantId ?? hand.variantKey ?? hand.gameId ?? "unknown";
+  const actions = collectHeroActions(hand, heroSeat);
+  const primaryAction = actions[actions.length - 1] ?? {};
+  const seqs = actions.map(actionSeq).filter((seq) => seq !== null);
+  const actionSeqRange = seqs.length
+    ? { start: Math.min(...seqs), end: Math.max(...seqs) }
+    : null;
+  const result = collectHeroResult(hand, heroSeat);
+  const pot = toNumber(hand.pot ?? hand.totalPot ?? hand.result?.totalPot, 0);
+  const stackDepth = toNumber(primaryAction.stack ?? primaryAction.stackBefore ?? hand.heroStack ?? hand.stack, 0);
+  return {
+    situationId: `${normalizeVariantPrefix(variantId)}-${String(index + 1).padStart(2, "0")}`,
+    reason,
+    handId: hand.handId ?? hand.id ?? null,
+    variantId,
+    actionSeqRange,
+    street: primaryAction.street ?? primaryAction.phase ?? hand.street ?? null,
+    seatIndex: getSeatIndex(primaryAction) ?? heroSeat,
+    position: primaryAction.position ?? primaryAction.pos ?? hand.heroPosition ?? null,
+    heroAction: normalizeActionType(primaryAction) || null,
+    toCall: toNumber(primaryAction.toCall ?? primaryAction.metadata?.betInfo?.toCall, 0),
+    currentBet: toNumber(primaryAction.currentBet ?? primaryAction.metadata?.betInfo?.currentBet, 0),
+    pot,
+    stackDepth,
+    resultDelta: toNumber(hand.heroNet ?? hand.net ?? hand.result?.heroNet, result.won),
+  };
+}
+
+function buildKeyHandReferences(hands = [], { heroSeat = 0 } = {}) {
+  const candidates = new Map();
+  const addCandidate = (hand, reason) => {
+    const id = hand?.handId ?? hand?.id;
+    if (!id || candidates.has(id)) return;
+    candidates.set(id, { hand, reason });
+  };
+
+  [...hands]
+    .sort((a, b) =>
+      Math.abs(toNumber(b.heroNet ?? b.net ?? b.result?.heroNet, 0)) -
+      Math.abs(toNumber(a.heroNet ?? a.net ?? a.result?.heroNet, 0)),
+    )
+    .slice(0, 6)
+    .forEach((hand) => addCandidate(hand, "large-result"));
+
+  hands.forEach((hand) => {
+    const result = collectHeroResult(hand, heroSeat);
+    if (result.allIn) addCandidate(hand, "all-in");
+    if (result.splitPot) addCandidate(hand, "split-pot");
+    if (result.showdown) addCandidate(hand, "showdown");
+  });
+
+  return [...candidates.values()].slice(0, 12).map((entry, index) =>
+    buildSituationReference({
+      hand: entry.hand,
+      heroSeat,
+      index,
+      reason: entry.reason,
+    }),
+  );
+}
+
 function summarizeHands(hands = [], { heroSeat = 0 } = {}) {
   const summary = {
     hands: hands.length,
@@ -75,6 +154,10 @@ function summarizeHands(hands = [], { heroSeat = 0 } = {}) {
     issueCounts: {},
     topIssues: [],
   };
+
+  const situationByHandId = new Map(
+    buildKeyHandReferences(hands, { heroSeat }).map((entry) => [entry.handId, entry]),
+  );
 
   hands.forEach((hand) => {
     const actions = collectHeroActions(hand, heroSeat);
@@ -101,9 +184,19 @@ function summarizeHands(hands = [], { heroSeat = 0 } = {}) {
 
     const followUp = buildPostMatchFollowUpSummary(hand, { heroOnly: true });
     followUp.issues.slice(0, 3).forEach((issue) => {
+      const situationRef =
+        situationByHandId.get(hand.handId ?? hand.id) ??
+        buildSituationReference({
+          hand,
+          heroSeat,
+          index: summary.topIssues.length,
+          reason: "follow-up-issue",
+        });
       summary.issueCounts[issue.type] = (summary.issueCounts[issue.type] ?? 0) + 1;
       summary.topIssues.push({
+        situationId: situationRef.situationId,
         handId: hand.handId ?? null,
+        actionSeqRange: situationRef.actionSeqRange,
         type: issue.type,
         severity: issue.severity,
         street: issue.street,
@@ -168,6 +261,7 @@ export function buildPlayFeedbackPayload({
       tournament: tournamentSummary,
       roi: tournamentSummary?.roi ?? null,
     },
+    keyHands: buildKeyHandReferences(safeHands, { heroSeat }),
     promptContext: {
       requestedOutput: [
         "良かった点",

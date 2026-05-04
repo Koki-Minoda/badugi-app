@@ -72,6 +72,7 @@
 - [x] `FB-07` OpenAI API のrate limit / cost / retry / privacy guardを設定する。
 - [x] `FB-08` cash / tournament / all-in / side pot を含む集計testを追加する。
 - [ ] `FB-09` feedback key hand に `situationId` / `handId` / `actionSeqRange` を付与し、modalから該当hand historyへ遷移できるようにする。
+  - 2026-05-05 部分対応: frontend payload の `keyHands` と `summary.topIssues` に `situationId` / `handId` / `actionSeqRange` / `heroAction` / `toCall` / `pot` / `resultDelta` を追加。modal jump UI は未実装。
 
 ## 実キー確認手順
 

@@ -2165,16 +2165,17 @@ Draw RL test coverage:
 | --- | --- | --- | --- | --- | --- |
 | `BUG-31` | Badugi draw UI | PC | fixed | DRAW中にカードを押しても反応しないように見える。Smart HUDがHero席でも開き、固定レイヤーがカード操作を邪魔することがある。またHeroのドロー順でない時も無反応に見える。 | Draw系/DramahaでもHero操作時にHUDが入力を塞がないことを確認する。 |
 | `BUG-32` | Smart HUD scope | PC / Mobile | fixed | HUD scope dropdown に Stud / Razz がなく、10-Game / Dealer's Choice の情報切替先が不足している。 | Stud/Razz実装時にvariant別stats集計へ接続する。 |
-| `BUG-33` | PC/Mobile layout separation | PC / Mobile | open | スマホ横画面対応がPC卓レイアウトへ影響しないことを継続確認する。 | PC desktop smoke と mobile landscape smoke を別々に維持する。 |
+| `BUG-33` | PC/Mobile layout separation | PC / Mobile | fixed | スマホ横画面対応がPC卓レイアウトへ影響しないことを継続確認する。 | PC desktop smoke と mobile landscape smoke を別々に維持する。 |
 | `BUG-34` | All-in / split pot flow | All | fixed | AI後、side pot / split pot / odd chip / all-in skipped actor が誤るとゲーム進行停止や誤配当につながる。 | NLH/PLO/Dramaha/PLO8/FLO8/Stud8/Razzdugi/Razzducey/ST6 fixtureと11controller invariant smokeを追加済み。 |
-| `BUG-35` | Play feedback pipeline | All | planned | Cash / tournament の30ハンド以上の履歴から、良かった点/悪かった点/ROI/参加条件/仮説をまとめるAI feedback APIが未実装。 | 10-Game Beginner/Standard RL適用後にBadugi/2-7/A-5/Stud/Razz/NLH/PLOを対象にする。 |
+| `BUG-35` | Play feedback pipeline | All | partial | Cash / tournament の30ハンド以上の履歴から、良かった点/悪かった点/ROI/参加条件/仮説をまとめるAI feedback APIが未実装。まずフロント側payload/gateを追加済み。 | 10-Game Beginner/Standard RL適用後にBadugi/2-7/A-5/Stud/Razz/NLH/PLOを対象にする。 |
 | `BUG-36` | All-in draw actor | Badugi / Draw | fixed | all-in後のCPU/Hero、またはall-in後にbusted seatが残った状態で、DRAWフェーズの交換対象が詰まりカード交換できなくなる。 | Badugiはactive all-in seatをDRAW可能、busted/seatOutはDRAW不可に分離。2-7/A-5 draw regressionも再実行する。 |
 
 - [x] `BUG-31` Hero DRAW中はHero seat Smart HUDを開かず、カードクリックを最優先する。
   - 2026-05-04 対応: `Player` componentでHeroかつ`phase === "DRAW"`の場合はSmart HUDを開かない。Player単体テストでHUDが出ず、Hero card clickが発火することを固定。
 - [x] `BUG-32` Smart HUD scope selector に `Stud` / `Razz` を追加する。
   - 2026-05-04 対応: `PlayerSmartHud` の scope option を追加し、テストで存在確認。
-- [ ] `BUG-33` PC版とスマホ版のUI差分をPlaywrightで別々に検証し、片方の修正が片方を崩さないようにする。
+- [x] `BUG-33` PC版とスマホ版のUI差分をPlaywrightで別々に検証し、片方の修正が片方を崩さないようにする。
+  - 2026-05-04 対応: `responsive-layout-separation.spec.ts` を追加。Desktopではmobile rootが出ない、header/ledger/decision panelが見える、全体scrollが出ないことを確認。Mobile landscapeではfixed mobile root、desktop ledger非表示、body/html overflow hidden、decision panel / hero cardがviewport内に残ることを確認。Mobile portraitでは横向き案内のみを確認。
 - [x] `BUG-34` all-in / side pot / split pot / odd chip のcross-game fixtureを追加する。
   - 2026-05-04 対応中: `sidePotResolver` を追加し、投資額からmain/side potを構築、fold済みは受賞対象外、odd chipはseat順で安定配分する共通helperを追加。
   - 2026-05-04 対応中: NLH/PLO/Dramahaのshowdownにside pot resolverを接続し、3人all-inでmain pot / side pot 1 / side pot 2のwinnerが別になるfixtureを追加。
@@ -2184,6 +2185,8 @@ Draw RL test coverage:
   - 2026-05-04 追加: FLO8専用のodd split + side pot fixture、ST6 2-7 Razz単体showdown fixture、Stud/Razz bring-in fixture、Stud up/down card UI adapter fixtureを追加。
   - 2026-05-04 追加: 高役evaluatorのカテゴリ順位を監査。カテゴリ桁がrank桁数でずれる問題を固定長rank scoreに修正し、standard high category order / flush over two pair fixtureを追加。
 - [ ] `BUG-35` Cash / tournament のプレイフィードバック仕様とAPIを実装する。
+  - 2026-05-04 部分対応: `playFeedbackPayload` を追加。30ハンド未満はAI feedback対象外にし、cash/tournamentのhand historyからvariant別hands、VPIP/PFR、showdown/all-in/split-pot率、net chips、tournament ROI、Badugi follow-up issueを要約するpayloadを生成する。
+  - 残TODO: OpenAI/ChatGPTへ送るbackend API route、認証、rate limit、PII除去、保存ポリシー、UI表示を追加する。
 - [x] `BUG-36` all-in後のDRAW停止を修正する。
   - 2026-05-04 対応: `isSeatEligibleForDraw` はcurrent handでactiveなall-in seatを交換対象に残し、BETだけall-inを除外するように整理。
   - 2026-05-04 対応: `sanitizeStacks` は stack 0 のcurrent-hand all-inを即busted扱いにせず、`seatOut` のときだけbustedへ寄せる。
@@ -2195,7 +2198,7 @@ Draw RL test coverage:
 - [x] `GAME-ALL-01` 10-Gameで使う未実装ゲームを先に playable にする: FLH (`B02`), PLO8 (`B06`), Stud (`ST1`), Stud8 (`ST2`), Razz (`ST3`)。
   - 2026-05-04 実装: FLH / PLO8 / Stud / Stud8 / Razz の controller / definition / registry / App routing / UI adapter / Game Selector catalog を追加。
   - 2026-05-04 テスト: playable invariant smokeで5種を含む7controllerを横断検証。PLO8専用split fixtureを追加。
-  - 残TODO: Stud系はplayable最小実装。bring-in順序、up/down card専用UI、Stud8複数side-pot split fixtureは後続で改善する。
+  - 2026-05-04 追加対応: Stud/Razz bring-in順序、up/down card専用UI、Stud8複数side-pot split fixtureを追加済み。
 - [ ] `GAME-ALL-02` 残りBoard/Draw/Stud/Dramaha/Chinese Pokerを順次 playable 化し、各ゲームごとに evaluator / action mask / all-in / split pot / history smoke を追加する。
 - [ ] `GAME-ALL-03` Stud / Razz 実装後、10-Game対象のCPUを Beginner / Standard まで学習・適用する。
 - [ ] `GAME-ALL-04` 強化学習済みCPUを使った cash / tournament のプレイログ収集を行い、30ハンド以上のセッションだけAI feedback対象にする。

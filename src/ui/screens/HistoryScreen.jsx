@@ -65,6 +65,23 @@ function formatEvent(event) {
   return event.type;
 }
 
+function getPotWinnersLabel(pot = {}) {
+  const winners = Array.isArray(pot.winners)
+    ? pot.winners
+    : Array.isArray(pot.payouts)
+      ? pot.payouts
+      : [];
+  if (!winners.length) return null;
+  return winners
+    .map((winner) => {
+      const seat = winner.seat ?? winner.seatIndex ?? winner.playerSeat ?? "-";
+      const amount = winner.amount ?? winner.payout ?? winner.chips ?? winner.value ?? 0;
+      const label = winner.name ?? winner.playerName ?? `Seat ${seat}`;
+      return `${label} +${amount}`;
+    })
+    .join(", ");
+}
+
 export default function HistoryScreen() {
   const navigate = useNavigate();
   const cashHands = useMemo(() => getHands({ limit: 100 }), []);
@@ -209,6 +226,11 @@ export default function HistoryScreen() {
                                 <span className="ml-2 text-slate-400">
                                   eligible: {pot.eligibleSeats.join(", ")}
                                 </span>
+                              )}
+                              {getPotWinnersLabel(pot) && (
+                                <div className="mt-1 text-emerald-200">
+                                  winners: {getPotWinnersLabel(pot)}
+                                </div>
                               )}
                             </div>
                           ))}

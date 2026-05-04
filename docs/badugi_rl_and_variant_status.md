@@ -2199,8 +2199,9 @@ Draw RL test coverage:
   - 2026-05-04 部分対応: 完了したcanonical hand historyをlocalStorageのcash/tournament履歴にも保存し、standalone `/history` でキャッシュゲーム履歴とトーナメント履歴を同時に確認できるようにする。
   - 2026-05-04 部分対応: cash履歴に席別サマリ、pot details、canonical event timelineを追加し、all-in / side pot / action countの調査入口を作る。
   - 2026-05-04 部分対応: ゲーム内`HandHistoryScreen`もlocalStorageのcash/tournament保存済み履歴をmemory bufferへ統合し、保存済みhandIdからreplayを開けるfallbackを追加。
+  - 2026-05-04 部分対応: standalone `/history` のpot detailsにwinners/payoutを表示し、side/split potの配当確認入口を追加。
   - 2026-05-04 確認: `HistoryScreen` unitでcash/tournament同時表示を固定。`main-menu-history-smoke`でstandalone menuから`/history`へ遷移できることを確認。
-  - 残TODO: variant別詳細表示、side pot/split potの勝者別配当表示、backend `/api/history/hand` 同期、multi-game evaluator labels、スマホ履歴表示を追加する。
+  - 残TODO: variant別詳細表示、backend `/api/history/hand` 同期、multi-game evaluator labels、スマホ履歴表示を追加する。
 - [ ] `BUG-38` フレンドマッチの実プレイQAを強化する。
   - 既存: `p2p-friend-match-smoke.spec.ts` はmock websocketでroom create / ready / draw / showdown / refresh restoreを確認済み。
   - 2026-05-04 確認: unitでcreate/join/websocket projection/action/reconnect/history replayを確認。Playwrightでlogin→room作成→ready→draw→showdown→refresh restoreを確認。

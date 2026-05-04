@@ -17,7 +17,14 @@ vi.mock("../../../utils/history.js", () => ({
         { seat: 0, name: "Hero", stackAfter: 620, bet: 40, action: "call" },
         { seat: 1, name: "CPU 1", stackAfter: 0, bet: 40, allIn: true, action: "all-in" },
       ],
-      pots: [{ label: "Main", amount: 120, eligibleSeats: [0, 1] }],
+      pots: [
+        {
+          label: "Main",
+          amount: 120,
+          eligibleSeats: [0, 1],
+          winners: [{ seat: 0, amount: 120, name: "Hero" }],
+        },
+      ],
       events: [
         { type: "HAND_START" },
         { type: "ACTION", seat: 0, action: "call" },
@@ -74,6 +81,7 @@ describe("HistoryScreen", () => {
     expect(screen.getAllByText(/Seat 0 \+120/).length).toBeGreaterThan(0);
     expect(screen.getByText("Action Timeline")).toBeTruthy();
     expect(screen.getByText("Pot details")).toBeTruthy();
+    expect(screen.getByText(/winners: Hero \+120/)).toBeTruthy();
     expect(screen.getByText("CPU 1")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "トーナメント一覧" })).toBeTruthy();
     expect(screen.getByText("tourney-1")).toBeTruthy();

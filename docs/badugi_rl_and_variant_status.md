@@ -2505,6 +2505,7 @@ Draw RL test coverage:
 - [x] `npm test -- --run src/games/draw/__tests__/DeuceToSevenTripleDrawEngine.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawController.test.js src/games/__tests__/playableInvariant.test.js`: 3 files / 65 tests pass。2-7/A-5/5-card draw系のall-in DRAW権、BET不可、空BET street skip、横断chip driftなしを確認。
 - [x] `npm test -- --run src/games/draw/__tests__/SpecialDrawEngine.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawEngine.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawController.test.js src/games/__tests__/playableInvariant.test.js`: 4 files / 79 tests pass。Archie qualifier scoop、all-in draw権、横断chip driftなしを確認。
 - [x] `npx playwright test tests/e2e/game-ui-layout-smoke.spec.ts --project=badugi-flow`: 1 passed。テーブルledger / decision panel / hero cards / seat detailの最低限操作性を確認。
+- [x] `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts --project=badugi-flow`: 22 passed。NLH/FLH/PLO/PLO8/Big-O/5-card PLO/Stud/Stud8/Razz/Razz27/Razzdugi/Razzducey/D04-D07/S03-S07/Badugi store tournament の起動、Hero card配布、actionable state到達を横断確認。
 - [x] `npm run lint`: pass。
 - [x] `npm run build`: pass。chunk size warning は既存警告。
 

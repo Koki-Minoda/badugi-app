@@ -1739,6 +1739,7 @@ Draw RL test coverage:
           - 2026-05-04 fixture: `loose_passive` / draw-heavy傾向相手に T-low程度のmade Badugiをfirst-in value betするfixtureと、pat pressure相手には同じ手を打たないfixtureを追加。狙いはbet頻度だけを雑に増やさず、value betとして正しい局面だけを厚くすること。
           - 次の実験: Iron probeは `--first-in-value-bet-replay-ratio 0.20〜0.30` から開始し、actionCountsの`3: bet`増加、badRaises据え置き、foldRate非悪化を確認してから20kへ進める。
       - [ ] `AI-06e` 2-7 / A-5 用の実ONNXを生成・配置する。現状は `model-27draw-iron-v1` (`D01/S01`) と `model-a5draw-iron-v1` (`D02/S02`) の registry / feature builder / routing test はあるが、実 `.onnx` は optional 未配置で、App draw CPU は rule-based fallback が主経路。
+        - 2026-05-05 対応: Draw ONNX の出力decodeを `DRAW_RL_ACTIONS` label + legal action mask 基準に修正。従来は出力indexを直接draw枚数として扱っており、将来 `draw_4/5` や `fold/check/call` を含む11-actionモデルを入れた際にズレる危険があった。
       - [ ] `AI-06e-1` 2-7 Triple / Single Draw の Pro までのRL学習を実施する。Badugiと別モデルとして `D01/S01` にroutingし、2-7 evaluator / discard heuristic / final street fold disciplineを使う。
       - [ ] `AI-06e-2` A-5 Triple / Single Draw の Pro までのRL学習を実施する。`D02/S02` にroutingし、A-5 wheel / straight-flush無視 / pat判断をBadugi/2-7と混同しない。
       - [ ] `AI-06e-3` 2-7 / A-5 Pro適用前に、hand evaluator regression / draw controller smoke / human-practice benchmark を最低50ハンド相当で通す。

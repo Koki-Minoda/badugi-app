@@ -8,25 +8,37 @@ function formatAmount(value) {
   return `${value}`;
 }
 
-function WinnerCard({ winner }) {
+function WinnerCard({ winner, tone = "emerald" }) {
   const cards = Array.isArray(winner.hand) ? winner.hand : [];
   const activeCards = Array.isArray(winner.activeCards) ? winner.activeCards : cards;
   const deadCards = Array.isArray(winner.deadCards) ? winner.deadCards : [];
+  const winnerName =
+    winner.name ??
+    (Number.isInteger(winner.seatIndex) ? `Seat ${winner.seatIndex + 1}` : "Winner");
+  const handLabel = winner.handLabel ?? winner.evaluation?.handName ?? "Winner";
+  const toneClasses = {
+    emerald: "border-emerald-300/25 bg-emerald-950/20",
+    amber: "border-amber-300/30 bg-amber-950/20",
+    cyan: "border-cyan-300/30 bg-cyan-950/20",
+    violet: "border-violet-300/30 bg-violet-950/20",
+  };
   return (
     <li
-      key={`${winner.seatIndex}-${winner.name}`}
-      className="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3 flex flex-col gap-1.5"
+      key={`${winner.seatIndex}-${winnerName}`}
+      className={`rounded-2xl border px-4 py-3 flex flex-col gap-1.5 ${
+        toneClasses[tone] ?? toneClasses.emerald
+      }`}
       data-testid="hand-result-winner-row"
     >
       <div className="flex items-center justify-between gap-3">
         <span className="text-lg font-semibold text-white" data-testid="hand-result-winner-name">
-          {winner.name}
+          {winnerName}
         </span>
         <span
           className="text-xs text-emerald-300 uppercase tracking-wide"
           data-testid="hand-result-winner-hand-label"
         >
-          {winner.handLabel ?? "Badugi"}
+          {handLabel}
         </span>
       </div>
       {winner.ranksLabel && winner.ranksLabel !== "-" && (
@@ -68,8 +80,22 @@ function WinnerCard({ winner }) {
   );
 }
 
+function buildWinnerGroups(pot) {
+  const groups = [];
+  const addGroup = (key, label, winners, tone) => {
+    if (Array.isArray(winners) && winners.length > 0) {
+      groups.push({ key, label, winners, tone });
+    }
+  };
+  addGroup("winners", "Winners", pot?.winners, "emerald");
+  addGroup("high", "High", pot?.highWinners, "amber");
+  addGroup("low", "Low", pot?.lowWinners, "cyan");
+  addGroup("badugi", "Badugi", pot?.badugiWinners, "violet");
+  return groups;
+}
+
 function PotSection({ pot, index, singlePot }) {
-  const winners = Array.isArray(pot?.winners) ? pot.winners : [];
+  const winnerGroups = buildWinnerGroups(pot);
   const title =
     singlePot || index === 0
       ? singlePot
@@ -85,13 +111,33 @@ function PotSection({ pot, index, singlePot }) {
     >
       <div className="flex items-center justify-between text-xs text-slate-400 uppercase tracking-[0.4em]">
         <span data-testid="hand-result-pot-title">{title}</span>
-        <span data-testid="hand-result-pot-amount">¥{formatAmount(pot?.potAmount ?? 0)}</span>
+        <span data-testid="hand-result-pot-amount">
+          ¥{formatAmount(pot?.potAmount ?? pot?.amount ?? 0)}
+        </span>
       </div>
       <div className="space-y-2">
-        {winners.map((winner) => (
-          <WinnerCard key={`${winner.seatIndex}-${winner.name}`} winner={winner} />
+        {winnerGroups.map((group) => (
+          <div
+            key={group.key}
+            data-testid="hand-result-winner-group"
+            className="space-y-2 rounded-2xl border border-white/10 bg-black/10 p-2"
+          >
+            <div
+              data-testid="hand-result-winner-group-label"
+              className="text-[11px] font-black uppercase tracking-[0.35em] text-slate-300"
+            >
+              {group.label}
+            </div>
+            {group.winners.map((winner) => (
+              <WinnerCard
+                key={`${group.key}-${winner.seatIndex}-${winner.name ?? "winner"}`}
+                winner={winner}
+                tone={group.tone}
+              />
+            ))}
+          </div>
         ))}
-        {winners.length === 0 && (
+        {winnerGroups.length === 0 && (
           <p className="text-xs text-slate-400 italic">No eligible winners</p>
         )}
       </div>

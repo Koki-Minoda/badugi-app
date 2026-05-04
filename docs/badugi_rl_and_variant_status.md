@@ -2507,6 +2507,20 @@ Draw RL test coverage:
   - 対応: NLH / FLH / PLO / PLO8 / Big-O / 5-card PLO / Stud / Razz / Badugi MTT を Playwright smoke に追加。
   - 確認: `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts --project=badugi-flow`: 9 passed。
 
+### 16.3.6 2026-05-04 Variant Progression / Showdown Display QA Gap
+
+- [x] `QA-20260504-RAZZ-STREET-PROGRESSION` Razz/Razz27 が THIRD -> FOURTH -> FIFTH -> SIXTH -> SEVENTH -> SHOWDOWN まで正しい actor で進むことをunit fixtureで固定する。
+  - 背景: RazzがBadugi流用に見える状態があり、bring-in後のstreet進行と7枚配布がゲームとして成立しているかを明示的に保証する必要がある。
+- [x] `QA-20260504-STUD-DISPLAY-ORDER` Stud/Razz系のdown/up card順とcardVisibilityをPlayer表示ソートで壊さない。
+  - 背景: draw用の手札ソートをStud/Razzにそのまま適用すると、up-card/down-cardの対応が崩れてゲーム内容を誤認する。
+- [x] `QA-20260504-LOWBALL-SHOWDOWN-SORT` 2-7/A-5/Badugi/High系で、showdown時のカード表示順をvariant特性に合わせる。
+  - 2-7: Aは高いカードとして扱う。A-5/Badugi: Aは低いカードとして扱う。High: A/Kなど強いrankを左へ寄せる。
+- [x] `QA-20260504-SPLIT-RESULT-VISIBILITY` Stud8/PLO8/FLO8/Badeucey/Badacey/Razzdugi/Razzducey の hi/low/component pot を色・ラベルで分離して表示する。
+  - 背景: split potやcomponent splitで、誰がHigh/Low/Badugi側を取ったかが結果画面で判別しにくい。
+- [ ] `QA-20260504-ALL-VARIANT-OPERATIONAL-AUDIT` playable invariant を「初回action到達」だけでなく、street完走・showdown・all-in/split potまで段階的に拡張する。
+  - 背景: Razz/Stud/draw/board gameごとの進行差をテストで拾わないと、ゲームできると誤認する。
+  - 2026-05-04: Razz/Razz27 のfull street unit fixture、Player表示順unit、HandResultOverlay split/component表示unitを追加。全variantの完全手動/自動E2E完走監査は継続タスク。
+
 ### 16.4 未対応タスク優先度
 
 - P0: `BUG-20260503-SB-FOLD-DRAW-FREEZE`

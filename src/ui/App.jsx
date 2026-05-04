@@ -8614,6 +8614,7 @@ const SAFE_RESET_PHASE = "IDLE";
     betRoundValue: betRoundIndexSrc,
     boardCards: hudInfo?.boardCards ?? controllerSnapshot?.boardCards ?? [],
     streetLabel: hudInfo?.streetLabel ?? "",
+    gameVariant: normalizedGameVariant,
   };
 
   const overlaysProps = {

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Card from "./Card";
 import { formatStatAf, formatStatPercent } from "../utils/stats.js";
+import { getDisplayCards } from "../utils/cardDisplayOrder.js";
 
 function BetStatus({ amount, allIn = false }) {
   const hasBet = Number(amount) > 0;
@@ -96,48 +97,6 @@ function AvatarChip({ avatar, name, isHero = false, isFolded = false, testId }) 
 function formatHudPercent(value) {
   if (!Number.isFinite(value)) return "--";
   return `${Math.round(value * 100)}%`;
-}
-
-const CARD_RANK_ORDER = {
-  A: 1,
-  2: 2,
-  3: 3,
-  4: 4,
-  5: 5,
-  6: 6,
-  7: 7,
-  8: 8,
-  9: 9,
-  T: 10,
-  J: 11,
-  Q: 12,
-  K: 13,
-};
-
-function parseCardRank(card) {
-  const match = String(card ?? "").trim().toUpperCase().match(/^(10|[2-9TJQKA])/);
-  if (!match) return Number.POSITIVE_INFINITY;
-  return CARD_RANK_ORDER[match[1] === "10" ? "T" : match[1]] ?? Number.POSITIVE_INFINITY;
-}
-
-function getDisplayCards(handCards = []) {
-  const rankCounts = new Map();
-  handCards.forEach((card) => {
-    const rank = parseCardRank(card);
-    rankCounts.set(rank, (rankCounts.get(rank) ?? 0) + 1);
-  });
-  return handCards
-    .map((card, sourceIndex) => ({
-      card,
-      sourceIndex,
-      rank: parseCardRank(card),
-      rankCount: rankCounts.get(parseCardRank(card)) ?? 1,
-    }))
-    .sort((left, right) => {
-      if (right.rankCount !== left.rankCount) return right.rankCount - left.rankCount;
-      if (left.rank !== right.rank) return left.rank - right.rank;
-      return left.sourceIndex - right.sourceIndex;
-    });
 }
 
 function HudMetricRing({ label, value }) {
@@ -280,6 +239,7 @@ export default function Player({
   canSelectForDraw = false,
   compact = false,
   revealMode = false,
+  displayVariant = "badugi",
 }) {
   const seatRef = useRef(null);
   const closeTimerRef = useRef(null);
@@ -393,7 +353,7 @@ export default function Player({
       onCardClick(cardIdx);
     }
   };
-  const displayCards = getDisplayCards(handCards);
+  const displayCards = getDisplayCards(handCards, { displayVariant });
 
   const hudOverlay =
     hudOpen && !compact && typeof document !== "undefined"

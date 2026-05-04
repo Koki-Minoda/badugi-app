@@ -21,6 +21,26 @@ function createController(Controller, playerCount = 3) {
   });
 }
 
+function playPassiveStudHandToShowdown(controller, maxActions = 80) {
+  const visitedStreets = new Set([controller.getSnapshot().street]);
+  for (let actions = 0; actions < maxActions; actions += 1) {
+    const snapshot = controller.getSnapshot();
+    visitedStreets.add(snapshot.street);
+    if (snapshot.street === "SHOWDOWN") return { snapshot, visitedStreets, actions };
+    const actor = snapshot.currentActor;
+    expect(actor).toEqual(expect.any(Number));
+    const player = snapshot.players[actor];
+    expect(player).toEqual(expect.objectContaining({ seatIndex: actor }));
+    expect(player.folded).toBe(false);
+    expect(player.seatOut).toBe(false);
+    expect(player.allIn).toBe(false);
+    const toCall = Math.max(0, (snapshot.currentBet ?? 0) - (player.betThisStreet ?? 0));
+    const result = controller.applyPlayerAction({ seatIndex: actor, action: toCall > 0 ? "call" : "check" });
+    expect(result.success).toBe(true);
+  }
+  throw new Error("Stud hand did not reach showdown within action limit");
+}
+
 describe("Stud split controllers", () => {
   it("deals Stud streets incrementally instead of pre-dealing seven cards", () => {
     const controller = createController(StudGameController, 3);
@@ -110,6 +130,38 @@ describe("Stud split controllers", () => {
     const bringInSeat = controller.findBringInSeat();
 
     expect(bringInSeat).toBe(1);
+  });
+
+  it("plays Razz through every stud street to showdown with seven-card hands", () => {
+    const controller = createController(RazzGameController, 4);
+    controller.startNewHand();
+
+    const { snapshot, visitedStreets } = playPassiveStudHandToShowdown(controller);
+
+    expect([...visitedStreets]).toEqual(
+      expect.arrayContaining(["THIRD", "FOURTH", "FIFTH", "SIXTH", "SEVENTH", "SHOWDOWN"]),
+    );
+    snapshot.players.filter((player) => !player.folded && !player.seatOut).forEach((player) => {
+      expect(player.holeCards).toHaveLength(7);
+      expect(player.downCards).toHaveLength(3);
+      expect(player.upCards).toHaveLength(4);
+    });
+    const summary = controller.resolveShowdown();
+    expect(summary.splitMode).toBe("single");
+  });
+
+  it("plays Razz27 through every stud street to showdown with 2-7 low evaluation", () => {
+    const controller = createController(Razz27GameController, 4);
+    controller.startNewHand();
+
+    const { visitedStreets } = playPassiveStudHandToShowdown(controller);
+
+    expect([...visitedStreets]).toEqual(
+      expect.arrayContaining(["THIRD", "FOURTH", "FIFTH", "SIXTH", "SEVENTH", "SHOWDOWN"]),
+    );
+    const summary = controller.resolveShowdown();
+    expect(summary.splitMode).toBe("single");
+    expect(summary.potDetails?.[0]?.winners?.[0]?.evaluation?.handName).toBe("2-7 Low");
   });
 
   it("resolves 2-7 Razz as a single 2-7 lowball pot", () => {

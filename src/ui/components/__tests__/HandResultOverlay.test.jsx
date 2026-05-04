@@ -145,6 +145,89 @@ describe("HandResultOverlay", () => {
     );
   });
 
+  test("renders hi/lo split winners as separate result groups", () => {
+    render(
+      <HandResultOverlay
+        visible
+        summary={{
+          handId: "stud8-hand-1",
+          pot: 101,
+          potDetails: [
+            {
+              potIndex: 0,
+              amount: 101,
+              highWinners: [
+                {
+                  seatIndex: 0,
+                  name: "High Seat",
+                  handLabel: "Pair of Aces",
+                  payout: 51,
+                },
+              ],
+              lowWinners: [
+                {
+                  seatIndex: 1,
+                  name: "Low Seat",
+                  handLabel: "A-5 Low 7-4-3-2-A",
+                  payout: 50,
+                },
+              ],
+            },
+          ],
+        }}
+      />
+    );
+
+    expect(screen.getByTestId("hand-result-pot-amount").textContent).toBe("¥101");
+    expect(screen.getAllByTestId("hand-result-winner-group-label").map((node) => node.textContent)).toEqual([
+      "High",
+      "Low",
+    ]);
+    expect(screen.getByText("High Seat")).toBeTruthy();
+    expect(screen.getByText("Low Seat")).toBeTruthy();
+  });
+
+  test("renders Badugi component and low component winners separately", () => {
+    render(
+      <HandResultOverlay
+        visible
+        summary={{
+          handId: "razzdugi-hand-1",
+          pot: 100,
+          potDetails: [
+            {
+              potIndex: 0,
+              amount: 100,
+              badugiWinners: [
+                {
+                  seatIndex: 2,
+                  name: "Badugi Seat",
+                  handLabel: "Badugi 4-card",
+                  payout: 50,
+                },
+              ],
+              lowWinners: [
+                {
+                  seatIndex: 3,
+                  name: "Low Seat",
+                  handLabel: "A-5 Low 6-4-3-2-A",
+                  payout: 50,
+                },
+              ],
+            },
+          ],
+        }}
+      />
+    );
+
+    expect(screen.getAllByTestId("hand-result-winner-group-label").map((node) => node.textContent)).toEqual([
+      "Low",
+      "Badugi",
+    ]);
+    expect(screen.getByText("Badugi Seat")).toBeTruthy();
+    expect(screen.getByText("Low Seat")).toBeTruthy();
+  });
+
   test("opens follow-up replay targets from the result overlay", () => {
     const onReplayTarget = vi.fn();
     const replayTarget = { handId: "hand-1", actionSeq: 4, seat: 0 };

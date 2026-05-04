@@ -358,9 +358,9 @@
 - Summary:
   - Hero またはCPUが all-in した後、BET/DRAW進行が `Waiting for other players...` で止まることがある。
 - Expected:
-  - all-in seat は以後のBET/DRAW actorから除外され、残りのeligible seatだけで進行する。
+  - all-in seat は以後のBET actorから除外される。ただしdraw pokerではlive handの交換権を保持し、DRAW actorとしては進行できる。
 - Actual:
-  - Badugiの `isSeatEligibleForDraw` が all-in seat をdraw actor候補に残していた。
+  - Badugiとdraw lowball系でBET eligibilityとDRAW eligibilityの扱いが揺れ、all-in seatを待ち続ける/逆に交換権を消す回帰が起き得た。
 - Suspected Scope:
   - Files:
     - `src/games/badugi/flow/actionUtils.js`
@@ -368,16 +368,18 @@
     - `src/games/draw/__tests__/DeuceToSevenTripleDrawEngine.test.js`
   - Cross-game:
     - Badugi: affected
-    - 2-7 Triple / A-5 Triple / 2-7 Single / A-5 Single: independent engine has all-in regression tests; re-run required
+    - 2-7 Triple / A-5 Triple / 2-7 Single / A-5 Single: independent engine/controller all-in draw regression added and re-run
     - Hold'em / Omaha: separate controller path, not covered by this Badugi fix
 - Fix Plan:
-  - Badugi draw eligibilityで `player.allIn` を明示除外する。
-  - all-inだが `hasActedThisRound=false` のseatをskipする回帰testを追加する。
+  - BET eligibility と DRAW eligibility を分離する。
+  - live all-in seat はDRAW可能、folded/sittingOut/seatOut/busted seatだけDRAW不可にする。
+  - all-inだが `hasActedThisRound=false` のseatがBETで詰まらず、DRAW権は残る回帰testを追加する。
 - Verification Plan:
   - Badugi roundFlow unit test。
   - draw lowball family all-in regression test。
 - Resolution:
   - 2026-05-04: `isSeatEligibleForDraw` 修正と回帰test追加。
+  - 2026-05-04: draw lowball engine/controllerも同じ方針へ統一。all-in live seatはDRAW可能、BET不可、空BET streetはskipする。
 - Residual Risk:
   - 実ブラウザで hero all-in 後の長時間プレイを継続確認する。
 

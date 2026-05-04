@@ -180,7 +180,7 @@ function buildEvent(beforeState, afterState, action = {}) {
 
 function deriveLegalActions(state = {}, seatIndex) {
   const player = state.players?.[seatIndex];
-  if (!player || player.folded || player.sittingOut || player.seatOut || player.allIn) {
+  if (!player || player.folded || player.sittingOut || player.seatOut) {
     return [];
   }
   if (state.actingPlayerIndex !== null && state.actingPlayerIndex !== seatIndex) {
@@ -188,6 +188,9 @@ function deriveLegalActions(state = {}, seatIndex) {
   }
   if (state.street === "DRAW") {
     return player.hasDrawn ? [] : [{ type: "DRAW", minDiscard: 0, maxDiscard: 5 }];
+  }
+  if (player.allIn) {
+    return [];
   }
   if (state.street !== "BET") return [];
   const currentBet = Math.max(

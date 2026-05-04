@@ -95,6 +95,14 @@ function labelForEvaluation(evaluation) {
   return evaluation.metadata?.ranks?.join("-") ?? "Hand";
 }
 
+function isQualifiedComponentEvaluation(evaluation) {
+  if (!evaluation) return false;
+  if (evaluation.qualifies === false || evaluation.metadata?.qualifies === false) return false;
+  if (evaluation.rankPrimary === Number.POSITIVE_INFINITY) return false;
+  if (evaluation.rankSecondary === Number.POSITIVE_INFINITY) return false;
+  return true;
+}
+
 const VARIANT_CONFIGS = {
   badeucey_triple_draw: {
     gameId: "badeucey_triple_draw",
@@ -307,28 +315,68 @@ export class SpecialDrawEngine extends DeuceToSevenTripleDrawEngine {
     (working.pots ?? []).forEach((pot, potIndex) => {
       const potAmount = Math.max(0, pot.amount ?? 0);
       totalPot += potAmount;
-      const halfAmounts = splitHalfAmounts(potAmount);
-      components.forEach((component, componentIndex) => {
-        const amount = halfAmounts[componentIndex] ?? 0;
-        const eligibleSeats = normalizePotEligibleSeats(pot, working.players).filter((seatIndex) => {
-          const player = working.players[seatIndex];
-          return player && !player.folded && !player.sittingOut;
+      const componentAmounts = splitHalfAmounts(potAmount);
+      const eligibleSeats = normalizePotEligibleSeats(pot, working.players).filter((seatIndex) => {
+        const player = working.players[seatIndex];
+        return player && !player.folded && !player.sittingOut;
+      });
+      const contendersByComponent = Object.fromEntries(
+        components.map((component) => [
+          component,
+          eligibleSeats
+            .map((seatIndex) => evaluations[seatIndex])
+            .filter((entry) => isQualifiedComponentEvaluation(entry?.components?.[component])),
+        ]),
+      );
+      const awardedAmounts = Object.fromEntries(
+        components.map((component, componentIndex) => [component, componentAmounts[componentIndex] ?? 0]),
+      );
+      const qualifyingComponents = components.filter((component) => contendersByComponent[component]?.length);
+
+      if (qualifyingComponents.length) {
+        components.forEach((component) => {
+          if (contendersByComponent[component]?.length) return;
+          const amount = awardedAmounts[component] ?? 0;
+          awardedAmounts[component] = 0;
+          awardedAmounts[qualifyingComponents[0]] += amount;
         });
-        const contenders = eligibleSeats
+      } else if (components.length) {
+        // Archie can have no pair-or-better high and no 8-or-better low.
+        // In that rare case, keep accounting stable by awarding the whole pot
+        // through the primary component using all live eligible seats.
+        const fallbackComponent = components[0];
+        contendersByComponent[fallbackComponent] = eligibleSeats
           .map((seatIndex) => evaluations[seatIndex])
-          .filter((entry) => entry?.components?.[component]?.rankPrimary !== Number.POSITIVE_INFINITY);
-        if (!amount || !contenders.length) {
+          .filter(Boolean);
+        components.forEach((component) => {
+          awardedAmounts[component] = component === fallbackComponent ? potAmount : 0;
+        });
+      }
+
+      components.forEach((component) => {
+        const amount = awardedAmounts[component] ?? 0;
+        const contenders = contendersByComponent[component] ?? [];
+        if (!amount) {
+          summary.push({ potIndex, component, potAmount: 0, payouts: [], evaluations: contenders });
+          return;
+        }
+        if (!contenders.length) {
           summary.push({ potIndex, component, potAmount: amount, payouts: [], evaluations: contenders });
           return;
         }
         const best = contenders.reduce((currentBest, entry) => {
-          if (!currentBest) return entry.components[component];
-          return compareEvaluations(entry.components[component], currentBest) < 0
-            ? entry.components[component]
+          if (!currentBest) return entry.components?.[component] ?? entry.evaluation;
+          const nextEvaluation = entry.components?.[component] ?? entry.evaluation;
+          return compareEvaluations(nextEvaluation, currentBest) < 0
+            ? nextEvaluation
             : currentBest;
         }, null);
-        const winners = contenders.filter((entry) => compareEvaluations(entry.components[component], best) === 0);
+        const winners = contenders.filter((entry) => {
+          const evaluation = entry.components?.[component] ?? entry.evaluation;
+          return compareEvaluations(evaluation, best) === 0;
+        });
         const payouts = splitAmountBySeatOrder(amount, winners).map((winner) => {
+          const evaluation = winner.components?.[component] ?? winner.evaluation;
           const player = working.players[winner.seatIndex];
           const stackBefore = player.stack ?? 0;
           player.stack = stackBefore + winner.payout;
@@ -339,11 +387,11 @@ export class SpecialDrawEngine extends DeuceToSevenTripleDrawEngine {
             payout: winner.payout,
             stackBefore,
             stackAfter: player.stack,
-            handName: winner.components[component].handName,
-            handLabel: winner.components[component].handName,
-            ranksLabel: winner.components[component].metadata?.ranks?.join("-") ?? "",
+            handName: evaluation?.handName,
+            handLabel: evaluation?.handName,
+            ranksLabel: evaluation?.metadata?.ranks?.join("-") ?? "",
             hand: Array.isArray(player.hand) ? [...player.hand] : [],
-            evaluation: winner.components[component],
+            evaluation,
             component,
           };
         });

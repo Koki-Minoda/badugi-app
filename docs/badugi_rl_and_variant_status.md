@@ -2202,6 +2202,7 @@ Draw RL test coverage:
   - 2026-05-04 追加: Stud8の複数side pot hi/lo fixture、Razzdugiのodd chip component split fixture、RazzduceyのBadugi+2-7 component split fixtureを追加。
   - 2026-05-04 追加: FLO8専用のodd split + side pot fixture、ST6 2-7 Razz単体showdown fixture、Stud/Razz bring-in fixture、Stud up/down card UI adapter fixtureを追加。
   - 2026-05-04 追加: 高役evaluatorのカテゴリ順位を監査。カテゴリ桁がrank桁数でずれる問題を固定長rank scoreに修正し、standard high category order / flush over two pair fixtureを追加。
+  - 2026-05-04 追加: Archieのpair-or-better high / 8-or-better lowで片側qualifier不成立時に半ポットが未配当になる問題を修正。no-low/no-high scoopと全員非qualify時の会計フォールバックfixtureを追加。
 - [x] `BUG-35` Cash / tournament のプレイフィードバック仕様とAPIを実装する。
   - 2026-05-04 部分対応: `playFeedbackPayload` を追加。30ハンド未満はAI feedback対象外にし、cash/tournamentのhand historyからvariant別hands、VPIP/PFR、showdown/all-in/split-pot率、net chips、tournament ROI、Badugi follow-up issueを要約するpayloadを生成する。
   - 2026-05-04 部分対応: `POST /api/analysis/play-feedback` を追加。認証必須、30ハンド以上schema、簡易rate limit、PII除去、OpenAI未設定時fallback、OpenAI用session promptをbackendに追加。
@@ -2218,7 +2219,8 @@ Draw RL test coverage:
   - 2026-05-04 対応: `isSeatEligibleForDraw` はcurrent handでactiveなall-in seatを交換対象に残し、BETだけall-inを除外するように整理。
   - 2026-05-04 対応: `sanitizeStacks` は stack 0 のcurrent-hand all-inを即busted扱いにせず、`seatOut` のときだけbustedへ寄せる。
   - 2026-05-04 対応: Hero / CPU draw actor loop、Badugi controller legal action、DRAW round skip判定を同じdraw eligibilityへ統一。
-  - 横断確認: Badugi unit、2-7/A-5 draw engine/controller、BadugiEngine regressionを実行して確認する。
+  - 2026-05-04 追加対応: 2-7/A-5/5-card draw controller系も同じ方針へ統一。live all-in seat はDRAW可能、BET actionは不可、全員all-inでBET streetが空になった場合は次draw/showdownへ自動進行する。
+  - 横断確認: `DeuceToSevenTripleDrawEngine` / `DeuceToSevenTripleDrawController` にall-in draw regressionを追加し、draw系とplayable invariantを再実行済み。
 - [x] `BUG-37` ハンド履歴を完成させる。
   - 2026-05-04 部分対応: 完了したcanonical hand historyをlocalStorageのcash/tournament履歴にも保存し、standalone `/history` でキャッシュゲーム履歴とトーナメント履歴を同時に確認できるようにする。
   - 2026-05-04 部分対応: cash履歴に席別サマリ、pot details、canonical event timelineを追加し、all-in / side pot / action countの調査入口を作る。
@@ -2477,12 +2479,18 @@ Draw RL test coverage:
 - [x] `BUG-20260504-DRAW-CASH-STACK-RESET` 2-7/A-5/5-cardなどdraw-controller系リングゲームで、次ハンド開始時にスタックがstarting stackへ戻る問題を修正。
   - 原因: `DeuceToSevenTripleDrawController.createNewHandState()` がengine初期化時の `startingStack` をそのまま使い、App側の現在スタックを反映していなかった。
   - 対応: `currentPlayers` / `prevPlayers` / 前回snapshotから seat stack とavatar/nameを引き継いでからforced betを適用する。
+- [x] `BUG-20260504-DRAW-ALLIN-DRAW-RIGHT` 2-7/A-5/5-cardなどdraw-controller系で、all-in live player がDRAWできず進行/交換権がBadugiとズレる問題を修正。
+  - 原因: lowball draw engine が active betting seat と drawable seat を同じ判定で扱い、all-in seat をDRAW順から除外していた。
+  - 対応: `getDrawableSeatIndexes()` / `findFirstDrawableSeat()` を追加し、DRAWはfolded/sittingOut/seatOut/bustedのみ除外、BETは従来通りall-inも除外する。
+  - 補足: all-inだけが残ったBET streetは空streetとして即skipし、次drawまたはshowdownへ進める。
 - [x] `UI-20260504-HAND-SORT` 5-card/draw handの視認性改善として、表示上は同rankをまとめて低い順に並べ、クリック時は元indexを維持する。
   - 例: `Q,5,T,5,5` は表示上 `5,5,5,T,Q` に寄せる。discard indexは元のカード位置で送るためゲームロジックは変更しない。
 - [ ] `RL-10GAME-BEGINNER-STANDARD` 10-Game対象CPUのBeginner/Standard学習適用。
   - 今回はゲーム進行バグ修正を優先。各ゲーム別RLモデルの学習・評価・適用は、Stud/draw/board系の進行fixtureが安定した後に実施する。
 - [x] `npm test -- --run src/games/stud/__tests__/StudSplitGameController.test.js src/ui/game/nlh/__tests__/NLHUIAdapter.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawController.test.js src/ui/components/__tests__/Player.test.jsx`: 4 files / 28 tests pass。
 - [x] `npm test -- --run src/games/__tests__/playableInvariant.test.js`: 1 file / 25 tests pass。NLH/FLH/PLO/PLO8/FLO8/Stud/Stud8/Razz/Razz27/Razzdugi/Razzducey/主要draw系のbroken actorとchip driftを横断確認。
+- [x] `npm test -- --run src/games/draw/__tests__/DeuceToSevenTripleDrawEngine.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawController.test.js src/games/__tests__/playableInvariant.test.js`: 3 files / 65 tests pass。2-7/A-5/5-card draw系のall-in DRAW権、BET不可、空BET street skip、横断chip driftなしを確認。
+- [x] `npm test -- --run src/games/draw/__tests__/SpecialDrawEngine.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawEngine.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawController.test.js src/games/__tests__/playableInvariant.test.js`: 4 files / 79 tests pass。Archie qualifier scoop、all-in draw権、横断chip driftなしを確認。
 - [x] `npx playwright test tests/e2e/game-ui-layout-smoke.spec.ts --project=badugi-flow`: 1 passed。テーブルledger / decision panel / hero cards / seat detailの最低限操作性を確認。
 - [x] `npm run lint`: pass。
 - [x] `npm run build`: pass。chunk size warning は既存警告。

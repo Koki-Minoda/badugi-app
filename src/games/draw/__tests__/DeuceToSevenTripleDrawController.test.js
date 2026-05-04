@@ -120,6 +120,33 @@ describe("DeuceToSevenTripleDrawController", () => {
     ]);
   });
 
+  it("exposes DRAW, not betting actions, for an all-in live draw actor", () => {
+    const controller = buildController([
+      "2S", "3S", "4S", "5S", "7S",
+      "2H", "3H", "4H", "5H", "8H",
+    ]);
+    const state = controller.createNewHandState(controller.createInitialState());
+    state.engineState.street = "DRAW";
+    state.engineState.actingPlayerIndex = 1;
+    state.engineState.players[1] = {
+      ...state.engineState.players[1],
+      allIn: true,
+      stack: 0,
+      folded: false,
+      sittingOut: false,
+      seatOut: false,
+      hasDrawn: false,
+      canDraw: true,
+    };
+
+    expect(controller.getLegalActions(state, 1)).toEqual([
+      { type: "DRAW", minDiscard: 0, maxDiscard: 5 },
+    ]);
+
+    state.engineState.street = "BET";
+    expect(controller.getLegalActions(state, 1)).toEqual([]);
+  });
+
   it("exposes the D01 rule-based CPU action through the controller", () => {
     const controller = buildController([
       "2S", "3S", "4S", "5S", "7S",

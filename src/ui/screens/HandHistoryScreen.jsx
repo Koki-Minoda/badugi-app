@@ -174,6 +174,9 @@ export default function HandHistoryScreen({
         feedbackNotReady: `${MIN_FEEDBACK_HANDS}ハンド以上プレイすると利用できます。`,
         feedbackSource: "保存元",
         savedFeedback: "保存済みフィードバック",
+        keyHandsTitle: "該当ハンド",
+        keyHandsBody: "AIの指摘と実際のアクションを結び付けるため、重要局面を表示します。",
+        replayHand: "リプレイ",
       }
     : {
         title: "Hand History",
@@ -198,7 +201,16 @@ export default function HandHistoryScreen({
         feedbackNotReady: `Play at least ${MIN_FEEDBACK_HANDS} hands to enable feedback.`,
         feedbackSource: "Source",
         savedFeedback: "Saved feedback",
+        keyHandsTitle: "Referenced Hands",
+        keyHandsBody: "Key spots are linked to the exact hand/action range used for feedback.",
+        replayHand: "Replay",
       };
+  const activeFeedbackEntry = feedbackState.response
+    ? { response: feedbackState.response, keyHands: feedbackPayloadResult.payload?.keyHands ?? [] }
+    : savedFeedback;
+  const feedbackKeyHands = Array.isArray(activeFeedbackEntry?.keyHands)
+    ? activeFeedbackEntry.keyHands.slice(0, 6)
+    : [];
 
   async function handleRequestFeedback() {
     if (!feedbackPayloadResult.eligible || !feedbackPayloadResult.payload) return;
@@ -327,6 +339,45 @@ export default function HandHistoryScreen({
               <p className="whitespace-pre-wrap">
                 {(feedbackState.response ?? savedFeedback.response).adviceJa}
               </p>
+              {feedbackKeyHands.length > 0 && (
+                <div className="mt-4 border-t border-white/10 pt-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-200">
+                    {copy.keyHandsTitle}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-400">{copy.keyHandsBody}</p>
+                  <div className="mt-3 grid gap-2">
+                    {feedbackKeyHands.map((spot) => {
+                      const matched = rows.find((entry) => entry.hand?.handId === spot.handId);
+                      const actionRange = spot.actionSeqRange
+                        ? `#${spot.actionSeqRange.start}-${spot.actionSeqRange.end}`
+                        : "-";
+                      return (
+                        <div
+                          key={`${spot.situationId}-${spot.handId}`}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-xs"
+                        >
+                          <div>
+                            <p className="font-semibold text-white">
+                              {spot.situationId} / {spot.handId ?? "-"}
+                            </p>
+                            <p className="text-slate-400">
+                              {spot.reason ?? "-"} · {spot.street ?? "-"} · {spot.heroAction ?? "-"} · action {actionRange}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            disabled={!matched}
+                            onClick={() => matched && onReplay?.(matched.hand)}
+                            className="rounded-full border border-emerald-300/40 px-3 py-1 text-[11px] font-semibold text-emerald-100 disabled:cursor-not-allowed disabled:border-white/10 disabled:text-white/30"
+                          >
+                            {copy.replayHand}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </section>

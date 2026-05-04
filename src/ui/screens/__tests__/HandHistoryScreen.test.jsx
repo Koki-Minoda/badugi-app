@@ -49,11 +49,16 @@ describe("HandHistoryScreen", () => {
       }),
     });
 
-    render(<HandHistoryScreen embedded language="ja" />);
+    const onReplay = vi.fn();
+    render(<HandHistoryScreen embedded language="ja" onReplay={onReplay} />);
 
     fireEvent.click(screen.getByRole("button", { name: "AIフィードバック作成" }));
 
     await waitFor(() => expect(screen.getByText("ゲーム内モーダル助言")).toBeTruthy());
+    expect(screen.getByText("該当ハンド")).toBeTruthy();
+    expect(screen.getAllByText(/modal-hand-1/).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getAllByRole("button", { name: "リプレイ" })[0]);
+    expect(onReplay).toHaveBeenCalledWith(expect.objectContaining({ handId: "modal-hand-1" }));
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/analysis/play-feedback",
       expect.objectContaining({

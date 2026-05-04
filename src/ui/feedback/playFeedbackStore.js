@@ -39,6 +39,7 @@ export function savePlayFeedbackResult({ payload, response }) {
     variantScope: payload.variantScope ?? "mixed",
     tournamentId: payload.summary?.tournament?.tournamentId ?? null,
     summary: payload.summary ?? null,
+    keyHands: Array.isArray(payload.keyHands) ? payload.keyHands : [],
     response,
   };
   const next = [entry, ...readResults().filter((item) => item.id !== entry.id)];

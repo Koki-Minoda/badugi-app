@@ -2262,7 +2262,8 @@ Draw RL test coverage:
 - [ ] `GAME-ALL-05` feedback API は hand history / position / stack / VPIP/PFR / ROI / showdown / all-in / split-pot結果を投げ、良かった点・悪かった点・次回方針・仮説を返す。
   - 2026-05-05 追加調査: feedback上の `B-07` などのシチュエーションIDは、hand history内の `handId` / `actionSeq` / `street` / `seatIndex` / `position` と紐付ければ「どのハンドのどのアクションか」を明示できる。
   - 実装方針: `playFeedbackPayload` で key hand ごとに `situationId`, `handId`, `actionSeqRange`, `variantId`, `street`, `heroAction`, `toCall`, `pot`, `stackDepth`, `resultDelta` を持たせ、backend保存結果にも同じ参照を残す。frontend modal は該当 hand history / replay frame へジャンプする導線を追加する。
-  - 残TODO: 現状のAI feedbackはsession summary中心。学習しやすさを高めるには key hand extraction を「自然文」ではなく action timeline reference 付き構造データへ拡張する。
+  - 2026-05-05 対応: feedback payload / local store / Hand History modal を `keyHands` に対応させ、`situationId` / `handId` / `actionSeqRange` から該当hand replayへ遷移できるようにした。
+  - 残TODO: backend保存済みfeedback取得結果にも `keyHands` を表示するため、DB保存payloadとresponseの統合表示をさらに強化する。
 
 ## 17. Mobile Browser Landscape Game UI
 

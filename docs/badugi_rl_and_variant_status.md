@@ -2515,6 +2515,8 @@ Draw RL test coverage:
 - [x] `QA-20260504-CROSS-OPERATIONAL-SMOKE` 今後の回帰防止として、controller invariantだけでなく「variant選択 -> 実画面 -> card visible -> action visible」を主要variantへ広げる。
   - 対応: NLH / FLH / PLO / PLO8 / Big-O / 5-card PLO / Stud / Razz / Badugi MTT を Playwright smoke に追加。
   - 確認: `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts --project=badugi-flow`: 9 passed。
+  - 2026-05-05 追加対応: D04-D07 / S03-S07 / Stud8 / Razz27 / Razzdugi / Razzducey も Game Selector 経由の実画面 smoke 対象へ追加。Hidugi系は仕様通り4枚配布として固定。
+  - 2026-05-05 確認: `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts --project=badugi-flow`: 22 passed。
 
 ### 16.3.6 2026-05-04 Variant Progression / Showdown Display QA Gap
 

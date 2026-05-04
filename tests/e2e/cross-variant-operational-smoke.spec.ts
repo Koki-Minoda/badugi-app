@@ -42,7 +42,20 @@ test.describe("cross variant operational smoke", () => {
     { variant: "big_o", title: /Big-O|5-Card Omaha Hi-Lo/i, heroCards: 5 },
     { variant: "five_card_plo", title: /5-Card PLO|Five-Card PLO/i, heroCards: 5 },
     { variant: "stud", title: /Stud/i, heroCards: 3 },
+    { variant: "stud8", title: /Stud 8/i, heroCards: 3 },
     { variant: "razz", title: /Razz/i, heroCards: 3 },
+    { variant: "razz27", title: /2-7 Razz/i, heroCards: 3 },
+    { variant: "razzdugi", title: /Razzdugi/i, heroCards: 3 },
+    { variant: "razzducey", title: /Razzducey/i, heroCards: 3 },
+    { variant: "D04", title: /Badeucey TD/i, heroCards: 5 },
+    { variant: "D05", title: /Badacey TD/i, heroCards: 5 },
+    { variant: "D06", title: /Hidugi TD/i, heroCards: 4 },
+    { variant: "D07", title: /Archie TD/i, heroCards: 5 },
+    { variant: "S03", title: /5-Card Single Draw/i, heroCards: 5 },
+    { variant: "S04", title: /Badugi SD|Badugi Single Draw/i, heroCards: 4 },
+    { variant: "S05", title: /Badeucey Single Draw/i, heroCards: 5 },
+    { variant: "S06", title: /Badacey Single Draw/i, heroCards: 5 },
+    { variant: "S07", title: /Hidugi Single Draw/i, heroCards: 4 },
   ].forEach(({ variant, title, heroCards }) => {
     test(`${variant} cash game deals hero cards and reaches an actionable hero state`, async ({ page }) => {
       await page.setViewportSize({ width: 1440, height: 900 });

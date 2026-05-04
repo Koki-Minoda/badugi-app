@@ -1704,6 +1704,10 @@ Draw RL test coverage:
           - 2026-05-02 実装: Badugi cash game の完了ハンドを `badugi_human_benchmark_logs_v1` に自動保存する。保存内容は `handId`, `variantId`, `heroSeat`, `heroNet`, `heroResult`, CPU tier/model/version/featureSet/trainingRun, actions, showdown, winners。
           - 2026-05-02 実装: ブラウザコンソールから `window.MGX.getHumanBenchmarkLogs()` で確認、`window.MGX.exportHumanBenchmarkLogs()` で JSONL をダウンロードできる。通常プレイ後にエクスポートしたJSONLを `npm run ai:benchmark-badugi-human-practice -- --human-log <file> --require-human-logs` へ渡す。
           - 2026-05-02 実装: benchmark parser は App 側の `humanBenchmark` ネスト形式も読み取れる。
+        - [x] `AI-06q` 通常プレイの Auto CPU を Standard 基準から Pro 基準へ引き上げる。
+          - 2026-05-04 実装: `DEFAULT_AI_TIER_ID` を `pro` に変更。設定画面の開発者向け tier override が未設定の場合、通常CPUは Pro policy を使う。既にブラウザlocalStorageへ `dev.aiTierOverride` が保存されている場合は、その明示設定を優先する。
+          - 2026-05-04 実装: Pro / Iron / WorldMaster の `policyRouter` に elite補正を追加。発展性の高い3-card low drawのsemi-bluff、rough made Badugiのthin value、強いmade handでのto-call punish raiseを増やす。Standard以下には同補正を入れない。
+          - 2026-05-04 テスト: ProがStandardより強い3-card drawをopen semi-bluffしやすいこと、WorldMasterがProよりrough made Badugiをthin value raiseしやすいことを回帰テスト化。
       - [ ] `AI-06e` 2-7 / A-5 用の実ONNXを生成・配置する。現状は `model-27draw-iron-v1` (`D01/S01`) と `model-a5draw-iron-v1` (`D02/S02`) の registry / feature builder / routing test はあるが、実 `.onnx` は optional 未配置で、App draw CPU は rule-based fallback が主経路。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
   - P2P:

@@ -221,7 +221,7 @@ export default function TitleSettingsScreen({ embedded = false, onClose = null }
                   onChange={handleTierOverrideChange}
                   className="flex-1 rounded-2xl bg-slate-900/60 border border-white/20 px-3 py-2 text-sm"
                 >
-                  <option value="">自動 (コンテキスト依存)</option>
+                  <option value="">自動 (Pro基準)</option>
                   {tierOptions.map((tier) => (
                     <option key={tier.id} value={tier.id}>
                       {tier.label}
@@ -240,7 +240,7 @@ export default function TitleSettingsScreen({ embedded = false, onClose = null }
                 現在:{" "}
                 {devTierOverride
                   ? getTierById(devTierOverride)?.label ?? devTierOverride
-                  : "自動 (ゲーム状況で決定)"}
+                  : "自動 (Pro基準)"}
               </p>
             </div>
             <div className="space-y-3">

@@ -180,6 +180,7 @@ function cloneHandHistory(value) {
 
 const DEFAULT_GAME_ID = "D03";
 const DEFAULT_GAME_VARIANT = "badugi";
+const DEFAULT_AI_TIER_ID = "pro";
 const DESKTOP_CANVAS_BASE_WIDTH = 1600;
 const DESKTOP_CANVAS_BASE_HEIGHT = 900;
 const HERO_TOURNAMENT_PLAYER_ID = "hero-player";
@@ -1355,7 +1356,7 @@ const SAFE_RESET_PHASE = "IDLE";
   const [cashOutSummary, setCashOutSummary] = useState(null);
   const [devTierOverride, setDevTierOverride] = useState(() => loadAiTierOverride());
   const activeAiTierConfig = useMemo(
-    () => getTierById(devTierOverride ?? "standard"),
+    () => getTierById(devTierOverride ?? DEFAULT_AI_TIER_ID),
     [devTierOverride],
   );
   const aiDecisionContext = useMemo(

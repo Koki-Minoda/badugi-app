@@ -68,6 +68,93 @@ describe("policyRouter", () => {
     vi.restoreAllMocks();
   });
 
+  it("lets pro tiers open strong three-card draws as semi-bluffs more often than standard", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.72);
+    const standardContext = buildAiContext({
+      variantId: "D03",
+      tierConfig: {
+        ...tier,
+        id: "standard",
+        aggression: 0.45,
+        bluffFrequency: 0.08,
+        raiseThreshold: 0.9,
+      },
+      opponentStats: {},
+    });
+    const standardDecision = computeBetDecision({
+      context: standardContext,
+      toCall: 0,
+      canRaise: true,
+      madeCards: 3,
+      betSize: 20,
+      actor: { stack: 200, betThisRound: 0 },
+      evaluation: { ranks: [1, 2, 5] },
+      activeOpponents: 2,
+      drawRound: 0,
+      betRound: 0,
+    });
+    const proDecision = computeBetDecision({
+      context,
+      toCall: 0,
+      canRaise: true,
+      madeCards: 3,
+      betSize: 20,
+      actor: { stack: 200, betThisRound: 0 },
+      evaluation: { ranks: [1, 2, 5] },
+      activeOpponents: 2,
+      drawRound: 0,
+      betRound: 0,
+    });
+    expect(standardDecision.action).toBe("CHECK");
+    expect(proDecision.action).toBe("RAISE");
+    expect(proDecision.reason).toBe("semi-bluff");
+    vi.restoreAllMocks();
+  });
+
+  it("lets worldmaster value-raise rough made badugi more often than pro", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.52);
+    const proDecision = computeBetDecision({
+      context,
+      toCall: 0,
+      canRaise: true,
+      madeCards: 4,
+      betSize: 20,
+      actor: { stack: 300, betThisRound: 0 },
+      evaluation: { ranks: [2, 5, 7, 10] },
+      activeOpponents: 2,
+      drawRound: 2,
+      betRound: 2,
+    });
+    const worldContext = buildAiContext({
+      variantId: "D03",
+      tierConfig: {
+        ...tier,
+        id: "worldmaster",
+        aggression: 0.8,
+        bluffFrequency: 0.28,
+        raiseThreshold: 0.7,
+        raiseSizeMultiplier: 1.45,
+      },
+      opponentStats: {},
+    });
+    const worldDecision = computeBetDecision({
+      context: worldContext,
+      toCall: 0,
+      canRaise: true,
+      madeCards: 4,
+      betSize: 20,
+      actor: { stack: 300, betThisRound: 0 },
+      evaluation: { ranks: [2, 5, 7, 10] },
+      activeOpponents: 2,
+      drawRound: 2,
+      betRound: 2,
+    });
+    expect(proDecision.action).toBe("CHECK");
+    expect(worldDecision.action).toBe("RAISE");
+    expect(worldDecision.reason).toBe("thin-value");
+    vi.restoreAllMocks();
+  });
+
   it("boosts raise size with tier multiplier", () => {
     vi.spyOn(Math, "random").mockReturnValue(0.99);
     const decision = computeBetDecision({

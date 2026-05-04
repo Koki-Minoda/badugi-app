@@ -86,12 +86,23 @@ export function computeBetDecision({
   betRound = 0,
 }) {
   const tier = context.tier ?? {};
-  const isWorld = tier.id === "worldmaster";
-  const raiseMultiplier = (tier.raiseSizeMultiplier ?? 1.1) * (isWorld ? 1.1 : 1);
+  const tierId = tier.id ?? "standard";
+  const eliteRank = tierId === "worldmaster" ? 3 : tierId === "iron" ? 2 : tierId === "pro" ? 1 : 0;
+  const isWorld = tierId === "worldmaster";
+  const isElite = eliteRank > 0;
+  const raiseMultiplier = (tier.raiseSizeMultiplier ?? 1.1) * (isWorld ? 1.1 : isElite ? 1.04 : 1);
   const aggression = tier.aggression ?? 0.5;
   const bluffFreq = tier.bluffFrequency ?? 0.1;
-  const foldThreshold = Math.max(0.03, (tier.foldThreshold ?? 0.2) - (isWorld ? 0.02 : 0));
-  const raiseThreshold = clamp((tier.raiseThreshold ?? 0.85) - (isWorld ? 0.05 : 0), 0.55, 0.95);
+  const eliteFoldDiscount = eliteRank * 0.015;
+  const foldThreshold = Math.max(
+    0.03,
+    (tier.foldThreshold ?? 0.2) - (isWorld ? 0.02 : 0) - eliteFoldDiscount,
+  );
+  const raiseThreshold = clamp(
+    (tier.raiseThreshold ?? 0.85) - (isWorld ? 0.05 : 0) - eliteRank * 0.025,
+    0.55,
+    0.95,
+  );
 
   const liveOpponents = Math.max(1, Number(activeOpponents) || 1);
   const toCallUnits = betSize > 0 ? Math.max(0, Number(toCall) || 0) / betSize : 0;
@@ -133,11 +144,18 @@ export function computeBetDecision({
       : madeCards === 2 && lowRanks >= 2 && liveOpponents <= 2
       ? 0.08
       : 0;
+  const eliteDrawCredit = isElite && madeCards === 3 && lowRanks >= 3 ? 0.04 + eliteRank * 0.02 : 0;
   const callPressure = clamp(toCallUnits * 0.08, 0, 0.24);
   const foldCutoff = clamp(
-    foldThreshold + riskFactor + multiwayPressure + callPressure + lateStreetPressure - drawPotentialCredit,
+    foldThreshold +
+      riskFactor +
+      multiwayPressure +
+      callPressure +
+      lateStreetPressure -
+      drawPotentialCredit -
+      eliteDrawCredit,
     0.05,
-    tier.id === "beginner" ? 0.72 : 0.84,
+    tierId === "beginner" ? 0.72 : 0.84,
   );
 
   const roll = Math.random();
@@ -160,9 +178,30 @@ export function computeBetDecision({
     const pressureRaise =
       madeStrength >= 0.55 && roll > raiseCutoff;
     const bluffRaise = toCall === 0 && madeStrength < 0.55 && roll > 1 - bluffFreq;
-    if (valueRaise || pressureRaise || bluffRaise) {
+    const eliteThinValueRaise =
+      isElite && toCall === 0 && madeStrength >= 0.72 && roll > clamp(0.72 - eliteRank * 0.07, 0.46, 0.72);
+    const eliteSemiBluff =
+      isElite &&
+      toCall === 0 &&
+      drawRound <= 1 &&
+      madeCards === 3 &&
+      lowRanks >= 3 &&
+      roll > clamp(0.78 - eliteRank * 0.08, 0.52, 0.78);
+    const elitePunishCall =
+      isElite && toCall > 0 && madeStrength >= 0.84 && roll > clamp(0.62 - eliteRank * 0.07, 0.38, 0.7);
+    if (valueRaise || pressureRaise || bluffRaise || eliteThinValueRaise || eliteSemiBluff || elitePunishCall) {
       action = "RAISE";
-      decisionReason = valueRaise ? "value" : pressureRaise ? "pressure" : "bluff";
+      decisionReason = valueRaise
+        ? "value"
+        : eliteThinValueRaise
+        ? "thin-value"
+        : elitePunishCall
+        ? "value-punish-call"
+        : eliteSemiBluff
+        ? "semi-bluff"
+        : pressureRaise
+        ? "pressure"
+        : "bluff";
     }
   }
 
@@ -178,7 +217,7 @@ export function computeBetDecision({
     action,
     raiseSize,
     source: "policy-router",
-    tierId: tier.id,
+    tierId,
     reason: decisionReason,
   };
 }

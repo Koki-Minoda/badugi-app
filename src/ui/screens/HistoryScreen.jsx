@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { designTokens } from "../../styles/designTokens.js";
 import { getHands, getTournaments, getTournamentHands } from "../../utils/history.js";
+import { getVariantProfile } from "../../games/config/variantProfiles.js";
 import { buildPlayFeedbackPayload, MIN_FEEDBACK_HANDS } from "../feedback/playFeedbackPayload.js";
 import { hasStoredFeedbackAuth, requestPlayFeedback } from "../feedback/playFeedbackApi.js";
 
@@ -49,6 +50,23 @@ function getActionCount(hand) {
 function getPlayerRows(hand) {
   const rows = Array.isArray(hand?.seats) ? hand.seats : hand?.legacyRecord?.seats;
   return Array.isArray(rows) ? rows : [];
+}
+
+function getVariantLabel(hand) {
+  if (hand?.variantName) return hand.variantName;
+  const variantId = hand?.variantId ?? hand?.gameId ?? hand?.metadata?.variantId;
+  if (!variantId) return "Badugi";
+  if (String(variantId).toLowerCase() === "badugi") return "Badugi";
+  return getVariantProfile(variantId)?.name ?? String(variantId);
+}
+
+function getEvaluatorLabel(hand) {
+  const direct = hand?.evaluatorLabel ?? hand?.evaluator ?? hand?.metadata?.evaluator;
+  if (direct) return direct;
+  const profile = getVariantProfile(hand?.variantId ?? hand?.gameId ?? hand?.metadata?.variantId);
+  return Array.isArray(profile?.evaluators) && profile.evaluators.length > 0
+    ? profile.evaluators.join(" / ")
+    : "-";
 }
 
 function formatEvent(event) {
@@ -234,6 +252,8 @@ export default function HistoryScreen() {
                 const actionCount = getActionCount(hand);
                 const playerRows = getPlayerRows(hand);
                 const potRows = Array.isArray(hand.pots) ? hand.pots : [];
+                const variantLabel = getVariantLabel(hand);
+                const evaluatorLabel = getEvaluatorLabel(hand);
                 return (
                   <details
                     key={hand.handId}
@@ -245,6 +265,9 @@ export default function HistoryScreen() {
                         <code>{hand.handId}</code>
                         <span className="ml-3 text-xs text-slate-400">
                           {fmt.format(new Date(hand.endedAt ?? hand.ts ?? hand.startedAt))}
+                        </span>
+                        <span className="ml-3 rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2 py-0.5 text-xs text-emerald-100">
+                          {variantLabel}
                         </span>
                       </div>
                       <div className="flex flex-wrap gap-3 text-sm">
@@ -262,6 +285,8 @@ export default function HistoryScreen() {
                     <div className="mt-3 grid gap-3 text-sm text-slate-200 md:grid-cols-2">
                       <div className="rounded-xl border border-white/5 bg-slate-900/50 p-3">
                         <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Table</p>
+                        <p>Variant: {variantLabel}</p>
+                        <p>Evaluator: {evaluatorLabel}</p>
                         <p>Button: {hand.buttonSeat ?? "-"}</p>
                         <p>SB: {hand.sbSeat ?? "-"}</p>
                         <p>BB: {hand.bbSeat ?? "-"}</p>
@@ -283,6 +308,7 @@ export default function HistoryScreen() {
                               <th className="p-2 text-right">Stack</th>
                               <th className="p-2 text-right">Bet</th>
                               <th className="p-2 text-left">Status</th>
+                              <th className="p-2 text-left">Hand / Eval</th>
                               <th className="p-2 text-left">Last action</th>
                             </tr>
                           </thead>
@@ -296,6 +322,7 @@ export default function HistoryScreen() {
                                 <td className="p-2">
                                   {player.folded ? "Folded" : player.allIn ? "All-in" : player.busted ? "Busted" : "Active"}
                                 </td>
+                                <td className="p-2">{player.handLabel ?? player.evaluation?.handName ?? player.evaluation?.label ?? "-"}</td>
                                 <td className="p-2">{player.action ?? player.lastAction ?? "-"}</td>
                               </tr>
                             ))}
@@ -426,6 +453,9 @@ export default function HistoryScreen() {
                       <span className="ml-3 text-xs text-slate-400">
                         {fmt.format(new Date(hand.ts))}
                       </span>
+                      <span className="ml-3 rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2 py-0.5 text-xs text-emerald-100">
+                        {getVariantLabel(hand)}
+                      </span>
                     </div>
                     <div className="flex flex-wrap gap-3 text-sm">
                       <span>
@@ -446,6 +476,7 @@ export default function HistoryScreen() {
                             <th className="p-2 text-right">Bet</th>
                             <th className="p-2 text-right">Stack (before → after)</th>
                             <th className="p-2 text-right">Draw</th>
+                            <th className="p-2 text-left">Hand / Eval</th>
                             <th className="p-2 text-left">Action</th>
                           </tr>
                         </thead>
@@ -459,6 +490,7 @@ export default function HistoryScreen() {
                                 {player.stackBefore} → <b>{player.stackAfter}</b>
                               </td>
                               <td className="p-2 text-right">{player.drawCount ?? 0}</td>
+                              <td className="p-2">{player.handLabel ?? player.evaluation?.handName ?? player.evaluation?.label ?? "-"}</td>
                               <td className="p-2">{player.action || "-"}</td>
                             </tr>
                           ))}

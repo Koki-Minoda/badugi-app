@@ -22,6 +22,7 @@ vi.mock("../../../utils/history.js", () => ({
           stackAfter: 620,
           bet: 40,
           action: "call",
+          handLabel: index % 2 === 0 ? "Badugi 8-4-3-A" : "2-7 Low 7-5-4-3-2",
           actions: [{ street: "BET", type: "call" }],
         },
         { seat: 1, name: "CPU 1", stackAfter: 0, bet: 40, allIn: true, action: "all-in" },
@@ -69,6 +70,7 @@ vi.mock("../../../utils/history.js", () => ({
           stackAfter: 580,
           drawCount: 1,
           action: "Call",
+          handLabel: index % 2 === 0 ? "Badugi 8-4-3-A" : "2-7 Low 7-5-4-3-2",
         },
       ],
       actionLog: [{ phase: "BET", seatName: "Hero", type: "call" }],
@@ -96,6 +98,8 @@ describe("HistoryScreen", () => {
     expect(screen.getAllByText("Pot details").length).toBeGreaterThan(0);
     expect(screen.getAllByText(/winners: Hero \+120/).length).toBeGreaterThan(0);
     expect(screen.getAllByText("CPU 1").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Badugi").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("2-7 Low 7-5-4-3-2").length).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { name: "トーナメント一覧" })).toBeTruthy();
     expect(screen.getByText("tourney-1")).toBeTruthy();
     expect(screen.getByText("tourney-hand-1")).toBeTruthy();

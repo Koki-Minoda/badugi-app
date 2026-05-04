@@ -16,6 +16,7 @@ export function ensureNLHUIAdapterRegistered(options = {}) {
     APP_VARIANT_IDS.STUD,
     APP_VARIANT_IDS.STUD8,
     APP_VARIANT_IDS.RAZZ,
+    APP_VARIANT_IDS.RAZZ27,
     APP_VARIANT_IDS.RAZZDUGI,
     APP_VARIANT_IDS.RAZZDUCEY,
   ];

@@ -136,4 +136,45 @@ describe("PLO8GameController", () => {
     controller.state.street = "TURN";
     expect(controller.getLimitUnit()).toBe(20);
   });
+
+  it("keeps FLO8 odd split and side-pot payouts compatible with PLO8", () => {
+    const controller = new FLO8GameController({
+      tableConfig: {
+        seats: [
+          { seatIndex: 0, name: "High", stack: 1000 },
+          { seatIndex: 1, name: "Low", stack: 1000 },
+          { seatIndex: 2, name: "Side", stack: 1000 },
+        ],
+        blinds: { sb: 5, bb: 10, ante: 0 },
+      },
+      deckFactory: () => new StubDeck([]),
+    });
+    controller.startNewHand();
+    controller.state.street = "SHOWDOWN";
+    controller.state.boardCards = ["2S", "3S", "4H", "9S", "KC"];
+    controller.state.players = controller.state.players.map((player, idx) => ({
+      ...player,
+      folded: false,
+      seatOut: false,
+      holeCards: [
+        ["AS", "QS", "KS", "QH"],
+        ["AH", "5D", "7D", "8C"],
+        ["2D", "2C", "TD", "TC"],
+      ][idx],
+      totalInvested: [33, 66, 66][idx],
+      stack: 1000 - [33, 66, 66][idx],
+    }));
+
+    const summary = controller.resolveShowdown();
+
+    expect(summary.potDetails).toHaveLength(2);
+    expect(summary.potDetails[0]).toMatchObject({ amount: 99 });
+    expect(summary.potDetails[0].highWinners).toEqual([
+      expect.objectContaining({ seatIndex: 0, payout: 50 }),
+    ]);
+    expect(summary.potDetails[0].lowWinners).toEqual([
+      expect.objectContaining({ seatIndex: 1, payout: 49 }),
+    ]);
+    expect(summary.potDetails[1]).toMatchObject({ amount: 66 });
+  });
 });

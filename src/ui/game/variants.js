@@ -14,6 +14,7 @@ export const GAME_VARIANTS = [
   { id: "stud", label: "Stud", enabled: true },
   { id: "stud8", label: "Stud 8", enabled: true },
   { id: "razz", label: "Razz", enabled: true },
+  { id: "razz27", label: "2-7 Razz", enabled: true },
   { id: "razzdugi", label: "Razzdugi", enabled: true },
   { id: "razzducey", label: "Razzducey", enabled: true },
   { id: "dramaha_hi", label: "Dramaha Hi", enabled: true },

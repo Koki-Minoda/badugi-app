@@ -21,6 +21,7 @@ import FLO8GameController from "../plo/FLO8GameController.js";
 import PLO8GameController from "../plo/PLO8GameController.js";
 import PLOGameController from "../plo/PLOGameController.js";
 import StudGameController, {
+  Razz27GameController,
   RazzGameController,
   RazzduceyGameController,
   RazzdugiGameController,
@@ -110,6 +111,13 @@ export const GAME_VARIANTS = {
     label: "Razz",
     controllerFactory: (config = {}) =>
       new RazzGameController({ tableConfig: config.tableConfig ?? config }),
+  },
+  razz27: {
+    id: "razz27",
+    variantId: "ST6",
+    label: "2-7 Razz",
+    controllerFactory: (config = {}) =>
+      new Razz27GameController({ tableConfig: config.tableConfig ?? config }),
   },
   razzdugi: {
     id: "razzdugi",

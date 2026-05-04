@@ -124,9 +124,13 @@ export function evaluateHighHand({ cards = [] } = {}) {
   let best = null;
   for (const combo of combinations(parsed, 5)) {
     const classification = classifyFiveCards(combo);
+    const paddedRanks = [
+      ...classification.ranks,
+      ...new Array(Math.max(0, 5 - classification.ranks.length)).fill(0),
+    ].slice(0, 5);
     const score = generateScore(
       CATEGORY_RANK[classification.category],
-      classification.ranks,
+      paddedRanks,
       { invert: true }
     );
     if (!best || score < best.rankPrimary) {

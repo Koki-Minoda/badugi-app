@@ -43,6 +43,7 @@ describe("GameRegistry", () => {
     expect(GameRegistry.get("stud")?.label).toBe("Stud");
     expect(GameRegistry.get("stud8")?.label).toBe("Stud 8");
     expect(GameRegistry.get("razz")?.label).toBe("Razz");
+    expect(GameRegistry.get("razz27")?.label).toBe("2-7 Razz");
     expect(GameRegistry.get("razzdugi")?.label).toBe("Razzdugi");
     expect(GameRegistry.get("razzducey")?.label).toBe("Razzducey");
   });

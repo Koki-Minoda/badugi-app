@@ -5,6 +5,7 @@ import { PLO8GameController } from "../plo/PLO8GameController.js";
 import { FLO8GameController } from "../plo/FLO8GameController.js";
 import { PLOGameController } from "../plo/PLOGameController.js";
 import StudGameController, {
+  Razz27GameController,
   RazzGameController,
   RazzduceyGameController,
   RazzdugiGameController,
@@ -94,6 +95,7 @@ describe("playable invariant smoke", () => {
     ["stud", StudGameController],
     ["stud8", Stud8GameController],
     ["razz", RazzGameController],
+    ["razz27", Razz27GameController],
     ["razzdugi", RazzdugiGameController],
     ["razzducey", RazzduceyGameController],
   ];

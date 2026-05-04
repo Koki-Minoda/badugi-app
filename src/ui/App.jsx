@@ -59,6 +59,7 @@ import FLO8GameController from "../games/plo/FLO8GameController.js";
 import PLO8GameController from "../games/plo/PLO8GameController.js";
 import PLOGameController from "../games/plo/PLOGameController.js";
 import StudGameController, {
+  Razz27GameController,
   RazzGameController,
   RazzduceyGameController,
   RazzdugiGameController,
@@ -1647,6 +1648,10 @@ const SAFE_RESET_PHASE = "IDLE";
         });
       } else if (variantId === APP_VARIANT_IDS.RAZZ) {
         gameControllerRef.current = new RazzGameController({
+          tableConfig: buildNlhTableConfig(),
+        });
+      } else if (variantId === APP_VARIANT_IDS.RAZZ27) {
+        gameControllerRef.current = new Razz27GameController({
           tableConfig: buildNlhTableConfig(),
         });
       } else if (variantId === APP_VARIANT_IDS.RAZZDUGI) {

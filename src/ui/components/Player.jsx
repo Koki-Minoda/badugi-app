@@ -550,7 +550,7 @@ export default function Player({
             <Card
               key={`${card}-${i}`}
               value={card}
-              hidden={!isHero && !player.showHand}
+              hidden={!isHero && !player.showHand && player.cardVisibility?.[i] !== "up"}
               selected={isHero && (player.selected || []).includes(i)}
               onClick={() => handleCardClick(i)}
               folded={isFolded}

@@ -12,6 +12,7 @@ import {
 } from "../core/sidePotResolver.js";
 import StudGameDefinition from "./StudGameDefinition.js";
 import Stud8GameDefinition from "./Stud8GameDefinition.js";
+import Razz27GameDefinition from "./Razz27GameDefinition.js";
 import RazzGameDefinition from "./RazzGameDefinition.js";
 import RazzdugiGameDefinition from "./RazzdugiGameDefinition.js";
 import RazzduceyGameDefinition from "./RazzduceyGameDefinition.js";
@@ -52,6 +53,38 @@ function compareEval(aEval, bEval) {
     (bEval?.rankPrimary ?? Number.POSITIVE_INFINITY);
 }
 
+const CARD_RANK_ORDER = {
+  2: 2,
+  3: 3,
+  4: 4,
+  5: 5,
+  6: 6,
+  7: 7,
+  8: 8,
+  9: 9,
+  T: 10,
+  J: 11,
+  Q: 12,
+  K: 13,
+  A: 14,
+};
+
+const SUIT_BRING_IN_ORDER = {
+  C: 1,
+  D: 2,
+  H: 3,
+  S: 4,
+};
+
+function parseRankValue(card) {
+  const rank = String(card ?? "").slice(0, -1).toUpperCase();
+  return CARD_RANK_ORDER[rank === "10" ? "T" : rank] ?? 0;
+}
+
+function parseSuitValue(card) {
+  return SUIT_BRING_IN_ORDER[String(card ?? "").slice(-1).toUpperCase()] ?? 0;
+}
+
 function defaultTableConfig() {
   return {
     seats: [],
@@ -81,6 +114,8 @@ export class StudGameController {
       dealerIndex: -1,
       handId: null,
       lastHandResult: null,
+      bringInIndex: null,
+      bringInAmount: 0,
     };
   }
 
@@ -104,6 +139,10 @@ export class StudGameController {
     };
   }
 
+  get isLowStudVariant() {
+    return ["razz", "razz27", "razzdugi", "razzducey"].includes(this.variant);
+  }
+
   getSnapshot() {
     return {
       ...this.state,
@@ -113,6 +152,8 @@ export class StudGameController {
       players: this.state.players.map(clonePlayer),
       boardCards: [],
       pots: [{ amount: this.calculatePot(), potAmount: this.calculatePot() }],
+      bringInIndex: this.state.bringInIndex,
+      bringInAmount: this.state.bringInAmount,
     };
   }
 
@@ -154,11 +195,20 @@ export class StudGameController {
       player.hasActedThisStreet = false;
     });
     this.dealStudCards(players);
+    const bringInIndex = this.findBringInSeat(players);
+    const bringInAmount = bringInIndex == null ? 0 : Math.min(this.blinds.sb, players[bringInIndex]?.stack ?? 0);
+    if (bringInIndex != null && bringInAmount > 0) {
+      this.commitChips(players[bringInIndex], bringInAmount);
+      players[bringInIndex].lastAction = `Bring-in ${bringInAmount}`;
+      players[bringInIndex].hasActedThisStreet = true;
+    }
     this.state.players = players;
     this.state.street = "THIRD";
-    this.state.currentBet = 0;
+    this.state.currentBet = bringInAmount;
     this.state.dealerIndex = this.nextOccupiedSeat(this.state.dealerIndex, { players, allowSame: false }) ?? 0;
-    this.state.currentActor = this.nextActiveSeat(this.state.dealerIndex, players);
+    this.state.bringInIndex = bringInIndex;
+    this.state.bringInAmount = bringInAmount;
+    this.state.currentActor = this.nextActiveSeat(bringInIndex ?? this.state.dealerIndex, players);
     this.state.pot = this.calculatePot(players);
     return this.getSnapshot();
   }
@@ -174,6 +224,26 @@ export class StudGameController {
         else player.upCards.push(card);
       });
     }
+  }
+
+  findBringInSeat(players = this.state.players) {
+    const candidates = players
+      .filter((player) => player && !player.folded && !player.seatOut && !player.allIn && player.upCards?.[0])
+      .map((player) => ({
+        player,
+        rank: parseRankValue(player.upCards[0]),
+        suit: parseSuitValue(player.upCards[0]),
+      }));
+    if (!candidates.length) return null;
+    candidates.sort((a, b) => {
+      if (this.isLowStudVariant) {
+        if (b.rank !== a.rank) return b.rank - a.rank;
+        return b.suit - a.suit;
+      }
+      if (a.rank !== b.rank) return a.rank - b.rank;
+      return a.suit - b.suit;
+    });
+    return candidates[0].player.seatIndex;
   }
 
   commitChips(player, amount) {
@@ -299,6 +369,8 @@ export class StudGameController {
       hasActedThisStreet: false,
     }));
     this.state.currentBet = 0;
+    this.state.bringInIndex = null;
+    this.state.bringInAmount = 0;
   }
 
   advanceStreet() {
@@ -311,6 +383,9 @@ export class StudGameController {
   }
 
   evaluatePlayer(player) {
+    if (this.variant === "razz" || this.variant === "razz27") {
+      return evaluateLowHand({ cards: player.holeCards, lowType: this.variant === "razz27" ? "27" : "A5" });
+    }
     if (this.variant === "razz") {
       return evaluateLowHand({ cards: player.holeCards, lowType: "A5" });
     }
@@ -326,15 +401,16 @@ export class StudGameController {
       player,
       evaluation: evaluateHighHand({ cards: player.holeCards }),
     }));
+    const singleLowType = this.variant === "razz27" ? "27" : "A5";
     const lowEvaluations = contenders.map((player) => ({
       player,
       evaluation: evaluateLowHand({
         cards: player.holeCards,
-        lowType: "A5",
+        lowType: singleLowType,
         requireQualifier: this.variant === "stud8" ? 8 : null,
       }),
     })).filter((entry) => this.variant !== "stud8" || entry.evaluation?.qualifies);
-    const singleEvaluations = this.variant === "razz" ? lowEvaluations : highEvaluations;
+    const singleEvaluations = this.variant === "razz" || this.variant === "razz27" ? lowEvaluations : highEvaluations;
     const badugiEvaluations = contenders.map((player) => ({
       player,
       evaluation: evaluateBadugiHand({ cards: player.holeCards }),
@@ -456,6 +532,12 @@ export class Stud8GameController extends StudGameController {
 export class RazzGameController extends StudGameController {
   constructor(options = {}) {
     super({ ...options, gameDefinition: options.gameDefinition ?? RazzGameDefinition, variant: "razz" });
+  }
+}
+
+export class Razz27GameController extends StudGameController {
+  constructor(options = {}) {
+    super({ ...options, gameDefinition: options.gameDefinition ?? Razz27GameDefinition, variant: "razz27" });
   }
 }
 

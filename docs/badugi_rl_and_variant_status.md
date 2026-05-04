@@ -1787,12 +1787,15 @@ Draw RL test coverage:
         - 2026-05-04 実装: `DramahaGameController` / `DramahaGameDefinition` / `dramahaEvaluator` / Dramaha UI adapter を追加し、H01-H06をGameRegistry・variant modal・Game Selector catalogへ `wip` route として接続した。
         - 実装範囲: 5枚hole、flop-only 3枚board、1 draw、final bet、showdownでboard half（Omaha exactly 2 + board exactly 3）とdraw half（High / 2-7 / A-5 / Zero / Hidugi / Badugi）を分割評価する。
         - 残TODO: Dramaha専用CPU discard strategy、split halfのUI詳細表示、odd chip ruleの運用仕様、Playwright smokeを追加する。
-      - [ ] `MIX-16-16` Stud family (`ST1` Stud, `ST2` Stud 8, `ST3` Razz, `ST4` Razzdugi, `ST5` Razzducey, `ST6` 2-7 Razz) を段階実装する。street/deal visibility、bring-in/antes、stud evaluator、split variantsを別章で詳細化する。
+      - [x] `MIX-16-16` Stud family (`ST1` Stud, `ST2` Stud 8, `ST3` Razz, `ST4` Razzdugi, `ST5` Razzducey, `ST6` 2-7 Razz) を段階実装する。street/deal visibility、bring-in/antes、stud evaluator、split variantsを別章で詳細化する。
         - 2026-05-04 部分実装: `StudGameController` / `Stud8GameController` / `RazzGameController` と各GameDefinitionを追加し、ST1/ST2/ST3をplayable化。7枚配布、up/down card保持、fixed-limit street進行、Stud high / Stud8 hi-lo / Razz A-5 low showdownを実装。
         - 2026-05-04 修正: anteをtotalInvestedには残しつつstreet betから分離。anteが`betThisStreet`に残ると全員checkしてもTHIRD streetから進まないため、startNewHand後にstreet betをresetする。
         - 2026-05-04 追加実装: `RazzdugiGameDefinition` / `RazzduceyGameDefinition` とcontroller routeを追加し、ST4/ST5をplayable化。RazzdugiはBadugi half + A-5 low half、RazzduceyはBadugi half + 2-7 low halfとしてcomponent splitを解決する。
         - 2026-05-04 追加確認: Stud8複数side pot hi/lo fixture、Razzdugi odd chip component split fixture、Razzducey component split fixture、Stud family invariant smokeを追加。
-        - 残TODO: Stud専用UIでup/down cardを明確に表示する、bring-in順序を実ルールに寄せる、ST6 2-7 Razzを追加する。
+        - 2026-05-04 追加実装: `Razz27GameDefinition` / `Razz27GameController` を追加し、ST6 2-7 Razzをplayable化。2-7 low単体showdown、GameRegistry、App routing、UI adapter、Game Selector catalogへ接続した。
+        - 2026-05-04 追加実装: Stud/Razz系のTHIRD street bring-inを追加。Stud/Stud8は最低up-card、Razz/Razz27/Razzdugi/Razzduceyは最高up-cardからbring-inを投稿し、次席へactionを渡す。
+        - 2026-05-04 追加実装: Stud/Razz系UIでdownCards/upCardsを区別し、showdown前は相手のup-cardだけを表向き、down-cardを伏せて表示する。street labelも3rd-7th Streetに対応。
+        - 残TODO: Stud専用テーブルレイアウトでup-card/down-cardの見せ方をさらに磨く、bring-in後のcomplete size/同ランクsuit tieの実運用をPlaywrightで確認する。
       - [x] `CHINESE-01` チャイポ / Chinese Poker / OFC の準備タスクを追加する。13枚配布、front/middle/back配置、royalty、foul判定、fantasyland、turn順の仕様を実装前提として整理する。
         - 2026-05-04 実装: `src/games/chinese/chinesePokerPreparation.js` に alias と実装要件を固定。現時点ではゲーム進行へ接続しない準備ファイルのみ。
       - [ ] `CHINESE-02` Chinese Poker / OFC の実ゲーム controller / layout UI / scorer / foul判定を実装する。
@@ -2163,7 +2166,7 @@ Draw RL test coverage:
 | `BUG-31` | Badugi draw UI | PC | fixed | DRAW中にカードを押しても反応しないように見える。Smart HUDがHero席でも開き、固定レイヤーがカード操作を邪魔することがある。またHeroのドロー順でない時も無反応に見える。 | Draw系/DramahaでもHero操作時にHUDが入力を塞がないことを確認する。 |
 | `BUG-32` | Smart HUD scope | PC / Mobile | fixed | HUD scope dropdown に Stud / Razz がなく、10-Game / Dealer's Choice の情報切替先が不足している。 | Stud/Razz実装時にvariant別stats集計へ接続する。 |
 | `BUG-33` | PC/Mobile layout separation | PC / Mobile | open | スマホ横画面対応がPC卓レイアウトへ影響しないことを継続確認する。 | PC desktop smoke と mobile landscape smoke を別々に維持する。 |
-| `BUG-34` | All-in / split pot flow | All | partial | AI後、side pot / split pot / odd chip / all-in skipped actor が誤るとゲーム進行停止や誤配当につながる。 | NLH/PLO/Dramahaはmain/side pot fixture追加済み。PLO8/FLO8/Stud8/Razzdugi/Razzducey fixtureと10controller invariant smokeを追加済み。FLO8専用side pot詳細、ST6/Razz系派生は後続。 |
+| `BUG-34` | All-in / split pot flow | All | fixed | AI後、side pot / split pot / odd chip / all-in skipped actor が誤るとゲーム進行停止や誤配当につながる。 | NLH/PLO/Dramaha/PLO8/FLO8/Stud8/Razzdugi/Razzducey/ST6 fixtureと11controller invariant smokeを追加済み。 |
 | `BUG-35` | Play feedback pipeline | All | planned | Cash / tournament の30ハンド以上の履歴から、良かった点/悪かった点/ROI/参加条件/仮説をまとめるAI feedback APIが未実装。 | 10-Game Beginner/Standard RL適用後にBadugi/2-7/A-5/Stud/Razz/NLH/PLOを対象にする。 |
 | `BUG-36` | All-in draw actor | Badugi / Draw | fixed | all-in後のCPU/Hero、またはall-in後にbusted seatが残った状態で、DRAWフェーズの交換対象が詰まりカード交換できなくなる。 | Badugiはactive all-in seatをDRAW可能、busted/seatOutはDRAW不可に分離。2-7/A-5 draw regressionも再実行する。 |
 
@@ -2172,13 +2175,14 @@ Draw RL test coverage:
 - [x] `BUG-32` Smart HUD scope selector に `Stud` / `Razz` を追加する。
   - 2026-05-04 対応: `PlayerSmartHud` の scope option を追加し、テストで存在確認。
 - [ ] `BUG-33` PC版とスマホ版のUI差分をPlaywrightで別々に検証し、片方の修正が片方を崩さないようにする。
-- [ ] `BUG-34` all-in / side pot / split pot / odd chip のcross-game fixtureを追加する。
+- [x] `BUG-34` all-in / side pot / split pot / odd chip のcross-game fixtureを追加する。
   - 2026-05-04 対応中: `sidePotResolver` を追加し、投資額からmain/side potを構築、fold済みは受賞対象外、odd chipはseat順で安定配分する共通helperを追加。
   - 2026-05-04 対応中: NLH/PLO/Dramahaのshowdownにside pot resolverを接続し、3人all-inでmain pot / side pot 1 / side pot 2のwinnerが別になるfixtureを追加。
-  - 2026-05-04 追加: `playableInvariant.test.js` を追加し、NLH / FLH / PLO / PLO8 / FLO8 / Stud / Stud8 / Razz / Razzdugi / Razzducey が1handを完走し、broken actor、all-in actorへの誤ターン、chip drift、negative stackを出さないことを横断検証する。
+  - 2026-05-04 追加: `playableInvariant.test.js` を追加し、NLH / FLH / PLO / PLO8 / FLO8 / Stud / Stud8 / Razz / Razz27 / Razzdugi / Razzducey が1handを完走し、broken actor、all-in actorへの誤ターン、chip drift、negative stackを出さないことを横断検証する。
   - 2026-05-04 追加: PLO8のqualifying low split / no-low high scoop / odd chip main+side pot fixtureを追加。
   - 2026-05-04 追加: Stud8の複数side pot hi/lo fixture、Razzdugiのodd chip component split fixture、RazzduceyのBadugi+2-7 component split fixtureを追加。
-  - 残: FLO8専用の複数side pot fixture、ST6 2-7 Razz、Razzdugi/Razzduceyの実ルールbring-in/visible-card UIを追加する。
+  - 2026-05-04 追加: FLO8専用のodd split + side pot fixture、ST6 2-7 Razz単体showdown fixture、Stud/Razz bring-in fixture、Stud up/down card UI adapter fixtureを追加。
+  - 2026-05-04 追加: 高役evaluatorのカテゴリ順位を監査。カテゴリ桁がrank桁数でずれる問題を固定長rank scoreに修正し、standard high category order / flush over two pair fixtureを追加。
 - [ ] `BUG-35` Cash / tournament のプレイフィードバック仕様とAPIを実装する。
 - [x] `BUG-36` all-in後のDRAW停止を修正する。
   - 2026-05-04 対応: `isSeatEligibleForDraw` はcurrent handでactiveなall-in seatを交換対象に残し、BETだけall-inを除外するように整理。

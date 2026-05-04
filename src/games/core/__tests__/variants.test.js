@@ -9,6 +9,7 @@ describe("core controller variant registry", () => {
     expect(GAME_VARIANTS.stud?.variantId).toBe("ST1");
     expect(GAME_VARIANTS.stud8?.variantId).toBe("ST2");
     expect(GAME_VARIANTS.razz?.variantId).toBe("ST3");
+    expect(GAME_VARIANTS.razz27?.variantId).toBe("ST6");
     expect(GAME_VARIANTS.razzdugi?.variantId).toBe("ST4");
     expect(GAME_VARIANTS.razzducey?.variantId).toBe("ST5");
     expect(GAME_VARIANTS.deuce_to_seven_triple_draw?.variantId).toBe("D01");

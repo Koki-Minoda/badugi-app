@@ -931,6 +931,8 @@
                      "razz",
                      "low-27"
                  ],
-        "priorityPhase":  4
+        "priorityPhase":  4,
+        "status":  "live",
+        "engineKey":  "razz27"
     }
 ]

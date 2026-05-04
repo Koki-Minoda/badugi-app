@@ -19,6 +19,32 @@ describe("High-hand evaluator", () => {
     });
     expect(compareEvaluations(straightFlush, fourKind) < 0).toBe(true);
   });
+
+  it("orders standard high-hand categories before kickers", () => {
+    const hands = [
+      evaluateHighHand({ cards: ["AS", "KS", "QS", "JS", "10S"] }),
+      evaluateHighHand({ cards: ["9H", "9C", "9D", "9S", "4H"] }),
+      evaluateHighHand({ cards: ["8H", "8C", "8D", "7S", "7H"] }),
+      evaluateHighHand({ cards: ["AH", "JH", "8H", "5H", "2H"] }),
+      evaluateHighHand({ cards: ["9S", "8D", "7C", "6H", "5S"] }),
+      evaluateHighHand({ cards: ["6S", "6D", "6C", "KH", "2D"] }),
+      evaluateHighHand({ cards: ["QS", "QD", "8C", "8H", "2S"] }),
+      evaluateHighHand({ cards: ["JS", "JD", "AC", "9H", "2S"] }),
+      evaluateHighHand({ cards: ["AS", "KD", "9C", "6H", "2S"] }),
+    ];
+
+    for (let i = 0; i < hands.length - 1; i += 1) {
+      expect(compareEvaluations(hands[i], hands[i + 1])).toBeLessThan(0);
+    }
+  });
+
+  it("selects flush over two pair from seven cards", () => {
+    const result = evaluateHighHand({
+      cards: ["AH", "JH", "8H", "5H", "2H", "QS", "QD"],
+    });
+
+    expect(result.metadata.category).toBe("flush");
+  });
 });
 
 describe("Lowball evaluator", () => {

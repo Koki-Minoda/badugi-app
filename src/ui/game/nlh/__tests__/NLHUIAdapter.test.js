@@ -59,6 +59,7 @@ describe("NLHUIAdapter", () => {
     expect(getGameUIAdapter(APP_VARIANT_IDS.STUD)).toBe(adapter);
     expect(getGameUIAdapter(APP_VARIANT_IDS.STUD8)).toBe(adapter);
     expect(getGameUIAdapter(APP_VARIANT_IDS.RAZZ)).toBe(adapter);
+    expect(getGameUIAdapter(APP_VARIANT_IDS.RAZZ27)).toBe(adapter);
     expect(getGameUIAdapter(APP_VARIANT_IDS.RAZZDUGI)).toBe(adapter);
     expect(getGameUIAdapter(APP_VARIANT_IDS.RAZZDUCEY)).toBe(adapter);
   });
@@ -78,6 +79,43 @@ describe("NLHUIAdapter", () => {
     expect(view.controlsConfig.isHeroTurn).toBe(true);
     expect(view.controlsConfig.canFold).toBe(false);
     expect(view.hudInfo.streetLabel).toBe("Preflop");
+  });
+
+  it("keeps stud up-cards visible while down-cards stay hidden before showdown", () => {
+    const adapter = new NLHUIAdapter();
+    const snapshot = buildSnapshot({
+      street: "THIRD",
+      players: [
+        {
+          seatIndex: 0,
+          name: "Hero",
+          stack: 980,
+          betThisStreet: 0,
+          totalInvested: 0,
+          holeCards: ["AS", "KD", "2C", "3H", "4S", "5D", "6C"],
+          downCards: ["AS", "KD", "6C"],
+          upCards: ["2C", "3H", "4S", "5D"],
+          folded: false,
+        },
+        {
+          seatIndex: 1,
+          name: "Razz CPU",
+          stack: 990,
+          betThisStreet: 0,
+          totalInvested: 0,
+          holeCards: ["QS", "JD", "9C", "8H", "7S", "6D", "5C"],
+          downCards: ["QS", "JD", "5C"],
+          upCards: ["9C", "8H", "7S", "6D"],
+          folded: false,
+        },
+      ],
+    });
+
+    const view = adapter.buildViewProps({ controllerSnapshot: snapshot, tableConfig });
+
+    expect(view.seatViews[1].cards).toEqual(["QS", "JD", "9C", "8H", "7S", "6D", "5C"]);
+    expect(view.seatViews[1].cardVisibility).toEqual(["down", "down", "up", "up", "up", "up", "down"]);
+    expect(view.hudInfo.streetLabel).toBe("3rd Street");
   });
 
   it("preserves image avatar URLs in seat views", () => {

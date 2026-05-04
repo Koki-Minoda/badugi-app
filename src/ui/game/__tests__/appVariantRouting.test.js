@@ -33,6 +33,7 @@ describe("appVariantRouting", () => {
     expect(normalizeAppVariantId("ST3")).toBe(APP_VARIANT_IDS.RAZZ);
     expect(normalizeAppVariantId("ST4")).toBe(APP_VARIANT_IDS.RAZZDUGI);
     expect(normalizeAppVariantId("ST5")).toBe(APP_VARIANT_IDS.RAZZDUCEY);
+    expect(normalizeAppVariantId("ST6")).toBe(APP_VARIANT_IDS.RAZZ27);
     expect(normalizeAppVariantId("unknown")).toBe(APP_VARIANT_IDS.BADUGI);
   });
 
@@ -53,6 +54,7 @@ describe("appVariantRouting", () => {
     expect(isControllerBackedAppVariant("dramaha_27")).toBe(true);
     expect(isControllerBackedAppVariant("stud")).toBe(true);
     expect(isControllerBackedAppVariant("razz")).toBe(true);
+    expect(isControllerBackedAppVariant("razz27")).toBe(true);
     expect(isControllerBackedAppVariant("razzdugi")).toBe(true);
     expect(isControllerBackedAppVariant("razzducey")).toBe(true);
   });

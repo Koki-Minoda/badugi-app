@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  Razz27GameController,
   RazzduceyGameController,
   RazzdugiGameController,
+  RazzGameController,
+  StudGameController,
   Stud8GameController,
 } from "../StudGameController.js";
 
@@ -19,6 +22,67 @@ function createController(Controller, playerCount = 3) {
 }
 
 describe("Stud split controllers", () => {
+  it("posts bring-in from the lowest up-card in Stud and next actor follows", () => {
+    const controller = createController(StudGameController, 3);
+    controller.startNewHand();
+    controller.state.players = controller.state.players.map((player, idx) => ({
+      ...player,
+      folded: false,
+      seatOut: false,
+      allIn: false,
+      stack: 1000,
+      totalInvested: 0,
+      betThisStreet: 0,
+      upCards: [["2C"], ["AH"], ["7S"]][idx],
+    }));
+
+    const bringInSeat = controller.findBringInSeat();
+
+    expect(bringInSeat).toBe(0);
+  });
+
+  it("posts bring-in from the highest up-card in Razz-family games", () => {
+    const controller = createController(RazzGameController, 3);
+    controller.startNewHand();
+    controller.state.players = controller.state.players.map((player, idx) => ({
+      ...player,
+      folded: false,
+      seatOut: false,
+      allIn: false,
+      stack: 1000,
+      totalInvested: 0,
+      betThisStreet: 0,
+      upCards: [["2C"], ["AH"], ["KS"]][idx],
+    }));
+
+    const bringInSeat = controller.findBringInSeat();
+
+    expect(bringInSeat).toBe(1);
+  });
+
+  it("resolves 2-7 Razz as a single 2-7 lowball pot", () => {
+    const controller = createController(Razz27GameController, 2);
+    controller.startNewHand();
+    controller.state.street = "SHOWDOWN";
+    controller.state.players = controller.state.players.map((player, idx) => ({
+      ...player,
+      folded: false,
+      seatOut: false,
+      holeCards: idx === 0
+        ? ["7S", "5D", "4C", "3H", "2S", "KD", "QC"]
+        : ["AS", "5D", "4C", "3H", "2S", "KD", "QC"],
+      totalInvested: 50,
+      stack: 950,
+    }));
+
+    const summary = controller.resolveShowdown();
+
+    expect(summary.splitMode).toBe("single");
+    expect(summary.potDetails[0].winners).toEqual([
+      expect.objectContaining({ seatIndex: 0, payout: 100 }),
+    ]);
+  });
+
   it("resolves Stud8 high/low across multiple side pots", () => {
     const controller = createController(Stud8GameController);
     controller.startNewHand();

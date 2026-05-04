@@ -101,4 +101,43 @@ describe("PLOGameController", () => {
     expect(controller.state.players[0].betThisStreet).toBe(70);
     expect(controller.state.currentBet).toBe(70);
   });
+
+  it("resolves side pots using Omaha eligibility and exactly-two evaluation", () => {
+    const controller = createController({
+      seats: [
+        { name: "Main Only", stack: 1000 },
+        { name: "Side One", stack: 1000 },
+        { name: "Deep Stack", stack: 1000 },
+      ],
+      deckCards: [
+        "AS", "KS", "QD",
+        "AD", "KD", "4D",
+        "3C", "4C", "5C",
+        "2C", "7D", "9H", "JS", "QC",
+      ],
+    });
+    controller.startNewHand();
+    controller.state.street = "SHOWDOWN";
+    controller.state.boardCards = ["2C", "7D", "9H", "JS", "QC"];
+    controller.state.players = controller.state.players.map((player, idx) => ({
+      ...player,
+      folded: false,
+      seatOut: false,
+      holeCards: [
+        ["AS", "AD", "3C", "4D"],
+        ["KS", "KD", "5C", "6D"],
+        ["3S", "4H", "5D", "6C"],
+      ][idx],
+      totalInvested: [50, 100, 200][idx],
+      stack: 0,
+    }));
+
+    const summary = controller.resolveShowdown();
+
+    expect(summary.potDetails.map((pot) => pot.amount)).toEqual([150, 100, 100]);
+    expect(summary.potDetails[0].winnerSeatIndexes).toEqual([0]);
+    expect(summary.potDetails[1].winnerSeatIndexes).toEqual([1]);
+    expect(summary.potDetails[2].winnerSeatIndexes).toEqual([2]);
+    expect(controller.state.players.map((player) => player.stack)).toEqual([150, 100, 100]);
+  });
 });

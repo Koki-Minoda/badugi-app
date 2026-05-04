@@ -1660,7 +1660,12 @@ const SAFE_RESET_PHASE = "IDLE";
     () => ({
       seats: players.map((player, idx) => ({
         seatIndex: idx,
+        playerId: player?.playerId ?? null,
         name: player?.name ?? `Seat ${idx + 1}`,
+        avatar: player?.avatar ?? null,
+        avatarUrl: player?.avatarUrl ?? null,
+        cpuCharacterId: player?.cpuCharacterId ?? null,
+        cpuStyle: player?.cpuStyle ?? null,
         stack: player?.stack ?? 0,
         seatOut: player?.seatOut ?? false,
       })),

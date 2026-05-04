@@ -1,6 +1,12 @@
 import NLHGameController from "../nlh/NLHGameController.js";
 import PLOGameDefinition from "./PLOGameDefinition.js";
 import { evaluatePloHand, comparePloHands } from "./utils/ploEvaluator.js";
+import {
+  applyPayoutsToPlayers,
+  buildContributionPots,
+  resolveEvaluationPot,
+  summarizePayouts,
+} from "../core/sidePotResolver.js";
 
 export class PLOGameController extends NLHGameController {
   constructor(options = {}) {
@@ -78,38 +84,63 @@ export class PLOGameController extends NLHGameController {
         best = entry;
       }
     });
+    const resolvedPot = totalPot ?? this.calculatePot();
+    if (!best) {
+      const summary = {
+        handId: this.state.handId,
+        board,
+        totalPot: resolvedPot,
+        winners: [],
+        potDetails: [],
+      };
+      this.state.lastHandResult = summary;
+      return summary;
+    }
     const winners = evaluations.filter(
       (entry) => comparePloHands(entry.evaluation, best.evaluation) === 0,
     );
-    const resolvedPot = totalPot ?? this.calculatePot();
-    const basePayout = winners.length ? Math.floor(resolvedPot / winners.length) : 0;
-    let remainder = resolvedPot - basePayout * winners.length;
-    const winnerSummaries = winners.map((entry) => {
-      let payout = basePayout;
-      if (remainder > 0) {
-        payout += 1;
-        remainder -= 1;
-      }
-      entry.player.stack += payout;
+    const contributionPots = buildContributionPots(this.state.players);
+    const potsToResolve = contributionPots.length
+      ? contributionPots
+      : [
+          {
+            potIndex: 0,
+            amount: resolvedPot,
+            potAmount: resolvedPot,
+            eligibleSeatIndexes: winners.map((entry) => entry.player.seatIndex),
+          },
+        ];
+    const allPayouts = [];
+    const potDetails = potsToResolve.map((pot, potIndex) => {
+      const payouts = resolveEvaluationPot({
+        amount: pot.amount,
+        eligibleSeatIndexes: pot.eligibleSeatIndexes,
+        evaluations,
+        compareEvaluations: comparePloHands,
+      });
+      allPayouts.push(...payouts);
       return {
-        seatIndex: entry.player.seatIndex,
-        name: entry.player.name,
-        payout,
-        evaluation: entry.evaluation,
+        potIndex: pot.potIndex ?? potIndex,
+        amount: pot.amount,
+        potAmount: pot.amount,
+        eligibleSeatIndexes: [...(pot.eligibleSeatIndexes ?? [])],
+        winnerSeatIndexes: payouts.map((winner) => winner.player.seatIndex),
+        winners: payouts.map((winner) => ({
+          seatIndex: winner.player.seatIndex,
+          name: winner.player.name,
+          payout: winner.payout,
+          evaluation: winner.evaluation,
+        })),
       };
     });
+    applyPayoutsToPlayers(this.state.players, allPayouts);
+    const winnerSummaries = summarizePayouts(allPayouts);
     const summary = {
       handId: this.state.handId,
       board,
       totalPot: resolvedPot,
       winners: winnerSummaries,
-      potDetails: [
-        {
-          potIndex: 0,
-          amount: resolvedPot,
-          winnerSeatIndexes: winnerSummaries.map((winner) => winner.seatIndex),
-        },
-      ],
+      potDetails,
     };
     this.state.lastHandResult = summary;
     return summary;

@@ -37,6 +37,8 @@ function mapSeatViews(snapshot = {}) {
       hasFolded: Boolean(player.folded),
       isAllIn: Boolean(player.allIn),
       seatOut: Boolean(player.seatOut),
+      avatar: player.avatarUrl ?? player.avatar ?? "default_avatar",
+      avatarUrl: player.avatarUrl ?? null,
       cards: obfuscated,
       lastAction: player.lastAction ?? "",
     };

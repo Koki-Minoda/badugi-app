@@ -6,6 +6,12 @@ import {
   evaluateDramahaHand,
   getDramahaVariantConfig,
 } from "./utils/dramahaEvaluator.js";
+import {
+  applyPayoutsToPlayers,
+  buildContributionPots,
+  resolveEvaluationPot,
+  summarizePayouts,
+} from "../core/sidePotResolver.js";
 
 const VARIANT_IDS = {
   dramaha_hi: { id: "game-dramaha-hi", label: "Dramaha Hi" },
@@ -191,76 +197,82 @@ export class DramahaGameController extends NLHGameController {
       this.state.lastHandResult = summary;
       return summary;
     }
-    const bestBoard = evaluations.reduce(
-      (best, entry) =>
-        !best || compareDramahaBoard(entry.evaluation, best.evaluation) < 0
-          ? entry
-          : best,
-      null,
-    );
-    const bestDraw = evaluations.reduce(
-      (best, entry) =>
-        !best || compareDramahaDraw(entry.evaluation, best.evaluation) < 0
-          ? entry
-          : best,
-      null,
-    );
-    const boardWinners = evaluations.filter(
-      (entry) => compareDramahaBoard(entry.evaluation, bestBoard.evaluation) === 0,
-    );
-    const drawWinners = evaluations.filter(
-      (entry) => compareDramahaDraw(entry.evaluation, bestDraw.evaluation) === 0,
-    );
-    const boardPot = Math.floor(resolvedPot / 2);
-    const drawPot = resolvedPot - boardPot;
-    const payouts = new Map();
-    const award = (entries, amount) => {
-      if (!entries.length || amount <= 0) return;
-      const base = Math.floor(amount / entries.length);
-      let remainder = amount - base * entries.length;
-      entries.forEach((entry) => {
-        const extra = remainder > 0 ? 1 : 0;
-        remainder -= extra;
-        payouts.set(entry.player.seatIndex, (payouts.get(entry.player.seatIndex) ?? 0) + base + extra);
+    const contributionPots = buildContributionPots(this.state.players);
+    const potsToResolve = contributionPots.length
+      ? contributionPots
+      : [{
+          potIndex: 0,
+          amount: resolvedPot,
+          potAmount: resolvedPot,
+          eligibleSeatIndexes: evaluations.map((entry) => entry.player.seatIndex),
+        }];
+    const allPayouts = [];
+    const potDetails = [];
+    potsToResolve.forEach((pot, sourcePotIndex) => {
+      const componentAmounts = [
+        {
+          component: "board",
+          label: "Board half",
+          amount: Math.floor(pot.amount / 2),
+          compare: compareDramahaBoard,
+        },
+        {
+          component: "draw",
+          label: "Draw half",
+          amount: pot.amount - Math.floor(pot.amount / 2),
+          compare: compareDramahaDraw,
+        },
+      ];
+      componentAmounts.forEach((component) => {
+        const payouts = resolveEvaluationPot({
+          amount: component.amount,
+          eligibleSeatIndexes: pot.eligibleSeatIndexes,
+          evaluations,
+          compareEvaluations: component.compare,
+        });
+        allPayouts.push(
+          ...payouts.map((payout) => ({
+            ...payout,
+            [`${component.component}Win`]: true,
+          })),
+        );
+        potDetails.push({
+          potIndex: potDetails.length,
+          sourcePotIndex: pot.potIndex ?? sourcePotIndex,
+          component: component.component,
+          label: sourcePotIndex === 0 ? component.label : `Side ${sourcePotIndex} ${component.label}`,
+          amount: component.amount,
+          potAmount: component.amount,
+          eligibleSeatIndexes: [...(pot.eligibleSeatIndexes ?? [])],
+          winnerSeatIndexes: payouts.map((winner) => winner.player.seatIndex),
+          winners: payouts.map((winner) => ({
+            seatIndex: winner.player.seatIndex,
+            name: winner.player.name,
+            payout: winner.payout,
+            evaluation: winner.evaluation,
+            boardWin: component.component === "board",
+            drawWin: component.component === "draw",
+          })),
+        });
       });
-    };
-    award(boardWinners, boardPot);
-    award(drawWinners, drawPot);
-
-    const winners = [...payouts.entries()].map(([seatIndex, payout]) => {
-      const player = this.state.players[seatIndex];
-      if (player) {
-        player.stack = (player.stack ?? 0) + payout;
-      }
-      return {
-        seatIndex,
-        name: player?.name ?? `Seat ${seatIndex + 1}`,
-        payout,
-        boardWin: boardWinners.some((entry) => entry.player.seatIndex === seatIndex),
-        drawWin: drawWinners.some((entry) => entry.player.seatIndex === seatIndex),
-        evaluation: evaluations.find((entry) => entry.player.seatIndex === seatIndex)?.evaluation,
-      };
     });
+    applyPayoutsToPlayers(this.state.players, allPayouts);
+    const winners = summarizePayouts(allPayouts).map((winner) => ({
+      ...winner,
+      boardWin: allPayouts.some(
+        (entry) => entry.player?.seatIndex === winner.seatIndex && entry.boardWin,
+      ),
+      drawWin: allPayouts.some(
+        (entry) => entry.player?.seatIndex === winner.seatIndex && entry.drawWin,
+      ),
+    }));
     const summary = {
       handId: this.state.handId,
       board: [...this.state.boardCards],
       totalPot: resolvedPot,
       splitMode: "boardAndDraw",
       winners,
-      potDetails: [
-        {
-          potIndex: 0,
-          label: "Board half",
-          amount: boardPot,
-          winnerSeatIndexes: boardWinners.map((entry) => entry.player.seatIndex),
-        },
-        {
-          potIndex: 1,
-          label: "Draw half",
-          amount: drawPot,
-          winnerSeatIndexes: drawWinners.map((entry) => entry.player.seatIndex),
-        },
-      ],
+      potDetails,
     };
     this.state.lastHandResult = summary;
     return summary;

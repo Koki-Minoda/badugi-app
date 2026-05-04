@@ -2151,7 +2151,7 @@ Draw RL test coverage:
 | `BUG-31` | Badugi draw UI | PC | fixed | DRAW中にカードを押しても反応しないように見える。Smart HUDがHero席でも開き、固定レイヤーがカード操作を邪魔することがある。またHeroのドロー順でない時も無反応に見える。 | Draw系/DramahaでもHero操作時にHUDが入力を塞がないことを確認する。 |
 | `BUG-32` | Smart HUD scope | PC / Mobile | fixed | HUD scope dropdown に Stud / Razz がなく、10-Game / Dealer's Choice の情報切替先が不足している。 | Stud/Razz実装時にvariant別stats集計へ接続する。 |
 | `BUG-33` | PC/Mobile layout separation | PC / Mobile | open | スマホ横画面対応がPC卓レイアウトへ影響しないことを継続確認する。 | PC desktop smoke と mobile landscape smoke を別々に維持する。 |
-| `BUG-34` | All-in / split pot flow | All | open | AI後、side pot / split pot / odd chip / all-in skipped actor が誤るとゲーム進行停止や誤配当につながる。 | PLO8/FLO8/Dramaha/Stud8/Razzdugi/Razzduceyで追加fixtureを作る。 |
+| `BUG-34` | All-in / split pot flow | All | partial | AI後、side pot / split pot / odd chip / all-in skipped actor が誤るとゲーム進行停止や誤配当につながる。 | NLH/PLO/Dramahaはmain/side pot fixture追加済み。PLO8/FLO8/Stud8/Razzdugi/Razzduceyはplayable化時にhi/lo・split fixtureを追加する。 |
 | `BUG-35` | Play feedback pipeline | All | planned | Cash / tournament の30ハンド以上の履歴から、良かった点/悪かった点/ROI/参加条件/仮説をまとめるAI feedback APIが未実装。 | 10-Game Beginner/Standard RL適用後にBadugi/2-7/A-5/Stud/Razz/NLH/PLOを対象にする。 |
 
 - [x] `BUG-31` Hero DRAW中はHero seat Smart HUDを開かず、カードクリックを最優先する。
@@ -2160,6 +2160,9 @@ Draw RL test coverage:
   - 2026-05-04 対応: `PlayerSmartHud` の scope option を追加し、テストで存在確認。
 - [ ] `BUG-33` PC版とスマホ版のUI差分をPlaywrightで別々に検証し、片方の修正が片方を崩さないようにする。
 - [ ] `BUG-34` all-in / side pot / split pot / odd chip のcross-game fixtureを追加する。
+  - 2026-05-04 対応中: `sidePotResolver` を追加し、投資額からmain/side potを構築、fold済みは受賞対象外、odd chipはseat順で安定配分する共通helperを追加。
+  - 2026-05-04 対応中: NLH/PLO/Dramahaのshowdownにside pot resolverを接続し、3人all-inでmain pot / side pot 1 / side pot 2のwinnerが別になるfixtureを追加。
+  - 残: PLO8/FLO8/Stud8/Razzdugi/RazzduceyはGAME-ALL playable化時にhi/lo split、no-low scoop、component別side pot、odd chip fixtureを追加する。
 - [ ] `BUG-35` Cash / tournament のプレイフィードバック仕様とAPIを実装する。
 
 ### 16.5 Full Game Implementation / RL / Feedback Order
@@ -2357,6 +2360,7 @@ Draw RL test coverage:
   - 2026-05-04 対応: `titleSettings` の初期avatarを `/characters/hero.png` に変更。旧デフォルトのダイヤ/`default_avatar` がlocalStorageに残る場合は初回ロード時にhero画像へ移行する。
 - [x] `CHAR-07` CPU画像が table seat / tournament復元後に initials へ落ちる経路を修正する。
   - 2026-05-04 対応: `seatViewMerge` で adapter の `default_avatar` が roster の `avatarUrl` を上書きしないよう修正。`App.jsx` の base seat / tournament hydrate でも `avatarUrl` を `avatar` に正規化。
+  - 2026-05-04 追加対応: NLH/PLO/Dramahaなどboard-controller系で `tableConfig.seats` から `avatarUrl` / `cpuCharacterId` / `cpuStyle` が落ちる経路を修正。`NLHUIAdapter` でも snapshot 由来の `avatarUrl` をseat viewへ保持するテストを追加。
 
 ### 16.3.2 Current Regression Fixes
 

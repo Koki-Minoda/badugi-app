@@ -65,6 +65,45 @@ describe("NLHUIAdapter", () => {
     expect(view.hudInfo.streetLabel).toBe("Preflop");
   });
 
+  it("preserves image avatar URLs in seat views", () => {
+    const adapter = new NLHUIAdapter();
+    const snapshot = buildSnapshot({
+      players: [
+        {
+          seatIndex: 0,
+          name: "Hero",
+          avatarUrl: "/characters/hero.png",
+          stack: 980,
+          betThisStreet: 20,
+          totalInvested: 20,
+          holeCards: ["AS", "KS"],
+          folded: false,
+        },
+        {
+          seatIndex: 1,
+          name: "Kei",
+          avatarUrl: "/characters/kei.png",
+          stack: 990,
+          betThisStreet: 20,
+          totalInvested: 20,
+          holeCards: ["QD", "JC"],
+          folded: false,
+        },
+      ],
+    });
+
+    const view = adapter.buildViewProps({ controllerSnapshot: snapshot, tableConfig });
+
+    expect(view.seatViews[0]).toMatchObject({
+      avatar: "/characters/hero.png",
+      avatarUrl: "/characters/hero.png",
+    });
+    expect(view.seatViews[1]).toMatchObject({
+      avatar: "/characters/kei.png",
+      avatarUrl: "/characters/kei.png",
+    });
+  });
+
   it("formats street labels", () => {
     const adapter = new NLHUIAdapter();
     expect(adapter.formatStreetLabel("PREFLOP")).toBe("Preflop");

@@ -64,6 +64,41 @@ describe("NLHGameController", () => {
     expect(snapshot.currentActor).toBe(0);
   });
 
+  it("preserves character metadata from table config", () => {
+    const controller = createController({
+      seats: [
+        {
+          name: "Hero",
+          stack: 1000,
+          avatarUrl: "/characters/hero.png",
+          cpuCharacterId: null,
+        },
+        {
+          name: "Kei",
+          stack: 1000,
+          avatarUrl: "/characters/kei.png",
+          cpuCharacterId: "kei",
+          cpuStyle: "standard",
+        },
+      ],
+      deckCards,
+      blinds,
+    });
+
+    const snapshot = controller.startNewHand();
+
+    expect(snapshot.players[0]).toMatchObject({
+      name: "Hero",
+      avatarUrl: "/characters/hero.png",
+    });
+    expect(snapshot.players[1]).toMatchObject({
+      name: "Kei",
+      avatarUrl: "/characters/kei.png",
+      cpuCharacterId: "kei",
+      cpuStyle: "standard",
+    });
+  });
+
   it("skips busted seats when assigning blinds", () => {
     const controller = createController({
       seats: [
@@ -143,5 +178,40 @@ describe("NLHGameController", () => {
     expect(summary.winners[0].seatIndex).toBe(0);
     expect(summary.winners[0].evaluation.category).toBe("FLUSH");
     expect(controller.state.players[0].stack).toBeGreaterThan(seats[0].stack);
+  });
+
+  it("resolves side pots with eligibility restricted by total investment", () => {
+    const controller = createController({
+      seats: [
+        { name: "Main Only", stack: 1000 },
+        { name: "Side One", stack: 1000 },
+        { name: "Deep Stack", stack: 1000 },
+      ],
+      deckCards,
+      blinds,
+    });
+    controller.startNewHand();
+    controller.state.street = "SHOWDOWN";
+    controller.state.boardCards = ["2C", "7D", "9H", "JS", "QC"];
+    controller.state.players = controller.state.players.map((player, idx) => ({
+      ...player,
+      folded: false,
+      seatOut: false,
+      holeCards: [
+        ["AS", "AD"],
+        ["KS", "KD"],
+        ["3S", "4D"],
+      ][idx],
+      totalInvested: [50, 100, 200][idx],
+      stack: 0,
+    }));
+
+    const summary = controller.resolveShowdown();
+
+    expect(summary.potDetails.map((pot) => pot.amount)).toEqual([150, 100, 100]);
+    expect(summary.potDetails[0].winnerSeatIndexes).toEqual([0]);
+    expect(summary.potDetails[1].winnerSeatIndexes).toEqual([1]);
+    expect(summary.potDetails[2].winnerSeatIndexes).toEqual([2]);
+    expect(controller.state.players.map((player) => player.stack)).toEqual([150, 100, 100]);
   });
 });

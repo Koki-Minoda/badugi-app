@@ -7,6 +7,7 @@ import SuperHoldemGameController, {
 import { PLO8GameController } from "../plo/PLO8GameController.js";
 import { FLO8GameController } from "../plo/FLO8GameController.js";
 import { PLOGameController } from "../plo/PLOGameController.js";
+import { FiveCardSingleDrawController } from "../draw/FiveCardSingleDrawController.js";
 import StudGameController, {
   Razz27GameController,
   RazzGameController,
@@ -62,6 +63,9 @@ function chooseSafeAction(snapshot) {
 }
 
 function driveOneHand(controller) {
+  if (!controller.state?.players && typeof controller.createNewHandState === "function") {
+    return driveGenericControllerHand(controller);
+  }
   const initialTotal = totalStacks(controller.state.players);
   let snapshot = controller.startNewHand();
   expect(totalAccounting(snapshot.players)).toBe(initialTotal);
@@ -86,6 +90,45 @@ function driveOneHand(controller) {
   const result = controller.state.lastHandResult ?? controller.resolveShowdown();
   expect(result.totalPot).toBeGreaterThanOrEqual(0);
   expect(totalStacks(controller.state.players)).toBe(initialTotal);
+}
+
+function chooseGenericAction(snapshot) {
+  const actor = snapshot.currentActor ?? snapshot.actingPlayerIndex ?? snapshot.turn;
+  const player = snapshot.players[actor];
+  if (snapshot.street === "DRAW" || snapshot.phase === "DRAW") {
+    return { seatIndex: actor, type: "DRAW", discardIndexes: [] };
+  }
+  const currentBet = Number(snapshot.currentBet ?? snapshot.metadata?.currentBet ?? 0) || 0;
+  const committed = Number(player.betThisStreet ?? player.betThisRound ?? player.bet ?? 0) || 0;
+  const toCall = Math.max(0, currentBet - committed);
+  if (toCall > 0) return { seatIndex: actor, type: "CALL" };
+  return { seatIndex: actor, type: "CHECK" };
+}
+
+function driveGenericControllerHand(controller) {
+  let state = controller.createNewHandState(controller.createInitialState?.() ?? {});
+  let snapshot = controller.getUiSnapshot(state);
+  const initialTotal = totalAccounting(snapshot.players);
+  expect(totalAccounting(snapshot.players)).toBe(initialTotal);
+  for (let step = 0; step < 80; step += 1) {
+    snapshot = controller.getUiSnapshot(state);
+    if (snapshot.street === "SHOWDOWN" || snapshot.phase === "SHOWDOWN") break;
+    assertNoBrokenActor(snapshot);
+    const result = controller.applyAction(state, chooseGenericAction(snapshot));
+    expect(result.events?.[0]?.type).not.toBe("invalidAction");
+    state = result.state;
+    const after = controller.getUiSnapshot(state);
+    after.players.forEach((player) => {
+      expect(player.stack).toBeGreaterThanOrEqual(0);
+      expect(player.totalInvested).toBeGreaterThanOrEqual(0);
+    });
+    if (after.street !== "SHOWDOWN" && after.phase !== "SHOWDOWN") {
+      expect(totalAccounting(after.players)).toBe(initialTotal);
+    }
+  }
+  snapshot = controller.getUiSnapshot(state);
+  expect(snapshot.street).toBe("SHOWDOWN");
+  expect(totalStacks(snapshot.players)).toBe(initialTotal);
 }
 
 function driveStartedHand(controller, initialTotal) {
@@ -129,6 +172,7 @@ describe("playable invariant smoke", () => {
     ["razz27", Razz27GameController],
     ["razzdugi", RazzdugiGameController],
     ["razzducey", RazzduceyGameController],
+    ["five_card_single_draw", FiveCardSingleDrawController],
   ];
 
   it.each(cases)("%s completes a hand without broken actors or chip drift", (_name, Controller) => {

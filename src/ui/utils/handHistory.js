@@ -1,4 +1,5 @@
 import { evaluateBadugi } from "../../games/badugi/utils/badugiEvaluator.js";
+import { evaluateHighHand } from "../../games/evaluators/high.js";
 import { evaluateLowHand, formatLowHandLabel } from "../../games/evaluators/low.js";
 
 let currentRecord = null;
@@ -37,6 +38,11 @@ function isAceToFiveVariant(variantId) {
   );
 }
 
+function isFiveCardHighDrawVariant(variantId) {
+  const normalized = normalizeVariantId(variantId);
+  return normalized === "S03" || normalized === "five_card_single_draw";
+}
+
 function evaluateVariantHand(hand = [], variantId = "badugi") {
   if (isDeuceToSevenVariant(variantId)) {
     const evaluation = evaluateLowHand({ cards: hand, lowType: "27" });
@@ -51,6 +57,9 @@ function evaluateVariantHand(hand = [], variantId = "badugi") {
       ...evaluation,
       handName: formatLowHandLabel(evaluation, { lowType: "A5" }),
     };
+  }
+  if (isFiveCardHighDrawVariant(variantId)) {
+    return evaluateHighHand({ cards: hand });
   }
   return evaluateBadugi(hand);
 }

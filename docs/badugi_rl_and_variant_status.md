@@ -1777,7 +1777,9 @@ Draw RL test coverage:
       - [ ] `MIX-16-02` Badacey TD (`D05`) を実装する。Badugi half + A-5 half のsplit evaluatorを追加する。
       - [ ] `MIX-16-03` Hidugi TD (`D06`) を実装する。Badugi high / reverse Badugi 系の評価とラベルを確定する。
       - [ ] `MIX-16-04` Archie TD (`D07`) を実装する。pair-or-better high half + 8-or-better A-5 low half のsplit contractを実ゲームへ接続する。
-      - [ ] `MIX-16-05` 5-Card Single Draw (`S03`) を実装する。high draw evaluator / single draw / fixed-limitまたは指定bettingを確定する。
+      - [x] `MIX-16-05` 5-Card Single Draw (`S03`) を実装する。high draw evaluator / single draw / fixed-limitまたは指定bettingを確定する。
+        - 2026-05-04 実装: `FiveCardSingleDrawEngine` / controller / registry / App routing / UI adapter / Game Selector catalogを追加。5枚配布、1 draw、high hand showdown、hand history high-hand labelを確認。
+        - 残TODO: S03専用Playwright smoke、CPU discard strategyの精緻化、履歴detailの見せ方を追加する。
       - [ ] `MIX-16-06` Badugi Single Draw (`S04`) を実装する。Badugi evaluatorをsingle draw familyへ接続する。
       - [ ] `MIX-16-07` Badeucey Single Draw (`S05`) を実装する。
       - [ ] `MIX-16-08` Badacey Single Draw (`S06`) を実装する。
@@ -1803,6 +1805,7 @@ Draw RL test coverage:
       - [x] `CHINESE-01` チャイポ / Chinese Poker / OFC の準備タスクを追加する。13枚配布、front/middle/back配置、royalty、foul判定、fantasyland、turn順の仕様を実装前提として整理する。
         - 2026-05-04 実装: `src/games/chinese/chinesePokerPreparation.js` に alias と実装要件を固定。現時点ではゲーム進行へ接続しない準備ファイルのみ。
       - [ ] `CHINESE-02` Chinese Poker / OFC の実ゲーム controller / layout UI / scorer / foul判定を実装する。
+        - 2026-05-04 部分対応: scorer foundationとしてfront/middle/back行評価、foul判定、最小royalty fixtureを追加。まだ実ゲーム進行・UI・fantasyland・turn orderには未接続。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
   - P2P:
     - data capture / export / sync / security test の部品はある。
@@ -2200,7 +2203,8 @@ Draw RL test coverage:
   - 2026-05-04 対応: ゲーム内History modalにもプレイフィードバックパネルを追加し、30ハンド以上の履歴から同じAPIへ送信、localStorageにも再表示用保存できるようにした。
   - 2026-05-04 対応: OpenAIキーは `MGX_OPENAI_API_KEY` と `OPENAI_API_KEY` の両方を受け付ける。`OPENAI_API_KEY` 経路はunitでHTTP request生成まで確認。
   - 2026-05-04 追記: キー配置ガイドを `backend/README.md` と `docs/play-feedback-policy.md` に追加。productionは `/etc/mgx/mgx-backend.env` を `EnvironmentFile` としてsystemd serviceへ読み込ませる方針にする。
-  - 2026-05-04 確認: この実行環境では `MGX_OPENAI_API_KEY` / `OPENAI_API_KEY` が未設定のため、実OpenAI外部通信は未実施。productionではどちらかの環境変数を設定し、`POST /api/analysis/play-feedback` の `source=openai` を確認する。
+  - 2026-05-04 確認: `/etc/mgx/mgx-backend.env` の `MGX_OPENAI_API_KEY` を読み込み、OpenAI Responses API / `gpt-5.2` で実疎通を確認。Badugi 42hand相当payloadに対して、良かった点・悪かった点・ROI/獲得チップ仮説・次回改善方針が日本語/英語で返ることを確認した。
+  - 2026-05-04 対応: backend OpenAI clientの既定を `gpt-5.2` + Responses APIへ更新。`MGX_OPENAI_MODEL` / `MGX_OPENAI_API_MODE` / timeout / max output tokens / reasoning effortをenvで上書き可能にし、structured JSON output、fenced/nested response解析、429/502/503/504 retryを追加。
 - [x] `BUG-36` all-in後のDRAW停止を修正する。
   - 2026-05-04 対応: `isSeatEligibleForDraw` はcurrent handでactiveなall-in seatを交換対象に残し、BETだけall-inを除外するように整理。
   - 2026-05-04 対応: `sanitizeStacks` は stack 0 のcurrent-hand all-inを即busted扱いにせず、`seatOut` のときだけbustedへ寄せる。
@@ -2233,6 +2237,10 @@ Draw RL test coverage:
   - 2026-05-04 追加対応: Stud/Razz bring-in順序、up/down card専用UI、Stud8複数side-pot split fixtureを追加済み。
 - [ ] `GAME-ALL-02` 残りBoard/Draw/Stud/Dramaha/Chinese Pokerを順次 playable 化し、各ゲームごとに evaluator / action mask / all-in / split pot / history smoke を追加する。
   - 2026-05-04 部分対応: 残Board枠の `B03` NL Super Hold'em / `B04` FL Super Hold'em をplayable化し、routing / registry / 3-hole配布 / high evaluator / all-in side-pot invariantに追加。
+  - 2026-05-04 部分対応: `S03` 5-Card Single Drawをplayable化。high hand evaluator / 1 draw / controller / registry / App routing / UI adapter / game selector / playable smoke / hand history high-hand labelを追加。
+  - 2026-05-04 部分対応: Chinese Poker / OFC用のscorer foundationを追加。front / middle / backの行評価、foul判定、最小royalty fixtureをunitで固定。実ゲームcontroller / layout UI / fantasyland / turn順は未実装のまま `CHINESE-02` に残す。
+  - 残TODO: `D04` Badeucey TD、`D05` Badacey TD、`D06` Hidugi TD、`D07` Archie TD のsplit draw系playable化。Badugi half + 2-7/A-5/high系halfのsplit pot / odd chip / all-in fixtureを追加する。
+  - 残TODO: `S04-S07` single draw split/Badugi系、Chinese/OFC本体、各variantのhistory/replay smokeを順次追加する。
 - [ ] `GAME-ALL-03` Stud / Razz 実装後、10-Game対象のCPUを Beginner / Standard まで学習・適用する。
 - [ ] `GAME-ALL-04` 強化学習済みCPUを使った cash / tournament のプレイログ収集を行い、30ハンド以上のセッションだけAI feedback対象にする。
 - [ ] `GAME-ALL-05` feedback API は hand history / position / stack / VPIP/PFR / ROI / showdown / all-in / split-pot結果を投げ、良かった点・悪かった点・次回方針・仮説を返す。

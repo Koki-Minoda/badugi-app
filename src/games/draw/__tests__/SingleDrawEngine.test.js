@@ -3,6 +3,7 @@ import { getEngine, listEngines } from "../../core/engineRegistry.js";
 import { getVariantProfile } from "../../config/variantProfiles.js";
 import { AceToFiveSingleDrawEngine } from "../AceToFiveSingleDrawEngine.js";
 import { DeuceToSevenSingleDrawEngine } from "../DeuceToSevenSingleDrawEngine.js";
+import { FiveCardSingleDrawEngine } from "../FiveCardSingleDrawEngine.js";
 
 class FakeDeckManager {
   constructor(cards = []) {
@@ -104,12 +105,36 @@ describe("Single draw lowball engines", () => {
     expect(state.isHandOver).toBe(true);
   });
 
-  it("registers S01/S02 engines and exposes single-draw mixed metadata", () => {
+  it("initializes S03 as a one-draw high-hand variant", () => {
+    const engine = new FiveCardSingleDrawEngine();
+    const state = engine.initHand({
+      seatConfig: ["HUMAN", "CPU"],
+      startingStack: 500,
+      dealerIndex: 0,
+    });
+
+    expect(state.players).toHaveLength(2);
+    expect(state.players[0].hand).toHaveLength(5);
+    expect(engine.id).toBe("five_card_single_draw");
+    expect(engine.variantId).toBe("S03");
+    expect(engine.maxDrawRounds).toBe(1);
+    expect(engine.evaluateShowdownHand(["AS", "AD", "AC", "AH", "2S"])).toMatchObject({
+      handName: "Four of a Kind",
+      isValid: true,
+    });
+  });
+
+  it("registers S01/S02/S03 engines and exposes single-draw mixed metadata", () => {
     expect(listEngines()).toEqual(
-      expect.arrayContaining(["deuce_to_seven_single_draw", "ace_to_five_single_draw"]),
+      expect.arrayContaining([
+        "deuce_to_seven_single_draw",
+        "ace_to_five_single_draw",
+        "five_card_single_draw",
+      ]),
     );
     expect(getEngine("deuce_to_seven_single_draw")).toBeInstanceOf(DeuceToSevenSingleDrawEngine);
     expect(getEngine("ace_to_five_single_draw")).toBeInstanceOf(AceToFiveSingleDrawEngine);
+    expect(getEngine("five_card_single_draw")).toBeInstanceOf(FiveCardSingleDrawEngine);
     expect(getVariantProfile("S01")).toMatchObject({
       id: "S01",
       category: "single-draw",
@@ -122,6 +147,13 @@ describe("Single draw lowball engines", () => {
       category: "single-draw",
       drawRounds: 1,
       engineKey: "ace_to_five_single_draw",
+      summary: "5 cards; 1 draw; fixed limit",
+    });
+    expect(getVariantProfile("S03")).toMatchObject({
+      id: "S03",
+      category: "single-draw",
+      drawRounds: 1,
+      engineKey: "five_card_single_draw",
       summary: "5 cards; 1 draw; fixed limit",
     });
   });

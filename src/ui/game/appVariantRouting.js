@@ -25,6 +25,7 @@ export const APP_VARIANT_IDS = {
   D02: "ace_to_five_triple_draw",
   S01: "deuce_to_seven_single_draw",
   S02: "ace_to_five_single_draw",
+  S03: "five_card_single_draw",
 };
 
 const VARIANT_ALIASES = new Map([
@@ -117,6 +118,11 @@ const VARIANT_ALIASES = new Map([
   ["a5sd", APP_VARIANT_IDS.S02],
   ["a-5-single-draw", APP_VARIANT_IDS.S02],
   ["ace_to_five_single_draw", APP_VARIANT_IDS.S02],
+  ["s03", APP_VARIANT_IDS.S03],
+  ["five_card_single_draw", APP_VARIANT_IDS.S03],
+  ["five-card-single-draw", APP_VARIANT_IDS.S03],
+  ["5_card_single_draw", APP_VARIANT_IDS.S03],
+  ["5-card-single-draw", APP_VARIANT_IDS.S03],
 ]);
 
 export const DRAW_LOWBALL_APP_VARIANTS = new Set([
@@ -124,6 +130,7 @@ export const DRAW_LOWBALL_APP_VARIANTS = new Set([
   APP_VARIANT_IDS.D02,
   APP_VARIANT_IDS.S01,
   APP_VARIANT_IDS.S02,
+  APP_VARIANT_IDS.S03,
 ]);
 
 export const DRAMAHA_APP_VARIANT_IDS = new Set([

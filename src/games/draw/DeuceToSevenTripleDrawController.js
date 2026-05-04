@@ -236,8 +236,8 @@ export class DeuceToSevenTripleDrawController extends GameController {
         turn: null,
         nextTurn: null,
         actingPlayerIndex: null,
-        maxDiscardCount: 5,
-        handCardCount: 5,
+        maxDiscardCount: this.engine?.handCardCount ?? 5,
+        handCardCount: this.engine?.handCardCount ?? 5,
         lastHandResult: null,
         metadata: {},
       };
@@ -267,8 +267,8 @@ export class DeuceToSevenTripleDrawController extends GameController {
       nextTurn: cloned.actingPlayerIndex,
       actingPlayerIndex: cloned.actingPlayerIndex,
       currentBet: metadata.currentBet ?? 0,
-      maxDiscardCount: 5,
-      handCardCount: 5,
+      maxDiscardCount: this.engine?.handCardCount ?? metadata.handCardCount ?? 5,
+      handCardCount: this.engine?.handCardCount ?? metadata.handCardCount ?? 5,
       lastHandResult,
       metadata,
     };

@@ -142,6 +142,38 @@ describe("handHistory", () => {
     expect(record.pots[0].winners[0].finalLowRanks).toEqual(ranks);
   });
 
+  it("records S03 high-draw hand labels without lowball ranks", () => {
+    const hand = ["AS", "AH", "AD", "AC", "2S"];
+    startHandHistoryRecord({
+      handId: "s03-hand",
+      variantId: "S03",
+      variantName: "5-Card Single Draw",
+      seats: [{ seat: 0, name: "Hero", startStack: 500 }],
+    });
+
+    const record = finalizeHandHistoryRecord({
+      players: [{ stack: 620, hand }],
+      pots: [
+        {
+          potIndex: 0,
+          potAmount: 120,
+          payouts: [{ seatIndex: 0, payout: 120, hand }],
+        },
+      ],
+    });
+
+    expect(record.variantId).toBe("S03");
+    expect(record.variantName).toBe("5-Card Single Draw");
+    expect(record.seats[0].handLabel).toBe("Four of a Kind");
+    expect(record.seats[0].evaluation).toMatchObject({
+      handName: "Four of a Kind",
+      metadata: { category: "four-of-a-kind" },
+    });
+    expect(record.seats[0].finalLowRanks).toBeUndefined();
+    expect(record.pots[0].winners[0].handLabel).toBe("Four of a Kind");
+    expect(record.pots[0].winners[0].finalLowRanks).toBeUndefined();
+  });
+
   it("defines and validates the minimum D01 replay fields", () => {
     const finalHand = ["7S", "5D", "4C", "3H", "2S"];
     startHandHistoryRecord({

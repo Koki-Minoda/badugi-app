@@ -267,4 +267,75 @@ def test_play_feedback_accepts_standard_openai_api_key(monkeypatch):
 
     assert response["adviceJa"] == "実キー経路"
     assert captured["authorization"] == "Bearer test-key"
-    assert captured["timeout"] == 25
+    assert captured["timeout"] == 60
+
+
+def test_play_feedback_parses_fenced_nested_responses_payload(monkeypatch):
+    from app.core import openai_client
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            content = """```json
+{"adviceJa":{"良かった点":["バリューを取れた"],"改善点":["薄いコールを減らす"]},"adviceEn":{"Good":["Value bet"],"Improve":["Fold more"]}}
+```"""
+            return json.dumps(
+                {
+                    "output": [
+                        {"type": "reasoning"},
+                        {"type": "message", "content": [{"type": "output_text", "text": content}]},
+                    ]
+                },
+                ensure_ascii=False,
+            ).encode("utf-8")
+
+    monkeypatch.setenv("MGX_OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("MGX_OPENAI_API_MODE", "responses")
+    monkeypatch.setattr("urllib.request.urlopen", lambda request, timeout: FakeResponse())
+
+    response = openai_client.get_play_feedback_advice(sample_play_feedback())
+
+    assert "## 良かった点" in response["adviceJa"]
+    assert "- バリューを取れた" in response["adviceJa"]
+    assert "## Improve" in response["adviceEn"]
+
+
+def test_openai_client_retries_transient_http_errors(monkeypatch):
+    from app.core import openai_client
+    import urllib.error
+
+    attempts = {"count": 0}
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return json.dumps(
+                {"output_text": json.dumps({"adviceJa": "成功", "adviceEn": "success"})},
+                ensure_ascii=False,
+            ).encode("utf-8")
+
+    def fake_urlopen(request, timeout):
+        attempts["count"] += 1
+        if attempts["count"] == 1:
+            raise urllib.error.HTTPError(request.full_url, 502, "Bad Gateway", {}, None)
+        return FakeResponse()
+
+    monkeypatch.setenv("MGX_OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("MGX_OPENAI_API_MODE", "responses")
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+    monkeypatch.setattr("time.sleep", lambda seconds: None)
+
+    response = openai_client.get_play_feedback_advice(sample_play_feedback())
+
+    assert attempts["count"] == 2
+    assert response["adviceJa"] == "成功"

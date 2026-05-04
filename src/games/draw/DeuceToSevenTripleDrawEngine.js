@@ -312,6 +312,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     cpuStrategy = "ruleBasedD01",
     maxDrawRounds = 3,
     bigBetStartsAtDrawRound = maxDrawRounds === 1 ? 1 : 2,
+    handCardCount = 5,
   } = {}) {
     super({ gameId, displayName, maxDrawRounds });
     this.variantId = variantId;
@@ -319,6 +320,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     this.lowType = lowType;
     this.cpuStrategy = cpuStrategy;
     this.bigBetStartsAtDrawRound = bigBetStartsAtDrawRound;
+    this.handCardCount = handCardCount;
     this.drawHeuristic = {
       aceLow: lowType === "A5" || lowType === "a5",
       penalizeStraightFlush: !(lowType === "A5" || lowType === "a5"),
@@ -342,7 +344,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     const dealtCards = [];
     const players = createPlayers(ctx).map((player) => {
       if (player.sittingOut) return player;
-      const hand = deckManager.draw(5, { activeCards: dealtCards });
+      const hand = deckManager.draw(this.handCardCount, { activeCards: dealtCards });
       dealtCards.push(...hand);
       return {
         ...player,
@@ -369,6 +371,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
         bettingStructure: "fixed-limit",
         evaluator: this.evaluatorTag,
         maxDrawRounds: this.maxDrawRounds,
+        handCardCount: this.handCardCount,
         smallBetBB: 1,
         bigBetBB: 2,
         bigBetStartsAtDrawRound: this.bigBetStartsAtDrawRound,

@@ -13,6 +13,7 @@ import { AceToFiveSingleDrawController } from "../draw/AceToFiveSingleDrawContro
 import { AceToFiveTripleDrawController } from "../draw/AceToFiveTripleDrawController.js";
 import { DeuceToSevenSingleDrawController } from "../draw/DeuceToSevenSingleDrawController.js";
 import { DeuceToSevenTripleDrawController } from "../draw/DeuceToSevenTripleDrawController.js";
+import { FiveCardSingleDrawController } from "../draw/FiveCardSingleDrawController.js";
 import FLHGameController from "../nlh/FLHGameController.js";
 import NLHGameController from "../nlh/NLHGameController.js";
 import SuperHoldemGameController, {
@@ -173,6 +174,12 @@ export const GAME_VARIANTS = {
     variantId: "S02",
     label: "A-5 Single Draw",
     controllerFactory: drawControllerFactory(AceToFiveSingleDrawController),
+  },
+  five_card_single_draw: {
+    id: "five_card_single_draw",
+    variantId: "S03",
+    label: "5-Card Single Draw",
+    controllerFactory: drawControllerFactory(FiveCardSingleDrawController),
   },
 };
 

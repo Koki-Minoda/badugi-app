@@ -494,6 +494,8 @@
                      "high"
                  ],
         "priorityPhase":  1,
+        "status":  "live",
+        "engineKey":  "five_card_single_draw",
         "description":  "Classic five-card draw."
     },
     {

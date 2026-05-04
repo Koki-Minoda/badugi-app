@@ -8,6 +8,7 @@ export const GAME_VARIANTS = [
   { id: "D02", label: "A-5 Triple Draw", enabled: true },
   { id: "S01", label: "2-7 Single Draw", enabled: true },
   { id: "S02", label: "A-5 Single Draw", enabled: true },
+  { id: "S03", label: "5-Card Single Draw", enabled: true },
   { id: "plo", label: "Pot-Limit Omaha", enabled: true },
   { id: "plo8", label: "PLO8", enabled: true },
   { id: "flo8", label: "FLO8", enabled: true },

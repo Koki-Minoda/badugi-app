@@ -3,6 +3,7 @@ import { AceToFiveSingleDrawEngine } from "../draw/AceToFiveSingleDrawEngine.js"
 import { AceToFiveTripleDrawEngine } from "../draw/AceToFiveTripleDrawEngine.js";
 import { DeuceToSevenSingleDrawEngine } from "../draw/DeuceToSevenSingleDrawEngine.js";
 import { DeuceToSevenTripleDrawEngine } from "../draw/DeuceToSevenTripleDrawEngine.js";
+import { FiveCardSingleDrawEngine } from "../draw/FiveCardSingleDrawEngine.js";
 
 const registry = new Map();
 
@@ -31,3 +32,4 @@ registerEngine("deuce_to_seven_triple_draw", () => new DeuceToSevenTripleDrawEng
 registerEngine("ace_to_five_triple_draw", () => new AceToFiveTripleDrawEngine());
 registerEngine("deuce_to_seven_single_draw", () => new DeuceToSevenSingleDrawEngine());
 registerEngine("ace_to_five_single_draw", () => new AceToFiveSingleDrawEngine());
+registerEngine("five_card_single_draw", () => new FiveCardSingleDrawEngine());

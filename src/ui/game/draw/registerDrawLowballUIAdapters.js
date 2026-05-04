@@ -9,10 +9,12 @@ export const DRAW_LOWBALL_UI_VARIANT_IDS = [
   "ace_to_five_triple_draw",
   "deuce_to_seven_single_draw",
   "ace_to_five_single_draw",
+  "five_card_single_draw",
   "D01",
   "D02",
   "S01",
   "S02",
+  "S03",
 ];
 
 export function ensureDrawLowballUIAdaptersRegistered(options = {}) {

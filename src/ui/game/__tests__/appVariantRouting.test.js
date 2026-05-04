@@ -15,6 +15,7 @@ describe("appVariantRouting", () => {
     expect(normalizeAppVariantId("a5td")).toBe(APP_VARIANT_IDS.D02);
     expect(normalizeAppVariantId("S01")).toBe(APP_VARIANT_IDS.S01);
     expect(normalizeAppVariantId("S02")).toBe(APP_VARIANT_IDS.S02);
+    expect(normalizeAppVariantId("S03")).toBe(APP_VARIANT_IDS.S03);
     expect(normalizeAppVariantId("B02")).toBe(APP_VARIANT_IDS.FLH);
     expect(normalizeAppVariantId("B03")).toBe(APP_VARIANT_IDS.SUPER_HOLDEM);
     expect(normalizeAppVariantId("B04")).toBe(APP_VARIANT_IDS.FL_SUPER_HOLDEM);
@@ -45,6 +46,7 @@ describe("appVariantRouting", () => {
     expect(isDrawLowballAppVariant("badugi")).toBe(false);
     expect(isControllerBackedAppVariant("badugi")).toBe(true);
     expect(isControllerBackedAppVariant("D02")).toBe(true);
+    expect(isControllerBackedAppVariant("S03")).toBe(true);
     expect(isControllerBackedAppVariant("nlh")).toBe(true);
     expect(isControllerBackedAppVariant("flh")).toBe(true);
     expect(isControllerBackedAppVariant("super_holdem")).toBe(true);

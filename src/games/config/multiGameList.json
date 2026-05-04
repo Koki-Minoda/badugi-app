@@ -87,7 +87,9 @@
                      "three-card"
                  ],
         "priorityPhase":  2,
-        "description":  "Three hole cards, discard to two by showdown."
+        "description":  "Three hole cards; best five-card hand from hole cards and board.",
+        "status":  "live",
+        "engineKey":  "super_holdem"
     },
     {
         "id":  "B04",
@@ -116,7 +118,9 @@
                      "three-card"
                  ],
         "priorityPhase":  2,
-        "description":  "Three-card Hold\u0027em played fixed-limit."
+        "description":  "Three-card Hold\u0027em played fixed-limit.",
+        "status":  "live",
+        "engineKey":  "fl_super_holdem"
     },
     {
         "id":  "B05",

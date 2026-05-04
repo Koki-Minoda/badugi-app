@@ -15,6 +15,9 @@ import { DeuceToSevenSingleDrawController } from "../draw/DeuceToSevenSingleDraw
 import { DeuceToSevenTripleDrawController } from "../draw/DeuceToSevenTripleDrawController.js";
 import FLHGameController from "../nlh/FLHGameController.js";
 import NLHGameController from "../nlh/NLHGameController.js";
+import SuperHoldemGameController, {
+  FLSuperHoldemGameController,
+} from "../nlh/SuperHoldemGameController.js";
 import BigOGameController from "../plo/BigOGameController.js";
 import FiveCardPLOGameController from "../plo/FiveCardPLOGameController.js";
 import FLO8GameController from "../plo/FLO8GameController.js";
@@ -55,6 +58,20 @@ export const GAME_VARIANTS = {
     label: "Fixed-Limit Hold'em",
     controllerFactory: (config = {}) =>
       new FLHGameController({ tableConfig: config.tableConfig ?? config }),
+  },
+  super_holdem: {
+    id: "super_holdem",
+    variantId: "B03",
+    label: "NL Super Hold'em",
+    controllerFactory: (config = {}) =>
+      new SuperHoldemGameController({ tableConfig: config.tableConfig ?? config }),
+  },
+  fl_super_holdem: {
+    id: "fl_super_holdem",
+    variantId: "B04",
+    label: "FL Super Hold'em",
+    controllerFactory: (config = {}) =>
+      new FLSuperHoldemGameController({ tableConfig: config.tableConfig ?? config }),
   },
   plo: {
     id: "plo",

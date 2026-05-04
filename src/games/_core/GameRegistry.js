@@ -1,7 +1,9 @@
 import BadugiGameDefinition from "../badugi/BadugiGameDefinition";
 import { DRAMAHA_DEFINITIONS } from "../dramaha/DramahaVariants.js";
 import FLHGameDefinition from "../nlh/FLHGameDefinition.js";
+import FLSuperHoldemGameDefinition from "../nlh/FLSuperHoldemGameDefinition.js";
 import NLHGameDefinition from "../nlh/NLHGameDefinition.js";
+import SuperHoldemGameDefinition from "../nlh/SuperHoldemGameDefinition.js";
 import BigOGameDefinition from "../plo/BigOGameDefinition.js";
 import FiveCardPLOGameDefinition from "../plo/FiveCardPLOGameDefinition.js";
 import FLO8GameDefinition from "../plo/FLO8GameDefinition.js";
@@ -47,6 +49,8 @@ const registry = new GameRegistryClass();
 registry.register(BadugiGameDefinition);
 registry.register(NLHGameDefinition);
 registry.register(FLHGameDefinition);
+registry.register(SuperHoldemGameDefinition);
+registry.register(FLSuperHoldemGameDefinition);
 registry.register(PLOGameDefinition);
 registry.register(PLO8GameDefinition);
 registry.register(BigOGameDefinition);

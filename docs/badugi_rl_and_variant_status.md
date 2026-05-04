@@ -1750,8 +1750,12 @@ Draw RL test coverage:
       - [x] `BOARD-03` FL Hold'em (`B02`) を playable にする。fixed-limit cap / street別bet size / raise capの表示とテストを含める。
         - 2026-05-04 実装: `FLHGameController` / `FLHGameDefinition` を追加し、fixed-limitのstreet別bet size（preflop/flop small bet、turn/river big bet）とraise capをNLH controller差分として実装。GameRegistry / App routing / NLH UI adapter / Game Selector catalogへ接続。
         - 2026-05-04 確認: playable invariant smokeで broken actor / chip drift / hand completion を検証。
-      - [ ] `BOARD-04` NL Super Hold'em (`B03`) を playable にする。3 hole cards / showdown時2枚選択またはbest two selection / discard requirement のUIと判定を実装する。
-      - [ ] `BOARD-05` FL Super Hold'em (`B04`) を playable にする。Super Hold'em差分をfixed-limitへ適用する。
+      - [x] `BOARD-04` NL Super Hold'em (`B03`) を playable にする。3 hole cards / showdown時best five selection / UIと判定を実装する。
+        - 2026-05-04 実装: `SuperHoldemGameDefinition` / `SuperHoldemGameController` を追加。既存NLH controllerを拡張し、handStructureのhole数から3枚配布する。showdownは3 hole + communityからhigh evaluatorがbest fiveを選ぶ。
+        - 2026-05-04 確認: GameRegistry / core variant registry / App routing / Game Selector enabled listへ接続し、playable invariant smokeでbroken actor / chip drift / side-pot resolutionを確認。
+      - [x] `BOARD-05` FL Super Hold'em (`B04`) を playable にする。Super Hold'em差分をfixed-limitへ適用する。
+        - 2026-05-04 実装: `FLSuperHoldemGameDefinition` / `FLSuperHoldemGameController` を追加し、3 hole card + fixed-limit raise capをFLH controller差分で接続。
+        - 2026-05-04 確認: Super Hold'em専用fixtureで3 hole card配布とall-in/side-pot accountingを確認。
       - [x] `BOARD-06` Pot-Limit Omaha (`B05`) を cash game route に接続する。must-use-two evaluator / pot-limit raise cap / 4 hole cards / App board-controller bridge を含める。
         - 2026-05-04 実装: `PLOGameController` / `PLOGameDefinition` / `evaluatePloHand()` / PLO UI adapter registration を追加し、cash variant modalとGame SelectorからPLOを起動可能にした。showdown evaluatorはOmaha highの「hole exactly 2 + board exactly 3」をfixtureで固定し、controller側でPL上限をcapする。
         - 残TODO: pot-limit raise上限のUI表示、PLO専用hand history detail、PLO smokeをPlaywrightで追加する。
@@ -2195,6 +2199,7 @@ Draw RL test coverage:
   - 2026-05-04 対応: `GET /api/analysis/play-feedback/results` を追加し、ログインユーザー単位で保存済みfeedbackを取得できるようにした。
   - 2026-05-04 対応: ゲーム内History modalにもプレイフィードバックパネルを追加し、30ハンド以上の履歴から同じAPIへ送信、localStorageにも再表示用保存できるようにした。
   - 2026-05-04 対応: OpenAIキーは `MGX_OPENAI_API_KEY` と `OPENAI_API_KEY` の両方を受け付ける。`OPENAI_API_KEY` 経路はunitでHTTP request生成まで確認。
+  - 2026-05-04 追記: キー配置ガイドを `backend/README.md` と `docs/play-feedback-policy.md` に追加。productionは `/etc/mgx/mgx-backend.env` を `EnvironmentFile` としてsystemd serviceへ読み込ませる方針にする。
   - 2026-05-04 確認: この実行環境では `MGX_OPENAI_API_KEY` / `OPENAI_API_KEY` が未設定のため、実OpenAI外部通信は未実施。productionではどちらかの環境変数を設定し、`POST /api/analysis/play-feedback` の `source=openai` を確認する。
 - [x] `BUG-36` all-in後のDRAW停止を修正する。
   - 2026-05-04 対応: `isSeatEligibleForDraw` はcurrent handでactiveなall-in seatを交換対象に残し、BETだけall-inを除外するように整理。
@@ -2227,6 +2232,7 @@ Draw RL test coverage:
   - 2026-05-04 テスト: playable invariant smokeで5種を含む7controllerを横断検証。PLO8専用split fixtureを追加。
   - 2026-05-04 追加対応: Stud/Razz bring-in順序、up/down card専用UI、Stud8複数side-pot split fixtureを追加済み。
 - [ ] `GAME-ALL-02` 残りBoard/Draw/Stud/Dramaha/Chinese Pokerを順次 playable 化し、各ゲームごとに evaluator / action mask / all-in / split pot / history smoke を追加する。
+  - 2026-05-04 部分対応: 残Board枠の `B03` NL Super Hold'em / `B04` FL Super Hold'em をplayable化し、routing / registry / 3-hole配布 / high evaluator / all-in side-pot invariantに追加。
 - [ ] `GAME-ALL-03` Stud / Razz 実装後、10-Game対象のCPUを Beginner / Standard まで学習・適用する。
 - [ ] `GAME-ALL-04` 強化学習済みCPUを使った cash / tournament のプレイログ収集を行い、30ハンド以上のセッションだけAI feedback対象にする。
 - [ ] `GAME-ALL-05` feedback API は hand history / position / stack / VPIP/PFR / ROI / showdown / all-in / split-pot結果を投げ、良かった点・悪かった点・次回方針・仮説を返す。

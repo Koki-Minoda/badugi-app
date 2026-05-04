@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { FLHGameController } from "../nlh/FLHGameController.js";
 import { NLHGameController } from "../nlh/NLHGameController.js";
+import SuperHoldemGameController, {
+  FLSuperHoldemGameController,
+} from "../nlh/SuperHoldemGameController.js";
 import { PLO8GameController } from "../plo/PLO8GameController.js";
 import { FLO8GameController } from "../plo/FLO8GameController.js";
 import { PLOGameController } from "../plo/PLOGameController.js";
@@ -85,10 +88,38 @@ function driveOneHand(controller) {
   expect(totalStacks(controller.state.players)).toBe(initialTotal);
 }
 
+function driveStartedHand(controller, initialTotal) {
+  let snapshot = controller.getSnapshot();
+  expect(totalAccounting(snapshot.players)).toBe(initialTotal);
+  for (let step = 0; step < 80; step += 1) {
+    snapshot = controller.getSnapshot();
+    if (snapshot.street === "SHOWDOWN" || snapshot.phase === "SHOWDOWN") break;
+    assertNoBrokenActor(snapshot);
+    const action = chooseSafeAction(snapshot);
+    const result = controller.applyPlayerAction(action);
+    expect(result.success, result.reason).toBe(true);
+    const after = controller.getSnapshot();
+    after.players.forEach((player) => {
+      expect(player.stack).toBeGreaterThanOrEqual(0);
+      expect(player.totalInvested).toBeGreaterThanOrEqual(0);
+    });
+    if (after.street !== "SHOWDOWN" && after.phase !== "SHOWDOWN") {
+      expect(totalAccounting(after.players)).toBe(initialTotal);
+    }
+  }
+  snapshot = controller.getSnapshot();
+  expect(snapshot.street).toBe("SHOWDOWN");
+  const result = controller.state.lastHandResult ?? controller.resolveShowdown();
+  expect(result.totalPot).toBeGreaterThanOrEqual(0);
+  expect(totalStacks(controller.state.players)).toBe(initialTotal);
+}
+
 describe("playable invariant smoke", () => {
   const cases = [
     ["nlh", NLHGameController],
     ["flh", FLHGameController],
+    ["super_holdem", SuperHoldemGameController],
+    ["fl_super_holdem", FLSuperHoldemGameController],
     ["plo", PLOGameController],
     ["plo8", PLO8GameController],
     ["flo8", FLO8GameController],
@@ -118,5 +149,23 @@ describe("playable invariant smoke", () => {
       },
     });
     driveOneHand(controller);
+  });
+
+  it.each([
+    ["super_holdem", SuperHoldemGameController],
+    ["fl_super_holdem", FLSuperHoldemGameController],
+  ])("%s deals three hole cards and resolves side pots without chip drift", (_name, Controller) => {
+    const controller = new Controller({
+      tableConfig: {
+        seats: makeSeats([45, 20, 80, 120]),
+        blinds: { sb: 5, bb: 10, ante: 0 },
+      },
+    });
+    const initialTotal = totalStacks(controller.state.players);
+    const snapshot = controller.startNewHand();
+    snapshot.players.filter((player) => !player.folded && !player.seatOut).forEach((player) => {
+      expect(player.holeCards).toHaveLength(3);
+    });
+    driveStartedHand(controller, initialTotal);
   });
 });

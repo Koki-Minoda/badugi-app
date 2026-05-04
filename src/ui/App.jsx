@@ -53,6 +53,9 @@ import BadugiGameController from "../games/badugi/BadugiGameController.js";
 import DramahaGameController from "../games/dramaha/DramahaGameController.js";
 import FLHGameController from "../games/nlh/FLHGameController.js";
 import NLHGameController from "../games/nlh/NLHGameController.js";
+import SuperHoldemGameController, {
+  FLSuperHoldemGameController,
+} from "../games/nlh/SuperHoldemGameController.js";
 import BigOGameController from "../games/plo/BigOGameController.js";
 import FiveCardPLOGameController from "../games/plo/FiveCardPLOGameController.js";
 import FLO8GameController from "../games/plo/FLO8GameController.js";
@@ -1620,6 +1623,14 @@ const SAFE_RESET_PHASE = "IDLE";
         });
       } else if (variantId === APP_VARIANT_IDS.FLH) {
         gameControllerRef.current = new FLHGameController({
+          tableConfig: buildNlhTableConfig(),
+        });
+      } else if (variantId === APP_VARIANT_IDS.SUPER_HOLDEM) {
+        gameControllerRef.current = new SuperHoldemGameController({
+          tableConfig: buildNlhTableConfig(),
+        });
+      } else if (variantId === APP_VARIANT_IDS.FL_SUPER_HOLDEM) {
+        gameControllerRef.current = new FLSuperHoldemGameController({
           tableConfig: buildNlhTableConfig(),
         });
       } else if (variantId === APP_VARIANT_IDS.PLO) {

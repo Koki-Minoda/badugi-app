@@ -26,12 +26,15 @@
 
 ## ChatGPT API 方針
 
-- backend に `POST /api/play-feedback/analyze` を追加する想定。
-- backend はDBのhand historyから必要項目を集計し、prompt version と input hash を付けて ChatGPT API に送る。
-- frontend は分析jobを作成し、`GET /api/play-feedback/{job_id}` で結果をpollingする。
+- backend の実APIは `POST /api/analysis/play-feedback`。
+- backend は frontend が構築した30ハンド以上のsession payloadを検証し、prompt version と input hash を付けて OpenAI API に送る。
+- 結果は `play_feedback_results` に保存し、`feedbackId` / `sessionKey` / `storedAt` を返す。
+- frontend は cash out / history から分析modalを開き、保存済み結果は `GET /api/analysis/play-feedback/results` で取得する。
 - APIへ送る内容は集計済みサマリーを基本にし、認証token、メールアドレス、不要な個人情報は送らない。
 - プレイヤIDは内部IDまたはhashにし、自由入力名は必要最小限にする。
 - 失敗時は再実行可能にし、同じinput hashの重複課金を避ける。
+- OpenAIキーは backend 環境変数 `MGX_OPENAI_API_KEY` を推奨し、`OPENAI_API_KEY` もfallbackとして受け付ける。
+- productionでは `/etc/mgx/mgx-backend.env` のようなsystemd `EnvironmentFile` にキーを置き、frontendやGit管理ファイルには置かない。
 
 ## フィードバック出力
 
@@ -45,11 +48,19 @@
 
 ## 実装タスク
 
-- [ ] `FB-01` hand history を session 単位で30ハンド以上集計できる backend helper を追加する。
-- [ ] `FB-02` cash out / tournament finish を feedback entry point にする。
-- [ ] `FB-03` `POST /api/play-feedback/analyze` と job status API を追加する。
-- [ ] `FB-04` prompt version / model / input hash / output をDB保存する。
-- [ ] `FB-05` frontend にセッション結果画面と feedback modal を追加する。
-- [ ] `FB-06` 30ハンド未満のローカル簡易振り返りを実装する。
-- [ ] `FB-07` OpenAI API のrate limit / cost / retry / privacy guardを設定する。
-- [ ] `FB-08` cash / tournament / all-in / side pot を含む集計testを追加する。
+- [x] `FB-01` hand history を session 単位で30ハンド以上集計できる frontend payload helper を追加する。
+- [x] `FB-02` cash out / history を feedback entry point にする。
+- [x] `FB-03` `POST /api/analysis/play-feedback` と保存結果取得APIを追加する。
+- [x] `FB-04` prompt version / model / input hash / output をDB保存する。
+- [x] `FB-05` frontend に feedback modal を追加する。
+- [x] `FB-06` 30ハンド未満のローカル簡易振り返りを実装する。
+- [x] `FB-07` OpenAI API のrate limit / cost / retry / privacy guardを設定する。
+- [x] `FB-08` cash / tournament / all-in / side pot を含む集計testを追加する。
+
+## 実キー確認手順
+
+1. backend実行環境に `MGX_OPENAI_API_KEY` または `OPENAI_API_KEY` を設定する。
+2. backendを再起動する。
+3. 30ハンド以上の履歴があるログイン状態で feedback modal を実行する。
+4. responseの `source` が `openai`、`feedbackId` が数値で返ることを確認する。
+5. `GET /api/analysis/play-feedback/results?session_key=...` で保存済み結果を確認する。

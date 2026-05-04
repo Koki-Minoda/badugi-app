@@ -19,6 +19,11 @@ describe("GameRegistry", () => {
   it("returns NLH and PLO definitions by logical variant id", () => {
     expect(GameRegistry.get("nlh")?.label).toBe("No-Limit Hold'em");
     expect(GameRegistry.get("flh")?.label).toBe("Fixed-Limit Hold'em");
+    expect(GameRegistry.get("super_holdem")?.handStructure).toMatchObject({
+      hole: 3,
+      community: 5,
+    });
+    expect(GameRegistry.get("fl_super_holdem")?.label).toBe("FL Super Hold'em");
     expect(GameRegistry.get("plo")?.label).toBe("Pot-Limit Omaha");
     expect(GameRegistry.get("plo8")?.label).toBe("PLO8");
     expect(GameRegistry.get("flo8")?.label).toBe("FLO8");

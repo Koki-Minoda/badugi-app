@@ -80,6 +80,18 @@ export class NLHGameController {
     this.handCounter = 0;
   }
 
+  get holeCardCount() {
+    if (Number.isFinite(this._holeCardCount) && this._holeCardCount > 0) {
+      return this._holeCardCount;
+    }
+    const count = this.config.gameDefinition?.handStructure?.hole;
+    return Number.isFinite(count) && count > 0 ? count : 2;
+  }
+
+  set holeCardCount(value) {
+    this._holeCardCount = value;
+  }
+
   updateTableConfig(tableConfig = {}) {
     this.config.tableConfig = {
       ...(this.config.tableConfig ?? {}),
@@ -194,7 +206,7 @@ export class NLHGameController {
 
   dealHoleCards(players) {
     const activeSeats = players.filter((p) => !p.folded && !p.seatOut);
-    for (let round = 0; round < 2; round += 1) {
+    for (let round = 0; round < this.holeCardCount; round += 1) {
       activeSeats.forEach((player) => {
         const [card] = this.drawCards(1);
         if (card) {
@@ -387,7 +399,7 @@ export class NLHGameController {
         !player.folded &&
         !player.seatOut &&
         Array.isArray(player.holeCards) &&
-        player.holeCards.length === 2,
+        player.holeCards.length >= this.holeCardCount,
     );
     const board = [...this.state.boardCards];
     const evaluations = contenders.map((player) => {

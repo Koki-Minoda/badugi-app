@@ -2,6 +2,8 @@ export const GAME_VARIANTS = [
   { id: "badugi", label: "Badugi", enabled: true },
   { id: "nlh", label: "No-Limit Hold'em", enabled: true },
   { id: "flh", label: "Fixed-Limit Hold'em", enabled: true },
+  { id: "super_holdem", label: "NL Super Hold'em", enabled: true },
+  { id: "fl_super_holdem", label: "FL Super Hold'em", enabled: true },
   { id: "D01", label: "2-7 Triple Draw", enabled: true },
   { id: "D02", label: "A-5 Triple Draw", enabled: true },
   { id: "S01", label: "2-7 Single Draw", enabled: true },

@@ -16,6 +16,8 @@ describe("appVariantRouting", () => {
     expect(normalizeAppVariantId("S01")).toBe(APP_VARIANT_IDS.S01);
     expect(normalizeAppVariantId("S02")).toBe(APP_VARIANT_IDS.S02);
     expect(normalizeAppVariantId("B02")).toBe(APP_VARIANT_IDS.FLH);
+    expect(normalizeAppVariantId("B03")).toBe(APP_VARIANT_IDS.SUPER_HOLDEM);
+    expect(normalizeAppVariantId("B04")).toBe(APP_VARIANT_IDS.FL_SUPER_HOLDEM);
     expect(normalizeAppVariantId("plo")).toBe(APP_VARIANT_IDS.PLO);
     expect(normalizeAppVariantId("PLO8")).toBe(APP_VARIANT_IDS.PLO8);
     expect(normalizeAppVariantId("FLO8")).toBe(APP_VARIANT_IDS.FLO8);
@@ -45,6 +47,8 @@ describe("appVariantRouting", () => {
     expect(isControllerBackedAppVariant("D02")).toBe(true);
     expect(isControllerBackedAppVariant("nlh")).toBe(true);
     expect(isControllerBackedAppVariant("flh")).toBe(true);
+    expect(isControllerBackedAppVariant("super_holdem")).toBe(true);
+    expect(isControllerBackedAppVariant("fl_super_holdem")).toBe(true);
     expect(isControllerBackedAppVariant("plo")).toBe(true);
     expect(isControllerBackedAppVariant("plo8")).toBe(true);
     expect(isControllerBackedAppVariant("flo8")).toBe(true);

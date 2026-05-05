@@ -2336,6 +2336,7 @@ Draw RL test coverage:
 28. フレンドマッチが英語固定で、日本語設定時に非常に読みにくい。
 29. フレンドマッチの説明文が「まだ networking will arrive soon」と古く、現在の同期実装とズレている。
 30. フレンドマッチの live table / sync / room event の文言が開発者向けで、プレイヤー向けではない。
+31. フレンドマッチはゲーム数が増えたため、一覧だけでは目的のゲームを探しにくい。
 
 ### 15.2 改善方針
 
@@ -2346,6 +2347,7 @@ Draw RL test coverage:
 - HUD は残り人数 / level / blinds / average stack を主表示にし、prize pool は小さくする。
 - フレンドマッチは日本語設定では自然な日本語へ置き換え、英語設定時は従来通り英語で読めるようにする。
 - 開発者向けの sync / sequence 表示は残すが、日本語では「同期状態」「最新番号」「破棄した古い通知」などの意味が分かる表現にする。
+- フレンドマッチのゲーム選択は Game Selector と同じく検索とカテゴリ切替を用意し、一覧をスクロールし続けなくても目的のゲームに到達できるようにする。
 
 ### 15.3 実装タスク
 
@@ -2361,11 +2363,15 @@ Draw RL test coverage:
 - [x] `TUI-10` Game Selector / Mixed rotation builder のゲーム説明を言語設定に合わせる。
   - 2026-05-05 対応: `/games` と `/mixed` は `mgx_language` を参照し、日本語設定時は variant description / mixed preset description / status label を日本語表示する。
   - 2026-05-05 対応: ゲーム検索欄を Game Selector と Mixed rotation builder の上部へ移し、先に検索・絞り込みしてから quick start / preset / profile 編集へ進める構成に変更。
+- [x] `TUI-11` Friend Match の variant 選択に検索欄とカテゴリ切替を追加する。
+  - 2026-05-05 対応: All / Board / Triple Draw / Single Draw / Dramaha / Stud のカテゴリタブ、ゲーム名・形式・説明検索、件数表示、空結果表示を追加。
+  - 検索クリアとカテゴリ切替は form submit にならないよう `type="button"` を明示し、ルーム作成導線への副作用を避ける。
 
 ### 15.4 確認結果
 
 - [x] `npm run lint`: pass。
 - [x] `npm test -- --run src/ui/components/__tests__/TournamentHUD.test.jsx src/ui/screens/__tests__/FriendMatchSetupScreen.test.jsx`: 2 files / 12 tests pass。
+- [x] `npm test -- --run src/ui/screens/__tests__/FriendMatchSetupScreen.test.jsx`: 1 file / 15 tests pass。Friend Match の検索・カテゴリ切替・空結果表示を追加確認。
 - [x] `npm run build`: pass。chunk size warning は既存警告。
 - [x] `npx playwright test tests/e2e/tournament-ui-layout-smoke.spec.ts --project=badugi-flow`: 1 passed。
 - [x] `npx playwright test tests/e2e/badugi-mtt-flow.spec.ts --project=badugi-flow`: 2 passed。

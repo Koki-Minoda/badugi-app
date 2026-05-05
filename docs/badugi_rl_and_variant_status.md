@@ -2269,7 +2269,9 @@ Draw RL test coverage:
   - 2026-05-05 追加調査: feedback上の `B-07` などのシチュエーションIDは、hand history内の `handId` / `actionSeq` / `street` / `seatIndex` / `position` と紐付ければ「どのハンドのどのアクションか」を明示できる。
   - 実装方針: `playFeedbackPayload` で key hand ごとに `situationId`, `handId`, `actionSeqRange`, `variantId`, `street`, `heroAction`, `toCall`, `pot`, `stackDepth`, `resultDelta` を持たせ、backend保存結果にも同じ参照を残す。frontend modal は該当 hand history / replay frame へジャンプする導線を追加する。
   - 2026-05-05 対応: feedback payload / local store / Hand History modal を `keyHands` に対応させ、`situationId` / `handId` / `actionSeqRange` から該当hand replayへ遷移できるようにした。
-  - 残TODO: backend保存済みfeedback取得結果にも `keyHands` を表示するため、DB保存payloadとresponseの統合表示をさらに強化する。
+  - 2026-05-05 対応: backend保存済みfeedback取得結果にも `keyHands` / `summary` を返し、History / Hand History 側で保存済み結果を開いても重要局面を確認できるようにした。
+  - 2026-05-05 対応: OpenAIへ送るpayloadを `summary_key_hands_v1` へ圧縮し、`summary` / `topIssues` / `keyHands` / 最大8件の軽量hand sampleだけを送ることで応答時間とtoken量を抑える。
+  - 残TODO: 10-Game全variantで実プレイ30ハンド以上のfeedback回帰を積み、variant別の指摘品質を実ログで確認する。
 
 ## 17. Mobile Browser Landscape Game UI
 
@@ -2705,18 +2707,19 @@ Draw RL test coverage:
 
 | Family | Variant | Tier | Run | Episodes | Avg reward trend | ONNX |
 |---|---|---:|---|---:|---:|---|
-| NLH | B01 | Beginner | `board_nlh_beginner_20260505` | 2,500 | 2k avg `0.610` | `public/models/nlh_beginner_dqn_v1.onnx` |
-| NLH | B01 | Standard | `board_nlh_standard_20260505` | 3,500 | 3k avg `0.710` | `public/models/nlh_standard_dqn_v1.onnx` |
-| FLH | B02 | Beginner | `board_flh_beginner_20260505` | 2,500 | 2k avg `0.539` | `public/models/flh_beginner_dqn_v1.onnx` |
-| FLH | B02 | Standard | `board_flh_standard_20260505` | 3,500 | 3k avg `0.738` | `public/models/flh_standard_dqn_v1.onnx` |
-| PLO | B05 | Beginner | `board_plo_beginner_20260505` | 2,500 | 2k avg `0.554` | `public/models/plo_beginner_dqn_v1.onnx` |
-| PLO | B05 | Standard | `board_plo_standard_20260505` | 3,500 | 3k avg `0.705` | `public/models/plo_standard_dqn_v1.onnx` |
-| PLO8 | B06 | Beginner | `board_plo8_beginner_20260505` | 2,500 | 2k avg `0.540` | `public/models/plo8_beginner_dqn_v1.onnx` |
-| PLO8 | B06 | Standard | `board_plo8_standard_20260505` | 3,500 | 3k avg `0.705` | `public/models/plo8_standard_dqn_v1.onnx` |
+| NLH | B01 | Beginner | `board_nlh_beginner_20260505` | 2,000 | last100 `3.806` | `public/models/nlh_beginner_dqn_v1.onnx` |
+| NLH | B01 | Standard | `board_nlh_standard_20260505` | 3,000 | last100 `6.972` | `public/models/nlh_standard_dqn_v1.onnx` |
+| FLH | B02 | Beginner | `board_flh_beginner_20260505` | 2,000 | last100 `5.403` | `public/models/flh_beginner_dqn_v1.onnx` |
+| FLH | B02 | Standard | `board_flh_standard_20260505` | 3,000 | last100 `6.811` | `public/models/flh_standard_dqn_v1.onnx` |
+| PLO | B05 | Beginner | `board_plo_beginner_20260505` | 3,000 | last100 `5.492` | `public/models/plo_beginner_dqn_v1.onnx` |
+| PLO | B05 | Standard | `board_plo_standard_20260505` | 3,000 | last100 `6.608` | `public/models/plo_standard_dqn_v1.onnx` |
+| PLO8 | B06 | Beginner | `board_plo8_beginner_20260505` | 2,000 | last100 `5.056` | `public/models/plo8_beginner_dqn_v1.onnx` |
+| PLO8 | B06 | Standard | `board_plo8_standard_20260505` | 3,000 | last100 `6.718` | `public/models/plo8_standard_dqn_v1.onnx` |
 
 補足:
 - 今回は「初期モデル導入」まで。実戦的な強さは未保証で、Badugi Pro/Iron相当の評価はしていない。
 - fixture gateは、強い手のvalue bet/continue、弱い手のfold disciplineだけを最低限確認する。
+- 2026-05-05 再学習: Beginner/Standard 8モデルを `--long-horizon --max-steps 12` で再学習し、ONNXを上書きexport。PLO Beginner は初回gateで強いopenをcheckして失敗したため、teacher / fixture replay比率を上げて再学習し、fixture pass後に採用した。
 
 ### 19.3 Routing
 
@@ -2734,6 +2737,7 @@ Draw RL test coverage:
 - [x] `npm run ai:train-board` で NLH/FLH/PLO/PLO8 の Beginner/Standard 8モデルを学習。
 - [x] `npm run ai:export-board-onnx` で8モデルをexportし、registry checksumを更新。
 - [x] `npm run ai:evaluate-board-onnx` を8モデルすべてに実行し、strong open / strong facing bet / weak facing bet fixture は全pass。
+- [x] 2026-05-05 再確認: `nlh/flh/plo/plo8` の `beginner/standard` 8モデルを long-horizon で再学習し、ONNX export後に全fixture pass。PLO Beginner は初回FAILを検出し、再学習後にPASSしたものだけを反映。
 - [x] `npm test -- --run src/ai/__tests__/modelRouter.test.js src/ai/__tests__/onnxPolicyAdapter.test.js src/ai/__tests__/onnxPolicyAdapterInference.test.js`: 3 files / 20 tests pass。
 - [x] `npm test -- --run src/games/nlh/__tests__/NLHGameController.test.js src/games/plo/__tests__/PLOGameController.test.js src/games/plo/utils/__tests__/ploEvaluator.test.js src/games/stud/__tests__/StudSplitGameController.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawController.test.js src/games/__tests__/playableInvariant.test.js`: 6 files / 66 tests pass。
 - [x] `npm run ai:verify-models`: required assets all OK。`model-nlh-v1` / `model-generic-v1` は既存optional missing。

@@ -31,6 +31,9 @@ FALLBACK_PLAY_FEEDBACK = {
 }
 
 logger = logging.getLogger(__name__)  # [tournament-feedback]
+MAX_PROMPT_TOP_ISSUES = 12
+MAX_PROMPT_KEY_HANDS = 10
+MAX_PROMPT_RAW_HAND_SUMMARIES = 8
 
 
 def _model_name() -> str:
@@ -98,6 +101,7 @@ def _build_prompt(worst_spot: Dict[str, Any]) -> Dict[str, Any]:
 def _build_play_feedback_prompt(session_payload: Dict[str, Any]) -> Dict[str, Any]:
     """Compose chat messages for multi-hand cash/tournament feedback."""
 
+    compact_payload = _compact_play_feedback_payload(session_payload or {})
     return {
         "model": _model_name(),
         "temperature": 0.5,
@@ -109,6 +113,8 @@ def _build_play_feedback_prompt(session_payload: Dict[str, Any]) -> Dict[str, An
                     "or tournament play. Focus on actionable feedback, not generic encouragement. "
                     "Use the supplied VPIP/PFR, ROI or net chips, showdown/all-in/split-pot rates, "
                     "variant mix, and top issue list. Do not request personal information. "
+                    "Key hands include situationId, handId, and actionSeqRange; reference those IDs "
+                    "when giving concrete examples so the UI can link feedback to replay. "
                     "Respond as compact JSON with adviceJa and adviceEn. Both values must be plain "
                     "strings, not nested objects. Japanese should be natural and concise, with short "
                     "sections for 良かった点, 悪かった点, ROI/獲得チップへの仮説, and 次回の改善点. "
@@ -120,11 +126,156 @@ def _build_play_feedback_prompt(session_payload: Dict[str, Any]) -> Dict[str, An
                 "content": (
                     "30ハンド以上のセッションサマリです。良かった点、悪かった点、"
                     "ROI/獲得チップに影響した仮説、次回の具体方針を返してください。\n"
-                    f"Session:\n{json.dumps(session_payload or {}, ensure_ascii=False)}"
+                    f"Session:\n{json.dumps(compact_payload, ensure_ascii=False)}"
                 ),
             },
         ],
     }
+
+
+def _copy_mapping_keys(source: Dict[str, Any], keys: list[str]) -> Dict[str, Any]:
+    return {key: source[key] for key in keys if key in source}
+
+
+def _compact_top_issue(issue: Any) -> Dict[str, Any] | None:
+    if not isinstance(issue, dict):
+        return None
+    return _copy_mapping_keys(
+        issue,
+        [
+            "situationId",
+            "handId",
+            "actionSeqRange",
+            "type",
+            "severity",
+            "street",
+            "detail",
+        ],
+    )
+
+
+def _compact_key_hand(spot: Any) -> Dict[str, Any] | None:
+    if not isinstance(spot, dict):
+        return None
+    return _copy_mapping_keys(
+        spot,
+        [
+            "situationId",
+            "reason",
+            "handId",
+            "variantId",
+            "actionSeqRange",
+            "street",
+            "seatIndex",
+            "position",
+            "heroAction",
+            "toCall",
+            "currentBet",
+            "pot",
+            "stackDepth",
+            "resultDelta",
+        ],
+    )
+
+
+def _compact_raw_hand(hand: Any) -> Dict[str, Any] | None:
+    if not isinstance(hand, dict):
+        return None
+    return _copy_mapping_keys(
+        hand,
+        [
+            "handId",
+            "variantId",
+            "variantKey",
+            "variantName",
+            "heroPosition",
+            "heroNet",
+            "net",
+            "totalPot",
+            "pot",
+        ],
+    )
+
+
+def _compact_play_feedback_payload(session_payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Reduce a session payload to coaching-relevant facts before sending to OpenAI."""
+
+    if not isinstance(session_payload, dict):
+        return {}
+    summary = session_payload.get("summary") if isinstance(session_payload.get("summary"), dict) else {}
+    top_issues = summary.get("topIssues") if isinstance(summary.get("topIssues"), list) else []
+    key_hands = session_payload.get("keyHands") if isinstance(session_payload.get("keyHands"), list) else []
+    compact_summary = _copy_mapping_keys(
+        summary,
+        [
+            "hands",
+            "vpip",
+            "pfr",
+            "showdownRate",
+            "allInRate",
+            "splitPotRate",
+            "netChips",
+            "roi",
+            "variants",
+            "issueCounts",
+            "tournament",
+        ],
+    )
+    compact_summary["topIssues"] = [
+        issue
+        for issue in (
+            _compact_top_issue(issue)
+            for issue in top_issues[:MAX_PROMPT_TOP_ISSUES]
+        )
+        if issue
+    ]
+
+    source_hands = session_payload.get("hands")
+    raw_hand_count = len(source_hands) if isinstance(source_hands, list) else 0
+    compact: Dict[str, Any] = _copy_mapping_keys(
+        session_payload,
+        [
+            "schemaVersion",
+            "generatedAt",
+            "mode",
+            "variantScope",
+            "feedbackScope",
+            "minHands",
+            "handCount",
+            "heroSeat",
+        ],
+    )
+    compact["summary"] = compact_summary
+    compact["keyHands"] = [
+        spot
+        for spot in (
+            _compact_key_hand(spot)
+            for spot in key_hands[:MAX_PROMPT_KEY_HANDS]
+        )
+        if spot
+    ]
+    if raw_hand_count:
+        compact["handSamples"] = [
+            hand
+            for hand in (
+                _compact_raw_hand(hand)
+                for hand in source_hands[:MAX_PROMPT_RAW_HAND_SUMMARIES]
+            )
+            if hand
+        ]
+    compact["promptContext"] = _copy_mapping_keys(
+        session_payload.get("promptContext") if isinstance(session_payload.get("promptContext"), dict) else {},
+        ["requestedOutput", "constraints"],
+    )
+    compact["compression"] = {
+        "strategy": "summary_key_hands_v1",
+        "inputHandCount": session_payload.get("handCount") or summary.get("hands") or raw_hand_count,
+        "rawHandCount": raw_hand_count,
+        "sentRawHandSamples": len(compact.get("handSamples") or []),
+        "keyHandCount": len(compact["keyHands"]),
+        "topIssueCount": len(compact_summary["topIssues"]),
+    }
+    return compact
 
 
 def _parse_response(payload: Dict[str, Any]) -> Dict[str, str]:

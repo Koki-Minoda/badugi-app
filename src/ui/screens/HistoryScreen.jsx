@@ -110,6 +110,13 @@ function getPotWinnersLabel(pot = {}) {
     .join(", ");
 }
 
+function getFeedbackKeyHands(entry) {
+  if (Array.isArray(entry?.keyHands)) return entry.keyHands;
+  if (Array.isArray(entry?.payload?.keyHands)) return entry.payload.keyHands;
+  if (Array.isArray(entry?.response?.keyHands)) return entry.response.keyHands;
+  return [];
+}
+
 export default function HistoryScreen() {
   const navigate = useNavigate();
   const cashHands = useMemo(() => getHands({ limit: 100 }), []);
@@ -161,6 +168,10 @@ export default function HistoryScreen() {
     () => getLatestPlayFeedbackResult(feedbackPayloadResult.payload),
     [feedbackPayloadResult.payload],
   );
+  const activeFeedbackEntry = feedbackState.response
+    ? { response: feedbackState.response, keyHands: feedbackPayloadResult.payload?.keyHands ?? [] }
+    : savedFeedback;
+  const feedbackKeyHands = getFeedbackKeyHands(activeFeedbackEntry).slice(0, 6);
 
   async function handleRequestFeedback() {
     if (!feedbackPayloadResult.eligible || !feedbackPayloadResult.payload) return;
@@ -276,6 +287,31 @@ export default function HistoryScreen() {
                 Saved feedback: {new Date(savedFeedback.createdAt).toLocaleString("ja-JP")}
               </div>
               <p className="whitespace-pre-wrap">{savedFeedback.response.adviceJa}</p>
+            </div>
+          )}
+          {feedbackKeyHands.length > 0 && (
+            <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4 text-xs text-slate-100">
+              <div className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-emerald-300">
+                Feedback key hands
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {feedbackKeyHands.map((spot) => (
+                  <div
+                    key={`${spot.situationId}-${spot.handId}`}
+                    className="rounded-xl border border-white/10 bg-black/20 px-3 py-2"
+                  >
+                    <div className="font-semibold text-white">
+                      {spot.situationId ?? "-"} / {spot.handId ?? "-"}
+                    </div>
+                    <div className="mt-1 text-slate-400">
+                      {spot.variantId ?? "-"} · {spot.street ?? "-"} · {spot.heroAction ?? "-"} ·{" "}
+                      {spot.actionSeqRange
+                        ? `#${spot.actionSeqRange.start}-${spot.actionSeqRange.end}`
+                        : "action -"}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </section>

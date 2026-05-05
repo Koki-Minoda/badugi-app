@@ -34,6 +34,13 @@ function extractHandEndEvent(hand) {
   return null;
 }
 
+function getFeedbackKeyHands(entry) {
+  if (Array.isArray(entry?.keyHands)) return entry.keyHands;
+  if (Array.isArray(entry?.payload?.keyHands)) return entry.payload.keyHands;
+  if (Array.isArray(entry?.response?.keyHands)) return entry.response.keyHands;
+  return [];
+}
+
 function HandHistoryRow({ entry, onReplay }) {
   const { hand, isLive } = entry;
   const handEnd = extractHandEndEvent(hand);
@@ -224,9 +231,7 @@ export default function HandHistoryScreen({
   const activeFeedbackEntry = feedbackState.response
     ? { response: feedbackState.response, keyHands: feedbackPayloadResult.payload?.keyHands ?? [] }
     : savedFeedback;
-  const feedbackKeyHands = Array.isArray(activeFeedbackEntry?.keyHands)
-    ? activeFeedbackEntry.keyHands.slice(0, 6)
-    : [];
+  const feedbackKeyHands = getFeedbackKeyHands(activeFeedbackEntry).slice(0, 6);
 
   async function handleRequestFeedback() {
     if (!feedbackPayloadResult.eligible || !feedbackPayloadResult.payload) return;

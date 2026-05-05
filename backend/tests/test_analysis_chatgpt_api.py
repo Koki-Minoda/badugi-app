@@ -92,6 +92,24 @@ def sample_play_feedback(hand_count=30):
                 }
             ],
         },
+        "keyHands": [
+            {
+                "situationId": "B-07",
+                "reason": "large-result",
+                "handId": "hand-9",
+                "variantId": "badugi",
+                "actionSeqRange": {"start": 3, "end": 5},
+                "street": "BET",
+                "position": "BTN",
+                "heroAction": "call",
+                "toCall": 40,
+                "currentBet": 40,
+                "pot": 240,
+                "stackDepth": 800,
+                "resultDelta": -120,
+                "email": "hero@example.com",
+            }
+        ],
         "promptContext": {
             "requestedOutput": ["良かった点", "悪かった点"],
             "userName": "Hero Name",
@@ -181,6 +199,9 @@ def test_play_feedback_endpoint_returns_sanitized_payload(monkeypatch):
     results = results_response.json()
     assert len(results) == 1
     assert results[0]["response"]["adviceJa"] == "セッション助言"
+    assert results[0]["summary"]["hands"] == 30
+    assert results[0]["keyHands"][0]["situationId"] == "B-07"
+    assert results[0]["keyHands"][0]["email"] == "[redacted]"
 
 
 def test_play_feedback_endpoint_requires_minimum_hands(monkeypatch):
@@ -268,6 +289,56 @@ def test_play_feedback_accepts_standard_openai_api_key(monkeypatch):
     assert response["adviceJa"] == "実キー経路"
     assert captured["authorization"] == "Bearer test-key"
     assert captured["timeout"] == 60
+
+
+def test_play_feedback_openai_payload_is_compacted(monkeypatch):
+    from app.core import openai_client
+
+    captured = {}
+    payload = sample_play_feedback()
+    payload["hands"] = [
+        {
+            "handId": f"hand-{idx}",
+            "variantId": "badugi",
+            "heroNet": -idx,
+            "events": [{"type": "ACTION", "debug": "x" * 500}],
+            "seats": [{"name": "Hero", "cards": ["AS", "2D", "3C", "4H"]}],
+        }
+        for idx in range(20)
+    ]
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return json.dumps(
+                {"output_text": json.dumps({"adviceJa": "圧縮済み", "adviceEn": "compact"})},
+                ensure_ascii=False,
+            ).encode("utf-8")
+
+    def fake_urlopen(request, timeout):
+        captured["wire_payload"] = json.loads(request.data.decode("utf-8"))
+        return FakeResponse()
+
+    monkeypatch.setenv("MGX_OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("MGX_OPENAI_API_MODE", "responses")
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+
+    response = openai_client.get_play_feedback_advice(payload)
+
+    assert response["adviceJa"] == "圧縮済み"
+    user_content = captured["wire_payload"]["input"][1]["content"]
+    session_json = user_content.split("Session:\n", 1)[1]
+    compact_session = json.loads(session_json)
+    assert compact_session["compression"]["strategy"] == "summary_key_hands_v1"
+    assert compact_session["compression"]["rawHandCount"] == 20
+    assert len(compact_session["handSamples"]) == 8
+    assert "events" not in compact_session["handSamples"][0]
+    assert compact_session["keyHands"][0]["situationId"] == "B-07"
 
 
 def test_play_feedback_parses_fenced_nested_responses_payload(monkeypatch):

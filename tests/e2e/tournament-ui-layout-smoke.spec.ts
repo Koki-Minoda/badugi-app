@@ -41,12 +41,16 @@ test.describe("tournament UI layout smoke", () => {
     const rightTopDetail = page.getByTestId("seat-4-detail");
     const heroAvatar = page.getByTestId("seat-0-avatar");
     const heroPosition = page.getByTestId("seat-0-pos");
+    const cpuAvatarImages = page.locator(
+      '[data-testid^="seat-"][data-testid$="-avatar"] img[src*="/characters/"]',
+    );
 
     await expect(hud).toBeVisible();
     await expect(heroCard).toBeVisible();
     await expect(topSeat).toBeVisible();
     await expect(rightTopSeat).toBeVisible();
     await expect(rightBottomSeat).toBeVisible();
+    await expect(cpuAvatarImages.first()).toBeVisible();
 
     const [hudBox, heroCardBox, rightTopBox, rightBottomBox, topSeatBox, heroSeatBox, feltBox] = await Promise.all([
       hud.boundingBox(),
@@ -95,5 +99,30 @@ test.describe("tournament UI layout smoke", () => {
     const scrollHeight = await page.evaluate(() => document.documentElement.scrollHeight);
     const viewportHeight = await page.evaluate(() => window.innerHeight);
     expect(scrollHeight).toBeLessThanOrEqual(viewportHeight + 8);
+  });
+
+  test("keeps CPU character images after a tournament redeal", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openAuthenticatedGame(page);
+    await waitForE2EHelper(page, "startTournamentMTT");
+    await invokeE2E(page, "startTournamentMTT");
+
+    const cpuAvatarImages = page.locator(
+      '[data-testid^="seat-"][data-testid$="-avatar"] img[src*="/characters/"]',
+    );
+    await expect(cpuAvatarImages.first()).toBeVisible();
+    const initialSrcs = await cpuAvatarImages.evaluateAll((nodes) =>
+      nodes.map((node) => node.getAttribute("src")).filter(Boolean),
+    );
+    expect(initialSrcs.length).toBeGreaterThan(1);
+
+    await waitForE2EHelper(page, "forceDealNewHandNow");
+    await invokeE2E(page, "forceDealNewHandNow");
+    await expect(cpuAvatarImages.first()).toBeVisible();
+    const redealtSrcs = await cpuAvatarImages.evaluateAll((nodes) =>
+      nodes.map((node) => node.getAttribute("src")).filter(Boolean),
+    );
+    expect(redealtSrcs.length).toBeGreaterThan(1);
+    expect(redealtSrcs.some((src) => src && src.includes("/characters/") && !src.endsWith("/hero.png"))).toBe(true);
   });
 });

@@ -3,7 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { designTokens } from "../../styles/designTokens.js";
 import { getHands, getTournaments, getTournamentHands } from "../../utils/history.js";
 import { getVariantProfile } from "../../games/config/variantProfiles.js";
-import { buildPlayFeedbackPayload, MIN_FEEDBACK_HANDS } from "../feedback/playFeedbackPayload.js";
+import {
+  buildPlayFeedbackPayload,
+  createFeedbackScopeOptions,
+  MIN_FEEDBACK_HANDS,
+} from "../feedback/playFeedbackPayload.js";
 import { hasStoredFeedbackAuth, requestPlayFeedback } from "../feedback/playFeedbackApi.js";
 import {
   getLatestPlayFeedbackResult,
@@ -106,6 +110,13 @@ function getPotWinnersLabel(pot = {}) {
     .join(", ");
 }
 
+function getFeedbackKeyHands(entry) {
+  if (Array.isArray(entry?.keyHands)) return entry.keyHands;
+  if (Array.isArray(entry?.payload?.keyHands)) return entry.payload.keyHands;
+  if (Array.isArray(entry?.response?.keyHands)) return entry.response.keyHands;
+  return [];
+}
+
 export default function HistoryScreen() {
   const navigate = useNavigate();
   const cashHands = useMemo(() => getHands({ limit: 100 }), []);
@@ -117,6 +128,7 @@ export default function HistoryScreen() {
     error: null,
     response: null,
   });
+  const [feedbackScope, setFeedbackScope] = useState("mixed");
   const filtered = tournaments.filter((entry) => {
     if (!search.trim()) return true;
     return (
@@ -132,19 +144,34 @@ export default function HistoryScreen() {
     () => tournaments.find((entry) => entry.tournamentId === selectedId) ?? null,
     [selectedId, tournaments],
   );
+  const feedbackSourceHands = selectedId ? hands : cashHands;
+  const feedbackScopeOptions = useMemo(
+    () =>
+      createFeedbackScopeOptions(feedbackSourceHands, {
+        mode: selectedId ? "tournament" : "cash",
+        tournamentId: selectedId,
+      }),
+    [feedbackSourceHands, selectedId],
+  );
+  const selectedFeedbackScope = feedbackScopeOptions.some((option) => option.value === feedbackScope)
+    ? feedbackScope
+    : feedbackScopeOptions[0]?.value ?? "mixed";
   const feedbackPayloadResult = useMemo(() => {
-    const sourceHands = selectedId ? hands : cashHands;
     return buildPlayFeedbackPayload({
-      hands: sourceHands,
+      hands: feedbackSourceHands,
       mode: selectedId ? "tournament" : "cash",
-      variantScope: "mixed",
+      variantScope: selectedFeedbackScope,
       tournament: selectedTournament,
     });
-  }, [cashHands, hands, selectedId, selectedTournament]);
+  }, [feedbackSourceHands, selectedFeedbackScope, selectedId, selectedTournament]);
   const savedFeedback = useMemo(
     () => getLatestPlayFeedbackResult(feedbackPayloadResult.payload),
     [feedbackPayloadResult.payload],
   );
+  const activeFeedbackEntry = feedbackState.response
+    ? { response: feedbackState.response, keyHands: feedbackPayloadResult.payload?.keyHands ?? [] }
+    : savedFeedback;
+  const feedbackKeyHands = getFeedbackKeyHands(activeFeedbackEntry).slice(0, 6);
 
   async function handleRequestFeedback() {
     if (!feedbackPayloadResult.eligible || !feedbackPayloadResult.payload) return;
@@ -197,6 +224,23 @@ export default function HistoryScreen() {
                 対象: {selectedId ? `Tournament ${selectedId}` : "Cash game"} / Hands:{" "}
                 {feedbackPayloadResult.handCount} / Minimum: {MIN_FEEDBACK_HANDS}
               </p>
+              <label className="mt-3 block max-w-sm text-xs font-semibold text-slate-300">
+                フィードバック対象
+                <select
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-emerald-300/30"
+                  value={selectedFeedbackScope}
+                  onChange={(event) => {
+                    setFeedbackScope(event.target.value);
+                    setFeedbackState({ loading: false, error: null, response: null });
+                  }}
+                >
+                  {feedbackScopeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label} ({option.handCount})
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
             <button
               type="button"
@@ -243,6 +287,31 @@ export default function HistoryScreen() {
                 Saved feedback: {new Date(savedFeedback.createdAt).toLocaleString("ja-JP")}
               </div>
               <p className="whitespace-pre-wrap">{savedFeedback.response.adviceJa}</p>
+            </div>
+          )}
+          {feedbackKeyHands.length > 0 && (
+            <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4 text-xs text-slate-100">
+              <div className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-emerald-300">
+                Feedback key hands
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {feedbackKeyHands.map((spot) => (
+                  <div
+                    key={`${spot.situationId}-${spot.handId}`}
+                    className="rounded-xl border border-white/10 bg-black/20 px-3 py-2"
+                  >
+                    <div className="font-semibold text-white">
+                      {spot.situationId ?? "-"} / {spot.handId ?? "-"}
+                    </div>
+                    <div className="mt-1 text-slate-400">
+                      {spot.variantId ?? "-"} · {spot.street ?? "-"} · {spot.heroAction ?? "-"} ·{" "}
+                      {spot.actionSeqRange
+                        ? `#${spot.actionSeqRange.start}-${spot.actionSeqRange.end}`
+                        : "action -"}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </section>

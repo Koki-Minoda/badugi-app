@@ -3,6 +3,33 @@ import { NLHUIAdapter } from "../nlh/NLHUIAdapter.js";
 import { DRAMAHA_APP_VARIANTS } from "../../../games/dramaha/DramahaVariants.js";
 
 export class DramahaUIAdapter extends NLHUIAdapter {
+  buildViewProps({ controllerSnapshot = {}, tableConfig = {} } = {}) {
+    const props = super.buildViewProps({ controllerSnapshot, tableConfig });
+    const street = String(controllerSnapshot?.street ?? "").toUpperCase();
+    if (street !== "DRAW") {
+      return props;
+    }
+    const players = controllerSnapshot?.players ?? [];
+    const hero = players[0] ?? null;
+    const isHeroTurn =
+      hero &&
+      hero.seatOut !== true &&
+      hero.folded !== true &&
+      hero.allIn !== true &&
+      hero.hasDrawn !== true &&
+      (controllerSnapshot.currentActor ?? controllerSnapshot.turn ?? null) === 0;
+    return {
+      ...props,
+      tablePhase: "DRAW",
+      controlsConfig: {
+        ...(props.controlsConfig ?? {}),
+        phase: "DRAW",
+        street: "DRAW",
+        isHeroTurn: Boolean(isHeroTurn),
+      },
+    };
+  }
+
   formatStreetLabel(streetId) {
     switch (String(streetId ?? "").toUpperCase()) {
       case "PREFLOP":

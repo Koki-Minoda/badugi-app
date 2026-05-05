@@ -41,6 +41,10 @@ const VARIANT_TEST_ID_BY_ALIAS: Record<string, string> = {
   b01: "nlh",
   flh: "flh",
   b02: "flh",
+  super_holdem: "super_holdem",
+  b03: "super_holdem",
+  fl_super_holdem: "fl_super_holdem",
+  b04: "fl_super_holdem",
   plo: "plo",
   b05: "plo",
   plo8: "plo8",
@@ -63,6 +67,60 @@ const VARIANT_TEST_ID_BY_ALIAS: Record<string, string> = {
   st5: "razzducey",
   razz27: "razz27",
   st6: "razz27",
+  dramaha_hi: "dramaha_hi",
+  h01: "dramaha_hi",
+  dramaha_27: "dramaha_27",
+  h02: "dramaha_27",
+  dramaha_a5: "dramaha_a5",
+  h03: "dramaha_a5",
+  dramaha_zero: "dramaha_zero",
+  h04: "dramaha_zero",
+  dramaha_hidugi: "dramaha_hidugi",
+  h05: "dramaha_hidugi",
+  dramaha_badugi: "dramaha_badugi",
+  h06: "dramaha_badugi",
+  chinese_poker: "chinese_poker",
+  chinese: "chinese_poker",
+  cp1: "chinese_poker",
+  ofc: "chinese_poker",
+};
+
+const VARIANT_CATEGORY_BUTTON_BY_TEST_ID: Record<string, RegExp> = {
+  nlh: /Board|Hold'em|Omaha|ボード|ホールデム|オマハ/i,
+  flh: /Board|Hold'em|Omaha|ボード|ホールデム|オマハ/i,
+  super_holdem: /Board|Hold'em|Omaha|ボード|ホールデム|オマハ/i,
+  fl_super_holdem: /Board|Hold'em|Omaha|ボード|ホールデム|オマハ/i,
+  plo: /Board|Hold'em|Omaha|ボード|ホールデム|オマハ/i,
+  plo8: /Board|Hold'em|Omaha|ボード|ホールデム|オマハ/i,
+  flo8: /Board|Hold'em|Omaha|ボード|ホールデム|オマハ/i,
+  big_o: /Board|Hold'em|Omaha|ボード|ホールデム|オマハ/i,
+  five_card_plo: /Board|Hold'em|Omaha|ボード|ホールデム|オマハ/i,
+  stud: /Stud|スタッド/i,
+  stud8: /Stud|スタッド/i,
+  razz: /Stud|スタッド/i,
+  razzdugi: /Stud|スタッド/i,
+  razzducey: /Stud|スタッド/i,
+  razz27: /Stud|スタッド/i,
+  deuce_to_seven_triple_draw: /Triple Draw|トリプルドロー/i,
+  ace_to_five_triple_draw: /Triple Draw|トリプルドロー/i,
+  badeucey_triple_draw: /Triple Draw|トリプルドロー/i,
+  badacey_triple_draw: /Triple Draw|トリプルドロー/i,
+  hidugi_triple_draw: /Triple Draw|トリプルドロー/i,
+  archie_triple_draw: /Triple Draw|トリプルドロー/i,
+  deuce_to_seven_single_draw: /Single Draw|シングルドロー/i,
+  ace_to_five_single_draw: /Single Draw|シングルドロー/i,
+  five_card_single_draw: /Single Draw|シングルドロー/i,
+  badugi_single_draw: /Single Draw|シングルドロー/i,
+  badeucey_single_draw: /Single Draw|シングルドロー/i,
+  badacey_single_draw: /Single Draw|シングルドロー/i,
+  hidugi_single_draw: /Single Draw|シングルドロー/i,
+  dramaha_hi: /Dramaha|ドラマハ/i,
+  dramaha_27: /Dramaha|ドラマハ/i,
+  dramaha_a5: /Dramaha|ドラマハ/i,
+  dramaha_zero: /Dramaha|ドラマハ/i,
+  dramaha_hidugi: /Dramaha|ドラマハ/i,
+  dramaha_badugi: /Dramaha|ドラマハ/i,
+  chinese_poker: /Chinese|OFC|チャイニーズ/i,
 };
 
 function variantTestIdFromUrl(url: string) {
@@ -186,6 +244,13 @@ export async function openAuthenticatedGame(page: Page, url = APP_URL) {
   await openAuthenticatedMenu(page, url);
   await page.getByTestId("menu-ring").click();
   const variantTestId = variantTestIdFromUrl(url);
+  const playButton = page.getByTestId(`game-selector-play-${variantTestId}`).first();
+  if (!(await playButton.count())) {
+    const categoryName = VARIANT_CATEGORY_BUTTON_BY_TEST_ID[variantTestId];
+    if (categoryName) {
+      await page.getByRole("button", { name: categoryName }).first().click();
+    }
+  }
   await page.getByTestId(`game-selector-play-${variantTestId}`).first().click();
   await Promise.race([
     page
@@ -193,5 +258,6 @@ export async function openAuthenticatedGame(page: Page, url = APP_URL) {
       .first()
       .waitFor({ state: "visible", timeout: 20000 }),
     page.getByTestId("decision-panel").waitFor({ state: "visible", timeout: 20000 }),
+    page.getByTestId("chinese-poker-screen").waitFor({ state: "visible", timeout: 20000 }),
   ]);
 }

@@ -29,6 +29,7 @@ describe("GameSelectorScreen", () => {
     expect(screen.getByText(/ストレートとフラッシュが弱点になる2-7ロー/)).toBeTruthy();
     expect(screen.getAllByText("開発中").length).toBeGreaterThan(0);
     expect(screen.queryByText("Triple-draw 2-7 lowball using three draws and fixed-limit betting streets.")).toBeNull();
+    expect(screen.queryByText("すぐに開始できるゲーム")).toBeNull();
   });
 
   it("renders English variant descriptions when language is en", () => {
@@ -38,5 +39,17 @@ describe("GameSelectorScreen", () => {
     expect(screen.getByText("Triple-draw 2-7 lowball using three draws and fixed-limit betting streets.")).toBeTruthy();
     expect(screen.getAllByText("In Progress").length).toBeGreaterThan(0);
     expect(screen.queryByText(/ストレートとフラッシュが弱点になる2-7ロー/)).toBeNull();
+    expect(screen.queryByText("Start a Cash Game")).toBeNull();
+  });
+
+  it("renders the filtered game cards immediately after search controls", () => {
+    render(<GameSelectorScreen language="ja" />);
+
+    const searchSection = screen.getByPlaceholderText("ゲームを検索...").closest("section");
+    const firstGameCard = screen.getByTestId("game-selector-card-deuce_to_seven_triple_draw");
+    const advancedMode = screen.getByText("Mixed Game").closest("section");
+
+    expect(searchSection.compareDocumentPosition(firstGameCard)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(firstGameCard.compareDocumentPosition(advancedMode)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 });

@@ -7,7 +7,7 @@ const FRONT_CATEGORY_RANK = {
   high: 8,
 };
 
-function compareScore(a, b) {
+export function compareChineseScore(a, b) {
   if (a.rankPrimary !== b.rankPrimary) return a.rankPrimary - b.rankPrimary;
   const aRanks = a.metadata?.ranks ?? [];
   const bRanks = b.metadata?.ranks ?? [];
@@ -69,8 +69,8 @@ export function evaluateChineseRows({ front = [], middle = [], back = [] } = {})
   const frontEval = evaluateFrontHand(front);
   const middleEval = evaluateHighHand({ cards: middle });
   const backEval = evaluateHighHand({ cards: back });
-  const middleBeatsBack = compareScore(middleEval, backEval) < 0;
-  const frontBeatsMiddle = compareScore(frontEval, middleEval) < 0;
+  const middleBeatsBack = compareChineseScore(middleEval, backEval) < 0;
+  const frontBeatsMiddle = compareChineseScore(frontEval, middleEval) < 0;
   const foulReasons = [];
   if (!frontEval.isValid || !middleEval.isValid || !backEval.isValid) {
     foulReasons.push("invalid-row-size");

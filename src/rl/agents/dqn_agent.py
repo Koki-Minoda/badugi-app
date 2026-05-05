@@ -202,12 +202,15 @@ class DQNAgent:
         return float(loss.item()), float(satisfied)
 
     def save(self, path: str):
+        first_layer = self.q_network.net[0]
+        hidden_dim = int(first_layer.out_features) if hasattr(first_layer, "out_features") else 256
         payload = {
             "q_network": self.q_network.state_dict(),
             "target_network": self.target_network.state_dict(),
             "hyper": self.hyper.__dict__,
             "obs_dim": self.obs_dim,
             "n_actions": self.n_actions,
+            "hidden_dim": hidden_dim,
         }
         torch.save(payload, path)
 
@@ -225,6 +228,7 @@ class DQNAgent:
             obs_dim=payload["obs_dim"],
             n_actions=payload["n_actions"],
             device=device,
+            hidden_dim=int(payload.get("hidden_dim", 256)),
             hyperparams=hyper,
         )
         agent.q_network.load_state_dict(payload["q_network"])

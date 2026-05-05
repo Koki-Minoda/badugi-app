@@ -146,6 +146,68 @@ The Badugi DQN uses the frontend action order
 actions by street. Promotion candidates must be evaluated with the same action
 masking used during training.
 
+## NLH / FLH / PLO / PLO8 board DQN
+
+Board-game CPUs use a separate 16-feature betting observation and the same
+frontend betting action order: `fold, check, call, bet, raise, all_in`.
+
+Short bootstrap smoke:
+
+```bash
+npm run ai:train-board -- \
+  --family nlh \
+  --tier standard \
+  --episodes 80 \
+  --teacher-warmup-episodes 30 \
+  --imitation-pretrain-steps 3 \
+  --batch-size 8 \
+  --output-dir /tmp/mgx-board-smoke \
+  --device cpu
+```
+
+Long-horizon smoke should resume from the current bootstrap checkpoint so it
+does not destroy the minimum fixture policy in a tiny run:
+
+```bash
+npm run ai:train-board -- \
+  --family nlh \
+  --tier standard \
+  --long-horizon \
+  --episodes 120 \
+  --max-steps 6 \
+  --teacher-warmup-episodes 40 \
+  --imitation-pretrain-steps 5 \
+  --batch-size 8 \
+  --resume-checkpoint rl/models/board_nlh_standard_20260505/nlh_standard_board_dqn_latest.pt \
+  --output-dir /tmp/mgx-board-long-resume-nlh \
+  --device cpu
+
+npm run ai:export-board-onnx -- \
+  --family nlh \
+  --tier standard \
+  --checkpoint /tmp/mgx-board-long-resume-nlh/nlh_standard_board_dqn_latest.pt \
+  --output /tmp/nlh_long_resume_smoke.onnx \
+  --no-update-registry \
+  --device cpu
+
+npm run ai:evaluate-board-onnx -- \
+  --model /tmp/nlh_long_resume_smoke.onnx \
+  --variant-id B01
+```
+
+Use `--family flh`, `--family plo`, or `--family plo8` with variant IDs `B02`,
+`B05`, and `B06` respectively. Promotion beyond Beginner/Standard requires a
+separate gate for EV delta, fold discipline, thin value, bluff frequency,
+multiway isolation, and PLO8 scoop/no-low behavior.
+
+The board teacher now includes a GTO-inspired preflop range layer without
+copying proprietary solver charts. NLH/FLH use position-specific open floors
+for UTG/MP/CO/BTN/SB/BB and score pairs, suited aces, broadways, connectors,
+and dominated offsuit trash separately. PLO/PLO8 weight nut potential,
+connectedness, double-suited structure, premium pairs, dangler penalties, and
+multiway pressure; PLO8 adds scoop-oriented A2/wheel-low plus high-backup
+credit and folds weak no-low structures more often.
+
 For non-smoke runs, prefer `--teacher-warmup-episodes` instead of starting from
 an empty replay buffer. The teacher uses explicit Badugi opening ranges:
 A-2-7-or-better one-card draws continue heads-up, rough made Badugis are street

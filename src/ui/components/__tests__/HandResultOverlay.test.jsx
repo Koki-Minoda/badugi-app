@@ -228,6 +228,121 @@ describe("HandResultOverlay", () => {
     expect(screen.getByText("Low Seat")).toBeTruthy();
   });
 
+  test("renders split draw component pot details and odd chip", () => {
+    render(
+      <HandResultOverlay
+        visible
+        summary={{
+          handId: "badacey-hand-1",
+          pot: 101,
+          potDetails: [
+            {
+              potIndex: 0,
+              sourcePotIndex: 0,
+              component: "badugi",
+              componentLabel: "Badugi half",
+              potAmount: 51,
+              oddChipAmount: 1,
+              eligibleSeatIndexes: [0, 1],
+              winners: [
+                {
+                  seatIndex: 0,
+                  name: "Badugi Winner",
+                  payout: 51,
+                  handLabel: "Badugi 4-card",
+                  component: "badugi",
+                  componentLabel: "Badugi half",
+                },
+              ],
+            },
+            {
+              potIndex: 1,
+              sourcePotIndex: 0,
+              component: "lowA5",
+              componentLabel: "A-5 Low half",
+              potAmount: 50,
+              eligibleSeatIndexes: [0, 1],
+              winners: [
+                {
+                  seatIndex: 1,
+                  name: "Low Winner",
+                  payout: 50,
+                  handLabel: "A-5 Low 6-4-3-2-A",
+                  component: "lowA5",
+                  componentLabel: "A-5 Low half",
+                },
+              ],
+            },
+          ],
+        }}
+      />
+    );
+
+    expect(screen.getAllByTestId("hand-result-pot-title").map((node) => node.textContent)).toEqual([
+      "Main Pot · Badugi half",
+      "Main Pot · A-5 Low half",
+    ]);
+    expect(screen.getAllByTestId("hand-result-component-label").map((node) => node.textContent)).toEqual([
+      "Component: Badugi half",
+      "Component: A-5 Low half",
+    ]);
+    expect(screen.getByTestId("hand-result-odd-chip").textContent).toBe(
+      "Odd chip +1 to Badugi half",
+    );
+    expect(screen.getAllByTestId("hand-result-winner-component").map((node) => node.textContent)).toEqual([
+      "Badugi half",
+      "A-5 Low half",
+    ]);
+  });
+
+  test("renders Dramaha board and draw component winners with source side pot titles", () => {
+    render(
+      <HandResultOverlay
+        visible
+        summary={{
+          handId: "dramaha-hand-1",
+          pot: 151,
+          potDetails: [
+            {
+              potIndex: 0,
+              sourcePotIndex: 0,
+              component: "board",
+              componentLabel: "Board half",
+              potAmount: 50,
+              winners: [{ seatIndex: 0, name: "Board Seat", payout: 50, handLabel: "Full House" }],
+            },
+            {
+              potIndex: 1,
+              sourcePotIndex: 0,
+              component: "draw",
+              componentLabel: "Draw half",
+              potAmount: 51,
+              oddChipAmount: 1,
+              winners: [{ seatIndex: 1, name: "Draw Seat", payout: 51, handLabel: "Ace-high flush" }],
+            },
+            {
+              potIndex: 2,
+              sourcePotIndex: 1,
+              component: "board",
+              componentLabel: "Board half",
+              potAmount: 25,
+              winners: [{ seatIndex: 2, name: "Side Board", payout: 25, handLabel: "Trips" }],
+            },
+          ],
+        }}
+      />
+    );
+
+    expect(screen.getAllByTestId("hand-result-pot-title").map((node) => node.textContent)).toEqual([
+      "Main Pot · Board half",
+      "Main Pot · Draw half",
+      "Side Pot · Board half",
+    ]);
+    expect(screen.getByText("Board Seat")).toBeTruthy();
+    expect(screen.getByText("Draw Seat")).toBeTruthy();
+    expect(screen.getByText("Side Board")).toBeTruthy();
+  });
+
   test("opens follow-up replay targets from the result overlay", () => {
     const onReplayTarget = vi.fn();
     const replayTarget = { handId: "hand-1", actionSeq: 4, seat: 0 };

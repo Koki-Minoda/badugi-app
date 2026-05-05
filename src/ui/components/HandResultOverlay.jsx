@@ -8,6 +8,66 @@ function formatAmount(value) {
   return `${value}`;
 }
 
+const COMPONENT_LABELS = {
+  badugi: "Badugi half",
+  low27: "2-7 Low half",
+  lowA5: "A-5 Low half",
+  archieHigh: "High half",
+  archieLow: "A-5 Low half",
+  board: "Board half",
+  draw: "Draw half",
+};
+
+const COMPONENT_TONES = {
+  badugi: "violet",
+  low27: "cyan",
+  lowA5: "cyan",
+  archieHigh: "amber",
+  archieLow: "cyan",
+  board: "amber",
+  draw: "cyan",
+};
+
+function getComponentLabel(source = {}) {
+  if (source.componentLabel) return source.componentLabel;
+  if (source.component && COMPONENT_LABELS[source.component]) return COMPONENT_LABELS[source.component];
+  if (source.label && /\bhalf\b/i.test(source.label)) return source.label;
+  return null;
+}
+
+function getBasePotTitle(pot = {}, index, singlePot) {
+  const sourcePotIndex = Number.isInteger(pot.sourcePotIndex) ? pot.sourcePotIndex : index;
+  if (singlePot && !getComponentLabel(pot)) return "Pot";
+  if (sourcePotIndex === 0) return singlePot ? "Pot" : "Main Pot";
+  if (sourcePotIndex === 1) return "Side Pot";
+  return `Side Pot ${sourcePotIndex}`;
+}
+
+function getPotTitle(pot = {}, index, singlePot) {
+  const baseTitle = getBasePotTitle(pot, index, singlePot);
+  const componentLabel = getComponentLabel(pot);
+  return componentLabel ? `${baseTitle} · ${componentLabel}` : baseTitle;
+}
+
+function getSeatListLabel(seatIndexes = []) {
+  if (!Array.isArray(seatIndexes) || seatIndexes.length === 0) return "";
+  return seatIndexes
+    .filter((seatIndex) => Number.isInteger(seatIndex))
+    .map((seatIndex) => `Seat ${seatIndex + 1}`)
+    .join(" / ");
+}
+
+function getOddChipAmount(source = {}) {
+  const raw = source.oddChipAmount ?? source.oddChip?.amount ?? 0;
+  return Number.isFinite(Number(raw)) ? Number(raw) : 0;
+}
+
+function getOddChipLabel(pot = {}) {
+  const oddChipAmount = getOddChipAmount(pot);
+  if (oddChipAmount <= 0) return "";
+  return `Odd chip +${formatAmount(oddChipAmount)} to ${getComponentLabel(pot) ?? "this component"}`;
+}
+
 function WinnerCard({ winner, tone = "emerald" }) {
   const cards = Array.isArray(winner.hand) ? winner.hand : [];
   const activeCards = Array.isArray(winner.activeCards) ? winner.activeCards : cards;
@@ -16,6 +76,7 @@ function WinnerCard({ winner, tone = "emerald" }) {
     winner.name ??
     (Number.isInteger(winner.seatIndex) ? `Seat ${winner.seatIndex + 1}` : "Winner");
   const handLabel = winner.handLabel ?? winner.evaluation?.handName ?? "Winner";
+  const componentLabel = getComponentLabel(winner);
   const toneClasses = {
     emerald: "border-emerald-300/25 bg-emerald-950/20",
     amber: "border-amber-300/30 bg-amber-950/20",
@@ -41,6 +102,14 @@ function WinnerCard({ winner, tone = "emerald" }) {
           {handLabel}
         </span>
       </div>
+      {componentLabel && (
+        <span
+          className="w-fit rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.25em] text-slate-200"
+          data-testid="hand-result-winner-component"
+        >
+          {componentLabel}
+        </span>
+      )}
       {winner.ranksLabel && winner.ranksLabel !== "-" && (
         <div
           className="text-xs text-slate-300 uppercase tracking-[0.35em]"
@@ -87,7 +156,12 @@ function buildWinnerGroups(pot) {
       groups.push({ key, label, winners, tone });
     }
   };
-  addGroup("winners", "Winners", pot?.winners, "emerald");
+  const componentLabel = getComponentLabel(pot);
+  if (componentLabel) {
+    addGroup("component", componentLabel, pot?.winners, COMPONENT_TONES[pot?.component] ?? "emerald");
+  } else {
+    addGroup("winners", "Winners", pot?.winners, "emerald");
+  }
   addGroup("high", "High", pot?.highWinners, "amber");
   addGroup("low", "Low", pot?.lowWinners, "cyan");
   addGroup("badugi", "Badugi", pot?.badugiWinners, "violet");
@@ -96,14 +170,10 @@ function buildWinnerGroups(pot) {
 
 function PotSection({ pot, index, singlePot }) {
   const winnerGroups = buildWinnerGroups(pot);
-  const title =
-    singlePot || index === 0
-      ? singlePot
-        ? "Pot"
-        : "Main Pot"
-      : index === 1
-      ? "Side Pot"
-      : `Side Pot ${index}`;
+  const title = getPotTitle(pot, index, singlePot);
+  const componentLabel = getComponentLabel(pot);
+  const eligibleSeatsLabel = getSeatListLabel(pot?.eligibleSeatIndexes);
+  const oddChipLabel = getOddChipLabel(pot);
   return (
     <div
       className="rounded-2xl border border-white/10 bg-slate-950/40 p-4 space-y-3"
@@ -115,6 +185,28 @@ function PotSection({ pot, index, singlePot }) {
           ¥{formatAmount(pot?.potAmount ?? pot?.amount ?? 0)}
         </span>
       </div>
+      {(componentLabel || eligibleSeatsLabel || oddChipLabel) && (
+        <div
+          className="grid gap-2 rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-slate-300 sm:grid-cols-3"
+          data-testid="hand-result-component-detail"
+        >
+          {componentLabel && (
+            <span data-testid="hand-result-component-label">
+              <strong className="text-slate-100">Component:</strong> {componentLabel}
+            </span>
+          )}
+          {eligibleSeatsLabel && (
+            <span data-testid="hand-result-eligible-seats">
+              <strong className="text-slate-100">Eligible:</strong> {eligibleSeatsLabel}
+            </span>
+          )}
+          {oddChipLabel && (
+            <span className="text-amber-200" data-testid="hand-result-odd-chip">
+              {oddChipLabel}
+            </span>
+          )}
+        </div>
+      )}
       <div className="space-y-2">
         {winnerGroups.map((group) => (
           <div
@@ -178,7 +270,7 @@ export default function HandResultOverlay({
   const singlePot = potSections.length <= 1;
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 px-4">
-      <div className="w-full max-w-xl bg-slate-900 rounded-3xl border border-emerald-400/40 p-6 space-y-4 shadow-2xl">
+      <div className="w-full max-w-3xl bg-slate-900 rounded-3xl border border-emerald-400/40 p-6 space-y-4 shadow-2xl">
         <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em] text-emerald-300">
           <span>Hand Result</span>
           {summary.handId && <span>#{summary.handId}</span>}

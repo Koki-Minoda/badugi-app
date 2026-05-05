@@ -18,6 +18,190 @@
     ]
   },
   {
+    "id": "model-plo8-standard-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "B06"
+    ],
+    "characterIds": [],
+    "tier": "standard",
+    "onnx": "models/plo8_standard_dqn_v1.onnx",
+    "checksumSha256": "e150b5743cadd1899ecf62fea02cb6f881c371d33cf330500c15cde907346e7b",
+    "trainingRun": "board_plo8_standard_dqn_20260505",
+    "trainingCheckpoint": "plo8_standard_board_dqn_latest.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "Advanced-gated PLO8 standard board-betting DQN trained in a synthetic board-game environment with teacher warmup, advanced fixture replay, and action masking. The current gate covers thin value, bluff discipline, multiway isolation, side-pot EV, and PLO8 scoop/no-low awareness where applicable. This is a bootstrap model for live CPU routing and must be replaced after hand-history/human-practice evaluation.",
+    "featureSet": "board-betting-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      16
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
+    "id": "model-plo8-beginner-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "B06"
+    ],
+    "characterIds": [],
+    "tier": "beginner",
+    "onnx": "models/plo8_beginner_dqn_v1.onnx",
+    "checksumSha256": "7119db9e11fd198969c7077bd922ef6f94b64da7525850f8e48ae40941436222",
+    "trainingRun": "board_plo8_beginner_dqn_20260505",
+    "trainingCheckpoint": "plo8_beginner_board_dqn_latest.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "Advanced-gated PLO8 beginner board-betting DQN trained in a synthetic board-game environment with teacher warmup, advanced fixture replay, and action masking. The current gate covers thin value, bluff discipline, multiway isolation, side-pot EV, and PLO8 scoop/no-low awareness where applicable. This is a bootstrap model for live CPU routing and must be replaced after hand-history/human-practice evaluation.",
+    "featureSet": "board-betting-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      16
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
+    "id": "model-plo-standard-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "B05"
+    ],
+    "characterIds": [],
+    "tier": "standard",
+    "onnx": "models/plo_standard_dqn_v1.onnx",
+    "checksumSha256": "ac34d341f1b8e5d4c1adb36e3b0690435559f527d1bedf29c932769c866b4a91",
+    "trainingRun": "board_plo_standard_dqn_20260505",
+    "trainingCheckpoint": "plo_standard_board_dqn_latest.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "Advanced-gated PLO standard board-betting DQN trained in a synthetic board-game environment with teacher warmup, advanced fixture replay, and action masking. The current gate covers thin value, bluff discipline, multiway isolation, side-pot EV, and PLO8 scoop/no-low awareness where applicable. This is a bootstrap model for live CPU routing and must be replaced after hand-history/human-practice evaluation.",
+    "featureSet": "board-betting-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      16
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
+    "id": "model-plo-beginner-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "B05"
+    ],
+    "characterIds": [],
+    "tier": "beginner",
+    "onnx": "models/plo_beginner_dqn_v1.onnx",
+    "checksumSha256": "f60e2fdf58537905645a3c36f0bc13eaa1892cd79e43527b00c75c440af8ac1a",
+    "trainingRun": "board_plo_beginner_dqn_20260505",
+    "trainingCheckpoint": "plo_beginner_board_dqn_latest.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "Advanced-gated PLO beginner board-betting DQN trained in a synthetic board-game environment with teacher warmup, advanced fixture replay, and action masking. The current gate covers thin value, bluff discipline, multiway isolation, side-pot EV, and PLO8 scoop/no-low awareness where applicable. This is a bootstrap model for live CPU routing and must be replaced after hand-history/human-practice evaluation.",
+    "featureSet": "board-betting-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      16
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
+    "id": "model-flh-standard-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "B02"
+    ],
+    "characterIds": [],
+    "tier": "standard",
+    "onnx": "models/flh_standard_dqn_v1.onnx",
+    "checksumSha256": "ab6a504704e0d5795a8cdb09e6b9abc5bd0708ad448ce1d39c9cd2e79d56de9d",
+    "trainingRun": "board_flh_standard_dqn_20260505",
+    "trainingCheckpoint": "flh_standard_board_dqn_latest.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "Advanced-gated FLH standard board-betting DQN trained in a synthetic board-game environment with teacher warmup, advanced fixture replay, and action masking. The current gate covers thin value, bluff discipline, multiway isolation, side-pot EV, and PLO8 scoop/no-low awareness where applicable. This is a bootstrap model for live CPU routing and must be replaced after hand-history/human-practice evaluation.",
+    "featureSet": "board-betting-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      16
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
+    "id": "model-flh-beginner-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "B02"
+    ],
+    "characterIds": [],
+    "tier": "beginner",
+    "onnx": "models/flh_beginner_dqn_v1.onnx",
+    "checksumSha256": "ea61635fd0811f82d2cbcf6cc0f10e772ea09998b1b4e7ac6c954dc2644af686",
+    "trainingRun": "board_flh_beginner_dqn_20260505",
+    "trainingCheckpoint": "flh_beginner_board_dqn_latest.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "Advanced-gated FLH beginner board-betting DQN trained in a synthetic board-game environment with teacher warmup, advanced fixture replay, and action masking. The current gate covers thin value, bluff discipline, multiway isolation, side-pot EV, and PLO8 scoop/no-low awareness where applicable. This is a bootstrap model for live CPU routing and must be replaced after hand-history/human-practice evaluation.",
+    "featureSet": "board-betting-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      16
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
+    "id": "model-nlh-standard-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "B01"
+    ],
+    "characterIds": [],
+    "tier": "standard",
+    "onnx": "models/nlh_standard_dqn_v1.onnx",
+    "checksumSha256": "518cbd4fb39102f72298647e0e41193e83931292e7493cbc4e278c3a0b19bbde",
+    "trainingRun": "board_nlh_standard_dqn_20260505",
+    "trainingCheckpoint": "nlh_standard_board_dqn_latest.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "Advanced-gated NLH standard board-betting DQN trained in a synthetic board-game environment with teacher warmup, advanced fixture replay, and action masking. The current gate covers thin value, bluff discipline, multiway isolation, side-pot EV, and PLO8 scoop/no-low awareness where applicable. This is a bootstrap model for live CPU routing and must be replaced after hand-history/human-practice evaluation.",
+    "featureSet": "board-betting-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      16
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
+    "id": "model-nlh-beginner-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "B01"
+    ],
+    "characterIds": [],
+    "tier": "beginner",
+    "onnx": "models/nlh_beginner_dqn_v1.onnx",
+    "checksumSha256": "9ddd97449bfd9a86ca6455a2a7858a7b2a64d5558a34c530eff55708764cbf93",
+    "trainingRun": "board_nlh_beginner_dqn_20260505",
+    "trainingCheckpoint": "nlh_beginner_board_dqn_latest.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "Advanced-gated NLH beginner board-betting DQN trained in a synthetic board-game environment with teacher warmup, advanced fixture replay, and action masking. The current gate covers thin value, bluff discipline, multiway isolation, side-pot EV, and PLO8 scoop/no-low awareness where applicable. This is a bootstrap model for live CPU routing and must be replaced after hand-history/human-practice evaluation.",
+    "featureSet": "board-betting-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      16
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
     "id": "model-badugi-pro-v1",
     "version": "v2",
     "variantIds": [
@@ -42,15 +226,18 @@
   },
   {
     "id": "model-badugi-iron-v1",
-    "version": "v1",
+    "version": "v2",
     "variantIds": [
       "D03"
     ],
     "tier": "iron",
     "onnx": "models/badugi_iron_v1.onnx",
-    "checksumSha256": "73bf81e5f993b0801f3588747e96447a8d03b09d0a9189eca77a135f4b98efdb",
-    "trainingStatus": "bootstrap",
-    "trainingNotes": "Bootstrap heuristic ONNX used to exercise the frontend ONNX path. Not validated as stronger than human players; replace with a trained checkpoint that clears Pro baseline, worst-profile, fold-rate, and human/practice gates.",
+    "checksumSha256": "172c5057712630782864949b5ac0098d9b4f510ea56ce2464afb49f3959dca05",
+    "trainingRun": "badugi_sixmax_iron_draw_final_20k_20260504",
+    "trainingCheckpoint": "badugi_dqn_010000_20260504-120111.pt",
+    "trainingStatus": "active-practice-gated",
+    "trainingNotes": "Trained 6-max Iron checkpoint selected from the draw-quality/final-fold-discipline 20k run. Re-evaluated 2026-05-05 vs Pro v2 on 7 profiles x 2 seeds x 120 episodes: avgReward 3.043 vs 2.987 (+0.057), showdownWinRate 0.731 vs 0.706, worstProfileAvgReward 2.209 vs 2.130, profitableFoldMisses 1 vs 13, negativeRaiseEVActions 12 vs 108. Practice-only Iron benchmark still fails the strict foldRate gate (0.204 > 0.18) and humanVerified=false; do not claim human-verified Iron strength until 50+ real hand logs pass.",
+    "featureSet": "badugi-observation-v1-ev-range",
     "productionRequired": true,
     "inputShape": [
       96
@@ -165,6 +352,150 @@
     ]
   },
   {
+    "id": "model-27draw-beginner-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "D01",
+      "S01"
+    ],
+    "characterIds": [],
+    "tier": "beginner",
+    "onnx": "models/27draw_beginner_dqn_v1.onnx",
+    "checksumSha256": "7e24d28a713910e841dec4fe6e3368aa61ea83ffbf47330b31ee1fb152edcf5e",
+    "trainingRun": "draw_low27_beginner_3k_20260505",
+    "trainingCheckpoint": "low-27_draw_dqn_latest.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "Current-env 2-7/A-5 draw-family DQN for beginner 2-7 lowball. Trained 3k episodes with beginner/loose opponent profiles, teacher warmup, fixture replay, and imitation pretrain. Intended for approachable D01/S01 CPUs; not promoted above beginner without human/practice gate.",
+    "featureSet": "draw-lowball-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      11
+    ]
+  },
+  {
+    "id": "model-27draw-standard-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "D01",
+      "S01"
+    ],
+    "characterIds": [],
+    "tier": "standard",
+    "onnx": "models/27draw_standard_dqn_v1.onnx",
+    "checksumSha256": "322be5d8c07c685b36ee670e0dc09f18a1b58a9889356d8094d01cc3c3c672a0",
+    "trainingRun": "draw_low27_standard_5k_20260505",
+    "trainingCheckpoint": "low-27_draw_dqn_latest.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "Current-env 2-7 draw DQN for standard D01/S01 CPUs. Trained 5k episodes against beginner/standard/tight/loose/aggressive profiles with teacher warmup, fixture replay, and imitation support. Last 500 episode reward moved positive; still requires human/practice benchmark before higher tiers.",
+    "featureSet": "draw-lowball-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      11
+    ]
+  },
+  {
+    "id": "model-a5draw-beginner-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "D02",
+      "S02"
+    ],
+    "characterIds": [],
+    "tier": "beginner",
+    "onnx": "models/a5draw_beginner_dqn_v1.onnx",
+    "checksumSha256": "fc924a55aca2354b61d462eef458e452ecf387554622d48d63c31acd2147fe0d",
+    "trainingRun": "draw_a5_beginner_3k_20260505",
+    "trainingCheckpoint": "low-a5_draw_dqn_latest.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "Current-env A-5 draw-family DQN for beginner D02/S02 CPUs. Trained 3k episodes with beginner/loose opponent profiles, teacher warmup, fixture replay, and imitation pretrain. Intended as a basic playable A-5 policy, not a high-tier model.",
+    "featureSet": "draw-lowball-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      11
+    ]
+  },
+  {
+    "id": "model-a5draw-standard-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "D02",
+      "S02"
+    ],
+    "characterIds": [],
+    "tier": "standard",
+    "onnx": "models/a5draw_standard_dqn_v1.onnx",
+    "checksumSha256": "1583317d33cfb577adfe8e6432d8db439e08881547a5dbdd9ef1ef3ca2be1368",
+    "trainingRun": "draw_a5_standard_5k_20260505",
+    "trainingCheckpoint": "low-a5_draw_dqn_latest.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "Current-env A-5 draw DQN for standard D02/S02 CPUs. Trained 5k episodes against mixed opponent profiles with teacher warmup, fixture replay, and imitation support. Last 500 episode reward was positive; requires human/practice gate before promotion.",
+    "featureSet": "draw-lowball-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      11
+    ]
+  },
+  {
+    "id": "model-27draw-pro-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "D01",
+      "S01"
+    ],
+    "characterIds": [],
+    "tier": "pro",
+    "onnx": "models/27draw_pro_dqn_v1.onnx",
+    "checksumSha256": "a60e5bf3bc8cf47d53511c4b0d0b26b757bc4c0b64f7326b39ff5199fe3d457d",
+    "trainingRun": "draw_low27_pro_probe_2500_20260505",
+    "trainingCheckpoint": "low-27_draw_dqn_latest.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "Current-env 2-7 draw DQN for Pro D01/S01 CPUs. Trained 2.5k episodes against standard/tight/aggressive profiles with teacher warmup, imitation pretrain, fixture replay, and low exploration floor. This clears the draw ONNX fixture gate and is the first Pro routing checkpoint; it still needs 20k+ checkpoint comparison and human/practice benchmark before promotion to Iron/WorldMaster.",
+    "featureSet": "draw-lowball-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      11
+    ]
+  },
+  {
+    "id": "model-a5draw-pro-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "D02",
+      "S02"
+    ],
+    "characterIds": [],
+    "tier": "pro",
+    "onnx": "models/a5draw_pro_dqn_v1.onnx",
+    "checksumSha256": "67079b8e41feafb60454448ff6525395052c9d19420ec38985ee30afde626547",
+    "trainingRun": "draw_a5_pro_probe_2500_20260505",
+    "trainingCheckpoint": "low-a5_draw_dqn_latest.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "Current-env A-5 draw DQN for Pro D02/S02 CPUs. Trained 2.5k episodes against standard/tight/aggressive profiles with teacher warmup, imitation pretrain, fixture replay, and low exploration floor. This clears the draw ONNX fixture gate and is the first Pro routing checkpoint; it still needs 20k+ checkpoint comparison and human/practice benchmark before promotion to Iron/WorldMaster.",
+    "featureSet": "draw-lowball-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      11
+    ]
+  },
+  {
     "id": "model-27draw-iron-v1",
     "version": "v1",
     "variantIds": [
@@ -173,14 +504,16 @@
     ],
     "tier": "iron",
     "onnx": "models/27draw_iron_v1.onnx",
-    "checksumSha256": null,
+    "checksumSha256": "8393fcc21a07fa950126a223fffa46003f1ad44bde6752a9a591743bf889f0dc",
     "productionRequired": false,
     "inputShape": [
       96
     ],
     "outputShape": [
       11
-    ]
+    ],
+    "trainingStatus": "bootstrap",
+    "trainingNotes": "Teacher-initialized draw bootstrap ONNX. This is not a full self-play RL checkpoint; replace after variant-specific draw RL and human/practice gates pass."
   },
   {
     "id": "model-a5draw-iron-v1",
@@ -191,14 +524,16 @@
     ],
     "tier": "iron",
     "onnx": "models/a5draw_iron_v1.onnx",
-    "checksumSha256": null,
+    "checksumSha256": "1828def48d3fe3bb97fbb07abfb9da62697ec872b319499c31f17860df7ffc99",
     "productionRequired": false,
     "inputShape": [
       96
     ],
     "outputShape": [
       11
-    ]
+    ],
+    "trainingStatus": "bootstrap",
+    "trainingNotes": "Teacher-initialized draw bootstrap ONNX. This is not a full self-play RL checkpoint; replace after variant-specific draw RL and human/practice gates pass."
   },
   {
     "id": "model-generic-v1",

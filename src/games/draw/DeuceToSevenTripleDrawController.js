@@ -91,8 +91,21 @@ function sumPots(pots = []) {
   return pots.reduce((sum, pot) => sum + Math.max(0, pot?.amount ?? 0), 0);
 }
 
+const COMPONENT_LABELS = {
+  badugi: "Badugi half",
+  low27: "2-7 Low half",
+  lowA5: "A-5 Low half",
+  archieHigh: "High half",
+  archieLow: "A-5 Low half",
+};
+
+function getComponentLabel(component) {
+  return COMPONENT_LABELS[component] ?? component;
+}
+
 function buildHandResultSummary({ showdownSummary = [], totalPot = 0, handId = null } = {}) {
   const potDetails = (Array.isArray(showdownSummary) ? showdownSummary : []).map((pot, potIndex) => {
+    const componentLabel = pot.componentLabel ?? getComponentLabel(pot.component);
     const winners = (Array.isArray(pot?.payouts) ? pot.payouts : []).map((winner) => ({
       seatIndex: winner.seatIndex,
       name: winner.name,
@@ -103,9 +116,18 @@ function buildHandResultSummary({ showdownSummary = [], totalPot = 0, handId = n
       hand: Array.isArray(winner.hand) ? [...winner.hand] : [],
       activeCards: Array.isArray(winner.activeCards) ? [...winner.activeCards] : [],
       deadCards: Array.isArray(winner.deadCards) ? [...winner.deadCards] : [],
+      component: winner.component ?? pot.component,
+      componentLabel: winner.componentLabel ?? componentLabel,
     }));
     return {
       potIndex: pot.potIndex ?? potIndex,
+      sourcePotIndex: pot.sourcePotIndex ?? pot.potIndex ?? potIndex,
+      component: pot.component,
+      componentLabel,
+      label: pot.label ?? componentLabel,
+      oddChipAmount: pot.oddChipAmount ?? 0,
+      oddChip: pot.oddChip ?? null,
+      eligibleSeatIndexes: Array.isArray(pot.eligibleSeatIndexes) ? [...pot.eligibleSeatIndexes] : [],
       potAmount: Math.max(0, pot.potAmount ?? pot.amount ?? 0),
       winners,
     };

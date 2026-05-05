@@ -45,6 +45,8 @@ describe("appVariantRouting", () => {
     expect(normalizeAppVariantId("ST4")).toBe(APP_VARIANT_IDS.RAZZDUGI);
     expect(normalizeAppVariantId("ST5")).toBe(APP_VARIANT_IDS.RAZZDUCEY);
     expect(normalizeAppVariantId("ST6")).toBe(APP_VARIANT_IDS.RAZZ27);
+    expect(normalizeAppVariantId("CP1")).toBe(APP_VARIANT_IDS.CHINESE_POKER);
+    expect(normalizeAppVariantId("ofc")).toBe(APP_VARIANT_IDS.CHINESE_POKER);
     expect(normalizeAppVariantId("unknown")).toBe(APP_VARIANT_IDS.BADUGI);
   });
 
@@ -74,5 +76,6 @@ describe("appVariantRouting", () => {
     expect(isControllerBackedAppVariant("razz27")).toBe(true);
     expect(isControllerBackedAppVariant("razzdugi")).toBe(true);
     expect(isControllerBackedAppVariant("razzducey")).toBe(true);
+    expect(isControllerBackedAppVariant("chinese_poker")).toBe(true);
   });
 });

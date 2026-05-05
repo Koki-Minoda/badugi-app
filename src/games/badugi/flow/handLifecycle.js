@@ -102,6 +102,22 @@ export function buildNextHandState({
         prevPlayers?.[seat]?.tournamentSeatIndex ??
         currentPlayers?.[seat]?.tournamentSeatIndex ??
         null,
+      cpuCharacterId:
+        prevPlayers?.[seat]?.cpuCharacterId ??
+        currentPlayers?.[seat]?.cpuCharacterId ??
+        null,
+      cpuStyle:
+        prevPlayers?.[seat]?.cpuStyle ??
+        currentPlayers?.[seat]?.cpuStyle ??
+        null,
+      avatar:
+        prevPlayers?.[seat]?.avatar ??
+        currentPlayers?.[seat]?.avatar ??
+        null,
+      avatarUrl:
+        prevPlayers?.[seat]?.avatarUrl ??
+        currentPlayers?.[seat]?.avatarUrl ??
+        null,
     };
   });
 
@@ -145,6 +161,7 @@ export function buildNextHandState({
     const seatMeta = base.seatType ?? seatConfig[seat] ?? (seat === 0 ? "HUMAN" : "CPU");
     const seatOut = base.seatOut ?? false;
     const player = {
+      seatIndex: seat,
       name: base.name ?? `P${seat + 1}`,
       seatType: seatMeta,
       stack: Math.max(base.stack ?? startingStack, 0),
@@ -165,6 +182,10 @@ export function buildNextHandState({
       isCPU: seatMeta === "CPU",
       tournamentPlayerId: base.tournamentPlayerId ?? null,
       tournamentSeatIndex: base.tournamentSeatIndex ?? null,
+      cpuCharacterId: base.cpuCharacterId ?? null,
+      cpuStyle: base.cpuStyle ?? null,
+      avatar: base.avatar ?? undefined,
+      avatarUrl: base.avatarUrl ?? null,
     };
     if (typeof drawCardsForSeat === "function" && !seatOut) {
       player.hand = drawCardsForSeat(seat, player, drawContext) ?? [];
@@ -175,6 +196,7 @@ export function buildNextHandState({
       player.name = heroProfile.name ?? player.name;
       player.titleBadge = heroProfile.titleBadge ?? player.titleBadge;
       player.avatar = heroProfile.avatar ?? player.avatar;
+      player.avatarUrl = heroProfile.avatarUrl ?? player.avatarUrl ?? null;
     }
     if (seatOut) {
       player.hand = [];

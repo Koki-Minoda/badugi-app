@@ -16,6 +16,7 @@ import {
 } from "./roundFlow.jsx";
 import {
   isSeatEligibleForBet,
+  isSeatEligibleForDraw,
   markPlayerFolded,
   findNextDrawActorSeat,
 } from "../flow/actionUtils.js";
@@ -693,7 +694,9 @@ function transitionEngineToDrawState(table, { dealerIndex = 0, nextRound = 0, nu
   );
   const firstToDraw = findDrawableSeat(players, drawStartBase);
   const resetPlayers = players.map((p) => {
-    const out = isSeatEligibleForBet(p) ? false : true;
+    // All-in players are done with BET actions, but in draw poker they still
+    // receive their draw decision while live in the hand.
+    const out = !isSeatEligibleForDraw(p);
     return {
       ...p,
       hasDrawn: out ? true : false,

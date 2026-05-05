@@ -1,11 +1,43 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { GAME_VARIANT_CATEGORIES } from "../../games/config/variantCatalog.js";
+import { listVariantProfiles } from "../../games/config/variantProfiles.js";
 import { designTokens } from "../../styles/designTokens.js";
 import { LANGUAGE_STORAGE_KEY, MGX_DEFAULT_LOCALE } from "../../config/mgxLocaleConfig.js";
+import variantJa from "../../i18n/variants.ja.json";
 import { getEnabledVariants } from "../game/variants.js";
 import { buildRoomWebSocketUrl, createRoom, getRoomInfo, joinRoom } from "../utils/roomApi.js";
 
 const ACTIVE_ROOM_STORAGE_KEY = "mgx_friend_match_active_room_v1";
+const FRIEND_VARIANT_ALL_CATEGORY = "all";
+
+const FRIEND_VARIANT_CATEGORY_ORDER = [
+  FRIEND_VARIANT_ALL_CATEGORY,
+  GAME_VARIANT_CATEGORIES.BOARD,
+  GAME_VARIANT_CATEGORIES.TRIPLE_DRAW,
+  GAME_VARIANT_CATEGORIES.SINGLE_DRAW,
+  GAME_VARIANT_CATEGORIES.DRAMAHA,
+  GAME_VARIANT_CATEGORIES.STUD,
+];
+
+const FRIEND_VARIANT_CATEGORY_LABELS = Object.freeze({
+  en: {
+    [FRIEND_VARIANT_ALL_CATEGORY]: "All",
+    [GAME_VARIANT_CATEGORIES.BOARD]: "Board / Hold'em / Omaha",
+    [GAME_VARIANT_CATEGORIES.TRIPLE_DRAW]: "Triple Draw",
+    [GAME_VARIANT_CATEGORIES.SINGLE_DRAW]: "Single Draw",
+    [GAME_VARIANT_CATEGORIES.DRAMAHA]: "Dramaha",
+    [GAME_VARIANT_CATEGORIES.STUD]: "Stud",
+  },
+  ja: {
+    [FRIEND_VARIANT_ALL_CATEGORY]: "すべて",
+    [GAME_VARIANT_CATEGORIES.BOARD]: "ボード / ホールデム / オマハ",
+    [GAME_VARIANT_CATEGORIES.TRIPLE_DRAW]: "トリプルドロー",
+    [GAME_VARIANT_CATEGORIES.SINGLE_DRAW]: "シングルドロー",
+    [GAME_VARIANT_CATEGORIES.DRAMAHA]: "ドラマハ",
+    [GAME_VARIANT_CATEGORIES.STUD]: "スタッド",
+  },
+});
 
 function loadStoredActiveRoom() {
   if (typeof window === "undefined") return null;
@@ -40,6 +72,11 @@ const FRIEND_COPY = {
       "友人と遊ぶための専用ルームを作成します。ルームコードを共有すると、同じ卓へ参加できます。",
     variant: "ゲーム",
     chooseGame: "遊ぶゲームを選択",
+    searchGame: "ゲーム検索",
+    searchPlaceholder: "ゲーム名・形式・説明で検索...",
+    clearSearch: "クリア",
+    showingVariants: (count, total) => `${count}/${total}件を表示`,
+    noVariants: "条件に一致するゲームがありません。",
     enabled: "利用可能",
     tableRules: "テーブル設定",
     setParams: "人数・スタック・ブラインド",
@@ -94,6 +131,11 @@ const FRIEND_COPY = {
       "Configure a private table for friends. Share the room code so everyone can join the same table.",
     variant: "Variant",
     chooseGame: "Choose your game",
+    searchGame: "Game Search",
+    searchPlaceholder: "Search by game, format, or description...",
+    clearSearch: "Clear",
+    showingVariants: (count, total) => `Showing ${count}/${total} variants`,
+    noVariants: "No variants match the current filters.",
     enabled: "Enabled",
     tableRules: "Table Rules",
     setParams: "Set table parameters",
@@ -143,6 +185,38 @@ const FRIEND_COPY = {
   },
 };
 
+function localizeFriendVariantProfile(profile, language) {
+  if (!profile) return profile;
+  const translation = language === "ja" ? variantJa[profile.id] : null;
+  const name = translation?.name || profile.name;
+  const description = translation?.description || profile.description || profile.summary || "";
+  return {
+    ...profile,
+    name,
+    description,
+    searchText: `${profile.id} ${profile.engineKey ?? ""} ${name} ${description} ${(
+      profile.tags ?? []
+    ).join(" ")}`.toLowerCase(),
+  };
+}
+
+function decorateFriendVariant(variant, profilesByAppId, language) {
+  const profile = profilesByAppId.get(variant.id);
+  const localizedProfile = localizeFriendVariantProfile(profile, language);
+  const label = localizedProfile?.name ?? variant.label;
+  const description = localizedProfile?.description ?? "";
+  const searchText = `${variant.id} ${variant.label} ${label} ${description} ${(
+    localizedProfile?.tags ?? []
+  ).join(" ")}`.toLowerCase();
+  return {
+    ...variant,
+    label,
+    description,
+    category: localizedProfile?.category ?? FRIEND_VARIANT_ALL_CATEGORY,
+    searchText,
+  };
+}
+
 function VariantOption({ variant, isSelected, onSelect, copy }) {
   return (
     <label
@@ -154,7 +228,9 @@ function VariantOption({ variant, isSelected, onSelect, copy }) {
     >
       <div className="flex flex-col">
         <span className="text-sm text-slate-300">{variant.label}</span>
-        <span className="text-xs text-slate-500">{copy.enabled}</span>
+        <span className="text-xs text-slate-500">
+          {variant.description || copy.enabled}
+        </span>
       </div>
       <input
         type="radio"
@@ -287,7 +363,24 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
     [languageKey],
   );
   const enabledVariants = useMemo(() => getEnabledVariants(), []);
+  const variantProfilesByAppId = useMemo(() => {
+    const map = new Map();
+    listVariantProfiles().forEach((profile) => {
+      if (profile.id) map.set(profile.id, profile);
+      if (profile.engineKey) map.set(profile.engineKey, profile);
+    });
+    return map;
+  }, []);
+  const friendVariants = useMemo(
+    () =>
+      enabledVariants.map((variant) =>
+        decorateFriendVariant(variant, variantProfilesByAppId, languageKey),
+      ),
+    [enabledVariants, languageKey, variantProfilesByAppId],
+  );
   const [variantId, setVariantId] = useState(enabledVariants[0]?.id ?? "badugi");
+  const [variantSearch, setVariantSearch] = useState("");
+  const [variantCategory, setVariantCategory] = useState(FRIEND_VARIANT_ALL_CATEGORY);
   const [seats, setSeats] = useState(4);
   const [stack, setStack] = useState(2000);
   const [smallBlind, setSmallBlind] = useState(10);
@@ -500,6 +593,21 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
     Boolean(createdRoom?.ownerId) &&
     (!p2pTableState.currentTurnPlayerId ||
       p2pTableState.currentTurnPlayerId === createdRoom.ownerId);
+  const normalizedVariantSearch = variantSearch.trim().toLowerCase();
+  const filteredVariants = useMemo(
+    () =>
+      friendVariants.filter((variant) => {
+        const matchesCategory =
+          variantCategory === FRIEND_VARIANT_ALL_CATEGORY ||
+          variant.category === variantCategory;
+        const matchesSearch =
+          !normalizedVariantSearch || variant.searchText.includes(normalizedVariantSearch);
+        return matchesCategory && matchesSearch;
+      }),
+    [friendVariants, normalizedVariantSearch, variantCategory],
+  );
+  const categoryLabels =
+    FRIEND_VARIANT_CATEGORY_LABELS[languageKey] ?? FRIEND_VARIANT_CATEGORY_LABELS.en;
 
   return (
     <div
@@ -526,16 +634,74 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
               <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">{copy.variant}</p>
               <h2 className="text-xl font-semibold text-white">{copy.chooseGame}</h2>
             </div>
-            <div className="space-y-3" role="radiogroup" aria-label="Game variant options">
-              {enabledVariants.map((variant) => (
-                <VariantOption
-                  key={variant.id}
-                  variant={variant}
-                  isSelected={variantId === variant.id}
-                  onSelect={setVariantId}
-                  copy={copy}
+            <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4 space-y-3">
+              <p className="text-xs uppercase tracking-[0.25em] text-emerald-300">
+                {copy.searchGame}
+              </p>
+              <div className="relative">
+                <input
+                  type="search"
+                  data-testid="friend-variant-search"
+                  value={variantSearch}
+                  onChange={(event) => setVariantSearch(event.target.value)}
+                  placeholder={copy.searchPlaceholder}
+                  className="w-full rounded-2xl border border-white/15 bg-slate-950/70 px-4 py-3 pr-16 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
-              ))}
+                {variantSearch ? (
+                  <button
+                    type="button"
+                    onClick={() => setVariantSearch("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 hover:text-emerald-200"
+                  >
+                    {copy.clearSearch}
+                  </button>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap gap-2" aria-label="Friend match variant categories">
+                {FRIEND_VARIANT_CATEGORY_ORDER.map((category) => (
+                  <button
+                    key={category}
+                    type="button"
+                    data-testid={`friend-variant-category-${category}`}
+                    onClick={() => setVariantCategory(category)}
+                    className={`rounded-full px-3 py-2 text-xs font-semibold transition ${
+                      category === variantCategory
+                        ? "bg-emerald-500 text-slate-950"
+                        : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                    }`}
+                  >
+                    {categoryLabels[category] ?? category}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-slate-400">
+                {copy.showingVariants(filteredVariants.length, friendVariants.length)}
+              </p>
+            </div>
+            <div
+              className="space-y-3"
+              role="radiogroup"
+              aria-label="Game variant options"
+              data-testid="friend-variant-options"
+            >
+              {filteredVariants.length > 0 ? (
+                filteredVariants.map((variant) => (
+                  <VariantOption
+                    key={variant.id}
+                    variant={variant}
+                    isSelected={variantId === variant.id}
+                    onSelect={setVariantId}
+                    copy={copy}
+                  />
+                ))
+              ) : (
+                <p
+                  data-testid="friend-variant-no-results"
+                  className="rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-100"
+                >
+                  {copy.noVariants}
+                </p>
+              )}
             </div>
           </section>
 

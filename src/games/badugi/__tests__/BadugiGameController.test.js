@@ -106,6 +106,50 @@ describe("BadugiGameController", () => {
     expect(snapshot.shouldAdvance).toBe(false);
   });
 
+  it("preserves CPU character avatar metadata across tournament next hands", () => {
+    const controller = new BadugiGameController({
+      numSeats: 3,
+      blindStructure: BLIND_STRUCTURE,
+      lastStructureIndex: BLIND_STRUCTURE.length - 1,
+    });
+    const prevPlayers = [
+      seatPlayer({ name: "Hero", stack: 500 }),
+      {
+        ...seatPlayer({ name: "Akira", stack: 500 }),
+        cpuCharacterId: "akira",
+        cpuStyle: "balanced",
+        avatar: "/characters/akira.png",
+        avatarUrl: "/characters/akira.png",
+        tournamentPlayerId: "cpu-akira",
+        tournamentSeatIndex: 1,
+      },
+      seatPlayer({ name: "Mina", stack: 500 }),
+    ];
+
+    const result = controller.startNewHand({
+      prevPlayers,
+      currentPlayers: prevPlayers,
+      numSeats: 3,
+      seatConfig: ["HUMAN", "CPU", "CPU"],
+      startingStack: 500,
+      heroProfile: { name: "Hero", avatar: "/characters/hero.png" },
+      nextDealerIdx: 0,
+      blindStructure: BLIND_STRUCTURE,
+      blindState: { blindLevelIndex: 0, handsInLevel: 0 },
+      lastStructureIndex: BLIND_STRUCTURE.length - 1,
+      drawCardsForSeat: () => [],
+    });
+
+    expect(result.players[1]).toMatchObject({
+      name: "Akira",
+      cpuCharacterId: "akira",
+      cpuStyle: "balanced",
+      avatar: "/characters/akira.png",
+      avatarUrl: "/characters/akira.png",
+      tournamentPlayerId: "cpu-akira",
+    });
+  });
+
   it("applyPlayerAction updates player state and pending turn", () => {
     const controller = createController();
     const { players } = controller.startNewHand({

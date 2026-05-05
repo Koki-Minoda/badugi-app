@@ -20,6 +20,28 @@ function splitHalfAmounts(amount) {
   return [Math.ceil(normalized / 2), Math.floor(normalized / 2)];
 }
 
+const COMPONENT_LABELS = {
+  badugi: "Badugi half",
+  low27: "2-7 Low half",
+  lowA5: "A-5 Low half",
+  archieHigh: "High half",
+  archieLow: "A-5 Low half",
+};
+
+function getComponentLabel(component) {
+  return COMPONENT_LABELS[component] ?? component;
+}
+
+function getComponentAmountDetails(amount, components = []) {
+  const componentAmounts = splitHalfAmounts(amount);
+  return components.map((component, componentIndex) => ({
+    component,
+    componentLabel: getComponentLabel(component),
+    amount: componentAmounts[componentIndex] ?? 0,
+    oddChipAmount: amount % 2 === 1 && componentIndex === 0 ? 1 : 0,
+  }));
+}
+
 function getActiveCardsFromBadugi(cards = []) {
   const evaluation = evaluateBadugiHand({ cards });
   return new Set(evaluation.metadata?.cards ?? []);
@@ -315,7 +337,7 @@ export class SpecialDrawEngine extends DeuceToSevenTripleDrawEngine {
     (working.pots ?? []).forEach((pot, potIndex) => {
       const potAmount = Math.max(0, pot.amount ?? 0);
       totalPot += potAmount;
-      const componentAmounts = splitHalfAmounts(potAmount);
+      const componentAmountDetails = getComponentAmountDetails(potAmount, components);
       const eligibleSeats = normalizePotEligibleSeats(pot, working.players).filter((seatIndex) => {
         const player = working.players[seatIndex];
         return player && !player.folded && !player.sittingOut;
@@ -329,7 +351,10 @@ export class SpecialDrawEngine extends DeuceToSevenTripleDrawEngine {
         ]),
       );
       const awardedAmounts = Object.fromEntries(
-        components.map((component, componentIndex) => [component, componentAmounts[componentIndex] ?? 0]),
+        componentAmountDetails.map((detail) => [detail.component, detail.amount]),
+      );
+      const oddChipByComponent = Object.fromEntries(
+        componentAmountDetails.map((detail) => [detail.component, detail.oddChipAmount]),
       );
       const qualifyingComponents = components.filter((component) => contendersByComponent[component]?.length);
 
@@ -356,12 +381,24 @@ export class SpecialDrawEngine extends DeuceToSevenTripleDrawEngine {
       components.forEach((component) => {
         const amount = awardedAmounts[component] ?? 0;
         const contenders = contendersByComponent[component] ?? [];
+        const componentLabel = getComponentLabel(component);
+        const oddChipAmount = oddChipByComponent[component] ?? 0;
+        const baseSummary = {
+          potIndex,
+          sourcePotIndex: pot.potIndex ?? potIndex,
+          component,
+          componentLabel,
+          label: componentLabel,
+          oddChipAmount,
+          oddChip: oddChipAmount > 0 ? { amount: oddChipAmount, component, componentLabel } : null,
+          eligibleSeatIndexes: [...eligibleSeats],
+        };
         if (!amount) {
-          summary.push({ potIndex, component, potAmount: 0, payouts: [], evaluations: contenders });
+          summary.push({ ...baseSummary, potAmount: 0, payouts: [], evaluations: contenders });
           return;
         }
         if (!contenders.length) {
-          summary.push({ potIndex, component, potAmount: amount, payouts: [], evaluations: contenders });
+          summary.push({ ...baseSummary, potAmount: amount, payouts: [], evaluations: contenders });
           return;
         }
         const best = contenders.reduce((currentBest, entry) => {
@@ -393,9 +430,10 @@ export class SpecialDrawEngine extends DeuceToSevenTripleDrawEngine {
             hand: Array.isArray(player.hand) ? [...player.hand] : [],
             evaluation,
             component,
+            componentLabel,
           };
         });
-        summary.push({ potIndex, component, potAmount: amount, payouts, evaluations: contenders });
+        summary.push({ ...baseSummary, potAmount: amount, payouts, evaluations: contenders });
       });
     });
 

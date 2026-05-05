@@ -470,7 +470,9 @@ export default function GameLayoutBase({
                     className={`pointer-events-none ${
                       isMobileLayout
                         ? "z-10 flex items-center justify-center"
-                        : "absolute left-1/2 top-[48%] z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1"
+                        : `absolute left-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1 ${
+                            boardCards.length > 0 ? "top-[58%]" : "top-[48%]"
+                          }`
                     }`}
                     style={isMobileLayout ? { gridArea: "pot" } : undefined}
                   >
@@ -489,11 +491,11 @@ export default function GameLayoutBase({
                   {boardCards.length > 0 && (
                     <div
                       className={`absolute left-1/2 z-20 flex -translate-x-1/2 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-black/35 px-3 py-2 shadow-xl backdrop-blur ${
-                        isMobileLayout ? "top-[44%]" : "top-[42%]"
+                        isMobileLayout ? "top-[44%]" : "top-[38%]"
                       }`}
                     >
                       {boardCards.map((card, idx) => (
-                        <Card key={`${card}-${idx}`} value={card} />
+                        <Card key={`${card}-${idx}`} value={card} data-testid={`board-card-${idx}`} />
                       ))}
                     </div>
                   )}

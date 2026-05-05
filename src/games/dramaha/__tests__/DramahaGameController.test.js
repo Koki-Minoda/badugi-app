@@ -110,13 +110,53 @@ describe("DramahaGameController", () => {
     expect(summary.potDetails).toHaveLength(2);
     expect(summary.potDetails[0]).toMatchObject({
       label: "Board half",
+      componentLabel: "Board half",
       winnerSeatIndexes: [0],
     });
     expect(summary.potDetails[1]).toMatchObject({
       label: "Draw half",
+      componentLabel: "Draw half",
       winnerSeatIndexes: [1],
     });
     expect(summary.winners.map((winner) => winner.payout)).toEqual([100, 100]);
+  });
+
+  it("marks Dramaha odd chips on the draw component", () => {
+    const controller = createController({
+      seats: [
+        { name: "Board", stack: 1000 },
+        { name: "Draw", stack: 1000 },
+        { name: "Third", stack: 1000 },
+      ],
+      variant: "dramaha_hi",
+    });
+    controller.startNewHand();
+    controller.state.street = "SHOWDOWN";
+    controller.state.boardCards = ["2C", "7D", "7H"];
+    controller.state.players = controller.state.players.map((player, idx) => ({
+      ...player,
+      folded: false,
+      seatOut: false,
+      holeCards: idx === 0
+        ? ["2S", "2D", "AS", "KD", "QC"]
+        : idx === 1
+        ? ["AH", "KH", "QH", "JH", "10H"]
+        : ["3S", "4D", "5C", "6H", "8S"],
+      totalInvested: 33,
+      stack: 0,
+    }));
+
+    const summary = controller.resolveShowdown();
+
+    expect(summary.pot).toBe(99);
+    expect(summary.potDetails.map((pot) => pot.amount)).toEqual([49, 50]);
+    expect(summary.potDetails[0]).toMatchObject({ component: "board", oddChipAmount: 0 });
+    expect(summary.potDetails[1]).toMatchObject({
+      component: "draw",
+      componentLabel: "Draw half",
+      oddChipAmount: 1,
+      oddChip: { amount: 1, component: "draw", componentLabel: "Draw half" },
+    });
   });
 
   it("keeps Dramaha side pots eligible before splitting board and draw halves", () => {

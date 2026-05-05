@@ -102,11 +102,20 @@ test.describe("Badugi MTT flow", () => {
     expect(sortedPlacements[2].payout).toBeGreaterThan(0);
     expect(sortedPlacements.slice(3).every((entry) => entry.payout === 0)).toBe(true);
 
+    const replay = await invokeE2E(page, "getTournamentReplay");
+    expect(replay).toBeTruthy();
+    expect(replay.config.name).toMatch(/Tournament/i);
+    expect(Array.isArray(replay.hands)).toBe(true);
+    expect(replay.hands.length).toBeGreaterThan(0);
+    expect(replay.finalState.placements).toHaveLength(totalEntrants);
+
     if (heroOverlayVisible) {
       const heroSummary = await heroOverlay
         .locator('[data-testid="mtt-hero-bust-hero-summary"]')
         .textContent();
       expect(heroSummary).toMatch(/You finished in \d+(st|nd|rd|th) place/);
+      await heroOverlay.getByRole("button", { name: /back to menu/i }).click();
+      await expect(page.getByTestId("menu-ring")).toBeVisible({ timeout: 20000 });
     } else {
       const overlay = await waitForTournamentOverlay(page);
       const rows = overlay.locator('[data-testid="mtt-result-row"]');
@@ -132,14 +141,9 @@ test.describe("Badugi MTT flow", () => {
       await expect(
         champion.locator('[data-testid="mtt-result-place"]'),
       ).toHaveText("1");
+      await overlay.getByRole("button", { name: /back to menu/i }).click();
+      await expect(page.getByTestId("menu-ring")).toBeVisible({ timeout: 20000 });
     }
-
-    const replay = await invokeE2E(page, "getTournamentReplay");
-    expect(replay).toBeTruthy();
-    expect(replay.config.name).toMatch(/Tournament/i);
-    expect(Array.isArray(replay.hands)).toBe(true);
-    expect(replay.hands.length).toBeGreaterThan(0);
-    expect(replay.finalState.placements).toHaveLength(totalEntrants);
   });
 
   test("Hero bust overlay shows in-the-money summary", async ({ page }) => {
@@ -154,5 +158,19 @@ test.describe("Badugi MTT flow", () => {
       .textContent();
     expect(heroText).toMatch(/You finished in \d+(st|nd|rd|th) place/);
     await overlay.getByRole("button", { name: /back to menu/i }).click();
+    await expect(page.getByTestId("menu-ring")).toBeVisible({ timeout: 20000 });
+  });
+
+  test("stage win E2E helper persists tournament and mode-unlock progress", async ({ page }) => {
+    await openGameSurface(page);
+    await waitForE2EHelper(page, "recordTournamentStageWin");
+    await invokeE2E(page, "recordTournamentStageWin", "store");
+
+    const progress = await page.evaluate(() => ({
+      tournament: JSON.parse(window.localStorage.getItem("progress.tournament") ?? "{}"),
+      player: JSON.parse(window.localStorage.getItem("playerProgress") ?? "{}"),
+    }));
+    expect(progress.tournament?.wins?.store).toBe(1);
+    expect(progress.player?.stageWins?.store).toBe(1);
   });
 });

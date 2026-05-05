@@ -34,6 +34,7 @@ export const APP_VARIANT_IDS = {
   S05: "badeucey_single_draw",
   S06: "badacey_single_draw",
   S07: "hidugi_single_draw",
+  CHINESE_POKER: "chinese_poker",
 };
 
 const VARIANT_ALIASES = new Map([
@@ -163,6 +164,13 @@ const VARIANT_ALIASES = new Map([
   ["hidugi_sd", APP_VARIANT_IDS.S07],
   ["hidugi-single-draw", APP_VARIANT_IDS.S07],
   ["hidugi_single_draw", APP_VARIANT_IDS.S07],
+  ["cp1", APP_VARIANT_IDS.CHINESE_POKER],
+  ["chinese", APP_VARIANT_IDS.CHINESE_POKER],
+  ["chinese_poker", APP_VARIANT_IDS.CHINESE_POKER],
+  ["chinese-poker", APP_VARIANT_IDS.CHINESE_POKER],
+  ["ofc", APP_VARIANT_IDS.CHINESE_POKER],
+  ["open_face_chinese", APP_VARIANT_IDS.CHINESE_POKER],
+  ["open-face-chinese", APP_VARIANT_IDS.CHINESE_POKER],
 ]);
 
 export const DRAW_LOWBALL_APP_VARIANTS = new Set([
@@ -211,6 +219,10 @@ export const STUD_APP_VARIANT_IDS = new Set([
   APP_VARIANT_IDS.RAZZDUCEY,
 ]);
 
+export const CHINESE_APP_VARIANT_IDS = new Set([
+  APP_VARIANT_IDS.CHINESE_POKER,
+]);
+
 export function normalizeAppVariantId(variantId, fallback = APP_VARIANT_IDS.BADUGI) {
   if (!variantId) return fallback;
   const key = String(variantId).trim().toLowerCase();
@@ -228,6 +240,7 @@ export function isControllerBackedAppVariant(variantId) {
     BOARD_APP_VARIANT_IDS.has(normalized) ||
     STUD_APP_VARIANT_IDS.has(normalized) ||
     DRAMAHA_APP_VARIANT_IDS.has(normalized) ||
-    DRAW_LOWBALL_APP_VARIANTS.has(normalized)
+    DRAW_LOWBALL_APP_VARIANTS.has(normalized) ||
+    CHINESE_APP_VARIANT_IDS.has(normalized)
   );
 }

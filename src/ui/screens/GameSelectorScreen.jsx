@@ -7,7 +7,7 @@ import { usePlayerProgress } from "../hooks/usePlayerProgress.js";
 import { computeUnlockState } from "../utils/playerProgress.js";
 import { designTokens } from "../../styles/designTokens.js";
 import { PRO_MIXED_PRESETS } from "../../config/mixed/proPresets.js";
-import { MGX_DEFAULT_LOCALE } from "../../config/mgxLocaleConfig.js";
+import { LANGUAGE_STORAGE_KEY, MGX_DEFAULT_LOCALE } from "../../config/mgxLocaleConfig.js";
 import variantJa from "../../i18n/variants.ja.json";
 
 const CATEGORY_ORDER = [
@@ -16,7 +16,10 @@ const CATEGORY_ORDER = [
   GAME_VARIANT_CATEGORIES.SINGLE_DRAW,
   GAME_VARIANT_CATEGORIES.DRAMAHA,
   GAME_VARIANT_CATEGORIES.STUD,
+  GAME_VARIANT_CATEGORIES.CHINESE,
 ];
+
+const DEFAULT_CATEGORY = GAME_VARIANT_CATEGORIES.TRIPLE_DRAW;
 
 const EN_CATEGORY_LABELS = Object.freeze({
   [GAME_VARIANT_CATEGORIES.BOARD]: "Board / Hold'em / Omaha",
@@ -24,6 +27,7 @@ const EN_CATEGORY_LABELS = Object.freeze({
   [GAME_VARIANT_CATEGORIES.SINGLE_DRAW]: "Single Draw",
   [GAME_VARIANT_CATEGORIES.DRAMAHA]: "Dramaha",
   [GAME_VARIANT_CATEGORIES.STUD]: "Stud",
+  [GAME_VARIANT_CATEGORIES.CHINESE]: "Chinese / OFC",
 });
 
 const JA_CATEGORY_LABELS = Object.freeze({
@@ -32,6 +36,7 @@ const JA_CATEGORY_LABELS = Object.freeze({
   [GAME_VARIANT_CATEGORIES.SINGLE_DRAW]: "シングルドロー",
   [GAME_VARIANT_CATEGORIES.DRAMAHA]: "ドラマハ",
   [GAME_VARIANT_CATEGORIES.STUD]: "スタッド",
+  [GAME_VARIANT_CATEGORIES.CHINESE]: "チャイニーズ / OFC",
 });
 
 const BETTING_LABELS = Object.freeze({
@@ -72,6 +77,11 @@ const MIXED_PRESET_JA = Object.freeze({
 
 function localizeBettingLabel(value, language) {
   return BETTING_LABELS[language]?.[value] ?? value;
+}
+
+function readStoredLanguage() {
+  if (typeof window === "undefined") return MGX_DEFAULT_LOCALE;
+  return window.localStorage.getItem(LANGUAGE_STORAGE_KEY) ?? MGX_DEFAULT_LOCALE;
 }
 
 function localizeVariantProfile(profile, language) {
@@ -189,12 +199,12 @@ function VariantCard({ profile, onLaunch, copy }) {
 }
 
 export default function GameSelectorScreen({
-  language = MGX_DEFAULT_LOCALE,
+  language = readStoredLanguage(),
   onBack = null,
   onLaunchVariant = null,
 }) {
   const navigate = useNavigate();
-  const [activeCategory, setActiveCategory] = useState(CATEGORY_ORDER[0]);
+  const [activeCategory, setActiveCategory] = useState(DEFAULT_CATEGORY);
   const [search, setSearch] = useState("");
   const playerProgress = usePlayerProgress();
   const unlockState = computeUnlockState(playerProgress);
@@ -338,14 +348,6 @@ export default function GameSelectorScreen({
     return allProfiles.filter((profile) => profile.category === activeCategory);
   }, [activeCategory, allProfiles, search]);
 
-  const playableProfiles = useMemo(
-    () =>
-      allProfiles
-        .filter((profile) => isControllerBackedAppVariant(profile.engineKey ?? profile.id))
-        .sort((a, b) => (a.priorityPhase ?? 99) - (b.priorityPhase ?? 99)),
-    [allProfiles],
-  );
-
   const advancedModes = useMemo(
     () => [
       {
@@ -428,25 +430,48 @@ export default function GameSelectorScreen({
       </header>
 
       <main className="max-w-6xl mx-auto px-6 pb-16 space-y-8">
-        <section className="rounded-3xl border border-emerald-400/25 bg-emerald-500/5 p-6 space-y-4">
-          <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-emerald-300">
-              {isJapanese ? "プレイ可能" : "Playable Now"}
-            </p>
-            <h2 className="text-2xl font-bold">
-              {isJapanese ? "すぐに開始できるゲーム" : "Start a Cash Game"}
-            </h2>
+        <section className="bg-slate-900/70 border border-white/10 rounded-3xl p-6 shadow-xl space-y-4">
+          <div className="relative">
+            <input
+              type="search"
+              placeholder={copy.search}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded-2xl bg-slate-950/60 border border-white/10 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            {search && (
+              <button
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"
+                onClick={() => setSearch("")}
+              >
+                {copy.clear}
+              </button>
+            )}
           </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            {playableProfiles.map((profile) => (
-              <VariantCard
-                key={`playable-${profile.id}`}
-                profile={profile}
-                onLaunch={handleLaunch}
-                copy={copy}
-              />
+          <div className="flex flex-wrap gap-3">
+            {CATEGORY_ORDER.map((category) => (
+              <button
+                key={category}
+                onClick={() => setActiveCategory(category)}
+                className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
+                  category === activeCategory
+                    ? "bg-emerald-500 text-slate-900"
+                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                }`}
+              >
+                {copy.categoryLabels[category]}
+              </button>
             ))}
           </div>
+          <p className="text-xs text-slate-400">
+            {copy.showing(variants.length)}
+          </p>
+        </section>
+
+        <section className="grid gap-4 md:grid-cols-2">
+          {variants.map((profile) => (
+            <VariantCard key={profile.id} profile={profile} onLaunch={handleLaunch} copy={copy} />
+          ))}
         </section>
 
         <section className="grid gap-4 lg:grid-cols-3">
@@ -511,50 +536,6 @@ export default function GameSelectorScreen({
           ))}
         </section>
 
-        <section className="bg-slate-900/70 border border-white/10 rounded-3xl p-6 shadow-xl space-y-4">
-          <div className="flex flex-wrap gap-3">
-            {CATEGORY_ORDER.map((category) => (
-              <button
-                key={category}
-                onClick={() => setActiveCategory(category)}
-                className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
-                  category === activeCategory
-                    ? "bg-emerald-500 text-slate-900"
-                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                }`}
-              >
-                {copy.categoryLabels[category]}
-              </button>
-            ))}
-          </div>
-
-          <div className="relative">
-            <input
-              type="search"
-              placeholder={copy.search}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-2xl bg-slate-950/60 border border-white/10 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-            {search && (
-              <button
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"
-                onClick={() => setSearch("")}
-              >
-                {copy.clear}
-              </button>
-            )}
-          </div>
-          <p className="text-xs text-slate-400">
-            {copy.showing(variants.length)}
-          </p>
-        </section>
-
-        <section className="grid gap-4 md:grid-cols-2">
-          {variants.map((profile) => (
-            <VariantCard key={profile.id} profile={profile} onLaunch={handleLaunch} copy={copy} />
-          ))}
-        </section>
       </main>
     </div>
   );

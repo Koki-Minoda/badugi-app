@@ -14,12 +14,20 @@
     "ai:verify-models": "node scripts/verifyAiModelAssets.mjs",
     "ai:install-models": "node scripts/installAiModelAssets.mjs",
     "ai:build-bootstrap-models": "node scripts/runPythonTool.mjs src/rl/training/build_badugi_bootstrap_onnx.py",
+    "ai:build-draw-bootstrap-models": "node scripts/runPythonTool.mjs src/rl/training/build_draw_bootstrap_onnx.py",
+    "ai:evaluate-draw-onnx": "node scripts/runPythonTool.mjs src/rl/training/evaluate_draw_onnx.py",
     "ai:train-badugi": "node scripts/runPythonTool.mjs src/rl/training/train_dqn.py",
     "ai:export-badugi-onnx": "node scripts/runPythonTool.mjs src/rl/training/export_badugi_dqn_onnx.py",
     "ai:evaluate-badugi-onnx": "node scripts/runPythonTool.mjs src/rl/training/evaluate_badugi_onnx.py",
     "ai:gate-badugi-model": "node scripts/runPythonTool.mjs src/rl/training/gate_badugi_model.py",
     "ai:benchmark-badugi-human-practice": "node scripts/runPythonTool.mjs src/rl/training/benchmark_badugi_human_practice.py",
-    "ai:evaluate-badugi-checkpoints": "node scripts/runPythonTool.mjs src/rl/training/evaluate_badugi_checkpoints.py"
+    "ai:evaluate-badugi-checkpoints": "node scripts/runPythonTool.mjs src/rl/training/evaluate_badugi_checkpoints.py",
+    "ai:train-draw": "node scripts/runPythonTool.mjs src/rl/training/train_draw_dqn.py",
+    "ai:export-draw-onnx": "node scripts/runPythonTool.mjs src/rl/training/export_draw_dqn_onnx.py",
+    "ai:train-board": "node scripts/runPythonTool.mjs src/rl/training/train_board_dqn.py",
+    "ai:export-board-onnx": "node scripts/runPythonTool.mjs src/rl/training/export_board_dqn_onnx.py",
+    "ai:evaluate-board-onnx": "node scripts/runPythonTool.mjs src/rl/training/evaluate_board_onnx.py",
+    "ai:benchmark-board-human-practice": "node scripts/runPythonTool.mjs src/rl/training/benchmark_board_human_practice.py"
   },
   "dependencies": {
     "onnxruntime-web": "^1.18.0",

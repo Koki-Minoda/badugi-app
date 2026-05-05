@@ -4,6 +4,7 @@ import LegacyBadugiController from "../BadugiGameController.js";
 import { analyzeBetSnapshot } from "../flow/betRoundUtils.js";
 import {
   maxBetThisRound,
+  nextAliveFrom,
   isFoldedOrOut,
   findNextDrawActorSeat,
   isSeatEligibleForDraw,
@@ -204,6 +205,7 @@ export class BadugiGameController extends GameController {
       lastAggressorIdx: this.legacy.state.lastAggressorIdx,
     });
     if (advanceSnapshot?.shouldAdvance) {
+      this._finishBetRound();
       events.push({ type: "betRoundComplete" });
     }
     const nextState = this._buildControllerState({
@@ -306,6 +308,7 @@ export class BadugiGameController extends GameController {
 
     const events = [];
     if (nextSeat == null) {
+      this._finishDrawRound(players, dealerIdx);
       events.push({ type: "drawRoundComplete" });
     } else {
       events.push({ type: "turnChanged", seatIndex: nextSeat });
@@ -332,6 +335,98 @@ export class BadugiGameController extends GameController {
       return Math.max(0, actor.lastDrawCount);
     }
     return 0;
+  }
+
+  _finishBetRound() {
+    const players = (this.legacy.state.players ?? []).map((player) => ({
+      ...player,
+      betThisRound: 0,
+      hasActedThisRound: Boolean(player.folded || player.seatOut || player.allIn),
+    }));
+    this.legacy.state.players = players;
+    this.legacy.state.currentBet = 0;
+    this.legacy.state.betHead = null;
+    this.legacy.state.lastAggressorIdx = null;
+    this.legacy.state.raiseCountThisRound = 0;
+    if ((this.legacy.state.drawRound ?? 0) >= 3) {
+      this.legacy.state.phase = "SHOWDOWN";
+      this.legacy.state.turn = null;
+      this.legacy.state.nextTurn = null;
+      this._resolveShowdownAndApplyPayouts();
+      return;
+    }
+
+    this.legacy.state.phase = "DRAW";
+    const dealerIdx = this.legacy.state.dealerIdx ?? 0;
+    const nextTurn = findNextDrawableSeat(players, { dealerIdx });
+    this.legacy.state.turn = nextTurn;
+    this.legacy.state.nextTurn = nextTurn;
+    if (nextTurn == null) {
+      this._finishDrawRound(players, dealerIdx);
+    }
+  }
+
+  _finishDrawRound(players = [], dealerIdx = 0) {
+    const currentDrawRound = this.legacy.state.drawRound ?? 0;
+    if (currentDrawRound >= 3) {
+      this.legacy.state.phase = "SHOWDOWN";
+      this.legacy.state.turn = null;
+      this.legacy.state.nextTurn = null;
+      this._resolveShowdownAndApplyPayouts();
+      return;
+    }
+
+    const nextPlayers = players.map((player) => ({
+      ...player,
+      betThisRound: 0,
+      hasActedThisRound: Boolean(player.folded || player.seatOut || player.allIn),
+      hasDrawn: false,
+    }));
+    this.legacy.state.players = nextPlayers;
+    this.legacy.state.phase = "BET";
+    this.legacy.state.drawRound = currentDrawRound + 1;
+    this.legacy.state.currentBet = 0;
+    this.legacy.state.betHead = null;
+    this.legacy.state.lastAggressorIdx = null;
+    this.legacy.state.raiseCountThisRound = 0;
+    const nextTurn = nextAliveFrom(nextPlayers, dealerIdx);
+    this.legacy.state.turn = nextTurn;
+    this.legacy.state.nextTurn = nextTurn;
+    if (nextTurn == null) {
+      this._finishBetRound();
+    }
+  }
+
+  _resolveShowdownAndApplyPayouts() {
+    const players = this.legacy.state.players ?? [];
+    const contenders = players.filter((player) => player && !player.folded && !player.seatOut);
+    const winners = getWinnersByBadugi(contenders).filter(
+      (winner) => typeof winner.seatIndex === "number",
+    );
+    const totalPot = players.reduce(
+      (sum, player) => sum + Math.max(0, Number(player?.totalInvested) || 0),
+      0,
+    );
+    const basePayout = winners.length ? Math.floor(totalPot / winners.length) : 0;
+    let remainder = winners.length ? totalPot - basePayout * winners.length : 0;
+    const payouts = winners
+      .sort((left, right) => left.seatIndex - right.seatIndex)
+      .map((winner) => {
+        const extra = remainder > 0 ? 1 : 0;
+        remainder -= extra;
+        const payout = basePayout + extra;
+        const player = players[winner.seatIndex];
+        if (player) {
+          player.stack = Math.max(0, Number(player.stack) || 0) + payout;
+        }
+        return { ...winner, payout };
+      });
+    this.legacy.resolveShowdown({
+      players,
+      summary: [{ potIndex: 0, potAmount: totalPot, payouts }],
+      totalPot,
+      handId: this.legacy.state.handId,
+    });
   }
 
   _buildControllerState({ handIndex, context, overrideSnapshot = null }) {

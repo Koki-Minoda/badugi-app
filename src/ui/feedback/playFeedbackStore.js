@@ -40,6 +40,7 @@ export function savePlayFeedbackResult({ payload, response }) {
     tournamentId: payload.summary?.tournament?.tournamentId ?? null,
     summary: payload.summary ?? null,
     keyHands: Array.isArray(payload.keyHands) ? payload.keyHands : [],
+    replayLinks: Array.isArray(payload.replayLinks) ? payload.replayLinks : [],
     response,
   };
   const next = [entry, ...readResults().filter((item) => item.id !== entry.id)];

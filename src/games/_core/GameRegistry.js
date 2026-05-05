@@ -1,4 +1,5 @@
 import BadugiGameDefinition from "../badugi/BadugiGameDefinition";
+import ChinesePokerGameDefinition from "../chinese/ChinesePokerGameDefinition.js";
 import { DRAMAHA_DEFINITIONS } from "../dramaha/DramahaVariants.js";
 import FLHGameDefinition from "../nlh/FLHGameDefinition.js";
 import FLSuperHoldemGameDefinition from "../nlh/FLSuperHoldemGameDefinition.js";
@@ -47,6 +48,7 @@ class GameRegistryClass {
 
 const registry = new GameRegistryClass();
 registry.register(BadugiGameDefinition);
+registry.register(ChinesePokerGameDefinition);
 registry.register(NLHGameDefinition);
 registry.register(FLHGameDefinition);
 registry.register(SuperHoldemGameDefinition);

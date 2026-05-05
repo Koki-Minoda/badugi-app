@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { selectModelForVariant } from "../modelRouter.js";
 import {
+  buildBoardBetOnnxFeatures,
   buildBadugiOnnxFeatures,
   buildDrawOnnxFeatures,
   buildDeterministicSafeDecision,
@@ -82,11 +83,35 @@ describe("onnxPolicyAdapter Badugi schema", () => {
   });
 
   it("builds exact-shape draw ONNX feature tensors and selects variant models", () => {
+    expect(selectModelForVariant({ variantId: "D01", tierId: "beginner" })?.id).toBe(
+      "model-27draw-beginner-dqn-v1",
+    );
+    expect(selectModelForVariant({ variantId: "D01", tierId: "standard" })?.id).toBe(
+      "model-27draw-standard-dqn-v1",
+    );
+    expect(selectModelForVariant({ variantId: "D01", tierId: "pro" })?.id).toBe(
+      "model-27draw-pro-dqn-v1",
+    );
     expect(selectModelForVariant({ variantId: "D01", tierId: "iron" })?.id).toBe(
       "model-27draw-iron-v1",
     );
+    expect(selectModelForVariant({ variantId: "S01", tierId: "standard" })?.id).toBe(
+      "model-27draw-standard-dqn-v1",
+    );
+    expect(selectModelForVariant({ variantId: "D02", tierId: "beginner" })?.id).toBe(
+      "model-a5draw-beginner-dqn-v1",
+    );
+    expect(selectModelForVariant({ variantId: "D02", tierId: "standard" })?.id).toBe(
+      "model-a5draw-standard-dqn-v1",
+    );
+    expect(selectModelForVariant({ variantId: "D02", tierId: "pro" })?.id).toBe(
+      "model-a5draw-pro-dqn-v1",
+    );
     expect(selectModelForVariant({ variantId: "D02", tierId: "iron" })?.id).toBe(
       "model-a5draw-iron-v1",
+    );
+    expect(selectModelForVariant({ variantId: "S02", tierId: "standard" })?.id).toBe(
+      "model-a5draw-standard-dqn-v1",
     );
     const entry = selectModelForVariant({ variantId: "D01", tierId: "iron" });
     const tensor = buildDrawOnnxFeatures(entry, {
@@ -101,6 +126,45 @@ describe("onnxPolicyAdapter Badugi schema", () => {
 
     expect(tensor).toBeInstanceOf(Float32Array);
     expect(tensor).toHaveLength(96);
+  });
+
+  it("builds exact-shape board betting tensors and selects board DQN models", () => {
+    expect(selectModelForVariant({ variantId: "B01", tierId: "beginner" })?.id).toBe(
+      "model-nlh-beginner-dqn-v1",
+    );
+    expect(selectModelForVariant({ variantId: "B01", tierId: "standard" })?.id).toBe(
+      "model-nlh-standard-dqn-v1",
+    );
+    expect(selectModelForVariant({ variantId: "B02", tierId: "standard" })?.id).toBe(
+      "model-flh-standard-dqn-v1",
+    );
+    expect(selectModelForVariant({ variantId: "B05", tierId: "standard" })?.id).toBe(
+      "model-plo-standard-dqn-v1",
+    );
+    expect(selectModelForVariant({ variantId: "B06", tierId: "standard" })?.id).toBe(
+      "model-plo8-standard-dqn-v1",
+    );
+
+    const entry = selectModelForVariant({ variantId: "B06", tierId: "standard" });
+    const tensor = buildBoardBetOnnxFeatures(entry, {
+      variantId: "B06",
+      toCall: 40,
+      betSize: 40,
+      potSize: 180,
+      strength: 0.68,
+      equity: 0.58,
+      drawPotential: 0.35,
+      positionIndex: 4,
+      tableSize: 6,
+      streetIndex: 2,
+      activeOpponents: 3,
+      actor: { stack: 500 },
+    });
+
+    expect(tensor).toBeInstanceOf(Float32Array);
+    expect(tensor).toHaveLength(16);
+    expect(tensor[10]).toBe(1);
+    expect(tensor[11]).toBe(1);
   });
 
   it("fails fast on invalid ONNX shape and exposes fallback priority", () => {

@@ -146,6 +146,9 @@ export class DramahaGameController extends NLHGameController {
       this.state.currentActor = null;
     }
     this.state.street = nextStreet;
+    if (nextStreet === "SHOWDOWN") {
+      this.resolveShowdown();
+    }
     return this.getSnapshot();
   }
 
@@ -209,17 +212,24 @@ export class DramahaGameController extends NLHGameController {
     const allPayouts = [];
     const potDetails = [];
     potsToResolve.forEach((pot, sourcePotIndex) => {
+      const boardAmount = Math.floor(pot.amount / 2);
+      const drawAmount = pot.amount - boardAmount;
+      const oddChipAmount = pot.amount % 2 === 1 ? 1 : 0;
       const componentAmounts = [
         {
           component: "board",
+          componentLabel: "Board half",
           label: "Board half",
-          amount: Math.floor(pot.amount / 2),
+          amount: boardAmount,
+          oddChipAmount: 0,
           compare: compareDramahaBoard,
         },
         {
           component: "draw",
+          componentLabel: "Draw half",
           label: "Draw half",
-          amount: pot.amount - Math.floor(pot.amount / 2),
+          amount: drawAmount,
+          oddChipAmount,
           compare: compareDramahaDraw,
         },
       ];
@@ -240,9 +250,18 @@ export class DramahaGameController extends NLHGameController {
           potIndex: potDetails.length,
           sourcePotIndex: pot.potIndex ?? sourcePotIndex,
           component: component.component,
+          componentLabel: component.componentLabel,
           label: sourcePotIndex === 0 ? component.label : `Side ${sourcePotIndex} ${component.label}`,
           amount: component.amount,
           potAmount: component.amount,
+          oddChipAmount: component.oddChipAmount,
+          oddChip: component.oddChipAmount > 0
+            ? {
+                amount: component.oddChipAmount,
+                component: component.component,
+                componentLabel: component.componentLabel,
+              }
+            : null,
           eligibleSeatIndexes: [...(pot.eligibleSeatIndexes ?? [])],
           winnerSeatIndexes: payouts.map((winner) => winner.player.seatIndex),
           winners: payouts.map((winner) => ({
@@ -250,6 +269,8 @@ export class DramahaGameController extends NLHGameController {
             name: winner.player.name,
             payout: winner.payout,
             evaluation: winner.evaluation,
+            component: component.component,
+            componentLabel: component.componentLabel,
             boardWin: component.component === "board",
             drawWin: component.component === "draw",
           })),
@@ -269,6 +290,7 @@ export class DramahaGameController extends NLHGameController {
     const summary = {
       handId: this.state.handId,
       board: [...this.state.boardCards],
+      pot: resolvedPot,
       totalPot: resolvedPot,
       splitMode: "boardAndDraw",
       winners,

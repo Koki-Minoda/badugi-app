@@ -16,6 +16,7 @@ const EXPECTED_COUNTS = Object.freeze({
   [GAME_VARIANT_CATEGORIES.SINGLE_DRAW]: 7,
   [GAME_VARIANT_CATEGORIES.DRAMAHA]: 6,
   [GAME_VARIANT_CATEGORIES.STUD]: 6,
+  [GAME_VARIANT_CATEGORIES.CHINESE]: 1,
 });
 
 describe("variantCatalog", () => {
@@ -25,7 +26,7 @@ describe("variantCatalog", () => {
       expect(ids.has(variant.id)).toBe(false);
       ids.add(variant.id);
     });
-    expect(ids.size).toBe(35);
+    expect(ids.size).toBe(36);
   });
 
   it("maintains expected counts per category", () => {
@@ -40,6 +41,15 @@ describe("variantCatalog", () => {
     expect(badugi).not.toBeNull();
     expect(badugi.status).toBe("live");
     expect(badugi.regenerationEligible).toBe(false);
+  });
+
+  it("registers Chinese Poker as a live controller-backed variant", () => {
+    expect(getVariantById("CP1")).toMatchObject({
+      category: GAME_VARIANT_CATEGORIES.CHINESE,
+      status: "live",
+      engineKey: "chinese_poker",
+      holeCards: 13,
+    });
   });
 
   it("marks implemented lowball draw variants as wip with engine keys", () => {
@@ -71,13 +81,13 @@ describe("variantCatalog", () => {
   it("produces engine template context", () => {
     const ctx = getEngineTemplateContext("D04");
     expect(ctx).toMatchObject({
-      engineId: "d04",
+      engineId: "badeucey_triple_draw",
       category: GAME_VARIANT_CATEGORIES.TRIPLE_DRAW,
-      holeCards: 4,
+      holeCards: 5,
       drawRounds: 3,
     });
     expect(Array.isArray(ctx.evaluators)).toBe(true);
-    expect(ctx.implemented).toBe(false);
+    expect(ctx.implemented).toBe(true);
   });
 
   it("lists phase variants without duplicates", () => {

@@ -7,6 +7,7 @@ export const GAME_VARIANT_CATEGORIES = Object.freeze({
   SINGLE_DRAW: "single-draw",
   DRAMAHA: "dramaha",
   STUD: "stud",
+  CHINESE: "chinese",
 });
 
 export const BETTING_STRUCTURES = Object.freeze({
@@ -26,6 +27,7 @@ export const EVALUATOR_TAGS = Object.freeze({
   SPLIT_BADUGI_A5: "split-badugi-a5",
   ARCHIE: "archie",
   ZERO: "zero",
+  CHINESE_HIGH: "chinese-high",
 });
 
 export const EVALUATOR_DEFINITIONS = Object.freeze({
@@ -68,6 +70,10 @@ export const EVALUATOR_DEFINITIONS = Object.freeze({
   [EVALUATOR_TAGS.ZERO]: {
     label: "Zero Hand",
     description: "Dramaha variant scoring towards zero total.",
+  },
+  [EVALUATOR_TAGS.CHINESE_HIGH]: {
+    label: "Chinese Poker",
+    description: "Three-row Chinese Poker scoring with foul and royalty rules.",
   },
 });
 

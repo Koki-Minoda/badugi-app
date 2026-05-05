@@ -125,10 +125,12 @@ export class BadugiGameController {
     this.state.handsInLevel = nextHandState.handsInLevel;
     this.state.betHead = nextHandState.resolvedTurn;
     this.state.nextTurn = nextHandState.resolvedTurn;
+    this.state.turn = nextHandState.resolvedTurn;
     this.state.lastAggressorIdx = nextHandState.bbIdx ?? null;
     this.state.currentBet = nextHandState.initialCurrentBet ?? 0;
     this.state.drawRound = 0;
     this.state.phase = "BET";
+    this.state.lastHandResult = null;
     this.state.raiseCountThisRound = 0;
     this.config.betSize = nextHandState.blindValues?.bb ?? this.config.betSize;
 
@@ -240,6 +242,7 @@ export class BadugiGameController {
       typeof lastAggressorIdx === "number" ? lastAggressorIdx : this.state.lastAggressorIdx;
     this.state.drawRound = drawRound;
     this.state.nextTurn = snapshot.nextTurn ?? null;
+    this.state.turn = snapshot.nextTurn ?? null;
     if (snapshot?.shouldAdvance) {
       this.state.raiseCountThisRound = 0;
     }

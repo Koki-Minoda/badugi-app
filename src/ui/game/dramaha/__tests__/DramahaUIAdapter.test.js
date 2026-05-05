@@ -13,6 +13,26 @@ describe("DramahaUIAdapter", () => {
     expect(adapter.formatStreetLabel("FINAL")).toBe("Final Bet");
   });
 
+  it("exposes Dramaha draw street as a DRAW action phase", () => {
+    const adapter = new DramahaUIAdapter();
+
+    const props = adapter.buildViewProps({
+      controllerSnapshot: {
+        street: "DRAW",
+        currentActor: 0,
+        players: [
+          { name: "Hero", stack: 100, holeCards: ["AS", "2D", "3C", "4H", "5S"] },
+          { name: "CPU", stack: 100, holeCards: ["KS", "QD", "JC", "10H", "9S"] },
+        ],
+      },
+      tableConfig: {},
+    });
+
+    expect(props.tablePhase).toBe("DRAW");
+    expect(props.controlsConfig.phase).toBe("DRAW");
+    expect(props.controlsConfig.isHeroTurn).toBe(true);
+  });
+
   it("registers all Dramaha app variants", () => {
     clearGameUIAdapters();
     ensureDramahaUIAdaptersRegistered();

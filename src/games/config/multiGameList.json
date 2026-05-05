@@ -952,5 +952,29 @@
         "priorityPhase":  4,
         "status":  "live",
         "engineKey":  "razz27"
+    },
+    {
+        "id":  "CP1",
+        "name":  "Chinese Poker",
+        "category":  "chinese",
+        "holeCards":  13,
+        "drawRounds":  0,
+        "board":  null,
+        "betting":  "points",
+        "evaluators":  [
+                           "chinese-high"
+                       ],
+        "features":  [
+                         "front-middle-back",
+                         "royalties",
+                         "foul"
+                     ],
+        "tags":  [
+                     "chinese",
+                     "ofc"
+                 ],
+        "priorityPhase":  5,
+        "status":  "live",
+        "engineKey":  "chinese_poker"
     }
 ]

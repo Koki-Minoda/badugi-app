@@ -36,4 +36,46 @@ describe("ShowdownResultToast", () => {
     render(<ShowdownResultToast visible summary={{ pot: 0, winners: [] }} />);
     expect(screen.queryByTestId("showdown-result-toast")).toBeNull();
   });
+
+  it("summarizes component pots for split draw and Dramaha results", () => {
+    const summary = {
+      pot: 101,
+      potDetails: [
+        {
+          potIndex: 0,
+          sourcePotIndex: 0,
+          component: "badugi",
+          componentLabel: "Badugi half",
+          potAmount: 51,
+          winners: [{ name: "Badugi Winner" }],
+        },
+        {
+          potIndex: 1,
+          sourcePotIndex: 0,
+          component: "lowA5",
+          componentLabel: "A-5 Low half",
+          potAmount: 50,
+          winners: [{ name: "Low Winner" }],
+        },
+        {
+          potIndex: 2,
+          sourcePotIndex: 1,
+          component: "draw",
+          componentLabel: "Draw half",
+          potAmount: 25,
+          winners: [{ name: "Side Draw" }],
+        },
+      ],
+    };
+
+    expect(buildShowdownToastItems(summary).map((item) => item.label)).toEqual([
+      "Pot · Badugi half",
+      "Pot · A-5 Low half",
+      "Side · Draw half",
+    ]);
+
+    render(<ShowdownResultToast visible summary={summary} />);
+    expect(screen.getByTestId("showdown-result-toast").textContent).toContain("Badugi half");
+    expect(screen.getByTestId("showdown-result-toast").textContent).toContain("A-5 Low half");
+  });
 });

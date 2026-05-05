@@ -44,6 +44,7 @@ function buildPlayerFromSeat(seat, idx) {
     totalInvested: seat?.totalInvested ?? 0,
     betThisStreet: 0,
     folded: false,
+    hasFolded: false,
     allIn: seat?.stack <= 0,
     seatOut: seat?.seatOut ?? false,
     holeCards: [],
@@ -80,9 +81,11 @@ const SUIT_BRING_IN_ORDER = {
   S: 4,
 };
 
-function parseRankValue(card) {
+function parseRankValue(card, { aceLow = false } = {}) {
   const rank = String(card ?? "").slice(0, -1).toUpperCase();
-  return CARD_RANK_ORDER[rank === "10" ? "T" : rank] ?? 0;
+  const normalizedRank = rank === "10" ? "T" : rank;
+  if (aceLow && normalizedRank === "A") return 1;
+  return CARD_RANK_ORDER[normalizedRank] ?? 0;
 }
 
 function parseSuitValue(card) {
@@ -120,6 +123,7 @@ export class StudGameController {
       lastHandResult: null,
       bringInIndex: null,
       bringInAmount: 0,
+      completeAmount: 0,
     };
   }
 
@@ -128,18 +132,44 @@ export class StudGameController {
   }
 
   syncExternalState(partial = {}) {
-    if (partial.players) {
-      this.state.players = partial.players.map(clonePlayer);
+    const sanitizedPartial = Object.fromEntries(
+      Object.entries(partial ?? {}).filter(([, value]) => value !== undefined),
+    );
+    const isActiveStudHand =
+      this.state.street &&
+      this.state.street !== "IDLE" &&
+      this.state.street !== "SHOWDOWN";
+    const isLegacyUiBetSync =
+      isActiveStudHand &&
+      !Object.prototype.hasOwnProperty.call(sanitizedPartial, "street") &&
+      (Object.prototype.hasOwnProperty.call(sanitizedPartial, "phase") ||
+        Object.prototype.hasOwnProperty.call(sanitizedPartial, "drawRound") ||
+        Object.prototype.hasOwnProperty.call(sanitizedPartial, "turn"));
+
+    if (isLegacyUiBetSync) {
+      delete sanitizedPartial.currentBet;
+      delete sanitizedPartial.bringInIndex;
+      delete sanitizedPartial.bringInAmount;
+      delete sanitizedPartial.completeAmount;
     }
-    this.state = { ...this.state, ...partial };
+    if (sanitizedPartial.players) {
+      this.state.players = sanitizedPartial.players.map((player, idx) => ({
+        ...clonePlayer(player),
+        seatIndex: player?.seatIndex ?? idx,
+      }));
+    }
+    this.state = { ...this.state, ...sanitizedPartial };
   }
 
   get blinds() {
     const blinds = this.config.tableConfig?.blinds ?? {};
+    const sb = Number(blinds.sb);
+    const bb = Number(blinds.bb);
+    const ante = Number(blinds.ante);
     return {
-      sb: blinds.sb ?? 1,
-      bb: blinds.bb ?? 2,
-      ante: blinds.ante ?? 1,
+      sb: Number.isFinite(sb) && sb > 0 ? sb : 1,
+      bb: Number.isFinite(bb) && bb > 0 ? bb : 2,
+      ante: Number.isFinite(ante) && ante >= 0 ? ante : 1,
     };
   }
 
@@ -148,6 +178,7 @@ export class StudGameController {
   }
 
   getSnapshot() {
+    this.ensureThirdStreetBringIn();
     return {
       ...this.state,
       phase: this.state.street === "SHOWDOWN" ? "SHOWDOWN" : "BET",
@@ -158,6 +189,7 @@ export class StudGameController {
       pots: [{ amount: this.calculatePot(), potAmount: this.calculatePot() }],
       bringInIndex: this.state.bringInIndex,
       bringInAmount: this.state.bringInAmount,
+      completeAmount: this.state.completeAmount,
     };
   }
 
@@ -180,12 +212,16 @@ export class StudGameController {
     this.state.handId = handId ?? `${this.variant}-hand-${this.handCounter}`;
     this.resetDeck();
     this.raiseCountThisStreet = 0;
-    const players = this.state.players.map((player) => ({
+    const players = this.state.players.map((player, idx) => ({
       ...player,
+      seatIndex: player.seatIndex ?? idx,
+      totalInvested: 0,
       betThisStreet: 0,
       folded: player.stack <= 0 || player.seatOut,
+      hasFolded: false,
       allIn: player.stack <= 0,
       hasActedThisStreet: false,
+      hasActedThisRound: false,
       lastAction: "",
       holeCards: [],
       upCards: [],
@@ -212,9 +248,34 @@ export class StudGameController {
     this.state.dealerIndex = this.nextOccupiedSeat(this.state.dealerIndex, { players, allowSame: false }) ?? 0;
     this.state.bringInIndex = bringInIndex;
     this.state.bringInAmount = bringInAmount;
+    this.state.completeAmount = this.getLimitUnit();
     this.state.currentActor = this.nextActiveSeat(bringInIndex ?? this.state.dealerIndex, players);
+    this.state.lastHandResult = null;
     this.state.pot = this.calculatePot(players);
     return this.getSnapshot();
+  }
+
+  ensureThirdStreetBringIn() {
+    if (this.state.street !== "THIRD") return false;
+    const players = this.state.players ?? [];
+    const hasPostedStreetBet = players.some((player) => (Number(player?.betThisStreet) || 0) > 0);
+    if ((Number(this.state.currentBet) || 0) > 0 || hasPostedStreetBet) return false;
+    const bringInIndex = this.findBringInSeat(players);
+    if (bringInIndex == null) return false;
+    const player = players[bringInIndex];
+    const bringInAmount = Math.min(this.blinds.sb, Number(player?.stack) || 0);
+    if (!(bringInAmount > 0)) return false;
+    this.commitChips(player, bringInAmount);
+    player.lastAction = `Bring-in ${bringInAmount}`;
+    player.hasActedThisStreet = true;
+    this.state.players[bringInIndex] = { ...player };
+    this.state.currentBet = bringInAmount;
+    this.state.bringInIndex = bringInIndex;
+    this.state.bringInAmount = bringInAmount;
+    this.state.completeAmount = this.getLimitUnit();
+    this.state.currentActor = this.nextActiveSeat(bringInIndex, this.state.players);
+    this.state.pot = this.calculatePot(this.state.players);
+    return true;
   }
 
   dealInitialStudCards(players) {
@@ -245,9 +306,10 @@ export class StudGameController {
   findBringInSeat(players = this.state.players) {
     const candidates = players
       .filter((player) => player && !player.folded && !player.seatOut && !player.allIn && player.upCards?.[0])
-      .map((player) => ({
+      .map((player, idx) => ({
         player,
-        rank: parseRankValue(player.upCards[0]),
+        seatIndex: player.seatIndex ?? idx,
+        rank: parseRankValue(player.upCards[0], { aceLow: this.isLowStudVariant }),
         suit: parseSuitValue(player.upCards[0]),
       }));
     if (!candidates.length) return null;
@@ -259,7 +321,7 @@ export class StudGameController {
       if (a.rank !== b.rank) return a.rank - b.rank;
       return a.suit - b.suit;
     });
-    return candidates[0].player.seatIndex;
+    return candidates[0].seatIndex;
   }
 
   commitChips(player, amount) {
@@ -298,8 +360,12 @@ export class StudGameController {
   compareExposedBoards(a, b) {
     const aCards = Array.isArray(a?.upCards) ? a.upCards : [];
     const bCards = Array.isArray(b?.upCards) ? b.upCards : [];
-    const aRanks = aCards.map(parseRankValue).sort((left, right) => right - left);
-    const bRanks = bCards.map(parseRankValue).sort((left, right) => right - left);
+    const aRanks = aCards
+      .map((card) => parseRankValue(card, { aceLow: this.isLowStudVariant }))
+      .sort((left, right) => right - left);
+    const bRanks = bCards
+      .map((card) => parseRankValue(card, { aceLow: this.isLowStudVariant }))
+      .sort((left, right) => right - left);
     const length = Math.max(aRanks.length, bRanks.length);
     for (let idx = 0; idx < length; idx += 1) {
       const aRank = aRanks[idx] ?? 0;
@@ -323,7 +389,7 @@ export class StudGameController {
       }
       return (a.seatIndex ?? 0) - (b.seatIndex ?? 0);
     });
-    return candidates[0].seatIndex;
+    return candidates[0].seatIndex ?? this.state.players.indexOf(candidates[0]);
   }
 
   getLimitUnit() {
@@ -334,13 +400,16 @@ export class StudGameController {
   }
 
   applyPlayerAction({ seatIndex, action, amount = 0 } = {}) {
+    this.ensureThirdStreetBringIn();
     const player = this.state.players[seatIndex];
     if (!player) return { success: false, reason: "Player not found" };
     if (player.folded || player.seatOut || player.allIn) return { success: false, reason: "Player cannot act" };
     const actionName = String(action ?? "").toLowerCase();
+    const previousCurrentBet = this.state.currentBet ?? 0;
     switch (actionName) {
       case "fold":
         player.folded = true;
+        player.hasFolded = true;
         player.lastAction = "Fold";
         break;
       case "check":
@@ -354,16 +423,50 @@ export class StudGameController {
       }
       case "bet":
       case "raise":
+      case "complete":
       case "all-in": {
         if (actionName !== "all-in" && this.raiseCountThisStreet >= this.raiseCap) {
           return this.applyPlayerAction({ seatIndex, action: "call" });
         }
         const toCall = Math.max(0, this.state.currentBet - (player.betThisStreet ?? 0));
-        const unit = actionName === "all-in" ? player.stack : (amount > 0 ? amount : this.getLimitUnit());
-        this.commitChips(player, Math.min(player.stack, toCall + unit));
+        const completeAmount = this.state.street === "THIRD"
+          ? Math.max(this.state.completeAmount ?? 0, this.getLimitUnit())
+          : 0;
+        const isBringInCompletion =
+          actionName === "complete" ||
+          (actionName === "raise" && this.state.currentBet > 0 && this.state.currentBet < completeAmount);
+        const targetStreetBet = isBringInCompletion
+          ? completeAmount
+          : (player.betThisStreet ?? 0) + toCall + (actionName === "all-in" ? player.stack : (amount > 0 ? amount : this.getLimitUnit()));
+        const chipsToCommit = actionName === "all-in"
+          ? player.stack
+          : Math.max(0, targetStreetBet - (player.betThisStreet ?? 0));
+        this.commitChips(player, Math.min(player.stack, chipsToCommit));
         this.state.currentBet = Math.max(this.state.currentBet, player.betThisStreet ?? 0);
-        if (actionName !== "all-in") this.raiseCountThisStreet += 1;
-        player.lastAction = actionName === "all-in" ? "All-in" : actionName === "raise" ? "Raise" : "Bet";
+        const isFullRaise = (player.betThisStreet ?? 0) > previousCurrentBet;
+        if (actionName !== "all-in" && isFullRaise) {
+          this.raiseCountThisStreet += 1;
+          this.state.players = this.state.players.map((entry, idx) => {
+            if (
+              idx === seatIndex ||
+              !entry ||
+              entry.folded ||
+              entry.seatOut ||
+              entry.allIn ||
+              entry.stack <= 0
+            ) {
+              return entry;
+            }
+            return { ...entry, hasActedThisStreet: false };
+          });
+        }
+        player.lastAction = actionName === "all-in"
+          ? "All-in"
+          : isBringInCompletion
+            ? "Complete"
+            : actionName === "raise"
+              ? "Raise"
+              : "Bet";
         break;
       }
       default:
@@ -471,6 +574,7 @@ export class StudGameController {
     this.state.currentBet = 0;
     this.state.bringInIndex = null;
     this.state.bringInAmount = 0;
+    this.state.completeAmount = 0;
   }
 
   advanceStreet() {

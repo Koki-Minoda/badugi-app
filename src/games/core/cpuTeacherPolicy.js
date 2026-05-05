@@ -45,6 +45,15 @@ const RANK_VALUE = {
   T: 10,
 };
 
+const POSITION_ORDER = ["UTG", "MP", "CO", "BTN", "SB", "BB"];
+
+const BOARD_OPEN_FLOORS = {
+  nlh: { UTG: 0.74, MP: 0.68, CO: 0.6, BTN: 0.5, SB: 0.56, BB: 0.3 },
+  flh: { UTG: 0.68, MP: 0.62, CO: 0.55, BTN: 0.48, SB: 0.52, BB: 0.28 },
+  plo: { UTG: 0.8, MP: 0.73, CO: 0.66, BTN: 0.58, SB: 0.64, BB: 0.36 },
+  plo8: { UTG: 0.78, MP: 0.7, CO: 0.62, BTN: 0.54, SB: 0.6, BB: 0.34 },
+};
+
 function clamp(value, min = 0, max = 1) {
   return Math.max(min, Math.min(max, value));
 }
@@ -69,8 +78,31 @@ function parseRank(card) {
   return RANK_VALUE[label] ?? (Number.isFinite(numericRank) ? numericRank : 0);
 }
 
+function parseSuit(card) {
+  return String(card ?? "").trim().slice(-1).toUpperCase();
+}
+
+function normalizeBoardFamily(variantId = "B01") {
+  const normalized = String(variantId ?? "").toLowerCase();
+  if (normalized.includes("plo8") || normalized.includes("flo8") || normalized === "b06" || normalized === "b09") return "plo8";
+  if (
+    normalized.includes("plo") ||
+    normalized.includes("omaha") ||
+    ["b05", "b07", "b08"].includes(normalized)
+  ) {
+    return "plo";
+  }
+  if (normalized.includes("flh") || normalized.includes("fixed") || normalized === "b02") return "flh";
+  return "nlh";
+}
+
+function normalizePosition(position = null) {
+  const label = String(position ?? "").trim().toUpperCase();
+  return POSITION_ORDER.includes(label) ? label : "MP";
+}
+
 function suitedness(cards = []) {
-  const suits = cards.map((card) => String(card ?? "").trim().slice(-1).toUpperCase()).filter(Boolean);
+  const suits = cards.map(parseSuit).filter(Boolean);
   if (!suits.length) return 0;
   const counts = new Map();
   suits.forEach((suit) => counts.set(suit, (counts.get(suit) ?? 0) + 1));
@@ -95,15 +127,96 @@ function highestPairScore(cards = []) {
   return bestPair > 0 ? bestPair / 14 : 0;
 }
 
+function pairRank(cards = []) {
+  const counts = rankCounts(cards);
+  let bestPair = 0;
+  counts.forEach((count, rank) => {
+    if (count >= 2) bestPair = Math.max(bestPair, rank);
+  });
+  return bestPair;
+}
+
+function countBroadways(ranks = []) {
+  return ranks.filter((rank) => rank >= 10 || rank === 14).length;
+}
+
+function countLowWheel(ranks = []) {
+  return new Set(ranks.map((rank) => (rank === 14 ? 1 : rank)).filter((rank) => rank >= 1 && rank <= 5)).size;
+}
+
+function doubleSuitedCredit(cards = []) {
+  const counts = new Map();
+  cards.map(parseSuit).filter(Boolean).forEach((suit) => counts.set(suit, (counts.get(suit) ?? 0) + 1));
+  const pairedSuits = [...counts.values()].filter((count) => count >= 2).length;
+  if (pairedSuits >= 2) return 0.16;
+  if (pairedSuits === 1) return 0.08;
+  return 0;
+}
+
+export function estimateNlhPreflopRangeScore({ holeCards = [], position = "MP" } = {}) {
+  const ranks = holeCards.map(parseRank).filter(Boolean).sort((a, b) => b - a);
+  if (ranks.length < 2) return 0.05;
+  const [hi, lo] = ranks;
+  const pair = hi === lo;
+  const suited = suitedness(holeCards) >= 1;
+  const gap = Math.abs(hi - lo);
+  const broadways = countBroadways(ranks);
+  const ace = hi === 14;
+  let score = pair
+    ? 0.36 + (hi / 14) * 0.58
+    : (hi + lo) / 30 + (ace ? 0.08 : 0) + broadways * 0.035;
+  if (suited) score += 0.08;
+  if (!pair && gap <= 1) score += 0.07;
+  else if (!pair && gap === 2) score += 0.04;
+  if (!pair && hi <= 9 && gap >= 4) score -= 0.12;
+  if (!suited && hi <= 11 && lo <= 8) score -= 0.08;
+  const positionCredit = { UTG: -0.03, MP: -0.01, CO: 0.02, BTN: 0.06, SB: -0.01, BB: 0.03 }[normalizePosition(position)] ?? 0;
+  return clamp(score + positionCredit, 0.05, 0.98);
+}
+
+export function estimateOmahaPreflopRangeScore({ holeCards = [], variantId = "B05", position = "MP" } = {}) {
+  const ranks = holeCards.map(parseRank).filter(Boolean).sort((a, b) => b - a);
+  if (ranks.length < 4) return 0.05;
+  const family = normalizeBoardFamily(variantId);
+  const uniqueRanks = new Set(ranks).size;
+  const highDensity = countBroadways(ranks) / ranks.length;
+  const span = Math.max(...ranks) - Math.min(...ranks);
+  const connectedCredit = clamp((9 - Math.min(9, span)) * 0.035, 0, 0.22);
+  const pair = pairRank(holeCards);
+  const premiumPairCredit = pair >= 13 ? 0.18 : pair >= 10 ? 0.1 : pair >= 2 ? 0.03 : 0;
+  const suitCredit = doubleSuitedCredit(holeCards);
+  const danglerPenalty = uniqueRanks >= 3 && ranks.filter((rank) => rank <= 7).length >= 1 && span >= 9 ? 0.08 : 0;
+  let score = 0.24 + highDensity * 0.24 + connectedCredit + premiumPairCredit + suitCredit - danglerPenalty;
+  if (family === "plo8") {
+    const wheelCount = countLowWheel(ranks);
+    const hasAce = ranks.includes(14);
+    const hasTwo = ranks.includes(2);
+    const hasThree = ranks.includes(3);
+    const lowNutCredit = hasAce && hasTwo ? 0.2 : hasAce && (hasThree || wheelCount >= 3) ? 0.12 : 0;
+    const scoopCredit = lowNutCredit > 0 && (pair >= 13 || highDensity >= 0.5 || suitCredit >= 0.08) ? 0.1 : 0;
+    score += lowNutCredit + scoopCredit - (wheelCount === 0 && highDensity < 0.5 ? 0.08 : 0);
+  }
+  const positionCredit = { UTG: -0.04, MP: -0.015, CO: 0.025, BTN: 0.07, SB: -0.015, BB: 0.035 }[normalizePosition(position)] ?? 0;
+  return clamp(score + positionCredit, 0.05, 0.98);
+}
+
 export function estimateBoardHandStrength({
   holeCards = [],
   boardCards = [],
   evaluation = null,
   variantId = "B01",
+  position = "MP",
 } = {}) {
   const categoryRank = Number(evaluation?.categoryRank);
   if (Number.isFinite(categoryRank)) {
     return clamp((categoryRank + 1) / 9);
+  }
+  if (!boardCards.length) {
+    const family = normalizeBoardFamily(variantId);
+    if (family === "plo" || family === "plo8") {
+      return estimateOmahaPreflopRangeScore({ holeCards, variantId, position });
+    }
+    return estimateNlhPreflopRangeScore({ holeCards, position });
   }
   const ranks = holeCards.map(parseRank).filter((rank) => rank > 0).sort((a, b) => b - a);
   const highCard = ranks[0] ?? 2;
@@ -111,8 +224,8 @@ export function estimateBoardHandStrength({
   const pairScore = highestPairScore(holeCards);
   const suitedCredit = suitedness(holeCards) >= 0.5 ? 0.08 : 0;
   const connectedCredit = ranks.length >= 2 && Math.abs(ranks[0] - ranks[1]) <= 2 ? 0.06 : 0;
-  const normalizedVariantId = String(variantId ?? "").toLowerCase();
-  const omahaWrapCredit = normalizedVariantId.includes("plo") || ["b05", "b06", "b07", "b08", "b09"].includes(normalizedVariantId)
+  const family = normalizeBoardFamily(variantId);
+  const omahaWrapCredit = family === "plo" || family === "plo8"
     ? clamp((ranks.filter((rank) => rank >= 9).length - 1) * 0.06, 0, 0.18)
     : 0;
   const boardPairPressure = boardCards.length >= 3 ? highestPairScore(boardCards) * 0.08 : 0;
@@ -159,17 +272,31 @@ export function chooseTeacherBetAction({
   currentBet = 0,
   playerBet = 0,
   street = "",
+  variantId = "B01",
+  position = "MP",
+  activeOpponents = 1,
 } = {}) {
   const policy = tierPolicy(tierConfig);
   const normalizedStrength = clamp(Number(strength) || 0);
-  const lateStreet = ["TURN", "RIVER", "FIFTH", "SIXTH", "SEVENTH"].includes(String(street).toUpperCase());
+  const normalizedStreet = String(street).toUpperCase();
+  const family = normalizeBoardFamily(variantId);
+  const positionLabel = normalizePosition(position);
+  const lateStreet = ["TURN", "RIVER", "FIFTH", "SIXTH", "SEVENTH"].includes(normalizedStreet);
+  const preflop = normalizedStreet === "PREFLOP";
+  const openFloor = BOARD_OPEN_FLOORS[family]?.[positionLabel] ?? policy.openThreshold;
+  const multiwayPenalty = Math.max(0, Number(activeOpponents) - 1) * (family === "plo" || family === "plo8" ? 0.035 : 0.02);
   const callThreshold = clamp(policy.callThreshold + (lateStreet ? 0.04 : 0), 0.05, 0.95);
-  const openThreshold = clamp(policy.openThreshold + (lateStreet ? 0.02 : 0), 0.05, 0.95);
+  const openThreshold = preflop
+    ? clamp(openFloor + (tierConfig?.id === "beginner" ? 0.04 : 0) + multiwayPenalty, 0.05, 0.95)
+    : clamp(policy.openThreshold + (lateStreet ? 0.02 : 0), 0.05, 0.95);
+  const continueThreshold = preflop
+    ? clamp(openThreshold - (positionLabel === "BB" ? 0.18 : 0.08), 0.12, 0.9)
+    : callThreshold;
   const raiseThreshold = clamp(policy.raiseThreshold - policy.bluffCredit * 0.25, 0.1, 0.98);
   const amount = Math.max(0, Number(betAmount) || 0);
 
   if (toCall > 0) {
-    if (normalizedStrength < callThreshold) {
+    if (normalizedStrength < continueThreshold) {
       return { type: "FOLD", metadata: { strategy: "teacher-supervised", reason: "below-call-threshold" } };
     }
     if (canRaise && normalizedStrength >= raiseThreshold) {

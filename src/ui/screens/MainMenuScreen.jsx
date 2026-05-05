@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import VariantSelectModal from "../components/VariantSelectModal.jsx";
 import mgxKitsune from "../../assets/mgx_kitsune_transparent.png";
 import { MGX_LOCALES, MGX_DEFAULT_LOCALE } from "../../config/mgxLocaleConfig.js";
+import { listVariantProfiles, VARIANT_CATEGORY_LABELS } from "../../games/config/variantProfiles.js";
 
 function ModeButton({
   label,
@@ -46,10 +47,11 @@ function ModeButton({
   );
 }
 
-function SimpleModal({ title, children, onClose, closeLabel = "Close" }) {
+function SimpleModal({ title, children, onClose, closeLabel = "Close", size = "md" }) {
+  const sizeClass = size === "wide" ? "max-w-5xl" : "max-w-md";
   return (
     <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/70 px-4 py-6">
-      <div className="w-full max-w-md space-y-4 rounded-3xl border border-white/10 bg-slate-950/90 p-6">
+      <div className={`max-h-[88vh] w-full ${sizeClass} space-y-4 overflow-y-auto rounded-3xl border border-white/10 bg-slate-950/95 p-6 shadow-2xl`}>
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-xl font-semibold text-white">{title}</h2>
           <button
@@ -61,6 +63,201 @@ function SimpleModal({ title, children, onClose, closeLabel = "Close" }) {
           </button>
         </div>
         {children}
+      </div>
+    </div>
+  );
+}
+
+const CATEGORY_GUIDES = {
+  ja: {
+    board: {
+      rule: "コミュニティカードを使うゲームです。NLH/FLHは手札2枚、PLO系は手札から必ず2枚とボード3枚を使います。",
+      tip: "ポジション、スタック深度、ナッツ候補を重視します。PLO系は強そうに見えても非ナッツのワンペアや弱いドローを過信しないことが重要です。",
+    },
+    "triple-draw": {
+      rule: "3回のドローと4回のベットラウンドでローまたはBadugi系の完成度を競います。",
+      tip: "初手の形、残りドロー回数、相手の交換枚数で価値が大きく変わります。最終ラウンドでは弱い完成手のバリューベットを控え、強い1枚ドローは早いラウンドで圧力をかけます。",
+    },
+    "single-draw": {
+      rule: "1回だけカード交換できるドローゲームです。交換前の参加レンジとポジションが特に重要です。",
+      tip: "1ドローで強い形に進展する手だけを広く続け、完成していても弱いローや弱いBadugiは大きなアクションに慎重になります。",
+    },
+    dramaha: {
+      rule: "5枚ドローとオマハ系ボードゲームを組み合わせたスプリット系ミックスゲームです。",
+      tip: "片側だけ強い手より、両方のポットを狙える手を優先します。ドロー側とボード側のどちらで勝っているかを分けて考えます。",
+    },
+    stud: {
+      rule: "一部のカードが表向きに配られるスタッド系ゲームです。Stud/Razz/Stud8などで勝ち条件が変わります。",
+      tip: "相手の表カードをよく見ます。自分のアウトが相手の表カードで消えているか、低いカードが生きているかを確認して参加判断を絞ります。",
+    },
+  },
+  en: {
+    board: {
+      rule: "Community-card games. NLH/FLH use two hole cards; Omaha variants must use exactly two hole cards and three board cards.",
+      tip: "Prioritize position, stack depth, and nut potential. In Omaha, avoid overvaluing non-nut one-pair hands and weak draws.",
+    },
+    "triple-draw": {
+      rule: "Three draws and four betting rounds. The winner is decided by the variant's lowball or Badugi-style evaluator.",
+      tip: "Hand value changes with starting shape, draws remaining, and opponent draw counts. Avoid thin value with weak made hands on the final round.",
+    },
+    "single-draw": {
+      rule: "One draw only. Pre-draw selection and position matter more than in triple-draw games.",
+      tip: "Continue wider with hands that can improve to strong lows or Badugis, but respect heavy action with weak made hands.",
+    },
+    dramaha: {
+      rule: "Split-pot mixed games combining a five-card draw hand with an Omaha-style board component.",
+      tip: "Prefer hands that can compete for both halves. Evaluate the draw side and board side separately before committing chips.",
+    },
+    stud: {
+      rule: "Stud-family games deal some cards face-up. Stud, Razz, and Stud8 use different winning conditions.",
+      tip: "Read exposed cards carefully. Discount outs that are already visible and tighten up when your live low or high cards are blocked.",
+    },
+  },
+};
+
+const EVALUATOR_GUIDES = {
+  ja: {
+    high: "通常の高い役で勝負します。トップペアだけでなくキッカー、ドロー、ナッツ完成可能性を見ます。",
+    "low-27": "2-7ローはAが高く、ストレートとフラッシュが悪い役です。最高形は7-5-4-3-2です。",
+    "low-a5": "A-5ローはAが低く、ストレートとフラッシュは無視します。A-2-3-4-5が強い形です。",
+    "hi-lo-8-split": "8以下のローが成立すればハイとローでポットを分けます。ロー不成立ならハイ側が総取りします。",
+    "badugi-low": "4枚すべて違うスート/ランクの低いBadugiが強いです。4枚Badugiは3枚以下の手より上です。",
+    "badugi-high": "高いBadugiを作る特殊系です。通常Badugiと逆方向の価値になります。",
+    "split-badugi-27": "Badugi側と2-7ロー側でポットを分けます。片側だけでなく両取り可能性を重視します。",
+    "split-badugi-a5": "Badugi側とA-5ロー側でポットを分けます。Aの価値が2-7と違う点に注意します。",
+    archie: "Archie系の独自評価です。完成条件とドロー後の両面価値を確認します。",
+    zero: "Dramaha 0系の特殊評価です。合計値を低くする方向で考えます。",
+  },
+  en: {
+    high: "Standard high-hand ranking. Consider kickers, draws, and nut potential rather than top pair alone.",
+    "low-27": "In 2-7 lowball, aces are high and straights/flushes count against you. The best hand is 7-5-4-3-2.",
+    "low-a5": "In A-5 lowball, aces are low and straights/flushes are ignored. A-2-3-4-5 is a premium low.",
+    "hi-lo-8-split": "The pot splits between high and qualifying 8-or-better low. If no low qualifies, high scoops.",
+    "badugi-low": "A four-card hand with unique suits/ranks is strongest; lower four-card Badugis beat three-card hands.",
+    "badugi-high": "A high-Badugi variant where normal Badugi low values are reversed.",
+    "split-badugi-27": "The pot splits between Badugi and 2-7 low. Prefer hands that can contest both halves.",
+    "split-badugi-a5": "The pot splits between Badugi and A-5 low. Remember that ace value differs from 2-7.",
+    archie: "Custom Archie-style scoring. Track made-hand requirements and two-way draw value.",
+    zero: "Dramaha Zero-style scoring. Aim to lower the target total while preserving board equity.",
+  },
+};
+
+function getVariantStrategyTip(profile, language) {
+  const ja = language === "ja";
+  const name = profile?.name ?? "";
+  const id = profile?.id ?? "";
+  if (id === "badugi" || /badugi/i.test(name)) {
+    return ja
+      ? "序盤は完成Badugiと強い1枚ドローを中心に参加します。最終ドロー後はK/QローBadugiの薄いベットを避け、相手の交換枚数が多い時だけ攻めます。"
+      : "Open strong made Badugis and strong one-card draws. On the final street, avoid thin value with K/Q-low Badugis unless opponents drew multiple cards.";
+  }
+  if (/PLO8|Omaha 8|Hi-Lo/i.test(name) || profile?.evaluators?.includes("hi-lo-8-split")) {
+    return ja
+      ? "A-2系のナッツロー候補とナッツハイ候補を同時に持つ手を重視します。片側だけの弱いドローは大きなポットで危険です。"
+      : "Prefer A-2 nut-low potential combined with nut-high potential. One-way weak draws are dangerous in big pots.";
+  }
+  if (/PLO|Omaha|Big O/i.test(name)) {
+    return ja
+      ? "手札4枚/5枚の連携、ナッツフラッシュ/ストレートの可能性、ポジションを重視します。裸のAや小さいセットだけで突っ込みすぎないこと。"
+      : "Value connected hole cards, nut flush/straight potential, and position. Do not overcommit with bare aces or weak sets.";
+  }
+  if (/Hold.?em|NLH|FLH/i.test(name)) {
+    return ja
+      ? "ポジション別の参加レンジ、3betへの対応、ボードテクスチャに応じたCB頻度を意識します。固定リミットでは薄いコールの積み重ねに注意します。"
+      : "Use position-aware ranges, disciplined 3-bet responses, and board-texture-aware c-bets. In fixed limit, avoid leaking through too many thin calls.";
+  }
+  if (/Razz/i.test(name)) {
+    return ja
+      ? "表カードの低さとライブカードが最重要です。相手の表カードに自分のアウトが多く見えている時は早めに撤退します。"
+      : "Exposed low cards and live cards drive decisions. Fold earlier when your key outs are visible in opponents' boards.";
+  }
+  if (/Stud/i.test(name)) {
+    return ja
+      ? "表カードから相手のレンジを推定します。強いペアやライブな高カード、Stud8ではローとの両面性を重視します。"
+      : "Infer ranges from exposed cards. Prioritize strong pairs/live high cards, and in Stud8 hands that can compete both ways.";
+  }
+  if (/2-7/i.test(name)) {
+    return ja
+      ? "7ローへ向かう形とペア/ストレート/フラッシュリスクを見ます。Aは高いカードなので、Aを含むローは弱くなります。"
+      : "Build toward seven-low while avoiding pairs, straights, and flushes. Aces are high, so ace-low-looking hands are weak here.";
+  }
+  if (/A-5/i.test(name)) {
+    return ja
+      ? "Aは最強の低いカードです。ストレート/フラッシュを気にせず、A-2-3-4-5方向の進展性を重視します。"
+      : "Aces are premium low cards. Ignore straights/flushes and value progress toward A-2-3-4-5.";
+  }
+  return ja
+    ? "まずはナッツ候補、ポジション、相手のアクション量を確認します。片側だけ弱く勝っている手より、複数の勝ち筋を持つ手を優先します。"
+    : "Start by checking nut potential, position, and opponent pressure. Prefer hands with multiple paths to win over fragile one-way holdings.";
+}
+
+function buildVariantGuide(profile, language) {
+  const categoryGuide =
+    CATEGORY_GUIDES[language]?.[profile.category] ?? CATEGORY_GUIDES.en[profile.category] ?? {};
+  const evaluatorTips = (profile.evaluators ?? [])
+    .map((tag) => EVALUATOR_GUIDES[language]?.[tag] ?? EVALUATOR_GUIDES.en[tag])
+    .filter(Boolean);
+  return {
+    rule: categoryGuide.rule ?? profile.description,
+    evaluator: evaluatorTips.join(" "),
+    tip: getVariantStrategyTip(profile, language),
+  };
+}
+
+function RulesGuide({ language }) {
+  const profiles = listVariantProfiles();
+  const ja = language === "ja";
+  return (
+    <div className="space-y-5 text-sm text-slate-300">
+      <p>
+        {ja
+          ? "MGXで選べる各ゲームの勝敗条件と、強くなるための基本方針です。実戦ではポジション、スタック、相手のアクション、ショーダウン情報を合わせて判断してください。"
+          : "Rules and practical improvement notes for MGX variants. In play, combine these with position, stacks, opponent actions, and showdown information."}
+      </p>
+      <div className="grid gap-3 md:grid-cols-2">
+        {profiles.map((profile) => {
+          const guide = buildVariantGuide(profile, language);
+          return (
+            <article
+              key={profile.id}
+              className="rounded-2xl border border-white/10 bg-slate-900/70 p-4"
+            >
+              <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <div className="text-xs uppercase tracking-[0.25em] text-emerald-300">
+                    {profile.id}
+                  </div>
+                  <h3 className="text-base font-bold text-white">{profile.name}</h3>
+                </div>
+                <span className="rounded-full border border-white/10 bg-black/30 px-2 py-1 text-[11px] text-slate-300">
+                  {VARIANT_CATEGORY_LABELS[profile.category] ?? profile.category}
+                </span>
+              </div>
+              <dl className="space-y-2">
+                <div>
+                  <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    {ja ? "ルール" : "Rules"}
+                  </dt>
+                  <dd>{guide.rule}</dd>
+                </div>
+                {guide.evaluator && (
+                  <div>
+                    <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      {ja ? "勝敗判定" : "Evaluator"}
+                    </dt>
+                    <dd>{guide.evaluator}</dd>
+                  </div>
+                )}
+                <div>
+                  <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    {ja ? "強くなるコツ" : "How to improve"}
+                  </dt>
+                  <dd>{guide.tip}</dd>
+                </div>
+              </dl>
+            </article>
+          );
+        })}
       </div>
     </div>
   );
@@ -334,10 +531,9 @@ export default function MainMenuScreen({
           title={modalCopy.rulesTitle}
           onClose={() => setShowRules(false)}
           closeLabel={modalCopy.close}
+          size="wide"
         >
-          <p className="text-sm text-slate-300">
-            {modalCopy.rulesBody}
-          </p>
+          <RulesGuide language={language} />
         </SimpleModal>
       )}
     </div>

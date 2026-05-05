@@ -31,6 +31,7 @@
 - 結果は `play_feedback_results` に保存し、`feedbackId` / `sessionKey` / `storedAt` を返す。
 - frontend は cash out / history から分析modalを開き、保存済み結果は `GET /api/analysis/play-feedback/results` で取得する。
 - APIへ送る内容は集計済みサマリーを基本にし、認証token、メールアドレス、不要な個人情報は送らない。
+- APIへ送る内容は backend でさらに圧縮し、`summary` / `topIssues` / `keyHands` / 最大8件の軽量hand sampleだけをOpenAIへ渡す。全handのraw eventsや全seat詳細は送らない。
 - プレイヤIDは内部IDまたはhashにし、自由入力名は必要最小限にする。
 - 失敗時は再実行可能にし、同じinput hashの重複課金を避ける。
 - OpenAIキーは backend 環境変数 `MGX_OPENAI_API_KEY` を推奨し、`OPENAI_API_KEY` もfallbackとして受け付ける。
@@ -61,6 +62,16 @@
 
 実装方針は、`playFeedbackPayload` の key hand extraction で上記参照を作り、backend の `play_feedback_results` に sanitize 済みpayloadとして保存する。frontend feedback modal は situation card から hand history / replay frame へジャンプできるようにする。これにより、AIの指摘を「抽象的な助言」ではなく「自分が押した具体ボタンと結果」に結び付けられる。
 
+保存済みfeedbackの取得APIも `keyHands` と `summary` を返す。これにより、ページ再読み込み後や別端末で保存済み結果を開いた場合でも、AI本文と該当hand historyの対応関係を失わない。
+
+## レイテンシ方針
+
+- frontendは30ハンド以上の全履歴から集計payloadを作るが、OpenAIへはbackendが `summary_key_hands_v1` へ圧縮して送る。
+- `topIssues` は最大12件、`keyHands` は最大10件、raw hand sampleは最大8件までに制限する。
+- GPTの回答は `adviceJa` / `adviceEn` のJSONだけに固定し、長い自由形式の文章や不要な推論ログを要求しない。
+- 低遅延優先時は `MGX_OPENAI_REASONING_EFFORT=low` と `MGX_OPENAI_MAX_OUTPUT_TOKENS` の上限調整で制御する。
+- 精度は「全ログ送信」ではなく、hand history側で重要局面を正しく抽出し、`situationId` と replay 導線で補う方針にする。
+
 ## 実装タスク
 
 - [x] `FB-01` hand history を session 単位で30ハンド以上集計できる frontend payload helper を追加する。
@@ -73,6 +84,8 @@
 - [x] `FB-08` cash / tournament / all-in / side pot を含む集計testを追加する。
 - [x] `FB-09` feedback key hand に `situationId` / `handId` / `actionSeqRange` を付与し、modalから該当hand historyへ遷移できるようにする。
   - 2026-05-05 対応: frontend payload の `keyHands` と `summary.topIssues` に `situationId` / `handId` / `actionSeqRange` / `heroAction` / `toCall` / `pot` / `resultDelta` を追加。Hand History のfeedback表示から該当hand replayへ遷移できるようにした。
+- [x] `FB-10` 保存済みfeedback取得APIでも `keyHands` / `summary` を返し、履歴画面で保存済み結果と重要局面を同時に見られるようにする。
+- [x] `FB-11` OpenAI送信用payloadを `summary_key_hands_v1` へ圧縮し、回答精度に必要な重要局面を残しつつ応答時間とtoken量を抑える。
 
 ## 実キー確認手順
 

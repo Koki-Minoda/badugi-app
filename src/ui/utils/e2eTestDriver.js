@@ -14,15 +14,23 @@ export function installE2eTestDriver(apiRef) {
 
   const driver = {
     forceSeatAction: (...args) => apiRef.current?.forceSeatAction?.(...args),
+    forceControllerAction: (...args) =>
+      apiRef.current?.forceControllerAction?.(...args),
+    forceMarkSeatFoldedForTest: (...args) =>
+      apiRef.current?.forceMarkSeatFoldedForTest?.(...args),
     forceSequentialFolds: (...args) => apiRef.current?.forceSequentialFolds?.(...args),
     forceAllIn: (...args) => apiRef.current?.forceAllIn?.(...args),
     forceHeroDraw: (...args) => apiRef.current?.forceHeroDraw?.(...args),
     resolveHandNow: (...args) => apiRef.current?.resolveHandNow?.(...args),
     dealNewHandNow: (...args) => apiRef.current?.dealNewHandNow?.(...args),
+    forceDealNewHandNow: (...args) =>
+      apiRef.current?.forceDealNewHandNow?.(...args),
     getStateSnapshot: (...args) => apiRef.current?.getStateSnapshot?.(...args),
     setPlayerHands: (...args) => apiRef.current?.setPlayerHands?.(...args),
     getLastPotSummary: (...args) => apiRef.current?.getLastPotSummary?.(...args),
     getHandHistory: (...args) => apiRef.current?.getHandHistory?.(...args),
+    getCurrentHandHistory: (...args) =>
+      apiRef.current?.getCurrentHandHistory?.(...args),
     getTournamentHudState: (...args) => apiRef.current?.getTournamentHudState?.(...args),
     getTournamentPlacements: (...args) => apiRef.current?.getTournamentPlacements?.(...args),
     isTournamentOverlayVisible: (...args) =>
@@ -35,6 +43,8 @@ export function installE2eTestDriver(apiRef) {
     fastForwardMTTComplete: (...args) =>
       apiRef.current?.fastForwardMTTComplete?.(...args),
     getTournamentReplay: (...args) => apiRef.current?.getTournamentReplay?.(...args),
+    recordTournamentStageWin: (...args) =>
+      apiRef.current?.recordTournamentStageWin?.(...args),
   };
 
   const target =

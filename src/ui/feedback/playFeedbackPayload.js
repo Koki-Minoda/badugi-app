@@ -1,6 +1,7 @@
 import { buildPostMatchFollowUpSummary } from "../../games/badugi/analysis/followUpAnalyzer.js";
 
 export const MIN_FEEDBACK_HANDS = 30;
+const MIXED_SCOPE_VALUES = new Set(["all", "mixed", "session", "10game", "tournament"]);
 
 function toNumber(value, fallback = 0) {
   const numeric = Number(value);
@@ -25,6 +26,83 @@ function normalizeVariantPrefix(variantId = "unknown") {
   if (!value || value === "unknown") return "UNK";
   if (value.toLowerCase() === "badugi") return "B";
   return value.replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 8) || "UNK";
+}
+
+function getHandVariantId(hand = {}) {
+  return String(hand.variantId ?? hand.variantKey ?? hand.gameId ?? hand.metadata?.variantId ?? "unknown");
+}
+
+function getHandVariantName(hand = {}) {
+  return String(
+    hand.variantName ??
+      hand.gameName ??
+      hand.metadata?.variantName ??
+      getHandVariantId(hand),
+  );
+}
+
+function normalizeFeedbackScopeValue(scope = "mixed") {
+  if (scope && typeof scope === "object") {
+    if (scope.type === "variant") return `variant:${scope.variantId ?? scope.id ?? "unknown"}`;
+    return String(scope.value ?? scope.type ?? "mixed");
+  }
+  const value = String(scope ?? "mixed").trim();
+  return value;
+}
+
+function parseFeedbackScope(scope = "mixed") {
+  const value = normalizeFeedbackScopeValue(scope);
+  if (!value) {
+    return { value: "", type: "unselected", variantId: null };
+  }
+  if (value.startsWith("variant:")) {
+    return { value, type: "variant", variantId: value.slice("variant:".length) };
+  }
+  if (MIXED_SCOPE_VALUES.has(value.toLowerCase()) || value.endsWith(":mixed")) {
+    return { value, type: "mixed", variantId: null };
+  }
+  return { value: `variant:${value}`, type: "variant", variantId: value };
+}
+
+export function filterHandsForFeedbackScope(hands = [], variantScope = "mixed") {
+  const safeHands = Array.isArray(hands) ? hands : [];
+  const scope = parseFeedbackScope(variantScope);
+  if (scope.type !== "variant") return safeHands;
+  return safeHands.filter((hand) => getHandVariantId(hand) === scope.variantId);
+}
+
+export function createFeedbackScopeOptions(hands = [], { mode = "cash", tournamentId = null } = {}) {
+  const safeHands = Array.isArray(hands) ? hands : [];
+  const variants = new Map();
+  safeHands.forEach((hand) => {
+    const variantId = getHandVariantId(hand);
+    const current = variants.get(variantId) ?? {
+      value: `variant:${variantId}`,
+      type: "variant",
+      variantId,
+      label: getHandVariantName(hand),
+      handCount: 0,
+    };
+    current.handCount += 1;
+    variants.set(variantId, current);
+  });
+
+  const mixedValue = mode === "tournament" && tournamentId ? `tournament:${tournamentId}:mixed` : "mixed";
+  const mixedLabel = variants.size > 1
+    ? mode === "tournament"
+      ? "Tournament / 全ゲーム"
+      : "Mixed session / 全ゲーム"
+    : "All hands";
+  return [
+    {
+      value: mixedValue,
+      type: "mixed",
+      variantId: null,
+      label: mixedLabel,
+      handCount: safeHands.length,
+    },
+    ...[...variants.values()].sort((a, b) => a.label.localeCompare(b.label)),
+  ];
 }
 
 function actionSeq(action = {}) {
@@ -141,6 +219,28 @@ function buildKeyHandReferences(hands = [], { heroSeat = 0 } = {}) {
   );
 }
 
+function buildReplayLinks(keyHands = [], hands = []) {
+  const handIds = new Set(
+    (Array.isArray(hands) ? hands : [])
+      .map((hand) => hand?.handId ?? hand?.id)
+      .filter(Boolean),
+  );
+  return (Array.isArray(keyHands) ? keyHands : [])
+    .filter((spot) => spot?.handId)
+    .map((spot) => ({
+      situationId: spot.situationId ?? null,
+      handId: spot.handId,
+      variantId: spot.variantId ?? null,
+      actionSeqRange: spot.actionSeqRange ?? null,
+      replayTarget: {
+        handId: spot.handId,
+        actionSeqStart: spot.actionSeqRange?.start ?? null,
+        actionSeqEnd: spot.actionSeqRange?.end ?? null,
+      },
+      handExists: handIds.has(spot.handId),
+    }));
+}
+
 function summarizeHands(hands = [], { heroSeat = 0 } = {}) {
   const summary = {
     hands: hands.length,
@@ -230,29 +330,53 @@ function summarizeTournament(tournament = {}) {
 export function buildPlayFeedbackPayload({
   hands = [],
   mode = "cash",
-  variantScope = "all",
+  variantScope = "mixed",
   heroSeat = 0,
   tournament = null,
   minHands = MIN_FEEDBACK_HANDS,
 } = {}) {
-  const safeHands = Array.isArray(hands) ? hands : [];
+  const sourceHands = Array.isArray(hands) ? hands : [];
+  const safeHands = filterHandsForFeedbackScope(sourceHands, variantScope);
+  const parsedScope = parseFeedbackScope(variantScope);
+  if (parsedScope.type === "unselected") {
+    return {
+      eligible: false,
+      reason: "select_feedback_scope",
+      minHands,
+      handCount: 0,
+      sourceHandCount: sourceHands.length,
+      variantScope: "",
+      payload: null,
+    };
+  }
   if (safeHands.length < minHands) {
     return {
       eligible: false,
       reason: "not_enough_hands",
       minHands,
       handCount: safeHands.length,
+      sourceHandCount: sourceHands.length,
+      variantScope: parsedScope.value,
       payload: null,
     };
   }
 
   const handSummary = summarizeHands(safeHands, { heroSeat });
   const tournamentSummary = tournament ? summarizeTournament(tournament) : null;
+  const keyHands = buildKeyHandReferences(safeHands, { heroSeat });
+  const replayLinks = buildReplayLinks(keyHands, safeHands);
   const payload = {
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
     mode,
-    variantScope,
+    variantScope: parsedScope.value,
+    feedbackScope: {
+      value: parsedScope.value,
+      type: parsedScope.type,
+      variantId: parsedScope.variantId,
+      sourceHandCount: sourceHands.length,
+      handCount: safeHands.length,
+    },
     minHands,
     handCount: safeHands.length,
     heroSeat,
@@ -261,7 +385,8 @@ export function buildPlayFeedbackPayload({
       tournament: tournamentSummary,
       roi: tournamentSummary?.roi ?? null,
     },
-    keyHands: buildKeyHandReferences(safeHands, { heroSeat }),
+    keyHands,
+    replayLinks,
     promptContext: {
       requestedOutput: [
         "良かった点",
@@ -272,6 +397,8 @@ export function buildPlayFeedbackPayload({
       constraints: [
         "30ハンド未満のセッションは評価しない",
         "variant別の判断差を分けて扱う",
+        "feedbackScope.variantId または mixed scope に従い、対象外variantを混ぜない",
+        "keyHands/replayLinksのhandIdとactionSeqRangeを具体例として参照する",
         "all-in, split pot, showdown結果を重視する",
       ],
     },
@@ -282,6 +409,8 @@ export function buildPlayFeedbackPayload({
     reason: "eligible",
     minHands,
     handCount: safeHands.length,
+    sourceHandCount: sourceHands.length,
+    variantScope: parsedScope.value,
     payload,
   };
 }

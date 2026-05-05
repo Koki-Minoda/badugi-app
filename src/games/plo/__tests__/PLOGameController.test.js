@@ -44,6 +44,38 @@ describe("PLOGameController", () => {
     expect(snapshot.players[snapshot.bigBlindIndex].betThisStreet).toBe(20);
   });
 
+  it("clears stale fold flags when a folded player joins the next hand", () => {
+    const controller = createController({
+      seats: [
+        { name: "Hero", stack: 1000 },
+        { name: "CPU 1", stack: 1000 },
+        { name: "CPU 2", stack: 1000 },
+      ],
+      deckCards: [
+        "AS", "KS", "QD",
+        "JC", "10H", "9D",
+        "8C", "7S", "6H",
+        "5C", "4D", "3S",
+        "2C", "2D", "2H", "2S",
+        "AC", "AD", "AH",
+        "KC", "KD", "KH",
+        "QC", "QS", "QH",
+      ],
+    });
+
+    controller.startNewHand();
+    expect(controller.applyPlayerAction({ seatIndex: 0, action: "fold" }).success).toBe(true);
+    expect(controller.state.players[0].folded).toBe(true);
+    expect(controller.state.players[0].hasFolded).toBe(true);
+
+    const next = controller.startNewHand();
+
+    expect(next.players[0].folded).toBe(false);
+    expect(next.players[0].hasFolded).toBe(false);
+    expect(next.players[0].allIn).toBe(false);
+    expect(next.players[0].holeCards).toHaveLength(4);
+  });
+
   it("resolves showdown using Omaha exactly-two rule", () => {
     const controller = createController({
       seats: [
@@ -73,6 +105,44 @@ describe("PLOGameController", () => {
     expect(summary.winners[0].evaluation.category).toBe("FLUSH");
     expect(summary.winners[0].evaluation.holeCardsUsed).toHaveLength(2);
     expect(summary.winners[0].evaluation.boardCardsUsed).toHaveLength(3);
+  });
+
+  it("resolves and stores result immediately when river betting completes", () => {
+    const controller = createController({
+      seats: [
+        { name: "Hero", stack: 1000 },
+        { name: "CPU 1", stack: 1000 },
+      ],
+      deckCards: [],
+    });
+    controller.startNewHand();
+    controller.state.street = "RIVER";
+    controller.state.boardCards = ["KS", "QS", "JS", "10S", "9S"];
+    controller.state.currentActor = 0;
+    controller.state.currentBet = 0;
+    controller.state.players = controller.state.players.map((player, idx) => ({
+      ...player,
+      folded: false,
+      seatOut: false,
+      allIn: false,
+      hasActedThisStreet: false,
+      betThisStreet: 0,
+      holeCards: idx === 0
+        ? ["AS", "AD", "7C", "8D"]
+        : ["AS", "2S", "AC", "AD"],
+      totalInvested: 100,
+      stack: 900,
+    }));
+
+    expect(controller.applyPlayerAction({ seatIndex: 0, action: "check" }).success).toBe(true);
+    expect(controller.state.street).toBe("RIVER");
+    expect(controller.applyPlayerAction({ seatIndex: 1, action: "check" }).success).toBe(true);
+
+    const snapshot = controller.getSnapshot();
+    expect(snapshot.street).toBe("SHOWDOWN");
+    expect(snapshot.lastHandResult).toBeTruthy();
+    expect(snapshot.lastHandResult.winners.length).toBeGreaterThan(0);
+    expect(snapshot.lastHandResult.board).toHaveLength(5);
   });
 
   it("caps bet and raise commits at pot-limit size", () => {

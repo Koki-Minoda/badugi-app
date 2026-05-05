@@ -14,9 +14,9 @@ describe("modelRouter", () => {
     expect(entry?.id).toBe("model-badugi-pro-v1");
   });
 
-  it("falls back to tier match", () => {
+  it("does not route an unrelated variant to a variant-specific tier model", () => {
     const entry = selectModelForVariant({ variantId: "UNKNOWN", tierId: "worldmaster" });
-    expect(entry?.tier).toBe("worldmaster");
+    expect(entry?.id).toBe("model-generic-v1");
   });
 
   it("uses exact variant-tier model before a generic tier model", () => {
@@ -74,6 +74,66 @@ describe("modelRouter", () => {
 
     expect(selectModelForVariant({ variantId: "D03", tierId: "beginner" })?.id).not.toBe(
       "model-badugi-beginner-dqn-v1",
+    );
+  });
+
+  it("routes 2-7 and A-5 draw beginner/standard tiers to trained draw DQN models", () => {
+    expect(resolveTierModelInfo({ variantId: "D01", tierId: "beginner" })?.modelId).toBe(
+      "model-27draw-beginner-dqn-v1",
+    );
+    expect(resolveTierModelInfo({ variantId: "D01", tierId: "standard" })?.modelId).toBe(
+      "model-27draw-standard-dqn-v1",
+    );
+    expect(resolveTierModelInfo({ variantId: "S01", tierId: "standard" })?.modelId).toBe(
+      "model-27draw-standard-dqn-v1",
+    );
+    expect(resolveTierModelInfo({ variantId: "D01", tierId: "pro" })?.modelId).toBe(
+      "model-27draw-pro-dqn-v1",
+    );
+    expect(resolveTierModelInfo({ variantId: "S01", tierId: "pro" })?.modelId).toBe(
+      "model-27draw-pro-dqn-v1",
+    );
+    expect(resolveTierModelInfo({ variantId: "D02", tierId: "beginner" })?.modelId).toBe(
+      "model-a5draw-beginner-dqn-v1",
+    );
+    expect(resolveTierModelInfo({ variantId: "D02", tierId: "standard" })?.modelId).toBe(
+      "model-a5draw-standard-dqn-v1",
+    );
+    expect(resolveTierModelInfo({ variantId: "S02", tierId: "standard" })?.modelId).toBe(
+      "model-a5draw-standard-dqn-v1",
+    );
+    expect(resolveTierModelInfo({ variantId: "D02", tierId: "pro" })?.modelId).toBe(
+      "model-a5draw-pro-dqn-v1",
+    );
+    expect(resolveTierModelInfo({ variantId: "S02", tierId: "pro" })?.modelId).toBe(
+      "model-a5draw-pro-dqn-v1",
+    );
+  });
+
+  it("routes NLH/FLH/PLO/PLO8 beginner and standard tiers to board DQN models", () => {
+    expect(resolveTierModelInfo({ variantId: "B01", tierId: "beginner" })?.modelId).toBe(
+      "model-nlh-beginner-dqn-v1",
+    );
+    expect(resolveTierModelInfo({ variantId: "B01", tierId: "standard" })?.modelId).toBe(
+      "model-nlh-standard-dqn-v1",
+    );
+    expect(resolveTierModelInfo({ variantId: "B02", tierId: "beginner" })?.modelId).toBe(
+      "model-flh-beginner-dqn-v1",
+    );
+    expect(resolveTierModelInfo({ variantId: "B02", tierId: "standard" })?.modelId).toBe(
+      "model-flh-standard-dqn-v1",
+    );
+    expect(resolveTierModelInfo({ variantId: "B05", tierId: "beginner" })?.modelId).toBe(
+      "model-plo-beginner-dqn-v1",
+    );
+    expect(resolveTierModelInfo({ variantId: "B05", tierId: "standard" })?.modelId).toBe(
+      "model-plo-standard-dqn-v1",
+    );
+    expect(resolveTierModelInfo({ variantId: "B06", tierId: "beginner" })?.modelId).toBe(
+      "model-plo8-beginner-dqn-v1",
+    );
+    expect(resolveTierModelInfo({ variantId: "B06", tierId: "standard" })?.modelId).toBe(
+      "model-plo8-standard-dqn-v1",
     );
   });
 });

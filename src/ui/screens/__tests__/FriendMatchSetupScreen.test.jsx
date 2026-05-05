@@ -89,11 +89,52 @@ describe("FriendMatchSetupScreen", () => {
 
   it("allows switching variants", () => {
     render(<FriendMatchSetupScreen language="en" />);
-    const nlhRadio = screen.getByRole("radio", { name: /no-limit hold'em/i });
+    const nlhRadio = getVariantRadio("nlh");
     fireEvent.click(nlhRadio);
     expect(nlhRadio).toHaveProperty("checked", true);
     const badugiRadio = getVariantRadio("badugi");
     expect(badugiRadio).toHaveProperty("checked", false);
+  });
+
+  it("filters variants by search text without submitting the room form", () => {
+    render(<FriendMatchSetupScreen language="en" />);
+
+    fireEvent.change(screen.getByTestId("friend-variant-search"), {
+      target: { value: "PLO8" },
+    });
+
+    expect(getVariantRadio("plo8")).toBeTruthy();
+    expect(screen.queryByRole("radio", { name: /^Badugi/i })).toBeNull();
+    expect(mockCreateRoom).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: /clear/i }));
+    expect(getVariantRadio("badugi")).toBeTruthy();
+  });
+
+  it("filters variants by category tabs", () => {
+    render(<FriendMatchSetupScreen language="en" />);
+
+    fireEvent.click(screen.getByTestId("friend-variant-category-stud"));
+
+    expect(getVariantRadio("stud")).toBeTruthy();
+    expect(screen.queryByRole("radio", { name: /^Pot-Limit Omaha/i })).toBeNull();
+
+    fireEvent.click(screen.getByTestId("friend-variant-category-board"));
+    expect(getVariantRadio("plo")).toBeTruthy();
+    expect(screen.queryByRole("radio", { name: /^Stud/i })).toBeNull();
+  });
+
+  it("shows a friendly empty state when no friend match variants match", () => {
+    render(<FriendMatchSetupScreen language="en" />);
+
+    fireEvent.change(screen.getByTestId("friend-variant-search"), {
+      target: { value: "not-a-real-game" },
+    });
+
+    expect(screen.getByTestId("friend-variant-no-results").textContent).toMatch(
+      /no variants match/i,
+    );
+    expect(screen.queryByRole("radio")).toBeNull();
   });
 
   it("navigates back to menu", () => {

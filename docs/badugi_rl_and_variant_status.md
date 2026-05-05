@@ -2819,3 +2819,57 @@ Draw RL test coverage:
 - [x] `npm test -- --run src/ai/__tests__/modelRouter.test.js src/ai/__tests__/onnxPolicyAdapter.test.js src/ai/__tests__/onnxPolicyAdapterInference.test.js`: 3 files / 20 tests pass。
 - [x] `npm run lint`: pass。
 - [x] `npm run build`: pass。chunk size warning は既存警告。
+
+## 20. 2026-05-05 Game / Progression QA / RL Status Matrix
+
+目的: 実装済みゲームごとに、友人へ公開テストできるかを判断できる粒度で、`ゲーム実装` / `ゲーム進行網羅テスト` / `強化学習` の現状を数値化する。
+
+評価基準:
+- `実装%`: controller / evaluator / UI adapter / Game Selector / result / history の総合進捗。
+- `進行テスト%`: unit / controller invariant / Playwright smoke / all-in / split pot / 5連続hand / MTT影響の総合進捗。
+- `RL%`: runtime teacher / ONNX DQN / variant別gate / human-practice benchmark の総合進捗。
+- `友達公開`: `可` は通常の友人テストに出せる、`限定可` はバグ報告前提の少人数テスト、`開発者限定` はまだ友人公開に出さない。
+- 数値は2026-05-05時点の実務目安。人間実ログでの強さ保証が未完のゲームは、RL%を控えめにする。
+
+| Game | 実装% | 進行テスト% | RL% | 友達公開 | 次にやること |
+|---|---:|---:|---:|---|---|
+| B01 NL Hold'em | 90 | 82 | 72 | 限定可 | 実ハンド履歴EV gate、position別human benchmark、50k以上の長期RL。 |
+| B02 FL Hold'em | 88 | 80 | 70 | 限定可 | fixed-limit特有のthin value / crying call / raise cap判断を実ログで検証。 |
+| B03 NL Super Hold'em | 82 | 74 | 35 | 開発者限定 | 3-hole専用preflop range、UI説明、history smoke、専用RL familyを追加。 |
+| B04 FL Super Hold'em | 80 | 72 | 35 | 開発者限定 | FL Super固有の参加レンジ、limit action mask、5連続UI smokeを強化。 |
+| B05 Pot-Limit Omaha | 88 | 80 | 72 | 限定可 | PLO専用multiway isolation、nut blocker、SPR別teacher、実プレイログgate。 |
+| B06 PLO8 | 86 | 78 | 70 | 限定可 | scoop/no-low判断を実ログで検証し、quartering/odd chip表示をさらに明確化。 |
+| B07 Big-O | 82 | 74 | 42 | 開発者限定 | 5-card hi/lo split evaluator差分、Big-O専用range、side-pot fixtureを増やす。 |
+| B08 5-Card PLO | 82 | 74 | 40 | 開発者限定 | 5-card PLO専用range、hand sort/役表示、pot-limit UI smokeを強化。 |
+| B09 FLO8 | 84 | 76 | 45 | 開発者限定 | fixed-limit Omaha8専用DQN、複数サイドポットfixture、quartering表示改善。 |
+| D01 2-7 Triple Draw | 84 | 82 | 68 | 限定可 | 2-7専用Pro/Iron学習、pat bluff / snow / final street disciplineを実ログで評価。 |
+| D02 A-5 Triple Draw | 82 | 80 | 66 | 限定可 | A-5専用Pro学習、wheel draw評価、showdownソート/履歴表示をさらに磨く。 |
+| D03 Badugi | 92 | 88 | 84 | 可 | human benchmarkを増やし、Iron/WorldMasterの難易度調整とプレイガイドを完成。 |
+| D04 Badeucey TD | 80 | 76 | 32 | 限定可 | split pot結果UI、Badugi half/2-7 half別の教師・RL datasetを作る。 |
+| D05 Badacey TD | 80 | 76 | 32 | 限定可 | Badugi half/A-5 half別のcomponent pot説明、RL teacher、history replay smoke。 |
+| D06 Hidugi TD | 78 | 74 | 28 | 開発者限定 | high Badugi評価の公式監査、discard strategy、専用result表示。 |
+| D07 Archie TD | 76 | 72 | 25 | 開発者限定 | Archie公式ルール監査、qualifier/odd chip fixture、CPU discard精緻化。 |
+| S01 2-7 Single Draw | 82 | 80 | 66 | 限定可 | NL/FL差分がある場合のbetting仕様監査、snow頻度、実ログ評価。 |
+| S02 A-5 Single Draw | 80 | 78 | 64 | 限定可 | A-5 SD専用teacher、pat/call discipline、low表示ソートを確認。 |
+| S03 5-Card Single Draw | 76 | 72 | 25 | 開発者限定 | high draw専用CPU、hand sort/役名表示、history detailを追加。 |
+| S04 Badugi Single Draw | 78 | 74 | 30 | 開発者限定 | Badugi SD専用range、1draw向けpat判断、UI smokeを強化。 |
+| S05 Badeucey Single Draw | 76 | 72 | 25 | 開発者限定 | split single drawのcomponent pot UI、official rule監査、専用teacher。 |
+| S06 Badacey Single Draw | 76 | 72 | 25 | 開発者限定 | A-5 half/Badugi halfの結果表示、discard strategy、history replay。 |
+| S07 Hidugi Single Draw | 74 | 70 | 22 | 開発者限定 | Hidugi SD評価監査、CPU discard、result label改善。 |
+| H01 Dramaha Hi | 72 | 66 | 20 | 開発者限定 | Dramaha共通UI、board+draw split結果、CPU discard strategyを強化。 |
+| H02 Dramaha 2-7 | 70 | 64 | 20 | 開発者限定 | 2-7 draw halfのソート/結果表示、split pot説明、Playwright replay smoke。 |
+| H03 Dramaha A-5 | 70 | 64 | 20 | 開発者限定 | A-5 draw halfの表示、CPU discard、component pot history。 |
+| H04 Dramaha Zero | 68 | 62 | 18 | 開発者限定 | zero-hand評価の公式監査、result label、CPU strategy。 |
+| H05 Dramaha Hidugi | 68 | 62 | 18 | 開発者限定 | Hidugi halfの公式監査、split result UI、discard teacher。 |
+| H06 Dramaha Badugi | 70 | 64 | 20 | 開発者限定 | Badugi halfのcomponent winner表示、odd chip、history smoke。 |
+| ST1 Stud | 82 | 78 | 35 | 限定可 | bring-in/completeを実プレイで再確認し、up/down UIと7th down card表示をさらに磨く。 |
+| ST2 Stud 8 | 80 | 76 | 32 | 限定可 | hi/lo split、no-low scoop、quartering表示、Stud8専用teacherを追加。 |
+| ST3 Razz | 82 | 78 | 35 | 限定可 | Razzのposition/board texture teacher、final street call discipline、実ログ評価。 |
+| ST4 Razzdugi | 76 | 72 | 25 | 開発者限定 | Razz half/Badugi halfのcomponent表示、split evaluator監査、専用CPU。 |
+| ST5 Razzducey | 76 | 72 | 25 | 開発者限定 | Razz half/2-7 halfのsplit結果UI、odd chip fixture、history replay。 |
+| ST6 2-7 Razz | 78 | 74 | 28 | 開発者限定 | 2-7 Razz公式進行監査、bring-in tie、low evaluator gateを追加。 |
+
+補足:
+- Chinese Poker / OFC は `ChinesePokerController` とscorer foundationはあるが、Game Selectorの正式playable UIには未接続。現時点では上表の「実装ゲーム」には含めず、`GAME-ALL-02 / CHINESE-02` の残タスクとして扱う。
+- 友達公開の第一候補は `D03 Badugi`。次点で限定公開候補は `B01/B02/B05/B06`, `D01/D02/S01/S02`, `ST1/ST2/ST3`。
+- 公開範囲を広げる前に、最低限 `公開候補variantごとの5連続UI hand`, `all-in/bust後next hand`, `history/replay`, `feedback対象のvariant分離` を再実行する。

@@ -80,9 +80,11 @@ const SUIT_BRING_IN_ORDER = {
   S: 4,
 };
 
-function parseRankValue(card) {
+function parseRankValue(card, { aceLow = false } = {}) {
   const rank = String(card ?? "").slice(0, -1).toUpperCase();
-  return CARD_RANK_ORDER[rank === "10" ? "T" : rank] ?? 0;
+  const normalizedRank = rank === "10" ? "T" : rank;
+  if (aceLow && normalizedRank === "A") return 1;
+  return CARD_RANK_ORDER[normalizedRank] ?? 0;
 }
 
 function parseSuitValue(card) {
@@ -304,7 +306,7 @@ export class StudGameController {
       .map((player, idx) => ({
         player,
         seatIndex: player.seatIndex ?? idx,
-        rank: parseRankValue(player.upCards[0]),
+        rank: parseRankValue(player.upCards[0], { aceLow: this.isLowStudVariant }),
         suit: parseSuitValue(player.upCards[0]),
       }));
     if (!candidates.length) return null;
@@ -355,8 +357,12 @@ export class StudGameController {
   compareExposedBoards(a, b) {
     const aCards = Array.isArray(a?.upCards) ? a.upCards : [];
     const bCards = Array.isArray(b?.upCards) ? b.upCards : [];
-    const aRanks = aCards.map(parseRankValue).sort((left, right) => right - left);
-    const bRanks = bCards.map(parseRankValue).sort((left, right) => right - left);
+    const aRanks = aCards
+      .map((card) => parseRankValue(card, { aceLow: this.isLowStudVariant }))
+      .sort((left, right) => right - left);
+    const bRanks = bCards
+      .map((card) => parseRankValue(card, { aceLow: this.isLowStudVariant }))
+      .sort((left, right) => right - left);
     const length = Math.max(aRanks.length, bRanks.length);
     for (let idx = 0; idx < length; idx += 1) {
       const aRank = aRanks[idx] ?? 0;

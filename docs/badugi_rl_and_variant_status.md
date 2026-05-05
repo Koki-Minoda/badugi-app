@@ -2648,9 +2648,12 @@ Draw RL test coverage:
   - completeはsmall betへの補完として扱う。
   - 2026-05-05 対応: 3rd streetのcompleteはbring-inからsmall betへの補完として処理するfixtureを追加。
   - 2026-05-05 修正: full raise / complete後は、既にcall/check済みだったlive playerを再行動対象へ戻す。raise後に応答なしでstreet進行またはwaiting停止する不具合をfixtureで固定。
+  - 2026-05-05 追加監査: 固定デッキの実プレイ監査fixtureを追加し、door card / bring-in / complete / 4th street先頭actor / up-down card枚数 / 7th street down card をStudとRazzで同時に検証。
+  - 2026-05-05 修正: Razz系のbring-inと4th以降の先頭actor判定でAを高扱いしていたため、Razz/Razz27/Razzdugi/RazzduceyではAce-lowでdoor/exposed boardを評価するように修正。A doorはbring-in対象から外れ、A-2 exposed boardはRazzの先頭actor候補になる。
 - [x] `STUD-QA-03` 7th street最終bet後、CPU/Heroのcall/check/foldで停止せずshowdownまたはuncontested resultへ遷移することをunit fixtureで固定する。
 - [x] `STUD-QA-04` Razz / Razz27 / Stud8 / Razzdugi / Razzduceyも同じstreet進行・表示・showdown遷移で確認する。
   - 2026-05-05 対応: controller invariantとcross-variant UI smokeでStud/Razz familyを含めて起動・配牌・actionable state到達を確認。
+  - 2026-05-05 追加確認: `stud-street-progression` PlaywrightでStud/Razzが全streetを訪問し、post-third streetのcheckで即showdownに飛ばないことを再確認。
 
 ### 17.3 Continuous Play / All-in / Tournament QA Expansion
 

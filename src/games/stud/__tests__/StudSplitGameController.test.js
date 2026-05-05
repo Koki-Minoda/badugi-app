@@ -205,7 +205,7 @@ describe("Stud split controllers", () => {
     expect(controller.state.street).toBe("FIFTH");
   });
 
-  it("posts bring-in from the highest up-card in Razz-family games", () => {
+  it("posts bring-in from the highest up-card in Razz-family games with aces low", () => {
     const controller = createController(RazzGameController, 3);
     controller.startNewHand();
     controller.state.players = controller.state.players.map((player, idx) => ({
@@ -221,7 +221,7 @@ describe("Stud split controllers", () => {
 
     const bringInSeat = controller.findBringInSeat();
 
-    expect(bringInSeat).toBe(1);
+    expect(bringInSeat).toBe(2);
   });
 
   it("plays Razz through every stud street to showdown with seven-card hands", () => {
@@ -307,7 +307,94 @@ describe("Stud split controllers", () => {
       ["TC", "9D"],
       ["4C", "5D"],
     ]);
-    expect(razzController.state.currentActor).toBe(3);
+    expect(razzController.state.currentActor).toBe(1);
+  });
+
+  it("audits Stud and Razz live street rules: bring-in, complete, up/down cards, and 7th street", () => {
+    const deckCards = [
+      "AC", "2D", "KH", "4S",
+      "5C", "6D", "7H", "8S",
+      "2C", "AD", "KS", "9H",
+      "3C", "4D", "5H", "6S",
+      "7C", "8D", "9S", "TC",
+      "JC", "QD", "QH", "JS",
+      "9D", "8H", "7S", "6H",
+    ];
+    const deckFactory = () => ({
+      cards: [...deckCards],
+      reset() {
+        this.cards = [...deckCards];
+      },
+      draw(count) {
+        return this.cards.splice(0, count);
+      },
+    });
+    const createAudited = (Controller) => new Controller({
+      tableConfig: {
+        seats: Array.from({ length: 4 }, (_, idx) => ({
+          seatIndex: idx,
+          name: `Audit ${idx}`,
+          stack: 1000,
+        })),
+        blinds: { sb: 5, bb: 10, ante: 1 },
+      },
+      deckFactory,
+    });
+
+    const stud = createAudited(StudGameController);
+    let snapshot = stud.startNewHand();
+    expect(snapshot.players.map((player) => player.upCards[0])).toEqual(["2C", "AD", "KS", "9H"]);
+    expect(snapshot.bringInIndex).toBe(0);
+    expect(snapshot.bringInAmount).toBe(5);
+    expect(snapshot.completeAmount).toBe(10);
+    expect(snapshot.currentActor).toBe(1);
+
+    const complete = stud.applyPlayerAction({ seatIndex: 1, action: "complete" });
+    expect(complete.success).toBe(true);
+    snapshot = stud.getSnapshot();
+    expect(snapshot.currentBet).toBe(10);
+    expect(snapshot.players[1].betThisStreet).toBe(10);
+    expect(snapshot.players[1].lastAction).toBe("Complete");
+
+    while (stud.getSnapshot().street !== "FOURTH") {
+      const current = stud.getSnapshot();
+      const actor = current.currentActor;
+      const player = current.players[actor];
+      const toCall = Math.max(0, current.currentBet - player.betThisStreet);
+      expect(stud.applyPlayerAction({ seatIndex: actor, action: toCall > 0 ? "call" : "check" }).success).toBe(true);
+    }
+    snapshot = stud.getSnapshot();
+    expect(snapshot.players.map((player) => player.upCards)).toEqual([
+      ["2C", "3C"],
+      ["AD", "4D"],
+      ["KS", "5H"],
+      ["9H", "6S"],
+    ]);
+    expect(snapshot.players.every((player) => player.downCards.length === 2)).toBe(true);
+    expect(snapshot.currentActor).toBe(1);
+
+    while (stud.getSnapshot().street !== "SEVENTH") stud.advanceStreet();
+    snapshot = stud.getSnapshot();
+    expect(snapshot.players.every((player) => player.holeCards.length === 7)).toBe(true);
+    expect(snapshot.players.every((player) => player.upCards.length === 4)).toBe(true);
+    expect(snapshot.players.every((player) => player.downCards.length === 3)).toBe(true);
+
+    const razz = createAudited(RazzGameController);
+    snapshot = razz.startNewHand();
+    expect(snapshot.players.map((player) => player.upCards[0])).toEqual(["2C", "AD", "KS", "9H"]);
+    expect(snapshot.bringInIndex).toBe(2);
+    expect(snapshot.currentActor).toBe(3);
+
+    razz.advanceStreet();
+    snapshot = razz.getSnapshot();
+    expect(snapshot.street).toBe("FOURTH");
+    expect(snapshot.players.map((player) => player.upCards)).toEqual([
+      ["2C", "3C"],
+      ["AD", "4D"],
+      ["KS", "5H"],
+      ["9H", "6S"],
+    ]);
+    expect(snapshot.currentActor).toBe(0);
   });
 
   it("completes five consecutive Stud-family hands through all streets without broken actors", () => {
@@ -340,8 +427,21 @@ describe("Stud split controllers", () => {
   it("returns a teacher-supervised CPU action for Stud-family betting", () => {
     const controller = createController(RazzGameController, 3);
     controller.startNewHand();
+    controller.state.street = "FOURTH";
     controller.state.currentActor = 0;
     controller.state.currentBet = 0;
+    controller.state.bringInIndex = null;
+    controller.state.bringInAmount = 0;
+    controller.state.completeAmount = 0;
+    controller.state.players = controller.state.players.map((player) => ({
+      ...player,
+      folded: false,
+      seatOut: false,
+      allIn: false,
+      stack: 1000,
+      betThisStreet: 0,
+      hasActedThisStreet: false,
+    }));
     controller.state.players[0] = {
       ...controller.state.players[0],
       holeCards: ["AS", "2D", "4C"],

@@ -3210,3 +3210,30 @@ Draw RL test coverage:
 - [x] `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts --project=badugi-flow`: 37 passed。
 - [x] `npm run lint`: pass（既存の `syncLegacyFromControllerSnapshot` hook dependency warning 1件のみ）。
 - [x] `npm run build`: pass。
+
+### 21.11 2026-05-06 8/10Game progression audit
+
+目的:
+- 8-Game / 10-Game対象variantの進行がRL学習データの前提になるため、PLO / Stud / Razz系を中心に、UI経由でもstreetを飛ばさずshowdownまで到達できることを固定する。
+- 既存の「起動」「配牌」「5hand smoke」だけでは、PLOのboard進行やStud/Razzの3rd-7th street進行を見落とす余地があるため、controller snapshotを使ったUI進行監査を追加する。
+
+対象:
+- Board系: `nlh`, `flh`, `plo`, `plo8`
+- Stud系: `stud`, `stud8`, `razz`
+- Draw系の8/10Game中核: `badugi`, `D01` 2-7 Triple Draw, `D02` A-5 Triple Draw, `S01` 2-7 Single Draw
+
+対応:
+- [x] `MIX-PROG-01` `mixed-rotation-core-progression.spec.ts` を追加し、NLH / FLH / PLO / PLO8 が `PREFLOP -> FLOP -> TURN -> RIVER -> SHOWDOWN` をUI E2Eで通過することを確認する。
+- [x] `MIX-PROG-02` Stud / Stud8 / Razz が `THIRD -> FOURTH -> FIFTH -> SIXTH -> SEVENTH -> SHOWDOWN` をUI E2Eで通過することを確認する。
+- [x] `MIX-PROG-03` Badugi / 2-7TD / A-5TD / 2-7SD は5hand連続、強制showdown、next hand復帰で止まらないことを同じsuiteで確認する。
+- [x] `MIX-PROG-04` 既存unitのprogression invariantと組み合わせ、8/10Game対象のunit + UI両面の進行監査を記録する。
+
+確認結果:
+- [x] `npm test -- --run src/games/__tests__/playableInvariant.test.js src/games/plo/__tests__/PLOGameController.test.js src/games/plo/__tests__/PLO8GameController.test.js src/games/stud/__tests__/StudSplitGameController.test.js src/games/nlh/__tests__/NLHGameController.test.js`: 5 files / 147 tests passed。
+- [x] `npx playwright test tests/e2e/stud-street-progression.spec.ts tests/e2e/friend-publish-candidate-regression.spec.ts --project=badugi-flow`: 10 passed。
+- [x] `npx playwright test tests/e2e/mixed-rotation-core-progression.spec.ts --project=badugi-flow`: 11 passed。
+- [x] `npx playwright test tests/e2e/stud-street-progression.spec.ts tests/e2e/friend-publish-candidate-regression.spec.ts tests/e2e/mixed-rotation-core-progression.spec.ts --project=badugi-flow`: 21 passed。
+
+残リスク:
+- [ ] `MIX-PROG-05` 実際の8-Game / 10-Game rotation sessionで、variant切替直後のseat/button/stack引き継ぎを5周以上確認する。今回の追加は各対象variant単体の進行保証であり、rotation境界そのものは次の監査対象。
+- [ ] `MIX-PROG-06` RL教師データ生成前に、PLO/Stud/Razzの実hand historyを使ったEV / position / showdown監査を別途gate化する。

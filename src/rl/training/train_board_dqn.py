@@ -18,7 +18,13 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from rl.agents.dqn_agent import DQNAgent, DQNHyperParams
-from rl.env.board_betting_env import BOARD_TIERS, BOARD_VARIANTS, BoardBettingEnv, board_teacher_action
+from rl.env.board_betting_env import (
+    BOARD_TIERS,
+    BOARD_VARIANTS,
+    BoardBettingEnv,
+    BoardLongHorizonEnv,
+    board_teacher_action,
+)
 from rl.utils.replay_buffer import ReplayBuffer
 
 
@@ -27,6 +33,8 @@ class BoardTrainConfig:
     family: str = "nlh"
     tier: str = "beginner"
     total_episodes: int = 3_000
+    max_steps_per_episode: int = 12
+    long_horizon: bool = False
     buffer_capacity: int = 80_000
     warmup_steps: int = 500
     batch_size: int = 64
@@ -44,6 +52,7 @@ class BoardTrainConfig:
     save_interval: int = 0
     log_interval: int = 500
     fixture_replay_copies: int = 120
+    resume_checkpoint: str | None = None
 
 
 def linear_epsilon_decay(episode: int, start_eps: float, end_eps: float, decay_episodes: int) -> float:
@@ -81,25 +90,40 @@ def train_board_dqn(cfg: BoardTrainConfig | None = None, device: str | torch.dev
     output_dir = Path(cfg.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    env = BoardBettingEnv(family=cfg.family, tier=cfg.tier)
+    env_class = BoardLongHorizonEnv if cfg.long_horizon else BoardBettingEnv
+    env = env_class(family=cfg.family, tier=cfg.tier, max_steps_per_episode=cfg.max_steps_per_episode) if cfg.long_horizon else env_class(family=cfg.family, tier=cfg.tier)
     obs, _ = env.reset()
     obs_dim = int(np.prod(env.observation_space.shape))
     n_actions = env.action_space.n
-    agent = DQNAgent(
-        obs_dim=obs_dim,
-        n_actions=n_actions,
-        device=device,
-        hidden_dim=cfg.hidden_dim,
-        hyperparams=DQNHyperParams(gamma=0.95, lr=cfg.learning_rate, batch_size=cfg.batch_size, tau=8e-3),
-    )
+    if cfg.resume_checkpoint:
+        agent = DQNAgent.load(cfg.resume_checkpoint, device=device)
+        if agent.obs_dim != obs_dim or agent.n_actions != n_actions:
+            raise ValueError(
+                f"Resume checkpoint shape mismatch: checkpoint=({agent.obs_dim},{agent.n_actions}) "
+                f"env=({obs_dim},{n_actions})"
+            )
+    else:
+        agent = DQNAgent(
+            obs_dim=obs_dim,
+            n_actions=n_actions,
+            device=device,
+            hidden_dim=cfg.hidden_dim,
+            hyperparams=DQNHyperParams(gamma=0.95 if not cfg.long_horizon else 0.985, lr=cfg.learning_rate, batch_size=cfg.batch_size, tau=8e-3),
+        )
     replay = ReplayBuffer(capacity=cfg.buffer_capacity)
     expert = ReplayBuffer(capacity=cfg.buffer_capacity)
 
     for _ in range(cfg.teacher_warmup_episodes):
         obs, _ = env.reset()
-        action = board_teacher_action(env.scenario)
-        replay.add(obs, action, 1.0, obs, True, next_action_mask=env.legal_action_mask())
-        expert.add(obs, action, 1.0, obs, True, next_action_mask=env.legal_action_mask())
+        for _step in range(max(1, cfg.max_steps_per_episode if cfg.long_horizon else 1)):
+            action = board_teacher_action(env.scenario)
+            next_obs, reward, terminated, truncated, _info = env.step(action)
+            done = terminated or truncated
+            replay.add(obs, action, reward, next_obs, done, next_action_mask=env.legal_action_mask())
+            expert.add(obs, action, reward, next_obs, done, next_action_mask=env.legal_action_mask())
+            obs = next_obs
+            if done:
+                break
     add_board_fixture_examples(env, replay, expert, cfg.fixture_replay_copies)
 
     imitation_loss = 0.0
@@ -119,19 +143,26 @@ def train_board_dqn(cfg: BoardTrainConfig | None = None, device: str | torch.dev
     mean_q = 0.0
     for episode in range(1, cfg.total_episodes + 1):
         obs, _ = env.reset()
+        total_reward = 0.0
         epsilon = linear_epsilon_decay(episode, cfg.epsilon_start, cfg.epsilon_end, cfg.epsilon_decay_episodes)
-        action = agent.act(obs, epsilon, action_mask=env.legal_action_mask())
-        next_obs, reward, terminated, _truncated, _info = env.step(action)
-        replay.add(obs, action, reward, next_obs, terminated, next_action_mask=env.legal_action_mask())
-        rewards.append(float(reward))
-        if episode >= cfg.warmup_steps and len(replay) >= cfg.batch_size and episode % cfg.train_every_steps == 0:
-            loss, mean_q = agent.update(replay.sample(cfg.batch_size))
-            expert_batch_size = int(round(cfg.batch_size * cfg.expert_replay_ratio))
-            if expert_batch_size > 0:
-                imitation_loss, imitation_accuracy = agent.imitation_update(
-                    expert.sample(expert_batch_size),
-                    loss_weight=cfg.imitation_loss_weight,
-                )
+        for _step in range(max(1, cfg.max_steps_per_episode if cfg.long_horizon else 1)):
+            action = agent.act(obs, epsilon, action_mask=env.legal_action_mask())
+            next_obs, reward, terminated, truncated, _info = env.step(action)
+            done = terminated or truncated
+            replay.add(obs, action, reward, next_obs, done, next_action_mask=env.legal_action_mask())
+            obs = next_obs
+            total_reward += float(reward)
+            if episode >= cfg.warmup_steps and len(replay) >= cfg.batch_size and episode % cfg.train_every_steps == 0:
+                loss, mean_q = agent.update(replay.sample(cfg.batch_size))
+                expert_batch_size = int(round(cfg.batch_size * cfg.expert_replay_ratio))
+                if expert_batch_size > 0:
+                    imitation_loss, imitation_accuracy = agent.imitation_update(
+                        expert.sample(expert_batch_size),
+                        loss_weight=cfg.imitation_loss_weight,
+                    )
+            if done:
+                break
+        rewards.append(total_reward)
         if cfg.log_interval > 0 and episode % cfg.log_interval == 0:
             recent = rewards[-cfg.log_interval :]
             print(
@@ -150,6 +181,8 @@ def train_board_dqn(cfg: BoardTrainConfig | None = None, device: str | torch.dev
         "family": cfg.family,
         "tier": cfg.tier,
         "episodes": int(cfg.total_episodes),
+        "long_horizon": bool(cfg.long_horizon),
+        "max_steps_per_episode": int(cfg.max_steps_per_episode),
         "avg_reward_last_100": float(sum(rewards[-100:]) / max(1, len(rewards[-100:]))),
         "checkpoint": str(latest),
         "obs_dim": int(obs_dim),
@@ -167,6 +200,8 @@ def parse_args():
     parser.add_argument("--family", choices=BOARD_VARIANTS, default=BoardTrainConfig.family)
     parser.add_argument("--tier", choices=BOARD_TIERS, default=BoardTrainConfig.tier)
     parser.add_argument("--episodes", type=int, default=BoardTrainConfig.total_episodes)
+    parser.add_argument("--max-steps", type=int, default=BoardTrainConfig.max_steps_per_episode)
+    parser.add_argument("--long-horizon", action="store_true")
     parser.add_argument("--warmup-steps", type=int, default=BoardTrainConfig.warmup_steps)
     parser.add_argument("--batch-size", type=int, default=BoardTrainConfig.batch_size)
     parser.add_argument("--teacher-warmup-episodes", type=int, default=BoardTrainConfig.teacher_warmup_episodes)
@@ -176,6 +211,7 @@ def parse_args():
     parser.add_argument("--output-dir", default=BoardTrainConfig.output_dir)
     parser.add_argument("--save-interval", type=int, default=BoardTrainConfig.save_interval)
     parser.add_argument("--log-interval", type=int, default=BoardTrainConfig.log_interval)
+    parser.add_argument("--resume-checkpoint", default=None)
     parser.add_argument("--device", default=None)
     return parser.parse_args()
 
@@ -187,6 +223,8 @@ if __name__ == "__main__":
         family=args.family,
         tier=args.tier,
         total_episodes=args.episodes,
+        max_steps_per_episode=args.max_steps,
+        long_horizon=args.long_horizon,
         warmup_steps=args.warmup_steps,
         batch_size=args.batch_size,
         teacher_warmup_episodes=args.teacher_warmup_episodes,
@@ -196,7 +234,7 @@ if __name__ == "__main__":
         output_dir=args.output_dir,
         save_interval=args.save_interval,
         log_interval=args.log_interval,
+        resume_checkpoint=args.resume_checkpoint,
     )
     print(f"Using device: {device}")
     train_board_dqn(cfg=cfg, device=device)
-

@@ -158,6 +158,149 @@ class BoardBettingEnv(gym.Env):
         return reward
 
 
+class BoardLongHorizonEnv(BoardBettingEnv):
+    """Multi-street board-game betting simulator for longer DQN runs.
+
+    It keeps the same 16-feature observation and 6-action output contract as
+    the bootstrap one-step environment, but turns each episode into a compact
+    hand with preflop/flop/turn/river decisions, stack movement, pot growth,
+    opponent pressure, and terminal showdown/fold rewards.
+    """
+
+    def __init__(
+        self,
+        family: str = "nlh",
+        tier: str = "beginner",
+        seed: int | None = None,
+        max_steps_per_episode: int = 12,
+    ):
+        self.max_steps_per_episode = int(max_steps_per_episode)
+        self.step_count = 0
+        self.hero_stack = 1.0
+        self.pot = 0.0
+        self.street_index = 0
+        self.folded = False
+        super().__init__(family=family, tier=tier, seed=seed)
+
+    def reset(self, *, seed: int | None = None, options=None):
+        super().reset(seed=seed)
+        if seed is not None:
+            self.random.seed(seed)
+        self.step_count = 0
+        self.hero_stack = self.random.uniform(0.7, 1.2)
+        self.pot = self.random.uniform(0.04, 0.12)
+        self.street_index = 0
+        self.folded = False
+        self.scenario = self._sample_long_scenario()
+        return self._observation(), {}
+
+    def step(self, action: int):
+        action = int(action)
+        teacher = board_teacher_action(self.scenario)
+        mask = self.legal_action_mask()
+        action_name = BOARD_ACTIONS[action] if 0 <= action < len(BOARD_ACTIONS) else "invalid"
+        reward = self._reward_for_action(action, teacher)
+        if action < 0 or action >= len(BOARD_ACTIONS) or mask[action] <= 0:
+            return self._observation(), -1.5, True, False, {"teacherAction": teacher, "terminal": "illegal"}
+
+        contribution = self._contribution_for(action_name)
+        self.hero_stack = max(0.0, self.hero_stack - contribution)
+        self.pot += contribution
+        if action_name == "fold":
+            self.folded = True
+            reward -= self._fold_ev_penalty()
+            return self._observation(), float(reward), True, False, {"teacherAction": teacher, "terminal": "fold"}
+
+        reward += self._ev_shaping(action_name)
+        self.step_count += 1
+        self.street_index = min(3, self.street_index + 1)
+        done = self.step_count >= self.max_steps_per_episode or self.street_index >= 4 or self.hero_stack <= 0.0
+        if done:
+            reward += self._showdown_reward()
+            return self._observation(), float(reward), True, False, {"teacherAction": teacher, "terminal": "showdown"}
+
+        self._advance_scenario(action_name)
+        return self._observation(), float(reward), False, False, {"teacherAction": teacher, "terminal": None}
+
+    def _sample_long_scenario(self) -> BoardScenario:
+        scenario = self._sample_scenario()
+        scenario.street_progress = self.street_index / 3.0
+        scenario.pot_size = self.pot
+        scenario.stack_ratio = self.hero_stack
+        scenario.to_call = self._sample_to_call()
+        scenario.equity = _estimate_equity(
+            strength=scenario.strength,
+            draw_potential=scenario.draw_potential,
+            street_progress=scenario.street_progress,
+            active_opponents=scenario.active_opponents,
+            hi_lo=1.0 if self.family == "plo8" else 0.0,
+        )
+        return scenario
+
+    def _sample_to_call(self):
+        pressure = self.random.random()
+        if pressure < 0.45:
+            return 0.0
+        if self.family == "flh":
+            return 0.04 if self.street_index < 2 else 0.08
+        return self.random.choice([0.04, 0.08, 0.14, 0.22])
+
+    def _contribution_for(self, action_name: str):
+        if action_name in {"check", "fold"}:
+            return 0.0
+        if action_name == "call":
+            return min(self.hero_stack, self.scenario.to_call)
+        if action_name == "all_in":
+            return self.hero_stack
+        unit = 0.04 if self.family == "flh" and self.street_index < 2 else 0.08
+        if self.family in {"plo", "plo8"}:
+            unit = min(max(0.05, self.pot), 0.35)
+        if self.family == "nlh":
+            unit = self.random.choice([0.08, 0.14, 0.22])
+        return min(self.hero_stack, max(unit, self.scenario.to_call + unit))
+
+    def _ev_shaping(self, action_name: str):
+        equity_edge = self.scenario.equity - _pot_odds(self.scenario)
+        if action_name in {"bet", "raise"}:
+            return 0.35 * equity_edge + (0.1 if self.scenario.position > 0.65 else 0.0)
+        if action_name == "call":
+            return 0.22 * equity_edge
+        if action_name == "check":
+            return 0.05 if self.scenario.equity < 0.55 else -0.04
+        return 0.0
+
+    def _fold_ev_penalty(self):
+        if self.scenario.equity > max(0.36, _pot_odds(self.scenario) + 0.04):
+            return 0.45
+        return -0.08
+
+    def _showdown_reward(self):
+        pressure = 0.04 * max(0, self.scenario.active_opponents - 1)
+        win_probability = float(np.clip(self.scenario.equity - pressure, 0.02, 0.95))
+        expected_pot = self.pot * win_probability
+        investment_penalty = max(0.0, 1.0 - self.hero_stack) * 0.35
+        return expected_pot - investment_penalty
+
+    def _advance_scenario(self, action_name: str):
+        aggression_boost = 0.04 if action_name in {"bet", "raise"} else 0.0
+        draw_realization = self.scenario.draw_potential * self.random.uniform(0.02, 0.12)
+        self.scenario.strength = float(np.clip(self.scenario.strength + draw_realization + aggression_boost, 0.02, 0.98))
+        self.scenario.draw_potential = float(np.clip(self.scenario.draw_potential * self.random.uniform(0.55, 0.9), 0.0, 1.0))
+        self.scenario.street_progress = self.street_index / 3.0
+        self.scenario.pot_size = self.pot
+        self.scenario.stack_ratio = self.hero_stack
+        self.scenario.to_call = self._sample_to_call()
+        self.scenario.raise_count = 0 if self.scenario.to_call == 0 else self.random.choice([0, 1, 2])
+        self.scenario.last_aggression = 1.0 if action_name in {"bet", "raise"} else self.random.random()
+        self.scenario.equity = _estimate_equity(
+            strength=self.scenario.strength,
+            draw_potential=self.scenario.draw_potential,
+            street_progress=self.scenario.street_progress,
+            active_opponents=self.scenario.active_opponents,
+            hi_lo=1.0 if self.family == "plo8" else 0.0,
+        )
+
+
 def _estimate_equity(*, strength: float, draw_potential: float, street_progress: float, active_opponents: int, hi_lo: float):
     draw_weight = max(0.05, 0.4 * (1.0 - street_progress))
     multiway_penalty = max(0.55, 1.0 - active_opponents * 0.09)

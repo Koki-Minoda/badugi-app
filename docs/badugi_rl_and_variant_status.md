@@ -2740,3 +2740,32 @@ Draw RL test coverage:
 - [x] `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts --project=badugi-flow`: 26 passed。
 - [x] `npm run lint`: pass。
 - [x] `npm run build`: pass。chunk size warning は既存警告。
+
+### 19.5 長期RL入口
+
+- [x] `AI-BOARD-LONG-01` `BoardLongHorizonEnv` を追加し、board系DQNが複数streetのhandを通して学習できる入口を作る。
+  - 既存16入力/6出力契約は維持する。
+  - episode内で street / pot / hero stack / to-call / draw potential / equity が推移する。
+  - fold / showdown / illegal action のterminal rewardを持つ。
+- [x] `AI-BOARD-LONG-02` `npm run ai:train-board` に `--long-horizon`, `--max-steps`, `--resume-checkpoint` を追加する。
+  - 初期モデルから継続学習できるため、短時間でもfixture gateを壊さず長期RL動作確認が可能。
+  - 長期本番学習例:
+    - `npm run ai:train-board -- --family nlh --tier standard --long-horizon --episodes 50000 --max-steps 8 --resume-checkpoint rl/models/board_nlh_standard_20260505/nlh_standard_board_dqn_latest.pt --output-dir rl/models/board_nlh_standard_long_50k_YYYYMMDD --device cpu`
+- [x] `AI-BOARD-LONG-03` `npm run ai:export-board-onnx` は任意checkpoint / outputへexportできるため、長期checkpointをそのままONNX化できる。
+- [x] `AI-BOARD-LONG-04` 短時間の継続学習smokeを NLH/FLH/PLO/PLO8 すべてで実行し、export/evaluateまで確認する。
+  - `nlh`: 120 episodes long-horizon resume smoke, exported `/tmp/nlh_long_resume_smoke.onnx`, fixture pass。
+  - `flh`: 120 episodes long-horizon resume smoke, exported `/tmp/flh_long_resume_smoke.onnx`, fixture pass。
+  - `plo`: 120 episodes long-horizon resume smoke, exported `/tmp/plo_long_resume_smoke.onnx`, fixture pass。
+  - `plo8`: 120 episodes long-horizon resume smoke, exported `/tmp/plo8_long_resume_smoke.onnx`, fixture pass。
+- [ ] `AI-BOARD-LONG-05` 次段階: 長期学習用の評価gateをfixtureだけでなく、EV delta / fold discipline / thin value / bluff frequency / multiway isolation / hi-lo scoop rateに広げる。
+
+### 19.6 長期RL確認結果
+
+- [x] `PYTHONPATH=src .venv/bin/python -m pytest src/rl/__tests__/test_board_betting_env.py`: 2 passed。
+- [x] `npm run ai:train-board -- --family nlh --tier standard --long-horizon --episodes 120 ... --resume-checkpoint rl/models/board_nlh_standard_20260505/nlh_standard_board_dqn_latest.pt`: completed, evaluate pass。
+- [x] `npm run ai:train-board -- --family flh --tier standard --long-horizon --episodes 120 ... --resume-checkpoint rl/models/board_flh_standard_20260505/flh_standard_board_dqn_latest.pt`: completed, evaluate pass。
+- [x] `npm run ai:train-board -- --family plo --tier standard --long-horizon --episodes 120 ... --resume-checkpoint rl/models/board_plo_standard_20260505/plo_standard_board_dqn_latest.pt`: completed, evaluate pass。
+- [x] `npm run ai:train-board -- --family plo8 --tier standard --long-horizon --episodes 120 ... --resume-checkpoint rl/models/board_plo8_standard_20260505/plo8_standard_board_dqn_latest.pt`: completed, evaluate pass。
+- [x] `npm test -- --run src/ai/__tests__/modelRouter.test.js src/ai/__tests__/onnxPolicyAdapter.test.js src/ai/__tests__/onnxPolicyAdapterInference.test.js`: 3 files / 20 tests pass。
+- [x] `npm run lint`: pass。
+- [x] `npm run build`: pass。chunk size warning は既存警告。

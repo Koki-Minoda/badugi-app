@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import FLHGameController from "../FLHGameController.js";
 import NLHGameController from "../NLHGameController.js";
 
 class StubDeck {
@@ -22,6 +23,17 @@ function createController({ seats, deckCards, blinds }) {
     blinds,
   };
   return new NLHGameController({
+    tableConfig,
+    deckFactory: () => new StubDeck(deckCards),
+  });
+}
+
+function createFixedLimitController({ seats, deckCards, blinds }) {
+  const tableConfig = {
+    seats,
+    blinds,
+  };
+  return new FLHGameController({
     tableConfig,
     deckFactory: () => new StubDeck(deckCards),
   });
@@ -155,6 +167,60 @@ describe("NLHGameController", () => {
     expect(controller.state.street).toBe("FLOP");
     expect(controller.state.boardCards).toHaveLength(3);
     expect(controller.state.currentBet).toBe(0);
+  });
+
+  it("converts capped fixed-limit raises to calls and advances after the cap is closed", () => {
+    const controller = createFixedLimitController({
+      seats: [
+        { name: "Hero", stack: 1000 },
+        { name: "CPU 1", stack: 1000 },
+        { name: "CPU 2", stack: 1000 },
+        { name: "CPU 3", stack: 1000 },
+      ],
+      deckCards: [
+        "AS", "KS", "QD", "JC",
+        "10H", "9D", "8C", "7S",
+        "2C", "2D", "2H", "3C", "4D", "5S",
+      ],
+      blinds,
+    });
+    controller.startNewHand();
+    controller.state.street = "FLOP";
+    controller.state.boardCards = ["2C", "7D", "9H"];
+    controller.state.currentBet = 0;
+    controller.raiseCountThisStreet = 0;
+    controller.state.players = controller.state.players.map((player) => ({
+      ...player,
+      folded: false,
+      seatOut: false,
+      allIn: false,
+      stack: 1000,
+      totalInvested: 0,
+      betThisStreet: 0,
+      hasActedThisStreet: false,
+    }));
+
+    expect(controller.applyPlayerAction({ seatIndex: 0, action: "bet" }).success).toBe(true);
+    expect(controller.applyPlayerAction({ seatIndex: 1, action: "raise" }).success).toBe(true);
+    expect(controller.applyPlayerAction({ seatIndex: 2, action: "raise" }).success).toBe(true);
+    expect(controller.applyPlayerAction({ seatIndex: 3, action: "raise" }).success).toBe(true);
+    expect(controller.raiseCountThisStreet).toBe(controller.raiseCap);
+    expect(controller.state.currentBet).toBe(80);
+
+    const cappedAttempt = controller.applyPlayerAction({ seatIndex: 0, action: "raise" });
+
+    expect(cappedAttempt.success).toBe(true);
+    expect(controller.raiseCountThisStreet).toBe(controller.raiseCap);
+    expect(controller.state.players[0].betThisStreet).toBe(80);
+    expect(controller.state.players[0].lastAction).toBe("Call");
+    expect(controller.state.currentBet).toBe(80);
+
+    expect(controller.applyPlayerAction({ seatIndex: 1, action: "call" }).success).toBe(true);
+    expect(controller.applyPlayerAction({ seatIndex: 2, action: "call" }).success).toBe(true);
+
+    expect(controller.state.street).toBe("TURN");
+    expect(controller.state.currentBet).toBe(0);
+    expect(controller.raiseCountThisStreet).toBe(0);
   });
 
   it("resolves showdown and returns winning summary", () => {

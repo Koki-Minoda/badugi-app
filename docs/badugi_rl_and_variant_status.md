@@ -3237,3 +3237,21 @@ Draw RL test coverage:
 残リスク:
 - [ ] `MIX-PROG-05` 実際の8-Game / 10-Game rotation sessionで、variant切替直後のseat/button/stack引き継ぎを5周以上確認する。今回の追加は各対象variant単体の進行保証であり、rotation境界そのものは次の監査対象。
 - [ ] `MIX-PROG-06` RL教師データ生成前に、PLO/Stud/Razzの実hand historyを使ったEV / position / showdown監査を別途gate化する。
+
+### 21.12 2026-05-06 Fixed-limit cap progression regression
+
+目的:
+- 5ベット/raise cap系のゲームで、cap到達後のraise入力が追加raiseにならず、call/checkとして丸められ、その後のstreet進行が止まらないことを明示fixture化する。
+- 既存ではDraw系とBadugi controllerにcap検査があったが、FLH / FLO8 / Stud系の「cap後の処理継続」まで見るfixtureが不足していた。
+
+対応:
+- [x] `CAP-REG-01` FLH: cap到達後のraise試行をcall扱いにし、残りcall後に `FLOP -> TURN` へ進むことを追加。
+- [x] `CAP-REG-02` FLO8: cap到達後のraise試行をcall扱いにし、残りcall後に `FLOP -> TURN` へ進むことを追加。
+- [x] `CAP-REG-03` Stud: cap到達後のraise試行をcall扱いにし、残りcall後に `FOURTH -> FIFTH` へ進むことを追加。
+- [x] `CAP-REG-04` cap到達後に `raiseCountThisStreet` が増えず、次streetで0にresetされることを確認する。
+
+確認結果:
+- [x] `npm test -- --run src/games/nlh/__tests__/NLHGameController.test.js src/games/plo/__tests__/PLO8GameController.test.js src/games/stud/__tests__/StudSplitGameController.test.js`: 3 files / 35 tests passed。
+
+残リスク:
+- [ ] `CAP-REG-05` UI E2EでHero/CPUが実ボタン操作・自動判断を通じてcap到達したときのボタン表示、raise不可表示、hand history記録を確認する。

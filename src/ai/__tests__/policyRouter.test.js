@@ -155,6 +155,55 @@ describe("policyRouter", () => {
     vi.restoreAllMocks();
   });
 
+  it("value-bets strong made Badugi on the final betting round without random hesitation", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.01);
+    const standardContext = buildAiContext({
+      variantId: "D03",
+      tierConfig: {
+        ...tier,
+        id: "standard",
+        aggression: 0.45,
+        bluffFrequency: 0.08,
+        raiseThreshold: 0.9,
+      },
+      opponentStats: {},
+    });
+    const decision = computeBetDecision({
+      context: standardContext,
+      toCall: 0,
+      canRaise: true,
+      madeCards: 4,
+      betSize: 40,
+      actor: { stack: 300, betThisRound: 0 },
+      evaluation: { ranks: [1, 2, 4, 6] },
+      activeOpponents: 3,
+      drawRound: 3,
+      betRound: 3,
+    });
+    expect(decision.action).toBe("RAISE");
+    expect(decision.reason).toBe("final-value-bet");
+    vi.restoreAllMocks();
+  });
+
+  it("value-raises strong made Badugi when facing a final betting-round bet", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.01);
+    const decision = computeBetDecision({
+      context,
+      toCall: 40,
+      canRaise: true,
+      madeCards: 4,
+      betSize: 40,
+      actor: { stack: 300, betThisRound: 0 },
+      evaluation: { ranks: [1, 2, 3, 6] },
+      activeOpponents: 2,
+      drawRound: 3,
+      betRound: 3,
+    });
+    expect(decision.action).toBe("RAISE");
+    expect(decision.reason).toBe("final-value-raise");
+    vi.restoreAllMocks();
+  });
+
   it("boosts raise size with tier multiplier", () => {
     vi.spyOn(Math, "random").mockReturnValue(0.99);
     const decision = computeBetDecision({

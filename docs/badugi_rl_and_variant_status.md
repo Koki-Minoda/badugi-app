@@ -2958,3 +2958,14 @@ Draw RL test coverage:
 残ギャップ:
 - [ ] `PV90-14` 36件目のChinese/OFCはGame Selector正式playable UI接続後、同じstreet/progression matrixへ追加する。
 - [ ] `PV90-15` Super Hold'em / FL Super Hold'em のPlaywright 5連続hand smoke fixmeを解除し、UI smokeも35/35へ引き上げる。
+
+### 21.5 2026-05-05 Badugi CPU / Tournament Avatar 再発防止
+
+- [x] `BUG-40` Badugi CPUが最終ベットラウンドで強い完成Badugiを過度にcheckする。
+  - 原因: policy routerの通常value raise判定は存在したが、最終streetの強いmade handを「乱数に関係なくvalue betする」fixtureがなく、tier/状況によって保守的に見える余地があった。
+  - 対応: 4-card 7-high以下の完成Badugiは最終BET roundで `final-value-bet` / `final-value-raise` としてraise候補に固定。
+  - 回帰: `policyRouter.test.js` に6-badugi相当のfinal value bet / value raise fixtureを追加。
+- [x] `BUG-41` Tournament CPU character avatarが次hand以降に落ちる。
+  - 原因: MTT state初期化では `avatarUrl` を保持していたが、Badugi next-hand lifecycleで `cpuCharacterId` / `cpuStyle` / `avatar` / `avatarUrl` をprev/current playersから引き継いでいなかった。またE2E/devではVite baseが `/dev/` のため、`/characters/...` が404になりinitialsへfallbackしていた。
+  - 対応: `buildNextHandState` でCPU character metadataを継承し、Hero profileのavatarUrlも保持する。加えてUI描画側で `avatarUrl` 優先、CPU roster名からの画像復元、dev base fallbackを追加。
+  - 回帰: controller unitでMTT next hand後のCPU avatar保持、Player unitで `avatarUrl` のみ/roster復元を確認、PlaywrightでTournament redeal後もCPU avatar imageが残ることを追加。

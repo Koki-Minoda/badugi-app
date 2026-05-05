@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import Card from "./Card";
 import { formatStatAf, formatStatPercent } from "../utils/stats.js";
 import { getDisplayCards } from "../utils/cardDisplayOrder.js";
+import { getCpuCharacterByName } from "../../ai/cpuRoster.js";
 
 function BetStatus({ amount, allIn = false }) {
   const hasBet = Number(amount) > 0;
@@ -44,14 +45,28 @@ function StatusPill({ label, tone = "slate" }) {
 
 function AvatarImage({ src, initials }) {
   const [failed, setFailed] = useState(false);
+  const [currentSrc, setCurrentSrc] = useState(src);
+  useEffect(() => {
+    setFailed(false);
+    setCurrentSrc(src);
+  }, [src]);
   if (failed) return initials;
   return (
     <img
-      src={src}
+      src={currentSrc}
       alt=""
       className="h-full w-full rounded-full object-cover"
       loading="lazy"
-      onError={() => setFailed(true)}
+      onError={() => {
+        if (
+          String(currentSrc).startsWith("/characters/") &&
+          !String(currentSrc).startsWith("/dev/")
+        ) {
+          setCurrentSrc(`/dev${currentSrc}`);
+          return;
+        }
+        setFailed(true);
+      }}
     />
   );
 }
@@ -92,6 +107,17 @@ function AvatarChip({ avatar, name, isHero = false, isFolded = false, testId }) 
       ) : shouldRenderAvatarText ? avatar : initials}
     </span>
   );
+}
+
+function resolvePlayerAvatarSource(player = {}) {
+  const explicitAvatar = player.avatarUrl ?? player.avatar;
+  if (explicitAvatar && explicitAvatar !== "default_avatar" && explicitAvatar !== "default") {
+    return explicitAvatar;
+  }
+  if (player.isCPU || player.cpuStyle || player.cpuCharacterId) {
+    return getCpuCharacterByName(player.name)?.avatarUrl ?? explicitAvatar;
+  }
+  return explicitAvatar;
 }
 
 function formatHudPercent(value) {
@@ -141,12 +167,13 @@ function PlayerSmartHud({ player, positionLabel, stats, statsLine, stackValue, b
   const [scope, setScope] = useState("all");
   const street = stats?.street ?? {};
   const hands = Number.isFinite(stats?.hands) ? stats.hands : 0;
+  const avatarSource = resolvePlayerAvatarSource(player);
   return (
     <div className="space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <AvatarChip
-            avatar={player.avatar}
+            avatar={avatarSource}
             name={player.name}
             isHero={false}
             isFolded={Boolean(player.folded)}
@@ -264,6 +291,7 @@ export default function Player({
   const stackValue = typeof player.stack === "number" ? player.stack : 0;
   const betValue = typeof player.betThisRound === "number" ? player.betThisRound : 0;
   const handCards = Array.isArray(player.hand) ? player.hand : [];
+  const avatarSource = resolvePlayerAvatarSource(player);
   const stats = player.stats;
   const statsLine =
     stats && Number.isFinite(stats.hands) && stats.hands > 0
@@ -439,7 +467,7 @@ export default function Player({
       <div className="relative z-10 flex items-start justify-between gap-2">
         <div className="min-w-0 flex items-center gap-2 text-white font-semibold">
           <AvatarChip
-            avatar={player.avatar}
+            avatar={avatarSource}
             name={player.name}
             isHero={isHero}
             isFolded={isFolded}

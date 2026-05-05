@@ -2157,6 +2157,10 @@ const SAFE_RESET_PHASE = "IDLE";
             hasDrawn: Boolean(player?.hasDrawn),
             hasActedThisRound: Boolean(player?.hasActedThisRound),
             seatOut: Boolean(player?.seatOut),
+            avatar: player?.avatar ?? null,
+            avatarUrl: player?.avatarUrl ?? null,
+            cpuCharacterId: player?.cpuCharacterId ?? null,
+            cpuStyle: player?.cpuStyle ?? null,
             hand: Array.isArray(player?.hand) ? [...player.hand] : [],
           };
         });

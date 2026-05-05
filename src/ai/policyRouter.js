@@ -114,6 +114,9 @@ export function computeBetDecision({
   const lowballRanks = Array.isArray(evaluation?.ranks) ? evaluation.ranks : [];
   const highCard = lowballRanks.length ? Math.max(...lowballRanks) : 13;
   const lowRanks = lowballRanks.filter((rank) => rank <= 7).length;
+  const isFinalBetRound =
+    Math.max(0, Number(drawRound) || 0) >= 3 ||
+    Math.max(0, Number(betRound) || 0) >= 3;
   const madeStrength =
     madeCards >= 4
       ? highCard <= 7
@@ -161,8 +164,13 @@ export function computeBetDecision({
   const roll = Math.random();
   let action = toCall === 0 ? "CHECK" : "CALL";
   let decisionReason = "default";
+  const strongFinalMadeBadugi =
+    isFinalBetRound && madeCards >= 4 && highCard <= 7;
 
-  if (toCall > 0 && madeStrength < 0.35 && roll < foldCutoff) {
+  if (canRaise && strongFinalMadeBadugi) {
+    action = "RAISE";
+    decisionReason = toCall > 0 ? "final-value-raise" : "final-value-bet";
+  } else if (toCall > 0 && madeStrength < 0.35 && roll < foldCutoff) {
     action = "FOLD";
     decisionReason = liveOpponents >= 3 ? "weak-multiway-facing-bet" : "weak-facing-bet";
   } else if (toCall > 0 && liveOpponents >= 3 && madeStrength < 0.5 && roll < clamp(foldCutoff + 0.16, 0, 0.9)) {

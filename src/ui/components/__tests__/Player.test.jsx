@@ -37,7 +37,52 @@ describe("Player", () => {
     expect(image?.getAttribute("src")).toBe("/characters/akira.png");
 
     if (image) fireEvent.error(image);
+    const fallbackImage = avatar.querySelector("img");
+    if (fallbackImage) fireEvent.error(fallbackImage);
     expect(avatar.textContent).toBe("A");
+  });
+
+  test("renders character images when only avatarUrl survives table hydration", () => {
+    render(
+      <Player
+        player={{ ...basePlayer, avatar: "default_avatar", avatarUrl: "/characters/akira.png" }}
+        index={2}
+        selfIndex={0}
+        turn={0}
+        dealerIdx={0}
+        phase="BET"
+        positionLabel="BB"
+      />,
+    );
+
+    const image = screen.getByTestId("seat-2-avatar").querySelector("img");
+    expect(image).not.toBeNull();
+    expect(image?.getAttribute("src")).toBe("/characters/akira.png");
+  });
+
+  test("recovers CPU character images from roster metadata when avatar fields are missing", () => {
+    render(
+      <Player
+        player={{
+          ...basePlayer,
+          name: "Sora",
+          avatar: "default_avatar",
+          avatarUrl: null,
+          isCPU: true,
+          cpuStyle: "loose-aggressive",
+        }}
+        index={3}
+        selfIndex={0}
+        turn={0}
+        dealerIdx={0}
+        phase="BET"
+        positionLabel="UTG"
+      />,
+    );
+
+    const image = screen.getByTestId("seat-3-avatar").querySelector("img");
+    expect(image).not.toBeNull();
+    expect(image?.getAttribute("src")).toBe("/characters/sora.png");
   });
 
   test("keeps hero draw cards clickable without opening the Smart HUD over the hand", () => {

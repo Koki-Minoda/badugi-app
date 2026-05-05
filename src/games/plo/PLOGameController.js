@@ -74,6 +74,7 @@ export class PLOGameController extends NLHGameController {
       boardCards: board,
       evaluation,
       variantId: this.config.gameDefinition?.id ?? "B05",
+      position: this.getPositionLabel(player?.seatIndex),
     });
   }
 

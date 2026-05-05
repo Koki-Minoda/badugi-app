@@ -14,7 +14,7 @@ function shouldRevealCards(player, snapshot) {
   return (snapshot.street ?? "").toUpperCase() === "SHOWDOWN";
 }
 
-function buildStudCardView(player = {}, revealCards = false) {
+function buildStudCardView(player = {}, { revealAll = false } = {}) {
   const downCards = Array.isArray(player.downCards) ? [...player.downCards] : [];
   const upCards = Array.isArray(player.upCards) ? [...player.upCards] : [];
   if (!downCards.length && !upCards.length) return null;
@@ -27,7 +27,7 @@ function buildStudCardView(player = {}, revealCards = false) {
     ...downCards.slice(0, 2).map(() => "down"),
     ...upCards.map(() => "up"),
     ...downCards.slice(2).map(() => "down"),
-  ].map((visibility) => (revealCards ? "up" : visibility));
+  ].map((visibility) => (revealAll ? "up" : visibility));
   return { cards, cardVisibility };
 }
 
@@ -39,7 +39,9 @@ function mapSeatViews(snapshot = {}) {
   return players.map((player = {}, idx) => {
     const revealCards = shouldRevealCards({ ...player, seatIndex: idx }, snapshot);
     const holeCards = Array.isArray(player.holeCards) ? [...player.holeCards] : [];
-    const studCardView = buildStudCardView(player, revealCards);
+    const studCardView = buildStudCardView(player, {
+      revealAll: (snapshot.street ?? "").toUpperCase() === "SHOWDOWN",
+    });
     const cards = studCardView?.cards ?? (revealCards || holeCards.length === 0 ? holeCards : new Array(holeCards.length).fill("?"));
     const cardVisibility = studCardView?.cardVisibility ?? cards.map(() => (revealCards ? "up" : "down"));
     return {

@@ -113,6 +113,9 @@ describe("NLHUIAdapter", () => {
 
     const view = adapter.buildViewProps({ controllerSnapshot: snapshot, tableConfig });
 
+    expect(view.seatViews[0].cards).toEqual(["AS", "KD", "2C"]);
+    expect(view.seatViews[0].hand).toEqual(["AS", "KD", "2C"]);
+    expect(view.seatViews[0].cardVisibility).toEqual(["down", "down", "up"]);
     expect(view.seatViews[1].cards).toEqual(["QS", "JD", "9C"]);
     expect(view.seatViews[1].hand).toEqual(["QS", "JD", "9C"]);
     expect(view.seatViews[1].cardVisibility).toEqual(["down", "down", "up"]);

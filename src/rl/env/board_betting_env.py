@@ -13,6 +13,13 @@ from gymnasium import spaces
 BOARD_ACTIONS = ["fold", "check", "call", "bet", "raise", "all_in"]
 BOARD_VARIANTS = ("nlh", "flh", "plo", "plo8")
 BOARD_TIERS = ("beginner", "standard")
+POSITION_BUCKETS = ("UTG", "MP", "CO", "BTN", "SB", "BB")
+POSITION_OPEN_FLOORS = {
+    "nlh": {"UTG": 0.74, "MP": 0.68, "CO": 0.60, "BTN": 0.50, "SB": 0.56, "BB": 0.30},
+    "flh": {"UTG": 0.68, "MP": 0.62, "CO": 0.55, "BTN": 0.48, "SB": 0.52, "BB": 0.28},
+    "plo": {"UTG": 0.80, "MP": 0.73, "CO": 0.66, "BTN": 0.58, "SB": 0.64, "BB": 0.36},
+    "plo8": {"UTG": 0.78, "MP": 0.70, "CO": 0.62, "BTN": 0.54, "SB": 0.60, "BB": 0.34},
+}
 
 
 @dataclass
@@ -31,6 +38,7 @@ class BoardScenario:
     active_opponents: int
     stack_ratio: float
     last_aggression: float
+    range_score: float = 0.0
 
 
 class BoardBettingEnv(gym.Env):
@@ -114,6 +122,13 @@ class BoardBettingEnv(gym.Env):
             active_opponents=active_opponents,
             hi_lo=hi_lo,
         )
+        range_score = _estimate_position_range_score(
+            family=self.family,
+            strength=strength,
+            draw_potential=draw_potential,
+            position=position,
+            active_opponents=active_opponents,
+        )
         return BoardScenario(
             family=self.family,
             tier=self.tier,
@@ -129,6 +144,7 @@ class BoardBettingEnv(gym.Env):
             active_opponents=active_opponents,
             stack_ratio=stack_ratio,
             last_aggression=self.random.random(),
+            range_score=range_score,
         )
 
     def _observation(self):
@@ -235,6 +251,13 @@ class BoardLongHorizonEnv(BoardBettingEnv):
             active_opponents=scenario.active_opponents,
             hi_lo=1.0 if self.family == "plo8" else 0.0,
         )
+        scenario.range_score = _estimate_position_range_score(
+            family=self.family,
+            strength=scenario.strength,
+            draw_potential=scenario.draw_potential,
+            position=scenario.position,
+            active_opponents=scenario.active_opponents,
+        )
         return scenario
 
     def _sample_to_call(self):
@@ -299,6 +322,13 @@ class BoardLongHorizonEnv(BoardBettingEnv):
             active_opponents=self.scenario.active_opponents,
             hi_lo=1.0 if self.family == "plo8" else 0.0,
         )
+        self.scenario.range_score = _estimate_position_range_score(
+            family=self.family,
+            strength=self.scenario.strength,
+            draw_potential=self.scenario.draw_potential,
+            position=self.scenario.position,
+            active_opponents=self.scenario.active_opponents,
+        )
 
 
 def _estimate_equity(*, strength: float, draw_potential: float, street_progress: float, active_opponents: int, hi_lo: float):
@@ -312,6 +342,49 @@ def _pot_odds(scenario: BoardScenario):
     if scenario.to_call <= 0:
         return 0.0
     return scenario.to_call / max(0.01, scenario.pot_size + scenario.to_call)
+
+
+def _position_bucket(position: float):
+    if position < 0.14:
+        return "UTG"
+    if position < 0.32:
+        return "MP"
+    if position < 0.52:
+        return "CO"
+    if position < 0.74:
+        return "BTN"
+    if position < 0.88:
+        return "SB"
+    return "BB"
+
+
+def _estimate_position_range_score(
+    *,
+    family: str,
+    strength: float,
+    draw_potential: float,
+    position: float,
+    active_opponents: int,
+):
+    """GTO-inspired abstract preflop playability score.
+
+    This is not a copied solver chart. It encodes solver-like principles:
+    early seats need tighter continuing ranges, late seats can pressure wider,
+    PLO values nut potential/connectedness more than raw high-card strength,
+    and PLO8 rewards scoop-capable low-plus-high structures.
+    """
+
+    bucket = _position_bucket(position)
+    late_credit = {"UTG": -0.05, "MP": -0.02, "CO": 0.03, "BTN": 0.09, "SB": -0.01, "BB": 0.04}[bucket]
+    multiway_penalty = max(0, active_opponents - 1) * (0.035 if family in {"plo", "plo8"} else 0.02)
+    if family in {"plo", "plo8"}:
+        nut_potential = draw_potential * (0.62 if family == "plo" else 0.5)
+        made_component = strength * (0.42 if family == "plo" else 0.34)
+        scoop_bonus = 0.12 if family == "plo8" and draw_potential >= 0.48 and strength >= 0.42 else 0.0
+        return float(np.clip(made_component + nut_potential + scoop_bonus + late_credit - multiway_penalty, 0.0, 1.0))
+    suited_connector_proxy = draw_potential * 0.22
+    made_component = strength * (0.66 if family == "nlh" else 0.58)
+    return float(np.clip(made_component + suited_connector_proxy + late_credit - multiway_penalty, 0.0, 1.0))
 
 
 def make_board_observation(scenario: BoardScenario):
@@ -350,9 +423,22 @@ def board_teacher_action(scenario: BoardScenario):
     pot_limit = scenario.family in {"plo", "plo8"}
     hi_lo = scenario.family == "plo8"
     standard = scenario.tier == "standard"
+    preflop = scenario.street_progress <= 0.01
+    position_bucket = _position_bucket(scenario.position)
+    range_score = scenario.range_score or _estimate_position_range_score(
+        family=scenario.family,
+        strength=scenario.strength,
+        draw_potential=scenario.draw_potential,
+        position=scenario.position,
+        active_opponents=scenario.active_opponents,
+    )
     value_threshold = 0.63 if standard else 0.72
     continue_threshold = max(0.24 if standard else 0.31, pot_odds + (0.03 if multiway else -0.02))
     semi_bluff_threshold = 0.48 if standard else 0.58
+    if preflop:
+        floor = POSITION_OPEN_FLOORS[scenario.family][position_bucket] + (0.04 if not standard else 0.0)
+        continue_threshold = max(0.18, floor - (0.18 if position_bucket == "BB" else 0.08))
+        value_threshold = max(value_threshold, floor + (0.14 if scenario.family in {"plo", "plo8"} else 0.1))
     thin_value_spot = late_position and scenario.strength >= 0.62 and equity >= (0.58 if standard else 0.66)
     isolation_spot = (
         multiway
@@ -363,13 +449,19 @@ def board_teacher_action(scenario: BoardScenario):
     scoop_pressure_spot = hi_lo and equity >= (0.68 if standard else 0.75) and scenario.draw_potential >= 0.45
 
     if scenario.to_call > 0:
-        if (equity >= value_threshold or isolation_spot or scoop_pressure_spot) and scenario.raise_count < 4:
+        if preflop and range_score < continue_threshold:
+            return BOARD_ACTIONS.index("fold")
+        if (equity >= value_threshold or range_score >= value_threshold or isolation_spot or scoop_pressure_spot) and scenario.raise_count < 4:
             return BOARD_ACTIONS.index("raise")
-        if equity >= continue_threshold or (late_position and scenario.draw_potential >= semi_bluff_threshold):
+        if equity >= continue_threshold or range_score >= continue_threshold or (late_position and scenario.draw_potential >= semi_bluff_threshold):
             return BOARD_ACTIONS.index("call")
         return BOARD_ACTIONS.index("fold")
 
-    if equity >= value_threshold or thin_value_spot:
+    if preflop and range_score < POSITION_OPEN_FLOORS[scenario.family][position_bucket] + (0.04 if not standard else 0.0):
+        return BOARD_ACTIONS.index("check")
+    if preflop:
+        return BOARD_ACTIONS.index("bet")
+    if equity >= value_threshold or range_score >= value_threshold or thin_value_spot:
         return BOARD_ACTIONS.index("bet")
     if standard and late_position and scenario.draw_potential >= semi_bluff_threshold and scenario.last_aggression < 0.55:
         return BOARD_ACTIONS.index("bet")

@@ -343,6 +343,7 @@ export class StudGameController {
     if (!player) return { success: false, reason: "Player not found" };
     if (player.folded || player.seatOut || player.allIn) return { success: false, reason: "Player cannot act" };
     const actionName = String(action ?? "").toLowerCase();
+    const previousCurrentBet = this.state.currentBet ?? 0;
     switch (actionName) {
       case "fold":
         player.folded = true;
@@ -379,7 +380,23 @@ export class StudGameController {
           : Math.max(0, targetStreetBet - (player.betThisStreet ?? 0));
         this.commitChips(player, Math.min(player.stack, chipsToCommit));
         this.state.currentBet = Math.max(this.state.currentBet, player.betThisStreet ?? 0);
-        if (actionName !== "all-in") this.raiseCountThisStreet += 1;
+        const isFullRaise = (player.betThisStreet ?? 0) > previousCurrentBet;
+        if (actionName !== "all-in" && isFullRaise) {
+          this.raiseCountThisStreet += 1;
+          this.state.players = this.state.players.map((entry, idx) => {
+            if (
+              idx === seatIndex ||
+              !entry ||
+              entry.folded ||
+              entry.seatOut ||
+              entry.allIn ||
+              entry.stack <= 0
+            ) {
+              return entry;
+            }
+            return { ...entry, hasActedThisStreet: false };
+          });
+        }
         player.lastAction = actionName === "all-in"
           ? "All-in"
           : isBringInCompletion

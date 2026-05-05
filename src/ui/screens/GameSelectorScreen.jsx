@@ -18,6 +18,8 @@ const CATEGORY_ORDER = [
   GAME_VARIANT_CATEGORIES.STUD,
 ];
 
+const DEFAULT_CATEGORY = GAME_VARIANT_CATEGORIES.TRIPLE_DRAW;
+
 const EN_CATEGORY_LABELS = Object.freeze({
   [GAME_VARIANT_CATEGORIES.BOARD]: "Board / Hold'em / Omaha",
   [GAME_VARIANT_CATEGORIES.TRIPLE_DRAW]: "Triple Draw",
@@ -199,7 +201,7 @@ export default function GameSelectorScreen({
   onLaunchVariant = null,
 }) {
   const navigate = useNavigate();
-  const [activeCategory, setActiveCategory] = useState(CATEGORY_ORDER[0]);
+  const [activeCategory, setActiveCategory] = useState(DEFAULT_CATEGORY);
   const [search, setSearch] = useState("");
   const playerProgress = usePlayerProgress();
   const unlockState = computeUnlockState(playerProgress);
@@ -343,14 +345,6 @@ export default function GameSelectorScreen({
     return allProfiles.filter((profile) => profile.category === activeCategory);
   }, [activeCategory, allProfiles, search]);
 
-  const playableProfiles = useMemo(
-    () =>
-      allProfiles
-        .filter((profile) => isControllerBackedAppVariant(profile.engineKey ?? profile.id))
-        .sort((a, b) => (a.priorityPhase ?? 99) - (b.priorityPhase ?? 99)),
-    [allProfiles],
-  );
-
   const advancedModes = useMemo(
     () => [
       {
@@ -471,25 +465,10 @@ export default function GameSelectorScreen({
           </p>
         </section>
 
-        <section className="rounded-3xl border border-emerald-400/25 bg-emerald-500/5 p-6 space-y-4">
-          <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-emerald-300">
-              {isJapanese ? "プレイ可能" : "Playable Now"}
-            </p>
-            <h2 className="text-2xl font-bold">
-              {isJapanese ? "すぐに開始できるゲーム" : "Start a Cash Game"}
-            </h2>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            {playableProfiles.map((profile) => (
-              <VariantCard
-                key={`playable-${profile.id}`}
-                profile={profile}
-                onLaunch={handleLaunch}
-                copy={copy}
-              />
-            ))}
-          </div>
+        <section className="grid gap-4 md:grid-cols-2">
+          {variants.map((profile) => (
+            <VariantCard key={profile.id} profile={profile} onLaunch={handleLaunch} copy={copy} />
+          ))}
         </section>
 
         <section className="grid gap-4 lg:grid-cols-3">
@@ -554,11 +533,6 @@ export default function GameSelectorScreen({
           ))}
         </section>
 
-        <section className="grid gap-4 md:grid-cols-2">
-          {variants.map((profile) => (
-            <VariantCard key={profile.id} profile={profile} onLaunch={handleLaunch} copy={copy} />
-          ))}
-        </section>
       </main>
     </div>
   );

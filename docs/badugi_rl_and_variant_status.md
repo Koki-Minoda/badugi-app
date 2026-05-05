@@ -2612,6 +2612,7 @@ Draw RL test coverage:
 
 - [x] `STUD-QA-01` Stud/Razz UIで、公開カード(up cards)と伏せカード(down cards)を視覚的に分離する。
   - 2026-05-05 追加対応: `UP/DOWN/HIDDEN` の文字だけに頼らず、公開カードは少し上にずらして緑ringを付け、Heroの伏せカードは斜め半分の裏面カバーを重ねる。Opponentの伏せカードは従来どおり非公開の裏面表示を維持する。
+  - 2026-05-05 修正: Hero視点の「カード値は見える」と「公開/伏せ状態」は別物として扱う。`revealCards` の副作用でHeroの `cardVisibility` が全て `up` になり、伏せ札カバーが出ない不具合を修正。
   - 3rd street: 2 down + 1 up。
   - 4th/5th/6th street: up card。
   - 7th street: down card。
@@ -2622,6 +2623,7 @@ Draw RL test coverage:
   - Razz: 高いup cardがbring-in。
   - completeはsmall betへの補完として扱う。
   - 2026-05-05 対応: 3rd streetのcompleteはbring-inからsmall betへの補完として処理するfixtureを追加。
+  - 2026-05-05 修正: full raise / complete後は、既にcall/check済みだったlive playerを再行動対象へ戻す。raise後に応答なしでstreet進行またはwaiting停止する不具合をfixtureで固定。
 - [x] `STUD-QA-03` 7th street最終bet後、CPU/Heroのcall/check/foldで停止せずshowdownまたはuncontested resultへ遷移することをunit fixtureで固定する。
 - [x] `STUD-QA-04` Razz / Razz27 / Stud8 / Razzdugi / Razzduceyも同じstreet進行・表示・showdown遷移で確認する。
   - 2026-05-05 対応: controller invariantとcross-variant UI smokeでStud/Razz familyを含めて起動・配牌・actionable state到達を確認。
@@ -2649,8 +2651,11 @@ Draw RL test coverage:
 
 - [x] `npm test -- --run src/ui/feedback/__tests__/playFeedbackPayload.test.js src/ui/screens/__tests__/HandHistoryScreen.test.jsx src/ui/components/__tests__/Player.test.jsx`: 3 files / 14 tests pass。
 - [x] `npm test -- --run src/games/stud/__tests__/StudSplitGameController.test.js src/games/__tests__/playableInvariant.test.js`: 2 files / 38 tests pass。
+- [x] `npm test -- --run src/ui/game/nlh/__tests__/NLHUIAdapter.test.js src/ui/components/__tests__/Player.test.jsx src/games/stud/__tests__/StudSplitGameController.test.js`: 3 files / 28 tests pass。Hero down card表示とStud/Razz raise後reopenを確認。
+- [x] `npm test -- --run src/games/__tests__/playableInvariant.test.js`: 1 file / 73 tests pass。全playable controllerで5連続hand、short-stack all-in pressure、broken actor/chip drift/negative stackなしを確認。
 - [x] `npm test -- --run src/ui/screens/__tests__/HistoryScreen.test.jsx src/ui/game/nlh/__tests__/NLHUIAdapter.test.js`: 2 files / 8 tests pass。
 - [x] `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts --project=badugi-flow`: 22 passed。
+- [x] `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts --project=badugi-flow`: 2026-05-05 再確認 26 passed。Game Selectorのカテゴリ初期表示変更に合わせ、E2E helperは対象variantのカテゴリへ切り替えてから起動する。
 - [x] `npx playwright test tests/e2e/cross-variant-five-hand-smoke.spec.ts tests/e2e/badugi-mtt-flow.spec.ts --project=badugi-flow`: 10 passed。
 - [x] `npm test -- --run src/games/__tests__/playableInvariant.test.js src/ui/screens/__tests__/MainMenuScreen.test.jsx`: 2 files / 83 tests pass。
 - [x] `npm run lint`: pass。
@@ -2785,6 +2790,12 @@ Draw RL test coverage:
 - [x] `AI-BOARD-LONG-07` variant別EV gateを追加する。NLH/FLH/PLO/PLO8を分け、`callEV`, `raiseEV`, `foldEV`, `thin value`, `bad bluff`, `multiway isolation`, `side-pot EV`, `PLO8 scoop/no-low` を別々に合否判定する。
   - 2026-05-05 対応: `B01/B02/B05/B06` の family 別fixtureを同一CLIで分岐。PLO/PLO8はpot-limit draw potentialとscoop/no-low awarenessを別categoryにし、FLHはfixed-limit isolationをcall許容にする。
   - 2026-05-05 評価: 既存8モデルはbase fixtureは全pass。advanced report-onlyではNLH/FLHが7/8、PLO/PLO8が6/8。共通課題は thin value不足、PLO/PLO8はmultiway isolationとPLO8 scoop/no-low raise頻度不足。Pro昇格対象ではなく、次の学習課題として扱う。
+- [x] `AI-BOARD-LONG-09` NLH/PLOのpreflop teacherへ、GTO solver風のポジション別参加レンジを導入する。
+  - 2026-05-05 対応: GTO Wizard等のレンジ分析思想を参考にしつつ、有料/独自チャートの丸写しはせず、MGX独自の抽象range scoreとして実装。
+  - NLH/FLH: UTG/MP/CO/BTN/SB/BBでopen floorを分け、pair / suited ace / broadway / connector / dominated offsuit trashを評価する。
+  - PLO: raw high-cardよりも、nut potential、連結性、double-suited、premium pair、dangler penaltyを重視する。
+  - PLO8/FLO8: A2 / wheel low / high backup / suited ace などscoop候補を高く評価し、lowもhighも弱いno-low寄りハンドはmultiwayで降ろす。
+  - 既存16入力/6出力のboard DQN契約は維持し、ONNX shape互換を壊さない。
 - [x] `AI-BOARD-LONG-08` human/practice benchmarkを board系にも追加する。Badugi用 `ai:benchmark-badugi-human-practice` と同等に、実プレイログを読み込めない場合は practice-only と明記し、人間相手の勝率保証には使わない。
   - 2026-05-05 対応: `benchmark_board_human_practice.py` と `npm run ai:benchmark-board-human-practice` を追加。`variantId` ごとにhuman logをfilterし、`heroNet` / `heroResult` / nested `humanBenchmark` / `feedbackContext` を集計する。`--require-human-logs` 時は指定ハンド数未満ならpassしない。
 - [x] `HELP-01` Main Menu の `?` ヘルプを「今後追加予定」から、全variantのルール要点・勝敗判定・強くなるコツを表示する実用ガイドへ拡張する。
@@ -2792,6 +2803,8 @@ Draw RL test coverage:
 ### 19.6 長期RL確認結果
 
 - [x] `PYTHONPATH=src .venv/bin/python -m pytest src/rl/__tests__/test_board_betting_env.py`: 2 passed。
+- [x] `cd src && ../.venv/bin/python -m pytest rl/__tests__/test_board_betting_env.py`: 4 passed。ポジション別preflop range、PLO8 scoop/no-low teacherを確認。
+- [x] `npm test -- --run src/games/core/__tests__/cpuTeacherPolicy.test.js src/games/nlh/__tests__/NLHGameController.test.js src/games/plo/__tests__/PLOGameController.test.js`: 3 files / 21 tests pass。
 - [x] `npm run ai:train-board -- --family nlh --tier standard --long-horizon --episodes 120 ... --resume-checkpoint rl/models/board_nlh_standard_20260505/nlh_standard_board_dqn_latest.pt`: completed, evaluate pass。
 - [x] `npm run ai:train-board -- --family flh --tier standard --long-horizon --episodes 120 ... --resume-checkpoint rl/models/board_flh_standard_20260505/flh_standard_board_dqn_latest.pt`: completed, evaluate pass。
 - [x] `npm run ai:train-board -- --family plo --tier standard --long-horizon --episodes 120 ... --resume-checkpoint rl/models/board_plo_standard_20260505/plo_standard_board_dqn_latest.pt`: completed, evaluate pass。

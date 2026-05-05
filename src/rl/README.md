@@ -200,6 +200,14 @@ Use `--family flh`, `--family plo`, or `--family plo8` with variant IDs `B02`,
 separate gate for EV delta, fold discipline, thin value, bluff frequency,
 multiway isolation, and PLO8 scoop/no-low behavior.
 
+The board teacher now includes a GTO-inspired preflop range layer without
+copying proprietary solver charts. NLH/FLH use position-specific open floors
+for UTG/MP/CO/BTN/SB/BB and score pairs, suited aces, broadways, connectors,
+and dominated offsuit trash separately. PLO/PLO8 weight nut potential,
+connectedness, double-suited structure, premium pairs, dangler penalties, and
+multiway pressure; PLO8 adds scoop-oriented A2/wheel-low plus high-backup
+credit and folds weak no-low structures more often.
+
 For non-smoke runs, prefer `--teacher-warmup-episodes` instead of starting from
 an empty replay buffer. The teacher uses explicit Badugi opening ranges:
 A-2-7-or-better one-card draws continue heads-up, rough made Badugis are street

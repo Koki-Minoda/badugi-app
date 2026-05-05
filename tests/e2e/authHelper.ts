@@ -65,6 +65,29 @@ const VARIANT_TEST_ID_BY_ALIAS: Record<string, string> = {
   st6: "razz27",
 };
 
+const VARIANT_CATEGORY_BUTTON_BY_TEST_ID: Record<string, RegExp> = {
+  nlh: /Board|Hold'em|Omaha|ボード|ホールデム|オマハ/i,
+  flh: /Board|Hold'em|Omaha|ボード|ホールデム|オマハ/i,
+  plo: /Board|Hold'em|Omaha|ボード|ホールデム|オマハ/i,
+  plo8: /Board|Hold'em|Omaha|ボード|ホールデム|オマハ/i,
+  flo8: /Board|Hold'em|Omaha|ボード|ホールデム|オマハ/i,
+  big_o: /Board|Hold'em|Omaha|ボード|ホールデム|オマハ/i,
+  five_card_plo: /Board|Hold'em|Omaha|ボード|ホールデム|オマハ/i,
+  stud: /Stud|スタッド/i,
+  stud8: /Stud|スタッド/i,
+  razz: /Stud|スタッド/i,
+  razzdugi: /Stud|スタッド/i,
+  razzducey: /Stud|スタッド/i,
+  razz27: /Stud|スタッド/i,
+  deuce_to_seven_single_draw: /Single Draw|シングルドロー/i,
+  ace_to_five_single_draw: /Single Draw|シングルドロー/i,
+  five_card_single_draw: /Single Draw|シングルドロー/i,
+  badugi_single_draw: /Single Draw|シングルドロー/i,
+  badeucey_single_draw: /Single Draw|シングルドロー/i,
+  badacey_single_draw: /Single Draw|シングルドロー/i,
+  hidugi_single_draw: /Single Draw|シングルドロー/i,
+};
+
 function variantTestIdFromUrl(url: string) {
   try {
     const parsed = new URL(url);
@@ -186,6 +209,13 @@ export async function openAuthenticatedGame(page: Page, url = APP_URL) {
   await openAuthenticatedMenu(page, url);
   await page.getByTestId("menu-ring").click();
   const variantTestId = variantTestIdFromUrl(url);
+  const playButton = page.getByTestId(`game-selector-play-${variantTestId}`).first();
+  if (!(await playButton.count())) {
+    const categoryName = VARIANT_CATEGORY_BUTTON_BY_TEST_ID[variantTestId];
+    if (categoryName) {
+      await page.getByRole("button", { name: categoryName }).first().click();
+    }
+  }
   await page.getByTestId(`game-selector-play-${variantTestId}`).first().click();
   await Promise.race([
     page

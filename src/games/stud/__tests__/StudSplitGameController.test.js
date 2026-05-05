@@ -140,6 +140,44 @@ describe("Stud split controllers", () => {
     expect(controller.state.players[1].lastAction).toBe("Complete");
   });
 
+  it("reopens Stud betting action after a full raise so earlier callers must respond", () => {
+    const controller = createController(StudGameController, 3);
+    controller.startNewHand();
+    controller.state.street = "FOURTH";
+    controller.state.currentBet = 10;
+    controller.raiseCountThisStreet = 0;
+    controller.state.players = controller.state.players.map((player, idx) => ({
+      ...player,
+      folded: false,
+      seatOut: false,
+      allIn: false,
+      stack: 1000,
+      betThisStreet: 10,
+      totalInvested: 10,
+      hasActedThisStreet: idx === 0,
+    }));
+    controller.state.currentActor = 1;
+
+    const raiseResult = controller.applyPlayerAction({ seatIndex: 1, action: "raise", amount: 10 });
+
+    expect(raiseResult.success).toBe(true);
+    expect(controller.state.currentBet).toBe(20);
+    expect(controller.state.players[0].hasActedThisStreet).toBe(false);
+    expect(controller.state.players[1].hasActedThisStreet).toBe(true);
+    expect(controller.state.currentActor).toBe(2);
+
+    const coldCallResult = controller.applyPlayerAction({ seatIndex: 2, action: "call" });
+
+    expect(coldCallResult.success).toBe(true);
+    expect(controller.state.street).toBe("FOURTH");
+    expect(controller.state.currentActor).toBe(0);
+
+    const closingCallResult = controller.applyPlayerAction({ seatIndex: 0, action: "call" });
+
+    expect(closingCallResult.success).toBe(true);
+    expect(controller.state.street).toBe("FIFTH");
+  });
+
   it("posts bring-in from the highest up-card in Razz-family games", () => {
     const controller = createController(RazzGameController, 3);
     controller.startNewHand();

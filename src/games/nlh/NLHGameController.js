@@ -354,7 +354,28 @@ export class NLHGameController {
       boardCards: board,
       evaluation,
       variantId: this.config.gameDefinition?.id ?? "B01",
+      position: this.getPositionLabel(player?.seatIndex),
     });
+  }
+
+  getPositionLabel(seatIndex, players = this.state.players) {
+    if (seatIndex == null) return "MP";
+    if (seatIndex === this.state.dealerIndex) return "BTN";
+    if (seatIndex === this.state.smallBlindIndex) return "SB";
+    if (seatIndex === this.state.bigBlindIndex) return "BB";
+    const activeOrder = [];
+    let cursor = this.state.bigBlindIndex;
+    for (let i = 0; i < players.length; i += 1) {
+      cursor = this.nextOccupiedSeat(cursor, { allowSame: false, players });
+      if (cursor == null || activeOrder.includes(cursor)) break;
+      if (cursor !== this.state.dealerIndex && cursor !== this.state.smallBlindIndex && cursor !== this.state.bigBlindIndex) {
+        activeOrder.push(cursor);
+      }
+    }
+    const idx = activeOrder.indexOf(seatIndex);
+    if (idx <= 0) return "UTG";
+    if (idx === activeOrder.length - 1) return "CO";
+    return "MP";
   }
 
   getCpuAction(state = this.getSnapshot(), seatIndex = state?.currentActor, options = {}) {
@@ -369,6 +390,9 @@ export class NLHGameController {
     const playerBet = Number(player.betThisStreet ?? player.bet ?? 0) || 0;
     const toCall = Math.max(0, currentBet - playerBet);
     const strength = this.evaluateCpuStrength(player);
+    const activeOpponents = state.players.filter(
+      (entry, idx) => idx !== seatIndex && entry && !entry.folded && !entry.seatOut && !entry.allIn,
+    ).length;
     const betAmount =
       this.config.gameDefinition?.betting?.structure === "fixed-limit" && typeof this.getLimitUnit === "function"
         ? this.getLimitUnit()
@@ -382,6 +406,9 @@ export class NLHGameController {
       currentBet,
       playerBet,
       street: state.street,
+      variantId: this.config.gameDefinition?.id ?? "B01",
+      position: this.getPositionLabel(seatIndex, state.players),
+      activeOpponents,
     });
     return {
       seatIndex,
@@ -389,6 +416,7 @@ export class NLHGameController {
       metadata: {
         ...(decision.metadata ?? {}),
         strength,
+        position: this.getPositionLabel(seatIndex, state.players),
         tierId: options.tierConfig?.id ?? "standard",
       },
     };

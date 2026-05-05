@@ -1,3 +1,34 @@
+const COMPONENT_LABELS = {
+  badugi: "Badugi half",
+  low27: "2-7 Low half",
+  lowA5: "A-5 Low half",
+  archieHigh: "High half",
+  archieLow: "A-5 Low half",
+  board: "Board half",
+  draw: "Draw half",
+};
+
+function getComponentLabel(pot = {}) {
+  if (pot.componentLabel) return pot.componentLabel;
+  if (pot.component && COMPONENT_LABELS[pot.component]) return COMPONENT_LABELS[pot.component];
+  if (pot.label && /\bhalf\b/i.test(pot.label)) return pot.label;
+  return null;
+}
+
+function getBasePotLabel(pot = {}, index, totalPots) {
+  const sourcePotIndex = Number.isInteger(pot.sourcePotIndex) ? pot.sourcePotIndex : index;
+  if (totalPots <= 1 && !getComponentLabel(pot)) return "Pot";
+  if (sourcePotIndex === 0) return "Pot";
+  if (sourcePotIndex === 1) return "Side";
+  return `Side ${sourcePotIndex}`;
+}
+
+function getToastPotLabel(pot = {}, index, totalPots) {
+  const baseLabel = getBasePotLabel(pot, index, totalPots);
+  const componentLabel = getComponentLabel(pot);
+  return componentLabel ? `${baseLabel} · ${componentLabel}` : baseLabel;
+}
+
 export function buildShowdownToastItems(summary) {
   const potDetails = Array.isArray(summary?.potDetails) ? summary.potDetails : [];
   if (potDetails.length > 0) {
@@ -7,10 +38,9 @@ export function buildShowdownToastItems(summary) {
         .map((winner) => winner?.name)
         .filter(Boolean)
         .join(" / ");
-      const label = potDetails.length <= 1 || index === 0 ? "Pot" : index === 1 ? "Side" : `Side ${index}`;
       return {
         key: `${pot?.potIndex ?? index}-${winnerNames}`,
-        label,
+        label: getToastPotLabel(pot, index, potDetails.length),
         amount: pot?.potAmount ?? 0,
         winners: winnerNames || "-",
       };

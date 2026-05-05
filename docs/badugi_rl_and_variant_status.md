@@ -2269,7 +2269,8 @@ Draw RL test coverage:
   - 2026-05-05 部分対応: Chinese Poker / OFC本体controllerを追加。13枚配布、front/middle/back自動配置、Hero row set、foul判定、royalty、showdown row scoring、next handをunitで固定。layout UI / fantasyland / OFC turn順は継続。
   - 2026-05-04 部分対応: `D04` Badeucey TD、`D05` Badacey TD、`D06` Hidugi TD、`D07` Archie TD をplayable化。Badugi half + 2-7/A-5/high系halfのcomponent split、odd chip fixture、registry/routing/UI adapter/history smokeを追加。
   - 2026-05-04 部分対応: `S04-S07` single draw split/Badugi系をplayable化。S04 Badugi SD、S05 Badeucey SD、S06 Badacey SD、S07 Hidugi SDのcontroller/engine/routing/catalog/history smokeを追加。
-  - 残TODO: Chinese/OFC layout UI / fantasyland / OFC street-by-street turn順、split draw系の公式ルール監査、component pot detail UI、Playwright replay smoke、CPU discard strategy精緻化を追加する。
+  - 2026-05-05 追加対応: Badeucey/Badacey/Hidugi/Archie と Dramaha 6種の結果summaryに componentLabel / sourcePotIndex / eligibleSeatIndexes / oddChipAmount を保持し、Hand Result Overlay と Showdown Toast で `Main Pot · Badugi half` / `Side Pot · Draw half` のようにcomponent pot単位で表示するようにした。Dramahaはodd chipがdraw halfへ行くことをsummary/UIで明示する。
+  - 残TODO: Chinese/OFC layout UI / fantasyland / OFC street-by-street turn順、split draw系の公式ルール監査、Playwright replay smoke、CPU discard strategy精緻化を追加する。
 - [ ] `GAME-ALL-03` Stud / Razz 実装後、10-Game対象のCPUを Beginner / Standard まで学習・適用する。
   - 2026-05-05 部分対応: NLH / FLH / PLO / PLO8 / FLO8 / Stud / Stud8 / Razz / Razz27 は、controller の `getCpuAction()` 経由で teacher-supervised CPU policy を実行できるようにした。
   - 2026-05-05 部分対応: App のCPU action経路を draw-lowball 限定から controller-driven game 全体へ広げ、board/stud系がBadugi fallback policyへ落ちないようにした。
@@ -2569,6 +2570,7 @@ Draw RL test coverage:
   - 2-7: Aは高いカードとして扱う。A-5/Badugi: Aは低いカードとして扱う。High: A/Kなど強いrankを左へ寄せる。
 - [x] `QA-20260504-SPLIT-RESULT-VISIBILITY` Stud8/PLO8/FLO8/Badeucey/Badacey/Razzdugi/Razzducey の hi/low/component pot を色・ラベルで分離して表示する。
   - 背景: split potやcomponent splitで、誰がHigh/Low/Badugi側を取ったかが結果画面で判別しにくい。
+  - 2026-05-05 追加対応: split draw / Dramaha のcomponent pot詳細を強化。元ポット(Main/Side)とhalf種別(Board/Draw/Badugi/2-7/A-5/High)、eligible seat、odd chipを結果overlayに表示し、toastでもcomponent別winner名を表示するunitを追加。
 - [ ] `QA-20260504-ALL-VARIANT-OPERATIONAL-AUDIT` playable invariant を「初回action到達」だけでなく、street完走・showdown・all-in/split potまで段階的に拡張する。
   - 背景: Razz/Stud/draw/board gameごとの進行差をテストで拾わないと、ゲームできると誤認する。
   - 2026-05-04: Razz/Razz27 のfull street unit fixture、Player表示順unit、HandResultOverlay split/component表示unitを追加。全variantの完全手動/自動E2E完走監査は継続タスク。

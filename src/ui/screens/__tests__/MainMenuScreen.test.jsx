@@ -117,4 +117,16 @@ describe("MainMenuScreen", () => {
     });
     expect(handleChange).toHaveBeenCalledWith("ja");
   });
+
+  it("shows per-variant Japanese rules and strategy guidance from the help button", () => {
+    render(<MainMenuScreen language="ja" />);
+    fireEvent.click(screen.getByRole("button", { name: /open rules/i }));
+
+    expect(screen.getByRole("heading", { name: "ゲームルール" })).toBeTruthy();
+    expect(screen.getByText("Badugi")).toBeTruthy();
+    expect(screen.getAllByText(/4枚すべて違うスート\/ランク/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/強くなるコツ/).length).toBeGreaterThan(0);
+    expect(screen.getByText("Pot-Limit Omaha")).toBeTruthy();
+    expect(screen.getAllByText(/手札から必ず2枚とボード3枚/).length).toBeGreaterThan(0);
+  });
 });

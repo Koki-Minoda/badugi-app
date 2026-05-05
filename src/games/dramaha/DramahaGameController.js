@@ -146,6 +146,9 @@ export class DramahaGameController extends NLHGameController {
       this.state.currentActor = null;
     }
     this.state.street = nextStreet;
+    if (nextStreet === "SHOWDOWN") {
+      this.resolveShowdown();
+    }
     return this.getSnapshot();
   }
 

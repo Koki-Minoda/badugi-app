@@ -145,6 +145,7 @@ export function buildNextHandState({
     const seatMeta = base.seatType ?? seatConfig[seat] ?? (seat === 0 ? "HUMAN" : "CPU");
     const seatOut = base.seatOut ?? false;
     const player = {
+      seatIndex: seat,
       name: base.name ?? `P${seat + 1}`,
       seatType: seatMeta,
       stack: Math.max(base.stack ?? startingStack, 0),

@@ -148,6 +148,7 @@ import {
   getTournamentReplay as getStoredTournamentReplay,
   resetTournamentReplay,
 } from "./utils/tournamentReplayStore.js";
+import { applyTournamentResult } from "./utils/tournamentState.js";
 import { initializeButtonForFirstHand, nextAliveSeat } from "./utils/buttonSeatUtils.js";
 import TournamentHUD from "./components/TournamentHUD.jsx";
 import TitleScreen from "./screens/TitleScreen.jsx";
@@ -5700,6 +5701,7 @@ const SAFE_RESET_PHASE = "IDLE";
       forceHeroDraw,
       resolveHandNow: resolveHandImmediately,
       dealNewHandNow: startNextHand,
+      forceDealNewHandNow: () => dealNewHandRef.current({}),
       setPlayerHands: applyCustomHands,
       getStateSnapshot: () => ({
         phase,
@@ -5722,6 +5724,14 @@ const SAFE_RESET_PHASE = "IDLE";
       forceHeroBust: () => forceHeroBustNow(),
       fastForwardMTTComplete: () => fastForwardMTTComplete(),
       getTournamentReplay: () => getStoredTournamentReplay(),
+      recordTournamentStageWin: (stageId = "store") =>
+        applyTournamentResult({
+          stageId,
+          placement: 1,
+          prize: 0,
+          feedback: "E2E stage unlock fixture",
+          reason: "e2e",
+        }),
     };
   }, [
     queueForcedSeatAction,

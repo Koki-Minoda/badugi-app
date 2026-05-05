@@ -217,6 +217,7 @@ export class StudGameController {
     this.state.bringInAmount = bringInAmount;
     this.state.completeAmount = this.getLimitUnit();
     this.state.currentActor = this.nextActiveSeat(bringInIndex ?? this.state.dealerIndex, players);
+    this.state.lastHandResult = null;
     this.state.pot = this.calculatePot(players);
     return this.getSnapshot();
   }

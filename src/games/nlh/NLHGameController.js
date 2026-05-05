@@ -168,6 +168,7 @@ export class NLHGameController {
     }
     this.handCounter += 1;
     this.state.handId = handId ?? `nlh-hand-${this.handCounter}`;
+    this.state.lastHandResult = null;
     const players = this.state.players.map((player) => ({
       ...player,
       totalInvested: 0,

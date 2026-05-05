@@ -408,9 +408,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     const bbIndex = next.metadata?.lastBlinds?.bbIndex;
     const nextBettingSeat =
       typeof bbIndex === "number" ? getNextBettingSeat(next, bbIndex) : null;
-    next.actingPlayerIndex = active.length
-      ? nextBettingSeat ?? next.players.findIndex((player) => !player.folded && !player.sittingOut)
-      : null;
+    next.actingPlayerIndex = active.length ? nextBettingSeat ?? findFirstActiveSeat(next.players, 0) : null;
     next.lastAggressorIndex = typeof bbIndex === "number" ? bbIndex : null;
     next.metadata = {
       ...(next.metadata ?? {}),

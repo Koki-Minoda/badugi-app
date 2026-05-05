@@ -2188,7 +2188,7 @@ Draw RL test coverage:
 | `BUG-31` | Badugi draw UI | PC | fixed | DRAW中にカードを押しても反応しないように見える。Smart HUDがHero席でも開き、固定レイヤーがカード操作を邪魔することがある。またHeroのドロー順でない時も無反応に見える。 | Draw系/DramahaでもHero操作時にHUDが入力を塞がないことを確認する。 |
 | `BUG-32` | Smart HUD scope | PC / Mobile | fixed | HUD scope dropdown に Stud / Razz がなく、10-Game / Dealer's Choice の情報切替先が不足している。 | Stud/Razz実装時にvariant別stats集計へ接続する。 |
 | `BUG-33` | PC/Mobile layout separation | PC / Mobile | fixed | スマホ横画面対応がPC卓レイアウトへ影響しないことを継続確認する。 | PC desktop smoke と mobile landscape smoke を別々に維持する。 |
-| `BUG-34` | All-in / split pot flow | All | fixed | AI後、side pot / split pot / odd chip / all-in skipped actor が誤るとゲーム進行停止や誤配当につながる。 | NLH/PLO/Dramaha/PLO8/FLO8/Stud8/Razzdugi/Razzducey/ST6 fixtureと11controller invariant smokeを追加済み。 |
+| `BUG-34` | All-in / split pot flow | All | fixed | AI後、side pot / split pot / odd chip / all-in skipped actor が誤るとゲーム進行停止や誤配当につながる。 | NLH/PLO/Dramaha/PLO8/FLO8/Stud8/Razzdugi/Razzducey/ST6 fixtureと36variant相当の5連続hand invariant smokeを追加済み。 |
 | `BUG-35` | Play feedback pipeline | All | fixed | Cash / tournament の30ハンド以上の履歴から、良かった点/悪かった点/ROI/参加条件/仮説をまとめるAI feedback API、DB保存、ゲーム内modal導線を追加済み。 | 10-Game Beginner/Standard RL適用後もBadugi/2-7/A-5/Stud/Razz/NLH/PLOを対象に継続回帰する。 |
 | `BUG-36` | All-in draw actor | Badugi / Draw | fixed | all-in後のCPU/Hero、またはall-in後にbusted seatが残った状態で、DRAWフェーズの交換対象が詰まりカード交換できなくなる。 | Badugiはactive all-in seatをDRAW可能、busted/seatOutはDRAW不可に分離。2-7/A-5 draw regressionも再実行する。 |
 | `BUG-37` | Hand history completeness | All | fixed | ゲーム内履歴と `/history` 永続履歴が分断され、キャッシュゲーム履歴が見えにくい。hand history detail/replay/API送信の完成度が不足。 | Cash/Tournament両方で完了ハンドが保存・表示され、variant/evaluator/pot/action/replayが復元できることを横断確認する。 |
@@ -2210,6 +2210,7 @@ Draw RL test coverage:
   - 2026-05-04 追加: FLO8専用のodd split + side pot fixture、ST6 2-7 Razz単体showdown fixture、Stud/Razz bring-in fixture、Stud up/down card UI adapter fixtureを追加。
   - 2026-05-04 追加: 高役evaluatorのカテゴリ順位を監査。カテゴリ桁がrank桁数でずれる問題を固定長rank scoreに修正し、standard high category order / flush over two pair fixtureを追加。
   - 2026-05-04 追加: Archieのpair-or-better high / 8-or-better lowで片側qualifier不成立時に半ポットが未配当になる問題を修正。no-low/no-high scoopと全員非qualify時の会計フォールバックfixtureを追加。
+  - 2026-05-05 追加: `playableInvariant` を36variant相当へ拡張。Big-O / 5-card PLO / 2-7 TD / A-5 TD / Badugi / 2-7 SD / A-5 SD / Dramaha 6種を5連続hand smokeへ追加し、Dramaha showdown chip drift と Badugi facade のBET/DRAW/SHOWDOWN遷移・精算漏れを修正。
 - [x] `BUG-35` Cash / tournament のプレイフィードバック仕様とAPIを実装する。
   - 2026-05-04 部分対応: `playFeedbackPayload` を追加。30ハンド未満はAI feedback対象外にし、cash/tournamentのhand historyからvariant別hands、VPIP/PFR、showdown/all-in/split-pot率、net chips、tournament ROI、Badugi follow-up issueを要約するpayloadを生成する。
   - 2026-05-04 部分対応: `POST /api/analysis/play-feedback` を追加。認証必須、30ハンド以上schema、簡易rate limit、PII除去、OpenAI未設定時fallback、OpenAI用session promptをbackendに追加。
@@ -2513,7 +2514,7 @@ Draw RL test coverage:
   - 2026-05-05 判定: Pro v1置換は保留。5k方向は有望だが、次はfoldRateを上げずにminAvgRewardを改善する短期fine-tuneまたはgateを追加する。
   - 残TODO: 10-Game全体の true RL 適用は未完。D01/D02/NLH/PLO/Stud/Razz系を「専用モデル」として名乗るには、variant別 dataset、action mask、reward、checkpoint評価、human/practice benchmark gate が必要。
 - [x] `npm test -- --run src/games/stud/__tests__/StudSplitGameController.test.js src/ui/game/nlh/__tests__/NLHUIAdapter.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawController.test.js src/ui/components/__tests__/Player.test.jsx`: 4 files / 28 tests pass。
-- [x] `npm test -- --run src/games/__tests__/playableInvariant.test.js`: 1 file / 25 tests pass。NLH/FLH/PLO/PLO8/FLO8/Stud/Stud8/Razz/Razz27/Razzdugi/Razzducey/主要draw系のbroken actorとchip driftを横断確認。
+- [x] `npm test -- --run src/games/__tests__/playableInvariant.test.js`: 1 file / 38 tests pass。NLH/FLH/Super/FL Super/PLO/PLO8/Big-O/5-card PLO/FLO8/Stud/Stud8/Razz/Razz27/Razzdugi/Razzducey/2-7 TD/A-5 TD/Badugi/D04-D07/2-7 SD/A-5 SD/S03-S07/Dramaha 6種の5連続handでbroken actorとchip driftを横断確認。
 - [x] `npm test -- --run src/games/draw/__tests__/DeuceToSevenTripleDrawEngine.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawController.test.js src/games/__tests__/playableInvariant.test.js`: 3 files / 65 tests pass。2-7/A-5/5-card draw系のall-in DRAW権、BET不可、空BET street skip、横断chip driftなしを確認。
 - [x] `npm test -- --run src/games/draw/__tests__/SpecialDrawEngine.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawEngine.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawController.test.js src/games/__tests__/playableInvariant.test.js`: 4 files / 79 tests pass。Archie qualifier scoop、all-in draw権、横断chip driftなしを確認。
 - [x] `npx playwright test tests/e2e/game-ui-layout-smoke.spec.ts --project=badugi-flow`: 1 passed。テーブルledger / decision panel / hero cards / seat detailの最低限操作性を確認。
@@ -2548,6 +2549,7 @@ Draw RL test coverage:
 - [ ] `QA-20260504-ALL-VARIANT-OPERATIONAL-AUDIT` playable invariant を「初回action到達」だけでなく、street完走・showdown・all-in/split potまで段階的に拡張する。
   - 背景: Razz/Stud/draw/board gameごとの進行差をテストで拾わないと、ゲームできると誤認する。
   - 2026-05-04: Razz/Razz27 のfull street unit fixture、Player表示順unit、HandResultOverlay split/component表示unitを追加。全variantの完全手動/自動E2E完走監査は継続タスク。
+  - 2026-05-05: controller invariantは全playable variantの5連続handまで拡張済み。UI/E2E上の5連続hand、all-in/split-pot全variant網羅、Chinese/OFC本体は継続。
 
 ### 16.4 未対応タスク優先度
 
@@ -2622,11 +2624,18 @@ Draw RL test coverage:
 
 - [x] `QA-CONT-01` 全playable variantで5ハンド連続プレイでき、broken actor / chip drift / stuck waiting が出ないことをcontroller smokeに追加する。
   - 2026-05-05 対応: `playableInvariant` を5連続handに拡張し、NLH/PLO系とStud系の`totalInvested` carry-overを修正。
-- [ ] `QA-CONT-02` 全playable variantでHero all-in後の進行、CPU all-in後の進行、all-in live playerのカード交換/追加カード配布権を確認する。
+  - 2026-05-05 追加対応: 対象を35variant catalogのうちChinese/OFCを除くplayable 36controllerケース相当へ拡張。Dramaha全6種、2-7/A-5 TD/SD、Badugi本体、Big-O、5-card PLOも5連続handでSHOWDOWNまで到達し、chip driftが出ないことを固定。
+  - 2026-05-05 修正: DramahaはSHOWDOWN遷移時に即 `resolveShowdown()` して、次handで古い `lastHandResult` を再利用しない。Badugi facadeはBET完了→DRAW、DRAW完了→次BET/SHOWDOWN、showdown payoutをcontroller内で完結できるようにした。
+- [x] `QA-CONT-02` 全playable variantでHero all-in後の進行、CPU all-in後の進行、all-in live playerのカード交換/追加カード配布権を確認する。
   - 2026-05-05 部分対応: Stud/PLO系の進行fixtureと既存draw all-in fixtureはあるが、全variant網羅は未完。
-- [ ] `QA-CONT-03` Badugi / 2-7 / A-5 / PLO / NLH / Stud / Razz の代表variantでUI smokeを5連続handに拡張する。
+  - 2026-05-05 追加対応: `playableInvariant` に全playable 36controllerケース相当のshort-stack all-in pressure fixtureを追加。NLH/FLH/Super/PLO/PLO8/Big-O/5-card/FLO8/Dramaha6種/Stud family/Draw familyで、all-in seat混在時もbroken actor・chip drift・negative stackなしで終端まで進むことを確認。
+  - 2026-05-05 修正: draw系はBET actorからall-inを外しつつ、DRAW actorではlive all-in seatを交換対象に残す。Badugi facadeはBET streetに行動可能者がいない場合に次DRAW/SHOWDOWNへ自動進行し、all-in後の停止を防ぐ。
+- [x] `QA-CONT-03` Badugi / 2-7 / A-5 / PLO / NLH / Stud / Razz の代表variantでUI smokeを5連続handに拡張する。
   - 2026-05-05 部分対応: 起動・配牌・actionable stateのcross-variant UI smokeは22件通過。UI上の5連続hand smokeは未完。
-- [ ] `QA-MTT-01` トーナメントでHero bust時のresult screen、メイン画面遷移、優勝時result、店舗ステージから地域ステージ開放、地域トーナメント選択をE2E観点に追加する。
+  - 2026-05-05 追加対応: `tests/e2e/cross-variant-five-hand-smoke.spec.ts` を追加。Badugi / 2-7 TD / A-5 TD / PLO / PLO8 / Stud / Razz で、実UI上のhero cardsとdecision panelが5hand連続でviewport上に出ることを確認。
+- [x] `QA-MTT-01` トーナメントでHero bust時のresult screen、メイン画面遷移、優勝時result、店舗ステージから地域ステージ開放、地域トーナメント選択をE2E観点に追加する。
+  - 2026-05-05 追加対応: `badugi-mtt-flow.spec.ts` を拡張。MTT完走時のresult overlay、winner row、replay保存、Back to Menu遷移、Hero bust overlay、ITM summary、stage win helperによる `progress.tournament` / `playerProgress` 永続化をE2Eで確認。
+  - 補足: 地域トーナメントの実エントリーUIは bankroll 条件と連動するため、今回は「店舗優勝によるstage win永続化」までを自動化対象とした。地域エントリー画面の実操作はTournament screen QAの継続対象。
 - [x] `BUG-LEDGER-01` 作業中に見つけた進行/UI/フィードバックのバグは、発見時点でこのmdまたは `docs/bugs/` に起票し、他variant影響欄を持たせる。
   - 2026-05-05 対応: この章にfeedback scope / Stud-Razz / continuous QAの残件と影響範囲を起票。
 
@@ -2636,6 +2645,8 @@ Draw RL test coverage:
 - [x] `npm test -- --run src/games/stud/__tests__/StudSplitGameController.test.js src/games/__tests__/playableInvariant.test.js`: 2 files / 38 tests pass。
 - [x] `npm test -- --run src/ui/screens/__tests__/HistoryScreen.test.jsx src/ui/game/nlh/__tests__/NLHUIAdapter.test.js`: 2 files / 8 tests pass。
 - [x] `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts --project=badugi-flow`: 22 passed。
+- [x] `npx playwright test tests/e2e/cross-variant-five-hand-smoke.spec.ts tests/e2e/badugi-mtt-flow.spec.ts --project=badugi-flow`: 10 passed。
+- [x] `npm test -- --run src/games/__tests__/playableInvariant.test.js src/ui/screens/__tests__/MainMenuScreen.test.jsx`: 2 files / 83 tests pass。
 - [x] `npm run lint`: pass。
 - [x] `npm run build`: pass。chunk size warning は既存警告。
 
@@ -2762,6 +2773,10 @@ Draw RL test coverage:
   - `plo`: 120 episodes long-horizon resume smoke, exported `/tmp/plo_long_resume_smoke.onnx`, fixture pass。
   - `plo8`: 120 episodes long-horizon resume smoke, exported `/tmp/plo8_long_resume_smoke.onnx`, fixture pass。
 - [ ] `AI-BOARD-LONG-05` 次段階: 長期学習用の評価gateをfixtureだけでなく、EV delta / fold discipline / thin value / bluff frequency / multiway isolation / hi-lo scoop rateに広げる。
+- [ ] `AI-BOARD-LONG-06` 実ハンド履歴ベース評価を board系にも導入する。最低条件: variant別に30/50/200ハンド単位で `heroNet`, showdown result, all-in EV, position, street action sequence を集計し、synthetic fixtureだけで強さを宣言しない。
+- [ ] `AI-BOARD-LONG-07` variant別EV gateを追加する。NLH/FLH/PLO/PLO8を分け、`callEV`, `raiseEV`, `foldEV`, `thin value`, `bad bluff`, `multiway isolation`, `side-pot EV`, `PLO8 scoop/no-low` を別々に合否判定する。
+- [ ] `AI-BOARD-LONG-08` human/practice benchmarkを board系にも追加する。Badugi用 `ai:benchmark-badugi-human-practice` と同等に、実プレイログを読み込めない場合は practice-only と明記し、人間相手の勝率保証には使わない。
+- [x] `HELP-01` Main Menu の `?` ヘルプを「今後追加予定」から、全variantのルール要点・勝敗判定・強くなるコツを表示する実用ガイドへ拡張する。
 
 ### 19.6 長期RL確認結果
 

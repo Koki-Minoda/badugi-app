@@ -136,4 +136,25 @@ describe("modelRouter", () => {
       "model-plo8-standard-dqn-v1",
     );
   });
+
+  it("routes Stud/Razz beginner and standard tiers to bootstrap Stud DQN models", () => {
+    expect(resolveTierModelInfo({ variantId: "ST1", tierId: "beginner" })?.modelId).toBe(
+      "model-stud-beginner-dqn-v1",
+    );
+    expect(resolveTierModelInfo({ variantId: "ST1", tierId: "standard" })?.modelId).toBe(
+      "model-stud-standard-dqn-v1",
+    );
+    expect(resolveTierModelInfo({ variantId: "ST2", tierId: "beginner" })?.modelId).toBe(
+      "model-stud8-beginner-dqn-v1",
+    );
+    expect(resolveTierModelInfo({ variantId: "ST2", tierId: "standard" })?.modelId).toBe(
+      "model-stud8-standard-dqn-v1",
+    );
+    expect(resolveTierModelInfo({ variantId: "ST3", tierId: "beginner" })?.modelId).toBe(
+      "model-razz-beginner-dqn-v1",
+    );
+    expect(resolveTierModelInfo({ variantId: "ST3", tierId: "standard" })?.modelId).toBe(
+      "model-razz-standard-dqn-v1",
+    );
+  });
 });

@@ -13,6 +13,7 @@ from pathlib import Path
 SCHEMA_VERSION = "badugi-observation-v1"
 VECTOR_SIZE = 96
 ACTION_PRIORITY = ["fold", "check", "call", "bet", "raise", "all_in"]
+DRAW_ACTIONS = ["draw_0", "draw_1", "draw_2", "draw_3", "draw_4", "draw_5"]
 
 
 def parse_args():
@@ -30,13 +31,61 @@ def _normalize_action(action):
     return str(action or "").strip().lower()
 
 
+def _variant_id_for(entry):
+    metadata = entry.get("metadata") or {}
+    return (
+        metadata.get("variantId")
+        or metadata.get("variant_id")
+        or entry.get("variantId")
+        or entry.get("variant_id")
+        or entry.get("gameId")
+        or entry.get("game_id")
+    )
+
+
+def _draw_info_for(entry):
+    metadata = entry.get("metadata") or {}
+    return entry.get("drawInfo") or metadata.get("drawInfo") or metadata.get("draw_info") or {}
+
+
+def _draw_count_for(entry):
+    draw_info = _draw_info_for(entry)
+    candidates = [
+        entry.get("drawCount"),
+        entry.get("draw_count"),
+        draw_info.get("drawCount") if isinstance(draw_info, dict) else None,
+        draw_info.get("draw_count") if isinstance(draw_info, dict) else None,
+    ]
+    for candidate in candidates:
+        if isinstance(candidate, int) and candidate >= 0:
+            return candidate
+    if isinstance(draw_info, dict):
+        for key in ("discardIndexes", "drawIndexes", "discarded"):
+            value = draw_info.get(key)
+            if isinstance(value, list):
+                return len(value)
+    return 0
+
+
+def _action_for(entry):
+    action = _normalize_action(entry.get("action") or entry.get("type"))
+    if action in {"draw", "draw_action"}:
+        return f"draw_{min(5, max(0, _draw_count_for(entry)))}"
+    if action == "pat":
+        return "draw_0"
+    return action
+
+
 def _legal_actions_for(entry):
     explicit = entry.get("legal_actions") or entry.get("legalActions")
     if isinstance(explicit, list) and explicit:
         return [_normalize_action(action) for action in explicit if _normalize_action(action)]
     phase = str(entry.get("phase") or entry.get("street") or "").upper()
     if phase == "DRAW":
-        return ["draw_0", "draw_1", "draw_2", "draw_3", "draw_4"]
+        variant_id = str(_variant_id_for(entry) or "").upper()
+        if variant_id == "D03":
+            return DRAW_ACTIONS[:5]
+        return DRAW_ACTIONS[:]
     return ACTION_PRIORITY[:]
 
 
@@ -60,6 +109,31 @@ def _reward_for(entry):
     if isinstance(paid, (int, float)) and paid > 0:
         return -min(float(paid), 100.0) / 100.0
     return 0.0
+
+
+def _transition_warnings(entry, action, legal_actions, observation, next_observation):
+    warnings = []
+    if not _variant_id_for(entry):
+        warnings.append("missing_variant_id")
+    if action and action not in legal_actions and action not in {"collect", "showdown"}:
+        warnings.append("action_not_in_legal_actions")
+    if len(observation) != VECTOR_SIZE:
+        warnings.append("observation_shape_mismatch")
+    if len(next_observation) != VECTOR_SIZE:
+        warnings.append("next_observation_shape_mismatch")
+    draw_info = _draw_info_for(entry)
+    if action.startswith("draw_") and isinstance(draw_info, dict):
+        discard_indexes = (
+            draw_info.get("discardIndexes")
+            or draw_info.get("drawIndexes")
+            or draw_info.get("discarded")
+            or []
+        )
+        if isinstance(discard_indexes, list):
+            draw_count = _draw_count_for(entry)
+            if draw_count != len(discard_indexes):
+                warnings.append("draw_count_discard_indexes_mismatch")
+    return warnings
 
 
 def _iter_action_entries(record):
@@ -88,21 +162,27 @@ def build_transitions(lines):
     for hand_id, entries in grouped.items():
         for index, entry in enumerate(entries):
             next_entry = entries[index + 1] if index + 1 < len(entries) else None
-            done = next_entry is None or _normalize_action(entry.get("action")) in {"collect", "showdown"}
+            action = _action_for(entry)
+            done = next_entry is None or action in {"collect", "showdown"}
+            legal_actions = _legal_actions_for(entry)
+            observation = _observation_from_entry(entry)
+            next_observation = _observation_from_entry(next_entry or {})
+            warnings = _transition_warnings(entry, action, legal_actions, observation, next_observation)
             transitions.append({
                 "schema_version": SCHEMA_VERSION,
                 "hand_id": hand_id,
                 "seat": entry.get("seat"),
                 "phase": entry.get("phase") or entry.get("street"),
-                "observation": _observation_from_entry(entry),
-                "action": _normalize_action(entry.get("action")),
+                "observation": observation,
+                "action": action,
                 "reward": _reward_for(entry),
-                "next_observation": _observation_from_entry(next_entry or {}),
+                "next_observation": next_observation,
                 "done": done,
-                "legal_actions": _legal_actions_for(entry),
+                "legal_actions": legal_actions,
                 "metadata": {
                     "source_action_id": (entry.get("metadata") or {}).get("actionId"),
-                    "variant_id": (entry.get("metadata") or {}).get("variantId") or entry.get("gameId"),
+                    "variant_id": _variant_id_for(entry),
+                    "warnings": warnings,
                 },
             })
     return transitions

@@ -2532,7 +2532,7 @@ Draw RL test coverage:
   - 補足: all-inだけが残ったBET streetは空streetとして即skipし、次drawまたはshowdownへ進める。
 - [x] `UI-20260504-HAND-SORT` 5-card/draw handの視認性改善として、表示上は同rankをまとめて低い順に並べ、クリック時は元indexを維持する。
   - 例: `Q,5,T,5,5` は表示上 `5,5,5,T,Q` に寄せる。discard indexは元のカード位置で送るためゲームロジックは変更しない。
-- [ ] `RL-10GAME-BEGINNER-STANDARD` 10-Game対象CPUのBeginner/Standard学習適用。
+- [x] `RL-10GAME-BEGINNER-STANDARD` 10-Game対象CPUのBeginner/Standard学習適用。
   - 2026-05-05 部分対応: `src/games/core/cpuTeacherPolicy.js` を追加し、board/stud系に Beginner/Standard 以上の tier threshold を使う teacher-supervised betting policy を導入。
   - 2026-05-05 部分対応: NLH / FLH / PLO / PLO8 / FLO8 は hole/board/evaluator ベースの強度推定、Stud / Stud8 / Razz / Razz27 は up/down card と high/low evaluator ベースの強度推定で CPU action を返す。
   - 2026-05-05 確認: targeted unit で NLH/PLO/Stud-family の `getCpuAction()` と teacher policy threshold を固定。
@@ -2542,7 +2542,12 @@ Draw RL test coverage:
   - 2026-05-05 Pro practice benchmark: `public/models/badugi_pro_v1.onnx` は practice-only 3200 episodes で `avgReward 2.827`, `showdownWinRate 0.683`, `foldRate 0.163`, `worstProfileAvgReward 1.988`。synthetic gate はpassだが human logなしのため人間相手60%超の保証には使わない。
   - 2026-05-05 Pro probe: Standard v3採用checkpointから `badugi_pro_probe_from_standard_v3_10k_20260505` を10k継続学習。5k checkpoint は Pro v1比 `avgReward 3.128 vs 3.130`, `showdownWinRate 0.687 vs 0.682`, `worstProfileAvgReward 2.185 vs 2.079`, `negativeRaiseEVActions 29 vs 114` だが `minAvgReward 1.803 vs 1.855` で僅かに未達。10k/latest は `showdownWinRate 0.751` まで上がる一方 `foldRate 0.262` へ悪化したため不採用。
   - 2026-05-05 判定: Pro v1置換は保留。5k方向は有望だが、次はfoldRateを上げずにminAvgRewardを改善する短期fine-tuneまたはgateを追加する。
-  - 残TODO: 10-Game全体の true RL 適用は未完。D01/D02/NLH/PLO/Stud/Razz系を「専用モデル」として名乗るには、variant別 dataset、action mask、reward、checkpoint評価、human/practice benchmark gate が必要。
+  - 2026-05-06 適用: 8Game / 10Game の未補完だった Stud-family `ST1 Stud`, `ST2 Stud Hi-Lo`, `ST3 Razz` に Beginner / Standard の16入力・6出力bootstrap DQNを追加。
+  - 2026-05-06 学習: `stud/stud8/razz` x `beginner/standard` を各1,600 episodesで学習し、`public/models/stud_beginner_dqn_v1.onnx`, `stud_standard_dqn_v1.onnx`, `stud8_beginner_dqn_v1.onnx`, `stud8_standard_dqn_v1.onnx`, `razz_beginner_dqn_v1.onnx`, `razz_standard_dqn_v1.onnx` を生成。
+  - 2026-05-06 評価: 6モデルすべて `npm run ai:evaluate-stud-onnx` の5 fixture gateで `5/5 pass`。value bet / pressure fold / pot-odds continue / Razz low strength / Stud8 scoop potentialを最低限確認。
+  - 2026-05-06 routing: `modelRegistry.json` に `model-stud-*-dqn-v1`, `model-stud8-*-dqn-v1`, `model-razz-*-dqn-v1` を追加し、`src/ai/onnxPolicyAdapter.js` に `stud-betting-observation-v1` feature builderを追加。
+  - 2026-05-06 台帳: `docs/testing/MGX_RL_8_10GAME_TRAINING_LEDGER.md` に、8Game/10Game対象variantごとの Beginner / Standard model coverage と残リスクを整理。
+  - 残TODO: 今回のStud系は実hand historyベースではなく synthetic fixture bootstrap。Pro以上に上げるには、Stud/Razz進行監査、variant別 dataset、hand-history EV gate、human/practice benchmarkが必要。
 - [x] `npm test -- --run src/games/stud/__tests__/StudSplitGameController.test.js src/ui/game/nlh/__tests__/NLHUIAdapter.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawController.test.js src/ui/components/__tests__/Player.test.jsx`: 4 files / 28 tests pass。
 - [x] `npm test -- --run src/games/__tests__/playableInvariant.test.js`: 1 file / 38 tests pass。NLH/FLH/Super/FL Super/PLO/PLO8/Big-O/5-card PLO/FLO8/Stud/Stud8/Razz/Razz27/Razzdugi/Razzducey/2-7 TD/A-5 TD/Badugi/D04-D07/2-7 SD/A-5 SD/S03-S07/Dramaha 6種の5連続handでbroken actorとchip driftを横断確認。
 - [x] `npm test -- --run src/games/draw/__tests__/DeuceToSevenTripleDrawEngine.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawController.test.js src/games/__tests__/playableInvariant.test.js`: 3 files / 65 tests pass。2-7/A-5/5-card draw系のall-in DRAW権、BET不可、空BET street skip、横断chip driftなしを確認。
@@ -2922,9 +2927,9 @@ Draw RL test coverage:
 | H04 Dramaha Zero | 68 | 62 | 18 | 開発者限定 | zero-hand評価の公式監査、result label、CPU strategy。 |
 | H05 Dramaha Hidugi | 68 | 62 | 18 | 開発者限定 | Hidugi halfの公式監査、split result UI、discard teacher。 |
 | H06 Dramaha Badugi | 70 | 64 | 20 | 開発者限定 | Badugi halfのcomponent winner表示、odd chip、history smoke。 |
-| ST1 Stud | 82 | 78 | 35 | 限定可 | bring-in/completeを実プレイで再確認し、up/down UIと7th down card表示をさらに磨く。 |
-| ST2 Stud 8 | 80 | 76 | 32 | 限定可 | hi/lo split、no-low scoop、quartering表示、Stud8専用teacherを追加。 |
-| ST3 Razz | 82 | 78 | 35 | 限定可 | Razzのposition/board texture teacher、final street call discipline、実ログ評価。 |
+| ST1 Stud | 82 | 78 | 52 | 限定可 | bootstrap DQNを実ログEV gateへ接続し、bring-in/completeを実プレイで再確認。 |
+| ST2 Stud 8 | 80 | 76 | 50 | 限定可 | bootstrap DQNをsplit/quartering実ログgateへ接続し、no-low scoop表示を磨く。 |
+| ST3 Razz | 82 | 78 | 52 | 限定可 | bootstrap DQNをboard texture / final street disciplineの実ログgateへ接続。 |
 | ST4 Razzdugi | 76 | 72 | 25 | 開発者限定 | Razz half/Badugi halfのcomponent表示、split evaluator監査、専用CPU。 |
 | ST5 Razzducey | 76 | 72 | 25 | 開発者限定 | Razz half/2-7 halfのsplit結果UI、odd chip fixture、history replay。 |
 | ST6 2-7 Razz | 78 | 74 | 28 | 開発者限定 | 2-7 Razz公式進行監査、bring-in tie、low evaluator gateを追加。 |
@@ -2973,9 +2978,9 @@ Draw RL test coverage:
 | H04 Dramaha Zero | 68 | 64 | 54 | 18 | 開発者限定 | zero-hand監査、result label。 |
 | H05 Dramaha Hidugi | 68 | 64 | 54 | 18 | 開発者限定 | Hidugi half公式監査、split result UI。 |
 | H06 Dramaha Badugi | 70 | 66 | 56 | 20 | 開発者限定 | Badugi half winner表示、odd chip。 |
-| ST1 Stud | 82 | 80 | 70 | 35 | 限定可 | bring-in/complete実プレイ監査、7th down UI。 |
-| ST2 Stud 8 | 80 | 78 | 68 | 32 | 限定可 | hi/lo split/no-low scoop/quartering表示。 |
-| ST3 Razz | 82 | 80 | 70 | 35 | 限定可 | Razz board texture teacher、final street discipline。 |
+| ST1 Stud | 82 | 80 | 70 | 52 | 限定可 | bootstrap DQNを実ログEV gateへ接続、bring-in/complete実プレイ監査。 |
+| ST2 Stud 8 | 80 | 78 | 68 | 50 | 限定可 | bootstrap DQNをsplit/quartering実ログgateへ接続。 |
+| ST3 Razz | 82 | 80 | 70 | 52 | 限定可 | bootstrap DQNをboard texture/final street discipline gateへ接続。 |
 | ST4 Razzdugi | 76 | 74 | 62 | 25 | 開発者限定 | Razz/Badugi component表示、split evaluator監査。 |
 | ST5 Razzducey | 76 | 74 | 62 | 25 | 開発者限定 | Razz/2-7 split result、odd chip fixture。 |
 | ST6 2-7 Razz | 78 | 76 | 64 | 28 | 開発者限定 | bring-in tie、low evaluator gate。 |
@@ -3188,7 +3193,9 @@ Draw RL test coverage:
 - [x] `npm run build`: pass。
 
 残タスク:
-- [ ] `BUG-49` Chinese/OFCはfoldが存在しないため対象外。OFC用には「set完了 -> result -> next hand」の専用復帰テストをhistory/replay側へ統合する。
+- [x] `BUG-49` Chinese/OFCはfoldが存在しないため対象外。CP1用には「set完了 -> result -> next hand」の専用復帰テストを追加する。
+  - 2026-05-06 対応: `chineseFamilyProgress.test.js` を追加し、CP1 Chinese Pokerで13枚配布、Hero set、CPU自動配置、showdown採点、next hand復帰、CPU hidden維持を固定。
+  - 残: OFC street-by-street / fantasyland と全variant共通のhistory/replay smoke統合は `HIST-REG-06` / `CHINESE-03` として継続。
 
 ### 21.10 2026-05-06 Dramaha card change / Active game title
 

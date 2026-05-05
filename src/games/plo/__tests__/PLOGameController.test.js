@@ -44,6 +44,38 @@ describe("PLOGameController", () => {
     expect(snapshot.players[snapshot.bigBlindIndex].betThisStreet).toBe(20);
   });
 
+  it("clears stale fold flags when a folded player joins the next hand", () => {
+    const controller = createController({
+      seats: [
+        { name: "Hero", stack: 1000 },
+        { name: "CPU 1", stack: 1000 },
+        { name: "CPU 2", stack: 1000 },
+      ],
+      deckCards: [
+        "AS", "KS", "QD",
+        "JC", "10H", "9D",
+        "8C", "7S", "6H",
+        "5C", "4D", "3S",
+        "2C", "2D", "2H", "2S",
+        "AC", "AD", "AH",
+        "KC", "KD", "KH",
+        "QC", "QS", "QH",
+      ],
+    });
+
+    controller.startNewHand();
+    expect(controller.applyPlayerAction({ seatIndex: 0, action: "fold" }).success).toBe(true);
+    expect(controller.state.players[0].folded).toBe(true);
+    expect(controller.state.players[0].hasFolded).toBe(true);
+
+    const next = controller.startNewHand();
+
+    expect(next.players[0].folded).toBe(false);
+    expect(next.players[0].hasFolded).toBe(false);
+    expect(next.players[0].allIn).toBe(false);
+    expect(next.players[0].holeCards).toHaveLength(4);
+  });
+
   it("resolves showdown using Omaha exactly-two rule", () => {
     const controller = createController({
       seats: [

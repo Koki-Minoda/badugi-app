@@ -3162,3 +3162,30 @@ Draw RL test coverage:
 残タスク:
 - [ ] `FB-REG-06` 実OpenAI環境で、variant別30hand以上の実プレイログを使い、回答がPLO/Badugi/2-7などを混同しないか手動確認する。
 - [ ] `FB-REG-07` Replay UI側で `replayTarget.actionSeqStart` へ直接ジャンプする操作を全variantで確認する。
+
+### 21.9 2026-05-06 Fold後の次hand復帰 35variant回帰
+
+目的:
+- PLOでHeroがfoldした後、後続handに参加できない再発報告を受け、fold状態が次handへ残らないことを35ゲーム横断で保証する。
+- `folded` だけでなく、UI側の参加可否判定で使われる `hasFolded` / `seatOut` / `allIn` も次handで解除されることを確認する。
+
+原因:
+- NLH/PLO系 controller は `folded` を新handで戻していたが、App同期後に残り得る `hasFolded` を controller の `startNewHand()` で明示的に初期化していなかった。
+- 同型の状態持ち越しがStud/Razz系 controllerにも存在した。
+- その結果、見た目上は新handへ進んでも、UI/turn eligibility 側で「前handでfold済み」と解釈される余地があった。
+
+対応:
+- [x] `BUG-45` NLH/PLO系 controllerで `hasFolded: false` をseat生成・新hand初期化時に明示し、fold action時は `hasFolded: true` に揃える。
+- [x] `BUG-46` Stud/Razz系 controllerでも同じ `hasFolded` reset / fold marking を追加する。
+- [x] `BUG-47` E2E driverへ `forceMarkSeatFoldedForTest` を追加し、UI操作でHero fold手番を作りにくいvariantでも、fold済み状態からcanonical next handで復帰できるかを検査可能にする。
+- [x] `BUG-48` `cross-variant-fold-recovery.spec.ts` を追加し、Chinese/OFC以外の35variantで「fold済み -> hand解決 -> canonical next hand -> Heroが再参加可能」を確認する。
+
+確認結果:
+- [x] `npm test -- --run src/games/plo/__tests__/PLOGameController.test.js src/games/nlh/__tests__/NLHGameController.test.js src/games/stud/__tests__/StudSplitGameController.test.js`: 3 files / 33 tests passed。
+- [x] `npx playwright test tests/e2e/cross-variant-fold-recovery.spec.ts --project=badugi-flow --grep "plo lets"`: 2 passed。
+- [x] `npx playwright test tests/e2e/cross-variant-fold-recovery.spec.ts --project=badugi-flow`: 35 passed。
+- [x] `npm run lint`: pass（既存の `syncLegacyFromControllerSnapshot` hook dependency warning 1件のみ）。
+- [x] `npm run build`: pass。
+
+残タスク:
+- [ ] `BUG-49` Chinese/OFCはfoldが存在しないため対象外。OFC用には「set完了 -> result -> next hand」の専用復帰テストをhistory/replay側へ統合する。

@@ -36,6 +36,7 @@ function buildPlayerFromSeat(seat, idx) {
     totalInvested: seat?.totalInvested ?? 0,
     betThisStreet: 0,
     folded: false,
+    hasFolded: false,
     allIn: seat?.stack <= 0,
     seatOut: seat?.seatOut ?? false,
     holeCards: [],
@@ -174,8 +175,10 @@ export class NLHGameController {
       totalInvested: 0,
       betThisStreet: 0,
       folded: player.stack <= 0 || player.seatOut,
+      hasFolded: false,
       allIn: player.stack <= 0,
       hasActedThisStreet: false,
+      hasActedThisRound: false,
       lastAction: "",
       holeCards: [],
     }));
@@ -299,6 +302,7 @@ export class NLHGameController {
     switch (actionName) {
       case "fold":
         player.folded = true;
+        player.hasFolded = true;
         player.lastAction = "Fold";
         break;
       case "check":

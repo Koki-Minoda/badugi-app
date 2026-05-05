@@ -5812,6 +5812,23 @@ const SAFE_RESET_PHASE = "IDLE";
         }
         return null;
       },
+      forceMarkSeatFoldedForTest: (seat = 0) => {
+        const snap = (playersRef.current ?? players ?? [])
+          .map(clonePlayerState)
+          .filter(Boolean);
+        if (!snap[seat]) return false;
+        snap[seat] = {
+          ...snap[seat],
+          folded: true,
+          hasFolded: true,
+          hasActedThisRound: true,
+          hasActedThisStreet: true,
+          lastAction: "Fold",
+        };
+        playersRef.current = snap;
+        setPlayers(snap);
+        return true;
+      },
       forceSequentialFolds,
       forceAllIn: forceAllInAction,
       forceHeroDraw,
@@ -5875,6 +5892,7 @@ const SAFE_RESET_PHASE = "IDLE";
     startNextHand,
     applyCustomHands,
     phase,
+    players,
     turn,
     drawRound,
     betRoundIndex,

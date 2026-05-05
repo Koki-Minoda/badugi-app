@@ -2808,7 +2808,10 @@ Draw RL test coverage:
   - `plo8`: 120 episodes long-horizon resume smoke, exported `/tmp/plo8_long_resume_smoke.onnx`, fixture pass。
 - [x] `AI-BOARD-LONG-05` 次段階: 長期学習用の評価gateをfixtureだけでなく、EV delta / fold discipline / thin value / bluff frequency / multiway isolation / hi-lo scoop rateに広げる。
   - 2026-05-05 対応: `evaluate_board_onnx.py` に `--advanced-gate` を追加。既存3fixture smokeは維持しつつ、advanced時だけ late thin value / low-equity bluff discipline / multiway isolation / side-pot EV / PLO8 scoop-or-no-low を評価し、各fixtureの `selectedEV`, `bestEV`, `evDelta`, category summaryをreport出力する。
-- [ ] `AI-BOARD-LONG-06` 実ハンド履歴ベース評価を board系にも導入する。最低条件: variant別に30/50/200ハンド単位で `heroNet`, showdown result, all-in EV, position, street action sequence を集計し、synthetic fixtureだけで強さを宣言しない。
+- [x] `AI-BOARD-LONG-06` 実ハンド履歴ベース評価を board系にも導入する。最低条件: variant別に30/50/200ハンド単位で `heroNet`, showdown result, all-in EV, position, street action sequence を集計し、synthetic fixtureだけで強さを宣言しない。
+  - 2026-05-05 対応: `ai:benchmark-board-human-practice` のhuman log集計を拡張し、`B01/B02/B05/B06` と `nlh/flh/plo/plo8` 系aliasをvariant別に正規化する。variant不明ログはboard系の強さ評価には混ぜない。
+  - 2026-05-05 対応: 実ログから `heroNet`, `avgEV`, `position`, `showdown`, `all-in`, `split pot`, `VPIP`, `PFR` を集計し、position別 `hands/net/avgEV/showdownRate/vpip/pfr` をreportへ出す。
+  - 2026-05-05 対応: `--require-human-logs` 時はhand数だけでなく、EV sample数、position coverage、showdown coverage、平均EV gateも満たさない限りpassしない。
 - [x] `AI-BOARD-LONG-07` variant別EV gateを追加する。NLH/FLH/PLO/PLO8を分け、`callEV`, `raiseEV`, `foldEV`, `thin value`, `bad bluff`, `multiway isolation`, `side-pot EV`, `PLO8 scoop/no-low` を別々に合否判定する。
   - 2026-05-05 対応: `B01/B02/B05/B06` の family 別fixtureを同一CLIで分岐。PLO/PLO8はpot-limit draw potentialとscoop/no-low awarenessを別categoryにし、FLHはfixed-limit isolationをcall許容にする。
   - 2026-05-05 評価: 既存8モデルはbase fixtureは全pass。advanced report-onlyではNLH/FLHが7/8、PLO/PLO8が6/8。共通課題は thin value不足、PLO/PLO8はmultiway isolationとPLO8 scoop/no-low raise頻度不足。Pro昇格対象ではなく、次の学習課題として扱う。
@@ -2835,6 +2838,8 @@ Draw RL test coverage:
 - [x] `npm run ai:evaluate-board-onnx -- --advanced-gate --report-only` を8モデルへ実行: report生成。NLH/FLH 7/8、PLO/PLO8 6/8で、Pro以上に進める前の追加学習課題を特定。
 - [x] `PYTHONPATH=src python3 -m pytest src/rl/__tests__/test_board_human_practice.py`: 2 passed。
 - [x] `npm run ai:benchmark-board-human-practice -- --variant-id B05 --model public/models/plo_standard_dqn_v1.onnx --tier standard --report-only`: practice-only PASS。human logなしのため `humanVerified=false`。
+- [x] 2026-05-05 実ハンド履歴gate拡張後: `PYTHONPATH=src .venv/bin/python -m pytest src/rl/__tests__/test_board_human_practice.py`: 4 passed。
+- [x] 2026-05-05 実ハンド履歴gate拡張後: `npm run ai:benchmark-board-human-practice -- --model public/models/nlh_standard_dqn_v1.onnx --variant-id B01 --tier standard --human-log <synthetic-jsonl> --require-human-logs --report-only --json`: PASS。`humanVerified=true`, `avgEV=2.38`, `positionCoverage=6`, `showdownHands=13`。
 - [x] 2026-05-05 advanced対応後: `nlh/flh/plo/plo8` の `beginner/standard` 8モデルを `board_*_advanced_20260505` として再学習し、`public/models/*_dqn_v1.onnx` と registry checksum を更新。
 - [x] 2026-05-05 advanced対応後: 8モデルすべて `npm run ai:evaluate-board-onnx -- --advanced-gate` で `8/8` pass。NLH/PLO/PLO8は `avgEVDelta=-0.012 worst=-0.060`、FLHは `avgEVDelta=-0.020 worst=-0.060`。
 - [x] 2026-05-05 advanced対応後: `npm run ai:verify-models` pass。required model checksumは全OK。`model-nlh-v1` / `model-generic-v1` は既存optional missing。

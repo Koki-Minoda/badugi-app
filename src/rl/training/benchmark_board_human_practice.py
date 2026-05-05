@@ -25,19 +25,36 @@ TIER_THRESHOLDS = {
     "beginner": {
         "minAdvancedPassRate": 0.60,
         "minAvgEVDelta": -0.12,
+        "minHumanAvgEV": -80.0,
         "minHumanLogHands": 30,
+        "minPositionBuckets": 3,
+        "minShowdownHands": 3,
     },
     "standard": {
         "minAdvancedPassRate": 0.75,
         "minAvgEVDelta": -0.08,
+        "minHumanAvgEV": -45.0,
         "minHumanLogHands": 50,
+        "minPositionBuckets": 4,
+        "minShowdownHands": 5,
     },
     "pro": {
         "minAdvancedPassRate": 0.88,
         "minAvgEVDelta": -0.04,
+        "minHumanAvgEV": -20.0,
         "minHumanLogHands": 100,
+        "minPositionBuckets": 5,
+        "minShowdownHands": 10,
     },
 }
+
+BOARD_VARIANT_ALIASES = {
+    "B01": {"B01", "nlh", "no_limit_holdem", "nl_holdem"},
+    "B02": {"B02", "flh", "fixed_limit_holdem", "limit_holdem"},
+    "B05": {"B05", "plo", "pot_limit_omaha"},
+    "B06": {"B06", "plo8", "omaha_hi_lo", "pot_limit_omaha_hi_lo"},
+}
+POSITION_ORDER = ("UTG", "MP", "CO", "BTN", "SB", "BB")
 
 
 def iter_json_records(path: Path) -> list[dict[str, Any]]:
@@ -69,6 +86,13 @@ def record_variant_id(record: dict[str, Any]) -> str | None:
     return None
 
 
+def normalized_variant_matches(record_variant: str | None, target_variant_id: str) -> bool:
+    if record_variant is None:
+        return False
+    aliases = {value.lower() for value in BOARD_VARIANT_ALIASES.get(target_variant_id, {target_variant_id})}
+    return str(record_variant).lower() in aliases
+
+
 def record_result(record: dict[str, Any]) -> str | None:
     sources = [record]
     for key in ("humanBenchmark", "human_benchmark", "result", "summary"):
@@ -83,7 +107,7 @@ def record_result(record: dict[str, Any]) -> str | None:
                 return "loss"
             if value in {"tie", "push", "0"}:
                 return "tie"
-        for key in ("heroNet", "net", "profit"):
+        for key in ("heroNet", "hero_net", "net", "profit", "chipDelta", "resultDelta"):
             if key not in source:
                 continue
             try:
@@ -98,6 +122,129 @@ def record_result(record: dict[str, Any]) -> str | None:
     return None
 
 
+def _nested_sources(record: dict[str, Any]) -> list[dict[str, Any]]:
+    sources = [record]
+    for key in (
+        "humanBenchmark",
+        "human_benchmark",
+        "feedbackContext",
+        "summary",
+        "result",
+        "metadata",
+    ):
+        if isinstance(record.get(key), dict):
+            sources.insert(0, record[key])
+    return sources
+
+
+def record_hero_net(record: dict[str, Any]) -> float | None:
+    for source in _nested_sources(record):
+        for key in ("heroNet", "hero_net", "net", "profit", "chipDelta", "resultDelta"):
+            if key not in source:
+                continue
+            try:
+                return float(source[key])
+            except (TypeError, ValueError):
+                continue
+    seats = record.get("seats") if isinstance(record.get("seats"), list) else []
+    for seat in seats:
+        if not isinstance(seat, dict):
+            continue
+        is_hero = seat.get("isHero") is True or seat.get("hero") is True or seat.get("seat") == 0
+        if not is_hero:
+            continue
+        try:
+            start_stack = float(seat.get("startStack") or seat.get("initialStack"))
+            end_stack = float(seat.get("endStack") or seat.get("stack"))
+            return end_stack - start_stack
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
+def record_position(record: dict[str, Any]) -> str | None:
+    for source in _nested_sources(record):
+        value = source.get("heroPosition") or source.get("position") or source.get("pos")
+        if value:
+            return str(value).upper()
+    seats = record.get("seats") if isinstance(record.get("seats"), list) else []
+    for seat in seats:
+        if not isinstance(seat, dict):
+            continue
+        is_hero = seat.get("isHero") is True or seat.get("hero") is True or seat.get("seat") == 0
+        if not is_hero:
+            continue
+        value = seat.get("position") or seat.get("pos")
+        if value:
+            return str(value).upper()
+        actions = seat.get("actions") if isinstance(seat.get("actions"), list) else []
+        for action in actions:
+            if isinstance(action, dict) and (action.get("position") or action.get("pos")):
+                return str(action.get("position") or action.get("pos")).upper()
+    return None
+
+
+def record_showdown(record: dict[str, Any]) -> bool:
+    for source in _nested_sources(record):
+        if source.get("showdown") is True or source.get("wentToShowdown") is True:
+            return True
+    events = record.get("events") if isinstance(record.get("events"), list) else []
+    if any(isinstance(event, dict) and str(event.get("type", "")).upper() == "SHOWDOWN" for event in events):
+        return True
+    seats = record.get("seats") if isinstance(record.get("seats"), list) else []
+    return any(
+        isinstance(seat, dict)
+        and (seat.get("handLabel") or seat.get("evaluation") or seat.get("finalLowRanks"))
+        for seat in seats
+    )
+
+
+def record_all_in(record: dict[str, Any]) -> bool:
+    seats = record.get("seats") if isinstance(record.get("seats"), list) else []
+    actions = []
+    for seat in seats:
+        if isinstance(seat, dict):
+            actions.extend(seat.get("actions") if isinstance(seat.get("actions"), list) else [])
+            if seat.get("allIn") is True or seat.get("isAllIn") is True:
+                return True
+    return any(
+        isinstance(action, dict)
+        and str(action.get("type") or action.get("action") or "").lower() in {"all-in", "allin"}
+        for action in actions
+    )
+
+
+def record_split_pot(record: dict[str, Any]) -> bool:
+    pots = record.get("pots") if isinstance(record.get("pots"), list) else []
+    for pot in pots:
+        winners = pot.get("winners") if isinstance(pot, dict) and isinstance(pot.get("winners"), list) else []
+        payouts = pot.get("payouts") if isinstance(pot, dict) and isinstance(pot.get("payouts"), list) else []
+        if len(winners or payouts) > 1:
+            return True
+    return False
+
+
+def record_vpip_pfr(record: dict[str, Any]) -> tuple[bool, bool]:
+    seats = record.get("seats") if isinstance(record.get("seats"), list) else []
+    hero_actions: list[dict[str, Any]] = []
+    for seat in seats:
+        if not isinstance(seat, dict):
+            continue
+        is_hero = seat.get("isHero") is True or seat.get("hero") is True or seat.get("seat") == 0
+        if is_hero and isinstance(seat.get("actions"), list):
+            hero_actions.extend(action for action in seat["actions"] if isinstance(action, dict))
+    vpip = False
+    pfr = False
+    for action in hero_actions:
+        action_type = str(action.get("type") or action.get("action") or "").lower()
+        if action_type in {"call", "bet", "raise", "all-in", "allin"}:
+            vpip = True
+        street = str(action.get("street") or action.get("phase") or "").upper()
+        if action_type in {"bet", "raise", "all-in", "allin"} and street in {"", "BET", "PREFLOP"}:
+            pfr = True
+    return vpip, pfr
+
+
 def summarize_human_logs(path: Path | None, variant_id: str, min_hands: int) -> dict[str, Any]:
     if path is None:
         return {
@@ -109,14 +256,33 @@ def summarize_human_logs(path: Path | None, variant_id: str, min_hands: int) -> 
             "losses": 0,
             "ties": 0,
             "winRate": 0.0,
+            "netChips": 0.0,
+            "avgEV": 0.0,
+            "evSamples": 0,
+            "showdownHands": 0,
+            "showdownRate": 0.0,
+            "allInHands": 0,
+            "splitPotHands": 0,
+            "vpip": 0.0,
+            "pfr": 0.0,
+            "positions": {},
+            "coveredPositions": [],
+            "positionCoverage": 0,
             "verified": False,
         }
     records = [
         record
         for record in iter_json_records(path)
-        if record_variant_id(record) in {None, variant_id}
+        if normalized_variant_matches(record_variant_id(record), variant_id)
     ]
     wins = losses = ties = 0
+    net_values: list[float] = []
+    showdown_hands = 0
+    all_in_hands = 0
+    split_pot_hands = 0
+    vpip_hands = 0
+    pfr_hands = 0
+    positions: dict[str, dict[str, Any]] = {}
     for record in records:
         result = record_result(record)
         if result == "win":
@@ -125,7 +291,47 @@ def summarize_human_logs(path: Path | None, variant_id: str, min_hands: int) -> 
             losses += 1
         elif result == "tie":
             ties += 1
+        hero_net = record_hero_net(record)
+        if hero_net is not None:
+            net_values.append(hero_net)
+        if record_showdown(record):
+            showdown_hands += 1
+        if record_all_in(record):
+            all_in_hands += 1
+        if record_split_pot(record):
+            split_pot_hands += 1
+        vpip, pfr = record_vpip_pfr(record)
+        if vpip:
+            vpip_hands += 1
+        if pfr:
+            pfr_hands += 1
+        position = record_position(record) or "UNKNOWN"
+        bucket = positions.setdefault(
+            position,
+            {"hands": 0, "net": 0.0, "showdowns": 0, "vpipHands": 0, "pfrHands": 0},
+        )
+        bucket["hands"] += 1
+        bucket["net"] += hero_net or 0.0
+        bucket["showdowns"] += 1 if record_showdown(record) else 0
+        bucket["vpipHands"] += 1 if vpip else 0
+        bucket["pfrHands"] += 1 if pfr else 0
     decided = wins + losses + ties
+    position_summary = {}
+    for position, bucket in positions.items():
+        hands = bucket["hands"]
+        position_summary[position] = {
+            **bucket,
+            "avgEV": bucket["net"] / hands if hands else 0.0,
+            "showdownRate": bucket["showdowns"] / hands if hands else 0.0,
+            "vpip": bucket["vpipHands"] / hands if hands else 0.0,
+            "pfr": bucket["pfrHands"] / hands if hands else 0.0,
+        }
+    covered_positions = [
+        position
+        for position in POSITION_ORDER
+        if position_summary.get(position, {}).get("hands", 0) > 0
+    ]
+    avg_ev = sum(net_values) / len(net_values) if net_values else 0.0
     return {
         "path": str(path),
         "variantId": variant_id,
@@ -135,7 +341,19 @@ def summarize_human_logs(path: Path | None, variant_id: str, min_hands: int) -> 
         "losses": losses,
         "ties": ties,
         "winRate": wins / decided if decided else 0.0,
-        "verified": len(records) >= min_hands and decided >= min_hands,
+        "netChips": sum(net_values),
+        "avgEV": avg_ev,
+        "evSamples": len(net_values),
+        "showdownHands": showdown_hands,
+        "showdownRate": showdown_hands / len(records) if records else 0.0,
+        "allInHands": all_in_hands,
+        "splitPotHands": split_pot_hands,
+        "vpip": vpip_hands / len(records) if records else 0.0,
+        "pfr": pfr_hands / len(records) if records else 0.0,
+        "positions": position_summary,
+        "coveredPositions": covered_positions,
+        "positionCoverage": len(covered_positions),
+        "verified": len(records) >= min_hands and decided >= min_hands and len(net_values) >= min_hands,
     }
 
 
@@ -151,10 +369,18 @@ def build_report(args) -> dict[str, Any]:
         args.variant_id,
         args.min_human_log_hands,
     )
+    human_quality_checks = {
+        "avgEV": human_logs["avgEV"] >= thresholds["minHumanAvgEV"],
+        "positionCoverage": human_logs["positionCoverage"] >= thresholds["minPositionBuckets"],
+        "showdownCoverage": human_logs["showdownHands"] >= thresholds["minShowdownHands"],
+    }
     checks = {
         "advancedPassRate": pass_rate >= thresholds["minAdvancedPassRate"],
         "avgEVDelta": summary["avgEVDelta"] >= thresholds["minAvgEVDelta"],
         "humanLogs": (not args.require_human_logs) or human_logs["verified"],
+        "humanLogEV": (not args.require_human_logs) or human_quality_checks["avgEV"],
+        "humanLogPositionCoverage": (not args.require_human_logs) or human_quality_checks["positionCoverage"],
+        "humanLogShowdownCoverage": (not args.require_human_logs) or human_quality_checks["showdownCoverage"],
     }
     return {
         "model": args.model,
@@ -166,7 +392,7 @@ def build_report(args) -> dict[str, Any]:
         "checks": checks,
         "thresholds": thresholds | {"minHumanLogHands": args.min_human_log_hands},
         "practice": practice,
-        "humanLogs": human_logs,
+        "humanLogs": human_logs | {"qualityChecks": human_quality_checks},
     }
 
 

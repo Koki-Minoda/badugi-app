@@ -2931,3 +2931,30 @@ Draw RL test coverage:
 - [x] `node -e "...multiGameList..."`: Game Selector playable catalog は35件。
 - [x] `npm test -- --run src/games/core/__tests__/variants.test.js src/games/_core/__tests__/GameRegistry.test.js src/games/__tests__/playableInvariant.test.js`: 3 files / 78 tests pass。
 - [x] `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts tests/e2e/cross-variant-five-hand-smoke.spec.ts --project=badugi-flow`: 68 passed / 2 skipped。
+
+### 21.4 2026-05-05 進行スキップ防止テストの追加
+
+目的:
+- 「配牌される」「5hand回る」だけでは、Studの4th/5th/6th/7thやDrawのBET/DRAWが飛ぶバグを検知しきれない。
+- そのため、controller integration層でvariant familyごとの期待street sequenceを固定し、途中streetがスキップされた場合に必ず落ちるテストを追加する。
+
+- [x] `PV90-11` 全35 playable variantsで期待street sequenceを検証する。
+  - Board系: `PREFLOP -> FLOP -> TURN -> RIVER -> SHOWDOWN`。
+  - Dramaha系: `PREFLOP -> FLOP -> DRAW -> FINAL -> SHOWDOWN`。
+  - Stud/Razz系: `THIRD -> FOURTH -> FIFTH -> SIXTH -> SEVENTH -> SHOWDOWN`。
+  - Triple Draw系: `BET -> DRAW -> BET -> DRAW -> BET -> DRAW -> BET -> SHOWDOWN`。
+  - Single Draw系: `BET -> DRAW -> BET -> SHOWDOWN`。
+- [x] `PV90-12` all-in pressure / chip drift / broken actor / negative stack / 5連続handの既存invariantと、street sequence検査を同じ横断suiteに統合する。
+- [x] `PV90-13` 単体・結合・総合・システム観点の今回確認を記録する。
+  - 単体/結合: controller invariant, evaluator/action mask周辺のtargeted unit。
+  - 総合: Game Registry / variant registry / controller facade / 35 playable variantsの横断完走。
+  - システム: PlaywrightでGame Selector経由の35 cash variants + Badugi tournament起動、33/35 UI 5連続handを確認。
+
+確認結果:
+- [x] `npm test -- --run src/games/__tests__/playableInvariant.test.js --reporter=verbose`: 1 file / 108 tests pass。
+- [x] `npm test -- --run src/games/core/__tests__/variants.test.js src/games/_core/__tests__/GameRegistry.test.js src/games/__tests__/playableInvariant.test.js src/games/stud/__tests__/StudSplitGameController.test.js src/games/nlh/__tests__/NLHGameController.test.js src/games/plo/__tests__/PLOGameController.test.js src/games/plo/__tests__/PLO8GameController.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawEngine.test.js src/games/draw/__tests__/SingleDrawEngine.test.js src/games/draw/__tests__/SpecialDrawEngine.test.js src/games/dramaha/__tests__/DramahaGameController.test.js`: 11 files / 202 tests pass。
+- [x] `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts tests/e2e/cross-variant-five-hand-smoke.spec.ts --project=badugi-flow`: 68 passed / 2 skipped。
+
+残ギャップ:
+- [ ] `PV90-14` 36件目のChinese/OFCはGame Selector正式playable UI接続後、同じstreet/progression matrixへ追加する。
+- [ ] `PV90-15` Super Hold'em / FL Super Hold'em のPlaywright 5連続hand smoke fixmeを解除し、UI smokeも35/35へ引き上げる。

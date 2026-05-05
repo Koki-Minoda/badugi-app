@@ -66,6 +66,28 @@ function isTerminalSnapshot(snapshot = {}) {
   );
 }
 
+function normalizeStreet(snapshot = {}) {
+  const raw =
+    snapshot.street ??
+    snapshot.phase ??
+    (snapshot.lastHandResult ? "SHOWDOWN" : null);
+  if (!raw) return null;
+  if (raw === "HAND_RESULT") return "SHOWDOWN";
+  return raw;
+}
+
+function collectStreetSequence(sequence, snapshot) {
+  const street = normalizeStreet(snapshot);
+  if (!street) return;
+  if (sequence[sequence.length - 1] !== street) {
+    sequence.push(street);
+  }
+}
+
+function expectExactStreetProgression(sequence, expected, label) {
+  expect(sequence, `${label} street progression`).toEqual(expected);
+}
+
 function assertNoBrokenActor(snapshot) {
   if (isTerminalSnapshot(snapshot)) return;
   const actor =
@@ -84,6 +106,47 @@ function assertNoBrokenActor(snapshot) {
   }
   expect(player.allIn).not.toBe(true);
   expect(player.stack).toBeGreaterThan(0);
+}
+
+function driveDirectControllerStreetProgression(controller) {
+  const sequence = [];
+  controller.startNewHand();
+  let snapshot = controller.getSnapshot();
+  collectStreetSequence(sequence, snapshot);
+  for (let step = 0; step < 400; step += 1) {
+    snapshot = controller.getSnapshot();
+    collectStreetSequence(sequence, snapshot);
+    if (isTerminalSnapshot(snapshot)) break;
+    assertNoBrokenActor(snapshot);
+    const result = controller.applyPlayerAction(chooseSafeAction(snapshot));
+    expect(result.success, result.reason).toBe(true);
+    collectStreetSequence(sequence, controller.getSnapshot());
+  }
+  snapshot = controller.getSnapshot();
+  collectStreetSequence(sequence, snapshot);
+  expect(isTerminalSnapshot(snapshot)).toBe(true);
+  return sequence;
+}
+
+function driveGenericControllerStreetProgression(controller) {
+  let state = controller.createNewHandState(controller.createInitialState?.() ?? {});
+  const sequence = [];
+  let snapshot = controller.getUiSnapshot(state);
+  collectStreetSequence(sequence, snapshot);
+  for (let step = 0; step < 400; step += 1) {
+    snapshot = controller.getUiSnapshot(state);
+    collectStreetSequence(sequence, snapshot);
+    if (isTerminalSnapshot(snapshot)) break;
+    assertNoBrokenActor(snapshot);
+    const result = controller.applyAction(state, chooseGenericAction(snapshot));
+    expect(result.events?.[0]?.type).not.toBe("invalidAction");
+    state = result.state;
+    collectStreetSequence(sequence, controller.getUiSnapshot(state));
+  }
+  snapshot = controller.getUiSnapshot(state);
+  collectStreetSequence(sequence, snapshot);
+  expect(isTerminalSnapshot(snapshot)).toBe(true);
+  return sequence;
 }
 
 function chooseSafeAction(snapshot) {
@@ -557,6 +620,37 @@ describe("playable invariant smoke", () => {
     ["hidugi_single_draw", () => new HidugiSingleDrawController({ tableConfig: shortDrawTableConfig })],
   ];
 
+  const boardStreetCases = directControllerCases.filter(([name]) =>
+    [
+      "nlh",
+      "flh",
+      "super_holdem",
+      "fl_super_holdem",
+      "plo",
+      "plo8",
+      "big_o",
+      "five_card_plo",
+      "flo8",
+    ].includes(name),
+  );
+
+  const dramahaStreetCases = directControllerCases.filter(([name]) =>
+    String(name).startsWith("dramaha_"),
+  );
+
+  const studStreetCases = directControllerCases.filter(([name]) =>
+    ["stud", "stud8", "razz", "razz27", "razzdugi", "razzducey"].includes(name),
+  );
+
+  const tripleDrawStreetCases = drawControllerCases.filter(([name]) =>
+    String(name).includes("triple_draw") ||
+    ["badugi", "archie_triple_draw"].includes(name),
+  );
+
+  const singleDrawStreetCases = drawControllerCases.filter(([name]) =>
+    String(name).includes("single_draw"),
+  );
+
   it.each(directControllerCases)("%s completes five consecutive hands without broken actors or chip drift", (_name, createController) => {
     const controller = createController();
     for (let hand = 0; hand < 5; hand += 1) {
@@ -577,6 +671,46 @@ describe("playable invariant smoke", () => {
 
   it.each(allInDrawControllerCases)("%s resolves a short-stack all-in hand without broken actors or chip drift", (_name, createController) => {
     driveAllInPressureGenericHand(createController());
+  });
+
+  it.each(boardStreetCases)("%s visits board streets without skipping", (name, createController) => {
+    expectExactStreetProgression(
+      driveDirectControllerStreetProgression(createController()),
+      ["PREFLOP", "FLOP", "TURN", "RIVER", "SHOWDOWN"],
+      name,
+    );
+  });
+
+  it.each(dramahaStreetCases)("%s visits Dramaha streets without skipping", (name, createController) => {
+    expectExactStreetProgression(
+      driveDirectControllerStreetProgression(createController()),
+      ["PREFLOP", "FLOP", "DRAW", "FINAL", "SHOWDOWN"],
+      name,
+    );
+  });
+
+  it.each(studStreetCases)("%s visits Stud-family streets without skipping", (name, createController) => {
+    expectExactStreetProgression(
+      driveDirectControllerStreetProgression(createController()),
+      ["THIRD", "FOURTH", "FIFTH", "SIXTH", "SEVENTH", "SHOWDOWN"],
+      name,
+    );
+  });
+
+  it.each(tripleDrawStreetCases)("%s visits triple-draw streets without skipping", (name, createController) => {
+    expectExactStreetProgression(
+      driveGenericControllerStreetProgression(createController()),
+      ["BET", "DRAW", "BET", "DRAW", "BET", "DRAW", "BET", "SHOWDOWN"],
+      name,
+    );
+  });
+
+  it.each(singleDrawStreetCases)("%s visits single-draw streets without skipping", (name, createController) => {
+    expectExactStreetProgression(
+      driveGenericControllerStreetProgression(createController()),
+      ["BET", "DRAW", "BET", "SHOWDOWN"],
+      name,
+    );
   });
 
   it("keeps all-in short stacks from becoming invalid actors in split games", () => {

@@ -43,7 +43,7 @@ This matrix tracks add-on progress coverage by variant family. It does not repla
 | SPLIT_POT | ST2/ST4/ST5 split Stud | Yes | progress scenario | component pot UI | STUD-005 | Added | Evaluator config and smoke |
 | SPECIAL | B03/B04 Super Hold'em | Yes | progress scenario | UI 5-hand per variant | SPECIAL-001 | Added | Special board-hole variant |
 | SPECIAL | H01-H06 Dramaha | WIP | progress scenario | result UI and component details | SPECIAL-001 | Added | Harnessed despite catalog WIP |
-| MIXED | H.O.R.S.E. / 8-game / Dealer's Choice | Mode-level | manual / UI routes | rotation-specific controller fixture | MIXED-001 | Skipped | No direct registry variant; tracked as explicit gap |
+| MIXED | H.O.R.S.E. / 8-game / Dealer's Choice | Mode-level | manual / UI routes + MIX-PROG-05 E2E | H.O.R.S.E. / Dealer's Choice specific rotation E2E | MIXED-001, MIX-PROG-05 | Partial | 8Game/10Game rotation boundary covered; no direct registry variant |
 | CHINESE | CP1 Chinese Poker | Yes | scorer/controller tests | OFC street-by-street / fantasyland / history replay | CHINESE-001 | Added | CP1 set/result/next-hand covered; OFC remains separate |
 
 ## Family Test IDs
@@ -65,5 +65,6 @@ This matrix tracks add-on progress coverage by variant family. It does not repla
 | DRAW-FAMILY-002 | DRAW | D01/D02/S01/S02 | lowball evaluator | A-5 and 2-7 do not cross-wire | `drawFamilyProgress.test.js` | Added | Evaluator output assertion |
 | DRAW-FAMILY-003 | SPLIT_POT | D04/D05/S05/S06 | split draw result | component result reached | `drawFamilyProgress.test.js` | Added | Split draw smoke |
 | MIXED-001 | MIXED | mode-level rotations | registry classification | explicit gap, not false pass | `mixedSpecialFamilyProgress.test.js` | Added | No direct registry variant |
+| MIX-PROG-05 | MIXED | 8Game / 10Game | 5-cycle per-hand rotation boundary | variantId / seat / dealer button / stack+pot total persists | `mixed-rotation-core-progression.spec.ts` | Added | 8Game 40 boundaries and 10Game 50 boundaries covered |
 | SPECIAL-001 | SPECIAL | B03/B04/H01-H06 | special smoke | supported special variants do not freeze | `mixedSpecialFamilyProgress.test.js` | Added | Family runner |
 | CHINESE-001 | CHINESE | CP1 | set -> showdown -> next hand | result totals exist and next hand resets state | `chineseFamilyProgress.test.js` | Added | CP1 classic Chinese Poker path |

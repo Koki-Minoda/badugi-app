@@ -5886,6 +5886,43 @@ const SAFE_RESET_PHASE = "IDLE";
         betRound: betRoundIndex,
         dealerIdx,
         handId: handIdRef.current,
+        handCount: handCountRef.current,
+        gameVariant: gameVariantRef.current,
+        potTotal: (potsRef.current ?? pots ?? []).reduce(
+          (sum, potEntry) => sum + Number(potEntry?.amount ?? 0),
+          0,
+        ),
+        pots: (potsRef.current ?? pots ?? []).map((potEntry, potIndex) => ({
+          potIndex,
+          amount: potEntry?.amount ?? 0,
+          eligible: Array.isArray(potEntry?.eligible) ? [...potEntry.eligible] : [],
+        })),
+        rotation: variantRotationRef.current
+          ? {
+              sequence: [...(variantRotationRef.current.sequence ?? [])],
+              policy: variantRotationRef.current.policy,
+              index: variantRotationRef.current.index,
+              currentVariant: getCurrentVariant(variantRotationRef.current),
+              nextVariant: getNextVariant(variantRotationRef.current),
+            }
+          : null,
+        players: (playersRef.current ?? players ?? []).map((player, seatIndex) => ({
+          seatIndex,
+          id: player?.id ?? player?.playerId ?? player?.tournamentPlayerId ?? null,
+          name: player?.name ?? null,
+          stack: player?.stack ?? 0,
+          bet:
+            player?.betThisRound ??
+            player?.betThisStreet ??
+            player?.bet ??
+            player?.committedThisStreet ??
+            0,
+          folded: Boolean(player?.folded || player?.hasFolded),
+          allIn: Boolean(player?.allIn),
+          seatOut: Boolean(player?.seatOut),
+          isBusted: Boolean(player?.isBusted),
+          isActiveInGame: player?.isActiveInGame !== false,
+        })),
         controllerSnapshot:
           gameControllerRef.current && typeof gameControllerRef.current.getSnapshot === "function"
             ? gameControllerRef.current.getSnapshot()

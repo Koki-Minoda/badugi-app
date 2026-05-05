@@ -88,6 +88,39 @@ const DRAW_OPERATIONAL_CASES: ProgressionCase[] = [
   },
 ];
 
+const MIXED_ROTATION_CASES = [
+  {
+    label: "8Game",
+    rotation: [
+      "nlh",
+      "flh",
+      "plo8",
+      "razz",
+      "stud",
+      "stud8",
+      "deuce_to_seven_triple_draw",
+      "plo",
+    ],
+    cycles: 5,
+  },
+  {
+    label: "10Game",
+    rotation: [
+      "nlh",
+      "flh",
+      "plo8",
+      "razz",
+      "stud",
+      "stud8",
+      "deuce_to_seven_triple_draw",
+      "plo",
+      "badugi",
+      "deuce_to_seven_single_draw",
+    ],
+    cycles: 5,
+  },
+];
+
 async function waitForE2EDriver(page: Page) {
   await page.waitForFunction(
     () => {
@@ -125,6 +158,101 @@ async function getStateSnapshot(page: Page): Promise<any> {
 
 async function getPhaseState(page: Page): Promise<any> {
   return page.evaluate(() => window.__BADUGI_E2E__?.getPhaseState?.() ?? null);
+}
+
+function stableSeatSignature(snapshot: any) {
+  const players = Array.isArray(snapshot?.players) ? snapshot.players : [];
+  return players.map((player: any) => player?.name ?? player?.id ?? `seat-${player?.seatIndex}`);
+}
+
+function tableChipTotal(snapshot: any) {
+  const players = Array.isArray(snapshot?.players) ? snapshot.players : [];
+  const playerTotal = players.reduce((sum: number, player: any) => {
+    const stack = Number(player?.stack ?? 0);
+    const bet = Number(player?.bet ?? 0);
+    return sum + (Number.isFinite(stack) ? stack : 0) + (Number.isFinite(bet) ? bet : 0);
+  }, 0);
+  const potTotal = Number(snapshot?.potTotal ?? 0);
+  return playerTotal + (Number.isFinite(potTotal) ? potTotal : 0);
+}
+
+async function startMixedRotationTournament(page: Page, label: string, rotation: string[]) {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openAuthenticatedGame(page, `${APP_URL}?variant=${rotation[0]}`);
+  await waitForE2EDriver(page);
+  await invokeE2E(page, "startTournamentMTT", {
+    id: `${label.toLowerCase()}-rotation-e2e`,
+    name: `${label} Rotation E2E`,
+    tables: 1,
+    seatsPerTable: 6,
+    startingStack: 5000,
+    gameVariant: rotation[0],
+    gameRotation: rotation,
+    rotationPolicy: "per-hand",
+    levels: [
+      { levelIndex: 1, smallBlind: 5, bigBlind: 10, ante: 0, handsThisLevel: 999 },
+    ],
+    payouts: [{ place: 1, percent: 100 }],
+  });
+  await page.waitForFunction(
+    ({ firstVariant, rotationLength }) => {
+      const api = window.__BADUGI_E2E__;
+      const snapshot = api?.getStateSnapshot?.();
+      if (snapshot?.gameVariant !== firstVariant) return false;
+      return Array.isArray(snapshot?.rotation?.sequence) &&
+        snapshot.rotation.sequence.length === rotationLength;
+    },
+    { firstVariant: rotation[0], rotationLength: rotation.length },
+    { timeout: 20000 },
+  );
+}
+
+async function completeRotationBoundary(page: Page) {
+  await invokeE2E(page, "resolveHandNow");
+  await page.waitForTimeout(150);
+  await invokeE2E(page, "dealNewHandNow");
+  await page.waitForTimeout(250);
+}
+
+async function expectRotationSnapshot(
+  page: Page,
+  {
+    expectedVariant,
+    expectedRotation,
+    expectedSeatSignature,
+    expectedChipTotal,
+    stepLabel,
+  }: {
+    expectedVariant: string;
+    expectedRotation: string[];
+    expectedSeatSignature: string[];
+    expectedChipTotal: number;
+    stepLabel: string;
+  },
+) {
+  const snapshot = await getStateSnapshot(page);
+  expect(snapshot, `${stepLabel}: snapshot`).toBeTruthy();
+  expect(snapshot?.gameVariant, `${stepLabel}: gameVariant`).toBe(expectedVariant);
+  expect(snapshot?.rotation?.currentVariant, `${stepLabel}: rotation current`).toBe(
+    expectedVariant,
+  );
+  expect(snapshot?.rotation?.sequence, `${stepLabel}: rotation sequence`).toEqual(
+    expectedRotation,
+  );
+  expect(stableSeatSignature(snapshot), `${stepLabel}: seat identity handoff`).toEqual(
+    expectedSeatSignature,
+  );
+  expect(tableChipTotal(snapshot), `${stepLabel}: table chip conservation`).toBe(
+    expectedChipTotal,
+  );
+  expect(typeof snapshot?.dealerIdx, `${stepLabel}: dealerIdx type`).toBe("number");
+  expect(snapshot.dealerIdx, `${stepLabel}: dealerIdx lower bound`).toBeGreaterThanOrEqual(0);
+  expect(snapshot.dealerIdx, `${stepLabel}: dealerIdx upper bound`).toBeLessThan(
+    expectedSeatSignature.length,
+  );
+  expect(Number(snapshot?.handCount ?? 0), `${stepLabel}: handCount`).toBeGreaterThanOrEqual(0);
+  await expectTableNotStuck(page);
+  return snapshot;
 }
 
 async function openVariant(page: Page, variant: string, title: RegExp) {
@@ -248,6 +376,45 @@ test.describe("8/10Game core progression audit", () => {
       await invokeE2E(page, "forceDealNewHandNow");
       await expectHeroCards(page, testCase.minHeroCards ?? 4);
       await expectTableNotStuck(page);
+    });
+  }
+
+  for (const rotationCase of MIXED_ROTATION_CASES) {
+    test(`MIX-PROG-05 ${rotationCase.label} preserves seats/buttons/stacks across five rotation cycles`, async ({
+      page,
+    }) => {
+      test.setTimeout(240000);
+      await startMixedRotationTournament(page, rotationCase.label, rotationCase.rotation);
+
+      await completeRotationBoundary(page);
+      const initial = await getStateSnapshot(page);
+      const expectedSeatSignature = stableSeatSignature(initial);
+      const expectedChipTotal = tableChipTotal(initial);
+      expect(expectedSeatSignature.length, `${rotationCase.label}: seats`).toBe(6);
+      expect(new Set(expectedSeatSignature).size, `${rotationCase.label}: duplicate seats`).toBe(6);
+      expect(expectedChipTotal, `${rotationCase.label}: initial chip total`).toBe(30000);
+
+      await expectRotationSnapshot(page, {
+        expectedVariant: rotationCase.rotation[1 % rotationCase.rotation.length],
+        expectedRotation: rotationCase.rotation,
+        expectedSeatSignature,
+        expectedChipTotal,
+        stepLabel: `${rotationCase.label} bootstrap boundary`,
+      });
+
+      const totalBoundaries = rotationCase.rotation.length * rotationCase.cycles;
+      for (let boundary = 1; boundary <= totalBoundaries; boundary += 1) {
+        await completeRotationBoundary(page);
+        const expectedVariant =
+          rotationCase.rotation[(boundary + 1) % rotationCase.rotation.length];
+        await expectRotationSnapshot(page, {
+          expectedVariant,
+          expectedRotation: rotationCase.rotation,
+          expectedSeatSignature,
+          expectedChipTotal,
+          stepLabel: `${rotationCase.label} boundary ${boundary}/${totalBoundaries}`,
+        });
+      }
     });
   }
 });

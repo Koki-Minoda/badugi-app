@@ -23,7 +23,7 @@ Last updated: 2026-05-06
 | FLOP_OMAHA | 5 | 5 | 0 | 0 | B07 Big-O is currently high-only in catalog; hi/lo expectation needs product/config decision |
 | SPLIT_POT | 9 | 9 | 0 | 0 | Component-pot / odd-chip UI clarity still needs E2E assertions |
 | SPECIAL | 8 | 8 | 0 | 0 | Dramaha result UI and board+draw explainability still need manual/E2E QA |
-| MIXED | 0 | 0 | 1 | 0 | Mixed rotations are mode-level, not direct registry variants |
+| MIXED | 0 | 2 mode rotations | 1 | 0 | 8Game/10Game rotation boundaries covered by MIX-PROG-05; H.O.R.S.E./Dealer's Choice still mode-level gaps |
 | CHINESE/OFC | 1 | 1 | 0 | 0 | CP1 classic set/result/next-hand covered; OFC street-by-street/fantasyland remains |
 
 ## Added Files
@@ -58,6 +58,7 @@ Last updated: 2026-05-06
 | DRAW-FAMILY-002 | DRAW | PASS | A-5 and 2-7 lowball evaluators do not cross-wire |
 | DRAW-FAMILY-003 | SPLIT_POT | PASS | Badeucey/Badacey split draw component result smoke |
 | MIXED-001 | MIXED | PASS | Explicitly records mode-level rotation gap instead of false pass |
+| MIX-PROG-05 | MIXED | PASS | 8Game 40 boundaries and 10Game 50 boundaries preserve variantId / seat / dealer button / stack+pot total |
 | SPECIAL-001 | SPECIAL | PASS | Super Hold'em and Dramaha family smoke |
 | CHINESE-001 | CHINESE/OFC | PASS | CP1 set/result/next-hand controller path |
 
@@ -74,6 +75,6 @@ Last updated: 2026-05-06
 | Area | Reason | Next Action |
 |---|---|---|
 | D03 Badugi controller harness | Existing App lifecycle is still the authoritative path for Badugi UI/MTT | Extract reusable Badugi controller fixture later |
-| MIXED family | H.O.R.S.E./8-game/Dealer's Choice are mode-level rotations, not variant registry entries | Add rotation runner that starts a mixed mode and advances variants |
+| MIXED family | H.O.R.S.E./Dealer's Choice are mode-level rotations, not variant registry entries | Reuse MIX-PROG-05 runner for H.O.R.S.E. fixed rotation and weighted Dealer's Choice smoke |
 | CP1 Chinese/OFC OFC mode | Current CP1 coverage is classic 13-card set, not OFC street-by-street | Add OFC 5-card open, one-card placement, fantasyland, and history/replay smoke |
 | B07 Big-O split expectation | Current catalog does not mark Big-O as hi/lo | Decide whether product requires Big-O hi/lo, then update evaluator/config/tests |

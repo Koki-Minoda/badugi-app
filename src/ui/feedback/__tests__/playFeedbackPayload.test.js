@@ -140,6 +140,26 @@ describe("playFeedbackPayload", () => {
     });
     expect(result.payload.summary.variants).toEqual({ D01: 30 });
     expect(result.payload.keyHands.every((spot) => spot.variantId === "D01")).toBe(true);
+    expect(result.payload.replayLinks.length).toBe(result.payload.keyHands.length);
+    expect(result.payload.replayLinks.every((link) => link.variantId === "D01")).toBe(true);
+    expect(result.payload.replayLinks.every((link) => link.handExists === true)).toBe(true);
+    expect(result.payload.promptContext.constraints).toContain(
+      "feedbackScope.variantId または mixed scope に従い、対象外variantを混ぜない",
+    );
+  });
+
+  it("requires an explicit feedback scope before building a sendable payload", () => {
+    const result = buildPlayFeedbackPayload({
+      hands: Array.from({ length: MIN_FEEDBACK_HANDS }, (_, index) => makeHand(index)),
+      mode: "cash",
+      variantScope: "",
+    });
+
+    expect(result).toMatchObject({
+      eligible: false,
+      reason: "select_feedback_scope",
+      payload: null,
+    });
   });
 
   it("keeps mixed feedback explicit and exposes per-variant scope options", () => {

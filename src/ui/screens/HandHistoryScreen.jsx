@@ -109,7 +109,7 @@ export default function HandHistoryScreen({
     error: null,
     response: null,
   });
-  const [feedbackScope, setFeedbackScope] = useState("mixed");
+  const [feedbackScope, setFeedbackScope] = useState("");
 
   const refreshSnapshots = useCallback(() => {
     setLiveHandSnapshot(getCurrentHandHistorySnapshot());
@@ -153,8 +153,13 @@ export default function HandHistoryScreen({
     [completedSnapshotList],
   );
   useEffect(() => {
-    if (!feedbackScopeOptions.some((option) => option.value === feedbackScope)) {
-      setFeedbackScope(feedbackScopeOptions[0]?.value ?? "mixed");
+    const selectableOptions = feedbackScopeOptions.filter((option) => option.type === "variant");
+    if (feedbackScope && !feedbackScopeOptions.some((option) => option.value === feedbackScope)) {
+      setFeedbackScope("");
+      return;
+    }
+    if (!feedbackScope && selectableOptions.length === 1) {
+      setFeedbackScope(selectableOptions[0].value);
     }
   }, [feedbackScope, feedbackScopeOptions]);
   const feedbackPayloadResult = useMemo(
@@ -191,9 +196,11 @@ export default function HandHistoryScreen({
           "30ハンド以上の履歴から、良かった点、悪かった点、次回方針をAIフィードバックとして保存します。",
         feedbackButton: "AIフィードバック作成",
         feedbackScope: "対象ゲーム",
+        feedbackScopePlaceholder: "フィードバック対象を選択",
         feedbackLoading: "解析中...",
         feedbackLogin: "ログインするとAIフィードバックを送信できます。",
         feedbackNotReady: `${MIN_FEEDBACK_HANDS}ハンド以上プレイすると利用できます。`,
+        feedbackScopeRequired: "PLOとBadugiなどを混ぜないため、フィードバック対象ゲームを選択してください。",
         feedbackSource: "保存元",
         savedFeedback: "保存済みフィードバック",
         keyHandsTitle: "該当ハンド",
@@ -219,9 +226,11 @@ export default function HandHistoryScreen({
           "Use 30+ completed hands to save AI feedback with strengths, leaks, and next-session goals.",
         feedbackButton: "Create AI Feedback",
         feedbackScope: "Feedback target",
+        feedbackScopePlaceholder: "Select feedback target",
         feedbackLoading: "Analyzing...",
         feedbackLogin: "Log in to request AI feedback.",
         feedbackNotReady: `Play at least ${MIN_FEEDBACK_HANDS} hands to enable feedback.`,
+        feedbackScopeRequired: "Select a feedback target so PLO, Badugi, and other variants are not mixed unintentionally.",
         feedbackSource: "Source",
         savedFeedback: "Saved feedback",
         keyHandsTitle: "Referenced Hands",
@@ -331,6 +340,9 @@ export default function HandHistoryScreen({
                     setFeedbackState({ loading: false, error: null, response: null });
                   }}
                 >
+                  <option value="" disabled>
+                    {copy.feedbackScopePlaceholder}
+                  </option>
                   {feedbackScopeOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label} ({option.handCount})
@@ -359,7 +371,9 @@ export default function HandHistoryScreen({
           )}
           {!feedbackPayloadResult.eligible && (
             <p className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3 text-slate-300">
-              {copy.feedbackNotReady}
+              {feedbackPayloadResult.reason === "select_feedback_scope"
+                ? copy.feedbackScopeRequired
+                : copy.feedbackNotReady}
             </p>
           )}
           {feedbackState.error && (

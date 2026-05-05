@@ -205,6 +205,7 @@ def _compact_play_feedback_payload(session_payload: Dict[str, Any]) -> Dict[str,
     summary = session_payload.get("summary") if isinstance(session_payload.get("summary"), dict) else {}
     top_issues = summary.get("topIssues") if isinstance(summary.get("topIssues"), list) else []
     key_hands = session_payload.get("keyHands") if isinstance(session_payload.get("keyHands"), list) else []
+    replay_links = session_payload.get("replayLinks") if isinstance(session_payload.get("replayLinks"), list) else []
     compact_summary = _copy_mapping_keys(
         summary,
         [
@@ -254,6 +255,14 @@ def _compact_play_feedback_payload(session_payload: Dict[str, Any]) -> Dict[str,
         )
         if spot
     ]
+    compact["replayLinks"] = [
+        _copy_mapping_keys(
+            link,
+            ["situationId", "handId", "variantId", "actionSeqRange", "replayTarget", "handExists"],
+        )
+        for link in replay_links[:MAX_PROMPT_KEY_HANDS]
+        if isinstance(link, dict)
+    ]
     if raw_hand_count:
         compact["handSamples"] = [
             hand
@@ -273,6 +282,7 @@ def _compact_play_feedback_payload(session_payload: Dict[str, Any]) -> Dict[str,
         "rawHandCount": raw_hand_count,
         "sentRawHandSamples": len(compact.get("handSamples") or []),
         "keyHandCount": len(compact["keyHands"]),
+        "replayLinkCount": len(compact["replayLinks"]),
         "topIssueCount": len(compact_summary["topIssues"]),
     }
     return compact

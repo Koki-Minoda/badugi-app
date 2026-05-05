@@ -90,6 +90,7 @@ class PlayFeedbackStoredResult(BaseModel):
     source: str
     piiRemoved: bool = True
     keyHands: List[Dict[str, Any]] = Field(default_factory=list)
+    replayLinks: List[Dict[str, Any]] = Field(default_factory=list)
     summary: Optional[Dict[str, Any]] = None
     response: Dict[str, Any]
     createdAt: Optional[str] = None

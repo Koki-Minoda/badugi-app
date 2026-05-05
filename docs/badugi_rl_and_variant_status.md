@@ -3040,3 +3040,31 @@ Draw RL test coverage:
 残タスク:
 - [ ] `HIST-REG-05` Replay UIのframe再生そのものを全variantで押下確認する。今回の範囲は「保存される履歴データがReplay-readyであること」まで。
 - [ ] `HIST-REG-06` Chinese/OFC正式接続後、同じhistory/replay smokeへ36件目として追加する。
+
+### 21.8 2026-05-05 Feedback Pipeline Variant分離 / 履歴リンク品質
+
+目的:
+- PLOとBadugiなど、別variantの履歴が同じfeedbackへ意図せず混ざる問題を避ける。
+- 30hand以上、対象variantの明示選択、該当hand/actionへの参照をfeedback payload / 保存結果 / UIで保証する。
+
+対応:
+- [x] `FB-REG-01` 複数variantの履歴がある場合、Hand History modalのAIフィードバックは対象ゲームを明示選択するまで送信できないようにする。
+  - `variant:badugi` / `variant:plo` / `mixed` をプレイヤが選ぶ。
+  - 1variantしかない場合のみ、そのvariantを自動選択する。
+- [x] `FB-REG-02` `buildPlayFeedbackPayload` は未選択scopeを `select_feedback_scope` として拒否する。
+  - 30hand未満は従来通り `not_enough_hands`。
+  - variant scope選択後は、対象variantだけで30hand以上ある場合のみeligible。
+- [x] `FB-REG-03` feedback payloadに `replayLinks` を追加する。
+  - `situationId`, `handId`, `variantId`, `actionSeqRange`, `replayTarget`, `handExists` を保持する。
+  - `keyHands` と同じhand/action範囲へUIとbackendが戻れるようにする。
+- [x] `FB-REG-04` local保存とbackend保存済みfeedback取得結果に `replayLinks` を残す。
+  - `GET /api/analysis/play-feedback/results` でも `replayLinks` を返す。
+- [x] `FB-REG-05` OpenAIへ送る圧縮payloadにも `replayLinks` を含め、回答でhandId/actionSeqRangeを参照しやすくする。
+
+確認結果:
+- [x] `npm test -- --run src/ui/feedback/__tests__/playFeedbackPayload.test.js src/ui/screens/__tests__/HandHistoryScreen.test.jsx`: 2 files / 8 tests pass。
+- [x] `cd backend && ../.venv/bin/python -m pytest tests/test_analysis_chatgpt_api.py`: 9 passed。
+
+残タスク:
+- [ ] `FB-REG-06` 実OpenAI環境で、variant別30hand以上の実プレイログを使い、回答がPLO/Badugi/2-7などを混同しないか手動確認する。
+- [ ] `FB-REG-07` Replay UI側で `replayTarget.actionSeqStart` へ直接ジャンプする操作を全variantで確認する。

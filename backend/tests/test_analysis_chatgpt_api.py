@@ -110,6 +110,20 @@ def sample_play_feedback(hand_count=30):
                 "email": "hero@example.com",
             }
         ],
+        "replayLinks": [
+            {
+                "situationId": "B-07",
+                "handId": "hand-9",
+                "variantId": "badugi",
+                "actionSeqRange": {"start": 3, "end": 5},
+                "replayTarget": {
+                    "handId": "hand-9",
+                    "actionSeqStart": 3,
+                    "actionSeqEnd": 5,
+                },
+                "handExists": True,
+            }
+        ],
         "promptContext": {
             "requestedOutput": ["良かった点", "悪かった点"],
             "userName": "Hero Name",
@@ -202,6 +216,8 @@ def test_play_feedback_endpoint_returns_sanitized_payload(monkeypatch):
     assert results[0]["summary"]["hands"] == 30
     assert results[0]["keyHands"][0]["situationId"] == "B-07"
     assert results[0]["keyHands"][0]["email"] == "[redacted]"
+    assert results[0]["replayLinks"][0]["handId"] == "hand-9"
+    assert results[0]["replayLinks"][0]["handExists"] is True
 
 
 def test_play_feedback_endpoint_requires_minimum_hands(monkeypatch):
@@ -339,6 +355,8 @@ def test_play_feedback_openai_payload_is_compacted(monkeypatch):
     assert len(compact_session["handSamples"]) == 8
     assert "events" not in compact_session["handSamples"][0]
     assert compact_session["keyHands"][0]["situationId"] == "B-07"
+    assert compact_session["replayLinks"][0]["handId"] == "hand-9"
+    assert compact_session["compression"]["replayLinkCount"] == 1
 
 
 def test_play_feedback_parses_fenced_nested_responses_payload(monkeypatch):

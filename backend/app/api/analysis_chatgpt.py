@@ -104,6 +104,15 @@ def _extract_saved_key_hands(payload: Any) -> list[dict[str, Any]]:
     return [entry for entry in key_hands if isinstance(entry, dict)]
 
 
+def _extract_saved_replay_links(payload: Any) -> list[dict[str, Any]]:
+    if not isinstance(payload, dict):
+        return []
+    replay_links = payload.get("replayLinks")
+    if not isinstance(replay_links, list):
+        return []
+    return [entry for entry in replay_links if isinstance(entry, dict)]
+
+
 def _extract_saved_summary(payload: Any) -> dict[str, Any] | None:
     if not isinstance(payload, dict):
         return None
@@ -209,6 +218,7 @@ def list_play_feedback_results(
             source=row.source,
             piiRemoved=row.pii_removed,
             keyHands=_extract_saved_key_hands(row.payload),
+            replayLinks=_extract_saved_replay_links(row.payload),
             summary=_extract_saved_summary(row.payload),
             response=row.response,
             createdAt=row.created_at.isoformat() if row.created_at else None,

@@ -47,6 +47,7 @@ test.describe("cross variant operational smoke", () => {
     { variant: "plo8", title: /PLO8|Omaha Hi-Lo/i, heroCards: 4 },
     { variant: "big_o", title: /Big-O|5-Card Omaha Hi-Lo/i, heroCards: 5 },
     { variant: "five_card_plo", title: /5-Card PLO|Five-Card PLO/i, heroCards: 5 },
+    { variant: "flo8", title: /FLO8|Fixed-Limit Omaha/i, heroCards: 4 },
     { variant: "stud", title: /Stud/i, heroCards: 3 },
     { variant: "stud8", title: /Stud 8/i, heroCards: 3 },
     { variant: "razz", title: /Razz/i, heroCards: 3 },
@@ -82,6 +83,18 @@ test.describe("cross variant operational smoke", () => {
       await expectHeroCards(page, heroCards);
       await expectActionPanelOrProgress(page);
     });
+  });
+
+  test("chinese_poker cash game renders playable Chinese Poker UI", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openAuthenticatedGame(page, `${APP_URL}?variant=chinese_poker`);
+
+    await expect(page.getByTestId("chinese-poker-screen")).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText(/Chinese Poker/i).first()).toBeVisible({ timeout: 20000 });
+    await expect
+      .poll(async () => page.locator("[data-testid^='chinese-card-']").count(), { timeout: 20000 })
+      .toBeGreaterThanOrEqual(13);
+    await expect(page.getByTestId("chinese-submit")).toBeVisible({ timeout: 20000 });
   });
 
   test("Badugi store tournament deals hero cards and reaches an actionable hero state", async ({ page }) => {

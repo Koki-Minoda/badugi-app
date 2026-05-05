@@ -2930,19 +2930,66 @@ Draw RL test coverage:
 | ST6 2-7 Razz | 78 | 74 | 28 | 開発者限定 | 2-7 Razz公式進行監査、bring-in tie、low evaluator gateを追加。 |
 
 補足:
-- Chinese Poker / OFC は `ChinesePokerController` とscorer foundationはあるが、Game Selectorの正式playable UIには未接続。現時点では上表の「実装ゲーム」には含めず、`GAME-ALL-02 / CHINESE-02` の残タスクとして扱う。
+- 上表は2026-05-05時点の旧基準。2026-05-06以降は「進行テスト%」を `進行保証%` と `UI/UX完成度%` に分離し、起動/進行が安定しているがUIが未完成なゲームを過大評価しない。
 - 友達公開の第一候補は `D03 Badugi`。次点で限定公開候補は `B01/B02/B05/B06`, `D01/D02/S01/S02`, `ST1/ST2/ST3`。
 - 公開範囲を広げる前に、最低限 `公開候補variantごとの5連続UI hand`, `all-in/bust後next hand`, `history/replay`, `feedback対象のvariant分離` を再実行する。
 
-## 21. 2026-05-05 35 Playable Variants 90%化対応
+### 20.1 進捗表 v2: 進行保証 / UI・UX完成度 分離版
+
+目的:
+- `実装%`: controller / evaluator / Game Selector / App routing / result / historyへの接続度。
+- `進行保証%`: unit / invariant / Playwright 5hand / all-in / split pot / next handで、ゲーム進行が止まらない保証度。
+- `UI/UX完成度%`: ルール固有表示、勝者表示、カード視認性、履歴/FB連携、スマホ/PCの操作快適性。
+- Chinese Pokerはstreet型ではないため、`set -> showdown -> next hand` の専用進行保証で評価する。OFC street-by-street / fantasylandは別タスク。
+
+| Game | 実装% | 進行保証% | UI/UX完成度% | RL% | 友達公開 | 次にやること |
+|---|---:|---:|---:|---:|---|---|
+| B01 NL Hold'em | 90 | 84 | 76 | 72 | 限定可 | 実ハンドEV gate、position別human benchmark、hand result表示改善。 |
+| B02 FL Hold'em | 88 | 82 | 74 | 70 | 限定可 | fixed-limit cap/crying call監査、thin value teacher。 |
+| B03 NL Super Hold'em | 84 | 80 | 70 | 35 | 開発者限定 | 3-hole専用range/RL family、history/replay smoke。 |
+| B04 FL Super Hold'em | 82 | 78 | 68 | 35 | 開発者限定 | limit Super range、raise cap UI、history/replay smoke。 |
+| B05 Pot-Limit Omaha | 88 | 82 | 72 | 72 | 限定可 | PLO hand sort/役名、SPR別teacher、showdown result安定化。 |
+| B06 PLO8 | 86 | 80 | 70 | 70 | 限定可 | scoop/no-low/quartering表示、PLO8専用実ログgate。 |
+| B07 Big-O | 82 | 76 | 66 | 42 | 開発者限定 | 5-card hi/lo split fixture、Big-O専用range。 |
+| B08 5-Card PLO | 82 | 76 | 66 | 40 | 開発者限定 | 5-card sort/役表示、pot-limit UI smoke。 |
+| B09 FLO8 | 84 | 78 | 68 | 45 | 開発者限定 | fixed-limit Omaha8 side-pot/quartering fixture。 |
+| D01 2-7 Triple Draw | 84 | 84 | 74 | 68 | 限定可 | Pro以上RL、final street discipline、showdownソート。 |
+| D02 A-5 Triple Draw | 82 | 82 | 74 | 66 | 限定可 | Pro以上RL、wheel draw評価、showdownソート。 |
+| D03 Badugi | 92 | 90 | 82 | 84 | 可 | Iron/WorldMaster、human benchmark、final value bet調整。 |
+| D04 Badeucey TD | 80 | 78 | 66 | 32 | 限定可 | component pot UI、Badugi/2-7 half別history。 |
+| D05 Badacey TD | 80 | 78 | 66 | 32 | 限定可 | Badugi/A-5 half別result、discard strategy。 |
+| D06 Hidugi TD | 78 | 76 | 62 | 28 | 開発者限定 | high Badugi公式監査、専用result表示。 |
+| D07 Archie TD | 76 | 74 | 60 | 25 | 開発者限定 | qualifier/odd chip fixture、公式ルール監査。 |
+| S01 2-7 Single Draw | 82 | 82 | 72 | 66 | 限定可 | snow頻度、single draw UI/result。 |
+| S02 A-5 Single Draw | 80 | 80 | 72 | 64 | 限定可 | A-5 SD teacher、pat/call discipline。 |
+| S03 5-Card Single Draw | 76 | 74 | 62 | 25 | 開発者限定 | high draw CPU、役名/hand sort。 |
+| S04 Badugi Single Draw | 78 | 76 | 64 | 30 | 開発者限定 | 1draw pat判断、専用range。 |
+| S05 Badeucey Single Draw | 76 | 74 | 62 | 25 | 開発者限定 | component pot UI、official rule監査。 |
+| S06 Badacey Single Draw | 76 | 74 | 62 | 25 | 開発者限定 | A-5/Badugi split result、history replay。 |
+| S07 Hidugi Single Draw | 74 | 72 | 60 | 22 | 開発者限定 | Hidugi SD評価監査、result label。 |
+| H01 Dramaha Hi | 72 | 68 | 58 | 20 | 開発者限定 | draw+board result UI、CPU discard。 |
+| H02 Dramaha 2-7 | 70 | 66 | 56 | 20 | 開発者限定 | 2-7 halfソート、component pot history。 |
+| H03 Dramaha A-5 | 70 | 66 | 56 | 20 | 開発者限定 | A-5 half表示、split pot説明。 |
+| H04 Dramaha Zero | 68 | 64 | 54 | 18 | 開発者限定 | zero-hand監査、result label。 |
+| H05 Dramaha Hidugi | 68 | 64 | 54 | 18 | 開発者限定 | Hidugi half公式監査、split result UI。 |
+| H06 Dramaha Badugi | 70 | 66 | 56 | 20 | 開発者限定 | Badugi half winner表示、odd chip。 |
+| ST1 Stud | 82 | 80 | 70 | 35 | 限定可 | bring-in/complete実プレイ監査、7th down UI。 |
+| ST2 Stud 8 | 80 | 78 | 68 | 32 | 限定可 | hi/lo split/no-low scoop/quartering表示。 |
+| ST3 Razz | 82 | 80 | 70 | 35 | 限定可 | Razz board texture teacher、final street discipline。 |
+| ST4 Razzdugi | 76 | 74 | 62 | 25 | 開発者限定 | Razz/Badugi component表示、split evaluator監査。 |
+| ST5 Razzducey | 76 | 74 | 62 | 25 | 開発者限定 | Razz/2-7 split result、odd chip fixture。 |
+| ST6 2-7 Razz | 78 | 76 | 64 | 28 | 開発者限定 | bring-in tie、low evaluator gate。 |
+| CP1 Chinese Poker | 82 | 78 | 68 | 0 | 開発者限定 | OFC street-by-street/fantasyland、history/replay smoke、4人UI。 |
+
+## 21. 2026-05-05 36 Playable Variants 90%化対応
 
 目的:
 - 実装済みplayable catalogの全ゲームで、「起動できる」だけではなく、連続進行・all-in・stable UIの最低保証を90%以上に引き上げる。
-- 36ゲーム表記はChinese/OFC正式接続後の目標。現時点のGame Selector表示は35 playable variantsで確定する。
+- 2026-05-06時点で `CP1 Chinese Poker` をGame Selector/App routing/専用UI smokeへ接続し、36件目のplayableとして扱う。ただしOFC street-by-street / fantasylandは後続。
 
 ### 21.1 今回到達点
 
-- [x] `PV90-01` 全35 playable variantsをPlaywright operational smokeへ登録する。
+- [x] `PV90-01` 全36 playable variantsをPlaywright operational smokeへ登録する。
   - NLH/FLH/Super/PLO/PLO8/Big-O/5-card/FLO8。
   - 2-7/A-5/Badugi/Badeucey/Badacey/Hidugi/ArchieのTriple Draw。
   - 2-7/A-5/5-card/Badugi/Badeucey/Badacey/HidugiのSingle Draw。
@@ -2952,18 +2999,20 @@ Draw RL test coverage:
 - [x] `PV90-03` E2Eカテゴリ遷移helperを35 playable variants対応へ拡張する。
 - [x] `PV90-04` E2E forced new hand helperのdealer引数誤りを修正し、通常variantの5連続handを安定化する。
 - [x] `PV90-05` controller invariantは全35 playable variantsで5連続hand / short-stack all-in pressureを通過済み。
-- [x] `PV90-06` Playwright operational smokeは35/35 cash variants + Badugi tournamentで通過。
-- [x] `PV90-07` Playwright UI 5連続hand smokeは33/35 playable variantsで通過。達成率は94.3%。
+- [x] `PV90-06` Playwright operational smokeは36 cash variants相当 + Badugi tournamentで通過対象化。
+- [x] `PV90-07` Playwright UI 5連続hand smokeは36 playable variants相当で通過対象化。Chineseはstreet型ではないため `set -> showdown -> next hand` の専用5hand smokeで確認する。
 
 ### 21.2 残ギャップ
 
-- [ ] `PV90-08` Super Hold'em / FL Super Hold'em のPlaywright 5連続hand smokeをfixme解除する。
-  - 現象: controller invariantは通過するが、E2E helperで強制new-handした後のhero card再描画が落ちる。
-  - 影響: 通常起動・配牌・stable UIは通過。連続UI smokeだけ未保証。
+- [x] `PV90-08` Super Hold'em / FL Super Hold'em のPlaywright 5連続hand smokeをfixme解除する。
+  - 2026-05-06 対応: Player表示で `hand` が空でもcontroller由来の `holeCards` を安全なfallbackとして表示する。非Hero/非showdownは従来通り裏面表示なので、Badugi等の相手カード秘匿には影響しない。
+  - 2026-05-06 確認: `super_holdem` / `fl_super_holdem` の5連続UI hand smokeがpass。
 - [x] `PV90-09` Chinese/OFCを36件目として正式Game Selector / UI controllerへ接続する。
   - 2026-05-05 対応: `CP1` / `chinese_poker` をGame Selector playable catalogへ追加し、専用Chinese Poker UIで13枚配置、採点、next handを実行できるようにした。
+  - 2026-05-06 追加: E2E helper alias/category、operational smoke、専用5連続hand smokeへ `chinese_poker` を追加。
   - 残: 全variant共通のhistory/replay smokeへの統合は `HIST-REG-06` として継続。
-- [ ] `PV90-10` 既存の進捗表は実装品質・RL込みの保守的な数値のため、今後の章で「進行テスト%」と「UI/UX完成度%」を分離する。
+- [x] `PV90-10` 既存の進捗表は実装品質・RL込みの保守的な数値のため、今後の章で「進行テスト%」と「UI/UX完成度%」を分離する。
+  - 2026-05-06 対応: `20.1 進捗表 v2` を追加し、`進行保証%` と `UI/UX完成度%` を分離して36件目のChinese Pokerも掲載。
 
 ### 21.3 確認結果
 
@@ -2987,17 +3036,21 @@ Draw RL test coverage:
 - [x] `PV90-13` 単体・結合・総合・システム観点の今回確認を記録する。
   - 単体/結合: controller invariant, evaluator/action mask周辺のtargeted unit。
   - 総合: Game Registry / variant registry / controller facade / 35 playable variantsの横断完走。
-  - システム: PlaywrightでGame Selector経由の35 cash variants + Badugi tournament起動、33/35 UI 5連続handを確認。
+  - システム: PlaywrightでGame Selector経由の36 cash variants相当 + Badugi tournament起動、Chinese専用5連続hand、Super Hold'em 2種のUI 5連続handを確認。
 
 確認結果:
 - [x] `npm test -- --run src/games/__tests__/playableInvariant.test.js --reporter=verbose`: 1 file / 108 tests pass。
 - [x] `npm test -- --run src/games/core/__tests__/variants.test.js src/games/_core/__tests__/GameRegistry.test.js src/games/__tests__/playableInvariant.test.js src/games/stud/__tests__/StudSplitGameController.test.js src/games/nlh/__tests__/NLHGameController.test.js src/games/plo/__tests__/PLOGameController.test.js src/games/plo/__tests__/PLO8GameController.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawEngine.test.js src/games/draw/__tests__/SingleDrawEngine.test.js src/games/draw/__tests__/SpecialDrawEngine.test.js src/games/dramaha/__tests__/DramahaGameController.test.js`: 11 files / 202 tests pass。
-- [x] `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts tests/e2e/cross-variant-five-hand-smoke.spec.ts --project=badugi-flow`: 68 passed / 2 skipped。
+- [x] 2026-05-05 `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts tests/e2e/cross-variant-five-hand-smoke.spec.ts --project=badugi-flow`: 68 passed / 2 skipped。
+- [x] 2026-05-06 `npx playwright test tests/e2e/cross-variant-five-hand-smoke.spec.ts --project=badugi-flow --grep "super_holdem|fl_super_holdem|chinese_poker"`: 3 passed。
+- [x] 2026-05-06 `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts --project=badugi-flow --grep "chinese_poker|flo8"`: 2 passed。
+- [x] 2026-05-06 `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts tests/e2e/cross-variant-five-hand-smoke.spec.ts --project=badugi-flow`: 73 passed / 0 skipped。
 
 残ギャップ:
-- [ ] `PV90-14` 36件目のChinese/OFCを同じprogression matrixへ追加する。
-  - 2026-05-05 進捗: Game Selector/UI controllerへの接続は完了。street型ゲームではないため、既存street progression matrixとは別に `set -> showdown -> next hand` invariantとして追加する。
-- [ ] `PV90-15` Super Hold'em / FL Super Hold'em のPlaywright 5連続hand smoke fixmeを解除し、UI smokeも35/35へ引き上げる。
+- [x] `PV90-14` 36件目のChinese/OFCを同じprogression matrixへ追加する。
+  - 2026-05-06 対応: `20.1 進捗表 v2` に `CP1 Chinese Poker` を追加。street型ゲームではないため、既存street progression matrixとは別に `set -> showdown -> next hand` 専用5hand smokeで保証する。
+- [x] `PV90-15` Super Hold'em / FL Super Hold'em のPlaywright 5連続hand smoke fixmeを解除し、UI smokeも35/35へ引き上げる。
+  - 2026-05-06 対応: `fiveHandKnownGap` と `test.fixme` を削除し、Super Hold'em 2種を通常Playwright 5連続hand対象へ戻した。
 
 ### 21.5 2026-05-05 Badugi CPU / Tournament Avatar 再発防止
 

@@ -290,7 +290,12 @@ export default function Player({
   if (player.isBusted || player.seatOut) statusBadges.push("BUSTED");
   const stackValue = typeof player.stack === "number" ? player.stack : 0;
   const betValue = typeof player.betThisRound === "number" ? player.betThisRound : 0;
-  const handCards = Array.isArray(player.hand) ? player.hand : [];
+  const handCards =
+    Array.isArray(player.hand) && player.hand.length > 0
+      ? player.hand
+      : Array.isArray(player.holeCards)
+        ? player.holeCards
+        : [];
   const avatarSource = resolvePlayerAvatarSource(player);
   const stats = player.stats;
   const statsLine =

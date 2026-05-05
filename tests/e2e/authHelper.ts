@@ -79,6 +79,10 @@ const VARIANT_TEST_ID_BY_ALIAS: Record<string, string> = {
   h05: "dramaha_hidugi",
   dramaha_badugi: "dramaha_badugi",
   h06: "dramaha_badugi",
+  chinese_poker: "chinese_poker",
+  chinese: "chinese_poker",
+  cp1: "chinese_poker",
+  ofc: "chinese_poker",
 };
 
 const VARIANT_CATEGORY_BUTTON_BY_TEST_ID: Record<string, RegExp> = {
@@ -116,6 +120,7 @@ const VARIANT_CATEGORY_BUTTON_BY_TEST_ID: Record<string, RegExp> = {
   dramaha_zero: /Dramaha|ドラマハ/i,
   dramaha_hidugi: /Dramaha|ドラマハ/i,
   dramaha_badugi: /Dramaha|ドラマハ/i,
+  chinese_poker: /Chinese|OFC|チャイニーズ/i,
 };
 
 function variantTestIdFromUrl(url: string) {
@@ -253,5 +258,6 @@ export async function openAuthenticatedGame(page: Page, url = APP_URL) {
       .first()
       .waitFor({ state: "visible", timeout: 20000 }),
     page.getByTestId("decision-panel").waitFor({ state: "visible", timeout: 20000 }),
+    page.getByTestId("chinese-poker-screen").waitFor({ state: "visible", timeout: 20000 }),
   ]);
 }

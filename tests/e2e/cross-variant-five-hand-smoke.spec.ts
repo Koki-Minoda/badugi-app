@@ -40,24 +40,20 @@ async function expectActionPanelStable(page: Page) {
   await expect(page.getByTestId("decision-panel")).toBeVisible({ timeout: 20000 });
 }
 
+async function expectChineseHeroCards(page: Page) {
+  await expect
+    .poll(async () => page.locator("[data-testid^='chinese-card-']").count(), { timeout: 20000 })
+    .toBeGreaterThanOrEqual(13);
+}
+
 test.describe("cross variant five-hand UI smoke", () => {
   test.describe.configure({ timeout: 180000 });
 
   [
     { variant: "nlh", title: /No-Limit Hold'em|NL Hold'em/i, heroCards: 2 },
     { variant: "flh", title: /Fixed-Limit Hold'em|FL Hold'em/i, heroCards: 2 },
-    {
-      variant: "super_holdem",
-      title: /Super Hold'em/i,
-      heroCards: 3,
-      fiveHandKnownGap: "Super Hold'em E2E force-new-hand path drops rendered hero cards; controller invariant covers 5 hands.",
-    },
-    {
-      variant: "fl_super_holdem",
-      title: /FL Super Hold'em/i,
-      heroCards: 3,
-      fiveHandKnownGap: "FL Super Hold'em E2E force-new-hand path drops rendered hero cards; controller invariant covers 5 hands.",
-    },
+    { variant: "super_holdem", title: /Super Hold'em/i, heroCards: 3, forceInitialHand: true },
+    { variant: "fl_super_holdem", title: /FL Super Hold'em/i, heroCards: 3, forceInitialHand: true },
     { variant: "plo", title: /Pot-Limit Omaha|PLO/i, heroCards: 4 },
     { variant: "plo8", title: /PLO8|Omaha Hi-Lo/i, heroCards: 4 },
     { variant: "big_o", title: /Big-O|5-Card Omaha Hi-Lo/i, heroCards: 5 },
@@ -89,12 +85,15 @@ test.describe("cross variant five-hand UI smoke", () => {
     { variant: "razz27", title: /2-7 Razz/i, heroCards: 3 },
     { variant: "razzdugi", title: /Razzdugi/i, heroCards: 3 },
     { variant: "razzducey", title: /Razzducey/i, heroCards: 3 },
-  ].forEach(({ variant, title, heroCards, fiveHandKnownGap }) => {
+  ].forEach(({ variant, title, heroCards, forceInitialHand }) => {
     test(`${variant} can render five consecutive UI hands`, async ({ page }) => {
-      test.fixme(Boolean(fiveHandKnownGap), fiveHandKnownGap ?? "");
       await page.setViewportSize({ width: 1440, height: 900 });
       await openAuthenticatedGame(page, `${APP_URL}?variant=${variant}`);
       await waitForE2EDriver(page);
+      if (forceInitialHand) {
+        await invokeE2E(page, "forceDealNewHandNow");
+        await page.waitForTimeout(250);
+      }
       await expect(page.getByText(title).first()).toBeVisible({ timeout: 20000 });
 
       for (let hand = 0; hand < 5; hand += 1) {
@@ -106,5 +105,23 @@ test.describe("cross variant five-hand UI smoke", () => {
         }
       }
     });
+  });
+
+  test("chinese_poker can render five consecutive UI hands", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openAuthenticatedGame(page, `${APP_URL}?variant=chinese_poker`);
+    await expect(page.getByTestId("chinese-poker-screen")).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText(/Chinese Poker/i).first()).toBeVisible({ timeout: 20000 });
+
+    for (let hand = 1; hand <= 5; hand += 1) {
+      await expect(page.getByText(new RegExp(`(?:Hand|ハンド) #${hand}`, "i")).first()).toBeVisible({ timeout: 20000 });
+      await expectChineseHeroCards(page);
+      await expect(page.getByTestId("chinese-submit")).toBeEnabled({ timeout: 20000 });
+      await page.getByTestId("chinese-submit").click();
+      await expect(page.getByTestId("chinese-results")).toBeVisible({ timeout: 20000 });
+      if (hand < 5) {
+        await page.getByTestId("chinese-next-hand").click();
+      }
+    }
   });
 });

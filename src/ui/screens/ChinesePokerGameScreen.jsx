@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import ChinesePokerController from "../../games/chinese/ChinesePokerController.js";
 
 const ROWS = [
@@ -209,8 +209,15 @@ function ResultPanel({ snapshot, copy }) {
 
 export default function ChinesePokerGameScreen({ language = "ja", onBack = null }) {
   const copy = getCopy(language);
-  const controller = useMemo(() => new ChinesePokerController({ seats: DEFAULT_SEATS }), []);
-  const [snapshot, setSnapshot] = useState(() => controller.startNewHand());
+  const [controllerState] = useState(() => {
+    const controller = new ChinesePokerController({ seats: DEFAULT_SEATS });
+    return {
+      controller,
+      snapshot: controller.startNewHand(),
+    };
+  });
+  const controller = controllerState.controller;
+  const [snapshot, setSnapshot] = useState(controllerState.snapshot);
   const [selectedCard, setSelectedCard] = useState(null);
   const [rowError, setRowError] = useState("");
   const hero = snapshot.players.find((player) => player.isHero) ?? snapshot.players[0];

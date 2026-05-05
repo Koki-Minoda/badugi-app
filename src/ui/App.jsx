@@ -7563,23 +7563,35 @@ const SAFE_RESET_PHASE = "IDLE";
   /* --- actions: DRAW --- */
   function drawSelected() {
     debugLog(`[CHECK] phase=${phase}, drawRound=${drawRound}, MAX_DRAWS=${MAX_DRAWS}`);
-    if (phase !== "DRAW" || turn !== 0) return;
+    const drawActionPhase = controlsPhase ?? phase;
+    const drawActionSeat =
+      typeof heroSeatIndex === "number" && heroSeatIndex >= 0 ? heroSeatIndex : 0;
+    const drawActionTurn =
+      typeof controllerTurn === "number" && !Number.isNaN(controllerTurn)
+        ? controllerTurn
+        : turn;
+    if (drawActionPhase !== "DRAW" || drawActionTurn !== drawActionSeat) return;
     const currentPlayers = playersRef.current ?? players;
-    const player = currentPlayers?.[0];
+    const player = currentPlayers?.[drawActionSeat];
     if (!player || !isSeatEligibleForDraw(player)) {
       logE2EError("Hero draw attempted while draw-ineligible", {
-        seat: 0,
+        seat: drawActionSeat,
         context: "drawSelected",
       });
       return;
     }
-    if (!ensureSeatCanAct(0, "playerDraw")) return;
+    if (!ensureSeatCanAct(drawActionSeat, "playerDraw")) return;
 
     const deckManager = getDeckManager();
     const basePlayers = playersRef.current ?? players;
     const newPlayers = basePlayers.map(clonePlayerState).filter(Boolean);
-    const p = newPlayers[0]
-      ? { ...newPlayers[0], hand: Array.isArray(newPlayers[0].hand) ? [...newPlayers[0].hand] : [] }
+    const p = newPlayers[drawActionSeat]
+      ? {
+          ...newPlayers[drawActionSeat],
+          hand: Array.isArray(newPlayers[drawActionSeat].hand)
+            ? [...newPlayers[drawActionSeat].hand]
+            : [],
+        }
       : null;
     if (!p) return;
 
@@ -7590,7 +7602,7 @@ const SAFE_RESET_PHASE = "IDLE";
     if (isSingleTableControllerDrawGame) {
       const controllerDrawOutcome = tryControllerBetAction({
         actionType: "draw",
-        seatIndex: 0,
+        seatIndex: drawActionSeat,
         metadata: {
           discardIndexes: sel.map((idx) => idx),
           drawIndexes: sel.map((idx) => idx),
@@ -7598,12 +7610,12 @@ const SAFE_RESET_PHASE = "IDLE";
         },
       });
       if (controllerDrawOutcome?.snapshot) {
-        const heroAfter = controllerDrawOutcome.snapshot.players?.[0] ?? p;
+        const heroAfter = controllerDrawOutcome.snapshot.players?.[drawActionSeat] ?? p;
         setHeroDrawSelection([]);
         recordActionToLog({
           phase: "DRAW",
           round: drawRound + 1,
-          seat: 0,
+          seat: drawActionSeat,
           playerState: heroAfter,
           type: heroAfter.lastAction ?? (sel.length === 0 ? "Pat" : `DRAW (${sel.length})`),
           stackBefore: p.stack,
@@ -7621,7 +7633,7 @@ const SAFE_RESET_PHASE = "IDLE";
           },
         });
         syncLegacyFromControllerSnapshot(controllerDrawOutcome.snapshot, {
-          seatIndex: 0,
+          seatIndex: drawActionSeat,
         });
         return;
       }
@@ -8931,9 +8943,11 @@ const SAFE_RESET_PHASE = "IDLE";
   }
 
   const headerLabels = MGX_LOCALES[language]?.header ?? MGX_LOCALES[MGX_DEFAULT_LOCALE].header;
+  const currentGameVariantId = normalizeAppVariantId(gameVariantRef.current ?? gameVariant);
   const currentGameTitle =
-    GAME_VARIANTS[gameVariant]?.label ??
-    GAME_VARIANTS[gameVariantRef.current]?.label ??
+    GAME_VARIANTS[currentGameVariantId]?.label ??
+    GameRegistry.get(currentGameVariantId)?.label ??
+    formatVariantLabel(currentGameVariantId) ??
     "MGX Poker";
 
   const headerProps = {

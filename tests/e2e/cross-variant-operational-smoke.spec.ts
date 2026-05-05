@@ -7,6 +7,10 @@ async function expectHeroCards(page: Page, count: number) {
   }
 }
 
+async function expectHeaderTitle(page: Page, title: RegExp) {
+  await expect(page.locator("header h1").first()).toHaveText(title, { timeout: 20000 });
+}
+
 async function expectActionPanelOrProgress(page: Page) {
   const actionButtons = page.locator(
     [
@@ -80,6 +84,7 @@ test.describe("cross variant operational smoke", () => {
       await openAuthenticatedGame(page, `${APP_URL}?variant=${variant}`);
 
       await expect(page.getByText(title).first()).toBeVisible({ timeout: 20000 });
+      await expectHeaderTitle(page, title);
       await expectHeroCards(page, heroCards);
       await expectActionPanelOrProgress(page);
     });

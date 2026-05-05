@@ -3189,3 +3189,24 @@ Draw RL test coverage:
 
 残タスク:
 - [ ] `BUG-49` Chinese/OFCはfoldが存在しないため対象外。OFC用には「set完了 -> result -> next hand」の専用復帰テストをhistory/replay側へ統合する。
+
+### 21.10 2026-05-06 Dramaha card change / Active game title
+
+目的:
+- Dramaha系でHeroがDRAW streetに入ってもカードチェンジできない再発報告を受け、controller-driven drawが旧Badugi phase/turnではなくcontroller snapshot基準で動くことを保証する。
+- 左上のゲーム名が `MGX Poker` のままになると、8-Game / 10-Game / mixed rotation中に現在のゲームが分からないため、全playable variantで正規ゲーム名を表示する。
+
+対応:
+- [x] `BUG-50` Dramahaの `drawSelected()` が旧legacy `phase/turn` を見て早期returnし、controller上はDRAWでもUI操作が無反応になる経路を修正する。
+  - `controlsPhase` / `controllerTurn` / `heroSeatIndex` を優先し、Dramahaやdraw controllerの実際のacting seatに対して `draw` actionを送る。
+- [x] `BUG-51` Header titleを `gameVariant` の生値ではなく `normalizeAppVariantId()` 後の `GAME_VARIANTS` / `GameRegistry` labelから解決する。
+  - `D01` / `S01` などURL別名やmixed rotation内部IDでも `MGX Poker` fallbackにならないようにする。
+
+確認結果:
+- [x] `DRAMAHA-REG-01` Dramaha 6variantでDRAW streetまで進め、カード選択 -> `Draw Selected` -> `lastDrawCount` / hand差し替えを確認するPlaywright回帰を追加する。
+- [x] `TITLE-REG-01` Chinese/OFC以外の35variantでheader `<h1>` が正規ゲーム名になり、`MGX Poker` fallbackにならないことを確認する。
+- [x] `npm test -- --run src/games/dramaha/__tests__/DramahaGameController.test.js src/ui/game/dramaha/__tests__/DramahaUIAdapter.test.js`: 2 files / 8 tests passed。
+- [x] `npx playwright test tests/e2e/dramaha-draw-action.spec.ts --project=badugi-flow`: 6 passed。
+- [x] `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts --project=badugi-flow`: 37 passed。
+- [x] `npm run lint`: pass（既存の `syncLegacyFromControllerSnapshot` hook dependency warning 1件のみ）。
+- [x] `npm run build`: pass。

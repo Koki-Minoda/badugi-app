@@ -43,6 +43,7 @@ def make_vector(
     flush: bool = False,
 ) -> np.ndarray:
     vector = np.zeros(96, dtype=np.float32)
+    vector[2] = 1  # draw decision phase
     vector[15] = made_cards / 5
     vector[16] = highest_rank / 14
     vector[17] = rank_sum / 60

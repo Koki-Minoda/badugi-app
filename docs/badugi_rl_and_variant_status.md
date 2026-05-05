@@ -1743,8 +1743,11 @@ Draw RL test coverage:
         - 2026-05-05 対応: `src/rl/training/build_draw_bootstrap_onnx.py` を追加し、`public/models/27draw_iron_v1.onnx` と `public/models/a5draw_iron_v1.onnx` を生成。registry checksum を更新し、`ai:verify-models` で D01/S01・D02/S02 の optional ONNX 配置を確認済み。
         - 2026-05-05 fixture: `evaluate_draw_onnx.py` を追加し、2-7 は clean 7-low pat / pair break / straight break、A-5 は wheel pat / flush-wheel pat / pair break を検証。これは teacher-initialized bootstrap であり、Pro相当の長期RLではない。
       - [ ] `AI-06e-1` 2-7 Triple / Single Draw の Pro までのRL学習を実施する。Badugiと別モデルとして `D01/S01` にroutingし、2-7 evaluator / discard heuristic / final street fold disciplineを使う。
+        - 2026-05-05 進捗: `DrawLowballEnv(family="low-27")`、`train_draw_dqn.py`、`export_draw_dqn_onnx.py` を追加。2-7専用のDQN train/export導線を作成し、clean 7-low pat / pair break / straight break のONNX gateを短時間BC smokeで通過確認。これはPro完成ではなく、Pro学習を回すための基盤。
       - [ ] `AI-06e-2` A-5 Triple / Single Draw の Pro までのRL学習を実施する。`D02/S02` にroutingし、A-5 wheel / straight-flush無視 / pat判断をBadugi/2-7と混同しない。
+        - 2026-05-05 進捗: `DrawLowballEnv(family="low-a5")` でA-5専用DQN train/export導線を作成。A-5 wheel pat / flush wheel pat / pair break のONNX gateを短時間BC smokeで通過確認。A-5ではstraight/flushを崩さないfixtureをteacher replayに固定。
       - [ ] `AI-06e-3` 2-7 / A-5 Pro適用前に、hand evaluator regression / draw controller smoke / human-practice benchmark を最低50ハンド相当で通す。
+        - 2026-05-05 追加TODO: 今回のsmoke checkpointは `/tmp` 出力のみで本番registryへは未適用。Pro適用前に20k以上のDQN学習、D01/D02/S01/S02別評価、50ハンドhuman-practice benchmark、production ONNX checksum更新を必須にする。
     - Board-game implementation roadmap:
       - [ ] `BOARD-01` BoardEngineBase をNLHで実戦化する。hole 2 / community 5 / preflop-flop-turn-river / no-limit betting / high evaluator / side-pot表示をBadugi UIに接続する。
       - [x] `BOARD-02` NL Hold'em (`B01`) を cash game route に接続する。hole 2 / community board / preflop-flop-turn-river / high evaluator / App board-controller bridge を含める。

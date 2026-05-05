@@ -9,6 +9,7 @@
  */
 
 import { BadugiGameController } from "../badugi/controller/BadugiGameController.js";
+import { DramahaGameController } from "../dramaha/DramahaGameController.js";
 import { AceToFiveSingleDrawController } from "../draw/AceToFiveSingleDrawController.js";
 import { AceToFiveTripleDrawController } from "../draw/AceToFiveTripleDrawController.js";
 import { DeuceToSevenSingleDrawController } from "../draw/DeuceToSevenSingleDrawController.js";
@@ -46,6 +47,14 @@ function drawControllerFactory(Controller) {
   return (config = {}) =>
     new Controller({
       tableConfig: config,
+    });
+}
+
+function dramahaControllerFactory(variant) {
+  return (config = {}) =>
+    new DramahaGameController({
+      variant,
+      tableConfig: config.tableConfig ?? config,
     });
 }
 
@@ -238,6 +247,42 @@ export const GAME_VARIANTS = {
     variantId: "S07",
     label: "Hidugi Single Draw",
     controllerFactory: drawControllerFactory(HidugiSingleDrawController),
+  },
+  dramaha_hi: {
+    id: "dramaha_hi",
+    variantId: "H01",
+    label: "Dramaha Hi",
+    controllerFactory: dramahaControllerFactory("dramaha_hi"),
+  },
+  dramaha_27: {
+    id: "dramaha_27",
+    variantId: "H02",
+    label: "Dramaha 2-7",
+    controllerFactory: dramahaControllerFactory("dramaha_27"),
+  },
+  dramaha_a5: {
+    id: "dramaha_a5",
+    variantId: "H03",
+    label: "Dramaha A-5",
+    controllerFactory: dramahaControllerFactory("dramaha_a5"),
+  },
+  dramaha_zero: {
+    id: "dramaha_zero",
+    variantId: "H04",
+    label: "Dramaha Zero",
+    controllerFactory: dramahaControllerFactory("dramaha_zero"),
+  },
+  dramaha_hidugi: {
+    id: "dramaha_hidugi",
+    variantId: "H05",
+    label: "Dramaha Hidugi",
+    controllerFactory: dramahaControllerFactory("dramaha_hidugi"),
+  },
+  dramaha_badugi: {
+    id: "dramaha_badugi",
+    variantId: "H06",
+    label: "Dramaha Badugi",
+    controllerFactory: dramahaControllerFactory("dramaha_badugi"),
   },
 };
 

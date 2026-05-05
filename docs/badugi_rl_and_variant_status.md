@@ -2257,6 +2257,8 @@ Draw RL test coverage:
   - 2026-05-04 追加対応: Stud/Razz bring-in順序、up/down card専用UI、Stud8複数side-pot split fixtureを追加済み。
 - [ ] `GAME-ALL-02` 残りBoard/Draw/Stud/Dramaha/Chinese Pokerを順次 playable 化し、各ゲームごとに evaluator / action mask / all-in / split pot / history smoke を追加する。
   - 2026-05-04 部分対応: 残Board枠の `B03` NL Super Hold'em / `B04` FL Super Hold'em をplayable化し、routing / registry / 3-hole配布 / high evaluator / all-in side-pot invariantに追加。
+  - 2026-05-05 進捗: Game Selectorに表示している35 playable variantsは、controller invariantで5連続hand / short-stack all-in pressureを全件通過。Playwright operational smokeも35/35 cash variants + Badugi tournamentで通過。Dramaha 6種はcore registryにも追加し、App上のゲーム名・controller lookupで正式variantとして扱えるようにした。
+  - 2026-05-05 残: 36件目相当のChinese/OFCはcontroller/scorer foundationのみで、正式Game Selector接続・UI controller・history smokeが未完。Super Hold'em / FL Super Hold'emはcontroller invariantでは通過済みだが、Playwright 5連続handの強制new-hand helper経路でhero card再描画が落ちるため、UI smokeはfixmeとして残す。
   - 2026-05-04 部分対応: `S03` 5-Card Single Drawをplayable化。high hand evaluator / 1 draw / controller / registry / App routing / UI adapter / game selector / playable smoke / hand history high-hand labelを追加。
   - 2026-05-04 部分対応: Chinese Poker / OFC用のscorer foundationを追加。front / middle / backの行評価、foul判定、最小royalty fixtureをunitで固定。実ゲームcontroller / layout UI / fantasyland / turn順は未実装のまま `CHINESE-02` に残す。
   - 2026-05-05 部分対応: Chinese Poker / OFC本体controllerを追加。13枚配布、front/middle/back自動配置、Hero row set、foul判定、royalty、showdown row scoring、next handをunitで固定。layout UI / fantasyland / OFC turn順は継続。
@@ -2644,15 +2646,17 @@ Draw RL test coverage:
 
 - [x] `QA-CONT-01` 全playable variantで5ハンド連続プレイでき、broken actor / chip drift / stuck waiting が出ないことをcontroller smokeに追加する。
   - 2026-05-05 対応: `playableInvariant` を5連続handに拡張し、NLH/PLO系とStud系の`totalInvested` carry-overを修正。
-  - 2026-05-05 追加対応: 対象を35variant catalogのうちChinese/OFCを除くplayable 36controllerケース相当へ拡張。Dramaha全6種、2-7/A-5 TD/SD、Badugi本体、Big-O、5-card PLOも5連続handでSHOWDOWNまで到達し、chip driftが出ないことを固定。
+  - 2026-05-05 追加対応: 対象をGame Selectorに正式表示している35 playable variantsへ拡張。Dramaha全6種、2-7/A-5 TD/SD、Badugi本体、Big-O、5-card PLOも5連続handでSHOWDOWNまで到達し、chip driftが出ないことを固定。
+  - 2026-05-05 追補: 「36ゲーム」表現はChinese/OFC正式接続後の目標値。現時点のplayable catalogは35件で、Chinese/OFCはcontroller/scorer foundationのみの未接続タスクとして扱う。
   - 2026-05-05 修正: DramahaはSHOWDOWN遷移時に即 `resolveShowdown()` して、次handで古い `lastHandResult` を再利用しない。Badugi facadeはBET完了→DRAW、DRAW完了→次BET/SHOWDOWN、showdown payoutをcontroller内で完結できるようにした。
 - [x] `QA-CONT-02` 全playable variantでHero all-in後の進行、CPU all-in後の進行、all-in live playerのカード交換/追加カード配布権を確認する。
   - 2026-05-05 部分対応: Stud/PLO系の進行fixtureと既存draw all-in fixtureはあるが、全variant網羅は未完。
-  - 2026-05-05 追加対応: `playableInvariant` に全playable 36controllerケース相当のshort-stack all-in pressure fixtureを追加。NLH/FLH/Super/PLO/PLO8/Big-O/5-card/FLO8/Dramaha6種/Stud family/Draw familyで、all-in seat混在時もbroken actor・chip drift・negative stackなしで終端まで進むことを確認。
+  - 2026-05-05 追加対応: `playableInvariant` に全35 playable variantのshort-stack all-in pressure fixtureを追加。NLH/FLH/Super/PLO/PLO8/Big-O/5-card/FLO8/Dramaha6種/Stud family/Draw familyで、all-in seat混在時もbroken actor・chip drift・negative stackなしで終端まで進むことを確認。
   - 2026-05-05 修正: draw系はBET actorからall-inを外しつつ、DRAW actorではlive all-in seatを交換対象に残す。Badugi facadeはBET streetに行動可能者がいない場合に次DRAW/SHOWDOWNへ自動進行し、all-in後の停止を防ぐ。
 - [x] `QA-CONT-03` Badugi / 2-7 / A-5 / PLO / NLH / Stud / Razz の代表variantでUI smokeを5連続handに拡張する。
   - 2026-05-05 部分対応: 起動・配牌・actionable stateのcross-variant UI smokeは22件通過。UI上の5連続hand smokeは未完。
   - 2026-05-05 追加対応: `tests/e2e/cross-variant-five-hand-smoke.spec.ts` を追加。Badugi / 2-7 TD / A-5 TD / PLO / PLO8 / Stud / Razz で、実UI上のhero cardsとdecision panelが5hand連続でviewport上に出ることを確認。
+  - 2026-05-05 拡張: UI operational smokeは35/35 variants + Badugi tournamentでpass。UI 5連続hand smokeは33/35 variantsでpass、Super Hold'em / FL Super Hold'emの2件はE2E helperの強制new-hand経路でhero card再描画が落ちるためfixme化。controller invariantはSuper Hold'em 2件も5hand通過済み。
 - [x] `QA-MTT-01` トーナメントでHero bust時のresult screen、メイン画面遷移、優勝時result、店舗ステージから地域ステージ開放、地域トーナメント選択をE2E観点に追加する。
   - 2026-05-05 追加対応: `badugi-mtt-flow.spec.ts` を拡張。MTT完走時のresult overlay、winner row、replay保存、Back to Menu遷移、Hero bust overlay、ITM summary、stage win helperによる `progress.tournament` / `playerProgress` 永続化をE2Eで確認。
   - 補足: 地域トーナメントの実エントリーUIは bankroll 条件と連動するため、今回は「店舗優勝によるstage win永続化」までを自動化対象とした。地域エントリー画面の実操作はTournament screen QAの継続対象。
@@ -2669,6 +2673,7 @@ Draw RL test coverage:
 - [x] `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts --project=badugi-flow`: 22 passed。
 - [x] `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts --project=badugi-flow`: 2026-05-05 再確認 26 passed。Game Selectorのカテゴリ初期表示変更に合わせ、E2E helperは対象variantのカテゴリへ切り替えてから起動する。
 - [x] `npx playwright test tests/e2e/cross-variant-five-hand-smoke.spec.ts tests/e2e/badugi-mtt-flow.spec.ts --project=badugi-flow`: 10 passed。
+- [x] `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts tests/e2e/cross-variant-five-hand-smoke.spec.ts --project=badugi-flow`: 68 passed / 2 skipped。全35 playable variantの起動・配牌・stable UIを確認し、33/35 playable variantでUI 5連続handを確認。skipはSuper Hold'em 2種のE2E helper再配牌ギャップ。
 - [x] `npm test -- --run src/games/__tests__/playableInvariant.test.js src/ui/screens/__tests__/MainMenuScreen.test.jsx`: 2 files / 83 tests pass。
 - [x] `npm run lint`: pass。
 - [x] `npm run build`: pass。chunk size warning は既存警告。
@@ -2885,3 +2890,39 @@ Draw RL test coverage:
 - Chinese Poker / OFC は `ChinesePokerController` とscorer foundationはあるが、Game Selectorの正式playable UIには未接続。現時点では上表の「実装ゲーム」には含めず、`GAME-ALL-02 / CHINESE-02` の残タスクとして扱う。
 - 友達公開の第一候補は `D03 Badugi`。次点で限定公開候補は `B01/B02/B05/B06`, `D01/D02/S01/S02`, `ST1/ST2/ST3`。
 - 公開範囲を広げる前に、最低限 `公開候補variantごとの5連続UI hand`, `all-in/bust後next hand`, `history/replay`, `feedback対象のvariant分離` を再実行する。
+
+## 21. 2026-05-05 35 Playable Variants 90%化対応
+
+目的:
+- 実装済みplayable catalogの全ゲームで、「起動できる」だけではなく、連続進行・all-in・stable UIの最低保証を90%以上に引き上げる。
+- 36ゲーム表記はChinese/OFC正式接続後の目標。現時点のGame Selector表示は35 playable variantsで確定する。
+
+### 21.1 今回到達点
+
+- [x] `PV90-01` 全35 playable variantsをPlaywright operational smokeへ登録する。
+  - NLH/FLH/Super/PLO/PLO8/Big-O/5-card/FLO8。
+  - 2-7/A-5/Badugi/Badeucey/Badacey/Hidugi/ArchieのTriple Draw。
+  - 2-7/A-5/5-card/Badugi/Badeucey/Badacey/HidugiのSingle Draw。
+  - Dramaha 6種。
+  - Stud/Razz family 6種。
+- [x] `PV90-02` Dramaha 6種をcore registryへ追加し、App上のtitle/controller lookupで正式variantとして扱う。
+- [x] `PV90-03` E2Eカテゴリ遷移helperを35 playable variants対応へ拡張する。
+- [x] `PV90-04` E2E forced new hand helperのdealer引数誤りを修正し、通常variantの5連続handを安定化する。
+- [x] `PV90-05` controller invariantは全35 playable variantsで5連続hand / short-stack all-in pressureを通過済み。
+- [x] `PV90-06` Playwright operational smokeは35/35 cash variants + Badugi tournamentで通過。
+- [x] `PV90-07` Playwright UI 5連続hand smokeは33/35 playable variantsで通過。達成率は94.3%。
+
+### 21.2 残ギャップ
+
+- [ ] `PV90-08` Super Hold'em / FL Super Hold'em のPlaywright 5連続hand smokeをfixme解除する。
+  - 現象: controller invariantは通過するが、E2E helperで強制new-handした後のhero card再描画が落ちる。
+  - 影響: 通常起動・配牌・stable UIは通過。連続UI smokeだけ未保証。
+- [ ] `PV90-09` Chinese/OFCを36件目として正式Game Selector / UI controller / history smokeへ接続する。
+  - 現状: controller/scorer foundationのみ。playable catalogには含めない。
+- [ ] `PV90-10` 既存の進捗表は実装品質・RL込みの保守的な数値のため、今後の章で「進行テスト%」と「UI/UX完成度%」を分離する。
+
+### 21.3 確認結果
+
+- [x] `node -e "...multiGameList..."`: Game Selector playable catalog は35件。
+- [x] `npm test -- --run src/games/core/__tests__/variants.test.js src/games/_core/__tests__/GameRegistry.test.js src/games/__tests__/playableInvariant.test.js`: 3 files / 78 tests pass。
+- [x] `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts tests/e2e/cross-variant-five-hand-smoke.spec.ts --project=badugi-flow`: 68 passed / 2 skipped。

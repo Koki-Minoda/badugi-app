@@ -44,15 +44,54 @@ test.describe("cross variant five-hand UI smoke", () => {
   test.describe.configure({ timeout: 180000 });
 
   [
-    { variant: "badugi", title: /Badugi/i, heroCards: 4 },
-    { variant: "D01", title: /2-7 Triple Draw/i, heroCards: 5 },
-    { variant: "D02", title: /A-5 Triple Draw/i, heroCards: 5 },
+    { variant: "nlh", title: /No-Limit Hold'em|NL Hold'em/i, heroCards: 2 },
+    { variant: "flh", title: /Fixed-Limit Hold'em|FL Hold'em/i, heroCards: 2 },
+    {
+      variant: "super_holdem",
+      title: /Super Hold'em/i,
+      heroCards: 3,
+      fiveHandKnownGap: "Super Hold'em E2E force-new-hand path drops rendered hero cards; controller invariant covers 5 hands.",
+    },
+    {
+      variant: "fl_super_holdem",
+      title: /FL Super Hold'em/i,
+      heroCards: 3,
+      fiveHandKnownGap: "FL Super Hold'em E2E force-new-hand path drops rendered hero cards; controller invariant covers 5 hands.",
+    },
     { variant: "plo", title: /Pot-Limit Omaha|PLO/i, heroCards: 4 },
     { variant: "plo8", title: /PLO8|Omaha Hi-Lo/i, heroCards: 4 },
+    { variant: "big_o", title: /Big-O|5-Card Omaha Hi-Lo/i, heroCards: 5 },
+    { variant: "five_card_plo", title: /5-Card PLO|Five-Card PLO/i, heroCards: 5 },
+    { variant: "flo8", title: /FLO8|Fixed-Limit Omaha/i, heroCards: 4 },
+    { variant: "D01", title: /2-7 Triple Draw/i, heroCards: 5 },
+    { variant: "D02", title: /A-5 Triple Draw/i, heroCards: 5 },
+    { variant: "badugi", title: /Badugi/i, heroCards: 4 },
+    { variant: "D04", title: /Badeucey TD/i, heroCards: 5 },
+    { variant: "D05", title: /Badacey TD/i, heroCards: 5 },
+    { variant: "D06", title: /Hidugi TD/i, heroCards: 4 },
+    { variant: "D07", title: /Archie TD/i, heroCards: 5 },
+    { variant: "S01", title: /2-7 Single Draw/i, heroCards: 5 },
+    { variant: "S02", title: /A-5 Single Draw/i, heroCards: 5 },
+    { variant: "S03", title: /5-Card Single Draw/i, heroCards: 5 },
+    { variant: "S04", title: /Badugi SD|Badugi Single Draw/i, heroCards: 4 },
+    { variant: "S05", title: /Badeucey Single Draw/i, heroCards: 5 },
+    { variant: "S06", title: /Badacey Single Draw/i, heroCards: 5 },
+    { variant: "S07", title: /Hidugi Single Draw/i, heroCards: 4 },
+    { variant: "dramaha_hi", title: /Dramaha Hi/i, heroCards: 5 },
+    { variant: "dramaha_27", title: /Dramaha 2-7/i, heroCards: 5 },
+    { variant: "dramaha_a5", title: /Dramaha A-5/i, heroCards: 5 },
+    { variant: "dramaha_zero", title: /Dramaha Zero/i, heroCards: 5 },
+    { variant: "dramaha_hidugi", title: /Dramaha Hidugi/i, heroCards: 5 },
+    { variant: "dramaha_badugi", title: /Dramaha Badugi/i, heroCards: 5 },
     { variant: "stud", title: /^Stud$/i, heroCards: 3 },
+    { variant: "stud8", title: /Stud 8/i, heroCards: 3 },
     { variant: "razz", title: /Razz/i, heroCards: 3 },
-  ].forEach(({ variant, title, heroCards }) => {
+    { variant: "razz27", title: /2-7 Razz/i, heroCards: 3 },
+    { variant: "razzdugi", title: /Razzdugi/i, heroCards: 3 },
+    { variant: "razzducey", title: /Razzducey/i, heroCards: 3 },
+  ].forEach(({ variant, title, heroCards, fiveHandKnownGap }) => {
     test(`${variant} can render five consecutive UI hands`, async ({ page }) => {
+      test.fixme(Boolean(fiveHandKnownGap), fiveHandKnownGap ?? "");
       await page.setViewportSize({ width: 1440, height: 900 });
       await openAuthenticatedGame(page, `${APP_URL}?variant=${variant}`);
       await waitForE2EDriver(page);

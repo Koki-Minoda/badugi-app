@@ -5755,7 +5755,18 @@ const SAFE_RESET_PHASE = "IDLE";
       forceHeroDraw,
       resolveHandNow: resolveHandImmediately,
       dealNewHandNow: startNextHand,
-      forceDealNewHandNow: () => dealNewHandRef.current({}),
+      forceDealNewHandNow: () => {
+        const nextHandNumber = handCountRef.current + 1;
+        const success = dealNewHandRef.current(
+          dealerIdx,
+          playersRef.current,
+          nextHandNumber,
+        );
+        if (success) {
+          handCountRef.current = nextHandNumber;
+        }
+        return success;
+      },
       setPlayerHands: applyCustomHands,
       getStateSnapshot: () => ({
         phase,

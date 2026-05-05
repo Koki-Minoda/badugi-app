@@ -41,7 +41,10 @@ export function selectModelForVariant({ variantId, tierId, characterId, modelId 
   }
   if (tierId) {
     const tierMatch = REGISTRY.find(
-      (entry) => entry.tier === tierId && entry.characterIds.length === 0,
+      (entry) =>
+        entry.tier === tierId &&
+        entry.characterIds.length === 0 &&
+        (!variantId || entry.variantIds.length === 0),
     );
     if (tierMatch) return tierMatch;
   }

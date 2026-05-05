@@ -23,7 +23,10 @@
     "ai:benchmark-badugi-human-practice": "node scripts/runPythonTool.mjs src/rl/training/benchmark_badugi_human_practice.py",
     "ai:evaluate-badugi-checkpoints": "node scripts/runPythonTool.mjs src/rl/training/evaluate_badugi_checkpoints.py",
     "ai:train-draw": "node scripts/runPythonTool.mjs src/rl/training/train_draw_dqn.py",
-    "ai:export-draw-onnx": "node scripts/runPythonTool.mjs src/rl/training/export_draw_dqn_onnx.py"
+    "ai:export-draw-onnx": "node scripts/runPythonTool.mjs src/rl/training/export_draw_dqn_onnx.py",
+    "ai:train-board": "node scripts/runPythonTool.mjs src/rl/training/train_board_dqn.py",
+    "ai:export-board-onnx": "node scripts/runPythonTool.mjs src/rl/training/export_board_dqn_onnx.py",
+    "ai:evaluate-board-onnx": "node scripts/runPythonTool.mjs src/rl/training/evaluate_board_onnx.py"
   },
   "dependencies": {
     "onnxruntime-web": "^1.18.0",

@@ -18,6 +18,190 @@
     ]
   },
   {
+    "id": "model-plo8-standard-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "B06"
+    ],
+    "characterIds": [],
+    "tier": "standard",
+    "onnx": "models/plo8_standard_dqn_v1.onnx",
+    "checksumSha256": "f97a00de71b1961f1496a6cf9904e05184c69e34c4c3fe1023967a5d535b6cee",
+    "trainingRun": "board_plo8_standard_dqn_20260505",
+    "trainingCheckpoint": "plo8_standard_board_dqn_latest.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "Initial PLO8 standard board-betting DQN trained in a synthetic board-game environment with teacher warmup, fixture replay, and action masking. This is a bootstrap model for live CPU routing and must be replaced after hand-history/human-practice evaluation.",
+    "featureSet": "board-betting-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      16
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
+    "id": "model-plo8-beginner-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "B06"
+    ],
+    "characterIds": [],
+    "tier": "beginner",
+    "onnx": "models/plo8_beginner_dqn_v1.onnx",
+    "checksumSha256": "90fa05c1e72d03aebbb1a1686201dc7bd7a92b812ae6d666b44eafa7854eb3a1",
+    "trainingRun": "board_plo8_beginner_dqn_20260505",
+    "trainingCheckpoint": "plo8_beginner_board_dqn_latest.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "Initial PLO8 beginner board-betting DQN trained in a synthetic board-game environment with teacher warmup, fixture replay, and action masking. This is a bootstrap model for live CPU routing and must be replaced after hand-history/human-practice evaluation.",
+    "featureSet": "board-betting-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      16
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
+    "id": "model-plo-standard-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "B05"
+    ],
+    "characterIds": [],
+    "tier": "standard",
+    "onnx": "models/plo_standard_dqn_v1.onnx",
+    "checksumSha256": "a7c88ec045d85f6257cac331e1bf93f22e2a94b1ac13239f20ecc698f419796f",
+    "trainingRun": "board_plo_standard_dqn_20260505",
+    "trainingCheckpoint": "plo_standard_board_dqn_latest.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "Initial PLO standard board-betting DQN trained in a synthetic board-game environment with teacher warmup, fixture replay, and action masking. This is a bootstrap model for live CPU routing and must be replaced after hand-history/human-practice evaluation.",
+    "featureSet": "board-betting-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      16
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
+    "id": "model-plo-beginner-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "B05"
+    ],
+    "characterIds": [],
+    "tier": "beginner",
+    "onnx": "models/plo_beginner_dqn_v1.onnx",
+    "checksumSha256": "288b7dba48233a4d7658e3e0389db2091a2728f0cf93d67d27fb25a22f3bf320",
+    "trainingRun": "board_plo_beginner_dqn_20260505",
+    "trainingCheckpoint": "plo_beginner_board_dqn_latest.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "Initial PLO beginner board-betting DQN trained in a synthetic board-game environment with teacher warmup, fixture replay, and action masking. This is a bootstrap model for live CPU routing and must be replaced after hand-history/human-practice evaluation.",
+    "featureSet": "board-betting-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      16
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
+    "id": "model-flh-standard-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "B02"
+    ],
+    "characterIds": [],
+    "tier": "standard",
+    "onnx": "models/flh_standard_dqn_v1.onnx",
+    "checksumSha256": "c56be5d5d672dea7b37da63aa09fdbdcfd13ccf5dd36e0afa01375a811c16804",
+    "trainingRun": "board_flh_standard_dqn_20260505",
+    "trainingCheckpoint": "flh_standard_board_dqn_latest.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "Initial FLH standard board-betting DQN trained in a synthetic board-game environment with teacher warmup, fixture replay, and action masking. This is a bootstrap model for live CPU routing and must be replaced after hand-history/human-practice evaluation.",
+    "featureSet": "board-betting-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      16
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
+    "id": "model-flh-beginner-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "B02"
+    ],
+    "characterIds": [],
+    "tier": "beginner",
+    "onnx": "models/flh_beginner_dqn_v1.onnx",
+    "checksumSha256": "298312485a14ea7072a3928c2ebd1da639d906ea501f1472f6dc1d37bc2b3196",
+    "trainingRun": "board_flh_beginner_dqn_20260505",
+    "trainingCheckpoint": "flh_beginner_board_dqn_latest.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "Initial FLH beginner board-betting DQN trained in a synthetic board-game environment with teacher warmup, fixture replay, and action masking. This is a bootstrap model for live CPU routing and must be replaced after hand-history/human-practice evaluation.",
+    "featureSet": "board-betting-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      16
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
+    "id": "model-nlh-standard-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "B01"
+    ],
+    "characterIds": [],
+    "tier": "standard",
+    "onnx": "models/nlh_standard_dqn_v1.onnx",
+    "checksumSha256": "9874985331c3d01cc74bdd6d1d2f2f5a73e11d6521ee20e47fc16430122f368c",
+    "trainingRun": "board_nlh_standard_dqn_20260505",
+    "trainingCheckpoint": "nlh_standard_board_dqn_latest.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "Initial NLH standard board-betting DQN trained in a synthetic board-game environment with teacher warmup, fixture replay, and action masking. This is a bootstrap model for live CPU routing and must be replaced after hand-history/human-practice evaluation.",
+    "featureSet": "board-betting-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      16
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
+    "id": "model-nlh-beginner-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "B01"
+    ],
+    "characterIds": [],
+    "tier": "beginner",
+    "onnx": "models/nlh_beginner_dqn_v1.onnx",
+    "checksumSha256": "a4debfdfffd1a57861e7195a40499cdee4a46680aeff44c4e93e3d65982a3b07",
+    "trainingRun": "board_nlh_beginner_dqn_20260505",
+    "trainingCheckpoint": "nlh_beginner_board_dqn_latest.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "Initial NLH beginner board-betting DQN trained in a synthetic board-game environment with teacher warmup, fixture replay, and action masking. This is a bootstrap model for live CPU routing and must be replaced after hand-history/human-practice evaluation.",
+    "featureSet": "board-betting-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      16
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
     "id": "model-badugi-pro-v1",
     "version": "v2",
     "variantIds": [
@@ -162,6 +346,102 @@
     ],
     "outputShape": [
       6
+    ]
+  },
+  {
+    "id": "model-27draw-beginner-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "D01",
+      "S01"
+    ],
+    "characterIds": [],
+    "tier": "beginner",
+    "onnx": "models/27draw_beginner_dqn_v1.onnx",
+    "checksumSha256": "7e24d28a713910e841dec4fe6e3368aa61ea83ffbf47330b31ee1fb152edcf5e",
+    "trainingRun": "draw_low27_beginner_3k_20260505",
+    "trainingCheckpoint": "low-27_draw_dqn_latest.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "Current-env 2-7/A-5 draw-family DQN for beginner 2-7 lowball. Trained 3k episodes with beginner/loose opponent profiles, teacher warmup, fixture replay, and imitation pretrain. Intended for approachable D01/S01 CPUs; not promoted above beginner without human/practice gate.",
+    "featureSet": "draw-lowball-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      11
+    ]
+  },
+  {
+    "id": "model-27draw-standard-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "D01",
+      "S01"
+    ],
+    "characterIds": [],
+    "tier": "standard",
+    "onnx": "models/27draw_standard_dqn_v1.onnx",
+    "checksumSha256": "322be5d8c07c685b36ee670e0dc09f18a1b58a9889356d8094d01cc3c3c672a0",
+    "trainingRun": "draw_low27_standard_5k_20260505",
+    "trainingCheckpoint": "low-27_draw_dqn_latest.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "Current-env 2-7 draw DQN for standard D01/S01 CPUs. Trained 5k episodes against beginner/standard/tight/loose/aggressive profiles with teacher warmup, fixture replay, and imitation support. Last 500 episode reward moved positive; still requires human/practice benchmark before higher tiers.",
+    "featureSet": "draw-lowball-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      11
+    ]
+  },
+  {
+    "id": "model-a5draw-beginner-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "D02",
+      "S02"
+    ],
+    "characterIds": [],
+    "tier": "beginner",
+    "onnx": "models/a5draw_beginner_dqn_v1.onnx",
+    "checksumSha256": "fc924a55aca2354b61d462eef458e452ecf387554622d48d63c31acd2147fe0d",
+    "trainingRun": "draw_a5_beginner_3k_20260505",
+    "trainingCheckpoint": "low-a5_draw_dqn_latest.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "Current-env A-5 draw-family DQN for beginner D02/S02 CPUs. Trained 3k episodes with beginner/loose opponent profiles, teacher warmup, fixture replay, and imitation pretrain. Intended as a basic playable A-5 policy, not a high-tier model.",
+    "featureSet": "draw-lowball-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      11
+    ]
+  },
+  {
+    "id": "model-a5draw-standard-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "D02",
+      "S02"
+    ],
+    "characterIds": [],
+    "tier": "standard",
+    "onnx": "models/a5draw_standard_dqn_v1.onnx",
+    "checksumSha256": "1583317d33cfb577adfe8e6432d8db439e08881547a5dbdd9ef1ef3ca2be1368",
+    "trainingRun": "draw_a5_standard_5k_20260505",
+    "trainingCheckpoint": "low-a5_draw_dqn_latest.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "Current-env A-5 draw DQN for standard D02/S02 CPUs. Trained 5k episodes against mixed opponent profiles with teacher warmup, fixture replay, and imitation support. Last 500 episode reward was positive; requires human/practice gate before promotion.",
+    "featureSet": "draw-lowball-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      11
     ]
   },
   {

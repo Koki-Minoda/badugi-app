@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   buildPlayFeedbackPayload,
+  createFeedbackScopeOptions,
+  filterHandsForFeedbackScope,
   MIN_FEEDBACK_HANDS,
 } from "../playFeedbackPayload.js";
 
@@ -116,5 +118,46 @@ describe("playFeedbackPayload", () => {
       roi: 1.5,
     });
     expect(result.payload.summary.roi).toBe(1.5);
+  });
+
+  it("filters feedback payloads to the explicitly selected variant scope", () => {
+    const hands = Array.from({ length: 60 }, (_, index) => makeHand(index));
+    const result = buildPlayFeedbackPayload({
+      hands,
+      mode: "cash",
+      variantScope: "variant:D01",
+    });
+
+    expect(result.eligible).toBe(true);
+    expect(result.sourceHandCount).toBe(60);
+    expect(result.handCount).toBe(30);
+    expect(result.payload.variantScope).toBe("variant:D01");
+    expect(result.payload.feedbackScope).toMatchObject({
+      type: "variant",
+      variantId: "D01",
+      sourceHandCount: 60,
+      handCount: 30,
+    });
+    expect(result.payload.summary.variants).toEqual({ D01: 30 });
+    expect(result.payload.keyHands.every((spot) => spot.variantId === "D01")).toBe(true);
+  });
+
+  it("keeps mixed feedback explicit and exposes per-variant scope options", () => {
+    const hands = Array.from({ length: 40 }, (_, index) => makeHand(index));
+    const options = createFeedbackScopeOptions(hands, { mode: "cash" });
+
+    expect(options[0]).toMatchObject({
+      value: "mixed",
+      type: "mixed",
+      handCount: 40,
+    });
+    expect(options).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ value: "variant:badugi", handCount: 20 }),
+        expect.objectContaining({ value: "variant:D01", handCount: 20 }),
+      ]),
+    );
+    expect(filterHandsForFeedbackScope(hands, "mixed")).toHaveLength(40);
+    expect(filterHandsForFeedbackScope(hands, "variant:badugi")).toHaveLength(20);
   });
 });

@@ -3,7 +3,11 @@ import {
   getCurrentHandHistorySnapshot,
   getHandHistoryBufferSnapshot,
 } from "../state/handHistoryStore.js";
-import { buildPlayFeedbackPayload, MIN_FEEDBACK_HANDS } from "../feedback/playFeedbackPayload.js";
+import {
+  buildPlayFeedbackPayload,
+  createFeedbackScopeOptions,
+  MIN_FEEDBACK_HANDS,
+} from "../feedback/playFeedbackPayload.js";
 import { hasStoredFeedbackAuth, requestPlayFeedback } from "../feedback/playFeedbackApi.js";
 import {
   getLatestPlayFeedbackResult,
@@ -98,6 +102,7 @@ export default function HandHistoryScreen({
     error: null,
     response: null,
   });
+  const [feedbackScope, setFeedbackScope] = useState("mixed");
 
   const refreshSnapshots = useCallback(() => {
     setLiveHandSnapshot(getCurrentHandHistorySnapshot());
@@ -136,14 +141,23 @@ export default function HandHistoryScreen({
       return typeof id === "string" && id.toLowerCase().includes(normalizedQuery);
     });
   }, [rows, filterMode, searchQuery]);
+  const feedbackScopeOptions = useMemo(
+    () => createFeedbackScopeOptions(completedSnapshotList, { mode: "cash" }),
+    [completedSnapshotList],
+  );
+  useEffect(() => {
+    if (!feedbackScopeOptions.some((option) => option.value === feedbackScope)) {
+      setFeedbackScope(feedbackScopeOptions[0]?.value ?? "mixed");
+    }
+  }, [feedbackScope, feedbackScopeOptions]);
   const feedbackPayloadResult = useMemo(
     () =>
       buildPlayFeedbackPayload({
         hands: completedSnapshotList,
         mode: "cash",
-        variantScope: "mixed",
+        variantScope: feedbackScope,
       }),
-    [completedSnapshotList],
+    [completedSnapshotList, feedbackScope],
   );
   const savedFeedback = useMemo(
     () => getLatestPlayFeedbackResult(feedbackPayloadResult.payload),
@@ -169,6 +183,7 @@ export default function HandHistoryScreen({
         feedbackBody:
           "30ハンド以上の履歴から、良かった点、悪かった点、次回方針をAIフィードバックとして保存します。",
         feedbackButton: "AIフィードバック作成",
+        feedbackScope: "対象ゲーム",
         feedbackLoading: "解析中...",
         feedbackLogin: "ログインするとAIフィードバックを送信できます。",
         feedbackNotReady: `${MIN_FEEDBACK_HANDS}ハンド以上プレイすると利用できます。`,
@@ -196,6 +211,7 @@ export default function HandHistoryScreen({
         feedbackBody:
           "Use 30+ completed hands to save AI feedback with strengths, leaks, and next-session goals.",
         feedbackButton: "Create AI Feedback",
+        feedbackScope: "Feedback target",
         feedbackLoading: "Analyzing...",
         feedbackLogin: "Log in to request AI feedback.",
         feedbackNotReady: `Play at least ${MIN_FEEDBACK_HANDS} hands to enable feedback.`,
@@ -300,6 +316,23 @@ export default function HandHistoryScreen({
               <p className="mt-2 text-xs text-slate-400">
                 Hands: {feedbackPayloadResult.handCount} / Minimum: {MIN_FEEDBACK_HANDS}
               </p>
+              <label className="mt-3 block text-xs font-semibold text-slate-300">
+                {copy.feedbackScope}
+                <select
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-emerald-300/30"
+                  value={feedbackScope}
+                  onChange={(event) => {
+                    setFeedbackScope(event.target.value);
+                    setFeedbackState({ loading: false, error: null, response: null });
+                  }}
+                >
+                  {feedbackScopeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label} ({option.handCount})
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
             <button
               type="button"

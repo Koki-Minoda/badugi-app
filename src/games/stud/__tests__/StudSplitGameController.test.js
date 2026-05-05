@@ -113,6 +113,33 @@ describe("Stud split controllers", () => {
     expect(bringInSeat).toBe(0);
   });
 
+  it("completes a third-street bring-in to the small bet instead of over-raising", () => {
+    const controller = createController(StudGameController, 3);
+    controller.startNewHand();
+    controller.state.street = "THIRD";
+    controller.state.currentBet = 5;
+    controller.state.bringInAmount = 5;
+    controller.state.completeAmount = 10;
+    controller.raiseCountThisStreet = 0;
+    controller.state.players[1] = {
+      ...controller.state.players[1],
+      folded: false,
+      seatOut: false,
+      allIn: false,
+      stack: 1000,
+      betThisStreet: 0,
+      totalInvested: 0,
+      hasActedThisStreet: false,
+    };
+
+    const result = controller.applyPlayerAction({ seatIndex: 1, action: "raise" });
+
+    expect(result.success).toBe(true);
+    expect(controller.state.players[1].betThisStreet).toBe(10);
+    expect(controller.state.currentBet).toBe(10);
+    expect(controller.state.players[1].lastAction).toBe("Complete");
+  });
+
   it("posts bring-in from the highest up-card in Razz-family games", () => {
     const controller = createController(RazzGameController, 3);
     controller.startNewHand();
@@ -148,6 +175,30 @@ describe("Stud split controllers", () => {
     });
     const summary = controller.resolveShowdown();
     expect(summary.splitMode).toBe("single");
+  });
+
+  it("resolves showdown after the seventh-street betting round completes", () => {
+    const controller = createController(StudGameController, 3);
+    controller.startNewHand();
+    while (controller.getSnapshot().street !== "SEVENTH") {
+      controller.advanceStreet();
+    }
+    controller.state.currentBet = 0;
+    controller.state.currentActor = controller.findFirstActionSeatForStreet();
+    controller.state.players = controller.state.players.map((player) => ({
+      ...player,
+      folded: false,
+      seatOut: false,
+      allIn: false,
+      stack: 1000,
+      betThisStreet: 0,
+      hasActedThisStreet: false,
+    }));
+
+    const { snapshot } = playPassiveStudHandToShowdown(controller);
+
+    expect(snapshot.street).toBe("SHOWDOWN");
+    expect(controller.state.lastHandResult?.totalPot).toBeGreaterThanOrEqual(0);
   });
 
   it("returns a teacher-supervised CPU action for Stud-family betting", () => {

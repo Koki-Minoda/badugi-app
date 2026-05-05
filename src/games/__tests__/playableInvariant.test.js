@@ -193,14 +193,16 @@ describe("playable invariant smoke", () => {
     ["hidugi_single_draw", HidugiSingleDrawController],
   ];
 
-  it.each(cases)("%s completes a hand without broken actors or chip drift", (_name, Controller) => {
+  it.each(cases)("%s completes five consecutive hands without broken actors or chip drift", (_name, Controller) => {
     const controller = new Controller({
       tableConfig: {
-        seats: makeSeats(),
+        seats: makeSeats([2000, 2000, 2000, 2000]),
         blinds: { sb: 5, bb: 10, ante: 1 },
       },
     });
-    driveOneHand(controller);
+    for (let hand = 0; hand < 5; hand += 1) {
+      driveOneHand(controller);
+    }
   });
 
   it("keeps all-in short stacks from becoming invalid actors in split games", () => {

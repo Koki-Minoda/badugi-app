@@ -114,6 +114,29 @@ describe("Player", () => {
     ).toEqual(["0:QS", "1:JD", "2:9C", "3:2H"]);
   });
 
+  test("labels Stud up-cards and down-cards so exposed cards are clear", () => {
+    render(
+      <Player
+        player={{
+          ...basePlayer,
+          hand: ["AS", "KD", "2C", "7H"],
+          cardVisibility: ["down", "down", "up", "up"],
+          showHand: true,
+        }}
+        index={0}
+        selfIndex={0}
+        turn={1}
+        dealerIdx={1}
+        phase="BET"
+        positionLabel="BTN"
+        displayVariant="stud"
+      />,
+    );
+
+    expect(screen.getByTestId("player-0-card-0-visibility").textContent).toBe("DOWN");
+    expect(screen.getByTestId("player-0-card-2-visibility").textContent).toBe("UP");
+  });
+
   test("sorts lowball and high-card variants with variant-specific ace handling", () => {
     expect(
       getDisplayCards(["5D", "AS", "2C", "7H", "3S"], {

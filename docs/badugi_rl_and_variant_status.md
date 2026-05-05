@@ -2582,3 +2582,161 @@ Draw RL test coverage:
     - forced all-in action は full raise として機能しても表示/log action は `All-in` として残す。
     - E2E `setPlayerHands` の `totalInvested` override 時は street bet を二重計上せず、side pot を `totalInvested` から再構築する。
     - CPU名の期待値を現行キャラクター名へ更新。
+
+## 17. 2026-05-05 Feedback Scope / Stud-Razz Progression QA
+
+### 17.1 Play Feedback Scope
+
+- [x] `FB-SCOPE-01` プレイフィードバック作成時に、対象を明示選択できるようにする。
+  - 必須: `Badugi`, `PLO`, `2-7`, `A-5` などvariant単位で分ける。
+  - 必須: `10-Game / Mixed session` は全体フィードバックとして明示的に選ぶ。
+  - 必須: トーナメント内でゲームが分割される場合は、そのゲーム区間ごとにフィードバックできる。
+  - 禁止: PLOとBadugiの履歴を暗黙に混ぜたフィードバックを作る。
+  - 2026-05-05 対応: feedback scope selectorを追加し、variant単位 / mixed session / tournament mixed を明示選択できるようにした。
+- [x] `FB-SCOPE-02` feedback payload / local saved feedback の session key に選択scopeを含め、同じ30ハンドでもvariantが違えば別フィードバックとして保存する。
+  - 2026-05-05 対応: `variantScope` / `feedbackScope` をpayloadへ含め、既存storeのscope込みsession keyで分離保存する。
+- [x] `FB-SCOPE-03` `HandHistoryScreen` / `HistoryScreen` の両方で対象選択UIを表示し、対象のhand数と最低必要hand数を明示する。
+  - 2026-05-05 対応: 両画面に対象ゲームselectを追加し、選択scopeのhand数で30ハンド条件を判定する。
+- [x] `FB-SCOPE-04` unit testで、DB/APIへ送るpayloadが選択variantだけを含むこと、mixed選択時だけ複数variantを含むことを固定する。
+
+### 17.2 Stud / Razz Correctness
+
+- [x] `STUD-QA-01` Stud/Razz UIで、公開カード(up cards)と伏せカード(down cards)を視覚的に分離する。
+  - 3rd street: 2 down + 1 up。
+  - 4th/5th/6th street: up card。
+  - 7th street: down card。
+  - 相手に見えているカードはboard上/seat上で「公開」と分かるようにする。
+  - 2026-05-05 対応: seat cardに `UP` / `DOWN` / `HIDDEN` labelを追加し、相手の公開カードと伏せカードを区別できるようにした。
+- [x] `STUD-QA-02` Stud/Razz controllerで bring-in / complete / fixed-limit street unit をTDA相当の実運用に近い形で保証する。
+  - Stud high: 低いup cardがbring-in。
+  - Razz: 高いup cardがbring-in。
+  - completeはsmall betへの補完として扱う。
+  - 2026-05-05 対応: 3rd streetのcompleteはbring-inからsmall betへの補完として処理するfixtureを追加。
+- [x] `STUD-QA-03` 7th street最終bet後、CPU/Heroのcall/check/foldで停止せずshowdownまたはuncontested resultへ遷移することをunit fixtureで固定する。
+- [x] `STUD-QA-04` Razz / Razz27 / Stud8 / Razzdugi / Razzduceyも同じstreet進行・表示・showdown遷移で確認する。
+  - 2026-05-05 対応: controller invariantとcross-variant UI smokeでStud/Razz familyを含めて起動・配牌・actionable state到達を確認。
+
+### 17.3 Continuous Play / All-in / Tournament QA Expansion
+
+- [x] `QA-CONT-01` 全playable variantで5ハンド連続プレイでき、broken actor / chip drift / stuck waiting が出ないことをcontroller smokeに追加する。
+  - 2026-05-05 対応: `playableInvariant` を5連続handに拡張し、NLH/PLO系とStud系の`totalInvested` carry-overを修正。
+- [ ] `QA-CONT-02` 全playable variantでHero all-in後の進行、CPU all-in後の進行、all-in live playerのカード交換/追加カード配布権を確認する。
+  - 2026-05-05 部分対応: Stud/PLO系の進行fixtureと既存draw all-in fixtureはあるが、全variant網羅は未完。
+- [ ] `QA-CONT-03` Badugi / 2-7 / A-5 / PLO / NLH / Stud / Razz の代表variantでUI smokeを5連続handに拡張する。
+  - 2026-05-05 部分対応: 起動・配牌・actionable stateのcross-variant UI smokeは22件通過。UI上の5連続hand smokeは未完。
+- [ ] `QA-MTT-01` トーナメントでHero bust時のresult screen、メイン画面遷移、優勝時result、店舗ステージから地域ステージ開放、地域トーナメント選択をE2E観点に追加する。
+- [x] `BUG-LEDGER-01` 作業中に見つけた進行/UI/フィードバックのバグは、発見時点でこのmdまたは `docs/bugs/` に起票し、他variant影響欄を持たせる。
+  - 2026-05-05 対応: この章にfeedback scope / Stud-Razz / continuous QAの残件と影響範囲を起票。
+
+### 17.4 確認結果
+
+- [x] `npm test -- --run src/ui/feedback/__tests__/playFeedbackPayload.test.js src/ui/screens/__tests__/HandHistoryScreen.test.jsx src/ui/components/__tests__/Player.test.jsx`: 3 files / 14 tests pass。
+- [x] `npm test -- --run src/games/stud/__tests__/StudSplitGameController.test.js src/games/__tests__/playableInvariant.test.js`: 2 files / 38 tests pass。
+- [x] `npm test -- --run src/ui/screens/__tests__/HistoryScreen.test.jsx src/ui/game/nlh/__tests__/NLHUIAdapter.test.js`: 2 files / 8 tests pass。
+- [x] `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts --project=badugi-flow`: 22 passed。
+- [x] `npm run lint`: pass。
+- [x] `npm run build`: pass。chunk size warning は既存警告。
+
+## 18. 2026-05-05 A-5 / 2-7 Beginner-Standard RL
+
+### 18.1 対応方針
+
+- [x] `AI-27-A5-01` 2-7 / A-5 draw lowball を Badugi とは別モデルとして扱う。
+  - 対象variant: `D01 2-7 Triple Draw`, `S01 2-7 Single Draw`, `D02 A-5 Triple Draw`, `S02 A-5 Single Draw`。
+  - `modelRegistry.json` に 2-7 / A-5 それぞれ Beginner / Standard のvariant-tier exact modelを追加。
+- [x] `AI-27-A5-02` Beginner は beginner/loose profile中心、Standard は beginner/standard/tight/loose/aggressive の混合profileで学習する。
+- [x] `AI-27-A5-03` ONNX fixture gateで pat / pair break / straight-flush rule を最低限確認してからroutingする。
+- [ ] `AI-27-A5-04` Pro以上は未実装。次段階では variant別 human/practice benchmark と6-max/multiway reward gateを追加する。
+
+### 18.2 学習結果
+
+| Family | Tier | Run | Episodes | Avg reward last 100 | ONNX |
+|---|---:|---|---:|---:|---|
+| 2-7 | Beginner | `draw_low27_beginner_3k_20260505` | 3,000 | `0.0843` | `public/models/27draw_beginner_dqn_v1.onnx` |
+| 2-7 | Standard | `draw_low27_standard_5k_20260505` | 5,000 | `0.0995` | `public/models/27draw_standard_dqn_v1.onnx` |
+| A-5 | Beginner | `draw_a5_beginner_3k_20260505` | 3,000 | `-0.0370` | `public/models/a5draw_beginner_dqn_v1.onnx` |
+| A-5 | Standard | `draw_a5_standard_5k_20260505` | 5,000 | `0.0989` | `public/models/a5draw_standard_dqn_v1.onnx` |
+
+補足:
+- Beginner は「弱すぎないが読みやすい」導入モデルとして採用。A-5 Beginner のlast100 rewardはわずかにマイナスだが、fixture gateはpassしており、Beginner用途としてroutingする。
+- Standard は両familyとも終盤でpositive rewardへ到達。Pro/Iron相当とは扱わない。
+
+### 18.3 Routing
+
+- [x] `D01/S01 + beginner` -> `model-27draw-beginner-dqn-v1`
+- [x] `D01/S01 + standard` -> `model-27draw-standard-dqn-v1`
+- [x] `D02/S02 + beginner` -> `model-a5draw-beginner-dqn-v1`
+- [x] `D02/S02 + standard` -> `model-a5draw-standard-dqn-v1`
+- [x] 既存 `model-27draw-iron-v1` / `model-a5draw-iron-v1` は bootstrap Iron として残す。Pro以上へは昇格しない。
+
+### 18.4 確認結果
+
+- [x] `npm run ai:train-draw -- --family low-27 --episodes 3000 ... --output-dir rl/models/draw_low27_beginner_3k_20260505`: completed。
+- [x] `npm run ai:train-draw -- --family low-27 --episodes 5000 ... --output-dir rl/models/draw_low27_standard_5k_20260505`: completed。
+- [x] `npm run ai:train-draw -- --family low-a5 --episodes 3000 ... --output-dir rl/models/draw_a5_beginner_3k_20260505`: completed。
+- [x] `npm run ai:train-draw -- --family low-a5 --episodes 5000 ... --output-dir rl/models/draw_a5_standard_5k_20260505`: completed。
+- [x] `npm run ai:export-draw-onnx` で4モデルをexport。
+- [x] `npm run ai:evaluate-draw-onnx -- --model public/models/27draw_beginner_dqn_v1.onnx --variant-id D01`: pass。
+- [x] `npm run ai:evaluate-draw-onnx -- --model public/models/27draw_standard_dqn_v1.onnx --variant-id D01`: pass。
+- [x] `npm run ai:evaluate-draw-onnx -- --model public/models/a5draw_beginner_dqn_v1.onnx --variant-id D02`: pass。
+- [x] `npm run ai:evaluate-draw-onnx -- --model public/models/a5draw_standard_dqn_v1.onnx --variant-id D02`: pass。
+- [x] `npm run ai:evaluate-draw-onnx -- --model public/models/27draw_standard_dqn_v1.onnx --variant-id S01`: pass。
+- [x] `npm run ai:evaluate-draw-onnx -- --model public/models/a5draw_standard_dqn_v1.onnx --variant-id S02`: pass。
+- [x] `npm test -- --run src/ai/__tests__/modelRouter.test.js src/ai/__tests__/onnxPolicyAdapter.test.js`: 2 files / 13 tests pass。
+- [x] `npm test -- --run src/games/draw/__tests__/DeuceToSevenTripleDrawController.test.js src/games/draw/__tests__/AceToFiveTripleDrawEngine.test.js src/games/__tests__/playableInvariant.test.js src/ui/feedback/__tests__/playFeedbackPayload.test.js src/ui/screens/__tests__/HandHistoryScreen.test.jsx src/ui/screens/__tests__/HistoryScreen.test.jsx src/ui/components/__tests__/Player.test.jsx`: 7 files / 57 tests pass。
+- [x] `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts --project=badugi-flow`: 26 passed。D01/D02/S01/S02を追加で含める。
+- [x] `npm run lint`: pass。
+- [x] `npm run build`: pass。chunk size warning は既存警告。
+
+## 19. 2026-05-05 NLH / FLH / PLO / PLO8 Beginner-Standard RL
+
+### 19.1 対応方針
+
+- [x] `AI-BOARD-01` NLH / FLH / PLO / PLO8 を Badugi/draw lowball とは別の board betting model family として扱う。
+  - 対象variant: `B01 NLH`, `B02 FLH`, `B05 PLO`, `B06 PLO8`。
+  - 16入力 / 6出力の `board-betting-observation-v1` を追加。
+  - action index は既存bet action互換: `fold/check/call/bet/raise/all_in`。
+- [x] `AI-BOARD-02` 合成board betting環境を追加し、strength / equity / draw potential / position / pot odds / limit type / hi-lo flag を観測に含める。
+- [x] `AI-BOARD-03` Beginner / Standard の初期モデルをteacher warmup + fixture replay + DQNで作成し、ONNXとして `public/models` に配置する。
+- [x] `AI-BOARD-04` `modelRegistry.json` に variant+tier exact route を追加し、他variantへ誤fallbackしないことをunit testで固定する。
+- [ ] `AI-BOARD-05` Pro以上は未実装。次段階では実ハンド履歴、variant別hand evaluator、human/practice benchmark、multiway/side-pot EV gateを追加する。
+
+### 19.2 学習結果
+
+| Family | Variant | Tier | Run | Episodes | Avg reward trend | ONNX |
+|---|---|---:|---|---:|---:|---|
+| NLH | B01 | Beginner | `board_nlh_beginner_20260505` | 2,500 | 2k avg `0.610` | `public/models/nlh_beginner_dqn_v1.onnx` |
+| NLH | B01 | Standard | `board_nlh_standard_20260505` | 3,500 | 3k avg `0.710` | `public/models/nlh_standard_dqn_v1.onnx` |
+| FLH | B02 | Beginner | `board_flh_beginner_20260505` | 2,500 | 2k avg `0.539` | `public/models/flh_beginner_dqn_v1.onnx` |
+| FLH | B02 | Standard | `board_flh_standard_20260505` | 3,500 | 3k avg `0.738` | `public/models/flh_standard_dqn_v1.onnx` |
+| PLO | B05 | Beginner | `board_plo_beginner_20260505` | 2,500 | 2k avg `0.554` | `public/models/plo_beginner_dqn_v1.onnx` |
+| PLO | B05 | Standard | `board_plo_standard_20260505` | 3,500 | 3k avg `0.705` | `public/models/plo_standard_dqn_v1.onnx` |
+| PLO8 | B06 | Beginner | `board_plo8_beginner_20260505` | 2,500 | 2k avg `0.540` | `public/models/plo8_beginner_dqn_v1.onnx` |
+| PLO8 | B06 | Standard | `board_plo8_standard_20260505` | 3,500 | 3k avg `0.705` | `public/models/plo8_standard_dqn_v1.onnx` |
+
+補足:
+- 今回は「初期モデル導入」まで。実戦的な強さは未保証で、Badugi Pro/Iron相当の評価はしていない。
+- fixture gateは、強い手のvalue bet/continue、弱い手のfold disciplineだけを最低限確認する。
+
+### 19.3 Routing
+
+- [x] `B01 + beginner` -> `model-nlh-beginner-dqn-v1`
+- [x] `B01 + standard` -> `model-nlh-standard-dqn-v1`
+- [x] `B02 + beginner` -> `model-flh-beginner-dqn-v1`
+- [x] `B02 + standard` -> `model-flh-standard-dqn-v1`
+- [x] `B05 + beginner` -> `model-plo-beginner-dqn-v1`
+- [x] `B05 + standard` -> `model-plo-standard-dqn-v1`
+- [x] `B06 + beginner` -> `model-plo8-beginner-dqn-v1`
+- [x] `B06 + standard` -> `model-plo8-standard-dqn-v1`
+
+### 19.4 確認結果
+
+- [x] `npm run ai:train-board` で NLH/FLH/PLO/PLO8 の Beginner/Standard 8モデルを学習。
+- [x] `npm run ai:export-board-onnx` で8モデルをexportし、registry checksumを更新。
+- [x] `npm run ai:evaluate-board-onnx` を8モデルすべてに実行し、strong open / strong facing bet / weak facing bet fixture は全pass。
+- [x] `npm test -- --run src/ai/__tests__/modelRouter.test.js src/ai/__tests__/onnxPolicyAdapter.test.js src/ai/__tests__/onnxPolicyAdapterInference.test.js`: 3 files / 20 tests pass。
+- [x] `npm test -- --run src/games/nlh/__tests__/NLHGameController.test.js src/games/plo/__tests__/PLOGameController.test.js src/games/plo/utils/__tests__/ploEvaluator.test.js src/games/stud/__tests__/StudSplitGameController.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawController.test.js src/games/__tests__/playableInvariant.test.js`: 6 files / 66 tests pass。
+- [x] `npm run ai:verify-models`: required assets all OK。`model-nlh-v1` / `model-generic-v1` は既存optional missing。
+- [x] `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts --project=badugi-flow`: 26 passed。
+- [x] `npm run lint`: pass。
+- [x] `npm run build`: pass。chunk size warning は既存警告。

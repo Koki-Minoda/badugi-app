@@ -3,7 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { designTokens } from "../../styles/designTokens.js";
 import { getHands, getTournaments, getTournamentHands } from "../../utils/history.js";
 import { getVariantProfile } from "../../games/config/variantProfiles.js";
-import { buildPlayFeedbackPayload, MIN_FEEDBACK_HANDS } from "../feedback/playFeedbackPayload.js";
+import {
+  buildPlayFeedbackPayload,
+  createFeedbackScopeOptions,
+  MIN_FEEDBACK_HANDS,
+} from "../feedback/playFeedbackPayload.js";
 import { hasStoredFeedbackAuth, requestPlayFeedback } from "../feedback/playFeedbackApi.js";
 import {
   getLatestPlayFeedbackResult,
@@ -117,6 +121,7 @@ export default function HistoryScreen() {
     error: null,
     response: null,
   });
+  const [feedbackScope, setFeedbackScope] = useState("mixed");
   const filtered = tournaments.filter((entry) => {
     if (!search.trim()) return true;
     return (
@@ -132,15 +137,26 @@ export default function HistoryScreen() {
     () => tournaments.find((entry) => entry.tournamentId === selectedId) ?? null,
     [selectedId, tournaments],
   );
+  const feedbackSourceHands = selectedId ? hands : cashHands;
+  const feedbackScopeOptions = useMemo(
+    () =>
+      createFeedbackScopeOptions(feedbackSourceHands, {
+        mode: selectedId ? "tournament" : "cash",
+        tournamentId: selectedId,
+      }),
+    [feedbackSourceHands, selectedId],
+  );
+  const selectedFeedbackScope = feedbackScopeOptions.some((option) => option.value === feedbackScope)
+    ? feedbackScope
+    : feedbackScopeOptions[0]?.value ?? "mixed";
   const feedbackPayloadResult = useMemo(() => {
-    const sourceHands = selectedId ? hands : cashHands;
     return buildPlayFeedbackPayload({
-      hands: sourceHands,
+      hands: feedbackSourceHands,
       mode: selectedId ? "tournament" : "cash",
-      variantScope: "mixed",
+      variantScope: selectedFeedbackScope,
       tournament: selectedTournament,
     });
-  }, [cashHands, hands, selectedId, selectedTournament]);
+  }, [feedbackSourceHands, selectedFeedbackScope, selectedId, selectedTournament]);
   const savedFeedback = useMemo(
     () => getLatestPlayFeedbackResult(feedbackPayloadResult.payload),
     [feedbackPayloadResult.payload],
@@ -197,6 +213,23 @@ export default function HistoryScreen() {
                 対象: {selectedId ? `Tournament ${selectedId}` : "Cash game"} / Hands:{" "}
                 {feedbackPayloadResult.handCount} / Minimum: {MIN_FEEDBACK_HANDS}
               </p>
+              <label className="mt-3 block max-w-sm text-xs font-semibold text-slate-300">
+                フィードバック対象
+                <select
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-emerald-300/30"
+                  value={selectedFeedbackScope}
+                  onChange={(event) => {
+                    setFeedbackScope(event.target.value);
+                    setFeedbackState({ loading: false, error: null, response: null });
+                  }}
+                >
+                  {feedbackScopeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label} ({option.handCount})
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
             <button
               type="button"

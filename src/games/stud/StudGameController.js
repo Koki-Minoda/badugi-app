@@ -120,6 +120,7 @@ export class StudGameController {
       lastHandResult: null,
       bringInIndex: null,
       bringInAmount: 0,
+      completeAmount: 0,
     };
   }
 
@@ -158,6 +159,7 @@ export class StudGameController {
       pots: [{ amount: this.calculatePot(), potAmount: this.calculatePot() }],
       bringInIndex: this.state.bringInIndex,
       bringInAmount: this.state.bringInAmount,
+      completeAmount: this.state.completeAmount,
     };
   }
 
@@ -182,6 +184,7 @@ export class StudGameController {
     this.raiseCountThisStreet = 0;
     const players = this.state.players.map((player) => ({
       ...player,
+      totalInvested: 0,
       betThisStreet: 0,
       folded: player.stack <= 0 || player.seatOut,
       allIn: player.stack <= 0,
@@ -212,6 +215,7 @@ export class StudGameController {
     this.state.dealerIndex = this.nextOccupiedSeat(this.state.dealerIndex, { players, allowSame: false }) ?? 0;
     this.state.bringInIndex = bringInIndex;
     this.state.bringInAmount = bringInAmount;
+    this.state.completeAmount = this.getLimitUnit();
     this.state.currentActor = this.nextActiveSeat(bringInIndex ?? this.state.dealerIndex, players);
     this.state.pot = this.calculatePot(players);
     return this.getSnapshot();
@@ -354,16 +358,34 @@ export class StudGameController {
       }
       case "bet":
       case "raise":
+      case "complete":
       case "all-in": {
         if (actionName !== "all-in" && this.raiseCountThisStreet >= this.raiseCap) {
           return this.applyPlayerAction({ seatIndex, action: "call" });
         }
         const toCall = Math.max(0, this.state.currentBet - (player.betThisStreet ?? 0));
-        const unit = actionName === "all-in" ? player.stack : (amount > 0 ? amount : this.getLimitUnit());
-        this.commitChips(player, Math.min(player.stack, toCall + unit));
+        const completeAmount = this.state.street === "THIRD"
+          ? Math.max(this.state.completeAmount ?? 0, this.getLimitUnit())
+          : 0;
+        const isBringInCompletion =
+          actionName === "complete" ||
+          (actionName === "raise" && this.state.currentBet > 0 && this.state.currentBet < completeAmount);
+        const targetStreetBet = isBringInCompletion
+          ? completeAmount
+          : (player.betThisStreet ?? 0) + toCall + (actionName === "all-in" ? player.stack : (amount > 0 ? amount : this.getLimitUnit()));
+        const chipsToCommit = actionName === "all-in"
+          ? player.stack
+          : Math.max(0, targetStreetBet - (player.betThisStreet ?? 0));
+        this.commitChips(player, Math.min(player.stack, chipsToCommit));
         this.state.currentBet = Math.max(this.state.currentBet, player.betThisStreet ?? 0);
         if (actionName !== "all-in") this.raiseCountThisStreet += 1;
-        player.lastAction = actionName === "all-in" ? "All-in" : actionName === "raise" ? "Raise" : "Bet";
+        player.lastAction = actionName === "all-in"
+          ? "All-in"
+          : isBringInCompletion
+            ? "Complete"
+            : actionName === "raise"
+              ? "Raise"
+              : "Bet";
         break;
       }
       default:
@@ -471,6 +493,7 @@ export class StudGameController {
     this.state.currentBet = 0;
     this.state.bringInIndex = null;
     this.state.bringInAmount = 0;
+    this.state.completeAmount = 0;
   }
 
   advanceStreet() {

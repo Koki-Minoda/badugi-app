@@ -354,6 +354,7 @@ export default function Player({
     }
   };
   const displayCards = getDisplayCards(handCards, { displayVariant });
+  const hasStudVisibility = Array.isArray(player.cardVisibility) && player.cardVisibility.length > 0;
 
   const hudOverlay =
     hudOpen && !compact && typeof document !== "undefined"
@@ -549,17 +550,40 @@ export default function Player({
             gridTemplateColumns: `repeat(${Math.max(1, displayCards.length || 4)}, minmax(0, 1fr))`,
           }}
         >
-          {displayCards.map(({ card, sourceIndex }) => (
-            <Card
-              key={`${card}-${sourceIndex}`}
-              value={card}
-              hidden={!isHero && !player.showHand && player.cardVisibility?.[sourceIndex] !== "up"}
-              selected={isHero && (player.selected || []).includes(sourceIndex)}
-              onClick={() => handleCardClick(sourceIndex)}
-              folded={isFolded}
-              data-testid={`player-${index}-card-${sourceIndex}`}
-            />
-          ))}
+          {displayCards.map(({ card, sourceIndex }) => {
+            const visibility = player.cardVisibility?.[sourceIndex] ?? "up";
+            const isPublicCard = visibility === "up";
+            const isHiddenFromHero = !isHero && !player.showHand && !isPublicCard;
+            const visibilityLabel = isPublicCard
+              ? "UP"
+              : isHero
+                ? "DOWN"
+                : "HIDDEN";
+            return (
+              <div key={`${card}-${sourceIndex}`} className="flex min-w-0 flex-col items-center gap-0.5">
+                <Card
+                  value={card}
+                  hidden={isHiddenFromHero}
+                  selected={isHero && (player.selected || []).includes(sourceIndex)}
+                  onClick={() => handleCardClick(sourceIndex)}
+                  folded={isFolded}
+                  data-testid={`player-${index}-card-${sourceIndex}`}
+                />
+                {hasStudVisibility && (
+                  <span
+                    data-testid={`player-${index}-card-${sourceIndex}-visibility`}
+                    className={`rounded-full px-1.5 py-0.5 text-[8px] font-black uppercase leading-none ${
+                      isPublicCard
+                        ? "bg-emerald-400/20 text-emerald-100"
+                        : "bg-slate-700/70 text-slate-200"
+                    }`}
+                  >
+                    {visibilityLabel}
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

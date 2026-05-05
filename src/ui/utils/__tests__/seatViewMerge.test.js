@@ -41,6 +41,16 @@ describe("seatViewMerge", () => {
     expect(result[0].showHand).toBe(false);
   });
 
+  it("does not let stale showHand reveal opponent cards before showdown", () => {
+    const result = mergeSeatViewsForDisplay({
+      phase: "BET",
+      baseSeats: [{ seatIndex: 1, hand: ["5d"], showHand: true, folded: false }],
+      adapterSeatViews: [{ seatIndex: 1, hand: ["5d"], showHand: true }],
+    });
+
+    expect(result[0].showHand).toBe(false);
+  });
+
   it("does not let an adapter default avatar overwrite a roster image", () => {
     const result = mergeSeatViewsForDisplay({
       phase: "BET",

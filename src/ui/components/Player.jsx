@@ -579,8 +579,12 @@ export default function Player({
           }}
         >
           {displayCards.map(({ card, sourceIndex }) => {
-            const visibility = player.cardVisibility?.[sourceIndex] ?? "up";
-            const isPublicCard = visibility === "up";
+            const visibility = hasStudVisibility
+              ? player.cardVisibility?.[sourceIndex] ?? "down"
+              : player.showHand || isHero
+                ? "up"
+                : "down";
+            const isPublicCard = hasStudVisibility && visibility === "up";
             const isHiddenFromHero = !isHero && !player.showHand && !isPublicCard;
             const isStudDownCard = hasStudVisibility && !isPublicCard;
             const visibilityLabel = isPublicCard

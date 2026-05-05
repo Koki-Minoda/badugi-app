@@ -108,6 +108,75 @@ describe("Player", () => {
     expect(handleCardClick).toHaveBeenCalledWith(0);
   });
 
+  test("keeps non-hero draw cards face down before showdown", () => {
+    render(
+      <Player
+        player={{ ...basePlayer, showHand: false }}
+        index={1}
+        selfIndex={0}
+        turn={0}
+        dealerIdx={0}
+        phase="BET"
+        positionLabel="BB"
+        displayVariant="badugi"
+      />,
+    );
+
+    const opponentCards = [
+      screen.getByTestId("player-1-card-0"),
+      screen.getByTestId("player-1-card-1"),
+      screen.getByTestId("player-1-card-2"),
+      screen.getByTestId("player-1-card-3"),
+    ];
+    opponentCards.forEach((card) => {
+      expect(card.textContent).not.toContain("A");
+      expect(card.textContent).not.toContain("2");
+      expect(card.textContent).not.toContain("3");
+      expect(card.textContent).not.toContain("4");
+    });
+  });
+
+  test("reveals only Stud up-cards for non-hero seats before showdown", () => {
+    render(
+      <Player
+        player={{
+          ...basePlayer,
+          hand: ["AS", "KD", "2C"],
+          cardVisibility: ["down", "down", "up"],
+          showHand: false,
+        }}
+        index={1}
+        selfIndex={0}
+        turn={0}
+        dealerIdx={0}
+        phase="BET"
+        positionLabel="UTG"
+        displayVariant="stud"
+      />,
+    );
+
+    expect(screen.getByTestId("player-1-card-0").textContent).not.toContain("A");
+    expect(screen.getByTestId("player-1-card-1").textContent).not.toContain("K");
+    expect(screen.getByTestId("player-1-card-2").textContent).toContain("2♣");
+  });
+
+  test("reveals non-hero draw cards when showdown marks showHand", () => {
+    render(
+      <Player
+        player={{ ...basePlayer, showHand: true }}
+        index={1}
+        selfIndex={0}
+        turn={0}
+        dealerIdx={0}
+        phase="SHOWDOWN"
+        positionLabel="BB"
+        displayVariant="badugi"
+      />,
+    );
+
+    expect(screen.getByTestId("player-1-card-0").textContent).toContain("A♣");
+  });
+
   test("groups paired draw cards visually while preserving original discard indexes", () => {
     const handleCardClick = vi.fn();
     render(

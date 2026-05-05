@@ -2645,6 +2645,8 @@ Draw RL test coverage:
 - [x] `STUD-QA-01` Stud/Razz UIで、公開カード(up cards)と伏せカード(down cards)を視覚的に分離する。
   - 2026-05-05 追加対応: `UP/DOWN/HIDDEN` の文字だけに頼らず、公開カードは少し上にずらして緑ringを付け、Heroの伏せカードは斜め半分の裏面カバーを重ねる。Opponentの伏せカードは従来どおり非公開の裏面表示を維持する。
   - 2026-05-05 修正: Hero視点の「カード値は見える」と「公開/伏せ状態」は別物として扱う。`revealCards` の副作用でHeroの `cardVisibility` が全て `up` になり、伏せ札カバーが出ない不具合を修正。
+  - 2026-05-06 修正: `Player`表示で `cardVisibility` 未指定カードを一律 `up` と扱っていたため、Badugi/Draw/Board系でも `showHand:false` の相手手札が表向きになる不具合を修正。Stud/Razzは `cardVisibility` のup-cardだけ公開し、通常ゲームはHeroまたはshowdownの `showHand:true` の場合だけ表向き表示する。
+  - 2026-05-06 回帰: Player unitでBadugi相手札は裏面、Stud非Heroはup-cardのみ表向き、showdownでは相手draw札を公開することを固定。`seatViewMerge` でもshowdown前のstale `showHand:true` が公開漏れを起こさないようにした。
   - 3rd street: 2 down + 1 up。
   - 4th/5th/6th street: up card。
   - 7th street: down card。

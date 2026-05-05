@@ -87,6 +87,12 @@ describe("modelRouter", () => {
     expect(resolveTierModelInfo({ variantId: "S01", tierId: "standard" })?.modelId).toBe(
       "model-27draw-standard-dqn-v1",
     );
+    expect(resolveTierModelInfo({ variantId: "D01", tierId: "pro" })?.modelId).toBe(
+      "model-27draw-pro-dqn-v1",
+    );
+    expect(resolveTierModelInfo({ variantId: "S01", tierId: "pro" })?.modelId).toBe(
+      "model-27draw-pro-dqn-v1",
+    );
     expect(resolveTierModelInfo({ variantId: "D02", tierId: "beginner" })?.modelId).toBe(
       "model-a5draw-beginner-dqn-v1",
     );
@@ -95,6 +101,12 @@ describe("modelRouter", () => {
     );
     expect(resolveTierModelInfo({ variantId: "S02", tierId: "standard" })?.modelId).toBe(
       "model-a5draw-standard-dqn-v1",
+    );
+    expect(resolveTierModelInfo({ variantId: "D02", tierId: "pro" })?.modelId).toBe(
+      "model-a5draw-pro-dqn-v1",
+    );
+    expect(resolveTierModelInfo({ variantId: "S02", tierId: "pro" })?.modelId).toBe(
+      "model-a5draw-pro-dqn-v1",
     );
   });
 

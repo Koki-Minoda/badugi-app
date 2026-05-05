@@ -2692,7 +2692,10 @@ Draw RL test coverage:
   - `modelRegistry.json` に 2-7 / A-5 それぞれ Beginner / Standard のvariant-tier exact modelを追加。
 - [x] `AI-27-A5-02` Beginner は beginner/loose profile中心、Standard は beginner/standard/tight/loose/aggressive の混合profileで学習する。
 - [x] `AI-27-A5-03` ONNX fixture gateで pat / pair break / straight-flush rule を最低限確認してからroutingする。
-- [ ] `AI-27-A5-04` Pro以上は未実装。次段階では variant別 human/practice benchmark と6-max/multiway reward gateを追加する。
+- [x] `AI-27-A5-04` Pro以上RLの入口を実装する。
+  - 2026-05-05 対応: `D01/S01` 用 `model-27draw-pro-dqn-v1` と `D02/S02` 用 `model-a5draw-pro-dqn-v1` を追加し、Pro tier routingへ接続。
+  - 2026-05-05 対応: `train_draw_dqn.py` のCLIへ `epsilon-start/end/decay`, `hidden-dim`, `learning-rate`, `train-every-steps`, `imitation-loss-weight` を追加し、上位tier学習の探索率・BC比率を再現可能にした。
+  - 2026-05-05 制限: 今回のProは2.5k probeのsynthetic fixture gate通過モデル。Iron/WorldMaster昇格には、20k+ checkpoint比較、variant別human/practice benchmark、6-max/multiway reward gateが必要。
 
 ### 18.2 学習結果
 
@@ -2700,20 +2703,25 @@ Draw RL test coverage:
 |---|---:|---|---:|---:|---|
 | 2-7 | Beginner | `draw_low27_beginner_3k_20260505` | 3,000 | `0.0843` | `public/models/27draw_beginner_dqn_v1.onnx` |
 | 2-7 | Standard | `draw_low27_standard_5k_20260505` | 5,000 | `0.0995` | `public/models/27draw_standard_dqn_v1.onnx` |
+| 2-7 | Pro | `draw_low27_pro_probe_2500_20260505` | 2,500 | `0.3930` | `public/models/27draw_pro_dqn_v1.onnx` |
 | A-5 | Beginner | `draw_a5_beginner_3k_20260505` | 3,000 | `-0.0370` | `public/models/a5draw_beginner_dqn_v1.onnx` |
 | A-5 | Standard | `draw_a5_standard_5k_20260505` | 5,000 | `0.0989` | `public/models/a5draw_standard_dqn_v1.onnx` |
+| A-5 | Pro | `draw_a5_pro_probe_2500_20260505` | 2,500 | `0.4450` | `public/models/a5draw_pro_dqn_v1.onnx` |
 
 補足:
 - Beginner は「弱すぎないが読みやすい」導入モデルとして採用。A-5 Beginner のlast100 rewardはわずかにマイナスだが、fixture gateはpassしており、Beginner用途としてroutingする。
 - Standard は両familyとも終盤でpositive rewardへ到達。Pro/Iron相当とは扱わない。
+- Pro は両familyとも standard/tight/aggressive profileでpositive rewardへ到達し、ONNX fixture gateを通過。ただし短縮probeのため、Iron以上には扱わない。
 
 ### 18.3 Routing
 
 - [x] `D01/S01 + beginner` -> `model-27draw-beginner-dqn-v1`
 - [x] `D01/S01 + standard` -> `model-27draw-standard-dqn-v1`
+- [x] `D01/S01 + pro` -> `model-27draw-pro-dqn-v1`
 - [x] `D02/S02 + beginner` -> `model-a5draw-beginner-dqn-v1`
 - [x] `D02/S02 + standard` -> `model-a5draw-standard-dqn-v1`
-- [x] 既存 `model-27draw-iron-v1` / `model-a5draw-iron-v1` は bootstrap Iron として残す。Pro以上へは昇格しない。
+- [x] `D02/S02 + pro` -> `model-a5draw-pro-dqn-v1`
+- [x] 既存 `model-27draw-iron-v1` / `model-a5draw-iron-v1` は bootstrap Iron として残す。今回のPro probeはIron以上へは昇格しない。
 
 ### 18.4 確認結果
 
@@ -2728,6 +2736,13 @@ Draw RL test coverage:
 - [x] `npm run ai:evaluate-draw-onnx -- --model public/models/a5draw_standard_dqn_v1.onnx --variant-id D02`: pass。
 - [x] `npm run ai:evaluate-draw-onnx -- --model public/models/27draw_standard_dqn_v1.onnx --variant-id S01`: pass。
 - [x] `npm run ai:evaluate-draw-onnx -- --model public/models/a5draw_standard_dqn_v1.onnx --variant-id S02`: pass。
+- [x] `npm run ai:train-draw -- --family low-27 --episodes 2500 --teacher-warmup-episodes 350 --imitation-pretrain-steps 120 --opponent-profiles standard,tight,aggressive --output-dir rl/models/draw_low27_pro_probe_2500_20260505`: completed。last500 avg reward `0.393`。
+- [x] `npm run ai:train-draw -- --family low-a5 --episodes 2500 --teacher-warmup-episodes 350 --imitation-pretrain-steps 120 --opponent-profiles standard,tight,aggressive --output-dir rl/models/draw_a5_pro_probe_2500_20260505`: completed。last500 avg reward `0.445`。
+- [x] `npm run ai:export-draw-onnx` で `27draw_pro_dqn_v1.onnx` / `a5draw_pro_dqn_v1.onnx` をexport。
+- [x] `npm run ai:evaluate-draw-onnx -- --model public/models/27draw_pro_dqn_v1.onnx --variant-id D01`: pass。
+- [x] `npm run ai:evaluate-draw-onnx -- --model public/models/27draw_pro_dqn_v1.onnx --variant-id S01`: pass。
+- [x] `npm run ai:evaluate-draw-onnx -- --model public/models/a5draw_pro_dqn_v1.onnx --variant-id D02`: pass。
+- [x] `npm run ai:evaluate-draw-onnx -- --model public/models/a5draw_pro_dqn_v1.onnx --variant-id S02`: pass。
 - [x] `npm test -- --run src/ai/__tests__/modelRouter.test.js src/ai/__tests__/onnxPolicyAdapter.test.js`: 2 files / 13 tests pass。
 - [x] `npm test -- --run src/games/draw/__tests__/DeuceToSevenTripleDrawController.test.js src/games/draw/__tests__/AceToFiveTripleDrawEngine.test.js src/games/__tests__/playableInvariant.test.js src/ui/feedback/__tests__/playFeedbackPayload.test.js src/ui/screens/__tests__/HandHistoryScreen.test.jsx src/ui/screens/__tests__/HistoryScreen.test.jsx src/ui/components/__tests__/Player.test.jsx`: 7 files / 57 tests pass。
 - [x] `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts --project=badugi-flow`: 26 passed。D01/D02/S01/S02を追加で含める。

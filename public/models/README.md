@@ -44,4 +44,8 @@ Current blocker:
 - `badugi_standard_dqn_v1.onnx` is the street/context-aware 50k DQN checkpoint.
   It clears a standard-tier avgReward gate across opponent profiles, but not the
   stricter Pro/Iron/WorldMaster showdown gate.
+- `27draw_pro_dqn_v1.onnx` and `a5draw_pro_dqn_v1.onnx` are current-env
+  2-7/A-5 Pro probe checkpoints from 2.5k draw DQN runs. They clear the draw
+  ONNX fixture gate and route Pro D01/S01/D02/S02 CPUs, but still need longer
+  checkpoint comparison and human/practice benchmarks before Iron promotion.
 - Rebuild the bootstrap set when needed with `npm run ai:build-bootstrap-models`.

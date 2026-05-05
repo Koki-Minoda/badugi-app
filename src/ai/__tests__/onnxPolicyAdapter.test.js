@@ -89,6 +89,9 @@ describe("onnxPolicyAdapter Badugi schema", () => {
     expect(selectModelForVariant({ variantId: "D01", tierId: "standard" })?.id).toBe(
       "model-27draw-standard-dqn-v1",
     );
+    expect(selectModelForVariant({ variantId: "D01", tierId: "pro" })?.id).toBe(
+      "model-27draw-pro-dqn-v1",
+    );
     expect(selectModelForVariant({ variantId: "D01", tierId: "iron" })?.id).toBe(
       "model-27draw-iron-v1",
     );
@@ -100,6 +103,9 @@ describe("onnxPolicyAdapter Badugi schema", () => {
     );
     expect(selectModelForVariant({ variantId: "D02", tierId: "standard" })?.id).toBe(
       "model-a5draw-standard-dqn-v1",
+    );
+    expect(selectModelForVariant({ variantId: "D02", tierId: "pro" })?.id).toBe(
+      "model-a5draw-pro-dqn-v1",
     );
     expect(selectModelForVariant({ variantId: "D02", tierId: "iron" })?.id).toBe(
       "model-a5draw-iron-v1",

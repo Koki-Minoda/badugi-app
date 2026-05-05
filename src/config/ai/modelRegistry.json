@@ -445,6 +445,54 @@
     ]
   },
   {
+    "id": "model-27draw-pro-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "D01",
+      "S01"
+    ],
+    "characterIds": [],
+    "tier": "pro",
+    "onnx": "models/27draw_pro_dqn_v1.onnx",
+    "checksumSha256": "a60e5bf3bc8cf47d53511c4b0d0b26b757bc4c0b64f7326b39ff5199fe3d457d",
+    "trainingRun": "draw_low27_pro_probe_2500_20260505",
+    "trainingCheckpoint": "low-27_draw_dqn_latest.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "Current-env 2-7 draw DQN for Pro D01/S01 CPUs. Trained 2.5k episodes against standard/tight/aggressive profiles with teacher warmup, imitation pretrain, fixture replay, and low exploration floor. This clears the draw ONNX fixture gate and is the first Pro routing checkpoint; it still needs 20k+ checkpoint comparison and human/practice benchmark before promotion to Iron/WorldMaster.",
+    "featureSet": "draw-lowball-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      11
+    ]
+  },
+  {
+    "id": "model-a5draw-pro-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "D02",
+      "S02"
+    ],
+    "characterIds": [],
+    "tier": "pro",
+    "onnx": "models/a5draw_pro_dqn_v1.onnx",
+    "checksumSha256": "67079b8e41feafb60454448ff6525395052c9d19420ec38985ee30afde626547",
+    "trainingRun": "draw_a5_pro_probe_2500_20260505",
+    "trainingCheckpoint": "low-a5_draw_dqn_latest.pt",
+    "trainingStatus": "active",
+    "trainingNotes": "Current-env A-5 draw DQN for Pro D02/S02 CPUs. Trained 2.5k episodes against standard/tight/aggressive profiles with teacher warmup, imitation pretrain, fixture replay, and low exploration floor. This clears the draw ONNX fixture gate and is the first Pro routing checkpoint; it still needs 20k+ checkpoint comparison and human/practice benchmark before promotion to Iron/WorldMaster.",
+    "featureSet": "draw-lowball-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      11
+    ]
+  },
+  {
     "id": "model-27draw-iron-v1",
     "version": "v1",
     "variantIds": [

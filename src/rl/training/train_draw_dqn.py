@@ -257,9 +257,16 @@ def parse_args():
     parser.add_argument("--buffer-capacity", type=int, default=DrawTrainConfig.buffer_capacity)
     parser.add_argument("--warmup-steps", type=int, default=DrawTrainConfig.warmup_steps)
     parser.add_argument("--batch-size", type=int, default=DrawTrainConfig.batch_size)
+    parser.add_argument("--epsilon-start", type=float, default=DrawTrainConfig.epsilon_start)
+    parser.add_argument("--epsilon-end", type=float, default=DrawTrainConfig.epsilon_end)
+    parser.add_argument("--epsilon-decay-episodes", type=int, default=DrawTrainConfig.epsilon_decay_episodes)
     parser.add_argument("--teacher-warmup-episodes", type=int, default=DrawTrainConfig.teacher_warmup_episodes)
     parser.add_argument("--imitation-pretrain-steps", type=int, default=DrawTrainConfig.imitation_pretrain_steps)
     parser.add_argument("--expert-replay-ratio", type=float, default=DrawTrainConfig.expert_replay_ratio)
+    parser.add_argument("--imitation-loss-weight", type=float, default=DrawTrainConfig.imitation_loss_weight)
+    parser.add_argument("--hidden-dim", type=int, default=DrawTrainConfig.hidden_dim)
+    parser.add_argument("--learning-rate", type=float, default=DrawTrainConfig.learning_rate)
+    parser.add_argument("--train-every-steps", type=int, default=DrawTrainConfig.train_every_steps)
     parser.add_argument("--output-dir", default=DrawTrainConfig.output_dir)
     parser.add_argument("--save-interval", type=int, default=DrawTrainConfig.save_interval)
     parser.add_argument("--log-interval", type=int, default=DrawTrainConfig.log_interval)
@@ -280,9 +287,16 @@ if __name__ == "__main__":
         buffer_capacity=args.buffer_capacity,
         warmup_steps=args.warmup_steps,
         batch_size=args.batch_size,
+        epsilon_start=args.epsilon_start,
+        epsilon_end=args.epsilon_end,
+        epsilon_decay_episodes=args.epsilon_decay_episodes,
         teacher_warmup_episodes=args.teacher_warmup_episodes,
         imitation_pretrain_steps=args.imitation_pretrain_steps,
         expert_replay_ratio=args.expert_replay_ratio,
+        imitation_loss_weight=args.imitation_loss_weight,
+        hidden_dim=args.hidden_dim,
+        learning_rate=args.learning_rate,
+        train_every_steps=args.train_every_steps,
         output_dir=args.output_dir,
         save_interval=args.save_interval,
         log_interval=args.log_interval,

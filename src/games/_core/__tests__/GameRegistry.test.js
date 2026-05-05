@@ -51,5 +51,6 @@ describe("GameRegistry", () => {
     expect(GameRegistry.get("razz27")?.label).toBe("2-7 Razz");
     expect(GameRegistry.get("razzdugi")?.label).toBe("Razzdugi");
     expect(GameRegistry.get("razzducey")?.label).toBe("Razzducey");
+    expect(GameRegistry.get("chinese_poker")?.label).toBe("Chinese Poker");
   });
 });

@@ -1824,9 +1824,13 @@ Draw RL test coverage:
         - 残TODO: Stud専用テーブルレイアウトでup-card/down-cardの見せ方をさらに磨く、bring-in後のcomplete size/同ランクsuit tieの実運用をPlaywrightで確認する。
       - [x] `CHINESE-01` チャイポ / Chinese Poker / OFC の準備タスクを追加する。13枚配布、front/middle/back配置、royalty、foul判定、fantasyland、turn順の仕様を実装前提として整理する。
         - 2026-05-04 実装: `src/games/chinese/chinesePokerPreparation.js` に alias と実装要件を固定。現時点ではゲーム進行へ接続しない準備ファイルのみ。
-      - [ ] `CHINESE-02` Chinese Poker / OFC の実ゲーム controller / layout UI / scorer / foul判定を実装する。
+      - [x] `CHINESE-02` Chinese Poker / OFC の実ゲーム controller / layout UI / scorer / foul判定を実装する。
         - 2026-05-04 部分対応: scorer foundationとしてfront/middle/back行評価、foul判定、最小royalty fixtureを追加。まだ実ゲーム進行・UI・fantasyland・turn orderには未接続。
         - 2026-05-05 部分対応: `ChinesePokerController` を追加し、13枚配布、最大4人、CPU自動配置、Hero row set、showdown、行別勝敗、royalty、foul scoop、next hand遷移をunitで固定。App layout UI、fantasyland、OFC street-by-street turn orderは未接続。
+        - 2026-05-05 対応: GameRegistry / Game Selector / App routingへ `CP1` / `chinese_poker` を正式接続し、Chinese Poker専用画面を追加。Heroは13枚をfront/middle/backへ手動配置または自動配置でき、確定後にrow別score / royalty / foul / totals / next handを表示する。
+        - 確認: `ChinesePokerGameScreen.test.jsx` で13枚表示、score hand、next hand、戻る導線を固定。
+      - [ ] `CHINESE-03` OFC street-by-street turn order / fantasyland / 3-5-5段階配置 / multi-player最大4人UIを実装する。
+        - 現在のplayable範囲はクラシックChinese Pokerの一括13枚配置。OFC固有の5枚初期配置、以降1枚ずつ配置、fantasyland突入/継続条件は後続。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
   - P2P:
     - data capture / export / sync / security test の部品はある。
@@ -2263,14 +2267,16 @@ Draw RL test coverage:
 - [ ] `GAME-ALL-02` 残りBoard/Draw/Stud/Dramaha/Chinese Pokerを順次 playable 化し、各ゲームごとに evaluator / action mask / all-in / split pot / history smoke を追加する。
   - 2026-05-04 部分対応: 残Board枠の `B03` NL Super Hold'em / `B04` FL Super Hold'em をplayable化し、routing / registry / 3-hole配布 / high evaluator / all-in side-pot invariantに追加。
   - 2026-05-05 進捗: Game Selectorに表示している35 playable variantsは、controller invariantで5連続hand / short-stack all-in pressureを全件通過。Playwright operational smokeも35/35 cash variants + Badugi tournamentで通過。Dramaha 6種はcore registryにも追加し、App上のゲーム名・controller lookupで正式variantとして扱えるようにした。
-  - 2026-05-05 残: 36件目相当のChinese/OFCはcontroller/scorer foundationのみで、正式Game Selector接続・UI controller・history smokeが未完。Super Hold'em / FL Super Hold'emはcontroller invariantでは通過済みだが、Playwright 5連続handの強制new-hand helper経路でhero card再描画が落ちるため、UI smokeはfixmeとして残す。
+  - 2026-05-05 追加対応: 36件目として `CP1` Chinese PokerをGame Selector / App routing / GameRegistryへ接続し、専用playable画面を追加。13枚配置、row scoring、foul/royalty、next handをUIテストで固定。
+  - 2026-05-05 残: Super Hold'em / FL Super Hold'emはcontroller invariantでは通過済みだが、Playwright 5連続handの強制new-hand helper経路でhero card再描画が落ちるため、UI smokeはfixmeとして残す。Chinese/OFCはクラシックChinese Poker playableまでで、OFC street-by-street / fantasyland / 横断history replay smokeは後続。
   - 2026-05-04 部分対応: `S03` 5-Card Single Drawをplayable化。high hand evaluator / 1 draw / controller / registry / App routing / UI adapter / game selector / playable smoke / hand history high-hand labelを追加。
   - 2026-05-04 部分対応: Chinese Poker / OFC用のscorer foundationを追加。front / middle / backの行評価、foul判定、最小royalty fixtureをunitで固定。実ゲームcontroller / layout UI / fantasyland / turn順は未実装のまま `CHINESE-02` に残す。
-  - 2026-05-05 部分対応: Chinese Poker / OFC本体controllerを追加。13枚配布、front/middle/back自動配置、Hero row set、foul判定、royalty、showdown row scoring、next handをunitで固定。layout UI / fantasyland / OFC turn順は継続。
+  - 2026-05-05 部分対応: Chinese Poker / OFC本体controllerを追加。13枚配布、front/middle/back自動配置、Hero row set、foul判定、royalty、showdown row scoring、next handをunitで固定。
+  - 2026-05-05 追加対応: Chinese Poker専用layout UIを追加し、Game Selectorから起動可能にした。Appの既存Badugi/Board/Stud table layoutとは分離し、既存ゲーム進行へ影響しない経路でplayable化。
   - 2026-05-04 部分対応: `D04` Badeucey TD、`D05` Badacey TD、`D06` Hidugi TD、`D07` Archie TD をplayable化。Badugi half + 2-7/A-5/high系halfのcomponent split、odd chip fixture、registry/routing/UI adapter/history smokeを追加。
   - 2026-05-04 部分対応: `S04-S07` single draw split/Badugi系をplayable化。S04 Badugi SD、S05 Badeucey SD、S06 Badacey SD、S07 Hidugi SDのcontroller/engine/routing/catalog/history smokeを追加。
   - 2026-05-05 追加対応: Badeucey/Badacey/Hidugi/Archie と Dramaha 6種の結果summaryに componentLabel / sourcePotIndex / eligibleSeatIndexes / oddChipAmount を保持し、Hand Result Overlay と Showdown Toast で `Main Pot · Badugi half` / `Side Pot · Draw half` のようにcomponent pot単位で表示するようにした。Dramahaはodd chipがdraw halfへ行くことをsummary/UIで明示する。
-  - 残TODO: Chinese/OFC layout UI / fantasyland / OFC street-by-street turn順、split draw系の公式ルール監査、Playwright replay smoke、CPU discard strategy精緻化を追加する。
+  - 残TODO: Chinese/OFCのfantasyland / OFC street-by-street turn順、Chinese/OFCのPlaywright replay smoke、split draw系の公式ルール監査、CPU discard strategy精緻化を追加する。
 - [ ] `GAME-ALL-03` Stud / Razz 実装後、10-Game対象のCPUを Beginner / Standard まで学習・適用する。
   - 2026-05-05 部分対応: NLH / FLH / PLO / PLO8 / FLO8 / Stud / Stud8 / Razz / Razz27 は、controller の `getCpuAction()` 経由で teacher-supervised CPU policy を実行できるようにした。
   - 2026-05-05 部分対応: App のCPU action経路を draw-lowball 限定から controller-driven game 全体へ広げ、board/stud系がBadugi fallback policyへ落ちないようにした。
@@ -2952,8 +2958,9 @@ Draw RL test coverage:
 - [ ] `PV90-08` Super Hold'em / FL Super Hold'em のPlaywright 5連続hand smokeをfixme解除する。
   - 現象: controller invariantは通過するが、E2E helperで強制new-handした後のhero card再描画が落ちる。
   - 影響: 通常起動・配牌・stable UIは通過。連続UI smokeだけ未保証。
-- [ ] `PV90-09` Chinese/OFCを36件目として正式Game Selector / UI controller / history smokeへ接続する。
-  - 現状: controller/scorer foundationのみ。playable catalogには含めない。
+- [x] `PV90-09` Chinese/OFCを36件目として正式Game Selector / UI controllerへ接続する。
+  - 2026-05-05 対応: `CP1` / `chinese_poker` をGame Selector playable catalogへ追加し、専用Chinese Poker UIで13枚配置、採点、next handを実行できるようにした。
+  - 残: 全variant共通のhistory/replay smokeへの統合は `HIST-REG-06` として継続。
 - [ ] `PV90-10` 既存の進捗表は実装品質・RL込みの保守的な数値のため、今後の章で「進行テスト%」と「UI/UX完成度%」を分離する。
 
 ### 21.3 確認結果
@@ -2986,7 +2993,8 @@ Draw RL test coverage:
 - [x] `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts tests/e2e/cross-variant-five-hand-smoke.spec.ts --project=badugi-flow`: 68 passed / 2 skipped。
 
 残ギャップ:
-- [ ] `PV90-14` 36件目のChinese/OFCはGame Selector正式playable UI接続後、同じstreet/progression matrixへ追加する。
+- [ ] `PV90-14` 36件目のChinese/OFCを同じprogression matrixへ追加する。
+  - 2026-05-05 進捗: Game Selector/UI controllerへの接続は完了。street型ゲームではないため、既存street progression matrixとは別に `set -> showdown -> next hand` invariantとして追加する。
 - [ ] `PV90-15` Super Hold'em / FL Super Hold'em のPlaywright 5連続hand smoke fixmeを解除し、UI smokeも35/35へ引き上げる。
 
 ### 21.5 2026-05-05 Badugi CPU / Tournament Avatar 再発防止
@@ -3070,6 +3078,7 @@ Draw RL test coverage:
 残タスク:
 - [ ] `HIST-REG-05` Replay UIのframe再生そのものを全variantで押下確認する。今回の範囲は「保存される履歴データがReplay-readyであること」まで。
 - [ ] `HIST-REG-06` Chinese/OFC正式接続後、同じhistory/replay smokeへ36件目として追加する。
+  - 2026-05-05 進捗: UI単体ではshowdown result / next hand smokeを追加済み。全variant hand history/replay pipelineへの保存・Replay-ready検証は未接続。
 
 ### 21.8 2026-05-05 Feedback Pipeline Variant分離 / 履歴リンク品質
 

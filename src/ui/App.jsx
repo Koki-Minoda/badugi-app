@@ -50,6 +50,7 @@ import {
   needsActionForBet,
 } from "../games/badugi/flow/betRoundUtils.js";
 import BadugiGameController from "../games/badugi/BadugiGameController.js";
+import ChinesePokerController from "../games/chinese/ChinesePokerController.js";
 import DramahaGameController from "../games/dramaha/DramahaGameController.js";
 import FLHGameController from "../games/nlh/FLHGameController.js";
 import NLHGameController from "../games/nlh/NLHGameController.js";
@@ -158,6 +159,7 @@ import AuthScreen from "./screens/AuthScreen.jsx";
 import HandHistoryScreen from "./screens/HandHistoryScreen.jsx";
 import ReplayScreen from "./screens/ReplayScreen.jsx";
 import GameSelectorScreen from "./screens/GameSelectorScreen.jsx";
+import ChinesePokerGameScreen from "./screens/ChinesePokerGameScreen.jsx";
 import TitleSettingsScreen from "./screens/TitleSettingsScreen.jsx";
 import ProfileStats from "../components/ProfileStats.jsx";
 import { useGameSessionState } from "./hooks/useGameSessionState.js";
@@ -1095,6 +1097,7 @@ const SAFE_RESET_PHASE = "IDLE";
     if (currentScreen === "settings") return "Settings";
     if (currentScreen === "handHistory") return "HandHistory";
     if (currentScreen === "handReplay") return "Replay";
+    if (currentScreen === "chinesePoker") return "ChinesePoker";
     return "Game";
   }, [authIsAuthenticated, currentScreen]);
 
@@ -1721,6 +1724,15 @@ const SAFE_RESET_PHASE = "IDLE";
       } else if (variantId === APP_VARIANT_IDS.RAZZDUCEY) {
         gameControllerRef.current = new RazzduceyGameController({
           tableConfig: buildNlhTableConfig(),
+        });
+      } else if (variantId === APP_VARIANT_IDS.CHINESE_POKER) {
+        gameControllerRef.current = new ChinesePokerController({
+          seats: [
+            { id: "hero", name: "You", isHero: true },
+            { id: "mina", name: "Mina" },
+            { id: "ren", name: "Ren" },
+            { id: "sora", name: "Sora" },
+          ],
         });
       } else if (isDrawLowballAppVariant(variantId)) {
         gameControllerRef.current = GAME_VARIANTS[variantId]?.controllerFactory?.({
@@ -4827,6 +4839,11 @@ const SAFE_RESET_PHASE = "IDLE";
     if (normalizedVariant !== gameVariantRef.current) {
       gameVariantRef.current = normalizedVariant;
       setGameVariant(normalizedVariant);
+    }
+    if (normalizedVariant === APP_VARIANT_IDS.CHINESE_POKER) {
+      setMode("cash");
+      setCurrentScreen("chinesePoker");
+      return;
     }
     resetInitialButtonState();
     setMode("cash");
@@ -8862,6 +8879,28 @@ const SAFE_RESET_PHASE = "IDLE";
           onBack={handleBackFromReplayToHistory}
           onClose={handleExitReplayToMenu}
         />
+        <DebugHud
+          enabled={debugFlags.enabled}
+          deviceProfile={deviceProfile}
+          shouldGateOrientation={shouldGateOrientation}
+          debugScale={debugScale}
+          screenLabel={screenLabel}
+        />
+      </>
+    );
+  }
+
+  if (currentScreen === "chinesePoker") {
+    return (
+      <>
+        <AuthProvider>
+          <AuthGate
+            onAuthenticated={handleAuthSuccess}
+            onAuthStateChange={handleAuthStateChange}
+          >
+            <ChinesePokerGameScreen language={language} onBack={handleOpenGameSelector} />
+          </AuthGate>
+        </AuthProvider>
         <DebugHud
           enabled={debugFlags.enabled}
           deviceProfile={deviceProfile}

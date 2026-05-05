@@ -10,6 +10,8 @@ import { useMixedGame } from "../mixed/useMixedGame.js";
 import { usePlayerProgress } from "../hooks/usePlayerProgress.js";
 import { computeUnlockState } from "../utils/playerProgress.js";
 import { designTokens } from "../../styles/designTokens.js";
+import { LANGUAGE_STORAGE_KEY, MGX_DEFAULT_LOCALE } from "../../config/mgxLocaleConfig.js";
+import variantJa from "../../i18n/variants.ja.json";
 
 const CATEGORY_ORDER = [
   GAME_VARIANT_CATEGORIES.TRIPLE_DRAW,
@@ -20,6 +22,53 @@ const CATEGORY_ORDER = [
 ];
 
 const MAX_SELECTED = 20;
+
+const MIXED_PRESET_JA = Object.freeze({
+  "mix-horse-pro": {
+    description: "HORSE形式の5ゲームを固定順で回す、フィックスリミット中心のプロ向けローテーションです。",
+  },
+  "mix-8game-pro": {
+    description: "NLH、PLO、Stud系、Draw系を含むWSOP形式に近い8ゲームローテーションです。",
+  },
+  "mix-10game-pro": {
+    description: "8-GameにBadugiとNL 2-7 Single Drawを加えた上位ミックスです。",
+  },
+  "mix-pro-dealers-choice": {
+    description: "重み付けと除外設定を使い、次のゲームをディーラーズチョイス形式で選ぶローテーションです。",
+  },
+  "mix-pro-category": {
+    description: "カテゴリごとの重みと候補プールを指定して、ゲーム種別を切り替えるディーラーズチョイスです。",
+  },
+});
+
+function readStoredLanguage() {
+  if (typeof window === "undefined") return MGX_DEFAULT_LOCALE;
+  return window.localStorage.getItem(LANGUAGE_STORAGE_KEY) ?? MGX_DEFAULT_LOCALE;
+}
+
+function localizeVariantProfile(profile, language) {
+  if (!profile) return profile;
+  if (language !== "ja") return profile;
+  const translation = variantJa[profile.id];
+  return {
+    ...profile,
+    name: translation?.name ?? profile.name,
+    description: translation?.description ?? profile.description,
+    summary: translation?.description ?? profile.summary,
+    searchText: `${profile.id} ${translation?.name ?? profile.name} ${
+      translation?.description ?? profile.summary ?? ""
+    } ${(profile.tags ?? []).join(" ")}`.toLowerCase(),
+  };
+}
+
+function localizePreset(preset, language) {
+  if (language !== "ja") return preset;
+  const translation = MIXED_PRESET_JA[preset.id];
+  return {
+    ...preset,
+    description: translation?.description ?? preset.description,
+  };
+}
 
 const createDefaultCategoryRules = () => ({
   weights: CATEGORY_ORDER.reduce((acc, cat) => {
@@ -173,7 +222,7 @@ function SelectedList({ draft, setDraft, isVariantPlayable }) {
   );
 }
 
-export default function MixedGameScreen() {
+export default function MixedGameScreen({ language = readStoredLanguage() }) {
   const navigate = useNavigate();
   const location = useLocation();
   const {
@@ -249,13 +298,22 @@ export default function MixedGameScreen() {
   }, [location.search, proPresets, profiles, navigate, saveProfile]);
 
   const variantOptions = useMemo(() => {
-    const source = search.trim()
-      ? listVariantProfiles().filter((profile) =>
-          profile.name.toLowerCase().includes(search.trim().toLowerCase())
+    const profiles = listVariantProfiles().map((profile) =>
+      localizeVariantProfile(profile, language)
+    );
+    const query = search.trim().toLowerCase();
+    const source = query
+      ? profiles.filter((profile) =>
+          (profile.searchText ?? `${profile.id} ${profile.name} ${profile.summary}`.toLowerCase()).includes(query)
         )
-      : listVariantProfiles({ category: activeCategory });
+      : profiles.filter((profile) => profile.category === activeCategory);
     return source.slice(0, 40);
-  }, [activeCategory, search]);
+  }, [activeCategory, language, search]);
+
+  const localizedProPresets = useMemo(
+    () => proPresets.map((preset) => localizePreset(preset, language)),
+    [language, proPresets],
+  );
 
   const blockWhenLocked = () => {
     if (!mixedLocked) return false;
@@ -379,6 +437,117 @@ export default function MixedGameScreen() {
   };
 
   const builderDisabled = mixedLocked;
+  const categoryLabels =
+    language === "ja"
+      ? {
+          [GAME_VARIANT_CATEGORIES.BOARD]: "ボード / ホールデム / オマハ",
+          [GAME_VARIANT_CATEGORIES.TRIPLE_DRAW]: "トリプルドロー",
+          [GAME_VARIANT_CATEGORIES.SINGLE_DRAW]: "シングルドロー",
+          [GAME_VARIANT_CATEGORIES.DRAMAHA]: "ドラマハ",
+          [GAME_VARIANT_CATEGORIES.STUD]: "スタッド",
+        }
+      : VARIANT_CATEGORY_LABELS;
+  const searchPlaceholder =
+    language === "ja" ? "ゲーム名・形式・説明で検索..." : "Search by game, format, or description...";
+  const variantSearchSection = (
+    <section className="bg-slate-900/80 border border-white/10 rounded-3xl p-6 space-y-4">
+      <div>
+        <p className="text-xs text-emerald-300 uppercase tracking-[0.3em]">
+          {language === "ja" ? "ゲーム検索" : "Game Search"}
+        </p>
+        <h2 className="text-xl font-semibold text-white">
+          {language === "ja" ? "ローテーションに入れるゲームを探す" : "Find Games for the Rotation"}
+        </h2>
+      </div>
+      <div className="relative">
+        <input
+          type="search"
+          placeholder={searchPlaceholder}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full rounded-2xl bg-slate-950/60 border border-white/10 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        />
+        {search && (
+          <button
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"
+            onClick={() => setSearch("")}
+          >
+            {language === "ja" ? "クリア" : "Clear"}
+          </button>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-3">
+        {CATEGORY_ORDER.map((category) => (
+          <button
+            key={category}
+            onClick={() => setActiveCategory(category)}
+            className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
+              category === activeCategory
+                ? "bg-emerald-500 text-slate-900"
+                : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+            }`}
+          >
+            {categoryLabels[category]}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        {variantOptions.map((profile) => {
+          const playable = isVariantPlayable(profile.id);
+          const selectedCount = draft.selectedGameIds.filter(
+            (id) => id === profile.id
+          ).length;
+          return (
+            <div
+              key={profile.id}
+              className="p-4 bg-slate-950/60 border border-white/10 rounded-2xl space-y-2"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-slate-400">{profile.id}</p>
+                  <h3 className="text-lg font-semibold">{profile.name}</h3>
+                </div>
+                <span
+                  className={`text-xs px-3 py-1 rounded-full ${
+                    playable
+                      ? "bg-emerald-500/20 text-emerald-200"
+                      : "bg-slate-800 text-slate-400"
+                  }`}
+                >
+                  {playable
+                    ? language === "ja"
+                      ? "プレイ可能"
+                      : "Playable"
+                    : language === "ja"
+                    ? "準備中"
+                    : "Planned"}
+                </span>
+              </div>
+              <p className="text-sm text-slate-300">{profile.summary}</p>
+              <p className="text-xs text-slate-400">
+                {profile.betting} / {profile.status}
+              </p>
+              <button
+                type="button"
+                onClick={() => addGameToDraft(profile.id)}
+                className="w-full px-3 py-2 rounded-xl bg-emerald-500/80 text-slate-900 font-semibold disabled:bg-slate-800 disabled:text-slate-500 disabled:border disabled:border-white/10"
+                disabled={
+                  builderDisabled ||
+                  (!draft.allowDuplicates &&
+                    draft.selectedGameIds.includes(profile.id)) ||
+                  draft.selectedGameIds.length >= MAX_SELECTED
+                }
+              >
+                {language === "ja" ? "追加する" : "Add"}
+                {selectedCount > 0 ? `（${selectedCount}）` : ""}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
 
   return (
     <div
@@ -418,6 +587,8 @@ export default function MixedGameScreen() {
           </div>
         )}
 
+        {variantSearchSection}
+
         <section className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
@@ -431,7 +602,7 @@ export default function MixedGameScreen() {
             </div>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
-            {proPresets.map((preset) => (
+            {localizedProPresets.map((preset) => (
               <div
                 key={preset.id}
                 className="rounded-2xl border border-white/10 bg-slate-950/40 p-4 flex flex-col gap-2"
@@ -704,91 +875,6 @@ export default function MixedGameScreen() {
                 />
               </div>
             </div>
-          </div>
-        </section>
-
-        <section className="bg-slate-900/80 border border-white/10 rounded-3xl p-6 space-y-4">
-          <div className="flex flex-wrap gap-3">
-            {CATEGORY_ORDER.map((category) => (
-              <button
-                key={category}
-                onClick={() => setActiveCategory(category)}
-                className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
-                  category === activeCategory
-                    ? "bg-emerald-500 text-slate-900"
-                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                }`}
-              >
-                {VARIANT_CATEGORY_LABELS[category]}
-              </button>
-            ))}
-          </div>
-
-          <div className="relative">
-            <input
-              type="search"
-              placeholder="ゲーム名で検索..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-2xl bg-slate-950/60 border border-white/10 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-            {search && (
-              <button
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"
-                onClick={() => setSearch("")}
-              >
-                クリア
-              </button>
-            )}
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            {variantOptions.map((profile) => {
-              const playable = isVariantPlayable(profile.id);
-              const selectedCount = draft.selectedGameIds.filter(
-                (id) => id === profile.id
-              ).length;
-              return (
-                <div
-                  key={profile.id}
-                  className="p-4 bg-slate-950/60 border border-white/10 rounded-2xl space-y-2"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-slate-400">{profile.id}</p>
-                      <h3 className="text-lg font-semibold">{profile.name}</h3>
-                    </div>
-                    <span
-                      className={`text-xs px-3 py-1 rounded-full ${
-                        playable
-                          ? "bg-emerald-500/20 text-emerald-200"
-                          : "bg-slate-800 text-slate-400"
-                      }`}
-                    >
-                      {playable ? "Playable" : "Planned"}
-                    </span>
-                  </div>
-                  <p className="text-sm text-slate-300">{profile.summary}</p>
-                  <p className="text-xs text-slate-400">
-                    {profile.betting} / {profile.status}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => addGameToDraft(profile.id)}
-                    className="w-full px-3 py-2 rounded-xl bg-emerald-500/80 text-slate-900 font-semibold disabled:bg-slate-800 disabled:text-slate-500 disabled:border disabled:border-white/10"
-                    disabled={
-                      builderDisabled ||
-                      (!draft.allowDuplicates &&
-                        draft.selectedGameIds.includes(profile.id)) ||
-                      draft.selectedGameIds.length >= MAX_SELECTED
-                    }
-                  >
-                    追加する
-                    {selectedCount > 0 ? `（${selectedCount}）` : ""}
-                  </button>
-                </div>
-              );
-            })}
           </div>
         </section>
 

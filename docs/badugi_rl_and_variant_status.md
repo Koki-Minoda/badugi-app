@@ -2356,6 +2356,9 @@ Draw RL test coverage:
 - [x] `TUI-07` FriendMatchSetupScreen を language 対応し、日本語設定時に自然な日本語を表示する。
 - [x] `TUI-08` friend match tests を日本語/英語の両方に対応する。
 - [x] `TUI-09` tournament layout smoke を追加し、HUD / hero card / showdown-visible seats の viewport 内表示を確認する。
+- [x] `TUI-10` Game Selector / Mixed rotation builder のゲーム説明を言語設定に合わせる。
+  - 2026-05-05 対応: `/games` と `/mixed` は `mgx_language` を参照し、日本語設定時は variant description / mixed preset description / status label を日本語表示する。
+  - 2026-05-05 対応: ゲーム検索欄を Game Selector と Mixed rotation builder の上部へ移し、先に検索・絞り込みしてから quick start / preset / profile 編集へ進める構成に変更。
 
 ### 15.4 確認結果
 

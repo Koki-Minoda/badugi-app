@@ -226,15 +226,18 @@
   },
   {
     "id": "model-badugi-iron-v1",
-    "version": "v1",
+    "version": "v2",
     "variantIds": [
       "D03"
     ],
     "tier": "iron",
     "onnx": "models/badugi_iron_v1.onnx",
-    "checksumSha256": "73bf81e5f993b0801f3588747e96447a8d03b09d0a9189eca77a135f4b98efdb",
-    "trainingStatus": "bootstrap",
-    "trainingNotes": "Bootstrap heuristic ONNX used to exercise the frontend ONNX path. Not validated as stronger than human players; replace with a trained checkpoint that clears Pro baseline, worst-profile, fold-rate, and human/practice gates.",
+    "checksumSha256": "172c5057712630782864949b5ac0098d9b4f510ea56ce2464afb49f3959dca05",
+    "trainingRun": "badugi_sixmax_iron_draw_final_20k_20260504",
+    "trainingCheckpoint": "badugi_dqn_010000_20260504-120111.pt",
+    "trainingStatus": "active-practice-gated",
+    "trainingNotes": "Trained 6-max Iron checkpoint selected from the draw-quality/final-fold-discipline 20k run. Re-evaluated 2026-05-05 vs Pro v2 on 7 profiles x 2 seeds x 120 episodes: avgReward 3.043 vs 2.987 (+0.057), showdownWinRate 0.731 vs 0.706, worstProfileAvgReward 2.209 vs 2.130, profitableFoldMisses 1 vs 13, negativeRaiseEVActions 12 vs 108. Practice-only Iron benchmark still fails the strict foldRate gate (0.204 > 0.18) and humanVerified=false; do not claim human-verified Iron strength until 50+ real hand logs pass.",
+    "featureSet": "badugi-observation-v1-ev-range",
     "productionRequired": true,
     "inputShape": [
       96

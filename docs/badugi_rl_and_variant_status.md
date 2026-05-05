@@ -1708,7 +1708,7 @@ Draw RL test coverage:
           - 2026-05-04 実装: `DEFAULT_AI_TIER_ID` を `pro` に変更。設定画面の開発者向け tier override が未設定の場合、通常CPUは Pro policy を使う。既にブラウザlocalStorageへ `dev.aiTierOverride` が保存されている場合は、その明示設定を優先する。
           - 2026-05-04 実装: Pro / Iron / WorldMaster の `policyRouter` に elite補正を追加。発展性の高い3-card low drawのsemi-bluff、rough made Badugiのthin value、強いmade handでのto-call punish raiseを増やす。Standard以下には同補正を入れない。
           - 2026-05-04 テスト: ProがStandardより強い3-card drawをopen semi-bluffしやすいこと、WorldMasterがProよりrough made Badugiをthin value raiseしやすいことを回帰テスト化。
-        - [ ] `AI-06r` Badugi Iron trained checkpoint を作る。
+        - [x] `AI-06r` Badugi Iron trained checkpoint を作る。
           - 2026-05-04 人間ログ評価: `/tmp/badugi-human-log.lbUkIF.jsonl` は3ハンドのみ検出。`win=1/loss=1/tie=1` で、形式確認としては使えるが強さ判定には不足。実プレイ分はブラウザから `window.MGX.exportHumanBenchmarkLogs()` でJSONL出力し、最低50ハンド以上で再評価する。
           - 2026-05-04 Pro評価: `npm run ai:benchmark-badugi-human-practice -- --model public/models/badugi_pro_v1.onnx --tier pro --episodes 200 --table-size 6 --human-log /tmp/badugi-human-log.lbUkIF.jsonl --min-human-log-hands 3 --require-human-logs` は PASS。practice summary は `avgReward=2.708`, `showdownWinRate=0.682`, `foldRate=0.163`, `worstProfileAvgReward=1.520`。
           - 2026-05-04 既存Iron候補再評価: `badugi_sixmax_iron_profile_continue_20k_20260502` の5k/10k/15k/20k checkpointは Pro比 `+0.017/+0.019/-0.048/-0.030`。showdownWinRateは上がるがfoldRateも上がり、Iron昇格不可。
@@ -1738,6 +1738,11 @@ Draw RL test coverage:
           - 2026-05-04 実装: 学習量を増やす前に first-in value bet の教師サンプル比率を見直した。`first_in_value_bet_action()` と専用 replay buffer / `--first-in-value-bet-replay-ratio` / `--first-in-value-bet-loss-weight` を追加し、to-callなしのmade-hand value betを通常expert replayとは別に維持する。
           - 2026-05-04 fixture: `loose_passive` / draw-heavy傾向相手に T-low程度のmade Badugiをfirst-in value betするfixtureと、pat pressure相手には同じ手を打たないfixtureを追加。狙いはbet頻度だけを雑に増やさず、value betとして正しい局面だけを厚くすること。
           - 次の実験: Iron probeは `--first-in-value-bet-replay-ratio 0.20〜0.30` から開始し、actionCountsの`3: bet`増加、badRaises据え置き、foldRate非悪化を確認してから20kへ進める。
+          - 2026-05-05 Iron反映: `badugi_sixmax_iron_draw_final_20k_20260504/badugi_dqn_010000_20260504-120111.pt` を `public/models/badugi_iron_v1.onnx` にexportし、`model-badugi-iron-v1` を `v2 / active-practice-gated` に更新。bootstrap Iron は置き換え済み。
+          - 2026-05-05 synthetic gate: Pro v2 baseline比較を 7 profile x 2 seeds x 120 episodes で再実行。candidateは `avgReward=3.043` vs Pro `2.987` (`+0.057`), `showdownWinRate=0.731` vs `0.706`, `foldRate=0.202` vs `0.164`, `worstProfileAvgReward=2.209` vs `2.130`。diagnosticは `profitableFoldMisses=1` vs Pro `13`, `negativeRaiseEVActions=12` vs Pro `108` まで改善。
+          - 2026-05-05 human/practice benchmark: practice-only Iron gate は `avgReward=3.018`, `showdownWinRate=0.728`, `worstProfileAvgReward=2.209` は通過したが、`foldRate=0.204` が strict gate `<=0.18` を超過。`humanVerified=false` のため「人間相手にIron確定」とは扱わない。
+          - [ ] `AI-06r-4` 実プレイ50hand以上のhuman logを `window.MGX.exportHumanBenchmarkLogs()` で集め、`--require-human-logs` 付きhuman benchmarkを通す。
+          - [ ] `AI-06r-5` foldRateを `<=0.18` に抑えつつ、showdownWinRate `>=0.72` / worst-profile reward非悪化を維持するfine-tuneを行う。WorldMaster昇格前に必須。
       - [x] `AI-06e` 2-7 / A-5 用の実ONNXを生成・配置する。現状は `model-27draw-iron-v1` (`D01/S01`) と `model-a5draw-iron-v1` (`D02/S02`) の registry / feature builder / routing test はあるが、実 `.onnx` は optional 未配置で、App draw CPU は rule-based fallback が主経路。
         - 2026-05-05 対応: Draw ONNX の出力decodeを `DRAW_RL_ACTIONS` label + legal action mask 基準に修正。従来は出力indexを直接draw枚数として扱っており、将来 `draw_4/5` や `fold/check/call` を含む11-actionモデルを入れた際にズレる危険があった。
         - 2026-05-05 対応: `src/rl/training/build_draw_bootstrap_onnx.py` を追加し、`public/models/27draw_iron_v1.onnx` と `public/models/a5draw_iron_v1.onnx` を生成。registry checksum を更新し、`ai:verify-models` で D01/S01・D02/S02 の optional ONNX 配置を確認済み。

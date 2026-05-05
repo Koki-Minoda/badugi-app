@@ -34,8 +34,12 @@ Current blocker:
   checkpoint from `badugi_sixmax_open_spot_20k_20260502`.
 - The current Pro result is a synthetic RL gate result against scripted profile
   opponents. It does not yet prove a 60%+ win rate against real human players.
-- `badugi_iron_v1.onnx` and `badugi_worldmaster_v1.onnx` are currently
-  generated bootstrap policies.
+- `badugi_iron_v1.onnx` is now the trained 6-max Iron practice-gated candidate
+  from `badugi_sixmax_iron_draw_final_20k_20260504` 10k. It beats the current
+  Pro synthetic baseline on avg reward, showdown win rate, worst-profile reward,
+  profitable-fold misses, and negative-raise diagnostics, but it is not yet
+  human-verified because the strict practice Iron fold-rate gate still fails.
+- `badugi_worldmaster_v1.onnx` is currently a generated bootstrap policy.
 - Bootstrap models are real ONNX files and exercise the frontend ONNX path, but
   they are heuristic initial policies, not validated high-tier opponents, and
   should later be replaced by trained RL checkpoints.

@@ -32,14 +32,14 @@ This matrix tracks add-on coverage for game progression regressions. Existing Vi
 | Variant ID | Game Name | Implemented | Supports Betting | Supports Draw | Supports All-in | Supports Tournament | Required Progress Tests | Added Tests | Missing Tests | Status | Notes |
 |---|---|---:|---:|---:|---:|---:|---|---|---|---|---|
 | B01 | NL Hold'em | Yes | Yes | No | Yes | Yes | betting/all-in/showdown | scenario smoke | MTT E2E variant-specific | Added | Alias `nlh` |
-| B02 | FL Hold'em | Yes | Yes | No | Yes | Yes | cap/betting/all-in/showdown | scenario smoke + cap unit existing | UI cap E2E | Added | Alias `flh` |
+| B02 | FL Hold'em | Yes | Yes | No | Yes | Yes | cap/betting/all-in/showdown | scenario smoke + cap unit + CAP-REG-05 UI E2E | CPU natural cap long-run | Added | Alias `flh` |
 | B03 | NL Super Hold'em | Yes | Yes | No | Yes | Yes | betting/all-in/showdown | scenario smoke | variant-specific E2E | Added | Alias `super_holdem` |
 | B04 | FL Super Hold'em | Yes | Yes | No | Yes | Yes | cap/betting/all-in/showdown | scenario smoke | UI cap E2E | Added | Alias `fl_super_holdem` |
 | B05 | Pot-Limit Omaha | Yes | Yes | No | Yes | Yes | betting/all-in/side pot/showdown | scenario smoke + E2E progress | deeper side-pot E2E | Added | Alias `plo` |
 | B06 | PLO8 | Yes | Yes | No | Yes | Yes | hi/lo split/all-in/showdown | scenario smoke | hi/lo UI result E2E | Added | Alias `plo8` |
 | B07 | Big-O | Yes | Yes | No | Yes | Yes | hi/lo split/all-in/showdown | scenario smoke | hi/lo UI result E2E | Added | Alias `big_o` |
 | B08 | 5-Card PLO | Yes | Yes | No | Yes | Yes | betting/all-in/showdown | scenario smoke | variant-specific E2E | Added | Alias `five_card_plo` |
-| B09 | FLO8 | Yes | Yes | No | Yes | Yes | cap/hi-lo/all-in/showdown | scenario smoke + cap unit existing | UI cap E2E | Added | Alias `flo8` |
+| B09 | FLO8 | Yes | Yes | No | Yes | Yes | cap/hi-lo/all-in/showdown | scenario smoke + cap unit + CAP-REG-05 UI E2E | CPU natural cap long-run | Added | Alias `flo8` |
 | D01 | 2-7 Triple Draw | WIP | Yes | Yes | Yes | Yes | draw count/betting/showdown | scenario smoke + known bug | UI 5-hand per variant exists separately | Added | Controller harness |
 | D02 | A-5 Triple Draw | WIP | Yes | Yes | Yes | Yes | draw count/betting/showdown | scenario smoke + known bug | UI 5-hand per variant exists separately | Added | Controller harness |
 | D03 | Badugi | Yes | Yes | Yes | Yes | Yes | action/all-in/draw/MTT | E2E progress existing + matrix | controller harness | Partial | Legacy App lifecycle |

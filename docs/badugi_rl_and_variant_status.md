@@ -3257,12 +3257,15 @@ Draw RL test coverage:
 - [x] `CAP-REG-02` FLO8: cap到達後のraise試行をcall扱いにし、残りcall後に `FLOP -> TURN` へ進むことを追加。
 - [x] `CAP-REG-03` Stud: cap到達後のraise試行をcall扱いにし、残りcall後に `FOURTH -> FIFTH` へ進むことを追加。
 - [x] `CAP-REG-04` cap到達後に `raiseCountThisStreet` が増えず、次streetで0にresetされることを確認する。
+- [x] `CAP-REG-05` UI E2EでFLH/FLO8/Studのcap到達時にRaiseボタンが消え、Call/Checkで進行し、hand historyの `betInfo.capReached/canRaise/raiseCountTable` が記録されることを確認する。
 
 確認結果:
 - [x] `npm test -- --run src/games/nlh/__tests__/NLHGameController.test.js src/games/plo/__tests__/PLO8GameController.test.js src/games/stud/__tests__/StudSplitGameController.test.js`: 3 files / 35 tests passed。
+- [x] `npm test -- --run src/ui/__tests__/getAvailableActions.test.js src/games/nlh/__tests__/NLHGameController.test.js src/games/plo/__tests__/PLO8GameController.test.js src/games/stud/__tests__/StudSplitGameController.test.js`: 4 files / 37 tests passed。
+- [x] `npx playwright test tests/e2e/fixed-limit-cap-ui.spec.ts --project=badugi-flow`: 4 tests passed。
 
 残リスク:
-- [ ] `CAP-REG-05` UI E2EでHero/CPUが実ボタン操作・自動判断を通じてcap到達したときのボタン表示、raise不可表示、hand history記録を確認する。
+- [ ] CPUが実戦中にcapへ到達する自然発生ケースは、別途長時間UI smokeで補強する。
 
 ### 21.13 2026-05-06 Stud UI Call turn sync regression
 

@@ -29,14 +29,14 @@ This matrix tracks add-on progress coverage by variant family. It does not repla
 | STUD | ST5 Razzducey | Yes | progress scenario | split result UI detail | STUD-001/002/005 | Added | Split Stud smoke |
 | STUD | ST6 2-7 Razz | Yes | progress scenario | low result UI detail | STUD-001/002/005 | Added | 2-7 low evaluator smoke |
 | FLOP_HOLDEM | B01 NL Hold'em | Yes | progress scenario | UI preflop option E2E | FLOP-001/002/003 | Added | 6-max blinds/order smoke |
-| FLOP_HOLDEM | B02 FL Hold'em | Yes | progress scenario | UI cap E2E | FLOP-001/002/003 | Added | Limit cap covered elsewhere |
+| FLOP_HOLDEM | B02 FL Hold'em | Yes | progress scenario + CAP-REG-05 UI E2E | CPU natural cap long-run | FLOP-001/002/003 | Added | Raise hidden at cap; Call/Check history covered |
 | FLOP_HOLDEM | B03 NL Super Hold'em | Yes | progress scenario | UI 5-hand per variant | FLOP-002/003, SPECIAL-001 | Added | Also SPECIAL |
 | FLOP_HOLDEM | B04 FL Super Hold'em | Yes | progress scenario | UI cap E2E | FLOP-002/003, SPECIAL-001 | Added | Also SPECIAL |
 | FLOP_OMAHA | B05 PLO | Yes | progress scenario, PLO E2E | deeper side-pot E2E | FLOP-003/OMAHA-001 | Added | Must-use-two checked |
 | FLOP_OMAHA | B06 PLO8 | Yes | progress scenario | hi/lo result UI detail | FLOP-003/OMAHA-001/SPLIT-001 | Added | Split-pot family |
 | FLOP_OMAHA | B07 Big-O | Yes | progress scenario | hi/lo catalog/evaluator clarification | FLOP-003/OMAHA-001 | Partial | Current catalog is high-only despite product expectation |
 | FLOP_OMAHA | B08 5-Card PLO | Yes | progress scenario | deeper side-pot E2E | FLOP-003/OMAHA-001 | Added | Must-use-two checked through evaluator fixture |
-| FLOP_OMAHA | B09 FLO8 | Yes | progress scenario | hi/lo result UI detail | FLOP-003/OMAHA-001/SPLIT-001 | Added | Split-pot family |
+| FLOP_OMAHA | B09 FLO8 | Yes | progress scenario + CAP-REG-05 UI E2E | hi/lo result UI detail / CPU natural cap long-run | FLOP-003/OMAHA-001/SPLIT-001 | Added | Split-pot family; Raise hidden at cap covered |
 | SPLIT_POT | B06 PLO8 | Yes | progress scenario | quartering/odd-chip UI | SPLIT-001 | Added | Smoke only |
 | SPLIT_POT | B09 FLO8 | Yes | progress scenario | quartering/odd-chip UI | SPLIT-001 | Added | Smoke only |
 | SPLIT_POT | D04/D05/S05/S06 split draw | Yes | progress scenario | component pot UI | DRAW-FAMILY-003 | Added | Badeucey/Badacey paths |

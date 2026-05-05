@@ -33,7 +33,7 @@ This ledger consolidates scattered bug notes from `docs/bugs`, `docs/testing`, `
 | HIST-REG-05 | `docs/badugi_rl_and_variant_status.md` | Replay UI frame再生を全variantで押下確認できていない | history/replay smoke | replay UI | P3 | Open | Not fixed this pass | Future full variant replay E2E |
 | FB-REG-06 | `docs/badugi_rl_and_variant_status.md` | 実OpenAI環境でvariant別30hand以上FB混同確認が未完 | feedback tests + manual key env | play feedback | P3 | Open | Not fixed this pass | Needs production-like manual/API run |
 | MIX-PROG-05 | `docs/badugi_rl_and_variant_status.md` | 8/10Game rotation境界のseat/button/stack引き継ぎ5周確認が未完 | `mixed-rotation-core-progression.spec.ts --grep MIX-PROG-05` | mixed rotation boundary | P2 | Fixed | `src/ui/App.jsx`, `tests/e2e/mixed-rotation-core-progression.spec.ts` | 8Game 40境界 / 10Game 50境界で variantId・seat・dealerIdx・stack+pot total を検証 |
-| CAP-REG-05 | `docs/badugi_rl_and_variant_status.md` | cap到達時のUI button/raise不可/history確認が未完 | cap unit exists, UI E2E missing | fixed-limit cap UI | P2 | Open | Not fixed this pass | Add FLH/FLO8 UI cap E2E |
+| CAP-REG-05 | `docs/badugi_rl_and_variant_status.md` | cap到達時のUI button/raise不可/history確認が未完 | `tests/e2e/fixed-limit-cap-ui.spec.ts` | fixed-limit cap UI | P2 | Fixed | `src/ui/App.jsx`, `src/ui/components/Controls.jsx`, `src/ui/screens/layouts/GameLayoutBase.jsx`, `src/ui/utils/getAvailableActions.js`, `tests/e2e/fixed-limit-cap-ui.spec.ts` | FLH/FLO8/StudでRaise非表示、Call/Check進行、canonical history `betInfo` を検証 |
 | BUG-55 | `docs/badugi_rl_and_variant_status.md` | Stud/Razzの実button操作だけで3rd-7th複数hand完走するE2Eが未完 | `stud-street-progression.spec.ts` partial | Stud/Razz E2E | P1 | Fixed | `src/ui/App.jsx`, `src/games/stud/StudGameController.js`, `tests/e2e/stud-street-progression.spec.ts` | `npx playwright test tests/e2e/stud-street-progression.spec.ts --project=badugi-flow` 6 passed; UI-only Stud/Razz 2hand loop 2 passed |
 | CP1-PROGRESS | add-on report / QA matrix | Chinese/OFC progress runnerが未対応 | `npm run test:game:chinese` | Chinese/OFC controller harness | P3 | Fixed for CP1; OFC-specific gaps remain | `src/games/testing/scenario/chineseFamilyProgress.test.js`, `runVariantFamilyScenario.js` | CP1 set/result/next-hand PASS; OFC street-by-street/fantasyland remains separate |
 
@@ -43,7 +43,7 @@ This ledger consolidates scattered bug notes from `docs/bugs`, `docs/testing`, `
 |---|---|---|---|
 | P1 | `BUG-55` | Fixed。Stud/Razzは手動報告でも進行誤認が目立つため、helper依存を減らす必要があった。 | UI-click-only 3rd-7th street 2hand E2Eを追加済み。 |
 | P2 | `MIX-PROG-05` | Mixed rotation境界でstack/button継承が壊れるとRL/履歴も信用できない。 | Fixed: 8Game/10Gameのvariant切替5周E2Eを追加。 |
-| P2 | `CAP-REG-05` | fixed-limit cap後のraise不可/履歴は運用上重要。 | FLH/FLO8でcap到達UI E2Eを追加。 |
+| P2 | `CAP-REG-05` | fixed-limit cap後のraise不可/履歴は運用上重要。 | Fixed。今後はCPU自然発生capの長時間smokeを追加。 |
 | P3 | `PV90-16` | 現行テスト前提が実進行と競合し、将来の回帰判断を曖昧にする。 | all-inしない固定スタック/固定action fixtureに変更。 |
 | P3 | `BG-005` | 実スマホ品質はPlaywrightだけでは保証できない。 | 実機QAチェックリストとログ取得手順を追加。 |
 

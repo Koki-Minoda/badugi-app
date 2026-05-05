@@ -3309,6 +3309,7 @@ const SAFE_RESET_PHASE = "IDLE";
     ts: Date.now(),
   };
   let historyAction = null;
+  let canonicalActionMetadata = nextEntry.metadata;
   if (idx !== null && currentHandHistoryRef.current) {
     const historyType = normalizeHandHistoryType(type);
     const amountDelta = Math.max(0, (resolvedBetAfter ?? 0) - (resolvedBetBefore ?? 0));
@@ -3338,6 +3339,7 @@ const SAFE_RESET_PHASE = "IDLE";
     const historyMetadata = normalizedDrawInfo
       ? { drawInfo: normalizedDrawInfo }
       : { betInfo };
+    canonicalActionMetadata = historyMetadata;
     historyAction = appendHandHistoryAction({
       seat: idx,
       street: phaseLabel,
@@ -3370,6 +3372,7 @@ const SAFE_RESET_PHASE = "IDLE";
         action: normalizedType,
         actionSeq: historyAction?.seq ?? null,
         amount: amountDelta,
+        metadata: canonicalActionMetadata,
       });
     }
   }
@@ -3720,6 +3723,76 @@ const SAFE_RESET_PHASE = "IDLE";
       }
     },
     [phase, applyForcedBetAction]
+  );
+
+  const setupFixedLimitCapFixtureForTest = useCallback(
+    ({
+      street = isSingleTableStudGame ? "FOURTH" : "FLOP",
+      currentBet: requestedCurrentBet = isSingleTableStudGame ? 40 : 80,
+      heroBet: requestedHeroBet = null,
+    } = {}) => {
+      const controller = ensureGameController();
+      if (!controller || !controller.state || typeof controller.getSnapshot !== "function") {
+        return null;
+      }
+      if (typeof controller.startNewHand === "function") {
+        controller.startNewHand();
+      }
+      const raiseCap = Number(controller.raiseCap ?? 4) || 4;
+      const currentBetValue = Math.max(0, Number(requestedCurrentBet) || 0);
+      const heroBetValue =
+        requestedHeroBet === null || requestedHeroBet === undefined
+          ? Math.max(0, currentBetValue - 20)
+          : Math.max(0, Number(requestedHeroBet) || 0);
+      controller.raiseCountThisStreet = raiseCap;
+      controller.state.street = street;
+      controller.state.phase = "BET";
+      controller.state.currentBet = currentBetValue;
+      controller.state.currentActor = 0;
+      controller.state.turn = 0;
+      controller.state.betHead = controller.state.betHead ?? null;
+      controller.state.lastAggressor = controller.state.lastAggressor ?? null;
+      if (Array.isArray(controller.state.boardCards) && !isSingleTableStudGame) {
+        controller.state.boardCards =
+          street === "FLOP" ? ["2C", "7D", "9H"] : controller.state.boardCards;
+      }
+      controller.state.players = (controller.state.players ?? []).map((player, seatIndex) => {
+        const betThisStreet = seatIndex === 0 ? heroBetValue : currentBetValue;
+        const stackBase = Math.max(0, 1000 - betThisStreet);
+        return {
+          ...player,
+          folded: false,
+          seatOut: false,
+          allIn: false,
+          stack: stackBase,
+          totalInvested: betThisStreet,
+          betThisStreet,
+          betThisRound: betThisStreet,
+          bet: betThisStreet,
+          hasActedThisStreet: seatIndex !== 0,
+          hasActedThisRound: seatIndex !== 0,
+          lastAction: seatIndex === 0 ? null : "Call",
+        };
+      });
+      const snapshot = controller.getSnapshot();
+      const fixtureSnapshot = {
+        ...snapshot,
+        raiseStats: {
+          raiseCountThisRound: raiseCap,
+          raisePerRound: [raiseCap, 0, 0, 0],
+          raisePerSeatRound: Array(NUM_PLAYERS)
+            .fill(0)
+            .map(() => [0, 0, 0, 0]),
+        },
+      };
+      syncLegacyFromControllerSnapshot(fixtureSnapshot, { seatIndex: 0 });
+      setRaiseCountThisRound(raiseCap);
+      setCurrentBet(currentBetValue);
+      setPhase("BET");
+      setTurn(0);
+      return fixtureSnapshot;
+    },
+    [ensureGameController, isSingleTableStudGame, syncLegacyFromControllerSnapshot],
   );
 
   const resolveHandImmediately = useCallback(() => {
@@ -5863,6 +5936,7 @@ const SAFE_RESET_PHASE = "IDLE";
       },
       forceSequentialFolds,
       forceAllIn: forceAllInAction,
+      setupFixedLimitCapFixtureForTest,
       forceHeroDraw,
       resolveHandNow: resolveHandImmediately,
       dealNewHandNow: startNextHand,
@@ -5884,6 +5958,11 @@ const SAFE_RESET_PHASE = "IDLE";
         turn,
         drawRound,
         betRound: betRoundIndex,
+        raiseCountThisRound,
+        controllerRaiseCount:
+          typeof gameControllerRef.current?.raiseCountThisStreet === "number"
+            ? gameControllerRef.current.raiseCountThisStreet
+            : null,
         dealerIdx,
         handId: handIdRef.current,
         handCount: handCountRef.current,
@@ -5957,6 +6036,7 @@ const SAFE_RESET_PHASE = "IDLE";
     syncLegacyFromControllerSnapshot,
     forceSequentialFolds,
     forceAllInAction,
+    setupFixedLimitCapFixtureForTest,
     resolveHandImmediately,
     startNextHand,
     applyCustomHands,
@@ -5965,6 +6045,7 @@ const SAFE_RESET_PHASE = "IDLE";
     turn,
     drawRound,
     betRoundIndex,
+    raiseCountThisRound,
     dealerIdx,
     tournamentHudState,
     startTournamentMTT,
@@ -7394,6 +7475,10 @@ const SAFE_RESET_PHASE = "IDLE";
       : 0;
     const toCall = Math.max(0, maxNow - heroCommitted);
     const pay = toCall;
+    const raiseCountBeforeControllerAction =
+      typeof gameControllerRef.current?.raiseCountThisStreet === "number"
+        ? gameControllerRef.current.raiseCountThisStreet
+        : raiseCountThisRound;
     const controllerOutcome = tryControllerBetAction({
       actionType: toCall === 0 ? "check" : "call",
       amount: toCall,
@@ -7401,13 +7486,21 @@ const SAFE_RESET_PHASE = "IDLE";
     });
     if (controllerOutcome?.snapshot) {
       const heroAfter = controllerOutcome.snapshot.players?.[0] ?? me;
+      const heroAfterBet =
+        heroAfter.betThisRound ?? heroAfter.betThisStreet ?? betBefore;
+      const effectiveRaiseCountTable =
+        raiseCountBeforeControllerAction;
       const actionLabel =
         toCall === 0
           ? "Check"
-          : heroAfter.stack === 0 && heroAfter.betThisRound > betBefore
+          : heroAfter.stack === 0 && heroAfterBet > betBefore
           ? "Call (All-in)"
           : "Call";
-      logAction(0, actionLabel, { toCall, pay: Math.min(heroAfter.betThisRound - betBefore, toCall), newBet: heroAfter.betThisRound });
+      logAction(0, actionLabel, {
+        toCall,
+        pay: Math.min(heroAfterBet - betBefore, toCall),
+        newBet: heroAfterBet,
+      });
       recordActionToLog({
         phase: "BET",
         round: currentBetRoundIndex(),
@@ -7417,8 +7510,8 @@ const SAFE_RESET_PHASE = "IDLE";
         stackBefore,
         stackAfter: heroAfter.stack ?? stackBefore,
         betBefore,
-        betAfter: heroAfter.betThisRound ?? betBefore,
-        raiseCountTable: raiseCountThisRound,
+        betAfter: heroAfterBet,
+        raiseCountTable: effectiveRaiseCountTable,
       });
       syncLegacyFromControllerSnapshot(controllerOutcome.snapshot, {
         seatIndex: 0,
@@ -7494,12 +7587,20 @@ const SAFE_RESET_PHASE = "IDLE";
       return;
     }
     if (!ensureSeatCanAct(0, "playerCheck")) return;
+    const raiseCountBeforeControllerAction =
+      typeof gameControllerRef.current?.raiseCountThisStreet === "number"
+        ? gameControllerRef.current.raiseCountThisStreet
+        : raiseCountThisRound;
     const controllerOutcome = tryControllerBetAction({
       actionType: "check",
       seatIndex: 0,
     });
     if (controllerOutcome?.snapshot) {
       const heroAfter = controllerOutcome.snapshot.players?.[0] ?? me;
+      const heroAfterBet =
+        heroAfter.betThisRound ?? heroAfter.betThisStreet ?? me.betThisRound;
+      const effectiveRaiseCountTable =
+        raiseCountBeforeControllerAction;
       logAction(0, "Check");
       recordActionToLog({
         phase: "BET",
@@ -7510,8 +7611,8 @@ const SAFE_RESET_PHASE = "IDLE";
         stackBefore: me.stack,
         stackAfter: heroAfter?.stack ?? me.stack,
         betBefore: me.betThisRound,
-        betAfter: heroAfter?.betThisRound ?? me.betThisRound,
-        raiseCountTable: raiseCountThisRound,
+        betAfter: heroAfterBet,
+        raiseCountTable: effectiveRaiseCountTable,
       });
       syncLegacyFromControllerSnapshot(controllerOutcome.snapshot, {
         seatIndex: 0,
@@ -7580,8 +7681,10 @@ const SAFE_RESET_PHASE = "IDLE";
     });
     if (controllerOutcome?.snapshot) {
       const heroAfter = controllerOutcome.snapshot.players?.[0] ?? me;
+      const heroAfterBet =
+        heroAfter.betThisRound ?? heroAfter.betThisStreet ?? betBefore;
       const payApplied =
-        (heroAfter.betThisRound ?? betBefore) - betBefore;
+        heroAfterBet - betBefore;
       const actionLabel =
         heroAfter.stack === 0 && payApplied < total ? "Raise (All-in)" : "Raise";
       setRaiseCountThisRound((c) => c + 1);
@@ -7591,7 +7694,7 @@ const SAFE_RESET_PHASE = "IDLE";
         toCall,
         raise: raiseAmt,
         pay: payApplied,
-        newBet: heroAfter.betThisRound ?? betBefore,
+        newBet: heroAfterBet,
         raiseCount: raiseCountThisRound + 1,
       });
       const newMax = maxBetThisRound(controllerOutcome.snapshot.players ?? []);
@@ -7605,7 +7708,7 @@ const SAFE_RESET_PHASE = "IDLE";
         stackBefore,
         stackAfter: heroAfter.stack ?? me.stack,
         betBefore,
-        betAfter: heroAfter.betThisRound ?? betBefore,
+        betAfter: heroAfterBet,
         raiseCountTable: raiseCountThisRound + 1,
       });
       syncLegacyFromControllerSnapshot(controllerOutcome.snapshot, {
@@ -8747,6 +8850,11 @@ const SAFE_RESET_PHASE = "IDLE";
         ...heroSeatView,
       }
     : playersSrc[0] ?? null;
+  const controllerRaiseCountForUi =
+    isSingleTableBoardGame &&
+    typeof gameControllerRef.current?.raiseCountThisStreet === "number"
+      ? gameControllerRef.current.raiseCountThisStreet
+      : null;
 
   const controlsPhase = controlsConfig?.phase ?? tablePhase;
   const controlsCurrentBet = controlsConfig?.currentBet ?? currentBetSrc;
@@ -8754,7 +8862,11 @@ const SAFE_RESET_PHASE = "IDLE";
   const heroToCall = Math.max(0, Number(controlsCurrentBet || 0) - heroBetThisRound);
   const currentRaiseCount = Math.max(
     0,
-    Number(raiseStatsSrc?.raiseCountThisRound ?? raiseCountThisRound) || 0,
+    Number(
+      controllerRaiseCountForUi ??
+        raiseStatsSrc?.raiseCountThisRound ??
+        raiseCountThisRound,
+    ) || 0,
   );
   const fixedLimitRaiseCap = 4;
   const currentRaiseUnit = getFixedLimitBetSize({

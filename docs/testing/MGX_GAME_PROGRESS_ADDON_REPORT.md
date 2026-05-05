@@ -61,7 +61,8 @@ Last updated: 2026-05-06
 | Bug ID | Covered By | Pass/Fail | Remaining Risk |
 |---|---|---|---|
 | ACTION-001 | Vitest invariant fixture | Pass | Needs real UI BB-option E2E later |
-| ACTION-002 | Vitest invariant fixture | Pass | Needs fixed-limit UI cap/option E2E |
+| ACTION-002 | Vitest invariant fixture + CAP-REG-05 E2E | Pass | BB option still needs broader natural-hand UI coverage |
+| CAP-REG-05 | `tests/e2e/fixed-limit-cap-ui.spec.ts` | Pass | CPU natural cap long-run remains future coverage |
 | ACTION-003 | Vitest + E2E | Pass | Broaden to every public variant |
 | ACTION-004 | Vitest invariant fixture | Pass | Existing Stud E2E covers one UI call path |
 | ACTION-005 | Vitest negative fixture | Pass | Guards folded actor freeze regressions |

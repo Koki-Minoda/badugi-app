@@ -19,7 +19,7 @@ Last updated: 2026-05-06
 |---|---:|---:|---:|---:|---|
 | DRAW | 14 | 13 | 1 | 0 | D03 Badugi still uses App E2E rather than controller harness |
 | STUD | 6 | 6 | 0 | 0 | UI-level repeated street/call/raise E2E remains separate |
-| FLOP_HOLDEM | 4 | 4 | 0 | 0 | UI BB-option/cap path E2E should be expanded |
+| FLOP_HOLDEM | 4 | 4 | 0 | 0 | CAP-REG-05 covers FLH cap UI; BB-option/natural cap long-run still useful |
 | FLOP_OMAHA | 5 | 5 | 0 | 0 | B07 Big-O is currently high-only in catalog; hi/lo expectation needs product/config decision |
 | SPLIT_POT | 9 | 9 | 0 | 0 | Component-pot / odd-chip UI clarity still needs E2E assertions |
 | SPECIAL | 8 | 8 | 0 | 0 | Dramaha result UI and board+draw explainability still need manual/E2E QA |

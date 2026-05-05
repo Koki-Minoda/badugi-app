@@ -20,6 +20,8 @@ export function installE2eTestDriver(apiRef) {
       apiRef.current?.forceMarkSeatFoldedForTest?.(...args),
     forceSequentialFolds: (...args) => apiRef.current?.forceSequentialFolds?.(...args),
     forceAllIn: (...args) => apiRef.current?.forceAllIn?.(...args),
+    setupFixedLimitCapFixtureForTest: (...args) =>
+      apiRef.current?.setupFixedLimitCapFixtureForTest?.(...args),
     forceHeroDraw: (...args) => apiRef.current?.forceHeroDraw?.(...args),
     resolveHandNow: (...args) => apiRef.current?.resolveHandNow?.(...args),
     dealNewHandNow: (...args) => apiRef.current?.dealNewHandNow?.(...args),

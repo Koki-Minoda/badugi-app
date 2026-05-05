@@ -12,13 +12,14 @@ export default function Controls({
   onRaise,
   onDraw,
   canDraw = true,
+  canRaise = true,
   layoutMode = "desktop",
   className,
 }) {
   const betActions = useMemo(() => {
     if (phase !== "BET") return [];
-    return getAvailableActions({ currentBet, player });
-  }, [phase, currentBet, player]);
+    return getAvailableActions({ currentBet, player, canRaise });
+  }, [phase, currentBet, player, canRaise]);
 
   if (!player) return null;
 

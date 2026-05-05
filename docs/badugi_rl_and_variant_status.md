@@ -2561,6 +2561,12 @@ Draw RL test coverage:
   - 背景: Razz/Stud/draw/board gameごとの進行差をテストで拾わないと、ゲームできると誤認する。
   - 2026-05-04: Razz/Razz27 のfull street unit fixture、Player表示順unit、HandResultOverlay split/component表示unitを追加。全variantの完全手動/自動E2E完走監査は継続タスク。
   - 2026-05-05: controller invariantは全playable variantの5連続handまで拡張済み。UI/E2E上の5連続hand、all-in/split-pot全variant網羅、Chinese/OFC layout UIは継続。
+- [x] `QA-20260505-STUD-STREET-UI-REGRESSION` Stud / Razz のUI実画面で THIRD -> FOURTH -> FIFTH -> SIXTH -> SEVENTH -> SHOWDOWN を完走し、4th以降の先頭アクターがチェックしても即SHOWDOWNへ飛ばないことをPlaywrightで固定する。
+  - 原因: App側の汎用同期がStud専用controllerの `currentBet` / bring-in情報を上書きし得ること、さらにApp由来のplayer snapshotで `seatIndex` が欠けるとbring-in seatが `undefined` になり、Third Streetの強制ベットが成立しないこと。
+  - 対応: Board/Stud/Dramahaではsession controllerの新規hand生成とlegacy external syncを使わないように分離。Stud controller側でplayer `seatIndex` を正規化し、Third Streetのbring-inが欠落した場合は `ensureThirdStreetBringIn()` で自己修復する。
+  - 対応: Stud street遷移直後はCPU auto actionに短いpauseを入れ、ユーザーが新streetの状況を視認できるようにした。stale timerが古いactorへactionを投げる経路も現controller actorで検証する。
+  - 検証: `npm test -- --run src/games/stud/__tests__/StudSplitGameController.test.js`: 17 passed。
+  - 検証: `npx playwright test tests/e2e/stud-street-progression.spec.ts --project=badugi-flow`: 3 passed。
 
 ### 16.4 未対応タスク優先度
 

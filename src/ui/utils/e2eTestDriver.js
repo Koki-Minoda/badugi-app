@@ -14,6 +14,8 @@ export function installE2eTestDriver(apiRef) {
 
   const driver = {
     forceSeatAction: (...args) => apiRef.current?.forceSeatAction?.(...args),
+    forceControllerAction: (...args) =>
+      apiRef.current?.forceControllerAction?.(...args),
     forceSequentialFolds: (...args) => apiRef.current?.forceSequentialFolds?.(...args),
     forceAllIn: (...args) => apiRef.current?.forceAllIn?.(...args),
     forceHeroDraw: (...args) => apiRef.current?.forceHeroDraw?.(...args),

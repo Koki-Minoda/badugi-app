@@ -41,6 +41,33 @@ function playPassiveStudHandToShowdown(controller, maxActions = 80) {
   throw new Error("Stud hand did not reach showdown within action limit");
 }
 
+function prepareStudStreet(controller, street, upCardsBySeat) {
+  controller.startNewHand();
+  controller.state.street = street;
+  controller.state.currentBet = 0;
+  controller.raiseCountThisStreet = 0;
+  controller.state.pots = [];
+  controller.state.players = controller.state.players.map((player, idx) => {
+    const upCards = upCardsBySeat[idx] ?? ["9C"];
+    const downCards = ["AS", "2D", "3H"].slice(0, street === "SEVENTH" ? 3 : 2);
+    return {
+      ...player,
+      folded: false,
+      seatOut: false,
+      allIn: false,
+      stack: 1000,
+      totalInvested: 0,
+      betThisStreet: 0,
+      hasActedThisStreet: false,
+      downCards,
+      upCards,
+      holeCards: [...downCards, ...upCards],
+    };
+  });
+  controller.state.currentActor = controller.findFirstActionSeatForStreet();
+  return controller.getSnapshot();
+}
+
 describe("Stud split controllers", () => {
   it("deals Stud streets incrementally instead of pre-dealing seven cards", () => {
     const controller = createController(StudGameController, 3);
@@ -237,6 +264,77 @@ describe("Stud split controllers", () => {
 
     expect(snapshot.street).toBe("SHOWDOWN");
     expect(controller.state.lastHandResult?.totalPot).toBeGreaterThanOrEqual(0);
+  });
+
+  it("keeps every Stud street open after only the first actor checks", () => {
+    const streets = ["FOURTH", "FIFTH", "SIXTH", "SEVENTH"];
+    const upCardsBySeat = [
+      ["KS", "QD", "9C", "3H"],
+      ["AH", "7D", "4C", "2S"],
+      ["TC", "9D", "8H", "6S"],
+      ["JC", "JD", "5H", "4S"],
+    ];
+
+    streets.forEach((street) => {
+      const controller = createController(StudGameController, 4);
+      const snapshot = prepareStudStreet(controller, street, upCardsBySeat);
+      const opener = snapshot.currentActor;
+
+      const result = controller.applyPlayerAction({ seatIndex: opener, action: "check" });
+
+      expect(result.success).toBe(true);
+      expect(controller.state.street).toBe(street);
+      expect(controller.state.lastHandResult).toBe(null);
+      expect(controller.state.currentActor).not.toBe(opener);
+      expect(controller.state.currentActor).toEqual(expect.any(Number));
+    });
+  });
+
+  it("starts later Stud streets from the best exposed high hand and Razz from the best exposed low hand", () => {
+    const studController = createController(StudGameController, 4);
+    prepareStudStreet(studController, "FOURTH", [
+      ["KS", "QD"],
+      ["AH", "2D"],
+      ["TC", "9D"],
+      ["JC", "JD"],
+    ]);
+    expect(studController.state.currentActor).toBe(1);
+
+    const razzController = createController(RazzGameController, 4);
+    prepareStudStreet(razzController, "FOURTH", [
+      ["KS", "QD"],
+      ["AH", "2D"],
+      ["TC", "9D"],
+      ["4C", "5D"],
+    ]);
+    expect(razzController.state.currentActor).toBe(3);
+  });
+
+  it("completes five consecutive Stud-family hands through all streets without broken actors", () => {
+    const controllers = [
+      StudGameController,
+      Stud8GameController,
+      RazzGameController,
+      Razz27GameController,
+      RazzdugiGameController,
+      RazzduceyGameController,
+    ];
+
+    controllers.forEach((Controller) => {
+      const controller = createController(Controller, 6);
+      for (let hand = 0; hand < 5; hand += 1) {
+        controller.startNewHand();
+        const { snapshot, visitedStreets } = playPassiveStudHandToShowdown(controller, 160);
+        expect(snapshot.street).toBe("SHOWDOWN");
+        expect([...visitedStreets]).toEqual(
+          expect.arrayContaining(["THIRD", "FOURTH", "FIFTH", "SIXTH", "SEVENTH", "SHOWDOWN"]),
+        );
+        snapshot.players.forEach((player) => {
+          expect(player.stack).toBeGreaterThanOrEqual(0);
+          expect(Number.isFinite(player.stack)).toBe(true);
+        });
+      }
+    });
   });
 
   it("returns a teacher-supervised CPU action for Stud-family betting", () => {

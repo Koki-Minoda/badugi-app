@@ -129,18 +129,44 @@ export class StudGameController {
   }
 
   syncExternalState(partial = {}) {
-    if (partial.players) {
-      this.state.players = partial.players.map(clonePlayer);
+    const sanitizedPartial = Object.fromEntries(
+      Object.entries(partial ?? {}).filter(([, value]) => value !== undefined),
+    );
+    const isActiveStudHand =
+      this.state.street &&
+      this.state.street !== "IDLE" &&
+      this.state.street !== "SHOWDOWN";
+    const isLegacyUiBetSync =
+      isActiveStudHand &&
+      !Object.prototype.hasOwnProperty.call(sanitizedPartial, "street") &&
+      (Object.prototype.hasOwnProperty.call(sanitizedPartial, "phase") ||
+        Object.prototype.hasOwnProperty.call(sanitizedPartial, "drawRound") ||
+        Object.prototype.hasOwnProperty.call(sanitizedPartial, "turn"));
+
+    if (isLegacyUiBetSync) {
+      delete sanitizedPartial.currentBet;
+      delete sanitizedPartial.bringInIndex;
+      delete sanitizedPartial.bringInAmount;
+      delete sanitizedPartial.completeAmount;
     }
-    this.state = { ...this.state, ...partial };
+    if (sanitizedPartial.players) {
+      this.state.players = sanitizedPartial.players.map((player, idx) => ({
+        ...clonePlayer(player),
+        seatIndex: player?.seatIndex ?? idx,
+      }));
+    }
+    this.state = { ...this.state, ...sanitizedPartial };
   }
 
   get blinds() {
     const blinds = this.config.tableConfig?.blinds ?? {};
+    const sb = Number(blinds.sb);
+    const bb = Number(blinds.bb);
+    const ante = Number(blinds.ante);
     return {
-      sb: blinds.sb ?? 1,
-      bb: blinds.bb ?? 2,
-      ante: blinds.ante ?? 1,
+      sb: Number.isFinite(sb) && sb > 0 ? sb : 1,
+      bb: Number.isFinite(bb) && bb > 0 ? bb : 2,
+      ante: Number.isFinite(ante) && ante >= 0 ? ante : 1,
     };
   }
 
@@ -149,6 +175,7 @@ export class StudGameController {
   }
 
   getSnapshot() {
+    this.ensureThirdStreetBringIn();
     return {
       ...this.state,
       phase: this.state.street === "SHOWDOWN" ? "SHOWDOWN" : "BET",
@@ -182,8 +209,9 @@ export class StudGameController {
     this.state.handId = handId ?? `${this.variant}-hand-${this.handCounter}`;
     this.resetDeck();
     this.raiseCountThisStreet = 0;
-    const players = this.state.players.map((player) => ({
+    const players = this.state.players.map((player, idx) => ({
       ...player,
+      seatIndex: player.seatIndex ?? idx,
       totalInvested: 0,
       betThisStreet: 0,
       folded: player.stack <= 0 || player.seatOut,
@@ -222,6 +250,29 @@ export class StudGameController {
     return this.getSnapshot();
   }
 
+  ensureThirdStreetBringIn() {
+    if (this.state.street !== "THIRD") return false;
+    const players = this.state.players ?? [];
+    const hasPostedStreetBet = players.some((player) => (Number(player?.betThisStreet) || 0) > 0);
+    if ((Number(this.state.currentBet) || 0) > 0 || hasPostedStreetBet) return false;
+    const bringInIndex = this.findBringInSeat(players);
+    if (bringInIndex == null) return false;
+    const player = players[bringInIndex];
+    const bringInAmount = Math.min(this.blinds.sb, Number(player?.stack) || 0);
+    if (!(bringInAmount > 0)) return false;
+    this.commitChips(player, bringInAmount);
+    player.lastAction = `Bring-in ${bringInAmount}`;
+    player.hasActedThisStreet = true;
+    this.state.players[bringInIndex] = { ...player };
+    this.state.currentBet = bringInAmount;
+    this.state.bringInIndex = bringInIndex;
+    this.state.bringInAmount = bringInAmount;
+    this.state.completeAmount = this.getLimitUnit();
+    this.state.currentActor = this.nextActiveSeat(bringInIndex, this.state.players);
+    this.state.pot = this.calculatePot(this.state.players);
+    return true;
+  }
+
   dealInitialStudCards(players) {
     const active = players.filter((player) => !player.folded && !player.seatOut);
     for (let round = 0; round < 3; round += 1) {
@@ -250,8 +301,9 @@ export class StudGameController {
   findBringInSeat(players = this.state.players) {
     const candidates = players
       .filter((player) => player && !player.folded && !player.seatOut && !player.allIn && player.upCards?.[0])
-      .map((player) => ({
+      .map((player, idx) => ({
         player,
+        seatIndex: player.seatIndex ?? idx,
         rank: parseRankValue(player.upCards[0]),
         suit: parseSuitValue(player.upCards[0]),
       }));
@@ -264,7 +316,7 @@ export class StudGameController {
       if (a.rank !== b.rank) return a.rank - b.rank;
       return a.suit - b.suit;
     });
-    return candidates[0].player.seatIndex;
+    return candidates[0].seatIndex;
   }
 
   commitChips(player, amount) {
@@ -328,7 +380,7 @@ export class StudGameController {
       }
       return (a.seatIndex ?? 0) - (b.seatIndex ?? 0);
     });
-    return candidates[0].seatIndex;
+    return candidates[0].seatIndex ?? this.state.players.indexOf(candidates[0]);
   }
 
   getLimitUnit() {
@@ -339,6 +391,7 @@ export class StudGameController {
   }
 
   applyPlayerAction({ seatIndex, action, amount = 0 } = {}) {
+    this.ensureThirdStreetBringIn();
     const player = this.state.players[seatIndex];
     if (!player) return { success: false, reason: "Player not found" };
     if (player.folded || player.seatOut || player.allIn) return { success: false, reason: "Player cannot act" };

@@ -380,6 +380,8 @@ function npcAutoDrawCount(evalResult = {}) {
   return kicker >= 11 ? 1 : 0;
 }
 
+const STUD_STREET_AUTOPLAY_PAUSE_MS = 900;
+
 export default function App() {
   const [tournamentSession, setTournamentSession] = useState(
     () => loadActiveTournamentSession()
@@ -536,6 +538,9 @@ export default function App() {
   const autoModeInitRef = useRef(false);
   const gameControllerRef = useRef(null);
   const controllerVariantRef = useRef(null);
+  const controllerStreetRef = useRef(null);
+  const studStreetPauseUntilRef = useRef(0);
+  const [studStreetPauseToken, setStudStreetPauseToken] = useState(0);
   const uiAdapterRef = useRef(null);
 
 
@@ -1059,6 +1064,8 @@ const SAFE_RESET_PHASE = "IDLE";
     (BOARD_APP_VARIANT_IDS.has(normalizedGameVariant) ||
       STUD_APP_VARIANT_IDS.has(normalizedGameVariant) ||
       DRAMAHA_APP_VARIANT_IDS.has(normalizedGameVariant));
+  const isSingleTableStudGame =
+    mode !== "tournament-mtt" && STUD_APP_VARIANT_IDS.has(normalizedGameVariant);
   const isSingleTableDramaha =
     mode !== "tournament-mtt" && DRAMAHA_APP_VARIANT_IDS.has(normalizedGameVariant);
   const isSingleTableControllerDrawGame =
@@ -1484,6 +1491,38 @@ const SAFE_RESET_PHASE = "IDLE";
         actingPlayerIndex: snapshotNextTurn,
       },
     });
+    const snapshotStreet = snapshot.street ?? snapshot.phase ?? null;
+    if (!isSingleTableStudGame) {
+      controllerStreetRef.current = null;
+      studStreetPauseUntilRef.current = 0;
+    } else if (snapshotStreet) {
+      const previousStreet = controllerStreetRef.current;
+      const hero = normalizedPlayers[0] ?? null;
+      const heroCanStillAct =
+        hero &&
+        !hero.folded &&
+        !hero.seatOut &&
+        !hero.allIn &&
+        (Number(hero.stack) || 0) > 0;
+      const advancedVisibleStudStreet =
+        ((previousStreet && previousStreet !== snapshotStreet && previousStreet !== "SHOWDOWN") ||
+          !previousStreet) &&
+        snapshotStreet !== "THIRD" &&
+        snapshotStreet !== "SHOWDOWN";
+      controllerStreetRef.current = snapshotStreet;
+      if (
+        advancedVisibleStudStreet &&
+        heroCanStillAct &&
+        typeof snapshotNextTurn === "number" &&
+        snapshotNextTurn !== 0
+      ) {
+        studStreetPauseUntilRef.current = Math.max(
+          studStreetPauseUntilRef.current,
+          Date.now() + STUD_STREET_AUTOPLAY_PAUSE_MS,
+        );
+        setStudStreetPauseToken((token) => token + 1);
+      }
+    }
     syncEngineSnapshot(engineSnapshot);
     if (!isSingleTableBadugi) {
       setPots(Array.isArray(snapshot.pots) ? snapshot.pots.map((pot) => ({ ...pot })) : []);
@@ -4930,7 +4969,9 @@ const SAFE_RESET_PHASE = "IDLE";
         console.warn("[BOARD_CONTROLLER] startNewHand failed", error);
       }
     }
-    if (isControllerDrivenSingleTable) {
+    const shouldUseSessionControllerForHand =
+      isSingleTableBadugi || isSingleTableDrawLowball;
+    if (shouldUseSessionControllerForHand) {
       const sessionController = ensureSessionController();
       if (sessionController) {
         const prevSessionState = sessionControllerStateRef.current;
@@ -5696,6 +5737,19 @@ const SAFE_RESET_PHASE = "IDLE";
     e2eDriverApiRef.current = {
       forceSeatAction: (seat, payload = {}) =>
         queueForcedSeatAction(seat, { ...payload, __forceInstant: true }),
+      forceControllerAction: (seat, payload = {}) => {
+        const outcome = tryControllerBetAction({
+          actionType: payload?.type ?? "check",
+          amount: payload?.amount ?? 0,
+          seatIndex: seat,
+          metadata: { ...payload, __forceInstant: true },
+        });
+        if (outcome?.snapshot) {
+          syncLegacyFromControllerSnapshot(outcome.snapshot, { seatIndex: seat });
+          return outcome.snapshot;
+        }
+        return null;
+      },
       forceSequentialFolds,
       forceAllIn: forceAllInAction,
       forceHeroDraw,
@@ -5710,6 +5764,11 @@ const SAFE_RESET_PHASE = "IDLE";
         betRound: betRoundIndex,
         dealerIdx,
         handId: handIdRef.current,
+        controllerSnapshot:
+          gameControllerRef.current && typeof gameControllerRef.current.getSnapshot === "function"
+            ? gameControllerRef.current.getSnapshot()
+            : null,
+        controllerName: gameControllerRef.current?.constructor?.name ?? null,
       }),
       getHandHistory: () => getHandHistoryBufferSnapshot(),
       getCurrentHandHistory: () => getCurrentHandHistorySnapshot(),
@@ -5735,6 +5794,8 @@ const SAFE_RESET_PHASE = "IDLE";
     };
   }, [
     queueForcedSeatAction,
+    tryControllerBetAction,
+    syncLegacyFromControllerSnapshot,
     forceSequentialFolds,
     forceAllInAction,
     resolveHandImmediately,
@@ -5855,6 +5916,7 @@ const SAFE_RESET_PHASE = "IDLE";
 
   useEffect(() => {
     if (!gameControllerRef.current) return;
+    if (isSingleTableBoardGame) return;
     if (typeof gameControllerRef.current.syncExternalState !== "function") return;
     const phaseTag = phaseTagLocalRef.current();
     gameControllerRef.current.syncExternalState({
@@ -5883,6 +5945,7 @@ const SAFE_RESET_PHASE = "IDLE";
     drawRound,
     turn,
     betRoundIndex,
+    isSingleTableBoardGame,
   ]);
 
   useEffect(() => {
@@ -7737,9 +7800,32 @@ const SAFE_RESET_PHASE = "IDLE";
       return;
     }
 
+    if (phase === "BET" && isSingleTableStudGame) {
+      const remainingPauseMs = studStreetPauseUntilRef.current - Date.now();
+      if (remainingPauseMs > 0) {
+        const pauseTimer = setTimeout(() => {
+          setStudStreetPauseToken((token) => token + 1);
+        }, Math.min(remainingPauseMs, STUD_STREET_AUTOPLAY_PAUSE_MS));
+        return () => clearTimeout(pauseTimer);
+      }
+    }
+
     if (phase === "BET" && isSingleTableBoardGame) {
       const seatToAct = turn;
       const timer = setTimeout(() => {
+        const liveControllerSnapshot =
+          gameControllerRef.current && typeof gameControllerRef.current.getSnapshot === "function"
+            ? gameControllerRef.current.getSnapshot()
+            : null;
+        const liveControllerActor =
+          typeof liveControllerSnapshot?.currentActor === "number"
+            ? liveControllerSnapshot.currentActor
+            : typeof liveControllerSnapshot?.turn === "number"
+            ? liveControllerSnapshot.turn
+            : null;
+        if (typeof liveControllerActor === "number" && liveControllerActor !== seatToAct) {
+          return;
+        }
         const snap = (playersRef.current ?? activePlayers).map(clonePlayerState).filter(Boolean);
         const actor = snap[seatToAct];
         if (!actor || isFoldedOrOut(actor) || actor.allIn || actor.stack <= 0) {
@@ -7907,6 +7993,8 @@ const SAFE_RESET_PHASE = "IDLE";
     isSingleTableBadugi,
     isSingleTableBoardGame,
     isSingleTableDrawLowball,
+    isSingleTableStudGame,
+    studStreetPauseToken,
     tryControllerBetAction,
   ]);
 

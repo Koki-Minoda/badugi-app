@@ -2153,6 +2153,9 @@ const SAFE_RESET_PHASE = "IDLE";
             folded: Boolean(player?.folded),
             hasFolded: Boolean(player?.hasFolded),
             allIn: Boolean(player?.allIn),
+            canDraw: player?.canDraw !== false,
+            hasDrawn: Boolean(player?.hasDrawn),
+            hasActedThisRound: Boolean(player?.hasActedThisRound),
             seatOut: Boolean(player?.seatOut),
             hand: Array.isArray(player?.hand) ? [...player.hand] : [],
           };
@@ -6020,7 +6023,16 @@ const SAFE_RESET_PHASE = "IDLE";
         drawRoundIndex: drawRound,
         dealerIndex: dealerIdx,
       });
-    if (!actedPlayer?.folded && !ensureSeatCanAct(actedIndex, "afterBetAction")) {
+    const actedCompletedAllIn =
+      phase === "BET" &&
+      actedPlayer &&
+      !actedPlayer.folded &&
+      actedPlayer.allIn === true;
+    if (
+      !actedPlayer?.folded &&
+      !actedCompletedAllIn &&
+      !ensureSeatCanAct(actedIndex, "afterBetAction")
+    ) {
       return;
     }
     if (actedPlayer?.folded) {
@@ -7023,6 +7035,7 @@ const SAFE_RESET_PHASE = "IDLE";
     const transitionSnapshot = applyDeckSnapshot({
       players: state.players,
       pots: state.pots,
+      phase: outcome.street === "DRAW" ? "DRAW" : outcome.street,
       nextTurn: nextTurnValue,
       turn: nextTurnValue,
       metadata: mergedMetadata,
@@ -7180,6 +7193,7 @@ const SAFE_RESET_PHASE = "IDLE";
         return true;
       }
       setBetRoundValue(normalizedDraw);
+      setPhase("DRAW");
       return true;
     }
 

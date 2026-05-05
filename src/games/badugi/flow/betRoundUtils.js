@@ -36,6 +36,9 @@ export function isBetRoundComplete(stateOrPlayers) {
     if (!isPlayerInBetRound(player)) {
       continue;
     }
+    if (player?.allIn) {
+      continue;
+    }
     if (!player?.hasActedThisRound) return false;
     const bet =
       typeof player?.betThisRound === "number"

@@ -2485,6 +2485,7 @@ Draw RL test coverage:
 - [x] `REG-20260504-ALLIN-DRAW-FREEZE` all-in後に進行停止する可能性を修正する。
   - 2026-05-04 初期対応: all-in seatをDRAW actorから除外して待機停止を避けたが、実戦確認で「all-in後もdraw pokerでは交換権が残る」ケースを潰してしまうことが判明。
   - 2026-05-04 再修正: BET eligibility と DRAW eligibility を分離し、current handでactiveなall-in seatはDRAW可能、busted/seatOut/folded seatだけDRAW不可に統一。
+  - 2026-05-05 追加修正: Badugi engine のBET→DRAW遷移でもDRAW eligibilityを使い、short all-inはBET完了判定で詰まらないようにした。Hero all-in後にBET turnが戻らないE2E、CPU/bust all-in後の追加actionなしE2Eを追加。
   - 横断確認: Badugi unit と 2-7/A-5系の draw regression test を再実行して確認する。
 - [x] `BUG-TRACK-20260504` 新規バグを `docs/bugs/badugi_browser_mobile_bug_tracker.md` に追加し、他ゲーム影響欄を持たせる。
 - [x] `FB-POLICY-01` キャッシュ/トーナメントのプレイフィードバック運用方針を作成する。

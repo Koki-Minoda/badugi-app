@@ -37,6 +37,35 @@ describe("BadugiEngine phase transitions", () => {
     expect(result.actingPlayerIndex).not.toBeNull();
   });
 
+  it("keeps all-in live players eligible for draw decisions", () => {
+    const engine = new BadugiEngine();
+    const state = {
+      gameId: "badugi",
+      engineId: "badugi",
+      players: [
+        seat({ name: "Hero", stack: 0, allIn: true, betThisRound: 10, totalInvested: 10 }),
+        seat({ name: "Villain", stack: 90, betThisRound: 10, totalInvested: 10 }),
+      ],
+      pots: [],
+      dealerIndex: 1,
+      drawRoundIndex: 0,
+      metadata: {},
+    };
+
+    const result = engine.advanceAfterBet(state, {
+      drawRound: 0,
+      maxDraws: 3,
+      dealerIndex: 1,
+      numPlayers: state.players.length,
+    });
+
+    expect(result.street).toBe("DRAW");
+    expect(result.state.players[0].allIn).toBe(true);
+    expect(result.state.players[0].canDraw).toBe(true);
+    expect(result.state.players[0].hasActedThisRound).toBe(false);
+    expect(result.actingPlayerIndex).toBe(0);
+  });
+
   it("moves directly into SHOWDOWN when no draws remain", () => {
     const engine = new BadugiEngine();
     const state = {

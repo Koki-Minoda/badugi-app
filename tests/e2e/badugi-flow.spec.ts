@@ -645,6 +645,20 @@ test.describe("Badugi flow regressions", () => {
     const startIdx = logs.length;
     await invokeE2E(page, "forceAllIn", targetSeat);
     await waitForSeatActionLog(logs, targetSeat, startIdx, (line) => line.includes("All-in"));
+    await page.waitForFunction(
+      (seat) => {
+        const state = window.__BADUGI_E2E__?.getPhaseState?.();
+        if (!state) return false;
+        const actor = state.players?.[seat];
+        if (!actor?.allIn) return false;
+        if (state.phase === "BET") {
+          return state.turn !== seat;
+        }
+        return ["DRAW", "SHOWDOWN", "HAND_RESULT"].includes(state.phase);
+      },
+      targetSeat,
+      { timeout: 30000 },
+    );
     await invokeE2E(page, "resolveHandNow");
     await waitForHandResolution(page, logs, startIdx);
 
@@ -666,6 +680,60 @@ test.describe("Badugi flow regressions", () => {
       (line) => line.includes("[E2E-SKIP]") && seatAnyRegex(targetSeat).test(line),
     );
     expect(skipLines).toHaveLength(0);
+  });
+
+  test("Hero all-in action advances the table instead of leaving hero stuck on BET", async ({ page }) => {
+    const logs = setupE2ELogCapture(page);
+    await openGame(page);
+    await waitForE2EDriver(page);
+    logs.length = 0;
+
+    await actionButton(page, "raise").waitFor({ state: "visible", timeout: 30000 });
+    const before = await getPhaseState(page);
+    const heroHand = before?.players?.[0]?.hand;
+    expect(Array.isArray(heroHand) && heroHand.length === 4).toBe(true);
+    await waitForE2EHelper(page, "setPlayerHands");
+    await invokeE2E(page, "setPlayerHands", [
+      {
+        seat: 0,
+        cards: heroHand,
+        stack: 10,
+      },
+    ]);
+    await waitForHandsApplied(page, [{ seat: 0, cards: heroHand, stack: 10 }]);
+
+    const startIdx = logs.length;
+    await actionButton(page, "raise").click();
+    await waitForSeatActionLog(logs, 0, startIdx, (line) => line.includes("All-in"));
+
+    await page.waitForFunction(
+      () => {
+        const state = window.__BADUGI_E2E__?.getPhaseState?.();
+        if (!state) return false;
+        const hero = state.players?.[0];
+        if (!hero?.allIn) return false;
+        if (state.phase === "BET") {
+          return state.turn !== 0;
+        }
+        return ["DRAW", "SHOWDOWN", "HAND_RESULT"].includes(state.phase);
+      },
+      undefined,
+      { timeout: 30000 },
+    );
+
+    const afterAllIn = await getPhaseState(page);
+    expect(afterAllIn?.players?.[0]?.allIn).toBe(true);
+    expect(
+      afterAllIn?.phase !== "BET" || afterAllIn?.turn !== 0,
+      `Hero remained stuck after all-in: ${JSON.stringify(afterAllIn)}`,
+    ).toBe(true);
+
+    await page.waitForTimeout(1000);
+    const stableState = await getPhaseState(page);
+    expect(
+      stableState?.phase !== "BET" || stableState?.turn !== 0,
+      `Hero re-entered a BET action after all-in: ${JSON.stringify(stableState)}`,
+    ).toBe(true);
   });
 
   test("Consecutive hands reset hero state and folded flags", async ({ page }) => {

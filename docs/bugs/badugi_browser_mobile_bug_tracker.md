@@ -380,8 +380,11 @@
 - Resolution:
   - 2026-05-04: `isSeatEligibleForDraw` 修正と回帰test追加。
   - 2026-05-04: draw lowball engine/controllerも同じ方針へ統一。all-in live seatはDRAW可能、BET不可、空BET streetはskipする。
+  - 2026-05-05: Badugi engine のBET→DRAW遷移でも `isSeatEligibleForDraw` を使うよう修正し、live all-in seatのDRAW権を保持。
+  - 2026-05-05: short all-in seatはBET完了判定で未達bet扱いにせず、残りlive seatが行動済みならstreet advance可能に修正。
+  - 2026-05-05: Hero all-in後にHeroへBET turnが戻らないE2E、CPU/bust all-in後に追加actionが出ないE2Eを追加。
 - Residual Risk:
-  - 実ブラウザで hero all-in 後の長時間プレイを継続確認する。
+  - 実ブラウザで hero / CPU all-in が複数回起きる長時間プレイを継続確認する。
 
 ## 5. 修正済み Bugs
 

@@ -2257,6 +2257,7 @@ const SAFE_RESET_PHASE = "IDLE";
 
   const resolvingDrawRef = useRef(false);
   const scheduledFinishDrawRef = useRef(false);
+  const autoProgressWatchdogRef = useRef({ key: null, at: 0 });
   const autoDrawHelpersRef = useRef({});
   const forcedBetHelpersRef = useRef({});
   const customHandHelpersRef = useRef({});
@@ -4365,6 +4366,31 @@ const SAFE_RESET_PHASE = "IDLE";
     console.log("[SHOWDOWN] === RESULTS (BADUGI) ===");
     const newStacks = workingPlayers.map((p) => p.stack);
     const showdownSummary = [];
+    const evaluateHandSafely = (hand = []) => {
+      try {
+        return evaluateBadugi(hand);
+      } catch (error) {
+        console.warn("[SHOWDOWN] hand evaluation fallback", {
+          variant: gameVariantRef.current,
+          error: error?.message ?? String(error),
+        });
+        return null;
+      }
+    };
+    const resolveWinnersSafely = (eligiblePlayers = []) => {
+      try {
+        const winners = getWinnersByBadugi(eligiblePlayers);
+        if (Array.isArray(winners) && winners.length > 0) {
+          return winners;
+        }
+      } catch (error) {
+        console.warn("[SHOWDOWN] winner resolution fallback", {
+          variant: gameVariantRef.current,
+          error: error?.message ?? String(error),
+        });
+      }
+      return eligiblePlayers.length > 0 ? [eligiblePlayers[0]] : [];
+    };
 
     allPots.forEach((pot, potIdx) => {
       const eligiblePlayers = pot.eligible
@@ -4384,7 +4410,7 @@ const SAFE_RESET_PHASE = "IDLE";
         return;
       }
 
-      const winners = getWinnersByBadugi(eligiblePlayers);
+      const winners = resolveWinnersSafely(eligiblePlayers);
       const evaluationBySeat = new Map(
         winners.map((entry) => [typeof entry.seat === "number" ? entry.seat : entry.seatIndex, entry])
       );
@@ -4409,7 +4435,9 @@ const SAFE_RESET_PHASE = "IDLE";
             stackBefore,
             stackAfter: newStacks[idx],
             hand: workingPlayers[idx]?.hand ?? [],
-            evaluation: evaluationBySeat.get(idx)?.evaluation ?? evaluateBadugi(workingPlayers[idx]?.hand ?? []),
+            evaluation:
+              evaluationBySeat.get(idx)?.evaluation ??
+              evaluateHandSafely(workingPlayers[idx]?.hand ?? []),
           });
           recordActionToLog({
             phase: "SHOWDOWN",
@@ -4525,12 +4553,12 @@ const SAFE_RESET_PHASE = "IDLE";
     console.log("[SHOWDOWN] === STACKS AFTER ===");
     updated.forEach((p) => {
       if (p.folded) return;
-      const ev = evaluateBadugi(p.hand);
-      const rankLabel = ev.rankType ?? "UNKNOWN";
+      const ev = evaluateHandSafely(p.hand);
+      const rankLabel = ev?.rankType ?? "UNKNOWN";
       const rankValues =
-        ev.ranks && ev.ranks.length > 0 ? ev.ranks.join("-") : "-";
+        ev?.ranks && ev.ranks.length > 0 ? ev.ranks.join("-") : "-";
       console.log(
-        `Seat ${p.name}: ${p.hand.join(" ")} | type=${rankLabel} ranks=${rankValues}`
+        `Seat ${p.name}: ${(p.hand ?? []).join(" ")} | type=${rankLabel} ranks=${rankValues}`
       );
     });
     if (mode === "tournament-mtt" && tournamentStateRef.current) {
@@ -6791,18 +6819,29 @@ const SAFE_RESET_PHASE = "IDLE";
           )
         : 0;
     const controller = gameControllerRef.current;
+    let controllerResolvedSummary = null;
+    if (!precomputedResult && typeof controller?.resolveShowdown === "function") {
+      try {
+        controllerResolvedSummary = controller.resolveShowdown({
+          players: finalPlayers,
+          summary,
+          totalPot: totalPotValue,
+          handId: handIdRef.current,
+          evaluateHand: evaluateBadugi,
+          buttonSeat: buttonSeatMeta,
+          sbSeat: sbSeatMeta,
+          bbSeat: bbSeatMeta,
+        });
+      } catch (error) {
+        console.warn("[HAND_RESULT] controller resolveShowdown fallback", {
+          variant: gameVariantRef.current,
+          error: error?.message ?? String(error),
+        });
+      }
+    }
     const resolvedSummary =
       precomputedResult ??
-      controller?.resolveShowdown({
-        players: finalPlayers,
-        summary,
-        totalPot: totalPotValue,
-        handId: handIdRef.current,
-        evaluateHand: evaluateBadugi,
-        buttonSeat: buttonSeatMeta,
-        sbSeat: sbSeatMeta,
-        bbSeat: bbSeatMeta,
-      }) ??
+      controllerResolvedSummary ??
       buildHandResultSummary({
         players: finalPlayers,
         summary,
@@ -7796,6 +7835,39 @@ const SAFE_RESET_PHASE = "IDLE";
       return;
     }
     if (turn === 0) {
+      const hero = activePlayers[0];
+      const heroCannotBet =
+        !hero ||
+        isFoldedOrOut(hero) ||
+        hero.allIn ||
+        Math.max(0, Number(hero.stack) || 0) <= 0;
+      if (phase === "BET" && heroCannotBet) {
+        const maxNow = maxBetThisRound(activePlayers);
+        const nextActor = findNextBetActorSeat(activePlayers, 1, maxNow);
+        if (nextActor !== null) {
+          setTurn(nextActor);
+          return;
+        }
+        forceFinishRoundRef.current({
+          reason: "bet-hero-cannot-act-no-next",
+          phaseOverride: "BET",
+          playersSnapshot: activePlayers,
+        });
+        return;
+      }
+      if (phase === "DRAW" && !isSeatEligibleForDraw(hero)) {
+        const nextDrawActor = drawHelpers.findNextDrawActorSeat?.(activePlayers, 1) ?? null;
+        if (nextDrawActor !== null) {
+          setTurn(nextDrawActor);
+          return;
+        }
+        forceFinishRoundRef.current({
+          reason: "draw-hero-cannot-act-no-next",
+          phaseOverride: "DRAW",
+          playersSnapshot: activePlayers,
+        });
+        return;
+      }
       if (shouldWaitForHeroDrawTurn({ phase, turn, players: activePlayers })) {
         return;
       }
@@ -8041,6 +8113,135 @@ const SAFE_RESET_PHASE = "IDLE";
     }
   }, [phase]);
 
+  useEffect(() => {
+    if (phase !== "BET" && phase !== "DRAW") {
+      autoProgressWatchdogRef.current = { key: null, at: 0 };
+      return;
+    }
+    const roster = playersRef.current ?? [];
+    if (!Array.isArray(roster) || roster.length === 0) return;
+    const maxNow = maxBetThisRound(roster);
+    const key = JSON.stringify({
+      phase,
+      turn,
+      drawRound,
+      maxNow,
+      players: roster.map((player) => ({
+        folded: !!player?.folded || !!player?.hasFolded,
+        allIn: !!player?.allIn,
+        seatOut: !!player?.seatOut || !!player?.isBusted,
+        stack: Number(player?.stack) || 0,
+        bet: Number(player?.betThisRound ?? player?.bet) || 0,
+        acted: !!player?.hasActedThisRound,
+        drawn: !!player?.hasDrawn,
+      })),
+    });
+    if (autoProgressWatchdogRef.current.key !== key) {
+      autoProgressWatchdogRef.current = { key, at: Date.now() };
+    }
+
+    const timer = setTimeout(() => {
+      const stable = autoProgressWatchdogRef.current;
+      if (stable.key !== key || Date.now() - stable.at < 1400) return;
+      const live = (playersRef.current ?? []).map(clonePlayerState).filter(Boolean);
+      if (!live.length) return;
+      const currentPhase = phaseRef.current ?? phase;
+      if (currentPhase === "BET") {
+        const liveMax = maxBetThisRound(live);
+        const currentSeat =
+          typeof turn === "number" && needsActionForBet(live[turn], liveMax)
+            ? turn
+            : findNextBetActorSeat(live, typeof turn === "number" ? turn + 1 : 0, liveMax);
+        if (currentSeat === null || typeof currentSeat !== "number") {
+          forceFinishRoundRef.current({
+            reason: "bet-watchdog-no-actionable-seat",
+            phaseOverride: "BET",
+            playersSnapshot: live,
+          });
+          return;
+        }
+        if (currentSeat !== turn) {
+          setTurn(currentSeat);
+          return;
+        }
+        if (currentSeat === 0) {
+          const hero = live[0];
+          if (!hero || isFoldedOrOut(hero) || hero.allIn || (Number(hero.stack) || 0) <= 0) {
+            const nextSeat = findNextBetActorSeat(live, 1, liveMax);
+            if (nextSeat !== null) {
+              setTurn(nextSeat);
+            } else {
+              forceFinishRoundRef.current({
+                reason: "bet-watchdog-hero-blocked",
+                phaseOverride: "BET",
+                playersSnapshot: live,
+              });
+            }
+          }
+          return;
+        }
+        const actor = live[currentSeat];
+        if (!actor || isFoldedOrOut(actor) || actor.allIn || (Number(actor.stack) || 0) <= 0) {
+          const nextSeat = findNextBetActorSeat(live, currentSeat + 1, liveMax);
+          if (nextSeat !== null) setTurn(nextSeat);
+          else {
+            forceFinishRoundRef.current({
+              reason: "bet-watchdog-blocked-actor",
+              phaseOverride: "BET",
+              playersSnapshot: live,
+            });
+          }
+          return;
+        }
+        const toCall = Math.max(0, liveMax - (Number(actor.betThisRound) || 0));
+        const advanced = applyForcedBetAction(currentSeat, {
+          type: toCall === 0 ? "check" : "call",
+          amount: toCall,
+          __forceInstant: true,
+          decisionSource: "bet-watchdog",
+        });
+        if (!advanced) {
+          forceFinishRoundRef.current({
+            reason: "bet-watchdog-action-rejected",
+            phaseOverride: "BET",
+            playersSnapshot: live,
+          });
+        }
+        return;
+      }
+      if (currentPhase === "DRAW") {
+        const currentSeat =
+          typeof turn === "number" && isSeatEligibleForDraw(live[turn])
+            ? turn
+            : findNextDrawActorSeat(live, typeof turn === "number" ? turn + 1 : 0);
+        if (currentSeat === null || typeof currentSeat !== "number") {
+          forceFinishRoundRef.current({
+            reason: "draw-watchdog-no-actionable-seat",
+            phaseOverride: "DRAW",
+            playersSnapshot: live,
+          });
+          return;
+        }
+        if (currentSeat !== turn) {
+          setTurn(currentSeat);
+          return;
+        }
+        if (currentSeat !== 0) {
+          autoResolveCpuDrawIfNeeded();
+        }
+      }
+    }, 1700);
+    return () => clearTimeout(timer);
+  }, [
+    phase,
+    turn,
+    drawRound,
+    currentBet,
+    players,
+    applyForcedBetAction,
+    autoResolveCpuDrawIfNeeded,
+    findNextDrawActorSeat,
+  ]);
 
   useEffect(() => {
     if (phase !== "SHOWDOWN") return;

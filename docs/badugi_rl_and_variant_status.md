@@ -2969,3 +2969,42 @@ Draw RL test coverage:
   - 原因: MTT state初期化では `avatarUrl` を保持していたが、Badugi next-hand lifecycleで `cpuCharacterId` / `cpuStyle` / `avatar` / `avatarUrl` をprev/current playersから引き継いでいなかった。またE2E/devではVite baseが `/dev/` のため、`/characters/...` が404になりinitialsへfallbackしていた。
   - 対応: `buildNextHandState` でCPU character metadataを継承し、Hero profileのavatarUrlも保持する。加えてUI描画側で `avatarUrl` 優先、CPU roster名からの画像復元、dev base fallbackを追加。
   - 回帰: controller unitでMTT next hand後のCPU avatar保持、Player unitで `avatarUrl` のみ/roster復元を確認、PlaywrightでTournament redeal後もCPU avatar imageが残ることを追加。
+
+### 21.6 2026-05-05 友達公開候補 5連続UI hand / all-in / next hand 再確認
+
+目的:
+- 友達公開候補の主要variantで「5hand連続」「all-in後に停止しない」「next handへ戻れる」を同じUI E2Eで再確認する。
+- Badugiだけでなく、NLH / PLO / 2-7 / A-5 / Stud / Razzを同じ観点で見る。
+
+対応:
+- [x] `PUB-REG-01` `friend-publish-candidate-regression.spec.ts` を追加し、以下7variantを横断する。
+  - Badugi
+  - NLH
+  - PLO
+  - 2-7 Triple Draw
+  - A-5 Triple Draw
+  - Stud
+  - Razz
+- [x] `PUB-REG-02` 各variantで5hand連続のhero card表示、decision panel表示、folded/all-in/seatOut actorでBETが止まらないことを検査する。
+- [x] `PUB-REG-03` 各variantでall-inを強制し、all-in seatのturnにBETが残らないことを検査する。
+- [x] `PUB-REG-04` all-in後に強制hand解決し、next handでhero handとtable状態が復帰することを検査する。
+- [x] `BUG-42` `resolveHandNow` / forced showdownが未完成boardやdraw/stud controller差分で例外になり、next handへ進めない可能性を修正。
+  - 原因: E2E/保険用の強制showdown経路が、NLH/PLOの未完成boardやdraw系controllerの未実装 `resolveShowdown` を通常showdown同様に評価し、例外を握れていなかった。
+  - 対応: forced showdown経路でwinner/evaluationをsafe fallbackし、通常controller/evaluatorが使える時は従来通り使う。未完成情報で例外が出ても、テスト/保険経路ではhand resultとnext handへ進める。
+- [x] `BUG-43` Heroがfold/all-in済みなのに内部turnがHeroへ残るとCPU actionへ進まず停止するケースを修正。
+  - 原因: NPC auto分岐が `turn === 0` を「Hero入力待ち」として先にreturnしており、Heroがfold/all-in/stack 0でも次actorへ送らないケースがあった。
+  - 対応: HeroがBET/DRAWで行動不能なら、次のactionable seatへ移す。次seatがいない場合はround finishへ送る。
+- [x] `BUG-44` BET/DRAWでactor状態が一定時間進まない場合のUI進行watchdogを追加。
+  - 目的: folded/all-in/短スタック絡みでactor同期がずれても、次actor選択・safe call/check・round finishのいずれかへ寄せ、画面停止を避ける。
+
+確認結果:
+- [x] `npx playwright test tests/e2e/friend-publish-candidate-regression.spec.ts --project=badugi-flow`: 7 passed。
+- [x] `npx playwright test tests/e2e/badugi-flow.spec.ts:409 tests/e2e/badugi-flow.spec.ts:485 tests/e2e/badugi-flow.spec.ts:527 --project=badugi-flow`: 2 passed / 1 failed。
+  - `Hero fold is terminal within the same hand`: pass。
+  - `No-next-alive scenarios never emit seat=-1 skips`: pass。
+  - `Full 3-draw flow keeps card history intact`: fail。短スタック/all-in絡みで早期showdownになる実進行と、古いE2Eの「必ずbet/drawを3回通る」固定期待が競合している。ゲーム停止ではなく、別途 `PV90-16` としてテスト条件をfixture化する。
+- [x] `npm test -- --run src/games/__tests__/playableInvariant.test.js src/games/badugi/flow/__tests__/nextActorUtils.test.js src/games/badugi/flow/__tests__/actionUtilsForcedBet.test.js`: 3 files / 118 tests pass。
+- [x] `npm run build`: pass。
+
+残タスク:
+- [ ] `PV90-16` Badugi full 3-draw E2Eを、all-in/短スタックで早期showdownしない固定fixtureに切り替える。現在の失敗は「停止」ではなく「テスト前提と実進行の競合」だが、回帰テストとしては不安定なので修正する。

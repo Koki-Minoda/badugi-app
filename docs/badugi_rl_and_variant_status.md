@@ -3255,3 +3255,27 @@ Draw RL test coverage:
 
 残リスク:
 - [ ] `CAP-REG-05` UI E2EでHero/CPUが実ボタン操作・自動判断を通じてcap到達したときのボタン表示、raise不可表示、hand history記録を確認する。
+
+### 21.13 2026-05-06 Stud UI Call turn sync regression
+
+目的:
+- StudでHeroがCallした後、controller上は次アクターへ進んでいるのにUI側のlegacy `turn` が同期されず、以後のアクションボタンが押せなくなる再発報告を潰す。
+- controller直接操作だけではなく、実際の `Call` ボタン押下で進行が止まらないことをE2Eに入れる。
+
+原因:
+- Stud/Razz系controllerの現在アクターは `currentActor` に入るが、App側の共通同期処理が `turn` / `nextTurn` / `metadata.actingPlayerIndex` だけを見ていた。
+- `heroCanAct` はcontroller由来の手番で有効化される一方、`playerCall()` の事前チェックはlegacy `turn` を見ていたため、Call後にcontroller/UIの手番判定がズレる余地があった。
+
+対応:
+- [x] `BUG-52` `syncLegacyFromControllerSnapshot()` が `snapshot.currentActor` をlegacy `turn` / engine metadataへ同期するように修正。
+- [x] `BUG-53` `ensureSeatCanAct()` はcontroller-driven single tableではcontroller snapshotの `currentActor` を優先して手番判定する。
+- [x] `BUG-54` Stud E2Eに、controllerでHeroのcall spotを作った後、実UIの `action-call` ボタンをクリックしてHeroが stuck しないことを追加。
+
+確認結果:
+- [x] `npx playwright test tests/e2e/stud-street-progression.spec.ts --project=badugi-flow`: 4 passed。
+- [x] `npx playwright test tests/e2e/mixed-rotation-core-progression.spec.ts --project=badugi-flow`: 11 passed。
+- [x] `npm run lint`: pass（既存の `syncLegacyFromControllerSnapshot` hook dependency warning 1件のみ）。
+- [x] `npm run build`: pass。
+
+残リスク:
+- [ ] `BUG-55` Stud/Razz系の実ボタン操作だけで3rd-7th streetを複数hand連続完走するUI E2Eを追加し、controller直接操作依存をさらに減らす。

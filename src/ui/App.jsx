@@ -1048,6 +1048,8 @@ const SAFE_RESET_PHASE = "IDLE";
       ? safeEngineState.nextTurn
       : typeof safeEngineState?.turn === "number"
       ? safeEngineState.turn
+      : typeof controllerSnapshot?.currentActor === "number"
+      ? controllerSnapshot.currentActor
       : typeof controllerSnapshot?.turn === "number"
       ? controllerSnapshot.turn
       : turn;
@@ -1470,6 +1472,8 @@ const SAFE_RESET_PHASE = "IDLE";
         ? snapshot.turn
         : typeof snapshot.nextTurn === "number"
         ? snapshot.nextTurn
+        : typeof snapshot.currentActor === "number"
+        ? snapshot.currentActor
         : typeof snapshot?.metadata?.actingPlayerIndex === "number"
         ? snapshot.metadata.actingPlayerIndex
         : null;
@@ -3083,11 +3087,34 @@ const SAFE_RESET_PHASE = "IDLE";
       return false;
     }
     const player = roster[seat];
-    if (turn !== seat) {
+    const controllerActionSeat = (() => {
+      if (!isControllerDrivenSingleTable) return null;
+      const controller = gameControllerRef.current;
+      if (!controller || typeof controller.getSnapshot !== "function") return null;
+      try {
+        const controllerState = controller.getSnapshot();
+        if (typeof controllerState?.currentActor === "number") return controllerState.currentActor;
+        if (typeof controllerState?.turn === "number") return controllerState.turn;
+        if (typeof controllerState?.nextTurn === "number") return controllerState.nextTurn;
+        if (typeof controllerState?.metadata?.actingPlayerIndex === "number") {
+          return controllerState.metadata.actingPlayerIndex;
+        }
+      } catch (err) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("[CTRL][TURN] unable to read controller turn", err);
+        }
+      }
+      return null;
+    })();
+    const expectedTurn =
+      typeof controllerActionSeat === "number" ? controllerActionSeat : turn;
+    if (expectedTurn !== seat) {
       logE2EError("turn mismatch before action", {
         seat,
         context,
-        expectedTurn: turn,
+        expectedTurn,
+        legacyTurn: turn,
+        controllerActionSeat,
       });
       return false;
     }

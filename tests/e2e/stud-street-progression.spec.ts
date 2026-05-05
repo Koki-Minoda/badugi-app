@@ -68,6 +68,37 @@ async function playForcedStudHand(page: Page) {
   throw new Error("Stud-family UI hand did not reach showdown");
 }
 
+async function advanceToHeroStudCallSpot(page: Page) {
+  for (let step = 0; step < 80; step += 1) {
+    const state = await getE2EState(page);
+    const snapshot = state?.controllerSnapshot;
+    const actor = snapshot?.currentActor;
+    if (typeof actor !== "number") {
+      await page.waitForTimeout(160);
+      continue;
+    }
+    const player = snapshot?.players?.[actor];
+    const currentBet = Number(snapshot?.currentBet ?? 0);
+    const actorBet = Number(player?.betThisStreet ?? player?.betThisRound ?? 0);
+    const toCall = Math.max(0, currentBet - actorBet);
+    if (actor === 0 && toCall > 0) {
+      return { currentBet, toCall, street: snapshot?.street };
+    }
+    const actionType =
+      toCall > 0 ? "call" : snapshot?.street === "THIRD" ? "complete" : "bet";
+    const amount = toCall > 0 ? toCall : Math.max(10, currentBet || 10);
+    await page.evaluate(
+      ({ seat, payload }) => window.__BADUGI_E2E__?.forceControllerAction?.(seat, payload),
+      {
+        seat: actor,
+        payload: { type: actionType, amount },
+      },
+    );
+    await page.waitForTimeout(160);
+  }
+  throw new Error("Stud UI did not reach a hero call spot");
+}
+
 test.describe("Stud-family street progression UI", () => {
   test.describe.configure({ timeout: 120000 });
 
@@ -107,5 +138,39 @@ test.describe("Stud-family street progression UI", () => {
       await page.waitForTimeout(140);
     }
     throw new Error("Stud UI did not reach a visible post-third street");
+  });
+
+  test("Stud Call button advances controller turn without leaving hero stuck", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openAuthenticatedGame(page, `${APP_URL}?variant=stud`);
+    await waitForE2EDriver(page);
+    await page.evaluate(() => window.__BADUGI_E2E__?.forceDealNewHandNow?.());
+    await page.waitForTimeout(300);
+
+    const callSpot = await advanceToHeroStudCallSpot(page);
+    expect(callSpot.toCall).toBeGreaterThan(0);
+
+    const callButton = page.getByTestId("action-call");
+    await expect(callButton).toBeVisible({ timeout: 10000 });
+    await expect(callButton).toBeEnabled({ timeout: 10000 });
+    await callButton.click();
+
+    await expect
+      .poll(
+        async () => {
+          const state = await getE2EState(page);
+          const snapshot = state?.controllerSnapshot;
+          const hero = snapshot?.players?.[0];
+          const toCall = Math.max(
+            0,
+            Number(snapshot?.currentBet ?? 0) -
+              Number(hero?.betThisStreet ?? hero?.betThisRound ?? 0),
+          );
+          if (snapshot?.currentActor === 0 && toCall > 0) return "stuck";
+          return "advanced";
+        },
+        { timeout: 10000 },
+      )
+      .toBe("advanced");
   });
 });

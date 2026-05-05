@@ -2487,6 +2487,10 @@ Draw RL test coverage:
   - 2026-05-04 再修正: BET eligibility と DRAW eligibility を分離し、current handでactiveなall-in seatはDRAW可能、busted/seatOut/folded seatだけDRAW不可に統一。
   - 2026-05-05 追加修正: Badugi engine のBET→DRAW遷移でもDRAW eligibilityを使い、short all-inはBET完了判定で詰まらないようにした。Hero all-in後にBET turnが戻らないE2E、CPU/bust all-in後の追加actionなしE2Eを追加。
   - 横断確認: Badugi unit と 2-7/A-5系の draw regression test を再実行して確認する。
+- [ ] `REG-20260505-BADUGI-HANDRESULT-WAIT` full `badugi-flow` で Hero fold / full 3-draw / no-next-alive の3ケースが `Hand Result` 待ちでtimeoutする。
+  - 発見: all-in修正後の full Badugi E2E で 14/17 pass、3件timeout。
+  - 切り分け: 今回追加した all-in/bust E2E はpass。失敗3件は、Hero fold後もCPU同士・all-in seatを含む手が継続する場合に、テストが即 `Hand Result` を待つ前提と実進行がズレる可能性が高い。
+  - 次対応: 「Hero fold後の観戦継続」「CPU-only hand auto-resolve」「no-next-alive の強制決着」を分けてfixture化し、期待値を実ゲーム仕様に合わせる。
 - [x] `BUG-TRACK-20260504` 新規バグを `docs/bugs/badugi_browser_mobile_bug_tracker.md` に追加し、他ゲーム影響欄を持たせる。
 - [x] `FB-POLICY-01` キャッシュ/トーナメントのプレイフィードバック運用方針を作成する。
   - 2026-05-04 対応: `docs/play-feedback-policy.md` に30ハンド以上の送信条件、ROI/良悪判断/ChatGPT API連携方針を記載。

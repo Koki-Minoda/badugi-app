@@ -32,7 +32,14 @@ else
   echo "[mgx-deploy] missing backend/.venv (create it before running this script)"
   exit 1
 fi
-pip install -r requirements.txt
+if [ -f "requirements.txt" ]; then
+  pip install -r requirements.txt
+elif [ -f "pyproject.toml" ]; then
+  pip install -e .
+else
+  echo "[mgx-deploy] missing backend requirements.txt or pyproject.toml"
+  exit 1
+fi
 deactivate
 cd "$APP_DIR"
 

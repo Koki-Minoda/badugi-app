@@ -2609,6 +2609,7 @@ Draw RL test coverage:
 ### 17.2 Stud / Razz Correctness
 
 - [x] `STUD-QA-01` Stud/Razz UIで、公開カード(up cards)と伏せカード(down cards)を視覚的に分離する。
+  - 2026-05-05 追加対応: `UP/DOWN/HIDDEN` の文字だけに頼らず、公開カードは少し上にずらして緑ringを付け、Heroの伏せカードは斜め半分の裏面カバーを重ねる。Opponentの伏せカードは従来どおり非公開の裏面表示を維持する。
   - 3rd street: 2 down + 1 up。
   - 4th/5th/6th street: up card。
   - 7th street: down card。

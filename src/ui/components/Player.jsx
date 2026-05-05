@@ -554,21 +554,47 @@ export default function Player({
             const visibility = player.cardVisibility?.[sourceIndex] ?? "up";
             const isPublicCard = visibility === "up";
             const isHiddenFromHero = !isHero && !player.showHand && !isPublicCard;
+            const isStudDownCard = hasStudVisibility && !isPublicCard;
             const visibilityLabel = isPublicCard
               ? "UP"
               : isHero
                 ? "DOWN"
                 : "HIDDEN";
             return (
-              <div key={`${card}-${sourceIndex}`} className="flex min-w-0 flex-col items-center gap-0.5">
-                <Card
-                  value={card}
-                  hidden={isHiddenFromHero}
-                  selected={isHero && (player.selected || []).includes(sourceIndex)}
-                  onClick={() => handleCardClick(sourceIndex)}
-                  folded={isFolded}
-                  data-testid={`player-${index}-card-${sourceIndex}`}
-                />
+              <div
+                key={`${card}-${sourceIndex}`}
+                className={`flex min-w-0 flex-col items-center gap-0.5 ${
+                  hasStudVisibility
+                    ? isPublicCard
+                      ? "-translate-y-2"
+                      : "translate-y-1"
+                    : ""
+                }`}
+                data-testid={
+                  hasStudVisibility
+                    ? `player-${index}-card-${sourceIndex}-${isPublicCard ? "up" : "down"}-slot`
+                    : undefined
+                }
+              >
+                <div
+                  className={`rounded-xl ${
+                    hasStudVisibility
+                      ? isPublicCard
+                        ? "ring-2 ring-emerald-300/70 shadow-[0_0_14px_rgba(52,211,153,0.35)]"
+                        : "ring-1 ring-slate-500/70 shadow-[0_0_10px_rgba(15,23,42,0.45)]"
+                      : ""
+                  }`}
+                >
+                  <Card
+                    value={card}
+                    hidden={isHiddenFromHero}
+                    selected={isHero && (player.selected || []).includes(sourceIndex)}
+                    onClick={() => handleCardClick(sourceIndex)}
+                    folded={isFolded}
+                    studDown={isStudDownCard && !isHiddenFromHero}
+                    data-testid={`player-${index}-card-${sourceIndex}`}
+                  />
+                </div>
                 {hasStudVisibility && (
                   <span
                     data-testid={`player-${index}-card-${sourceIndex}-visibility`}

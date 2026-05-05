@@ -1,7 +1,15 @@
 // src/ui/components/Card.jsx
 import React from "react";
 
-export default function Card({ value, hidden, selected, onClick, folded, ...rest }) {
+export default function Card({
+  value,
+  hidden,
+  selected,
+  onClick,
+  folded,
+  studDown = false,
+  ...rest
+}) {
   const { style: restStyle, ...restProps } = rest;
   const cardSizeStyle = {
     width: "var(--card-w, clamp(40px, 6vw, 64px))",
@@ -94,10 +102,32 @@ export default function Card({ value, hidden, selected, onClick, folded, ...rest
         bg-gradient-to-br from-white via-slate-50 to-slate-200 rounded-lg shadow-[0_4px_0_rgba(15,23,42,0.35)] 
         flex items-center justify-center 
         font-black select-none cursor-pointer transition-transform touch-manipulation relative overflow-hidden
-        ${selected ? "border-[3px] border-sky-400 scale-105 ring-2 ring-sky-300/60" : "border-[3px] border-slate-300"}
+        ${selected ? "border-[3px] border-sky-400 scale-105 ring-2 ring-sky-300/60" : studDown ? "border-[3px] border-slate-500" : "border-[3px] border-slate-300"}
         hover:scale-105 active:scale-95
       `}
     >
+      {studDown && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 right-0 w-[58%] bg-gradient-to-br from-gray-950 via-black to-gray-800 opacity-95"
+          style={{
+            clipPath: "polygon(38% 0, 100% 0, 100% 100%, 0 100%)",
+          }}
+        >
+          <div className="absolute inset-0 grid grid-cols-3 grid-rows-5 gap-1 opacity-20">
+            {Array.from({ length: 15 }).map((_, i) => (
+              <div
+                key={i}
+                className="mx-auto my-auto rounded-full bg-yellow-400"
+                style={{
+                  width: "var(--card-dot-size, clamp(4px, 0.8vw, 6px))",
+                  height: "var(--card-dot-size, clamp(4px, 0.8vw, 6px))",
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
       <span className={`absolute left-1 top-0.5 leading-none ${color}`} style={{ fontSize: "0.7em" }}>
         {rank}
       </span>

@@ -135,6 +135,32 @@ describe("Player", () => {
 
     expect(screen.getByTestId("player-0-card-0-visibility").textContent).toBe("DOWN");
     expect(screen.getByTestId("player-0-card-2-visibility").textContent).toBe("UP");
+    expect(screen.getByTestId("player-0-card-0-down-slot").className).toContain("translate-y-1");
+    expect(screen.getByTestId("player-0-card-2-up-slot").className).toContain("-translate-y-2");
+  });
+
+  test("renders Stud hero down-cards with a diagonal back overlay instead of text-only labels", () => {
+    render(
+      <Player
+        player={{
+          ...basePlayer,
+          hand: ["AS", "KD", "2C"],
+          cardVisibility: ["down", "down", "up"],
+          showHand: true,
+        }}
+        index={0}
+        selfIndex={0}
+        turn={1}
+        dealerIdx={1}
+        phase="BET"
+        positionLabel="BTN"
+        displayVariant="stud"
+      />,
+    );
+
+    const downCard = screen.getByTestId("player-0-card-0");
+    expect(downCard.querySelector('[style*="polygon"]')).toBeTruthy();
+    expect(screen.getByTestId("player-0-card-2").querySelector('[style*="polygon"]')).toBeNull();
   });
 
   test("sorts lowball and high-card variants with variant-specific ace handling", () => {

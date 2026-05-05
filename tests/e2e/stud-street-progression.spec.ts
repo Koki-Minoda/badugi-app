@@ -20,6 +20,156 @@ async function getE2EState(page: Page): Promise<any> {
   return page.evaluate(() => window.__BADUGI_E2E__?.getStateSnapshot?.() ?? null);
 }
 
+function summarizeStudState(state: any) {
+  const snapshot = state?.controllerSnapshot;
+  const actor = snapshot?.currentActor ?? snapshot?.turn ?? state?.turn;
+  const actorState =
+    typeof actor === "number" && Array.isArray(snapshot?.players)
+      ? snapshot.players[actor]
+      : null;
+  return JSON.stringify({
+    handId: state?.handId,
+    phase: state?.phase,
+    turn: state?.turn,
+    street: snapshot?.street,
+    controllerPhase: snapshot?.phase,
+    actor,
+    actorName: actorState?.name ?? actorState?.playerId ?? null,
+    actorStack: actorState?.stack,
+    actorBet: actorState?.betThisStreet ?? actorState?.betThisRound,
+    actorFolded: actorState?.folded,
+    actorAllIn: actorState?.allIn,
+    currentBet: snapshot?.currentBet,
+    pot: snapshot?.pot,
+    lastHandResult: Boolean(snapshot?.lastHandResult),
+  });
+}
+
+async function isVisibleAndEnabled(page: Page, testId: string) {
+  const locator = page.getByTestId(testId).first();
+  if (!(await locator.count())) return false;
+  if (!(await locator.isVisible().catch(() => false))) return false;
+  return locator.isEnabled().catch(() => false);
+}
+
+async function clickFirstHeroActionButton(page: Page) {
+  const preferredActions = [
+    "action-check",
+    "action-call",
+    "action-allin_call",
+    "action-raise",
+  ];
+  for (const testId of preferredActions) {
+    if (await isVisibleAndEnabled(page, testId)) {
+      await page.getByTestId(testId).first().click();
+      return testId;
+    }
+  }
+  return null;
+}
+
+async function playStudHandWithVisibleHeroButtons(page: Page, variant: string, handNumber: number) {
+  const visited = new Set<string>();
+  let heroButtonClicks = 0;
+  let lastProgressKey = "";
+  let stableTicks = 0;
+
+  for (let step = 0; step < 260; step += 1) {
+    const state = await getE2EState(page);
+    const snapshot = state?.controllerSnapshot;
+    const street = snapshot?.street;
+    if (street) visited.add(street);
+
+    const resultVisible = await page
+      .getByTestId("hand-result-pot")
+      .first()
+      .isVisible()
+      .catch(() => false);
+    if (
+      resultVisible ||
+      street === "SHOWDOWN" ||
+      snapshot?.lastHandResult ||
+      state?.phase === "HAND_RESULT"
+    ) {
+      await expect(page.getByTestId("hand-result-pot").first()).toBeVisible({
+        timeout: 15000,
+      });
+      return { visited, heroButtonClicks };
+    }
+
+    const actor = snapshot?.currentActor ?? snapshot?.turn ?? state?.turn;
+    const progressKey = JSON.stringify({
+      handId: state?.handId,
+      phase: state?.phase,
+      street,
+      actor,
+      currentBet: snapshot?.currentBet,
+      pot: snapshot?.pot,
+      lastAction:
+        typeof actor === "number"
+          ? snapshot?.players?.[actor]?.lastAction ?? null
+          : null,
+    });
+    if (progressKey === lastProgressKey) {
+      stableTicks += 1;
+    } else {
+      stableTicks = 0;
+      lastProgressKey = progressKey;
+    }
+
+    if (actor === 0) {
+      await expect(page.getByTestId("decision-panel")).toBeVisible({ timeout: 10000 });
+      const clicked = await clickFirstHeroActionButton(page);
+      if (!clicked) {
+        throw new Error(
+          `${variant} hand ${handNumber} reached hero turn without an enabled action button: ${summarizeStudState(
+            state,
+          )}`,
+        );
+      }
+      heroButtonClicks += 1;
+      await page.waitForTimeout(260);
+      continue;
+    }
+
+    if (stableTicks > 80) {
+      throw new Error(
+        `${variant} hand ${handNumber} appears frozen after ${step} steps: ${summarizeStudState(
+          state,
+        )}`,
+      );
+    }
+
+    await page.waitForTimeout(240);
+  }
+
+  const state = await getE2EState(page);
+  throw new Error(
+    `${variant} hand ${handNumber} did not reach showdown/result with UI buttons only: ${summarizeStudState(
+      state,
+    )}`,
+  );
+}
+
+async function advanceToNextHandWithButton(page: Page, previousHandId: string | null) {
+  const nextButton = page.getByRole("button", { name: /next hand/i }).first();
+  await expect(nextButton).toBeVisible({ timeout: 15000 });
+  await expect(nextButton).toBeEnabled({ timeout: 15000 });
+  await nextButton.click();
+  await expect(page.getByTestId("hand-result-pot").first()).toBeHidden({ timeout: 15000 });
+  await expect
+    .poll(
+      async () => {
+        const state = await getE2EState(page);
+        if (!state?.controllerSnapshot) return "missing-controller";
+        if (previousHandId && state.handId === previousHandId) return "same-hand";
+        return state.controllerSnapshot.street ?? state.phase ?? "unknown";
+      },
+      { timeout: 20000 },
+    )
+    .not.toBe("same-hand");
+}
+
 async function forceCurrentStudAction(page: Page) {
   const state = await getE2EState(page);
   const snapshot = state?.controllerSnapshot;
@@ -101,6 +251,37 @@ async function advanceToHeroStudCallSpot(page: Page) {
 
 test.describe("Stud-family street progression UI", () => {
   test.describe.configure({ timeout: 120000 });
+
+  for (const variant of ["stud", "razz"]) {
+    test(`${variant} completes two consecutive hands from 3rd to 7th with visible hero buttons only`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await openAuthenticatedGame(page, `${APP_URL}?variant=${variant}`);
+      await waitForE2EDriver(page);
+
+      for (let hand = 1; hand <= 2; hand += 1) {
+        const before = await getE2EState(page);
+        const handIdBefore = before?.handId ?? null;
+        const result = await playStudHandWithVisibleHeroButtons(page, variant, hand);
+
+        expect(
+          [...result.visited],
+          `${variant} hand ${hand} visited streets`,
+        ).toEqual(
+          expect.arrayContaining(["THIRD", "FOURTH", "FIFTH", "SIXTH", "SEVENTH", "SHOWDOWN"]),
+        );
+        expect(
+          result.heroButtonClicks,
+          `${variant} hand ${hand} should exercise at least one real hero action button`,
+        ).toBeGreaterThan(0);
+
+        if (hand < 2) {
+          await advanceToNextHandWithButton(page, handIdBefore);
+        }
+      }
+    });
+  }
 
   for (const variant of ["stud", "razz"]) {
     test(`${variant} visits every street before showdown`, async ({ page }) => {

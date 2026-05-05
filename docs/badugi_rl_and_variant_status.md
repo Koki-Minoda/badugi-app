@@ -3279,10 +3279,15 @@ Draw RL test coverage:
 - [x] `BUG-54` Stud E2Eに、controllerでHeroのcall spotを作った後、実UIの `action-call` ボタンをクリックしてHeroが stuck しないことを追加。
 
 確認結果:
-- [x] `npx playwright test tests/e2e/stud-street-progression.spec.ts --project=badugi-flow`: 4 passed。
+- [x] `npx playwright test tests/e2e/stud-street-progression.spec.ts --project=badugi-flow`: 6 passed。
 - [x] `npx playwright test tests/e2e/mixed-rotation-core-progression.spec.ts --project=badugi-flow`: 11 passed。
 - [x] `npm run lint`: pass（既存の `syncLegacyFromControllerSnapshot` hook dependency warning 1件のみ）。
 - [x] `npm run build`: pass。
 
-残リスク:
-- [ ] `BUG-55` Stud/Razz系の実ボタン操作だけで3rd-7th streetを複数hand連続完走するUI E2Eを追加し、controller直接操作依存をさらに減らす。
+追加対応:
+- [x] `BUG-55` Stud/Razz系の実ボタン操作だけで3rd-7th streetを2hand連続完走するUI E2Eを追加し、controller直接操作依存を減らした。
+  - 原因: Stud/RazzのHero Callが、クリック後にlegacy `betThisRound` だけでtoCallを計算していたため、controller上はbring-in/currentBetが残っているのにUI actionがCheck扱いで送られ、3rd streetでHero actorに戻り続けることがあった。
+  - 対応: controller-driven board/stud系では `controllerSnapshot.currentActor/currentBet/betThisStreet` を手番・toCallの正とし、NPC自動action/watchdogもcontroller actorへ同期するよう修正。
+  - 検証: `npx playwright test tests/e2e/stud-street-progression.spec.ts --project=badugi-flow --grep "visible hero buttons only"`: 2 passed。
+  - 検証: `npx playwright test tests/e2e/stud-street-progression.spec.ts --project=badugi-flow`: 6 passed。
+  - 検証: `npm test -- --run src/games/stud/__tests__/StudSplitGameController.test.js`: 19 passed。

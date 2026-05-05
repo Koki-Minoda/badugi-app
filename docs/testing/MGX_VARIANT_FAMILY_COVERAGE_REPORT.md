@@ -66,7 +66,7 @@ Last updated: 2026-05-06
 | Finding | Status | Notes |
 |---|---|---|
 | New Vitest-level Stud progression failures | None detected | Added tests passed for ST1-ST6 |
-| Remaining risk: UI-only Stud/Razz street actions | Open | Existing manual reports around call/raise UI need Playwright expansion |
+| UI-only Stud/Razz street actions | Covered | `stud-street-progression.spec.ts` now drives Stud/Razz through two consecutive hands using visible Hero buttons only; full spec passes 6/6 |
 | Remaining risk: 7th-street down-card clarity | Open | UI representation is outside this family runner scope |
 
 ## Skips / Unhandled

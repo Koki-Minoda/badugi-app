@@ -1038,26 +1038,6 @@ const SAFE_RESET_PHASE = "IDLE";
   const tablePhase = adapterViewProps?.tablePhase ?? phaseSrc;
   const isTableActionPhase =
     tablePhase === "BET" || tablePhase === "DRAW";
-  const safeEngineState = engineState ?? {};
-  const snapshotTurn =
-    typeof turnSeatSrc === "number"
-      ? turnSeatSrc
-      : typeof safeEngineState?.metadata?.actingPlayerIndex === "number"
-      ? safeEngineState.metadata.actingPlayerIndex
-      : typeof safeEngineState?.nextTurn === "number"
-      ? safeEngineState.nextTurn
-      : typeof safeEngineState?.turn === "number"
-      ? safeEngineState.turn
-      : typeof controllerSnapshot?.currentActor === "number"
-      ? controllerSnapshot.currentActor
-      : typeof controllerSnapshot?.turn === "number"
-      ? controllerSnapshot.turn
-      : turn;
-  const controllerTurn =
-    typeof snapshotTurn === "number" && !Number.isNaN(snapshotTurn)
-      ? snapshotTurn
-      : 0;
-
   const normalizedGameVariant = normalizeAppVariantId(gameVariant);
   const isSingleTableBadugi =
     mode !== "tournament-mtt" && normalizedGameVariant === APP_VARIANT_IDS.BADUGI;
@@ -1076,6 +1056,31 @@ const SAFE_RESET_PHASE = "IDLE";
     isSingleTableDrawLowball || isSingleTableDramaha;
   const isControllerDrivenSingleTable =
     isSingleTableBadugi || isSingleTableDrawLowball || isSingleTableBoardGame;
+  const safeEngineState = engineState ?? {};
+  const controllerActor =
+    typeof controllerSnapshot?.currentActor === "number"
+      ? controllerSnapshot.currentActor
+      : typeof controllerSnapshot?.turn === "number"
+      ? controllerSnapshot.turn
+      : null;
+  const snapshotTurn =
+    isSingleTableBoardGame && typeof controllerActor === "number"
+      ? controllerActor
+      : typeof turnSeatSrc === "number"
+      ? turnSeatSrc
+      : typeof safeEngineState?.metadata?.actingPlayerIndex === "number"
+      ? safeEngineState.metadata.actingPlayerIndex
+      : typeof safeEngineState?.nextTurn === "number"
+      ? safeEngineState.nextTurn
+      : typeof safeEngineState?.turn === "number"
+      ? safeEngineState.turn
+      : typeof controllerActor === "number"
+      ? controllerActor
+      : turn;
+  const controllerTurn =
+    typeof snapshotTurn === "number" && !Number.isNaN(snapshotTurn)
+      ? snapshotTurn
+      : 0;
   const isMobileDevice = deviceProfile.isMobile;
   const layoutMode = isMobileDevice ? "mobile" : "desktop";
   const shouldUseDesktopCanvasScale = false;
@@ -7330,8 +7335,27 @@ const SAFE_RESET_PHASE = "IDLE";
     const stackBefore = me.stack;
     const betBefore = me.betThisRound;
 
-    const maxNow = maxBetThisRound(snap);
-    const toCall = Math.max(0, maxNow - me.betThisRound);
+    const liveControllerSnapshot =
+      isSingleTableBoardGame &&
+      gameControllerRef.current &&
+      typeof gameControllerRef.current.getSnapshot === "function"
+        ? gameControllerRef.current.getSnapshot()
+        : null;
+    const controllerHero =
+      liveControllerSnapshot?.players?.[0] && typeof liveControllerSnapshot.players[0] === "object"
+        ? liveControllerSnapshot.players[0]
+        : null;
+    const maxNow = Number.isFinite(Number(liveControllerSnapshot?.currentBet))
+      ? Number(liveControllerSnapshot.currentBet)
+      : maxBetThisRound(snap);
+    const heroCommitted = Number.isFinite(Number(controllerHero?.betThisStreet))
+      ? Number(controllerHero.betThisStreet)
+      : Number.isFinite(Number(controllerHero?.betThisRound))
+      ? Number(controllerHero.betThisRound)
+      : Number.isFinite(Number(me.betThisRound))
+      ? Number(me.betThisRound)
+      : 0;
+    const toCall = Math.max(0, maxNow - heroCommitted);
     const pay = toCall;
     const controllerOutcome = tryControllerBetAction({
       actionType: toCall === 0 ? "check" : "call",
@@ -7408,7 +7432,30 @@ const SAFE_RESET_PHASE = "IDLE";
     const snap = basePlayers.map(clonePlayerState).filter(Boolean);
     const me = snap[0] ? { ...snap[0] } : null;
     if (!me) return;
-    const maxNow = maxBetThisRound(snap);
+    const liveControllerSnapshot =
+      isSingleTableBoardGame &&
+      gameControllerRef.current &&
+      typeof gameControllerRef.current.getSnapshot === "function"
+        ? gameControllerRef.current.getSnapshot()
+        : null;
+    const controllerHero =
+      liveControllerSnapshot?.players?.[0] && typeof liveControllerSnapshot.players[0] === "object"
+        ? liveControllerSnapshot.players[0]
+        : null;
+    const maxNow = Number.isFinite(Number(liveControllerSnapshot?.currentBet))
+      ? Number(liveControllerSnapshot.currentBet)
+      : maxBetThisRound(snap);
+    const heroCommitted = Number.isFinite(Number(controllerHero?.betThisStreet))
+      ? Number(controllerHero.betThisStreet)
+      : Number.isFinite(Number(controllerHero?.betThisRound))
+      ? Number(controllerHero.betThisRound)
+      : Number.isFinite(Number(me.betThisRound))
+      ? Number(me.betThisRound)
+      : 0;
+    if (isSingleTableBoardGame && maxNow > heroCommitted) {
+      playerCall();
+      return;
+    }
     if (!ensureSeatCanAct(0, "playerCheck")) return;
     const controllerOutcome = tryControllerBetAction({
       actionType: "check",
@@ -7996,7 +8043,7 @@ const SAFE_RESET_PHASE = "IDLE";
     }
 
     if (phase === "BET" && isSingleTableBoardGame) {
-      const seatToAct = turn;
+      const seatToActHint = turn;
       const timer = setTimeout(() => {
         const liveControllerSnapshot =
           gameControllerRef.current && typeof gameControllerRef.current.getSnapshot === "function"
@@ -8008,18 +8055,24 @@ const SAFE_RESET_PHASE = "IDLE";
             : typeof liveControllerSnapshot?.turn === "number"
             ? liveControllerSnapshot.turn
             : null;
-        if (typeof liveControllerActor === "number" && liveControllerActor !== seatToAct) {
-          return;
+        const seatToAct =
+          typeof liveControllerActor === "number" ? liveControllerActor : seatToActHint;
+        if (typeof liveControllerActor === "number" && liveControllerActor !== seatToActHint) {
+          setTurn(liveControllerActor);
         }
-        const snap = (playersRef.current ?? activePlayers).map(clonePlayerState).filter(Boolean);
+        if (seatToAct === 0) return;
+        const snap = (liveControllerSnapshot?.players ?? playersRef.current ?? activePlayers)
+          .map(clonePlayerState)
+          .filter(Boolean);
         const actor = snap[seatToAct];
         if (!actor || isFoldedOrOut(actor) || actor.allIn || actor.stack <= 0) {
           const nextActor = nextAliveFrom(snap, seatToAct);
           if (nextActor !== null) setTurn(nextActor);
           return;
         }
-        const maxNow = maxBetThisRound(snap);
-        const toCall = Math.max(0, maxNow - (Number(actor.betThisRound) || 0));
+        const maxNow = Number(liveControllerSnapshot?.currentBet ?? maxBetThisRound(snap)) || 0;
+        const actorBet = Number(actor.betThisStreet ?? actor.betThisRound ?? 0) || 0;
+        const toCall = Math.max(0, maxNow - actorBet);
         applyForcedBetAction(seatToAct, {
           type: toCall === 0 ? "check" : "call",
           amount: toCall,
@@ -8231,6 +8284,37 @@ const SAFE_RESET_PHASE = "IDLE";
       if (!live.length) return;
       const currentPhase = phaseRef.current ?? phase;
       if (currentPhase === "BET") {
+        if (isSingleTableBoardGame) {
+          const liveControllerSnapshot =
+            gameControllerRef.current && typeof gameControllerRef.current.getSnapshot === "function"
+              ? gameControllerRef.current.getSnapshot()
+              : null;
+          const liveControllerActor =
+            typeof liveControllerSnapshot?.currentActor === "number"
+              ? liveControllerSnapshot.currentActor
+              : typeof liveControllerSnapshot?.turn === "number"
+              ? liveControllerSnapshot.turn
+              : null;
+          if (typeof liveControllerActor !== "number") return;
+          if (liveControllerActor !== turn) {
+            setTurn(liveControllerActor);
+          }
+          if (liveControllerActor === 0) return;
+          const actor = liveControllerSnapshot?.players?.[liveControllerActor] ?? null;
+          if (!actor || isFoldedOrOut(actor) || actor.allIn || (Number(actor.stack) || 0) <= 0) {
+            return;
+          }
+          const liveMax = Number(liveControllerSnapshot?.currentBet ?? 0) || 0;
+          const actorBet = Number(actor.betThisStreet ?? actor.betThisRound ?? 0) || 0;
+          const toCall = Math.max(0, liveMax - actorBet);
+          applyForcedBetAction(liveControllerActor, {
+            type: toCall === 0 ? "check" : "call",
+            amount: toCall,
+            __forceInstant: true,
+            decisionSource: "board-controller-watchdog",
+          });
+          return;
+        }
         const liveMax = maxBetThisRound(live);
         const currentSeat =
           typeof turn === "number" && needsActionForBet(live[turn], liveMax)
@@ -8322,6 +8406,7 @@ const SAFE_RESET_PHASE = "IDLE";
     drawRound,
     currentBet,
     players,
+    isSingleTableBoardGame,
     applyForcedBetAction,
     autoResolveCpuDrawIfNeeded,
     findNextDrawActorSeat,

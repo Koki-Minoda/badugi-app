@@ -60,9 +60,9 @@ This matrix tracks add-on coverage for game progression regressions. Existing Vi
 | H04 | Dramaha Zero | WIP | Yes | Yes | Yes | Yes | board+draw/split result | scenario smoke | result UI detail | Added | Alias `dramaha_zero` |
 | H05 | Dramaha Hidugi | WIP | Yes | Yes | Yes | Yes | board+draw/split result | scenario smoke | result UI detail | Added | Alias `dramaha_hidugi` |
 | H06 | Dramaha Badugi | WIP | Yes | Yes | Yes | Yes | board+draw/split result | scenario smoke | result UI detail | Added | Alias `dramaha_badugi` |
-| ST1 | Stud | Yes | Yes | No | Yes | Yes | bring-in/3rd-7th/showdown | scenario smoke + Stud E2E existing | multi-hand pure UI E2E | Added | Alias `stud` |
+| ST1 | Stud | Yes | Yes | No | Yes | Yes | bring-in/3rd-7th/showdown | scenario smoke + Stud E2E UI-only 2hand | none for BUG-55 | Added | Alias `stud`; visible Hero buttons only |
 | ST2 | Stud 8 | Yes | Yes | No | Yes | Yes | bring-in/hi-lo/showdown | scenario smoke | hi/lo result UI E2E | Added | Alias `stud8` |
-| ST3 | Razz | Yes | Yes | No | Yes | Yes | bring-in/low/showdown | scenario smoke + Stud E2E existing | multi-hand pure UI E2E | Added | Alias `razz` |
+| ST3 | Razz | Yes | Yes | No | Yes | Yes | bring-in/low/showdown | scenario smoke + Stud E2E UI-only 2hand | none for BUG-55 | Added | Alias `razz`; visible Hero buttons only |
 | ST4 | Razzdugi | Yes | Yes | No | Yes | Yes | split stud result | scenario smoke | component-pot UI E2E | Added | Alias `razzdugi` |
 | ST5 | Razzducey | Yes | Yes | No | Yes | Yes | split stud result | scenario smoke | component-pot UI E2E | Added | Alias `razzducey` |
 | ST6 | 2-7 Razz | Yes | Yes | No | Yes | Yes | bring-in/2-7 low/showdown | scenario smoke | low result UI E2E | Added | Alias `razz27` |

@@ -70,12 +70,19 @@ export function buildHandResultSummary({
         : null;
     const playerState = typeof seatIndex === "number" ? players?.[seatIndex] : null;
     const playerHand = playerState?.hand ?? entry?.hand ?? [];
-    const evaluation =
-      entry?.evaluation && typeof entry.evaluation === "object"
-        ? entry.evaluation
-        : playerHand.length && evaluate
-        ? evaluate(playerHand)
-        : null;
+    let evaluation = entry?.evaluation && typeof entry.evaluation === "object"
+      ? entry.evaluation
+      : null;
+    if (!evaluation && playerHand.length && evaluate) {
+      try {
+        evaluation = evaluate(playerHand);
+      } catch (error) {
+        console.warn("[HAND_RESULT] Failed to hydrate winner evaluation", {
+          seatIndex,
+          message: error?.message ?? String(error),
+        });
+      }
+    }
     const activeCards =
       evaluation?.activeCards && evaluation.activeCards.length
         ? evaluation.activeCards

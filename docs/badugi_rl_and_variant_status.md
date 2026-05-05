@@ -3008,3 +3008,35 @@ Draw RL test coverage:
 
 残タスク:
 - [ ] `PV90-16` Badugi full 3-draw E2Eを、all-in/短スタックで早期showdownしない固定fixtureに切り替える。現在の失敗は「停止」ではなく「テスト前提と実進行の競合」だが、回帰テストとしては不安定なので修正する。
+
+### 21.7 2026-05-05 Hand History / Replay Smoke 強化
+
+目的:
+- FB、バグ調査、学習ログ評価で使う最低限の履歴品質を全playable variantで保証する。
+- 各完了handに `handId` / `variantId` / action rows / pot winner result / replay validation fields が揃っていることをE2Eで固定する。
+
+対応:
+- [x] `HIST-REG-01` canonical hand historyのトップレベルへ `variantId` / `variantName` を保持する。
+  - これまではlegacy record側にはvariantがあったが、canonical bufferのトップレベルからvariantを見失う経路があった。
+  - `beginCanonicalHandHistory` と `finalizeCanonicalHandHistory` の両方でvariant情報を保持・補完する。
+- [x] `HIST-REG-02` E2E driverへ `getCurrentHandHistory` を公開し、進行中handの `handId` と完了後bufferの同一性を検査できるようにする。
+- [x] `HIST-REG-03` `cross-variant-history-replay-smoke.spec.ts` を追加し、全35 playable variantsで以下を確認する。
+  - active handの `handId` が取得できる。
+  - 完了履歴に同じ `handId` が残る。
+  - `variantId` が保存される。
+  - `HAND_START` / `HAND_END` eventが残る。
+  - blinds/antes/player actionのいずれかがseat actionとして残る。
+  - pot resultとwinner resultが残る。
+  - `validateReplayReadyHandHistory` を通過する。
+  - next handへ進めたときに新しい `handId` へ切り替わる。
+- [x] `HIST-REG-04` Dramaha系のforced result smokeでwinner evaluation hydrationが例外になり履歴が残らないケースを修正する。
+  - Dramaha result summaryはboard/draw split情報が不足した保険経路ではPLO evaluatorへ不完全入力が渡ることがあった。
+  - hand result hydrationで評価例外を握り、pot/winner/result保存とnext hand進行を優先する。
+
+確認結果:
+- [x] `npx playwright test tests/e2e/cross-variant-history-replay-smoke.spec.ts --project=badugi-flow --grep "badugi records"`: 2 passed。
+- [x] `npx playwright test tests/e2e/cross-variant-history-replay-smoke.spec.ts --project=badugi-flow`: 35 passed。
+
+残タスク:
+- [ ] `HIST-REG-05` Replay UIのframe再生そのものを全variantで押下確認する。今回の範囲は「保存される履歴データがReplay-readyであること」まで。
+- [ ] `HIST-REG-06` Chinese/OFC正式接続後、同じhistory/replay smokeへ36件目として追加する。

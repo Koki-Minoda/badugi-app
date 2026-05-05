@@ -27,6 +27,8 @@ export function installE2eTestDriver(apiRef) {
     setPlayerHands: (...args) => apiRef.current?.setPlayerHands?.(...args),
     getLastPotSummary: (...args) => apiRef.current?.getLastPotSummary?.(...args),
     getHandHistory: (...args) => apiRef.current?.getHandHistory?.(...args),
+    getCurrentHandHistory: (...args) =>
+      apiRef.current?.getCurrentHandHistory?.(...args),
     getTournamentHudState: (...args) => apiRef.current?.getTournamentHudState?.(...args),
     getTournamentPlacements: (...args) => apiRef.current?.getTournamentPlacements?.(...args),
     isTournamentOverlayVisible: (...args) =>

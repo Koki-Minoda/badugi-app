@@ -1986,6 +1986,8 @@ const SAFE_RESET_PHASE = "IDLE";
       buttonSeat,
       sbSeat,
       bbSeat,
+      variantId = null,
+      variantName = null,
       seatsSnapshot = [],
     }) => {
       const seats = seatsSnapshot.map((player, seat) => ({
@@ -1999,6 +2001,8 @@ const SAFE_RESET_PHASE = "IDLE";
         handId,
         handCount,
         tableId,
+        variantId,
+        variantName,
         buttonSeat,
         sbSeat,
         bbSeat,
@@ -2061,6 +2065,10 @@ const SAFE_RESET_PHASE = "IDLE";
       });
       handHistoryRef.current.endedAt = Date.now();
       if (legacyRecord) {
+        handHistoryRef.current.variantId =
+          legacyRecord.variantId ?? handHistoryRef.current.variantId ?? null;
+        handHistoryRef.current.variantName =
+          legacyRecord.variantName ?? handHistoryRef.current.variantName ?? null;
         handHistoryRef.current.legacyRecord = legacyRecord;
         handHistoryRef.current.seats = Array.isArray(legacyRecord.seats)
           ? legacyRecord.seats.map((seat) => ({ ...seat }))
@@ -5245,6 +5253,8 @@ const SAFE_RESET_PHASE = "IDLE";
       handId: newHandId,
       handCount: nextHandNumber,
       tableId: baseTableId,
+      variantId: handVariantProfile?.variantId ?? normalizedHandVariant,
+      variantName: handVariantProfile?.label ?? formatVariantLabel(normalizedHandVariant),
       buttonSeat: nextDealerIdx,
       sbSeat: typeof sbIdx === "number" ? sbIdx : null,
       bbSeat: typeof bbIdx === "number" ? bbIdx : null,

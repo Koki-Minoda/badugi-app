@@ -26,7 +26,8 @@
     "ai:export-draw-onnx": "node scripts/runPythonTool.mjs src/rl/training/export_draw_dqn_onnx.py",
     "ai:train-board": "node scripts/runPythonTool.mjs src/rl/training/train_board_dqn.py",
     "ai:export-board-onnx": "node scripts/runPythonTool.mjs src/rl/training/export_board_dqn_onnx.py",
-    "ai:evaluate-board-onnx": "node scripts/runPythonTool.mjs src/rl/training/evaluate_board_onnx.py"
+    "ai:evaluate-board-onnx": "node scripts/runPythonTool.mjs src/rl/training/evaluate_board_onnx.py",
+    "ai:benchmark-board-human-practice": "node scripts/runPythonTool.mjs src/rl/training/benchmark_board_human_practice.py"
   },
   "dependencies": {
     "onnxruntime-web": "^1.18.0",

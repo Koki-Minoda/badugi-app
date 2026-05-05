@@ -1821,6 +1821,7 @@ Draw RL test coverage:
         - 2026-05-04 実装: `src/games/chinese/chinesePokerPreparation.js` に alias と実装要件を固定。現時点ではゲーム進行へ接続しない準備ファイルのみ。
       - [ ] `CHINESE-02` Chinese Poker / OFC の実ゲーム controller / layout UI / scorer / foul判定を実装する。
         - 2026-05-04 部分対応: scorer foundationとしてfront/middle/back行評価、foul判定、最小royalty fixtureを追加。まだ実ゲーム進行・UI・fantasyland・turn orderには未接続。
+        - 2026-05-05 部分対応: `ChinesePokerController` を追加し、13枚配布、最大4人、CPU自動配置、Hero row set、showdown、行別勝敗、royalty、foul scoop、next hand遷移をunitで固定。App layout UI、fantasyland、OFC street-by-street turn orderは未接続。
     - [x] `AI-07` CPU decision log に `source`, `tierId`, `reason`, `discardIndexes` を集計表示し、手動検証で追えるようにする。
   - P2P:
     - data capture / export / sync / security test の部品はある。
@@ -2258,9 +2259,10 @@ Draw RL test coverage:
   - 2026-05-04 部分対応: 残Board枠の `B03` NL Super Hold'em / `B04` FL Super Hold'em をplayable化し、routing / registry / 3-hole配布 / high evaluator / all-in side-pot invariantに追加。
   - 2026-05-04 部分対応: `S03` 5-Card Single Drawをplayable化。high hand evaluator / 1 draw / controller / registry / App routing / UI adapter / game selector / playable smoke / hand history high-hand labelを追加。
   - 2026-05-04 部分対応: Chinese Poker / OFC用のscorer foundationを追加。front / middle / backの行評価、foul判定、最小royalty fixtureをunitで固定。実ゲームcontroller / layout UI / fantasyland / turn順は未実装のまま `CHINESE-02` に残す。
+  - 2026-05-05 部分対応: Chinese Poker / OFC本体controllerを追加。13枚配布、front/middle/back自動配置、Hero row set、foul判定、royalty、showdown row scoring、next handをunitで固定。layout UI / fantasyland / OFC turn順は継続。
   - 2026-05-04 部分対応: `D04` Badeucey TD、`D05` Badacey TD、`D06` Hidugi TD、`D07` Archie TD をplayable化。Badugi half + 2-7/A-5/high系halfのcomponent split、odd chip fixture、registry/routing/UI adapter/history smokeを追加。
   - 2026-05-04 部分対応: `S04-S07` single draw split/Badugi系をplayable化。S04 Badugi SD、S05 Badeucey SD、S06 Badacey SD、S07 Hidugi SDのcontroller/engine/routing/catalog/history smokeを追加。
-  - 残TODO: Chinese/OFC本体controller / layout UI / fantasyland / turn順、split draw系の公式ルール監査、component pot detail UI、Playwright replay smoke、CPU discard strategy精緻化を追加する。
+  - 残TODO: Chinese/OFC layout UI / fantasyland / OFC street-by-street turn順、split draw系の公式ルール監査、component pot detail UI、Playwright replay smoke、CPU discard strategy精緻化を追加する。
 - [ ] `GAME-ALL-03` Stud / Razz 実装後、10-Game対象のCPUを Beginner / Standard まで学習・適用する。
   - 2026-05-05 部分対応: NLH / FLH / PLO / PLO8 / FLO8 / Stud / Stud8 / Razz / Razz27 は、controller の `getCpuAction()` 経由で teacher-supervised CPU policy を実行できるようにした。
   - 2026-05-05 部分対応: App のCPU action経路を draw-lowball 限定から controller-driven game 全体へ広げ、board/stud系がBadugi fallback policyへ落ちないようにした。
@@ -2552,7 +2554,7 @@ Draw RL test coverage:
 - [ ] `QA-20260504-ALL-VARIANT-OPERATIONAL-AUDIT` playable invariant を「初回action到達」だけでなく、street完走・showdown・all-in/split potまで段階的に拡張する。
   - 背景: Razz/Stud/draw/board gameごとの進行差をテストで拾わないと、ゲームできると誤認する。
   - 2026-05-04: Razz/Razz27 のfull street unit fixture、Player表示順unit、HandResultOverlay split/component表示unitを追加。全variantの完全手動/自動E2E完走監査は継続タスク。
-  - 2026-05-05: controller invariantは全playable variantの5連続handまで拡張済み。UI/E2E上の5連続hand、all-in/split-pot全variant網羅、Chinese/OFC本体は継続。
+  - 2026-05-05: controller invariantは全playable variantの5連続handまで拡張済み。UI/E2E上の5連続hand、all-in/split-pot全variant網羅、Chinese/OFC layout UIは継続。
 
 ### 16.4 未対応タスク優先度
 
@@ -2735,6 +2737,7 @@ Draw RL test coverage:
 - 今回は「初期モデル導入」まで。実戦的な強さは未保証で、Badugi Pro/Iron相当の評価はしていない。
 - fixture gateは、強い手のvalue bet/continue、弱い手のfold disciplineだけを最低限確認する。
 - 2026-05-05 再学習: Beginner/Standard 8モデルを `--long-horizon --max-steps 12` で再学習し、ONNXを上書きexport。PLO Beginner は初回gateで強いopenをcheckして失敗したため、teacher / fixture replay比率を上げて再学習し、fixture pass後に採用した。
+- 2026-05-05 advanced再学習: thin value / low-equity bluff discipline / multiway isolation / side-pot EV / PLO8 scoop-or-no-low を teacher / fixture replay に追加し、Beginner/Standard 8モデルを再export。advanced gate は8モデルすべて `8/8` pass。
 
 ### 19.3 Routing
 
@@ -2776,10 +2779,14 @@ Draw RL test coverage:
   - `flh`: 120 episodes long-horizon resume smoke, exported `/tmp/flh_long_resume_smoke.onnx`, fixture pass。
   - `plo`: 120 episodes long-horizon resume smoke, exported `/tmp/plo_long_resume_smoke.onnx`, fixture pass。
   - `plo8`: 120 episodes long-horizon resume smoke, exported `/tmp/plo8_long_resume_smoke.onnx`, fixture pass。
-- [ ] `AI-BOARD-LONG-05` 次段階: 長期学習用の評価gateをfixtureだけでなく、EV delta / fold discipline / thin value / bluff frequency / multiway isolation / hi-lo scoop rateに広げる。
+- [x] `AI-BOARD-LONG-05` 次段階: 長期学習用の評価gateをfixtureだけでなく、EV delta / fold discipline / thin value / bluff frequency / multiway isolation / hi-lo scoop rateに広げる。
+  - 2026-05-05 対応: `evaluate_board_onnx.py` に `--advanced-gate` を追加。既存3fixture smokeは維持しつつ、advanced時だけ late thin value / low-equity bluff discipline / multiway isolation / side-pot EV / PLO8 scoop-or-no-low を評価し、各fixtureの `selectedEV`, `bestEV`, `evDelta`, category summaryをreport出力する。
 - [ ] `AI-BOARD-LONG-06` 実ハンド履歴ベース評価を board系にも導入する。最低条件: variant別に30/50/200ハンド単位で `heroNet`, showdown result, all-in EV, position, street action sequence を集計し、synthetic fixtureだけで強さを宣言しない。
-- [ ] `AI-BOARD-LONG-07` variant別EV gateを追加する。NLH/FLH/PLO/PLO8を分け、`callEV`, `raiseEV`, `foldEV`, `thin value`, `bad bluff`, `multiway isolation`, `side-pot EV`, `PLO8 scoop/no-low` を別々に合否判定する。
-- [ ] `AI-BOARD-LONG-08` human/practice benchmarkを board系にも追加する。Badugi用 `ai:benchmark-badugi-human-practice` と同等に、実プレイログを読み込めない場合は practice-only と明記し、人間相手の勝率保証には使わない。
+- [x] `AI-BOARD-LONG-07` variant別EV gateを追加する。NLH/FLH/PLO/PLO8を分け、`callEV`, `raiseEV`, `foldEV`, `thin value`, `bad bluff`, `multiway isolation`, `side-pot EV`, `PLO8 scoop/no-low` を別々に合否判定する。
+  - 2026-05-05 対応: `B01/B02/B05/B06` の family 別fixtureを同一CLIで分岐。PLO/PLO8はpot-limit draw potentialとscoop/no-low awarenessを別categoryにし、FLHはfixed-limit isolationをcall許容にする。
+  - 2026-05-05 評価: 既存8モデルはbase fixtureは全pass。advanced report-onlyではNLH/FLHが7/8、PLO/PLO8が6/8。共通課題は thin value不足、PLO/PLO8はmultiway isolationとPLO8 scoop/no-low raise頻度不足。Pro昇格対象ではなく、次の学習課題として扱う。
+- [x] `AI-BOARD-LONG-08` human/practice benchmarkを board系にも追加する。Badugi用 `ai:benchmark-badugi-human-practice` と同等に、実プレイログを読み込めない場合は practice-only と明記し、人間相手の勝率保証には使わない。
+  - 2026-05-05 対応: `benchmark_board_human_practice.py` と `npm run ai:benchmark-board-human-practice` を追加。`variantId` ごとにhuman logをfilterし、`heroNet` / `heroResult` / nested `humanBenchmark` / `feedbackContext` を集計する。`--require-human-logs` 時は指定ハンド数未満ならpassしない。
 - [x] `HELP-01` Main Menu の `?` ヘルプを「今後追加予定」から、全variantのルール要点・勝敗判定・強くなるコツを表示する実用ガイドへ拡張する。
 
 ### 19.6 長期RL確認結果
@@ -2789,6 +2796,13 @@ Draw RL test coverage:
 - [x] `npm run ai:train-board -- --family flh --tier standard --long-horizon --episodes 120 ... --resume-checkpoint rl/models/board_flh_standard_20260505/flh_standard_board_dqn_latest.pt`: completed, evaluate pass。
 - [x] `npm run ai:train-board -- --family plo --tier standard --long-horizon --episodes 120 ... --resume-checkpoint rl/models/board_plo_standard_20260505/plo_standard_board_dqn_latest.pt`: completed, evaluate pass。
 - [x] `npm run ai:train-board -- --family plo8 --tier standard --long-horizon --episodes 120 ... --resume-checkpoint rl/models/board_plo8_standard_20260505/plo8_standard_board_dqn_latest.pt`: completed, evaluate pass。
+- [x] `npm run ai:evaluate-board-onnx` base gateをNLH/FLH/PLO/PLO8 Beginner/Standard 8モデルへ実行: all pass。
+- [x] `npm run ai:evaluate-board-onnx -- --advanced-gate --report-only` を8モデルへ実行: report生成。NLH/FLH 7/8、PLO/PLO8 6/8で、Pro以上に進める前の追加学習課題を特定。
+- [x] `PYTHONPATH=src python3 -m pytest src/rl/__tests__/test_board_human_practice.py`: 2 passed。
+- [x] `npm run ai:benchmark-board-human-practice -- --variant-id B05 --model public/models/plo_standard_dqn_v1.onnx --tier standard --report-only`: practice-only PASS。human logなしのため `humanVerified=false`。
+- [x] 2026-05-05 advanced対応後: `nlh/flh/plo/plo8` の `beginner/standard` 8モデルを `board_*_advanced_20260505` として再学習し、`public/models/*_dqn_v1.onnx` と registry checksum を更新。
+- [x] 2026-05-05 advanced対応後: 8モデルすべて `npm run ai:evaluate-board-onnx -- --advanced-gate` で `8/8` pass。NLH/PLO/PLO8は `avgEVDelta=-0.012 worst=-0.060`、FLHは `avgEVDelta=-0.020 worst=-0.060`。
+- [x] 2026-05-05 advanced対応後: `npm run ai:verify-models` pass。required model checksumは全OK。`model-nlh-v1` / `model-generic-v1` は既存optional missing。
 - [x] `npm test -- --run src/ai/__tests__/modelRouter.test.js src/ai/__tests__/onnxPolicyAdapter.test.js src/ai/__tests__/onnxPolicyAdapterInference.test.js`: 3 files / 20 tests pass。
 - [x] `npm run lint`: pass。
 - [x] `npm run build`: pass。chunk size warning は既存警告。

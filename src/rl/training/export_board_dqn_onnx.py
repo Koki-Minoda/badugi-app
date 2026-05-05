@@ -68,8 +68,10 @@ def upsert_registry_entry(registry_path: Path, *, family: str, tier: str, output
         "trainingCheckpoint": checkpoint.name,
         "trainingStatus": "active",
         "trainingNotes": (
-            f"Initial {family.upper()} {tier} board-betting DQN trained in a synthetic "
-            "board-game environment with teacher warmup, fixture replay, and action masking. "
+            f"Advanced-gated {family.upper()} {tier} board-betting DQN trained in a synthetic "
+            "board-game environment with teacher warmup, advanced fixture replay, and action masking. "
+            "The current gate covers thin value, bluff discipline, multiway isolation, side-pot EV, "
+            "and PLO8 scoop/no-low awareness where applicable. "
             "This is a bootstrap model for live CPU routing and must be replaced after "
             "hand-history/human-practice evaluation."
         ),
@@ -174,4 +176,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

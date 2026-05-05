@@ -63,22 +63,30 @@ def linear_epsilon_decay(episode: int, start_eps: float, end_eps: float, decay_e
 
 def add_board_fixture_examples(env: BoardBettingEnv, replay: ReplayBuffer, expert: ReplayBuffer, copies: int):
     for _ in range(max(0, copies)):
-        for strength, equity, draw, to_call, position, expected in [
-            (0.85, 0.82, 0.15, 0.0, 0.7, 3),
-            (0.78, 0.74, 0.1, 0.12, 0.5, 4),
-            (0.45, 0.42, 0.72, 0.08, 0.85, 2),
-            (0.2, 0.18, 0.1, 0.2, 0.2, 0),
-            (0.38, 0.34, 0.35, 0.0, 0.4, 1),
+        for fixture in [
+            # Base gate: value open / strong continue / weak fold.
+            {"strength": 0.85, "equity": 0.82, "draw": 0.15, "to_call": 0.0, "position": 0.7, "expected": 3},
+            {"strength": 0.78, "equity": 0.74, "draw": 0.1, "to_call": 0.12, "position": 0.5, "expected": 4},
+            {"strength": 0.45, "equity": 0.42, "draw": 0.72, "to_call": 0.08, "position": 0.85, "expected": 2},
+            {"strength": 0.2, "equity": 0.18, "draw": 0.1, "to_call": 0.2, "position": 0.2, "expected": 0},
+            {"strength": 0.38, "equity": 0.34, "draw": 0.35, "to_call": 0.0, "position": 0.4, "expected": 1},
+            # Advanced gate: thin value, bluff discipline, isolation, side-pot control.
+            {"strength": 0.66, "equity": 0.61, "draw": 0.05, "to_call": 0.0, "position": 0.9, "expected": 3},
+            {"strength": 0.22, "equity": 0.24, "draw": 0.1, "to_call": 0.0, "position": 0.35, "expected": 1},
+            {"strength": 0.72, "equity": 0.68, "draw": 0.28 if env.family in {"plo", "plo8"} else 0.12, "to_call": 0.08, "position": 0.72, "expected": 4 if env.family != "flh" else 2, "active_opponents": 3},
+            {"strength": 0.34, "equity": 0.31, "draw": 0.16, "to_call": 0.2, "position": 0.5, "expected": 2},
+            {"strength": 0.64 if env.family == "plo8" else 0.58, "equity": 0.72 if env.family == "plo8" else 0.52, "draw": 0.62 if env.family == "plo8" else 0.22, "to_call": 0.1, "position": 0.7, "expected": 4 if env.family == "plo8" else 2},
         ]:
             env.reset()
-            env.scenario.strength = strength
-            env.scenario.equity = equity
-            env.scenario.draw_potential = draw
-            env.scenario.to_call = to_call
-            env.scenario.position = position
+            env.scenario.strength = fixture["strength"]
+            env.scenario.equity = fixture["equity"]
+            env.scenario.draw_potential = fixture["draw"]
+            env.scenario.to_call = fixture["to_call"]
+            env.scenario.position = fixture["position"]
+            env.scenario.active_opponents = fixture.get("active_opponents", env.scenario.active_opponents)
             env.scenario.raise_count = 0
             obs = env._observation()
-            action = expected
+            action = fixture["expected"]
             if env.legal_action_mask()[action] <= 0:
                 action = board_teacher_action(env.scenario)
             replay.add(obs, action, 0.35, obs, False, next_action_mask=env.legal_action_mask())

@@ -347,19 +347,29 @@ def board_teacher_action(scenario: BoardScenario):
     pot_odds = _pot_odds(scenario)
     late_position = scenario.position > 0.62
     multiway = scenario.active_opponents >= 3
+    pot_limit = scenario.family in {"plo", "plo8"}
+    hi_lo = scenario.family == "plo8"
     standard = scenario.tier == "standard"
     value_threshold = 0.63 if standard else 0.72
     continue_threshold = max(0.24 if standard else 0.31, pot_odds + (0.03 if multiway else -0.02))
     semi_bluff_threshold = 0.48 if standard else 0.58
+    thin_value_spot = late_position and scenario.strength >= 0.62 and equity >= (0.58 if standard else 0.66)
+    isolation_spot = (
+        multiway
+        and late_position
+        and equity >= (0.64 if standard else 0.72)
+        and (scenario.draw_potential >= 0.22 if pot_limit else scenario.strength >= 0.68)
+    )
+    scoop_pressure_spot = hi_lo and equity >= (0.68 if standard else 0.75) and scenario.draw_potential >= 0.45
 
     if scenario.to_call > 0:
-        if equity >= value_threshold and scenario.raise_count < 4:
+        if (equity >= value_threshold or isolation_spot or scoop_pressure_spot) and scenario.raise_count < 4:
             return BOARD_ACTIONS.index("raise")
         if equity >= continue_threshold or (late_position and scenario.draw_potential >= semi_bluff_threshold):
             return BOARD_ACTIONS.index("call")
         return BOARD_ACTIONS.index("fold")
 
-    if equity >= value_threshold:
+    if equity >= value_threshold or thin_value_spot:
         return BOARD_ACTIONS.index("bet")
     if standard and late_position and scenario.draw_potential >= semi_bluff_threshold and scenario.last_aggression < 0.55:
         return BOARD_ACTIONS.index("bet")

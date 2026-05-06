@@ -49,6 +49,8 @@ class TrainConfig:
     first_in_value_bet_loss_weight: float = 0.75
     table_size: int = 2
     resume_checkpoint: str | None = None
+    dataset_validation_summary: str | None = None
+    require_clean_dataset: bool = False
 
 
 def linear_epsilon_decay(
@@ -123,6 +125,7 @@ def first_in_value_bet_action(env) -> int | None:
 
 def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"):
     cfg = cfg or TrainConfig()
+    assert_dataset_is_safe_for_training(cfg)
     os.makedirs(cfg.output_dir, exist_ok=True)
 
     env = BadugiEnv(opponent_profile=cfg.opponent_profiles[0], table_size=cfg.table_size)
@@ -379,6 +382,8 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
         "first_in_value_bet_buffer": len(first_in_value_bet_buffer),
         "table_size": cfg.table_size,
         "resume_checkpoint": cfg.resume_checkpoint,
+        "dataset_validation_summary": cfg.dataset_validation_summary,
+        "require_clean_dataset": cfg.require_clean_dataset,
         "avg_reward_last_100": (
             sum(episode_rewards[-100:]) / max(1, len(episode_rewards[-100:]))
             if episode_rewards
@@ -446,6 +451,16 @@ def parse_args():
     )
     parser.add_argument("--table-size", type=int, default=TrainConfig.table_size)
     parser.add_argument("--resume-checkpoint", default=None)
+    parser.add_argument(
+        "--dataset-validation-summary",
+        default=None,
+        help="Path to an export_dataset.py validation summary or dataset JSON containing validation_summary.",
+    )
+    parser.add_argument(
+        "--require-clean-dataset",
+        action="store_true",
+        help="Refuse training unless --dataset-validation-summary reports zero invalid transitions.",
+    )
     parser.add_argument("--device", default=None)
     return parser.parse_args()
 
@@ -455,6 +470,37 @@ def parse_profile_csv(value: str) -> tuple[str, ...]:
     if not profiles:
         raise ValueError("At least one opponent profile is required")
     return profiles
+
+
+def load_dataset_validation_summary(path_value: str | None):
+    if not path_value:
+        return None
+    path = Path(path_value)
+    if not path.exists():
+        raise FileNotFoundError(f"Dataset validation summary not found: {path}")
+    payload = json.loads(path.read_text(encoding="utf8"))
+    if isinstance(payload, dict) and "validation_summary" in payload:
+        return payload["validation_summary"]
+    return payload
+
+
+def assert_dataset_is_safe_for_training(cfg: TrainConfig):
+    if not cfg.require_clean_dataset and not cfg.dataset_validation_summary:
+        return
+    if cfg.require_clean_dataset and not cfg.dataset_validation_summary:
+        raise ValueError(
+            "--require-clean-dataset requires --dataset-validation-summary so training cannot start without a safety gate"
+        )
+    summary = load_dataset_validation_summary(cfg.dataset_validation_summary)
+    if not isinstance(summary, dict):
+        raise ValueError("Dataset validation summary must be a JSON object")
+    invalid = int(summary.get("invalid", 0) or 0)
+    training_allowed = bool(summary.get("trainingAllowed", invalid == 0))
+    if cfg.require_clean_dataset and (invalid > 0 or not training_allowed):
+        raise ValueError(
+            "Dataset validation failed; refusing training with --require-clean-dataset: "
+            f"invalid={invalid} trainingAllowed={training_allowed}"
+        )
 
 
 if __name__ == "__main__":
@@ -487,6 +533,8 @@ if __name__ == "__main__":
         first_in_value_bet_loss_weight=args.first_in_value_bet_loss_weight,
         table_size=args.table_size,
         resume_checkpoint=args.resume_checkpoint,
+        dataset_validation_summary=args.dataset_validation_summary,
+        require_clean_dataset=args.require_clean_dataset,
     )
     print(f"Using device: {device}")
     train_dqn(cfg=cfg, device=device)

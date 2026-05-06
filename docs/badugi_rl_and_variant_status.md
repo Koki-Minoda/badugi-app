@@ -3348,3 +3348,39 @@ Draw RL test coverage:
 残リスク:
 - [ ] `PV90-16` Badugi full 3-draw E2Eは、短スタック/all-inで早期showdownする自然進行と固定期待が競合するため、別途no-all-in固定fixtureへ切り替える。
 - [ ] 今回のdraw E2EはDRAW phase到達をテストhookで安定化している。自然進行だけでDraw#1-#3を通す長時間UIテストは別タスクとして残す。
+
+### 21.15 2026-05-06 RL resume safety gate
+
+目的:
+- 壊れたゲーム進行や不正transitionを強化学習へ混ぜないため、Badugi / D01 / D02 / S01 / S02 のRL再開条件をgate化する。
+- 現行仕様はBadugi/Drawとも96-dim/96-slotで固定し、frontend ONNXを主経路、backend RL APIは比較/fallback用として扱う。
+
+対応:
+- [x] `MGX_RL_RESUME_SAFETY_GATE.md` を追加し、GAME / SCHEMA / ACTION / TRANSITION / REWARD / DATASET / FALLBACK gateを文書化。
+- [x] `MGX_RL_RESUME_READINESS_REPORT.md` を追加し、`TRAINING_ALLOWED / INFERENCE_ALLOWED / DATASET_EXPORT_ALLOWED` の判定を記録。
+- [x] `src/rl/testing/validateRlTransition.js` を追加し、variantId / schemaVersion / 96-slot observation / action / reward / next_observation / legal_actions / draw metadataを検証。
+- [x] `src/rl/testing/rlResumeSafetyGate.test.js` を追加し、Badugi / D01 / D02 / S01 / S02 の1hand progression、schema、dataset corruption、fallback安全性を検査。
+- [x] `export_dataset.py` に `validation_summary` と `--require-clean-dataset` を追加し、dirty datasetをtrainingAllowed=falseにできるようにした。
+- [x] `train_dqn.py` に `--dataset-validation-summary` と `--require-clean-dataset` を追加し、dirty summaryでは学習開始を拒否する。
+- [x] `package.json` に `npm run test:rl:safety` を追加。
+
+判定:
+- [x] `TRAINING_ALLOWED=YES` ただし `validation_summary.invalid=0` のclean dataset、またはexported game logを使わないenv-only学習に限る。
+- [x] `INFERENCE_ALLOWED=YES` frontend ONNX主経路、invalid shape時はsilent fallbackしない。
+- [x] `DATASET_EXPORT_ALLOWED=YES` dirty exportは警告とsummaryを出し、`--require-clean-dataset` で停止できる。
+
+確認結果:
+- [x] `npm run test:rl:safety`: 8 files / 52 tests passed。
+- [x] `npm run test:game:known-bugs`: 42 passed。
+- [x] `npm run test:game:one-hand`: 53 passed。
+- [x] `npm run test:game:progress`: 151 passed / 11 skipped。
+- [x] `npm run test:game:family`: 28 passed。
+- [x] `python3 src/rl/tools/export_dataset.py --help`: pass。
+- [x] `.venv/bin/python src/rl/training/train_dqn.py --help`: pass。
+- [x] `cd backend && .venv/bin/python -m pytest tests/test_badugi_rl.py tests/test_analysis_chatgpt_api.py`: 13 passed。
+- [ ] `cd backend && .venv/bin/python -m pytest`: 32 passed / 4 failed。RL gate外の既存別領域（Badugi stats、variant seed/list/detail/idempotency）で失敗しているため、backend全体QAのgreen化は別タスク。
+
+残リスク:
+- [ ] `RL-SAFE-01` rewardは数値検査まで。Pro/WorldMaster昇格前にhand history EV / winner reward sign / split rewardの意味論監査を追加する。
+- [ ] `RL-SAFE-02` Python exporterは互換性維持のため欠損vectorをzero vector化できる。bulk trainingでは必ず `--require-clean-dataset` を使い、raw log source validationを強化する。
+- [ ] `RL-SAFE-03` backend全体pytestのstats/variant失敗を修正し、backend release gateを再度greenにする。

@@ -3384,3 +3384,37 @@ Draw RL test coverage:
 - [ ] `RL-SAFE-01` rewardは数値検査まで。Pro/WorldMaster昇格前にhand history EV / winner reward sign / split rewardの意味論監査を追加する。
 - [ ] `RL-SAFE-02` Python exporterは互換性維持のため欠損vectorをzero vector化できる。bulk trainingでは必ず `--require-clean-dataset` を使い、raw log source validationを強化する。
 - [ ] `RL-SAFE-03` backend全体pytestのstats/variant失敗を修正し、backend release gateを再度greenにする。
+
+### 21.16 2026-05-06 Priority5 EV / reward / pot / stack integrity guard
+
+目的:
+- ゲームが止まらず進むだけでなく、terminal result の pot配分、winner eligibility、stack delta、reward が数学的に破綻していないことを検知する。
+- RL再開時に壊れた reward / EV / dataset transition を学習へ混ぜない。
+
+対応:
+- [x] `EV-GUARD-01` `MGX_EV_SOURCE_OF_TRUTH.md` を追加し、chip conservation / pot conservation / side pot / split pot / reward / dataset export reward の正本ルールを文書化。
+- [x] `EV-GUARD-02` `validateHandEvIntegrity()` を追加し、pot/payout不一致、folded winner、inactive winner、side-pot eligibility違反、duplicate payout、reward non-finite、zero-sum違反、reward/stack-delta不一致を検知。
+- [x] `EV-GUARD-03` `runOneHandProgression()` のterminal到達時にEV checkerを接続。全36variantの1hand progressionにEVエラーが混ざらないことを検査。
+- [x] `EV-GUARD-04` `validateRlTransition()` にseat別reward / stackDelta監査を追加し、dirty datasetで `reward_sum_not_zero` や `reward_stack_delta_mismatch` を検知。
+- [x] `EV-GUARD-05` `MGX_EV_INTEGRITY_REPORT.md` を追加し、EV_GUARD_ENABLED / TRAINING_BLOCKED_BY_EV / variant EV coverage / dataset reward auditを記録。
+- [x] `EV-001`〜`EV-015` のVitestを追加。Badugi / 2-7 / A-5 evaluator consistency、split component sum、odd chip deterministicも固定。
+
+判定:
+- [x] `EV_GUARD_ENABLED=YES`
+- [x] `TRAINING_BLOCKED_BY_EV=NO` for current fixtures / one-hand runs
+- [x] dirty reward dataset は `trainingAllowed=false`
+
+確認結果:
+- [x] `npm run test:game:ev`: 1 file / 14 tests passed。
+- [x] `npm run test:game:one-hand`: 2 files / 53 tests passed。全36variantでterminal EV guardがfailしない。
+- [x] `npm run test:game:known-bugs`: 42 tests passed。
+- [x] `npm run test:game:progress`: 9 files / 151 tests passed。
+- [x] `npm run test:rl:safety`: 8 files / 52 tests passed。reward corruption fixtureをブロック。
+- [x] `npm run test:mgx:safety`: known-bugs / one-hand / EV / RL safety gate aggregate passed。
+- [x] `npm run test:e2e:progression`: 7 Playwright progression-guarantee tests passed。
+- [x] `npm run build`: pass。chunk size / browserslist warning は既存警告。
+
+残リスク:
+- [ ] `EV-GUARD-06` Board/Omaha/Studのterminal evaluator replayを、実hand historyベースでwinner/resultと突合する。
+- [ ] `EV-GUARD-07` terminal snapshotのpot echo差分をcontrollerごとに正規化し、全variantでstrict chip conservationを有効化する。
+- [ ] `EV-GUARD-08` split-pot odd chipをTDA/variant別の位置ルールに寄せる。

@@ -1,5 +1,6 @@
 import { ChinesePokerController } from "../../chinese/ChinesePokerController.js";
 import { GAME_VARIANTS, getVariantById } from "../../config/variantCatalog.js";
+import { validateHandEvIntegrity } from "../ev/evIntegrityChecker.js";
 import { assertGameProgressInvariants, getActorIndex } from "../progress/gameProgressInvariants.js";
 import {
   buildSignature,
@@ -12,6 +13,10 @@ import {
 } from "./runProgressScenario.js";
 
 const TERMINAL_PHASE_PATTERN = /SHOWDOWN|HAND_OVER|HAND_RESULT|COMPLETE|TERMINAL|SETTLED/i;
+
+function cloneSnapshot(snapshot) {
+  return JSON.parse(JSON.stringify(snapshot ?? {}));
+}
 
 export function getProgressionFamily(variant = {}) {
   if (variant.category === "board" && variant.tags?.includes("omaha")) return "FLOP_OMAHA";
@@ -173,6 +178,7 @@ export async function runOneHandProgression({
   }
 
   const harness = createProgressHarness(variantId, { seatCount: playerCount ?? 6 });
+  const beforeHandSnapshot = cloneSnapshot(snapshotOf(harness));
   const trace = [];
   let previousSignature = null;
   let repeated = 0;
@@ -200,19 +206,42 @@ export async function runOneHandProgression({
       const terminalPhase = terminalPhaseOf(snapshot);
       const winnerCount = getWinnerCount(snapshot);
       const validTerminal = TERMINAL_PHASE_PATTERN.test(terminalPhase) || winnerCount > 0;
+      const evCheck = validateHandEvIntegrity({
+        beforeState: beforeHandSnapshot,
+        afterState: snapshot,
+        result: snapshot.lastHandResult ?? snapshot.result ?? snapshot.results ?? null,
+        variant,
+        options: {
+          allowMissingResult: true,
+          allowResultPotEcho: true,
+          enforceZeroSumReward: false,
+        },
+      });
+      const validEv = evCheck.ok;
       return {
         variantId,
         family: resolvedFamily,
         seed,
-        status: validTerminal ? "PASS" : "FAIL",
+        status: validTerminal && validEv ? "PASS" : "FAIL",
         terminalPhase,
         steps: step,
         handEnded: true,
         winnerCount,
         finalPot: getFinalPot(snapshot),
-        reason: validTerminal ? "terminal reached" : "terminal state lacks valid reason",
+        reason:
+          validTerminal && validEv
+            ? "terminal reached"
+            : !validTerminal
+              ? "terminal state lacks valid reason"
+              : `[MGX_EV_INTEGRITY] ${JSON.stringify({ errors: evCheck.errors, metrics: evCheck.metrics, trace: evCheck.trace })}`,
         skipReason: null,
         trace,
+        ev: {
+          ok: evCheck.ok,
+          errors: evCheck.errors,
+          warnings: evCheck.warnings,
+          metrics: evCheck.metrics,
+        },
       };
     }
 

@@ -17,6 +17,8 @@
     "test:game:draw-family": "vitest run src/games/testing/scenario/drawFamilyProgress.test.js",
     "test:game:chinese": "vitest run src/games/testing/scenario/chineseFamilyProgress.test.js",
     "test:game:one-hand": "vitest run src/games/testing/scenario/allVariantsOneHandProgression.test.js src/games/testing/scenario/familyOneHandProgression.test.js",
+    "test:game:ev": "vitest run src/games/testing/ev",
+    "test:mgx:safety": "npm run test:game:known-bugs && npm run test:game:one-hand && npm run test:game:ev && npm run test:rl:safety",
     "test:rl:pipeline": "vitest run src/rl/__tests__/rlDataPipelineAudit.test.js src/rl/__tests__/badugiObservationSchema.test.js src/rl/__tests__/drawObservationSchema.test.js src/ai/__tests__/onnxPolicyAdapter.test.js src/ai/__tests__/onnxPolicyAdapterInference.test.js src/ai/__tests__/modelRouter.test.js",
     "test:rl:safety": "vitest run src/rl/testing/rlResumeSafetyGate.test.js src/rl/__tests__/rlDataPipelineAudit.test.js src/rl/__tests__/badugiObservationSchema.test.js src/rl/__tests__/drawObservationSchema.test.js src/ai/__tests__/onnxPolicyAdapter.test.js src/ai/__tests__/onnxPolicyAdapterInference.test.js src/ai/__tests__/modelRouter.test.js src/ai/__tests__/onnxFallbackSmoke.test.js",
     "test:e2e:progress": "playwright test tests/e2e/mgx-game-progress.spec.js --project=badugi-flow",

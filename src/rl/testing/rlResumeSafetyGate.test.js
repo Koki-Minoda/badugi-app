@@ -143,14 +143,20 @@ describe("MGX RL resume safety gate", () => {
       vectorTransition({ observation: [0, 1, 2] }),
       vectorTransition({ reward: Number.NaN }),
       vectorTransition({ metadata: { drawInfo: { drawCount: 3, discardIndexes: [0, 1] } } }),
+      vectorTransition({
+        done: true,
+        rewardBySeat: { 0: 10, 1: -5 },
+        stackDeltaBySeat: { 0: 10, 1: -10 },
+      }),
     ]);
     expect(invalid.trainingAllowed).toBe(false);
-    expect(invalid.invalid).toBe(4);
+    expect(invalid.invalid).toBe(5);
     expect(invalid.invalidReasons).toMatchObject({
       action_not_in_legal_actions: 1,
       observation_shape_mismatch: 1,
       reward_not_finite: 1,
       draw_count_discard_indexes_mismatch: 1,
+      reward_sum_not_zero: 1,
     });
   });
 

@@ -211,3 +211,23 @@ This matrix tracks add-on coverage for game progression regressions. Existing Vi
 | Draw family metadata | Engine `lastDrawAction` metadata | `DeuceToSevenTripleDrawEngine.js` | Added | Replay UI can later expose discarded/drawn cards |
 | Round monotonicity | Controller `drawRoundIndex` | `gameProgressInvariants.js`, `runProgressScenario.js` | Added | Requires previous snapshot context in custom harnesses |
 | Pending draw seats | Controller `pendingDrawSeats` | `gameProgressInvariants.js` | Added | All-in draw policy should become variant-definition driven |
+
+## QA Matrix 7: EV / Reward / Pot / Stack Integrity
+
+| Test ID | Area | Scenario | Expected | Test File | Status | Notes |
+|---|---|---|---|---|---|---|
+| EV-001 | Chip conservation | strict hand-start/end fixture | total chips are conserved | `src/games/testing/ev/evIntegrityChecker.test.js` | Added | Rake/rebuy exceptions remain explicit options |
+| EV-002 | Pot conservation | payout total does not match pot | mismatch is rejected | `src/games/testing/ev/evIntegrityChecker.test.js` | Added | Guards double/missing pot payouts |
+| EV-003 | Winner eligibility | folded player receives payout | folded winner is rejected | `src/games/testing/ev/evIntegrityChecker.test.js` | Added | Applies to result objects and hand history |
+| EV-004 | Side-pot eligibility | all-in player wins ineligible side pot | payout is rejected | `src/games/testing/ev/evIntegrityChecker.test.js` | Added | Uses `eligibleSeatIndexes` when available |
+| EV-005 | Duplicate payout | same seat receives same pot/component twice | duplicate is rejected | `src/games/testing/ev/evIntegrityChecker.test.js` | Added | Prevents double distribution |
+| EV-006 | Fake side pot | single-pot fixture creates extra positive side pot | fake side pot is rejected when disallowed | `src/games/testing/ev/evIntegrityChecker.test.js` | Added | Useful for single-pot result overlay regressions |
+| EV-007 | Reward finite | reward contains NaN/Infinity | invalid reward is rejected | `src/games/testing/ev/evIntegrityChecker.test.js` | Added | Mirrors RL dataset reward guard |
+| EV-008/010 | Reward/stack consistency | reward sign disagrees with stack delta | mismatch is rejected | `src/games/testing/ev/evIntegrityChecker.test.js` | Added | Detects reversed reward learning signal |
+| EV-009 | Reward zero-sum | terminal reward map is not zero-sum | reward sum is rejected | `src/games/testing/ev/evIntegrityChecker.test.js` | Added | Shaped reward must opt out explicitly |
+| EV-011 | Badugi evaluator | evaluator winner vs result winner | mismatch is rejected | `src/games/testing/ev/evIntegrityChecker.test.js` | Added | Focused D03 fixture |
+| EV-012 | 2-7 evaluator | low-27 evaluator winner vs result winner | mismatch is rejected | `src/games/testing/ev/evIntegrityChecker.test.js` | Added | Focused D01 fixture |
+| EV-013 | A-5 evaluator | low-A5 evaluator winner vs result winner | mismatch is rejected | `src/games/testing/ev/evIntegrityChecker.test.js` | Added | Focused D02 fixture |
+| EV-014 | Split component | high/low payout components | component total equals pot | `src/games/testing/ev/evIntegrityChecker.test.js` | Added | Hi/Lo component smoke |
+| EV-015 | Odd chip | odd chip split | deterministic split | `src/games/testing/ev/evIntegrityChecker.test.js` | Added | Full TDA-position odd chip remains future |
+| EV-HARNESS-001 | Progression terminal | all runnable variants terminal state | EV checker returns no errors | `src/games/testing/scenario/runOneHandProgression.js` | Added | Broad one-hand guard keeps chip conservation warnings non-blocking |

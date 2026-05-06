@@ -53,6 +53,60 @@ function getDrawInfo(transition = {}) {
   return transition.drawInfo ?? transition.draw_info ?? transition.metadata?.drawInfo ?? transition.metadata?.draw_info ?? {};
 }
 
+function getObjectField(transition = {}, keys = []) {
+  for (const key of keys) {
+    if (transition[key] && typeof transition[key] === "object") return transition[key];
+    if (transition.metadata?.[key] && typeof transition.metadata[key] === "object") return transition.metadata[key];
+  }
+  return null;
+}
+
+function validateRewardMetadata(transition = {}, options = {}) {
+  const errors = [];
+  const warnings = [];
+  const rewardBySeat = getObjectField(transition, ["rewardBySeat", "reward_by_seat", "rewards", "rewardsBySeat"]);
+  const stackDeltaBySeat = getObjectField(transition, ["stackDeltaBySeat", "stack_delta_by_seat", "stackDeltas"]);
+  const terminal = transition.done === true;
+
+  if (rewardBySeat) {
+    let rewardSum = 0;
+    for (const [seat, rawReward] of Object.entries(rewardBySeat)) {
+      const reward = Number(rawReward);
+      if (!Number.isFinite(reward)) {
+        errors.push("reward_by_seat_not_finite");
+        continue;
+      }
+      rewardSum += reward;
+      if (stackDeltaBySeat && stackDeltaBySeat[seat] != null) {
+        const stackDelta = Number(stackDeltaBySeat[seat]);
+        if (!Number.isFinite(stackDelta)) {
+          errors.push("stack_delta_not_finite");
+        } else if (Math.abs(stackDelta - reward) > (options.rewardDeltaEpsilon ?? 0.001)) {
+          errors.push("reward_stack_delta_mismatch");
+        }
+      }
+    }
+    if (terminal && options.enforceZeroSumReward !== false && Math.abs(rewardSum) > (options.rewardSumEpsilon ?? 0.001)) {
+      errors.push("reward_sum_not_zero");
+    }
+  } else if (terminal && options.requireTerminalRewardBySeat) {
+    warnings.push("missing_terminal_reward_by_seat");
+  }
+
+  const stackDelta = transition.stackDelta ?? transition.stack_delta ?? transition.metadata?.stackDelta ?? transition.metadata?.stack_delta;
+  if (stackDelta != null) {
+    const numericStackDelta = Number(stackDelta);
+    const reward = Number(transition.reward);
+    if (!Number.isFinite(numericStackDelta)) {
+      errors.push("stack_delta_not_finite");
+    } else if (Number.isFinite(reward) && Math.abs(numericStackDelta - reward) > (options.rewardDeltaEpsilon ?? 0.001)) {
+      errors.push("reward_stack_delta_mismatch");
+    }
+  }
+
+  return { errors, warnings };
+}
+
 function validateDrawMetadata(transition = {}) {
   const errors = [];
   const warnings = [];
@@ -129,6 +183,10 @@ export function validateRlTransition(transition = {}, options = {}) {
   const drawValidation = validateDrawMetadata(transition);
   errors.push(...drawValidation.errors);
   warnings.push(...drawValidation.warnings);
+
+  const rewardValidation = validateRewardMetadata(transition, options);
+  errors.push(...rewardValidation.errors);
+  warnings.push(...rewardValidation.warnings);
 
   return {
     ok: errors.length === 0,

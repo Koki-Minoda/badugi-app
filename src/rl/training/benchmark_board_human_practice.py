@@ -26,25 +26,54 @@ TIER_THRESHOLDS = {
         "minAdvancedPassRate": 0.60,
         "minAvgEVDelta": -0.12,
         "minHumanAvgEV": -80.0,
+        "minWorstPositionAvgEV": -140.0,
+        "minShowdownAvgEV": -120.0,
+        "minAllInAvgEV": -180.0,
+        "minSplitPotAvgEV": -180.0,
         "minHumanLogHands": 30,
         "minPositionBuckets": 3,
         "minShowdownHands": 3,
+        "minAllInHands": 0,
+        "minSplitPotHands": 0,
     },
     "standard": {
         "minAdvancedPassRate": 0.75,
         "minAvgEVDelta": -0.08,
         "minHumanAvgEV": -45.0,
+        "minWorstPositionAvgEV": -90.0,
+        "minShowdownAvgEV": -80.0,
+        "minAllInAvgEV": -120.0,
+        "minSplitPotAvgEV": -120.0,
         "minHumanLogHands": 50,
         "minPositionBuckets": 4,
         "minShowdownHands": 5,
+        "minAllInHands": 1,
+        "minSplitPotHands": 0,
     },
     "pro": {
         "minAdvancedPassRate": 0.88,
         "minAvgEVDelta": -0.04,
         "minHumanAvgEV": -20.0,
+        "minWorstPositionAvgEV": -45.0,
+        "minShowdownAvgEV": -35.0,
+        "minAllInAvgEV": -60.0,
+        "minSplitPotAvgEV": -60.0,
         "minHumanLogHands": 100,
         "minPositionBuckets": 5,
         "minShowdownHands": 10,
+        "minAllInHands": 3,
+        "minSplitPotHands": 0,
+    },
+}
+
+VARIANT_GATE_OVERRIDES = {
+    "B05": {
+        "standard": {"minAllInHands": 2},
+        "pro": {"minAllInHands": 5},
+    },
+    "B06": {
+        "standard": {"minAllInHands": 2, "minSplitPotHands": 1},
+        "pro": {"minAllInHands": 5, "minSplitPotHands": 3},
     },
 }
 
@@ -200,6 +229,9 @@ def record_showdown(record: dict[str, Any]) -> bool:
 
 
 def record_all_in(record: dict[str, Any]) -> bool:
+    for source in _nested_sources(record):
+        if source.get("allIn") is True or source.get("isAllIn") is True:
+            return True
     seats = record.get("seats") if isinstance(record.get("seats"), list) else []
     actions = []
     for seat in seats:
@@ -222,6 +254,12 @@ def record_split_pot(record: dict[str, Any]) -> bool:
         if len(winners or payouts) > 1:
             return True
     return False
+
+
+def resolved_thresholds(variant_id: str, tier: str) -> dict[str, float | int]:
+    thresholds = dict(TIER_THRESHOLDS[tier])
+    thresholds.update(VARIANT_GATE_OVERRIDES.get(variant_id, {}).get(tier, {}))
+    return thresholds
 
 
 def record_vpip_pfr(record: dict[str, Any]) -> tuple[bool, bool]:
@@ -277,6 +315,9 @@ def summarize_human_logs(path: Path | None, variant_id: str, min_hands: int) -> 
     ]
     wins = losses = ties = 0
     net_values: list[float] = []
+    showdown_net_values: list[float] = []
+    all_in_net_values: list[float] = []
+    split_pot_net_values: list[float] = []
     showdown_hands = 0
     all_in_hands = 0
     split_pot_hands = 0
@@ -294,12 +335,21 @@ def summarize_human_logs(path: Path | None, variant_id: str, min_hands: int) -> 
         hero_net = record_hero_net(record)
         if hero_net is not None:
             net_values.append(hero_net)
-        if record_showdown(record):
+        showdown = record_showdown(record)
+        all_in = record_all_in(record)
+        split_pot = record_split_pot(record)
+        if showdown:
             showdown_hands += 1
-        if record_all_in(record):
+            if hero_net is not None:
+                showdown_net_values.append(hero_net)
+        if all_in:
             all_in_hands += 1
-        if record_split_pot(record):
+            if hero_net is not None:
+                all_in_net_values.append(hero_net)
+        if split_pot:
             split_pot_hands += 1
+            if hero_net is not None:
+                split_pot_net_values.append(hero_net)
         vpip, pfr = record_vpip_pfr(record)
         if vpip:
             vpip_hands += 1
@@ -312,7 +362,7 @@ def summarize_human_logs(path: Path | None, variant_id: str, min_hands: int) -> 
         )
         bucket["hands"] += 1
         bucket["net"] += hero_net or 0.0
-        bucket["showdowns"] += 1 if record_showdown(record) else 0
+        bucket["showdowns"] += 1 if showdown else 0
         bucket["vpipHands"] += 1 if vpip else 0
         bucket["pfrHands"] += 1 if pfr else 0
     decided = wins + losses + ties
@@ -332,6 +382,11 @@ def summarize_human_logs(path: Path | None, variant_id: str, min_hands: int) -> 
         if position_summary.get(position, {}).get("hands", 0) > 0
     ]
     avg_ev = sum(net_values) / len(net_values) if net_values else 0.0
+    covered_position_evs = [
+        position_summary[position]["avgEV"]
+        for position in covered_positions
+        if position in position_summary
+    ]
     return {
         "path": str(path),
         "variantId": variant_id,
@@ -344,10 +399,21 @@ def summarize_human_logs(path: Path | None, variant_id: str, min_hands: int) -> 
         "netChips": sum(net_values),
         "avgEV": avg_ev,
         "evSamples": len(net_values),
+        "worstPositionAvgEV": min(covered_position_evs) if covered_position_evs else 0.0,
         "showdownHands": showdown_hands,
         "showdownRate": showdown_hands / len(records) if records else 0.0,
+        "showdownAvgEV": sum(showdown_net_values) / len(showdown_net_values)
+        if showdown_net_values
+        else 0.0,
+        "showdownEVSamples": len(showdown_net_values),
         "allInHands": all_in_hands,
+        "allInAvgEV": sum(all_in_net_values) / len(all_in_net_values) if all_in_net_values else 0.0,
+        "allInEVSamples": len(all_in_net_values),
         "splitPotHands": split_pot_hands,
+        "splitPotAvgEV": sum(split_pot_net_values) / len(split_pot_net_values)
+        if split_pot_net_values
+        else 0.0,
+        "splitPotEVSamples": len(split_pot_net_values),
         "vpip": vpip_hands / len(records) if records else 0.0,
         "pfr": pfr_hands / len(records) if records else 0.0,
         "positions": position_summary,
@@ -360,7 +426,7 @@ def summarize_human_logs(path: Path | None, variant_id: str, min_hands: int) -> 
 def build_report(args) -> dict[str, Any]:
     from rl.training.evaluate_board_onnx import evaluate
 
-    thresholds = TIER_THRESHOLDS[args.tier]
+    thresholds = resolved_thresholds(args.variant_id, args.tier)
     practice = evaluate(Path(args.model), args.variant_id, advanced_gate=True)
     summary = practice["summary"]
     pass_rate = summary["passCount"] / summary["fixtureCount"] if summary["fixtureCount"] else 0.0
@@ -371,16 +437,36 @@ def build_report(args) -> dict[str, Any]:
     )
     human_quality_checks = {
         "avgEV": human_logs["avgEV"] >= thresholds["minHumanAvgEV"],
+        "worstPositionAvgEV": human_logs["worstPositionAvgEV"] >= thresholds["minWorstPositionAvgEV"],
         "positionCoverage": human_logs["positionCoverage"] >= thresholds["minPositionBuckets"],
         "showdownCoverage": human_logs["showdownHands"] >= thresholds["minShowdownHands"],
+        "showdownEV": human_logs["showdownAvgEV"] >= thresholds["minShowdownAvgEV"],
+        "allInCoverage": human_logs["allInHands"] >= thresholds["minAllInHands"],
+        "allInEV": (
+            thresholds["minAllInHands"] <= 0
+            or human_logs["allInEVSamples"] >= thresholds["minAllInHands"]
+        )
+        and human_logs["allInAvgEV"] >= thresholds["minAllInAvgEV"],
+        "splitPotCoverage": human_logs["splitPotHands"] >= thresholds["minSplitPotHands"],
+        "splitPotEV": (
+            thresholds["minSplitPotHands"] <= 0
+            or human_logs["splitPotEVSamples"] >= thresholds["minSplitPotHands"]
+        )
+        and human_logs["splitPotAvgEV"] >= thresholds["minSplitPotAvgEV"],
     }
     checks = {
         "advancedPassRate": pass_rate >= thresholds["minAdvancedPassRate"],
         "avgEVDelta": summary["avgEVDelta"] >= thresholds["minAvgEVDelta"],
         "humanLogs": (not args.require_human_logs) or human_logs["verified"],
         "humanLogEV": (not args.require_human_logs) or human_quality_checks["avgEV"],
+        "humanLogWorstPositionEV": (not args.require_human_logs) or human_quality_checks["worstPositionAvgEV"],
         "humanLogPositionCoverage": (not args.require_human_logs) or human_quality_checks["positionCoverage"],
         "humanLogShowdownCoverage": (not args.require_human_logs) or human_quality_checks["showdownCoverage"],
+        "humanLogShowdownEV": (not args.require_human_logs) or human_quality_checks["showdownEV"],
+        "humanLogAllInCoverage": (not args.require_human_logs) or human_quality_checks["allInCoverage"],
+        "humanLogAllInEV": (not args.require_human_logs) or human_quality_checks["allInEV"],
+        "humanLogSplitPotCoverage": (not args.require_human_logs) or human_quality_checks["splitPotCoverage"],
+        "humanLogSplitPotEV": (not args.require_human_logs) or human_quality_checks["splitPotEV"],
     }
     return {
         "model": args.model,

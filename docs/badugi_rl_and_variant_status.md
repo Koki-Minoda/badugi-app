@@ -2790,7 +2790,10 @@ Draw RL test coverage:
 - [x] `AI-BOARD-02` 合成board betting環境を追加し、strength / equity / draw potential / position / pot odds / limit type / hi-lo flag を観測に含める。
 - [x] `AI-BOARD-03` Beginner / Standard の初期モデルをteacher warmup + fixture replay + DQNで作成し、ONNXとして `public/models` に配置する。
 - [x] `AI-BOARD-04` `modelRegistry.json` に variant+tier exact route を追加し、他variantへ誤fallbackしないことをunit testで固定する。
-- [ ] `AI-BOARD-05` Pro以上は未実装。次段階では実ハンド履歴、variant別hand evaluator、human/practice benchmark、multiway/side-pot EV gateを追加する。
+- [x] `AI-BOARD-05` NLH/PLO系実ログEV gateを追加する。synthetic gateだけで強さを保証せず、hand historyからposition/showdown/EVを集計して昇格条件化する。
+  - 2026-05-06 対応: `ai:benchmark-board-human-practice` の昇格gateへ `worstPositionAvgEV` / `showdownAvgEV` / `allInAvgEV` / `splitPotAvgEV` を追加。NLH/FLH/PLO/PLO8で平均EVだけではなく、特定ポジションの大崩れ、showdownでの負け越し、all-in/side-potの不十分な実ログサンプルを検知する。
+  - 2026-05-06 対応: PLO/PLO8はvariant別overrideでall-in sampleを必須化し、PLO8はStandard以上でsplit-pot sampleも必須化。`--require-human-logs` 時はposition coverage / showdown coverage / all-in / split pot条件を満たさないとpromotion不可。
+  - 残TODO: これは昇格gateの実装であり、Pro以上モデルの本学習・配備は次タスク。実プレイログが十分に集まるまではPro/Iron相当の強さ保証には使わない。
 
 ### 19.2 学習結果
 
@@ -2885,6 +2888,8 @@ Draw RL test coverage:
 - [x] `npm run ai:benchmark-board-human-practice -- --variant-id B05 --model public/models/plo_standard_dqn_v1.onnx --tier standard --report-only`: practice-only PASS。human logなしのため `humanVerified=false`。
 - [x] 2026-05-05 実ハンド履歴gate拡張後: `PYTHONPATH=src .venv/bin/python -m pytest src/rl/__tests__/test_board_human_practice.py`: 4 passed。
 - [x] 2026-05-05 実ハンド履歴gate拡張後: `npm run ai:benchmark-board-human-practice -- --model public/models/nlh_standard_dqn_v1.onnx --variant-id B01 --tier standard --human-log <synthetic-jsonl> --require-human-logs --report-only --json`: PASS。`humanVerified=true`, `avgEV=2.38`, `positionCoverage=6`, `showdownHands=13`。
+- [x] 2026-05-06 AI-BOARD-05昇格gate強化後: `PYTHONPATH=src .venv/bin/python -m pytest src/rl/__tests__/test_board_human_practice.py`: 6 passed。worst position EV fail と PLO8 split-pot sample不足 fail を固定。
+- [x] 2026-05-06 AI-BOARD-05昇格gate強化後: `npm run ai:benchmark-board-human-practice -- --model public/models/nlh_standard_dqn_v1.onnx --variant-id B01 --tier standard --human-log /tmp/mgx_board_human_gate_nlh.jsonl --require-human-logs --report /tmp/mgx_board_human_gate_report.json --json`: PASS。`humanVerified=true`, `avgEV=8.25`, `worstPositionAvgEV=4.5`, `showdownAvgEV=7.71`, `allInAvgEV=4.5`。
 - [x] 2026-05-05 advanced対応後: `nlh/flh/plo/plo8` の `beginner/standard` 8モデルを `board_*_advanced_20260505` として再学習し、`public/models/*_dqn_v1.onnx` と registry checksum を更新。
 - [x] 2026-05-05 advanced対応後: 8モデルすべて `npm run ai:evaluate-board-onnx -- --advanced-gate` で `8/8` pass。NLH/PLO/PLO8は `avgEVDelta=-0.012 worst=-0.060`、FLHは `avgEVDelta=-0.020 worst=-0.060`。
 - [x] 2026-05-05 advanced対応後: `npm run ai:verify-models` pass。required model checksumは全OK。`model-nlh-v1` / `model-generic-v1` は既存optional missing。

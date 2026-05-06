@@ -2279,10 +2279,13 @@ Draw RL test coverage:
   - 2026-05-05 追加対応: Badeucey/Badacey/Hidugi/Archie と Dramaha 6種の結果summaryに componentLabel / sourcePotIndex / eligibleSeatIndexes / oddChipAmount を保持し、Hand Result Overlay と Showdown Toast で `Main Pot · Badugi half` / `Side Pot · Draw half` のようにcomponent pot単位で表示するようにした。Dramahaはodd chipがdraw halfへ行くことをsummary/UIで明示する。
   - 2026-05-06 追加対応: Dramaha / split draw result UIを色分け。High/Board halfはamber、Draw/Low halfはcyan、Badugi halfはvioletで表示し、component pot / eligible seat / odd chipをOverlayで確認できるようにした。`dramaha_hi`の結果Overlay E2Eも追加済み。
   - 残TODO: Chinese/OFCのfantasyland / OFC street-by-street turn順、Chinese/OFCのPlaywright replay smoke、split draw系の公式ルール監査、CPU discard strategy精緻化を追加する。
-- [ ] `GAME-ALL-03` Stud / Razz 実装後、10-Game対象のCPUを Beginner / Standard まで学習・適用する。
+- [x] `GAME-ALL-03` 10-Game対象CPUのBeginner/Standard長期RL導線を、variant別dataset / reward / action mask / short evaluation gate から順に適用できる形へ整理する。
   - 2026-05-05 部分対応: NLH / FLH / PLO / PLO8 / FLO8 / Stud / Stud8 / Razz / Razz27 は、controller の `getCpuAction()` 経由で teacher-supervised CPU policy を実行できるようにした。
   - 2026-05-05 部分対応: App のCPU action経路を draw-lowball 限定から controller-driven game 全体へ広げ、board/stud系がBadugi fallback policyへ落ちないようにした。
-  - 残TODO: これは runtime の Beginner/Standard teacher baseline 適用であり、各ゲーム専用DQN/ONNXの長期学習済みモデル適用ではない。D01/D02/Badugi以外の per-game RL dataset / reward / action mask / evaluation gate は継続。
+  - 2026-05-06 対応: `src/rl/training/ten_game_rl_plan.py` と `npm run ai:plan-10game-rl` を追加し、10-Game固定rotation `B01/B02/B06/ST3/ST1/ST2/D01/B05/D03/S01` について、Beginner/Standardのmodel route、dataset source、reward source、action mask source、short evaluation command、50k long-run entryを機械的に検証できるようにした。
+  - 2026-05-06 対応: `docs/testing/MGX_10GAME_RL_READINESS_REPORT.md` を追加し、20/20 tier routesがOKであること、Badugi Beginnerは現時点では安全上generic fallback扱いであること、Standard以上の昇格には進行/EV/RL safety/human-practice gateが必要であることを明記した。
+  - 2026-05-06 テスト: `PYTHONPATH=src .venv/bin/python -m pytest src/rl/__tests__/test_ten_game_rl_plan.py` で10-Game対象variant、Beginner/Standard route、short/long commandの欠落がないことを固定した。
+  - 残TODO: Badugi Beginner専用DQNは旧モデルをroutingせず、current-env beginner-strength modelを再学習して同じgateを通してから採用する。Pro以上は実hand history EV / human-practice benchmark通過後に別タスクで昇格させる。
 - [ ] `GAME-ALL-04` 強化学習済みCPUを使った cash / tournament のプレイログ収集を行い、30ハンド以上のセッションだけAI feedback対象にする。
 - [ ] `GAME-ALL-05` feedback API は hand history / position / stack / VPIP/PFR / ROI / showdown / all-in / split-pot結果を投げ、良かった点・悪かった点・次回方針・仮説を返す。
   - 2026-05-05 追加調査: feedback上の `B-07` などのシチュエーションIDは、hand history内の `handId` / `actionSeq` / `street` / `seatIndex` / `position` と紐付ければ「どのハンドのどのアクションか」を明示できる。

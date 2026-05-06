@@ -44,6 +44,7 @@
     "ai:train-stud": "node scripts/runPythonTool.mjs src/rl/training/train_stud_dqn.py",
     "ai:export-stud-onnx": "node scripts/runPythonTool.mjs src/rl/training/export_stud_dqn_onnx.py",
     "ai:evaluate-stud-onnx": "node scripts/runPythonTool.mjs src/rl/training/evaluate_stud_onnx.py",
+    "ai:plan-10game-rl": "node scripts/runPythonTool.mjs src/rl/training/ten_game_rl_plan.py",
     "ai:benchmark-board-human-practice": "node scripts/runPythonTool.mjs src/rl/training/benchmark_board_human_practice.py"
   },
   "dependencies": {

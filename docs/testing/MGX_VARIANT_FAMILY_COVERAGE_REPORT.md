@@ -22,7 +22,7 @@ Last updated: 2026-05-06
 | FLOP_HOLDEM | 4 | 4 | 0 | 0 | CAP-REG-05 covers FLH cap UI; BB-option/natural cap long-run still useful |
 | FLOP_OMAHA | 5 | 5 | 0 | 0 | B07 Big-O is currently high-only in catalog; hi/lo expectation needs product/config decision |
 | SPLIT_POT | 9 | 9 | 0 | 0 | Component-pot / odd-chip UI clarity still needs E2E assertions |
-| SPECIAL | 8 | 8 | 0 | 0 | Dramaha result UI and board+draw explainability still need manual/E2E QA |
+| SPECIAL | 8 | 8 | 0 | 0 | Dramaha result UI E2E covers High/Board half + Draw half component display; CPU discard strategy and official odd-chip documentation remain |
 | MIXED | 0 | 2 mode rotations | 1 | 0 | 8Game/10Game rotation boundaries covered by MIX-PROG-05; H.O.R.S.E./Dealer's Choice still mode-level gaps |
 | CHINESE/OFC | 1 | 1 | 0 | 0 | CP1 classic set/result/next-hand covered; OFC street-by-street/fantasyland remains |
 
@@ -60,6 +60,7 @@ Last updated: 2026-05-06
 | MIXED-001 | MIXED | PASS | Explicitly records mode-level rotation gap instead of false pass |
 | MIX-PROG-05 | MIXED | PASS | 8Game 40 boundaries and 10Game 50 boundaries preserve variantId / seat / dealer button / stack+pot total |
 | SPECIAL-001 | SPECIAL | PASS | Super Hold'em and Dramaha family smoke |
+| DRAMAHA-RESULT-001 | SPECIAL/SPLIT_POT | PASS | `dramaha_hi` Playwright smoke reaches result overlay and verifies High/Board half, Draw half, and component pot DOM |
 | CHINESE-001 | CHINESE/OFC | PASS | CP1 set/result/next-hand controller path |
 
 ## Stud Findings

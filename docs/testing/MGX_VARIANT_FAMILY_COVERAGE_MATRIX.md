@@ -42,7 +42,7 @@ This matrix tracks add-on progress coverage by variant family. It does not repla
 | SPLIT_POT | D04/D05/S05/S06 split draw | Yes | progress scenario | component pot UI | DRAW-FAMILY-003 | Added | Badeucey/Badacey paths |
 | SPLIT_POT | ST2/ST4/ST5 split Stud | Yes | progress scenario | component pot UI | STUD-005 | Added | Evaluator config and smoke |
 | SPECIAL | B03/B04 Super Hold'em | Yes | progress scenario | UI 5-hand per variant | SPECIAL-001 | Added | Special board-hole variant |
-| SPECIAL | H01-H06 Dramaha | WIP | progress scenario | result UI and component details | SPECIAL-001 | Added | Harnessed despite catalog WIP |
+| SPECIAL | H01-H06 Dramaha | WIP | progress scenario + result UI E2E | CPU discard strategy / official odd-chip documentation | SPECIAL-001 / DRAMAHA-RESULT-001 | Added | Result overlay now separates High/Board half, Draw half, component pot, and odd chip |
 | MIXED | H.O.R.S.E. / 8-game / Dealer's Choice | Mode-level | manual / UI routes + MIX-PROG-05 E2E | H.O.R.S.E. / Dealer's Choice specific rotation E2E | MIXED-001, MIX-PROG-05 | Partial | 8Game/10Game rotation boundary covered; no direct registry variant |
 | CHINESE | CP1 Chinese Poker | Yes | scorer/controller tests | OFC street-by-street / fantasyland / history replay | CHINESE-001 | Added | CP1 set/result/next-hand covered; OFC remains separate |
 

@@ -73,6 +73,31 @@ async function driveDramahaToHeroDraw(page: Page) {
   throw new Error("Dramaha did not reach a hero DRAW action within the step budget");
 }
 
+async function driveDramahaToResultOverlay(page: Page) {
+  for (let step = 0; step < 160; step += 1) {
+    const resultPots = page.getByTestId("hand-result-pot");
+    if ((await resultPots.count()) > 0 && await resultPots.first().isVisible().catch(() => false)) {
+      return;
+    }
+
+    const snapshot = await getSnapshot(page);
+    const controller = snapshot.controllerSnapshot;
+    const actor = controller?.turn;
+    if (typeof actor !== "number" || actor < 0) {
+      await page.waitForTimeout(100);
+      continue;
+    }
+
+    if (controller?.street === "DRAW") {
+      await forceControllerAction(page, actor, { type: "draw", discardIndexes: [] });
+    } else {
+      await forceControllerAction(page, actor, { type: nextBetAction(snapshot, actor) });
+    }
+    await page.waitForTimeout(75);
+  }
+  throw new Error("Dramaha did not reach result overlay within the step budget");
+}
+
 const DRAMAHA_VARIANTS = [
   "dramaha_hi",
   "dramaha_27",
@@ -95,7 +120,8 @@ test.describe("Dramaha draw action regression", () => {
       const before = drawSnapshot.players?.[0]?.holeCards?.[0];
       expect(before).toBeTruthy();
 
-      await page.getByTestId("player-0-card-0").click();
+      await page.mouse.move(8, 8);
+      await page.getByTestId("player-0-card-0").click({ force: true });
       await expect(page.getByTestId("action-draw-selected")).toBeVisible({ timeout: 10000 });
       await page.getByTestId("action-draw-selected").click();
 
@@ -117,5 +143,25 @@ test.describe("Dramaha draw action regression", () => {
       const afterSnapshot = await getSnapshot(page);
       expect(afterSnapshot.controllerSnapshot?.players?.[0]?.holeCards?.[0]).not.toBe(before);
     });
+  });
+
+  test("dramaha_hi result overlay separates high board and draw half component pots", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openAuthenticatedGame(page, `${APP_URL}?variant=dramaha_hi`);
+    await waitForE2EDriver(page);
+
+    await driveDramahaToResultOverlay(page);
+
+    const resultPots = page.getByTestId("hand-result-pot");
+    await expect(resultPots.first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("High / Board half").first()).toBeVisible();
+    await expect(page.getByText("Draw half").first()).toBeVisible();
+    await expect(page.getByText(/Component pot:/).first()).toBeVisible();
+
+    const components = await resultPots.evaluateAll((nodes) =>
+      nodes.map((node) => node.getAttribute("data-component")).filter(Boolean),
+    );
+    expect(components).toContain("board");
+    expect(components).toContain("draw");
   });
 });

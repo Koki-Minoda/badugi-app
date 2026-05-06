@@ -1812,7 +1812,8 @@ Draw RL test coverage:
       - [x] `MIX-16-15` Dramaha Badugi (`H06`) を実装する。
         - 2026-05-04 実装: `DramahaGameController` / `DramahaGameDefinition` / `dramahaEvaluator` / Dramaha UI adapter を追加し、H01-H06をGameRegistry・variant modal・Game Selector catalogへ `wip` route として接続した。
         - 実装範囲: 5枚hole、flop-only 3枚board、1 draw、final bet、showdownでboard half（Omaha exactly 2 + board exactly 3）とdraw half（High / 2-7 / A-5 / Zero / Hidugi / Badugi）を分割評価する。
-        - 残TODO: Dramaha専用CPU discard strategy、split halfのUI詳細表示、odd chip ruleの運用仕様、Playwright smokeを追加する。
+        - 2026-05-06 追加対応: Dramaha / split draw result UIでcomponent potを色分け表示。Dramahaのboard側は `High / Board half`、draw側は `Draw half` と表示し、eligible seats / odd chip / component potをOverlayに明示。Showdown toastもcomponent別winner表示へ揃え、Dramaha result Overlay Playwright smokeを追加。
+        - 残TODO: Dramaha専用CPU discard strategy、split draw系の公式ルール監査、odd chip ruleの運用仕様ドキュメントを追加する。
       - [x] `MIX-16-16` Stud family (`ST1` Stud, `ST2` Stud 8, `ST3` Razz, `ST4` Razzdugi, `ST5` Razzducey, `ST6` 2-7 Razz) を段階実装する。street/deal visibility、bring-in/antes、stud evaluator、split variantsを別章で詳細化する。
         - 2026-05-04 部分実装: `StudGameController` / `Stud8GameController` / `RazzGameController` と各GameDefinitionを追加し、ST1/ST2/ST3をplayable化。7枚配布、up/down card保持、fixed-limit street進行、Stud high / Stud8 hi-lo / Razz A-5 low showdownを実装。
         - 2026-05-04 修正: anteをtotalInvestedには残しつつstreet betから分離。anteが`betThisStreet`に残ると全員checkしてもTHIRD streetから進まないため、startNewHand後にstreet betをresetする。
@@ -2276,6 +2277,7 @@ Draw RL test coverage:
   - 2026-05-04 部分対応: `D04` Badeucey TD、`D05` Badacey TD、`D06` Hidugi TD、`D07` Archie TD をplayable化。Badugi half + 2-7/A-5/high系halfのcomponent split、odd chip fixture、registry/routing/UI adapter/history smokeを追加。
   - 2026-05-04 部分対応: `S04-S07` single draw split/Badugi系をplayable化。S04 Badugi SD、S05 Badeucey SD、S06 Badacey SD、S07 Hidugi SDのcontroller/engine/routing/catalog/history smokeを追加。
   - 2026-05-05 追加対応: Badeucey/Badacey/Hidugi/Archie と Dramaha 6種の結果summaryに componentLabel / sourcePotIndex / eligibleSeatIndexes / oddChipAmount を保持し、Hand Result Overlay と Showdown Toast で `Main Pot · Badugi half` / `Side Pot · Draw half` のようにcomponent pot単位で表示するようにした。Dramahaはodd chipがdraw halfへ行くことをsummary/UIで明示する。
+  - 2026-05-06 追加対応: Dramaha / split draw result UIを色分け。High/Board halfはamber、Draw/Low halfはcyan、Badugi halfはvioletで表示し、component pot / eligible seat / odd chipをOverlayで確認できるようにした。`dramaha_hi`の結果Overlay E2Eも追加済み。
   - 残TODO: Chinese/OFCのfantasyland / OFC street-by-street turn順、Chinese/OFCのPlaywright replay smoke、split draw系の公式ルール監査、CPU discard strategy精緻化を追加する。
 - [ ] `GAME-ALL-03` Stud / Razz 実装後、10-Game対象のCPUを Beginner / Standard まで学習・適用する。
   - 2026-05-05 部分対応: NLH / FLH / PLO / PLO8 / FLO8 / Stud / Stud8 / Razz / Razz27 は、controller の `getCpuAction()` 経由で teacher-supervised CPU policy を実行できるようにした。
@@ -2582,6 +2584,7 @@ Draw RL test coverage:
 - [x] `QA-20260504-SPLIT-RESULT-VISIBILITY` Stud8/PLO8/FLO8/Badeucey/Badacey/Razzdugi/Razzducey の hi/low/component pot を色・ラベルで分離して表示する。
   - 背景: split potやcomponent splitで、誰がHigh/Low/Badugi側を取ったかが結果画面で判別しにくい。
   - 2026-05-05 追加対応: split draw / Dramaha のcomponent pot詳細を強化。元ポット(Main/Side)とhalf種別(Board/Draw/Badugi/2-7/A-5/High)、eligible seat、odd chipを結果overlayに表示し、toastでもcomponent別winner名を表示するunitを追加。
+  - 2026-05-06 追加対応: Dramaha / split draw result UIをさらに明確化。`High / Board half` / `Draw half` / `Component pot:` / `Odd chip +n` を色分け表示し、Dramaha結果Overlay E2Eでboard/draw componentが実DOMに出ることを確認。
 - [ ] `QA-20260504-ALL-VARIANT-OPERATIONAL-AUDIT` playable invariant を「初回action到達」だけでなく、street完走・showdown・all-in/split potまで段階的に拡張する。
   - 背景: Razz/Stud/draw/board gameごとの進行差をテストで拾わないと、ゲームできると誤認する。
   - 2026-05-04: Razz/Razz27 のfull street unit fixture、Player表示順unit、HandResultOverlay split/component表示unitを追加。全variantの完全手動/自動E2E完走監査は継続タスク。

@@ -4,13 +4,13 @@ const COMPONENT_LABELS = {
   lowA5: "A-5 Low half",
   archieHigh: "High half",
   archieLow: "A-5 Low half",
-  board: "Board half",
+  board: "High / Board half",
   draw: "Draw half",
 };
 
 function getComponentLabel(pot = {}) {
-  if (pot.componentLabel) return pot.componentLabel;
   if (pot.component && COMPONENT_LABELS[pot.component]) return COMPONENT_LABELS[pot.component];
+  if (pot.componentLabel) return pot.componentLabel;
   if (pot.label && /\bhalf\b/i.test(pot.label)) return pot.label;
   return null;
 }

@@ -17,6 +17,10 @@ Last updated: 2026-05-06
 | `src/games/testing/scenario/flopFamilyProgress.test.js` | Hold'em/Omaha family add-on | blinds, streets, all-in, Omaha 2-hole rule |
 | `src/games/testing/scenario/drawFamilyProgress.test.js` | Draw/lowball/split-draw family add-on | draw counts, A-5/2-7 evaluator separation, component result |
 | `src/games/testing/scenario/mixedSpecialFamilyProgress.test.js` | Mixed/Special family add-on | rotation gap tracking and special variant smoke |
+| `src/games/testing/scenario/safeActionPolicy.js` | Deterministic safe action policy | CHECK/CALL/PAT-first progression policy |
+| `src/games/testing/scenario/runOneHandProgression.js` | One-hand controller progression harness | Enumerates catalog variants and runs real controller/action paths |
+| `src/games/testing/scenario/allVariantsOneHandProgression.test.js` | All-variant one-hand guarantee | 36 variants must reach terminal state or explicit skip |
+| `src/games/testing/scenario/familyOneHandProgression.test.js` | Family representative one-hand guarantee | Ensures each family has controller-path terminal coverage |
 | `tests/e2e/mgx-game-progress.spec.js` | Minimal Playwright progress add-on | Cash, draw/pat, PLO, tournament, mobile |
 | `docs/testing/MGX_VARIANT_FAMILY_COVERAGE_MATRIX.md` | Variant family coverage matrix | Tracks family-level coverage and gaps |
 | `docs/testing/MGX_VARIANT_FAMILY_COVERAGE_REPORT.md` | Variant family execution report | Command results and family summary |
@@ -56,6 +60,8 @@ Last updated: 2026-05-06
 | DRAW-FAMILY-001..003 | Draw family | `drawFamilyProgress.test.js` | Pass | Draw count, lowball evaluator, split draw result smoke |
 | MIXED-001 | Mixed family | `mixedSpecialFamilyProgress.test.js` | Pass | Mode-level rotation gap explicitly tracked |
 | SPECIAL-001 | Special family | `mixedSpecialFamilyProgress.test.js` | Pass | Super Hold'em / Dramaha smoke |
+| ONEHAND-001 | All variants | `allVariantsOneHandProgression.test.js` | Pass | 36/36 catalog variants complete one controller-path hand |
+| ONEHAND-FAMILY-001 | Family representatives | `familyOneHandProgression.test.js` | Pass | DRAW/STUD/FLOP/SPLIT/SPECIAL/CHINESE representatives complete one hand |
 
 ## Known Bugs Covered
 
@@ -86,7 +92,7 @@ Last updated: 2026-05-06
 
 | Total variants | Tested variants | Skipped variants | Failed variants | Unknown variants |
 |---:|---:|---:|---:|---:|
-| 36 | 24 | 12 | 0 | 0 |
+| 36 | 36 | 0 | 0 | 0 |
 
 ## Command Results
 
@@ -96,8 +102,9 @@ Last updated: 2026-05-06
 | `npm run test:game:stud` | Pass | 1 file, 13 tests passed |
 | `npm run test:game:flop` | Pass | 1 file, 5 tests passed |
 | `npm run test:game:draw-family` | Pass | 1 file, 6 tests passed |
-| `npm run test:game:family` | Pass | 4 files, 26 tests passed |
-| `npm run test:game:progress` | Pass | 7 files, 73 tests passed, 12 skipped with explicit reasons |
+| `npm run test:game:family` | Pass | 5 files, 28 tests passed |
+| `npm run test:game:one-hand` | Pass | 2 files, 53 tests passed |
+| `npm run test:game:progress` | Pass | 9 files, 127 tests passed, 11 skipped with explicit reasons |
 | `npm run test:e2e:progress` | Pass | 5 Playwright tests passed on `badugi-flow` project |
 | `npm test -- --run src/ui/screens/__tests__/ReplayScreen.test.jsx src/ui/screens/__tests__/HandHistoryScreen.test.jsx` | Pass | 2 files, 4 tests passed |
 | `npx playwright test tests/e2e/cross-variant-history-replay-smoke.spec.ts --project=badugi-flow` | Pass | 35 playable variants passed with Replay UI frame jumps |
@@ -109,7 +116,6 @@ Last updated: 2026-05-06
 
 | Gap | Risk | Suggested Next Action |
 |---|---|---|
-| Badugi legacy controller harness is not yet mapped into the Vitest scenario runner | Badugi relies on App E2E for several progression guarantees | Extract App lifecycle setup into a reusable Badugi controller fixture |
 | OFC street-by-street / fantasyland is still separate from CP1 classic Chinese Poker | CP1 set/result/next-hand is covered, but OFC-specific turn order is not | Add OFC 5-card open, one-card placement, fantasyland, and history/replay smoke |
 | Scenario runner uses passive action policy | It catches freezes but not all strategic UI edge cases | Add scenario action plans for raise/cap/all-in/fold paths |
 | Full MTT table merge E2E remains expensive | CPU bust/reseat bugs may still require manual reproduction | Add deterministic MTT fixture with forced bust and merge |

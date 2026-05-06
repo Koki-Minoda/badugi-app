@@ -10,7 +10,7 @@ This matrix tracks add-on progress coverage by variant family. It does not repla
 |---|---|---:|---|---|---|---|---|
 | DRAW | D01 2-7 Triple Draw | WIP | progress scenario | UI 5-hand per variant | DRAW-FAMILY-001/002 | Added | Harnessed despite catalog WIP |
 | DRAW | D02 A-5 Triple Draw | WIP | progress scenario | UI 5-hand per variant | DRAW-FAMILY-001/002 | Added | Harnessed despite catalog WIP |
-| DRAW | D03 Badugi | Yes | App E2E, known bug tests | controller fixture mapping | DRAW-FAMILY-001 skip reason | Partial | Legacy lifecycle still separate |
+| DRAW | D03 Badugi | Yes | App E2E, known bug tests, one-hand controller guarantee | UI 5-hand/MTT long-run | DRAW-FAMILY-001 + ONEHAND-001 | Added | Core Badugi controller mapped in one-hand harness |
 | DRAW | D04 Badeucey TD | Yes | progress scenario | component-pot UI details | DRAW-FAMILY-001/003 | Added | Split draw smoke |
 | DRAW | D05 Badacey TD | Yes | progress scenario | component-pot UI details | DRAW-FAMILY-001/003 | Added | Split draw smoke |
 | DRAW | D06 Hidugi TD | Yes | progress scenario | component-pot UI details | DRAW-FAMILY-001 | Added | Triple-draw smoke |
@@ -68,3 +68,5 @@ This matrix tracks add-on progress coverage by variant family. It does not repla
 | MIX-PROG-05 | MIXED | 8Game / 10Game | 5-cycle per-hand rotation boundary | variantId / seat / dealer button / stack+pot total persists | `mixed-rotation-core-progression.spec.ts` | Added | 8Game 40 boundaries and 10Game 50 boundaries covered |
 | SPECIAL-001 | SPECIAL | B03/B04/H01-H06 | special smoke | supported special variants do not freeze | `mixedSpecialFamilyProgress.test.js` | Added | Family runner |
 | CHINESE-001 | CHINESE | CP1 | set -> showdown -> next hand | result totals exist and next hand resets state | `chineseFamilyProgress.test.js` | Added | CP1 classic Chinese Poker path |
+| ONEHAND-001 | ALL | all 36 variants | one-hand controller progression | each runnable variant reaches a valid terminal state via real controller/action path | `allVariantsOneHandProgression.test.js` | Added | Fixed seed `20260506`; PASS 36/36 |
+| ONEHAND-FAMILY-001 | ALL families | representative variants | family one-hand progression | each family representative reaches terminal state and invariants hold at every step | `familyOneHandProgression.test.js` | Added | DRAW/STUD/FLOP/SPLIT/SPECIAL/CHINESE representatives |

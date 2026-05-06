@@ -58,3 +58,4 @@ This ledger consolidates scattered bug notes from `docs/bugs`, `docs/testing`, `
 | `npm test` | PASS | 132 files passed; 886 tests passed, 12 skipped |
 | `npm run test:game:chinese` | PASS | 1 file, 2 tests passed |
 | `npm run test:game:family` | PASS | 5 files, 28 tests passed after adding CP1 family coverage |
+| `npm run test:game:one-hand` | PASS | 2 files, 53 tests passed; all 36 variants complete one real controller/action-path hand |

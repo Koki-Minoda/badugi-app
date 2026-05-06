@@ -1,4 +1,9 @@
 import { applyChips } from "../../core/applyChips.js";
+import {
+  findNextEligibleActor,
+  isSeatActiveForHand,
+  isSeatEligibleForDrawing,
+} from "../../core/turn/actorEligibility.js";
 import { normalizeBetActionAmount } from "../logic/actionAmount.js";
 
 export { applyChips };
@@ -16,20 +21,13 @@ export function isFoldedOrOut(player) {
 // All seat-selection helpers (nextAliveFrom, assignBlinds, controller actor search,
 // and showdown code) MUST call these helpers instead of duplicating predicates.
 export function isPlayerSeated(player) {
-  if (!player) return false;
-  if (player.seatOut || player.isBusted) return false;
-  if (player.seatType && typeof player.seatType === "string") {
-    if (player.seatType.toUpperCase() === "EMPTY") return false;
-  }
-  if (typeof player.stack === "number" && player.stack <= 0 && !player.allIn) return false;
+  if (!isSeatActiveForHand({ ...player, folded: false, hasFolded: false })) return false;
   if (typeof player.isSeated === "boolean") return player.isSeated;
   return !player.seatOut;
 }
 
 export function isPlayerActiveInGame(player) {
-  if (!player) return false;
-  if (player.seatOut || player.isBusted) return false;
-  if (typeof player.stack === "number" && player.stack <= 0 && !player.allIn) return false;
+  if (!isSeatActiveForHand({ ...player, folded: false, hasFolded: false })) return false;
   if (typeof player.isActiveInGame === "boolean") return player.isActiveInGame;
   return true;
 }
@@ -66,16 +64,10 @@ export function maxBetThisRound(arr) {
 }
 
 export function findNextActiveSeat(players, startIdx = 0) {
-  if (!Array.isArray(players) || players.length === 0) return null;
-  const n = players.length;
-  for (let offset = 0; offset < n; offset += 1) {
-    const candidate = (startIdx + offset) % n;
-    const player = players[candidate];
-    if (isSeatEligibleForBet(player)) {
-      return candidate;
-    }
-  }
-  return null;
+  return findNextEligibleActor(
+    { phase: "BET", players, currentBet: maxBetThisRound(players) },
+    { phase: "BET", startIndex: startIdx, ignoreActionCompletion: true },
+  );
 }
 
 export function firstBetterAfterBlinds(players, dealerIdx = 0) {
@@ -158,8 +150,7 @@ export function isSeatEligibleForBet(player) {
 }
 
 export function isSeatEligibleForDraw(player) {
-  if (!isPlayerEligibleForBlinds(player)) return false;
-  if (isFoldedOrOut(player)) return false;
+  if (!isSeatEligibleForDrawing(player, { phase: "DRAW" }, { allowAllInDraw: true })) return false;
   if (player?.canDraw === false) return false;
   return true;
 }
@@ -169,20 +160,10 @@ export function isSeatEligibleForDraw(player) {
 // hasActedThisRound to decide who still needs to draw. Returning null means
 // the draw round is complete and callers must advance the phase safely.
 export function findNextDrawActorSeat(players = [], startIdx = 0) {
-  if (!Array.isArray(players) || players.length === 0) return null;
-  const n = players.length;
-  const normalized =
-    typeof startIdx === "number" && Number.isFinite(startIdx)
-      ? ((Math.trunc(startIdx) % n) + n) % n
-      : 0;
-  for (let offset = 0; offset < n; offset += 1) {
-    const seat = (normalized + offset) % n;
-    const player = players[seat];
-    if (isSeatEligibleForDraw(player) && !player?.hasActedThisRound) {
-      return seat;
-    }
-  }
-  return null;
+  return findNextEligibleActor(
+    { phase: "DRAW", players },
+    { phase: "DRAW", startIndex: startIdx, allowAllInDraw: true },
+  );
 }
 
 // NOTE (G-06): Folded players must be completely skipped for BET/DRAW/showdown logic.

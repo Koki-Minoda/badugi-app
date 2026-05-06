@@ -5,20 +5,14 @@ import {
   isPlayerInBetRound,
   getBlindSeatsForPlayers,
 } from "./actionUtils.js";
+import {
+  findNextEligibleActor,
+  isSeatEligibleForBetting,
+} from "../../core/turn/actorEligibility.js";
 
 export function needsActionForBet(player, maxBet = 0) {
   if (!player || !isPlayerInBetRound(player)) return false;
-  const bet =
-    typeof player.betThisRound === "number"
-      ? player.betThisRound
-      : typeof player.bet === "number"
-      ? player.bet
-      : 0;
-  const hasActed =
-    typeof player.hasActedThisRound === "boolean"
-      ? player.hasActedThisRound
-      : Boolean(player.lastAction || player.lastAct);
-  return bet < maxBet || !hasActed;
+  return isSeatEligibleForBetting(player, { phase: "BET", currentBet: maxBet, players: [player] });
 }
 
 export function isBetRoundComplete(stateOrPlayers) {
@@ -149,31 +143,8 @@ export function findNextBetActorSeat(snapshotOrPlayers, startIdx = 0, maxBet = 0
 
   if (players.length === 0) return null;
 
-  const n = players.length;
-  const normalizedStart = ((startIdx % n) + n) % n;
-
-  for (let offset = 0; offset < n; offset += 1) {
-    const seat = (normalizedStart + offset) % n;
-    const player = players[seat];
-    if (!player || isFoldedOrOut(player) || player.allIn) continue;
-
-    const needsAction = needsActionForBet(player, maxBet);
-
-    console.log('[BET][CANDIDATE]', {
-      seat,
-      name: player.name,
-      bet: player.betThisRound ?? player.bet ?? 0,
-      maxBet,
-      hasActed: player.hasActedThisRound,
-      folded: player.folded,
-      allIn: player.allIn,
-      needsAction,
-    });
-
-    if (needsAction) {
-      return seat;
-    }
-  }
-
-  return null;
+  return findNextEligibleActor(
+    { phase: "BET", players, currentBet: maxBet },
+    { phase: "BET", startIndex: startIdx },
+  );
 }

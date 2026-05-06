@@ -4,12 +4,170 @@ import {
   assertTournamentInvariants,
 } from "../progress/gameProgressInvariants.js";
 import { buildSyntheticSnapshot, runProgressScenario } from "../scenario/runProgressScenario.js";
+import {
+  findNextEligibleActor,
+  getEligibleActorSeats,
+  normalizeTurnState,
+} from "../../core/turn/actorEligibility.js";
 
 function expectInvariantFailure(snapshot, match, context = {}) {
   expect(() => assertGameProgressInvariants(snapshot, context)).toThrow(match);
 }
 
 describe("MGX known game progress bug regressions", () => {
+  test("TURN-001 SB fold should pass turn to BB or next eligible seat", () => {
+    const snapshot = buildSyntheticSnapshot({
+      variantId: "badugi",
+      currentBet: 20,
+      players: [
+        { seatIndex: 0, playerId: "btn", stack: 480, betThisStreet: 20, hasActedThisRound: true },
+        { seatIndex: 1, playerId: "sb", stack: 490, betThisStreet: 10, folded: true, hasFolded: true },
+        { seatIndex: 2, playerId: "bb", stack: 480, betThisStreet: 20, hasActedThisRound: false },
+      ],
+    });
+    expect(findNextEligibleActor(snapshot, { phase: "BET", startIndex: 1 })).toBe(2);
+  });
+
+  test("TURN-002 BB option keeps betting round open", () => {
+    const snapshot = buildSyntheticSnapshot({
+      variantId: "flh",
+      currentBet: 20,
+      players: [
+        { seatIndex: 0, playerId: "btn", stack: 480, betThisStreet: 20, hasActedThisRound: true },
+        { seatIndex: 1, playerId: "sb", stack: 490, betThisStreet: 20, hasActedThisRound: true },
+        { seatIndex: 2, playerId: "bb", stack: 480, betThisStreet: 20, hasActedThisRound: false },
+      ],
+    });
+    expect(getEligibleActorSeats(snapshot, { phase: "BET" })).toContain(2);
+  });
+
+  test("TURN-003 folded seat should not be selected as next actor", () => {
+    const snapshot = buildSyntheticSnapshot({
+      variantId: "badugi",
+      currentBet: 20,
+      players: [
+        { seatIndex: 0, playerId: "hero", stack: 480, betThisStreet: 20, hasActedThisRound: true },
+        { seatIndex: 1, playerId: "folded", stack: 480, betThisStreet: 20, folded: true, hasFolded: true },
+        { seatIndex: 2, playerId: "bb", stack: 480, betThisStreet: 20, hasActedThisRound: false },
+      ],
+    });
+    expect(findNextEligibleActor(snapshot, { phase: "BET", startIndex: 1 })).toBe(2);
+  });
+
+  test("TURN-004 all-in seat should not be selected as BET actor", () => {
+    const snapshot = buildSyntheticSnapshot({
+      variantId: "badugi",
+      currentBet: 20,
+      players: [
+        { seatIndex: 0, playerId: "hero", stack: 480, betThisStreet: 20, hasActedThisRound: false },
+        { seatIndex: 1, playerId: "allin", stack: 0, betThisStreet: 20, allIn: true },
+      ],
+    });
+    expect(findNextEligibleActor(snapshot, { phase: "BET", startIndex: 1 })).toBe(0);
+  });
+
+  test("TURN-005 eligible seat with null actor fails instead of freezing", () => {
+    const snapshot = buildSyntheticSnapshot({
+      variantId: "plo",
+      currentActor: null,
+      turn: null,
+      nextTurn: null,
+      actingPlayerIndex: null,
+      metadata: { actingPlayerIndex: null },
+      players: [
+        { seatIndex: 0, playerId: "hero", stack: 480, betThisStreet: 20 },
+        { seatIndex: 1, playerId: "cpu-1", stack: 480, betThisStreet: 20 },
+      ],
+    });
+    expectInvariantFailure(snapshot, /eligible player exists but no actor is set/, {
+      variantId: "plo",
+      scenarioId: "TURN-005",
+    });
+  });
+
+  test("TURN-006 stale metadata actingPlayerIndex does not override authoritative actor", () => {
+    const normalized = normalizeTurnState(
+      buildSyntheticSnapshot({
+        variantId: "stud",
+        currentActor: 0,
+        actingPlayerIndex: 0,
+        turn: 0,
+        nextTurn: 0,
+        metadata: { actingPlayerIndex: 3 },
+        players: [
+          { seatIndex: 0, playerId: "hero", stack: 480, betThisStreet: 20 },
+          { seatIndex: 1, playerId: "cpu-1", stack: 480, betThisStreet: 20 },
+          { seatIndex: 2, playerId: "cpu-2", stack: 0, seatOut: true },
+          { seatIndex: 3, playerId: "cpu-3", stack: 0, seatOut: true },
+        ],
+      }),
+      { phase: "BET" },
+    );
+    expect(normalized.currentActor).toBe(0);
+    expect(normalized.metadata.actingPlayerIndex).toBe(3);
+    expect(normalized.players.filter((player) => player.isTurn)).toHaveLength(1);
+    expect(normalized.players[0].isTurn).toBe(true);
+  });
+
+  test("TURN-007 normalizeTurnState rebuilds players.isTurn from one actor", () => {
+    const normalized = normalizeTurnState(
+      buildSyntheticSnapshot({
+        currentActor: 1,
+        actingPlayerIndex: 1,
+        turn: 1,
+        nextTurn: 1,
+        players: [
+          { seatIndex: 0, playerId: "hero", stack: 480, isTurn: true },
+          { seatIndex: 1, playerId: "cpu-1", stack: 480, isTurn: true },
+        ],
+      }),
+      { phase: "BET" },
+    );
+    expect(normalized.players.map((player) => Boolean(player.isTurn))).toEqual([false, true]);
+  });
+
+  test("TURN-008 DRAW actor must be inside pendingDrawSeats", () => {
+    const snapshot = buildSyntheticSnapshot({
+      variantId: "D01",
+      phase: "DRAW",
+      currentActor: 0,
+      pendingDrawSeats: [1],
+      players: [
+        { seatIndex: 0, playerId: "hero", stack: 480, hand: ["2C", "3D", "4H", "5S", "7C"] },
+        { seatIndex: 1, playerId: "cpu-1", stack: 480, hand: ["2D", "3C", "4S", "5H", "8C"] },
+      ],
+    });
+    expectInvariantFailure(snapshot, /draw actor is not in pendingDrawSeats/, {
+      variantId: "D01",
+      scenarioId: "TURN-008",
+    });
+  });
+
+  test("TURN-009 already drawn seat should not be selected for DRAW again", () => {
+    const snapshot = buildSyntheticSnapshot({
+      variantId: "D01",
+      phase: "DRAW",
+      pendingDrawSeats: [0, 1],
+      players: [
+        { seatIndex: 0, playerId: "hero", stack: 480, hasDrawn: true },
+        { seatIndex: 1, playerId: "cpu-1", stack: 480 },
+      ],
+    });
+    expect(findNextEligibleActor(snapshot, { phase: "DRAW", startIndex: 0 })).toBe(1);
+  });
+
+  test("TURN-010 draw family fixed-limit actor paths still complete one hand", () => {
+    for (const variantId of ["D01", "D02", "S01", "S02"]) {
+      const result = runProgressScenario({
+        variantId,
+        scenarioId: "turn-010-draw-family-actor-path",
+        invariantContext: { maxDrawRounds: variantId.startsWith("S") ? 1 : 3, handCardCount: 5, maxDiscardCount: 5 },
+        maxSteps: 180,
+      });
+      expect(result.status, `${variantId} should complete via unified actor helpers`).toBe("passed");
+    }
+  });
+
   test("ACTION-001 SB fold should not skip BB option", () => {
     const snapshot = buildSyntheticSnapshot({
       variantId: "nlh",

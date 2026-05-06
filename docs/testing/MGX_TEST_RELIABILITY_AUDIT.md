@@ -17,7 +17,7 @@ This audit checks whether the current MGX progress, regression, and E2E tests ca
 
 | Test File | Test Count | Main Area | Coverage | Notes |
 |---|---:|---|---|---|
-| `src/games/testing/regression/gameProgressKnownBugs.test.js` | 18 | ACTION / ALLIN / DRAW / MTT regressions | PARTIAL | Strong negative invariant fixtures; some ACTION positives are synthetic state checks. |
+| `src/games/testing/regression/gameProgressKnownBugs.test.js` | 28 | ACTION / ALLIN / DRAW / MTT / TURN regressions | PARTIAL | Strong negative invariant fixtures plus TURN-001..010 for shared actor eligibility. Some ACTION positives are still synthetic state checks. |
 | `src/games/testing/scenario/allVariantsProgressSmoke.test.js` | 43 | Variant registry smoke | BROAD/PARTIAL | Covers registered variants through harness where supported; 12 explicit skips remain. |
 | `tests/e2e/mgx-game-progress.spec.js` | 5 | Cash, Badugi draw, PLO result, tournament, mobile action UI | PARTIAL | Strengthened this audit to require real action execution and pot result evidence. |
 | `tests/e2e/badugi-flow.spec.ts` | 33 | Badugi UI/game flow | BADUGI_ONLY | Broad Badugi scenarios, but some older assertions are still shallow. |
@@ -51,6 +51,16 @@ This audit checks whether the current MGX progress, regression, and E2E tests ca
 | `ACTION-005` | STRONG | HIGH | PARTIAL | LOW | LOW | TRUSTED | Negative fixture detects folded actor regressions. |
 | `ACTION-006` | STRONG | HIGH | PARTIAL | LOW | LOW | TRUSTED | Negative fixture detects eligible-player/no-actor freeze states. |
 | `ACTION-007` | STRONG | HIGH | PARTIAL | LOW | LOW | TRUSTED | Negative fixture detects duplicate UI turn flags. |
+| `TURN-001` | MEDIUM | MEDIUM | DRAW_FAMILY | MEDIUM | LOW | NEEDS_STRENGTHENING | Confirms shared helper selects the next eligible seat after SB fold; still helper-level, not full UI click path. |
+| `TURN-002` | MEDIUM | MEDIUM | DRAW_FAMILY | MEDIUM | LOW | NEEDS_STRENGTHENING | Confirms BB option remains betting-eligible while unmatched option exists. |
+| `TURN-003` | STRONG | HIGH | DRAW_FAMILY | LOW | LOW | TRUSTED | Shared helper and invariant reject folded seats as next actors. |
+| `TURN-004` | STRONG | HIGH | DRAW_FAMILY | LOW | LOW | TRUSTED | Shared helper and invariant reject all-in seats as BET actors. |
+| `TURN-005` | STRONG | HIGH | DRAW_FAMILY | LOW | LOW | TRUSTED | Invariant detects nonterminal actor-null states when eligible seats exist. |
+| `TURN-006` | STRONG | HIGH | DRAW_FAMILY | LOW | LOW | TRUSTED | `metadata.actingPlayerIndex` is explicitly ignored as authoritative turn source. |
+| `TURN-007` | STRONG | HIGH | DRAW_FAMILY | LOW | LOW | TRUSTED | `normalizeTurnState` rebuilds `players[].isTurn` from a single actor. |
+| `TURN-008` | STRONG | HIGH | DRAW_FAMILY | LOW | LOW | TRUSTED | DRAW actors outside `pendingDrawSeats` are rejected. |
+| `TURN-009` | STRONG | HIGH | DRAW_FAMILY | LOW | LOW | TRUSTED | Already-drawn seats are excluded from DRAW actor selection. |
+| `TURN-010` | STRONG | HIGH | DRAW_FAMILY | LOW | LOW | TRUSTED | D01/D02/S01/S02 fixed-limit actor paths complete through the shared draw controller. |
 | `ALLIN-001` | STRONG | HIGH | PARTIAL | LOW | LOW | TRUSTED | Negative fixture proves all-in betting-turn bug is detected. |
 | `ALLIN-002` | MEDIUM | MEDIUM | PARTIAL | MEDIUM | LOW | NEEDS_STRENGTHENING | Terminal state is checked, but heads-up all-in path is still fixture-based. |
 | `ALLIN-003` | STRONG | HIGH | PARTIAL | LOW | LOW | TRUSTED | PLO scenario runner checks freeze-free multiway all-in progression. |
@@ -76,6 +86,9 @@ No permanent production-code mutation was committed. Where possible, negative in
 | Folded player is selected for turn | `ACTION-005` | Invariant throws | DETECTED | Added during bugfix sweep. |
 | Eligible players exist with no actor | `ACTION-006` | Invariant throws | DETECTED | Added during bugfix sweep. |
 | Multiple seats expose `isTurn=true` | `ACTION-007` | Invariant throws | DETECTED | Added during bugfix sweep. |
+| Stale metadata actor overrides valid actor | `TURN-006` | Normalized actor remains unchanged | DETECTED | Covered by shared helper fixture. |
+| Pending draw actor is outside pending set | `TURN-008` | Invariant throws | DETECTED | Covered by negative fixture. |
+| Drawn seat is re-selected for draw | `TURN-009` | Shared helper returns remaining seat | DETECTED | Covered by helper fixture. |
 | Already-drawn player receives draw turn | `DRAW-003` | Invariant throws | DETECTED | Covered by negative fixture. |
 | Draw hand size drifts below configured size | `DRAW-004` | Invariant throws | DETECTED | Covered by negative fixture. |
 | Busted player remains current actor | `MTT-001` | Invariant throws | DETECTED | Covered by negative fixture. |
@@ -95,21 +108,28 @@ No permanent production-code mutation was committed. Where possible, negative in
 | `src/games/testing/regression/gameProgressKnownBugs.test.js` ACTION coverage | ACTION regressions had positive fixtures but lacked negative detection for folded/no-actor/duplicate-turn states | Added `ACTION-005`, `ACTION-006`, and `ACTION-007` negative fixtures | `npm run test:game:known-bugs` passed |
 | `src/games/testing/scenario/allVariantsProgressSmoke.test.js` skipped variants | Skip reason was logged separately but not visible in test title | Skip test title now includes `[skip: ...]` | `npm run test:game:progress` passed |
 | `src/ui/components/__tests__/VariantSelectModal.test.jsx` Badugi selector | Full suite failed because selector matched both Badugi and Badugi Single Draw | Selector now chooses exact Badugi button and asserts it exists | `npm test` passed |
+| `src/games/testing/regression/gameProgressKnownBugs.test.js` turn source coverage | Actor skip regressions were covered by mixed fixture styles but lacked one consolidated helper contract | Added TURN-001..010 covering fold, BB option, all-in BET exclusion, actor-null detection, stale metadata, single `isTurn`, draw pending seats, and D01/D02/S01/S02 paths | `npm run test:game:known-bugs` and `npm run test:game:one-hand` passed |
+| `src/games/testing/progress/gameProgressInvariants.js` turn consistency | Metadata and UI flags could disagree without a single invariant failure point | Invariant now compares authoritative actor fields, rejects multiple/mismatched `isTurn`, rejects BET all-in actors, and rejects DRAW actors outside pending seats | `npm run test:game:progress` passed |
+| `src/games/core/turn/actorEligibility.js` fixture compatibility | First full-suite run exposed overly strict stack-presence assumptions in existing unit fixtures | Stackless fixtures now remain eligible unless an explicit zero/negative stack is present; real zero-stack non-all-in seats remain excluded | Focused unit rerun and `npm test` passed |
 
 ## Command Results
 
 | Command | Result | Notes |
 |---|---|---|
-| `npm run test:game:known-bugs` | PASS | 1 file, 18 tests passed |
-| `npm run test:game:progress` | PASS | 2 files, 44 tests passed, 12 skipped with explicit reasons |
-| `npm run test:e2e:progress` | PASS | 5 Playwright tests passed after strengthening PLO assertions |
-| `npm test` | PASS | 126 files passed; 849 tests passed, 12 skipped |
+| `npm run test:game:known-bugs` | PASS | 1 file, 28 tests passed |
+| `npm run test:game:one-hand` | PASS | 2 files, 53 tests passed; 36 variants completed one-hand progression via controller/action harness |
+| `npm run test:game:progress` | PASS | 9 files, 137 tests passed, 11 skipped with explicit reasons |
+| `npm run test:game:family` | PASS | 5 files, 28 tests passed |
+| `npm run test:e2e:progress` | PASS | 5 Playwright tests passed after actor consolidation |
+| `npm test` | PASS | 135 files passed; 957 tests passed, 11 skipped |
 
 ## Remaining Risks
 
 | Risk | Impact | Suggested Next Action |
 |---|---|---|
 | ACTION positive tests are still mostly synthetic | Real next-actor selector could regress while some fixtures still pass | Add temporary mutation verification or controller-path fixtures for SB fold / BB option. |
+| Board/Stud actor logic is not fully rewired to shared helper | Non-draw families can still have family-specific actor bugs | Connect shared helper gradually after family-specific rule assertions are stable. |
+| UI snapshot merge still needs targeted stale-actor E2E | React state merge bugs may not be fully caught by helper-level tests | Add a UI-click fold-heavy E2E that asserts only one active seat and expected legal buttons after every action. |
 | 12 variant progress harness skips remain | Broad coverage can be overestimated | Add harness adapters or E2E substitutes for skipped variants, especially Chinese/OFC and legacy Badugi. |
 | Some older E2E tests remain smoke-oriented | UI can exist while game state is wrong | Convert high-risk smoke tests to assert actor, phase, pot, stack, hand count, and result. |
 | Tournament reseat/table merge is not deeply E2E-covered | MTT bugs may still reach production | Add deterministic MTT bust/merge/winner E2E with seed and state assertions. |
@@ -121,13 +141,13 @@ No permanent production-code mutation was committed. Where possible, negative in
 
 | Verdict | Count |
 |---|---:|
-| TRUSTED | 12 |
-| NEEDS_STRENGTHENING | 9 |
+| TRUSTED | 20 |
+| NEEDS_STRENGTHENING | 11 |
 | WEAK | 0 |
 | INVALID | 0 |
 
 | Mutation Verdict | Count |
 |---|---:|
-| DETECTED | 9 |
+| DETECTED | 12 |
 | NOT_DETECTED | 0 |
 | NOT_RUN | 5 |

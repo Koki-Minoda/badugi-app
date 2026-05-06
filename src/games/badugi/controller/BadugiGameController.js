@@ -1,5 +1,9 @@
 // src/games/badugi/controller/BadugiGameController.js
 import { GameController } from "../../core/GameController.js";
+import {
+  getAuthoritativeActorIndex,
+  normalizeTurnState,
+} from "../../core/turn/actorEligibility.js";
 import LegacyBadugiController from "../BadugiGameController.js";
 import { analyzeBetSnapshot } from "../flow/betRoundUtils.js";
 import {
@@ -62,6 +66,9 @@ function deriveLegalActions(snapshot, seatIndex) {
   const players = snapshot?.players ?? [];
   const player = players[seatIndex];
   if (!player || isFoldedOrOut(player)) {
+    return [];
+  }
+  if (getAuthoritativeActorIndex(snapshot) !== seatIndex) {
     return [];
   }
 
@@ -431,10 +438,14 @@ export class BadugiGameController extends GameController {
 
   _buildControllerState({ handIndex, context, overrideSnapshot = null }) {
     const snapshotSource = overrideSnapshot ?? this.legacy.getSnapshot();
+    const normalizedSnapshot = normalizeTurnState(cloneSnapshot(snapshotSource), {
+      phase: snapshotSource?.phase,
+      allowAllInDraw: true,
+    });
     const builtState = {
       handIndex,
       context,
-      snapshot: cloneSnapshot(snapshotSource),
+      snapshot: normalizedSnapshot,
       lastEvents: [],
     };
     this._lastState = builtState;
@@ -493,8 +504,6 @@ export class BadugiGameController extends GameController {
         ? normalized.nextTurn
         : typeof normalized.turn === "number"
         ? normalized.turn
-        : typeof metadata.actingPlayerIndex === "number"
-        ? metadata.actingPlayerIndex
         : this.legacy.state.turn ?? this.legacy.state.nextTurn ?? 0;
 
     this.legacy.syncExternalState({

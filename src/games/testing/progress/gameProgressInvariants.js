@@ -1,3 +1,8 @@
+import {
+  getAuthoritativeActorIndex,
+  getEligibleActorSeats,
+} from "../../core/turn/actorEligibility.js";
+
 function fail(message, context = {}) {
   const details = {
     variantId: context.variantId ?? context.snapshot?.variantId ?? context.snapshot?.variant ?? "unknown",
@@ -12,14 +17,7 @@ function fail(message, context = {}) {
 }
 
 export function getActorIndex(snapshot = {}) {
-  if (typeof snapshot?.currentActor === "number") return snapshot.currentActor;
-  if (typeof snapshot?.turn === "number") return snapshot.turn;
-  if (typeof snapshot?.nextTurn === "number") return snapshot.nextTurn;
-  if (typeof snapshot?.actingPlayerIndex === "number") return snapshot.actingPlayerIndex;
-  if (typeof snapshot?.metadata?.actingPlayerIndex === "number") {
-    return snapshot.metadata.actingPlayerIndex;
-  }
-  return null;
+  return getAuthoritativeActorIndex(snapshot);
 }
 
 function getPhase(snapshot = {}) {
@@ -53,7 +51,7 @@ function isBusted(player = {}) {
       player.busted ||
       player.seatOut ||
       player.sittingOut ||
-      Math.max(0, Number(player.stack) || 0) <= 0,
+      (Math.max(0, Number(player.stack) || 0) <= 0 && !player.allIn),
   );
 }
 
@@ -88,10 +86,28 @@ export function assertTurnInvariants(snapshot, context = {}) {
   if (turnFlags.length > 1) {
     fail("multiple players have isTurn=true", { ...context, snapshot, actor, phase });
   }
+  if (turnFlags.length === 1 && actor != null && turnFlags[0] !== actor) {
+    fail("isTurn flag disagrees with authoritative actor", { ...context, snapshot, actor, phase });
+  }
+
+  const primaryFields = [
+    ["currentActor", snapshot?.currentActor],
+    ["actingPlayerIndex", snapshot?.actingPlayerIndex],
+    ["turn", snapshot?.turn],
+    ["nextTurn", snapshot?.nextTurn],
+  ].filter(([, value]) => typeof value === "number");
+  const uniquePrimaryActors = new Set(primaryFields.map(([, value]) => value));
+  if (uniquePrimaryActors.size > 1) {
+    fail("turn source fields disagree", { ...context, snapshot, actor, phase });
+  }
 
   if (actor == null) {
-    const eligible =
-      phase === "DRAW" ? players.some(canDrawAct) : phase === "BET" ? players.some(canBetAct) : false;
+    const eligible = ["BET", "DRAW"].includes(phase)
+      ? getEligibleActorSeats(snapshot, {
+          phase,
+          allowAllInDraw: context.allowAllInDraw ?? true,
+        }).length > 0
+      : false;
     if (!terminal && eligible) {
       fail("eligible player exists but no actor is set", { ...context, snapshot, actor, phase });
     }
@@ -111,8 +127,22 @@ export function assertTurnInvariants(snapshot, context = {}) {
   if (phase === "BET" && player.allIn) {
     fail("all-in player received betting turn", { ...context, snapshot, actor, phase });
   }
+  if (phase === "BET" && !canBetAct(player)) {
+    fail("non-eligible betting actor received turn", { ...context, snapshot, actor, phase });
+  }
+  if (
+    phase === "DRAW" &&
+    Array.isArray(snapshot?.pendingDrawSeats) &&
+    snapshot.pendingDrawSeats.length > 0 &&
+    !snapshot.pendingDrawSeats.map(Number).includes(actor)
+  ) {
+    fail("draw actor is not in pendingDrawSeats", { ...context, snapshot, actor, phase });
+  }
   if (phase === "DRAW" && player.hasDrawn) {
     fail("already drawn player received draw turn", { ...context, snapshot, actor, phase });
+  }
+  if (phase === "DRAW" && !canDrawAct(player)) {
+    fail("non-eligible draw actor received turn", { ...context, snapshot, actor, phase });
   }
 }
 

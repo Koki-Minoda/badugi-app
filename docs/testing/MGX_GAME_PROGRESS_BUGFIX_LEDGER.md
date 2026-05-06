@@ -15,6 +15,16 @@ This ledger consolidates scattered bug notes from `docs/bugs`, `docs/testing`, `
 | ACTION-005 | Search/audit follow-up | folded seatにturnが戻るとfreezeする | `ACTION-005` | actor eligibility invariant | P1 | Fixed in tests | `src/games/testing/regression/gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
 | ACTION-006 | Search/audit follow-up | eligible playerがいるのにactor nullで無音freezeする | `ACTION-006` | actor eligibility invariant | P0 | Fixed in tests | `src/games/testing/regression/gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
 | ACTION-007 | Search/audit follow-up | UI上の複数seatがturn表示になり操作先が曖昧になる | `ACTION-007` | UI turn reconstruction / invariant | P1 | Fixed in tests | `src/games/testing/regression/gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| TURN-001 | Priority2 actor consolidation | SB fold後にBB/次eligible seatへturnが渡ることを共通helperで保証 | `TURN-001` | actor eligibility helper | P1 | Fixed | `src/games/core/turn/actorEligibility.js`, `src/games/badugi/flow/actionUtils.js`, `src/games/badugi/flow/betRoundUtils.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| TURN-002 | Priority2 actor consolidation | BB optionが残る状態でbet roundを終わらせない | `TURN-002` | fixed-limit betting eligibility | P1 | Fixed | `src/games/core/turn/actorEligibility.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| TURN-003 | Priority2 actor consolidation | folded seatを次actorにしない | `TURN-003` | actor eligibility helper | P1 | Fixed | `src/games/core/turn/actorEligibility.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| TURN-004 | Priority2 actor consolidation | all-in seatをBET actorにしない | `TURN-004` | actor eligibility helper | P0 | Fixed | `src/games/core/turn/actorEligibility.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| TURN-005 | Priority2 actor consolidation | eligible seatがいるnon-terminal状態でactor nullにしない | `TURN-005` | invariant / actor source | P0 | Fixed | `src/games/testing/progress/gameProgressInvariants.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| TURN-006 | Priority2 actor consolidation | stale `metadata.actingPlayerIndex` が正しいactorを壊さない | `TURN-006` | turn source priority | P1 | Fixed | `src/games/core/turn/actorEligibility.js`, `BadugiGameController.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| TURN-007 | Priority2 actor consolidation | `players[].isTurn` が複数残らない | `TURN-007` | snapshot normalization | P1 | Fixed | `src/games/core/turn/actorEligibility.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| TURN-008 | Priority2 actor consolidation | DRAW phaseでpendingDrawSeats外にturnが回らない | `TURN-008` | draw actor eligibility | P1 | Fixed | `src/games/core/turn/actorEligibility.js`, `gameProgressInvariants.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| TURN-009 | Priority2 actor consolidation | draw済みseatに再度DRAW turnが回らない | `TURN-009` | draw actor eligibility | P2 | Fixed | `src/games/core/turn/actorEligibility.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| TURN-010 | Priority2 actor consolidation | D01/D02/S01/S02のfixed-limit actor pathをBadugi修正で壊さない | `TURN-010` | draw family controller eligibility | P2 | Fixed | `DeuceToSevenTripleDrawController.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
 | BG-008 / ALLIN-001 | `docs/bugs/badugi_browser_mobile_bug_tracker.md`, QA matrix | all-in playerにbetting actionが要求される | `ALLIN-001` | all-in betting eligibility | P0 | Fixed/covered | Existing gameplay fix; `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
 | ALLIN-002 | QA matrix | HU all-in後にshowdown/terminalへ進まない | `ALLIN-002` | all-in terminal transition | P0 | Covered; deeper path test pending | `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
 | ALLIN-003 | QA matrix | multiway all-in後にfreezeする | `ALLIN-003` | side-pot/showdown transition | P0 | Covered | `runProgressScenario.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
@@ -59,3 +69,8 @@ This ledger consolidates scattered bug notes from `docs/bugs`, `docs/testing`, `
 | `npm run test:game:chinese` | PASS | 1 file, 2 tests passed |
 | `npm run test:game:family` | PASS | 5 files, 28 tests passed after adding CP1 family coverage |
 | `npm run test:game:one-hand` | PASS | 2 files, 53 tests passed; all 36 variants complete one real controller/action-path hand |
+| `npm run test:game:known-bugs` | PASS | 28 tests passed after TURN-001 through TURN-010 |
+| `npm run test:game:progress` | PASS | 9 files, 137 tests passed, 11 skipped after actor consolidation |
+| `npm run test:game:family` | PASS | 5 files, 28 tests passed after actor consolidation |
+| `npm run test:e2e:progress` | PASS | 5 Playwright progress tests passed after actor consolidation |
+| `npm test` | PASS | 135 files passed; 957 tests passed, 11 skipped after actor consolidation |

@@ -1,4 +1,9 @@
 import { GameController } from "../core/GameController.js";
+import {
+  isSeatEligibleForBetting,
+  isSeatEligibleForDrawing,
+  normalizeTurnState,
+} from "../core/turn/actorEligibility.js";
 import { DeuceToSevenTripleDrawEngine } from "./DeuceToSevenTripleDrawEngine.js";
 
 const DEFAULT_SEAT_CONFIG = ["HUMAN", "CPU", "CPU", "CPU", "CPU", "CPU"];
@@ -209,9 +214,11 @@ function deriveLegalActions(state = {}, seatIndex) {
     return [];
   }
   if (state.street === "DRAW") {
-    return player.hasDrawn ? [] : [{ type: "DRAW", minDiscard: 0, maxDiscard: 5 }];
+    return isSeatEligibleForDrawing(player, state, { allowAllInDraw: true })
+      ? [{ type: "DRAW", minDiscard: 0, maxDiscard: 5 }]
+      : [];
   }
-  if (player.allIn) {
+  if (!isSeatEligibleForBetting(player, { ...state, phase: "BET" })) {
     return [];
   }
   if (state.street !== "BET") return [];
@@ -334,7 +341,7 @@ export class DeuceToSevenTripleDrawController extends GameController {
           handId: cloned.handId,
         })
       : null;
-    return {
+    return normalizeTurnState({
       ...cloned,
       gameId: cloned.gameId,
       variantId: metadata.variantId ?? this.variantId,
@@ -353,7 +360,7 @@ export class DeuceToSevenTripleDrawController extends GameController {
       handCardCount: this.engine?.handCardCount ?? metadata.handCardCount ?? 5,
       lastHandResult,
       metadata,
-    };
+    }, { phase: cloned.street, allowAllInDraw: true });
   }
 
   getLegalActions(state = {}, seatIndex) {

@@ -15,6 +15,16 @@ This matrix tracks add-on coverage for game progression regressions. Existing Vi
 | ACTION-005 | Action eligibility | folded playerにturnが回らない | invariant catches folded actor | Vitest invariant | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Negative fixture added during bugfix sweep |
 | ACTION-006 | Freeze prevention | eligible playerがいるのにactor nullで止まらない | invariant catches no-actor freeze state | Vitest invariant | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Negative fixture added during bugfix sweep |
 | ACTION-007 | Turn sync | UI上で複数seatがturn表示にならない | invariant catches multiple `isTurn` flags | Vitest invariant | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Negative fixture added during bugfix sweep |
+| TURN-001 | Actor selection | SB fold後にBB/次eligible seatへturnが渡る | Common helper returns BB or next eligible actor | Vitest helper/regression | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Priority2 actor consolidation |
+| TURN-002 | Actor selection | BB optionが残る場合にBET roundが終了しない | BB remains eligible until option resolves | Vitest helper/regression | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Fixed-limit option guard |
+| TURN-003 | Actor eligibility | folded seatが次actorにならない | Folded seat is excluded | Vitest helper/regression | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Uses `isSeatActiveForHand` |
+| TURN-004 | Actor eligibility | all-in seatがBET actorにならない | All-in stays active for hand but not betting eligible | Vitest helper/regression | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Draw all-in policy is explicit |
+| TURN-005 | Freeze prevention | eligible seatがいるnon-terminal状態でactor nullにならない | Invariant fails actor-null eligible state | Vitest invariant | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Prevents silent freeze |
+| TURN-006 | Turn sync | stale metadata actorが正本actorを壊さない | `metadata.actingPlayerIndex` is debug-only | Vitest helper/regression | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Source of truth documented |
+| TURN-007 | Turn sync | `players[].isTurn` は最大1人 | Normalize clears stale turn flags | Vitest helper/regression | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | UI merge guard |
+| TURN-008 | Draw actor | DRAW phaseでpendingDrawSeats外のseatにturnが回らない | Actor must be in pending draw queue | Vitest invariant | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Draw family guard |
+| TURN-009 | Draw actor | draw済みseatに再度DRAW turnが回らない | Already-drawn seat is excluded | Vitest helper/regression | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Prevents draw rollback |
+| TURN-010 | Draw family | D01/D02/S01/S02のfixed-limit actor pathが壊れない | Draw family scenario completes | Vitest scenario | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Badugi actor helper did not regress draw family |
 | ALLIN-001 | All-in | all-in playerにbetting actionを要求しない | invariant fails if all-in actor is selected | Vitest invariant | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Negative fixture |
 | ALLIN-002 | All-in | HU all-in後にshowdownへ進む | terminal/showdown state is valid | Vitest invariant | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Terminal fixture |
 | ALLIN-003 | All-in | multiway all-in後にfreezeしない | scenario runner reaches terminal | Vitest scenario | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | PLO controller passive progression |
@@ -166,3 +176,13 @@ This matrix tracks add-on coverage for game progression regressions. Existing Vi
 | SPECIAL-001 | SPECIAL | B03/B04/H01-H06 | special smoke | special variants do not freeze | `src/games/testing/scenario/mixedSpecialFamilyProgress.test.js` | Added | Super Hold'em + Dramaha |
 | ONEHAND-001 | ALL | all 36 variants | one-hand controller progression | each runnable variant reaches terminal state via real controller/action path | `src/games/testing/scenario/allVariantsOneHandProgression.test.js` | Added | Fixed seed `20260506`; PASS 36/36 |
 | ONEHAND-FAMILY-001 | ALL families | representative variants | family-level one-hand progression | each family representative reaches terminal state | `src/games/testing/scenario/familyOneHandProgression.test.js` | Added | DRAW/STUD/FLOP/SPLIT/SPECIAL/CHINESE representatives |
+
+## QA Matrix 5: Turn Source / Actor Consolidation
+
+| Area | Source of Truth | Connected Files | Status | Remaining Risk |
+|---|---|---|---|---|
+| Actor index | `actingPlayerIndex` normalized through `getAuthoritativeActorIndex` | `src/games/core/turn/actorEligibility.js`, `BadugiGameController.js`, `DeuceToSevenTripleDrawController.js` | Added | Board/Stud local actor logic remains mostly audited, not fully rewired |
+| UI turn flags | Rebuilt from authoritative actor | `normalizeTurnState(...)`, `gameProgressInvariants.js` | Added | App-level stale merge needs future UI-specific regression |
+| Betting eligibility | Shared helper excludes folded/busted/sittingOut/all-in and respects BET actions only | `actorEligibility.js`, Badugi bet helpers | Added | `lastAggressorIndex` / `betHead` closure semantics remain Badugi-specific |
+| Draw eligibility | Shared helper uses `pendingDrawSeats`, excludes drawn/folded/busted, requires explicit `allowAllInDraw` | `actorEligibility.js`, Badugi draw helpers, draw controller | Added | All-in draw/pat policy should be made variant-definition driven later |
+| Metadata actor | Debug only; never authoritative | `actorEligibility.js`, invariants | Added | Legacy code should avoid reading metadata as actor source |

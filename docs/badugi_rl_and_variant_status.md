@@ -3327,3 +3327,24 @@ Draw RL test coverage:
   - 検証: `npx playwright test tests/e2e/stud-street-progression.spec.ts --project=badugi-flow --grep "visible hero buttons only"`: 2 passed。
   - 検証: `npx playwright test tests/e2e/stud-street-progression.spec.ts --project=badugi-flow`: 6 passed。
   - 検証: `npm test -- --run src/games/stud/__tests__/StudSplitGameController.test.js`: 19 passed。
+
+### 21.14 2026-05-06 Priority4 progression-guarantee E2E
+
+目的:
+- 既存E2Eの「表示確認」寄りの弱さを補い、実UI + 実controller経路で、action後にactor/phase/stateが進み、freezeしないことをPlaywrightで保証する。
+- Badugiを代表フローとして、one hand完走、fold-heavy、draw action、all-in、5hand連続、mobile landscapeを同一suiteで検査する。
+
+対応:
+- [x] `tests/e2e/helpers/gameProgressHelper.js` を追加し、E2E driver snapshotから `phase / actor / legalActions / pot / stacks` を読み、safe action、freeze検知、actor/phase invariant、失敗時traceを共通化。
+- [x] `tests/e2e/mgx-game-progression.spec.js` を追加し、`TEST-001` one hand完走、`TEST-002` fold-heavy、`TEST-003` draw identity、`TEST-004` all-in actor、`TEST-005` 5hand連続、`TEST-006` mobile landscapeを実行。
+- [x] `src/ui/App.jsx` / `src/ui/utils/e2eTestDriver.js` にテスト専用 `forceFinishRoundForTest` を追加し、DRAW phaseのHero実ボタン操作を安定して再現できるようにした。
+- [x] `package.json` に `npm run test:e2e:progression` を追加。
+
+確認結果:
+- [x] `npm run test:e2e:progression`: 7 passed。
+- [x] `npm run test:game:known-bugs`: 42 passed。
+- [x] `npm run test:game:progress`: 151 passed / 11 skipped。
+
+残リスク:
+- [ ] `PV90-16` Badugi full 3-draw E2Eは、短スタック/all-inで早期showdownする自然進行と固定期待が競合するため、別途no-all-in固定fixtureへ切り替える。
+- [ ] 今回のdraw E2EはDRAW phase到達をテストhookで安定化している。自然進行だけでDraw#1-#3を通す長時間UIテストは別タスクとして残す。

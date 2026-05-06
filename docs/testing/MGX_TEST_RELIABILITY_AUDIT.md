@@ -20,6 +20,7 @@ This audit checks whether the current MGX progress, regression, and E2E tests ca
 | `src/games/testing/regression/gameProgressKnownBugs.test.js` | 42 | ACTION / ALLIN / DRAW / MTT / TURN / DRAW-SOT regressions | PARTIAL | Strong negative invariant fixtures plus TURN-001..010 and DRAW-SOT-001..014 for shared actor and draw source rules. Some ACTION positives are still synthetic state checks. |
 | `src/games/testing/scenario/allVariantsProgressSmoke.test.js` | 43 | Variant registry smoke | BROAD/PARTIAL | Covers registered variants through harness where supported; 12 explicit skips remain. |
 | `tests/e2e/mgx-game-progress.spec.js` | 5 | Cash, Badugi draw, PLO result, tournament, mobile action UI | PARTIAL | Strengthened this audit to require real action execution and pot result evidence. |
+| `tests/e2e/mgx-game-progression.spec.js` | 7 | Progression-guarantee E2E | BADUGI_ONLY/PARTIAL | One-hand, fold-heavy, draw identity, all-in, five-hand, mobile landscape, and reproducible-state checks with freeze detection. |
 | `tests/e2e/badugi-flow.spec.ts` | 33 | Badugi UI/game flow | BADUGI_ONLY | Broad Badugi scenarios, but some older assertions are still shallow. |
 | `tests/e2e/badugi-mtt-flow.spec.ts` | 3 | Badugi tournament flow | BADUGI_ONLY | Useful smoke, but reseat/table merge depth remains limited. |
 | `tests/e2e/cross-variant-five-hand-smoke.spec.ts` | 2 | Cross-variant 5-hand UI smoke | BROAD | Good operational signal; still mostly UI progression, not pot correctness. |
@@ -88,6 +89,7 @@ This audit checks whether the current MGX progress, regression, and E2E tests ca
 | `MTT-004` | MEDIUM | MEDIUM | PARTIAL | MEDIUM | LOW | NEEDS_STRENGTHENING | Valid terminal fixture only; needs full MTT terminal E2E. |
 | `allVariantsProgressSmoke.test.js` | MEDIUM | MEDIUM | BROAD/PARTIAL | MEDIUM | LOW | NEEDS_STRENGTHENING | Good broad harness, but 12 variants skipped and some harnesses are simplified. |
 | `mgx-game-progress.spec.js` | MEDIUM | MEDIUM | PARTIAL | MEDIUM | MEDIUM | NEEDS_STRENGTHENING | Strengthened PLO action/result assertions; still uses E2E helper for speed. |
+| `mgx-game-progression.spec.js` | STRONG | HIGH | BADUGI_ONLY/PARTIAL | LOW | MEDIUM | TRUSTED | Uses real Hero UI clicks, controller-safe non-Hero actions, actor/phase/pot/stack assertions, freeze detection, all-in guard, five-hand loop, and mobile viewport checks. |
 | Older E2E smoke files | MEDIUM | LOW/MEDIUM | PARTIAL | MEDIUM | MEDIUM | NEEDS_STRENGTHENING | Useful operational signal, but several are smoke-first and not full rule audits. |
 
 ## Mutation Verification

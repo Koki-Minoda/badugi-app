@@ -24,6 +24,8 @@ Last updated: 2026-05-06
 | `src/games/core/draw/normalizeDrawAction.js` | Draw action normalization helper | `discardIndexes` source of truth, count-only compatibility, max-discard validation |
 | `docs/testing/MGX_DRAW_SOURCE_OF_TRUTH.md` | Draw source-of-truth documentation | Documents draw fields, consolidation, regression coverage, and remaining risks |
 | `tests/e2e/mgx-game-progress.spec.js` | Minimal Playwright progress add-on | Cash, draw/pat, PLO, tournament, mobile |
+| `tests/e2e/helpers/gameProgressHelper.js` | Progression-guarantee E2E helper | Reads real E2E driver state, performs safe UI/controller actions, detects freeze, validates actor/phase/pot/stack |
+| `tests/e2e/mgx-game-progression.spec.js` | Priority4 progression-guarantee Playwright suite | One-hand, fold-heavy, draw identity, all-in, five-hand, mobile landscape, reproducible-state checks |
 | `docs/testing/MGX_VARIANT_FAMILY_COVERAGE_MATRIX.md` | Variant family coverage matrix | Tracks family-level coverage and gaps |
 | `docs/testing/MGX_VARIANT_FAMILY_COVERAGE_REPORT.md` | Variant family execution report | Command results and family summary |
 
@@ -55,6 +57,12 @@ Last updated: 2026-05-06
 | E2E-PROG-003 | E2E | `mgx-game-progress.spec.js` | Pass | PLO controller action + hand result smoke |
 | E2E-PROG-004 | E2E | `mgx-game-progress.spec.js` | Pass | Tournament start remains valid |
 | E2E-PROG-005 | E2E | `mgx-game-progress.spec.js` | Pass | Mobile landscape action button is tappable |
+| E2E-GUARD-001 | Progression E2E | `mgx-game-progression.spec.js` | Pass | Badugi cash hand reaches terminal through real hero UI action plus controller-safe non-hero actions |
+| E2E-GUARD-002 | Progression E2E | `mgx-game-progression.spec.js` | Pass | Fold-heavy progression reaches terminal without stale actor/freeze |
+| E2E-GUARD-003 | Draw E2E | `mgx-game-progression.spec.js` | Pass | Badugi DRAW phase exercises Hero draw button and keeps Hero hand present after draw flow |
+| E2E-GUARD-004 | All-in E2E | `mgx-game-progression.spec.js` | Pass | Forced all-in seat is not left as BET actor and hand can resolve |
+| E2E-GUARD-005 | Multi-hand E2E | `mgx-game-progression.spec.js` | Pass | Five consecutive Badugi hands progress without freeze |
+| E2E-GUARD-006 | Mobile E2E | `mgx-game-progression.spec.js` | Pass | Mobile landscape action controls are 44px+ and inside viewport while progression continues |
 | HIST-REG-05 | History/replay E2E | `cross-variant-history-replay-smoke.spec.ts` | Pass | 35 playable variantsでhandId/action/result/Replay-ready + Replay UI first/next/last/event-row frame jump |
 | STUD-001..006 | Stud family | `studFamilyProgress.test.js` | Pass | ST1-ST6 ante/bring-in/street/all-in/evaluator coverage |
 | FLOP-001..003 | Flop family | `flopFamilyProgress.test.js` | Pass | Hold'em/Omaha blinds, streets, all-in coverage |
@@ -114,6 +122,7 @@ Last updated: 2026-05-06
 | `npm run test:game:progress` | Pass | 9 files, 151 tests passed, 11 skipped with explicit reasons after draw source consolidation |
 | `npm run test:game:family` | Pass | 5 files, 28 tests passed after draw source consolidation |
 | `npm run test:e2e:progress` | Pass | 5 Playwright tests passed on `badugi-flow` project |
+| `npm run test:e2e:progression` | Pass | 7 Playwright tests passed; progression helper asserts actor/phase/pot/stack and detects freeze |
 | `npm test` | Pass | 135 files passed; 971 tests passed, 11 skipped after draw source consolidation |
 | `npm test -- --run src/ui/screens/__tests__/ReplayScreen.test.jsx src/ui/screens/__tests__/HandHistoryScreen.test.jsx` | Pass | 2 files, 4 tests passed |
 | `npx playwright test tests/e2e/cross-variant-history-replay-smoke.spec.ts --project=badugi-flow` | Pass | 35 playable variants passed with Replay UI frame jumps |

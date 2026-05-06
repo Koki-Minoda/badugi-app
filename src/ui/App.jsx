@@ -5938,6 +5938,28 @@ const SAFE_RESET_PHASE = "IDLE";
       forceAllIn: forceAllInAction,
       setupFixedLimitCapFixtureForTest,
       forceHeroDraw,
+      forceFinishRoundForTest: (phaseOverride = null) => {
+        const forcedPlayers = (playersRef.current ?? [])
+          .map(clonePlayerState)
+          .filter(Boolean);
+        if ((phaseOverride ?? phaseRef.current ?? phase) === "BET") {
+          const matchedBet = maxBetThisRound(forcedPlayers);
+          forcedPlayers.forEach((player) => {
+            if (!player || player.folded || player.hasFolded || player.seatOut || player.isBusted || player.allIn) return;
+            player.betThisRound = matchedBet;
+            player.hasActedThisRound = true;
+            player.lastAction = player.lastAction || (matchedBet > 0 ? "Call" : "Check");
+          });
+        }
+        return forceFinishRound({
+          reason: "e2e-force-finish-round",
+          phaseOverride,
+          playersSnapshot: forcedPlayers,
+          potsSnapshot: potsRef.current,
+          drawRoundIndex: drawRoundTracker.current,
+          dealerIndex: dealerIdx,
+        });
+      },
       resolveHandNow: resolveHandImmediately,
       dealNewHandNow: startNextHand,
       forceDealNewHandNow: () => {

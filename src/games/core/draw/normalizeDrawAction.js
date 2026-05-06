@@ -150,10 +150,11 @@ export function validateDrawAction({ action = {}, player = null, state = {}, var
     });
   }
   const seatIndex = player.seatIndex ?? action.seatIndex;
+  const pendingDrawSeats = state.pendingDrawSeats ?? state.metadata?.pendingDrawSeats;
   if (
-    Array.isArray(state.pendingDrawSeats ?? state.metadata?.pendingDrawSeats) &&
-    (state.pendingDrawSeats ?? state.metadata?.pendingDrawSeats).length > 0 &&
-    !new Set((state.pendingDrawSeats ?? state.metadata?.pendingDrawSeats).map(Number)).has(Number(seatIndex))
+    Array.isArray(pendingDrawSeats) &&
+    pendingDrawSeats.length > 0 &&
+    !new Set(pendingDrawSeats.map(Number)).has(Number(seatIndex))
   ) {
     throw createDrawActionError("Seat is not pending for draw", { seatIndex });
   }

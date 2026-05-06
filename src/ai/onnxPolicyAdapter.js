@@ -117,6 +117,49 @@ export function buildBoardBetOnnxFeatures(entry, payload = {}) {
   return vector;
 }
 
+export function buildStudBetOnnxFeatures(entry, payload = {}) {
+  const observation = payload.observation ?? payload;
+  const maxStack = Math.max(1, observation.actor?.stack ?? observation.stack ?? 500);
+  const variantId = observation.variantId ?? payload.variantId;
+  const toCall = Number(observation.toCall ?? 0);
+  const betSize = Number(observation.betSize ?? observation.currentBet ?? 0);
+  const potSize = Number(observation.potSize ?? observation.pot ?? 0);
+  const streetIndex = Number(observation.streetIndex ?? observation.streetProgress ?? 0);
+  const tableSize = Number(observation.tableSize ?? 6) || 6;
+  const position = Number(observation.position ?? observation.positionIndex ?? 0) / tableSize;
+  const visiblePressure = Number(observation.visiblePressure ?? observation.boardPressure ?? 0);
+  const lowPotential = Number(observation.lowPotential ?? observation.lowEquity ?? 0);
+  const highPotential = Number(observation.highPotential ?? observation.highEquity ?? observation.handStrength ?? 0);
+  const strength = Number(observation.strength ?? observation.handStrength ?? Math.max(lowPotential, highPotential));
+  const drawPotential = Number(observation.drawPotential ?? observation.draw ?? 0);
+  const raiseCount = Number(observation.raiseCount ?? 0);
+  const activeOpponents = Number(observation.activeOpponents ?? observation.opponents ?? 1);
+  const rawStackRatio = Number(observation.stackRatio ?? maxStack / 500);
+  const vector = new Float32Array([
+    toCall / maxStack,
+    betSize / maxStack,
+    potSize / (maxStack * 6),
+    Math.max(0, Math.min(1, strength)),
+    Math.max(0, Math.min(1, drawPotential)),
+    Math.max(0, Math.min(1, visiblePressure)),
+    Math.max(0, Math.min(1, position)),
+    Math.max(0, Math.min(1, streetIndex > 1 ? streetIndex / 4 : streetIndex)),
+    toCall > 0 ? toCall / Math.max(1, potSize + toCall) : 0,
+    Math.max(0, Math.min(1, raiseCount / 4)),
+    variantId === "ST3" ? 1 : 0,
+    variantId === "ST2" ? 1 : 0,
+    variantId === "ST1" ? 1 : 0,
+    Math.max(0, Math.min(1, activeOpponents / 5)),
+    Math.max(0, Math.min(1.5, rawStackRatio)),
+    Math.max(0, Math.min(1, Math.max(lowPotential, highPotential))),
+  ]);
+  const expectedLength = expectedInputLength(entry) || 16;
+  if (vector.length !== expectedLength) {
+    throw new Error(`Stud ONNX feature length ${vector.length} does not match ${expectedLength}`);
+  }
+  return vector;
+}
+
 function buildBetFeatures(entry, payload) {
   const variantId = payload.variantId ?? payload.observation?.variantId;
   if (variantId === "D03") {
@@ -127,6 +170,9 @@ function buildBetFeatures(entry, payload) {
   }
   if (entry?.featureSet === "board-betting-observation-v1") {
     return buildBoardBetOnnxFeatures(entry, payload);
+  }
+  if (entry?.featureSet === "stud-betting-observation-v1") {
+    return buildStudBetOnnxFeatures(entry, payload);
   }
   const length = expectedInputLength(entry) || 16;
   const maxStack = Math.max(1, payload.actor?.stack ?? 1);

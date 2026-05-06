@@ -18,6 +18,144 @@
     ]
   },
   {
+    "id": "model-razz-standard-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "ST3"
+    ],
+    "characterIds": [],
+    "tier": "standard",
+    "onnx": "models/razz_standard_dqn_v1.onnx",
+    "checksumSha256": "9284fb3383e9fbf3241bb994a7efeab7733f3b4c42a58c30bba6935d36f42de3",
+    "trainingRun": "stud_razz_standard_dqn_20260506",
+    "trainingCheckpoint": "razz_standard_stud_dqn_latest.pt",
+    "trainingStatus": "bootstrap-active",
+    "trainingNotes": "Razz standard betting DQN trained in a synthetic Stud-family bootstrap environment with teacher warmup, fixture replay, and action masking. This model covers value bet, pressure-fold, pot-odds continue, Razz low-strength, and Stud8 scoop-potential fixtures. It is intended as a playable Beginner/Standard CPU surface for 8Game/10Game routing, not as a Pro-strength or human-verified model. Replace or re-gate after Stud/Razz progression audits and hand-history benchmark data.",
+    "featureSet": "stud-betting-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      16
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
+    "id": "model-razz-beginner-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "ST3"
+    ],
+    "characterIds": [],
+    "tier": "beginner",
+    "onnx": "models/razz_beginner_dqn_v1.onnx",
+    "checksumSha256": "31f6e81d03f78dc2a716eb77fb3499a09e3e0db521195c3a879426dbb6fcfe82",
+    "trainingRun": "stud_razz_beginner_dqn_20260506",
+    "trainingCheckpoint": "razz_beginner_stud_dqn_latest.pt",
+    "trainingStatus": "bootstrap-active",
+    "trainingNotes": "Razz beginner betting DQN trained in a synthetic Stud-family bootstrap environment with teacher warmup, fixture replay, and action masking. This model covers value bet, pressure-fold, pot-odds continue, Razz low-strength, and Stud8 scoop-potential fixtures. It is intended as a playable Beginner/Standard CPU surface for 8Game/10Game routing, not as a Pro-strength or human-verified model. Replace or re-gate after Stud/Razz progression audits and hand-history benchmark data.",
+    "featureSet": "stud-betting-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      16
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
+    "id": "model-stud8-standard-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "ST2"
+    ],
+    "characterIds": [],
+    "tier": "standard",
+    "onnx": "models/stud8_standard_dqn_v1.onnx",
+    "checksumSha256": "64e16c6ddd39122828b7bad9d1bc28f5e7a1f0ee74317c04e916c4d80d8f8a70",
+    "trainingRun": "stud_stud8_standard_dqn_20260506",
+    "trainingCheckpoint": "stud8_standard_stud_dqn_latest.pt",
+    "trainingStatus": "bootstrap-active",
+    "trainingNotes": "Stud Hi-Lo standard betting DQN trained in a synthetic Stud-family bootstrap environment with teacher warmup, fixture replay, and action masking. This model covers value bet, pressure-fold, pot-odds continue, Razz low-strength, and Stud8 scoop-potential fixtures. It is intended as a playable Beginner/Standard CPU surface for 8Game/10Game routing, not as a Pro-strength or human-verified model. Replace or re-gate after Stud/Razz progression audits and hand-history benchmark data.",
+    "featureSet": "stud-betting-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      16
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
+    "id": "model-stud8-beginner-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "ST2"
+    ],
+    "characterIds": [],
+    "tier": "beginner",
+    "onnx": "models/stud8_beginner_dqn_v1.onnx",
+    "checksumSha256": "2faee9ef82aef611a26844b16e1ae225eaec6231dcdc6bb05895480cbcd79828",
+    "trainingRun": "stud_stud8_beginner_dqn_20260506",
+    "trainingCheckpoint": "stud8_beginner_stud_dqn_latest.pt",
+    "trainingStatus": "bootstrap-active",
+    "trainingNotes": "Stud Hi-Lo beginner betting DQN trained in a synthetic Stud-family bootstrap environment with teacher warmup, fixture replay, and action masking. This model covers value bet, pressure-fold, pot-odds continue, Razz low-strength, and Stud8 scoop-potential fixtures. It is intended as a playable Beginner/Standard CPU surface for 8Game/10Game routing, not as a Pro-strength or human-verified model. Replace or re-gate after Stud/Razz progression audits and hand-history benchmark data.",
+    "featureSet": "stud-betting-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      16
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
+    "id": "model-stud-standard-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "ST1"
+    ],
+    "characterIds": [],
+    "tier": "standard",
+    "onnx": "models/stud_standard_dqn_v1.onnx",
+    "checksumSha256": "ce4c529f1e0e6afc618576c2ad03514931de0cf7f292ae4d27e8ea6a5846411a",
+    "trainingRun": "stud_stud_standard_dqn_20260506",
+    "trainingCheckpoint": "stud_standard_stud_dqn_latest.pt",
+    "trainingStatus": "bootstrap-active",
+    "trainingNotes": "Stud standard betting DQN trained in a synthetic Stud-family bootstrap environment with teacher warmup, fixture replay, and action masking. This model covers value bet, pressure-fold, pot-odds continue, Razz low-strength, and Stud8 scoop-potential fixtures. It is intended as a playable Beginner/Standard CPU surface for 8Game/10Game routing, not as a Pro-strength or human-verified model. Replace or re-gate after Stud/Razz progression audits and hand-history benchmark data.",
+    "featureSet": "stud-betting-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      16
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
+    "id": "model-stud-beginner-dqn-v1",
+    "version": "v1",
+    "variantIds": [
+      "ST1"
+    ],
+    "characterIds": [],
+    "tier": "beginner",
+    "onnx": "models/stud_beginner_dqn_v1.onnx",
+    "checksumSha256": "7f4d81d565e09d986a986d4f1271476e5dd10562d20113462c7052a80af636c6",
+    "trainingRun": "stud_stud_beginner_dqn_20260506",
+    "trainingCheckpoint": "stud_beginner_stud_dqn_latest.pt",
+    "trainingStatus": "bootstrap-active",
+    "trainingNotes": "Stud beginner betting DQN trained in a synthetic Stud-family bootstrap environment with teacher warmup, fixture replay, and action masking. This model covers value bet, pressure-fold, pot-odds continue, Razz low-strength, and Stud8 scoop-potential fixtures. It is intended as a playable Beginner/Standard CPU surface for 8Game/10Game routing, not as a Pro-strength or human-verified model. Replace or re-gate after Stud/Razz progression audits and hand-history benchmark data.",
+    "featureSet": "stud-betting-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      16
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
     "id": "model-plo8-standard-dqn-v1",
     "version": "v1",
     "variantIds": [

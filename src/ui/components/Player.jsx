@@ -43,6 +43,36 @@ function StatusPill({ label, tone = "slate" }) {
   );
 }
 
+function StudActionBadge({ lastAction = "" }) {
+  const action = String(lastAction ?? "").trim();
+  if (!action) return null;
+  const normalized = action.toLowerCase();
+  const isBringIn = normalized.startsWith("bring-in");
+  const isComplete = normalized.startsWith("complete");
+  if (!isBringIn && !isComplete) return null;
+  return (
+    <span
+      data-testid="stud-action-badge"
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.18em] ${
+        isBringIn
+          ? "border-amber-200/80 bg-amber-300/95 text-slate-950"
+          : "border-sky-200/80 bg-sky-300/90 text-slate-950"
+      }`}
+    >
+      {isBringIn ? action.replace(/bring-in/i, "Bring-in") : action.replace(/complete/i, "Complete")}
+    </span>
+  );
+}
+
+function getStudCardVisibilityLabel(cardVisibility = [], sourceIndex = 0, isHero = false) {
+  const visibility = cardVisibility[sourceIndex] ?? "down";
+  if (visibility === "up") return "VISIBLE";
+  const downOrdinal =
+    cardVisibility.slice(0, sourceIndex + 1).filter((entry) => entry !== "up").length;
+  if (downOrdinal >= 3) return "7TH DOWN";
+  return isHero ? "HOLE" : "DOWN";
+}
+
 function AvatarImage({ src, initials }) {
   const [failed, setFailed] = useState(false);
   const [currentSrc, setCurrentSrc] = useState(src);
@@ -388,6 +418,11 @@ export default function Player({
   };
   const displayCards = getDisplayCards(handCards, { displayVariant });
   const hasStudVisibility = Array.isArray(player.cardVisibility) && player.cardVisibility.length > 0;
+  const studVisibleCount = hasStudVisibility
+    ? player.cardVisibility.filter((visibility) => visibility === "up").length
+    : 0;
+  const studDownCount = hasStudVisibility ? player.cardVisibility.length - studVisibleCount : 0;
+  const hasSeventhDownCard = hasStudVisibility && studDownCount >= 3;
 
   const hudOverlay =
     hudOpen && !compact && typeof document !== "undefined"
@@ -517,6 +552,24 @@ export default function Player({
                 ))}
               </div>
             )}
+            {hasStudVisibility && (
+              <div
+                data-testid={`seat-${seatIndex}-stud-summary`}
+                className="mt-1 flex flex-wrap items-center gap-1 text-[9px] font-black uppercase tracking-wide text-slate-300"
+              >
+                <span className="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-1.5 py-0.5 text-emerald-100">
+                  Visible {studVisibleCount}
+                </span>
+                <span className="rounded-full border border-slate-400/30 bg-slate-800/70 px-1.5 py-0.5 text-slate-100">
+                  Down {studDownCount}
+                </span>
+                {hasSeventhDownCard && (
+                  <span className="rounded-full border border-violet-300/40 bg-violet-400/15 px-1.5 py-0.5 text-violet-100">
+                    7th down
+                  </span>
+                )}
+              </div>
+            )}
             {!compact && (
               <div
               className="uppercase tracking-wide text-slate-300 truncate"
@@ -560,6 +613,11 @@ export default function Player({
           }}
         >
           {player.lastAction ? `[${player.lastAction}]` : "\u00A0"}
+          {hasStudVisibility && (
+            <span className="ml-2">
+              <StudActionBadge lastAction={player.lastAction} />
+            </span>
+          )}
         </div>
       )}
 
@@ -592,11 +650,9 @@ export default function Player({
             const isPublicCard = hasStudVisibility && visibility === "up";
             const isHiddenFromHero = !isHero && !player.showHand && !isPublicCard;
             const isStudDownCard = hasStudVisibility && !isPublicCard;
-            const visibilityLabel = isPublicCard
-              ? "UP"
-              : isHero
-                ? "DOWN"
-                : "HIDDEN";
+            const visibilityLabel = hasStudVisibility
+              ? getStudCardVisibilityLabel(player.cardVisibility, sourceIndex, isHero)
+              : "";
             return (
               <div
                 key={`${card}-${sourceIndex}`}

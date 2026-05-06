@@ -1,0 +1,58 @@
+{
+  "variantId": "ST1",
+  "model": "public/models/stud_standard_dqn_v1.onnx",
+  "summary": {
+    "fixtureCount": 5,
+    "passCount": 5,
+    "avgEVDelta": -0.010000000000000009,
+    "worstEVDelta": -0.050000000000000044
+  },
+  "results": [
+    {
+      "name": "strong-made-hand-value-bets",
+      "family": "stud",
+      "action": "bet",
+      "selectedEV": 0.78,
+      "bestEV": 0.78,
+      "evDelta": 0.0,
+      "passed": true
+    },
+    {
+      "name": "strong-facing-bet-continues",
+      "family": "stud",
+      "action": "raise",
+      "selectedEV": 0.5,
+      "bestEV": 0.55,
+      "evDelta": -0.050000000000000044,
+      "passed": true
+    },
+    {
+      "name": "weak-facing-bet-folds",
+      "family": "stud",
+      "action": "fold",
+      "selectedEV": 0.0,
+      "bestEV": 0.0,
+      "evDelta": 0.0,
+      "passed": true
+    },
+    {
+      "name": "medium-equity-pot-odds-continues",
+      "family": "stud",
+      "action": "call",
+      "selectedEV": 0.18,
+      "bestEV": 0.18,
+      "evDelta": 0.0,
+      "passed": true
+    },
+    {
+      "name": "razz-low-strength-or-stud8-scoop-pressure",
+      "family": "stud",
+      "action": "bet",
+      "selectedEV": 0.3,
+      "bestEV": 0.3,
+      "evDelta": 0.0,
+      "passed": true
+    }
+  ],
+  "failures": []
+}

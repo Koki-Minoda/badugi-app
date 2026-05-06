@@ -30,7 +30,10 @@ describe("VariantSelectModal", () => {
     const dialog = screen.getByRole("dialog", { name: /select a variant/i });
     expect(dialog).toBeTruthy();
 
-    const badugiButton = screen.getByRole("button", { name: /^badugi\b/i });
+    const badugiButton = screen
+      .getAllByRole("button", { name: /badugi/i })
+      .find((button) => button.textContent?.includes("Badugi") && !button.textContent?.includes("Single Draw"));
+    expect(badugiButton).toBeDefined();
     fireEvent.click(badugiButton);
     expect(handleSelect).toHaveBeenCalledWith("badugi");
     expect(handleClose).toHaveBeenCalled();

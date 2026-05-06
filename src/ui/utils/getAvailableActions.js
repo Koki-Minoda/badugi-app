@@ -1,4 +1,4 @@
-export function getAvailableActions({ currentBet = 0, player } = {}) {
+export function getAvailableActions({ currentBet = 0, player, canRaise = true } = {}) {
   if (!player) return [];
 
   const playerBet = typeof player.betThisRound === "number" ? player.betThisRound : 0;
@@ -19,12 +19,14 @@ export function getAvailableActions({ currentBet = 0, player } = {}) {
       handler: "onCheck",
       variant: "check",
     });
-    actions.push({
-      key: "RAISE",
-      label: "Raise",
-      handler: "onRaise",
-      variant: "raise",
-    });
+    if (canRaise) {
+      actions.push({
+        key: "RAISE",
+        label: "Raise",
+        handler: "onRaise",
+        variant: "raise",
+      });
+    }
     actions.push({
       key: "FOLD",
       label: "Fold",
@@ -50,12 +52,14 @@ export function getAvailableActions({ currentBet = 0, player } = {}) {
     });
   }
 
-  actions.push({
-    key: "RAISE",
-    label: "Raise",
-    handler: "onRaise",
-    variant: "raise",
-  });
+  if (canRaise) {
+    actions.push({
+      key: "RAISE",
+      label: "Raise",
+      handler: "onRaise",
+      variant: "raise",
+    });
+  }
 
   actions.push({
     key: "FOLD",

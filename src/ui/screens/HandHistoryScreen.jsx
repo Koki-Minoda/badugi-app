@@ -41,6 +41,46 @@ function getFeedbackKeyHands(entry) {
   return [];
 }
 
+function getFeedbackReplayLinks(entry) {
+  if (Array.isArray(entry?.replayLinks)) return entry.replayLinks;
+  if (Array.isArray(entry?.payload?.replayLinks)) return entry.payload.replayLinks;
+  if (Array.isArray(entry?.response?.replayLinks)) return entry.response.replayLinks;
+  return [];
+}
+
+function findReplayLinkForSpot(replayLinks = [], spot = {}) {
+  if (!spot?.handId) return null;
+  return (
+    replayLinks.find(
+      (link) =>
+        link?.handId === spot.handId &&
+        (!spot.situationId || !link?.situationId || link.situationId === spot.situationId),
+    ) ??
+    replayLinks.find((link) => link?.handId === spot.handId) ??
+    null
+  );
+}
+
+function buildReplayTargetForSpot(spot = {}, replayLink = null) {
+  const replayTarget = replayLink?.replayTarget ?? {};
+  return {
+    handId: replayTarget.handId ?? replayLink?.handId ?? spot.handId ?? null,
+    actionSeqStart:
+      replayTarget.actionSeqStart ??
+      replayLink?.actionSeqRange?.start ??
+      spot.actionSeqRange?.start ??
+      null,
+    actionSeqEnd:
+      replayTarget.actionSeqEnd ??
+      replayLink?.actionSeqRange?.end ??
+      spot.actionSeqRange?.end ??
+      null,
+    seat: replayTarget.seat ?? spot.seatIndex ?? null,
+    street: replayTarget.street ?? spot.street ?? null,
+    type: replayTarget.type ?? spot.heroAction ?? null,
+  };
+}
+
 function HandHistoryRow({ entry, onReplay }) {
   const { hand, isLive } = entry;
   const handEnd = extractHandEndEvent(hand);
@@ -55,6 +95,7 @@ function HandHistoryRow({ entry, onReplay }) {
   return (
     <button
       type="button"
+      data-testid={`hand-history-row-${hand?.handId ?? "unknown"}`}
       className={`w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-left text-sm text-white transition hover:bg-white/5 ${
         isLive ? "ring-1 ring-emerald-400/40" : ""
       }`}
@@ -238,9 +279,14 @@ export default function HandHistoryScreen({
         replayHand: "Replay",
       };
   const activeFeedbackEntry = feedbackState.response
-    ? { response: feedbackState.response, keyHands: feedbackPayloadResult.payload?.keyHands ?? [] }
+    ? {
+        response: feedbackState.response,
+        keyHands: feedbackPayloadResult.payload?.keyHands ?? [],
+        replayLinks: feedbackPayloadResult.payload?.replayLinks ?? [],
+      }
     : savedFeedback;
   const feedbackKeyHands = getFeedbackKeyHands(activeFeedbackEntry).slice(0, 6);
+  const feedbackReplayLinks = getFeedbackReplayLinks(activeFeedbackEntry);
 
   async function handleRequestFeedback() {
     if (!feedbackPayloadResult.eligible || !feedbackPayloadResult.payload) return;
@@ -400,6 +446,8 @@ export default function HandHistoryScreen({
                   <div className="mt-3 grid gap-2">
                     {feedbackKeyHands.map((spot) => {
                       const matched = rows.find((entry) => entry.hand?.handId === spot.handId);
+                      const replayLink = findReplayLinkForSpot(feedbackReplayLinks, spot);
+                      const replayTarget = buildReplayTargetForSpot(spot, replayLink);
                       const actionRange = spot.actionSeqRange
                         ? `#${spot.actionSeqRange.start}-${spot.actionSeqRange.end}`
                         : "-";
@@ -418,8 +466,10 @@ export default function HandHistoryScreen({
                           </div>
                           <button
                             type="button"
-                            disabled={!matched}
-                            onClick={() => matched && onReplay?.(matched.hand)}
+                            disabled={!matched || replayLink?.handExists === false}
+                            onClick={() =>
+                              matched?.hand?.handId && onReplay?.(matched.hand.handId, replayTarget)
+                            }
                             className="rounded-full border border-emerald-300/40 px-3 py-1 text-[11px] font-semibold text-emerald-100 disabled:cursor-not-allowed disabled:border-white/10 disabled:text-white/30"
                           >
                             {copy.replayHand}

@@ -4,6 +4,10 @@ title: Current blocker list
 
 # Current confirmed problems
 
+> 2026-05-06 update: the old Badugi gameplay regression notes below are retained as historical context.
+> Current progress bugfix status is consolidated in `docs/testing/MGX_GAME_PROGRESS_BUGFIX_LEDGER.md`.
+> The P0/P1 action/all-in/freeze regressions listed here are now covered by `npm run test:game:known-bugs`; remaining open work is tracked in the ledger instead of this stale blocker list.
+
 1. **Playwright SB-fold spec needs stronger navigation guards.**  
    - The `START` button redirect flickers between `/menu` and `/game`, so we run a `Promise.race` between the two and wait for the `Leaderboard` button before proceeding. This keeps the test resilient to layout changes.
 2. **Documented start screen confirmation.**  

@@ -232,6 +232,7 @@ export default function GameLayoutBase({
             onCall={playerCall}
             onCheck={playerCheck}
             onRaise={playerRaise}
+            canRaise={!actionPanelInfo?.capReached}
             layoutMode={layoutMode}
             className={isMobileLayout ? "w-full" : undefined}
           />

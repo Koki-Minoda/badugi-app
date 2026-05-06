@@ -4,6 +4,7 @@ import {
   buildBoardBetOnnxFeatures,
   buildBadugiOnnxFeatures,
   buildDrawOnnxFeatures,
+  buildStudBetOnnxFeatures,
   buildDeterministicSafeDecision,
   getRlDecisionFallbackPriority,
 } from "../onnxPolicyAdapter.js";
@@ -165,6 +166,61 @@ describe("onnxPolicyAdapter Badugi schema", () => {
     expect(tensor).toHaveLength(16);
     expect(tensor[10]).toBe(1);
     expect(tensor[11]).toBe(1);
+  });
+
+  it("builds exact-shape Stud-family betting tensors and selects bootstrap DQN models", () => {
+    expect(selectModelForVariant({ variantId: "ST1", tierId: "beginner" })?.id).toBe(
+      "model-stud-beginner-dqn-v1",
+    );
+    expect(selectModelForVariant({ variantId: "ST1", tierId: "standard" })?.id).toBe(
+      "model-stud-standard-dqn-v1",
+    );
+    expect(selectModelForVariant({ variantId: "ST2", tierId: "beginner" })?.id).toBe(
+      "model-stud8-beginner-dqn-v1",
+    );
+    expect(selectModelForVariant({ variantId: "ST2", tierId: "standard" })?.id).toBe(
+      "model-stud8-standard-dqn-v1",
+    );
+    expect(selectModelForVariant({ variantId: "ST3", tierId: "beginner" })?.id).toBe(
+      "model-razz-beginner-dqn-v1",
+    );
+    expect(selectModelForVariant({ variantId: "ST3", tierId: "standard" })?.id).toBe(
+      "model-razz-standard-dqn-v1",
+    );
+
+    const entry = {
+      inputShape: [16],
+      featureSet: "stud-betting-observation-v1",
+    };
+    const stud = buildStudBetOnnxFeatures(entry, {
+      variantId: "ST1",
+      toCall: 20,
+      betSize: 20,
+      potSize: 120,
+      strength: 0.71,
+      drawPotential: 0.22,
+      visiblePressure: 0.44,
+      positionIndex: 3,
+      tableSize: 6,
+      streetIndex: 2,
+      highPotential: 0.71,
+      lowPotential: 0.12,
+      actor: { stack: 500 },
+    });
+    expect(stud).toBeInstanceOf(Float32Array);
+    expect(stud).toHaveLength(16);
+    expect(stud[12]).toBe(1);
+
+    const razz = buildStudBetOnnxFeatures(entry, {
+      variantId: "ST3",
+      toCall: 0,
+      lowPotential: 0.82,
+      highPotential: 0.18,
+      actor: { stack: 500 },
+    });
+    expect(razz).toHaveLength(16);
+    expect(razz[10]).toBe(1);
+    expect(razz[15]).toBeCloseTo(0.82);
   });
 
   it("fails fast on invalid ONNX shape and exposes fallback priority", () => {

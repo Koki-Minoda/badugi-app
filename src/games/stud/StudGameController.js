@@ -357,6 +357,20 @@ export class StudGameController {
     return null;
   }
 
+  nextActionSeat(fromIndex, players = this.state.players) {
+    if (!players.length) return null;
+    const currentBet = Number(this.state.currentBet ?? 0) || 0;
+    for (let i = 1; i <= players.length; i += 1) {
+      const idx = (fromIndex + i) % players.length;
+      const player = players[idx];
+      if (!player || player.seatOut || player.folded || player.allIn || player.stack <= 0) continue;
+      const playerBet = Number(player.betThisStreet ?? 0) || 0;
+      const toCall = Math.max(0, currentBet - playerBet);
+      if (!player.hasActedThisStreet || toCall > 0) return idx;
+    }
+    return null;
+  }
+
   compareExposedBoards(a, b) {
     const aCards = Array.isArray(a?.upCards) ? a.upCards : [];
     const bCards = Array.isArray(b?.upCards) ? b.upCards : [];
@@ -481,7 +495,12 @@ export class StudGameController {
     } else if (this.isBettingRoundComplete()) {
       this.advanceStreet();
     } else {
-      this.state.currentActor = this.nextActiveSeat(seatIndex);
+      const nextActor = this.nextActionSeat(seatIndex);
+      if (nextActor == null) {
+        this.advanceStreet();
+      } else {
+        this.state.currentActor = nextActor;
+      }
     }
     return { success: true, player: clonePlayer(player) };
   }

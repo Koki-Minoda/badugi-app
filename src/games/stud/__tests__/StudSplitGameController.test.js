@@ -205,6 +205,50 @@ describe("Stud split controllers", () => {
     expect(controller.state.street).toBe("FIFTH");
   });
 
+  it("converts capped Stud raises to calls and advances after the cap is closed", () => {
+    const controller = createController(StudGameController, 4);
+    controller.startNewHand();
+    controller.state.street = "FOURTH";
+    controller.state.currentBet = 0;
+    controller.state.bringInIndex = null;
+    controller.state.bringInAmount = 0;
+    controller.state.completeAmount = 0;
+    controller.raiseCountThisStreet = 0;
+    controller.state.players = controller.state.players.map((player) => ({
+      ...player,
+      folded: false,
+      seatOut: false,
+      allIn: false,
+      stack: 1000,
+      totalInvested: 0,
+      betThisStreet: 0,
+      hasActedThisStreet: false,
+    }));
+    controller.state.currentActor = 0;
+
+    expect(controller.applyPlayerAction({ seatIndex: 0, action: "bet" }).success).toBe(true);
+    expect(controller.applyPlayerAction({ seatIndex: 1, action: "raise" }).success).toBe(true);
+    expect(controller.applyPlayerAction({ seatIndex: 2, action: "raise" }).success).toBe(true);
+    expect(controller.applyPlayerAction({ seatIndex: 3, action: "raise" }).success).toBe(true);
+    expect(controller.raiseCountThisStreet).toBe(controller.raiseCap);
+    expect(controller.state.currentBet).toBe(40);
+
+    const cappedAttempt = controller.applyPlayerAction({ seatIndex: 0, action: "raise" });
+
+    expect(cappedAttempt.success).toBe(true);
+    expect(controller.raiseCountThisStreet).toBe(controller.raiseCap);
+    expect(controller.state.players[0].betThisStreet).toBe(40);
+    expect(controller.state.players[0].lastAction).toBe("Call");
+    expect(controller.state.currentBet).toBe(40);
+
+    expect(controller.applyPlayerAction({ seatIndex: 1, action: "call" }).success).toBe(true);
+    expect(controller.applyPlayerAction({ seatIndex: 2, action: "call" }).success).toBe(true);
+
+    expect(controller.state.street).toBe("FIFTH");
+    expect(controller.state.currentBet).toBe(0);
+    expect(controller.raiseCountThisStreet).toBe(0);
+  });
+
   it("posts bring-in from the highest up-card in Razz-family games with aces low", () => {
     const controller = createController(RazzGameController, 3);
     controller.startNewHand();

@@ -283,8 +283,8 @@ describe("HandResultOverlay", () => {
       "Main Pot · A-5 Low half",
     ]);
     expect(screen.getAllByTestId("hand-result-component-label").map((node) => node.textContent)).toEqual([
-      "Component: Badugi half",
-      "Component: A-5 Low half",
+      "Component pot: Badugi half",
+      "Component pot: A-5 Low half",
     ]);
     expect(screen.getByTestId("hand-result-odd-chip").textContent).toBe(
       "Odd chip +1 to Badugi half",
@@ -334,10 +334,21 @@ describe("HandResultOverlay", () => {
     );
 
     expect(screen.getAllByTestId("hand-result-pot-title").map((node) => node.textContent)).toEqual([
-      "Main Pot · Board half",
+      "Main Pot · High / Board half",
       "Main Pot · Draw half",
-      "Side Pot · Board half",
+      "Side Pot · High / Board half",
     ]);
+    const potSections = screen.getAllByTestId("hand-result-pot");
+    expect(potSections[0].getAttribute("data-component")).toBe("board");
+    expect(potSections[1].getAttribute("data-component")).toBe("draw");
+    expect(screen.getAllByTestId("hand-result-component-label").map((node) => node.textContent)).toEqual([
+      "Component pot: High / Board half",
+      "Component pot: Draw half",
+      "Component pot: High / Board half",
+    ]);
+    expect(screen.getByTestId("hand-result-odd-chip").textContent).toBe(
+      "Odd chip +1 to Draw half",
+    );
     expect(screen.getByText("Board Seat")).toBeTruthy();
     expect(screen.getByText("Draw Seat")).toBeTruthy();
     expect(screen.getByText("Side Board")).toBeTruthy();

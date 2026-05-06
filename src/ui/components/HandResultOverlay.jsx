@@ -14,7 +14,7 @@ const COMPONENT_LABELS = {
   lowA5: "A-5 Low half",
   archieHigh: "High half",
   archieLow: "A-5 Low half",
-  board: "Board half",
+  board: "High / Board half",
   draw: "Draw half",
 };
 
@@ -28,11 +28,29 @@ const COMPONENT_TONES = {
   draw: "cyan",
 };
 
+const COMPONENT_SECTION_CLASSES = {
+  emerald: "border-emerald-300/25 bg-emerald-950/20",
+  amber: "border-amber-300/35 bg-amber-950/25",
+  cyan: "border-cyan-300/35 bg-cyan-950/25",
+  violet: "border-violet-300/35 bg-violet-950/25",
+};
+
+const COMPONENT_DETAIL_CLASSES = {
+  emerald: "border-emerald-300/20 bg-emerald-300/8 text-emerald-50",
+  amber: "border-amber-300/25 bg-amber-300/10 text-amber-50",
+  cyan: "border-cyan-300/25 bg-cyan-300/10 text-cyan-50",
+  violet: "border-violet-300/25 bg-violet-300/10 text-violet-50",
+};
+
 function getComponentLabel(source = {}) {
-  if (source.componentLabel) return source.componentLabel;
   if (source.component && COMPONENT_LABELS[source.component]) return COMPONENT_LABELS[source.component];
+  if (source.componentLabel) return source.componentLabel;
   if (source.label && /\bhalf\b/i.test(source.label)) return source.label;
   return null;
+}
+
+function getComponentTone(source = {}) {
+  return COMPONENT_TONES[source.component] ?? (getComponentLabel(source) ? "emerald" : "emerald");
 }
 
 function getBasePotTitle(pot = {}, index, singlePot) {
@@ -172,12 +190,18 @@ function PotSection({ pot, index, singlePot }) {
   const winnerGroups = buildWinnerGroups(pot);
   const title = getPotTitle(pot, index, singlePot);
   const componentLabel = getComponentLabel(pot);
+  const componentTone = getComponentTone(pot);
   const eligibleSeatsLabel = getSeatListLabel(pot?.eligibleSeatIndexes);
   const oddChipLabel = getOddChipLabel(pot);
   return (
     <div
-      className="rounded-2xl border border-white/10 bg-slate-950/40 p-4 space-y-3"
+      className={`rounded-2xl border p-4 space-y-3 ${
+        componentLabel
+          ? COMPONENT_SECTION_CLASSES[componentTone] ?? COMPONENT_SECTION_CLASSES.emerald
+          : "border-white/10 bg-slate-950/40"
+      }`}
       data-testid="hand-result-pot"
+      data-component={pot?.component ?? ""}
     >
       <div className="flex items-center justify-between text-xs text-slate-400 uppercase tracking-[0.4em]">
         <span data-testid="hand-result-pot-title">{title}</span>
@@ -187,17 +211,19 @@ function PotSection({ pot, index, singlePot }) {
       </div>
       {(componentLabel || eligibleSeatsLabel || oddChipLabel) && (
         <div
-          className="grid gap-2 rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-slate-300 sm:grid-cols-3"
+          className={`grid gap-2 rounded-2xl border px-3 py-2 text-[11px] sm:grid-cols-3 ${
+            COMPONENT_DETAIL_CLASSES[componentTone] ?? COMPONENT_DETAIL_CLASSES.emerald
+          }`}
           data-testid="hand-result-component-detail"
         >
           {componentLabel && (
             <span data-testid="hand-result-component-label">
-              <strong className="text-slate-100">Component:</strong> {componentLabel}
+              <strong className="text-white">Component pot:</strong> {componentLabel}
             </span>
           )}
           {eligibleSeatsLabel && (
             <span data-testid="hand-result-eligible-seats">
-              <strong className="text-slate-100">Eligible:</strong> {eligibleSeatsLabel}
+              <strong className="text-white">Eligible:</strong> {eligibleSeatsLabel}
             </span>
           )}
           {oddChipLabel && (

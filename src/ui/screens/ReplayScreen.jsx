@@ -445,7 +445,10 @@ export default function ReplayScreen({
   }, [isPlaying, playIntervalMs, frames.length, maxFrameIndex]);
 
   return (
-    <div className="min-h-screen bg-slate-950/95 px-6 py-8 text-slate-100">
+    <div
+      className="min-h-screen bg-slate-950/95 px-6 py-8 text-slate-100"
+      data-testid="hand-replay-screen"
+    >
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -485,7 +488,7 @@ export default function ReplayScreen({
 
         <div className="rounded-3xl border border-white/10 bg-black/40 p-4">
           <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-slate-300">
-            <div>
+            <div data-testid="replay-frame-counter">
               Frame {frames.length === 0 ? 0 : clampedIndex + 1} / {frames.length || 0}
             </div>
             <div>Phase: {currentFrame?.phase ?? "—"}</div>
@@ -500,6 +503,7 @@ export default function ReplayScreen({
             <button
               type="button"
               onClick={handleFirst}
+              data-testid="replay-first-frame"
               className="rounded-full border border-white/20 px-3 py-1 text-xs text-white hover:border-emerald-300/70"
               disabled={!frames.length || clampedIndex === 0}
             >
@@ -508,6 +512,7 @@ export default function ReplayScreen({
             <button
               type="button"
               onClick={handlePrev}
+              data-testid="replay-prev-frame"
               className="rounded-full border border-white/20 px-3 py-1 text-xs text-white hover:border-emerald-300/70"
               disabled={!frames.length || clampedIndex === 0}
             >
@@ -519,11 +524,13 @@ export default function ReplayScreen({
               max={Math.max(frames.length - 1, 0)}
               value={clampedIndex}
               onChange={(event) => goToIndex(Number(event.target.value))}
+              data-testid="replay-frame-slider"
               className="flex-1 accent-emerald-400"
             />
             <button
               type="button"
               onClick={handleNext}
+              data-testid="replay-next-frame"
               className="rounded-full border border-white/20 px-3 py-1 text-xs text-white hover:border-emerald-300/70"
               disabled={!frames.length || clampedIndex >= frames.length - 1}
             >
@@ -532,6 +539,7 @@ export default function ReplayScreen({
             <button
               type="button"
               onClick={handleLast}
+              data-testid="replay-last-frame"
               className="rounded-full border border-white/20 px-3 py-1 text-xs text-white hover:border-emerald-300/70"
               disabled={!frames.length || clampedIndex >= frames.length - 1}
             >
@@ -540,6 +548,7 @@ export default function ReplayScreen({
             <button
               type="button"
               onClick={() => setIsPlaying((value) => !value)}
+              data-testid="replay-play-toggle"
               className={`rounded-full border px-3 py-1 text-xs ${
                 isPlaying
                   ? "border-red-300/70 text-red-200"
@@ -552,6 +561,7 @@ export default function ReplayScreen({
             <select
               value={playIntervalMs}
               onChange={(event) => setPlayIntervalMs(Number(event.target.value))}
+              data-testid="replay-speed-select"
               className="rounded-full border border-white/20 bg-black/40 px-3 py-1 text-xs text-white"
             >
               {[100, 250, 500].map((ms) => (
@@ -767,6 +777,7 @@ export default function ReplayScreen({
               <button
                 key={`evt-${idx}-${frame?.phase}`}
                 type="button"
+                data-testid={`replay-event-row-${idx}`}
                 onClick={() => {
                   goToIndex(idx);
                   const seat = getSeatFromFrameEvent(frames[idx]);

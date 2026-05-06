@@ -78,4 +78,33 @@ describe("ShowdownResultToast", () => {
     expect(screen.getByTestId("showdown-result-toast").textContent).toContain("Badugi half");
     expect(screen.getByTestId("showdown-result-toast").textContent).toContain("A-5 Low half");
   });
+
+  it("labels Dramaha board component as the high half in compact toast", () => {
+    const summary = {
+      pot: 151,
+      potDetails: [
+        {
+          potIndex: 0,
+          sourcePotIndex: 0,
+          component: "board",
+          componentLabel: "Board half",
+          potAmount: 75,
+          winners: [{ name: "Board Winner" }],
+        },
+        {
+          potIndex: 1,
+          sourcePotIndex: 0,
+          component: "draw",
+          componentLabel: "Draw half",
+          potAmount: 76,
+          winners: [{ name: "Draw Winner" }],
+        },
+      ],
+    };
+
+    expect(buildShowdownToastItems(summary).map((item) => item.label)).toEqual([
+      "Pot · High / Board half",
+      "Pot · Draw half",
+    ]);
+  });
 });

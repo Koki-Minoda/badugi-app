@@ -7,6 +7,7 @@ import {
 const RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
 const SUITS = ["C", "D", "H", "S"];
 const ROWS = ["front", "middle", "back"];
+const arrangementCache = new Map();
 
 function createStandardDeck() {
   return RANKS.flatMap((rank) => SUITS.map((suit) => `${rank}${suit}`));
@@ -40,10 +41,23 @@ function getArrangementScore(evaluation) {
   );
 }
 
+function cloneArrangement(arrangement) {
+  return {
+    front: [...arrangement.front],
+    middle: [...arrangement.middle],
+    back: [...arrangement.back],
+    evaluation: arrangement.evaluation,
+  };
+}
+
 export function autoArrangeChineseHand(cards = []) {
   if (!Array.isArray(cards) || cards.length !== 13 || !uniqueCards(cards)) {
     throw new Error("Chinese Poker auto arrange requires 13 unique cards");
   }
+
+  const cacheKey = [...cards].sort().join("|");
+  const cached = arrangementCache.get(cacheKey);
+  if (cached) return cloneArrangement(cached);
 
   let best = null;
   let bestScore = Number.NEGATIVE_INFINITY;
@@ -60,13 +74,18 @@ export function autoArrangeChineseHand(cards = []) {
     }
   }
 
-  if (best) return best;
+  if (best) {
+    arrangementCache.set(cacheKey, cloneArrangement(best));
+    return cloneArrangement(best);
+  }
   const fallback = {
     front: cards.slice(0, 3),
     middle: cards.slice(3, 8),
     back: cards.slice(8, 13),
   };
-  return { ...fallback, evaluation: evaluateChineseRows(fallback) };
+  const fallbackArrangement = { ...fallback, evaluation: evaluateChineseRows(fallback) };
+  arrangementCache.set(cacheKey, cloneArrangement(fallbackArrangement));
+  return cloneArrangement(fallbackArrangement);
 }
 
 function normalizeSeat(seat, index) {

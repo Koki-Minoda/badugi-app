@@ -1812,7 +1812,8 @@ Draw RL test coverage:
       - [x] `MIX-16-15` Dramaha Badugi (`H06`) を実装する。
         - 2026-05-04 実装: `DramahaGameController` / `DramahaGameDefinition` / `dramahaEvaluator` / Dramaha UI adapter を追加し、H01-H06をGameRegistry・variant modal・Game Selector catalogへ `wip` route として接続した。
         - 実装範囲: 5枚hole、flop-only 3枚board、1 draw、final bet、showdownでboard half（Omaha exactly 2 + board exactly 3）とdraw half（High / 2-7 / A-5 / Zero / Hidugi / Badugi）を分割評価する。
-        - 残TODO: Dramaha専用CPU discard strategy、split halfのUI詳細表示、odd chip ruleの運用仕様、Playwright smokeを追加する。
+        - 2026-05-06 追加対応: Dramaha / split draw result UIでcomponent potを色分け表示。Dramahaのboard側は `High / Board half`、draw側は `Draw half` と表示し、eligible seats / odd chip / component potをOverlayに明示。Showdown toastもcomponent別winner表示へ揃え、Dramaha result Overlay Playwright smokeを追加。
+        - 残TODO: Dramaha専用CPU discard strategy、split draw系の公式ルール監査、odd chip ruleの運用仕様ドキュメントを追加する。
       - [x] `MIX-16-16` Stud family (`ST1` Stud, `ST2` Stud 8, `ST3` Razz, `ST4` Razzdugi, `ST5` Razzducey, `ST6` 2-7 Razz) を段階実装する。street/deal visibility、bring-in/antes、stud evaluator、split variantsを別章で詳細化する。
         - 2026-05-04 部分実装: `StudGameController` / `Stud8GameController` / `RazzGameController` と各GameDefinitionを追加し、ST1/ST2/ST3をplayable化。7枚配布、up/down card保持、fixed-limit street進行、Stud high / Stud8 hi-lo / Razz A-5 low showdownを実装。
         - 2026-05-04 修正: anteをtotalInvestedには残しつつstreet betから分離。anteが`betThisStreet`に残ると全員checkしてもTHIRD streetから進まないため、startNewHand後にstreet betをresetする。
@@ -2276,6 +2277,7 @@ Draw RL test coverage:
   - 2026-05-04 部分対応: `D04` Badeucey TD、`D05` Badacey TD、`D06` Hidugi TD、`D07` Archie TD をplayable化。Badugi half + 2-7/A-5/high系halfのcomponent split、odd chip fixture、registry/routing/UI adapter/history smokeを追加。
   - 2026-05-04 部分対応: `S04-S07` single draw split/Badugi系をplayable化。S04 Badugi SD、S05 Badeucey SD、S06 Badacey SD、S07 Hidugi SDのcontroller/engine/routing/catalog/history smokeを追加。
   - 2026-05-05 追加対応: Badeucey/Badacey/Hidugi/Archie と Dramaha 6種の結果summaryに componentLabel / sourcePotIndex / eligibleSeatIndexes / oddChipAmount を保持し、Hand Result Overlay と Showdown Toast で `Main Pot · Badugi half` / `Side Pot · Draw half` のようにcomponent pot単位で表示するようにした。Dramahaはodd chipがdraw halfへ行くことをsummary/UIで明示する。
+  - 2026-05-06 追加対応: Dramaha / split draw result UIを色分け。High/Board halfはamber、Draw/Low halfはcyan、Badugi halfはvioletで表示し、component pot / eligible seat / odd chipをOverlayで確認できるようにした。`dramaha_hi`の結果Overlay E2Eも追加済み。
   - 残TODO: Chinese/OFCのfantasyland / OFC street-by-street turn順、Chinese/OFCのPlaywright replay smoke、split draw系の公式ルール監査、CPU discard strategy精緻化を追加する。
 - [ ] `GAME-ALL-03` Stud / Razz 実装後、10-Game対象のCPUを Beginner / Standard まで学習・適用する。
   - 2026-05-05 部分対応: NLH / FLH / PLO / PLO8 / FLO8 / Stud / Stud8 / Razz / Razz27 は、controller の `getCpuAction()` 経由で teacher-supervised CPU policy を実行できるようにした。
@@ -2532,7 +2534,7 @@ Draw RL test coverage:
   - 補足: all-inだけが残ったBET streetは空streetとして即skipし、次drawまたはshowdownへ進める。
 - [x] `UI-20260504-HAND-SORT` 5-card/draw handの視認性改善として、表示上は同rankをまとめて低い順に並べ、クリック時は元indexを維持する。
   - 例: `Q,5,T,5,5` は表示上 `5,5,5,T,Q` に寄せる。discard indexは元のカード位置で送るためゲームロジックは変更しない。
-- [ ] `RL-10GAME-BEGINNER-STANDARD` 10-Game対象CPUのBeginner/Standard学習適用。
+- [x] `RL-10GAME-BEGINNER-STANDARD` 10-Game対象CPUのBeginner/Standard学習適用。
   - 2026-05-05 部分対応: `src/games/core/cpuTeacherPolicy.js` を追加し、board/stud系に Beginner/Standard 以上の tier threshold を使う teacher-supervised betting policy を導入。
   - 2026-05-05 部分対応: NLH / FLH / PLO / PLO8 / FLO8 は hole/board/evaluator ベースの強度推定、Stud / Stud8 / Razz / Razz27 は up/down card と high/low evaluator ベースの強度推定で CPU action を返す。
   - 2026-05-05 確認: targeted unit で NLH/PLO/Stud-family の `getCpuAction()` と teacher policy threshold を固定。
@@ -2542,7 +2544,12 @@ Draw RL test coverage:
   - 2026-05-05 Pro practice benchmark: `public/models/badugi_pro_v1.onnx` は practice-only 3200 episodes で `avgReward 2.827`, `showdownWinRate 0.683`, `foldRate 0.163`, `worstProfileAvgReward 1.988`。synthetic gate はpassだが human logなしのため人間相手60%超の保証には使わない。
   - 2026-05-05 Pro probe: Standard v3採用checkpointから `badugi_pro_probe_from_standard_v3_10k_20260505` を10k継続学習。5k checkpoint は Pro v1比 `avgReward 3.128 vs 3.130`, `showdownWinRate 0.687 vs 0.682`, `worstProfileAvgReward 2.185 vs 2.079`, `negativeRaiseEVActions 29 vs 114` だが `minAvgReward 1.803 vs 1.855` で僅かに未達。10k/latest は `showdownWinRate 0.751` まで上がる一方 `foldRate 0.262` へ悪化したため不採用。
   - 2026-05-05 判定: Pro v1置換は保留。5k方向は有望だが、次はfoldRateを上げずにminAvgRewardを改善する短期fine-tuneまたはgateを追加する。
-  - 残TODO: 10-Game全体の true RL 適用は未完。D01/D02/NLH/PLO/Stud/Razz系を「専用モデル」として名乗るには、variant別 dataset、action mask、reward、checkpoint評価、human/practice benchmark gate が必要。
+  - 2026-05-06 適用: 8Game / 10Game の未補完だった Stud-family `ST1 Stud`, `ST2 Stud Hi-Lo`, `ST3 Razz` に Beginner / Standard の16入力・6出力bootstrap DQNを追加。
+  - 2026-05-06 学習: `stud/stud8/razz` x `beginner/standard` を各1,600 episodesで学習し、`public/models/stud_beginner_dqn_v1.onnx`, `stud_standard_dqn_v1.onnx`, `stud8_beginner_dqn_v1.onnx`, `stud8_standard_dqn_v1.onnx`, `razz_beginner_dqn_v1.onnx`, `razz_standard_dqn_v1.onnx` を生成。
+  - 2026-05-06 評価: 6モデルすべて `npm run ai:evaluate-stud-onnx` の5 fixture gateで `5/5 pass`。value bet / pressure fold / pot-odds continue / Razz low strength / Stud8 scoop potentialを最低限確認。
+  - 2026-05-06 routing: `modelRegistry.json` に `model-stud-*-dqn-v1`, `model-stud8-*-dqn-v1`, `model-razz-*-dqn-v1` を追加し、`src/ai/onnxPolicyAdapter.js` に `stud-betting-observation-v1` feature builderを追加。
+  - 2026-05-06 台帳: `docs/testing/MGX_RL_8_10GAME_TRAINING_LEDGER.md` に、8Game/10Game対象variantごとの Beginner / Standard model coverage と残リスクを整理。
+  - 残TODO: 今回のStud系は実hand historyベースではなく synthetic fixture bootstrap。Pro以上に上げるには、Stud/Razz進行監査、variant別 dataset、hand-history EV gate、human/practice benchmarkが必要。
 - [x] `npm test -- --run src/games/stud/__tests__/StudSplitGameController.test.js src/ui/game/nlh/__tests__/NLHUIAdapter.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawController.test.js src/ui/components/__tests__/Player.test.jsx`: 4 files / 28 tests pass。
 - [x] `npm test -- --run src/games/__tests__/playableInvariant.test.js`: 1 file / 38 tests pass。NLH/FLH/Super/FL Super/PLO/PLO8/Big-O/5-card PLO/FLO8/Stud/Stud8/Razz/Razz27/Razzdugi/Razzducey/2-7 TD/A-5 TD/Badugi/D04-D07/2-7 SD/A-5 SD/S03-S07/Dramaha 6種の5連続handでbroken actorとchip driftを横断確認。
 - [x] `npm test -- --run src/games/draw/__tests__/DeuceToSevenTripleDrawEngine.test.js src/games/draw/__tests__/DeuceToSevenTripleDrawController.test.js src/games/__tests__/playableInvariant.test.js`: 3 files / 65 tests pass。2-7/A-5/5-card draw系のall-in DRAW権、BET不可、空BET street skip、横断chip driftなしを確認。
@@ -2577,6 +2584,7 @@ Draw RL test coverage:
 - [x] `QA-20260504-SPLIT-RESULT-VISIBILITY` Stud8/PLO8/FLO8/Badeucey/Badacey/Razzdugi/Razzducey の hi/low/component pot を色・ラベルで分離して表示する。
   - 背景: split potやcomponent splitで、誰がHigh/Low/Badugi側を取ったかが結果画面で判別しにくい。
   - 2026-05-05 追加対応: split draw / Dramaha のcomponent pot詳細を強化。元ポット(Main/Side)とhalf種別(Board/Draw/Badugi/2-7/A-5/High)、eligible seat、odd chipを結果overlayに表示し、toastでもcomponent別winner名を表示するunitを追加。
+  - 2026-05-06 追加対応: Dramaha / split draw result UIをさらに明確化。`High / Board half` / `Draw half` / `Component pot:` / `Odd chip +n` を色分け表示し、Dramaha結果Overlay E2Eでboard/draw componentが実DOMに出ることを確認。
 - [ ] `QA-20260504-ALL-VARIANT-OPERATIONAL-AUDIT` playable invariant を「初回action到達」だけでなく、street完走・showdown・all-in/split potまで段階的に拡張する。
   - 背景: Razz/Stud/draw/board gameごとの進行差をテストで拾わないと、ゲームできると誤認する。
   - 2026-05-04: Razz/Razz27 のfull street unit fixture、Player表示順unit、HandResultOverlay split/component表示unitを追加。全variantの完全手動/自動E2E完走監査は継続タスク。
@@ -2652,6 +2660,7 @@ Draw RL test coverage:
   - 7th street: down card。
   - 相手に見えているカードはboard上/seat上で「公開」と分かるようにする。
   - 2026-05-05 対応: seat cardに `UP` / `DOWN` / `HIDDEN` labelを追加し、相手の公開カードと伏せカードを区別できるようにした。
+  - 2026-05-06 仕上げ: Stud/Razz seatに `Visible n` / `Down n` / `7th down` の集計badgeを追加し、カード単位のlabelを `VISIBLE` / `HOLE` / `DOWN` / `7TH DOWN` に整理。公開カードは上ずらし+ring、伏せ札はHeroでも7th downを明示する。
 - [x] `STUD-QA-02` Stud/Razz controllerで bring-in / complete / fixed-limit street unit をTDA相当の実運用に近い形で保証する。
   - Stud high: 低いup cardがbring-in。
   - Razz: 高いup cardがbring-in。
@@ -2660,6 +2669,7 @@ Draw RL test coverage:
   - 2026-05-05 修正: full raise / complete後は、既にcall/check済みだったlive playerを再行動対象へ戻す。raise後に応答なしでstreet進行またはwaiting停止する不具合をfixtureで固定。
   - 2026-05-05 追加監査: 固定デッキの実プレイ監査fixtureを追加し、door card / bring-in / complete / 4th street先頭actor / up-down card枚数 / 7th street down card をStudとRazzで同時に検証。
   - 2026-05-05 修正: Razz系のbring-inと4th以降の先頭actor判定でAを高扱いしていたため、Razz/Razz27/Razzdugi/RazzduceyではAce-lowでdoor/exposed boardを評価するように修正。A doorはbring-in対象から外れ、A-2 exposed boardはRazzの先頭actor候補になる。
+  - 2026-05-06 仕上げ: seat上のlast actionで `Bring-in` / `Complete` を専用badge表示し、forced bring-inとcomplete actionを通常call/checkと見間違えないようにした。
 - [x] `STUD-QA-03` 7th street最終bet後、CPU/Heroのcall/check/foldで停止せずshowdownまたはuncontested resultへ遷移することをunit fixtureで固定する。
 - [x] `STUD-QA-04` Razz / Razz27 / Stud8 / Razzdugi / Razzduceyも同じstreet進行・表示・showdown遷移で確認する。
   - 2026-05-05 対応: controller invariantとcross-variant UI smokeでStud/Razz familyを含めて起動・配牌・actionable state到達を確認。
@@ -2691,6 +2701,8 @@ Draw RL test coverage:
 - [x] `npm test -- --run src/ui/feedback/__tests__/playFeedbackPayload.test.js src/ui/screens/__tests__/HandHistoryScreen.test.jsx src/ui/components/__tests__/Player.test.jsx`: 3 files / 14 tests pass。
 - [x] `npm test -- --run src/games/stud/__tests__/StudSplitGameController.test.js src/games/__tests__/playableInvariant.test.js`: 2 files / 38 tests pass。
 - [x] `npm test -- --run src/ui/game/nlh/__tests__/NLHUIAdapter.test.js src/ui/components/__tests__/Player.test.jsx src/games/stud/__tests__/StudSplitGameController.test.js`: 3 files / 28 tests pass。Hero down card表示とStud/Razz raise後reopenを確認。
+- [x] `npm test -- --run src/ui/components/__tests__/Player.test.jsx src/ui/game/nlh/__tests__/NLHUIAdapter.test.js src/games/stud/__tests__/StudSplitGameController.test.js`: 2026-05-06 再確認 3 files / 39 tests pass。Stud/Razzの `VISIBLE` / `HOLE` / `7TH DOWN`、Visible/Down集計、Bring-in/Complete badgeを確認。
+- [x] `npx playwright test tests/e2e/stud-street-progression.spec.ts --project=badugi-flow`: 2026-05-06 再確認 6 passed。Stud/Razzが2hand連続で3rd-7thを実ボタン進行し、7th street到達時に `7TH DOWN` UIが表示されることを確認。
 - [x] `npm test -- --run src/games/__tests__/playableInvariant.test.js`: 1 file / 73 tests pass。全playable controllerで5連続hand、short-stack all-in pressure、broken actor/chip drift/negative stackなしを確認。
 - [x] `npm test -- --run src/ui/screens/__tests__/HistoryScreen.test.jsx src/ui/game/nlh/__tests__/NLHUIAdapter.test.js`: 2 files / 8 tests pass。
 - [x] `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts --project=badugi-flow`: 22 passed。
@@ -2778,7 +2790,10 @@ Draw RL test coverage:
 - [x] `AI-BOARD-02` 合成board betting環境を追加し、strength / equity / draw potential / position / pot odds / limit type / hi-lo flag を観測に含める。
 - [x] `AI-BOARD-03` Beginner / Standard の初期モデルをteacher warmup + fixture replay + DQNで作成し、ONNXとして `public/models` に配置する。
 - [x] `AI-BOARD-04` `modelRegistry.json` に variant+tier exact route を追加し、他variantへ誤fallbackしないことをunit testで固定する。
-- [ ] `AI-BOARD-05` Pro以上は未実装。次段階では実ハンド履歴、variant別hand evaluator、human/practice benchmark、multiway/side-pot EV gateを追加する。
+- [x] `AI-BOARD-05` NLH/PLO系実ログEV gateを追加する。synthetic gateだけで強さを保証せず、hand historyからposition/showdown/EVを集計して昇格条件化する。
+  - 2026-05-06 対応: `ai:benchmark-board-human-practice` の昇格gateへ `worstPositionAvgEV` / `showdownAvgEV` / `allInAvgEV` / `splitPotAvgEV` を追加。NLH/FLH/PLO/PLO8で平均EVだけではなく、特定ポジションの大崩れ、showdownでの負け越し、all-in/side-potの不十分な実ログサンプルを検知する。
+  - 2026-05-06 対応: PLO/PLO8はvariant別overrideでall-in sampleを必須化し、PLO8はStandard以上でsplit-pot sampleも必須化。`--require-human-logs` 時はposition coverage / showdown coverage / all-in / split pot条件を満たさないとpromotion不可。
+  - 残TODO: これは昇格gateの実装であり、Pro以上モデルの本学習・配備は次タスク。実プレイログが十分に集まるまではPro/Iron相当の強さ保証には使わない。
 
 ### 19.2 学習結果
 
@@ -2873,6 +2888,8 @@ Draw RL test coverage:
 - [x] `npm run ai:benchmark-board-human-practice -- --variant-id B05 --model public/models/plo_standard_dqn_v1.onnx --tier standard --report-only`: practice-only PASS。human logなしのため `humanVerified=false`。
 - [x] 2026-05-05 実ハンド履歴gate拡張後: `PYTHONPATH=src .venv/bin/python -m pytest src/rl/__tests__/test_board_human_practice.py`: 4 passed。
 - [x] 2026-05-05 実ハンド履歴gate拡張後: `npm run ai:benchmark-board-human-practice -- --model public/models/nlh_standard_dqn_v1.onnx --variant-id B01 --tier standard --human-log <synthetic-jsonl> --require-human-logs --report-only --json`: PASS。`humanVerified=true`, `avgEV=2.38`, `positionCoverage=6`, `showdownHands=13`。
+- [x] 2026-05-06 AI-BOARD-05昇格gate強化後: `PYTHONPATH=src .venv/bin/python -m pytest src/rl/__tests__/test_board_human_practice.py`: 6 passed。worst position EV fail と PLO8 split-pot sample不足 fail を固定。
+- [x] 2026-05-06 AI-BOARD-05昇格gate強化後: `npm run ai:benchmark-board-human-practice -- --model public/models/nlh_standard_dqn_v1.onnx --variant-id B01 --tier standard --human-log /tmp/mgx_board_human_gate_nlh.jsonl --require-human-logs --report /tmp/mgx_board_human_gate_report.json --json`: PASS。`humanVerified=true`, `avgEV=8.25`, `worstPositionAvgEV=4.5`, `showdownAvgEV=7.71`, `allInAvgEV=4.5`。
 - [x] 2026-05-05 advanced対応後: `nlh/flh/plo/plo8` の `beginner/standard` 8モデルを `board_*_advanced_20260505` として再学習し、`public/models/*_dqn_v1.onnx` と registry checksum を更新。
 - [x] 2026-05-05 advanced対応後: 8モデルすべて `npm run ai:evaluate-board-onnx -- --advanced-gate` で `8/8` pass。NLH/PLO/PLO8は `avgEVDelta=-0.012 worst=-0.060`、FLHは `avgEVDelta=-0.020 worst=-0.060`。
 - [x] 2026-05-05 advanced対応後: `npm run ai:verify-models` pass。required model checksumは全OK。`model-nlh-v1` / `model-generic-v1` は既存optional missing。
@@ -2922,9 +2939,9 @@ Draw RL test coverage:
 | H04 Dramaha Zero | 68 | 62 | 18 | 開発者限定 | zero-hand評価の公式監査、result label、CPU strategy。 |
 | H05 Dramaha Hidugi | 68 | 62 | 18 | 開発者限定 | Hidugi halfの公式監査、split result UI、discard teacher。 |
 | H06 Dramaha Badugi | 70 | 64 | 20 | 開発者限定 | Badugi halfのcomponent winner表示、odd chip、history smoke。 |
-| ST1 Stud | 82 | 78 | 35 | 限定可 | bring-in/completeを実プレイで再確認し、up/down UIと7th down card表示をさらに磨く。 |
-| ST2 Stud 8 | 80 | 76 | 32 | 限定可 | hi/lo split、no-low scoop、quartering表示、Stud8専用teacherを追加。 |
-| ST3 Razz | 82 | 78 | 35 | 限定可 | Razzのposition/board texture teacher、final street call discipline、実ログ評価。 |
+| ST1 Stud | 82 | 78 | 52 | 限定可 | bootstrap DQNを実ログEV gateへ接続し、bring-in/completeを実プレイで再確認。 |
+| ST2 Stud 8 | 80 | 76 | 50 | 限定可 | bootstrap DQNをsplit/quartering実ログgateへ接続し、no-low scoop表示を磨く。 |
+| ST3 Razz | 82 | 78 | 52 | 限定可 | bootstrap DQNをboard texture / final street disciplineの実ログgateへ接続。 |
 | ST4 Razzdugi | 76 | 72 | 25 | 開発者限定 | Razz half/Badugi halfのcomponent表示、split evaluator監査、専用CPU。 |
 | ST5 Razzducey | 76 | 72 | 25 | 開発者限定 | Razz half/2-7 halfのsplit結果UI、odd chip fixture、history replay。 |
 | ST6 2-7 Razz | 78 | 74 | 28 | 開発者限定 | 2-7 Razz公式進行監査、bring-in tie、low evaluator gateを追加。 |
@@ -2973,9 +2990,9 @@ Draw RL test coverage:
 | H04 Dramaha Zero | 68 | 64 | 54 | 18 | 開発者限定 | zero-hand監査、result label。 |
 | H05 Dramaha Hidugi | 68 | 64 | 54 | 18 | 開発者限定 | Hidugi half公式監査、split result UI。 |
 | H06 Dramaha Badugi | 70 | 66 | 56 | 20 | 開発者限定 | Badugi half winner表示、odd chip。 |
-| ST1 Stud | 82 | 80 | 70 | 35 | 限定可 | bring-in/complete実プレイ監査、7th down UI。 |
-| ST2 Stud 8 | 80 | 78 | 68 | 32 | 限定可 | hi/lo split/no-low scoop/quartering表示。 |
-| ST3 Razz | 82 | 80 | 70 | 35 | 限定可 | Razz board texture teacher、final street discipline。 |
+| ST1 Stud | 82 | 80 | 70 | 52 | 限定可 | bootstrap DQNを実ログEV gateへ接続、bring-in/complete実プレイ監査。 |
+| ST2 Stud 8 | 80 | 78 | 68 | 50 | 限定可 | bootstrap DQNをsplit/quartering実ログgateへ接続。 |
+| ST3 Razz | 82 | 80 | 70 | 52 | 限定可 | bootstrap DQNをboard texture/final street discipline gateへ接続。 |
 | ST4 Razzdugi | 76 | 74 | 62 | 25 | 開発者限定 | Razz/Badugi component表示、split evaluator監査。 |
 | ST5 Razzducey | 76 | 74 | 62 | 25 | 開発者限定 | Razz/2-7 split result、odd chip fixture。 |
 | ST6 2-7 Razz | 78 | 76 | 64 | 28 | 開発者限定 | bring-in tie、low evaluator gate。 |
@@ -3125,15 +3142,23 @@ Draw RL test coverage:
 - [x] `HIST-REG-04` Dramaha系のforced result smokeでwinner evaluation hydrationが例外になり履歴が残らないケースを修正する。
   - Dramaha result summaryはboard/draw split情報が不足した保険経路ではPLO evaluatorへ不完全入力が渡ることがあった。
   - hand result hydrationで評価例外を握り、pot/winner/result保存とnext hand進行を優先する。
+- [x] `HIST-REG-05` Replay UIのframe jumpを全35 playable variantsで押下確認する。
+  - `ReplayScreen` に安定した `data-testid` を追加し、E2Eで履歴modalのhand rowからReplay画面へ遷移する。
+  - `handId` / `variantId` / action / result / Replay-ready validationに加え、`next`, `last`, `first`, event row clickでframe counterが正しく変化することを検証する。
 
 確認結果:
 - [x] `npx playwright test tests/e2e/cross-variant-history-replay-smoke.spec.ts --project=badugi-flow --grep "badugi records"`: 2 passed。
 - [x] `npx playwright test tests/e2e/cross-variant-history-replay-smoke.spec.ts --project=badugi-flow`: 35 passed。
+- [x] `npm test -- --run src/ui/screens/__tests__/ReplayScreen.test.jsx src/ui/screens/__tests__/HandHistoryScreen.test.jsx`: 2 files / 4 tests passed。
+- [x] `npx playwright test tests/e2e/cross-variant-history-replay-smoke.spec.ts --project=badugi-flow --grep "(badugi|plo) records"`: 4 passed。
+- [x] `npx playwright test tests/e2e/cross-variant-history-replay-smoke.spec.ts --project=badugi-flow`: 35 passed with Replay UI frame jumps。
+- [x] `npm run test:game:progress`: 7 files / 73 passed / 12 skipped。
+- [x] `npm run build`: passed（既存のchunk-size / browserslist警告のみ）。
 
 残タスク:
-- [ ] `HIST-REG-05` Replay UIのframe再生そのものを全variantで押下確認する。今回の範囲は「保存される履歴データがReplay-readyであること」まで。
 - [ ] `HIST-REG-06` Chinese/OFC正式接続後、同じhistory/replay smokeへ36件目として追加する。
   - 2026-05-05 進捗: UI単体ではshowdown result / next hand smokeを追加済み。全variant hand history/replay pipelineへの保存・Replay-ready検証は未接続。
+  - 2026-05-06 現状: 35 playable variantsの履歴/Replay UI横断は完了。CP1/OFCは別controller画面のため、本体履歴保存接続後に同じE2Eへ追加する。
 
 ### 21.8 2026-05-05 Feedback Pipeline Variant分離 / 履歴リンク品質
 
@@ -3159,9 +3184,21 @@ Draw RL test coverage:
 - [x] `npm test -- --run src/ui/feedback/__tests__/playFeedbackPayload.test.js src/ui/screens/__tests__/HandHistoryScreen.test.jsx`: 2 files / 8 tests pass。
 - [x] `cd backend && ../.venv/bin/python -m pytest tests/test_analysis_chatgpt_api.py`: 9 passed。
 
+追加対応:
+- [x] `FB-REG-06` feedback対象variantの明示選択と、variant filter後の30hand gateを単体/画面テストで固定する。
+  - PLOとBadugiなどが混在する履歴では、未選択scopeを送信不可にする。
+  - total 30hand以上でも、選択variantが30hand未満なら `not_enough_hands` として拒否する。
+  - 送信payloadの `variantScope`, `summary.variants`, `keyHands`, `replayLinks` が選択variantだけになることを確認する。
+- [x] `FB-REG-07` Feedbackの `replayTarget.actionSeqStart` をReplay UIへ渡し、該当action frameへ直接ジャンプできるようにする。
+  - ゲーム内History modalのFBリプレイボタンは `(handId, replayTarget)` を渡す。
+  - Replay frame resolverは `actionSeq`, `actionSeqStart`, `actionSeqRange.start`, nested `replayTarget.actionSeqStart` を解釈する。
+
 残タスク:
-- [ ] `FB-REG-06` 実OpenAI環境で、variant別30hand以上の実プレイログを使い、回答がPLO/Badugi/2-7などを混同しないか手動確認する。
-- [ ] `FB-REG-07` Replay UI側で `replayTarget.actionSeqStart` へ直接ジャンプする操作を全variantで確認する。
+- [ ] `FB-REG-06-MANUAL` 実OpenAI環境で、variant別30hand以上の実プレイログを使い、回答文がPLO/Badugi/2-7などを混同しないか手動確認する。
+  - 自動テストではpayload分離まで保証済み。実モデル回答品質は本番キー/実ログで別途確認する。
+
+確認結果:
+- [x] `npm test -- --run src/ui/feedback/__tests__/playFeedbackPayload.test.js src/ui/screens/__tests__/HandHistoryScreen.test.jsx src/ui/screens/__tests__/ReplayScreen.test.jsx`: 3 files / 13 tests pass。
 
 ### 21.9 2026-05-06 Fold後の次hand復帰 35variant回帰
 
@@ -3188,7 +3225,9 @@ Draw RL test coverage:
 - [x] `npm run build`: pass。
 
 残タスク:
-- [ ] `BUG-49` Chinese/OFCはfoldが存在しないため対象外。OFC用には「set完了 -> result -> next hand」の専用復帰テストをhistory/replay側へ統合する。
+- [x] `BUG-49` Chinese/OFCはfoldが存在しないため対象外。CP1用には「set完了 -> result -> next hand」の専用復帰テストを追加する。
+  - 2026-05-06 対応: `chineseFamilyProgress.test.js` を追加し、CP1 Chinese Pokerで13枚配布、Hero set、CPU自動配置、showdown採点、next hand復帰、CPU hidden維持を固定。
+  - 残: OFC street-by-street / fantasyland と全variant共通のhistory/replay smoke統合は `HIST-REG-06` / `CHINESE-03` として継続。
 
 ### 21.10 2026-05-06 Dramaha card change / Active game title
 
@@ -3210,3 +3249,81 @@ Draw RL test coverage:
 - [x] `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts --project=badugi-flow`: 37 passed。
 - [x] `npm run lint`: pass（既存の `syncLegacyFromControllerSnapshot` hook dependency warning 1件のみ）。
 - [x] `npm run build`: pass。
+
+### 21.11 2026-05-06 8/10Game progression audit
+
+目的:
+- 8-Game / 10-Game対象variantの進行がRL学習データの前提になるため、PLO / Stud / Razz系を中心に、UI経由でもstreetを飛ばさずshowdownまで到達できることを固定する。
+- 既存の「起動」「配牌」「5hand smoke」だけでは、PLOのboard進行やStud/Razzの3rd-7th street進行を見落とす余地があるため、controller snapshotを使ったUI進行監査を追加する。
+
+対象:
+- Board系: `nlh`, `flh`, `plo`, `plo8`
+- Stud系: `stud`, `stud8`, `razz`
+- Draw系の8/10Game中核: `badugi`, `D01` 2-7 Triple Draw, `D02` A-5 Triple Draw, `S01` 2-7 Single Draw
+
+対応:
+- [x] `MIX-PROG-01` `mixed-rotation-core-progression.spec.ts` を追加し、NLH / FLH / PLO / PLO8 が `PREFLOP -> FLOP -> TURN -> RIVER -> SHOWDOWN` をUI E2Eで通過することを確認する。
+- [x] `MIX-PROG-02` Stud / Stud8 / Razz が `THIRD -> FOURTH -> FIFTH -> SIXTH -> SEVENTH -> SHOWDOWN` をUI E2Eで通過することを確認する。
+- [x] `MIX-PROG-03` Badugi / 2-7TD / A-5TD / 2-7SD は5hand連続、強制showdown、next hand復帰で止まらないことを同じsuiteで確認する。
+- [x] `MIX-PROG-04` 既存unitのprogression invariantと組み合わせ、8/10Game対象のunit + UI両面の進行監査を記録する。
+- [x] `MIX-PROG-05` 実際の8-Game / 10-Game rotation sessionを `per-hand` rotationで起動し、5周ぶんのvariant境界で `variantId` / `seat` / `dealer button` / `stack+pot total` が引き継がれることを確認する。
+
+確認結果:
+- [x] `npm test -- --run src/games/__tests__/playableInvariant.test.js src/games/plo/__tests__/PLOGameController.test.js src/games/plo/__tests__/PLO8GameController.test.js src/games/stud/__tests__/StudSplitGameController.test.js src/games/nlh/__tests__/NLHGameController.test.js`: 5 files / 147 tests passed。
+- [x] `npx playwright test tests/e2e/stud-street-progression.spec.ts tests/e2e/friend-publish-candidate-regression.spec.ts --project=badugi-flow`: 10 passed。
+- [x] `npx playwright test tests/e2e/mixed-rotation-core-progression.spec.ts --project=badugi-flow`: 11 passed。
+- [x] `npx playwright test tests/e2e/stud-street-progression.spec.ts tests/e2e/friend-publish-candidate-regression.spec.ts tests/e2e/mixed-rotation-core-progression.spec.ts --project=badugi-flow`: 21 passed。
+- [x] `npx playwright test tests/e2e/mixed-rotation-core-progression.spec.ts --project=badugi-flow --grep "MIX-PROG-05"`: 2 passed（8Game 40境界、10Game 50境界）。
+
+残リスク:
+- [ ] `MIX-PROG-06` RL教師データ生成前に、PLO/Stud/Razzの実hand historyを使ったEV / position / showdown監査を別途gate化する。
+
+### 21.12 2026-05-06 Fixed-limit cap progression regression
+
+目的:
+- 5ベット/raise cap系のゲームで、cap到達後のraise入力が追加raiseにならず、call/checkとして丸められ、その後のstreet進行が止まらないことを明示fixture化する。
+- 既存ではDraw系とBadugi controllerにcap検査があったが、FLH / FLO8 / Stud系の「cap後の処理継続」まで見るfixtureが不足していた。
+
+対応:
+- [x] `CAP-REG-01` FLH: cap到達後のraise試行をcall扱いにし、残りcall後に `FLOP -> TURN` へ進むことを追加。
+- [x] `CAP-REG-02` FLO8: cap到達後のraise試行をcall扱いにし、残りcall後に `FLOP -> TURN` へ進むことを追加。
+- [x] `CAP-REG-03` Stud: cap到達後のraise試行をcall扱いにし、残りcall後に `FOURTH -> FIFTH` へ進むことを追加。
+- [x] `CAP-REG-04` cap到達後に `raiseCountThisStreet` が増えず、次streetで0にresetされることを確認する。
+- [x] `CAP-REG-05` UI E2EでFLH/FLO8/Studのcap到達時にRaiseボタンが消え、Call/Checkで進行し、hand historyの `betInfo.capReached/canRaise/raiseCountTable` が記録されることを確認する。
+
+確認結果:
+- [x] `npm test -- --run src/games/nlh/__tests__/NLHGameController.test.js src/games/plo/__tests__/PLO8GameController.test.js src/games/stud/__tests__/StudSplitGameController.test.js`: 3 files / 35 tests passed。
+- [x] `npm test -- --run src/ui/__tests__/getAvailableActions.test.js src/games/nlh/__tests__/NLHGameController.test.js src/games/plo/__tests__/PLO8GameController.test.js src/games/stud/__tests__/StudSplitGameController.test.js`: 4 files / 37 tests passed。
+- [x] `npx playwright test tests/e2e/fixed-limit-cap-ui.spec.ts --project=badugi-flow`: 4 tests passed。
+
+残リスク:
+- [ ] CPUが実戦中にcapへ到達する自然発生ケースは、別途長時間UI smokeで補強する。
+
+### 21.13 2026-05-06 Stud UI Call turn sync regression
+
+目的:
+- StudでHeroがCallした後、controller上は次アクターへ進んでいるのにUI側のlegacy `turn` が同期されず、以後のアクションボタンが押せなくなる再発報告を潰す。
+- controller直接操作だけではなく、実際の `Call` ボタン押下で進行が止まらないことをE2Eに入れる。
+
+原因:
+- Stud/Razz系controllerの現在アクターは `currentActor` に入るが、App側の共通同期処理が `turn` / `nextTurn` / `metadata.actingPlayerIndex` だけを見ていた。
+- `heroCanAct` はcontroller由来の手番で有効化される一方、`playerCall()` の事前チェックはlegacy `turn` を見ていたため、Call後にcontroller/UIの手番判定がズレる余地があった。
+
+対応:
+- [x] `BUG-52` `syncLegacyFromControllerSnapshot()` が `snapshot.currentActor` をlegacy `turn` / engine metadataへ同期するように修正。
+- [x] `BUG-53` `ensureSeatCanAct()` はcontroller-driven single tableではcontroller snapshotの `currentActor` を優先して手番判定する。
+- [x] `BUG-54` Stud E2Eに、controllerでHeroのcall spotを作った後、実UIの `action-call` ボタンをクリックしてHeroが stuck しないことを追加。
+
+確認結果:
+- [x] `npx playwright test tests/e2e/stud-street-progression.spec.ts --project=badugi-flow`: 6 passed。
+- [x] `npx playwright test tests/e2e/mixed-rotation-core-progression.spec.ts --project=badugi-flow`: 11 passed。
+- [x] `npm run lint`: pass（既存の `syncLegacyFromControllerSnapshot` hook dependency warning 1件のみ）。
+- [x] `npm run build`: pass。
+
+追加対応:
+- [x] `BUG-55` Stud/Razz系の実ボタン操作だけで3rd-7th streetを2hand連続完走するUI E2Eを追加し、controller直接操作依存を減らした。
+  - 原因: Stud/RazzのHero Callが、クリック後にlegacy `betThisRound` だけでtoCallを計算していたため、controller上はbring-in/currentBetが残っているのにUI actionがCheck扱いで送られ、3rd streetでHero actorに戻り続けることがあった。
+  - 対応: controller-driven board/stud系では `controllerSnapshot.currentActor/currentBet/betThisStreet` を手番・toCallの正とし、NPC自動action/watchdogもcontroller actorへ同期するよう修正。
+  - 検証: `npx playwright test tests/e2e/stud-street-progression.spec.ts --project=badugi-flow --grep "visible hero buttons only"`: 2 passed。
+  - 検証: `npx playwright test tests/e2e/stud-street-progression.spec.ts --project=badugi-flow`: 6 passed。
+  - 検証: `npm test -- --run src/games/stud/__tests__/StudSplitGameController.test.js`: 19 passed。

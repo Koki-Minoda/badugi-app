@@ -163,17 +163,18 @@ function buildHandResultSummary({ showdownSummary = [], totalPot = 0, handId = n
 function normalizeAction(action = {}) {
   const payload = action.payload ?? action.metadata ?? action;
   const type = String(payload.type ?? action.type ?? "").toUpperCase();
+  const normalizedDiscardIndexes = Array.isArray(payload.discardIndexes)
+    ? [...payload.discardIndexes]
+    : Array.isArray(payload.drawIndexes)
+      ? [...payload.drawIndexes]
+      : Array.isArray(action.discardIndexes)
+        ? [...action.discardIndexes]
+        : undefined;
   return {
     ...payload,
     ...action,
     type,
-    discardIndexes: Array.isArray(payload.discardIndexes)
-      ? [...payload.discardIndexes]
-      : Array.isArray(payload.drawIndexes)
-      ? [...payload.drawIndexes]
-      : Array.isArray(action.discardIndexes)
-      ? [...action.discardIndexes]
-      : [],
+    discardIndexes: normalizedDiscardIndexes,
   };
 }
 

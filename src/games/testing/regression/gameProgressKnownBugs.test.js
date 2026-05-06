@@ -9,6 +9,11 @@ import {
   getEligibleActorSeats,
   normalizeTurnState,
 } from "../../core/turn/actorEligibility.js";
+import { normalizeDiscardIndexes, normalizeDrawAction } from "../../core/draw/normalizeDrawAction.js";
+import { DeuceToSevenTripleDrawController } from "../../draw/DeuceToSevenTripleDrawController.js";
+import { AceToFiveTripleDrawController } from "../../draw/AceToFiveTripleDrawController.js";
+import { DeuceToSevenSingleDrawController } from "../../draw/DeuceToSevenSingleDrawController.js";
+import { AceToFiveSingleDrawController } from "../../draw/AceToFiveSingleDrawController.js";
 
 function expectInvariantFailure(snapshot, match, context = {}) {
   expect(() => assertGameProgressInvariants(snapshot, context)).toThrow(match);
@@ -361,6 +366,225 @@ describe("MGX known game progress bug regressions", () => {
       variantId: "D01",
       scenarioId: "DRAW-004",
     });
+  });
+
+  test("DRAW-SOT-001 draw afterHand is preserved in next snapshot", () => {
+    const controller = new DeuceToSevenTripleDrawController();
+    let state = controller.createInitialState();
+    state = controller.createNewHandState(state, { handId: "draw-sot-001" });
+    let snapshot = state.snapshot;
+    let guard = 0;
+    while (snapshot.phase !== "DRAW" && guard < 30) {
+      const actor = snapshot.actingPlayerIndex;
+      const actions = controller.getLegalActions(state, actor);
+      const type = actions.some((action) => action.type === "CHECK") ? "CHECK" : "CALL";
+      state = controller.applyAction(state, { seatIndex: actor, type }).state;
+      snapshot = state.snapshot;
+      guard += 1;
+    }
+    expect(snapshot.phase).toBe("DRAW");
+    const actor = snapshot.actingPlayerIndex;
+    const before = [...snapshot.players[actor].hand];
+    state = controller.applyAction(state, {
+      seatIndex: actor,
+      type: "DRAW",
+      discardIndexes: [0, 1],
+    }).state;
+    const afterDraw = state.snapshot.players[actor].hand;
+    expect(afterDraw).toHaveLength(5);
+    expect(afterDraw).not.toEqual(before);
+    const lastDraw = state.snapshot.metadata.lastDrawAction;
+    expect(lastDraw.beforeHand).toEqual(before);
+    expect(lastDraw.afterHand).toEqual(afterDraw);
+    expect(lastDraw.discardIndexes).toEqual([0, 1]);
+  });
+
+  test("DRAW-SOT-002 drawRoundIndex never decreases across draw family progressions", () => {
+    for (const variantId of ["D01", "D02", "S01", "S02"]) {
+      const result = runProgressScenario({
+        variantId,
+        scenarioId: `draw-sot-002-${variantId}`,
+        invariantContext: { maxDrawRounds: variantId.startsWith("S") ? 1 : 3, handCardCount: 5, maxDiscardCount: 5 },
+        maxSteps: 180,
+      });
+      expect(result.status).toBe("passed");
+    }
+  });
+
+  test("DRAW-SOT-003 discardIndexes are authoritative over mismatched drawCount", () => {
+    const normalized = normalizeDiscardIndexes({
+      hand: ["2C", "3D", "4H", "5S", "7C"],
+      discardIndexes: [3, 1],
+      drawCount: 5,
+      maxDiscardCount: 5,
+    });
+    expect(normalized.discardIndexes).toEqual([1, 3]);
+    expect(normalized.drawCount).toBe(2);
+    expect(normalized.warnings.map((warning) => warning.code)).toContain("DRAW_COUNT_MISMATCH");
+  });
+
+  test("DRAW-SOT-004 discardIndexes duplicates are invalid", () => {
+    expect(() =>
+      normalizeDiscardIndexes({
+        hand: ["2C", "3D", "4H", "5S", "7C"],
+        discardIndexes: [0, 0],
+        maxDiscardCount: 5,
+      }),
+    ).toThrow(/unique/);
+  });
+
+  test("DRAW-SOT-005 discardIndexes out of range are invalid", () => {
+    expect(() =>
+      normalizeDiscardIndexes({
+        hand: ["2C", "3D", "4H", "5S", "7C"],
+        discardIndexes: [5],
+        maxDiscardCount: 5,
+      }),
+    ).toThrow(/out-of-range/);
+  });
+
+  test("DRAW-SOT-006 pat normalizes to empty discardIndexes", () => {
+    const normalized = normalizeDrawAction({
+      action: { type: "DRAW", discardIndexes: [] },
+      player: { hand: ["2C", "3D", "4H", "5S", "7C"] },
+      state: { maxDiscardCount: 5 },
+    });
+    expect(normalized.discardIndexes).toEqual([]);
+    expect(normalized.drawCount).toBe(0);
+    expect(normalized.pat).toBe(true);
+  });
+
+  test("DRAW-SOT-007 Badugi discard upper bound is four", () => {
+    expect(() =>
+      normalizeDiscardIndexes({
+        hand: ["AC", "2D", "3H", "4S"],
+        drawCount: 5,
+        maxDiscardCount: 4,
+      }),
+    ).toThrow(/drawCount is outside/);
+  });
+
+  test("DRAW-SOT-008 D01/D02/S01/S02 discard upper bound is five", () => {
+    const normalized = normalizeDiscardIndexes({
+      hand: ["2C", "3D", "4H", "5S", "7C"],
+      drawCount: 5,
+      maxDiscardCount: 5,
+    });
+    expect(normalized.discardIndexes).toEqual([0, 1, 2, 3, 4]);
+  });
+
+  test("DRAW-SOT-009 S01/S02 draw only once", () => {
+    for (const variantId of ["S01", "S02"]) {
+      const result = runProgressScenario({
+        variantId,
+        scenarioId: `draw-sot-009-${variantId}`,
+        invariantContext: { maxDrawRounds: 1, handCardCount: 5, maxDiscardCount: 5 },
+        maxSteps: 100,
+      });
+      expect(result.status).toBe("passed");
+      expect([...new Set(result.drawRoundIndexes)]).toEqual([1]);
+    }
+  });
+
+  test("DRAW-SOT-010 CPU draw clears pendingDrawSeats", () => {
+    const result = runProgressScenario({
+      variantId: "D02",
+      scenarioId: "draw-sot-010-cpu-draw-pending",
+      invariantContext: { maxDrawRounds: 3, handCardCount: 5, maxDiscardCount: 5 },
+      maxSteps: 180,
+    });
+    expect(result.status).toBe("passed");
+  });
+
+  test("DRAW-SOT-011 drawn seat is removed from pending draw queue", () => {
+    const controller = new AceToFiveTripleDrawController();
+    let state = controller.createInitialState();
+    state = controller.createNewHandState(state, { handId: "draw-sot-011" });
+    let snapshot = state.snapshot;
+    let guard = 0;
+    while (snapshot.phase !== "DRAW" && guard < 30) {
+      const actor = snapshot.actingPlayerIndex;
+      const actions = controller.getLegalActions(state, actor);
+      const type = actions.some((action) => action.type === "CHECK") ? "CHECK" : "CALL";
+      state = controller.applyAction(state, { seatIndex: actor, type }).state;
+      snapshot = state.snapshot;
+      guard += 1;
+    }
+    const actor = snapshot.actingPlayerIndex;
+    state = controller.applyAction(state, {
+      seatIndex: actor,
+      type: "DRAW",
+      drawCount: 1,
+    }).state;
+    expect(state.snapshot.metadata.pendingDrawSeats).not.toContain(actor);
+  });
+
+  test("DRAW-SOT-012 old snapshot with smaller drawRoundIndex is rejected by invariant context", () => {
+    const previousSnapshot = buildSyntheticSnapshot({
+      variantId: "D01",
+      phase: "DRAW",
+      drawRoundIndex: 2,
+      players: [{ seatIndex: 0, playerId: "hero", stack: 480, hand: ["2C", "3D", "4H", "5S", "7C"] }],
+    });
+    const staleSnapshot = buildSyntheticSnapshot({
+      variantId: "D01",
+      phase: "DRAW",
+      drawRoundIndex: 1,
+      players: [{ seatIndex: 0, playerId: "hero", stack: 480, hand: ["2C", "3D", "4H", "5S", "7C"] }],
+    });
+    expectInvariantFailure(staleSnapshot, /draw round index decreased/, {
+      variantId: "D01",
+      scenarioId: "DRAW-SOT-012",
+      previousSnapshot,
+    });
+  });
+
+  test("DRAW-SOT-013 action log drawInfo fields are present in draw controller metadata", () => {
+    const controller = new DeuceToSevenSingleDrawController();
+    let state = controller.createInitialState();
+    state = controller.createNewHandState(state, { handId: "draw-sot-013" });
+    let snapshot = state.snapshot;
+    let guard = 0;
+    while (snapshot.phase !== "DRAW" && guard < 30) {
+      const actor = snapshot.actingPlayerIndex;
+      const actions = controller.getLegalActions(state, actor);
+      const type = actions.some((action) => action.type === "CHECK") ? "CHECK" : "CALL";
+      state = controller.applyAction(state, { seatIndex: actor, type }).state;
+      snapshot = state.snapshot;
+      guard += 1;
+    }
+    const actor = snapshot.actingPlayerIndex;
+    state = controller.applyAction(state, { seatIndex: actor, type: "DRAW", discardIndexes: [] }).state;
+    const lastDraw = state.snapshot.metadata.lastDrawAction;
+    expect(lastDraw).toMatchObject({
+      seatIndex: actor,
+      discardIndexes: [],
+      drawCount: 0,
+      discardedCards: [],
+      replacementCards: [],
+    });
+    expect(lastDraw.beforeHand).toHaveLength(5);
+    expect(lastDraw.afterHand).toHaveLength(5);
+  });
+
+  test("DRAW-SOT-014 RL/replay drawCount-only action is normalized deterministically", () => {
+    const controller = new AceToFiveSingleDrawController();
+    let state = controller.createInitialState();
+    state = controller.createNewHandState(state, { handId: "draw-sot-014" });
+    let snapshot = state.snapshot;
+    let guard = 0;
+    while (snapshot.phase !== "DRAW" && guard < 30) {
+      const actor = snapshot.actingPlayerIndex;
+      const actions = controller.getLegalActions(state, actor);
+      const type = actions.some((action) => action.type === "CHECK") ? "CHECK" : "CALL";
+      state = controller.applyAction(state, { seatIndex: actor, type }).state;
+      snapshot = state.snapshot;
+      guard += 1;
+    }
+    const actor = snapshot.actingPlayerIndex;
+    state = controller.applyAction(state, { seatIndex: actor, type: "DRAW", drawCount: 2 }).state;
+    expect(state.snapshot.metadata.lastDrawAction.discardIndexes).toEqual([0, 1]);
+    expect(state.snapshot.metadata.lastDrawAction.drawCount).toBe(2);
   });
 
   test("MTT-001 busted player should not receive turn", () => {

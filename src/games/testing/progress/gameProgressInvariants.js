@@ -74,6 +74,30 @@ function getPotAmount(snapshot = {}) {
   return 0;
 }
 
+function getDrawRoundIndex(snapshot = {}) {
+  const value = Number(snapshot?.drawRoundIndex ?? snapshot?.drawRound ?? snapshot?.metadata?.drawRoundIndex ?? 0);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function validateDiscardIndexes({ discardIndexes, handSize, maxDiscardCount, context, snapshot, seatIndex }) {
+  if (!Array.isArray(discardIndexes)) return;
+  const normalized = discardIndexes.map(Number);
+  if (normalized.some((idx) => !Number.isInteger(idx))) {
+    fail("discardIndexes contains a non-integer index", { ...context, snapshot, actor: seatIndex });
+  }
+  if (new Set(normalized).size !== normalized.length) {
+    fail("discardIndexes contains duplicate indexes", { ...context, snapshot, actor: seatIndex });
+  }
+  normalized.forEach((idx) => {
+    if (idx < 0 || (handSize > 0 && idx >= handSize)) {
+      fail("discardIndexes contains out-of-range index", { ...context, snapshot, actor: seatIndex });
+    }
+  });
+  if (normalized.length > maxDiscardCount) {
+    fail("discardIndexes exceeds max discard count", { ...context, snapshot, actor: seatIndex });
+  }
+}
+
 export function assertTurnInvariants(snapshot, context = {}) {
   const players = getPlayers(snapshot);
   const actor = getActorIndex(snapshot);
@@ -171,7 +195,11 @@ export function assertDrawInvariants(snapshot, context = {}) {
   const maxDrawRounds = Number(
     context.maxDrawRounds ?? snapshot?.maxDrawRounds ?? snapshot?.metadata?.maxDrawRounds ?? Infinity,
   );
-  const drawRound = Number(snapshot?.drawRound ?? snapshot?.drawRoundIndex ?? 0);
+  const drawRound = getDrawRoundIndex(snapshot);
+  const previousDrawRound = context.previousSnapshot ? getDrawRoundIndex(context.previousSnapshot) : null;
+  if (previousDrawRound != null && drawRound < previousDrawRound) {
+    fail("draw round index decreased", { ...context, snapshot, phase });
+  }
   if (Number.isFinite(maxDrawRounds) && drawRound > maxDrawRounds) {
     fail("draw round exceeds variant max draw count", { ...context, snapshot, phase });
   }
@@ -179,6 +207,20 @@ export function assertDrawInvariants(snapshot, context = {}) {
     context.handCardCount ?? snapshot?.handCardCount ?? snapshot?.metadata?.handCardCount ?? 0,
   );
   const shouldEnforceHandSize = phase === "DRAW" || context.enforceHandSize === true;
+  const pendingDrawSeats = Array.isArray(snapshot?.pendingDrawSeats)
+    ? snapshot.pendingDrawSeats.map(Number)
+    : Array.isArray(snapshot?.metadata?.pendingDrawSeats)
+      ? snapshot.metadata.pendingDrawSeats.map(Number)
+      : [];
+  pendingDrawSeats.forEach((seatIndex) => {
+    const player = players[seatIndex];
+    if (!player || isFolded(player) || isBusted(player)) {
+      fail("pendingDrawSeats contains inactive seat", { ...context, snapshot, actor: seatIndex, phase });
+    }
+    if (player?.hasDrawn) {
+      fail("pendingDrawSeats contains already drawn seat", { ...context, snapshot, actor: seatIndex, phase });
+    }
+  });
   players.forEach((player, seatIndex) => {
     const lastDrawCount = Number(player?.lastDrawCount ?? 0);
     const maxDiscardCount = Number(
@@ -187,6 +229,14 @@ export function assertDrawInvariants(snapshot, context = {}) {
     if (lastDrawCount > maxDiscardCount) {
       fail("draw count exceeds max discard count", { ...context, snapshot, actor: seatIndex, phase });
     }
+    validateDiscardIndexes({
+      discardIndexes: player?.lastDiscardIndexes,
+      handSize: Array.isArray(player?.hand) ? player.hand.length : expectedHandSize,
+      maxDiscardCount,
+      context,
+      snapshot,
+      seatIndex,
+    });
     const hand = player?.hand ?? player?.holeCards ?? player?.cards ?? [];
     if (
       shouldEnforceHandSize &&
@@ -200,6 +250,34 @@ export function assertDrawInvariants(snapshot, context = {}) {
       fail("hand size changed after draw", { ...context, snapshot, actor: seatIndex, phase });
     }
   });
+  const lastDrawAction = snapshot?.metadata?.lastDrawAction ?? snapshot?.metadata?.lastDraw;
+  if (lastDrawAction) {
+    const beforeHand = lastDrawAction.beforeHand ?? lastDrawAction.before;
+    const afterHand = lastDrawAction.afterHand ?? lastDrawAction.after;
+    const actionSeat = lastDrawAction.seatIndex ?? lastDrawAction.seat;
+    const actionHandSize = Array.isArray(beforeHand)
+      ? beforeHand.length
+      : expectedHandSize || (Array.isArray(afterHand) ? afterHand.length : 0);
+    const maxDiscardCount = Number(
+      context.maxDiscardCount ?? snapshot?.maxDiscardCount ?? snapshot?.metadata?.maxDiscardCount ?? actionHandSize,
+    );
+    validateDiscardIndexes({
+      discardIndexes: lastDrawAction.discardIndexes ?? lastDrawAction.drawIndexes,
+      handSize: actionHandSize,
+      maxDiscardCount,
+      context,
+      snapshot,
+      seatIndex: actionSeat,
+    });
+    const actionDrawCount = Number(lastDrawAction.drawCount ?? lastDrawAction.discardCount);
+    const indexes = lastDrawAction.discardIndexes ?? lastDrawAction.drawIndexes;
+    if (Array.isArray(indexes) && Number.isFinite(actionDrawCount) && actionDrawCount !== indexes.length) {
+      fail("drawCount does not match discardIndexes length", { ...context, snapshot, actor: actionSeat, phase });
+    }
+    if (Array.isArray(beforeHand) && Array.isArray(afterHand) && beforeHand.length !== afterHand.length) {
+      fail("draw beforeHand and afterHand sizes differ", { ...context, snapshot, actor: actionSeat, phase });
+    }
+  }
 }
 
 export function assertTournamentInvariants(snapshot, context = {}) {

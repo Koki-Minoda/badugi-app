@@ -32,6 +32,20 @@ This matrix tracks add-on coverage for game progression regressions. Existing Vi
 | DRAW-002 | CPU draw | CPU drawが自動解決される | draw scenario reaches terminal | Vitest scenario | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | D02 full cycle |
 | DRAW-003 | Draw turn | draw済みplayerに再度draw turnが回らない | invariant catches duplicate draw actor | Vitest invariant | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Negative fixture |
 | DRAW-004 | Hand size | draw後のhand sizeが正しい | invariant catches hand size drift | Vitest invariant | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Negative fixture |
+| DRAW-SOT-001 | Draw source | Draw後のhandがrollbackしない | afterHand remains the controller hand | Vitest controller | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Badugi controller metadata path |
+| DRAW-SOT-002 | Draw source | drawRoundIndexが戻らない | visited draw indexes are monotonic | Vitest scenario | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | D01/D02/S01/S02 |
+| DRAW-SOT-003 | Draw action | discardIndexesがdrawCountより優先される | index identity wins over count mismatch | Vitest helper | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Warning metadata retained |
+| DRAW-SOT-004 | Draw action | discardIndexes重複はinvalid | duplicate indexes throw | Vitest helper | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Shared normalization |
+| DRAW-SOT-005 | Draw action | discardIndexes範囲外はinvalid | out-of-range indexes throw | Vitest helper | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Shared normalization |
+| DRAW-SOT-006 | Draw action | PatはdiscardIndexes=[] | zero discard normalizes to empty indexes | Vitest helper | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Pat compatibility |
+| DRAW-SOT-007 | Draw cap | Badugiは最大4枚discard | 5-card Badugi draw is rejected | Vitest helper | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Badugi cap |
+| DRAW-SOT-008 | Draw cap | D01/D02/S01/S02は最大5枚discard | 5-card draw family accepts 5 indexes | Vitest helper | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | 5-card cap |
+| DRAW-SOT-009 | Draw count | S01/S02は1 drawのみ | unique drawRoundIndexes equals `[1]` | Vitest scenario | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Single draw bound |
+| DRAW-SOT-010 | CPU draw | CPU drawがpendingを解消する | terminal scenario has empty pending draw seats | Vitest scenario | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | D02 path |
+| DRAW-SOT-011 | Draw turn | draw済みseatがpendingに戻らない | pending queue excludes drawn seat | Vitest invariant | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Negative fixture |
+| DRAW-SOT-012 | Snapshot | old snapshotでafterHandをbeforeHandに戻さない | stale lower draw round is rejected | Vitest invariant | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Rollback guard |
+| DRAW-SOT-013 | History/RL | drawInfoがmetadataに残る | before/after/discarded/drawn are present | Vitest scenario | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Replay/RL payload |
+| DRAW-SOT-014 | RL/replay | drawCount-only actionも正規化される | count-only action creates deterministic discardIndexes | Vitest controller | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Count compatibility path |
 | HIST-REG-05 | History/replay | handId/action/result/frame jumpをvariant横断で確認 | Replay UI controls move the frame counter from history row entry | Playwright E2E | `tests/e2e/cross-variant-history-replay-smoke.spec.ts` | Added | 35 playable variants; Chinese/OFC body integration tracked as HIST-REG-06 |
 | MTT-001 | Tournament | busted playerにturnが回らない | invariant catches busted actor | Vitest invariant | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Negative fixture |
 | MTT-002 | Tournament | CPU bust後にtableが空にならない | non-terminal active table required | Vitest invariant | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Negative fixture |
@@ -186,3 +200,14 @@ This matrix tracks add-on coverage for game progression regressions. Existing Vi
 | Betting eligibility | Shared helper excludes folded/busted/sittingOut/all-in and respects BET actions only | `actorEligibility.js`, Badugi bet helpers | Added | `lastAggressorIndex` / `betHead` closure semantics remain Badugi-specific |
 | Draw eligibility | Shared helper uses `pendingDrawSeats`, excludes drawn/folded/busted, requires explicit `allowAllInDraw` | `actorEligibility.js`, Badugi draw helpers, draw controller | Added | All-in draw/pat policy should be made variant-definition driven later |
 | Metadata actor | Debug only; never authoritative | `actorEligibility.js`, invariants | Added | Legacy code should avoid reading metadata as actor source |
+
+## QA Matrix 6: Draw Source / Discard Normalization
+
+| Area | Source of Truth | Connected Files | Status | Remaining Risk |
+|---|---|---|---|---|
+| Discard identity | `discardIndexes` | `src/games/core/draw/normalizeDrawAction.js` | Added | Remaining direct legacy paths should migrate gradually |
+| Draw count | Derived from `discardIndexes.length` | `normalizeDrawAction.js`, `DeuceToSevenTripleDrawController.js` | Added | Count-only compatibility path is deterministic, not strategic |
+| Badugi draw metadata | Controller `lastDraw` metadata | `BadugiGameController.js`, `src/games/badugi/engine/drawRound.js` | Added | UI stale-hand E2E still useful |
+| Draw family metadata | Engine `lastDrawAction` metadata | `DeuceToSevenTripleDrawEngine.js` | Added | Replay UI can later expose discarded/drawn cards |
+| Round monotonicity | Controller `drawRoundIndex` | `gameProgressInvariants.js`, `runProgressScenario.js` | Added | Requires previous snapshot context in custom harnesses |
+| Pending draw seats | Controller `pendingDrawSeats` | `gameProgressInvariants.js` | Added | All-in draw policy should become variant-definition driven |

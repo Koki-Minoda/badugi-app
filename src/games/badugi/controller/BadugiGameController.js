@@ -14,6 +14,7 @@ import {
   isSeatEligibleForDraw,
 } from "../flow/actionUtils.js";
 import { getWinnersByBadugi } from "../utils/badugiEvaluator.js";
+import { normalizeDrawAction } from "../../core/draw/normalizeDrawAction.js";
 
 const DEFAULT_SEAT_CONFIG = ["HUMAN", "CPU", "CPU", "CPU", "CPU", "CPU"];
 const DEFAULT_BLINDS = [{ sb: 5, bb: 10, ante: 0 }];
@@ -271,7 +272,33 @@ export class BadugiGameController extends GameController {
       };
     }
 
-    const drawCount = this._resolveDrawCount(payload, actor);
+    let normalizedDraw;
+    try {
+      normalizedDraw = normalizeDrawAction({
+        action: payload,
+        player: { ...actor, seatIndex },
+        state: {
+          phase: "DRAW",
+          drawRoundIndex: this.legacy.state.drawRound ?? 0,
+          maxDiscardCount: 4,
+        },
+        variant: { handCardCount: 4 },
+      });
+    } catch (error) {
+      const fallbackState = baseState ?? this._buildControllerState({ handIndex, context });
+      return {
+        state: fallbackState,
+        events: [
+          {
+            type: "invalidAction",
+            error: error?.message ?? "invalid draw action",
+            meta: error?.meta ?? null,
+          },
+        ],
+      };
+    }
+    const drawCount = normalizedDraw.drawCount;
+    const beforeHand = Array.isArray(actor.hand) ? [...actor.hand] : [];
     const nextHand = Array.isArray(payload.handAfter)
       ? [...payload.handAfter]
       : Array.isArray(actor.hand)
@@ -304,12 +331,23 @@ export class BadugiGameController extends GameController {
     const replacedCards = Array.isArray(payload.replacedCards)
       ? payload.replacedCards.map((entry) => ({ ...entry }))
       : [];
+    const discarded = normalizedDraw.discardIndexes.map((idx) => beforeHand[idx]);
+    const drawn = replacedCards.map((entry) => entry?.newCard).filter(Boolean);
+    const keptCards = beforeHand.filter((_, idx) => !normalizedDraw.discardIndexes.includes(idx));
     this.legacy.state.metadata = {
       ...(this.legacy.state.metadata ?? {}),
       lastDraw: {
         seatIndex,
         drawCount,
+        discardIndexes: normalizedDraw.discardIndexes,
+        drawIndexes: normalizedDraw.discardIndexes,
+        discarded,
+        drawn,
+        keptCards,
         replacedCards,
+        beforeHand,
+        afterHand: nextHand,
+        warnings: normalizedDraw.drawNormalization?.warnings ?? [],
       },
     };
 

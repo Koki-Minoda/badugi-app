@@ -21,6 +21,8 @@ Last updated: 2026-05-06
 | `src/games/testing/scenario/runOneHandProgression.js` | One-hand controller progression harness | Enumerates catalog variants and runs real controller/action paths |
 | `src/games/testing/scenario/allVariantsOneHandProgression.test.js` | All-variant one-hand guarantee | 36 variants must reach terminal state or explicit skip |
 | `src/games/testing/scenario/familyOneHandProgression.test.js` | Family representative one-hand guarantee | Ensures each family has controller-path terminal coverage |
+| `src/games/core/draw/normalizeDrawAction.js` | Draw action normalization helper | `discardIndexes` source of truth, count-only compatibility, max-discard validation |
+| `docs/testing/MGX_DRAW_SOURCE_OF_TRUTH.md` | Draw source-of-truth documentation | Documents draw fields, consolidation, regression coverage, and remaining risks |
 | `tests/e2e/mgx-game-progress.spec.js` | Minimal Playwright progress add-on | Cash, draw/pat, PLO, tournament, mobile |
 | `docs/testing/MGX_VARIANT_FAMILY_COVERAGE_MATRIX.md` | Variant family coverage matrix | Tracks family-level coverage and gaps |
 | `docs/testing/MGX_VARIANT_FAMILY_COVERAGE_REPORT.md` | Variant family execution report | Command results and family summary |
@@ -43,6 +45,7 @@ Last updated: 2026-05-06
 | DRAW-002 | Draw | `gameProgressKnownBugs.test.js` | Pass | D02 CPU draw auto-resolve |
 | DRAW-003 | Draw | `gameProgressKnownBugs.test.js` | Pass | Already drawn player cannot draw twice |
 | DRAW-004 | Draw | `gameProgressKnownBugs.test.js` | Pass | Hand size drift is detected |
+| DRAW-SOT-001..014 | Draw source | `gameProgressKnownBugs.test.js` | Pass | Rollback, discard normalization, single-draw bounds, pending cleanup, and draw metadata |
 | MTT-001 | Tournament | `gameProgressKnownBugs.test.js` | Pass | Busted player cannot receive turn |
 | MTT-002 | Tournament | `gameProgressKnownBugs.test.js` | Pass | Non-terminal empty active table rejected |
 | MTT-003 | Tournament | `gameProgressKnownBugs.test.js` | Pass | Duplicate playerId after merge rejected |
@@ -82,6 +85,7 @@ Last updated: 2026-05-06
 | DRAW-002 | Scenario runner | Pass | CPU policy-specific draw choices not audited |
 | DRAW-003 | Vitest negative fixture | Pass | UI duplicate-click debounce separate |
 | DRAW-004 | Vitest negative fixture | Pass | Deck/discard duplicate-card audit future |
+| DRAW-SOT-001..014 | Shared draw helper + Badugi/Draw controller paths | Pass | UI stale-hand click path and Dramaha component-result UI remain separate |
 | HIST-REG-05 | `cross-variant-history-replay-smoke.spec.ts` | Pass | Chinese/OFC本体履歴接続はHIST-REG-06として継続 |
 | MTT-001 | Vitest negative fixture | Pass | Full table merge E2E still needed |
 | MTT-002 | Vitest negative fixture | Pass | Full MTT long-run E2E still needed |
@@ -105,7 +109,12 @@ Last updated: 2026-05-06
 | `npm run test:game:family` | Pass | 5 files, 28 tests passed |
 | `npm run test:game:one-hand` | Pass | 2 files, 53 tests passed |
 | `npm run test:game:progress` | Pass | 9 files, 127 tests passed, 11 skipped with explicit reasons |
+| `npm run test:game:known-bugs` | Pass | 1 file, 42 tests passed after DRAW-SOT-001 through DRAW-SOT-014 |
+| `npm run test:game:one-hand` | Pass | 2 files, 53 tests passed after draw source consolidation |
+| `npm run test:game:progress` | Pass | 9 files, 151 tests passed, 11 skipped with explicit reasons after draw source consolidation |
+| `npm run test:game:family` | Pass | 5 files, 28 tests passed after draw source consolidation |
 | `npm run test:e2e:progress` | Pass | 5 Playwright tests passed on `badugi-flow` project |
+| `npm test` | Pass | 135 files passed; 971 tests passed, 11 skipped after draw source consolidation |
 | `npm test -- --run src/ui/screens/__tests__/ReplayScreen.test.jsx src/ui/screens/__tests__/HandHistoryScreen.test.jsx` | Pass | 2 files, 4 tests passed |
 | `npx playwright test tests/e2e/cross-variant-history-replay-smoke.spec.ts --project=badugi-flow` | Pass | 35 playable variants passed with Replay UI frame jumps |
 | `npm test` | Pass | 126 files passed; 849 tests passed, 12 skipped |
@@ -119,3 +128,5 @@ Last updated: 2026-05-06
 | OFC street-by-street / fantasyland is still separate from CP1 classic Chinese Poker | CP1 set/result/next-hand is covered, but OFC-specific turn order is not | Add OFC 5-card open, one-card placement, fantasyland, and history/replay smoke |
 | Scenario runner uses passive action policy | It catches freezes but not all strategic UI edge cases | Add scenario action plans for raise/cap/all-in/fold paths |
 | Full MTT table merge E2E remains expensive | CPU bust/reseat bugs may still require manual reproduction | Add deterministic MTT fixture with forced bust and merge |
+| UI-level draw rollback is only partially covered | Controller metadata is protected, but stale React state can still be a UI-only regression | Add Badugi UI-click Draw#1/Draw#2 identity E2E with card rollback assertion |
+| Dramaha/split draw component-pot UI remains separate | Generic draw normalization does not prove high/draw half result clarity | Add Dramaha odd-chip/component-pot E2E and replay assertions |

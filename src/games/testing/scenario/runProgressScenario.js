@@ -341,14 +341,18 @@ export function runProgressScenario({
   let repeated = 0;
   let previousSignature = null;
   const visited = [];
+  const drawRoundIndexes = [];
 
   for (let step = 0; step < maxSteps; step += 1) {
     const snapshot = snapshotOf(harness);
     const context = { variantId, scenarioId, seed, step, snapshot, ...invariantContext };
     assertGameProgressInvariants(snapshot, context);
     visited.push(String(snapshot.phase ?? snapshot.street ?? "UNKNOWN"));
+    if (String(snapshot.phase ?? snapshot.street ?? "").toUpperCase() === "DRAW") {
+      drawRoundIndexes.push(Number(snapshot.drawRoundIndex ?? snapshot.drawRound ?? snapshot.metadata?.drawRoundIndex ?? 0));
+    }
     if (isTerminal(snapshot)) {
-      return { variantId, scenarioId, seed, status: "passed", steps: step, visited };
+      return { variantId, scenarioId, seed, status: "passed", steps: step, visited, drawRoundIndexes };
     }
     const signature = buildSignature(snapshot);
     repeated = signature === previousSignature ? repeated + 1 : 0;

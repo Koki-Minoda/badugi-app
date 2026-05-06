@@ -5,6 +5,7 @@ import { applyChips } from "../core/applyChips.js";
 import { DeckManager } from "../badugi/utils/deck.js";
 import { evaluateLowHand, formatLowHandLabel } from "../evaluators/low.js";
 import { compareEvaluations } from "../evaluators/registry.js";
+import { normalizeDrawAction as normalizeCoreDrawAction } from "../core/draw/normalizeDrawAction.js";
 
 const DEFAULT_SEAT_CONFIG = ["HUMAN", "CPU", "CPU", "CPU", "CPU", "CPU"];
 const DEFAULT_PAT_HIGH_RANK = 8;
@@ -87,26 +88,6 @@ function findSeatIndex(state, action = {}) {
     return state.players.findIndex((player) => player.playerId === action.playerId || player.id === action.playerId);
   }
   return state.actingPlayerIndex;
-}
-
-function normalizeDiscardIndexes(discardIndexes = [], handLength = 5) {
-  if (!Array.isArray(discardIndexes)) {
-    throw new IllegalActionError("DRAW requires discardIndexes");
-  }
-  const normalized = discardIndexes.map((idx) => Number(idx));
-  const unique = new Set(normalized);
-  if (unique.size !== normalized.length) {
-    throw new IllegalActionError("discardIndexes must be unique", { discardIndexes });
-  }
-  normalized.forEach((idx) => {
-    if (!Number.isInteger(idx) || idx < 0 || idx >= handLength) {
-      throw new IllegalActionError("discardIndexes contains an out-of-range index", {
-        discardIndexes,
-        handLength,
-      });
-    }
-  });
-  return normalized.sort((a, b) => a - b);
 }
 
 function getCardsInPlay(players = []) {
@@ -644,7 +625,25 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     }
 
     const handBefore = [...(player.hand ?? [])];
-    const discardIndexes = normalizeDiscardIndexes(action.discardIndexes ?? [], handBefore.length);
+    let normalizedAction;
+    try {
+      normalizedAction = normalizeCoreDrawAction({
+        action,
+        player,
+        state: {
+          ...next,
+          maxDiscardCount: this.handCardCount,
+          handCardCount: this.handCardCount,
+        },
+        variant: { handCardCount: this.handCardCount },
+      });
+    } catch (error) {
+      throw new IllegalActionError(error?.message ?? "Invalid DRAW action", {
+        ...(error?.meta ?? {}),
+        seatIndex,
+      });
+    }
+    const discardIndexes = normalizedAction.discardIndexes;
     const discardedCards = discardIndexes.map((idx) => handBefore[idx]);
     const keptCards = handBefore.filter((_, idx) => !discardIndexes.includes(idx));
     if (discardedCards.length) {
@@ -657,6 +656,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     player.hasDrawn = true;
     player.hasActedThisRound = true;
     player.lastDrawCount = discardedCards.length;
+    player.lastDiscardIndexes = [...discardIndexes];
     player.lastAction = discardedCards.length === 0 ? "Pat" : `DRAW(${discardedCards.length})`;
 
     const pendingDrawSeats = getDrawableSeatIndexes(next.players).filter(
@@ -672,8 +672,16 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
       lastDrawAction: {
         seatIndex,
         discardIndexes,
+        drawIndexes: discardIndexes,
+        drawCount: discardIndexes.length,
+        beforeHand: handBefore,
+        afterHand: [...player.hand],
         discardedCards,
+        discarded: discardedCards,
+        keptCards,
         replacementCards,
+        drawn: replacementCards,
+        warnings: normalizedAction.drawNormalization?.warnings ?? [],
         drawRoundIndex: next.drawRoundIndex ?? 0,
       },
     };

@@ -32,6 +32,20 @@ This ledger consolidates scattered bug notes from `docs/bugs`, `docs/testing`, `
 | DRAW-002 | QA matrix | CPU drawが自動進行せず止まる | `DRAW-002` | CPU draw auto resolve | P0 | Covered | `runProgressScenario.js` | `npm run test:game:known-bugs` PASS |
 | DRAW-003 | QA matrix | draw済みplayerに再度draw turnが回る | `DRAW-003` | draw actor eligibility | P2 | Covered | `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
 | DRAW-004 | QA matrix | draw後hand sizeが壊れる | `DRAW-004` | draw/deck/discard invariant | P2 | Covered | `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| DRAW-SOT-001 | Priority3 draw SOT | Draw後のhandがsnapshot/metadataでrollbackしない | `DRAW-SOT-001` | Badugi draw application / snapshot | P1 | Fixed | `src/games/core/draw/normalizeDrawAction.js`, `BadugiGameController.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| DRAW-SOT-002 | Priority3 draw SOT | `drawRoundIndex` がD01/D02/S01/S02で巻き戻らない | `DRAW-SOT-002` | draw round monotonicity | P1 | Fixed | `runProgressScenario.js`, `gameProgressInvariants.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| DRAW-SOT-003 | Priority3 draw SOT | `discardIndexes` と `drawCount` が矛盾した時にcount側で誤学習/誤交換する | `DRAW-SOT-003` | draw action normalization | P1 | Fixed | `src/games/core/draw/normalizeDrawAction.js` | `npm run test:game:known-bugs` PASS |
+| DRAW-SOT-004 | Priority3 draw SOT | duplicate discard indexが通る | `DRAW-SOT-004` | draw action validation | P1 | Fixed | `src/games/core/draw/normalizeDrawAction.js` | `npm run test:game:known-bugs` PASS |
+| DRAW-SOT-005 | Priority3 draw SOT | out-of-range discard indexが通る | `DRAW-SOT-005` | draw action validation | P1 | Fixed | `src/games/core/draw/normalizeDrawAction.js` | `npm run test:game:known-bugs` PASS |
+| DRAW-SOT-006 | Priority3 draw SOT | Patと0枚drawの表現が混線する | `DRAW-SOT-006` | draw action normalization | P2 | Fixed | `src/games/core/draw/normalizeDrawAction.js` | `npm run test:game:known-bugs` PASS |
+| DRAW-SOT-007 | Priority3 draw SOT | Badugiで4枚超discardが通り得る | `DRAW-SOT-007` | Badugi discard cap | P1 | Fixed | `src/games/core/draw/normalizeDrawAction.js` | `npm run test:game:known-bugs` PASS |
+| DRAW-SOT-008 | Priority3 draw SOT | 5-card draw系でBadugi上限と混線する | `DRAW-SOT-008` | D01/D02/S01/S02 discard cap | P1 | Fixed | `src/games/core/draw/normalizeDrawAction.js` | `npm run test:game:known-bugs` PASS |
+| DRAW-SOT-009 | Priority3 draw SOT | S01/S02で2回以上drawし得る | `DRAW-SOT-009` | single-draw round bound | P1 | Fixed | `runProgressScenario.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| DRAW-SOT-010 | Priority3 draw SOT | CPU draw後にpendingが残りfreezeする | `DRAW-SOT-010` | CPU draw pending cleanup | P0 | Fixed | `DeuceToSevenTripleDrawEngine.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| DRAW-SOT-011 | Priority3 draw SOT | draw済みseatがpending queueに戻る | `DRAW-SOT-011` | pending draw queue | P1 | Fixed | `gameProgressInvariants.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| DRAW-SOT-012 | Priority3 draw SOT | 古いsnapshotで新しいdrawRound/handを戻す | `DRAW-SOT-012` | snapshot rollback invariant | P1 | Fixed | `gameProgressInvariants.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| DRAW-SOT-013 | Priority3 draw SOT | hand history / replay / RL用drawInfoが欠損する | `DRAW-SOT-013` | draw metadata/log payload | P2 | Fixed | `DeuceToSevenTripleDrawEngine.js`, `BadugiGameController.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| DRAW-SOT-014 | Priority3 draw SOT | RL/replay count-only draw actionがPat扱いに潰れる | `DRAW-SOT-014` | draw count compatibility path | P1 | Fixed | `DeuceToSevenTripleDrawController.js`, `normalizeDrawAction.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
 | BG-003 | `docs/bugs/current_bugs.md`, browser tracker | single potなのに余分なside-pot blockが出る | Badugi flow side-pot tests | Hand result overlay | P2 | Verified earlier | Existing overlay fix | `npm test` PASS |
 | BG-004 | `docs/bugs/current_bugs.md`, browser tracker | result overlay後に次handのbuttonが戻らない | Badugi flow fold-only / next-hand tests | hand result overlay / hero action ready | P1 | Verified earlier | Existing overlay/next-hand fix | `npm test` PASS |
 | MTT-001 | QA matrix | busted playerにturnが回る | `MTT-001` | tournament actor eligibility | P1 | Covered | `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
@@ -74,3 +88,9 @@ This ledger consolidates scattered bug notes from `docs/bugs`, `docs/testing`, `
 | `npm run test:game:family` | PASS | 5 files, 28 tests passed after actor consolidation |
 | `npm run test:e2e:progress` | PASS | 5 Playwright progress tests passed after actor consolidation |
 | `npm test` | PASS | 135 files passed; 957 tests passed, 11 skipped after actor consolidation |
+| `npm run test:game:known-bugs` | PASS | 42 tests passed after DRAW-SOT-001 through DRAW-SOT-014 |
+| `npm run test:game:one-hand` | PASS | 2 files, 53 tests passed after draw source consolidation |
+| `npm run test:game:progress` | PASS | 9 files, 151 tests passed, 11 skipped after draw source consolidation |
+| `npm run test:game:family` | PASS | 5 files, 28 tests passed after draw source consolidation |
+| `npm run test:e2e:progress` | PASS | 5 Playwright progress tests passed after draw source consolidation |
+| `npm test` | PASS | 135 files passed; 971 tests passed, 11 skipped after draw source consolidation |

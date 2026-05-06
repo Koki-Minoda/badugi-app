@@ -17,7 +17,7 @@ This audit checks whether the current MGX progress, regression, and E2E tests ca
 
 | Test File | Test Count | Main Area | Coverage | Notes |
 |---|---:|---|---|---|
-| `src/games/testing/regression/gameProgressKnownBugs.test.js` | 28 | ACTION / ALLIN / DRAW / MTT / TURN regressions | PARTIAL | Strong negative invariant fixtures plus TURN-001..010 for shared actor eligibility. Some ACTION positives are still synthetic state checks. |
+| `src/games/testing/regression/gameProgressKnownBugs.test.js` | 42 | ACTION / ALLIN / DRAW / MTT / TURN / DRAW-SOT regressions | PARTIAL | Strong negative invariant fixtures plus TURN-001..010 and DRAW-SOT-001..014 for shared actor and draw source rules. Some ACTION positives are still synthetic state checks. |
 | `src/games/testing/scenario/allVariantsProgressSmoke.test.js` | 43 | Variant registry smoke | BROAD/PARTIAL | Covers registered variants through harness where supported; 12 explicit skips remain. |
 | `tests/e2e/mgx-game-progress.spec.js` | 5 | Cash, Badugi draw, PLO result, tournament, mobile action UI | PARTIAL | Strengthened this audit to require real action execution and pot result evidence. |
 | `tests/e2e/badugi-flow.spec.ts` | 33 | Badugi UI/game flow | BADUGI_ONLY | Broad Badugi scenarios, but some older assertions are still shallow. |
@@ -68,6 +68,20 @@ This audit checks whether the current MGX progress, regression, and E2E tests ca
 | `DRAW-002` | STRONG | HIGH | PARTIAL | LOW | LOW | TRUSTED | CPU draw auto-resolve path is scenario-tested. |
 | `DRAW-003` | STRONG | HIGH | PARTIAL | LOW | LOW | TRUSTED | Negative fixture detects already-drawn actor. |
 | `DRAW-004` | STRONG | HIGH | PARTIAL | LOW | LOW | TRUSTED | Negative fixture detects invalid hand size after draw. |
+| `DRAW-SOT-001` | STRONG | HIGH | DRAW_FAMILY | LOW | LOW | TRUSTED | Badugi controller path verifies `afterHand` survives snapshot/metadata. |
+| `DRAW-SOT-002` | STRONG | HIGH | DRAW_FAMILY | LOW | LOW | TRUSTED | D01/D02/S01/S02 scenario traces prove draw indexes do not roll back. |
+| `DRAW-SOT-003` | STRONG | HIGH | DRAW_FAMILY | LOW | LOW | TRUSTED | Shared helper proves `discardIndexes` is authoritative over conflicting `drawCount`. |
+| `DRAW-SOT-004` | STRONG | HIGH | DRAW_FAMILY | LOW | LOW | TRUSTED | Duplicate discard indexes are rejected. |
+| `DRAW-SOT-005` | STRONG | HIGH | DRAW_FAMILY | LOW | LOW | TRUSTED | Out-of-range discard indexes are rejected. |
+| `DRAW-SOT-006` | STRONG | HIGH | DRAW_FAMILY | LOW | LOW | TRUSTED | Pat normalizes to empty discard indexes. |
+| `DRAW-SOT-007` | STRONG | HIGH | DRAW_FAMILY | LOW | LOW | TRUSTED | Badugi max-discard guard rejects more than four cards. |
+| `DRAW-SOT-008` | STRONG | HIGH | DRAW_FAMILY | LOW | LOW | TRUSTED | 5-card draw family accepts five legal discard indexes. |
+| `DRAW-SOT-009` | STRONG | HIGH | DRAW_FAMILY | LOW | LOW | TRUSTED | S01/S02 unique visited draw round is exactly one. |
+| `DRAW-SOT-010` | STRONG | HIGH | DRAW_FAMILY | LOW | LOW | TRUSTED | CPU draw scenario clears pending draw queue. |
+| `DRAW-SOT-011` | STRONG | HIGH | DRAW_FAMILY | LOW | LOW | TRUSTED | Drawn seat cannot remain pending. |
+| `DRAW-SOT-012` | STRONG | HIGH | DRAW_FAMILY | LOW | LOW | TRUSTED | Stale lower draw-round snapshot is rejected. |
+| `DRAW-SOT-013` | STRONG | HIGH | DRAW_FAMILY | LOW | LOW | TRUSTED | Draw metadata contains before/after/discarded/drawn data. |
+| `DRAW-SOT-014` | STRONG | HIGH | DRAW_FAMILY | LOW | LOW | TRUSTED | Count-only RL/replay action normalizes to deterministic indexes. |
 | `MTT-001` | STRONG | HIGH | PARTIAL | LOW | LOW | TRUSTED | Negative fixture detects busted player turn. |
 | `MTT-002` | STRONG | HIGH | PARTIAL | LOW | LOW | TRUSTED | Detects empty active tournament table state. |
 | `MTT-003` | STRONG | HIGH | PARTIAL | LOW | LOW | TRUSTED | Detects duplicate playerId after reseat/merge. |
@@ -91,6 +105,10 @@ No permanent production-code mutation was committed. Where possible, negative in
 | Drawn seat is re-selected for draw | `TURN-009` | Shared helper returns remaining seat | DETECTED | Covered by helper fixture. |
 | Already-drawn player receives draw turn | `DRAW-003` | Invariant throws | DETECTED | Covered by negative fixture. |
 | Draw hand size drifts below configured size | `DRAW-004` | Invariant throws | DETECTED | Covered by negative fixture. |
+| Conflicting drawCount overrides discardIndexes | `DRAW-SOT-003` | Shared helper preserves discardIndexes and records warning | DETECTED | Prevents count-based silent corruption. |
+| Duplicate discard index is accepted | `DRAW-SOT-004` | Shared helper throws | DETECTED | Prevents duplicate-card replacement corruption. |
+| Out-of-range discard index is accepted | `DRAW-SOT-005` | Shared helper throws | DETECTED | Prevents invalid hand mutation. |
+| Stale lower draw round replaces newer snapshot | `DRAW-SOT-012` | Invariant throws | DETECTED | Covers draw-round rollback class. |
 | Busted player remains current actor | `MTT-001` | Invariant throws | DETECTED | Covered by negative fixture. |
 | Tournament has zero active players while nonterminal | `MTT-002` | Invariant throws | DETECTED | Covered by negative fixture. |
 | Reseat/table merge duplicates playerId | `MTT-003` | Invariant throws | DETECTED | Covered by negative fixture. |
@@ -111,6 +129,7 @@ No permanent production-code mutation was committed. Where possible, negative in
 | `src/games/testing/regression/gameProgressKnownBugs.test.js` turn source coverage | Actor skip regressions were covered by mixed fixture styles but lacked one consolidated helper contract | Added TURN-001..010 covering fold, BB option, all-in BET exclusion, actor-null detection, stale metadata, single `isTurn`, draw pending seats, and D01/D02/S01/S02 paths | `npm run test:game:known-bugs` and `npm run test:game:one-hand` passed |
 | `src/games/testing/progress/gameProgressInvariants.js` turn consistency | Metadata and UI flags could disagree without a single invariant failure point | Invariant now compares authoritative actor fields, rejects multiple/mismatched `isTurn`, rejects BET all-in actors, and rejects DRAW actors outside pending seats | `npm run test:game:progress` passed |
 | `src/games/core/turn/actorEligibility.js` fixture compatibility | First full-suite run exposed overly strict stack-presence assumptions in existing unit fixtures | Stackless fixtures now remain eligible unless an explicit zero/negative stack is present; real zero-stack non-all-in seats remain excluded | Focused unit rerun and `npm test` passed |
+| Draw action normalization | `drawCount`/`discardIndexes` had multiple local interpretations and count-only controller payloads could collapse into Pat | Added shared `normalizeDrawAction`, connected Badugi and D01/D02/S01/S02, and added DRAW-SOT-001..014 | `npm run test:game:known-bugs`, `npm run test:game:one-hand`, `npm run test:game:progress`, `npm run test:game:family` passed |
 
 ## Command Results
 
@@ -122,6 +141,12 @@ No permanent production-code mutation was committed. Where possible, negative in
 | `npm run test:game:family` | PASS | 5 files, 28 tests passed |
 | `npm run test:e2e:progress` | PASS | 5 Playwright tests passed after actor consolidation |
 | `npm test` | PASS | 135 files passed; 957 tests passed, 11 skipped |
+| `npm run test:game:known-bugs` | PASS | 1 file, 42 tests passed after draw source consolidation |
+| `npm run test:game:one-hand` | PASS | 2 files, 53 tests passed after draw source consolidation |
+| `npm run test:game:progress` | PASS | 9 files, 151 tests passed, 11 skipped after draw source consolidation |
+| `npm run test:game:family` | PASS | 5 files, 28 tests passed after draw source consolidation |
+| `npm run test:e2e:progress` | PASS | 5 Playwright progress tests passed after draw source consolidation |
+| `npm test` | PASS | 135 files passed; 971 tests passed, 11 skipped after draw source consolidation |
 
 ## Remaining Risks
 
@@ -136,6 +161,7 @@ No permanent production-code mutation was committed. Where possible, negative in
 | Heavy deck/debug logging makes failures noisy | Real failure signal can be buried | Gate debug logs behind env flag during test runs. |
 | E2E helper-forced actions are faster but less human-faithful | Some button wiring bugs may be missed | Pair helper tests with UI-click-only tests for representative variants. |
 | Stud/Razz progression remains rule-sensitive | Bring-in/complete/7th street regressions may slip | Add per-street actor/order assertions and 5-hand Stud/Razz E2E loops. |
+| UI-only draw rollback still needs a focused browser test | Controller source is protected, but stale React merge bugs can be visual-only | Add Badugi UI-click Draw#1/Draw#2 card identity E2E. |
 
 ## Summary Counts
 

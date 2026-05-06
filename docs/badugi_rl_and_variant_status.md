@@ -2657,6 +2657,7 @@ Draw RL test coverage:
   - 7th street: down card。
   - 相手に見えているカードはboard上/seat上で「公開」と分かるようにする。
   - 2026-05-05 対応: seat cardに `UP` / `DOWN` / `HIDDEN` labelを追加し、相手の公開カードと伏せカードを区別できるようにした。
+  - 2026-05-06 仕上げ: Stud/Razz seatに `Visible n` / `Down n` / `7th down` の集計badgeを追加し、カード単位のlabelを `VISIBLE` / `HOLE` / `DOWN` / `7TH DOWN` に整理。公開カードは上ずらし+ring、伏せ札はHeroでも7th downを明示する。
 - [x] `STUD-QA-02` Stud/Razz controllerで bring-in / complete / fixed-limit street unit をTDA相当の実運用に近い形で保証する。
   - Stud high: 低いup cardがbring-in。
   - Razz: 高いup cardがbring-in。
@@ -2665,6 +2666,7 @@ Draw RL test coverage:
   - 2026-05-05 修正: full raise / complete後は、既にcall/check済みだったlive playerを再行動対象へ戻す。raise後に応答なしでstreet進行またはwaiting停止する不具合をfixtureで固定。
   - 2026-05-05 追加監査: 固定デッキの実プレイ監査fixtureを追加し、door card / bring-in / complete / 4th street先頭actor / up-down card枚数 / 7th street down card をStudとRazzで同時に検証。
   - 2026-05-05 修正: Razz系のbring-inと4th以降の先頭actor判定でAを高扱いしていたため、Razz/Razz27/Razzdugi/RazzduceyではAce-lowでdoor/exposed boardを評価するように修正。A doorはbring-in対象から外れ、A-2 exposed boardはRazzの先頭actor候補になる。
+  - 2026-05-06 仕上げ: seat上のlast actionで `Bring-in` / `Complete` を専用badge表示し、forced bring-inとcomplete actionを通常call/checkと見間違えないようにした。
 - [x] `STUD-QA-03` 7th street最終bet後、CPU/Heroのcall/check/foldで停止せずshowdownまたはuncontested resultへ遷移することをunit fixtureで固定する。
 - [x] `STUD-QA-04` Razz / Razz27 / Stud8 / Razzdugi / Razzduceyも同じstreet進行・表示・showdown遷移で確認する。
   - 2026-05-05 対応: controller invariantとcross-variant UI smokeでStud/Razz familyを含めて起動・配牌・actionable state到達を確認。
@@ -2696,6 +2698,8 @@ Draw RL test coverage:
 - [x] `npm test -- --run src/ui/feedback/__tests__/playFeedbackPayload.test.js src/ui/screens/__tests__/HandHistoryScreen.test.jsx src/ui/components/__tests__/Player.test.jsx`: 3 files / 14 tests pass。
 - [x] `npm test -- --run src/games/stud/__tests__/StudSplitGameController.test.js src/games/__tests__/playableInvariant.test.js`: 2 files / 38 tests pass。
 - [x] `npm test -- --run src/ui/game/nlh/__tests__/NLHUIAdapter.test.js src/ui/components/__tests__/Player.test.jsx src/games/stud/__tests__/StudSplitGameController.test.js`: 3 files / 28 tests pass。Hero down card表示とStud/Razz raise後reopenを確認。
+- [x] `npm test -- --run src/ui/components/__tests__/Player.test.jsx src/ui/game/nlh/__tests__/NLHUIAdapter.test.js src/games/stud/__tests__/StudSplitGameController.test.js`: 2026-05-06 再確認 3 files / 39 tests pass。Stud/Razzの `VISIBLE` / `HOLE` / `7TH DOWN`、Visible/Down集計、Bring-in/Complete badgeを確認。
+- [x] `npx playwright test tests/e2e/stud-street-progression.spec.ts --project=badugi-flow`: 2026-05-06 再確認 6 passed。Stud/Razzが2hand連続で3rd-7thを実ボタン進行し、7th street到達時に `7TH DOWN` UIが表示されることを確認。
 - [x] `npm test -- --run src/games/__tests__/playableInvariant.test.js`: 1 file / 73 tests pass。全playable controllerで5連続hand、short-stack all-in pressure、broken actor/chip drift/negative stackなしを確認。
 - [x] `npm test -- --run src/ui/screens/__tests__/HistoryScreen.test.jsx src/ui/game/nlh/__tests__/NLHUIAdapter.test.js`: 2 files / 8 tests pass。
 - [x] `npx playwright test tests/e2e/cross-variant-operational-smoke.spec.ts --project=badugi-flow`: 22 passed。

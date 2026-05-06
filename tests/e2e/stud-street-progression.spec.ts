@@ -20,6 +20,17 @@ async function getE2EState(page: Page): Promise<any> {
   return page.evaluate(() => window.__BADUGI_E2E__?.getStateSnapshot?.() ?? null);
 }
 
+async function expectStudVisibilityUi(page: Page, options: { requireSeventhDown?: boolean } = {}) {
+  await expect(page.locator('[data-testid$="-stud-summary"]').first()).toBeVisible({
+    timeout: 15000,
+  });
+  await expect(page.getByText("VISIBLE").first()).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText(/Down\s+\d+/).first()).toBeVisible({ timeout: 15000 });
+  if (options.requireSeventhDown) {
+    await expect(page.getByText("7TH DOWN").first()).toBeVisible({ timeout: 15000 });
+  }
+}
+
 function summarizeStudState(state: any) {
   const snapshot = state?.controllerSnapshot;
   const actor = snapshot?.currentActor ?? snapshot?.turn ?? state?.turn;
@@ -218,6 +229,22 @@ async function playForcedStudHand(page: Page) {
   throw new Error("Stud-family UI hand did not reach showdown");
 }
 
+async function forceToStudStreet(page: Page, targetStreet: string) {
+  const visited = new Set<string>();
+  for (let step = 0; step < 120; step += 1) {
+    const state = await getE2EState(page);
+    const street = state?.controllerSnapshot?.street;
+    if (street) visited.add(street);
+    if (street === targetStreet) return visited;
+    if (street === "SHOWDOWN" || state?.phase === "HAND_RESULT") {
+      throw new Error(`Stud-family UI reached ${street} before ${targetStreet}`);
+    }
+    await forceCurrentStudAction(page);
+    await page.waitForTimeout(180);
+  }
+  throw new Error(`Stud-family UI did not reach ${targetStreet}`);
+}
+
 async function advanceToHeroStudCallSpot(page: Page) {
   for (let step = 0; step < 80; step += 1) {
     const state = await getE2EState(page);
@@ -259,6 +286,7 @@ test.describe("Stud-family street progression UI", () => {
       await page.setViewportSize({ width: 1440, height: 900 });
       await openAuthenticatedGame(page, `${APP_URL}?variant=${variant}`);
       await waitForE2EDriver(page);
+      await expectStudVisibilityUi(page);
 
       for (let hand = 1; hand <= 2; hand += 1) {
         const before = await getE2EState(page);
@@ -291,7 +319,10 @@ test.describe("Stud-family street progression UI", () => {
       await page.evaluate(() => window.__BADUGI_E2E__?.forceDealNewHandNow?.());
       await page.waitForTimeout(300);
 
-      const visited = await playForcedStudHand(page);
+      const visited = await forceToStudStreet(page, "SEVENTH");
+      await expectStudVisibilityUi(page, { requireSeventhDown: true });
+      const finalVisited = await playForcedStudHand(page);
+      for (const street of finalVisited) visited.add(street);
 
       expect([...visited]).toEqual(
         expect.arrayContaining(["THIRD", "FOURTH", "FIFTH", "SIXTH", "SEVENTH", "SHOWDOWN"]),

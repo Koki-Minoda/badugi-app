@@ -37,7 +37,7 @@ This audit checks whether the current MGX progress, regression, and E2E tests ca
 | `tests/e2e/p2p-friend-match-real-ws.spec.ts` | 1 | Real WS P2P | PARTIAL | Important integration test, environment-sensitive. |
 | `tests/e2e/p2p-friend-match-smoke.spec.ts` | 5 | P2P smoke | PARTIAL | Smoke-level. |
 | `tests/e2e/responsive-layout-separation.spec.ts` | 2 | PC/mobile layout separation | PARTIAL | Layout only. |
-| `tests/e2e/stud-street-progression.spec.ts` | 3 | Stud street progression | PARTIAL | Needs stronger bring-in/complete/7th street action-path coverage. |
+| `tests/e2e/stud-street-progression.spec.ts` | 6 | Stud street progression | PARTIAL | Stud/Razz 2-hand UI button loop plus 7th down-card clarity checks. |
 | `tests/e2e/tournament-ui-layout-smoke.spec.ts` | 3 | Tournament layout | PARTIAL | UI-only; not enough for MTT progression correctness. |
 
 ## Test Quality Audit

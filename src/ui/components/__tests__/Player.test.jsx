@@ -247,10 +247,12 @@ describe("Player", () => {
       />,
     );
 
-    expect(screen.getByTestId("player-0-card-0-visibility").textContent).toBe("DOWN");
-    expect(screen.getByTestId("player-0-card-2-visibility").textContent).toBe("UP");
+    expect(screen.getByTestId("player-0-card-0-visibility").textContent).toBe("HOLE");
+    expect(screen.getByTestId("player-0-card-2-visibility").textContent).toBe("VISIBLE");
     expect(screen.getByTestId("player-0-card-0-down-slot").className).toContain("translate-y-1");
     expect(screen.getByTestId("player-0-card-2-up-slot").className).toContain("-translate-y-2");
+    expect(screen.getByTestId("seat-0-stud-summary").textContent).toContain("Visible 2");
+    expect(screen.getByTestId("seat-0-stud-summary").textContent).toContain("Down 2");
   });
 
   test("renders Stud hero down-cards with a diagonal back overlay instead of text-only labels", () => {
@@ -275,6 +277,52 @@ describe("Player", () => {
     const downCard = screen.getByTestId("player-0-card-0");
     expect(downCard.querySelector('[style*="polygon"]')).toBeTruthy();
     expect(screen.getByTestId("player-0-card-2").querySelector('[style*="polygon"]')).toBeNull();
+  });
+
+  test("marks seventh street down card and bring-in / complete actions clearly", () => {
+    const { rerender } = render(
+      <Player
+        player={{
+          ...basePlayer,
+          hand: ["AS", "KD", "2C", "7H", "8S", "9D", "3C"],
+          cardVisibility: ["down", "down", "up", "up", "up", "up", "down"],
+          showHand: true,
+          lastAction: "Bring-in 5",
+        }}
+        index={0}
+        selfIndex={0}
+        turn={1}
+        dealerIdx={1}
+        phase="BET"
+        positionLabel="BTN"
+        displayVariant="stud"
+      />,
+    );
+
+    expect(screen.getByTestId("player-0-card-6-visibility").textContent).toBe("7TH DOWN");
+    expect(screen.getByTestId("seat-0-stud-summary").textContent).toContain("7th down");
+    expect(screen.getByTestId("stud-action-badge").textContent).toContain("Bring-in 5");
+
+    rerender(
+      <Player
+        player={{
+          ...basePlayer,
+          hand: ["AS", "KD", "2C", "7H", "8S", "9D", "3C"],
+          cardVisibility: ["down", "down", "up", "up", "up", "up", "down"],
+          showHand: true,
+          lastAction: "Complete",
+        }}
+        index={0}
+        selfIndex={0}
+        turn={1}
+        dealerIdx={1}
+        phase="BET"
+        positionLabel="BTN"
+        displayVariant="razz"
+      />,
+    );
+
+    expect(screen.getByTestId("stud-action-badge").textContent).toBe("Complete");
   });
 
   test("sorts lowball and high-card variants with variant-specific ace handling", () => {

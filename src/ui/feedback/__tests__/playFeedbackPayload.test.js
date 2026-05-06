@@ -143,9 +143,37 @@ describe("playFeedbackPayload", () => {
     expect(result.payload.replayLinks.length).toBe(result.payload.keyHands.length);
     expect(result.payload.replayLinks.every((link) => link.variantId === "D01")).toBe(true);
     expect(result.payload.replayLinks.every((link) => link.handExists === true)).toBe(true);
+    expect(
+      result.payload.replayLinks.every((link) => link.replayTarget?.actionSeqStart === 1),
+    ).toBe(true);
     expect(result.payload.promptContext.constraints).toContain(
       "feedbackScope.variantId または mixed scope に従い、対象外variantを混ぜない",
     );
+  });
+
+  it("applies the 30 hand gate after variant filtering, not before it", () => {
+    const hands = [
+      ...Array.from({ length: 30 }, (_, index) =>
+        makeHand(index, { handId: `badugi-${index}`, variantId: "badugi" }),
+      ),
+      ...Array.from({ length: MIN_FEEDBACK_HANDS - 1 }, (_, index) =>
+        makeHand(index + 100, { handId: `plo-${index}`, variantId: "plo" }),
+      ),
+    ];
+
+    const result = buildPlayFeedbackPayload({
+      hands,
+      mode: "cash",
+      variantScope: "variant:plo",
+    });
+
+    expect(result).toMatchObject({
+      eligible: false,
+      reason: "not_enough_hands",
+      sourceHandCount: 59,
+      handCount: 29,
+      payload: null,
+    });
   });
 
   it("requires an explicit feedback scope before building a sendable payload", () => {

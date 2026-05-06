@@ -1,6 +1,6 @@
 # MGX Play Feedback Policy
 
-更新日: 2026-05-04
+更新日: 2026-05-06
 
 ## 目的
 
@@ -10,6 +10,8 @@
 
 - キャッシュゲーム: `Cash Out` 後に同一セッション30ハンド以上ある場合だけ分析対象にする。
 - トーナメント: bust / 優勝 / 終了後に30ハンド以上ある場合だけ分析対象にする。
+- Mixed sessionではPLO/Badugi/2-7などを誤って混ぜないよう、feedback作成前に対象variantまたはmixed scopeを明示選択する。
+- variant scopeを選んだ場合、30ハンド判定は全体件数ではなく「選択variantに絞り込んだ後」の件数で行う。
 - 30ハンド未満は「サンプル不足」としてローカル集計のみ表示する。
 - 100ハンド以上は信頼度を高め、30〜99ハンドは「暫定評価」と明示する。
 - all-in / side pot / showdown / folded hand の重大イベントは、30ハンド未満でもローカルの簡易振り返りに使う。
@@ -63,6 +65,8 @@
 実装方針は、`playFeedbackPayload` の key hand extraction で上記参照を作り、backend の `play_feedback_results` に sanitize 済みpayloadとして保存する。frontend feedback modal は situation card から hand history / replay frame へジャンプできるようにする。これにより、AIの指摘を「抽象的な助言」ではなく「自分が押した具体ボタンと結果」に結び付けられる。
 
 保存済みfeedbackの取得APIも `keyHands` と `summary` を返す。これにより、ページ再読み込み後や別端末で保存済み結果を開いた場合でも、AI本文と該当hand historyの対応関係を失わない。
+
+2026-05-06 追記。Feedbackのリプレイ導線は、重要局面cardから `(handId, replayTarget)` をReplay UIへ渡す。`replayTarget.actionSeqStart` がある場合は該当action frameへ直接ジャンプし、なければ `actionSeqRange.start`、seat/street/action type の順にfallbackする。これにより、AIが参照した `B-07` / `PLO-03` などの局面を、同じvariantの同じhand/actionへ戻して確認できる。
 
 ## レイテンシ方針
 

@@ -1,8 +1,17 @@
 export function findReplayFrameIndex(frames = [], target = {}) {
   if (!Array.isArray(frames) || !frames.length || !target) return -1;
-  const actionSeq = Number(target.actionSeq);
-  if (Number.isInteger(actionSeq) && actionSeq > 0) {
-    const exact = frames.findIndex((frame) => frame?.event?.actionSeq === actionSeq);
+  const actionSeqCandidates = [
+    target.actionSeq,
+    target.actionSeqStart,
+    target.actionSeqRange?.start,
+    target.replayTarget?.actionSeq,
+    target.replayTarget?.actionSeqStart,
+  ]
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value > 0);
+  const actionSeq = actionSeqCandidates[0] ?? null;
+  if (actionSeq) {
+    const exact = frames.findIndex((frame) => Number(frame?.event?.actionSeq) === actionSeq);
     if (exact >= 0) return exact;
   }
   const targetSeat = Number(target.seat);

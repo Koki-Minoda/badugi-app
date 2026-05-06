@@ -3172,9 +3172,21 @@ Draw RL test coverage:
 - [x] `npm test -- --run src/ui/feedback/__tests__/playFeedbackPayload.test.js src/ui/screens/__tests__/HandHistoryScreen.test.jsx`: 2 files / 8 tests pass。
 - [x] `cd backend && ../.venv/bin/python -m pytest tests/test_analysis_chatgpt_api.py`: 9 passed。
 
+追加対応:
+- [x] `FB-REG-06` feedback対象variantの明示選択と、variant filter後の30hand gateを単体/画面テストで固定する。
+  - PLOとBadugiなどが混在する履歴では、未選択scopeを送信不可にする。
+  - total 30hand以上でも、選択variantが30hand未満なら `not_enough_hands` として拒否する。
+  - 送信payloadの `variantScope`, `summary.variants`, `keyHands`, `replayLinks` が選択variantだけになることを確認する。
+- [x] `FB-REG-07` Feedbackの `replayTarget.actionSeqStart` をReplay UIへ渡し、該当action frameへ直接ジャンプできるようにする。
+  - ゲーム内History modalのFBリプレイボタンは `(handId, replayTarget)` を渡す。
+  - Replay frame resolverは `actionSeq`, `actionSeqStart`, `actionSeqRange.start`, nested `replayTarget.actionSeqStart` を解釈する。
+
 残タスク:
-- [ ] `FB-REG-06` 実OpenAI環境で、variant別30hand以上の実プレイログを使い、回答がPLO/Badugi/2-7などを混同しないか手動確認する。
-- [ ] `FB-REG-07` Replay UI側で `replayTarget.actionSeqStart` へ直接ジャンプする操作を全variantで確認する。
+- [ ] `FB-REG-06-MANUAL` 実OpenAI環境で、variant別30hand以上の実プレイログを使い、回答文がPLO/Badugi/2-7などを混同しないか手動確認する。
+  - 自動テストではpayload分離まで保証済み。実モデル回答品質は本番キー/実ログで別途確認する。
+
+確認結果:
+- [x] `npm test -- --run src/ui/feedback/__tests__/playFeedbackPayload.test.js src/ui/screens/__tests__/HandHistoryScreen.test.jsx src/ui/screens/__tests__/ReplayScreen.test.jsx`: 3 files / 13 tests pass。
 
 ### 21.9 2026-05-06 Fold後の次hand復帰 35variant回帰
 

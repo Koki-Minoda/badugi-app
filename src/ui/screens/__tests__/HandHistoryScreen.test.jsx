@@ -14,7 +14,7 @@ const completedHands = Array.from({ length: 60 }, (_, index) => ({
     {
       seat: 0,
       name: "Hero",
-      actions: [{ street: "BET", type: "call" }],
+      actions: [{ seq: 1, street: "BET", type: "call" }],
       handLabel: "Badugi 8-4-3-A",
     },
   ],
@@ -65,7 +65,14 @@ describe("HandHistoryScreen", () => {
     expect(screen.getByText("該当ハンド")).toBeTruthy();
     expect(screen.getAllByText(/modal-hand-1/).length).toBeGreaterThan(0);
     fireEvent.click(screen.getAllByRole("button", { name: "リプレイ" })[0]);
-    expect(onReplay).toHaveBeenCalledWith(expect.objectContaining({ handId: "modal-hand-1" }));
+    expect(onReplay).toHaveBeenCalledWith(
+      "modal-hand-1",
+      expect.objectContaining({
+        handId: "modal-hand-1",
+        actionSeqStart: 1,
+        actionSeqEnd: 1,
+      }),
+    );
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/analysis/play-feedback",
       expect.objectContaining({
@@ -78,6 +85,10 @@ describe("HandHistoryScreen", () => {
     expect(requestBody.replayLinks[0]).toMatchObject({
       handId: expect.any(String),
       variantId: "badugi",
+      replayTarget: expect.objectContaining({
+        actionSeqStart: 1,
+        actionSeqEnd: 1,
+      }),
       handExists: true,
     });
     expect(window.localStorage.getItem("mgx.playFeedback.results.v1")).toContain(
@@ -113,5 +124,8 @@ describe("HandHistoryScreen", () => {
     expect(requestBody.summary.variants).toEqual({ plo: 30 });
     expect(requestBody.keyHands.every((spot) => spot.variantId === "plo")).toBe(true);
     expect(requestBody.replayLinks.every((link) => link.variantId === "plo")).toBe(true);
+    expect(
+      requestBody.replayLinks.every((link) => Number.isInteger(link.replayTarget?.actionSeqStart)),
+    ).toBe(true);
   }, 10000);
 });

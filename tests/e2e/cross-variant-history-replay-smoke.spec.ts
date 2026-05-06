@@ -99,6 +99,15 @@ function resultWinnerCount(record: any) {
   );
 }
 
+function parseReplayCounter(value: string | null) {
+  const match = String(value ?? "").match(/Frame\s+(\d+)\s*\/\s*(\d+)/i);
+  if (!match) return { current: 0, total: 0 };
+  return {
+    current: Number(match[1]) || 0,
+    total: Number(match[2]) || 0,
+  };
+}
+
 async function waitForFinalizedHistory(page: Page, handId: string) {
   return expect
     .poll(
@@ -111,11 +120,56 @@ async function waitForFinalizedHistory(page: Page, handId: string) {
     .not.toBeNull();
 }
 
+async function openReplayFromHistoryUi(page: Page, handId: string) {
+  await page.getByRole("button", { name: /履歴|History/i }).first().click();
+  const modal = page.getByTestId("game-utility-modal");
+  await expect(modal).toBeVisible({ timeout: 10000 });
+  await modal.getByTestId(`hand-history-row-${handId}`).click();
+  await expect(page.getByTestId("hand-replay-screen")).toBeVisible({ timeout: 10000 });
+  await expect(page.getByText(`Hand ${handId}`).first()).toBeVisible();
+}
+
+async function expectReplayFrameJumpControls(page: Page, variant: string) {
+  const counter = page.getByTestId("replay-frame-counter");
+  await expect(counter).toBeVisible();
+  const initial = parseReplayCounter(await counter.textContent());
+  expect(initial.total, `${variant} replay should expose multiple frames`).toBeGreaterThan(1);
+  expect(initial.current, `${variant} replay should start on first frame`).toBe(1);
+
+  await page.getByTestId("replay-next-frame").click();
+  await expect
+    .poll(async () => parseReplayCounter(await counter.textContent()).current, {
+      timeout: 5000,
+    })
+    .toBe(2);
+
+  await page.getByTestId("replay-last-frame").click();
+  await expect
+    .poll(async () => parseReplayCounter(await counter.textContent()).current, {
+      timeout: 5000,
+    })
+    .toBe(initial.total);
+
+  await page.getByTestId("replay-first-frame").click();
+  await expect
+    .poll(async () => parseReplayCounter(await counter.textContent()).current, {
+      timeout: 5000,
+    })
+    .toBe(1);
+
+  await page.getByTestId("replay-event-row-1").click();
+  await expect
+    .poll(async () => parseReplayCounter(await counter.textContent()).current, {
+      timeout: 5000,
+    })
+    .toBe(2);
+}
+
 test.describe("cross variant hand history replay smoke", () => {
   test.describe.configure({ timeout: 180000 });
 
   for (const { variant, title } of VARIANT_CASES) {
-    test(`${variant} records handId actions and result for replay`, async ({ page }) => {
+    test(`${variant} records handId/actions/result and supports replay frame jumps`, async ({ page }) => {
       await page.setViewportSize({ width: 1440, height: 900 });
       await openAuthenticatedGame(page, `${APP_URL}?variant=${variant}`);
       await waitForE2EDriver(page);
@@ -156,6 +210,9 @@ test.describe("cross variant hand history replay smoke", () => {
         variantId: record.variantId,
       });
       expect(validation.valid, `${variant} replay fields missing: ${validation.missing.join(", ")}`).toBe(true);
+
+      await openReplayFromHistoryUi(page, handId);
+      await expectReplayFrameJumpControls(page, variant);
 
       await invokeE2E(page, "forceDealNewHandNow");
       const nextSnapshot = await getStateSnapshot(page);

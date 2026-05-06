@@ -48,6 +48,7 @@ Last updated: 2026-05-06
 | E2E-PROG-003 | E2E | `mgx-game-progress.spec.js` | Pass | PLO controller action + hand result smoke |
 | E2E-PROG-004 | E2E | `mgx-game-progress.spec.js` | Pass | Tournament start remains valid |
 | E2E-PROG-005 | E2E | `mgx-game-progress.spec.js` | Pass | Mobile landscape action button is tappable |
+| HIST-REG-05 | History/replay E2E | `cross-variant-history-replay-smoke.spec.ts` | Pass | 35 playable variantsでhandId/action/result/Replay-ready + Replay UI first/next/last/event-row frame jump |
 | STUD-001..006 | Stud family | `studFamilyProgress.test.js` | Pass | ST1-ST6 ante/bring-in/street/all-in/evaluator coverage |
 | FLOP-001..003 | Flop family | `flopFamilyProgress.test.js` | Pass | Hold'em/Omaha blinds, streets, all-in coverage |
 | OMAHA-001 | Omaha family | `flopFamilyProgress.test.js` | Pass | Omaha evaluator uses exactly two hole cards |
@@ -75,6 +76,7 @@ Last updated: 2026-05-06
 | DRAW-002 | Scenario runner | Pass | CPU policy-specific draw choices not audited |
 | DRAW-003 | Vitest negative fixture | Pass | UI duplicate-click debounce separate |
 | DRAW-004 | Vitest negative fixture | Pass | Deck/discard duplicate-card audit future |
+| HIST-REG-05 | `cross-variant-history-replay-smoke.spec.ts` | Pass | Chinese/OFC本体履歴接続はHIST-REG-06として継続 |
 | MTT-001 | Vitest negative fixture | Pass | Full table merge E2E still needed |
 | MTT-002 | Vitest negative fixture | Pass | Full MTT long-run E2E still needed |
 | MTT-003 | Vitest negative fixture | Pass | Stack/button movement audit future |
@@ -95,8 +97,10 @@ Last updated: 2026-05-06
 | `npm run test:game:flop` | Pass | 1 file, 5 tests passed |
 | `npm run test:game:draw-family` | Pass | 1 file, 6 tests passed |
 | `npm run test:game:family` | Pass | 4 files, 26 tests passed |
-| `npm run test:game:progress` | Pass | 6 files, 71 tests passed, 12 skipped with explicit reasons |
+| `npm run test:game:progress` | Pass | 7 files, 73 tests passed, 12 skipped with explicit reasons |
 | `npm run test:e2e:progress` | Pass | 5 Playwright tests passed on `badugi-flow` project |
+| `npm test -- --run src/ui/screens/__tests__/ReplayScreen.test.jsx src/ui/screens/__tests__/HandHistoryScreen.test.jsx` | Pass | 2 files, 4 tests passed |
+| `npx playwright test tests/e2e/cross-variant-history-replay-smoke.spec.ts --project=badugi-flow` | Pass | 35 playable variants passed with Replay UI frame jumps |
 | `npm test` | Pass | 126 files passed; 849 tests passed, 12 skipped |
 | `npm run build` | Pass | Vite build completed; existing chunk-size warning remains |
 | `npm run lint` | Pass with warning | Existing `src/ui/App.jsx` hook dependency warning remains; no new lint warnings |

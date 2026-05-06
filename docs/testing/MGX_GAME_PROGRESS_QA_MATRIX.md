@@ -22,6 +22,7 @@ This matrix tracks add-on coverage for game progression regressions. Existing Vi
 | DRAW-002 | CPU draw | CPU drawが自動解決される | draw scenario reaches terminal | Vitest scenario | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | D02 full cycle |
 | DRAW-003 | Draw turn | draw済みplayerに再度draw turnが回らない | invariant catches duplicate draw actor | Vitest invariant | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Negative fixture |
 | DRAW-004 | Hand size | draw後のhand sizeが正しい | invariant catches hand size drift | Vitest invariant | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Negative fixture |
+| HIST-REG-05 | History/replay | handId/action/result/frame jumpをvariant横断で確認 | Replay UI controls move the frame counter from history row entry | Playwright E2E | `tests/e2e/cross-variant-history-replay-smoke.spec.ts` | Added | 35 playable variants; Chinese/OFC body integration tracked as HIST-REG-06 |
 | MTT-001 | Tournament | busted playerにturnが回らない | invariant catches busted actor | Vitest invariant | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Negative fixture |
 | MTT-002 | Tournament | CPU bust後にtableが空にならない | non-terminal active table required | Vitest invariant | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Negative fixture |
 | MTT-003 | Tournament | table merge/reseat後にplayerIdが壊れない | duplicate playerId is rejected | Vitest invariant | `src/games/testing/regression/gameProgressKnownBugs.test.js` | Added | Negative fixture |

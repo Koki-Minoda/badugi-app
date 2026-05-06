@@ -24,7 +24,7 @@ This audit checks whether the current MGX progress, regression, and E2E tests ca
 | `tests/e2e/badugi-mtt-flow.spec.ts` | 3 | Badugi tournament flow | BADUGI_ONLY | Useful smoke, but reseat/table merge depth remains limited. |
 | `tests/e2e/cross-variant-five-hand-smoke.spec.ts` | 2 | Cross-variant 5-hand UI smoke | BROAD | Good operational signal; still mostly UI progression, not pot correctness. |
 | `tests/e2e/cross-variant-fold-recovery.spec.ts` | 1 | Fold recovery across variants | BROAD/PARTIAL | Important regression target; needs all-in/fold matrix expansion. |
-| `tests/e2e/cross-variant-history-replay-smoke.spec.ts` | 1 | History/replay smoke | BROAD/PARTIAL | Ensures link exists, but not complete result audit. |
+| `tests/e2e/cross-variant-history-replay-smoke.spec.ts` | 1 | History/replay smoke | BROAD/PARTIAL | 35 playable variantsでhandId/action/result/Replay-readyとReplay UI frame jumpを検証。Chinese/OFC本体接続は別残件。 |
 | `tests/e2e/cross-variant-operational-smoke.spec.ts` | 3 | Operational UI smoke | BROAD/PARTIAL | Detects major freezes; not enough for variant-specific rules. |
 | `tests/e2e/dramaha-draw-action.spec.ts` | 1 | Dramaha draw UI | PARTIAL | Single scenario; one shallow assertion pattern remains. |
 | `tests/e2e/draw-lowball-app-smoke.spec.ts` | 2 | 2-7/A-5 app smoke | PARTIAL | Useful for draw games; not full 5-hand coverage. |

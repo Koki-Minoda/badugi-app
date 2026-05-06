@@ -55,6 +55,7 @@ function HandHistoryRow({ entry, onReplay }) {
   return (
     <button
       type="button"
+      data-testid={`hand-history-row-${hand?.handId ?? "unknown"}`}
       className={`w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-left text-sm text-white transition hover:bg-white/5 ${
         isLive ? "ring-1 ring-emerald-400/40" : ""
       }`}

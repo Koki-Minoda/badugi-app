@@ -3130,15 +3130,23 @@ Draw RL test coverage:
 - [x] `HIST-REG-04` Dramaha系のforced result smokeでwinner evaluation hydrationが例外になり履歴が残らないケースを修正する。
   - Dramaha result summaryはboard/draw split情報が不足した保険経路ではPLO evaluatorへ不完全入力が渡ることがあった。
   - hand result hydrationで評価例外を握り、pot/winner/result保存とnext hand進行を優先する。
+- [x] `HIST-REG-05` Replay UIのframe jumpを全35 playable variantsで押下確認する。
+  - `ReplayScreen` に安定した `data-testid` を追加し、E2Eで履歴modalのhand rowからReplay画面へ遷移する。
+  - `handId` / `variantId` / action / result / Replay-ready validationに加え、`next`, `last`, `first`, event row clickでframe counterが正しく変化することを検証する。
 
 確認結果:
 - [x] `npx playwright test tests/e2e/cross-variant-history-replay-smoke.spec.ts --project=badugi-flow --grep "badugi records"`: 2 passed。
 - [x] `npx playwright test tests/e2e/cross-variant-history-replay-smoke.spec.ts --project=badugi-flow`: 35 passed。
+- [x] `npm test -- --run src/ui/screens/__tests__/ReplayScreen.test.jsx src/ui/screens/__tests__/HandHistoryScreen.test.jsx`: 2 files / 4 tests passed。
+- [x] `npx playwright test tests/e2e/cross-variant-history-replay-smoke.spec.ts --project=badugi-flow --grep "(badugi|plo) records"`: 4 passed。
+- [x] `npx playwright test tests/e2e/cross-variant-history-replay-smoke.spec.ts --project=badugi-flow`: 35 passed with Replay UI frame jumps。
+- [x] `npm run test:game:progress`: 7 files / 73 passed / 12 skipped。
+- [x] `npm run build`: passed（既存のchunk-size / browserslist警告のみ）。
 
 残タスク:
-- [ ] `HIST-REG-05` Replay UIのframe再生そのものを全variantで押下確認する。今回の範囲は「保存される履歴データがReplay-readyであること」まで。
 - [ ] `HIST-REG-06` Chinese/OFC正式接続後、同じhistory/replay smokeへ36件目として追加する。
   - 2026-05-05 進捗: UI単体ではshowdown result / next hand smokeを追加済み。全variant hand history/replay pipelineへの保存・Replay-ready検証は未接続。
+  - 2026-05-06 現状: 35 playable variantsの履歴/Replay UI横断は完了。CP1/OFCは別controller画面のため、本体履歴保存接続後に同じE2Eへ追加する。
 
 ### 21.8 2026-05-05 Feedback Pipeline Variant分離 / 履歴リンク品質
 

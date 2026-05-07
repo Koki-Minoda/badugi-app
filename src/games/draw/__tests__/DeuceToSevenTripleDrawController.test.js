@@ -163,6 +163,47 @@ describe("DeuceToSevenTripleDrawController", () => {
     expect(controller.getCpuAction(state, 0)).toBeNull();
   });
 
+  it("PRO-ROUTE-001 calls the Pro overlay when tier=pro", () => {
+    const controller = buildController([
+      "2S", "3S", "4S", "5S", "7S",
+      "2H", "3H", "4H", "5H", "8H",
+    ]);
+    const state = controller.createNewHandState(controller.createInitialState());
+    state.engineState.players[1].hand = ["7S", "5D", "4C", "3H", "2S"];
+
+    const action = controller.getCpuAction(state, 1, {
+      tierConfig: { id: "pro" },
+    });
+
+    expect(action).toMatchObject({
+      seatIndex: 1,
+      type: "RAISE",
+      metadata: {
+        strategy: "pro-d01",
+        tierId: "pro",
+        decisionSource: "pro-overlay",
+      },
+    });
+  });
+
+  it("PRO-ROUTE-003 keeps standard and Pro controller routes distinguishable", () => {
+    const controller = buildController([
+      "2S", "3S", "4S", "5S", "7S",
+      "2H", "3H", "4H", "5H", "8H",
+    ]);
+    const state = controller.createNewHandState(controller.createInitialState());
+    state.engineState.players[1].hand = ["7S", "5D", "4C", "3H", "2S"];
+
+    const standardAction = controller.getCpuAction(state, 1);
+    const proAction = controller.getCpuAction(state, 1, {
+      tierConfig: { id: "pro" },
+    });
+
+    expect(standardAction?.metadata?.strategy).toBe("ruleBasedD01");
+    expect(proAction?.metadata?.strategy).toBe("pro-d01");
+    expect(proAction?.metadata?.decisionSource).toBe("pro-overlay");
+  });
+
   it("applies betting actions and emits a bet-round completion event", () => {
     const controller = buildController([
       "2S", "3S", "4S", "5S", "7S",

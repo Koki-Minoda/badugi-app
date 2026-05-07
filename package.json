@@ -21,6 +21,8 @@
     "test:mgx:safety": "npm run test:game:known-bugs && npm run test:game:one-hand && npm run test:game:ev && npm run test:rl:safety",
     "test:rl:pipeline": "vitest run src/rl/__tests__/rlDataPipelineAudit.test.js src/rl/__tests__/badugiObservationSchema.test.js src/rl/__tests__/drawObservationSchema.test.js src/ai/__tests__/onnxPolicyAdapter.test.js src/ai/__tests__/onnxPolicyAdapterInference.test.js src/ai/__tests__/modelRouter.test.js",
     "test:rl:safety": "vitest run src/rl/testing/rlResumeSafetyGate.test.js src/rl/__tests__/rlDataPipelineAudit.test.js src/rl/__tests__/badugiObservationSchema.test.js src/rl/__tests__/drawObservationSchema.test.js src/ai/__tests__/onnxPolicyAdapter.test.js src/ai/__tests__/onnxPolicyAdapterInference.test.js src/ai/__tests__/modelRouter.test.js src/ai/__tests__/onnxFallbackSmoke.test.js",
+    "test:ai:pro": "vitest run src/ai/pro",
+    "eval:ai:pro": "node scripts/runAiProEvaluation.mjs",
     "test:e2e:progress": "playwright test tests/e2e/mgx-game-progress.spec.js --project=badugi-flow",
     "test:e2e:progression": "playwright test tests/e2e/mgx-game-progression.spec.js --project=badugi-flow",
     "test:scrape": "python -m tests.scraping.runner smoke",

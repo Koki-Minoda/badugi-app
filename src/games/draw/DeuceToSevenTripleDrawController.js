@@ -5,6 +5,7 @@ import {
   normalizeTurnState,
 } from "../core/turn/actorEligibility.js";
 import { DeuceToSevenTripleDrawEngine } from "./DeuceToSevenTripleDrawEngine.js";
+import { chooseProAction } from "../../ai/pro/proDecisionOverlay.js";
 
 const DEFAULT_SEAT_CONFIG = ["HUMAN", "CPU", "CPU", "CPU", "CPU", "CPU"];
 const DEFAULT_STRUCTURE = { sb: 10, bb: 20, ante: 0 };
@@ -370,12 +371,47 @@ export class DeuceToSevenTripleDrawController extends GameController {
     return deriveLegalActions(engineState ?? {}, seatIndex);
   }
 
-  getCpuAction(state = {}, seatIndex = null) {
+  getCpuAction(state = {}, seatIndex = null, options = {}) {
     const engineState = state?.engineState ?? this._lastState?.engineState ?? state;
     const targetSeat = typeof seatIndex === "number" ? seatIndex : engineState?.actingPlayerIndex;
     const player = engineState?.players?.[targetSeat];
     if (!player?.isCPU) return null;
-    return this.engine.chooseCpuAction(engineState, targetSeat);
+    const standardAction = this.engine.chooseCpuAction(engineState, targetSeat);
+    if (options?.tierConfig?.id !== "pro") {
+      return standardAction;
+    }
+    const legalActions = deriveLegalActions(engineState ?? {}, targetSeat);
+    const result = chooseProAction({
+      variantId: this.variantId,
+      snapshot: {
+        ...engineState,
+        variantId: this.variantId,
+        phase: engineState?.street,
+        maxDiscardCount: this.engine?.handCardCount ?? 5,
+        maxDrawRounds: this.engine?.maxDrawRounds ?? 3,
+      },
+      legalActions,
+      standardAction,
+      context: { actor: player },
+    });
+    if (!result?.type) {
+      return standardAction;
+    }
+    return {
+      seatIndex: targetSeat,
+      type: result.type,
+      discardIndexes: result.discardIndexes,
+      amount: result.amount,
+      metadata: {
+        ...(standardAction?.metadata ?? {}),
+        strategy: `pro-${this.variantId.toLowerCase()}`,
+        tierId: options?.tierConfig?.id ?? "pro",
+        decisionSource: result.source,
+        decisionReason: result.reason,
+        confidence: result.confidence,
+        warnings: result.warnings ?? [],
+      },
+    };
   }
 
   applyAction(state = {}, action = {}) {

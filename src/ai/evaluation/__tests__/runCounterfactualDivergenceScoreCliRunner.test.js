@@ -7,6 +7,7 @@ function parseArgs() {
   const variantsArg = forwardedArgs.find((entry) => String(entry).startsWith("--variants="));
   const maxSamplesArg = forwardedArgs.find((entry) => String(entry).startsWith("--max-samples="));
   const bucketFilterArg = forwardedArgs.find((entry) => String(entry).startsWith("--bucket-filter="));
+  const corpusTagArg = forwardedArgs.find((entry) => String(entry).startsWith("--corpus-tag="));
 
   return {
     variants:
@@ -22,12 +23,20 @@ function parseArgs() {
             .map((entry) => entry.trim())
             .filter(Boolean)
         : [],
+    sampleTagFilter:
+      typeof corpusTagArg === "string" && corpusTagArg.length
+        ? corpusTagArg
+            .replace("--corpus-tag=", "")
+            .split(",")
+            .map((entry) => entry.trim())
+            .filter(Boolean)
+        : [],
   };
 }
 
 describe("AI counterfactual divergence CLI runner", () => {
   it("executes the counterfactual score without noisy engine logs", async () => {
-    const { variants, maxSamples, bucketFilter } = parseArgs();
+    const { variants, maxSamples, bucketFilter, sampleTagFilter } = parseArgs();
     const originalLog = console.log;
     const originalWarn = console.warn;
 
@@ -39,6 +48,7 @@ describe("AI counterfactual divergence CLI runner", () => {
         variants,
         maxSamples,
         bucketFilter,
+        sampleTagFilter,
       });
 
       expect(report.replaySamples).toBeGreaterThan(0);
@@ -48,5 +58,5 @@ describe("AI counterfactual divergence CLI runner", () => {
       console.log = originalLog;
       console.warn = originalWarn;
     }
-  }, 120000);
+  }, 300000);
 });

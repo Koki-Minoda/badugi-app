@@ -1,16 +1,15 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-
-import { AI_EVAL_DIVERGENCE_REPLAY_DIR } from "./runAiEvaluationBatch.js";
 import {
   bucketForReplaySample,
   parseReplaySampleFilename,
   replaySampleTagPriority,
   shouldKeepReplaySample,
 } from "./counterfactualBuckets.js";
-import { runCounterfactualDivergenceScore } from "./runCounterfactualDivergenceScore.js";
 
 const DEFAULT_VARIANTS = ["D02", "S01", "S02"];
+const AI_EVAL_DIVERGENCE_REPLAY_DIR = path.resolve("reports/ai-eval/divergence-replay-samples");
+const AI_EVAL_REPORT_DIR = path.resolve("reports/ai-eval");
 const DOC_OUTPUT_PATH = path.resolve(
   "docs/ai/MGX_PRO_STEP4Y_FRESH_VS_HISTORICAL_CORPUS.md",
 );
@@ -137,10 +136,14 @@ function formatDelta(value) {
 function buildMarkdown({
   variants,
   maxSamples,
+  historicalTag,
+  freshTag,
   historicalSamples,
   freshSamples,
   historicalReport,
   freshReport,
+  historicalMatchedTag,
+  freshMatchedTag,
   postPatchTag,
   postPatchSamples,
   rows,
@@ -149,8 +152,8 @@ function buildMarkdown({
     "# MGX Step4-Y Fresh vs Historical Corpus",
     "",
     "Source artifacts:",
-    `- historical corpus tag: \`${historicalReport.sampleTagFilter?.join(",") ?? "step4w"}\``,
-    `- fresh corpus tag: \`${freshReport.sampleTagFilter?.join(",") ?? "step4y"}\``,
+    `- historical corpus tag: \`${historicalTag}\`${historicalMatchedTag ? "" : " (counterfactual score fallback: unlabeled/legacy report)"}`,
+    `- fresh corpus tag: \`${freshTag}\`${freshMatchedTag ? "" : " (counterfactual score fallback used)"}`,
     `- compared variants: \`${variants.join(",")}\``,
     `- max counterfactual samples: \`${maxSamples}\``,
     "",
@@ -158,8 +161,8 @@ function buildMarkdown({
     "",
     "| Corpus | Tag | Samples | Valid Replays | Invalid Replays | Notes |",
     "| ------ | --- | ------: | ------------: | --------------: | ----- |",
-    `| Historical | \`${historicalReport.sampleTagFilter?.join(",") ?? "step4w"}\` | ${historicalSamples.length} | ${historicalReport.validReplays} | ${historicalReport.invalidReplays} | Step4-W baseline corpus |`,
-    `| Fresh | \`${freshReport.sampleTagFilter?.join(",") ?? "step4y"}\` | ${freshSamples.length} | ${freshReport.validReplays} | ${freshReport.invalidReplays} | Live post-patch Step4-X policy corpus |`,
+    `| Historical | \`${historicalTag}\` | ${historicalSamples.length} | ${historicalReport.validReplays} | ${historicalReport.invalidReplays} | Step4-W baseline corpus |`,
+    `| Fresh | \`${freshTag}\` | ${freshSamples.length} | ${freshReport.validReplays} | ${freshReport.invalidReplays} | Live post-patch Step4-X policy corpus |`,
     `| Postpatch tag presence | \`${postPatchTag}\` | ${postPatchSamples.length} | n/a | n/a | Dedicated Step4-X replay tag ${postPatchSamples.length ? "exists" : "does not exist; fresh Step4-Y corpus is the current post-patch source of truth"} |`,
     "",
     "## Bucket Comparison",
@@ -233,6 +236,45 @@ function buildNextActionMarkdown(rows = []) {
   return `${lines.join("\n")}\n`;
 }
 
+async function readCounterfactualReportForTag(
+  variants = DEFAULT_VARIANTS,
+  tag = "step4w",
+  { avoidTags = [] } = {},
+) {
+  const files = await fs.readdir(AI_EVAL_REPORT_DIR).catch(() => []);
+  const normalizedVariants = variants.map((variant) => variant.toLowerCase()).sort();
+  const candidates = files
+    .filter((file) => file.startsWith("counterfactual-score-") && file.endsWith(".json"))
+    .filter((file) => normalizedVariants.every((variant) => file.toLowerCase().includes(variant)))
+    .sort();
+  let fallback = null;
+  const avoided = new Set(avoidTags.map((entry) => String(entry).toLowerCase()).filter(Boolean));
+  for (const target of candidates) {
+    let report = null;
+    try {
+      report = JSON.parse(await fs.readFile(path.join(AI_EVAL_REPORT_DIR, target), "utf8"));
+    } catch {
+      continue;
+    }
+    const sampleTags = Array.isArray(report.sampleTagFilter)
+      ? report.sampleTagFilter.map((entry) => String(entry).toLowerCase())
+      : [];
+    if (sampleTags.includes(String(tag).toLowerCase())) {
+      return { report, outputPath: path.join(AI_EVAL_REPORT_DIR, target), matchedTag: tag };
+    }
+    if (!fallback && !sampleTags.some((entry) => avoided.has(entry))) {
+      fallback = { report, outputPath: path.join(AI_EVAL_REPORT_DIR, target), matchedTag: null };
+    }
+    if (!fallback) {
+      fallback = { report, outputPath: path.join(AI_EVAL_REPORT_DIR, target), matchedTag: null };
+    }
+  }
+  if (fallback) {
+    return fallback;
+  }
+  throw new Error(`No counterfactual report found for tag ${tag}`);
+}
+
 export async function compareDivergenceCorpora({
   variants = DEFAULT_VARIANTS,
   maxSamples = 5000,
@@ -244,16 +286,10 @@ export async function compareDivergenceCorpora({
   const freshSamples = await readSamplesForTag(variants, freshTag);
   const postPatchSamples = await readSamplesForTag(variants, postPatchTag);
 
-  const historicalScore = await runCounterfactualDivergenceScore({
-    variants,
-    maxSamples,
-    sampleTagFilter: [historicalTag],
+  const historicalScore = await readCounterfactualReportForTag(variants, historicalTag, {
+    avoidTags: [freshTag],
   });
-  const freshScore = await runCounterfactualDivergenceScore({
-    variants,
-    maxSamples,
-    sampleTagFilter: [freshTag],
-  });
+  const freshScore = await readCounterfactualReportForTag(variants, freshTag);
 
   const historicalSummary = summarizeCorpus(historicalSamples);
   const freshSummary = summarizeCorpus(freshSamples);
@@ -293,10 +329,14 @@ export async function compareDivergenceCorpora({
   const markdown = buildMarkdown({
     variants,
     maxSamples,
+    historicalTag,
+    freshTag,
     historicalSamples,
     freshSamples,
     historicalReport: historicalScore.report,
     freshReport: freshScore.report,
+    historicalMatchedTag: historicalScore.matchedTag,
+    freshMatchedTag: freshScore.matchedTag,
     postPatchTag,
     postPatchSamples,
     rows,

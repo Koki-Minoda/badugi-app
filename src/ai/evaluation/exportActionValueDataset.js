@@ -6,7 +6,6 @@ import {
   buildDrawObservationVector,
   DRAW_OBSERVATION_VECTOR_SIZE,
 } from "../../rl/drawObservationSchema.js";
-import { AI_EVAL_DIVERGENCE_REPLAY_DIR, AI_EVAL_REPORT_DIR } from "./runAiEvaluationBatch.js";
 import {
   bucketForReplaySample,
   parseReplaySampleFilename,
@@ -15,6 +14,8 @@ import {
 } from "./counterfactualBuckets.js";
 
 const DEFAULT_VARIANTS = ["D02", "S01", "S02"];
+const AI_EVAL_DIVERGENCE_REPLAY_DIR = path.resolve("reports/ai-eval/divergence-replay-samples");
+const AI_EVAL_REPORT_DIR = path.resolve("reports/ai-eval");
 const DATASET_OUTPUT_PATH = path.resolve("data/ai/action-value/step4y-action-value.jsonl");
 const SPEC_OUTPUT_PATH = path.resolve("docs/ai/MGX_ACTION_VALUE_DATASET_SPEC.md");
 
@@ -95,14 +96,28 @@ async function readCounterfactualReport(variants = DEFAULT_VARIANTS, sampleTag =
       return [...normalizedVariantSet].every((variant) => normalized.includes(variant));
     })
     .sort();
-  const preferred = candidates.find((file) => file.toLowerCase().includes(`-${sampleTag.toLowerCase()}.json`));
-  const fallback = candidates[candidates.length - 1] ?? null;
-  if (!preferred && !fallback) {
+  if (!candidates.length) {
     throw new Error("No counterfactual score report found for action-value export");
   }
-  const target = preferred ?? fallback;
-  const report = JSON.parse(await fs.readFile(path.join(AI_EVAL_REPORT_DIR, target), "utf8"));
-  return { report, reportPath: path.join(AI_EVAL_REPORT_DIR, target) };
+  let fallback = null;
+  for (const target of candidates) {
+    let report = null;
+    try {
+      report = JSON.parse(await fs.readFile(path.join(AI_EVAL_REPORT_DIR, target), "utf8"));
+    } catch {
+      continue;
+    }
+    const reportPath = path.join(AI_EVAL_REPORT_DIR, target);
+    if (!fallback) fallback = { report, reportPath };
+    const sampleTags = Array.isArray(report.sampleTagFilter)
+      ? report.sampleTagFilter.map((entry) => String(entry).toLowerCase())
+      : [];
+    if (sampleTags.includes(String(sampleTag).toLowerCase())) {
+      return { report, reportPath };
+    }
+  }
+  if (fallback) return fallback;
+  throw new Error("No parseable counterfactual score report found for action-value export");
 }
 
 function buildDatasetSpecMarkdown() {

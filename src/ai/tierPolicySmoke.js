@@ -1,4 +1,4 @@
-import tiers from "../config/ai/tiers.json";
+import tiers from "../config/ai/tiers.json" with { type: "json" };
 import { buildAiContext, computeBetDecision, computeDrawDecision } from "./policyRouter.js";
 import {
   compareBadugiEvaluations,

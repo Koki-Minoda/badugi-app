@@ -1,4 +1,4 @@
-import tiers from "../config/ai/tiers.json";
+import tiers from "../config/ai/tiers.json" with { type: "json" };
 import { getStageById } from "../config/tournamentStages.js";
 import { getModelEntry, selectModelForVariant } from "./modelRouter.js";
 

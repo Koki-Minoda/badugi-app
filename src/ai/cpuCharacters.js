@@ -1,4 +1,4 @@
-import cpuCharacters from "../config/ai/cpuCharacters.json";
+import cpuCharacters from "../config/ai/cpuCharacters.json" with { type: "json" };
 import { getModelEntry, selectModelForVariant } from "./modelRouter.js";
 
 const CHARACTERS = cpuCharacters.map((character) =>

@@ -125,6 +125,40 @@ function inferFallbackReasonCategory({
   return "no-rule-match";
 }
 
+function inferBlockedOverrideAction({
+  chosenDecision = null,
+  candidateAction = null,
+  standardAction = null,
+  legalActions = [],
+  snapshot = {},
+  actor = null,
+} = {}) {
+  const chosenType = normalizeDecision(chosenDecision)?.type ?? null;
+  if (!chosenType) return null;
+
+  const validatedCandidate = validateDecisionAgainstLegal({
+    decision: candidateAction,
+    legalActions,
+    snapshot,
+    actor,
+  });
+  if (validatedCandidate.valid && validatedCandidate.decision?.type !== chosenType) {
+    return validatedCandidate.decision.type;
+  }
+
+  const validatedStandard = validateDecisionAgainstLegal({
+    decision: standardAction,
+    legalActions,
+    snapshot,
+    actor,
+  });
+  if (validatedStandard.valid && validatedStandard.decision?.type !== chosenType) {
+    return validatedStandard.decision.type;
+  }
+
+  return null;
+}
+
 export function chooseProAction({
   variantId,
   family = null,
@@ -164,7 +198,14 @@ export function chooseProAction({
       source: "pro-overlay",
       reason: strategyDecision?.reason ?? "obvious-mistake-prevention",
       confidence: clampConfidence(strategyDecision?.confidence, 0.8),
-      blockedAction: null,
+      blockedAction: inferBlockedOverrideAction({
+        chosenDecision: validatedStrategy.decision,
+        candidateAction,
+        standardAction,
+        legalActions,
+        snapshot,
+        actor,
+      }),
       warnings,
     };
   }

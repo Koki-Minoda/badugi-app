@@ -404,6 +404,7 @@ export class DeuceToSevenTripleDrawController extends GameController {
       amount: result.amount,
       metadata: {
         ...(standardAction?.metadata ?? {}),
+        ...(result?.metadata ?? {}),
         strategy: `pro-${this.variantId.toLowerCase()}`,
         tierId: options?.tierConfig?.id ?? "pro",
         decisionSource: result.source,

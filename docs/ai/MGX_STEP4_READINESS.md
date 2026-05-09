@@ -39,6 +39,8 @@ Source evaluations:
 
 Step4-X confirms that the Step4-W stable buckets were safe to touch, but the required full-suite averages do not move yet. `S01` improves slightly in targeted `500-hand` runs, `D02` does not, and the historical counterfactual bucket deltas remain effectively unchanged until a fresh post-patch replay corpus is generated. Iron readiness is still blocked by EV quality on `D02`, `S01`, and `S02`.
 
+Step4-Z applies the last fresh-corpus-backed heuristic (`D02 strongA5 second-pressure`) on fresh seeds `20260509/10/11`. Safety stays perfect and fallback remains `0.0000`, but D02 does not improve. This is the stopping point for manual Pro heuristics.
+
 ## Experimental Iron Readiness
 
 | Condition | Status | Notes |
@@ -61,7 +63,7 @@ Step4-X confirms that the Step4-W stable buckets were safe to touch, but the req
 
 | Priority | Variant | Required Fix |
 | -------- | ------- | ------------ |
-| P0 | D02 | Step4-Y fresh corpus keeps only `D02 strongA5 second-pressure` as a stable replay-backed Standard-better bucket. Any further Pro patch should stay inside that bucket. |
+| P0 | Iron bootstrap | Use [MGX_IRON_BOOTSTRAP_DATASET_CANDIDATE.md](/home/mgx/badugi-app/docs/ai/MGX_IRON_BOOTSTRAP_DATASET_CANDIDATE.md) and the Step4-Y action-value export as the supervised warm-start source. |
 | P0 | S01/S02 | Fresh corpus still leaves S01/S02 buckets noisy or under-sampled. Prefer replay corpus expansion or Iron bootstrap dataset work over another manual heuristic pass. |
 | P1 | D01 | Keep the Step4-O late-defense trim intact; only small smooth `8-low` value refinements remain if D01 is revisited. |
 | P1 | D03 | Move from neutral to positive EV by tuning medium made Badugi bets and cheap-call defense. |

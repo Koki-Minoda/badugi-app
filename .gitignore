@@ -78,3 +78,8 @@ tests/scraping/logs/*
 /playwright/.cache/
 /playwright/.auth/
 .env
+
+# MGX AI evaluation artifacts
+reports/ai-eval/**/*.json
+reports/ai-eval/**/*.jsonl
+data/ai/**/*.jsonl

@@ -5,6 +5,7 @@ import {
   getDefaultEvalOutputPath,
   MAJOR_10_VARIANTS,
   runProVsStandardEvaluationSuite,
+  writeDivergenceReplaySamples,
   writeEvaluationJson,
 } from "./runAiEvaluationBatch.js";
 
@@ -22,6 +23,24 @@ export function parseArgs(argv = []) {
     seed: Number(options.seed ?? 20260506),
     playerCount: Number(options.playerCount ?? 6),
     maxStepsPerHand: Number(options.maxStepsPerHand ?? 300),
+    options: {
+      detailedTrace: String(options.detailedTrace ?? "false").toLowerCase() === "true",
+      captureDivergence: String(options["capture-divergence"] ?? "false").toLowerCase() === "true",
+      maxDivergenceSamples: Number(options["max-divergence-samples"] ?? 400),
+      maxReplaySamples: Number(options["max-replay-samples"] ?? options["max-divergence-samples"] ?? 400),
+      maxDivergenceRecords: Number(options["max-divergence-records"] ?? 600),
+      divergenceSampleTag:
+        String(options["capture-divergence"] ?? "false").toLowerCase() === "true"
+          ? String(options["corpus-tag"] ?? options["divergence-sample-tag"] ?? "step4w")
+          : String(options["corpus-tag"] ?? options["divergence-sample-tag"] ?? ""),
+      divergenceBucketFilter:
+        typeof options["divergence-bucket-filter"] === "string" && options["divergence-bucket-filter"].trim().length
+          ? options["divergence-bucket-filter"].split(",").map((entry) => entry.trim()).filter(Boolean)
+          : [],
+      bucketSampleLimit: Number(options["bucket-sample-limit"] ?? 0),
+      variantSampleLimit: Number(options["variant-sample-limit"] ?? 0),
+      handClassSampleLimit: Number(options["handclass-sample-limit"] ?? 0),
+    },
     variants:
       typeof options.variants === "string" && options.variants.trim().length
         ? options.variants.split(",").map((entry) => entry.trim()).filter(Boolean)
@@ -69,6 +88,7 @@ export async function runEvaluationCli(argv = process.argv.slice(2)) {
   const report = await withMutedConsole(() => runProVsStandardEvaluationSuite(options));
   const outputPath = getDefaultEvalOutputPath(options.seed);
   await writeEvaluationJson(report, outputPath);
+  await writeDivergenceReplaySamples(report, { seed: options.seed });
   return {
     report,
     outputPath,

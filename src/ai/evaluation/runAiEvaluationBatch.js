@@ -15,13 +15,21 @@ import { DeuceToSevenTripleDrawController } from "../../games/draw/DeuceToSevenT
 import { AceToFiveTripleDrawController } from "../../games/draw/AceToFiveTripleDrawController.js";
 import { DeuceToSevenSingleDrawController } from "../../games/draw/DeuceToSevenSingleDrawController.js";
 import { AceToFiveSingleDrawController } from "../../games/draw/AceToFiveSingleDrawController.js";
+import { analyzeActionDivergence } from "./analyzeActionDivergence.js";
+import { bucketForReplaySample, matchesReplayBucketFilter } from "./counterfactualBuckets.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const AI_EVAL_REPORT_DIR = path.resolve(__dirname, "../../../reports/ai-eval");
+export const AI_EVAL_DIVERGENCE_REPLAY_DIR = path.resolve(
+  __dirname,
+  "../../../reports/ai-eval/divergence-replay-samples",
+);
 
 const DEFAULT_HANDS = 40;
 const DEFAULT_PLAYER_COUNT = 6;
 const DEFAULT_MAX_STEPS = 300;
+const DEFAULT_MAX_DIVERGENCE_RECORDS = 600;
+const DEFAULT_MAX_REPLAY_SAMPLES = 400;
 const TIER_MAP = new Map(tiers.map((tier) => [tier.id, Object.freeze(tier)]));
 
 const DRAW_VARIANT_CONTROLLERS = {
@@ -75,6 +83,56 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value ?? null));
 }
 
+function normalizeDivergenceOptions(options = {}) {
+  return {
+    captureDivergence:
+      options.captureDivergence == null ? true : Boolean(options.captureDivergence),
+    maxDivergenceRecords: Math.max(
+      0,
+      toNumber(options.maxDivergenceRecords, DEFAULT_MAX_DIVERGENCE_RECORDS),
+    ),
+    maxReplaySamples: Math.max(
+      0,
+      toNumber(options.maxReplaySamples ?? options.maxDivergenceSamples, DEFAULT_MAX_REPLAY_SAMPLES),
+    ),
+    divergenceSampleTag: String(options.divergenceSampleTag ?? "").trim() || null,
+    divergenceBucketFilter: Array.isArray(options.divergenceBucketFilter)
+      ? options.divergenceBucketFilter
+      : typeof options.divergenceBucketFilter === "string" && options.divergenceBucketFilter.trim().length
+        ? options.divergenceBucketFilter.split(",").map((entry) => entry.trim()).filter(Boolean)
+        : [],
+    bucketSampleLimit: Math.max(0, toNumber(options.bucketSampleLimit ?? 0, 0)),
+    variantSampleLimit: Math.max(0, toNumber(options.variantSampleLimit ?? 0, 0)),
+    handClassSampleLimit: Math.max(0, toNumber(options.handClassSampleLimit ?? 0, 0)),
+  };
+}
+
+function canStoreReplaySample(sample, analysis = {}, divergenceOptions = {}) {
+  if (!divergenceOptions.captureDivergence) return false;
+  if (!matchesReplayBucketFilter(sample, divergenceOptions.divergenceBucketFilter)) return false;
+  if ((analysis.divergenceReplaySamples?.length ?? 0) >= divergenceOptions.maxReplaySamples) return false;
+  if (divergenceOptions.variantSampleLimit > 0) {
+    const variantCount = (analysis.divergenceReplaySamples ?? []).filter(
+      (entry) => entry.variantId === sample.variantId,
+    ).length;
+    if (variantCount >= divergenceOptions.variantSampleLimit) return false;
+  }
+  if (divergenceOptions.handClassSampleLimit > 0) {
+    const handClassCount = (analysis.divergenceReplaySamples ?? []).filter(
+      (entry) => entry.variantId === sample.variantId && entry.handClass === sample.handClass,
+    ).length;
+    if (handClassCount >= divergenceOptions.handClassSampleLimit) return false;
+  }
+  if (divergenceOptions.bucketSampleLimit > 0) {
+    const bucket = bucketForReplaySample(sample);
+    const bucketCount = (analysis.divergenceReplaySamples ?? []).filter(
+      (entry) => entry.variantId === sample.variantId && bucketForReplaySample(entry) === bucket,
+    ).length;
+    if (bucketCount >= divergenceOptions.bucketSampleLimit) return false;
+  }
+  return true;
+}
+
 function buildAlternatingSeatAssignments(playerCount = DEFAULT_PLAYER_COUNT) {
   return Array.from({ length: playerCount }, (_, seat) => ({
     seat,
@@ -117,6 +175,47 @@ function getCurrentBet(snapshot = {}, seatIndex = 0) {
   const currentBet = toNumber(snapshot?.currentBet ?? snapshot?.metadata?.currentBet, 0);
   const playerBet = toNumber(player?.betThisRound ?? player?.betThisStreet ?? player?.bet, 0);
   return Math.max(0, currentBet - playerBet);
+}
+
+function getDrawRoundIndex(snapshot = {}) {
+  return toNumber(snapshot?.drawRoundIndex ?? snapshot?.drawRound, 0);
+}
+
+function getBettingRoundIndex(snapshot = {}) {
+  return toNumber(
+    snapshot?.bettingRoundIndex ??
+      snapshot?.metadata?.bettingRoundIndex ??
+      snapshot?.streetIndex ??
+      snapshot?.roundIndex,
+    0,
+  );
+}
+
+function getPositionLabel(snapshot = {}, seatIndex = 0) {
+  const players = Array.isArray(snapshot?.players) ? snapshot.players : [];
+  const playerCount = players.length;
+  if (playerCount <= 1) return "unknown";
+  const buttonIndex = toNumber(
+    snapshot?.buttonIndex ?? snapshot?.dealerIndex ?? snapshot?.metadata?.buttonIndex,
+    -1,
+  );
+  if (buttonIndex < 0) return "unknown";
+  const relative = (seatIndex - buttonIndex + playerCount) % playerCount;
+  if (relative === 0) return "button";
+  if (relative === 1) return "small-blind";
+  if (relative === 2) return "big-blind";
+  if (relative === playerCount - 1) return "cutoff";
+  return relative <= Math.floor(playerCount / 2) ? "early" : "late";
+}
+
+function getFacingAction(snapshot = {}, seatIndex = 0) {
+  const toCall = getCurrentBet(snapshot, seatIndex);
+  if (toCall <= 0) return "none";
+  const raiseCountThisRound = toNumber(
+    snapshot?.metadata?.raiseCountThisRound ?? snapshot?.raiseCountThisRound,
+    0,
+  );
+  return raiseCountThisRound > 0 ? "raise" : "bet";
 }
 
 function hasLegalAction(legalActions = [], target) {
@@ -182,6 +281,26 @@ function getFinalPot(snapshot = {}) {
     return snapshot.pots.reduce((sum, pot) => sum + Math.max(0, toNumber(pot?.amount ?? pot?.potAmount)), 0);
   }
   return 0;
+}
+
+function getPotSize(snapshot = {}) {
+  if (typeof snapshot?.pot === "number") return Math.max(0, snapshot.pot);
+  if (Array.isArray(snapshot?.pots) && snapshot.pots.length) {
+    return snapshot.pots.reduce((sum, pot) => sum + Math.max(0, toNumber(pot?.amount ?? pot?.potAmount)), 0);
+  }
+  const players = Array.isArray(snapshot?.players) ? snapshot.players : [];
+  const currentBet = toNumber(snapshot?.currentBet ?? snapshot?.metadata?.currentBet, 0);
+  if (!players.length || currentBet <= 0) return 0;
+  return currentBet * players.length;
+}
+
+function classifyBetSizeBucket(toCall = 0, potSize = 0) {
+  const normalizedPot = Math.max(1, potSize);
+  const ratio = toCall / normalizedPot;
+  if (ratio > 1) return "large";
+  if (ratio > 0.5) return "large";
+  if (ratio > 0.2) return "medium";
+  return "small";
 }
 
 function chooseTierConfig(tierId = "standard") {
@@ -388,6 +507,129 @@ function summarizeHandFeatures({ variantId, hand = [] }) {
   };
 }
 
+function analyzeLowTextureForEvaluation(ranks = [], lowType = "27") {
+  const ordered = [...ranks].map((rank) => Number(rank) || 99).sort((left, right) => left - right);
+  const highest = ordered[ordered.length - 1] ?? 99;
+  const secondHighest = ordered[ordered.length - 2] ?? 99;
+  const largestGap = ordered.slice(1).reduce((gap, rank, index) => Math.max(gap, rank - ordered[index]), 0);
+  const smoothHigh = lowType === "A5" ? 7 : 8;
+  const isSmooth =
+    highest <= smoothHigh &&
+    secondHighest <= (lowType === "A5" ? 5 : 6) &&
+    largestGap <= 2;
+  const isRough =
+    highest >= (lowType === "A5" ? 8 : 9) ||
+    secondHighest >= (lowType === "A5" ? 6 : 7) ||
+    largestGap >= 4;
+  return { highest, secondHighest, largestGap, isSmooth, isRough };
+}
+
+function classifyD02HandClass(hand = []) {
+  const evaluation = evaluateLowHand({ cards: hand, lowType: "A5" });
+  const ranks = evaluation?.metadata?.ranks ?? [];
+  const paired = new Set(ranks.map(Number)).size < ranks.length;
+  const highestRank = ranks[0] ?? 99;
+  const category = String(evaluation?.metadata?.category ?? "");
+  const cleanLow = Boolean(
+    evaluation?.metadata?.isLow ??
+      evaluation?.metadata?.qualifiesLow ??
+      ["highCard", "straight", "flush", "straightFlush"].includes(category),
+  );
+  const texture = analyzeLowTextureForEvaluation(ranks, "A5");
+  if (paired || !cleanLow) {
+    if (highestRank >= 10 || paired) return "trashA5";
+    return "weakA5";
+  }
+  if (highestRank <= 6) return "premiumA5";
+  if (highestRank === 7 && texture.isSmooth) return "strongA5";
+  if ((highestRank === 7 && !texture.isRough) || (highestRank === 8 && texture.isSmooth)) {
+    return "mediumA5";
+  }
+  if (highestRank <= 9) return "weakA5";
+  return "trashA5";
+}
+
+function classifyD01HandClass(hand = []) {
+  const evaluation = evaluateLowHand({ cards: hand, lowType: "27" });
+  const ranks = evaluation?.metadata?.ranks ?? [];
+  const paired = new Set(ranks.map(Number)).size < ranks.length;
+  const highestRank = ranks[0] ?? 99;
+  const category = String(evaluation?.metadata?.category ?? "");
+  const texture = analyzeLowTextureForEvaluation(ranks, "27");
+  if (paired || ["pair", "straight", "flush", "straightFlush"].includes(category)) return "trash27TD";
+  if (highestRank <= 7) return "premium27TD";
+  if (highestRank === 8) return texture.isSmooth ? "premium27TD" : "strong27TD";
+  if (highestRank === 9) return "medium27TD";
+  if (highestRank === 10) return "medium27TD";
+  if (highestRank <= 12) return "weak27TD";
+  return "trash27TD";
+}
+
+function classifyS01HandClass(hand = []) {
+  const evaluation = evaluateLowHand({ cards: hand, lowType: "27" });
+  const ranks = evaluation?.metadata?.ranks ?? [];
+  const paired = new Set(ranks.map(Number)).size < ranks.length;
+  const highestRank = ranks[0] ?? 99;
+  const category = String(evaluation?.metadata?.category ?? "");
+  const texture = analyzeLowTextureForEvaluation(ranks, "27");
+  if (paired || ["pair", "straight", "flush", "straightFlush"].includes(category)) return "trashSD27";
+  if (highestRank <= 7) return "premiumSD27";
+  if (highestRank === 8) return texture.isSmooth ? "premiumSD27" : "strongSD27";
+  if (highestRank === 9) {
+    return (texture.secondHighest ?? 99) <= 6 && (texture.largestGap ?? 99) <= 3
+      ? "upperMediumSD27"
+      : "lowerMediumSD27";
+  }
+  if (highestRank === 10) return "lowerMediumSD27";
+  if (highestRank <= 12) return "weakSD27";
+  return "trashSD27";
+}
+
+function classifyS02HandClass(hand = []) {
+  const evaluation = evaluateLowHand({ cards: hand, lowType: "A5" });
+  const ranks = evaluation?.metadata?.ranks ?? [];
+  const paired = new Set(ranks.map(Number)).size < ranks.length;
+  const highestRank = ranks[0] ?? 99;
+  const category = String(evaluation?.metadata?.category ?? "");
+  const cleanLow = Boolean(
+    evaluation?.metadata?.isLow ??
+      evaluation?.metadata?.qualifiesLow ??
+      ["highCard", "straight", "flush", "straightFlush"].includes(category),
+  );
+  const texture = analyzeLowTextureForEvaluation(ranks, "A5");
+  if (paired || !cleanLow) return highestRank >= 10 || paired ? "trashSDA5" : "weakSDA5";
+  if (highestRank <= 6) return "premiumSDA5";
+  if (highestRank === 7) return texture.isRough ? "strongSDA5" : "strongSDA5";
+  if (highestRank === 8) {
+    return (texture.secondHighest ?? 99) <= 4 && (texture.largestGap ?? 99) <= 3
+      ? "upperMediumSDA5"
+      : "lowerMediumSDA5";
+  }
+  if (highestRank <= 10) return "weakSDA5";
+  return "trashSDA5";
+}
+
+function classifyHandClassForVariant(variantId, hand = []) {
+  switch (variantId) {
+    case "D02":
+      return classifyD02HandClass(hand);
+    case "D01":
+      return classifyD01HandClass(hand);
+    case "S01":
+      return classifyS01HandClass(hand);
+    case "S02":
+      return classifyS02HandClass(hand);
+    case "D03": {
+      const evaluation = evaluateBadugi(hand);
+      if (evaluation.count >= 4) return "madeBadugi";
+      if (evaluation.count === 3) return "threeCardBadugi";
+      return "weakBadugi";
+    }
+    default:
+      return "unknown";
+  }
+}
+
 function finalizeHandResult({ beforeSnapshot, snapshot, metrics, variantId, handIndex, trace }) {
   const evCheck = validateHandEvIntegrity({
     beforeState: beforeSnapshot,
@@ -405,6 +647,21 @@ function finalizeHandResult({ beforeSnapshot, snapshot, metrics, variantId, hand
   metrics.finalPot = getFinalPot(snapshot);
   (snapshot.players ?? []).forEach((player, seatIndex) => {
     metrics.seatDeltas[seatIndex] = toNumber(player?.stack, 0) - toNumber(beforeSnapshot?.players?.[seatIndex]?.stack, 0);
+  });
+  metrics.callEvents = (metrics.callEvents ?? []).map((event) => ({
+    ...event,
+    seatDelta: metrics.seatDeltas[event.seatIndex] ?? 0,
+    losingCall: (metrics.seatDeltas[event.seatIndex] ?? 0) < 0,
+  }));
+  metrics.divergenceRecords = (metrics.divergenceRecords ?? []).map((event) => {
+    const seatDelta = metrics.seatDeltas[event.seatIndex] ?? 0;
+    const winner = metrics.winners.includes(event.seatIndex);
+    return {
+      ...event,
+      proEvDelta: event.actualTier === "pro" ? seatDelta : null,
+      standardEvDelta: event.actualTier === "standard" ? seatDelta : null,
+      showdownResult: winner ? "win" : seatDelta > 0 ? "profit" : seatDelta < 0 ? "loss" : "neutral",
+    };
   });
   return {
     status: evCheck.ok ? "PASS" : "FAIL",
@@ -430,6 +687,124 @@ function decideAction({ controller, variantId, state, seatIndex, tierId }) {
   return controller.getCpuAction(state, seatIndex, {
     tierConfig: chooseTierConfig(tierId),
   });
+}
+
+function buildDivergenceRecord({
+  variantId,
+  seed,
+  handIndex,
+  step,
+  snapshot,
+  seatIndex,
+  legalActions,
+  hand,
+  proDecision,
+  standardDecision,
+  actualTier,
+  actualActionType,
+}) {
+  const proActionType = normalizeActionType(proDecision);
+  const standardActionType = normalizeActionType(standardDecision);
+  if (!proActionType || !standardActionType || proActionType === standardActionType) return null;
+  const livePlayers = countLivePlayers(snapshot);
+  return {
+    variantId,
+    seed,
+    handId: handIndex,
+    step,
+    seatIndex,
+    drawRound: getDrawRoundIndex(snapshot),
+    bettingRound: getBettingRoundIndex(snapshot),
+    playerCount: livePlayers,
+    position: getPositionLabel(snapshot, seatIndex),
+    potSize: getPotSize(snapshot),
+    facingAction: getFacingAction(snapshot, seatIndex),
+    handClass: classifyHandClassForVariant(variantId, hand),
+    drawTexture: summarizeHandFeatures({ variantId, hand }),
+    legalActions: legalActions.map((action) => String(action?.type ?? action)),
+    actualTier,
+    actualAction: actualActionType,
+    proAction: proActionType,
+    standardAction: standardActionType,
+    proReason:
+      proDecision?.metadata?.decisionReason ?? proDecision?.reason ?? proDecision?.metadata?.raiseReason ?? null,
+    standardReason:
+      standardDecision?.metadata?.decisionReason ??
+      standardDecision?.reason ??
+      standardDecision?.metadata?.raiseReason ??
+      null,
+    proSource: classifyActionSource(proDecision?.metadata?.decisionSource ?? proDecision?.source, "pro"),
+    standardSource: classifyActionSource(
+      standardDecision?.metadata?.decisionSource ?? standardDecision?.source,
+      "standard",
+    ),
+    proEvDelta: actualTier === "pro" ? 0 : null,
+    standardEvDelta: actualTier === "standard" ? 0 : null,
+    evGap: null,
+    showdownResult: null,
+  };
+}
+
+function buildReplaySample({
+  variantId,
+  seed,
+  handIndex,
+  step,
+  state,
+  snapshot,
+  seatIndex,
+  legalActions,
+  hand,
+  proDecision,
+  standardDecision,
+}) {
+  return {
+    variantId,
+    seed,
+    handId: handIndex,
+    step,
+    actorSeat: seatIndex,
+    drawRound: getDrawRoundIndex(snapshot),
+    bettingRound: getBettingRoundIndex(snapshot),
+    playerCount: countLivePlayers(snapshot),
+    position: getPositionLabel(snapshot, seatIndex),
+    facingAction: getFacingAction(snapshot, seatIndex),
+    handClass: classifyHandClassForVariant(variantId, hand),
+    potSize: getPotSize(snapshot),
+    legalActions: legalActions.map((action) => String(action?.type ?? action)),
+    stacks: (snapshot?.players ?? []).map((player, index) => ({
+      seatIndex: index,
+      stack: toNumber(player?.stack, 0),
+      folded: Boolean(player?.folded || player?.hasFolded),
+      allIn: Boolean(player?.allIn || player?.isAllIn),
+    })),
+    proAction: {
+      type: normalizeActionType(proDecision),
+      amount: toNumber(proDecision?.amount, 0),
+      discardIndexes: Array.isArray(proDecision?.discardIndexes) ? [...proDecision.discardIndexes] : [],
+      source: classifyActionSource(proDecision?.metadata?.decisionSource ?? proDecision?.source, "pro"),
+      reason:
+        proDecision?.metadata?.decisionReason ?? proDecision?.reason ?? proDecision?.metadata?.raiseReason ?? null,
+    },
+    standardAction: {
+      type: normalizeActionType(standardDecision),
+      amount: toNumber(standardDecision?.amount, 0),
+      discardIndexes: Array.isArray(standardDecision?.discardIndexes)
+        ? [...standardDecision.discardIndexes]
+        : [],
+      source: classifyActionSource(
+        standardDecision?.metadata?.decisionSource ?? standardDecision?.source,
+        "standard",
+      ),
+      reason:
+        standardDecision?.metadata?.decisionReason ??
+        standardDecision?.reason ??
+        standardDecision?.metadata?.raiseReason ??
+        null,
+    },
+    snapshot: clone(snapshot),
+    state: clone(state),
+  };
 }
 
 function evaluateDrawMistake({ variantId, phase, actionType, discardIndexes = [], hand = [] }) {
@@ -475,12 +850,36 @@ function buildTierAccumulator() {
     safeFallbackActions: 0,
     drawMistakes: 0,
     recklessRaises: 0,
+    callActions: 0,
+    losingCalls: 0,
+    frequencyDecisions: 0,
+    valueBetActions: 0,
+    checkBackActions: 0,
+    foldFacingBetActions: 0,
+    callFacingBetActions: 0,
+    raiseActions: 0,
+    frequencySourceBreakdown: {
+      BET: 0,
+      RAISE: 0,
+      CALL: 0,
+      CHECK: 0,
+      FOLD: 0,
+    },
+    actionTypeCounts: {
+      CALL: 0,
+      BET: 0,
+      RAISE: 0,
+      FOLD: 0,
+      CHECK: 0,
+      DRAW: 0,
+    },
     fallbackReasonCounts: {
       "no-rule-match": 0,
       "unsafe-action": 0,
       "missing-logic": 0,
       "illegal-block": 0,
     },
+    divergenceCount: 0,
   };
 }
 
@@ -518,12 +917,23 @@ function summarizeTierAccumulator(accumulator, bigBlind = 20, handsRequested = 1
     variance,
     drawMistakeRate: accumulator.drawMistakes / actionCount,
     recklessRaiseRate: accumulator.recklessRaises / actionCount,
+    callRate: accumulator.callActions / actionCount,
+    losingCallRate: accumulator.losingCalls / Math.max(1, accumulator.callActions),
+    frequencyDecisionRate: accumulator.frequencyDecisions / actionCount,
+    valueBetFrequency: accumulator.valueBetActions / actionCount,
+    checkBackFrequency: accumulator.checkBackActions / actionCount,
+    foldFacingBetFrequency: accumulator.foldFacingBetActions / actionCount,
+    callFacingBetFrequency: accumulator.callFacingBetActions / actionCount,
+    raiseFrequency: accumulator.raiseActions / actionCount,
+    divergenceRate: accumulator.divergenceCount / actionCount,
+    frequencySourceBreakdown: accumulator.frequencySourceBreakdown,
     actionCounts: {
       total: accumulator.actions,
       proOverlay: accumulator.proOverlayActions,
       onnx: accumulator.onnxActions,
       standardRule: accumulator.standardRuleActions,
       safeFallback: accumulator.safeFallbackActions,
+      byType: accumulator.actionTypeCounts,
     },
     fallbackReasonCounts: accumulator.fallbackReasonCounts,
   };
@@ -547,8 +957,10 @@ async function playEvaluationHand({
   playerCount,
   seatAssignments,
   maxStepsPerHand,
+  options = {},
 }) {
   return withSeededRandom(seed, async () => {
+    const divergenceOptions = normalizeDivergenceOptions(options);
     const controller = createControllerForVariant(variantId, playerCount);
     if (!controller) {
       return {
@@ -568,10 +980,20 @@ async function playEvaluationHand({
       illegal: false,
       freeze: false,
       analysisEvents: [],
+      callEvents: [],
+      divergenceRecords: [],
+      replaySamples: [],
     };
 
     for (let step = 0; step < maxStepsPerHand; step += 1) {
       const snapshot = state?.snapshot ?? controller.getUiSnapshot(state);
+      if (snapshot && typeof snapshot === "object") {
+        snapshot.metadata = {
+          ...(snapshot.metadata ?? {}),
+          evaluationSeed: seed,
+          evaluationHandIndex: handIndex,
+        };
+      }
       const phase = String(snapshot?.phase ?? snapshot?.street ?? "").toUpperCase();
       const actor = getActorIndex(snapshot);
       if (isEvaluationTerminal(controller, state, snapshot)) {
@@ -616,6 +1038,26 @@ async function playEvaluationHand({
         seatIndex: actor,
         tierId,
       });
+      const proDecision =
+        tierId === "pro"
+          ? decision
+          : decideAction({
+              controller,
+              variantId,
+              state,
+              seatIndex: actor,
+              tierId: "pro",
+            });
+      const standardDecision =
+        tierId === "standard"
+          ? decision
+          : decideAction({
+              controller,
+              variantId,
+              state,
+              seatIndex: actor,
+              tierId: "standard",
+            });
       const actionType = normalizeActionType(decision);
       const source = classifyActionSource(
         decision?.metadata?.decisionSource ?? decision?.source,
@@ -628,6 +1070,7 @@ async function playEvaluationHand({
         currentBetAmount: getCurrentBet(snapshot, actor),
       });
       const tierMetrics = metrics.actionsByTier[tierId];
+      const facingBetNow = getCurrentBet(snapshot, actor) > 0;
       const drawMistake = evaluateDrawMistake({
         variantId,
         phase,
@@ -643,6 +1086,33 @@ async function playEvaluationHand({
         hand,
       });
       tierMetrics.actions += 1;
+      if (tierMetrics.actionTypeCounts[actionType] != null) {
+        tierMetrics.actionTypeCounts[actionType] += 1;
+      }
+      if (actionType === "CALL") {
+        tierMetrics.callActions += 1;
+      }
+      if (actionType === "RAISE") {
+        tierMetrics.raiseActions += 1;
+      }
+      if (actionPayload.metadata.frequencyControlled) {
+        tierMetrics.frequencyDecisions += 1;
+        if (tierMetrics.frequencySourceBreakdown[actionType] != null) {
+          tierMetrics.frequencySourceBreakdown[actionType] += 1;
+        }
+      }
+      if (!facingBetNow && ["BET", "RAISE"].includes(actionType)) {
+        tierMetrics.valueBetActions += 1;
+      }
+      if (!facingBetNow && actionType === "CHECK") {
+        tierMetrics.checkBackActions += 1;
+      }
+      if (facingBetNow && actionType === "FOLD") {
+        tierMetrics.foldFacingBetActions += 1;
+      }
+      if (facingBetNow && actionType === "CALL") {
+        tierMetrics.callFacingBetActions += 1;
+      }
       if (!hasLegalAction(legalActions, actionType)) {
         tierMetrics.illegalActions += 1;
         metrics.illegal = true;
@@ -680,16 +1150,61 @@ async function playEvaluationHand({
       }
       tierMetrics.drawMistakes += drawMistake;
       tierMetrics.recklessRaises += recklessRaise;
+      const divergenceRecord = buildDivergenceRecord({
+        variantId,
+        seed,
+        handIndex,
+        step,
+        snapshot,
+        seatIndex: actor,
+        legalActions,
+        hand,
+        proDecision,
+        standardDecision,
+        actualTier: tierId,
+        actualActionType: actionType,
+      });
+      if (divergenceRecord) {
+        metrics.divergenceRecords.push(divergenceRecord);
+        tierMetrics.divergenceCount += 1;
+        if (
+          divergenceOptions.captureDivergence &&
+          metrics.replaySamples.length < Math.max(120, divergenceOptions.maxReplaySamples)
+        ) {
+          metrics.replaySamples.push(
+            buildReplaySample({
+              variantId,
+              seed,
+              handIndex,
+              step,
+              state,
+              snapshot,
+              seatIndex: actor,
+              legalActions,
+              hand,
+              proDecision,
+              standardDecision,
+            }),
+          );
+        }
+      }
 
       if (
         tierId === "pro" &&
         metrics.analysisEvents.length < 160 &&
-        (source !== "pro-overlay" || drawMistake > 0 || recklessRaise > 0)
+        (options?.detailedTrace || source !== "pro-overlay" || drawMistake > 0 || recklessRaise > 0)
       ) {
+        const livePlayers = countLivePlayers(snapshot);
+        const raiseCountThisRound = toNumber(
+          snapshot?.metadata?.raiseCountThisRound ?? snapshot?.raiseCountThisRound,
+          0,
+        );
         metrics.analysisEvents.push({
           handIndex,
           step,
           phase,
+          seatIndex: actor,
+          tierId,
           drawRoundIndex: toNumber(snapshot?.drawRoundIndex ?? snapshot?.drawRound, 0),
           source,
           actionType,
@@ -700,8 +1215,35 @@ async function playEvaluationHand({
               : null,
           warnings: actionPayload.metadata.warnings ?? [],
           legalActions: legalActions.map((action) => String(action?.type ?? action)),
+          toCall: getCurrentBet(snapshot, actor),
+          potSize: getPotSize(snapshot),
+          betSizeBucket: classifyBetSizeBucket(getCurrentBet(snapshot, actor), getPotSize(snapshot)),
+          livePlayers,
+          headsUp: livePlayers <= 2,
+          multiwayClass: livePlayers >= 4 ? "4way+" : livePlayers === 3 ? "3way" : "heads-up",
+          facingBet: getCurrentBet(snapshot, actor) > 0,
+          facingRaise: getCurrentBet(snapshot, actor) > 0 && raiseCountThisRound > 0,
+          raiseCountThisRound,
           drawMistake,
           recklessRaise,
+          handSummary: summarizeHandFeatures({ variantId, hand }),
+        });
+      }
+
+      if (tierId === "pro" && variantId === "D02" && phase === "BET" && actionType === "CALL" && metrics.callEvents.length < 240) {
+        const toCall = getCurrentBet(snapshot, actor);
+        const potSize = getPotSize(snapshot);
+        metrics.callEvents.push({
+          handIndex,
+          step,
+          seatIndex: actor,
+          drawRoundIndex: toNumber(snapshot?.drawRoundIndex ?? snapshot?.drawRound, 0),
+          toCall,
+          potSize,
+          betSizeBucket: classifyBetSizeBucket(toCall, potSize),
+          handClass: classifyD02HandClass(hand),
+          actionType,
+          source,
           handSummary: summarizeHandFeatures({ variantId, hand }),
         });
       }
@@ -766,6 +1308,7 @@ export async function runAiEvaluationBatch({
   options = {},
 } = {}) {
   const normalizedVariantId = String(variantId ?? "").toUpperCase();
+  const divergenceOptions = normalizeDivergenceOptions(options);
   if (!SUPPORTED_VARIANTS.has(normalizedVariantId)) {
     return {
       variantId: normalizedVariantId,
@@ -781,6 +1324,10 @@ export async function runAiEvaluationBatch({
       summary: {},
       seatAssignments: normalizeSeatAssignments(seatAssignments, playerCount),
       tiers,
+      analysis: {
+        divergenceRecords: [],
+        divergenceReplaySamples: [],
+      },
     };
   }
 
@@ -801,6 +1348,7 @@ export async function runAiEvaluationBatch({
     fallbackSamples: [],
     lossSamples: [],
     patMistakeSamples: [],
+    divergenceReplaySamples: [],
   };
   let handsCompleted = 0;
   let evFailures = 0;
@@ -815,14 +1363,36 @@ export async function runAiEvaluationBatch({
       playerCount,
       seatAssignments: assignment,
       maxStepsPerHand,
+      options,
     });
-    traces.push({
+    const traceEntry = {
       handIndex,
       seed: handSeed,
       seatAssignments: assignment,
       status: result.status,
       reason: result.reason ?? null,
-    });
+    };
+    if (options?.detailedTrace) {
+      traceEntry.metrics = {
+        winners: result.metrics?.winners ?? [],
+        seatDeltas: result.metrics?.seatDeltas ?? {},
+        evFailure: Boolean(result.metrics?.evFailure),
+        illegal: Boolean(result.metrics?.illegal),
+        freeze: Boolean(result.metrics?.freeze),
+        analysisEvents: result.metrics?.analysisEvents ?? [],
+        callEvents: result.metrics?.callEvents ?? [],
+        divergenceRecords: result.metrics?.divergenceRecords ?? [],
+        replaySamples: result.metrics?.replaySamples ?? [],
+      };
+      traceEntry.snapshotSummary = result.snapshot
+        ? {
+            phase: result.snapshot?.phase ?? result.snapshot?.street ?? null,
+            pot: getFinalPot(result.snapshot),
+            livePlayers: countLivePlayers(result.snapshot),
+          }
+        : null;
+    }
+    traces.push(traceEntry);
     const handReachedTerminal = Boolean(result.snapshot);
 
     ["standard", "pro"].forEach((tierId) => {
@@ -837,11 +1407,30 @@ export async function runAiEvaluationBatch({
       tierAccumulators[tierId].safeFallbackActions += handMetrics.safeFallbackActions;
       tierAccumulators[tierId].drawMistakes += handMetrics.drawMistakes;
       tierAccumulators[tierId].recklessRaises += handMetrics.recklessRaises;
+      tierAccumulators[tierId].callActions += handMetrics.callActions ?? 0;
+      tierAccumulators[tierId].frequencyDecisions += handMetrics.frequencyDecisions ?? 0;
+      tierAccumulators[tierId].valueBetActions += handMetrics.valueBetActions ?? 0;
+      tierAccumulators[tierId].checkBackActions += handMetrics.checkBackActions ?? 0;
+      tierAccumulators[tierId].foldFacingBetActions += handMetrics.foldFacingBetActions ?? 0;
+      tierAccumulators[tierId].callFacingBetActions += handMetrics.callFacingBetActions ?? 0;
+      tierAccumulators[tierId].raiseActions += handMetrics.raiseActions ?? 0;
+      Object.entries(handMetrics.actionTypeCounts ?? {}).forEach(([actionType, count]) => {
+        if (tierAccumulators[tierId].actionTypeCounts[actionType] == null) {
+          tierAccumulators[tierId].actionTypeCounts[actionType] = 0;
+        }
+        tierAccumulators[tierId].actionTypeCounts[actionType] += count;
+      });
       Object.entries(handMetrics.fallbackReasonCounts ?? {}).forEach(([category, count]) => {
         if (tierAccumulators[tierId].fallbackReasonCounts[category] == null) {
           tierAccumulators[tierId].fallbackReasonCounts[category] = 0;
         }
         tierAccumulators[tierId].fallbackReasonCounts[category] += count;
+      });
+      Object.entries(handMetrics.frequencySourceBreakdown ?? {}).forEach(([actionType, count]) => {
+        if (tierAccumulators[tierId].frequencySourceBreakdown[actionType] == null) {
+          tierAccumulators[tierId].frequencySourceBreakdown[actionType] = 0;
+        }
+        tierAccumulators[tierId].frequencySourceBreakdown[actionType] += count;
       });
     });
 
@@ -861,6 +1450,40 @@ export async function runAiEvaluationBatch({
           variantId: normalizedVariantId,
           handIndex,
           ...event,
+        });
+      }
+    });
+
+    (result.metrics?.callEvents ?? []).forEach((event) => {
+      if (!analysis.d02CallEvents) {
+        analysis.d02CallEvents = [];
+      }
+      if (analysis.d02CallEvents.length < 240) {
+        analysis.d02CallEvents.push({
+          variantId: normalizedVariantId,
+          ...event,
+        });
+      }
+    });
+
+    (result.metrics?.divergenceRecords ?? []).forEach((event) => {
+      if (!divergenceOptions.captureDivergence) return;
+      if (!analysis.divergenceRecords) {
+        analysis.divergenceRecords = [];
+      }
+      if (analysis.divergenceRecords.length < divergenceOptions.maxDivergenceRecords) {
+        analysis.divergenceRecords.push({
+          variantId: normalizedVariantId,
+          ...event,
+        });
+      }
+    });
+
+    (result.metrics?.replaySamples ?? []).forEach((sample) => {
+      if (canStoreReplaySample(sample, analysis, divergenceOptions)) {
+        analysis.divergenceReplaySamples.push({
+          variantId: normalizedVariantId,
+          ...sample,
         });
       }
     });
@@ -907,6 +1530,11 @@ export async function runAiEvaluationBatch({
           });
         }
       }
+      (result.metrics?.callEvents ?? []).forEach((event) => {
+        if (event.seatDelta < 0) {
+          tierAccumulators.pro.losingCalls += 1;
+        }
+      });
     }
 
     if (result.metrics?.evFailure) {
@@ -1006,6 +1634,7 @@ export async function runProVsStandardEvaluationSuite({
   hands = DEFAULT_HANDS,
   playerCount = DEFAULT_PLAYER_COUNT,
   maxStepsPerHand = DEFAULT_MAX_STEPS,
+  options = {},
 } = {}) {
   const runId = `pro-vs-standard-${seed}`;
   const normalizedVariants = variants.map((variantId) => String(variantId).toUpperCase());
@@ -1017,6 +1646,7 @@ export async function runProVsStandardEvaluationSuite({
       hands,
       playerCount,
       maxStepsPerHand,
+      options,
     });
   }
   return {
@@ -1026,6 +1656,7 @@ export async function runProVsStandardEvaluationSuite({
     hands,
     playerCount,
     variants: results,
+    actionDivergence: analyzeActionDivergence({ variants: results }),
   };
 }
 
@@ -1035,8 +1666,39 @@ export async function writeEvaluationJson(report, outputPath) {
   return outputPath;
 }
 
+export async function writeDivergenceReplaySamples(report, { seed = null } = {}) {
+  await fs.mkdir(AI_EVAL_DIVERGENCE_REPLAY_DIR, { recursive: true });
+  const written = [];
+  for (const [variantId, result] of Object.entries(report?.variants ?? {})) {
+    const samples = result?.analysis?.divergenceReplaySamples ?? [];
+    if (!samples.length) continue;
+    const safeSeed = seed ?? report?.seed ?? "unknown";
+    const divergenceOptions = normalizeDivergenceOptions(result?.summary?.options ?? {});
+    const prefix = divergenceOptions.divergenceSampleTag
+      ? `${divergenceOptions.divergenceSampleTag.toLowerCase()}-`
+      : "";
+    const filePath = path.join(
+      AI_EVAL_DIVERGENCE_REPLAY_DIR,
+      `${prefix}${String(variantId).toLowerCase()}-${safeSeed}.jsonl`,
+    );
+    const content = `${samples.map((sample) => JSON.stringify(sample)).join("\n")}\n`;
+    await fs.writeFile(filePath, content, "utf8");
+    written.push(filePath);
+  }
+  return written;
+}
+
 export function getDefaultEvalOutputPath(seed = 20260506) {
   return path.join(AI_EVAL_REPORT_DIR, `pro-vs-standard-${seed}.json`);
 }
 
 export { MAJOR_10_VARIANTS };
+export {
+  buildActionPayload,
+  createControllerForVariant,
+  decideAction,
+  isEvaluationTerminal,
+  getCurrentBet,
+  normalizeActionType,
+  clone,
+};

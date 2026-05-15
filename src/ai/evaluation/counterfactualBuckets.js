@@ -1,3 +1,5 @@
+import { classifyD01SubBucket } from "./d01SubBucketClassifier.js";
+
 function normalizeBucketFilter(filter = []) {
   if (!Array.isArray(filter)) return [];
   return filter
@@ -25,6 +27,16 @@ export function bucketForReplaySample(sample = {}) {
     if (handClass === "premiumA5") return "premiumA5 value spots";
     if (handClass === "trashA5") return "trashA5 FOLD/CALL verify";
   }
+  if (sample.variantId === "D01") {
+    if (String(sample.sampleTag ?? "").toLowerCase() === "iron-step7") {
+      const subBucket = classifyD01SubBucket(sample);
+      if (subBucket?.subBucketId) return subBucket.subBucketId;
+    }
+    if (handClass === "premium27TD") return "premium27TD late pressure";
+    if (handClass === "strong27TD") return "strong27TD late pressure";
+    if (handClass === "medium27TD") return "medium27TD pressure";
+    if (handClass === "trash27TD") return "trash27TD FOLD/CALL verify";
+  }
   return null;
 }
 
@@ -49,6 +61,13 @@ export function shouldKeepReplaySample(sample = {}) {
     if (bucket.startsWith("strong")) return sample.facingAction !== "none";
     if (bucket.startsWith("medium")) return sample.facingAction === "bet";
     if (bucket.startsWith("premium")) return sample.facingAction === "none" || sample.facingAction === "bet";
+    return sample.playerCount >= 4 && sample.facingAction === "bet";
+  }
+  if (sample.variantId === "D01") {
+    if (bucket.startsWith("premium") || bucket.startsWith("strong")) {
+      return sample.facingAction === "bet" || sample.facingAction === "raise";
+    }
+    if (bucket.startsWith("medium")) return sample.facingAction === "bet";
     return sample.playerCount >= 4 && sample.facingAction === "bet";
   }
   return false;
@@ -87,6 +106,14 @@ export function parseReplaySampleFilename(fileName = "") {
 
 export function replaySampleTagPriority(tag = "") {
   switch (String(tag ?? "").toLowerCase()) {
+    case "iron-step7":
+      return 9;
+    case "iron-step6":
+      return 8;
+    case "iron-step2":
+      return 6;
+    case "iron-step4":
+      return 7;
     case "step4y":
       return 5;
     case "step4x":

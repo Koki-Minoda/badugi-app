@@ -8,6 +8,11 @@ import {
   isEvaluationTerminal,
   normalizeActionType,
 } from "./runAiEvaluationBatch.js";
+import {
+  createActionHash,
+  createReplayStateHash,
+  createReplayTraceHash,
+} from "./replayDeterminismHash.js";
 
 function toNumber(value, fallback = 0) {
   const numeric = Number(value);
@@ -37,7 +42,7 @@ function hasLegalAction(legalActions = [], target) {
   return legalActions.some((action) => String(action?.type ?? action).toUpperCase() === wanted);
 }
 
-function getActorIndex(snapshot = {}) {
+export function getActorIndex(snapshot = {}) {
   const candidates = [
     snapshot?.currentActor,
     snapshot?.actingPlayerIndex,
@@ -76,6 +81,55 @@ function applyForcedAction({ controller, state, actorSeat, action, rolloutPolicy
   return controller.applyAction(state, payload);
 }
 
+export function isReplayActionStillLegal({ controller, state, actorSeat, action } = {}) {
+  const snapshot = state?.snapshot ?? controller?.getUiSnapshot?.(state) ?? {};
+  const restoredLegalActions = controller?.getLegalActions?.(state, actorSeat) ?? [];
+  const normalizedActionType = normalizeActionType(action);
+  const currentBetAmount = getCurrentBet(snapshot, actorSeat);
+  const actorStack = toNumber(snapshot?.players?.[actorSeat]?.stack, 0);
+  const toCall = Math.max(
+    0,
+    ...restoredLegalActions
+      .map((legalAction) => toNumber(legalAction?.toCall))
+      .filter((value) => Number.isFinite(value)),
+  );
+  const amount = toNumber(action?.amount ?? action?.betAmount);
+  let reason = null;
+  if (!hasLegalAction(restoredLegalActions, normalizedActionType)) {
+    reason = "LEGAL_ACTION_MISMATCH";
+  } else if (normalizedActionType === "RAISE" && actorStack <= currentBetAmount + toCall) {
+    reason = "STACK_INSUFFICIENT";
+  } else if (normalizedActionType === "RAISE" && amount > 0 && actorStack < amount) {
+    reason = "STACK_INSUFFICIENT";
+  }
+  return {
+    ok: reason === null,
+    reason,
+    restoredLegalActions,
+    currentBetAmount,
+    actorStack,
+    toCall,
+  };
+}
+
+function classifyReplayError(error = "", context = {}) {
+  const normalized = String(error ?? "").toLowerCase();
+  if (!normalized.length) return "UNKNOWN";
+  if (normalized.includes("illegal-replay-action") || normalized.includes("forced-action-rejected")) {
+    return "INVALID_ACTION";
+  }
+  if (normalized.includes("illegal-rollout-action")) return "LEGAL_ACTION_MISMATCH";
+  if (normalized.includes("raise cap reached")) return "LEGAL_ACTION_MISMATCH";
+  if (normalized.includes("unsupported-variant") || normalized.includes("invalid-sample")) {
+    return "STATE_RESTORE_ERROR";
+  }
+  if (normalized.includes("missing-actor")) return "STATE_RESTORE_ERROR";
+  if (normalized.includes("max-steps-exceeded")) return "MAX_STEPS_EXCEEDED";
+  if (normalized.includes("ev-check-failed")) return "EV_CHECK_FAILED";
+  if (context.terminal === false && normalized.includes("terminal")) return "TERMINAL_MISMATCH";
+  return "UNKNOWN";
+}
+
 export async function replayDivergenceAction({
   sample,
   action,
@@ -85,6 +139,7 @@ export async function replayDivergenceAction({
   maxSteps = 300,
 } = {}) {
   const normalizedActionType = normalizeActionType(action);
+  const actionHash = createActionHash(action);
   if (!sample?.variantId || !sample?.state || !Number.isInteger(sample?.actorSeat)) {
     return {
       ok: false,
@@ -97,6 +152,8 @@ export async function replayDivergenceAction({
       safety: { illegal: true, freeze: false, evFail: false },
       trace: [],
       errors: ["invalid-sample"],
+      invalidReason: "STATE_RESTORE_ERROR",
+      actionHash,
     };
   }
   if (!hasLegalAction(sample.legalActions ?? [], normalizedActionType)) {
@@ -111,6 +168,8 @@ export async function replayDivergenceAction({
       safety: { illegal: true, freeze: false, evFail: false },
       trace: [],
       errors: ["illegal-replay-action"],
+      invalidReason: "INVALID_ACTION",
+      actionHash,
     };
   }
 
@@ -120,6 +179,7 @@ export async function replayDivergenceAction({
   let illegal = false;
   let freeze = false;
   let evFail = false;
+  const invalidDetails = [];
 
   for (const rolloutSeed of rolloutSeeds.slice(0, Math.max(1, rolloutHands * rolloutSeeds.length))) {
     const replay = await withSeededRandom((sample.seed ?? 1) + rolloutSeed, async () => {
@@ -132,7 +192,28 @@ export async function replayDivergenceAction({
       }
       let state = clone(sample.state);
       const beforeSnapshot = clone(state?.snapshot ?? controller.getUiSnapshot(state));
+      const initialStateHash = createReplayStateHash(state);
       const trace = [];
+      const legality = isReplayActionStillLegal({
+        controller,
+        state,
+        actorSeat: sample.actorSeat,
+        action,
+      });
+      if (!legality.ok) {
+        return {
+          ok: false,
+          error: legality.reason?.toLowerCase() ?? "replay-action-no-longer-legal",
+          invalidReason: legality.reason ?? "LEGAL_ACTION_MISMATCH",
+          initialStateHash,
+          actionHash,
+          restoredLegalActions: legality.restoredLegalActions,
+          currentBetAmount: legality.currentBetAmount,
+          actorStack: legality.actorStack,
+          toCall: legality.toCall,
+          legalityValidated: false,
+        };
+      }
       const forcedResult = applyForcedAction({
         controller,
         state,
@@ -144,7 +225,19 @@ export async function replayDivergenceAction({
         ["invalidAction", "error"].includes(String(event?.type ?? "")),
       );
       if (invalidEvent) {
-        return { ok: false, error: invalidEvent?.error ?? invalidEvent?.message ?? "forced-action-rejected" };
+        const error = invalidEvent?.error ?? invalidEvent?.message ?? "forced-action-rejected";
+        return {
+          ok: false,
+          error,
+          invalidReason: classifyReplayError(error),
+          initialStateHash,
+          actionHash,
+          restoredLegalActions: legality.restoredLegalActions,
+          currentBetAmount: legality.currentBetAmount,
+          actorStack: legality.actorStack,
+          toCall: legality.toCall,
+          legalityValidated: false,
+        };
       }
       state = forcedResult.state;
       for (let step = 0; step < maxSteps; step += 1) {
@@ -171,6 +264,11 @@ export async function replayDivergenceAction({
             seatDelta,
             ev: seatDelta,
             trace,
+            initialStateHash,
+            terminalStateHash: createReplayStateHash(state),
+            actionHash,
+            traceHash: createReplayTraceHash(trace),
+            legalityValidated: true,
             safety: {
               illegal: false,
               freeze: false,
@@ -200,12 +298,25 @@ export async function replayDivergenceAction({
         const actionType = normalizeActionType(decision);
         const legalActions = controller.getLegalActions(state, actor);
         if (!hasLegalAction(legalActions, actionType)) {
-          return { ok: false, error: "illegal-rollout-action", trace };
+          const error = "illegal-rollout-action";
+          return {
+            ok: false,
+            error,
+            trace,
+            invalidReason: classifyReplayError(error),
+            initialStateHash,
+            terminalStateHash: createReplayStateHash(state),
+            actionHash,
+            traceHash: createReplayTraceHash(trace),
+            restoredLegalActions: controller.getLegalActions(state, actor),
+            legalityValidated: true,
+          };
         }
         trace.push({
           step,
           actor,
           actionType,
+          stateHash: createReplayStateHash(state),
         });
         const result = controller.applyAction(
           state,
@@ -220,25 +331,63 @@ export async function replayDivergenceAction({
           ["invalidAction", "error"].includes(String(event?.type ?? "")),
         );
         if (rolloutInvalid) {
-          return { ok: false, error: rolloutInvalid?.error ?? rolloutInvalid?.message ?? "rollout-rejected", trace };
+          const error = rolloutInvalid?.error ?? rolloutInvalid?.message ?? "rollout-rejected";
+          return {
+            ok: false,
+            error,
+            trace,
+            invalidReason: classifyReplayError(error),
+            initialStateHash,
+            terminalStateHash: createReplayStateHash(state),
+            actionHash,
+            traceHash: createReplayTraceHash(trace),
+            legalityValidated: true,
+          };
         }
         state = result.state;
       }
-      return { ok: false, error: "max-steps-exceeded", trace, freeze: true };
+      const error = "max-steps-exceeded";
+      return {
+        ok: false,
+        error,
+        trace,
+        freeze: true,
+        invalidReason: classifyReplayError(error),
+        initialStateHash,
+        terminalStateHash: createReplayStateHash(state),
+        actionHash,
+        traceHash: createReplayTraceHash(trace),
+      };
     });
 
     if (!replay.ok) {
       errors.push(replay.error ?? "invalid-replay");
+      invalidDetails.push({
+        rolloutSeed,
+        error: replay.error ?? "invalid-replay",
+        invalidReason: replay.invalidReason ?? classifyReplayError(replay.error),
+        initialStateHash: replay.initialStateHash ?? null,
+        terminalStateHash: replay.terminalStateHash ?? null,
+        actionHash: replay.actionHash ?? actionHash,
+        traceHash: replay.traceHash ?? null,
+        legalityValidated: Boolean(replay.legalityValidated),
+        restoredLegalActions: replay.restoredLegalActions ?? [],
+        currentBetAmount: replay.currentBetAmount ?? null,
+        actorStack: replay.actorStack ?? null,
+        toCall: replay.toCall ?? null,
+        legalActions: sample.legalActions ?? [],
+      });
       illegal = illegal || replay.error?.includes("illegal");
       freeze = freeze || Boolean(replay.freeze);
       continue;
     }
     seatDeltas.push(replay.seatDelta);
     traces.push(replay.trace);
-    evFail = evFail || Boolean(replay.safety?.evFail);
+      evFail = evFail || Boolean(replay.safety?.evFail);
   }
 
   if (!seatDeltas.length) {
+    const invalidReason = invalidDetails[0]?.invalidReason ?? classifyReplayError(errors[0]);
     return {
       ok: false,
       variantId: sample.variantId,
@@ -250,6 +399,10 @@ export async function replayDivergenceAction({
       safety: { illegal, freeze, evFail },
       trace: traces,
       errors,
+      invalidReason,
+      invalidDetails,
+      actionHash,
+      legalityValidated: false,
     };
   }
 
@@ -265,5 +418,10 @@ export async function replayDivergenceAction({
     safety: { illegal, freeze, evFail },
     trace: traces,
     errors,
+    initialStateHash: invalidDetails[0]?.initialStateHash ?? null,
+    terminalStateHash: null,
+    actionHash,
+    traceHash: traces.length ? createReplayTraceHash(traces[0]) : null,
+    legalityValidated: true,
   };
 }

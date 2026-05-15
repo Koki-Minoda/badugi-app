@@ -82,4 +82,7 @@ tests/scraping/logs/*
 # MGX AI evaluation artifacts
 reports/ai-eval/**/*.json
 reports/ai-eval/**/*.jsonl
+reports/ai-iron/**/*.json
+reports/ai-iron/**/*.jsonl
+reports/screenshots/**/*.png
 data/ai/**/*.jsonl

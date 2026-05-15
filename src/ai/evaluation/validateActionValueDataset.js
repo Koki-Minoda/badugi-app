@@ -1,15 +1,45 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-const DATASET_OUTPUT_PATH = path.resolve("data/ai/action-value/step4y-action-value.jsonl");
-const REPORT_OUTPUT_PATH = path.resolve("reports/ai-eval/action-value-validation-step4y.json");
+const DEFAULT_DATASET_OUTPUT_PATH = path.resolve("data/ai/action-value/step4y-action-value.jsonl");
 const AUDIT_OUTPUT_PATH = path.resolve("docs/ai/MGX_ACTION_VALUE_DATASET_AUDIT.md");
 const STEP4Y_REPORT_OUTPUT_PATH = path.resolve("docs/ai/MGX_PRO_STEP4Y_REPORT.md");
 const READINESS_OUTPUT_PATH = path.resolve("docs/ai/MGX_STEP4_READINESS.md");
 const BACKLOG_OUTPUT_PATH = path.resolve("docs/ai/MGX_PRO_IMPROVEMENT_BACKLOG.md");
 
+function parseArgs(argv = []) {
+  const options = {};
+  argv.forEach((argument) => {
+    if (!argument.startsWith("--")) return;
+    const [rawKey, rawValue = "true"] = argument.slice(2).split("=");
+    options[rawKey] = rawValue;
+  });
+  return {
+    datasetPath: path.resolve(String(options.dataset ?? DEFAULT_DATASET_OUTPUT_PATH)),
+    writeArtifacts: String(options["write-artifacts"] ?? "true") !== "false",
+  };
+}
+
 function actionType(action = null) {
   return String(action?.type ?? action?.action ?? action ?? "").toUpperCase();
+}
+
+function normalizeLegacyRow(row = {}) {
+  return {
+    ...row,
+    sourceCorpusTag: row.sourceCorpusTag ?? row.metadata?.sampleTag ?? "",
+    sourceCounterfactualScore:
+      row.sourceCounterfactualScore ?? row.metadata?.counterfactualReportPath ?? "",
+    trainingWeight:
+      row.trainingWeight ??
+      (() => {
+        const confidence =
+          Number(row.candidateActions?.[0]?.confidence ?? row.candidateActions?.[1]?.confidence ?? 0) || 0;
+        const sampleCount =
+          Number(row.candidateActions?.[0]?.sampleCount ?? row.candidateActions?.[1]?.sampleCount ?? 0) || 0;
+        return Number((confidence * Math.min(1, sampleCount / 50)).toFixed(4));
+      })(),
+  };
 }
 
 function isLegalAction(action = null, legalActions = []) {
@@ -40,12 +70,12 @@ async function countFreshCorpusSamples() {
   return { files: step4yFiles.length, total };
 }
 
-function buildAuditMarkdown(result) {
+function buildAuditMarkdown(result, datasetPath) {
   return `# MGX Action-value Dataset Audit
 
 | Check | Status | Notes |
 | ----- | ------ | ----- |
-| Dataset file exists | ${result.total > 0 ? "PASS" : "FAIL"} | \`${DATASET_OUTPUT_PATH}\` |
+| Dataset file exists | ${result.total > 0 ? "PASS" : "FAIL"} | \`${datasetPath}\` |
 | Valid rows present | ${result.valid > 0 ? "PASS" : "FAIL"} | valid rows: \`${result.valid}\` |
 | Invalid rows rejected | ${result.invalid === 0 ? "PASS" : "WARN"} | invalid rows: \`${result.invalid}\` |
 | Training allowed | ${result.trainingAllowed ? "PASS" : "FAIL"} | trainingAllowed=\`${result.trainingAllowed}\` |
@@ -111,7 +141,7 @@ async function patchBacklogFile(validation) {
 }
 
 export async function validateActionValueDataset({
-  datasetPath = DATASET_OUTPUT_PATH,
+  datasetPath = DEFAULT_DATASET_OUTPUT_PATH,
   writeArtifacts = true,
 } = {}) {
   const content = await fs.readFile(datasetPath, "utf8").catch(() => "");
@@ -119,7 +149,7 @@ export async function validateActionValueDataset({
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean)
-    .map((line) => JSON.parse(line));
+    .map((line) => normalizeLegacyRow(JSON.parse(line)));
 
   const invalidReasons = {};
   const seen = new Set();
@@ -141,6 +171,9 @@ export async function validateActionValueDataset({
     if (!Array.isArray(row.candidateActions) || !row.candidateActions.length) fail("candidateActions");
     if (!row.chosenBestAction) fail("chosenBestAction");
     if (!String(row.bucket ?? "").length) fail("bucket");
+    if (!String(row.sourceCorpusTag ?? "").length) fail("sourceCorpusTag");
+    if (!String(row.sourceCounterfactualScore ?? "").length) fail("sourceCounterfactualScore");
+    if (!Number.isFinite(row.trainingWeight) || row.trainingWeight < 0) fail("trainingWeight");
     row.candidateActions?.forEach((candidate) => {
       if (!Number.isFinite(candidate?.estimatedValue)) fail("estimatedValue");
       if (!Number.isFinite(candidate?.confidence)) fail("confidence");
@@ -166,6 +199,7 @@ export async function validateActionValueDataset({
   });
 
   const result = {
+    datasetPath,
     total: rows.length,
     valid,
     invalid: rows.length - valid,
@@ -174,28 +208,33 @@ export async function validateActionValueDataset({
   };
 
   if (writeArtifacts) {
+    const datasetTag = path.basename(datasetPath).replace(/-action-value\.jsonl$/i, "").toLowerCase();
+    const reportOutputPath = path.resolve("reports/ai-eval", `action-value-validation-${datasetTag}.json`);
     const freshCorpus = await countFreshCorpusSamples();
     const counterfactual =
+      (await readJsonIfExists(path.resolve("reports/ai-eval", `counterfactual-score-d02-s01-s02-${datasetTag}.json`))) ??
       (await readJsonIfExists(path.resolve("reports/ai-eval/counterfactual-score-d02-s01-s02-step4y.json"))) ??
       (await readJsonIfExists(path.resolve("reports/ai-eval/counterfactual-score-d02-s01-s02.json"))) ??
       {};
 
-    await fs.mkdir(path.dirname(REPORT_OUTPUT_PATH), { recursive: true });
+    await fs.mkdir(path.dirname(reportOutputPath), { recursive: true });
     await fs.mkdir(path.dirname(AUDIT_OUTPUT_PATH), { recursive: true });
-    await fs.writeFile(REPORT_OUTPUT_PATH, JSON.stringify(result, null, 2), "utf8");
-    await fs.writeFile(AUDIT_OUTPUT_PATH, buildAuditMarkdown(result), "utf8");
-    await fs.writeFile(
-      STEP4Y_REPORT_OUTPUT_PATH,
-      buildStep4YReport({ freshCorpus, counterfactual, validation: result }),
-      "utf8",
-    );
-    await patchReadinessFile(result);
-    await patchBacklogFile(result);
+    await fs.writeFile(reportOutputPath, JSON.stringify(result, null, 2), "utf8");
+    await fs.writeFile(AUDIT_OUTPUT_PATH, buildAuditMarkdown(result, datasetPath), "utf8");
+    if (datasetTag === "step4y") {
+      await fs.writeFile(
+        STEP4Y_REPORT_OUTPUT_PATH,
+        buildStep4YReport({ freshCorpus, counterfactual, validation: result }),
+        "utf8",
+      );
+      await patchReadinessFile(result);
+      await patchBacklogFile(result);
+    }
   }
   return result;
 }
 
 if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
-  const result = await validateActionValueDataset();
+  const result = await validateActionValueDataset(parseArgs(process.argv.slice(2)));
   console.log(JSON.stringify(result, null, 2));
 }

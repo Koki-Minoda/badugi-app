@@ -40,6 +40,14 @@ export function parseArgs(argv = []) {
       bucketSampleLimit: Number(options["bucket-sample-limit"] ?? 0),
       variantSampleLimit: Number(options["variant-sample-limit"] ?? 0),
       handClassSampleLimit: Number(options["handclass-sample-limit"] ?? 0),
+      d01Targeted: String(options["d01-targeted"] ?? "false").toLowerCase() === "true",
+      subbucketQuota: Number(options["subbucket-quota"] ?? 0),
+      latePressureFocus: String(options["late-pressure-focus"] ?? "false").toLowerCase() === "true",
+      targetPlayerCount: Number(options["target-player-count"] ?? 0),
+      targetHandclass:
+        typeof options["target-handclass"] === "string" && options["target-handclass"].trim().length
+          ? options["target-handclass"].trim()
+          : null,
     },
     variants:
       typeof options.variants === "string" && options.variants.trim().length

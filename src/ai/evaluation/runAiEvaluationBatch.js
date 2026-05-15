@@ -56,6 +56,87 @@ const BIG_BLIND_BY_VARIANT = {
   S02: 20,
 };
 
+const DIVERGENCE_PRESET_QUOTAS = {
+  "iron-step5": {
+    excludeBuckets: new Set([
+      "trash27TD FOLD/CALL verify",
+      "trashA5 FOLD/CALL verify",
+      "trashSD27 FOLD/CALL verify",
+      "trashSDA5 FOLD/CALL verify",
+    ]),
+    variantQuotaConfig: {
+      D01: 4500,
+      D02: 3500,
+      S01: 4500,
+      S02: 3500,
+    },
+    bucketQuotaConfig: {
+      S01: {
+        "strongSD27 top-end pressure": 1200,
+        "upperMediumSD27 small-pressure": 400,
+      },
+      D01: {
+        "premium27TD late pressure": 800,
+        "strong27TD late pressure": 1200,
+        "medium27TD pressure": 600,
+      },
+      S02: {
+        "strongSDA5 CALL/FOLD/RAISE": 900,
+        "premiumSDA5 CALL/RAISE": 400,
+      },
+      D02: {
+        "strongA5 second-pressure": 900,
+        "premiumA5 value spots": 300,
+      },
+    },
+  },
+  "iron-step6": {
+    excludeBuckets: new Set([
+      "trash27TD FOLD/CALL verify",
+      "trashA5 FOLD/CALL verify",
+      "trashSD27 FOLD/CALL verify",
+      "trashSDA5 FOLD/CALL verify",
+    ]),
+    variantQuotaConfig: {
+      D01: 8000,
+      D02: 3500,
+      S01: 3500,
+      S02: 3500,
+    },
+    bucketQuotaConfig: {
+      D01: {
+        "premium27TD late pressure": 2000,
+        "strong27TD late pressure": 2000,
+        "medium27TD pressure": 1200,
+      },
+      S01: {
+        "strongSD27 top-end pressure": 900,
+      },
+      S02: {
+        "strongSDA5 CALL/FOLD/RAISE": 900,
+      },
+      D02: {
+        "strongA5 second-pressure": 900,
+      },
+    },
+  },
+  "iron-step7": {
+    excludeBuckets: new Set([
+      "trash27TD FOLD/CALL verify",
+    ]),
+    variantQuotaConfig: {
+      D01: 12000,
+    },
+    bucketQuotaConfig: {
+      D01: {
+        "premium27TD late pressure": 2500,
+        "strong27TD late pressure": 4000,
+        "medium27TD pressure": 2000,
+      },
+    },
+  },
+};
+
 function toNumber(value, fallback = 0) {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : fallback;
@@ -83,7 +164,9 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value ?? null));
 }
 
-function normalizeDivergenceOptions(options = {}) {
+export function normalizeDivergenceOptions(options = {}) {
+  const divergenceSampleTag = String(options.divergenceSampleTag ?? "").trim() || null;
+  const preset = divergenceSampleTag ? DIVERGENCE_PRESET_QUOTAS[divergenceSampleTag.toLowerCase()] : null;
   return {
     captureDivergence:
       options.captureDivergence == null ? true : Boolean(options.captureDivergence),
@@ -95,7 +178,7 @@ function normalizeDivergenceOptions(options = {}) {
       0,
       toNumber(options.maxReplaySamples ?? options.maxDivergenceSamples, DEFAULT_MAX_REPLAY_SAMPLES),
     ),
-    divergenceSampleTag: String(options.divergenceSampleTag ?? "").trim() || null,
+    divergenceSampleTag,
     divergenceBucketFilter: Array.isArray(options.divergenceBucketFilter)
       ? options.divergenceBucketFilter
       : typeof options.divergenceBucketFilter === "string" && options.divergenceBucketFilter.trim().length
@@ -104,13 +187,57 @@ function normalizeDivergenceOptions(options = {}) {
     bucketSampleLimit: Math.max(0, toNumber(options.bucketSampleLimit ?? 0, 0)),
     variantSampleLimit: Math.max(0, toNumber(options.variantSampleLimit ?? 0, 0)),
     handClassSampleLimit: Math.max(0, toNumber(options.handClassSampleLimit ?? 0, 0)),
+    bucketQuotaConfig: preset?.bucketQuotaConfig ?? {},
+    variantQuotaConfig: preset?.variantQuotaConfig ?? {},
+    excludeBuckets: preset?.excludeBuckets ?? new Set(),
+    d01Targeted: Boolean(options.d01Targeted ?? options["d01-targeted"] ?? false),
+    subbucketQuota: Math.max(0, toNumber(options.subbucketQuota ?? options["subbucket-quota"] ?? 0, 0)),
+    latePressureFocus: Boolean(options.latePressureFocus ?? options["late-pressure-focus"] ?? false),
+    targetPlayerCount: Math.max(0, toNumber(options.targetPlayerCount ?? options["target-player-count"] ?? 0, 0)),
+    targetHandclass:
+      typeof options.targetHandclass === "string" && options.targetHandclass.trim().length
+        ? options.targetHandclass.trim()
+        : typeof options["target-handclass"] === "string" && options["target-handclass"].trim().length
+          ? options["target-handclass"].trim()
+          : null,
   };
 }
 
-function canStoreReplaySample(sample, analysis = {}, divergenceOptions = {}) {
+export function canStoreReplaySample(sample, analysis = {}, divergenceOptions = {}) {
+  const bucketSample =
+    divergenceOptions.d01Targeted && sample.variantId === "D01"
+      ? { ...sample, sampleTag: divergenceOptions.divergenceSampleTag }
+      : sample;
   if (!divergenceOptions.captureDivergence) return false;
-  if (!matchesReplayBucketFilter(sample, divergenceOptions.divergenceBucketFilter)) return false;
+  if (!matchesReplayBucketFilter(bucketSample, divergenceOptions.divergenceBucketFilter)) return false;
+  const bucket = bucketForReplaySample(bucketSample);
+  if (bucket && divergenceOptions.excludeBuckets?.has?.(bucket)) return false;
+  if (divergenceOptions.d01Targeted && sample.variantId === "D01") {
+    const allowedHandClass = ["premium27TD", "strong27TD", "medium27TD"].includes(String(sample.handClass ?? ""));
+    if (!allowedHandClass) return false;
+    if (divergenceOptions.latePressureFocus && Number(sample.drawRound ?? 0) < 2) return false;
+    if (divergenceOptions.latePressureFocus && String(sample.facingAction ?? "none") === "none") return false;
+  }
+  if (String(divergenceOptions.divergenceSampleTag ?? "").toLowerCase() === "iron-step17") {
+    if (divergenceOptions.targetPlayerCount > 0 && Number(sample.playerCount ?? 0) !== divergenceOptions.targetPlayerCount) {
+      return false;
+    }
+    if (
+      divergenceOptions.targetHandclass &&
+      String(sample.handClass ?? "").toLowerCase() !== String(divergenceOptions.targetHandclass).toLowerCase()
+    ) {
+      return false;
+    }
+  }
   if ((analysis.divergenceReplaySamples?.length ?? 0) >= divergenceOptions.maxReplaySamples) return false;
+  const presetVariantLimit =
+    divergenceOptions.variantQuotaConfig?.[sample.variantId] ?? 0;
+  if (presetVariantLimit > 0) {
+    const variantCount = (analysis.divergenceReplaySamples ?? []).filter(
+      (entry) => entry.variantId === sample.variantId,
+    ).length;
+    if (variantCount >= presetVariantLimit) return false;
+  }
   if (divergenceOptions.variantSampleLimit > 0) {
     const variantCount = (analysis.divergenceReplaySamples ?? []).filter(
       (entry) => entry.variantId === sample.variantId,
@@ -123,12 +250,39 @@ function canStoreReplaySample(sample, analysis = {}, divergenceOptions = {}) {
     ).length;
     if (handClassCount >= divergenceOptions.handClassSampleLimit) return false;
   }
-  if (divergenceOptions.bucketSampleLimit > 0) {
-    const bucket = bucketForReplaySample(sample);
+  const presetBucketLimit =
+    divergenceOptions.bucketQuotaConfig?.[sample.variantId]?.[bucket] ?? 0;
+  if (presetBucketLimit > 0) {
     const bucketCount = (analysis.divergenceReplaySamples ?? []).filter(
-      (entry) => entry.variantId === sample.variantId && bucketForReplaySample(entry) === bucket,
+      (entry) =>
+        entry.variantId === sample.variantId &&
+        bucketForReplaySample(
+          divergenceOptions.d01Targeted && entry.variantId === "D01"
+            ? { ...entry, sampleTag: divergenceOptions.divergenceSampleTag }
+            : entry,
+        ) === bucket,
+    ).length;
+    if (bucketCount >= presetBucketLimit) return false;
+  }
+  if (divergenceOptions.bucketSampleLimit > 0) {
+    const bucketCount = (analysis.divergenceReplaySamples ?? []).filter(
+      (entry) =>
+        entry.variantId === sample.variantId &&
+        bucketForReplaySample(
+          divergenceOptions.d01Targeted && entry.variantId === "D01"
+            ? { ...entry, sampleTag: divergenceOptions.divergenceSampleTag }
+            : entry,
+        ) === bucket,
     ).length;
     if (bucketCount >= divergenceOptions.bucketSampleLimit) return false;
+  }
+  if (divergenceOptions.subbucketQuota > 0 && sample.variantId === "D01" && bucket) {
+    const subbucketCount = (analysis.divergenceReplaySamples ?? []).filter(
+      (entry) =>
+        entry.variantId === "D01" &&
+        bucketForReplaySample({ ...entry, sampleTag: divergenceOptions.divergenceSampleTag }) === bucket,
+    ).length;
+    if (subbucketCount >= divergenceOptions.subbucketQuota) return false;
   }
   return true;
 }
@@ -1661,8 +1815,36 @@ export async function runProVsStandardEvaluationSuite({
 }
 
 export async function writeEvaluationJson(report, outputPath) {
+  const persistedReport = {
+    ...report,
+    variants: Object.fromEntries(
+      Object.entries(report?.variants ?? {}).map(([variantId, result]) => [
+        variantId,
+        {
+          ...result,
+          analysis: result?.analysis
+            ? {
+                ...result.analysis,
+                divergenceRecords: Array.isArray(result.analysis.divergenceRecords)
+                  ? {
+                      count: result.analysis.divergenceRecords.length,
+                      truncated: true,
+                    }
+                  : result.analysis.divergenceRecords,
+                divergenceReplaySamples: Array.isArray(result.analysis.divergenceReplaySamples)
+                  ? {
+                      count: result.analysis.divergenceReplaySamples.length,
+                      truncated: true,
+                    }
+                  : result.analysis.divergenceReplaySamples,
+              }
+            : result?.analysis,
+        },
+      ]),
+    ),
+  };
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
-  await fs.writeFile(outputPath, JSON.stringify(report, null, 2), "utf8");
+  await fs.writeFile(outputPath, JSON.stringify(persistedReport, null, 2), "utf8");
   return outputPath;
 }
 

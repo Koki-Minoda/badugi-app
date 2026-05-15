@@ -98,7 +98,12 @@ async function readSamplesForTag(variants = [], tag = "step4w") {
       .map((line) => line.trim())
       .filter(Boolean)
       .forEach((line) => {
-        const sample = JSON.parse(line);
+        let sample = null;
+        try {
+          sample = JSON.parse(line);
+        } catch {
+          return;
+        }
         if (shouldKeepReplaySample(sample)) samples.push(sample);
       });
   }

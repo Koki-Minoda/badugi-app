@@ -20,6 +20,11 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Convert JSONL hand logs into RL dataset format.")
     parser.add_argument("--input", required=True, help="Path to exported JSONL from the app.")
     parser.add_argument("--output", required=True, help="Destination JSON file for the dataset.")
+    parser.add_argument(
+        "--require-clean-dataset",
+        action="store_true",
+        help="Fail the export if any transition has validation warnings.",
+    )
     return parser.parse_args()
 
 
@@ -99,6 +104,13 @@ def _observation_from_entry(entry):
     return _empty_vector()
 
 
+def _raw_observation_vector(entry):
+    if not isinstance(entry, dict):
+        return None
+    vector = entry.get("state_vector") or entry.get("stateVector")
+    return vector if isinstance(vector, list) else None
+
+
 def _reward_for(entry):
     if isinstance(entry.get("reward"), (int, float)):
         return float(entry["reward"])
@@ -111,16 +123,31 @@ def _reward_for(entry):
     return 0.0
 
 
-def _transition_warnings(entry, action, legal_actions, observation, next_observation):
+def _transition_warnings(entry, action, legal_actions, observation, next_observation, done, next_entry):
     warnings = []
     if not _variant_id_for(entry):
         warnings.append("missing_variant_id")
+    if _raw_observation_vector(entry) is None:
+        warnings.append("missing_observation")
+    if not done and _raw_observation_vector(next_entry) is None:
+        warnings.append("missing_next_observation")
+    if not action:
+        warnings.append("missing_action")
     if action and action not in legal_actions and action not in {"collect", "showdown"}:
         warnings.append("action_not_in_legal_actions")
     if len(observation) != VECTOR_SIZE:
         warnings.append("observation_shape_mismatch")
     if len(next_observation) != VECTOR_SIZE:
         warnings.append("next_observation_shape_mismatch")
+    raw_observation = _raw_observation_vector(entry)
+    if raw_observation is not None and not all(isinstance(value, (int, float)) for value in raw_observation):
+        warnings.append("raw_observation_non_numeric")
+    if not all(isinstance(value, (int, float)) for value in observation):
+        warnings.append("observation_non_numeric")
+    if not all(isinstance(value, (int, float)) for value in next_observation):
+        warnings.append("next_observation_non_numeric")
+    if not legal_actions:
+        warnings.append("missing_legal_actions")
     draw_info = _draw_info_for(entry)
     if action.startswith("draw_") and isinstance(draw_info, dict):
         discard_indexes = (
@@ -134,6 +161,25 @@ def _transition_warnings(entry, action, legal_actions, observation, next_observa
             if draw_count != len(discard_indexes):
                 warnings.append("draw_count_discard_indexes_mismatch")
     return warnings
+
+
+def validation_summary(transitions):
+    invalid_reasons = {}
+    invalid = 0
+    for transition in transitions:
+        warnings = transition.get("metadata", {}).get("warnings") or []
+        if warnings:
+            invalid += 1
+        for warning in warnings:
+            invalid_reasons[warning] = invalid_reasons.get(warning, 0) + 1
+    total = len(transitions)
+    return {
+        "total": total,
+        "valid": total - invalid,
+        "invalid": invalid,
+        "invalidReasons": invalid_reasons,
+        "trainingAllowed": invalid == 0,
+    }
 
 
 def _iter_action_entries(record):
@@ -167,7 +213,7 @@ def build_transitions(lines):
             legal_actions = _legal_actions_for(entry)
             observation = _observation_from_entry(entry)
             next_observation = _observation_from_entry(next_entry or {})
-            warnings = _transition_warnings(entry, action, legal_actions, observation, next_observation)
+            warnings = _transition_warnings(entry, action, legal_actions, observation, next_observation, done, next_entry)
             transitions.append({
                 "schema_version": SCHEMA_VERSION,
                 "hand_id": hand_id,
@@ -200,6 +246,12 @@ def main():
         raise SystemExit(f"Input file not found: {input_path}")
     with input_path.open("r", encoding="utf-8") as source:
         dataset = build_dataset(source.readlines())
+    summary = validation_summary(dataset)
+    if args.require_clean_dataset and summary["invalid"] > 0:
+        print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
+        raise SystemExit(
+            "Dataset validation failed; refusing export because --require-clean-dataset was set"
+        )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8") as target:
         json.dump(
@@ -208,12 +260,14 @@ def main():
                 "format": "transition",
                 "records": dataset,
                 "count": len(dataset),
+                "validation_summary": summary,
             },
             target,
             ensure_ascii=False,
             indent=2,
         )
     print(f"[RL] Exported {len(dataset)} records -> {output_path}")
+    print(f"[RL] Validation summary: {json.dumps(summary, ensure_ascii=False, sort_keys=True)}")
 
 
 if __name__ == "__main__":

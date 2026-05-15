@@ -82,6 +82,17 @@ describe("MainMenuScreen", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/history");
   });
 
+  it("hides learning dashboard preview when the preview flag is off", () => {
+    render(<MainMenuScreen language="en" coachingPreviewEnabled={false} />);
+    expect(screen.queryByTestId("menu-learning-dashboard-preview")).toBeNull();
+  });
+
+  it("shows learning dashboard preview only when explicitly enabled", () => {
+    render(<MainMenuScreen language="en" coachingPreviewEnabled />);
+    fireEvent.click(screen.getByTestId("menu-learning-dashboard-preview"));
+    expect(mockNavigate).toHaveBeenCalledWith("/learning-dashboard-preview?mgxPreview=coaching");
+  });
+
   it("uses the provided hand history callback inside App flow", () => {
     const handleHistory = vi.fn();
     render(<MainMenuScreen language="ja" onSelectHandHistory={handleHistory} />);

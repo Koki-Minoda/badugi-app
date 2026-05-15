@@ -2,48 +2,50 @@
 title: Current blocker list
 ---
 
-# Current confirmed problems
+# Current Bug Index
 
-> 2026-05-06 update: the old Badugi gameplay regression notes below are retained as historical context.
-> Current progress bugfix status is consolidated in `docs/testing/MGX_GAME_PROGRESS_BUGFIX_LEDGER.md`.
-> The P0/P1 action/all-in/freeze regressions listed here are now covered by `npm run test:game:known-bugs`; remaining open work is tracked in the ledger instead of this stale blocker list.
+Last updated: 2026-05-06
 
-1. **Playwright SB-fold spec needs stronger navigation guards.**  
-   - The `START` button redirect flickers between `/menu` and `/game`, so we run a `Promise.race` between the two and wait for the `Leaderboard` button before proceeding. This keeps the test resilient to layout changes.
-2. **Documented start screen confirmation.**  
-   - `tests/start-screen.png` has been moved into the docs directory along with a brief caption covering the `START` / `Settings` labels and the Google Translate bubble for future reference.
-3. **Runner helper docs should mention Playwright prerequisites.**  
-   - The old `runner.py` no longer prints `sys.executable`. Instead, the README/docs explain that `playwright.sync_api` is required and how to launch the dev server (`npm run dev` or `Playwright webServer` mode).
+This file is now a compact index of **currently open or partially guaranteed** issues. Historical Badugi regressions such as SB fold freeze, draw rollback, single-pot side-pot duplication, next-hand button loss, all-in betting actor selection, stale turn metadata, and draw hand rollback are consolidated in `docs/testing/MGX_GAME_PROGRESS_BUGFIX_LEDGER.md` and are covered by automated regression suites.
 
-## Badugi gameplay regressions (new findings)
+## Active / Residual Items
 
-1. **Bet-round counter still appears stuck after the draw cycle.**  
-   - The console shows `phase: BET` while the on-screen `Phase` tag does not advance (it stays `BET#0` or `BET#1`). Added bet-round instrumentation and now display `Bet Round X/4` in the Table summary to prove the counter is advancing before/after each draw. Observe the new `Bet Round` row when you step through draws to confirm the progress. If it still lags, the log entries we added earlier will show which transition failed.
-2. **Hand rollback / draw-count oscillation after repeated draw actions.**  
-   - Screenshots show `drawRound` resetting to an earlier number when “Draw Selected” completes, and stale hands reappear. Logs around `[DRAW][NEXT_TO_DRAW]` suggest `setPlayers` is getting overwritten by outdated snapshots that clear `hasDrawn`. Added `[TRACE] about to call finishDrawRound`, `[TRACE] finishDrawRound start`, and `[STATE] finishDrawRound RESET snapshot` logging so we can see both the incoming snapshot and the version being applied for the next BET.
-3. **Hand result overlay renders side pot sections even when a single pot exists.**  
-   - The overlay now displays `Pot #2` even though only the main pot took place, and the pot total stays at ¥0. Only render extra pot blocks when `summary.potDetails` contains a positive `potAmount`, and make sure `summary.potAmount` matches the actual stored `pots`.
+| ID | Area | Current Status | Priority | Verification / Source | Next Action |
+|---|---|---|---|---|---|
+| `RL-SAFE-03` | Backend QA | Backend full pytest is not green: 32 passed / 4 failed in non-RL Badugi stats and variants API areas. | P2 | `docs/testing/MGX_RL_RESUME_READINESS_REPORT.md` | Fix stats/variant API failures and rerun full backend pytest. |
+| `MIX-PROG-06` | RL / 8-10Game | PLO/Stud/Razz real hand-history EV / position / showdown gate is not yet built. | P2 | `docs/badugi_rl_and_variant_status.md` | Add real-log EV gate before promoting board/stud RL tiers. |
+| `EV-GUARD-06` | EV integrity | Board/Omaha/Stud terminal evaluator replay against real hand history is still open. | P2 | `docs/testing/MGX_EV_INTEGRITY_REPORT.md` | Replay terminal hands and compare evaluator winner/result. |
+| `EV-GUARD-07` | EV integrity | Strict chip conservation is not yet enabled for every controller because terminal pot echo differs by controller. | P2 | `docs/testing/MGX_EV_INTEGRITY_REPORT.md` | Normalize terminal snapshots and enable strict conservation. |
+| `EV-GUARD-08` | Split pot | Odd-chip policy is deterministic but not yet aligned to every TDA/variant-specific position rule. | P2 | `docs/testing/MGX_EV_INTEGRITY_REPORT.md` | Define per-variant odd-chip policy and add fixtures. |
+| `PV90-16` | Badugi E2E fixture | Full 3-draw E2E still needs a no-all-in deterministic fixture; current progression E2E uses a stabilized draw hook. | P3 | `docs/testing/MGX_GAME_PROGRESS_BUGFIX_LEDGER.md` | Build fixed-stack/no-all-in full draw UI path. |
+| `DRAW-NAT-01` | Draw UI E2E | Natural Draw#1-#3 UI path without test hook is not yet guaranteed. | P3 | `docs/badugi_rl_and_variant_status.md` | Add long UI smoke that reaches all draw rounds naturally. |
+| `HIST-REG-06` | History / Replay | Chinese/OFC history/replay smoke is separate from the 35 betting/draw variants and remains incomplete. | P3 | `docs/badugi_rl_and_variant_status.md` | Add CP1/OFC handId/action/result/replay frame smoke. |
+| `FB-REG-06-MANUAL` | Feedback | Feedback variant separation and replay links are unit-tested; real OpenAI-key manual quality check is still pending. | P3 | `docs/testing/MGX_GAME_PROGRESS_BUGFIX_LEDGER.md` | Run production-like 30+ hand feedback checks per variant. |
+| `CHINESE-03` | Chinese / OFC | CP1 controller smoke passes, but OFC street-by-street and fantasyland are not fully playable/verified. | P3 | `docs/testing/MGX_VARIANT_FAMILY_COVERAGE_REPORT.md` | Implement/verify OFC street progression and fantasyland. |
+| `CAP-NAT-01` | Fixed-limit cap | FLH/FLO8/Stud cap UI E2E passes; CPU-natural cap long-run smoke remains open. | P3 | `docs/badugi_rl_and_variant_status.md` | Add long-run CPU cap arrival and post-cap continuation smoke. |
+| `BG-005` | Mobile manual QA | Playwright mobile landscape coverage exists, but real device touch/orientation/next-hand inventory is incomplete. | P3 | `docs/testing/MGX_GAME_PROGRESS_BUGFIX_LEDGER.md` | Add real-device QA checklist, log capture, and known viewport matrix. |
 
-4. **SB/UTG flow still freezes when SB folds before the first draw.**  
-   - Playwright logs show the SB action ends but the carousel never advances; UTG stays highlighted without action buttons, and the same SB seat reappears in the next round even though `seatOut`/`folded` flags were set. The fallback from `nextAliveFrom` / `findNextAliveAfter` still prefers the same seat, so we need to ensure that a folded CPU is excluded and the next alive seat (BB then UTG) gets the turn.
-5. **Draw hand rollback persists even after cards change.**  
-   - When the hero swaps cards in Draw#2 the next draw round shows the pre-change hand, and the soon-after Showdown logs show `null` references. The new `[E2E-ACTION]` traces capture hand/stack metadata and should reveal which `setPlayers` call reverts the hand after `finishDrawRound`.
+## Quantitative Snapshot
 
-6. **Playwright draw→bet spec still times out after a fold.**  
-   - Trace instrumentation now logs hero’s re-entry into the Draw phase, `finishBetRoundFrom`/`finishDrawRound` explicitly reset `turn`/`betHead` after SB folds, and the new showdown log dumps every seat’s cards before Next-hand, but the third `[TRACE] finishDrawRound start` still arrives too late. Playwright’s `finishPromise` thus never resolves before the 30 s browser timeout.
-7. **Fold-only loop spec never finds the Fold button.**  
-   - The repeated fold scenario still leaves the hero behind the hand-result overlay, so the Fold button never becomes visible and the spec times out after 15 s. `heroActionReadyRef` now primes hero to retake the button once a new hand deals, and the auto-Next-hand timer fires after the overlay appears, but the control still doesn’t show up before the spec gives up because we never leave `handResultVisible` early enough for Playwright to see the Fold button.
-8. **Result overlay should not duplicate Pot #2 when only the main pot exists.**  
-   - Even with a single pot, the overlay renders extra pot blocks. Only show `potDetails` when there are two or more positive pots and otherwise list the winners directly so the UI matches the actual pot structure.
+| Area | Current Estimate | Basis | Main Gap |
+|---|---:|---|---|
+| Game implementation | 84% | 36 variants are reachable/playable enough for one-hand controller tests; Chinese/OFC and special/mixed polish remain. | OFC/fantasyland, Dramaha/split result UX depth. |
+| Progression guarantee | 88% | `test:game:one-hand`, known-bugs, progress, family, E2E progression, EV guard are documented as passing. | Natural long-run UI paths and tournament/manual device cases. |
+| UI/UX completion | 68% | Core table UI improved, mobile landscape exists, Stud up/down and HUD improved. | Friend/manual polish, result clarity for split games, real phone QA. |
+| History/replay | 86% | 35 playable variants have replay smoke; feedback replay links are covered. | Chinese/OFC replay and richer frame semantics. |
+| Feedback pipeline | 70% | Variant selection, 30-hand gate, replay links are tested. | Real OpenAI-key output quality and latency checks. |
+| RL safety | 82% | 96-dim gates, transition validator, EV reward guard, clean-dataset requirement exist. | Backend full pytest and real hand-history EV gates. |
+| RL strength | 58% | 10-Game Beginner/Standard routing and entrypoints exist. | Long-run training/evaluation, Pro/Iron/WorldMaster promotion gates. |
 
-Document any further issues in this list so we can prioritize fixes in Spec order.
+## Historical Archive
 
-## Automation coverage
+The old entries that previously lived here are no longer considered active blockers:
 
-* `e2e/sb-fold-bug.spec.js` already covers main menu→SB fold flow.
-* `e2e/draw-rollback.spec.js` now validates sequential `finishDrawRound` logs and asserts a hero Badugi win after all CPUs bust, so we can catch the rollback/role bugs automatically in the future.
-4. **Showdown pot eligibility excluded the real winner.**  
-   - The showdown summary logs kept selecting CPU seats while the hero’s Badugi never appeared in the winners list, even though Hero was eligible for the main pot.  
-   - Fallback logic now pays attention to **every** active, non-folded seat, logs the seat indexes/pots it evaluates, and the showdown evaluator dumps each player’s hand plus Badugi evaluation so we can confirm hero is included when the winner is determined.
-5. **SB fold did not hand turn to the BB/UTG when someone else still has action.**  
-   - After SB folds the next alive seat should always be BB if alive, otherwise UTG, but the previous `nextAliveFrom` path sometimes fell through and forced the hand to end. Added `findNextAliveAfter` as a fallback so the action carousel continues even without a full re-loop, keeping the postfold flow alive.
+- SB fold did not hand turn to BB/UTG.
+- Stale `metadata.actingPlayerIndex` overrode the real actor.
+- All-in seats were selected for betting action.
+- Draw round / hand rollback after card exchange.
+- Single-pot results rendered fake side-pot blocks.
+- Result overlay blocked next-hand controls.
+
+Regression coverage for these is tracked in `docs/testing/MGX_GAME_PROGRESS_BUGFIX_LEDGER.md`.

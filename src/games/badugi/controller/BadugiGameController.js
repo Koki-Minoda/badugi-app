@@ -1,5 +1,9 @@
 // src/games/badugi/controller/BadugiGameController.js
 import { GameController } from "../../core/GameController.js";
+import {
+  getAuthoritativeActorIndex,
+  normalizeTurnState,
+} from "../../core/turn/actorEligibility.js";
 import LegacyBadugiController from "../BadugiGameController.js";
 import { analyzeBetSnapshot } from "../flow/betRoundUtils.js";
 import {
@@ -10,6 +14,7 @@ import {
   isSeatEligibleForDraw,
 } from "../flow/actionUtils.js";
 import { getWinnersByBadugi } from "../utils/badugiEvaluator.js";
+import { normalizeDrawAction } from "../../core/draw/normalizeDrawAction.js";
 
 const DEFAULT_SEAT_CONFIG = ["HUMAN", "CPU", "CPU", "CPU", "CPU", "CPU"];
 const DEFAULT_BLINDS = [{ sb: 5, bb: 10, ante: 0 }];
@@ -62,6 +67,9 @@ function deriveLegalActions(snapshot, seatIndex) {
   const players = snapshot?.players ?? [];
   const player = players[seatIndex];
   if (!player || isFoldedOrOut(player)) {
+    return [];
+  }
+  if (getAuthoritativeActorIndex(snapshot) !== seatIndex) {
     return [];
   }
 
@@ -264,7 +272,33 @@ export class BadugiGameController extends GameController {
       };
     }
 
-    const drawCount = this._resolveDrawCount(payload, actor);
+    let normalizedDraw;
+    try {
+      normalizedDraw = normalizeDrawAction({
+        action: payload,
+        player: { ...actor, seatIndex },
+        state: {
+          phase: "DRAW",
+          drawRoundIndex: this.legacy.state.drawRound ?? 0,
+          maxDiscardCount: 4,
+        },
+        variant: { handCardCount: 4 },
+      });
+    } catch (error) {
+      const fallbackState = baseState ?? this._buildControllerState({ handIndex, context });
+      return {
+        state: fallbackState,
+        events: [
+          {
+            type: "invalidAction",
+            error: error?.message ?? "invalid draw action",
+            meta: error?.meta ?? null,
+          },
+        ],
+      };
+    }
+    const drawCount = normalizedDraw.drawCount;
+    const beforeHand = Array.isArray(actor.hand) ? [...actor.hand] : [];
     const nextHand = Array.isArray(payload.handAfter)
       ? [...payload.handAfter]
       : Array.isArray(actor.hand)
@@ -297,12 +331,23 @@ export class BadugiGameController extends GameController {
     const replacedCards = Array.isArray(payload.replacedCards)
       ? payload.replacedCards.map((entry) => ({ ...entry }))
       : [];
+    const discarded = normalizedDraw.discardIndexes.map((idx) => beforeHand[idx]);
+    const drawn = replacedCards.map((entry) => entry?.newCard).filter(Boolean);
+    const keptCards = beforeHand.filter((_, idx) => !normalizedDraw.discardIndexes.includes(idx));
     this.legacy.state.metadata = {
       ...(this.legacy.state.metadata ?? {}),
       lastDraw: {
         seatIndex,
         drawCount,
+        discardIndexes: normalizedDraw.discardIndexes,
+        drawIndexes: normalizedDraw.discardIndexes,
+        discarded,
+        drawn,
+        keptCards,
         replacedCards,
+        beforeHand,
+        afterHand: nextHand,
+        warnings: normalizedDraw.drawNormalization?.warnings ?? [],
       },
     };
 
@@ -431,10 +476,14 @@ export class BadugiGameController extends GameController {
 
   _buildControllerState({ handIndex, context, overrideSnapshot = null }) {
     const snapshotSource = overrideSnapshot ?? this.legacy.getSnapshot();
+    const normalizedSnapshot = normalizeTurnState(cloneSnapshot(snapshotSource), {
+      phase: snapshotSource?.phase,
+      allowAllInDraw: true,
+    });
     const builtState = {
       handIndex,
       context,
-      snapshot: cloneSnapshot(snapshotSource),
+      snapshot: normalizedSnapshot,
       lastEvents: [],
     };
     this._lastState = builtState;
@@ -493,8 +542,6 @@ export class BadugiGameController extends GameController {
         ? normalized.nextTurn
         : typeof normalized.turn === "number"
         ? normalized.turn
-        : typeof metadata.actingPlayerIndex === "number"
-        ? metadata.actingPlayerIndex
         : this.legacy.state.turn ?? this.legacy.state.nextTurn ?? 0;
 
     this.legacy.syncExternalState({

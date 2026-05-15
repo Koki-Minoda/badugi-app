@@ -1,4 +1,5 @@
 import { DeuceToSevenTripleDrawController } from "../../draw/DeuceToSevenTripleDrawController.js";
+import { BadugiGameController as CoreBadugiGameController } from "../../badugi/controller/BadugiGameController.js";
 import { AceToFiveTripleDrawController } from "../../draw/AceToFiveTripleDrawController.js";
 import { DeuceToSevenSingleDrawController } from "../../draw/DeuceToSevenSingleDrawController.js";
 import { AceToFiveSingleDrawController } from "../../draw/AceToFiveSingleDrawController.js";
@@ -30,6 +31,7 @@ import Razz27GameDefinition from "../../stud/Razz27GameDefinition.js";
 import RazzdugiGameDefinition from "../../stud/RazzdugiGameDefinition.js";
 import RazzduceyGameDefinition from "../../stud/RazzduceyGameDefinition.js";
 import { assertGameProgressInvariants, getActorIndex } from "../progress/gameProgressInvariants.js";
+import { chooseSafeAction } from "./safeActionPolicy.js";
 
 const DEFAULT_SEATS = ["HUMAN", "CPU", "CPU", "CPU", "CPU", "CPU"];
 const DEFAULT_BLINDS = { sb: 10, bb: 20, ante: 0 };
@@ -68,6 +70,7 @@ const STUD_DEFINITIONS = {
 };
 
 const DRAW_CONTROLLERS = {
+  badugi: CoreBadugiGameController,
   D01: DeuceToSevenTripleDrawController,
   D02: AceToFiveTripleDrawController,
   D04: BadeuceyTripleDrawController,
@@ -140,13 +143,6 @@ export function getProgressHarnessStatus(variantId) {
   if (STUD_DEFINITIONS[normalizedVariantId]) return { supported: true, family: "stud" };
   if (DRAW_CONTROLLERS[normalizedVariantId]) return { supported: true, family: "draw" };
   if (DRAMAHA_VARIANTS.has(normalizedVariantId)) return { supported: true, family: "dramaha" };
-  if (normalizedVariantId === "badugi") {
-    return {
-      supported: false,
-      family: "badugi",
-      reason: "Badugi cash/MTT progression is covered by existing App E2E driver; controller unit fixture requires legacy App lifecycle wiring.",
-    };
-  }
   return { supported: false, family: "unknown", reason: "No progress harness controller mapping yet." };
 }
 
@@ -180,32 +176,63 @@ export function createProgressHarness(variantId, options = {}) {
   }
   if (DRAW_CONTROLLERS[normalizedVariantId]) {
     const Controller = DRAW_CONTROLLERS[normalizedVariantId];
-    const controller = new Controller({
-      tableConfig: {
-        seatConfig: DEFAULT_SEATS,
-        startingStack: options.startingStack ?? 500,
-        structure: { ...DEFAULT_BLINDS, ...(options.blinds ?? {}) },
-      },
-    });
+    const isBadugi = normalizedVariantId === "badugi";
+    const controller = isBadugi
+      ? new Controller({
+          seatConfig: DEFAULT_SEATS,
+          startingStack: options.startingStack ?? 500,
+          blindStructure: [
+            {
+              sb: options.blinds?.sb ?? DEFAULT_BLINDS.sb,
+              bb: options.blinds?.bb ?? DEFAULT_BLINDS.bb,
+              ante: options.blinds?.ante ?? DEFAULT_BLINDS.ante,
+            },
+          ],
+        })
+      : new Controller({
+          tableConfig: {
+            seatConfig: DEFAULT_SEATS,
+            startingStack: options.startingStack ?? 500,
+            structure: { ...DEFAULT_BLINDS, ...(options.blinds ?? {}) },
+          },
+        });
     let state = controller.createInitialState();
-    state = controller.createNewHandState(state, { handId: `${normalizedVariantId}-progress-1` });
+    state = controller.createNewHandState(state, {
+      handId: `${normalizedVariantId}-progress-1`,
+      seatConfig: DEFAULT_SEATS,
+      startingStack: options.startingStack ?? 500,
+      blindStructure: [
+        {
+          sb: options.blinds?.sb ?? DEFAULT_BLINDS.sb,
+          bb: options.blinds?.bb ?? DEFAULT_BLINDS.bb,
+          ante: options.blinds?.ante ?? DEFAULT_BLINDS.ante,
+        },
+      ],
+    });
     return { family: "draw", controller, state };
   }
   const status = getProgressHarnessStatus(variantId);
   throw new Error(`Unsupported progress harness variant=${variantId} reason=${status.reason}`);
 }
 
-function snapshotOf(harness) {
+export function snapshotOf(harness) {
   if (harness.family === "draw") return harness.state?.snapshot ?? harness.controller.getUiSnapshot();
   return harness.controller.getSnapshot();
 }
 
-function isTerminal(snapshot = {}) {
+export function isTerminal(snapshot = {}) {
   const phase = String(snapshot.phase ?? snapshot.street ?? "").toUpperCase();
-  return Boolean(snapshot.lastHandResult || phase === "SHOWDOWN" || phase === "HAND_RESULT");
+  return Boolean(
+    snapshot.lastHandResult ||
+      snapshot.isHandOver ||
+      snapshot.isTerminal ||
+      snapshot.results ||
+      phase === "SHOWDOWN" ||
+      phase === "HAND_RESULT",
+  );
 }
 
-function buildSignature(snapshot = {}) {
+export function buildSignature(snapshot = {}) {
   const players = Array.isArray(snapshot.players) ? snapshot.players : [];
   return JSON.stringify({
     phase: snapshot.phase ?? snapshot.street,
@@ -218,7 +245,7 @@ function buildSignature(snapshot = {}) {
   });
 }
 
-function describeFailure(snapshot, context = {}) {
+export function describeFailure(snapshot, context = {}) {
   const players = Array.isArray(snapshot?.players) ? snapshot.players : [];
   return {
     ...context,
@@ -231,37 +258,60 @@ function describeFailure(snapshot, context = {}) {
   };
 }
 
-function choosePassiveBoardAction(snapshot = {}, actor) {
-  const player = snapshot.players?.[actor];
-  const currentBet = Number(snapshot.currentBet ?? 0);
-  const playerBet = Number(player?.betThisStreet ?? player?.betThisRound ?? player?.bet ?? 0);
-  const toCall = Math.max(0, currentBet - playerBet);
-  return {
-    action: String(snapshot.phase ?? snapshot.street).toUpperCase() === "DRAW" ? "draw" : toCall > 0 ? "call" : "check",
-    amount: toCall,
-    metadata: { discardIndexes: [] },
-  };
+function normalizeActionType(action) {
+  return String(action?.type ?? action?.action ?? action ?? "").toUpperCase();
 }
 
-function stepHarness(harness) {
+export function stepHarness(harness) {
   const snapshot = snapshotOf(harness);
   const actor = getActorIndex(snapshot);
   if (actor == null || isTerminal(snapshot)) return { progressed: false, snapshot };
 
   if (harness.family === "draw") {
     const legalActions = harness.controller.getLegalActions(harness.state, actor);
-    const draw = legalActions.find((action) => action.type === "DRAW");
-    const call = legalActions.find((action) => action.type === "CALL");
-    const check = legalActions.find((action) => action.type === "CHECK");
-    const payload = draw
-      ? { seatIndex: actor, type: "DRAW", discardIndexes: [] }
-      : { seatIndex: actor, type: call ? "CALL" : check ? "CHECK" : "FOLD" };
+    const selected = chooseSafeAction({ snapshot, legalActions, family: harness.family });
+    const selectedType = normalizeActionType(selected);
+    const selectedPayload = {
+      type: selected.action ?? selectedType.toLowerCase(),
+      amount: selected.amount ?? 0,
+      discardIndexes: selected.discardIndexes ?? [],
+      drawIndexes: selected.discardIndexes ?? [],
+      drawCount: Array.isArray(selected.discardIndexes) ? selected.discardIndexes.length : 0,
+    };
+    const payload =
+      selectedType === "DRAW"
+        ? {
+            seatIndex: actor,
+            type: "DRAW",
+            discardIndexes: selected.discardIndexes ?? [],
+            drawIndexes: selected.discardIndexes ?? [],
+            drawCount: selectedPayload.drawCount,
+            payload: { ...selectedPayload, type: "draw" },
+            metadata: { ...selectedPayload, type: "draw" },
+          }
+        : {
+            seatIndex: actor,
+            type: selectedType,
+            amount: selected.amount ?? 0,
+            payload: { ...selectedPayload, type: selected.action ?? selectedType.toLowerCase() },
+            metadata: { ...selectedPayload, type: selected.action ?? selectedType.toLowerCase() },
+          };
     const result = harness.controller.applyAction(harness.state, payload);
+    const invalidEvent = result?.events?.find((event) =>
+      ["error", "invalidAction"].includes(String(event?.type ?? "")),
+    );
+    if (invalidEvent) {
+      throw new Error(
+        `[MGX_PROGRESS_SCENARIO] draw action rejected ${JSON.stringify(
+          describeFailure(snapshot, { reason: invalidEvent, attemptedAction: payload, legalActions }),
+        )}`,
+      );
+    }
     harness.state = result.state;
-    return { progressed: true, snapshot: snapshotOf(harness), legalActions };
+    return { progressed: true, snapshot: snapshotOf(harness), legalActions, selectedAction: payload };
   }
 
-  const passiveAction = choosePassiveBoardAction(snapshot, actor);
+  const passiveAction = chooseSafeAction({ snapshot, legalActions: [], family: harness.family });
   const result = harness.controller.applyPlayerAction({
     seatIndex: actor,
     ...passiveAction,
@@ -291,14 +341,18 @@ export function runProgressScenario({
   let repeated = 0;
   let previousSignature = null;
   const visited = [];
+  const drawRoundIndexes = [];
 
   for (let step = 0; step < maxSteps; step += 1) {
     const snapshot = snapshotOf(harness);
     const context = { variantId, scenarioId, seed, step, snapshot, ...invariantContext };
     assertGameProgressInvariants(snapshot, context);
     visited.push(String(snapshot.phase ?? snapshot.street ?? "UNKNOWN"));
+    if (String(snapshot.phase ?? snapshot.street ?? "").toUpperCase() === "DRAW") {
+      drawRoundIndexes.push(Number(snapshot.drawRoundIndex ?? snapshot.drawRound ?? snapshot.metadata?.drawRoundIndex ?? 0));
+    }
     if (isTerminal(snapshot)) {
-      return { variantId, scenarioId, seed, status: "passed", steps: step, visited };
+      return { variantId, scenarioId, seed, status: "passed", steps: step, visited, drawRoundIndexes };
     }
     const signature = buildSignature(snapshot);
     repeated = signature === previousSignature ? repeated + 1 : 0;

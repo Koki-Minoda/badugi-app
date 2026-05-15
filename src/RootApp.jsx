@@ -1,6 +1,6 @@
 // src/RootApp.jsx
 import React from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import App from "@ui/App";
 import ProfileStats from "./components/ProfileStats";
 import HistoryScreen from "./ui/screens/HistoryScreen.jsx";
@@ -13,13 +13,22 @@ import DealersChoiceScreen from "./ui/screens/DealersChoiceScreen.jsx";
 import MainMenuScreen from "./ui/screens/MainMenuScreen.jsx";
 import FriendMatchSetupScreen from "./ui/screens/FriendMatchSetupScreen.jsx";
 import LeaderboardScreen from "./ui/screens/LeaderboardScreen.jsx";
+import LearningDashboardPreviewScreen from "./ui/screens/LearningDashboardPreviewScreen.jsx";
+import { isCoachingPreviewEnabled } from "./ui/coaching/previewFeatureFlags.js";
 import { GameEngineProvider } from "./ui/engine/GameEngineContext";
 import { MixedGameProvider } from "./ui/mixed/MixedGameContext.jsx";
 
 export default function RootApp() {
+  const location = useLocation();
+  const coachingPreviewEnabled = isCoachingPreviewEnabled({ search: location.search });
   return (
     <MixedGameProvider>
       <Routes>
+        <Route path="/dev/menu" element={<MainMenuScreen coachingPreviewEnabled={coachingPreviewEnabled} />} />
+        <Route
+          path="/dev/learning-dashboard-preview"
+          element={coachingPreviewEnabled ? <LearningDashboardPreviewScreen /> : <Navigate to="/dev/menu" replace />}
+        />
         <Route
           path="/"
           element={
@@ -36,8 +45,11 @@ export default function RootApp() {
             </GameEngineProvider>
           }
         />
-        <Route path="/menu" element={<MainMenuScreen />} />
-        <Route path="/dev/menu" element={<MainMenuScreen />} />
+        <Route path="/menu" element={<MainMenuScreen coachingPreviewEnabled={coachingPreviewEnabled} />} />
+        <Route
+          path="/learning-dashboard-preview"
+          element={coachingPreviewEnabled ? <LearningDashboardPreviewScreen /> : <Navigate to="/menu" replace />}
+        />
         <Route path="/friend-match" element={<FriendMatchSetupScreen />} />
         <Route path="/dev/friend-match" element={<FriendMatchSetupScreen />} />
         <Route path="/mixed" element={<MixedGameScreen />} />

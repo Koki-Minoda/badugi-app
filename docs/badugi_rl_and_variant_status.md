@@ -2279,10 +2279,13 @@ Draw RL test coverage:
   - 2026-05-05 追加対応: Badeucey/Badacey/Hidugi/Archie と Dramaha 6種の結果summaryに componentLabel / sourcePotIndex / eligibleSeatIndexes / oddChipAmount を保持し、Hand Result Overlay と Showdown Toast で `Main Pot · Badugi half` / `Side Pot · Draw half` のようにcomponent pot単位で表示するようにした。Dramahaはodd chipがdraw halfへ行くことをsummary/UIで明示する。
   - 2026-05-06 追加対応: Dramaha / split draw result UIを色分け。High/Board halfはamber、Draw/Low halfはcyan、Badugi halfはvioletで表示し、component pot / eligible seat / odd chipをOverlayで確認できるようにした。`dramaha_hi`の結果Overlay E2Eも追加済み。
   - 残TODO: Chinese/OFCのfantasyland / OFC street-by-street turn順、Chinese/OFCのPlaywright replay smoke、split draw系の公式ルール監査、CPU discard strategy精緻化を追加する。
-- [ ] `GAME-ALL-03` Stud / Razz 実装後、10-Game対象のCPUを Beginner / Standard まで学習・適用する。
+- [x] `GAME-ALL-03` 10-Game対象CPUのBeginner/Standard長期RL導線を、variant別dataset / reward / action mask / short evaluation gate から順に適用できる形へ整理する。
   - 2026-05-05 部分対応: NLH / FLH / PLO / PLO8 / FLO8 / Stud / Stud8 / Razz / Razz27 は、controller の `getCpuAction()` 経由で teacher-supervised CPU policy を実行できるようにした。
   - 2026-05-05 部分対応: App のCPU action経路を draw-lowball 限定から controller-driven game 全体へ広げ、board/stud系がBadugi fallback policyへ落ちないようにした。
-  - 残TODO: これは runtime の Beginner/Standard teacher baseline 適用であり、各ゲーム専用DQN/ONNXの長期学習済みモデル適用ではない。D01/D02/Badugi以外の per-game RL dataset / reward / action mask / evaluation gate は継続。
+  - 2026-05-06 対応: `src/rl/training/ten_game_rl_plan.py` と `npm run ai:plan-10game-rl` を追加し、10-Game固定rotation `B01/B02/B06/ST3/ST1/ST2/D01/B05/D03/S01` について、Beginner/Standardのmodel route、dataset source、reward source、action mask source、short evaluation command、50k long-run entryを機械的に検証できるようにした。
+  - 2026-05-06 対応: `docs/testing/MGX_10GAME_RL_READINESS_REPORT.md` を追加し、20/20 tier routesがOKであること、Badugi Beginnerは現時点では安全上generic fallback扱いであること、Standard以上の昇格には進行/EV/RL safety/human-practice gateが必要であることを明記した。
+  - 2026-05-06 テスト: `PYTHONPATH=src .venv/bin/python -m pytest src/rl/__tests__/test_ten_game_rl_plan.py` で10-Game対象variant、Beginner/Standard route、short/long commandの欠落がないことを固定した。
+  - 残TODO: Badugi Beginner専用DQNは旧モデルをroutingせず、current-env beginner-strength modelを再学習して同じgateを通してから採用する。Pro以上は実hand history EV / human-practice benchmark通過後に別タスクで昇格させる。
 - [ ] `GAME-ALL-04` 強化学習済みCPUを使った cash / tournament のプレイログ収集を行い、30ハンド以上のセッションだけAI feedback対象にする。
 - [ ] `GAME-ALL-05` feedback API は hand history / position / stack / VPIP/PFR / ROI / showdown / all-in / split-pot結果を投げ、良かった点・悪かった点・次回方針・仮説を返す。
   - 2026-05-05 追加調査: feedback上の `B-07` などのシチュエーションIDは、hand history内の `handId` / `actionSeq` / `street` / `seatIndex` / `position` と紐付ければ「どのハンドのどのアクションか」を明示できる。
@@ -3327,3 +3330,171 @@ Draw RL test coverage:
   - 検証: `npx playwright test tests/e2e/stud-street-progression.spec.ts --project=badugi-flow --grep "visible hero buttons only"`: 2 passed。
   - 検証: `npx playwright test tests/e2e/stud-street-progression.spec.ts --project=badugi-flow`: 6 passed。
   - 検証: `npm test -- --run src/games/stud/__tests__/StudSplitGameController.test.js`: 19 passed。
+
+### 21.14 2026-05-06 Priority4 progression-guarantee E2E
+
+目的:
+- 既存E2Eの「表示確認」寄りの弱さを補い、実UI + 実controller経路で、action後にactor/phase/stateが進み、freezeしないことをPlaywrightで保証する。
+- Badugiを代表フローとして、one hand完走、fold-heavy、draw action、all-in、5hand連続、mobile landscapeを同一suiteで検査する。
+
+対応:
+- [x] `tests/e2e/helpers/gameProgressHelper.js` を追加し、E2E driver snapshotから `phase / actor / legalActions / pot / stacks` を読み、safe action、freeze検知、actor/phase invariant、失敗時traceを共通化。
+- [x] `tests/e2e/mgx-game-progression.spec.js` を追加し、`TEST-001` one hand完走、`TEST-002` fold-heavy、`TEST-003` draw identity、`TEST-004` all-in actor、`TEST-005` 5hand連続、`TEST-006` mobile landscapeを実行。
+- [x] `src/ui/App.jsx` / `src/ui/utils/e2eTestDriver.js` にテスト専用 `forceFinishRoundForTest` を追加し、DRAW phaseのHero実ボタン操作を安定して再現できるようにした。
+- [x] `package.json` に `npm run test:e2e:progression` を追加。
+
+確認結果:
+- [x] `npm run test:e2e:progression`: 7 passed。
+- [x] `npm run test:game:known-bugs`: 42 passed。
+- [x] `npm run test:game:progress`: 151 passed / 11 skipped。
+
+残リスク:
+- [ ] `PV90-16` Badugi full 3-draw E2Eは、短スタック/all-inで早期showdownする自然進行と固定期待が競合するため、別途no-all-in固定fixtureへ切り替える。
+- [ ] 今回のdraw E2EはDRAW phase到達をテストhookで安定化している。自然進行だけでDraw#1-#3を通す長時間UIテストは別タスクとして残す。
+
+### 21.15 2026-05-06 RL resume safety gate
+
+目的:
+- 壊れたゲーム進行や不正transitionを強化学習へ混ぜないため、Badugi / D01 / D02 / S01 / S02 のRL再開条件をgate化する。
+- 現行仕様はBadugi/Drawとも96-dim/96-slotで固定し、frontend ONNXを主経路、backend RL APIは比較/fallback用として扱う。
+
+対応:
+- [x] `MGX_RL_RESUME_SAFETY_GATE.md` を追加し、GAME / SCHEMA / ACTION / TRANSITION / REWARD / DATASET / FALLBACK gateを文書化。
+- [x] `MGX_RL_RESUME_READINESS_REPORT.md` を追加し、`TRAINING_ALLOWED / INFERENCE_ALLOWED / DATASET_EXPORT_ALLOWED` の判定を記録。
+- [x] `src/rl/testing/validateRlTransition.js` を追加し、variantId / schemaVersion / 96-slot observation / action / reward / next_observation / legal_actions / draw metadataを検証。
+- [x] `src/rl/testing/rlResumeSafetyGate.test.js` を追加し、Badugi / D01 / D02 / S01 / S02 の1hand progression、schema、dataset corruption、fallback安全性を検査。
+- [x] `export_dataset.py` に `validation_summary` と `--require-clean-dataset` を追加し、dirty datasetをtrainingAllowed=falseにできるようにした。
+- [x] `train_dqn.py` に `--dataset-validation-summary` と `--require-clean-dataset` を追加し、dirty summaryでは学習開始を拒否する。
+- [x] `package.json` に `npm run test:rl:safety` を追加。
+
+判定:
+- [x] `TRAINING_ALLOWED=YES` ただし `validation_summary.invalid=0` のclean dataset、またはexported game logを使わないenv-only学習に限る。
+- [x] `INFERENCE_ALLOWED=YES` frontend ONNX主経路、invalid shape時はsilent fallbackしない。
+- [x] `DATASET_EXPORT_ALLOWED=YES` dirty exportは警告とsummaryを出し、`--require-clean-dataset` で停止できる。
+
+確認結果:
+- [x] `npm run test:rl:safety`: 8 files / 52 tests passed。
+- [x] `npm run test:game:known-bugs`: 42 passed。
+- [x] `npm run test:game:one-hand`: 53 passed。
+- [x] `npm run test:game:progress`: 151 passed / 11 skipped。
+- [x] `npm run test:game:family`: 28 passed。
+- [x] `python3 src/rl/tools/export_dataset.py --help`: pass。
+- [x] `.venv/bin/python src/rl/training/train_dqn.py --help`: pass。
+- [x] `cd backend && .venv/bin/python -m pytest tests/test_badugi_rl.py tests/test_analysis_chatgpt_api.py`: 13 passed。
+- [ ] `cd backend && .venv/bin/python -m pytest`: 32 passed / 4 failed。RL gate外の既存別領域（Badugi stats、variant seed/list/detail/idempotency）で失敗しているため、backend全体QAのgreen化は別タスク。
+
+残リスク:
+- [ ] `RL-SAFE-01` rewardは数値検査まで。Pro/WorldMaster昇格前にhand history EV / winner reward sign / split rewardの意味論監査を追加する。
+- [ ] `RL-SAFE-02` Python exporterは互換性維持のため欠損vectorをzero vector化できる。bulk trainingでは必ず `--require-clean-dataset` を使い、raw log source validationを強化する。
+- [ ] `RL-SAFE-03` backend全体pytestのstats/variant失敗を修正し、backend release gateを再度greenにする。
+
+### 21.16 2026-05-06 Priority5 EV / reward / pot / stack integrity guard
+
+目的:
+- ゲームが止まらず進むだけでなく、terminal result の pot配分、winner eligibility、stack delta、reward が数学的に破綻していないことを検知する。
+- RL再開時に壊れた reward / EV / dataset transition を学習へ混ぜない。
+
+対応:
+- [x] `EV-GUARD-01` `MGX_EV_SOURCE_OF_TRUTH.md` を追加し、chip conservation / pot conservation / side pot / split pot / reward / dataset export reward の正本ルールを文書化。
+- [x] `EV-GUARD-02` `validateHandEvIntegrity()` を追加し、pot/payout不一致、folded winner、inactive winner、side-pot eligibility違反、duplicate payout、reward non-finite、zero-sum違反、reward/stack-delta不一致を検知。
+- [x] `EV-GUARD-03` `runOneHandProgression()` のterminal到達時にEV checkerを接続。全36variantの1hand progressionにEVエラーが混ざらないことを検査。
+- [x] `EV-GUARD-04` `validateRlTransition()` にseat別reward / stackDelta監査を追加し、dirty datasetで `reward_sum_not_zero` や `reward_stack_delta_mismatch` を検知。
+- [x] `EV-GUARD-05` `MGX_EV_INTEGRITY_REPORT.md` を追加し、EV_GUARD_ENABLED / TRAINING_BLOCKED_BY_EV / variant EV coverage / dataset reward auditを記録。
+- [x] `EV-001`〜`EV-015` のVitestを追加。Badugi / 2-7 / A-5 evaluator consistency、split component sum、odd chip deterministicも固定。
+
+判定:
+- [x] `EV_GUARD_ENABLED=YES`
+- [x] `TRAINING_BLOCKED_BY_EV=NO` for current fixtures / one-hand runs
+- [x] dirty reward dataset は `trainingAllowed=false`
+
+確認結果:
+- [x] `npm run test:game:ev`: 1 file / 14 tests passed。
+- [x] `npm run test:game:one-hand`: 2 files / 53 tests passed。全36variantでterminal EV guardがfailしない。
+- [x] `npm run test:game:known-bugs`: 42 tests passed。
+- [x] `npm run test:game:progress`: 9 files / 151 tests passed。
+- [x] `npm run test:rl:safety`: 8 files / 52 tests passed。reward corruption fixtureをブロック。
+- [x] `npm run test:mgx:safety`: known-bugs / one-hand / EV / RL safety gate aggregate passed。
+- [x] `npm run test:e2e:progression`: 7 Playwright progression-guarantee tests passed。
+- [x] `npm run build`: pass。chunk size / browserslist warning は既存警告。
+
+残リスク:
+- [ ] `EV-GUARD-06` Board/Omaha/Studのterminal evaluator replayを、実hand historyベースでwinner/resultと突合する。
+- [ ] `EV-GUARD-07` terminal snapshotのpot echo差分をcontrollerごとに正規化し、全variantでstrict chip conservationを有効化する。
+- [ ] `EV-GUARD-08` split-pot odd chipをTDA/variant別の位置ルールに寄せる。
+
+## 22. 2026-05-06 棚卸結果 / 定量完成度 / 残タスク
+
+目的:
+- `docs/testing/*` / `docs/bugs/current_bugs.md` / source registry / RL台帳を横断し、修正済みタスクと未保証タスクを分離する。
+- 進行保証、UI/UX、履歴、feedback、RL安全性、RL強度を定量的に見直す。
+
+### 22.1 定量完成度サマリ
+
+| 領域 | 完成度 | 根拠 | 主な未保証 |
+|---|---:|---|---|
+| ゲーム実装 | 84% | 36variantが到達可能で、全variant one-hand progressionが通過。 | Chinese/OFC本体、OFC fantasyland、split/Dramaha結果UX。 |
+| 進行保証 | 88% | `test:game:known-bugs` / `test:game:one-hand` / `test:game:progress` / `test:game:family` / `test:e2e:progression` / EV guardが通過記録あり。 | natural full draw UI、MTT長時間・実機スマホ、CPU自然cap。 |
+| Pot/EV/Reward整合 | 82% | EV checker、reward guard、dirty dataset blockを追加済み。 | Board/Omaha/Studの実hand history evaluator replay、strict chip conservation、variant別odd chip。 |
+| UI/UX | 68% | PC table、mobile landscape、Stud up/down card、HUD、game selectionは改善済み。 | split結果の色分け深度、OFC UI、実スマホ手動QA、Friend match polish。 |
+| Hand history / Replay | 86% | 35playable variantsでhandId/action/result/replay frame smoke。 | Chinese/OFC history/replay smoke、より詳細なframe semantics。 |
+| Feedback | 70% | variant選択、30hand gate、replay link、payload分離はunit/UIで確認済み。 | 実OpenAIキーでの出力品質、レイテンシ、variant別実ログ評価。 |
+| RL安全性 | 82% | 96-dim/96-slot gate、transition validator、EV reward guard、clean dataset requirementあり。 | backend全体pytest green化、real log EV gate、raw log validation強化。 |
+| RL強度 | 58% | 10-Game Beginner/Standard routingと短期導線は整備済み。 | 各variant長期学習、human/practice benchmark、Pro/Iron/WorldMaster昇格。 |
+| Backend release QA | 78% | RL/API部分の主要テストは通過。 | `cd backend && .venv/bin/python -m pytest` が32 passed / 4 failed。 |
+
+### 22.2 RL進捗棚卸
+
+| Family / Variant | Beginner | Standard | Pro以上 | Safety Gate | 現状評価 |
+|---|---|---|---|---|---|
+| Badugi | 導入済み | Standard v3系まで導入済み | Iron/WorldMaster未完 | 96-dim / EV / transition gate OK | 公開可能水準に近いが、final street value bet / human benchmark継続。 |
+| 2-7 Draw `D01/S01` | 導入済み | 導入済み | 未完 | Draw 96-slot gate OK | Beginner/Standardは遊べる水準。Pro以上は別タスク。 |
+| A-5 Draw `D02/S02` | 導入済み | 導入済み | 未完 | Draw 96-slot gate OK | 2-7同等の安全導線。強さ保証は短期評価止まり。 |
+| NLH / FLH | 導入済み | 導入済み | 未完 | Board RL plan/gateあり | Synthetic gate中心。thin valueと実ログEVが次課題。 |
+| PLO / PLO8 | 導入済み | 導入済み | 未完 | Board RL plan/gateあり | multiway isolation / scoop-no-low / real EV gateが不足。 |
+| Stud / Stud8 / Razz | 導入済み | 導入済み | 未完 | playable/progression gateあり | UI進行は改善済み。bring-in/complete実ログEV監査が必要。 |
+| Split draw / Dramaha | 未導入 | 未導入 | 未導入 | 進行・結果UI中心 | RL前にcomponent pot/result UXと履歴品質が必要。 |
+| Chinese / OFC | 未導入 | 未導入 | 未導入 | CP1 smokeのみ | OFC本体/fantasyland未完のためRL対象外。 |
+
+判定:
+- 10-Game Beginner/Standard の「route / dataset / reward / action mask導線」は整備済み。
+- ただし「全10Gameで長期RL学習済み・人間相手に安定して強い」とはまだ言えない。
+- Pro以上の昇格前に、`MIX-PROG-06` と `EV-GUARD-06/07/08` を優先する。
+
+### 22.3 現在の残タスク一覧
+
+| ID | 内容 | 優先度 | 状態 |
+|---|---|---|---|
+| `RL-SAFE-03` | backend全体pytestのBadugi stats / variants API失敗を修正 | P2 | Open |
+| `MIX-PROG-06` | PLO/Stud/Razzの実hand history EV / position / showdown gate | P2 | Open |
+| `EV-GUARD-06` | Board/Omaha/Stud terminal evaluator replayを実履歴と突合 | P2 | Open |
+| `EV-GUARD-07` | 全variant strict chip conservationをcontroller別に有効化 | P2 | Open |
+| `EV-GUARD-08` | split-pot odd chipをTDA/variant別ルールへ寄せる | P2 | Open |
+| `PV90-16` | Badugi full 3-draw E2Eをno-all-in固定fixtureへ変更 | P3 | Open |
+| `DRAW-NAT-01` | test hookなし自然進行だけでDraw#1-#3 long UI smoke | P3 | Open |
+| `HIST-REG-06` | Chinese/OFC history/replay smoke | P3 | Open |
+| `FB-REG-06-MANUAL` | 実OpenAIキーでvariant別30hand feedback品質確認 | P3 | Open |
+| `CHINESE-03` | OFC street-by-street / fantasyland / foul scoring playable化 | P3 | Open |
+| `CAP-NAT-01` | CPU自然発生fixed-limit cap long-run smoke | P3 | Open |
+| `BG-005` | 実スマホChrome/Safari横画面の手動QA・ログ取得 | P3 | Open |
+| `GAME-RL-PRO-01` | 10Game Pro/Iron向け長期RL学習・human benchmark | P3 | Not started |
+
+### 22.4 優先度高く対応するべきTop 10
+
+| Rank | Task | 理由 | 対応方針 | 見積 |
+|---:|---|---|---|---|
+| 1 | `RL-SAFE-03` backend full pytest green化 | release gateが赤いままでは品質判断が曖昧。 | Badugi statsとvariant API seed/list/detail/idempotencyの4失敗を修正し、backend全体pytestを再実行。 | 0.5日 |
+| 2 | `MIX-PROG-06` real hand history EV gate | 10Game RLの昇格判断に直結。 | PLO/Stud/Razzのposition/showdown/EVを履歴から集計し、promotion gateに接続。 | 1日 |
+| 3 | `EV-GUARD-06/07/08` EV厳格化 | 壊れたrewardを学習しないための最後の安全柵。 | evaluator replay、strict conservation、odd-chip fixtureを追加。 | 1.5日 |
+| 4 | `PV90-16` + `DRAW-NAT-01` natural Badugi draw E2E | test hook依存を減らし、手動で起きるdraw不具合を拾う。 | 固定スタック/no-all-inの3draw UI scenarioを追加。 | 0.5-1日 |
+| 5 | `HIST-REG-06` Chinese/OFC replay | feedbackとバグ調査の土台を36variantへ揃える。 | CP1/OFCのhandId/action/result/replay frame smokeを追加。 | 0.5日 |
+| 6 | `FB-REG-06-MANUAL` feedback実キー確認 | unit上は正しくても実出力品質が未保証。 | 30hand以上のvariant別payloadでOpenAI応答、遅延、replay link妥当性を確認。 | 0.5日 |
+| 7 | `CHINESE-03` OFC本体 | 36番目の正式playableとして残る大きな穴。 | street-by-street、fantasyland、foul scoring、result UIを段階導入。 | 2日 |
+| 8 | `CAP-NAT-01` CPU自然cap smoke | fixtureではなく実CPU挙動でcap後停止しない保証が必要。 | FLH/FLO8/Studの長時間UI smokeでcap到達とpost-cap進行を検査。 | 0.5日 |
+| 9 | `BG-005` 実スマホQA | PlaywrightだけではSafari/Chrome実機の操作感を保証できない。 | device matrix、ログ採取、横画面/縦警告/next-hand/touchを手順化。 | 0.5日 |
+| 10 | `GAME-RL-PRO-01` 10Game長期RL batch | Beginner/StandardからPro以上へ進める本筋。 | 上記gate通過後、20k checkpoint -> 50k以上、human/practice benchmarkで昇格。 | 2-3日 |
+
+### 22.5 棚卸で更新した記録
+
+- `docs/bugs/current_bugs.md`: 古いBadugi回帰メモを履歴扱いにし、現在の未解決/未保証タスクへ差し替え。
+- `docs/testing/MGX_GAME_PROGRESS_BUGFIX_LEDGER.md`: fixed済みの `BUG-55` / `MIX-PROG-05` / `CAP-REG-05` を優先Openから外し、現行Top riskへ更新。
+- 本節: 完成度、RL進捗、残タスク、Top 10を追記。

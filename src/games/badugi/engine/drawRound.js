@@ -2,6 +2,7 @@
 import { findNextActorSeatForPhase } from "../flow/nextActorUtils.js";
 import { debugLog } from "../../../utils/debugLog";
 import { assertNoDuplicateCards } from "../utils/deck.js";
+import { normalizeDiscardIndexes } from "../../core/draw/normalizeDrawAction.js";
 
 /**
  * Deck-managed DRAW round controller.
@@ -34,18 +35,33 @@ export function runDrawRound({
     return;
   }
 
-  let drawCount = actor.drawRequest ?? 0;
-  if (turn !== 0 && drawCount === 0) {
-    drawCount = decideCpuDraw(actor.hand);
+  let requestedDrawCount = actor.drawRequest ?? actor.drawCount ?? 0;
+  if (turn !== 0 && requestedDrawCount === 0) {
+    requestedDrawCount = decideCpuDraw(actor.hand);
   }
 
   const newHand = [...actor.hand];
   const stackBefore = actor.stack;
   const betBefore = actor.betThisRound;
   const originalHand = [...actor.hand];
-  const discardIndexes = pickDiscardIndexes(actor.hand, drawCount);
+  const requestedDiscardIndexes = Array.isArray(actor.discardIndexes)
+    ? actor.discardIndexes
+    : Array.isArray(actor.drawIndexes)
+      ? actor.drawIndexes
+      : requestedDrawCount > 0
+        ? pickDiscardIndexes(actor.hand, requestedDrawCount)
+        : [];
+  const normalizedDraw = normalizeDiscardIndexes({
+    hand: actor.hand,
+    discardIndexes: requestedDiscardIndexes,
+    drawCount: requestedDrawCount,
+    maxDiscardCount: 4,
+  });
+  const discardIndexes = normalizedDraw.discardIndexes;
+  const drawCount = normalizedDraw.drawCount;
   const activeCards = collectActiveCards(players);
   const drawnCards = deckManager.draw(drawCount, { activeCards });
+  const keptCards = originalHand.filter((_, idx) => !discardIndexes.includes(idx));
 
   const replacedCards = discardIndexes.map((idx, j) => {
     const incoming = drawnCards?.[j];
@@ -67,6 +83,7 @@ export function runDrawRound({
           hasDrawn: true,
           hasActedThisRound: true,
           lastDrawCount: drawCount,
+          lastDiscardIndexes: discardIndexes,
           lastAction: drawCount === 0 ? "Pat" : `DRAW(${drawCount})`,
         }
       : p
@@ -88,8 +105,15 @@ export function runDrawRound({
   }
   advanceAfterAction(updatedPlayers, turn, {
     drawCount,
+    discardIndexes,
+    discarded: discardIndexes.map((idx) => originalHand[idx]),
+    drawn: drawnCards,
+    keptCards,
     replacedCards,
+    beforeHand: originalHand,
+    afterHand: newHand,
     newHand,
+    warnings: normalizedDraw.warnings,
   });
 
   if (typeof onActionLog === "function") {
@@ -105,9 +129,17 @@ export function runDrawRound({
       metadata: {
         drawInfo: {
           drawCount,
+          discardIndexes,
+          drawIndexes: discardIndexes,
+          discarded: discardIndexes.map((idx) => originalHand[idx]),
+          drawn: drawnCards,
+          keptCards,
           replacedCards,
           before: originalHand,
           after: newHand,
+          beforeHand: originalHand,
+          afterHand: newHand,
+          warnings: normalizedDraw.warnings,
         },
       },
     });

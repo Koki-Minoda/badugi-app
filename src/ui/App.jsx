@@ -138,6 +138,7 @@ import {
   computeBetDecision,
   computeDrawDecision,
 } from "../ai/policyRouter.js";
+import { chooseProAction } from "../ai/pro/proDecisionOverlay.js";
 import { useGameEngine } from "./engine/useGameEngine";
 import { mergeEngineSnapshot } from "./utils/engineSnapshotUtils.js";
 import { loadActiveTournamentSession } from "./tournament/tournamentManager";
@@ -177,6 +178,7 @@ import {
   getHandHistoryBufferSnapshot,
   setHandHistoryAccessors,
 } from "./state/handHistoryStore.js";
+import { isCoachingPreviewEnabled } from "./coaching/previewFeatureFlags.js";
 import {
   enqueueBadugiActions,
   enqueueHandRecord,
@@ -584,6 +586,7 @@ export default function App() {
   }, []);
   const navigate = useNavigate();
   const location = useLocation();
+  const coachingPreviewEnabled = isCoachingPreviewEnabled({ search: location.search });
   const isDev = import.meta.env?.DEV;
   const debugFlags = useMemo(() => {
     if (!isDev) {
@@ -2433,15 +2436,40 @@ const SAFE_RESET_PHASE = "IDLE";
       }
       const deckManager = helpers.getDeckManager();
       const drawEvaluator = helpers.evaluateBadugi(me.hand);
-      const aiDrawDecision = computeDrawDecision({
+      const standardDrawDecision = computeDrawDecision({
         context: aiDecisionContext,
         evaluation: drawEvaluator,
         hand: me.hand,
       });
+      const aiDrawDecision =
+        activeAiTierConfig?.id === "pro"
+          ? chooseProAction({
+              variantId: "D03",
+              family: "badugi",
+              snapshot: {
+                phase: "DRAW",
+                street: "DRAW",
+                drawRoundIndex: drawRound,
+                maxDiscardCount: me.hand.length,
+                players: [{ ...me }],
+                actingPlayerIndex: 0,
+              },
+              legalActions: [{ type: "DRAW", minDiscard: 0, maxDiscard: me.hand.length }],
+              standardAction: {
+                type: "DRAW",
+                discardIndexes: standardDrawDecision?.discardIndexes ?? [],
+                confidence: 0.55,
+                reason: standardDrawDecision?.source ?? "policy-router",
+              },
+              context: { actor: me },
+            })
+          : standardDrawDecision;
       const fallbackDrawCount = npcAutoDrawCount(drawEvaluator);
       const requestedDrawCount = Number.isInteger(aiDrawDecision?.drawCount)
         ? aiDrawDecision.drawCount
-        : fallbackDrawCount;
+        : Array.isArray(aiDrawDecision?.discardIndexes)
+          ? aiDrawDecision.discardIndexes.length
+          : fallbackDrawCount;
       const discardIndexes = Array.isArray(aiDrawDecision?.discardIndexes)
         ? aiDrawDecision.discardIndexes
             .filter((index) => Number.isInteger(index) && index >= 0 && index < me.hand.length)
@@ -5938,6 +5966,28 @@ const SAFE_RESET_PHASE = "IDLE";
       forceAllIn: forceAllInAction,
       setupFixedLimitCapFixtureForTest,
       forceHeroDraw,
+      forceFinishRoundForTest: (phaseOverride = null) => {
+        const forcedPlayers = (playersRef.current ?? [])
+          .map(clonePlayerState)
+          .filter(Boolean);
+        if ((phaseOverride ?? phaseRef.current ?? phase) === "BET") {
+          const matchedBet = maxBetThisRound(forcedPlayers);
+          forcedPlayers.forEach((player) => {
+            if (!player || player.folded || player.hasFolded || player.seatOut || player.isBusted || player.allIn) return;
+            player.betThisRound = matchedBet;
+            player.hasActedThisRound = true;
+            player.lastAction = player.lastAction || (matchedBet > 0 ? "Call" : "Check");
+          });
+        }
+        return forceFinishRound({
+          reason: "e2e-force-finish-round",
+          phaseOverride,
+          playersSnapshot: forcedPlayers,
+          potsSnapshot: potsRef.current,
+          drawRoundIndex: drawRoundTracker.current,
+          dealerIndex: dealerIdx,
+        });
+      },
       resolveHandNow: resolveHandImmediately,
       dealNewHandNow: startNextHand,
       forceDealNewHandNow: () => {
@@ -8298,7 +8348,7 @@ const SAFE_RESET_PHASE = "IDLE";
         const activeOpponents = snap.filter(
           (player, seatIndex) => seatIndex !== activeSeat && player && !isFoldedOrOut(player) && !player.allIn,
         ).length;
-        const betDecision = computeBetDecision({
+        const standardBetDecision = computeBetDecision({
           context: aiDecisionContext,
           toCall,
           canRaise,
@@ -8310,6 +8360,31 @@ const SAFE_RESET_PHASE = "IDLE";
           drawRound,
           betRound: betRoundIndex,
         });
+        const betDecision =
+          activeAiTierConfig?.id === "pro"
+            ? chooseProAction({
+                variantId: "D03",
+                family: "badugi",
+                snapshot: {
+                  phase: "BET",
+                  street: "BET",
+                  drawRoundIndex: drawRound,
+                  players: [{ ...me }],
+                  actingPlayerIndex: 0,
+                },
+                legalActions: [
+                  "FOLD",
+                  toCall === 0 ? "CHECK" : "CALL",
+                  ...(canRaise ? ["RAISE"] : []),
+                ],
+                standardAction: {
+                  type: standardBetDecision?.action,
+                  confidence: 0.55,
+                  reason: standardBetDecision?.reason,
+                },
+                context: { actor: me },
+              })
+            : standardBetDecision;
         const decisionAction = String(betDecision?.action ?? "").toLowerCase();
         const actionPayload = {
           type:
@@ -9077,6 +9152,7 @@ const SAFE_RESET_PHASE = "IDLE";
               onSelectTournament={handleSelectTournament}
               onSelectSettings={handleSelectSettings}
               onSelectHandHistory={handleOpenHandHistoryScreen}
+              coachingPreviewEnabled={coachingPreviewEnabled}
               onLogoutComplete={handleNavigateToTitle}
             />
           </AuthGate>

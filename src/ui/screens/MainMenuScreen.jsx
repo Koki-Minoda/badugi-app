@@ -4,6 +4,7 @@ import VariantSelectModal from "../components/VariantSelectModal.jsx";
 import mgxKitsune from "../../assets/mgx_kitsune_transparent.png";
 import { MGX_LOCALES, MGX_DEFAULT_LOCALE } from "../../config/mgxLocaleConfig.js";
 import { listVariantProfiles, VARIANT_CATEGORY_LABELS } from "../../games/config/variantProfiles.js";
+import { isCoachingPreviewEnabled } from "../coaching/previewFeatureFlags.js";
 
 function ModeButton({
   label,
@@ -271,6 +272,8 @@ export default function MainMenuScreen({
   onSelectSettings,
   onSelectFriendMatch,
   onSelectHandHistory,
+  onSelectLearningDashboardPreview,
+  coachingPreviewEnabled = isCoachingPreviewEnabled(),
 }) {
   const navigate = useNavigate();
   const [isVariantModalOpen, setVariantModalOpen] = useState(false);
@@ -288,6 +291,10 @@ export default function MainMenuScreen({
   };
 
   const resetInfoPanel = () => setActiveMode("default");
+  const previewDashboardPath =
+    typeof window !== "undefined" && window.location?.pathname?.startsWith("/dev")
+      ? "/dev/learning-dashboard-preview?mgxPreview=coaching"
+      : "/learning-dashboard-preview?mgxPreview=coaching";
 
   const infoMap = {
     cash: {
@@ -311,6 +318,13 @@ export default function MainMenuScreen({
       body:
         locale?.info?.historyBody ??
         "Review your latest hands, inspect blinds, and jump into replays.",
+    },
+    learningDashboard: {
+      title: language === "ja" ? "学習ダッシュボード Preview" : "Learning Dashboard Preview",
+      body:
+        language === "ja"
+          ? "ローカルのpreviewデータだけで、学習グラフとリプレイ見直し候補を確認します。"
+          : "Inspect local preview-only learning graphs and replay revisit candidates.",
     },
   };
   const infoContent =
@@ -467,6 +481,22 @@ export default function MainMenuScreen({
               onHover={() => setActiveMode("history")}
               onBlur={resetInfoPanel}
             />
+            {coachingPreviewEnabled && (
+              <ModeButton
+                label={language === "ja" ? "学習ダッシュボード Preview" : "Learning Dashboard Preview"}
+                isActive={activeMode === "learningDashboard"}
+                testId="menu-learning-dashboard-preview"
+                onClick={() => {
+                  if (onSelectLearningDashboardPreview) {
+                    onSelectLearningDashboardPreview();
+                    return;
+                  }
+                  navigate(previewDashboardPath);
+                }}
+                onHover={() => setActiveMode("learningDashboard")}
+                onBlur={resetInfoPanel}
+              />
+            )}
             <ModeButton
               label={locale.menu.settings}
               isActive={activeMode === "settings"}

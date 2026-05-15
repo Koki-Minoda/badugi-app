@@ -1,5 +1,5 @@
-import rawVariants from "./multiGameList.json";
-import rawPriority from "./variantPriority.data.json";
+import rawVariants from "./multiGameList.json" with { type: "json" };
+import rawPriority from "./variantPriority.data.json" with { type: "json" };
 
 export const GAME_VARIANT_CATEGORIES = Object.freeze({
   BOARD: "board",

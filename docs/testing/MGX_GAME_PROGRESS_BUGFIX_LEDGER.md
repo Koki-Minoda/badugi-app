@@ -15,6 +15,16 @@ This ledger consolidates scattered bug notes from `docs/bugs`, `docs/testing`, `
 | ACTION-005 | Search/audit follow-up | folded seatにturnが戻るとfreezeする | `ACTION-005` | actor eligibility invariant | P1 | Fixed in tests | `src/games/testing/regression/gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
 | ACTION-006 | Search/audit follow-up | eligible playerがいるのにactor nullで無音freezeする | `ACTION-006` | actor eligibility invariant | P0 | Fixed in tests | `src/games/testing/regression/gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
 | ACTION-007 | Search/audit follow-up | UI上の複数seatがturn表示になり操作先が曖昧になる | `ACTION-007` | UI turn reconstruction / invariant | P1 | Fixed in tests | `src/games/testing/regression/gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| TURN-001 | Priority2 actor consolidation | SB fold後にBB/次eligible seatへturnが渡ることを共通helperで保証 | `TURN-001` | actor eligibility helper | P1 | Fixed | `src/games/core/turn/actorEligibility.js`, `src/games/badugi/flow/actionUtils.js`, `src/games/badugi/flow/betRoundUtils.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| TURN-002 | Priority2 actor consolidation | BB optionが残る状態でbet roundを終わらせない | `TURN-002` | fixed-limit betting eligibility | P1 | Fixed | `src/games/core/turn/actorEligibility.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| TURN-003 | Priority2 actor consolidation | folded seatを次actorにしない | `TURN-003` | actor eligibility helper | P1 | Fixed | `src/games/core/turn/actorEligibility.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| TURN-004 | Priority2 actor consolidation | all-in seatをBET actorにしない | `TURN-004` | actor eligibility helper | P0 | Fixed | `src/games/core/turn/actorEligibility.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| TURN-005 | Priority2 actor consolidation | eligible seatがいるnon-terminal状態でactor nullにしない | `TURN-005` | invariant / actor source | P0 | Fixed | `src/games/testing/progress/gameProgressInvariants.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| TURN-006 | Priority2 actor consolidation | stale `metadata.actingPlayerIndex` が正しいactorを壊さない | `TURN-006` | turn source priority | P1 | Fixed | `src/games/core/turn/actorEligibility.js`, `BadugiGameController.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| TURN-007 | Priority2 actor consolidation | `players[].isTurn` が複数残らない | `TURN-007` | snapshot normalization | P1 | Fixed | `src/games/core/turn/actorEligibility.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| TURN-008 | Priority2 actor consolidation | DRAW phaseでpendingDrawSeats外にturnが回らない | `TURN-008` | draw actor eligibility | P1 | Fixed | `src/games/core/turn/actorEligibility.js`, `gameProgressInvariants.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| TURN-009 | Priority2 actor consolidation | draw済みseatに再度DRAW turnが回らない | `TURN-009` | draw actor eligibility | P2 | Fixed | `src/games/core/turn/actorEligibility.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| TURN-010 | Priority2 actor consolidation | D01/D02/S01/S02のfixed-limit actor pathをBadugi修正で壊さない | `TURN-010` | draw family controller eligibility | P2 | Fixed | `DeuceToSevenTripleDrawController.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
 | BG-008 / ALLIN-001 | `docs/bugs/badugi_browser_mobile_bug_tracker.md`, QA matrix | all-in playerにbetting actionが要求される | `ALLIN-001` | all-in betting eligibility | P0 | Fixed/covered | Existing gameplay fix; `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
 | ALLIN-002 | QA matrix | HU all-in後にshowdown/terminalへ進まない | `ALLIN-002` | all-in terminal transition | P0 | Covered; deeper path test pending | `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
 | ALLIN-003 | QA matrix | multiway all-in後にfreezeする | `ALLIN-003` | side-pot/showdown transition | P0 | Covered | `runProgressScenario.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
@@ -22,6 +32,20 @@ This ledger consolidates scattered bug notes from `docs/bugs`, `docs/testing`, `
 | DRAW-002 | QA matrix | CPU drawが自動進行せず止まる | `DRAW-002` | CPU draw auto resolve | P0 | Covered | `runProgressScenario.js` | `npm run test:game:known-bugs` PASS |
 | DRAW-003 | QA matrix | draw済みplayerに再度draw turnが回る | `DRAW-003` | draw actor eligibility | P2 | Covered | `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
 | DRAW-004 | QA matrix | draw後hand sizeが壊れる | `DRAW-004` | draw/deck/discard invariant | P2 | Covered | `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| DRAW-SOT-001 | Priority3 draw SOT | Draw後のhandがsnapshot/metadataでrollbackしない | `DRAW-SOT-001` | Badugi draw application / snapshot | P1 | Fixed | `src/games/core/draw/normalizeDrawAction.js`, `BadugiGameController.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| DRAW-SOT-002 | Priority3 draw SOT | `drawRoundIndex` がD01/D02/S01/S02で巻き戻らない | `DRAW-SOT-002` | draw round monotonicity | P1 | Fixed | `runProgressScenario.js`, `gameProgressInvariants.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| DRAW-SOT-003 | Priority3 draw SOT | `discardIndexes` と `drawCount` が矛盾した時にcount側で誤学習/誤交換する | `DRAW-SOT-003` | draw action normalization | P1 | Fixed | `src/games/core/draw/normalizeDrawAction.js` | `npm run test:game:known-bugs` PASS |
+| DRAW-SOT-004 | Priority3 draw SOT | duplicate discard indexが通る | `DRAW-SOT-004` | draw action validation | P1 | Fixed | `src/games/core/draw/normalizeDrawAction.js` | `npm run test:game:known-bugs` PASS |
+| DRAW-SOT-005 | Priority3 draw SOT | out-of-range discard indexが通る | `DRAW-SOT-005` | draw action validation | P1 | Fixed | `src/games/core/draw/normalizeDrawAction.js` | `npm run test:game:known-bugs` PASS |
+| DRAW-SOT-006 | Priority3 draw SOT | Patと0枚drawの表現が混線する | `DRAW-SOT-006` | draw action normalization | P2 | Fixed | `src/games/core/draw/normalizeDrawAction.js` | `npm run test:game:known-bugs` PASS |
+| DRAW-SOT-007 | Priority3 draw SOT | Badugiで4枚超discardが通り得る | `DRAW-SOT-007` | Badugi discard cap | P1 | Fixed | `src/games/core/draw/normalizeDrawAction.js` | `npm run test:game:known-bugs` PASS |
+| DRAW-SOT-008 | Priority3 draw SOT | 5-card draw系でBadugi上限と混線する | `DRAW-SOT-008` | D01/D02/S01/S02 discard cap | P1 | Fixed | `src/games/core/draw/normalizeDrawAction.js` | `npm run test:game:known-bugs` PASS |
+| DRAW-SOT-009 | Priority3 draw SOT | S01/S02で2回以上drawし得る | `DRAW-SOT-009` | single-draw round bound | P1 | Fixed | `runProgressScenario.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| DRAW-SOT-010 | Priority3 draw SOT | CPU draw後にpendingが残りfreezeする | `DRAW-SOT-010` | CPU draw pending cleanup | P0 | Fixed | `DeuceToSevenTripleDrawEngine.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| DRAW-SOT-011 | Priority3 draw SOT | draw済みseatがpending queueに戻る | `DRAW-SOT-011` | pending draw queue | P1 | Fixed | `gameProgressInvariants.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| DRAW-SOT-012 | Priority3 draw SOT | 古いsnapshotで新しいdrawRound/handを戻す | `DRAW-SOT-012` | snapshot rollback invariant | P1 | Fixed | `gameProgressInvariants.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| DRAW-SOT-013 | Priority3 draw SOT | hand history / replay / RL用drawInfoが欠損する | `DRAW-SOT-013` | draw metadata/log payload | P2 | Fixed | `DeuceToSevenTripleDrawEngine.js`, `BadugiGameController.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
+| DRAW-SOT-014 | Priority3 draw SOT | RL/replay count-only draw actionがPat扱いに潰れる | `DRAW-SOT-014` | draw count compatibility path | P1 | Fixed | `DeuceToSevenTripleDrawController.js`, `normalizeDrawAction.js`, `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
 | BG-003 | `docs/bugs/current_bugs.md`, browser tracker | single potなのに余分なside-pot blockが出る | Badugi flow side-pot tests | Hand result overlay | P2 | Verified earlier | Existing overlay fix | `npm test` PASS |
 | BG-004 | `docs/bugs/current_bugs.md`, browser tracker | result overlay後に次handのbuttonが戻らない | Badugi flow fold-only / next-hand tests | hand result overlay / hero action ready | P1 | Verified earlier | Existing overlay/next-hand fix | `npm test` PASS |
 | MTT-001 | QA matrix | busted playerにturnが回る | `MTT-001` | tournament actor eligibility | P1 | Covered | `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
@@ -29,6 +53,8 @@ This ledger consolidates scattered bug notes from `docs/bugs`, `docs/testing`, `
 | MTT-003 | QA matrix | reseat/table merge後にplayerId/stack/seatが壊れる | `MTT-003` | MTT reseat/table merge | P2 | Covered by invariant; deterministic E2E pending | `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
 | MTT-004 | QA matrix | tournamentがvalid terminal stateに到達しない | `MTT-004` | tournament terminal state | P0 | Covered by terminal fixture; full MTT long-run pending | `gameProgressKnownBugs.test.js` | `npm run test:game:known-bugs` PASS |
 | BG-005 | browser tracker | 実スマホでBadugi touch/orientation/next-hand操作が未棚卸し | Mobile Playwright smoke only | mobile browser/manual QA | P3 | Open | Not code-fixed this pass | `npm run test:e2e:progress` covers landscape button only |
+| E2E-GUARD-001 | Priority4 prompt | E2Eが表示確認中心で、action後のactor/phase/terminal/freezeを保証していない | `tests/e2e/mgx-game-progression.spec.js` | Playwright progression harness | P1 | Fixed | `tests/e2e/helpers/gameProgressHelper.js`, `tests/e2e/mgx-game-progression.spec.js`, `src/ui/App.jsx`, `src/ui/utils/e2eTestDriver.js`, `package.json` | `npm run test:e2e:progression` PASS; one-hand/fold-heavy/draw/all-in/5hand/mobileを進行保証 |
+| EV-GUARD-001 | Priority5 EV integrity | 進行は完了してもpot/payout/reward/stack deltaの破綻を検知できない | `src/games/testing/ev/evIntegrityChecker.test.js` | EV / reward / pot settlement | P1 | Fixed | `src/games/testing/ev/evIntegrityChecker.js`, `src/games/testing/scenario/runOneHandProgression.js`, `src/rl/testing/validateRlTransition.js`, `src/rl/testing/rlResumeSafetyGate.test.js` | `npm run test:game:ev` PASS; `npm run test:game:one-hand` PASS; `npm run test:rl:safety` PASS |
 | PV90-16 | `docs/badugi_rl_and_variant_status.md` | Badugi full 3-draw E2Eがshort-stack/all-in進行と固定期待で不安定 | Existing Badugi flow note | E2E fixture design | P3 | Open | Not fixed this pass | Needs fixed no-all-in fixture |
 | HIST-REG-05 | `docs/badugi_rl_and_variant_status.md` | Replay UI frame再生を全variantで押下確認できていない | `cross-variant-history-replay-smoke.spec.ts` | replay UI | P3 | Fixed | `src/ui/screens/ReplayScreen.jsx`, `src/ui/screens/HandHistoryScreen.jsx`, `tests/e2e/cross-variant-history-replay-smoke.spec.ts` | 35 playable variantsでhandId/action/result/Replay-ready + next/last/first/event-row frame jumpを検証 |
 | FB-REG-06 | `docs/badugi_rl_and_variant_status.md` | PLO/Badugiなどの混在履歴でfeedback対象variantが混線し得る / 30hand gateが全体件数だけで誤解され得る | `playFeedbackPayload.test.js`, `HandHistoryScreen.test.jsx` | play feedback variant scope | P3 | Fixed for payload/UI; manual OpenAI quality pending | `src/ui/feedback/playFeedbackPayload.js`, `src/ui/screens/HandHistoryScreen.jsx`, `src/ui/feedback/__tests__/playFeedbackPayload.test.js`, `src/ui/screens/__tests__/HandHistoryScreen.test.jsx` | variant未選択拒否、variant filter後30hand gate、payload/replayLinksのvariant一致を検証 |
@@ -42,11 +68,16 @@ This ledger consolidates scattered bug notes from `docs/bugs`, `docs/testing`, `
 
 | Priority | Bug IDs | Why Next | Suggested Fix Scope |
 |---|---|---|---|
-| P1 | `BUG-55` | Fixed。Stud/Razzは手動報告でも進行誤認が目立つため、helper依存を減らす必要があった。 | UI-click-only 3rd-7th street 2hand E2Eを追加済み。 |
-| P2 | `MIX-PROG-05` | Mixed rotation境界でstack/button継承が壊れるとRL/履歴も信用できない。 | Fixed: 8Game/10Gameのvariant切替5周E2Eを追加。 |
-| P2 | `CAP-REG-05` | fixed-limit cap後のraise不可/履歴は運用上重要。 | Fixed。今後はCPU自然発生capの長時間smokeを追加。 |
-| P3 | `PV90-16` | 現行テスト前提が実進行と競合し、将来の回帰判断を曖昧にする。 | all-inしない固定スタック/固定action fixtureに変更。 |
-| P3 | `BG-005` | 実スマホ品質はPlaywrightだけでは保証できない。 | 実機QAチェックリストとログ取得手順を追加。 |
+| P2 | `RL-SAFE-03` | RL gate外とはいえbackend全体pytestが赤いままだとrelease品質を誤認する。 | Badugi stats / variants API の4 failing testsを直し、`cd backend && .venv/bin/python -m pytest` をgreenにする。 |
+| P2 | `MIX-PROG-06` | 8/10GameのRL教師・評価はPLO/Stud/Razzの実ログEVが弱いと昇格判断を誤る。 | Real hand historyからposition/showdown/EVを抽出し、variant別promotion gateにする。 |
+| P2 | `EV-GUARD-06/07/08` | 進行は通っても、terminal result / chip conservation / odd chip が緩いとRL reward汚染が残る。 | Board/Omaha/Stud replay照合、strict chip conservation、TDA/variant別odd-chip fixtureを追加。 |
+| P3 | `PV90-16` | 現行テスト前提が実進行と競合し、将来の回帰判断を曖昧にする。 | Badugi full 3-draw E2Eをall-inしない固定スタック/固定action fixtureへ変更。 |
+| P3 | `DRAW-NAT-01` | DRAW E2Eの一部はtest hookで安定化しているため、自然進行だけの長時間保証が弱い。 | Hero/CPUの自然Draw#1-#3をUI操作だけで通すlong smokeを追加。 |
+| P3 | `HIST-REG-06` | Replay/feedback/RL調査の土台としてChinese/OFCだけ履歴保証が弱い。 | CP1/OFCのhandId/action/result/replay frame smokeを追加。 |
+| P3 | `FB-REG-06-MANUAL` | Unit上のvariant分離は通ったが、実OpenAI応答品質・遅延・内容の妥当性が未確認。 | 実キー環境で30hand以上/variant選択/該当hand replay linkの手動・API確認を実施。 |
+| P3 | `CHINESE-03` | CP1 smokeはあるが、OFC本体UI/controller/fantasylandは公開品質ではない。 | OFC street-by-street / fantasyland / foul scoringのplayable接続とfixtureを追加。 |
+| P3 | `CAP-NAT-01` | Cap UI fixtureは通ったが、CPU自然発生時の長時間進行は別リスク。 | FLH/FLO8/StudのCPU natural cap arrival long-run smokeを追加。 |
+| P3 | `BG-005` | 実スマホ品質はPlaywrightだけでは保証できない。 | 実機QAチェックリスト、viewport別ログ取得、orientation/touch/next-hand確認を追加。 |
 
 ## Verification Log
 
@@ -58,3 +89,20 @@ This ledger consolidates scattered bug notes from `docs/bugs`, `docs/testing`, `
 | `npm test` | PASS | 132 files passed; 886 tests passed, 12 skipped |
 | `npm run test:game:chinese` | PASS | 1 file, 2 tests passed |
 | `npm run test:game:family` | PASS | 5 files, 28 tests passed after adding CP1 family coverage |
+| `npm run test:game:one-hand` | PASS | 2 files, 53 tests passed; all 36 variants complete one real controller/action-path hand |
+| `npm run test:game:known-bugs` | PASS | 28 tests passed after TURN-001 through TURN-010 |
+| `npm run test:game:progress` | PASS | 9 files, 137 tests passed, 11 skipped after actor consolidation |
+| `npm run test:game:family` | PASS | 5 files, 28 tests passed after actor consolidation |
+| `npm run test:e2e:progress` | PASS | 5 Playwright progress tests passed after actor consolidation |
+| `npm test` | PASS | 135 files passed; 957 tests passed, 11 skipped after actor consolidation |
+| `npm run test:game:known-bugs` | PASS | 42 tests passed after DRAW-SOT-001 through DRAW-SOT-014 |
+| `npm run test:game:one-hand` | PASS | 2 files, 53 tests passed after draw source consolidation |
+| `npm run test:game:progress` | PASS | 9 files, 151 tests passed, 11 skipped after draw source consolidation |
+| `npm run test:game:family` | PASS | 5 files, 28 tests passed after draw source consolidation |
+| `npm run test:e2e:progress` | PASS | 5 Playwright progress tests passed after draw source consolidation |
+| `npm test` | PASS | 135 files passed; 971 tests passed, 11 skipped after draw source consolidation |
+| `npm run test:e2e:progression` | PASS | 7 Playwright progression-guarantee tests passed; one-hand/fold-heavy/draw/all-in/5hand/mobile/repro-state |
+| `npm run test:game:ev` | PASS | 1 file, 14 tests passed; EV-001 through EV-015 covered |
+| `npm run test:rl:safety` | PASS | 8 files, 52 tests passed after reward/stack-delta guard |
+| `npm run test:mgx:safety` | PASS | Aggregate known-bugs + one-hand + EV + RL safety gates passed |
+| `npm run build` | PASS | Production build completed; existing chunk-size/browserslist warnings only |

@@ -1,4 +1,4 @@
-import proBlindSheets from "./tournament/proBlindSheets.json";
+import proBlindSheets from "./tournament/proBlindSheets.json" with { type: "json" };
 
 const level = (lvl, sb, bb, ante = 0) => ({ level: lvl, sb, bb, ante });
 

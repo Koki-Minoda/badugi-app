@@ -1,4 +1,4 @@
-import tiers from "../../config/ai/tiers.json";
+import tiers from "../../config/ai/tiers.json" with { type: "json" };
 import { getTierById } from "./tierManager.js";
 
 const TIER_ORDER = tiers.map((tier) => tier.id);

@@ -1,5 +1,11 @@
 import { GameController } from "../core/GameController.js";
+import {
+  isSeatEligibleForBetting,
+  isSeatEligibleForDrawing,
+  normalizeTurnState,
+} from "../core/turn/actorEligibility.js";
 import { DeuceToSevenTripleDrawEngine } from "./DeuceToSevenTripleDrawEngine.js";
+import { chooseProAction } from "../../ai/pro/proDecisionOverlay.js";
 
 const DEFAULT_SEAT_CONFIG = ["HUMAN", "CPU", "CPU", "CPU", "CPU", "CPU"];
 const DEFAULT_STRUCTURE = { sb: 10, bb: 20, ante: 0 };
@@ -158,17 +164,18 @@ function buildHandResultSummary({ showdownSummary = [], totalPot = 0, handId = n
 function normalizeAction(action = {}) {
   const payload = action.payload ?? action.metadata ?? action;
   const type = String(payload.type ?? action.type ?? "").toUpperCase();
+  const normalizedDiscardIndexes = Array.isArray(payload.discardIndexes)
+    ? [...payload.discardIndexes]
+    : Array.isArray(payload.drawIndexes)
+      ? [...payload.drawIndexes]
+      : Array.isArray(action.discardIndexes)
+        ? [...action.discardIndexes]
+        : undefined;
   return {
     ...payload,
     ...action,
     type,
-    discardIndexes: Array.isArray(payload.discardIndexes)
-      ? [...payload.discardIndexes]
-      : Array.isArray(payload.drawIndexes)
-      ? [...payload.drawIndexes]
-      : Array.isArray(action.discardIndexes)
-      ? [...action.discardIndexes]
-      : [],
+    discardIndexes: normalizedDiscardIndexes,
   };
 }
 
@@ -209,9 +216,11 @@ function deriveLegalActions(state = {}, seatIndex) {
     return [];
   }
   if (state.street === "DRAW") {
-    return player.hasDrawn ? [] : [{ type: "DRAW", minDiscard: 0, maxDiscard: 5 }];
+    return isSeatEligibleForDrawing(player, state, { allowAllInDraw: true })
+      ? [{ type: "DRAW", minDiscard: 0, maxDiscard: 5 }]
+      : [];
   }
-  if (player.allIn) {
+  if (!isSeatEligibleForBetting(player, { ...state, phase: "BET" })) {
     return [];
   }
   if (state.street !== "BET") return [];
@@ -334,7 +343,7 @@ export class DeuceToSevenTripleDrawController extends GameController {
           handId: cloned.handId,
         })
       : null;
-    return {
+    return normalizeTurnState({
       ...cloned,
       gameId: cloned.gameId,
       variantId: metadata.variantId ?? this.variantId,
@@ -353,7 +362,7 @@ export class DeuceToSevenTripleDrawController extends GameController {
       handCardCount: this.engine?.handCardCount ?? metadata.handCardCount ?? 5,
       lastHandResult,
       metadata,
-    };
+    }, { phase: cloned.street, allowAllInDraw: true });
   }
 
   getLegalActions(state = {}, seatIndex) {
@@ -362,12 +371,48 @@ export class DeuceToSevenTripleDrawController extends GameController {
     return deriveLegalActions(engineState ?? {}, seatIndex);
   }
 
-  getCpuAction(state = {}, seatIndex = null) {
+  getCpuAction(state = {}, seatIndex = null, options = {}) {
     const engineState = state?.engineState ?? this._lastState?.engineState ?? state;
     const targetSeat = typeof seatIndex === "number" ? seatIndex : engineState?.actingPlayerIndex;
     const player = engineState?.players?.[targetSeat];
     if (!player?.isCPU) return null;
-    return this.engine.chooseCpuAction(engineState, targetSeat);
+    const standardAction = this.engine.chooseCpuAction(engineState, targetSeat);
+    if (options?.tierConfig?.id !== "pro") {
+      return standardAction;
+    }
+    const legalActions = deriveLegalActions(engineState ?? {}, targetSeat);
+    const result = chooseProAction({
+      variantId: this.variantId,
+      snapshot: {
+        ...engineState,
+        variantId: this.variantId,
+        phase: engineState?.street,
+        maxDiscardCount: this.engine?.handCardCount ?? 5,
+        maxDrawRounds: this.engine?.maxDrawRounds ?? 3,
+      },
+      legalActions,
+      standardAction,
+      context: { actor: player },
+    });
+    if (!result?.type) {
+      return standardAction;
+    }
+    return {
+      seatIndex: targetSeat,
+      type: result.type,
+      discardIndexes: result.discardIndexes,
+      amount: result.amount,
+      metadata: {
+        ...(standardAction?.metadata ?? {}),
+        ...(result?.metadata ?? {}),
+        strategy: `pro-${this.variantId.toLowerCase()}`,
+        tierId: options?.tierConfig?.id ?? "pro",
+        decisionSource: result.source,
+        decisionReason: result.reason,
+        confidence: result.confidence,
+        warnings: result.warnings ?? [],
+      },
+    };
   }
 
   applyAction(state = {}, action = {}) {

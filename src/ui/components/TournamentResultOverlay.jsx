@@ -1,12 +1,30 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
+import CoachingPreviewCard from "./CoachingPreviewCard.jsx";
+import CoachingSummaryPanel from "./CoachingSummaryPanel.jsx";
 
 export default function TournamentResultOverlay({
   visible,
   placements = [],
   title = "Tournament Results",
+  coachingPreview = null,
+  coachingLocale = "jp",
+  onCoachingReplay,
+  onCoachingTelemetry,
   onBackToMenu,
   onPlayAgain,
 }) {
+  const shownKeyRef = useRef(null);
+  const visibleLessons = coachingPreview?.summary?.topLessons ?? coachingPreview?.lessons?.slice(0, 2) ?? [];
+  const useSummaryPanel = Boolean(coachingPreview?.summary);
+  useEffect(() => {
+    if (!visible || !visibleLessons.length || typeof onCoachingTelemetry !== "function") return;
+    const key = visibleLessons.map((lesson) => lesson.lessonId).join("|");
+    if (shownKeyRef.current === key) return;
+    shownKeyRef.current = key;
+    visibleLessons.forEach((lesson) => {
+      onCoachingTelemetry("LESSON_SHOWN", lesson);
+    });
+  }, [visible, visibleLessons, onCoachingTelemetry]);
   if (!visible) return null;
   const sortedPlacements = [...placements].sort((a, b) => a.place - b.place);
   const champion = sortedPlacements.find((entry) => entry.place === 1) ?? null;
@@ -82,6 +100,41 @@ export default function TournamentResultOverlay({
             </div>
           ))}
         </div>
+        {useSummaryPanel ? (
+          <div className="space-y-2" data-testid="mtt-coaching-preview">
+            <CoachingSummaryPanel
+              summary={coachingPreview.summary}
+              locale={coachingLocale}
+              onReplay={(payload) => {
+                const lesson = visibleLessons.find((entry) => entry.lessonId === payload.lessonId) ?? payload;
+                onCoachingTelemetry?.("REPLAY_OPENED", lesson);
+                onCoachingReplay?.(payload);
+              }}
+              onOpened={(entry) => onCoachingTelemetry?.("LESSON_OPENED", entry)}
+              onHelpful={(entry) => onCoachingTelemetry?.("LESSON_HELPFUL", entry)}
+              onNotHelpful={(entry) => onCoachingTelemetry?.("LESSON_NOT_HELPFUL", entry)}
+            />
+          </div>
+        ) : coachingPreview?.lessons?.length > 0 ? (
+          <div className="space-y-2" data-testid="mtt-coaching-preview">
+            {visibleLessons.map((lesson) => (
+              <CoachingPreviewCard
+                key={lesson.lessonId}
+                lesson={lesson}
+                locale={coachingLocale}
+                onReplay={(payload) => {
+                  onCoachingTelemetry?.("REPLAY_OPENED", lesson);
+                  onCoachingReplay?.(payload);
+                }}
+                onOpened={(entry) => onCoachingTelemetry?.("LESSON_OPENED", entry)}
+                onAcknowledged={(entry) => onCoachingTelemetry?.("LESSON_ACKNOWLEDGED", entry)}
+                onHelpful={(entry) => onCoachingTelemetry?.("LESSON_HELPFUL", entry)}
+                onNotHelpful={(entry) => onCoachingTelemetry?.("LESSON_NOT_HELPFUL", entry)}
+                onDismissed={(entry) => onCoachingTelemetry?.("LESSON_DISMISSED", entry)}
+              />
+            ))}
+          </div>
+        ) : null}
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
           <button
             type="button"

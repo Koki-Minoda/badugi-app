@@ -11,6 +11,7 @@ import {
   getHandHistoryBufferSnapshot,
 } from "../state/handHistoryStore.js";
 import { findReplayFrameIndex } from "./replayFrameUtils.js";
+import ReplayCoachingOverlay from "../components/ReplayCoachingOverlay.jsx";
 
 function formatTimestamp(ts) {
   if (!Number.isFinite(ts)) return "–";
@@ -256,6 +257,10 @@ function ReplayTableView({ frame, flashSeat = null, hoverSeat = null }) {
 export default function ReplayScreen({
   handId = null,
   target = null,
+  lessonFocus = null,
+  coachingAnnotation = null,
+  coachingLocale = "jp",
+  onCoachingTelemetry,
   onClose = () => {},
   onBack = () => {},
 }) {
@@ -397,15 +402,23 @@ export default function ReplayScreen({
     });
   }, [maxFrameIndex]);
 
+  const activeReplayTarget = lessonFocus?.focusMode === "coaching-lesson" ? lessonFocus.target : target;
+  const lessonFocusUnavailable = lessonFocus && lessonFocus.status !== "ready";
+  const lessonActionIndex = Number.isInteger(lessonFocus?.actionIndex)
+    ? lessonFocus.actionIndex
+    : Number.isInteger(coachingAnnotation?.actionIndex)
+      ? coachingAnnotation.actionIndex
+      : null;
+
   useEffect(() => {
-    const targetIndex = findReplayFrameIndex(frames, target);
+    const targetIndex = findReplayFrameIndex(frames, activeReplayTarget);
     if (targetIndex < 0) return;
     setFrameIndex(targetIndex);
     const seat = getSeatFromFrameEvent(frames[targetIndex]);
     if (seat != null) {
       triggerSeatFlash(seat);
     }
-  }, [frames, target, triggerSeatFlash]);
+  }, [frames, activeReplayTarget, triggerSeatFlash]);
 
   const goToIndex = useCallback(
     (next) => {
@@ -443,6 +456,14 @@ export default function ReplayScreen({
       clearInterval(id);
     };
   }, [isPlaying, playIntervalMs, frames.length, maxFrameIndex]);
+  const emitCoachingTelemetry = useCallback(
+    (type, annotation = coachingAnnotation) => {
+      if (typeof onCoachingTelemetry === "function" && annotation) {
+        onCoachingTelemetry(type, annotation);
+      }
+    },
+    [coachingAnnotation, onCoachingTelemetry],
+  );
 
   return (
     <div
@@ -479,7 +500,10 @@ export default function ReplayScreen({
             <button
               type="button"
               className="rounded-full border border-white/20 px-4 py-2 text-xs uppercase tracking-[0.35em] text-white/90 hover:border-red-300/70 hover:text-red-200"
-              onClick={onClose}
+              onClick={() => {
+                emitCoachingTelemetry("REPLAY_COMPLETED");
+                onClose();
+              }}
             >
               Exit
             </button>
@@ -575,6 +599,32 @@ export default function ReplayScreen({
 
         <div className="flex flex-col gap-3">
           <ReplayHighlightLegend />
+          {coachingAnnotation ? (
+            <ReplayCoachingOverlay
+              annotation={coachingAnnotation}
+              locale={coachingLocale}
+              onAcknowledged={(annotation) => emitCoachingTelemetry("LESSON_ACKNOWLEDGED", annotation)}
+              onHelpful={(annotation) => emitCoachingTelemetry("LESSON_HELPFUL", annotation)}
+              onNotHelpful={(annotation) => emitCoachingTelemetry("LESSON_NOT_HELPFUL", annotation)}
+              onDismissed={(annotation) => emitCoachingTelemetry("LESSON_DISMISSED", annotation)}
+            />
+          ) : null}
+          {lessonFocus?.focusMode === "coaching-lesson" ? (
+            <div
+              className="rounded-2xl border border-yellow-300/35 bg-yellow-300/10 px-4 py-3 text-sm text-yellow-50"
+              data-testid="replay-coaching-focus"
+            >
+              Coaching lesson focus · {lessonFocus.lessonId} · action #{lessonFocus.actionIndex}
+            </div>
+          ) : null}
+          {lessonFocusUnavailable ? (
+            <div
+              className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-300"
+              data-testid="replay-coaching-fallback"
+            >
+              Coaching replay preview unavailable. Replay remains safe to inspect.
+            </div>
+          ) : null}
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
@@ -774,10 +824,16 @@ export default function ReplayScreen({
               </div>
             )}
             {frames.map((frame, idx) => (
+              (() => {
+                const actionSeq = Number(frame?.event?.actionSeq ?? idx);
+                const isLessonAction =
+                  lessonActionIndex !== null && (idx === lessonActionIndex || actionSeq === lessonActionIndex);
+                return (
               <button
                 key={`evt-${idx}-${frame?.phase}`}
                 type="button"
                 data-testid={`replay-event-row-${idx}`}
+                data-coaching-highlight={isLessonAction ? "true" : "false"}
                 onClick={() => {
                   goToIndex(idx);
                   const seat = getSeatFromFrameEvent(frames[idx]);
@@ -793,7 +849,9 @@ export default function ReplayScreen({
                 onFocus={() => setHoverSeat(getSeatFromFrameEvent(frames[idx]))}
                 onBlur={() => setHoverSeat(null)}
                 className={`w-full rounded-2xl border px-4 py-3 text-left text-sm transition ${
-                  idx === clampedIndex
+                  isLessonAction
+                    ? "border-yellow-300/90 bg-yellow-300/10 text-white shadow shadow-yellow-500/10"
+                    : idx === clampedIndex
                     ? "border-emerald-400/80 bg-emerald-500/5 text-white"
                     : "border-white/10 bg-black/20 text-slate-200 hover:border-emerald-300/60 hover:text-white"
                 }`}
@@ -802,7 +860,17 @@ export default function ReplayScreen({
                   <span>
                     Frame {idx + 1} · {frame?.phase ?? "—"}
                   </span>
-                  <span>{frame?.event?.type ?? "—"}</span>
+                  <span className="flex items-center gap-2">
+                    {isLessonAction ? (
+                      <span
+                        className="rounded-full border border-yellow-200/50 bg-yellow-300/15 px-2 py-0.5 text-[10px] text-yellow-100"
+                        data-testid="replay-coaching-timeline-marker"
+                      >
+                        Coaching
+                      </span>
+                    ) : null}
+                    {frame?.event?.type ?? "—"}
+                  </span>
                 </div>
                 <div className="mt-1 text-base font-semibold text-white">
                   {eventToLabel(frame?.event)}
@@ -814,6 +882,8 @@ export default function ReplayScreen({
                     : "—"}
                 </div>
               </button>
+                );
+              })()
             ))}
           </div>
         </div>

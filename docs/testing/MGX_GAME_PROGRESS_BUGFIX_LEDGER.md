@@ -68,11 +68,16 @@ This ledger consolidates scattered bug notes from `docs/bugs`, `docs/testing`, `
 
 | Priority | Bug IDs | Why Next | Suggested Fix Scope |
 |---|---|---|---|
-| P1 | `BUG-55` | Fixed。Stud/Razzは手動報告でも進行誤認が目立つため、helper依存を減らす必要があった。 | UI-click-only 3rd-7th street 2hand E2Eを追加済み。 |
-| P2 | `MIX-PROG-05` | Mixed rotation境界でstack/button継承が壊れるとRL/履歴も信用できない。 | Fixed: 8Game/10Gameのvariant切替5周E2Eを追加。 |
-| P2 | `CAP-REG-05` | fixed-limit cap後のraise不可/履歴は運用上重要。 | Fixed。今後はCPU自然発生capの長時間smokeを追加。 |
-| P3 | `PV90-16` | 現行テスト前提が実進行と競合し、将来の回帰判断を曖昧にする。 | all-inしない固定スタック/固定action fixtureに変更。 |
-| P3 | `BG-005` | 実スマホ品質はPlaywrightだけでは保証できない。 | 実機QAチェックリストとログ取得手順を追加。 |
+| P2 | `RL-SAFE-03` | RL gate外とはいえbackend全体pytestが赤いままだとrelease品質を誤認する。 | Badugi stats / variants API の4 failing testsを直し、`cd backend && .venv/bin/python -m pytest` をgreenにする。 |
+| P2 | `MIX-PROG-06` | 8/10GameのRL教師・評価はPLO/Stud/Razzの実ログEVが弱いと昇格判断を誤る。 | Real hand historyからposition/showdown/EVを抽出し、variant別promotion gateにする。 |
+| P2 | `EV-GUARD-06/07/08` | 進行は通っても、terminal result / chip conservation / odd chip が緩いとRL reward汚染が残る。 | Board/Omaha/Stud replay照合、strict chip conservation、TDA/variant別odd-chip fixtureを追加。 |
+| P3 | `PV90-16` | 現行テスト前提が実進行と競合し、将来の回帰判断を曖昧にする。 | Badugi full 3-draw E2Eをall-inしない固定スタック/固定action fixtureへ変更。 |
+| P3 | `DRAW-NAT-01` | DRAW E2Eの一部はtest hookで安定化しているため、自然進行だけの長時間保証が弱い。 | Hero/CPUの自然Draw#1-#3をUI操作だけで通すlong smokeを追加。 |
+| P3 | `HIST-REG-06` | Replay/feedback/RL調査の土台としてChinese/OFCだけ履歴保証が弱い。 | CP1/OFCのhandId/action/result/replay frame smokeを追加。 |
+| P3 | `FB-REG-06-MANUAL` | Unit上のvariant分離は通ったが、実OpenAI応答品質・遅延・内容の妥当性が未確認。 | 実キー環境で30hand以上/variant選択/該当hand replay linkの手動・API確認を実施。 |
+| P3 | `CHINESE-03` | CP1 smokeはあるが、OFC本体UI/controller/fantasylandは公開品質ではない。 | OFC street-by-street / fantasyland / foul scoringのplayable接続とfixtureを追加。 |
+| P3 | `CAP-NAT-01` | Cap UI fixtureは通ったが、CPU自然発生時の長時間進行は別リスク。 | FLH/FLO8/StudのCPU natural cap arrival long-run smokeを追加。 |
+| P3 | `BG-005` | 実スマホ品質はPlaywrightだけでは保証できない。 | 実機QAチェックリスト、viewport別ログ取得、orientation/touch/next-hand確認を追加。 |
 
 ## Verification Log
 

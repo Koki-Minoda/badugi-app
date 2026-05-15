@@ -3421,3 +3421,80 @@ Draw RL test coverage:
 - [ ] `EV-GUARD-06` Board/Omaha/Studのterminal evaluator replayを、実hand historyベースでwinner/resultと突合する。
 - [ ] `EV-GUARD-07` terminal snapshotのpot echo差分をcontrollerごとに正規化し、全variantでstrict chip conservationを有効化する。
 - [ ] `EV-GUARD-08` split-pot odd chipをTDA/variant別の位置ルールに寄せる。
+
+## 22. 2026-05-06 棚卸結果 / 定量完成度 / 残タスク
+
+目的:
+- `docs/testing/*` / `docs/bugs/current_bugs.md` / source registry / RL台帳を横断し、修正済みタスクと未保証タスクを分離する。
+- 進行保証、UI/UX、履歴、feedback、RL安全性、RL強度を定量的に見直す。
+
+### 22.1 定量完成度サマリ
+
+| 領域 | 完成度 | 根拠 | 主な未保証 |
+|---|---:|---|---|
+| ゲーム実装 | 84% | 36variantが到達可能で、全variant one-hand progressionが通過。 | Chinese/OFC本体、OFC fantasyland、split/Dramaha結果UX。 |
+| 進行保証 | 88% | `test:game:known-bugs` / `test:game:one-hand` / `test:game:progress` / `test:game:family` / `test:e2e:progression` / EV guardが通過記録あり。 | natural full draw UI、MTT長時間・実機スマホ、CPU自然cap。 |
+| Pot/EV/Reward整合 | 82% | EV checker、reward guard、dirty dataset blockを追加済み。 | Board/Omaha/Studの実hand history evaluator replay、strict chip conservation、variant別odd chip。 |
+| UI/UX | 68% | PC table、mobile landscape、Stud up/down card、HUD、game selectionは改善済み。 | split結果の色分け深度、OFC UI、実スマホ手動QA、Friend match polish。 |
+| Hand history / Replay | 86% | 35playable variantsでhandId/action/result/replay frame smoke。 | Chinese/OFC history/replay smoke、より詳細なframe semantics。 |
+| Feedback | 70% | variant選択、30hand gate、replay link、payload分離はunit/UIで確認済み。 | 実OpenAIキーでの出力品質、レイテンシ、variant別実ログ評価。 |
+| RL安全性 | 82% | 96-dim/96-slot gate、transition validator、EV reward guard、clean dataset requirementあり。 | backend全体pytest green化、real log EV gate、raw log validation強化。 |
+| RL強度 | 58% | 10-Game Beginner/Standard routingと短期導線は整備済み。 | 各variant長期学習、human/practice benchmark、Pro/Iron/WorldMaster昇格。 |
+| Backend release QA | 78% | RL/API部分の主要テストは通過。 | `cd backend && .venv/bin/python -m pytest` が32 passed / 4 failed。 |
+
+### 22.2 RL進捗棚卸
+
+| Family / Variant | Beginner | Standard | Pro以上 | Safety Gate | 現状評価 |
+|---|---|---|---|---|---|
+| Badugi | 導入済み | Standard v3系まで導入済み | Iron/WorldMaster未完 | 96-dim / EV / transition gate OK | 公開可能水準に近いが、final street value bet / human benchmark継続。 |
+| 2-7 Draw `D01/S01` | 導入済み | 導入済み | 未完 | Draw 96-slot gate OK | Beginner/Standardは遊べる水準。Pro以上は別タスク。 |
+| A-5 Draw `D02/S02` | 導入済み | 導入済み | 未完 | Draw 96-slot gate OK | 2-7同等の安全導線。強さ保証は短期評価止まり。 |
+| NLH / FLH | 導入済み | 導入済み | 未完 | Board RL plan/gateあり | Synthetic gate中心。thin valueと実ログEVが次課題。 |
+| PLO / PLO8 | 導入済み | 導入済み | 未完 | Board RL plan/gateあり | multiway isolation / scoop-no-low / real EV gateが不足。 |
+| Stud / Stud8 / Razz | 導入済み | 導入済み | 未完 | playable/progression gateあり | UI進行は改善済み。bring-in/complete実ログEV監査が必要。 |
+| Split draw / Dramaha | 未導入 | 未導入 | 未導入 | 進行・結果UI中心 | RL前にcomponent pot/result UXと履歴品質が必要。 |
+| Chinese / OFC | 未導入 | 未導入 | 未導入 | CP1 smokeのみ | OFC本体/fantasyland未完のためRL対象外。 |
+
+判定:
+- 10-Game Beginner/Standard の「route / dataset / reward / action mask導線」は整備済み。
+- ただし「全10Gameで長期RL学習済み・人間相手に安定して強い」とはまだ言えない。
+- Pro以上の昇格前に、`MIX-PROG-06` と `EV-GUARD-06/07/08` を優先する。
+
+### 22.3 現在の残タスク一覧
+
+| ID | 内容 | 優先度 | 状態 |
+|---|---|---|---|
+| `RL-SAFE-03` | backend全体pytestのBadugi stats / variants API失敗を修正 | P2 | Open |
+| `MIX-PROG-06` | PLO/Stud/Razzの実hand history EV / position / showdown gate | P2 | Open |
+| `EV-GUARD-06` | Board/Omaha/Stud terminal evaluator replayを実履歴と突合 | P2 | Open |
+| `EV-GUARD-07` | 全variant strict chip conservationをcontroller別に有効化 | P2 | Open |
+| `EV-GUARD-08` | split-pot odd chipをTDA/variant別ルールへ寄せる | P2 | Open |
+| `PV90-16` | Badugi full 3-draw E2Eをno-all-in固定fixtureへ変更 | P3 | Open |
+| `DRAW-NAT-01` | test hookなし自然進行だけでDraw#1-#3 long UI smoke | P3 | Open |
+| `HIST-REG-06` | Chinese/OFC history/replay smoke | P3 | Open |
+| `FB-REG-06-MANUAL` | 実OpenAIキーでvariant別30hand feedback品質確認 | P3 | Open |
+| `CHINESE-03` | OFC street-by-street / fantasyland / foul scoring playable化 | P3 | Open |
+| `CAP-NAT-01` | CPU自然発生fixed-limit cap long-run smoke | P3 | Open |
+| `BG-005` | 実スマホChrome/Safari横画面の手動QA・ログ取得 | P3 | Open |
+| `GAME-RL-PRO-01` | 10Game Pro/Iron向け長期RL学習・human benchmark | P3 | Not started |
+
+### 22.4 優先度高く対応するべきTop 10
+
+| Rank | Task | 理由 | 対応方針 | 見積 |
+|---:|---|---|---|---|
+| 1 | `RL-SAFE-03` backend full pytest green化 | release gateが赤いままでは品質判断が曖昧。 | Badugi statsとvariant API seed/list/detail/idempotencyの4失敗を修正し、backend全体pytestを再実行。 | 0.5日 |
+| 2 | `MIX-PROG-06` real hand history EV gate | 10Game RLの昇格判断に直結。 | PLO/Stud/Razzのposition/showdown/EVを履歴から集計し、promotion gateに接続。 | 1日 |
+| 3 | `EV-GUARD-06/07/08` EV厳格化 | 壊れたrewardを学習しないための最後の安全柵。 | evaluator replay、strict conservation、odd-chip fixtureを追加。 | 1.5日 |
+| 4 | `PV90-16` + `DRAW-NAT-01` natural Badugi draw E2E | test hook依存を減らし、手動で起きるdraw不具合を拾う。 | 固定スタック/no-all-inの3draw UI scenarioを追加。 | 0.5-1日 |
+| 5 | `HIST-REG-06` Chinese/OFC replay | feedbackとバグ調査の土台を36variantへ揃える。 | CP1/OFCのhandId/action/result/replay frame smokeを追加。 | 0.5日 |
+| 6 | `FB-REG-06-MANUAL` feedback実キー確認 | unit上は正しくても実出力品質が未保証。 | 30hand以上のvariant別payloadでOpenAI応答、遅延、replay link妥当性を確認。 | 0.5日 |
+| 7 | `CHINESE-03` OFC本体 | 36番目の正式playableとして残る大きな穴。 | street-by-street、fantasyland、foul scoring、result UIを段階導入。 | 2日 |
+| 8 | `CAP-NAT-01` CPU自然cap smoke | fixtureではなく実CPU挙動でcap後停止しない保証が必要。 | FLH/FLO8/Studの長時間UI smokeでcap到達とpost-cap進行を検査。 | 0.5日 |
+| 9 | `BG-005` 実スマホQA | PlaywrightだけではSafari/Chrome実機の操作感を保証できない。 | device matrix、ログ採取、横画面/縦警告/next-hand/touchを手順化。 | 0.5日 |
+| 10 | `GAME-RL-PRO-01` 10Game長期RL batch | Beginner/StandardからPro以上へ進める本筋。 | 上記gate通過後、20k checkpoint -> 50k以上、human/practice benchmarkで昇格。 | 2-3日 |
+
+### 22.5 棚卸で更新した記録
+
+- `docs/bugs/current_bugs.md`: 古いBadugi回帰メモを履歴扱いにし、現在の未解決/未保証タスクへ差し替え。
+- `docs/testing/MGX_GAME_PROGRESS_BUGFIX_LEDGER.md`: fixed済みの `BUG-55` / `MIX-PROG-05` / `CAP-REG-05` を優先Openから外し、現行Top riskへ更新。
+- 本節: 完成度、RL進捗、残タスク、Top 10を追記。

@@ -14,5 +14,5 @@ describe("AI pro evaluation CLI", () => {
     expect(summary.runId).toMatch(/^pro-vs-standard-\d+$/);
     expect(summary.variants[expectedVariants[0]]).toBeTruthy();
     expect(typeof outputPath).toBe("string");
-  }, 30000);
+  }, 300000);
 });

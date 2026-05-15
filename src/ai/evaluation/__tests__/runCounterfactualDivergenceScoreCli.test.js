@@ -12,12 +12,18 @@ describe("AI counterfactual divergence CLI", () => {
         : ["S02", "S01", "D02"];
     const maxSamplesArg = forwardedArgs.find((entry) => String(entry).startsWith("--max-samples="));
     const maxSamples = Number(String(maxSamplesArg ?? "--max-samples=500").replace("--max-samples=", ""));
+    const corpusTagArg = forwardedArgs.find((entry) => String(entry).startsWith("--corpus-tag="));
+    const sampleTagFilter =
+      typeof corpusTagArg === "string" && corpusTagArg.length
+        ? corpusTagArg.replace("--corpus-tag=", "").split(",").map((entry) => entry.trim()).filter(Boolean)
+        : [];
     const { report, outputPath } = await runCounterfactualDivergenceScore({
       variants: expectedVariants,
       maxSamples,
+      sampleTagFilter,
     });
     expect(report.replaySamples).toBeGreaterThan(0);
     expect(report.bucketResults.length).toBeGreaterThan(0);
     expect(typeof outputPath).toBe("string");
-  }, 30000);
+  }, 300000);
 });

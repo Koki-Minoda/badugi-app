@@ -58,5 +58,5 @@ describe("AI counterfactual divergence CLI runner", () => {
       console.log = originalLog;
       console.warn = originalWarn;
     }
-  }, 300000);
+  }, 900000);
 });

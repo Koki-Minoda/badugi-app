@@ -26,6 +26,13 @@ Schema goal:
   "chosenBestAction": {},
   "handClass": "strongSDA5",
   "bucket": "strongSDA5-safe-pressure",
+  "sourceCorpusTag": "iron-step2",
+  "sourceCounterfactualScore": "reports/ai-eval/counterfactual-score-*.json",
+  "trainingWeight": 0.84,
+  "sourceType": "stable-bucket|verified-neighbor",
+  "parentStableBucket": "strongA5 second-pressure",
+  "neighborAxis": "repeatedPressure",
+  "verificationConfidence": 0.97,
   "metadata": {}
 }
 ```
@@ -41,6 +48,13 @@ Schema goal:
 | `candidateActions` | replay-backed action/value rows |
 | `chosenBestAction` | legal action selected from candidate values |
 | `bucket` | replay/counterfactual bucket label |
+| `sourceCorpusTag` | corpus lineage tag such as `step4y` or `iron-step2` |
+| `sourceCounterfactualScore` | source counterfactual score artifact path |
+| `trainingWeight` | confidence/sample-count derived bootstrap weight |
+| `sourceType` | `stable-bucket` or `verified-neighbor` |
+| `parentStableBucket` | origin stable bucket when row is neighbor-backed |
+| `neighborAxis` | single differing axis used for neighbor verification |
+| `verificationConfidence` | replay-backed verification confidence |
 | `confidence` | stored per candidate action |
 | `source` | `pro`, `standard`, `replay`, or `counterfactual` |
 | `metadata` | seed/hand/step/context and safety provenance |

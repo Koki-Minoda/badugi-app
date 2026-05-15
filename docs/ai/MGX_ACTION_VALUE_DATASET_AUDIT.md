@@ -2,8 +2,8 @@
 
 | Check | Status | Notes |
 | ----- | ------ | ----- |
-| Dataset file exists | PASS | `/home/mgx/badugi-app/data/ai/action-value/step4y-action-value.jsonl` |
-| Valid rows present | PASS | valid rows: `40` |
+| Dataset file exists | PASS | `/home/mgx/badugi-app/data/ai/action-value/iron-step39-action-value.jsonl` |
+| Valid rows present | PASS | valid rows: `1071` |
 | Invalid rows rejected | PASS | invalid rows: `0` |
 | Training allowed | PASS | trainingAllowed=`true` |
 | Observation shape = 96 | PASS | 0 violations |

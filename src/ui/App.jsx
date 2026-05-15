@@ -178,6 +178,7 @@ import {
   getHandHistoryBufferSnapshot,
   setHandHistoryAccessors,
 } from "./state/handHistoryStore.js";
+import { isCoachingPreviewEnabled } from "./coaching/previewFeatureFlags.js";
 import {
   enqueueBadugiActions,
   enqueueHandRecord,
@@ -585,6 +586,7 @@ export default function App() {
   }, []);
   const navigate = useNavigate();
   const location = useLocation();
+  const coachingPreviewEnabled = isCoachingPreviewEnabled({ search: location.search });
   const isDev = import.meta.env?.DEV;
   const debugFlags = useMemo(() => {
     if (!isDev) {
@@ -9150,6 +9152,7 @@ const SAFE_RESET_PHASE = "IDLE";
               onSelectTournament={handleSelectTournament}
               onSelectSettings={handleSelectSettings}
               onSelectHandHistory={handleOpenHandHistoryScreen}
+              coachingPreviewEnabled={coachingPreviewEnabled}
               onLogoutComplete={handleNavigateToTitle}
             />
           </AuthGate>

@@ -1,8 +1,11 @@
 import React, { useEffect, useLayoutEffect, useRef } from "react";
+import { canLaunchVariant } from "../../games/config/canLaunchVariant.js";
 import { GAME_VARIANTS } from "../game/variants.js";
+import VariantCardAvailability from "./VariantCardAvailability.jsx";
 
 function VariantButton({ variant, onSelect, labels }) {
-  const disabled = !variant.enabled;
+  const gate = canLaunchVariant(variant.id);
+  const disabled = !variant.enabled || !gate.canLaunch;
   return (
     <button
       type="button"
@@ -25,8 +28,9 @@ function VariantButton({ variant, onSelect, labels }) {
           </span>
         )}
       </div>
+      <VariantCardAvailability availability={gate} language={labels.language} compact={!disabled} />
       {disabled ? (
-        <p className="text-sm text-amber-300 mt-1">{labels.comingSoon}</p>
+        <p className="text-sm text-amber-300 mt-1">{gate.reason ?? labels.comingSoon}</p>
       ) : (
         <p className="text-sm text-slate-300 mt-1">{labels.jumpIn}</p>
       )}
@@ -101,8 +105,10 @@ export default function VariantSelectModal({
     comingSoon: "Coming soon",
     jumpIn: "Jump in immediately",
     close: "Close",
+    language: "en",
     ...labels,
   };
+  const visibleVariants = GAME_VARIANTS.filter((variant) => !canLaunchVariant(variant.id).hidden);
 
   return (
     <div
@@ -136,7 +142,7 @@ export default function VariantSelectModal({
           </button>
         </div>
         <div className="space-y-3">
-          {GAME_VARIANTS.map((variant) => (
+          {visibleVariants.map((variant) => (
             <VariantButton
               key={variant.id}
               variant={variant}

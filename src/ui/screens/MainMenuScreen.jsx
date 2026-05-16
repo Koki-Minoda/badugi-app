@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import VariantSelectModal from "../components/VariantSelectModal.jsx";
 import mgxKitsune from "../../assets/mgx_kitsune_transparent.png";
 import { MGX_LOCALES, MGX_DEFAULT_LOCALE } from "../../config/mgxLocaleConfig.js";
+import { canLaunchVariant } from "../../games/config/canLaunchVariant.js";
 import { listVariantProfiles, VARIANT_CATEGORY_LABELS } from "../../games/config/variantProfiles.js";
 import { isCoachingPreviewEnabled } from "../coaching/previewFeatureFlags.js";
 
@@ -286,6 +287,7 @@ export default function MainMenuScreen({
   const handleVariantSelected = (variantId) => {
     setVariantModalOpen(false);
     if (!variantId) return;
+    if (!canLaunchVariant(variantId).canLaunch) return;
     const search = variantId ? `?variant=${variantId}` : "";
     navigate(`/game${search}`);
   };
@@ -446,7 +448,7 @@ export default function MainMenuScreen({
                   onSelectTournament();
                   return;
                 }
-                navigate("/game?mode=store_tournament&variant=badugi", {
+                navigate("/game?mode=store_tournament&variant=ace_to_five_triple_draw", {
                   state: { startTournamentMTT: true },
                 });
               }}
@@ -523,7 +525,7 @@ export default function MainMenuScreen({
         isOpen={isVariantModalOpen}
         onClose={() => setVariantModalOpen(false)}
         onSelectVariant={handleVariantSelected}
-        labels={modalCopy}
+        labels={{ ...modalCopy, language }}
       />
 
       {showSettings && (

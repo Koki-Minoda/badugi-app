@@ -70,6 +70,7 @@ import StudGameController, {
   Stud8GameController,
 } from "../games/stud/StudGameController.js";
 import { GAME_VARIANTS } from "../games/core/variants.js";
+import { canLaunchVariant } from "../games/config/canLaunchVariant.js";
 import {
   buildHandResultSummary,
 } from "../games/badugi/flow/handResultUtils.js";
@@ -217,6 +218,7 @@ function cloneHandHistory(value) {
 
 const DEFAULT_GAME_ID = "D03";
 const DEFAULT_GAME_VARIANT = "badugi";
+const DEFAULT_ALPHA_GAME_VARIANT = APP_VARIANT_IDS.D02;
 const DEFAULT_AI_TIER_ID = "pro";
 const DESKTOP_CANVAS_BASE_WIDTH = 1600;
 const DESKTOP_CANVAS_BASE_HEIGHT = 900;
@@ -276,6 +278,15 @@ function getRequestedVariantIdFromURL() {
     const variant = params.get("variant");
     const normalized = normalizeAppVariantId(variant, null);
     if (normalized) {
+      const gate = canLaunchVariant(normalized);
+      if (!gate.canLaunch) {
+        console.warn("[VARIANT_GATE] blocked direct variant launch", {
+          variant: normalized,
+          availability: gate.availability,
+          reason: gate.reason,
+        });
+        return DEFAULT_ALPHA_GAME_VARIANT;
+      }
       return normalized;
     }
   } catch (err) {
@@ -4969,6 +4980,16 @@ const SAFE_RESET_PHASE = "IDLE";
 
   const handleSelectRing = (variantId = gameVariantRef.current ?? DEFAULT_GAME_VARIANT) => {
     const normalizedVariant = normalizeAppVariantId(variantId, DEFAULT_GAME_VARIANT);
+    const gate = canLaunchVariant(normalizedVariant);
+    if (!gate.canLaunch) {
+      console.warn("[VARIANT_GATE] launch blocked", {
+        variant: normalizedVariant,
+        availability: gate.availability,
+        reason: gate.reason,
+      });
+      setCurrentScreen("gameSelector");
+      return;
+    }
     if (normalizedVariant !== gameVariantRef.current) {
       gameVariantRef.current = normalizedVariant;
       setGameVariant(normalizedVariant);

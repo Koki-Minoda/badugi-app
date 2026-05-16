@@ -6434,15 +6434,19 @@ const SAFE_RESET_PHASE = "IDLE";
     );
 
     const controller = ensureGameController();
+    const controllerAnalysis =
+      typeof controller?.advanceStreet === "function"
+        ? controller.advanceStreet({
+            players: snap,
+            actedIndex,
+            dealerIdx,
+            drawRound,
+            betHead: resolvedBetHead,
+            lastAggressorIdx: resolvedLastAggressor,
+          })
+        : null;
     const analysis =
-      controller?.advanceStreet({
-        players: snap,
-        actedIndex,
-        dealerIdx,
-        drawRound,
-        betHead: resolvedBetHead,
-        lastAggressorIdx: resolvedLastAggressor,
-      }) ??
+      controllerAnalysis ??
       analyzeBetSnapshot({
         players: snap,
         actedIndex,

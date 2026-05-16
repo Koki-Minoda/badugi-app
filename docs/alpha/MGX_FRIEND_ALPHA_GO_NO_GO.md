@@ -4,9 +4,9 @@ Date: 2026-05-17
 
 ## Decision
 
-`HOLD_FOR_LIVE_TOURNAMENT_RESULT_PATH_REMOTE_SYNC_AND_PHYSICAL_QA`
+`HOLD_FOR_BROWSER_GAMEPLAY_INVARIANTS_LIVE_TOURNAMENT_RESULT_PATH_REMOTE_SYNC_AND_PHYSICAL_QA`
 
-The live URL is the release source of truth for this gate. `https://mgx-poker.com/` is healthy and the latest `reports/alpha/live-deploy-verification.json` records deployed commit matching local head. The prior live tournament browser fatal (`applyPlayerAction is not a function` / `advanceStreet is not a function`) is fixed live, and live Core5 layout evidence passes 30/30. Friend alpha still remains HOLD because live Core5 alpha smoke does not reach tournament result/next-hand for D01/D02/S01/S02, remote push is blocked by missing credentials, and physical mobile QA is still pending.
+The live URL is the release source of truth for deploy gates, and the browser gameplay invariant harness is now the local browser source of truth for action-by-action UI/controller consistency. `https://mgx-poker.com/` is healthy and the latest `reports/alpha/live-deploy-verification.json` records deployed commit matching local head. The prior live tournament browser fatal (`applyPlayerAction is not a function` / `advanceStreet is not a function`) is fixed live, and live Core5 layout evidence passes 30/30. Friend alpha still remains HOLD because the new browser gameplay invariant gate fails on Badugi cash desktop, live Core5 alpha smoke does not reach tournament result/next-hand for D01/D02/S01/S02, remote push is blocked by missing credentials, and physical mobile QA is still pending.
 
 ## Gate Summary
 
@@ -30,6 +30,7 @@ The live URL is the release source of truth for this gate. `https://mgx-poker.co
 | Core5 Cash lifecycle invariant gate | PASS locally, 6,000 synthetic hands / 60 sessions / 0 violations; 5/5 full browser lifecycle variants; 25/25 individual Cash checks |
 | Core5 Tournament lifecycle invariant gate | PASS locally, 1,200 synthetic tournaments / 0 violations; 5/5 full browser lifecycle variants; 30/30 individual Tournament checks |
 | Tournament integration expansion | PASS locally, 90-row sweep / 0 violations; unit integration 28/28; tournament E2E integration 50/50 |
+| Browser gameplay invariant gate | FAIL, Badugi cash desktop reports P0 actor and terminal browser/controller violations |
 | Physical mobile QA | PENDING, no physical device available in this environment |
 | Core 5 UI layout | PASS for all five core games in automation |
 | Alpha-scope P0 | `CORE5-TOUR-LIVE-001` live tournament result path; Badugi re-raise-positive proof incomplete |
@@ -49,7 +50,7 @@ The live URL is the release source of truth for this gate. `https://mgx-poker.co
 
 ## Remaining Required Action
 
-Fix the live tournament result/next-hand path, rerun `live-core5-alpha-smoke`, complete the Badugi re-raise-positive live closure proof or explicitly classify it as unsupported by the test harness, run physical mobile QA on at least Android Chrome or iPhone Safari/Chrome, and push `feature/d-04-next-actor-unify` from a credentialed environment. Only then can the Core5 friend alpha move from HOLD to GO.
+Fix the browser gameplay invariant P0s, rerun the Badugi cash desktop browser invariant smoke, expand the browser invariant matrix to Core5 x Cash/Tournament x desktop/portrait/landscape, fix the live tournament result/next-hand path, rerun `live-core5-alpha-smoke`, complete the Badugi re-raise-positive live closure proof or explicitly classify it as unsupported by the test harness, run physical mobile QA on at least Android Chrome or iPhone Safari/Chrome, and push `feature/d-04-next-actor-unify` from a credentialed environment. Only then can the Core5 friend alpha move from HOLD to GO.
 
 Badugi should be watched closely in alpha: Step6 clears the Badugi portrait mobile UI blocker, Step7 clears the automated long-run active-pot / terminal-transition blocker, and live no-reraise closure evidence confirms the raiser is not reselected after all remaining players call/fold. The live re-raise-positive path still needs a stronger proof before Badugi is considered fully certified.
 

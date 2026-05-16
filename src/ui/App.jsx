@@ -1103,7 +1103,8 @@ const SAFE_RESET_PHASE = "IDLE";
     baseWidth: DESKTOP_CANVAS_BASE_WIDTH,
     baseHeight: DESKTOP_CANVAS_BASE_HEIGHT,
   });
-  const shouldGateOrientation = isMobileDevice && !isSingleTableDrawLowball;
+  const shouldGateOrientation =
+    isMobileDevice && !(isSingleTableBadugi || isSingleTableDrawLowball);
   useEffect(() => {
     if (!shouldUseDesktopCanvasScale) {
       setDebugScale(1);

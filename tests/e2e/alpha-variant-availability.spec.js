@@ -11,10 +11,10 @@ test.describe("alpha variant availability gate", () => {
   test("alpha mode exposes only alpha-playable launch buttons by default", async ({ page }) => {
     await openGameSelector(page);
 
+    await expect(page.getByTestId("game-selector-play-badugi")).toBeEnabled();
+    await expect(page.getByTestId("game-selector-card-badugi")).toContainText(/Alpha/i);
     await expect(page.getByTestId("game-selector-play-ace_to_five_triple_draw")).toBeEnabled();
     await expect(page.getByTestId("game-selector-play-deuce_to_seven_triple_draw")).toBeEnabled();
-    await expect(page.getByTestId("game-selector-play-badugi")).toBeDisabled();
-    await expect(page.getByTestId("game-selector-card-badugi")).toContainText(/Preview|検証中/);
 
     await page.getByRole("button", { name: /Single Draw|シングルドロー/i }).click();
     await expect(page.getByTestId("game-selector-play-deuce_to_seven_single_draw")).toBeEnabled();
@@ -35,14 +35,15 @@ test.describe("alpha variant availability gate", () => {
     });
     await openGameSelector(page);
 
-    await expect(page.getByTestId("game-selector-play-badugi")).toBeEnabled();
+    await page.getByRole("button", { name: /Board|Hold'em|Omaha|ボード|ホールデム|オマハ/i }).click();
+    await expect(page.getByTestId("game-selector-play-plo")).toBeEnabled();
   });
 
   test("mobile viewport keeps status labels visible", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await openGameSelector(page);
 
-    await expect(page.getByTestId("game-selector-card-badugi")).toContainText(/Preview|検証中/);
-    await expect(page.getByTestId("game-selector-play-badugi")).toBeDisabled();
+    await expect(page.getByTestId("game-selector-card-badugi")).toContainText(/Alpha/);
+    await expect(page.getByTestId("game-selector-play-badugi")).toBeEnabled();
   });
 });

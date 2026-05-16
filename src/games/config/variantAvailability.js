@@ -9,7 +9,9 @@ export const PREVIEW_VARIANTS_STORAGE_KEY = "mgx.previewVariants";
 export const ALPHA_ONLY_VARIANTS_STORAGE_KEY = "mgx.alphaOnlyVariants";
 
 const ALPHA_REASON =
-  "Core draw-game flow is enabled for friend alpha while Badugi blockers are isolated.";
+  "Core draw-game flow is enabled for friend alpha.";
+const BADUGI_ALPHA_REASON =
+  "Core MGX alpha game; automated progression, pot, terminal, orientation gates passed.";
 const PREVIEW_REASON =
   "Playable for development review, but long-run natural UI, mobile, replay, or split-result coverage is not alpha-ready.";
 
@@ -71,9 +73,14 @@ const comingSoon = (label, reason, blockers = []) =>
   });
 
 export const VARIANT_AVAILABILITY = Object.freeze({
-  badugi: preview("Badugi", "Automated restore gates pass, but physical mobile full-hand QA is still pending.", [
-    "BG-005",
-  ]),
+  badugi: makeEntry({
+    availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
+    label: "Badugi",
+    statusLabel: "Alpha",
+    statusLabelJa: "Alpha",
+    reason: BADUGI_ALPHA_REASON,
+    requiredBeforeAlpha: [],
+  }),
   nlh: preview("No-Limit Hold'em"),
   flh: preview("Fixed-Limit Hold'em"),
   super_holdem: preview("NL Super Hold'em"),

@@ -11,6 +11,9 @@ describe("variantAvailability", () => {
     expect(getVariantAvailability("D01").availability).toBe(
       VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
     );
+    expect(getVariantAvailability("badugi").availability).toBe(
+      VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
+    );
     expect(getVariantAvailability("D02").availability).toBe(
       VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
     );
@@ -22,11 +25,12 @@ describe("variantAvailability", () => {
     );
   });
 
-  it("keeps Badugi behind preview while the alpha blocker is open", () => {
+  it("includes Badugi in the friend alpha scope", () => {
     const badugi = getVariantAvailability("badugi");
-    expect(badugi.availability).toBe(VARIANT_AVAILABILITY_STATES.PREVIEW_ONLY);
-    expect(badugi.alphaPlayable).toBe(false);
-    expect(badugi.blockers).toContain("BG-005");
+    expect(badugi.availability).toBe(VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE);
+    expect(badugi.alphaPlayable).toBe(true);
+    expect(badugi.statusLabel).toBe("Alpha");
+    expect(badugi.reason).toMatch(/Core MGX alpha game/i);
   });
 
   it("marks Chinese/OFC as coming soon and keeps unknown variants unavailable", () => {

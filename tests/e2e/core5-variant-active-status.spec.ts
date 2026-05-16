@@ -11,9 +11,9 @@ const CORE5 = [
     variantId: "badugi",
     selectorKey: "badugi",
     label: /Badugi/i,
-    expectedAvailability: "preview_only",
-    launchableByDefault: false,
-    requiresPreview: true,
+    expectedAvailability: "alpha_playable",
+    launchableByDefault: true,
+    requiresPreview: false,
   },
   {
     game: "2-7 Triple Draw",

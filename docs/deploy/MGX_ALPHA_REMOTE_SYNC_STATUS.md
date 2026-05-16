@@ -7,23 +7,23 @@ Date: 2026-05-17
 | Item | Result |
 | --- | --- |
 | Local branch | `feature/d-04-next-actor-unify` |
-| Local HEAD after live release blocker docs update | `3e0dd0bfff3c8c5862393f7570f57c36e3d8db67` |
+| Local HEAD | see `reports/alpha/live-deploy-verification.json` from the latest deploy verification |
 | Remote | `origin https://github.com/Koki-Minoda/badugi-app.git` |
-| Branch state after live release blocker docs update | local branch is ahead of `origin/feature/d-04-next-actor-unify` by 61 commits |
+| Branch state | local branch is ahead of `origin/feature/d-04-next-actor-unify` by 60+ commits |
 | Preview URL | `https://mgx-poker.com/` |
-| Deployed snapshot | `3e0dd0bfff3c8c5862393f7570f57c36e3d8db67` |
+| Deployed snapshot | see `reports/alpha/live-deploy-verification.json` |
 
 ## Push Readiness
 
 | Check | Result |
 | --- | --- |
 | `git status --short` | only generated `reports/alpha/`, `reports/invariant/`, and `reports/tournament/` untracked |
-| `git branch -vv` | local branch ahead 61 before final deploy |
+| `git branch -vv` | local branch ahead 60+ before final deploy |
 | `gh --version` | unavailable, `gh` is not installed |
 | HTTPS push | blocked by missing credentials |
 | Token exposure | false |
 | Remote synced | false |
-| Deploy source risk | preview is deployed from local branch head `3e0dd0b`, but remote has not been updated |
+| Deploy source risk | preview is deployed from the local branch head, but remote has not been updated |
 
 Push result:
 

@@ -6,20 +6,20 @@ Date: 2026-05-17
 
 `HOLD_FOR_LIVE_TOURNAMENT_RESULT_PATH_REMOTE_SYNC_AND_PHYSICAL_QA`
 
-Badugi P0 browser progression and active-hand pot continuity regressions remain fixed in focused automation. Step6 cleared the Badugi portrait mobile UI blocker, Step7 cleared the automated long-run active-pot / terminal-transition restore gate, and live action-history audit confirms no Core5 actor-order violation. The live deploy now matches local `3e0dd0bfff3c8c5862393f7570f57c36e3d8db67`, live Core5 tournament runtime fatal checks pass, and live Core5 layout evidence passes 30/30. Friend alpha is still blocked because live Core5 alpha smoke fails to reach tournament result/next-hand for D01/D02/S01/S02, remote sync is unresolved, and physical mobile QA is pending.
+Badugi P0 browser progression and active-hand pot continuity regressions remain fixed in focused automation. Step6 cleared the Badugi portrait mobile UI blocker, Step7 cleared the automated long-run active-pot / terminal-transition restore gate, and live action-history audit confirms no Core5 actor-order violation. The live deploy now matches the local head recorded in `reports/alpha/live-deploy-verification.json`, live Core5 tournament runtime fatal checks pass, and live Core5 layout evidence passes 30/30. Friend alpha is still blocked because live Core5 alpha smoke fails to reach tournament result/next-hand for D01/D02/S01/S02, remote sync is unresolved, and physical mobile QA is pending.
 
 ## Gate Results
 
 | Gate | Result | Notes |
 | --- | --- | --- |
-| live deploy snapshot | PASS | live build info reports `3e0dd0bfff3c8c5862393f7570f57c36e3d8db67` and `/assets/index-CrjvsFOE.js`, matching local head at verification |
+| live deploy snapshot | PASS | live build info matches local head in `reports/alpha/live-deploy-verification.json` |
 | live health | PASS | `/api/health` returns `{"status":"ok","env":"prod","db":"ok"}` |
 | build | PASS | `npm run build` succeeds |
 | Badugi playable | PARTIAL_LIVE_VERIFY / HOLD | focused full 3-draw regression reaches `Hand Result`; long-run restore smoke passes 5 hands / 180 checkpoints; live no-reraise raise/call closure passes; re-raise-positive live proof remains incomplete |
 | pot continuity | PASS | focused browser, UI snapshot, and long-run restore tests pass with 0 active-hand `Total Pot 0` occurrences |
 | mobile playable | PASS in emulation for Core 5 / physical QA pending | Core 5 UI audit now passes Badugi/D01/D02/S01/S02 on cash portrait, cash landscape, tournament portrait, tournament landscape, interaction, and desktop |
 | Core 5 live layout evidence | PASS | 30/30 live cash/tournament portrait/landscape evidence cases pass; screenshots under `reports/screenshots/live-core5-v2-*.png` |
-| Core 5 live tournament fatal guard | PASS | `tests/e2e/live-core5-tournament-runtime-fatal.spec.ts` passes 5/5 after deploy of `6110fc8`; deploy was then refreshed to docs head `3e0dd0b` |
+| Core 5 live tournament fatal guard | PASS | `tests/e2e/live-core5-tournament-runtime-fatal.spec.ts` passes 5/5 after the tournament runtime fix deploy |
 | Core 5 live alpha smoke | FAIL | D01/D02/S01/S02 cash result/next-hand passes, but tournament result/next-hand is not reached inside smoke budget; Badugi tournament can also stall in final `BET` with stale top-level `turn` |
 | Core 5 active status | PENDING recheck after config change | Badugi/D01/D02/S01/S02 should be alpha-playable and launchable |
 | Core 5 actor order | PASS | live action-history audit across Badugi/D01/D02/S01/S02 recorded expected vs actual actor samples and found 0 invalid actor rows / 0 hero-control mismatches |
@@ -37,7 +37,7 @@ Badugi P0 browser progression and active-hand pot continuity regressions remain 
 | --- | --- | --- |
 | P0 | Fix live Core5 tournament result/next-hand path | live tournament runtime no longer fatals, but D01/D02/S01/S02 do not reach result/next-hand in the release smoke |
 | P1 | Complete Badugi re-raise-positive live closure proof | no-reraise closure passes live, but the positive re-raise reopen proof is incomplete |
-| P1 | Refresh live deploy snapshot after the next fix | current deploy matches `6110fc8`; rerun after any new fix |
+| P1 | Refresh live deploy snapshot after the next fix | current deploy matches the latest verification report; rerun after any new fix |
 | P1 | Push deployed local commits | preview deploy used a local branch ahead of origin by many commits |
 | P1 | Run physical mobile QA | emulation passed, but real device touch/orientation is still unchecked |
 | P1 | Recheck mobile tournament layout on real Safari/Chrome | automation passes, but this was originally found on real-device/browser tournament views |

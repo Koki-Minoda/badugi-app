@@ -6,14 +6,14 @@ Date: 2026-05-17
 
 `HOLD_FOR_LIVE_TOURNAMENT_RESULT_PATH_REMOTE_SYNC_AND_PHYSICAL_QA`
 
-The live URL is the release source of truth for this gate. `https://mgx-poker.com/` is healthy and now reports deployed commit `3e0dd0bfff3c8c5862393f7570f57c36e3d8db67`, matching local head at the time of verification. The prior live tournament browser fatal (`applyPlayerAction is not a function` / `advanceStreet is not a function`) is fixed live, and live Core5 layout evidence passes 30/30. Friend alpha still remains HOLD because live Core5 alpha smoke does not reach tournament result/next-hand for D01/D02/S01/S02, remote push is blocked by missing credentials, and physical mobile QA is still pending.
+The live URL is the release source of truth for this gate. `https://mgx-poker.com/` is healthy and the latest `reports/alpha/live-deploy-verification.json` records deployed commit matching local head. The prior live tournament browser fatal (`applyPlayerAction is not a function` / `advanceStreet is not a function`) is fixed live, and live Core5 layout evidence passes 30/30. Friend alpha still remains HOLD because live Core5 alpha smoke does not reach tournament result/next-hand for D01/D02/S01/S02, remote push is blocked by missing credentials, and physical mobile QA is still pending.
 
 ## Gate Summary
 
 | Gate | Result |
 | --- | --- |
 | Remote source sync for deployed commit | BLOCKED / unresolved |
-| Live deploy snapshot | PASS, live `3e0dd0b` == local head at verification |
+| Live deploy snapshot | PASS, live commit == local head in latest deploy verification report |
 | Badugi alpha availability | HOLD for friend exposure until full live smoke and physical QA clear |
 | Badugi raise/call betting closure | PASS for no-reraise closure on live; re-raise-positive live proof remains incomplete |
 | D02/S01/S02 desktop smoke | PASS |

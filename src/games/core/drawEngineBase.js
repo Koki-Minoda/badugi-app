@@ -21,6 +21,10 @@ function nextForcedBetSeat(players = [], startIdx = 0, excludeIdx = null) {
   return null;
 }
 
+function countForcedBetEligibleSeats(players = []) {
+  return players.reduce((count, seat) => count + (isForcedBetEligible(seat) ? 1 : 0), 0);
+}
+
 /**
  * Utility base class for draw games (Badugi, 2-7, Dramahaなど)。
  * ここでは汎用的な SB/BB 処理や「全員がマッチしたか」の判定だけ提供し、
@@ -44,7 +48,11 @@ export class DrawEngineBase extends GameEngine {
         if (seat.stack === 0) seat.allIn = true;
       });
     }
-    const sbIdx = nextForcedBetSeat(next.players, (next.dealerIndex + 1) % next.players.length);
+    const eligibleSeatCount = countForcedBetEligibleSeats(next.players);
+    const headsUp = eligibleSeatCount === 2;
+    const sbIdx = headsUp
+      ? nextForcedBetSeat(next.players, next.dealerIndex)
+      : nextForcedBetSeat(next.players, (next.dealerIndex + 1) % next.players.length);
     const bbIdx = nextForcedBetSeat(
       next.players,
       ((sbIdx ?? next.dealerIndex) + 1) % next.players.length,

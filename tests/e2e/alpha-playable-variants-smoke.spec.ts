@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { APP_URL, openAuthenticatedGame } from "./authHelper";
 import {
+  expectMobileActionsInViewport,
   playOneHandProgression,
   waitForE2EDriver,
 } from "./helpers/gameProgressHelper.js";
@@ -45,24 +46,6 @@ async function expectVisiblePositivePot(page: Page) {
   await expect(page.getByText(/Total Pot/i).first()).toBeVisible({ timeout: 10000 });
 }
 
-async function expectActionControlsVisibleInViewport(page: Page) {
-  const viewport = page.viewportSize();
-  const action = page
-    .locator("[data-testid='action-check'],[data-testid='action-call'],[data-testid='action-raise'],[data-testid='action-fold'],[data-testid='action-draw-selected']")
-    .first();
-  await expect(action).toBeVisible({ timeout: 30000 });
-  const box = await action.boundingBox();
-  expect(box, "action button should have a bounding box").toBeTruthy();
-  expect(box?.width ?? 0).toBeGreaterThan(0);
-  expect(box?.height ?? 0).toBeGreaterThanOrEqual(32);
-  if (viewport && box) {
-    expect(box.x).toBeGreaterThanOrEqual(0);
-    expect(box.y).toBeGreaterThanOrEqual(0);
-    expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
-    expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);
-  }
-}
-
 test.describe("friend alpha playable variants smoke", () => {
   test.describe.configure({ timeout: 180000 });
 
@@ -99,22 +82,17 @@ test.describe("friend alpha playable variants smoke", () => {
   }
 
   for (const viewport of MOBILE_VIEWPORTS) {
-    for (const { variant, title } of ALPHA_VARIANTS) {
+    for (const { variant } of ALPHA_VARIANTS) {
       test(`${variant} keeps alpha controls visible on mobile ${viewport.name}`, async ({ page }) => {
-        test.fixme(
-          true,
-          "P1 mobile gameplay hardening: draw alpha action row currently overflows narrow viewports; keep external friend alpha gated until fixed.",
-        );
         const browserErrors = captureFatalBrowserErrors(page);
 
         await page.setViewportSize({ width: viewport.width, height: viewport.height });
         await openAuthenticatedGame(page, `${APP_URL}?variant=${variant}`);
         await waitForE2EDriver(page);
 
-        await expect(page.getByText(title).first()).toBeVisible({ timeout: 20000 });
         await expect(page.getByTestId("decision-panel")).toBeVisible({ timeout: 20000 });
         await expectVisiblePositivePot(page);
-        await expectActionControlsVisibleInViewport(page);
+        await expectMobileActionsInViewport(page);
 
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
         expect(overflow).toBeLessThanOrEqual(2);

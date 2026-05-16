@@ -133,6 +133,26 @@ function variantTestIdFromUrl(url: string) {
   }
 }
 
+async function waitForGameLaunchReady(page: Page, timeout = 20000) {
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    const ready = await Promise.all([
+      page
+        .getByRole("button", { name: /Leaderboard|ランキング/i })
+        .first()
+        .isVisible()
+        .catch(() => false),
+      page.getByTestId("decision-panel").isVisible().catch(() => false),
+      page.getByTestId("chinese-poker-screen").isVisible().catch(() => false),
+    ]);
+    if (ready.some(Boolean)) {
+      return;
+    }
+    await page.waitForTimeout(100);
+  }
+  throw new Error(`Game launch did not become ready within ${timeout}ms`);
+}
+
 export function uniqueE2eEmail(prefix = "mgx.e2e") {
   const nonce = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   return `${prefix}+${nonce}@mgx-e2e.com`;
@@ -252,12 +272,5 @@ export async function openAuthenticatedGame(page: Page, url = APP_URL) {
     }
   }
   await page.getByTestId(`game-selector-play-${variantTestId}`).first().click();
-  await Promise.race([
-    page
-      .getByRole("button", { name: /Leaderboard|ランキング/i })
-      .first()
-      .waitFor({ state: "visible", timeout: 20000 }),
-    page.getByTestId("decision-panel").waitFor({ state: "visible", timeout: 20000 }),
-    page.getByTestId("chinese-poker-screen").waitFor({ state: "visible", timeout: 20000 }),
-  ]);
+  await waitForGameLaunchReady(page);
 }

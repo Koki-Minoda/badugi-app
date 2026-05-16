@@ -8,6 +8,9 @@ import {
 
 describe("variantAvailability", () => {
   it("classifies alpha playable variants conservatively", () => {
+    expect(getVariantAvailability("D01").availability).toBe(
+      VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
+    );
     expect(getVariantAvailability("D02").availability).toBe(
       VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
     );
@@ -23,8 +26,7 @@ describe("variantAvailability", () => {
     const badugi = getVariantAvailability("badugi");
     expect(badugi.availability).toBe(VARIANT_AVAILABILITY_STATES.PREVIEW_ONLY);
     expect(badugi.alphaPlayable).toBe(false);
-    expect(badugi.blockers).toContain("BADUGI-ALPHA-01");
-    expect(badugi.blockers).toContain("BADUGI-ALPHA-02");
+    expect(badugi.blockers).toContain("BG-005");
   });
 
   it("marks Chinese/OFC as coming soon and keeps unknown variants unavailable", () => {
@@ -45,4 +47,3 @@ describe("variantAvailability", () => {
     expect(listVariantAvailability().length).toBeGreaterThan(0);
   });
 });
-

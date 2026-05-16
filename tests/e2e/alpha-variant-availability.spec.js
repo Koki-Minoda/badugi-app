@@ -12,6 +12,7 @@ test.describe("alpha variant availability gate", () => {
     await openGameSelector(page);
 
     await expect(page.getByTestId("game-selector-play-ace_to_five_triple_draw")).toBeEnabled();
+    await expect(page.getByTestId("game-selector-play-deuce_to_seven_triple_draw")).toBeEnabled();
     await expect(page.getByTestId("game-selector-play-badugi")).toBeDisabled();
     await expect(page.getByTestId("game-selector-card-badugi")).toContainText(/Preview|検証中/);
 

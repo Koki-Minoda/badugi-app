@@ -30,7 +30,7 @@ export const CORE5_VARIANTS = [
     variant: "D01",
     displayName: "2-7 Triple Draw",
     heroCardTestId: "player-0-card-4",
-    requiresPreview: true,
+    requiresPreview: false,
     maxSteps: 110,
   },
   {

@@ -71,9 +71,8 @@ const comingSoon = (label, reason, blockers = []) =>
   });
 
 export const VARIANT_AVAILABILITY = Object.freeze({
-  badugi: preview("Badugi", "Round progression and pot display regression are under investigation.", [
-    "BADUGI-ALPHA-01",
-    "BADUGI-ALPHA-02",
+  badugi: preview("Badugi", "Automated restore gates pass, but physical mobile full-hand QA is still pending.", [
+    "BG-005",
   ]),
   nlh: preview("No-Limit Hold'em"),
   flh: preview("Fixed-Limit Hold'em"),
@@ -96,7 +95,7 @@ export const VARIANT_AVAILABILITY = Object.freeze({
   five_card_plo: preview("5-Card PLO", "Five-card Omaha flow exists, but mobile/replay/EV gates are not alpha-ready.", [
     "EV-GUARD-06",
   ]),
-  deuce_to_seven_triple_draw: preview("2-7 Triple Draw", "D01 remains excluded from Iron teacher/RL paths and is not friend-alpha selectable."),
+  deuce_to_seven_triple_draw: alpha("2-7 Triple Draw"),
   ace_to_five_triple_draw: alpha("A-5 Triple Draw"),
   badeucey_triple_draw: preview("Badeucey TD", "Split draw flow exists, but split-result/replay/mobile coverage is not alpha-ready."),
   badacey_triple_draw: preview("Badacey TD", "Split draw flow exists, but split-result/replay/mobile coverage is not alpha-ready."),
@@ -276,4 +275,3 @@ export function listVariantAvailability() {
     .sort()
     .map((key) => ({ key, ...VARIANT_AVAILABILITY[key] }));
 }
-

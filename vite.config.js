@@ -2,15 +2,36 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import { fileURLToPath } from "url";
+import { execSync } from "child_process";
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
+function readGitCommit() {
+  try {
+    return execSync("git rev-parse HEAD", {
+      cwd: projectRoot,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return "unknown";
+  }
+}
+
 export default defineConfig(({ command }) => {
   const isDev = command === "serve";
+  const buildInfo = {
+    commit: process.env.VITE_MGX_BUILD_COMMIT || readGitCommit(),
+    buildTime: process.env.VITE_MGX_BUILD_TIME || new Date().toISOString(),
+    appVersion: process.env.npm_package_version || "0.0.0",
+  };
 
   return {
     plugins: [react()],
     base: isDev ? "/dev/" : "/",
+    define: {
+      __MGX_BUILD_INFO__: JSON.stringify(buildInfo),
+    },
     resolve: {
       alias: {
         "@core": path.resolve(projectRoot, "src/core"),

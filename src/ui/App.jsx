@@ -11,6 +11,7 @@ import { DEFAULT_SEAT_TYPES, DEFAULT_STARTING_STACK, TOURNAMENT_STRUCTURE } from
 import { formatComment } from "./utils/commentCatalog.js";
 import GameRegistry from "../games/_core/GameRegistry";
 import { DEBUG_TOURNAMENT, logMTT } from "../config/debugFlags.js";
+import { BUILD_INFO } from "../config/buildInfo.js";
 import {
   startHandHistoryRecord,
   appendHandHistoryAction,
@@ -599,6 +600,11 @@ export default function App() {
   const location = useLocation();
   const coachingPreviewEnabled = isCoachingPreviewEnabled({ search: location.search });
   const isDev = import.meta.env?.DEV;
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.__MGX_BUILD_INFO__ = BUILD_INFO;
+    }
+  }, []);
   const debugFlags = useMemo(() => {
     if (!isDev) {
       return {
@@ -616,6 +622,13 @@ export default function App() {
       novh: params.get("novh") === "1",
     };
   }, [isDev, location.search]);
+  const showBuildInfo = useMemo(() => {
+    const params = new URLSearchParams(location.search ?? "");
+    return (
+      params.get("buildInfo") === "1" ||
+      (typeof window !== "undefined" && window.localStorage.getItem("mgx.showBuildInfo") === "true")
+    );
+  }, [location.search]);
   const ensureURLModeParam = useCallback(
     (modeValue) => {
       const params = new URLSearchParams(location.search ?? "");
@@ -1104,7 +1117,11 @@ const SAFE_RESET_PHASE = "IDLE";
     baseHeight: DESKTOP_CANVAS_BASE_HEIGHT,
   });
   const shouldGateOrientation =
-    isMobileDevice && !(isSingleTableBadugi || isSingleTableDrawLowball);
+    isMobileDevice &&
+    !(
+      normalizedGameVariant === APP_VARIANT_IDS.BADUGI ||
+      isDrawLowballAppVariant(normalizedGameVariant)
+    );
   useEffect(() => {
     if (!shouldUseDesktopCanvasScale) {
       setDebugScale(1);
@@ -9539,7 +9556,25 @@ const SAFE_RESET_PHASE = "IDLE";
         debugScale={debugScale}
         screenLabel={screenLabel}
       />
+      <BuildInfoBadge visible={showBuildInfo} />
     </>
+  );
+}
+
+function BuildInfoBadge({ visible }) {
+  const forcedVisible =
+    typeof window !== "undefined" && window.localStorage.getItem("mgx.showBuildInfo") === "true";
+  if (!visible && !forcedVisible) return null;
+  const shortCommit = String(BUILD_INFO.commit ?? "unknown").slice(0, 12);
+  return (
+    <div
+      data-testid="mgx-build-info"
+      className="fixed bottom-2 left-2 z-[9998] max-w-[92vw] rounded bg-black/75 px-2 py-1 text-[10px] leading-tight text-white shadow"
+    >
+      <div>commit: {shortCommit}</div>
+      <div>build: {BUILD_INFO.buildTime}</div>
+      <div>version: {BUILD_INFO.appVersion}</div>
+    </div>
   );
 }
 

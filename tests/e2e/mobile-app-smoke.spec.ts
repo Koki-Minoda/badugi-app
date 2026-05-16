@@ -1,9 +1,6 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import {
   APP_URL,
-  createAuthenticatedSession,
-  enterTitleIfPresent,
-  gotoWithRetry,
   openAuthenticatedGame,
 } from "./authHelper";
 
@@ -92,16 +89,13 @@ async function expectActionButtonIsFingerSized(locator: ReturnType<Page["getByTe
 test.describe("mobile App smoke", () => {
   test.describe.configure({ timeout: 120000 });
 
-  test("shows orientation gate on mobile portrait", async ({ browser }) => {
+  test("allows Core 5 gameplay on mobile portrait", async ({ browser }) => {
     const { context, page } = await openMobilePage(browser, "portrait");
     try {
-      await createAuthenticatedSession(page);
-      await gotoWithRetry(page, APP_URL);
-      await enterTitleIfPresent(page);
-      await page.getByTestId("menu-ring").click();
-      await page.getByTestId("game-selector-play-badugi").click();
-      await expect(page.getByText("Landscape mode required")).toBeVisible({ timeout: 20000 });
-      await expect(page.getByText("MGXはスマホ横画面に最適化されています")).toBeVisible();
+      await openAuthenticatedGame(page, `${APP_URL}?variant=D01`);
+      await expect(page.getByText("Landscape mode required")).toHaveCount(0);
+      await expect(page.getByText("MGXはスマホ横画面に最適化されています")).toHaveCount(0);
+      await expectMobileLayoutIsUsable(page, "player-0-card-4");
     } finally {
       await closeContext(context);
     }
@@ -117,6 +111,11 @@ test.describe("mobile App smoke", () => {
     test(`plays ${variant} draw controls on mobile landscape`, async ({ browser }) => {
       const { context, page } = await openMobilePage(browser, "landscape");
       try {
+        if (variant === "badugi") {
+          await page.addInitScript(() => {
+            window.localStorage.setItem("mgx.previewVariants", "true");
+          });
+        }
         await openAuthenticatedGame(page, `${APP_URL}?variant=${variant}`);
         await expectMobileLayoutIsUsable(page, lastHeroCard);
 
@@ -143,6 +142,9 @@ test.describe("mobile App smoke", () => {
   test("keeps Android landscape actions and cards inside viewport", async ({ browser }) => {
     const { context, page } = await openMobilePage(browser, "landscape", "android");
     try {
+      await page.addInitScript(() => {
+        window.localStorage.setItem("mgx.previewVariants", "true");
+      });
       await openAuthenticatedGame(page, `${APP_URL}?variant=badugi`);
       await expectMobileLayoutIsUsable(page, "player-0-card-3");
       const drawButton = await waitForDrawButton(page);

@@ -28,6 +28,7 @@ import {
   markPlayerFolded,
   isPlayerSeated,
   applyChips,
+  applyForcedBetActionSnapshot,
   queueForcedSeatAction as queueForcedSeatActionMap,
   forceSequentialFolds as forceSequentialFoldsMap,
   forceAllInAction as forceAllInActionMap,
@@ -3552,12 +3553,20 @@ const SAFE_RESET_PHASE = "IDLE";
         }
       }
       const controller = ensureGameController();
-      const result = controller.applyPlayerAction({
-        seatIndex: seat,
-        payload,
-        betSize,
-        players: snap,
-      });
+      const result =
+        typeof controller?.applyPlayerAction === "function"
+          ? controller.applyPlayerAction({
+              seatIndex: seat,
+              payload,
+              betSize,
+              players: snap,
+            })
+          : applyForcedBetActionSnapshot({
+              players: snap,
+              seat,
+              payload,
+              betSize,
+            });
       if (!result.success) {
         forcedSeatActionsRef.current.delete(seat);
         return false;

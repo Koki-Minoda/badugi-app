@@ -373,6 +373,9 @@ export async function playOneHandProgression(page, options = {}) {
     }
     trace.push({ step, ...summarizeProgressState(progress), legalActions: await getLegalActions(page) });
     assertProgressState(progress, { step, trace: trace.slice(-3) });
+    if (typeof options.onStep === "function") {
+      await options.onStep({ step, progress, trace });
+    }
     visitedPhases.add(String(progress.phase));
     if (String(progress.phase) === "DRAW" || progress?.snapshot?.street === "DRAW") {
       visitedDrawRounds.add(Number(progress.drawRoundIndex ?? progress.snapshot?.drawRoundIndex ?? 0));

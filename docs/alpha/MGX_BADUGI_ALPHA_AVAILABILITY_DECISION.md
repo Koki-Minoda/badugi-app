@@ -4,48 +4,44 @@ Date: 2026-05-16
 
 ## Decision
 
-`BADUGI_REMAINS_PREVIEW_ONLY`
+`BADUGI_ALPHA_PLAYABLE_FOR_FRIEND_ALPHA`
+
+## Rationale
+
+Badugi is a core MGX game and should be part of the closed friend alpha. The previous safety-first `preview_only` gate protected the alpha scope while Badugi progression, pot continuity, terminal transition, portrait mobile, and orientation blockers were being audited. Those automated gates now pass.
+
+This change accepts remaining non-P0 risk for closed alpha while keeping all known risks visible in `docs/bugs/current_bugs.md`.
 
 ## Evidence
 
 | Gate | Result |
 | --- | --- |
-| Playwright full 3-draw | PASS |
+| focused full 3-draw browser flow | PASS |
 | pot regression | PASS |
-| desktop preview full-hand smoke | PASS |
-| desktop active-hand pot continuity | PASS, min observed pot `30` |
-| post-draw betting observed | PASS |
-| hand result reached | PASS |
-| Badugi long-run alpha restore smoke | PASS, 5 hands / 180 checkpoints |
-| active-hand Total Pot 0 | PASS, 0 occurrences |
-| terminal transition audit | PASS |
-| Badugi portrait mobile UI gate | PASS |
-| mobile variant disabled-state visibility | PASS |
-| mobile Badugi full-hand gameplay | PASS in portrait emulation and landscape automation; physical mobile still pending |
-| physical mobile QA | PENDING |
-| new P0 | none from Step7; alpha scope remains protected because Badugi is gated |
+| long-run active-pot / terminal restore | PASS |
+| active-hand `Total Pot 0` | PASS, 0 observed in long-run restore gate |
+| stale actor / terminal transition | PASS |
+| portrait mobile blocker | PASS in automation |
+| landscape / orientation | PASS in automation |
+| actor order | PASS in Core5 audit |
+| Core5 mobile tournament layout | PASS in automation and deployed smoke |
+| P0 in automation | none confirmed |
 
-## Rationale
-
-The original focused Badugi P0 automation blocker remains fixed: the full 3-draw browser regression, pot continuity regression, stale-turn merge test, and no-next-alive actor test pass. Step7 removed the broader automated restore blocker:
-
-- the long-run preview smoke now passes without `test.fail`
-- active-hand `Total Pot 0` was not reproduced across 5 hands / 180 checkpoints
-- terminal stale actor/action state is covered and fixed by clearing canonical turn fields at terminal result
-- portrait mobile launch/readability was blocked by the mobile orientation gate, but Step6 cleared that UI blocker in 390x844 and 430x932 automation
-
-The friend alpha policy is safety-first. Badugi should still not return to `alpha_playable` until physical mobile QA confirms pot/action/phase usability on at least one real device.
-
-## Current Availability
+## Availability
 
 | Variant | Availability |
 | --- | --- |
-| Badugi | `preview_only` |
+| Badugi | `alpha_playable` |
 
-## Required Before Reclassification
+## Known Limitations Accepted For Closed Alpha
 
-1. Run Badugi full hand on mobile portrait and landscape.
-2. Keep `tests/e2e/badugi-alpha-long-run-smoke.spec.ts` in the release gate.
-3. Confirm pot/action controls visibility through Draw 1-3 on a physical mobile device.
-4. Confirm next hand from result overlay on a physical mobile device.
-5. Rerun targeted Playwright gates after any UI adjustment.
+- Physical mobile QA is still required before broad sharing.
+- Continue monitoring Badugi pot continuity, terminal transition, actor state, and next-hand behavior.
+- If any P0 is reproduced on real devices, pause friend alpha and revert Badugi to `preview_only`.
+
+## Guardrails
+
+- Production routing unchanged.
+- Live RL unchanged.
+- Model promotion unchanged.
+- Badugi-family side variants remain preview-only unless separately cleared.

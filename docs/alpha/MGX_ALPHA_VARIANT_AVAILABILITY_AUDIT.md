@@ -10,7 +10,7 @@ Friend alpha should expose fewer, safer games. Variants with active P0/P1 progre
 
 | Variant | Availability | Reason | Blockers | Required Before Alpha |
 | ------- | ------------ | ------ | -------- | --------------------- |
-| Badugi | preview_only | Automated progression, active-pot, terminal-transition, and portrait UI gates pass; physical mobile QA is still pending. | `BG-005` | Real-device full-hand mobile QA |
+| Badugi | alpha_playable | Core MGX alpha game; automated progression, active-pot, terminal-transition, portrait UI, orientation, and actor-order gates pass. | Physical mobile QA remains P1 risk | Monitor pot/terminal/actor regressions during closed alpha |
 | 2-7 Triple Draw / D01 | alpha_playable | Core 5 gameplay target; rule/evaluator/actor audits pass for alpha scope. | none active for basic alpha flow | Keep all-in draw-skip P1 tracked separately from basic friend launch |
 | A-5 Triple Draw | alpha_playable | Core draw flow is the initial friend-alpha safe draw target. | none active | Keep one-hand/EV/RL safety green |
 | 2-7 Single Draw | alpha_playable | Single-draw core flow selected as safe alpha scope. | none active | Keep one-hand/EV/RL safety green |

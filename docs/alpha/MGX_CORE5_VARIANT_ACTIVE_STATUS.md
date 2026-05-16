@@ -10,7 +10,7 @@ Date: 2026-05-16
 
 | Game | variantId | UI Label | availability | Launchable | Notes |
 | ---- | --------- | -------- | ------------ | ---------- | ----- |
-| Badugi | `badugi` | Badugi | `preview_only` | no by default | Preview/dev flag required until physical mobile QA clears |
+| Badugi | `badugi` | Badugi | `alpha_playable` | yes | Core MGX alpha game; automated progression/pot/terminal/mobile/orientation gates pass |
 | 2-7 Triple Draw | `D01` | 2-7 Triple Draw | `alpha_playable` | yes | Gameplay alpha-active; RL teacher/D01 exclusion remains separate |
 | A-5 Triple Draw | `D02` | A-5 Triple Draw | `alpha_playable` | yes | Existing alpha candidate |
 | 2-7 Single Draw | `S01` | 2-7 Single Draw | `alpha_playable` | yes | Existing alpha candidate |
@@ -22,4 +22,4 @@ Date: 2026-05-16
 npx playwright test tests/e2e/core5-variant-active-status.spec.ts --project=badugi-flow
 ```
 
-Result: 6 passed.
+Expected result after Badugi promotion: 7 passed.

@@ -12,6 +12,7 @@ import { formatComment } from "./utils/commentCatalog.js";
 import GameRegistry from "../games/_core/GameRegistry";
 import { DEBUG_TOURNAMENT, logMTT } from "../config/debugFlags.js";
 import { BUILD_INFO } from "../config/buildInfo.js";
+import { exposeBrowserGameplayState } from "./qa/exposeBrowserGameplayState.js";
 import {
   startHandHistoryRecord,
   appendHandHistoryAction,
@@ -605,6 +606,10 @@ export default function App() {
     if (typeof window !== "undefined") {
       window.__MGX_BUILD_INFO__ = BUILD_INFO;
     }
+  }, []);
+
+  useEffect(() => {
+    exposeBrowserGameplayState();
   }, []);
   const debugFlags = useMemo(() => {
     if (!isDev) {
@@ -2245,12 +2250,14 @@ const SAFE_RESET_PHASE = "IDLE";
             hand: Array.isArray(player?.hand) ? [...player.hand] : [],
           };
         });
+        const snapshotPhase = handResultVisible ? "HAND_RESULT" : phase;
+        const snapshotTurn = handResultVisible ? null : turn;
         return {
-          phase,
+          phase: snapshotPhase,
           drawRound,
           betRoundIndex,
           betRound: betRoundIndex,
-          turn,
+          turn: snapshotTurn,
           dealerIdx,
           handId: handIdRef.current,
           players: snapshot,
@@ -2281,7 +2288,7 @@ const SAFE_RESET_PHASE = "IDLE";
       }
       e2eLogEnabledRef.current = false;
     };
-  }, [phase, drawRound, betRoundIndex, turn, dealerIdx]);
+  }, [phase, drawRound, betRoundIndex, turn, dealerIdx, handResultVisible]);
 
   useEffect(() => {
     consoleContextRef.current = {
@@ -6084,10 +6091,7 @@ const SAFE_RESET_PHASE = "IDLE";
         handId: handIdRef.current,
         handCount: handCountRef.current,
         gameVariant: gameVariantRef.current,
-        potTotal: (potsRef.current ?? pots ?? []).reduce(
-          (sum, potEntry) => sum + Number(potEntry?.amount ?? 0),
-          0,
-        ),
+        potTotal: totalPotRef.current,
         pots: (potsRef.current ?? pots ?? []).map((potEntry, potIndex) => ({
           potIndex,
           amount: potEntry?.amount ?? 0,
@@ -6285,9 +6289,11 @@ const SAFE_RESET_PHASE = "IDLE";
       betHead,
       lastAggressorIdx: lastAggressor,
       currentBet,
-      phase,
+      pot: totalPotForDisplay,
+      phase: handResultVisible ? "HAND_RESULT" : phase,
       drawRound,
-      turn,
+      turn: handResultVisible ? null : turn,
+      nextTurn: handResultVisible ? null : turn,
       betRoundIndex,
       phaseTag,
     });
@@ -6299,10 +6305,12 @@ const SAFE_RESET_PHASE = "IDLE";
     betHead,
     lastAggressor,
     currentBet,
+    totalPotForDisplay,
     phase,
     drawRound,
     turn,
     betRoundIndex,
+    handResultVisible,
     isSingleTableBoardGame,
   ]);
 

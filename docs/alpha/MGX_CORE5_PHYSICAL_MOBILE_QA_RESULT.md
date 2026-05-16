@@ -1,18 +1,18 @@
 # MGX Core5 Physical Mobile QA Result
 
-Date: 2026-05-16
+Date: 2026-05-17
 
 Preview URL: `https://mgx-poker.com/`
 
-Deployed commit: `d91d7e0cdcbf24a0260a78c7c6083eaaaf1b0bf9`
+Deployed commit: `6110fc85272a8dc625f0fe65a68d488d4753e06f`
 
 ## Decision
 
 `HOLD`
 
-Physical mobile QA was not executed in this shell because no real Android or iPhone device is available to the agent. Automated mobile browser/emulation and post-deploy preview smoke pass, but the friend alpha GO condition still requires at least one real mobile device PASS or PASS_WITH_NOTES.
+Physical mobile QA was not executed in this shell because no real Android or iPhone device is available to the agent. Automated mobile browser/emulation and live layout evidence pass, but the friend alpha GO condition still requires at least one real mobile device PASS or PASS_WITH_NOTES. Live full tournament result smoke is also still blocked separately.
 
-Last-mile check: 2026-05-16T13:49:57Z.
+Last-mile check: 2026-05-17.
 
 Physical device tested: none in this environment.
 
@@ -52,7 +52,9 @@ Physical device tested: none in this environment.
 | Core5 tournament landscape | PASS, 10/10 |
 | Core5 mobile portrait visual | PASS, 10/10 |
 | Core5 mobile interaction | PASS, 10/10 |
-| post-deploy preview smoke | PASS |
+| live layout evidence | PASS, 30/30 |
+| live tournament runtime fatal guard | PASS, 5/5 |
+| live Core5 alpha smoke | FAIL, tournament result/next-hand path not reached |
 
 ## Next Action
 

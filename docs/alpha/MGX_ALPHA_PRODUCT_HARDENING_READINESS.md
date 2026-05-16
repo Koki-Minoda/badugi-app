@@ -17,6 +17,7 @@ Badugi P0 browser progression and active-hand pot continuity regressions remain 
 | Badugi playable | BLOCKED / preview-only | focused full 3-draw regression reaches `Hand Result`, but long-run restore smoke is expected-fail due active-pot/terminal mismatch |
 | pot continuity | PASS focused / FAIL long-run restore | focused browser and UI snapshot tests pass; long-run restore gate can still surface active-hand `Total Pot 0` symptoms |
 | mobile playable | PASS for D02/S01/S02 / BLOCKED for Badugi restore | D02/S01/S02 mobile emulation passes; Badugi portrait restore launch is expected-fail at 390px/430px |
+| Triple Draw actor order | PASS | D02/S01/S02/D01 mapping audited; 6max/5max/3way pre-draw actor starts left of BB; heads-up blind/button actor semantics fixed |
 | test coverage sufficiency | PASS for P0 | browser pot, snapshot pot merge, stale turn merge, no-next-alive actor tests added |
 | routing/promotion/live RL | PASS | no production routing, promotion, live RL, or model registry change |
 
@@ -33,3 +34,5 @@ Badugi P0 browser progression and active-hand pot continuity regressions remain 
 ## Deploy Recommendation
 
 Continue with D02/S01/S02 friend-alpha preview QA on `https://mgx-poker.com/`, but hold wider friend sharing until physical mobile QA is complete. Do not reclassify Badugi to `alpha_playable` until the long-run restore smoke, portrait mobile restore gate, and physical mobile full-hand QA pass.
+
+The latest Triple Draw audit does not add a deployed alpha-scope P0. Keep D02/S01/S02 as the candidate set, with the new actor-order and mobile-layout regression tests in the pre-alpha gate.

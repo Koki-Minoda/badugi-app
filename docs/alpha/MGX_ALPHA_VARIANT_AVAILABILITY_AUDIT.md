@@ -29,6 +29,10 @@ Friend alpha should expose fewer, safer games. Variants with active P0/P1 progre
 
 None currently. Unknown variants are treated as `coming_soon` by the gate.
 
+## Triple Draw Mapping Audit
+
+`D02` is A-5 Triple Draw, `S01` is 2-7 Single Draw, and `S02` is A-5 Single Draw. The alpha audit found no A-5 / 2-7 mapping mix and no Single Draw / Triple Draw mapping mix. The suspected six-max BB-first issue was not reproduced in engine tests; heads-up blind/button actor semantics were corrected and covered.
+
 ## Implementation
 
 The alpha gate is implemented in:
@@ -55,4 +59,3 @@ Feature flags:
 | `VITE_MGX_ALPHA_ONLY_VARIANTS` | document alpha-only launch mode |
 | `mgx.previewVariants=true` | local preview override |
 | `mgx.alphaOnlyVariants=true` | local alpha-only override |
-

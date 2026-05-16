@@ -16,6 +16,7 @@ The latest mobile overflow fix is deployed and the alpha scope has no known depl
 | Latest preview deploy | PASS |
 | D02/S01/S02 desktop smoke | PASS |
 | D02/S01/S02 mobile emulation | PASS |
+| D02/S01/S02 Triple Draw actor / mapping audit | PASS |
 | Post-deploy browser smoke | PASS |
 | Physical mobile QA | PENDING |
 | Alpha-scope P0 | none observed |
@@ -37,3 +38,5 @@ The latest mobile overflow fix is deployed and the alpha scope has no known depl
 Run physical mobile QA on at least Android Chrome or iPhone Safari/Chrome. If the device pass is clean, the D02/S01/S02-only friend alpha can move from HOLD to GO.
 
 Badugi has a separate restore gate and must remain out of the friend alpha until its long-run and portrait-mobile readiness blockers are fixed.
+
+Triple Draw / Single Draw mapping has been re-audited: `D02` is A-5 Triple Draw, `S01` is 2-7 Single Draw, and `S02` is A-5 Single Draw. The suspected six-max BB-first issue was not reproduced in the engine; heads-up blind/button semantics were corrected and covered.

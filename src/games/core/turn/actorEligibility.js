@@ -182,7 +182,7 @@ export function normalizeTurnState(state = {}, options = {}) {
       : isSeatEligibleForBetting(
           { seatIndex: preferredActor, ...players[preferredActor] },
           state,
-          { ...options, ignoreActionCompletion: true },
+          options,
         ));
   const actor = actorIsEligible
     ? preferredActor
@@ -194,6 +194,10 @@ export function normalizeTurnState(state = {}, options = {}) {
     actingPlayerIndex: actor,
     turn: actor,
     nextTurn: actor,
+    metadata:
+      state.metadata && typeof state.metadata === "object"
+        ? { ...state.metadata, actingPlayerIndex: actor }
+        : { actingPlayerIndex: actor },
     players: players.map((player, seatIndex) => ({
       ...player,
       isTurn: actor === seatIndex,

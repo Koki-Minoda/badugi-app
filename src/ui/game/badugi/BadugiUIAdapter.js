@@ -9,6 +9,10 @@ import {
   getFixedLimitBetSize,
   isBigBetStreet,
 } from "../../../games/badugi/logic/bettingRules.js";
+import {
+  isSeatEligibleForBetting,
+  isSeatEligibleForDrawing,
+} from "../../../games/core/turn/actorEligibility.js";
 import { getBlindSeatIndexes, getPositionNameForSeat } from "../../utils/positionLabels.js";
 
 function sumPotAmounts(pots = [], fallbackPlayers = []) {
@@ -46,12 +50,28 @@ function buildControlsConfig(snapshot, tableConfig) {
   const players = snapshot.players ?? [];
   const hero = players[0] ?? null;
   const phase = snapshot.phase ?? "BET";
-  const heroTurn = hero && snapshot.turn === 0 && !hero.folded && !hero.seatOut;
+  const canonicalHeroTurn = Boolean(hero && snapshot.turn === 0 && !hero.folded && !hero.seatOut);
   const heroBet = hero?.betThisRound ?? 0;
   const currentBet = snapshot.currentBet ?? 0;
   const needsToCall = hero ? currentBet > heroBet : false;
   const heroStack = hero?.stack ?? 0;
   const hasCardsToDraw = Boolean(hero?.hand && hero.hand.length && (hero.selected ?? []).length);
+  const heroTurn =
+    phase === "BET"
+      ? Boolean(
+          canonicalHeroTurn &&
+            isSeatEligibleForBetting(hero, { ...snapshot, phase: "BET", currentBet, players }),
+        )
+      : phase === "DRAW"
+      ? Boolean(
+          canonicalHeroTurn &&
+            isSeatEligibleForDrawing(
+              hero,
+              { ...snapshot, phase: "DRAW", players },
+              { allowAllInDraw: true },
+            ),
+        )
+      : false;
 
   const canFold = Boolean(heroTurn && phase === "BET" && !hero?.allIn);
   const canCall = Boolean(heroTurn && phase === "BET" && heroStack > 0);

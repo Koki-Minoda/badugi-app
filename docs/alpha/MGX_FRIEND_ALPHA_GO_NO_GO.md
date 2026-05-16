@@ -19,7 +19,7 @@ The latest preview deploy includes the Core 5 mobile tournament layout fix at `d
 | D02/S01/S02 mobile emulation | PASS |
 | D02/S01/S02 Triple Draw actor / mapping audit | PASS |
 | D01 2-7TD active status | PASS |
-| Core 5 actor order | PASS |
+| Core 5 actor order | PASS, per-action history audit |
 | Core 5 orientation support | PASS |
 | Core 5 mobile tournament portrait/landscape | PASS in automation |
 | Post-deploy browser smoke | PASS, Core5 tournament portrait/landscape live preview smoke |
@@ -47,3 +47,5 @@ Deploy the Badugi availability change, run physical mobile QA on at least Androi
 Badugi should be watched closely in alpha: Step6 clears the Badugi portrait mobile UI blocker, Step7 clears the automated long-run active-pot / terminal-transition blocker, and the Core 5 UI audit now has no desktop, cash mobile, tournament mobile, or interaction UI blocker in automation.
 
 Triple Draw / Single Draw mapping has been re-audited: `D02` is A-5 Triple Draw, `S01` is 2-7 Single Draw, and `S02` is A-5 Single Draw. The suspected six-max BB-first issue was not reproduced in the engine; heads-up blind/button semantics were corrected and covered.
+
+The latest Core 5 betting-order reality audit records every observed betting action for Badugi/D01/D02/S01/S02. It found no invalid actor rows and no hero-control mismatch rows. The reported BB case is treated as `FALSE_ALARM_CONFIRMED_BY_HISTORY`, not a P0, because history shows BB acts only after prior active obligations or when BB is the first active seat left of the button after folds.

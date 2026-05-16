@@ -19,7 +19,7 @@ Badugi P0 browser progression and active-hand pot continuity regressions remain 
 | mobile playable | PASS in emulation for Core 5 / physical QA pending | Core 5 UI audit now passes Badugi/D01/D02/S01/S02 on cash portrait, cash landscape, tournament portrait, tournament landscape, interaction, and desktop |
 | Core 5 UI layout | PASS | desktop, cash mobile, tournament mobile, and interaction gates pass for all five core games in automation |
 | Core 5 active status | PENDING recheck after config change | Badugi/D01/D02/S01/S02 should be alpha-playable and launchable |
-| Core 5 actor order | PASS | no fixed-opposite-seat actor bug reproduced; BB does not act first in 3+ pre-draw without prior action |
+| Core 5 actor order | PASS | action-history audit across Badugi/D01/D02/S01/S02 recorded expected vs actual actor for every betting action; no fixed-opposite-seat or BB-before-UTG violation found |
 | Core 5 orientation | PASS | cash and tournament support portrait and landscape for Badugi/D01/D02/S01/S02 |
 | Triple Draw actor order | PASS | D01/D02/S01/S02 mapping audited; 6max/5max/3way pre-draw actor starts left of BB; heads-up blind/button actor semantics fixed |
 | test coverage sufficiency | PASS for P0 | browser pot, snapshot pot merge, stale turn merge, no-next-alive actor tests added |
@@ -41,3 +41,5 @@ Badugi P0 browser progression and active-hand pot continuity regressions remain 
 Continue with Core5 friend-alpha preview QA after deploy verification, but hold wider friend sharing until physical mobile QA is complete and remote sync is resolved or explicitly accepted as an operational P1.
 
 The latest Core 5 UI audit does not add a Core5 UI blocker, clears the Badugi portrait UI blocker, and clears the mobile tournament portrait/landscape layout blocker in automation. Step7 clears the Badugi automated long-run restore blocker; the remaining Badugi release risk is physical mobile QA.
+
+The Core 5 action-order reality audit adds per-action history evidence beyond first-actor checks. It classifies the reported BB case as `FALSE_ALARM_CONFIRMED_BY_HISTORY`: BB acted only after earlier active obligations were resolved, or as the first active post-draw actor when seats left of the button were folded/ineligible.

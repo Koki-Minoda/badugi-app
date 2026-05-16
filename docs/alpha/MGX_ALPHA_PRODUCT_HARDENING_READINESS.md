@@ -12,7 +12,7 @@ Badugi P0 browser progression and active-hand pot continuity regressions are fix
 
 | Gate | Result | Notes |
 | --- | --- | --- |
-| preview deploy | PASS | deployed `90a830b7e1d2e9cb1a0683e59088874fd6f2972f` to `https://mgx-poker.com/` |
+| preview deploy | PASS | deployed `f121d732dd0a1debf699eb43699484e06d0a5c1d` to `https://mgx-poker.com/` with the mobile action overflow fix |
 | build | PASS | `npm run build` succeeds |
 | Badugi playable | PASS / preview-only | full 3-draw browser regression reaches `Hand Result`; Badugi remains hidden from friend alpha |
 | pot continuity | PASS | active hand no longer renders `Total Pot 0`; browser and UI snapshot tests cover this |
@@ -32,4 +32,4 @@ Badugi P0 browser progression and active-hand pot continuity regressions are fix
 
 ## Deploy Recommendation
 
-Continue with D02/S01/S02 friend-alpha preview QA on `https://mgx-poker.com/`, but hold wider friend sharing until remote sync and physical mobile QA are complete. Do not reclassify Badugi to `alpha_playable` until mobile full-hand QA passes.
+Continue with D02/S01/S02 friend-alpha preview QA on `https://mgx-poker.com/`, but hold wider friend sharing until physical mobile QA is complete. Do not reclassify Badugi to `alpha_playable` until mobile full-hand QA passes.

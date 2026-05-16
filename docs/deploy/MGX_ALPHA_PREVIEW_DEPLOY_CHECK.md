@@ -2,13 +2,13 @@
 
 Date: 2026-05-16
 
-Deploy time: 2026-05-16T01:54:12Z
+Deploy time: 2026-05-16T03:21:13Z
 
 ## Snapshot
 
 | Item | Value |
 | --- | --- |
-| commit | `90a830b7e1d2e9cb1a0683e59088874fd6f2972f` |
+| commit | `f121d732dd0a1debf699eb43699484e06d0a5c1d` |
 | branch | `feature/d-04-next-actor-unify` |
 | frontend URL | `https://mgx-poker.com/` |
 | backend health | `https://mgx-poker.com/api/health` |
@@ -29,6 +29,7 @@ Deploy time: 2026-05-16T01:54:12Z
 | SPA hard refresh | PASS |
 | `/api/health` | PASS, `{\"status\":\"ok\",\"env\":\"prod\",\"db\":\"ok\"}` |
 | deploy health helper | PASS via `/healthz` + frontend HTML |
+| mobile fix included | true |
 
 ## Preview Flag / Availability
 
@@ -45,6 +46,6 @@ Deploy time: 2026-05-16T01:54:12Z
 
 ## Notes
 
-The deploy script initially failed when `APP_DIR` defaulted to `/root/badugi-app`; rerun succeeded with `APP_DIR=/home/mgx/badugi-app`.
+The deploy script does not create a fresh backup. The latest available frontend dist rollback archive remains `/var/backups/mgx/dist/mgx-dist-20260516-105342-pre-alpha-preview.tar.gz`.
 
-The local branch is ahead of `origin/feature/d-04-next-actor-unify`; this preview deploy used the local committed snapshot on the VPS.
+Rollback frontend dist manually with the backup archive if needed, then redeploy the known-good commit `90a830b7e1d2e9cb1a0683e59088874fd6f2972f`.

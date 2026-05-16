@@ -4,7 +4,7 @@ Date: 2026-05-17
 
 Preview URL: `https://mgx-poker.com/`
 
-Deployed commit: `6110fc85272a8dc625f0fe65a68d488d4753e06f`
+Deployed commit: `3e0dd0bfff3c8c5862393f7570f57c36e3d8db67`
 
 ## Decision
 

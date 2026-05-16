@@ -17,16 +17,16 @@ Date: 2026-05-17
 
 | Field | Result |
 | --- | --- |
-| localHead | `6110fc85272a8dc625f0fe65a68d488d4753e06f` |
-| deployedCommit | `6110fc85272a8dc625f0fe65a68d488d4753e06f` |
-| deployedBundle | `/assets/index-CWEZeOZr.js` |
+| localHead | `3e0dd0bfff3c8c5862393f7570f57c36e3d8db67` |
+| deployedCommit | `3e0dd0bfff3c8c5862393f7570f57c36e3d8db67` |
+| deployedBundle | `/assets/index-CrjvsFOE.js` |
 | matched | `true` |
 | health | `PASS` |
-| buildTime | `2026-05-16T18:08:24.816Z` |
+| buildTime | `2026-05-16T18:16:58.149Z` |
 
 ## Live Blocker Evidence
 
-The live deploy snapshot now matches local `6110fc8`. The original D01/D02/S01/S02 tournament browser fatal has been fixed and the live fatal guard passes for all Core5 games.
+The live deploy snapshot now matches local `3e0dd0b`. The original D01/D02/S01/S02 tournament browser fatal has been fixed and the live fatal guard passes for all Core5 games.
 
 ```txt
 npx playwright test tests/e2e/live-core5-tournament-runtime-fatal.spec.ts --project=badugi-flow

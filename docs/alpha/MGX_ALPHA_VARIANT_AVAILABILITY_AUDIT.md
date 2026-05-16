@@ -10,11 +10,11 @@ Friend alpha should expose fewer, safer games. Variants with active P0/P1 progre
 
 | Variant | Availability | Reason | Blockers | Required Before Alpha |
 | ------- | ------------ | ------ | -------- | --------------------- |
-| Badugi | preview_only | Round progression and pot display regression reproduced in browser QA. | `BADUGI-ALPHA-01`, `BADUGI-ALPHA-02` | Fix full 3-draw stall, pot continuity, no-next-alive actor election, mobile QA |
+| Badugi | preview_only | Automated progression, active-pot, terminal-transition, and portrait UI gates pass; physical mobile QA is still pending. | `BG-005` | Real-device full-hand mobile QA |
+| 2-7 Triple Draw / D01 | alpha_playable | Core 5 gameplay target; rule/evaluator/actor audits pass for alpha scope. | none active for basic alpha flow | Keep all-in draw-skip P1 tracked separately from basic friend launch |
 | A-5 Triple Draw | alpha_playable | Core draw flow is the initial friend-alpha safe draw target. | none active | Keep one-hand/EV/RL safety green |
 | 2-7 Single Draw | alpha_playable | Single-draw core flow selected as safe alpha scope. | none active | Keep one-hand/EV/RL safety green |
 | A-5 Single Draw | alpha_playable | Verified coaching/RL path and core single-draw flow are strongest current signal path. | none active | Keep one-hand/EV/RL safety green |
-| 2-7 Triple Draw / D01 | preview_only | D01 remains excluded from Iron teacher/RL paths and is not friend-alpha selectable. | D01 teacher/RL exclusion | Separate gameplay-only approval if needed |
 | Badeucey TD / Badacey TD | preview_only | Split draw flow exists but split result, replay, and mobile QA are not alpha-ready. | split-result QA | Split result UI/replay/mobile audit |
 | Hidugi TD / Archie TD | preview_only | Special draw evaluators exist but natural long-run/mobile/replay coverage is not alpha-ready. | special evaluator QA | Long-run browser smoke and replay audit |
 | 5-Card SD / Badugi SD / Badeucey SD / Badacey SD / Hidugi SD | preview_only | Basic paths exist but evaluator/mobile/replay coverage remains insufficient for friends. | mobile/replay QA | Variant-specific smoke and replay audit |
@@ -31,7 +31,7 @@ None currently. Unknown variants are treated as `coming_soon` by the gate.
 
 ## Triple Draw Mapping Audit
 
-`D02` is A-5 Triple Draw, `S01` is 2-7 Single Draw, and `S02` is A-5 Single Draw. The alpha audit found no A-5 / 2-7 mapping mix and no Single Draw / Triple Draw mapping mix. The suspected six-max BB-first issue was not reproduced in engine tests; heads-up blind/button actor semantics were corrected and covered.
+`D01` is 2-7 Triple Draw, `D02` is A-5 Triple Draw, `S01` is 2-7 Single Draw, and `S02` is A-5 Single Draw. The alpha audit found no A-5 / 2-7 mapping mix and no Single Draw / Triple Draw mapping mix. The suspected six-max BB-first issue was not reproduced in engine/browser actor-order tests; when Hero is on the button, UTG can be the visually opposite seat while still being rule-correct.
 
 ## Implementation
 

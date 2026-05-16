@@ -6,7 +6,7 @@ Date: 2026-05-16
 
 `HOLD_FOR_PHYSICAL_MOBILE_QA`
 
-The latest mobile overflow fix is deployed and the alpha scope has no known deployed P0. Friend alpha should remain held until real-device mobile QA is completed.
+The latest local alpha verification confirms Core 5 availability, actor order, and orientation support, but the preview deploy was stale before this step. Friend alpha should remain held until the latest snapshot is deployed and real-device mobile QA is completed.
 
 ## Gate Summary
 
@@ -17,6 +17,9 @@ The latest mobile overflow fix is deployed and the alpha scope has no known depl
 | D02/S01/S02 desktop smoke | PASS |
 | D02/S01/S02 mobile emulation | PASS |
 | D02/S01/S02 Triple Draw actor / mapping audit | PASS |
+| D01 2-7TD active status | PASS |
+| Core 5 actor order | PASS |
+| Core 5 orientation support | PASS |
 | Post-deploy browser smoke | PASS |
 | Physical mobile QA | PENDING |
 | Core 5 UI layout | PASS for all five core games in automation |
@@ -27,6 +30,7 @@ The latest mobile overflow fix is deployed and the alpha scope has no known depl
 
 | Variant | Status |
 | --- | --- |
+| D01 | alpha candidate |
 | D02 | alpha candidate |
 | S01 | alpha candidate |
 | S02 | alpha candidate |
@@ -36,7 +40,7 @@ The latest mobile overflow fix is deployed and the alpha scope has no known depl
 
 ## Remaining Required Action
 
-Run physical mobile QA on at least Android Chrome or iPhone Safari/Chrome. If the device pass is clean, the D02/S01/S02-only friend alpha can move from HOLD to GO.
+Redeploy the latest verified snapshot, then run physical mobile QA on at least Android Chrome or iPhone Safari/Chrome. If the device pass is clean, the D01/D02/S01/S02 friend alpha can move from HOLD to GO.
 
 Badugi has a separate restore gate and must remain out of the friend alpha until real-device mobile QA passes. Step6 clears the Badugi portrait mobile UI blocker, Step7 clears the automated long-run active-pot / terminal-transition blocker, and the Core 5 UI audit now has no desktop, portrait, landscape, or interaction UI blocker in automation.
 

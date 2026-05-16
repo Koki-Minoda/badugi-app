@@ -27,6 +27,7 @@ The live URL is the release source of truth for this gate. `https://mgx-poker.co
 | Live Core5 action order | PASS, 63 audited betting actions, 0 invalid actor rows |
 | Core5 Cash lifecycle invariant gate | PASS locally, 6,000 synthetic hands / 60 sessions / 0 violations; 5/5 full browser lifecycle variants; 25/25 individual Cash checks |
 | Core5 Tournament lifecycle invariant gate | PASS locally, 1,200 synthetic tournaments / 0 violations; 5/5 full browser lifecycle variants; 30/30 individual Tournament checks |
+| Tournament integration expansion | PASS locally, 90-row sweep / 0 violations; unit integration 28/28; tournament E2E integration 50/50 |
 | Physical mobile QA | PENDING, no physical device available in this environment |
 | Core 5 UI layout | PASS for all five core games in automation |
 | Alpha-scope P0 | `BADUGI-BET-REOPEN-001` pending live verification; `CORE5-UI-LIVE-001` D01/D02/S01/S02 tournament runtime fatal on live |

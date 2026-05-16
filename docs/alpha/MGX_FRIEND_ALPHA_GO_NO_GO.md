@@ -19,7 +19,7 @@ The latest mobile overflow fix is deployed and the alpha scope has no known depl
 | Post-deploy browser smoke | PASS |
 | Physical mobile QA | PENDING |
 | Alpha-scope P0 | none observed |
-| Badugi friend-alpha exposure | blocked; remains `preview_only` |
+| Badugi friend-alpha exposure | blocked; remains `preview_only` after alpha restore gates found long-run and portrait-mobile blockers |
 
 ## Alpha Scope
 
@@ -28,10 +28,12 @@ The latest mobile overflow fix is deployed and the alpha scope has no known depl
 | D02 | alpha candidate |
 | S01 | alpha candidate |
 | S02 | alpha candidate |
-| Badugi | preview-only |
+| Badugi | preview-only; restore blocked by long-run active-pot/terminal mismatch and portrait mobile launch readiness |
 | Chinese/OFC | coming soon |
 | Board/Omaha/Stud/Razz/Dramaha families | preview-only or unavailable for friend alpha |
 
 ## Remaining Required Action
 
 Run physical mobile QA on at least Android Chrome or iPhone Safari/Chrome. If the device pass is clean, the D02/S01/S02-only friend alpha can move from HOLD to GO.
+
+Badugi has a separate restore gate and must remain out of the friend alpha until its long-run and portrait-mobile readiness blockers are fixed.

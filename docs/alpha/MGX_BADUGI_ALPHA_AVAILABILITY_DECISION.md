@@ -4,7 +4,7 @@ Date: 2026-05-16
 
 ## Decision
 
-`KEEP_PREVIEW_ONLY`
+`BADUGI_REMAINS_PREVIEW_ONLY`
 
 ## Evidence
 
@@ -16,19 +16,21 @@ Date: 2026-05-16
 | desktop active-hand pot continuity | PASS, min observed pot `30` |
 | post-draw betting observed | PASS |
 | hand result reached | PASS |
+| Badugi long-run alpha restore smoke | FAIL / expected-fail gate |
+| Badugi portrait mobile restore gate | FAIL / expected-fail gate |
 | mobile variant disabled-state visibility | PASS |
-| mobile Badugi full-hand gameplay | PENDING |
+| mobile Badugi full-hand gameplay | FAIL for portrait restore gate; landscape PASS |
 | physical mobile QA | PENDING |
-| new P0 | none observed |
+| new P0 | present for Badugi restore only; alpha scope remains protected because Badugi is gated |
 
 ## Rationale
 
-The Badugi P0 automation blocker is fixed and the deployed preview URL can complete a desktop preview full-hand smoke with pot continuity intact. However, the friend alpha policy is safety-first. Badugi should not return to `alpha_playable` until physical mobile or equivalent full-hand mobile gameplay confirms:
+The original focused Badugi P0 automation blocker remains fixed: the full 3-draw browser regression, pot continuity regression, stale-turn merge test, and no-next-alive actor test pass. However, the alpha restore gate found broader Badugi readiness blockers:
 
-- pot remains visible
-- action buttons remain tappable
-- phase labels remain readable
-- next-hand flow is usable
+- a long-run preview smoke can still surface active-hand `Total Pot 0` / terminal transition mismatch symptoms
+- portrait mobile restore launch is not consistently ready at 390x844 and 430x932
+
+The friend alpha policy is safety-first. Badugi must not return to `alpha_playable` until the long-run and mobile restore gates pass without expected-failure annotations and physical mobile QA confirms pot/action/phase usability.
 
 ## Current Availability
 
@@ -39,6 +41,8 @@ The Badugi P0 automation blocker is fixed and the deployed preview URL can compl
 ## Required Before Reclassification
 
 1. Run Badugi full hand on mobile portrait and landscape.
-2. Confirm pot/action controls visibility through Draw 1-3.
-3. Confirm next hand from result overlay.
-4. Rerun targeted Playwright gates after any UI adjustment.
+2. Make `tests/e2e/badugi-alpha-long-run-smoke.spec.ts` pass without `test.fail`.
+3. Make portrait cases in `tests/e2e/badugi-mobile-gameplay-layout.spec.ts` pass without `test.fail`.
+4. Confirm pot/action controls visibility through Draw 1-3.
+5. Confirm next hand from result overlay.
+6. Rerun targeted Playwright gates after any UI adjustment.

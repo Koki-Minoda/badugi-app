@@ -16,7 +16,15 @@ function sumPotAmounts(pots = [], fallbackPlayers = []) {
     return pots.reduce((acc, pot) => acc + (pot?.amount ?? pot?.potAmount ?? 0), 0);
   }
   if (Array.isArray(fallbackPlayers)) {
-    return fallbackPlayers.reduce((acc, player) => acc + (player?.betThisRound ?? 0), 0);
+    const investedTotal = fallbackPlayers.reduce(
+      (acc, player) => acc + Math.max(0, Number(player?.totalInvested) || 0),
+      0,
+    );
+    if (investedTotal > 0) return investedTotal;
+    return fallbackPlayers.reduce(
+      (acc, player) => acc + Math.max(0, Number(player?.betThisRound) || 0),
+      0,
+    );
   }
   return 0;
 }

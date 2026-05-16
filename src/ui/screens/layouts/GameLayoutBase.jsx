@@ -443,12 +443,12 @@ export default function GameLayoutBase({
             <div
               className={`relative grid ${
                 isMobileLayout
-                  ? "h-full min-h-0 grid-cols-[minmax(0,1fr)_clamp(218px,29dvw,286px)] gap-2"
+                  ? "h-full min-h-0 grid-cols-1 grid-rows-[minmax(0,1fr)_auto] gap-2 min-[641px]:grid-cols-[minmax(0,1fr)_clamp(190px,29dvw,286px)] min-[641px]:grid-rows-1"
                   : desktopGridClass
               }`}
             >
               <div
-                className={`relative overflow-hidden rounded-[32px] border border-white/10 bg-slate-950/28 ${
+                className={`relative min-w-0 overflow-hidden rounded-[32px] border border-white/10 bg-slate-950/28 ${
                   heroTableAnimating ? "ring-2 ring-yellow-300 animate-pulse" : ""
                 } ${isMobileLayout ? "min-h-0 p-2" : "overflow-visible p-4"} shadow-[inset_0_0_45px_rgba(0,0,0,0.38),0_18px_42px_rgba(0,0,0,0.35)]`}
               >
@@ -549,7 +549,7 @@ export default function GameLayoutBase({
               </div>
               <div
                 data-testid="decision-panel"
-                className={`flex min-h-0 flex-col ${
+                className={`flex min-h-0 min-w-0 flex-col ${
                   isMobileLayout
                     ? "mgx-mobile-action-sheet gap-2 overflow-hidden pb-[max(0px,env(safe-area-inset-bottom))]"
                     : "gap-3"
@@ -588,7 +588,7 @@ export default function GameLayoutBase({
                     Draw allowed: {tableHeroCanDraw ? "Yes" : "No"}
                   </div>
                 </div>
-                <div className={`${isMobileLayout ? "mt-auto min-h-0 overflow-hidden p-2" : "p-3"} rounded-2xl border border-emerald-300/15 bg-slate-900/88 shadow-lg space-y-3`}>
+                <div className={`${isMobileLayout ? "min-h-0 min-w-0 overflow-hidden p-2" : "p-3"} rounded-2xl border border-emerald-300/15 bg-slate-900/88 shadow-lg space-y-3`}>
                   <h2 className="text-xs font-semibold text-white uppercase tracking-wider">
                     Hero Controls
                   </h2>

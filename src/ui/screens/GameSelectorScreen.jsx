@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { GAME_VARIANT_CATEGORIES } from "../../games/config/variantCatalog.js";
+import { canLaunchVariant } from "../../games/config/canLaunchVariant.js";
 import { listVariantProfiles } from "../../games/config/variantProfiles.js";
 import { isControllerBackedAppVariant } from "../game/appVariantRouting.js";
 import { usePlayerProgress } from "../hooks/usePlayerProgress.js";
@@ -9,6 +10,7 @@ import { designTokens } from "../../styles/designTokens.js";
 import { PRO_MIXED_PRESETS } from "../../config/mixed/proPresets.js";
 import { LANGUAGE_STORAGE_KEY, MGX_DEFAULT_LOCALE } from "../../config/mgxLocaleConfig.js";
 import variantJa from "../../i18n/variants.ja.json";
+import VariantCardAvailability from "../components/VariantCardAvailability.jsx";
 
 const CATEGORY_ORDER = [
   GAME_VARIANT_CATEGORIES.BOARD,
@@ -148,7 +150,10 @@ function getStatusBadge(profile, labels) {
 function VariantCard({ profile, onLaunch, copy }) {
   const badge = getStatusBadge(profile, copy);
   const launchVariantId = profile.engineKey ?? profile.id;
-  const canLaunch = Boolean(launchVariantId && isControllerBackedAppVariant(launchVariantId));
+  const gate = canLaunchVariant(launchVariantId);
+  const canLaunch = Boolean(
+    launchVariantId && isControllerBackedAppVariant(launchVariantId) && gate.canLaunch,
+  );
   return (
     <div
       className={`p-4 bg-slate-900/80 border rounded-2xl flex flex-col gap-3 ${
@@ -163,18 +168,23 @@ function VariantCard({ profile, onLaunch, copy }) {
         </div>
         <span
           className={`px-3 py-1 text-xs rounded-full ${
-            badge.tone === "success"
+            gate.availability === "alpha_playable"
+              ? "bg-emerald-500/20 text-emerald-200"
+              : gate.availability === "preview_only"
+              ? "bg-amber-500/20 text-amber-200"
+              : badge.tone === "success"
               ? "bg-emerald-500/20 text-emerald-200"
               : badge.tone === "warning"
               ? "bg-amber-500/20 text-amber-200"
               : "bg-slate-700 text-slate-300"
           }`}
         >
-          {badge.label}
+          {copy.language === "ja" ? gate.statusLabelJa : gate.statusLabel}
         </span>
       </div>
 
       <p className="text-sm text-slate-300">{profile.description || profile.summary}</p>
+      <VariantCardAvailability availability={gate} language={copy.language} />
       <RequirementChips requirements={profile.requirements} labels={copy.requirements} />
       <div className="flex items-center justify-between text-xs text-slate-400">
         <span>{copy.betting}: {profile.bettingLabel ?? profile.betting}</span>
@@ -186,13 +196,14 @@ function VariantCard({ profile, onLaunch, copy }) {
         disabled={!canLaunch}
         aria-label={`${copy.play}: ${profile.name}`}
         data-testid={`game-selector-play-${launchVariantId}`}
+        title={canLaunch ? copy.play : gate.reason}
         className={`mt-1 px-4 py-2 rounded-lg font-semibold transition ${
           canLaunch
             ? "bg-emerald-500 text-slate-900 hover:bg-emerald-400"
             : "bg-slate-800 text-slate-500 cursor-not-allowed"
         }`}
       >
-        {canLaunch ? copy.play : copy.comingSoon}
+        {canLaunch ? copy.play : copy.unavailableAction(gate)}
       </button>
     </div>
   );
@@ -272,6 +283,9 @@ export default function GameSelectorScreen({
           CATEGORY: "カテゴリ",
           FIXED: "固定",
         },
+        language: "ja",
+        unavailableAction: (gate) =>
+          gate.availability === "preview_only" ? "検証中" : "準備中",
           }
         : {
         eyebrow: "Cash Game",
@@ -331,6 +345,9 @@ export default function GameSelectorScreen({
           CATEGORY: "Category",
           FIXED: "Fixed",
             },
+        language: "en",
+        unavailableAction: (gate) =>
+          gate.availability === "preview_only" ? "Preview Only" : "Coming Soon",
           },
     [isJapanese],
   );
@@ -342,10 +359,14 @@ export default function GameSelectorScreen({
 
   const variants = useMemo(() => {
     const query = search.trim().toLowerCase();
+    const visibleProfiles = allProfiles.filter((profile) => {
+      const gate = canLaunchVariant(profile.engineKey ?? profile.id);
+      return !gate.hidden;
+    });
     if (query) {
-      return allProfiles.filter((profile) => profile.searchText.includes(query));
+      return visibleProfiles.filter((profile) => profile.searchText.includes(query));
     }
-    return allProfiles.filter((profile) => profile.category === activeCategory);
+    return visibleProfiles.filter((profile) => profile.category === activeCategory);
   }, [activeCategory, allProfiles, search]);
 
   const advancedModes = useMemo(

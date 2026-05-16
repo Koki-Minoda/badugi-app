@@ -70,6 +70,7 @@ import StudGameController, {
   Stud8GameController,
 } from "../games/stud/StudGameController.js";
 import { GAME_VARIANTS } from "../games/core/variants.js";
+import { canLaunchVariant } from "../games/config/canLaunchVariant.js";
 import {
   buildHandResultSummary,
 } from "../games/badugi/flow/handResultUtils.js";
@@ -217,6 +218,7 @@ function cloneHandHistory(value) {
 
 const DEFAULT_GAME_ID = "D03";
 const DEFAULT_GAME_VARIANT = "badugi";
+const DEFAULT_ALPHA_GAME_VARIANT = APP_VARIANT_IDS.D02;
 const DEFAULT_AI_TIER_ID = "pro";
 const DESKTOP_CANVAS_BASE_WIDTH = 1600;
 const DESKTOP_CANVAS_BASE_HEIGHT = 900;
@@ -276,6 +278,15 @@ function getRequestedVariantIdFromURL() {
     const variant = params.get("variant");
     const normalized = normalizeAppVariantId(variant, null);
     if (normalized) {
+      const gate = canLaunchVariant(normalized);
+      if (!gate.canLaunch) {
+        console.warn("[VARIANT_GATE] blocked direct variant launch", {
+          variant: normalized,
+          availability: gate.availability,
+          reason: gate.reason,
+        });
+        return DEFAULT_ALPHA_GAME_VARIANT;
+      }
       return normalized;
     }
   } catch (err) {
@@ -1092,7 +1103,7 @@ const SAFE_RESET_PHASE = "IDLE";
     baseWidth: DESKTOP_CANVAS_BASE_WIDTH,
     baseHeight: DESKTOP_CANVAS_BASE_HEIGHT,
   });
-  const shouldGateOrientation = isMobileDevice;
+  const shouldGateOrientation = isMobileDevice && !isSingleTableDrawLowball;
   useEffect(() => {
     if (!shouldUseDesktopCanvasScale) {
       setDebugScale(1);
@@ -1476,10 +1487,10 @@ const SAFE_RESET_PHASE = "IDLE";
     });
     const normalizedPlayers = setPlayerSnapshot(sourcePlayers);
     const snapshotNextTurn =
-      typeof snapshot.turn === "number"
-        ? snapshot.turn
-        : typeof snapshot.nextTurn === "number"
+      typeof snapshot.nextTurn === "number"
         ? snapshot.nextTurn
+        : typeof snapshot.turn === "number"
+        ? snapshot.turn
         : typeof snapshot.currentActor === "number"
         ? snapshot.currentActor
         : typeof snapshot?.metadata?.actingPlayerIndex === "number"
@@ -1539,7 +1550,9 @@ const SAFE_RESET_PHASE = "IDLE";
       }
     }
     syncEngineSnapshot(engineSnapshot);
-    if (!isSingleTableBadugi) {
+    const shouldApplyControllerSnapshotDirectly =
+      !isSingleTableBadugi || Boolean(snapshot.phase || snapshot.street || snapshot.lastHandResult);
+    if (shouldApplyControllerSnapshotDirectly) {
       setPots(Array.isArray(snapshot.pots) ? snapshot.pots.map((pot) => ({ ...pot })) : []);
       setCurrentBet(resolvedCurrentBet ?? 0);
       setBetHead(resolvedBetHead ?? null);
@@ -1547,6 +1560,23 @@ const SAFE_RESET_PHASE = "IDLE";
       setTurn(snapshotNextTurn);
       const drawResultSummary = snapshot.lastHandResult ?? null;
       if (drawResultSummary) {
+        const showdownHandId =
+          snapshot.metadata?.handId ??
+          snapshot.handId ??
+          handIdRef.current ??
+          "unknown-hand";
+        if (
+          e2eLogEnabledRef.current &&
+          shouldEmitE2EAction(`showdown:${showdownHandId}`)
+        ) {
+          const showdownRound =
+            Number.isFinite(snapshot.drawRound ?? snapshot.drawRoundIndex)
+              ? snapshot.drawRound ?? snapshot.drawRoundIndex
+              : drawRoundTracker.current;
+          console.log(
+            `[E2E-ACTION] handId=${showdownHandId} street=showdown streetRound=${showdownRound} phase=SHOWDOWN round=${showdownRound} seat=- name=TABLE action=Showdown stackBefore=? stackAfter=? betBefore=? betAfter=? hand= turn=null drawRound=${showdownRound} betRound=${betRoundTracker.current} metadata={}`
+          );
+        }
         if (!handSavedRef.current) {
           finishHand({
             playersSnapshot: normalizedPlayers,
@@ -4969,6 +4999,16 @@ const SAFE_RESET_PHASE = "IDLE";
 
   const handleSelectRing = (variantId = gameVariantRef.current ?? DEFAULT_GAME_VARIANT) => {
     const normalizedVariant = normalizeAppVariantId(variantId, DEFAULT_GAME_VARIANT);
+    const gate = canLaunchVariant(normalizedVariant);
+    if (!gate.canLaunch) {
+      console.warn("[VARIANT_GATE] launch blocked", {
+        variant: normalizedVariant,
+        availability: gate.availability,
+        reason: gate.reason,
+      });
+      setCurrentScreen("gameSelector");
+      return;
+    }
     if (normalizedVariant !== gameVariantRef.current) {
       gameVariantRef.current = normalizedVariant;
       setGameVariant(normalizedVariant);

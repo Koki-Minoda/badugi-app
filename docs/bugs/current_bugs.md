@@ -4,7 +4,7 @@ title: Current blocker list
 
 # Current Bug Index
 
-Last updated: 2026-05-06
+Last updated: 2026-05-16
 
 This file is now a compact index of **currently open or partially guaranteed** issues. Historical Badugi regressions such as SB fold freeze, draw rollback, single-pot side-pot duplication, next-hand button loss, all-in betting actor selection, stale turn metadata, and draw hand rollback are consolidated in `docs/testing/MGX_GAME_PROGRESS_BUGFIX_LEDGER.md` and are covered by automated regression suites.
 
@@ -17,20 +17,28 @@ This file is now a compact index of **currently open or partially guaranteed** i
 | `EV-GUARD-06` | EV integrity | Board/Omaha/Stud terminal evaluator replay against real hand history is still open. | P2 | `docs/testing/MGX_EV_INTEGRITY_REPORT.md` | Replay terminal hands and compare evaluator winner/result. |
 | `EV-GUARD-07` | EV integrity | Strict chip conservation is not yet enabled for every controller because terminal pot echo differs by controller. | P2 | `docs/testing/MGX_EV_INTEGRITY_REPORT.md` | Normalize terminal snapshots and enable strict conservation. |
 | `EV-GUARD-08` | Split pot | Odd-chip policy is deterministic but not yet aligned to every TDA/variant-specific position rule. | P2 | `docs/testing/MGX_EV_INTEGRITY_REPORT.md` | Define per-variant odd-chip policy and add fixtures. |
-| `PV90-16` | Badugi E2E fixture | Full 3-draw E2E still needs a no-all-in deterministic fixture; current progression E2E uses a stabilized draw hook. | P3 | `docs/testing/MGX_GAME_PROGRESS_BUGFIX_LEDGER.md` | Build fixed-stack/no-all-in full draw UI path. |
-| `DRAW-NAT-01` | Draw UI E2E | Natural Draw#1-#3 UI path without test hook is not yet guaranteed. | P3 | `docs/badugi_rl_and_variant_status.md` | Add long UI smoke that reaches all draw rounds naturally. |
+| `BADUGI-ALPHA-01` | Badugi browser progression | Fixed in the alpha hardening sprint: full 3-draw browser flow now reaches `Hand Result` with the preview flag enabled. Keep as monitor until manual preview QA. | P2 | `tests/e2e/badugi-flow.spec.ts` full 3-draw regression PASS | Keep Badugi `preview_only` until manual browser/mobile QA confirms the fix outside CI. |
+| `BADUGI-ALPHA-02` | Badugi pot display | Fixed: active-hand pot now falls back to controller `totalInvested` when street bets reset and explicit pots are not present. | P2 | `src/ui/__tests__/badugiPotSnapshotMerge.test.jsx`; `tests/e2e/badugi-full-round-pot-regression.spec.ts` PASS | Monitor in preview deploy; do not promote Badugi to friend-alpha playable yet. |
+| `BADUGI-ALPHA-03` | Badugi actor election | Fixed/covered: canonical controller `nextTurn` wins over stale metadata and no-next-alive path transitions instead of re-electing checked Hero. | P2 | `src/ui/__tests__/badugiTurnSnapshotMerge.test.jsx`; `src/games/badugi/__tests__/badugiNoNextAliveRegression.test.js` PASS | Keep regression in alpha gate. |
+| `TEST-GAP-ALPHA-01` | Test coverage | Closed for the immediate Badugi P0 class: browser pot continuity, snapshot pot merge, stale turn merge, and no-next-alive regressions now have tests. | P2 | `docs/testing/MGX_ALPHA_TEST_COVERAGE_GAP_AUDIT.md` | Remaining gap is real-device mobile/manual QA. |
+| `PREVIEW-DEPLOY-01` | Deploy readiness | Preview deploy completed from a clean snapshot after stashing unrelated Step59-65 files. Remaining risk is branch not pushed and physical mobile QA pending. | P2 | `docs/deploy/MGX_ALPHA_PREVIEW_DEPLOY_CHECK.md` | Push or otherwise preserve the deployed commits before wider sharing. |
+| `PREVIEW-DEPLOY-02` | Remote sync | Local branch is ahead of origin and HTTPS dry-run push is blocked by missing credentials; `gh` CLI is not installed in this environment. | P1 | `docs/deploy/MGX_ALPHA_REMOTE_SYNC_STATUS.md` | Configure GitHub CLI, SSH, or a credential helper outside logs, then push the deployed commits. |
+| `ALPHA-SCOPE-01` | Variant availability | Friend alpha variant gate is now required: D02/S01/S02 playable, Badugi/board/stud/dramaha preview-only, Chinese/OFC coming soon. | P1 | `docs/alpha/MGX_ALPHA_VARIANT_AVAILABILITY_AUDIT.md`; `docs/alpha/MGX_ALPHA_FRIEND_LAUNCH_SCOPE.md` | Keep gate enabled until each variant clears its blocker list. |
+| `ALPHA-MOBILE-01` | Mobile gameplay layout | Fixed/covered in emulation: D02/S01/S02 controls fit 390x844, 430x932, and 844x390, with one-hand result reachability on 390x844. | P2 | `docs/alpha/MGX_ALPHA_PLAYABLE_MOBILE_EMULATION_SMOKE.md`; `tests/e2e/alpha-playable-variants-smoke.spec.ts`; `tests/e2e/alpha-mobile-gameplay-layout.spec.ts` PASS | Keep monitoring during physical mobile QA. |
+| `PV90-16` | Badugi E2E fixture | Full 3-draw E2E is green again, but still depends on preview launch gating and should stay in the alpha gate. | P2 | `tests/e2e/badugi-flow.spec.ts` PASS | Keep fixed-stack/no-all-in coverage on the deploy checklist. |
+| `DRAW-NAT-01` | Draw UI E2E | Natural Draw#1-#3 UI path reaches result locally and on the deployed preview desktop smoke. Mobile full-hand gameplay is still pending. | P2 | `tests/e2e/badugi-flow.spec.ts`; `tests/e2e/badugi-full-round-pot-regression.spec.ts`; `docs/alpha/MGX_BADUGI_ALPHA_AVAILABILITY_DECISION.md` | Keep Badugi `preview_only` until mobile full-hand QA passes. |
 | `HIST-REG-06` | History / Replay | Chinese/OFC history/replay smoke is separate from the 35 betting/draw variants and remains incomplete. | P3 | `docs/badugi_rl_and_variant_status.md` | Add CP1/OFC handId/action/result/replay frame smoke. |
 | `FB-REG-06-MANUAL` | Feedback | Feedback variant separation and replay links are unit-tested; real OpenAI-key manual quality check is still pending. | P3 | `docs/testing/MGX_GAME_PROGRESS_BUGFIX_LEDGER.md` | Run production-like 30+ hand feedback checks per variant. |
 | `CHINESE-03` | Chinese / OFC | CP1 controller smoke passes, but OFC street-by-street and fantasyland are not fully playable/verified. | P3 | `docs/testing/MGX_VARIANT_FAMILY_COVERAGE_REPORT.md` | Implement/verify OFC street progression and fantasyland. |
 | `CAP-NAT-01` | Fixed-limit cap | FLH/FLO8/Stud cap UI E2E passes; CPU-natural cap long-run smoke remains open. | P3 | `docs/badugi_rl_and_variant_status.md` | Add long-run CPU cap arrival and post-cap continuation smoke. |
-| `BG-005` | Mobile manual QA | Playwright mobile landscape coverage exists, but real device touch/orientation/next-hand inventory is incomplete. | P3 | `docs/testing/MGX_GAME_PROGRESS_BUGFIX_LEDGER.md` | Add real-device QA checklist, log capture, and known viewport matrix. |
+| `BG-005` | Mobile manual QA | Playwright mobile emulation passes for alpha variant gate, dashboard preview, and D02/S01/S02 gameplay controls. Physical device QA remains incomplete. | P1 | `docs/alpha/MGX_ALPHA_MOBILE_MANUAL_QA.md`; `docs/alpha/MGX_ALPHA_PHYSICAL_MOBILE_QA_CHECKLIST.md` | Run real Android/iOS QA before external friend alpha. |
 
 ## Quantitative Snapshot
 
 | Area | Current Estimate | Basis | Main Gap |
 |---|---:|---|---|
 | Game implementation | 84% | 36 variants are reachable/playable enough for one-hand controller tests; Chinese/OFC and special/mixed polish remain. | OFC/fantasyland, Dramaha/split result UX depth. |
-| Progression guarantee | 88% | `test:game:one-hand`, known-bugs, progress, family, E2E progression, EV guard are documented as passing. | Natural long-run UI paths and tournament/manual device cases. |
+| Progression guarantee | 84% | Controller, one-hand, EV, safety gates, and targeted Badugi browser full-flow regressions pass. | Manual preview/mobile QA and broader long-run browser coverage. |
 | UI/UX completion | 68% | Core table UI improved, mobile landscape exists, Stud up/down and HUD improved. | Friend/manual polish, result clarity for split games, real phone QA. |
 | History/replay | 86% | 35 playable variants have replay smoke; feedback replay links are covered. | Chinese/OFC replay and richer frame semantics. |
 | Feedback pipeline | 70% | Variant selection, 30-hand gate, replay links are tested. | Real OpenAI-key output quality and latency checks. |

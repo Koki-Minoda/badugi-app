@@ -27,7 +27,7 @@ describe("GameSelectorScreen", () => {
 
     expect(screen.getByText("ゲームを選択")).toBeTruthy();
     expect(screen.getByText(/ストレートとフラッシュが弱点になる2-7ロー/)).toBeTruthy();
-    expect(screen.getAllByText("開発中").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("検証中").length).toBeGreaterThan(0);
     expect(screen.queryByText("Triple-draw 2-7 lowball using three draws and fixed-limit betting streets.")).toBeNull();
     expect(screen.queryByText("すぐに開始できるゲーム")).toBeNull();
   });
@@ -37,7 +37,7 @@ describe("GameSelectorScreen", () => {
 
     expect(screen.getByText("Select Your Variant")).toBeTruthy();
     expect(screen.getByText("Triple-draw 2-7 lowball using three draws and fixed-limit betting streets.")).toBeTruthy();
-    expect(screen.getAllByText("In Progress").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Preview").length).toBeGreaterThan(0);
     expect(screen.queryByText(/ストレートとフラッシュが弱点になる2-7ロー/)).toBeNull();
     expect(screen.queryByText("Start a Cash Game")).toBeNull();
   });

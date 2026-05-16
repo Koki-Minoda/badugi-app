@@ -41,9 +41,9 @@ const MOBILE_TABLE_GRID_STYLE = {
 };
 
 const MOBILE_CARD_VARS = {
-  "--card-w": "clamp(30px, 4.4dvw, 42px)",
-  "--card-h": "clamp(42px, 6.2dvw, 59px)",
-  "--card-font-size": "clamp(12px, 2dvw, 18px)",
+  "--card-w": "clamp(24px, 4.4dvw, 38px)",
+  "--card-h": "clamp(34px, 6.2dvw, 54px)",
+  "--card-font-size": "clamp(10px, 1.8dvw, 16px)",
   "--card-dot-size": "clamp(5px, 0.9dvw, 8px)",
   "--card-center-size": "clamp(24px, 3.8dvw, 40px)",
   "--card-center-inner-size": "clamp(10px, 1.6dvw, 16px)",
@@ -56,7 +56,7 @@ const MOBILE_CARD_VARS = {
   "--player-stack-size": "clamp(8px, 1.1dvw, 10px)",
   "--player-action-size": "clamp(8px, 1.15dvw, 10px)",
   "--player-card-gap": "clamp(4px, 0.7dvw, 7px)",
-  "--player-card-strip-maxw": "clamp(138px, 22dvw, 190px)",
+  "--player-card-strip-maxw": "clamp(124px, 28dvw, 180px)",
   "--player-name-maxw": "clamp(72px, 12dvw, 130px)",
   "--player-action-min-h": "clamp(10px, 1.8dvw, 16px)",
 };
@@ -477,13 +477,21 @@ export default function GameLayoutBase({
                     }`}
                     style={isMobileLayout ? { gridArea: "pot" } : undefined}
                   >
-                      <div className="rounded-full border border-yellow-200/45 bg-black/55 px-5 py-2 text-center shadow-lg backdrop-blur">
+                      <div
+                        data-testid="table-total-pot"
+                        className={`rounded-full border border-yellow-200/45 bg-black/55 text-center shadow-lg backdrop-blur ${
+                          isMobileLayout ? "px-3 py-1.5" : "px-5 py-2"
+                        }`}
+                      >
                         <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-yellow-100/80">
                           Total Pot
                         </p>
                         <p className="text-lg font-black text-yellow-200">{totalPot}</p>
                       </div>
-                      <div className={`${isMobileLayout ? "ml-1" : ""} rounded-full bg-black/45 px-3 py-1 text-[11px] font-semibold text-slate-200`}>
+                      <div
+                        data-testid="table-phase-badge"
+                        className={`${isMobileLayout ? "ml-1 px-2" : "px-3"} rounded-full bg-black/45 py-1 text-[11px] font-semibold text-slate-200`}
+                      >
                         {boardCards.length > 0 || streetLabel
                           ? `${tablePhase} · ${streetLabel || "Board"}`
                           : `${tablePhase} · Draw ${drawRoundValue + 1}`}

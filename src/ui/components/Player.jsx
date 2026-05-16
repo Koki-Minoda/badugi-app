@@ -475,15 +475,19 @@ export default function Player({
         gap: "var(--player-gap, 8px)",
         ...(compact && !isHero
           ? {
-              "--card-w": "clamp(30px, 4.4dvw, 42px)",
-              "--card-h": "clamp(42px, 6.2dvw, 59px)",
-              "--card-font-size": "clamp(10px, 1.4dvw, 13px)",
+              "--card-w": "clamp(24px, 4.4dvw, 36px)",
+              "--card-h": "clamp(34px, 6.2dvw, 51px)",
+              "--card-font-size": "clamp(9px, 1.35dvw, 12px)",
+              "--player-card-gap": "clamp(2px, 0.5dvw, 5px)",
+              "--player-card-strip-maxw": "clamp(124px, 28dvw, 176px)",
             }
           : compact && isHero
           ? {
-              "--card-w": "clamp(38px, 5.6dvw, 54px)",
-              "--card-h": "clamp(53px, 7.8dvw, 76px)",
+              "--card-w": "clamp(30px, 5.6dvw, 50px)",
+              "--card-h": "clamp(42px, 7.8dvw, 70px)",
               "--card-font-size": "clamp(12px, 1.8dvw, 16px)",
+              "--player-card-gap": "clamp(3px, 0.6dvw, 6px)",
+              "--player-card-strip-maxw": "clamp(158px, 42dvw, 240px)",
             }
           : shouldRevealLarge
           ? {

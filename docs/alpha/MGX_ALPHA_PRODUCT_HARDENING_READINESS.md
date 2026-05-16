@@ -4,22 +4,23 @@ Date: 2026-05-16
 
 ## Decision
 
-`READY_FOR_UI_HARDENING`
+`HOLD_FOR_LIVE_TOURNAMENT_RUNTIME_AND_PHYSICAL_QA`
 
-Badugi P0 browser progression and active-hand pot continuity regressions remain fixed in focused automation. Step6 cleared the Badugi portrait mobile UI blocker, Step7 cleared the automated long-run active-pot / terminal-transition restore gate, and the Core 5 verification pass confirms Badugi/D01/D02/S01/S02 availability plus Core 5 actor-order/orientation support. Badugi is now intentionally promoted into friend-alpha scope because it is a core MGX game. The Core 5 mobile tournament layout fix is deployed at `d91d7e0cdcbf24a0260a78c7c6083eaaaf1b0bf9`; the Badugi availability promotion still needs a deploy update after tests pass.
+Badugi P0 browser progression and active-hand pot continuity regressions remain fixed in focused automation. Step6 cleared the Badugi portrait mobile UI blocker, Step7 cleared the automated long-run active-pot / terminal-transition restore gate, and live action-history audit confirms no Core5 actor-order violation. However, live URL evidence now blocks friend alpha: `https://mgx-poker.com/` reports deployed commit `f2c36e7ec833153b8428da07918bf7c8fb3ee234`, which does not match local HEAD `e8d94f9d0e49d61713db41025d81d9a3ccd601e8`, and D01/D02/S01/S02 tournament mode throws live browser fatal `applyPlayerAction is not a function`.
 
 ## Gate Results
 
 | Gate | Result | Notes |
 | --- | --- | --- |
-| preview deploy | PASS | preview refreshed and served frontend build info reports `d91d7e0cdcbf24a0260a78c7c6083eaaaf1b0bf9` |
+| live deploy snapshot | FAIL | live build info reports `f2c36e7ec833153b8428da07918bf7c8fb3ee234` and `/assets/index-Dt7nwlgG.js`; local HEAD is `e8d94f9d0e49d61713db41025d81d9a3ccd601e8` |
+| live health | PASS | `/api/health` returns `{"status":"ok","env":"prod","db":"ok"}` |
 | build | PASS | `npm run build` succeeds |
 | Badugi playable | AUTOMATED PASS / alpha scope | focused full 3-draw regression reaches `Hand Result`; long-run restore smoke passes 5 hands / 180 checkpoints; physical mobile QA remains required |
 | pot continuity | PASS | focused browser, UI snapshot, and long-run restore tests pass with 0 active-hand `Total Pot 0` occurrences |
 | mobile playable | PASS in emulation for Core 5 / physical QA pending | Core 5 UI audit now passes Badugi/D01/D02/S01/S02 on cash portrait, cash landscape, tournament portrait, tournament landscape, interaction, and desktop |
-| Core 5 UI layout | PASS | desktop, cash mobile, tournament mobile, and interaction gates pass for all five core games in automation |
+| Core 5 live layout evidence | FAIL | 13/25 live cases pass. Badugi cash/tournament and D01/D02/S01/S02 cash pass; D01/D02/S01/S02 tournament portrait/landscape fail with browser fatal `applyPlayerAction is not a function` |
 | Core 5 active status | PENDING recheck after config change | Badugi/D01/D02/S01/S02 should be alpha-playable and launchable |
-| Core 5 actor order | PASS | action-history audit across Badugi/D01/D02/S01/S02 recorded expected vs actual actor for every betting action; no fixed-opposite-seat or BB-before-UTG violation found |
+| Core 5 actor order | PASS | live action-history audit across Badugi/D01/D02/S01/S02 recorded expected vs actual actor samples and found 0 invalid actor rows / 0 hero-control mismatches |
 | Core 5 orientation | PASS | cash and tournament support portrait and landscape for Badugi/D01/D02/S01/S02 |
 | Triple Draw actor order | PASS | D01/D02/S01/S02 mapping audited; 6max/5max/3way pre-draw actor starts left of BB; heads-up blind/button actor semantics fixed |
 | test coverage sufficiency | PASS for P0 | browser pot, snapshot pot merge, stale turn merge, no-next-alive actor tests added |
@@ -29,7 +30,9 @@ Badugi P0 browser progression and active-hand pot continuity regressions remain 
 
 | Priority | Item | Why |
 | --- | --- | --- |
-| P1 | Push deployed local commits | preview deploy used a local branch ahead of origin by 37 commits |
+| P0 | Fix live D01/D02/S01/S02 tournament fatal | live tournament mode throws `applyPlayerAction is not a function` and must not be exposed to friend alpha |
+| P1 | Refresh live deploy snapshot | live build info is stale relative to local HEAD |
+| P1 | Push deployed local commits | preview deploy used a local branch ahead of origin by many commits |
 | P1 | Run physical mobile QA | emulation passed, but real device touch/orientation is still unchecked |
 | P1 | Recheck mobile tournament layout on real Safari/Chrome | automation passes, but this was originally found on real-device/browser tournament views |
 | P2 | Keep Badugi long-run restore gate in CI/release checks | Step7 cleared the blocker, but this should stay protected against regression |
@@ -38,8 +41,8 @@ Badugi P0 browser progression and active-hand pot continuity regressions remain 
 
 ## Deploy Recommendation
 
-Continue with Core5 friend-alpha preview QA after deploy verification, but hold wider friend sharing until physical mobile QA is complete and remote sync is resolved or explicitly accepted as an operational P1.
+Hold friend alpha. Continue only after live D01/D02/S01/S02 tournament fatal is fixed, the live deploy snapshot matches the intended commit, physical mobile QA is complete, and remote sync is resolved or explicitly accepted as an operational P1.
 
-The latest Core 5 UI audit does not add a Core5 UI blocker, clears the Badugi portrait UI blocker, and clears the mobile tournament portrait/landscape layout blocker in automation. Step7 clears the Badugi automated long-run restore blocker; the remaining Badugi release risk is physical mobile QA.
+The latest local Core5 UI audits remain useful, but they are not sufficient for release. The live URL evidence is the current source of truth and adds `CORE5-UI-LIVE-001` as a P0 tournament runtime blocker.
 
 The Core 5 action-order reality audit adds per-action history evidence beyond first-actor checks. It classifies the reported BB case as `FALSE_ALARM_CONFIRMED_BY_HISTORY`: BB acted only after earlier active obligations were resolved, or as the first active post-draw actor when seats left of the button were folded/ineligible.

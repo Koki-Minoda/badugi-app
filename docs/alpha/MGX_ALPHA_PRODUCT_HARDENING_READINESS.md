@@ -16,7 +16,8 @@ Badugi P0 browser progression and active-hand pot continuity regressions remain 
 | build | PASS | `npm run build` succeeds |
 | Badugi playable | BLOCKED / preview-only | focused full 3-draw regression reaches `Hand Result`, but long-run restore smoke is expected-fail due active-pot/terminal mismatch |
 | pot continuity | PASS focused / FAIL long-run restore | focused browser and UI snapshot tests pass; long-run restore gate can still surface active-hand `Total Pot 0` symptoms |
-| mobile playable | PASS for D02/S01/S02 / BLOCKED for Badugi restore | D02/S01/S02 mobile emulation passes; Badugi portrait restore launch is expected-fail at 390px/430px |
+| mobile playable | PASS for D01/D02/S01/S02 / BLOCKED for Badugi restore | Core 5 Step5 UI audit passes D01/D02/S01/S02 on portrait, landscape, interaction, and desktop; Badugi portrait launch readiness still fails at 390px/430px |
+| Core 5 UI layout | PASS except Badugi portrait | desktop and landscape pass all 5; D01/D02/S01/S02 portrait/interaction pass; Badugi remains blocked in portrait |
 | Triple Draw actor order | PASS | D02/S01/S02/D01 mapping audited; 6max/5max/3way pre-draw actor starts left of BB; heads-up blind/button actor semantics fixed |
 | test coverage sufficiency | PASS for P0 | browser pot, snapshot pot merge, stale turn merge, no-next-alive actor tests added |
 | routing/promotion/live RL | PASS | no production routing, promotion, live RL, or model registry change |
@@ -28,11 +29,11 @@ Badugi P0 browser progression and active-hand pot continuity regressions remain 
 | P1 | Push or preserve deployed local commits | preview deploy used a local branch ahead of origin |
 | P1 | Run physical mobile QA | emulation passed, but real device touch/orientation is still unchecked |
 | P1 | Fix Badugi long-run active-pot / terminal-transition restore gate | Badugi cannot return to alpha while long-run smoke is expected-fail |
-| P1 | Fix Badugi portrait mobile restore launch readiness | 390px/430px portrait cases are expected-fail |
+| P1 | Fix Badugi portrait mobile restore launch readiness | Core 5 Step5 portrait audit still fails to launch Badugi at 390px/430px |
 | P1 | Keep Badugi `preview_only` until mobile full-hand QA passes | friend alpha must only expose stable variants |
 
 ## Deploy Recommendation
 
 Continue with D02/S01/S02 friend-alpha preview QA on `https://mgx-poker.com/`, but hold wider friend sharing until physical mobile QA is complete. Do not reclassify Badugi to `alpha_playable` until the long-run restore smoke, portrait mobile restore gate, and physical mobile full-hand QA pass.
 
-The latest Triple Draw audit does not add a deployed alpha-scope P0. Keep D02/S01/S02 as the candidate set, with the new actor-order and mobile-layout regression tests in the pre-alpha gate.
+The latest Core 5 UI audit does not add a D01/D02/S01/S02 UI blocker. Keep Badugi `preview_only` until its portrait and long-run restore blockers are cleared.

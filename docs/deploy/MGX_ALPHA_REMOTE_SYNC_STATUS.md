@@ -7,25 +7,22 @@ Date: 2026-05-16
 | Item | Result |
 | --- | --- |
 | Local branch | `feature/d-04-next-actor-unify` |
-| Current local HEAD before final-gate docs | `f121d732dd0a1debf699eb43699484e06d0a5c1d` |
+| Local HEAD | `d91d7e0cdcbf24a0260a78c7c6083eaaaf1b0bf9` |
 | Remote | `origin https://github.com/Koki-Minoda/badugi-app.git` |
-| Branch state | local `HEAD` matched local `origin/feature/d-04-next-actor-unify` tracking ref before final-gate docs |
+| Branch state | local branch is ahead of `origin/feature/d-04-next-actor-unify` by 37 commits |
 | Preview URL | `https://mgx-poker.com/` |
-| Deployed snapshot | `f121d732dd0a1debf699eb43699484e06d0a5c1d` |
+| Deployed snapshot | `d91d7e0cdcbf24a0260a78c7c6083eaaaf1b0bf9` |
 
 ## Push Readiness
 
 | Check | Result |
 | --- | --- |
-| `git status --short` | clean before adding this sprint's QA artifacts |
-| `git branch -vv` | local branch up to date with local tracking ref before final-gate docs |
-| `gh` CLI | not installed in this environment |
+| `git status --short` before deploy | only generated `reports/alpha/` untracked |
+| `git branch -vv` | local branch ahead 37 |
 | HTTPS dry-run push | blocked by missing credentials |
-| SSH push readiness | no private key configured in `~/.ssh` |
-| Latest dry-run push | blocked by missing HTTPS credentials |
-| Token exposure | none |
-| Source/mobile-fix commits synced | true, tracking ref contains `f121d732dd0a1debf699eb43699484e06d0a5c1d` |
-| Final-gate docs pushable from this shell | false |
+| Token exposure | false |
+| Remote synced | false |
+| Deploy source risk | preview was deployed from local branch head, but remote has not been updated |
 
 Dry-run push result:
 
@@ -35,10 +32,14 @@ fatal: could not read Username for 'https://github.com': No such device or addre
 
 ## Required Follow-up
 
-Remote sync is blocked until one of these is configured outside command logs:
+Push from a credentialed environment without logging secrets:
 
-1. GitHub CLI auth (`gh auth login`) after installing `gh`.
-2. SSH remote with a configured deploy/user key.
-3. HTTPS credential helper or PAT entered interactively without logging the token.
+```bash
+git push origin feature/d-04-next-actor-unify
+```
 
-The deployed source/mobile-fix snapshot is present on the tracked remote branch. New final-gate documentation created after deploy still requires an authenticated push from a credentialed environment.
+Acceptable credential paths:
+
+1. GitHub CLI auth (`gh auth login`) if `gh` is available.
+2. SSH remote with a configured user/deploy key.
+3. HTTPS credential helper or PAT entered interactively, never embedded in the remote URL or shell history.

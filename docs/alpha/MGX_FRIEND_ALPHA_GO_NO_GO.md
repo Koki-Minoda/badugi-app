@@ -4,16 +4,16 @@ Date: 2026-05-16
 
 ## Decision
 
-`HOLD_FOR_PHYSICAL_MOBILE_QA`
+`HOLD_FOR_PHYSICAL_MOBILE_QA_AND_REMOTE_SYNC`
 
-The latest alpha verification confirms Core 5 availability, actor order, orientation support, and mobile tournament layout recovery in automation. Friend alpha should remain held until real-device mobile QA is completed.
+The latest preview deploy now includes the Core 5 mobile tournament layout fix at `d91d7e0cdcbf24a0260a78c7c6083eaaaf1b0bf9`. Post-deploy browser smoke passes, but friend alpha should remain held until real-device mobile QA is completed and the ahead local branch is pushed from a credentialed environment.
 
 ## Gate Summary
 
 | Gate | Result |
 | --- | --- |
-| Remote source sync for deployed commit | PASS |
-| Latest preview deploy | PASS |
+| Remote source sync for deployed commit | BLOCKED, branch ahead 37 |
+| Latest preview deploy | PASS, deployed `d91d7e0cdcbf24a0260a78c7c6083eaaaf1b0bf9` |
 | D02/S01/S02 desktop smoke | PASS |
 | D02/S01/S02 mobile emulation | PASS |
 | D02/S01/S02 Triple Draw actor / mapping audit | PASS |
@@ -21,7 +21,7 @@ The latest alpha verification confirms Core 5 availability, actor order, orienta
 | Core 5 actor order | PASS |
 | Core 5 orientation support | PASS |
 | Core 5 mobile tournament portrait/landscape | PASS in automation |
-| Post-deploy browser smoke | PASS |
+| Post-deploy browser smoke | PASS, Core5 tournament portrait/landscape live preview smoke |
 | Physical mobile QA | PENDING |
 | Core 5 UI layout | PASS for all five core games in automation |
 | Alpha-scope P0 | none observed |
@@ -41,7 +41,7 @@ The latest alpha verification confirms Core 5 availability, actor order, orienta
 
 ## Remaining Required Action
 
-Run physical mobile QA on at least Android Chrome or iPhone Safari/Chrome. If the device pass is clean, the D01/D02/S01/S02 friend alpha can move from HOLD to GO.
+Run physical mobile QA on at least Android Chrome or iPhone Safari/Chrome, and push `feature/d-04-next-actor-unify` from a credentialed environment. If the device pass is clean and remote sync is resolved or explicitly accepted as a P1 operational risk, the D01/D02/S01/S02 friend alpha can move from HOLD to GO.
 
 Badugi has a separate restore gate and must remain out of the friend alpha until real-device mobile QA passes. Step6 clears the Badugi portrait mobile UI blocker, Step7 clears the automated long-run active-pot / terminal-transition blocker, and the Core 5 UI audit now has no desktop, cash mobile, tournament mobile, or interaction UI blocker in automation.
 

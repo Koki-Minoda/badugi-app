@@ -68,7 +68,7 @@ describe("MainMenuScreen", () => {
     render(<MainMenuScreen language="en" />);
 
     fireEvent.click(screen.getByRole("button", { name: /tournament/i }));
-    expect(mockNavigate).toHaveBeenCalledWith("/game?mode=store_tournament&variant=badugi", {
+    expect(mockNavigate).toHaveBeenCalledWith("/game?mode=store_tournament&variant=ace_to_five_triple_draw", {
       state: { startTournamentMTT: true },
     });
 

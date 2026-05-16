@@ -14,6 +14,7 @@ describe("VariantSelectModal", () => {
 
   afterEach(() => {
     cleanup();
+    window.localStorage.clear();
   });
 
   afterAll(() => {
@@ -21,6 +22,7 @@ describe("VariantSelectModal", () => {
   });
 
   it("renders variants, focuses dialog, and handles selection", () => {
+    window.localStorage.setItem("mgx.previewVariants", "true");
     const handleSelect = vi.fn();
     const handleClose = vi.fn();
     render(
@@ -40,6 +42,7 @@ describe("VariantSelectModal", () => {
   });
 
   it("allows draw lowball variants to be selected", () => {
+    window.localStorage.setItem("mgx.previewVariants", "true");
     const handleSelect = vi.fn();
     render(<VariantSelectModal isOpen onClose={() => {}} onSelectVariant={handleSelect} />);
 
@@ -57,6 +60,7 @@ describe("VariantSelectModal", () => {
   });
 
   it("allows Omaha family variants to be selected", () => {
+    window.localStorage.setItem("mgx.previewVariants", "true");
     const handleSelect = vi.fn();
     render(<VariantSelectModal isOpen onClose={() => {}} onSelectVariant={handleSelect} />);
 
@@ -73,6 +77,7 @@ describe("VariantSelectModal", () => {
   });
 
   it("allows Dramaha family variants to be selected", () => {
+    window.localStorage.setItem("mgx.previewVariants", "true");
     const handleSelect = vi.fn();
     render(<VariantSelectModal isOpen onClose={() => {}} onSelectVariant={handleSelect} />);
 
@@ -89,6 +94,23 @@ describe("VariantSelectModal", () => {
   it("does not render when closed", () => {
     render(<VariantSelectModal isOpen={false} onClose={() => {}} onSelectVariant={() => {}} />);
     expect(screen.queryByText(/select a variant/i)).toBeNull();
+  });
+
+  it("blocks preview variants when the preview flag is off", () => {
+    const handleSelect = vi.fn();
+    render(<VariantSelectModal isOpen onClose={() => {}} onSelectVariant={handleSelect} />);
+
+    const badugiButton = screen
+      .getAllByRole("button", { name: /badugi/i })
+      .find((button) => button.textContent?.includes("Badugi") && !button.textContent?.includes("Single Draw"));
+    expect(badugiButton.disabled).toBe(true);
+    fireEvent.click(badugiButton);
+    expect(handleSelect).not.toHaveBeenCalled();
+
+    const a5Button = screen.getByRole("button", { name: /a-5 single draw/i });
+    expect(a5Button.disabled).toBe(false);
+    fireEvent.click(a5Button);
+    expect(handleSelect).toHaveBeenCalledWith("S02");
   });
 
   it("closes when escape is pressed", () => {

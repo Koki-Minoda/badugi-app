@@ -22,6 +22,7 @@ Badugi P0 browser progression and active-hand pot continuity regressions remain 
 | Core 5 active status | PENDING recheck after config change | Badugi/D01/D02/S01/S02 should be alpha-playable and launchable |
 | Core 5 actor order | PASS | live action-history audit across Badugi/D01/D02/S01/S02 recorded expected vs actual actor samples and found 0 invalid actor rows / 0 hero-control mismatches |
 | Core 5 orientation | PASS | cash and tournament support portrait and landscape for Badugi/D01/D02/S01/S02 |
+| Core 5 full lifecycle invariants | PASS locally | Cash: 6,000 synthetic hands / 60 sessions / 0 violations plus 5/5 full browser lifecycle variants and 25/25 individual Cash checks. Tournament: 1,200 synthetic tournaments / 0 violations plus 5/5 full browser lifecycle variants and 30/30 individual Tournament checks |
 | Triple Draw actor order | PASS | D01/D02/S01/S02 mapping audited; 6max/5max/3way pre-draw actor starts left of BB; heads-up blind/button actor semantics fixed |
 | test coverage sufficiency | PASS for P0 | browser pot, snapshot pot merge, stale turn merge, no-next-alive actor tests added |
 | Badugi raise/call betting closure | FIXED_LOCAL | `badugiRaiseCallClosureRegression`, `badugiRaiseCallClosureSnapshot`, and `badugi-raise-call-round-closure` prove raise-call closes without reselecting Hero, while re-raise legitimately reopens action |
@@ -37,6 +38,7 @@ Badugi P0 browser progression and active-hand pot continuity regressions remain 
 | P1 | Push deployed local commits | preview deploy used a local branch ahead of origin by many commits |
 | P1 | Run physical mobile QA | emulation passed, but real device touch/orientation is still unchecked |
 | P1 | Recheck mobile tournament layout on real Safari/Chrome | automation passes, but this was originally found on real-device/browser tournament views |
+| P1 | Deploy and live-run the Core5 lifecycle gate evidence | local Cash/Tournament lifecycle automation passes, but live build and live tournament runtime remain the release source of truth |
 | P2 | Keep Badugi long-run restore gate in CI/release checks | Step7 cleared the blocker, but this should stay protected against regression |
 | P1 | Run Badugi physical mobile full-hand QA | Step6/Step7 automation passes, but real mobile pot/action/draw controls are still unchecked |
 | P1 | Monitor Badugi pot/terminal/actor behavior in closed alpha | Badugi is core MGX scope, but remaining real-device risk must stay visible |

@@ -59,6 +59,7 @@ export default function TournamentHUD({
   nextVariantLabel = null,
   compact = false,
   placement = "table",
+  mobileCompact = false,
 }) {
   const displayPayouts = formatPayoutRows(payoutBreakdown);
   const prizePoolDisplay =
@@ -90,6 +91,50 @@ export default function TournamentHUD({
     (currentLevelNumber != null ? `Level ${currentLevelNumber}` : "Level —");
 
   if (placement === "side") {
+    if (mobileCompact) {
+      return (
+        <div
+          className="mgx-hud-compact rounded-xl border border-yellow-300/20 bg-slate-950/90 p-2 text-slate-50 shadow-lg"
+          data-testid="tournament-hud"
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="text-[9px] font-black uppercase tracking-[0.18em] text-yellow-300">
+                Tournament
+              </div>
+              <div className="truncate text-xs font-black text-white">{tournamentName}</div>
+              <div className="truncate text-[10px] font-semibold text-slate-300">
+                {levelDisplay} · {currentVariantLabel ?? "Core 5"}
+              </div>
+            </div>
+            <div className="shrink-0 rounded-lg border border-white/10 bg-black/35 px-2 py-1 text-center">
+              <div className="text-[8px] uppercase tracking-wide text-slate-400">Hands</div>
+              <div className="text-sm font-black text-white">{progressDisplay}</div>
+            </div>
+          </div>
+
+          <div className="mt-2 grid grid-cols-4 gap-1 text-[10px]">
+            <div className="min-w-0 rounded-lg border border-white/10 bg-black/30 px-1.5 py-1">
+              <p className="truncate text-[8px] font-bold uppercase tracking-wide text-slate-400">Prize</p>
+              <p className="truncate font-black text-yellow-200">{prizePoolDisplay}</p>
+            </div>
+            <div className="min-w-0 rounded-lg border border-white/10 bg-black/30 px-1.5 py-1">
+              <p className="truncate text-[8px] font-bold uppercase tracking-wide text-slate-400">Blinds</p>
+              <p className="truncate font-black text-white">{blindsDisplay}</p>
+            </div>
+            <div className="min-w-0 rounded-lg border border-white/10 bg-black/30 px-1.5 py-1">
+              <p className="truncate text-[8px] font-bold uppercase tracking-wide text-slate-400">Players</p>
+              <p className="truncate font-black text-white">{playersDisplay}</p>
+            </div>
+            <div className="min-w-0 rounded-lg border border-white/10 bg-black/30 px-1.5 py-1">
+              <p className="truncate text-[8px] font-bold uppercase tracking-wide text-slate-400">Next</p>
+              <p className="truncate font-black text-white">{nextLevelDisplay}</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div
         className="rounded-2xl border border-yellow-300/20 bg-slate-950/88 p-3 text-slate-50 shadow-xl"

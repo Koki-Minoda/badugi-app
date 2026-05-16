@@ -475,19 +475,19 @@ export default function Player({
         gap: "var(--player-gap, 8px)",
         ...(compact && !isHero
           ? {
-              "--card-w": "clamp(24px, 4.4dvw, 36px)",
-              "--card-h": "clamp(34px, 6.2dvw, 51px)",
-              "--card-font-size": "clamp(9px, 1.35dvw, 12px)",
-              "--player-card-gap": "clamp(2px, 0.5dvw, 5px)",
-              "--player-card-strip-maxw": "clamp(124px, 28dvw, 176px)",
+              "--card-w": "var(--compact-cpu-card-w, clamp(24px, 4.4dvw, 36px))",
+              "--card-h": "var(--compact-cpu-card-h, clamp(34px, 6.2dvw, 51px))",
+              "--card-font-size": "var(--compact-cpu-card-font-size, clamp(9px, 1.35dvw, 12px))",
+              "--player-card-gap": "var(--compact-cpu-card-gap, clamp(2px, 0.5dvw, 5px))",
+              "--player-card-strip-maxw": "var(--compact-cpu-card-strip-maxw, clamp(124px, 28dvw, 176px))",
             }
           : compact && isHero
           ? {
-              "--card-w": "clamp(30px, 5.6dvw, 50px)",
-              "--card-h": "clamp(42px, 7.8dvw, 70px)",
-              "--card-font-size": "clamp(12px, 1.8dvw, 16px)",
-              "--player-card-gap": "clamp(3px, 0.6dvw, 6px)",
-              "--player-card-strip-maxw": "clamp(158px, 42dvw, 240px)",
+              "--card-w": "var(--compact-hero-card-w, clamp(30px, 5.6dvw, 50px))",
+              "--card-h": "var(--compact-hero-card-h, clamp(42px, 7.8dvw, 70px))",
+              "--card-font-size": "var(--compact-hero-card-font-size, clamp(12px, 1.8dvw, 16px))",
+              "--player-card-gap": "var(--compact-hero-card-gap, clamp(3px, 0.6dvw, 6px))",
+              "--player-card-strip-maxw": "var(--compact-hero-card-strip-maxw, clamp(158px, 42dvw, 240px))",
             }
           : shouldRevealLarge
           ? {

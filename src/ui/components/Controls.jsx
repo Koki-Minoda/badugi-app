@@ -34,7 +34,7 @@ export default function Controls({
       ? "w-full flex flex-col gap-3"
       : "flex flex-col gap-2 bg-gray-800/90 p-2 rounded shadow-lg");
   const buttonBase = isMobile
-    ? "min-h-[44px] flex-1 py-[clamp(8px,2dvw,12px)] rounded-2xl text-[clamp(12px,2.1dvw,16px)] font-semibold tracking-wide touch-manipulation"
+    ? "min-h-[44px] w-full min-w-0 flex-1 py-[clamp(8px,2dvw,12px)] rounded-2xl text-[clamp(12px,2.1dvw,16px)] font-semibold tracking-wide touch-manipulation"
     : "px-3 py-2 rounded text-sm font-medium";
 
   return (

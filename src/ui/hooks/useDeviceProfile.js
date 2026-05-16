@@ -26,7 +26,8 @@ function computeProfile() {
     typeof navigator !== "undefined" &&
     (navigator.maxTouchPoints > 1 || "ontouchstart" in window || coarseNoHover);
   const isMobileUA = /iphone|ipod|android|mobile/i.test(ua);
-  const isPhoneLike = (coarseNoHover || isTouch || isMobileUA) && shortSide <= 900;
+  const isNarrowViewport = shortSide <= 640;
+  const isPhoneLike = isNarrowViewport || ((coarseNoHover || isTouch || isMobileUA) && shortSide <= 900);
   const isMobile = isPhoneLike;
   return {
     width,

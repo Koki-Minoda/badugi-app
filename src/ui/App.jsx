@@ -1487,10 +1487,10 @@ const SAFE_RESET_PHASE = "IDLE";
     });
     const normalizedPlayers = setPlayerSnapshot(sourcePlayers);
     const snapshotNextTurn =
-      typeof snapshot.turn === "number"
-        ? snapshot.turn
-        : typeof snapshot.nextTurn === "number"
+      typeof snapshot.nextTurn === "number"
         ? snapshot.nextTurn
+        : typeof snapshot.turn === "number"
+        ? snapshot.turn
         : typeof snapshot.currentActor === "number"
         ? snapshot.currentActor
         : typeof snapshot?.metadata?.actingPlayerIndex === "number"
@@ -1550,7 +1550,9 @@ const SAFE_RESET_PHASE = "IDLE";
       }
     }
     syncEngineSnapshot(engineSnapshot);
-    if (!isSingleTableBadugi) {
+    const shouldApplyControllerSnapshotDirectly =
+      !isSingleTableBadugi || Boolean(snapshot.phase || snapshot.street || snapshot.lastHandResult);
+    if (shouldApplyControllerSnapshotDirectly) {
       setPots(Array.isArray(snapshot.pots) ? snapshot.pots.map((pot) => ({ ...pot })) : []);
       setCurrentBet(resolvedCurrentBet ?? 0);
       setBetHead(resolvedBetHead ?? null);
@@ -1558,6 +1560,23 @@ const SAFE_RESET_PHASE = "IDLE";
       setTurn(snapshotNextTurn);
       const drawResultSummary = snapshot.lastHandResult ?? null;
       if (drawResultSummary) {
+        const showdownHandId =
+          snapshot.metadata?.handId ??
+          snapshot.handId ??
+          handIdRef.current ??
+          "unknown-hand";
+        if (
+          e2eLogEnabledRef.current &&
+          shouldEmitE2EAction(`showdown:${showdownHandId}`)
+        ) {
+          const showdownRound =
+            Number.isFinite(snapshot.drawRound ?? snapshot.drawRoundIndex)
+              ? snapshot.drawRound ?? snapshot.drawRoundIndex
+              : drawRoundTracker.current;
+          console.log(
+            `[E2E-ACTION] handId=${showdownHandId} street=showdown streetRound=${showdownRound} phase=SHOWDOWN round=${showdownRound} seat=- name=TABLE action=Showdown stackBefore=? stackAfter=? betBefore=? betAfter=? hand= turn=null drawRound=${showdownRound} betRound=${betRoundTracker.current} metadata={}`
+          );
+        }
         if (!handSavedRef.current) {
           finishHand({
             playersSnapshot: normalizedPlayers,

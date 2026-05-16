@@ -6,7 +6,7 @@ Date: 2026-05-16
 
 `HOLD_FOR_PHYSICAL_MOBILE_QA`
 
-The latest alpha verification confirms Core 5 availability, actor order, and orientation support, and the preview deploy was refreshed after the stale snapshot was detected. Friend alpha should remain held until real-device mobile QA is completed.
+The latest alpha verification confirms Core 5 availability, actor order, orientation support, and mobile tournament layout recovery in automation. Friend alpha should remain held until real-device mobile QA is completed.
 
 ## Gate Summary
 
@@ -20,6 +20,7 @@ The latest alpha verification confirms Core 5 availability, actor order, and ori
 | D01 2-7TD active status | PASS |
 | Core 5 actor order | PASS |
 | Core 5 orientation support | PASS |
+| Core 5 mobile tournament portrait/landscape | PASS in automation |
 | Post-deploy browser smoke | PASS |
 | Physical mobile QA | PENDING |
 | Core 5 UI layout | PASS for all five core games in automation |
@@ -42,6 +43,6 @@ The latest alpha verification confirms Core 5 availability, actor order, and ori
 
 Run physical mobile QA on at least Android Chrome or iPhone Safari/Chrome. If the device pass is clean, the D01/D02/S01/S02 friend alpha can move from HOLD to GO.
 
-Badugi has a separate restore gate and must remain out of the friend alpha until real-device mobile QA passes. Step6 clears the Badugi portrait mobile UI blocker, Step7 clears the automated long-run active-pot / terminal-transition blocker, and the Core 5 UI audit now has no desktop, portrait, landscape, or interaction UI blocker in automation.
+Badugi has a separate restore gate and must remain out of the friend alpha until real-device mobile QA passes. Step6 clears the Badugi portrait mobile UI blocker, Step7 clears the automated long-run active-pot / terminal-transition blocker, and the Core 5 UI audit now has no desktop, cash mobile, tournament mobile, or interaction UI blocker in automation.
 
 Triple Draw / Single Draw mapping has been re-audited: `D02` is A-5 Triple Draw, `S01` is 2-7 Single Draw, and `S02` is A-5 Single Draw. The suspected six-max BB-first issue was not reproduced in the engine; heads-up blind/button semantics were corrected and covered.

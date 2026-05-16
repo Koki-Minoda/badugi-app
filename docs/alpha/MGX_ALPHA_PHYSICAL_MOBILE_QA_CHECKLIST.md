@@ -33,4 +33,11 @@ Run these on the deployed preview URL: `https://mgx-poker.com/`.
 
 ## Known Risk Before Physical QA
 
-Mobile emulation found gameplay action controls overflowing narrow viewports. Treat this as a P1 friend-alpha blocker until verified and fixed.
+Mobile emulation now passes for D02/S01/S02 gameplay controls, pot, phase, no horizontal overflow, and one-hand result reachability on 390px-class portrait. Treat physical device QA as the remaining P1 gate because real browser chrome, touch behavior, and orientation handling can still differ from Playwright emulation.
+
+Automated mobile coverage:
+
+```bash
+npx playwright test tests/e2e/alpha-playable-variants-smoke.spec.ts --project=badugi-flow
+npx playwright test tests/e2e/alpha-mobile-gameplay-layout.spec.ts --project=badugi-flow
+```

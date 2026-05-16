@@ -7,9 +7,9 @@ Date: 2026-05-16
 | Item | Result |
 | --- | --- |
 | Local branch | `feature/d-04-next-actor-unify` |
-| Local HEAD before this QA doc commit | `f45f8e299c8c3a448a580eb190d934a1ac7655a8` |
+| Local HEAD before this sprint | `694594f docs(alpha): freeze friend alpha scope and QA checklist` |
 | Remote | `origin https://github.com/Koki-Minoda/badugi-app.git` |
-| Branch state | ahead of origin by 8 commits before this QA doc commit |
+| Branch state | ahead of origin by 12 commits after the mobile overflow fix commits |
 | Preview URL | `https://mgx-poker.com/` |
 | Deployed snapshot | `90a830b7e1d2e9cb1a0683e59088874fd6f2972f` |
 
@@ -21,12 +21,21 @@ Date: 2026-05-16
 | `git branch -vv` | local branch ahead of origin |
 | `gh` CLI | not installed in this environment |
 | HTTPS dry-run push | blocked by missing credentials |
+| SSH push readiness | blocked by host-key verification / SSH setup |
+| Latest post-commit dry-run push | blocked by missing HTTPS credentials |
 | Token exposure | none |
+| Remote synced | false |
 
 Dry-run push result:
 
 ```txt
 fatal: could not read Username for 'https://github.com': No such device or address
+```
+
+SSH readiness check:
+
+```txt
+Host key verification failed.
 ```
 
 ## Required Follow-up

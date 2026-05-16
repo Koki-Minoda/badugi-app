@@ -60,4 +60,10 @@ Do not widen to friends until:
 
 - Remote GitHub sync is resolved.
 - Physical mobile QA is complete.
-- D02/S01/S02 mobile gameplay action overflow is fixed or verified safe on real devices.
+- D02/S01/S02 mobile gameplay action controls are verified on real devices.
+
+Current automated status:
+
+- D02/S01/S02 desktop smoke: PASS.
+- D02/S01/S02 mobile emulation, including 390px portrait controls and result overlay reachability: PASS.
+- Physical mobile QA: PENDING.

@@ -16,7 +16,7 @@ Badugi P0 browser progression and active-hand pot continuity regressions are fix
 | build | PASS | `npm run build` succeeds |
 | Badugi playable | PASS / preview-only | full 3-draw browser regression reaches `Hand Result`; Badugi remains hidden from friend alpha |
 | pot continuity | PASS | active hand no longer renders `Total Pot 0`; browser and UI snapshot tests cover this |
-| mobile playable | PARTIAL | emulated mobile variant gate/dashboard pass; physical device and Badugi full-hand mobile QA pending |
+| mobile playable | PASS / physical pending | D02/S01/S02 mobile emulation passes for 390px/430px portrait and 844px landscape; physical device and Badugi full-hand mobile QA pending |
 | test coverage sufficiency | PASS for P0 | browser pot, snapshot pot merge, stale turn merge, no-next-alive actor tests added |
 | routing/promotion/live RL | PASS | no production routing, promotion, live RL, or model registry change |
 
@@ -27,9 +27,9 @@ Badugi P0 browser progression and active-hand pot continuity regressions are fix
 | P1 | Push or preserve deployed local commits | preview deploy used a local branch ahead of origin |
 | P1 | Run physical mobile QA | emulation passed, but real device touch/orientation is still unchecked |
 | P1 | Keep Badugi `preview_only` until mobile full-hand QA passes | friend alpha must only expose stable variants |
-| P1 | Add mobile Badugi pot/action visibility assertions | prevents regression on small viewports |
+| P2 | Add mobile Badugi pot/action visibility assertions | prevents regression on small viewports |
 | P2 | Broaden long-run natural Badugi browser smoke | catches rare CPU progression and transition edge cases |
 
 ## Deploy Recommendation
 
-Continue with D02/S01/S02 friend-alpha preview QA on `https://mgx-poker.com/`. Do not reclassify Badugi to `alpha_playable` until mobile full-hand QA passes.
+Continue with D02/S01/S02 friend-alpha preview QA on `https://mgx-poker.com/`, but hold wider friend sharing until remote sync and physical mobile QA are complete. Do not reclassify Badugi to `alpha_playable` until mobile full-hand QA passes.

@@ -180,14 +180,16 @@ export default function GameLayoutBase({
   const isShowdownPhase = phase === "SHOWDOWN" || tablePhase === "SHOWDOWN";
   const showDesktopSidePanel = showSidePanel && !isMobileLayout;
   const desktopSectionClass = showDesktopSidePanel
-    ? "pl-[290px] pr-5 pt-[5.5rem] pb-[4.5rem] gap-6"
+    ? "pl-[270px] pr-4 pt-[4.75rem] pb-8 gap-4 min-[1360px]:pl-[290px] min-[1360px]:pr-5 min-[1360px]:pt-[5.5rem] min-[1360px]:pb-[4.5rem] min-[1360px]:gap-6"
     : isTournament
-      ? "px-4 pt-[5.25rem] pb-[3.5rem] gap-4"
-      : "px-5 pt-[5.5rem] pb-[4.5rem] gap-6";
+      ? "px-4 pt-[4.75rem] pb-8 gap-4 min-[1360px]:pt-[5.25rem] min-[1360px]:pb-[3.5rem]"
+      : "px-4 pt-[4.75rem] pb-8 gap-4 min-[1360px]:px-5 min-[1360px]:pt-[5.5rem] min-[1360px]:pb-[4.5rem] min-[1360px]:gap-6";
   const desktopGridClass = isTournament
-    ? "grid-cols-[minmax(820px,1fr)_clamp(280px,20vw,340px)] gap-3"
-    : "grid-cols-[minmax(720px,1fr)_clamp(260px,22vw,340px)] gap-4";
-  const desktopTableMinHeight = isTournament ? "min-h-[540px]" : "min-h-[600px]";
+    ? "grid-cols-[minmax(700px,1fr)_clamp(240px,19vw,320px)] gap-3 min-[1360px]:grid-cols-[minmax(820px,1fr)_clamp(280px,20vw,340px)]"
+    : "grid-cols-[minmax(620px,1fr)_clamp(230px,20vw,320px)] gap-3 min-[1360px]:grid-cols-[minmax(720px,1fr)_clamp(260px,22vw,340px)] min-[1360px]:gap-4";
+  const desktopTableMinHeight = isTournament
+    ? "min-h-[clamp(460px,calc(100dvh-230px),540px)] min-[1360px]:min-h-[540px]"
+    : "min-h-[clamp(480px,calc(100dvh-220px),600px)] min-[1360px]:min-h-[600px]";
   const mobileLandscapeClass = isMobileLayout
     ? "mgx-mobile-landscape fixed inset-0 h-screen w-screen overflow-hidden"
     : "";
@@ -521,7 +523,7 @@ export default function GameLayoutBase({
                       : "items-center";
                     const mobileSeatLiftClass =
                       isMobileLayout && seat.seatIndex === heroSeatIndex
-                        ? "-translate-y-7"
+                        ? "-translate-y-3 min-[641px]:-translate-y-7"
                         : "";
                     return (
                       <div
@@ -578,7 +580,7 @@ export default function GameLayoutBase({
                     <p className="text-base font-semibold text-white">{betRoundValue + 1}</p>
                   </div>
                 </div>
-                <div className={`${isMobileLayout ? "hidden" : "flex"} flex-col gap-2 rounded-2xl border border-white/10 bg-slate-900/85 p-3 shadow-lg`}>
+                <div className={`${isMobileLayout ? "hidden" : "hidden min-[1360px]:flex"} flex-col gap-2 rounded-2xl border border-white/10 bg-slate-900/85 p-3 shadow-lg`}>
                   <h2 className="text-xs font-semibold text-white uppercase tracking-wider">
                     Hero Hand
                   </h2>

@@ -7364,14 +7364,18 @@ const SAFE_RESET_PHASE = "IDLE";
         (baseState?.players ?? []).map(clonePlayerState).filter(Boolean),
       ),
     };
-    const outcome = engine.advanceAfterBet(reconciledBaseState, {
-      drawRound: drawRoundValue,
-      maxDraws: MAX_DRAWS,
-      dealerIndex: dealerIndexValue,
-      numPlayers: NUM_PLAYERS,
-    });
-    if (!outcome?.state) return false;
-    const state = outcome.state;
+	    const outcome = engine.advanceAfterBet(reconciledBaseState, {
+	      drawRound: drawRoundValue,
+	      maxDraws: MAX_DRAWS,
+	      dealerIndex: dealerIndexValue,
+	      numPlayers: NUM_PLAYERS,
+	    });
+	    if (!outcome?.state) return false;
+	    const outcomeStreet = outcome.street ?? outcome.state?.street ?? outcome.state?.phase ?? null;
+	    if (outcomeStreet === "BET") {
+	      return false;
+	    }
+	    const state = outcome.state;
     const mergedMetadata = {
       ...(state.metadata ?? outcome.metadata ?? baseState.metadata ?? {}),
     };
@@ -7394,7 +7398,7 @@ const SAFE_RESET_PHASE = "IDLE";
     const transitionSnapshot = applyDeckSnapshot({
       players: state.players,
       pots: state.pots,
-      phase: outcome.street === "DRAW" ? "DRAW" : outcome.street,
+	      phase: outcomeStreet === "DRAW" ? "DRAW" : outcomeStreet,
       nextTurn: nextTurnValue,
       turn: nextTurnValue,
       metadata: mergedMetadata,
@@ -7402,17 +7406,17 @@ const SAFE_RESET_PHASE = "IDLE";
     syncEngineSnapshot(transitionSnapshot);
     if (!isTournament) {
       const sessionPhase =
-        outcome.street === "DRAW"
-          ? "DRAW"
-          : outcome.street === "SHOWDOWN"
-          ? "SHOWDOWN"
-          : phaseRef.current ?? phase;
-      const sessionRound =
-        outcome.street === "DRAW"
-          ? Number.isFinite(outcome.drawRoundIndex)
-            ? outcome.drawRoundIndex
-            : drawRoundValue + 1
-          : drawRoundValue;
+	        outcomeStreet === "DRAW"
+	          ? "DRAW"
+	          : outcomeStreet === "SHOWDOWN"
+	          ? "SHOWDOWN"
+	          : phaseRef.current ?? phase;
+	      const sessionRound =
+	        outcomeStreet === "DRAW"
+	          ? Number.isFinite(outcome.drawRoundIndex)
+	            ? outcome.drawRoundIndex
+	            : drawRoundValue + 1
+	          : drawRoundValue;
       syncSessionFromSnapshot(
         {
           ...transitionSnapshot,
@@ -7429,7 +7433,7 @@ const SAFE_RESET_PHASE = "IDLE";
       );
     }
 
-    if (outcome.showdown || outcome.street === "SHOWDOWN") {
+	    if (outcome.showdown || outcomeStreet === "SHOWDOWN") {
       const showdownToken = showdownTokenRef.current + 1;
       showdownTokenRef.current = showdownToken;
       transitionToShowdownPhase({

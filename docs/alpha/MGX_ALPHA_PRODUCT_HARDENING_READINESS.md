@@ -12,7 +12,7 @@ Badugi P0 browser progression and active-hand pot continuity regressions remain 
 
 | Gate | Result | Notes |
 | --- | --- | --- |
-| preview deploy | STALE BEFORE REDEPLOY | deployed preview still recorded `f121d732dd0a1debf699eb43699484e06d0a5c1d`; local latest before this verification was `c72fe2a50a49690fb966eeef1c4aec085eb11e98` |
+| preview deploy | PASS | preview refreshed and served frontend includes the latest verified branch-head build hash |
 | build | PASS | `npm run build` succeeds |
 | Badugi playable | AUTOMATED PASS / preview-only | focused full 3-draw regression reaches `Hand Result`; long-run restore smoke passes 5 hands / 180 checkpoints; physical mobile QA remains required |
 | pot continuity | PASS | focused browser, UI snapshot, and long-run restore tests pass with 0 active-hand `Total Pot 0` occurrences |
@@ -37,6 +37,6 @@ Badugi P0 browser progression and active-hand pot continuity regressions remain 
 
 ## Deploy Recommendation
 
-Redeploy the latest verified branch snapshot before more preview QA. Continue with D01/D02/S01/S02 friend-alpha preview QA after deploy verification, but hold wider friend sharing until physical mobile QA is complete. Do not reclassify Badugi to `alpha_playable` until physical mobile full-hand QA passes.
+Continue with D01/D02/S01/S02 friend-alpha preview QA after deploy verification, but hold wider friend sharing until physical mobile QA is complete. Do not reclassify Badugi to `alpha_playable` until physical mobile full-hand QA passes.
 
 The latest Core 5 UI audit does not add a D01/D02/S01/S02 UI blocker and clears the Badugi portrait UI blocker. Step7 clears the Badugi automated long-run restore blocker; the remaining Badugi release gate is physical mobile QA.

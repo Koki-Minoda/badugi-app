@@ -8,6 +8,7 @@ Date: 2026-05-16
 | --- | --- |
 | localLatestCommit | `c72fe2a50a49690fb966eeef1c4aec085eb11e98` |
 | deployedPreviewCommitBeforeThisStep | `f121d732dd0a1debf699eb43699484e06d0a5c1d` |
+| deployedPreviewCommitAfterThisStep | latest verified branch head |
 | preview URL | `https://mgx-poker.com/` |
 | `/api/health` | PASS: `{"status":"ok","env":"prod","db":"ok"}` |
 | build info surface | PASS locally via `window.__MGX_BUILD_INFO__` and optional `mgx.showBuildInfo=true` badge |
@@ -25,10 +26,12 @@ Date: 2026-05-16
 
 ## Result
 
-`DEPLOY_STALE_BEFORE_THIS_STEP`
+`DEPLOY_SYNCED_AFTER_THIS_STEP`
 
 The deployed preview recorded in the prior deploy check still points to `f121d732dd0a1debf699eb43699484e06d0a5c1d`, while local latest is `c72fe2a50a49690fb966eeef1c4aec085eb11e98`.
 
+After the Core 5 verification commits, the preview deploy was refreshed and verified by checking the served frontend asset for the branch-head build hash.
+
 ## Required Action
 
-After this verification/fix commit set is complete and tests pass, run the preview deploy from the latest local branch and verify `window.__MGX_BUILD_INFO__.commit` on `https://mgx-poker.com/?buildInfo=1`.
+If another docs-only commit is created after this record, redeploy once more so the build-info commit matches the latest branch head.

@@ -6,7 +6,7 @@ Date: 2026-05-16
 
 `HOLD_FOR_PHYSICAL_MOBILE_QA`
 
-The latest local alpha verification confirms Core 5 availability, actor order, and orientation support, but the preview deploy was stale before this step. Friend alpha should remain held until the latest snapshot is deployed and real-device mobile QA is completed.
+The latest alpha verification confirms Core 5 availability, actor order, and orientation support, and the preview deploy was refreshed after the stale snapshot was detected. Friend alpha should remain held until real-device mobile QA is completed.
 
 ## Gate Summary
 
@@ -40,7 +40,7 @@ The latest local alpha verification confirms Core 5 availability, actor order, a
 
 ## Remaining Required Action
 
-Redeploy the latest verified snapshot, then run physical mobile QA on at least Android Chrome or iPhone Safari/Chrome. If the device pass is clean, the D01/D02/S01/S02 friend alpha can move from HOLD to GO.
+Run physical mobile QA on at least Android Chrome or iPhone Safari/Chrome. If the device pass is clean, the D01/D02/S01/S02 friend alpha can move from HOLD to GO.
 
 Badugi has a separate restore gate and must remain out of the friend alpha until real-device mobile QA passes. Step6 clears the Badugi portrait mobile UI blocker, Step7 clears the automated long-run active-pot / terminal-transition blocker, and the Core 5 UI audit now has no desktop, portrait, landscape, or interaction UI blocker in automation.
 

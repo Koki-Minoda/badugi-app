@@ -12,6 +12,10 @@ Deployed commit: `d91d7e0cdcbf24a0260a78c7c6083eaaaf1b0bf9`
 
 Physical mobile QA was not executed in this shell because no real Android or iPhone device is available to the agent. Automated mobile browser/emulation and post-deploy preview smoke pass, but the friend alpha GO condition still requires at least one real mobile device PASS or PASS_WITH_NOTES.
 
+Last-mile check: 2026-05-16T13:49:57Z.
+
+Physical device tested: none in this environment.
+
 ## Android Chrome Checklist
 
 | Check | Result |

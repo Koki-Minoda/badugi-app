@@ -7,9 +7,9 @@ Date: 2026-05-16
 | Item | Result |
 | --- | --- |
 | Local branch | `feature/d-04-next-actor-unify` |
-| Local HEAD | `d91d7e0cdcbf24a0260a78c7c6083eaaaf1b0bf9` |
+| Local HEAD before last-mile docs update | `3fb5dbb` |
 | Remote | `origin https://github.com/Koki-Minoda/badugi-app.git` |
-| Branch state | local branch is ahead of `origin/feature/d-04-next-actor-unify` by 37 commits |
+| Branch state before last-mile docs update | local branch is ahead of `origin/feature/d-04-next-actor-unify` by 38 commits |
 | Preview URL | `https://mgx-poker.com/` |
 | Deployed snapshot | `d91d7e0cdcbf24a0260a78c7c6083eaaaf1b0bf9` |
 
@@ -17,14 +17,15 @@ Date: 2026-05-16
 
 | Check | Result |
 | --- | --- |
-| `git status --short` before deploy | only generated `reports/alpha/` untracked |
-| `git branch -vv` | local branch ahead 37 |
-| HTTPS dry-run push | blocked by missing credentials |
+| `git status --short` | only generated `reports/alpha/` untracked |
+| `git branch -vv` | local branch ahead 38 before this docs update |
+| `gh --version` | unavailable, `gh` is not installed |
+| HTTPS push | blocked by missing credentials |
 | Token exposure | false |
 | Remote synced | false |
 | Deploy source risk | preview was deployed from local branch head, but remote has not been updated |
 
-Dry-run push result:
+Push result:
 
 ```txt
 fatal: could not read Username for 'https://github.com': No such device or address

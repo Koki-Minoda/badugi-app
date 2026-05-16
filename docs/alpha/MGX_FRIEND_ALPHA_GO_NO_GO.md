@@ -6,13 +6,13 @@ Date: 2026-05-16
 
 `HOLD_FOR_PHYSICAL_MOBILE_QA_AND_REMOTE_SYNC`
 
-The latest preview deploy now includes the Core 5 mobile tournament layout fix at `d91d7e0cdcbf24a0260a78c7c6083eaaaf1b0bf9`. Post-deploy browser smoke passes, but friend alpha should remain held until real-device mobile QA is completed and the ahead local branch is pushed from a credentialed environment.
+The latest preview deploy now includes the Core 5 mobile tournament layout fix at `d91d7e0cdcbf24a0260a78c7c6083eaaaf1b0bf9`. Post-deploy browser smoke passes, but friend alpha should remain held until real-device mobile QA is completed and the ahead local branch is pushed from a credentialed environment. The last-mile push attempt in this shell still failed because HTTPS credentials are unavailable; no token was exposed.
 
 ## Gate Summary
 
 | Gate | Result |
 | --- | --- |
-| Remote source sync for deployed commit | BLOCKED, branch ahead 37 |
+| Remote source sync for deployed commit | BLOCKED, branch ahead 38 before this docs update |
 | Latest preview deploy | PASS, deployed `d91d7e0cdcbf24a0260a78c7c6083eaaaf1b0bf9` |
 | D02/S01/S02 desktop smoke | PASS |
 | D02/S01/S02 mobile emulation | PASS |
@@ -22,7 +22,7 @@ The latest preview deploy now includes the Core 5 mobile tournament layout fix a
 | Core 5 orientation support | PASS |
 | Core 5 mobile tournament portrait/landscape | PASS in automation |
 | Post-deploy browser smoke | PASS, Core5 tournament portrait/landscape live preview smoke |
-| Physical mobile QA | PENDING |
+| Physical mobile QA | PENDING, no physical device available in this environment |
 | Core 5 UI layout | PASS for all five core games in automation |
 | Alpha-scope P0 | none observed |
 | Badugi friend-alpha exposure | blocked pending physical mobile QA; remains `preview_only` even though Step7 cleared the automated long-run active-pot/terminal-transition gate |

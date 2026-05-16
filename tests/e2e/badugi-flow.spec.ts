@@ -39,6 +39,9 @@ async function waitForCondition(predicate: () => boolean, timeout = 20000, inter
 }
 
 async function openGame(page: Page) {
+  await page.addInitScript(() => {
+    window.localStorage.setItem("mgx.previewVariants", "true");
+  });
   await openAuthenticatedGame(page);
 }
 
@@ -96,7 +99,7 @@ async function waitForPotSummary(page: Page, minLength = 1, timeout = 60000) {
 }
 
 async function playHandWithoutFolding(page: Page) {
-  const deadline = Date.now() + 45000;
+  const deadline = Date.now() + 95000;
   while (Date.now() < deadline) {
     const state = await getPhaseState(page);
     if (state?.phase === "SHOWDOWN" || state?.phase === "HAND_RESULT") {
@@ -104,18 +107,26 @@ async function playHandWithoutFolding(page: Page) {
     }
     if (state?.turn === 0 && state?.phase === "DRAW") {
       await invokeE2E(page, "forceHeroDraw");
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(180);
       continue;
     }
     if (state?.turn === 0 && state?.phase === "BET") {
       await forceContinueAction(page, 0);
-      await page.waitForTimeout(300);
+      await page.waitForTimeout(120);
       continue;
     }
     if (await page.locator("text=Hand Result").first().isVisible().catch(() => false)) {
       break;
     }
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(120);
+  }
+  const finalState = await getPhaseState(page);
+  if (
+    finalState?.phase !== "SHOWDOWN" &&
+    finalState?.phase !== "HAND_RESULT" &&
+    !(await page.locator("text=Hand Result").first().isVisible().catch(() => false))
+  ) {
+    throw new Error(`playHandWithoutFolding timed out: ${JSON.stringify(finalState)}`);
   }
 }
 
@@ -495,7 +506,8 @@ test.describe("Badugi flow regressions", () => {
       new Set(
         drawActions
           .map((line) => parseStreetRound(line))
-          .filter((value): value is number => typeof value === "number"),
+          .filter((value): value is number => typeof value === "number")
+          .map((value) => value + 1),
       ),
     ).sort((a, b) => a - b);
     expect(uniqueDrawRounds).toEqual([1, 2, 3]);

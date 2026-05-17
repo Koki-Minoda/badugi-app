@@ -4,9 +4,9 @@ Date: 2026-05-17
 
 ## Result
 
-`PARTIAL_PASS_BADUGI_1HAND_AND_10HAND__FAIL_100HAND_SOAK`
+`PASS_BADUGI_100HAND_AND_BADUGI_MODE_VIEWPORT_MATRIX__P1_POT_MONITOR`
 
-The first Badugi cash desktop P0s are fixed locally. The 1-hand gate now passes with zero invariant violations, and the 10-hand Badugi cash desktop soak also passes. The 100-hand Badugi cash desktop soak was started only after those gates passed, but it halted at hand 16, so the release gate remains blocked and the Core5 matrix was not expanded.
+The first Badugi cash desktop P0s are fixed locally. The 1-hand, 10-hand, and 100-hand Badugi cash desktop gates now pass without halt or P0 actor/terminal/action-reopen violations. The focused hand16 repro also completes through hand20. After the 100-hand pass, the allowed Badugi-only cash/tournament x desktop/portrait/landscape matrix completed 120/120 hands. Core5 full matrix expansion has not been run in this step.
 
 ## Evidence
 
@@ -15,6 +15,8 @@ The first Badugi cash desktop P0s are fixed locally. The 1-hand gate now passes 
 | Summary | `reports/browser-gameplay/browser-gameplay-invariant-summary.json` |
 | Failures | `reports/browser-gameplay/browser-gameplay-invariant-failures.json` |
 | Badugi cash desktop trace | `reports/browser-gameplay/browser-gameplay-trace-badugi-cash-desktop.jsonl` |
+| Hand16 focused trace | `reports/browser-gameplay/badugi-cash-desktop-hand16-halt-trace.jsonl` |
+| Hand16 decision log | `reports/browser-gameplay/progress-helper-hand16-decision-log.jsonl` |
 | Focused Badugi raise/call trace | `reports/browser-gameplay/browser-gameplay-trace-badugi-raise-call-reopen.jsonl` |
 | Failure screenshots | `reports/screenshots/browser-gameplay-failure-*.png` |
 
@@ -24,7 +26,9 @@ The first Badugi cash desktop P0s are fixed locally. The 1-hand gate now passes 
 |---|---|---:|---:|---:|---:|---|
 | Badugi | cash | desktop 1280x720 | 1 | 1 | 27 | PASS |
 | Badugi | cash | desktop 1280x720 | 10 | 10 | report-generated | PASS |
-| Badugi | cash | desktop 1280x720 | 100 | 15 before halt | report-generated | FAIL/HALT |
+| Badugi | cash | desktop 1280x720 | 100 | 100 | report-generated | PASS |
+| Badugi | cash | desktop/portrait/landscape | 20 each | 60 | 1,134 | PASS_WITH_P1_POT_MONITOR |
+| Badugi | tournament | desktop/portrait/landscape | 20 each | 60 | 1,148 | PASS |
 
 Observed counts in the latest clean 1-hand smoke:
 
@@ -67,12 +71,12 @@ The same focused report still recorded P1 pot display/controller lag, so it does
 | BROWSER-GAMEPLAY-001 | Minimal Badugi browser invariant gate fixed locally | 1-hand and 10-hand Badugi cash desktop pass | MONITOR |
 | CORE5-BROWSER-ACTOR-001 | Initial actor P0 classified as collector/timing and fixed in harness/source-of-truth selection | Badugi 1-hand and 10-hand pass | MONITOR |
 | CORE5-BROWSER-TERMINAL-001 | Initial terminal P0 classified as collector fallback from explicit null turn and fixed | Badugi 1-hand and 10-hand pass | MONITOR |
-| CORE5-BROWSER-POT-001 | Pot/phase lag classified as transition-window P1 after bounded retry | Badugi 1-hand and 10-hand pass | MONITOR |
-| BROWSER-SOAK-001 | Badugi 100-hand cash desktop soak halted at hand 16 | 100-hand command output and screenshot | P1 HOLD |
+| CORE5-BROWSER-POT-001 | Pot/phase lag classified as transition-window P1 after bounded retry | Badugi 100-hand pass; Badugi matrix has 14 P1 pot rows in cash only | MONITOR |
+| BROWSER-SOAK-001 | Hand16 halt classified as progress-helper stale-read / terminal and next-hand detection issue, then fixed locally | focused hand16 repro PASS through hand20; 100-hand Badugi cash desktop PASS | TEST_HARNESS_FIXED / MONITOR |
 
 ## Next Fix List
 
-1. Isolate the 100-hand hand-16 halt: browser was in a result/terminal-style state while the progress helper still attempted a Hero call.
-2. Verify whether stale `ACTING` decoration after `HAND_RESULT` is a real UI merge bug or a trace/progress helper stale-read.
-3. Re-run Badugi cash desktop 100-hand until it passes before expanding to Badugi matrix.
-4. Expand to Core5 x Cash/Tournament x desktop/portrait/landscape only after Badugi 100-hand is clean.
+1. Preserve `BROWSER-SOAK-001` as monitor during the next browser matrix expansion.
+2. Decide whether the cash-mode P1 pot display/controller timing rows should be normalized in the invariant or fixed in the snapshot adapter.
+3. Expand only to the next approved ladder step; Core5 full matrix has not been run in this step.
+4. Keep generated traces/screenshots out of commits.

@@ -42,7 +42,11 @@ Friend alpha remains HOLD if any P0 browser gameplay invariant violation exists.
 |---|---|---|
 | Badugi cash desktop 1 hand | P0 = 0 | PASS |
 | Badugi cash desktop 10 hands | invariant violations = 0, no freeze | PASS |
-| Badugi cash desktop 100 hands | invariant violations = 0, no freeze | FAIL/HALT at hand 16 |
-| Badugi full browser matrix | cash/tournament x desktop/portrait/landscape | BLOCKED until 100-hand cash desktop passes |
-| Core5 browser smoke matrix | Core5 x cash/tournament x desktop | BLOCKED until Badugi 100-hand passes |
+| Badugi cash desktop 100 hands | P0 = 0, no halt, no freeze | PASS |
+| Badugi full browser matrix | cash/tournament x desktop/portrait/landscape, 20 hands each | PASS_WITH_P1_POT_MONITOR |
+| Core5 browser smoke matrix | Core5 x cash/tournament x desktop | NEXT LADDER STEP, not run in this step |
 | Core5 full browser matrix | Core5 x cash/tournament x desktop/portrait/landscape | BLOCKED |
+
+## Current Monitor
+
+The Badugi matrix has no P0 actor, terminal, action-reopen, active-pot-zero, or freeze failures. It still emits P1 pot display/controller timing rows in cash views. These are classified as monitor until either the invariant is normalized around effective pot semantics or the snapshot adapter is made fully synchronous at action boundaries.

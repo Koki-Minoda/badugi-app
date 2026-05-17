@@ -11,7 +11,7 @@ Date: 2026-05-17
 | Viewport | Desktop 1280x720 |
 | Initial run | 1 hand / 31 actions |
 | Initial result | FAIL |
-| Current result | 1-hand PASS, 10-hand PASS, 100-hand soak halted |
+| Current result | 1-hand PASS, 10-hand PASS, 100-hand PASS, Badugi-only mode/viewport matrix PASS with P1 pot monitor |
 
 ## Initial Failure Summary
 
@@ -74,16 +74,40 @@ The harness now retries boundedly before recording these as stable violations. A
 |---|---|---|
 | Badugi cash desktop 1 hand | PASS | `tests/e2e/browser-gameplay-invariant-harness.spec.ts` |
 | Badugi cash desktop 10 hands | PASS | `tests/e2e/browser-gameplay-invariant-harness.spec.ts` |
-| Badugi cash desktop 100 hands | FAIL/HALT | hand 16 action application stopped after terminal/actor transition inconsistency |
+| Badugi cash desktop 100 hands | PASS | no halt, no P0 actor/terminal/action-reopen violations |
+| Badugi cash/tournament desktop/portrait/landscape 20 hands each | PASS_WITH_P1_MONITOR | 120 hands completed; 14 P1 pot-display/controller timing rows in cash only |
 
-## 100-Hand Halt
+## Hand16 Halt Diagnosis
 
-The 100-hand run reached hand 16 before stopping. The failure was not the original 1-hand actor/terminal P0 pattern; it halted because the harness believed Hero was the actor and attempted a call, while the browser was already showing a result/terminal-style state. The screenshot also showed stale `ACTING` decoration after `HAND_RESULT`.
+The original 100-hand run reached hand 16 before stopping. The focused repro test now runs the same Badugi cash desktop path through hand20 and writes a per-loop progress-helper decision log.
+
+| Artifact | Path |
+|---|---|
+| Focused trace | `reports/browser-gameplay/badugi-cash-desktop-hand16-halt-trace.jsonl` |
+| Focused summary | `reports/browser-gameplay/badugi-cash-desktop-hand16-halt-summary.json` |
+| Progress helper decision log | `reports/browser-gameplay/progress-helper-hand16-decision-log.jsonl` |
+| Halt screenshot | none after fix; focused repro did not halt |
+
+Focused result:
+
+- `handsCompleted=20`
+- `actionsObserved=424`
+- `halt=null`
+
+The halt was not reproduced after improving terminal/next-hand detection and progress-helper re-query behavior. The earlier halt classifies as helper stale-read/terminal misclassification, not a confirmed game freeze.
 
 Classification:
 
-`REAL_UI_MERGE_BUG` or `TRACE_COLLECTOR_BUG` still needs isolation in long-run soak. The Core5 matrix remains blocked until this is resolved or proven as harness-only by trace.
+`PROGRESS_HELPER_STALE_READ`, `PROGRESS_HELPER_MISCLASSIFIED_TERMINAL`, and `NEXT_HAND_BUTTON_DETECTION_BUG`.
+
+## Remaining P1 Pot Monitor
+
+The Badugi-only mode/viewport matrix completed 120/120 hands and produced no P0 actor, terminal, action-reopen, active-pot-zero, or freeze violations. It did record 14 P1 pot display/controller rows in cash views. These rows occur at action boundaries where UI `Total Pot` includes the just-applied contribution before the controller `pot` field has settled to the same displayed value. Active-hand pot zero did not occur.
+
+Classification:
+
+`TRANSIENT_LAG_NEEDS_GRACE_WINDOW / MONITOR`.
 
 ## Release Impact
 
-The minimal 1-hand P0 is fixed locally and monitored. The browser gameplay release gate remains `FAIL` because 100-hand Badugi cash desktop does not yet pass, and matrix expansion is intentionally blocked.
+The minimal 1-hand P0 and the 100-hand hand16 halt are fixed locally and monitored. Badugi browser gameplay can now advance to the next ladder step. Core5 full matrix expansion is still a separate gate and should not be treated as complete from this Badugi-only result.

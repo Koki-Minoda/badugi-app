@@ -4,9 +4,9 @@ Date: 2026-05-17
 
 ## Decision
 
-`HOLD_FOR_BROWSER_GAMEPLAY_INVARIANTS_LIVE_TOURNAMENT_RESULT_PATH_REMOTE_SYNC_AND_PHYSICAL_QA`
+`HOLD_FOR_CORE5_BROWSER_MATRIX_LIVE_TOURNAMENT_RESULT_PATH_REMOTE_SYNC_AND_PHYSICAL_QA`
 
-The live URL is the release source of truth for deploy gates, and the browser gameplay invariant harness is now the local browser source of truth for action-by-action UI/controller consistency. `https://mgx-poker.com/` is healthy and the latest `reports/alpha/live-deploy-verification.json` records deployed commit matching local head. The prior live tournament browser fatal (`applyPlayerAction is not a function` / `advanceStreet is not a function`) is fixed live, and live Core5 layout evidence passes 30/30. Friend alpha still remains HOLD because the browser gameplay ladder is only partially cleared: Badugi cash desktop 1-hand and 10-hand pass, but the 100-hand soak halted at hand 16 and Core5 matrix expansion is blocked. Live Core5 alpha smoke also does not reach tournament result/next-hand for D01/D02/S01/S02, remote push is blocked by missing credentials, and physical mobile QA is still pending.
+The live URL is the release source of truth for deploy gates, and the browser gameplay invariant harness is now the local browser source of truth for action-by-action UI/controller consistency. `https://mgx-poker.com/` is healthy and the latest `reports/alpha/live-deploy-verification.json` records deployed commit matching local head. The prior live tournament browser fatal (`applyPlayerAction is not a function` / `advanceStreet is not a function`) is fixed live, and live Core5 layout evidence passes 30/30. Friend alpha still remains HOLD because the browser gameplay ladder is only cleared for Badugi: Badugi cash desktop 1/10/100-hand passes and the Badugi-only mode/viewport matrix passes, but Core5 browser expansion has not yet run. Live Core5 alpha smoke also does not reach tournament result/next-hand for D01/D02/S01/S02, remote push is blocked by missing credentials, and physical mobile QA is still pending.
 
 ## Gate Summary
 
@@ -30,7 +30,7 @@ The live URL is the release source of truth for deploy gates, and the browser ga
 | Core5 Cash lifecycle invariant gate | PASS locally, 6,000 synthetic hands / 60 sessions / 0 violations; 5/5 full browser lifecycle variants; 25/25 individual Cash checks |
 | Core5 Tournament lifecycle invariant gate | PASS locally, 1,200 synthetic tournaments / 0 violations; 5/5 full browser lifecycle variants; 30/30 individual Tournament checks |
 | Tournament integration expansion | PASS locally, 90-row sweep / 0 violations; unit integration 28/28; tournament E2E integration 50/50 |
-| Browser gameplay invariant gate | PARTIAL, Badugi cash desktop 1-hand and 10-hand PASS; 100-hand soak HALT at hand 16 |
+| Browser gameplay invariant gate | BADUGI PASS / CORE5 PENDING, Badugi cash desktop 1/10/100-hand and Badugi mode/viewport matrix PASS with P1 pot monitor |
 | Physical mobile QA | PENDING, no physical device available in this environment |
 | Core 5 UI layout | PASS for all five core games in automation |
 | Alpha-scope P0 | `CORE5-TOUR-LIVE-001` live tournament result path; Badugi re-raise-positive proof incomplete |
@@ -50,7 +50,7 @@ The live URL is the release source of truth for deploy gates, and the browser ga
 
 ## Remaining Required Action
 
-Resolve the Badugi cash desktop 100-hand browser soak halt, then expand the browser invariant matrix to Core5 x Cash/Tournament x desktop/portrait/landscape, fix the live tournament result/next-hand path, rerun `live-core5-alpha-smoke`, complete the Badugi re-raise-positive live closure proof or explicitly classify it as unsupported by the test harness, run physical mobile QA on at least Android Chrome or iPhone Safari/Chrome, and push `feature/d-04-next-actor-unify` from a credentialed environment. Only then can the Core5 friend alpha move from HOLD to GO.
+Expand the browser invariant matrix to the next approved Core5 step, fix the live tournament result/next-hand path, rerun `live-core5-alpha-smoke`, complete the Badugi re-raise-positive live closure proof or explicitly classify it as unsupported by the test harness, run physical mobile QA on at least Android Chrome or iPhone Safari/Chrome, and push `feature/d-04-next-actor-unify` from a credentialed environment. Only then can the Core5 friend alpha move from HOLD to GO.
 
 Badugi should be watched closely in alpha: Step6 clears the Badugi portrait mobile UI blocker, Step7 clears the automated long-run active-pot / terminal-transition blocker, and live no-reraise closure evidence confirms the raiser is not reselected after all remaining players call/fold. The live re-raise-positive path still needs a stronger proof before Badugi is considered fully certified.
 

@@ -905,12 +905,11 @@ const SAFE_RESET_PHASE = "IDLE";
   );
   const controllerSnapshot = (() => {
     const controller = gameControllerRef.current;
-    if (!controller) return null;
     try {
-      if (typeof controller.getSnapshot === "function") {
+      if (controller && typeof controller.getSnapshot === "function") {
         return controller.getSnapshot();
       }
-      if (typeof controller.getUiSnapshot === "function") {
+      if (controller && typeof controller.getUiSnapshot === "function") {
         return controller.getUiSnapshot();
       }
       return null;
@@ -1102,15 +1101,54 @@ const SAFE_RESET_PHASE = "IDLE";
   const isControllerDrivenSingleTable =
     isSingleTableBadugi || isSingleTableDrawLowball || isSingleTableBoardGame;
   const safeEngineState = engineState ?? {};
+  const effectiveControllerSnapshot = (() => {
+    const sessionController = sessionControllerRef.current;
+    const sessionState = sessionControllerStateRef.current;
+    try {
+      if (sessionController && sessionState && typeof sessionController.getUiSnapshot === "function") {
+        return sessionController.getUiSnapshot(sessionState);
+      }
+    } catch (error) {
+      console.warn("[UI-ADAPTER] session controller snapshot failed", error);
+    }
+    if (controllerSnapshot) return controllerSnapshot;
+    try {
+      if (sessionController && sessionState && typeof sessionController.getUiSnapshot === "function") {
+        return sessionController.getUiSnapshot(sessionState);
+      }
+    } catch (error) {
+      console.warn("[UI-ADAPTER] fallback session controller snapshot failed", error);
+    }
+    return engineStateRef.current ?? safeEngineState ?? null;
+  })();
   const controllerActor =
-    typeof controllerSnapshot?.currentActor === "number"
-      ? controllerSnapshot.currentActor
-      : typeof controllerSnapshot?.turn === "number"
-      ? controllerSnapshot.turn
+    typeof effectiveControllerSnapshot?.currentActor === "number"
+      ? effectiveControllerSnapshot.currentActor
+      : typeof effectiveControllerSnapshot?.turn === "number"
+      ? effectiveControllerSnapshot.turn
+      : null;
+  const controllerSnapshotTerminal =
+    Boolean(effectiveControllerSnapshot?.lastHandResult) ||
+    ["SHOWDOWN", "HAND_RESULT", "WAITING_NEXT_HAND", "COMPLETE", "TERMINAL"].includes(
+      String(effectiveControllerSnapshot?.phase ?? effectiveControllerSnapshot?.street ?? "").toUpperCase(),
+    );
+  const engineSnapshotActor =
+    typeof safeEngineState?.metadata?.actingPlayerIndex === "number"
+      ? safeEngineState.metadata.actingPlayerIndex
+      : typeof safeEngineState?.currentActor === "number"
+      ? safeEngineState.currentActor
+      : typeof safeEngineState?.nextTurn === "number"
+      ? safeEngineState.nextTurn
+      : typeof safeEngineState?.turn === "number"
+      ? safeEngineState.turn
       : null;
   const liveControllerTurn =
-    isSingleTableControllerDrawGame && typeof turn === "number"
-      ? turn
+    controllerSnapshotTerminal
+      ? null
+      : isSingleTableControllerDrawGame && typeof controllerActor === "number"
+      ? controllerActor
+      : isSingleTableControllerDrawGame && typeof engineSnapshotActor === "number"
+      ? engineSnapshotActor
       : typeof controllerActor === "number"
       ? controllerActor
       : typeof turnSeatSrc === "number"
@@ -1135,7 +1173,7 @@ const SAFE_RESET_PHASE = "IDLE";
   const controllerTurn =
     typeof snapshotTurn === "number" && !Number.isNaN(snapshotTurn)
       ? snapshotTurn
-      : 0;
+      : null;
   const isMobileDevice = deviceProfile.isMobile;
   const layoutMode = isMobileDevice ? "mobile" : "desktop";
   const shouldUseDesktopCanvasScale = false;
@@ -6202,10 +6240,29 @@ const SAFE_RESET_PHASE = "IDLE";
           isBusted: Boolean(player?.isBusted),
           isActiveInGame: player?.isActiveInGame !== false,
         })),
-        controllerSnapshot:
-          gameControllerRef.current && typeof gameControllerRef.current.getSnapshot === "function"
-            ? gameControllerRef.current.getSnapshot()
-            : null,
+        controllerSnapshot: (() => {
+          const controller = gameControllerRef.current;
+          try {
+            const sessionController = sessionControllerRef.current;
+            const sessionState = sessionControllerStateRef.current;
+            if (sessionController && sessionState && typeof sessionController.getUiSnapshot === "function") {
+              return sessionController.getUiSnapshot(sessionState);
+            }
+            if (controller && typeof controller.getSnapshot === "function") {
+              return controller.getSnapshot();
+            }
+            if (controller && typeof controller.getUiSnapshot === "function") {
+              return controller.getUiSnapshot();
+            }
+            if (sessionController && sessionState && typeof sessionController.getUiSnapshot === "function") {
+              return sessionController.getUiSnapshot(sessionState);
+            }
+            return engineStateRef.current ?? null;
+          } catch (error) {
+            console.warn("[E2E] controller snapshot failed", error);
+            return engineStateRef.current ?? null;
+          }
+        })(),
         controllerName: gameControllerRef.current?.constructor?.name ?? null,
       }),
       getHandHistory: () => getHandHistoryBufferSnapshot(),
@@ -9104,7 +9161,7 @@ const SAFE_RESET_PHASE = "IDLE";
       ? gameControllerRef.current.raiseCountThisStreet
       : null;
 
-  const controlsPhase = controlsConfig?.phase ?? tablePhase;
+  const controlsPhase = effectiveControllerSnapshot?.phase ?? controlsConfig?.phase ?? tablePhase;
   const controlsCurrentBet = controlsConfig?.currentBet ?? currentBetSrc;
   const heroBetThisRound = Math.max(0, Number(heroPlayerForControls?.betThisRound) || 0);
   const heroToCall = Math.max(0, Number(controlsCurrentBet || 0) - heroBetThisRound);

@@ -104,9 +104,9 @@ export async function getProgressState(page) {
     const ui = collectBrowserSignals();
     const variantId = state?.gameVariant ?? snapshot?.variantId ?? null;
     const rawPhase =
-      phaseState?.phase ??
       snapshot?.phase ??
       snapshot?.street ??
+      phaseState?.phase ??
       state?.phase ??
       null;
     const uiTerminal =
@@ -132,7 +132,7 @@ export async function getProgressState(page) {
                   : null;
     const players = snapshot?.players ?? phaseState?.players ?? state?.players ?? [];
     const pot = Number(snapshot?.pot ?? state?.potTotal ?? 0);
-    const handId = phaseState?.handId ?? state?.handId ?? null;
+    const handId = snapshot?.handId ?? phaseState?.handId ?? state?.handId ?? null;
     const maxExplicitStreetBet = Math.max(
       0,
       ...(players ?? []).map((player) => Number(player?.betThisStreet ?? player?.committedThisStreet ?? 0) || 0),

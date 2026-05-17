@@ -73,14 +73,38 @@ function parseDisplayedPot(text) {
   return match ? Number(match[0]) : null;
 }
 
+function sumPotAmounts(pots = []) {
+  if (!Array.isArray(pots)) return 0;
+  return pots.reduce((sum, pot) => sum + (Number(pot?.amount ?? pot?.potAmount ?? 0) || 0), 0);
+}
+
+function deriveControllerPot({ snapshot, state, phaseState, terminal }) {
+  const explicitPot = numberOrNull(snapshot?.pot);
+  if (explicitPot && explicitPot > 0) return explicitPot;
+
+  const potsTotal = sumPotAmounts(snapshot?.pots);
+  if (potsTotal > 0) return potsTotal;
+
+  const statePot = numberOrNull(state?.potTotal ?? state?.totalPot);
+  if (statePot && statePot > 0) return statePot;
+
+  const phasePot = numberOrNull(phaseState?.pot ?? phaseState?.potTotal ?? phaseState?.totalPot);
+  if (phasePot && phasePot > 0) return phasePot;
+
+  const resultPot = numberOrNull(snapshot?.lastHandResult?.pot ?? snapshot?.lastHandResult?.totalPot);
+  if (terminal && resultPot && resultPot > 0) return resultPot;
+
+  return explicitPot ?? statePot ?? phasePot ?? resultPot ?? 0;
+}
+
 function collectControllerSnapshot() {
   const api = window.__BADUGI_E2E__;
   const state = api?.getStateSnapshot?.() ?? null;
   const phaseState = api?.getPhaseState?.() ?? null;
   const snapshot = state?.controllerSnapshot ?? null;
   const variantId = state?.gameVariant ?? snapshot?.variantId ?? null;
-  const players = phaseState?.players ?? snapshot?.players ?? state?.players ?? [];
-  const phase = normalizePhase(phaseState?.phase ?? snapshot?.phase ?? snapshot?.street ?? state?.phase);
+  const players = snapshot?.players ?? phaseState?.players ?? state?.players ?? [];
+  const phase = normalizePhase(snapshot?.phase ?? snapshot?.street ?? phaseState?.phase ?? state?.phase);
   const resultVisible =
     visibleTestId("hand-result-pot") ||
     (typeof document !== "undefined" && /Hand Result/i.test(document.body?.textContent ?? ""));
@@ -120,12 +144,14 @@ function collectControllerSnapshot() {
     maxExplicitStreetBet > 0 ? maxExplicitStreetBet : String(variantId ?? "").toLowerCase() !== "badugi" ? maxFallbackBet : 0,
   );
 
+  const pot = deriveControllerPot({ snapshot, state, phaseState, terminal });
+
   return {
     rawState: state,
     phaseState,
     snapshot,
     players,
-    handId: phaseState?.handId ?? state?.handId ?? null,
+    handId: snapshot?.handId ?? phaseState?.handId ?? state?.handId ?? null,
     variantId,
     mode: document?.body?.dataset?.mode ?? null,
     phase,
@@ -139,7 +165,7 @@ function collectControllerSnapshot() {
     actorSeat,
     nextTurn,
     currentBet: effectiveCurrentBet,
-    pot: numberOrNull(snapshot?.pot ?? state?.potTotal) ?? 0,
+    pot,
   };
 }
 

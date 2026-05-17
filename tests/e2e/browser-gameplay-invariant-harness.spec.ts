@@ -137,9 +137,10 @@ async function collect(page: Page, context: any, action: any, traceRows: any[], 
   let row: any = null;
   let assertion: ReturnType<typeof assertBrowserGameplayInvariants> | null = null;
   let attempts = 0;
-  for (let attempt = 0; attempt < 5; attempt += 1) {
+  const retryWaitsMs = [20, 75, 150, 250, 500, 1000, 1500, 2000];
+  for (let attempt = 0; attempt < retryWaitsMs.length; attempt += 1) {
     attempts += 1;
-    const waitMs = attempt === 0 ? 20 : 75;
+    const waitMs = retryWaitsMs[attempt];
     const waitStart = Date.now();
     await page.waitForTimeout(waitMs);
     telemetry?.recordWait(Date.now() - waitStart, attempt === 0 ? "collect-initial" : "collect-retry");

@@ -4,9 +4,11 @@ Date: 2026-05-17
 
 ## Result
 
-`PASS_BADUGI_100HAND_AND_BADUGI_MODE_VIEWPORT_MATRIX__P1_POT_MONITOR`
+`PASS_BADUGI_100HAND_AND_BADUGI_MODE_VIEWPORT_MATRIX__CORE5_STEP_B_FAIL`
 
-The first Badugi cash desktop P0s are fixed locally. The 1-hand, 10-hand, and 100-hand Badugi cash desktop gates now pass without halt or P0 actor/terminal/action-reopen violations. The focused hand16 repro also completes through hand20. After the 100-hand pass, the allowed Badugi-only cash/tournament x desktop/portrait/landscape matrix completed 120/120 hands. Core5 full matrix expansion has not been run in this step.
+The first Badugi cash desktop P0s are fixed locally. The 1-hand, 10-hand, and 100-hand Badugi cash desktop gates now pass without halt or P0 actor/terminal/action-reopen violations. The focused hand16 repro also completes through hand20. After the 100-hand pass, the allowed Badugi-only cash/tournament x desktop/portrait/landscape matrix completed 120/120 hands.
+
+Core5 expansion has now started. Step A, Core5 cash desktop 10-hand, passes. Step B, Core5 cash desktop 100-hand, fails and blocks tournament/mobile/live expansion.
 
 ## Evidence
 
@@ -29,6 +31,8 @@ The first Badugi cash desktop P0s are fixed locally. The 1-hand, 10-hand, and 10
 | Badugi | cash | desktop 1280x720 | 100 | 100 | report-generated | PASS |
 | Badugi | cash | desktop/portrait/landscape | 20 each | 60 | 1,134 | PASS_WITH_P1_POT_MONITOR |
 | Badugi | tournament | desktop/portrait/landscape | 20 each | 60 | 1,148 | PASS |
+| Core5 | cash | desktop 1280x720 | 10 each | 50 | report-generated | PASS |
+| Core5 | cash | desktop 1280x720 | 100 each | failed before completion | report-generated | FAIL |
 
 Observed counts in the latest clean 1-hand smoke:
 
@@ -73,10 +77,12 @@ The same focused report still recorded P1 pot display/controller lag, so it does
 | CORE5-BROWSER-TERMINAL-001 | Initial terminal P0 classified as collector fallback from explicit null turn and fixed | Badugi 1-hand and 10-hand pass | MONITOR |
 | CORE5-BROWSER-POT-001 | Pot/phase lag classified as transition-window P1 after bounded retry | Badugi 100-hand pass; Badugi matrix has 14 P1 pot rows in cash only | MONITOR |
 | BROWSER-SOAK-001 | Hand16 halt classified as progress-helper stale-read / terminal and next-hand detection issue, then fixed locally | focused hand16 repro PASS through hand20; 100-hand Badugi cash desktop PASS | TEST_HARNESS_FIXED / MONITOR |
+| CORE5-BROWSER-MATRIX-001 | Core5 cash desktop 100-hand matrix failed after Step A passed | Step B command output; `reports/browser-gameplay/core5-cash-desktop-100hand-failures.json` | P0 OPEN |
 
 ## Next Fix List
 
-1. Preserve `BROWSER-SOAK-001` as monitor during the next browser matrix expansion.
-2. Decide whether the cash-mode P1 pot display/controller timing rows should be normalized in the invariant or fixed in the snapshot adapter.
-3. Expand only to the next approved ladder step; Core5 full matrix has not been run in this step.
-4. Keep generated traces/screenshots out of commits.
+1. Stop matrix expansion at Step B.
+2. Add focused repros for the draw-variant late-hand draw/terminal stale-control failures.
+3. Separate helper action-selection failures from real UI/controller divergence.
+4. Decide whether the cash-mode P1 pot/phase timing rows should be normalized in the invariant or fixed in the snapshot adapter.
+5. Keep generated traces/screenshots out of commits.

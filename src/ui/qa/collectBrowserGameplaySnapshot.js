@@ -18,6 +18,38 @@ function visibleTestId(testId) {
   return box.width > 0 && box.height > 0 && style.visibility !== "hidden" && style.display !== "none";
 }
 
+function hasHiddenAncestor(element) {
+  let current = element;
+  while (current && current !== document.documentElement) {
+    const style = window.getComputedStyle(current);
+    if (
+      style.display === "none" ||
+      style.visibility === "hidden" ||
+      Number(style.opacity) === 0 ||
+      style.pointerEvents === "none"
+    ) {
+      return true;
+    }
+    current = current.parentElement;
+  }
+  return false;
+}
+
+function isInteractableTestId(testId) {
+  if (typeof document === "undefined") return false;
+  const element = document.querySelector(`[data-testid="${testId}"]`);
+  if (!element || !visibleTestId(testId) || hasHiddenAncestor(element)) return false;
+  if (element.disabled || element.getAttribute("aria-disabled") === "true") return false;
+  const box = element.getBoundingClientRect();
+  const x = Math.min(Math.max(box.left + box.width / 2, 0), window.innerWidth - 1);
+  const y = Math.min(Math.max(box.top + box.height / 2, 0), window.innerHeight - 1);
+  if (box.bottom <= 0 || box.right <= 0 || box.left >= window.innerWidth || box.top >= window.innerHeight) {
+    return false;
+  }
+  const topElement = document.elementFromPoint(x, y);
+  return Boolean(topElement && (element === topElement || element.contains(topElement)));
+}
+
 function textForTestId(testId) {
   if (typeof document === "undefined") return null;
   return document.querySelector(`[data-testid="${testId}"]`)?.textContent?.trim() ?? null;
@@ -31,7 +63,7 @@ function visibleActionIds() {
     "action-raise",
     "action-fold",
     "action-draw-selected",
-  ].filter((testId) => visibleTestId(testId));
+  ].filter((testId) => isInteractableTestId(testId));
 }
 
 function parseDisplayedPot(text) {
@@ -47,9 +79,13 @@ function collectControllerSnapshot() {
   const snapshot = state?.controllerSnapshot ?? null;
   const players = phaseState?.players ?? snapshot?.players ?? state?.players ?? [];
   const phase = normalizePhase(phaseState?.phase ?? snapshot?.phase ?? snapshot?.street ?? state?.phase);
+  const phaseStateHasTurn =
+    phaseState && Object.prototype.hasOwnProperty.call(phaseState, "turn");
   const actorSeat =
-    typeof phaseState?.turn === "number"
-      ? phaseState.turn
+    phaseStateHasTurn
+      ? typeof phaseState?.turn === "number"
+        ? phaseState.turn
+        : null
       : typeof snapshot?.currentActor === "number"
         ? snapshot.currentActor
         : typeof snapshot?.turn === "number"
@@ -57,6 +93,12 @@ function collectControllerSnapshot() {
           : typeof state?.turn === "number"
             ? state.turn
             : null;
+  const nextTurn =
+    phaseStateHasTurn
+      ? actorSeat
+      : typeof snapshot?.nextTurn === "number"
+        ? snapshot.nextTurn
+        : actorSeat;
 
   return {
     rawState: state,
@@ -74,7 +116,7 @@ function collectControllerSnapshot() {
     sbSeat: numberOrNull(snapshot?.smallBlindSeat ?? snapshot?.sbSeat),
     bbSeat: numberOrNull(snapshot?.bigBlindSeat ?? snapshot?.bbSeat),
     actorSeat,
-    nextTurn: typeof snapshot?.nextTurn === "number" ? snapshot.nextTurn : actorSeat,
+    nextTurn,
     currentBet: numberOrNull(snapshot?.currentBet ?? phaseState?.currentBet ?? state?.currentBet) ?? 0,
     pot: numberOrNull(snapshot?.pot ?? state?.potTotal) ?? 0,
   };
@@ -130,4 +172,3 @@ export function collectBrowserGameplaySnapshot(extra = {}) {
   recordBrowserGameplayTrace(row);
   return row;
 }
-

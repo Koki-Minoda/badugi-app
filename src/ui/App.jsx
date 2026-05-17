@@ -1096,9 +1096,15 @@ const SAFE_RESET_PHASE = "IDLE";
       : typeof controllerSnapshot?.turn === "number"
       ? controllerSnapshot.turn
       : null;
-  const snapshotTurn =
-    isSingleTableBoardGame && typeof controllerActor === "number"
+  const liveControllerTurn =
+    typeof controllerActor === "number"
       ? controllerActor
+      : typeof turn === "number"
+      ? turn
+      : null;
+  const snapshotTurn =
+    isControllerDrivenSingleTable && typeof liveControllerTurn === "number"
+      ? liveControllerTurn
       : typeof turnSeatSrc === "number"
       ? turnSeatSrc
       : typeof safeEngineState?.metadata?.actingPlayerIndex === "number"

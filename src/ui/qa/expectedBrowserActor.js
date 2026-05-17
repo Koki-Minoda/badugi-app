@@ -29,8 +29,8 @@ export function playersNeedingBrowserAction(playersInput = [], currentBet = 0) {
   return players
     .filter((player) => {
       if (!isEligible(player)) return false;
+      if (!player.acted) return true;
       if (Number(player.bet) < Number(currentBet)) return true;
-      if (Number(currentBet) <= 0 && !player.acted) return true;
       return false;
     })
     .map((player) => player.seat);
@@ -84,4 +84,3 @@ export function expectedBrowserActor({
   const expectedActorSeat = playersNeedingAction.includes(first) ? first : playersNeedingAction[0];
   return { expectedActorSeat, playersNeedingAction, shouldRoundClose, expectedNextPhase: null };
 }
-

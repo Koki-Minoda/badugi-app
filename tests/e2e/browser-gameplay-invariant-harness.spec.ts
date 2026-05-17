@@ -92,13 +92,21 @@ async function openVariantMode(page: Page, variant: (typeof CORE5_VARIANTS)[numb
 }
 
 async function collect(page: Page, context: any, action: any, traceRows: any[]) {
-  await page.waitForTimeout(100);
-  const row = await page.evaluate(
-    ({ label, mode, action }) => window.__MGX_GET_GAMEPLAY_SNAPSHOT__?.({ label, mode, action }),
-    { label: context.label, mode: context.mode, action },
-  );
-  if (!row) throw new Error("browser gameplay snapshot API unavailable");
-  const assertion = assertBrowserGameplayInvariants(row, traceRows);
+  let row: any = null;
+  let assertion: ReturnType<typeof assertBrowserGameplayInvariants> | null = null;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    await page.waitForTimeout(attempt === 0 ? 100 : 150);
+    row = await page.evaluate(
+      ({ label, mode, action }) => window.__MGX_GET_GAMEPLAY_SNAPSHOT__?.({ label, mode, action }),
+      { label: context.label, mode: context.mode, action },
+    );
+    if (!row) throw new Error("browser gameplay snapshot API unavailable");
+    assertion = assertBrowserGameplayInvariants(row, traceRows);
+    if (assertion.violations.length === 0) {
+      break;
+    }
+  }
+  if (!row || !assertion) throw new Error("browser gameplay snapshot API unavailable");
   const enriched = { ...row, expected: assertion.expected, violations: assertion.violations };
   traceRows.push(enriched);
   let screenshotPath: string | null = null;

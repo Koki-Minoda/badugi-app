@@ -18,8 +18,8 @@ This gate expands the browser gameplay invariant harness from Badugi-only covera
 | Step | Matrix | Status |
 |---|---|---|
 | A | Core5 cash desktop 10-hand | PASS after draw current-bet helper normalization |
-| B | Core5 cash desktop 100-hand | FAIL / BLOCKED: S01/S02 100-hand pass, but D01 stricter runtime classification exposed terminal/UI divergence before D01/D02 100-hand can be accepted |
-| C | Core5 tournament desktop 20-hand | NOT RUN |
+| B | Core5 cash desktop 100-hand | PASS: S01/S02 100-hand pass; focused D01 fold-to-one collect passes; D01 30-hand, D01 100-hand, and D02 100-hand pass after controller snapshot source-priority fix |
+| C | Core5 tournament desktop 20-hand | READY TO RUN / NOT RUN |
 | D | Core5 tournament desktop 100-hand | NOT RUN |
 | E | Core5 portrait/landscape matrix | NOT RUN |
 | F | live preview browser matrix | NOT RUN |
@@ -40,13 +40,12 @@ Each step must meet all of these before continuing:
 
 ## Current Gate Decision
 
-`BLOCKED_AT_STEP_B_D01_TERMINAL_UI_DIVERGENCE`
+`STEP_B_PASS__TOURNAMENT_DESKTOP_EXPANSION_ALLOWED`
 
-Core5 cash desktop 10-hand passed. The original S01/S02 late-hand draw/terminal P0 is fixed locally and S01/S02 100-hand now pass. D02's CPU draw fallback path is present, but Step B is now blocked earlier than the D01/D02 100-hand runtime question: D01 cash desktop 30-hand under the stricter completion gate reaches a fold-to-one collect-like state with no canonical actor, no terminal transition, and visible Hero controls. Tournament, viewport, and live matrix expansion remain blocked.
+Core5 cash desktop 10-hand passed. The original S01/S02 late-hand draw/terminal P0 is fixed locally and S01/S02 100-hand now pass. D02's CPU draw fallback path is present. The D01 fold-to-one collect terminal path is fixed locally. The later D01 actor/source divergence was traced to the browser collector and E2E progress helper mixing stale `phaseState` fields with the newer session controller snapshot; both now prefer `controllerSnapshot` for phase, players, and hand id. D01 cash desktop 30-hand, D01 100-hand, and D02 100-hand pass with no actor P0, terminal P0, illegal reopen, action application failure, or real freeze. Tournament desktop expansion is now allowed.
 
 ## Current Required Recheck
 
-1. Fix D01 terminal/fold-to-one collect handling or snapshot merge so a no-actor completed hand reaches terminal and hides controls.
-2. Re-run D01 cash desktop 30-hand.
-3. Re-run D01 and D02 cash desktop 100-hand with runtime telemetry.
-4. Only then mark Step B as PASS and proceed to tournament desktop.
+1. Run Core5 tournament desktop 20-hand.
+2. If clean, run Core5 tournament desktop 100-hand.
+3. Keep live/mobile expansion blocked until local tournament desktop passes.

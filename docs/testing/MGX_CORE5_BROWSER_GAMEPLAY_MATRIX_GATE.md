@@ -18,7 +18,7 @@ This gate expands the browser gameplay invariant harness from Badugi-only covera
 | Step | Matrix | Status |
 |---|---|---|
 | A | Core5 cash desktop 10-hand | PASS after draw current-bet helper normalization |
-| B | Core5 cash desktop 100-hand | FAIL, expansion stopped |
+| B | Core5 cash desktop 100-hand | PARTIAL_FIX / BLOCKED: S01/S02 100-hand pass; D01/D02 100-hand runtime pending |
 | C | Core5 tournament desktop 20-hand | NOT RUN |
 | D | Core5 tournament desktop 100-hand | NOT RUN |
 | E | Core5 portrait/landscape matrix | NOT RUN |
@@ -40,7 +40,6 @@ Each step must meet all of these before continuing:
 
 ## Current Gate Decision
 
-`FAIL_AT_STEP_B_CORE5_CASH_DESKTOP_100HAND`
+`BLOCKED_AT_STEP_B_TRIPLE_DRAW_100HAND_RUNTIME_PENDING`
 
-Core5 cash desktop 10-hand passed. The 100-hand expansion failed, so tournament, viewport, and live matrix expansion remain blocked.
-
+Core5 cash desktop 10-hand passed. The original S01/S02 late-hand draw/terminal P0 is fixed locally and S01/S02 100-hand now pass. D02's CPU draw fallback failure is fixed for 30-hand coverage. Step B is still not a release PASS because D01/D02 100-hand runs did not complete within the current practical runtime window, so tournament, viewport, and live matrix expansion remain blocked.

@@ -1,6 +1,6 @@
 # MGX Core5 Browser Gameplay Matrix Gate
 
-Date: 2026-05-17
+Date: 2026-05-18
 
 ## Scope
 
@@ -18,7 +18,7 @@ This gate expands the browser gameplay invariant harness from Badugi-only covera
 | Step | Matrix | Status |
 |---|---|---|
 | A | Core5 cash desktop 10-hand | PASS after draw current-bet helper normalization |
-| B | Core5 cash desktop 100-hand | PARTIAL_FIX / BLOCKED: S01/S02 100-hand pass; D01/D02 100-hand runtime pending |
+| B | Core5 cash desktop 100-hand | FAIL / BLOCKED: S01/S02 100-hand pass, but D01 stricter runtime classification exposed terminal/UI divergence before D01/D02 100-hand can be accepted |
 | C | Core5 tournament desktop 20-hand | NOT RUN |
 | D | Core5 tournament desktop 100-hand | NOT RUN |
 | E | Core5 portrait/landscape matrix | NOT RUN |
@@ -40,6 +40,13 @@ Each step must meet all of these before continuing:
 
 ## Current Gate Decision
 
-`BLOCKED_AT_STEP_B_TRIPLE_DRAW_100HAND_RUNTIME_PENDING`
+`BLOCKED_AT_STEP_B_D01_TERMINAL_UI_DIVERGENCE`
 
-Core5 cash desktop 10-hand passed. The original S01/S02 late-hand draw/terminal P0 is fixed locally and S01/S02 100-hand now pass. D02's CPU draw fallback failure is fixed for 30-hand coverage. Step B is still not a release PASS because D01/D02 100-hand runs did not complete within the current practical runtime window, so tournament, viewport, and live matrix expansion remain blocked.
+Core5 cash desktop 10-hand passed. The original S01/S02 late-hand draw/terminal P0 is fixed locally and S01/S02 100-hand now pass. D02's CPU draw fallback path is present, but Step B is now blocked earlier than the D01/D02 100-hand runtime question: D01 cash desktop 30-hand under the stricter completion gate reaches a fold-to-one collect-like state with no canonical actor, no terminal transition, and visible Hero controls. Tournament, viewport, and live matrix expansion remain blocked.
+
+## Current Required Recheck
+
+1. Fix D01 terminal/fold-to-one collect handling or snapshot merge so a no-actor completed hand reaches terminal and hides controls.
+2. Re-run D01 cash desktop 30-hand.
+3. Re-run D01 and D02 cash desktop 100-hand with runtime telemetry.
+4. Only then mark Step B as PASS and proceed to tournament desktop.

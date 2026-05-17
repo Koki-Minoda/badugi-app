@@ -77,6 +77,7 @@ function collectControllerSnapshot() {
   const state = api?.getStateSnapshot?.() ?? null;
   const phaseState = api?.getPhaseState?.() ?? null;
   const snapshot = state?.controllerSnapshot ?? null;
+  const variantId = state?.gameVariant ?? snapshot?.variantId ?? null;
   const players = phaseState?.players ?? snapshot?.players ?? state?.players ?? [];
   const phase = normalizePhase(phaseState?.phase ?? snapshot?.phase ?? snapshot?.street ?? state?.phase);
   const phaseStateHasTurn =
@@ -99,6 +100,18 @@ function collectControllerSnapshot() {
       : typeof snapshot?.nextTurn === "number"
         ? snapshot.nextTurn
         : actorSeat;
+  const maxExplicitStreetBet = Math.max(
+    0,
+    ...players.map((player) => Number(player?.betThisStreet ?? player?.committedThisStreet ?? 0) || 0),
+  );
+  const maxFallbackBet = Math.max(
+    0,
+    ...players.map((player) => Number(player?.betThisRound ?? player?.bet ?? 0) || 0),
+  );
+  const effectiveCurrentBet = Math.max(
+    numberOrNull(snapshot?.currentBet ?? phaseState?.currentBet ?? state?.currentBet) ?? 0,
+    maxExplicitStreetBet > 0 ? maxExplicitStreetBet : String(variantId ?? "").toLowerCase() !== "badugi" ? maxFallbackBet : 0,
+  );
 
   return {
     rawState: state,
@@ -106,7 +119,7 @@ function collectControllerSnapshot() {
     snapshot,
     players,
     handId: phaseState?.handId ?? state?.handId ?? null,
-    variantId: state?.gameVariant ?? snapshot?.variantId ?? null,
+    variantId,
     mode: document?.body?.dataset?.mode ?? null,
     phase,
     drawRound: numberOrNull(snapshot?.drawRoundIndex ?? snapshot?.drawRound ?? phaseState?.drawRound ?? state?.drawRound),
@@ -117,7 +130,7 @@ function collectControllerSnapshot() {
     bbSeat: numberOrNull(snapshot?.bigBlindSeat ?? snapshot?.bbSeat),
     actorSeat,
     nextTurn,
-    currentBet: numberOrNull(snapshot?.currentBet ?? phaseState?.currentBet ?? state?.currentBet) ?? 0,
+    currentBet: effectiveCurrentBet,
     pot: numberOrNull(snapshot?.pot ?? state?.potTotal) ?? 0,
   };
 }

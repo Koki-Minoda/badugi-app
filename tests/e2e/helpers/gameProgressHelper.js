@@ -79,6 +79,7 @@ export async function getProgressState(page) {
     const phaseState = api?.getPhaseState?.() ?? null;
     const snapshot = state?.controllerSnapshot ?? null;
     const ui = collectBrowserSignals();
+    const variantId = state?.gameVariant ?? snapshot?.variantId ?? null;
     const rawPhase =
       phaseState?.phase ??
       snapshot?.phase ??
@@ -107,10 +108,16 @@ export async function getProgressState(page) {
     const players = snapshot?.players ?? phaseState?.players ?? state?.players ?? [];
     const pot = Number(snapshot?.pot ?? state?.potTotal ?? 0);
     const handId = phaseState?.handId ?? state?.handId ?? null;
-    const maxPlayerStreetBet = Math.max(
+    const maxExplicitStreetBet = Math.max(
       0,
       ...(players ?? []).map((player) => Number(player?.betThisStreet ?? player?.committedThisStreet ?? 0) || 0),
     );
+    const maxFallbackBet = Math.max(
+      0,
+      ...(players ?? []).map((player) => Number(player?.betThisRound ?? player?.bet ?? 0) || 0),
+    );
+    const useFallbackBet = String(variantId ?? "").toLowerCase() !== "badugi";
+    const maxPlayerStreetBet = maxExplicitStreetBet > 0 ? maxExplicitStreetBet : useFallbackBet ? maxFallbackBet : 0;
     const currentBet = Math.max(Number(snapshot?.currentBet ?? phaseState?.currentBet ?? state?.currentBet ?? 0) || 0, maxPlayerStreetBet);
     return {
       state,
@@ -320,6 +327,7 @@ export async function waitForProgressChange(page, previousKey, { timeout = 8000 
       const phaseState = api?.getPhaseState?.() ?? null;
       const snapshot = state?.controllerSnapshot ?? null;
       const ui = collectBrowserSignals();
+      const variantId = state?.gameVariant ?? snapshot?.variantId ?? null;
       const rawPhase = phaseState?.phase ?? snapshot?.phase ?? snapshot?.street ?? state?.phase ?? null;
       const uiTerminal =
         ui.resultVisible ||
@@ -343,10 +351,16 @@ export async function waitForProgressChange(page, previousKey, { timeout = 8000 
       const players = snapshot?.players ?? phaseState?.players ?? state?.players ?? [];
       const pot = Number(snapshot?.pot ?? state?.potTotal ?? 0);
       const handId = phaseState?.handId ?? state?.handId ?? null;
-      const maxPlayerStreetBet = Math.max(
+      const maxExplicitStreetBet = Math.max(
         0,
         ...(players ?? []).map((player) => Number(player?.betThisStreet ?? player?.committedThisStreet ?? 0) || 0),
       );
+      const maxFallbackBet = Math.max(
+        0,
+        ...(players ?? []).map((player) => Number(player?.betThisRound ?? player?.bet ?? 0) || 0),
+      );
+      const useFallbackBet = String(variantId ?? "").toLowerCase() !== "badugi";
+      const maxPlayerStreetBet = maxExplicitStreetBet > 0 ? maxExplicitStreetBet : useFallbackBet ? maxFallbackBet : 0;
       const currentBet = Math.max(Number(snapshot?.currentBet ?? phaseState?.currentBet ?? state?.currentBet ?? 0) || 0, maxPlayerStreetBet);
       const drawRoundIndex = snapshot?.drawRoundIndex ?? snapshot?.drawRound ?? phaseState?.drawRound ?? state?.drawRound ?? null;
       const playerSummary = players.map((player, seat) => ({

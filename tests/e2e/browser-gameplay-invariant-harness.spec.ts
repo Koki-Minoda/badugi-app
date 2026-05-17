@@ -275,6 +275,52 @@ async function playHands(page: Page, context: any) {
       const beforeKey = progressKey(progress);
       const payload = choosePayload(progress, counters.actionsObserved + 1);
       const acted = await applyPayload(page, progress, payload);
+      if (!acted.acted) {
+        const haltRow = {
+          timestamp: Date.now(),
+          variantId: context.variantId,
+          mode: context.mode,
+          viewport: context.viewport,
+          handId: progress?.handId ?? null,
+          phase: progress?.phase ?? null,
+          drawRound: progress?.drawRoundIndex ?? null,
+          betRound: progress?.snapshot?.betRound ?? progress?.phaseState?.betRound ?? null,
+          label: `halt-hand-${hand}-step-${step}`,
+          progress: summarizeProgressState(progress),
+          attemptedAction: payload,
+          acted,
+          violations: [
+            {
+              type: "ACTION_APPLICATION_FAILED",
+              severity: "P0",
+              message: "browser gameplay harness could not apply the selected legal/progress action",
+            },
+          ],
+        };
+        traceRows.push(haltRow);
+        const partialTracePath = writeTrace(
+          path.basename(context.tracePath ?? `browser-gameplay-trace-${context.variantId}-${context.mode}-${context.viewport}.jsonl`),
+          traceRows,
+        );
+        failures.push({
+          severity: "P0",
+          type: "ACTION_APPLICATION_FAILED",
+          variantId: context.variantId,
+          mode: context.mode,
+          viewport: context.viewport,
+          handId: progress?.handId ?? null,
+          betRound: haltRow.betRound,
+          drawRound: haltRow.drawRound,
+          expected: null,
+          actual: {
+            actorSeat: progress?.actor ?? null,
+            attemptedAction: payload,
+          },
+          message: "selected action could not be applied; expansion stopped",
+          tracePath: partialTracePath,
+          screenshotPath: null,
+        });
+      }
       expect(acted.acted, JSON.stringify({ context, hand, step, progress: summarizeProgressState(progress), payload })).toBe(true);
       counters.actionsObserved += 1;
       if (acted.payload.type === "raise") {

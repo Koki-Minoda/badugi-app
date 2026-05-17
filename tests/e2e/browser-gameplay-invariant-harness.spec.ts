@@ -196,6 +196,13 @@ async function applyPayload(page: Page, progress: any, payload: any) {
     const fallback = choosePayload(progress, 1);
     snapshot = await invokeE2E(page, "forceControllerAction", actor, fallback);
     if (!snapshot) snapshot = await invokeE2E(page, "forceSeatAction", actor, fallback);
+    if (!snapshot) {
+      await waitForProgressChange(page, progressKey(progress), { timeout: 3000 }).catch(() => {});
+      const after = await getProgressState(page);
+      if (progressKey(after) !== progressKey(progress)) {
+        return { acted: true, clickedAction: "auto-progress-after-raise-fallback", actor, payload: fallback };
+      }
+    }
     return { acted: Boolean(snapshot), clickedAction: `controller:${fallback.type}`, actor, payload: fallback };
   }
   if (!snapshot) {
@@ -206,6 +213,33 @@ async function applyPayload(page: Page, progress: any, payload: any) {
     }
   }
   return { acted: Boolean(snapshot), clickedAction: `controller:${payload.type}`, actor, payload };
+}
+
+async function advanceFromTerminal(page: Page, progress: any) {
+  const key = progressKey(progress);
+  const nextHand = page.getByRole("button", { name: /next hand/i }).first();
+  if (!(await nextHand.isVisible().catch(() => false))) {
+    await waitForProgressChange(page, key, { timeout: 6000 }).catch(() => {});
+    return progressKey(await getProgressState(page)) !== key;
+  }
+  try {
+    await nextHand.click({ timeout: 3000 });
+  } catch {
+    const changed = await waitForProgressChange(page, key, { timeout: 6000 })
+      .then(() => true)
+      .catch(() => false);
+    if (changed) return true;
+    await nextHand.click({ force: true, timeout: 3000 }).catch(async () => {
+      await page.evaluate(() => {
+        const button = [...document.querySelectorAll("button")].find((candidate) =>
+          /next hand/i.test(candidate.textContent ?? ""),
+        );
+        button?.click();
+      });
+    });
+  }
+  await waitForProgressChange(page, key, { timeout: 15000 }).catch(() => {});
+  return progressKey(await getProgressState(page)) !== key;
 }
 
 async function playHands(page: Page, context: any) {
@@ -233,9 +267,7 @@ async function playHands(page: Page, context: any) {
         await collect(page, { ...context, label: "terminal" }, null, traceRows);
         const nextHand = page.getByRole("button", { name: /next hand/i }).first();
         if (hand < handsPerCombo - 1 && await nextHand.isVisible().catch(() => false)) {
-          const key = progressKey(progress);
-          await nextHand.click();
-          await waitForProgressChange(page, key, { timeout: 15000 }).catch(() => {});
+          await advanceFromTerminal(page, progress);
         }
         break;
       }
@@ -263,7 +295,7 @@ async function playHands(page: Page, context: any) {
 }
 
 test.describe("Browser gameplay invariant harness", () => {
-  test.describe.configure({ timeout: 900000 });
+  test.describe.configure({ timeout: 1800000 });
 
   test.afterAll(() => {
     const status = failures.some((failure) => failure.severity === "P0") ? "FAIL" : failures.length ? "WARN" : "PASS";

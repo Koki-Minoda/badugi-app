@@ -4,9 +4,9 @@ Date: 2026-05-17
 
 ## Result
 
-`FAIL`
+`PARTIAL_PASS_BADUGI_1HAND_AND_10HAND__FAIL_100HAND_SOAK`
 
-The browser invariant framework is now installed, but the first stable browser trace still finds P0 violations. The full Core5 matrix was not expanded after the first Badugi cash desktop smoke failed; release remains blocked until the minimal case is clean.
+The first Badugi cash desktop P0s are fixed locally. The 1-hand gate now passes with zero invariant violations, and the 10-hand Badugi cash desktop soak also passes. The 100-hand Badugi cash desktop soak was started only after those gates passed, but it halted at hand 16, so the release gate remains blocked and the Core5 matrix was not expanded.
 
 ## Evidence
 
@@ -22,28 +22,30 @@ The browser invariant framework is now installed, but the first stable browser t
 
 | Variant | Mode | Viewport | Hands Attempted | Hands Completed | Actions | Result |
 |---|---|---:|---:|---:|---:|---|
-| Badugi | cash | desktop 1280x720 | 1 | 1 | 31 | FAIL |
+| Badugi | cash | desktop 1280x720 | 1 | 1 | 27 | PASS |
+| Badugi | cash | desktop 1280x720 | 10 | 10 | report-generated | PASS |
+| Badugi | cash | desktop 1280x720 | 100 | 15 before halt | report-generated | FAIL/HALT |
 
-Observed counts in the latest smoke:
+Observed counts in the latest clean 1-hand smoke:
 
 | Metric | Count |
 |---|---:|
-| Calls/checks | 16 |
+| Calls/checks | 15 |
 | Folds | 0 |
 | Raises | 0 |
 | Re-raises | 0 |
-| Draw decisions | 15 |
+| Draw decisions | 12 |
 | Showdowns | 1 |
-| Violations | 7 |
+| Violations | 0 |
 
 Violation breakdown:
 
 | Type | Count | Severity |
 |---|---:|---|
-| ACTOR | 2 | P0 |
-| TERMINAL | 2 | P0 |
-| POT | 1 | P1 |
-| PHASE | 2 | P1 |
+| ACTOR | 0 | - |
+| TERMINAL | 0 | - |
+| POT | 0 | - |
+| PHASE | 0 | - |
 
 ## Focused Badugi Raise/Call Reopen
 
@@ -62,15 +64,15 @@ The same focused report still recorded P1 pot display/controller lag, so it does
 
 | ID | Classification | Evidence | Release Impact |
 |---|---|---|---|
-| BROWSER-GAMEPLAY-001 | Browser invariant release gate failed | summary/failure JSON | P0 HOLD |
-| CORE5-BROWSER-ACTOR-001 | Browser controller selected folded/ineligible actor or actor mismatched expected actor | Badugi cash desktop trace | P0 HOLD |
-| CORE5-BROWSER-TERMINAL-001 | Terminal state keeps controller actor after result/next-hand is visible | Badugi cash desktop trace | P0 HOLD |
-| CORE5-BROWSER-POT-001 | Browser controller/displayed pot lag remains | Badugi cash desktop and raise/call traces | P1 |
+| BROWSER-GAMEPLAY-001 | Minimal Badugi browser invariant gate fixed locally | 1-hand and 10-hand Badugi cash desktop pass | MONITOR |
+| CORE5-BROWSER-ACTOR-001 | Initial actor P0 classified as collector/timing and fixed in harness/source-of-truth selection | Badugi 1-hand and 10-hand pass | MONITOR |
+| CORE5-BROWSER-TERMINAL-001 | Initial terminal P0 classified as collector fallback from explicit null turn and fixed | Badugi 1-hand and 10-hand pass | MONITOR |
+| CORE5-BROWSER-POT-001 | Pot/phase lag classified as transition-window P1 after bounded retry | Badugi 1-hand and 10-hand pass | MONITOR |
+| BROWSER-SOAK-001 | Badugi 100-hand cash desktop soak halted at hand 16 | 100-hand command output and screenshot | P1 HOLD |
 
 ## Next Fix List
 
-1. Audit single-table Badugi snapshot source of truth after forced/browser actions.
-2. Clear controller actor when terminal/result state is visible.
-3. Prevent folded/ineligible actor from remaining in the browser controller snapshot.
-4. Align browser controller pot with active displayed pot at action boundaries.
-5. Re-run the Badugi cash desktop smoke, then expand to Core5 x Cash/Tournament x desktop/portrait/landscape.
+1. Isolate the 100-hand hand-16 halt: browser was in a result/terminal-style state while the progress helper still attempted a Hero call.
+2. Verify whether stale `ACTING` decoration after `HAND_RESULT` is a real UI merge bug or a trace/progress helper stale-read.
+3. Re-run Badugi cash desktop 100-hand until it passes before expanding to Badugi matrix.
+4. Expand to Core5 x Cash/Tournament x desktop/portrait/landscape only after Badugi 100-hand is clean.

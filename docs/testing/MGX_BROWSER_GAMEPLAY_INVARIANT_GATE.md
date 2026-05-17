@@ -35,3 +35,14 @@ npx playwright test tests/e2e/badugi-browser-raise-call-reopen-regression.spec.t
 ## Release Rule
 
 Friend alpha remains HOLD if any P0 browser gameplay invariant violation exists. A local fixture/lifecycle pass is not enough to override this gate.
+
+## Fix Ladder Status
+
+| Stage | Requirement | Current Status |
+|---|---|---|
+| Badugi cash desktop 1 hand | P0 = 0 | PASS |
+| Badugi cash desktop 10 hands | invariant violations = 0, no freeze | PASS |
+| Badugi cash desktop 100 hands | invariant violations = 0, no freeze | FAIL/HALT at hand 16 |
+| Badugi full browser matrix | cash/tournament x desktop/portrait/landscape | BLOCKED until 100-hand cash desktop passes |
+| Core5 browser smoke matrix | Core5 x cash/tournament x desktop | BLOCKED until Badugi 100-hand passes |
+| Core5 full browser matrix | Core5 x cash/tournament x desktop/portrait/landscape | BLOCKED |

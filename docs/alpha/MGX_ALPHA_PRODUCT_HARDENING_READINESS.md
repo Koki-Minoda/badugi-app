@@ -6,7 +6,7 @@ Date: 2026-05-17
 
 `HOLD_FOR_BROWSER_GAMEPLAY_INVARIANTS_LIVE_TOURNAMENT_RESULT_PATH_REMOTE_SYNC_AND_PHYSICAL_QA`
 
-Badugi focused raise/call no-reraise closure is P0-clean in the new browser trace, but the new Browser Gameplay Invariant gate finds broader Badugi cash desktop browser/controller divergence: ineligible actor selection, terminal actor persistence, and pot/phase lag. Step6 cleared the Badugi portrait mobile UI blocker, Step7 cleared the earlier automated long-run active-pot / terminal-transition restore gate, and live action-history audit confirms no Core5 actor-order violation in that older harness. The live deploy now matches the local head recorded in `reports/alpha/live-deploy-verification.json`, live Core5 tournament runtime fatal checks pass, and live Core5 layout evidence passes 30/30. Friend alpha is still blocked because browser gameplay invariants fail, live Core5 alpha smoke fails to reach tournament result/next-hand for D01/D02/S01/S02, remote sync is unresolved, and physical mobile QA is pending.
+Badugi focused raise/call no-reraise closure is P0-clean in the new browser trace, and the Browser Gameplay Invariant minimal ladder now passes Badugi cash desktop 1-hand and 10-hand runs. The earlier one-hand ACTOR/TERMINAL P0s were fixed or classified as collector/transition-window issues. The 100-hand Badugi cash desktop soak still halted at hand 16, so Core5 browser matrix expansion remains blocked. Step6 cleared the Badugi portrait mobile UI blocker, Step7 cleared the earlier automated long-run active-pot / terminal-transition restore gate, and live action-history audit confirms no Core5 actor-order violation in that older harness. The live deploy now matches the local head recorded in `reports/alpha/live-deploy-verification.json`, live Core5 tournament runtime fatal checks pass, and live Core5 layout evidence passes 30/30. Friend alpha is still blocked because browser long-run soak is not clean, live Core5 alpha smoke fails to reach tournament result/next-hand for D01/D02/S01/S02, remote sync is unresolved, and physical mobile QA is pending.
 
 ## Gate Results
 
@@ -26,7 +26,7 @@ Badugi focused raise/call no-reraise closure is P0-clean in the new browser trac
 | Core 5 orientation | PASS | cash and tournament support portrait and landscape for Badugi/D01/D02/S01/S02 |
 | Core 5 full lifecycle invariants | PASS locally | Cash: 6,000 synthetic hands / 60 sessions / 0 violations plus 5/5 full browser lifecycle variants and 25/25 individual Cash checks. Tournament: 1,200 synthetic tournaments / 0 violations plus 5/5 full browser lifecycle variants and 30/30 individual Tournament checks |
 | Tournament integration expansion | PASS locally | 90-row deterministic tournament integration sweep / 0 violations, 9 unit/integration files / 28 assertions PASS, and 50/50 Core5 tournament E2E integration checks PASS across blind progression, button/blinds, rebalance, bust/placement, payout, all-in/side-pot, resume/retire, hero/CPU lifecycle, feedback, HUD/mobile, champion, and menu return |
-| Browser gameplay invariant gate | FAIL | `tests/e2e/browser-gameplay-invariant-harness.spec.ts` fails on Badugi cash desktop with P0 actor and terminal browser/controller violations; focused no-reraise Badugi raise/call regression is P0-clean but still shows P1 pot lag |
+| Browser gameplay invariant gate | PARTIAL | Badugi cash desktop 1-hand and 10-hand pass with 0 invariant violations; 100-hand soak halted at hand 16 and blocks matrix expansion |
 | Triple Draw actor order | PASS | D01/D02/S01/S02 mapping audited; 6max/5max/3way pre-draw actor starts left of BB; heads-up blind/button actor semantics fixed |
 | test coverage sufficiency | PASS for P0 | browser pot, snapshot pot merge, stale turn merge, no-next-alive actor tests added |
 | Badugi raise/call betting closure | PARTIAL_LIVE_PASS | live no-reraise closure passes without Hero re-action; live re-raise-positive path currently fails to force/apply the opponent re-raise in the audit harness |
@@ -37,7 +37,7 @@ Badugi focused raise/call no-reraise closure is P0-clean in the new browser trac
 | Priority | Item | Why |
 | --- | --- | --- |
 | P0 | Fix live Core5 tournament result/next-hand path | live tournament runtime no longer fatals, but D01/D02/S01/S02 do not reach result/next-hand in the release smoke |
-| P0 | Fix Browser Gameplay Invariant P0s | Badugi cash desktop browser trace still shows actor and terminal controller/UI divergence under actual browser actions |
+| P1 | Resolve Browser Gameplay 100-hand soak halt | Minimal Badugi cash desktop P0s are fixed locally, but hand 16 in the 100-hand soak exposed a terminal/actor stale-state halt before matrix expansion |
 | P1 | Complete Badugi re-raise-positive live closure proof | no-reraise closure passes live, but the positive re-raise reopen proof is incomplete |
 | P1 | Refresh live deploy snapshot after the next fix | current deploy matches the latest verification report; rerun after any new fix |
 | P1 | Push deployed local commits | preview deploy used a local branch ahead of origin by many commits |

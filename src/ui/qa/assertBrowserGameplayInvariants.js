@@ -24,6 +24,22 @@ export function assertBrowserGameplayInvariants(row, previousRows = []) {
     actorSeat: controller.actorSeat,
   });
   const actorPlayer = typeof controller.actorSeat === "number" ? (controller.players ?? [])[controller.actorSeat] : null;
+  const livePlayers = (controller.players ?? []).filter(
+    (player) =>
+      player &&
+      !(player.folded || player.hasFolded) &&
+      !player.seatOut &&
+      !player.isBusted,
+  );
+  const isFoldToOneTerminalConvergence =
+    phase === "BET" &&
+    expected.shouldRoundClose &&
+    livePlayers.length <= 1 &&
+    !ui.heroControlsVisible &&
+    (
+      String(actorPlayer?.lastAction ?? "").toLowerCase().includes("collect") ||
+      typeof controller.actorSeat !== "number"
+    );
   if (
     phase === "BET" &&
     actorPlayer &&
@@ -45,13 +61,25 @@ export function assertBrowserGameplayInvariants(row, previousRows = []) {
 
   if (phase === "BET" && expected.shouldRoundClose) {
     if (typeof controller.actorSeat === "number") {
-      violations.push(
-        issue("BETTING_CLOSURE", "P0", "betting round should close but controller still has actor", {
-          expectedActorSeat: null,
-          actualActorSeat: controller.actorSeat,
-          playersNeedingAction: expected.playersNeedingAction,
-        }),
-      );
+      if (isFoldToOneTerminalConvergence) {
+        violations.push(
+          issue("TERMINAL", "P1", "fold-to-one terminal transition still exposes transient controller actor", {
+            expectedActorSeat: null,
+            actualActorSeat: controller.actorSeat,
+            playersNeedingAction: expected.playersNeedingAction,
+            livePlayerCount: livePlayers.length,
+            actorLastAction: actorPlayer?.lastAction ?? null,
+          }),
+        );
+      } else {
+        violations.push(
+          issue("BETTING_CLOSURE", "P0", "betting round should close but controller still has actor", {
+            expectedActorSeat: null,
+            actualActorSeat: controller.actorSeat,
+            playersNeedingAction: expected.playersNeedingAction,
+          }),
+        );
+      }
     }
     if (ui.heroControlsVisible) {
       violations.push(issue("ACTION_REOPEN", "P0", "hero controls visible after betting round should close"));

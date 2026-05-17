@@ -50,6 +50,7 @@ import {
 import {
   analyzeBetSnapshot,
   findNextBetActorSeat,
+  isBetRoundComplete,
   needsActionForBet,
 } from "../games/badugi/flow/betRoundUtils.js";
 import BadugiGameController from "../games/badugi/BadugiGameController.js";
@@ -810,7 +811,18 @@ export default function App() {
   const handCountRef = useRef(0);
   const tableMetadataRef = useRef({});
   const [turn, setTurn] = useState(0);
-  const MAX_DRAWS = 3;
+  const normalizedDrawVariantForRounds = normalizeAppVariantId(gameVariant);
+  const MAX_DRAWS = [
+    APP_VARIANT_IDS.S01,
+    APP_VARIANT_IDS.S02,
+    APP_VARIANT_IDS.S03,
+    APP_VARIANT_IDS.S04,
+    APP_VARIANT_IDS.S05,
+    APP_VARIANT_IDS.S06,
+    APP_VARIANT_IDS.S07,
+  ].includes(normalizedDrawVariantForRounds)
+    ? 1
+    : 3;
 const MAX_DRAW_SELECTION = 4;
 const SAFE_RESET_PHASE = "IDLE";
   const [heroDrawSelection, setHeroDrawSelection] = useState([]);
@@ -1097,8 +1109,12 @@ const SAFE_RESET_PHASE = "IDLE";
       ? controllerSnapshot.turn
       : null;
   const liveControllerTurn =
-    typeof controllerActor === "number"
+    isSingleTableControllerDrawGame && typeof turn === "number"
+      ? turn
+      : typeof controllerActor === "number"
       ? controllerActor
+      : typeof turnSeatSrc === "number"
+      ? turnSeatSrc
       : typeof turn === "number"
       ? turn
       : null;
@@ -1884,7 +1900,16 @@ const SAFE_RESET_PHASE = "IDLE";
       }
       const controller = sessionControllerRef.current;
       const controllerState = sessionControllerStateRef.current;
-      if (!controller || !controllerState) return null;
+      if (!controller || !controllerState) {
+        return {
+          rejected: true,
+          code: !controller ? "session-controller-missing" : "session-controller-state-missing",
+          message: !controller
+            ? "session controller is not available"
+            : "session controller state is not available",
+          events: [],
+        };
+      }
       try {
         const sanitizedMetadata = { ...(metadata ?? {}) };
         delete sanitizedMetadata.raiseCap;
@@ -1899,7 +1924,12 @@ const SAFE_RESET_PHASE = "IDLE";
         };
         const result = controller.applyAction(controllerState, actionPayload);
         if (!result || !result.state) {
-          return null;
+          return {
+            rejected: true,
+            code: "session-controller-no-state",
+            message: "session controller returned no next state",
+            events: Array.isArray(result?.events) ? result.events : [],
+          };
         }
         const events = Array.isArray(result.events) ? result.events : [];
         const rejectionEvent = events.find(
@@ -1930,7 +1960,12 @@ const SAFE_RESET_PHASE = "IDLE";
         };
       } catch (error) {
         console.warn("[CTRL][BET] applyAction failed", error);
-        return null;
+        return {
+          rejected: true,
+          code: "session-controller-exception",
+          message: error?.message ?? "session controller applyAction failed",
+          events: [],
+        };
       }
     },
     [ensureGameController, isControllerDrivenSingleTable, isSingleTableBoardGame, updateAfterActionFromSnapshot],
@@ -2190,6 +2225,7 @@ const SAFE_RESET_PHASE = "IDLE";
 
   const forcedSeatActionsRef = useRef(new Map());
   const e2eDriverApiRef = useRef({});
+  const lastControllerActionFailureRef = useRef(null);
 
   const consoleLogBuffer = useRef([]);
   const consoleContextRef = useRef({
@@ -2494,7 +2530,13 @@ const SAFE_RESET_PHASE = "IDLE";
           helpers.syncLegacyFromControllerSnapshot(controllerOutcome.snapshot);
           return true;
         }
-        return false;
+        if (controllerOutcome?.rejected && process.env.NODE_ENV !== "production") {
+          console.warn("[CTRL][DRAW] CPU controller draw rejected; using legacy draw fallback", {
+            seat: seatToAct,
+            code: controllerOutcome.code ?? null,
+            message: controllerOutcome.message ?? "draw rejected",
+          });
+        }
       }
       const deckManager = helpers.getDeckManager();
       const drawEvaluator = helpers.evaluateBadugi(me.hand);
@@ -6013,6 +6055,7 @@ const SAFE_RESET_PHASE = "IDLE";
       forceSeatAction: (seat, payload = {}) =>
         queueForcedSeatAction(seat, { ...payload, __forceInstant: true }),
       forceControllerAction: (seat, payload = {}) => {
+        lastControllerActionFailureRef.current = null;
         const outcome = tryControllerBetAction({
           actionType: payload?.type ?? "check",
           amount: payload?.amount ?? 0,
@@ -6023,8 +6066,26 @@ const SAFE_RESET_PHASE = "IDLE";
           syncLegacyFromControllerSnapshot(outcome.snapshot, { seatIndex: seat });
           return outcome.snapshot;
         }
+        if (outcome?.rejected) {
+          lastControllerActionFailureRef.current = {
+            seat,
+            payload,
+            code: outcome.code ?? null,
+            message: outcome.message ?? "action rejected",
+            events: Array.isArray(outcome.events) ? outcome.events : [],
+          };
+          return null;
+        }
+        lastControllerActionFailureRef.current = {
+          seat,
+          payload,
+          code: "no-snapshot",
+          message: "controller action returned no snapshot",
+          events: [],
+        };
         return null;
       },
+      getLastControllerActionFailure: () => lastControllerActionFailureRef.current,
       forceMarkSeatFoldedForTest: (seat = 0) => {
         const snap = (playersRef.current ?? players ?? [])
           .map(clonePlayerState)
@@ -8209,6 +8270,10 @@ const SAFE_RESET_PHASE = "IDLE";
     const drawHelpers = autoDrawHelpersRef.current;
     const seatCount = activePlayers.length;
 
+    if ((phase === "BET" || phase === "DRAW") && checkIfOneLeftThenEnd(activePlayers)) {
+      return;
+    }
+
     if (
       typeof turn !== "number" ||
       Number.isNaN(turn) ||
@@ -8240,9 +8305,6 @@ const SAFE_RESET_PHASE = "IDLE";
           return;
         }
       }
-    }
-    if (phase === "BET" && checkIfOneLeftThenEnd(activePlayers)) {
-      return;
     }
     if (turn === 0) {
       const hero = activePlayers[0];
@@ -8367,6 +8429,15 @@ const SAFE_RESET_PHASE = "IDLE";
         const basePlayers = playersRef.current ?? activePlayers;
         const snap = basePlayers.map(clonePlayerState).filter(Boolean);
         const activeSeat = turn;
+        const maxNowForClosure = maxBetThisRound(snap);
+        if (isBetRoundComplete({ players: snap, currentBet: maxNowForClosure })) {
+          forceFinishRoundRef.current({
+            reason: "npc-bet-round-complete-before-auto",
+            phaseOverride: "BET",
+            playersSnapshot: snap,
+          });
+          return;
+        }
         if (!betHelpers.ensureSeatCanAct?.(activeSeat, "npcBetAction")) {
           const nxt = nextAliveFrom(snap, turn);
           if (nxt !== null) setTurn(nxt);
@@ -9444,7 +9515,7 @@ const SAFE_RESET_PHASE = "IDLE";
     heroSeatIndex,
     heroDrawSelection,
     heroCanDraw,
-    controllerTurn: turnSeatSrc,
+    controllerTurn,
     controllerDealerIdx: dealerSeatSrc,
     positionNameFn: positionName,
     clonePlayerStateFn: clonePlayerState,

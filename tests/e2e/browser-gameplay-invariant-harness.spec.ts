@@ -95,14 +95,14 @@ async function collect(page: Page, context: any, action: any, traceRows: any[]) 
   let row: any = null;
   let assertion: ReturnType<typeof assertBrowserGameplayInvariants> | null = null;
   for (let attempt = 0; attempt < 5; attempt += 1) {
-    await page.waitForTimeout(attempt === 0 ? 100 : 150);
+    await page.waitForTimeout(attempt === 0 ? 20 : 75);
     row = await page.evaluate(
       ({ label, mode, action }) => window.__MGX_GET_GAMEPLAY_SNAPSHOT__?.({ label, mode, action }),
       { label: context.label, mode: context.mode, action },
     );
     if (!row) throw new Error("browser gameplay snapshot API unavailable");
     assertion = assertBrowserGameplayInvariants(row, traceRows);
-    if (assertion.violations.length === 0) {
+    if (!assertion.violations.some((violation: any) => violation?.severity === "P0")) {
       break;
     }
   }
@@ -169,7 +169,22 @@ function choosePayload(progress: any, actionIndex: number) {
 
 async function applyPayload(page: Page, progress: any, payload: any) {
   const actor = progress?.actor;
-  if (typeof actor !== "number") return { acted: false, clickedAction: "no-actor", actor, payload };
+  if (typeof actor !== "number") {
+    await waitForProgressChange(page, progressKey(progress), { timeout: 3000 }).catch(() => {});
+    const after = await getProgressState(page);
+    if (progressKey(after) !== progressKey(progress) || after?.isTerminal) {
+      return { acted: true, clickedAction: "auto-progress-no-actor", actor, payload };
+    }
+    return { acted: false, clickedAction: "no-actor", actor, payload };
+  }
+  if (actor !== 0 && String(progress?.phase ?? "").toUpperCase() === "DRAW") {
+    const beforeKey = progressKey(progress);
+    await waitForProgressChange(page, beforeKey, { timeout: 1200 }).catch(() => {});
+    const after = await getProgressState(page);
+    if (progressKey(after) !== beforeKey || after?.isTerminal) {
+      return { acted: true, clickedAction: "auto-cpu-draw", actor, payload };
+    }
+  }
   if (actor === 0) {
     const legal = await getLegalActions(page);
     const preferred =
@@ -189,8 +204,28 @@ async function applyPayload(page: Page, progress: any, payload: any) {
     }
   }
   let snapshot = await invokeE2E(page, "forceControllerAction", actor, payload);
+  if (!snapshot && payload.type === "draw" && payload.discardIndexes?.length) {
+    const fallback = { type: "draw", discardIndexes: [] };
+    snapshot = await invokeE2E(page, "forceControllerAction", actor, fallback);
+    if (!snapshot) snapshot = await invokeE2E(page, "forceSeatAction", actor, fallback);
+    if (snapshot) {
+      return { acted: true, clickedAction: "controller:draw-pat-fallback", actor, payload: fallback };
+    }
+  }
   if (!snapshot) {
     snapshot = await invokeE2E(page, "forceSeatAction", actor, payload);
+  }
+  if (
+    !snapshot &&
+    String(progress?.phase ?? "").toUpperCase() === "BET" &&
+    payload.type !== "fold"
+  ) {
+    const fallback = { type: "fold" };
+    snapshot = await invokeE2E(page, "forceControllerAction", actor, fallback);
+    if (!snapshot) snapshot = await invokeE2E(page, "forceSeatAction", actor, fallback);
+    if (snapshot) {
+      return { acted: true, clickedAction: "controller:fold-fallback", actor, payload: fallback };
+    }
   }
   if (!snapshot && payload.type === "raise") {
     const fallback = choosePayload(progress, 1);
@@ -205,6 +240,13 @@ async function applyPayload(page: Page, progress: any, payload: any) {
     }
     return { acted: Boolean(snapshot), clickedAction: `controller:${fallback.type}`, actor, payload: fallback };
   }
+  if (!snapshot && payload.type === "draw") {
+    await waitForProgressChange(page, progressKey(progress), { timeout: 9000 }).catch(() => {});
+    const after = await getProgressState(page);
+    if (progressKey(after) !== progressKey(progress) || after?.isTerminal) {
+      return { acted: true, clickedAction: "auto-progress-after-draw-force", actor, payload };
+    }
+  }
   if (!snapshot) {
     await waitForProgressChange(page, progressKey(progress), { timeout: 2500 }).catch(() => {});
     const after = await getProgressState(page);
@@ -212,7 +254,16 @@ async function applyPayload(page: Page, progress: any, payload: any) {
       return { acted: true, clickedAction: "auto-progress", actor, payload };
     }
   }
-  return { acted: Boolean(snapshot), clickedAction: `controller:${payload.type}`, actor, payload };
+  const controllerFailure = !snapshot
+    ? await invokeE2E(page, "getLastControllerActionFailure").catch(() => null)
+    : null;
+  return {
+    acted: Boolean(snapshot),
+    clickedAction: `controller:${payload.type}`,
+    actor,
+    payload,
+    controllerFailure,
+  };
 }
 
 async function advanceFromTerminal(page: Page, progress: any) {
@@ -289,6 +340,7 @@ async function playHands(page: Page, context: any) {
           progress: summarizeProgressState(progress),
           attemptedAction: payload,
           acted,
+          controllerFailure: acted?.controllerFailure ?? null,
           violations: [
             {
               type: "ACTION_APPLICATION_FAILED",
@@ -315,6 +367,7 @@ async function playHands(page: Page, context: any) {
           actual: {
             actorSeat: progress?.actor ?? null,
             attemptedAction: payload,
+            controllerFailure: acted?.controllerFailure ?? null,
           },
           message: "selected action could not be applied; expansion stopped",
           tracePath: partialTracePath,

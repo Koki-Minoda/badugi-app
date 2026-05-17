@@ -1,4 +1,5 @@
 import { recordBrowserGameplayTrace } from "./browserGameplayTrace.js";
+import { appendSnapshotMergeSourceTrace } from "./traceSnapshotMergeSource.js";
 
 function numberOrNull(value) {
   const number = Number(value);
@@ -80,26 +81,32 @@ function collectControllerSnapshot() {
   const variantId = state?.gameVariant ?? snapshot?.variantId ?? null;
   const players = phaseState?.players ?? snapshot?.players ?? state?.players ?? [];
   const phase = normalizePhase(phaseState?.phase ?? snapshot?.phase ?? snapshot?.street ?? state?.phase);
-  const phaseStateHasTurn =
-    phaseState && Object.prototype.hasOwnProperty.call(phaseState, "turn");
+  const resultVisible =
+    visibleTestId("hand-result-pot") ||
+    (typeof document !== "undefined" && /Hand Result/i.test(document.body?.textContent ?? ""));
+  const nextHandVisible =
+    typeof document !== "undefined" &&
+    [...document.querySelectorAll("button")].some((button) => /next hand/i.test(button.textContent ?? ""));
+  const terminal =
+    resultVisible ||
+    nextHandVisible ||
+    ["HAND_RESULT", "SHOWDOWN", "WAITING_NEXT_HAND", "COMPLETE", "TERMINAL"].includes(phase);
   const actorSeat =
-    phaseStateHasTurn
-      ? typeof phaseState?.turn === "number"
-        ? phaseState.turn
-        : null
+    terminal
+      ? null
       : typeof snapshot?.currentActor === "number"
-        ? snapshot.currentActor
-        : typeof snapshot?.turn === "number"
-          ? snapshot.turn
-          : typeof state?.turn === "number"
-            ? state.turn
-            : null;
+      ? snapshot.currentActor
+      : typeof snapshot?.turn === "number"
+        ? snapshot.turn
+        : typeof snapshot?.nextTurn === "number"
+          ? snapshot.nextTurn
+          : typeof phaseState?.turn === "number"
+            ? phaseState.turn
+            : typeof state?.turn === "number"
+              ? state.turn
+              : null;
   const nextTurn =
-    phaseStateHasTurn
-      ? actorSeat
-      : typeof snapshot?.nextTurn === "number"
-        ? snapshot.nextTurn
-        : actorSeat;
+    terminal ? null : typeof snapshot?.nextTurn === "number" ? snapshot.nextTurn : actorSeat;
   const maxExplicitStreetBet = Math.max(
     0,
     ...players.map((player) => Number(player?.betThisStreet ?? player?.committedThisStreet ?? 0) || 0),
@@ -122,6 +129,7 @@ function collectControllerSnapshot() {
     variantId,
     mode: document?.body?.dataset?.mode ?? null,
     phase,
+    terminal,
     drawRound: numberOrNull(snapshot?.drawRoundIndex ?? snapshot?.drawRound ?? phaseState?.drawRound ?? state?.drawRound),
     betRound: numberOrNull(phaseState?.betRound ?? state?.betRound ?? snapshot?.betRound ?? snapshot?.betRoundIndex),
     actionIndex: numberOrNull(snapshot?.actionIndex ?? state?.actionIndex),
@@ -159,6 +167,7 @@ export function collectBrowserGameplaySnapshot(extra = {}) {
   if (typeof window === "undefined") return null;
   const controller = collectControllerSnapshot();
   const ui = collectUiSnapshot(controller);
+  const mergeSource = appendSnapshotMergeSourceTrace(extra);
   const row = {
     timestamp: Date.now(),
     variantId: controller.variantId,
@@ -174,11 +183,13 @@ export function collectBrowserGameplaySnapshot(extra = {}) {
     controller: {
       actorSeat: controller.actorSeat,
       nextTurn: controller.nextTurn,
+      legacyTurn: controller.phaseState?.turn ?? controller.rawState?.turn ?? null,
       currentBet: controller.currentBet,
       pot: controller.pot,
       players: controller.players,
     },
     ui,
+    mergeSource,
     action: extra.action ?? null,
     label: extra.label ?? null,
   };

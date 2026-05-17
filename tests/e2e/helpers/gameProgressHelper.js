@@ -10,8 +10,31 @@ function collectBrowserSignals() {
     const style = window.getComputedStyle(element);
     return box.width > 0 && box.height > 0 && style.display !== "none" && style.visibility !== "hidden";
   };
+  const hasHiddenAncestor = (element) => {
+    let current = element;
+    while (current && current !== document.documentElement) {
+      const style = window.getComputedStyle(current);
+      if (
+        style.display === "none" ||
+        style.visibility === "hidden" ||
+        Number(style.opacity) === 0 ||
+        style.pointerEvents === "none"
+      ) {
+        return true;
+      }
+      current = current.parentElement;
+    }
+    return false;
+  };
   const isInteractable = (element) => {
-    if (!isVisible(element) || element.disabled || element.getAttribute("aria-disabled") === "true") return false;
+    if (
+      !isVisible(element) ||
+      hasHiddenAncestor(element) ||
+      element.disabled ||
+      element.getAttribute("aria-disabled") === "true"
+    ) {
+      return false;
+    }
     const box = element.getBoundingClientRect();
     if (box.bottom <= 0 || box.right <= 0 || box.left >= window.innerWidth || box.top >= window.innerHeight) return false;
     const x = Math.min(Math.max(box.left + box.width / 2, 0), window.innerWidth - 1);
@@ -96,15 +119,17 @@ export async function getProgressState(page) {
     const actor =
       uiTerminal
         ? null
-        : typeof phaseState?.turn === "number"
-        ? phaseState.turn
         : typeof snapshot?.currentActor === "number"
           ? snapshot.currentActor
           : typeof snapshot?.turn === "number"
             ? snapshot.turn
-            : typeof state?.turn === "number"
-              ? state.turn
-              : null;
+            : typeof snapshot?.nextTurn === "number"
+              ? snapshot.nextTurn
+              : typeof phaseState?.turn === "number"
+                ? phaseState.turn
+                : typeof state?.turn === "number"
+                  ? state.turn
+                  : null;
     const players = snapshot?.players ?? phaseState?.players ?? state?.players ?? [];
     const pot = Number(snapshot?.pot ?? state?.potTotal ?? 0);
     const handId = phaseState?.handId ?? state?.handId ?? null;
@@ -339,15 +364,17 @@ export async function waitForProgressChange(page, previousKey, { timeout = 8000 
       const actor =
         uiTerminal
           ? null
-          : typeof phaseState?.turn === "number"
-          ? phaseState.turn
           : typeof snapshot?.currentActor === "number"
             ? snapshot.currentActor
             : typeof snapshot?.turn === "number"
               ? snapshot.turn
-              : typeof state?.turn === "number"
-                ? state.turn
-                : null;
+              : typeof snapshot?.nextTurn === "number"
+                ? snapshot.nextTurn
+                : typeof phaseState?.turn === "number"
+                  ? phaseState.turn
+                  : typeof state?.turn === "number"
+                    ? state.turn
+                    : null;
       const players = snapshot?.players ?? phaseState?.players ?? state?.players ?? [];
       const pot = Number(snapshot?.pot ?? state?.potTotal ?? 0);
       const handId = phaseState?.handId ?? state?.handId ?? null;
@@ -389,13 +416,15 @@ export async function waitForTurnChange(page, prevActor) {
       const phaseState = api?.getPhaseState?.() ?? null;
       const snapshot = state?.controllerSnapshot ?? null;
       const current =
-        typeof phaseState?.turn === "number"
-          ? phaseState.turn
-          : typeof snapshot?.currentActor === "number"
-            ? snapshot.currentActor
-            : typeof snapshot?.turn === "number"
-              ? snapshot.turn
-              : state?.turn;
+        typeof snapshot?.currentActor === "number"
+          ? snapshot.currentActor
+          : typeof snapshot?.turn === "number"
+            ? snapshot.turn
+            : typeof snapshot?.nextTurn === "number"
+              ? snapshot.nextTurn
+              : typeof phaseState?.turn === "number"
+                ? phaseState.turn
+                : state?.turn;
       return current !== actor || phaseState?.phase === "HAND_RESULT" || snapshot?.lastHandResult;
     },
     prevActor,

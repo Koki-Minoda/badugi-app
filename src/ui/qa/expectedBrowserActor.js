@@ -1,11 +1,11 @@
 function normalizePlayers(players = []) {
   return players.map((player, seat) => ({
-    seat,
+    seat: typeof player?.seat === "number" ? player.seat : seat,
     folded: Boolean(player?.folded || player?.hasFolded),
     allIn: Boolean(player?.allIn),
     seatOut: Boolean(player?.seatOut || player?.isBusted || player?.isActiveInGame === false),
     bet: Number(player?.betThisStreet ?? player?.betThisRound ?? player?.bet ?? player?.committedThisStreet ?? 0) || 0,
-    acted: Boolean(player?.hasActedThisRound || player?.hasActedThisStreet),
+    acted: Boolean(player?.acted || player?.hasActedThisRound || player?.hasActedThisStreet),
     lastAction: player?.lastAction ?? null,
   }));
 }
@@ -72,7 +72,19 @@ export function expectedBrowserActor({
     return { expectedActorSeat: actorSeat, playersNeedingAction: [], shouldRoundClose: false, expectedNextPhase: null };
   }
 
-  const playersNeedingAction = playersNeedingBrowserAction(normalized, currentBet);
+  const livePlayers = normalized.filter((player) => player && !player.folded && !player.seatOut);
+  if (livePlayers.length <= 1) {
+    return { expectedActorSeat: null, playersNeedingAction: [], shouldRoundClose: true, expectedNextPhase: "TERMINAL" };
+  }
+
+  const playersNeedingAction = normalized
+    .filter((player) => {
+      if (!isEligible(player)) return false;
+      if (!player.acted) return true;
+      if (Number(player.bet) < Number(currentBet)) return true;
+      return false;
+    })
+    .map((player) => player.seat);
   const shouldRoundClose = playersNeedingAction.length === 0;
   if (shouldRoundClose) {
     return { expectedActorSeat: null, playersNeedingAction, shouldRoundClose, expectedNextPhase: "DRAW_OR_SHOWDOWN" };

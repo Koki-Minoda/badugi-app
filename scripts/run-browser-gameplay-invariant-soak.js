@@ -17,7 +17,11 @@ const env = {
   BROWSER_GAMEPLAY_VARIANTS: args.variants ?? process.env.BROWSER_GAMEPLAY_VARIANTS ?? "badugi,D01,D02,S01,S02",
   BROWSER_GAMEPLAY_MODES: args.modes ?? process.env.BROWSER_GAMEPLAY_MODES ?? "cash,tournament",
   BROWSER_GAMEPLAY_VIEWPORTS: args.viewports ?? process.env.BROWSER_GAMEPLAY_VIEWPORTS ?? "desktop,portrait,landscape",
+  BROWSER_RUNTIME_TELEMETRY: args.runtimeTelemetry ?? args["runtime-telemetry"] ?? process.env.BROWSER_RUNTIME_TELEMETRY ?? "0",
+  BROWSER_TRACE_MODE: args.traceMode ?? args["trace-mode"] ?? process.env.BROWSER_TRACE_MODE ?? "normal",
 };
+const timeoutMs = args.timeoutMs ?? args["timeout-ms"] ?? process.env.BROWSER_GAMEPLAY_TIMEOUT_MS;
+if (timeoutMs) env.BROWSER_GAMEPLAY_TIMEOUT_MS = timeoutMs;
 
 const result = spawnSync(
   "npx",
@@ -26,4 +30,3 @@ const result = spawnSync(
 );
 
 process.exit(result.status ?? 1);
-

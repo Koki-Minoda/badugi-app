@@ -13,8 +13,13 @@ import {
   waitForProgressChange,
 } from "./helpers/gameProgressHelper.js";
 import { assertBrowserGameplayInvariants } from "../../src/ui/qa/assertBrowserGameplayInvariants.js";
+import {
+  createBrowserGameplayRuntimeTelemetry,
+  writeBrowserGameplayRuntimeTelemetry,
+} from "../../src/ui/qa/browserGameplayRuntimeTelemetry.js";
 
 const REPORT_DIR = path.resolve("reports/browser-gameplay");
+const RUNTIME_REPORT_DIR = path.resolve("reports/browser-gameplay/runtime");
 const SCREENSHOT_DIR = path.resolve("reports/screenshots");
 const SUMMARY_PATH = path.join(REPORT_DIR, "browser-gameplay-invariant-summary.json");
 const FAILURE_PATH = path.join(REPORT_DIR, "browser-gameplay-invariant-failures.json");
@@ -40,12 +45,16 @@ const selectedModes = selected(process.env.BROWSER_GAMEPLAY_MODES, MODE_CONFIG);
 const selectedViewports = selected(process.env.BROWSER_GAMEPLAY_VIEWPORTS, Object.keys(VIEWPORTS) as Array<keyof typeof VIEWPORTS>);
 const handsPerCombo = Math.max(1, Number(process.env.BROWSER_GAMEPLAY_HANDS ?? 1));
 const maxSteps = Math.max(20, Number(process.env.BROWSER_GAMEPLAY_MAX_STEPS ?? 90));
+const runtimeTelemetryEnabled = process.env.BROWSER_RUNTIME_TELEMETRY === "1";
+const traceMode = process.env.BROWSER_TRACE_MODE === "light" ? "light" : "normal";
+const testTimeoutMs = Math.max(30000, Number(process.env.BROWSER_GAMEPLAY_TIMEOUT_MS ?? 1800000));
 
 const summaryRows: any[] = [];
 const failures: any[] = [];
 
 function ensureDir() {
   fs.mkdirSync(REPORT_DIR, { recursive: true });
+  fs.mkdirSync(RUNTIME_REPORT_DIR, { recursive: true });
   fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
 }
 
@@ -59,6 +68,39 @@ function writeTrace(fileName: string, rows: any[]) {
   const tracePath = path.join(REPORT_DIR, fileName);
   fs.writeFileSync(tracePath, rows.map((row) => JSON.stringify(row)).join("\n") + "\n");
   return tracePath;
+}
+
+function traceRowForMode(row: any, assertion: any) {
+  if (traceMode !== "light" || assertion.violations.length > 0 || ["initial", "terminal"].includes(String(row?.label ?? ""))) {
+    return row;
+  }
+  return {
+    timestamp: row.timestamp,
+    variantId: row.variantId,
+    mode: row.mode,
+    viewport: row.viewport,
+    handId: row.handId,
+    actionIndex: row.actionIndex,
+    phase: row.phase,
+    drawRound: row.drawRound,
+    betRound: row.betRound,
+    controller: {
+      actorSeat: row.controller?.actorSeat ?? null,
+      currentBet: row.controller?.currentBet ?? null,
+      pot: row.controller?.pot ?? null,
+    },
+    ui: {
+      heroSeat: row.ui?.heroSeat ?? null,
+      heroControlsVisible: row.ui?.heroControlsVisible ?? false,
+      displayedPhase: row.ui?.displayedPhase ?? null,
+      resultVisible: row.ui?.resultVisible ?? false,
+      nextHandVisible: row.ui?.nextHandVisible ?? false,
+    },
+    action: row.action ?? null,
+    label: row.label ?? null,
+    expected: assertion.expected,
+    violations: assertion.violations,
+  };
 }
 
 function playerBet(player: any) {
@@ -91,24 +133,32 @@ async function openVariantMode(page: Page, variant: (typeof CORE5_VARIANTS)[numb
   await page.evaluate(() => window.__MGX_CLEAR_GAMEPLAY_TRACE__?.());
 }
 
-async function collect(page: Page, context: any, action: any, traceRows: any[]) {
+async function collect(page: Page, context: any, action: any, traceRows: any[], telemetry: any = null) {
   let row: any = null;
   let assertion: ReturnType<typeof assertBrowserGameplayInvariants> | null = null;
+  let attempts = 0;
   for (let attempt = 0; attempt < 5; attempt += 1) {
-    await page.waitForTimeout(attempt === 0 ? 20 : 75);
+    attempts += 1;
+    const waitMs = attempt === 0 ? 20 : 75;
+    const waitStart = Date.now();
+    await page.waitForTimeout(waitMs);
+    telemetry?.recordWait(Date.now() - waitStart, attempt === 0 ? "collect-initial" : "collect-retry");
+    telemetry?.recordSnapshot(1);
     row = await page.evaluate(
       ({ label, mode, action }) => window.__MGX_GET_GAMEPLAY_SNAPSHOT__?.({ label, mode, action }),
       { label: context.label, mode: context.mode, action },
     );
     if (!row) throw new Error("browser gameplay snapshot API unavailable");
     assertion = assertBrowserGameplayInvariants(row, traceRows);
+    telemetry?.recordAssertion(assertion.violations);
     if (!assertion.violations.some((violation: any) => violation?.severity === "P0")) {
       break;
     }
   }
   if (!row || !assertion) throw new Error("browser gameplay snapshot API unavailable");
   const enriched = { ...row, expected: assertion.expected, violations: assertion.violations };
-  traceRows.push(enriched);
+  enriched.retryCount = Math.max(0, attempts - 1);
+  traceRows.push(traceRowForMode(enriched, assertion));
   let screenshotPath: string | null = null;
   if (assertion.violations.length > 0) {
     ensureDir();
@@ -124,7 +174,9 @@ async function collect(page: Page, context: any, action: any, traceRows: any[]) 
       .map((part) => String(part).replace(/[^a-z0-9_-]+/gi, "-"))
       .join("-");
     screenshotPath = path.join(SCREENSHOT_DIR, `browser-gameplay-failure-${slug}.png`);
+    const screenshotStart = Date.now();
     await page.screenshot({ path: screenshotPath, fullPage: true });
+    telemetry?.recordScreenshot(Date.now() - screenshotStart);
   }
   for (const violation of assertion.violations) {
     failures.push({
@@ -167,11 +219,14 @@ function choosePayload(progress: any, actionIndex: number) {
   return toCall > 0 ? { type: "call", amount: toCall } : { type: "check", amount: 0 };
 }
 
-async function applyPayload(page: Page, progress: any, payload: any) {
+async function applyPayload(page: Page, progress: any, payload: any, telemetry: any = null) {
   const actor = progress?.actor;
   if (typeof actor !== "number") {
+    const waitStart = Date.now();
     await waitForProgressChange(page, progressKey(progress), { timeout: 3000 }).catch(() => {});
+    telemetry?.recordWait(Date.now() - waitStart, "no-actor-progress");
     const after = await getProgressState(page);
+    telemetry?.recordSnapshot(1);
     if (progressKey(after) !== progressKey(progress) || after?.isTerminal) {
       return { acted: true, clickedAction: "auto-progress-no-actor", actor, payload };
     }
@@ -179,37 +234,55 @@ async function applyPayload(page: Page, progress: any, payload: any) {
   }
   if (actor !== 0 && String(progress?.phase ?? "").toUpperCase() === "DRAW") {
     const beforeKey = progressKey(progress);
+    const waitStart = Date.now();
     await waitForProgressChange(page, beforeKey, { timeout: 1200 }).catch(() => {});
+    telemetry?.recordWait(Date.now() - waitStart, "cpu-draw-auto-wait");
     const after = await getProgressState(page);
+    telemetry?.recordSnapshot(1);
     if (progressKey(after) !== beforeKey || after?.isTerminal) {
       return { acted: true, clickedAction: "auto-cpu-draw", actor, payload };
     }
   }
   if (actor === 0) {
+    telemetry?.recordDomQuery(1);
     const legal = await getLegalActions(page);
     const preferred =
       payload.type === "raise"
         ? ["action-raise", "action-call", "action-check", "action-fold"]
         : payload.type === "fold"
           ? ["action-fold", "action-call", "action-check"]
-          : payload.type === "draw"
-            ? ["action-draw-selected"]
-            : payload.type === "call"
-              ? ["action-call", "action-check", "action-fold"]
-              : ["action-check", "action-call", "action-fold"];
+        : payload.type === "draw"
+          ? ["action-draw-selected"]
+        : payload.type === "call"
+          ? ["action-call", "action-fold"]
+          : ["action-check", "action-call", "action-fold"];
     const testId = preferred.find((id) => legal.includes(id));
     if (testId) {
       await page.getByTestId(testId).first().click();
-      return { acted: true, clickedAction: testId, actor, payload };
+      const clickWaitStart = Date.now();
+      await waitForProgressChange(page, progressKey(progress), { timeout: 1200 }).catch(() => {});
+      telemetry?.recordWait(Date.now() - clickWaitStart, "hero-click-progress");
+      const afterClick = await getProgressState(page);
+      telemetry?.recordSnapshot(1);
+      if (progressKey(afterClick) !== progressKey(progress) || afterClick?.isTerminal) {
+        return { acted: true, clickedAction: testId, actor, payload };
+      }
     }
   }
   let snapshot = await invokeE2E(page, "forceControllerAction", actor, payload);
   if (!snapshot && payload.type === "draw" && payload.discardIndexes?.length) {
     const fallback = { type: "draw", discardIndexes: [] };
     snapshot = await invokeE2E(page, "forceControllerAction", actor, fallback);
+    if (!snapshot) snapshot = await invokeE2E(page, "forceSeatDraw", actor, fallback).catch(() => null);
     if (!snapshot) snapshot = await invokeE2E(page, "forceSeatAction", actor, fallback);
     if (snapshot) {
       return { acted: true, clickedAction: "controller:draw-pat-fallback", actor, payload: fallback };
+    }
+  }
+  if (!snapshot && payload.type === "draw") {
+    snapshot = await invokeE2E(page, "forceSeatDraw", actor, payload).catch(() => null);
+    if (snapshot) {
+      return { acted: true, clickedAction: "e2e:force-seat-draw", actor, payload };
     }
   }
   if (!snapshot) {
@@ -241,15 +314,21 @@ async function applyPayload(page: Page, progress: any, payload: any) {
     return { acted: Boolean(snapshot), clickedAction: `controller:${fallback.type}`, actor, payload: fallback };
   }
   if (!snapshot && payload.type === "draw") {
+    const waitStart = Date.now();
     await waitForProgressChange(page, progressKey(progress), { timeout: 9000 }).catch(() => {});
+    telemetry?.recordWait(Date.now() - waitStart, "draw-force-progress");
     const after = await getProgressState(page);
+    telemetry?.recordSnapshot(1);
     if (progressKey(after) !== progressKey(progress) || after?.isTerminal) {
       return { acted: true, clickedAction: "auto-progress-after-draw-force", actor, payload };
     }
   }
   if (!snapshot) {
+    const waitStart = Date.now();
     await waitForProgressChange(page, progressKey(progress), { timeout: 2500 }).catch(() => {});
+    telemetry?.recordWait(Date.now() - waitStart, "fallback-progress");
     const after = await getProgressState(page);
+    telemetry?.recordSnapshot(1);
     if (progressKey(after) !== progressKey(progress)) {
       return { acted: true, clickedAction: "auto-progress", actor, payload };
     }
@@ -266,19 +345,23 @@ async function applyPayload(page: Page, progress: any, payload: any) {
   };
 }
 
-async function advanceFromTerminal(page: Page, progress: any) {
+async function advanceFromTerminal(page: Page, progress: any, telemetry: any = null) {
   const key = progressKey(progress);
   const nextHand = page.getByRole("button", { name: /next hand/i }).first();
   if (!(await nextHand.isVisible().catch(() => false))) {
+    const waitStart = Date.now();
     await waitForProgressChange(page, key, { timeout: 6000 }).catch(() => {});
+    telemetry?.recordWait(Date.now() - waitStart, "terminal-auto-progress");
     return progressKey(await getProgressState(page)) !== key;
   }
   try {
     await nextHand.click({ timeout: 3000 });
   } catch {
+    const waitStart = Date.now();
     const changed = await waitForProgressChange(page, key, { timeout: 6000 })
       .then(() => true)
       .catch(() => false);
+    telemetry?.recordWait(Date.now() - waitStart, "terminal-click-fallback");
     if (changed) return true;
     await nextHand.click({ force: true, timeout: 3000 }).catch(async () => {
       await page.evaluate(() => {
@@ -289,11 +372,13 @@ async function advanceFromTerminal(page: Page, progress: any) {
       });
     });
   }
+  const waitStart = Date.now();
   await waitForProgressChange(page, key, { timeout: 15000 }).catch(() => {});
+  telemetry?.recordWait(Date.now() - waitStart, "terminal-next-hand");
   return progressKey(await getProgressState(page)) !== key;
 }
 
-async function playHands(page: Page, context: any) {
+async function playHands(page: Page, context: any, telemetry: any = null) {
   const traceRows: any[] = [];
   const counters = {
     actionsObserved: 0,
@@ -306,26 +391,33 @@ async function playHands(page: Page, context: any) {
     handsCompleted: 0,
   };
 
-  await collect(page, { ...context, label: "initial" }, null, traceRows);
+  await collect(page, { ...context, label: "initial" }, null, traceRows, telemetry);
   let lastAggressor: number | null = null;
 
   for (let hand = 0; hand < handsPerCombo; hand += 1) {
+    let handCompleted = false;
     for (let step = 0; step < maxSteps; step += 1) {
+      telemetry?.recordSnapshot(1);
       const progress = await getProgressState(page);
+      telemetry?.recordProgress(progressKey(progress));
       if (progress?.isTerminal) {
         counters.handsCompleted += 1;
         counters.showdownsObserved += 1;
-        await collect(page, { ...context, label: "terminal" }, null, traceRows);
+        handCompleted = true;
+        telemetry?.completeHand(hand, progress);
+        await collect(page, { ...context, label: "terminal" }, null, traceRows, telemetry);
         const nextHand = page.getByRole("button", { name: /next hand/i }).first();
         if (hand < handsPerCombo - 1 && await nextHand.isVisible().catch(() => false)) {
-          await advanceFromTerminal(page, progress);
+          await advanceFromTerminal(page, progress, telemetry);
         }
         break;
       }
 
       const beforeKey = progressKey(progress);
       const payload = choosePayload(progress, counters.actionsObserved + 1);
-      const acted = await applyPayload(page, progress, payload);
+      const actionToken = telemetry?.startAction({ handIndex: hand, step, progress, payload });
+      const acted = await applyPayload(page, progress, payload, telemetry);
+      telemetry?.endAction(actionToken, acted);
       if (!acted.acted) {
         const haltRow = {
           timestamp: Date.now(),
@@ -385,8 +477,57 @@ async function playHands(page: Page, context: any) {
       if (acted.payload.type === "fold") counters.foldsObserved += 1;
       if (acted.payload.type === "draw") counters.drawDecisionsObserved += 1;
 
+      const transitionStart = Date.now();
       await waitForProgressChange(page, beforeKey, { timeout: 15000 }).catch(() => {});
-      await collect(page, { ...context, label: `hand-${hand}-step-${step}` }, acted, traceRows);
+      const transitionMs = Date.now() - transitionStart;
+      telemetry?.recordWait(transitionMs, "post-action-transition");
+      telemetry?.recordTransition(transitionMs, "post-action-transition");
+      await collect(page, { ...context, label: `hand-${hand}-step-${step}` }, acted, traceRows, telemetry);
+    }
+    if (!handCompleted) {
+      const progress = await getProgressState(page);
+      const haltRow = {
+        timestamp: Date.now(),
+        variantId: context.variantId,
+        mode: context.mode,
+        viewport: context.viewport,
+        handId: progress?.handId ?? null,
+        phase: progress?.phase ?? null,
+        drawRound: progress?.drawRoundIndex ?? null,
+        betRound: progress?.snapshot?.betRound ?? progress?.phaseState?.betRound ?? null,
+        label: `hand-${hand}-max-steps`,
+        progress: summarizeProgressState(progress),
+        violations: [
+          {
+            type: "HAND_COMPLETION_TIMEOUT",
+            severity: "P0",
+            message: "hand did not reach terminal state before max steps",
+          },
+        ],
+      };
+      traceRows.push(haltRow);
+      const partialTracePath = writeTrace(
+        path.basename(context.tracePath ?? `browser-gameplay-trace-${context.variantId}-${context.mode}-${context.viewport}.jsonl`),
+        traceRows,
+      );
+      failures.push({
+        severity: "P0",
+        type: "HAND_COMPLETION_TIMEOUT",
+        variantId: context.variantId,
+        mode: context.mode,
+        viewport: context.viewport,
+        handId: progress?.handId ?? null,
+        betRound: haltRow.betRound,
+        drawRound: haltRow.drawRound,
+        expected: "terminal hand result before max steps",
+        actual: {
+          progress: summarizeProgressState(progress),
+        },
+        message: "hand did not reach terminal state before max steps",
+        tracePath: partialTracePath,
+        screenshotPath: null,
+      });
+      expect(handCompleted, JSON.stringify({ context, hand, progress: summarizeProgressState(progress) }, null, 2)).toBe(true);
     }
   }
 
@@ -394,7 +535,7 @@ async function playHands(page: Page, context: any) {
 }
 
 test.describe("Browser gameplay invariant harness", () => {
-  test.describe.configure({ timeout: 1800000 });
+  test.describe.configure({ timeout: testTimeoutMs });
 
   test.afterAll(() => {
     const status = failures.some((failure) => failure.severity === "P0") ? "FAIL" : failures.length ? "WARN" : "PASS";
@@ -440,17 +581,53 @@ test.describe("Browser gameplay invariant harness", () => {
             `browser-gameplay-trace-${variant.variant.toLowerCase()}-${mode}-${viewportName}.jsonl`,
           );
           const context = { variantId: variant.variant, mode, viewport: viewportName, tracePath: anticipatedTracePath };
-          const { traceRows, counters } = await playHands(page, context);
+          const telemetry = runtimeTelemetryEnabled
+            ? createBrowserGameplayRuntimeTelemetry({
+                variantId: variant.variant,
+                mode,
+                viewport: viewportName,
+                handsTarget: handsPerCombo,
+                traceMode,
+              })
+            : null;
+          const { traceRows, counters } = await playHands(page, context, telemetry);
+          const traceWriteStart = Date.now();
           const tracePath = writeTrace(
             `browser-gameplay-trace-${variant.variant.toLowerCase()}-${mode}-${viewportName}.jsonl`,
             traceRows,
           );
+          telemetry?.recordTraceWrite({
+            rows: traceRows.length,
+            bytes: fs.statSync(tracePath).size,
+            elapsedMs: Date.now() - traceWriteStart,
+          });
+          let runtimeTelemetryPath: string | null = null;
+          let runtimeSummary: any = null;
+          if (telemetry) {
+            runtimeTelemetryPath = path.join(
+              RUNTIME_REPORT_DIR,
+              `${variant.variant.toLowerCase()}-${mode}-${viewportName}-runtime-telemetry.json`,
+            );
+            runtimeSummary = telemetry.summary({
+              tracePath,
+              failures: failures.filter(
+                (failure) =>
+                  failure.variantId === variant.variant &&
+                  failure.mode === mode &&
+                  failure.viewport === viewportName,
+              ),
+            });
+            const writeStats = writeBrowserGameplayRuntimeTelemetry(runtimeTelemetryPath, runtimeSummary);
+            telemetry.recordTraceWrite({ rows: 1, bytes: writeStats.bytes, elapsedMs: writeStats.elapsedMs });
+          }
           summaryRows.push({
             ...context,
             status: traceRows.some((row) => row.violations?.some((v: any) => v.severity === "P0")) ? "FAIL" : "PASS",
             handsAttempted: handsPerCombo,
             ...counters,
             tracePath,
+            runtimeTelemetryPath,
+            runtimeClassification: runtimeSummary?.classification ?? null,
           });
         });
       }

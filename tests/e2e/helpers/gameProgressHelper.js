@@ -299,16 +299,27 @@ export async function performSafeAction(page, options = {}) {
   }
 
   if (actor === 0) {
+    const actorBet = Number(progress?.players?.[actor]?.betThisStreet ?? progress?.players?.[actor]?.betThisRound ?? progress?.players?.[actor]?.bet ?? 0);
+    const toCall = Math.max(0, Number(progress?.currentBet ?? 0) - actorBet);
     const order =
       DRAW_PHASES.has(phase) || progress?.snapshot?.street === "DRAW"
         ? ["action-draw-selected"]
+        : toCall > 0
+          ? options.policy === "heroAggressive"
+            ? ["action-raise", "action-call", "action-fold"]
+            : ["action-call", "action-fold", "action-raise"]
         : options.policy === "heroAggressive"
           ? ["action-raise", "action-call", "action-check", "action-fold"]
           : ["action-check", "action-call", "action-raise", "action-fold"];
     const action = await firstClickableAction(page, order);
     if (action) {
       await action.locator.click();
-      return { acted: true, clickedAction: action.id, actor, before: summarizeProgressState(progress) };
+      const changed = await waitForProgressChange(page, beforeKey, { timeout: 1200 })
+        .then(() => true)
+        .catch(() => false);
+      if (changed) {
+        return { acted: true, clickedAction: action.id, actor, before: summarizeProgressState(progress) };
+      }
     }
   }
 
@@ -324,6 +335,9 @@ export async function performSafeAction(page, options = {}) {
 
   const payload = controllerActionFor(progress, options);
   let snapshot = await invokeE2E(page, "forceControllerAction", actor, payload);
+  if (!snapshot && payload.type === "draw") {
+    snapshot = await invokeE2E(page, "forceSeatDraw", actor, payload).catch(() => null);
+  }
   if (!snapshot) {
     snapshot = await invokeE2E(page, "forceSeatAction", actor, payload);
   }

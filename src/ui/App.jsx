@@ -6107,6 +6107,18 @@ const SAFE_RESET_PHASE = "IDLE";
       forceAllIn: forceAllInAction,
       setupFixedLimitCapFixtureForTest,
       forceHeroDraw,
+      forceSeatDraw: (seat = turn, payload = {}) => {
+        const currentPhase = phaseRef.current ?? phase;
+        if (currentPhase !== "DRAW") return false;
+        if (typeof seat !== "number" || seat !== turn) return false;
+        if (seat === 0) {
+          return drawSelectedRef.current();
+        }
+        return autoResolveCpuDrawIfNeeded({
+          discardIndexes: Array.isArray(payload?.discardIndexes) ? payload.discardIndexes : [],
+          __forceInstant: true,
+        });
+      },
       forceFinishRoundForTest: (phaseOverride = null) => {
         const forcedPlayers = (playersRef.current ?? [])
           .map(clonePlayerState)
@@ -6222,6 +6234,7 @@ const SAFE_RESET_PHASE = "IDLE";
     queueForcedSeatAction,
     tryControllerBetAction,
     syncLegacyFromControllerSnapshot,
+    autoResolveCpuDrawIfNeeded,
     forceSequentialFolds,
     forceAllInAction,
     setupFixedLimitCapFixtureForTest,

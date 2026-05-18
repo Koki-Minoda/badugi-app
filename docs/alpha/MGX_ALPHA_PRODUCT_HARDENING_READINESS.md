@@ -4,9 +4,9 @@ Date: 2026-05-18
 
 ## Decision
 
-`HOLD_FOR_REMOTE_SYNC_AND_PHYSICAL_QA`
+`HOLD_FOR_PHYSICAL_MOBILE_BADUGI_P0`
 
-Badugi focused raise/call no-reraise closure is P0-clean in the browser trace, and the re-raise-positive live proof now passes. The Browser Gameplay Invariant Badugi ladder passes Badugi cash desktop 1-hand, 10-hand, and 100-hand runs; the earlier hand16 100-hand halt is classified as progress-helper stale-read / terminal and next-hand detection, with the focused repro completing through hand20. Core5 browser expansion is now clean locally and live: cash desktop 100-hand passes, tournament desktop 100-hand passes with 500/500 hands complete and 0 invariant violations, mobile Step E passes with 1000/1000 hands complete, live smoke completes 50/50 hands, live desktop matrix completes 200/200 hands, and live mobile emulation completes 200/200 hands. Remote sync is unresolved and physical mobile QA is pending.
+Badugi focused raise/call no-reraise closure is P0-clean in the browser trace, and the re-raise-positive live proof passes. The Core5 local/live browser matrices remain important coverage, but physical mobile QA has now found a live Badugi tournament P0: hand 5/5 can remain stuck on `Waiting for other players...` at BET Draw2 / Bet Round 2 with To Call 0 and Pot 66. This supersedes the previous “physical QA pending only” status. Remote sync is unresolved, and friend alpha is HOLD until the physical waiting freeze is fixed, deployed, and rechecked.
 
 ## Gate Results
 
@@ -14,6 +14,8 @@ Badugi focused raise/call no-reraise closure is P0-clean in the browser trace, a
 | --- | --- | --- |
 | live deploy snapshot | PASS | live build info matches local head in `reports/alpha/live-deploy-verification.json` |
 | live health | PASS | `/api/health` returns `{"status":"ok","env":"prod","db":"ok"}` |
+| physical mobile Badugi tournament waiting freeze | P0 OPEN | `PHYSICAL-MOBILE-BADUGI-WAITING-001`; iPhone live preview screenshot shows Waiting at BET Draw2 with no Hero action |
+| physical mobile Badugi DRAW/BET divergence | P0 OPEN | `BADUGI-DRAW-BET-MIX-001`; tracked separately after waiting freeze |
 | build | PASS | `npm run build` succeeds |
 | Badugi playable | LIVE_BROWSER_VERIFY_PASS / HOLD_FOR_PHYSICAL_QA | focused full 3-draw regression reaches `Hand Result`; long-run restore smoke passes 5 hands / 180 checkpoints; live no-reraise raise/call closure passes; re-raise-positive live proof passes |
 | pot continuity | PASS | focused browser, UI snapshot, and long-run restore tests pass with 0 active-hand `Total Pot 0` occurrences |

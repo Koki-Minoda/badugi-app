@@ -4,15 +4,17 @@ Date: 2026-05-18
 
 ## Decision
 
-`HOLD_FOR_REMOTE_SYNC_AND_PHYSICAL_QA`
+`HOLD_FOR_PHYSICAL_MOBILE_BADUGI_P0`
 
-The live URL is the release source of truth for deploy gates, and the browser gameplay invariant harness is now the browser source of truth for action-by-action UI/controller consistency. `https://mgx-poker.com/` is healthy and `reports/alpha/live-deploy-verification.json` records deployed commit `a2a271e4b426581fcdb7c156d1aa90b1ed607a00`, matching local head with bundle `/assets/index-BlAPEzcs.js`. The prior live tournament browser fatal and tournament result/next-hand blocker are fixed live: live smoke completed 50/50 hands, live desktop matrix completed 200/200 hands, and live mobile emulation completed 200/200 hands with no actor P0, terminal P0, illegal reopen, UI/controller divergence, action application failure, or freeze. Badugi live no-reraise closure and re-raise-positive reopen proof both pass. Friend alpha remains HOLD only because remote push/sync and physical mobile QA are still pending.
+The live URL is the release source of truth for deploy gates, and the browser gameplay invariant harness is the browser source of truth for action-by-action UI/controller consistency. However, physical mobile QA has now found a Badugi tournament P0 on the live preview: hand 5/5 can stay on `Waiting for other players...` at BET Draw2 / Bet Round 2 with To Call 0 and Pot 66. Friend alpha is HOLD until this physical mobile waiting freeze is fixed, deployed, and rechecked on a real device. Remote push/sync also remains unresolved.
 
 ## Gate Summary
 
 | Gate | Result |
 | --- | --- |
 | Remote source sync for deployed commit | BLOCKED / unresolved, branch ahead origin by 87 commits |
+| Physical mobile Badugi tournament waiting freeze | P0 OPEN, `PHYSICAL-MOBILE-BADUGI-WAITING-001` |
+| Physical mobile Badugi DRAW/BET divergence | P0 OPEN, `BADUGI-DRAW-BET-MIX-001`, separate follow-up after waiting freeze |
 | Live deploy snapshot | PASS, live commit == local head in latest deploy verification report |
 | Badugi alpha availability | HOLD for friend exposure until physical QA and remote sync clear |
 | Badugi raise/call betting closure | PASS live for no-reraise closure and re-raise-positive reopen proof |

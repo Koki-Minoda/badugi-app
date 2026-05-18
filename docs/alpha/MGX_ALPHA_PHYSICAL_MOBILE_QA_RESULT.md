@@ -4,9 +4,16 @@ Date: 2026-05-16
 
 ## Decision
 
-`PENDING_PHYSICAL_DEVICE`
+`FAIL_P0_BADUGI_WAITING_FREEZE`
 
-Physical mobile QA has not been completed from this shell. Friend alpha remains `HOLD` until at least one real device passes or passes with notes.
+Physical mobile QA found a live Badugi tournament P0 on iPhone: hand 5/5 can stay on `Waiting for other players...` at BET Draw2 / Bet Round 2 with To Call 0 and Pot 66. Friend alpha remains `HOLD` until this is fixed, deployed, and rechecked on a real device.
+
+## P0 Findings
+
+| ID | Status | Evidence | Required Follow-up |
+| --- | --- | --- | --- |
+| `PHYSICAL-MOBILE-BADUGI-WAITING-001` | OPEN | iPhone live preview screenshot | Export freeze report with `?mgxQa=mobile`, fix waiting/round-closure path, deploy, physical recheck. |
+| `BADUGI-DRAW-BET-MIX-001` | OPEN | second physical screenshot | Separate focused DRAW/BET divergence regression after waiting freeze. |
 
 ## Required Device Checks
 

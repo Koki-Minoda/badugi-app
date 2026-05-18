@@ -10,11 +10,18 @@ Deployed commit: see `reports/alpha/live-deploy-verification.json`
 
 `HOLD`
 
-Physical mobile QA was not executed in this shell because no real Android or iPhone device is available to the agent. Automated mobile browser/emulation and live layout evidence pass, but the friend alpha GO condition still requires at least one real mobile device PASS or PASS_WITH_NOTES. Live full tournament result smoke is also still blocked separately.
+Physical mobile QA has now produced a P0 report outside this shell: live iPhone Badugi tournament can remain on `Waiting for other players...` at hand 5/5, phase BET, Draw 2, Bet Round 2, Hero SB, To Call 0, Pot 66, with folded players visible. Automated mobile browser/emulation and live layout evidence are not sufficient to clear this physical-device blocker.
 
 Last-mile check: 2026-05-17.
 
-Physical device tested: none in this environment.
+Physical device tested: iPhone live preview screenshot supplied by QA.
+
+## P0 Findings
+
+| ID | Device | Game | Mode | Status | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `PHYSICAL-MOBILE-BADUGI-WAITING-001` | iPhone | Badugi | Tournament | OPEN | Waiting freeze at BET Draw2 / Bet Round 2 / hand 5/5. Needs freeze export JSON and post-fix physical recheck. |
+| `BADUGI-DRAW-BET-MIX-001` | iPhone | Badugi | Tournament | OPEN | DRAW/BET label/control divergence observed separately; defer focused fix until waiting freeze is closed. |
 
 ## Android Chrome Checklist
 
@@ -58,4 +65,4 @@ Physical device tested: none in this environment.
 
 ## Next Action
 
-Run the checklist on at least one physical Android Chrome or iPhone Safari/Chrome device. If no P0 is found and controls/table/pot remain usable, update this result to PASS or PASS_WITH_NOTES and re-evaluate Friend Alpha GO/HOLD.
+Fix and deploy `PHYSICAL-MOBILE-BADUGI-WAITING-001`, collect a `?mgxQa=mobile` freeze report if it reproduces, and rerun Badugi tournament on the same physical mobile path. Friend alpha remains HOLD while this P0 is open.

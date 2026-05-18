@@ -23,7 +23,7 @@ This document defines expected release-audit behavior. It does not change routin
 - Three players or more, pre-draw: first actor is the first active player left of the big blind, commonly UTG.
 - Heads-up, pre-draw: first actor is BTN/SB.
 - Post-draw betting: first actor is the first active player left of the button.
-- Folded and all-in players are skipped.
+- Folded, out, busted, and all-in players are skipped for betting action.
 - If no eligible betting actor exists, the betting round closes and the hand advances to showdown or single-winner terminal state.
 
 ## Betting Rounds
@@ -38,9 +38,10 @@ Betting closes when all non-folded, non-all-in players have either matched the c
 ## Draw Round
 
 - Exactly 1 draw round occurs.
-- Each active non-folded, non-all-in player may discard 0 to 5 cards.
+- Each active non-folded player, including all-in hand-eligible players, may discard 0 to 5 cards.
 - Discarding 0 cards is pat.
-- Folded and all-in players skip draw decisions.
+- Folded, out, busted, or sitting-out players skip draw decisions.
+- All-in draw decisions must resolve before the hand can advance to the final betting round or showdown path.
 - After draw 1, the hand transitions to the final betting round.
 - No draw 2 may occur.
 - No draw 3 may occur.

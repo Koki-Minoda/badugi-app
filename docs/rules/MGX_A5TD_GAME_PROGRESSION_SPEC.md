@@ -20,7 +20,7 @@ This document defines the expected release-audit behavior for A-5 Triple Draw. I
 - Three players or more, pre-draw: first actor is the first active player left of the big blind, commonly UTG.
 - Heads-up, pre-draw: first actor is BTN/SB.
 - Post-draw betting: first actor is the first active player left of the button.
-- Folded and all-in players are skipped.
+- Folded, out, busted, and all-in players are skipped for betting action.
 - If no eligible betting actor exists, the betting round closes and the hand advances to the next draw, showdown, or single-winner terminal state.
 
 ## Betting Rounds
@@ -37,9 +37,10 @@ Betting closes when all non-folded, non-all-in players have either matched the c
 ## Draw Rounds
 
 - Exactly 3 draw rounds occur at most: Draw 1, Draw 2, Draw 3.
-- Each active non-folded, non-all-in player may discard 0 to 5 cards.
+- Each active non-folded player, including all-in hand-eligible players, may discard 0 to 5 cards.
 - Discarding 0 cards is pat.
-- Folded and all-in players skip draw decisions.
+- Folded, out, busted, or sitting-out players skip draw decisions.
+- All-in draw decisions must resolve before the hand can advance to the next betting round or showdown path.
 - After draw 1 and draw 2, the hand transitions to the next betting round.
 - After draw 3, the final betting round starts.
 - No fourth draw may occur.

@@ -42,10 +42,11 @@ MGX currently implements D01 as fixed-limit draw:
 ## Draw Rounds
 
 - Exactly three draw rounds are allowed.
-- Each active non-folded player may discard 0 to 5 cards.
+- Each active non-folded player, including all-in hand-eligible players, may discard 0 to 5 cards.
 - Discarding 0 cards is pat.
 - Discarding more than 5 cards or an out-of-range index is illegal.
 - Folded, sitting-out, busted, and non-draw-eligible seats skip draw action.
+- All-in draw decisions must resolve before the hand can advance to the next betting round or showdown path.
 - After draw 1 and draw 2, the game transitions to the next betting round.
 - After draw 3, the game transitions to the final betting round.
 - There is no fourth draw.
@@ -75,4 +76,3 @@ Terminal behavior:
 - Street and draw transitions must not clear the active visible pot.
 - Showdown/fold-win may empty active pots only after recording result metadata.
 - New hand reset may initialize a fresh pot only after result/next-hand transition.
-

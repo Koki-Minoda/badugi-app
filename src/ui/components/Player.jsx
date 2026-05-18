@@ -5,12 +5,12 @@ import { formatStatAf, formatStatPercent } from "../utils/stats.js";
 import { getDisplayCards } from "../utils/cardDisplayOrder.js";
 import { getCpuCharacterByName } from "../../ai/cpuRoster.js";
 
-function BetStatus({ amount, allIn = false }) {
+function BetStatus({ amount, allIn = false, seatIndex = null }) {
   const hasBet = Number(amount) > 0;
   const chipLabel = allIn && hasBet ? "ALL-IN" : hasBet ? "BET" : "BET";
   return (
     <div
-      data-testid="player-bet-status"
+      data-testid={seatIndex == null ? "player-bet-status" : `seat-${seatIndex}-bet-status`}
       className={`mt-1 inline-flex min-w-[64px] items-center justify-center gap-1.5 rounded-full border px-2.5 py-1 font-black uppercase tracking-wide ${
         hasBet
           ? "border-amber-200/90 bg-gradient-to-b from-amber-300 to-amber-500 text-slate-950 shadow-[0_3px_0_rgba(120,53,15,0.75)]"
@@ -19,7 +19,12 @@ function BetStatus({ amount, allIn = false }) {
       style={{ fontSize: "var(--player-stack-size, 11px)" }}
     >
       <span>{chipLabel}</span>
-      <span data-testid="player-bet-amount">{amount}</span>
+      <span
+        data-testid={seatIndex == null ? "player-bet-amount" : `seat-${seatIndex}-bet-amount`}
+        data-seat-bet-amount={seatIndex == null ? undefined : seatIndex}
+      >
+        {amount}
+      </span>
     </div>
   );
 }
@@ -596,7 +601,7 @@ export default function Player({
             <span className="text-slate-400">Stack</span>{" "}
             <span className="text-white">{stackValue}</span>
           </div>
-          <BetStatus amount={betValue} allIn={player.allIn} />
+          <BetStatus amount={betValue} allIn={player.allIn} seatIndex={seatIndex} />
           {isActive && !compact && (
             <div
               className="text-lime-300 font-bold mt-1"

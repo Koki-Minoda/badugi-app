@@ -1,5 +1,6 @@
 import { recordBrowserGameplayTrace } from "./browserGameplayTrace.js";
 import { appendSnapshotMergeSourceTrace } from "./traceSnapshotMergeSource.js";
+import { buildBlindPostingAudit } from "./blindPostingAudit.js";
 
 function numberOrNull(value) {
   const number = Number(value);
@@ -159,9 +160,25 @@ function collectControllerSnapshot() {
     drawRound: numberOrNull(snapshot?.drawRoundIndex ?? snapshot?.drawRound ?? phaseState?.drawRound ?? state?.drawRound),
     betRound: numberOrNull(phaseState?.betRound ?? state?.betRound ?? snapshot?.betRound ?? snapshot?.betRoundIndex),
     actionIndex: numberOrNull(snapshot?.actionIndex ?? state?.actionIndex),
-    buttonSeat: numberOrNull(snapshot?.dealerIndex ?? state?.dealerIdx ?? phaseState?.dealerIdx),
-    sbSeat: numberOrNull(snapshot?.smallBlindSeat ?? snapshot?.sbSeat),
-    bbSeat: numberOrNull(snapshot?.bigBlindSeat ?? snapshot?.bbSeat),
+    buttonSeat: numberOrNull(
+      snapshot?.dealerIndex ??
+        snapshot?.dealerIdx ??
+        snapshot?.dealerSeat ??
+        state?.dealerIdx ??
+        phaseState?.dealerIdx,
+    ),
+    sbSeat: numberOrNull(
+      snapshot?.smallBlindSeat ??
+        snapshot?.sbSeat ??
+        snapshot?.smallBlindIndex ??
+        snapshot?.metadata?.lastBlinds?.sbIndex,
+    ),
+    bbSeat: numberOrNull(
+      snapshot?.bigBlindSeat ??
+        snapshot?.bbSeat ??
+        snapshot?.bigBlindIndex ??
+        snapshot?.metadata?.lastBlinds?.bbIndex,
+    ),
     actorSeat,
     nextTurn,
     currentBet: effectiveCurrentBet,
@@ -194,6 +211,19 @@ export function collectBrowserGameplaySnapshot(extra = {}) {
   const controller = collectControllerSnapshot();
   const ui = collectUiSnapshot(controller);
   const mergeSource = appendSnapshotMergeSourceTrace(extra);
+  const blindPosting = buildBlindPostingAudit({
+    snapshot: {
+      ...(controller.snapshot ?? {}),
+      buttonSeat: controller.buttonSeat,
+      sbSeat: controller.sbSeat,
+      bbSeat: controller.bbSeat,
+      currentBet: controller.currentBet,
+      pot: controller.pot,
+    },
+    players: controller.players,
+    heroSeat: 0,
+    displayedPot: ui.displayedPot,
+  });
   const row = {
     timestamp: Date.now(),
     variantId: controller.variantId,
@@ -215,6 +245,7 @@ export function collectBrowserGameplaySnapshot(extra = {}) {
       players: controller.players,
     },
     ui,
+    blindPosting,
     mergeSource,
     action: extra.action ?? null,
     label: extra.label ?? null,

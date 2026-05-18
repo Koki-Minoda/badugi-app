@@ -1,4 +1,5 @@
 import { expectedBrowserActor } from "./expectedBrowserActor.js";
+import { buildBlindPostingAudit } from "./blindPostingAudit.js";
 
 const WAITING_TEXT_RE = /Waiting for other players|他のプレイヤー|待機/i;
 
@@ -210,6 +211,19 @@ export function buildMobileFreezeReport({
     traceTail: window.__MGX_GAMEPLAY_TRACE__?.slice?.(-12) ?? [],
     consoleErrors: window.__MGX_CONSOLE_ERRORS__?.slice?.(-20) ?? [],
   };
+  report.blindPosting = buildBlindPostingAudit({
+    snapshot: {
+      ...(e2eState?.controllerSnapshot ?? {}),
+      buttonSeat: snapshot?.buttonSeat ?? e2eState?.dealerIdx ?? phaseState?.dealerIdx,
+      sbSeat: snapshot?.sbSeat ?? e2eState?.controllerSnapshot?.sbSeat,
+      bbSeat: snapshot?.bbSeat ?? e2eState?.controllerSnapshot?.bbSeat,
+      currentBet,
+      pot: report.pot,
+    },
+    players: rawPlayers,
+    heroSeat: report.heroSeat,
+    displayedPot: report.displayedPot,
+  });
   return {
     ...report,
     classification: classifyMobileWaitingFreeze(report),

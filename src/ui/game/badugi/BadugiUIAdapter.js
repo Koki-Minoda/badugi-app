@@ -137,7 +137,14 @@ function buildControlsConfig(snapshot, tableConfig) {
 
 function mapSeatViews(snapshot, structureMeta) {
   const players = snapshot.players ?? [];
-  const dealerIdx = snapshot.dealerIdx ?? 0;
+  const dealerIdx =
+    snapshot.dealerIdx ??
+    snapshot.dealerIndex ??
+    snapshot.dealerSeat ??
+    snapshot.buttonSeat ??
+    snapshot.metadata?.dealerIndex ??
+    snapshot.metadata?.buttonSeat ??
+    0;
   const { sbIdx, bbIdx } = getBlindSeatIndexes(players, dealerIdx);
 
   return players.map((player, idx) => {

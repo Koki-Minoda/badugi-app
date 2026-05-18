@@ -6570,10 +6570,74 @@ const SAFE_RESET_PHASE = "IDLE";
         if (seat === 0) {
           return drawSelectedRef.current();
         }
-        return autoResolveCpuDrawIfNeeded({
-          discardIndexes: Array.isArray(payload?.discardIndexes) ? payload.discardIndexes : [],
-          __forceInstant: true,
+        const basePlayers = (playersRef.current ?? players ?? [])
+          .map(clonePlayerState)
+          .filter(Boolean);
+        const actor = basePlayers[seat];
+        if (!actor || !isSeatEligibleForDraw(actor)) return false;
+        const drawIndexes = Array.isArray(payload?.discardIndexes)
+          ? payload.discardIndexes
+          : [];
+        const forcedPlayers = basePlayers.map((player, index) =>
+          index === seat
+            ? {
+                ...player,
+                hasDrawn: true,
+                hasActedThisRound: true,
+                lastDrawCount: drawIndexes.length,
+                lastAction: drawIndexes.length === 0 ? "Pat" : `DRAW(${drawIndexes.length})`,
+              }
+            : player,
+        );
+        setPlayerSnapshot(forcedPlayers);
+        logAction(seat, forcedPlayers[seat]?.lastAction ?? "Pat");
+        recordActionToLog({
+          phase: "DRAW",
+          round: drawRound + 1,
+          seat,
+          playerState: forcedPlayers[seat],
+          type: forcedPlayers[seat]?.lastAction ?? "Pat",
+          stackBefore: actor.stack,
+          stackAfter: forcedPlayers[seat]?.stack ?? actor.stack,
+          betBefore: actor.betThisRound,
+          betAfter: forcedPlayers[seat]?.betThisRound ?? actor.betThisRound,
+          raiseCountTable: raiseCountThisRound,
+          metadata: {
+            drawInfo: {
+              drawCount: drawIndexes.length,
+              drawIndexes,
+              before: Array.isArray(actor.hand) ? [...actor.hand] : [],
+              after: Array.isArray(forcedPlayers[seat]?.hand)
+                ? [...forcedPlayers[seat].hand]
+                : [],
+              source: "e2e-force-seat-draw",
+            },
+          },
         });
+        const nextSeat = findNextDrawActorSeat(forcedPlayers, seat + 1);
+        const snapshot = applyDeckSnapshot({
+          players: forcedPlayers,
+          pots: potsRef.current ?? pots,
+          nextTurn: nextSeat ?? null,
+          turn: nextSeat ?? null,
+          metadata: {
+            currentBet,
+            betHead,
+            lastAggressor,
+            actingPlayerIndex: nextSeat ?? null,
+          },
+        });
+        syncEngineSnapshot(snapshot);
+        if (nextSeat !== null) {
+          setTurn(nextSeat);
+        } else {
+          forceFinishRoundRef.current({
+            reason: "e2e-force-seat-draw-complete",
+            phaseOverride: "DRAW",
+            playersSnapshot: forcedPlayers,
+          });
+        }
+        return snapshot;
       },
       forceFinishRoundForTest: (phaseOverride = null) => {
         const forcedPlayers = (playersRef.current ?? [])

@@ -251,13 +251,35 @@ def player_kind(row: dict[str, Any], metadata: dict[str, Any], hero_seat: Any = 
 
 
 def decision_source_value(metadata: dict[str, Any]) -> Any:
-    value = nested_get(metadata, "decisionSource", "decision_source", "cpuPolicy", "cpu_policy", "aiTier", "ai_tier", "tierId", "tier_id", "rlUsed", "rl_used")
+    value = nested_get(metadata, "decisionSource", "decision_source", "cpuDecisionSource", "strategy", "rlUsed", "rl_used")
     if value is not None:
         return value
     generic_source = nested_get(metadata, "source")
     if generic_source and str(generic_source).lower() not in {"syncmanager", "hand-history", "history"}:
         return generic_source
     return None
+
+
+def session_id_value(metadata: dict[str, Any]) -> str:
+    value = nested_get(metadata, "sessionId", "session_id", "qaSessionId", "qa_session_id")
+    return str(value) if value else "unknown"
+
+
+def ai_tier_value(metadata: dict[str, Any]) -> str:
+    value = nested_get(metadata, "aiTier", "ai_tier", "tierId", "tier_id")
+    return str(value) if value else "unknown"
+
+
+def cpu_policy_value(metadata: dict[str, Any]) -> str:
+    value = nested_get(metadata, "cpuPolicy", "cpu_policy", "policy")
+    return str(value) if value else "unknown"
+
+
+def legal_actions_value(metadata: dict[str, Any]) -> list[str]:
+    raw = nested_get(metadata, "legalActions", "legal_actions")
+    if not isinstance(raw, list):
+        return []
+    return [normalize_action(entry.get("type") if isinstance(entry, dict) else entry) for entry in raw]
 
 
 def has_decision_source(table_columns: set[str], rows: list[dict[str, Any]]) -> tuple[str, list[str]]:
@@ -284,7 +306,14 @@ def init_bucket() -> dict[str, Any]:
         "potSamples": [],
         "decisionSources": Counter(),
         "fallbackReasons": Counter(),
+        "aiTiers": Counter(),
+        "cpuPolicies": Counter(),
         "cpuIdentityInferred": 0,
+        "sessions": set(),
+        "rowsWithSessionId": 0,
+        "legalActionsAvailable": 0,
+        "legalRaiseSpots": 0,
+        "raiseAvailableButFolded": 0,
     }
 
 
@@ -307,7 +336,15 @@ def finalize_bucket(bucket: dict[str, Any]) -> dict[str, Any]:
         "averagePotSample": round(sum(pots) / len(pots), 2) if pots else None,
         "decisionSources": dict(sorted(bucket["decisionSources"].items())),
         "fallbackReasons": dict(sorted(bucket["fallbackReasons"].items())),
+        "aiTiers": dict(sorted(bucket["aiTiers"].items())),
+        "cpuPolicies": dict(sorted(bucket["cpuPolicies"].items())),
         "cpuIdentityInferredActions": bucket["cpuIdentityInferred"],
+        "sessionCount": len(bucket["sessions"]),
+        "rowsWithSessionId": bucket["rowsWithSessionId"],
+        "legalActionsAvailable": bucket["legalActionsAvailable"],
+        "legalActionsAvailabilityRate": round(bucket["legalActionsAvailable"] / actions, 4) if actions else None,
+        "legalRaiseSpots": bucket["legalRaiseSpots"],
+        "raiseAvailableButFolded": bucket["raiseAvailableButFolded"],
     }
 
 
@@ -315,6 +352,8 @@ def aggregate_rows(rows: list[dict[str, Any]], table_columns: set[str], limit_ha
     by_variant: dict[str, dict[str, Any]] = defaultdict(init_bucket)
     by_mode: dict[str, dict[str, Any]] = defaultdict(init_bucket)
     by_variant_mode: dict[str, dict[str, Any]] = defaultdict(init_bucket)
+    by_session: dict[str, dict[str, Any]] = defaultdict(init_bucket)
+    by_decision_source: dict[str, dict[str, Any]] = defaultdict(init_bucket)
     all_actions = init_bucket()
     identity_counts = Counter()
     inferred_count = 0
@@ -335,16 +374,31 @@ def aggregate_rows(rows: list[dict[str, Any]], table_columns: set[str], limit_ha
         mode = safe_mode(row, metadata)
         source = decision_source_value(metadata) or "unknown"
         fallback = nested_get(metadata, "fallbackReason", "fallback_reason")
+        session_id = session_id_value(metadata)
+        ai_tier = ai_tier_value(metadata)
+        cpu_policy = cpu_policy_value(metadata)
+        legal_actions = legal_actions_value(metadata)
+        has_legal_raise = "raise" in legal_actions or "bet" in legal_actions
         paid = row.get("paid")
         amount = row.get("amount")
         pot = nested_get(metadata, "pot", "potAfter", "displayedPot")
         if pot is None:
             pot = row.get("pot")
 
-        for bucket in (all_actions, by_variant[variant], by_mode[mode], by_variant_mode[f"{variant}/{mode}"]):
+        for bucket in (
+            all_actions,
+            by_variant[variant],
+            by_mode[mode],
+            by_variant_mode[f"{variant}/{mode}"],
+            by_session[session_id],
+            by_decision_source[str(source)],
+        ):
             bucket["actions"] += 1
             if hand_id:
                 bucket["hands"].add(hand_id)
+            if session_id != "unknown":
+                bucket["sessions"].add(session_id)
+                bucket["rowsWithSessionId"] += 1
             bucket["actionCounts"][action] += 1
             if action in {"call", "bet", "raise"} and not bool(row.get("is_forced")):
                 bucket["voluntaryActions"] += 1
@@ -359,6 +413,14 @@ def aggregate_rows(rows: list[dict[str, Any]], table_columns: set[str], limit_ha
             elif isinstance(amount, (int, float)) and amount > 0:
                 bucket["potSamples"].append(float(amount))
             bucket["decisionSources"][str(source)] += 1
+            bucket["aiTiers"][ai_tier] += 1
+            bucket["cpuPolicies"][cpu_policy] += 1
+            if legal_actions:
+                bucket["legalActionsAvailable"] += 1
+            if has_legal_raise:
+                bucket["legalRaiseSpots"] += 1
+                if action == "fold":
+                    bucket["raiseAvailableButFolded"] += 1
             if fallback:
                 bucket["fallbackReasons"][str(fallback)] += 1
             if inferred:
@@ -385,6 +447,8 @@ def aggregate_rows(rows: list[dict[str, Any]], table_columns: set[str], limit_ha
         "byVariant": {key: finalize_bucket(value) for key, value in sorted(by_variant.items())},
         "byMode": {key: finalize_bucket(value) for key, value in sorted(by_mode.items())},
         "byVariantMode": {key: finalize_bucket(value) for key, value in sorted(by_variant_mode.items())},
+        "bySession": {key: finalize_bucket(value) for key, value in sorted(by_session.items())},
+        "byDecisionSource": {key: finalize_bucket(value) for key, value in sorted(by_decision_source.items())},
     }
 
 
@@ -492,12 +556,46 @@ def write_markdown(report: dict[str, Any], path: Path) -> None:
         f"- Raise/open count: `{totals.get('raiseOpenCount', 0)}`",
         f"- Call count: `{totals.get('callCount', 0)}`",
         f"- Showdown count: `{totals.get('showdownCount', 0)}`",
+        f"- Rows with sessionId: `{totals.get('rowsWithSessionId', 0)}`",
+        f"- Legal actions availability: `{totals.get('legalActionsAvailabilityRate')}`",
+        f"- Legal raise spots: `{totals.get('legalRaiseSpots', 0)}`",
+        f"- Raise available but folded: `{totals.get('raiseAvailableButFolded', 0)}`",
         "",
+        "## Decision Sources",
+        "",
+        "| Source | Actions | Fold rate | Raise/open | Legal raise spots | Raise available folded |",
+        "| --- | ---: | ---: | ---: | ---: | ---: |",
+    ]
+    for source, row in (audit.get("byDecisionSource") or {}).items():
+        lines.append(
+            f"| {source} | {row.get('actions', 0)} | {row.get('foldRate')} | "
+            f"{row.get('raiseOpenCount', 0)} | {row.get('legalRaiseSpots', 0)} | "
+            f"{row.get('raiseAvailableButFolded', 0)} |"
+        )
+    lines.extend(
+        [
+            "",
+            "## Sessions",
+            "",
+            "| Session | Hands | Actions | Sources | Fold rate | Raise/open |",
+            "| --- | ---: | ---: | --- | ---: | ---: |",
+        ]
+    )
+    for session_id, row in (audit.get("bySession") or {}).items():
+        lines.append(
+            f"| {session_id} | {row.get('hands', 0)} | {row.get('actions', 0)} | "
+            f"{', '.join((row.get('decisionSources') or {}).keys()) or 'unknown'} | "
+            f"{row.get('foldRate')} | {row.get('raiseOpenCount', 0)} |"
+        )
+    lines.extend(
+        [
+            "",
         "## By Variant",
         "",
         "| Variant | Hands | Actions | Fold rate | VPIP proxy | Raise/open | Calls | Showdowns |",
         "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
-    ]
+        ]
+    )
     for variant, row in (audit.get("byVariant") or {}).items():
         lines.append(
             f"| {variant} | {row.get('hands', 0)} | {row.get('actions', 0)} | {row.get('foldRate')} | "

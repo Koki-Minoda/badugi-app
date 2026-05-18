@@ -37,6 +37,7 @@ Badugi focused raise/call no-reraise closure is P0-clean in the browser trace, a
 | Badugi raise/call betting closure | LIVE_PASS | live no-reraise closure passes without Hero re-action; live re-raise-positive path passes and proves only an opponent re-raise reopens Hero action |
 | Badugi fold event logging | PASS_LOCAL / MONITOR | `tests/e2e/badugi-fold-event-logging-regression.spec.ts` and the `badugi-flow.spec.ts -g "fold"` subset pass for hero-fold, position-specific fold, and consecutive-hand reset paths |
 | Core5 all-in draw eligibility | PASS_LOCAL / MONITOR | D01/D02/S01/S02 now enforce separate BET/DRAW/showdown eligibility: all-in seats are skipped for betting, remain draw-eligible, and retain showdown/pot eligibility |
+| Core5 all-in hand visibility | PASS_LOCAL / MONITOR | draw games are showdown-only reveal, board games can reveal after all-in action completion, and unknown variants default to showdown-only |
 | Single Draw pot semantics | PASS_LOCAL / MONITOR | S01/S02 active-hand snapshots now expose effective pot including blind/current street commitments, while terminal echo and next-hand reset remain separate |
 | routing/promotion/live RL | PASS | no production routing, promotion, live RL, or model registry change |
 
@@ -54,7 +55,7 @@ Badugi focused raise/call no-reraise closure is P0-clean in the browser trace, a
 | P1 | Complete Badugi physical mobile full-hand QA after fixes | Step6/Step7 automation passes, but real mobile already found P0s and must be rechecked after deploy |
 | P1 | Monitor Badugi pot/terminal/actor behavior in closed alpha | Badugi is core MGX scope, but remaining real-device risk must stay visible |
 
-The former release-audit P1 progression rows are closed locally as monitor items: `27TD-PROG-001`, `A5TD-PROG-001`, `27SD-PROG-001`, `A5SD-PROG-001`, `SD-POT-001`, `BADUGI-PROG-002`, and `BADUGI-BET-REOPEN-001`. Friend alpha still remains HOLD because those fixes do not clear the physical mobile Badugi P0s or remote sync.
+The former release-audit P1 progression rows are closed locally as monitor items: `27TD-PROG-001`, `A5TD-PROG-001`, `27SD-PROG-001`, `A5SD-PROG-001`, `SD-POT-001`, `BADUGI-PROG-002`, and `BADUGI-BET-REOPEN-001`. `CORE5-ALLIN-VISIBILITY-001` is also fixed local / monitor. Friend alpha still remains HOLD because those fixes do not clear the physical mobile Badugi P0s or remote sync.
 
 ## Deploy Recommendation
 

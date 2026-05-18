@@ -21,6 +21,7 @@ The live URL is the release source of truth for deploy gates, and the browser ga
 | Badugi raise/call betting closure | PASS live for no-reraise closure and re-raise-positive reopen proof |
 | Badugi fold event logging | PASS local, hero-fold / position-specific fold / consecutive-hand reset covered |
 | Core5 all-in draw eligibility | PASS local, all-in players are BET-ineligible but DRAW/showdown/pot eligible for D01/D02/S01/S02 |
+| Core5 all-in hand visibility | PASS local, draw games are showdown-only reveal and board games are action-complete reveal |
 | Single Draw pot semantics | PASS local, active snapshots expose effective pot including blind/current street commitments |
 | D02/S01/S02 desktop smoke | PASS |
 | D02/S01/S02 mobile emulation | PASS |
@@ -65,6 +66,6 @@ Badugi should be watched closely in alpha: Step6 clears the Badugi portrait mobi
 
 Triple Draw / Single Draw mapping has been re-audited: `D02` is A-5 Triple Draw, `S01` is 2-7 Single Draw, and `S02` is A-5 Single Draw. The suspected six-max BB-first issue was not reproduced in the engine; heads-up blind/button semantics were corrected and covered.
 
-The remaining Core5 progression P1 rows from the release audit are now fixed locally and downgraded to monitor: `27TD-PROG-001`, `A5TD-PROG-001`, `27SD-PROG-001`, `A5SD-PROG-001`, `SD-POT-001`, `BADUGI-PROG-002`, and `BADUGI-BET-REOPEN-001`. This does not change the overall HOLD decision because physical mobile Badugi P0s and remote sync remain open.
+The remaining Core5 progression P1 rows from the release audit are now fixed locally and downgraded to monitor: `27TD-PROG-001`, `A5TD-PROG-001`, `27SD-PROG-001`, `A5SD-PROG-001`, `SD-POT-001`, `BADUGI-PROG-002`, and `BADUGI-BET-REOPEN-001`. `CORE5-ALLIN-VISIBILITY-001` adds the variant-family visibility rule: Core5 draw hands stay hidden until showdown, while board-game all-in hands can reveal only after action completion. This does not change the overall HOLD decision because physical mobile Badugi P0s and remote sync remain open.
 
 The latest live Core5 betting-order reality audit records expected-vs-actual samples for Badugi/D01/D02/S01/S02. It found no invalid actor rows and no hero-control mismatch rows. The reported BB case is treated as `FALSE_ALARM_CONFIRMED_BY_HISTORY`, not a P0, because live action history shows actors match canonical order.

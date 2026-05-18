@@ -293,7 +293,7 @@ export default function GameLayoutBase({
     }
     return (
       <p className="text-sm text-slate-400 text-center w-full">
-        Waiting for other players…
+        {actionPanelInfo?.waitingLabel ?? "Waiting for other players…"}
       </p>
     );
   };
@@ -648,6 +648,29 @@ export default function GameLayoutBase({
                     Hero Controls
                   </h2>
                   <div
+                    data-testid="actor-readability-strip"
+                    className={`grid ${isMobileTournament ? "grid-cols-2 gap-1 text-[9px]" : "grid-cols-3 gap-2 text-[11px]"} text-slate-200`}
+                  >
+                    <div className={`rounded-xl border border-emerald-300/20 bg-emerald-400/10 ${isMobileTournament ? "px-1 py-1" : "px-2 py-1.5"}`}>
+                      <p className="uppercase tracking-wide text-emerald-200/80">Hero</p>
+                      <p className="truncate font-black text-white">{actionPanelInfo?.heroPosition ?? "Seat"}</p>
+                    </div>
+                    <div className={`rounded-xl border border-yellow-300/20 bg-yellow-300/10 ${isMobileTournament ? "px-1 py-1" : "px-2 py-1.5"}`}>
+                      <p className="uppercase tracking-wide text-yellow-100/80">Actor</p>
+                      <p className="truncate font-black text-white">
+                        {actionPanelInfo?.currentActorName
+                          ? `${actionPanelInfo.currentActorName}${actionPanelInfo?.currentActorPosition ? ` / ${actionPanelInfo.currentActorPosition}` : ""}`
+                          : "Resolving"}
+                      </p>
+                    </div>
+                    {!isMobileTournament && (
+                      <div className="rounded-xl border border-white/10 bg-black/30 px-2 py-1.5">
+                        <p className="uppercase tracking-wide text-slate-500">State</p>
+                        <p className="truncate font-black text-white">{actionPanelInfo?.waitingLabel ?? "Ready"}</p>
+                      </div>
+                    )}
+                  </div>
+                  <div
                     data-testid="action-context-panel"
                     className={`grid ${isMobileTournament ? "grid-cols-4 gap-1 text-[9px]" : "grid-cols-2 gap-2 text-[11px]"} text-slate-200`}
                   >
@@ -676,6 +699,29 @@ export default function GameLayoutBase({
                       </p>
                     </div>
                   </div>
+                  {actionPanelInfo?.recentActions?.length > 0 && (
+                    <div
+                      data-testid="recent-action-strip"
+                      className={`rounded-xl border border-white/10 bg-black/25 ${isMobileTournament ? "px-2 py-1" : "px-3 py-2"}`}
+                    >
+                      <p className={`${isMobileTournament ? "text-[9px]" : "text-[10px]"} uppercase tracking-wide text-slate-500`}>
+                        Last Actions
+                      </p>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {actionPanelInfo.recentActions.slice(-5).map((entry, index) => (
+                          <span
+                            key={`${entry.type}-${entry.seat ?? "table"}-${entry.label}-${index}`}
+                            className={`max-w-full truncate rounded-full border border-white/10 bg-slate-950/70 px-2 py-0.5 font-semibold text-slate-100 ${
+                              isMobileTournament ? "text-[9px]" : "text-[10px]"
+                            }`}
+                            title={entry.label}
+                          >
+                            {entry.label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div>{renderControlsContent()}</div>
                   {isCashGame && (
                     <button

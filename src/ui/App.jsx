@@ -10122,6 +10122,42 @@ const SAFE_RESET_PHASE = "IDLE";
     drawRound: drawRoundSrc,
     betRound: betRoundIndexSrc,
   });
+  const heroSeatIndex =
+    typeof heroSeatView?.seatIndex === "number" ? heroSeatView.seatIndex : 0;
+  const currentActorSeat = typeof controllerTurn === "number" ? controllerTurn : null;
+  const currentActorView =
+    currentActorSeat !== null
+      ? seatViews.find((seat) => seat?.seatIndex === currentActorSeat) ?? playersSrc[currentActorSeat] ?? null
+      : null;
+  const currentActorPosition =
+    currentActorSeat !== null
+      ? positionName(currentActorSeat, dealerSeatSrc, playersSrc?.length ?? NUM_PLAYERS)
+      : null;
+  const heroPositionLabel = positionName(heroSeatIndex, dealerSeatSrc, playersSrc?.length ?? NUM_PLAYERS);
+  const recentTableActions = (currentHandHistoryRef.current?.events ?? [])
+    .filter((event) => event?.type === "BET_ACTION" || event?.type === "DRAW_ACTION" || event?.type === "PHASE_TRANSITION")
+    .slice(-5)
+    .map((event) => {
+      if (event.type === "PHASE_TRANSITION") {
+        return {
+          type: "phase",
+          label: `${event.from ?? "START"} -> ${event.to}`,
+        };
+      }
+      const seat = typeof event.seat === "number" ? event.seat : null;
+      const player = seat !== null ? seatViews.find((entry) => entry?.seatIndex === seat) ?? playersSrc[seat] : null;
+      const position = seat !== null ? positionName(seat, dealerSeatSrc, playersSrc?.length ?? NUM_PLAYERS) : null;
+      const action = event.type === "DRAW_ACTION" ? "draw" : event.action;
+      const amount = Number(event.amount ?? 0) > 0 ? ` ${event.amount}` : "";
+      const discarded = Array.isArray(event.discarded) ? ` (${event.discarded.length})` : "";
+      return {
+        type: event.type === "DRAW_ACTION" ? "draw" : "bet",
+        seat,
+        seatName: player?.name ?? (seat !== null ? `Seat ${seat + 1}` : "Table"),
+        position,
+        label: `${position ? `${position} ` : ""}${player?.name ?? "Seat"} ${action}${amount}${discarded}`,
+      };
+    });
   const actionPanelInfo = {
     currentBet: Math.max(0, Number(controlsCurrentBet) || 0),
     heroBet: heroBetThisRound,
@@ -10130,10 +10166,20 @@ const SAFE_RESET_PHASE = "IDLE";
     raiseCap: fixedLimitRaiseCap,
     raiseUnit: currentRaiseUnit,
     capReached: currentRaiseCount >= fixedLimitRaiseCap,
+    heroPosition: heroPositionLabel,
+    currentActorSeat,
+    currentActorName: currentActorView?.name ?? null,
+    currentActorPosition,
+    waitingLabel:
+      currentActorSeat === null
+        ? "Resolving round"
+        : currentActorSeat === heroSeatIndex
+          ? `Your action / ${heroPositionLabel}`
+          : `Waiting for ${currentActorView?.name ?? `Seat ${currentActorSeat + 1}`}${
+              currentActorPosition ? ` / ${currentActorPosition}` : ""
+            }`,
+    recentActions: recentTableActions,
   };
-
-  const heroSeatIndex =
-    typeof heroSeatView?.seatIndex === "number" ? heroSeatView.seatIndex : 0;
   const heroEligible =
     heroPlayerForControls &&
     !heroPlayerForControls.folded &&

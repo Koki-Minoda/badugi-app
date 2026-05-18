@@ -17,7 +17,7 @@ The same physical QA pass also flagged D01 blind display risk: Hero appeared lab
 | ID | Status | Evidence | Required Follow-up |
 | --- | --- | --- | --- |
 | `PHYSICAL-MOBILE-BADUGI-WAITING-001` | OPEN | iPhone live preview screenshot | Export freeze report with `?mgxQa=mobile`, fix waiting/round-closure path, deploy, physical recheck. |
-| `BADUGI-BET-DRAW-TRANSITION-001` | FIXED_LOCAL / NEEDS_LIVE_AND_PHYSICAL_RECHECK | physical mobile live observation; focused local regression | Deploy, run live Badugi tournament mobile matrix, and recheck Badugi tournament portrait/landscape on physical mobile. |
+| `BADUGI-BET-DRAW-TRANSITION-001` | DEPLOYED / LIVE_EMULATION_BLOCKED / NEEDS_PHYSICAL_RECHECK | physical mobile live observation; focused local regression; live emulation currently stops on DRAW1 CPU action application | Fix/classify the live DRAW1 action-application failure, rerun live Badugi tournament mobile matrix, and recheck Badugi tournament portrait/landscape on physical mobile. |
 | `BADUGI-DRAW-BET-MIX-001` | OPEN | second physical screenshot | Separate focused DRAW/BET divergence regression after waiting freeze. |
 | `D01-BLIND-POSTING-001` | FIXED_LOCAL / NEEDS_PHYSICAL_RECHECK | iPhone live preview screenshot; local blind trace | Deploy, export `?mgxQa=mobile` blindPosting JSON on device, and verify BB seat shows posted BB amount. |
 

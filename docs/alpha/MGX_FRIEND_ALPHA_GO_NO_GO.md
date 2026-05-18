@@ -6,15 +6,15 @@ Date: 2026-05-18
 
 `HOLD_FOR_PHYSICAL_MOBILE_BADUGI_P0_AND_REMOTE_SYNC`
 
-The live URL is the release source of truth for deploy gates, and the browser gameplay invariant harness is the browser source of truth for action-by-action UI/controller consistency. The preview deploy now matches local head `72e306f9e3dde6ea0c1f71b39dafda4b10889ba0`, including the Core5 progression fixes through `22c0e7c`. Physical mobile QA still found Badugi tournament P0s on the live preview: hand 5/5 can stay on `Waiting for other players...` at BET Draw2 / Bet Round 2 with To Call 0 and Pot 66, and a follow-up report says a closed BET round can fail to transition into DRAW. A separate DRAW/BET divergence screenshot remains open. Friend alpha is HOLD until these physical mobile blockers are fixed, deployed, and rechecked on a real device. Remote push/sync is also unresolved.
+The live URL is the release source of truth for deploy gates, and the browser gameplay invariant harness is the browser source of truth for action-by-action UI/controller consistency. The preview deploy now matches local head `77506198e4f8c5441038b6770710d7746b2f6bfc`. Physical mobile QA still found Badugi tournament P0s on the live preview: hand 5/5 can stay on `Waiting for other players...` at BET Draw2 / Bet Round 2 with To Call 0 and Pot 66, and a follow-up report says a closed BET round can fail to transition into DRAW. The focused BET-to-DRAW fix is deployed, but live Badugi mobile emulation is still blocked by a separate DRAW1 CPU action-application failure before physical recheck can be credited. A separate DRAW/BET divergence screenshot remains open. Friend alpha is HOLD until these physical mobile blockers are fixed, deployed, and rechecked on a real device. Remote push/sync is also unresolved.
 
 ## Gate Summary
 
 | Gate | Result |
 | --- | --- |
-| Remote source sync for deployed commit | BLOCKED / unresolved, branch ahead origin by 104 commits at `72e306f` |
+| Remote source sync for deployed commit | BLOCKED / unresolved, branch ahead origin by 112 commits at `7750619` |
 | Physical mobile Badugi tournament waiting freeze | P0 OPEN, `PHYSICAL-MOBILE-BADUGI-WAITING-001` |
-| Physical mobile Badugi BET to DRAW transition | P0 FIXED_LOCAL / NEEDS_LIVE_AND_PHYSICAL_RECHECK, `BADUGI-BET-DRAW-TRANSITION-001` |
+| Physical mobile Badugi BET to DRAW transition | P0 DEPLOYED / LIVE_EMULATION_BLOCKED / NEEDS_PHYSICAL_RECHECK, `BADUGI-BET-DRAW-TRANSITION-001` |
 | Physical mobile Badugi DRAW/BET divergence | P0 OPEN, `BADUGI-DRAW-BET-MIX-001`, separate follow-up after waiting freeze |
 | Core5 phase machine integrity | PASS_LOCAL / MONITOR, legal graph / impossible transition / DRAW-BET mixed / stale merge detectors pass focused regressions and Core5 browser matrix gates with 0 P0 |
 | Live deploy snapshot | PASS, live commit == local head in latest deploy verification report |

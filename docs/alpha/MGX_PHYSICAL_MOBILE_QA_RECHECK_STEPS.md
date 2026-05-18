@@ -4,7 +4,7 @@ Date: 2026-05-18
 
 Preview URL: `https://mgx-poker.com/?mgxQa=mobile`
 
-Expected deployed commit: `72e306f9e3dde6ea0c1f71b39dafda4b10889ba0`
+Expected deployed commit: `77506198e4f8c5441038b6770710d7746b2f6bfc`
 
 ## Purpose
 
@@ -13,7 +13,7 @@ Recheck the remaining physical mobile Badugi blockers after the Core5 progressio
 ## Badugi Tournament Recheck
 
 1. Open `https://mgx-poker.com/?mgxQa=mobile`.
-2. Confirm the QA/build panel shows commit `72e306f9e3dde6ea0c1f71b39dafda4b10889ba0`.
+2. Confirm the QA/build panel shows commit `77506198e4f8c5441038b6770710d7746b2f6bfc`.
 3. Start Badugi tournament.
 4. In portrait, play at least 5 to 10 hands.
 5. Rotate to landscape and play at least 5 hands.

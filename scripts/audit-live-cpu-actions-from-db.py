@@ -348,7 +348,14 @@ def finalize_bucket(bucket: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def aggregate_rows(rows: list[dict[str, Any]], table_columns: set[str], limit_hands: int) -> dict[str, Any]:
+def filter_rows_by_session(rows: list[dict[str, Any]], session_id: str | None) -> list[dict[str, Any]]:
+    if not session_id:
+        return rows
+    requested = str(session_id)
+    return [row for row in rows if session_id_value(row_metadata(row)) == requested]
+
+
+def aggregate_rows(rows: list[dict[str, Any]], table_columns: set[str], limit_hands: int, session_id: str | None = None) -> dict[str, Any]:
     by_variant: dict[str, dict[str, Any]] = defaultdict(init_bucket)
     by_mode: dict[str, dict[str, Any]] = defaultdict(init_bucket)
     by_variant_mode: dict[str, dict[str, Any]] = defaultdict(init_bucket)
@@ -437,6 +444,7 @@ def aggregate_rows(rows: list[dict[str, Any]], table_columns: set[str], limit_ha
     recent_hand_count = len({str(row.get("hand_id")) for row in rows if row.get("hand_id")})
     return {
         "limitHands": limit_hands,
+        "sessionIdFilter": session_id,
         "recentHandCount": min(recent_hand_count, limit_hands),
         "rowsRead": len(rows),
         "cpuIdentityAvailability": cpu_identity,
@@ -544,6 +552,7 @@ def write_markdown(report: dict[str, Any], path: Path) -> None:
         f"- DB configured: `{report['database']['configured']}`",
         f"- DB dialect: `{report['database']['dialect']}`",
         f"- Source table: `{report.get('sourceTable')}`",
+        f"- Session filter: `{audit.get('sessionIdFilter') or 'none'}`",
         f"- Recent hands: `{audit.get('recentHandCount', 0)}`",
         f"- CPU identity: `{audit.get('cpuIdentityAvailability', 'unknown')}`",
         f"- Decision source: `{audit.get('decisionSourceAvailability', 'unknown')}`",
@@ -641,6 +650,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--limit-hands", type=int, default=500)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--session-id", default=None, help="Optional QA session id filter. Does not print raw player identifiers.")
     args = parser.parse_args()
 
     output = args.output if args.output.is_absolute() else ROOT / args.output
@@ -664,7 +674,8 @@ def main() -> int:
     table_columns = set()
     for shape in shapes:
         table_columns |= shape.columns
-    audit = aggregate_rows(rows, table_columns, max(1, args.limit_hands))
+    filtered_rows = filter_rows_by_session(rows, args.session_id)
+    audit = aggregate_rows(filtered_rows, table_columns, max(1, args.limit_hands), args.session_id)
     comparison, comparison_notes = classify_comparison(audit)
     gaps: list[str] = []
     if audit["cpuIdentityAvailability"] != "CPU_ID_AVAILABLE":
@@ -673,6 +684,8 @@ def main() -> int:
         gaps.append("decisionSource/fallbackReason/legalActions are not reliably persisted in DB action rows.")
     if not rows:
         gaps.append("No recent supported action rows were readable from the configured DB.")
+    if args.session_id and not filtered_rows:
+        gaps.append("No action rows matched the requested sessionId filter.")
 
     report = {
         "generatedAt": now_iso(),
@@ -697,6 +710,7 @@ def main() -> int:
                 "output": str(output.relative_to(ROOT)),
                 "markdown": str(md_output.relative_to(ROOT)),
                 "sourceTable": source_table,
+                "sessionId": args.session_id,
                 "recentHandCount": audit["recentHandCount"],
                 "cpuIdentityAvailability": audit["cpuIdentityAvailability"],
                 "decisionSourceAvailability": audit["decisionSourceAvailability"],

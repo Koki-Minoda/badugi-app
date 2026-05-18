@@ -29,6 +29,8 @@ function normalizeSnapshot(snapshot = {}) {
       ? snapshot.nextTurn
       : typeof snapshot.turn === "number"
       ? snapshot.turn
+      : typeof snapshot.currentActor === "number"
+      ? snapshot.currentActor
       : typeof metadata.actingPlayerIndex === "number"
       ? metadata.actingPlayerIndex
       : null;

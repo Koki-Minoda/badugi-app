@@ -7,6 +7,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { flushSync } from "react-dom";
 import { DEFAULT_SEAT_TYPES, DEFAULT_STARTING_STACK, TOURNAMENT_STRUCTURE } from "../tournament/tournamentStructure";
 import { formatComment } from "./utils/commentCatalog.js";
 import GameRegistry from "../games/_core/GameRegistry";
@@ -811,6 +812,7 @@ export default function App() {
   const handCountRef = useRef(0);
   const tableMetadataRef = useRef({});
   const [turn, setTurn] = useState(0);
+  const [, bumpControllerSyncVersion] = useState(0);
   const normalizedDrawVariantForRounds = normalizeAppVariantId(gameVariant);
   const MAX_DRAWS = [
     APP_VARIANT_IDS.S01,
@@ -933,6 +935,7 @@ const SAFE_RESET_PHASE = "IDLE";
   }, [controllerSnapshot, tableConfig]);
   const [deck, setDeck] = useState([]);
   const [engineState, setEngineState] = useState(null);
+  const [controllerUiSnapshotState, setControllerUiSnapshotState] = useState(null);
   const engineStateRef = useRef(null);
   const { engine } = useGameEngine();
 
@@ -1116,6 +1119,7 @@ const SAFE_RESET_PHASE = "IDLE";
     } catch (error) {
       console.warn("[UI-ADAPTER] session controller snapshot failed", error);
     }
+    if (controllerUiSnapshotState) return controllerUiSnapshotState;
     if (controllerSnapshot) return controllerSnapshot;
     try {
       if (sessionController && sessionState && typeof sessionController.getUiSnapshot === "function") {
@@ -1639,6 +1643,13 @@ const SAFE_RESET_PHASE = "IDLE";
       }
     }
     syncEngineSnapshot(engineSnapshot);
+    setControllerUiSnapshotState(engineSnapshot);
+    if (typeof snapshotNextTurn === "number" || snapshotNextTurn === null) {
+      flushSync(() => {
+        setTurn(snapshotNextTurn);
+      });
+    }
+    bumpControllerSyncVersion((version) => version + 1);
     const shouldApplyControllerSnapshotDirectly =
       !isSingleTableBadugi || Boolean(snapshot.phase || snapshot.street || snapshot.lastHandResult);
     if (shouldApplyControllerSnapshotDirectly) {
@@ -7092,6 +7103,8 @@ const SAFE_RESET_PHASE = "IDLE";
         ? snapshotWithDeck.nextTurn
         : typeof snapshotWithDeck?.turn === "number"
         ? snapshotWithDeck.turn
+        : typeof snapshotWithDeck?.currentActor === "number"
+        ? snapshotWithDeck.currentActor
         : typeof snapshotWithDeck?.metadata?.actingPlayerIndex === "number"
         ? snapshotWithDeck.metadata.actingPlayerIndex
         : null;
@@ -7149,6 +7162,7 @@ const SAFE_RESET_PHASE = "IDLE";
     };
     engineStateRef.current = normalizedSnapshot;
     setEngineState(normalizedSnapshot);
+    setControllerUiSnapshotState(normalizedSnapshot);
     console.log("[DECK][UI_AFTER_SYNC]", {
       context: "[SYNC_ENGINE_SNAPSHOT]",
       deck: normalizedSnapshot.deck,

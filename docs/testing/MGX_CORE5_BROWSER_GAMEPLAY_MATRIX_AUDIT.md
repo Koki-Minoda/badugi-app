@@ -226,4 +226,5 @@ Artifacts:
 ## Next Fix List
 
 1. Keep S01/S02 late-hand draw/terminal regression, D02 draw fallback, D01 terminal collect, D01 mobile stale-controls fix, tournament draw-lowball controller-action fallback, and live matrix monitor rows under release-gate monitor.
-2. Keep friend alpha HOLD until physical mobile QA and remote sync are resolved.
+2. D01 blind posting / display invariant now has a focused local gate: engine posts SB/BB, UI position badges use controller `dealerIndex`, and browser export includes `blindPosting` expected/actual/displayed values. Physical mobile must still verify this on live after deploy.
+3. Keep friend alpha HOLD until physical mobile QA and remote sync are resolved.

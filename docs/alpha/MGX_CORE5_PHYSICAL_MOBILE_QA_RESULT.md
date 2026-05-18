@@ -12,6 +12,8 @@ Deployed commit: see `reports/alpha/live-deploy-verification.json`
 
 Physical mobile QA has now produced a P0 report outside this shell: live iPhone Badugi tournament can remain on `Waiting for other players...` at hand 5/5, phase BET, Draw 2, Bet Round 2, Hero SB, To Call 0, Pot 66, with folded players visible. Automated mobile browser/emulation and live layout evidence are not sufficient to clear this physical-device blocker.
 
+The same QA stream also flagged D01 blind display risk: Hero appeared labeled `BB` with `BET 0`, Pot 30, and To Call 20. Local engine/UI/browser audit classifies this as a fixed-local display/position mismatch risk, not confirmed BB non-payment; physical recheck must export the `blindPosting` report after deploy.
+
 Last-mile check: 2026-05-17.
 
 Physical device tested: iPhone live preview screenshot supplied by QA.
@@ -22,6 +24,7 @@ Physical device tested: iPhone live preview screenshot supplied by QA.
 | --- | --- | --- | --- | --- | --- |
 | `PHYSICAL-MOBILE-BADUGI-WAITING-001` | iPhone | Badugi | Tournament | OPEN | Waiting freeze at BET Draw2 / Bet Round 2 / hand 5/5. Needs freeze export JSON and post-fix physical recheck. |
 | `BADUGI-DRAW-BET-MIX-001` | iPhone | Badugi | Tournament | OPEN | DRAW/BET label/control divergence observed separately; defer focused fix until waiting freeze is closed. |
+| `D01-BLIND-POSTING-001` | iPhone | D01 | Cash/Tournament | FIXED_LOCAL / NEEDS_PHYSICAL_RECHECK | Local D01 trace shows SB/BB actual and displayed posts align after dealer-index position fix. Escalate to P0 if exported `blindPosting` JSON shows BB actual/displayed post is 0. |
 
 ## Android Chrome Checklist
 

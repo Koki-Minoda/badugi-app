@@ -18,3 +18,15 @@ Preview deploy now matches local head `3e597c515f8e3874cf3685db9d9fa45dc2c4ea14`
 Use `https://mgx-poker.com/?mgxQa=mobile` and follow `docs/alpha/MGX_PHYSICAL_MOBILE_QA_RECHECK_STEPS.md`.
 
 `BADUGI-BET-DRAW-TRANSITION-001` and `BADUGI-DRAW1-CPU-ACTION-001` are fixed locally and deployed at `3e597c515f8e3874cf3685db9d9fa45dc2c4ea14`; live Badugi tournament emulation now passes the 20-hand portrait and landscape gates. If either physical mobile issue reproduces, export the freeze report JSON and save a screenshot. Friend alpha remains HOLD until real-device recheck passes and remote sync is resolved.
+
+## Required Recheck Evidence
+
+- Device/browser.
+- Live build commit and bundle shown in QA panel.
+- QA sessionId.
+- D01 cash -> Cash Out -> Menu -> Badugi tournament result.
+- Badugi portrait 10-hand result.
+- Badugi landscape 5-hand result.
+- Freeze export status.
+- CPU session export status.
+- If CPU behavior feels fold-heavy, exported CPU session JSON and matching DB audit by sessionId.

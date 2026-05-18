@@ -8,6 +8,12 @@ Date: 2026-05-19
 
 The live URL is the release source of truth for deploy gates, and the browser gameplay invariant harness is the browser source of truth for action-by-action UI/controller consistency. The preview deploy now matches local head `3e597c515f8e3874cf3685db9d9fa45dc2c4ea14` and includes the cross-variant reset, CPU telemetry persistence, and Badugi tournament DRAW1 CPU action fix. Live cross-variant contamination recheck passes. The focused live DRAW1 CPU action regression passes, and Badugi tournament portrait/landscape live emulation completes 20 hands each with 0 invariant failures. Friend alpha is still HOLD because the original physical mobile Badugi waiting freeze / DRAW-BET divergence must be rechecked on a real device, and remote source sync is still unresolved.
 
+The replay/table readability audit is complete as a structural WARN, not a gameplay P0. It identifies action visibility, position clarity, replay grouping, and mobile context as P1 UX/readability work that should be addressed before broad friend feedback, but it does not supersede the physical Badugi and remote-sync release blockers.
+
+The tournament AI/structure audit is also complete as a structural WARN. The minutes-based Store/Regional/National/World preset framework is viable, with low simulated heads-up endless risk, but Store Turbo is intentionally push/fold heavy. More importantly, the measured pro-overlay CPU path is not tournament-alpha ready: it folds `97.75%` of decisions and produces only `0.12` meaningful decisions per hand. The heuristic path is not fold-heavy and produces `16.29` meaningful decisions per hand. Friend alpha should not use the pro-overlay path for tournament feedback until that path is confirmed inactive or tuned.
+
+This pass adds the small release gates requested for the remaining work: physical QA recheck steps now require sessionId/freeze export/CPU export evidence, tournament presets are code-defined and validated by a structure gate, a fast Core5 long-run soak wrapper exists, and table readability has low-risk actor/action context added to the decision panel. These are readiness improvements; they do not clear the real-device Badugi P0 rows or remote sync.
+
 ## Gate Summary
 
 | Gate | Result |
@@ -28,6 +34,11 @@ The live URL is the release source of truth for deploy gates, and the browser ga
 | Core5 all-in hand visibility | PASS local, draw games are showdown-only reveal and board games are action-complete reveal |
 | Single Draw pot semantics | PASS local, active snapshots expose effective pot including blind/current street commitments |
 | Core5 CPU cash strategy sanity | P1 OPEN / SOURCE_CONFIRMATION_NEEDED, rule-based D01/D02/S01/S02 controller path is not fold-heavy, but `--cpu=rl` pro-overlay path is extremely nitty in 6max cash; explicit CPU decision metadata is deployed and needs targeted QA |
+| Tournament structure audit | PASS_WITH_NOTES, minutes-based presets are viable; Store Turbo is very push/fold and should be quick/custom only |
+| Tournament CPU realism | WARN / P1, heuristic path is playable for audit but pro-overlay is too nit/passive for tournament alpha feedback |
+| Tournament meaningful decision density | SOURCE_DEPENDENT, heuristic `16.29` meaningful decisions/hand vs pro-overlay `0.12`; Badugi still needs browser/live decision-density measurement |
+| Long-run soak gate | PASS_WITH_MONITOR locally for fast gate: 100/100 hands, 2,431 actions, no actor/terminal/action-application/freeze blockers; PHASE/POT monitor rows remain |
+| Replay/table readability audit | WARN / P1 roadmap defined; low-risk actor/action context strip added for `UI-ACTION-VISIBILITY-001` and `UI-POSITION-CLARITY-001`; replay grouping remains open |
 | D02/S01/S02 desktop smoke | PASS |
 | D02/S01/S02 mobile emulation | PASS |
 | D02/S01/S02 Triple Draw actor / mapping audit | PASS |
@@ -66,6 +77,8 @@ The live URL is the release source of truth for deploy gates, and the browser ga
 ## Remaining Required Action
 
 Recheck the physical Badugi mobile P0s against `https://mgx-poker.com/?mgxQa=mobile` using the D01 cash -> Cash Out/Menu -> Badugi tournament path. Confirm the live CPU decision source for cash games by QA sessionId using the deployed telemetry, complete Android Chrome and iPhone Safari/Chrome QA, and push `feature/d-04-next-actor-unify` from a credentialed environment. Only then can the Core5 friend alpha move from HOLD to GO.
+
+Before broad tournament feedback, confirm that friend-alpha tournament tables are not routed to the current pro-overlay CPU path. If pro-overlay is active, schedule AI tuning as a P1 after physical/mobile P0s are cleared; do not mask the issue by changing tournament structure alone.
 
 Badugi should be watched closely in alpha: Step6 clears the Badugi portrait mobile UI blocker, Step7 clears the automated long-run active-pot / terminal-transition blocker, live no-reraise closure evidence confirms the raiser is not reselected after all remaining players call/fold, and live re-raise-positive evidence confirms Hero action reopens only after an opponent re-raises.
 

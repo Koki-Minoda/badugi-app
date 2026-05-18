@@ -8,6 +8,10 @@ Date: 2026-05-19
 
 Badugi focused raise/call no-reraise closure is P0-clean in the browser trace, and the re-raise-positive live proof passes. The preview deploy now matches local head `3e597c515f8e3874cf3685db9d9fa45dc2c4ea14` and includes the cross-variant controller reset fix, CPU decision telemetry persistence, and Badugi tournament DRAW1 CPU action fix; live cross-variant contamination recheck passes. The Core5 local/live browser matrices remain important coverage, but physical mobile QA has found live Badugi tournament P0s: hand 5/5 can remain stuck on `Waiting for other players...` at BET Draw2 / Bet Round 2 with To Call 0 and Pot 66, and a follow-up report says a closed BET round can fail to transition into DRAW. The focused BET-to-DRAW and DRAW1 CPU action fixes are deployed and live Badugi tournament emulation now passes portrait and landscape. A separate DRAW/BET divergence screenshot remains open until physical recheck. Remote sync is unresolved, and friend alpha is HOLD until the physical recheck and remote sync are cleared.
 
+The tournament structure / AI feedback audit adds a quality WARN. Minutes-based tournament presets are viable, and the current simulated structures avoid endless heads-up by eventually forcing sub-10BB play. However, tournament CPU quality depends strongly on decision source: heuristic D01/D02/S01/S02 produces playable audit density, while pro-overlay folds `97.75%` of decisions and collapses meaningful decision density to `0.12` per hand. This does not change gameplay rules or routing, but it blocks pro-overlay as a friend-alpha tournament opponent source until the active live source is confirmed or tuned.
+
+The remaining-readiness pass adds code-level tournament preset definitions, a structure validation gate, a fast long-run soak wrapper, and low-risk table actor/action readability context. Physical QA instructions now explicitly require sessionId, CPU export, and freeze export evidence. These are supporting release gates; they do not override the physical Badugi P0 recheck requirement.
+
 ## Gate Results
 
 | Gate | Result | Notes |
@@ -29,6 +33,7 @@ Badugi focused raise/call no-reraise closure is P0-clean in the browser trace, a
 | Core 5 live browser gameplay smoke | PARTIAL post-deploy | 24/30 latest smoke cases reached gameplay and passed; 6 Triple Draw cases were blocked before launch by live `/auth/signup` 504, so they need auth-stable rerun |
 | Core 5 live desktop browser matrix | PASS | 200/200 live hands complete; no actor P0, terminal P0, illegal reopen, UI/controller divergence, action application failure, or freeze |
 | Core 5 live mobile browser matrix | PASS | 200/200 live mobile-emulated hands complete across portrait/landscape; no blocking gameplay invariant violation |
+| Core5 long-run soak fast gate | PASS_WITH_MONITOR | 100/100 hands and 2,431 actions completed across Core5 cash/tournament desktop/portrait; no actor/terminal/action-application/freeze blockers; PHASE/POT monitor rows remain |
 | Core 5 active status | PENDING recheck after config change | Badugi/D01/D02/S01/S02 should be alpha-playable and launchable |
 | Core 5 actor order | PASS | live action-history audit across Badugi/D01/D02/S01/S02 recorded expected vs actual actor samples and found 0 invalid actor rows / 0 hero-control mismatches |
 | Core 5 orientation | PASS | cash and tournament support portrait and landscape for Badugi/D01/D02/S01/S02 |
@@ -43,6 +48,10 @@ Badugi focused raise/call no-reraise closure is P0-clean in the browser trace, a
 | Core5 all-in hand visibility | PASS_LOCAL / MONITOR | draw games are showdown-only reveal, board games can reveal after all-in action completion, and unknown variants default to showdown-only |
 | Single Draw pot semantics | PASS_LOCAL / MONITOR | S01/S02 active-hand snapshots now expose effective pot including blind/current street commitments, while terminal echo and next-hand reset remain separate |
 | Core5 CPU cash strategy sanity | P1 OPEN / SOURCE_CONFIRMATION_NEEDED | local telemetry shows D01/D02/S01/S02 rule-based controller CPUs are not fold-heavy, but the `--cpu=rl` pro-overlay path folds 92.6%-97.3% in 6max cash. CPU decision telemetry is deployed and needs targeted QA by sessionId. |
+| Tournament structure quality | PASS_WITH_NOTES | minutes-based Store/Regional/National/World candidates are viable; Store Turbo is push/fold heavy and should remain a quick/custom preset |
+| Tournament CPU realism | WARN / P1 | heuristic path is not fold-heavy, but pro-overlay tournament path folds 97.75% and is not alpha-ready as a gameplay experience |
+| Tournament meaningful decision density | WARN / SOURCE_DEPENDENT | heuristic has 16.29 meaningful decisions per hand; pro-overlay has 0.12; Badugi still needs browser/live telemetry because the Node runner skips Badugi |
+| Table action readability quick wins | IMPROVED_LOCAL / MONITOR | decision panel now mirrors Hero position, current actor, waiting target, and recent actions; replay grouping remains future P1 work |
 | routing/promotion/live RL | PASS | no production routing, promotion, live RL, or model registry change |
 
 ## Next Bugfix Priorities
@@ -56,7 +65,10 @@ Badugi focused raise/call no-reraise closure is P0-clean in the browser trace, a
 | P0 | Reproduce/fix physical DRAW/BET divergence | real-device screenshot remains open as `BADUGI-DRAW-BET-MIX-001` even though local phase-machine detectors pass |
 | P1 | Recheck mobile tournament layout on real Safari/Chrome | automation passes, but this was originally found on real-device/browser tournament views |
 | P1 | Confirm live CPU decision source | physical preview cash felt fold-heavy; local telemetry points to pro-overlay nit behavior if that path is active live |
+| P1 | Confirm tournament CPU source | tournament audit shows pro-overlay is too nit/passive; friend-alpha tournaments should use a confirmed non-pro-overlay path or wait for tuning |
+| P2 | Lock minutes-based tournament presets | Store/Regional/National/World structure candidates are documented; preserve eventual sub-10BB pressure to avoid endless HU |
 | P2 | Keep live browser matrix in deploy checks | live browser gameplay is now clean, but it should be rerun after any controller/UI/deploy change |
+| P2 | Keep fast long-run soak in local release checks | fast soak completes without hard blockers, while PHASE/POT monitor rows remain tracked separately |
 | P2 | Re-run tournament integration after future tournament changes | local tournament integration expansion passes; keep it as a regression gate |
 | P2 | Keep Badugi long-run restore gate in CI/release checks | Step7 cleared the blocker, but this should stay protected against regression |
 | P1 | Complete Badugi physical mobile full-hand QA after fixes | Step6/Step7 automation passes, but real mobile already found P0s and must be rechecked after deploy |

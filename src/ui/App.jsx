@@ -2508,6 +2508,13 @@ const SAFE_RESET_PHASE = "IDLE";
       const basePlayers = playersRef.current ?? players;
       if (!Array.isArray(basePlayers) || basePlayers.length === 0) return false;
       const seatCount = basePlayers.length;
+      const drawTurn =
+        typeof controllerTurn === "number" && !Number.isNaN(controllerTurn)
+          ? controllerTurn
+          : turn;
+      if (typeof drawTurn === "number" && drawTurn !== turn) {
+        setTurn(drawTurn);
+      }
       const ensureNextSeat = () => {
         const fallback = helpers.findNextDrawActorSeat(basePlayers);
         if (fallback === null) {
@@ -2534,17 +2541,17 @@ const SAFE_RESET_PHASE = "IDLE";
         setTurn(fallback);
         return true;
       };
-      if (!Number.isInteger(turn) || turn < 0 || turn >= seatCount) {
+      if (!Number.isInteger(drawTurn) || drawTurn < 0 || drawTurn >= seatCount) {
         return ensureNextSeat() || false;
       }
       const snapshot = basePlayers.map(clonePlayerState).filter(Boolean);
-      if (turn === 0 && shouldWaitForHeroDrawTurn({ phase, turn, players: snapshot })) {
+      if (drawTurn === 0 && shouldWaitForHeroDrawTurn({ phase, turn: drawTurn, players: snapshot })) {
         // Hero acts manually only while the hero is still an eligible draw actor.
         return false;
       }
-      const currentSeat = snapshot[turn];
+      const currentSeat = snapshot[drawTurn];
       if (!currentSeat || !isSeatEligibleForDraw(currentSeat)) {
-        const nxt = helpers.findNextDrawActorSeat(snapshot, turn);
+        const nxt = helpers.findNextDrawActorSeat(snapshot, drawTurn);
         if (nxt !== null) {
           setTurn(nxt);
         } else {
@@ -2557,7 +2564,7 @@ const SAFE_RESET_PHASE = "IDLE";
         return true;
       }
       if (currentSeat.hasDrawn) {
-        const nxt = helpers.findNextDrawActorSeat(snapshot, turn + 1);
+        const nxt = helpers.findNextDrawActorSeat(snapshot, drawTurn + 1);
         if (nxt !== null) {
           setTurn(nxt);
         } else {
@@ -2569,7 +2576,7 @@ const SAFE_RESET_PHASE = "IDLE";
         }
         return true;
       }
-      const seatToAct = turn;
+      const seatToAct = drawTurn;
       const me = snapshot[seatToAct]
         ? {
             ...snapshot[seatToAct],
@@ -2889,6 +2896,7 @@ const SAFE_RESET_PHASE = "IDLE";
     aiDecisionContext,
     activeAiTierConfig,
     isSingleTableControllerDrawGame,
+    controllerTurn,
     tryControllerBetAction,
   ]);
 
@@ -6554,7 +6562,11 @@ const SAFE_RESET_PHASE = "IDLE";
       forceSeatDraw: (seat = turn, payload = {}) => {
         const currentPhase = phaseRef.current ?? phase;
         if (currentPhase !== "DRAW") return false;
-        if (typeof seat !== "number" || seat !== turn) return false;
+        const currentDrawTurn =
+          typeof controllerTurn === "number" && !Number.isNaN(controllerTurn)
+            ? controllerTurn
+            : turn;
+        if (typeof seat !== "number" || seat !== currentDrawTurn) return false;
         if (seat === 0) {
           return drawSelectedRef.current();
         }
@@ -8969,7 +8981,13 @@ const SAFE_RESET_PHASE = "IDLE";
         });
         return;
       }
-      if (shouldWaitForHeroDrawTurn({ phase, turn, players: activePlayers })) {
+      const effectiveDrawTurn =
+        phase === "DRAW" &&
+        typeof controllerTurn === "number" &&
+        !Number.isNaN(controllerTurn)
+          ? controllerTurn
+          : turn;
+      if (shouldWaitForHeroDrawTurn({ phase, turn: effectiveDrawTurn, players: activePlayers })) {
         return;
       }
       if (phase === "DRAW") {

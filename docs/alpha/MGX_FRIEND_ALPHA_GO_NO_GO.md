@@ -24,6 +24,7 @@ The live URL is the release source of truth for deploy gates, and the browser ga
 | Core5 all-in draw eligibility | PASS local, all-in players are BET-ineligible but DRAW/showdown/pot eligible for D01/D02/S01/S02 |
 | Core5 all-in hand visibility | PASS local, draw games are showdown-only reveal and board games are action-complete reveal |
 | Single Draw pot semantics | PASS local, active snapshots expose effective pot including blind/current street commitments |
+| Core5 CPU cash strategy sanity | P1 OPEN / SOURCE_CONFIRMATION_NEEDED, rule-based D01/D02/S01/S02 controller path is not fold-heavy, but `--cpu=rl` pro-overlay path is extremely nitty in 6max cash |
 | D02/S01/S02 desktop smoke | PASS |
 | D02/S01/S02 mobile emulation | PASS |
 | D02/S01/S02 Triple Draw actor / mapping audit | PASS |
@@ -61,7 +62,7 @@ The live URL is the release source of truth for deploy gates, and the browser ga
 
 ## Remaining Required Action
 
-Recheck the physical Badugi mobile P0s against `https://mgx-poker.com/?mgxQa=mobile`, rerun the 6 live smoke rows that hit `/auth/signup` 504, complete Android Chrome and iPhone Safari/Chrome QA, and push `feature/d-04-next-actor-unify` from a credentialed environment. Only then can the Core5 friend alpha move from HOLD to GO.
+Recheck the physical Badugi mobile P0s against `https://mgx-poker.com/?mgxQa=mobile`, rerun the 6 live smoke rows that hit `/auth/signup` 504, confirm the live CPU decision source for cash games, complete Android Chrome and iPhone Safari/Chrome QA, and push `feature/d-04-next-actor-unify` from a credentialed environment. Only then can the Core5 friend alpha move from HOLD to GO.
 
 Badugi should be watched closely in alpha: Step6 clears the Badugi portrait mobile UI blocker, Step7 clears the automated long-run active-pot / terminal-transition blocker, live no-reraise closure evidence confirms the raiser is not reselected after all remaining players call/fold, and live re-raise-positive evidence confirms Hero action reopens only after an opponent re-raises.
 

@@ -39,6 +39,7 @@ Badugi focused raise/call no-reraise closure is P0-clean in the browser trace, a
 | Core5 all-in draw eligibility | PASS_LOCAL / MONITOR | D01/D02/S01/S02 now enforce separate BET/DRAW/showdown eligibility: all-in seats are skipped for betting, remain draw-eligible, and retain showdown/pot eligibility |
 | Core5 all-in hand visibility | PASS_LOCAL / MONITOR | draw games are showdown-only reveal, board games can reveal after all-in action completion, and unknown variants default to showdown-only |
 | Single Draw pot semantics | PASS_LOCAL / MONITOR | S01/S02 active-hand snapshots now expose effective pot including blind/current street commitments, while terminal echo and next-hand reset remain separate |
+| Core5 CPU cash strategy sanity | P1 OPEN / SOURCE_CONFIRMATION_NEEDED | local telemetry shows D01/D02/S01/S02 rule-based controller CPUs are not fold-heavy, but the `--cpu=rl` pro-overlay path folds 92.6%-97.3% in 6max cash. Badugi still needs browser-level CPU trace because the Node runner skips the JSX-dependent Badugi browser controller path |
 | routing/promotion/live RL | PASS | no production routing, promotion, live RL, or model registry change |
 
 ## Next Bugfix Priorities
@@ -49,6 +50,7 @@ Badugi focused raise/call no-reraise closure is P0-clean in the browser trace, a
 | P0 | Fix physical Badugi waiting freeze | real-device live QA found `PHYSICAL-MOBILE-BADUGI-WAITING-001`; friend alpha remains HOLD |
 | P0 | Reproduce/fix physical DRAW/BET divergence | real-device screenshot remains open as `BADUGI-DRAW-BET-MIX-001` even though local phase-machine detectors pass |
 | P1 | Recheck mobile tournament layout on real Safari/Chrome | automation passes, but this was originally found on real-device/browser tournament views |
+| P1 | Confirm live CPU decision source | physical preview cash felt fold-heavy; local telemetry points to pro-overlay nit behavior if that path is active live |
 | P2 | Keep live browser matrix in deploy checks | live browser gameplay is now clean, but it should be rerun after any controller/UI/deploy change |
 | P2 | Re-run tournament integration after future tournament changes | local tournament integration expansion passes; keep it as a regression gate |
 | P2 | Keep Badugi long-run restore gate in CI/release checks | Step7 cleared the blocker, but this should stay protected against regression |

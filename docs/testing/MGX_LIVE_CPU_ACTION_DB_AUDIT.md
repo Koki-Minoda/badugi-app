@@ -1,6 +1,6 @@
 # MGX Live CPU Action DB Audit
 
-Date: 2026-05-18
+Date: 2026-05-19
 
 ## Scope
 
@@ -126,7 +126,7 @@ New action metadata added for CPU decisions:
 - `canRaise`
 - `handStrengthBucket`
 
-`?mgxQa=mobile` now exposes a QA session id, CPU decision summary, and CPU session export. The next live DB audit should be run after deploy and targeted physical QA, then filtered by recent rows/session id.
+`?mgxQa=mobile` now exposes a QA session id, CPU decision summary, and CPU session export. The telemetry persistence is deployed in preview head `3e597c515f8e3874cf3685db9d9fa45dc2c4ea14`, which includes CPU telemetry commits `b75e424`, `b0b1a2e`, and `8638c79`. The next live DB audit should be run after targeted physical QA and filtered by recent rows/session id.
 
 ## Comparison to Node Sanity
 
@@ -140,10 +140,9 @@ However, because decision source is missing for most actions and mode is not rel
 
 `CORE5-CPU-FOLD-001` remains a P1 investigation item, but the current DB evidence does not justify an immediate CPU strategy change.
 
-Next action should be telemetry, not tuning:
+Next action should be targeted QA and DB audit by session id, not tuning:
 
-- persist explicit CPU identity
-- persist decision source
-- persist fallback reason
-- persist compact legal action info
-- persist mode and variant on every action row
+- run `?mgxQa=mobile` cash sessions for D01/D02/Badugi
+- record the visible QA session id
+- export the CPU session QA JSON if fold-heavy behavior is observed
+- rerun `scripts/audit-live-cpu-actions-from-db.py` against recent rows / session id

@@ -1,6 +1,6 @@
 # MGX Alpha Live Deploy Verification
 
-Date: 2026-05-18
+Date: 2026-05-19
 
 ## Live Source Of Truth
 
@@ -8,7 +8,7 @@ Date: 2026-05-18
 | --- | --- |
 | Live URL | `https://mgx-poker.com/` |
 | Health endpoint | `https://mgx-poker.com/api/health` |
-| Verification report | `reports/alpha/live-deploy-verification-after-cross-variant-reset.json` |
+| Verification report | `reports/alpha/live-deploy-verification-after-draw1-cpu-fix.json` |
 | Live layout evidence | `reports/alpha/live-core5-layout-evidence-v2.json` |
 | Live tournament fatal report | `reports/alpha/live-core5-tournament-runtime-fatal.json` |
 | Live Badugi betting closure report | `reports/alpha/live-badugi-betting-closure.json` |
@@ -20,16 +20,16 @@ Date: 2026-05-18
 
 | Field | Result |
 | --- | --- |
-| localHead | `77265c4bc7718085cc7d9d686f481ec77f66ffbd` |
-| deployedCommit | `77265c4bc7718085cc7d9d686f481ec77f66ffbd` |
-| deployedBundle | `/assets/index-CzoXsOzq.js` |
+| localHead | `3e597c515f8e3874cf3685db9d9fa45dc2c4ea14` |
+| deployedCommit | `3e597c515f8e3874cf3685db9d9fa45dc2c4ea14` |
+| deployedBundle | `/assets/index-DT960jbi.js` |
 | matched | `true` |
 | health | `PASS` |
-| buildTime | `2026-05-18T13:54:42.923Z` |
+| buildTime | `2026-05-18T21:49:29.883Z` |
 
 ## Live Blocker Evidence
 
-The live deploy snapshot now matches local head `77265c4bc7718085cc7d9d686f481ec77f66ffbd` in `reports/alpha/live-deploy-verification-after-cross-variant-reset.json`. The deployed build includes the cross-variant session reset commits (`17c6d16`, `e2a3f96`) plus the later live CPU DB audit docs. `/api/health` returns `{"status":"ok","env":"prod","db":"ok"}`.
+The live deploy snapshot now matches local head `3e597c515f8e3874cf3685db9d9fa45dc2c4ea14` in `reports/alpha/live-deploy-verification-after-draw1-cpu-fix.json`. The deployed build includes the cross-variant session reset commits (`17c6d16`, `e2a3f96`), CPU telemetry commits (`b75e424`, `b0b1a2e`, `8638c79`), and the Badugi tournament DRAW1 CPU action fix. `/api/health` returns `{"status":"ok","env":"prod","db":"ok"}`.
 
 ```txt
 npx playwright test tests/e2e/live-core5-tournament-runtime-fatal.spec.ts --project=badugi-flow
@@ -52,7 +52,7 @@ LIVE_PREVIEW=1 npx playwright test tests/e2e/cross-variant-session-contamination
 # 4 passed
 ```
 
-The remaining live Badugi tournament mobile blocker is not stale D01/D02 controller reuse. The 20-hand live mobile Badugi tournament matrix fails in both portrait and landscape at DRAW1 CPU action application with `controller action returned no snapshot`; track this as `BADUGI-DRAW1-CPU-ACTION-001`.
+The remaining live Badugi tournament mobile blocker was not stale D01/D02 controller reuse. The 20-hand live mobile Badugi tournament matrix had failed in both portrait and landscape at DRAW1 CPU action application with `controller action returned no snapshot`; this is tracked as `BADUGI-DRAW1-CPU-ACTION-001`. After deploying `3e597c515f8e3874cf3685db9d9fa45dc2c4ea14`, the focused live DRAW1 CPU regression passes, Badugi tournament portrait live emulation completes 20/20 hands with 0 invariant failures, and the landscape live recheck completes 20/20 hands with 0 invariant failures. The combined two-viewport run still intermittently hits live `/auth/signup` 504 before gameplay on the second leg; classify that as live auth infrastructure, not a gameplay invariant failure.
 
 Live layout evidence now passes:
 

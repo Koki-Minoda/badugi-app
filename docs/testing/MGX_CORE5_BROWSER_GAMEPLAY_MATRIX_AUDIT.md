@@ -1,6 +1,6 @@
 # MGX Core5 Browser Gameplay Matrix Audit
 
-Date: 2026-05-18
+Date: 2026-05-19
 
 ## Result
 
@@ -16,7 +16,7 @@ Step E initially exposed a mobile-only D01 tournament portrait UI/controller div
 
 Physical mobile Badugi later exposed a narrower tournament P0 outside the local matrix: a closed BET Draw2 state with no pending actors could remain in BET/waiting instead of entering DRAW. The focused `badugi-tournament-bet-to-draw-regression.spec.ts` now covers this state. Root cause was stale BET street flags and transition deferral around BET→DRAW / DRAW→BET handling: a closed BET round could keep prior street bets/acted flags and an empty actor. The local fix resets DRAW and next-BET street flags at phase boundaries, prevents stale transition guards from dropping forced BET closure, and adds a closed-BET guard before re-electing a fallback actor.
 
-Post-deploy live Badugi tournament mobile emulation still fails before clearing the release gate: both portrait and landscape stop at DRAW1 with CPU actor seat 2 because the live MTT path reports `ACTION_APPLICATION_FAILED` / `controller action returned no snapshot` for CPU draw forcing. The cross-variant reset is deployed and the live contamination regression passes, so this is now classified as `BADUGI_DRAW_ACTION_APPLICATION_BUG` / `QA_DRAW_FORCING_SOURCE_MISMATCH`, not stale D01/D02 controller contamination. Track it as `BADUGI-DRAW1-CPU-ACTION-001`; do not mark the physical Badugi gate clear until it is fixed and the live matrix passes.
+Post-deploy live Badugi tournament mobile emulation exposed a DRAW1 CPU actor failure: both portrait and landscape stopped at DRAW1 with CPU actor seat 2 because the live MTT path reported `ACTION_APPLICATION_FAILED` / `controller action returned no snapshot` for CPU draw forcing. The cross-variant reset was already deployed and the live contamination regression passed, so this was classified as `BADUGI_DRAW_ACTION_APPLICATION_BUG` / `QA_DRAW_FORCING_SOURCE_MISMATCH`, not stale D01/D02 controller contamination. The focused local and live regressions now pass on deployed head `3e597c515f8e3874cf3685db9d9fa45dc2c4ea14`, and live Badugi tournament emulation completes 20 hands in portrait and 20 hands in landscape with 0 invariant failures. Track `BADUGI-DRAW1-CPU-ACTION-001` as `FIXED_LIVE / NEEDS_PHYSICAL_RECHECK`; do not clear the physical Badugi gate until the real-device path passes.
 
 ## Step A: Core5 Cash Desktop 10-Hand
 
@@ -205,7 +205,7 @@ Live URL: `https://mgx-poker.com/`
 
 | Check | Result |
 |---|---|
-| Deploy verification | PASS, deployed commit matches local head `a2a271e4b426581fcdb7c156d1aa90b1ed607a00` |
+| Deploy verification | PASS, deployed commit matches local head `3e597c515f8e3874cf3685db9d9fa45dc2c4ea14` |
 | Live smoke 5-hand desktop | PASS, 50/50 hands complete |
 | Live desktop 20-hand matrix | PASS, 200/200 hands complete |
 | Live mobile emulation 10-hand matrix | PASS, 200/200 hands complete |
@@ -213,12 +213,13 @@ Live URL: `https://mgx-poker.com/`
 | Monitor rows | PHASE/POT timing rows only, no stale controls or active-hand pot-zero P0 |
 | Badugi no-reraise closure | PASS live |
 | Badugi re-raise-positive proof | PASS live after explicit fixed-limit raise increment |
+| Badugi tournament DRAW1 CPU action | PASS live, focused regression plus portrait/landscape 20-hand emulation |
 
 Artifacts:
 
 | Artifact | Path |
 |---|---|
-| Deploy verification | `reports/alpha/live-deploy-verification.json` |
+| Deploy verification | `reports/alpha/live-deploy-verification-after-draw1-cpu-fix.json` |
 | Live smoke summary | `reports/browser-gameplay/live-core5-smoke-summary.json` |
 | Live smoke failures/monitor rows | `reports/browser-gameplay/live-core5-smoke-failures.json` |
 | Live desktop summary | `reports/browser-gameplay/live-core5-desktop-20hand-summary.json` |

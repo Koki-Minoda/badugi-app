@@ -35,6 +35,7 @@ Each step must meet all of these before continuing:
 | Action reopen | no re-action without a re-raise or pending action |
 | Draw | no selected draw actor that cannot legally draw |
 | Terminal | actor cleared, controls hidden, result/next-hand path usable |
+| Phase machine | no impossible transition, no DRAW/BET mixed snapshot, no stale controller-source phase merge, no terminal actor |
 | Pot | no active-hand pot zero; display/controller pot differences classified |
 | Runtime | no fatal console/page error and no freeze |
 
@@ -50,7 +51,10 @@ Mobile portrait/landscape expansion is also clean locally. Step E passed the 10-
 
 Live preview expansion is clean against `https://mgx-poker.com/`. Step F first verified deploy reality: live commit `a2a271e4b426581fcdb7c156d1aa90b1ed607a00` matches local head and bundle `/assets/index-BlAPEzcs.js`. The live smoke completed 50/50 hands, the live desktop matrix completed 200/200 hands, and the live mobile emulation matrix completed 200/200 hands. No actor P0, terminal P0, illegal reopen, UI/controller divergence, action application failure, freeze, or fatal live error was observed. Remaining PHASE/POT rows are bounded monitor-only timing rows. Badugi live no-reraise closure and re-raise-positive proof both pass.
 
+Phase machine hardening is clean locally. The legal graph and impossible-transition detectors pass focused unit/E2E regressions. The full local Core5 50-hand matrix completed 1500/1500 hands with 0 phase-machine P0 rows. A follow-up 5-hand Core5 matrix after display-lag classification completed 150/150 hands and reported 0 `STALE_PHASE_MERGE`, 0 `DRAW_BET_MIXED_STATE`, 0 `IMPOSSIBLE_PHASE_TRANSITION`, and 0 `TERMINAL_WITH_ACTOR`. Remaining PHASE/POT rows are timing monitor rows only.
+
 ## Current Required Recheck
 
-1. Keep the local Step E and live Step F traces under monitor for D01/D02 tournament portrait/landscape and Badugi closure behavior.
-2. Keep friend alpha HOLD until physical mobile QA and remote sync are resolved.
+1. Keep the local Step E, phase-machine, and live Step F traces under monitor for D01/D02 tournament portrait/landscape and Badugi closure behavior.
+2. Re-run phase-machine detectors after any engine/controller/snapshot merge change.
+3. Keep friend alpha HOLD until physical mobile QA and remote sync are resolved.

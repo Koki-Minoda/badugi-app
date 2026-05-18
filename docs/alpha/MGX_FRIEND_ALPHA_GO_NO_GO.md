@@ -15,6 +15,7 @@ The live URL is the release source of truth for deploy gates, and the browser ga
 | Remote source sync for deployed commit | BLOCKED / unresolved, branch ahead origin by 87 commits |
 | Physical mobile Badugi tournament waiting freeze | P0 OPEN, `PHYSICAL-MOBILE-BADUGI-WAITING-001` |
 | Physical mobile Badugi DRAW/BET divergence | P0 OPEN, `BADUGI-DRAW-BET-MIX-001`, separate follow-up after waiting freeze |
+| Core5 phase machine integrity | PASS_LOCAL / MONITOR, legal graph / impossible transition / DRAW-BET mixed / stale merge detectors pass focused regressions and Core5 browser matrix gates with 0 P0 |
 | Live deploy snapshot | PASS, live commit == local head in latest deploy verification report |
 | Badugi alpha availability | HOLD for friend exposure until physical QA and remote sync clear |
 | Badugi raise/call betting closure | PASS live for no-reraise closure and re-raise-positive reopen proof |

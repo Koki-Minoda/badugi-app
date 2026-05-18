@@ -223,8 +223,50 @@ Artifacts:
 | Live mobile failures/monitor rows | `reports/browser-gameplay/live-core5-mobile-10hand-failures.json` |
 | Badugi betting closure | `reports/alpha/live-badugi-betting-closure.json` |
 
+## Phase Machine Hardening Recheck
+
+Added release-gate detectors:
+
+| Detector | Scope | Result |
+|---|---|---|
+| Legal phase graph | Core5 `BET` / `DRAW` / `SHOWDOWN` / `COLLECT` / `RESULT` / `NEXT_HAND` transitions, with Badugi/D01/D02 max draw 3 and S01/S02 max draw 1 | PASS |
+| Impossible transition detector | illegal graph edge, phase regression, illegal draw sequence, terminal actor, collect-with-pending-action, multi-actor state | PASS |
+| DRAW/BET mixed snapshot detector | `BET` with active draw controls, or `DRAW` with active betting controls / raise path | PASS |
+| Stale phase merge detector | controller snapshot phase/actor/drawRound overridden by stale session/legacy/metadata state | PASS |
+
+Focused tests:
+
+| Test | Result |
+|---|---|
+| `src/games/_core/__tests__/phaseMachineGraph.test.js` | PASS, 4/4 |
+| `src/ui/__tests__/drawBetMixedStateRegression.test.jsx` | PASS, 3/3 |
+| `src/ui/__tests__/stalePhaseMergeRegression.test.jsx` | PASS, 4/4 |
+| `tests/e2e/core5-impossible-transition.spec.ts` | PASS, 2/2 |
+| `tests/e2e/core5-phase-machine-regression.spec.ts` | PASS, 5/5 variants sampled |
+
+Browser matrix evidence:
+
+| Check | Result |
+|---|---|
+| Full local Core5 50-hand matrix with phase detectors | PASS for P0, 30/30 combinations, 1500/1500 hands complete, 33,964 actions observed |
+| Full matrix hard P0 rows | 0 actor / 0 terminal / 0 illegal reopen / 0 action application / 0 impossible transition / 0 DRAW-BET mixed / 0 controller-source stale merge |
+| Initial full matrix monitor rows | 370 displayed PHASE P1, 27 POT P1, and duplicated displayed-phase `STALE_PHASE_MERGE` P1 rows |
+| Detector classification fix | PASS, displayed phase lag is now classified only as `PHASE` monitor, not stale source merge |
+| Post-classification Core5 5-hand matrix | PASS, 30/30 combinations, 150/150 hands complete, 4,078 actions observed |
+| Post-classification violations | 43 PHASE P1 and 1 POT P1 timing rows; 0 `STALE_PHASE_MERGE`, 0 `DRAW_BET_MIXED_STATE`, 0 `IMPOSSIBLE_PHASE_TRANSITION`, 0 `TERMINAL_WITH_ACTOR` |
+
+Artifacts:
+
+| Artifact | Path |
+|---|---|
+| Phase spec | `docs/testing/MGX_CORE5_PHASE_MACHINE_SPEC.md` |
+| Matrix summary | `reports/browser-gameplay/browser-gameplay-invariant-summary.json` |
+| Matrix failures/monitor rows | `reports/browser-gameplay/browser-gameplay-invariant-failures.json` |
+| Phase regression report | `reports/phase-machine/core5-phase-machine-regression.json` |
+
 ## Next Fix List
 
 1. Keep S01/S02 late-hand draw/terminal regression, D02 draw fallback, D01 terminal collect, D01 mobile stale-controls fix, tournament draw-lowball controller-action fallback, and live matrix monitor rows under release-gate monitor.
-2. D01 blind posting / display invariant now has a focused local gate: engine posts SB/BB, UI position badges use controller `dealerIndex`, and browser export includes `blindPosting` expected/actual/displayed values. Physical mobile must still verify this on live after deploy.
-3. Keep friend alpha HOLD until physical mobile QA and remote sync are resolved.
+2. Keep phase-machine detectors enabled in browser/live/physical QA so DRAW/BET mixed screenshots become traceable P0 rows instead of ambiguous UI symptoms.
+3. D01 blind posting / display invariant now has a focused local gate: engine posts SB/BB, UI position badges use controller `dealerIndex`, and browser export includes `blindPosting` expected/actual/displayed values. Physical mobile must still verify this on live after deploy.
+4. Keep friend alpha HOLD until physical mobile QA and remote sync are resolved.

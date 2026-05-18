@@ -16,6 +16,7 @@ Badugi focused raise/call no-reraise closure is P0-clean in the browser trace, a
 | live health | PASS | `/api/health` returns `{"status":"ok","env":"prod","db":"ok"}` |
 | physical mobile Badugi tournament waiting freeze | P0 OPEN | `PHYSICAL-MOBILE-BADUGI-WAITING-001`; iPhone live preview screenshot shows Waiting at BET Draw2 with no Hero action |
 | physical mobile Badugi DRAW/BET divergence | P0 OPEN | `BADUGI-DRAW-BET-MIX-001`; tracked separately after waiting freeze |
+| Core5 phase machine hardening | PASS_LOCAL / MONITOR | legal phase graph, impossible transition detector, DRAW/BET mixed-state detector, and stale phase merge detector pass focused regressions. The 50-hand Core5 matrix completed 1500/1500 hands with 0 P0, and the post-classification 5-hand matrix completed 150/150 hands with 0 impossible transition / DRAW-BET mixed / stale-merge rows. Remaining PHASE/POT rows are timing monitor only. |
 | build | PASS | `npm run build` succeeds |
 | Badugi playable | LIVE_BROWSER_VERIFY_PASS / HOLD_FOR_PHYSICAL_QA | focused full 3-draw regression reaches `Hand Result`; long-run restore smoke passes 5 hands / 180 checkpoints; live no-reraise raise/call closure passes; re-raise-positive live proof passes |
 | pot continuity | PASS | focused browser, UI snapshot, and long-run restore tests pass with 0 active-hand `Total Pot 0` occurrences |

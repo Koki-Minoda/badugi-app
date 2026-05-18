@@ -179,7 +179,7 @@ test.describe("Live Badugi betting closure", () => {
     expect(typeof firstOpponent.actor).toBe("number");
 
     const beforeKey = progressKey(firstOpponent);
-    const reraiseSnapshot = await forceBetAction(page, firstOpponent.actor, { type: "raise" });
+    const reraiseSnapshot = await forceBetAction(page, firstOpponent.actor, { type: "raise", amount: 20 });
     expect(reraiseSnapshot, "opponent re-raise should apply").toBeTruthy();
     await waitForProgressChange(page, beforeKey, { timeout: 15000 });
 

@@ -21,8 +21,11 @@ import {
 const REPORT_DIR = path.resolve("reports/browser-gameplay");
 const RUNTIME_REPORT_DIR = path.resolve("reports/browser-gameplay/runtime");
 const SCREENSHOT_DIR = path.resolve("reports/screenshots");
-const SUMMARY_PATH = path.join(REPORT_DIR, "browser-gameplay-invariant-summary.json");
-const FAILURE_PATH = path.join(REPORT_DIR, "browser-gameplay-invariant-failures.json");
+const REPORT_LABEL =
+  process.env.BROWSER_GAMEPLAY_REPORT_LABEL ??
+  (process.env.LIVE_PREVIEW === "1" ? "live-browser-gameplay-invariant" : "browser-gameplay-invariant");
+const SUMMARY_PATH = path.join(REPORT_DIR, `${REPORT_LABEL}-summary.json`);
+const FAILURE_PATH = path.join(REPORT_DIR, `${REPORT_LABEL}-failures.json`);
 
 const VIEWPORTS = {
   desktop: { width: 1280, height: 720 },
@@ -584,7 +587,7 @@ test.describe("Browser gameplay invariant harness", () => {
           await openVariantMode(page, variant, mode);
           const anticipatedTracePath = path.join(
             REPORT_DIR,
-            `browser-gameplay-trace-${variant.variant.toLowerCase()}-${mode}-${viewportName}.jsonl`,
+            `${REPORT_LABEL}-trace-${variant.variant.toLowerCase()}-${mode}-${viewportName}.jsonl`,
           );
           const context = { variantId: variant.variant, mode, viewport: viewportName, tracePath: anticipatedTracePath };
           const telemetry = runtimeTelemetryEnabled
@@ -599,7 +602,7 @@ test.describe("Browser gameplay invariant harness", () => {
           const { traceRows, counters } = await playHands(page, context, telemetry);
           const traceWriteStart = Date.now();
           const tracePath = writeTrace(
-            `browser-gameplay-trace-${variant.variant.toLowerCase()}-${mode}-${viewportName}.jsonl`,
+            `${REPORT_LABEL}-trace-${variant.variant.toLowerCase()}-${mode}-${viewportName}.jsonl`,
             traceRows,
           );
           telemetry?.recordTraceWrite({

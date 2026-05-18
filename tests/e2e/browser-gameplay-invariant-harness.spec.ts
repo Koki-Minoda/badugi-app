@@ -337,12 +337,16 @@ async function applyPayload(page: Page, progress: any, payload: any, telemetry: 
   const controllerFailure = !snapshot
     ? await invokeE2E(page, "getLastControllerActionFailure").catch(() => null)
     : null;
+  const controllerDebug = !snapshot
+    ? await invokeE2E(page, "getControllerDebug").catch(() => null)
+    : null;
   return {
     acted: Boolean(snapshot),
     clickedAction: `controller:${payload.type}`,
     actor,
     payload,
     controllerFailure,
+    controllerDebug,
   };
 }
 
@@ -461,6 +465,7 @@ async function playHands(page: Page, context: any, telemetry: any = null) {
             actorSeat: progress?.actor ?? null,
             attemptedAction: payload,
             controllerFailure: acted?.controllerFailure ?? null,
+            controllerDebug: acted?.controllerDebug ?? null,
           },
           message: "selected action could not be applied; expansion stopped",
           tracePath: partialTracePath,

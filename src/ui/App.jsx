@@ -981,8 +981,12 @@ const SAFE_RESET_PHASE = "IDLE";
       BOARD_APP_VARIANT_IDS.has(normalizedVariant) ||
       STUD_APP_VARIANT_IDS.has(normalizedVariant) ||
       DRAMAHA_APP_VARIANT_IDS.has(normalizedVariant);
+    const allowsTournamentSessionController =
+      mode === "tournament-mtt" &&
+      (normalizedVariant === APP_VARIANT_IDS.BADUGI ||
+        isDrawLowballAppVariant(normalizedVariant));
     if (
-      mode === "tournament-mtt" ||
+      (mode === "tournament-mtt" && !allowsTournamentSessionController) ||
       usesBoardController ||
       !isControllerBackedAppVariant(normalizedVariant)
     ) {
@@ -1087,6 +1091,7 @@ const SAFE_RESET_PHASE = "IDLE";
     mode !== "tournament-mtt" && normalizedGameVariant === APP_VARIANT_IDS.BADUGI;
   const isSingleTableDrawLowball =
     mode !== "tournament-mtt" && isDrawLowballAppVariant(normalizedGameVariant);
+  const isDrawLowballControllerGame = isDrawLowballAppVariant(normalizedGameVariant);
   const isSingleTableBoardGame =
     mode !== "tournament-mtt" &&
     (BOARD_APP_VARIANT_IDS.has(normalizedGameVariant) ||
@@ -1909,7 +1914,15 @@ const SAFE_RESET_PHASE = "IDLE";
 
   const tryControllerBetAction = useCallback(
     ({ actionType, amount = 0, seatIndex = 0, metadata = {} }) => {
-      if (!isControllerDrivenSingleTable) return null;
+      const fallbackDrawController =
+        isDrawLowballControllerGame && gameControllerRef.current?.applyAction
+          ? gameControllerRef.current
+          : null;
+      const hasActionController = Boolean(
+        (sessionControllerRef.current && sessionControllerStateRef.current) ||
+          fallbackDrawController,
+      );
+      if (!isControllerDrivenSingleTable && !hasActionController) return null;
       const normalizedType =
         typeof actionType === "string" && actionType.length
           ? actionType.toLowerCase()
@@ -1936,8 +1949,12 @@ const SAFE_RESET_PHASE = "IDLE";
           events: [],
         };
       }
-      const controller = sessionControllerRef.current;
-      const controllerState = sessionControllerStateRef.current;
+      const usingFallbackDrawController =
+        !sessionControllerRef.current && Boolean(fallbackDrawController);
+      const controller = sessionControllerRef.current ?? fallbackDrawController;
+      const controllerState =
+        sessionControllerStateRef.current ??
+        (usingFallbackDrawController ? fallbackDrawController?._lastState ?? null : null);
       if (!controller || !controllerState) {
         return {
           rejected: true,
@@ -1988,6 +2005,12 @@ const SAFE_RESET_PHASE = "IDLE";
           };
         }
         sessionControllerStateRef.current = result.state;
+        if (usingFallbackDrawController) {
+          sessionControllerRef.current = controller;
+          sessionControllerRef.current.__appVariantId = normalizedGameVariant;
+          gameControllerRef.current = controller;
+          controllerVariantRef.current = normalizedGameVariant;
+        }
         const snapshot = controller.getUiSnapshot(result.state);
         if (snapshot) {
           updateAfterActionFromSnapshot(snapshot);
@@ -2006,7 +2029,14 @@ const SAFE_RESET_PHASE = "IDLE";
         };
       }
     },
-    [ensureGameController, isControllerDrivenSingleTable, isSingleTableBoardGame, updateAfterActionFromSnapshot],
+    [
+      ensureGameController,
+      isControllerDrivenSingleTable,
+      isDrawLowballControllerGame,
+      isSingleTableBoardGame,
+      normalizedGameVariant,
+      updateAfterActionFromSnapshot,
+    ],
   );
 
   useEffect(() => {
@@ -5239,7 +5269,7 @@ const SAFE_RESET_PHASE = "IDLE";
 
     const deckManager = getDeckManager();
     const usesAppDeckForCurrentHand =
-      !isSingleTableBoardGame && !isSingleTableControllerDrawGame;
+      !isSingleTableBoardGame && !isSingleTableControllerDrawGame && !isDrawLowballControllerGame;
     if (deckManager && usesAppDeckForCurrentHand) {
       deckManager.reset();
       if (typeof deckManager.shuffle === "function") {
@@ -5323,7 +5353,7 @@ const SAFE_RESET_PHASE = "IDLE";
       }
     }
     const shouldUseSessionControllerForHand =
-      isSingleTableBadugi || isSingleTableDrawLowball;
+      isSingleTableBadugi || isDrawLowballControllerGame;
     if (shouldUseSessionControllerForHand) {
       const sessionController = ensureSessionController();
       if (sessionController) {
@@ -5350,12 +5380,12 @@ const SAFE_RESET_PHASE = "IDLE";
           );
           if (nextControllerState) {
             sessionControllerStateRef.current = nextControllerState;
-            if (isSingleTableDrawLowball) {
+            if (isDrawLowballControllerGame) {
               gameControllerRef.current = sessionController;
               controllerVariantRef.current = normalizedGameVariant;
             }
             controllerHandSnapshot = sessionController.getUiSnapshot(nextControllerState);
-            if (isSingleTableDrawLowball && controllerHandSnapshot) {
+            if (isDrawLowballControllerGame && controllerHandSnapshot) {
               const snapshotPlayers = (controllerHandSnapshot.players ?? [])
                 .map(clonePlayerState)
                 .filter(Boolean);
@@ -6124,6 +6154,32 @@ const SAFE_RESET_PHASE = "IDLE";
         return null;
       },
       getLastControllerActionFailure: () => lastControllerActionFailureRef.current,
+      getControllerDebug: () => {
+        const sessionController = sessionControllerRef.current;
+        const sessionState = sessionControllerStateRef.current;
+        const gameController = gameControllerRef.current;
+        const sessionEngineState = sessionState?.engineState ?? null;
+        return {
+          mode,
+          gameVariant,
+          normalizedGameVariant,
+          isControllerDrivenSingleTable,
+          hasSessionController: Boolean(sessionController),
+          hasSessionState: Boolean(sessionState),
+          sessionControllerName: sessionController?.constructor?.name ?? null,
+          sessionVariantId:
+            sessionController?.__appVariantId ?? sessionController?.variantId ?? null,
+          sessionHandId: sessionEngineState?.handId ?? sessionState?.snapshot?.handId ?? null,
+          sessionStreet: sessionEngineState?.street ?? sessionState?.snapshot?.street ?? null,
+          sessionActor:
+            sessionEngineState?.actingPlayerIndex ??
+            sessionState?.snapshot?.actingPlayerIndex ??
+            null,
+          gameControllerName: gameController?.constructor?.name ?? null,
+          gameControllerVariantId:
+            gameController?.__appVariantId ?? gameController?.variantId ?? null,
+        };
+      },
       forceMarkSeatFoldedForTest: (seat = 0) => {
         const snap = (playersRef.current ?? players ?? [])
           .map(clonePlayerState)

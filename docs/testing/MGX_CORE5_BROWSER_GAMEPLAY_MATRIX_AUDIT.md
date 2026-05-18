@@ -4,13 +4,15 @@ Date: 2026-05-18
 
 ## Result
 
-`STEP_A_PASS__STEP_B_PASS__STEP_C_PASS__STEP_D_PASS__MOBILE_MATRIX_READY`
+`STEP_A_PASS__STEP_B_PASS__STEP_C_PASS__STEP_D_PASS__STEP_E_PASS__LOCAL_MOBILE_MATRIX_CLEAN`
 
 The Badugi-only browser ladder was clean enough to expand. Core5 cash desktop 10-hand initially exposed a draw-variant progress-helper current-bet bug: D01/D02/S01/S02 snapshots carried blind bets in player fields while `currentBet` read as `0`, causing the helper to choose `CHECK`. The helper now derives current bet from draw-variant player bets when explicit street fields are absent, while preserving Badugi's stricter handling of cumulative `betThisRound`.
 
 After that fix, Step A passed for all Core5 variants. Step B initially failed during the 100-hand cash desktop run, so expansion stopped. The focused Step B fixes clear the Single Draw late-hand P0 and add a D02 CPU draw fallback. The later D01 fold-to-one collect terminal path is covered by focused unit/UI/E2E regressions. A subsequent D01 actor/source divergence around hand `D03-h28-d2-mpaebgvh` was traced to the browser collector and E2E progress helper mixing stale `phaseState` fields with the current session controller snapshot. The collector/helper now prefer `controllerSnapshot` for phase, players, and hand id. D01 30-hand, D01 100-hand, and D02 100-hand now pass.
 
 Step C initially exposed a tournament-only draw-lowball action application gap: D01/D02/S01/S02 tournament snapshots were controller-backed, but the E2E/controller action path only applied actions through `sessionControllerRef`, which was absent after tournament mode initialization. The fix allows Core5 controller-backed tournament variants to preserve/use their session controller, falls back to the active draw-lowball `gameControllerRef` when needed, and exposes E2E controller-action diagnostics. Step C and Step D now pass locally for Core5 tournament desktop.
+
+Step E initially exposed a mobile-only D01 tournament portrait UI/controller divergence in the 50-hand matrix: the controller actor advanced to a non-Hero seat, but stale Hero action controls remained interactable in the DOM. The fix stores the controller UI snapshot in React state and includes `currentActor` when syncing engine snapshots, so controls render from the canonical controller actor instead of stale legacy turn state. Focused D01 tournament portrait 50-hand, Core5 mobile 20-hand, and Core5 mobile 50-hand now pass locally.
 
 ## Step A: Core5 Cash Desktop 10-Hand
 
@@ -101,8 +103,8 @@ Artifacts:
 | B | PASS | Core5 cash desktop 100-hand is now clean for D01/D02/S01/S02 plus prior Badugi ladder |
 | C | PASS | Core5 tournament desktop 20-hand passed, 5/5 variants |
 | D | PASS | Core5 tournament desktop 100-hand passed, 500/500 hands, 0 invariant violations |
-| E | READY TO RUN | Mobile portrait/landscape matrix is now allowed next, but was not run in this step |
-| F | BLOCKED | Do not run live matrix until local matrix passes |
+| E | PASS | Core5 portrait/landscape 10-hand, 20-hand, and 50-hand local mobile matrices pass |
+| F | READY TO RUN / NOT RUN | Live preview browser matrix is now the next approved ladder step |
 
 ## Step C/D Tournament Desktop Recheck
 
@@ -128,8 +130,73 @@ Artifacts:
 | S01 trace | `reports/browser-gameplay/browser-gameplay-trace-s01-tournament-desktop.jsonl` |
 | S02 trace | `reports/browser-gameplay/browser-gameplay-trace-s02-tournament-desktop.jsonl` |
 
+## Step E Mobile Portrait/Landscape Recheck
+
+Commands:
+
+```bash
+BROWSER_GAMEPLAY_HANDS=10 \
+BROWSER_GAMEPLAY_VARIANTS=badugi,D01,D02,S01,S02 \
+BROWSER_GAMEPLAY_MODES=cash,tournament \
+BROWSER_GAMEPLAY_VIEWPORTS=portrait,landscape \
+BROWSER_TRACE_MODE=light \
+BROWSER_RUNTIME_TELEMETRY=1 \
+npx playwright test tests/e2e/browser-gameplay-invariant-harness.spec.ts --project=badugi-flow
+
+BROWSER_GAMEPLAY_HANDS=20 \
+BROWSER_GAMEPLAY_VARIANTS=badugi,D01,D02,S01,S02 \
+BROWSER_GAMEPLAY_MODES=cash,tournament \
+BROWSER_GAMEPLAY_VIEWPORTS=portrait,landscape \
+BROWSER_TRACE_MODE=light \
+BROWSER_RUNTIME_TELEMETRY=1 \
+BROWSER_GAMEPLAY_TIMEOUT_MS=5400000 \
+npx playwright test tests/e2e/browser-gameplay-invariant-harness.spec.ts --project=badugi-flow
+
+BROWSER_GAMEPLAY_HANDS=50 \
+BROWSER_GAMEPLAY_VARIANTS=badugi,D01,D02,S01,S02 \
+BROWSER_GAMEPLAY_MODES=cash,tournament \
+BROWSER_GAMEPLAY_VIEWPORTS=portrait,landscape \
+BROWSER_TRACE_MODE=light \
+BROWSER_RUNTIME_TELEMETRY=1 \
+BROWSER_GAMEPLAY_TIMEOUT_MS=5400000 \
+npx playwright test tests/e2e/browser-gameplay-invariant-harness.spec.ts --project=badugi-flow
+```
+
+Result:
+
+| Check | Result |
+|---|---|
+| Mobile smoke 10-hand | PASS, 20/20 combinations |
+| Mobile 20-hand matrix | PASS, 20/20 combinations |
+| Mobile 50-hand matrix | PASS, 20/20 combinations |
+| Hands attempted/completed in 50-hand | 1000/1000 |
+| Actions observed in 50-hand | 23,358 |
+| Raises / calls / folds / draws / re-raises | 1,295 / 13,615 / 539 / 7,909 / 1,003 |
+| Actor P0 / terminal P0 / illegal reopen / UI divergence / action application failed | 0 / 0 / 0 / 0 / 0 |
+| Monitor rows | 245 PHASE P1 and 23 POT P1 timing rows, all without stale controls or active-hand pot-zero P0 |
+
+Focused failure recheck:
+
+| Check | Result |
+|---|---|
+| D01 tournament portrait 50-hand after stale-controls fix | PASS |
+| Original failure class | `UI_CONTROLLER_DIVERGENCE`, D01 tournament portrait, non-Hero controller actor with stale Hero controls |
+| Classification | REAL_UI_MERGE_BUG / FIXED_LOCAL |
+
+Artifacts:
+
+| Artifact | Path |
+|---|---|
+| Mobile summary | `reports/browser-gameplay/browser-gameplay-invariant-summary.json` |
+| Mobile failures/monitor rows | `reports/browser-gameplay/browser-gameplay-invariant-failures.json` |
+| D01 tournament portrait trace | `reports/browser-gameplay/browser-gameplay-trace-d01-tournament-portrait.jsonl` |
+| D02 tournament portrait trace | `reports/browser-gameplay/browser-gameplay-trace-d02-tournament-portrait.jsonl` |
+| S01 tournament landscape trace | `reports/browser-gameplay/browser-gameplay-trace-s01-tournament-landscape.jsonl` |
+| S02 tournament landscape trace | `reports/browser-gameplay/browser-gameplay-trace-s02-tournament-landscape.jsonl` |
+| Failure/monitor screenshots | `reports/screenshots/browser-gameplay-failure-*.png` |
+
 ## Next Fix List
 
-1. Start Core5 portrait/landscape local browser matrix next.
-2. Keep S01/S02 late-hand draw/terminal regression, D02 draw fallback, D01 terminal collect, and tournament draw-lowball controller-action fallback under monitor.
-3. Do not start live matrix until the local mobile viewport matrix passes.
+1. Proceed to the live preview browser matrix next; local mobile portrait/landscape is no longer the blocker.
+2. Keep S01/S02 late-hand draw/terminal regression, D02 draw fallback, D01 terminal collect, D01 mobile stale-controls fix, and tournament draw-lowball controller-action fallback under monitor.
+3. Keep friend alpha HOLD until live preview matrix, physical mobile QA, and remote sync are resolved.

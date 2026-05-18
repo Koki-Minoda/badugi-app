@@ -21,8 +21,8 @@ This gate expands the browser gameplay invariant harness from Badugi-only covera
 | B | Core5 cash desktop 100-hand | PASS: S01/S02 100-hand pass; focused D01 fold-to-one collect passes; D01 30-hand, D01 100-hand, and D02 100-hand pass after controller snapshot source-priority fix |
 | C | Core5 tournament desktop 20-hand | PASS, 5/5 variants |
 | D | Core5 tournament desktop 100-hand | PASS, 500/500 hands, 0 invariant violations |
-| E | Core5 portrait/landscape matrix | READY TO RUN / NOT RUN |
-| F | live preview browser matrix | NOT RUN |
+| E | Core5 portrait/landscape matrix | PASS, 10-hand/20-hand/50-hand local mobile matrices pass |
+| F | live preview browser matrix | READY TO RUN / NOT RUN |
 
 ## Pass Conditions
 
@@ -40,14 +40,16 @@ Each step must meet all of these before continuing:
 
 ## Current Gate Decision
 
-`STEP_D_PASS__LOCAL_DESKTOP_MATRIX_CLEAN__MOBILE_MATRIX_ALLOWED`
+`STEP_E_PASS__LOCAL_MOBILE_MATRIX_CLEAN__LIVE_MATRIX_ALLOWED`
 
 Core5 cash desktop 10-hand passed. The original S01/S02 late-hand draw/terminal P0 is fixed locally and S01/S02 100-hand now pass. D02's CPU draw fallback path is present. The D01 fold-to-one collect terminal path is fixed locally. The later D01 actor/source divergence was traced to the browser collector and E2E progress helper mixing stale `phaseState` fields with the newer session controller snapshot; both now prefer `controllerSnapshot` for phase, players, and hand id. D01 cash desktop 30-hand, D01 100-hand, and D02 100-hand pass with no actor P0, terminal P0, illegal reopen, action application failure, or real freeze.
 
 Tournament desktop expansion is now clean locally. Step C passed Core5 tournament desktop 20-hand. Step D passed Core5 tournament desktop 100-hand with 500/500 hands complete, 13,062 actions observed, and 0 invariant violations. The initial tournament draw-lowball action application failure was fixed by allowing controller-backed tournament variants to use the active session/draw-lowball controller path.
 
+Mobile portrait/landscape expansion is also clean locally. Step E passed the 10-hand smoke, 20-hand matrix, and 50-hand matrix across Badugi/D01/D02/S01/S02, cash/tournament, and portrait/landscape. The final 50-hand mobile matrix completed 1000/1000 hands with 23,358 actions observed and no actor P0, terminal P0, illegal reopen, UI/controller divergence, action application failure, real freeze, or fatal console/page error. Remaining PHASE/POT rows are monitor-only timing rows without stale controls.
+
 ## Current Required Recheck
 
-1. Run Core5 portrait/landscape browser matrix.
-2. If local mobile matrix is clean, proceed to live preview browser matrix.
+1. Run the live preview browser matrix against `https://mgx-poker.com/`.
+2. Keep the local Step E mobile traces under monitor for D01/D02 tournament portrait/landscape.
 3. Keep friend alpha HOLD until live preview matrix, physical mobile QA, and remote sync are resolved.

@@ -104,7 +104,6 @@ The report is generated evidence and is not committed.
 
 ## Release status
 
-`CROSS-VARIANT-STATE-001` is `FIXED_LOCAL / NEEDS_DEPLOY_RECHECK`.
+`CROSS-VARIANT-STATE-001` is `FIXED_LIVE / NEEDS_PHYSICAL_RECHECK`.
 
-Friend Alpha remains HOLD because the physical Badugi mobile P0s and remote sync are still open until the fixed build is deployed and rechecked on real devices.
-
+The fixed build is deployed at `77265c4bc7718085cc7d9d686f481ec77f66ffbd`, and `LIVE_PREVIEW=1 tests/e2e/cross-variant-session-contamination.spec.ts` passes. The remaining live Badugi tournament DRAW1 CPU action failure does not show stale D01/D02 controller contamination. Friend Alpha remains HOLD because `BADUGI-DRAW1-CPU-ACTION-001`, physical Badugi mobile P0 recheck, and remote sync are still open.

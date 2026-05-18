@@ -6,13 +6,13 @@ Date: 2026-05-18
 
 `HOLD_FOR_PHYSICAL_MOBILE_BADUGI_P0_AND_REMOTE_SYNC`
 
-Badugi focused raise/call no-reraise closure is P0-clean in the browser trace, and the re-raise-positive live proof passes. The Core5 local/live browser matrices remain important coverage, but physical mobile QA has found live Badugi tournament P0s: hand 5/5 can remain stuck on `Waiting for other players...` at BET Draw2 / Bet Round 2 with To Call 0 and Pot 66, and a separate DRAW/BET divergence screenshot remains open. This supersedes the previous “physical QA pending only” status. Remote sync is unresolved, and friend alpha is HOLD until the physical blockers are fixed, deployed, and rechecked.
+Badugi focused raise/call no-reraise closure is P0-clean in the browser trace, and the re-raise-positive live proof passes. The preview deploy now matches local head `72e306f9e3dde6ea0c1f71b39dafda4b10889ba0`, including the Core5 progression fixes through `22c0e7c`. The Core5 local/live browser matrices remain important coverage, but physical mobile QA has found live Badugi tournament P0s: hand 5/5 can remain stuck on `Waiting for other players...` at BET Draw2 / Bet Round 2 with To Call 0 and Pot 66, and a separate DRAW/BET divergence screenshot remains open. Remote sync is unresolved, and friend alpha is HOLD until the physical blockers are rechecked on a real device.
 
 ## Gate Results
 
 | Gate | Result | Notes |
 | --- | --- | --- |
-| live deploy snapshot | PASS | live build info matches local head in `reports/alpha/live-deploy-verification.json` |
+| live deploy snapshot | PASS | live build info matches local head `72e306f9e3dde6ea0c1f71b39dafda4b10889ba0` in `reports/alpha/live-deploy-verification-after-core5-fixes.json`; bundle `/assets/index-CisEAtSU.js` |
 | live health | PASS | `/api/health` returns `{"status":"ok","env":"prod","db":"ok"}` |
 | physical mobile Badugi tournament waiting freeze | P0 OPEN | `PHYSICAL-MOBILE-BADUGI-WAITING-001`; iPhone live preview screenshot shows Waiting at BET Draw2 with no Hero action |
 | physical mobile Badugi DRAW/BET divergence | P0 OPEN | `BADUGI-DRAW-BET-MIX-001`; tracked separately after waiting freeze |
@@ -23,7 +23,7 @@ Badugi focused raise/call no-reraise closure is P0-clean in the browser trace, a
 | mobile playable | PASS in emulation for Core 5 / physical QA pending | Core 5 UI audit now passes Badugi/D01/D02/S01/S02 on cash portrait, cash landscape, tournament portrait, tournament landscape, interaction, and desktop |
 | Core 5 live layout evidence | PASS | 30/30 live cash/tournament portrait/landscape evidence cases pass; screenshots under `reports/screenshots/live-core5-v2-*.png` |
 | Core 5 live tournament fatal guard | PASS | `tests/e2e/live-core5-tournament-runtime-fatal.spec.ts` passes 5/5 after the tournament runtime fix deploy |
-| Core 5 live browser gameplay smoke | PASS | 50/50 live hands complete across Core5 cash/tournament desktop; only bounded PHASE monitor rows |
+| Core 5 live browser gameplay smoke | PARTIAL post-deploy | 24/30 latest smoke cases reached gameplay and passed; 6 Triple Draw cases were blocked before launch by live `/auth/signup` 504, so they need auth-stable rerun |
 | Core 5 live desktop browser matrix | PASS | 200/200 live hands complete; no actor P0, terminal P0, illegal reopen, UI/controller divergence, action application failure, or freeze |
 | Core 5 live mobile browser matrix | PASS | 200/200 live mobile-emulated hands complete across portrait/landscape; no blocking gameplay invariant violation |
 | Core 5 active status | PENDING recheck after config change | Badugi/D01/D02/S01/S02 should be alpha-playable and launchable |
@@ -45,7 +45,7 @@ Badugi focused raise/call no-reraise closure is P0-clean in the browser trace, a
 
 | Priority | Item | Why |
 | --- | --- | --- |
-| P1 | Push deployed local commits | branch `feature/d-04-next-actor-unify` is ahead of origin by 99 commits at `f735fca` |
+| P1 | Push deployed local commits | branch `feature/d-04-next-actor-unify` is ahead of origin by 104 commits at `72e306f` |
 | P0 | Fix physical Badugi waiting freeze | real-device live QA found `PHYSICAL-MOBILE-BADUGI-WAITING-001`; friend alpha remains HOLD |
 | P0 | Reproduce/fix physical DRAW/BET divergence | real-device screenshot remains open as `BADUGI-DRAW-BET-MIX-001` even though local phase-machine detectors pass |
 | P1 | Recheck mobile tournament layout on real Safari/Chrome | automation passes, but this was originally found on real-device/browser tournament views |
@@ -61,6 +61,6 @@ The former release-audit P1 progression rows are closed locally as monitor items
 
 Hold friend alpha. Continue only after the physical mobile Badugi P0s are fixed/deployed/rechecked and remote sync is resolved or explicitly accepted as an operational P1.
 
-The live URL evidence is the current source of truth: `CORE5-UI-LIVE-001`, `CORE5-TOUR-LIVE-001`, and the Badugi betting-closure proof are fixed live / monitor. Remaining friend-alpha blockers are operational/physical, not a confirmed Core5 browser gameplay P0.
+The live URL evidence is the current source of truth: the latest deploy snapshot and Badugi betting-closure proof pass live. The latest Core5 smoke is partial because live auth returned 504 before six Triple Draw launches; rerun those rows before treating the current deploy as a complete live matrix pass. Remaining friend-alpha blockers are physical mobile Badugi P0 recheck, remote sync, and live auth-stable rerun.
 
 The Core 5 action-order reality audit adds per-action history evidence beyond first-actor checks. It classifies the reported BB case as `FALSE_ALARM_CONFIRMED_BY_HISTORY`: BB acted only after earlier active obligations were resolved, or as the first active post-draw actor when seats left of the button were folded/ineligible.

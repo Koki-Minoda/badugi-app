@@ -1,20 +1,22 @@
 # MGX Core5 Physical Mobile QA Result
 
-Date: 2026-05-17
+Date: 2026-05-18
 
 Preview URL: `https://mgx-poker.com/`
 
-Deployed commit: see `reports/alpha/live-deploy-verification.json`
+Deployed commit: `72e306f9e3dde6ea0c1f71b39dafda4b10889ba0`
+
+Recheck instructions: `docs/alpha/MGX_PHYSICAL_MOBILE_QA_RECHECK_STEPS.md`
 
 ## Decision
 
 `HOLD`
 
-Physical mobile QA has now produced a P0 report outside this shell: live iPhone Badugi tournament can remain on `Waiting for other players...` at hand 5/5, phase BET, Draw 2, Bet Round 2, Hero SB, To Call 0, Pot 66, with folded players visible. Automated mobile browser/emulation and live layout evidence are not sufficient to clear this physical-device blocker.
+Physical mobile QA has produced a P0 report outside this shell: live iPhone Badugi tournament can remain on `Waiting for other players...` at hand 5/5, phase BET, Draw 2, Bet Round 2, Hero SB, To Call 0, Pot 66, with folded players visible. The Core5 progression fixes are now deployed to preview at commit `72e306f9e3dde6ea0c1f71b39dafda4b10889ba0`, but this physical-device blocker remains `OPEN / NEEDS_RECHECK` until the same real-device path is retested.
 
 The same QA stream also flagged D01 blind display risk: Hero appeared labeled `BB` with `BET 0`, Pot 30, and To Call 20. Local engine/UI/browser audit classifies this as a fixed-local display/position mismatch risk, not confirmed BB non-payment; physical recheck must export the `blindPosting` report after deploy.
 
-Last-mile check: 2026-05-17.
+Last-mile check: 2026-05-18 deploy verification completed; physical retest pending.
 
 Physical device tested: iPhone live preview screenshot supplied by QA.
 
@@ -22,8 +24,8 @@ Physical device tested: iPhone live preview screenshot supplied by QA.
 
 | ID | Device | Game | Mode | Status | Notes |
 | --- | --- | --- | --- | --- | --- |
-| `PHYSICAL-MOBILE-BADUGI-WAITING-001` | iPhone | Badugi | Tournament | OPEN | Waiting freeze at BET Draw2 / Bet Round 2 / hand 5/5. Needs freeze export JSON and post-fix physical recheck. |
-| `BADUGI-DRAW-BET-MIX-001` | iPhone | Badugi | Tournament | OPEN | DRAW/BET label/control divergence observed separately; defer focused fix until waiting freeze is closed. |
+| `PHYSICAL-MOBILE-BADUGI-WAITING-001` | iPhone | Badugi | Tournament | OPEN / NEEDS_RECHECK | Waiting freeze at BET Draw2 / Bet Round 2 / hand 5/5. Latest preview deploy is updated; needs same-path physical recheck and freeze export JSON if reproduced. |
+| `BADUGI-DRAW-BET-MIX-001` | iPhone | Badugi | Tournament | OPEN / NEEDS_RECHECK | DRAW/BET label/control divergence observed separately; latest preview deploy is updated, but physical recheck is still required. |
 | `D01-BLIND-POSTING-001` | iPhone | D01 | Cash/Tournament | FIXED_LOCAL / NEEDS_PHYSICAL_RECHECK | Local D01 trace shows SB/BB actual and displayed posts align after dealer-index position fix. Escalate to P0 if exported `blindPosting` JSON shows BB actual/displayed post is 0. |
 
 ## Android Chrome Checklist
@@ -64,8 +66,8 @@ Physical device tested: iPhone live preview screenshot supplied by QA.
 | Core5 mobile interaction | PASS, 10/10 |
 | live layout evidence | PASS, 30/30 |
 | live tournament runtime fatal guard | PASS, 5/5 |
-| live Core5 alpha smoke | FAIL, tournament result/next-hand path not reached |
+| live Core5 alpha smoke | PARTIAL, 24/30 latest cases reached gameplay and passed; 6 Triple Draw launches blocked by live `/auth/signup` 504 |
 
 ## Next Action
 
-Fix and deploy `PHYSICAL-MOBILE-BADUGI-WAITING-001`, collect a `?mgxQa=mobile` freeze report if it reproduces, and rerun Badugi tournament on the same physical mobile path. Friend alpha remains HOLD while this P0 is open.
+Rerun Badugi tournament on the same physical mobile path using `https://mgx-poker.com/?mgxQa=mobile`. Collect an `Export Freeze Report` JSON and screenshot if `Waiting for other players...` remains fixed for more than 20 seconds or DRAW/BET controls diverge. Friend alpha remains HOLD while these P0 rows are open.

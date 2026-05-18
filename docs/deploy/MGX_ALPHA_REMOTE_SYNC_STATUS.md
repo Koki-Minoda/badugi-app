@@ -7,18 +7,18 @@ Date: 2026-05-18
 | Item | Result |
 | --- | --- |
 | Local branch | `feature/d-04-next-actor-unify` |
-| Local HEAD | `a2a271e4b426581fcdb7c156d1aa90b1ed607a00` |
+| Local HEAD | `72e306f9e3dde6ea0c1f71b39dafda4b10889ba0` |
 | Remote | `origin https://github.com/Koki-Minoda/badugi-app.git` |
-| Branch state | local branch is ahead of `origin/feature/d-04-next-actor-unify` by 87 commits |
+| Branch state | local branch is ahead of `origin/feature/d-04-next-actor-unify` by 104 commits |
 | Preview URL | `https://mgx-poker.com/` |
-| Deployed snapshot | live commit matches local HEAD in `reports/alpha/live-deploy-verification.json` |
+| Deployed snapshot | live commit matches local HEAD in `reports/alpha/live-deploy-verification-after-core5-fixes.json` |
 
 ## Push Readiness
 
 | Check | Result |
 | --- | --- |
 | `git status --short` | source/docs/tests are expected clean after the live-matrix docs commit; generated `reports/` remain untracked |
-| `git branch -vv` | local branch ahead 87 before remote push |
+| `git branch -vv` | local branch ahead 104 before remote push |
 | `gh --version` | unavailable, `gh` is not installed |
 | HTTPS push | blocked by missing credentials |
 | Token exposure | false |

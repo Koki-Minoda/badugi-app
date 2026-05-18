@@ -128,4 +128,51 @@ describe("DrawLowballUIAdapter", () => {
       expect(getGameUIAdapter(variantId)).toBeInstanceOf(DrawLowballUIAdapter);
     }
   });
+
+  it("hides Raise for draw lowball variants when the fixed-limit cap is reached", () => {
+    const adapter = new DrawLowballUIAdapter();
+    const cappedSnapshot = {
+      phase: "BET",
+      turn: 0,
+      currentBet: 40,
+      raiseStats: {
+        raiseCountThisRound: 4,
+        raiseCap: 4,
+      },
+      metadata: {
+        raiseCountThisRound: 4,
+        raiseCap: 4,
+      },
+      players: [
+        {
+          name: "Hero",
+          stack: 460,
+          betThisRound: 20,
+          hand: ["AS", "2H", "3C", "4D", "5S"],
+        },
+        {
+          name: "CPU",
+          stack: 460,
+          betThisRound: 40,
+          hand: ["6S", "7H", "8C", "9D", "TS"],
+        },
+      ],
+      pots: [{ amount: 80, eligible: [0, 1] }],
+    };
+
+    const props = adapter.buildViewProps({
+      controllerSnapshot: cappedSnapshot,
+      tableConfig: {
+        levelNumber: 1,
+        sbValue: 10,
+        bbValue: 20,
+        maxDraws: 3,
+      },
+    });
+
+    expect(props.controlsConfig.canRaise).toBe(false);
+    expect(
+      adapter.getAvailableActions({ controllerSnapshot: cappedSnapshot, seatIndex: 0 }),
+    ).not.toContain("raise");
+  });
 });

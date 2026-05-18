@@ -14,6 +14,7 @@ import GameRegistry from "../games/_core/GameRegistry";
 import { DEBUG_TOURNAMENT, logMTT } from "../config/debugFlags.js";
 import { BUILD_INFO } from "../config/buildInfo.js";
 import { exposeBrowserGameplayState } from "./qa/exposeBrowserGameplayState.js";
+import { getTablePhaseColors } from "./game/tablePhaseColors.js";
 import {
   startHandHistoryRecord,
   appendHandHistoryAction,
@@ -3950,6 +3951,106 @@ const SAFE_RESET_PHASE = "IDLE";
       currentBet: requestedCurrentBet = isSingleTableStudGame ? 40 : 80,
       heroBet: requestedHeroBet = null,
     } = {}) => {
+      const raiseCap = 4;
+      const currentBetValue = Math.max(0, Number(requestedCurrentBet) || 0);
+      const heroBetValue =
+        requestedHeroBet === null || requestedHeroBet === undefined
+          ? Math.max(0, currentBetValue - 20)
+          : Math.max(0, Number(requestedHeroBet) || 0);
+      const normalizedVariant = normalizeAppVariantId(gameVariantRef.current ?? gameVariant);
+      const sessionController =
+        !isSingleTableBoardGame && isControllerBackedAppVariant(normalizedVariant)
+          ? ensureSessionController()
+          : null;
+      if (sessionController && sessionControllerStateRef.current) {
+        const sourceState = sessionControllerStateRef.current;
+        const sourceEngine = sourceState.engineState ?? null;
+        const sourceSnapshot =
+          sourceState.snapshot ??
+          (typeof sessionController.getUiSnapshot === "function"
+            ? sessionController.getUiSnapshot(sourceState)
+            : null);
+        const sourcePlayers = sourceEngine?.players ?? sourceSnapshot?.players ?? [];
+        const capPlayers = sourcePlayers.map((player, seatIndex) => {
+          const betThisRound = seatIndex === 0 ? heroBetValue : currentBetValue;
+          return {
+            ...player,
+            folded: false,
+            hasFolded: false,
+            sittingOut: false,
+            seatOut: false,
+            allIn: false,
+            stack: Math.max(0, Number(player?.stack ?? startingStackRef.current ?? 1000) - betThisRound),
+            totalInvested: betThisRound,
+            bet: betThisRound,
+            betThisRound,
+            betThisStreet: betThisRound,
+            hasActedThisRound: seatIndex !== 0,
+            hasActedThisStreet: seatIndex !== 0,
+            lastAction: seatIndex === 0 ? null : "Call",
+          };
+        });
+        const metadata = {
+          ...(sourceEngine?.metadata ?? sourceSnapshot?.metadata ?? {}),
+          currentBet: currentBetValue,
+          raiseCap,
+          raiseCountThisRound: raiseCap,
+          potAmount: capPlayers.reduce(
+            (sum, player) => sum + Math.max(0, Number(player?.bet ?? player?.betThisRound) || 0),
+            0,
+          ),
+        };
+        let nextState = null;
+        if (sourceEngine) {
+          const nextEngineState = {
+            ...sourceEngine,
+            street: "BET",
+            phase: "BET",
+            actingPlayerIndex: 0,
+            currentBet: currentBetValue,
+            players: capPlayers,
+            metadata,
+          };
+          const nextSnapshot = sessionController.getUiSnapshot(nextEngineState);
+          nextState = {
+            ...sourceState,
+            engineState: nextEngineState,
+            snapshot: nextSnapshot,
+            lastEvents: [],
+          };
+        } else if (typeof sessionController.syncFromExternalState === "function") {
+          const nextSnapshot = {
+            ...(sourceSnapshot ?? {}),
+            phase: "BET",
+            street: "BET",
+            turn: 0,
+            nextTurn: 0,
+            actingPlayerIndex: 0,
+            currentBet: currentBetValue,
+            raiseCap,
+            raiseCountThisRound: raiseCap,
+            players: capPlayers,
+            metadata,
+          };
+          nextState = sessionController.syncFromExternalState({
+            snapshot: nextSnapshot,
+            context: sourceState.context ?? null,
+            handIndex: sourceState.handIndex ?? 0,
+          });
+        }
+        const nextSnapshot = nextState ? sessionController.getUiSnapshot(nextState) : null;
+        if (nextState && nextSnapshot) {
+          sessionControllerStateRef.current = nextState;
+          resetForNewHandFromSnapshot(nextSnapshot);
+          playersRef.current = nextSnapshot.players ?? capPlayers;
+          setPlayers(playersRef.current);
+          setRaiseCountThisRound(raiseCap);
+          setCurrentBet(currentBetValue);
+          setPhase("BET");
+          setTurn(0);
+          return nextSnapshot;
+        }
+      }
       const controller = ensureGameController();
       if (!controller || !controller.state || typeof controller.getSnapshot !== "function") {
         return null;
@@ -3957,13 +4058,9 @@ const SAFE_RESET_PHASE = "IDLE";
       if (typeof controller.startNewHand === "function") {
         controller.startNewHand();
       }
-      const raiseCap = Number(controller.raiseCap ?? 4) || 4;
-      const currentBetValue = Math.max(0, Number(requestedCurrentBet) || 0);
-      const heroBetValue =
-        requestedHeroBet === null || requestedHeroBet === undefined
-          ? Math.max(0, currentBetValue - 20)
-          : Math.max(0, Number(requestedHeroBet) || 0);
       controller.raiseCountThisStreet = raiseCap;
+      controller.state.raiseCountThisRound = raiseCap;
+      controller.state.raiseCap = raiseCap;
       controller.state.street = street;
       controller.state.phase = "BET";
       controller.state.currentBet = currentBetValue;
@@ -4011,7 +4108,15 @@ const SAFE_RESET_PHASE = "IDLE";
       setTurn(0);
       return fixtureSnapshot;
     },
-    [ensureGameController, isSingleTableStudGame, syncLegacyFromControllerSnapshot],
+    [
+      ensureGameController,
+      ensureSessionController,
+      gameVariant,
+      isSingleTableBoardGame,
+      isSingleTableStudGame,
+      resetForNewHandFromSnapshot,
+      syncLegacyFromControllerSnapshot,
+    ],
   );
 
   const resolveHandImmediately = useCallback(() => {
@@ -9193,10 +9298,8 @@ const SAFE_RESET_PHASE = "IDLE";
     return mode === "tournament-mtt" ? tournamentLayouts : cashLayouts;
   }, [mode]);
 
-  const isDrawPhase = tablePhase === "DRAW";
-  const tableOuterBg = isDrawPhase ? "bg-red-900" : "bg-green-800";
-  const tableSurfaceBg = isDrawPhase ? "bg-red-800" : "bg-green-700";
-  const tableBorderColor = isDrawPhase ? "border-red-400" : "border-yellow-600";
+  const { tableOuterBg, tableSurfaceBg, tableBorderColor } =
+    getTablePhaseColors(tablePhase);
 
   const tableSummaryProps = {
     phaseTag: hudInfo?.phaseTag ?? phaseTagLocal(),
@@ -9226,7 +9329,7 @@ const SAFE_RESET_PHASE = "IDLE";
       }
     : playersSrc[0] ?? null;
   const controllerRaiseCountForUi =
-    isSingleTableBoardGame &&
+    (isSingleTableBoardGame || isSingleTableBadugi) &&
     typeof gameControllerRef.current?.raiseCountThisStreet === "number"
       ? gameControllerRef.current.raiseCountThisStreet
       : null;
@@ -9239,11 +9342,24 @@ const SAFE_RESET_PHASE = "IDLE";
     0,
     Number(
       controllerRaiseCountForUi ??
+        effectiveControllerSnapshot?.raiseStats?.raiseCountThisRound ??
+        effectiveControllerSnapshot?.raiseCountThisRound ??
+        effectiveControllerSnapshot?.metadata?.raiseCountThisRound ??
+        controlsConfig?.raiseCount ??
         raiseStatsSrc?.raiseCountThisRound ??
         raiseCountThisRound,
     ) || 0,
   );
-  const fixedLimitRaiseCap = 4;
+  const fixedLimitRaiseCap = Math.max(
+    1,
+    Number(
+      effectiveControllerSnapshot?.raiseStats?.raiseCap ??
+        effectiveControllerSnapshot?.raiseCap ??
+        effectiveControllerSnapshot?.metadata?.raiseCap ??
+        controlsConfig?.raiseCap ??
+        raiseStatsSrc?.raiseCap,
+    ) || 4,
+  );
   const currentRaiseUnit = getFixedLimitBetSize({
     baseBet: BB,
     drawRound: drawRoundSrc,

@@ -453,7 +453,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
       }
       case "BET":
       case "RAISE": {
-        if (raiseCount >= getRaiseCap(next) - 1) {
+        if (raiseCount >= getRaiseCap(next)) {
           throw new IllegalActionError("Fixed-limit raise cap reached", {
             seatIndex,
             raiseCount,
@@ -734,7 +734,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     const playerBet = player.bet ?? 0;
     const facingBet = currentBet > playerBet;
     const raiseCount = Number(state.metadata?.raiseCountThisRound) || 0;
-    const canRaise = (player.stack ?? 0) > 0 && raiseCount < getRaiseCap(state) - 1;
+    const canRaise = (player.stack ?? 0) > 0 && raiseCount < getRaiseCap(state);
     const strongPat = cleanLow && highestRank <= this.drawHeuristic.raiseHighRank;
     const strongOneDraw = drawCount <= 1 && highestRank <= this.drawHeuristic.patHighRank;
     const weakLateDraw = drawCount >= 3 && (state.drawRoundIndex ?? 0) >= 2;

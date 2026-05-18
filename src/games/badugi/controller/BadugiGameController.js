@@ -88,7 +88,17 @@ function deriveLegalActions(snapshot, seatIndex) {
     baseActions.push({ type: "CALL" });
   }
 
-  if (!player.allIn && player.stack > 0) {
+  const metadata = snapshot?.metadata ?? {};
+  const raiseCount = Math.max(
+    0,
+    Number(snapshot?.raiseCountThisRound ?? metadata.raiseCountThisRound) || 0,
+  );
+  const raiseCap = Math.max(
+    0,
+    Number(snapshot?.raiseCap ?? metadata.raiseCap ?? 4) || 4,
+  );
+
+  if (!player.allIn && player.stack > 0 && raiseCount < raiseCap) {
     baseActions.push({ type: "RAISE" });
   }
 

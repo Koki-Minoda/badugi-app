@@ -78,6 +78,27 @@ describe("BadugiUIAdapter", () => {
     });
   });
 
+  it("hides Raise when the fixed-limit cap is reached", () => {
+    const adapter = new BadugiUIAdapter({});
+    const cappedSnapshot = mockSnapshot({
+      raiseCountThisRound: 4,
+      raiseCap: 4,
+      metadata: {
+        raiseCountThisRound: 4,
+        raiseCap: 4,
+      },
+    });
+    const props = adapter.buildViewProps({
+      controllerSnapshot: cappedSnapshot,
+      tableConfig: mockTableConfig,
+    });
+
+    expect(props.controlsConfig.canRaise).toBe(false);
+    expect(
+      adapter.getAvailableActions({ controllerSnapshot: cappedSnapshot, seatIndex: 0 }),
+    ).not.toContain("raise");
+  });
+
   it("uses player avatarUrl as the seat avatar when present", () => {
     const adapter = new BadugiUIAdapter({});
     const props = adapter.buildViewProps({

@@ -191,6 +191,40 @@ describe("BadugiGameController – betting", () => {
     expect(invalid).toBeTruthy();
     expect(invalid?.code).toBe("FL_RAISE_CAP");
   });
+
+  it("does not expose Raise when the normal four-raise cap is reached", () => {
+    const controller = createController();
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU"],
+    });
+    const state = controller.createNewHandState(initial, {});
+    const snapshot = controller.getUiSnapshot(state);
+    const seeded = controller.syncFromExternalState({
+      snapshot: {
+        ...snapshot,
+        turn: 0,
+        nextTurn: 0,
+        raiseCap: 4,
+        raiseCountThisRound: 4,
+        metadata: {
+          ...(snapshot.metadata ?? {}),
+          raiseCap: 4,
+          raiseCountThisRound: 4,
+        },
+      },
+      context: state?.context ?? null,
+      handIndex: state?.handIndex ?? 0,
+    });
+
+    expect(controller.getLegalActions(seeded, 0).map((action) => action.type)).not.toContain(
+      "RAISE",
+    );
+    const { events } = controller.applyAction(seeded, {
+      seatIndex: 0,
+      payload: { type: "raise", amount: 10 },
+    });
+    expect(events.find((event) => event.type === "invalidAction")?.code).toBe("FL_RAISE_CAP");
+  });
 });
 
 describe("BadugiGameController – draw", () => {

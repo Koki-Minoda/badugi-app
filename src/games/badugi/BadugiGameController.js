@@ -46,7 +46,7 @@ export class BadugiGameController {
       sbIndex: null,
       bbIndex: null,
       raiseCountThisRound: 0,
-      raiseCap: null,
+      raiseCap: 4,
     };
   }
 
@@ -73,7 +73,7 @@ export class BadugiGameController {
       ...this.state,
       ...partial,
       raiseCountThisRound: Math.max(0, Number(nextRaiseCount) || 0),
-      raiseCap: nextRaiseCap ?? null,
+      raiseCap: nextRaiseCap ?? 4,
     };
   }
 

@@ -231,7 +231,9 @@ function deriveLegalActions(state = {}, seatIndex) {
   const playerBet = player.bet ?? 0;
   const actions = [{ type: "FOLD" }];
   actions.push(playerBet >= currentBet ? { type: "CHECK" } : { type: "CALL" });
-  if ((player.stack ?? 0) > 0) {
+  const raiseCount = Math.max(0, Number(state.metadata?.raiseCountThisRound) || 0);
+  const raiseCap = Math.max(1, Number(state.metadata?.raiseCap) || 4);
+  if ((player.stack ?? 0) > 0 && raiseCount < raiseCap) {
     actions.push({ type: currentBet > 0 ? "RAISE" : "BET" });
   }
   return actions;
@@ -358,6 +360,10 @@ export class DeuceToSevenTripleDrawController extends GameController {
       nextTurn: cloned.actingPlayerIndex,
       actingPlayerIndex: cloned.actingPlayerIndex,
       currentBet: metadata.currentBet ?? 0,
+      raiseStats: {
+        raiseCountThisRound: Math.max(0, Number(metadata.raiseCountThisRound) || 0),
+        raiseCap: Math.max(1, Number(metadata.raiseCap) || 4),
+      },
       maxDiscardCount: this.engine?.handCardCount ?? metadata.handCardCount ?? 5,
       handCardCount: this.engine?.handCardCount ?? metadata.handCardCount ?? 5,
       lastHandResult,

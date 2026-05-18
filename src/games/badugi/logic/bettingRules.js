@@ -2,7 +2,8 @@
 // Fixed-limit Badugi betting uses a "small bet" on the opening street
 // and a "big bet" (double the blind) on all subsequent betting streets.
 
-export const DEFAULT_FIXED_LIMIT_RAISE_CAP = null;
+// Fixed-limit draw games use a five-bet cap: opening bet plus four raises.
+export const DEFAULT_FIXED_LIMIT_RAISE_CAP = 4;
 
 export function isBigBetStreet({ drawRound = 0, betRound = 0 } = {}) {
   const normalizedDraw = Number(drawRound) || 0;

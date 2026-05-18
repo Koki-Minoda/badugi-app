@@ -207,7 +207,10 @@ describe("DeuceToSevenTripleDrawEngine", () => {
     });
 
     state.metadata.raiseCountThisRound = 3;
+    state.metadata.currentBet = 40;
     state.drawRoundIndex = 2;
+    state.players[0].bet = 40;
+    state.players[1].bet = 20;
     state.players[1].hand = ["2S", "2H", "QC", "KD", "JS"];
     expect(engine.chooseCpuAction(state, 1)).toMatchObject({
       seatIndex: 1,
@@ -427,7 +430,7 @@ describe("DeuceToSevenTripleDrawEngine", () => {
 
     const drawState = engine.applyPlayerAction(called, {
       seatIndex: 0,
-      type: "CHECK",
+      type: "CALL",
     });
 
     expect(drawState.street).toBe("DRAW");
@@ -472,7 +475,7 @@ describe("DeuceToSevenTripleDrawEngine", () => {
     expect(called.pots[0]).toMatchObject({ amount: 80 });
   });
 
-  it("enforces the fixed-limit raise cap", () => {
+  it("allows the fourth raise and rejects a raise beyond the five-bet cap", () => {
     const engine = new DeuceToSevenTripleDrawEngine();
     const state = engine.applyForcedBets(
       engine.initHand({
@@ -485,9 +488,16 @@ describe("DeuceToSevenTripleDrawEngine", () => {
     state.actingPlayerIndex = 1;
     state.metadata.raiseCountThisRound = 3;
 
+    const fourthRaise = engine.applyPlayerAction(state, {
+      seatIndex: 1,
+      type: "RAISE",
+    });
+    expect(fourthRaise.metadata.raiseCountThisRound).toBe(4);
+
+    fourthRaise.actingPlayerIndex = 0;
     expect(() =>
-      engine.applyPlayerAction(state, {
-        seatIndex: 1,
+      engine.applyPlayerAction(fourthRaise, {
+        seatIndex: 0,
         type: "RAISE",
       }),
     ).toThrow(/raise cap/);

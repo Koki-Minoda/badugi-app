@@ -55,6 +55,20 @@ function buildControlsConfig(snapshot, tableConfig) {
   const currentBet = snapshot.currentBet ?? 0;
   const needsToCall = hero ? currentBet > heroBet : false;
   const heroStack = hero?.stack ?? 0;
+  const metadata = snapshot.metadata ?? {};
+  const raiseStats = snapshot.raiseStats ?? {};
+  const raiseCount = Math.max(
+    0,
+    Number(
+      raiseStats.raiseCountThisRound ??
+        snapshot.raiseCountThisRound ??
+        metadata.raiseCountThisRound,
+    ) || 0,
+  );
+  const raiseCap = Math.max(
+    1,
+    Number(raiseStats.raiseCap ?? snapshot.raiseCap ?? metadata.raiseCap) || 4,
+  );
   const hasCardsToDraw = Boolean(hero?.hand && hero.hand.length && (hero.selected ?? []).length);
   const heroTurn =
     phase === "BET"
@@ -76,7 +90,13 @@ function buildControlsConfig(snapshot, tableConfig) {
   const canFold = Boolean(heroTurn && phase === "BET" && !hero?.allIn);
   const canCall = Boolean(heroTurn && phase === "BET" && heroStack > 0);
   const canCheck = Boolean(heroTurn && phase === "BET" && !needsToCall);
-  const canRaise = Boolean(heroTurn && phase === "BET" && heroStack > 0 && !hero?.allIn);
+  const canRaise = Boolean(
+    heroTurn &&
+      phase === "BET" &&
+      heroStack > 0 &&
+      !hero?.allIn &&
+      raiseCount < raiseCap,
+  );
   const canDraw = Boolean(
     heroTurn &&
       phase === "DRAW" &&
@@ -108,6 +128,8 @@ function buildControlsConfig(snapshot, tableConfig) {
     canDraw,
     drawSelections: hero?.selected ?? [],
     maxDraws: tableConfig.maxDraws ?? 3,
+    raiseCount,
+    raiseCap,
     betSize,
     isBigBetStreet: bigBetStreet,
   };

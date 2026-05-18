@@ -1,0 +1,114 @@
+# MGX Live CPU Action DB Audit
+
+Date: 2026-05-18
+
+## Scope
+
+This audit checks whether live/preview cash gameplay logs can prove the reported fold-heavy CPU behavior and identify the active CPU decision path.
+
+Read-only audit output:
+
+- `reports/ai/live-db-cpu-action-audit.json`
+- `reports/ai/live-db-cpu-action-audit.md`
+
+Generated reports are not committed.
+
+## Persistence Inspection
+
+Models and endpoints inspected:
+
+- `backend/app/models/hand_log.py`
+  - `badugi_hand_logs`
+  - `badugi_hand_actions`
+  - `badugi_hand_results`
+- `backend/app/models/badugi_action_log.py`
+  - `badugi_action_logs`
+- `backend/app/api/badugi_log.py`
+  - `POST /api/badugi/hands`
+  - `GET /api/badugi/hands/recent`
+  - `GET /api/badugi/hands/by-table/{table_id}`
+  - `GET /api/badugi/hands/{hand_id}`
+- `backend/app/api/badugi_actions.py`
+  - `POST /api/badugi/actions/batch`
+  - `GET /api/badugi/actions/recent`
+- `backend/app/api/history.py`
+  - generic in-memory history only; not DB-backed
+- `backend/app/core/db.py`
+  - SQLAlchemy engine/session configuration
+
+Live action rows are persisted in `badugi_action_logs`. Structured hand summaries are persisted in `badugi_hand_logs`, `badugi_hand_actions`, and `badugi_hand_results`.
+
+## DB Audit Result
+
+The read-only audit connected to the configured backend database without exposing credentials.
+
+Summary from `reports/ai/live-db-cpu-action-audit.json`:
+
+| Field | Result |
+| --- | --- |
+| Source table | `badugi_action_logs` |
+| Recent hands read | `500` |
+| Action rows read | `2307` |
+| CPU identity availability | `CPU_ID_MISSING_BUT_INFERABLE` |
+| Decision source availability | `DECISION_SOURCE_AVAILABLE` |
+| Decision source fields found | `decisionSource`, `tierId` |
+| PII/token exposure | `false` |
+
+CPU identity is not stored as a first-class boolean/type column. The audit inferred CPU actions from player identifiers/names where possible and excludes obvious hero/human actions. Unknown actions remain classified as unknown instead of being forced into CPU.
+
+## Live Metrics
+
+CPU-inferred plus unknown non-hero action metrics:
+
+| Metric | Value |
+| --- | ---: |
+| Actions analyzed | `2092` |
+| Hands represented | `498` |
+| Fold rate | `35.42%` |
+| VPIP proxy | `31.50%` |
+| Call count | `606` |
+| Raise/open count | `53` |
+| Showdown/collect count | `139` |
+
+By variant where hand metadata was available:
+
+| Variant | Hands | Actions | Fold rate | VPIP proxy | Raise/open |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| D01 | `48` | `256` | `33.20%` | `22.27%` | `12` |
+| D02 | `29` | `108` | `29.63%` | `24.07%` | `5` |
+| D03 | `109` | `890` | `42.58%` | `32.58%` | `9` |
+| S01 | `40` | `97` | `22.68%` | `44.33%` | `6` |
+| S02 | `6` | `22` | `4.55%` | `50.00%` | `1` |
+| unknown | `266` | `719` | `30.88%` | `32.27%` | `20` |
+
+Mode is not reliably persisted in the action rows, so cash-vs-tournament cannot be separated from DB alone today.
+
+## Decision Source
+
+Decision source data is only partially available:
+
+- `pro-overlay`: `86` actions
+- `unknown`: `2006` actions
+
+This means the DB can prove that some persisted live actions carried pro-overlay metadata, but it cannot determine the decision source for most live actions. `fallbackReason`, `legalActions`, `cpuPolicy`, and `rlUsed` are not reliably persisted.
+
+## Comparison to Node Sanity
+
+Classification: `LIVE_UNKNOWN_SOURCE`.
+
+The live DB sample is not fold-heavy overall: fold rate is `35.42%`, not close to the local pro-overlay sanity fold rates of `92.6%` to `97.3%`.
+
+However, because decision source is missing for most actions and mode is not reliable, this does not prove the reported physical cash session used the healthy heuristic path. It only proves that the persisted recent live DB sample does not globally match the extreme pro-overlay fold-heavy pattern.
+
+## Conclusion
+
+`CORE5-CPU-FOLD-001` remains a P1 investigation item, but the current DB evidence does not justify an immediate CPU strategy change.
+
+Next action should be telemetry, not tuning:
+
+- persist explicit CPU identity
+- persist decision source
+- persist fallback reason
+- persist compact legal action info
+- persist mode and variant on every action row
+

@@ -31,6 +31,8 @@ export function installE2eTestDriver(apiRef) {
       apiRef.current?.setupBadugiWaitingFreezeFixtureForTest?.(...args),
     setupBadugiBetToDrawFixtureForTest: (...args) =>
       apiRef.current?.setupBadugiBetToDrawFixtureForTest?.(...args),
+    setupBadugiTournamentCpuDrawFixtureForTest: (...args) =>
+      apiRef.current?.setupBadugiTournamentCpuDrawFixtureForTest?.(...args),
     forceHeroDraw: (...args) => apiRef.current?.forceHeroDraw?.(...args),
     forceFinishRoundForTest: (...args) =>
       apiRef.current?.forceFinishRoundForTest?.(...args),

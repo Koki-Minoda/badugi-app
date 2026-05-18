@@ -6412,6 +6412,93 @@ const SAFE_RESET_PHASE = "IDLE";
 
   useEffect(() => {
     const forceHeroDraw = () => drawSelectedRef.current();
+    const forceSeatDrawForTest = (seat = turn, payload = {}) => {
+      const canonicalPhase =
+        phaseRef.current ??
+        engineStateRef.current?.phase ??
+        controllerUiSnapshotState?.phase ??
+        phase;
+      const snapshotPhase =
+        engineStateRef.current?.phase ?? controllerUiSnapshotState?.phase ?? canonicalPhase;
+      if (canonicalPhase !== "DRAW" && snapshotPhase !== "DRAW") return false;
+      if (typeof seat !== "number") return false;
+      if (seat === 0) {
+        return drawSelectedRef.current();
+      }
+      const basePlayers = (playersRef.current ?? players ?? [])
+        .map(clonePlayerState)
+        .filter(Boolean);
+      const actor = basePlayers[seat];
+      if (!actor || !isSeatEligibleForDraw(actor)) return false;
+      const drawIndexes = Array.isArray(payload?.discardIndexes)
+        ? payload.discardIndexes
+        : [];
+      const forcedPlayers = basePlayers.map((player, index) =>
+        index === seat
+          ? {
+              ...player,
+              hasDrawn: true,
+              hasActedThisRound: true,
+              lastDrawCount: drawIndexes.length,
+              lastAction: drawIndexes.length === 0 ? "Pat" : `DRAW(${drawIndexes.length})`,
+            }
+          : player,
+      );
+      setPlayerSnapshot(forcedPlayers);
+      logAction(seat, forcedPlayers[seat]?.lastAction ?? "Pat");
+      recordActionToLog({
+        phase: "DRAW",
+        round: drawRound + 1,
+        seat,
+        playerState: forcedPlayers[seat],
+        type: forcedPlayers[seat]?.lastAction ?? "Pat",
+        stackBefore: actor.stack,
+        stackAfter: forcedPlayers[seat]?.stack ?? actor.stack,
+        betBefore: actor.betThisRound,
+        betAfter: forcedPlayers[seat]?.betThisRound ?? actor.betThisRound,
+        raiseCountTable: raiseCountThisRound,
+        metadata: {
+          drawInfo: {
+            drawCount: drawIndexes.length,
+            drawIndexes,
+            before: Array.isArray(actor.hand) ? [...actor.hand] : [],
+            after: Array.isArray(forcedPlayers[seat]?.hand)
+              ? [...forcedPlayers[seat].hand]
+              : [],
+            source: "e2e-force-seat-draw",
+          },
+        },
+      });
+      const nextSeat = findNextDrawActorSeat(forcedPlayers, seat + 1);
+      const snapshot = {
+        ...applyDeckSnapshot({
+          players: forcedPlayers,
+          pots: potsRef.current ?? pots,
+          nextTurn: nextSeat ?? null,
+          turn: nextSeat ?? null,
+          metadata: {
+            currentBet,
+            betHead,
+            lastAggressor,
+            actingPlayerIndex: nextSeat ?? null,
+          },
+        }),
+        variantId: gameVariantRef.current,
+        gameVariant: gameVariantRef.current,
+        handId: handIdRef.current,
+      };
+      syncEngineSnapshot(snapshot);
+      if (nextSeat !== null) {
+        setTurn(nextSeat);
+      } else {
+        forceFinishRoundRef.current({
+          reason: "e2e-force-seat-draw-complete",
+          phaseOverride: "DRAW",
+          playersSnapshot: forcedPlayers,
+        });
+      }
+      return snapshot;
+    };
     e2eDriverApiRef.current = {
       forceSeatAction: (seat, payload = {}) =>
         queueForcedSeatAction(seat, { ...payload, __forceInstant: true }),
@@ -6426,6 +6513,13 @@ const SAFE_RESET_PHASE = "IDLE";
         if (outcome?.snapshot) {
           syncLegacyFromControllerSnapshot(outcome.snapshot, { seatIndex: seat });
           return outcome.snapshot;
+        }
+        if (String(payload?.type ?? "").toLowerCase() === "draw") {
+          const drawSnapshot = forceSeatDrawForTest(seat, payload);
+          if (drawSnapshot) {
+            lastControllerActionFailureRef.current = null;
+            return drawSnapshot;
+          }
         }
         if (outcome?.rejected) {
           lastControllerActionFailureRef.current = {
@@ -6737,86 +6831,88 @@ const SAFE_RESET_PHASE = "IDLE";
         }
         return snapshot;
       },
+      setupBadugiTournamentCpuDrawFixtureForTest: () => {
+        const base = (playersRef.current ?? players ?? [])
+          .map(clonePlayerState)
+          .filter(Boolean);
+        const names = ["You", "Mina", "Ren", "Kai", "Ari", "Bo"];
+        const nextPlayers = Array.from({ length: Math.max(6, base.length || NUM_PLAYERS) }, (_, seat) => {
+          const existing = base[seat] ?? {};
+          const folded = seat > 2;
+          return {
+            ...existing,
+            seatIndex: seat,
+            seat,
+            name: existing.name ?? names[seat] ?? `P${seat + 1}`,
+            stack: folded ? 0 : 4980,
+            hand: Array.isArray(existing.hand) && existing.hand.length
+              ? existing.hand
+              : ["As", "2h", "3c", "4d"],
+            folded,
+            hasFolded: folded,
+            allIn: false,
+            seatOut: false,
+            isBusted: false,
+            isActiveInGame: true,
+            betThisRound: 0,
+            bet: 0,
+            totalInvested: folded ? 0 : 20,
+            hasActedThisRound: folded,
+            hasActedThisStreet: folded,
+            hasDrawn: seat < 2,
+            lastAction: folded ? "Fold" : seat < 2 ? "Pat" : "",
+          };
+        });
+        const fixturePots = [{ amount: 60, eligible: [0, 1, 2] }];
+        const fixtureHandId = "BADUGI-DRAW1-CPU-ACTION-001-fixture";
+        playersRef.current = nextPlayers;
+        potsRef.current = fixturePots;
+        handIdRef.current = fixtureHandId;
+        handCountRef.current = 1;
+        drawRoundTracker.current = 1;
+        betRoundTracker.current = 1;
+        setPlayers(nextPlayers);
+        setPots(fixturePots);
+        setPhase("DRAW");
+        setDrawRoundValue(1);
+        setBetRoundIndex(1);
+        setCurrentBet(0);
+        setTurn(2);
+        setTransitioning(false);
+        transitioningRef.current = false;
+        const snapshot = {
+          variantId: "badugi",
+          handId: fixtureHandId,
+          phase: "DRAW",
+          street: "DRAW",
+          drawRound: 1,
+          drawRoundIndex: 1,
+          betRound: 1,
+          betRoundIndex: 1,
+          currentBet: 0,
+          pot: 60,
+          pots: fixturePots,
+          players: nextPlayers,
+          currentActor: 2,
+          nextTurn: 2,
+          turn: 2,
+          metadata: {
+            actingPlayerIndex: 2,
+            currentBet: 0,
+            betHead: null,
+            handId: fixtureHandId,
+          },
+        };
+        engineStateRef.current = snapshot;
+        setEngineState(snapshot);
+        syncEngineSnapshot(snapshot);
+        return snapshot;
+      },
       forceSequentialFolds,
       forceAllIn: forceAllInAction,
       setupFixedLimitCapFixtureForTest,
       forceHeroDraw,
-      forceSeatDraw: (seat = turn, payload = {}) => {
-        const currentPhase = phaseRef.current ?? phase;
-        if (currentPhase !== "DRAW") return false;
-        if (typeof seat !== "number") return false;
-        if (seat === 0) {
-          return drawSelectedRef.current();
-        }
-        const basePlayers = (playersRef.current ?? players ?? [])
-          .map(clonePlayerState)
-          .filter(Boolean);
-        const actor = basePlayers[seat];
-        if (!actor || !isSeatEligibleForDraw(actor)) return false;
-        const drawIndexes = Array.isArray(payload?.discardIndexes)
-          ? payload.discardIndexes
-          : [];
-        const forcedPlayers = basePlayers.map((player, index) =>
-          index === seat
-            ? {
-                ...player,
-                hasDrawn: true,
-                hasActedThisRound: true,
-                lastDrawCount: drawIndexes.length,
-                lastAction: drawIndexes.length === 0 ? "Pat" : `DRAW(${drawIndexes.length})`,
-              }
-            : player,
-        );
-        setPlayerSnapshot(forcedPlayers);
-        logAction(seat, forcedPlayers[seat]?.lastAction ?? "Pat");
-        recordActionToLog({
-          phase: "DRAW",
-          round: drawRound + 1,
-          seat,
-          playerState: forcedPlayers[seat],
-          type: forcedPlayers[seat]?.lastAction ?? "Pat",
-          stackBefore: actor.stack,
-          stackAfter: forcedPlayers[seat]?.stack ?? actor.stack,
-          betBefore: actor.betThisRound,
-          betAfter: forcedPlayers[seat]?.betThisRound ?? actor.betThisRound,
-          raiseCountTable: raiseCountThisRound,
-          metadata: {
-            drawInfo: {
-              drawCount: drawIndexes.length,
-              drawIndexes,
-              before: Array.isArray(actor.hand) ? [...actor.hand] : [],
-              after: Array.isArray(forcedPlayers[seat]?.hand)
-                ? [...forcedPlayers[seat].hand]
-                : [],
-              source: "e2e-force-seat-draw",
-            },
-          },
-        });
-        const nextSeat = findNextDrawActorSeat(forcedPlayers, seat + 1);
-        const snapshot = applyDeckSnapshot({
-          players: forcedPlayers,
-          pots: potsRef.current ?? pots,
-          nextTurn: nextSeat ?? null,
-          turn: nextSeat ?? null,
-          metadata: {
-            currentBet,
-            betHead,
-            lastAggressor,
-            actingPlayerIndex: nextSeat ?? null,
-          },
-        });
-        syncEngineSnapshot(snapshot);
-        if (nextSeat !== null) {
-          setTurn(nextSeat);
-        } else {
-          forceFinishRoundRef.current({
-            reason: "e2e-force-seat-draw-complete",
-            phaseOverride: "DRAW",
-            playersSnapshot: forcedPlayers,
-          });
-        }
-        return snapshot;
-      },
+      forceSeatDraw: forceSeatDrawForTest,
       forceFinishRoundForTest: (phaseOverride = null) => {
         const forcedPlayers = (playersRef.current ?? [])
           .map(clonePlayerState)

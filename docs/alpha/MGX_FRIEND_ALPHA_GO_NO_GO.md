@@ -4,15 +4,15 @@ Date: 2026-05-18
 
 ## Decision
 
-`HOLD_FOR_PHYSICAL_MOBILE_BADUGI_P0`
+`HOLD_FOR_PHYSICAL_MOBILE_BADUGI_P0_AND_REMOTE_SYNC`
 
-The live URL is the release source of truth for deploy gates, and the browser gameplay invariant harness is the browser source of truth for action-by-action UI/controller consistency. However, physical mobile QA has now found a Badugi tournament P0 on the live preview: hand 5/5 can stay on `Waiting for other players...` at BET Draw2 / Bet Round 2 with To Call 0 and Pot 66. Friend alpha is HOLD until this physical mobile waiting freeze is fixed, deployed, and rechecked on a real device. Remote push/sync also remains unresolved.
+The live URL is the release source of truth for deploy gates, and the browser gameplay invariant harness is the browser source of truth for action-by-action UI/controller consistency. Live Core5 browser gates are fixed live / monitor, but physical mobile QA found Badugi tournament P0s on the live preview: hand 5/5 can stay on `Waiting for other players...` at BET Draw2 / Bet Round 2 with To Call 0 and Pot 66, and a separate DRAW/BET divergence screenshot remains open. Friend alpha is HOLD until these physical mobile blockers are fixed, deployed, and rechecked on a real device. Remote push/sync is also unresolved.
 
 ## Gate Summary
 
 | Gate | Result |
 | --- | --- |
-| Remote source sync for deployed commit | BLOCKED / unresolved, branch ahead origin by 87 commits |
+| Remote source sync for deployed commit | BLOCKED / unresolved, branch ahead origin by 99 commits at `f735fca` |
 | Physical mobile Badugi tournament waiting freeze | P0 OPEN, `PHYSICAL-MOBILE-BADUGI-WAITING-001` |
 | Physical mobile Badugi DRAW/BET divergence | P0 OPEN, `BADUGI-DRAW-BET-MIX-001`, separate follow-up after waiting freeze |
 | Core5 phase machine integrity | PASS_LOCAL / MONITOR, legal graph / impossible transition / DRAW-BET mixed / stale merge detectors pass focused regressions and Core5 browser matrix gates with 0 P0 |
@@ -37,9 +37,9 @@ The live URL is the release source of truth for deploy gates, and the browser ga
 | Core5 Tournament lifecycle invariant gate | PASS locally, 1,200 synthetic tournaments / 0 violations; 5/5 full browser lifecycle variants; 30/30 individual Tournament checks |
 | Tournament integration expansion | PASS locally, 90-row sweep / 0 violations; unit integration 28/28; tournament E2E integration 50/50 |
 | Browser gameplay invariant gate | CORE5 STEP F PASS on live preview; local desktop/mobile matrices also pass |
-| Physical mobile QA | PENDING, no physical device available in this environment |
+| Physical mobile QA | ACTIVE / BLOCKED, physical iPhone live QA found Badugi P0s that still need fix/deploy/recheck |
 | Core 5 UI layout | PASS for all five core games in automation |
-| Alpha-scope P0 | None confirmed in current live browser gameplay matrix |
+| Alpha-scope P0 | None confirmed in live browser gameplay matrix; physical mobile Badugi P0s remain open |
 | Badugi friend-alpha exposure | Live browser matrix and betting-closure proof pass; HOLD remains for physical mobile QA and remote sync |
 
 ## Alpha Scope
@@ -56,7 +56,7 @@ The live URL is the release source of truth for deploy gates, and the browser ga
 
 ## Remaining Required Action
 
-Run physical mobile QA on at least Android Chrome or iPhone Safari/Chrome, and push `feature/d-04-next-actor-unify` from a credentialed environment. Only then can the Core5 friend alpha move from HOLD to GO.
+Fix/deploy/recheck the physical Badugi mobile P0s, then complete Android Chrome and iPhone Safari/Chrome QA, and push `feature/d-04-next-actor-unify` from a credentialed environment. Only then can the Core5 friend alpha move from HOLD to GO.
 
 Badugi should be watched closely in alpha: Step6 clears the Badugi portrait mobile UI blocker, Step7 clears the automated long-run active-pot / terminal-transition blocker, live no-reraise closure evidence confirms the raiser is not reselected after all remaining players call/fold, and live re-raise-positive evidence confirms Hero action reopens only after an opponent re-raises.
 

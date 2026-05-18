@@ -1,17 +1,13 @@
 // src/ui/game/nlh/NLHUIAdapter.js
 
 import { BaseGameUIAdapter } from "../GameUIAdapter.js";
+import { shouldRevealPlayerHand } from "../../../games/_core/allInVisibilityPolicy.js";
 
 function sumTotalInvested(players = []) {
   return players.reduce(
     (sum, player) => sum + (player?.totalInvested ?? player?.betThisStreet ?? 0),
     0,
   );
-}
-
-function shouldRevealCards(player, snapshot) {
-  if (player.seatIndex === 0) return true;
-  return (snapshot.street ?? "").toUpperCase() === "SHOWDOWN";
 }
 
 function buildStudCardView(player = {}, { revealAll = false } = {}) {
@@ -33,11 +29,24 @@ function buildStudCardView(player = {}, { revealAll = false } = {}) {
 
 function mapSeatViews(snapshot = {}) {
   const players = snapshot.players ?? [];
+  const variantId = snapshot.variantId ?? snapshot.gameVariant ?? snapshot.metadata?.variantId ?? "nlh";
   const dealerIdx = snapshot.dealerIndex ?? 0;
   const sbIdx = snapshot.smallBlindIndex ?? null;
   const bbIdx = snapshot.bigBlindIndex ?? null;
   return players.map((player = {}, idx) => {
-    const revealCards = shouldRevealCards({ ...player, seatIndex: idx }, snapshot);
+    const revealCards = shouldRevealPlayerHand({
+      variantId,
+      player,
+      seatIndex: idx,
+      heroSeat: 0,
+      phase: snapshot.phase,
+      street: snapshot.street,
+      allInActionComplete: Boolean(
+        snapshot.allInActionComplete ??
+          snapshot.bettingActionComplete ??
+          snapshot.metadata?.allInActionComplete,
+      ),
+    });
     const holeCards = Array.isArray(player.holeCards) ? [...player.holeCards] : [];
     const studCardView = buildStudCardView(player, {
       revealAll: (snapshot.street ?? "").toUpperCase() === "SHOWDOWN",

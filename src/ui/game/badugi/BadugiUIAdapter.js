@@ -13,6 +13,7 @@ import {
   isSeatEligibleForBetting,
   isSeatEligibleForDrawing,
 } from "../../../games/core/turn/actorEligibility.js";
+import { shouldRevealPlayerHand } from "../../../games/_core/allInVisibilityPolicy.js";
 import { getBlindSeatIndexes, getPositionNameForSeat } from "../../utils/positionLabels.js";
 
 function sumPotAmounts(pots = [], fallbackPlayers = []) {
@@ -135,7 +136,7 @@ function buildControlsConfig(snapshot, tableConfig) {
   };
 }
 
-function mapSeatViews(snapshot, structureMeta) {
+function mapSeatViews(snapshot, structureMeta, variantId = "badugi") {
   const players = snapshot.players ?? [];
   const dealerIdx =
     snapshot.dealerIdx ??
@@ -149,6 +150,19 @@ function mapSeatViews(snapshot, structureMeta) {
 
   return players.map((player, idx) => {
     const sanitizedPlayer = player ? { ...player } : {};
+    const showHand = shouldRevealPlayerHand({
+      variantId,
+      player: sanitizedPlayer,
+      seatIndex: idx,
+      heroSeat: 0,
+      phase: snapshot.phase,
+      street: snapshot.street,
+      allInActionComplete: Boolean(
+        snapshot.allInActionComplete ??
+          snapshot.bettingActionComplete ??
+          snapshot.metadata?.allInActionComplete,
+      ),
+    });
     return {
       ...sanitizedPlayer,
       seatIndex: idx,
@@ -168,7 +182,7 @@ function mapSeatViews(snapshot, structureMeta) {
       isBusted: Boolean(sanitizedPlayer.isBusted),
       lastAction: sanitizedPlayer.lastAction ?? "",
       hand: Array.isArray(sanitizedPlayer.hand) ? [...sanitizedPlayer.hand] : [],
-      showHand: sanitizedPlayer.showHand ?? idx === 0,
+      showHand,
       selected: Array.isArray(sanitizedPlayer.selected) ? [...sanitizedPlayer.selected] : [],
       hasDrawn: Boolean(sanitizedPlayer.hasDrawn),
       hasActedThisRound: Boolean(sanitizedPlayer.hasActedThisRound),
@@ -208,7 +222,16 @@ export class BadugiUIAdapter extends BaseGameUIAdapter {
   buildViewProps({ controllerSnapshot = {}, tableConfig = {} } = {}) {
     const phase = controllerSnapshot.phase ?? "BET";
     const structureMeta = defaultStructureMeta(tableConfig);
-    const seatViews = mapSeatViews(controllerSnapshot, structureMeta);
+    const variantId =
+      controllerSnapshot.variantId ??
+      controllerSnapshot.gameVariant ??
+      controllerSnapshot.metadata?.variantId ??
+      tableConfig.variantId ??
+      tableConfig.gameVariant ??
+      this.gameDefinition?.id ??
+      this.gameDefinition?.variantId ??
+      "badugi";
+    const seatViews = mapSeatViews(controllerSnapshot, structureMeta, variantId);
     const totalPot = sumPotAmounts(controllerSnapshot.pots, controllerSnapshot.players);
 
     const potView = {

@@ -7,6 +7,11 @@ import { DeuceToSevenSingleDrawController } from "../DeuceToSevenSingleDrawContr
 import { DeuceToSevenSingleDrawEngine } from "../DeuceToSevenSingleDrawEngine.js";
 import { DeuceToSevenTripleDrawController } from "../DeuceToSevenTripleDrawController.js";
 import { DeuceToSevenTripleDrawEngine } from "../DeuceToSevenTripleDrawEngine.js";
+import {
+  canSeatBetAction,
+  canSeatDrawAction,
+  canSeatShowdown,
+} from "../drawEligibility.js";
 
 const variants = [
   ["D01", DeuceToSevenTripleDrawController, DeuceToSevenTripleDrawEngine],
@@ -66,6 +71,9 @@ describe("draw all-in eligibility regression", () => {
     expect(drawState.actingPlayerIndex).toBe(1);
     expect(drawState.metadata.pendingDrawSeats).toContain(1);
     expect(drawState.players[1]).toMatchObject({ allIn: true, stack: 0, folded: false });
+    expect(canSeatBetAction(drawState.players[1], drawState)).toBe(false);
+    expect(canSeatDrawAction({ seatIndex: 1, ...drawState.players[1] }, drawState)).toBe(true);
+    expect(canSeatShowdown(drawState.players[1])).toBe(true);
     expect(game.getLegalActions({ engineState: drawState }, 1)).toEqual([
       { type: "DRAW", minDiscard: 0, maxDiscard: 5 },
     ]);
@@ -84,6 +92,7 @@ describe("draw all-in eligibility regression", () => {
 
     expect(afterHeroDraw.players[1].allIn).toBe(true);
     expect(afterHeroDraw.players[1].folded).toBe(false);
+    expect(canSeatShowdown(afterHeroDraw.players[1])).toBe(true);
     expect(afterHeroDraw.actingPlayerIndex).not.toBe(1);
     if (afterHeroDraw.street === "BET") {
       expect(game.getLegalActions({ engineState: afterHeroDraw }, 1)).toEqual([]);
@@ -106,5 +115,27 @@ describe("draw all-in eligibility regression", () => {
 
     expect(drawState.metadata.pendingDrawSeats).not.toContain(1);
     expect(drawState.actingPlayerIndex).not.toBe(1);
+    expect(canSeatDrawAction({ seatIndex: 1, ...drawState.players[1] }, drawState)).toBe(false);
+    expect(canSeatShowdown(drawState.players[1])).toBe(false);
+  });
+
+  it.each(variants)("%s excludes busted/out seats from DRAW and showdown", (_id, ControllerClass, EngineClass) => {
+    const game = makeController(ControllerClass, EngineClass);
+    const state = game.createNewHandState(game.createInitialState());
+    const drawState = game.engine.transitionToDraw({
+      ...state.engineState,
+      players: state.engineState.players.map((player, seat) => ({
+        ...player,
+        folded: false,
+        seatOut: seat === 1,
+        sittingOut: false,
+        isBusted: seat === 1,
+      })),
+    }, 1);
+
+    expect(drawState.metadata.pendingDrawSeats).not.toContain(1);
+    expect(drawState.actingPlayerIndex).not.toBe(1);
+    expect(canSeatDrawAction({ seatIndex: 1, ...drawState.players[1] }, drawState)).toBe(false);
+    expect(canSeatShowdown(drawState.players[1])).toBe(false);
   });
 });

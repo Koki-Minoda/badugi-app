@@ -29,6 +29,12 @@ import {
   buildBadugiBetToDrawTransitionTrace,
   recordBadugiBetToDrawTransitionTrace,
 } from "../games/badugi/auditBadugiBetToDrawTransition.js";
+import { recordBrowserCpuDecisionTrace } from "../ai/qa/cpuDecisionTraceCore.js";
+import {
+  buildCpuDecisionTelemetry,
+  mergeCpuDecisionTelemetry,
+} from "../ai/qa/cpuDecisionPersistence.js";
+import { getMobileQaSessionId } from "./qa/mobileQaSession.js";
 
 import {
   nextAliveFrom,
@@ -3603,6 +3609,29 @@ const SAFE_RESET_PHASE = "IDLE";
       ? metadata.paid
       : Math.max(0, (resolvedBetAfter ?? 0) - (resolvedBetBefore ?? 0));
   const resolvedToCall = Number.isFinite(metadata?.toCall) ? metadata.toCall : null;
+  const cpuDecisionTelemetry = buildCpuDecisionTelemetry({
+    sessionId: getMobileQaSessionId(),
+    mode: isTournament ? "tournament" : "cash",
+    variantId: normalizedGameVariant,
+    actorSeat: idx,
+    seatSnapshot,
+    phase: phaseLabel,
+    drawRound: resolvedDrawRound,
+    betRound: resolvedBetRound,
+    actionType: type,
+    metadata: mergedMeta,
+    toCall: resolvedToCall,
+    currentBet,
+    pot: potAfter ?? totalPotRef.current,
+    stack: resolvedStackAfter ?? resolvedStackBefore ?? seatSnapshot?.stack,
+    canRaise: Number.isFinite(raiseCountTable) ? raiseCountTable < 4 : null,
+    aiTier: activeAiTierConfig?.id,
+    cpuPolicy: activeAiTierConfig?.id,
+  });
+  const persistedMeta = mergeCpuDecisionTelemetry(mergedMeta, cpuDecisionTelemetry);
+  if (cpuDecisionTelemetry?.cpuDecision) {
+    recordBrowserCpuDecisionTrace(cpuDecisionTelemetry.cpuDecision);
+  }
 
   console.assert(
     typeof resolvedStackBefore === "number" && typeof resolvedStackAfter === "number",
@@ -3635,7 +3664,7 @@ const SAFE_RESET_PHASE = "IDLE";
     toCall: resolvedToCall,
     potAfter: potAfter ?? totalPotRef.current,
     raiseCountTable,
-    metadata: Object.keys(mergedMeta).length ? mergedMeta : undefined,
+    metadata: Object.keys(persistedMeta).length ? persistedMeta : undefined,
     drawRound: resolvedDrawRound,
     betRound: resolvedBetRound,
     ts: Date.now(),

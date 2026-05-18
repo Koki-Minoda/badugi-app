@@ -104,7 +104,7 @@ Artifacts:
 | C | PASS | Core5 tournament desktop 20-hand passed, 5/5 variants |
 | D | PASS | Core5 tournament desktop 100-hand passed, 500/500 hands, 0 invariant violations |
 | E | PASS | Core5 portrait/landscape 10-hand, 20-hand, and 50-hand local mobile matrices pass |
-| F | READY TO RUN / NOT RUN | Live preview browser matrix is now the next approved ladder step |
+| F | PASS | Live preview browser smoke, desktop matrix, and mobile emulation matrix pass against `https://mgx-poker.com/` |
 
 ## Step C/D Tournament Desktop Recheck
 
@@ -195,8 +195,35 @@ Artifacts:
 | S02 tournament landscape trace | `reports/browser-gameplay/browser-gameplay-trace-s02-tournament-landscape.jsonl` |
 | Failure/monitor screenshots | `reports/screenshots/browser-gameplay-failure-*.png` |
 
+## Step F Live Preview Matrix
+
+Live URL: `https://mgx-poker.com/`
+
+| Check | Result |
+|---|---|
+| Deploy verification | PASS, deployed commit matches local head `a2a271e4b426581fcdb7c156d1aa90b1ed607a00` |
+| Live smoke 5-hand desktop | PASS, 50/50 hands complete |
+| Live desktop 20-hand matrix | PASS, 200/200 hands complete |
+| Live mobile emulation 10-hand matrix | PASS, 200/200 hands complete |
+| Actor P0 / terminal P0 / illegal reopen / UI divergence / action application failed / freeze | 0 / 0 / 0 / 0 / 0 / 0 |
+| Monitor rows | PHASE/POT timing rows only, no stale controls or active-hand pot-zero P0 |
+| Badugi no-reraise closure | PASS live |
+| Badugi re-raise-positive proof | PASS live after explicit fixed-limit raise increment |
+
+Artifacts:
+
+| Artifact | Path |
+|---|---|
+| Deploy verification | `reports/alpha/live-deploy-verification.json` |
+| Live smoke summary | `reports/browser-gameplay/live-core5-smoke-summary.json` |
+| Live smoke failures/monitor rows | `reports/browser-gameplay/live-core5-smoke-failures.json` |
+| Live desktop summary | `reports/browser-gameplay/live-core5-desktop-20hand-summary.json` |
+| Live desktop failures/monitor rows | `reports/browser-gameplay/live-core5-desktop-20hand-failures.json` |
+| Live mobile summary | `reports/browser-gameplay/live-core5-mobile-10hand-summary.json` |
+| Live mobile failures/monitor rows | `reports/browser-gameplay/live-core5-mobile-10hand-failures.json` |
+| Badugi betting closure | `reports/alpha/live-badugi-betting-closure.json` |
+
 ## Next Fix List
 
-1. Proceed to the live preview browser matrix next; local mobile portrait/landscape is no longer the blocker.
-2. Keep S01/S02 late-hand draw/terminal regression, D02 draw fallback, D01 terminal collect, D01 mobile stale-controls fix, and tournament draw-lowball controller-action fallback under monitor.
-3. Keep friend alpha HOLD until live preview matrix, physical mobile QA, and remote sync are resolved.
+1. Keep S01/S02 late-hand draw/terminal regression, D02 draw fallback, D01 terminal collect, D01 mobile stale-controls fix, tournament draw-lowball controller-action fallback, and live matrix monitor rows under release-gate monitor.
+2. Keep friend alpha HOLD until physical mobile QA and remote sync are resolved.

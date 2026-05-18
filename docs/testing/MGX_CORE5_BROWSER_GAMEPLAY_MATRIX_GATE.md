@@ -22,7 +22,7 @@ This gate expands the browser gameplay invariant harness from Badugi-only covera
 | C | Core5 tournament desktop 20-hand | PASS, 5/5 variants |
 | D | Core5 tournament desktop 100-hand | PASS, 500/500 hands, 0 invariant violations |
 | E | Core5 portrait/landscape matrix | PASS, 10-hand/20-hand/50-hand local mobile matrices pass |
-| F | live preview browser matrix | READY TO RUN / NOT RUN |
+| F | live preview browser matrix | PASS, live smoke/desktop/mobile matrices pass |
 
 ## Pass Conditions
 
@@ -40,7 +40,7 @@ Each step must meet all of these before continuing:
 
 ## Current Gate Decision
 
-`STEP_E_PASS__LOCAL_MOBILE_MATRIX_CLEAN__LIVE_MATRIX_ALLOWED`
+`STEP_F_PASS__LIVE_BROWSER_MATRIX_CLEAN__PHYSICAL_QA_AND_REMOTE_SYNC_PENDING`
 
 Core5 cash desktop 10-hand passed. The original S01/S02 late-hand draw/terminal P0 is fixed locally and S01/S02 100-hand now pass. D02's CPU draw fallback path is present. The D01 fold-to-one collect terminal path is fixed locally. The later D01 actor/source divergence was traced to the browser collector and E2E progress helper mixing stale `phaseState` fields with the newer session controller snapshot; both now prefer `controllerSnapshot` for phase, players, and hand id. D01 cash desktop 30-hand, D01 100-hand, and D02 100-hand pass with no actor P0, terminal P0, illegal reopen, action application failure, or real freeze.
 
@@ -48,8 +48,9 @@ Tournament desktop expansion is now clean locally. Step C passed Core5 tournamen
 
 Mobile portrait/landscape expansion is also clean locally. Step E passed the 10-hand smoke, 20-hand matrix, and 50-hand matrix across Badugi/D01/D02/S01/S02, cash/tournament, and portrait/landscape. The final 50-hand mobile matrix completed 1000/1000 hands with 23,358 actions observed and no actor P0, terminal P0, illegal reopen, UI/controller divergence, action application failure, real freeze, or fatal console/page error. Remaining PHASE/POT rows are monitor-only timing rows without stale controls.
 
+Live preview expansion is clean against `https://mgx-poker.com/`. Step F first verified deploy reality: live commit `a2a271e4b426581fcdb7c156d1aa90b1ed607a00` matches local head and bundle `/assets/index-BlAPEzcs.js`. The live smoke completed 50/50 hands, the live desktop matrix completed 200/200 hands, and the live mobile emulation matrix completed 200/200 hands. No actor P0, terminal P0, illegal reopen, UI/controller divergence, action application failure, freeze, or fatal live error was observed. Remaining PHASE/POT rows are bounded monitor-only timing rows. Badugi live no-reraise closure and re-raise-positive proof both pass.
+
 ## Current Required Recheck
 
-1. Run the live preview browser matrix against `https://mgx-poker.com/`.
-2. Keep the local Step E mobile traces under monitor for D01/D02 tournament portrait/landscape.
-3. Keep friend alpha HOLD until live preview matrix, physical mobile QA, and remote sync are resolved.
+1. Keep the local Step E and live Step F traces under monitor for D01/D02 tournament portrait/landscape and Badugi closure behavior.
+2. Keep friend alpha HOLD until physical mobile QA and remote sync are resolved.

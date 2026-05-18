@@ -1,24 +1,24 @@
 # MGX Alpha Remote Sync Status
 
-Date: 2026-05-17
+Date: 2026-05-18
 
 ## Snapshot
 
 | Item | Result |
 | --- | --- |
 | Local branch | `feature/d-04-next-actor-unify` |
-| Local HEAD | see `reports/alpha/live-deploy-verification.json` from the latest deploy verification |
+| Local HEAD | `a2a271e4b426581fcdb7c156d1aa90b1ed607a00` |
 | Remote | `origin https://github.com/Koki-Minoda/badugi-app.git` |
-| Branch state | local branch is ahead of `origin/feature/d-04-next-actor-unify` by 60+ commits |
+| Branch state | local branch is ahead of `origin/feature/d-04-next-actor-unify` by 87 commits |
 | Preview URL | `https://mgx-poker.com/` |
-| Deployed snapshot | see `reports/alpha/live-deploy-verification.json` |
+| Deployed snapshot | live commit matches local HEAD in `reports/alpha/live-deploy-verification.json` |
 
 ## Push Readiness
 
 | Check | Result |
 | --- | --- |
-| `git status --short` | only generated `reports/alpha/`, `reports/invariant/`, and `reports/tournament/` untracked |
-| `git branch -vv` | local branch ahead 60+ before final deploy |
+| `git status --short` | source/docs/tests are expected clean after the live-matrix docs commit; generated `reports/` remain untracked |
+| `git branch -vv` | local branch ahead 87 before remote push |
 | `gh --version` | unavailable, `gh` is not installed |
 | HTTPS push | blocked by missing credentials |
 | Token exposure | false |

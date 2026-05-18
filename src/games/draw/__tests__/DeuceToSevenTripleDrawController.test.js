@@ -53,7 +53,7 @@ describe("DeuceToSevenTripleDrawController", () => {
     expect(snapshot.players[0].selected).toEqual([]);
     expect(snapshot.maxDiscardCount).toBe(5);
     expect(snapshot.handCardCount).toBe(5);
-    expect(snapshot.turn).toBe(1);
+    expect(snapshot.turn).toBe(0);
     expect(snapshot.currentBet).toBe(20);
   });
 
@@ -95,8 +95,8 @@ describe("DeuceToSevenTripleDrawController", () => {
     ]);
     const state = controller.createNewHandState(controller.createInitialState());
 
-    expect(controller.getLegalActions(state, 0)).toEqual([]);
-    expect(controller.getLegalActions(state, 1).map((action) => action.type)).toEqual([
+    expect(controller.getLegalActions(state, 1)).toEqual([]);
+    expect(controller.getLegalActions(state, 0).map((action) => action.type)).toEqual([
       "FOLD",
       "CALL",
       "RAISE",
@@ -109,8 +109,8 @@ describe("DeuceToSevenTripleDrawController", () => {
       "2H", "3H", "4H", "5H", "8H",
     ]);
     let state = controller.createNewHandState(controller.createInitialState());
-    state = controller.applyAction(state, { seatIndex: 1, type: "CALL" }).state;
-    state = controller.applyAction(state, { seatIndex: 0, type: "CHECK" }).state;
+    state = controller.applyAction(state, { seatIndex: 0, type: "CALL" }).state;
+    state = controller.applyAction(state, { seatIndex: 1, type: "CHECK" }).state;
 
     expect(state.snapshot.phase).toBe("DRAW");
     expect(state.snapshot.turn).toBe(1);
@@ -153,6 +153,7 @@ describe("DeuceToSevenTripleDrawController", () => {
       "2H", "3H", "4H", "5H", "8H",
     ]);
     const state = controller.createNewHandState(controller.createInitialState());
+    state.engineState.actingPlayerIndex = 1;
     state.engineState.players[1].hand = ["7S", "5D", "4C", "3H", "2S"];
 
     expect(controller.getCpuAction(state, 1)).toMatchObject({
@@ -169,6 +170,7 @@ describe("DeuceToSevenTripleDrawController", () => {
       "2H", "3H", "4H", "5H", "8H",
     ]);
     const state = controller.createNewHandState(controller.createInitialState());
+    state.engineState.actingPlayerIndex = 1;
     state.engineState.players[1].hand = ["7S", "5D", "4C", "3H", "2S"];
 
     const action = controller.getCpuAction(state, 1, {
@@ -192,6 +194,7 @@ describe("DeuceToSevenTripleDrawController", () => {
       "2H", "3H", "4H", "5H", "8H",
     ]);
     const state = controller.createNewHandState(controller.createInitialState());
+    state.engineState.actingPlayerIndex = 1;
     state.engineState.players[1].hand = ["7S", "5D", "4C", "3H", "2S"];
 
     const standardAction = controller.getCpuAction(state, 1);
@@ -212,14 +215,14 @@ describe("DeuceToSevenTripleDrawController", () => {
     let state = controller.createNewHandState(controller.createInitialState());
 
     let result = controller.applyAction(state, {
-      seatIndex: 1,
+      seatIndex: 0,
       type: "CALL",
     });
-    expect(result.events[0]).toMatchObject({ type: "actionApplied", seatIndex: 1 });
+    expect(result.events[0]).toMatchObject({ type: "actionApplied", seatIndex: 0 });
     state = result.state;
 
     result = controller.applyAction(state, {
-      seatIndex: 0,
+      seatIndex: 1,
       type: "CHECK",
     });
 
@@ -236,8 +239,8 @@ describe("DeuceToSevenTripleDrawController", () => {
       "9S", "10S",
     ]);
     let state = controller.createNewHandState(controller.createInitialState());
-    state = controller.applyAction(state, { seatIndex: 1, type: "CALL" }).state;
-    state = controller.applyAction(state, { seatIndex: 0, type: "CHECK" }).state;
+    state = controller.applyAction(state, { seatIndex: 0, type: "CALL" }).state;
+    state = controller.applyAction(state, { seatIndex: 1, type: "CHECK" }).state;
 
     let result = controller.applyAction(state, {
       seatIndex: 1,
@@ -270,7 +273,7 @@ describe("DeuceToSevenTripleDrawController", () => {
     });
     expect(missingSeat.state).toBe(state);
 
-    const outOfTurn = controller.applyAction(state, { seatIndex: 0, type: "CALL" });
+    const outOfTurn = controller.applyAction(state, { seatIndex: 1, type: "CALL" });
     expect(outOfTurn.events[0]).toMatchObject({
       type: "invalidAction",
     });
@@ -312,7 +315,7 @@ describe("DeuceToSevenTripleDrawController", () => {
     const state = controller.createNewHandState(controller.createInitialState());
 
     const result = controller.applyAction(state, {
-      seatIndex: 1,
+      seatIndex: 0,
       type: "FOLD",
     });
 
@@ -324,7 +327,7 @@ describe("DeuceToSevenTripleDrawController", () => {
     expect(controller.isHandFinished(result.state)).toBe(true);
     expect(controller.getWinners(result.state)).toEqual([
       expect.objectContaining({
-        seatIndex: 0,
+        seatIndex: 1,
         payout: 30,
       }),
     ]);

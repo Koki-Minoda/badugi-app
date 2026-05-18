@@ -103,7 +103,7 @@ describe("A-5 Triple Draw progression spec", () => {
     expect(state.snapshot.lastHandResult?.winners).toHaveLength(1);
   });
 
-  it.fails("no-next-alive closes safely instead of electing an all-in draw actor", () => {
+  it("all-in players keep draw decision rights, then are skipped for the next betting actor", () => {
     const game = huController();
     const state = game.createNewHandState(game.createInitialState());
     const next = {
@@ -125,7 +125,27 @@ describe("A-5 Triple Draw progression spec", () => {
 
     const advanced = game.engine.applyBettingAction(next, { seatIndex: 0, type: "CHECK" });
 
-    expect(advanced.actingPlayerIndex).not.toBe(1);
-    expect(["DRAW", "SHOWDOWN"]).toContain(advanced.street);
+    expect(advanced.street).toBe("DRAW");
+    expect(advanced.actingPlayerIndex).toBe(1);
+    expect(advanced.metadata.pendingDrawSeats).toContain(1);
+
+    const afterAllInDraw = game.engine.applyDrawAction(advanced, {
+      seatIndex: 1,
+      type: "DRAW",
+      discardIndexes: [],
+    });
+
+    expect(afterAllInDraw.actingPlayerIndex).toBe(0);
+    expect(afterAllInDraw.players[1].allIn).toBe(true);
+
+    const afterHeroDraw = game.engine.applyDrawAction(afterAllInDraw, {
+      seatIndex: 0,
+      type: "DRAW",
+      discardIndexes: [],
+    });
+
+    expect(afterHeroDraw.street).toBe("BET");
+    expect(afterHeroDraw.actingPlayerIndex).toBe(0);
+    expect(afterHeroDraw.actingPlayerIndex).not.toBe(1);
   });
 });

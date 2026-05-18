@@ -32,7 +32,7 @@ describe("Single Draw showdown and next hand spec", () => {
     expect(state.snapshot.lastHandResult?.pot).toBeGreaterThan(0);
   });
 
-  it.fails.each(variants)("%s next hand resets street state while preserving playable stacks and blind pot", (_id, ControllerClass, EngineClass) => {
+  it.each(variants)("%s next hand resets street state while preserving playable stacks and blind pot", (_id, ControllerClass, EngineClass) => {
     const game = makeController(ControllerClass, EngineClass);
     let state = game.createNewHandState(game.createInitialState());
     state = game.applyAction(state, { seatIndex: 0, type: "FOLD" }).state;

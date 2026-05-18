@@ -91,8 +91,8 @@ describe("D02 A-5 Triple Draw e2e hand flow", () => {
     ]);
     let state = controller.createNewHandState(controller.createInitialState());
 
-    state = controller.applyAction(state, { seatIndex: 1, type: "CALL" }).state;
-    state = controller.applyAction(state, { seatIndex: 0, type: "CHECK" }).state;
+    state = controller.applyAction(state, { seatIndex: 0, type: "CALL" }).state;
+    state = controller.applyAction(state, { seatIndex: 1, type: "CHECK" }).state;
     state = controller.applyAction(state, {
       seatIndex: 1,
       payload: { type: "DRAW", discardIndexes: [] },

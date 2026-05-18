@@ -97,6 +97,17 @@ function sumPots(pots = []) {
   return pots.reduce((sum, pot) => sum + Math.max(0, pot?.amount ?? 0), 0);
 }
 
+function sumStreetBets(players = []) {
+  return players.reduce((sum, player) => sum + Math.max(0, Number(player?.bet) || 0), 0);
+}
+
+function getSnapshotPot(state = {}, metadata = {}) {
+  if (state?.isHandOver || metadata?.showdownSummary) {
+    return Math.max(0, metadata.potAmount ?? sumPots(state?.pots ?? []));
+  }
+  return Math.max(0, (metadata.potAmount ?? sumPots(state?.pots ?? [])) + sumStreetBets(state?.players ?? []));
+}
+
 const COMPONENT_LABELS = {
   badugi: "Badugi half",
   low27: "2-7 Low half",
@@ -354,7 +365,7 @@ export class DeuceToSevenTripleDrawController extends GameController {
       drawRound: cloned.drawRoundIndex ?? 0,
       drawRoundIndex: cloned.drawRoundIndex ?? 0,
       players: cloned.players.map(toUiPlayer),
-      pot: metadata.potAmount ?? sumPots(cloned.pots),
+      pot: getSnapshotPot(cloned, metadata),
       pots: cloned.pots.map((pot) => ({ ...pot })),
       turn: cloned.actingPlayerIndex,
       nextTurn: cloned.actingPlayerIndex,

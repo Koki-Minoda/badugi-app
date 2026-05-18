@@ -2031,6 +2031,17 @@ const SAFE_RESET_PHASE = "IDLE";
         const snapshot = controller.getUiSnapshot(result.state);
         if (snapshot) {
           updateAfterActionFromSnapshot(snapshot);
+          if (normalizedType === "fold") {
+            const foldedPlayer = Array.isArray(snapshot.players)
+              ? snapshot.players[seatIndex]
+              : null;
+            logE2EEvent("FOLD", {
+              seat: seatIndex,
+              stackAfter:
+                typeof foldedPlayer?.stack === "number" ? foldedPlayer.stack : null,
+              hasFolded: true,
+            });
+          }
         }
         return {
           snapshot,
@@ -3294,7 +3305,11 @@ const SAFE_RESET_PHASE = "IDLE";
     };
     const seatLabel =
       typeof details.seat === "number" ? ` seat=${details.seat}` : "";
-    console.log(`[E2E-EVENT] ${tag}${seatLabel}`, context);
+    const fields = Object.entries(context)
+      .filter(([, value]) => value == null || ["string", "number", "boolean"].includes(typeof value))
+      .map(([key, value]) => `${key}=${value ?? "null"}`)
+      .join(" ");
+    console.log(`[E2E-EVENT] ${tag}${seatLabel} ${fields}`, context);
   }
   function ensureSeatCanAct(seat, context) {
     const roster = playersRef.current ?? players;

@@ -22,12 +22,15 @@ function makeController(ControllerClass, EngineClass) {
 }
 
 describe("Single Draw pot continuity spec", () => {
-  it.fails.each(variants)("%s blinds produce a nonzero pot obligation in canonical snapshot pot", (_id, ControllerClass, EngineClass) => {
+  it.each(variants)("%s blinds produce a nonzero effective active pot in canonical snapshot pot", (_id, ControllerClass, EngineClass) => {
     const game = makeController(ControllerClass, EngineClass);
     const state = game.createNewHandState(game.createInitialState());
 
     expect(state.snapshot.pot).toBeGreaterThan(0);
-    expect(state.snapshot.metadata.lastBlinds).toMatchObject({ sb: 10, bb: 20 });
+    expect(state.snapshot.pot).toBe(30);
+    expect(state.snapshot.metadata.lastBlinds).toMatchObject({ sbIndex: 0, bbIndex: 1 });
+    expect(state.snapshot.players[0].betThisRound).toBe(10);
+    expect(state.snapshot.players[1].betThisRound).toBe(20);
   });
 
   it.each(variants)("%s pot survives transition from pre-draw betting to draw", (_id, ControllerClass, EngineClass) => {
@@ -54,7 +57,7 @@ describe("Single Draw pot continuity spec", () => {
     expect(state.snapshot.pot).toBeGreaterThanOrEqual(drawPot);
   });
 
-  it.fails.each(variants)("%s new hand starts with fresh blind pot state after terminal result", (_id, ControllerClass, EngineClass) => {
+  it.each(variants)("%s new hand starts with fresh blind pot state after terminal result", (_id, ControllerClass, EngineClass) => {
     const game = makeController(ControllerClass, EngineClass);
     let state = game.createNewHandState(game.createInitialState());
     state = game.applyAction(state, { seatIndex: 0, type: "FOLD" }).state;

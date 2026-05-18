@@ -14,6 +14,7 @@ import GameRegistry from "../games/_core/GameRegistry";
 import { DEBUG_TOURNAMENT, logMTT } from "../config/debugFlags.js";
 import { BUILD_INFO } from "../config/buildInfo.js";
 import { exposeBrowserGameplayState } from "./qa/exposeBrowserGameplayState.js";
+import MobileQaDebugPanel from "./qa/MobileQaDebugPanel.jsx";
 import { getTablePhaseColors } from "./game/tablePhaseColors.js";
 import {
   startHandHistoryRecord,
@@ -637,6 +638,10 @@ export default function App() {
       params.get("buildInfo") === "1" ||
       (typeof window !== "undefined" && window.localStorage.getItem("mgx.showBuildInfo") === "true")
     );
+  }, [location.search]);
+  const mobileQaEnabled = useMemo(() => {
+    const params = new URLSearchParams(location.search ?? "");
+    return params.get("mgxQa") === "mobile";
   }, [location.search]);
   const ensureURLModeParam = useCallback(
     (modeValue) => {
@@ -6313,6 +6318,80 @@ const SAFE_RESET_PHASE = "IDLE";
         setPlayers(snap);
         return true;
       },
+      setupBadugiWaitingFreezeFixtureForTest: () => {
+        const base = (playersRef.current ?? players ?? [])
+          .map(clonePlayerState)
+          .filter(Boolean);
+        const names = ["You", "Mina", "Ren", "Kai", "Ari", "Bo"];
+        const nextPlayers = Array.from({ length: Math.max(6, base.length || NUM_PLAYERS) }, (_, seat) => {
+          const existing = base[seat] ?? {};
+          const folded = seat !== 0;
+          return {
+            ...existing,
+            seatIndex: seat,
+            seat,
+            name: existing.name ?? names[seat] ?? `P${seat + 1}`,
+            stack: seat === 0 ? 934 : 0,
+            hand: Array.isArray(existing.hand) && existing.hand.length
+              ? existing.hand
+              : ["As", "2h", "3c", "4d"],
+            folded,
+            hasFolded: folded,
+            allIn: false,
+            seatOut: false,
+            isBusted: false,
+            isActiveInGame: true,
+            betThisRound: seat === 0 ? 21 : 0,
+            bet: seat === 0 ? 21 : 0,
+            totalInvested: seat === 0 ? 21 : 0,
+            hasActedThisRound: true,
+            hasActedThisStreet: true,
+            hasDrawn: false,
+            lastAction: folded ? "Fold" : "Call",
+          };
+        });
+        const fixturePots = [{ amount: 45, eligible: [0] }];
+        const fixtureHandId = "PHYSICAL-MOBILE-BADUGI-WAITING-001-fixture";
+        playersRef.current = nextPlayers;
+        potsRef.current = fixturePots;
+        handIdRef.current = fixtureHandId;
+        handCountRef.current = 5;
+        drawRoundTracker.current = 2;
+        betRoundTracker.current = 2;
+        setPlayers(nextPlayers);
+        setPots(fixturePots);
+        setPhase("BET");
+        setDrawRoundValue(2);
+        setBetRoundIndex(2);
+        setCurrentBet(21);
+        setTurn(0);
+        const snapshot = {
+          variantId: "badugi",
+          handId: fixtureHandId,
+          phase: "BET",
+          street: "BET",
+          drawRound: 2,
+          drawRoundIndex: 2,
+          betRound: 2,
+          betRoundIndex: 2,
+          currentBet: 21,
+          pot: 66,
+          pots: fixturePots,
+          players: nextPlayers,
+          currentActor: 0,
+          nextTurn: 0,
+          turn: 0,
+          metadata: {
+            actingPlayerIndex: 0,
+            currentBet: 21,
+            betHead: 0,
+            handId: fixtureHandId,
+          },
+        };
+        engineStateRef.current = snapshot;
+        setEngineState(snapshot);
+        return snapshot;
+      },
       forceSequentialFolds,
       forceAllIn: forceAllInAction,
       setupFixedLimitCapFixtureForTest,
@@ -8537,8 +8616,17 @@ const SAFE_RESET_PHASE = "IDLE";
           setTurn(drawFallback);
         }
       } else {
-        const nextBetSeat = firstBetterAfterBlinds(activePlayers, dealerIdx);
-        setTurn(nextBetSeat);
+        const maxNow = maxBetThisRound(activePlayers);
+        const nextBetSeat = findNextBetActorSeat(activePlayers, 0, maxNow);
+        if (nextBetSeat !== null) {
+          setTurn(nextBetSeat);
+        } else {
+          forceFinishRoundRef.current({
+            reason: "bet-invalid-turn-no-actionable-seat",
+            phaseOverride: "BET",
+            playersSnapshot: activePlayers,
+          });
+        }
       }
       return;
     }
@@ -8567,6 +8655,20 @@ const SAFE_RESET_PHASE = "IDLE";
         }
         forceFinishRoundRef.current({
           reason: "bet-hero-cannot-act-no-next",
+          phaseOverride: "BET",
+          playersSnapshot: activePlayers,
+        });
+        return;
+      }
+      if (phase === "BET" && hero && !needsActionForBet(hero, maxBetThisRound(activePlayers))) {
+        const maxNow = maxBetThisRound(activePlayers);
+        const nextActor = findNextBetActorSeat(activePlayers, 1, maxNow);
+        if (nextActor !== null) {
+          setTurn(nextActor);
+          return;
+        }
+        forceFinishRoundRef.current({
+          reason: "bet-hero-has-no-pending-action",
           phaseOverride: "BET",
           playersSnapshot: activePlayers,
         });
@@ -9913,6 +10015,10 @@ const SAFE_RESET_PHASE = "IDLE";
         shouldGateOrientation={shouldGateOrientation}
         debugScale={debugScale}
         screenLabel={screenLabel}
+      />
+      <MobileQaDebugPanel
+        enabled={mobileQaEnabled}
+        onReturnToMenu={handleTournamentBackToMenu}
       />
       <BuildInfoBadge visible={showBuildInfo} />
     </>

@@ -1,6 +1,7 @@
 import { recordBrowserGameplayTrace } from "./browserGameplayTrace.js";
 import { appendSnapshotMergeSourceTrace } from "./traceSnapshotMergeSource.js";
 import { buildBlindPostingAudit } from "./blindPostingAudit.js";
+import { assertNoCrossVariantStateLeak } from "./assertNoCrossVariantStateLeak.js";
 
 function numberOrNull(value) {
   const number = Number(value);
@@ -217,6 +218,7 @@ export function collectBrowserGameplaySnapshot(extra = {}) {
   const controller = collectControllerSnapshot();
   const ui = collectUiSnapshot(controller);
   const mergeSource = appendSnapshotMergeSourceTrace(extra);
+  const controllerDebug = window.__BADUGI_E2E__?.getControllerDebug?.() ?? null;
   const blindPosting = buildBlindPostingAudit({
     snapshot: {
       ...(controller.snapshot ?? {}),
@@ -253,9 +255,20 @@ export function collectBrowserGameplaySnapshot(extra = {}) {
     ui,
     blindPosting,
     mergeSource,
+    controllerDebug,
     action: extra.action ?? null,
     label: extra.label ?? null,
   };
+  row.crossVariant = assertNoCrossVariantStateLeak({
+    currentVariant: row.variantId,
+    controllerClass: controllerDebug?.gameControllerName,
+    controllerVariantRef: controllerDebug?.controllerVariantRef,
+    gameControllerVariantId: controllerDebug?.gameControllerVariantId,
+    sessionVariantId: controllerDebug?.sessionVariantId,
+    controllerSnapshotVariantId: controller.snapshot?.variantId ?? controller.snapshot?.gameVariant ?? null,
+    engineStateVariantId: controller.rawState?.engineStateVariantId ?? controller.rawState?.gameVariant ?? null,
+    handId: row.handId,
+  });
   recordBrowserGameplayTrace(row);
   return row;
 }

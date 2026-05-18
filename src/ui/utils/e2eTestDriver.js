@@ -19,6 +19,8 @@ export function installE2eTestDriver(apiRef) {
     getLastControllerActionFailure: (...args) =>
       apiRef.current?.getLastControllerActionFailure?.(...args),
     getControllerDebug: (...args) => apiRef.current?.getControllerDebug?.(...args),
+    getCrossVariantStateAudit: (...args) =>
+      apiRef.current?.getCrossVariantStateAudit?.(...args),
     forceMarkSeatFoldedForTest: (...args) =>
       apiRef.current?.forceMarkSeatFoldedForTest?.(...args),
     forceSequentialFolds: (...args) => apiRef.current?.forceSequentialFolds?.(...args),

@@ -29,6 +29,9 @@ export function assertBrowserGameplayInvariants(row, previousRows = []) {
   violations.push(...assertImpossiblePhaseTransition(row, previousRows).violations);
   violations.push(...assertNoMixedDrawBetState(row).violations);
   violations.push(...assertNoStalePhaseMerge(row).violations);
+  if (Array.isArray(row?.crossVariant?.violations)) {
+    violations.push(...row.crossVariant.violations);
+  }
   const actorPlayer = typeof controller.actorSeat === "number" ? (controller.players ?? [])[controller.actorSeat] : null;
   const livePlayers = (controller.players ?? []).filter(
     (player) =>

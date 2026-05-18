@@ -15,6 +15,7 @@ import { DEBUG_TOURNAMENT, logMTT } from "../config/debugFlags.js";
 import { BUILD_INFO } from "../config/buildInfo.js";
 import { exposeBrowserGameplayState } from "./qa/exposeBrowserGameplayState.js";
 import MobileQaDebugPanel from "./qa/MobileQaDebugPanel.jsx";
+import { assertNoCrossVariantStateLeak } from "./qa/assertNoCrossVariantStateLeak.js";
 import { getTablePhaseColors } from "./game/tablePhaseColors.js";
 import {
   startHandHistoryRecord,
@@ -214,6 +215,16 @@ import {
 import { getFixedLimitBetSize } from "../games/badugi/logic/bettingRules.js";
 import { assertNoDuplicateCards } from "../games/badugi/utils/deck.js";
 import { dealInitialHands, validatePreflopState } from "../games/badugi/utils/deckHelpers.js";
+
+function snapshotVariantMatchesAppVariant(snapshot, appVariant) {
+  if (!snapshot) return false;
+  const expected = normalizeAppVariantId(appVariant);
+  const actual = normalizeAppVariantId(
+    snapshot.variantId ?? snapshot.gameVariant ?? snapshot.gameId ?? snapshot.metadata?.variantId,
+    null,
+  );
+  return !actual || actual === expected;
+}
 
 function cloneHandHistory(value) {
   if (value == null) return null;
@@ -921,10 +932,12 @@ const SAFE_RESET_PHASE = "IDLE";
     const controller = gameControllerRef.current;
     try {
       if (controller && typeof controller.getSnapshot === "function") {
-        return controller.getSnapshot();
+        const snapshot = controller.getSnapshot();
+        return snapshotVariantMatchesAppVariant(snapshot, gameVariant) ? snapshot : null;
       }
       if (controller && typeof controller.getUiSnapshot === "function") {
-        return controller.getUiSnapshot();
+        const snapshot = controller.getUiSnapshot();
+        return snapshotVariantMatchesAppVariant(snapshot, gameVariant) ? snapshot : null;
       }
       return null;
     } catch (err) {
@@ -1126,21 +1139,30 @@ const SAFE_RESET_PHASE = "IDLE";
     const sessionState = sessionControllerStateRef.current;
     try {
       if (sessionController && sessionState && typeof sessionController.getUiSnapshot === "function") {
-        return sessionController.getUiSnapshot(sessionState);
+        const snapshot = sessionController.getUiSnapshot(sessionState);
+        if (snapshotVariantMatchesAppVariant(snapshot, normalizedGameVariant)) {
+          return snapshot;
+        }
       }
     } catch (error) {
       console.warn("[UI-ADAPTER] session controller snapshot failed", error);
     }
-    if (controllerUiSnapshotState) return controllerUiSnapshotState;
-    if (controllerSnapshot) return controllerSnapshot;
+    if (snapshotVariantMatchesAppVariant(controllerUiSnapshotState, normalizedGameVariant)) return controllerUiSnapshotState;
+    if (snapshotVariantMatchesAppVariant(controllerSnapshot, normalizedGameVariant)) return controllerSnapshot;
     try {
       if (sessionController && sessionState && typeof sessionController.getUiSnapshot === "function") {
-        return sessionController.getUiSnapshot(sessionState);
+        const snapshot = sessionController.getUiSnapshot(sessionState);
+        if (snapshotVariantMatchesAppVariant(snapshot, normalizedGameVariant)) {
+          return snapshot;
+        }
       }
     } catch (error) {
       console.warn("[UI-ADAPTER] fallback session controller snapshot failed", error);
     }
-    return engineStateRef.current ?? safeEngineState ?? null;
+    if (snapshotVariantMatchesAppVariant(engineStateRef.current, normalizedGameVariant)) {
+      return engineStateRef.current;
+    }
+    return snapshotVariantMatchesAppVariant(safeEngineState, normalizedGameVariant) ? safeEngineState : null;
   })();
   const controllerActor =
     typeof effectiveControllerSnapshot?.currentActor === "number"
@@ -1814,6 +1836,22 @@ const SAFE_RESET_PHASE = "IDLE";
     const needsNew =
       !gameControllerRef.current || controllerVariantRef.current !== variantId;
     if (needsNew) {
+      if (gameControllerRef.current || sessionControllerRef.current || controllerUiSnapshotState || engineStateRef.current) {
+        try {
+          gameControllerRef.current?.destroy?.();
+          gameControllerRef.current?.dispose?.();
+        } catch (error) {
+          console.warn("[RESET][CROSS_VARIANT] controller disposal failed", error);
+        }
+        gameControllerRef.current = null;
+        controllerVariantRef.current = null;
+        controllerStreetRef.current = null;
+        sessionControllerRef.current = null;
+        sessionControllerStateRef.current = null;
+        setControllerUiSnapshotState(null);
+        engineStateRef.current = null;
+        setEngineState(null);
+      }
       if (variantId === APP_VARIANT_IDS.NLH) {
         gameControllerRef.current = new NLHGameController({
           tableConfig: buildNlhTableConfig(),
@@ -1931,6 +1969,7 @@ const SAFE_RESET_PHASE = "IDLE";
     BB,
     currentAnte,
     activeBlindStructure,
+    controllerUiSnapshotState,
     evaluateBadugi,
     lastStructureIndex,
   ]);
@@ -3051,8 +3090,23 @@ const SAFE_RESET_PHASE = "IDLE";
       reason = "manual-reset",
       preserveHandCount = true,
       navigateTo = null,
+      destroyControllers = false,
     } = {}) => {
       console.warn("[RESET][G-10] resetting table state", { reason, navigateTo });
+      if (destroyControllers) {
+        try {
+          gameControllerRef.current?.destroy?.();
+          gameControllerRef.current?.dispose?.();
+        } catch (err) {
+          console.warn("[RESET][CROSS_VARIANT] controller disposal failed", err);
+        }
+        gameControllerRef.current = null;
+        controllerVariantRef.current = null;
+        controllerStreetRef.current = null;
+        sessionControllerRef.current = null;
+        sessionControllerStateRef.current = null;
+        setControllerUiSnapshotState(null);
+      }
       dealingRef.current = false;
       transitioningRef.current = false;
       forcedSeatActionsRef.current = new Map();
@@ -3108,7 +3162,8 @@ const SAFE_RESET_PHASE = "IDLE";
       setPlayers(safePlayers);
       playersRef.current = safePlayers;
       engineStateRef.current = null;
-      if (gameControllerRef.current && typeof gameControllerRef.current.syncExternalState === "function") {
+      setEngineState(null);
+      if (!destroyControllers && gameControllerRef.current && typeof gameControllerRef.current.syncExternalState === "function") {
         try {
           gameControllerRef.current.syncExternalState({
             players: safePlayers,
@@ -5149,6 +5204,21 @@ const SAFE_RESET_PHASE = "IDLE";
   const startTournamentMTT = useCallback(
     (configOverride = DEFAULT_STORE_TOURNAMENT_CONFIG) => {
       const config = { ...DEFAULT_STORE_TOURNAMENT_CONFIG, ...configOverride };
+      const normalizedRotation =
+        Array.isArray(config.gameRotation) && config.gameRotation.length
+          ? config.gameRotation.map((variant) => normalizeAppVariantId(variant, DEFAULT_GAME_VARIANT))
+          : [normalizeAppVariantId(config.gameVariant ?? DEFAULT_GAME_VARIANT, DEFAULT_GAME_VARIANT)];
+      const initialTournamentVariant = normalizeAppVariantId(
+        config.gameVariant ?? normalizedRotation[0] ?? DEFAULT_GAME_VARIANT,
+        DEFAULT_GAME_VARIANT,
+      );
+      resetTableStateToSafeDefaults({
+        reason: "start-tournament-hard-reset",
+        preserveHandCount: false,
+        destroyControllers: true,
+      });
+      gameVariantRef.current = initialTournamentVariant;
+      setGameVariant(initialTournamentVariant);
       resetTournamentState();
       setTournamentBlindStructure(getBlindStructureForTournamentConfig(config));
       initTournamentReplay(config);
@@ -5189,14 +5259,10 @@ const SAFE_RESET_PHASE = "IDLE";
         hudPayload.nextBreakLabel =
           hudPayload.nextBreakLabel ?? TOURNAMENT_CLOCK_PLACEHOLDER;
       }
-      const normalizedRotation =
-        Array.isArray(config.gameRotation) && config.gameRotation.length
-          ? config.gameRotation
-          : [config.gameVariant ?? DEFAULT_GAME_VARIANT];
       initializeVariantRotation({
         rotation: normalizedRotation,
         policy: config.rotationPolicy ?? "fixed",
-        initialVariant: config.gameVariant ?? normalizedRotation[0],
+        initialVariant: initialTournamentVariant,
       });
       setTournamentHudState(attachVariantLabels(hudPayload));
       setTournamentTitle(config?.name ?? "Tournament Results");
@@ -5238,15 +5304,21 @@ const SAFE_RESET_PHASE = "IDLE";
       initializeVariantRotation,
       resetInitialButtonState,
       resetTournamentState,
+      resetTableStateToSafeDefaults,
     ],
   );
 
   const handleTournamentBackToMenu = useCallback(() => {
+    resetTableStateToSafeDefaults({
+      reason: "tournament-back-to-menu",
+      preserveHandCount: false,
+      destroyControllers: true,
+    });
     resetTournamentState();
     setMode("cash");
     setCurrentScreen("menu");
     navigate("/");
-  }, [navigate, resetTournamentState, setCurrentScreen]);
+  }, [navigate, resetTableStateToSafeDefaults, resetTournamentState, setCurrentScreen]);
 
   const handleTournamentPlayAgain = useCallback(() => {
     const config = tournamentStateRef.current?.config ?? DEFAULT_STORE_TOURNAMENT_CONFIG;
@@ -5309,6 +5381,11 @@ const SAFE_RESET_PHASE = "IDLE";
 
   const handleCashOutBackToMenu = () => {
     setCashOutSummary(null);
+    resetTableStateToSafeDefaults({
+      reason: "cash-out-back-to-menu",
+      preserveHandCount: false,
+      destroyControllers: true,
+    });
     handleBackToMenu();
   };
 
@@ -5341,6 +5418,11 @@ const SAFE_RESET_PHASE = "IDLE";
       return;
     }
     if (normalizedVariant !== gameVariantRef.current) {
+      resetTableStateToSafeDefaults({
+        reason: "variant-switch-before-ring-start",
+        preserveHandCount: false,
+        destroyControllers: true,
+      });
       gameVariantRef.current = normalizedVariant;
       setGameVariant(normalizedVariant);
     }
@@ -5355,6 +5437,7 @@ const SAFE_RESET_PHASE = "IDLE";
     resetTableStateToSafeDefaults({
       reason: "menu-ring-start",
       preserveHandCount: false,
+      destroyControllers: true,
       navigateTo: "gameRing",
     });
   };
@@ -6357,8 +6440,78 @@ const SAFE_RESET_PHASE = "IDLE";
             sessionState?.snapshot?.actingPlayerIndex ??
             null,
           gameControllerName: gameController?.constructor?.name ?? null,
+          controllerVariantRef: controllerVariantRef.current,
           gameControllerVariantId:
             gameController?.__appVariantId ?? gameController?.variantId ?? null,
+          engineStateVariantId:
+            engineStateRef.current?.variantId ??
+            engineStateRef.current?.gameVariant ??
+            engineStateRef.current?.gameId ??
+            null,
+          controllerUiSnapshotVariantId:
+            controllerUiSnapshotState?.variantId ??
+            controllerUiSnapshotState?.gameVariant ??
+            controllerUiSnapshotState?.gameId ??
+            null,
+        };
+      },
+      getCrossVariantStateAudit: (context = {}) => {
+        const controller = gameControllerRef.current;
+        const sessionController = sessionControllerRef.current;
+        const sessionState = sessionControllerStateRef.current;
+        let controllerSnapshotForAudit = null;
+        try {
+          if (sessionController && sessionState && typeof sessionController.getUiSnapshot === "function") {
+            controllerSnapshotForAudit = sessionController.getUiSnapshot(sessionState);
+          } else if (controller && typeof controller.getSnapshot === "function") {
+            controllerSnapshotForAudit = controller.getSnapshot();
+          } else if (controller && typeof controller.getUiSnapshot === "function") {
+            controllerSnapshotForAudit = controller.getUiSnapshot();
+          }
+        } catch (error) {
+          controllerSnapshotForAudit = null;
+        }
+        const row = {
+          previousVariant: context?.previousVariant ?? null,
+          nextVariant: gameVariantRef.current,
+          previousMode: context?.previousMode ?? null,
+          nextMode: mode,
+          previousHandId: context?.previousHandId ?? null,
+          newHandId:
+            controllerSnapshotForAudit?.handId ??
+            engineStateRef.current?.handId ??
+            handIdRef.current ??
+            null,
+          currentVariant: gameVariantRef.current,
+          mode,
+          controllerClass: controller?.constructor?.name ?? null,
+          controllerVariantRef: controllerVariantRef.current,
+          gameControllerVariantId: controller?.__appVariantId ?? controller?.variantId ?? null,
+          sessionControllerClass: sessionController?.constructor?.name ?? null,
+          sessionVariantId: sessionController?.__appVariantId ?? sessionController?.variantId ?? null,
+          controllerSnapshotVariantId:
+            controllerSnapshotForAudit?.variantId ??
+            controllerSnapshotForAudit?.gameVariant ??
+            controllerSnapshotForAudit?.gameId ??
+            null,
+          engineStateVariantId:
+            engineStateRef.current?.variantId ??
+            engineStateRef.current?.gameVariant ??
+            engineStateRef.current?.gameId ??
+            null,
+          phase,
+          drawRound,
+          betRound: betRoundIndex,
+          currentBet,
+          nextTurn: turn,
+          actingPlayerIndex:
+            controllerSnapshotForAudit?.metadata?.actingPlayerIndex ??
+            engineStateRef.current?.metadata?.actingPlayerIndex ??
+            null,
+        };
+        return {
+          ...row,
+          leakAudit: assertNoCrossVariantStateLeak(row),
         };
       },
       forceMarkSeatFoldedForTest: (seat = 0) => {
@@ -6753,21 +6906,37 @@ const SAFE_RESET_PHASE = "IDLE";
             const sessionController = sessionControllerRef.current;
             const sessionState = sessionControllerStateRef.current;
             if (sessionController && sessionState && typeof sessionController.getUiSnapshot === "function") {
-              return sessionController.getUiSnapshot(sessionState);
+              const snapshot = sessionController.getUiSnapshot(sessionState);
+              return snapshotVariantMatchesAppVariant(snapshot, gameVariantRef.current)
+                ? snapshot
+                : null;
             }
             if (controller && typeof controller.getSnapshot === "function") {
-              return controller.getSnapshot();
+              const snapshot = controller.getSnapshot();
+              return snapshotVariantMatchesAppVariant(snapshot, gameVariantRef.current)
+                ? snapshot
+                : null;
             }
             if (controller && typeof controller.getUiSnapshot === "function") {
-              return controller.getUiSnapshot();
+              const snapshot = controller.getUiSnapshot();
+              return snapshotVariantMatchesAppVariant(snapshot, gameVariantRef.current)
+                ? snapshot
+                : null;
             }
             if (sessionController && sessionState && typeof sessionController.getUiSnapshot === "function") {
-              return sessionController.getUiSnapshot(sessionState);
+              const snapshot = sessionController.getUiSnapshot(sessionState);
+              return snapshotVariantMatchesAppVariant(snapshot, gameVariantRef.current)
+                ? snapshot
+                : null;
             }
-            return engineStateRef.current ?? null;
+            return snapshotVariantMatchesAppVariant(engineStateRef.current, gameVariantRef.current)
+              ? engineStateRef.current
+              : null;
           } catch (error) {
             console.warn("[E2E] controller snapshot failed", error);
-            return engineStateRef.current ?? null;
+            return snapshotVariantMatchesAppVariant(engineStateRef.current, gameVariantRef.current)
+              ? engineStateRef.current
+              : null;
           }
         })(),
         controllerName: gameControllerRef.current?.constructor?.name ?? null,
@@ -6813,6 +6982,7 @@ const SAFE_RESET_PHASE = "IDLE";
     raiseCountThisRound,
     dealerIdx,
     tournamentHudState,
+    controllerUiSnapshotState,
     startTournamentMTT,
     runTournamentBackgroundSimulation,
     runHeroHandsForE2E,

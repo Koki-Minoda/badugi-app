@@ -1,4 +1,7 @@
 import { expectedBrowserActor } from "./expectedBrowserActor.js";
+import { assertImpossiblePhaseTransition } from "./assertImpossiblePhaseTransition.js";
+import { assertNoMixedDrawBetState } from "./assertNoMixedDrawBetState.js";
+import { assertNoStalePhaseMerge } from "./assertNoStalePhaseMerge.js";
 
 function issue(type, severity, message, details = {}) {
   return { type, severity, message, ...details };
@@ -23,6 +26,9 @@ export function assertBrowserGameplayInvariants(row, previousRows = []) {
     currentBet: controller.currentBet ?? 0,
     actorSeat: controller.actorSeat,
   });
+  violations.push(...assertImpossiblePhaseTransition(row, previousRows).violations);
+  violations.push(...assertNoMixedDrawBetState(row).violations);
+  violations.push(...assertNoStalePhaseMerge(row).violations);
   const actorPlayer = typeof controller.actorSeat === "number" ? (controller.players ?? [])[controller.actorSeat] : null;
   const livePlayers = (controller.players ?? []).filter(
     (player) =>

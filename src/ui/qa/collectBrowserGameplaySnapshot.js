@@ -68,6 +68,10 @@ function visibleActionIds() {
   ].filter((testId) => isInteractableTestId(testId));
 }
 
+function hasInteractableAny(testIds = []) {
+  return testIds.some((testId) => isInteractableTestId(testId));
+}
+
 function parseDisplayedPot(text) {
   if (!text) return null;
   const match = String(text).replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
@@ -197,6 +201,8 @@ function collectUiSnapshot(controller) {
     displayedPotText,
     displayedPhase: normalizePhase(textForTestId("table-phase-badge")) ?? controller.phase,
     visibleActions,
+    bettingControlsVisible: hasInteractableAny(["action-check", "action-call", "action-raise", "action-fold"]),
+    drawControlsVisible: hasInteractableAny(["action-draw-selected"]),
     resultVisible:
       visibleTestId("hand-result-pot") ||
       (typeof document !== "undefined" && /Hand Result/i.test(document.body?.textContent ?? "")),

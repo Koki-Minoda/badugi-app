@@ -209,6 +209,7 @@ export function buildMobileFreezeReport({
     eligibleActors: players.filter((player) => player.eligibleForAction).map((player) => player.seat),
     lastActions: window.__BADUGI_E2E__?.getCurrentHandHistory?.()?.actions ?? [],
     traceTail: window.__MGX_GAMEPLAY_TRACE__?.slice?.(-12) ?? [],
+    betToDrawTraceTail: window.__MGX_BADUGI_BET_TO_DRAW_TRACE__?.slice?.(-12) ?? [],
     consoleErrors: window.__MGX_CONSOLE_ERRORS__?.slice?.(-20) ?? [],
   };
   report.blindPosting = buildBlindPostingAudit({

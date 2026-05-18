@@ -24,6 +24,10 @@ import {
   resetHandHistoryRecord,
 } from "./utils/handHistory";
 import { buildPostMatchFollowUpSummary } from "../games/badugi/analysis/followUpAnalyzer.js";
+import {
+  buildBadugiBetToDrawTransitionTrace,
+  recordBadugiBetToDrawTransitionTrace,
+} from "../games/badugi/auditBadugiBetToDrawTransition.js";
 
 import {
   nextAliveFrom,
@@ -46,6 +50,8 @@ import {
   buildSidePots,
   finishBetRoundFrom,
   resetBetRoundFlags,
+  resetDrawRoundFlags,
+  resetBetStreetForNextRound,
   transitionToBetPhase,
   transitionToDrawPhase,
   transitionToShowdownPhase,
@@ -3138,6 +3144,34 @@ const SAFE_RESET_PHASE = "IDLE";
     const roster = playersRef.current ?? players;
     const seatCount = Array.isArray(roster) ? roster.length : 0;
     if (seatCount === 0) return;
+    if (phase === "BET") {
+      const currentRoundBet = Math.max(
+        Number(currentBet) || 0,
+        maxBetThisRound(roster),
+      );
+      const closure = analyzeBetSnapshot({
+        players: roster,
+        actedIndex: Number.isInteger(turn) ? turn : dealerIdx,
+        dealerIdx,
+        drawRound: drawRoundTracker.current,
+        betHead,
+        lastAggressorIdx: lastAggressor,
+      });
+      if (
+        closure?.shouldAdvance ||
+        isBetRoundComplete({ players: roster, currentBet: currentRoundBet })
+      ) {
+        const handled = forceFinishRoundRef.current({
+          reason: "bet-closed-guard",
+          phaseOverride: "BET",
+          playersSnapshot: roster,
+        });
+        if (!handled) {
+          handleFatalTableError("bet-closed-guard", { phase, turn, seatCount });
+        }
+        return;
+      }
+    }
     if (!Number.isInteger(turn) || turn < 0 || turn >= seatCount) {
       if (phase === "DRAW") {
         const drawFallback = findNextDrawActorSeatRef.current(roster);
@@ -3166,6 +3200,9 @@ const SAFE_RESET_PHASE = "IDLE";
     turn,
     players,
     dealerIdx,
+    currentBet,
+    betHead,
+    lastAggressor,
     transitioning,
     handleFatalTableError,
   ]);
@@ -6380,6 +6417,8 @@ const SAFE_RESET_PHASE = "IDLE";
         setBetRoundIndex(2);
         setCurrentBet(21);
         setTurn(0);
+        setTransitioning(false);
+        transitioningRef.current = false;
         const snapshot = {
           variantId: "badugi",
           handId: fixtureHandId,
@@ -6405,6 +6444,107 @@ const SAFE_RESET_PHASE = "IDLE";
         };
         engineStateRef.current = snapshot;
         setEngineState(snapshot);
+        return snapshot;
+      },
+      setupBadugiBetToDrawFixtureForTest: ({ finish = false } = {}) => {
+        const base = (playersRef.current ?? players ?? [])
+          .map(clonePlayerState)
+          .filter(Boolean);
+        const names = ["You", "Mina", "Ren", "Kai", "Ari", "Bo"];
+        const nextPlayers = Array.from({ length: Math.max(6, base.length || NUM_PLAYERS) }, (_, seat) => {
+          const existing = base[seat] ?? {};
+          const folded = seat > 1;
+          return {
+            ...existing,
+            seatIndex: seat,
+            seat,
+            name: existing.name ?? names[seat] ?? `P${seat + 1}`,
+            stack: folded ? 0 : seat === 0 ? 934 : 420,
+            hand: Array.isArray(existing.hand) && existing.hand.length
+              ? existing.hand
+              : ["As", "2h", "3c", "4d"],
+            folded,
+            hasFolded: folded,
+            allIn: false,
+            seatOut: false,
+            isBusted: false,
+            isActiveInGame: true,
+            betThisRound: folded ? 0 : 21,
+            bet: folded ? 0 : 21,
+            totalInvested: folded ? 0 : 21,
+            hasActedThisRound: true,
+            hasActedThisStreet: true,
+            hasDrawn: false,
+            lastAction: folded ? "Fold" : "Call",
+          };
+        });
+        const fixturePots = [{ amount: 42, eligible: [0, 1] }];
+        const fixtureHandId = "BADUGI-BET-DRAW-TRANSITION-001-fixture";
+        playersRef.current = nextPlayers;
+        potsRef.current = fixturePots;
+        handIdRef.current = fixtureHandId;
+        handCountRef.current = 5;
+        drawRoundTracker.current = 2;
+        betRoundTracker.current = 2;
+        setPlayers(nextPlayers);
+        setPots(fixturePots);
+        setPhase("BET");
+        setDrawRoundValue(2);
+        setBetRoundIndex(2);
+        setCurrentBet(21);
+        setTurn(null);
+        setTransitioning(false);
+        transitioningRef.current = false;
+        const snapshot = {
+          variantId: "badugi",
+          handId: fixtureHandId,
+          phase: "BET",
+          street: "BET",
+          drawRound: 2,
+          drawRoundIndex: 2,
+          betRound: 2,
+          betRoundIndex: 2,
+          currentBet: 21,
+          pot: 66,
+          pots: fixturePots,
+          players: nextPlayers,
+          currentActor: null,
+          nextTurn: null,
+          turn: null,
+          metadata: {
+            actingPlayerIndex: null,
+            currentBet: 21,
+            betHead: null,
+            handId: fixtureHandId,
+          },
+        };
+        engineStateRef.current = snapshot;
+        setEngineState(snapshot);
+        if (finish) {
+          finishBetRoundFrom({
+            players: nextPlayers,
+            pots: fixturePots,
+            setPlayers,
+            setPots,
+            drawRound: 2,
+            setDrawRound: setDrawRoundValue,
+            setPhase,
+            setTurn,
+            dealerIdx,
+            NUM_PLAYERS,
+            MAX_DRAWS,
+            runShowdown,
+            dealNewHand: (seat, handSnapshot) =>
+              startNextHandRef.current({
+                dealerOverride: seat,
+                prevPlayers: handSnapshot,
+              }),
+            setShowNextButton,
+            setBetHead,
+            onPhaseTransition: logPhaseTransition,
+            onShowdownEntered: logShowdownEvent,
+          });
+        }
         return snapshot;
       },
       forceSequentialFolds,
@@ -6444,6 +6584,35 @@ const SAFE_RESET_PHASE = "IDLE";
           drawRoundIndex: drawRoundTracker.current,
           dealerIndex: dealerIdx,
         });
+      },
+      forceBadugiBetToDrawTransitionForTest: () => {
+        const snap = (playersRef.current ?? [])
+          .map(clonePlayerState)
+          .filter(Boolean);
+        finishBetRoundFrom({
+          players: snap,
+          pots: potsRef.current ?? [],
+          setPlayers,
+          setPots,
+          drawRound: drawRoundTracker.current,
+          setDrawRound: setDrawRoundValue,
+          setPhase,
+          setTurn,
+          dealerIdx,
+          NUM_PLAYERS,
+          MAX_DRAWS,
+          runShowdown,
+          dealNewHand: (seat, snapshot) =>
+            startNextHandRef.current({
+              dealerOverride: seat,
+              prevPlayers: snapshot,
+            }),
+          setShowNextButton,
+          setBetHead,
+          onPhaseTransition: logPhaseTransition,
+          onShowdownEntered: logShowdownEvent,
+        });
+        return true;
       },
       resolveHandNow: resolveHandImmediately,
       dealNewHandNow: startNextHand,
@@ -6926,12 +7095,86 @@ const SAFE_RESET_PHASE = "IDLE";
           debugLog("[FORCE_END] Only one active player remains -> goShowdownNow()");
           return;
         }
-        finishBetRoundSafely("bet-analysis-advance");
+        const finishQueued = finishBetRoundSafely("bet-analysis-advance");
+        if (isSingleTableBadugi) {
+          recordBadugiBetToDrawTransitionTrace(
+            buildBadugiBetToDrawTransitionTrace({
+              before: {
+                handId: handIdRef.current,
+                phase: "BET",
+                drawRound,
+                betRound: betRoundIndex,
+                currentBet: maxNow,
+                pot: totalPotForDisplay,
+                turn: resolvedNext,
+                nextTurn: resolvedNext,
+                dealerIdx,
+                betHead: resolvedBetHead,
+                lastAggressorIdx: resolvedLastAggressor,
+                metadata: {
+                  actingPlayerIndex: resolvedNext,
+                  currentBet: maxNow,
+                  betHead: resolvedBetHead,
+                  lastAggressor: resolvedLastAggressor,
+                },
+                players: snap,
+              },
+              after: {
+                phase: phaseRef.current ?? phase,
+                drawRound: drawRoundTracker.current,
+                betRound: betRoundTracker.current,
+                pot: totalPotForDisplay,
+              },
+              mode: isTournament ? "tournament" : "cash",
+              actedIndex,
+              closeReason: "bet-analysis-advance",
+              transitionCalled: finishQueued,
+              transitionResult: finishQueued ? "queued" : "not_queued",
+            }),
+          );
+        }
         return;
       }
       if (resolvedNext === null || typeof resolvedNext !== "number") {
         debugLog("[BET] No next alive player, forcing finish");
-        finishBetRoundSafely("bet-no-next-actor");
+        const finishQueued = finishBetRoundSafely("bet-no-next-actor");
+        if (isSingleTableBadugi) {
+          recordBadugiBetToDrawTransitionTrace(
+            buildBadugiBetToDrawTransitionTrace({
+              before: {
+                handId: handIdRef.current,
+                phase: "BET",
+                drawRound,
+                betRound: betRoundIndex,
+                currentBet: maxNow,
+                pot: totalPotForDisplay,
+                turn: resolvedNext,
+                nextTurn: resolvedNext,
+                dealerIdx,
+                betHead: resolvedBetHead,
+                lastAggressorIdx: resolvedLastAggressor,
+                metadata: {
+                  actingPlayerIndex: resolvedNext,
+                  currentBet: maxNow,
+                  betHead: resolvedBetHead,
+                  lastAggressor: resolvedLastAggressor,
+                },
+                players: snap,
+              },
+              after: {
+                phase: phaseRef.current ?? phase,
+                drawRound: drawRoundTracker.current,
+                betRound: betRoundTracker.current,
+                pot: totalPotForDisplay,
+              },
+              mode: isTournament ? "tournament" : "cash",
+              actedIndex,
+              closeReason: "bet-no-next-actor",
+              transitionCalled: finishQueued,
+              transitionResult: finishQueued ? "queued" : "not_queued",
+            }),
+          );
+        }
         return;
       }
       setTurn(resolvedNext);
@@ -7112,7 +7355,7 @@ const SAFE_RESET_PHASE = "IDLE";
         hasDrawn: Boolean(p?.hasDrawn),
       })),
     });
-    const betRoundReady = resetBetRoundFlags(snap);
+    const betRoundReady = resetBetStreetForNextRound(snap);
     const startSeat = (dealerIdx + 1) % NUM_PLAYERS;
     debugLog("[DRAW] -> finishDrawRound", { drawRound, startSeat, snap });
 
@@ -7185,6 +7428,7 @@ const SAFE_RESET_PHASE = "IDLE";
     potsSnapshot = null,
     drawRoundIndex = null,
     dealerIndex = null,
+    retryCount = 0,
   } = {}) {
     const phaseNow = phaseOverride ?? phaseRef.current ?? phase;
     if (phaseNow === "BET") {
@@ -7211,8 +7455,31 @@ const SAFE_RESET_PHASE = "IDLE";
         ? dealerIndex
         : dealerIdx;
       if (transitioningRef.current) {
-        debugLog("[ROUND_FORCE] Skip BET finish (transitioning)", { reason });
-        return false;
+        debugLog("[ROUND_FORCE] Defer BET finish while transitioning", {
+          reason,
+          retryCount,
+        });
+        if (retryCount < 5) {
+          setTimeout(() => {
+            forceFinishRound({
+              reason,
+              phaseOverride,
+              playersSnapshot: snap,
+              potsSnapshot: potSnapshot,
+              drawRoundIndex: roundValue,
+              dealerIndex: dealerSeatValue,
+              retryCount: retryCount + 1,
+            });
+          }, 120);
+          return true;
+        }
+        console.warn("[ROUND_FORCE] BET finish retry exhausted", {
+          reason,
+          round: roundValue,
+          dealerSeat: dealerSeatValue,
+        });
+        transitioningRef.current = false;
+        setTransitioning(false);
       }
       debugLog("[ROUND_FORCE] Forcing BET finish", {
         reason,
@@ -7221,39 +7488,37 @@ const SAFE_RESET_PHASE = "IDLE";
       });
       setTransitioning(true);
       transitioningRef.current = true;
-      setTimeout(() => {
-        try {
-          const handled = handleEngineRoundTransition(roundValue, dealerSeatValue);
-          if (!handled) {
-            finishBetRoundFrom({
-              players: snap,
-              pots: potSnapshot,
-              setPlayers,
-              setPots,
-              drawRound: roundValue,
-              setDrawRound: setDrawRoundValue,
-              setPhase,
-              setTurn,
-              dealerIdx: dealerSeatValue,
-              NUM_PLAYERS,
-              MAX_DRAWS,
-              runShowdown,
-              dealNewHand: (seat, snapshot) =>
-                startNextHandRef.current({
-                  dealerOverride: seat,
-                  prevPlayers: snapshot,
-                }),
-              setShowNextButton,
-              setBetHead,
-              onPhaseTransition: logPhaseTransition,
-              onShowdownEntered: logShowdownEvent,
-            });
-          }
-        } finally {
-          setTransitioning(false);
-          transitioningRef.current = false;
+      try {
+        const handled = handleEngineRoundTransition(roundValue, dealerSeatValue);
+        if (!handled) {
+          finishBetRoundFrom({
+            players: snap,
+            pots: potSnapshot,
+            setPlayers,
+            setPots,
+            drawRound: roundValue,
+            setDrawRound: setDrawRoundValue,
+            setPhase,
+            setTurn,
+            dealerIdx: dealerSeatValue,
+            NUM_PLAYERS,
+            MAX_DRAWS,
+            runShowdown,
+            dealNewHand: (seat, snapshot) =>
+              startNextHandRef.current({
+                dealerOverride: seat,
+                prevPlayers: snapshot,
+              }),
+            setShowNextButton,
+            setBetHead,
+            onPhaseTransition: logPhaseTransition,
+            onShowdownEntered: logShowdownEvent,
+          });
         }
-      }, 100);
+      } finally {
+        setTransitioning(false);
+        transitioningRef.current = false;
+      }
       return true;
     }
 
@@ -7809,8 +8074,10 @@ const SAFE_RESET_PHASE = "IDLE";
         : typeof mergedMetadata.actingPlayerIndex === "number"
         ? mergedMetadata.actingPlayerIndex
         : null;
+    const transitionPlayers =
+      outcomeStreet === "DRAW" ? resetDrawRoundFlags(state.players) : state.players;
     const transitionSnapshot = applyDeckSnapshot({
-      players: state.players,
+      players: transitionPlayers,
       pots: state.pots,
 	      phase: outcomeStreet === "DRAW" ? "DRAW" : outcomeStreet,
       nextTurn: nextTurnValue,
@@ -7899,7 +8166,7 @@ const SAFE_RESET_PHASE = "IDLE";
           : prevDraw + 1;
       const normalizedDraw = Math.min(Math.max(candidate, 0), MAX_DRAWS);
       const handleDrawSkip = ({ players: skipPlayers }) => {
-        const betReady = resetBetRoundFlags(skipPlayers ?? state.players ?? []);
+        const betReady = resetBetStreetForNextRound(skipPlayers ?? state.players ?? []);
         const startSeat = sbIndex(dealerIndexValue);
         const resolvedTurn =
           findNextActiveSeat(betReady, startSeat) ?? startSeat;
@@ -7948,7 +8215,7 @@ const SAFE_RESET_PHASE = "IDLE";
         }
       };
       const enteredDraw = transitionToDrawPhase({
-        players: state.players,
+        players: transitionPlayers,
         pots: state.pots,
         setPlayers,
         setPots,
@@ -7964,7 +8231,7 @@ const SAFE_RESET_PHASE = "IDLE";
         fromPhase: "BET",
         meta: mergedMetadata,
         onSkipDrawRound: ({ players: skipPlayers }) =>
-          handleDrawSkip({ players: skipPlayers }),
+          handleDrawSkip({ players: skipPlayers ?? transitionPlayers }),
       });
       if (enteredDraw === false) {
         return true;

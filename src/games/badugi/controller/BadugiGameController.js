@@ -396,7 +396,13 @@ export class BadugiGameController extends GameController {
     const players = (this.legacy.state.players ?? []).map((player) => ({
       ...player,
       betThisRound: 0,
-      hasActedThisRound: Boolean(player.folded || player.seatOut || player.allIn),
+      hasDrawn: Boolean(player.folded || player.seatOut || player.isBusted || player.isActiveInGame === false),
+      hasActedThisRound: Boolean(
+        player.folded ||
+          player.seatOut ||
+          player.isBusted ||
+          player.isActiveInGame === false
+      ),
     }));
     this.legacy.state.players = players;
     this.legacy.state.currentBet = 0;

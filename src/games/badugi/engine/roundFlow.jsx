@@ -45,6 +45,43 @@ export function resetBetRoundFlags(players = []) {
   return changed ? normalized : players;
 }
 
+export function resetDrawRoundFlags(players = []) {
+  if (!Array.isArray(players)) return [];
+  return players.map((player) => {
+    if (!player) return player;
+    const out =
+      isFoldedOrOut(player) ||
+      player?.isBusted ||
+      player?.isActiveInGame === false;
+    return {
+      ...player,
+      lastAction: out ? player.lastAction ?? "" : "",
+      hasDrawn: out ? true : false,
+      canDraw: !out,
+      hasActedThisRound: out ? true : false,
+    };
+  });
+}
+
+export function resetBetStreetForNextRound(players = []) {
+  if (!Array.isArray(players)) return [];
+  return players.map((player) => {
+    if (!player) return player;
+    const out =
+      isFoldedOrOut(player) ||
+      player?.seatOut ||
+      player?.isBusted ||
+      player?.isActiveInGame === false;
+    return {
+      ...player,
+      betThisRound: 0,
+      bet: 0,
+      lastAction: out ? player.lastAction ?? "" : "",
+      hasActedThisRound: Boolean(out || player?.allIn),
+    };
+  });
+}
+
 export function shouldSkipDrawRound(state = {}) {
   if (state?.meta?.forceDrawRound) return false;
   const players = Array.isArray(state?.players) ? state.players : [];
@@ -172,8 +209,10 @@ export function transitionToBetPhase({
   fromPhase = null,
   onPhaseTransition,
 } = {}) {
+  const nextPlayers =
+    fromPhase === "DRAW" ? resetBetStreetForNextRound(players) : players;
   if (typeof setPlayers === "function" && players) {
-    setPlayers(players);
+    setPlayers(nextPlayers);
   }
   setPhase?.("BET");
   onPhaseTransition?.(fromPhase, "BET");
@@ -422,7 +461,7 @@ export function finishBetRoundFrom({
     nextRoundIndex = drawRound + 1,
     actingPlayerIndex = null,
   } = {}) => {
-    const betReady = resetBetRoundFlags(skipPlayers);
+    const betReady = resetBetStreetForNextRound(skipPlayers);
     const playerCount = NUM_PLAYERS || betReady.length || 1;
     const startSeat = ((dealerIdx + 1) % playerCount + playerCount) % playerCount;
     const resolvedTurn =
@@ -516,8 +555,9 @@ export function finishBetRoundFrom({
         }
 
         const nextRound = outcome.drawRoundIndex ?? drawRound + 1;
+        const drawReadyPlayers = resetDrawRoundFlags(nextPlayers);
         const enteredDraw = transitionToDrawPhase({
-          players: nextPlayers,
+          players: drawReadyPlayers,
           pots: nextPots,
           setPlayers,
           setPots,
@@ -534,7 +574,7 @@ export function finishBetRoundFrom({
           meta: outcome?.state?.metadata ?? outcome?.metadata ?? null,
           onSkipDrawRound: ({ players: skipPlayers, pots: skipPots }) =>
             handleDrawRoundSkipped({
-              players: skipPlayers ?? nextPlayers,
+              players: skipPlayers ?? drawReadyPlayers,
               pots: skipPots ?? nextPots,
               nextRoundIndex: nextRound,
               actingPlayerIndex: outcome.actingPlayerIndex,
@@ -706,16 +746,7 @@ export function finishBetRoundFrom({
 
   // ---  hasDrawnfalseRAW#1--
 
-  const resetPlayers = clearedPlayers.map((p) => {
-    const out = isFoldedOrOut(p) || p?.isBusted || p?.isActiveInGame === false;
-    return {
-      ...p,
-      lastAction: "",
-      hasDrawn: out ? true : false,
-      canDraw: !out,
-      hasActedThisRound: out ? true : false,
-    };
-  });
+  const resetPlayers = resetDrawRoundFlags(clearedPlayers);
 
   const enteredDraw = transitionToDrawPhase({
     players: resetPlayers,

@@ -6562,11 +6562,7 @@ const SAFE_RESET_PHASE = "IDLE";
       forceSeatDraw: (seat = turn, payload = {}) => {
         const currentPhase = phaseRef.current ?? phase;
         if (currentPhase !== "DRAW") return false;
-        const currentDrawTurn =
-          typeof controllerTurn === "number" && !Number.isNaN(controllerTurn)
-            ? controllerTurn
-            : turn;
-        if (typeof seat !== "number" || seat !== currentDrawTurn) return false;
+        if (typeof seat !== "number") return false;
         if (seat === 0) {
           return drawSelectedRef.current();
         }

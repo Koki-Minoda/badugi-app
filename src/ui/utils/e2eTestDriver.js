@@ -25,6 +25,8 @@ export function installE2eTestDriver(apiRef) {
     forceAllIn: (...args) => apiRef.current?.forceAllIn?.(...args),
     setupFixedLimitCapFixtureForTest: (...args) =>
       apiRef.current?.setupFixedLimitCapFixtureForTest?.(...args),
+    setupBadugiWaitingFreezeFixtureForTest: (...args) =>
+      apiRef.current?.setupBadugiWaitingFreezeFixtureForTest?.(...args),
     forceHeroDraw: (...args) => apiRef.current?.forceHeroDraw?.(...args),
     forceFinishRoundForTest: (...args) =>
       apiRef.current?.forceFinishRoundForTest?.(...args),

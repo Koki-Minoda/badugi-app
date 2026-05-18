@@ -14,6 +14,8 @@ Step C initially exposed a tournament-only draw-lowball action application gap: 
 
 Step E initially exposed a mobile-only D01 tournament portrait UI/controller divergence in the 50-hand matrix: the controller actor advanced to a non-Hero seat, but stale Hero action controls remained interactable in the DOM. The fix stores the controller UI snapshot in React state and includes `currentActor` when syncing engine snapshots, so controls render from the canonical controller actor instead of stale legacy turn state. Focused D01 tournament portrait 50-hand, Core5 mobile 20-hand, and Core5 mobile 50-hand now pass locally.
 
+Physical mobile Badugi later exposed a narrower tournament P0 outside the local matrix: a closed BET Draw2 state with no pending actors could remain in BET/waiting instead of entering DRAW. The focused `badugi-tournament-bet-to-draw-regression.spec.ts` now covers this state. Root cause was stale BET street flags and transition deferral around BET→DRAW / DRAW→BET handling: a closed BET round could keep prior street bets/acted flags and an empty actor. The local fix resets DRAW and next-BET street flags at phase boundaries, prevents stale transition guards from dropping forced BET closure, and adds a closed-BET guard before re-electing a fallback actor.
+
 ## Step A: Core5 Cash Desktop 10-Hand
 
 Command:

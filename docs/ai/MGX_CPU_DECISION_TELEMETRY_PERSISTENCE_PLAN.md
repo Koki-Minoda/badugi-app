@@ -14,25 +14,32 @@ Current gaps:
 - Most actions do not persist `decisionSource`.
 - `fallbackReason`, `legalActions`, `cpuPolicy`, `aiTier`, and `rlUsed` are missing or sparse.
 
-## Minimal Persistence Proposal
+## Implemented Persistence
 
-No migration is included in this step. The lowest-risk future change is to extend existing action metadata JSON, not add new required columns.
+No migration is included in this step. The implementation extends the existing `badugi_action_logs.metadata` JSON payload that is already accepted by `POST /api/badugi/actions/batch`.
 
-Recommended fields inside `badugi_action_logs.metadata`:
+Fields persisted inside `badugi_action_logs.metadata` for CPU action rows:
 
 ```json
 {
+  "sessionId": "qa-...",
   "variantId": "D01",
   "mode": "cash",
+  "actorSeat": 2,
   "isCpu": true,
   "decisionSource": "heuristic|pro-overlay|rl|fallback|forced",
   "fallbackReason": null,
   "aiTier": "standard|pro|iron",
+  "cpuPolicy": "standard|pro|iron|unknown",
   "legalActions": ["fold", "call", "raise"],
-  "legalActionsCount": 3,
   "selectedAction": "call",
   "finalAction": "call",
-  "policyVersion": "core5-cpu-v1"
+  "street": "BET",
+  "drawRound": 1,
+  "betRound": 1,
+  "toCall": 20,
+  "canRaise": true,
+  "handStrengthBucket": "unknown|trash|weak|medium|strong|premium"
 }
 ```
 
@@ -55,4 +62,13 @@ With those fields, live audits can separate:
 
 ## Current Recommendation
 
-Keep `CORE5-CPU-FOLD-001` open as P1 until live browser/physical sessions persist explicit CPU decision source. Add `CORE5-CPU-TELEMETRY-001` as P2 because the lack of explicit telemetry blocks fast diagnosis but does not itself break gameplay.
+Keep `CORE5-CPU-FOLD-001` open as P1 until a deployed targeted physical/browser cash session persists explicit CPU decision source and is audited by sessionId. Keep `CORE5-CPU-TELEMETRY-001` as P2 / needs deploy + targeted QA until the new fields appear in live DB rows.
+
+QA flow:
+
+1. Open `https://mgx-poker.com/?mgxQa=mobile`.
+2. Record the visible QA session id.
+3. Play D01 cash, D02 cash, and Badugi cash for roughly 20 hands each.
+4. Export the CPU session report if play feels fold-heavy.
+5. Run `scripts/audit-live-cpu-actions-from-db.py --limit-hands 500 --output reports/ai/live-db-cpu-action-audit-v2.json`.
+6. Compare the session rows by `decisionSource`, `legalActions`, and `raiseAvailableButFolded`.

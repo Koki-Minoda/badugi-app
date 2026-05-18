@@ -10,6 +10,8 @@ Read-only audit output:
 
 - `reports/ai/live-db-cpu-action-audit.json`
 - `reports/ai/live-db-cpu-action-audit.md`
+- `reports/ai/live-db-cpu-action-audit-v2.json`
+- `reports/ai/live-db-cpu-action-audit-v2.md`
 
 Generated reports are not committed.
 
@@ -88,9 +90,43 @@ Mode is not reliably persisted in the action rows, so cash-vs-tournament cannot 
 Decision source data is only partially available:
 
 - `pro-overlay`: `86` actions
-- `unknown`: `2006` actions
+- `unknown`: `2001` actions in the v2 read
+
+The v2 audit also confirms the historical rows still have:
+
+- `sessionId`: `0` rows
+- `legalActions`: `0` rows
+- `fallbackReason`: `0` rows
+- `cpuPolicy`: `0` reliable rows
 
 This means the DB can prove that some persisted live actions carried pro-overlay metadata, but it cannot determine the decision source for most live actions. `fallbackReason`, `legalActions`, `cpuPolicy`, and `rlUsed` are not reliably persisted.
+
+## Persistence Update
+
+The implementation now uses the existing `badugi_action_logs.metadata` JSON column. No migration is required.
+
+New action metadata added for CPU decisions:
+
+- `sessionId`
+- `mode`
+- `variantId`
+- `actorSeat`
+- `isCpu`
+- `decisionSource`
+- `fallbackReason`
+- `legalActions`
+- `selectedAction`
+- `finalAction`
+- `cpuPolicy`
+- `aiTier`
+- `street`
+- `drawRound`
+- `betRound`
+- `toCall`
+- `canRaise`
+- `handStrengthBucket`
+
+`?mgxQa=mobile` now exposes a QA session id, CPU decision summary, and CPU session export. The next live DB audit should be run after deploy and targeted physical QA, then filtered by recent rows/session id.
 
 ## Comparison to Node Sanity
 
@@ -111,4 +147,3 @@ Next action should be telemetry, not tuning:
 - persist fallback reason
 - persist compact legal action info
 - persist mode and variant on every action row
-

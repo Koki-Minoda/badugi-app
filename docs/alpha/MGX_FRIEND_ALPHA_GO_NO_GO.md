@@ -50,7 +50,7 @@ This pass adds the small release gates requested for the remaining work: physica
 | Core 5 actor order | PASS, per-action history audit |
 | Core 5 orientation support | PASS |
 | Core 5 mobile tournament portrait/landscape | PASS on live URL, 30/30 layout evidence cases |
-| iPhone PWA tournament landscape action buttons | FIXED_LOCAL / needs deploy + physical recheck; physical PWA evidence showed Hero Call/Raise/Fold clipped below viewport, and local gate `tests/e2e/mobile-tournament-landscape-action-buttons.spec.ts` now passes reduced-height landscape cases |
+| iPhone PWA tournament landscape action buttons | FIXED_LIVE / needs physical recheck; physical PWA evidence showed Hero Call/Raise/Fold clipped below viewport, and local/live gate `tests/e2e/mobile-tournament-landscape-action-buttons.spec.ts` now passes reduced-height landscape cases on deployed head `cfcdb3d` |
 | Live Core5 cash/tournament layout evidence | PASS for Badugi/D01/D02/S01/S02 at 390x844, 430x932, and 844x390 |
 | Live Core5 tournament runtime fatal | PASS, 5/5 fatal guard cases |
 | Live browser gameplay smoke | PRIOR FULL PASS; latest post-deploy smoke PARTIAL due live auth 504 before launch, not a gameplay invariant failure |

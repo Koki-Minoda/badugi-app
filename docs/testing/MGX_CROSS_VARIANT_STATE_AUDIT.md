@@ -106,17 +106,18 @@ The report is generated evidence and is not committed.
 
 `CROSS-VARIANT-STATE-001` was reopened as P0 after physical iPhone QA showed Badugi tournament rendering five-card draw-lowball hands after a cash-session variant switch.
 
-The newly fixed local path is stricter than the previous controller-class-only guard:
+The deployed fix is stricter than the previous controller-class-only guard:
 
 - `gameVariantRef` and `modeRef` are the source of truth for immediate hand start after variant/mode switch.
 - New-hand `prevPlayers` and `currentPlayers` are sanitized against the active variant hand-shape before deal.
 - Badugi rejects non-empty five-card hand/card snapshots before UI merge.
 - Folded/out/busted players are excluded from DRAW actor selection while all-in non-folded players remain draw eligible.
 
-Local evidence:
+Evidence:
 
-- `tests/e2e/physical-cross-variant-badugi-contamination-regression.spec.ts` PASS for `D01 -> Badugi`, `D02 -> Badugi`, `S01 -> Badugi`, `S02 -> Badugi`, and `Badugi -> Badugi`.
+- `LIVE_PREVIEW=1 tests/e2e/physical-cross-variant-badugi-contamination-regression.spec.ts` PASS for `D01 -> Badugi`, `D02 -> Badugi`, `S01 -> Badugi`, `S02 -> Badugi`, and `Badugi -> Badugi`.
 - `tests/e2e/badugi-hand-shape-contamination.spec.ts` PASS.
 - `tests/e2e/badugi-folded-draw-freeze-regression.spec.ts` PASS.
+- Live Badugi tournament portrait/landscape 20-hand emulation PASS on deployed head `a73042dcd2eca92097aa27a2d3f732b648fd49f4`.
 
-Status: `FIXED_LOCAL / NEEDS_DEPLOY_AND_PHYSICAL_RECHECK`. Friend Alpha remains HOLD until this build is deployed, live recheck passes, and the physical `?mgxQa=mobile` path is confirmed.
+Status: `FIXED_LIVE / NEEDS_PHYSICAL_RECHECK`. Friend Alpha remains HOLD until the physical `?mgxQa=mobile` path is confirmed.

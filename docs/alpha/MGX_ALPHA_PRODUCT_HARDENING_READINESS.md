@@ -19,12 +19,12 @@ The remaining-readiness pass adds code-level tournament preset definitions, a st
 | live deploy snapshot | PASS | live build info matches the local head recorded in `reports/alpha/live-deploy-verification-after-structure-soak-ux.json` |
 | live health | PASS | `/api/health` returns `{"status":"ok","env":"prod","db":"ok"}` |
 | physical mobile Badugi tournament waiting freeze | P0 OPEN | `PHYSICAL-MOBILE-BADUGI-WAITING-001`; iPhone live preview screenshot shows Waiting at BET Draw2 with no Hero action |
-| physical mobile Badugi hand-shape contamination | P0 FIXED_LOCAL / NEEDS_DEPLOY_AND_PHYSICAL_RECHECK | `BADUGI-HAND-SHAPE-001`; iPhone live preview showed Badugi tournament with five-card draw-lowball hands; local hand-shape and physical cross-variant regressions pass |
-| physical mobile Badugi folded DRAW freeze | P0 FIXED_LOCAL / NEEDS_DEPLOY_AND_PHYSICAL_RECHECK | `BADUGI-FOLD-DRAW-FREEZE-001`; folded Hero cannot be selected as DRAW actor; local engine/UI/E2E regressions pass |
+| physical mobile Badugi hand-shape contamination | P0 FIXED_LIVE / NEEDS_PHYSICAL_RECHECK | `BADUGI-HAND-SHAPE-001`; iPhone live preview showed Badugi tournament with five-card draw-lowball hands; deployed hand-shape and physical cross-variant regressions pass |
+| physical mobile Badugi folded DRAW freeze | P0 FIXED_LIVE / NEEDS_PHYSICAL_RECHECK | `BADUGI-FOLD-DRAW-FREEZE-001`; folded Hero cannot be selected as DRAW actor; deployed engine/UI/E2E regressions pass |
 | physical mobile Badugi BET to DRAW transition | P0 FIXED_LIVE / NEEDS_PHYSICAL_RECHECK | `BADUGI-BET-DRAW-TRANSITION-001`; focused local regression covers the closed BET Draw2 state and preview deploy includes `3e597c515f8e3874cf3685db9d9fa45dc2c4ea14`; live Badugi mobile emulation now passes portrait/landscape |
 | live Badugi tournament DRAW1 CPU action | FIXED_LIVE / NEEDS_PHYSICAL_RECHECK | `BADUGI-DRAW1-CPU-ACTION-001`; focused local/live regression passes and Badugi tournament portrait/landscape live emulation completes 20 hands each with 0 invariant failures |
 | physical mobile Badugi DRAW/BET divergence | P0 OPEN | `BADUGI-DRAW-BET-MIX-001`; tracked separately after waiting freeze |
-| cross-variant state contamination | P0 FIXED_LOCAL / NEEDS_DEPLOY_AND_PHYSICAL_RECHECK | `CROSS-VARIANT-STATE-001`; physical Badugi reopened the class as hand-shape contamination, and local D01/D02/S01/S02 cash -> Badugi tournament regression now passes after ref-based variant/mode hand-start hardening |
+| cross-variant state contamination | P0 FIXED_LIVE / NEEDS_PHYSICAL_RECHECK | `CROSS-VARIANT-STATE-001`; physical Badugi reopened the class as hand-shape contamination, and deployed D01/D02/S01/S02 cash -> Badugi tournament regression now passes after ref-based variant/mode hand-start hardening |
 | Core5 phase machine hardening | PASS_LOCAL / MONITOR | legal phase graph, impossible transition detector, DRAW/BET mixed-state detector, and stale phase merge detector pass focused regressions. The 50-hand Core5 matrix completed 1500/1500 hands with 0 P0, and the post-classification 5-hand matrix completed 150/150 hands with 0 impossible transition / DRAW-BET mixed / stale-merge rows. Remaining PHASE/POT rows are timing monitor only. |
 | build | PASS | `npm run build` succeeds |
 | Badugi playable | LIVE_BROWSER_VERIFY_PASS / HOLD_FOR_PHYSICAL_QA | focused full 3-draw regression reaches `Hand Result`; long-run restore smoke passes 5 hands / 180 checkpoints; live no-reraise raise/call closure passes; re-raise-positive live proof passes |
@@ -62,7 +62,7 @@ The remaining-readiness pass adds code-level tournament preset definitions, a st
 | --- | --- | --- |
 | P1 | Push deployed local commits | branch `feature/d-04-next-actor-unify` remains ahead of origin and requires credentialed push |
 | P0 | Fix physical Badugi waiting freeze | real-device live QA found `PHYSICAL-MOBILE-BADUGI-WAITING-001`; friend alpha remains HOLD |
-| P0 | Deploy/recheck Badugi hand-shape and folded-DRAW fix | local regressions pass for `BADUGI-HAND-SHAPE-001`, `BADUGI-FOLD-DRAW-FREEZE-001`, and reopened `CROSS-VARIANT-STATE-001`; live deploy and real-device recheck still required |
+| P0 | Recheck Badugi hand-shape and folded-DRAW fix on physical device | deployed regressions pass for `BADUGI-HAND-SHAPE-001`, `BADUGI-FOLD-DRAW-FREEZE-001`, and reopened `CROSS-VARIANT-STATE-001`; real-device recheck still required |
 | P0 | Clear physical Badugi DRAW1 / BET→DRAW recheck | local and live emulation fixes pass for `BADUGI-DRAW1-CPU-ACTION-001` and `BADUGI-BET-DRAW-TRANSITION-001`, but physical mobile recheck has not passed |
 | P1 | Physical recheck cross-variant reset | live cross-variant regression passes; real-device D01 cash -> Cash Out/Menu -> Badugi tournament must still be rechecked after DRAW1 fix |
 | P0 | Reproduce/fix physical DRAW/BET divergence | real-device screenshot remains open as `BADUGI-DRAW-BET-MIX-001` even though local phase-machine detectors pass |

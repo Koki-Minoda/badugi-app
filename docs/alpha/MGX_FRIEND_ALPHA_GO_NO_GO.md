@@ -6,7 +6,7 @@ Date: 2026-05-19
 
 `HOLD_FOR_PHYSICAL_MOBILE_BADUGI_RECHECK_AND_REMOTE_SYNC`
 
-The live URL is the release source of truth for deploy gates, and the browser gameplay invariant harness is the browser source of truth for action-by-action UI/controller consistency. The preview deploy now matches local head `3e597c515f8e3874cf3685db9d9fa45dc2c4ea14` and includes the cross-variant reset, CPU telemetry persistence, and Badugi tournament DRAW1 CPU action fix. Live cross-variant contamination recheck passes. The focused live DRAW1 CPU action regression passes, and Badugi tournament portrait/landscape live emulation completes 20 hands each with 0 invariant failures. Friend alpha is still HOLD because the original physical mobile Badugi waiting freeze / DRAW-BET divergence must be rechecked on a real device, and remote source sync is still unresolved.
+The live URL is the release source of truth for deploy gates, and the browser gameplay invariant harness is the browser source of truth for action-by-action UI/controller consistency. The preview deploy now matches local head `48d370c98b3eb895af37ffdc52fae47119610c23` and includes the structure presets, long-run soak gate, readability quick wins, cross-variant reset, CPU telemetry persistence, and Badugi tournament DRAW1 CPU action fix. Live cross-variant contamination recheck passes. The focused live DRAW1 CPU action regression passes, and Badugi tournament portrait/landscape live emulation completes 20 hands each with 0 invariant failures. Friend alpha is still HOLD because the original physical mobile Badugi waiting freeze / DRAW-BET divergence must be rechecked on a real device, and remote source sync is still unresolved.
 
 The replay/table readability audit is complete as a structural WARN, not a gameplay P0. It identifies action visibility, position clarity, replay grouping, and mobile context as P1 UX/readability work that should be addressed before broad friend feedback, but it does not supersede the physical Badugi and remote-sync release blockers.
 
@@ -18,7 +18,7 @@ This pass adds the small release gates requested for the remaining work: physica
 
 | Gate | Result |
 | --- | --- |
-| Remote source sync for deployed commit | BLOCKED / unresolved, branch ahead origin by 123 commits at `3e597c5` |
+| Remote source sync for deployed commit | BLOCKED / unresolved, branch ahead origin by 129 commits at `48d370c` |
 | Physical mobile Badugi tournament waiting freeze | P0 OPEN / NEEDS_PHYSICAL_RECHECK, `PHYSICAL-MOBILE-BADUGI-WAITING-001` |
 | Physical mobile Badugi BET to DRAW transition | P0 FIXED_LIVE / NEEDS_PHYSICAL_RECHECK, `BADUGI-BET-DRAW-TRANSITION-001` |
 | Physical mobile Badugi DRAW/BET divergence | P0 OPEN, `BADUGI-DRAW-BET-MIX-001`, separate follow-up after waiting freeze |
@@ -26,7 +26,7 @@ This pass adds the small release gates requested for the remaining work: physica
 | Badugi tournament DRAW1 CPU action application | FIXED_LIVE / NEEDS_PHYSICAL_RECHECK, `BADUGI-DRAW1-CPU-ACTION-001`; focused local/live regression PASS and live portrait/landscape Badugi tournament emulation PASS |
 | Core5 phase machine integrity | PASS_LOCAL / MONITOR, legal graph / impossible transition / DRAW-BET mixed / stale merge detectors pass focused regressions and Core5 browser matrix gates with 0 P0 |
 | Live deploy snapshot | PASS, live commit == local head in latest deploy verification report |
-| Live post-deploy Core5 smoke after progression fixes | PARTIAL, 24/30 gameplay cases PASS; 6 Triple Draw cases blocked before launch by live `/auth/signup` 504 |
+| Live post-deploy Core5 smoke after structure/soak/UX deploy | PARTIAL, 25/30 gameplay cases PASS; 5 Triple Draw cases blocked before launch by live `/auth/signup` 504 |
 | Badugi alpha availability | HOLD for friend exposure until physical QA and remote sync clear |
 | Badugi raise/call betting closure | PASS live for no-reraise closure and re-raise-positive reopen proof |
 | Badugi fold event logging | PASS local, hero-fold / position-specific fold / consecutive-hand reset covered |
@@ -39,6 +39,7 @@ This pass adds the small release gates requested for the remaining work: physica
 | Tournament meaningful decision density | SOURCE_DEPENDENT, heuristic `16.29` meaningful decisions/hand vs pro-overlay `0.12`; Badugi still needs browser/live decision-density measurement |
 | Long-run soak gate | PASS_WITH_MONITOR locally for fast gate: 100/100 hands, 2,431 actions, no actor/terminal/action-application/freeze blockers; PHASE/POT monitor rows remain |
 | Replay/table readability audit | WARN / P1 roadmap defined; low-risk actor/action context strip added for `UI-ACTION-VISIBILITY-001` and `UI-POSITION-CLARITY-001`; replay grouping remains open |
+| Live readability smoke | PASS, 10/10 after deploy `48d370c` |
 | D02/S01/S02 desktop smoke | PASS |
 | D02/S01/S02 mobile emulation | PASS |
 | D02/S01/S02 Triple Draw actor / mapping audit | PASS |

@@ -1,3 +1,5 @@
+import { assertNoHandShapeContamination } from "../utils/handShapeInvariant.js";
+
 const DRAW_CONTROLLER_CLASS_PATTERN = /(?:D1|D2|S1|S2|DrawLowball|TripleDraw|SingleDraw)/i;
 
 function normalizeVariant(value) {
@@ -83,6 +85,24 @@ export function classifyCrossVariantStateLeak(audit = {}) {
     );
   }
 
+  const handShape = assertNoHandShapeContamination({
+    variantId: currentVariant,
+    snapshot: audit.snapshot,
+    players: audit.players ?? audit.snapshot?.players,
+  });
+  if (handShape.status === "FAIL") {
+    handShape.violations.forEach((violation) => {
+      violations.push(
+        issue(
+          "CROSS_VARIANT_HAND_SHAPE",
+          "P0",
+          "active variant snapshot has incompatible hand/card count",
+          { handShapeViolation: violation },
+        ),
+      );
+    });
+  }
+
   return {
     status: violations.some((violation) => violation.severity === "P0") ? "FAIL" : "PASS",
     violations,
@@ -92,4 +112,3 @@ export function classifyCrossVariantStateLeak(audit = {}) {
 export function assertNoCrossVariantStateLeak(audit = {}) {
   return classifyCrossVariantStateLeak(audit);
 }
-

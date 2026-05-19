@@ -162,6 +162,11 @@ import {
 import { chooseProAction } from "../ai/pro/proDecisionOverlay.js";
 import { useGameEngine } from "./engine/useGameEngine";
 import { mergeEngineSnapshot } from "./utils/engineSnapshotUtils.js";
+import {
+  assertNoHandShapeContamination,
+  isValidHandShapeForVariant,
+  sanitizeSeatHandShapeForVariant,
+} from "./utils/handShapeInvariant.js";
 import { loadActiveTournamentSession } from "./tournament/tournamentManager";
 import { installE2eTestDriver } from "./utils/e2eTestDriver.js";
 import {
@@ -229,7 +234,8 @@ function snapshotVariantMatchesAppVariant(snapshot, appVariant) {
     snapshot.variantId ?? snapshot.gameVariant ?? snapshot.gameId ?? snapshot.metadata?.variantId,
     null,
   );
-  return !actual || actual === expected;
+  if (actual && actual !== expected) return false;
+  return isValidHandShapeForVariant({ variantId: expected, snapshot });
 }
 
 function cloneHandHistory(value) {
@@ -437,6 +443,7 @@ export default function App() {
   const [authToken, setAuthToken] = useState(null);
   const [authTokenType, setAuthTokenType] = useState(null);
   const [mode, setMode] = useState(initialModeRef.current);
+  const modeRef = useRef(initialModeRef.current);
   const [language, setLanguage] = useState(() => getInitialLanguage());
   // MGX branding: kitsune title screen + title → menu → game flow (2025-11-28)
   const [currentScreen, setCurrentScreen] = useState("title");
@@ -567,6 +574,9 @@ export default function App() {
     gameVariantRef.current = gameVariant;
     refreshHudVariantLabels();
   }, [gameVariant, refreshHudVariantLabels]);
+  useLayoutEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
   const heroSeatMapRef = useRef([]);
   const heroTableIdRef = useRef(null);
   const heroTableMetaRef = useRef({ tableId: null, seatIndex: null });
@@ -1010,17 +1020,18 @@ const SAFE_RESET_PHASE = "IDLE";
   const sessionControllerStateRef = useRef(null);
 
   const ensureSessionController = useCallback(() => {
-    const normalizedVariant = normalizeAppVariantId(gameVariant);
+    const normalizedVariant = normalizeAppVariantId(gameVariantRef.current ?? gameVariant);
+    const activeMode = modeRef.current ?? mode;
     const usesBoardController =
       BOARD_APP_VARIANT_IDS.has(normalizedVariant) ||
       STUD_APP_VARIANT_IDS.has(normalizedVariant) ||
       DRAMAHA_APP_VARIANT_IDS.has(normalizedVariant);
     const allowsTournamentSessionController =
-      mode === "tournament-mtt" &&
+      activeMode === "tournament-mtt" &&
       (normalizedVariant === APP_VARIANT_IDS.BADUGI ||
         isDrawLowballAppVariant(normalizedVariant));
     if (
-      (mode === "tournament-mtt" && !allowsTournamentSessionController) ||
+      (activeMode === "tournament-mtt" && !allowsTournamentSessionController) ||
       usesBoardController ||
       !isControllerBackedAppVariant(normalizedVariant)
     ) {
@@ -1350,6 +1361,7 @@ const SAFE_RESET_PHASE = "IDLE";
       baseSeats,
       adapterSeatViews: adapterViewProps?.seatViews ?? [],
       phase,
+      variantId: normalizedGameVariant,
     });
     return normalized.map((seat, idx) => ({
       ...seat,
@@ -1364,6 +1376,7 @@ const SAFE_RESET_PHASE = "IDLE";
     authUserId,
     mergedSeatStatsByPlayerId,
     phase,
+    normalizedGameVariant,
   ]);
 
   const seatLabels = useMemo(
@@ -1608,6 +1621,17 @@ const SAFE_RESET_PHASE = "IDLE";
     { seatIndex = null, scheduleAfterBet = false } = {},
   ) => {
     if (!snapshot || !Array.isArray(snapshot.players)) return null;
+    const snapshotShape = assertNoHandShapeContamination({
+      variantId: gameVariantRef.current ?? gameVariant,
+      snapshot,
+    });
+    if (snapshotShape.status === "FAIL") {
+      console.warn("[SNAPSHOT_REJECTED_HAND_SHAPE_MISMATCH]", {
+        variantId: gameVariantRef.current ?? gameVariant,
+        violations: snapshotShape.violations,
+      });
+      return null;
+    }
     const sourcePlayers = (snapshot.players ?? []).map((player) => {
       if (!player || !Array.isArray(player.holeCards)) return player;
       return {
@@ -1838,7 +1862,7 @@ const SAFE_RESET_PHASE = "IDLE";
   );
 
   const ensureGameController = useCallback(() => {
-    const variantId = normalizeAppVariantId(gameVariant);
+    const variantId = normalizeAppVariantId(gameVariantRef.current ?? gameVariant);
     const needsNew =
       !gameControllerRef.current || controllerVariantRef.current !== variantId;
     if (needsNew) {
@@ -2958,14 +2982,25 @@ const SAFE_RESET_PHASE = "IDLE";
     return {
       ...player,
       hand: Array.isArray(player.hand) ? [...player.hand] : player.hand,
+      cards: Array.isArray(player.cards) ? [...player.cards] : player.cards,
+      holeCards: Array.isArray(player.holeCards) ? [...player.holeCards] : player.holeCards,
       selected: Array.isArray(player.selected) ? [...player.selected] : player.selected,
     };
   }
 
+  function sanitizePlayerSnapshotForVariant(snapshot, variantId = gameVariantRef.current ?? gameVariant) {
+    if (!Array.isArray(snapshot)) return [];
+    return snapshot
+      .map((player) => {
+        const cloned = clonePlayerState(player);
+        if (!cloned) return null;
+        return sanitizeSeatHandShapeForVariant(cloned, variantId);
+      })
+      .filter(Boolean);
+  }
+
   function setPlayerSnapshot(snap) {
-    const normalized = Array.isArray(snap)
-      ? snap.map(clonePlayerState).filter(Boolean)
-      : [];
+    const normalized = sanitizePlayerSnapshotForVariant(snap);
     setPlayers(normalized);
     return normalized;
   }
@@ -5257,10 +5292,14 @@ const SAFE_RESET_PHASE = "IDLE";
       heroTournamentPlayerIdRef.current = entrants[0]?.id ?? HERO_TOURNAMENT_PLAYER_ID;
       const hydration = hydrateHeroTableFromTournamentState(tournamentState);
       if (hydration) {
+        const sanitizedTablePlayers = sanitizePlayerSnapshotForVariant(
+          hydration.tablePlayers,
+          initialTournamentVariant,
+        );
         heroSeatMapRef.current = hydration.seatMapping;
         heroTableIdRef.current = hydration.tableId;
-        playersRef.current = hydration.tablePlayers;
-        setPlayers(hydration.tablePlayers);
+        playersRef.current = sanitizedTablePlayers;
+        setPlayers(sanitizedTablePlayers);
         heroRenderTableIdRef.current = hydration.tableId;
       }
       const heroPlayer = tournamentState.players?.[heroTournamentPlayerIdRef.current];
@@ -5296,6 +5335,7 @@ const SAFE_RESET_PHASE = "IDLE";
       setTournamentHudState(attachVariantLabels(hudPayload));
       setTournamentTitle(config?.name ?? "Tournament Results");
       handStartingStacksRef.current = {};
+      modeRef.current = "tournament-mtt";
       setMode("tournament-mtt");
       setStartingStack(config.startingStack);
       startingStackRef.current = config.startingStack;
@@ -5318,7 +5358,10 @@ const SAFE_RESET_PHASE = "IDLE";
       if (hydration) {
         startNextHandRef.current({
           dealerOverride: 0,
-          prevPlayers: hydration.tablePlayers,
+          prevPlayers: sanitizePlayerSnapshotForVariant(
+            hydration.tablePlayers,
+            initialTournamentVariant,
+          ),
         });
       } else {
         startNextHandRef.current({ dealerOverride: 0 });
@@ -5344,6 +5387,7 @@ const SAFE_RESET_PHASE = "IDLE";
       destroyControllers: true,
     });
     resetTournamentState();
+    modeRef.current = "cash";
     setMode("cash");
     setCurrentScreen("menu");
     navigate("/");
@@ -5456,11 +5500,13 @@ const SAFE_RESET_PHASE = "IDLE";
       setGameVariant(normalizedVariant);
     }
     if (normalizedVariant === APP_VARIANT_IDS.CHINESE_POKER) {
+      modeRef.current = "cash";
       setMode("cash");
       setCurrentScreen("chinesePoker");
       return;
     }
     resetInitialButtonState();
+    modeRef.current = "cash";
     setMode("cash");
     pendingRingStartRef.current = true;
     resetTableStateToSafeDefaults({
@@ -5525,6 +5571,7 @@ const SAFE_RESET_PHASE = "IDLE";
 
   const handleNavigateToTitle = useCallback(() => {
     resetTournamentState();
+    modeRef.current = "cash";
     setMode("cash");
     setCurrentScreen("title");
     navigate("/");
@@ -5540,7 +5587,34 @@ const SAFE_RESET_PHASE = "IDLE";
     };
     try {
 
-    const basePlayersSnapshot = playersRef.current ?? [];
+    const activeHandVariant = normalizeAppVariantId(gameVariantRef.current ?? gameVariant);
+    const activeHandMode = modeRef.current ?? mode;
+    const activeHandIsTournament = activeHandMode === "tournament-mtt";
+    const activeHandIsSingleTableBadugi =
+      activeHandMode !== "tournament-mtt" && activeHandVariant === APP_VARIANT_IDS.BADUGI;
+    const activeHandIsDrawLowballController = isDrawLowballAppVariant(activeHandVariant);
+    const activeHandIsSingleTableDrawLowball =
+      activeHandMode !== "tournament-mtt" && activeHandIsDrawLowballController;
+    const activeHandIsSingleTableDramaha =
+      activeHandMode !== "tournament-mtt" && DRAMAHA_APP_VARIANT_IDS.has(activeHandVariant);
+    const activeHandIsSingleTableBoardGame =
+      activeHandMode !== "tournament-mtt" &&
+      (BOARD_APP_VARIANT_IDS.has(activeHandVariant) ||
+        STUD_APP_VARIANT_IDS.has(activeHandVariant) ||
+        DRAMAHA_APP_VARIANT_IDS.has(activeHandVariant));
+    const activeHandIsSingleTableControllerDraw =
+      activeHandIsSingleTableDrawLowball || activeHandIsSingleTableDramaha;
+    const basePlayersSnapshot = sanitizePlayerSnapshotForVariant(
+      playersRef.current ?? [],
+      activeHandVariant,
+    );
+    const prevPlayersSnapshot = sanitizePlayerSnapshotForVariant(
+      prevPlayers ?? [],
+      activeHandVariant,
+    );
+    const resolvedPrevPlayers = Array.isArray(prevPlayers)
+      ? prevPlayersSnapshot
+      : prevPlayers;
     const nextHandNumber = Number.isFinite(handNumberOverride)
       ? Number(handNumberOverride)
       : handCountRef.current + 1;
@@ -5562,7 +5636,9 @@ const SAFE_RESET_PHASE = "IDLE";
 
     const deckManager = getDeckManager();
     const usesAppDeckForCurrentHand =
-      !isSingleTableBoardGame && !isSingleTableControllerDrawGame && !isDrawLowballControllerGame;
+      !activeHandIsSingleTableBoardGame &&
+      !activeHandIsSingleTableControllerDraw &&
+      !activeHandIsDrawLowballController;
     if (deckManager && usesAppDeckForCurrentHand) {
       deckManager.reset();
       if (typeof deckManager.shuffle === "function") {
@@ -5589,7 +5665,7 @@ const SAFE_RESET_PHASE = "IDLE";
     const fallbackStack = startingStackRef.current;
     const blindLevelSnapshot = blindLevelIndexRef.current ?? 0;
     const handsInLevelSnapshot = handsInLevelRef.current ?? 0;
-    const handBlindStructure = isTournament
+    const handBlindStructure = activeHandIsTournament
       ? getBlindStructureForTournamentConfig(
           tournamentStateRef.current?.config ?? DEFAULT_STORE_TOURNAMENT_CONFIG,
         )
@@ -5599,7 +5675,7 @@ const SAFE_RESET_PHASE = "IDLE";
     const legacyGameController = ensureGameController();
     let controllerHandSnapshot = null;
     let nextHandState = null;
-    if (isSingleTableBoardGame && legacyGameController?.startNewHand) {
+    if (activeHandIsSingleTableBoardGame && legacyGameController?.startNewHand) {
       try {
         legacyGameController.updateTableConfig?.(buildNlhTableConfig());
         controllerHandSnapshot = legacyGameController.startNewHand({
@@ -5646,16 +5722,16 @@ const SAFE_RESET_PHASE = "IDLE";
       }
     }
     const shouldUseSessionControllerForHand =
-      isSingleTableBadugi || isDrawLowballControllerGame;
+      activeHandIsSingleTableBadugi || activeHandIsDrawLowballController;
     if (shouldUseSessionControllerForHand) {
       const sessionController = ensureSessionController();
       if (sessionController) {
         const prevSessionState = sessionControllerStateRef.current;
         try {
           const nextControllerState = sessionController.createNewHandState(
-            prevSessionState,
+              prevSessionState,
             {
-              prevPlayers,
+              prevPlayers: resolvedPrevPlayers,
               currentPlayers: basePlayersSnapshot,
               numSeats: NUM_PLAYERS,
               seatConfig: effectiveSeatConfig,
@@ -5673,12 +5749,12 @@ const SAFE_RESET_PHASE = "IDLE";
           );
           if (nextControllerState) {
             sessionControllerStateRef.current = nextControllerState;
-            if (isDrawLowballControllerGame) {
+            if (activeHandIsDrawLowballController) {
               gameControllerRef.current = sessionController;
-              controllerVariantRef.current = normalizedGameVariant;
+              controllerVariantRef.current = activeHandVariant;
             }
             controllerHandSnapshot = sessionController.getUiSnapshot(nextControllerState);
-            if (isDrawLowballControllerGame && controllerHandSnapshot) {
+            if (activeHandIsDrawLowballController && controllerHandSnapshot) {
               const snapshotPlayers = (controllerHandSnapshot.players ?? [])
                 .map(clonePlayerState)
                 .filter(Boolean);
@@ -5736,7 +5812,7 @@ const SAFE_RESET_PHASE = "IDLE";
 
     if (!nextHandState) {
       nextHandState = legacyGameController.startNewHand({
-        prevPlayers,
+        prevPlayers: resolvedPrevPlayers,
         currentPlayers: basePlayersSnapshot,
         numSeats: NUM_PLAYERS,
         seatConfig: effectiveSeatConfig,
@@ -6217,6 +6293,7 @@ const SAFE_RESET_PHASE = "IDLE";
         Array.isArray(prevPlayers) && prevPlayers.length
           ? prevPlayers
           : playersRef.current ?? players;
+      snapshot = sanitizePlayerSnapshotForVariant(snapshot, gameVariantRef.current ?? gameVariant);
       if (!canContinueGame(snapshot)) {
         if (mode !== "tournament-mtt") {
           const recoveredSnapshot = buildCashNextHandSnapshot(snapshot);
@@ -6631,6 +6708,8 @@ const SAFE_RESET_PHASE = "IDLE";
             controllerSnapshotForAudit?.metadata?.actingPlayerIndex ??
             engineStateRef.current?.metadata?.actingPlayerIndex ??
             null,
+          snapshot: controllerSnapshotForAudit,
+          players: controllerSnapshotForAudit?.players ?? null,
         };
         return {
           ...row,
@@ -6907,6 +6986,115 @@ const SAFE_RESET_PHASE = "IDLE";
         setEngineState(snapshot);
         syncEngineSnapshot(snapshot);
         return snapshot;
+      },
+      setupBadugiHandShapeContaminationFixtureForTest: () => {
+        const stalePlayers = Array.from({ length: NUM_PLAYERS }, (_, seat) => ({
+          seatIndex: seat,
+          seat,
+          name: seat === 0 ? "You" : `CPU ${seat + 1}`,
+          stack: 500,
+          hand: ["AS", "2H", "3C", "4D", "5S"],
+          folded: false,
+          hasFolded: false,
+          allIn: false,
+          seatOut: false,
+          isBusted: false,
+          isActiveInGame: true,
+          betThisRound: 0,
+          totalInvested: 0,
+          hasDrawn: false,
+          hasActedThisRound: false,
+        }));
+        const staleSnapshot = {
+          variantId: "badugi",
+          gameVariant: "badugi",
+          handId: "BADUGI-HAND-SHAPE-001-fixture",
+          phase: "DRAW",
+          street: "DRAW",
+          drawRound: 1,
+          drawRoundIndex: 1,
+          betRound: 1,
+          betRoundIndex: 1,
+          currentBet: 0,
+          pot: 30,
+          pots: [{ amount: 30, eligible: [0, 1, 2, 3, 4, 5] }],
+          players: stalePlayers,
+          currentActor: 0,
+          nextTurn: 0,
+          turn: 0,
+          metadata: {
+            actingPlayerIndex: 0,
+            handId: "BADUGI-HAND-SHAPE-001-fixture",
+          },
+        };
+        const shapeAudit = assertNoHandShapeContamination({
+          variantId: "badugi",
+          snapshot: staleSnapshot,
+        });
+        syncEngineSnapshot(staleSnapshot);
+        return {
+          staleSnapshot,
+          shapeAudit,
+          acceptedEngineHandLengths: (engineStateRef.current?.players ?? []).map(
+            (player) => player?.hand?.length ?? 0,
+          ),
+        };
+      },
+      setupBadugiFoldedDrawFreezeFixtureForTest: () => {
+        const nextPlayers = Array.from({ length: NUM_PLAYERS }, (_, seat) => {
+          const folded = seat === 0 || seat > 1;
+          return {
+            seatIndex: seat,
+            seat,
+            name: seat === 0 ? "You" : seat === 1 ? "Sora" : `CPU ${seat + 1}`,
+            stack: folded ? 0 : 500,
+            hand: ["AS", "2H", "3C", "4D"],
+            folded,
+            hasFolded: folded,
+            allIn: false,
+            seatOut: false,
+            isBusted: false,
+            isActiveInGame: true,
+            betThisRound: 0,
+            totalInvested: folded ? 0 : 20,
+            hasDrawn: false,
+            hasActedThisRound: folded,
+            lastAction: folded ? "Fold" : "",
+          };
+        });
+        const snapshot = {
+          variantId: "badugi",
+          gameVariant: "badugi",
+          handId: "BADUGI-FOLD-DRAW-FREEZE-001-fixture",
+          phase: "DRAW",
+          street: "DRAW",
+          drawRound: 2,
+          drawRoundIndex: 2,
+          betRound: 2,
+          betRoundIndex: 2,
+          currentBet: 0,
+          pot: 66,
+          pots: [{ amount: 66, eligible: [1] }],
+          players: nextPlayers,
+          currentActor: 0,
+          nextTurn: 0,
+          turn: 0,
+          metadata: {
+            actingPlayerIndex: 0,
+            handId: "BADUGI-FOLD-DRAW-FREEZE-001-fixture",
+          },
+        };
+        playersRef.current = nextPlayers;
+        setPlayers(nextPlayers);
+        potsRef.current = snapshot.pots;
+        setPots(snapshot.pots);
+        setPhase("DRAW");
+        setDrawRoundValue(2);
+        setBetRoundIndex(2);
+        setCurrentBet(0);
+        setTurn(0);
+        syncEngineSnapshot(snapshot);
+        return engineStateRef.current ?? snapshot;
       },
       forceSequentialFolds,
       forceAllIn: forceAllInAction,
@@ -7923,13 +8111,29 @@ const SAFE_RESET_PHASE = "IDLE";
   /* --- actions: BET --- */
   function syncEngineSnapshot(snapshot, baseOverride = null) {
     if (!snapshot) return;
+    const snapshotShape = assertNoHandShapeContamination({
+      variantId: gameVariantRef.current ?? gameVariant,
+      snapshot,
+    });
+    if (snapshotShape.status === "FAIL") {
+      console.warn("[SNAPSHOT_REJECTED_HAND_SHAPE_MISMATCH]", {
+        variantId: gameVariantRef.current ?? gameVariant,
+        violations: snapshotShape.violations,
+      });
+      setControllerUiSnapshotState(null);
+      engineStateRef.current = null;
+      setEngineState(null);
+      return;
+    }
     const snapshotWithDeck = {
       ...snapshot,
       deck: Array.isArray(snapshot.deck) ? snapshot.deck : [],
       discard: Array.isArray(snapshot.discard) ? snapshot.discard : [],
       burn: Array.isArray(snapshot.burn) ? snapshot.burn : [],
     };
-    const engineActingIndex =
+    const snapshotPhase = String(snapshotWithDeck.phase ?? snapshotWithDeck.street ?? "").toUpperCase();
+    const snapshotPlayers = Array.isArray(snapshotWithDeck.players) ? snapshotWithDeck.players : [];
+    const requestedActor =
       typeof snapshotWithDeck?.nextTurn === "number"
         ? snapshotWithDeck.nextTurn
         : typeof snapshotWithDeck?.turn === "number"
@@ -7939,12 +8143,39 @@ const SAFE_RESET_PHASE = "IDLE";
         : typeof snapshotWithDeck?.metadata?.actingPlayerIndex === "number"
         ? snapshotWithDeck.metadata.actingPlayerIndex
         : null;
+    const safeSnapshot =
+      snapshotPhase === "DRAW" &&
+      typeof requestedActor === "number" &&
+      !isSeatEligibleForDraw(snapshotPlayers[requestedActor])
+        ? {
+            ...snapshotWithDeck,
+            currentActor: findNextDrawActorSeatHelper(snapshotPlayers, requestedActor + 1),
+            nextTurn: findNextDrawActorSeatHelper(snapshotPlayers, requestedActor + 1),
+            turn: findNextDrawActorSeatHelper(snapshotPlayers, requestedActor + 1),
+            metadata: {
+              ...(snapshotWithDeck.metadata ?? {}),
+              actingPlayerIndex: findNextDrawActorSeatHelper(snapshotPlayers, requestedActor + 1),
+              rejectedActingPlayerIndex: requestedActor,
+              rejectedActingPlayerReason: "DRAW_ACTOR_NOT_ELIGIBLE",
+            },
+          }
+        : snapshotWithDeck;
+    const engineActingIndex =
+      typeof safeSnapshot?.nextTurn === "number"
+        ? safeSnapshot.nextTurn
+        : typeof safeSnapshot?.turn === "number"
+        ? safeSnapshot.turn
+        : typeof safeSnapshot?.currentActor === "number"
+        ? safeSnapshot.currentActor
+        : typeof safeSnapshot?.metadata?.actingPlayerIndex === "number"
+        ? safeSnapshot.metadata.actingPlayerIndex
+        : null;
     const snapshotWithTurn = {
-      ...snapshotWithDeck,
+      ...safeSnapshot,
       nextTurn: engineActingIndex,
       turn: engineActingIndex,
       metadata: {
-        ...(snapshotWithDeck.metadata ?? {}),
+        ...(safeSnapshot.metadata ?? {}),
         actingPlayerIndex: engineActingIndex,
       },
     };
@@ -7980,8 +8211,8 @@ const SAFE_RESET_PHASE = "IDLE";
     setLastAggressor(merged.metadata.lastAggressor);
     setTurn(merged.metadata.actingPlayerIndex);
     setDeck(merged.deck);
-    const normalizedSnapshot = {
-      ...snapshotWithDeck,
+      const normalizedSnapshot = {
+      ...safeSnapshot,
       players: normalizedPlayers,
       pots: merged.pots,
       deck: merged.deck,

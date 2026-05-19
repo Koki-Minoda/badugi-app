@@ -268,6 +268,8 @@ export function collectBrowserGameplaySnapshot(extra = {}) {
     controllerSnapshotVariantId: controller.snapshot?.variantId ?? controller.snapshot?.gameVariant ?? null,
     engineStateVariantId: controller.rawState?.engineStateVariantId ?? controller.rawState?.gameVariant ?? null,
     handId: row.handId,
+    snapshot: controller.snapshot,
+    players: controller.players,
   });
   recordBrowserGameplayTrace(row);
   return row;

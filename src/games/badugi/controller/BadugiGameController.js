@@ -53,6 +53,28 @@ function clonePlayers(players = []) {
   );
 }
 
+function collectBadugiHandShapeViolations(players = []) {
+  if (!Array.isArray(players)) return [];
+  const violations = [];
+  players.forEach((player, seatIndex) => {
+    if (!player) return;
+    [
+      ["hand", player.hand],
+      ["cards", player.cards],
+      ["holeCards", player.holeCards],
+    ].forEach(([field, cards]) => {
+      if (Array.isArray(cards) && cards.length > 0 && cards.length !== 4) {
+        violations.push({ seatIndex, field, actualCardCount: cards.length, expectedCardCount: 4 });
+      }
+    });
+  });
+  return violations;
+}
+
+function hasBadugiHandShapeMismatch(snapshot = {}) {
+  return collectBadugiHandShapeViolations(snapshot?.players ?? []).length > 0;
+}
+
 function findNextDrawableSeat(players = [], { startIndex = null, dealerIdx = 0 } = {}) {
   const seatCount = Array.isArray(players) ? players.length : 0;
   if (!seatCount) return null;
@@ -279,6 +301,20 @@ export class BadugiGameController extends GameController {
       return {
         state: fallbackState,
         events: [{ type: "invalidAction", error: "seat not found" }],
+      };
+    }
+    if (Array.isArray(actor.hand) && actor.hand.length > 0 && actor.hand.length !== 4) {
+      const fallbackState = baseState ?? this._buildControllerState({ handIndex, context });
+      return {
+        state: fallbackState,
+        events: [
+          {
+            type: "invalidAction",
+            error: "Badugi draw action rejected because hand shape is not four cards",
+            code: "SNAPSHOT_REJECTED_HAND_SHAPE_MISMATCH",
+            meta: { seatIndex, actualCardCount: actor.hand.length, expectedCardCount: 4 },
+          },
+        ],
       };
     }
 
@@ -545,6 +581,23 @@ export class BadugiGameController extends GameController {
 
   syncFromExternalState({ snapshot = {}, context = null, handIndex = null } = {}) {
     const normalized = cloneSnapshot(snapshot);
+    if (hasBadugiHandShapeMismatch(normalized)) {
+      const fallbackState = this._lastState ?? this._buildControllerState({
+        handIndex: typeof handIndex === "number" ? handIndex : 0,
+        context,
+      });
+      const violations = collectBadugiHandShapeViolations(normalized.players);
+      fallbackState.lastEvents = [
+        ...(fallbackState.lastEvents ?? []),
+        {
+          type: "snapshotRejected",
+          code: "SNAPSHOT_REJECTED_HAND_SHAPE_MISMATCH",
+          severity: "P0",
+          violations,
+        },
+      ];
+      return fallbackState;
+    }
     const metadata = normalized.metadata ?? {};
     const dealerIdx =
       normalized.dealerIdx ??

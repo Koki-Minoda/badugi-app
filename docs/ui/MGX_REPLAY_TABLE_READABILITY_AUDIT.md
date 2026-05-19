@@ -57,6 +57,7 @@ Videos were not captured in this pass.
 | `ANIMATION_TIMING` | No direct video evidence in this pass; prior user reports imply transient actions are easy to miss. | Needs video capture. | P2 | Action labels may be transient and not mirrored in persistent log. | Add persistent log first; tune animation later. | S-M | Medium. |
 | `HUD_DENSITY` | Desktop side status is useful but can dominate; mobile loses that information and relies on table labels. | D01 desktop vs portrait screenshots. | P2 | Different desktop/mobile information hierarchy. | Define a shared minimum: actor, last action, position, pot, phase, tournament level. | M | Medium. |
 | `TOURNAMENT_SEAT_LIFECYCLE` | Busted/out CPU panels can remain as large table seats and cover pot/cards/Hero area on physical mobile. | Physical mobile Badugi tournament screenshot; `TOUR-SEAT-LIFECYCLE-001`. | P1/P0 | Tournament state correctly tracks busts, but display layout did not compact eliminated seats away from active table geometry. | Hide eliminated seats from the full table layout and show them in a compact eliminated rail. | S-M | High: gameplay may continue, but table readability becomes close to unusable. |
+| `MOBILE_TOURNAMENT_LANDSCAPE_ACTIONS` | iPhone PWA/standalone landscape can show Hero Controls while clipping Call/Raise/Fold below the viewport. | Physical iPhone PWA Badugi tournament screenshot; `UI-MOBILE-TOURNAMENT-LANDSCAPE-001`. | P0 | Right-column vertical allocation gives HUD/phase/context/stat rows space before reserving a guaranteed action-button area. | In mobile landscape tournament, compact HUD/phase/context first and keep action buttons fully visible/tappable without scroll. | S-M | Critical: Hero is actor but cannot play. |
 
 ## Desktop vs Mobile
 
@@ -65,6 +66,8 @@ Desktop has more room but also more competing panels: top nav, table status, cen
 Mobile portrait is playable and has no horizontal overflow in the smoke, but loses the desktop table-status sidebar. This makes position and prior action harder to verify. The action panel says `Waiting for other players...`, but does not name the pending actor or show the already-resolved street sequence.
 
 Mobile landscape has enough width for tournament play but compresses tournament HUD, table, and action context into a dense view. It should be treated as a readability risk even when automation passes.
+
+iPhone PWA/standalone does not remove the landscape tournament risk. The URL bar is not the root cause when the right column itself allocates more vertical content than the visual viewport can show. The layout policy now treats Hero action buttons as the first priority and tournament details as collapsible/compact context.
 
 ## Classification of Prior User Confusion
 
@@ -88,6 +91,7 @@ These are allowed before a full redesign because they do not alter game rules or
 - Keep action labels visible until superseded by the next action.
 - Add replay street headers and actor name/position to each event row.
 - Move busted/out tournament seats to a compact eliminated rail instead of full table panels.
+- Reserve mobile landscape tournament space for Hero action buttons before HUD/phase/detail rows.
 
 ## Recommendation
 

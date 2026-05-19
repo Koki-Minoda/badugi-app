@@ -56,6 +56,7 @@ Videos were not captured in this pass.
 | `SHOWDOWN_READABILITY` | Result overlays are reachable, but showdown/winner story is separate from replay timeline. | Existing result gates; replay screenshot hand-end row. | P1 | Result and replay use different information hierarchy. | Align result overlay with replay: winners, shown hands, pot breakdown, final action. | M | Medium-high for learning and trust. |
 | `ANIMATION_TIMING` | No direct video evidence in this pass; prior user reports imply transient actions are easy to miss. | Needs video capture. | P2 | Action labels may be transient and not mirrored in persistent log. | Add persistent log first; tune animation later. | S-M | Medium. |
 | `HUD_DENSITY` | Desktop side status is useful but can dominate; mobile loses that information and relies on table labels. | D01 desktop vs portrait screenshots. | P2 | Different desktop/mobile information hierarchy. | Define a shared minimum: actor, last action, position, pot, phase, tournament level. | M | Medium. |
+| `TOURNAMENT_SEAT_LIFECYCLE` | Busted/out CPU panels can remain as large table seats and cover pot/cards/Hero area on physical mobile. | Physical mobile Badugi tournament screenshot; `TOUR-SEAT-LIFECYCLE-001`. | P1/P0 | Tournament state correctly tracks busts, but display layout did not compact eliminated seats away from active table geometry. | Hide eliminated seats from the full table layout and show them in a compact eliminated rail. | S-M | High: gameplay may continue, but table readability becomes close to unusable. |
 
 ## Desktop vs Mobile
 
@@ -86,6 +87,7 @@ These are allowed before a full redesign because they do not alter game rules or
 - Rename draw-game phase copy to reduce `BET · Draw n` ambiguity.
 - Keep action labels visible until superseded by the next action.
 - Add replay street headers and actor name/position to each event row.
+- Move busted/out tournament seats to a compact eliminated rail instead of full table panels.
 
 ## Recommendation
 

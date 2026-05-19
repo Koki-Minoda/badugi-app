@@ -17,6 +17,7 @@ Preview deploy now matches `a73042dcd2eca92097aa27a2d3f732b648fd49f4`. The lates
 - `BADUGI-DRAW1-CPU-ACTION-001`: `FIXED_LIVE / NEEDS_PHYSICAL_RECHECK`
 - `BADUGI-DRAW-BET-MIX-001`: `OPEN / NEEDS_RECHECK`
 - `CROSS-VARIANT-STATE-001`: `FIXED_LIVE / NEEDS_PHYSICAL_RECHECK`
+- `TOUR-SEAT-LIFECYCLE-001`: `OPEN / NEEDS_DEPLOY_AND_PHYSICAL_RECHECK`
 
 Use `https://mgx-poker.com/?mgxQa=mobile` and follow `docs/alpha/MGX_PHYSICAL_MOBILE_QA_RECHECK_STEPS.md`.
 
@@ -32,4 +33,5 @@ Use `https://mgx-poker.com/?mgxQa=mobile` and follow `docs/alpha/MGX_PHYSICAL_MO
 - Badugi landscape 5-hand result.
 - Freeze export status.
 - CPU session export status.
+- Busted/out CPU seat rail status: eliminated CPUs should not remain as large table panels.
 - If CPU behavior feels fold-heavy, exported CPU session JSON and matching DB audit by sessionId.

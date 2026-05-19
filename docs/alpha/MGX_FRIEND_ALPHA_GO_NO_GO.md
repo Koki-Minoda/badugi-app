@@ -24,6 +24,7 @@ This pass adds the small release gates requested for the remaining work: physica
 | Badugi folded DRAW actor freeze | P0 FIXED_LIVE / NEEDS_PHYSICAL_RECHECK, `BADUGI-FOLD-DRAW-FREEZE-001`; folded Hero cannot remain a draw actor |
 | Physical mobile Badugi BET to DRAW transition | P0 FIXED_LIVE / NEEDS_PHYSICAL_RECHECK, `BADUGI-BET-DRAW-TRANSITION-001` |
 | Physical mobile Badugi DRAW/BET divergence | P0 OPEN, `BADUGI-DRAW-BET-MIX-001`, separate follow-up after waiting freeze |
+| Tournament busted CPU seat readability | P1/P0 OPEN / NEEDS_DEPLOY_AND_PHYSICAL_RECHECK, `TOUR-SEAT-LIFECYCLE-001`; busted/out CPU seats must not remain as large panels blocking pot/cards/Hero area |
 | Cross-variant session/controller contamination | P0 FIXED_LIVE / NEEDS_PHYSICAL_RECHECK, `CROSS-VARIANT-STATE-001`; reopened after physical Badugi showed draw-lowball hand-shape contamination, live physical-flow regression now passes |
 | Badugi tournament DRAW1 CPU action application | FIXED_LIVE / NEEDS_PHYSICAL_RECHECK, `BADUGI-DRAW1-CPU-ACTION-001`; focused local/live regression PASS and live portrait/landscape Badugi tournament emulation PASS |
 | Core5 phase machine integrity | PASS_LOCAL / MONITOR, legal graph / impossible transition / DRAW-BET mixed / stale merge detectors pass focused regressions and Core5 browser matrix gates with 0 P0 |

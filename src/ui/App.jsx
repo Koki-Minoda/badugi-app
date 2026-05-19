@@ -7191,6 +7191,87 @@ const SAFE_RESET_PHASE = "IDLE";
         syncEngineSnapshot(snapshot);
         return engineStateRef.current ?? snapshot;
       },
+      setupMobileTournamentHeroActionFixtureForTest: ({ variantId = "badugi" } = {}) => {
+        const normalizedVariant = String(variantId || "badugi");
+        const isBadugiFixture = normalizedVariant.toLowerCase() === "badugi";
+        const heroHand = isBadugiFixture
+          ? ["AS", "2H", "3C", "4D"]
+          : ["AS", "2H", "3C", "4D", "5S"];
+        setMode("tournament-mtt");
+        modeRef.current = "tournament-mtt";
+        gameVariantRef.current = normalizedVariant;
+        setGameVariant(normalizedVariant);
+        controllerVariantRef.current = normalizedVariant;
+        const nextPlayers = Array.from({ length: NUM_PLAYERS }, (_, seat) => ({
+          seatIndex: seat,
+          seat,
+          name: seat === 0 ? "You" : ["Sora", "Mina", "Ren", "Hana", "Jun"][seat - 1] ?? `CPU ${seat + 1}`,
+          tournamentPlayerId: seat === 0 ? HERO_TOURNAMENT_PLAYER_ID : `cpu-${seat}`,
+          stack: seat === 0 ? 600 : 500,
+          hand: seat === 0 ? heroHand : heroHand.map((card, idx) => `${card}-${seat}-${idx}`),
+          folded: false,
+          hasFolded: false,
+          allIn: false,
+          seatOut: false,
+          isBusted: false,
+          isActiveInGame: true,
+          betThisRound: seat === 0 ? 0 : seat === 1 ? 10 : seat === 2 ? 20 : 0,
+          betThisStreet: seat === 0 ? 0 : seat === 1 ? 10 : seat === 2 ? 20 : 0,
+          committedThisStreet: seat === 0 ? 0 : seat === 1 ? 10 : seat === 2 ? 20 : 0,
+          bet: seat === 0 ? 0 : seat === 1 ? 10 : seat === 2 ? 20 : 0,
+          totalInvested: seat === 0 ? 0 : seat === 1 ? 10 : seat === 2 ? 20 : 0,
+          hasDrawn: false,
+          hasActedThisRound: seat === 1 || seat === 2,
+          lastAction: seat === 1 ? "SB 10" : seat === 2 ? "BB 20" : "",
+        }));
+        const snapshot = {
+          variantId: normalizedVariant,
+          gameVariant: normalizedVariant,
+          handId: `UI-MOBILE-TOURNAMENT-LANDSCAPE-001-${normalizedVariant}`,
+          phase: "BET",
+          street: "BET",
+          drawRound: 0,
+          drawRoundIndex: 0,
+          betRound: 0,
+          betRoundIndex: 0,
+          currentBet: 20,
+          pot: 30,
+          pots: [{ amount: 30, eligible: [0, 1, 2, 3, 4, 5] }],
+          players: nextPlayers,
+          dealerIdx: 0,
+          buttonSeat: 0,
+          smallBlindSeat: 1,
+          bigBlindSeat: 2,
+          currentActor: 0,
+          nextTurn: 0,
+          turn: 0,
+          metadata: {
+            actingPlayerIndex: 0,
+            dealerIdx: 0,
+            handId: `UI-MOBILE-TOURNAMENT-LANDSCAPE-001-${normalizedVariant}`,
+          },
+        };
+        playersRef.current = nextPlayers;
+        setPlayers(nextPlayers);
+        potsRef.current = snapshot.pots;
+        setPots(snapshot.pots);
+        setPhase("BET");
+        setDrawRoundValue(0);
+        setBetRoundIndex(0);
+        setCurrentBet(20);
+        setTurn(0);
+        setTournamentHudState(
+          attachVariantLabels({
+            title: `${isBadugiFixture ? "Badugi" : normalizedVariant} Tournament`,
+            currentLevel: 1,
+            playersRemaining: 6,
+            totalEntrants: 6,
+            playersRemainingText: "Players Remaining: 6 / 6",
+          }),
+        );
+        syncEngineSnapshot(snapshot);
+        return engineStateRef.current ?? snapshot;
+      },
       forceSequentialFolds,
       forceAllIn: forceAllInAction,
       setupFixedLimitCapFixtureForTest,

@@ -20,16 +20,16 @@ Date: 2026-05-19
 
 | Field | Result |
 | --- | --- |
-| localHead | `48d370c98b3eb895af37ffdc52fae47119610c23` |
-| deployedCommit | `48d370c98b3eb895af37ffdc52fae47119610c23` |
-| deployedBundle | `/assets/index-BuIzHWjq.js` |
+| localHead | See `reports/alpha/live-deploy-verification-after-structure-soak-ux.json` |
+| deployedCommit | See `reports/alpha/live-deploy-verification-after-structure-soak-ux.json` |
+| deployedBundle | See `reports/alpha/live-deploy-verification-after-structure-soak-ux.json` |
 | matched | `true` |
 | health | `PASS` |
-| buildTime | `2026-05-18T23:50:39.850Z` |
+| buildTime | See `reports/alpha/live-deploy-verification-after-structure-soak-ux.json` |
 
 ## Live Blocker Evidence
 
-The live deploy snapshot now matches local head `48d370c98b3eb895af37ffdc52fae47119610c23` in `reports/alpha/live-deploy-verification-after-structure-soak-ux.json`. The deployed build includes the cross-variant session reset commits (`17c6d16`, `e2a3f96`), CPU telemetry commits (`b75e424`, `b0b1a2e`, `8638c79`), the Badugi tournament DRAW1 CPU action fix, tournament structure presets/gate, long-run soak gate, and table action readability quick wins. `/api/health` returns `{"status":"ok","env":"prod","db":"ok"}`.
+The live deploy snapshot matches the local head recorded in `reports/alpha/live-deploy-verification-after-structure-soak-ux.json`. The deployed build includes the cross-variant session reset commits (`17c6d16`, `e2a3f96`), CPU telemetry commits (`b75e424`, `b0b1a2e`, `8638c79`), the Badugi tournament DRAW1 CPU action fix, tournament structure presets/gate, long-run soak gate, and table action readability quick wins. `/api/health` returns `{"status":"ok","env":"prod","db":"ok"}`.
 
 ```txt
 npx playwright test tests/e2e/live-core5-tournament-runtime-fatal.spec.ts --project=badugi-flow

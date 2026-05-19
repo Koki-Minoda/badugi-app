@@ -6,7 +6,7 @@ Date: 2026-05-19
 
 `HOLD_FOR_PHYSICAL_MOBILE_BADUGI_RECHECK_AND_REMOTE_SYNC`
 
-The live URL is the release source of truth for deploy gates, and the browser gameplay invariant harness is the browser source of truth for action-by-action UI/controller consistency. The preview deploy now matches local head `48d370c98b3eb895af37ffdc52fae47119610c23` and includes the structure presets, long-run soak gate, readability quick wins, cross-variant reset, CPU telemetry persistence, and Badugi tournament DRAW1 CPU action fix. Live cross-variant contamination recheck passes. The focused live DRAW1 CPU action regression passes, and Badugi tournament portrait/landscape live emulation completes 20 hands each with 0 invariant failures. Friend alpha is still HOLD because the original physical mobile Badugi waiting freeze / DRAW-BET divergence must be rechecked on a real device, and remote source sync is still unresolved.
+The live URL is the release source of truth for deploy gates, and the browser gameplay invariant harness is the browser source of truth for action-by-action UI/controller consistency. The preview deploy now matches the local head recorded in `reports/alpha/live-deploy-verification-after-structure-soak-ux.json` and includes the structure presets, long-run soak gate, readability quick wins, cross-variant reset, CPU telemetry persistence, and Badugi tournament DRAW1 CPU action fix. Live cross-variant contamination recheck passes. The focused live DRAW1 CPU action regression passes, and Badugi tournament portrait/landscape live emulation completes 20 hands each with 0 invariant failures. Friend alpha is still HOLD because the original physical mobile Badugi waiting freeze / DRAW-BET divergence must be rechecked on a real device, and remote source sync is still unresolved.
 
 The replay/table readability audit is complete as a structural WARN, not a gameplay P0. It identifies action visibility, position clarity, replay grouping, and mobile context as P1 UX/readability work that should be addressed before broad friend feedback, but it does not supersede the physical Badugi and remote-sync release blockers.
 
@@ -18,7 +18,7 @@ This pass adds the small release gates requested for the remaining work: physica
 
 | Gate | Result |
 | --- | --- |
-| Remote source sync for deployed commit | BLOCKED / unresolved, branch ahead origin by 129 commits at `48d370c` |
+| Remote source sync for deployed commit | BLOCKED / unresolved, branch ahead origin and requires credentialed push |
 | Physical mobile Badugi tournament waiting freeze | P0 OPEN / NEEDS_PHYSICAL_RECHECK, `PHYSICAL-MOBILE-BADUGI-WAITING-001` |
 | Physical mobile Badugi BET to DRAW transition | P0 FIXED_LIVE / NEEDS_PHYSICAL_RECHECK, `BADUGI-BET-DRAW-TRANSITION-001` |
 | Physical mobile Badugi DRAW/BET divergence | P0 OPEN, `BADUGI-DRAW-BET-MIX-001`, separate follow-up after waiting freeze |

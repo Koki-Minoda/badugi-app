@@ -101,6 +101,11 @@ async function collectReadabilityMetrics(page: Page, scenario: Scenario) {
       minActionButtonHeight: actionButtons.reduce((min, entry) => Math.min(min, entry.height), Infinity),
       positionBadgeTextCount: (document.body.textContent?.match(/\b(BTN|SB|BB|UTG|MP|CO)\b/g) ?? []).length,
       visibleFoldCallRaiseCount: (document.body.textContent?.match(/\b(Fold|Call|Raise|Check|Draw|Pat)\b/gi) ?? []).length,
+      largeBustedSeatPanels: Array.from(document.querySelectorAll('[data-testid^="seat-"]')).filter((node) => {
+        const text = node.textContent?.toUpperCase() ?? "";
+        const rect = node.getBoundingClientRect();
+        return text.includes("BUSTED") && rect.width > 80 && rect.height > 70;
+      }).length,
       seatLabels,
     };
   });
@@ -127,6 +132,9 @@ async function collectReadabilityMetrics(page: Page, scenario: Scenario) {
     if (button.offscreen) {
       issues.push({ priority: "P1", issue: "visible action button clipped/offscreen", value: button });
     }
+  }
+  if (scenario.mode === "tournament" && metrics.largeBustedSeatPanels > 0) {
+    issues.push({ priority: "P1", issue: "large busted seat panel visible in tournament layout", value: metrics.largeBustedSeatPanels });
   }
 
   const potBox = await visibleBox(page, '[data-testid="table-total-pot"]');

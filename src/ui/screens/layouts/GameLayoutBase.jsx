@@ -10,6 +10,7 @@ import HandResultOverlay from "../../components/HandResultOverlay";
 import ShowdownResultToast from "../../components/ShowdownResultToast.jsx";
 import HeroBustOverlay from "../../components/HeroBustOverlay.jsx";
 import TournamentResultOverlay from "../../components/TournamentResultOverlay.jsx";
+import TournamentEliminatedRail from "../../components/TournamentEliminatedRail.jsx";
 import useCardScaleVars from "../../hooks/useCardScaleVars.js";
 
 const MOBILE_SEAT_GRID_AREA = {
@@ -139,6 +140,7 @@ export default function GameLayoutBase({
     boardCards = [],
     streetLabel = "",
     gameVariant = "badugi",
+    eliminatedRailEntries = [],
   } = tableProps;
 
   const {
@@ -554,6 +556,7 @@ export default function GameLayoutBase({
                   {seatLayouts.map((_, idx) => {
                     const seat = tableSeatViews[idx];
                     if (!seat) return null;
+                    if (isTournament && seat.hiddenFromTableLayout) return null;
                     const seatPosition = positionNameFn(idx, controllerDealerIdx, seatLayouts.length);
                     const renderedSeat =
                       seat.seatIndex === heroSeatIndex
@@ -611,6 +614,9 @@ export default function GameLayoutBase({
                 }`}
               >
                 {isTournament && renderedTournamentHud}
+                {isTournament && (
+                  <TournamentEliminatedRail entries={eliminatedRailEntries} layoutMode={layoutMode} />
+                )}
                 <div className={`${isMobileLayout ? (isMobileTournament ? "p-1.5" : "p-2") : "p-3"} flex items-center justify-between rounded-2xl border border-white/10 bg-slate-900/85 shadow-lg`}>
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-slate-400">

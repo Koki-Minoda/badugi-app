@@ -191,6 +191,10 @@ import TitleSettingsScreen from "./screens/TitleSettingsScreen.jsx";
 import ProfileStats from "../components/ProfileStats.jsx";
 import { useGameSessionState } from "./hooks/useGameSessionState.js";
 import { mergeSeatViewsForDisplay } from "./utils/seatViewMerge.js";
+import {
+  buildTournamentEliminatedRailEntries,
+  compactTournamentSeatViews,
+} from "./utils/tournamentSeatDisplay.js";
 import { getPositionNameForSeat } from "./utils/positionLabels.js";
 import MobileOrientationGate from "./components/MobileOrientationGate.jsx";
 import { useDeviceProfile } from "./hooks/useDeviceProfile.js";
@@ -1390,6 +1394,17 @@ const SAFE_RESET_PHASE = "IDLE";
           )
       ),
     [seatViews, dealerSeatSrc]
+  );
+  const tableSeatViews = useMemo(
+    () => compactTournamentSeatViews(seatViews, { isTournament }),
+    [isTournament, seatViews],
+  );
+  const eliminatedRailEntries = useMemo(
+    () =>
+      isTournament
+        ? buildTournamentEliminatedRailEntries(seatViews, { limit: 5 })
+        : [],
+    [isTournament, seatViews],
   );
   const hudInfo = adapterViewProps?.hudInfo ?? null;
   const controlsConfig = adapterViewProps?.controlsConfig ?? null;
@@ -7096,6 +7111,86 @@ const SAFE_RESET_PHASE = "IDLE";
         syncEngineSnapshot(snapshot);
         return engineStateRef.current ?? snapshot;
       },
+      setupTournamentBustedSeatDisplayFixtureForTest: () => {
+        setMode("tournament-mtt");
+        modeRef.current = "tournament-mtt";
+        gameVariantRef.current = "badugi";
+        setGameVariant("badugi");
+        controllerVariantRef.current = "badugi";
+        const nextPlayers = Array.from({ length: NUM_PLAYERS }, (_, seat) => {
+          const eliminated = seat === 2 || seat === 4;
+          const folded = eliminated || seat === 3;
+          return {
+            seatIndex: seat,
+            seat,
+            name:
+              seat === 0
+                ? "You"
+                : seat === 2
+                  ? "Mina"
+                  : seat === 4
+                    ? "Ren"
+                    : `CPU ${seat + 1}`,
+            tournamentPlayerId: seat === 0 ? HERO_TOURNAMENT_PLAYER_ID : `cpu-${seat}`,
+            stack: eliminated ? 0 : seat === 5 ? 220 : 500,
+            hand: ["AS", "2H", "3C", "4D"],
+            folded,
+            hasFolded: folded,
+            allIn: seat === 5,
+            seatOut: eliminated,
+            isBusted: eliminated,
+            isActiveInGame: !eliminated,
+            finishPlace: seat === 2 ? 16 : seat === 4 ? 15 : null,
+            betThisRound: eliminated ? 0 : seat === 5 ? 220 : 20,
+            totalInvested: eliminated ? 0 : 20,
+            hasDrawn: false,
+            hasActedThisRound: folded,
+            lastAction: eliminated ? "BUSTED" : folded ? "Fold" : seat === 5 ? "ALL-IN" : "",
+          };
+        });
+        const snapshot = {
+          variantId: "badugi",
+          gameVariant: "badugi",
+          handId: "TOUR-SEAT-LIFECYCLE-001-fixture",
+          phase: "BET",
+          street: "BET",
+          drawRound: 1,
+          drawRoundIndex: 1,
+          betRound: 1,
+          betRoundIndex: 1,
+          currentBet: 20,
+          pot: 90,
+          pots: [{ amount: 90, eligible: [0, 1, 3, 5] }],
+          players: nextPlayers,
+          currentActor: 1,
+          nextTurn: 1,
+          turn: 1,
+          metadata: {
+            actingPlayerIndex: 1,
+            handId: "TOUR-SEAT-LIFECYCLE-001-fixture",
+          },
+        };
+        playersRef.current = nextPlayers;
+        setPlayers(nextPlayers);
+        potsRef.current = snapshot.pots;
+        setPots(snapshot.pots);
+        setPhase("BET");
+        setDrawRoundValue(1);
+        setBetRoundIndex(1);
+        setCurrentBet(20);
+        setTurn(1);
+        setTournamentHudState(
+          attachVariantLabels({
+            title: "Badugi Tournament",
+            currentLevel: 1,
+            playersRemaining: 4,
+            totalEntrants: 6,
+            playersRemainingText: "Players Remaining: 4 / 6",
+          }),
+        );
+        syncEngineSnapshot(snapshot);
+        return engineStateRef.current ?? snapshot;
+      },
       forceSequentialFolds,
       forceAllIn: forceAllInAction,
       setupFixedLimitCapFixtureForTest,
@@ -10798,7 +10893,8 @@ const SAFE_RESET_PHASE = "IDLE";
     heroTableAnimating,
     isTournament,
     tableSummaryProps,
-    seatViews,
+    seatViews: tableSeatViews,
+    eliminatedRailEntries,
     seatLayouts,
     players: tablePlayers,
     pots: tablePots,

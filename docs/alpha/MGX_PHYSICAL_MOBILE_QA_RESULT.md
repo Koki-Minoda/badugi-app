@@ -8,16 +8,19 @@ This file records the latest physical-mobile release decision for the Core5 frie
 
 `HOLD`
 
-Preview deploy now matches local head `3e597c515f8e3874cf3685db9d9fa45dc2c4ea14`, and the deployed bundle is `/assets/index-DT960jbi.js`. Live cross-variant contamination recheck passes, the focused Badugi DRAW1 CPU action regression passes live, and Badugi tournament portrait/landscape live emulation completes 20 hands each with 0 invariant failures. The remaining physical mobile Badugi findings still require real-device recheck:
+Preview deploy currently matches `3e597c515f8e3874cf3685db9d9fa45dc2c4ea14`, and the deployed bundle is `/assets/index-DT960jbi.js`. A newer local fix is now required before physical recheck because the latest iPhone evidence showed Badugi tournament rendering five-card draw-lowball hands after a cash-session variant switch. Local regressions now pass for D01/D02/S01/S02 cash -> Badugi tournament hand-shape reset and folded-DRAW actor handling, but those fixes still need deploy and physical confirmation.
 
 - `PHYSICAL-MOBILE-BADUGI-WAITING-001`: `OPEN / NEEDS_RECHECK`
+- `BADUGI-HAND-SHAPE-001`: `FIXED_LOCAL / NEEDS_DEPLOY_AND_PHYSICAL_RECHECK`
+- `BADUGI-FOLD-DRAW-FREEZE-001`: `FIXED_LOCAL / NEEDS_DEPLOY_AND_PHYSICAL_RECHECK`
 - `BADUGI-BET-DRAW-TRANSITION-001`: `FIXED_LIVE / NEEDS_PHYSICAL_RECHECK`
 - `BADUGI-DRAW1-CPU-ACTION-001`: `FIXED_LIVE / NEEDS_PHYSICAL_RECHECK`
 - `BADUGI-DRAW-BET-MIX-001`: `OPEN / NEEDS_RECHECK`
+- `CROSS-VARIANT-STATE-001`: `FIXED_LOCAL / NEEDS_DEPLOY_AND_PHYSICAL_RECHECK`
 
 Use `https://mgx-poker.com/?mgxQa=mobile` and follow `docs/alpha/MGX_PHYSICAL_MOBILE_QA_RECHECK_STEPS.md`.
 
-`BADUGI-BET-DRAW-TRANSITION-001` and `BADUGI-DRAW1-CPU-ACTION-001` are fixed locally and deployed at `3e597c515f8e3874cf3685db9d9fa45dc2c4ea14`; live Badugi tournament emulation now passes the 20-hand portrait and landscape gates. If either physical mobile issue reproduces, export the freeze report JSON and save a screenshot. Friend alpha remains HOLD until real-device recheck passes and remote sync is resolved.
+`BADUGI-BET-DRAW-TRANSITION-001` and `BADUGI-DRAW1-CPU-ACTION-001` are fixed locally and deployed at `3e597c515f8e3874cf3685db9d9fa45dc2c4ea14`; live Badugi tournament emulation passed the 20-hand portrait and landscape gates on that build. The newer `BADUGI-HAND-SHAPE-001` / `BADUGI-FOLD-DRAW-FREEZE-001` / reopened `CROSS-VARIANT-STATE-001` fix must be deployed before the next real-device recheck. If any physical mobile issue reproduces, export the freeze report JSON and save a screenshot. Friend alpha remains HOLD until real-device recheck passes and remote sync is resolved.
 
 ## Required Recheck Evidence
 

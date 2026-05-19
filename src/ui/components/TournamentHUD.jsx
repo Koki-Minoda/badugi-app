@@ -94,10 +94,22 @@ export default function TournamentHUD({
     if (mobileCompact) {
       return (
         <div
-          className="mgx-hud-compact rounded-xl border border-yellow-300/20 bg-slate-950/90 p-2 text-slate-50 shadow-lg"
+          className="mgx-hud-compact rounded-xl border border-yellow-300/20 bg-slate-950/90 p-2 text-slate-50 shadow-lg min-[641px]:p-1"
           data-testid="tournament-hud"
         >
-          <div className="flex items-start justify-between gap-2">
+          <div className="hidden min-[641px]:grid min-[641px]:grid-cols-[1fr_auto_auto] min-[641px]:items-center min-[641px]:gap-1 min-[641px]:text-[9px]">
+            <div className="min-w-0 truncate font-black text-yellow-200">
+              {levelDisplay} · {currentVariantLabel ?? "Core 5"}
+            </div>
+            <div className="rounded border border-white/10 bg-black/35 px-1 py-0.5 font-black text-white">
+              {blindsDisplay}
+            </div>
+            <div className="rounded border border-white/10 bg-black/35 px-1 py-0.5 font-black text-white">
+              {playersDisplay}
+            </div>
+          </div>
+
+          <div className="flex items-start justify-between gap-2 min-[641px]:hidden">
             <div className="min-w-0">
               <div className="text-[9px] font-black uppercase tracking-[0.18em] text-yellow-300">
                 Tournament
@@ -113,7 +125,7 @@ export default function TournamentHUD({
             </div>
           </div>
 
-          <div className="mt-2 grid grid-cols-4 gap-1 text-[10px]">
+          <div className="mt-2 grid grid-cols-4 gap-1 text-[10px] min-[641px]:hidden">
             <div className="min-w-0 rounded-lg border border-white/10 bg-black/30 px-1.5 py-1">
               <p className="truncate text-[8px] font-bold uppercase tracking-wide text-slate-400">Prize</p>
               <p className="truncate font-black text-yellow-200">{prizePoolDisplay}</p>

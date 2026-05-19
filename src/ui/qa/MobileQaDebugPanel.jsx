@@ -12,6 +12,7 @@ import {
 export default function MobileQaDebugPanel({ enabled = false, onReturnToMenu }) {
   const [lastStatus, setLastStatus] = useState("Ready");
   const [lastClassification, setLastClassification] = useState(null);
+  const [expanded, setExpanded] = useState(false);
   const [cpuSession, setCpuSession] = useState(() => ({
     sessionId: getMobileQaSessionId(),
     summary: null,
@@ -49,9 +50,26 @@ export default function MobileQaDebugPanel({ enabled = false, onReturnToMenu }) 
   return (
     <div
       data-testid="mobile-qa-debug-panel"
-      className="fixed bottom-3 right-3 z-[9999] w-[min(92vw,320px)] rounded-lg border border-amber-300/50 bg-slate-950/95 p-2 text-xs text-white shadow-2xl"
+      className={`fixed bottom-3 right-3 z-[9999] rounded-lg border border-amber-300/50 bg-slate-950/95 p-2 text-xs text-white shadow-2xl ${
+        expanded ? "w-[min(92vw,320px)]" : "w-auto"
+      }`}
     >
-      <div className="mb-2 font-bold text-amber-200">MGX Mobile QA</div>
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-2 rounded border border-amber-300/30 px-2 py-1 text-left font-bold text-amber-200"
+        onClick={() => setExpanded((value) => !value)}
+        aria-expanded={expanded}
+      >
+        <span>MGX Mobile QA</span>
+        <span className="text-[10px] text-slate-300">{expanded ? "Hide" : "Show"}</span>
+      </button>
+      {!expanded && (
+        <div className="mt-1 max-w-[170px] truncate text-[10px] text-slate-300">
+          Session: {cpuSession.sessionId}
+        </div>
+      )}
+      {expanded && (
+        <>
       <div className="mb-2 text-[11px] text-slate-300">
         {lastStatus}
         {lastClassification ? ` / ${lastClassification}` : ""}
@@ -101,6 +119,8 @@ export default function MobileQaDebugPanel({ enabled = false, onReturnToMenu }) 
           Return to Menu
         </button>
       </div>
+        </>
+      )}
     </div>
   );
 }

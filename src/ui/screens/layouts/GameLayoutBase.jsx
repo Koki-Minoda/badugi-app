@@ -487,7 +487,7 @@ export default function GameLayoutBase({
             <div
               className={`relative grid ${
                 isMobileLayout
-                  ? "h-full min-h-0 grid-cols-1 grid-rows-[minmax(0,1fr)_auto] gap-2 min-[641px]:grid-cols-[minmax(0,1fr)_clamp(190px,29dvw,286px)] min-[641px]:grid-rows-1"
+                  ? "h-full min-h-0 grid-cols-1 grid-rows-[minmax(0,1fr)_auto] gap-2 min-[641px]:grid-cols-[minmax(0,1fr)_clamp(206px,30dvw,286px)] min-[641px]:grid-rows-1"
                   : desktopGridClass
               }`}
             >
@@ -608,7 +608,7 @@ export default function GameLayoutBase({
                 className={`flex min-h-0 min-w-0 flex-col ${
                   isMobileLayout
                     ? isMobileTournament
-                      ? "mgx-mobile-action-sheet mgx-mobile-tournament-panel gap-1 overflow-hidden pb-[max(0px,env(safe-area-inset-bottom))]"
+                      ? "mgx-mobile-action-sheet mgx-mobile-tournament-panel gap-1 overflow-hidden pb-[max(0px,env(safe-area-inset-bottom))] min-[641px]:max-h-[calc(100dvh-12px)] min-[641px]:gap-0.5"
                       : "mgx-mobile-action-sheet gap-2 overflow-hidden pb-[max(0px,env(safe-area-inset-bottom))]"
                     : "gap-3"
                 }`}
@@ -617,18 +617,18 @@ export default function GameLayoutBase({
                 {isTournament && (
                   <TournamentEliminatedRail entries={eliminatedRailEntries} layoutMode={layoutMode} />
                 )}
-                <div className={`${isMobileLayout ? (isMobileTournament ? "p-1.5" : "p-2") : "p-3"} flex items-center justify-between rounded-2xl border border-white/10 bg-slate-900/85 shadow-lg`}>
+                <div className={`${isMobileLayout ? (isMobileTournament ? "p-1.5 min-[641px]:px-1.5 min-[641px]:py-1 min-[641px]:rounded-xl" : "p-2") : "p-3"} flex items-center justify-between rounded-2xl border border-white/10 bg-slate-900/85 shadow-lg min-[641px]:gap-2`}>
                   <div>
-                    <p className="text-[10px] uppercase tracking-wider text-slate-400">
+                    <p className="text-[10px] uppercase tracking-wider text-slate-400 min-[641px]:text-[8px]">
                       Phase
                     </p>
-                    <p className={`${isMobileLayout ? (isMobileTournament ? "text-sm" : "text-base") : "text-xl"} font-bold text-white`}>{tablePhase}</p>
+                    <p className={`${isMobileLayout ? (isMobileTournament ? "text-sm min-[641px]:text-xs" : "text-base") : "text-xl"} font-bold text-white`}>{tablePhase}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] uppercase tracking-wider text-slate-400">Draw</p>
-                    <p className={`${isMobileTournament ? "text-sm" : "text-base"} font-semibold text-white`}>{drawRoundValue + 1}</p>
-                    <p className="mt-1 text-[10px] uppercase tracking-wider text-slate-400">Bet Round</p>
-                    <p className={`${isMobileTournament ? "text-sm" : "text-base"} font-semibold text-white`}>{betRoundValue + 1}</p>
+                    <p className="text-[10px] uppercase tracking-wider text-slate-400 min-[641px]:text-[8px]">Draw</p>
+                    <p className={`${isMobileTournament ? "text-sm min-[641px]:text-xs" : "text-base"} font-semibold text-white`}>{drawRoundValue + 1}</p>
+                    <p className="mt-1 text-[10px] uppercase tracking-wider text-slate-400 min-[641px]:mt-0 min-[641px]:text-[8px]">Bet Round</p>
+                    <p className={`${isMobileTournament ? "text-sm min-[641px]:text-xs" : "text-base"} font-semibold text-white`}>{betRoundValue + 1}</p>
                   </div>
                 </div>
                 <div className={`${isMobileLayout ? "hidden" : "hidden min-[1360px]:flex"} flex-col gap-2 rounded-2xl border border-white/10 bg-slate-900/85 p-3 shadow-lg`}>
@@ -649,19 +649,19 @@ export default function GameLayoutBase({
                     Draw allowed: {tableHeroCanDraw ? "Yes" : "No"}
                   </div>
                 </div>
-                <div className={`${isMobileLayout ? (isMobileTournament ? "min-h-0 min-w-0 overflow-hidden p-1.5 space-y-2" : "min-h-0 min-w-0 overflow-hidden p-2 space-y-3") : "p-3 space-y-3"} rounded-2xl border border-emerald-300/15 bg-slate-900/88 shadow-lg`}>
-                  <h2 className={`${isMobileTournament ? "text-[10px]" : "text-xs"} font-semibold text-white uppercase tracking-wider`}>
+                <div className={`${isMobileLayout ? (isMobileTournament ? "min-h-0 min-w-0 overflow-hidden p-1.5 space-y-2 min-[641px]:p-1 min-[641px]:space-y-1 min-[641px]:rounded-xl" : "min-h-0 min-w-0 overflow-hidden p-2 space-y-3") : "p-3 space-y-3"} rounded-2xl border border-emerald-300/15 bg-slate-900/88 shadow-lg`}>
+                  <h2 className={`${isMobileTournament ? "text-[10px] min-[641px]:sr-only" : "text-xs"} font-semibold text-white uppercase tracking-wider`}>
                     Hero Controls
                   </h2>
                   <div
                     data-testid="actor-readability-strip"
-                    className={`grid ${isMobileTournament ? "grid-cols-2 gap-1 text-[9px]" : "grid-cols-3 gap-2 text-[11px]"} text-slate-200`}
+                    className={`grid ${isMobileTournament ? "grid-cols-2 gap-1 text-[9px] min-[641px]:text-[8px]" : "grid-cols-3 gap-2 text-[11px]"} text-slate-200`}
                   >
-                    <div className={`rounded-xl border border-emerald-300/20 bg-emerald-400/10 ${isMobileTournament ? "px-1 py-1" : "px-2 py-1.5"}`}>
+                    <div className={`rounded-xl border border-emerald-300/20 bg-emerald-400/10 ${isMobileTournament ? "px-1 py-1 min-[641px]:py-0.5 min-[641px]:rounded-lg" : "px-2 py-1.5"}`}>
                       <p className="uppercase tracking-wide text-emerald-200/80">Hero</p>
                       <p className="truncate font-black text-white">{actionPanelInfo?.heroPosition ?? "Seat"}</p>
                     </div>
-                    <div className={`rounded-xl border border-yellow-300/20 bg-yellow-300/10 ${isMobileTournament ? "px-1 py-1" : "px-2 py-1.5"}`}>
+                    <div className={`rounded-xl border border-yellow-300/20 bg-yellow-300/10 ${isMobileTournament ? "px-1 py-1 min-[641px]:py-0.5 min-[641px]:rounded-lg" : "px-2 py-1.5"}`}>
                       <p className="uppercase tracking-wide text-yellow-100/80">Actor</p>
                       <p className="truncate font-black text-white">
                         {actionPanelInfo?.currentActorName
@@ -678,22 +678,22 @@ export default function GameLayoutBase({
                   </div>
                   <div
                     data-testid="action-context-panel"
-                    className={`grid ${isMobileTournament ? "grid-cols-4 gap-1 text-[9px]" : "grid-cols-2 gap-2 text-[11px]"} text-slate-200`}
+                    className={`grid ${isMobileTournament ? "grid-cols-4 gap-1 text-[9px] min-[641px]:text-[8px]" : "grid-cols-2 gap-2 text-[11px]"} text-slate-200`}
                   >
-                    <div className={`rounded-xl border border-white/10 bg-black/30 ${isMobileTournament ? "px-1 py-1" : "px-2 py-1.5"}`}>
+                    <div className={`rounded-xl border border-white/10 bg-black/30 ${isMobileTournament ? "px-1 py-1 min-[641px]:py-0.5 min-[641px]:rounded-lg" : "px-2 py-1.5"}`}>
                       <p className="uppercase tracking-wide text-slate-500">Current Bet</p>
                       <p className="font-black text-white">{actionPanelInfo?.currentBet ?? 0}</p>
                     </div>
-                    <div className={`rounded-xl border border-white/10 bg-black/30 ${isMobileTournament ? "px-1 py-1" : "px-2 py-1.5"}`}>
+                    <div className={`rounded-xl border border-white/10 bg-black/30 ${isMobileTournament ? "px-1 py-1 min-[641px]:py-0.5 min-[641px]:rounded-lg" : "px-2 py-1.5"}`}>
                       <p className="uppercase tracking-wide text-slate-500">To Call</p>
                       <p className="font-black text-yellow-200">{actionPanelInfo?.toCall ?? 0}</p>
                     </div>
-                    <div className={`rounded-xl border border-white/10 bg-black/30 ${isMobileTournament ? "px-1 py-1" : "px-2 py-1.5"}`}>
+                    <div className={`rounded-xl border border-white/10 bg-black/30 ${isMobileTournament ? "px-1 py-1 min-[641px]:py-0.5 min-[641px]:rounded-lg" : "px-2 py-1.5"}`}>
                       <p className="uppercase tracking-wide text-slate-500">Raise Unit</p>
                       <p className="font-black text-white">{actionPanelInfo?.raiseUnit ?? 0}</p>
                     </div>
                     <div
-                      className={`rounded-xl border ${isMobileTournament ? "px-1 py-1" : "px-2 py-1.5"} ${
+                      className={`rounded-xl border ${isMobileTournament ? "px-1 py-1 min-[641px]:py-0.5 min-[641px]:rounded-lg" : "px-2 py-1.5"} ${
                         actionPanelInfo?.capReached
                           ? "border-red-300/40 bg-red-500/15"
                           : "border-white/10 bg-black/30"
@@ -708,7 +708,7 @@ export default function GameLayoutBase({
                   {actionPanelInfo?.recentActions?.length > 0 && (
                     <div
                       data-testid="recent-action-strip"
-                      className={`rounded-xl border border-white/10 bg-black/25 ${isMobileTournament ? "px-2 py-1" : "px-3 py-2"}`}
+                      className={`rounded-xl border border-white/10 bg-black/25 ${isMobileTournament ? "px-2 py-1 min-[641px]:hidden" : "px-3 py-2"}`}
                     >
                       <p className={`${isMobileTournament ? "text-[9px]" : "text-[10px]"} uppercase tracking-wide text-slate-500`}>
                         Last Actions

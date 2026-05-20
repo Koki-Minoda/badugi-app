@@ -87,7 +87,7 @@ The pro-overlay path is not tournament-alpha ready as a gameplay experience. It 
 | --- | --- |
 | Heuristic tournament CPU | playable for audit, needs later tuning |
 | Pro-overlay tournament CPU | `CPU_TOO_NIT`, not alpha-ready for gameplay |
-| Badugi tournament CPU | P1 local fix candidate: friend-alpha default tier routes Badugi through pro-overlay; focused adapter normalization now preserves valid pro-overlay `type` pressure actions as canonical `action`, but deployed/live confirmation is still required |
+| Badugi tournament CPU | P1 deployed adapter fix / targeted live confirmation required: friend-alpha default tier routes Badugi through pro-overlay; focused adapter normalization preserves valid pro-overlay `type` pressure actions as canonical `action`, deploy commit matches local head, but the latest natural live sample did not capture a pro-overlay BET pressure row with `rawActionSource=type` |
 | Tournament pacing | preset framework viable |
 | Meaningful decisions | good with heuristic, poor with pro-overlay |
 
@@ -112,6 +112,20 @@ Badugi comparison:
 
 The Badugi finding is not an evaluator or RL-training result. It is a runtime-source/action-shape audit finding: pro-overlay returns a pressure `type`, while the previous BET runtime adapter read `action`, so the applied selected action could become passive. The local adapter now normalizes `type -> action` and records invalid/illegal action fallback reasons.
 
+## Badugi Deploy / Live Addendum
+
+Date: 2026-05-21
+
+The Badugi pro-overlay normalization fix is deployed to preview and the live frontend build matches local head `c36bc37035dc29d2f98925139199ab99031efc2e`. Evidence:
+
+- `reports/alpha/live-deploy-verification-after-badugi-pro-overlay-normalization.json`
+- `reports/ai/badugi-value-bet-live-observation.json`
+- `reports/ai/live-db-badugi-pro-overlay-normalization-audit.json`
+
+The focused live browser observation passed, classified the runtime as `pro-overlay`, and reported no adapter mismatches or illegal normalization rows. DB telemetry for session `qa-1779319175402-7247efc3` persisted `decisionSource=pro-overlay` rows and no fallback reasons. However, those pro-overlay rows were DRAW actions; the live sample did not naturally capture a value-pressure BET row with legacy `type` input and canonical `finalAction=raise/bet`.
+
+This narrows the risk but does not close the broader pro-overlay tournament CPU realism row. Keep `CPU-TOO-NIT-001` and `MEANINGFUL-DECISION-001` open until targeted live/physical telemetry captures pressure opportunities and enough meaningful-decision density on the deployed path.
+
 ## Recommendation
 
-Do not tune AI inside this audit pass. First deploy/confirm the adapter fix with CPU telemetry by sessionId. If pro-overlay remains globally too nit after schema normalization, that is a separate P1 tuning problem; do not mix it with this Badugi action-shape bug.
+Do not tune AI inside this audit pass. First capture targeted live pressure telemetry by sessionId. If pro-overlay remains globally too nit after schema normalization is proven live in BET pressure spots, that is a separate P1 tuning problem; do not mix it with this Badugi action-shape bug.

@@ -88,8 +88,41 @@ No DB migration is required because the fields live in `badugi_action_logs.metad
 
 Passive behavior was confirmed for the pre-fix pro-overlay runtime adapter path in focused made-Badugi value spots.
 
-Local adapter normalization removes that focused passive collapse in deterministic audit scenarios. Friend-alpha still needs deployed/live telemetry confirmation by sessionId before this row can be considered fully closed.
+Local adapter normalization removes that focused passive collapse in deterministic audit scenarios.
+
+## Deploy / Live Confirmation
+
+Date: 2026-05-21
+
+Deploy evidence:
+
+- `reports/alpha/live-deploy-verification-after-badugi-pro-overlay-normalization.json`
+- `localHead`: `c36bc37035dc29d2f98925139199ab99031efc2e`
+- `deployedCommit`: `c36bc37035dc29d2f98925139199ab99031efc2e`
+- `matched`: `true`
+- `health`: `{"status":"ok","env":"prod","db":"ok"}`
+- Deployed bundle: `assets/index-DIVDOspv.js`
+
+Pre-deploy local gates passed: build, AI iron/pro, RL safety, game EV, `normalizeCpuAction`, focused Badugi value-pressure regression, focused Badugi value-bet observation, and `scripts/run-badugi-value-bet-audit.js`.
+
+Live browser evidence:
+
+- Live invariant run reached gameplay in the Badugi cash landscape, Badugi tournament desktop, and Badugi tournament portrait rows, completing 150/150 gameplay hands with no actor P0, terminal P0, or action-application failure. Two additional startup rows failed before gameplay on live `/auth/signup` 504 and are classified as auth infrastructure, not gameplay normalization failures.
+- Focused live Badugi observation passed and classified runtime as `pro-overlay`.
+- Focused live observation reported `passiveConfirmed=false`, `adapterMismatchRows=0`, `typeAliasRows=0`, and `illegalNormalizationRows=0`.
+- The natural focused live sample did not hit a value-bet opportunity or a pro-overlay BET pressure row carrying `rawActionSource=type`, so it cannot close the deploy gate by itself.
+
+DB telemetry evidence:
+
+- `reports/ai/live-db-badugi-pro-overlay-normalization-audit.json`
+- Session: `qa-1779319175402-7247efc3`
+- Persisted rows: 7
+- `decisionSource=pro-overlay`: 2 rows, both DRAW actions.
+- Unknown-source rows included one `raise` and no fallback reasons.
+- No `ACTION_APPLICATION_FAILED` or illegal normalization fallback was recorded in this session.
+
+Status: `BADUGI-CPU-VALUE-BET-001` is deployed and locally fixed, but remains `NEEDS_TARGETED_LIVE_PRESSURE_CONFIRMATION` until a live/physical session captures a legal pro-overlay BET pressure spot with `rawActionSource=type` and canonical `finalAction=raise/bet`.
 
 ## Next Action
 
-Do not tune in this pass. Next work is deploy/live confirmation that `decisionSource=pro-overlay`, `rawActionSource=type`, and canonical `finalAction=raise` are recorded in real sessions when pressure is legal.
+Do not tune in this pass. Next work is a targeted live/physical telemetry run long enough to capture `decisionSource=pro-overlay`, `rawActionSource=type`, and canonical `finalAction=raise/bet` in a legal pressure spot.

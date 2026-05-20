@@ -1,6 +1,6 @@
 # MGX Alpha Live Deploy Verification
 
-Date: 2026-05-19
+Date: 2026-05-21
 
 ## Live Source Of Truth
 
@@ -8,28 +8,30 @@ Date: 2026-05-19
 | --- | --- |
 | Live URL | `https://mgx-poker.com/` |
 | Health endpoint | `https://mgx-poker.com/api/health` |
-| Verification report | `reports/alpha/live-deploy-verification-after-structure-soak-ux.json` |
+| Verification report | `reports/alpha/live-deploy-verification-after-badugi-pro-overlay-normalization.json` |
 | Live layout evidence | `reports/alpha/live-core5-layout-evidence-v2.json` |
 | Live tournament fatal report | `reports/alpha/live-core5-tournament-runtime-fatal.json` |
 | Live Badugi betting closure report | `reports/alpha/live-badugi-betting-closure.json` |
 | Live browser gameplay smoke | `reports/browser-gameplay/live-core5-smoke-summary.json` |
 | Live browser desktop matrix | `reports/browser-gameplay/live-core5-desktop-20hand-summary.json` |
 | Live browser mobile matrix | `reports/browser-gameplay/live-core5-mobile-10hand-summary.json` |
+| Badugi pro-overlay live observation | `reports/ai/badugi-value-bet-live-observation.json` |
+| Badugi pro-overlay DB audit | `reports/ai/live-db-badugi-pro-overlay-normalization-audit.json` |
 
 ## Latest Verified Snapshot
 
 | Field | Result |
 | --- | --- |
-| localHead | See `reports/alpha/live-deploy-verification-after-structure-soak-ux.json` |
-| deployedCommit | See `reports/alpha/live-deploy-verification-after-structure-soak-ux.json` |
-| deployedBundle | See `reports/alpha/live-deploy-verification-after-structure-soak-ux.json` |
+| localHead | `c36bc37035dc29d2f98925139199ab99031efc2e` |
+| deployedCommit | `c36bc37035dc29d2f98925139199ab99031efc2e` |
+| deployedBundle | `assets/index-DIVDOspv.js` |
 | matched | `true` |
 | health | `PASS` |
-| buildTime | See `reports/alpha/live-deploy-verification-after-structure-soak-ux.json` |
+| buildTime | `2026-05-20T23:06:32.950Z` |
 
 ## Live Blocker Evidence
 
-The live deploy snapshot matches the local head recorded in `reports/alpha/live-deploy-verification-after-structure-soak-ux.json`. The deployed build includes the cross-variant session reset commits (`17c6d16`, `e2a3f96`), CPU telemetry commits (`b75e424`, `b0b1a2e`, `8638c79`), the Badugi tournament DRAW1 CPU action fix, tournament structure presets/gate, long-run soak gate, and table action readability quick wins. `/api/health` returns `{"status":"ok","env":"prod","db":"ok"}`.
+The live deploy snapshot matches the local head recorded in `reports/alpha/live-deploy-verification-after-badugi-pro-overlay-normalization.json`. The deployed build includes the cross-variant session reset commits (`17c6d16`, `e2a3f96`), CPU telemetry commits (`b75e424`, `b0b1a2e`, `8638c79`), the Badugi tournament DRAW1 CPU action fix, tournament structure presets/gate, long-run soak gate, table action readability quick wins, and the Badugi pro-overlay action normalization commits (`bd1f4e4`, `845161e`, `c36bc37`). `/api/health` returns `{"status":"ok","env":"prod","db":"ok"}`.
 
 ```txt
 npx playwright test tests/e2e/live-core5-tournament-runtime-fatal.spec.ts --project=badugi-flow
@@ -61,14 +63,47 @@ npx playwright test tests/e2e/live-core5-layout-evidence.spec.ts --project=badug
 # 30 passed
 ```
 
+## Badugi Pro-overlay Normalization Gate
+
+Pre-deploy checks passed before running the preview deploy:
+
+```txt
+npm run build
+npm run test:ai:iron
+npm run test:ai:pro
+npm run test:rl:safety
+npm run test:game:ev
+npx vitest run src/ai/__tests__/normalizeCpuAction.test.js
+npx vitest run src/ai/__tests__/badugiValuePressureRegression.test.js
+npx playwright test tests/e2e/badugi-value-bet-observation.spec.ts --project=badugi-flow
+node scripts/run-badugi-value-bet-audit.js
+```
+
+Local audit result after normalization:
+
+| Path | Value bet frequency | HU pressure | Meaningful density |
+| --- | ---: | ---: | ---: |
+| heuristic | 100.00% | 100.00% | 66.67% |
+| pro-overlay runtime | 100.00% | 100.00% | 66.67% |
+| fallback | 0.00% | 0.00% | 16.67% |
+
+Live confirmation status:
+
+- `LIVE_PREVIEW=1 BROWSER_RUNTIME_TELEMETRY=1 tests/e2e/live-browser-gameplay-invariant.spec.ts` reached gameplay for Badugi cash landscape, Badugi tournament desktop, and Badugi tournament portrait. Those gameplay rows completed 150/150 hands with no actor P0, terminal P0, or action-application failure. Two additional startup rows failed before gameplay on live `/auth/signup` 504 and are classified as auth infrastructure.
+- `LIVE_PREVIEW=1 tests/e2e/badugi-value-bet-observation.spec.ts` passed, classified runtime as `pro-overlay`, and reported `passiveConfirmed=false`, `adapterMismatchRows=0`, `typeAliasRows=0`, and `illegalNormalizationRows=0`.
+- DB audit for session `qa-1779319175402-7247efc3` persisted `decisionSource=pro-overlay` rows and no fallback reasons, but the pro-overlay rows were DRAW actions. The natural sample did not capture a legal pro-overlay BET pressure row with `rawActionSource=type` and canonical `finalAction=raise/bet`.
+
+Classification: the fix is deployed and the live path is active, but `BADUGI-CPU-VALUE-BET-001` remains `NEEDS_TARGETED_LIVE_PRESSURE_CONFIRMATION` until a live/physical session captures the pressure/type-alias case.
+
 ## Required Follow-up
 
-Remote sync and physical mobile QA remain required before friend alpha GO. After any new fix, verify `window.__MGX_BUILD_INFO__` and rerun:
+Remote sync, physical mobile QA, and targeted Badugi pro-overlay pressure telemetry remain required before friend alpha GO. After any new fix, verify `window.__MGX_BUILD_INFO__` and rerun:
 
 ```bash
 npx playwright test tests/e2e/live-deploy-verification.spec.ts --project=badugi-flow
 npx playwright test tests/e2e/live-core5-tournament-runtime-fatal.spec.ts --project=badugi-flow
 npx playwright test tests/e2e/live-browser-gameplay-invariant.spec.ts --project=badugi-flow
+npx playwright test tests/e2e/badugi-value-bet-observation.spec.ts --project=badugi-flow
 npx playwright test tests/e2e/live-badugi-betting-closure.spec.ts --project=badugi-flow
 npx playwright test tests/e2e/live-core5-layout-evidence.spec.ts --project=badugi-flow
 ```

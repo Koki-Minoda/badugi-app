@@ -1,14 +1,14 @@
 # MGX Alpha Product Hardening Readiness
 
-Date: 2026-05-19
+Date: 2026-05-21
 
 ## Decision
 
-`HOLD_FOR_PHYSICAL_MOBILE_BADUGI_RECHECK_AND_REMOTE_SYNC`
+`HOLD_FOR_PHYSICAL_MOBILE_BADUGI_RECHECK_REMOTE_SYNC_AND_TARGETED_CPU_PRESSURE_CONFIRMATION`
 
-Badugi focused raise/call no-reraise closure is P0-clean in the browser trace, and the re-raise-positive live proof passes. The preview deploy now matches the local head recorded in `reports/alpha/live-deploy-verification-after-structure-soak-ux.json` and includes the structure presets, long-run soak gate, readability quick wins, cross-variant controller reset fix, CPU decision telemetry persistence, and Badugi tournament DRAW1 CPU action fix; live cross-variant contamination recheck passes. The Core5 local/live browser matrices remain important coverage, but physical mobile QA has found live Badugi tournament P0s: hand 5/5 can remain stuck on `Waiting for other players...` at BET Draw2 / Bet Round 2 with To Call 0 and Pot 66, and a follow-up report says a closed BET round can fail to transition into DRAW. The focused BET-to-DRAW and DRAW1 CPU action fixes are deployed and live Badugi tournament emulation now passes portrait and landscape. A separate DRAW/BET divergence screenshot remains open until physical recheck. Remote sync is unresolved, and friend alpha is HOLD until the physical recheck and remote sync are cleared.
+Badugi focused raise/call no-reraise closure is P0-clean in the browser trace, and the re-raise-positive live proof passes. The preview deploy now matches the local head `c36bc37035dc29d2f98925139199ab99031efc2e` recorded in `reports/alpha/live-deploy-verification-after-badugi-pro-overlay-normalization.json` and includes the structure presets, long-run soak gate, readability quick wins, cross-variant controller reset fix, CPU decision telemetry persistence, Badugi tournament DRAW1 CPU action fix, and Badugi pro-overlay action normalization fix; live cross-variant contamination recheck passes. The Core5 local/live browser matrices remain important coverage, but physical mobile QA has found live Badugi tournament P0s: hand 5/5 can remain stuck on `Waiting for other players...` at BET Draw2 / Bet Round 2 with To Call 0 and Pot 66, and a follow-up report says a closed BET round can fail to transition into DRAW. The focused BET-to-DRAW and DRAW1 CPU action fixes are deployed and live Badugi tournament emulation now passes portrait and landscape. A separate DRAW/BET divergence screenshot remains open until physical recheck. Remote sync is unresolved, and friend alpha is HOLD until the physical recheck, remote sync, and targeted Badugi pro-overlay pressure confirmation are cleared or explicitly accepted.
 
-The tournament structure / AI feedback audit adds a quality WARN. Minutes-based tournament presets are viable, and the current simulated structures avoid endless heads-up by eventually forcing sub-10BB play. However, tournament CPU quality depends strongly on decision source: heuristic D01/D02/S01/S02 produces playable audit density, while pro-overlay folds `97.75%` of decisions and collapses meaningful decision density to `0.12` per hand. This does not change gameplay rules or routing, but it blocks pro-overlay as a friend-alpha tournament opponent source until the active live source is confirmed or tuned.
+The tournament structure / AI feedback audit adds a quality WARN. Minutes-based tournament presets are viable, and the current simulated structures avoid endless heads-up by eventually forcing sub-10BB play. However, tournament CPU quality depends strongly on decision source: heuristic D01/D02/S01/S02 produces playable audit density, while pro-overlay folds `97.75%` of decisions and collapses meaningful decision density to `0.12` per hand. Badugi pro-overlay action normalization is deployed and focused live telemetry confirms the `pro-overlay` path is active without adapter mismatch rows, but the natural sample has not captured the exact BET pressure/type-alias row required to close the value-pressure bug live. This does not change gameplay rules or routing, but it keeps pro-overlay as a friend-alpha tournament opponent source under targeted telemetry confirmation.
 
 The remaining-readiness pass adds code-level tournament preset definitions, a structure validation gate, a fast long-run soak wrapper, and low-risk table actor/action readability context. Physical QA instructions now explicitly require sessionId, CPU export, and freeze export evidence. These are supporting release gates; they do not override the physical Badugi P0 recheck requirement.
 
@@ -16,13 +16,14 @@ The remaining-readiness pass adds code-level tournament preset definitions, a st
 
 | Gate | Result | Notes |
 | --- | --- | --- |
-| live deploy snapshot | PASS | live build info matches the local head recorded in `reports/alpha/live-deploy-verification-after-structure-soak-ux.json` |
+| live deploy snapshot | PASS | live build info matches local head `c36bc37035dc29d2f98925139199ab99031efc2e` in `reports/alpha/live-deploy-verification-after-badugi-pro-overlay-normalization.json` |
 | live health | PASS | `/api/health` returns `{"status":"ok","env":"prod","db":"ok"}` |
 | physical mobile Badugi tournament waiting freeze | P0 OPEN | `PHYSICAL-MOBILE-BADUGI-WAITING-001`; iPhone live preview screenshot shows Waiting at BET Draw2 with no Hero action |
 | physical mobile Badugi hand-shape contamination | P0 FIXED_LIVE / NEEDS_PHYSICAL_RECHECK | `BADUGI-HAND-SHAPE-001`; iPhone live preview showed Badugi tournament with five-card draw-lowball hands; deployed hand-shape and physical cross-variant regressions pass |
 | physical mobile Badugi folded DRAW freeze | P0 FIXED_LIVE / NEEDS_PHYSICAL_RECHECK | `BADUGI-FOLD-DRAW-FREEZE-001`; folded Hero cannot be selected as DRAW actor; deployed engine/UI/E2E regressions pass |
 | physical mobile Badugi BET to DRAW transition | P0 FIXED_LIVE / NEEDS_PHYSICAL_RECHECK | `BADUGI-BET-DRAW-TRANSITION-001`; focused local regression covers the closed BET Draw2 state and preview deploy includes `3e597c515f8e3874cf3685db9d9fa45dc2c4ea14`; live Badugi mobile emulation now passes portrait/landscape |
 | live Badugi tournament DRAW1 CPU action | FIXED_LIVE / NEEDS_PHYSICAL_RECHECK | `BADUGI-DRAW1-CPU-ACTION-001`; focused local/live regression passes and Badugi tournament portrait/landscape live emulation completes 20 hands each with 0 invariant failures |
+| Badugi pro-overlay action normalization | DEPLOYED / NEEDS_TARGETED_LIVE_PRESSURE_CONFIRMATION | `BADUGI-CPU-VALUE-BET-001`; local audit pro-overlay value bet and HU pressure are `100.00%` after normalization, focused live classifies `pro-overlay` with `passiveConfirmed=false` and no adapter mismatches, but no pro-overlay BET `rawActionSource=type` pressure row was captured in the natural live sample |
 | physical mobile Badugi DRAW/BET divergence | P0 OPEN | `BADUGI-DRAW-BET-MIX-001`; tracked separately after waiting freeze |
 | tournament busted seat readability | P1/P0 OPEN / NEEDS_DEPLOY_AND_PHYSICAL_RECHECK | `TOUR-SEAT-LIFECYCLE-001`; physical mobile Badugi showed busted/out CPU panels remaining large enough to block table readability |
 | iPhone Safari/PWA tournament landscape controls | P0 OPEN / FIXED_LOCAL_CANDIDATE | `UI-MOBILE-TOURNAMENT-LANDSCAPE-001`; Safari URL/tab bars cannot be hidden, so Hero controls now size against `window.visualViewport` and require physical recheck |
@@ -54,8 +55,8 @@ The remaining-readiness pass adds code-level tournament preset definitions, a st
 | Single Draw pot semantics | PASS_LOCAL / MONITOR | S01/S02 active-hand snapshots now expose effective pot including blind/current street commitments, while terminal echo and next-hand reset remain separate |
 | Core5 CPU cash strategy sanity | P1 OPEN / SOURCE_CONFIRMATION_NEEDED | local telemetry shows D01/D02/S01/S02 rule-based controller CPUs are not fold-heavy, but the `--cpu=rl` pro-overlay path folds 92.6%-97.3% in 6max cash. CPU decision telemetry is deployed and needs targeted QA by sessionId. |
 | Tournament structure quality | PASS_WITH_NOTES | minutes-based Store/Regional/National/World candidates are viable; Store Turbo is push/fold heavy and should remain a quick/custom preset |
-| Tournament CPU realism | WARN / P1 | heuristic path is not fold-heavy, but pro-overlay tournament path folds 97.75% and is not alpha-ready as a gameplay experience |
-| Tournament meaningful decision density | WARN / SOURCE_DEPENDENT | heuristic has 16.29 meaningful decisions per hand; pro-overlay has 0.12; Badugi still needs browser/live telemetry because the Node runner skips Badugi |
+| Tournament CPU realism | WARN / P1 | heuristic path is not fold-heavy, but pro-overlay tournament path folds 97.75% and is not alpha-ready as a gameplay experience; Badugi action normalization is deployed but still needs targeted pressure telemetry |
+| Tournament meaningful decision density | WARN / SOURCE_DEPENDENT | heuristic has 16.29 meaningful decisions per hand; pro-overlay has 0.12; Badugi local focused adapter density is 66.67%, but live natural telemetry has not captured enough BET pressure rows to close the row |
 | Table action readability quick wins | IMPROVED_LIVE / MONITOR | decision panel now mirrors Hero position, current actor, waiting target, and recent actions; live readability smoke passes 10/10; replay grouping remains future P1 work |
 | routing/promotion/live RL | PASS | no production routing, promotion, live RL, or model registry change |
 
@@ -73,6 +74,7 @@ The remaining-readiness pass adds code-level tournament preset definitions, a st
 | P0 | Reproduce/fix physical DRAW/BET divergence | real-device screenshot remains open as `BADUGI-DRAW-BET-MIX-001` even though local phase-machine detectors pass |
 | P1 | Recheck mobile tournament layout on real Safari/Chrome | automation passes, but this was originally found on real-device/browser tournament views |
 | P1 | Confirm live CPU decision source | physical preview cash felt fold-heavy; local telemetry points to pro-overlay nit behavior if that path is active live |
+| P1 | Confirm Badugi pro-overlay pressure normalization in live BET spots | deploy and runtime source are confirmed, but a targeted live/physical session must capture `decisionSource=pro-overlay`, `rawActionSource=type`, and canonical `finalAction=raise/bet` in a legal pressure spot |
 | P1 | Confirm tournament CPU source | tournament audit shows pro-overlay is too nit/passive; friend-alpha tournaments should use a confirmed non-pro-overlay path or wait for tuning |
 | P2 | Lock minutes-based tournament presets | Store/Regional/National/World structure candidates are documented; preserve eventual sub-10BB pressure to avoid endless HU |
 | P2 | Keep live browser matrix in deploy checks | live browser gameplay is now clean, but it should be rerun after any controller/UI/deploy change |
@@ -82,12 +84,12 @@ The remaining-readiness pass adds code-level tournament preset definitions, a st
 | P1 | Complete Badugi physical mobile full-hand QA after fixes | Step6/Step7 automation passes, but real mobile already found P0s and must be rechecked after deploy |
 | P1 | Monitor Badugi pot/terminal/actor behavior in closed alpha | Badugi is core MGX scope, but remaining real-device risk must stay visible |
 
-The former release-audit P1 progression rows are closed locally as monitor items: `27TD-PROG-001`, `A5TD-PROG-001`, `27SD-PROG-001`, `A5SD-PROG-001`, `SD-POT-001`, `BADUGI-PROG-002`, and `BADUGI-BET-REOPEN-001`. `CORE5-ALLIN-VISIBILITY-001` is also fixed local / monitor. Friend alpha still remains HOLD because the live fixes require real physical mobile recheck and remote sync.
+The former release-audit P1 progression rows are closed locally as monitor items: `27TD-PROG-001`, `A5TD-PROG-001`, `27SD-PROG-001`, `A5SD-PROG-001`, `SD-POT-001`, `BADUGI-PROG-002`, and `BADUGI-BET-REOPEN-001`. `CORE5-ALLIN-VISIBILITY-001` is also fixed local / monitor. Friend alpha still remains HOLD because the live fixes require real physical mobile recheck, remote sync, and targeted Badugi pro-overlay pressure confirmation.
 
 ## Deploy Recommendation
 
-Hold friend alpha. Continue only after the physical mobile Badugi P0s are fixed/deployed/rechecked and remote sync is resolved or explicitly accepted as an operational P1.
+Hold friend alpha. Continue only after the physical mobile Badugi P0s are fixed/deployed/rechecked, remote sync is resolved or explicitly accepted as an operational P1, and the Badugi pro-overlay pressure normalization has targeted live/physical evidence in a legal BET spot.
 
-The live URL evidence is the current source of truth: the latest deploy snapshot, Badugi betting-closure proof, focused DRAW1 CPU regression, and Badugi tournament portrait/landscape live emulation pass. Remaining friend-alpha blockers are physical mobile Badugi P0 recheck, remote sync, and targeted CPU telemetry QA.
+The live URL evidence is the current source of truth: the latest deploy snapshot, Badugi betting-closure proof, focused DRAW1 CPU regression, Badugi pro-overlay action normalization deploy, and Badugi tournament portrait/landscape live emulation pass. Remaining friend-alpha blockers are physical mobile Badugi P0 recheck, remote sync, targeted Badugi pro-overlay pressure telemetry, and broader CPU telemetry QA.
 
 The Core 5 action-order reality audit adds per-action history evidence beyond first-actor checks. It classifies the reported BB case as `FALSE_ALARM_CONFIRMED_BY_HISTORY`: BB acted only after earlier active obligations were resolved, or as the first active post-draw actor when seats left of the button were folded/ineligible.

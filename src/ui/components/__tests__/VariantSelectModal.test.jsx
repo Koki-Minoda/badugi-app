@@ -100,11 +100,11 @@ describe("VariantSelectModal", () => {
     const handleSelect = vi.fn();
     render(<VariantSelectModal isOpen onClose={() => {}} onSelectVariant={handleSelect} />);
 
-    const badugiButton = screen
-      .getAllByRole("button", { name: /badugi/i })
-      .find((button) => button.textContent?.includes("Badugi") && !button.textContent?.includes("Single Draw"));
-    expect(badugiButton.disabled).toBe(true);
-    fireEvent.click(badugiButton);
+    const previewButton = screen
+      .getAllByRole("button", { name: /badeucey td/i })
+      .find((button) => button.textContent?.includes("Badeucey TD"));
+    expect(previewButton.disabled).toBe(true);
+    fireEvent.click(previewButton);
     expect(handleSelect).not.toHaveBeenCalled();
 
     const a5Button = screen.getByRole("button", { name: /a-5 single draw/i });

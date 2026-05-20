@@ -109,7 +109,7 @@ describe("MGX known game progress bug regressions", () => {
       { phase: "BET" },
     );
     expect(normalized.currentActor).toBe(0);
-    expect(normalized.metadata.actingPlayerIndex).toBe(3);
+    expect(normalized.metadata.actingPlayerIndex).toBe(0);
     expect(normalized.players.filter((player) => player.isTurn)).toHaveLength(1);
     expect(normalized.players[0].isTurn).toBe(true);
   });

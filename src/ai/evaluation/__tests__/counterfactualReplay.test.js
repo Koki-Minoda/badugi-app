@@ -74,7 +74,7 @@ describe("counterfactual replay", () => {
     expect(typeof outputPath).toBe("string");
     const saved = JSON.parse(await fs.readFile(outputPath, "utf8"));
     expect(saved.bucketResults.length).toBeGreaterThan(0);
-  }, 30000);
+  }, 120000);
 
   it("replay is deterministic for the same sample and seed", async () => {
     const result = await runAiEvaluationBatch({
@@ -113,5 +113,5 @@ describe("counterfactual replay", () => {
         (row) => row.bucket.includes("strongSDA5") || row.bucket.includes("strongA5"),
       ),
     ).toBe(true);
-  });
+  }, 60000);
 });

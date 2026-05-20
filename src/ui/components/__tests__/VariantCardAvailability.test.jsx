@@ -13,9 +13,8 @@ describe("VariantCardAvailability", () => {
   });
 
   it("renders Japanese preview labels and reason", () => {
-    render(<VariantCardAvailability availability={getVariantAvailability("badugi")} language="ja" />);
+    render(<VariantCardAvailability availability={getVariantAvailability("S04")} language="ja" />);
     expect(screen.getByTestId("variant-availability-badge").textContent).toContain("検証中");
-    expect(screen.getByTestId("variant-availability-reason").textContent).toMatch(/Round progression/);
+    expect(screen.getByTestId("variant-availability-reason").textContent).toMatch(/Badugi-family/);
   });
 });
-

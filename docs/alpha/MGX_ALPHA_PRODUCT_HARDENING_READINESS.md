@@ -25,6 +25,8 @@ The remaining-readiness pass adds code-level tournament preset definitions, a st
 | live Badugi tournament DRAW1 CPU action | FIXED_LIVE / NEEDS_PHYSICAL_RECHECK | `BADUGI-DRAW1-CPU-ACTION-001`; focused local/live regression passes and Badugi tournament portrait/landscape live emulation completes 20 hands each with 0 invariant failures |
 | physical mobile Badugi DRAW/BET divergence | P0 OPEN | `BADUGI-DRAW-BET-MIX-001`; tracked separately after waiting freeze |
 | tournament busted seat readability | P1/P0 OPEN / NEEDS_DEPLOY_AND_PHYSICAL_RECHECK | `TOUR-SEAT-LIFECYCLE-001`; physical mobile Badugi showed busted/out CPU panels remaining large enough to block table readability |
+| iPhone Safari/PWA tournament landscape controls | P0 OPEN / FIXED_LOCAL_CANDIDATE | `UI-MOBILE-TOURNAMENT-LANDSCAPE-001`; Safari URL/tab bars cannot be hidden, so Hero controls now size against `window.visualViewport` and require physical recheck |
+| Badugi cash opening actor | P0 OPEN / FIXED_LOCAL_CANDIDATE | `BADUGI-CASH-OPENING-ACTOR-001`; physical iPhone Safari observed cash freeze at the first actor, and local fix syncs Badugi cash controller state at new-hand boundaries |
 | cross-variant state contamination | P0 FIXED_LIVE / NEEDS_PHYSICAL_RECHECK | `CROSS-VARIANT-STATE-001`; physical Badugi reopened the class as hand-shape contamination, and deployed D01/D02/S01/S02 cash -> Badugi tournament regression now passes after ref-based variant/mode hand-start hardening |
 | Core5 phase machine hardening | PASS_LOCAL / MONITOR | legal phase graph, impossible transition detector, DRAW/BET mixed-state detector, and stale phase merge detector pass focused regressions. The 50-hand Core5 matrix completed 1500/1500 hands with 0 P0, and the post-classification 5-hand matrix completed 150/150 hands with 0 impossible transition / DRAW-BET mixed / stale-merge rows. Remaining PHASE/POT rows are timing monitor only. |
 | build | PASS | `npm run build` succeeds |
@@ -65,6 +67,8 @@ The remaining-readiness pass adds code-level tournament preset definitions, a st
 | P0 | Fix physical Badugi waiting freeze | real-device live QA found `PHYSICAL-MOBILE-BADUGI-WAITING-001`; friend alpha remains HOLD |
 | P0 | Recheck Badugi hand-shape and folded-DRAW fix on physical device | deployed regressions pass for `BADUGI-HAND-SHAPE-001`, `BADUGI-FOLD-DRAW-FREEZE-001`, and reopened `CROSS-VARIANT-STATE-001`; real-device recheck still required |
 | P0 | Clear physical Badugi DRAW1 / BET→DRAW recheck | local and live emulation fixes pass for `BADUGI-DRAW1-CPU-ACTION-001` and `BADUGI-BET-DRAW-TRANSITION-001`, but physical mobile recheck has not passed |
+| P0 | Clear iPhone Safari/PWA landscape action clipping | normal Safari and PWA standalone must show fully tappable Hero action buttons inside the visual viewport |
+| P0 | Clear Badugi cash opening actor freeze | physical iPhone Safari cash start must progress from the first CPU/Hero opening actor without waiting freeze |
 | P1 | Physical recheck cross-variant reset | live cross-variant regression passes; real-device D01 cash -> Cash Out/Menu -> Badugi tournament must still be rechecked after DRAW1 fix |
 | P0 | Reproduce/fix physical DRAW/BET divergence | real-device screenshot remains open as `BADUGI-DRAW-BET-MIX-001` even though local phase-machine detectors pass |
 | P1 | Recheck mobile tournament layout on real Safari/Chrome | automation passes, but this was originally found on real-device/browser tournament views |

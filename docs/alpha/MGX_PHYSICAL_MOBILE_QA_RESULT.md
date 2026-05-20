@@ -18,7 +18,8 @@ Preview deploy now matches `a73042dcd2eca92097aa27a2d3f732b648fd49f4`. The lates
 - `BADUGI-DRAW-BET-MIX-001`: `OPEN / NEEDS_RECHECK`
 - `CROSS-VARIANT-STATE-001`: `FIXED_LIVE / NEEDS_PHYSICAL_RECHECK`
 - `TOUR-SEAT-LIFECYCLE-001`: `OPEN / NEEDS_DEPLOY_AND_PHYSICAL_RECHECK`
-- `UI-MOBILE-TOURNAMENT-LANDSCAPE-001`: `FIXED_LIVE / NEEDS_PHYSICAL_RECHECK`
+- `UI-MOBILE-TOURNAMENT-LANDSCAPE-001`: `OPEN P0 / FIXED_LOCAL_CANDIDATE`
+- `BADUGI-CASH-OPENING-ACTOR-001`: `OPEN P0 / FIXED_LOCAL_CANDIDATE`
 
 Use `https://mgx-poker.com/?mgxQa=mobile` and follow `docs/alpha/MGX_PHYSICAL_MOBILE_QA_RECHECK_STEPS.md`.
 
@@ -36,4 +37,6 @@ Use `https://mgx-poker.com/?mgxQa=mobile` and follow `docs/alpha/MGX_PHYSICAL_MO
 - CPU session export status.
 - Busted/out CPU seat rail status: eliminated CPUs should not remain as large table panels.
 - iPhone PWA/standalone landscape tournament action status: Hero Call/Raise/Fold must be fully visible and tappable without scroll.
+- iPhone normal Safari landscape tournament action status: Hero Call/Raise/Fold must fit inside the visible `window.visualViewport`; Safari URL/tab bars cannot be forced hidden.
+- Badugi cash opening actor status: start Badugi cash, confirm the first CPU/Hero actor progresses and no opening wait/freeze occurs.
 - If CPU behavior feels fold-heavy, exported CPU session JSON and matching DB audit by sessionId.

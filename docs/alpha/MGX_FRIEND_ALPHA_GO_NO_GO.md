@@ -27,6 +27,7 @@ This pass adds the small release gates requested for the remaining work: physica
 | Tournament busted CPU seat readability | P1/P0 OPEN / NEEDS_DEPLOY_AND_PHYSICAL_RECHECK, `TOUR-SEAT-LIFECYCLE-001`; busted/out CPU seats must not remain as large panels blocking pot/cards/Hero area |
 | Cross-variant session/controller contamination | P0 FIXED_LIVE / NEEDS_PHYSICAL_RECHECK, `CROSS-VARIANT-STATE-001`; reopened after physical Badugi showed draw-lowball hand-shape contamination, live physical-flow regression now passes |
 | Badugi tournament DRAW1 CPU action application | FIXED_LIVE / NEEDS_PHYSICAL_RECHECK, `BADUGI-DRAW1-CPU-ACTION-001`; focused local/live regression PASS and live portrait/landscape Badugi tournament emulation PASS |
+| Badugi cash opening actor | P0 OPEN / FIXED_LOCAL_CANDIDATE, `BADUGI-CASH-OPENING-ACTOR-001`; physical iPhone Safari observed cash freeze at the first actor, and local fix syncs the Badugi cash session controller at new-hand boundaries |
 | Core5 phase machine integrity | PASS_LOCAL / MONITOR, legal graph / impossible transition / DRAW-BET mixed / stale merge detectors pass focused regressions and Core5 browser matrix gates with 0 P0 |
 | Live deploy snapshot | PASS, live commit == local head in latest deploy verification report |
 | Live post-deploy Core5 smoke after structure/soak/UX deploy | PARTIAL, 25/30 gameplay cases PASS; 5 Triple Draw cases blocked before launch by live `/auth/signup` 504 |
@@ -50,7 +51,7 @@ This pass adds the small release gates requested for the remaining work: physica
 | Core 5 actor order | PASS, per-action history audit |
 | Core 5 orientation support | PASS |
 | Core 5 mobile tournament portrait/landscape | PASS on live URL, 30/30 layout evidence cases |
-| iPhone PWA tournament landscape action buttons | FIXED_LIVE / needs physical recheck; physical PWA evidence showed Hero Call/Raise/Fold clipped below viewport, and local/live gate `tests/e2e/mobile-tournament-landscape-action-buttons.spec.ts` now passes reduced-height landscape cases on deployed head `cfcdb3d` |
+| iPhone Safari/PWA tournament landscape action buttons | P0 OPEN / FIXED_LOCAL_CANDIDATE; normal Safari and PWA landscape must fit Hero controls inside `window.visualViewport`, because Safari URL/tab bars cannot be force-hidden. New local gates `tests/e2e/iphone-safari-tournament-landscape-controls.spec.ts` and `tests/e2e/mobile-tournament-visual-viewport.spec.ts` cover reduced visual viewport heights |
 | Live Core5 cash/tournament layout evidence | PASS for Badugi/D01/D02/S01/S02 at 390x844, 430x932, and 844x390 |
 | Live Core5 tournament runtime fatal | PASS, 5/5 fatal guard cases |
 | Live browser gameplay smoke | PRIOR FULL PASS; latest post-deploy smoke PARTIAL due live auth 504 before launch, not a gameplay invariant failure |

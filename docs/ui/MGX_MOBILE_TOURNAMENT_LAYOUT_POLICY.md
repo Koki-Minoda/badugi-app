@@ -15,6 +15,8 @@ Mobile landscape tournament layout must allocate vertical space in this order:
 
 ## Hard Rules
 
+- Normal iPhone Safari must fit controls inside `window.visualViewport`; MGX cannot force-hide Safari URL or tab bars.
+- PWA / standalone mode is only a supplemental path after Add to Home Screen and must not be required for basic tournament play.
 - Hero action buttons must be fully visible and clickable without scrolling.
 - PWA / standalone mode does not relax this requirement.
 - Tournament HUD must compact before Hero buttons clip.

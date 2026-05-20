@@ -94,55 +94,37 @@ export default function TournamentHUD({
     if (mobileCompact) {
       return (
         <div
-          className="mgx-hud-compact rounded-xl border border-yellow-300/20 bg-slate-950/90 p-2 text-slate-50 shadow-lg min-[641px]:p-1"
+          className="mgx-hud-compact rounded-lg border border-yellow-300/20 bg-slate-950/88 px-2 py-1 text-slate-50 shadow-lg"
           data-testid="tournament-hud"
         >
-          <div className="hidden min-[641px]:grid min-[641px]:grid-cols-[1fr_auto_auto] min-[641px]:items-center min-[641px]:gap-1 min-[641px]:text-[9px]">
-            <div className="min-w-0 truncate font-black text-yellow-200">
-              {levelDisplay} · {currentVariantLabel ?? "Core 5"}
-            </div>
-            <div className="rounded border border-white/10 bg-black/35 px-1 py-0.5 font-black text-white">
-              {blindsDisplay}
-            </div>
-            <div className="rounded border border-white/10 bg-black/35 px-1 py-0.5 font-black text-white">
-              {playersDisplay}
-            </div>
-          </div>
-
-          <div className="flex items-start justify-between gap-2 min-[641px]:hidden">
-            <div className="min-w-0">
-              <div className="text-[9px] font-black uppercase tracking-[0.18em] text-yellow-300">
-                Tournament
+          <details className="group">
+            <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-1 text-[10px] min-[641px]:text-[9px]">
+              <span className="min-w-0 truncate font-black text-yellow-200">
+                {levelDisplay}
+                {currentVariantLabel ? ` · ${currentVariantLabel}` : ""}
+              </span>
+              <span className="rounded border border-white/10 bg-black/35 px-1.5 py-0.5 font-black text-white">
+                {blindsDisplay}
+              </span>
+              <span className="rounded border border-white/10 bg-black/35 px-1.5 py-0.5 font-black text-white">
+                {playersRemaining ?? 0}/{totalEntrants ?? totalPlayers ?? 0}
+              </span>
+              <span className="rounded border border-white/10 bg-black/35 px-1.5 py-0.5 font-black text-slate-200">
+                H{progressDisplay}
+              </span>
+            </summary>
+            <div className="mt-1 grid grid-cols-3 gap-1 text-[9px] text-slate-300">
+              <div className="min-w-0 truncate rounded border border-white/10 bg-black/30 px-1 py-0.5">
+                Prize {prizePoolDisplay}
               </div>
-              <div className="truncate text-xs font-black text-white">{tournamentName}</div>
-              <div className="truncate text-[10px] font-semibold text-slate-300">
-                {levelDisplay} · {currentVariantLabel ?? "Core 5"}
+              <div className="min-w-0 truncate rounded border border-white/10 bg-black/30 px-1 py-0.5">
+                Next {nextLevelDisplay}
+              </div>
+              <div className="min-w-0 truncate rounded border border-white/10 bg-black/30 px-1 py-0.5">
+                Break {breakDisplay}
               </div>
             </div>
-            <div className="shrink-0 rounded-lg border border-white/10 bg-black/35 px-2 py-1 text-center">
-              <div className="text-[8px] uppercase tracking-wide text-slate-400">Hands</div>
-              <div className="text-sm font-black text-white">{progressDisplay}</div>
-            </div>
-          </div>
-
-          <div className="mt-2 grid grid-cols-4 gap-1 text-[10px] min-[641px]:hidden">
-            <div className="min-w-0 rounded-lg border border-white/10 bg-black/30 px-1.5 py-1">
-              <p className="truncate text-[8px] font-bold uppercase tracking-wide text-slate-400">Prize</p>
-              <p className="truncate font-black text-yellow-200">{prizePoolDisplay}</p>
-            </div>
-            <div className="min-w-0 rounded-lg border border-white/10 bg-black/30 px-1.5 py-1">
-              <p className="truncate text-[8px] font-bold uppercase tracking-wide text-slate-400">Blinds</p>
-              <p className="truncate font-black text-white">{blindsDisplay}</p>
-            </div>
-            <div className="min-w-0 rounded-lg border border-white/10 bg-black/30 px-1.5 py-1">
-              <p className="truncate text-[8px] font-bold uppercase tracking-wide text-slate-400">Players</p>
-              <p className="truncate font-black text-white">{playersDisplay}</p>
-            </div>
-            <div className="min-w-0 rounded-lg border border-white/10 bg-black/30 px-1.5 py-1">
-              <p className="truncate text-[8px] font-bold uppercase tracking-wide text-slate-400">Next</p>
-              <p className="truncate font-black text-white">{nextLevelDisplay}</p>
-            </div>
-          </div>
+          </details>
         </div>
       );
     }

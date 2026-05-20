@@ -5,20 +5,29 @@ import { formatStatAf, formatStatPercent } from "../utils/stats.js";
 import { getDisplayCards } from "../utils/cardDisplayOrder.js";
 import { getCpuCharacterByName } from "../../ai/cpuRoster.js";
 
-function BetStatus({ amount, allIn = false, seatIndex = null }) {
+function BetStatus({ amount, allIn = false, seatIndex = null, compact = false }) {
   const hasBet = Number(amount) > 0;
-  const chipLabel = allIn && hasBet ? "ALL-IN" : hasBet ? "BET" : "BET";
+  if (compact && !hasBet) return null;
+  const chipLabel = compact
+    ? allIn && hasBet
+      ? "AI"
+      : ""
+    : allIn && hasBet
+      ? "ALL-IN"
+      : hasBet
+        ? "BET"
+        : "BET";
   return (
     <div
       data-testid={seatIndex == null ? "player-bet-status" : `seat-${seatIndex}-bet-status`}
-      className={`mt-1 inline-flex min-w-[64px] items-center justify-center gap-1.5 rounded-full border px-2.5 py-1 font-black uppercase tracking-wide ${
+      className={`${compact ? "mt-0 min-w-[34px] gap-0.5 px-1.5 py-0.5" : "mt-1 min-w-[64px] gap-1.5 px-2.5 py-1"} inline-flex items-center justify-center rounded-full border font-black uppercase tracking-wide ${
         hasBet
           ? "border-amber-200/90 bg-gradient-to-b from-amber-300 to-amber-500 text-slate-950 shadow-[0_3px_0_rgba(120,53,15,0.75)]"
           : "border-white/10 bg-black/25 text-slate-400"
       }`}
       style={{ fontSize: "var(--player-stack-size, 11px)" }}
     >
-      <span>{chipLabel}</span>
+      {chipLabel ? <span>{chipLabel}</span> : null}
       <span
         data-testid={seatIndex == null ? "player-bet-amount" : `seat-${seatIndex}-bet-amount`}
         data-seat-bet-amount={seatIndex == null ? undefined : seatIndex}
@@ -321,8 +330,8 @@ export default function Player({
     revealMode && !compact && !isFolded && (isHero || player.showHand || isWinner);
   const statusBadges = [];
   if (player.allIn) statusBadges.push("ALL-IN");
-  if (isFolded) statusBadges.push("FOLDED");
-  if (player.isBusted || player.seatOut) statusBadges.push("BUSTED");
+  if (isFolded) statusBadges.push(compact ? "MUCK" : "FOLDED");
+  if (player.isBusted || player.seatOut) statusBadges.push(compact ? "OUT" : "BUSTED");
   const stackValue = typeof player.stack === "number" ? player.stack : 0;
   const betValue = typeof player.betThisRound === "number" ? player.betThisRound : 0;
   const handCards =
@@ -550,13 +559,13 @@ export default function Player({
                 {player.titleBadge}
               </div>
             )}
-            {statusBadges.length > 0 && (
+            {statusBadges.length > 0 && !(compact && !isActive && !isHero) && (
               <div className="mt-1 flex flex-wrap gap-1">
                 {statusBadges.map((badge) => (
                   <StatusPill
                     key={badge}
                     label={badge}
-                    tone={badge === "ALL-IN" ? "purple" : badge === "FOLDED" ? "folded" : "slate"}
+                    tone={badge === "ALL-IN" ? "purple" : badge === "FOLDED" || badge === "MUCK" ? "folded" : "slate"}
                   />
                 ))}
               </div>
@@ -601,13 +610,13 @@ export default function Player({
             <span className="text-slate-400">Stack</span>{" "}
             <span className="text-white">{stackValue}</span>
           </div>
-          <BetStatus amount={betValue} allIn={player.allIn} seatIndex={seatIndex} />
-          {isActive && !compact && (
+          <BetStatus amount={betValue} allIn={player.allIn} seatIndex={seatIndex} compact={compact} />
+          {isActive && (
             <div
               className="text-lime-300 font-bold mt-1"
               style={{ fontSize: "var(--player-action-size, 11px)" }}
             >
-              ACTING
+              {compact ? "ACT" : "ACTING"}
             </div>
           )}
         </div>
@@ -639,7 +648,7 @@ export default function Player({
               : "min-h-[calc(var(--card-h,56px)*0.72)] text-[11px] tracking-[0.22em]"
           }`}
         >
-          Folded - mucked
+          {compact ? "Mucked" : "Folded - mucked"}
         </div>
       ) : (
         <div

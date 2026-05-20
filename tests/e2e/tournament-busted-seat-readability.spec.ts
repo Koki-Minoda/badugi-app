@@ -37,6 +37,7 @@ test("busted tournament CPU seats move to rail and do not block mobile table", a
 
   const fixture = await invokeE2E(page, "setupTournamentBustedSeatDisplayFixtureForTest");
   await expect(page.getByTestId("tournament-eliminated-rail")).toBeVisible({ timeout: 10000 });
+  await page.getByTestId("tournament-eliminated-rail").getByRole("button", { name: /rail/i }).click();
   await expect(page.getByTestId("eliminated-rail-entry-cpu-2")).toBeVisible();
   await expect(page.getByTestId("eliminated-rail-entry-cpu-4")).toBeVisible();
   await expect(page.getByTestId("seat-2")).toHaveCount(0);

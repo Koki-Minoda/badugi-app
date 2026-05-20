@@ -7212,7 +7212,7 @@ const SAFE_RESET_PHASE = "IDLE";
           name: seat === 0 ? "You" : ["Sora", "Mina", "Ren", "Hana", "Jun"][seat - 1] ?? `CPU ${seat + 1}`,
           tournamentPlayerId: seat === 0 ? HERO_TOURNAMENT_PLAYER_ID : `cpu-${seat}`,
           stack: seat === 0 ? 600 : 500,
-          hand: seat === 0 ? heroHand : heroHand.map((card, idx) => `${card}-${seat}-${idx}`),
+          hand: seat === 0 || isBadugiFixture ? heroHand : heroHand.map((card, idx) => `${card}-${seat}-${idx}`),
           folded: false,
           hasFolded: false,
           allIn: false,

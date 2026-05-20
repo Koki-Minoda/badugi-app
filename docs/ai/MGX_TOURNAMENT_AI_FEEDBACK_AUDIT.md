@@ -87,9 +87,29 @@ The pro-overlay path is not tournament-alpha ready as a gameplay experience. It 
 | --- | --- |
 | Heuristic tournament CPU | playable for audit, needs later tuning |
 | Pro-overlay tournament CPU | `CPU_TOO_NIT`, not alpha-ready for gameplay |
-| Badugi tournament CPU | not measured by Node audit; needs browser/live telemetry |
+| Badugi tournament CPU | P1 confirmed in focused value-pressure audit: friend-alpha default tier routes Badugi through pro-overlay, and the current runtime adapter can collapse made-Badugi pressure to check/call |
 | Tournament pacing | preset framework viable |
 | Meaningful decisions | good with heuristic, poor with pro-overlay |
+
+## Badugi Value Pressure Addendum
+
+Date: 2026-05-20
+
+Focused Badugi value audit report:
+
+- `docs/ai/MGX_BADUGI_VALUE_BET_AUDIT.md`
+- `reports/ai/badugi-value-bet-audit.json`
+- `reports/ai/badugi-cpu-pressure-comparison.json`
+
+Badugi comparison:
+
+| Path | Value bet frequency | Heads-up pressure | Meaningful density | Status |
+| --- | ---: | ---: | ---: | --- |
+| heuristic | 100.00% | 100.00% | 66.67% | acceptable in focused value spots |
+| pro-overlay runtime | 0.00% | 0.00% | 16.67% | `BADUGI_VALUE_PRESSURE_COLLAPSE` |
+| fallback | 0.00% | 0.00% | 16.67% | passive safe fallback |
+
+The Badugi finding is not an evaluator or RL-training result. It is a runtime-source/action-shape audit finding: pro-overlay returns a pressure `type`, while the current BET runtime adapter reads `action`, so the applied selected action can become passive.
 
 ## Recommendation
 

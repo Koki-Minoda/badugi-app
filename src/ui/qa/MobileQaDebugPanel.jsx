@@ -50,7 +50,7 @@ export default function MobileQaDebugPanel({ enabled = false, onReturnToMenu }) 
   return (
     <div
       data-testid="mobile-qa-debug-panel"
-      className={`fixed bottom-3 right-3 z-[9999] rounded-lg border border-amber-300/50 bg-slate-950/95 p-2 text-xs text-white shadow-2xl ${
+      className={`fixed bottom-3 right-3 z-[9999] rounded-lg border border-amber-300/50 bg-slate-950/95 p-2 text-xs text-white shadow-2xl min-[641px]:top-2 min-[641px]:bottom-auto min-[641px]:right-2 ${
         expanded ? "w-[min(92vw,320px)]" : "w-auto"
       }`}
     >

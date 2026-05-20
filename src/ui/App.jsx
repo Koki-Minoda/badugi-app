@@ -6200,7 +6200,11 @@ const SAFE_RESET_PHASE = "IDLE";
 
     if (!isTournament) {
       if (isControllerDrivenSingleTable && controllerHandSnapshot) {
-        resetForNewHandFromSnapshot(nextHandSnapshot);
+        const sessionUi =
+          syncSessionFromSnapshot(nextHandSnapshot, nextHandState, {
+            reason: "new-hand",
+          });
+        resetForNewHandFromSnapshot(sessionUi ?? nextHandSnapshot);
       } else {
         const sessionUi =
           syncSessionFromSnapshot(nextHandSnapshot, nextHandState, {

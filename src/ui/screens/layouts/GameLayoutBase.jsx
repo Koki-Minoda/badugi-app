@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import Player from "../../components/Player";
 import Card from "../../components/Card";
 import Controls from "../../components/Controls";
@@ -198,7 +198,7 @@ export default function GameLayoutBase({
     ? "min-h-[clamp(460px,calc(100dvh-230px),540px)] min-[1360px]:min-h-[540px]"
     : "min-h-[clamp(480px,calc(100dvh-220px),600px)] min-[1360px]:min-h-[600px]";
   const mobileLandscapeClass = isMobileLayout
-    ? "mgx-mobile-landscape fixed inset-0 h-screen w-screen overflow-hidden"
+    ? "mgx-mobile-landscape fixed inset-0 h-[var(--mgx-visual-vh,100dvh)] max-h-[var(--mgx-visual-vh,100dvh)] w-[var(--mgx-visual-vw,100vw)] max-w-[var(--mgx-visual-vw,100vw)] overflow-hidden"
     : "";
   const mainLayoutClass = isMobileLayout
     ? "h-full overflow-hidden"
@@ -214,6 +214,36 @@ export default function GameLayoutBase({
       : "min-h-screen";
   const layoutRootRef = useRef(null);
   const cardScaleVars = useCardScaleVars(layoutRootRef);
+  useEffect(() => {
+    if (!isMobileLayout || typeof window === "undefined") return undefined;
+    const root = layoutRootRef.current;
+    const visualViewport = window.visualViewport;
+    const setVisualViewportVars = () => {
+      const height = Math.max(
+        1,
+        Math.floor(visualViewport?.height ?? window.innerHeight ?? 0),
+      );
+      const width = Math.max(
+        1,
+        Math.floor(visualViewport?.width ?? window.innerWidth ?? 0),
+      );
+      document.documentElement.style.setProperty("--mgx-visual-vh", `${height}px`);
+      document.documentElement.style.setProperty("--mgx-visual-vw", `${width}px`);
+      root?.style?.setProperty?.("--mgx-visual-vh", `${height}px`);
+      root?.style?.setProperty?.("--mgx-visual-vw", `${width}px`);
+    };
+    setVisualViewportVars();
+    visualViewport?.addEventListener?.("resize", setVisualViewportVars);
+    visualViewport?.addEventListener?.("scroll", setVisualViewportVars);
+    window.addEventListener("resize", setVisualViewportVars);
+    window.addEventListener("orientationchange", setVisualViewportVars);
+    return () => {
+      visualViewport?.removeEventListener?.("resize", setVisualViewportVars);
+      visualViewport?.removeEventListener?.("scroll", setVisualViewportVars);
+      window.removeEventListener("resize", setVisualViewportVars);
+      window.removeEventListener("orientationchange", setVisualViewportVars);
+    };
+  }, [isMobileLayout]);
   const feltOvalClass = isMobileLayout
     ? "inset-x-[10%] inset-y-[35%] border-[8px]"
     : "inset-x-[3%] inset-y-[26%] border-[10px]";
@@ -256,7 +286,8 @@ export default function GameLayoutBase({
               "--compact-hero-card-strip-maxw": "clamp(112px, 34dvw, 190px)",
             }
           : {}),
-        height: disableVh ? "100vh" : "100dvh",
+        height: disableVh ? "100vh" : "var(--mgx-visual-vh, 100dvh)",
+        maxHeight: disableVh ? "100vh" : "var(--mgx-visual-vh, 100dvh)",
       }
     : disableVh
       ? cardScaleVars
@@ -608,7 +639,7 @@ export default function GameLayoutBase({
                 className={`flex min-h-0 min-w-0 flex-col ${
                   isMobileLayout
                     ? isMobileTournament
-                      ? "mgx-mobile-action-sheet mgx-mobile-tournament-panel gap-1 overflow-hidden pb-[max(0px,env(safe-area-inset-bottom))] min-[641px]:max-h-[calc(100dvh-12px)] min-[641px]:gap-0.5"
+                      ? "mgx-mobile-action-sheet mgx-mobile-tournament-panel gap-1 overflow-hidden pb-[max(0px,env(safe-area-inset-bottom))] min-[641px]:max-h-[calc(var(--mgx-visual-vh,100dvh)-12px)] min-[641px]:gap-0.5"
                       : "mgx-mobile-action-sheet gap-2 overflow-hidden pb-[max(0px,env(safe-area-inset-bottom))]"
                     : "gap-3"
                 }`}

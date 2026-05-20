@@ -5,14 +5,14 @@ export default function TournamentEliminatedRail({
   layoutMode = "desktop",
 }) {
   const [expanded, setExpanded] = useState(false);
+  const isMobile = String(layoutMode).startsWith("mobile");
   useEffect(() => {
-    if (layoutMode !== "mobile" || !expanded) return undefined;
+    if (!isMobile || !expanded) return undefined;
     const timer = window.setTimeout(() => setExpanded(false), 3500);
     return () => window.clearTimeout(timer);
-  }, [expanded, layoutMode]);
+  }, [expanded, isMobile]);
 
   if (!Array.isArray(entries) || entries.length === 0) return null;
-  const isMobile = layoutMode === "mobile";
   if (isMobile) {
     return (
       <section

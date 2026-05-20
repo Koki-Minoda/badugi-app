@@ -27,7 +27,7 @@ export default function Controls({
     return null;
   }
 
-  const isMobile = layoutMode === "mobile";
+  const isMobile = String(layoutMode).startsWith("mobile");
   const containerClass =
     className ??
     (isMobile

@@ -58,6 +58,7 @@ Videos were not captured in this pass.
 | `HUD_DENSITY` | Desktop side status is useful but can dominate; mobile loses that information and relies on table labels. | D01 desktop vs portrait screenshots. | P2 | Different desktop/mobile information hierarchy. | Define a shared minimum: actor, last action, position, pot, phase, tournament level. | M | Medium. |
 | `TOURNAMENT_SEAT_LIFECYCLE` | Busted/out CPU panels can remain as large table seats and cover pot/cards/Hero area on physical mobile. | Physical mobile Badugi tournament screenshot; `TOUR-SEAT-LIFECYCLE-001`. | P1/P0 | Tournament state correctly tracks busts, but display layout did not compact eliminated seats away from active table geometry. | Hide eliminated seats from the full table layout and show them in a compact eliminated rail. | S-M | High: gameplay may continue, but table readability becomes close to unusable. |
 | `MOBILE_TOURNAMENT_LANDSCAPE_ACTIONS` | iPhone PWA/standalone landscape can show Hero Controls while clipping Call/Raise/Fold below the viewport. | Physical iPhone PWA Badugi tournament screenshot; `UI-MOBILE-TOURNAMENT-LANDSCAPE-001`. | P0 | Right-column vertical allocation gives HUD/phase/context/stat rows space before reserving a guaranteed action-button area. | In mobile landscape tournament, compact HUD/phase/context first and keep action buttons fully visible/tappable without scroll. | S-M | Critical: Hero is actor but cannot play. |
+| `MOBILE_TOURNAMENT_TABLE_DENSITY` | Physical iPhone tournament play is technically progressing, but table/card/player recognition is too dense because HUD, rail, phase, and Hero metadata remain permanently visible. | Physical iPhone tournament QA; `reports/ui/mobile-tournament-readability.json`; `reports/screenshots/mobile-readability/`. | P1 | Mobile tournament information hierarchy treated prize/next/remaining/rail/phase as always-visible peers with cards, actor, pot, and actions. | Make mobile tournament HUD one-row by default, collapse rail/details, inline the phase strip, suppress inactive seat metadata, and preserve 55-60%+ table battlefield height. | S-M | High: gameplay is possible but too tiring and error-prone for real tournament play. |
 
 ## Desktop vs Mobile
 
@@ -92,6 +93,7 @@ These are allowed before a full redesign because they do not alter game rules or
 - Add replay street headers and actor name/position to each event row.
 - Move busted/out tournament seats to a compact eliminated rail instead of full table panels.
 - Reserve mobile landscape tournament space for Hero action buttons before HUD/phase/detail rows.
+- Reserve mobile tournament battlefield before metadata; default prize, next level, and rail details to collapsed/compact states.
 
 ## Recommendation
 

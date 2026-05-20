@@ -16,6 +16,7 @@ These are not engine P0s, but they are release-critical clarity issues because t
 | P0 clarity | Action visibility | Add a compact street action strip that persists fold/call/raise/draw decisions. | `reports/screenshots/readability/d01-desktop-cash.png` |
 | P0 clarity | Position clarity | Increase and standardize BTN/SB/BB/UTG/MP/CO badges; display Hero position in controls. | `reports/ui/readability/ui-readability-smoke.json` |
 | P0 clarity | Draw/BET wording | Replace terse `BET · Draw 1` with phase text that explains whether this is betting before/after a draw. | `reports/screenshots/readability/d01-portrait-cash.png` |
+| P1 playability | Mobile tournament table density | In mobile tournament, preserve table battlefield before prize/next/rail metadata; make HUD one-row, phase inline, rail collapsed, and inactive seat metadata minimal. | `docs/ui/MGX_MOBILE_TOURNAMENT_READABILITY_POLICY.md`; `reports/ui/mobile-tournament-readability.json` |
 
 ## P1 Replay Readability
 
@@ -44,6 +45,7 @@ These are not engine P0s, but they are release-critical clarity issues because t
 4. `REPLAY_GROUPING`: group replay event rows by street.
 5. `REPLAY_SHOWDOWN_STORY`: winner/pot/showdown summary.
 6. `MOBILE_CONTEXT_BAR`: compact mobile actor/action/position bar.
+7. `MOBILE_TOURNAMENT_DENSITY`: mobile tournament HUD/phase/rail/seat compaction with battlefield-ratio gate.
 
 ## Non-Goals
 

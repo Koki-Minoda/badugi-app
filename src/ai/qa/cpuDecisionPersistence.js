@@ -5,6 +5,16 @@ import {
 } from "./cpuDecisionTraceCore.js";
 
 export const CPU_DECISION_METADATA_VERSION = 1;
+export const BADUGI_VALUE_TELEMETRY_FIELDS = Object.freeze([
+  "handStrengthBucket",
+  "madeBadugi",
+  "patState",
+  "drawCount",
+  "streetStrengthEstimate",
+  "aggressionOpportunity",
+  "valueBetOpportunity",
+  "showdownEquityBucket",
+]);
 
 const VALID_SOURCES = new Set([
   "heuristic",
@@ -143,6 +153,37 @@ export function buildCpuDecisionTelemetry({
     nestedDecision?.handStrengthBucket ??
     findMetadataValue(metadata, ["handStrengthBucket"]) ??
     "unknown";
+  const madeBadugi =
+    metadata?.madeBadugi ??
+    nestedDecision?.madeBadugi ??
+    findMetadataValue(metadata, ["madeBadugi"]);
+  const patState =
+    metadata?.patState ??
+    nestedDecision?.patState ??
+    findMetadataValue(metadata, ["patState"]) ??
+    null;
+  const drawCount =
+    metadata?.drawCount ??
+    metadata?.drawInfo?.drawCount ??
+    nestedDecision?.drawCount ??
+    findMetadataValue(metadata, ["drawCount"]);
+  const streetStrengthEstimate =
+    metadata?.streetStrengthEstimate ??
+    nestedDecision?.streetStrengthEstimate ??
+    findMetadataValue(metadata, ["streetStrengthEstimate"]);
+  const aggressionOpportunity =
+    metadata?.aggressionOpportunity ??
+    nestedDecision?.aggressionOpportunity ??
+    findMetadataValue(metadata, ["aggressionOpportunity"]);
+  const valueBetOpportunity =
+    metadata?.valueBetOpportunity ??
+    nestedDecision?.valueBetOpportunity ??
+    findMetadataValue(metadata, ["valueBetOpportunity"]);
+  const showdownEquityBucket =
+    metadata?.showdownEquityBucket ??
+    nestedDecision?.showdownEquityBucket ??
+    findMetadataValue(metadata, ["showdownEquityBucket"]) ??
+    null;
   const resolvedCanRaise =
     typeof canRaise === "boolean"
       ? canRaise
@@ -171,7 +212,17 @@ export function buildCpuDecisionTelemetry({
     finalAction,
     decisionSource,
     fallbackReason,
-    metadata: { ...metadata, handStrengthBucket },
+    metadata: {
+      ...metadata,
+      handStrengthBucket,
+      madeBadugi: madeBadugi === true,
+      patState,
+      drawCount,
+      streetStrengthEstimate,
+      aggressionOpportunity: aggressionOpportunity === true,
+      valueBetOpportunity: valueBetOpportunity === true,
+      showdownEquityBucket,
+    },
     toCall: Number(toCall) || 0,
     currentBet: Number(currentBet) || 0,
     pot: Number(pot) || 0,
@@ -188,6 +239,15 @@ export function buildCpuDecisionTelemetry({
   row.cpuPolicy = policy;
   row.aiTier = tier;
   row.canRaise = resolvedCanRaise;
+  row.madeBadugi = madeBadugi === true;
+  row.patState = patState;
+  row.drawCount = Number.isFinite(Number(drawCount)) ? Number(drawCount) : row.drawCount;
+  row.streetStrengthEstimate = Number.isFinite(Number(streetStrengthEstimate))
+    ? Number(streetStrengthEstimate)
+    : null;
+  row.aggressionOpportunity = aggressionOpportunity === true;
+  row.valueBetOpportunity = valueBetOpportunity === true;
+  row.showdownEquityBucket = showdownEquityBucket;
 
   return {
     cpuTelemetryVersion: CPU_DECISION_METADATA_VERSION,
@@ -209,6 +269,15 @@ export function buildCpuDecisionTelemetry({
     toCall: Number(toCall) || 0,
     canRaise: resolvedCanRaise,
     handStrengthBucket,
+    madeBadugi: madeBadugi === true,
+    patState,
+    drawCount: Number.isFinite(Number(drawCount)) ? Number(drawCount) : null,
+    streetStrengthEstimate: Number.isFinite(Number(streetStrengthEstimate))
+      ? Number(streetStrengthEstimate)
+      : null,
+    aggressionOpportunity: aggressionOpportunity === true,
+    valueBetOpportunity: valueBetOpportunity === true,
+    showdownEquityBucket,
     cpuDecision: row,
   };
 }

@@ -34,6 +34,7 @@ import {
   buildCpuDecisionTelemetry,
   mergeCpuDecisionTelemetry,
 } from "../ai/qa/cpuDecisionPersistence.js";
+import { buildBadugiValueTelemetryFields } from "../ai/qa/badugiValuePressureAudit.js";
 import { getMobileQaSessionId } from "./qa/mobileQaSession.js";
 
 import {
@@ -2856,6 +2857,17 @@ const SAFE_RESET_PHASE = "IDLE";
         actionLabel: me.lastAction,
         decisionSource: aiDrawDecision?.source ?? "npcAutoDrawCount",
         tierId: aiDrawDecision?.tierId ?? activeAiTierConfig?.id,
+        ...buildBadugiValueTelemetryFields({
+          hand: oldHand,
+          phase: "DRAW",
+          drawRound,
+          betRound: betRoundIndex,
+          legalActions: ["DRAW"],
+          drawCount,
+          activeOpponents: snapshot.filter(
+            (player, seatIndex) => seatIndex !== seatToAct && player && !isFoldedOrOut(player),
+          ).length,
+        }),
       };
       const controllerOutcome = tryControllerBetAction({
         actionType: "draw",
@@ -9958,6 +9970,20 @@ const SAFE_RESET_PHASE = "IDLE";
                 context: { actor: me },
               })
             : standardBetDecision;
+        const legalBetActions = [
+          "FOLD",
+          toCall === 0 ? "CHECK" : "CALL",
+          ...(canRaise ? ["RAISE"] : []),
+        ];
+        const badugiValueTelemetry = buildBadugiValueTelemetryFields({
+          hand: me.hand,
+          phase: "BET",
+          drawRound,
+          betRound: betRoundIndex,
+          legalActions: legalBetActions,
+          toCall,
+          activeOpponents,
+        });
         const decisionAction = String(betDecision?.action ?? "").toLowerCase();
         const actionPayload = {
           type:
@@ -9974,6 +10000,14 @@ const SAFE_RESET_PHASE = "IDLE";
           decisionSource: betDecision?.source ?? "policy-router",
           tierId: betDecision?.tierId ?? activeAiTierConfig?.id,
           decisionReason: betDecision?.reason,
+          rawDecisionType: betDecision?.type ?? null,
+          rawDecisionAction: betDecision?.action ?? null,
+          adapterMismatch:
+            Boolean(betDecision?.type) &&
+            !Boolean(betDecision?.action) &&
+            activeAiTierConfig?.id === "pro",
+          legalActions: legalBetActions,
+          ...badugiValueTelemetry,
         };
 
         if (applyForcedBetAction(activeSeat, actionPayload)) {

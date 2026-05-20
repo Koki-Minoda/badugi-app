@@ -59,6 +59,13 @@ def test_cpu_decision_metadata_persists_in_badugi_action_log(monkeypatch):
             "toCall": 20,
             "canRaise": True,
             "handStrengthBucket": "strong",
+            "madeBadugi": True,
+            "patState": "pat",
+            "drawCount": 0,
+            "streetStrengthEstimate": 0.91,
+            "aggressionOpportunity": True,
+            "valueBetOpportunity": True,
+            "showdownEquityBucket": "strong",
         }
         response = client.post(
             "/api/badugi/actions/batch",
@@ -88,6 +95,11 @@ def test_cpu_decision_metadata_persists_in_badugi_action_log(monkeypatch):
             assert row.metadata_json["isCpu"] is True
             assert row.metadata_json["decisionSource"] == "heuristic"
             assert row.metadata_json["legalActions"] == ["fold", "call", "raise"]
+            assert row.metadata_json["madeBadugi"] is True
+            assert row.metadata_json["patState"] == "pat"
+            assert row.metadata_json["drawCount"] == 0
+            assert row.metadata_json["valueBetOpportunity"] is True
+            assert row.metadata_json["showdownEquityBucket"] == "strong"
             assert "rawStateVector" not in row.metadata_json
             assert "holeCards" not in row.metadata_json
         finally:

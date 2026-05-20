@@ -8,6 +8,18 @@ from sqlalchemy.orm import Mapped, mapped_column
 from . import Base
 
 
+BADUGI_VALUE_TELEMETRY_KEYS = (
+    "handStrengthBucket",
+    "madeBadugi",
+    "patState",
+    "drawCount",
+    "streetStrengthEstimate",
+    "aggressionOpportunity",
+    "valueBetOpportunity",
+    "showdownEquityBucket",
+)
+
+
 class BadugiHandAction(Base):
     """Single ActionLog entry persisted from the frontend."""
 

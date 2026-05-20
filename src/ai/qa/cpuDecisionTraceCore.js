@@ -97,6 +97,8 @@ export function buildCpuDecisionTraceRow({
       metadata,
       action: normalizedFinal,
     }),
+    madeBadugi: metadata?.madeBadugi === true,
+    patState: metadata?.patState ?? null,
     toCall: Number(toCall) || 0,
     currentBet: Number(currentBet) || 0,
     pot: Number(pot) || 0,
@@ -108,6 +110,12 @@ export function buildCpuDecisionTraceRow({
     finalAction: normalizedFinal,
     drawCount: Number.isFinite(Number(metadata?.drawCount)) ? Number(metadata.drawCount) : null,
     pat: metadata?.pat === true,
+    streetStrengthEstimate: Number.isFinite(Number(metadata?.streetStrengthEstimate))
+      ? Number(metadata.streetStrengthEstimate)
+      : null,
+    aggressionOpportunity: metadata?.aggressionOpportunity === true,
+    valueBetOpportunity: metadata?.valueBetOpportunity === true,
+    showdownEquityBucket: metadata?.showdownEquityBucket ?? null,
     applySuccess: Boolean(applySuccess),
     illegalActionRejected: Boolean(illegalActionRejected),
     forcedFold: Boolean(forcedFold),

@@ -6,6 +6,7 @@ os.environ.setdefault("BACKEND_DB_DRIVER", "sqlite")  # [tournament-feedback]
 os.environ.setdefault("BACKEND_DB_NAME", ":memory:")  # [tournament-feedback]
 
 from fastapi.testclient import TestClient
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -35,7 +36,13 @@ def override_feedback_db():
         db.close()
 
 
-app.dependency_overrides[get_db] = override_feedback_db
+@pytest.fixture(autouse=True)
+def feedback_db_override():
+    app.dependency_overrides[get_db] = override_feedback_db
+    try:
+        yield
+    finally:
+        app.dependency_overrides.pop(get_db, None)
 
 
 def clear_feedback_results():

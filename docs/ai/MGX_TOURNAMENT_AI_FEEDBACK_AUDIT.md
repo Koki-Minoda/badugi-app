@@ -87,7 +87,7 @@ The pro-overlay path is not tournament-alpha ready as a gameplay experience. It 
 | --- | --- |
 | Heuristic tournament CPU | playable for audit, needs later tuning |
 | Pro-overlay tournament CPU | `CPU_TOO_NIT`, not alpha-ready for gameplay |
-| Badugi tournament CPU | P1 confirmed in focused value-pressure audit: friend-alpha default tier routes Badugi through pro-overlay, and the current runtime adapter can collapse made-Badugi pressure to check/call |
+| Badugi tournament CPU | P1 local fix candidate: friend-alpha default tier routes Badugi through pro-overlay; focused adapter normalization now preserves valid pro-overlay `type` pressure actions as canonical `action`, but deployed/live confirmation is still required |
 | Tournament pacing | preset framework viable |
 | Meaningful decisions | good with heuristic, poor with pro-overlay |
 
@@ -106,11 +106,12 @@ Badugi comparison:
 | Path | Value bet frequency | Heads-up pressure | Meaningful density | Status |
 | --- | ---: | ---: | ---: | --- |
 | heuristic | 100.00% | 100.00% | 66.67% | acceptable in focused value spots |
-| pro-overlay runtime | 0.00% | 0.00% | 16.67% | `BADUGI_VALUE_PRESSURE_COLLAPSE` |
+| pro-overlay runtime before normalization | 0.00% | 0.00% | 16.67% | `BADUGI_VALUE_PRESSURE_COLLAPSE` |
+| pro-overlay runtime after normalization | 100.00% | 100.00% | 66.67% | local adapter collapse fixed |
 | fallback | 0.00% | 0.00% | 16.67% | passive safe fallback |
 
-The Badugi finding is not an evaluator or RL-training result. It is a runtime-source/action-shape audit finding: pro-overlay returns a pressure `type`, while the current BET runtime adapter reads `action`, so the applied selected action can become passive.
+The Badugi finding is not an evaluator or RL-training result. It is a runtime-source/action-shape audit finding: pro-overlay returns a pressure `type`, while the previous BET runtime adapter read `action`, so the applied selected action could become passive. The local adapter now normalizes `type -> action` and records invalid/illegal action fallback reasons.
 
 ## Recommendation
 
-Do not tune AI inside this audit pass. First decide which CPU path is active for friend alpha and confirm it with deployed CPU telemetry by sessionId. If pro-overlay is active for friend-alpha tournament or cash tables, tuning should become a P1 before broad external feedback because the current pro-overlay behavior can make games feel dead.
+Do not tune AI inside this audit pass. First deploy/confirm the adapter fix with CPU telemetry by sessionId. If pro-overlay remains globally too nit after schema normalization, that is a separate P1 tuning problem; do not mix it with this Badugi action-shape bug.

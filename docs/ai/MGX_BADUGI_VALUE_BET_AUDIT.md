@@ -1,6 +1,6 @@
 ---
 title: MGX Badugi Value Bet Audit
-date: 2026-05-20
+date: 2026-05-21
 ---
 
 # MGX Badugi Value Bet Audit
@@ -32,20 +32,23 @@ The audit separates:
 Current finding:
 
 - `pro-overlay` is the friend-alpha default path unless a dev override changes tier.
-- The current Badugi BET adapter can lose the overlay action because the overlay returns `type`, while the runtime BET path reads `action`.
-- This creates a pro-overlay runtime adapter classification, not an evaluator/RL finding.
+- Root cause confirmed: the previous Badugi BET adapter could lose the overlay action because the overlay returns `type`, while the runtime BET path read `action`.
+- Local fix: `normalizeCpuAction()` accepts `type` as a legacy alias, normalizes it to canonical `action`, and records invalid/illegal action fallback reasons instead of silently collapsing pressure to check/call.
+- This remains a runtime adapter/schema finding, not an evaluator/RL finding.
 
 ## Comparison
 
 | Path | VPIP | PFR | Aggression | Value bet opps | Value bet freq | HU pressure freq | Meaningful density | Classification |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 | heuristic | 66.67% | 66.67% | 66.67% | 3 | 100.00% | 100.00% | 66.67% | acceptable in focused value spots |
-| pro-overlay runtime | 16.67% | 0.00% | 0.00% | 3 | 0.00% | 0.00% | 16.67% | passive collapse confirmed |
+| pro-overlay runtime after normalization | 66.67% | 66.67% | 66.67% | 3 | 100.00% | 100.00% | 66.67% | local adapter collapse fixed |
 | fallback | 16.67% | 0.00% | 0.00% | 3 | 0.00% | 0.00% | 16.67% | passive safe fallback |
+
+Before normalization, the pro-overlay runtime row was `0.00%` value bet frequency, `0.00%` heads-up pressure, and `16.67%` meaningful density.
 
 ## Missed Value Classes
 
-Current pro-overlay runtime classifications:
+Pre-fix pro-overlay runtime classifications:
 
 - `VALUE_BET_MISSED`: 3
 - `PRESSURE_MISSING`: 4
@@ -55,6 +58,8 @@ Current pro-overlay runtime classifications:
 - `NO_HEADS_UP_PRESSURE`: 4
 
 These are audit classifications only. They should drive the next fix/tuning plan, but this pass intentionally does not tune the AI.
+
+Post-fix focused audit classifications for `pro-overlay` are empty in the six deterministic value-pressure scenarios. This does not prove CPU strategy strength; it only proves the adapter no longer drops valid pro-overlay pressure actions in these cases.
 
 ## Telemetry Fields
 
@@ -68,15 +73,23 @@ Badugi CPU action metadata now preserves these audit fields inside the existing 
 - `aggressionOpportunity`
 - `valueBetOpportunity`
 - `showdownEquityBucket`
+- `rawDecisionType`
+- `rawDecisionAction`
+- `rawActionSource`
+- `sourceActionField`
+- `normalizedAction`
+- `normalizationWarnings`
+- `legacyTypeAliasNormalized`
+- `adapterMismatch`
 
 No DB migration is required because the fields live in `badugi_action_logs.metadata`.
 
 ## Current Status
 
-Passive behavior is confirmed for the pro-overlay runtime adapter path in focused made-Badugi value spots.
+Passive behavior was confirmed for the pre-fix pro-overlay runtime adapter path in focused made-Badugi value spots.
 
-Friend-alpha runtime path is not acceptable if it remains on this pro-overlay adapter behavior. Heuristic is acceptable for this audit surface, but that is not a strength endorsement; it only means the focused value-pressure collapse is not reproduced there.
+Local adapter normalization removes that focused passive collapse in deterministic audit scenarios. Friend-alpha still needs deployed/live telemetry confirmation by sessionId before this row can be considered fully closed.
 
 ## Next Action
 
-Do not tune in this pass. Next work should fix or explicitly classify the runtime adapter/action-shape mismatch first, then rerun live telemetry by sessionId before any aggression or strategy tuning.
+Do not tune in this pass. Next work is deploy/live confirmation that `decisionSource=pro-overlay`, `rawActionSource=type`, and canonical `finalAction=raise` are recorded in real sessions when pressure is legal.

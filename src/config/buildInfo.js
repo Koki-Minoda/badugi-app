@@ -1,3 +1,5 @@
+/* global __MGX_BUILD_INFO__ */
+
 const fallbackBuildInfo = {
   commit: "unknown",
   buildTime: "unknown",

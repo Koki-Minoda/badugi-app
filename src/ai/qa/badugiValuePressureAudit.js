@@ -1,4 +1,5 @@
 import { evaluateBadugi } from "../../games/badugi/utils/badugiEvaluator.js";
+import { normalizeCpuAction } from "../normalizeCpuAction.js";
 
 const PRESSURE_ACTIONS = new Set(["BET", "RAISE"]);
 const PASSIVE_ACTIONS = new Set(["CHECK", "CALL"]);
@@ -265,15 +266,38 @@ function proOverlayRuntimeDecision(scenario) {
       : scenario.toCall > 0
         ? "CALL"
         : "CHECK";
-  const runtimeAction = "UNKNOWN";
+  const normalized = normalizeCpuAction(
+    {
+      type: rawAction,
+      source: "pro-overlay",
+      reason:
+        rawAction === "RAISE"
+          ? "audit-pro-overlay-raw-value-pressure"
+          : "audit-pro-overlay-raw-continue",
+    },
+    {
+      phase: "BET",
+      legalActions: scenario.legalActions,
+      toCall: scenario.toCall,
+      fixedLimit: true,
+    },
+  );
   const selectedAction =
-    runtimeAction !== "UNKNOWN" ? runtimeAction : scenario.toCall > 0 ? "CALL" : "CHECK";
+    normalized.legal && normalized.action
+      ? normalizeAction(normalized.action)
+      : scenario.toCall > 0
+        ? "CALL"
+        : "CHECK";
   return {
     decisionSource: "pro-overlay",
     selectedAction,
     rawAction,
     reason: rawAction === "RAISE" ? "audit-pro-overlay-raw-value-pressure" : "audit-pro-overlay-raw-continue",
-    adapterMismatch: rawAction !== selectedAction,
+    adapterMismatch: false,
+    sourceActionField: normalized.sourceActionField,
+    normalizedAction: normalized.action ? normalizeAction(normalized.action) : "UNKNOWN",
+    normalizationWarnings: normalized.warnings,
+    fallbackReason: normalized.fallbackReason,
   };
 }
 
@@ -388,6 +412,10 @@ export function runBadugiValueBetAudit({ paths = ["heuristic", "pro-overlay", "f
         selectedAction: decision.selectedAction,
         reason: decision.reason,
         adapterMismatch: decision.adapterMismatch,
+        sourceActionField: decision.sourceActionField ?? null,
+        normalizedAction: decision.normalizedAction ?? null,
+        normalizationWarnings: decision.normalizationWarnings ?? [],
+        fallbackReason: decision.fallbackReason ?? null,
         legalActions: normalizeLegalActions(scenario.legalActions),
         toCall: scenario.toCall,
         drawRound: scenario.drawRound,

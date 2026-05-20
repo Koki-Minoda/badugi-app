@@ -116,6 +116,16 @@ export function buildCpuDecisionTraceRow({
     aggressionOpportunity: metadata?.aggressionOpportunity === true,
     valueBetOpportunity: metadata?.valueBetOpportunity === true,
     showdownEquityBucket: metadata?.showdownEquityBucket ?? null,
+    rawDecisionType: metadata?.rawDecisionType ?? null,
+    rawDecisionAction: metadata?.rawDecisionAction ?? null,
+    rawActionSource: metadata?.rawActionSource ?? metadata?.sourceActionField ?? null,
+    sourceActionField: metadata?.sourceActionField ?? metadata?.rawActionSource ?? null,
+    normalizedAction: metadata?.normalizedAction ?? null,
+    normalizationWarnings: Array.isArray(metadata?.normalizationWarnings)
+      ? metadata.normalizationWarnings
+      : [],
+    legacyTypeAliasNormalized: metadata?.legacyTypeAliasNormalized === true,
+    adapterMismatch: metadata?.adapterMismatch === true,
     applySuccess: Boolean(applySuccess),
     illegalActionRejected: Boolean(illegalActionRejected),
     forcedFold: Boolean(forcedFold),

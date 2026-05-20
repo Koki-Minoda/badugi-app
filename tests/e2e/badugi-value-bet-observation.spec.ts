@@ -115,6 +115,12 @@ function summarizeRows(mode: string, rows: any[]) {
     pressureActions: pressureRows.length,
     meaningfulDecisions: rows.filter((row) => !["check", "fold", "unknown"].includes(normalizeAction(row?.finalAction))).length,
     adapterMismatchRows: rows.filter((row) => row?.adapterMismatch === true).length,
+    typeAliasRows: rows.filter(
+      (row) => row?.rawActionSource === "type" || row?.sourceActionField === "type",
+    ).length,
+    illegalNormalizationRows: rows.filter(
+      (row) => row?.fallbackReason === "CPU_ACTION_ILLEGAL_AFTER_NORMALIZATION",
+    ).length,
     sampleRows: rows.slice(0, 12).map((row) => ({
       sessionId: row?.sessionId ?? null,
       variantId: row?.variantId ?? null,
@@ -124,10 +130,18 @@ function summarizeRows(mode: string, rows: any[]) {
       aiTier: row?.aiTier ?? null,
       cpuPolicy: row?.cpuPolicy ?? null,
       finalAction: row?.finalAction ?? null,
+      selectedAction: row?.selectedAction ?? null,
+      rawDecisionType: row?.rawDecisionType ?? null,
+      rawDecisionAction: row?.rawDecisionAction ?? null,
+      rawActionSource: row?.rawActionSource ?? row?.sourceActionField ?? null,
+      normalizedAction: row?.normalizedAction ?? null,
+      normalizationWarnings: row?.normalizationWarnings ?? [],
+      fallbackReason: row?.fallbackReason ?? null,
       legalActions: row?.legalActions ?? [],
       handStrengthBucket: row?.handStrengthBucket ?? null,
       valueBetOpportunity: row?.valueBetOpportunity ?? false,
       aggressionOpportunity: row?.aggressionOpportunity ?? false,
+      legacyTypeAliasNormalized: row?.legacyTypeAliasNormalized ?? false,
       adapterMismatch: row?.adapterMismatch ?? false,
     })),
   };

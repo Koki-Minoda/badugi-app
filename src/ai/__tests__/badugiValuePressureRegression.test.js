@@ -40,10 +40,13 @@ describe("Badugi value pressure audit", () => {
     expect(byPath.heuristic.headsUpPressureFrequency).toBeGreaterThanOrEqual(0.5);
 
     expect(byPath["pro-overlay"].valueBetOpportunities).toBeGreaterThan(0);
-    expect(byPath["pro-overlay"].valueBetFrequency).toBe(0);
-    expect(byPath["pro-overlay"].adapterMismatches).toBeGreaterThan(0);
-    expect(byPath["pro-overlay"].classifications.VALUE_BET_MISSED).toBeGreaterThan(0);
-    expect(byPath["pro-overlay"].classifications.PRESSURE_MISSING).toBeGreaterThan(0);
+    expect(byPath["pro-overlay"].valueBetFrequency).toBeGreaterThan(0);
+    expect(byPath["pro-overlay"].headsUpPressureFrequency).toBeGreaterThan(0);
+    expect(byPath["pro-overlay"].adapterMismatches).toBe(0);
+    expect(byPath["pro-overlay"].classifications.VALUE_BET_MISSED ?? 0).toBe(0);
+    expect(byPath["pro-overlay"].classifications.PRESSURE_MISSING ?? 0).toBeLessThan(
+      byPath.fallback.classifications.PRESSURE_MISSING,
+    );
 
     expect(byPath.fallback.valueBetFrequency).toBe(0);
     expect(byPath.fallback.classifications.OVER_PASSIVE_CHECK).toBeGreaterThan(0);

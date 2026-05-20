@@ -184,6 +184,24 @@ export function buildCpuDecisionTelemetry({
     nestedDecision?.showdownEquityBucket ??
     findMetadataValue(metadata, ["showdownEquityBucket"]) ??
     null;
+  const rawDecisionType = metadata?.rawDecisionType ?? nestedDecision?.rawDecisionType ?? null;
+  const rawDecisionAction = metadata?.rawDecisionAction ?? nestedDecision?.rawDecisionAction ?? null;
+  const rawActionSource =
+    metadata?.rawActionSource ??
+    metadata?.sourceActionField ??
+    nestedDecision?.rawActionSource ??
+    nestedDecision?.sourceActionField ??
+    null;
+  const normalizedAction =
+    metadata?.normalizedAction ?? nestedDecision?.normalizedAction ?? null;
+  const normalizationWarnings = Array.isArray(metadata?.normalizationWarnings)
+    ? metadata.normalizationWarnings
+    : Array.isArray(nestedDecision?.normalizationWarnings)
+      ? nestedDecision.normalizationWarnings
+      : [];
+  const legacyTypeAliasNormalized =
+    metadata?.legacyTypeAliasNormalized === true || nestedDecision?.legacyTypeAliasNormalized === true;
+  const adapterMismatch = metadata?.adapterMismatch === true || nestedDecision?.adapterMismatch === true;
   const resolvedCanRaise =
     typeof canRaise === "boolean"
       ? canRaise
@@ -222,6 +240,14 @@ export function buildCpuDecisionTelemetry({
       aggressionOpportunity: aggressionOpportunity === true,
       valueBetOpportunity: valueBetOpportunity === true,
       showdownEquityBucket,
+      rawDecisionType,
+      rawDecisionAction,
+      rawActionSource,
+      sourceActionField: rawActionSource,
+      normalizedAction,
+      normalizationWarnings,
+      legacyTypeAliasNormalized,
+      adapterMismatch,
     },
     toCall: Number(toCall) || 0,
     currentBet: Number(currentBet) || 0,
@@ -248,6 +274,14 @@ export function buildCpuDecisionTelemetry({
   row.aggressionOpportunity = aggressionOpportunity === true;
   row.valueBetOpportunity = valueBetOpportunity === true;
   row.showdownEquityBucket = showdownEquityBucket;
+  row.rawDecisionType = rawDecisionType;
+  row.rawDecisionAction = rawDecisionAction;
+  row.rawActionSource = rawActionSource;
+  row.sourceActionField = rawActionSource;
+  row.normalizedAction = normalizedAction;
+  row.normalizationWarnings = normalizationWarnings;
+  row.legacyTypeAliasNormalized = legacyTypeAliasNormalized;
+  row.adapterMismatch = adapterMismatch;
 
   return {
     cpuTelemetryVersion: CPU_DECISION_METADATA_VERSION,
@@ -278,6 +312,14 @@ export function buildCpuDecisionTelemetry({
     aggressionOpportunity: aggressionOpportunity === true,
     valueBetOpportunity: valueBetOpportunity === true,
     showdownEquityBucket,
+    rawDecisionType,
+    rawDecisionAction,
+    rawActionSource,
+    sourceActionField: rawActionSource,
+    normalizedAction,
+    normalizationWarnings,
+    legacyTypeAliasNormalized,
+    adapterMismatch,
     cpuDecision: row,
   };
 }

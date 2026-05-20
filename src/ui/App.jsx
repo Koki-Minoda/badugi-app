@@ -35,6 +35,7 @@ import {
   mergeCpuDecisionTelemetry,
 } from "../ai/qa/cpuDecisionPersistence.js";
 import { buildBadugiValueTelemetryFields } from "../ai/qa/badugiValuePressureAudit.js";
+import { normalizeCpuAction } from "../ai/normalizeCpuAction.js";
 import { getMobileQaSessionId } from "./qa/mobileQaSession.js";
 
 import {
@@ -9984,28 +9985,53 @@ const SAFE_RESET_PHASE = "IDLE";
           toCall,
           activeOpponents,
         });
-        const decisionAction = String(betDecision?.action ?? "").toLowerCase();
+        const normalizedCpuAction = normalizeCpuAction(betDecision, {
+          phase: "BET",
+          legalActions: legalBetActions,
+          toCall,
+          fixedLimit: true,
+        });
+        const fallbackAction = toCall === 0 ? "check" : "call";
+        const decisionAction = normalizedCpuAction.legal ? normalizedCpuAction.action : fallbackAction;
+        const fallbackReason =
+          normalizedCpuAction.fallbackReason ??
+          betDecision?.fallbackReason ??
+          betDecision?.fallbackReasonCategory ??
+          null;
         const actionPayload = {
           type:
-            decisionAction === "fold" || decisionAction === "raise"
+            decisionAction === "fold" ||
+            decisionAction === "raise" ||
+            decisionAction === "check" ||
+            decisionAction === "call"
               ? decisionAction
-              : toCall === 0
-              ? "check"
-              : "call",
+              : fallbackAction,
           amount:
             decisionAction === "raise"
               ? betSize
               : toCall,
+          action: decisionAction,
+          selectedAction: decisionAction,
+          finalAction: decisionAction,
           __forceInstant: true,
           decisionSource: betDecision?.source ?? "policy-router",
           tierId: betDecision?.tierId ?? activeAiTierConfig?.id,
           decisionReason: betDecision?.reason,
           rawDecisionType: betDecision?.type ?? null,
           rawDecisionAction: betDecision?.action ?? null,
-          adapterMismatch:
+          rawActionSource: normalizedCpuAction.sourceActionField,
+          sourceActionField: normalizedCpuAction.sourceActionField,
+          normalizedAction: normalizedCpuAction.action,
+          normalized: normalizedCpuAction.normalized,
+          normalizationWarnings: normalizedCpuAction.warnings,
+          fallbackReason,
+          fallbackReasonCategory: fallbackReason,
+          legacyTypeAliasNormalized:
+            normalizedCpuAction.sourceActionField === "type" &&
             Boolean(betDecision?.type) &&
-            !Boolean(betDecision?.action) &&
-            activeAiTierConfig?.id === "pro",
+            normalizedCpuAction.legal,
+          adapterMismatch: Boolean(normalizedCpuAction.fallbackReason),
+          illegalActionRejected: normalizedCpuAction.valid && !normalizedCpuAction.legal,
           legalActions: legalBetActions,
           ...badugiValueTelemetry,
         };

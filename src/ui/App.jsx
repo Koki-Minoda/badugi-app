@@ -202,6 +202,40 @@ import { getFixedLimitBetSize } from "../games/badugi/logic/bettingRules.js";
 import { assertNoDuplicateCards } from "../games/badugi/utils/deck.js";
 import { dealInitialHands, validatePreflopState } from "../games/badugi/utils/deckHelpers.js";
 
+function normalizeControllerLegalActionType(action) {
+  return String(typeof action === "string" ? action : action?.type ?? "").toUpperCase();
+}
+
+function buildSafeControllerBetAction({ legalActions = [], currentBet = 0, actorBet = 0 } = {}) {
+  const legal = new Set((legalActions ?? []).map(normalizeControllerLegalActionType).filter(Boolean));
+  const toCall = Math.max(0, Number(currentBet ?? 0) - Number(actorBet ?? 0));
+  if (toCall > 0 && legal.has("CALL")) {
+    return {
+      type: "CALL",
+      amount: toCall,
+      decisionSource: "controller-safe-fallback",
+      fallbackReason: "cpu-action-unavailable",
+    };
+  }
+  if (toCall === 0 && legal.has("CHECK")) {
+    return {
+      type: "CHECK",
+      amount: 0,
+      decisionSource: "controller-safe-fallback",
+      fallbackReason: "cpu-action-unavailable",
+    };
+  }
+  if (legal.has("FOLD")) {
+    return {
+      type: "FOLD",
+      amount: 0,
+      decisionSource: "controller-safe-fallback",
+      fallbackReason: "cpu-action-unavailable",
+    };
+  }
+  return null;
+}
+
 function cloneHandHistory(value) {
   if (value == null) return null;
   try {
@@ -8341,33 +8375,62 @@ const SAFE_RESET_PHASE = "IDLE";
         ) {
           const controller = sessionControllerRef.current;
           const controllerState = sessionControllerStateRef.current;
-          const cpuAction =
-            typeof controller?.getCpuAction === "function"
-              ? controller.getCpuAction(controllerState, activeSeat, {
-                  tierConfig: activeAiTierConfig,
-                })
-              : null;
-          const payload = cpuAction?.payload ?? cpuAction ?? null;
-          const actionType = payload?.type ?? (maxBetThisRound(snap) > (me.betThisRound ?? 0) ? "CALL" : "CHECK");
-          const amount =
-            typeof payload?.amount === "number"
-              ? payload.amount
-              : Math.max(0, maxBetThisRound(snap) - (me.betThisRound ?? 0));
-          const controllerOutcome = tryControllerBetAction({
-            actionType,
-            amount,
-            seatIndex: activeSeat,
-            metadata: payload ?? {},
+          const legalActions =
+            typeof controller?.getLegalActions === "function"
+              ? controller.getLegalActions(controllerState, activeSeat)
+              : [];
+          const currentControllerBet = maxBetThisRound(snap);
+          const actorBet = me.betThisRound ?? me.betThisStreet ?? me.bet ?? 0;
+          const safePayload = buildSafeControllerBetAction({
+            legalActions,
+            currentBet: currentControllerBet,
+            actorBet,
           });
+          let cpuAction = null;
+          try {
+            cpuAction =
+              typeof controller?.getCpuAction === "function"
+                ? controller.getCpuAction(controllerState, activeSeat, {
+                    tierConfig: activeAiTierConfig,
+                  })
+                : null;
+          } catch (error) {
+            console.warn("[CTRL][CPU] getCpuAction failed; using safe controller fallback", error);
+          }
+          const payload = cpuAction?.payload ?? cpuAction ?? safePayload ?? null;
+          const applyControllerPayload = (actionPayload) => {
+            if (!actionPayload?.type) return null;
+            const actionType =
+              actionPayload.type ??
+              (currentControllerBet > actorBet ? "CALL" : "CHECK");
+            const amount =
+              typeof actionPayload.amount === "number"
+                ? actionPayload.amount
+                : Math.max(0, currentControllerBet - actorBet);
+            return tryControllerBetAction({
+              actionType,
+              amount,
+              seatIndex: activeSeat,
+              metadata: actionPayload ?? {},
+            });
+          };
+          let controllerOutcome = applyControllerPayload(payload);
+          if (!controllerOutcome?.snapshot && safePayload && payload !== safePayload) {
+            controllerOutcome = applyControllerPayload(safePayload);
+          }
           if (controllerOutcome?.snapshot) {
             const actorAfter = controllerOutcome.snapshot.players?.[activeSeat] ?? me;
-            betHelpers.logAction?.(activeSeat, actorAfter?.lastAction ?? actionType, { controller: true });
+            betHelpers.logAction?.(
+              activeSeat,
+              actorAfter?.lastAction ?? payload?.type ?? safePayload?.type ?? "CALL",
+              { controller: true },
+            );
             betHelpers.recordActionToLog?.({
               phase: "BET",
               round: betHelpers.currentBetRoundIndex?.() ?? betRoundTracker.current,
               seat: activeSeat,
               playerState: actorAfter,
-              type: actorAfter?.lastAction ?? actionType,
+              type: actorAfter?.lastAction ?? payload?.type ?? safePayload?.type ?? "CALL",
               stackBefore: me.stack,
               stackAfter: actorAfter?.stack ?? me.stack,
               betBefore: me.betThisRound ?? 0,
@@ -8377,6 +8440,16 @@ const SAFE_RESET_PHASE = "IDLE";
             betHelpers.syncLegacyFromControllerSnapshot?.(controllerOutcome.snapshot, {
               seatIndex: activeSeat,
             });
+            return;
+          }
+          if (isSingleTableDrawLowball) {
+            lastControllerActionFailureRef.current = {
+              seat: activeSeat,
+              payload,
+              code: controllerOutcome?.code ?? "controller-cpu-action-rejected",
+              message: controllerOutcome?.message ?? "controller CPU action rejected",
+              events: Array.isArray(controllerOutcome?.events) ? controllerOutcome.events : [],
+            };
             return;
           }
         }

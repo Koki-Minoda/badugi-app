@@ -5,7 +5,12 @@ import { formatStatAf, formatStatPercent } from "../utils/stats.js";
 import { getDisplayCards } from "../utils/cardDisplayOrder.js";
 import { getCpuCharacterByName } from "../../ai/cpuRoster.js";
 
-function BetStatus({ amount, allIn = false, seatIndex = null, compact = false }) {
+function BetStatus({
+  amount,
+  allIn = false,
+  seatIndex = null,
+  compact = false,
+}) {
   const hasBet = Number(amount) > 0;
   if (compact && !hasBet) return null;
   const chipLabel = compact
@@ -19,7 +24,9 @@ function BetStatus({ amount, allIn = false, seatIndex = null, compact = false })
         : "BET";
   return (
     <div
-      data-testid={seatIndex == null ? "player-bet-status" : `seat-${seatIndex}-bet-status`}
+      data-testid={
+        seatIndex == null ? "player-bet-status" : `seat-${seatIndex}-bet-status`
+      }
       className={`${compact ? "mt-0 min-w-[34px] gap-0.5 px-1.5 py-0.5" : "mt-1 min-w-[64px] gap-1.5 px-2.5 py-1"} inline-flex items-center justify-center rounded-full border font-black uppercase tracking-wide ${
         hasBet
           ? "border-amber-200/90 bg-gradient-to-b from-amber-300 to-amber-500 text-slate-950 shadow-[0_3px_0_rgba(120,53,15,0.75)]"
@@ -29,7 +36,11 @@ function BetStatus({ amount, allIn = false, seatIndex = null, compact = false })
     >
       {chipLabel ? <span>{chipLabel}</span> : null}
       <span
-        data-testid={seatIndex == null ? "player-bet-amount" : `seat-${seatIndex}-bet-amount`}
+        data-testid={
+          seatIndex == null
+            ? "player-bet-amount"
+            : `seat-${seatIndex}-bet-amount`
+        }
         data-seat-bet-amount={seatIndex == null ? undefined : seatIndex}
       >
         {amount}
@@ -73,16 +84,23 @@ function StudActionBadge({ lastAction = "" }) {
           : "border-sky-200/80 bg-sky-300/90 text-slate-950"
       }`}
     >
-      {isBringIn ? action.replace(/bring-in/i, "Bring-in") : action.replace(/complete/i, "Complete")}
+      {isBringIn
+        ? action.replace(/bring-in/i, "Bring-in")
+        : action.replace(/complete/i, "Complete")}
     </span>
   );
 }
 
-function getStudCardVisibilityLabel(cardVisibility = [], sourceIndex = 0, isHero = false) {
+function getStudCardVisibilityLabel(
+  cardVisibility = [],
+  sourceIndex = 0,
+  isHero = false,
+) {
   const visibility = cardVisibility[sourceIndex] ?? "down";
   if (visibility === "up") return "VISIBLE";
-  const downOrdinal =
-    cardVisibility.slice(0, sourceIndex + 1).filter((entry) => entry !== "up").length;
+  const downOrdinal = cardVisibility
+    .slice(0, sourceIndex + 1)
+    .filter((entry) => entry !== "up").length;
   if (downOrdinal >= 3) return "7TH DOWN";
   return isHero ? "HOLE" : "DOWN";
 }
@@ -115,7 +133,13 @@ function AvatarImage({ src, initials }) {
   );
 }
 
-function AvatarChip({ avatar, name, isHero = false, isFolded = false, testId }) {
+function AvatarChip({
+  avatar,
+  name,
+  isHero = false,
+  isFolded = false,
+  testId,
+}) {
   const trimmedName = String(name ?? "").trim();
   const initials =
     trimmedName
@@ -148,14 +172,22 @@ function AvatarChip({ avatar, name, isHero = false, isFolded = false, testId }) 
     >
       {shouldRenderAvatarImage ? (
         <AvatarImage src={avatar} initials={initials} />
-      ) : shouldRenderAvatarText ? avatar : initials}
+      ) : shouldRenderAvatarText ? (
+        avatar
+      ) : (
+        initials
+      )}
     </span>
   );
 }
 
 function resolvePlayerAvatarSource(player = {}) {
   const explicitAvatar = player.avatarUrl ?? player.avatar;
-  if (explicitAvatar && explicitAvatar !== "default_avatar" && explicitAvatar !== "default") {
+  if (
+    explicitAvatar &&
+    explicitAvatar !== "default_avatar" &&
+    explicitAvatar !== "default"
+  ) {
     return explicitAvatar;
   }
   if (player.isCPU || player.cpuStyle || player.cpuCharacterId) {
@@ -174,7 +206,9 @@ function HudMetricRing({ label, value }) {
   const degrees = Math.round(numeric * 360);
   return (
     <div className="flex flex-col items-center gap-1">
-      <span className="text-[10px] font-black uppercase tracking-wide text-slate-100">{label}</span>
+      <span className="text-[10px] font-black uppercase tracking-wide text-slate-100">
+        {label}
+      </span>
       <div
         className="grid h-12 w-12 place-items-center rounded-full"
         style={{
@@ -190,14 +224,18 @@ function HudMetricRing({ label, value }) {
 }
 
 function HudBar({ label, value, trailing = null }) {
-  const numeric = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : null;
+  const numeric = Number.isFinite(value)
+    ? Math.max(0, Math.min(1, value))
+    : null;
   return (
     <div className="grid grid-cols-[38px_1fr_42px] items-center gap-2 text-[11px]">
       <span className="font-black uppercase text-slate-200">{label}</span>
       <div className="h-5 overflow-hidden rounded-sm bg-white/12">
         <div
           className="h-full bg-slate-400/80"
-          style={{ width: numeric === null ? "0%" : `${Math.round(numeric * 100)}%` }}
+          style={{
+            width: numeric === null ? "0%" : `${Math.round(numeric * 100)}%`,
+          }}
         />
       </div>
       <span className="text-right font-black text-white">
@@ -207,7 +245,15 @@ function HudBar({ label, value, trailing = null }) {
   );
 }
 
-function PlayerSmartHud({ player, positionLabel, stats, statsLine, stackValue, betValue, statusBadges }) {
+function PlayerSmartHud({
+  player,
+  positionLabel,
+  stats,
+  statsLine,
+  stackValue,
+  betValue,
+  statusBadges,
+}) {
   const [scope, setScope] = useState("all");
   const street = stats?.street ?? {};
   const hands = Number.isFinite(stats?.hands) ? stats.hands : 0;
@@ -223,7 +269,9 @@ function PlayerSmartHud({ player, positionLabel, stats, statsLine, stackValue, b
             isFolded={Boolean(player.folded)}
           />
           <div className="min-w-0">
-            <p className="truncate text-sm font-black text-white">{player.name}</p>
+            <p className="truncate text-sm font-black text-white">
+              {player.name}
+            </p>
             <p className="text-[10px] uppercase tracking-wide text-slate-400">
               {positionLabel ?? "Seat"} · Hands {hands}
             </p>
@@ -254,21 +302,27 @@ function PlayerSmartHud({ player, positionLabel, stats, statsLine, stackValue, b
 
       <div className="grid grid-cols-3 gap-3">
         <div>
-          <p className="mb-1 text-center text-[11px] font-black uppercase text-slate-200">Flop</p>
+          <p className="mb-1 text-center text-[11px] font-black uppercase text-slate-200">
+            Flop
+          </p>
           <HudBar label="CB" value={street.flop?.cb} />
           <HudBar label="FCB" value={street.flop?.fcb} />
           <HudBar label="CCB" value={street.flop?.ccb} />
           <HudBar label="RCB" value={street.flop?.rcb} />
         </div>
         <div>
-          <p className="mb-1 text-center text-[11px] font-black uppercase text-slate-200">Turn</p>
+          <p className="mb-1 text-center text-[11px] font-black uppercase text-slate-200">
+            Turn
+          </p>
           <HudBar label="CB" value={street.turn?.cb} />
           <HudBar label="FCB" value={street.turn?.fcb} />
           <HudBar label="CCB" value={street.turn?.ccb} />
           <HudBar label="RCB" value={street.turn?.rcb} />
         </div>
         <div>
-          <p className="mb-1 text-center text-[11px] font-black uppercase text-slate-200">River</p>
+          <p className="mb-1 text-center text-[11px] font-black uppercase text-slate-200">
+            River
+          </p>
           <HudBar label="WT" value={street.river?.wt} />
           <HudBar label="WSD" value={street.river?.wsd} />
           <HudBar label="TAF" value={street.river?.taf} />
@@ -292,7 +346,9 @@ function PlayerSmartHud({ player, positionLabel, stats, statsLine, stackValue, b
           </p>
         </div>
       </div>
-      <p className="truncate text-[10px] uppercase tracking-wide text-slate-400">{statsLine}</p>
+      <p className="truncate text-[10px] uppercase tracking-wide text-slate-400">
+        {statsLine}
+      </p>
     </div>
   );
 }
@@ -311,6 +367,8 @@ export default function Player({
   compact = false,
   revealMode = false,
   displayVariant = "badugi",
+  layoutProfile,
+  mobileHeroCardOnly = false,
 }) {
   const seatRef = useRef(null);
   const closeTimerRef = useRef(null);
@@ -326,14 +384,25 @@ export default function Player({
   const isHero = index === selfIndex;
   const isActive = turn === index;
   const isFolded = Boolean(player.folded);
+  const isDrawTableMobileLayout =
+    compact &&
+    ["badugi", "draw-lowball-5card"].includes(layoutProfile?.layoutGroup);
+  const useCompactFoldedBadge =
+    isDrawTableMobileLayout &&
+    layoutProfile?.mobilePortrait?.foldedSeatMode === "footer-badge";
   const shouldRevealLarge =
-    revealMode && !compact && !isFolded && (isHero || player.showHand || isWinner);
+    revealMode &&
+    !compact &&
+    !isFolded &&
+    (isHero || player.showHand || isWinner);
   const statusBadges = [];
   if (player.allIn) statusBadges.push("ALL-IN");
   if (isFolded) statusBadges.push(compact ? "MUCK" : "FOLDED");
-  if (player.isBusted || player.seatOut) statusBadges.push(compact ? "OUT" : "BUSTED");
+  if (player.isBusted || player.seatOut)
+    statusBadges.push(compact ? "OUT" : "BUSTED");
   const stackValue = typeof player.stack === "number" ? player.stack : 0;
-  const betValue = typeof player.betThisRound === "number" ? player.betThisRound : 0;
+  const betValue =
+    typeof player.betThisRound === "number" ? player.betThisRound : 0;
   const handCards =
     Array.isArray(player.hand) && player.hand.length > 0
       ? player.hand
@@ -345,7 +414,7 @@ export default function Player({
   const statsLine =
     stats && Number.isFinite(stats.hands) && stats.hands > 0
       ? `VPIP ${formatStatPercent(stats.vpipRate)} / PFR ${formatStatPercent(
-          stats.pfrRate
+          stats.pfrRate,
         )} / AF ${formatStatAf(stats.af)} / H ${stats.hands}`
       : "VPIP -- / PFR -- / ATS -- / 3BET -- / H --";
   const compactStatsLine =
@@ -391,7 +460,8 @@ export default function Player({
     const margin = 12;
     const preferredBelow = rect.bottom + margin;
     const preferredAbove = rect.top - estimatedHeight - margin;
-    const hasRoomBelow = preferredBelow + estimatedHeight <= window.innerHeight - margin;
+    const hasRoomBelow =
+      preferredBelow + estimatedHeight <= window.innerHeight - margin;
     const rawTop = hasRoomBelow ? preferredBelow : preferredAbove;
     const left = Math.min(
       window.innerWidth - width - margin,
@@ -431,11 +501,14 @@ export default function Player({
     }
   };
   const displayCards = getDisplayCards(handCards, { displayVariant });
-  const hasStudVisibility = Array.isArray(player.cardVisibility) && player.cardVisibility.length > 0;
+  const hasStudVisibility =
+    Array.isArray(player.cardVisibility) && player.cardVisibility.length > 0;
   const studVisibleCount = hasStudVisibility
     ? player.cardVisibility.filter((visibility) => visibility === "up").length
     : 0;
-  const studDownCount = hasStudVisibility ? player.cardVisibility.length - studVisibleCount : 0;
+  const studDownCount = hasStudVisibility
+    ? player.cardVisibility.length - studVisibleCount
+    : 0;
   const hasSeventhDownCard = hasStudVisibility && studDownCount >= 3;
 
   const hudOverlay =
@@ -464,269 +537,351 @@ export default function Player({
 
   return (
     <>
-    <div
-      ref={seatRef}
-      data-testid={`seat-${seatIndex}`}
-      tabIndex={0}
-      aria-label={playerDetailTitle}
-      onMouseEnter={openHud}
-      onMouseLeave={scheduleCloseHud}
-      onFocus={openHud}
-      onBlur={scheduleCloseHud}
-      className={`relative overflow-visible rounded-[18px] border shadow-[0_10px_20px_rgba(0,0,0,0.35)] backdrop-blur flex flex-col outline-none transition hover:z-[80] focus:z-[80] focus-within:z-[80] focus-visible:ring-2 focus-visible:ring-sky-300 ${
-        isFolded
-          ? "border-slate-500/25 bg-slate-950/50 grayscale"
-          : isHero
-            ? "border-emerald-200/55 bg-slate-950/94"
-            : "border-cyan-200/24 bg-slate-950/90"
-      } ${isActive ? "ring-2 ring-yellow-300 shadow-[0_0_24px_rgba(250,204,21,0.55)]" : ""} ${
-        isWinner ? "ring-4 ring-emerald-400 animate-pulse" : ""
-      } ${
-        shouldRevealLarge ? "z-[90] scale-[1.06]" : ""
-      } ${
-        compact && isFolded && !isActive && !isHero ? "opacity-60 scale-[0.96]" : ""
-      }`}
-      style={{
-        padding: "var(--player-pad, 10px)",
-        gap: "var(--player-gap, 8px)",
-        ...(compact && !isHero
-          ? {
-              "--card-w": "var(--compact-cpu-card-w, clamp(24px, 4.4dvw, 36px))",
-              "--card-h": "var(--compact-cpu-card-h, clamp(34px, 6.2dvw, 51px))",
-              "--card-font-size": "var(--compact-cpu-card-font-size, clamp(9px, 1.35dvw, 12px))",
-              "--player-card-gap": "var(--compact-cpu-card-gap, clamp(2px, 0.5dvw, 5px))",
-              "--player-card-strip-maxw": "var(--compact-cpu-card-strip-maxw, clamp(124px, 28dvw, 176px))",
-            }
-          : compact && isHero
-          ? {
-              "--card-w": "var(--compact-hero-card-w, clamp(30px, 5.6dvw, 50px))",
-              "--card-h": "var(--compact-hero-card-h, clamp(42px, 7.8dvw, 70px))",
-              "--card-font-size": "var(--compact-hero-card-font-size, clamp(12px, 1.8dvw, 16px))",
-              "--player-card-gap": "var(--compact-hero-card-gap, clamp(3px, 0.6dvw, 6px))",
-              "--player-card-strip-maxw": "var(--compact-hero-card-strip-maxw, clamp(158px, 42dvw, 240px))",
-            }
-          : shouldRevealLarge
-          ? {
-              "--card-w": "calc(var(--card-w, 56px) * 1.12)",
-              "--card-h": "calc(var(--card-h, 78px) * 1.12)",
-              "--card-font-size": "calc(var(--card-font-size, 22px) * 1.06)",
-              "--player-card-strip-maxw": "calc(var(--player-card-strip-maxw, 280px) * 1.12)",
-            }
-          : {}),
-      }}
-    >
       <div
-        className={`pointer-events-none absolute inset-0 rounded-[18px] ${
+        ref={seatRef}
+        data-testid={`seat-${seatIndex}`}
+        tabIndex={0}
+        aria-label={playerDetailTitle}
+        onMouseEnter={openHud}
+        onMouseLeave={scheduleCloseHud}
+        onFocus={openHud}
+        onBlur={scheduleCloseHud}
+        className={`relative overflow-visible rounded-[18px] border shadow-[0_10px_20px_rgba(0,0,0,0.35)] backdrop-blur flex flex-col outline-none transition hover:z-[80] focus:z-[80] focus-within:z-[80] focus-visible:ring-2 focus-visible:ring-sky-300 ${
           isFolded
-            ? "bg-slate-950/35"
+            ? "border-slate-500/25 bg-slate-950/50 grayscale"
             : isHero
-              ? "bg-gradient-to-b from-emerald-300/10 via-transparent to-black/20"
-              : "bg-gradient-to-b from-cyan-300/6 via-transparent to-black/25"
+              ? "border-emerald-200/55 bg-slate-950/94"
+              : "border-cyan-200/24 bg-slate-950/90"
+        } ${isActive ? "ring-2 ring-yellow-300 shadow-[0_0_24px_rgba(250,204,21,0.55)]" : ""} ${
+          isWinner ? "ring-4 ring-emerald-400 animate-pulse" : ""
+        } ${shouldRevealLarge ? "z-[90] scale-[1.06]" : ""} ${
+          compact && isFolded && !isActive && !isHero
+            ? isDrawTableMobileLayout
+              ? "opacity-55 scale-[0.92]"
+              : "opacity-60 scale-[0.96]"
+            : ""
         }`}
-      />
-      <div className="relative z-10 flex items-start justify-between gap-2">
-        <div className="min-w-0 flex items-center gap-2 text-white font-semibold">
-          <AvatarChip
-            avatar={avatarSource}
-            name={player.name}
-            isHero={isHero}
-            isFolded={isFolded}
-            testId={`seat-${seatIndex}-avatar`}
-          />
-          <div className="min-w-0 leading-tight">
-            <div className="flex items-center gap-1 flex-wrap">
-              {positionLabel && (
-                <span data-testid={`seat-${seatIndex}-pos`}>
-                  <StatusPill label={positionLabel} tone="slate" />
-                </span>
-              )}
-              <span
-                className="truncate"
-                style={{
-                  fontSize: "var(--player-name-size, 14px)",
-                  maxWidth: "var(--player-name-maxw, 150px)",
-                }}
-              >
-                {player.name}
-              </span>
-              {index === dealerIdx && (
-                <StatusPill label="D" tone="yellow" />
-              )}
-            </div>
-            {player.titleBadge && !compact && (
-              <div
-                className="uppercase tracking-wide text-emerald-300"
-                style={{ fontSize: "var(--player-meta-size, 10px)" }}
-              >
-                {player.titleBadge}
-              </div>
-            )}
-            {statusBadges.length > 0 && !(compact && !isActive && !isHero) && (
-              <div className="mt-1 flex flex-wrap gap-1">
-                {statusBadges.map((badge) => (
-                  <StatusPill
-                    key={badge}
-                    label={badge}
-                    tone={badge === "ALL-IN" ? "purple" : badge === "FOLDED" || badge === "MUCK" ? "folded" : "slate"}
-                  />
-                ))}
-              </div>
-            )}
-            {hasStudVisibility && (
-              <div
-                data-testid={`seat-${seatIndex}-stud-summary`}
-                className="mt-1 flex flex-wrap items-center gap-1 text-[9px] font-black uppercase tracking-wide text-slate-300"
-              >
-                <span className="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-1.5 py-0.5 text-emerald-100">
-                  Visible {studVisibleCount}
-                </span>
-                <span className="rounded-full border border-slate-400/30 bg-slate-800/70 px-1.5 py-0.5 text-slate-100">
-                  Down {studDownCount}
-                </span>
-                {hasSeventhDownCard && (
-                  <span className="rounded-full border border-violet-300/40 bg-violet-400/15 px-1.5 py-0.5 text-violet-100">
-                    7th down
+        style={{
+          padding: "var(--player-pad, 10px)",
+          gap: "var(--player-gap, 8px)",
+          ...(isDrawTableMobileLayout && !isHero
+            ? {
+                width: isFolded
+                  ? "var(--compact-folded-player-w, clamp(76px, 24dvw, 102px))"
+                  : "var(--compact-player-w, clamp(90px, 28dvw, 118px))",
+                maxWidth: "100%",
+              }
+            : {}),
+          ...(mobileHeroCardOnly
+            ? {
+                width: "fit-content",
+                maxWidth:
+                  "min(100%, var(--compact-hero-card-strip-maxw, 180px))",
+                marginInline: "auto",
+                borderColor: "rgba(255,255,255,0.12)",
+                background: "rgba(2, 44, 18, 0.48)",
+                boxShadow: "0 10px 26px rgba(0,0,0,0.28)",
+              }
+            : {}),
+          ...(compact && !isHero
+            ? {
+                "--card-w": isDrawTableMobileLayout
+                  ? "var(--compact-cpu-card-w, clamp(16px, 4.8dvw, 22px))"
+                  : "var(--compact-cpu-card-w, clamp(24px, 4.4dvw, 36px))",
+                "--card-h": isDrawTableMobileLayout
+                  ? "var(--compact-cpu-card-h, clamp(22px, 6.8dvw, 31px))"
+                  : "var(--compact-cpu-card-h, clamp(34px, 6.2dvw, 51px))",
+                "--card-font-size": isDrawTableMobileLayout
+                  ? "var(--compact-cpu-card-font-size, clamp(7px, 1.4dvw, 9px))"
+                  : "var(--compact-cpu-card-font-size, clamp(9px, 1.35dvw, 12px))",
+                "--player-card-gap": isDrawTableMobileLayout
+                  ? "var(--compact-cpu-card-gap, 2px)"
+                  : "var(--compact-cpu-card-gap, clamp(2px, 0.5dvw, 5px))",
+                "--player-card-strip-maxw": isDrawTableMobileLayout
+                  ? "var(--compact-cpu-card-strip-maxw, clamp(86px, 28dvw, 112px))"
+                  : "var(--compact-cpu-card-strip-maxw, clamp(124px, 28dvw, 176px))",
+              }
+            : compact && isHero
+              ? {
+                  "--card-w": isDrawTableMobileLayout
+                    ? "var(--compact-hero-card-w, clamp(22px, 6.4dvw, 34px))"
+                    : "var(--compact-hero-card-w, clamp(30px, 5.6dvw, 50px))",
+                  "--card-h": isDrawTableMobileLayout
+                    ? "var(--compact-hero-card-h, clamp(31px, 9dvw, 48px))"
+                    : "var(--compact-hero-card-h, clamp(42px, 7.8dvw, 70px))",
+                  "--card-font-size": isDrawTableMobileLayout
+                    ? "var(--compact-hero-card-font-size, clamp(8px, 1.7dvw, 11px))"
+                    : "var(--compact-hero-card-font-size, clamp(12px, 1.8dvw, 16px))",
+                  "--player-card-gap": isDrawTableMobileLayout
+                    ? "var(--compact-hero-card-gap, 2px)"
+                    : "var(--compact-hero-card-gap, clamp(3px, 0.6dvw, 6px))",
+                  "--player-card-strip-maxw": isDrawTableMobileLayout
+                    ? "var(--compact-hero-card-strip-maxw, clamp(108px, 38dvw, 162px))"
+                    : "var(--compact-hero-card-strip-maxw, clamp(158px, 42dvw, 240px))",
+                }
+              : shouldRevealLarge
+                ? {
+                    "--card-w": "calc(var(--card-w, 56px) * 1.12)",
+                    "--card-h": "calc(var(--card-h, 78px) * 1.12)",
+                    "--card-font-size":
+                      "calc(var(--card-font-size, 22px) * 1.06)",
+                    "--player-card-strip-maxw":
+                      "calc(var(--player-card-strip-maxw, 280px) * 1.12)",
+                  }
+                : {}),
+        }}
+      >
+        <div
+          className={`pointer-events-none absolute inset-0 rounded-[18px] ${
+            isFolded
+              ? "bg-slate-950/35"
+              : isHero
+                ? "bg-gradient-to-b from-emerald-300/10 via-transparent to-black/20"
+                : "bg-gradient-to-b from-cyan-300/6 via-transparent to-black/25"
+          }`}
+        />
+        {!mobileHeroCardOnly && (
+          <div
+            className={`relative z-10 flex items-start justify-between ${isDrawTableMobileLayout ? "gap-1" : "gap-2"}`}
+          >
+            <div
+              className={`min-w-0 flex items-center text-white font-semibold ${isDrawTableMobileLayout ? "gap-1" : "gap-2"}`}
+            >
+              <AvatarChip
+                avatar={avatarSource}
+                name={player.name}
+                isHero={isHero}
+                isFolded={isFolded}
+                testId={`seat-${seatIndex}-avatar`}
+              />
+              <div className="min-w-0 leading-tight">
+                <div
+                  className={`flex items-center gap-1 ${isDrawTableMobileLayout ? "flex-nowrap" : "flex-wrap"}`}
+                >
+                  {positionLabel && (
+                    <span data-testid={`seat-${seatIndex}-pos`}>
+                      <StatusPill label={positionLabel} tone="slate" />
+                    </span>
+                  )}
+                  <span
+                    className="truncate"
+                    style={{
+                      fontSize: "var(--player-name-size, 14px)",
+                      maxWidth: "var(--player-name-maxw, 150px)",
+                    }}
+                  >
+                    {player.name}
                   </span>
+                  {index === dealerIdx && (
+                    <StatusPill label="D" tone="yellow" />
+                  )}
+                </div>
+                {player.titleBadge && !compact && (
+                  <div
+                    className="uppercase tracking-wide text-emerald-300"
+                    style={{ fontSize: "var(--player-meta-size, 10px)" }}
+                  >
+                    {player.titleBadge}
+                  </div>
+                )}
+                {statusBadges.length > 0 &&
+                  !(compact && !isActive && !isHero) &&
+                  !useCompactFoldedBadge && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {statusBadges.map((badge) => (
+                        <StatusPill
+                          key={badge}
+                          label={badge}
+                          tone={
+                            badge === "ALL-IN"
+                              ? "purple"
+                              : badge === "FOLDED" || badge === "MUCK"
+                                ? "folded"
+                                : "slate"
+                          }
+                        />
+                      ))}
+                    </div>
+                  )}
+                {hasStudVisibility && (
+                  <div
+                    data-testid={`seat-${seatIndex}-stud-summary`}
+                    className="mt-1 flex flex-wrap items-center gap-1 text-[9px] font-black uppercase tracking-wide text-slate-300"
+                  >
+                    <span className="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-1.5 py-0.5 text-emerald-100">
+                      Visible {studVisibleCount}
+                    </span>
+                    <span className="rounded-full border border-slate-400/30 bg-slate-800/70 px-1.5 py-0.5 text-slate-100">
+                      Down {studDownCount}
+                    </span>
+                    {hasSeventhDownCard && (
+                      <span className="rounded-full border border-violet-300/40 bg-violet-400/15 px-1.5 py-0.5 text-violet-100">
+                        7th down
+                      </span>
+                    )}
+                  </div>
+                )}
+                {!compact && (
+                  <div
+                    className="uppercase tracking-wide text-slate-300 truncate"
+                    style={{
+                      fontSize: "var(--player-meta-size, 10px)",
+                      maxWidth: "var(--player-card-strip-maxw, 240px)",
+                    }}
+                    title={statsLine}
+                  >
+                    {compactStatsLine}
+                  </div>
                 )}
               </div>
-            )}
-            {!compact && (
-              <div
-              className="uppercase tracking-wide text-slate-300 truncate"
-              style={{
-                fontSize: "var(--player-meta-size, 10px)",
-                maxWidth: "var(--player-card-strip-maxw, 240px)",
-              }}
-              title={statsLine}
-            >
-              {compactStatsLine}
-              </div>
-            )}
-          </div>
-        </div>
-        <div
-          className="shrink-0 text-right text-slate-200 leading-tight"
-          style={{ fontSize: "var(--player-stack-size, 11px)" }}
-        >
-          <div className="rounded-full border border-white/10 bg-black/45 px-2 py-1 font-semibold">
-            <span className="text-slate-400">Stack</span>{" "}
-            <span className="text-white">{stackValue}</span>
-          </div>
-          <BetStatus amount={betValue} allIn={player.allIn} seatIndex={seatIndex} compact={compact} />
-          {isActive && (
-            <div
-              className="text-lime-300 font-bold mt-1"
-              style={{ fontSize: "var(--player-action-size, 11px)" }}
-            >
-              {compact ? "ACT" : "ACTING"}
             </div>
-          )}
-        </div>
-      </div>
-
-      {!compact && (
-        <div
-          className="relative z-10 flex items-center text-slate-200 italic"
-          style={{
-            fontSize: "var(--player-stack-size, 11px)",
-            minHeight: "var(--player-action-min-h, 18px)",
-          }}
-        >
-          {player.lastAction ? `[${player.lastAction}]` : "\u00A0"}
-          {hasStudVisibility && (
-            <span className="ml-2">
-              <StudActionBadge lastAction={player.lastAction} />
-            </span>
-          )}
-        </div>
-      )}
-
-      {isFolded ? (
-        <div
-          data-testid={`player-${index}-mucked`}
-          className={`relative z-10 flex w-full items-center justify-center rounded-xl border border-slate-500/25 bg-slate-950/65 px-3 font-black uppercase text-slate-400 ${
-            compact
-              ? "min-h-[calc(var(--card-h,56px)*0.52)] text-[8px] tracking-[0.14em]"
-              : "min-h-[calc(var(--card-h,56px)*0.72)] text-[11px] tracking-[0.22em]"
-          }`}
-        >
-          {compact ? "Mucked" : "Folded - mucked"}
-        </div>
-      ) : (
-        <div
-          className="relative z-10 grid w-full mx-auto justify-items-center"
-          style={{
-            gap: "var(--player-card-gap, 8px)",
-            maxWidth: "var(--player-card-strip-maxw, 280px)",
-            gridTemplateColumns: `repeat(${Math.max(1, displayCards.length || 4)}, minmax(0, 1fr))`,
-          }}
-        >
-          {displayCards.map(({ card, sourceIndex }) => {
-            const visibility = hasStudVisibility
-              ? player.cardVisibility?.[sourceIndex] ?? "down"
-              : player.showHand || isHero
-                ? "up"
-                : "down";
-            const isPublicCard = hasStudVisibility && visibility === "up";
-            const isHiddenFromHero = !isHero && !player.showHand && !isPublicCard;
-            const isStudDownCard = hasStudVisibility && !isPublicCard;
-            const visibilityLabel = hasStudVisibility
-              ? getStudCardVisibilityLabel(player.cardVisibility, sourceIndex, isHero)
-              : "";
-            return (
-              <div
-                key={`${card}-${sourceIndex}`}
-                className={`flex min-w-0 flex-col items-center gap-0.5 ${
-                  hasStudVisibility
-                    ? isPublicCard
-                      ? "-translate-y-2"
-                      : "translate-y-1"
-                    : ""
-                }`}
-                data-testid={
-                  hasStudVisibility
-                    ? `player-${index}-card-${sourceIndex}-${isPublicCard ? "up" : "down"}-slot`
-                    : undefined
-                }
-              >
+            <div
+              className="shrink-0 text-right text-slate-200 leading-tight"
+              style={{ fontSize: "var(--player-stack-size, 11px)" }}
+            >
+              <div className="rounded-full border border-white/10 bg-black/45 px-2 py-1 font-semibold">
+                {!isDrawTableMobileLayout && (
+                  <>
+                    <span className="text-slate-400">Stack</span>{" "}
+                  </>
+                )}
+                <span className="text-white">{stackValue}</span>
+              </div>
+              <BetStatus
+                amount={betValue}
+                allIn={player.allIn}
+                seatIndex={seatIndex}
+                compact={compact}
+              />
+              {isActive && (
                 <div
-                  className={`rounded-xl ${
+                  className="text-lime-300 font-bold mt-1"
+                  style={{ fontSize: "var(--player-action-size, 11px)" }}
+                >
+                  {compact ? "ACT" : "ACTING"}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {!compact && (
+          <div
+            className="relative z-10 flex items-center text-slate-200 italic"
+            style={{
+              fontSize: "var(--player-stack-size, 11px)",
+              minHeight: "var(--player-action-min-h, 18px)",
+            }}
+          >
+            {player.lastAction ? `[${player.lastAction}]` : "\u00A0"}
+            {hasStudVisibility && (
+              <span className="ml-2">
+                <StudActionBadge lastAction={player.lastAction} />
+              </span>
+            )}
+          </div>
+        )}
+
+        {isFolded ? (
+          <div
+            data-testid={`player-${index}-mucked`}
+            className={`relative z-10 flex items-center justify-center rounded-xl border border-slate-500/25 bg-slate-950/65 font-black uppercase text-slate-400 ${
+              useCompactFoldedBadge
+                ? "mx-auto min-h-[18px] w-auto max-w-full px-2 py-0.5 text-[7px] leading-none tracking-[0.12em]"
+                : compact
+                  ? "w-full min-h-[calc(var(--card-h,56px)*0.52)] px-3 text-[8px] tracking-[0.14em]"
+                  : "w-full min-h-[calc(var(--card-h,56px)*0.72)] px-3 text-[11px] tracking-[0.22em]"
+            }`}
+          >
+            {useCompactFoldedBadge
+              ? "Folded"
+              : compact
+                ? "Mucked"
+                : "Folded - mucked"}
+          </div>
+        ) : (
+          <div
+            data-testid={`player-${index}-card-row`}
+            className="relative z-10 grid w-full mx-auto justify-items-center"
+            style={{
+              gap: "var(--player-card-gap, 8px)",
+              maxWidth: "var(--player-card-strip-maxw, 280px)",
+              gridTemplateColumns: `repeat(${Math.max(1, displayCards.length || 4)}, minmax(0, 1fr))`,
+            }}
+          >
+            {displayCards.map(({ card, sourceIndex }) => {
+              const visibility = hasStudVisibility
+                ? (player.cardVisibility?.[sourceIndex] ?? "down")
+                : player.showHand || isHero
+                  ? "up"
+                  : "down";
+              const isPublicCard = hasStudVisibility && visibility === "up";
+              const isHiddenFromHero =
+                !isHero && !player.showHand && !isPublicCard;
+              const isStudDownCard = hasStudVisibility && !isPublicCard;
+              const visibilityLabel = hasStudVisibility
+                ? getStudCardVisibilityLabel(
+                    player.cardVisibility,
+                    sourceIndex,
+                    isHero,
+                  )
+                : "";
+              return (
+                <div
+                  key={`${card}-${sourceIndex}`}
+                  className={`flex min-w-0 flex-col items-center gap-0.5 ${
                     hasStudVisibility
                       ? isPublicCard
-                        ? "ring-2 ring-emerald-300/70 shadow-[0_0_14px_rgba(52,211,153,0.35)]"
-                        : "ring-1 ring-slate-500/70 shadow-[0_0_10px_rgba(15,23,42,0.45)]"
+                        ? "-translate-y-2"
+                        : "translate-y-1"
                       : ""
                   }`}
+                  data-testid={
+                    hasStudVisibility
+                      ? `player-${index}-card-${sourceIndex}-${isPublicCard ? "up" : "down"}-slot`
+                      : undefined
+                  }
                 >
-                  <Card
-                    value={card}
-                    hidden={isHiddenFromHero}
-                    selected={isHero && (player.selected || []).includes(sourceIndex)}
-                    onClick={() => handleCardClick(sourceIndex)}
-                    folded={isFolded}
-                    studDown={isStudDownCard && !isHiddenFromHero}
-                    data-testid={`player-${index}-card-${sourceIndex}`}
-                  />
-                </div>
-                {hasStudVisibility && (
-                  <span
-                    data-testid={`player-${index}-card-${sourceIndex}-visibility`}
-                    className={`rounded-full px-1.5 py-0.5 text-[8px] font-black uppercase leading-none ${
-                      isPublicCard
-                        ? "bg-emerald-400/20 text-emerald-100"
-                        : "bg-slate-700/70 text-slate-200"
+                  <div
+                    className={`rounded-xl ${
+                      hasStudVisibility
+                        ? isPublicCard
+                          ? "ring-2 ring-emerald-300/70 shadow-[0_0_14px_rgba(52,211,153,0.35)]"
+                          : "ring-1 ring-slate-500/70 shadow-[0_0_10px_rgba(15,23,42,0.45)]"
+                        : ""
                     }`}
                   >
-                    {visibilityLabel}
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-    {hudOverlay}
+                    <Card
+                      value={card}
+                      hidden={isHiddenFromHero}
+                      selected={
+                        isHero && (player.selected || []).includes(sourceIndex)
+                      }
+                      onClick={() => handleCardClick(sourceIndex)}
+                      folded={isFolded}
+                      studDown={isStudDownCard && !isHiddenFromHero}
+                      data-testid={`player-${index}-card-${sourceIndex}`}
+                    />
+                  </div>
+                  {hasStudVisibility && (
+                    <span
+                      data-testid={`player-${index}-card-${sourceIndex}-visibility`}
+                      className={`rounded-full px-1.5 py-0.5 text-[8px] font-black uppercase leading-none ${
+                        isPublicCard
+                          ? "bg-emerald-400/20 text-emerald-100"
+                          : "bg-slate-700/70 text-slate-200"
+                      }`}
+                    >
+                      {visibilityLabel}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      {hudOverlay}
     </>
   );
 }

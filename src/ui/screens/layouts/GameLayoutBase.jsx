@@ -12,6 +12,10 @@ import HeroBustOverlay from "../../components/HeroBustOverlay.jsx";
 import TournamentResultOverlay from "../../components/TournamentResultOverlay.jsx";
 import TournamentEliminatedRail from "../../components/TournamentEliminatedRail.jsx";
 import useCardScaleVars from "../../hooks/useCardScaleVars.js";
+import {
+  LAYOUT_GROUPS,
+  getVariantLayoutProfile,
+} from "../../game/layoutGroups.js";
 
 const MOBILE_SEAT_GRID_AREA = {
   0: "hero",
@@ -147,6 +151,7 @@ export default function GameLayoutBase({
     boardCards = [],
     streetLabel = "",
     gameVariant = "badugi",
+    layoutProfile,
     eliminatedRailEntries = [],
   } = tableProps;
 
@@ -197,18 +202,35 @@ export default function GameLayoutBase({
   const isMobilePortraitMode = mobileLayoutMode === "mobile-portrait";
   const isMobileLandscapeMode = mobileLayoutMode === "mobile-landscape";
   const isMobilePortraitTournament = isMobileTournament && isMobilePortraitMode;
-  const isMobileLandscapeTournament = isMobileTournament && isMobileLandscapeMode;
+  const isMobileLandscapeTournament =
+    isMobileTournament && isMobileLandscapeMode;
+  const tableLayoutProfile =
+    layoutProfile ?? getVariantLayoutProfile(gameVariant);
+  const tableLayoutGroup =
+    tableLayoutProfile?.layoutGroup ?? LAYOUT_GROUPS.DEFAULT;
+  const mobilePortraitProfile = tableLayoutProfile?.mobilePortrait ?? {};
+  const isPortraitDrawTable =
+    isMobilePortraitMode &&
+    (tableLayoutGroup === LAYOUT_GROUPS.BADUGI ||
+      tableLayoutGroup === LAYOUT_GROUPS.DRAW_LOWBALL_5CARD);
+  const isFiveCardDrawLayout =
+    tableLayoutGroup === LAYOUT_GROUPS.DRAW_LOWBALL_5CARD;
+  const useRailPhasePanel = isPortraitDrawTable;
+  const useDenseActionPanel = isMobileTournament || isPortraitDrawTable;
   const renderedTournamentHud =
     isMobileTournament && React.isValidElement(tournamentHud)
       ? React.cloneElement(tournamentHud, { mobileCompact: true })
       : tournamentHud;
-  const normalizedTablePhase = String(tablePhase ?? phase ?? "BET").toUpperCase();
+  const normalizedTablePhase = String(
+    tablePhase ?? phase ?? "BET",
+  ).toUpperCase();
   const displayPhase =
-    normalizedTablePhase === "DRAWING"
-      ? "DRAW"
-      : normalizedTablePhase || "BET";
+    normalizedTablePhase === "DRAWING" ? "DRAW" : normalizedTablePhase || "BET";
   const isDrawDisplayPhase = displayPhase === "DRAW";
-  const maxDrawsForDisplay = Math.max(1, Number(tableSummaryProps?.maxDraws) || 3);
+  const maxDrawsForDisplay = Math.max(
+    1,
+    Number(tableSummaryProps?.maxDraws) || 3,
+  );
   const drawNumberForDisplay = Math.min(
     maxDrawsForDisplay,
     Math.max(
@@ -218,8 +240,31 @@ export default function GameLayoutBase({
         : (Number(drawRoundValue) || 0) + 1,
     ),
   );
-  const betRoundNumberForDisplay = Math.max(1, (Number(betRoundValue) || 0) + 1);
+  const betRoundNumberForDisplay = Math.max(
+    1,
+    (Number(betRoundValue) || 0) + 1,
+  );
   const phaseCompactText = `${displayPhase} | D${drawNumberForDisplay} | R${betRoundNumberForDisplay}`;
+  const phasePrimaryText = displayPhase;
+  const phaseSecondaryText = `R${betRoundNumberForDisplay}`;
+  const drawRailItems = [
+    { key: "R1", label: `R${betRoundNumberForDisplay}`, value: displayPhase },
+    {
+      key: "D1",
+      label: "D1",
+      value: drawNumberForDisplay >= 1 && isDrawDisplayPhase ? "DRAW" : "--",
+    },
+    {
+      key: "D2",
+      label: "D2",
+      value: drawNumberForDisplay >= 2 && isDrawDisplayPhase ? "DRAW" : "--",
+    },
+    {
+      key: "D3",
+      label: "D3",
+      value: drawNumberForDisplay >= 3 && isDrawDisplayPhase ? "DRAW" : "--",
+    },
+  ];
   const phaseAccentClass = isDrawDisplayPhase
     ? "border-red-300/55 bg-red-950/85 text-red-50 shadow-[0_0_18px_rgba(248,113,113,0.24)]"
     : displayPhase === "SHOWDOWN"
@@ -247,13 +292,14 @@ export default function GameLayoutBase({
     : isTournament
       ? "h-screen overflow-hidden"
       : "mt-20";
-  const rootSizingClass = !isMobileLayout && isTournament && !disableVh
-    ? "h-screen overflow-hidden"
-    : isMobileLayout
+  const rootSizingClass =
+    !isMobileLayout && isTournament && !disableVh
       ? "h-screen overflow-hidden"
-    : disableVh
-      ? "h-auto"
-      : "min-h-screen";
+      : isMobileLayout
+        ? "h-screen overflow-hidden"
+        : disableVh
+          ? "h-auto"
+          : "min-h-screen";
   const layoutRootRef = useRef(null);
   const cardScaleVars = useCardScaleVars(layoutRootRef);
   useEffect(() => {
@@ -274,8 +320,14 @@ export default function GameLayoutBase({
           ? previous
           : { width, height },
       );
-      document.documentElement.style.setProperty("--mgx-visual-vh", `${height}px`);
-      document.documentElement.style.setProperty("--mgx-visual-vw", `${width}px`);
+      document.documentElement.style.setProperty(
+        "--mgx-visual-vh",
+        `${height}px`,
+      );
+      document.documentElement.style.setProperty(
+        "--mgx-visual-vw",
+        `${width}px`,
+      );
       root?.style?.setProperty?.("--mgx-visual-vh", `${height}px`);
       root?.style?.setProperty?.("--mgx-visual-vw", `${width}px`);
     };
@@ -310,7 +362,9 @@ export default function GameLayoutBase({
     isMobileLayout && isMobilePortraitMode
       ? {
           ...MOBILE_TABLE_GRID_STYLE,
-          gridTemplateRows: "minmax(0, 0.86fr) minmax(0, 0.9fr) minmax(0, 1.14fr)",
+          gridTemplateRows:
+            mobilePortraitProfile.tableRows ??
+            "minmax(0, 0.86fr) minmax(0, 0.9fr) minmax(0, 1.14fr)",
         }
       : MOBILE_TABLE_GRID_STYLE;
   const rootStyle = isMobileLayout
@@ -349,7 +403,8 @@ export default function GameLayoutBase({
                     "--compact-cpu-card-h": "clamp(22px, 8.4dvh, 36px)",
                     "--compact-cpu-card-font-size": "clamp(7px, 1.8dvh, 10px)",
                     "--compact-cpu-card-gap": "clamp(1px, 0.45dvh, 2px)",
-                    "--compact-cpu-card-strip-maxw": "clamp(76px, 22dvw, 118px)",
+                    "--compact-cpu-card-strip-maxw":
+                      "clamp(76px, 22dvw, 118px)",
                     "--player-avatar-size": "clamp(17px, 4.6dvh, 25px)",
                     "--player-name-size": "clamp(8px, 2dvh, 11px)",
                     "--player-stack-size": "clamp(7px, 1.7dvh, 9px)",
@@ -364,6 +419,54 @@ export default function GameLayoutBase({
               "--compact-hero-card-font-size": "clamp(10px, 2.6dvh, 14px)",
               "--compact-hero-card-gap": "clamp(1px, 0.6dvh, 4px)",
               "--compact-hero-card-strip-maxw": "clamp(112px, 34dvw, 190px)",
+            }
+          : {}),
+        ...(isPortraitDrawTable
+          ? {
+              "--card-w": isFiveCardDrawLayout
+                ? "clamp(18px, 5.7dvh, 27px)"
+                : "clamp(21px, 6.4dvh, 31px)",
+              "--card-h": isFiveCardDrawLayout
+                ? "clamp(25px, 8dvh, 38px)"
+                : "clamp(30px, 9dvh, 44px)",
+              "--card-font-size": isFiveCardDrawLayout
+                ? "clamp(7px, 1.9dvh, 10px)"
+                : "clamp(8px, 2.1dvh, 11px)",
+              "--card-center-size": "clamp(16px, 4.8dvh, 24px)",
+              "--player-pad": "clamp(2px, 0.7dvh, 4px)",
+              "--player-gap": "clamp(1px, 0.5dvh, 3px)",
+              "--player-avatar-size": "clamp(14px, 3.7dvh, 20px)",
+              "--player-avatar-font-size": "clamp(7px, 1.6dvh, 9px)",
+              "--player-name-size": "clamp(8px, 1.9dvh, 10px)",
+              "--player-meta-size": "clamp(6px, 1.5dvh, 7px)",
+              "--player-stack-size": "clamp(7px, 1.7dvh, 9px)",
+              "--player-action-size": "clamp(6px, 1.55dvh, 8px)",
+              "--player-card-gap": "clamp(1px, 0.35dvh, 2px)",
+              "--player-card-strip-maxw":
+                mobilePortraitProfile.cpuCardStripMaxWidth,
+              "--player-name-maxw": isFiveCardDrawLayout
+                ? "clamp(42px, 12dvw, 68px)"
+                : "clamp(48px, 13dvw, 76px)",
+              "--compact-player-w": mobilePortraitProfile.playerWidth,
+              "--compact-folded-player-w":
+                mobilePortraitProfile.foldedPlayerWidth,
+              "--compact-cpu-card-w": mobilePortraitProfile.cpuCardWidth,
+              "--compact-cpu-card-h": mobilePortraitProfile.cpuCardHeight,
+              "--compact-cpu-card-font-size": isFiveCardDrawLayout
+                ? "clamp(6px, 1.45dvh, 8px)"
+                : "clamp(7px, 1.65dvh, 9px)",
+              "--compact-cpu-card-gap": "clamp(1px, 0.35dvh, 2px)",
+              "--compact-cpu-card-strip-maxw":
+                mobilePortraitProfile.cpuCardStripMaxWidth,
+              "--compact-hero-card-w": mobilePortraitProfile.heroCardWidth,
+              "--compact-hero-card-h": mobilePortraitProfile.heroCardHeight,
+              "--compact-hero-card-font-size": isFiveCardDrawLayout
+                ? "clamp(8px, 2dvh, 11px)"
+                : "clamp(9px, 2.2dvh, 12px)",
+              "--compact-hero-card-gap": "clamp(1px, 0.45dvh, 3px)",
+              "--compact-hero-card-strip-maxw":
+                mobilePortraitProfile.heroCardStripMaxWidth,
+              "--player-bet-minw": "clamp(30px, 8dvw, 42px)",
             }
           : {}),
         height: disableVh ? "100vh" : "var(--mgx-visual-vh, 100dvh)",
@@ -429,6 +532,7 @@ export default function GameLayoutBase({
     <div
       ref={layoutRootRef}
       data-layout-mode={mobileLayoutMode}
+      data-layout-group={tableLayoutGroup}
       data-phase-tone={phaseTone ?? (isDrawDisplayPhase ? "draw" : "bet")}
       className={`flex flex-col ${rootSizingClass} ${mobileViewportClass} ${
         isMobileTournament ? "mgx-mobile-tournament" : ""
@@ -440,16 +544,18 @@ export default function GameLayoutBase({
           isMobileLayout ? "hidden" : "flex"
         } flex-col gap-3 bg-gray-900/95 backdrop-blur-md shadow-md ${
           disableFixed ? "relative" : "fixed top-0 left-0 right-0"
-        } z-50 ${
-          isMobileLayout ? "px-4 py-2" : "px-6 py-3"
-        }`}
+        } z-50 ${isMobileLayout ? "px-4 py-2" : "px-6 py-3"}`}
       >
         <div
           className={`flex items-center ${
             isMobileLayout ? "justify-between" : "justify-between gap-6"
           }`}
         >
-          <h1 className={`font-bold ${isMobileLayout ? "text-xl" : "text-2xl"}`}>{gameTitle}</h1>
+          <h1
+            className={`font-bold ${isMobileLayout ? "text-xl" : "text-2xl"}`}
+          >
+            {gameTitle}
+          </h1>
           <div
             className={`flex ${
               isMobileLayout
@@ -470,7 +576,8 @@ export default function GameLayoutBase({
             </div>
             {!isMobileLayout && (
               <div className="text-[11px] text-slate-300">
-                {labels.skill ?? "Skill"} {Math.round(ratingState.skillRating ?? 1500)} |{" "}
+                {labels.skill ?? "Skill"}{" "}
+                {Math.round(ratingState.skillRating ?? 1500)} |{" "}
                 {labels.mixed ?? "Mixed"}{" "}
                 {Math.round(ratingState.mixedRating ?? 1500)}
               </div>
@@ -478,7 +585,9 @@ export default function GameLayoutBase({
             <button
               onClick={onNavigateLeaderboard}
               className={`rounded-full border border-white/30 font-semibold uppercase tracking-wide transition ${
-                isMobileLayout ? "px-2 py-1 text-[10px]" : "px-3 py-1 text-[11px]"
+                isMobileLayout
+                  ? "px-2 py-1 text-[10px]"
+                  : "px-3 py-1 text-[11px]"
               }`}
             >
               {labels.leaderboard ?? "Leaderboard"}
@@ -490,24 +599,35 @@ export default function GameLayoutBase({
             isMobileLayout ? "gap-2 text-[11px] overflow-x-auto" : "gap-4"
           }`}
         >
-          <button type="button" onClick={onNavigateTitle} className="hover:text-yellow-400 transition">
+          <button
+            type="button"
+            onClick={onNavigateTitle}
+            className="hover:text-yellow-400 transition"
+          >
             {labels.mainMenu ?? "Title"}
           </button>
-          <button onClick={onNavigateSettings} className="hover:text-yellow-400 transition">
+          <button
+            onClick={onNavigateSettings}
+            className="hover:text-yellow-400 transition"
+          >
             {labels.settings ?? "Settings"}
           </button>
-          <button onClick={onNavigateProfile} className="hover:text-yellow-400 transition">
+          <button
+            onClick={onNavigateProfile}
+            className="hover:text-yellow-400 transition"
+          >
             {labels.profile ?? "Profile"}
           </button>
-          <button onClick={onNavigateHistory} className="hover:text-yellow-400 transition">
+          <button
+            onClick={onNavigateHistory}
+            className="hover:text-yellow-400 transition"
+          >
             {labels.history ?? "History"}
           </button>
         </nav>
       </header>
 
-      <main
-        className={`flex-1 ${mainLayoutClass} relative ${tableOuterBg}`}
-      >
+      <main className={`flex-1 ${mainLayoutClass} relative ${tableOuterBg}`}>
         {showDesktopSidePanel && (
           <div className="absolute top-5 left-5 z-40 flex w-[250px] flex-col gap-3 pointer-events-none">
             <div className="pointer-events-auto rounded-2xl border border-white/10 bg-black/70 p-3 text-xs text-white shadow-xl backdrop-blur space-y-3">
@@ -537,14 +657,21 @@ export default function GameLayoutBase({
               <div className="pointer-events-auto bg-black/70 rounded-lg p-3 text-xs space-y-3 shadow-lg">
                 <div className="flex items-center justify-between text-[11px] uppercase tracking-wide text-slate-400">
                   <span>CPU Decisions</span>
-                  <strong className="text-emerald-300">{aiDecisionSummary.total}</strong>
+                  <strong className="text-emerald-300">
+                    {aiDecisionSummary.total}
+                  </strong>
                 </div>
                 <div className="flex flex-wrap gap-2 text-[11px] text-slate-300">
-                  {Object.entries(aiDecisionSummary.byTier ?? {}).map(([tier, count]) => (
-                    <span key={tier} className="rounded bg-slate-800/80 px-2 py-1">
-                      {tier}: {count}
-                    </span>
-                  ))}
+                  {Object.entries(aiDecisionSummary.byTier ?? {}).map(
+                    ([tier, count]) => (
+                      <span
+                        key={tier}
+                        className="rounded bg-slate-800/80 px-2 py-1"
+                      >
+                        {tier}: {count}
+                      </span>
+                    ),
+                  )}
                 </div>
                 <div className="space-y-1">
                   {(aiDecisionSummary.recent ?? []).map((entry, index) => (
@@ -594,29 +721,35 @@ export default function GameLayoutBase({
         >
           <div
             className={`flex flex-col ${
-            isMobileLayout ? "h-full min-h-0 gap-0 rounded-none border-0 bg-transparent p-0 shadow-none" : "gap-5 rounded-3xl border border-white/10 bg-black/40 p-3 shadow-2xl"
+              isMobileLayout
+                ? "h-full min-h-0 gap-0 rounded-none border-0 bg-transparent p-0 shadow-none"
+                : "gap-5 rounded-3xl border border-white/10 bg-black/40 p-3 shadow-2xl"
             }`}
           >
-              <div
-                className={`relative grid ${
-                  isMobileLayout
-                    ? isMobilePortraitTournament
+            <div
+              className={`relative grid ${
+                isMobileLayout
+                  ? isMobilePortraitTournament || isPortraitDrawTable
                     ? "h-full min-h-0 grid-cols-1 grid-rows-[minmax(0,1fr)_auto] gap-1"
                     : isMobileLandscapeTournament
                       ? "h-full min-h-0 grid-cols-[minmax(0,1fr)_clamp(186px,24dvw,228px)] grid-rows-1 gap-1.5"
-                    : "h-full min-h-0 grid-cols-1 grid-rows-[minmax(0,1fr)_auto] gap-2 min-[641px]:grid-cols-[minmax(0,1fr)_clamp(206px,30dvw,286px)] min-[641px]:grid-rows-1"
+                      : "h-full min-h-0 grid-cols-1 grid-rows-[minmax(0,1fr)_auto] gap-2 min-[641px]:grid-cols-[minmax(0,1fr)_clamp(206px,30dvw,286px)] min-[641px]:grid-rows-1"
                   : desktopGridClass
               }`}
             >
               <div
                 data-testid="game-table-surface"
                 className={`relative min-w-0 overflow-hidden rounded-[32px] border ${tableBorderColor ?? "border-white/10"} bg-slate-950/28 ${tableAccentRing ?? ""} ${
-                  heroTableAnimating ? "ring-2 ring-yellow-300 animate-pulse" : ""
-                } ${isMobileLayout ? (isMobileTournament ? "min-h-0 p-1.5" : "min-h-0 p-2") : "overflow-visible p-4"} shadow-[inset_0_0_45px_rgba(0,0,0,0.38),0_18px_42px_rgba(0,0,0,0.35)]`}
+                  heroTableAnimating
+                    ? "ring-2 ring-yellow-300 animate-pulse"
+                    : ""
+                } ${isMobileLayout ? (useDenseActionPanel ? "min-h-0 p-1.5" : "min-h-0 p-2") : "overflow-visible p-4"} shadow-[inset_0_0_45px_rgba(0,0,0,0.38),0_18px_42px_rgba(0,0,0,0.35)]`}
                 style={
                   isMobilePortraitMode
                     ? {
-                        aspectRatio: isMobileTournament ? "9 / 14" : "3 / 5",
+                        aspectRatio:
+                          mobilePortraitProfile.tableAspectRatio ??
+                          (isMobileTournament ? "9 / 14" : "3 / 5"),
                         maxHeight: "100%",
                         width: "100%",
                       }
@@ -627,13 +760,17 @@ export default function GameLayoutBase({
                   data-testid="table-felt-oval"
                   className={`pointer-events-none absolute ${feltOvalClass} rounded-[50%] border-slate-950/80 ${tableSurfaceBg} shadow-[inset_0_0_65px_rgba(0,0,0,0.42)]`}
                 />
-                <div className={`pointer-events-none absolute ${feltInnerRingClass} rounded-[50%] border border-white/10`} />
-                <div className={`pointer-events-none absolute ${feltInnerRingSoftClass} rounded-[50%] border border-white/5`} />
+                <div
+                  className={`pointer-events-none absolute ${feltInnerRingClass} rounded-[50%] border border-white/10`}
+                />
+                <div
+                  className={`pointer-events-none absolute ${feltInnerRingSoftClass} rounded-[50%] border border-white/5`}
+                />
                 {!isTournament && renderedTournamentHud}
                 <div
                   className={`relative ${
                     isMobileLayout
-                      ? `grid h-full min-h-0 ${isMobileTournament ? "gap-0.5" : "gap-1"}`
+                      ? `grid h-full min-h-0 ${useDenseActionPanel ? "gap-0.5" : "gap-1"}`
                       : desktopTableMinHeight
                   }`}
                   style={isMobileLayout ? mobileTableGridStyle : undefined}
@@ -648,29 +785,31 @@ export default function GameLayoutBase({
                     }`}
                     style={isMobileLayout ? { gridArea: "pot" } : undefined}
                   >
-                      <div
-                        data-testid="table-total-pot"
-                        className={`rounded-full border border-yellow-200/45 bg-black/55 text-center shadow-lg backdrop-blur ${
-                          isMobileLayout ? "px-3 py-1.5" : "px-5 py-2"
-                        }`}
-                      >
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-yellow-100/80">
-                          POT
-                        </p>
-                        <p className="text-lg font-black text-yellow-200">{totalPot}</p>
-                      </div>
-                      <div
-                        data-testid="table-phase-badge"
-                        className={`${isMobileLayout ? "ml-1 px-2 py-0.5 text-[10px]" : "px-3 py-1 text-[11px]"} rounded-full border font-semibold ${phaseBadgeAccentClass}`}
-                      >
-                        {isDrawDisplayPhase
-                          ? `${phaseCompactText} · DRAW RUSHER`
-                          : isMobileTournament
-                          ? phaseCompactText
+                    <div
+                      data-testid="table-total-pot"
+                      className={`rounded-full border border-yellow-200/45 bg-black/55 text-center shadow-lg backdrop-blur ${
+                        isMobileLayout ? "px-3 py-1.5" : "px-5 py-2"
+                      }`}
+                    >
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-yellow-100/80">
+                        POT
+                      </p>
+                      <p className="text-lg font-black text-yellow-200">
+                        {totalPot}
+                      </p>
+                    </div>
+                    <div
+                      data-testid="table-phase-badge"
+                      className={`${isMobileLayout ? "ml-1 px-2 py-0.5 text-[10px]" : "px-3 py-1 text-[11px]"} rounded-full border font-semibold ${phaseBadgeAccentClass}`}
+                    >
+                      {isDrawDisplayPhase
+                        ? `${phaseCompactText} · DRAW RUSHER`
+                        : useDenseActionPanel
+                          ? `${displayPhase} | R${betRoundNumberForDisplay}`
                           : boardCards.length > 0 || streetLabel
-                          ? `${displayPhase} · ${streetLabel || "Board"}`
-                          : phaseCompactText}
-                      </div>
+                            ? `${displayPhase} · ${streetLabel || "Board"}`
+                            : phaseCompactText}
+                    </div>
                   </div>
                   {boardCards.length > 0 && (
                     <div
@@ -679,7 +818,11 @@ export default function GameLayoutBase({
                       }`}
                     >
                       {boardCards.map((card, idx) => (
-                        <Card key={`${card}-${idx}`} value={card} data-testid={`board-card-${idx}`} />
+                        <Card
+                          key={`${card}-${idx}`}
+                          value={card}
+                          data-testid={`board-card-${idx}`}
+                        />
                       ))}
                     </div>
                   )}
@@ -687,13 +830,17 @@ export default function GameLayoutBase({
                     const seat = tableSeatViews[idx];
                     if (!seat) return null;
                     if (isTournament && seat.hiddenFromTableLayout) return null;
-                    const seatPosition = positionNameFn(idx, controllerDealerIdx, seatLayouts.length);
+                    const seatPosition = positionNameFn(
+                      idx,
+                      controllerDealerIdx,
+                      seatLayouts.length,
+                    );
                     const renderedSeat =
                       seat.seatIndex === heroSeatIndex
                         ? { ...seat, selected: heroDrawSelection }
                         : seat;
                     const seatAlignClass = isMobileLayout
-                      ? MOBILE_SEAT_ALIGN_CLASS[idx] ?? "items-center"
+                      ? (MOBILE_SEAT_ALIGN_CLASS[idx] ?? "items-center")
                       : "items-center";
                     const mobileSeatLiftClass =
                       isMobileLayout && seat.seatIndex === heroSeatIndex
@@ -707,11 +854,14 @@ export default function GameLayoutBase({
                       <div
                         key={seat.seatIndex ?? idx}
                         className={`flex flex-col ${seatAlignClass} ${mobileSeatLiftClass} ${isMobileLayout ? "gap-1" : "gap-3"} overflow-visible hover:z-[180] focus-within:z-[180] ${
-                          isMobileLayout ? "" : seatLayouts[idx] ?? ""
+                          isMobileLayout ? "" : (seatLayouts[idx] ?? "")
                         }`}
                         style={
                           isMobileLayout
-                            ? { gridArea: MOBILE_SEAT_GRID_AREA[idx] ?? "topCenter" }
+                            ? {
+                                gridArea:
+                                  MOBILE_SEAT_GRID_AREA[idx] ?? "topCenter",
+                              }
                             : undefined
                         }
                       >
@@ -723,12 +873,19 @@ export default function GameLayoutBase({
                           turn={controllerTurn}
                           phase={phase}
                           positionLabel={seatPosition}
-                          canSelectForDraw={tableHeroCanDraw && seat.seatIndex === heroSeatIndex}
+                          canSelectForDraw={
+                            tableHeroCanDraw && seat.seatIndex === heroSeatIndex
+                          }
                           isWinner={seat.winner}
                           onCardClick={(cardIdx) => handleCardClick(cardIdx)}
                           compact={isMobileLayout}
                           revealMode={isShowdownPhase}
                           displayVariant={gameVariant}
+                          layoutProfile={tableLayoutProfile}
+                          mobileHeroCardOnly={
+                            isPortraitDrawTable &&
+                            seat.seatIndex === heroSeatIndex
+                          }
                         />
                       </div>
                     );
@@ -739,9 +896,11 @@ export default function GameLayoutBase({
                 data-testid="decision-panel"
                 className={`flex min-h-0 min-w-0 flex-col ${
                   isMobileLayout
-                    ? isMobileTournament
+                    ? useDenseActionPanel
                       ? `mgx-mobile-action-sheet mgx-mobile-tournament-panel gap-1 overflow-hidden pb-[max(8px,env(safe-area-inset-bottom))] ${
-                          isMobileLandscapeMode ? "max-h-[calc(var(--mgx-visual-vh,100dvh)-12px)] gap-0.5" : ""
+                          isMobileLandscapeMode
+                            ? "max-h-[calc(var(--mgx-visual-vh,100dvh)-12px)] gap-0.5"
+                            : ""
                         }`
                       : "mgx-mobile-action-sheet gap-2 overflow-hidden pb-[max(8px,env(safe-area-inset-bottom))]"
                     : "gap-3"
@@ -749,24 +908,64 @@ export default function GameLayoutBase({
               >
                 {isTournament && renderedTournamentHud}
                 {isTournament && (
-                  <TournamentEliminatedRail entries={eliminatedRailEntries} layoutMode={mobileLayoutMode} />
+                  <TournamentEliminatedRail
+                    entries={eliminatedRailEntries}
+                    layoutMode={mobileLayoutMode}
+                  />
                 )}
                 <div
                   data-testid="phase-compact-strip"
-                  className={`${isMobileLayout ? (isMobileTournament ? "rounded-lg px-2 py-0.5 text-[10px]" : "rounded-2xl p-2 text-base") : "rounded-2xl p-3"} flex items-center justify-between border font-black shadow-lg ${phaseAccentClass}`}
+                  className={`${isMobileLayout ? (useRailPhasePanel ? "rounded-lg px-1 py-0.5 text-[10px]" : isMobileTournament ? "rounded-lg px-2 py-0.5 text-[10px]" : "rounded-2xl p-2 text-base") : "rounded-2xl p-3"} flex items-center justify-between border font-black shadow-lg ${phaseAccentClass}`}
                 >
-                  {isMobileTournament ? (
+                  {useRailPhasePanel ? (
+                    <div className="grid w-full grid-cols-4 overflow-hidden rounded-md border border-white/10 bg-black/20">
+                      {drawRailItems.map((item, itemIndex) => (
+                        <div
+                          key={item.key}
+                          className={`min-w-0 px-2 py-0.5 text-center ${
+                            itemIndex > 0 ? "border-l border-white/10" : ""
+                          }`}
+                        >
+                          <p className="text-[9px] font-black leading-tight text-slate-200">
+                            {item.label}
+                          </p>
+                          <p
+                            className={`truncate text-[8px] font-black uppercase leading-tight ${
+                              isDrawDisplayPhase && item.value === "DRAW"
+                                ? "text-red-200"
+                                : itemIndex === 0
+                                  ? "text-emerald-200"
+                                  : "text-slate-500"
+                            }`}
+                          >
+                            {itemIndex === 0 && !isDrawDisplayPhase ? "● " : ""}
+                            {item.value}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : isMobileTournament ? (
                     <>
-                      <span className="truncate">{phaseCompactText}</span>
+                      <span className="truncate">
+                        {phasePrimaryText} | {phaseSecondaryText}
+                      </span>
                       <span className="ml-2 shrink-0 text-[9px] font-semibold text-slate-400">
-                        {actionPanelInfo?.currentActorPosition ?? actionPanelInfo?.heroPosition ?? ""}
+                        {actionPanelInfo?.currentActorPosition ??
+                          actionPanelInfo?.heroPosition ??
+                          ""}
                       </span>
                     </>
                   ) : (
                     <>
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider text-slate-400">Phase</p>
-                        <p className={`${isMobileLayout ? "text-base" : "text-xl"} font-bold text-white`}>{displayPhase}</p>
+                        <p className="text-[10px] uppercase tracking-wider text-slate-400">
+                          Phase
+                        </p>
+                        <p
+                          className={`${isMobileLayout ? "text-base" : "text-xl"} font-bold text-white`}
+                        >
+                          {displayPhase}
+                        </p>
                         {isDrawDisplayPhase && (
                           <p className="mt-1 text-[9px] font-black uppercase tracking-[0.22em] text-red-200">
                             Draw Rusher
@@ -774,15 +973,25 @@ export default function GameLayoutBase({
                         )}
                       </div>
                       <div className="text-right">
-                        <p className="text-[10px] uppercase tracking-wider text-slate-400">Draw</p>
-                        <p className="text-base font-semibold text-white">D{drawNumberForDisplay}</p>
-                        <p className="mt-1 text-[10px] uppercase tracking-wider text-slate-400">Bet Round</p>
-                        <p className="text-base font-semibold text-white">R{betRoundNumberForDisplay}</p>
+                        <p className="text-[10px] uppercase tracking-wider text-slate-400">
+                          Draw
+                        </p>
+                        <p className="text-base font-semibold text-white">
+                          D{drawNumberForDisplay}
+                        </p>
+                        <p className="mt-1 text-[10px] uppercase tracking-wider text-slate-400">
+                          Bet Round
+                        </p>
+                        <p className="text-base font-semibold text-white">
+                          R{betRoundNumberForDisplay}
+                        </p>
                       </div>
                     </>
                   )}
                 </div>
-                <div className={`${isMobileLayout ? "hidden" : "hidden min-[1360px]:flex"} flex-col gap-2 rounded-2xl border border-white/10 bg-slate-900/85 p-3 shadow-lg`}>
+                <div
+                  className={`${isMobileLayout ? "hidden" : "hidden min-[1360px]:flex"} flex-col gap-2 rounded-2xl border border-white/10 bg-slate-900/85 p-3 shadow-lg`}
+                >
                   <h2 className="text-xs font-semibold text-white uppercase tracking-wider">
                     Hero Hand
                   </h2>
@@ -800,82 +1009,129 @@ export default function GameLayoutBase({
                     Draw allowed: {tableHeroCanDraw ? "Yes" : "No"}
                   </div>
                 </div>
-                <div className={`${isMobileLayout ? (isMobileTournament ? "min-h-0 min-w-0 overflow-hidden rounded-xl p-1 space-y-1" : "min-h-0 min-w-0 overflow-hidden p-2 space-y-3") : "p-3 space-y-3"} rounded-2xl border ${isDrawDisplayPhase ? "border-red-300/35 bg-red-950/35" : "border-emerald-300/15 bg-slate-900/88"} shadow-lg`}>
-                  <h2 className={`${isMobileTournament ? "sr-only" : "text-xs"} font-semibold text-white uppercase tracking-wider`}>
+                <div
+                  className={`${isMobileLayout ? (useDenseActionPanel ? "min-h-0 min-w-0 overflow-hidden rounded-xl p-1 space-y-1" : "min-h-0 min-w-0 overflow-hidden p-2 space-y-3") : "p-3 space-y-3"} rounded-2xl border ${isDrawDisplayPhase ? "border-red-300/35 bg-red-950/35" : "border-emerald-300/15 bg-slate-900/88"} shadow-lg`}
+                >
+                  <h2
+                    className={`${useDenseActionPanel ? "sr-only" : "text-xs"} font-semibold text-white uppercase tracking-wider`}
+                  >
                     Hero Controls
                   </h2>
                   <div
                     data-testid="actor-readability-strip"
-                    className={`grid ${isMobileTournament ? "grid-cols-2 gap-1 text-[9px]" : "grid-cols-3 gap-2 text-[11px]"} text-slate-200`}
+                    className={`${isPortraitDrawTable && heroCanAct ? "hidden" : "grid"} ${useDenseActionPanel ? "grid-cols-2 gap-1 text-[9px]" : "grid-cols-3 gap-2 text-[11px]"} text-slate-200`}
                   >
-                    <div className={`rounded-xl border ${isDrawDisplayPhase ? "border-red-300/30 bg-red-500/10" : "border-emerald-300/20 bg-emerald-400/10"} ${isMobileTournament ? "rounded-lg px-1 py-0.5" : "px-2 py-1.5"}`}>
-                      <p className={`uppercase tracking-wide ${isDrawDisplayPhase ? "text-red-100/80" : "text-emerald-200/80"}`}>Hero</p>
-                      <p className="truncate font-black text-white">{actionPanelInfo?.heroPosition ?? "Seat"}</p>
+                    <div
+                      className={`rounded-xl border ${isDrawDisplayPhase ? "border-red-300/30 bg-red-500/10" : "border-emerald-300/20 bg-emerald-400/10"} ${useDenseActionPanel ? "rounded-lg px-1 py-0.5" : "px-2 py-1.5"}`}
+                    >
+                      <p
+                        className={`uppercase tracking-wide ${isDrawDisplayPhase ? "text-red-100/80" : "text-emerald-200/80"}`}
+                      >
+                        Hero
+                      </p>
+                      <p className="truncate font-black text-white">
+                        {actionPanelInfo?.heroPosition ?? "Seat"}
+                      </p>
                     </div>
-                    <div className={`rounded-xl border border-yellow-300/20 bg-yellow-300/10 ${isMobileTournament ? "rounded-lg px-1 py-0.5" : "px-2 py-1.5"}`}>
-                      <p className="uppercase tracking-wide text-yellow-100/80">Actor</p>
+                    <div
+                      className={`rounded-xl border border-yellow-300/20 bg-yellow-300/10 ${useDenseActionPanel ? "rounded-lg px-1 py-0.5" : "px-2 py-1.5"}`}
+                    >
+                      <p className="uppercase tracking-wide text-yellow-100/80">
+                        Actor
+                      </p>
                       <p className="truncate font-black text-white">
                         {actionPanelInfo?.currentActorName
                           ? `${actionPanelInfo.currentActorName}${actionPanelInfo?.currentActorPosition ? ` / ${actionPanelInfo.currentActorPosition}` : ""}`
                           : "Resolving"}
                       </p>
                     </div>
-                    {!isMobileTournament && (
+                    {!useDenseActionPanel && (
                       <div className="rounded-xl border border-white/10 bg-black/30 px-2 py-1.5">
-                        <p className="uppercase tracking-wide text-slate-500">State</p>
-                        <p className="truncate font-black text-white">{actionPanelInfo?.waitingLabel ?? "Ready"}</p>
+                        <p className="uppercase tracking-wide text-slate-500">
+                          State
+                        </p>
+                        <p className="truncate font-black text-white">
+                          {actionPanelInfo?.waitingLabel ?? "Ready"}
+                        </p>
                       </div>
                     )}
                   </div>
                   <div
                     data-testid="action-context-panel"
-                    className={`grid ${isMobileTournament ? `${isMobilePortraitMode ? "hidden" : "grid"} grid-cols-4 gap-1 text-[8px]` : "grid-cols-2 gap-2 text-[11px]"} text-slate-200`}
+                    className={`grid ${useDenseActionPanel ? `${isMobilePortraitMode ? "hidden" : "grid"} grid-cols-4 gap-1 text-[8px]` : "grid-cols-2 gap-2 text-[11px]"} text-slate-200`}
                   >
-                    <div className={`rounded-xl border border-white/10 bg-black/30 ${isMobileTournament ? "rounded-lg px-1 py-0.5" : "px-2 py-1.5"}`}>
-                      <p className="uppercase tracking-wide text-slate-500">{isMobileTournament ? "Bet" : "Current Bet"}</p>
-                      <p className="font-black text-white">{actionPanelInfo?.currentBet ?? 0}</p>
-                    </div>
-                    <div className={`rounded-xl border border-white/10 bg-black/30 ${isMobileTournament ? "rounded-lg px-1 py-0.5" : "px-2 py-1.5"}`}>
-                      <p className="uppercase tracking-wide text-slate-500">{isMobileTournament ? "Call" : "To Call"}</p>
-                      <p className="font-black text-yellow-200">{actionPanelInfo?.toCall ?? 0}</p>
-                    </div>
-                    <div className={`rounded-xl border border-white/10 bg-black/30 ${isMobileTournament ? "rounded-lg px-1 py-0.5" : "px-2 py-1.5"}`}>
-                      <p className="uppercase tracking-wide text-slate-500">{isMobileTournament ? "Raise" : "Raise Unit"}</p>
-                      <p className="font-black text-white">{actionPanelInfo?.raiseUnit ?? 0}</p>
+                    <div
+                      className={`rounded-xl border border-white/10 bg-black/30 ${useDenseActionPanel ? "rounded-lg px-1 py-0.5" : "px-2 py-1.5"}`}
+                    >
+                      <p className="uppercase tracking-wide text-slate-500">
+                        {useDenseActionPanel ? "Bet" : "Current Bet"}
+                      </p>
+                      <p className="font-black text-white">
+                        {actionPanelInfo?.currentBet ?? 0}
+                      </p>
                     </div>
                     <div
-                      className={`rounded-xl border ${isMobileTournament ? "rounded-lg px-1 py-0.5" : "px-2 py-1.5"} ${
+                      className={`rounded-xl border border-white/10 bg-black/30 ${useDenseActionPanel ? "rounded-lg px-1 py-0.5" : "px-2 py-1.5"}`}
+                    >
+                      <p className="uppercase tracking-wide text-slate-500">
+                        {useDenseActionPanel ? "Call" : "To Call"}
+                      </p>
+                      <p className="font-black text-yellow-200">
+                        {actionPanelInfo?.toCall ?? 0}
+                      </p>
+                    </div>
+                    <div
+                      className={`rounded-xl border border-white/10 bg-black/30 ${useDenseActionPanel ? "rounded-lg px-1 py-0.5" : "px-2 py-1.5"}`}
+                    >
+                      <p className="uppercase tracking-wide text-slate-500">
+                        {useDenseActionPanel ? "Raise" : "Raise Unit"}
+                      </p>
+                      <p className="font-black text-white">
+                        {actionPanelInfo?.raiseUnit ?? 0}
+                      </p>
+                    </div>
+                    <div
+                      className={`rounded-xl border ${useDenseActionPanel ? "rounded-lg px-1 py-0.5" : "px-2 py-1.5"} ${
                         actionPanelInfo?.capReached
                           ? "border-red-300/40 bg-red-500/15"
                           : "border-white/10 bg-black/30"
                       }`}
                     >
-                      <p className="uppercase tracking-wide text-slate-500">{isMobileTournament ? "Cap" : "Raise Cap"}</p>
+                      <p className="uppercase tracking-wide text-slate-500">
+                        {useDenseActionPanel ? "Cap" : "Raise Cap"}
+                      </p>
                       <p className="font-black text-white">
-                        {actionPanelInfo?.raiseCount ?? 0}/{actionPanelInfo?.raiseCap ?? 4}
+                        {actionPanelInfo?.raiseCount ?? 0}/
+                        {actionPanelInfo?.raiseCap ?? 4}
                       </p>
                     </div>
                   </div>
                   {actionPanelInfo?.recentActions?.length > 0 && (
                     <div
                       data-testid="recent-action-strip"
-                      className={`rounded-xl border border-white/10 bg-black/25 ${isMobileTournament ? `${isMobilePortraitMode ? "hidden" : ""} px-2 py-1 min-[641px]:hidden` : "px-3 py-2"}`}
+                      className={`rounded-xl border border-white/10 bg-black/25 ${useDenseActionPanel ? `${isMobilePortraitMode ? "hidden" : ""} px-2 py-1 min-[641px]:hidden` : "px-3 py-2"}`}
                     >
-                      <p className={`${isMobileTournament ? "text-[9px]" : "text-[10px]"} uppercase tracking-wide text-slate-500`}>
+                      <p
+                        className={`${useDenseActionPanel ? "text-[9px]" : "text-[10px]"} uppercase tracking-wide text-slate-500`}
+                      >
                         Last Actions
                       </p>
                       <div className="mt-1 flex flex-wrap gap-1">
-                        {actionPanelInfo.recentActions.slice(-5).map((entry, index) => (
-                          <span
-                            key={`${entry.type}-${entry.seat ?? "table"}-${entry.label}-${index}`}
-                            className={`max-w-full truncate rounded-full border border-white/10 bg-slate-950/70 px-2 py-0.5 font-semibold text-slate-100 ${
-                              isMobileTournament ? "text-[9px]" : "text-[10px]"
-                            }`}
-                            title={entry.label}
-                          >
-                            {entry.label}
-                          </span>
-                        ))}
+                        {actionPanelInfo.recentActions
+                          .slice(-5)
+                          .map((entry, index) => (
+                            <span
+                              key={`${entry.type}-${entry.seat ?? "table"}-${entry.label}-${index}`}
+                              className={`max-w-full truncate rounded-full border border-white/10 bg-slate-950/70 px-2 py-0.5 font-semibold text-slate-100 ${
+                                useDenseActionPanel
+                                  ? "text-[9px]"
+                                  : "text-[10px]"
+                              }`}
+                              title={entry.label}
+                            >
+                              {entry.label}
+                            </span>
+                          ))}
                       </div>
                     </div>
                   )}
@@ -887,6 +1143,15 @@ export default function GameLayoutBase({
                       className="w-full rounded-xl border border-yellow-300/30 bg-yellow-400/10 px-3 py-2 text-sm font-black text-yellow-100 transition hover:bg-yellow-400 hover:text-slate-950"
                     >
                       Cash Out
+                    </button>
+                  )}
+                  {!isCashGame && isPortraitDrawTable && (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full rounded-xl border border-purple-300/25 bg-purple-500/20 px-3 py-2 text-sm font-black text-purple-100 opacity-80"
+                    >
+                      Sit Out
                     </button>
                   )}
                   {nextHandButton}
@@ -905,17 +1170,28 @@ export default function GameLayoutBase({
             <span>Debug</span>
             <label className="inline-flex cursor-pointer items-center gap-2">
               <span>Mode</span>
-              <input type="checkbox" checked={debugMode} onChange={onToggleDebugMode} />
+              <input
+                type="checkbox"
+                checked={debugMode}
+                onChange={onToggleDebugMode}
+              />
             </label>
           </div>
           <div className="flex items-center gap-3">
             <p className="text-[11px] uppercase tracking-wider">Mode: {mode}</p>
-            <p className="text-[11px] uppercase tracking-wider">Tournament: {isTournament ? "Yes" : "No"}</p>
+            <p className="text-[11px] uppercase tracking-wider">
+              Tournament: {isTournament ? "Yes" : "No"}
+            </p>
           </div>
         </footer>
       )}
 
-      {!isMobileLayout && <Notification variant={notificationVariant} message={notificationMessage} />}
+      {!isMobileLayout && (
+        <Notification
+          variant={notificationVariant}
+          message={notificationMessage}
+        />
+      )}
 
       <Modal
         title="Seat Manager"
@@ -932,11 +1208,15 @@ export default function GameLayoutBase({
             <input
               type="checkbox"
               checked={autoRotateSeats}
-              onChange={(event) => onToggleAutoRotateSeats(event.target.checked)}
+              onChange={(event) =>
+                onToggleAutoRotateSeats(event.target.checked)
+              }
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs uppercase tracking-wider text-slate-400">Seat Layout</label>
+            <label className="text-xs uppercase tracking-wider text-slate-400">
+              Seat Layout
+            </label>
             <select
               className="w-full rounded border border-white/20 bg-slate-900/80 px-3 py-2 text-sm"
               value={seatConfig}
@@ -950,12 +1230,16 @@ export default function GameLayoutBase({
             </select>
           </div>
           <div className="space-y-1">
-            <label className="text-xs uppercase tracking-wider text-slate-400">Starting Stack</label>
+            <label className="text-xs uppercase tracking-wider text-slate-400">
+              Starting Stack
+            </label>
             <input
               type="number"
               className="w-full rounded border border-white/20 bg-slate-900/80 px-3 py-2 text-sm"
               value={startingStack}
-              onChange={(event) => onStartingStackChange(Number(event.target.value))}
+              onChange={(event) =>
+                onStartingStackChange(Number(event.target.value))
+              }
             />
           </div>
           <div className="flex gap-3">
@@ -1005,7 +1289,10 @@ export default function GameLayoutBase({
         buttonLabel={nextHandLabel}
         onReplayTarget={onReplayTarget}
       />
-      <ShowdownResultToast visible={handResultVisible} summary={handResultSummary} />
+      <ShowdownResultToast
+        visible={handResultVisible}
+        summary={handResultSummary}
+      />
       <HeroBustOverlay
         visible={heroBustOverlayVisible}
         title={heroBustSummary?.title}

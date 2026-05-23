@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { GAME_VARIANTS } from "../../games/core/variants.js";
 import { assertBrowserGameplayInvariants } from "../qa/assertBrowserGameplayInvariants.js";
+import {
+  resolveCanonicalActionSeat,
+  shouldSyncLegacyTurnToController,
+} from "../utils/actorSourceOfTruth.js";
 
 const players = Array.from({ length: 6 }, (_, seat) => ({
   seatIndex: seat,
@@ -48,5 +53,54 @@ describe("Badugi cash opening actor UI snapshot regression", () => {
 
     expect(result.status).toBe("PASS");
     expect(result.violations).toEqual([]);
+  });
+
+  it("keeps CPU auto progression on the controller actor when legacy turn is stale", () => {
+    const controller = GAME_VARIANTS.badugi.controllerFactory({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU", "CPU", "CPU"],
+      startingStack: 600,
+      blindStructure: [{ sb: 10, bb: 20, ante: 0 }],
+      lastStructureIndex: 0,
+    });
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU", "CPU", "CPU"],
+    });
+    const state = controller.createNewHandState(initial, {
+      seatConfig: ["HERO", "CPU", "CPU", "CPU", "CPU", "CPU"],
+      nextDealerIdx: 0,
+      blindStructure: [{ sb: 10, bb: 20, ante: 0 }],
+    });
+    const opening = controller.getUiSnapshot(state);
+    const controllerTurn = opening.currentActor ?? opening.turn ?? opening.nextTurn;
+    const legacyTurn = 0;
+
+    expect(controllerTurn).toBe(3);
+    expect(
+      resolveCanonicalActionSeat({
+        phase: "BET",
+        controllerTurn,
+        legacyTurn,
+        players: opening.players,
+      }),
+    ).toBe(3);
+    expect(
+      shouldSyncLegacyTurnToController({
+        phase: "BET",
+        controllerTurn,
+        legacyTurn,
+        players: opening.players,
+      }),
+    ).toBe(true);
+
+    const { state: nextState, events } = controller.applyAction(state, {
+      seatIndex: controllerTurn,
+      payload: { type: "call", amount: 20 },
+    });
+    expect(events.find((event) => event.type === "invalidAction")).toBeUndefined();
+
+    const after = controller.getUiSnapshot(nextState);
+    expect(after.players[3].hasActedThisRound).toBe(true);
+    expect(after.players[3].betThisRound).toBe(20);
+    expect(after.currentActor ?? after.turn ?? after.nextTurn).toBe(4);
   });
 });

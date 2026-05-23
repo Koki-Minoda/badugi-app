@@ -37,6 +37,11 @@ import {
 import { buildBadugiValueTelemetryFields } from "../ai/qa/badugiValuePressureAudit.js";
 import { normalizeCpuAction } from "../ai/normalizeCpuAction.js";
 import { getMobileQaSessionId } from "./qa/mobileQaSession.js";
+import {
+  resolveCanonicalActionSeat,
+  resolveSessionPreferredActor,
+  shouldSyncLegacyTurnToController,
+} from "./utils/actorSourceOfTruth.js";
 
 import {
   nextAliveFrom,
@@ -3527,25 +3532,18 @@ const SAFE_RESET_PHASE = "IDLE";
       return false;
     }
     const player = roster[seat];
-    const controllerActionSeat = (() => {
-      if (!isControllerDrivenSingleTable) return null;
-      const controller = gameControllerRef.current;
-      if (!controller || typeof controller.getSnapshot !== "function") return null;
-      try {
-        const controllerState = controller.getSnapshot();
-        if (typeof controllerState?.currentActor === "number") return controllerState.currentActor;
-        if (typeof controllerState?.turn === "number") return controllerState.turn;
-        if (typeof controllerState?.nextTurn === "number") return controllerState.nextTurn;
-        if (typeof controllerState?.metadata?.actingPlayerIndex === "number") {
-          return controllerState.metadata.actingPlayerIndex;
-        }
-      } catch (err) {
-        if (process.env.NODE_ENV !== "production") {
-          console.warn("[CTRL][TURN] unable to read controller turn", err);
-        }
-      }
-      return null;
-    })();
+    const controllerActionSeat = !isControllerDrivenSingleTable
+      ? null
+      : resolveSessionPreferredActor({
+          sessionController: sessionControllerRef.current,
+          sessionState: sessionControllerStateRef.current,
+          gameController: gameControllerRef.current,
+          preferSession: isSingleTableBadugi,
+          warn:
+            process.env.NODE_ENV !== "production"
+              ? (...args) => console.warn(...args)
+              : undefined,
+        });
     const expectedTurn =
       typeof controllerActionSeat === "number" ? controllerActionSeat : turn;
     if (expectedTurn !== seat) {
@@ -9700,16 +9698,39 @@ const SAFE_RESET_PHASE = "IDLE";
     const betHelpers = forcedBetHelpersRef.current;
     const drawHelpers = autoDrawHelpersRef.current;
     const seatCount = activePlayers.length;
+    const canonicalActionSeat = isSingleTableBadugi
+      ? resolveCanonicalActionSeat({
+          phase,
+          controllerTurn,
+          legacyTurn: turn,
+          players: activePlayers,
+        })
+      : null;
+    const autoTurn =
+      isSingleTableBadugi && typeof canonicalActionSeat === "number"
+        ? canonicalActionSeat
+        : turn;
+    if (
+      isSingleTableBadugi &&
+      shouldSyncLegacyTurnToController({
+        phase,
+        controllerTurn,
+        legacyTurn: turn,
+        players: activePlayers,
+      })
+    ) {
+      setTurn(controllerTurn);
+    }
 
     if ((phase === "BET" || phase === "DRAW") && checkIfOneLeftThenEnd(activePlayers)) {
       return;
     }
 
     if (
-      typeof turn !== "number" ||
-      Number.isNaN(turn) ||
-      turn < 0 ||
-      turn >= seatCount
+      typeof autoTurn !== "number" ||
+      Number.isNaN(autoTurn) ||
+      autoTurn < 0 ||
+      autoTurn >= seatCount
     ) {
       if (phase === "DRAW") {
         const drawFallback = drawHelpers.findNextDrawActorSeat?.(activePlayers) ?? null;
@@ -9746,7 +9767,7 @@ const SAFE_RESET_PHASE = "IDLE";
         }
       }
     }
-    if (turn === 0) {
+    if (autoTurn === 0) {
       const hero = activePlayers[0];
       const heroCannotBet =
         !hero ||
@@ -9810,17 +9831,17 @@ const SAFE_RESET_PHASE = "IDLE";
       return;
     }
 
-    const p = activePlayers[turn];
+    const p = activePlayers[autoTurn];
     if (!p || isFoldedOrOut(p)) {
-      betHelpers.logE2ESkip?.(turn, "folded_or_out");
-      const nxt = nextAliveFrom(activePlayers, turn);
+      betHelpers.logE2ESkip?.(autoTurn, "folded_or_out");
+      const nxt = nextAliveFrom(activePlayers, autoTurn);
       if (nxt !== null) setTurn(nxt);
       return;
     }
 
     if (phase === "BET" && (p.allIn || p.stack <= 0)) {
       const maxNow = maxBetThisRound(activePlayers);
-      const nextActor = findNextBetActorSeat(activePlayers, turn + 1, maxNow);
+      const nextActor = findNextBetActorSeat(activePlayers, autoTurn + 1, maxNow);
       if (nextActor !== null) {
         setTurn(nextActor);
         return;
@@ -9844,7 +9865,7 @@ const SAFE_RESET_PHASE = "IDLE";
     }
 
     if (phase === "BET" && isSingleTableBoardGame) {
-      const seatToActHint = turn;
+      const seatToActHint = autoTurn;
       const timer = setTimeout(() => {
         const liveControllerSnapshot =
           gameControllerRef.current && typeof gameControllerRef.current.getSnapshot === "function"
@@ -9888,7 +9909,7 @@ const SAFE_RESET_PHASE = "IDLE";
       if (phase === "BET") {
         const basePlayers = playersRef.current ?? activePlayers;
         const snap = basePlayers.map(clonePlayerState).filter(Boolean);
-        const activeSeat = turn;
+        const activeSeat = autoTurn;
         const maxNowForClosure = maxBetThisRound(snap);
         if (isBetRoundComplete({ players: snap, currentBet: maxNowForClosure })) {
           forceFinishRoundRef.current({
@@ -9899,7 +9920,7 @@ const SAFE_RESET_PHASE = "IDLE";
           return;
         }
         if (!betHelpers.ensureSeatCanAct?.(activeSeat, "npcBetAction")) {
-          const nxt = nextAliveFrom(snap, turn);
+          const nxt = nextAliveFrom(snap, activeSeat);
           if (nxt !== null) setTurn(nxt);
           else {
             forceFinishRoundRef.current({
@@ -9913,7 +9934,7 @@ const SAFE_RESET_PHASE = "IDLE";
         if (checkIfOneLeftThenEnd(snap)) {
           return;
         }
-        const me = snap[turn] ? { ...snap[turn] } : null;
+        const me = snap[activeSeat] ? { ...snap[activeSeat] } : null;
         if (!me) return;
         if (
           sessionControllerRef.current &&
@@ -10135,6 +10156,7 @@ const SAFE_RESET_PHASE = "IDLE";
     return () => clearTimeout(timer);
   }, [
     turn,
+    controllerTurn,
     phase,
     deck,
     currentBet,

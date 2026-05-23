@@ -32,9 +32,21 @@ test.describe("responsive game layout separation", () => {
     const metrics = await page.evaluate(() => ({
       bodyOverflow: getComputedStyle(document.body).overflow,
       horizontalScroll: document.documentElement.scrollWidth > window.innerWidth + 2,
+      table: (() => {
+        const box = document.querySelector('[data-testid="game-table-surface"]')?.getBoundingClientRect();
+        return box
+          ? {
+              width: box.width,
+              height: box.height,
+              ratio: box.width / Math.max(1, box.height),
+            }
+          : null;
+      })(),
     }));
     expect(metrics.bodyOverflow).not.toBe("hidden");
     expect(metrics.horizontalScroll).toBe(false);
+    expect(metrics.table?.ratio).toBeGreaterThan(1.2);
+    expect(metrics.table?.ratio).toBeLessThan(2.6);
   });
 
   test("mobile landscape uses fixed mobile root and hides desktop-only chrome", async ({ browser }) => {

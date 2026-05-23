@@ -483,6 +483,8 @@ export default function Player({
         isWinner ? "ring-4 ring-emerald-400 animate-pulse" : ""
       } ${
         shouldRevealLarge ? "z-[90] scale-[1.06]" : ""
+      } ${
+        compact && isFolded && !isActive && !isHero ? "opacity-60 scale-[0.96]" : ""
       }`}
       style={{
         padding: "var(--player-pad, 10px)",

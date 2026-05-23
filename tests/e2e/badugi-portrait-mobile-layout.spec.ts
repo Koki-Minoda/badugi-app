@@ -16,6 +16,7 @@ import {
 const BADUGI = CORE5_VARIANTS.find((variant) => variant.variant === "badugi")!;
 const REPORT_PATH = path.resolve("reports/alpha/badugi-portrait-mobile-layout-audit.json");
 const VIEWPORTS = [
+  { name: "375x812", width: 375, height: 812 },
   { name: "390x844", width: 390, height: 844 },
   { name: "430x932", width: 430, height: 932 },
 ] as const;
@@ -99,4 +100,3 @@ test.describe("Badugi portrait mobile layout readiness", () => {
     });
   }
 });
-

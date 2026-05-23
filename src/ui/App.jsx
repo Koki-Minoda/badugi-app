@@ -10599,7 +10599,7 @@ const SAFE_RESET_PHASE = "IDLE";
     return mode === "tournament-mtt" ? tournamentLayouts : cashLayouts;
   }, [mode]);
 
-  const { tableOuterBg, tableSurfaceBg, tableBorderColor } =
+  const { tableOuterBg, tableSurfaceBg, tableBorderColor, tableAccentRing, phaseTone } =
     getTablePhaseColors(tablePhase);
 
   const tableSummaryProps = {
@@ -11108,6 +11108,8 @@ const SAFE_RESET_PHASE = "IDLE";
     tournamentHud,
     tableSurfaceBg,
     tableBorderColor,
+    tableAccentRing,
+    phaseTone,
     heroTableAnimating,
     isTournament,
     tableSummaryProps,

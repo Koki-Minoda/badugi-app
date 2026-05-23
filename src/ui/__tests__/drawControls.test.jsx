@@ -163,3 +163,51 @@ describe("Hero draw controls follow engine snapshot", () => {
     expect(screen.queryByTestId("player-0-card-0")).toBeNull();
   });
 });
+
+describe("Mobile betting controls", () => {
+  const bettingPlayer = {
+    name: "You",
+    stack: 500,
+    betThisRound: 0,
+    folded: false,
+    allIn: false,
+    seatOut: false,
+  };
+
+  it("orders Fold, Call, Raise in three portrait mobile columns", () => {
+    render(
+      <Controls
+        phase="BET"
+        currentBet={20}
+        player={bettingPlayer}
+        onFold={() => {}}
+        onCall={() => {}}
+        onRaise={() => {}}
+        layoutMode="mobile-portrait"
+      />,
+    );
+    const buttons = screen.getAllByRole("button");
+    expect(buttons.map((button) => button.textContent)).toEqual(["Fold", "Call 20", "Raise"]);
+    expect(screen.getByTestId("action-fold")).toBe(buttons[0]);
+    expect(screen.getByTestId("action-call")).toBe(buttons[1]);
+    expect(screen.getByTestId("action-raise")).toBe(buttons[2]);
+  });
+
+  it("keeps the third mobile column occupied with a disabled Bet button when capped", () => {
+    render(
+      <Controls
+        phase="BET"
+        currentBet={0}
+        player={bettingPlayer}
+        onFold={() => {}}
+        onCheck={() => {}}
+        canRaise={false}
+        layoutMode="mobile-portrait"
+      />,
+    );
+    const buttons = screen.getAllByRole("button");
+    expect(buttons.map((button) => button.textContent)).toEqual(["Fold", "Check", "Bet"]);
+    expect(buttons[2].disabled).toBe(true);
+    expect(screen.queryByTestId("action-raise")).toBeNull();
+  });
+});

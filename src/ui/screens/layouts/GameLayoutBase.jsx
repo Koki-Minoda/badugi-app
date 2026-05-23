@@ -125,6 +125,9 @@ export default function GameLayoutBase({
     tableOuterBg,
     tournamentHud,
     tableSurfaceBg,
+    tableBorderColor,
+    tableAccentRing,
+    phaseTone,
     heroTableAnimating,
     isTournament,
     tableSummaryProps,
@@ -199,7 +202,32 @@ export default function GameLayoutBase({
     isMobileTournament && React.isValidElement(tournamentHud)
       ? React.cloneElement(tournamentHud, { mobileCompact: true })
       : tournamentHud;
-  const mobilePhaseCompactText = `${tablePhase} | D${drawRoundValue + 1} | R${betRoundValue + 1}`;
+  const normalizedTablePhase = String(tablePhase ?? phase ?? "BET").toUpperCase();
+  const displayPhase =
+    normalizedTablePhase === "DRAWING"
+      ? "DRAW"
+      : normalizedTablePhase || "BET";
+  const isDrawDisplayPhase = displayPhase === "DRAW";
+  const maxDrawsForDisplay = Math.max(1, Number(tableSummaryProps?.maxDraws) || 3);
+  const drawNumberForDisplay = Math.min(
+    maxDrawsForDisplay,
+    Math.max(
+      1,
+      isDrawDisplayPhase
+        ? Number(drawRoundValue) || 1
+        : (Number(drawRoundValue) || 0) + 1,
+    ),
+  );
+  const betRoundNumberForDisplay = Math.max(1, (Number(betRoundValue) || 0) + 1);
+  const phaseCompactText = `${displayPhase} | D${drawNumberForDisplay} | R${betRoundNumberForDisplay}`;
+  const phaseAccentClass = isDrawDisplayPhase
+    ? "border-red-300/55 bg-red-950/85 text-red-50 shadow-[0_0_18px_rgba(248,113,113,0.24)]"
+    : displayPhase === "SHOWDOWN"
+      ? "border-purple-300/45 bg-purple-950/75 text-purple-50"
+      : "border-emerald-300/25 bg-slate-900/85 text-white";
+  const phaseBadgeAccentClass = isDrawDisplayPhase
+    ? "border-red-300/55 bg-red-600/90 text-white shadow-[0_0_18px_rgba(248,113,113,0.36)]"
+    : "border-white/10 bg-black/45 text-slate-200";
   const desktopSectionClass = showDesktopSidePanel
     ? "pl-[270px] pr-4 pt-[4.75rem] pb-8 gap-4 min-[1360px]:pl-[290px] min-[1360px]:pr-5 min-[1360px]:pt-[5.5rem] min-[1360px]:pb-[4.5rem] min-[1360px]:gap-6"
     : isTournament
@@ -264,14 +292,27 @@ export default function GameLayoutBase({
     };
   }, [isMobileLayout]);
   const feltOvalClass = isMobileLayout
-    ? "inset-x-[10%] inset-y-[35%] border-[8px]"
+    ? isMobilePortraitMode
+      ? "inset-x-[14%] inset-y-[17%] border-[7px]"
+      : "inset-x-[10%] inset-y-[35%] border-[8px]"
     : "inset-x-[3%] inset-y-[26%] border-[10px]";
   const feltInnerRingClass = isMobileLayout
-    ? "inset-x-[12%] inset-y-[38%]"
+    ? isMobilePortraitMode
+      ? "inset-x-[18%] inset-y-[22%]"
+      : "inset-x-[12%] inset-y-[38%]"
     : "inset-x-[8%] inset-y-[30%]";
   const feltInnerRingSoftClass = isMobileLayout
-    ? "inset-x-[18%] inset-y-[42%]"
+    ? isMobilePortraitMode
+      ? "inset-x-[24%] inset-y-[28%]"
+      : "inset-x-[18%] inset-y-[42%]"
     : "inset-x-[14%] inset-y-[34%]";
+  const mobileTableGridStyle =
+    isMobileLayout && isMobilePortraitMode
+      ? {
+          ...MOBILE_TABLE_GRID_STYLE,
+          gridTemplateRows: "minmax(0, 0.86fr) minmax(0, 0.9fr) minmax(0, 1.14fr)",
+        }
+      : MOBILE_TABLE_GRID_STYLE;
   const rootStyle = isMobileLayout
     ? {
         ...cardScaleVars,
@@ -302,6 +343,18 @@ export default function GameLayoutBase({
               "--compact-cpu-card-font-size": "clamp(8px, 2.1dvh, 11px)",
               "--compact-cpu-card-gap": "clamp(1px, 0.5dvh, 3px)",
               "--compact-cpu-card-strip-maxw": "clamp(86px, 23dvw, 132px)",
+              ...(isMobilePortraitTournament
+                ? {
+                    "--compact-cpu-card-w": "clamp(16px, 6dvh, 26px)",
+                    "--compact-cpu-card-h": "clamp(22px, 8.4dvh, 36px)",
+                    "--compact-cpu-card-font-size": "clamp(7px, 1.8dvh, 10px)",
+                    "--compact-cpu-card-gap": "clamp(1px, 0.45dvh, 2px)",
+                    "--compact-cpu-card-strip-maxw": "clamp(76px, 22dvw, 118px)",
+                    "--player-avatar-size": "clamp(17px, 4.6dvh, 25px)",
+                    "--player-name-size": "clamp(8px, 2dvh, 11px)",
+                    "--player-stack-size": "clamp(7px, 1.7dvh, 9px)",
+                  }
+                : {}),
               "--compact-hero-card-w": isMobilePortraitTournament
                 ? "clamp(24px, 8.1dvh, 40px)"
                 : "clamp(22px, 8.4dvh, 38px)",
@@ -376,6 +429,7 @@ export default function GameLayoutBase({
     <div
       ref={layoutRootRef}
       data-layout-mode={mobileLayoutMode}
+      data-phase-tone={phaseTone ?? (isDrawDisplayPhase ? "draw" : "bet")}
       className={`flex flex-col ${rootSizingClass} ${mobileViewportClass} ${
         isMobileTournament ? "mgx-mobile-tournament" : ""
       } bg-gray-900 text-white`}
@@ -540,14 +594,14 @@ export default function GameLayoutBase({
         >
           <div
             className={`flex flex-col ${
-              isMobileLayout ? "h-full min-h-0 gap-0 rounded-none border-0 bg-transparent p-0 shadow-none" : "gap-5 rounded-3xl border border-white/10 bg-black/40 p-3 shadow-2xl"
+            isMobileLayout ? "h-full min-h-0 gap-0 rounded-none border-0 bg-transparent p-0 shadow-none" : "gap-5 rounded-3xl border border-white/10 bg-black/40 p-3 shadow-2xl"
             }`}
           >
               <div
                 className={`relative grid ${
                   isMobileLayout
                     ? isMobilePortraitTournament
-                    ? "h-full min-h-0 grid-cols-1 grid-rows-[minmax(70dvh,1fr)_auto] gap-1"
+                    ? "h-full min-h-0 grid-cols-1 grid-rows-[minmax(0,1fr)_auto] gap-1"
                     : isMobileLandscapeTournament
                       ? "h-full min-h-0 grid-cols-[minmax(0,1fr)_clamp(186px,24dvw,228px)] grid-rows-1 gap-1.5"
                     : "h-full min-h-0 grid-cols-1 grid-rows-[minmax(0,1fr)_auto] gap-2 min-[641px]:grid-cols-[minmax(0,1fr)_clamp(206px,30dvw,286px)] min-[641px]:grid-rows-1"
@@ -556,9 +610,18 @@ export default function GameLayoutBase({
             >
               <div
                 data-testid="game-table-surface"
-                className={`relative min-w-0 overflow-hidden rounded-[32px] border border-white/10 bg-slate-950/28 ${
+                className={`relative min-w-0 overflow-hidden rounded-[32px] border ${tableBorderColor ?? "border-white/10"} bg-slate-950/28 ${tableAccentRing ?? ""} ${
                   heroTableAnimating ? "ring-2 ring-yellow-300 animate-pulse" : ""
                 } ${isMobileLayout ? (isMobileTournament ? "min-h-0 p-1.5" : "min-h-0 p-2") : "overflow-visible p-4"} shadow-[inset_0_0_45px_rgba(0,0,0,0.38),0_18px_42px_rgba(0,0,0,0.35)]`}
+                style={
+                  isMobilePortraitMode
+                    ? {
+                        aspectRatio: isMobileTournament ? "9 / 14" : "3 / 5",
+                        maxHeight: "100%",
+                        width: "100%",
+                      }
+                    : undefined
+                }
               >
                 <div
                   data-testid="table-felt-oval"
@@ -573,7 +636,7 @@ export default function GameLayoutBase({
                       ? `grid h-full min-h-0 ${isMobileTournament ? "gap-0.5" : "gap-1"}`
                       : desktopTableMinHeight
                   }`}
-                  style={isMobileLayout ? MOBILE_TABLE_GRID_STYLE : undefined}
+                  style={isMobileLayout ? mobileTableGridStyle : undefined}
                 >
                   <div
                     className={`pointer-events-none ${
@@ -592,19 +655,21 @@ export default function GameLayoutBase({
                         }`}
                       >
                         <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-yellow-100/80">
-                          Total Pot
+                          POT
                         </p>
                         <p className="text-lg font-black text-yellow-200">{totalPot}</p>
                       </div>
                       <div
                         data-testid="table-phase-badge"
-                        className={`${isMobileLayout ? "ml-1 px-2 py-0.5 text-[10px]" : "px-3 py-1 text-[11px]"} rounded-full bg-black/45 font-semibold text-slate-200`}
+                        className={`${isMobileLayout ? "ml-1 px-2 py-0.5 text-[10px]" : "px-3 py-1 text-[11px]"} rounded-full border font-semibold ${phaseBadgeAccentClass}`}
                       >
-                        {isMobileTournament
-                          ? mobilePhaseCompactText
+                        {isDrawDisplayPhase
+                          ? `${phaseCompactText} · DRAW RUSHER`
+                          : isMobileTournament
+                          ? phaseCompactText
                           : boardCards.length > 0 || streetLabel
-                          ? `${tablePhase} · ${streetLabel || "Board"}`
-                          : `${tablePhase} · Draw ${drawRoundValue + 1}`}
+                          ? `${displayPhase} · ${streetLabel || "Board"}`
+                          : phaseCompactText}
                       </div>
                   </div>
                   {boardCards.length > 0 && (
@@ -675,10 +740,10 @@ export default function GameLayoutBase({
                 className={`flex min-h-0 min-w-0 flex-col ${
                   isMobileLayout
                     ? isMobileTournament
-                      ? `mgx-mobile-action-sheet mgx-mobile-tournament-panel gap-1 overflow-hidden pb-[max(0px,env(safe-area-inset-bottom))] ${
+                      ? `mgx-mobile-action-sheet mgx-mobile-tournament-panel gap-1 overflow-hidden pb-[max(8px,env(safe-area-inset-bottom))] ${
                           isMobileLandscapeMode ? "max-h-[calc(var(--mgx-visual-vh,100dvh)-12px)] gap-0.5" : ""
                         }`
-                      : "mgx-mobile-action-sheet gap-2 overflow-hidden pb-[max(0px,env(safe-area-inset-bottom))]"
+                      : "mgx-mobile-action-sheet gap-2 overflow-hidden pb-[max(8px,env(safe-area-inset-bottom))]"
                     : "gap-3"
                 }`}
               >
@@ -688,11 +753,11 @@ export default function GameLayoutBase({
                 )}
                 <div
                   data-testid="phase-compact-strip"
-                  className={`${isMobileLayout ? (isMobileTournament ? "rounded-lg px-2 py-0.5 text-[10px]" : "rounded-2xl p-2 text-base") : "rounded-2xl p-3"} flex items-center justify-between border border-white/10 bg-slate-900/85 font-black text-white shadow-lg`}
+                  className={`${isMobileLayout ? (isMobileTournament ? "rounded-lg px-2 py-0.5 text-[10px]" : "rounded-2xl p-2 text-base") : "rounded-2xl p-3"} flex items-center justify-between border font-black shadow-lg ${phaseAccentClass}`}
                 >
                   {isMobileTournament ? (
                     <>
-                      <span className="truncate">{mobilePhaseCompactText}</span>
+                      <span className="truncate">{phaseCompactText}</span>
                       <span className="ml-2 shrink-0 text-[9px] font-semibold text-slate-400">
                         {actionPanelInfo?.currentActorPosition ?? actionPanelInfo?.heroPosition ?? ""}
                       </span>
@@ -701,13 +766,18 @@ export default function GameLayoutBase({
                     <>
                       <div>
                         <p className="text-[10px] uppercase tracking-wider text-slate-400">Phase</p>
-                        <p className={`${isMobileLayout ? "text-base" : "text-xl"} font-bold text-white`}>{tablePhase}</p>
+                        <p className={`${isMobileLayout ? "text-base" : "text-xl"} font-bold text-white`}>{displayPhase}</p>
+                        {isDrawDisplayPhase && (
+                          <p className="mt-1 text-[9px] font-black uppercase tracking-[0.22em] text-red-200">
+                            Draw Rusher
+                          </p>
+                        )}
                       </div>
                       <div className="text-right">
                         <p className="text-[10px] uppercase tracking-wider text-slate-400">Draw</p>
-                        <p className="text-base font-semibold text-white">{drawRoundValue + 1}</p>
+                        <p className="text-base font-semibold text-white">D{drawNumberForDisplay}</p>
                         <p className="mt-1 text-[10px] uppercase tracking-wider text-slate-400">Bet Round</p>
-                        <p className="text-base font-semibold text-white">{betRoundValue + 1}</p>
+                        <p className="text-base font-semibold text-white">R{betRoundNumberForDisplay}</p>
                       </div>
                     </>
                   )}
@@ -730,7 +800,7 @@ export default function GameLayoutBase({
                     Draw allowed: {tableHeroCanDraw ? "Yes" : "No"}
                   </div>
                 </div>
-                <div className={`${isMobileLayout ? (isMobileTournament ? "min-h-0 min-w-0 overflow-hidden rounded-xl p-1 space-y-1" : "min-h-0 min-w-0 overflow-hidden p-2 space-y-3") : "p-3 space-y-3"} rounded-2xl border border-emerald-300/15 bg-slate-900/88 shadow-lg`}>
+                <div className={`${isMobileLayout ? (isMobileTournament ? "min-h-0 min-w-0 overflow-hidden rounded-xl p-1 space-y-1" : "min-h-0 min-w-0 overflow-hidden p-2 space-y-3") : "p-3 space-y-3"} rounded-2xl border ${isDrawDisplayPhase ? "border-red-300/35 bg-red-950/35" : "border-emerald-300/15 bg-slate-900/88"} shadow-lg`}>
                   <h2 className={`${isMobileTournament ? "sr-only" : "text-xs"} font-semibold text-white uppercase tracking-wider`}>
                     Hero Controls
                   </h2>
@@ -738,8 +808,8 @@ export default function GameLayoutBase({
                     data-testid="actor-readability-strip"
                     className={`grid ${isMobileTournament ? "grid-cols-2 gap-1 text-[9px]" : "grid-cols-3 gap-2 text-[11px]"} text-slate-200`}
                   >
-                    <div className={`rounded-xl border border-emerald-300/20 bg-emerald-400/10 ${isMobileTournament ? "rounded-lg px-1 py-0.5" : "px-2 py-1.5"}`}>
-                      <p className="uppercase tracking-wide text-emerald-200/80">Hero</p>
+                    <div className={`rounded-xl border ${isDrawDisplayPhase ? "border-red-300/30 bg-red-500/10" : "border-emerald-300/20 bg-emerald-400/10"} ${isMobileTournament ? "rounded-lg px-1 py-0.5" : "px-2 py-1.5"}`}>
+                      <p className={`uppercase tracking-wide ${isDrawDisplayPhase ? "text-red-100/80" : "text-emerald-200/80"}`}>Hero</p>
                       <p className="truncate font-black text-white">{actionPanelInfo?.heroPosition ?? "Seat"}</p>
                     </div>
                     <div className={`rounded-xl border border-yellow-300/20 bg-yellow-300/10 ${isMobileTournament ? "rounded-lg px-1 py-0.5" : "px-2 py-1.5"}`}>
@@ -789,7 +859,7 @@ export default function GameLayoutBase({
                   {actionPanelInfo?.recentActions?.length > 0 && (
                     <div
                       data-testid="recent-action-strip"
-                      className={`rounded-xl border border-white/10 bg-black/25 ${isMobileTournament ? "px-2 py-1 min-[641px]:hidden" : "px-3 py-2"}`}
+                      className={`rounded-xl border border-white/10 bg-black/25 ${isMobileTournament ? `${isMobilePortraitMode ? "hidden" : ""} px-2 py-1 min-[641px]:hidden` : "px-3 py-2"}`}
                     >
                       <p className={`${isMobileTournament ? "text-[9px]" : "text-[10px]"} uppercase tracking-wide text-slate-500`}>
                         Last Actions

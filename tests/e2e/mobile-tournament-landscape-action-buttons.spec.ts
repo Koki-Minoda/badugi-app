@@ -13,6 +13,7 @@ const PWA_LANDSCAPE_VIEWPORTS = [
 ] as const;
 
 const SANITY_VIEWPORTS = [
+  { name: "iphone-portrait-375x812", width: 375, height: 812, mode: "portrait" },
   { name: "iphone-portrait-390x844", width: 390, height: 844, mode: "portrait" },
 ] as const;
 
@@ -92,6 +93,44 @@ async function collectMetrics(page: Page) {
   return { viewport, decisionBox, callBox, raiseBox, foldBox, overflow };
 }
 
+async function assertNoHorizontalOverflow(page: Page) {
+  const overflow = await page.evaluate(() => ({
+    documentOverflow: document.documentElement.scrollWidth - window.innerWidth,
+    bodyOverflow: document.body.scrollWidth - window.innerWidth,
+  }));
+  expect(overflow.documentOverflow, `document horizontal overflow: ${JSON.stringify(overflow)}`).toBeLessThanOrEqual(1);
+  expect(overflow.bodyOverflow, `body horizontal overflow: ${JSON.stringify(overflow)}`).toBeLessThanOrEqual(1);
+}
+
+async function assertPortraitThreeColumnBetControls(page: Page) {
+  const buttons = [
+    { id: "action-fold", label: "Fold" },
+    (await page.getByTestId("action-call").isVisible().catch(() => false))
+      ? { id: "action-call", label: "Call" }
+      : { id: "action-check", label: "Check" },
+    { id: "action-raise", label: "Raise" },
+  ];
+  const boxes = [];
+  for (const button of buttons) {
+    const locator = page.getByTestId(button.id);
+    await expect(locator, `${button.label} should be visible`).toBeVisible();
+    const box = await boxFor(locator);
+    expect(box, `${button.id} layout box`).toBeTruthy();
+    expect(box!.height, `${button.id} target height`).toBeGreaterThanOrEqual(44);
+    expect(box!.height, `${button.id} target height`).toBeLessThanOrEqual(54);
+    boxes.push({ ...button, box: box! });
+  }
+
+  expect(boxes[0].box.x, "Fold should be left column").toBeLessThan(boxes[1].box.x);
+  expect(boxes[1].box.x, "Call/Check should be center column").toBeLessThan(boxes[2].box.x);
+  const maxTopDelta = Math.max(...boxes.map(({ box }) => box.y)) - Math.min(...boxes.map(({ box }) => box.y));
+  const maxHeightDelta =
+    Math.max(...boxes.map(({ box }) => box.height)) - Math.min(...boxes.map(({ box }) => box.height));
+  expect(maxTopDelta, `buttons should sit on one row: ${JSON.stringify(boxes)}`).toBeLessThanOrEqual(3);
+  expect(maxHeightDelta, `buttons should have stable row heights: ${JSON.stringify(boxes)}`).toBeLessThanOrEqual(3);
+  await assertNoHorizontalOverflow(page);
+}
+
 async function assertBetButtonsUsable(page: Page, variantId: string) {
   if (variantId.toLowerCase() === "badugi") {
     await assertButtonFullyUsable(page, "action-call");
@@ -126,6 +165,7 @@ test.describe("mobile tournament landscape action buttons", () => {
         try {
           await openFixture(page, variantId);
           await assertBetButtonsUsable(page, variantId);
+          await assertNoHorizontalOverflow(page);
           const metrics = await collectMetrics(page);
           rows.push({ variantId, viewport: viewport.name, status: "PASS", metrics, screenshotPath });
           await page.screenshot({ path: screenshotPath, fullPage: true });
@@ -143,6 +183,7 @@ test.describe("mobile tournament landscape action buttons", () => {
       const screenshotPath = path.join(SCREENSHOT_DIR, `badugi-${viewport.name}.png`);
       await openFixture(page, "badugi");
       await assertBetButtonsUsable(page, "badugi");
+      await assertPortraitThreeColumnBetControls(page);
       const metrics = await collectMetrics(page);
       rows.push({ variantId: "badugi", viewport: viewport.name, status: "PASS", metrics, screenshotPath });
       await page.screenshot({ path: screenshotPath, fullPage: true });

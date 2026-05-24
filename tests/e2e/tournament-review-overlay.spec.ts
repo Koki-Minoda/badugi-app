@@ -67,6 +67,7 @@ test.describe("Tournament Review result overlay", () => {
     const overlay = page.getByTestId("mtt-result-overlay");
     await expect(overlay).toBeVisible({ timeout: 20000 });
     await expect(page.getByTestId("mtt-tournament-review")).toBeVisible();
+    await expect(page.getByRole("button", { name: "AIレビューを見る" })).toHaveCount(0);
     await expect(page.getByTestId("mtt-result-champion")).toContainText("Champion");
     await expect(page.getByTestId("mtt-result-row")).toHaveCount(3);
     await expect(page.getByTestId("mtt-result-payout").first()).toContainText(/Payout \d+/);

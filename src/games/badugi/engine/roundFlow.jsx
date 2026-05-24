@@ -412,33 +412,7 @@ export function finishBetRoundFrom({
 
 }) {
 
-  console.log("[DEBUG][finishBetRoundFrom args]", {
-
-    phaseBefore: "BET",
-
-    dealerIdx,
-
-    drawRound,
-
-    typeofDrawRound: typeof drawRound,
-
-    MAX_DRAWS,
-
-    playerStates: players.map((p, i) => ({
-
-      i,
-
-      name: p.name,
-
-      folded: p.folded,
-
-      allIn: p.allIn,
-
-      betThisRound: p.betThisRound,
-
-    })),
-
-  });
+  debugLog(`[BET] finishBetRoundFrom args dealerIdx=${dealerIdx} drawRound=${drawRound} MAX_DRAWS=${MAX_DRAWS}`);
 
 
 
@@ -452,7 +426,6 @@ export function finishBetRoundFrom({
 
   }
 
-  console.log(`[TRACE ${new Date().toISOString()}]  finishBetRoundFrom START`, { drawRound });
   debugLog(`[ BET] finishBetRoundFrom start drawRound=${drawRound}`);
 
   const handleDrawRoundSkipped = ({
@@ -801,7 +774,7 @@ export function finishBetRoundFrom({
     })),
   );
 
-  console.log(`[TRACE ${new Date().toISOString()}] finishBetRoundFrom END nextPhase=DRAW`);
+  debugLog(`[BET] finishBetRoundFrom END nextPhase=DRAW round=${nextRound}`);
 
 
 

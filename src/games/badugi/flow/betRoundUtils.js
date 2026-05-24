@@ -9,6 +9,7 @@ import {
   findNextEligibleActor,
   isSeatEligibleForBetting,
 } from "../../core/turn/actorEligibility.js";
+import { debugLog } from "../../../utils/debugLog.js";
 
 export function needsActionForBet(player, maxBet = 0) {
   if (!player || !isPlayerInBetRound(player)) return false;
@@ -82,7 +83,7 @@ export function analyzeBetSnapshot({
   const hasPendingAction = snap.some((player) => needsActionForBet(player, maxNow));
 
   // Debug: snapshot of players prior to selecting nextTurn
-  console.log("[BET][PLAYERS]", {
+  debugLog("[BET][PLAYERS]", `actedIndex=${actedIndex} maxNow=${maxNow}`, {
     actedIndex,
     maxNow,
     players: snap.map((p, idx) => ({

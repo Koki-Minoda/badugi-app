@@ -62,9 +62,16 @@ export function isSeatActionEligibleForPhase(players, seat, phase) {
   if (player.folded || player.hasFolded || player.seatOut || player.isBusted || player.busted) {
     return false;
   }
+  const normalizedPhase = String(phase).toUpperCase();
+  if (normalizedPhase === "DRAW") {
+    // TDA-style rule: all-in players and stack=0 players may still take
+    // pat/draw decisions.  Folded/busted/seatOut are already excluded above.
+    // Only skip a seat that has already drawn this round.
+    return !player.hasDrawn;
+  }
+  // BET: all-in and stack=0 seats cannot take betting actions.
   const stack = Math.max(0, Number(player.stack) || 0);
   if (player.allIn || stack <= 0) return false;
-  if (String(phase).toUpperCase() === "DRAW" && player.hasDrawn) return false;
   return true;
 }
 

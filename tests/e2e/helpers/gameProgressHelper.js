@@ -568,9 +568,17 @@ export async function playOneHandProgression(page, options = {}) {
 
 export async function expectMobileActionsInViewport(page) {
   const viewport = page.viewportSize();
-  const action = page
-    .locator("[data-testid='action-check'],[data-testid='action-call'],[data-testid='action-raise'],[data-testid='action-fold'],[data-testid='action-draw-selected']")
-    .first();
+  const progress = await getProgressState(page);
+  const heroIsActor = progress?.actor === 0;
+  const actions = page.locator(
+    "[data-testid='action-check'],[data-testid='action-call'],[data-testid='action-raise'],[data-testid='action-fold'],[data-testid='action-draw-selected']",
+  );
+  if (!heroIsActor) {
+    await expect(actions).toHaveCount(0);
+    return;
+  }
+
+  const action = actions.first();
   await expect(action).toBeVisible({ timeout: 30000 });
   const box = await action.boundingBox();
   expect(box, "action button should have a bounding box").toBeTruthy();

@@ -71,22 +71,70 @@ export function findNextActiveSeat(players, startIdx = 0) {
   );
 }
 
-export function firstBetterAfterBlinds(players, dealerIdx = 0) {
-  if (!Array.isArray(players) || players.length === 0) return 0;
-  const n = players.length;
-  const blindSeats = getBlindSeatsForPlayers(players, dealerIdx);
-  const start =
-    typeof blindSeats.bbIdx === "number"
-      ? (blindSeats.bbIdx + 1) % n
-      : ((dealerIdx + 1) % n + n) % n;
-  for (let offset = 0; offset < n; offset += 1) {
-    const seat = (start + offset) % n;
-    const player = players[seat];
-    if (isSeatEligibleForBet(player)) {
-      return seat;
+export function getOpeningBetEligibleSeats(seats = []) {
+  if (!Array.isArray(seats)) return [];
+  return seats
+    .map((player, seatIndex) => ({ player, seatIndex }))
+    .filter(({ player }) => isSeatEligibleForBet(player))
+    .map(({ seatIndex }) => seatIndex);
+}
+
+export function resolveOpeningBetActor({
+  seats = [],
+  buttonSeat = null,
+  smallBlindSeat = null,
+  bigBlindSeat = null,
+  phase = "BET",
+  round = 1,
+} = {}) {
+  const normalizedPhase = String(phase ?? "").toUpperCase();
+  const activeEligibleSeats = getOpeningBetEligibleSeats(seats);
+  const seatCount = Array.isArray(seats) ? seats.length : 0;
+  let resolvedOpeningActor = null;
+
+  if (normalizedPhase === "BET" && Number(round) === 1 && activeEligibleSeats.length >= 2 && seatCount > 0) {
+    const startSeat =
+      activeEligibleSeats.length === 2
+        ? typeof buttonSeat === "number"
+          ? buttonSeat
+          : smallBlindSeat
+        : typeof bigBlindSeat === "number"
+          ? (bigBlindSeat + 1) % seatCount
+          : null;
+    if (typeof startSeat === "number") {
+      for (let offset = 0; offset < seatCount; offset += 1) {
+        const seat = (startSeat + offset) % seatCount;
+        if (activeEligibleSeats.includes(seat)) {
+          resolvedOpeningActor = seat;
+          break;
+        }
+      }
     }
   }
-  return start;
+
+  debugLog("[BET][OPENING_ACTOR]", `seat=${resolvedOpeningActor} round=${round}`, {
+    buttonSeat,
+    sbSeat: smallBlindSeat,
+    bbSeat: bigBlindSeat,
+    resolvedOpeningActor,
+    activeEligibleSeats,
+    round,
+    phase: normalizedPhase,
+  });
+
+  return resolvedOpeningActor;
+}
+
+export function firstBetterAfterBlinds(players, dealerIdx = 0) {
+  const blindSeats = getBlindSeatsForPlayers(players, dealerIdx);
+  return resolveOpeningBetActor({
+    seats: players,
+    buttonSeat: dealerIdx,
+    smallBlindSeat: blindSeats.sbIdx,
+    bigBlindSeat: blindSeats.bbIdx,
+    phase: "BET",
+    round: 1,
+  });
 }
 
 export function getBlindSeatsForPlayers(players = [], dealerIdx = 0) {

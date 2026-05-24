@@ -19,6 +19,8 @@ import {
   isSeatEligibleForDraw,
   markPlayerFolded,
   findNextDrawActorSeat,
+  resolveOpeningBetActor,
+  getBlindSeatsForPlayers,
 } from "../flow/actionUtils.js";
 import { applyChips } from "../flow/actionUtils.js";
 import { normalizePotsWithContributions } from "./potIntegrity.js";
@@ -112,12 +114,9 @@ export class BadugiEngine extends DrawEngineBase {
       }
     }
 
-    const sbIndex = findNextActiveSeat(players, (next.dealerIndex + 1) % players.length);
-    const bbIndex = findNextActiveSeat(
-      players,
-      ((sbIndex !== -1 ? sbIndex : next.dealerIndex) + 1) % players.length,
-      sbIndex
-    );
+    const { sbIdx, bbIdx } = getBlindSeatsForPlayers(players, next.dealerIndex);
+    const sbIndex = typeof sbIdx === "number" ? sbIdx : -1;
+    const bbIndex = typeof bbIdx === "number" ? bbIdx : -1;
 
     let sbPay = 0;
     let bbPay = 0;
@@ -140,14 +139,20 @@ export class BadugiEngine extends DrawEngineBase {
       }
     });
 
-    const actingPlayerIndex = findNextActiveSeat(
-      players,
-      ((bbIndex !== -1 ? bbIndex : sbIndex !== -1 ? sbIndex : next.dealerIndex) + 1) % players.length
-    );
+    const actingPlayerIndex = resolveOpeningBetActor({
+      seats: players,
+      buttonSeat: next.dealerIndex,
+      smallBlindSeat: sbIndex !== -1 ? sbIndex : null,
+      bigBlindSeat: bbIndex !== -1 ? bbIndex : null,
+      phase: "BET",
+      round: 1,
+    });
 
     next.players = players;
     next.lastAggressorIndex = bbIndex !== -1 ? bbIndex : sbIndex !== -1 ? sbIndex : next.dealerIndex;
-    next.actingPlayerIndex = actingPlayerIndex === -1 ? next.dealerIndex : actingPlayerIndex;
+    next.actingPlayerIndex = typeof actingPlayerIndex === "number" ? actingPlayerIndex : null;
+    next.turn = next.actingPlayerIndex;
+    next.nextTurn = next.actingPlayerIndex;
     const committed = sumCommitted(players);
     next.metadata = {
       ...(next.metadata ?? {}),
@@ -155,6 +160,7 @@ export class BadugiEngine extends DrawEngineBase {
       lastBlinds: { sbIndex, sbPay, bbIndex, bbPay },
       currentBet: computeCurrentBet(players),
       betHead: next.actingPlayerIndex,
+      actingPlayerIndex: next.actingPlayerIndex,
       raiseCountThisRound: 0,
       raiseCap: getFixedLimitRaiseCap(next?.metadata?.raiseCap),
       totalCommitted: committed,
@@ -476,22 +482,6 @@ function payContribution(player, amount) {
   }
 
   return { updated, paid: pay };
-}
-
-/**
- * ENGINE-LEGACY helper: scoped to internal table state.
- * External layers must not import this (use flow/nextActorUtils).
- */
-function findNextActiveSeat(players, startIndex, skipIndex) {
-  if (!Array.isArray(players) || players.length === 0) return -1;
-  const n = players.length;
-  let idx = ((startIndex % n) + n) % n;
-  for (let step = 0; step < n; step += 1) {
-    const seat = (idx + step) % n;
-    if (seat === skipIndex) continue;
-    if (isSeatEligibleForBet(players[seat])) return seat;
-  }
-  return -1;
 }
 
 function computeCurrentBet(players) {

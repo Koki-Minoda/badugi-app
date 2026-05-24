@@ -3,6 +3,9 @@ import {
   APP_URL,
   openAuthenticatedGame,
 } from "./authHelper";
+import {
+  playOneHandProgression,
+} from "./helpers/gameProgressHelper.js";
 
 async function openMobilePage(
   browser: Browser,
@@ -31,30 +34,6 @@ async function closeContext(context: BrowserContext) {
   await context.close().catch(() => {});
 }
 
-async function clickFirstVisible(page: Page, testIds: string[]) {
-  for (const testId of testIds) {
-    const locator = page.getByTestId(testId).first();
-    if ((await locator.count()) && (await locator.isVisible().catch(() => false))) {
-      await locator.click();
-      return testId;
-    }
-  }
-  return null;
-}
-
-async function waitForDrawButton(page: Page) {
-  const deadline = Date.now() + 45000;
-  while (Date.now() < deadline) {
-    const drawButton = page.getByTestId("action-draw-selected").first();
-    if ((await drawButton.count()) && (await drawButton.isVisible().catch(() => false))) {
-      return drawButton;
-    }
-    await clickFirstVisible(page, ["action-check", "action-call", "action-raise"]);
-    await page.waitForTimeout(300);
-  }
-  throw new Error("Timed out waiting for mobile draw action");
-}
-
 async function expectCardInsideViewport(page: Page, testId: string) {
   const box = await page.getByTestId(testId).boundingBox();
   const viewport = page.viewportSize();
@@ -79,13 +58,6 @@ async function expectMobileLayoutIsUsable(page: Page, lastHeroCard: string) {
   expect(scrollMetrics.rootScrolls).toBe(false);
 }
 
-async function expectActionButtonIsFingerSized(locator: ReturnType<Page["getByTestId"]>) {
-  const box = await locator.first().boundingBox();
-  expect(box, "action button should have a layout box").not.toBeNull();
-  if (!box) return;
-  expect(box.height).toBeGreaterThanOrEqual(44);
-}
-
 test.describe("mobile App smoke", () => {
   test.describe.configure({ timeout: 120000 });
 
@@ -108,7 +80,7 @@ test.describe("mobile App smoke", () => {
     { variant: "S01", lastHeroCard: "player-0-card-4" },
     { variant: "S02", lastHeroCard: "player-0-card-4" },
   ]) {
-    test(`plays ${variant} draw controls on mobile landscape`, async ({ browser }) => {
+    test(`plays ${variant} controls on mobile landscape`, async ({ browser }) => {
       const { context, page } = await openMobilePage(browser, "landscape");
       try {
         if (variant === "badugi") {
@@ -119,20 +91,12 @@ test.describe("mobile App smoke", () => {
         await openAuthenticatedGame(page, `${APP_URL}?variant=${variant}`);
         await expectMobileLayoutIsUsable(page, lastHeroCard);
 
-        const drawButton = await waitForDrawButton(page);
-        await expectActionButtonIsFingerSized(drawButton);
-        await page.getByTestId("player-0-card-0").click();
-        await expect(page.getByTestId("player-0-card-0")).toHaveAttribute(
-          "aria-pressed",
-          "true",
-          { timeout: 5000 },
-        );
-        await drawButton.click();
-        await expect(page.getByTestId("player-0-card-0")).not.toHaveAttribute(
-          "aria-pressed",
-          "true",
-          { timeout: 10000 },
-        );
+        await playOneHandProgression(page, {
+          maxSteps: 90,
+          policy: "safe",
+          requireHeroButtonClick: true,
+          requireDrawVisit: true,
+        });
       } finally {
         await closeContext(context);
       }
@@ -147,8 +111,12 @@ test.describe("mobile App smoke", () => {
       });
       await openAuthenticatedGame(page, `${APP_URL}?variant=badugi`);
       await expectMobileLayoutIsUsable(page, "player-0-card-3");
-      const drawButton = await waitForDrawButton(page);
-      await expectActionButtonIsFingerSized(drawButton);
+      await playOneHandProgression(page, {
+        maxSteps: 90,
+        policy: "safe",
+        requireHeroButtonClick: true,
+        requireDrawVisit: true,
+      });
     } finally {
       await closeContext(context);
     }

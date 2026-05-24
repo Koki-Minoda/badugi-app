@@ -171,6 +171,38 @@ function appendUniqueSeat(seats: number[], seat: number) {
   return uniqueSeats([...seats, seat]);
 }
 
+function playerHasCompletedBetAction(progress: any, seat: number, { sbSeat, bbSeat }: { sbSeat: number | null; bbSeat: number | null }) {
+  const player = progress?.players?.[seat];
+  if (!player) return false;
+  if (player?.folded || player?.hasFolded || player?.allIn || player?.seatOut || player?.isBusted) return true;
+  const currentBet = effectiveCurrentBet(progress);
+  if (currentBet <= 0) return false;
+  const preDraw = String(progress?.phase ?? "") === "BET" && Number(progress?.drawRoundIndex ?? 0) <= 0;
+  const blindOnly = preDraw && (seat === sbSeat || seat === bbSeat);
+  if (blindOnly) return false;
+  return playerBet(player) >= currentBet;
+}
+
+function reconcileObservedAutoActions(
+  progress: any,
+  street: StreetContext,
+  { sbSeat, bbSeat }: { sbSeat: number | null; bbSeat: number | null },
+) {
+  const actor = progress?.actor;
+  const players = progress?.players ?? [];
+  if (typeof actor !== "number" || !players.length || typeof street.previousActorSeat !== "number") return;
+
+  let cursor = street.previousActorSeat;
+  for (let guard = 0; guard < players.length; guard += 1) {
+    cursor = (cursor + 1) % players.length;
+    if (cursor === actor) return;
+    if (street.actedThisStreet.includes(cursor)) continue;
+    if (!playerHasCompletedBetAction(progress, cursor, { sbSeat, bbSeat })) return;
+    street.actedThisStreet = appendUniqueSeat(street.actedThisStreet, cursor);
+    street.previousActorSeat = cursor;
+  }
+}
+
 function normalizeActionId(actionId: string | null) {
   if (!actionId) return null;
   return actionId.replace(/^action-/, "").replace(/-selected$/, "").toUpperCase();
@@ -232,6 +264,7 @@ async function auditVariant(page: Page, entry: (typeof CORE5)[number]) {
           street.actedThisStreet.length > 0 ? street.actedThisStreet[street.actedThisStreet.length - 1] : null;
         street.actionSequence = [];
       }
+      reconcileObservedAutoActions(progress, street, { sbSeat, bbSeat });
 
       const legalActions = await getLegalActions(page);
       const plannedAction = controllerBetAction(progress);

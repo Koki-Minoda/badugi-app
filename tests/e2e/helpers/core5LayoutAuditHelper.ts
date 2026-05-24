@@ -4,6 +4,7 @@ import type { Page } from "@playwright/test";
 import { APP_URL, openAuthenticatedGame } from "../authHelper";
 import {
   expectMobileActionsInViewport,
+  getProgressState,
   playOneHandProgression,
   waitForE2EDriver,
 } from "./gameProgressHelper.js";
@@ -185,13 +186,18 @@ export async function evaluateInitialLayout(
 
 export async function evaluateMobileInteraction(page: Page) {
   const issues: AuditIssue[] = [];
-  await expectMobileActionsInViewport(page).catch((error) => {
-    issues.push({ priority: "P0", issue: "mobile action button outside usable viewport", message: error.message });
-  });
+  const progress = await getProgressState(page);
+  const heroIsActor = progress?.actor === 0;
+  const actionSelector =
+    "[data-testid='action-check'],[data-testid='action-call'],[data-testid='action-raise'],[data-testid='action-fold'],[data-testid='action-draw-selected']";
 
-  const buttons = page.locator(
-    "[data-testid='action-check'],[data-testid='action-call'],[data-testid='action-raise'],[data-testid='action-fold'],[data-testid='action-draw-selected']",
-  );
+  if (heroIsActor) {
+    await expectMobileActionsInViewport(page).catch((error) => {
+      issues.push({ priority: "P0", issue: "mobile action button outside usable viewport", message: error.message });
+    });
+  }
+
+  const buttons = page.locator(actionSelector);
   const count = await buttons.count();
   let visibleActionButtons = 0;
   let minActionButtonHeight = Number.POSITIVE_INFINITY;
@@ -202,8 +208,11 @@ export async function evaluateMobileInteraction(page: Page) {
     const box = await button.boundingBox();
     if (box) minActionButtonHeight = Math.min(minActionButtonHeight, box.height);
   }
-  if (visibleActionButtons === 0) {
+  if (heroIsActor && visibleActionButtons === 0) {
     issues.push({ priority: "P0", issue: "no visible action buttons" });
+  }
+  if (!heroIsActor && visibleActionButtons > 0) {
+    issues.push({ priority: "P0", issue: "hero action buttons visible for non-hero actor", value: progress?.actor });
   }
   if (Number.isFinite(minActionButtonHeight) && minActionButtonHeight < 40) {
     issues.push({ priority: "P1", issue: "action button below target size", value: minActionButtonHeight });
@@ -212,6 +221,8 @@ export async function evaluateMobileInteraction(page: Page) {
   return {
     issues,
     metrics: {
+      actor: progress?.actor ?? null,
+      heroIsActor,
       visibleActionButtons,
       minActionButtonHeight: Number.isFinite(minActionButtonHeight) ? minActionButtonHeight : null,
     },

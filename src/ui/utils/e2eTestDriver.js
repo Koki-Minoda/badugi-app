@@ -41,6 +41,9 @@ export function installE2eTestDriver(apiRef) {
       apiRef.current?.setupTournamentBustedSeatDisplayFixtureForTest?.(...args),
     setupMobileTournamentHeroActionFixtureForTest: (...args) =>
       apiRef.current?.setupMobileTournamentHeroActionFixtureForTest?.(...args),
+    setupTournamentReviewOverlayFixtureForTest: (...args) =>
+      apiRef.current?.setupTournamentReviewOverlayFixtureForTest?.(...args),
+    getReplayState: (...args) => apiRef.current?.getReplayState?.(...args),
     forceHeroDraw: (...args) => apiRef.current?.forceHeroDraw?.(...args),
     forceFinishRoundForTest: (...args) =>
       apiRef.current?.forceFinishRoundForTest?.(...args),

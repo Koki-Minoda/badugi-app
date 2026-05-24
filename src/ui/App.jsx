@@ -7948,6 +7948,158 @@ export default function App() {
         syncEngineSnapshot(snapshot);
         return engineStateRef.current ?? snapshot;
       },
+      setupTournamentReviewOverlayFixtureForTest: ({
+        status = "summary",
+        variantId = "badugi",
+        withReplayTarget = true,
+      } = {}) => {
+        const normalizedVariant = String(variantId || "badugi");
+        const tournamentId = `t-review-${normalizedVariant}`;
+        const buildFixtureHand = ({
+          handId,
+          heroNet,
+          pot,
+          phase = "BET",
+          action = "call",
+          actionSeq = 1,
+          busted = false,
+          showdown = false,
+        }) => ({
+          handId,
+          tournamentId,
+          variantId: normalizedVariant,
+          startedAt: Date.now() - 1000,
+          endedAt: Date.now(),
+          heroNet,
+          pot,
+          totalPot: pot,
+          heroBusted: busted,
+          showdown,
+          seats: [
+            {
+              seat: 0,
+              name: heroProfile?.name ?? "You",
+              isHero: true,
+              initialStack: 1000,
+              stack: Math.max(0, 1000 + heroNet),
+              busted,
+              actions: [
+                {
+                  seq: actionSeq,
+                  street: phase,
+                  type: action,
+                  amount: Math.max(0, action === "draw" ? 0 : Math.abs(heroNet)),
+                  stackBefore: 1000,
+                  stackAfter: Math.max(0, 1000 + heroNet),
+                  legalActions: ["fold", "call", "raise"],
+                },
+              ],
+            },
+            { seat: 1, name: "Sora", initialStack: 1000, stack: 1000 },
+          ],
+          events: [
+            { type: "HAND_START", timestamp: Date.now() - 900 },
+            {
+              type: phase === "DRAW" ? "DRAW_ACTION" : "BET_ACTION",
+              seat: 0,
+              action,
+              amount: Math.max(0, action === "draw" ? 0 : Math.abs(heroNet)),
+              actionSeq,
+              timestamp: Date.now() - 700,
+            },
+            ...(showdown ? [{ type: "SHOWDOWN", timestamp: Date.now() - 500 }] : []),
+            {
+              type: "HAND_END",
+              totalPot: pot,
+              winners: heroNet >= 0 ? [{ seat: 0, amount: pot }] : [{ seat: 1, amount: pot }],
+              timestamp: Date.now() - 300,
+            },
+          ],
+        });
+        const hands =
+          status === "insufficient_logs"
+            ? []
+            : [
+                buildFixtureHand({
+                  handId: "t-review-bust",
+                  heroNet: -320,
+                  pot: 640,
+                  action: "call",
+                  actionSeq: 2,
+                  busted: true,
+                }),
+                buildFixtureHand({
+                  handId: "t-review-win",
+                  heroNet: 480,
+                  pot: 760,
+                  action: "raise",
+                  actionSeq: 3,
+                  showdown: true,
+                }),
+                buildFixtureHand({
+                  handId: "t-review-draw",
+                  heroNet: 80,
+                  pot: 220,
+                  phase: "DRAW",
+                  action: "draw",
+                  actionSeq: 4,
+                }),
+              ];
+        const placements = [
+          {
+            id: heroTournamentPlayerIdRef.current,
+            place: 2,
+            name: heroProfile?.name ?? "You",
+            stack: 0,
+            payout: 300,
+          },
+          { id: "cpu-1", place: 1, name: "Sora", stack: 2200, payout: 700 },
+          { id: "cpu-2", place: 3, name: "Mina", stack: 0, payout: 0 },
+        ];
+        const review = buildTournamentReviewContract({
+          tournament: {
+            id: tournamentId,
+            tournamentId,
+            name: "E2E Tournament Review",
+            gameVariant: normalizedVariant,
+            buyIn: 100,
+          },
+          hands,
+          placements,
+          heroSeat: 0,
+          heroPlayerId: heroTournamentPlayerIdRef.current,
+          hasAuth: authIsAuthenticated === true,
+          requestState: status === "error" ? { error: "e2e_error" } : {},
+        });
+        const nextReview =
+          withReplayTarget || !Array.isArray(review.keyHands)
+            ? review
+            : {
+                ...review,
+                keyHands: review.keyHands.map((hand) => ({
+                  ...hand,
+                  replayRef: null,
+                })),
+                replayRefs: [],
+              };
+        setMode("tournament-mtt");
+        modeRef.current = "tournament-mtt";
+        gameVariantRef.current = normalizedVariant;
+        setGameVariant(normalizedVariant);
+        controllerVariantRef.current = normalizedVariant;
+        handHistoryBufferRef.current = hands.map(cloneHandHistory).filter(Boolean);
+        setTournamentPlacements(placements);
+        setTournamentTitle("E2E Tournament Review");
+        setTournamentReview(nextReview);
+        setTournamentOverlayVisible(true);
+        setCurrentScreen("gameTournament");
+        return {
+          status,
+          variantId: normalizedVariant,
+          placements,
+          review: nextReview,
+        };
+      },
       forceSequentialFolds,
       forceAllIn: forceAllInAction,
       setupFixedLimitCapFixtureForTest,
@@ -8155,6 +8307,11 @@ export default function App() {
       getTournamentHudState: () => getTournamentHudSnapshotRef.current(),
       getTournamentPlacements: () => [...tournamentPlacements],
       isTournamentOverlayVisible: () => tournamentOverlayVisible,
+      getReplayState: () => ({
+        currentScreen,
+        replayHandId,
+        replayTarget,
+      }),
       startTournamentMTT: (config) => startTournamentMTT(config),
       simulateTournamentBackground: (iterations = 1) =>
         runTournamentBackgroundSimulation(iterations),
@@ -8179,6 +8336,9 @@ export default function App() {
     forceSequentialFolds,
     forceAllInAction,
     setupFixedLimitCapFixtureForTest,
+    authIsAuthenticated,
+    currentScreen,
+    heroProfile,
     resolveHandImmediately,
     startNextHand,
     applyCustomHands,
@@ -8198,6 +8358,8 @@ export default function App() {
     fastForwardMTTComplete,
     tournamentPlacements,
     tournamentOverlayVisible,
+    replayHandId,
+    replayTarget,
   ]);
 
   useEffect(() => installE2eTestDriver(e2eDriverApiRef), []);

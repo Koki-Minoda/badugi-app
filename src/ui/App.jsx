@@ -209,6 +209,7 @@ import {
   compactTournamentSeatViews,
 } from "./utils/tournamentSeatDisplay.js";
 import { getPositionNameForSeat } from "./utils/positionLabels.js";
+import { buildTournamentReviewContract } from "./feedback/tournamentReviewContract.js";
 import MobileOrientationGate from "./components/MobileOrientationGate.jsx";
 import { useDeviceProfile } from "./hooks/useDeviceProfile.js";
 import { useDesktopCanvasScale } from "./hooks/useDesktopCanvasScale.js";
@@ -573,6 +574,7 @@ export default function App() {
     useState(false);
   const [tournamentPlacements, setTournamentPlacements] = useState([]);
   const [tournamentTitle, setTournamentTitle] = useState("Tournament Results");
+  const [tournamentReview, setTournamentReview] = useState(null);
   const [heroBustSummary, setHeroBustSummary] = useState(null);
   const [heroBustOverlayVisible, setHeroBustOverlayVisible] = useState(false);
   const tournamentStateRef = useRef(null);
@@ -5190,8 +5192,32 @@ export default function App() {
         }
         computePayouts(nextState);
         const placements = buildTournamentPlacementsPayload(nextState);
+        const tournamentHands = Array.isArray(handHistoryBufferRef.current)
+          ? handHistoryBufferRef.current.filter(Boolean)
+          : [];
+        const heroPlayerSnapshot =
+          nextState.players?.[heroTournamentPlayerIdRef.current] ?? null;
+        const reviewContract = buildTournamentReviewContract({
+          tournament: {
+            ...(nextState.config ?? {}),
+            tournamentId: nextState.config?.id ?? nextState.id ?? "active-mtt",
+            championId: nextState.championId ?? null,
+            heroNet:
+              typeof heroPlayerSnapshot?.payout === "number" ||
+              typeof nextState.config?.buyIn === "number"
+                ? (Number(heroPlayerSnapshot?.payout) || 0) -
+                  (Number(nextState.config?.buyIn ?? nextState.config?.entryFee ?? nextState.config?.entry) || 0)
+                : null,
+          },
+          hands: tournamentHands,
+          placements,
+          heroSeat: 0,
+          heroPlayerId: heroTournamentPlayerIdRef.current,
+          hasAuth: authIsAuthenticated === true,
+        });
         setTournamentPlacements(placements);
         setTournamentTitle(nextState?.config?.name ?? "Tournament Results");
+        setTournamentReview(reviewContract);
         setShowNextButton(false);
         setHandResultVisible(false);
         finalizeTournamentReplay(nextState, placements);
@@ -5251,8 +5277,10 @@ export default function App() {
       setTournamentHudState,
       setTournamentOverlayVisible,
       setTournamentPlacements,
+      setTournamentReview,
       setTournamentTitle,
       triggerHeroTableAnimation,
+      authIsAuthenticated,
     ],
   );
 
@@ -5743,6 +5771,7 @@ export default function App() {
       getBlindStructureForTournamentConfig(DEFAULT_STORE_TOURNAMENT_CONFIG),
     );
     setTournamentPlacements([]);
+    setTournamentReview(null);
     setTournamentOverlayVisible(false);
     setHeroBustSummary(null);
     setHeroBustOverlayVisible(false);
@@ -12104,6 +12133,8 @@ export default function App() {
     tournamentTitle,
     tournamentOverlayVisible,
     tournamentPlacements,
+    tournamentReview,
+    onOpenTournamentReviewReplay: handleOpenReplayTarget,
     onTournamentBackToMenu: handleTournamentBackToMenu,
     onTournamentPlayAgain: handleTournamentPlayAgain,
   };

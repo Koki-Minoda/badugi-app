@@ -167,6 +167,8 @@ export default function GameLayoutBase({
     tournamentTitle,
     tournamentOverlayVisible,
     tournamentPlacements,
+    tournamentReview,
+    onOpenTournamentReviewReplay,
     onTournamentBackToMenu,
     onTournamentPlayAgain,
   } = overlaysProps;
@@ -1304,6 +1306,8 @@ export default function GameLayoutBase({
         visible={tournamentOverlayVisible}
         placements={tournamentPlacements}
         title={tournamentTitle}
+        tournamentReview={tournamentReview}
+        onOpenReviewReplay={onOpenTournamentReviewReplay}
         onBackToMenu={onTournamentBackToMenu}
         onPlayAgain={onTournamentPlayAgain}
       />

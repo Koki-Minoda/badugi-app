@@ -227,6 +227,40 @@ describe("BadugiGameController – betting", () => {
   });
 });
 
+describe("BadugiGameController – syncFromSnapshot null turn handling", () => {
+  it("preserves null turn when all turn sources are absent (RISK-04 regression)", () => {
+    const controller = createController();
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU"],
+    });
+    const state = controller.createNewHandState(initial, {});
+
+    // Simulate the post-bust/terminal state that BadugiEngine.applyForcedBets
+    // can produce: legacy state has null turns (e.g. heads-up seatOut scenario).
+    controller.legacy.state.turn = null;
+    controller.legacy.state.nextTurn = null;
+
+    const snap = controller.getUiSnapshot(state);
+    const synced = controller.syncFromExternalState({
+      snapshot: {
+        ...snap,
+        turn: undefined,     // not a number → falls through to legacy state
+        nextTurn: undefined, // not a number → falls through to legacy state
+      },
+      context: state?.context ?? null,
+      handIndex: state?.handIndex ?? 0,
+    });
+
+    // With the fix: null ?? null ?? null → null, not coerced to 0.
+    // syncExternalState does a plain object spread so legacy.state.turn
+    // directly reflects the nextTurn value computed at line 614.
+    // normalizeTurnState post-processes the *snapshot* but does not
+    // write back to legacy.state, so this is the correct observation point.
+    expect(controller.legacy.state.turn).toBeNull();
+    expect(controller.legacy.state.nextTurn).toBeNull();
+  });
+});
+
 describe("BadugiGameController – draw", () => {
   it("marks players as having drawn with correct count", () => {
     const controller = createController();

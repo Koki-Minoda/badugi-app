@@ -8,7 +8,7 @@ export function mergeEngineSnapshot(currentState, snapshot) {
       currentBet: defaultMeta.currentBet ?? 0,
       betHead: defaultMeta.betHead ?? 0,
       lastAggressor: defaultMeta.lastAggressor ?? null,
-      actingPlayerIndex: defaultMeta.actingPlayerIndex ?? 0,
+      actingPlayerIndex: defaultMeta.actingPlayerIndex ?? null,
       handId: typeof defaultMeta.handId === "string" ? defaultMeta.handId : null,
     },
       deck: Array.isArray(currentState?.deck) ? currentState.deck : [],

@@ -29,6 +29,15 @@ describe("mergeEngineSnapshot", () => {
     expect(merged.metadata.lastAggressor).toBe(1);
   });
 
+  it("preserves null actingPlayerIndex in no-snapshot path (RISK-01 regression)", () => {
+    const stateWithNullActor = {
+      ...baseState,
+      metadata: { ...baseState.metadata, actingPlayerIndex: null },
+    };
+    const merged = mergeEngineSnapshot(stateWithNullActor, null);
+    expect(merged.metadata.actingPlayerIndex).toBeNull();
+  });
+
   it("prefers snapshot data and metadata overrides", () => {
     const snapshot = {
       players: [{ id: 2 }],
@@ -50,6 +59,22 @@ describe("mergeEngineSnapshot", () => {
     expect(merged.metadata.betHead).toBe(50);
     expect(merged.metadata.lastAggressor).toBe(2);
     expect(merged.metadata.actingPlayerIndex).toBe(3);
+  });
+
+  it("does not allow stale metadata actingPlayerIndex to override canonical nextTurn", () => {
+    const snapshot = {
+      players: [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }],
+      nextTurn: 3,
+      turn: 3,
+      metadata: {
+        actingPlayerIndex: 0,
+        currentBet: 20,
+      },
+    };
+    const merged = mergeEngineSnapshot(baseState, snapshot);
+
+    expect(merged.metadata.actingPlayerIndex).toBe(3);
+    expect(merged.metadata.currentBet).toBe(20);
   });
 
   it("preserves character image metadata when engine snapshot omits UI-only fields", () => {

@@ -6307,7 +6307,7 @@ export default function App() {
                 ?.betThisRound ?? 0,
             anteEvents: [],
             initialCurrentBet: controllerHandSnapshot.currentBet ?? BB,
-            resolvedTurn: controllerHandSnapshot.currentActor ?? 0,
+            resolvedTurn: controllerHandSnapshot.currentActor ?? null,
             activeCount: snapshotPlayers.filter((player) => !player?.seatOut)
               .length,
             handStartingStacksById: snapshotPlayers.map((player) =>

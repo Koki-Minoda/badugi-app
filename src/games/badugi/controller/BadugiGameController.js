@@ -611,7 +611,7 @@ export class BadugiGameController extends GameController {
         ? normalized.nextTurn
         : typeof normalized.turn === "number"
         ? normalized.turn
-        : this.legacy.state.turn ?? this.legacy.state.nextTurn ?? 0;
+        : this.legacy.state.turn ?? this.legacy.state.nextTurn ?? null;
 
     this.legacy.syncExternalState({
       players: normalized.players ?? [],

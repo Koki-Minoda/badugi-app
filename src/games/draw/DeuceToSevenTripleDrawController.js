@@ -101,6 +101,105 @@ function sumStreetBets(players = []) {
   return players.reduce((sum, player) => sum + Math.max(0, Number(player?.bet) || 0), 0);
 }
 
+function normalizePhase(value) {
+  const normalized = String(value ?? "").toUpperCase();
+  if (normalized === "DRAW") return "DRAW";
+  if (normalized === "SHOWDOWN" || normalized === "HAND_RESULT") return "SHOWDOWN";
+  return "BET";
+}
+
+function resolveExternalActor(snapshot = {}, metadata = {}) {
+  const candidates = [
+    snapshot.currentActor,
+    snapshot.actingPlayerIndex,
+    snapshot.turn,
+    snapshot.nextTurn,
+    metadata.actingPlayerIndex,
+  ];
+  for (const candidate of candidates) {
+    if (Number.isInteger(candidate) && candidate >= 0) return candidate;
+  }
+  return null;
+}
+
+function normalizeExternalPlayer(player = {}, seatIndex = 0) {
+  const hand = Array.isArray(player.hand)
+    ? [...player.hand]
+    : Array.isArray(player.cards)
+      ? [...player.cards]
+      : [];
+  const seatOut = normalizeSeatOut(player);
+  const folded = Boolean(player.folded || player.hasFolded || seatOut);
+  const stack = Math.max(0, Number(player.stack ?? 0) || 0);
+  const bet = Math.max(
+    0,
+    Number(player.bet ?? player.betThisRound ?? player.betThisStreet ?? 0) || 0,
+  );
+  const lastAction = player.lastAction ?? player.action ?? "";
+  return {
+    ...player,
+    id: player.id ?? player.playerId ?? `seat-${seatIndex}`,
+    playerId: player.playerId ?? player.id ?? `seat-${seatIndex}`,
+    name: player.name ?? (seatIndex === 0 ? "You" : `CPU ${seatIndex + 1}`),
+    seatIndex: player.seatIndex ?? seatIndex,
+    seatType: player.seatType ?? (seatIndex === 0 ? "HUMAN" : "CPU"),
+    isCPU:
+      typeof player.isCPU === "boolean"
+        ? player.isCPU
+        : player.seatType
+          ? player.seatType === "CPU"
+          : seatIndex !== 0,
+    hand,
+    selected: Array.isArray(player.selected) ? [...player.selected] : [],
+    stack,
+    bet,
+    totalInvested: Math.max(0, Number(player.totalInvested ?? bet) || 0),
+    folded,
+    allIn: Boolean(player.allIn || player.isAllIn),
+    sittingOut: seatOut,
+    seatOut,
+    isBusted: Boolean(player.isBusted || player.busted),
+    hasActedThisRound:
+      typeof player.hasActedThisRound === "boolean"
+        ? player.hasActedThisRound
+        : ["CHECK", "CALL", "BET", "RAISE", "FOLD", "ALL-IN", "ALL_IN"].includes(
+            String(lastAction).toUpperCase(),
+          ),
+    hasDrawn: Boolean(player.hasDrawn || player.hasDrawnThisRound),
+    canDraw: player.canDraw,
+    lastDrawCount: Number(player.lastDrawCount ?? 0) || 0,
+    lastAction,
+  };
+}
+
+function normalizeExternalPots(snapshot = {}, players = []) {
+  const sourcePots = Array.isArray(snapshot.pots) ? snapshot.pots : [];
+  if (sourcePots.length) {
+    return sourcePots.map((pot) => {
+      const amount = Math.max(0, Number(pot?.amount ?? pot?.pot ?? 0) || 0);
+      const eligiblePlayerIds =
+        pot?.eligiblePlayerIds ??
+        pot?.eligible ??
+        pot?.eligibleSeats?.map((seat) => players[seat]?.playerId ?? players[seat]?.id) ??
+        [];
+      return {
+        ...pot,
+        amount,
+        eligiblePlayerIds: Array.isArray(eligiblePlayerIds) ? [...eligiblePlayerIds] : [],
+      };
+    });
+  }
+  const streetBets = sumStreetBets(players);
+  const displayedPot = Math.max(0, Number(snapshot.pot ?? snapshot.potTotal ?? 0) || 0);
+  if (streetBets > 0 || displayedPot <= 0) return [];
+  return [
+    {
+      amount: displayedPot,
+      eligiblePlayerIds: getActivePlayers(players).map((player) => player.playerId ?? player.id),
+    },
+  ];
+}
+
 function getSnapshotPot(state = {}, metadata = {}) {
   if (state?.isHandOver || metadata?.showdownSummary) {
     return Math.max(0, metadata.potAmount ?? sumPots(state?.pots ?? []));
@@ -322,6 +421,86 @@ export class DeuceToSevenTripleDrawController extends GameController {
     };
     this._lastState = state;
     return state;
+  }
+
+  syncFromExternalState({ snapshot = {}, context = null, handIndex = null } = {}) {
+    const metadata = { ...(snapshot.metadata ?? {}) };
+    const players = Array.isArray(snapshot.players)
+      ? snapshot.players.map(normalizeExternalPlayer)
+      : [];
+    const street = normalizePhase(snapshot.phase ?? snapshot.street ?? metadata.phase);
+    const actingPlayerIndex = resolveExternalActor(snapshot, metadata);
+    const dealerIndex = Math.max(
+      0,
+      Number(
+        snapshot.dealerIndex ??
+          snapshot.dealerIdx ??
+          snapshot.dealerSeat ??
+          metadata.dealerIndex ??
+          metadata.dealerIdx ??
+          this.config.dealerIndex ??
+          0,
+      ) || 0,
+    );
+    const drawRoundIndex = Math.max(
+      0,
+      Number(snapshot.drawRoundIndex ?? snapshot.drawRound ?? metadata.drawRoundIndex ?? metadata.drawRound ?? 0) || 0,
+    );
+    const currentBet = Math.max(
+      0,
+      Number(snapshot.currentBet ?? metadata.currentBet ?? 0) || 0,
+      ...players.map((player) => Number(player.bet ?? 0) || 0),
+    );
+    const engineState = {
+      handId: snapshot.handId ?? this._lastState?.engineState?.handId ?? `external-${Date.now()}`,
+      gameId: snapshot.gameId ?? this.gameId,
+      engineId: snapshot.engineId ?? snapshot.gameId ?? this.gameId,
+      players,
+      dealerIndex,
+      smallBlind: Number(snapshot.smallBlind ?? metadata.smallBlind ?? this.config.structure?.sb ?? DEFAULT_STRUCTURE.sb) || 0,
+      bigBlind: Number(snapshot.bigBlind ?? metadata.bigBlind ?? this.config.structure?.bb ?? DEFAULT_STRUCTURE.bb) || 0,
+      ante: Number(snapshot.ante ?? metadata.ante ?? this.config.structure?.ante ?? DEFAULT_STRUCTURE.ante) || 0,
+      pots: normalizeExternalPots(snapshot, players),
+      deck: Array.isArray(snapshot.deck) ? [...snapshot.deck] : [],
+      street,
+      drawRoundIndex,
+      actingPlayerIndex,
+      lastAggressorIndex:
+        snapshot.lastAggressorIndex ??
+        snapshot.lastAggressor ??
+        metadata.lastAggressorIndex ??
+        metadata.lastAggressor ??
+        null,
+      metadata: {
+        ...metadata,
+        variantId: metadata.variantId ?? snapshot.variantId ?? this.variantId,
+        bettingStructure: metadata.bettingStructure ?? "fixed-limit",
+        evaluator: metadata.evaluator ?? this.engine?.evaluatorTag,
+        maxDrawRounds: metadata.maxDrawRounds ?? this.engine?.maxDrawRounds ?? 3,
+        handCardCount: metadata.handCardCount ?? this.engine?.handCardCount ?? 5,
+        currentBet,
+        raiseCap: metadata.raiseCap ?? snapshot.raiseCap ?? 4,
+        raiseCountThisRound:
+          metadata.raiseCountThisRound ?? snapshot.raiseCountThisRound ?? 0,
+        lastBlinds: metadata.lastBlinds ?? {
+          sbIndex: snapshot.sbSeat ?? metadata.sbSeat ?? null,
+          bbIndex: snapshot.bbSeat ?? metadata.bbSeat ?? null,
+        },
+      },
+      isHandOver: Boolean(snapshot.isHandOver || street === "SHOWDOWN" || snapshot.lastHandResult),
+    };
+    const nextState = {
+      handIndex:
+        typeof handIndex === "number"
+          ? handIndex
+          : this._lastState?.handIndex ?? 0,
+      engineState: cloneState(engineState),
+      snapshot: this.getUiSnapshot(engineState),
+      context,
+      lastEvents: [{ type: "syncedExternalState", handId: engineState.handId }],
+    };
+    this._lastState = nextState;
+    return nextState;
   }
 
   getUiSnapshot(state = null) {

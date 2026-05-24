@@ -491,8 +491,8 @@ function getInitialLanguage() {
 }
 
 function npcAutoDrawCount(evalResult = {}) {
-  const ranks = evalResult.ranks ?? [];
-  const kicker = evalResult.kicker ?? 13;
+  const ranks = evalResult?.ranks ?? [];
+  const kicker = evalResult?.kicker ?? 13;
   const uniqueCount = ranks.length;
 
   if (uniqueCount <= 1) {
@@ -1048,6 +1048,15 @@ export default function App() {
   const controllerSnapshot = (() => {
     const controller = gameControllerRef.current;
     try {
+      const activeVariant = normalizeAppVariantId(
+        gameVariantRef.current ?? gameVariant,
+      );
+      if (
+        (modeRef.current ?? mode) === "tournament-mtt" &&
+        isDrawLowballAppVariant(activeVariant)
+      ) {
+        return null;
+      }
       if (controller && typeof controller.getSnapshot === "function") {
         const snapshot = controller.getSnapshot();
         return snapshotVariantMatchesAppVariant(snapshot, gameVariant)
@@ -2248,8 +2257,11 @@ export default function App() {
 
   const tryControllerBetAction = useCallback(
     ({ actionType, amount = 0, seatIndex = 0, metadata = {} }) => {
+      const activeMode = modeRef.current ?? mode;
       const fallbackDrawController =
-        isDrawLowballControllerGame && gameControllerRef.current?.applyAction
+        activeMode !== "tournament-mtt" &&
+        isDrawLowballControllerGame &&
+        gameControllerRef.current?.applyAction
           ? gameControllerRef.current
           : null;
       const hasActionController = Boolean(
@@ -2384,6 +2396,7 @@ export default function App() {
       isControllerDrivenSingleTable,
       isDrawLowballControllerGame,
       isSingleTableBoardGame,
+      mode,
       normalizedGameVariant,
       updateAfterActionFromSnapshot,
     ],
@@ -3075,6 +3088,9 @@ export default function App() {
       const replacedCards = [];
       const oldHand = [...me.hand];
       const npcActiveCards = helpers.collectActiveCards(snapshot);
+      const drawableDeckForAssert = Array.isArray(deckManager?.deck)
+        ? deckManager.deck.filter((card) => !npcActiveCards.includes(card))
+        : deckManager?.deck;
       const deckBefore =
         typeof deckManager?.snapshot === "function"
           ? deckManager.snapshot()
@@ -3089,7 +3105,7 @@ export default function App() {
       }
       try {
         assertNoDuplicateCards(`[DRAW][AUTO seat=${seatToAct}][BEFORE]`, {
-          deck: deckManager?.deck,
+          deck: drawableDeckForAssert,
           discard: deckManager?.discardPile,
           burn: deckManager?.burnPile,
           ...helpers.buildSeatCardBuckets(snapshot),
@@ -3100,13 +3116,25 @@ export default function App() {
       }
       const newHand = [...me.hand];
       discardIndexes.forEach((cardIndex) => {
+        const activeCardsForDraw = helpers.collectActiveCards(snapshot);
+        if (Array.isArray(deckManager?.deck)) {
+          deckManager.deck = deckManager.deck.filter(
+            (card) => !activeCardsForDraw.includes(card),
+          );
+        }
         let drawn =
-          deckManager?.draw?.(1, { activeCards: npcActiveCards }) ?? [];
+          deckManager?.draw?.(1, { activeCards: activeCardsForDraw }) ?? [];
         if (!drawn.length) {
           helpers.recycleFoldedAndDiscardsBeforeCurrent(snapshot, seatToAct);
+          const recycledActiveCards = helpers.collectActiveCards(snapshot);
+          if (Array.isArray(deckManager?.deck)) {
+            deckManager.deck = deckManager.deck.filter(
+              (card) => !recycledActiveCards.includes(card),
+            );
+          }
           drawn =
             deckManager?.draw?.(1, {
-              activeCards: helpers.collectActiveCards(snapshot),
+              activeCards: recycledActiveCards,
             }) ?? [];
         }
         if (!drawn.length) return;
@@ -3135,8 +3163,14 @@ export default function App() {
         });
       }
       try {
+        const activeCardsAfterDraw = helpers.collectActiveCards(snapshot);
+        const drawableDeckAfterDraw = Array.isArray(deckManager?.deck)
+          ? deckManager.deck.filter(
+              (card) => !activeCardsAfterDraw.includes(card),
+            )
+          : deckManager?.deck;
         assertNoDuplicateCards(`[DRAW][AUTO seat=${seatToAct}][AFTER]`, {
-          deck: deckManager?.deck,
+          deck: drawableDeckAfterDraw,
           discard: deckManager?.discardPile,
           burn: deckManager?.burnPile,
           ...helpers.buildSeatCardBuckets(snapshot),
@@ -3825,7 +3859,7 @@ export default function App() {
           sessionController: sessionControllerRef.current,
           sessionState: sessionControllerStateRef.current,
           gameController: gameControllerRef.current,
-          preferSession: isSingleTableBadugi,
+          preferSession: isSingleTableBadugi || isSingleTableDrawLowball,
           warn:
             process.env.NODE_ENV !== "production"
               ? (...args) => console.warn(...args)
@@ -6656,7 +6690,7 @@ export default function App() {
       );
       debugLog(
         `[STATE] phase=BET, drawRound=0, turn=${
-          (nextDealerIdx + 3) % NUM_PLAYERS
+          typeof resolvedTurn === "number" ? resolvedTurn : "null"
         }, currentBet=${initialCurrentBet}`,
       );
 
@@ -8239,6 +8273,38 @@ export default function App() {
           try {
             const sessionController = sessionControllerRef.current;
             const sessionState = sessionControllerStateRef.current;
+            const activeVariant = gameVariantRef.current;
+            const activeMode = modeRef.current ?? mode;
+            if (
+              activeMode === "tournament-mtt" &&
+              isDrawLowballAppVariant(normalizeAppVariantId(activeVariant))
+            ) {
+              const livePlayers = (playersRef.current ?? players ?? [])
+                .map(clonePlayerState)
+                .filter(Boolean);
+              return {
+                variantId: activeVariant,
+                gameVariant: activeVariant,
+                handId: handIdRef.current,
+                phase,
+                street: phase,
+                turn,
+                nextTurn: turn,
+                currentActor: turn,
+                actingPlayerIndex: turn,
+                metadata: { actingPlayerIndex: turn },
+                drawRoundIndex: drawRoundTracker.current,
+                drawRound: drawRoundTracker.current,
+                betRound: betRoundIndex,
+                betRoundIndex,
+                currentBet,
+                pot: totalPotRef.current,
+                players: livePlayers,
+                pots: potsRef.current ?? pots ?? [],
+                dealerIdx,
+                dealerSeat: dealerIdx,
+              };
+            }
             if (
               sessionController &&
               sessionState &&
@@ -10656,7 +10722,9 @@ export default function App() {
     const betHelpers = forcedBetHelpersRef.current;
     const drawHelpers = autoDrawHelpersRef.current;
     const seatCount = activePlayers.length;
-    const canonicalActionSeat = isSingleTableBadugi
+    const shouldUseControllerActorForAuto =
+      isSingleTableBadugi || isSingleTableDrawLowball;
+    const canonicalActionSeat = shouldUseControllerActorForAuto
       ? resolveCanonicalActionSeat({
           phase,
           controllerTurn,
@@ -10665,11 +10733,11 @@ export default function App() {
         })
       : null;
     const autoTurn =
-      isSingleTableBadugi && typeof canonicalActionSeat === "number"
+      shouldUseControllerActorForAuto && typeof canonicalActionSeat === "number"
         ? canonicalActionSeat
         : turn;
     if (
-      isSingleTableBadugi &&
+      shouldUseControllerActorForAuto &&
       shouldSyncLegacyTurnToController({
         phase,
         controllerTurn,
@@ -10900,6 +10968,7 @@ export default function App() {
 
     const timer = setTimeout(() => {
       if (phase === "BET") {
+        if ((phaseRef.current ?? phase) !== "BET") return;
         const basePlayers = playersRef.current ?? activePlayers;
         const snap = basePlayers.map(clonePlayerState).filter(Boolean);
         const activeSeat = autoTurn;
@@ -11043,7 +11112,9 @@ export default function App() {
         const evalResult = betHelpers.evaluateBadugi?.(me.hand) ?? {
           ranks: [],
         };
-        const madeCards = evalResult.ranks.length;
+        const madeCards = Array.isArray(evalResult?.ranks)
+          ? evalResult.ranks.length
+          : 0;
         const canRaise = !me.allIn && raiseCountThisRound < 4;
         const activeOpponents = snap.filter(
           (player, seatIndex) =>
@@ -11172,6 +11243,7 @@ export default function App() {
           warnLegacySingleTablePath(`npc-bet fallback seat=${activeSeat}`);
         }
       } else if (phase === "DRAW") {
+        if ((phaseRef.current ?? phase) !== "DRAW") return;
         autoResolveCpuDrawIfNeeded();
         return;
       }

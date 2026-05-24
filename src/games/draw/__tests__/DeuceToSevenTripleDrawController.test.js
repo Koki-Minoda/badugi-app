@@ -103,6 +103,76 @@ describe("DeuceToSevenTripleDrawController", () => {
     ]);
   });
 
+  it("syncs an external D01 opening snapshot so CPU betting can progress", () => {
+    const controller = buildController([
+      "2S", "3S", "4S", "5S", "7S",
+      "2H", "3H", "4H", "5H", "8H",
+      "2C", "3C", "4C", "5C", "9C",
+      "2D", "3D", "4D", "5D", "9D",
+      "6S", "7C", "8D", "9H", "TC",
+      "6H", "7D", "8C", "9S", "TD",
+    ]);
+    const initial = controller.createInitialState();
+    const synced = controller.syncFromExternalState({
+      handIndex: 1,
+      snapshot: {
+        handId: "d01-hand-1",
+        gameId: "deuce_to_seven_triple_draw",
+        variantId: "deuce_to_seven_triple_draw",
+        phase: "BET",
+        street: "BET",
+        drawRound: 0,
+        drawRoundIndex: 0,
+        dealerIdx: 0,
+        turn: 3,
+        nextTurn: 3,
+        actingPlayerIndex: 3,
+        currentBet: 20,
+        sbSeat: 1,
+        bbSeat: 2,
+        players: initial.snapshot.players.length
+          ? initial.snapshot.players
+          : Array.from({ length: 6 }, (_, seat) => ({
+              id: `seat-${seat}`,
+              playerId: `seat-${seat}`,
+              name: seat === 0 ? "You" : `CPU ${seat + 1}`,
+              seatType: seat === 0 ? "HUMAN" : "CPU",
+              isCPU: seat !== 0,
+              stack: seat === 1 ? 490 : seat === 2 ? 480 : 500,
+              betThisRound: seat === 1 ? 10 : seat === 2 ? 20 : 0,
+              bet: seat === 1 ? 10 : seat === 2 ? 20 : 0,
+              hand: ["2S", "3S", "4S", "5S", "7S"],
+              folded: false,
+              allIn: false,
+              seatOut: false,
+              hasActedThisRound: false,
+              lastAction: seat === 1 ? "SB" : seat === 2 ? "BB" : "",
+            })),
+      },
+    });
+
+    const opening = controller.getUiSnapshot(synced);
+    expect(opening.phase).toBe("BET");
+    expect(opening.turn).toBe(3);
+    expect(controller.getLegalActions(synced, 3).map((action) => action.type)).toEqual([
+      "FOLD",
+      "CALL",
+      "RAISE",
+    ]);
+
+    const result = controller.applyAction(synced, {
+      seatIndex: 3,
+      type: "CALL",
+      amount: 20,
+    });
+    const after = controller.getUiSnapshot(result.state);
+
+    expect(result.events[0]?.type).toBe("actionApplied");
+    expect(after.turn).toBe(4);
+    expect(after.players[3].lastAction).toBe("Call");
+    expect(after.players[3].betThisRound).toBe(20);
+  });
+
   it("exposes legal DRAW action only for the current draw actor", () => {
     const controller = buildController([
       "2S", "3S", "4S", "5S", "7S",

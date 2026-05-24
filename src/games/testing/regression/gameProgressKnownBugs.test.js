@@ -173,6 +173,50 @@ describe("MGX known game progress bug regressions", () => {
     }
   });
 
+  test("TURN-011 all-in seat is excluded from BET actor selection (asymmetry with DRAW)", () => {
+    // Regression: isSeatEligibleForBetting excludes all-in seats regardless of stack value.
+    // Old or duplicated predicates could accidentally select the all-in player for BET.
+    // See NOTE (H-01-2) in actionUtils.js.
+    const snapshot = buildSyntheticSnapshot({
+      variantId: "badugi",
+      currentBet: 20,
+      players: [
+        { seatIndex: 0, playerId: "hero",  stack: 300, betThisStreet: 20, hasActedThisRound: true },
+        { seatIndex: 1, playerId: "allin", stack: 0,   betThisStreet: 20, allIn: true },
+        { seatIndex: 2, playerId: "cpu-2", stack: 200, betThisStreet: 0,  hasActedThisRound: false },
+      ],
+    });
+    // Searching from the all-in seat must skip it and land on seat 2.
+    expect(findNextEligibleActor(snapshot, { phase: "BET", startIndex: 1 })).toBe(2);
+    // All-in seat must not appear in the BET eligible set.
+    expect(getEligibleActorSeats(snapshot, { phase: "BET" })).not.toContain(1);
+  });
+
+  test("TURN-012 all-in seat is included in DRAW actor selection when hasDrawn=false, excluded after hasDrawn=true", () => {
+    // Regression (TDA-style asymmetry, NOTE H-01-2):
+    // All-in players may still take pat/draw decisions — the only DRAW gate is hasDrawn.
+    // Old code excluded all-in from DRAW the same way it excluded them from BET.
+    const activePlayers = [
+      { seatIndex: 0, playerId: "hero",  stack: 300, allIn: false, folded: false, hasDrawn: true,  hasActedThisRound: true  },
+      { seatIndex: 1, playerId: "allin", stack: 0,   allIn: true,  folded: false, hasDrawn: false, hasActedThisRound: false },
+      { seatIndex: 2, playerId: "cpu-2", stack: 200, allIn: false, folded: false, hasDrawn: false, hasActedThisRound: false },
+    ];
+    const snapshot = buildSyntheticSnapshot({ variantId: "badugi", phase: "DRAW", players: activePlayers });
+
+    // All-in with hasDrawn=false must be next (comes before cpu-2 from seat 0).
+    expect(findNextEligibleActor(snapshot, { phase: "DRAW", startIndex: 0, allowAllInDraw: true })).toBe(1);
+
+    // After the all-in player draws, it must be skipped and cpu-2 becomes the actor.
+    const afterDraw = buildSyntheticSnapshot({
+      variantId: "badugi",
+      phase: "DRAW",
+      players: activePlayers.map((player) =>
+        player.seatIndex === 1 ? { ...player, hasDrawn: true } : player,
+      ),
+    });
+    expect(findNextEligibleActor(afterDraw, { phase: "DRAW", startIndex: 0, allowAllInDraw: true })).toBe(2);
+  });
+
   test("ACTION-001 SB fold should not skip BB option", () => {
     const snapshot = buildSyntheticSnapshot({
       variantId: "nlh",
@@ -585,6 +629,66 @@ describe("MGX known game progress bug regressions", () => {
     state = controller.applyAction(state, { seatIndex: actor, type: "DRAW", drawCount: 2 }).state;
     expect(state.snapshot.metadata.lastDrawAction.discardIndexes).toEqual([0, 1]);
     expect(state.snapshot.metadata.lastDrawAction.drawCount).toBe(2);
+  });
+
+  test("DRAW-SOT-015 D01 minimal all-in progression reaches result without freeze", () => {
+    const controller = new DeuceToSevenTripleDrawController({
+      tableConfig: {
+        seatConfig: ["HUMAN", "CPU", "CPU"],
+        startingStack: 10,
+        structure: { sb: 5, bb: 10, ante: 0 },
+      },
+    });
+    let state = controller.createInitialState();
+    state = controller.createNewHandState(state, { handId: "draw-sot-015" });
+
+    for (let guard = 0; guard < 100 && !state.snapshot.lastHandResult; guard += 1) {
+      const snapshot = state.snapshot;
+      const actor = [snapshot.actingPlayerIndex, snapshot.currentActor, snapshot.turn, snapshot.nextTurn]
+        .find((candidate) => typeof candidate === "number");
+      if (typeof actor !== "number") {
+        throw new Error(`DRAW-SOT-015 missing actor before terminal: ${JSON.stringify({
+          phase: snapshot.phase,
+          handId: snapshot.handId,
+          lastHandResult: Boolean(snapshot.lastHandResult),
+          actingPlayerIndex: snapshot.actingPlayerIndex,
+          currentActor: snapshot.currentActor,
+          turn: snapshot.turn,
+          nextTurn: snapshot.nextTurn,
+          players: snapshot.players.map((player) => ({
+            seatIndex: player.seatIndex,
+            stack: player.stack,
+            allIn: player.allIn,
+            folded: player.folded,
+            hasDrawn: player.hasDrawn,
+            lastAction: player.lastAction,
+          })),
+        })}`);
+      }
+
+      const legalActions = controller.getLegalActions(state, actor);
+      const legalTypes = legalActions.map((action) => action.type);
+      if (snapshot.phase === "BET") {
+        const type = legalTypes.includes("CHECK") ? "CHECK" : "CALL";
+        if (!legalTypes.includes(type)) {
+          throw new Error(`DRAW-SOT-015 missing BET action: ${JSON.stringify({ actor, legalTypes, snapshot })}`);
+        }
+        state = controller.applyAction(state, { seatIndex: actor, type }).state;
+        continue;
+      }
+      if (snapshot.phase === "DRAW") {
+        if (!legalTypes.includes("DRAW")) {
+          throw new Error(`DRAW-SOT-015 missing DRAW action: ${JSON.stringify({ actor, legalTypes, snapshot })}`);
+        }
+        state = controller.applyAction(state, { seatIndex: actor, type: "DRAW", discardIndexes: [] }).state;
+        continue;
+      }
+      throw new Error(`DRAW-SOT-015 unexpected non-terminal phase: ${snapshot.phase}`);
+    }
+
+    expect(state.snapshot.lastHandResult).toBeTruthy();
+    expect(state.snapshot.players.reduce((sum, player) => sum + Number(player.stack ?? 0), 0)).toBe(30);
+    expect(state.snapshot.players.some((player) => player.allIn && player.hasDrawn === true)).toBe(true);
   });
 
   test("MTT-001 busted player should not receive turn", () => {

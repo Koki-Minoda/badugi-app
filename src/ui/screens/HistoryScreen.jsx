@@ -13,6 +13,8 @@ import {
   getLatestPlayFeedbackResult,
   savePlayFeedbackResult,
 } from "../feedback/playFeedbackStore.js";
+import { buildReplayReviewContract } from "../feedback/replayReviewContract.js";
+import ReplayScreen from "./ReplayScreen.jsx";
 
 const fmt = new Intl.DateTimeFormat("ja-JP", {
   month: "2-digit",
@@ -129,6 +131,7 @@ export default function HistoryScreen() {
     response: null,
   });
   const [feedbackScope, setFeedbackScope] = useState("mixed");
+  const [activeFeedbackReplay, setActiveFeedbackReplay] = useState(null);
   const filtered = tournaments.filter((entry) => {
     if (!search.trim()) return true;
     return (
@@ -173,6 +176,49 @@ export default function HistoryScreen() {
     : savedFeedback;
   const feedbackKeyHands = getFeedbackKeyHands(activeFeedbackEntry).slice(0, 6);
 
+  function findFeedbackHand(handId) {
+    if (!handId) return null;
+    return feedbackSourceHands.find((hand) => (hand?.handId ?? hand?.id) === handId) ?? null;
+  }
+
+  function buildFeedbackReplayTarget(spot = {}) {
+    const hand = findFeedbackHand(spot.handId);
+    if (!hand) return null;
+    const target = spot.replayTarget ?? {
+      handId: spot.handId,
+      actionSeqStart: spot.actionSeqRange?.start ?? null,
+      actionSeqEnd: spot.actionSeqRange?.end ?? null,
+      seat: spot.seatIndex ?? spot.seat ?? null,
+      street: spot.street ?? null,
+      type: spot.heroAction ?? null,
+    };
+    const replayRef = {
+      handId: spot.handId,
+      variantId: spot.variantId ?? hand.variantId ?? hand.gameId ?? null,
+      target,
+      available: true,
+    };
+    return {
+      handId: spot.handId,
+      hand,
+      target: {
+        ...target,
+        replayReview: buildReplayReviewContract({
+          reviewMode: "cash",
+          keyHand: spot,
+          replayRef,
+          variantId: spot.variantId ?? hand.variantId ?? hand.gameId,
+        }),
+      },
+    };
+  }
+
+  function handleOpenFeedbackReplay(spot) {
+    const replay = buildFeedbackReplayTarget(spot);
+    if (!replay) return;
+    setActiveFeedbackReplay(replay);
+  }
+
   async function handleRequestFeedback() {
     if (!feedbackPayloadResult.eligible || !feedbackPayloadResult.payload) return;
     setFeedbackState({ loading: true, error: null, response: null });
@@ -187,6 +233,18 @@ export default function HistoryScreen() {
         response: null,
       });
     }
+  }
+
+  if (activeFeedbackReplay) {
+    return (
+      <ReplayScreen
+        handId={activeFeedbackReplay.handId}
+        target={activeFeedbackReplay.target}
+        initialHandSnapshot={activeFeedbackReplay.hand}
+        onBack={() => setActiveFeedbackReplay(null)}
+        onClose={() => setActiveFeedbackReplay(null)}
+      />
+    );
   }
 
   return (
@@ -309,6 +367,16 @@ export default function HistoryScreen() {
                         ? `#${spot.actionSeqRange.start}-${spot.actionSeqRange.end}`
                         : "action -"}
                     </div>
+                    {findFeedbackHand(spot.handId) ? (
+                      <button
+                        type="button"
+                        className="mt-2 rounded-full border border-sky-300/30 px-3 py-1 text-[11px] font-semibold text-sky-100 hover:bg-sky-300/10"
+                        onClick={() => handleOpenFeedbackReplay(spot)}
+                        data-testid="cash-review-replay"
+                      >
+                        Replay
+                      </button>
+                    ) : null}
                   </div>
                 ))}
               </div>

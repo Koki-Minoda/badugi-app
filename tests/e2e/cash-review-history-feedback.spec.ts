@@ -56,7 +56,13 @@ function makeCashHand(index: number) {
       },
     ],
     events: [
-      { type: "ACTION", seat: 0, action: actionType, amount: actionType === "raise" ? 40 : 20 },
+      {
+        type: "BET_ACTION",
+        seat: 0,
+        action: actionType,
+        amount: actionType === "raise" ? 40 : 20,
+        actionSeq: 1,
+      },
       ...(index % 5 === 0 ? [{ type: "SHOWDOWN" }] : []),
       {
         type: "HAND_END",
@@ -132,6 +138,7 @@ test.describe("Cash Review history feedback", () => {
     await expect(page.getByText(/悪かった点:/)).toBeVisible();
     await expect(page.getByText(/改善点:/)).toBeVisible();
     await expect(page.getByText("Feedback key hands")).toBeVisible();
+    await expect(page.getByTestId("cash-review-replay").first()).toBeVisible();
 
     expect(requests).toHaveLength(1);
     expect(requests[0].mode).toBe("cash");
@@ -141,5 +148,14 @@ test.describe("Cash Review history feedback", () => {
 
     await expect(page.getByText("Tournament Review")).toHaveCount(0);
     await expect(page.getByTestId("mtt-result-overlay")).toHaveCount(0);
+
+    await page.getByTestId("cash-review-replay").first().click();
+    await expect(page.getByTestId("hand-replay-screen")).toBeVisible({ timeout: 20000 });
+    const replayReview = page.getByTestId("replay-review-panel");
+    await expect(replayReview).toBeVisible();
+    await expect(replayReview).toContainText("Replay Review");
+    await expect(replayReview).toContainText("cash");
+    await expect(replayReview).not.toContainText(/Tournament Review|Place|Payout/i);
+    await expect(page.getByTestId("replay-review-timeline-marker")).toBeVisible();
   });
 });

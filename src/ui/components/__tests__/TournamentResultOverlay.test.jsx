@@ -150,11 +150,17 @@ describe("TournamentResultOverlay", () => {
     expect(screen.getByTestId("mtt-tournament-review-key-hand").textContent).toContain("Biggest win");
     expect(screen.getByTestId("mtt-tournament-review-key-hand").textContent).toContain("h-7");
     fireEvent.click(screen.getByTestId("mtt-tournament-review-replay"));
-    expect(onOpenReviewReplay).toHaveBeenCalledWith({
-      handId: "h-7",
-      actionSeqStart: 2,
-      actionSeqEnd: 2,
-    });
+    expect(onOpenReviewReplay).toHaveBeenCalledWith(
+      expect.objectContaining({
+        handId: "h-7",
+        actionSeqStart: 2,
+        actionSeqEnd: 2,
+        replayReview: expect.objectContaining({
+          reviewMode: "tournament",
+          handId: "h-7",
+        }),
+      }),
+    );
     expect(screen.getAllByTestId("mtt-result-row")).toHaveLength(3);
   });
 

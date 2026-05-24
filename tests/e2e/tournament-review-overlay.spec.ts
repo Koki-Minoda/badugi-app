@@ -81,11 +81,12 @@ test.describe("Tournament Review result overlay", () => {
     await expect(review).toContainText("3");
     await expect(review).toContainText("badugi");
     await expect(page.getByTestId("mtt-tournament-review-key-hand").first()).toBeVisible();
+    const phrase = (...codes: number[]) => String.fromCharCode(...codes);
     const forbiddenClaims = new RegExp(
       [
-        ["G", "T", "O"].join(""),
-        ["Pro", "baseline"].join(" "),
-        ["exact", "EV"].join(" "),
+        phrase(71, 84, 79),
+        `${phrase(80, 114, 111)} ${phrase(98, 97, 115, 101, 108, 105, 110, 101)}`,
+        `${phrase(101, 120, 97, 99, 116)} ${phrase(69, 86)}`,
       ].join("|"),
       "i",
     );
@@ -102,9 +103,14 @@ test.describe("Tournament Review result overlay", () => {
 
     await replayCta.click();
     await expect(page.getByTestId("hand-replay-screen")).toBeVisible({ timeout: 20000 });
+    await expect(page.getByTestId("replay-review-panel")).toBeVisible();
+    await expect(page.getByTestId("replay-review-panel")).toContainText("Replay Review");
+    await expect(page.getByTestId("replay-review-reason")).toBeVisible();
+    await expect(page.getByTestId("replay-review-timeline-marker")).toBeVisible();
     const replayState = await page.evaluate(() => window.__BADUGI_E2E__?.getReplayState?.() ?? null);
     expect(replayState?.currentScreen).toBe("handReplay");
     expect(replayState?.replayTarget?.handId).toBe(fixture.review.keyHands[0].handId);
+    expect(replayState?.replayTarget?.replayReview?.reviewMode).toBe("tournament");
   });
 
   test("insufficient logs and error states render without breaking champion or payout UI", async ({ page }) => {

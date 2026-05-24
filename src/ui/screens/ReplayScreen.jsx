@@ -12,6 +12,10 @@ import {
 } from "../state/handHistoryStore.js";
 import { findReplayFrameIndex } from "./replayFrameUtils.js";
 import ReplayCoachingOverlay from "../components/ReplayCoachingOverlay.jsx";
+import {
+  buildReplayReviewContract,
+  isReplayReviewContract,
+} from "../feedback/replayReviewContract.js";
 
 function formatTimestamp(ts) {
   if (!Number.isFinite(ts)) return "–";
@@ -143,6 +147,122 @@ function ReplayHighlightLegend() {
   );
 }
 
+function formatReviewReason(reason) {
+  switch (reason) {
+    case "bust-hand":
+      return "Bust hand";
+    case "biggest-loss":
+      return "Biggest loss";
+    case "biggest-win":
+      return "Biggest win";
+    case "hero-all-in":
+      return "All-in";
+    case "showdown":
+      return "Showdown";
+    case "draw-decision":
+      return "Draw decision";
+    case "large-pot":
+      return "Large pot";
+    default:
+      return "Key hand";
+  }
+}
+
+function reviewMarkerLabel(reason) {
+  switch (reason) {
+    case "bust-hand":
+      return "Bust hand";
+    case "biggest-loss":
+    case "hero-all-in":
+      return "Key decision";
+    case "draw-decision":
+      return "Improvement point";
+    default:
+      return "Review marker";
+  }
+}
+
+function ReplayReviewPanel({ review, onJumpToTarget }) {
+  if (!review) return null;
+  return (
+    <details
+      open
+      className="rounded-2xl border border-sky-300/25 bg-sky-300/10 p-4 text-sm text-slate-100"
+      data-testid="replay-review-panel"
+    >
+      <summary className="cursor-pointer list-none">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-sky-200">
+              Replay Review
+            </p>
+            <h2 className="mt-1 text-lg font-semibold text-white">{review.title}</h2>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span
+              className="rounded-full border border-sky-200/40 bg-sky-200/15 px-2 py-1 font-semibold text-sky-50"
+              data-testid="replay-review-reason"
+            >
+              {formatReviewReason(review.reason)}
+            </span>
+            <span className="rounded-full border border-white/10 bg-black/20 px-2 py-1 text-slate-200">
+              {review.reviewMode}
+            </span>
+            <span className="rounded-full border border-white/10 bg-black/20 px-2 py-1 text-slate-200">
+              {review.severity}
+            </span>
+          </div>
+        </div>
+      </summary>
+      <p className="mt-3 text-sm leading-6 text-slate-100" data-testid="replay-review-summary">
+        {review.summary}
+      </p>
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="rounded-xl bg-black/20 px-3 py-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">
+            良かった点
+          </p>
+          <ul className="mt-2 space-y-1 text-xs text-slate-200">
+            {(review.positives ?? []).map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+        <div className="rounded-xl bg-black/20 px-3 py-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-200">
+            改善点
+          </p>
+          <ul className="mt-2 space-y-1 text-xs text-slate-200">
+            {(review.improvements ?? []).map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {(review.tags ?? []).slice(0, 6).map((tag) => (
+          <span
+            key={tag}
+            className="rounded-full border border-white/10 bg-black/20 px-2 py-1 text-[11px] text-slate-200"
+          >
+            {tag}
+          </span>
+        ))}
+        {typeof onJumpToTarget === "function" ? (
+          <button
+            type="button"
+            className="rounded-full border border-sky-200/40 px-3 py-1 text-[11px] font-semibold text-sky-100 hover:bg-sky-200/10"
+            onClick={onJumpToTarget}
+            data-testid="replay-review-jump"
+          >
+            Jump to review point
+          </button>
+        ) : null}
+      </div>
+    </details>
+  );
+}
+
 function confidenceClasses(level) {
   switch (level) {
     case "high":
@@ -257,6 +377,8 @@ function ReplayTableView({ frame, flashSeat = null, hoverSeat = null }) {
 export default function ReplayScreen({
   handId = null,
   target = null,
+  replayReview = null,
+  initialHandSnapshot = null,
   lessonFocus = null,
   coachingAnnotation = null,
   coachingLocale = "jp",
@@ -265,7 +387,7 @@ export default function ReplayScreen({
   onBack = () => {},
 }) {
   const [handSnapshot, setHandSnapshot] = useState(() =>
-    handId ? findHandHistoryById(handId) ?? null : null,
+    initialHandSnapshot ?? (handId ? findHandHistoryById(handId) ?? null : null),
   );
   const [frameIndex, setFrameIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -316,6 +438,24 @@ export default function ReplayScreen({
     if (!candidateResults) return null;
     return candidateResults.find((candidate) => Number.isFinite(candidate.ev)) ?? null;
   }, [candidateResults]);
+  const effectiveReplayReview = useMemo(() => {
+    const source = replayReview ?? target?.replayReview ?? target?.reviewContext ?? null;
+    if (!source) return null;
+    if (isReplayReviewContract(source)) return source;
+    return buildReplayReviewContract({
+      reviewMode: source.reviewMode,
+      keyHand: source.keyHand ?? source,
+      replayRef: source.replayRef,
+      variantId: source.variantId,
+      title: source.title,
+      summary: source.summary,
+    });
+  }, [replayReview, target]);
+  const replayReviewTarget =
+    effectiveReplayReview?.replayRef?.target ??
+    effectiveReplayReview?.replayRef?.replayTarget ??
+    target?.replayTarget ??
+    null;
   const triggerSeatFlash = useCallback((seat) => {
     if (!Number.isInteger(seat) || seat < 0) return;
     if (flashTimerRef.current) {
@@ -370,6 +510,13 @@ export default function ReplayScreen({
   }, [trainingRequestKey]);
 
   const refreshSnapshot = useCallback(() => {
+    if (initialHandSnapshot && (!handId || initialHandSnapshot.handId === handId)) {
+      const nextFrames = replayHandFromHistory(initialHandSnapshot);
+      setHandSnapshot(initialHandSnapshot);
+      setFrameIndex((value) => Math.min(Math.max(value, 0), Math.max(nextFrames.length - 1, 0)));
+      setTrainingRequestKey((key) => key + 1);
+      return;
+    }
     if (!handId) {
       setHandSnapshot(null);
       setFrameIndex(0);
@@ -389,7 +536,7 @@ export default function ReplayScreen({
     setHandSnapshot(snapshot);
     setFrameIndex((value) => Math.min(Math.max(value, 0), Math.max(nextFrames.length - 1, 0)));
     setTrainingRequestKey((key) => key + 1);
-  }, [handId]);
+  }, [handId, initialHandSnapshot]);
 
   useEffect(() => {
     refreshSnapshot();
@@ -403,6 +550,10 @@ export default function ReplayScreen({
   }, [maxFrameIndex]);
 
   const activeReplayTarget = lessonFocus?.focusMode === "coaching-lesson" ? lessonFocus.target : target;
+  const replayReviewFrameIndex = useMemo(
+    () => findReplayFrameIndex(frames, replayReviewTarget),
+    [frames, replayReviewTarget],
+  );
   const lessonFocusUnavailable = lessonFocus && lessonFocus.status !== "ready";
   const lessonActionIndex = Number.isInteger(lessonFocus?.actionIndex)
     ? lessonFocus.actionIndex
@@ -625,6 +776,22 @@ export default function ReplayScreen({
               Coaching replay preview unavailable. Replay remains safe to inspect.
             </div>
           ) : null}
+          {effectiveReplayReview ? (
+            <ReplayReviewPanel
+              review={effectiveReplayReview}
+              onJumpToTarget={
+                replayReviewFrameIndex >= 0
+                  ? () => {
+                      goToIndex(replayReviewFrameIndex);
+                      const seat = getSeatFromFrameEvent(frames[replayReviewFrameIndex]);
+                      if (seat != null) {
+                        triggerSeatFlash(seat);
+                      }
+                    }
+                  : null
+              }
+            />
+          ) : null}
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
@@ -828,12 +995,14 @@ export default function ReplayScreen({
                 const actionSeq = Number(frame?.event?.actionSeq ?? idx);
                 const isLessonAction =
                   lessonActionIndex !== null && (idx === lessonActionIndex || actionSeq === lessonActionIndex);
+                const isReviewAction = replayReviewFrameIndex >= 0 && idx === replayReviewFrameIndex;
                 return (
               <button
                 key={`evt-${idx}-${frame?.phase}`}
                 type="button"
                 data-testid={`replay-event-row-${idx}`}
                 data-coaching-highlight={isLessonAction ? "true" : "false"}
+                data-review-highlight={isReviewAction ? "true" : "false"}
                 onClick={() => {
                   goToIndex(idx);
                   const seat = getSeatFromFrameEvent(frames[idx]);
@@ -851,6 +1020,8 @@ export default function ReplayScreen({
                 className={`w-full rounded-2xl border px-4 py-3 text-left text-sm transition ${
                   isLessonAction
                     ? "border-yellow-300/90 bg-yellow-300/10 text-white shadow shadow-yellow-500/10"
+                    : isReviewAction
+                    ? "border-sky-300/90 bg-sky-300/10 text-white shadow shadow-sky-500/10"
                     : idx === clampedIndex
                     ? "border-emerald-400/80 bg-emerald-500/5 text-white"
                     : "border-white/10 bg-black/20 text-slate-200 hover:border-emerald-300/60 hover:text-white"
@@ -867,6 +1038,14 @@ export default function ReplayScreen({
                         data-testid="replay-coaching-timeline-marker"
                       >
                         Coaching
+                      </span>
+                    ) : null}
+                    {isReviewAction && effectiveReplayReview ? (
+                      <span
+                        className="rounded-full border border-sky-200/50 bg-sky-300/15 px-2 py-0.5 text-[10px] text-sky-100"
+                        data-testid="replay-review-timeline-marker"
+                      >
+                        {reviewMarkerLabel(effectiveReplayReview.reason)}
                       </span>
                     ) : null}
                     {frame?.event?.type ?? "—"}

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import CoachingPreviewCard from "./CoachingPreviewCard.jsx";
 import CoachingSummaryPanel from "./CoachingSummaryPanel.jsx";
+import { buildReplayReviewContract } from "../feedback/replayReviewContract.js";
 
 const TOURNAMENT_REVIEW_STATUS_COPY = {
   summary: {
@@ -180,7 +181,17 @@ function TournamentReviewSection({ tournamentReview, onOpenReviewReplay }) {
                       <button
                         type="button"
                         className="rounded-full border border-sky-300/30 px-2 py-1 text-[11px] font-semibold text-sky-100 hover:bg-sky-300/10"
-                        onClick={() => onOpenReviewReplay(hand.replayRef.target)}
+                        onClick={() =>
+                          onOpenReviewReplay({
+                            ...hand.replayRef.target,
+                            replayReview: buildReplayReviewContract({
+                              reviewMode: "tournament",
+                              keyHand: hand,
+                              replayRef: hand.replayRef,
+                              variantId: hand.variantId,
+                            }),
+                          })
+                        }
                         data-testid="mtt-tournament-review-replay"
                       >
                         Replay

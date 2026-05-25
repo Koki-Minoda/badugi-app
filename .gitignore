@@ -86,3 +86,18 @@ reports/ai-iron/**/*.json
 reports/ai-iron/**/*.jsonl
 reports/screenshots/**/*.png
 data/ai/**/*.jsonl
+
+# MGX test run artifacts (generated output — do not commit)
+reports/ai/
+reports/alpha/
+reports/badugi/
+reports/browser-gameplay/
+reports/core5/
+reports/cross-variant/
+reports/d01/
+reports/invariant/
+reports/phase-machine/
+reports/physical/
+reports/soak/
+reports/tournament/
+reports/ui/

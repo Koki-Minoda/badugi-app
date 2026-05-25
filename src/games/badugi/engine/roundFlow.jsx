@@ -489,12 +489,13 @@ export function finishBetRoundFrom({
         const nextPlayers = outcome.players ?? outcome.state.players ?? players;
         const nextPots = outcome.pots ?? outcome.state.pots ?? pots;
 
-        const activeNonAllIn = (nextPlayers || []).filter(
-          (p) => p && !p.folded && !p.allIn
+        const drawReadyPlayers = resetDrawRoundFlags(nextPlayers);
+        const hasNonAllInEligibleDrawer = drawReadyPlayers.some(
+          (p) => p && !p.allIn && isSeatEligibleForDraw(p)
         );
         const earlyShowdown =
           (outcome.showdown || outcome.street === "SHOWDOWN") &&
-          activeNonAllIn.length > 0 &&
+          hasNonAllInEligibleDrawer &&
           drawRound < MAX_DRAWS;
 
         if (!earlyShowdown && (outcome.showdown || outcome.street === "SHOWDOWN")) {
@@ -528,7 +529,6 @@ export function finishBetRoundFrom({
         }
 
         const nextRound = outcome.drawRoundIndex ?? drawRound + 1;
-        const drawReadyPlayers = resetDrawRoundFlags(nextPlayers);
         const enteredDraw = transitionToDrawPhase({
           players: drawReadyPlayers,
           pots: nextPots,

@@ -1,6 +1,6 @@
 import React from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
 import TournamentEliminatedRail from "../components/TournamentEliminatedRail.jsx";
 import {
@@ -36,6 +36,8 @@ describe("tournament busted seat display regression", () => {
     render(<TournamentEliminatedRail entries={entries} layoutMode="mobile" />);
 
     expect(screen.getByTestId("tournament-eliminated-rail")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /rail/i }));
+
     expect(screen.getByText("Mina")).toBeTruthy();
     expect(screen.getByText("#16")).toBeTruthy();
     expect(screen.queryByText("Sora")).toBeNull();

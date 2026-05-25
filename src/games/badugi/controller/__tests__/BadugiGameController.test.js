@@ -1,6 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import { BadugiGameController } from "../BadugiGameController.js";
 import { GAME_VARIANTS } from "../../../core/variants.js";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.doUnmock("../../../core/draw/normalizeDrawAction.js");
+});
 
 function createController(config = {}) {
   const factory = GAME_VARIANTS.badugi.controllerFactory;
@@ -225,6 +230,57 @@ describe("BadugiGameController – betting", () => {
     });
     expect(events.find((event) => event.type === "invalidAction")?.code).toBe("FL_RAISE_CAP");
   });
+
+  it("uses reference snapshot street context for advanceStreet when legacy state is stale", () => {
+    const controller = createController();
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU"],
+    });
+    const state = controller.createNewHandState(initial, {});
+    const snapshot = controller.getUiSnapshot(state);
+    const referenceState = {
+      ...state,
+      snapshot: {
+        ...snapshot,
+        dealerIdx: 2,
+        drawRound: 2,
+        betHead: 1,
+        lastAggressorIdx: 3,
+        players: (snapshot.players ?? []).map((player) => ({
+          ...player,
+          folded: false,
+          seatOut: false,
+          allIn: false,
+          betThisRound: 20,
+          hasActedThisRound: true,
+        })),
+      },
+    };
+
+    controller.legacy.state.dealerIdx = 0;
+    controller.legacy.state.drawRound = 0;
+    controller.legacy.state.betHead = null;
+    controller.legacy.state.lastAggressorIdx = null;
+
+    vi.spyOn(controller.legacy, "applyPlayerAction").mockReturnValue({ success: true });
+    const advanceStreet = vi
+      .spyOn(controller.legacy, "advanceStreet")
+      .mockReturnValue({ shouldAdvance: false });
+
+    controller.applyAction(referenceState, {
+      seatIndex: 0,
+      payload: { type: "call" },
+    });
+
+    expect(advanceStreet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dealerIdx: 2,
+        drawRound: 2,
+        betHead: 1,
+        lastAggressorIdx: 3,
+      }),
+    );
+  });
 });
 
 describe("BadugiGameController – syncFromSnapshot null turn handling", () => {
@@ -292,5 +348,75 @@ describe("BadugiGameController – draw", () => {
     expect(heroAfter.hasDrawn).toBe(true);
     expect(heroAfter.lastDrawCount).toBe(drawCount);
     expect(Array.isArray(events)).toBe(true);
+  });
+
+  it("uses reference snapshot draw round for draw normalization when legacy state is stale", async () => {
+    let capturedNormalizeArgs = null;
+    vi.resetModules();
+    vi.doMock("../../../core/draw/normalizeDrawAction.js", async () => {
+      const actual = await vi.importActual("../../../core/draw/normalizeDrawAction.js");
+      return {
+        ...actual,
+        normalizeDrawAction: vi.fn((args) => {
+          capturedNormalizeArgs = args;
+          return actual.normalizeDrawAction(args);
+        }),
+      };
+    });
+    const { BadugiGameController: IsolatedBadugiGameController } = await import(
+      "../BadugiGameController.js"
+    );
+    const controller = new IsolatedBadugiGameController({
+      numSeats: 4,
+      seatConfig: ["HERO", "CPU", "CPU", "CPU"],
+      startingStack: 500,
+      blindStructure: [{ sb: 5, bb: 10, ante: 0 }],
+    });
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU"],
+    });
+    const state = controller.createNewHandState(initial, {});
+    const snapshot = controller.getUiSnapshot(state);
+    const referenceState = {
+      ...state,
+      snapshot: {
+        ...snapshot,
+        phase: "DRAW",
+        dealerIdx: 1,
+        drawRound: 2,
+        drawRoundIndex: 2,
+        turn: 0,
+        nextTurn: 0,
+        players: (snapshot.players ?? []).map((player) => ({
+          ...player,
+          hand:
+            Array.isArray(player.hand) && player.hand.length === 4
+              ? [...player.hand]
+              : ["AS", "2C", "3D", "4H"],
+          hasDrawn: false,
+          hasActedThisRound: false,
+          folded: false,
+          seatOut: false,
+          isBusted: false,
+          allIn: false,
+          isActiveInGame: true,
+        })),
+      },
+    };
+    controller.legacy.state.drawRound = 0;
+    controller.legacy.state.dealerIdx = 0;
+
+    const heroHand = referenceState.snapshot.players[0].hand;
+    controller.applyAction(referenceState, {
+      seatIndex: 0,
+      payload: {
+        type: "draw",
+        drawCount: 0,
+        drawIndexes: [],
+        handAfter: [...heroHand],
+      },
+    });
+
+    expect(capturedNormalizeArgs?.state?.drawRoundIndex).toBe(2);
   });
 });

@@ -236,13 +236,33 @@ export class BadugiGameController extends GameController {
       return { state, events };
     }
 
+    const referenceSnapshot = referenceState?.snapshot ?? {};
+    const referenceMetadata = referenceSnapshot?.metadata ?? {};
     const advanceSnapshot = this.legacy.advanceStreet({
       players: this.legacy.state.players,
       actedIndex: seatIndex,
-      dealerIdx: this.legacy.state.dealerIdx,
-      drawRound: this.legacy.state.drawRound,
-      betHead: this.legacy.state.betHead,
-      lastAggressorIdx: this.legacy.state.lastAggressorIdx,
+      dealerIdx:
+        referenceSnapshot.dealerIdx ??
+        referenceSnapshot.dealerSeat ??
+        referenceMetadata.dealerIdx ??
+        referenceMetadata.dealerSeat ??
+        this.legacy.state.dealerIdx,
+      drawRound:
+        referenceSnapshot.drawRound ??
+        referenceSnapshot.drawRoundIndex ??
+        referenceMetadata.drawRound ??
+        referenceMetadata.drawRoundIndex ??
+        this.legacy.state.drawRound,
+      betHead:
+        referenceSnapshot.betHead ??
+        referenceMetadata.betHead ??
+        this.legacy.state.betHead,
+      lastAggressorIdx:
+        referenceSnapshot.lastAggressorIdx ??
+        referenceSnapshot.lastAggressor ??
+        referenceMetadata.lastAggressorIdx ??
+        referenceMetadata.lastAggressor ??
+        this.legacy.state.lastAggressorIdx,
     });
     if (advanceSnapshot?.shouldAdvance) {
       this._finishBetRound();
@@ -318,6 +338,15 @@ export class BadugiGameController extends GameController {
       };
     }
 
+    const referenceSnapshot = referenceState?.snapshot ?? {};
+    const referenceMetadata = referenceSnapshot?.metadata ?? {};
+    const drawRoundIndex =
+      referenceSnapshot.drawRound ??
+      referenceSnapshot.drawRoundIndex ??
+      referenceMetadata.drawRound ??
+      referenceMetadata.drawRoundIndex ??
+      this.legacy.state.drawRound ??
+      0;
     let normalizedDraw;
     try {
       normalizedDraw = normalizeDrawAction({
@@ -325,7 +354,7 @@ export class BadugiGameController extends GameController {
         player: { ...actor, seatIndex },
         state: {
           phase: "DRAW",
-          drawRoundIndex: this.legacy.state.drawRound ?? 0,
+          drawRoundIndex,
           maxDiscardCount: 4,
         },
         variant: { handCardCount: 4 },

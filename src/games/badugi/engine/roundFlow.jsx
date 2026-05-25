@@ -239,17 +239,6 @@ function sanitizeStacks(snap, setPlayers) {
 
   if (setPlayers) setPlayers(corrected);
 
-  console.table(
-    corrected.map((p, i) => ({
-      i,
-      name: p.name,
-      allIn: p.allIn,
-      hasDrawn: p.hasDrawn,
-      stack: p.stack,
-      folded: p.folded,
-      isBusted: p.isBusted,
-    }))
-  );
   return corrected;
 }
 
@@ -765,46 +754,11 @@ export function finishBetRoundFrom({
 
   debugLog(`[SYNC] Phase=DRAW, round=${nextRound}, start=${firstToDraw}`);
 
-  console.table(
-    resetPlayers.map((p, i) => ({
-      seat: i,
-      name: p.name,
-      folded: p.folded ? "Y" : "",
-      drawn: p.hasDrawn ? "Y" : "",
-    })),
-  );
-
   debugLog(`[BET] finishBetRoundFrom END nextPhase=DRAW round=${nextRound}`);
 
 
 
   // finishBetRoundFrom anitizeStacks 
-
-  console.groupCollapsed("[DEBUG][AFTER ROUND TRANSITION]");
-
-  console.table(resetPlayers.map((p, i) => ({
-
-    seat: i,
-
-    name: p.name,
-
-    folded: p.folded,
-
-    allIn: p.allIn,
-
-    hasDrawn: p.hasDrawn,
-
-    canDraw: p.canDraw,
-
-    stack: p.stack,
-
-    lastAction: p.lastAction,
-
-  })));
-
-  console.groupEnd();
-
-
 
   //  
 

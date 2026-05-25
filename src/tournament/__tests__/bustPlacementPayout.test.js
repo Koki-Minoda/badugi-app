@@ -38,4 +38,45 @@ describe("tournament bust, placement, and payout", () => {
       .filter((player) => player.finishPlace > 2)
       .forEach((player) => expect(player.payout).toBe(0));
   });
+
+  it("is idempotent — calling computePayouts twice yields the same payout values", () => {
+    let state = buildTournamentTestFixture("payout").state;
+    const champion = Object.values(state.players)[0].id;
+    state = finishTournamentToChampion(state, champion);
+
+    computePayouts(state);
+    const payoutsAfterFirst = Object.fromEntries(
+      Object.entries(state.players).map(([id, player]) => [id, player.payout]),
+    );
+
+    computePayouts(state);
+    const payoutsAfterSecond = Object.fromEntries(
+      Object.entries(state.players).map(([id, player]) => [id, player.payout]),
+    );
+
+    expect(payoutsAfterSecond).toEqual(payoutsAfterFirst);
+  });
+
+  it("does not replace the config.payouts array reference", () => {
+    let state = buildTournamentTestFixture("payout").state;
+    const champion = Object.values(state.players)[0].id;
+    // Capture the reference before any payout computation.
+    const originalPayoutsRef = state.config.payouts;
+
+    state = finishTournamentToChampion(state, champion);
+    computePayouts(state);
+
+    // computePayouts reads config.payouts but must not reassign it.
+    expect(state.config.payouts).toBe(originalPayoutsRef);
+  });
+
+  it("mutates state in place — return value is the same object reference", () => {
+    let state = buildTournamentTestFixture("payout").state;
+    const champion = Object.values(state.players)[0].id;
+    state = finishTournamentToChampion(state, champion);
+
+    // Mutation is intentional: callers must not assume a new state is returned.
+    const returnedState = computePayouts(state);
+    expect(returnedState).toBe(state);
+  });
 });

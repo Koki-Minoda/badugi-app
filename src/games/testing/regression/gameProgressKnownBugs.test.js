@@ -14,6 +14,8 @@ import { DeuceToSevenTripleDrawController } from "../../draw/DeuceToSevenTripleD
 import { AceToFiveTripleDrawController } from "../../draw/AceToFiveTripleDrawController.js";
 import { DeuceToSevenSingleDrawController } from "../../draw/DeuceToSevenSingleDrawController.js";
 import { AceToFiveSingleDrawController } from "../../draw/AceToFiveSingleDrawController.js";
+import { BadugiGameController } from "../../badugi/BadugiGameController.js";
+import { validateAction } from "../../badugi/engine/BadugiEngine.js";
 
 function expectInvariantFailure(snapshot, match, context = {}) {
   expect(() => assertGameProgressInvariants(snapshot, context)).toThrow(match);
@@ -215,6 +217,87 @@ describe("MGX known game progress bug regressions", () => {
       ),
     });
     expect(findNextEligibleActor(afterDraw, { phase: "DRAW", startIndex: 0, allowAllInDraw: true })).toBe(2);
+  });
+
+  test("TURN-013 advanceStreet resets raiseCountThisRound to 0 when the bet round closes", () => {
+    // Risk: raiseCountThisRound leaking into the next round would incorrectly
+    // suppress raises, miscompute reopen logic, or freeze betting progression.
+    // D-04 / actor-unification work increased sensitivity around betting-round
+    // carry-over because the consolidated actor path relies on a clean
+    // raiseCountThisRound at round start.
+    const ctrl = new BadugiGameController({ blindStructure: [] });
+
+    // Simulate 3 raises having occurred in the current betting round.
+    ctrl.syncExternalState({
+      raiseCountThisRound: 3,
+      raiseCap: 4,
+      drawRound: 0,
+      currentBet: 60,
+      dealerIdx: 0,
+      players: [
+        {
+          seatIndex: 0, playerId: "hero",  stack: 440, betThisRound: 60,
+          hasActedThisRound: true, folded: false, allIn: false,
+          isSeated: true, isActiveInGame: true,
+        },
+        {
+          seatIndex: 1, playerId: "cpu-1", stack: 440, betThisRound: 60,
+          hasActedThisRound: true, folded: false, allIn: false,
+          isSeated: true, isActiveInGame: true,
+        },
+      ],
+    });
+
+    expect(ctrl.state.raiseCountThisRound).toBe(3);
+
+    // Both players have acted and bets match — the round must close.
+    const snap = ctrl.advanceStreet({
+      players:         ctrl.state.players,
+      actedIndex:      1,
+      dealerIdx:       ctrl.state.dealerIdx,
+      drawRound:       ctrl.state.drawRound,
+      betHead:         ctrl.state.betHead,
+      lastAggressorIdx: ctrl.state.lastAggressorIdx,
+    });
+
+    expect(snap.shouldAdvance).toBe(true);
+    // After the round closes, the carry-over count must be zero.
+    expect(ctrl.state.raiseCountThisRound).toBe(0);
+  });
+
+  test("TURN-014 after street advance, RAISE is not blocked by stale raiseCountThisRound", () => {
+    // Risk: if raiseCountThisRound were not reset on street advance, a cap=4
+    // state from the previous round would reject all raises in the new round.
+    // validateAction reads raiseCountThisRound from table.metadata — this test
+    // confirms that the pre-reset value (4 == cap) blocks RAISE and the
+    // post-reset value (0) allows it.
+    const betSize = 20;
+
+    // Build a minimal betting-round table snapshot with the given raise count.
+    const makeBettingTable = (raiseCountThisRound) => ({
+      players: [
+        {
+          seatIndex: 0, playerId: "hero",
+          stack: 500, betThisRound: 0,
+          hasActedThisRound: false, folded: false, allIn: false,
+          isSeated: true, isActiveInGame: true,
+        },
+      ],
+      bigBlind: betSize,
+      smallBlind: betSize / 2,
+      drawRoundIndex: 0,
+      betRoundIndex: 0,
+      metadata: { raiseCountThisRound, raiseCap: 4, bbValue: betSize },
+    });
+
+    // Pre-reset state: cap is reached — RAISE must be blocked.
+    const capHit = validateAction(makeBettingTable(4), 0, { type: "RAISE" });
+    expect(capHit.isValid).toBe(false);
+    expect(capHit.code).toBe("FL_RAISE_CAP");
+
+    // Post-reset state: count back to 0 — RAISE must be allowed.
+    const afterReset = validateAction(makeBettingTable(0), 0, { type: "RAISE" });
+    expect(afterReset.isValid).toBe(true);
   });
 
   test("ACTION-001 SB fold should not skip BB option", () => {

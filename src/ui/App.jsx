@@ -6371,8 +6371,18 @@ export default function App() {
                     : typeof controllerHandSnapshot.nextTurn === "number"
                       ? controllerHandSnapshot.nextTurn
                       : 0;
-                const resolvedSbIdx = (nextDealerIdx + 1) % NUM_PLAYERS;
-                const resolvedBbIdx = (nextDealerIdx + 2) % NUM_PLAYERS;
+                const useControllerBlindIndexes =
+                  activeHandVariant === APP_VARIANT_IDS.D01;
+                const resolvedSbIdx = useControllerBlindIndexes
+                  ? (controllerHandSnapshot.smallBlindIndex ??
+                      controllerHandSnapshot.metadata?.lastBlinds?.sbIndex ??
+                      (nextDealerIdx + 1) % NUM_PLAYERS)
+                  : (nextDealerIdx + 1) % NUM_PLAYERS;
+                const resolvedBbIdx = useControllerBlindIndexes
+                  ? (controllerHandSnapshot.bigBlindIndex ??
+                      controllerHandSnapshot.metadata?.lastBlinds?.bbIndex ??
+                      (nextDealerIdx + 2) % NUM_PLAYERS)
+                  : (nextDealerIdx + 2) % NUM_PLAYERS;
                 const investedForSeat = (seat) =>
                   Math.max(
                     0,

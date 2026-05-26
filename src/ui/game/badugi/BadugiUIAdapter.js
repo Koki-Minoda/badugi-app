@@ -202,7 +202,7 @@ function buildHudInfo(snapshot, tableConfig, totalPot) {
     phaseTag: snapshot.phaseTag ?? snapshot.phase ?? "BET",
     drawRound: snapshot.drawRound ?? 0,
     betRoundIndex: snapshot.betRoundIndex ?? 0,
-    dealerName: snapshot.players?.[snapshot.dealerIdx ?? 0]?.name ?? "-",
+    dealerName: snapshot.players?.[snapshot.dealerIndex ?? snapshot.dealerIdx ?? 0]?.name ?? "-",
   };
 }
 

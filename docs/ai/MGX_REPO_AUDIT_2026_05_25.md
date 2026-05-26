@@ -32,6 +32,12 @@ The silent fallback at line 589 is particularly dangerous: if `engineAdvance` th
 
 **Risk:** HIGH. Any change to `finishBetRoundFrom`'s phase-decision logic is invisible to the test suite. Only E2E soak can catch regressions.
 
+**→ Update 2026-05-26:** ✅ FIXED  
+- fix: `986d603` PB-2 earlyShowdown guard + legacy path coverage  
+- tests: `88256ee` — 10 unit tests added in `finishBetRoundFrom.test.js` covering all phase branches, engineAdvance override, draw-skip, fallback-on-throw  
+- logging: `968d0ad` — unconditional console calls removed from `finishBetRoundFrom`  
+Console noise fully resolved. All tests passing.
+
 ---
 
 ### H-02 · Dual `BadugiGameController` — App.jsx uses legacy; tests use new wrapper
@@ -50,6 +56,15 @@ The new controller reads `this.legacy.state.drawRound`, `this.legacy.state.playe
 **Consequence:** AI evaluation results (counterfactual divergence scores, pro vs iron arena) are measured against the new controller, but actual browser gameplay runs through the legacy controller. Policy quality metrics may not reflect real gameplay.
 
 **Risk:** HIGH (silent divergence between test/eval and production).
+
+**→ Update 2026-05-26:** 🟡 PARTIALLY FIXED  
+- fix: `1ad7b27` `fix(badugi): prefer fresh snapshot context in wrapper controller`  
+  Stale `this.legacy.state.drawRound / dealerIdx / betHead / lastAggressorIdx` reads in `applyAction` (lines 240–244) and `_applyDrawAction` (line 328) are replaced with `referenceState?.snapshot`-first lookups with `??`-fallback to legacy state.  
+- tests: 2 regression tests added — `"uses reference snapshot street context for advanceStreet when legacy state is stale"` and `"uses reference snapshot draw round for draw normalization when legacy state is stale"`. Vitest green. Preview deployed.  
+**Remaining latent risk (follow-up required):**  
+  - `this.legacy.state.players`, `blindLevelIndex`, `handsInLevel` still read from `this.legacy.state` directly in `getSnapshot` and `advanceStreet` call sites (see C-02).  
+  - Dual-controller architecture (C-02, C-04) is unresolved — App.jsx still imports the legacy controller at line 83.  
+  - Test/eval divergence risk remains until App.jsx is migrated off the legacy import (blocked on D-04 completion).
 
 ---
 
@@ -173,6 +188,8 @@ dealerIdx: this.legacy.state.dealerIdx,
 ```
 
 The new controller wraps but does not isolate the legacy one. Any mutation of `this.legacy.state` inside an engine call is immediately visible to the new controller. The encapsulation boundary is purely nominal.
+
+**→ Update 2026-05-26:** 🟡 PARTIAL — `applyAction` stale reads on lines 240–244 and `_applyDrawAction` stale read are now fixed (commit `1ad7b27`). The critical per-action fields (`dealerIdx`, `drawRound`, `betHead`, `lastAggressorIdx`) now prefer the fresh `referenceState.snapshot`. However `this.legacy.state.players`, `blindLevelIndex`, and `handsInLevel` still read legacy state directly. Full isolation requires completing the D-04 migration (C-04).
 
 ---
 

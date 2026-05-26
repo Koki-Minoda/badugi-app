@@ -6372,7 +6372,7 @@ export default function App() {
                       ? controllerHandSnapshot.nextTurn
                       : 0;
                 const useControllerBlindIndexes =
-                  activeHandVariant === APP_VARIANT_IDS.D01;
+                  isDrawLowballAppVariant(activeHandVariant);
                 const resolvedSbIdx = useControllerBlindIndexes
                   ? (controllerHandSnapshot.smallBlindIndex ??
                       controllerHandSnapshot.metadata?.lastBlinds?.sbIndex ??

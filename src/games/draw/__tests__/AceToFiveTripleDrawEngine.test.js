@@ -122,4 +122,36 @@ describe("AceToFiveTripleDrawEngine", () => {
       metadata: { strategy: "ruleBasedD02", pat: true, highestRank: 5 },
     });
   });
+
+  it("delays weak late-draw folds until the final A-5 betting round", () => {
+    const engine = new AceToFiveTripleDrawEngine();
+    const state = engine.applyForcedBets(
+      engine.initHand({
+        seatConfig: ["HUMAN", "CPU"],
+        startingStack: 500,
+        dealerIndex: 0,
+        structure: { sb: 10, bb: 20 },
+      }),
+    );
+    state.actingPlayerIndex = 1;
+    state.metadata.raiseCountThisRound = 3;
+    state.metadata.currentBet = 40;
+    state.players[0].bet = 40;
+    state.players[1].bet = 20;
+    state.players[1].hand = ["AS", "AD", "QC", "KD", "JS"];
+
+    state.drawRoundIndex = 2;
+    expect(engine.chooseCpuAction(state, 1)).toMatchObject({
+      seatIndex: 1,
+      type: "CALL",
+      metadata: { strategy: "ruleBasedD02", drawCount: 4 },
+    });
+
+    state.drawRoundIndex = 3;
+    expect(engine.chooseCpuAction(state, 1)).toMatchObject({
+      seatIndex: 1,
+      type: "FOLD",
+      metadata: { foldReason: "weakLateDraw", drawCount: 4 },
+    });
+  });
 });

@@ -11,6 +11,7 @@ export class AceToFiveTripleDrawEngine extends DeuceToSevenTripleDrawEngine {
       lowType: "A5",
       cpuStrategy: "ruleBasedD02",
     });
+    this.drawHeuristic.weakLateDrawRound = 3;
   }
 }
 

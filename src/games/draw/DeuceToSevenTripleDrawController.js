@@ -405,7 +405,11 @@ export class DeuceToSevenTripleDrawController extends GameController {
       dealerIndex:
         typeof options.dealerIndex === "number"
           ? options.dealerIndex
-          : config.dealerIndex,
+          : typeof options.nextDealerIdx === "number"
+            ? options.nextDealerIdx
+            : typeof options.dealerIdx === "number"
+              ? options.dealerIdx
+              : config.dealerIndex,
       structure: config.structure,
     });
     raw.players = hydratePlayersFromCurrentStacks(

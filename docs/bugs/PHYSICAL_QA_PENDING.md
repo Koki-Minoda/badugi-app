@@ -1,6 +1,6 @@
 # Physical QA Pending
 
-Last updated: 2026-05-21
+Last updated: 2026-05-26
 
 This file contains rows that cannot be closed from Playwright emulation alone. Each requires real-device proof such as iPhone Safari, iPhone PWA, Android Chrome, rotation, touch, or physical mobile interaction evidence.
 
@@ -37,7 +37,7 @@ Summary:
 | `BADUGI-DRAW-BET-MIX-001` | iPhone Safari/PWA | Badugi tournament after physical DRAW/BET divergence screenshot. | Mixed-state detector and emulation gates PASS. | Physical proof no settled DRAW/BET mixed controls/labels. | P0 legal-action corruption. |
 | `CROSS-VARIANT-STATE-001` | iPhone Safari/PWA | Cash variants then Badugi tournament. | Cross-variant local/live regressions PASS. | Physical proof no hand-shape/session/controller contamination. | P0 variant state corruption. |
 | `D01-BLIND-POSTING-001` | iPhone Safari/PWA | D01 cash/tournament opening blinds and position badges. | D01 blind invariant/snapshot/E2E PASS. | Physical trace showing Hero blind label, bet, pot, and To Call are consistent. | P1 blind display confusion; P0 if actual pot/stack broken. |
-| `DRAW-OPENING-ACTOR-001` | iPhone Safari/PWA | Draw-lowball opening actor and position badge after physical screenshot suspicion. | Not reproduced locally; actor order audits PASS. | Physical trace proving no MP-before-UTG unopened-pot action, or export if reproduced. | P2 monitor; reopen P0/P1 if physical trace proves order/display bug. |
+| `DRAW-OPENING-ACTOR-001` | iPhone Safari/PWA | Draw-lowball opening actor and position badge after physical screenshot suspicion. | **CODE FIXED / PREVIEW QA PENDING** — commit a5bfd74 fixed live `dealerIdx` resolution in `DeuceToSevenTripleDrawController.js`; A5TD/D01 also covered via inheritance. Actor order audits PASS. | Preview QA on real/emulated device before closing; then full physical trace proving no MP-before-UTG unopened-pot action. | P2 monitor; code fix applied — do not close until preview QA passes. |
 | `ALPHA-MOBILE-01` | iPhone Safari/PWA, Android Chrome | D02/S01/S02 playable mobile layout and result reachability. | Emulation deployed smoke PASS. | Physical smoke covering controls, pot, phase, and result. | Core alpha mobile confidence gap. |
 | `UI-CORE5-003` | iPhone Safari/PWA | Badugi portrait launch, tap, result, next hand. | Portrait emulation PASS. | Physical Badugi portrait acceptance proof. | Badugi mobile restore confidence gap. |
 | `CORE5-UI-TOURNAMENT-001` | iPhone Safari/PWA, Android Chrome | Core5 mobile tournament portrait. | Tournament portrait layout gates PASS. | Physical portrait tournament screenshot/tap proof. | HUD/table collapse recurrence risk. |

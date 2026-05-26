@@ -4,7 +4,7 @@ title: Current bug tracking index
 
 # Current Bug Index
 
-Last updated: 2026-05-21
+Last updated: 2026-05-26
 
 This file is now a compact index. The mixed ledger has been split into focused tracking files so release status is visible without losing historical evidence.
 

@@ -1,4 +1,9 @@
-export const debugEnabled = true;
+export const debugEnabled =
+  typeof import.meta.env?.DEV === "boolean"
+    ? import.meta.env.DEV
+    : typeof process !== "undefined"
+      ? process.env?.NODE_ENV !== "production"
+      : false;
 
 /**
  * Lightweight logging helper used throughout the app.

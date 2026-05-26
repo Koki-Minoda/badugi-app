@@ -1467,9 +1467,17 @@ export default function App() {
       .filter(Boolean);
   }, [authUserId, playersSrc]);
 
+  const seatPlayerIdsKey = seatPlayerIds.join(",");
+
+  const stableSeatPlayerIds = useMemo(
+    () => seatPlayerIds,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [seatPlayerIdsKey],
+  );
+
   const refreshSeatStats = useCallback(async () => {
     if (!authToken) return;
-    const ids = [...new Set(seatPlayerIds.filter(Boolean))];
+    const ids = [...new Set(stableSeatPlayerIds.filter(Boolean))];
     if (!ids.length) return;
     const results = await Promise.all(
       ids.map((playerId) =>
@@ -1493,7 +1501,7 @@ export default function App() {
         ...next,
       }));
     }
-  }, [authToken, authTokenType, seatPlayerIds]);
+  }, [authToken, authTokenType, stableSeatPlayerIds]);
 
   useEffect(() => {
     if (!authToken) return undefined;
@@ -4903,6 +4911,79 @@ export default function App() {
     return alive.length >= 2;
   }
 
+  const CASH_CPU_RESEAT_HAND_DELAY = 10;
+
+  function isCashCpuLifecycleEnabled() {
+    const activeMode = modeRef.current ?? mode;
+    const activeVariant = normalizeAppVariantId(
+      gameVariantRef.current ?? gameVariant,
+    );
+    return (
+      activeMode !== "tournament-mtt" &&
+      (activeVariant === APP_VARIANT_IDS.BADUGI ||
+        isDrawLowballAppVariant(activeVariant))
+    );
+  }
+
+  function isCashCpuSeat(player, seatType, idx) {
+    return (
+      idx !== 0 &&
+      String(seatType ?? player?.seatType ?? "").toUpperCase() === "CPU"
+    );
+  }
+
+  function getCashCpuReseatStack(player = {}, baseline = {}) {
+    const stack =
+      Number(player.rebuyStack) ||
+      Number(player.initialStack) ||
+      Number(baseline.rebuyStack) ||
+      Number(baseline.initialStack) ||
+      Number(startingStackRef.current) ||
+      DEFAULT_STARTING_STACK;
+    return Math.max(1, stack || DEFAULT_STARTING_STACK);
+  }
+
+  function markCashCpuOut(player = {}, bustHandIndex = handCountRef.current) {
+    return {
+      ...player,
+      stack: 0,
+      isBusted: true,
+      busted: true,
+      seatOut: true,
+      folded: true,
+      hasFolded: true,
+      allIn: false,
+      hand: [],
+      cards: [],
+      selected: [],
+      bet: 0,
+      betThisRound: 0,
+      totalInvested: 0,
+      hasActedThisRound: true,
+      hasDrawn: true,
+      canDraw: false,
+      lastDrawCount: 0,
+      lastAction: "OUT",
+      bustHandIndex:
+        typeof player.bustHandIndex === "number"
+          ? player.bustHandIndex
+          : bustHandIndex,
+    };
+  }
+
+  function markCashCpuBustsForShowdown(roster = []) {
+    if (!isCashCpuLifecycleEnabled()) return roster;
+    return roster.map((player, idx) => {
+      if (!player) return player;
+      const seatType = player.seatType ?? seatConfigRef.current?.[idx];
+      if (!isCashCpuSeat(player, seatType, idx)) return player;
+      if (Number(player.stack) <= 0 || player.isBusted || player.seatOut) {
+        return markCashCpuOut(player);
+      }
+      return player;
+    });
+  }
+
   const buildCashNextHandSnapshot = useCallback(
     (snapshot = []) => {
       const configuredPlayers = applyHeroProfile(
@@ -4943,6 +5024,55 @@ export default function App() {
             betThisRound: 0,
             totalInvested: 0,
             lastAction: "",
+          };
+        }
+
+        const isCpuSeat = isCashCpuSeat(player, seatType, idx);
+        const existingBustHandIndex =
+          typeof player?.bustHandIndex === "number"
+            ? player.bustHandIndex
+            : handCountRef.current;
+        const shouldKeepCpuOut =
+          isCashCpuLifecycleEnabled() &&
+          isCpuSeat &&
+          (player?.seatOut || player?.isBusted || Number(player?.stack) <= 0);
+        if (shouldKeepCpuOut) {
+          const handsSinceBust = handCountRef.current - existingBustHandIndex;
+          if (handsSinceBust < CASH_CPU_RESEAT_HAND_DELAY) {
+            return markCashCpuOut(
+              {
+                ...baseline,
+                ...player,
+                seatType,
+              },
+              existingBustHandIndex,
+            );
+          }
+          const reseatStack = getCashCpuReseatStack(player, baseline);
+          return {
+            ...baseline,
+            seatType,
+            stack: reseatStack,
+            initialStack: reseatStack,
+            hand: [],
+            cards: [],
+            selected: [],
+            folded: false,
+            hasFolded: false,
+            allIn: false,
+            isBusted: false,
+            busted: false,
+            seatOut: false,
+            hasActedThisRound: false,
+            hasDrawn: false,
+            canDraw: false,
+            bet: 0,
+            betThisRound: 0,
+            totalInvested: 0,
+            lastDrawCount: 0,
+            lastAction: "",
+            bustHandIndex: null,
+            showHand: false,
           };
         }
 
@@ -5677,13 +5807,15 @@ export default function App() {
       });
     }
 
-    const updated = workingPlayers.map((p, i) => ({
-      ...p,
-      stack: newStacks[i],
-      showHand: true,
-      result: p.folded ? "FOLD" : "SHOW",
-      isBusted: newStacks[i] <= 0,
-    }));
+    const updated = markCashCpuBustsForShowdown(
+      workingPlayers.map((p, i) => ({
+        ...p,
+        stack: newStacks[i],
+        showHand: true,
+        result: p.folded ? "FOLD" : "SHOW",
+        isBusted: newStacks[i] <= 0,
+      })),
+    );
 
     console.log(
       "[SHOWDOWN] DETAILS ->",
@@ -6953,6 +7085,9 @@ export default function App() {
         snapshot,
         gameVariantRef.current ?? gameVariant,
       );
+      if (isCashCpuLifecycleEnabled()) {
+        snapshot = buildCashNextHandSnapshot(snapshot);
+      }
       if (!canContinueGame(snapshot)) {
         if (mode !== "tournament-mtt") {
           const recoveredSnapshot = buildCashNextHandSnapshot(snapshot);
@@ -9823,6 +9958,9 @@ export default function App() {
       cloneState: false,
     });
     if (!outcome?.state) return false;
+    outcome.state.players = markCashCpuBustsForShowdown(
+      outcome.state.players ?? [],
+    );
     const showdownSnapshot = applyDeckSnapshot({
       players: outcome.state.players,
       pots: outcome.state.pots,

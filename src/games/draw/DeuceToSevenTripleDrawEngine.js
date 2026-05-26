@@ -917,12 +917,39 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     working.isHandOver = true;
     working.actingPlayerIndex = null;
     working.pots = [];
-    working.players = working.players.map((player) => ({
-      ...player,
-      bet: 0,
-      hasActedThisRound: false,
-      canDraw: false,
-    }));
+    working.players = working.players.map((player) => {
+      const isBusted =
+        Number(player?.stack) <= 0 || player?.isBusted || player?.seatOut;
+      if (isBusted) {
+        return {
+          ...player,
+          stack: 0,
+          bet: 0,
+          betThisRound: 0,
+          totalInvested: 0,
+          folded: true,
+          hasFolded: true,
+          allIn: false,
+          sittingOut: true,
+          seatOut: true,
+          isBusted: true,
+          busted: true,
+          hand: [],
+          selected: [],
+          hasActedThisRound: true,
+          hasDrawn: true,
+          canDraw: false,
+          lastDrawCount: 0,
+          lastAction: "OUT",
+        };
+      }
+      return {
+        ...player,
+        bet: 0,
+        hasActedThisRound: false,
+        canDraw: false,
+      };
+    });
     working.metadata = {
       ...(working.metadata ?? {}),
       currentBet: 0,

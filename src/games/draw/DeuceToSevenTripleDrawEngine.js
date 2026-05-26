@@ -320,7 +320,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
       patHighRank: DEFAULT_PAT_HIGH_RANK,
       raiseHighRank: DEFAULT_RAISE_HIGH_RANK,
       drawKeepMaxRank: DEFAULT_DRAW_KEEP_MAX_RANK,
-      weakLateDrawRound: 2,
+      weakLateDrawRound: 3,
     };
     this.deckManager = deckManager ?? new DeckManager();
   }
@@ -740,7 +740,8 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     const strongOneDraw = drawCount <= 1 && highestRank <= this.drawHeuristic.patHighRank;
     const weakLateDraw =
       drawCount >= 3 &&
-      (state.drawRoundIndex ?? 0) >= (this.drawHeuristic.weakLateDrawRound ?? 2);
+      (state.drawRoundIndex ?? 0) >= (this.drawHeuristic.weakLateDrawRound ?? 3) &&
+      highestRank > (this.drawHeuristic.patHighRank ?? 8);
 
     if (canRaise && (strongPat || (!facingBet && strongOneDraw))) {
       return {

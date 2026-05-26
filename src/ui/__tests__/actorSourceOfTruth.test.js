@@ -96,6 +96,10 @@ describe("resolveActorFromSnapshot – priority chain", () => {
     expect(resolveActorFromSnapshot(null)).toBeNull();
   });
 
+  it("5b2. returns null for undefined input", () => {
+    expect(resolveActorFromSnapshot(undefined)).toBeNull();
+  });
+
   it("5c. returns null for string actor fields (not typeof number)", () => {
     expect(resolveActorFromSnapshot({ currentActor: "2", nextTurn: "1" })).toBeNull();
   });
@@ -197,6 +201,20 @@ describe("isSeatActionEligibleForPhase – folded/busted/seatOut disqualify in a
   it("folded all-in player is still excluded from DRAW (fold beats all-in rule)", () => {
     const players = makePlayers(3);
     players[1] = makePlayer({ folded: true, allIn: true, stack: 0, hasDrawn: false });
+    expect(isSeatActionEligibleForPhase(players, 1, "DRAW")).toBe(false);
+  });
+
+  it.each([
+    ["folded", { folded: true }],
+    ["hasFolded", { hasFolded: true }],
+    ["seatOut", { seatOut: true }],
+    ["isBusted", { isBusted: true }],
+    ["busted", { busted: true }],
+  ])("returns false for %s players in both BET and DRAW", (_label, overrides) => {
+    const players = makePlayers(3);
+    players[1] = makePlayer(overrides);
+
+    expect(isSeatActionEligibleForPhase(players, 1, "BET")).toBe(false);
     expect(isSeatActionEligibleForPhase(players, 1, "DRAW")).toBe(false);
   });
 });

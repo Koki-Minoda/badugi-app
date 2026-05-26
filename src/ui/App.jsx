@@ -1295,7 +1295,10 @@ export default function App() {
         typeof sessionController.getUiSnapshot === "function"
       ) {
         const snapshot = sessionController.getUiSnapshot(sessionState);
-        if (snapshotVariantMatchesAppVariant(snapshot, normalizedGameVariant)) {
+        if (
+          snapshot?.phase !== "IDLE" &&
+          snapshotVariantMatchesAppVariant(snapshot, normalizedGameVariant)
+        ) {
           return snapshot;
         }
       }
@@ -1323,7 +1326,10 @@ export default function App() {
         typeof sessionController.getUiSnapshot === "function"
       ) {
         const snapshot = sessionController.getUiSnapshot(sessionState);
-        if (snapshotVariantMatchesAppVariant(snapshot, normalizedGameVariant)) {
+        if (
+          snapshot?.phase !== "IDLE" &&
+          snapshotVariantMatchesAppVariant(snapshot, normalizedGameVariant)
+        ) {
           return snapshot;
         }
       }

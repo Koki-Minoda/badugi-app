@@ -11020,6 +11020,17 @@ export default function App() {
             typeof controller?.getLegalActions === "function"
               ? controller.getLegalActions(controllerState, activeSeat)
               : [];
+          if (legalActions.length === 0) {
+            debugLog(
+              "[CPU][WARN]",
+              `legalActions empty seat=${activeSeat} actingIdx=${controllerState?.actingPlayerIndex} phase=${phase}`,
+              {
+                activeSeat,
+                actingPlayerIndex: controllerState?.actingPlayerIndex,
+                phase,
+              },
+            );
+          }
           const currentControllerBet = maxBetThisRound(snap);
           const actorBet = me.betThisRound ?? me.betThisStreet ?? me.bet ?? 0;
           const safePayload = buildSafeControllerBetAction({

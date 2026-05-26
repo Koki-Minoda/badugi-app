@@ -1449,6 +1449,7 @@ export default function App() {
         if (!player) return null;
         if (String(player.seatType ?? "").toUpperCase() === "EMPTY")
           return null;
+        if (player.busted || player.seatOut || player.isBusted) return null;
         const playerId =
           player?.playerId ??
           player?.tournamentPlayerId ??

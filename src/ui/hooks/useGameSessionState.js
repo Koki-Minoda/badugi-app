@@ -40,6 +40,7 @@ function normalizeSnapshot(snapshot = {}) {
     dealerSeat:
       snapshot.dealerSeat ??
       snapshot.dealerIdx ??
+      snapshot.dealerIndex ??
       metadata.dealerSeat ??
       null,
     heroSeat: snapshot.heroSeat ?? null,

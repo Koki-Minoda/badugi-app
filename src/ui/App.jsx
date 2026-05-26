@@ -6451,7 +6451,7 @@ export default function App() {
         });
       }
 
-      if (typeof tableMetadataRef.current?.firstButtonSeat === "number") {
+      if (legacyGameController?.state && typeof tableMetadataRef.current?.firstButtonSeat === "number") {
         legacyGameController.state.metadata = {
           ...(legacyGameController.state.metadata ?? {}),
           firstButtonSeat: tableMetadataRef.current.firstButtonSeat,

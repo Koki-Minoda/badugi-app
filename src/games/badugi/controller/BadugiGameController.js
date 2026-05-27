@@ -529,11 +529,15 @@ export class BadugiGameController extends GameController {
     this.legacy.state.lastAggressorIdx = null;
     this.legacy.state.raiseCountThisRound = 0;
     const nextTurn = nextAliveFrom(nextPlayers, dealerIdx);
+    const activeBettingCount = nextPlayers.filter(
+      (p) => !isFoldedOrOut(p) && !p.allIn
+    ).length;
+    if (nextTurn == null || activeBettingCount <= 1) {
+      this._finishBetRound();
+      return;
+    }
     this.legacy.state.turn = nextTurn;
     this.legacy.state.nextTurn = nextTurn;
-    if (nextTurn == null) {
-      this._finishBetRound();
-    }
   }
 
   _resolveShowdownAndApplyPayouts() {

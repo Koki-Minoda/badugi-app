@@ -417,6 +417,38 @@ describe("BadugiGameController – draw", () => {
     expect(Array.isArray(events)).toBe(true);
   });
 
+  it("auto-completes the post-draw BET round when all opponents are all-in", () => {
+    const controller = createController();
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU"],
+    });
+    const state = controller.createNewHandState(initial, {});
+    const snapshot = controller.getUiSnapshot(state);
+    const players = snapshot.players.map((player, seatIndex) => ({
+      ...player,
+      stack: seatIndex === 0 ? 480 : 0,
+      folded: false,
+      hasFolded: false,
+      seatOut: false,
+      isBusted: false,
+      allIn: seatIndex !== 0,
+      betThisRound: 0,
+      hasActedThisRound: false,
+      hasDrawn: true,
+    }));
+
+    controller.legacy.state.players = players;
+    controller.legacy.state.phase = "DRAW";
+    controller.legacy.state.drawRound = 1;
+    controller.legacy.state.dealerIdx = 0;
+
+    controller._finishDrawRound(players, 0);
+
+    expect(controller.legacy.state.phase).toBe("DRAW");
+    expect(controller.legacy.state.turn).not.toBe(0);
+    expect(controller.legacy.state.currentBet).toBe(0);
+  });
+
   it("uses reference snapshot draw round for draw normalization when legacy state is stale", async () => {
     let capturedNormalizeArgs = null;
     vi.resetModules();

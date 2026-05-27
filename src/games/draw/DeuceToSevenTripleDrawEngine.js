@@ -584,7 +584,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
       raiseCountThisRound: 0,
       pendingDrawSeats: [],
     };
-    if (next.actingPlayerIndex == null) {
+    if (next.actingPlayerIndex == null || hasBettingRoundCompleted(next)) {
       return this.advanceAfterBet(next);
     }
     return next;

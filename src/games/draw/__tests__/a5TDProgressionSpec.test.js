@@ -103,7 +103,7 @@ describe("A-5 Triple Draw progression spec", () => {
     expect(state.snapshot.lastHandResult?.winners).toHaveLength(1);
   });
 
-  it("all-in players keep draw decision rights, then are skipped for the next betting actor", () => {
+  it("all-in players keep draw decision rights, then skip the empty betting round", () => {
     const game = huController();
     const state = game.createNewHandState(game.createInitialState());
     const next = {
@@ -144,8 +144,9 @@ describe("A-5 Triple Draw progression spec", () => {
       discardIndexes: [],
     });
 
-    expect(afterHeroDraw.street).toBe("BET");
-    expect(afterHeroDraw.actingPlayerIndex).toBe(0);
-    expect(afterHeroDraw.actingPlayerIndex).not.toBe(1);
+    expect(afterHeroDraw.street).toBe("DRAW");
+    expect(afterHeroDraw.drawRoundIndex).toBe(2);
+    expect(afterHeroDraw.actingPlayerIndex).toBe(1);
+    expect(afterHeroDraw.players[1].allIn).toBe(true);
   });
 });

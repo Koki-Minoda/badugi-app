@@ -162,6 +162,40 @@ describe("DeuceToSevenTripleDrawController", () => {
     expect(controller.getLegalActions(state, 0).map((action) => action.type)).toContain("RAISE");
   });
 
+  it("auto-completes a post-draw BET round when all opponents are all-in", () => {
+    const controller = buildController([
+      "2S", "3S", "4S", "5S", "7S",
+      "2H", "3H", "4H", "5H", "8H",
+    ]);
+    const state = controller.createNewHandState(controller.createInitialState());
+    state.engineState.street = "DRAW";
+    state.engineState.drawRoundIndex = 1;
+    state.engineState.actingPlayerIndex = null;
+    state.engineState.players[0] = {
+      ...state.engineState.players[0],
+      stack: 480,
+      bet: 0,
+      allIn: false,
+      folded: false,
+      sittingOut: false,
+      seatOut: false,
+    };
+    state.engineState.players[1] = {
+      ...state.engineState.players[1],
+      stack: 0,
+      bet: 0,
+      allIn: true,
+      folded: false,
+      sittingOut: false,
+      seatOut: false,
+    };
+
+    const next = controller.engine.transitionToBet(state.engineState);
+
+    expect(next.street).toBe("DRAW");
+    expect(next.drawRoundIndex).toBe(2);
+  });
+
   it("syncs an external D01 opening snapshot so CPU betting can progress", () => {
     const controller = buildController([
       "2S", "3S", "4S", "5S", "7S",

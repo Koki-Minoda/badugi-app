@@ -208,7 +208,7 @@ describe("DeuceToSevenTripleDrawEngine", () => {
 
     state.metadata.raiseCountThisRound = 3;
     state.metadata.currentBet = 40;
-    state.drawRoundIndex = 2;
+    state.drawRoundIndex = 3;
     state.players[0].bet = 40;
     state.players[1].bet = 20;
     state.players[1].hand = ["2S", "2H", "QC", "KD", "JS"];

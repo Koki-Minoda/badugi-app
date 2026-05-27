@@ -103,6 +103,65 @@ describe("DeuceToSevenTripleDrawController", () => {
     ]);
   });
 
+  it("does not expose BET or RAISE when every opponent is all-in", () => {
+    const controller = buildController([
+      "2S", "3S", "4S", "5S", "7S",
+      "2H", "3H", "4H", "5H", "8H",
+    ]);
+    const state = controller.createNewHandState(controller.createInitialState());
+    state.engineState.street = "BET";
+    state.engineState.actingPlayerIndex = 0;
+    state.engineState.metadata.currentBet = 20;
+    state.engineState.players[0] = {
+      ...state.engineState.players[0],
+      bet: 20,
+      stack: 480,
+      allIn: false,
+    };
+    state.engineState.players[1] = {
+      ...state.engineState.players[1],
+      bet: 20,
+      stack: 0,
+      allIn: true,
+      folded: false,
+      sittingOut: false,
+      seatOut: false,
+    };
+
+    expect(controller.getLegalActions(state, 0).map((action) => action.type)).toEqual([
+      "FOLD",
+      "CHECK",
+    ]);
+  });
+
+  it("keeps RAISE available when one active opponent can still respond", () => {
+    const controller = buildController([
+      "2S", "3S", "4S", "5S", "7S",
+      "2H", "3H", "4H", "5H", "8H",
+    ]);
+    const state = controller.createNewHandState(controller.createInitialState());
+    state.engineState.street = "BET";
+    state.engineState.actingPlayerIndex = 0;
+    state.engineState.metadata.currentBet = 20;
+    state.engineState.players[0] = {
+      ...state.engineState.players[0],
+      bet: 20,
+      stack: 480,
+      allIn: false,
+    };
+    state.engineState.players[1] = {
+      ...state.engineState.players[1],
+      bet: 20,
+      stack: 480,
+      allIn: false,
+      folded: false,
+      sittingOut: false,
+      seatOut: false,
+    };
+
+    expect(controller.getLegalActions(state, 0).map((action) => action.type)).toContain("RAISE");
+  });
+
   it("syncs an external D01 opening snapshot so CPU betting can progress", () => {
     const controller = buildController([
       "2S", "3S", "4S", "5S", "7S",

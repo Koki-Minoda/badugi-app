@@ -134,6 +134,38 @@ describe("BadugiUIAdapter", () => {
     ).not.toContain("raise");
   });
 
+  it("hides Raise when no active non-all-in opponent can respond", () => {
+    const adapter = new BadugiUIAdapter({});
+    const allInOpponentSnapshot = mockSnapshot({
+      players: [
+        {
+          name: "Hero",
+          stack: 490,
+          betThisRound: 10,
+          hand: ["AS", "KH", "QC", "JD"],
+          selected: [0],
+        },
+        {
+          name: "CPU 1",
+          stack: 0,
+          betThisRound: 10,
+          hand: ["2S", "3H", "4C", "5D"],
+          allIn: true,
+        },
+      ],
+    });
+    const props = adapter.buildViewProps({
+      controllerSnapshot: allInOpponentSnapshot,
+      tableConfig: mockTableConfig,
+    });
+
+    expect(props.controlsConfig.canCheck).toBe(true);
+    expect(props.controlsConfig.canRaise).toBe(false);
+    expect(
+      adapter.getAvailableActions({ controllerSnapshot: allInOpponentSnapshot, seatIndex: 0 }),
+    ).not.toContain("raise");
+  });
+
   it("uses player avatarUrl as the seat avatar when present", () => {
     const adapter = new BadugiUIAdapter({});
     const props = adapter.buildViewProps({

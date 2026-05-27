@@ -5037,7 +5037,8 @@ export default function App() {
           isCpuSeat &&
           (player?.seatOut || player?.isBusted || Number(player?.stack) <= 0);
         if (shouldKeepCpuOut) {
-          const handsSinceBust = handCountRef.current - existingBustHandIndex;
+          const handsSinceBust =
+            (handCountRef.current + 1) - existingBustHandIndex;
           if (handsSinceBust < CASH_CPU_RESEAT_HAND_DELAY) {
             return markCashCpuOut(
               {

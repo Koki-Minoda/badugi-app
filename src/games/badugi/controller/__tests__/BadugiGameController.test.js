@@ -231,6 +231,73 @@ describe("BadugiGameController – betting", () => {
     expect(events.find((event) => event.type === "invalidAction")?.code).toBe("FL_RAISE_CAP");
   });
 
+  it("does not expose Raise when every opponent is all-in or out", () => {
+    const controller = createController();
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU"],
+    });
+    const state = controller.createNewHandState(initial, {});
+    const snapshot = controller.getUiSnapshot(state);
+    const seeded = controller.syncFromExternalState({
+      snapshot: {
+        ...snapshot,
+        phase: "BET",
+        turn: 0,
+        nextTurn: 0,
+        currentBet: 10,
+        players: snapshot.players.map((player, seatIndex) => ({
+          ...player,
+          betThisRound: 10,
+          folded: false,
+          hasFolded: false,
+          seatOut: false,
+          isBusted: false,
+          allIn: seatIndex !== 0,
+          stack: seatIndex === 0 ? 490 : 0,
+        })),
+      },
+      context: state?.context ?? null,
+      handIndex: state?.handIndex ?? 0,
+    });
+
+    expect(controller.getLegalActions(seeded, 0).map((action) => action.type)).toEqual([
+      "FOLD",
+      "CHECK",
+    ]);
+  });
+
+  it("keeps Raise available when one active opponent can still respond", () => {
+    const controller = createController();
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU"],
+    });
+    const state = controller.createNewHandState(initial, {});
+    const snapshot = controller.getUiSnapshot(state);
+    const seeded = controller.syncFromExternalState({
+      snapshot: {
+        ...snapshot,
+        phase: "BET",
+        turn: 0,
+        nextTurn: 0,
+        currentBet: 10,
+        players: snapshot.players.map((player, seatIndex) => ({
+          ...player,
+          betThisRound: 10,
+          folded: false,
+          hasFolded: false,
+          seatOut: false,
+          isBusted: false,
+          allIn: seatIndex > 1,
+          stack: seatIndex === 0 ? 490 : seatIndex === 1 ? 490 : 0,
+        })),
+      },
+      context: state?.context ?? null,
+      handIndex: state?.handIndex ?? 0,
+    });
+
+    expect(controller.getLegalActions(seeded, 0).map((action) => action.type)).toContain("RAISE");
+  });
+
   it("uses reference snapshot street context for advanceStreet when legacy state is stale", () => {
     const controller = createController();
     const initial = controller.createInitialState({

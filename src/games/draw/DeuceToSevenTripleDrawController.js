@@ -50,6 +50,24 @@ function normalizeSeatOut(source = {}, generated = {}) {
   );
 }
 
+function hasActiveNonAllInOpponent(players = [], seatIndex) {
+  return players.some((entry, idx) => {
+    if (idx === seatIndex || !entry) return false;
+    if (
+      entry.folded ||
+      entry.hasFolded ||
+      entry.sittingOut ||
+      entry.seatOut ||
+      entry.isBusted ||
+      entry.busted ||
+      entry.allIn
+    ) {
+      return false;
+    }
+    return Number(entry.stack) > 0;
+  });
+}
+
 function hydratePlayersFromCurrentStacks(generatedPlayers = [], sourcePlayers = []) {
   if (!Array.isArray(sourcePlayers) || sourcePlayers.length === 0) {
     return generatedPlayers;
@@ -343,7 +361,11 @@ function deriveLegalActions(state = {}, seatIndex) {
   actions.push(playerBet >= currentBet ? { type: "CHECK" } : { type: "CALL" });
   const raiseCount = Math.max(0, Number(state.metadata?.raiseCountThisRound) || 0);
   const raiseCap = Math.max(1, Number(state.metadata?.raiseCap) || 4);
-  if ((player.stack ?? 0) > 0 && raiseCount < raiseCap) {
+  if (
+    (player.stack ?? 0) > 0 &&
+    raiseCount < raiseCap &&
+    hasActiveNonAllInOpponent(state.players, seatIndex)
+  ) {
     actions.push({ type: currentBet > 0 ? "RAISE" : "BET" });
   }
   return actions;

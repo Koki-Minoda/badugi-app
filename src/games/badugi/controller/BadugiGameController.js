@@ -85,6 +85,14 @@ function findNextDrawableSeat(players = [], { startIndex = null, dealerIdx = 0 }
   return findNextDrawActorSeat(players, normalizedBase);
 }
 
+function hasActiveNonAllInOpponent(players = [], seatIndex) {
+  return players.some((entry, idx) => {
+    if (idx === seatIndex || !entry || isFoldedOrOut(entry)) return false;
+    if (entry.allIn || entry.sittingOut || entry.isBusted || entry.busted) return false;
+    return Number(entry.stack) > 0;
+  });
+}
+
 function deriveLegalActions(snapshot, seatIndex) {
   const players = snapshot?.players ?? [];
   const player = players[seatIndex];
@@ -120,7 +128,12 @@ function deriveLegalActions(snapshot, seatIndex) {
     Number(snapshot?.raiseCap ?? metadata.raiseCap ?? 4) || 4,
   );
 
-  if (!player.allIn && player.stack > 0 && raiseCount < raiseCap) {
+  if (
+    !player.allIn &&
+    player.stack > 0 &&
+    raiseCount < raiseCap &&
+    hasActiveNonAllInOpponent(players, seatIndex)
+  ) {
     baseActions.push({ type: "RAISE" });
   }
 

@@ -47,6 +47,24 @@ function defaultStructureMeta(tableConfig = {}) {
   };
 }
 
+function hasActiveNonAllInOpponent(players = [], seatIndex) {
+  return players.some((entry, idx) => {
+    if (idx === seatIndex || !entry) return false;
+    if (
+      entry.folded ||
+      entry.hasFolded ||
+      entry.sittingOut ||
+      entry.seatOut ||
+      entry.isBusted ||
+      entry.busted ||
+      entry.allIn
+    ) {
+      return false;
+    }
+    return Number(entry.stack) > 0;
+  });
+}
+
 function buildControlsConfig(snapshot, tableConfig) {
   const players = snapshot.players ?? [];
   const hero = players[0] ?? null;
@@ -96,7 +114,8 @@ function buildControlsConfig(snapshot, tableConfig) {
       phase === "BET" &&
       heroStack > 0 &&
       !hero?.allIn &&
-      raiseCount < raiseCap,
+      raiseCount < raiseCap &&
+      hasActiveNonAllInOpponent(players, 0),
   );
   const canDraw = Boolean(
     heroTurn &&

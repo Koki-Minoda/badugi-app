@@ -127,6 +127,7 @@ import {
   getNextVariant,
 } from "./game/variantRotationController.js";
 import {
+  applyActualBlindDisplayToHud,
   attachVariantLabelsToHud,
   buildTournamentHudPayload,
   resolveHandsPlayedThisLevel,
@@ -1239,12 +1240,21 @@ export default function App() {
   }, [ensureSessionController, mode]);
 
   const sessionSnapshot = !isTournament && uiFromSession ? uiFromSession : null;
+  const tournamentHeroBustTerminal =
+    mode === "tournament-mtt" &&
+    heroBustHandledRef.current &&
+    tournamentStateRef.current?.players?.[heroTournamentPlayerIdRef.current]
+      ?.busted;
   const playersSrc = sessionSnapshot?.players ?? players;
   const potsSrc = sessionSnapshot?.pots ?? pots;
-  const phaseSrc = sessionSnapshot?.phase ?? phase;
+  const phaseSrc = tournamentHeroBustTerminal
+    ? "TABLE_FINISHED"
+    : (sessionSnapshot?.phase ?? phase);
   const drawRoundSrc = sessionSnapshot?.drawRound ?? drawRound;
   const betRoundIndexSrc = sessionSnapshot?.betRoundIndex ?? betRoundIndex;
-  const turnSeatSrc = sessionSnapshot?.turnSeat ?? turn;
+  const turnSeatSrc = tournamentHeroBustTerminal
+    ? null
+    : (sessionSnapshot?.turnSeat ?? turn);
   const betHeadSrc = sessionSnapshot?.betHead ?? betHead;
   const lastAggressorSrc = sessionSnapshot?.lastAggressor ?? lastAggressor;
   const currentBetSrc = sessionSnapshot?.currentBet ?? currentBet;
@@ -1255,7 +1265,9 @@ export default function App() {
     raisePerSeatRound,
   };
 
-  const tablePhase = adapterViewProps?.tablePhase ?? phaseSrc;
+  const tablePhase = tournamentHeroBustTerminal
+    ? "TABLE_FINISHED"
+    : (adapterViewProps?.tablePhase ?? phaseSrc);
   const isTableActionPhase = tablePhase === "BET" || tablePhase === "DRAW";
   const normalizedGameVariant = normalizeAppVariantId(gameVariant);
   const layoutProfile = useMemo(
@@ -1414,8 +1426,9 @@ export default function App() {
               : typeof controllerActor === "number"
                 ? controllerActor
                 : turn;
-  const controllerTurn =
-    typeof snapshotTurn === "number" && !Number.isNaN(snapshotTurn)
+  const controllerTurn = tournamentHeroBustTerminal
+    ? null
+    : typeof snapshotTurn === "number" && !Number.isNaN(snapshotTurn)
       ? snapshotTurn
       : null;
   const isMobileDevice = deviceProfile.isMobile;
@@ -5319,7 +5332,11 @@ export default function App() {
         hudPayload.nextBreakLabel =
           hudPayload.nextBreakLabel ?? TOURNAMENT_CLOCK_PLACEHOLDER;
       }
-      setTournamentHudState(attachVariantLabels(hudPayload));
+      const displayHudPayload = applyActualBlindDisplayToHud(hudPayload, {
+        blindStructure: activeBlindStructure,
+        blindLevelIndex: blindLevelIndexRef.current,
+      });
+      setTournamentHudState(attachVariantLabels(displayHudPayload));
       if (hydrate) {
         const hydration = hydrateHeroTableFromTournamentState(nextState);
         if (hydration) {
@@ -5360,6 +5377,60 @@ export default function App() {
         });
         setHeroBustOverlayVisible(true);
         setTournamentOverlayVisible(false);
+      };
+      const parkHeroBustTable = (heroPlayerSnapshot) => {
+        const heroPlayerId =
+          heroPlayerSnapshot?.id ?? heroTournamentPlayerIdRef.current;
+        const tableFinishedPlayers = (playersRef.current ?? []).map(
+          (player) => {
+            const isHero =
+              player?.tournamentPlayerId === heroPlayerId ||
+              player?.id === heroPlayerId;
+            return {
+              ...player,
+              isTurn: false,
+              ...(isHero
+                ? {
+                    stack: 0,
+                    folded: true,
+                    hasFolded: true,
+                    seatOut: true,
+                    isBusted: true,
+                    lastAction: "Out",
+                  }
+                : null),
+            };
+          },
+        );
+        playersRef.current = tableFinishedPlayers;
+        setPlayers(tableFinishedPlayers);
+        setTurn(null);
+        setPhase("TABLE_FINISHED");
+        phaseRef.current = "TABLE_FINISHED";
+        setShowNextButton(false);
+        setHandResultVisible(false);
+        updateShowdownRef.current({
+          phase: "TABLE_FINISHED",
+          handResultVisible: false,
+          showNextButton: false,
+        });
+        const tableFinishedSnapshot = engineStateRef.current
+          ? {
+              ...engineStateRef.current,
+              phase: "TABLE_FINISHED",
+              players: tableFinishedPlayers,
+              currentActor: null,
+              nextTurn: null,
+              turn: null,
+              metadata: {
+                ...(engineStateRef.current.metadata ?? {}),
+                actingPlayerIndex: null,
+              },
+            }
+          : null;
+        engineStateRef.current = tableFinishedSnapshot;
+        setEngineState(tableFinishedSnapshot);
+        setControllerUiSnapshotState(tableFinishedSnapshot);
       };
 
       if (nextState.isFinished) {
@@ -5409,10 +5480,19 @@ export default function App() {
 
       const heroPlayerSnapshot =
         nextState.players?.[heroTournamentPlayerIdRef.current];
+      if (heroBustHandledRef.current && heroPlayerSnapshot?.busted) {
+        parkHeroBustTable(heroPlayerSnapshot);
+      }
       if (!heroBustHandledRef.current && heroPlayerSnapshot?.busted) {
         heroBustHandledRef.current = true;
-        setShowNextButton(false);
-        setHandResultVisible(false);
+        parkHeroBustTable(heroPlayerSnapshot);
+        if (DEBUG_TOURNAMENT) {
+          logMTT("PLACEMENT", {
+            event: "hero-bust-detected",
+            playerId: heroPlayerSnapshot.id,
+          });
+        }
+        publishHeroBustOverlay(nextState, heroPlayerSnapshot);
         const forwardPromise =
           fastForwardMTTCompleteRef.current?.({
             suppressResultOverlay: true,
@@ -5420,12 +5500,6 @@ export default function App() {
         if (forwardPromise) {
           forwardPromise.then((finalState) => {
             if (!finalState) return;
-            if (DEBUG_TOURNAMENT) {
-              logMTT("PLACEMENT", {
-                event: "hero-bust-detected",
-                playerId: heroPlayerSnapshot.id,
-              });
-            }
             publishHeroBustOverlay(finalState, {
               id: heroPlayerSnapshot.id ?? heroTournamentPlayerIdRef.current,
               finishPlace: heroPlayerSnapshot.finishPlace,
@@ -5434,19 +5508,12 @@ export default function App() {
               payout: heroPlayerSnapshot.payout,
             });
           });
-        } else {
-          if (DEBUG_TOURNAMENT) {
-            logMTT("PLACEMENT", {
-              event: "hero-bust-detected",
-              playerId: heroPlayerSnapshot.id,
-            });
-          }
-          publishHeroBustOverlay(nextState, heroPlayerSnapshot);
         }
       }
     },
     [
       attachVariantLabels,
+      activeBlindStructure,
       handleVariantRotationTrigger,
       hydrateHeroTableFromTournamentState,
       heroProfile,
@@ -5521,12 +5588,18 @@ export default function App() {
       });
     }
     const baseHud =
-      buildTournamentHudPayload({
-        state,
-        heroPlayer,
-        heroTableId: heroPlayer?.tableId ?? heroTableIdRef.current ?? null,
-        fallbackSeatsPerTable: state.config?.seatsPerTable ?? NUM_PLAYERS,
-      }) ?? {};
+      applyActualBlindDisplayToHud(
+        buildTournamentHudPayload({
+          state,
+          heroPlayer,
+          heroTableId: heroPlayer?.tableId ?? heroTableIdRef.current ?? null,
+          fallbackSeatsPerTable: state.config?.seatsPerTable ?? NUM_PLAYERS,
+        }),
+        {
+          blindStructure: activeBlindStructure,
+          blindLevelIndex: blindLevelIndexRef.current,
+        },
+      ) ?? {};
     const handsProgress = resolveHandsPlayedThisLevel(
       baseHud.handsPlayedThisLevel,
       handsInLevelRef.current,
@@ -5555,22 +5628,22 @@ export default function App() {
       prizePoolTotal,
       averageStack,
       payoutBreakdown,
-      currentLevelNumber,
-      currentBlinds: {
+      currentLevelNumber: baseHud.currentLevelNumber ?? currentLevelNumber,
+      currentBlinds: baseHud.currentBlinds ?? {
         sb: levelInfo?.smallBlind ?? null,
         bb: levelInfo?.bigBlind ?? null,
         ante: levelInfo?.ante ?? null,
       },
-      nextLevelBlinds: nextLevelInfo
+      nextLevelBlinds: baseHud.nextLevelBlinds ?? (nextLevelInfo
         ? {
             sb: nextLevelInfo.smallBlind ?? null,
             bb: nextLevelInfo.bigBlind ?? null,
             ante: nextLevelInfo.ante ?? null,
           }
-        : null,
+        : null),
       startingStack: startingStackValue,
       handsPlayedThisLevel: handsProgress,
-      handsThisLevel: levelInfo?.handsThisLevel ?? null,
+      handsThisLevel: baseHud.handsThisLevel ?? levelInfo?.handsThisLevel ?? null,
       nextBreakLabel: TOURNAMENT_CLOCK_PLACEHOLDER,
     };
   }
@@ -5993,7 +6066,8 @@ export default function App() {
       gameVariantRef.current = initialTournamentVariant;
       setGameVariant(initialTournamentVariant);
       resetTournamentState();
-      setTournamentBlindStructure(getBlindStructureForTournamentConfig(config));
+      const initialBlindStructure = getBlindStructureForTournamentConfig(config);
+      setTournamentBlindStructure(initialBlindStructure);
       initTournamentReplay(config);
       const entrants = buildTournamentEntrants(config);
       const tournamentState = createMTTTournamentState(config, entrants);
@@ -6042,7 +6116,11 @@ export default function App() {
         policy: config.rotationPolicy ?? "fixed",
         initialVariant: initialTournamentVariant,
       });
-      setTournamentHudState(attachVariantLabels(hudPayload));
+      const displayHudPayload = applyActualBlindDisplayToHud(hudPayload, {
+        blindStructure: initialBlindStructure,
+        blindLevelIndex: 0,
+      });
+      setTournamentHudState(attachVariantLabels(displayHudPayload));
       setTournamentTitle(config?.name ?? "Tournament Results");
       handStartingStacksRef.current = {};
       modeRef.current = "tournament-mtt";
@@ -6055,7 +6133,9 @@ export default function App() {
       setDrawRoundValue(0);
       setBetRoundValue(0);
       setHandsInLevel(0);
+      handsInLevelRef.current = 0;
       setBlindLevelIndex(0);
+      blindLevelIndexRef.current = 0;
       resetSeatConfigToDefault();
       resetHandHistoryRecord();
       handHistoryBufferRef.current = [];
@@ -8377,8 +8457,8 @@ export default function App() {
       },
       setPlayerHands: applyCustomHands,
       getStateSnapshot: () => ({
-        phase,
-        turn,
+        phase: tournamentHeroBustTerminal ? "TABLE_FINISHED" : phase,
+        turn: tournamentHeroBustTerminal ? null : turn,
         drawRound,
         betRound: betRoundIndex,
         raiseCountThisRound,
@@ -8433,6 +8513,27 @@ export default function App() {
         controllerSnapshot: (() => {
           const controller = gameControllerRef.current;
           try {
+            if (tournamentHeroBustTerminal) {
+              const livePlayers = (playersRef.current ?? players ?? [])
+                .map(clonePlayerState)
+                .filter(Boolean);
+              return {
+                variantId: gameVariantRef.current,
+                gameVariant: gameVariantRef.current,
+                handId: handIdRef.current,
+                phase: "TABLE_FINISHED",
+                street: "TABLE_FINISHED",
+                turn: null,
+                nextTurn: null,
+                currentActor: null,
+                actingPlayerIndex: null,
+                metadata: { actingPlayerIndex: null },
+                players: livePlayers,
+                pots: potsRef.current ?? pots ?? [],
+                dealerIdx,
+                dealerSeat: dealerIdx,
+              };
+            }
             const sessionController = sessionControllerRef.current;
             const sessionState = sessionControllerStateRef.current;
             const activeVariant = gameVariantRef.current;
@@ -8448,13 +8549,15 @@ export default function App() {
                 variantId: activeVariant,
                 gameVariant: activeVariant,
                 handId: handIdRef.current,
-                phase,
-                street: phase,
-                turn,
-                nextTurn: turn,
-                currentActor: turn,
-                actingPlayerIndex: turn,
-                metadata: { actingPlayerIndex: turn },
+                phase: tournamentHeroBustTerminal ? "TABLE_FINISHED" : phase,
+                street: tournamentHeroBustTerminal ? "TABLE_FINISHED" : phase,
+                turn: tournamentHeroBustTerminal ? null : turn,
+                nextTurn: tournamentHeroBustTerminal ? null : turn,
+                currentActor: tournamentHeroBustTerminal ? null : turn,
+                actingPlayerIndex: tournamentHeroBustTerminal ? null : turn,
+                metadata: {
+                  actingPlayerIndex: tournamentHeroBustTerminal ? null : turn,
+                },
                 drawRoundIndex: drawRoundTracker.current,
                 drawRound: drawRoundTracker.current,
                 betRound: betRoundIndex,
@@ -8586,6 +8689,7 @@ export default function App() {
     fastForwardMTTComplete,
     tournamentPlacements,
     tournamentOverlayVisible,
+    tournamentHeroBustTerminal,
     replayHandId,
     replayTarget,
   ]);
@@ -9432,6 +9536,34 @@ export default function App() {
   /* --- actions: BET --- */
   function syncEngineSnapshot(snapshot, baseOverride = null) {
     if (!snapshot) return;
+    if (modeRef.current === "tournament-mtt" && heroBustHandledRef.current) {
+      const heroId = heroTournamentPlayerIdRef.current;
+      const heroPlayer = tournamentStateRef.current?.players?.[heroId];
+      if (heroPlayer?.busted) {
+        const terminalSnapshot = {
+          ...snapshot,
+          phase: "TABLE_FINISHED",
+          players:
+            Array.isArray(playersRef.current) && playersRef.current.length > 0
+              ? playersRef.current
+              : (snapshot.players ?? []),
+          currentActor: null,
+          nextTurn: null,
+          turn: null,
+          metadata: {
+            ...(snapshot.metadata ?? {}),
+            actingPlayerIndex: null,
+          },
+        };
+        setTurn(null);
+        setPhase("TABLE_FINISHED");
+        phaseRef.current = "TABLE_FINISHED";
+        engineStateRef.current = terminalSnapshot;
+        setEngineState(terminalSnapshot);
+        setControllerUiSnapshotState(terminalSnapshot);
+        return;
+      }
+    }
     const snapshotShape = assertNoHandShapeContamination({
       variantId: gameVariantRef.current ?? gameVariant,
       snapshot,

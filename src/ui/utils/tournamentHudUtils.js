@@ -143,6 +143,73 @@ export function resolveHandsPlayedThisLevel(engineHandsPlayed, appCounterFallbac
   return typeof appCounterFallback === "number" ? appCounterFallback : 0;
 }
 
+function normalizeHudBlindLevel(level, index = 0) {
+  if (!level) return null;
+  const smallBlind = Number(level.sb ?? level.smallBlind);
+  const bigBlind = Number(level.bb ?? level.bigBlind);
+  if (!Number.isFinite(smallBlind) || !Number.isFinite(bigBlind)) {
+    return null;
+  }
+  const rawLevelNumber = Number(level.level ?? level.levelIndex);
+  const levelNumber = Number.isFinite(rawLevelNumber) ? rawLevelNumber : index + 1;
+  const ante = Number(level.ante ?? 0);
+  return {
+    levelNumber,
+    smallBlind,
+    bigBlind,
+    ante: Number.isFinite(ante) ? ante : 0,
+    handsThisLevel: level.handsThisLevel ?? level.hands ?? null,
+  };
+}
+
+export function applyActualBlindDisplayToHud(
+  payload,
+  { blindStructure, blindLevelIndex } = {},
+) {
+  if (!payload) return null;
+  const levels = Array.isArray(blindStructure) ? blindStructure : [];
+  if (levels.length === 0) return payload;
+
+  const requestedIndex = Number(blindLevelIndex);
+  const boundedIndex = Number.isFinite(requestedIndex)
+    ? Math.min(Math.max(0, Math.trunc(requestedIndex)), levels.length - 1)
+    : 0;
+  const actualLevel = normalizeHudBlindLevel(levels[boundedIndex], boundedIndex);
+  if (!actualLevel) return payload;
+
+  const nextLevel = normalizeHudBlindLevel(
+    levels[boundedIndex + 1],
+    boundedIndex + 1,
+  );
+
+  return {
+    ...payload,
+    levelLabel: formatLevelLabel(
+      {
+        levelIndex: actualLevel.levelNumber,
+        smallBlind: actualLevel.smallBlind,
+        bigBlind: actualLevel.bigBlind,
+        ante: actualLevel.ante,
+      },
+      `Level ${actualLevel.levelNumber}`,
+    ),
+    currentLevelNumber: actualLevel.levelNumber,
+    currentBlinds: {
+      sb: actualLevel.smallBlind,
+      bb: actualLevel.bigBlind,
+      ante: actualLevel.ante,
+    },
+    nextLevelBlinds: nextLevel
+      ? {
+          sb: nextLevel.smallBlind,
+          bb: nextLevel.bigBlind,
+          ante: nextLevel.ante,
+        }
+      : payload.nextLevelBlinds ?? null,
+    handsThisLevel: payload.handsThisLevel ?? actualLevel.handsThisLevel,
+  };
+}
+
 /**
  * Merge variant labels into the HUD payload.
  * @param {Object|null} payload

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  applyActualBlindDisplayToHud,
   attachVariantLabelsToHud,
   buildTournamentHudPayload,
   resolveHandsPlayedThisLevel,
@@ -114,6 +115,49 @@ describe("tournamentHudUtils", () => {
     expect(resolveHandsPlayedThisLevel(0, 5)).toBe(0);
     expect(resolveHandsPlayedThisLevel(2, 5)).toBe(2);
     expect(resolveHandsPlayedThisLevel(null, 5)).toBe(5);
+  });
+
+  it("uses the actual blind level for HUD display when tournament state is stale", () => {
+    const payload = buildTournamentHudPayload({
+      state: createState({ levelIndex: 0 }),
+      heroPlayer: { tableId: "table-1", seatIndex: 0 },
+    });
+
+    const displayed = applyActualBlindDisplayToHud(payload, {
+      blindLevelIndex: 1,
+      blindStructure: [
+        { level: 1, sb: 5, bb: 10, ante: 0, hands: 5 },
+        { level: 2, sb: 10, bb: 20, ante: 1, hands: 5 },
+      ],
+    });
+
+    expect(displayed.levelLabel).toBe("Level 2  10/20 (Ante 1)");
+    expect(displayed.currentLevelNumber).toBe(2);
+    expect(displayed.currentBlinds).toEqual({ sb: 10, bb: 20, ante: 1 });
+  });
+
+  it("keeps player counts while overriding stale blind display", () => {
+    const payload = buildTournamentHudPayload({
+      state: createState({
+        playersRemaining: 17,
+        totalPlayers: 18,
+        levelIndex: 0,
+      }),
+      heroPlayer: { tableId: "table-1", seatIndex: 0 },
+    });
+
+    const displayed = applyActualBlindDisplayToHud(payload, {
+      blindLevelIndex: 1,
+      blindStructure: [
+        { levelIndex: 1, smallBlind: 5, bigBlind: 10, ante: 0 },
+        { levelIndex: 2, smallBlind: 10, bigBlind: 20, ante: 1 },
+      ],
+    });
+
+    expect(displayed.playersRemaining).toBe(17);
+    expect(displayed.totalEntrants).toBe(18);
+    expect(displayed.playersRemainingText).toBe("Players Remaining: 17 / 18");
+    expect(displayed.currentBlinds).toEqual({ sb: 10, bb: 20, ante: 1 });
   });
 
   it("attaches variant labels without mutating payload", () => {

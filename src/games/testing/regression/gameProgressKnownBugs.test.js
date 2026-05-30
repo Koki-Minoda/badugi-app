@@ -724,6 +724,7 @@ describe("MGX known game progress bug regressions", () => {
     });
     let state = controller.createInitialState();
     state = controller.createNewHandState(state, { handId: "draw-sot-015" });
+    let observedAllInDrew = false;
 
     for (let guard = 0; guard < 100 && !state.snapshot.lastHandResult; guard += 1) {
       const snapshot = state.snapshot;
@@ -757,6 +758,9 @@ describe("MGX known game progress bug regressions", () => {
           throw new Error(`DRAW-SOT-015 missing BET action: ${JSON.stringify({ actor, legalTypes, snapshot })}`);
         }
         state = controller.applyAction(state, { seatIndex: actor, type }).state;
+        if (state.snapshot?.players?.some((player) => player.allIn && player.hasDrawn === true)) {
+          observedAllInDrew = true;
+        }
         continue;
       }
       if (snapshot.phase === "DRAW") {
@@ -764,6 +768,9 @@ describe("MGX known game progress bug regressions", () => {
           throw new Error(`DRAW-SOT-015 missing DRAW action: ${JSON.stringify({ actor, legalTypes, snapshot })}`);
         }
         state = controller.applyAction(state, { seatIndex: actor, type: "DRAW", discardIndexes: [] }).state;
+        if (state.snapshot?.players?.some((player) => player.allIn && player.hasDrawn === true)) {
+          observedAllInDrew = true;
+        }
         continue;
       }
       throw new Error(`DRAW-SOT-015 unexpected non-terminal phase: ${snapshot.phase}`);
@@ -771,7 +778,7 @@ describe("MGX known game progress bug regressions", () => {
 
     expect(state.snapshot.lastHandResult).toBeTruthy();
     expect(state.snapshot.players.reduce((sum, player) => sum + Number(player.stack ?? 0), 0)).toBe(30);
-    expect(state.snapshot.players.some((player) => player.allIn && player.hasDrawn === true)).toBe(true);
+    expect(observedAllInDrew).toBe(true);
   });
 
   test("MTT-001 busted player should not receive turn", () => {

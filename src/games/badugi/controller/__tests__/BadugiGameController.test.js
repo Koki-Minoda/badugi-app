@@ -266,6 +266,44 @@ describe("BadugiGameController – betting", () => {
     ]);
   });
 
+  it("exposes only FOLD and CALL when last remaining opponent goes all-in mid-round", () => {
+    const controller = createController();
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU"],
+    });
+    const state = controller.createNewHandState(initial, {});
+    const snapshot = controller.getUiSnapshot(state);
+    const seeded = controller.syncFromExternalState({
+      snapshot: {
+        ...snapshot,
+        phase: "BET",
+        drawRound: 1,
+        turn: 0,
+        nextTurn: 0,
+        currentBet: 10,
+        raiseCountThisRound: 0,
+        players: snapshot.players.map((player, seatIndex) => ({
+          ...player,
+          betThisRound: seatIndex === 1 ? 10 : 0,
+          folded: seatIndex > 1,
+          hasFolded: seatIndex > 1,
+          seatOut: false,
+          isBusted: false,
+          allIn: seatIndex === 1,
+          stack: seatIndex === 0 ? 490 : 0,
+          hasActedThisRound: seatIndex !== 0,
+        })),
+      },
+      context: state?.context ?? null,
+      handIndex: state?.handIndex ?? 0,
+    });
+
+    expect(controller.getLegalActions(seeded, 0).map((action) => action.type)).toEqual([
+      "FOLD",
+      "CALL",
+    ]);
+  });
+
   it("keeps Raise available when one active opponent can still respond", () => {
     const controller = createController();
     const initial = controller.createInitialState({

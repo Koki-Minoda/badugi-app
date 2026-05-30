@@ -129,6 +129,7 @@ import {
 import {
   attachVariantLabelsToHud,
   buildTournamentHudPayload,
+  resolveHandsPlayedThisLevel,
 } from "./utils/tournamentHudUtils.js";
 
 // History persistence helpers
@@ -5288,6 +5289,12 @@ export default function App() {
         previousState.levelIndex !== nextState.levelIndex;
       if (levelChanged) {
         handleVariantRotationTrigger("level");
+        if (Number.isFinite(nextState.levelIndex)) {
+          setBlindLevelIndex(nextState.levelIndex);
+          blindLevelIndexRef.current = nextState.levelIndex;
+          setHandsInLevel(0);
+          handsInLevelRef.current = 0;
+        }
       }
       const heroPlayer = nextState.players?.[heroTournamentPlayerIdRef.current];
       heroTableIdRef.current = heroPlayer?.tableId ?? null;
@@ -5302,10 +5309,10 @@ export default function App() {
         fallbackSeatsPerTable: nextState.config?.seatsPerTable ?? NUM_PLAYERS,
       });
       if (hudPayload) {
-        hudPayload.handsPlayedThisLevel =
-          typeof handsInLevelRef.current === "number"
-            ? handsInLevelRef.current
-            : (hudPayload.handsPlayedThisLevel ?? 0);
+        hudPayload.handsPlayedThisLevel = resolveHandsPlayedThisLevel(
+          hudPayload.handsPlayedThisLevel,
+          handsInLevelRef.current,
+        );
         const currentLevelDef = getCurrentLevel(nextState);
         hudPayload.handsThisLevel =
           hudPayload.handsThisLevel ?? currentLevelDef?.handsThisLevel ?? null;
@@ -5520,8 +5527,10 @@ export default function App() {
         heroTableId: heroPlayer?.tableId ?? heroTableIdRef.current ?? null,
         fallbackSeatsPerTable: state.config?.seatsPerTable ?? NUM_PLAYERS,
       }) ?? {};
-    const handsProgress =
-      typeof handsInLevelRef.current === "number" ? handsInLevelRef.current : 0;
+    const handsProgress = resolveHandsPlayedThisLevel(
+      baseHud.handsPlayedThisLevel,
+      handsInLevelRef.current,
+    );
     return {
       ...baseHud,
       playersRemaining,
@@ -6018,10 +6027,10 @@ export default function App() {
           tournamentState.config?.seatsPerTable ?? NUM_PLAYERS,
       });
       if (hudPayload) {
-        hudPayload.handsPlayedThisLevel =
-          typeof handsInLevelRef.current === "number"
-            ? handsInLevelRef.current
-            : (hudPayload.handsPlayedThisLevel ?? 0);
+        hudPayload.handsPlayedThisLevel = resolveHandsPlayedThisLevel(
+          hudPayload.handsPlayedThisLevel,
+          handsInLevelRef.current,
+        );
         const currentLevelDef = getCurrentLevel(tournamentState);
         hudPayload.handsThisLevel =
           hudPayload.handsThisLevel ?? currentLevelDef?.handsThisLevel ?? null;

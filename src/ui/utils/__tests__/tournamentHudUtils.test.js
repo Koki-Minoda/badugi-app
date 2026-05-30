@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   attachVariantLabelsToHud,
   buildTournamentHudPayload,
+  resolveHandsPlayedThisLevel,
 } from "../tournamentHudUtils.js";
 
 const baseConfig = {
@@ -85,6 +86,34 @@ describe("tournamentHudUtils", () => {
     expect(payload.currentBlinds.sb).toBe(5);
     expect(payload.handsPlayedThisLevel).toBe(2);
     expect(payload.handsThisLevel).toBe(5);
+  });
+
+  it("keeps canonical remaining and entrant counts after a CPU bust", () => {
+    const players = Object.fromEntries(
+      Array.from({ length: 18 }, (_, idx) => [
+        `player-${idx + 1}`,
+        { id: `player-${idx + 1}`, stack: 500, busted: false },
+      ]),
+    );
+    const payload = buildTournamentHudPayload({
+      state: createState({
+        config: { ...baseConfig, tables: 3 },
+        players,
+        playersRemaining: 17,
+        totalPlayers: 18,
+      }),
+      heroPlayer: { tableId: "table-1", seatIndex: 0 },
+    });
+
+    expect(payload.playersRemaining).toBe(17);
+    expect(payload.totalEntrants).toBe(18);
+    expect(payload.playersRemainingText).toBe("Players Remaining: 17 / 18");
+  });
+
+  it("prefers engine handsPlayedThisLevel over stale app counters", () => {
+    expect(resolveHandsPlayedThisLevel(0, 5)).toBe(0);
+    expect(resolveHandsPlayedThisLevel(2, 5)).toBe(2);
+    expect(resolveHandsPlayedThisLevel(null, 5)).toBe(5);
   });
 
   it("attaches variant labels without mutating payload", () => {

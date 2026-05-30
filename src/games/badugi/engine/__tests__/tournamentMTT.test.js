@@ -141,6 +141,57 @@ describe("tournamentMTT engine", () => {
     expect(Math.max(...activeCounts) - Math.min(...activeCounts)).toBeLessThanOrEqual(1);
   });
 
+  it("preserves playersRemaining and blind progression after CPU bust rebalance", () => {
+    let state = createMTTTournamentState(BASE_CONFIG, entrants);
+    const targetTable = state.tables[0];
+    const cpuSeat = targetTable.seats.find((seat) => seat.playerId !== null);
+    state = onTableHandCompleted(state, targetTable.tableId, {
+      handIndex: 1,
+      seatResults: [
+        {
+          seatIndex: cpuSeat.seatIndex,
+          playerId: cpuSeat.playerId,
+          stack: 0,
+          startingStack: state.players[cpuSeat.playerId].stack,
+        },
+      ],
+    });
+    state = rebalanceTables(state);
+
+    expect(state.totalPlayers).toBe(18);
+    expect(state.playersRemaining).toBe(17);
+    expect(Object.values(state.players).filter((player) => !player.busted)).toHaveLength(17);
+    expect(
+      state.tables
+        .filter((table) => table.isActive)
+        .map((table) => table.seats.filter((seat) => seat.playerId !== null).length)
+        .sort((a, b) => b - a),
+    ).toEqual([6, 6, 5]);
+    expect(state.levelIndex).toBe(0);
+
+    for (let cycle = 0; cycle < 2; cycle += 1) {
+      const activeTableIds = state.tables
+        .filter((table) => table.isActive)
+        .map((table) => table.tableId);
+      activeTableIds.forEach((tableId) => {
+        state = onTableHandCompleted(state, tableId, {
+          handIndex: cycle + 2,
+          seatResults: [],
+        });
+      });
+    }
+
+    expect(state.playersRemaining).toBe(17);
+    expect(state.levelIndex).toBe(1);
+    expect(getCurrentLevel(state).smallBlind).toBe(10);
+    expect(getCurrentLevel(state).bigBlind).toBe(20);
+    state.tables
+      .filter((table) => table.isActive)
+      .forEach((table) => {
+        expect(table.handsPlayedAtThisLevel).toBe(0);
+      });
+  });
+
   it("completes the tournament and assigns champion", () => {
     let state = createMTTTournamentState(BASE_CONFIG, entrants);
     const survivor = state.tables[0].seats[0].playerId;

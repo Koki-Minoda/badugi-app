@@ -46,11 +46,18 @@ export function buildTournamentHudPayload({
     (Math.max(1, Number(config.tables) || 1) *
       Math.max(1, Number(seatsPerTable) || fallbackSeatsPerTable)) ||
     fallbackSeatsPerTable;
-  const totalEntrants = Math.max(state.totalPlayers ?? 0, entrantsFallback);
+  const stateTotalPlayers = Number(state.totalPlayers);
+  const totalEntrants =
+    Number.isFinite(stateTotalPlayers) && stateTotalPlayers > 0
+      ? stateTotalPlayers
+      : entrantsFallback;
 
   const alivePlayers = Object.values(state.players ?? {}).filter((player) => !player?.busted);
+  const statePlayersRemaining = Number(state.playersRemaining);
   const playersRemaining =
-    alivePlayers.length || Math.max(0, Number(state.playersRemaining) || 0);
+    Number.isFinite(statePlayersRemaining) && statePlayersRemaining >= 0
+      ? statePlayersRemaining
+      : alivePlayers.length || 0;
   const totalChipsInPlay = alivePlayers.reduce(
     (sum, player) => sum + Math.max(0, Number(player?.stack) || 0),
     0,
@@ -127,6 +134,13 @@ export function buildTournamentHudPayload({
     handsThisLevel,
     nextBreakLabel: null,
   };
+}
+
+export function resolveHandsPlayedThisLevel(engineHandsPlayed, appCounterFallback) {
+  if (typeof engineHandsPlayed === "number") {
+    return engineHandsPlayed;
+  }
+  return typeof appCounterFallback === "number" ? appCounterFallback : 0;
 }
 
 /**

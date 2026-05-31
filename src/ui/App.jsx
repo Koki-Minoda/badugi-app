@@ -7317,7 +7317,7 @@ export default function App() {
         i += 1
       ) {
         nextState = simulateBackgroundTables(nextState, heroTableId, {
-          maxHandsPerTable: 3,
+          maxHandsPerTable: 1,
           onHandSimulated: recordCpuHandForReplay,
         });
       }

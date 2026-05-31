@@ -1,4 +1,5 @@
 import { getStageById, TOURNAMENT_STAGES } from "../../config/tournamentStages";
+import { recordCareerTournamentResult } from "../career/careerProfile.js";
 import { recordStageWin, updateProgressAfterWorldChampClear } from "./playerProgress";
 
 const PROGRESS_KEY = "progress.tournament";
@@ -20,6 +21,7 @@ const DEFAULT_PROGRESS = {
     national: 0,
     world: 0,
   },
+  completedTournaments: [],
   lastResult: null,
 };
 
@@ -41,6 +43,9 @@ export function loadTournamentProgress() {
       ...clone(DEFAULT_PROGRESS),
       ...parsed,
       wins: { ...clone(DEFAULT_PROGRESS).wins, ...(parsed?.wins ?? {}) },
+      completedTournaments: Array.isArray(parsed?.completedTournaments)
+        ? parsed.completedTournaments
+        : [],
     };
   } catch (err) {
     console.warn("Failed to load tournament progress:", err);
@@ -54,6 +59,9 @@ export function saveTournamentProgress(progress) {
     ...clone(DEFAULT_PROGRESS),
     ...progress,
     wins: { ...clone(DEFAULT_PROGRESS).wins, ...(progress?.wins ?? {}) },
+    completedTournaments: Array.isArray(progress?.completedTournaments)
+      ? progress.completedTournaments
+      : [],
   };
   window.localStorage.setItem(PROGRESS_KEY, JSON.stringify(next));
   return next;
@@ -143,7 +151,57 @@ export function deductEntryFee(stageId) {
   return { ok: true, progress: next };
 }
 
-export function applyTournamentResult({ stageId, placement, prize = 0, feedback, reason }) {
+function normalizeCompletedTournamentEntry({
+  variant = "badugi",
+  stage,
+  stageId,
+  finishPlace,
+  placement,
+  tournamentId,
+  completedAt = Date.now(),
+} = {}) {
+  return {
+    variant,
+    stage: stage ?? stageId,
+    finishPlace: Number(finishPlace ?? placement),
+    tournamentId: tournamentId ?? null,
+    completedAt,
+  };
+}
+
+export function recordCompletedTournament(result = {}) {
+  const progress = loadTournamentProgress();
+  const entry = normalizeCompletedTournamentEntry(result);
+  if (!entry.stage || !Number.isFinite(entry.finishPlace)) {
+    return progress;
+  }
+  return saveTournamentProgress({
+    ...progress,
+    completedTournaments: [
+      ...(Array.isArray(progress.completedTournaments)
+        ? progress.completedTournaments
+        : []),
+      entry,
+    ],
+  });
+}
+
+export function applyTournamentResult({
+  stageId,
+  variant = "badugi",
+  placement,
+  prize = 0,
+  feedback,
+  reason,
+  tournamentId = null,
+}) {
+  recordCareerTournamentResult({
+    variant,
+    stageId,
+    finishPlace: placement,
+    prize,
+    tournamentId,
+  });
   const progress = loadTournamentProgress();
   const wins = { ...progress.wins };
   if (placement === 1 && wins[stageId] !== undefined) {
@@ -155,6 +213,7 @@ export function applyTournamentResult({ stageId, placement, prize = 0, feedback,
   }
   const bankroll = Math.max(0, (progress.bankroll ?? 0) + (prize ?? 0));
   const lastResult = {
+    variant,
     stageId,
     placement,
     prize,
@@ -166,9 +225,22 @@ export function applyTournamentResult({ stageId, placement, prize = 0, feedback,
     ...progress,
     wins,
     bankroll,
+    completedTournaments: [
+      ...(Array.isArray(progress.completedTournaments)
+        ? progress.completedTournaments
+        : []),
+      normalizeCompletedTournamentEntry({
+        variant,
+        stageId,
+        finishPlace: placement,
+        tournamentId,
+        completedAt: lastResult.finishedAt,
+      }),
+    ],
     lastResult,
   });
   appendTournamentHistory({
+    variant,
     stageId,
     placement,
     prize,

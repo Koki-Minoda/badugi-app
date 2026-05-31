@@ -212,6 +212,8 @@ import AuthScreen from "./screens/AuthScreen.jsx";
 import HandHistoryScreen from "./screens/HandHistoryScreen.jsx";
 import ReplayScreen from "./screens/ReplayScreen.jsx";
 import GameSelectorScreen from "./screens/GameSelectorScreen.jsx";
+import TournamentHubScreen from "./screens/TournamentHubScreen.jsx";
+import CareerScreen from "./screens/CareerScreen.jsx";
 import ChinesePokerGameScreen from "./screens/ChinesePokerGameScreen.jsx";
 import TitleSettingsScreen from "./screens/TitleSettingsScreen.jsx";
 import ProfileStats from "../components/ProfileStats.jsx";
@@ -1442,6 +1444,8 @@ export default function App() {
     if (currentScreen === "title") return "Title";
     if (currentScreen === "menu") return "Menu";
     if (currentScreen === "settings") return "Settings";
+    if (currentScreen === "career") return "Career";
+    if (currentScreen === "tournamentHub") return "TournamentHub";
     if (currentScreen === "handHistory") return "HandHistory";
     if (currentScreen === "handReplay") return "Replay";
     if (currentScreen === "chinesePoker") return "ChinesePoker";
@@ -12728,6 +12732,7 @@ export default function App() {
               }}
               onSelectRing={handleOpenGameSelector}
               onSelectTournament={handleSelectTournament}
+              onSelectCareer={handleOpenCareerScreen}
               onSelectSettings={handleSelectSettings}
               onSelectHandHistory={handleOpenHandHistoryScreen}
               coachingPreviewEnabled={coachingPreviewEnabled}
@@ -12787,6 +12792,41 @@ export default function App() {
           onBack={handleBackToMenu}
           onLaunchVariant={handleSelectRing}
         />
+        <DebugHud
+          enabled={debugFlags.enabled}
+          deviceProfile={deviceProfile}
+          shouldGateOrientation={shouldGateOrientation}
+          debugScale={debugScale}
+          screenLabel={screenLabel}
+        />
+      </>
+    );
+  }
+
+  if (currentScreen === "tournamentHub") {
+    return (
+      <>
+        <TournamentHubScreen
+          onBack={handleBackToMenu}
+          onStartTournament={handleStartTournamentFromHub}
+          onResumeTournament={handleResumeTournamentFromHub}
+          onRetireTournament={handleRetireTournamentFromHub}
+        />
+        <DebugHud
+          enabled={debugFlags.enabled}
+          deviceProfile={deviceProfile}
+          shouldGateOrientation={shouldGateOrientation}
+          debugScale={debugScale}
+          screenLabel={screenLabel}
+        />
+      </>
+    );
+  }
+
+  if (currentScreen === "career") {
+    return (
+      <>
+        <CareerScreen onBack={handleBackToMenu} />
         <DebugHud
           enabled={debugFlags.enabled}
           deviceProfile={deviceProfile}

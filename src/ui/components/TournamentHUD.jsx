@@ -85,10 +85,6 @@ export default function TournamentHUD({
   const progressDisplay = handsThisLevel
     ? `${Math.min(handsPlayedThisLevel ?? 0, handsThisLevel)} / ${handsThisLevel}`
     : `${handsPlayedThisLevel ?? 0}`;
-  console.info("[MTT][HUD-RENDER]", {
-    handsPlayedThisLevel,
-    handsThisLevel,
-  });
   const breakDisplay = nextBreakLabel ?? PLACEHOLDER_TIME;
   const levelDisplay =
     levelLabel ??

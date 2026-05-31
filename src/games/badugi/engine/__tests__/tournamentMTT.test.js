@@ -7,6 +7,7 @@ import {
   computePayouts,
   simulateBackgroundTables,
 } from "../tournamentMTT.js";
+import { STORE_STANDARD_BLIND_LEVELS } from "../../../../config/tournamentBlindSheets.js";
 
 const BASE_CONFIG = {
   id: "store-mtt",
@@ -28,6 +29,11 @@ const BASE_CONFIG = {
 const SINGLE_TABLE_CONFIG = {
   ...BASE_CONFIG,
   tables: 1,
+};
+
+const STORE_15_LEVEL_CONFIG = {
+  ...BASE_CONFIG,
+  levels: STORE_STANDARD_BLIND_LEVELS,
 };
 
 const entrants = Array.from({ length: 18 }, (_, idx) => ({
@@ -82,12 +88,28 @@ describe("tournamentMTT engine", () => {
         cpuCharacterId: "akira",
         cpuStyle: "balanced",
         avatarUrl: "/characters/akira.png",
+        opponentProfileId: "store-mika",
+        opponentTitle: "Store Regular",
+        titleBadge: "Store Regular",
+        tierId: "standard",
+        personalityId: "calling-station",
+        personality: { id: "calling-station", label: "Calling Station" },
+        personalityBadge: "Calling Station",
+        avatarId: "mika",
+        flavorText: "Calls too much, but never gives up.",
+        traits: ["loose", "sticky"],
       },
     ]);
     expect(state.players["cpu-akira"].name).toBe("Akira");
     expect(state.players["cpu-akira"].cpuCharacterId).toBe("akira");
     expect(state.players["cpu-akira"].cpuStyle).toBe("balanced");
     expect(state.players["cpu-akira"].avatarUrl).toBe("/characters/akira.png");
+    expect(state.players["cpu-akira"].opponentProfileId).toBe("store-mika");
+    expect(state.players["cpu-akira"].opponentTitle).toBe("Store Regular");
+    expect(state.players["cpu-akira"].tierId).toBe("standard");
+    expect(state.players["cpu-akira"].personalityId).toBe("calling-station");
+    expect(state.players["cpu-akira"].personalityBadge).toBe("Calling Station");
+    expect(state.players["cpu-akira"].traits).toEqual(["loose", "sticky"]);
   });
 
   it("advances levels once all active tables meet handsThisLevel", () => {
@@ -107,6 +129,33 @@ describe("tournamentMTT engine", () => {
     });
     expect(state.levelIndex).toBe(1);
     expect(getCurrentLevel(state).levelIndex).toBe(2);
+  });
+
+  it("advances store blind sheet through level 4 without terminal 999 hands", () => {
+    let state = createMTTTournamentState(STORE_15_LEVEL_CONFIG, entrants);
+    expect(STORE_15_LEVEL_CONFIG.levels).toHaveLength(15);
+    expect(getCurrentLevel(state).levelIndex).toBe(1);
+
+    for (let targetLevelIndex = 1; targetLevelIndex <= 3; targetLevelIndex += 1) {
+      for (let hand = 0; hand < 5; hand += 1) {
+        const activeTableIds = state.tables
+          .filter((table) => table.isActive)
+          .map((table) => table.tableId);
+        activeTableIds.forEach((tableId) => {
+          state = onTableHandCompleted(state, tableId, {
+            handIndex: hand + 1,
+            seatResults: [],
+          });
+        });
+      }
+
+      expect(state.levelIndex).toBe(targetLevelIndex);
+      expect(getCurrentLevel(state).levelIndex).toBe(targetLevelIndex + 1);
+      expect(getCurrentLevel(state).handsThisLevel).toBe(5);
+    }
+
+    expect(getCurrentLevel(state).smallBlind).toBe(30);
+    expect(getCurrentLevel(state).bigBlind).toBe(60);
   });
 
   it("increments handsPlayedAtThisLevel before level advancement", () => {

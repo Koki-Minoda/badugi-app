@@ -401,6 +401,12 @@ export default function Player({
   const isFolded = Boolean(player.folded);
   const isOut = Boolean(player.isBusted || player.seatOut);
   const drawBadgeLabel = resolveDrawBadgeLabel(player);
+  const playerTitleBadge = player.titleBadge ?? player.opponentTitle ?? null;
+  const personalityBadge =
+    player.personalityBadge ??
+    player.personality?.label ??
+    player.personalityId ??
+    null;
   const isDrawTableMobileLayout =
     compact &&
     ["badugi", "draw-lowball-5card"].includes(layoutProfile?.layoutGroup);
@@ -446,6 +452,8 @@ export default function Player({
     `${player.allIn && betValue > 0 ? "All-in" : "Bet"}: ${betValue}`,
     `Status: ${statusBadges.length > 0 ? statusBadges.join(", ") : "Ready"}`,
     `Last action: ${player.lastAction || "-"}`,
+    playerTitleBadge ? `Title: ${playerTitleBadge}` : null,
+    personalityBadge ? `Personality: ${personalityBadge}` : null,
     player.cpuStyle ? `CPU style: ${player.cpuStyle}` : null,
     player.cpuModelId ? `Model: ${player.cpuModelId}` : null,
     player.trainingRun ? `Training: ${player.trainingRun}` : null,
@@ -701,12 +709,23 @@ export default function Player({
                     <StatusPill label="D" tone="yellow" />
                   )}
                 </div>
-                {player.titleBadge && !compact && (
+                {playerTitleBadge && !compact && (
                   <div
                     className="uppercase tracking-wide text-emerald-300"
                     style={{ fontSize: "var(--player-meta-size, 10px)" }}
                   >
-                    {player.titleBadge}
+                    {playerTitleBadge}
+                  </div>
+                )}
+                {personalityBadge && !compact && !isHero && (
+                  <div
+                    data-testid={`seat-${seatIndex}-personality-badge`}
+                    className="mt-1 inline-flex max-w-full rounded-full border border-cyan-200/25 bg-cyan-300/10 px-1.5 py-0.5 text-[9px] font-black uppercase leading-none tracking-wide text-cyan-100"
+                    title={String(personalityBadge)}
+                  >
+                    <span className="truncate">
+                      {String(personalityBadge).toUpperCase()}
+                    </span>
                   </div>
                 )}
                 {statusBadges.length > 0 &&

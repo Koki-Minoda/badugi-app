@@ -171,6 +171,7 @@ import {
 } from "./utils/aiTierContext.js";
 import { selectModelForVariant } from "../ai/modelRouter.js";
 import { getCpuCharacterForIndex, getCpuDisplayName } from "../ai/cpuRoster.js";
+import { getTournamentOpponentForSeat } from "../config/tournamentOpponents.js";
 import {
   buildAiContext,
   computeBetDecision,
@@ -214,6 +215,11 @@ import ReplayScreen from "./screens/ReplayScreen.jsx";
 import GameSelectorScreen from "./screens/GameSelectorScreen.jsx";
 import TournamentHubScreen from "./screens/TournamentHubScreen.jsx";
 import CareerScreen from "./screens/CareerScreen.jsx";
+import {
+  recordRivalHandPlayed,
+  recordRivalTournamentMet,
+  recordRivalTournamentResult,
+} from "./career/rivalHistory.js";
 import ChinesePokerGameScreen from "./screens/ChinesePokerGameScreen.jsx";
 import TitleSettingsScreen from "./screens/TitleSettingsScreen.jsx";
 import ProfileStats from "../components/ProfileStats.jsx";
@@ -653,6 +659,7 @@ export default function App() {
   const heroTournamentPlayerIdRef = useRef(HERO_TOURNAMENT_PLAYER_ID);
   const handStartingStacksRef = useRef({});
   const heroBustHandledRef = useRef(false);
+  const tournamentProgressRecordedRef = useRef(null);
   const heroRenderTableIdRef = useRef(null);
   const heroTableAnimTimerRef = useRef(null);
   const animationsEnabledRef = useRef(
@@ -1809,12 +1816,14 @@ export default function App() {
     () => (isTournament ? tournamentAiTierConfig : cashAiTierConfig),
     [cashAiTierConfig, isTournament, tournamentAiTierConfig],
   );
-  const aiDecisionContext = useMemo(
-    () =>
+  const getAiDecisionContextForActor = useCallback(
+    (actor = null) =>
       buildAiContext({
         variantId: normalizedGameVariant,
         tierConfig: activeAiTierConfig,
         opponentStats: {},
+        personalityId: actor?.personalityId ?? "balanced",
+        personality: actor?.personality ?? null,
       }),
     [activeAiTierConfig, normalizedGameVariant],
   );
@@ -3017,6 +3026,8 @@ export default function App() {
           typeof controller?.getCpuAction === "function"
             ? controller.getCpuAction(controllerState, seatToAct, {
                 tierConfig: activeAiTierConfig,
+                personalityId: me?.personalityId ?? "balanced",
+                personality: me?.personality ?? null,
               })
             : null;
         const payload = cpuAction?.payload ??
@@ -3088,7 +3099,7 @@ export default function App() {
       const deckManager = helpers.getDeckManager();
       const drawEvaluator = helpers.evaluateBadugi(me.hand);
       const standardDrawDecision = computeDrawDecision({
-        context: aiDecisionContext,
+        context: getAiDecisionContextForActor(me),
         evaluation: drawEvaluator,
         hand: me.hand,
       });
@@ -3114,7 +3125,11 @@ export default function App() {
                 confidence: 0.55,
                 reason: standardDrawDecision?.source ?? "policy-router",
               },
-              context: { actor: me },
+              context: {
+                actor: me,
+                personalityId: me?.personalityId ?? "balanced",
+                personality: me?.personality ?? null,
+              },
             })
           : standardDrawDecision;
       const fallbackDrawCount = npcAutoDrawCount(drawEvaluator);
@@ -3382,7 +3397,7 @@ export default function App() {
     currentBet,
     betHead,
     lastAggressor,
-    aiDecisionContext,
+    getAiDecisionContextForActor,
     activeAiTierConfig,
     isSingleTableControllerDrawGame,
     controllerTurn,
@@ -5152,9 +5167,12 @@ export default function App() {
 
   const buildTournamentEntrants = useCallback(
     (config) => {
+      const explicitTotalPlayers = Number(config?.totalPlayers);
       const totalPlayersForConfig =
-        Math.max(1, Number(config?.tables) || 1) *
-        Math.max(1, Number(config?.seatsPerTable) || NUM_PLAYERS);
+        Number.isFinite(explicitTotalPlayers) && explicitTotalPlayers > 0
+          ? Math.trunc(explicitTotalPlayers)
+          : Math.max(1, Number(config?.tables) || 1) *
+            Math.max(1, Number(config?.seatsPerTable) || NUM_PLAYERS);
       return Array.from({ length: totalPlayersForConfig }, (_, idx) => {
         if (idx === 0) {
           return {
@@ -5163,12 +5181,28 @@ export default function App() {
           };
         }
         const cpuCharacter = getCpuCharacterForIndex(idx);
+        const opponent = getTournamentOpponentForSeat(
+          config?.stageId ?? "store",
+          idx - 1,
+        );
+        const personalityLabel =
+          opponent?.personality?.label ?? opponent?.personalityId ?? "Balanced";
         return {
           id: `cpu-${idx}`,
-          name: cpuCharacter.name,
+          name: opponent?.name ?? cpuCharacter.name,
           cpuCharacterId: cpuCharacter.id,
-          cpuStyle: cpuCharacter.style,
+          cpuStyle: opponent?.personalityId ?? cpuCharacter.style,
           avatarUrl: cpuCharacter.avatarUrl,
+          opponentProfileId: opponent?.id ?? null,
+          opponentTitle: opponent?.title ?? null,
+          titleBadge: opponent?.title ?? null,
+          tierId: opponent?.tierId ?? null,
+          personalityId: opponent?.personalityId ?? "balanced",
+          personality: opponent?.personality ?? null,
+          personalityBadge: personalityLabel,
+          avatarId: opponent?.avatarId ?? null,
+          flavorText: opponent?.flavorText ?? null,
+          traits: Array.isArray(opponent?.traits) ? [...opponent.traits] : [],
         };
       });
     },
@@ -5221,6 +5255,38 @@ export default function App() {
           cpuCharacterId:
             linkedPlayer?.cpuCharacterId ?? player.cpuCharacterId ?? null,
           cpuStyle: linkedPlayer?.cpuStyle ?? player.cpuStyle ?? null,
+          opponentProfileId:
+            linkedPlayer?.opponentProfileId ?? player.opponentProfileId ?? null,
+          opponentTitle:
+            linkedPlayer?.opponentTitle ??
+            linkedPlayer?.titleBadge ??
+            player.opponentTitle ??
+            player.titleBadge ??
+            null,
+          titleBadge:
+            linkedPlayer?.titleBadge ??
+            linkedPlayer?.opponentTitle ??
+            player.titleBadge ??
+            player.opponentTitle ??
+            null,
+          tierId: linkedPlayer?.tierId ?? player.tierId ?? null,
+          personalityId:
+            linkedPlayer?.personalityId ?? player.personalityId ?? "balanced",
+          personality:
+            linkedPlayer?.personality ?? player.personality ?? null,
+          personalityBadge:
+            linkedPlayer?.personalityBadge ??
+            player.personalityBadge ??
+            linkedPlayer?.personality?.label ??
+            player.personality?.label ??
+            null,
+          avatarId: linkedPlayer?.avatarId ?? player.avatarId ?? null,
+          flavorText: linkedPlayer?.flavorText ?? player.flavorText ?? null,
+          traits: Array.isArray(linkedPlayer?.traits)
+            ? [...linkedPlayer.traits]
+            : Array.isArray(player.traits)
+              ? [...player.traits]
+              : [],
           avatarUrl: linkedPlayer?.avatarUrl ?? player.avatarUrl ?? null,
           avatar:
             linkedPlayer?.avatarUrl ??
@@ -5297,6 +5363,31 @@ export default function App() {
       }));
   }
 
+  function collectTournamentOpponentProfileIds(
+    state,
+    { heroTableOnly = false } = {},
+  ) {
+    if (!state?.players) return [];
+    const heroId = heroTournamentPlayerIdRef.current;
+    let tableId = null;
+    if (heroTableOnly) {
+      tableId =
+        state.players?.[heroId]?.tableId ?? heroTableIdRef.current ?? null;
+      if (!tableId) return [];
+    }
+    return Object.values(state.players)
+      .filter((player) => {
+        if (!player || player.id === heroId || !player.opponentProfileId) {
+          return false;
+        }
+        if (heroTableOnly) {
+          return !player.busted && player.tableId === tableId;
+        }
+        return true;
+      })
+      .map((player) => player.opponentProfileId);
+  }
+
   const recordHeroHandForReplay = useCallback((tableId, summary) => {
     if (!summary) return;
     appendTournamentReplayHand({
@@ -5341,6 +5432,9 @@ export default function App() {
         });
       }
       tournamentStateRef.current = nextState;
+      recordRivalHandPlayed(
+        collectTournamentOpponentProfileIds(nextState, { heroTableOnly: true }),
+      );
       const levelChanged =
         typeof previousState?.levelIndex === "number" &&
         previousState.levelIndex !== nextState.levelIndex;
@@ -5512,6 +5606,29 @@ export default function App() {
           : [];
         const heroPlayerSnapshot =
           nextState.players?.[heroTournamentPlayerIdRef.current] ?? null;
+        if (heroPlayerSnapshot?.finishPlace) {
+          const resultKey = [
+            nextState.config?.id ?? "active-mtt",
+            heroPlayerSnapshot.id ?? heroTournamentPlayerIdRef.current,
+            heroPlayerSnapshot.finishPlace,
+            nextState.championId ?? "no-champion",
+          ].join(":");
+          if (tournamentProgressRecordedRef.current !== resultKey) {
+            applyTournamentResult({
+              variant: nextState.config?.gameVariant ?? "badugi",
+              stageId: nextState.config?.stageId ?? "store",
+              placement: heroPlayerSnapshot.finishPlace,
+              prize: Math.max(0, Number(heroPlayerSnapshot.payout) || 0),
+              reason: "mtt-finished",
+              tournamentId: nextState.config?.id ?? nextState.id ?? "active-mtt",
+            });
+            recordRivalTournamentResult(
+              collectTournamentOpponentProfileIds(nextState),
+              nextState.championId === heroTournamentPlayerIdRef.current,
+            );
+            tournamentProgressRecordedRef.current = resultKey;
+          }
+        }
         const reviewContract = buildTournamentReviewContract({
           tournament: {
             ...(nextState.config ?? {}),
@@ -6087,6 +6204,7 @@ export default function App() {
     heroTournamentPlayerIdRef.current = HERO_TOURNAMENT_PLAYER_ID;
     heroRenderTableIdRef.current = null;
     heroBustHandledRef.current = false;
+    tournamentProgressRecordedRef.current = null;
     setTournamentHudState(null);
     setTournamentBlindStructure(
       getBlindStructureForTournamentConfig(DEFAULT_STORE_TOURNAMENT_CONFIG),
@@ -6154,6 +6272,11 @@ export default function App() {
       setTournamentBlindStructure(initialBlindStructure);
       initTournamentReplay(config);
       const entrants = buildTournamentEntrants(config);
+      recordRivalTournamentMet(
+        entrants
+          .map((entrant) => entrant.opponentProfileId)
+          .filter(Boolean),
+      );
       const tournamentState = createMTTTournamentState(config, entrants);
       tournamentStateRef.current = tournamentState;
       heroTournamentPlayerIdRef.current =
@@ -11633,6 +11756,8 @@ export default function App() {
               typeof controller?.getCpuAction === "function"
                 ? controller.getCpuAction(controllerState, activeSeat, {
                     tierConfig: activeAiTierConfig,
+                    personalityId: me?.personalityId ?? "balanced",
+                    personality: me?.personality ?? null,
                   })
                 : null;
           } catch (error) {
@@ -11734,7 +11859,7 @@ export default function App() {
             !player.allIn,
         ).length;
         const standardBetDecision = computeBetDecision({
-          context: aiDecisionContext,
+          context: getAiDecisionContextForActor(me),
           toCall,
           canRaise,
           madeCards,
@@ -11767,7 +11892,11 @@ export default function App() {
                   confidence: 0.55,
                   reason: standardBetDecision?.reason,
                 },
-                context: { actor: me },
+                context: {
+                  actor: me,
+                  personalityId: me?.personalityId ?? "balanced",
+                  personality: me?.personality ?? null,
+                },
               })
             : standardBetDecision;
         const legalBetActions = [
@@ -11872,7 +12001,7 @@ export default function App() {
     betSize,
     betRoundIndex,
     drawRound,
-    aiDecisionContext,
+    getAiDecisionContextForActor,
     activeAiTierConfig,
     applyForcedBetAction,
     autoResolveCpuDrawIfNeeded,

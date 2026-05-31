@@ -60,6 +60,30 @@ describe("Player", () => {
     expect(image?.getAttribute("src")).toBe("/characters/akira.png");
   });
 
+  test("renders tournament rival title and personality badge", () => {
+    render(
+      <Player
+        player={{
+          ...basePlayer,
+          name: "Mika",
+          titleBadge: "Store Regular",
+          personalityBadge: "Calling Station",
+        }}
+        index={1}
+        selfIndex={0}
+        turn={0}
+        dealerIdx={0}
+        phase="BET"
+        positionLabel="BB"
+      />,
+    );
+
+    expect(screen.getByText("Store Regular")).toBeTruthy();
+    expect(screen.getByTestId("seat-1-personality-badge").textContent).toBe(
+      "CALLING STATION",
+    );
+  });
+
   test("recovers CPU character images from roster metadata when avatar fields are missing", () => {
     render(
       <Player

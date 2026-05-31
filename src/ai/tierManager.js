@@ -27,7 +27,7 @@ export function describeTierMetrics(tierConfig) {
   };
 }
 
-function pickTierFromStage(stageId) {
+export function pickTierFromStage(stageId) {
   switch (stageId) {
     case "world":
       return "worldmaster";

@@ -164,6 +164,10 @@ import {
   DEV_EVENTS,
 } from "./utils/devOverrides.js";
 import { listTierIds, getTierById } from "../ai/tierManager.js";
+import {
+  resolveAiTierForGameContext,
+  resolveTournamentStageId,
+} from "./utils/aiTierContext.js";
 import { selectModelForVariant } from "../ai/modelRouter.js";
 import { getCpuCharacterForIndex, getCpuDisplayName } from "../ai/cpuRoster.js";
 import {
@@ -329,7 +333,6 @@ function cloneHandHistory(value) {
 const DEFAULT_GAME_ID = "D03";
 const DEFAULT_GAME_VARIANT = "badugi";
 const DEFAULT_ALPHA_GAME_VARIANT = APP_VARIANT_IDS.D02;
-const DEFAULT_AI_TIER_ID = "pro";
 const DESKTOP_CANVAS_BASE_WIDTH = 1600;
 const DESKTOP_CANVAS_BASE_HEIGHT = 900;
 const HERO_TOURNAMENT_PLAYER_ID = "hero-player";
@@ -1777,9 +1780,32 @@ export default function App() {
   const [devTierOverride, setDevTierOverride] = useState(() =>
     loadAiTierOverride(),
   );
-  const activeAiTierConfig = useMemo(
-    () => getTierById(devTierOverride ?? DEFAULT_AI_TIER_ID),
+  const cashAiTierConfig = useMemo(
+    () =>
+      resolveAiTierForGameContext({
+        mode: "cash",
+        devTierOverride,
+      }),
     [devTierOverride],
+  );
+  const [tournamentStageTierConfig, setTournamentStageTierConfig] = useState(
+    () =>
+      resolveAiTierForGameContext({
+        mode: "tournament-mtt",
+        config: DEFAULT_STORE_TOURNAMENT_CONFIG,
+        tournamentSession: loadActiveTournamentSession(),
+      }),
+  );
+  const tournamentAiTierConfig = useMemo(
+    () =>
+      devTierOverride
+        ? getTierById(devTierOverride)
+        : tournamentStageTierConfig,
+    [devTierOverride, tournamentStageTierConfig],
+  );
+  const activeAiTierConfig = useMemo(
+    () => (isTournament ? tournamentAiTierConfig : cashAiTierConfig),
+    [cashAiTierConfig, isTournament, tournamentAiTierConfig],
   );
   const aiDecisionContext = useMemo(
     () =>
@@ -6042,7 +6068,26 @@ export default function App() {
 
   const startTournamentMTT = useCallback(
     (configOverride = DEFAULT_STORE_TOURNAMENT_CONFIG) => {
-      const config = { ...DEFAULT_STORE_TOURNAMENT_CONFIG, ...configOverride };
+      const baseConfig = {
+        ...DEFAULT_STORE_TOURNAMENT_CONFIG,
+        ...configOverride,
+      };
+      const activeTournamentSession = loadActiveTournamentSession();
+      const stageId = resolveTournamentStageId({
+        config: baseConfig,
+        tournamentSession: activeTournamentSession ?? tournamentSession,
+      });
+      const resolvedTournamentTier = resolveAiTierForGameContext({
+        mode: "tournament-mtt",
+        config: { ...baseConfig, stageId },
+        tournamentSession: activeTournamentSession ?? tournamentSession,
+      });
+      const config = {
+        ...baseConfig,
+        stageId,
+        aiTierId: resolvedTournamentTier?.id,
+      };
+      setTournamentStageTierConfig(resolvedTournamentTier);
       const normalizedRotation =
         Array.isArray(config.gameRotation) && config.gameRotation.length
           ? config.gameRotation.map((variant) =>
@@ -6167,6 +6212,7 @@ export default function App() {
       resetInitialButtonState,
       resetTournamentState,
       resetTableStateToSafeDefaults,
+      tournamentSession,
     ],
   );
 

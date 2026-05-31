@@ -13,6 +13,7 @@ import {
   DEFAULT_STARTING_STACK,
   TOURNAMENT_STRUCTURE,
 } from "../tournament/tournamentStructure";
+import { buildTournamentConfigFromStage } from "../config/tournamentStages.js";
 import { formatComment } from "./utils/commentCatalog.js";
 import GameRegistry from "../games/_core/GameRegistry";
 import { DEBUG_TOURNAMENT, logMTT } from "../config/debugFlags.js";
@@ -339,32 +340,7 @@ const HERO_TOURNAMENT_PLAYER_ID = "hero-player";
 function getPositionName(index, dealer, players = []) {
   return getPositionNameForSeat(index, dealer, players);
 }
-const DEFAULT_STORE_TOURNAMENT_CONFIG = {
-  id: "store-mtt",
-  name: "Store Tournament",
-  tables: 3,
-  seatsPerTable: 6,
-  startingStack: 500,
-  gameVariant: "badugi",
-  gameRotation: ["badugi"],
-  rotationPolicy: "fixed",
-  levels: [
-    { levelIndex: 1, smallBlind: 5, bigBlind: 10, ante: 0, handsThisLevel: 5 },
-    { levelIndex: 2, smallBlind: 10, bigBlind: 20, ante: 1, handsThisLevel: 5 },
-    {
-      levelIndex: 3,
-      smallBlind: 20,
-      bigBlind: 40,
-      ante: 2,
-      handsThisLevel: 999,
-    },
-  ],
-  payouts: [
-    { place: 1, percent: 50 },
-    { place: 2, percent: 30 },
-    { place: 3, percent: 20 },
-  ],
-};
+const DEFAULT_STORE_TOURNAMENT_CONFIG = buildTournamentConfigFromStage("store");
 
 function normalizeTournamentBlindLevel(level = {}, index = 0) {
   const levelNumber = level.level ?? level.levelIndex ?? index + 1;

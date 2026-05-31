@@ -1,4 +1,9 @@
-import { getBlindSheetById } from "./tournamentBlindSheets";
+import {
+  TOURNAMENT_BLIND_SHEETS,
+  getBlindSheetById,
+} from "./tournamentBlindSheets.js";
+import { TOURNAMENT_UNLOCKS } from "./tournamentUnlocks.js";
+import { createTournamentRepository } from "../tournament/domain/tournamentRepository.js";
 
 export const TOURNAMENT_STAGE_IDS = ["store", "local", "national", "world"];
 
@@ -8,6 +13,8 @@ export const TOURNAMENT_STAGES = [
   {
     id: "store",
     label: "店舗",
+    tournamentName: "Store Tournament",
+    seriesLabel: "Beginner Circuit",
     description:
       "無料開催の店舗トーナメント。ここでバンクロールを増やして上位ステージを解放します。",
     entryFee: 0,
@@ -36,6 +43,8 @@ export const TOURNAMENT_STAGES = [
   {
     id: "local",
     label: "地方",
+    tournamentName: "Local Tournament",
+    seriesLabel: "Regional Series",
     description:
       "地区代表を決める中規模 MTT。テンポも一段階速く、上位入賞で全国への切符を得ます。",
     entryFee: 1_000,
@@ -66,6 +75,8 @@ export const TOURNAMENT_STAGES = [
   {
     id: "national",
     label: "全国",
+    tournamentName: "National Championship",
+    seriesLabel: "National Circuit",
     description:
       "全国大会。フィールドも賞金も大きく、集中力が試されます。優勝で世界ステージの挑戦権。",
     entryFee: 3_000,
@@ -99,6 +110,8 @@ export const TOURNAMENT_STAGES = [
   {
     id: "world",
     label: "世界",
+    tournamentName: "World Championship",
+    seriesLabel: "World Series",
     description:
       "世界王者を決める戦い。ロングストラクチャで要求レベルも最高。優勝で全モード解放。",
     entryFee: 7_500,
@@ -133,6 +146,16 @@ export const TOURNAMENT_STAGES = [
   },
 ];
 
+const STATIC_TOURNAMENT_REPOSITORY = createTournamentRepository({
+  stages: TOURNAMENT_STAGES,
+  blindSheets: TOURNAMENT_BLIND_SHEETS,
+  unlockConditions: TOURNAMENT_UNLOCKS,
+});
+
+export function getStaticTournamentRepository() {
+  return STATIC_TOURNAMENT_REPOSITORY;
+}
+
 export function getStageById(stageId) {
   return TOURNAMENT_STAGES.find((stage) => stage.id === stageId) ?? null;
 }
@@ -141,4 +164,8 @@ export function getStageBlindSheet(stageId) {
   const stage = getStageById(stageId);
   if (!stage) return null;
   return getBlindSheetById(stage.blindSheetId);
+}
+
+export function buildTournamentConfigFromStage(stageId) {
+  return STATIC_TOURNAMENT_REPOSITORY.buildTournamentConfig(stageId);
 }

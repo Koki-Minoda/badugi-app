@@ -1,6 +1,45 @@
 import proBlindSheets from "./tournament/proBlindSheets.json" with { type: "json" };
 
-const level = (lvl, sb, bb, ante = 0) => ({ level: lvl, sb, bb, ante });
+const level = (lvl, sb, bb, ante = 0) => ({
+  level: lvl,
+  levelIndex: lvl,
+  sb,
+  smallBlind: sb,
+  bb,
+  bigBlind: bb,
+  ante,
+  hands: 5,
+  handsThisLevel: 5,
+});
+const storeLevel = (levelIndex, smallBlind, bigBlind, ante = 0) => ({
+  level: levelIndex,
+  levelIndex,
+  sb: smallBlind,
+  smallBlind,
+  bb: bigBlind,
+  bigBlind,
+  ante,
+  hands: 5,
+  handsThisLevel: 5,
+});
+
+export const STORE_STANDARD_BLIND_LEVELS = [
+  storeLevel(1, 5, 10, 0),
+  storeLevel(2, 10, 20, 1),
+  storeLevel(3, 20, 40, 2),
+  storeLevel(4, 30, 60, 3),
+  storeLevel(5, 50, 100, 5),
+  storeLevel(6, 75, 150, 10),
+  storeLevel(7, 100, 200, 15),
+  storeLevel(8, 150, 300, 25),
+  storeLevel(9, 200, 400, 40),
+  storeLevel(10, 300, 600, 60),
+  storeLevel(11, 400, 800, 80),
+  storeLevel(12, 600, 1_200, 120),
+  storeLevel(13, 800, 1_600, 160),
+  storeLevel(14, 1_000, 2_000, 200),
+  storeLevel(15, 1_500, 3_000, 300),
+];
 
 export const TOURNAMENT_BLIND_SHEETS = {
   "store-standard": {
@@ -10,20 +49,7 @@ export const TOURNAMENT_BLIND_SHEETS = {
     levelDurationMinutes: 8,
     breakEveryLevels: 6,
     breakDurationMinutes: 5,
-    levels: [
-      level(1, 10, 20),
-      level(2, 15, 30),
-      level(3, 20, 40),
-      level(4, 25, 50, 5),
-      level(5, 30, 60, 5),
-      level(6, 40, 80, 10),
-      level(7, 50, 100, 10),
-      level(8, 75, 150, 15),
-      level(9, 100, 200, 25),
-      level(10, 150, 300, 25),
-      level(11, 200, 400, 50),
-      level(12, 250, 500, 75),
-    ],
+    levels: STORE_STANDARD_BLIND_LEVELS,
   },
   "local-regional": {
     id: "local-regional",

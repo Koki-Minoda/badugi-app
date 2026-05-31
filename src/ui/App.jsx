@@ -572,6 +572,12 @@ export default function App() {
     [gameDefinition],
   );
   const [tournamentHudState, setTournamentHudState] = useState(null);
+  useEffect(() => {
+    console.info("[MTT][HUDSTATE-EFFECT]", {
+      handsPlayedThisLevel: tournamentHudState?.handsPlayedThisLevel,
+      handsThisLevel: tournamentHudState?.handsThisLevel,
+    });
+  }, [tournamentHudState]);
   const [tournamentBlindStructure, setTournamentBlindStructure] = useState(() =>
     getBlindStructureForTournamentConfig(DEFAULT_STORE_TOURNAMENT_CONFIG),
   );
@@ -5398,17 +5404,18 @@ export default function App() {
           hudPayload.nextBreakLabel ?? TOURNAMENT_CLOCK_PLACEHOLDER;
       }
       const debugHeroTableId = heroPlayer?.tableId ?? heroTableIdRef.current ?? null;
+      const resolvedHands = resolveHandsPlayedThisLevel(
+        hudPayloadHands,
+        handsInLevelRef.current,
+      );
       console.info("[MTT][HANDS-DEBUG]", {
+        levelChanged,
+        resolvedHands,
         levelIndex: nextState?.levelIndex,
         prevLevelIndex: previousState?.levelIndex,
-        levelChanged,
         heroTableId: debugHeroTableId,
         hudPayloadHands,
         handsInLevelRef: handsInLevelRef.current,
-        resolvedHands: resolveHandsPlayedThisLevel(
-          hudPayloadHands,
-          handsInLevelRef.current,
-        ),
         heroTableHands: nextState?.tables?.find(
           (table) => table.tableId === debugHeroTableId,
         )?.handsPlayedAtThisLevel,

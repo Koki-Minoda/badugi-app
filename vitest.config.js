@@ -51,6 +51,7 @@ export default defineConfig({
             "src/games/testing/**/*.{test,spec}.{js,jsx,ts,tsx}",
             "src/ui/**/*.{test,spec}.{js,jsx,ts,tsx}",
             "src/components/**/*.{test,spec}.{js,jsx,ts,tsx}",
+            "src/storage/**/*.{test,spec}.{js,jsx,ts,tsx}",
             "src/utils/**/*.{test,spec}.{js,jsx,ts,tsx}",
             "src/rl/**/*.{test,spec}.{js,jsx,ts,tsx}",
             "src/ai/__tests__/**/*.{test,spec}.{js,jsx,ts,tsx}",

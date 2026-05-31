@@ -72,6 +72,13 @@ describe("tournament hero bust flow regression", () => {
       fireEvent.click(screen.getByTestId("menu-tournament"));
       await Promise.resolve();
     });
+    await waitFor(() => {
+      expect(screen.getByTestId("tournament-start")).toBeTruthy();
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("tournament-start"));
+      await Promise.resolve();
+    });
 
     await waitFor(() => {
       expect(window.__BADUGI_E2E__?.forceHeroBust).toBeTypeOf("function");

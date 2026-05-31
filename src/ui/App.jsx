@@ -184,7 +184,13 @@ import {
   isValidHandShapeForVariant,
   sanitizeSeatHandShapeForVariant,
 } from "./utils/handShapeInvariant.js";
-import { loadActiveTournamentSession } from "./tournament/tournamentManager";
+import {
+  clearActiveMTTSnapshot,
+  isResumeableMTTSnapshot,
+  loadActiveMTTSnapshot,
+  loadActiveTournamentSession,
+  saveActiveMTTSnapshot,
+} from "./tournament/tournamentManager";
 import { installE2eTestDriver } from "./utils/e2eTestDriver.js";
 import {
   initTournamentReplay,
@@ -5380,7 +5386,18 @@ export default function App() {
         blindStructure: activeBlindStructure,
         blindLevelIndex: hudLevelIndex,
       });
-      setTournamentHudState(attachVariantLabels(displayHudPayload));
+      const attachedHudPayload = attachVariantLabels(displayHudPayload);
+      setTournamentHudState(attachedHudPayload);
+      if (nextState.isFinished) {
+        clearActiveMTTSnapshot();
+      } else {
+        saveActiveMTTSnapshot({
+          tournamentState: nextState,
+          heroPlayerId: heroTournamentPlayerIdRef.current,
+          hud: attachedHudPayload,
+          variantId: gameVariantRef.current,
+        });
+      }
       if (hydrate) {
         const hydration = hydrateHeroTableFromTournamentState(nextState);
         if (hydration) {
@@ -6183,7 +6200,14 @@ export default function App() {
         blindStructure: initialBlindStructure,
         blindLevelIndex: 0,
       });
-      setTournamentHudState(attachVariantLabels(displayHudPayload));
+      const attachedInitialHudPayload = attachVariantLabels(displayHudPayload);
+      setTournamentHudState(attachedInitialHudPayload);
+      saveActiveMTTSnapshot({
+        tournamentState,
+        heroPlayerId: heroTournamentPlayerIdRef.current,
+        hud: attachedInitialHudPayload,
+        variantId: initialTournamentVariant,
+      });
       setTournamentTitle(config?.name ?? "Tournament Results");
       handStartingStacksRef.current = {};
       modeRef.current = "tournament-mtt";
@@ -6234,6 +6258,142 @@ export default function App() {
     ],
   );
 
+  const resumeTournamentMTT = useCallback(
+    (snapshotOverride = null) => {
+      const snapshot = snapshotOverride ?? loadActiveMTTSnapshot();
+      if (!isResumeableMTTSnapshot(snapshot)) return false;
+      const restoredState = {
+        ...(snapshot.tournamentState ?? {}),
+        config: snapshot.config ?? snapshot.tournamentState?.config ?? {},
+      };
+      const config = restoredState.config;
+      const restoredVariant = normalizeAppVariantId(
+        snapshot.variantId ?? config.gameVariant ?? DEFAULT_GAME_VARIANT,
+        DEFAULT_GAME_VARIANT,
+      );
+      const restoredRotation =
+        Array.isArray(config.gameRotation) && config.gameRotation.length
+          ? config.gameRotation.map((variant) =>
+              normalizeAppVariantId(variant, DEFAULT_GAME_VARIANT),
+            )
+          : [restoredVariant];
+      const resolvedTournamentTier = resolveAiTierForGameContext({
+        mode: "tournament-mtt",
+        config,
+        tournamentSession,
+      });
+
+      resetTableStateToSafeDefaults({
+        reason: "resume-tournament-hard-reset",
+        preserveHandCount: false,
+        destroyControllers: true,
+      });
+      gameVariantRef.current = restoredVariant;
+      setGameVariant(restoredVariant);
+      resetTournamentState();
+      setTournamentStageTierConfig(resolvedTournamentTier);
+      initializeVariantRotation({
+        rotation: restoredRotation,
+        policy: config.rotationPolicy ?? "fixed",
+        initialVariant: restoredVariant,
+      });
+
+      tournamentStateRef.current = restoredState;
+      heroTournamentPlayerIdRef.current =
+        snapshot.hero?.playerId ?? HERO_TOURNAMENT_PLAYER_ID;
+      const blindStructure = getBlindStructureForTournamentConfig(config);
+      setTournamentBlindStructure(blindStructure);
+      initTournamentReplay(config);
+      const hydration = hydrateHeroTableFromTournamentState(restoredState);
+      if (hydration) {
+        const sanitizedTablePlayers = sanitizePlayerSnapshotForVariant(
+          hydration.tablePlayers,
+          restoredVariant,
+        );
+        heroSeatMapRef.current = hydration.seatMapping;
+        heroTableIdRef.current = hydration.tableId;
+        playersRef.current = sanitizedTablePlayers;
+        setPlayers(sanitizedTablePlayers);
+        heroRenderTableIdRef.current = hydration.tableId;
+      }
+
+      const heroPlayer =
+        restoredState.players?.[heroTournamentPlayerIdRef.current] ?? null;
+      heroTableIdRef.current = heroPlayer?.tableId ?? null;
+      heroTableMetaRef.current = {
+        tableId: heroPlayer?.tableId ?? null,
+        seatIndex: heroPlayer?.seatIndex ?? null,
+      };
+      const restoredHands =
+        Number(snapshot.hud?.handsPlayedThisLevel) ||
+        Number(
+          restoredState.tables?.find(
+            (table) => table.tableId === heroPlayer?.tableId,
+          )?.handsPlayedAtThisLevel,
+        ) ||
+        0;
+      handsInLevelRef.current = restoredHands;
+      setHandsInLevel(restoredHands);
+      const restoredLevelIndex = Number.isFinite(Number(restoredState.levelIndex))
+        ? Number(restoredState.levelIndex)
+        : 0;
+      blindLevelIndexRef.current = restoredLevelIndex;
+      setBlindLevelIndex(restoredLevelIndex);
+      const hudPayload = buildTournamentHudPayload({
+        state: restoredState,
+        heroPlayer,
+        heroTableId: heroPlayer?.tableId ?? heroTableIdRef.current ?? null,
+        fallbackSeatsPerTable: restoredState.config?.seatsPerTable ?? NUM_PLAYERS,
+      });
+      if (hudPayload) {
+        hudPayload.handsPlayedThisLevel = resolveHandsPlayedThisLevel(
+          hudPayload.handsPlayedThisLevel,
+          handsInLevelRef.current,
+        );
+        const currentLevelDef = getCurrentLevel(restoredState);
+        hudPayload.handsThisLevel =
+          hudPayload.handsThisLevel ?? currentLevelDef?.handsThisLevel ?? null;
+        hudPayload.nextBreakLabel =
+          hudPayload.nextBreakLabel ?? TOURNAMENT_CLOCK_PLACEHOLDER;
+      }
+      const displayHudPayload = applyActualBlindDisplayToHud(hudPayload, {
+        blindStructure,
+        blindLevelIndex: restoredLevelIndex,
+      });
+      setTournamentHudState(attachVariantLabels(displayHudPayload));
+      setTournamentTitle(config?.name ?? "Tournament Results");
+      setStartingStack(config.startingStack ?? DEFAULT_STARTING_STACK);
+      startingStackRef.current = config.startingStack ?? DEFAULT_STARTING_STACK;
+      setTournamentPlacements(restoredState.placements ?? []);
+      setTournamentReview(null);
+      setTournamentOverlayVisible(false);
+      setHeroBustSummary(null);
+      setHeroBustOverlayVisible(false);
+      setHandResultVisible(false);
+      setHandResultSummary(null);
+      setShowNextButton(true);
+      setPhase("WAITING_NEXT_HAND");
+      phaseRef.current = "WAITING_NEXT_HAND";
+      setDrawRoundValue(0);
+      setBetRoundValue(0);
+      setMode("tournament-mtt");
+      modeRef.current = "tournament-mtt";
+      setCurrentScreen("gameTournament");
+      return true;
+    },
+    [
+      attachVariantLabels,
+      hydrateHeroTableFromTournamentState,
+      initializeVariantRotation,
+      resetTableStateToSafeDefaults,
+      resetTournamentState,
+      setHandResultVisible,
+      setPlayers,
+      setShowNextButton,
+      tournamentSession,
+    ],
+  );
+
   const handleTournamentBackToMenu = useCallback(() => {
     resetTableStateToSafeDefaults({
       reason: "tournament-back-to-menu",
@@ -6259,18 +6419,33 @@ export default function App() {
   }, [startTournamentMTT]);
 
   useEffect(() => {
-    if (!location?.state?.startTournamentMTT) return;
+    if (!location?.state?.startTournamentMTT && !location?.state?.resumeTournamentMTT) return;
     autoModeInitRef.current = true;
     ensureURLModeParam("store_tournament");
-    startTournamentMTT(DEFAULT_STORE_TOURNAMENT_CONFIG);
-    setCurrentScreen("gameTournament");
+    if (location.state.resumeTournamentMTT) {
+      resumeTournamentMTT();
+    } else {
+      const requestedStageId =
+        location.state.stageId ??
+        new URLSearchParams(location.search).get("stage") ??
+        "store";
+      startTournamentMTT(
+        buildTournamentConfigFromStage(requestedStageId) ??
+          DEFAULT_STORE_TOURNAMENT_CONFIG,
+      );
+      setCurrentScreen("gameTournament");
+    }
     const nextState = { ...location.state };
     delete nextState.startTournamentMTT;
+    delete nextState.resumeTournamentMTT;
+    delete nextState.stageId;
+    delete nextState.tournamentConfigId;
     navigate(location.pathname, { replace: true, state: nextState });
   }, [
     ensureURLModeParam,
     location,
     navigate,
+    resumeTournamentMTT,
     setCurrentScreen,
     startTournamentMTT,
   ]);
@@ -6283,10 +6458,20 @@ export default function App() {
         source: "url-param",
         requestedMode: "tournament-mtt",
       });
-      startTournamentMTT(DEFAULT_STORE_TOURNAMENT_CONFIG);
+      const requestedStageId =
+        new URLSearchParams(location.search).get("stage") ?? "store";
+      const shouldResume =
+        new URLSearchParams(location.search).get("resume") === "1";
+      if (shouldResume && resumeTournamentMTT()) {
+        return;
+      }
+      startTournamentMTT(
+        buildTournamentConfigFromStage(requestedStageId) ??
+          DEFAULT_STORE_TOURNAMENT_CONFIG,
+      );
       setCurrentScreen("gameTournament");
     }
-  }, [setCurrentScreen, startTournamentMTT]);
+  }, [location.search, resumeTournamentMTT, setCurrentScreen, startTournamentMTT]);
 
   const handleEnterFromTitle = () => {
     setCurrentScreen("menu");
@@ -6396,11 +6581,39 @@ export default function App() {
     handleSelectRing(gameVariantRef.current ?? DEFAULT_GAME_VARIANT);
   };
 
-  const handleSelectTournament = (configOverride) => {
-    const config = configOverride ?? DEFAULT_STORE_TOURNAMENT_CONFIG;
+  const handleSelectTournament = (configOverride = null) => {
+    if (!configOverride) {
+      setCurrentScreen("tournamentHub");
+      return;
+    }
+    const config = configOverride;
     setCurrentScreen("gameTournament");
     startTournamentMTT(config);
   };
+
+  const handleOpenCareerScreen = useCallback(() => {
+    setCurrentScreen("career");
+  }, []);
+
+  const handleStartTournamentFromHub = useCallback(
+    (config) => {
+      if (!config) return;
+      setCurrentScreen("gameTournament");
+      startTournamentMTT(config);
+    },
+    [setCurrentScreen, startTournamentMTT],
+  );
+
+  const handleResumeTournamentFromHub = useCallback(
+    (snapshot) => {
+      resumeTournamentMTT(snapshot);
+    },
+    [resumeTournamentMTT],
+  );
+
+  const handleRetireTournamentFromHub = useCallback(() => {
+    clearActiveMTTSnapshot();
+  }, []);
 
   const handleOpenHandHistoryScreen = useCallback(() => {
     setCurrentScreen("handHistory");

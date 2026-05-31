@@ -77,6 +77,10 @@ tests/scraping/logs/*
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Playwright MCP local artifacts
+.playwright-mcp/
+
 .env
 
 # MGX AI evaluation artifacts

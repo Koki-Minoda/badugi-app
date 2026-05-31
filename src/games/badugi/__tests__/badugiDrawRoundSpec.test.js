@@ -63,7 +63,7 @@ describe("Badugi draw round spec", () => {
     expect(drawFour.state.snapshot.players[1].lastDrawCount).toBe(4);
   });
 
-  it("skips folded players and advances to betting when no draw actor remains", () => {
+  it("skips folded players and advances to the next draw when the betting round is empty", () => {
     const controller = createController();
     let state = controller.createNewHandState(controller.createInitialState(), {
       drawCardsForSeat: (seat) => hands[seat],
@@ -95,11 +95,11 @@ describe("Badugi draw round spec", () => {
     });
 
     expect(result.events.some((event) => event.type === "drawRoundComplete")).toBe(true);
-    expect(result.state.snapshot.phase).toBe("BET");
+    expect(result.state.snapshot.phase).toBe("DRAW");
     expect(result.state.snapshot.drawRound).toBe(1);
   });
 
-  it("moves from final draw completion to final betting round", () => {
+  it("moves directly to showdown after final draw when the betting round is empty", () => {
     const controller = createController();
     let state = controller.createNewHandState(controller.createInitialState(), {
       drawCardsForSeat: (seat) => hands[seat],
@@ -130,7 +130,7 @@ describe("Badugi draw round spec", () => {
       payload: { type: "draw", drawIndexes: [], handAfter: hands[0] },
     });
 
-    expect(result.state.snapshot.phase).toBe("BET");
+    expect(result.state.snapshot.phase).toBe("SHOWDOWN");
     expect(result.state.snapshot.drawRound).toBe(3);
   });
 });

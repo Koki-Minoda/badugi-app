@@ -7,6 +7,124 @@ import {
   sanitizeDiscardIndexes,
 } from "../strategyUtils.js";
 
+function normalizePositionLabel(value) {
+  const label = String(value ?? "").trim().toUpperCase();
+  if (!label) return null;
+  if (["BTN", "BUTTON", "DEALER"].includes(label)) return "BTN";
+  if (["CO", "CUTOFF", "CUT_OFF"].includes(label)) return "CO";
+  if (
+    ["UTG", "EP", "EARLY", "EARLY_POSITION", "EARLY-POSITION"].includes(label)
+  ) {
+    return "EARLY";
+  }
+  return label;
+}
+
+function isInactiveSeat(player = null) {
+  return Boolean(
+    player?.folded ||
+      player?.hasFolded ||
+      player?.busted ||
+      player?.isBusted ||
+      player?.seatOut ||
+      player?.sittingOut,
+  );
+}
+
+function getActorSeatIndex(snapshot = {}, actor = null) {
+  const candidates = [
+    snapshot?.actingPlayerIndex,
+    snapshot?.actorSeat,
+    actor?.seatIndex,
+    actor?.seat,
+  ];
+  const value = candidates.find((candidate) => Number.isInteger(candidate));
+  return Number.isInteger(value) ? value : null;
+}
+
+function getButtonSeat(snapshot = {}) {
+  const candidates = [
+    snapshot?.buttonSeat,
+    snapshot?.dealerSeat,
+    snapshot?.dealerIdx,
+    snapshot?.dealerIndex,
+    snapshot?.metadata?.buttonSeat,
+    snapshot?.metadata?.dealerSeat,
+    snapshot?.metadata?.dealerIdx,
+  ];
+  const value = candidates.find((candidate) => Number.isInteger(candidate));
+  return Number.isInteger(value) ? value : null;
+}
+
+function seatAfter(activeSeats, seat, offset) {
+  const start = activeSeats.indexOf(seat);
+  if (start < 0 || activeSeats.length === 0) return null;
+  return activeSeats[(start + offset + activeSeats.length) % activeSeats.length];
+}
+
+function classifyBadugiPosition(snapshot = {}, actor = null) {
+  const explicit = normalizePositionLabel(
+    actor?.position ??
+      actor?.positionLabel ??
+      actor?.tablePosition ??
+      snapshot?.position ??
+      snapshot?.positionLabel ??
+      snapshot?.metadata?.position,
+  );
+  if (explicit === "BTN" || explicit === "CO") {
+    return { label: explicit, isLate: true, isEarly: false };
+  }
+  if (explicit === "EARLY") {
+    return { label: explicit, isLate: false, isEarly: true };
+  }
+
+  const actorSeat = getActorSeatIndex(snapshot, actor);
+  const buttonSeat = getButtonSeat(snapshot);
+  const players = Array.isArray(snapshot?.players) ? snapshot.players : [];
+  if (
+    !Number.isInteger(actorSeat) ||
+    !Number.isInteger(buttonSeat) ||
+    players.length < 2
+  ) {
+    return { label: explicit, isLate: false, isEarly: false };
+  }
+  const activeSeats = players
+    .map((player, seat) => ({ player, seat }))
+    .filter(({ player }) => player && !isInactiveSeat(player))
+    .map(({ seat }) => seat);
+  if (!activeSeats.includes(actorSeat) || !activeSeats.includes(buttonSeat)) {
+    return { label: explicit, isLate: false, isEarly: false };
+  }
+  if (actorSeat === buttonSeat) {
+    return { label: "BTN", isLate: true, isEarly: false };
+  }
+  if (actorSeat === seatAfter(activeSeats, buttonSeat, -1)) {
+    return { label: "CO", isLate: true, isEarly: false };
+  }
+  const orderFromButton = Array.from({ length: activeSeats.length }, (_, offset) =>
+    seatAfter(activeSeats, buttonSeat, offset),
+  );
+  const orderIndex = orderFromButton.indexOf(actorSeat);
+  const isEarly =
+    activeSeats.length >= 5 &&
+    orderIndex >= 3 &&
+    orderIndex <= Math.max(3, activeSeats.length - 3);
+  return { label: isEarly ? "EARLY" : explicit, isLate: false, isEarly };
+}
+
+function canSafelyValueRaise(snapshot = {}, legalActions = []) {
+  if (!hasLegalAction(legalActions, "RAISE")) return false;
+  const raiseCount =
+    Number(
+      snapshot?.metadata?.raiseCountThisRound ??
+        snapshot?.raiseCountThisRound ??
+        0,
+    ) || 0;
+  const raiseCap =
+    Number(snapshot?.metadata?.raiseCap ?? snapshot?.raiseCap ?? 4) || 4;
+  return raiseCount < raiseCap - 1;
+}
+
 export function chooseBadugiProStrategy({
   snapshot = {},
   legalActions = [],
@@ -29,6 +147,8 @@ export function chooseBadugiProStrategy({
   const canCall = hasLegalAction(legalActions, "CALL");
   const canRaise = hasLegalAction(legalActions, "RAISE");
   const canBet = hasLegalAction(legalActions, "BET");
+  const canValueRaise = canSafelyValueRaise(snapshot, legalActions);
+  const position = classifyBadugiPosition(snapshot, actor);
   const normalizedLegal = normalizeLegalActions(legalActions);
   const finalRound = drawRound >= 3;
   const expensiveCall = toCall >= Math.max(40, (actor?.stack ?? 0) * 0.25);
@@ -80,11 +200,19 @@ export function chooseBadugiProStrategy({
     };
   }
 
-  if (strongMade && canRaise && (toCall > 0 || !canBet)) {
+  if (strongMade && canRaise && canValueRaise && (toCall > 0 || !canBet)) {
     return {
       type: "RAISE",
       confidence: clampConfidence(finalRound ? 0.9 : 0.76),
       reason: finalRound ? "strong-made-value-raise" : "strong-made-pressure-raise",
+    };
+  }
+
+  if (strongMade && canRaise && !canValueRaise && toCall > 0 && canCall) {
+    return {
+      type: "CALL",
+      confidence: 0.82,
+      reason: "strong-made-raise-cap-call",
     };
   }
 
@@ -101,6 +229,37 @@ export function chooseBadugiProStrategy({
       type: "BET",
       confidence: 0.72,
       reason: "final-round-medium-badugi-value-bet",
+    };
+  }
+
+  if (
+    !toCall &&
+    canBet &&
+    evaluation.count === 3 &&
+    evaluation.kicker <= 6 &&
+    drawRound <= 1 &&
+    !position.isEarly
+  ) {
+    return {
+      type: "BET",
+      confidence: position.isLate ? 0.74 : 0.68,
+      reason: "strong-3card-early-pressure",
+    };
+  }
+
+  if (
+    toCall > 0 &&
+    strongThreeCard &&
+    position.isLate &&
+    drawRound <= 1 &&
+    canRaise &&
+    canValueRaise &&
+    !expensiveCall
+  ) {
+    return {
+      type: "RAISE",
+      confidence: 0.66,
+      reason: "late-position-strong-3card-pressure-raise",
     };
   }
 

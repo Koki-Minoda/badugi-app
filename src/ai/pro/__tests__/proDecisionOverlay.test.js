@@ -12,6 +12,10 @@ function buildSnapshot({
   maxDiscardCount = hand.length,
   currentBet = 0,
   betThisRound = 0,
+  position = null,
+  metadata = null,
+  raiseCountThisRound,
+  raiseCap,
   maxDrawRounds = variantId.startsWith("S") ? 1 : 3,
   pots,
   players = null,
@@ -25,20 +29,31 @@ function buildSnapshot({
     maxDiscardCount,
     maxDrawRounds,
     currentBet,
+    metadata,
+    raiseCountThisRound,
+    raiseCap,
     pots,
     players:
       Array.isArray(players) && players.length
         ? players.map((player, index) => ({
-            hand: index === actingPlayerIndex ? [...hand] : [...(player?.hand ?? [])],
+            hand:
+              index === actingPlayerIndex
+                ? [...hand]
+                : [...(player?.hand ?? [])],
             allIn: Boolean(player?.allIn),
             stack: typeof player?.stack === "number" ? player.stack : 500,
-            betThisRound: typeof player?.betThisRound === "number" ? player.betThisRound : 0,
+            betThisRound:
+              typeof player?.betThisRound === "number"
+                ? player.betThisRound
+                : 0,
             folded: Boolean(player?.folded),
             hasFolded: Boolean(player?.hasFolded),
             busted: Boolean(player?.busted),
             isBusted: Boolean(player?.isBusted),
             seatOut: Boolean(player?.seatOut),
             sittingOut: Boolean(player?.sittingOut),
+            seatIndex: index,
+            position: index === actingPlayerIndex ? position : player?.position,
           }))
         : [
             {
@@ -46,6 +61,8 @@ function buildSnapshot({
               allIn,
               stack: allIn ? 0 : 500,
               betThisRound,
+              seatIndex: actingPlayerIndex,
+              position,
             },
           ],
   };
@@ -237,6 +254,56 @@ describe("chooseProAction", () => {
       legalActions: ["FOLD", "CALL"],
     });
     expect(result.type).toBe("FOLD");
+  });
+
+  it("PRO-BADUGI-QW1 late position strong three-card hand applies pressure", () => {
+    const result = chooseProAction({
+      variantId: "D03",
+      snapshot: buildSnapshot({
+        variantId: "D03",
+        street: "BET",
+        drawRoundIndex: 1,
+        hand: ["AS", "2D", "5C", "KS"],
+        position: "BTN",
+      }),
+      legalActions: ["BET", "CHECK"],
+    });
+    expect(result.type).toBe("BET");
+    expect(result.reason).toBe("strong-3card-early-pressure");
+  });
+
+  it("PRO-BADUGI-QW1 early position strong three-card hand stays cautious", () => {
+    const result = chooseProAction({
+      variantId: "D03",
+      snapshot: buildSnapshot({
+        variantId: "D03",
+        street: "BET",
+        drawRoundIndex: 1,
+        hand: ["AS", "2D", "5C", "KS"],
+        position: "UTG",
+      }),
+      legalActions: ["BET", "CHECK"],
+    });
+    expect(result.type).not.toBe("BET");
+    expect(result.type).toBe("CHECK");
+  });
+
+  it("PRO-BADUGI-QW5 does not raise into the fixed-limit cap", () => {
+    const result = chooseProAction({
+      variantId: "D03",
+      snapshot: buildSnapshot({
+        variantId: "D03",
+        street: "BET",
+        drawRoundIndex: 2,
+        hand: ["AS", "2D", "3C", "4H"],
+        currentBet: 20,
+        betThisRound: 0,
+        metadata: { raiseCountThisRound: 3, raiseCap: 4 },
+      }),
+      legalActions: ["FOLD", "CALL", "RAISE"],
+    });
+    expect(result.type).toBe("CALL");
+    expect(result.reason).toBe("strong-made-raise-cap-call");
   });
 
   it("PRO-004 respects D01 discard cap", () => {

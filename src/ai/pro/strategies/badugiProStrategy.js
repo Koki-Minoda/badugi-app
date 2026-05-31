@@ -147,14 +147,15 @@ export function chooseBadugiProStrategy({
   const canCall = hasLegalAction(legalActions, "CALL");
   const canRaise = hasLegalAction(legalActions, "RAISE");
   const canBet = hasLegalAction(legalActions, "BET");
+  const canOpenAggress = canBet || (toCall === 0 && canRaise);
   const canValueRaise = canSafelyValueRaise(snapshot, legalActions);
   const position = classifyBadugiPosition(snapshot, actor);
   const normalizedLegal = normalizeLegalActions(legalActions);
   const finalRound = drawRound >= 3;
   const expensiveCall = toCall >= Math.max(40, (actor?.stack ?? 0) * 0.25);
   const strongMade = evaluation.count >= 4 && evaluation.kicker <= 7;
-  const mediumMade = evaluation.count >= 4 && evaluation.kicker <= 10;
-  const weakMade = evaluation.count >= 4 && evaluation.kicker > 10;
+  const mediumMade = evaluation.count >= 4 && evaluation.kicker <= 9;
+  const weakMade = evaluation.count >= 4 && evaluation.kicker > 9;
   const strongThreeCard = evaluation.count === 3 && evaluation.kicker <= 7;
   const playableThreeCard = evaluation.count === 3 && evaluation.kicker <= 9;
   const weakDraw = evaluation.count < 4 || evaluation.kicker >= 10;
@@ -200,7 +201,7 @@ export function chooseBadugiProStrategy({
     };
   }
 
-  if (strongMade && canRaise && canValueRaise && (toCall > 0 || !canBet)) {
+  if (strongMade && canRaise && canValueRaise && toCall > 0) {
     return {
       type: "RAISE",
       confidence: clampConfidence(finalRound ? 0.9 : 0.76),
@@ -216,17 +217,17 @@ export function chooseBadugiProStrategy({
     };
   }
 
-  if (!toCall && canBet && strongMade) {
+  if (!toCall && canOpenAggress && strongMade) {
     return {
-      type: "BET",
+      type: canBet ? "BET" : "RAISE",
       confidence: 0.78,
       reason: "made-badugi-open-value-bet",
     };
   }
 
-  if (!toCall && canBet && mediumMade && finalRound) {
+  if (!toCall && canOpenAggress && mediumMade && finalRound) {
     return {
-      type: "BET",
+      type: canBet ? "BET" : "RAISE",
       confidence: 0.72,
       reason: "final-round-medium-badugi-value-bet",
     };
@@ -234,14 +235,14 @@ export function chooseBadugiProStrategy({
 
   if (
     !toCall &&
-    canBet &&
+    canOpenAggress &&
     evaluation.count === 3 &&
     evaluation.kicker <= 6 &&
     drawRound <= 1 &&
     !position.isEarly
   ) {
     return {
-      type: "BET",
+      type: canBet ? "BET" : "RAISE",
       confidence: position.isLate ? 0.74 : 0.68,
       reason: "strong-3card-early-pressure",
     };

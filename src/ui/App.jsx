@@ -5362,10 +5362,16 @@ export default function App() {
         handleVariantRotationTrigger("level");
         if (Number.isFinite(nextState.levelIndex)) {
           setBlindLevelIndex(nextState.levelIndex);
-          blindLevelIndexRef.current = nextState.levelIndex;
           setHandsInLevel(0);
           handsInLevelRef.current = 0;
         }
+      }
+      // RC-1 FIX: always sync the ref to tournamentMTT authority
+      // regardless of whether level actually changed this call.
+      // blindLevelIndexRef.current is used by applyActualBlindDisplayToHud;
+      // if stale when levelChanged=false, HUD shows old blinds.
+      if (Number.isFinite(nextState.levelIndex)) {
+        blindLevelIndexRef.current = nextState.levelIndex;
       }
       const heroPlayer = nextState.players?.[heroTournamentPlayerIdRef.current];
       heroTableIdRef.current = heroPlayer?.tableId ?? null;
@@ -5390,9 +5396,12 @@ export default function App() {
         hudPayload.nextBreakLabel =
           hudPayload.nextBreakLabel ?? TOURNAMENT_CLOCK_PLACEHOLDER;
       }
+      const hudLevelIndex = Number.isFinite(nextState.levelIndex)
+        ? nextState.levelIndex
+        : blindLevelIndexRef.current;
       const displayHudPayload = applyActualBlindDisplayToHud(hudPayload, {
         blindStructure: activeBlindStructure,
-        blindLevelIndex: blindLevelIndexRef.current,
+        blindLevelIndex: hudLevelIndex,
       });
       setTournamentHudState(attachVariantLabels(displayHudPayload));
       if (hydrate) {

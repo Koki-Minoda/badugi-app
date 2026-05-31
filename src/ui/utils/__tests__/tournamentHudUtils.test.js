@@ -160,6 +160,42 @@ describe("tournamentHudUtils", () => {
     expect(displayed.currentBlinds).toEqual({ sb: 10, bb: 20, ante: 1 });
   });
 
+  it("BLIND-LEVEL-001 HUD shows level2 blinds when levelIndex=1 in nextState", () => {
+    const blindStructure = [
+      { levelNumber: 1, smallBlind: 5, bigBlind: 10, ante: 0 },
+      { levelNumber: 2, smallBlind: 10, bigBlind: 20, ante: 1 },
+    ];
+    const stalePayload = buildTournamentHudPayload({
+      state: createState({ levelIndex: 0 }),
+      heroPlayer: { tableId: "table-1", seatIndex: 0 },
+    });
+
+    const updated = applyActualBlindDisplayToHud(stalePayload, {
+      blindStructure,
+      blindLevelIndex: 1,
+    });
+
+    expect(updated.currentBlinds.sb).toBe(10);
+    expect(updated.currentBlinds.bb).toBe(20);
+    expect(updated.currentLevelNumber).toBe(2);
+  });
+
+  it("BLIND-LEVEL-002 HUD level matches state.levelIndex when no levelChanged detected", () => {
+    const blindStructure = [
+      { levelNumber: 1, smallBlind: 5, bigBlind: 10, ante: 0 },
+      { levelNumber: 2, smallBlind: 10, bigBlind: 20, ante: 1 },
+      { levelNumber: 3, smallBlind: 20, bigBlind: 40, ante: 2 },
+    ];
+
+    const payload = applyActualBlindDisplayToHud(
+      { currentBlinds: { sb: 5, bb: 10, ante: 0 } },
+      { blindStructure, blindLevelIndex: 2 },
+    );
+
+    expect(payload.currentBlinds.sb).toBe(20);
+    expect(payload.currentBlinds.bb).toBe(40);
+  });
+
   it("PLAYERS-REMAINING-004 HUD shows correct count using state.playersRemaining as SOT", () => {
     // Simulate the regression: state says 15 but tournamentHudState still carries 18
     const stateWith15 = {

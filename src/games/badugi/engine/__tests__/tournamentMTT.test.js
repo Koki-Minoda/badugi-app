@@ -82,6 +82,23 @@ describe("tournamentMTT engine", () => {
     expect(getCurrentLevel(state).levelIndex).toBe(2);
   });
 
+  it("increments handsPlayedAtThisLevel before level advancement", () => {
+    let state = createMTTTournamentState(BASE_CONFIG, entrants);
+    const tableId = state.tables[0].tableId;
+
+    state = onTableHandCompleted(state, tableId, {
+      handIndex: 1,
+      seatResults: [],
+    });
+    expect(state.tables[0].handsPlayedAtThisLevel).toBe(1);
+
+    state = onTableHandCompleted(state, tableId, {
+      handIndex: 2,
+      seatResults: [],
+    });
+    expect(state.tables[0].handsPlayedAtThisLevel).toBe(2);
+  });
+
   it("marks players busted and reduces playersRemaining", () => {
     let state = createMTTTournamentState(BASE_CONFIG, entrants);
     const targetTable = state.tables[0];

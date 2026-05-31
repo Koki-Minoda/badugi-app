@@ -137,7 +137,7 @@ export function buildTournamentHudPayload({
 }
 
 export function resolveHandsPlayedThisLevel(engineHandsPlayed, appCounterFallback) {
-  if (typeof engineHandsPlayed === "number") {
+  if (typeof engineHandsPlayed === "number" && engineHandsPlayed > 0) {
     return engineHandsPlayed;
   }
   return typeof appCounterFallback === "number" ? appCounterFallback : 0;

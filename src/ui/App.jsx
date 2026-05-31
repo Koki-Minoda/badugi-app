@@ -5362,8 +5362,8 @@ export default function App() {
         handleVariantRotationTrigger("level");
         if (Number.isFinite(nextState.levelIndex)) {
           setBlindLevelIndex(nextState.levelIndex);
-          setHandsInLevel(0);
-          handsInLevelRef.current = 0;
+          setHandsInLevel(1);
+          handsInLevelRef.current = 1;
         }
       }
       // RC-1 FIX: always sync the ref to tournamentMTT authority

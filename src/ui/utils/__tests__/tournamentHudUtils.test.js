@@ -111,10 +111,20 @@ describe("tournamentHudUtils", () => {
     expect(payload.playersRemainingText).toBe("Players Remaining: 17 / 18");
   });
 
-  it("prefers engine handsPlayedThisLevel over stale app counters", () => {
-    expect(resolveHandsPlayedThisLevel(0, 5)).toBe(0);
+  it("HANDS-001 resolveHandsPlayedThisLevel returns appCounter when engine reports 0", () => {
+    expect(resolveHandsPlayedThisLevel(0, 1)).toBe(1);
+    expect(resolveHandsPlayedThisLevel(0, 3)).toBe(3);
+    expect(resolveHandsPlayedThisLevel(0, 0)).toBe(0);
+  });
+
+  it("HANDS-002 resolveHandsPlayedThisLevel prefers positive engine value over fallback", () => {
+    expect(resolveHandsPlayedThisLevel(3, 0)).toBe(3);
     expect(resolveHandsPlayedThisLevel(2, 5)).toBe(2);
-    expect(resolveHandsPlayedThisLevel(null, 5)).toBe(5);
+  });
+
+  it("HANDS-003 resolveHandsPlayedThisLevel falls back when engine is null or undefined", () => {
+    expect(resolveHandsPlayedThisLevel(null, 4)).toBe(4);
+    expect(resolveHandsPlayedThisLevel(undefined, 4)).toBe(4);
   });
 
   it("uses the actual blind level for HUD display when tournament state is stale", () => {

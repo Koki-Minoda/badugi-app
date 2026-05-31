@@ -28,6 +28,14 @@ describe("TournamentHUD", () => {
     nextBreakLabel: "--:--",
     currentVariantLabel: "Badugi",
     nextVariantLabel: "NLH",
+    tournamentTimeline: [
+      { value: 18, active: true },
+      { value: 12, active: false },
+      { value: 6, active: false },
+      { value: 3, active: false },
+      { value: 2, active: false },
+      { value: 1, active: false },
+    ],
   };
 
   it("renders prize pool and payout details", () => {
@@ -62,5 +70,68 @@ describe("TournamentHUD", () => {
     expect(screen.getByText("Blinds")).toBeTruthy();
     expect(screen.getByText("Players")).toBeTruthy();
     expect(screen.getByText("Top Payouts")).toBeTruthy();
+    expect(screen.getByTestId("tournament-timeline").textContent).toContain("18");
+  });
+
+  it("shows tournament transition event banners and active table status", () => {
+    render(
+      <TournamentHUD
+        {...baseProps}
+        placement="side"
+        tournamentEventText="TABLE MERGE: 12 players / 2 tables"
+        tablesActiveText="Tables: 2"
+        playersRemaining={12}
+      />,
+    );
+
+    expect(screen.getByTestId("tournament-event-banner").textContent).toContain(
+      "TABLE MERGE: 12 players / 2 tables",
+    );
+    expect(screen.getByText("Tables: 2")).toBeTruthy();
+    expect(screen.getByText("12 / 18")).toBeTruthy();
+    expect(screen.getByText("5 / 10")).toBeTruthy();
+    expect(screen.getByText("0 / 5")).toBeTruthy();
+  });
+
+  it("shows final table and heads-up event labels", () => {
+    const { rerender } = render(
+      <TournamentHUD {...baseProps} tournamentEventText="FINAL TABLE" tablesActiveText="Tables: Final" />,
+    );
+    expect(screen.getByTestId("tournament-event-banner").textContent).toContain("FINAL TABLE");
+
+    rerender(
+      <TournamentHUD
+        {...baseProps}
+        tournamentEventText="HEADS-UP"
+        tablesActiveText="HEADS-UP"
+        playersRemaining={2}
+      />,
+    );
+    expect(screen.getByTestId("tournament-event-banner").textContent).toContain("HEADS-UP");
+    expect(screen.getByText("2 / 18")).toBeTruthy();
+  });
+
+  it("shows money bubble and final 3 event labels", () => {
+    const { rerender } = render(
+      <TournamentHUD
+        {...baseProps}
+        tournamentEventText="MONEY BUBBLE"
+        playersRemaining={4}
+      />,
+    );
+    expect(screen.getByTestId("tournament-event-banner").textContent).toContain(
+      "MONEY BUBBLE",
+    );
+
+    rerender(
+      <TournamentHUD
+        {...baseProps}
+        tournamentEventText="FINAL 3"
+        playersRemaining={3}
+      />,
+    );
+    expect(screen.getByTestId("tournament-event-banner").textContent).toContain(
+      "FINAL 3",
+    );
   });
 });

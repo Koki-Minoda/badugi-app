@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Player from "../../components/Player";
 import Card from "../../components/Card";
 import Controls from "../../components/Controls";
@@ -65,6 +65,69 @@ const MOBILE_CARD_VARS = {
   "--player-name-maxw": "clamp(72px, 12dvw, 130px)",
   "--player-action-min-h": "clamp(10px, 1.8dvw, 16px)",
 };
+
+function buildTournamentMilestoneCopy(event) {
+  if (!event?.type) return null;
+  if (event.type === "MONEY_BUBBLE") {
+    return {
+      title: "MONEY BUBBLE",
+      subtitle: "Next Elimination Reaches The Money",
+    };
+  }
+  if (event.type === "FINAL_TABLE") {
+    return { title: "FINAL TABLE", subtitle: "Final table reached" };
+  }
+  if (event.type === "TOP_THREE") {
+    return { title: "FINAL 3", subtitle: "Top 3 players remain" };
+  }
+  if (event.type === "HEADS_UP") {
+    return { title: "HEADS UP", subtitle: "Winner Takes Glory" };
+  }
+  if (event.type === "TABLE_MERGE") {
+    const players = Number.isFinite(event.playersRemaining)
+      ? event.playersRemaining
+      : "?";
+    const tables = Number.isFinite(event.toTables) ? event.toTables : "?";
+    return {
+      title: "TABLE MERGE",
+      subtitle: `${players} players / ${tables} tables`,
+    };
+  }
+  return null;
+}
+
+function TournamentMilestoneBanner({ event }) {
+  const eventKey = event
+    ? `${event.type}:${event.sequence ?? ""}:${event.playersRemaining ?? ""}`
+    : "";
+  const copy = useMemo(() => buildTournamentMilestoneCopy(event), [eventKey, event]);
+  const [visible, setVisible] = useState(Boolean(copy));
+
+  useEffect(() => {
+    if (!copy) {
+      setVisible(false);
+      return undefined;
+    }
+    setVisible(true);
+    const timer = setTimeout(() => setVisible(false), 4000);
+    return () => clearTimeout(timer);
+  }, [copy, eventKey]);
+
+  if (!copy || !visible) return null;
+  return (
+    <div
+      className="pointer-events-none absolute left-1/2 top-[18%] z-[170] w-[min(520px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border border-yellow-200/45 bg-slate-950/92 px-6 py-4 text-center text-white shadow-2xl shadow-black/40 backdrop-blur"
+      data-testid="tournament-milestone-banner"
+    >
+      <div className="text-2xl font-black uppercase tracking-[0.22em] text-yellow-200">
+        {copy.title}
+      </div>
+      <div className="mt-2 text-sm font-bold uppercase tracking-[0.14em] text-slate-200">
+        {copy.subtitle}
+      </div>
+    </div>
+  );
+}
 
 export default function GameLayoutBase({
   headerProps,
@@ -168,6 +231,7 @@ export default function GameLayoutBase({
     tournamentOverlayVisible,
     tournamentPlacements,
     tournamentReview,
+    tournamentEvent,
     onOpenTournamentReviewReplay,
     onTournamentBackToMenu,
     onTournamentPlayAgain,
@@ -769,6 +833,9 @@ export default function GameLayoutBase({
                   className={`pointer-events-none absolute ${feltInnerRingSoftClass} rounded-[50%] border border-white/5`}
                 />
                 {!isTournament && renderedTournamentHud}
+                {isTournament ? (
+                  <TournamentMilestoneBanner event={tournamentEvent} />
+                ) : null}
                 <div
                   className={`relative ${
                     isMobileLayout

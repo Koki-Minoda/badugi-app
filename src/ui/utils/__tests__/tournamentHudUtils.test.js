@@ -5,6 +5,7 @@ import {
   buildTournamentHudPayload,
   resolveHandsPlayedThisLevel,
 } from "../tournamentHudUtils.js";
+import { STORE_STANDARD_BLIND_LEVELS } from "../../../config/tournamentBlindSheets.js";
 
 const baseConfig = {
   seatsPerTable: 6,
@@ -66,6 +67,99 @@ describe("tournamentHudUtils", () => {
     expect(payload.totalPlayers).toBe(18);
     expect(payload.totalEntrants).toBe(18);
     expect(payload.payoutBreakdown).toHaveLength(3);
+  });
+
+  it("formats TABLE_MERGE tournament event status without changing core counters", () => {
+    const payload = buildTournamentHudPayload({
+      state: createState({
+        playersRemaining: 12,
+        tables: [
+          { tableId: "table-1", isActive: true, handsPlayedAtThisLevel: 2 },
+          { tableId: "table-2", isActive: true, handsPlayedAtThisLevel: 1 },
+          { tableId: "table-3", isActive: false, handsPlayedAtThisLevel: 0 },
+        ],
+        lastEvent: {
+          type: "TABLE_MERGE",
+          fromTables: 3,
+          toTables: 2,
+          playersRemaining: 12,
+        },
+      }),
+      heroPlayer: { tableId: "table-1", seatIndex: 0 },
+    });
+
+    expect(payload.tournamentEventText).toBe("TABLE MERGE: 12 players / 2 tables");
+    expect(payload.tablesActiveText).toBe("Tables: 2");
+    expect(payload.playersRemaining).toBe(12);
+    expect(payload.currentBlinds).toEqual({ sb: 5, bb: 10, ante: 0 });
+    expect(payload.handsPlayedThisLevel).toBe(2);
+    expect(payload.handsThisLevel).toBe(5);
+  });
+
+  it("formats FINAL_TABLE tournament event status", () => {
+    const payload = buildTournamentHudPayload({
+      state: createState({
+        playersRemaining: 6,
+        tables: [{ tableId: "table-1", isActive: true, handsPlayedAtThisLevel: 1 }],
+        lastEvent: {
+          type: "FINAL_TABLE",
+          fromTables: 2,
+          toTables: 1,
+          playersRemaining: 6,
+        },
+      }),
+      heroPlayer: { tableId: "table-1", seatIndex: 0 },
+    });
+
+    expect(payload.tournamentEventText).toBe("FINAL TABLE");
+    expect(payload.tablesActiveText).toBe("Tables: Final");
+    expect(payload.isFinalTable).toBe(true);
+  });
+
+  it("formats HEADS_UP tournament event status", () => {
+    const payload = buildTournamentHudPayload({
+      state: createState({
+        playersRemaining: 2,
+        tables: [{ tableId: "table-1", isActive: true, handsPlayedAtThisLevel: 3 }],
+        events: [{ type: "HEADS_UP", playersRemaining: 2, tablesActive: 1 }],
+      }),
+      heroPlayer: { tableId: "table-1", seatIndex: 1 },
+    });
+
+    expect(payload.tournamentEventText).toBe("HEADS-UP");
+    expect(payload.tablesActiveText).toBe("HEADS-UP");
+    expect(payload.playersRemaining).toBe(2);
+  });
+
+  it("formats MONEY_BUBBLE and TOP_THREE milestone event status", () => {
+    const bubblePayload = buildTournamentHudPayload({
+      state: createState({
+        playersRemaining: 4,
+        tables: [{ tableId: "table-1", isActive: true, handsPlayedAtThisLevel: 2 }],
+        lastEvent: { type: "MONEY_BUBBLE", playersRemaining: 4, paidPlaces: 3 },
+      }),
+      heroPlayer: { tableId: "table-1", seatIndex: 0 },
+    });
+    expect(bubblePayload.tournamentEventText).toBe("MONEY BUBBLE");
+    expect(bubblePayload.tournamentTimeline.map((item) => item.value)).toEqual([
+      18,
+      12,
+      6,
+      3,
+      2,
+      1,
+    ]);
+
+    const topThreePayload = buildTournamentHudPayload({
+      state: createState({
+        playersRemaining: 3,
+        tables: [{ tableId: "table-1", isActive: true, handsPlayedAtThisLevel: 3 }],
+        lastEvent: { type: "TOP_THREE", playersRemaining: 3 },
+      }),
+      heroPlayer: { tableId: "table-1", seatIndex: 0 },
+    });
+    expect(topThreePayload.tournamentEventText).toBe("FINAL 3");
+    expect(topThreePayload.tournamentTimeline.find((item) => item.value === 3)?.active).toBe(true);
   });
 
   it("computes average stack and level info", () => {
@@ -204,6 +298,59 @@ describe("tournamentHudUtils", () => {
 
     expect(payload.currentBlinds.sb).toBe(20);
     expect(payload.currentBlinds.bb).toBe(40);
+  });
+
+  it("STORE-BLINDS-001 store blind sheet defines 15 explicit five-hand levels", () => {
+    expect(STORE_STANDARD_BLIND_LEVELS).toHaveLength(15);
+    STORE_STANDARD_BLIND_LEVELS.forEach((blindLevel, index) => {
+      expect(blindLevel.levelIndex).toBe(index + 1);
+      expect(Number.isFinite(blindLevel.smallBlind)).toBe(true);
+      expect(Number.isFinite(blindLevel.bigBlind)).toBe(true);
+      expect(Number.isFinite(blindLevel.ante)).toBe(true);
+      expect(blindLevel.handsThisLevel).toBe(5);
+    });
+  });
+
+  it("STORE-BLINDS-002 HUD reflects store levels 1 through 4", () => {
+    const config = { ...baseConfig, levels: STORE_STANDARD_BLIND_LEVELS };
+    const heroPlayer = { tableId: "table-1", seatIndex: 0 };
+    const expectedLevels = [
+      { levelIndex: 0, levelNumber: 1, sb: 5, bb: 10, ante: 0 },
+      { levelIndex: 1, levelNumber: 2, sb: 10, bb: 20, ante: 1 },
+      { levelIndex: 2, levelNumber: 3, sb: 20, bb: 40, ante: 2 },
+      { levelIndex: 3, levelNumber: 4, sb: 30, bb: 60, ante: 3 },
+    ];
+
+    expectedLevels.forEach(({ levelIndex, levelNumber, sb, bb, ante }) => {
+      const payload = buildTournamentHudPayload({
+        state: createState({ config, levelIndex }),
+        heroPlayer,
+      });
+
+      expect(payload.currentLevelNumber).toBe(levelNumber);
+      expect(payload.currentBlinds).toEqual({ sb, bb, ante });
+      expect(payload.handsThisLevel).toBe(5);
+    });
+  });
+
+  it("STORE-BLINDS-003 level3 HUD does not show H1/999", () => {
+    const config = { ...baseConfig, levels: STORE_STANDARD_BLIND_LEVELS };
+    const payload = buildTournamentHudPayload({
+      state: createState({
+        config,
+        levelIndex: 2,
+        tables: [
+          { tableId: "table-1", isActive: true, handsPlayedAtThisLevel: 1 },
+          { tableId: "table-2", isActive: true, handsPlayedAtThisLevel: 1 },
+        ],
+      }),
+      heroPlayer: { tableId: "table-1", seatIndex: 0 },
+    });
+
+    expect(payload.currentLevelNumber).toBe(3);
+    expect(payload.handsPlayedThisLevel).toBe(1);
+    expect(payload.handsThisLevel).toBe(5);
+    expect(`${payload.handsPlayedThisLevel}/${payload.handsThisLevel}`).not.toBe("1/999");
   });
 
   it("PLAYERS-REMAINING-004 HUD shows correct count using state.playersRemaining as SOT", () => {

@@ -12761,6 +12761,7 @@ export default function App() {
     tournamentOverlayVisible,
     tournamentPlacements,
     tournamentReview,
+    tournamentEvent: liveTournamentHudState?.tournamentEvent ?? null,
     onOpenTournamentReviewReplay: handleOpenReplayTarget,
     onTournamentBackToMenu: handleTournamentBackToMenu,
     onTournamentPlayAgain: handleTournamentPlayAgain,

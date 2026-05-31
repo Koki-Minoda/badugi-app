@@ -10,6 +10,50 @@ function formatLevelLabel(level, fallbackLabel) {
   return `Level ${level.levelIndex ?? "?"}  ${level.smallBlind}/${level.bigBlind} (Ante ${ante})`;
 }
 
+function formatTournamentEvent(event) {
+  if (!event?.type) return null;
+  if (event.type === "TABLE_MERGE") {
+    const players = Number.isFinite(event.playersRemaining)
+      ? event.playersRemaining
+      : "?";
+    const tables = Number.isFinite(event.toTables) ? event.toTables : "?";
+    return `TABLE MERGE: ${players} players / ${tables} tables`;
+  }
+  if (event.type === "FINAL_TABLE") {
+    return "FINAL TABLE";
+  }
+  if (event.type === "MONEY_BUBBLE") {
+    return "MONEY BUBBLE";
+  }
+  if (event.type === "TOP_THREE") {
+    return "FINAL 3";
+  }
+  if (event.type === "HEADS_UP") {
+    return "HEADS-UP";
+  }
+  return null;
+}
+
+function buildTournamentTimeline({ totalEntrants, seatsPerTable, playersRemaining }) {
+  const total = Number(totalEntrants);
+  const seats = Math.max(2, Number(seatsPerTable) || DEFAULT_SEATS_PER_TABLE);
+  if (!Number.isFinite(total) || total <= 0) return [];
+  const steps = [total];
+  const twoTables = seats * 2;
+  if (total > twoTables) steps.push(twoTables);
+  if (total > seats) steps.push(seats);
+  steps.push(3, 2, 1);
+  return [...new Set(steps)]
+    .filter((step) => step > 0 && step <= total)
+    .sort((a, b) => b - a)
+    .map((step) => ({
+      value: step,
+      active:
+        Number.isFinite(Number(playersRemaining)) &&
+        Number(playersRemaining) <= step,
+    }));
+}
+
 /**
  * Build the base HUD payload for the tournament view.
  * @param {Object} params
@@ -102,6 +146,14 @@ export function buildTournamentHudPayload({
   const isFinalTable =
     tablesActive <= 1 &&
     playersRemaining <= Math.max(1, Number(seatsPerTable) || fallbackSeatsPerTable);
+  const tournamentEvent =
+    state.lastEvent ?? (Array.isArray(state.events) ? state.events.at(-1) : null) ?? null;
+  const tournamentEventText = formatTournamentEvent(tournamentEvent);
+  const tournamentTimeline = buildTournamentTimeline({
+    totalEntrants,
+    seatsPerTable,
+    playersRemaining,
+  });
 
   return {
     tournamentName: config.name ?? "Store Tournament",
@@ -120,10 +172,18 @@ export function buildTournamentHudPayload({
         }
       : null,
     playersRemainingText: `Players Remaining: ${playersRemaining} / ${totalEntrants}`,
-    tablesActiveText: tablesActive <= 1 ? "Tables: Final" : `Tables: ${tablesActive}`,
+    tablesActiveText:
+      playersRemaining === 2
+        ? "HEADS-UP"
+        : tablesActive <= 1
+          ? "Tables: Final"
+          : `Tables: ${tablesActive}`,
     heroPositionText: `Table ${tableLabel}  Seat ${heroSeatNumber}`,
     payoutSummaryText,
     isFinalTable,
+    tournamentEvent,
+    tournamentEventText,
+    tournamentTimeline,
     playersRemaining,
     totalPlayers: totalEntrants,
     totalEntrants,

@@ -81,6 +81,8 @@ export function createMTTTournamentState(config, entrants) {
     championId: null,
     finishOrder: [],
     abstractHandCounter: 0,
+    events: [],
+    lastEvent: null,
   };
 }
 
@@ -105,6 +107,8 @@ function cloneState(state) {
       Object.entries(state.players).map(([id, player]) => [id, { ...player }]),
     ),
     finishOrder: [...(state.finishOrder ?? [])],
+    events: (state.events ?? []).map((event) => ({ ...event })),
+    lastEvent: state.lastEvent ? { ...state.lastEvent } : null,
   };
 }
 
@@ -222,8 +226,30 @@ function maybeRebalance(state) {
   applyRebalance(state);
 }
 
+function hasTournamentEvent(state, type) {
+  return (state.events ?? []).some((event) => event?.type === type);
+}
+
+function getPaidPlaces(state) {
+  const payouts = Array.isArray(state?.config?.payouts) ? state.config.payouts : [];
+  const paidPlaces = payouts
+    .map((payout) => Number(payout?.place))
+    .filter((place) => Number.isFinite(place) && place > 0);
+  return paidPlaces.length ? Math.max(...paidPlaces) : 3;
+}
+
+function appendTournamentEvent(state, event) {
+  const nextEvent = {
+    ...event,
+    sequence: (state.events?.length ?? 0) + 1,
+  };
+  state.events = [...(state.events ?? []), nextEvent];
+  state.lastEvent = nextEvent;
+}
+
 function applyRebalance(state) {
   const seatsPerTable = state.config.seatsPerTable;
+  const previousActiveTables = state.tables.filter((table) => table.isActive).length;
   const targetTables = Math.max(
     1,
     Math.min(
@@ -257,6 +283,33 @@ function applyRebalance(state) {
     };
   });
 
+  if (previousActiveTables > targetTables) {
+    appendTournamentEvent(state, {
+      type: targetTables === 1 ? "FINAL_TABLE" : "TABLE_MERGE",
+      fromTables: previousActiveTables,
+      toTables: targetTables,
+      playersRemaining: state.playersRemaining,
+    });
+  }
+
+  const paidPlaces = getPaidPlaces(state);
+  if (
+    state.playersRemaining === paidPlaces + 1 &&
+    !hasTournamentEvent(state, "MONEY_BUBBLE")
+  ) {
+    appendTournamentEvent(state, {
+      type: "MONEY_BUBBLE",
+      playersRemaining: state.playersRemaining,
+      paidPlaces,
+    });
+  }
+  if (state.playersRemaining === 3 && !hasTournamentEvent(state, "TOP_THREE")) {
+    appendTournamentEvent(state, {
+      type: "TOP_THREE",
+      playersRemaining: state.playersRemaining,
+    });
+  }
+
   activePlayers.forEach((player, idx) => {
     const tableIndex = idx % targetTables;
     const seatIndex = Math.floor(idx / targetTables);
@@ -268,6 +321,13 @@ function applyRebalance(state) {
     player.tableId = table.tableId;
     player.seatIndex = seatIndex;
   });
+  if (state.playersRemaining === 2 && !hasTournamentEvent(state, "HEADS_UP")) {
+    appendTournamentEvent(state, {
+      type: "HEADS_UP",
+      playersRemaining: state.playersRemaining,
+      tablesActive: targetTables,
+    });
+  }
   if (DEBUG_TOURNAMENT) {
     logMTT("BREAK", {
       playersRemaining: state.playersRemaining,
@@ -482,4 +542,6 @@ function sanitizeStack(value) {
  * @property {boolean} isFinished
  * @property {string|null} championId
  * @property {string[]} finishOrder
+ * @property {Array<Object>} events
+ * @property {Object|null} lastEvent
  */

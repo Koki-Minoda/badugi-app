@@ -57,6 +57,9 @@ export default function TournamentHUD({
   nextBreakLabel = null,
   currentVariantLabel = null,
   nextVariantLabel = null,
+  tablesActiveText = null,
+  tournamentEventText = null,
+  tournamentTimeline = [],
   compact = false,
   placement = "table",
   mobileCompact = false,
@@ -89,6 +92,41 @@ export default function TournamentHUD({
   const levelDisplay =
     levelLabel ??
     (currentLevelNumber != null ? `Level ${currentLevelNumber}` : "Level —");
+  const timelineItems = Array.isArray(tournamentTimeline)
+    ? tournamentTimeline
+    : [];
+  const renderTimeline = (compactTimeline = false) =>
+    timelineItems.length ? (
+      <div
+        className={`mt-3 rounded-xl border border-white/10 bg-black/25 ${
+          compactTimeline ? "px-2 py-1" : "px-2 py-1.5"
+        }`}
+        data-testid="tournament-timeline"
+      >
+        <div className="mb-1 text-[9px] font-bold uppercase tracking-wide text-slate-400">
+          Timeline
+        </div>
+        <div className="flex items-center gap-1 overflow-hidden text-[10px] font-black">
+          {timelineItems.map((item, index) => (
+            <React.Fragment key={`timeline-${item.value}`}>
+              <span
+                className={`rounded-full border px-1.5 py-0.5 ${
+                  item.active
+                    ? "border-yellow-300/60 bg-yellow-300/20 text-yellow-100"
+                    : "border-white/10 bg-black/20 text-slate-400"
+                }`}
+                data-testid={item.active ? "tournament-timeline-active" : undefined}
+              >
+                {item.value}
+              </span>
+              {index < timelineItems.length - 1 ? (
+                <span className="text-slate-600">↓</span>
+              ) : null}
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+    ) : null;
 
   if (placement === "side") {
     if (mobileCompact) {
@@ -124,6 +162,15 @@ export default function TournamentHUD({
                 Break {breakDisplay}
               </div>
             </div>
+            {(tournamentEventText || tablesActiveText) ? (
+              <div
+                className="mt-1 truncate rounded border border-yellow-300/25 bg-yellow-300/10 px-1 py-0.5 text-[9px] font-black uppercase text-yellow-100"
+                data-testid="tournament-event-banner"
+              >
+                {tournamentEventText ?? tablesActiveText}
+              </div>
+            ) : null}
+            {renderTimeline(true)}
           </details>
         </div>
       );
@@ -141,6 +188,14 @@ export default function TournamentHUD({
             </div>
             <div className="truncate text-sm font-black text-white">{tournamentName}</div>
             <div className="mt-1 text-xs font-semibold text-slate-300">{levelDisplay}</div>
+            {tournamentEventText ? (
+              <div
+                className="mt-2 inline-flex max-w-full rounded-full border border-yellow-300/30 bg-yellow-300/10 px-2 py-0.5 text-[10px] font-black uppercase text-yellow-100"
+                data-testid="tournament-event-banner"
+              >
+                <span className="truncate">{tournamentEventText}</span>
+              </div>
+            ) : null}
           </div>
           <div className="rounded-xl border border-white/10 bg-black/35 px-3 py-2 text-center">
             <div className="text-[10px] uppercase tracking-wide text-slate-400">Hands</div>
@@ -161,7 +216,9 @@ export default function TournamentHUD({
           <div className="rounded-xl border border-white/10 bg-black/30 px-2 py-1.5">
             <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400">Players</p>
             <p className="font-black text-white">{playersDisplay}</p>
-            <p className="text-[10px] text-slate-400">Avg {avgStackDisplay}</p>
+            <p className="text-[10px] text-slate-400">
+              {tablesActiveText ?? `Avg ${avgStackDisplay}`}
+            </p>
           </div>
           <div className="rounded-xl border border-white/10 bg-black/30 px-2 py-1.5">
             <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400">Next</p>
@@ -194,6 +251,7 @@ export default function TournamentHUD({
             </div>
           ) : null}
         </div>
+        {renderTimeline()}
       </div>
     );
   }
@@ -248,6 +306,14 @@ export default function TournamentHUD({
             {tournamentName}
           </div>
           <div className={`${compact ? "text-sm" : "text-lg"} font-semibold mb-1`}>{levelDisplay}</div>
+          {tournamentEventText ? (
+            <div
+              className="mb-2 max-w-full truncate rounded-full border border-yellow-300/30 bg-yellow-300/10 px-2 py-0.5 text-[10px] font-black uppercase text-yellow-100"
+              data-testid="tournament-event-banner"
+            >
+              {tournamentEventText}
+            </div>
+          ) : null}
           <div className={`${compact ? "text-3xl mb-1" : "text-5xl mb-3"} font-bold leading-none text-white`}>
             {progressDisplay}
           </div>
@@ -285,6 +351,11 @@ export default function TournamentHUD({
               PLAYERS
             </div>
             <div className={`${compact ? "text-lg" : "text-2xl"} font-bold`}>{playersDisplay}</div>
+            {tablesActiveText ? (
+              <div className="text-[11px] font-semibold uppercase text-slate-400">
+                {tablesActiveText}
+              </div>
+            ) : null}
           </div>
           {(currentVariantLabel || nextVariantLabel) && (
             <div className={`${compact ? "" : "mt-4"} text-left text-xs`}>
@@ -301,6 +372,7 @@ export default function TournamentHUD({
               ) : null}
             </div>
           )}
+          {renderTimeline(compact)}
         </div>
       </div>
     </div>

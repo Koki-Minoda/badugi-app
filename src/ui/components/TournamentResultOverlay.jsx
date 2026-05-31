@@ -239,6 +239,12 @@ export default function TournamentResultOverlay({
   const sortedPlacements = [...placements].sort((a, b) => a.place - b.place);
   const champion = sortedPlacements.find((entry) => entry.place === 1) ?? null;
   const showPayoutColumn = sortedPlacements.length > 0;
+  const championPrize =
+    typeof champion?.payout === "number" ? champion.payout : 0;
+  const championStack =
+    typeof champion?.stack === "number" ? champion.stack : null;
+  const championKnockouts =
+    typeof champion?.knockouts === "number" ? champion.knockouts : null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
       <div
@@ -249,7 +255,42 @@ export default function TournamentResultOverlay({
           <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">
             Tournament Complete
           </p>
-          <h2 className="text-3xl font-bold">{title}</h2>
+          {champion ? (
+            <div
+              className="rounded-2xl border border-yellow-300/35 bg-yellow-300/10 px-4 py-4"
+              data-testid="mtt-champion-celebration"
+            >
+              <p className="text-3xl font-black uppercase tracking-[0.16em] text-yellow-200">
+                🏆 Champion
+              </p>
+              <h2 className="mt-2 text-2xl font-black uppercase text-white">
+                {String(title).toUpperCase()}
+              </h2>
+              <p className="mt-1 text-lg font-black text-emerald-200">
+                1st Place
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                <div className="rounded-lg border border-white/10 bg-black/25 px-2 py-2">
+                  <p className="uppercase tracking-wide text-slate-400">Prize</p>
+                  <p className="font-black text-yellow-200">{championPrize}</p>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-black/25 px-2 py-2">
+                  <p className="uppercase tracking-wide text-slate-400">Entrants</p>
+                  <p className="font-black text-white">{sortedPlacements.length || "--"}</p>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-black/25 px-2 py-2">
+                  <p className="uppercase tracking-wide text-slate-400">Final Stack</p>
+                  <p className="font-black text-white">{championStack ?? "--"}</p>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-black/25 px-2 py-2">
+                  <p className="uppercase tracking-wide text-slate-400">Knockouts</p>
+                  <p className="font-black text-white">{championKnockouts ?? "--"}</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <h2 className="text-3xl font-bold">{title}</h2>
+          )}
           {champion ? (
             <p className="text-sm text-emerald-200" data-testid="mtt-result-champion">
               Champion: <strong>{champion.name}</strong>

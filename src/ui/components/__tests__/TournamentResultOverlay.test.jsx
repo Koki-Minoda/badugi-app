@@ -111,6 +111,26 @@ describe("TournamentResultOverlay", () => {
     expect(badgeText[0]).toBe("Champion");
   });
 
+  it("renders champion celebration details", () => {
+    render(
+      <TournamentResultOverlay
+        visible
+        placements={basePlacements}
+        title="Badugi Store Tournament"
+        onBackToMenu={() => {}}
+      />,
+    );
+
+    const celebration = screen.getByTestId("mtt-champion-celebration");
+    expect(celebration.textContent).toContain("Champion");
+    expect(celebration.textContent).toContain("BADUGI STORE TOURNAMENT");
+    expect(celebration.textContent).toContain("1st Place");
+    expect(celebration.textContent).toContain("Prize");
+    expect(celebration.textContent).toContain("Entrants");
+    expect(celebration.textContent).toContain("Final Stack");
+    expect(celebration.textContent).toContain("Knockouts");
+  });
+
   it("renders payout column even when all payouts are zero", () => {
     const zeroPayoutPlacements = basePlacements.map((entry) => ({
       ...entry,

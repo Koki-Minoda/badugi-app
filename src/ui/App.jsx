@@ -5385,6 +5385,7 @@ export default function App() {
         heroTableId: heroPlayer?.tableId ?? heroTableIdRef.current ?? null,
         fallbackSeatsPerTable: nextState.config?.seatsPerTable ?? NUM_PLAYERS,
       });
+      const hudPayloadHands = hudPayload?.handsPlayedThisLevel;
       if (hudPayload) {
         hudPayload.handsPlayedThisLevel = resolveHandsPlayedThisLevel(
           hudPayload.handsPlayedThisLevel,
@@ -5396,6 +5397,28 @@ export default function App() {
         hudPayload.nextBreakLabel =
           hudPayload.nextBreakLabel ?? TOURNAMENT_CLOCK_PLACEHOLDER;
       }
+      const debugHeroTableId = heroPlayer?.tableId ?? heroTableIdRef.current ?? null;
+      console.info("[MTT][HANDS-DEBUG]", {
+        levelIndex: nextState?.levelIndex,
+        prevLevelIndex: previousState?.levelIndex,
+        levelChanged,
+        heroTableId: debugHeroTableId,
+        hudPayloadHands,
+        handsInLevelRef: handsInLevelRef.current,
+        resolvedHands: resolveHandsPlayedThisLevel(
+          hudPayloadHands,
+          handsInLevelRef.current,
+        ),
+        heroTableHands: nextState?.tables?.find(
+          (table) => table.tableId === debugHeroTableId,
+        )?.handsPlayedAtThisLevel,
+        tablesList: nextState?.tables?.map((table) => ({
+          id: table.tableId,
+          hands: table.handsPlayedAtThisLevel,
+          active: table.isActive,
+          seats: table.seats?.length,
+        })),
+      });
       const hudLevelIndex = Number.isFinite(nextState.levelIndex)
         ? nextState.levelIndex
         : blindLevelIndexRef.current;
@@ -6032,6 +6055,14 @@ export default function App() {
     });
     if (mode === "tournament-mtt" && tournamentStateRef.current) {
       const tournamentSummary = buildTournamentHandSummaryFromPlayers(updated);
+      console.info("[MTT][SUMMARY-DEBUG]", {
+        heroSeatMapLength: heroSeatMapRef.current?.length ?? 0,
+        heroTableIdRef: heroTableIdRef.current,
+        summaryIsNull: !tournamentSummary,
+        mode,
+        phase,
+        playerCount: Array.isArray(updated) ? updated.length : null,
+      });
       if (tournamentSummary) {
         const tableId =
           heroTableIdRef.current ?? heroTableMetaRef.current.tableId;

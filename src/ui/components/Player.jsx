@@ -91,6 +91,21 @@ function StudActionBadge({ lastAction = "" }) {
   );
 }
 
+function resolveDrawBadgeLabel(player = {}) {
+  const drawCount = Number(player.lastDrawCount);
+  if (Number.isInteger(drawCount) && drawCount >= 0 && drawCount <= 4) {
+    return drawCount === 0 ? "PAT" : `D${drawCount}`;
+  }
+
+  const action = String(player.lastAction ?? "").trim();
+  if (!action) return null;
+  if (/^pat$/i.test(action)) return "PAT";
+  const drawMatch = action.match(/\bDRAW\s*\(?\s*([0-4])\s*\)?/i);
+  if (!drawMatch) return null;
+  const parsedCount = Number(drawMatch[1]);
+  return parsedCount === 0 ? "PAT" : `D${parsedCount}`;
+}
+
 function getStudCardVisibilityLabel(
   cardVisibility = [],
   sourceIndex = 0,
@@ -384,6 +399,8 @@ export default function Player({
   const isHero = index === selfIndex;
   const isActive = turn === index;
   const isFolded = Boolean(player.folded);
+  const isOut = Boolean(player.isBusted || player.seatOut);
+  const drawBadgeLabel = resolveDrawBadgeLabel(player);
   const isDrawTableMobileLayout =
     compact &&
     ["badugi", "draw-lowball-5card"].includes(layoutProfile?.layoutGroup);
@@ -640,6 +657,14 @@ export default function Player({
                 : "bg-gradient-to-b from-cyan-300/6 via-transparent to-black/25"
           }`}
         />
+        {compact && drawBadgeLabel && !isFolded && !isOut && (
+          <div
+            data-testid={`seat-${seatIndex}-draw-badge`}
+            className="absolute right-0.5 top-0.5 z-20 rounded-full border border-white/20 bg-slate-900/90 px-1 py-0.5 text-[7px] font-black leading-none text-slate-100"
+          >
+            {drawBadgeLabel}
+          </div>
+        )}
         {!mobileHeroCardOnly && (
           <div
             className={`relative z-10 flex items-start justify-between ${isDrawTableMobileLayout ? "gap-1" : "gap-2"}`}

@@ -41,6 +41,7 @@ describe("MainMenuScreen", () => {
     render(<MainMenuScreen language="en" />);
     expect(screen.getByRole("button", { name: /cash game/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /tournament/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /career/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /friend match/i })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: /cash game/i }));
@@ -68,12 +69,21 @@ describe("MainMenuScreen", () => {
     render(<MainMenuScreen language="en" />);
 
     fireEvent.click(screen.getByRole("button", { name: /tournament/i }));
-    expect(mockNavigate).toHaveBeenCalledWith("/game?mode=store_tournament&variant=ace_to_five_triple_draw", {
-      state: { startTournamentMTT: true },
-    });
+    expect(mockNavigate).toHaveBeenCalledWith("/tournament");
+
+    fireEvent.click(screen.getByTestId("menu-career"));
+    expect(mockNavigate).toHaveBeenCalledWith("/career");
 
     fireEvent.click(screen.getByRole("button", { name: /friend match/i }));
     expect(mockNavigate).toHaveBeenCalledWith("/friend-match");
+  });
+
+  it("uses the provided career callback inside App flow", () => {
+    const handleCareer = vi.fn();
+    render(<MainMenuScreen language="en" onSelectCareer={handleCareer} />);
+    fireEvent.click(screen.getByTestId("menu-career"));
+    expect(handleCareer).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).not.toHaveBeenCalledWith("/career");
   });
 
   it("routes hand history when no in-app callback is provided", () => {

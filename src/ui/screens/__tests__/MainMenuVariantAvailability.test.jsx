@@ -21,13 +21,10 @@ describe("MainMenu variant availability", () => {
 
   afterEach(() => cleanup());
 
-  it("routes store tournament to an alpha-playable variant", () => {
+  it("routes tournament to the tournament hub", () => {
     render(<MainMenuScreen language="en" />);
     fireEvent.click(screen.getByTestId("menu-tournament"));
-    expect(mockNavigate).toHaveBeenCalledWith(
-      "/game?mode=store_tournament&variant=ace_to_five_triple_draw",
-      { state: { startTournamentMTT: true } },
-    );
+    expect(mockNavigate).toHaveBeenCalledWith("/tournament");
   });
 
   it("routes variant selection to the gated game selector", () => {

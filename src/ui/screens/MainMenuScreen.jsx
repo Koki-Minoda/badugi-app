@@ -270,6 +270,7 @@ export default function MainMenuScreen({
   onChangeLanguage = () => {},
   onSelectRing,
   onSelectTournament,
+  onSelectCareer,
   onSelectSettings,
   onSelectFriendMatch,
   onSelectHandHistory,
@@ -297,6 +298,14 @@ export default function MainMenuScreen({
     typeof window !== "undefined" && window.location?.pathname?.startsWith("/dev")
       ? "/dev/learning-dashboard-preview?mgxPreview=coaching"
       : "/learning-dashboard-preview?mgxPreview=coaching";
+  const tournamentHubPath =
+    typeof window !== "undefined" && window.location?.pathname?.startsWith("/dev")
+      ? "/dev/tournament"
+      : "/tournament";
+  const careerPath =
+    typeof window !== "undefined" && window.location?.pathname?.startsWith("/dev")
+      ? "/dev/career"
+      : "/career";
 
   const infoMap = {
     cash: {
@@ -306,6 +315,13 @@ export default function MainMenuScreen({
     tournament: {
       title: locale.info.tournamentTitle,
       body: locale.info.tournamentBody,
+    },
+    career: {
+      title: "Career",
+      body:
+        language === "ja"
+          ? "Badugi Series の優勝記録、解放済みVariant、長期統計を確認します。"
+          : "Review Badugi Series championships, unlocked variants, and long-term tournament statistics.",
     },
     friend: {
       title: locale.info.friendTitle,
@@ -448,11 +464,23 @@ export default function MainMenuScreen({
                   onSelectTournament();
                   return;
                 }
-                navigate("/game?mode=store_tournament&variant=ace_to_five_triple_draw", {
-                  state: { startTournamentMTT: true },
-                });
+                navigate(tournamentHubPath);
               }}
               onHover={() => setActiveMode("tournament")}
+              onBlur={resetInfoPanel}
+            />
+            <ModeButton
+              label="CAREER"
+              isActive={activeMode === "career"}
+              testId="menu-career"
+              onClick={() => {
+                if (onSelectCareer) {
+                  onSelectCareer();
+                  return;
+                }
+                navigate(careerPath);
+              }}
+              onHover={() => setActiveMode("career")}
               onBlur={resetInfoPanel}
             />
             <ModeButton

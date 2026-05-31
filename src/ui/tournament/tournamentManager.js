@@ -3,7 +3,9 @@ import { TOURNAMENT_OPPONENTS } from "../../config/tournamentOpponents";
 import { disableDealerChoiceMode } from "../dealersChoice/dealerChoiceManager.js";
 
 const SESSION_KEY = "session.tournament.active";
+const MTT_ACTIVE_SAVE_KEY = "mgx.tournament.mtt.active";
 export const ACTIVE_TOURNAMENT_SESSION_KEY = SESSION_KEY;
+export const ACTIVE_MTT_SAVE_KEY = MTT_ACTIVE_SAVE_KEY;
 
 function randomId(prefix = "session") {
   if (typeof globalThis !== "undefined" && globalThis.crypto?.randomUUID) {
@@ -21,6 +23,24 @@ function randomInt(min, max) {
 
 function hasStorage() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+}
+
+function cloneJson(value) {
+  if (value == null) return value;
+  return JSON.parse(JSON.stringify(value));
+}
+
+function buildPlacementsFromState(state) {
+  return Object.values(state?.players ?? {})
+    .filter((player) => Number.isFinite(Number(player?.finishPlace)))
+    .sort((a, b) => Number(a.finishPlace) - Number(b.finishPlace))
+    .map((player) => ({
+      id: player.id,
+      name: player.name ?? player.id,
+      place: Number(player.finishPlace),
+      stack: Math.max(0, Number(player.stack) || 0),
+      payout: Math.max(0, Number(player.payout) || 0),
+    }));
 }
 
 const fallbackNames = [
@@ -165,6 +185,77 @@ export function loadActiveTournamentSession() {
 export function clearActiveTournamentSession() {
   if (!hasStorage()) return;
   window.localStorage.removeItem(SESSION_KEY);
+}
+
+export function createMTTSaveSnapshot({
+  tournamentState,
+  heroPlayerId = "hero-player",
+  hud = null,
+  variantId = null,
+} = {}) {
+  if (!tournamentState) return null;
+  const state = cloneJson(tournamentState);
+  const heroPlayer = state.players?.[heroPlayerId] ?? null;
+  const placements = buildPlacementsFromState(state);
+  return {
+    version: 1,
+    savedAt: new Date().toISOString(),
+    stageId: state.config?.stageId ?? null,
+    variantId: variantId ?? state.config?.gameVariant ?? null,
+    config: cloneJson(state.config ?? {}),
+    tournamentState: {
+      ...state,
+      placements,
+    },
+    hero: {
+      playerId: heroPlayerId,
+      tableId: heroPlayer?.tableId ?? null,
+      seatIndex: heroPlayer?.seatIndex ?? null,
+      stack: Math.max(0, Number(heroPlayer?.stack) || 0),
+    },
+    hud: {
+      handsPlayedThisLevel: hud?.handsPlayedThisLevel ?? null,
+      handsThisLevel: hud?.handsThisLevel ?? null,
+      currentBlinds: cloneJson(hud?.currentBlinds ?? null),
+      currentLevelNumber: hud?.currentLevelNumber ?? null,
+    },
+  };
+}
+
+export function saveActiveMTTSnapshot(input = {}) {
+  if (!hasStorage()) return input?.version === 1 ? input : null;
+  const snapshot = input?.version === 1 ? input : createMTTSaveSnapshot(input);
+  if (!snapshot) return null;
+  window.localStorage.setItem(MTT_ACTIVE_SAVE_KEY, JSON.stringify(snapshot));
+  return snapshot;
+}
+
+export function loadActiveMTTSnapshot() {
+  if (!hasStorage()) return null;
+  try {
+    const raw = window.localStorage.getItem(MTT_ACTIVE_SAVE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed?.version !== 1 || !parsed?.tournamentState) return null;
+    return parsed;
+  } catch (err) {
+    console.warn("Failed to load active MTT snapshot:", err);
+    return null;
+  }
+}
+
+export function clearActiveMTTSnapshot() {
+  if (!hasStorage()) return;
+  window.localStorage.removeItem(MTT_ACTIVE_SAVE_KEY);
+}
+
+export function isResumeableMTTSnapshot(snapshot) {
+  if (!snapshot?.tournamentState || snapshot.tournamentState.isFinished) {
+    return false;
+  }
+  const heroId = snapshot.hero?.playerId ?? "hero-player";
+  const hero = snapshot.tournamentState.players?.[heroId];
+  return Boolean(hero && !hero.busted && Math.max(0, Number(hero.stack) || 0) > 0);
 }
 
 export function createTournamentSession(stageId, heroProfile) {

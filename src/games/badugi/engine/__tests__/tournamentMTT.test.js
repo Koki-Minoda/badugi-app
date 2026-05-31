@@ -343,6 +343,72 @@ describe("tournamentMTT engine", () => {
     expect(state.players[mid.id].finishPlace).toBeLessThan(state.players[low.id].finishPlace);
   });
 
+  it("PLAYERS-REMAINING-001 18 players, 1 bust -> playersRemaining is 17 and never reverts", () => {
+    let state = createMTTTournamentState(BASE_CONFIG, entrants);
+    expect(state.playersRemaining).toBe(18);
+    const targetTable = state.tables[0];
+    const seat = targetTable.seats[0];
+    state = onTableHandCompleted(state, targetTable.tableId, {
+      handIndex: 1,
+      seatResults: [
+        { seatIndex: seat.seatIndex, playerId: seat.playerId, stack: 0, startingStack: 500 },
+      ],
+    });
+    expect(state.playersRemaining).toBe(17);
+    expect(state.players[seat.playerId].busted).toBe(true);
+    // Verify count is not reverted by a no-op hand
+    state = onTableHandCompleted(state, targetTable.tableId, { seatResults: [] });
+    expect(state.playersRemaining).toBe(17);
+  });
+
+  it("PLAYERS-REMAINING-002 18 players, 3 busts -> playersRemaining is 15 and holds", () => {
+    let state = createMTTTournamentState(BASE_CONFIG, entrants);
+    const table = state.tables[0];
+    const bustSeats = table.seats.slice(0, 3);
+    state = onTableHandCompleted(state, table.tableId, {
+      handIndex: 1,
+      seatResults: bustSeats.map((s) => ({
+        seatIndex: s.seatIndex,
+        playerId: s.playerId,
+        stack: 0,
+        startingStack: 500,
+      })),
+    });
+    expect(state.playersRemaining).toBe(15);
+    bustSeats.forEach((s) => expect(state.players[s.playerId].busted).toBe(true));
+    // Background simulation should not revive them
+    const nextState = simulateBackgroundTables(state, table.tableId, { maxHandsPerTable: 1 });
+    expect(nextState.playersRemaining).toBeLessThanOrEqual(15);
+    bustSeats.forEach((s) => expect(nextState.players[s.playerId].busted).toBe(true));
+  });
+
+  it("PLAYERS-REMAINING-003 playersRemaining is stable after rebalance with 15 alive", () => {
+    let state = createMTTTournamentState(BASE_CONFIG, entrants);
+    // Bust 3 players to reach 15
+    const table = state.tables[0];
+    const bustSeats = table.seats.slice(0, 3);
+    state = onTableHandCompleted(state, table.tableId, {
+      handIndex: 1,
+      seatResults: bustSeats.map((s) => ({
+        seatIndex: s.seatIndex,
+        playerId: s.playerId,
+        stack: 0,
+        startingStack: 500,
+      })),
+    });
+    expect(state.playersRemaining).toBe(15);
+    // Explicit rebalance must not change the count
+    state = rebalanceTables(state);
+    expect(state.playersRemaining).toBe(15);
+    const alivePlayers = Object.values(state.players).filter((p) => !p.busted);
+    expect(alivePlayers.length).toBe(15);
+    // busted players must not reappear in any table seat
+    const allSeatedIds = new Set(
+      state.tables.flatMap((t) => t.seats.map((s) => s.playerId).filter(Boolean)),
+    );
+    bustSeats.forEach((s) => expect(allSeatedIds.has(s.playerId)).toBe(false));
+  });
+
   it("produces contiguous finish places when tournament completes", () => {
     let state = createMTTTournamentState(SINGLE_TABLE_CONFIG, entrants.slice(0, 5));
     const tableId = state.tables[0].tableId;

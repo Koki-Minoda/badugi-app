@@ -160,6 +160,34 @@ describe("tournamentHudUtils", () => {
     expect(displayed.currentBlinds).toEqual({ sb: 10, bb: 20, ante: 1 });
   });
 
+  it("PLAYERS-REMAINING-004 HUD shows correct count using state.playersRemaining as SOT", () => {
+    // Simulate the regression: state says 15 but tournamentHudState still carries 18
+    const stateWith15 = {
+      config: { ...baseConfig, tables: 3 },
+      playersRemaining: 15,
+      totalPlayers: 18,
+      levelIndex: 0,
+      tables: [
+        { tableId: "table-1", isActive: true, handsPlayedAtThisLevel: 1 },
+        { tableId: "table-2", isActive: true, handsPlayedAtThisLevel: 1 },
+        { tableId: "table-3", isActive: true, handsPlayedAtThisLevel: 1 },
+      ],
+      players: Object.fromEntries(
+        Array.from({ length: 18 }, (_, idx) => [
+          `player-${idx + 1}`,
+          { id: `player-${idx + 1}`, stack: idx < 3 ? 0 : 400, busted: idx < 3 },
+        ]),
+      ),
+    };
+    const heroPlayer = { tableId: "table-1", seatIndex: 0 };
+    const payload = buildTournamentHudPayload({ state: stateWith15, heroPlayer });
+
+    // buildTournamentHudPayload must use state.playersRemaining (15), not alivePlayers fallback
+    expect(payload.playersRemaining).toBe(15);
+    expect(payload.totalEntrants).toBe(18);
+    expect(payload.playersRemainingText).toBe("Players Remaining: 15 / 18");
+  });
+
   it("attaches variant labels without mutating payload", () => {
     const basePayload = {
       levelLabel: "Level 1  5/10 (Ante 0)",

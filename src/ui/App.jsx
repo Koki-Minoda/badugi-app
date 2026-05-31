@@ -1624,6 +1624,18 @@ export default function App() {
     const state = tournamentStateRef.current;
     if (!state?.players || !Array.isArray(playersSrc))
       return tournamentHudState;
+
+    // SOURCE OF TRUTH: tournamentStateRef is updated synchronously in
+    // applyTournamentStateUpdate before the async React state updates fire.
+    // Using it as the floor prevents the regression where a stale
+    // tournamentHudState (e.g. 18) is returned after playersSrc has already
+    // been refreshed to the new table composition with no stack-zero players.
+    const confirmedRemaining = Number.isFinite(Number(state.playersRemaining))
+      ? Math.max(0, Number(state.playersRemaining))
+      : Number(tournamentHudState.playersRemaining);
+
+    // Detect mid-hand busts: hero-table players whose stack has reached 0
+    // but tournamentMTT hasn't yet processed the hand result.
     const pendingBustedIds = new Set(
       playersSrc
         .filter(
@@ -1635,7 +1647,6 @@ export default function App() {
         )
         .map((player) => player.tournamentPlayerId),
     );
-    if (!pendingBustedIds.size) return tournamentHudState;
     const alreadyBusted = new Set(
       Object.values(state.players)
         .filter((player) => player?.busted)
@@ -1644,11 +1655,16 @@ export default function App() {
     const pendingCount = [...pendingBustedIds].filter(
       (id) => !alreadyBusted.has(id),
     ).length;
-    if (pendingCount <= 0) return tournamentHudState;
-    const playersRemaining = Math.max(
-      0,
-      Number(tournamentHudState.playersRemaining) - pendingCount,
-    );
+
+    const playersRemaining = Math.max(0, confirmedRemaining - pendingCount);
+
+    if (
+      playersRemaining === Number(tournamentHudState.playersRemaining) &&
+      pendingCount === 0
+    ) {
+      return tournamentHudState;
+    }
+
     const totalEntrants =
       tournamentHudState.totalEntrants ??
       tournamentHudState.totalPlayers ??
@@ -5322,6 +5338,22 @@ export default function App() {
     (nextState, { hydrate = true, suppressResultOverlay = false } = {}) => {
       if (!nextState) return;
       const previousState = tournamentStateRef.current;
+      const prevRemaining = previousState?.playersRemaining ?? "?";
+      const nextRemaining = nextState.playersRemaining ?? "?";
+      const alivePlayers = Object.values(nextState.players ?? {}).filter(
+        (p) => !p?.busted,
+      ).length;
+      if (prevRemaining !== nextRemaining) {
+        debugLog("[MTT][COUNT]", {
+          playersRemaining: nextRemaining,
+          totalPlayers: nextState.totalPlayers ?? "?",
+          alivePlayers,
+          prev: prevRemaining,
+          delta: typeof prevRemaining === "number" && typeof nextRemaining === "number"
+            ? nextRemaining - prevRemaining
+            : "n/a",
+        });
+      }
       tournamentStateRef.current = nextState;
       const levelChanged =
         typeof previousState?.levelIndex === "number" &&

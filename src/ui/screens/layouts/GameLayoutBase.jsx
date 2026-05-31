@@ -886,6 +886,7 @@ export default function GameLayoutBase({
                           layoutProfile={tableLayoutProfile}
                           mobileHeroCardOnly={
                             isPortraitDrawTable &&
+                            !isMobileTournament &&
                             seat.seatIndex === heroSeatIndex
                           }
                         />

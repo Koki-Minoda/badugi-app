@@ -202,6 +202,11 @@ import {
 } from "./utils/tournamentReplayStore.js";
 import { applyTournamentResult } from "./utils/tournamentState.js";
 import {
+  detectLegacyProgressDrift,
+  migrateLegacyProgressToV2,
+  recordConsolidatedTournamentResult,
+} from "./utils/consolidatedProgress.js";
+import {
   initializeButtonForFirstHand,
   nextAliveSeat,
 } from "./utils/buttonSeatUtils.js";
@@ -674,6 +679,10 @@ export default function App() {
   const studStreetPauseUntilRef = useRef(0);
   const [studStreetPauseToken, setStudStreetPauseToken] = useState(0);
   const uiAdapterRef = useRef(null);
+
+  useEffect(() => {
+    migrateLegacyProgressToV2();
+  }, []);
 
   const triggerHeroTableAnimation = useCallback(() => {
     const e2eActive = typeof window !== "undefined" && window.__BADUGI_E2E__;
@@ -5614,14 +5623,41 @@ export default function App() {
             nextState.championId ?? "no-champion",
           ].join(":");
           if (tournamentProgressRecordedRef.current !== resultKey) {
+            const tournamentResultCompletedAt = Date.now();
+            const tournamentResultVariant =
+              nextState.config?.gameVariant ?? "badugi";
+            const tournamentResultStageId =
+              nextState.config?.stageId ?? "store";
+            const tournamentResultPlacement = heroPlayerSnapshot.finishPlace;
+            const tournamentResultPrize = Math.max(
+              0,
+              Number(heroPlayerSnapshot.payout) || 0,
+            );
+            const tournamentResultId =
+              nextState.config?.id ?? nextState.id ?? "active-mtt";
             applyTournamentResult({
-              variant: nextState.config?.gameVariant ?? "badugi",
-              stageId: nextState.config?.stageId ?? "store",
-              placement: heroPlayerSnapshot.finishPlace,
-              prize: Math.max(0, Number(heroPlayerSnapshot.payout) || 0),
+              variant: tournamentResultVariant,
+              stageId: tournamentResultStageId,
+              placement: tournamentResultPlacement,
+              prize: tournamentResultPrize,
               reason: "mtt-finished",
-              tournamentId: nextState.config?.id ?? nextState.id ?? "active-mtt",
+              tournamentId: tournamentResultId,
             });
+            try {
+              recordConsolidatedTournamentResult({
+                variant: tournamentResultVariant,
+                stageId: tournamentResultStageId,
+                finishPlace: tournamentResultPlacement,
+                prize: tournamentResultPrize,
+                tournamentId: tournamentResultId,
+                completedAt: tournamentResultCompletedAt,
+                finalTables: tournamentResultPlacement <= 6 ? 1 : 0,
+                headsUps: tournamentResultPlacement <= 2 ? 1 : 0,
+              });
+              detectLegacyProgressDrift();
+            } catch (error) {
+              console.warn("[TD1][V2_WRITE_FAILED]", error);
+            }
             recordRivalTournamentResult(
               collectTournamentOpponentProfileIds(nextState),
               nextState.championId === heroTournamentPlayerIdRef.current,

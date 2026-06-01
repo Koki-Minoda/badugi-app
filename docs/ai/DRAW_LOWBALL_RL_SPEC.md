@@ -278,6 +278,66 @@ OOP パットの強さ:
 | 72 | opp_draw_congruence | 1.0 - opp_last_draw / 5.0 | ドロー軌跡とベットの整合性 |
 | 73 | opp_pat_rounds | opp_pat_count / max_draws | パットした回数（range floor推定） |
 
+#### グループG: スタック情報（slots 74〜76）
+
+| スロット | 名前 | 計算式 | 用途 |
+|---------|------|--------|------|
+| 74 | opp_stack_depth | opp_stack / starting_stack | **相手スタック深さ（完全に欠落していた）** |
+| 75 | hero_stack_depth | hero_stack / starting_stack | hero の絶対スタック量（slot 46 と補完） |
+| 76 | stack_ratio | min(2.0, opp_stack / max(1, hero_stack)) / 2.0 | 相対スタック比（正規化） |
+
+```
+opp_stack_depth の意味:
+  < 0.30 → ショートスタック
+    → ブラフコスト高（失うとアウト）→ パッシブ化が正解
+    → ドロー系でレイズ = ほぼバリューのみ
+    → hero はコールレンジを広げられる
+
+  > 1.50 → チップリーダー
+    → ブラフを仕掛ける余裕あり
+    → ドローを広くコールできる
+    → hero は bluff-catch に慎重になるべき
+
+stack_ratio の意味（正規化後 0〜1.0）:
+  0.25 → 相手は自分の半分 → 自分がスタック有利
+  0.50 → 同スタック
+  > 0.50 → 相手の方が大きい → スクイーズ・圧力リスク
+```
+
+#### グループH: ICM・トーナメント情報（slots 77〜79）
+
+| スロット | 名前 | 計算式 | 用途 |
+|---------|------|--------|------|
+| 77 | chip_share | hero_stack / max(1, total_chips) | チップシェア（ICM簡易近似） |
+| 78 | near_bubble | 1.0 if near_bubble else 0.0 | バブル近傍フラグ |
+| 79 | tournament_stage | players_remaining / total_players_started | トーナメント進行度 |
+
+```
+ICMと報酬構造の問題:
+
+  キャッシュゲーム: チップ = お金（線形）
+    1チップ増 = 常に同じ価値
+
+  トーナメント: チップ = ICM EV（非線形）
+    ショートスタック: 1チップ失う = 価値大（存続コスト）
+    チップリーダー:   1チップ得る = 価値小（逓減収益）
+
+  ⚠ 重要: ICMを正しく学習させるには観測ベクトルの変更だけでは不十分。
+    報酬関数自体をICM-weightedに変更する必要がある。
+    → 現在の DrawLowballEnv は cash-game 前提の reward
+    → tournament_env を別途設計する必要あり（将来課題）
+
+near_bubble の影響:
+  1.0 = フォールドエクイティが激増
+    → 相手はバスト回避のためブラフを大幅減少
+    → ドロー系の外れベットが激減
+    → hero のコールレンジを締めるべき
+
+chip_share の使い方:
+  小さい（< 0.10）= 存続プレッシャー高い = タイト化が正解
+  大きい（> 0.30）= チップ余裕あり = 積極的に圧力をかけられる
+```
+
 ```
 dead_twos の意味（2-7TD）:
   自分が3枚の2を見た（手元に持っていた or 捨てた）
@@ -335,13 +395,20 @@ else:
 59〜63:  アクション履歴（hero_raised, hero_bet×2, passive×2）
 64〜69:  ドロー情報（draws_first, hero_draw×2, opp_traj×2, draw_diff）
 70〜73:  最終BET用（dead_twos, dead_premium, congruence, pat_rounds）
-74〜95:  未使用（将来拡張用, 22スロット）
+74〜76:  スタック情報（opp_depth, hero_depth, stack_ratio）
+77〜79:  ICM・トーナメント（chip_share, near_bubble, tournament_stage）
+80〜95:  未使用（将来拡張用, 16スロット）
 ```
 
 **v1 → v2 の変化:**
-- 使用スロット: 32 → 59（+27）
-- 未使用スロット: 53 → 22（-31 使用）
+- 使用スロット: 32 → 65（+33）
+- 未使用スロット: 53 → 16（-37 使用）
 - 全モデルの再学習が必要（観測形状は 96 次元のまま変更なし）
+
+**⚠ ICM に関する重要注記:**
+ICM 近似値（slot 77〜79）を観測に加えても、報酬関数が cash-game 前提のままでは
+正しいトーナメント戦略を学習できない。ICM-weighted reward を持つ
+`DrawLowballEnvTournament` の別途設計が必要（将来課題として P4 に記録）。
 
 ---
 
@@ -479,9 +546,10 @@ node scripts/verifyAiModelAssets.mjs
 | export_draw_dqn_onnx.py | ✅ 完成 | self-play用エントリ追加済み |
 | DeuceToSevenTripleDrawController.getCpuActionAsync | ✅ 完成 | ONNX推論+フォールバック |
 | ONNX HU self-play（2-7TD / A-5TD） | 🔄 訓練中 | 20k エピソード進行中 |
-| v2 観測ベクトル（slots 33-39） | 📋 設計済み | **未実装** |
+| v2 観測ベクトル（slots 33-79, 33個） | 📋 設計済み | **未実装** |
 | 多人数対応環境（3〜4人） | 📋 設計済み | **未実装** |
 | 3〜4人カリキュラム訓練 | 📋 設計済み | HU完走後に着手 |
+| ICM-weighted reward 環境 | 📋 将来課題 | 報酬関数の再設計が必要 |
 
 ---
 
@@ -510,3 +578,26 @@ draw_adjusted_strength の計算根拠が誤っている。
 マルチラウンドの改善軌跡が評価されていない。
 
 **対応**: slots 38（premium_card_count）, 39（deuce_blocker）で対処予定。
+
+### P4: スタック情報の完全欠如（緊急度：高）
+
+**問題**: hero_stack も opp_stack も観測ベクトルに含まれていない。
+相手がショートスタックかチップリーダーかを一切考慮できない。
+トーナメントでは相手スタックに応じてパッシブ化する判断が必要。
+
+**症状**: 相手スタックに依存しないフラットな戦略 → 短スタック相手にブラフを
+過剰に信頼、深スタック相手のブラフを過小評価。
+
+**対応**: slots 74〜76（opp_stack_depth, hero_stack_depth, stack_ratio）で対処予定。
+
+### P5: ICM・トーナメント報酬の未対応（緊急度：将来課題）
+
+**問題**: 現在の報酬関数は cash-game 前提（チップ = 線形価値）。
+トーナメントでは ICM により同じチップでも価値が異なるが、これを学習できない。
+
+**原因**: 観測ベクトルの問題ではなく、`DrawLowballEnv` の reward 設計が
+cash-game 前提であること。
+
+**対応**: ICM-weighted reward を持つ `DrawLowballEnvTournament` の別途設計。
+slots 77〜79 はICM近似値として観測に追加するが、正しい学習には報酬関数の
+再設計が必要。優先度は P1〜P4 完了後。

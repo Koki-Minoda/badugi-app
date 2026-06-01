@@ -12,7 +12,7 @@ import {
   getTournamentVariantById,
 } from "../../config/tournamentUnlocks.js";
 import { resolveAiTierForGameContext } from "../utils/aiTierContext.js";
-import { loadTournamentProgress } from "../utils/tournamentState.js";
+import { loadConsolidatedProgress } from "../utils/consolidatedProgress.js";
 import {
   clearActiveMTTSnapshot,
   isResumeableMTTSnapshot,
@@ -74,7 +74,7 @@ export default function TournamentHubScreen({
     () => activeSnapshot ?? loadActiveMTTSnapshot(),
   );
   const effectiveProgress = useMemo(
-    () => progress ?? loadTournamentProgress(),
+    () => progress ?? loadConsolidatedProgress().tournament,
     [progress],
   );
   const resumeableSnapshot = isResumeableMTTSnapshot(savedSnapshot)

@@ -3,6 +3,10 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import TournamentHubScreen from "../TournamentHubScreen.jsx";
 import { saveActiveMTTSnapshot } from "../../tournament/tournamentManager.js";
+import {
+  createDefaultConsolidatedProgress,
+  saveConsolidatedProgress,
+} from "../../utils/consolidatedProgress.js";
 
 describe("TournamentHubScreen", () => {
   afterEach(() => {
@@ -113,6 +117,25 @@ describe("TournamentHubScreen", () => {
         }}
       />,
     );
+
+    expect(screen.getByTestId("variant-unlock-2-7td").textContent).toContain(
+      "PLAYABLE",
+    );
+  });
+
+  it("uses consolidated v2 completed tournaments for unlock evaluation", () => {
+    const defaults = createDefaultConsolidatedProgress();
+    saveConsolidatedProgress({
+      ...defaults,
+      tournament: {
+        ...defaults.tournament,
+        completedTournaments: [
+          { variant: "badugi", stage: "world", finishPlace: 1 },
+        ],
+      },
+    });
+
+    render(<TournamentHubScreen />);
 
     expect(screen.getByTestId("variant-unlock-2-7td").textContent).toContain(
       "PLAYABLE",

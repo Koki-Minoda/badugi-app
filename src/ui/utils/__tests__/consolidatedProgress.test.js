@@ -3,6 +3,7 @@ import {
   CONSOLIDATED_TOURNAMENT_PROGRESS_KEY,
   createDefaultConsolidatedProgress,
   detectLegacyProgressDrift,
+  getPlayerProgressFromConsolidated,
   loadConsolidatedProgress,
   migrateLegacyProgressToV2,
   recordConsolidatedTournamentResult,
@@ -115,6 +116,55 @@ describe("consolidated tournament progress v2", () => {
     expect(loadConsolidatedProgress()).toMatchObject(
       createDefaultConsolidatedProgress(),
     );
+  });
+
+  it("projects player progress stage wins from consolidated v2", () => {
+    const progress = getPlayerProgressFromConsolidated({
+      ...createDefaultConsolidatedProgress(),
+      tournament: {
+        ...createDefaultConsolidatedProgress().tournament,
+        stageWins: { store: 2, local: 1, national: 0, world: 3 },
+      },
+    });
+
+    expect(progress.stageWins).toEqual({
+      store: 2,
+      local: 1,
+      national: 0,
+      world: 3,
+    });
+  });
+
+  it("projects world championship state to legacy player progress shape", () => {
+    const progress = getPlayerProgressFromConsolidated({
+      ...createDefaultConsolidatedProgress(),
+      career: {
+        ...createDefaultConsolidatedProgress().career,
+        worldChampionship: {
+          cleared: true,
+          firstClearTimestamp: 100,
+          clearCount: 2,
+          lastUnlockPopupAt: 200,
+        },
+      },
+    });
+
+    expect(progress).toMatchObject({
+      worldChampCleared: true,
+      firstClearTimestamp: 100,
+      clearCount: 2,
+      lastUnlockPopupAt: 200,
+    });
+  });
+
+  it("projects missing consolidated player progress fields to defaults", () => {
+    expect(getPlayerProgressFromConsolidated({})).toEqual({
+      stageWins: { store: 0, local: 0, national: 0, world: 0 },
+      worldChampCleared: false,
+      firstClearTimestamp: null,
+      clearCount: 0,
+      lastUnlockPopupAt: null,
+    });
   });
 
   it("does not throw when v2 save fails", () => {

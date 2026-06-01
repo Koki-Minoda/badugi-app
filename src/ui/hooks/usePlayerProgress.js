@@ -1,18 +1,22 @@
 import { useEffect, useState } from "react";
-import { loadPlayerProgress } from "../utils/playerProgress.js";
+import { getPlayerProgressFromConsolidated } from "../utils/consolidatedProgress.js";
 
 export function usePlayerProgress() {
-  const [progress, setProgress] = useState(() => loadPlayerProgress());
+  const [progress, setProgress] = useState(() =>
+    getPlayerProgressFromConsolidated(),
+  );
 
   useEffect(() => {
     function handleProgressEvent() {
-      setProgress(loadPlayerProgress());
+      setProgress(getPlayerProgressFromConsolidated());
     }
     if (typeof window !== "undefined") {
       window.addEventListener("badugi:playerProgress-changed", handleProgressEvent);
+      window.addEventListener("badugi:worldChampUnlocked", handleProgressEvent);
       window.addEventListener("storage", handleProgressEvent);
       return () => {
         window.removeEventListener("badugi:playerProgress-changed", handleProgressEvent);
+        window.removeEventListener("badugi:worldChampUnlocked", handleProgressEvent);
         window.removeEventListener("storage", handleProgressEvent);
       };
     }

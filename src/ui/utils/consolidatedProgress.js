@@ -350,6 +350,27 @@ export function loadConsolidatedProgress() {
   return normalizeConsolidatedProgress(stored);
 }
 
+export function getPlayerProgressFromConsolidated(
+  v2 = loadConsolidatedProgress(),
+) {
+  const tournament = v2?.tournament ?? {};
+  const career = v2?.career ?? {};
+  const worldChampionship = career?.worldChampionship ?? {};
+
+  return {
+    stageWins: {
+      store: tournament?.stageWins?.store ?? 0,
+      local: tournament?.stageWins?.local ?? 0,
+      national: tournament?.stageWins?.national ?? 0,
+      world: tournament?.stageWins?.world ?? 0,
+    },
+    worldChampCleared: Boolean(worldChampionship?.cleared),
+    firstClearTimestamp: worldChampionship?.firstClearTimestamp ?? null,
+    clearCount: worldChampionship?.clearCount ?? 0,
+    lastUnlockPopupAt: worldChampionship?.lastUnlockPopupAt ?? null,
+  };
+}
+
 export function saveConsolidatedProgress(progress) {
   const normalized = normalizeConsolidatedProgress(progress);
   const saved = safeSetItem(STORAGE_KEYS.TOURNAMENT_V2, normalized, {

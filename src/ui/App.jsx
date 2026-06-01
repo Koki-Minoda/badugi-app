@@ -2934,7 +2934,7 @@ export default function App() {
   // acting seat (to avoid duplicate work in callers).
   // ANALYSIS: (C) 全員がAIでもここで順番に draw を実行し、全席 hasDrawn=true に
   //           なるまで finishDrawRound() を呼ばないため DRAW ラウンドは省略されない。
-  const autoResolveCpuDrawIfNeeded = useCallback(() => {
+  const autoResolveCpuDrawIfNeeded = useCallback(async () => {
     if (phase !== "DRAW") return false;
     if (resolvingDrawRef.current) return false;
     resolvingDrawRef.current = true;
@@ -3032,13 +3032,19 @@ export default function App() {
         const controller = sessionControllerRef.current;
         const controllerState = sessionControllerStateRef.current;
         const cpuAction =
-          typeof controller?.getCpuAction === "function"
-            ? controller.getCpuAction(controllerState, seatToAct, {
+          typeof controller?.getCpuActionAsync === "function"
+            ? await controller.getCpuActionAsync(controllerState, seatToAct, {
                 tierConfig: activeAiTierConfig,
                 personalityId: me?.personalityId ?? "balanced",
                 personality: me?.personality ?? null,
               })
-            : null;
+            : typeof controller?.getCpuAction === "function"
+              ? controller.getCpuAction(controllerState, seatToAct, {
+                  tierConfig: activeAiTierConfig,
+                  personalityId: me?.personalityId ?? "balanced",
+                  personality: me?.personality ?? null,
+                })
+              : null;
         const payload = cpuAction?.payload ??
           cpuAction ?? {
             type: "DRAW",
@@ -11724,7 +11730,7 @@ export default function App() {
       return () => clearTimeout(timer);
     }
 
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       if (phase === "BET") {
         if ((phaseRef.current ?? phase) !== "BET") return;
         const basePlayers = playersRef.current ?? activePlayers;
@@ -11789,13 +11795,19 @@ export default function App() {
           let cpuAction = null;
           try {
             cpuAction =
-              typeof controller?.getCpuAction === "function"
-                ? controller.getCpuAction(controllerState, activeSeat, {
+              typeof controller?.getCpuActionAsync === "function"
+                ? await controller.getCpuActionAsync(controllerState, activeSeat, {
                     tierConfig: activeAiTierConfig,
                     personalityId: me?.personalityId ?? "balanced",
                     personality: me?.personality ?? null,
                   })
-                : null;
+                : typeof controller?.getCpuAction === "function"
+                  ? controller.getCpuAction(controllerState, activeSeat, {
+                      tierConfig: activeAiTierConfig,
+                      personalityId: me?.personalityId ?? "balanced",
+                      personality: me?.personality ?? null,
+                    })
+                  : null;
           } catch (error) {
             console.warn(
               "[CTRL][CPU] getCpuAction failed; using safe controller fallback",

@@ -6,6 +6,13 @@ import {
 } from "../core/turn/actorEligibility.js";
 import { DeuceToSevenTripleDrawEngine } from "./DeuceToSevenTripleDrawEngine.js";
 import { chooseProAction } from "../../ai/pro/proDecisionOverlay.js";
+import {
+  buildDrawObservationPayload,
+} from "../../rl/drawObservationSchema.js";
+import {
+  inferBetActionWithOnnx,
+  inferDrawDecisionWithOnnx,
+} from "../../ai/onnxPolicyAdapter.js";
 
 const DEFAULT_SEAT_CONFIG = ["HUMAN", "CPU", "CPU", "CPU", "CPU", "CPU"];
 const DEFAULT_STRUCTURE = { sb: 10, bb: 20, ante: 0 };
@@ -335,6 +342,20 @@ function buildEvent(beforeState, afterState, action = {}) {
   };
 }
 
+function pickWorstCardIndexes(hand, count, aceLow = false) {
+  const rankMap = { A: aceLow ? 1 : 14, J: 11, Q: 12, K: 13 };
+  return hand
+    .map((card, idx) => {
+      const match = String(card ?? "").trim().toUpperCase().match(/^([2-9]|10|[AJQK])/);
+      const rank = match ? (rankMap[match[1]] ?? Number(match[1])) : 0;
+      return { idx, rank };
+    })
+    .sort((a, b) => b.rank - a.rank)
+    .slice(0, count)
+    .map((e) => e.idx)
+    .sort((a, b) => a - b);
+}
+
 function deriveLegalActions(state = {}, seatIndex) {
   const player = state.players?.[seatIndex];
   if (!player || player.folded || player.sittingOut || player.seatOut) {
@@ -635,6 +656,100 @@ export class DeuceToSevenTripleDrawController extends GameController {
         warnings: result.warnings ?? [],
       },
     };
+  }
+
+  async getCpuActionAsync(state = {}, seatIndex = null, options = {}) {
+    const engineState = state?.engineState ?? this._lastState?.engineState ?? state;
+    const targetSeat = typeof seatIndex === "number" ? seatIndex : engineState?.actingPlayerIndex;
+    const player = engineState?.players?.[targetSeat];
+    if (!player?.isCPU) return null;
+
+    const tierId = options?.tierConfig?.id ?? "standard";
+    const phase = String(engineState?.street ?? "BET").toUpperCase();
+    const legalActionsRaw = deriveLegalActions(engineState ?? {}, targetSeat);
+
+    if (phase === "DRAW") {
+      const drawLegalActions = ["draw_0", "draw_1", "draw_2", "draw_3", "draw_4", "draw_5"];
+      const observation = buildDrawObservationPayload({
+        state: engineState,
+        seatIndex: targetSeat,
+        variantId: this.variantId,
+        legalActions: drawLegalActions,
+      });
+      let onnxDecision = null;
+      try {
+        onnxDecision = await inferDrawDecisionWithOnnx({
+          variantId: this.variantId,
+          tierId,
+          observation,
+          legalActions: drawLegalActions,
+        });
+      } catch (_) {
+        // fall through to heuristic
+      }
+      if (typeof onnxDecision?.drawCount === "number") {
+        const heuristic = this.getCpuAction(state, seatIndex, options);
+        const onnxCount = Math.max(0, Math.min(5, onnxDecision.drawCount));
+        const heuristicIndexes = heuristic?.discardIndexes ?? [];
+        const discardIndexes =
+          onnxCount <= heuristicIndexes.length
+            ? heuristicIndexes.slice(0, onnxCount)
+            : pickWorstCardIndexes(player.hand ?? [], onnxCount, this.variantId === "D02");
+        return {
+          seatIndex: targetSeat,
+          type: "DRAW",
+          discardIndexes,
+          metadata: {
+            ...(heuristic?.metadata ?? {}),
+            strategy: `onnx-${tierId}`,
+            source: "onnx",
+            drawCount: onnxCount,
+          },
+        };
+      }
+      return this.getCpuAction(state, seatIndex, options);
+    }
+
+    if (phase === "BET") {
+      const betLegalStrings = legalActionsRaw
+        .map((a) => (typeof a === "string" ? a.toUpperCase() : (a?.type ?? "").toUpperCase()))
+        .filter(Boolean);
+      const observation = buildDrawObservationPayload({
+        state: engineState,
+        seatIndex: targetSeat,
+        variantId: this.variantId,
+        legalActions: betLegalStrings.map((a) => a.toLowerCase()),
+      });
+      let onnxDecision = null;
+      try {
+        onnxDecision = await inferBetActionWithOnnx({
+          variantId: this.variantId,
+          tierId,
+          observation,
+          legalActions: betLegalStrings,
+        });
+      } catch (_) {
+        // fall through to heuristic
+      }
+      if (onnxDecision?.action) {
+        const actionType = onnxDecision.action.toUpperCase();
+        if (betLegalStrings.includes(actionType)) {
+          return {
+            seatIndex: targetSeat,
+            type: actionType,
+            amount: onnxDecision.raiseSize,
+            metadata: {
+              strategy: `onnx-${tierId}`,
+              source: "onnx",
+              decisionSource: "onnx",
+            },
+          };
+        }
+      }
+      return this.getCpuAction(state, seatIndex, options);
+    }
+
+    return this.getCpuAction(state, seatIndex, options);
   }
 
   applyAction(state = {}, action = {}) {

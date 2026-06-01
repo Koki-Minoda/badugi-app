@@ -39,6 +39,7 @@ if str(SRC_ROOT) not in sys.path:
 from rl.agents.dqn_agent import DQNAgent, DQNHyperParams
 from rl.env.draw_lowball_env import DrawLowballEnv, draw_teacher_action
 from rl.env.draw_lowball_env_selfplay import DualAgentDrawLowballEnv
+from rl.training.train_draw_dqn import _call_margin_examples
 from rl.utils.replay_buffer import ReplayBuffer
 
 
@@ -62,9 +63,14 @@ class SelfPlayConfig:
     imitation_loss_weight: float = 0.50
     expert_replay_ratio: float = 0.25
     # Fold/call margin updates (same as single-agent training).
+    # fold_margin prevents the agent learning to fold strong draws.
+    # call_margin is the symmetric counterpart: prevents fold over-generalisation
+    # to ace-holding / strong-draw hands.  Both must be present or fold_margin
+    # alone will push Q(fold) too high on good hands as well as bad ones.
     fold_margin: float = 0.10
     call_margin: float = 0.10
     fold_margin_weight: float = 0.30
+    call_margin_weight: float = 0.30
     fold_margin_interval: int = 5
     # Self-play specific: how often (in episodes) to copy hero → opp.
     opponent_update_interval: int = 500
@@ -91,6 +97,7 @@ def _teacher_warmup(
     replay: ReplayBuffer,
     expert: ReplayBuffer,
     fold_buffer: ReplayBuffer,
+    call_buffer: ReplayBuffer,
 ) -> None:
     """Fill replay/expert buffers using the rule-based teacher policy."""
     env = DrawLowballEnv(
@@ -115,6 +122,14 @@ def _teacher_warmup(
             obs = next_obs
             if done:
                 break
+
+    # Populate call_buffer: hands that should CALL not fold (ace-holding draws,
+    # strong low draws).  Mirrors single-agent training to prevent fold_margin
+    # from over-generalising to good hands.
+    call_examples = _call_margin_examples(env)
+    for _ in range(30):
+        for obs, action in call_examples:
+            call_buffer.add(obs, action, 0.3, obs, False)
 
     if cfg.imitation_pretrain_steps > 0 and len(expert) >= cfg.batch_size:
         for _ in range(cfg.imitation_pretrain_steps):
@@ -174,16 +189,19 @@ def train_selfplay_draw_dqn(
     replay = ReplayBuffer(capacity=cfg.buffer_capacity)
     expert = ReplayBuffer(capacity=cfg.buffer_capacity)
     fold_buffer = ReplayBuffer(capacity=10_000, alpha=0.0)
+    # call_buffer is the symmetric counterpart of fold_buffer: prevents
+    # fold_margin from over-generalising to good hands.
+    call_buffer = ReplayBuffer(capacity=5_000, alpha=0.0)
 
     # Phase 1: teacher warm-up.
     print(
         f"[SelfPlay] Teacher warm-up: family={cfg.family} "
         f"episodes={cfg.teacher_warmup_episodes}"
     )
-    _teacher_warmup(cfg, hero, replay, expert, fold_buffer)
+    _teacher_warmup(cfg, hero, replay, expert, fold_buffer, call_buffer)
     print(
         f"[SelfPlay] Teacher done: replay={len(replay)} expert={len(expert)} "
-        f"fold_buffer={len(fold_buffer)}"
+        f"fold_buffer={len(fold_buffer)} call_buffer={len(call_buffer)}"
     )
 
     # Self-play environment.
@@ -192,6 +210,10 @@ def train_selfplay_draw_dqn(
 
     global_step = 0
     rewards: list[float] = []
+    # Per-episode BET action counts (for mode collapse detection).
+    ep_folds: list[int] = []
+    ep_raises: list[int] = []
+    ep_bet_steps: list[int] = []
     loss = 0.0
     mean_q = 0.0
     imitation_loss = 0.0
@@ -203,13 +225,24 @@ def train_selfplay_draw_dqn(
     for episode in range(1, cfg.total_episodes + 1):
         obs, _ = sp_env.reset()
         total_reward = 0.0
+        ep_fold_count = ep_raise_count = ep_bet_step_count = 0
         epsilon = _linear_decay(
             episode, cfg.epsilon_start, cfg.epsilon_end, cfg.epsilon_decay_episodes
         )
 
         for _ in range(cfg.max_steps_per_episode):
             global_step += 1
-            action = hero.act(obs, epsilon, action_mask=sp_env.legal_action_mask())
+            mask = sp_env.legal_action_mask()
+            action = hero.act(obs, epsilon, action_mask=mask)
+
+            # Track BET-phase actions for mode collapse detection.
+            if sp_env.phase == "BET":
+                ep_bet_step_count += 1
+                if action == 0:
+                    ep_fold_count += 1
+                elif action in (3, 4):  # bet or raise
+                    ep_raise_count += 1
+
             next_obs, reward, terminated, truncated, _ = sp_env.step(action)
             done = terminated or truncated
             replay.add(
@@ -244,11 +277,23 @@ def train_selfplay_draw_dqn(
                             margin=cfg.fold_margin,
                             loss_weight=cfg.fold_margin_weight,
                         )
+                    # Symmetric call_margin: Q(call) > Q(fold) on strong-draw hands.
+                    # Prevents fold_margin from over-generalising to good holdings.
+                    if len(call_buffer) >= margin_batch:
+                        hero.action_margin_update(
+                            call_buffer.sample(margin_batch),
+                            avoid_action=0,
+                            margin=cfg.call_margin,
+                            loss_weight=cfg.call_margin_weight,
+                        )
 
             if done:
                 break
 
         rewards.append(total_reward)
+        ep_folds.append(ep_fold_count)
+        ep_raises.append(ep_raise_count)
+        ep_bet_steps.append(ep_bet_step_count)
 
         # Periodically freeze a snapshot of hero as the new opponent.
         if episode % cfg.opponent_update_interval == 0:
@@ -258,13 +303,22 @@ def train_selfplay_draw_dqn(
 
         if cfg.log_interval > 0 and episode % cfg.log_interval == 0:
             recent = rewards[-cfg.log_interval:]
+            window_bet = max(1, sum(ep_bet_steps[-cfg.log_interval:]))
+            fold_rate = sum(ep_folds[-cfg.log_interval:]) / window_bet
+            raise_rate = sum(ep_raises[-cfg.log_interval:]) / window_bet
+            collapse_warn = ""
+            if fold_rate > 0.60:
+                collapse_warn = " ⚠ HIGH-FOLD (possible mode collapse)"
+            elif raise_rate < 0.02 and fold_rate < 0.05:
+                collapse_warn = " ⚠ LOW-AGGRESSION (possible check-lock)"
             print(
                 f"[SelfPlay {cfg.family} {episode:6d}] "
                 f"avg_reward={sum(recent)/len(recent):8.3f} "
                 f"epsilon={epsilon:5.3f} buffer={len(replay):7d} "
                 f"loss={loss:8.5f} mean_q={mean_q:8.3f} "
                 f"bc_acc={imitation_accuracy:5.3f} "
-                f"opp_updates={opponent_updates}"
+                f"fold%={fold_rate*100:4.1f} raise%={raise_rate*100:4.1f} "
+                f"opp_updates={opponent_updates}{collapse_warn}"
             )
 
         if cfg.save_interval > 0 and episode % cfg.save_interval == 0:
@@ -311,6 +365,7 @@ def parse_args():
     parser.add_argument("--imitation-pretrain-steps", type=int, default=SelfPlayConfig.imitation_pretrain_steps)
     parser.add_argument("--hidden-dim", type=int, default=SelfPlayConfig.hidden_dim)
     parser.add_argument("--learning-rate", type=float, default=SelfPlayConfig.learning_rate)
+    parser.add_argument("--call-margin-weight", type=float, default=SelfPlayConfig.call_margin_weight)
     parser.add_argument("--opponent-update-interval", type=int, default=SelfPlayConfig.opponent_update_interval)
     parser.add_argument("--output-dir", default=SelfPlayConfig.output_dir)
     parser.add_argument("--save-interval", type=int, default=SelfPlayConfig.save_interval)
@@ -339,6 +394,7 @@ if __name__ == "__main__":
         imitation_pretrain_steps=args.imitation_pretrain_steps,
         hidden_dim=args.hidden_dim,
         learning_rate=args.learning_rate,
+        call_margin_weight=args.call_margin_weight,
         opponent_update_interval=args.opponent_update_interval,
         output_dir=args.output_dir,
         save_interval=args.save_interval,

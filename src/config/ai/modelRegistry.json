@@ -674,6 +674,46 @@
     "trainingNotes": "Teacher-initialized draw bootstrap ONNX. This is not a full self-play RL checkpoint; replace after variant-specific draw RL and human/practice gates pass."
   },
   {
+    "id": "model-27draw-selfplay-v1",
+    "version": "v1",
+    "variantIds": [],
+    "characterIds": [],
+    "tier": "standard",
+    "onnx": "models/27draw_selfplay_v1.onnx",
+    "checksumSha256": "",
+    "trainingRun": "",
+    "trainingStatus": "pending",
+    "trainingNotes": "Self-play DQN for 2-7 Triple Draw / Single Draw. Trained with DualAgentDrawLowballEnv \u2014 both seats use DQN policies with periodic opponent freeze and call_buffer / fold_buffer margin shaping. variantIds is intentionally empty until human/practice benchmark passes; deploy by adding [\"D01\",\"S01\"] and re-running export_draw_dqn_onnx.py with --model-id model-27draw-selfplay-v1.",
+    "featureSet": "draw-lowball-observation-v1",
+    "productionRequired": false,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      11
+    ]
+  },
+  {
+    "id": "model-a5draw-selfplay-v1",
+    "version": "v1",
+    "variantIds": [],
+    "characterIds": [],
+    "tier": "standard",
+    "onnx": "models/a5draw_selfplay_v1.onnx",
+    "checksumSha256": "",
+    "trainingRun": "",
+    "trainingStatus": "pending",
+    "trainingNotes": "Self-play DQN for A-5 Triple Draw / Single Draw. Trained with DualAgentDrawLowballEnv \u2014 both seats use DQN policies with periodic opponent freeze and call_buffer / fold_buffer margin shaping. variantIds is intentionally empty until human/practice benchmark passes; deploy by adding [\"D02\",\"S02\"] and re-running export_draw_dqn_onnx.py with --model-id model-a5draw-selfplay-v1.",
+    "featureSet": "draw-lowball-observation-v1",
+    "productionRequired": false,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      11
+    ]
+  },
+  {
     "id": "model-generic-v1",
     "version": "v1",
     "variantIds": [],

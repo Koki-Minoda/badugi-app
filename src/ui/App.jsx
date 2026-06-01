@@ -9096,14 +9096,34 @@ export default function App() {
       forceHeroBust: () => forceHeroBustNow(),
       fastForwardMTTComplete: () => fastForwardMTTComplete(),
       getTournamentReplay: () => getStoredTournamentReplay(),
-      recordTournamentStageWin: (stageId = "store") =>
-        applyTournamentResult({
-          stageId,
+      recordTournamentStageWin: (stageId = "store") => {
+        const resolvedStageId = stageId ?? "store";
+        const completedAt = Date.now();
+        const legacyResult = applyTournamentResult({
+          stageId: resolvedStageId,
           placement: 1,
           prize: 0,
           feedback: "E2E stage unlock fixture",
           reason: "e2e",
-        }),
+        });
+        try {
+          recordConsolidatedTournamentResult({
+            variant:
+              tournamentStateRef.current?.config?.gameVariant ??
+              gameVariantRef.current ??
+              "badugi",
+            stageId: resolvedStageId,
+            finishPlace: 1,
+            prize: 0,
+            tournamentId: `${resolvedStageId}-e2e-stage-win`,
+            completedAt,
+          });
+          detectLegacyProgressDrift();
+        } catch (error) {
+          console.warn("[TD1][V2_WRITE_FAILED]", error);
+        }
+        return legacyResult;
+      },
     };
   }, [
     queueForcedSeatAction,

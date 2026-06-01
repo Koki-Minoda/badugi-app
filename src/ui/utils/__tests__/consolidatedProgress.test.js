@@ -8,6 +8,7 @@ import {
   recordConsolidatedTournamentResult,
   saveConsolidatedProgress,
 } from "../consolidatedProgress.js";
+import { STORAGE_KEYS } from "../../../storage/keys.js";
 
 const LEGACY_TOURNAMENT_PROGRESS_KEY = "progress.tournament";
 const LEGACY_TOURNAMENT_HISTORY_KEY = "history.tournaments";
@@ -79,6 +80,25 @@ describe("consolidated tournament progress v2", () => {
     });
   });
 
+  it("loads consolidated progress from the storage layer tournament v2 key", () => {
+    setJson(STORAGE_KEYS.TOURNAMENT_V2, {
+      ...createDefaultConsolidatedProgress(),
+      tournament: {
+        ...createDefaultConsolidatedProgress().tournament,
+        stageWins: { store: 1, local: 0, national: 0, world: 0 },
+      },
+    });
+
+    expect(CONSOLIDATED_TOURNAMENT_PROGRESS_KEY).toBe(STORAGE_KEYS.TOURNAMENT_V2);
+    expect(loadConsolidatedProgress().tournament.stageWins.store).toBe(1);
+  });
+
+  it("returns default when storage layer returns fallback for missing v2", () => {
+    expect(loadConsolidatedProgress()).toMatchObject(
+      createDefaultConsolidatedProgress(),
+    );
+  });
+
   it("returns default when v2 JSON is corrupted", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     window.localStorage.setItem(CONSOLIDATED_TOURNAMENT_PROGRESS_KEY, "{bad json");
@@ -86,7 +106,30 @@ describe("consolidated tournament progress v2", () => {
     expect(loadConsolidatedProgress()).toMatchObject(
       createDefaultConsolidatedProgress(),
     );
-    expect(warnSpy).toHaveBeenCalled();
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it("returns default when v2 schema is invalid", () => {
+    setJson(STORAGE_KEYS.TOURNAMENT_V2, { version: 2 });
+
+    expect(loadConsolidatedProgress()).toMatchObject(
+      createDefaultConsolidatedProgress(),
+    );
+  });
+
+  it("does not throw when v2 save fails", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const setItemSpy = vi
+      .spyOn(Storage.prototype, "setItem")
+      .mockImplementation(() => {
+        throw new DOMException("quota exceeded", "QuotaExceededError");
+      });
+
+    expect(() =>
+      saveConsolidatedProgress(createDefaultConsolidatedProgress()),
+    ).not.toThrow();
+    expect(warnSpy).toHaveBeenCalledWith("[TD2][SAVE_FAILED]");
+    setItemSpy.mockRestore();
   });
 
   it("migrates stage wins from progress.tournament and playerProgress using max values", () => {

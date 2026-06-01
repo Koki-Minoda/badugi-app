@@ -1,4 +1,8 @@
-export const CONSOLIDATED_TOURNAMENT_PROGRESS_KEY = "mgx.tournament.v2";
+import { safeGetItem, safeSetItem } from "../../storage/core.js";
+import { STORAGE_KEYS } from "../../storage/keys.js";
+import { validateTournamentV2 } from "../../storage/schemas.js";
+
+export const CONSOLIDATED_TOURNAMENT_PROGRESS_KEY = STORAGE_KEYS.TOURNAMENT_V2;
 
 const LEGACY_TOURNAMENT_PROGRESS_KEY = "progress.tournament";
 const LEGACY_TOURNAMENT_HISTORY_KEY = "history.tournaments";
@@ -24,34 +28,12 @@ const DEFAULT_STATISTICS = {
   totalPrize: 0,
 };
 
-function hasStorage() {
-  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
-}
-
 function cloneJson(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
 function safeParseStorage(key) {
-  if (!hasStorage()) return null;
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : null;
-  } catch (err) {
-    console.warn("[TD1][LEGACY_PARSE_FAILED]", { key, error: err });
-    return null;
-  }
-}
-
-function readStoredV2() {
-  if (!hasStorage()) return null;
-  try {
-    const raw = window.localStorage.getItem(CONSOLIDATED_TOURNAMENT_PROGRESS_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch (err) {
-    console.warn("[TD1][V2_PARSE_FAILED]", err);
-    return null;
-  }
+  return safeGetItem(key, null, { silent: true });
 }
 
 function normalizeCount(value) {
@@ -363,21 +345,18 @@ export function createDefaultConsolidatedProgress() {
 }
 
 export function loadConsolidatedProgress() {
-  const stored = readStoredV2();
-  if (!stored) return createDefaultConsolidatedProgress();
+  const stored = safeGetItem(STORAGE_KEYS.TOURNAMENT_V2, null, { silent: true });
+  if (!validateTournamentV2(stored)) return createDefaultConsolidatedProgress();
   return normalizeConsolidatedProgress(stored);
 }
 
 export function saveConsolidatedProgress(progress) {
   const normalized = normalizeConsolidatedProgress(progress);
-  if (!hasStorage()) return normalized;
-  try {
-    window.localStorage.setItem(
-      CONSOLIDATED_TOURNAMENT_PROGRESS_KEY,
-      JSON.stringify(normalized),
-    );
-  } catch (err) {
-    console.warn("[TD1][V2_SAVE_FAILED]", err);
+  const saved = safeSetItem(STORAGE_KEYS.TOURNAMENT_V2, normalized, {
+    silent: true,
+  });
+  if (!saved) {
+    console.warn("[TD2][SAVE_FAILED]");
   }
   return normalized;
 }

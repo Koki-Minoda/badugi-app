@@ -58,12 +58,23 @@ class DualAgentDrawLowballEnv:
         family: DrawFamily = "low-27",
         max_draws: int = 3,
         seed: int | None = None,
+        opp_epsilon: float = 0.0,
     ) -> None:
+        """
+        Args:
+            opp_epsilon: Exploration rate applied to the frozen opponent agent.
+                0.0 (default) = fully greedy → pure GTO self-play.
+                0.05–0.15 = adds stochastic diversity to opponent actions,
+                making the hero more robust to loose/aggressive play patterns
+                without explicitly encoding personality types. Does not move
+                toward Nash equilibrium as cleanly as the default.
+        """
         if family not in {"low-27", "low-a5"}:
             raise ValueError(f"Unsupported draw family: {family!r}")
         self.family = family
         self.max_draws = max(1, min(3, int(max_draws)))
         self.random = random.Random(seed)
+        self.opp_epsilon = float(opp_epsilon)
 
         self.observation_space = spaces.Box(
             low=0.0,
@@ -93,7 +104,7 @@ class DualAgentDrawLowballEnv:
         if seed is not None:
             self.random.seed(seed)
         self._init_state()
-        return self._obs_hero(), {}
+        return self._obs_for(is_hero=True), {}
 
     def legal_action_mask(self) -> np.ndarray:
         """Hero's legal action mask (matches DrawLowballEnv interface)."""
@@ -102,24 +113,24 @@ class DualAgentDrawLowballEnv:
     def step(self, hero_action: int):
         """Advance the game with hero's action; opp responds automatically."""
         if self.legal_action_mask()[hero_action] <= 0:
-            return self._obs_hero(), -2.0, True, False, {"illegal": True}
+            return self._obs_for(is_hero=True), -2.0, True, False, {"illegal": True}
 
         reward = 0.0
 
         if self.phase == "BET":
             reward += self._apply_hero_bet(hero_action)
             if hero_action == 0:  # hero folded
-                return self._obs_hero(), reward, True, False, {"folded": True}
+                return self._obs_for(is_hero=True), reward, True, False, {"folded": True}
 
             opp_terminal, opp_reward = self._opp_bet_response()
             reward += opp_reward
             if opp_terminal:
-                return self._obs_hero(), reward, True, False, {"opponentFolded": True}
+                return self._obs_for(is_hero=True), reward, True, False, {"opponentFolded": True}
 
             if self.draw_round >= self.max_draws:
                 reward += self._showdown_reward()
                 self.phase = "SHOWDOWN"
-                return self._obs_hero(), reward, True, False, {"showdown": True}
+                return self._obs_for(is_hero=True), reward, True, False, {"showdown": True}
 
             self.phase = "DRAW"
 
@@ -142,7 +153,7 @@ class DualAgentDrawLowballEnv:
             self.opp_bet = 0
             reward += self._draw_quality_reward(draw_count)
 
-        return self._obs_hero(), reward, False, False, {}
+        return self._obs_for(is_hero=True), reward, False, False, {}
 
     # ------------------------------------------------------------------
     # Internal state initialisation
@@ -179,32 +190,43 @@ class DualAgentDrawLowballEnv:
     # Observation building
     # ------------------------------------------------------------------
 
-    def _obs_hero(self) -> np.ndarray:
-        return self._observation_for(
-            my_hand=self.hero_hand,
-            my_bet=self.hero_bet,
-            my_stack=self.hero_stack,
-            my_is_button=self.hero_is_button,
-            opp_last_draw=self.opp_last_draw_count,
-            opp_draw_hist=self.opp_draw_history,
-            opp_total_draws=self.opp_total_draws,
-            opp_opened=self.opp_opened_current_round,
-            opp_bet_hist=self.opp_bet_history,
-            mask=self._mask_for(self.hero_bet, self.hero_stack),
-        )
+    def _obs_for(self, is_hero: bool) -> np.ndarray:
+        """Build observation from the perspective of hero (is_hero=True) or opp.
 
-    def _obs_opp(self) -> np.ndarray:
+        Centralised so that adding a new feature only requires one edit here —
+        both seats automatically receive the correctly-swapped view.
+        """
+        if is_hero:
+            my_hand       = self.hero_hand
+            my_bet        = self.hero_bet
+            my_stack      = self.hero_stack
+            my_is_button  = self.hero_is_button
+            opp_last_draw = self.opp_last_draw_count
+            opp_draw_hist = self.opp_draw_history
+            opp_total     = self.opp_total_draws
+            opp_opened    = self.opp_opened_current_round
+            opp_bet_hist  = self.opp_bet_history
+        else:
+            my_hand       = self.opp_hand
+            my_bet        = self.opp_bet
+            my_stack      = self.opp_stack
+            my_is_button  = not self.hero_is_button
+            opp_last_draw = self.hero_last_draw_count
+            opp_draw_hist = self.hero_draw_history
+            opp_total     = self.hero_total_draws
+            opp_opened    = self.hero_opened_current_round
+            opp_bet_hist  = self.hero_bet_history
         return self._observation_for(
-            my_hand=self.opp_hand,
-            my_bet=self.opp_bet,
-            my_stack=self.opp_stack,
-            my_is_button=not self.hero_is_button,
-            opp_last_draw=self.hero_last_draw_count,
-            opp_draw_hist=self.hero_draw_history,
-            opp_total_draws=self.hero_total_draws,
-            opp_opened=self.hero_opened_current_round,
-            opp_bet_hist=self.hero_bet_history,
-            mask=self._mask_for(self.opp_bet, self.opp_stack),
+            my_hand=my_hand,
+            my_bet=my_bet,
+            my_stack=my_stack,
+            my_is_button=my_is_button,
+            opp_last_draw=opp_last_draw,
+            opp_draw_hist=opp_draw_hist,
+            opp_total_draws=opp_total,
+            opp_opened=opp_opened,
+            opp_bet_hist=opp_bet_hist,
+            mask=self._mask_for(my_bet, my_stack),
         )
 
     def _observation_for(
@@ -333,10 +355,10 @@ class DualAgentDrawLowballEnv:
     # ------------------------------------------------------------------
 
     def _opp_bet_response(self) -> tuple[bool, float]:
-        opp_obs = self._obs_opp()
+        opp_obs = self._obs_for(is_hero=False)
         opp_mask = self._mask_for(self.opp_bet, self.opp_stack)
         if self.opp_agent is not None:
-            opp_action = self.opp_agent.act(opp_obs, epsilon=0.0, action_mask=opp_mask)
+            opp_action = self.opp_agent.act(opp_obs, epsilon=self.opp_epsilon, action_mask=opp_mask)
             if opp_mask[opp_action] <= 0:
                 opp_action = int(np.argmax(opp_mask)) if opp_mask.sum() > 0 else 1
         else:
@@ -390,10 +412,10 @@ class DualAgentDrawLowballEnv:
         self.hero_total_draws += draw_count
 
     def _draw_opp_via_agent(self) -> None:
-        opp_obs = self._obs_opp()
+        opp_obs = self._obs_for(is_hero=False)
         opp_mask = self._mask_for(self.opp_bet, self.opp_stack)  # all draw actions legal
         if self.opp_agent is not None:
-            opp_action = self.opp_agent.act(opp_obs, epsilon=0.0, action_mask=opp_mask)
+            opp_action = self.opp_agent.act(opp_obs, epsilon=self.opp_epsilon, action_mask=opp_mask)
             if opp_mask[opp_action] <= 0:
                 opp_action = 5  # draw_0 fallback
         else:

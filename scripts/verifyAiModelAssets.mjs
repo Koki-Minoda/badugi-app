@@ -53,6 +53,14 @@ function verifyEntry(entry) {
 
   const actualChecksum = sha256(assetPath);
   if (!entry.checksumSha256) {
+    if (!entry.productionRequired) {
+      return {
+        ...result,
+        actualChecksum,
+        status: "missing-optional",
+        reason: "checksumSha256 not yet set (non-production pending model)",
+      };
+    }
     return {
       ...result,
       actualChecksum,

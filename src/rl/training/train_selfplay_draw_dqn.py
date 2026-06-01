@@ -72,6 +72,12 @@ class SelfPlayConfig:
     fold_margin_weight: float = 0.30
     call_margin_weight: float = 0.30
     fold_margin_interval: int = 5
+    # opp_epsilon: exploration rate for the frozen opponent agent.
+    #   0.0 (default) = pure GTO self-play (opponent is fully greedy).
+    #   0.05–0.15 = stochastic diversity; hero learns to handle loose/aggressive
+    #   style deviations without explicitly encoding personality types.
+    #   Avoid > 0.20: excessively random opponent degrades training signal.
+    opp_epsilon: float = 0.0
     # Self-play specific: how often (in episodes) to copy hero → opp.
     opponent_update_interval: int = 500
     # Training cadence.
@@ -205,15 +211,16 @@ def train_selfplay_draw_dqn(
     )
 
     # Self-play environment.
-    sp_env = DualAgentDrawLowballEnv(family=cfg.family, max_draws=cfg.max_draws)
+    sp_env = DualAgentDrawLowballEnv(
+        family=cfg.family, max_draws=cfg.max_draws, opp_epsilon=cfg.opp_epsilon
+    )
     sp_env.set_agents(hero, opp)
 
     global_step = 0
     rewards: list[float] = []
-    # Per-episode BET action counts (for mode collapse detection).
-    ep_folds: list[int] = []
-    ep_raises: list[int] = []
-    ep_bet_steps: list[int] = []
+    # Rolling window accumulators for mode-collapse detection (reset each log interval).
+    # Using scalars instead of growing lists avoids unbounded memory growth over 20k episodes.
+    window_folds = window_raises = window_bet_steps = 0
     loss = 0.0
     mean_q = 0.0
     imitation_loss = 0.0
@@ -291,9 +298,9 @@ def train_selfplay_draw_dqn(
                 break
 
         rewards.append(total_reward)
-        ep_folds.append(ep_fold_count)
-        ep_raises.append(ep_raise_count)
-        ep_bet_steps.append(ep_bet_step_count)
+        window_folds += ep_fold_count
+        window_raises += ep_raise_count
+        window_bet_steps += ep_bet_step_count
 
         # Periodically freeze a snapshot of hero as the new opponent.
         if episode % cfg.opponent_update_interval == 0:
@@ -303,14 +310,17 @@ def train_selfplay_draw_dqn(
 
         if cfg.log_interval > 0 and episode % cfg.log_interval == 0:
             recent = rewards[-cfg.log_interval:]
-            window_bet = max(1, sum(ep_bet_steps[-cfg.log_interval:]))
-            fold_rate = sum(ep_folds[-cfg.log_interval:]) / window_bet
-            raise_rate = sum(ep_raises[-cfg.log_interval:]) / window_bet
+            w_bet = max(1, window_bet_steps)
+            fold_rate = window_folds / w_bet
+            raise_rate = window_raises / w_bet
+            # Separate ifs so both can fire simultaneously:
+            #   HIGH-FOLD  > 55%  → near-always-fold degenerate policy
+            #   LOW-AGGR   < 5%   → passive check/call equilibrium (most common collapse)
             collapse_warn = ""
-            if fold_rate > 0.60:
-                collapse_warn = " ⚠ HIGH-FOLD (possible mode collapse)"
-            elif raise_rate < 0.02 and fold_rate < 0.05:
-                collapse_warn = " ⚠ LOW-AGGRESSION (possible check-lock)"
+            if fold_rate > 0.55:
+                collapse_warn += " ⚠ HIGH-FOLD"
+            if raise_rate < 0.05:
+                collapse_warn += " ⚠ LOW-AGGRESSION"
             print(
                 f"[SelfPlay {cfg.family} {episode:6d}] "
                 f"avg_reward={sum(recent)/len(recent):8.3f} "
@@ -320,6 +330,8 @@ def train_selfplay_draw_dqn(
                 f"fold%={fold_rate*100:4.1f} raise%={raise_rate*100:4.1f} "
                 f"opp_updates={opponent_updates}{collapse_warn}"
             )
+            # Reset window accumulators after logging.
+            window_folds = window_raises = window_bet_steps = 0
 
         if cfg.save_interval > 0 and episode % cfg.save_interval == 0:
             ts = time.strftime("%Y%m%d-%H%M%S")
@@ -366,6 +378,10 @@ def parse_args():
     parser.add_argument("--hidden-dim", type=int, default=SelfPlayConfig.hidden_dim)
     parser.add_argument("--learning-rate", type=float, default=SelfPlayConfig.learning_rate)
     parser.add_argument("--call-margin-weight", type=float, default=SelfPlayConfig.call_margin_weight)
+    parser.add_argument(
+        "--opp-epsilon", type=float, default=SelfPlayConfig.opp_epsilon,
+        help="Opponent exploration rate. 0.0=pure GTO, 0.05-0.15=personality diversity.",
+    )
     parser.add_argument("--opponent-update-interval", type=int, default=SelfPlayConfig.opponent_update_interval)
     parser.add_argument("--output-dir", default=SelfPlayConfig.output_dir)
     parser.add_argument("--save-interval", type=int, default=SelfPlayConfig.save_interval)
@@ -395,6 +411,7 @@ if __name__ == "__main__":
         hidden_dim=args.hidden_dim,
         learning_rate=args.learning_rate,
         call_margin_weight=args.call_margin_weight,
+        opp_epsilon=args.opp_epsilon,
         opponent_update_interval=args.opponent_update_interval,
         output_dir=args.output_dir,
         save_interval=args.save_interval,

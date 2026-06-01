@@ -312,6 +312,15 @@ class BadugiEnv(gym.Env):
     self.last_ev_diagnostic = None
     self.last_final_fold_discipline_spot = False
     self.terminal_reason = None
+    # v2 history tracking
+    self.hero_draw_history: list[int] = [0, 0, 0]
+    self.hero_last_draw: int = 0
+    self.hero_bet_history: list[bool] = [False, False, False]
+    self.hero_opened_current_round: bool = False
+    self.opp_draw_history: list[int] = [0, 0, 0]
+    self.opp_opened_current_round: bool = False
+    self.opp_bet_history: list[bool] = [False, False, False]
+    self.hero_discarded_ranks: list[int] = []
     self._start_betting_round()
     info: dict = {}
     return self._get_obs(), info
@@ -406,6 +415,7 @@ class BadugiEnv(gym.Env):
       self.bet_round = 1
       self.last_opp_action = 2
       self._record_opponent_action("bet")
+      self.opp_opened_current_round = True
 
   def _opponent_opens_before_hero(self) -> bool:
     if self.table_size <= 2 or self._player_is_first_to_act():
@@ -496,6 +506,7 @@ class BadugiEnv(gym.Env):
         self.bet_round += 1
         if self.player_stack == 0:
           self.player_all_in = True
+        self.hero_opened_current_round = True
       else:
         reward -= 0.1
     else:
@@ -507,7 +518,16 @@ class BadugiEnv(gym.Env):
     reward = 0.0
     draw_count = max(0, min(3, action))
     before_features = self._hand_features(self.player_hand)
+    # Record hero draw history and save bet flag BEFORE round increment
+    round_idx = min(2, self.round)
+    self.hero_draw_history[round_idx] = draw_count
+    self.hero_last_draw = draw_count
+    self.hero_bet_history[round_idx] = self.hero_opened_current_round
+    self.hero_opened_current_round = False
     if draw_count > 0:
+      keep = self._best_badugi_keep(self.player_hand)
+      discarded = [c for c in self.player_hand if c not in keep][:draw_count]
+      self.hero_discarded_ranks.extend(r for r, _ in discarded)
       self.player_hand = self._draw_toward_badugi(self.player_hand, draw_count)
       after_features = self._hand_features(self.player_hand)
       reward += self._draw_quality_reward(before_features, after_features, draw_count)
@@ -630,6 +650,7 @@ class BadugiEnv(gym.Env):
         self.bet_round += 1
         self.last_opp_action = 2
         self._record_opponent_action("raise")
+        self.opp_opened_current_round = True
     elif self.bet_round < self.max_bets and (
       strength > profile.raise_strength_threshold
       or (strength > profile.open_strength_threshold and r < profile.open_probability)
@@ -643,6 +664,7 @@ class BadugiEnv(gym.Env):
       self.bet_round += 1
       self.last_opp_action = 2
       self._record_opponent_action("raise")
+      self.opp_opened_current_round = True
     else:
       self.last_opp_action = 1
       self._record_opponent_action("check")
@@ -659,9 +681,13 @@ class BadugiEnv(gym.Env):
 
   def _opponent_draw_action(self):
     features = self._hand_features(self.opponent_hand)
+    round_idx = min(2, max(0, self.round - 1))
     if features.count == 4:
       self.opponent_last_draw = 0
       self._record_opponent_draw(0)
+      self.opp_draw_history[round_idx] = 0
+      self.opp_bet_history[round_idx] = self.opp_opened_current_round
+      self.opp_opened_current_round = False
       self.phase = "BET"
       self._start_betting_round()
       return
@@ -670,6 +696,9 @@ class BadugiEnv(gym.Env):
     self.opponent_hand = self._draw_toward_badugi(self.opponent_hand, draw_amount)
     self.opponent_last_draw = draw_amount
     self._record_opponent_draw(draw_amount)
+    self.opp_draw_history[round_idx] = draw_amount
+    self.opp_bet_history[round_idx] = self.opp_opened_current_round
+    self.opp_opened_current_round = False
     self.phase = "BET"
     self._start_betting_round()
 
@@ -1309,6 +1338,26 @@ class BadugiEnv(gym.Env):
         1.0 if self._sixmax_late_semibluff_spot(features, to_call, ev) else 0.0,
       ]
     )
+    # ---- v2: 時系列・履歴フィーチャー (slots 61-74) ----
+    # hero アクション履歴
+    obs.append(1.0 if self.hero_bet_history[0] else 0.0)   # 61: hero raised predraw
+    obs.append(1.0 if self.hero_bet_history[1] else 0.0)   # 62: hero bet R1
+    obs.append(1.0 if self.hero_bet_history[2] else 0.0)   # 63: hero bet R2
+    obs.append(1.0 if self.hero_opened_current_round else 0.0)  # 64: hero opened this round
+    # hero ドロー履歴
+    obs.append(self.hero_draw_history[0] / 3.0)            # 65: hero draw R1
+    obs.append(self.hero_draw_history[1] / 3.0)            # 66: hero draw R2
+    obs.append(self.hero_last_draw / 3.0)                  # 67: hero most recent draw
+    # 相手ドロー軌跡
+    obs.append((self.opp_draw_history[0] - self.opp_draw_history[1]) / 3.0)  # 68: opp traj R1→R2
+    obs.append((self.opp_draw_history[1] - self.opp_draw_history[2]) / 3.0)  # 69: opp traj R2→R3
+    obs.append((self.opponent_last_draw - self.hero_last_draw) / 3.0)         # 70: draw differential
+    # デッドカード（rank=0 が Ace = Badugi ナッツカード）
+    obs.append(min(1.0, sum(1 for r in self.hero_discarded_ranks if r == 0) / 4.0))   # 71: dead aces
+    obs.append(min(1.0, sum(1 for r in self.hero_discarded_ranks if r <= 3) / 16.0))  # 72: dead premium (A,2,3,4)
+    # ポジション・スタック
+    obs.append(0.0 if self.is_button else 1.0)             # 73: hero draws first (OOP)
+    obs.append(min(2.0, self.opponent_stack / max(1, self.player_stack)) / 2.0)  # 74: stack ratio
     while len(obs) < BADUGI_OBSERVATION_VECTOR_SIZE:
       obs.append(0.0)
     return np.array(obs[:BADUGI_OBSERVATION_VECTOR_SIZE], dtype=np.float32)

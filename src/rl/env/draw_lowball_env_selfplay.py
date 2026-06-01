@@ -185,6 +185,11 @@ class DualAgentDrawLowballEnv:
         self.opp_opened_current_round = False
         self.hero_bet_history: list[bool] = [False, False, False]
         self.opp_bet_history: list[bool] = [False, False, False]
+        # v2 additions
+        self.hero_raised_predraw: bool = False
+        self.opp_raised_predraw: bool = False
+        self.hero_discarded_cards: list = []
+        self.opp_discarded_cards: list = []
 
     # ------------------------------------------------------------------
     # Observation building
@@ -197,35 +202,53 @@ class DualAgentDrawLowballEnv:
         both seats automatically receive the correctly-swapped view.
         """
         if is_hero:
-            my_hand       = self.hero_hand
-            my_bet        = self.hero_bet
-            my_stack      = self.hero_stack
-            my_is_button  = self.hero_is_button
-            opp_last_draw = self.opp_last_draw_count
-            opp_draw_hist = self.opp_draw_history
-            opp_total     = self.opp_total_draws
-            opp_opened    = self.opp_opened_current_round
-            opp_bet_hist  = self.opp_bet_history
+            my_hand         = self.hero_hand
+            my_bet          = self.hero_bet
+            my_stack        = self.hero_stack
+            my_is_button    = self.hero_is_button
+            my_draw_hist    = self.hero_draw_history
+            my_last_draw    = self.hero_last_draw_count
+            my_raised_pre   = self.hero_raised_predraw
+            my_bet_hist     = self.hero_bet_history
+            my_discarded    = self.hero_discarded_cards
+            opp_last_draw   = self.opp_last_draw_count
+            opp_draw_hist   = self.opp_draw_history
+            opp_total       = self.opp_total_draws
+            opp_opened      = self.opp_opened_current_round
+            opp_bet_hist    = self.opp_bet_history
+            opp_stack       = self.opp_stack
         else:
-            my_hand       = self.opp_hand
-            my_bet        = self.opp_bet
-            my_stack      = self.opp_stack
-            my_is_button  = not self.hero_is_button
-            opp_last_draw = self.hero_last_draw_count
-            opp_draw_hist = self.hero_draw_history
-            opp_total     = self.hero_total_draws
-            opp_opened    = self.hero_opened_current_round
-            opp_bet_hist  = self.hero_bet_history
+            my_hand         = self.opp_hand
+            my_bet          = self.opp_bet
+            my_stack        = self.opp_stack
+            my_is_button    = not self.hero_is_button
+            my_draw_hist    = self.opp_draw_history
+            my_last_draw    = self.opp_last_draw_count
+            my_raised_pre   = self.opp_raised_predraw
+            my_bet_hist     = self.opp_bet_history
+            my_discarded    = self.opp_discarded_cards
+            opp_last_draw   = self.hero_last_draw_count
+            opp_draw_hist   = self.hero_draw_history
+            opp_total       = self.hero_total_draws
+            opp_opened      = self.hero_opened_current_round
+            opp_bet_hist    = self.hero_bet_history
+            opp_stack       = self.hero_stack
         return self._observation_for(
             my_hand=my_hand,
             my_bet=my_bet,
             my_stack=my_stack,
             my_is_button=my_is_button,
+            my_draw_hist=my_draw_hist,
+            my_last_draw=my_last_draw,
+            my_raised_pre=my_raised_pre,
+            my_bet_hist=my_bet_hist,
+            my_discarded=my_discarded,
             opp_last_draw=opp_last_draw,
             opp_draw_hist=opp_draw_hist,
             opp_total_draws=opp_total,
             opp_opened=opp_opened,
             opp_bet_hist=opp_bet_hist,
+            opp_stack=opp_stack,
             mask=self._mask_for(my_bet, my_stack),
         )
 
@@ -236,11 +259,17 @@ class DualAgentDrawLowballEnv:
         my_bet: int,
         my_stack: int,
         my_is_button: bool,
+        my_draw_hist: list[int],
+        my_last_draw: int,
+        my_raised_pre: bool,
+        my_bet_hist: list[bool],
+        my_discarded: list,
         opp_last_draw: int,
         opp_draw_hist: list[int],
         opp_total_draws: int,
         opp_opened: bool,
         opp_bet_hist: list[bool],
+        opp_stack: int,
         mask: np.ndarray,
     ) -> np.ndarray:
         vector = np.zeros(DRAW_OBSERVATION_VECTOR_SIZE, dtype=np.float32)
@@ -248,6 +277,7 @@ class DualAgentDrawLowballEnv:
         to_call = max(0, self.current_bet - my_bet)
         pot_odds = to_call / max(1, self.pot + to_call) if to_call > 0 else 0.0
 
+        # ---- v1 既存フィーチャー ----
         vector[0] = self.draw_round / max(1, self.max_draws)
         vector[1] = 1.0 if self.phase == "BET" else 0.0
         vector[2] = 1.0 if self.phase == "DRAW" else 0.0
@@ -256,9 +286,7 @@ class DualAgentDrawLowballEnv:
         vector[5] = 1.0 if my_is_button else 0.0
         vector[6] = 1.0 if (self.phase == "BET" and self.draw_round >= self.max_draws) else 0.0
         vector[7] = opp_last_draw / 5.0
-        # Opponent profile slots: neutral "standard" values so the model uses
-        # the same feature range as in single-agent training.
-        vector[8] = 0.05
+        vector[8] = 0.05   # neutral profile
         vector[9] = 0.54
         vector[10] = 0.50
         vector[11] = 0.76
@@ -281,10 +309,78 @@ class DualAgentDrawLowballEnv:
         vector[28] = 1.0 if opp_opened else 0.0
         vector[29] = 1.0 if opp_bet_hist[0] else 0.0
         vector[30] = 1.0 if opp_bet_hist[1] else 0.0
-        vector[31] = _draw_adjusted_strength(my_hand, self.family, features)
-        vector[32] = len(discard_indexes_for_family(my_hand, self.family)) / 5.0
         vector[41] = 1.0 if self.family == "low-27" else 0.0
         vector[42] = 1.0 if self.family == "low-a5" else 0.0
+
+        # ---- v2 共通計算 ----
+        _discards = discard_indexes_for_family(my_hand, self.family)
+        _kept = [c for i, c in enumerate(my_hand) if i not in _discards]
+        _discount = max(0.40, 1.0 - len(_discards) * 0.12)
+        if _kept:
+            _kf = evaluate_lowball(_kept, self.family)
+            _draw_target_str = _kf.strength * _discount
+            _draw_target_rank = _kf.highest_rank / 14.0
+        else:
+            _draw_target_str = 0.0
+            _draw_target_rank = 1.0
+
+        _is_a5 = self.family == "low-a5"
+        _premium_ranks = {14, 2, 3, 4, 5} if _is_a5 else {2, 3, 4, 5}
+        _blocker_rank = 14 if _is_a5 else 2
+
+        # slot 31: v2修正版
+        vector[31] = _draw_target_str
+        vector[32] = len(_discards) / 5.0
+
+        # グループA
+        vector[33] = 2.0 / 6.0
+        vector[34] = 1.0 if my_is_button else 0.0
+        vector[35] = 0.0
+        # グループC
+        vector[36] = _draw_target_str
+        vector[37] = _draw_target_rank
+        vector[38] = sum(1 for r, _ in my_hand if r in _premium_ranks) / 5.0
+        vector[39] = sum(1 for r, _ in my_hand if r == _blocker_rank) / 4.0
+        # グループA続き
+        _opp_pos = 0.0 if my_is_button else 1.0
+        vector[43] = _opp_pos if opp_bet_hist[0] else 0.0
+        vector[44] = 0.0
+        vector[45] = 1.0 if opp_opened else 0.0
+        # グループB
+        _big_bet = self.small_bet * 2
+        _rem = max(1, self.max_draws - self.draw_round + (1 if self.phase == "BET" else 0))
+        vector[46] = my_stack / max(1, _big_bet * 4 * _rem)
+        vector[47] = 1.0 if self.draw_round >= 2 else 0.0
+        # グループD
+        vector[59] = 1.0 if my_raised_pre else 0.0
+        vector[60] = 1.0 if my_bet_hist[0] else 0.0
+        vector[61] = 1.0 if my_bet_hist[1] else 0.0
+        vector[62] = 1.0 if (not my_bet_hist[0] and not opp_bet_hist[0] and self.draw_round >= 1) else 0.0
+        vector[63] = 1.0 if (not my_bet_hist[1] and not opp_bet_hist[1] and self.draw_round >= 2) else 0.0
+        # グループE
+        vector[64] = 0.0 if my_is_button else 1.0
+        vector[65] = my_draw_hist[0] / 5.0
+        vector[66] = my_draw_hist[1] / 5.0
+        vector[67] = (opp_draw_hist[0] - opp_draw_hist[1]) / 5.0
+        vector[68] = (opp_draw_hist[1] - opp_draw_hist[2]) / 5.0
+        vector[69] = (opp_last_draw - my_last_draw) / 5.0
+        # グループF
+        vector[70] = sum(1 for r, _ in my_discarded if r == _blocker_rank) / 4.0
+        _dead_denom = 20.0 if _is_a5 else 16.0
+        vector[71] = min(1.0, sum(1 for r, _ in my_discarded if r in _premium_ranks) / _dead_denom)
+        vector[72] = 1.0 - opp_last_draw / 5.0
+        vector[73] = sum(1 for h in opp_draw_hist[:self.draw_round] if h == 0) / max(1, self.max_draws)
+        # グループG
+        vector[74] = opp_stack / max(1, self.starting_stack)
+        vector[75] = my_stack / max(1, self.starting_stack)
+        vector[76] = min(2.0, opp_stack / max(1, my_stack)) / 2.0
+        # グループH
+        vector[77] = my_stack / max(1, my_stack + opp_stack)
+        vector[78] = 0.0
+        vector[79] = 0.0
+        # SD/TD 区別
+        vector[80] = self.max_draws / 3.0
+
         vector[48 : 48 + len(mask)] = mask
         return vector
 
@@ -347,6 +443,8 @@ class DualAgentDrawLowballEnv:
             self.hero_bet += paid
             self.pot += paid
             self.hero_opened_current_round = True
+            if self.draw_round == 0:
+                self.hero_raised_predraw = True
             return (0.20 if eff >= 0.70 else -0.25) + opp_draw_bonus
         return 0.0  # check
 
@@ -403,6 +501,7 @@ class DualAgentDrawLowballEnv:
 
     def _draw_hero(self, draw_count: int) -> None:
         discards = discard_indexes_for_family(self.hero_hand, self.family, target_count=draw_count)
+        discarded_cards = [self.hero_hand[i] for i in discards]
         keep = [c for i, c in enumerate(self.hero_hand) if i not in discards]
         while len(keep) < 5 and self.deck:
             keep.append(self.deck.pop())
@@ -410,18 +509,20 @@ class DualAgentDrawLowballEnv:
         self.hero_last_draw_count = draw_count
         self.hero_draw_history[min(2, self.draw_round)] = draw_count
         self.hero_total_draws += draw_count
+        self.hero_discarded_cards.extend(discarded_cards)
 
     def _draw_opp_via_agent(self) -> None:
         opp_obs = self._obs_for(is_hero=False)
-        opp_mask = self._mask_for(self.opp_bet, self.opp_stack)  # all draw actions legal
+        opp_mask = self._mask_for(self.opp_bet, self.opp_stack)
         if self.opp_agent is not None:
             opp_action = self.opp_agent.act(opp_obs, epsilon=self.opp_epsilon, action_mask=opp_mask)
             if opp_mask[opp_action] <= 0:
-                opp_action = 5  # draw_0 fallback
+                opp_action = 5
         else:
             opp_action = 5 + len(discard_indexes_for_family(self.opp_hand, self.family))
         draw_count = max(0, min(5, opp_action - 5))
         discards = discard_indexes_for_family(self.opp_hand, self.family, target_count=draw_count)
+        discarded_cards = [self.opp_hand[i] for i in discards]
         keep = [c for i, c in enumerate(self.opp_hand) if i not in discards]
         while len(keep) < 5 and self.deck:
             keep.append(self.deck.pop())
@@ -429,6 +530,7 @@ class DualAgentDrawLowballEnv:
         self.opp_last_draw_count = draw_count
         self.opp_draw_history[min(2, self.draw_round)] = draw_count
         self.opp_total_draws += draw_count
+        self.opp_discarded_cards.extend(discarded_cards)
 
     # ------------------------------------------------------------------
     # Reward helpers

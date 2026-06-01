@@ -277,15 +277,22 @@ class DrawLowballEnv(gym.Env):
         self.current_bet = 2
         self.hero_bet = 1
         self.opp_bet = 2
-        # Randomise position each episode so both IP and OOP play are learned.
         self.hero_is_button = self.random.random() < 0.5
-        self.opp_last_draw_count = 0
-        # Per-round draw history for opponent (up to 3 rounds).
+        # Opponent draw/bet history.
+        self.opp_last_draw_count: int = 0
         self.opp_draw_history: list[int] = [0, 0, 0]
         self.opp_total_draws: int = 0
-        # Whether opponent bet or raised in each BET round (per-round history).
         self.opp_opened_current_round: bool = False
         self.opp_bet_history: list[bool] = [False, False, False]
+        # Hero draw/bet history (v2: used for action-history features).
+        self.hero_last_draw_count: int = 0
+        self.hero_draw_history: list[int] = [0, 0, 0]
+        self.hero_total_draws: int = 0
+        self.hero_opened_current_round: bool = False
+        self.hero_bet_history: list[bool] = [False, False, False]
+        self.hero_raised_predraw: bool = False
+        # Dead card tracking: cards hero discarded across all draw rounds.
+        self.hero_discarded_cards: list[Card] = []
         return self._observation(), {}
 
     def legal_action_mask(self):
@@ -333,10 +340,12 @@ class DrawLowballEnv(gym.Env):
             self.current_bet = 0
             self.hero_bet = 0
             self.opp_bet = 0
-            # Record this round's BET aggression before resetting
+            # Record this round's BET aggression (both hero and opp) before resetting.
             round_idx = min(2, max(0, self.draw_round - 1))
             self.opp_bet_history[round_idx] = self.opp_opened_current_round
-            self.opp_opened_current_round = False  # reset for next BET round
+            self.hero_bet_history[round_idx] = self.hero_opened_current_round
+            self.opp_opened_current_round = False
+            self.hero_opened_current_round = False
             reward += self._draw_quality_reward(draw_count)
         return self._observation(), reward, False, False, {}
 
@@ -374,16 +383,20 @@ class DrawLowballEnv(gym.Env):
             return 0.05 + 0.10 * equity_edge
         # Value bonus when opponent is likely still drawing
         opp_draw_bonus = 0.05 if self.opp_last_draw_count >= 3 else 0.0
-        if action == 3:  # bet — stronger signal, use draw-adjusted strength
+        if action == 3:  # bet
             self.current_bet = self.small_bet
             self._commit("hero", self.small_bet)
+            self.hero_opened_current_round = True
             base = 0.15 if eff >= 0.58 else -0.12
             return base + opp_draw_bonus
-        if action == 4:  # raise — stronger signal
+        if action == 4:  # raise
             to_call = max(0, self.current_bet - self.hero_bet)
             self.current_bet += self.small_bet
             self.raise_count += 1
             self._commit("hero", to_call + self.small_bet)
+            self.hero_opened_current_round = True
+            if self.draw_round == 0:
+                self.hero_raised_predraw = True
             base = 0.20 if eff >= 0.70 else -0.25
             return base + opp_draw_bonus
         return 0.0
@@ -412,16 +425,20 @@ class DrawLowballEnv(gym.Env):
     def _draw_for(self, who: str, draw_count: int):
         hand = self.hero_hand if who == "hero" else self.opp_hand
         discards = discard_indexes_for_family(hand, self.family, target_count=draw_count)
+        discarded_cards = [hand[i] for i in discards]
         keep = [card for index, card in enumerate(hand) if index not in discards]
         while len(keep) < 5 and self.deck:
             keep.append(self.deck.pop())
+        round_idx = min(2, max(0, self.draw_round))
         if who == "hero":
             self.hero_hand = keep
+            self.hero_last_draw_count = draw_count
+            self.hero_draw_history[round_idx] = draw_count
+            self.hero_total_draws += draw_count
+            self.hero_discarded_cards.extend(discarded_cards)
         else:
             self.opp_hand = keep
             self.opp_last_draw_count = draw_count
-            # Record per-round and cumulative draw history (capped at 3 rounds).
-            round_idx = min(2, max(0, self.draw_round))
             self.opp_draw_history[round_idx] = draw_count
             self.opp_total_draws += draw_count
 
@@ -455,36 +472,23 @@ class DrawLowballEnv(gym.Env):
     def _observation(self):
         vector = np.zeros(DRAW_OBSERVATION_VECTOR_SIZE, dtype=np.float32)
         features = evaluate_lowball(self.hero_hand, self.family)
+
+        # ---- v1 既存フィーチャー ----
         vector[0] = self.draw_round / max(1, self.max_draws)
         vector[1] = 1.0 if self.phase == "BET" else 0.0
         vector[2] = 1.0 if self.phase == "DRAW" else 0.0
-        # Context features: pot odds, position, street, opponent draw history
         vector[3] = self._pot_odds()
         vector[4] = min(self.pot, 100) / 100.0
         vector[5] = 1.0 if self.hero_is_button else 0.0
         vector[6] = 1.0 if self._is_final_street() else 0.0
         vector[7] = self.opp_last_draw_count / 5.0
-        # Opponent draw history: per-round + cumulative + pat flag + aggression
-        vector[13] = self.opp_draw_history[0] / 5.0   # R1 draws
-        vector[14] = self.opp_draw_history[1] / 5.0   # R2 draws
-        vector[23] = self.opp_draw_history[2] / 5.0   # R3 draws
-        vector[24] = self.opp_total_draws / 15.0       # cumulative (max 15 = 3×5)
-        vector[27] = 1.0 if (self.opp_last_draw_count == 0 and self.draw_round > 0) else 0.0
-        vector[28] = 1.0 if self.opp_opened_current_round else 0.0
-        vector[29] = 1.0 if self.opp_bet_history[0] else 0.0   # opp bet/raised in R1
-        vector[30] = 1.0 if self.opp_bet_history[1] else 0.0   # opp bet/raised in R2
-        # draw-adjusted strength: directly expose the teacher's evaluation signal
-        vector[31] = _draw_adjusted_strength(self.hero_hand, self.family, features)
-        # planned draw count: how many cards hero should discard
-        _planned_discards = discard_indexes_for_family(self.hero_hand, self.family)
-        vector[32] = len(_planned_discards) / 5.0
-        # Opponent profile — lets DQN adapt strategy to tight/loose/aggressive opponents
         vector[8] = self.profile.bluff_frequency
         vector[9] = self.profile.open_strength
         vector[10] = self.profile.call_strength
         vector[11] = self.profile.raise_strength
-        # Draws remaining (1.0 = first round, 0.0 = final/no more draws)
         vector[12] = (self.max_draws - self.draw_round) / max(1, self.max_draws)
+        vector[13] = self.opp_draw_history[0] / 5.0
+        vector[14] = self.opp_draw_history[1] / 5.0
         vector[15] = features.made_cards / 5.0
         vector[16] = features.highest_rank / 14.0
         vector[17] = features.rank_sum / 70.0
@@ -493,11 +497,103 @@ class DrawLowballEnv(gym.Env):
         vector[20] = 1.0 if features.straight else 0.0
         vector[21] = 1.0 if features.flush else 0.0
         vector[22] = features.strength
+        vector[23] = self.opp_draw_history[2] / 5.0
+        vector[24] = self.opp_total_draws / 15.0
         vector[25] = self.current_bet / 20.0
         vector[26] = self.raise_count / 4.0
+        vector[27] = 1.0 if (self.opp_last_draw_count == 0 and self.draw_round > 0) else 0.0
+        vector[28] = 1.0 if self.opp_opened_current_round else 0.0
+        vector[29] = 1.0 if self.opp_bet_history[0] else 0.0
+        vector[30] = 1.0 if self.opp_bet_history[1] else 0.0
         vector[40] = 0.0
         vector[41] = 1.0 if self.family == "low-27" else 0.0
         vector[42] = 1.0 if self.family == "low-a5" else 0.0
+
+        # ---- v2 共通計算 ----
+        # ドロー先の手（最適捨て牌後の kept cards）を一度だけ計算して複数スロットで使う
+        _discards = discard_indexes_for_family(self.hero_hand, self.family)
+        _kept = [c for i, c in enumerate(self.hero_hand) if i not in _discards]
+        _discount = max(0.40, 1.0 - len(_discards) * 0.12)
+        if _kept:
+            _kf = evaluate_lowball(_kept, self.family)
+            _draw_target_str = _kf.strength * _discount
+            _draw_target_rank = _kf.highest_rank / 14.0
+        else:
+            _draw_target_str = 0.0
+            _draw_target_rank = 1.0
+
+        # slot 31: v2 修正版 draw_adjusted_strength（重複カードも正しく扱う）
+        vector[31] = _draw_target_str
+        vector[32] = len(_discards) / 5.0
+
+        # プレミアムランク・ブロッカー定義
+        _is_a5 = self.family == "low-a5"
+        _premium_ranks = {14, 2, 3, 4, 5} if _is_a5 else {2, 3, 4, 5}
+        _blocker_rank = 14 if _is_a5 else 2
+
+        # ---- グループA: テーブル状況（HU プレースホルダー） ----
+        vector[33] = 2.0 / 6.0   # active_players=2 (HU固定)
+        vector[34] = 1.0 if self.hero_is_button else 0.0   # hero position
+        vector[35] = 0.0   # players_yet_to_act: HU は hero が先行するため常に0
+
+        # ---- グループC: 進展性・ブロッカー ----
+        vector[36] = _draw_target_str
+        vector[37] = _draw_target_rank
+        vector[38] = sum(1 for r, _ in self.hero_hand if r in _premium_ranks) / 5.0
+        vector[39] = sum(1 for r, _ in self.hero_hand if r == _blocker_rank) / 4.0
+
+        # ---- グループA続き: BET前状況（HU簡易版） ----
+        # HU ではheroが常に先行するため callers/raises_before は簡易化
+        _opp_pos = 0.0 if self.hero_is_button else 1.0   # HU での opp 位置
+        vector[43] = _opp_pos if self.opp_bet_history[0] else 0.0  # original_raiser_pos
+        vector[44] = 0.0   # callers_in_pot: HU では常に0
+        vector[45] = 1.0 if self.opp_opened_current_round else 0.0  # raises_before_hero 近似
+
+        # ---- グループB: BET構造 ----
+        _big_bet = self.small_bet * 2
+        _remaining = max(1, self.max_draws - self.draw_round + (1 if self.phase == "BET" else 0))
+        vector[46] = self.hero_stack / max(1, _big_bet * 4 * _remaining)
+        vector[47] = 1.0 if self.draw_round >= 2 else 0.0
+
+        # ---- グループD: アクション履歴 ----
+        vector[59] = 1.0 if self.hero_raised_predraw else 0.0
+        vector[60] = 1.0 if self.hero_bet_history[0] else 0.0
+        vector[61] = 1.0 if self.hero_bet_history[1] else 0.0
+        # passive street: 双方チェックで終わったラウンド
+        vector[62] = 1.0 if (not self.hero_bet_history[0] and not self.opp_bet_history[0]
+                              and self.draw_round >= 1) else 0.0
+        vector[63] = 1.0 if (not self.hero_bet_history[1] and not self.opp_bet_history[1]
+                              and self.draw_round >= 2) else 0.0
+
+        # ---- グループE: ドロー情報 ----
+        vector[64] = 0.0 if self.hero_is_button else 1.0  # OOP が先ドロー
+        vector[65] = self.hero_draw_history[0] / 5.0
+        vector[66] = self.hero_draw_history[1] / 5.0
+        vector[67] = (self.opp_draw_history[0] - self.opp_draw_history[1]) / 5.0
+        vector[68] = (self.opp_draw_history[1] - self.opp_draw_history[2]) / 5.0
+        vector[69] = (self.opp_last_draw_count - self.hero_last_draw_count) / 5.0
+
+        # ---- グループF: デッドカード・最終BET ----
+        vector[70] = sum(1 for r, _ in self.hero_discarded_cards if r == _blocker_rank) / 4.0
+        _dead_denom = 20.0 if _is_a5 else 16.0
+        vector[71] = min(1.0, sum(1 for r, _ in self.hero_discarded_cards
+                                  if r in _premium_ranks) / _dead_denom)
+        vector[72] = 1.0 - self.opp_last_draw_count / 5.0
+        vector[73] = sum(1 for h in self.opp_draw_history[:self.draw_round] if h == 0) / max(1, self.max_draws)
+
+        # ---- グループG: スタック情報 ----
+        vector[74] = self.opp_stack / max(1, self.starting_stack)
+        vector[75] = self.hero_stack / max(1, self.starting_stack)
+        vector[76] = min(2.0, self.opp_stack / max(1, self.hero_stack)) / 2.0
+
+        # ---- グループH: ICM（キャッシュゲームモードでは0） ----
+        vector[77] = self.hero_stack / max(1, self.hero_stack + self.opp_stack)
+        vector[78] = 0.0
+        vector[79] = 0.0
+
+        # ---- SD/TD 区別フラグ ----
+        vector[80] = self.max_draws / 3.0  # SD=0.333, TD=1.000
+
         mask = self.legal_action_mask()
         vector[48 : 48 + len(mask)] = mask
         return vector

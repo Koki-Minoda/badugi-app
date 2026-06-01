@@ -111,37 +111,205 @@ Draw ゲームにおいて手の価値は「今の強さ」より「ドロー後
 
 ---
 
-## 3. v2 観測ベクトル拡張仕様（計画中）
+## 3. v2 観測ベクトル拡張仕様（設計確定）
 
-### 3.1 追加フィーチャー（slots 33〜39）
+本セクションは決断タイミング別の仕様レビュー（2026-06-01）の結果を記録する。
+4つの決断タイミング（①初回BET / ②DRAW / ③中盤BET / ④最終BET）それぞれで
+「強い人間が見る情報」を洗い出し、26個の新規フィーチャーを確定した。
 
-| スロット | 名前 | 計算式 | 意図 |
-|---------|------|--------|------|
-| 33 | active_players | active_players / 6.0 | テーブル人数（HU=0.33, 4max=0.67, 6max=1.0） |
-| 34 | position_index | position / max(1, active_players-1) | UTG=0.0 〜 BTN=1.0 の連続値 |
-| 35 | players_yet_to_act | players_behind / max(1, active_players-1) | 後ろに何人残っているか |
-| 36 | draw_target_strength | kept_eval.strength × draw_discount | **ドロー後ターゲットハンド強度（最重要）** |
-| 37 | draw_target_high_rank | kept_eval.highest_rank / 14.0 | ドロー先の最高ランク（低いほど良） |
-| 38 | premium_card_count | count(rank ≤ 7 in 2-7, or A/2-5 in A-5) / 5.0 | 低ランクプレミアムカード枚数 |
-| 39 | deuce_blocker | count(rank==2) / 4.0 (2-7) / ace_count / 4.0 (A-5) | ナッツブロッカー枚数 |
+---
 
-**draw_discount の計算**:
-```python
-draw_discount = max(0.40, 1.0 - len(discards) * 0.12)
-# draw0（パット）: 1.00
-# draw1: 0.88
-# draw2: 0.76
-# draw3: 0.64
-# draw4: 0.52
-# draw5: 0.40
+### 3.1 決断タイミング × フィーチャー マトリクス
+
+```
+                         ①初回 ②DRAW ③中盤 ④最終
+active_players             ✓
+hero_position_index        ✓      ✓
+original_raiser_pos        ✓
+players_yet_to_act         ✓
+callers_in_pot             ✓
+raises_before_hero         ✓
+stack_depth_ratio          ✓
+is_big_bet_round           ✓             ✓     ✓
+draw_target_strength       ✓      ✓
+draw_target_high_rank      ✓      ✓
+premium_card_count         ✓      ✓
+deuce_blocker              ✓      ✓
+hero_draws_first                  ✓
+hero_draw_R1                      ✓      ✓
+hero_draw_R2                      ✓      ✓
+hero_raised_predraw        ✓      ✓      ✓
+hero_bet_R1                              ✓
+hero_bet_R2                              ✓
+street_was_passive_R1                    ✓
+street_was_passive_R2                    ✓
+opp_draw_trajectory_R1R2          ✓      ✓
+opp_draw_trajectory_R2R3                 ✓     ✓
+draw_count_differential                  ✓
+dead_twos                                       ✓
+dead_premium_cards                              ✓
+opp_draw_congruence                             ✓
+opp_pat_round_count                             ✓
 ```
 
-### 3.2 vector[31] の修正
+---
 
-現行の `_draw_adjusted_strength` を廃止し、
-`discard_indexes_for_family` ベースの正しい計算に置き換える。
+### 3.2 確定フィーチャー全リスト（27個）
+
+#### グループA: テーブル状況・位置（slots 33〜35, 43〜45）
+
+| スロット | 名前 | 計算式 | 用途 |
+|---------|------|--------|------|
+| 33 | active_players | active_players / 6.0 | テーブル人数。draw枚数の意味もここで変わる |
+| 34 | hero_position_index | hero_pos / max(1, active_players-1) | UTG=0.0 〜 BTN=1.0 |
+| 35 | players_yet_to_act | players_behind / max(1, active_players-1) | 後ろ何人→スクイーズリスク |
+| 43 | original_raiser_position | raiser_pos / max(1, active_players-1) | UTGレイズ vs BTNスチールの区別 |
+| 44 | callers_in_pot | callers_count / max(1, active_players-1) | コール後レイズはバリュー極振り |
+| 45 | raises_before_hero | raise_count_before / 4.0 | リレイズ状況 |
+
+```
+なぜ callers_in_pot と raises_before_hero が両方必要か:
+  callers=2, raises=1（コール2人の後のレイズ）→ バリュー極振り
+  callers=0, raises=1（シンプルなオープン）     → 通常レンジ
+  モデルが両方の積から学習できる
+```
+
+#### グループB: ベッティング構造（slots 46〜47）
+
+| スロット | 名前 | 計算式 | 用途 |
+|---------|------|--------|------|
+| 46 | stack_depth_ratio | hero_stack / (big_bet × 4 × remaining_rounds) | 残りストリートのコミットメント量 |
+| 47 | is_big_bet_round | 1.0 if draw_round >= 2 else 0.0 | スモールベット vs ビッグベット |
+
+```
+2-7TD の固定リミット構造:
+  Pre-draw / Post-draw1: small bet = 1単位
+  Post-draw2 / Final:    big bet  = 2単位（2倍）
+
+is_big_bet_round = 1 の状態で 4-bet = 8単位 = ほぼナッツ宣言
+→ モデルがベット強度のスケールを正確に学習するために必要
+```
+
+#### グループC: 進展性・ブロッカー（slots 36〜39）
+
+| スロット | 名前 | 計算式 | 用途 |
+|---------|------|--------|------|
+| 36 | draw_target_strength | kept_eval.strength × draw_discount | **ドロー後ターゲット強度（最重要）** |
+| 37 | draw_target_high_rank | kept_eval.highest_rank / 14.0 | ドロー先の形の品質 |
+| 38 | premium_card_count | count(rank≤7) / 5.0 ※A-5はA,2,3,4,5 | 低ランクプレミアム枚数 |
+| 39 | deuce_blocker | count(rank==2) / 4.0 ※A-5はace_count | ナッツブロッカー枚数 |
 
 ```python
+# draw_discount: ドロー枚数に応じた改善期待値の割引率
+draw_discount = max(0.40, 1.0 - len(discards) * 0.12)
+# draw0（パット）: 1.00    draw3: 0.64
+# draw1:           0.88    draw4: 0.52
+# draw2:           0.76    draw5: 0.40
+
+# 具体例 2,2,2,3,7（2-7TD）:
+# kept=[2,3,7], kept_strength=0.910, draw2 → discount=0.76
+# draw_target_strength = 0.910 × 0.76 = 0.692  ← 現行の 0.626 より正確
+
+# 具体例 2,5,8,9,10（2-7TD）:
+# kept=[2,5,8,9], kept_strength=0.320, draw1 → discount=0.88
+# draw_target_strength = 0.320 × 0.88 = 0.282
+```
+
+#### グループD: アクション履歴（slots 59〜63）
+
+| スロット | 名前 | 値 | 用途 |
+|---------|------|-----|------|
+| 59 | hero_raised_predraw | 0 or 1 | hero がプリドローでレイズしたか |
+| 60 | hero_bet_R1 | 0 or 1 | R1 BETで hero がBET/RAISEしたか |
+| 61 | hero_bet_R2 | 0 or 1 | R2 BETで hero がBET/RAISEしたか |
+| 62 | street_was_passive_R1 | 0 or 1 | R1 BETが双方チェックで終わった |
+| 63 | street_was_passive_R2 | 0 or 1 | R2 BETが双方チェックで終わった |
+
+```
+なぜ hero のアクション履歴が必要か:
+
+  ドンクベット検出:
+    R1で hero がレイズ（hero_raised_predraw=1）
+    R2で相手がいきなりBET（opp_opened_current_round=1）
+    → 「プリドローのレイザーに向かってベット」= ドンクベット
+    → hero のアクション履歴がないと ドンクかどうか判定不能
+
+  チェックレイズ検出:
+    street_was_passive_R1=1 → その後の R2 BET は「静かな後の爆発」= 強いシグナル
+
+  相手のイメージ管理:
+    hero_draw_R1=3, hero_bet_R1=1 → 「3枚引いてベット」= ブラフ or 引けた
+    hero_draw_R1=1, hero_bet_R1=1 → 「1枚引いてベット」= 自信のバリュー
+```
+
+#### グループE: ドローフェーズ情報（slots 64〜69）
+
+| スロット | 名前 | 計算式 | 用途 |
+|---------|------|--------|------|
+| 64 | hero_draws_first | 1.0 if OOP else 0.0 | OOPでのパットは最強シグナル |
+| 65 | hero_draw_R1 | hero_draw_count_R1 / 5.0 | 自分のR1ドロー枚数（相手が見た情報） |
+| 66 | hero_draw_R2 | hero_draw_count_R2 / 5.0 | 自分のR2ドロー枚数 |
+| 67 | opp_traj_R1R2 | (opp_draw_R1 - opp_draw_R2) / 5.0 | 相手の改善軌跡（正=改善中） |
+| 68 | opp_traj_R2R3 | (opp_draw_R2 - opp_draw_R3) / 5.0 | 相手の最終改善軌跡 |
+| 69 | draw_diff_current | (opp_last_draw - hero_last_draw) / 5.0 | 今ラウンドの相対ドロー差 |
+
+```
+draw_diff_current の意味:
+  +0.6 → 相手 draw3、自分 draw0（パット）→ 自分が圧倒的有利
+   0.0 → 同枚数 → 中立（完成してないならベット控える）
+  -0.6 → 自分 draw3、相手 draw0       → 相手が有利
+
+「同枚数でベット控える」の学習:
+  draw_diff=0.0 + hand_strength 低い → check が最適解
+  draw_diff=0.0 + hand_strength 高い（強い形）→ ベット可
+
+OOP パットの強さ:
+  hero_draws_first=1（OOP）+ hero_draw_R1=0（パット）
+  → 「後ろを見ずに手を守った」= 最強のストレングスシグナル
+  → 相手はこの情報を見てドロー枚数を決める
+```
+
+#### グループF: デッドカード・最終BET（slots 70〜73）
+
+| スロット | 名前 | 計算式 | 用途 |
+|---------|------|--------|------|
+| 70 | dead_twos | dead_2s_count / 4.0 | 自分が見た2の枚数（手元+捨て牌） |
+| 71 | dead_premium | dead_premium_count / 16.0 | 2,3,4,5（A-5はA,2,3,4,5）のデッド数 |
+| 72 | opp_draw_congruence | 1.0 - opp_last_draw / 5.0 | ドロー軌跡とベットの整合性 |
+| 73 | opp_pat_rounds | opp_pat_count / max_draws | パットした回数（range floor推定） |
+
+```
+dead_twos の意味（2-7TD）:
+  自分が3枚の2を見た（手元に持っていた or 捨てた）
+  → 相手のデッキに2は最大1枚
+  → 相手がナッツ（2-x-x-x-x）を持っている確率が激減
+  → より広いブラフキャッチレンジが正当化される
+
+opp_draw_congruence の使い方:
+  draw3 → 最終ベット: congruence=0.4 → ブラフ警戒
+  draw0 → 最終ベット: congruence=1.0 → バリュー寄り
+  → ペア（duplicate_ranks > 0, slot 18）でもコールが正当化される条件
+
+opp_pat_rounds の意味:
+  R1からパット（opp_pat_rounds=1.0）
+    → 最低でも 9-low 以上は確定
+    → range floor が上がる = tight なコール判断が必要
+  全ラウンドドロー（opp_pat_rounds=0.0）
+    → ブラフ頻度高い可能性 = 広いブラフキャッチが正当化
+```
+
+---
+
+### 3.3 vector[31] の修正
+
+現行の `_draw_adjusted_strength` は「ランク10以上のカードのみ」を捨て対象として扱うため、
+**重複カード（ペア、トリップス）を捨てるケースを計算しない欠陥**がある。
+
+```python
+# 修正前（欠陥あり）
+bad_indexes = [i for i, (r, _) in enumerate(hand) if _must_discard_rank(r, family)]
+# rank>=10 のみ → 2,2,2,3,7 は bad_indexes=[] → raw strength をそのまま返す
+
 # 修正後
 discards = discard_indexes_for_family(hand, family)
 kept = [c for i, c in enumerate(hand) if i not in discards]
@@ -153,15 +321,27 @@ else:
     vector[31] = 0.0
 ```
 
-### 3.3 位置インデックスの計算方針（多人数対応）
+---
+
+### 3.4 スロット割当の全体図（v2確定版）
 
 ```
-4人テーブル（実戦最大の想定）:
-  UTG  (0番): position_index = 0 / 3 = 0.00
-  HJ   (1番): position_index = 1 / 3 = 0.33
-  CO   (2番): position_index = 2 / 3 = 0.67
-  BTN  (3番): position_index = 3 / 3 = 1.00
+ 0〜32:  既存フィーチャー（一部修正あり）
+33〜35:  テーブル状況・位置（active_players, hero_pos, players_behind）
+36〜39:  進展性・ブロッカー（draw_target_str, rank, premium, deuce）
+40〜42:  バリアントフラグ（既存）
+43〜47:  BET構造（raiser_pos, callers, raises, stack_depth, big_bet_flag）
+48〜58:  legal action mask（既存, 11スロット）
+59〜63:  アクション履歴（hero_raised, hero_bet×2, passive×2）
+64〜69:  ドロー情報（draws_first, hero_draw×2, opp_traj×2, draw_diff）
+70〜73:  最終BET用（dead_twos, dead_premium, congruence, pat_rounds）
+74〜95:  未使用（将来拡張用, 22スロット）
 ```
+
+**v1 → v2 の変化:**
+- 使用スロット: 32 → 59（+27）
+- 未使用スロット: 53 → 22（-31 使用）
+- 全モデルの再学習が必要（観測形状は 96 次元のまま変更なし）
 
 ---
 

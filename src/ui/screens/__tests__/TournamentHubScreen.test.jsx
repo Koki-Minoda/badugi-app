@@ -2,10 +2,12 @@ import React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import TournamentHubScreen from "../TournamentHubScreen.jsx";
+import { saveActiveMTTSnapshot } from "../../tournament/tournamentManager.js";
 
 describe("TournamentHubScreen", () => {
   afterEach(() => {
     cleanup();
+    window.localStorage.clear();
   });
 
   it("renders the Badugi Series hub from tournament definitions", () => {
@@ -143,6 +145,27 @@ describe("TournamentHubScreen", () => {
     );
     fireEvent.click(screen.getByTestId("tournament-resume"));
     expect(handleResume).toHaveBeenCalledWith(snapshot);
+  });
+
+  it("shows resume controls when an active snapshot exists in storage", () => {
+    saveActiveMTTSnapshot({
+      version: 1,
+      config: { name: "Store Tournament" },
+      tournamentState: {
+        isFinished: false,
+        playersRemaining: 10,
+        players: {
+          "hero-player": { id: "hero-player", stack: 500, busted: false },
+        },
+      },
+      hero: { playerId: "hero-player" },
+    });
+
+    render(<TournamentHubScreen />);
+
+    expect(screen.getByTestId("tournament-resume-panel").textContent).toContain(
+      "Resume Tournament",
+    );
   });
 
   it("retire clears the active resume panel", () => {

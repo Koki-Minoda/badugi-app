@@ -1,9 +1,11 @@
 import { getStageById } from "../../config/tournamentStages";
 import { TOURNAMENT_OPPONENTS } from "../../config/tournamentOpponents";
+import { safeGetItem, safeRemoveItem, safeSetItem } from "../../storage/core.js";
+import { STORAGE_KEYS } from "../../storage/keys.js";
 import { disableDealerChoiceMode } from "../dealersChoice/dealerChoiceManager.js";
 
-const SESSION_KEY = "session.tournament.active";
-const MTT_ACTIVE_SAVE_KEY = "mgx.tournament.mtt.active";
+const SESSION_KEY = STORAGE_KEYS.TOURNAMENT_SESSION_ACTIVE;
+const MTT_ACTIVE_SAVE_KEY = STORAGE_KEYS.TOURNAMENT_MTT_ACTIVE;
 export const ACTIVE_TOURNAMENT_SESSION_KEY = SESSION_KEY;
 export const ACTIVE_MTT_SAVE_KEY = MTT_ACTIVE_SAVE_KEY;
 
@@ -19,10 +21,6 @@ function randomInt(min, max) {
   const low = Math.ceil(min);
   const high = Math.floor(max);
   return Math.floor(Math.random() * (high - low + 1)) + low;
-}
-
-function hasStorage() {
-  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 }
 
 function cloneJson(value) {
@@ -166,25 +164,18 @@ function ensureTableAssignments(session) {
 }
 
 export function saveActiveTournamentSession(session) {
-  if (!hasStorage()) return session;
-  window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  if (!safeSetItem(SESSION_KEY, session, { silent: true })) {
+    console.warn("[TD2][SNAPSHOT_SAVE_FAILED]");
+  }
   return session;
 }
 
 export function loadActiveTournamentSession() {
-  if (!hasStorage()) return null;
-  try {
-    const raw = window.localStorage.getItem(SESSION_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch (err) {
-    console.warn("Failed to load tournament session:", err);
-    return null;
-  }
+  return safeGetItem(SESSION_KEY, null, { silent: true });
 }
 
 export function clearActiveTournamentSession() {
-  if (!hasStorage()) return;
-  window.localStorage.removeItem(SESSION_KEY);
+  safeRemoveItem(SESSION_KEY, { silent: true });
 }
 
 export function createMTTSaveSnapshot({
@@ -223,30 +214,22 @@ export function createMTTSaveSnapshot({
 }
 
 export function saveActiveMTTSnapshot(input = {}) {
-  if (!hasStorage()) return input?.version === 1 ? input : null;
   const snapshot = input?.version === 1 ? input : createMTTSaveSnapshot(input);
   if (!snapshot) return null;
-  window.localStorage.setItem(MTT_ACTIVE_SAVE_KEY, JSON.stringify(snapshot));
+  if (!safeSetItem(MTT_ACTIVE_SAVE_KEY, snapshot, { silent: true })) {
+    console.warn("[TD2][SNAPSHOT_SAVE_FAILED]");
+  }
   return snapshot;
 }
 
 export function loadActiveMTTSnapshot() {
-  if (!hasStorage()) return null;
-  try {
-    const raw = window.localStorage.getItem(MTT_ACTIVE_SAVE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (parsed?.version !== 1 || !parsed?.tournamentState) return null;
-    return parsed;
-  } catch (err) {
-    console.warn("Failed to load active MTT snapshot:", err);
-    return null;
-  }
+  const parsed = safeGetItem(MTT_ACTIVE_SAVE_KEY, null, { silent: true });
+  if (parsed?.version !== 1 || !parsed?.tournamentState) return null;
+  return parsed;
 }
 
 export function clearActiveMTTSnapshot() {
-  if (!hasStorage()) return;
-  window.localStorage.removeItem(MTT_ACTIVE_SAVE_KEY);
+  safeRemoveItem(MTT_ACTIVE_SAVE_KEY, { silent: true });
 }
 
 export function isResumeableMTTSnapshot(snapshot) {

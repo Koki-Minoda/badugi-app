@@ -1,10 +1,14 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ACTIVE_MTT_SAVE_KEY,
+  ACTIVE_TOURNAMENT_SESSION_KEY,
+  clearActiveTournamentSession,
   clearActiveMTTSnapshot,
   createMTTSaveSnapshot,
   isResumeableMTTSnapshot,
+  loadActiveTournamentSession,
   loadActiveMTTSnapshot,
+  saveActiveTournamentSession,
   saveActiveMTTSnapshot,
 } from "../../tournament/tournamentManager.js";
 
@@ -61,6 +65,8 @@ const baseState = {
 
 describe("MTT save snapshot", () => {
   afterEach(() => {
+    vi.restoreAllMocks();
+    clearActiveTournamentSession();
     clearActiveMTTSnapshot();
     window.localStorage.clear();
   });
@@ -145,5 +151,58 @@ describe("MTT save snapshot", () => {
     saveActiveMTTSnapshot({ tournamentState: baseState, heroPlayerId: "hero-player" });
     clearActiveMTTSnapshot();
     expect(loadActiveMTTSnapshot()).toBeNull();
+  });
+
+  it("returns null for corrupted active MTT snapshots", () => {
+    window.localStorage.setItem(ACTIVE_MTT_SAVE_KEY, "{bad json");
+
+    expect(() => loadActiveMTTSnapshot()).not.toThrow();
+    expect(loadActiveMTTSnapshot()).toBeNull();
+  });
+
+  it("does not throw when active MTT snapshot storage reads fail", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("storage unavailable");
+    });
+
+    expect(() => loadActiveMTTSnapshot()).not.toThrow();
+    expect(loadActiveMTTSnapshot()).toBeNull();
+  });
+
+  it("warns and returns the snapshot when active MTT snapshot save fails", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("quota");
+    });
+
+    const snapshot = saveActiveMTTSnapshot({
+      tournamentState: baseState,
+      heroPlayerId: "hero-player",
+    });
+
+    expect(snapshot).toMatchObject({ version: 1, stageId: "store" });
+    expect(warnSpy).toHaveBeenCalledWith("[TD2][SNAPSHOT_SAVE_FAILED]");
+  });
+
+  it("does not throw when active MTT snapshot remove fails", () => {
+    vi.spyOn(Storage.prototype, "removeItem").mockImplementation(() => {
+      throw new Error("remove failed");
+    });
+
+    expect(() => clearActiveMTTSnapshot()).not.toThrow();
+  });
+
+  it("roundtrips active tournament sessions through the session snapshot key", () => {
+    const session = {
+      id: "session-1",
+      stageId: "store",
+      status: "active",
+      remainingPlayers: 18,
+    };
+
+    saveActiveTournamentSession(session);
+
+    expect(window.localStorage.getItem(ACTIVE_TOURNAMENT_SESSION_KEY)).toBeTruthy();
+    expect(loadActiveTournamentSession()).toEqual(session);
   });
 });

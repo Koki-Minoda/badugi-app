@@ -535,7 +535,7 @@ node scripts/verifyAiModelAssets.mjs
 
 ---
 
-## 7. 実装状況（2026-06-01現在）
+## 7. 実装状況（2026-06-02現在）
 
 | 項目 | 状態 | 備考 |
 |-----|------|------|
@@ -545,11 +545,21 @@ node scripts/verifyAiModelAssets.mjs
 | evaluate_selfplay_draw.py | ✅ 完成 | 5プロファイル評価 |
 | export_draw_dqn_onnx.py | ✅ 完成 | self-play用エントリ追加済み |
 | DeuceToSevenTripleDrawController.getCpuActionAsync | ✅ 完成 | ONNX推論+フォールバック |
-| ONNX HU self-play（2-7TD / A-5TD） | 🔄 訓練中 | 20k エピソード進行中 |
-| v2 観測ベクトル（slots 33-79, 33個） | 📋 設計済み | **未実装** |
+| v2 観測ベクトル（slots 31-80, 33軸） | ✅ 実装済み | draw_lowball_env.py / selfplay両方 |
+| A-5 TD self-play（D02） | ✅ 25k完了・standard適用済み | avg_reward=0.53、D02のみ対象 |
+| 2-7 TD self-play（D01） | 🔄 訓練中 | 累計50k相当進行中 |
+| **SD（S01/S02）専用学習** | ❌ **未実装** | **TD と別物。max_draws=1で独立学習が必要** |
 | 多人数対応環境（3〜4人） | 📋 設計済み | **未実装** |
 | 3〜4人カリキュラム訓練 | 📋 設計済み | HU完走後に着手 |
 | ICM-weighted reward 環境 | 📋 将来課題 | 報酬関数の再設計が必要 |
+
+### TD / SD 分離方針（2026-06-02 確定）
+
+**SD（Single Draw）はTDとは別のゲームとして扱う。**
+
+- プリドローレンジが大幅に異なる（SDは1回しかドローできないため、スタートハンド選択が別物）
+- 現行デプロイ済みの S01/S02 ONNX はすべてTD（max_draws=3）学習モデルの流用であり、SD として機能していない
+- SD 専用学習は `max_draws=1` で独立したモデルとして立て直す。TD チェックポイントからの warm-start は避ける（戦略が乖離しすぎている）
 
 ---
 

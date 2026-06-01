@@ -565,17 +565,16 @@
     "id": "model-a5draw-standard-dqn-v1",
     "version": "v1",
     "variantIds": [
-      "D02",
-      "S02"
+      "D02"
     ],
     "characterIds": [],
     "tier": "standard",
     "onnx": "models/a5draw_standard_dqn_v1.onnx",
-    "checksumSha256": "1583317d33cfb577adfe8e6432d8db439e08881547a5dbdd9ef1ef3ca2be1368",
-    "trainingRun": "draw_a5_standard_5k_20260505",
-    "trainingCheckpoint": "low-a5_draw_dqn_latest.pt",
+    "checksumSha256": "fbf39b14f8d8489d3b5688727fa108f1f8fc9591ed9e3a05fef68cacc56a2a46",
+    "trainingRun": "draw_a5_selfplay_td_25k_20260602",
+    "trainingCheckpoint": "low-a5_selfplay_dqn_latest.pt",
     "trainingStatus": "active",
-    "trainingNotes": "Current-env A-5 draw DQN for standard D02/S02 CPUs. Trained 5k episodes against mixed opponent profiles with teacher warmup, fixture replay, and imitation support. Last 500 episode reward was positive; requires human/practice gate before promotion.",
+    "trainingNotes": "A-5 Triple Draw専用モデル（D02のみ）。DualAgentDrawLowballEnv self-playで累計25kエピソード学習、avg_reward=0.53。S02（A-5 SD）はプリドローレンジが別物のため未学習・別途立て直し予定。",
     "featureSet": "draw-lowball-observation-v1",
     "productionRequired": true,
     "inputShape": [

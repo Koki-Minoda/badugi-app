@@ -46,6 +46,26 @@ describe("career profile", () => {
     });
   });
 
+  it("falls back to default profile for corrupted storage JSON", () => {
+    window.localStorage.setItem(CAREER_PROFILE_KEY, "{bad json");
+
+    expect(loadCareerProfile()).toMatchObject({
+      version: 1,
+      unlockedVariants: ["badugi"],
+      completedTournaments: [],
+    });
+  });
+
+  it("does not throw for schema-invalid career payloads", () => {
+    window.localStorage.setItem(
+      CAREER_PROFILE_KEY,
+      JSON.stringify({ version: 1, completedTournaments: "invalid" }),
+    );
+
+    expect(() => loadCareerProfile()).not.toThrow();
+    expect(loadCareerProfile().completedTournaments).toEqual([]);
+  });
+
   it("records Store, Local, and World champion progress", () => {
     resetCareerProfile();
 

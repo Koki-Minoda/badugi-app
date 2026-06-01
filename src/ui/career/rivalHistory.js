@@ -1,13 +1,13 @@
-export const RIVAL_HISTORY_KEY = "mgx.career.rivals";
+import { STORAGE_KEYS } from "../../storage/keys.js";
+import { safeGetItem, safeSetItem } from "../../storage/core.js";
+import { isPlainObject } from "../../storage/schemas.js";
+
+export const RIVAL_HISTORY_KEY = STORAGE_KEYS.CAREER_RIVALS;
 
 const DEFAULT_RIVAL_HISTORY = {
   version: 1,
   rivals: {},
 };
-
-function hasStorage() {
-  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
-}
 
 function normalizeEntry(entry = {}) {
   return {
@@ -21,22 +21,16 @@ function normalizeEntry(entry = {}) {
 }
 
 export function loadRivalHistory() {
-  if (!hasStorage()) return { ...DEFAULT_RIVAL_HISTORY, rivals: {} };
-  try {
-    const raw = window.localStorage.getItem(RIVAL_HISTORY_KEY);
-    if (!raw) return { ...DEFAULT_RIVAL_HISTORY, rivals: {} };
-    const parsed = JSON.parse(raw);
-    const rivals = Object.fromEntries(
-      Object.entries(parsed?.rivals ?? {}).map(([id, entry]) => [
-        id,
-        normalizeEntry({ ...entry, opponentId: id }),
-      ]),
-    );
-    return { version: 1, rivals };
-  } catch (err) {
-    console.warn("[RivalHistory] Failed to load:", err);
-    return { ...DEFAULT_RIVAL_HISTORY, rivals: {} };
-  }
+  const parsed = safeGetItem(RIVAL_HISTORY_KEY, null);
+  if (!parsed) return { ...DEFAULT_RIVAL_HISTORY, rivals: {} };
+  if (!isPlainObject(parsed?.rivals)) return { ...DEFAULT_RIVAL_HISTORY, rivals: {} };
+  const rivals = Object.fromEntries(
+    Object.entries(parsed?.rivals ?? {}).map(([id, entry]) => [
+      id,
+      normalizeEntry({ ...entry, opponentId: id }),
+    ]),
+  );
+  return { version: 1, rivals };
 }
 
 export function saveRivalHistory(history) {
@@ -49,9 +43,7 @@ export function saveRivalHistory(history) {
       ]),
     ),
   };
-  if (hasStorage()) {
-    window.localStorage.setItem(RIVAL_HISTORY_KEY, JSON.stringify(normalized));
-  }
+  safeSetItem(RIVAL_HISTORY_KEY, normalized);
   return normalized;
 }
 

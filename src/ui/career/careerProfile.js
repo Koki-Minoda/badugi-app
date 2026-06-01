@@ -4,8 +4,10 @@ import {
   getTournamentVariantById,
 } from "../../config/tournamentUnlocks.js";
 import { TOURNAMENT_STAGE_IDS, getStageById } from "../../config/tournamentStages.js";
+import { STORAGE_KEYS } from "../../storage/keys.js";
+import { safeGetItem, safeSetItem } from "../../storage/core.js";
 
-export const CAREER_PROFILE_KEY = "mgx.career.profile";
+export const CAREER_PROFILE_KEY = STORAGE_KEYS.CAREER_PROFILE;
 export const CAREER_PROFILE_VERSION = 1;
 export const BASE_CAREER_VARIANT_ID = "badugi";
 
@@ -24,10 +26,6 @@ const DEFAULT_PROFILE = {
   achievements: [],
   statistics: { ...DEFAULT_STATISTICS },
 };
-
-function hasStorage() {
-  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
-}
 
 function cloneJson(value) {
   return JSON.parse(JSON.stringify(value));
@@ -108,30 +106,20 @@ export function createDefaultCareerProfile() {
 }
 
 export function loadCareerProfile() {
-  if (!hasStorage()) return createDefaultCareerProfile();
-  try {
-    const raw = window.localStorage.getItem(CAREER_PROFILE_KEY);
-    if (!raw) return createDefaultCareerProfile();
-    return normalizeCareerProfile(JSON.parse(raw));
-  } catch (err) {
-    console.warn("[Career] Failed to load career profile:", err);
-    return createDefaultCareerProfile();
-  }
+  const stored = safeGetItem(CAREER_PROFILE_KEY, null);
+  if (!stored) return createDefaultCareerProfile();
+  return normalizeCareerProfile(stored);
 }
 
 export function saveCareerProfile(profile) {
   const normalized = normalizeCareerProfile(profile);
-  if (hasStorage()) {
-    window.localStorage.setItem(CAREER_PROFILE_KEY, JSON.stringify(normalized));
-  }
+  safeSetItem(CAREER_PROFILE_KEY, normalized);
   return normalized;
 }
 
 export function resetCareerProfile() {
   const next = createDefaultCareerProfile();
-  if (hasStorage()) {
-    window.localStorage.setItem(CAREER_PROFILE_KEY, JSON.stringify(next));
-  }
+  safeSetItem(CAREER_PROFILE_KEY, next);
   return next;
 }
 

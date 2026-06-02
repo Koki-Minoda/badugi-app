@@ -341,18 +341,18 @@
   },
   {
     "id": "model-badugi-pro-v1",
-    "version": "v2",
+    "version": "v3",
     "variantIds": [
       "D03"
     ],
     "characterIds": [],
     "tier": "pro",
     "onnx": "models/badugi_pro_v1.onnx",
-    "checksumSha256": "4325e670b9b0a4360060fa5285f372b6cb85d4264b49dc5ccd0d5f3ba8211b5d",
-    "trainingRun": "badugi_sixmax_open_spot_20k_20260502",
-    "trainingCheckpoint": "badugi_dqn_015000_20260502-145626.pt",
+    "checksumSha256": "7735e4367f9e24eab5481075855ed6ef221a5d06c053cf70bc449ec3d7fba3ce",
+    "trainingRun": "badugi_v2obs_perf_50k_20260602",
+    "trainingCheckpoint": "badugi_dqn_050000_20260602-150628.pt",
     "trainingStatus": "active",
-    "trainingNotes": "6-max open-spot/range-equity checkpoint selected for Pro. 7-profile x 2-seed checkpoint gate: avgReward 2.307, showdownWinRate 0.674, foldRate 0.159, Standard v3 delta +0.911. This is a synthetic RL gate result, not a verified 60%+ win rate against human players. Not promoted to Iron because negative raise-EV actions remain high.",
+    "trainingNotes": "v2obs (slots 61-74 追加: hero/opp bet履歴・draw軌跡・deadカード・OOPフラグ・stack比) + 学習高速化（evaluate_badugi lru_cache・counterfactual_continue間引き）で50kエピソード学習。gate: avgReward 1.711, showdownWinRate 64.4%, foldRate 24.4%, vs-pro delta +1.077（standard/pro/iron/worldmaster全通過）。分散±3.49・worst_profile 1.172を考慮しPro適用。Iron昇格にはstronger opponent profilingと追加学習が必要。",
     "featureSet": "badugi-observation-v1-ev-range",
     "productionRequired": true,
     "inputShape": [

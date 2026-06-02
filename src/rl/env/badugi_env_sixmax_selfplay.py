@@ -235,37 +235,15 @@ class SixMaxBadugiEnv:
         if self.phase != "BET":
             return
         while self.bet_queue and self.bet_queue[0] != self.hero_seat:
-            # Batch pre-fetch: gather all consecutive non-hero non-folded seats
-            pre_seats = []
-            for s in self.bet_queue:
-                if s == self.hero_seat:
-                    break
-                if not self.players[s]["folded"]:
-                    pre_seats.append(s)
-                    # Stop batch at first potential raiser to avoid stale obs
-                    # (conservative: only pre-fetch up to 3 non-raising opponents)
-                    if len(pre_seats) >= 3:
-                        break
-
-            if not pre_seats:
-                # Skip folded seats at front
-                if self.bet_queue and self.players[self.bet_queue[0]]["folded"]:
-                    self.bet_queue.popleft()
-                    continue
-                break
-
-            actions = self._get_opp_actions_batched(pre_seats, "BET")
-
-            for seat, action in zip(pre_seats, actions):
-                if not self.bet_queue or self.bet_queue[0] != seat:
-                    break  # state changed (raise re-queued), recompute
-                done, _, _ = self._apply_action(seat, action)
-                if done:
-                    self._game_ended = True
-                    return
-                if action in (3, 4):  # BET or RAISE — queue rebuilt, re-fetch
-                    break
-
+            seat = self.bet_queue[0]
+            if self.players[seat]["folded"]:
+                self.bet_queue.popleft()
+                continue
+            action = self._get_opp_action_bet(seat)
+            done, _, _ = self._apply_action(seat, action)
+            if done:
+                self._game_ended = True
+                return
         # If queue is empty and hero isn't here, round ended before hero acted
         if not self.bet_queue and self.phase == "BET":
             done, _, _ = self._advance_from_bet(0.0)

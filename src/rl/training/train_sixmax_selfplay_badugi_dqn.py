@@ -69,8 +69,8 @@ class SixMaxSelfPlayConfig:
     opp_epsilon: float = 0.05
     opponent_update_interval: int = 1_000  # less frequent than heads-up (more stable)
     train_every_steps: int = 4             # slightly less frequent due to 6x more steps/ep
-    hidden_dim: int = 256                  # larger network for 6-max complexity
-    learning_rate: float = 5e-5            # conservative lr for 1M run
+    hidden_dim: int = 192                  # Pro v3と同じサイズ（warm-startとの互換性）
+    learning_rate: float = 1e-4
     save_interval: int = 50_000
     log_interval: int = 1_000
     output_dir: str = "rl/models/badugi_sixmax_selfplay"

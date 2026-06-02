@@ -437,7 +437,7 @@ class SixMaxBadugiEnv:
         return -1.0
 
     def _showdown(self) -> float:
-        """Evaluate all hands; return hero's reward."""
+        """Evaluate all hands; return hero's reward (normalized to [-1, +3] scale)."""
         self.terminal_reason = "showdown"
         active = self._active_seats_list()
         scores = {s: evaluate_badugi(self.players[s]["hand"]) for s in active}
@@ -445,15 +445,13 @@ class SixMaxBadugiEnv:
         best_count = max(s[0] for s in scores.values())
         best_seats = [s for s in active if scores[s][0] == best_count]
         if len(best_seats) > 1:
-            # Tiebreak: lowest rank sum
             min_sum = min(sum(scores[s][1]) for s in best_seats)
             winners = [s for s in best_seats if sum(scores[s][1]) == min_sum]
         else:
             winners = best_seats
-        share = self.pot / len(winners)
         if self.hero_seat in winners:
-            return share - (self.pot - share) / max(1, len(active) - len(winners))
-        # Hero lost
+            # Normalize: same scale as _settle — caps at +3.0
+            return 1.0 + min(2.0, self.pot / 40.0)
         return -1.0
 
     # ------------------------------------------------------------------

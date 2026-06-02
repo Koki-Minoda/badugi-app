@@ -242,7 +242,7 @@ export class BadugiEngine extends DrawEngineBase {
         applyRaiseState(next, seatIndex, metadata);
         break;
       case "DRAW":
-        applyDrawState(target, metadata);
+        applyDrawState(target, metadata, next.metadata?.drawRoundIndex ?? next.drawRoundIndex ?? 0);
         break;
       default:
         target.lastAction = normalizedType;
@@ -658,7 +658,7 @@ function findDrawableSeat(players = [], startIndex = 0) {
   return ((startIndex % players.length) + players.length) % players.length;
 }
 
-function applyDrawState(target, metadata = {}) {
+function applyDrawState(target, metadata = {}, drawRoundIndex = 0) {
   const drawCount =
     metadata.drawCount ??
     (Array.isArray(metadata.replacedCards) ? metadata.replacedCards.length : 0) ??
@@ -673,10 +673,20 @@ function applyDrawState(target, metadata = {}) {
   target.hasActedThisRound = true;
   target.lastDrawCount = drawCount;
   target.lastAction = metadata.actionLabel ?? (drawCount > 0 ? `DRAW(${drawCount})` : "Pat");
+  // v2obs: draw history per round
+  if (!Array.isArray(target.drawHistory)) target.drawHistory = [0, 0, 0];
+  const roundIdx = Math.max(0, Math.min(2, Number(drawRoundIndex) || 0));
+  target.drawHistory[roundIdx] = drawCount;
+  // v2obs: discarded cards (for dead-card tracking)
+  if (!Array.isArray(target.discardedCards)) target.discardedCards = [];
+  if (Array.isArray(metadata.replacedCards)) {
+    target.discardedCards.push(...metadata.replacedCards);
+  }
 }
 
 function transitionEngineToDrawState(table, { dealerIndex = 0, nextRound = 0, numPlayers = 6 } = {}) {
   const players = table.players ?? [];
+  const betRoundIdx = Math.max(0, Math.min(2, (nextRound - 1 + 1) % 3)); // pre-draw=0, after-d1=1, after-d2=2
   const drawStartBase = calcDrawStartIndex(
     dealerIndex,
     nextRound,
@@ -684,6 +694,10 @@ function transitionEngineToDrawState(table, { dealerIndex = 0, nextRound = 0, nu
   );
   const firstToDraw = findDrawableSeat(players, drawStartBase);
   const resetPlayers = players.map((p) => {
+    if (!p) return p;
+    // v2obs: save current round's bet flag into betHistory, then reset
+    const betHistory = Array.isArray(p.betHistory) ? [...p.betHistory] : [false, false, false];
+    betHistory[betRoundIdx] = p.openedCurrentRound ?? false;
     // All-in players are done with BET actions, but in draw poker they still
     // receive their draw decision while live in the hand.
     const out = !isSeatEligibleForDraw(p);
@@ -693,6 +707,8 @@ function transitionEngineToDrawState(table, { dealerIndex = 0, nextRound = 0, nu
       canDraw: !out,
       hasActedThisRound: out ? true : false,
       lastAction: out ? p?.lastAction || "Fold" : p?.lastAction ?? "",
+      betHistory,
+      openedCurrentRound: false,
     };
   });
   table.players = resetPlayers;
@@ -827,6 +843,7 @@ function applyRaiseState(table, seatIndex, metadata = {}) {
   workingMeta.reopenedAction = reopenedAction;
   metadata.reopenedAction = reopenedAction;
   player.hasActedThisRound = true;
+  if (reopenedAction) player.openedCurrentRound = true; // v2obs: bet/raise aggressor flag
   player.lastAction =
     workingMeta.actionLabel ??
     (reopenedAction

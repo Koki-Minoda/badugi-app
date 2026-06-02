@@ -399,6 +399,17 @@ export function buildBadugiObservationPayload({
       opponentFoldability: opponentFoldabilityAverage,
       opponentBluffFrequency: opponentBluffFrequencyAverage,
       maxStack,
+      // v2obs: hero per-round history (populated by BadugiEngine)
+      betHistory: Array.isArray(actor?.betHistory) ? actor.betHistory : [false, false, false],
+      openedCurrentRound: actor?.openedCurrentRound ?? false,
+      drawHistory: Array.isArray(actor?.drawHistory) ? actor.drawHistory : [0, 0, 0],
+      lastDrawCount: Number(actor?.lastDrawCount) || 0,
+      discardedCards: Array.isArray(actor?.discardedCards) ? actor.discardedCards : [],
+      // v2obs: opponent draw history per round (first active opponent)
+      oppDrawHistory: Array.isArray(activeOpponents[0]?.drawHistory)
+        ? activeOpponents[0].drawHistory
+        : [0, 0, 0],
+      opponentLastDraw: Number(activeOpponents[0]?.lastDrawCount) || 0,
     },
   };
 }
@@ -483,6 +494,35 @@ export function buildBadugiObservationVector(input = {}) {
   vector[58] = normalizeNumber(features.rangeEquity ?? ev.rangeEquity, 1);
   vector[59] = normalizeNumber(features.isolationPressure, 1);
   vector[60] = features.lateSemibluffSpot ? 1 : 0;
+
+  // ---- v2: slots 61-74 (時系列・履歴フィーチャー) ----
+  const betHistory = Array.isArray(features.betHistory) ? features.betHistory : [false, false, false];
+  vector[61] = betHistory[0] ? 1 : 0; // hero raised pre-draw
+  vector[62] = betHistory[1] ? 1 : 0; // hero bet/raised after draw 1
+  vector[63] = betHistory[2] ? 1 : 0; // hero bet/raised after draw 2
+  vector[64] = features.openedCurrentRound ? 1 : 0; // hero opened this round
+
+  const heroDrawHistory = Array.isArray(features.drawHistory) ? features.drawHistory : [0, 0, 0];
+  vector[65] = clamp01(heroDrawHistory[0] / 3);  // hero draw R1
+  vector[66] = clamp01(heroDrawHistory[1] / 3);  // hero draw R2
+  vector[67] = clamp01((Number(features.lastDrawCount) || 0) / 3); // hero most recent draw
+
+  const oppDrawHistory = Array.isArray(features.oppDrawHistory) ? features.oppDrawHistory : [0, 0, 0];
+  vector[68] = Math.max(-1, Math.min(1, (oppDrawHistory[0] - oppDrawHistory[1]) / 3)); // opp traj R1→R2
+  vector[69] = Math.max(-1, Math.min(1, (oppDrawHistory[1] - oppDrawHistory[2]) / 3)); // opp traj R2→R3
+  vector[70] = Math.max(-1, Math.min(1, (features.opponentLastDraw - (Number(features.lastDrawCount) || 0)) / 3)); // draw differential
+
+  // dead cards: 捨てたカードのランク（Ace=1, 2=2, 3=3, 4=4）
+  const discarded = Array.isArray(features.discardedCards) ? features.discardedCards : [];
+  const deadAces = discarded.filter((c) => parseCard(c).rank === 1).length;
+  const deadPremium = discarded.filter((c) => parseCard(c).rank <= 4).length;
+  vector[71] = clamp01(deadAces / 4);
+  vector[72] = clamp01(deadPremium / 16);
+
+  vector[73] = features.isButton ? 0 : 1; // hero draws first (OOP)
+  const heroStack = Math.max(1, Number(features.stack) || 1);
+  const oppStack = Math.max(0, Number(features.opponentStackAverage) || 0);
+  vector[74] = clamp01((oppStack / heroStack) / 2); // stack ratio (capped at 2x)
 
   return vector;
 }

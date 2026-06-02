@@ -232,22 +232,45 @@ class SixMaxBadugiEnv:
 
     def _autoplay_until_hero(self) -> None:
         """Process opponent actions until it is hero's turn (or phase ends)."""
-        if self.phase == "BET":
-            while self.bet_queue and self.bet_queue[0] != self.hero_seat:
-                seat = self.bet_queue[0]
-                if self.players[seat]["folded"]:
+        if self.phase != "BET":
+            return
+        while self.bet_queue and self.bet_queue[0] != self.hero_seat:
+            # Batch pre-fetch: gather all consecutive non-hero non-folded seats
+            pre_seats = []
+            for s in self.bet_queue:
+                if s == self.hero_seat:
+                    break
+                if not self.players[s]["folded"]:
+                    pre_seats.append(s)
+                    # Stop batch at first potential raiser to avoid stale obs
+                    # (conservative: only pre-fetch up to 3 non-raising opponents)
+                    if len(pre_seats) >= 3:
+                        break
+
+            if not pre_seats:
+                # Skip folded seats at front
+                if self.bet_queue and self.players[self.bet_queue[0]]["folded"]:
                     self.bet_queue.popleft()
                     continue
-                action = self._get_opp_action_bet(seat)
+                break
+
+            actions = self._get_opp_actions_batched(pre_seats, "BET")
+
+            for seat, action in zip(pre_seats, actions):
+                if not self.bet_queue or self.bet_queue[0] != seat:
+                    break  # state changed (raise re-queued), recompute
                 done, _, _ = self._apply_action(seat, action)
                 if done:
                     self._game_ended = True
                     return
-            # If queue is empty and hero isn't here, round ended before hero acted
-            if not self.bet_queue and self.phase == "BET":
-                done, _, _ = self._advance_from_bet(0.0)
-                if done:
-                    self._game_ended = True
+                if action in (3, 4):  # BET or RAISE — queue rebuilt, re-fetch
+                    break
+
+        # If queue is empty and hero isn't here, round ended before hero acted
+        if not self.bet_queue and self.phase == "BET":
+            done, _, _ = self._advance_from_bet(0.0)
+            if done:
+                self._game_ended = True
 
     def _complete_bet_round_and_advance(self) -> tuple[bool, float, dict]:
         """After hero acts in BET, process remaining actors and advance phase."""
@@ -465,10 +488,12 @@ class SixMaxBadugiEnv:
         if self.opp_agent is None:
             return [self._fallback_bet(s) if phase == "BET" else self._fallback_draw(s)
                     for s in seats]
+        import torch
         obs_batch = np.stack([self._obs_for(s) for s in seats], axis=0)
-        q_batch = self.opp_agent.q_network(
-            __import__("torch").tensor(obs_batch, dtype=__import__("torch").float32)
-        ).detach().numpy()
+        with torch.no_grad():
+            q_batch = self.opp_agent.q_network(
+                torch.tensor(obs_batch, dtype=torch.float32)
+            ).numpy()
         actions = []
         for i, seat in enumerate(seats):
             q = q_batch[i].copy()

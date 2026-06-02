@@ -32,7 +32,9 @@ __pycache__/
 
 # Virtual env (Python)
 venv/
-.venv/
+.venv*/
+/env/
+/ENV/
 badugi-rl/venv/
 
 # Python build artifacts

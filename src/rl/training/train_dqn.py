@@ -276,7 +276,10 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
                     False,
                     next_action_mask=action_mask,
                 )
-            counterfactual_continue = profitable_continue_action(env)
+            if global_step % max(1, cfg.train_every_steps) == 0:
+                counterfactual_continue = profitable_continue_action(env)
+            else:
+                counterfactual_continue = None
             if counterfactual_continue is not None:
                 profitable_continue_buffer.add(
                     obs,

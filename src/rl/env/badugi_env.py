@@ -21,8 +21,8 @@ def build_deck() -> List[Card]:
   return [(rank, suit) for rank in range(13) for suit in range(4)]
 
 
-def evaluate_badugi(hand: Sequence[Card]) -> Tuple[int, List[int]]:
-  """Return (made_card_count, sorted ranks for the best subset)."""
+@lru_cache(maxsize=4096)
+def _evaluate_badugi_impl(hand: tuple) -> Tuple[int, List[int]]:
   best: Tuple[int, List[int]] = (0, [])
   for subset_size in range(1, min(4, len(hand)) + 1):
     for subset in combinations(hand, subset_size):
@@ -34,6 +34,11 @@ def evaluate_badugi(hand: Sequence[Card]) -> Tuple[int, List[int]]:
       if compare_badugi_scores(candidate, best) > 0:
         best = candidate
   return best
+
+
+def evaluate_badugi(hand: Sequence[Card]) -> Tuple[int, List[int]]:
+  """Return (made_card_count, sorted ranks for the best subset)."""
+  return _evaluate_badugi_impl(tuple(hand))
 
 
 def compare_badugi_scores(player_score: Tuple[int, List[int]], opp_score: Tuple[int, List[int]]) -> int:
@@ -269,6 +274,10 @@ class BadugiEnv(gym.Env):
     self.deck: List[Card] = []
     self.player_hand: List[Card] = []
     self.opponent_hand: List[Card] = []
+    self._cached_player_features: HandFeature | None = None
+    self._cached_player_hand_ref: list | None = None
+    self._cached_opp_features: HandFeature | None = None
+    self._cached_opp_hand_ref: list | None = None
     self.reset()
 
   def set_opponent_profile(self, profile: str | OpponentProfile):
@@ -321,6 +330,10 @@ class BadugiEnv(gym.Env):
     self.opp_opened_current_round: bool = False
     self.opp_bet_history: list[bool] = [False, False, False]
     self.hero_discarded_ranks: list[int] = []
+    self._cached_player_features = None
+    self._cached_player_hand_ref = None
+    self._cached_opp_features = None
+    self._cached_opp_hand_ref = None
     self._start_betting_round()
     info: dict = {}
     return self._get_obs(), info
@@ -529,6 +542,7 @@ class BadugiEnv(gym.Env):
       discarded = [c for c in self.player_hand if c not in keep][:draw_count]
       self.hero_discarded_ranks.extend(r for r, _ in discarded)
       self.player_hand = self._draw_toward_badugi(self.player_hand, draw_count)
+      self._cached_player_features = None
       after_features = self._hand_features(self.player_hand)
       reward += self._draw_quality_reward(before_features, after_features, draw_count)
       reward -= 0.05 * draw_count
@@ -694,6 +708,7 @@ class BadugiEnv(gym.Env):
     keep = self._best_badugi_keep(self.opponent_hand)
     draw_amount = max(0, min(3, 4 - len(keep) + self.opponent_profile.draw_bias))
     self.opponent_hand = self._draw_toward_badugi(self.opponent_hand, draw_amount)
+    self._cached_opp_features = None
     self.opponent_last_draw = draw_amount
     self._record_opponent_draw(draw_amount)
     self.opp_draw_history[round_idx] = draw_amount
@@ -1363,13 +1378,17 @@ class BadugiEnv(gym.Env):
     return np.array(obs[:BADUGI_OBSERVATION_VECTOR_SIZE], dtype=np.float32)
 
   def _hand_features(self, hand: Sequence[Card]) -> HandFeature:
+    if hand is self.player_hand and hand is self._cached_player_hand_ref and self._cached_player_features is not None:
+      return self._cached_player_features
+    if hand is self.opponent_hand and hand is self._cached_opp_hand_ref and self._cached_opp_features is not None:
+      return self._cached_opp_features
     count, ranks = evaluate_badugi(hand)
     ranks_sorted = sorted(ranks)
     rank_sum = sum(ranks_sorted) if ranks_sorted else 99
     min_rank = ranks_sorted[0] if ranks_sorted else 99
     is_nuts = count == 4 and ranks_sorted == [0, 1, 2, 3]
     one_away = count == 3
-    return HandFeature(
+    result = HandFeature(
       count=count,
       ranks=ranks_sorted,
       rank_sum=rank_sum,
@@ -1377,3 +1396,10 @@ class BadugiEnv(gym.Env):
       is_nuts=is_nuts,
       one_away=one_away,
     )
+    if hand is self.player_hand:
+      self._cached_player_features = result
+      self._cached_player_hand_ref = self.player_hand
+    elif hand is self.opponent_hand:
+      self._cached_opp_features = result
+      self._cached_opp_hand_ref = self.opponent_hand
+    return result

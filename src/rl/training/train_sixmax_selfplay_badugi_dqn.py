@@ -134,36 +134,39 @@ def train_sixmax_selfplay_badugi_dqn(
     output_dir = Path(cfg.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    hero = DQNAgent(
-        obs_dim=96,
-        n_actions=6,
-        device=device,
-        hidden_dim=cfg.hidden_dim,
-        hyperparams=DQNHyperParams(
-            gamma=0.990,           # slightly higher for multi-street
-            lr=cfg.learning_rate,
-            batch_size=cfg.batch_size,
-            tau=3e-3,              # slower target update
-        ),
-    )
-
+    # pretrained があれば checkpoint の hidden_dim を自動検出してロード
+    # なければ cfg.hidden_dim でフレッシュスタート
     if cfg.pretrained:
         pretrained_path = Path(cfg.pretrained)
         if not pretrained_path.is_absolute():
             pretrained_path = PROJECT_ROOT / pretrained_path
         if pretrained_path.exists():
-            loaded = DQNAgent.load(str(pretrained_path), device=device)
-            hero.q_network.load_state_dict(loaded.q_network.state_dict())
-            hero.target_network.load_state_dict(loaded.target_network.state_dict())
-            print(f"[6max-SelfPlay] Warm-started from {pretrained_path}")
+            hero = DQNAgent.load(str(pretrained_path), device=device)
+            # lr / gamma / tau を上書き
+            for pg in hero.optimizer.param_groups:
+                pg["lr"] = cfg.learning_rate
+            hero.gamma = 0.990
+            hero.tau = 3e-3
+            print(f"[6max-SelfPlay] Warm-started from {pretrained_path} "
+                  f"(hidden_dim={hero.q_network.net[0].out_features})")
         else:
             print(f"[6max-SelfPlay] Pretrained not found: {pretrained_path} — fresh start")
+            hero = DQNAgent(
+                obs_dim=96, n_actions=6, device=device, hidden_dim=cfg.hidden_dim,
+                hyperparams=DQNHyperParams(gamma=0.990, lr=cfg.learning_rate,
+                                           batch_size=cfg.batch_size, tau=3e-3),
+            )
+    else:
+        hero = DQNAgent(
+            obs_dim=96, n_actions=6, device=device, hidden_dim=cfg.hidden_dim,
+            hyperparams=DQNHyperParams(gamma=0.990, lr=cfg.learning_rate,
+                                       batch_size=cfg.batch_size, tau=3e-3),
+        )
 
+    # opp は hero と同じ hidden_dim で作成（checkpoint 由来の場合も正しく一致）
+    hero_hidden = hero.q_network.net[0].out_features
     opp = DQNAgent(
-        obs_dim=96,
-        n_actions=6,
-        device=device,
-        hidden_dim=cfg.hidden_dim,
+        obs_dim=96, n_actions=6, device=device, hidden_dim=hero_hidden,
         hyperparams=DQNHyperParams(gamma=0.990, lr=cfg.learning_rate, batch_size=cfg.batch_size),
     )
     opp.q_network.load_state_dict(hero.q_network.state_dict())

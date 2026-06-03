@@ -58,3 +58,67 @@ def test_teacher_uses_variant_specific_pat_rules():
     env_a5.phase = "DRAW"
     env_a5.hero_hand = [c("A", 0), c("2", 0), c("3", 0), c("4", 0), c("5", 0)]
     assert draw_teacher_action(env_a5) == 5
+
+
+# ---------------------------------------------------------------------------
+# PAT-DRAW-SDCARD-001: A-5 made low hands (6-8 high) must not be force-discarded
+# Root cause: _must_discard_rank used eff > 5, wrongly flagging rank 6/7/8 as
+# "must discard" even for clean made lows, causing ideal_draw_count=1 for every
+# A-5 6-8 low. Training reward penalised patting (0.04 vs 0.12) → patFrequency=0%.
+# ---------------------------------------------------------------------------
+
+def test_a5_made_lows_six_through_eight_pat():
+    """discard_indexes_for_family must return [] for clean A-5 6-low/7-low/8-low."""
+    six_low = [c("A", 0), c("2", 1), c("3", 2), c("4", 3), c("6", 0)]
+    seven_low = [c("A", 0), c("2", 1), c("3", 2), c("5", 3), c("7", 0)]
+    eight_low = [c("A", 0), c("2", 1), c("3", 2), c("4", 3), c("8", 0)]
+
+    assert discard_indexes_for_family(six_low, "low-a5") == [], "A-5 6-low should pat"
+    assert discard_indexes_for_family(seven_low, "low-a5") == [], "A-5 7-low should pat"
+    assert discard_indexes_for_family(eight_low, "low-a5") == [], "A-5 8-low should pat"
+
+
+def test_a5_nine_low_draws_to_improve():
+    """A-5 9-low should draw 1 (9 is above the pat threshold of eff>8)."""
+    nine_low = [c("A", 0), c("2", 1), c("3", 2), c("4", 3), c("9", 0)]
+    assert discard_indexes_for_family(nine_low, "low-a5") == [4], "A-5 9-low should draw 1"
+
+
+def test_a5_teacher_pats_strong_made_lows():
+    """draw_teacher_action must select pat (action=5) for A-5 6-8 low hands."""
+    for hand in [
+        [c("A", 0), c("2", 1), c("3", 2), c("4", 3), c("6", 0)],
+        [c("A", 0), c("2", 1), c("3", 2), c("5", 3), c("7", 0)],
+        [c("A", 0), c("2", 1), c("3", 2), c("4", 3), c("8", 0)],
+    ]:
+        env = DrawLowballEnv(family="low-a5", seed=1)
+        env.phase = "DRAW"
+        env.hero_hand = hand
+        assert draw_teacher_action(env) == 5, f"Teacher should pat A-5 made low: {hand}"
+
+
+def test_27_nine_low_pats():
+    """discard_indexes_for_family must return [] for 2-7 9-low (no force-discard, rank<10)."""
+    nine_low = [c("9", 0), c("7", 1), c("5", 2), c("3", 3), c("2", 0)]
+    assert discard_indexes_for_family(nine_low, "low-27") == [], "2-7 9-low should pat"
+
+
+def test_draw_quality_reward_uses_pre_draw_ideal():
+    """Reward for patting a strong A-5 made low must equal 0.12 (not 0.04)."""
+    env = DrawLowballEnv(family="low-a5", seed=42)
+    env.phase = "DRAW"
+    env.hero_hand = [c("A", 0), c("2", 1), c("3", 2), c("4", 3), c("6", 0)]
+    env.opp_hand = [c("K", 0), c("K", 1), c("Q", 2), c("J", 3), c("T", 0)]
+    env.draw_round = 0
+    env.raise_count = 0
+    env.current_bet = 0
+    env.hero_bet = 0
+    env.opp_bet = 0
+    env.opp_opened_current_round = False
+    env.hero_opened_current_round = False
+
+    pre_draw_ideal = len(discard_indexes_for_family(env.hero_hand, env.family))
+    assert pre_draw_ideal == 0, "Pre-draw ideal for A-5 6-low must be 0"
+
+    reward = env._draw_quality_reward(0, pre_draw_ideal)
+    assert abs(reward - 0.12) < 1e-6, f"Pat reward for strong A-5 low must be 0.12, got {reward}"

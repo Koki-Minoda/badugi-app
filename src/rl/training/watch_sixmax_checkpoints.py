@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -147,6 +148,70 @@ def _parse_log(log_path: Path, episode: int) -> dict | None:
         return None
 
 
+def _run_clean_eval_cli(checkpoint: Path, args, episode: int) -> dict:
+    """Run the official clean eval CLI for one checkpoint and read its report."""
+    clean_report_dir = Path(args.clean_eval_report_dir)
+    clean_report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = clean_report_dir / f"badugi-sixmax-clean-eval-{episode:06d}.json"
+    cmd = [
+        sys.executable,
+        str(PROJECT_ROOT / "src/rl/training/evaluate_badugi_sixmax_clean.py"),
+        "--checkpoint",
+        str(checkpoint),
+        "--episodes",
+        str(args.clean_eval_episodes),
+        "--max-steps",
+        str(args.clean_eval_max_steps),
+        "--seeds",
+        args.clean_eval_seeds,
+        "--opponent-profiles",
+        args.clean_eval_profiles,
+        "--report",
+        str(report_path),
+        "--onnx-dir",
+        str(clean_report_dir / "onnx"),
+        "--min-onnx-usage-rate",
+        str(args.clean_eval_min_onnx_usage_rate),
+        "--max-fallback-rate",
+        str(args.clean_eval_max_fallback_rate),
+        "--report-only",
+    ]
+    completed = subprocess.run(
+        cmd,
+        cwd=PROJECT_ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    report = None
+    if report_path.exists():
+        report = json.loads(report_path.read_text(encoding="utf8"))
+    fail_reasons = []
+    if completed.returncode != 0:
+        fail_reasons.append(f"CLEAN_EVAL_CLI_ERROR:{completed.returncode}")
+    if report is None:
+        fail_reasons.append("CLEAN_EVAL_REPORT_MISSING")
+    elif not report.get("passed", False):
+        fail_reasons.append("CLEAN_EVAL_FAILED")
+        fail_reasons.extend(report.get("gate", {}).get("failReasons", []))
+        for result in report.get("results", []):
+            for mode_name, mode_result in result.get("cleanEval", {}).items():
+                if not mode_result.get("passed", False):
+                    fail_reasons.extend(
+                        f"{mode_name}:{reason}"
+                        for reason in mode_result.get("gate", {}).get("failReasons", [])
+                    )
+    return {
+        "passed": completed.returncode == 0 and report is not None and report.get("passed", False),
+        "report": str(report_path),
+        "returncode": completed.returncode,
+        "failReasons": fail_reasons,
+        "stdout": completed.stdout[-2000:],
+        "stderr": completed.stderr[-2000:],
+        "summary": report,
+    }
+
+
 def watch(args):
     checkpoint_dir = Path(args.checkpoint_dir)
     eval_dir = Path(args.eval_dir)
@@ -268,6 +333,22 @@ def watch(args):
                     "tier_estimate": tier_est,
                     "issues": issues,
                 }
+
+                if args.clean_eval:
+                    print(f"[clean-eval] clean評価CLI実行中 ({args.clean_eval_episodes} ep/profile/seed)...")
+                    clean_result = _run_clean_eval_cli(ckpt, args, ep)
+                    row["clean_eval"] = {
+                        "passed": clean_result["passed"],
+                        "report": clean_result["report"],
+                        "returncode": clean_result["returncode"],
+                        "failReasons": clean_result["failReasons"],
+                    }
+                    if clean_result["passed"]:
+                        print(f"[clean-eval] PASS report={clean_result['report']}")
+                    else:
+                        print(f"[clean-eval] FAIL report={clean_result['report']} reasons={clean_result['failReasons']}")
+                        issues.extend(clean_result["failReasons"])
+
                 report.append(row)
                 (eval_dir / "sixmax_eval_report.json").write_text(
                     json.dumps(report, indent=2, ensure_ascii=False)
@@ -299,6 +380,17 @@ def main():
     parser.add_argument("--poll-interval", type=float, default=30.0)
     parser.add_argument("--target-episodes", type=int, default=1_000_000)
     parser.add_argument("--hidden-dim", type=int, default=256)
+    parser.add_argument("--clean-eval", action="store_true", help="Run clean eval CLI for each checkpoint")
+    parser.add_argument("--clean-eval-report-dir", default="reports/ai-eval")
+    parser.add_argument("--clean-eval-episodes", type=int, default=120)
+    parser.add_argument("--clean-eval-max-steps", type=int, default=120)
+    parser.add_argument("--clean-eval-seeds", default="20260602,20260603")
+    parser.add_argument(
+        "--clean-eval-profiles",
+        default="balanced,loose_passive,loose_aggressive,tight_passive,tight_aggressive,pat_heavy,draw_heavy",
+    )
+    parser.add_argument("--clean-eval-min-onnx-usage-rate", type=float, default=0.99)
+    parser.add_argument("--clean-eval-max-fallback-rate", type=float, default=0.01)
     args = parser.parse_args()
     watch(args)
 

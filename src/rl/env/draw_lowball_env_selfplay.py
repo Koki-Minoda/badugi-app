@@ -136,6 +136,7 @@ class DualAgentDrawLowballEnv:
 
         elif self.phase == "DRAW":
             draw_count = hero_action - 5
+            pre_draw_ideal = len(discard_indexes_for_family(self.hero_hand, self.family))
             self._draw_hero(draw_count)
             self._draw_opp_via_agent()
 
@@ -151,7 +152,7 @@ class DualAgentDrawLowballEnv:
             self.current_bet = 0
             self.hero_bet = 0
             self.opp_bet = 0
-            reward += self._draw_quality_reward(draw_count)
+            reward += self._draw_quality_reward(draw_count, pre_draw_ideal)
 
         return self._obs_for(is_hero=True), reward, False, False, {}
 
@@ -536,8 +537,9 @@ class DualAgentDrawLowballEnv:
     # Reward helpers
     # ------------------------------------------------------------------
 
-    def _draw_quality_reward(self, draw_count: int) -> float:
-        ideal = len(discard_indexes_for_family(self.hero_hand, self.family))
+    def _draw_quality_reward(self, draw_count: int, pre_draw_ideal: int | None = None) -> float:
+        # Use pre-draw ideal when available so drawing into a worse hand is penalised.
+        ideal = pre_draw_ideal if pre_draw_ideal is not None else len(discard_indexes_for_family(self.hero_hand, self.family))
         return 0.12 - abs(draw_count - ideal) * 0.08
 
     def _showdown_reward(self) -> float:

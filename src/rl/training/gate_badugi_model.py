@@ -23,6 +23,8 @@ from rl.training.evaluate_badugi_onnx import evaluate_model
 
 DEFAULT_CANDIDATE = PROJECT_ROOT / "public/models/badugi_beginner_dqn_v1.onnx"
 DEFAULT_BASELINE = PROJECT_ROOT / "public/models/badugi_worldmaster_v1.onnx"
+DEFAULT_MIN_ONNX_USAGE_RATE = 0.99
+DEFAULT_MAX_FALLBACK_RATE = 0.01
 PROMOTION_TIERS = [
     {
         "tier": "standard",
@@ -170,6 +172,225 @@ def build_promotion_report(candidate_summary: dict, avg_delta: float | None) -> 
     }
 
 
+def normalize_gate_summary(summary: dict) -> dict:
+    """Return a gate-compatible summary for legacy and clean-eval reports."""
+    normalized = dict(summary or {})
+    episodes = int(normalized.get("episodes", 0))
+    showdowns = int(normalized.get("showdowns", 0))
+    wins = int(normalized.get("wins", 0))
+    folds = int(normalized.get("folds", 0))
+    normalized.setdefault("runs", int(normalized.get("runs", 1 if episodes else 0)))
+    normalized.setdefault("avgReward", 0.0)
+    normalized.setdefault("minAvgReward", normalized.get("avgReward", 0.0))
+    normalized.setdefault("showdownWinRate", wins / showdowns if showdowns else 0.0)
+    normalized.setdefault("foldRate", folds / episodes if episodes else 0.0)
+    normalized.setdefault("actionCounts", {})
+    normalized.setdefault("evDiagnostics", {})
+    normalized.setdefault("profileSummaries", {})
+    normalized.setdefault("positionSummaries", {})
+    normalized.setdefault("worstProfile", None)
+    normalized.setdefault("worstProfileAvgReward", 0.0)
+    normalized.setdefault("valueBetRate", 0.0)
+    normalized.setdefault("bluffRate", 0.0)
+    normalized.setdefault("patFrequency", 0.0)
+    normalized.setdefault("drawDecisionAccuracy", 0.0)
+    normalized.setdefault("onnxUsageRate", None)
+    normalized.setdefault("fallbackRate", None)
+    normalized.setdefault("proOverlayRate", None)
+    normalized["episodes"] = episodes
+    normalized["showdowns"] = showdowns
+    normalized["wins"] = wins
+    normalized["folds"] = folds
+    return normalized
+
+
+def build_source_health_gate(
+    summary: dict,
+    *,
+    min_onnx_usage_rate: float,
+    max_fallback_rate: float,
+) -> dict:
+    onnx_rate = summary.get("onnxUsageRate")
+    fallback_rate = summary.get("fallbackRate")
+    checks = {
+        "episodes": int(summary.get("episodes", 0)) > 0,
+        "onnxUsageRate": (
+            onnx_rate is None or float(onnx_rate) >= float(min_onnx_usage_rate)
+        ),
+        "fallbackRate": (
+            fallback_rate is None or float(fallback_rate) <= float(max_fallback_rate)
+        ),
+    }
+    fail_reasons = []
+    if not checks["episodes"]:
+        fail_reasons.append("NO_EVALUATION_EPISODES")
+    if not checks["onnxUsageRate"]:
+        fail_reasons.append(f"ONNX_USAGE_LOW:{float(onnx_rate or 0.0):.4f}")
+    if not checks["fallbackRate"]:
+        fail_reasons.append(f"FALLBACK_RATE_HIGH:{float(fallback_rate or 0.0):.4f}")
+    return {
+        "passed": all(checks.values()),
+        "checks": checks,
+        "failReasons": fail_reasons,
+        "thresholds": {
+            "minOnnxUsageRate": float(min_onnx_usage_rate),
+            "maxFallbackRate": float(max_fallback_rate),
+        },
+    }
+
+
+def extract_clean_eval_summaries(report: dict, mode: str) -> list[dict]:
+    results = report.get("results", [])
+    summaries = []
+    for result in results:
+        clean_eval = result.get("cleanEval", {})
+        mode_result = clean_eval.get(mode)
+        if not mode_result:
+            continue
+        summary = normalize_gate_summary(mode_result.get("summary", {}))
+        summaries.append(
+            {
+                "checkpoint": result.get("checkpoint"),
+                "episode": result.get("episode"),
+                "milestone": result.get("milestone"),
+                "summary": summary,
+                "sourceGate": mode_result.get("gate"),
+                "promotion": mode_result.get("promotion"),
+            }
+        )
+    return summaries
+
+
+def build_clean_eval_gate_report(args) -> dict:
+    report_path = Path(args.clean_eval_report)
+    if not report_path.exists():
+        empty_summary = normalize_gate_summary({})
+        return {
+            "passed": False,
+            "checks": {
+                "checkpoint": {
+                    "cleanEvalReportExists": False,
+                    "checkpointExists": False,
+                },
+                "cleanEval": [],
+                "source": [],
+            },
+            "failReasons": [f"CLEAN_EVAL_REPORT_NOT_FOUND:{report_path}"],
+            "thresholds": {
+                "minAvgReward": args.min_avg_reward,
+                "minShowdownWinRate": args.min_showdown_win_rate,
+                "maxFoldRate": args.max_fold_rate,
+                "minWorstProfileAvgReward": args.min_worst_profile_avg_reward,
+                "minBaselineAvgDelta": args.min_baseline_avg_delta,
+                "minOnnxUsageRate": args.min_onnx_usage_rate,
+                "maxFallbackRate": args.max_fallback_rate,
+            },
+            "avgRewardDeltaVsBaseline": None,
+            "promotion": build_promotion_report(empty_summary, avg_delta=None),
+            "candidate": {
+                "model": str(report_path),
+                "summary": empty_summary,
+                "runs": [],
+            },
+            "baseline": None,
+            "cleanEvaluation": {
+                "report": str(report_path),
+                "mode": args.clean_eval_mode,
+                "missingMilestones": [],
+                "evaluated": [],
+            },
+        }
+    clean_report = json.loads(report_path.read_text(encoding="utf8"))
+    summaries = extract_clean_eval_summaries(clean_report, args.clean_eval_mode)
+    missing_milestones = clean_report.get("missingMilestones", [])
+    checkpoint_checks = {
+        "cleanEvalReportExists": report_path.exists(),
+        "checkpointExists": not missing_milestones and bool(summaries),
+    }
+    checkpoint_fail_reasons = []
+    if missing_milestones:
+        checkpoint_fail_reasons.extend(
+            f"CHECKPOINT_NOT_FOUND:{row.get('milestone')}" for row in missing_milestones
+        )
+    if not summaries:
+        checkpoint_fail_reasons.append(f"CLEAN_EVAL_MODE_NOT_FOUND:{args.clean_eval_mode}")
+
+    evaluated = []
+    for row in summaries:
+        summary = row["summary"]
+        avg_delta = None
+        metric_checks = {
+            "avgReward": summary["avgReward"] >= args.min_avg_reward,
+            "showdownWinRate": summary["showdownWinRate"] >= args.min_showdown_win_rate,
+            "foldRate": summary["foldRate"] <= args.max_fold_rate,
+            "worstProfileAvgReward": summary["worstProfileAvgReward"]
+            >= args.min_worst_profile_avg_reward,
+            "baselineAvgDelta": (
+                True if avg_delta is None else avg_delta >= args.min_baseline_avg_delta
+            ),
+        }
+        source_gate = build_source_health_gate(
+            summary,
+            min_onnx_usage_rate=args.min_onnx_usage_rate,
+            max_fallback_rate=args.max_fallback_rate,
+        )
+        promotion = build_promotion_report(summary, avg_delta)
+        evaluated.append(
+            {
+                **row,
+                "checks": metric_checks,
+                "sourceGate": source_gate,
+                "passed": all(metric_checks.values()) and source_gate["passed"],
+                "promotion": promotion,
+            }
+        )
+
+    passed = (
+        all(checkpoint_checks.values())
+        and not checkpoint_fail_reasons
+        and bool(evaluated)
+        and all(row["passed"] for row in evaluated)
+    )
+    candidate_summary = evaluated[-1]["summary"] if evaluated else normalize_gate_summary({})
+    return {
+        "passed": passed,
+        "checks": {
+            "checkpoint": checkpoint_checks,
+            "cleanEval": [row["checks"] for row in evaluated],
+            "source": [row["sourceGate"]["checks"] for row in evaluated],
+        },
+        "failReasons": checkpoint_fail_reasons
+        + [
+            reason
+            for row in evaluated
+            for reason in row["sourceGate"].get("failReasons", [])
+        ],
+        "thresholds": {
+            "minAvgReward": args.min_avg_reward,
+            "minShowdownWinRate": args.min_showdown_win_rate,
+            "maxFoldRate": args.max_fold_rate,
+            "minWorstProfileAvgReward": args.min_worst_profile_avg_reward,
+            "minBaselineAvgDelta": args.min_baseline_avg_delta,
+            "minOnnxUsageRate": args.min_onnx_usage_rate,
+            "maxFallbackRate": args.max_fallback_rate,
+        },
+        "avgRewardDeltaVsBaseline": None,
+        "promotion": build_promotion_report(candidate_summary, avg_delta=None),
+        "candidate": {
+            "model": str(report_path),
+            "summary": candidate_summary,
+            "runs": [],
+        },
+        "baseline": None,
+        "cleanEvaluation": {
+            "report": str(report_path),
+            "mode": args.clean_eval_mode,
+            "missingMilestones": missing_milestones,
+            "evaluated": evaluated,
+        },
+    }
+
+
 def evaluate_across_seeds(
     model: Path,
     *,
@@ -202,6 +423,9 @@ def evaluate_across_seeds(
 
 
 def build_gate_report(args) -> dict:
+    if args.clean_eval_report:
+        return build_clean_eval_gate_report(args)
+
     candidate = evaluate_across_seeds(
         Path(args.candidate),
         seeds=args.seeds,
@@ -265,6 +489,12 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Gate a Badugi ONNX policy for tier promotion.")
     parser.add_argument("--candidate", default=str(DEFAULT_CANDIDATE))
     parser.add_argument("--baseline", default=str(DEFAULT_BASELINE))
+    parser.add_argument("--clean-eval-report", default=None)
+    parser.add_argument(
+        "--clean-eval-mode",
+        default="proOverlayOff",
+        choices=["proOverlayOff", "proOverlayOn"],
+    )
     parser.add_argument("--episodes", type=int, default=500)
     parser.add_argument("--max-steps", type=int, default=200)
     parser.add_argument("--table-size", type=int, default=2)
@@ -289,6 +519,8 @@ def parse_args():
     parser.add_argument("--max-fold-rate", type=float, default=0.45)
     parser.add_argument("--min-worst-profile-avg-reward", type=float, default=0.0)
     parser.add_argument("--min-baseline-avg-delta", type=float, default=0.25)
+    parser.add_argument("--min-onnx-usage-rate", type=float, default=DEFAULT_MIN_ONNX_USAGE_RATE)
+    parser.add_argument("--max-fallback-rate", type=float, default=DEFAULT_MAX_FALLBACK_RATE)
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--report-only", action="store_true")
     return parser.parse_args()
@@ -322,6 +554,8 @@ def main():
                 f"worstProfileAvgReward={baseline.get('worstProfileAvgReward', 0.0):.3f}"
             )
         print(f"[BADUGI GATE CHECKS] {report['checks']}")
+        if report.get("failReasons"):
+            print(f"[BADUGI GATE FAIL REASONS] {report['failReasons']}")
         promotion = report["promotion"]
         print(
             "[BADUGI PROMOTION] "

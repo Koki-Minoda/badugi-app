@@ -149,12 +149,14 @@ def _must_discard_rank(rank: int, family: DrawFamily) -> bool:
     """True when a card is so high it should always be discarded in draw lowball.
 
     In low-27, aces (rank 14) and tens-or-higher are unplayable without a draw.
-    In low-a5, ace counts as 1 (excellent), but 6 and above are candidates to drop.
+    In low-a5, ace counts as 1 (excellent). Ranks 6-8 are part of strong made lows
+    (6-low through 8-low) and must NOT be force-discarded. Only effective rank 9+
+    warrants a mandatory discard; 6/7/8 in a made low should be patted.
     """
     if family == "low-27":
         return rank >= 10
     eff = 1 if rank == 14 else rank
-    return eff > 5
+    return eff > 8
 
 
 def _draw_adjusted_strength(hand: Sequence[Card], family: DrawFamily, features: LowballFeatures) -> float:
@@ -332,6 +334,7 @@ class DrawLowballEnv(gym.Env):
             self.phase = "DRAW"
         elif self.phase == "DRAW":
             draw_count = action - 5
+            pre_draw_ideal = len(discard_indexes_for_family(self.hero_hand, self.family))
             self._draw_for("hero", draw_count)
             self._draw_for("opponent", self._opponent_draw_count())
             self.draw_round += 1
@@ -346,7 +349,7 @@ class DrawLowballEnv(gym.Env):
             self.hero_bet_history[round_idx] = self.hero_opened_current_round
             self.opp_opened_current_round = False
             self.hero_opened_current_round = False
-            reward += self._draw_quality_reward(draw_count)
+            reward += self._draw_quality_reward(draw_count, pre_draw_ideal)
         return self._observation(), reward, False, False, {}
 
     def _commit(self, who: str, amount: int):
@@ -446,8 +449,9 @@ class DrawLowballEnv(gym.Env):
         base = len(discard_indexes_for_family(self.opp_hand, self.family))
         return max(0, min(5, base + self.profile.draw_extra))
 
-    def _draw_quality_reward(self, draw_count: int) -> float:
-        ideal = len(discard_indexes_for_family(self.hero_hand, self.family))
+    def _draw_quality_reward(self, draw_count: int, pre_draw_ideal: int | None = None) -> float:
+        # Use pre-draw ideal when available so drawing into a worse hand is penalised.
+        ideal = pre_draw_ideal if pre_draw_ideal is not None else len(discard_indexes_for_family(self.hero_hand, self.family))
         distance = abs(draw_count - ideal)
         return 0.12 - distance * 0.08
 

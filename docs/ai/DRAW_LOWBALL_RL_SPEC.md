@@ -561,6 +561,54 @@ node scripts/verifyAiModelAssets.mjs
 - 現行デプロイ済みの S01/S02 ONNX はすべてTD（max_draws=3）学習モデルの流用であり、SD として機能していない
 - SD 専用学習は `max_draws=1` で独立したモデルとして立て直す。TD チェックポイントからの warm-start は避ける（戦略が乖離しすぎている）
 
+### Variant別 clean evaluation / gate
+
+CORE5 Pro 判定では `training reward` 単体で昇格しない。Draw Lowball は必ず variant 別に clean evaluation を実行し、`D01/D02` は `maxDraws=3`、`S01/S02` は `maxDraws=1` として判定する。
+
+```bash
+# Variant別 self-play clean evaluation
+npm run ai:evaluate-draw-selfplay -- \
+  --checkpoint rl/models/draw/low-27_selfplay_dqn_latest.pt \
+  --variant-id D01 \
+  --episodes 500 \
+  --write-report
+
+# Promotion gate
+npm run ai:gate-draw-model -- \
+  --checkpoint rl/models/draw/low-27_selfplay_dqn_latest.pt \
+  --variant-id D01 \
+  --tier pro \
+  --episodes 500
+```
+
+レポートは `reports/ai-eval/` に保存する。self-play evaluation は `draw-lowball-eval-D01-YYYYMMDD.json`、gate は `draw-lowball-gate-D01-pro-YYYYMMDD.json` を生成する。
+
+評価summaryの必須指標:
+
+| 指標 | 用途 |
+|------|------|
+| `avgReward` / `winRate` | 全体強度 |
+| `showdownWinRate` / `foldRate` | showdown品質とfold過多検出 |
+| `patFrequency` / `patRateWithStrongLow` | pat判断の偏り検出 |
+| `drawAccuracy` / `drawMistakeRate` | draw decision の正誤 |
+| `worstProfileAvgReward` | opponent profile別の最悪値 |
+
+S02（A-5 Single Draw）では `drawAccuracy` / `drawMistakeRate` は report-only とし、promotion gate の必須条件にしない。A-5 SD の 9-low は pat/draw が文脈依存であり、`discard_indexes_for_family()` の教師 heuristic との完全一致率は単体でモデル強度を表さないため。D01/D02/S01 では従来どおり `drawAccuracy` / `drawMistakeRate` を gate 条件として維持する。
+
+`foldToBetPct` は現行 `DrawLowballEnv` / `DualAgentDrawLowballEnv` では pre-draw only の指標である。BET round が hero 1 action + opponent 1 response で完結する single-action-per-BET-round model のため、真の full-street fold-to-bet を測るには multi-action BET v3 が必要になる。v3 実装は checkpoint 互換、reward 再設計、再学習コストを伴うため別フェーズで扱う。
+
+
+`gate_draw_model.py` は `D01/D02/S01/S02` で別々の暫定閾値を持つ。特に `S01/S02` は `pro` / `iron` 判定時に、checkpoint path/name が `S01` / `S02` / `sd` / `single` / `single-draw` / `singledraw` を示さない場合は FAIL とする。TDモデル流用のままSingle DrawをPro昇格しない。
+
+ONNX smoke fixture も variant 別に分離する:
+
+```bash
+npm run ai:evaluate-draw-onnx -- --model path/to/model.onnx --variant-id S01
+npm run ai:evaluate-draw-onnx -- --model path/to/model.onnx --variant-id S02
+```
+
+`S01` は `rough-nine-pats-in-sd` と `borderline-nine-low-with-pair`、`S02` は `eight-high-a5-pats-in-sd` / `nine-high-a5-context-dependent-sd` / `pair-a5-breaks-even-with-low-pair` を含め、Single Draw 固有のpat/break判断を検査する。ただし S02 の context-dependent pat/draw exact-match fixtures は report-only であり、promotion gate の blocking failure にはしない。
+
 ---
 
 ## 8. 既知の問題と対応方針

@@ -221,6 +221,7 @@ def train_selfplay_draw_dqn(
     # Rolling window accumulators for mode-collapse detection (reset each log interval).
     # Using scalars instead of growing lists avoids unbounded memory growth over 20k episodes.
     window_folds = window_raises = window_bet_steps = 0
+    window_fold_opps = window_folds_vs_bet = 0
     loss = 0.0
     mean_q = 0.0
     imitation_loss = 0.0
@@ -233,6 +234,7 @@ def train_selfplay_draw_dqn(
         obs, _ = sp_env.reset()
         total_reward = 0.0
         ep_fold_count = ep_raise_count = ep_bet_step_count = 0
+        ep_fold_opp_count = ep_folds_vs_bet_count = 0
         epsilon = _linear_decay(
             episode, cfg.epsilon_start, cfg.epsilon_end, cfg.epsilon_decay_episodes
         )
@@ -249,6 +251,10 @@ def train_selfplay_draw_dqn(
                     ep_fold_count += 1
                 elif action in (3, 4):  # bet or raise
                     ep_raise_count += 1
+                if mask[0] > 0:
+                    ep_fold_opp_count += 1
+                    if action == 0:
+                        ep_folds_vs_bet_count += 1
 
             next_obs, reward, terminated, truncated, _ = sp_env.step(action)
             done = terminated or truncated
@@ -301,6 +307,8 @@ def train_selfplay_draw_dqn(
         window_folds += ep_fold_count
         window_raises += ep_raise_count
         window_bet_steps += ep_bet_step_count
+        window_fold_opps += ep_fold_opp_count
+        window_folds_vs_bet += ep_folds_vs_bet_count
 
         # Periodically freeze a snapshot of hero as the new opponent.
         if episode % cfg.opponent_update_interval == 0:
@@ -312,6 +320,7 @@ def train_selfplay_draw_dqn(
             recent = rewards[-cfg.log_interval:]
             w_bet = max(1, window_bet_steps)
             fold_rate = window_folds / w_bet
+            fold_to_bet_rate = window_folds_vs_bet / max(1, window_fold_opps)
             raise_rate = window_raises / w_bet
             # Separate ifs so both can fire simultaneously:
             #   HIGH-FOLD  > 55%  → near-always-fold degenerate policy
@@ -327,11 +336,13 @@ def train_selfplay_draw_dqn(
                 f"epsilon={epsilon:5.3f} buffer={len(replay):7d} "
                 f"loss={loss:8.5f} mean_q={mean_q:8.3f} "
                 f"bc_acc={imitation_accuracy:5.3f} "
-                f"fold%={fold_rate*100:4.1f} raise%={raise_rate*100:4.1f} "
+                f"fold%={fold_rate*100:4.1f} ftb%={fold_to_bet_rate*100:4.1f} "
+                f"raise%={raise_rate*100:4.1f} "
                 f"opp_updates={opponent_updates}{collapse_warn}"
             )
             # Reset window accumulators after logging.
             window_folds = window_raises = window_bet_steps = 0
+            window_fold_opps = window_folds_vs_bet = 0
 
         if cfg.save_interval > 0 and episode % cfg.save_interval == 0:
             ts = time.strftime("%Y%m%d-%H%M%S")

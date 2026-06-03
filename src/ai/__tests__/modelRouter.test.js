@@ -88,10 +88,13 @@ describe("modelRouter", () => {
       "model-27draw-standard-dqn-v1",
     );
     expect(resolveTierModelInfo({ variantId: "D01", tierId: "pro" })?.modelId).toBe(
-      "model-27draw-pro-dqn-v1",
+      "model-d01-td-pro-dqn-025000",
     );
     expect(resolveTierModelInfo({ variantId: "S01", tierId: "pro" })?.modelId).toBe(
       "model-27draw-pro-dqn-v1",
+    );
+    expect(resolveTierModelInfo({ variantId: "D01", tierId: "iron" })?.modelId).toBe(
+      "model-27draw-iron-v1",
     );
     expect(resolveTierModelInfo({ variantId: "D02", tierId: "beginner" })?.modelId).toBe(
       "model-a5draw-beginner-dqn-v1",
@@ -122,6 +125,19 @@ describe("modelRouter", () => {
       sourceCheckpoint:
         "rl/models/draw/s02_sd_v2_25k/low-a5_selfplay_dqn_020000_20260603-191333.pt",
       gateReport: "reports/ai-eval/draw-lowball-gate-S02-pro-25k-v2-20260603-rerun.json",
+    });
+    expect(getModelEntry("model-d01-td-pro-dqn-025000")).toMatchObject({
+      variantId: "D01",
+      variantIds: ["D01"],
+      family: "low-27",
+      maxDraws: 3,
+      tier: "pro",
+      activeTier: "pro",
+      ironPassed: true,
+      onnx: "models/d01_td_pro_dqn_025000.onnx",
+      sourceCheckpoint:
+        "rl/models/draw/d01_local_25k/low-27_selfplay_dqn_025000_20260604-012200.pt",
+      gateReport: "reports/ai-eval/draw-lowball-gate-D01-pro-local-25k-20260604.json",
     });
   });
 

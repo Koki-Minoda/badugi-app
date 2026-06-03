@@ -90,14 +90,25 @@ describe("onnxPolicyAdapter Badugi schema", () => {
     expect(selectModelForVariant({ variantId: "D01", tierId: "standard" })?.id).toBe(
       "model-27draw-standard-dqn-v1",
     );
-    expect(selectModelForVariant({ variantId: "D01", tierId: "pro" })?.id).toBe(
-      "model-27draw-pro-dqn-v1",
-    );
+    expect(selectModelForVariant({ variantId: "D01", tierId: "pro" })).toMatchObject({
+      id: "model-d01-td-pro-dqn-025000",
+      variantId: "D01",
+      variantIds: ["D01"],
+      family: "low-27",
+      maxDraws: 3,
+      tier: "pro",
+      activeTier: "pro",
+      ironPassed: true,
+      onnx: "models/d01_td_pro_dqn_025000.onnx",
+    });
     expect(selectModelForVariant({ variantId: "D01", tierId: "iron" })?.id).toBe(
       "model-27draw-iron-v1",
     );
     expect(selectModelForVariant({ variantId: "S01", tierId: "standard" })?.id).toBe(
       "model-27draw-standard-dqn-v1",
+    );
+    expect(selectModelForVariant({ variantId: "S01", tierId: "pro" })?.id).toBe(
+      "model-27draw-pro-dqn-v1",
     );
     expect(selectModelForVariant({ variantId: "D02", tierId: "beginner" })?.id).toBe(
       "model-a5draw-beginner-dqn-v1",

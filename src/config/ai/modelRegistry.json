@@ -609,6 +609,39 @@
     ]
   },
   {
+    "id": "model-d01-td-pro-dqn-025000",
+    "version": "v025000",
+    "variantId": "D01",
+    "variantIds": [
+      "D01"
+    ],
+    "family": "low-27",
+    "maxDraws": 3,
+    "characterIds": [],
+    "tier": "pro",
+    "activeTier": "pro",
+    "ironPassed": true,
+    "onnx": "models/d01_td_pro_dqn_025000.onnx",
+    "checksumSha256": "9c6156b70745d899ccd35d609f087dbd5c5dffd7d58f70742368ee664b14657e",
+    "trainingRun": "d01_local_25k_20260604",
+    "trainingCheckpoint": "low-27_selfplay_dqn_025000_20260604-012200.pt",
+    "sourceCheckpoint": "rl/models/draw/d01_local_25k/low-27_selfplay_dqn_025000_20260604-012200.pt",
+    "evaluationReport": "reports/ai-eval/draw-lowball-eval-D01-local-25k-20260604.json",
+    "gateReport": "reports/ai-eval/draw-lowball-gate-D01-pro-local-25k-20260604.json",
+    "standardGateReport": "reports/ai-eval/draw-lowball-gate-D01-standard-local-25k-20260604.json",
+    "ironGateReport": "reports/ai-eval/draw-lowball-gate-D01-iron-local-25k-20260604.json",
+    "trainingStatus": "active",
+    "trainingNotes": "D01 2-7 Triple Draw local 25k self-play DQN. Gate reports pass standard/pro/iron, but runtime exposes this checkpoint only for the Pro tier while D01 Iron remains on the existing iron entry.",
+    "featureSet": "draw-lowball-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      11
+    ]
+  },
+  {
     "id": "model-a5draw-pro-dqn-v1",
     "version": "v1",
     "variantIds": [

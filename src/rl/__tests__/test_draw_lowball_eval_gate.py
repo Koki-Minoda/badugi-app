@@ -304,6 +304,105 @@ class DrawLowballEvalGateTest(unittest.TestCase):
             self.assertFalse(checks["drawAccuracy"])
             self.assertFalse(checks["drawMistakeRate"])
 
+    def test_s02_gate_report_keeps_draw_metrics_report_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            checkpoint = Path(tmp) / "s02_sd_dqn.pt"
+            checkpoint.write_text("placeholder", encoding="utf8")
+            thresholds = GATE_THRESHOLDS["S02"]["pro"]
+            result = ProfileResult(
+                profile="standard",
+                episodes=1,
+                wins=1,
+                losses=0,
+                draws=0,
+                showdowns=1,
+                showdown_wins=1,
+                folds=0,
+                opponent_folds=0,
+                draw_decisions=1,
+                pat_actions=0,
+                strong_low_draw_decisions=1,
+                strong_low_pats=1,
+                draw_correct=0,
+                draw_mistakes=1,
+                total_reward=thresholds["minAvgReward"],
+            )
+
+            with (
+                patch("rl.training.gate_draw_model.DQNAgent.load", return_value=object()),
+                patch("rl.training.gate_draw_model.evaluate_against_profiles", return_value=[result]),
+            ):
+                report = build_gate_report(
+                    SimpleNamespace(
+                        checkpoint=str(checkpoint),
+                        variant_id="S02",
+                        tier="pro",
+                        episodes=1,
+                        max_steps=1,
+                        family="low-a5",
+                        max_draws=None,
+                        profiles="standard",
+                        seed=1,
+                        device="cpu",
+                    )
+                )
+
+        self.assertTrue(report["passed"])
+        self.assertEqual(report["failReasons"], [])
+        self.assertNotIn("drawAccuracy", report["checks"])
+        self.assertNotIn("drawMistakeRate", report["checks"])
+        self.assertEqual(report["reportOnlyMetrics"]["drawAccuracy"], 0.0)
+        self.assertEqual(report["reportOnlyMetrics"]["drawMistakeRate"], 1.0)
+
+    def test_non_s02_gate_report_keeps_draw_metrics_blocking(self):
+        for variant_id in ("D01", "D02", "S01"):
+            with self.subTest(variant_id=variant_id), tempfile.TemporaryDirectory() as tmp:
+                checkpoint = Path(tmp) / f"{variant_id.lower()}_dqn.pt"
+                checkpoint.write_text("placeholder", encoding="utf8")
+                thresholds = GATE_THRESHOLDS[variant_id]["standard"]
+                result = ProfileResult(
+                    profile="standard",
+                    episodes=1,
+                    wins=1,
+                    losses=0,
+                    draws=0,
+                    showdowns=1,
+                    showdown_wins=1,
+                    folds=0,
+                    opponent_folds=0,
+                    draw_decisions=1,
+                    pat_actions=0,
+                    strong_low_draw_decisions=1,
+                    strong_low_pats=1,
+                    draw_correct=0,
+                    draw_mistakes=1,
+                    total_reward=thresholds["minAvgReward"],
+                )
+
+                with (
+                    patch("rl.training.gate_draw_model.DQNAgent.load", return_value=object()),
+                    patch("rl.training.gate_draw_model.evaluate_against_profiles", return_value=[result]),
+                ):
+                    report = build_gate_report(
+                        SimpleNamespace(
+                            checkpoint=str(checkpoint),
+                            variant_id=variant_id,
+                            tier="standard",
+                            episodes=1,
+                            max_steps=1,
+                            family="low-27" if variant_id in {"D01", "S01"} else "low-a5",
+                            max_draws=None,
+                            profiles="standard",
+                            seed=1,
+                            device="cpu",
+                        )
+                    )
+
+                self.assertFalse(report["passed"])
+                self.assertIn("drawAccuracy", report["failReasons"])
+                self.assertIn("drawMistakeRate", report["failReasons"])
+                self.assertEqual(report["reportOnlyMetrics"], {})
+
     def test_missing_checkpoint_is_explicit_fail(self):
         with tempfile.TemporaryDirectory() as tmp:
             missing = Path(tmp) / "missing.pt"

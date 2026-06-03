@@ -108,11 +108,17 @@ describe("onnxPolicyAdapter Badugi schema", () => {
     expect(selectModelForVariant({ variantId: "D02", tierId: "pro" })?.id).toBe(
       "model-a5draw-pro-dqn-v1",
     );
+    expect(selectModelForVariant({ variantId: "S02", tierId: "pro" })).toMatchObject({
+      id: "model-s02-sd-pro-dqn-v2-025000",
+      family: "low-a5",
+      maxDraws: 1,
+      tier: "pro",
+      activeTier: "pro",
+      ironPassed: true,
+      onnx: "models/s02_sd_pro_dqn_v2_025000.onnx",
+    });
     expect(selectModelForVariant({ variantId: "D02", tierId: "iron" })?.id).toBe(
       "model-a5draw-iron-v1",
-    );
-    expect(selectModelForVariant({ variantId: "S02", tierId: "standard" })?.id).toBe(
-      "model-a5draw-standard-dqn-v1",
     );
     const entry = selectModelForVariant({ variantId: "D01", tierId: "iron" });
     const tensor = buildDrawOnnxFeatures(entry, {

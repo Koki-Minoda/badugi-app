@@ -5,7 +5,7 @@ vi.mock("../onnxExecutor.js", () => ({
   getOrCreateSession: vi.fn(async () => null),
 }));
 
-const { inferBetActionWithOnnx } = await import("../onnxPolicyAdapter.js");
+const { inferBetActionWithOnnx, inferDrawDecisionWithOnnx } = await import("../onnxPolicyAdapter.js");
 const { buildAiContext, computeBetDecision } = await import("../policyRouter.js");
 const { buildDeterministicSafeDecision } = await import("../onnxPolicyAdapter.js");
 const { resolveFallbackDecision } = await import("../tierPolicySmoke.js");
@@ -62,5 +62,46 @@ describe("ONNX fallback smoke", () => {
         deterministicDecision: buildDeterministicSafeDecision(["raise", "call"]),
       }),
     ).toEqual({ action: "CALL", source: "deterministic-safe" });
+  });
+
+  it("keeps S02 Pro playable when ONNX loading is unavailable", async () => {
+    const betDecision = await inferBetActionWithOnnx({
+      variantId: "S02",
+      tierId: "pro",
+      observation: {
+        variantId: "S02",
+        state: {
+          street: "BET",
+          players: [{ hand: ["AC", "2D", "3H", "9S", "KD"], stack: 500 }],
+        },
+        seatIndex: 0,
+        legalActions: ["fold", "call", "raise"],
+      },
+      legalActions: ["FOLD", "CALL", "RAISE"],
+    });
+    const drawDecision = await inferDrawDecisionWithOnnx({
+      variantId: "S02",
+      tierId: "pro",
+      observation: {
+        variantId: "S02",
+        state: {
+          street: "DRAW",
+          drawRoundIndex: 1,
+          players: [{ hand: ["AC", "2D", "3H", "9S", "KD"], stack: 500 }],
+        },
+        seatIndex: 0,
+        legalActions: ["draw_0", "draw_1", "draw_2", "draw_3", "draw_4", "draw_5"],
+      },
+      legalActions: ["draw_0", "draw_1", "draw_2", "draw_3", "draw_4", "draw_5"],
+    });
+    const fallback = resolveFallbackDecision({
+      onnxDecision: betDecision,
+      ruleDecision: { action: "CALL", source: "policy-router" },
+      deterministicDecision: buildDeterministicSafeDecision(["call"]),
+    });
+
+    expect(betDecision).toBeNull();
+    expect(drawDecision).toBeNull();
+    expect(fallback).toEqual({ action: "CALL", source: "policy-router" });
   });
 });

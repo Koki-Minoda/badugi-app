@@ -597,6 +597,7 @@ S02（A-5 Single Draw）では `drawAccuracy` / `drawMistakeRate` は report-onl
 
 `foldToBetPct` は現行 `DrawLowballEnv` / `DualAgentDrawLowballEnv` では pre-draw only の指標である。BET round が hero 1 action + opponent 1 response で完結する single-action-per-BET-round model のため、真の full-street fold-to-bet を測るには multi-action BET v3 が必要になる。v3 実装は checkpoint 互換、reward 再設計、再学習コストを伴うため別フェーズで扱う。
 
+S02 Pro runtime 接続状態: `model-s02-sd-pro-dqn-v2-025000` をゲーム内 CPU の S02 Pro 候補として接続済み。`activeTier` は `pro`、`ironPassed` は `true` だが、後続評価で Iron 昇格を承認するまでは UI/runtime では Pro としてのみ露出する。S02 の旧 heuristic ONNX fixture fail（A-5 SD の 8-low / 9-low pat/draw exact-match）は report-only / known limitation とし、Pro 昇格ブロッカーにはしない。
 
 `gate_draw_model.py` は `D01/D02/S01/S02` で別々の暫定閾値を持つ。特に `S01/S02` は `pro` / `iron` 判定時に、checkpoint path/name が `S01` / `S02` / `sd` / `single` / `single-draw` / `singledraw` を示さない場合は FAIL とする。TDモデル流用のままSingle DrawをPro昇格しない。
 

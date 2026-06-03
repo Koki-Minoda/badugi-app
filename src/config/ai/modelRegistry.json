@@ -633,6 +633,36 @@
     ]
   },
   {
+    "id": "model-s02-sd-pro-dqn-v2-025000",
+    "version": "v2-025000",
+    "variantId": "S02",
+    "variantIds": [
+      "S02"
+    ],
+    "family": "low-a5",
+    "maxDraws": 1,
+    "characterIds": [],
+    "tier": "pro",
+    "activeTier": "pro",
+    "ironPassed": true,
+    "onnx": "models/s02_sd_pro_dqn_v2_025000.onnx",
+    "checksumSha256": "4872578177762e63ca0e4b23524f63093b31ed71bb56c9532f25d026014b6f7a",
+    "trainingRun": "s02_sd_v2_25k_20260603",
+    "trainingCheckpoint": "s02_sd_pro_dqn_v2_025000.pt",
+    "sourceCheckpoint": "rl/models/draw/s02_sd_v2_25k/low-a5_selfplay_dqn_020000_20260603-191333.pt",
+    "gateReport": "reports/ai-eval/draw-lowball-gate-S02-pro-25k-v2-20260603-rerun.json",
+    "trainingStatus": "active",
+    "trainingNotes": "S02 A-5 Single Draw v2 self-play DQN trained to 25k total episodes. Gate reports pass standard/pro/iron, but distribution uses activeTier=pro and does not expose this model as Iron until follow-up evaluation approves promotion.",
+    "featureSet": "draw-lowball-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      11
+    ]
+  },
+  {
     "id": "model-27draw-iron-v1",
     "version": "v1",
     "variantIds": [

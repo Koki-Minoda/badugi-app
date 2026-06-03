@@ -10,27 +10,37 @@ export function getModelEntry(modelId) {
   return REGISTRY.find((entry) => entry.id === modelId) ?? null;
 }
 
+function pickMostSpecificEntry(entries) {
+  return entries
+    .map((entry, index) => ({ entry, index }))
+    .sort((a, b) => {
+      const variantDelta = a.entry.variantIds.length - b.entry.variantIds.length;
+      if (variantDelta !== 0) return variantDelta;
+      return a.index - b.index;
+    })[0]?.entry ?? null;
+}
+
 export function selectModelForVariant({ variantId, tierId, characterId, modelId }) {
   if (modelId) {
     const explicit = getModelEntry(modelId);
     if (explicit) return explicit;
   }
   if (variantId && tierId && characterId) {
-    const characterTier = REGISTRY.find(
+    const characterTier = pickMostSpecificEntry(REGISTRY.filter(
       (entry) =>
         entry.variantIds.includes(variantId) &&
         entry.tier === tierId &&
         entry.characterIds.includes(characterId),
-    );
+    ));
     if (characterTier) return characterTier;
   }
   if (variantId && tierId) {
-    const exactTier = REGISTRY.find(
+    const exactTier = pickMostSpecificEntry(REGISTRY.filter(
       (entry) =>
         entry.variantIds.includes(variantId) &&
         entry.tier === tierId &&
         entry.characterIds.length === 0,
-    );
+    ));
     if (exactTier) return exactTier;
   }
   if (variantId && !tierId) {

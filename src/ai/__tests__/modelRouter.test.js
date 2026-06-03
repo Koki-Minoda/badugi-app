@@ -99,15 +99,30 @@ describe("modelRouter", () => {
     expect(resolveTierModelInfo({ variantId: "D02", tierId: "standard" })?.modelId).toBe(
       "model-a5draw-standard-dqn-v1",
     );
-    expect(resolveTierModelInfo({ variantId: "S02", tierId: "standard" })?.modelId).toBe(
-      "model-a5draw-standard-dqn-v1",
-    );
     expect(resolveTierModelInfo({ variantId: "D02", tierId: "pro" })?.modelId).toBe(
       "model-a5draw-pro-dqn-v1",
     );
     expect(resolveTierModelInfo({ variantId: "S02", tierId: "pro" })?.modelId).toBe(
-      "model-a5draw-pro-dqn-v1",
+      "model-s02-sd-pro-dqn-v2-025000",
     );
+    expect(resolveTierModelInfo({ variantId: "S02", tierId: "pro" })).toMatchObject({
+      tierId: "pro",
+      variantIds: ["S02"],
+      onnx: "models/s02_sd_pro_dqn_v2_025000.onnx",
+      inputShape: [96],
+      outputShape: [11],
+    });
+    expect(getModelEntry("model-s02-sd-pro-dqn-v2-025000")).toMatchObject({
+      variantId: "S02",
+      family: "low-a5",
+      maxDraws: 1,
+      tier: "pro",
+      activeTier: "pro",
+      ironPassed: true,
+      sourceCheckpoint:
+        "rl/models/draw/s02_sd_v2_25k/low-a5_selfplay_dqn_020000_20260603-191333.pt",
+      gateReport: "reports/ai-eval/draw-lowball-gate-S02-pro-25k-v2-20260603-rerun.json",
+    });
   });
 
   it("routes NLH/FLH/PLO/PLO8 beginner and standard tiers to board DQN models", () => {

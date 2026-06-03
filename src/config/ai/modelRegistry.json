@@ -468,6 +468,34 @@
     ]
   },
   {
+    "id": "model-badugi-hu-beginner-dqn-100000",
+    "version": "v100000",
+    "variantIds": [
+      "D03"
+    ],
+    "characterIds": [],
+    "tier": "beginner",
+    "onnx": "models/badugi_hu_beginner_dqn_100000.onnx",
+    "checksumSha256": "ed09a11c1e27b3f3ceb8e022cdc0db7aff07d7240f5a232c331071f287ea92f1",
+    "trainingRun": "badugi_wsl_100k_v2_20260604",
+    "trainingCheckpoint": "badugi_selfplay_dqn_100000_20260604-030709.pt",
+    "trainingMode": "heads-up-selfplay",
+    "trainingEpisodes": 100000,
+    "trainingStatus": "beginner",
+    "sourceCheckpoint": "rl/models/badugi_wsl_100k_v2/badugi_selfplay_dqn_100000_20260604-030709.pt",
+    "cleanEvalReport": "reports/ai-eval/badugi-clean-eval-100k-20260604.json",
+    "note": "Six-max clean eval recommends beginner; not eligible for standard/pro/iron.",
+    "trainingNotes": "Heads-up Badugi self-play DQN trained for 100k episodes on WSL local CPU. Six-max clean eval recommends beginner only: avgReward is negative, showdownWinRate is low, and eligibleTiers is empty. Connected only to Beginner routing and not promoted to standard/pro/iron.",
+    "featureSet": "badugi-observation-v1-ev-range",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
     "id": "model-badugi-beginner-dqn-v1",
     "version": "v1",
     "variantIds": [

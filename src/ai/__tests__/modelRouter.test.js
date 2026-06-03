@@ -21,7 +21,7 @@ describe("modelRouter", () => {
 
   it("uses exact variant-tier model before a generic tier model", () => {
     const entry = resolveTierModelInfo({ variantId: "D03", tierId: "beginner" });
-    expect(entry?.modelId).toBe("model-generic-v1");
+    expect(entry?.modelId).toBe("model-badugi-hu-beginner-dqn-100000");
 
     const standard = resolveTierModelInfo({ variantId: "D03", tierId: "standard" });
     expect(standard?.modelId).toBe("model-badugi-standard-dqn-v3");
@@ -72,9 +72,38 @@ describe("modelRouter", () => {
     expect(legacy?.trainingStatus).toBe("legacy");
     expect(legacy?.productionRequired).toBe(false);
 
-    expect(selectModelForVariant({ variantId: "D03", tierId: "beginner" })?.id).not.toBe(
-      "model-badugi-beginner-dqn-v1",
+    expect(selectModelForVariant({ variantId: "D03", tierId: "beginner" })?.id).toBe(
+      "model-badugi-hu-beginner-dqn-100000",
     );
+  });
+
+  it("routes Badugi beginner to HU self-play without changing stronger tiers", () => {
+    expect(resolveTierModelInfo({ variantId: "D03", tierId: "beginner" })).toMatchObject({
+      modelId: "model-badugi-hu-beginner-dqn-100000",
+      tierId: "beginner",
+      variantIds: ["D03"],
+      onnx: "models/badugi_hu_beginner_dqn_100000.onnx",
+      inputShape: [96],
+      outputShape: [6],
+    });
+    expect(resolveTierModelInfo({ variantId: "D03", tierId: "standard" })?.modelId).toBe(
+      "model-badugi-standard-dqn-v3",
+    );
+    expect(resolveTierModelInfo({ variantId: "D03", tierId: "pro" })?.modelId).toBe(
+      "model-badugi-pro-v1",
+    );
+    expect(resolveTierModelInfo({ variantId: "D03", tierId: "iron" })?.modelId).toBe(
+      "model-badugi-iron-v1",
+    );
+    expect(getModelEntry("model-badugi-hu-beginner-dqn-100000")).toMatchObject({
+      trainingMode: "heads-up-selfplay",
+      trainingEpisodes: 100000,
+      trainingStatus: "beginner",
+      sourceCheckpoint:
+        "rl/models/badugi_wsl_100k_v2/badugi_selfplay_dqn_100000_20260604-030709.pt",
+      cleanEvalReport: "reports/ai-eval/badugi-clean-eval-100k-20260604.json",
+      note: "Six-max clean eval recommends beginner; not eligible for standard/pro/iron.",
+    });
   });
 
   it("routes 2-7 and A-5 draw beginner/standard tiers to trained draw DQN models", () => {

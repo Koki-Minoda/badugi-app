@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -56,7 +57,8 @@ def _action_rates(counts: list[int], *, include_all_in: bool = True) -> dict[str
 @dataclass
 class PositionTelemetry:
     action_count: int = 6
-    rewards: list[float] = field(default_factory=list)
+    history_maxlen: int = 100_000
+    rewards: deque[float] = field(default_factory=deque)
     bet_action_counts: list[int] = field(default_factory=list)
     facing_bet_decisions: int = 0
     fold_to_bet_actions: int = 0
@@ -65,6 +67,8 @@ class PositionTelemetry:
     pfr_hands: int = 0
 
     def __post_init__(self) -> None:
+        if self.rewards.maxlen is None:
+            self.rewards = deque(self.rewards, maxlen=self.history_maxlen)
         if not self.bet_action_counts:
             self.bet_action_counts = _zero_counts(self.action_count)
 
@@ -98,6 +102,7 @@ class PositionTelemetry:
 class SixMaxActionTelemetry:
     action_count: int = 6
     max_draw_count: int = 4
+    history_maxlen: int = 100_000
     position_names: tuple[str, ...] = POSITION_LOG_ORDER
     bet_action_counts: list[int] = field(default_factory=list)
     facing_bet_decisions: int = 0
@@ -108,7 +113,7 @@ class SixMaxActionTelemetry:
     terminal_counts: dict[str, int] = field(default_factory=dict)
     showdown_wins: int = 0
     hands: int = 0
-    episode_lengths: list[int] = field(default_factory=list)
+    episode_lengths: deque[int] = field(default_factory=deque)
     max_step_hits: int = 0
     vpip_hands: int = 0
     pfr_hands: int = 0
@@ -117,9 +122,13 @@ class SixMaxActionTelemetry:
     street_action_counts: dict[str, list[int]] = field(default_factory=dict)
     hand_strength_action_counts: dict[str, list[int]] = field(default_factory=dict)
     positions: dict[str, PositionTelemetry] = field(default_factory=dict)
-    q_means: list[float] = field(default_factory=list)
+    q_means: deque[float] = field(default_factory=deque)
 
     def __post_init__(self) -> None:
+        if self.episode_lengths.maxlen is None:
+            self.episode_lengths = deque(self.episode_lengths, maxlen=self.history_maxlen)
+        if self.q_means.maxlen is None:
+            self.q_means = deque(self.q_means, maxlen=self.history_maxlen)
         if not self.bet_action_counts:
             self.bet_action_counts = _zero_counts(self.action_count)
         for draw_count in range(self.max_draw_count + 1):
@@ -131,7 +140,10 @@ class SixMaxActionTelemetry:
         for strength_class in HAND_STRENGTH_CLASSES:
             self.hand_strength_action_counts.setdefault(strength_class, _zero_counts(self.action_count))
         for position in self.position_names:
-            self.positions.setdefault(position, PositionTelemetry(action_count=self.action_count))
+            self.positions.setdefault(
+                position,
+                PositionTelemetry(action_count=self.action_count, history_maxlen=self.history_maxlen),
+            )
         self._episode_position: str | None = None
         self._episode_vpip = False
         self._episode_pfr = False
@@ -182,6 +194,11 @@ class SixMaxActionTelemetry:
                     self.three_bet_actions += 1
 
     def record_draw(self, draw_count: int) -> None:
+        """Record already-normalized draw count.
+
+        Badugi callers usually pass action 0..3 directly. Draw Lowball callers
+        should pass action - DRAW_0 so this helper stays action-space neutral.
+        """
         normalized = max(0, min(self.max_draw_count, int(draw_count)))
         self.draw_actions += 1
         self.drawn_cards += normalized

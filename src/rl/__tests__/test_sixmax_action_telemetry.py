@@ -1,5 +1,6 @@
 import pytest
 
+from rl.training.watch_sixmax_checkpoints import _parse_log
 from rl.training.sixmax_action_telemetry import SixMaxActionTelemetry
 
 
@@ -96,3 +97,37 @@ def test_terminal_reason_rates_and_position_actions_are_separate():
     assert summary["positionStats"]["BTN"]["betRate"] == pytest.approx(1.0)
     assert summary["positionStats"]["SB"]["foldRate"] == pytest.approx(1.0)
     assert summary["positionStats"]["BB"]["hands"] == 1
+
+
+def test_history_storage_is_bounded():
+    telemetry = SixMaxActionTelemetry(history_maxlen=3)
+
+    for idx in range(10):
+        telemetry.start_episode(position="BTN")
+        telemetry.record_episode(reward=float(idx), length=idx + 1, terminal_reason="showdown", position="BTN")
+        telemetry.record_q(mean_q=float(idx))
+
+    assert len(telemetry.episode_lengths) == 3
+    assert list(telemetry.episode_lengths) == [8, 9, 10]
+    assert len(telemetry.q_means) == 3
+    assert list(telemetry.q_means) == [7.0, 8.0, 9.0]
+    assert len(telemetry.positions["BTN"].rewards) == 3
+    assert list(telemetry.positions["BTN"].rewards) == [7.0, 8.0, 9.0]
+
+
+def test_watcher_parses_pure_raise_and_agg_separately(tmp_path):
+    log_path = tmp_path / "train.log"
+    log_path.write_text(
+        "[6max      100] avg=  -0.100 ε=0.500 buf=    10 loss=0.00100 q=0.250 "
+        "fold%=10.0 chk%=20.0 call%=30.0 bet%=15.0 raise%=5.0 ai%=0.0 agg%=20.0 "
+        "ftb%=12.0 drawAvg=1.50 vpip%=70.0 pfr%=20.0 af=0.67 sd%=50.0 wsd%=25.0 "
+        "term=[sd:5 fw:3 fl:1 tr:1] epLen=8.0 drawDist=[0:1 1:2 2:3 3:4 4:0] "
+        "opp_upd=0 spd=12.0ep/s ETA=0.0h\n",
+        encoding="utf8",
+    )
+
+    stats = _parse_log(log_path, 100)
+
+    assert stats["bet_pct"] == 15.0
+    assert stats["raise_pct"] == 5.0
+    assert stats["aggression_pct"] == 20.0

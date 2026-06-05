@@ -42,6 +42,10 @@ from rl.env.badugi_env_selfplay import _best_badugi_keep
 from rl.utils.replay_buffer import ReplayBuffer
 
 
+POSITION_NAMES_BY_BUTTON_OFFSET = ("BTN", "SB", "BB", "UTG", "MP", "CO")
+POSITION_LOG_ORDER = ("BTN", "CO", "MP", "UTG", "BB", "SB")
+
+
 @dataclass
 class SixMaxSelfPlayConfig:
     total_episodes: int = 1_000_000
@@ -80,6 +84,56 @@ class SixMaxSelfPlayConfig:
 def _linear_decay(episode: int, start: float, end: float, decay_episodes: int) -> float:
     frac = min(1.0, episode / max(1, decay_episodes))
     return start + frac * (end - start)
+
+
+def hero_position_name(hero_seat: int, dealer_seat: int) -> str:
+    """Return table position name for hero relative to the dealer/button."""
+    offset = (hero_seat - dealer_seat) % len(POSITION_NAMES_BY_BUTTON_OFFSET)
+    return POSITION_NAMES_BY_BUTTON_OFFSET[offset]
+
+
+def _recent_mean(values: list[float], n: int) -> float:
+    recent = values[-n:]
+    return float(sum(recent) / max(1, len(recent)))
+
+
+def _format_position_rewards(pos_name_rewards: dict[str, list[float]], window: int) -> str:
+    return " ".join(
+        f"{name}={_recent_mean(pos_name_rewards[name], window):.2f}"
+        for name in POSITION_LOG_ORDER
+        if pos_name_rewards[name]
+    )
+
+
+def _build_summary(
+    *,
+    cfg: SixMaxSelfPlayConfig,
+    global_step: int,
+    rewards: list[float],
+    pos_rewards: list[list[float]],
+    pos_name_rewards: dict[str, list[float]],
+    opponent_updates: int,
+    latest: Path,
+) -> dict:
+    return {
+        "episodes": int(cfg.total_episodes),
+        "global_steps": int(global_step),
+        "avg_reward_last_100": _recent_mean(rewards, 100),
+        "position_avg_rewards": {
+            f"pos_{i}": _recent_mean(pos_rewards[i], 500)
+            for i in range(6)
+        },
+        "position_name_avg_rewards": {
+            name: _recent_mean(pos_name_rewards[name], 1000)
+            for name in POSITION_NAMES_BY_BUTTON_OFFSET
+        },
+        "opponent_updates": int(opponent_updates),
+        "pretrained": cfg.pretrained,
+        "checkpoint": str(latest),
+        "obs_dim": 96,
+        "n_actions": 6,
+        "hidden_dim": cfg.hidden_dim,
+    }
 
 
 def _teacher_warmup(
@@ -185,6 +239,7 @@ def train_sixmax_selfplay_badugi_dqn(
     rewards: list[float] = []
     # Position-stratified tracking (6 positions)
     pos_rewards: list[list[float]] = [[] for _ in range(6)]
+    pos_name_rewards: dict[str, list[float]] = {name: [] for name in POSITION_NAMES_BY_BUTTON_OFFSET}
     window_folds = window_raises = window_bet_steps = 0
     loss = mean_q = imitation_loss = imitation_accuracy = fold_margin_loss = 0.0
     opponent_updates = 0
@@ -195,6 +250,7 @@ def train_sixmax_selfplay_badugi_dqn(
     for episode in range(1, cfg.total_episodes + 1):
         obs, _ = sp_env.reset()
         hero_seat = sp_env.hero_seat
+        hero_position = hero_position_name(hero_seat, sp_env.dealer_seat)
         total_reward = 0.0
         ep_folds = ep_raises = ep_bet_steps = 0
         epsilon = _linear_decay(episode, cfg.epsilon_start, cfg.epsilon_end, cfg.epsilon_decay_episodes)
@@ -247,6 +303,7 @@ def train_sixmax_selfplay_badugi_dqn(
 
         rewards.append(total_reward)
         pos_rewards[hero_seat % 6].append(total_reward)
+        pos_name_rewards[hero_position].append(total_reward)
         window_folds += ep_folds
         window_raises += ep_raises
         window_bet_steps += ep_bet_steps
@@ -276,6 +333,7 @@ def train_sixmax_selfplay_badugi_dqn(
                 f"p{i}={sum(pos_rewards[i][-200:])/max(1,len(pos_rewards[i][-200:])):.2f}"
                 for i in range(6) if pos_rewards[i]
             )
+            pos_name_str = _format_position_rewards(pos_name_rewards, 200)
             print(
                 f"[6max {episode:8d}] avg={sum(recent)/len(recent):8.3f} "
                 f"ε={epsilon:.3f} buf={len(replay):7d} "
@@ -283,7 +341,7 @@ def train_sixmax_selfplay_badugi_dqn(
                 f"fold%={fold_rate*100:.1f} raise%={raise_rate*100:.1f} "
                 f"opp_upd={opponent_updates} "
                 f"spd={eps_per_sec:.1f}ep/s ETA={eta_h:.1f}h "
-                f"{pos_str}{warn}"
+                f"{pos_str} {pos_name_str}{warn}"
             )
             window_folds = window_raises = window_bet_steps = 0
 
@@ -297,26 +355,37 @@ def train_sixmax_selfplay_badugi_dqn(
                 f"pos_{i}": float(sum(pos_rewards[i][-1000:]) / max(1, len(pos_rewards[i][-1000:])))
                 for i in range(6)
             }
-            print(f"[6max-SelfPlay] Saved → {ckpt} | pos_avgs={pos_avg}")
+            pos_name_avg = {
+                name: _recent_mean(pos_name_rewards[name], 1000)
+                for name in POSITION_NAMES_BY_BUTTON_OFFSET
+            }
+            latest = output_dir / "badugi_sixmax_dqn_latest.pt"
+            summary = _build_summary(
+                cfg=cfg,
+                global_step=global_step,
+                rewards=rewards,
+                pos_rewards=pos_rewards,
+                pos_name_rewards=pos_name_rewards,
+                opponent_updates=opponent_updates,
+                latest=latest,
+            )
+            (output_dir / "badugi_sixmax_dqn_latest_summary.json").write_text(
+                json.dumps(summary, indent=2) + "\n", encoding="utf8"
+            )
+            print(f"[6max-SelfPlay] Saved → {ckpt} | pos_avgs={pos_avg} pos_name_avgs={pos_name_avg}")
 
     latest = output_dir / "badugi_sixmax_dqn_latest.pt"
     hero.save(str(latest))
 
-    summary = {
-        "episodes": int(cfg.total_episodes),
-        "global_steps": int(global_step),
-        "avg_reward_last_100": float(sum(rewards[-100:]) / max(1, len(rewards[-100:]))),
-        "position_avg_rewards": {
-            f"pos_{i}": float(sum(pos_rewards[i][-500:]) / max(1, len(pos_rewards[i][-500:])))
-            for i in range(6)
-        },
-        "opponent_updates": int(opponent_updates),
-        "pretrained": cfg.pretrained,
-        "checkpoint": str(latest),
-        "obs_dim": 96,
-        "n_actions": 6,
-        "hidden_dim": cfg.hidden_dim,
-    }
+    summary = _build_summary(
+        cfg=cfg,
+        global_step=global_step,
+        rewards=rewards,
+        pos_rewards=pos_rewards,
+        pos_name_rewards=pos_name_rewards,
+        opponent_updates=opponent_updates,
+        latest=latest,
+    )
     (output_dir / "badugi_sixmax_dqn_latest_summary.json").write_text(
         json.dumps(summary, indent=2) + "\n", encoding="utf8"
     )

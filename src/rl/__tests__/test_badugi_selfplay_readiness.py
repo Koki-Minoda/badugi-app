@@ -9,6 +9,7 @@ from rl.training.train_selfplay_badugi_dqn import (
     _validate_config,
     train_selfplay_badugi_dqn,
 )
+from rl.training.train_sixmax_selfplay_badugi_dqn import hero_position_name
 
 
 def test_selfplay_config_rejects_unbounded_update_cadence():
@@ -16,6 +17,16 @@ def test_selfplay_config_rejects_unbounded_update_cadence():
 
     with pytest.raises(ValueError, match="opponent_update_interval"):
         _validate_config(cfg)
+
+
+def test_sixmax_hero_position_name_maps_relative_to_dealer():
+    expected = ["BTN", "SB", "BB", "UTG", "MP", "CO"]
+
+    for dealer_seat in range(6):
+        assert [
+            hero_position_name((dealer_seat + offset) % 6, dealer_seat)
+            for offset in range(6)
+        ] == expected
 
 
 def test_atomic_save_agent_writes_readable_checkpoint(tmp_path: Path):

@@ -99,6 +99,20 @@ def test_terminal_reason_rates_and_position_actions_are_separate():
     assert summary["positionStats"]["BB"]["hands"] == 1
 
 
+def test_fold_win_terminal_reason_splits_by_reward_sign():
+    telemetry = SixMaxActionTelemetry()
+
+    telemetry.record_episode(reward=1.0, length=2, terminal_reason="fold_win")
+    telemetry.record_episode(reward=-1.0, length=3, terminal_reason="fold_win")
+
+    summary = telemetry.summary()
+
+    assert summary["terminalCounts"]["fold_win"] == 1
+    assert summary["terminalCounts"]["fold_loss"] == 1
+    assert summary["foldWinRate"] == pytest.approx(0.5)
+    assert summary["foldLossRate"] == pytest.approx(0.5)
+
+
 def test_history_storage_is_bounded():
     telemetry = SixMaxActionTelemetry(history_maxlen=3)
 

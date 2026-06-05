@@ -27,7 +27,8 @@ if str(SRC_ROOT) not in sys.path:
 
 from rl.env.badugi_env_sixmax_selfplay import SixMaxBadugiEnv
 from rl.training.export_badugi_dqn_onnx import export_checkpoint
-from rl.training.sixmax_action_telemetry import SixMaxActionTelemetry
+from rl.training.sixmax_action_telemetry import SixMaxActionTelemetry, betting_round_name
+from rl.training.train_sixmax_selfplay_badugi_dqn import hero_position_name
 
 try:
     import onnxruntime as ort
@@ -67,6 +68,8 @@ def _eval_sixmax(checkpoint: Path, n_episodes: int = 600, hidden_dim: int = 256)
             terminal_reason = None
             episode_truncated = False
             hero_seat = env.hero_seat
+            hero_position = hero_position_name(hero_seat, env.dealer_seat)
+            telemetry.start_episode(position=hero_position)
             for _ in range(100):
                 ep_steps += 1
                 mask = env.legal_action_mask()
@@ -78,7 +81,21 @@ def _eval_sixmax(checkpoint: Path, n_episodes: int = 600, hidden_dim: int = 256)
                     q_masked[mask <= 0] = -1e9
                     action = int(np.argmax(q_masked))
                     facing_bet = max(0, env.current_bet - env.players[hero_seat]["bet"]) > 0 or mask[0] > 0
-                    telemetry.record_bet(action, facing_bet=facing_bet)
+                    three_bet_opportunity = (
+                        env.draw_round == 0
+                        and facing_bet
+                        and mask[4] > 0
+                        and env.raise_count >= 1
+                    )
+                    telemetry.record_bet(
+                        action,
+                        facing_bet=facing_bet,
+                        position=hero_position,
+                        betting_round=betting_round_name(env.draw_round),
+                        is_pre_draw=env.draw_round == 0,
+                        three_bet_opportunity=three_bet_opportunity,
+                        hand_strength_class="unknown",
+                    )
                 else:
                     # DRAW phase: greedily draw toward best badugi
                     q = agent.q_network(
@@ -104,6 +121,7 @@ def _eval_sixmax(checkpoint: Path, n_episodes: int = 600, hidden_dim: int = 256)
                 terminal_reason=terminal_reason or ("truncated" if max_step_hit else None),
                 truncated=episode_truncated or max_step_hit,
                 max_step_hit=max_step_hit,
+                position=hero_position,
             )
 
     n = len(all_rewards)

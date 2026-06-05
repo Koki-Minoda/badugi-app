@@ -24,6 +24,7 @@ import argparse
 import json
 import sys
 import time
+from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -45,6 +46,7 @@ from rl.utils.replay_buffer import ReplayBuffer
 
 POSITION_NAMES_BY_BUTTON_OFFSET = ("BTN", "SB", "BB", "UTG", "MP", "CO")
 POSITION_LOG_ORDER = ("BTN", "CO", "MP", "UTG", "BB", "SB")
+TELEMETRY_HISTORY_MAXLEN = 100_000
 
 
 @dataclass
@@ -93,12 +95,12 @@ def hero_position_name(hero_seat: int, dealer_seat: int) -> str:
     return POSITION_NAMES_BY_BUTTON_OFFSET[offset]
 
 
-def _recent_mean(values: list[float], n: int) -> float:
-    recent = values[-n:]
+def _recent_mean(values, n: int) -> float:
+    recent = list(values)[-n:]
     return float(sum(recent) / max(1, len(recent)))
 
 
-def _format_position_rewards(pos_name_rewards: dict[str, list[float]], window: int) -> str:
+def _format_position_rewards(pos_name_rewards: dict[str, deque[float]], window: int) -> str:
     return " ".join(
         f"{name}={_recent_mean(pos_name_rewards[name], window):.2f}"
         for name in POSITION_LOG_ORDER
@@ -239,10 +241,13 @@ def train_sixmax_selfplay_badugi_dqn(
     sp_env.set_agents(hero, opp)
 
     global_step = 0
-    rewards: list[float] = []
+    rewards: deque[float] = deque(maxlen=TELEMETRY_HISTORY_MAXLEN)
     # Position-stratified tracking (6 positions)
-    pos_rewards: list[list[float]] = [[] for _ in range(6)]
-    pos_name_rewards: dict[str, list[float]] = {name: [] for name in POSITION_NAMES_BY_BUTTON_OFFSET}
+    pos_rewards: list[deque[float]] = [deque(maxlen=TELEMETRY_HISTORY_MAXLEN) for _ in range(6)]
+    pos_name_rewards: dict[str, deque[float]] = {
+        name: deque(maxlen=TELEMETRY_HISTORY_MAXLEN)
+        for name in POSITION_NAMES_BY_BUTTON_OFFSET
+    }
     window_actions = SixMaxActionTelemetry(max_draw_count=4, position_names=POSITION_NAMES_BY_BUTTON_OFFSET)
     total_actions = SixMaxActionTelemetry(max_draw_count=4, position_names=POSITION_NAMES_BY_BUTTON_OFFSET)
     loss = mean_q = imitation_loss = imitation_accuracy = fold_margin_loss = 0.0
@@ -359,7 +364,7 @@ def train_sixmax_selfplay_badugi_dqn(
             opponent_updates += 1
 
         if cfg.log_interval > 0 and episode % cfg.log_interval == 0:
-            recent = rewards[-cfg.log_interval:]
+            recent = list(rewards)[-cfg.log_interval:]
             action_rates = window_actions.rates(
                 include_all_in=True,
                 include_fold_to_bet=True,
@@ -377,7 +382,7 @@ def train_sixmax_selfplay_badugi_dqn(
 
             # Per-position reward (last N samples per position)
             pos_str = " ".join(
-                f"p{i}={sum(pos_rewards[i][-200:])/max(1,len(pos_rewards[i][-200:])):.2f}"
+                f"p{i}={_recent_mean(pos_rewards[i], 200):.2f}"
                 for i in range(6) if pos_rewards[i]
             )
             pos_name_str = _format_position_rewards(pos_name_rewards, 200)
@@ -399,7 +404,7 @@ def train_sixmax_selfplay_badugi_dqn(
             hero.save(str(output_dir / "badugi_sixmax_dqn_latest.pt"))
             # Per-position reward summary at checkpoint
             pos_avg = {
-                f"pos_{i}": float(sum(pos_rewards[i][-1000:]) / max(1, len(pos_rewards[i][-1000:])))
+                f"pos_{i}": _recent_mean(pos_rewards[i], 1000)
                 for i in range(6)
             }
             pos_name_avg = {

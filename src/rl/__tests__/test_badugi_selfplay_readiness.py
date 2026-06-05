@@ -10,6 +10,7 @@ from rl.training.train_selfplay_badugi_dqn import (
     train_selfplay_badugi_dqn,
 )
 from rl.training.train_sixmax_selfplay_badugi_dqn import hero_position_name
+from rl.training.sixmax_action_telemetry import SixMaxActionTelemetry
 
 
 def test_selfplay_config_rejects_unbounded_update_cadence():
@@ -27,6 +28,29 @@ def test_sixmax_hero_position_name_maps_relative_to_dealer():
             hero_position_name((dealer_seat + offset) % 6, dealer_seat)
             for offset in range(6)
         ] == expected
+
+
+def test_sixmax_action_telemetry_separates_bet_raise_and_facing_bet():
+    telemetry = SixMaxActionTelemetry()
+    telemetry.record_bet(0, facing_bet=True)
+    telemetry.record_bet(1, facing_bet=False)
+    telemetry.record_bet(2, facing_bet=True)
+    telemetry.record_bet(3, facing_bet=False)
+    telemetry.record_bet(4, facing_bet=True)
+    telemetry.record_draw(2)
+    telemetry.record_draw(0)
+
+    rates = telemetry.rates(include_all_in=True, include_fold_to_bet=True, include_draw_average=True)
+
+    assert rates["foldRate"] == 0.2
+    assert rates["checkRate"] == 0.2
+    assert rates["callRate"] == 0.2
+    assert rates["betRate"] == 0.2
+    assert rates["pureRaiseRate"] == 0.2
+    assert rates["aggressionRate"] == 0.4
+    assert rates["allInRate"] == 0.0
+    assert rates["foldToBetRate"] == 1 / 3
+    assert rates["drawAverage"] == 1.0
 
 
 def test_atomic_save_agent_writes_readable_checkpoint(tmp_path: Path):

@@ -39,6 +39,7 @@ from rl.agents.dqn_agent import DQNAgent, DQNHyperParams
 from rl.env.badugi_env import BadugiEnv
 from rl.env.badugi_env_sixmax_selfplay import SixMaxBadugiEnv
 from rl.env.badugi_env_selfplay import _best_badugi_keep
+from rl.training.sixmax_action_telemetry import SixMaxActionTelemetry
 from rl.utils.replay_buffer import ReplayBuffer
 
 
@@ -112,6 +113,7 @@ def _build_summary(
     rewards: list[float],
     pos_rewards: list[list[float]],
     pos_name_rewards: dict[str, list[float]],
+    action_telemetry: SixMaxActionTelemetry,
     opponent_updates: int,
     latest: Path,
 ) -> dict:
@@ -127,6 +129,11 @@ def _build_summary(
             name: _recent_mean(pos_name_rewards[name], 1000)
             for name in POSITION_NAMES_BY_BUTTON_OFFSET
         },
+        **action_telemetry.rates(
+            include_all_in=True,
+            include_fold_to_bet=True,
+            include_draw_average=True,
+        ),
         "opponent_updates": int(opponent_updates),
         "pretrained": cfg.pretrained,
         "checkpoint": str(latest),
@@ -240,7 +247,8 @@ def train_sixmax_selfplay_badugi_dqn(
     # Position-stratified tracking (6 positions)
     pos_rewards: list[list[float]] = [[] for _ in range(6)]
     pos_name_rewards: dict[str, list[float]] = {name: [] for name in POSITION_NAMES_BY_BUTTON_OFFSET}
-    window_folds = window_raises = window_bet_steps = 0
+    window_actions = SixMaxActionTelemetry()
+    total_actions = SixMaxActionTelemetry()
     loss = mean_q = imitation_loss = imitation_accuracy = fold_margin_loss = 0.0
     opponent_updates = 0
     t_start = time.time()
@@ -252,7 +260,6 @@ def train_sixmax_selfplay_badugi_dqn(
         hero_seat = sp_env.hero_seat
         hero_position = hero_position_name(hero_seat, sp_env.dealer_seat)
         total_reward = 0.0
-        ep_folds = ep_raises = ep_bet_steps = 0
         epsilon = _linear_decay(episode, cfg.epsilon_start, cfg.epsilon_end, cfg.epsilon_decay_episodes)
 
         for _ in range(cfg.max_steps_per_episode):
@@ -261,11 +268,14 @@ def train_sixmax_selfplay_badugi_dqn(
             action = hero.act(obs, epsilon, action_mask=mask)
 
             if sp_env.phase == "BET":
-                ep_bet_steps += 1
-                if action == 0:
-                    ep_folds += 1
-                elif action in (3, 4):
-                    ep_raises += 1
+                hero_state = sp_env.players[hero_seat]
+                facing_bet = max(0, sp_env.current_bet - hero_state["bet"]) > 0 or mask[0] > 0
+                window_actions.record_bet(action, facing_bet=facing_bet)
+                total_actions.record_bet(action, facing_bet=facing_bet)
+            elif sp_env.phase == "DRAW":
+                draw_count = max(0, min(3, action))
+                window_actions.record_draw(draw_count)
+                total_actions.record_draw(draw_count)
 
             next_obs, reward, terminated, truncated, _ = sp_env.step(action)
             done = terminated or truncated
@@ -304,9 +314,6 @@ def train_sixmax_selfplay_badugi_dqn(
         rewards.append(total_reward)
         pos_rewards[hero_seat % 6].append(total_reward)
         pos_name_rewards[hero_position].append(total_reward)
-        window_folds += ep_folds
-        window_raises += ep_raises
-        window_bet_steps += ep_bet_steps
 
         if episode % cfg.opponent_update_interval == 0:
             opp.q_network.load_state_dict(hero.q_network.state_dict())
@@ -315,17 +322,19 @@ def train_sixmax_selfplay_badugi_dqn(
 
         if cfg.log_interval > 0 and episode % cfg.log_interval == 0:
             recent = rewards[-cfg.log_interval:]
-            w = max(1, window_bet_steps)
-            fold_rate = window_folds / w
-            raise_rate = window_raises / w
+            action_rates = window_actions.rates(
+                include_all_in=True,
+                include_fold_to_bet=True,
+                include_draw_average=True,
+            )
             elapsed = time.time() - t_start
             eps_per_sec = episode / max(1, elapsed)
             eta_h = (cfg.total_episodes - episode) / max(1, eps_per_sec) / 3600
 
             warn = ""
-            if fold_rate > 0.60:
+            if action_rates["foldRate"] > 0.60:
                 warn += " ⚠ HIGH-FOLD"
-            if raise_rate < 0.04:
+            if action_rates["aggressionRate"] < 0.04:
                 warn += " ⚠ LOW-AGGRESSION"
 
             # Per-position reward (last N samples per position)
@@ -338,12 +347,12 @@ def train_sixmax_selfplay_badugi_dqn(
                 f"[6max {episode:8d}] avg={sum(recent)/len(recent):8.3f} "
                 f"ε={epsilon:.3f} buf={len(replay):7d} "
                 f"loss={loss:.5f} q={mean_q:.3f} "
-                f"fold%={fold_rate*100:.1f} raise%={raise_rate*100:.1f} "
+                f"{window_actions.format_log(include_all_in=True, include_fold_to_bet=True, include_draw_average=True)} "
                 f"opp_upd={opponent_updates} "
                 f"spd={eps_per_sec:.1f}ep/s ETA={eta_h:.1f}h "
                 f"{pos_str} {pos_name_str}{warn}"
             )
-            window_folds = window_raises = window_bet_steps = 0
+            window_actions = SixMaxActionTelemetry()
 
         if cfg.save_interval > 0 and episode % cfg.save_interval == 0:
             ts = time.strftime("%Y%m%d-%H%M%S")
@@ -366,6 +375,7 @@ def train_sixmax_selfplay_badugi_dqn(
                 rewards=rewards,
                 pos_rewards=pos_rewards,
                 pos_name_rewards=pos_name_rewards,
+                action_telemetry=total_actions,
                 opponent_updates=opponent_updates,
                 latest=latest,
             )
@@ -383,6 +393,7 @@ def train_sixmax_selfplay_badugi_dqn(
         rewards=rewards,
         pos_rewards=pos_rewards,
         pos_name_rewards=pos_name_rewards,
+        action_telemetry=total_actions,
         opponent_updates=opponent_updates,
         latest=latest,
     )

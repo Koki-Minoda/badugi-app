@@ -141,7 +141,11 @@ def _parse_log(log_path: Path, episode: int) -> dict | None:
             "loss": _extract("loss"),
             "mean_q": _extract("q"),
             "fold_pct": _extract("fold%"),
+            "check_pct": _extract("chk%"),
+            "call_pct": _extract("call%"),
+            "bet_pct": _extract("bet%"),
             "raise_pct": _extract("raise%"),
+            "aggression_pct": _extract("agg%"),
             "speed_eps_per_sec": _extract("spd"),
         }
     except Exception:
@@ -265,14 +269,21 @@ def watch(args):
             # 学習ログから統計
             log_stats = _parse_log(log_path, ep)
             if log_stats:
+                def _fmt(value, spec: str) -> str:
+                    return "?" if value is None else format(value, spec)
+
                 print(
-                    f"[学習] avg={log_stats.get('train_avg_reward', '?'):.3f}  "
-                    f"ε={log_stats.get('epsilon', '?'):.3f}  "
-                    f"buf={log_stats.get('buffer', '?'):.0f}  "
-                    f"loss={log_stats.get('loss', '?'):.5f}  "
-                    f"fold%={log_stats.get('fold_pct', '?'):.1f}  "
-                    f"raise%={log_stats.get('raise_pct', '?'):.1f}  "
-                    f"spd={log_stats.get('speed_eps_per_sec', '?'):.1f} ep/s"
+                    f"[学習] avg={_fmt(log_stats.get('train_avg_reward'), '.3f')}  "
+                    f"ε={_fmt(log_stats.get('epsilon'), '.3f')}  "
+                    f"buf={_fmt(log_stats.get('buffer'), '.0f')}  "
+                    f"loss={_fmt(log_stats.get('loss'), '.5f')}  "
+                    f"fold%={_fmt(log_stats.get('fold_pct'), '.1f')}  "
+                    f"chk%={_fmt(log_stats.get('check_pct'), '.1f')}  "
+                    f"call%={_fmt(log_stats.get('call_pct'), '.1f')}  "
+                    f"bet%={_fmt(log_stats.get('bet_pct'), '.1f')}  "
+                    f"raise%={_fmt(log_stats.get('raise_pct'), '.1f')}  "
+                    f"agg%={_fmt(log_stats.get('aggression_pct'), '.1f')}  "
+                    f"spd={_fmt(log_stats.get('speed_eps_per_sec'), '.1f')} ep/s"
                 )
 
             # 6-max評価

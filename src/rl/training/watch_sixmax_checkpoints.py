@@ -30,7 +30,10 @@ from rl.training.export_badugi_dqn_onnx import export_checkpoint
 from rl.training.sixmax_action_telemetry import (
     SixMaxActionTelemetry,
     betting_round_name,
+    blind_pre_draw_pressure_opportunity,
+    conservative_steal_opportunity,
     conservative_three_bet_opportunity,
+    pre_draw_no_voluntary_action_before_hero,
 )
 from rl.training.train_sixmax_selfplay_badugi_dqn import hero_position_name
 
@@ -85,19 +88,43 @@ def _eval_sixmax(checkpoint: Path, n_episodes: int = 600, hidden_dim: int = 256)
                     q_masked[mask <= 0] = -1e9
                     action = int(np.argmax(q_masked))
                     facing_bet = max(0, env.current_bet - env.players[hero_seat]["bet"]) > 0 or mask[0] > 0
+                    street = betting_round_name(env.draw_round)
+                    no_voluntary_action = (
+                        env.draw_round == 0
+                        and pre_draw_no_voluntary_action_before_hero(
+                            players=env.players,
+                            dealer_seat=env.dealer_seat,
+                            hero_seat=hero_seat,
+                        )
+                    )
                     three_bet_opportunity = conservative_three_bet_opportunity(
                         draw_round=env.draw_round,
                         facing_bet=facing_bet,
                         raise_legal=mask[4] > 0,
                         raise_count=env.raise_count,
                     )
+                    steal_opportunity = conservative_steal_opportunity(
+                        position=hero_position,
+                        betting_round=street,
+                        no_voluntary_action_before_hero=no_voluntary_action,
+                        bet_legal=mask[3] > 0,
+                        raise_legal=mask[4] > 0,
+                    )
+                    blind_pressure_opportunity = blind_pre_draw_pressure_opportunity(
+                        position=hero_position,
+                        betting_round=street,
+                        facing_bet=facing_bet,
+                        fold_legal=mask[0] > 0,
+                    )
                     telemetry.record_bet(
                         action,
                         facing_bet=facing_bet,
                         position=hero_position,
-                        betting_round=betting_round_name(env.draw_round),
+                        betting_round=street,
                         is_pre_draw=env.draw_round == 0,
                         three_bet_opportunity=three_bet_opportunity,
+                        steal_opportunity=steal_opportunity,
+                        blind_pressure_opportunity=blind_pressure_opportunity,
                         hand_strength_class="unknown",
                     )
                 else:
@@ -138,6 +165,13 @@ def _eval_sixmax(checkpoint: Path, n_episodes: int = 600, hidden_dim: int = 256)
         "pure_raise_rate": rates["pureRaiseRate"],
         "agg_rate": rates["aggressionRate"],
         "raise_rate": rates["pureRaiseRate"],
+        "vpip": rates["vpip"],
+        "pfr": rates["pfr"],
+        "steal_rate": rates["stealRate"],
+        "fold_bb_to_steal_rate": rates["foldBbToStealRate"],
+        "fold_sb_to_steal_rate": rates["foldSbToStealRate"],
+        "bb_fold_to_predraw_pressure_rate": rates["bbFoldToPreDrawPressureRate"],
+        "sb_fold_to_predraw_pressure_rate": rates["sbFoldToPreDrawPressureRate"],
         "pos_rewards": {
             i: float(np.mean(pos_rewards[i])) if pos_rewards[i] else None
             for i in range(6)
@@ -182,6 +216,12 @@ def _parse_log(log_path: Path, episode: int) -> dict | None:
             "bet_pct": _extract("bet%"),
             "raise_pct": _extract("raise%"),
             "aggression_pct": _extract("agg%"),
+            "steal_pct": _extract("steal%"),
+            "btn_steal_pct": _extract("BTNsteal%"),
+            "co_steal_pct": _extract("COsteal%"),
+            "sb_steal_pct": _extract("SBsteal%"),
+            "bb_ftp_pct": _extract("bbFtp%"),
+            "sb_ftp_pct": _extract("sbFtp%"),
             "speed_eps_per_sec": _extract("spd"),
         }
     except Exception:

@@ -4,7 +4,10 @@ import numpy as np
 import rl.training.watch_sixmax_checkpoints as watch_sixmax_checkpoints
 from rl.training.sixmax_action_telemetry import (
     SixMaxActionTelemetry,
+    blind_pre_draw_pressure_opportunity,
+    conservative_steal_opportunity,
     conservative_three_bet_opportunity,
+    pre_draw_no_voluntary_action_before_hero,
 )
 from rl.training.watch_sixmax_checkpoints import _parse_log
 
@@ -145,6 +148,207 @@ def test_conservative_three_bet_approximation_contract():
     ) is True
 
 
+def test_steal_opportunity_and_attempts_for_late_positions_only():
+    telemetry = SixMaxActionTelemetry()
+
+    for position, action in [("BTN", 3), ("CO", 4), ("SB", 3)]:
+        telemetry.record_bet(
+            action,
+            facing_bet=action == 4,
+            position=position,
+            betting_round="preDraw",
+            is_pre_draw=True,
+            steal_opportunity=True,
+        )
+
+    for action in (0, 1, 2):
+        telemetry.record_bet(
+            action,
+            facing_bet=action in (0, 2),
+            position="BTN",
+            betting_round="preDraw",
+            is_pre_draw=True,
+            steal_opportunity=True,
+        )
+
+    summary = telemetry.summary()
+
+    assert summary["stealOpportunityCount"] == 6
+    assert summary["stealAttemptCount"] == 3
+    assert summary["stealRate"] == pytest.approx(0.5)
+    assert summary["positionStats"]["BTN"]["stealOpportunityCount"] == 4
+    assert summary["positionStats"]["BTN"]["stealAttemptCount"] == 1
+    assert summary["positionStats"]["BTN"]["stealRate"] == pytest.approx(0.25)
+    assert summary["positionStats"]["CO"]["stealRate"] == 1.0
+    assert summary["positionStats"]["SB"]["stealRate"] == 1.0
+
+
+def test_conservative_steal_opportunity_contract_and_false_positive_guards():
+    assert conservative_steal_opportunity(
+        position="BTN",
+        betting_round="preDraw",
+        no_voluntary_action_before_hero=True,
+        bet_legal=False,
+        raise_legal=True,
+    ) is True
+    assert conservative_steal_opportunity(
+        position="UTG",
+        betting_round="preDraw",
+        no_voluntary_action_before_hero=True,
+        bet_legal=True,
+        raise_legal=False,
+    ) is False
+    assert conservative_steal_opportunity(
+        position="MP",
+        betting_round="preDraw",
+        no_voluntary_action_before_hero=True,
+        bet_legal=True,
+        raise_legal=False,
+    ) is False
+    assert conservative_steal_opportunity(
+        position="BB",
+        betting_round="preDraw",
+        no_voluntary_action_before_hero=True,
+        bet_legal=True,
+        raise_legal=True,
+    ) is False
+    assert conservative_steal_opportunity(
+        position="CO",
+        betting_round="afterDraw1",
+        no_voluntary_action_before_hero=True,
+        bet_legal=True,
+        raise_legal=False,
+    ) is False
+    assert conservative_steal_opportunity(
+        position="SB",
+        betting_round="preDraw",
+        no_voluntary_action_before_hero=False,
+        bet_legal=False,
+        raise_legal=True,
+    ) is False
+    assert conservative_steal_opportunity(
+        position="BTN",
+        betting_round="preDraw",
+        no_voluntary_action_before_hero=True,
+        bet_legal=False,
+        raise_legal=False,
+    ) is False
+
+
+def test_pre_draw_first_in_helper_detects_prior_voluntary_calls():
+    players = [
+        {"bet": 0, "folded": False, "opened_current_round": False},
+        {"bet": 1, "folded": False, "opened_current_round": False},
+        {"bet": 2, "folded": False, "opened_current_round": False},
+        {"bet": 0, "folded": True, "opened_current_round": False},
+        {"bet": 0, "folded": False, "opened_current_round": False},
+        {"bet": 0, "folded": False, "opened_current_round": False},
+    ]
+
+    assert pre_draw_no_voluntary_action_before_hero(
+        players=players,
+        dealer_seat=0,
+        hero_seat=5,
+    ) is True
+
+    players[4]["bet"] = 2
+    assert pre_draw_no_voluntary_action_before_hero(
+        players=players,
+        dealer_seat=0,
+        hero_seat=5,
+    ) is False
+
+    players[4]["bet"] = 0
+    players[3]["folded"] = False
+    players[3]["opened_current_round"] = True
+    assert pre_draw_no_voluntary_action_before_hero(
+        players=players,
+        dealer_seat=0,
+        hero_seat=5,
+    ) is False
+
+
+def test_blind_pre_draw_pressure_fallback_and_exact_steal_rates_are_null():
+    telemetry = SixMaxActionTelemetry()
+
+    telemetry.record_bet(
+        0,
+        facing_bet=True,
+        position="BB",
+        betting_round="preDraw",
+        is_pre_draw=True,
+        blind_pressure_opportunity=True,
+    )
+    telemetry.record_bet(
+        2,
+        facing_bet=True,
+        position="SB",
+        betting_round="preDraw",
+        is_pre_draw=True,
+        blind_pressure_opportunity=True,
+    )
+
+    summary = telemetry.summary()
+
+    assert summary["foldBbToStealRate"] is None
+    assert summary["foldSbToStealRate"] is None
+    assert summary["bbFoldToPreDrawPressureRate"] == pytest.approx(1.0)
+    assert summary["sbFoldToPreDrawPressureRate"] == pytest.approx(0.0)
+    assert summary["blindPreDrawPressureCounts"]["BB"] == {"opportunities": 1, "folds": 1}
+    assert summary["blindPreDrawPressureCounts"]["SB"] == {"opportunities": 1, "folds": 0}
+    assert summary["positionStats"]["BB"]["foldToPreDrawPressureRate"] == pytest.approx(1.0)
+    assert summary["positionStats"]["SB"]["foldToPreDrawPressureRate"] == pytest.approx(0.0)
+
+
+def test_blind_pressure_opportunity_contract():
+    assert blind_pre_draw_pressure_opportunity(
+        position="BB",
+        betting_round="preDraw",
+        facing_bet=True,
+        fold_legal=True,
+    ) is True
+    assert blind_pre_draw_pressure_opportunity(
+        position="SB",
+        betting_round="preDraw",
+        facing_bet=True,
+        fold_legal=True,
+    ) is True
+    assert blind_pre_draw_pressure_opportunity(
+        position="BTN",
+        betting_round="preDraw",
+        facing_bet=True,
+        fold_legal=True,
+    ) is False
+    assert blind_pre_draw_pressure_opportunity(
+        position="BB",
+        betting_round="afterDraw1",
+        facing_bet=True,
+        fold_legal=True,
+    ) is False
+    assert blind_pre_draw_pressure_opportunity(
+        position="BB",
+        betting_round="preDraw",
+        facing_bet=True,
+        fold_legal=False,
+    ) is False
+
+
+def test_steal_summary_safe_when_no_opportunities_exist():
+    telemetry = SixMaxActionTelemetry()
+
+    telemetry.record_bet(3, facing_bet=False, position="UTG", betting_round="preDraw", is_pre_draw=True)
+    telemetry.record_bet(3, facing_bet=False, position="BTN", betting_round="afterDraw1", is_pre_draw=False)
+
+    summary = telemetry.summary()
+
+    assert summary["stealOpportunityCount"] == 0
+    assert summary["stealAttemptCount"] == 0
+    assert summary["stealRate"] is None
+    assert summary["positionStats"]["BTN"]["stealRate"] is None
+    assert summary["bbFoldToPreDrawPressureRate"] is None
+    assert summary["sbFoldToPreDrawPressureRate"] is None
+
+
 def test_terminal_reason_rates_and_position_actions_are_separate():
     telemetry = SixMaxActionTelemetry()
 
@@ -242,6 +446,7 @@ def test_watcher_parses_pure_raise_and_agg_separately(tmp_path):
         "[6max      100] avg=  -0.100 ε=0.500 buf=    10 loss=0.00100 q=0.250 "
         "fold%=10.0 chk%=20.0 call%=30.0 bet%=15.0 raise%=5.0 ai%=0.0 agg%=20.0 "
         "ftb%=12.0 drawAvg=1.50 vpip%=70.0 pfr%=20.0 af=0.67 sd%=50.0 wsd%=25.0 "
+        "steal%=33.0 BTNsteal%=40.0 COsteal%=20.0 SBsteal%=10.0 bbFtp%=55.0 sbFtp%=44.0 "
         "term=[sd:5 fw:3 fl:1 tr:1] epLen=8.0 drawDist=[0:1 1:2 2:3 3:4 4:0] "
         "opp_upd=0 spd=12.0ep/s ETA=0.0h\n",
         encoding="utf8",
@@ -252,6 +457,12 @@ def test_watcher_parses_pure_raise_and_agg_separately(tmp_path):
     assert stats["bet_pct"] == 15.0
     assert stats["raise_pct"] == 5.0
     assert stats["aggression_pct"] == 20.0
+    assert stats["steal_pct"] == 33.0
+    assert stats["btn_steal_pct"] == 40.0
+    assert stats["co_steal_pct"] == 20.0
+    assert stats["sb_steal_pct"] == 10.0
+    assert stats["bb_ftp_pct"] == 55.0
+    assert stats["sb_ftp_pct"] == 44.0
 
 
 def test_watcher_eval_sixmax_return_contract_uses_pure_raise_and_agg(monkeypatch):
@@ -320,8 +531,25 @@ def test_watcher_eval_sixmax_return_contract_uses_pure_raise_and_agg(monkeypatch
 
     result = watch_sixmax_checkpoints._eval_sixmax("fake.pt", n_episodes=6)
 
-    assert set(["fold_rate", "pure_raise_rate", "agg_rate", "raise_rate", "pos_rewards"]).issubset(result)
+    assert set([
+        "fold_rate",
+        "pure_raise_rate",
+        "agg_rate",
+        "raise_rate",
+        "vpip",
+        "pfr",
+        "steal_rate",
+        "fold_bb_to_steal_rate",
+        "fold_sb_to_steal_rate",
+        "bb_fold_to_predraw_pressure_rate",
+        "sb_fold_to_predraw_pressure_rate",
+        "pos_rewards",
+    ]).issubset(result)
     assert result["pure_raise_rate"] == pytest.approx(0.5)
     assert result["raise_rate"] == result["pure_raise_rate"]
     assert result["agg_rate"] == pytest.approx(1.0)
     assert result["pure_raise_rate"] != result["agg_rate"]
+    assert result["vpip"] == pytest.approx(1.0)
+    assert result["pfr"] == pytest.approx(1.0)
+    assert result["fold_bb_to_steal_rate"] is None
+    assert result["fold_sb_to_steal_rate"] is None

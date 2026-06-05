@@ -10,6 +10,8 @@ from typing import Any
 POSITION_LOG_ORDER = ("BTN", "CO", "MP", "UTG", "BB", "SB")
 BETTING_ROUNDS = ("preDraw", "afterDraw1", "afterDraw2", "afterDraw3")
 HAND_STRENGTH_CLASSES = ("madeStrong", "madeMedium", "drawStrong", "trash", "unknown")
+STEAL_POSITIONS = ("BTN", "CO", "SB")
+BLIND_POSITIONS = ("BB", "SB")
 EPSILON = 1e-9
 
 
@@ -37,6 +39,67 @@ def conservative_three_bet_opportunity(
     may be included; exact street action history is not available here.
     """
     return draw_round == 0 and facing_bet and raise_legal and raise_count >= 1
+
+
+def pre_draw_no_voluntary_action_before_hero(
+    *,
+    players: list[dict[str, Any]],
+    dealer_seat: int,
+    hero_seat: int,
+    sb_amount: int = 1,
+    bb_amount: int = 2,
+) -> bool:
+    """Return whether no non-hero player has voluntarily entered pre-draw.
+
+    This is a conservative telemetry helper. It treats blind baseline chips as
+    forced, and any extra bet or opened flag as voluntary action. It does not
+    require env transition changes or exact per-seat action history.
+    """
+    sb_seat = (dealer_seat + 1) % len(players)
+    bb_seat = (dealer_seat + 2) % len(players)
+    forced_bets = {sb_seat: sb_amount, bb_seat: bb_amount}
+    for seat, player in enumerate(players):
+        if seat == hero_seat or player.get("folded", False):
+            continue
+        forced = forced_bets.get(seat, 0)
+        if player.get("opened_current_round", False):
+            return False
+        if int(player.get("bet", 0)) > forced:
+            return False
+    return True
+
+
+def conservative_steal_opportunity(
+    *,
+    position: str | None,
+    betting_round: str,
+    no_voluntary_action_before_hero: bool,
+    bet_legal: bool,
+    raise_legal: bool,
+) -> bool:
+    """Conservative steal opportunity used when exact action history is absent."""
+    return (
+        betting_round == "preDraw"
+        and position in STEAL_POSITIONS
+        and no_voluntary_action_before_hero
+        and (bet_legal or raise_legal)
+    )
+
+
+def blind_pre_draw_pressure_opportunity(
+    *,
+    position: str | None,
+    betting_round: str,
+    facing_bet: bool,
+    fold_legal: bool,
+) -> bool:
+    """Fallback blind-defense opportunity when exact steal aggressor is unknown."""
+    return (
+        betting_round == "preDraw"
+        and position in BLIND_POSITIONS
+        and facing_bet
+        and fold_legal
+    )
 
 
 def unknown_q_stats() -> dict[str, float | None]:
@@ -81,6 +144,10 @@ class PositionTelemetry:
     hands: int = 0
     vpip_hands: int = 0
     pfr_hands: int = 0
+    steal_opportunities: int = 0
+    steal_attempts: int = 0
+    blind_pressure_opportunities: int = 0
+    blind_pressure_folds: int = 0
 
     def __post_init__(self) -> None:
         if self.rewards.maxlen is None:
@@ -88,13 +155,28 @@ class PositionTelemetry:
         if not self.bet_action_counts:
             self.bet_action_counts = _zero_counts(self.action_count)
 
-    def record_bet(self, action: int, *, facing_bet: bool) -> None:
+    def record_bet(
+        self,
+        action: int,
+        *,
+        facing_bet: bool,
+        steal_opportunity: bool = False,
+        blind_pressure_opportunity: bool = False,
+    ) -> None:
         if 0 <= action < len(self.bet_action_counts):
             self.bet_action_counts[action] += 1
         if facing_bet:
             self.facing_bet_decisions += 1
             if action == 0:
                 self.fold_to_bet_actions += 1
+        if steal_opportunity:
+            self.steal_opportunities += 1
+            if action in (3, 4):
+                self.steal_attempts += 1
+        if blind_pressure_opportunity:
+            self.blind_pressure_opportunities += 1
+            if action == 0:
+                self.blind_pressure_folds += 1
 
     def record_episode(self, reward: float, *, vpip: bool, pfr: bool) -> None:
         self.rewards.append(float(reward))
@@ -104,11 +186,23 @@ class PositionTelemetry:
         if pfr:
             self.pfr_hands += 1
 
-    def summary(self) -> dict[str, float | int]:
+    def summary(self) -> dict[str, float | int | None]:
         rates = _action_rates(self.bet_action_counts, include_all_in=True)
         rates["foldToBetRate"] = _safe_rate(self.fold_to_bet_actions, self.facing_bet_decisions)
         rates["vpip"] = _safe_rate(self.vpip_hands, self.hands)
         rates["pfr"] = _safe_rate(self.pfr_hands, self.hands)
+        rates["stealOpportunityCount"] = self.steal_opportunities
+        rates["stealAttemptCount"] = self.steal_attempts
+        rates["stealRate"] = (
+            None
+            if self.steal_opportunities <= 0
+            else self.steal_attempts / self.steal_opportunities
+        )
+        rates["foldToPreDrawPressureRate"] = (
+            None
+            if self.blind_pressure_opportunities <= 0
+            else self.blind_pressure_folds / self.blind_pressure_opportunities
+        )
         rates["hands"] = self.hands
         rates["rewardAvg"] = sum(self.rewards) / max(1, len(self.rewards))
         return rates
@@ -135,6 +229,10 @@ class SixMaxActionTelemetry:
     pfr_hands: int = 0
     three_bet_opportunities: int = 0
     three_bet_actions: int = 0
+    steal_opportunities: int = 0
+    steal_attempts: int = 0
+    blind_pressure_opportunities: dict[str, int] = field(default_factory=dict)
+    blind_pressure_folds: dict[str, int] = field(default_factory=dict)
     street_action_counts: dict[str, list[int]] = field(default_factory=dict)
     hand_strength_action_counts: dict[str, list[int]] = field(default_factory=dict)
     positions: dict[str, PositionTelemetry] = field(default_factory=dict)
@@ -160,6 +258,9 @@ class SixMaxActionTelemetry:
                 position,
                 PositionTelemetry(action_count=self.action_count, history_maxlen=self.history_maxlen),
             )
+        for position in BLIND_POSITIONS:
+            self.blind_pressure_opportunities.setdefault(position, 0)
+            self.blind_pressure_folds.setdefault(position, 0)
         self._episode_position: str | None = None
         self._episode_vpip = False
         self._episode_pfr = False
@@ -178,6 +279,8 @@ class SixMaxActionTelemetry:
         betting_round: str = "preDraw",
         is_pre_draw: bool = False,
         three_bet_opportunity: bool = False,
+        steal_opportunity: bool = False,
+        blind_pressure_opportunity: bool = False,
         hand_strength_class: str = "unknown",
     ) -> None:
         if 0 <= action < len(self.bet_action_counts):
@@ -197,7 +300,12 @@ class SixMaxActionTelemetry:
             self.hand_strength_action_counts[strength_class][action] += 1
 
         if position in self.positions:
-            self.positions[position].record_bet(action, facing_bet=facing_bet)
+            self.positions[position].record_bet(
+                action,
+                facing_bet=facing_bet,
+                steal_opportunity=steal_opportunity,
+                blind_pressure_opportunity=blind_pressure_opportunity,
+            )
 
         if is_pre_draw:
             if action in (2, 3, 4):
@@ -208,6 +316,14 @@ class SixMaxActionTelemetry:
                 self.three_bet_opportunities += 1
                 if action == 4:
                     self.three_bet_actions += 1
+            if steal_opportunity:
+                self.steal_opportunities += 1
+                if action in (3, 4):
+                    self.steal_attempts += 1
+            if blind_pressure_opportunity and position in BLIND_POSITIONS:
+                self.blind_pressure_opportunities[position] += 1
+                if action == 0:
+                    self.blind_pressure_folds[position] += 1
 
     def record_draw(self, draw_count: int) -> None:
         """Record already-normalized draw count.
@@ -287,6 +403,25 @@ class SixMaxActionTelemetry:
             if self.three_bet_opportunities <= 0
             else self.three_bet_actions / self.three_bet_opportunities
         )
+        rates["stealOpportunityCount"] = self.steal_opportunities
+        rates["stealAttemptCount"] = self.steal_attempts
+        rates["stealRate"] = (
+            None
+            if self.steal_opportunities <= 0
+            else self.steal_attempts / self.steal_opportunities
+        )
+        rates["foldBbToStealRate"] = None
+        rates["foldSbToStealRate"] = None
+        rates["bbFoldToPreDrawPressureRate"] = (
+            None
+            if self.blind_pressure_opportunities.get("BB", 0) <= 0
+            else self.blind_pressure_folds.get("BB", 0) / self.blind_pressure_opportunities["BB"]
+        )
+        rates["sbFoldToPreDrawPressureRate"] = (
+            None
+            if self.blind_pressure_opportunities.get("SB", 0) <= 0
+            else self.blind_pressure_folds.get("SB", 0) / self.blind_pressure_opportunities["SB"]
+        )
         rates["patRate"] = _safe_rate(self.draw_count_distribution.get(0, 0), self.draw_actions)
 
         hands = max(1, self.hands)
@@ -323,7 +458,7 @@ class SixMaxActionTelemetry:
             for strength_class, counts in self.hand_strength_action_counts.items()
         }
 
-    def position_summaries(self) -> dict[str, dict[str, float | int]]:
+    def position_summaries(self) -> dict[str, dict[str, float | int | None]]:
         return {position: telemetry.summary() for position, telemetry in self.positions.items()}
 
     def summary(self) -> dict[str, Any]:
@@ -336,6 +471,13 @@ class SixMaxActionTelemetry:
                     for draw_count in range(self.max_draw_count + 1)
                 },
                 "terminalCounts": dict(self.terminal_counts),
+                "blindPreDrawPressureCounts": {
+                    position: {
+                        "opportunities": self.blind_pressure_opportunities.get(position, 0),
+                        "folds": self.blind_pressure_folds.get(position, 0),
+                    }
+                    for position in BLIND_POSITIONS
+                },
                 "bettingRoundActionStats": self.street_summaries(),
                 "positionStats": self.position_summaries(),
                 "handStrengthClassStats": self.hand_strength_summaries(),
@@ -371,11 +513,22 @@ class SixMaxActionTelemetry:
         if include_draw_average:
             parts.append(f"drawAvg={rates['drawAverage']:.2f}")
         if include_foundation:
+            position_stats = self.position_summaries()
+
+            def _pct_or_zero(value: float | None) -> float:
+                return 0.0 if value is None else value * 100.0
+
             parts.extend(
                 [
                     f"vpip%={rates['vpip']*100:.1f}",
                     f"pfr%={rates['pfr']*100:.1f}",
                     f"af={rates['aggressionFactor']:.2f}",
+                    f"steal%={_pct_or_zero(rates['stealRate']):.1f}",
+                    f"BTNsteal%={_pct_or_zero(position_stats.get('BTN', {}).get('stealRate')):.1f}",
+                    f"COsteal%={_pct_or_zero(position_stats.get('CO', {}).get('stealRate')):.1f}",
+                    f"SBsteal%={_pct_or_zero(position_stats.get('SB', {}).get('stealRate')):.1f}",
+                    f"bbFtp%={_pct_or_zero(rates['bbFoldToPreDrawPressureRate']):.1f}",
+                    f"sbFtp%={_pct_or_zero(rates['sbFoldToPreDrawPressureRate']):.1f}",
                     f"sd%={rates['showdownRate']*100:.1f}",
                     f"wsd%={rates['showdownWinRate']*100:.1f}",
                     (

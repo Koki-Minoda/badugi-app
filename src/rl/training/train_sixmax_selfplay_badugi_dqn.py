@@ -43,7 +43,10 @@ from rl.env.badugi_env_selfplay import _best_badugi_keep
 from rl.training.sixmax_action_telemetry import (
     SixMaxActionTelemetry,
     betting_round_name,
+    blind_pre_draw_pressure_opportunity,
+    conservative_steal_opportunity,
     conservative_three_bet_opportunity,
+    pre_draw_no_voluntary_action_before_hero,
 )
 from rl.utils.replay_buffer import ReplayBuffer
 
@@ -283,11 +286,32 @@ def train_sixmax_selfplay_badugi_dqn(
                 hero_state = sp_env.players[hero_seat]
                 facing_bet = max(0, sp_env.current_bet - hero_state["bet"]) > 0 or mask[0] > 0
                 street = betting_round_name(sp_env.draw_round)
+                no_voluntary_action = (
+                    sp_env.draw_round == 0
+                    and pre_draw_no_voluntary_action_before_hero(
+                        players=sp_env.players,
+                        dealer_seat=sp_env.dealer_seat,
+                        hero_seat=hero_seat,
+                    )
+                )
                 three_bet_opportunity = conservative_three_bet_opportunity(
                     draw_round=sp_env.draw_round,
                     facing_bet=facing_bet,
                     raise_legal=mask[4] > 0,
                     raise_count=sp_env.raise_count,
+                )
+                steal_opportunity = conservative_steal_opportunity(
+                    position=hero_position,
+                    betting_round=street,
+                    no_voluntary_action_before_hero=no_voluntary_action,
+                    bet_legal=mask[3] > 0,
+                    raise_legal=mask[4] > 0,
+                )
+                blind_pressure_opportunity = blind_pre_draw_pressure_opportunity(
+                    position=hero_position,
+                    betting_round=street,
+                    facing_bet=facing_bet,
+                    fold_legal=mask[0] > 0,
                 )
                 for telemetry in (window_actions, total_actions):
                     telemetry.record_bet(
@@ -297,6 +321,8 @@ def train_sixmax_selfplay_badugi_dqn(
                         betting_round=street,
                         is_pre_draw=sp_env.draw_round == 0,
                         three_bet_opportunity=three_bet_opportunity,
+                        steal_opportunity=steal_opportunity,
+                        blind_pressure_opportunity=blind_pressure_opportunity,
                         hand_strength_class="unknown",
                     )
             elif sp_env.phase == "DRAW":

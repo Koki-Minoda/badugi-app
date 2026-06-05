@@ -1,17 +1,72 @@
-"""Shared action-frequency telemetry helpers for 6-max RL trainers."""
+"""Shared poker telemetry primitives for 6-max RL trainers."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
+
+
+POSITION_LOG_ORDER = ("BTN", "CO", "MP", "UTG", "BB", "SB")
+BETTING_ROUNDS = ("preDraw", "afterDraw1", "afterDraw2", "afterDraw3")
+HAND_STRENGTH_CLASSES = ("madeStrong", "madeMedium", "drawStrong", "trash", "unknown")
+EPSILON = 1e-9
+
+
+def betting_round_name(draw_round: int) -> str:
+    if draw_round <= 0:
+        return "preDraw"
+    if draw_round == 1:
+        return "afterDraw1"
+    if draw_round == 2:
+        return "afterDraw2"
+    return "afterDraw3"
+
+
+def unknown_q_stats() -> dict[str, float | None]:
+    return {"qMean": None, "qMin": None, "qMax": None, "qStd": None}
+
+
+def _zero_counts(size: int) -> list[int]:
+    return [0 for _ in range(size)]
+
+
+def _safe_rate(numerator: int | float, denominator: int | float) -> float:
+    return float(numerator) / max(1.0, float(denominator))
+
+
+def _action_rates(counts: list[int], *, include_all_in: bool = True) -> dict[str, float]:
+    decisions = max(1, sum(counts))
+    bet = counts[3] if len(counts) > 3 else 0
+    raise_count = counts[4] if len(counts) > 4 else 0
+    call = counts[2] if len(counts) > 2 else 0
+    rates = {
+        "foldRate": counts[0] / decisions if len(counts) > 0 else 0.0,
+        "checkRate": counts[1] / decisions if len(counts) > 1 else 0.0,
+        "callRate": call / decisions,
+        "betRate": bet / decisions,
+        "pureRaiseRate": raise_count / decisions,
+        "aggressionRate": (bet + raise_count) / decisions,
+        "aggressionFactor": (bet + raise_count) / max(EPSILON, call),
+    }
+    if include_all_in:
+        rates["allInRate"] = counts[5] / decisions if len(counts) > 5 else 0.0
+    return rates
 
 
 @dataclass
-class SixMaxActionTelemetry:
-    bet_action_counts: list[int] = field(default_factory=lambda: [0, 0, 0, 0, 0, 0])
+class PositionTelemetry:
+    action_count: int = 6
+    rewards: list[float] = field(default_factory=list)
+    bet_action_counts: list[int] = field(default_factory=list)
     facing_bet_decisions: int = 0
     fold_to_bet_actions: int = 0
-    draw_actions: int = 0
-    drawn_cards: int = 0
+    hands: int = 0
+    vpip_hands: int = 0
+    pfr_hands: int = 0
+
+    def __post_init__(self) -> None:
+        if not self.bet_action_counts:
+            self.bet_action_counts = _zero_counts(self.action_count)
 
     def record_bet(self, action: int, *, facing_bet: bool) -> None:
         if 0 <= action < len(self.bet_action_counts):
@@ -21,35 +76,248 @@ class SixMaxActionTelemetry:
             if action == 0:
                 self.fold_to_bet_actions += 1
 
+    def record_episode(self, reward: float, *, vpip: bool, pfr: bool) -> None:
+        self.rewards.append(float(reward))
+        self.hands += 1
+        if vpip:
+            self.vpip_hands += 1
+        if pfr:
+            self.pfr_hands += 1
+
+    def summary(self) -> dict[str, float | int]:
+        rates = _action_rates(self.bet_action_counts, include_all_in=True)
+        rates["foldToBetRate"] = _safe_rate(self.fold_to_bet_actions, self.facing_bet_decisions)
+        rates["vpip"] = _safe_rate(self.vpip_hands, self.hands)
+        rates["pfr"] = _safe_rate(self.pfr_hands, self.hands)
+        rates["hands"] = self.hands
+        rates["rewardAvg"] = sum(self.rewards) / max(1, len(self.rewards))
+        return rates
+
+
+@dataclass
+class SixMaxActionTelemetry:
+    action_count: int = 6
+    max_draw_count: int = 4
+    position_names: tuple[str, ...] = POSITION_LOG_ORDER
+    bet_action_counts: list[int] = field(default_factory=list)
+    facing_bet_decisions: int = 0
+    fold_to_bet_actions: int = 0
+    draw_actions: int = 0
+    drawn_cards: int = 0
+    draw_count_distribution: dict[int, int] = field(default_factory=dict)
+    terminal_counts: dict[str, int] = field(default_factory=dict)
+    showdown_wins: int = 0
+    hands: int = 0
+    episode_lengths: list[int] = field(default_factory=list)
+    max_step_hits: int = 0
+    vpip_hands: int = 0
+    pfr_hands: int = 0
+    three_bet_opportunities: int = 0
+    three_bet_actions: int = 0
+    street_action_counts: dict[str, list[int]] = field(default_factory=dict)
+    hand_strength_action_counts: dict[str, list[int]] = field(default_factory=dict)
+    positions: dict[str, PositionTelemetry] = field(default_factory=dict)
+    q_means: list[float] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        if not self.bet_action_counts:
+            self.bet_action_counts = _zero_counts(self.action_count)
+        for draw_count in range(self.max_draw_count + 1):
+            self.draw_count_distribution.setdefault(draw_count, 0)
+        for reason in ("showdown", "fold_win", "fold_loss", "truncated"):
+            self.terminal_counts.setdefault(reason, 0)
+        for street in BETTING_ROUNDS:
+            self.street_action_counts.setdefault(street, _zero_counts(self.action_count))
+        for strength_class in HAND_STRENGTH_CLASSES:
+            self.hand_strength_action_counts.setdefault(strength_class, _zero_counts(self.action_count))
+        for position in self.position_names:
+            self.positions.setdefault(position, PositionTelemetry(action_count=self.action_count))
+        self._episode_position: str | None = None
+        self._episode_vpip = False
+        self._episode_pfr = False
+
+    def start_episode(self, *, position: str | None = None) -> None:
+        self._episode_position = position
+        self._episode_vpip = False
+        self._episode_pfr = False
+
+    def record_bet(
+        self,
+        action: int,
+        *,
+        facing_bet: bool,
+        position: str | None = None,
+        betting_round: str = "preDraw",
+        is_pre_draw: bool = False,
+        three_bet_opportunity: bool = False,
+        hand_strength_class: str = "unknown",
+    ) -> None:
+        if 0 <= action < len(self.bet_action_counts):
+            self.bet_action_counts[action] += 1
+
+        if facing_bet:
+            self.facing_bet_decisions += 1
+            if action == 0:
+                self.fold_to_bet_actions += 1
+
+        street = betting_round if betting_round in self.street_action_counts else "afterDraw3"
+        if 0 <= action < len(self.street_action_counts[street]):
+            self.street_action_counts[street][action] += 1
+
+        strength_class = hand_strength_class if hand_strength_class in self.hand_strength_action_counts else "unknown"
+        if 0 <= action < len(self.hand_strength_action_counts[strength_class]):
+            self.hand_strength_action_counts[strength_class][action] += 1
+
+        if position in self.positions:
+            self.positions[position].record_bet(action, facing_bet=facing_bet)
+
+        if is_pre_draw:
+            if action in (2, 3, 4):
+                self._episode_vpip = True
+            if action in (3, 4):
+                self._episode_pfr = True
+            if three_bet_opportunity:
+                self.three_bet_opportunities += 1
+                if action == 4:
+                    self.three_bet_actions += 1
+
     def record_draw(self, draw_count: int) -> None:
+        normalized = max(0, min(self.max_draw_count, int(draw_count)))
         self.draw_actions += 1
-        self.drawn_cards += max(0, int(draw_count))
+        self.drawn_cards += normalized
+        self.draw_count_distribution[normalized] = self.draw_count_distribution.get(normalized, 0) + 1
+
+    def record_episode(
+        self,
+        *,
+        reward: float,
+        length: int,
+        terminal_reason: str | None,
+        truncated: bool = False,
+        max_step_hit: bool = False,
+        position: str | None = None,
+    ) -> None:
+        self.hands += 1
+        self.episode_lengths.append(max(0, int(length)))
+        if max_step_hit:
+            self.max_step_hits += 1
+
+        reason = terminal_reason or ("truncated" if truncated or max_step_hit else "unknown")
+        if truncated or max_step_hit:
+            reason = "truncated"
+        elif reason == "fold_win":
+            reason = "fold_win" if reward > 0 else "fold_loss"
+        elif reason not in self.terminal_counts:
+            self.terminal_counts.setdefault(reason, 0)
+        self.terminal_counts[reason] = self.terminal_counts.get(reason, 0) + 1
+
+        if reason == "showdown" and reward > 0:
+            self.showdown_wins += 1
+        if self._episode_vpip:
+            self.vpip_hands += 1
+        if self._episode_pfr:
+            self.pfr_hands += 1
+
+        episode_position = position or self._episode_position
+        if episode_position in self.positions:
+            self.positions[episode_position].record_episode(
+                reward,
+                vpip=self._episode_vpip,
+                pfr=self._episode_pfr,
+            )
+
+    def record_q(self, *, mean_q: float | None = None) -> None:
+        if mean_q is not None:
+            self.q_means.append(float(mean_q))
 
     @property
     def bet_decisions(self) -> int:
         return sum(self.bet_action_counts)
 
-    def rates(self, *, include_all_in: bool = True, include_fold_to_bet: bool = True, include_draw_average: bool = True) -> dict:
-        decisions = max(1, self.bet_decisions)
-        rates = {
-            "foldRate": self.bet_action_counts[0] / decisions,
-            "checkRate": self.bet_action_counts[1] / decisions,
-            "callRate": self.bet_action_counts[2] / decisions,
-            "betRate": self.bet_action_counts[3] / decisions,
-            "pureRaiseRate": self.bet_action_counts[4] / decisions,
-            "aggressionRate": (self.bet_action_counts[3] + self.bet_action_counts[4]) / decisions,
-        }
-        if include_all_in:
-            rates["allInRate"] = self.bet_action_counts[5] / decisions
+    def rates(
+        self,
+        *,
+        include_all_in: bool = True,
+        include_fold_to_bet: bool = True,
+        include_draw_average: bool = True,
+    ) -> dict[str, Any]:
+        rates: dict[str, Any] = _action_rates(self.bet_action_counts, include_all_in=include_all_in)
         if include_fold_to_bet:
-            rates["foldToBetRate"] = (
-                self.fold_to_bet_actions / max(1, self.facing_bet_decisions)
-            )
+            rates["foldToBetRate"] = _safe_rate(self.fold_to_bet_actions, self.facing_bet_decisions)
         if include_draw_average:
-            rates["drawAverage"] = self.drawn_cards / max(1, self.draw_actions)
+            rates["drawAverage"] = _safe_rate(self.drawn_cards, self.draw_actions)
+
+        rates["vpip"] = _safe_rate(self.vpip_hands, self.hands)
+        rates["pfr"] = _safe_rate(self.pfr_hands, self.hands)
+        rates["threeBetRate"] = (
+            None
+            if self.three_bet_opportunities <= 0
+            else self.three_bet_actions / self.three_bet_opportunities
+        )
+        rates["patRate"] = _safe_rate(self.draw_count_distribution.get(0, 0), self.draw_actions)
+
+        hands = max(1, self.hands)
+        rates["showdownRate"] = _safe_rate(self.terminal_counts.get("showdown", 0), hands)
+        rates["foldWinRate"] = _safe_rate(self.terminal_counts.get("fold_win", 0), hands)
+        rates["foldLossRate"] = _safe_rate(self.terminal_counts.get("fold_loss", 0), hands)
+        rates["truncationRate"] = _safe_rate(self.terminal_counts.get("truncated", 0), hands)
+        rates["showdownWinRate"] = _safe_rate(self.showdown_wins, self.terminal_counts.get("showdown", 0))
+        rates["avgEpisodeLength"] = sum(self.episode_lengths) / max(1, len(self.episode_lengths))
+        rates["maxStepHitRate"] = _safe_rate(self.max_step_hits, hands)
         return rates
 
-    def format_log(self, *, include_all_in: bool = False, include_fold_to_bet: bool = False, include_draw_average: bool = False) -> str:
+    def q_stats(self) -> dict[str, float | None]:
+        if not self.q_means:
+            return unknown_q_stats()
+        # DQNAgent.update currently returns mean Q only. Keep min/max/std null
+        # until trainers can pass the full Q sample without changing learning.
+        return {
+            "qMean": sum(self.q_means) / len(self.q_means),
+            "qMin": None,
+            "qMax": None,
+            "qStd": None,
+        }
+
+    def street_summaries(self) -> dict[str, dict[str, float]]:
+        return {
+            street: _action_rates(counts, include_all_in=True)
+            for street, counts in self.street_action_counts.items()
+        }
+
+    def hand_strength_summaries(self) -> dict[str, dict[str, float]]:
+        return {
+            strength_class: _action_rates(counts, include_all_in=True)
+            for strength_class, counts in self.hand_strength_action_counts.items()
+        }
+
+    def position_summaries(self) -> dict[str, dict[str, float | int]]:
+        return {position: telemetry.summary() for position, telemetry in self.positions.items()}
+
+    def summary(self) -> dict[str, Any]:
+        payload = self.rates(include_all_in=True, include_fold_to_bet=True, include_draw_average=True)
+        payload.update(self.q_stats())
+        payload.update(
+            {
+                "drawCountDistribution": {
+                    str(draw_count): self.draw_count_distribution.get(draw_count, 0)
+                    for draw_count in range(self.max_draw_count + 1)
+                },
+                "terminalCounts": dict(self.terminal_counts),
+                "bettingRoundActionStats": self.street_summaries(),
+                "positionStats": self.position_summaries(),
+                "handStrengthClassStats": self.hand_strength_summaries(),
+            }
+        )
+        return payload
+
+    def format_log(
+        self,
+        *,
+        include_all_in: bool = False,
+        include_fold_to_bet: bool = False,
+        include_draw_average: bool = False,
+        include_foundation: bool = False,
+    ) -> str:
         rates = self.rates(
             include_all_in=include_all_in,
             include_fold_to_bet=include_fold_to_bet,
@@ -69,4 +337,29 @@ class SixMaxActionTelemetry:
             parts.append(f"ftb%={rates['foldToBetRate']*100:.1f}")
         if include_draw_average:
             parts.append(f"drawAvg={rates['drawAverage']:.2f}")
+        if include_foundation:
+            parts.extend(
+                [
+                    f"vpip%={rates['vpip']*100:.1f}",
+                    f"pfr%={rates['pfr']*100:.1f}",
+                    f"af={rates['aggressionFactor']:.2f}",
+                    f"sd%={rates['showdownRate']*100:.1f}",
+                    f"wsd%={rates['showdownWinRate']*100:.1f}",
+                    (
+                        "term=["
+                        f"sd:{self.terminal_counts.get('showdown', 0)} "
+                        f"fw:{self.terminal_counts.get('fold_win', 0)} "
+                        f"fl:{self.terminal_counts.get('fold_loss', 0)} "
+                        f"tr:{self.terminal_counts.get('truncated', 0)}"
+                        "]"
+                    ),
+                    f"epLen={rates['avgEpisodeLength']:.1f}",
+                    "drawDist=["
+                    + " ".join(
+                        f"{draw_count}:{self.draw_count_distribution.get(draw_count, 0)}"
+                        for draw_count in range(self.max_draw_count + 1)
+                    )
+                    + "]",
+                ]
+            )
         return " ".join(parts)

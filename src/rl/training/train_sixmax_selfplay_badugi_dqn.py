@@ -39,7 +39,7 @@ from rl.agents.dqn_agent import DQNAgent, DQNHyperParams
 from rl.env.badugi_env import BadugiEnv
 from rl.env.badugi_env_sixmax_selfplay import SixMaxBadugiEnv
 from rl.env.badugi_env_selfplay import _best_badugi_keep
-from rl.training.sixmax_action_telemetry import SixMaxActionTelemetry
+from rl.training.sixmax_action_telemetry import SixMaxActionTelemetry, betting_round_name
 from rl.utils.replay_buffer import ReplayBuffer
 
 
@@ -129,11 +129,7 @@ def _build_summary(
             name: _recent_mean(pos_name_rewards[name], 1000)
             for name in POSITION_NAMES_BY_BUTTON_OFFSET
         },
-        **action_telemetry.rates(
-            include_all_in=True,
-            include_fold_to_bet=True,
-            include_draw_average=True,
-        ),
+        **action_telemetry.summary(),
         "opponent_updates": int(opponent_updates),
         "pretrained": cfg.pretrained,
         "checkpoint": str(latest),
@@ -247,8 +243,8 @@ def train_sixmax_selfplay_badugi_dqn(
     # Position-stratified tracking (6 positions)
     pos_rewards: list[list[float]] = [[] for _ in range(6)]
     pos_name_rewards: dict[str, list[float]] = {name: [] for name in POSITION_NAMES_BY_BUTTON_OFFSET}
-    window_actions = SixMaxActionTelemetry()
-    total_actions = SixMaxActionTelemetry()
+    window_actions = SixMaxActionTelemetry(max_draw_count=4, position_names=POSITION_NAMES_BY_BUTTON_OFFSET)
+    total_actions = SixMaxActionTelemetry(max_draw_count=4, position_names=POSITION_NAMES_BY_BUTTON_OFFSET)
     loss = mean_q = imitation_loss = imitation_accuracy = fold_margin_loss = 0.0
     opponent_updates = 0
     t_start = time.time()
@@ -259,29 +255,57 @@ def train_sixmax_selfplay_badugi_dqn(
         obs, _ = sp_env.reset()
         hero_seat = sp_env.hero_seat
         hero_position = hero_position_name(hero_seat, sp_env.dealer_seat)
+        window_actions.start_episode(position=hero_position)
+        total_actions.start_episode(position=hero_position)
         total_reward = 0.0
+        episode_steps = 0
+        terminal_reason: str | None = None
+        episode_truncated = False
+        episode_done = False
         epsilon = _linear_decay(episode, cfg.epsilon_start, cfg.epsilon_end, cfg.epsilon_decay_episodes)
 
         for _ in range(cfg.max_steps_per_episode):
             global_step += 1
+            episode_steps += 1
             mask = sp_env.legal_action_mask()
             action = hero.act(obs, epsilon, action_mask=mask)
 
             if sp_env.phase == "BET":
                 hero_state = sp_env.players[hero_seat]
                 facing_bet = max(0, sp_env.current_bet - hero_state["bet"]) > 0 or mask[0] > 0
-                window_actions.record_bet(action, facing_bet=facing_bet)
-                total_actions.record_bet(action, facing_bet=facing_bet)
+                street = betting_round_name(sp_env.draw_round)
+                # Conservative 3bet approximation: only count pre-draw raises
+                # after the env has already registered at least one raise.
+                three_bet_opportunity = (
+                    sp_env.draw_round == 0
+                    and facing_bet
+                    and mask[4] > 0
+                    and sp_env.raise_count >= 1
+                )
+                for telemetry in (window_actions, total_actions):
+                    telemetry.record_bet(
+                        action,
+                        facing_bet=facing_bet,
+                        position=hero_position,
+                        betting_round=street,
+                        is_pre_draw=sp_env.draw_round == 0,
+                        three_bet_opportunity=three_bet_opportunity,
+                        hand_strength_class="unknown",
+                    )
             elif sp_env.phase == "DRAW":
                 draw_count = max(0, min(3, action))
                 window_actions.record_draw(draw_count)
                 total_actions.record_draw(draw_count)
 
-            next_obs, reward, terminated, truncated, _ = sp_env.step(action)
+            next_obs, reward, terminated, truncated, info = sp_env.step(action)
             done = terminated or truncated
             replay.add(obs, action, reward, next_obs, done, next_action_mask=sp_env.legal_action_mask())
             obs = next_obs
             total_reward += float(reward)
+            if done:
+                episode_done = True
+                episode_truncated = bool(truncated)
+                terminal_reason = info.get("terminal_reason") or getattr(sp_env, "terminal_reason", None)
 
             if (
                 global_step >= cfg.warmup_steps
@@ -290,6 +314,8 @@ def train_sixmax_selfplay_badugi_dqn(
             ):
                 batch, indices, is_weights = replay.sample(cfg.batch_size, return_meta=True)
                 loss, mean_q, td_errors = hero.update(batch, weights=is_weights)
+                window_actions.record_q(mean_q=mean_q)
+                total_actions.record_q(mean_q=mean_q)
                 replay.update_priorities(indices, td_errors)
 
                 expert_bs = int(round(cfg.batch_size * cfg.expert_replay_ratio))
@@ -314,6 +340,18 @@ def train_sixmax_selfplay_badugi_dqn(
         rewards.append(total_reward)
         pos_rewards[hero_seat % 6].append(total_reward)
         pos_name_rewards[hero_position].append(total_reward)
+        max_step_hit = not episode_done
+        if max_step_hit:
+            terminal_reason = "truncated"
+        for telemetry in (window_actions, total_actions):
+            telemetry.record_episode(
+                reward=total_reward,
+                length=episode_steps,
+                terminal_reason=terminal_reason,
+                truncated=episode_truncated or max_step_hit,
+                max_step_hit=max_step_hit,
+                position=hero_position,
+            )
 
         if episode % cfg.opponent_update_interval == 0:
             opp.q_network.load_state_dict(hero.q_network.state_dict())
@@ -347,12 +385,12 @@ def train_sixmax_selfplay_badugi_dqn(
                 f"[6max {episode:8d}] avg={sum(recent)/len(recent):8.3f} "
                 f"ε={epsilon:.3f} buf={len(replay):7d} "
                 f"loss={loss:.5f} q={mean_q:.3f} "
-                f"{window_actions.format_log(include_all_in=True, include_fold_to_bet=True, include_draw_average=True)} "
+                f"{window_actions.format_log(include_all_in=True, include_fold_to_bet=True, include_draw_average=True, include_foundation=True)} "
                 f"opp_upd={opponent_updates} "
                 f"spd={eps_per_sec:.1f}ep/s ETA={eta_h:.1f}h "
                 f"{pos_str} {pos_name_str}{warn}"
             )
-            window_actions = SixMaxActionTelemetry()
+            window_actions = SixMaxActionTelemetry(max_draw_count=4, position_names=POSITION_NAMES_BY_BUTTON_OFFSET)
 
         if cfg.save_interval > 0 and episode % cfg.save_interval == 0:
             ts = time.strftime("%Y%m%d-%H%M%S")

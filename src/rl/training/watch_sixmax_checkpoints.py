@@ -27,6 +27,7 @@ if str(SRC_ROOT) not in sys.path:
 
 from rl.env.badugi_env_sixmax_selfplay import SixMaxBadugiEnv
 from rl.training.export_badugi_dqn_onnx import export_checkpoint
+from rl.training.sixmax_action_telemetry import SixMaxActionTelemetry
 
 try:
     import onnxruntime as ort
@@ -53,9 +54,7 @@ def _eval_sixmax(checkpoint: Path, n_episodes: int = 600, hidden_dim: int = 256)
 
     all_rewards: list[float] = []
     pos_rewards: dict[int, list[float]] = {i: [] for i in range(6)}
-    fold_count = 0
-    raise_count = 0
-    bet_steps = 0
+    telemetry = SixMaxActionTelemetry(max_draw_count=4)
 
     eps_per_pos = max(1, n_episodes // 6)
     for pos in range(6):
@@ -63,21 +62,23 @@ def _eval_sixmax(checkpoint: Path, n_episodes: int = 600, hidden_dim: int = 256)
         for _ in range(eps_per_pos):
             obs, _ = env.reset()
             ep_r = 0.0
+            ep_steps = 0
+            done = False
+            terminal_reason = None
+            episode_truncated = False
             hero_seat = env.hero_seat
             for _ in range(100):
+                ep_steps += 1
                 mask = env.legal_action_mask()
                 if env.phase == "BET":
-                    bet_steps += 1
                     q = agent.q_network(
                         __import__("torch").tensor(obs.reshape(1, -1), dtype=__import__("torch").float32)
                     ).detach().numpy()[0]
                     q_masked = q.copy()
                     q_masked[mask <= 0] = -1e9
                     action = int(np.argmax(q_masked))
-                    if action == 0:
-                        fold_count += 1
-                    elif action in (3, 4):
-                        raise_count += 1
+                    facing_bet = max(0, env.current_bet - env.players[hero_seat]["bet"]) > 0 or mask[0] > 0
+                    telemetry.record_bet(action, facing_bet=facing_bet)
                 else:
                     # DRAW phase: greedily draw toward best badugi
                     q = agent.q_network(
@@ -86,22 +87,35 @@ def _eval_sixmax(checkpoint: Path, n_episodes: int = 600, hidden_dim: int = 256)
                     q_masked = q.copy()
                     q_masked[mask <= 0] = -1e9
                     action = int(np.argmax(q_masked))
-                obs, r, terminated, truncated, _ = env.step(action)
+                    telemetry.record_draw(max(0, min(3, action)))
+                obs, r, terminated, truncated, info = env.step(action)
                 ep_r += r
                 if terminated or truncated:
+                    done = True
+                    episode_truncated = bool(truncated)
+                    terminal_reason = info.get("terminal_reason") or getattr(env, "terminal_reason", None)
                     break
             all_rewards.append(ep_r)
             pos_rewards[hero_seat % 6].append(ep_r)
+            max_step_hit = not done
+            telemetry.record_episode(
+                reward=ep_r,
+                length=ep_steps,
+                terminal_reason=terminal_reason or ("truncated" if max_step_hit else None),
+                truncated=episode_truncated or max_step_hit,
+                max_step_hit=max_step_hit,
+            )
 
     n = len(all_rewards)
-    fold_rate = fold_count / max(1, bet_steps)
-    raise_rate = raise_count / max(1, bet_steps)
+    rates = telemetry.rates(include_all_in=True, include_fold_to_bet=True, include_draw_average=True)
     return {
         "n_episodes": n,
         "avg_reward": float(np.mean(all_rewards)) if n else 0.0,
         "std_reward": float(np.std(all_rewards)) if n else 0.0,
-        "fold_rate": fold_rate,
-        "raise_rate": raise_rate,
+        "fold_rate": rates["foldRate"],
+        "pure_raise_rate": rates["pureRaiseRate"],
+        "agg_rate": rates["aggressionRate"],
+        "raise_rate": rates["pureRaiseRate"],
         "pos_rewards": {
             i: float(np.mean(pos_rewards[i])) if pos_rewards[i] else None
             for i in range(6)
@@ -296,7 +310,8 @@ def watch(args):
                 avg_r = result["avg_reward"]
                 std_r = result["std_reward"]
                 fold_r = result["fold_rate"]
-                raise_r = result["raise_rate"]
+                raise_r = result["pure_raise_rate"]
+                agg_r = result["agg_rate"]
                 pos_r = result["pos_rewards"]
 
                 # ポジション別表示
@@ -304,7 +319,7 @@ def watch(args):
                     f"{pos_labels[i]}={pos_r[i]:.2f}" if pos_r[i] is not None else f"{pos_labels[i]}=N/A"
                     for i in range(6)
                 )
-                print(f"[結果] avg={avg_r:.3f}±{std_r:.3f}  fold={fold_r:.1%}  raise={raise_r:.1%}  ({eval_time:.0f}s)")
+                print(f"[結果] avg={avg_r:.3f}±{std_r:.3f}  fold={fold_r:.1%}  raise={raise_r:.1%}  agg={agg_r:.1%}  ({eval_time:.0f}s)")
                 print(f"[ポジ] {pos_str}")
 
                 # 問題検知
@@ -313,8 +328,8 @@ def watch(args):
                     issues.append("avg_reward が低すぎる（学習崩壊の可能性）")
                 if fold_r > 0.65:
                     issues.append(f"フォールド率過多 ({fold_r:.1%}) — HIGH-FOLD崩壊")
-                if raise_r < 0.03:
-                    issues.append(f"レイズ率過少 ({raise_r:.1%}) — LOW-AGGRESSION崩壊")
+                if agg_r < 0.03:
+                    issues.append(f"攻撃頻度過少 ({agg_r:.1%}) — LOW-AGGRESSION崩壊")
                 worst_pos = min((i for i in range(6) if pos_r[i] is not None), key=lambda i: pos_r[i] or 0)
                 if pos_r[worst_pos] is not None and pos_r[worst_pos] < -2.0:
                     issues.append(f"ポジション {pos_labels[worst_pos]} の報酬が極端に低い ({pos_r[worst_pos]:.2f})")
@@ -339,7 +354,8 @@ def watch(args):
                     "eval_avg_reward": avg_r,
                     "eval_std_reward": std_r,
                     "fold_rate": fold_r,
-                    "raise_rate": raise_r,
+                    "pure_raise_rate": raise_r,
+                    "agg_rate": agg_r,
                     "position_rewards": {pos_labels[i]: pos_r[i] for i in range(6)},
                     "tier_estimate": tier_est,
                     "issues": issues,

@@ -23,6 +23,22 @@ def betting_round_name(draw_round: int) -> str:
     return "afterDraw3"
 
 
+def conservative_three_bet_opportunity(
+    *,
+    draw_round: int,
+    facing_bet: bool,
+    raise_legal: bool,
+    raise_count: int,
+) -> bool:
+    """Conservative 3bet hook used by trainers/watchers.
+
+    This intentionally counts pre-draw spots where at least one raise already
+    exists and hero has a legal raise while facing a bet. Later 4bet/cap spots
+    may be included; exact street action history is not available here.
+    """
+    return draw_round == 0 and facing_bet and raise_legal and raise_count >= 1
+
+
 def unknown_q_stats() -> dict[str, float | None]:
     return {"qMean": None, "qMin": None, "qMax": None, "qStd": None}
 

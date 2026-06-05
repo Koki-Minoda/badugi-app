@@ -40,7 +40,11 @@ from rl.agents.dqn_agent import DQNAgent, DQNHyperParams
 from rl.env.badugi_env import BadugiEnv
 from rl.env.badugi_env_sixmax_selfplay import SixMaxBadugiEnv
 from rl.env.badugi_env_selfplay import _best_badugi_keep
-from rl.training.sixmax_action_telemetry import SixMaxActionTelemetry, betting_round_name
+from rl.training.sixmax_action_telemetry import (
+    SixMaxActionTelemetry,
+    betting_round_name,
+    conservative_three_bet_opportunity,
+)
 from rl.utils.replay_buffer import ReplayBuffer
 
 
@@ -112,9 +116,9 @@ def _build_summary(
     *,
     cfg: SixMaxSelfPlayConfig,
     global_step: int,
-    rewards: list[float],
-    pos_rewards: list[list[float]],
-    pos_name_rewards: dict[str, list[float]],
+    rewards: deque[float],
+    pos_rewards: list[deque[float]],
+    pos_name_rewards: dict[str, deque[float]],
     action_telemetry: SixMaxActionTelemetry,
     opponent_updates: int,
     latest: Path,
@@ -279,13 +283,11 @@ def train_sixmax_selfplay_badugi_dqn(
                 hero_state = sp_env.players[hero_seat]
                 facing_bet = max(0, sp_env.current_bet - hero_state["bet"]) > 0 or mask[0] > 0
                 street = betting_round_name(sp_env.draw_round)
-                # Conservative 3bet approximation: only count pre-draw raises
-                # after the env has already registered at least one raise.
-                three_bet_opportunity = (
-                    sp_env.draw_round == 0
-                    and facing_bet
-                    and mask[4] > 0
-                    and sp_env.raise_count >= 1
+                three_bet_opportunity = conservative_three_bet_opportunity(
+                    draw_round=sp_env.draw_round,
+                    facing_bet=facing_bet,
+                    raise_legal=mask[4] > 0,
+                    raise_count=sp_env.raise_count,
                 )
                 for telemetry in (window_actions, total_actions):
                     telemetry.record_bet(

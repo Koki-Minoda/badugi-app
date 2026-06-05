@@ -1,7 +1,12 @@
 import pytest
+import numpy as np
 
+import rl.training.watch_sixmax_checkpoints as watch_sixmax_checkpoints
+from rl.training.sixmax_action_telemetry import (
+    SixMaxActionTelemetry,
+    conservative_three_bet_opportunity,
+)
 from rl.training.watch_sixmax_checkpoints import _parse_log
-from rl.training.sixmax_action_telemetry import SixMaxActionTelemetry
 
 
 def test_action_split_aggression_factor_and_draw_distribution_badugi_shape():
@@ -73,6 +78,73 @@ def test_vpip_pfr_three_bet_and_blind_only_hands():
     assert telemetry.position_summaries()["MP"]["pfr"] == 1.0
 
 
+def test_vpip_negative_paths_and_voluntary_actions_only():
+    telemetry = SixMaxActionTelemetry()
+
+    for action, expected_vpip in [(1, False), (0, False), (2, True), (3, True), (4, True)]:
+        telemetry.start_episode(position="BB")
+        telemetry.record_bet(action, facing_bet=action in (0, 2, 4), position="BB", betting_round="preDraw", is_pre_draw=True)
+        telemetry.record_episode(reward=0.0, length=1, terminal_reason="showdown", position="BB")
+        assert bool(telemetry._episode_vpip) is expected_vpip
+
+    assert telemetry.rates()["vpip"] == pytest.approx(3 / 5)
+
+
+def test_pfr_negative_paths_and_predraw_bet_raise_only():
+    telemetry = SixMaxActionTelemetry()
+
+    actions = [2, 1, 3, 4]
+    for action in actions:
+        telemetry.start_episode(position="CO")
+        telemetry.record_bet(action, facing_bet=action in (2, 4), position="CO", betting_round="preDraw", is_pre_draw=True)
+        telemetry.record_episode(reward=0.0, length=1, terminal_reason="showdown", position="CO")
+
+    rates = telemetry.rates()
+
+    assert rates["vpip"] == pytest.approx(3 / 4)
+    assert rates["pfr"] == pytest.approx(2 / 4)
+
+
+def test_conservative_three_bet_approximation_contract():
+    assert conservative_three_bet_opportunity(
+        draw_round=0,
+        facing_bet=False,
+        raise_legal=True,
+        raise_count=1,
+    ) is False
+    assert conservative_three_bet_opportunity(
+        draw_round=0,
+        facing_bet=True,
+        raise_legal=True,
+        raise_count=0,
+    ) is False
+    assert conservative_three_bet_opportunity(
+        draw_round=0,
+        facing_bet=True,
+        raise_legal=False,
+        raise_count=1,
+    ) is False
+    assert conservative_three_bet_opportunity(
+        draw_round=1,
+        facing_bet=True,
+        raise_legal=True,
+        raise_count=1,
+    ) is False
+    assert conservative_three_bet_opportunity(
+        draw_round=0,
+        facing_bet=True,
+        raise_legal=True,
+        raise_count=1,
+    ) is True
+    # By design, this conservative approximation may include later 4bet/cap spots.
+    assert conservative_three_bet_opportunity(
+        draw_round=0,
+        facing_bet=True,
+        raise_legal=True,
+        raise_count=2,
+    ) is True
+
+
 def test_terminal_reason_rates_and_position_actions_are_separate():
     telemetry = SixMaxActionTelemetry()
 
@@ -97,6 +169,41 @@ def test_terminal_reason_rates_and_position_actions_are_separate():
     assert summary["positionStats"]["BTN"]["betRate"] == pytest.approx(1.0)
     assert summary["positionStats"]["SB"]["foldRate"] == pytest.approx(1.0)
     assert summary["positionStats"]["BB"]["hands"] == 1
+
+
+def test_position_rewards_vpip_and_pfr_are_isolated():
+    telemetry = SixMaxActionTelemetry()
+
+    telemetry.start_episode(position="BTN")
+    telemetry.record_bet(3, facing_bet=False, position="BTN", betting_round="preDraw", is_pre_draw=True)
+    telemetry.record_episode(reward=2.0, length=2, terminal_reason="fold_win", position="BTN")
+
+    telemetry.start_episode(position="BB")
+    telemetry.record_bet(1, facing_bet=False, position="BB", betting_round="preDraw", is_pre_draw=True)
+    telemetry.record_episode(reward=-1.0, length=2, terminal_reason="fold_win", position="BB")
+
+    positions = telemetry.position_summaries()
+
+    assert positions["BTN"]["rewardAvg"] == 2.0
+    assert positions["BB"]["rewardAvg"] == -1.0
+    assert positions["BTN"]["vpip"] == 1.0
+    assert positions["BTN"]["pfr"] == 1.0
+    assert positions["BB"]["vpip"] == 0.0
+    assert positions["BB"]["pfr"] == 0.0
+
+
+def test_street_action_buckets_are_independent():
+    telemetry = SixMaxActionTelemetry()
+
+    for action, street in [(0, "preDraw"), (1, "afterDraw1"), (2, "afterDraw2"), (3, "afterDraw3")]:
+        telemetry.record_bet(action, facing_bet=action in (0, 2), betting_round=street)
+
+    streets = telemetry.summary()["bettingRoundActionStats"]
+
+    assert streets["preDraw"]["foldRate"] == 1.0
+    assert streets["afterDraw1"]["checkRate"] == 1.0
+    assert streets["afterDraw2"]["callRate"] == 1.0
+    assert streets["afterDraw3"]["betRate"] == 1.0
 
 
 def test_fold_win_terminal_reason_splits_by_reward_sign():
@@ -145,3 +252,76 @@ def test_watcher_parses_pure_raise_and_agg_separately(tmp_path):
     assert stats["bet_pct"] == 15.0
     assert stats["raise_pct"] == 5.0
     assert stats["aggression_pct"] == 20.0
+
+
+def test_watcher_eval_sixmax_return_contract_uses_pure_raise_and_agg(monkeypatch):
+    class FakeQ:
+        def __init__(self):
+            self.calls = 0
+
+        def __call__(self, _tensor):
+            action = 3 if self.calls % 2 == 0 else 4
+            self.calls += 1
+            q = np.zeros((1, 6), dtype=np.float32)
+            q[0, action] = 10.0
+            return FakeQResult(q)
+
+    class FakeQResult:
+        def __init__(self, array):
+            self.array = array
+
+        def detach(self):
+            return self
+
+        def numpy(self):
+            return self.array
+
+    class FakeAgent:
+        def __init__(self):
+            self.q_network = FakeQ()
+
+    class FakeDQNAgent:
+        @staticmethod
+        def load(_path, device="cpu"):
+            return FakeAgent()
+
+    class FakeEnv:
+        def __init__(self, seed=None):
+            self._hero_seat_counter = 0
+            self.players = [{"bet": 1} for _ in range(6)]
+
+        def set_agents(self, _hero, _opp):
+            return None
+
+        def reset(self):
+            self.hero_seat = self._hero_seat_counter % 6
+            self.dealer_seat = self.hero_seat
+            self.phase = "BET"
+            self.draw_round = 0
+            self.raise_count = 1
+            self.current_bet = 2
+            return np.zeros(96, dtype=np.float32), {}
+
+        def legal_action_mask(self):
+            return np.array([1, 0, 1, 1, 1, 0], dtype=np.float32)
+
+        def step(self, action):
+            reward = 1.0 if action == 3 else -1.0
+            return (
+                np.zeros(96, dtype=np.float32),
+                reward,
+                True,
+                False,
+                {"terminal_reason": "fold_win"},
+            )
+
+    monkeypatch.setattr(watch_sixmax_checkpoints, "DQNAgent", FakeDQNAgent)
+    monkeypatch.setattr(watch_sixmax_checkpoints, "SixMaxBadugiEnv", FakeEnv)
+
+    result = watch_sixmax_checkpoints._eval_sixmax("fake.pt", n_episodes=6)
+
+    assert set(["fold_rate", "pure_raise_rate", "agg_rate", "raise_rate", "pos_rewards"]).issubset(result)
+    assert result["pure_raise_rate"] == pytest.approx(0.5)
+    assert result["raise_rate"] == result["pure_raise_rate"]
+    assert result["agg_rate"] == pytest.approx(1.0)
+    assert result["pure_raise_rate"] != result["agg_rate"]

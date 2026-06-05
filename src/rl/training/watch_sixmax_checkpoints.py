@@ -27,7 +27,11 @@ if str(SRC_ROOT) not in sys.path:
 
 from rl.env.badugi_env_sixmax_selfplay import SixMaxBadugiEnv
 from rl.training.export_badugi_dqn_onnx import export_checkpoint
-from rl.training.sixmax_action_telemetry import SixMaxActionTelemetry, betting_round_name
+from rl.training.sixmax_action_telemetry import (
+    SixMaxActionTelemetry,
+    betting_round_name,
+    conservative_three_bet_opportunity,
+)
 from rl.training.train_sixmax_selfplay_badugi_dqn import hero_position_name
 
 try:
@@ -81,11 +85,11 @@ def _eval_sixmax(checkpoint: Path, n_episodes: int = 600, hidden_dim: int = 256)
                     q_masked[mask <= 0] = -1e9
                     action = int(np.argmax(q_masked))
                     facing_bet = max(0, env.current_bet - env.players[hero_seat]["bet"]) > 0 or mask[0] > 0
-                    three_bet_opportunity = (
-                        env.draw_round == 0
-                        and facing_bet
-                        and mask[4] > 0
-                        and env.raise_count >= 1
+                    three_bet_opportunity = conservative_three_bet_opportunity(
+                        draw_round=env.draw_round,
+                        facing_bet=facing_bet,
+                        raise_legal=mask[4] > 0,
+                        raise_count=env.raise_count,
                     )
                     telemetry.record_bet(
                         action,

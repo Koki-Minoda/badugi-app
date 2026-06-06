@@ -53,7 +53,55 @@ describe("modelRouter", () => {
       characterLabel: "Ryo",
       modelId: "model-badugi-sixmax-standard-1m",
       tierId: "standard",
+      style: "pat-pressure",
     });
+  });
+
+  it("uses sixmax 1M as the shared Badugi Standard base while preserving character styles", () => {
+    expect(resolveTierModelInfo({ variantId: "D03", tierId: "standard" })).toMatchObject({
+      modelId: "model-badugi-sixmax-standard-1m",
+      tierId: "standard",
+    });
+
+    expect(resolveCpuCharacterModelInfo({
+      characterId: "badugi-standard-reader",
+      variantId: "D03",
+      tierId: "standard",
+    })).toMatchObject({
+      characterLabel: "Reading Standard",
+      modelId: "model-badugi-sixmax-standard-1m",
+      style: "opponent-reading",
+    });
+
+    expect(resolveCpuCharacterModelInfo({
+      characterId: "badugi-standard-balanced",
+      variantId: "D03",
+      tierId: "standard",
+    })).toMatchObject({
+      characterLabel: "Balanced Standard",
+      modelId: "model-badugi-sixmax-standard-1m",
+      style: "baseline-balanced",
+    });
+
+    for (const [characterId, characterLabel, style] of [
+      ["akira", "Akira", "balanced"],
+      ["mina", "Mina", "tight-aggressive"],
+      ["ryo", "Ryo", "pat-pressure"],
+      ["emi", "Emi", "passive-punisher"],
+    ]) {
+      expect(resolveCpuCharacterModelInfo({
+        characterId,
+        variantId: "D03",
+        tierId: "standard",
+      })).toMatchObject({
+        characterId,
+        characterLabel,
+        personality: characterLabel,
+        modelId: "model-badugi-sixmax-standard-1m",
+        tierId: "standard",
+        style,
+      });
+    }
   });
 
   it("does not route older standard models to normal Badugi standard CPU", () => {

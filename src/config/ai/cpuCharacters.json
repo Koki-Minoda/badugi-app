@@ -13,17 +13,17 @@
     "label": "Reading Standard",
     "variantIds": ["D03"],
     "tierId": "standard",
-    "modelId": "model-badugi-standard-dqn-v3",
+    "modelId": "model-badugi-sixmax-standard-1m",
     "style": "opponent-reading",
-    "notes": "Current standard-strength Badugi CPU trained with 6-max teacher replay, first-in value betting, and profitable continue support. Not promoted to Pro because min reward stability is still below Pro v1."
+    "notes": "Routes to the shared Badugi Standard six-max 1M base model; opponent-reading behavior is applied as character style metadata."
   },
   {
     "id": "badugi-standard-balanced",
     "label": "Balanced Standard",
     "variantIds": ["D03"],
     "tierId": "standard",
-    "modelId": "model-badugi-standard-dqn-v3",
+    "modelId": "model-badugi-sixmax-standard-1m",
     "style": "baseline-balanced",
-    "notes": "Routes to the current standard DQN. Older v1/v2 models are retained only for offline comparison and rollback."
+    "notes": "Routes to the shared Badugi Standard six-max 1M base model. Older v1/v2/v3 models are retained only for offline comparison and rollback."
   }
 ]

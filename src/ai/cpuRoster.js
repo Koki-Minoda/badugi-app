@@ -44,6 +44,12 @@ export function getCpuCharacterByName(name = "") {
   );
 }
 
+export function getCpuCharacterById(id = "") {
+  const normalizedId = String(id ?? "").trim().toLowerCase();
+  if (!normalizedId) return null;
+  return CPU_CHARACTER_ROSTER.find((character) => character.id === normalizedId) ?? null;
+}
+
 export function getCpuDisplayName(index = 0) {
   return getCpuCharacterForIndex(index).name;
 }

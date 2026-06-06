@@ -286,6 +286,18 @@ class SixMaxDrawLowballEnv:
         self._setup_bet_queue(first_post_draw)
         return self._autoplay_until_hero()
 
+    def _fold_shaping(self, seat: int) -> float:
+        """Immediate hero-fold shaping for 2-7 lowball sixmax self-play."""
+        player = self.players[seat]
+        to_call = max(0, self.current_bet - player["bet"])
+        pot_odds = to_call / max(1, self.pot + to_call) if to_call > 0 else 0.0
+        features = evaluate_lowball(player["hand"], self.family)
+        effective_strength = _draw_adjusted_strength(player["hand"], self.family, features)
+        if effective_strength < pot_odds:
+            return 0.15
+        equity_missed = effective_strength - pot_odds
+        return -max(0.30, min(0.90, 0.20 + equity_missed * 1.5))
+
     def _apply_action(self, seat: int, action: int) -> tuple[bool, float, dict]:
         player = self.players[seat]
         to_call = max(0, self.current_bet - player["bet"])
@@ -293,6 +305,9 @@ class SixMaxDrawLowballEnv:
 
         if action == FOLD:
             player["folded"] = True
+            if seat == self.hero_seat and self.family == "low-27":
+                self.terminal_reason = "hero_fold"
+                return True, self._fold_shaping(seat), {"terminal_reason": "hero_fold"}
             active = self._active_seats_list()
             if len(active) == 1:
                 return True, self._settle(active[0]), {"terminal_reason": "fold_win"}

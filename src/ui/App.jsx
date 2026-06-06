@@ -47,6 +47,7 @@ import {
   resolveSessionPreferredActor,
   shouldSyncLegacyTurnToController,
 } from "./utils/actorSourceOfTruth.js";
+import { runNpcDrawAllInAutoFastPath } from "./utils/npcAutoActionTiming.js";
 
 import {
   nextAliveFrom,
@@ -11661,6 +11662,17 @@ export default function App() {
       betHelpers.logE2ESkip?.(autoTurn, "folded_or_out");
       const nxt = nextAliveFrom(activePlayers, autoTurn);
       if (nxt !== null) setTurn(nxt);
+      return;
+    }
+
+    if (
+      runNpcDrawAllInAutoFastPath({
+        phase,
+        seatIndex: autoTurn,
+        player: p,
+        autoResolveCpuDrawIfNeeded,
+      })
+    ) {
       return;
     }
 

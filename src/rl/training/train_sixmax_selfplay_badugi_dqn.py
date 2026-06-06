@@ -38,7 +38,7 @@ if str(SRC_ROOT) not in sys.path:
 
 from rl.agents.dqn_agent import DQNAgent, DQNHyperParams
 from rl.env.badugi_env import BadugiEnv
-from rl.env.badugi_env_sixmax_selfplay import SixMaxBadugiEnv
+from rl.env.badugi_env_sixmax_selfplay import CALL, FOLD, SixMaxBadugiEnv
 from rl.env.badugi_env_selfplay import _best_badugi_keep
 from rl.training.sixmax_action_telemetry import (
     SixMaxActionTelemetry,
@@ -76,10 +76,13 @@ class SixMaxSelfPlayConfig:
     imitation_pretrain_steps: int = 1_000
     imitation_loss_weight: float = 0.35
     expert_replay_ratio: float = 0.15
-    # Fold margin: prevents folding strong hands against multi-way pressure
+    # Fold margin: trains Q(FOLD) > Q(CALL) in good-fold states (equity < pot odds).
     fold_margin: float = 0.10
     fold_margin_weight: float = 0.20
     fold_margin_interval: int = 8
+    # Call margin (symmetric): trains Q(CALL) > Q(FOLD) in bad-fold states.
+    call_margin: float = 0.10
+    call_margin_weight: float = 0.20
     # Self-play
     opp_epsilon: float = 0.05
     opponent_update_interval: int = 1_000  # less frequent than heads-up (more stable)
@@ -186,14 +189,44 @@ def _build_summary(
     }
 
 
+def _add_fold_margin_transition(
+    *,
+    fold_buffer: ReplayBuffer,
+    call_buffer: ReplayBuffer,
+    obs: np.ndarray,
+    action: int,
+    reward: float,
+    next_obs: np.ndarray,
+    done: bool,
+    next_action_mask: np.ndarray,
+) -> str | None:
+    """Route hero-fold transitions to the margin buffer with the right direction."""
+    if action != FOLD:
+        return None
+    if reward > 0:
+        fold_buffer.add(obs, FOLD, reward, next_obs, done, next_action_mask=next_action_mask)
+        return "fold"
+    if reward < 0:
+        call_buffer.add(obs, CALL, reward, next_obs, done, next_action_mask=next_action_mask)
+        return "call"
+    return None
+
+
 def _teacher_warmup(
     cfg: SixMaxSelfPlayConfig,
     hero: DQNAgent,
     replay: ReplayBuffer,
     expert: ReplayBuffer,
     fold_buffer: ReplayBuffer,
+    call_buffer: ReplayBuffer,
 ) -> None:
-    """Fill replay with 6-player BadugiEnv transitions."""
+    """Fill replay with 6-player BadugiEnv transitions.
+
+    fold_buffer: good-fold states (reward > 0): trains Q(FOLD) > Q(CALL).
+    call_buffer: bad-fold states (reward < 0): trains Q(CALL) > Q(FOLD).
+                   Stored with action=CALL so action_margin_update pushes
+                   Q(CALL) above Q(FOLD) in states where hero folded wrongly.
+    """
     teacher_warmup_episodes = _effective_teacher_warmup_episodes(cfg)
     print(f"[6max-SelfPlay] Teacher warm-up: {teacher_warmup_episodes} ep × 6 profiles")
     env = BadugiEnv(opponent_profile=cfg.teacher_profiles[0], table_size=6)
@@ -216,8 +249,16 @@ def _teacher_warmup(
             done = terminated or truncated
             replay.add(obs, action, reward, next_obs, done, next_action_mask=mask)
             expert.add(obs, action, reward, next_obs, done, next_action_mask=mask)
-            if action == 0 and reward < 0:
-                fold_buffer.add(obs, action, reward, next_obs, done, next_action_mask=mask)
+            _add_fold_margin_transition(
+                fold_buffer=fold_buffer,
+                call_buffer=call_buffer,
+                obs=obs,
+                action=action,
+                reward=reward,
+                next_obs=next_obs,
+                done=done,
+                next_action_mask=mask,
+            )
             obs = next_obs
             if done:
                 break
@@ -228,7 +269,10 @@ def _teacher_warmup(
                 expert.sample(cfg.batch_size),
                 loss_weight=cfg.imitation_loss_weight,
             )
-    print(f"[6max-SelfPlay] Teacher done: replay={len(replay)} expert={len(expert)}")
+    print(
+        f"[6max-SelfPlay] Teacher done: replay={len(replay)} expert={len(expert)} "
+        f"fold={len(fold_buffer)} call={len(call_buffer)}"
+    )
 
 
 def train_sixmax_selfplay_badugi_dqn(
@@ -279,7 +323,10 @@ def train_sixmax_selfplay_badugi_dqn(
 
     replay = ReplayBuffer(capacity=cfg.buffer_capacity)
     expert = ReplayBuffer(capacity=min(80_000, cfg.buffer_capacity // 4))
+    # fold_buffer: good-fold states (shaping > 0) train Q(FOLD) > Q(CALL)
     fold_buffer = ReplayBuffer(capacity=15_000, alpha=0.0)
+    # call_buffer: bad-fold states (shaping < 0) train Q(CALL) > Q(FOLD)
+    call_buffer = ReplayBuffer(capacity=15_000, alpha=0.0)
 
     epsilon_start_effective = _effective_epsilon_start(cfg)
     teacher_warmup_episodes = _effective_teacher_warmup_episodes(cfg)
@@ -290,7 +337,7 @@ def train_sixmax_selfplay_badugi_dqn(
         f"teacher_warmup_episodes={teacher_warmup_episodes}"
     )
     if teacher_warmup_episodes > 0:
-        _teacher_warmup(cfg, hero, replay, expert, fold_buffer)
+        _teacher_warmup(cfg, hero, replay, expert, fold_buffer, call_buffer)
     else:
         skip_reason = "for continuation" if cfg.resume_continuation else "(0 episodes configured)"
         print(f"[6max-SelfPlay] Teacher warm-up skipped {skip_reason}")
@@ -383,7 +430,25 @@ def train_sixmax_selfplay_badugi_dqn(
 
             next_obs, reward, terminated, truncated, info = sp_env.step(action)
             done = terminated or truncated
-            replay.add(obs, action, reward, next_obs, done, next_action_mask=sp_env.legal_action_mask())
+            next_mask = sp_env.legal_action_mask()
+            replay.add(obs, action, reward, next_obs, done, next_action_mask=next_mask)
+            # ---- fold / call buffer fill (self-play) ----
+            # After fold shaping was added to the env, hero-fold transitions are
+            # done=True with reward = fold_shaping (positive good fold, negative bad fold).
+            if action == FOLD and done:
+                term = info.get("terminal_reason") if isinstance(info, dict) else None
+                if term == "hero_fold":
+                    _add_fold_margin_transition(
+                        fold_buffer=fold_buffer,
+                        call_buffer=call_buffer,
+                        obs=obs,
+                        action=action,
+                        reward=reward,
+                        next_obs=next_obs,
+                        done=done,
+                        next_action_mask=next_mask,
+                    )
+            # ---------------------------------------------
             obs = next_obs
             total_reward += float(reward)
             if done:
@@ -410,13 +475,23 @@ def train_sixmax_selfplay_badugi_dqn(
                     )
 
                 margin_batch = max(16, cfg.batch_size // 8)
-                if global_step % cfg.fold_margin_interval == 0 and len(fold_buffer) >= margin_batch:
-                    fold_margin_loss, _ = hero.action_margin_update(
-                        fold_buffer.sample(margin_batch),
-                        avoid_action=2,
-                        margin=cfg.fold_margin,
-                        loss_weight=cfg.fold_margin_weight,
-                    )
+                if global_step % cfg.fold_margin_interval == 0:
+                    if len(fold_buffer) >= margin_batch:
+                        # Good-fold states: Q(FOLD) > Q(CALL) by margin.
+                        fold_margin_loss, _ = hero.action_margin_update(
+                            fold_buffer.sample(margin_batch),
+                            avoid_action=CALL,
+                            margin=cfg.fold_margin,
+                            loss_weight=cfg.fold_margin_weight,
+                        )
+                    if len(call_buffer) >= margin_batch:
+                        # Bad-fold states: Q(CALL) > Q(FOLD) by margin.
+                        hero.action_margin_update(
+                            call_buffer.sample(margin_batch),
+                            avoid_action=FOLD,
+                            margin=cfg.call_margin,
+                            loss_weight=cfg.call_margin_weight,
+                        )
 
             if done:
                 break

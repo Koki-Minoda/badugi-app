@@ -347,6 +347,27 @@ class SixMaxBadugiEnv:
     # Action application
     # ------------------------------------------------------------------
 
+    def _fold_shaping(self, seat: int) -> float:
+        """Immediate fold shaping for hero, mirroring DualAgentBadugiEnv._apply_hero_bet.
+
+        Good fold (equity < pot odds): +0.15, folding was correct.
+        Bad fold  (equity > pot odds): -0.30 to -0.90, discourages folding equity.
+
+        Only applied when *hero* folds so opponent auto-play logic is unchanged.
+        Returns done=True from _apply_action so the terminal -1.0 from the
+        opponent winning the pot is NOT added on top of this shaping reward.
+        This matches the HU environment's fold-return semantics.
+        """
+        p = self.players[seat]
+        to_call = max(0, self.current_bet - p["bet"])
+        f = _evaluate_badugi_features(p["hand"])
+        strength = float(f["strength"])
+        pot_odds = to_call / max(1, self.pot + to_call) if to_call > 0 else 0.0
+        if strength < pot_odds:
+            return 0.15
+        equity_missed = strength - pot_odds
+        return -max(0.30, min(0.90, 0.20 + equity_missed * 1.5))
+
     def _apply_action(self, seat: int, action: int) -> tuple[bool, float, dict]:
         """Apply a BET-phase action for seat. Returns (done, shaping_reward, info)."""
         p = self.players[seat]
@@ -356,8 +377,13 @@ class SixMaxBadugiEnv:
 
         if action == FOLD:
             p["folded"] = True
-            self.pot += 0  # nothing extra
-            # Check if only one active player left
+            if seat == self.hero_seat:
+                # Hero fold: immediate terminal with fold shaping.
+                # done=True prevents the auto-played -1.0 terminal from being
+                # added on top of the shaping signal (matches HU env semantics).
+                self.terminal_reason = "hero_fold"
+                return True, self._fold_shaping(seat), {"terminal_reason": "hero_fold"}
+            # Non-hero fold: existing logic unchanged.
             active = self._active_seats_list()
             if len(active) == 1:
                 r = self._settle(active[0])

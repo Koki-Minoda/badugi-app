@@ -287,7 +287,7 @@ class SixMaxDrawLowballEnv:
         return self._autoplay_until_hero()
 
     def _fold_shaping(self, seat: int) -> float:
-        """Immediate hero-fold shaping for 2-7 lowball sixmax self-play."""
+        """Immediate hero-fold shaping for draw lowball sixmax self-play."""
         player = self.players[seat]
         to_call = max(0, self.current_bet - player["bet"])
         pot_odds = to_call / max(1, self.pot + to_call) if to_call > 0 else 0.0
@@ -305,7 +305,7 @@ class SixMaxDrawLowballEnv:
 
         if action == FOLD:
             player["folded"] = True
-            if seat == self.hero_seat and self.family == "low-27":
+            if seat == self.hero_seat:
                 self.terminal_reason = "hero_fold"
                 return True, self._fold_shaping(seat), {"terminal_reason": "hero_fold"}
             active = self._active_seats_list()

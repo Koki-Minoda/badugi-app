@@ -19,6 +19,11 @@ WEAK_27_HAND = [c("K", 0), c("K", 1), c("Q", 2), c("J", 3), c("T", 0)]
 STRONG_27_HAND = [c("7", 0), c("5", 1), c("4", 2), c("3", 3), c("2", 0)]
 OPP_EIGHT_LOW = [c("8", 0), c("6", 1), c("5", 2), c("4", 3), c("2", 0)]
 OPP_NINE_LOW = [c("9", 0), c("7", 1), c("5", 2), c("4", 3), c("2", 0)]
+WEAK_A5_HAND = [c("K", 0), c("K", 1), c("Q", 2), c("J", 3), c("T", 0)]
+WHEEL_A5_HAND = [c("A", 0), c("2", 1), c("3", 2), c("4", 3), c("5", 0)]
+WHEEL_DRAW_A5_HAND = [c("A", 0), c("2", 1), c("3", 2), c("4", 3), c("K", 0)]
+OPP_A5_SIX_LOW = [c("A", 0), c("2", 1), c("3", 2), c("4", 3), c("6", 0)]
+OPP_A5_SEVEN_LOW = [c("A", 1), c("2", 2), c("3", 3), c("5", 0), c("7", 1)]
 
 
 def _set_final_street_facing_bet(
@@ -45,12 +50,20 @@ def _set_final_street_facing_bet(
         player["stack"] = 100
         player["bet"] = current_bet if seat in {opp1, opp2} else 0
     env.players[hero]["hand"] = list(hero_hand)
-    env.players[opp1]["hand"] = list(OPP_EIGHT_LOW)
-    env.players[opp2]["hand"] = list(OPP_NINE_LOW)
+    if env.family == "low-a5":
+        env.players[opp1]["hand"] = list(OPP_A5_SIX_LOW)
+        env.players[opp2]["hand"] = list(OPP_A5_SEVEN_LOW)
+    else:
+        env.players[opp1]["hand"] = list(OPP_EIGHT_LOW)
+        env.players[opp2]["hand"] = list(OPP_NINE_LOW)
 
 
 def _s01_env() -> SixMaxDrawLowballEnv:
     return SixMaxDrawLowballEnv(family="low-27", max_draws=1, seed=1, opp_epsilon=0.0)
+
+
+def _d02_env() -> SixMaxDrawLowballEnv:
+    return SixMaxDrawLowballEnv(family="low-a5", max_draws=3, seed=1, opp_epsilon=0.0)
 
 
 def test_s01_weak_hand_fold_better_than_call():
@@ -100,6 +113,69 @@ def test_s01_non_hero_fold_no_shaping():
 
 
 def test_s01_fold_call_action_indices_preserved():
+    assert FOLD == 0
+    assert CALL == 2
+
+
+def test_d02_weak_hand_fold_better_than_call():
+    fold_env = _d02_env()
+    _set_final_street_facing_bet(fold_env, hero_hand=WEAK_A5_HAND)
+    assert len(fold_env._active_seats_list()) == 3
+
+    _obs, fold_reward, terminated, _truncated, info = fold_env.step(FOLD)
+
+    assert terminated is True
+    assert info["terminal_reason"] == "hero_fold"
+    assert fold_env.terminal_reason == "hero_fold"
+
+    call_env = _d02_env()
+    _set_final_street_facing_bet(call_env, hero_hand=WEAK_A5_HAND)
+    _obs, call_reward, terminated, _truncated, info = call_env.step(CALL)
+
+    assert terminated is True
+    assert info["terminal_reason"] == "showdown"
+    assert fold_reward > call_reward
+
+
+def test_d02_made_wheel_fold_is_bad_fold():
+    env = _d02_env()
+    _set_final_street_facing_bet(env, hero_hand=WHEEL_A5_HAND, current_bet=2, pot=12)
+
+    _obs, reward, terminated, _truncated, info = env.step(FOLD)
+
+    assert terminated is True
+    assert info["terminal_reason"] == "hero_fold"
+    assert reward < 0
+
+
+def test_d02_one_card_draw_to_wheel_is_bad_fold():
+    env = _d02_env()
+    _set_final_street_facing_bet(env, hero_hand=WHEEL_DRAW_A5_HAND, current_bet=2, pot=12)
+    env.draw_round = 0
+
+    _obs, reward, terminated, _truncated, info = env.step(FOLD)
+
+    assert terminated is True
+    assert info["terminal_reason"] == "hero_fold"
+    assert reward < 0
+
+
+def test_d02_non_hero_fold_no_shaping():
+    env = _d02_env()
+    _set_final_street_facing_bet(env, hero_hand=WHEEL_A5_HAND, queue_only_hero=False)
+    hero = env.hero_seat
+    opponent = (hero + 1) % 6
+    env.bet_queue = deque([opponent, hero])
+
+    done, reward, info = env._apply_action(opponent, FOLD)
+
+    assert done is False
+    assert reward == 0.0
+    assert info == {}
+    assert env.terminal_reason is None
+
+
+def test_d02_action_indices_preserved():
     assert FOLD == 0
     assert CALL == 2
 

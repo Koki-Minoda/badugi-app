@@ -1,5 +1,14 @@
 [
   {
+    "id": "badugi-sixmax-standard-ryo",
+    "label": "Ryo",
+    "variantIds": ["D03"],
+    "tierId": "standard",
+    "modelId": "model-badugi-sixmax-standard-1m",
+    "style": "pat-pressure",
+    "notes": "Badugi Standard six-max 1M checkpoint. Strong vs pat-heavy/tight, weak vs loose/draw-heavy; Standard tier only."
+  },
+  {
     "id": "badugi-standard-reader",
     "label": "Reading Standard",
     "variantIds": ["D03"],

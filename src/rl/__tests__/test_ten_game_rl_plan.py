@@ -38,9 +38,10 @@ def test_ten_game_beginner_standard_routes_are_explicit_and_safe():
     badugi_beginner = next(tier for tier in badugi["tiers"] if tier["tier"] == "beginner")
     badugi_standard = next(tier for tier in badugi["tiers"] if tier["tier"] == "standard")
 
-    assert badugi_beginner["routeStatus"] == "generic-fallback"
-    assert badugi_beginner["fallbackAllowed"] is True
-    assert badugi_standard["modelId"] == "model-badugi-standard-dqn-v3"
+    assert badugi_beginner["routeStatus"] == "variant-model"
+    assert badugi_beginner["modelId"] == "model-badugi-hu-beginner-dqn-100000"
+    assert badugi_beginner["fallbackAllowed"] is False
+    assert badugi_standard["modelId"] == "model-badugi-sixmax-standard-1m"
 
     for row in plan["variants"]:
         if row["variantId"] == "D03":

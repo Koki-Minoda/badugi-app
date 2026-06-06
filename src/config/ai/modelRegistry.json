@@ -404,6 +404,36 @@
     ]
   },
   {
+    "id": "model-badugi-sixmax-standard-1m",
+    "version": "v20260606",
+    "variant": "Badugi",
+    "variantIds": [
+      "D03"
+    ],
+    "characterIds": [],
+    "tier": "standard",
+    "onnx": "models/badugi_sixmax_standard_1m_20260606.onnx",
+    "checksumSha256": "4271fcf898c6882b44e6697ee6e722ffa56dba8a6710201b2c798c89ae210e31",
+    "trainingRun": "badugi_sixmax_1m_from_200k",
+    "trainingCheckpoint": "badugi_sixmax_dqn_1000000_20260606-121025.pt",
+    "trainingMode": "sixmax-selfplay",
+    "trainingEpisodes": 1000000,
+    "trainingStatus": "active",
+    "sourceCheckpoint": "rl/models/badugi_sixmax_1m_from_200k/badugi_sixmax_dqn_1000000_20260606-121025.pt",
+    "personality": "Ryo",
+    "style": "pat-pressure",
+    "notes": "Strong vs pat-heavy/tight, weak vs loose/draw-heavy; Standard tier only.",
+    "trainingNotes": "Completed Badugi 6-max 1M self-play checkpoint promoted as the in-game Badugi Standard candidate for Ryo / pat-pressure. Clean eval passed; 800k evaluation indicated Standard tier suitability. Keep Pro, Iron, and WorldMaster routing on their existing models.",
+    "featureSet": "badugi-observation-v1-ev-range",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
     "id": "model-badugi-standard-dqn-v3",
     "version": "v4",
     "variantIds": [

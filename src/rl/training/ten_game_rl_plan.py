@@ -201,7 +201,7 @@ FAMILY_PLANS: dict[str, RlFamilyPlan] = {
             "--profitable-continue-replay-ratio 0.25 --first-in-value-bet-replay-ratio 0.25"
         ),
         eval_command_template=(
-            "npm run ai:evaluate-badugi-onnx -- --model public/models/badugi_standard_dqn_v3.onnx "
+            "npm run ai:evaluate-badugi-onnx -- --model public/models/badugi_sixmax_standard_1m_20260606.onnx "
             "--episodes 500 --max-steps 200 --table-size 6 --feature-set badugi-observation-v1-ev-range"
         ),
         long_run_command_template=(

@@ -24,7 +24,7 @@ describe("modelRouter", () => {
     expect(entry?.modelId).toBe("model-badugi-hu-beginner-dqn-100000");
 
     const standard = resolveTierModelInfo({ variantId: "D03", tierId: "standard" });
-    expect(standard?.modelId).toBe("model-badugi-standard-dqn-v3");
+    expect(standard?.modelId).toBe("model-badugi-sixmax-standard-1m");
 
     const generic = resolveTierModelInfo({ variantId: "UNKNOWN", tierId: "beginner" });
     expect(generic?.modelId).toBe("model-generic-v1");
@@ -32,39 +32,40 @@ describe("modelRouter", () => {
 
   it("supports character-specific standard Badugi model overrides", () => {
     expect(selectModelForVariant({ variantId: "D03", tierId: "standard" })?.id).toBe(
-      "model-badugi-standard-dqn-v3",
+      "model-badugi-sixmax-standard-1m",
     );
     expect(
       selectModelForVariant({
         variantId: "D03",
         tierId: "standard",
-        characterId: "badugi-standard-reader",
+        characterId: "badugi-sixmax-standard-ryo",
       })?.id,
-    ).toBe("model-badugi-standard-dqn-v3");
+    ).toBe("model-badugi-sixmax-standard-1m");
 
     const characterModel = resolveCpuCharacterModelInfo({
-      characterId: "badugi-standard-reader",
+      characterId: "badugi-sixmax-standard-ryo",
       variantId: "D03",
       tierId: "standard",
     });
 
     expect(characterModel).toMatchObject({
-      characterId: "badugi-standard-reader",
-      modelId: "model-badugi-standard-dqn-v3",
+      characterId: "badugi-sixmax-standard-ryo",
+      characterLabel: "Ryo",
+      modelId: "model-badugi-sixmax-standard-1m",
       tierId: "standard",
     });
   });
 
-  it("does not route legacy standard models to normal Badugi standard CPU", () => {
+  it("does not route older standard models to normal Badugi standard CPU", () => {
     const legacy = getModelEntry("model-badugi-standard-dqn-v1");
     expect(legacy?.trainingStatus).toBe("legacy");
     expect(legacy?.productionRequired).toBe(false);
 
     expect(resolveCpuCharacterModelInfo({
-      characterId: "badugi-standard-balanced",
+      characterId: "badugi-sixmax-standard-ryo",
       variantId: "D03",
       tierId: "standard",
-    })?.modelId).toBe("model-badugi-standard-dqn-v3");
+    })?.modelId).toBe("model-badugi-sixmax-standard-1m");
   });
 
   it("does not route legacy beginner DQN to normal Badugi beginner CPU", () => {
@@ -87,7 +88,7 @@ describe("modelRouter", () => {
       outputShape: [6],
     });
     expect(resolveTierModelInfo({ variantId: "D03", tierId: "standard" })?.modelId).toBe(
-      "model-badugi-standard-dqn-v3",
+      "model-badugi-sixmax-standard-1m",
     );
     expect(resolveTierModelInfo({ variantId: "D03", tierId: "pro" })?.modelId).toBe(
       "model-badugi-pro-v1",

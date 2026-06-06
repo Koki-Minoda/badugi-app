@@ -54,6 +54,7 @@ from rl.utils.replay_buffer import ReplayBuffer
 POSITION_NAMES_BY_BUTTON_OFFSET = ("BTN", "SB", "BB", "UTG", "MP", "CO")
 POSITION_LOG_ORDER = ("BTN", "CO", "MP", "UTG", "BB", "SB")
 TELEMETRY_HISTORY_MAXLEN = 100_000
+DEFAULT_TEACHER_WARMUP_EPISODES = 5_000
 
 
 @dataclass
@@ -67,7 +68,7 @@ class SixMaxSelfPlayConfig:
     epsilon_end: float = 0.05
     epsilon_decay_episodes: int = 800_000  # slow decay over 80% of run
     # Teacher warm-up with 6-player BadugiEnv
-    teacher_warmup_episodes: int = 5_000
+    teacher_warmup_episodes: int | None = None
     teacher_profiles: tuple[str, ...] = field(default_factory=lambda: (
         "balanced", "loose_aggressive", "tight_passive",
         "tight_aggressive", "draw_heavy", "pat_heavy",
@@ -89,11 +90,42 @@ class SixMaxSelfPlayConfig:
     log_interval: int = 1_000
     output_dir: str = "rl/models/badugi_sixmax_selfplay"
     pretrained: str = ""
+    resume_continuation: bool = False
+    resume_epsilon: float = 0.05
 
 
 def _linear_decay(episode: int, start: float, end: float, decay_episodes: int) -> float:
     frac = min(1.0, episode / max(1, decay_episodes))
     return start + frac * (end - start)
+
+
+def _effective_epsilon_start(cfg: SixMaxSelfPlayConfig) -> float:
+    if cfg.resume_continuation:
+        return float(cfg.resume_epsilon if cfg.resume_epsilon is not None else cfg.epsilon_end)
+    return float(cfg.epsilon_start)
+
+
+def _episode_epsilon(cfg: SixMaxSelfPlayConfig, episode: int) -> float:
+    if cfg.resume_continuation:
+        return _linear_decay(
+            max(0, episode - 1),
+            _effective_epsilon_start(cfg),
+            cfg.epsilon_end,
+            cfg.epsilon_decay_episodes,
+        )
+    return _linear_decay(episode, cfg.epsilon_start, cfg.epsilon_end, cfg.epsilon_decay_episodes)
+
+
+def _effective_teacher_warmup_episodes(cfg: SixMaxSelfPlayConfig) -> int:
+    if cfg.teacher_warmup_episodes is not None:
+        return max(0, int(cfg.teacher_warmup_episodes))
+    if cfg.resume_continuation:
+        return 0
+    return DEFAULT_TEACHER_WARMUP_EPISODES
+
+
+def _teacher_warmup_skipped(cfg: SixMaxSelfPlayConfig) -> bool:
+    return _effective_teacher_warmup_episodes(cfg) == 0
 
 
 def hero_position_name(hero_seat: int, dealer_seat: int) -> str:
@@ -141,6 +173,12 @@ def _build_summary(
         **action_telemetry.summary(),
         "opponent_updates": int(opponent_updates),
         "pretrained": cfg.pretrained,
+        "resume_continuation": bool(cfg.resume_continuation),
+        "resume_epsilon": float(cfg.resume_epsilon),
+        "epsilon_start_effective": _effective_epsilon_start(cfg),
+        "epsilon_end": float(cfg.epsilon_end),
+        "teacher_warmup_episodes": _effective_teacher_warmup_episodes(cfg),
+        "teacher_warmup_skipped": _teacher_warmup_skipped(cfg),
         "checkpoint": str(latest),
         "obs_dim": 96,
         "n_actions": 6,
@@ -156,9 +194,10 @@ def _teacher_warmup(
     fold_buffer: ReplayBuffer,
 ) -> None:
     """Fill replay with 6-player BadugiEnv transitions."""
-    print(f"[6max-SelfPlay] Teacher warm-up: {cfg.teacher_warmup_episodes} ep × 6 profiles")
+    teacher_warmup_episodes = _effective_teacher_warmup_episodes(cfg)
+    print(f"[6max-SelfPlay] Teacher warm-up: {teacher_warmup_episodes} ep × 6 profiles")
     env = BadugiEnv(opponent_profile=cfg.teacher_profiles[0], table_size=6)
-    for episode in range(1, cfg.teacher_warmup_episodes + 1):
+    for episode in range(1, teacher_warmup_episodes + 1):
         env.set_opponent_profile(cfg.teacher_profiles[(episode - 1) % len(cfg.teacher_profiles)])
         obs, _ = env.reset()
         for _ in range(cfg.max_steps_per_episode):
@@ -242,7 +281,19 @@ def train_sixmax_selfplay_badugi_dqn(
     expert = ReplayBuffer(capacity=min(80_000, cfg.buffer_capacity // 4))
     fold_buffer = ReplayBuffer(capacity=15_000, alpha=0.0)
 
-    _teacher_warmup(cfg, hero, replay, expert, fold_buffer)
+    epsilon_start_effective = _effective_epsilon_start(cfg)
+    teacher_warmup_episodes = _effective_teacher_warmup_episodes(cfg)
+    print(
+        "[6max-SelfPlay] Continuation mode: "
+        f"{'on' if cfg.resume_continuation else 'off'} "
+        f"epsilon_start={epsilon_start_effective:.3f} "
+        f"teacher_warmup_episodes={teacher_warmup_episodes}"
+    )
+    if teacher_warmup_episodes > 0:
+        _teacher_warmup(cfg, hero, replay, expert, fold_buffer)
+    else:
+        skip_reason = "for continuation" if cfg.resume_continuation else "(0 episodes configured)"
+        print(f"[6max-SelfPlay] Teacher warm-up skipped {skip_reason}")
 
     sp_env = SixMaxBadugiEnv(opp_epsilon=cfg.opp_epsilon)
     sp_env.set_agents(hero, opp)
@@ -274,7 +325,7 @@ def train_sixmax_selfplay_badugi_dqn(
         terminal_reason: str | None = None
         episode_truncated = False
         episode_done = False
-        epsilon = _linear_decay(episode, cfg.epsilon_start, cfg.epsilon_end, cfg.epsilon_decay_episodes)
+        epsilon = _episode_epsilon(cfg, episode)
 
         for _ in range(cfg.max_steps_per_episode):
             global_step += 1
@@ -487,7 +538,9 @@ def parse_args():
     parser.add_argument("--hidden-dim", type=int, default=SixMaxSelfPlayConfig.hidden_dim)
     parser.add_argument("--batch-size", type=int, default=SixMaxSelfPlayConfig.batch_size)
     parser.add_argument("--buffer-capacity", type=int, default=SixMaxSelfPlayConfig.buffer_capacity)
-    parser.add_argument("--teacher-warmup-episodes", type=int, default=SixMaxSelfPlayConfig.teacher_warmup_episodes)
+    parser.add_argument("--teacher-warmup-episodes", type=int, default=None)
+    parser.add_argument("--resume-continuation", action="store_true")
+    parser.add_argument("--resume-epsilon", type=float, default=SixMaxSelfPlayConfig.resume_epsilon)
     parser.add_argument("--device", default=None)
     return parser.parse_args()
 
@@ -507,6 +560,8 @@ if __name__ == "__main__":
         batch_size=args.batch_size,
         buffer_capacity=args.buffer_capacity,
         teacher_warmup_episodes=args.teacher_warmup_episodes,
+        resume_continuation=args.resume_continuation,
+        resume_epsilon=args.resume_epsilon,
     )
     print(f"[6max-SelfPlay] device={device} episodes={cfg.total_episodes} pretrained={cfg.pretrained!r}")
     train_sixmax_selfplay_badugi_dqn(cfg=cfg, device=device)

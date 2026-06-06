@@ -10,6 +10,13 @@ from rl.training.train_selfplay_badugi_dqn import (
     train_selfplay_badugi_dqn,
 )
 from rl.training.train_sixmax_selfplay_badugi_dqn import hero_position_name
+from rl.training import train_sixmax_selfplay_badugi_dqn as sixmax_trainer
+from rl.training.train_sixmax_selfplay_badugi_dqn import (
+    SixMaxSelfPlayConfig,
+    _effective_teacher_warmup_episodes,
+    _episode_epsilon,
+    train_sixmax_selfplay_badugi_dqn,
+)
 from rl.training.sixmax_action_telemetry import SixMaxActionTelemetry
 
 
@@ -28,6 +35,67 @@ def test_sixmax_hero_position_name_maps_relative_to_dealer():
             hero_position_name((dealer_seat + offset) % 6, dealer_seat)
             for offset in range(6)
         ] == expected
+
+
+def test_sixmax_resume_continuation_starts_from_resume_epsilon():
+    cfg = SixMaxSelfPlayConfig(
+        pretrained="rl/models/badugi_sixmax_1m_from_200k/badugi_sixmax_dqn_latest.pt",
+        resume_continuation=True,
+    )
+
+    assert _episode_epsilon(cfg, 1) == pytest.approx(0.05)
+    assert _effective_teacher_warmup_episodes(cfg) == 0
+
+
+def test_sixmax_pretrained_without_resume_keeps_existing_epsilon_schedule():
+    cfg = SixMaxSelfPlayConfig(
+        pretrained="rl/models/badugi_sixmax_1m_from_200k/badugi_sixmax_dqn_latest.pt",
+    )
+
+    assert _episode_epsilon(cfg, 1) == pytest.approx(0.55, abs=0.001)
+    assert _effective_teacher_warmup_episodes(cfg) == 5_000
+
+
+def test_sixmax_resume_continuation_skips_teacher_warmup(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+):
+    checkpoint = tmp_path / "pretrained.pt"
+    agent = DQNAgent(
+        obs_dim=96,
+        n_actions=6,
+        hidden_dim=8,
+        hyperparams=DQNHyperParams(batch_size=2),
+    )
+    agent.save(str(checkpoint))
+
+    def fail_teacher_warmup(*_args, **_kwargs):
+        raise AssertionError("teacher warm-up should be skipped for resume continuation")
+
+    monkeypatch.setattr(sixmax_trainer, "_teacher_warmup", fail_teacher_warmup)
+    output_dir = tmp_path / "sixmax"
+    cfg = SixMaxSelfPlayConfig(
+        total_episodes=0,
+        pretrained=str(checkpoint),
+        resume_continuation=True,
+        output_dir=str(output_dir),
+        save_interval=0,
+        log_interval=0,
+        hidden_dim=8,
+        batch_size=2,
+        buffer_capacity=8,
+    )
+
+    summary = train_sixmax_selfplay_badugi_dqn(cfg=cfg, device="cpu")
+    captured = capsys.readouterr().out
+
+    assert summary["resume_continuation"] is True
+    assert summary["epsilon_start_effective"] == pytest.approx(0.05)
+    assert summary["teacher_warmup_episodes"] == 0
+    assert summary["teacher_warmup_skipped"] is True
+    assert "Continuation mode: on epsilon_start=0.050 teacher_warmup_episodes=0" in captured
+    assert "Teacher warm-up skipped for continuation" in captured
 
 
 def test_sixmax_action_telemetry_separates_bet_raise_and_facing_bet():

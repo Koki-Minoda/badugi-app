@@ -175,12 +175,56 @@ def test_steal_opportunity_and_attempts_for_late_positions_only():
 
     assert summary["stealOpportunityCount"] == 6
     assert summary["stealAttemptCount"] == 3
+    assert summary["stealSuccessCount"] == 0
+    assert summary["steal_opportunity_count"] == 6
+    assert summary["steal_attempt_count"] == 3
+    assert summary["steal_success_count"] == 0
     assert summary["stealRate"] == pytest.approx(0.5)
+    assert summary["stealSuccessRate"] == pytest.approx(0.0)
     assert summary["positionStats"]["BTN"]["stealOpportunityCount"] == 4
     assert summary["positionStats"]["BTN"]["stealAttemptCount"] == 1
+    assert summary["positionStats"]["BTN"]["stealSuccessCount"] == 0
+    assert summary["positionStats"]["BTN"]["steal_opportunity_count"] == 4
+    assert summary["positionStats"]["BTN"]["steal_attempt_count"] == 1
+    assert summary["positionStats"]["BTN"]["steal_success_count"] == 0
     assert summary["positionStats"]["BTN"]["stealRate"] == pytest.approx(0.25)
     assert summary["positionStats"]["CO"]["stealRate"] == 1.0
     assert summary["positionStats"]["SB"]["stealRate"] == 1.0
+
+
+def test_steal_success_counts_are_episode_scoped_by_position():
+    telemetry = SixMaxActionTelemetry()
+
+    telemetry.start_episode(position="BTN")
+    telemetry.record_bet(
+        3,
+        facing_bet=False,
+        position="BTN",
+        betting_round="preDraw",
+        is_pre_draw=True,
+        steal_opportunity=True,
+    )
+    telemetry.record_episode(reward=1.0, length=2, terminal_reason="fold_win", position="BTN")
+
+    telemetry.start_episode(position="CO")
+    telemetry.record_bet(
+        4,
+        facing_bet=True,
+        position="CO",
+        betting_round="preDraw",
+        is_pre_draw=True,
+        steal_opportunity=True,
+    )
+    telemetry.record_episode(reward=-1.0, length=4, terminal_reason="showdown", position="CO")
+
+    summary = telemetry.summary()
+
+    assert summary["stealOpportunityCount"] == 2
+    assert summary["stealAttemptCount"] == 2
+    assert summary["stealSuccessCount"] == 1
+    assert summary["stealSuccessRate"] == pytest.approx(0.5)
+    assert summary["positionStats"]["BTN"]["stealSuccessCount"] == 1
+    assert summary["positionStats"]["CO"]["stealSuccessCount"] == 0
 
 
 def test_conservative_steal_opportunity_contract_and_false_positive_guards():
@@ -343,7 +387,9 @@ def test_steal_summary_safe_when_no_opportunities_exist():
 
     assert summary["stealOpportunityCount"] == 0
     assert summary["stealAttemptCount"] == 0
+    assert summary["stealSuccessCount"] == 0
     assert summary["stealRate"] is None
+    assert summary["stealSuccessRate"] is None
     assert summary["positionStats"]["BTN"]["stealRate"] is None
     assert summary["bbFoldToPreDrawPressureRate"] is None
     assert summary["sbFoldToPreDrawPressureRate"] is None
@@ -396,11 +442,13 @@ def test_position_rewards_vpip_and_pfr_are_isolated():
     assert positions["BB"]["pfr"] == 0.0
 
 
-def test_position_ev_order_and_btn_below_utg_warning_are_reported():
+def test_position_ev_order_and_btn_below_utg_or_co_warning_are_reported():
     telemetry = SixMaxActionTelemetry()
 
     telemetry.start_episode(position="BTN")
     telemetry.record_episode(reward=-0.5, length=1, terminal_reason="showdown", position="BTN")
+    telemetry.start_episode(position="CO")
+    telemetry.record_episode(reward=0.0, length=1, terminal_reason="showdown", position="CO")
     telemetry.start_episode(position="UTG")
     telemetry.record_episode(reward=0.25, length=1, terminal_reason="showdown", position="UTG")
 
@@ -409,7 +457,10 @@ def test_position_ev_order_and_btn_below_utg_warning_are_reported():
     assert list(summary["positionEV"].keys()) == ["BTN", "CO", "MP", "UTG", "SB", "BB"]
     assert summary["positionEV"]["BTN"] == pytest.approx(-0.5)
     assert summary["positionEV"]["UTG"] == pytest.approx(0.25)
-    assert summary["warnings"] == ["BTN_EV_BELOW_UTG:BTN=-0.500<UTG=0.250"]
+    assert summary["warnings"] == [
+        "BTN_EV_BELOW_UTG:BTN=-0.500<UTG=0.250",
+        "BTN_EV_BELOW_CO:BTN=-0.500<CO=0.000",
+    ]
 
 
 def test_street_action_buckets_are_independent():
@@ -462,7 +513,10 @@ def test_watcher_parses_pure_raise_and_agg_separately(tmp_path):
         "[6max      100] avg=  -0.100 ε=0.500 buf=    10 loss=0.00100 q=0.250 "
         "fold%=10.0 chk%=20.0 call%=30.0 bet%=15.0 raise%=5.0 ai%=0.0 agg%=20.0 "
         "ftb%=12.0 drawAvg=1.50 vpip%=70.0 pfr%=20.0 af=0.67 sd%=50.0 wsd%=25.0 "
-        "steal%=33.0 stealOpp=12 stealAtt=4 BTNsteal%=40.0 COsteal%=20.0 SBsteal%=10.0 "
+        "steal%=33.0 stealOpp=12 stealAtt=4 stealSucc=3 "
+        "BTNsteal%=40.0 BTNstealOpp=5 BTNstealAtt=2 BTNstealSucc=1 "
+        "COsteal%=20.0 COstealOpp=4 COstealAtt=1 COstealSucc=1 "
+        "SBsteal%=10.0 SBstealOpp=3 SBstealAtt=1 SBstealSucc=1 "
         "bbFtp%=55.0 sbFtp%=44.0 "
         "term=[sd:5 fw:3 fl:1 tr:1] epLen=8.0 drawDist=[0:1 1:2 2:3 3:4 4:0] "
         "opp_upd=0 spd=12.0ep/s ETA=0.0h\n",
@@ -477,9 +531,19 @@ def test_watcher_parses_pure_raise_and_agg_separately(tmp_path):
     assert stats["steal_pct"] == 33.0
     assert stats["steal_opportunity_count"] == 12.0
     assert stats["steal_attempt_count"] == 4.0
+    assert stats["steal_success_count"] == 3.0
     assert stats["btn_steal_pct"] == 40.0
+    assert stats["btn_steal_opportunity_count"] == 5.0
+    assert stats["btn_steal_attempt_count"] == 2.0
+    assert stats["btn_steal_success_count"] == 1.0
     assert stats["co_steal_pct"] == 20.0
+    assert stats["co_steal_opportunity_count"] == 4.0
+    assert stats["co_steal_attempt_count"] == 1.0
+    assert stats["co_steal_success_count"] == 1.0
     assert stats["sb_steal_pct"] == 10.0
+    assert stats["sb_steal_opportunity_count"] == 3.0
+    assert stats["sb_steal_attempt_count"] == 1.0
+    assert stats["sb_steal_success_count"] == 1.0
     assert stats["bb_ftp_pct"] == 55.0
     assert stats["sb_ftp_pct"] == 44.0
 
@@ -560,6 +624,7 @@ def test_watcher_eval_sixmax_return_contract_uses_pure_raise_and_agg(monkeypatch
         "steal_rate",
         "steal_opportunity_count",
         "steal_attempt_count",
+        "steal_success_count",
         "fold_bb_to_steal_rate",
         "fold_sb_to_steal_rate",
         "bb_fold_to_predraw_pressure_rate",
@@ -574,5 +639,6 @@ def test_watcher_eval_sixmax_return_contract_uses_pure_raise_and_agg(monkeypatch
     assert result["pfr"] == pytest.approx(1.0)
     assert result["steal_opportunity_count"] >= 0
     assert result["steal_attempt_count"] >= 0
+    assert result["steal_success_count"] >= 0
     assert result["fold_bb_to_steal_rate"] is None
     assert result["fold_sb_to_steal_rate"] is None

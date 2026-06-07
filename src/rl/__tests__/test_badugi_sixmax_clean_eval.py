@@ -14,6 +14,7 @@ from rl.training.evaluate_badugi_sixmax_clean import (
     RAISE,
     checkpoint_episode,
     parse_milestones,
+    position_ev_warnings,
     pro_overlay_action,
     select_milestone_checkpoints,
     summarize_runs,
@@ -144,6 +145,44 @@ class BadugiSixMaxCleanEvalTest(unittest.TestCase):
         self.assertEqual(summary["worstProfileAvgReward"], -0.5)
         self.assertEqual(summary["onnxUsageRate"], 1.0)
         self.assertEqual(summary["fallbackRate"], 0.0)
+
+    def test_summarize_runs_reports_position_ev_warnings_without_failing(self):
+        base_summary = {
+            "episodes": 1,
+            "avgReward": 0.0,
+            "showdowns": 0,
+            "wins": 0,
+            "folds": 0,
+            "actionCounts": {},
+            "decisionCounts": {},
+            "showdownWinRate": 0.0,
+            "foldRate": 0.0,
+            "valueBetRate": 0.0,
+            "bluffRate": 0.0,
+            "patFrequency": 0.0,
+            "drawDecisionAccuracy": 0.0,
+        }
+
+        summary = summarize_runs(
+            [
+                {
+                    "opponentProfile": "balanced",
+                    "summary": base_summary,
+                    "positionSummaries": {
+                        "BTN": {**base_summary, "avgReward": -0.25},
+                        "CO": {**base_summary, "avgReward": 0.1},
+                        "UTG": {**base_summary, "avgReward": 0.2},
+                    },
+                }
+            ]
+        )
+
+        self.assertEqual(summary["positionEV"]["BTN"], -0.25)
+        self.assertIn("BTN_EV_BELOW_UTG:BTN=-0.250<UTG=0.200", summary["warnings"])
+        self.assertIn("BTN_EV_BELOW_CO:BTN=-0.250<CO=0.100", summary["warnings"])
+
+    def test_position_ev_warning_helper_skips_missing_positions(self):
+        self.assertEqual(position_ev_warnings({"BTN": -0.5}), [])
 
     def test_gate_reads_clean_eval_summary_json(self):
         clean_summary = {

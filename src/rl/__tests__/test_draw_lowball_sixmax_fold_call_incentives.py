@@ -1,12 +1,20 @@
 from collections import deque
 
+import numpy as np
 import pytest
+import torch
 
+from rl.agents.dqn_agent import DQNHyperParams
 from rl.env.draw_lowball_env_sixmax_selfplay import (
     CALL,
     FOLD,
     SixMaxDrawLowballEnv,
 )
+from rl.training.train_draw_lowball_sixmax_dqn import (
+    _LazyDQNAgent,
+    _add_fold_margin_transition,
+)
+from rl.utils.replay_buffer import ReplayBuffer
 
 
 def c(rank: str | int, suit: int) -> tuple[int, int]:
@@ -119,6 +127,82 @@ def test_s01_non_hero_fold_no_shaping():
 def test_s01_fold_call_action_indices_preserved():
     assert FOLD == 0
     assert CALL == 2
+
+
+def test_draw_trainer_fold_margin_transition_routes_good_and_bad_folds():
+    fold_buffer = ReplayBuffer(capacity=4, alpha=0.0)
+    call_buffer = ReplayBuffer(capacity=4, alpha=0.0)
+    obs = np.zeros(96, dtype=np.float32)
+    next_obs = np.ones(96, dtype=np.float32)
+    mask = np.ones(11, dtype=np.float32)
+
+    good_route = _add_fold_margin_transition(
+        fold_buffer=fold_buffer,
+        call_buffer=call_buffer,
+        obs=obs,
+        action=FOLD,
+        reward=0.15,
+        next_obs=next_obs,
+        done=True,
+        next_action_mask=mask,
+    )
+    bad_route = _add_fold_margin_transition(
+        fold_buffer=fold_buffer,
+        call_buffer=call_buffer,
+        obs=obs,
+        action=FOLD,
+        reward=-0.30,
+        next_obs=next_obs,
+        done=True,
+        next_action_mask=mask,
+    )
+    ignored_route = _add_fold_margin_transition(
+        fold_buffer=fold_buffer,
+        call_buffer=call_buffer,
+        obs=obs,
+        action=CALL,
+        reward=-0.30,
+        next_obs=next_obs,
+        done=True,
+        next_action_mask=mask,
+    )
+
+    assert good_route == "fold"
+    assert bad_route == "call"
+    assert ignored_route is None
+    assert len(fold_buffer) == 1
+    assert len(call_buffer) == 1
+    assert fold_buffer.sample(1)["actions"][0] == FOLD
+    assert call_buffer.sample(1)["actions"][0] == CALL
+
+
+def test_lazy_draw_agent_action_margin_update_pushes_call_above_fold():
+    torch.manual_seed(23)
+    np.random.seed(23)
+    agent = _LazyDQNAgent(
+        obs_dim=4,
+        n_actions=11,
+        device="cpu",
+        hidden_dim=16,
+        hyperparams=DQNHyperParams(lr=0.05, batch_size=8),
+    )
+    batch = {
+        "obs": np.tile(np.array([1.0, 0.0, 1.0, 0.0], dtype=np.float32), (8, 1)),
+        "actions": np.full((8,), CALL, dtype=np.int64),
+    }
+
+    for _ in range(80):
+        _loss, satisfied = agent.action_margin_update(
+            batch,
+            avoid_action=FOLD,
+            margin=0.20,
+            loss_weight=1.0,
+        )
+
+    q_values = agent.q_network(torch.as_tensor(batch["obs"][:1], dtype=torch.float32))
+    assert agent.optimizer is not None
+    assert satisfied >= 0.9
+    assert q_values[0, CALL].item() > q_values[0, FOLD].item()
 
 
 def test_d02_weak_hand_fold_better_than_call():
@@ -247,6 +331,50 @@ def test_s02_non_hero_fold_no_shaping():
 def test_s02_action_indices_preserved():
     assert FOLD == 0
     assert CALL == 2
+
+
+@pytest.mark.parametrize("max_draws", [1, 3])
+def test_low27_strong_hand_fold_is_bad_fold(max_draws: int):
+    env = SixMaxDrawLowballEnv(
+        family="low-27",
+        max_draws=max_draws,
+        seed=1,
+        opp_epsilon=0.0,
+    )
+    _set_final_street_facing_bet(
+        env,
+        hero_hand=STRONG_27_HAND,
+        current_bet=2,
+        pot=12,
+    )
+
+    _obs, reward, terminated, _truncated, info = env.step(FOLD)
+
+    assert terminated is True
+    assert info["terminal_reason"] == "hero_fold"
+    assert reward < 0
+
+
+@pytest.mark.parametrize("max_draws", [1, 3])
+def test_lowa5_wheel_fold_is_bad_fold(max_draws: int):
+    env = SixMaxDrawLowballEnv(
+        family="low-a5",
+        max_draws=max_draws,
+        seed=1,
+        opp_epsilon=0.0,
+    )
+    _set_final_street_facing_bet(
+        env,
+        hero_hand=WHEEL_A5_HAND,
+        current_bet=2,
+        pot=12,
+    )
+
+    _obs, reward, terminated, _truncated, info = env.step(FOLD)
+
+    assert terminated is True
+    assert info["terminal_reason"] == "hero_fold"
+    assert reward < 0
 
 
 @pytest.mark.parametrize("max_draws", [1, 3])

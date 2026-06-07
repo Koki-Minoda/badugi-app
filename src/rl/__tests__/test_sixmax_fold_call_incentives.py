@@ -167,24 +167,87 @@ def test_draw_phase_resets_current_bet_and_observation_ignores_stale_bet():
         assert stale_obs[idx] == pytest.approx(clean_obs[idx])
 
 
-def test_btn_three_card_nine_high_is_not_unconditional_late_semibluff_signal():
+def _semibluff_obs(
+    *,
+    position: str,
+    hand: list[tuple[int, int]],
+    n_opps: int = 2,
+    draw_round: int = 1,
+    pot: int = 10,
+    current_bet: int = 0,
+) -> np.ndarray:
     env = SixMaxBadugiEnv(seed=17, opp_epsilon=0.0)
     env.reset(seed=17)
     hero = env.hero_seat
-    env.dealer_seat = hero
+    dealer_offsets = {"BTN": 0, "CO": 1, "MP": 2}
+    env.dealer_seat = (hero + dealer_offsets[position]) % 6
     env.phase = "BET"
-    env.draw_round = 2
-    env.current_bet = 0
-    env.pot = 12
+    env.draw_round = draw_round
+    env.current_bet = current_bet
+    env.pot = pot
+    active = {hero}
+    for offset in range(1, n_opps + 1):
+        active.add((hero + offset) % 6)
     for seat, player in enumerate(env.players):
-        player["folded"] = seat not in {hero, (hero + 1) % 6, (hero + 2) % 6}
+        player["folded"] = seat not in active
         player["bet"] = 0
 
-    env.players[hero]["hand"] = [(0, 0), (4, 1), (8, 2), (12, 2)]
-    nine_high_obs = env._obs_for(hero)
+    env.players[hero]["hand"] = list(hand)
+    return env._obs_for(hero)
 
-    env.players[hero]["hand"] = [(0, 0), (3, 1), (6, 2), (12, 2)]
-    seven_high_obs = env._obs_for(hero)
 
-    assert nine_high_obs[60] == pytest.approx(0.0)
-    assert seven_high_obs[60] == pytest.approx(1.0)
+def test_mp_position_does_not_emit_late_semibluff_signal():
+    obs = _semibluff_obs(position="MP", hand=[(0, 0), (3, 1), (6, 2), (12, 2)])
+
+    assert obs[21] == pytest.approx(0.6)
+    assert obs[60] == pytest.approx(0.0)
+
+
+def test_btn_three_card_nine_high_is_not_unconditional_late_semibluff_signal():
+    obs = _semibluff_obs(position="BTN", hand=[(0, 0), (4, 1), (8, 2), (12, 2)])
+
+    assert obs[60] == pytest.approx(0.0)
+
+
+@pytest.mark.parametrize("position", ["BTN", "CO"])
+@pytest.mark.parametrize(
+    "hand",
+    [
+        [(0, 0), (3, 1), (6, 2), (12, 2)],
+        [(0, 0), (3, 1), (7, 2), (12, 2)],
+    ],
+)
+def test_late_position_three_card_seven_or_eight_high_can_emit_semibluff_signal(position, hand):
+    obs = _semibluff_obs(position=position, hand=hand, n_opps=2, draw_round=1, pot=10)
+
+    assert obs[60] == pytest.approx(1.0)
+
+
+def test_late_semibluff_signal_rejects_too_many_opponents():
+    obs = _semibluff_obs(
+        position="BTN",
+        hand=[(0, 0), (3, 1), (6, 2), (12, 2)],
+        n_opps=3,
+    )
+
+    assert obs[60] == pytest.approx(0.0)
+
+
+def test_late_semibluff_signal_rejects_final_draw_spot():
+    obs = _semibluff_obs(
+        position="BTN",
+        hand=[(0, 0), (3, 1), (6, 2), (12, 2)],
+        draw_round=2,
+    )
+
+    assert obs[60] == pytest.approx(0.0)
+
+
+def test_late_semibluff_signal_rejects_high_pot_pressure():
+    obs = _semibluff_obs(
+        position="BTN",
+        hand=[(0, 0), (3, 1), (6, 2), (12, 2)],
+        pot=18,
+    )
+
+    assert obs[60] == pytest.approx(0.0)

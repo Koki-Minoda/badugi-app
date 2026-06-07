@@ -146,6 +146,7 @@ class PositionTelemetry:
     pfr_hands: int = 0
     steal_opportunities: int = 0
     steal_attempts: int = 0
+    steal_successes: int = 0
     blind_pressure_opportunities: int = 0
     blind_pressure_folds: int = 0
 
@@ -178,13 +179,15 @@ class PositionTelemetry:
             if action == 0:
                 self.blind_pressure_folds += 1
 
-    def record_episode(self, reward: float, *, vpip: bool, pfr: bool) -> None:
+    def record_episode(self, reward: float, *, vpip: bool, pfr: bool, steal_success: bool = False) -> None:
         self.rewards.append(float(reward))
         self.hands += 1
         if vpip:
             self.vpip_hands += 1
         if pfr:
             self.pfr_hands += 1
+        if steal_success:
+            self.steal_successes += 1
 
     def summary(self) -> dict[str, float | int | None]:
         rates = _action_rates(self.bet_action_counts, include_all_in=True)
@@ -193,11 +196,21 @@ class PositionTelemetry:
         rates["pfr"] = _safe_rate(self.pfr_hands, self.hands)
         rates["stealOpportunityCount"] = self.steal_opportunities
         rates["stealAttemptCount"] = self.steal_attempts
+        rates["stealSuccessCount"] = self.steal_successes
+        rates["steal_opportunity_count"] = self.steal_opportunities
+        rates["steal_attempt_count"] = self.steal_attempts
+        rates["steal_success_count"] = self.steal_successes
         rates["stealRate"] = (
             None
             if self.steal_opportunities <= 0
             else self.steal_attempts / self.steal_opportunities
         )
+        rates["stealSuccessRate"] = (
+            None
+            if self.steal_attempts <= 0
+            else self.steal_successes / self.steal_attempts
+        )
+        rates["steal_success_rate"] = rates["stealSuccessRate"]
         rates["foldToPreDrawPressureRate"] = (
             None
             if self.blind_pressure_opportunities <= 0
@@ -231,6 +244,7 @@ class SixMaxActionTelemetry:
     three_bet_actions: int = 0
     steal_opportunities: int = 0
     steal_attempts: int = 0
+    steal_successes: int = 0
     blind_pressure_opportunities: dict[str, int] = field(default_factory=dict)
     blind_pressure_folds: dict[str, int] = field(default_factory=dict)
     street_action_counts: dict[str, list[int]] = field(default_factory=dict)
@@ -264,11 +278,13 @@ class SixMaxActionTelemetry:
         self._episode_position: str | None = None
         self._episode_vpip = False
         self._episode_pfr = False
+        self._episode_steal_attempt = False
 
     def start_episode(self, *, position: str | None = None) -> None:
         self._episode_position = position
         self._episode_vpip = False
         self._episode_pfr = False
+        self._episode_steal_attempt = False
 
     def record_bet(
         self,
@@ -320,6 +336,7 @@ class SixMaxActionTelemetry:
                 self.steal_opportunities += 1
                 if action in (3, 4):
                     self.steal_attempts += 1
+                    self._episode_steal_attempt = True
             if blind_pressure_opportunity and position in BLIND_POSITIONS:
                 self.blind_pressure_opportunities[position] += 1
                 if action == 0:
@@ -362,6 +379,9 @@ class SixMaxActionTelemetry:
 
         if reason == "showdown" and reward > 0:
             self.showdown_wins += 1
+        steal_success = bool(self._episode_steal_attempt and reason == "fold_win" and reward > 0)
+        if steal_success:
+            self.steal_successes += 1
         if self._episode_vpip:
             self.vpip_hands += 1
         if self._episode_pfr:
@@ -373,6 +393,7 @@ class SixMaxActionTelemetry:
                 reward,
                 vpip=self._episode_vpip,
                 pfr=self._episode_pfr,
+                steal_success=steal_success,
             )
 
     def record_q(self, *, mean_q: float | None = None) -> None:
@@ -405,11 +426,21 @@ class SixMaxActionTelemetry:
         )
         rates["stealOpportunityCount"] = self.steal_opportunities
         rates["stealAttemptCount"] = self.steal_attempts
+        rates["stealSuccessCount"] = self.steal_successes
+        rates["steal_opportunity_count"] = self.steal_opportunities
+        rates["steal_attempt_count"] = self.steal_attempts
+        rates["steal_success_count"] = self.steal_successes
         rates["stealRate"] = (
             None
             if self.steal_opportunities <= 0
             else self.steal_attempts / self.steal_opportunities
         )
+        rates["stealSuccessRate"] = (
+            None
+            if self.steal_attempts <= 0
+            else self.steal_successes / self.steal_attempts
+        )
+        rates["steal_success_rate"] = rates["stealSuccessRate"]
         rates["foldBbToStealRate"] = None
         rates["foldSbToStealRate"] = None
         rates["bbFoldToPreDrawPressureRate"] = (
@@ -473,13 +504,20 @@ class SixMaxActionTelemetry:
 
     def position_warnings(self) -> list[str]:
         btn = self.positions.get("BTN")
+        co = self.positions.get("CO")
         utg = self.positions.get("UTG")
+        warnings = []
         if btn is not None and utg is not None and btn.hands > 0 and utg.hands > 0:
             btn_ev = btn.summary()["rewardAvg"]
             utg_ev = utg.summary()["rewardAvg"]
             if btn_ev < utg_ev:
-                return [f"BTN_EV_BELOW_UTG:BTN={btn_ev:.3f}<UTG={utg_ev:.3f}"]
-        return []
+                warnings.append(f"BTN_EV_BELOW_UTG:BTN={btn_ev:.3f}<UTG={utg_ev:.3f}")
+        if btn is not None and co is not None and btn.hands > 0 and co.hands > 0:
+            btn_ev = btn.summary()["rewardAvg"]
+            co_ev = co.summary()["rewardAvg"]
+            if btn_ev < co_ev:
+                warnings.append(f"BTN_EV_BELOW_CO:BTN={btn_ev:.3f}<CO={co_ev:.3f}")
+        return warnings
 
     def summary(self) -> dict[str, Any]:
         payload = self.rates(include_all_in=True, include_fold_to_bet=True, include_draw_average=True)
@@ -548,9 +586,19 @@ class SixMaxActionTelemetry:
                     f"steal%={_pct_or_zero(rates['stealRate']):.1f}",
                     f"stealOpp={rates['stealOpportunityCount']}",
                     f"stealAtt={rates['stealAttemptCount']}",
+                    f"stealSucc={rates['stealSuccessCount']}",
                     f"BTNsteal%={_pct_or_zero(position_stats.get('BTN', {}).get('stealRate')):.1f}",
+                    f"BTNstealOpp={position_stats.get('BTN', {}).get('stealOpportunityCount', 0)}",
+                    f"BTNstealAtt={position_stats.get('BTN', {}).get('stealAttemptCount', 0)}",
+                    f"BTNstealSucc={position_stats.get('BTN', {}).get('stealSuccessCount', 0)}",
                     f"COsteal%={_pct_or_zero(position_stats.get('CO', {}).get('stealRate')):.1f}",
+                    f"COstealOpp={position_stats.get('CO', {}).get('stealOpportunityCount', 0)}",
+                    f"COstealAtt={position_stats.get('CO', {}).get('stealAttemptCount', 0)}",
+                    f"COstealSucc={position_stats.get('CO', {}).get('stealSuccessCount', 0)}",
                     f"SBsteal%={_pct_or_zero(position_stats.get('SB', {}).get('stealRate')):.1f}",
+                    f"SBstealOpp={position_stats.get('SB', {}).get('stealOpportunityCount', 0)}",
+                    f"SBstealAtt={position_stats.get('SB', {}).get('stealAttemptCount', 0)}",
+                    f"SBstealSucc={position_stats.get('SB', {}).get('stealSuccessCount', 0)}",
                     f"bbFtp%={_pct_or_zero(rates['bbFoldToPreDrawPressureRate']):.1f}",
                     f"sbFtp%={_pct_or_zero(rates['sbFoldToPreDrawPressureRate']):.1f}",
                     f"sd%={rates['showdownRate']*100:.1f}",

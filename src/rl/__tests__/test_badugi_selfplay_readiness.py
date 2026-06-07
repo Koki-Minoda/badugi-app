@@ -15,6 +15,7 @@ from rl.training.train_sixmax_selfplay_badugi_dqn import (
     SixMaxSelfPlayConfig,
     _effective_teacher_warmup_episodes,
     _episode_epsilon,
+    _maybe_imitation_update,
     train_sixmax_selfplay_badugi_dqn,
 )
 from rl.training.sixmax_action_telemetry import SixMaxActionTelemetry
@@ -43,8 +44,20 @@ def test_sixmax_resume_continuation_starts_from_resume_epsilon():
         resume_continuation=True,
     )
 
-    assert _episode_epsilon(cfg, 1) == pytest.approx(0.05)
+    assert _episode_epsilon(cfg, 1) == pytest.approx(0.25)
     assert _effective_teacher_warmup_episodes(cfg) == 0
+
+
+def test_sixmax_trainer_defaults_counter_vpip_plateau():
+    cfg = SixMaxSelfPlayConfig()
+
+    assert cfg.resume_epsilon == pytest.approx(0.25)
+    assert cfg.resume_epsilon_decay_episodes == 200_000
+    assert cfg.epsilon_end == pytest.approx(0.05)
+    assert cfg.fold_margin == pytest.approx(0.20)
+    assert cfg.fold_margin_weight == pytest.approx(0.40)
+    assert cfg.call_margin == pytest.approx(0.20)
+    assert cfg.call_margin_weight == pytest.approx(0.40)
 
 
 def test_sixmax_pretrained_without_resume_keeps_existing_epsilon_schedule():
@@ -91,11 +104,67 @@ def test_sixmax_resume_continuation_skips_teacher_warmup(
     captured = capsys.readouterr().out
 
     assert summary["resume_continuation"] is True
-    assert summary["epsilon_start_effective"] == pytest.approx(0.05)
+    assert summary["epsilon_start_effective"] == pytest.approx(0.25)
     assert summary["teacher_warmup_episodes"] == 0
     assert summary["teacher_warmup_skipped"] is True
-    assert "Continuation mode: on epsilon_start=0.050 teacher_warmup_episodes=0" in captured
+    assert "Continuation mode: on epsilon_start=0.250 teacher_warmup_episodes=0" in captured
     assert "Teacher warm-up skipped for continuation" in captured
+
+
+class _FakeExpertBuffer:
+    def __init__(self, size: int):
+        self.size = size
+        self.sample_calls = 0
+
+    def __len__(self):
+        return self.size
+
+    def sample(self, batch_size: int):
+        self.sample_calls += 1
+        return {"batch_size": batch_size}
+
+
+class _FakeHero:
+    def __init__(self):
+        self.imitation_calls = 0
+
+    def imitation_update(self, batch, loss_weight: float):
+        self.imitation_calls += 1
+        return 1.25, 0.75
+
+
+def test_sixmax_resume_continuation_skips_imitation_update():
+    cfg = SixMaxSelfPlayConfig(
+        resume_continuation=True,
+        batch_size=10,
+        expert_replay_ratio=0.5,
+    )
+    hero = _FakeHero()
+    expert = _FakeExpertBuffer(size=10)
+
+    loss, accuracy, ran = _maybe_imitation_update(cfg=cfg, hero=hero, expert=expert)
+
+    assert (loss, accuracy, ran) == (None, None, False)
+    assert hero.imitation_calls == 0
+    assert expert.sample_calls == 0
+
+
+def test_sixmax_fresh_training_allows_imitation_update():
+    cfg = SixMaxSelfPlayConfig(
+        resume_continuation=False,
+        batch_size=10,
+        expert_replay_ratio=0.5,
+    )
+    hero = _FakeHero()
+    expert = _FakeExpertBuffer(size=10)
+
+    loss, accuracy, ran = _maybe_imitation_update(cfg=cfg, hero=hero, expert=expert)
+
+    assert ran is True
+    assert loss == pytest.approx(1.25)
+    assert accuracy == pytest.approx(0.75)
+    assert hero.imitation_calls == 1
+    assert expert.sample_calls == 1
 
 
 def test_sixmax_action_telemetry_separates_bet_raise_and_facing_bet():

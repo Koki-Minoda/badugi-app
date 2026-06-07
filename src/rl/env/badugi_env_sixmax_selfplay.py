@@ -734,19 +734,21 @@ class SixMaxBadugiEnv:
     def _late_semibluff_spot(self, seat: int, f: dict, to_call: int, draws_remaining: int, n_opps: int) -> bool:
         high = f["highest_rank"] if f["highest_rank"] else 13
         pos = self._position_fraction(seat)
-        # Keep this feature narrow: the previous "late position + 3-card 9/10-high"
-        # rule fired for common BTN/CO opens and acted like an unconditional BET
-        # prior. Require a short-handed late-street spot, a stronger draw, and a
-        # pot worth pressuring before exposing the semi-bluff signal.
+        # This observation feature does not force BET directly, but it is a
+        # semi-bluff signal to the Q network. In early self-play and high-VPIP
+        # games a broad late-position signal can amplify over-aggression, so keep
+        # it restricted to clean CO/BTN draw spots. Position encoding itself is
+        # unchanged; only this derived feature is gated more conservatively.
         return (
             self.phase == "BET"
             and 1 <= n_opps <= 2
-            and to_call <= 0
+            and to_call == 0
+            and self.current_bet == 0
             and pos >= 0.8
             and f["count"] == 3
-            and high <= 6
-            and draws_remaining == 1
-            and self.pot >= 10
+            and high <= 7
+            and draws_remaining >= 2
+            and self.pot <= 14
         )
 
     def _street_adjusted_strength(self, f: dict, draws_remaining: int) -> float:

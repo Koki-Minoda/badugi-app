@@ -168,6 +168,9 @@ def _eval_sixmax(checkpoint: Path, n_episodes: int = 600, hidden_dim: int = 256)
     warnings = []
     if position_ev.get("BTN") is not None and position_ev.get("UTG") is not None and position_ev["BTN"] < position_ev["UTG"]:
         warnings.append(f"BTN_EV_BELOW_UTG:BTN={position_ev['BTN']:.3f}<UTG={position_ev['UTG']:.3f}")
+    if position_ev.get("BTN") is not None and position_ev.get("CO") is not None and position_ev["BTN"] < position_ev["CO"]:
+        warnings.append(f"BTN_EV_BELOW_CO:BTN={position_ev['BTN']:.3f}<CO={position_ev['CO']:.3f}")
+    position_stats = telemetry.position_summaries()
     return {
         "n_episodes": n,
         "avg_reward": float(np.mean(all_rewards)) if n else 0.0,
@@ -180,6 +183,7 @@ def _eval_sixmax(checkpoint: Path, n_episodes: int = 600, hidden_dim: int = 256)
         "pfr": rates["pfr"],
         "steal_opportunity_count": rates["stealOpportunityCount"],
         "steal_attempt_count": rates["stealAttemptCount"],
+        "steal_success_count": rates["stealSuccessCount"],
         "steal_rate": rates["stealRate"],
         "fold_bb_to_steal_rate": rates["foldBbToStealRate"],
         "fold_sb_to_steal_rate": rates["foldSbToStealRate"],
@@ -190,6 +194,14 @@ def _eval_sixmax(checkpoint: Path, n_episodes: int = 600, hidden_dim: int = 256)
             for i in range(6)
         },
         "position_ev": position_ev,
+        "position_steal_counts": {
+            position: {
+                "opportunities": int(position_stats.get(position, {}).get("stealOpportunityCount") or 0),
+                "attempts": int(position_stats.get(position, {}).get("stealAttemptCount") or 0),
+                "successes": int(position_stats.get(position, {}).get("stealSuccessCount") or 0),
+            }
+            for position in ("BTN", "CO", "SB")
+        },
         "warnings": warnings,
     }
 
@@ -237,6 +249,16 @@ def _parse_log(log_path: Path, episode: int) -> dict | None:
             "sb_steal_pct": _extract("SBsteal%"),
             "steal_opportunity_count": _extract("stealOpp"),
             "steal_attempt_count": _extract("stealAtt"),
+            "steal_success_count": _extract("stealSucc"),
+            "btn_steal_opportunity_count": _extract("BTNstealOpp"),
+            "btn_steal_attempt_count": _extract("BTNstealAtt"),
+            "btn_steal_success_count": _extract("BTNstealSucc"),
+            "co_steal_opportunity_count": _extract("COstealOpp"),
+            "co_steal_attempt_count": _extract("COstealAtt"),
+            "co_steal_success_count": _extract("COstealSucc"),
+            "sb_steal_opportunity_count": _extract("SBstealOpp"),
+            "sb_steal_attempt_count": _extract("SBstealAtt"),
+            "sb_steal_success_count": _extract("SBstealSucc"),
             "bb_ftp_pct": _extract("bbFtp%"),
             "sb_ftp_pct": _extract("sbFtp%"),
             "speed_eps_per_sec": _extract("spd"),
@@ -441,6 +463,8 @@ def watch(args):
                     "position_rewards": position_ev,
                     "steal_opportunity_count": result.get("steal_opportunity_count"),
                     "steal_attempt_count": result.get("steal_attempt_count"),
+                    "steal_success_count": result.get("steal_success_count"),
+                    "position_steal_counts": result.get("position_steal_counts"),
                     "tier_estimate": tier_est,
                     "issues": issues,
                 }

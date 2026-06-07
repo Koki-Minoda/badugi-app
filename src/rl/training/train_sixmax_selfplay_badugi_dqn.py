@@ -67,6 +67,7 @@ class SixMaxSelfPlayConfig:
     epsilon_start: float = 0.55
     epsilon_end: float = 0.05
     epsilon_decay_episodes: int = 800_000  # slow decay over 80% of run
+    resume_epsilon_decay_episodes: int = 200_000
     # Teacher warm-up with 6-player BadugiEnv
     teacher_warmup_episodes: int | None = None
     teacher_profiles: tuple[str, ...] = field(default_factory=lambda: (
@@ -77,12 +78,12 @@ class SixMaxSelfPlayConfig:
     imitation_loss_weight: float = 0.35
     expert_replay_ratio: float = 0.15
     # Fold margin: trains Q(FOLD) > Q(CALL) in good-fold states (equity < pot odds).
-    fold_margin: float = 0.10
-    fold_margin_weight: float = 0.20
+    fold_margin: float = 0.20
+    fold_margin_weight: float = 0.40
     fold_margin_interval: int = 8
     # Call margin (symmetric): trains Q(CALL) > Q(FOLD) in bad-fold states.
-    call_margin: float = 0.10
-    call_margin_weight: float = 0.20
+    call_margin: float = 0.20
+    call_margin_weight: float = 0.40
     # Self-play
     opp_epsilon: float = 0.05
     opponent_update_interval: int = 1_000  # less frequent than heads-up (more stable)
@@ -94,7 +95,7 @@ class SixMaxSelfPlayConfig:
     output_dir: str = "rl/models/badugi_sixmax_selfplay"
     pretrained: str = ""
     resume_continuation: bool = False
-    resume_epsilon: float = 0.05
+    resume_epsilon: float = 0.25
 
 
 def _linear_decay(episode: int, start: float, end: float, decay_episodes: int) -> float:
@@ -114,7 +115,7 @@ def _episode_epsilon(cfg: SixMaxSelfPlayConfig, episode: int) -> float:
             max(0, episode - 1),
             _effective_epsilon_start(cfg),
             cfg.epsilon_end,
-            cfg.epsilon_decay_episodes,
+            cfg.resume_epsilon_decay_episodes,
         )
     return _linear_decay(episode, cfg.epsilon_start, cfg.epsilon_end, cfg.epsilon_decay_episodes)
 
@@ -164,14 +165,22 @@ def _position_ev_warning(
     min_samples: int = 20,
 ) -> str:
     btn = pos_name_rewards.get("BTN", deque())
+    co = pos_name_rewards.get("CO", deque())
     utg = pos_name_rewards.get("UTG", deque())
+    warnings = []
     if len(btn) < min_samples or len(utg) < min_samples:
-        return ""
-    btn_ev = _recent_mean(btn, window)
-    utg_ev = _recent_mean(utg, window)
-    if btn_ev < utg_ev:
-        return f" ⚠ BTN_EV<UTG_EV({btn_ev:.2f}<{utg_ev:.2f})"
-    return ""
+        pass
+    else:
+        btn_ev = _recent_mean(btn, window)
+        utg_ev = _recent_mean(utg, window)
+        if btn_ev < utg_ev:
+            warnings.append(f"BTN_EV<UTG_EV({btn_ev:.2f}<{utg_ev:.2f})")
+    if len(btn) >= min_samples and len(co) >= min_samples:
+        btn_ev = _recent_mean(btn, window)
+        co_ev = _recent_mean(co, window)
+        if btn_ev < co_ev:
+            warnings.append(f"BTN_EV<CO_EV({btn_ev:.2f}<{co_ev:.2f})")
+    return "".join(f" ⚠ {warning}" for warning in warnings)
 
 
 def _build_summary(
@@ -236,6 +245,26 @@ def _add_fold_margin_transition(
         call_buffer.add(obs, CALL, reward, next_obs, done, next_action_mask=next_action_mask)
         return "call"
     return None
+
+
+def _maybe_imitation_update(
+    *,
+    cfg: SixMaxSelfPlayConfig,
+    hero: DQNAgent,
+    expert: ReplayBuffer,
+) -> tuple[float | None, float | None, bool]:
+    if cfg.resume_continuation:
+        return None, None, False
+
+    expert_bs = int(round(cfg.batch_size * cfg.expert_replay_ratio))
+    if expert_bs <= 0 or len(expert) < expert_bs:
+        return None, None, False
+
+    imitation_loss, imitation_accuracy = hero.imitation_update(
+        expert.sample(expert_bs),
+        loss_weight=cfg.imitation_loss_weight,
+    )
+    return imitation_loss, imitation_accuracy, True
 
 
 def _teacher_warmup(
@@ -493,12 +522,14 @@ def train_sixmax_selfplay_badugi_dqn(
                 total_actions.record_q(mean_q=mean_q)
                 replay.update_priorities(indices, td_errors)
 
-                expert_bs = int(round(cfg.batch_size * cfg.expert_replay_ratio))
-                if expert_bs > 0 and len(expert) >= expert_bs:
-                    imitation_loss, imitation_accuracy = hero.imitation_update(
-                        expert.sample(expert_bs),
-                        loss_weight=cfg.imitation_loss_weight,
-                    )
+                next_imitation_loss, next_imitation_accuracy, imitation_ran = _maybe_imitation_update(
+                    cfg=cfg,
+                    hero=hero,
+                    expert=expert,
+                )
+                if imitation_ran:
+                    imitation_loss = next_imitation_loss or 0.0
+                    imitation_accuracy = next_imitation_accuracy or 0.0
 
                 margin_batch = max(16, cfg.batch_size // 8)
                 if global_step % cfg.fold_margin_interval == 0:
@@ -643,6 +674,11 @@ def parse_args():
     parser.add_argument("--teacher-warmup-episodes", type=int, default=None)
     parser.add_argument("--resume-continuation", action="store_true")
     parser.add_argument("--resume-epsilon", type=float, default=SixMaxSelfPlayConfig.resume_epsilon)
+    parser.add_argument(
+        "--resume-epsilon-decay-episodes",
+        type=int,
+        default=SixMaxSelfPlayConfig.resume_epsilon_decay_episodes,
+    )
     parser.add_argument("--device", default=None)
     return parser.parse_args()
 
@@ -664,6 +700,7 @@ if __name__ == "__main__":
         teacher_warmup_episodes=args.teacher_warmup_episodes,
         resume_continuation=args.resume_continuation,
         resume_epsilon=args.resume_epsilon,
+        resume_epsilon_decay_episodes=args.resume_epsilon_decay_episodes,
     )
     print(f"[6max-SelfPlay] device={device} episodes={cfg.total_episodes} pretrained={cfg.pretrained!r}")
     train_sixmax_selfplay_badugi_dqn(cfg=cfg, device=device)

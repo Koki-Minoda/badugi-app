@@ -446,6 +446,18 @@ def summarize_group(rows: list[dict], counters: DecisionCounters) -> dict:
     }
 
 
+def position_ev_warnings(position_ev: dict[str, float | None]) -> list[str]:
+    warnings = []
+    btn = position_ev.get("BTN")
+    utg = position_ev.get("UTG")
+    co = position_ev.get("CO")
+    if btn is not None and utg is not None and btn < utg:
+        warnings.append(f"BTN_EV_BELOW_UTG:BTN={btn:.3f}<UTG={utg:.3f}")
+    if btn is not None and co is not None and btn < co:
+        warnings.append(f"BTN_EV_BELOW_CO:BTN={btn:.3f}<CO={co:.3f}")
+    return warnings
+
+
 def evaluate_policy_once(
     *,
     model: Path,
@@ -601,6 +613,11 @@ def summarize_runs(runs: list[dict]) -> dict:
             "foldRate": statistics.fmean(float(summary["foldRate"]) for summary in summaries),
             "drawDecisionAccuracy": statistics.fmean(float(summary["drawDecisionAccuracy"]) for summary in summaries),
         }
+    position_ev = {
+        label: float(summary["avgReward"])
+        for label, summary in position_summary_out.items()
+        if int(summary.get("episodes", 0)) > 0
+    }
 
     worst_profile = min(
         profile_summary_out.items(),
@@ -625,6 +642,8 @@ def summarize_runs(runs: list[dict]) -> dict:
         "showdownWinRate": total_wins / total_showdowns if total_showdowns else 0.0,
         "profileSummaries": profile_summary_out,
         "positionSummaries": position_summary_out,
+        "positionEV": position_ev,
+        "warnings": position_ev_warnings(position_ev),
         "worstProfile": worst_profile[0],
         "worstProfileAvgReward": worst_profile[1]["avgReward"],
         **counters.rates(),

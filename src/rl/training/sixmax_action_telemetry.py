@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 
-POSITION_LOG_ORDER = ("BTN", "CO", "MP", "UTG", "BB", "SB")
+POSITION_LOG_ORDER = ("BTN", "CO", "MP", "UTG", "SB", "BB")
 BETTING_ROUNDS = ("preDraw", "afterDraw1", "afterDraw2", "afterDraw3")
 HAND_STRENGTH_CLASSES = ("madeStrong", "madeMedium", "drawStrong", "trash", "unknown")
 STEAL_POSITIONS = ("BTN", "CO", "SB")
@@ -461,6 +461,26 @@ class SixMaxActionTelemetry:
     def position_summaries(self) -> dict[str, dict[str, float | int | None]]:
         return {position: telemetry.summary() for position, telemetry in self.positions.items()}
 
+    def position_ev(self) -> dict[str, float | None]:
+        return {
+            position: (
+                self.positions[position].summary()["rewardAvg"]
+                if position in self.positions and self.positions[position].hands > 0
+                else None
+            )
+            for position in POSITION_LOG_ORDER
+        }
+
+    def position_warnings(self) -> list[str]:
+        btn = self.positions.get("BTN")
+        utg = self.positions.get("UTG")
+        if btn is not None and utg is not None and btn.hands > 0 and utg.hands > 0:
+            btn_ev = btn.summary()["rewardAvg"]
+            utg_ev = utg.summary()["rewardAvg"]
+            if btn_ev < utg_ev:
+                return [f"BTN_EV_BELOW_UTG:BTN={btn_ev:.3f}<UTG={utg_ev:.3f}"]
+        return []
+
     def summary(self) -> dict[str, Any]:
         payload = self.rates(include_all_in=True, include_fold_to_bet=True, include_draw_average=True)
         payload.update(self.q_stats())
@@ -480,6 +500,8 @@ class SixMaxActionTelemetry:
                 },
                 "bettingRoundActionStats": self.street_summaries(),
                 "positionStats": self.position_summaries(),
+                "positionEV": self.position_ev(),
+                "warnings": self.position_warnings(),
                 "handStrengthClassStats": self.hand_strength_summaries(),
             }
         )
@@ -524,6 +546,8 @@ class SixMaxActionTelemetry:
                     f"pfr%={rates['pfr']*100:.1f}",
                     f"af={rates['aggressionFactor']:.2f}",
                     f"steal%={_pct_or_zero(rates['stealRate']):.1f}",
+                    f"stealOpp={rates['stealOpportunityCount']}",
+                    f"stealAtt={rates['stealAttemptCount']}",
                     f"BTNsteal%={_pct_or_zero(position_stats.get('BTN', {}).get('stealRate')):.1f}",
                     f"COsteal%={_pct_or_zero(position_stats.get('CO', {}).get('stealRate')):.1f}",
                     f"SBsteal%={_pct_or_zero(position_stats.get('SB', {}).get('stealRate')):.1f}",

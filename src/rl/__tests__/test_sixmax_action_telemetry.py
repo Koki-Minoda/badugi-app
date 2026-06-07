@@ -396,6 +396,22 @@ def test_position_rewards_vpip_and_pfr_are_isolated():
     assert positions["BB"]["pfr"] == 0.0
 
 
+def test_position_ev_order_and_btn_below_utg_warning_are_reported():
+    telemetry = SixMaxActionTelemetry()
+
+    telemetry.start_episode(position="BTN")
+    telemetry.record_episode(reward=-0.5, length=1, terminal_reason="showdown", position="BTN")
+    telemetry.start_episode(position="UTG")
+    telemetry.record_episode(reward=0.25, length=1, terminal_reason="showdown", position="UTG")
+
+    summary = telemetry.summary()
+
+    assert list(summary["positionEV"].keys()) == ["BTN", "CO", "MP", "UTG", "SB", "BB"]
+    assert summary["positionEV"]["BTN"] == pytest.approx(-0.5)
+    assert summary["positionEV"]["UTG"] == pytest.approx(0.25)
+    assert summary["warnings"] == ["BTN_EV_BELOW_UTG:BTN=-0.500<UTG=0.250"]
+
+
 def test_street_action_buckets_are_independent():
     telemetry = SixMaxActionTelemetry()
 
@@ -446,7 +462,8 @@ def test_watcher_parses_pure_raise_and_agg_separately(tmp_path):
         "[6max      100] avg=  -0.100 ε=0.500 buf=    10 loss=0.00100 q=0.250 "
         "fold%=10.0 chk%=20.0 call%=30.0 bet%=15.0 raise%=5.0 ai%=0.0 agg%=20.0 "
         "ftb%=12.0 drawAvg=1.50 vpip%=70.0 pfr%=20.0 af=0.67 sd%=50.0 wsd%=25.0 "
-        "steal%=33.0 BTNsteal%=40.0 COsteal%=20.0 SBsteal%=10.0 bbFtp%=55.0 sbFtp%=44.0 "
+        "steal%=33.0 stealOpp=12 stealAtt=4 BTNsteal%=40.0 COsteal%=20.0 SBsteal%=10.0 "
+        "bbFtp%=55.0 sbFtp%=44.0 "
         "term=[sd:5 fw:3 fl:1 tr:1] epLen=8.0 drawDist=[0:1 1:2 2:3 3:4 4:0] "
         "opp_upd=0 spd=12.0ep/s ETA=0.0h\n",
         encoding="utf8",
@@ -458,6 +475,8 @@ def test_watcher_parses_pure_raise_and_agg_separately(tmp_path):
     assert stats["raise_pct"] == 5.0
     assert stats["aggression_pct"] == 20.0
     assert stats["steal_pct"] == 33.0
+    assert stats["steal_opportunity_count"] == 12.0
+    assert stats["steal_attempt_count"] == 4.0
     assert stats["btn_steal_pct"] == 40.0
     assert stats["co_steal_pct"] == 20.0
     assert stats["sb_steal_pct"] == 10.0
@@ -539,6 +558,8 @@ def test_watcher_eval_sixmax_return_contract_uses_pure_raise_and_agg(monkeypatch
         "vpip",
         "pfr",
         "steal_rate",
+        "steal_opportunity_count",
+        "steal_attempt_count",
         "fold_bb_to_steal_rate",
         "fold_sb_to_steal_rate",
         "bb_fold_to_predraw_pressure_rate",
@@ -551,5 +572,7 @@ def test_watcher_eval_sixmax_return_contract_uses_pure_raise_and_agg(monkeypatch
     assert result["pure_raise_rate"] != result["agg_rate"]
     assert result["vpip"] == pytest.approx(1.0)
     assert result["pfr"] == pytest.approx(1.0)
+    assert result["steal_opportunity_count"] >= 0
+    assert result["steal_attempt_count"] >= 0
     assert result["fold_bb_to_steal_rate"] is None
     assert result["fold_sb_to_steal_rate"] is None

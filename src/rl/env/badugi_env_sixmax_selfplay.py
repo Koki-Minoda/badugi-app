@@ -293,6 +293,7 @@ class SixMaxBadugiEnv:
             p["bet_history"][idx] = p["opened_current_round"]
             p["opened_current_round"] = False
             p["bet"] = 0
+        self.current_bet = 0
 
         # Auto-play opponents' draws that come BEFORE hero in draw order
         # Draw order: starts from BTN+1 going clockwise
@@ -571,7 +572,8 @@ class SixMaxBadugiEnv:
             obs[i * 2 + 1] = suit / 3.0
 
         f = _evaluate_badugi_features(hand)
-        to_call = max(0, self.current_bet - p["bet"])
+        current_bet = self.current_bet if self.phase == "BET" else 0
+        to_call = max(0, current_bet - p["bet"])
         draws_remaining = MAX_DRAWS - self.draw_round
         pot_odds_val = to_call / max(1, self.pot + to_call) if to_call > 0 else 0.0
         is_button = seat == self.dealer_seat
@@ -602,7 +604,7 @@ class SixMaxBadugiEnv:
         obs[12] = min(p["bet"], 10) / 10.0
         opp_bet_avg = np.mean([self.players[s]["bet"] for s in active_opps]) if active_opps else 0.0
         obs[13] = min(opp_bet_avg, 10) / 10.0
-        obs[14] = min(self.current_bet, 10) / 10.0
+        obs[14] = min(current_bet, 10) / 10.0
         obs[15] = self.raise_count / MAX_BETS
         obs[16] = draws_remaining / MAX_DRAWS
         obs[17] = 0.0 if self.phase == "BET" else 1.0
@@ -730,13 +732,21 @@ class SixMaxBadugiEnv:
             (0.05 if self.pot >= 12 else 0.0))
 
     def _late_semibluff_spot(self, seat: int, f: dict, to_call: int, draws_remaining: int, n_opps: int) -> bool:
+        high = f["highest_rank"] if f["highest_rank"] else 13
+        pos = self._position_fraction(seat)
+        # Keep this feature narrow: the previous "late position + 3-card 9/10-high"
+        # rule fired for common BTN/CO opens and acted like an unconditional BET
+        # prior. Require a short-handed late-street spot, a stronger draw, and a
+        # pot worth pressuring before exposing the semi-bluff signal.
         return (
-            n_opps >= 2
+            self.phase == "BET"
+            and 1 <= n_opps <= 2
             and to_call <= 0
-            and self._position_fraction(seat) >= 0.6
+            and pos >= 0.8
             and f["count"] == 3
-            and (f["highest_rank"] if f["highest_rank"] else 13) <= 9
-            and draws_remaining > 0
+            and high <= 6
+            and draws_remaining == 1
+            and self.pot >= 10
         )
 
     def _street_adjusted_strength(self, f: dict, draws_remaining: int) -> float:

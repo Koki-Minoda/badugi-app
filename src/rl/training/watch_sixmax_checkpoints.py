@@ -62,6 +62,9 @@ def _eval_sixmax(checkpoint: Path, n_episodes: int = 600, hidden_dim: int = 256)
 
     all_rewards: list[float] = []
     pos_rewards: dict[int, list[float]] = {i: [] for i in range(6)}
+    position_rewards: dict[str, list[float]] = {
+        position: [] for position in ("BTN", "CO", "MP", "UTG", "SB", "BB")
+    }
     telemetry = SixMaxActionTelemetry(max_draw_count=4)
 
     eps_per_pos = max(1, n_episodes // 6)
@@ -145,6 +148,7 @@ def _eval_sixmax(checkpoint: Path, n_episodes: int = 600, hidden_dim: int = 256)
                     break
             all_rewards.append(ep_r)
             pos_rewards[hero_seat % 6].append(ep_r)
+            position_rewards.setdefault(hero_position, []).append(ep_r)
             max_step_hit = not done
             telemetry.record_episode(
                 reward=ep_r,
@@ -157,6 +161,13 @@ def _eval_sixmax(checkpoint: Path, n_episodes: int = 600, hidden_dim: int = 256)
 
     n = len(all_rewards)
     rates = telemetry.rates(include_all_in=True, include_fold_to_bet=True, include_draw_average=True)
+    position_ev = {
+        position: float(np.mean(rewards)) if rewards else None
+        for position, rewards in position_rewards.items()
+    }
+    warnings = []
+    if position_ev.get("BTN") is not None and position_ev.get("UTG") is not None and position_ev["BTN"] < position_ev["UTG"]:
+        warnings.append(f"BTN_EV_BELOW_UTG:BTN={position_ev['BTN']:.3f}<UTG={position_ev['UTG']:.3f}")
     return {
         "n_episodes": n,
         "avg_reward": float(np.mean(all_rewards)) if n else 0.0,
@@ -167,6 +178,8 @@ def _eval_sixmax(checkpoint: Path, n_episodes: int = 600, hidden_dim: int = 256)
         "raise_rate": rates["pureRaiseRate"],
         "vpip": rates["vpip"],
         "pfr": rates["pfr"],
+        "steal_opportunity_count": rates["stealOpportunityCount"],
+        "steal_attempt_count": rates["stealAttemptCount"],
         "steal_rate": rates["stealRate"],
         "fold_bb_to_steal_rate": rates["foldBbToStealRate"],
         "fold_sb_to_steal_rate": rates["foldSbToStealRate"],
@@ -176,6 +189,8 @@ def _eval_sixmax(checkpoint: Path, n_episodes: int = 600, hidden_dim: int = 256)
             i: float(np.mean(pos_rewards[i])) if pos_rewards[i] else None
             for i in range(6)
         },
+        "position_ev": position_ev,
+        "warnings": warnings,
     }
 
 
@@ -220,6 +235,8 @@ def _parse_log(log_path: Path, episode: int) -> dict | None:
             "btn_steal_pct": _extract("BTNsteal%"),
             "co_steal_pct": _extract("COsteal%"),
             "sb_steal_pct": _extract("SBsteal%"),
+            "steal_opportunity_count": _extract("stealOpp"),
+            "steal_attempt_count": _extract("stealAtt"),
             "bb_ftp_pct": _extract("bbFtp%"),
             "sb_ftp_pct": _extract("sbFtp%"),
             "speed_eps_per_sec": _extract("spd"),
@@ -303,7 +320,7 @@ def watch(args):
     prev_ckpt_time: float | None = None
     report: list[dict] = []
 
-    pos_labels = ["SB", "BB", "UTG", "MP", "CO", "BTN"]
+    pos_labels = ["BTN", "CO", "MP", "UTG", "SB", "BB"]
 
     print(f"[watch] {checkpoint_dir} を監視中 (間隔: {args.poll_interval}s)")
     print(f"[watch] 評価エピソード数: {args.eval_episodes} (6ポジション均等)")
@@ -374,12 +391,12 @@ def watch(args):
                 fold_r = result["fold_rate"]
                 raise_r = result["pure_raise_rate"]
                 agg_r = result["agg_rate"]
-                pos_r = result["pos_rewards"]
+                position_ev = result.get("position_ev") or {}
 
                 # ポジション別表示
                 pos_str = "  ".join(
-                    f"{pos_labels[i]}={pos_r[i]:.2f}" if pos_r[i] is not None else f"{pos_labels[i]}=N/A"
-                    for i in range(6)
+                    f"{label}={position_ev[label]:.2f}" if position_ev.get(label) is not None else f"{label}=N/A"
+                    for label in pos_labels
                 )
                 print(f"[結果] avg={avg_r:.3f}±{std_r:.3f}  fold={fold_r:.1%}  raise={raise_r:.1%}  agg={agg_r:.1%}  ({eval_time:.0f}s)")
                 print(f"[ポジ] {pos_str}")
@@ -392,9 +409,12 @@ def watch(args):
                     issues.append(f"フォールド率過多 ({fold_r:.1%}) — HIGH-FOLD崩壊")
                 if agg_r < 0.03:
                     issues.append(f"攻撃頻度過少 ({agg_r:.1%}) — LOW-AGGRESSION崩壊")
-                worst_pos = min((i for i in range(6) if pos_r[i] is not None), key=lambda i: pos_r[i] or 0)
-                if pos_r[worst_pos] is not None and pos_r[worst_pos] < -2.0:
-                    issues.append(f"ポジション {pos_labels[worst_pos]} の報酬が極端に低い ({pos_r[worst_pos]:.2f})")
+                valid_positions = [label for label in pos_labels if position_ev.get(label) is not None]
+                if valid_positions:
+                    worst_pos = min(valid_positions, key=lambda label: position_ev[label] or 0)
+                    if position_ev[worst_pos] is not None and position_ev[worst_pos] < -2.0:
+                        issues.append(f"ポジション {worst_pos} の報酬が極端に低い ({position_ev[worst_pos]:.2f})")
+                issues.extend(result.get("warnings") or [])
 
                 # ティア推定
                 if avg_r >= 1.5:
@@ -418,7 +438,9 @@ def watch(args):
                     "fold_rate": fold_r,
                     "pure_raise_rate": raise_r,
                     "agg_rate": agg_r,
-                    "position_rewards": {pos_labels[i]: pos_r[i] for i in range(6)},
+                    "position_rewards": position_ev,
+                    "steal_opportunity_count": result.get("steal_opportunity_count"),
+                    "steal_attempt_count": result.get("steal_attempt_count"),
                     "tier_estimate": tier_est,
                     "issues": issues,
                 }

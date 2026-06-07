@@ -52,7 +52,7 @@ from rl.utils.replay_buffer import ReplayBuffer
 
 
 POSITION_NAMES_BY_BUTTON_OFFSET = ("BTN", "SB", "BB", "UTG", "MP", "CO")
-POSITION_LOG_ORDER = ("BTN", "CO", "MP", "UTG", "BB", "SB")
+POSITION_LOG_ORDER = ("BTN", "CO", "MP", "UTG", "SB", "BB")
 TELEMETRY_HISTORY_MAXLEN = 100_000
 DEFAULT_TEACHER_WARMUP_EPISODES = 5_000
 
@@ -143,11 +143,35 @@ def _recent_mean(values, n: int) -> float:
 
 
 def _format_position_rewards(pos_name_rewards: dict[str, deque[float]], window: int) -> str:
-    return " ".join(
+    return "posEV[" + " ".join(
         f"{name}={_recent_mean(pos_name_rewards[name], window):.2f}"
         for name in POSITION_LOG_ORDER
         if pos_name_rewards[name]
-    )
+    ) + "]"
+
+
+def _position_ev_snapshot(pos_name_rewards: dict[str, deque[float]], window: int) -> dict[str, float | None]:
+    return {
+        name: (_recent_mean(pos_name_rewards[name], window) if pos_name_rewards[name] else None)
+        for name in POSITION_LOG_ORDER
+    }
+
+
+def _position_ev_warning(
+    pos_name_rewards: dict[str, deque[float]],
+    *,
+    window: int,
+    min_samples: int = 20,
+) -> str:
+    btn = pos_name_rewards.get("BTN", deque())
+    utg = pos_name_rewards.get("UTG", deque())
+    if len(btn) < min_samples or len(utg) < min_samples:
+        return ""
+    btn_ev = _recent_mean(btn, window)
+    utg_ev = _recent_mean(utg, window)
+    if btn_ev < utg_ev:
+        return f" ⚠ BTN_EV<UTG_EV({btn_ev:.2f}<{utg_ev:.2f})"
+    return ""
 
 
 def _build_summary(
@@ -173,6 +197,8 @@ def _build_summary(
             name: _recent_mean(pos_name_rewards[name], 1000)
             for name in POSITION_NAMES_BY_BUTTON_OFFSET
         },
+        "position_ev": _position_ev_snapshot(pos_name_rewards, 1000),
+        "position_ev_warning": _position_ev_warning(pos_name_rewards, window=1000),
         **action_telemetry.summary(),
         "opponent_updates": int(opponent_updates),
         "pretrained": cfg.pretrained,
@@ -533,6 +559,7 @@ def train_sixmax_selfplay_badugi_dqn(
                 warn += " ⚠ HIGH-FOLD"
             if action_rates["aggressionRate"] < 0.04:
                 warn += " ⚠ LOW-AGGRESSION"
+            warn += _position_ev_warning(pos_name_rewards, window=200)
 
             # Per-position reward (last N samples per position)
             pos_str = " ".join(

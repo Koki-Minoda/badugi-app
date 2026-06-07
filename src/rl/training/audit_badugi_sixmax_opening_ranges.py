@@ -30,6 +30,7 @@ from rl.env.badugi_env_selfplay import _best_badugi_keep
 from rl.env.badugi_env_sixmax_selfplay import (
     ALL_IN,
     BET,
+    BB_AMOUNT,
     CALL,
     CHECK,
     FOLD,
@@ -48,12 +49,14 @@ ACTION_NAMES = {
     ALL_IN: "ALL_IN",
 }
 POSITION_ORDER = ("BTN", "CO", "MP", "UTG", "SB", "BB")
+SPOT_ORDER = ("unopened", "facing_open", "sb_completion", "bb_option")
 HAND_CLASS_ORDER = (
     "made_badugi",
     "3-card",
     "2-card",
     "1-card",
     "premium_3card",
+    "weak_2card",
     "weak_3card",
     "trash",
 )
@@ -122,13 +125,16 @@ def classify_opening_hand(hand: Sequence[Card]) -> OpeningHandInfo:
     labels: list[str] = ["made_badugi" if count == 4 else f"{count}-card"]
 
     premium_3card = count == 3 and high <= 6 and rank_sum <= 12
+    weak_2card = count == 2 and high >= 8
     weak_3card = count == 3 and high >= 7
     is_premium = (count == 4 and high <= 8) or premium_3card
-    is_trash = count <= 1 or (count == 2 and high >= 8) or (count == 3 and high >= 10)
+    is_trash = count <= 1 or weak_2card or (count == 3 and high >= 10)
     is_playable = not is_trash
 
     if premium_3card:
         labels.append("premium_3card")
+    if weak_2card:
+        labels.append("weak_2card")
     if weak_3card:
         labels.append("weak_3card")
     if is_trash:
@@ -184,6 +190,16 @@ def is_pfr_action(action: int) -> bool:
     return action in (BET, RAISE, ALL_IN)
 
 
+def spot_type(*, position: str, current_bet: int, to_call: int) -> str:
+    if current_bet > BB_AMOUNT or to_call > BB_AMOUNT:
+        return "facing_open"
+    if position == "SB" and current_bet == BB_AMOUNT and to_call == 1:
+        return "sb_completion"
+    if position == "BB" and current_bet == BB_AMOUNT and to_call == 0:
+        return "bb_option"
+    return "unopened"
+
+
 def make_decision_record(
     *,
     env: SixMaxBadugiEnv,
@@ -203,13 +219,16 @@ def make_decision_record(
     ]
     q_list = [float(v) for v in np.asarray(q_values, dtype=np.float32).reshape(-1)]
     to_call = max(0, int(env.current_bet - env.players[hero_seat]["bet"]))
+    position = hero_position_name(hero_seat, env.dealer_seat)
     keep = _best_badugi_keep(hand)
     selected_q = q_list[action] if 0 <= action < len(q_list) else None
     legal_q = [q_list[idx] for idx, allowed in enumerate(action_mask) if allowed > 0 and idx < len(q_list)]
     best_legal_q = max(legal_q) if legal_q else selected_q
     return {
         "sampleIndex": int(sample_index),
-        "position": hero_position_name(hero_seat, env.dealer_seat),
+        "position": position,
+        "spotType": spot_type(position=position, current_bet=int(env.current_bet), to_call=int(to_call)),
+        "handClass": hand_info.hand_class,
         "heroSeat": hero_seat,
         "dealerSeat": int(env.dealer_seat),
         "drawRound": int(env.draw_round),
@@ -231,6 +250,8 @@ def make_decision_record(
         "recommendedDrawCount": max(0, min(3, len(hand) - len(keep))),
         "vpip": is_vpip_action(action),
         "pfr": is_pfr_action(action),
+        "vpipIncluded": is_vpip_action(action),
+        "pfrIncluded": is_pfr_action(action),
     }
 
 
@@ -281,22 +302,73 @@ def _summarize_bucket(records: list[dict]) -> dict:
 
 def summarize_decisions(records: list[dict]) -> dict:
     by_position_records: dict[str, list[dict]] = {position: [] for position in POSITION_ORDER}
+    by_spot_records: dict[str, list[dict]] = {spot: [] for spot in SPOT_ORDER}
+    by_position_and_spot_records: dict[str, list[dict]] = {
+        f"{position}.{spot}": [] for position in POSITION_ORDER for spot in SPOT_ORDER
+    }
     by_hand_class_records: dict[str, list[dict]] = {label: [] for label in HAND_CLASS_ORDER}
+    by_hand_class_and_spot_records: dict[str, list[dict]] = {
+        f"{label}.{spot}": [] for label in HAND_CLASS_ORDER for spot in SPOT_ORDER
+    }
+    by_position_spot_and_hand_class_records: dict[str, list[dict]] = {
+        f"{position}.{spot}.{label}": []
+        for position in POSITION_ORDER
+        for spot in SPOT_ORDER
+        for label in HAND_CLASS_ORDER
+    }
     for record in records:
-        by_position_records.setdefault(record["position"], []).append(record)
+        position = record["position"]
+        spot = record.get("spotType", "unopened")
+        by_position_records.setdefault(position, []).append(record)
+        by_spot_records.setdefault(spot, []).append(record)
+        by_position_and_spot_records.setdefault(f"{position}.{spot}", []).append(record)
         for label in record["hand"]["class_labels"]:
             by_hand_class_records.setdefault(label, []).append(record)
+            by_hand_class_and_spot_records.setdefault(f"{label}.{spot}", []).append(record)
+            by_position_spot_and_hand_class_records.setdefault(f"{position}.{spot}.{label}", []).append(record)
 
     by_position = {
         position: _summarize_bucket(by_position_records.get(position, []))
         for position in POSITION_ORDER
     }
+    by_spot = {
+        spot: _summarize_bucket(by_spot_records.get(spot, []))
+        for spot in SPOT_ORDER
+    }
+    by_position_and_spot = {
+        f"{position}.{spot}": _summarize_bucket(by_position_and_spot_records.get(f"{position}.{spot}", []))
+        for position in POSITION_ORDER
+        for spot in SPOT_ORDER
+    }
     by_hand_class = {
         hand_class: _summarize_bucket(by_hand_class_records.get(hand_class, []))
         for hand_class in HAND_CLASS_ORDER
     }
+    by_hand_class_and_spot = {
+        f"{hand_class}.{spot}": _summarize_bucket(
+            by_hand_class_and_spot_records.get(f"{hand_class}.{spot}", [])
+        )
+        for hand_class in HAND_CLASS_ORDER
+        for spot in SPOT_ORDER
+    }
+    by_position_spot_and_hand_class = {
+        f"{position}.{spot}.{hand_class}": _summarize_bucket(
+            by_position_spot_and_hand_class_records.get(f"{position}.{spot}.{hand_class}", [])
+        )
+        for position in POSITION_ORDER
+        for spot in SPOT_ORDER
+        for hand_class in HAND_CLASS_ORDER
+    }
     overall = _summarize_bucket(records)
     trash_records = [record for record in records if record["hand"]["is_trash"]]
+    facing_open = [record for record in records if record.get("spotType") == "facing_open"]
+    facing_open_trash = [record for record in facing_open if record["hand"]["is_trash"]]
+    facing_open_weak_2card = [
+        record for record in facing_open if "weak_2card" in record["hand"]["class_labels"]
+    ]
+    facing_open_weak_3card = [
+        record for record in facing_open if "weak_3card" in record["hand"]["class_labels"]
+    ]
     weak_early = [
         record
         for record in records
@@ -306,15 +378,35 @@ def summarize_decisions(records: list[dict]) -> dict:
     premium_folds = [record for record in premium_records if int(record["selectedAction"]) == FOLD]
     trash_played = [record for record in trash_records if is_vpip_action(int(record["selectedAction"]))]
     weak_early_played = [record for record in weak_early if is_vpip_action(int(record["selectedAction"]))]
+    facing_open_trash_played = [
+        record for record in facing_open_trash if is_vpip_action(int(record["selectedAction"]))
+    ]
+    facing_open_weak_2card_played = [
+        record for record in facing_open_weak_2card if is_vpip_action(int(record["selectedAction"]))
+    ]
+    facing_open_weak_3card_played = [
+        record for record in facing_open_weak_3card if is_vpip_action(int(record["selectedAction"]))
+    ]
 
     return {
         "overall": overall,
         "byPosition": by_position,
+        "bySpot": by_spot,
+        "byPositionAndSpot": by_position_and_spot,
         "byHandClass": by_hand_class,
+        "byHandClassAndSpot": by_hand_class_and_spot,
+        "byPositionSpotAndHandClass": by_position_spot_and_hand_class,
         "rates": {
             "trashPlayRate": _pct(len(trash_played), len(trash_records)),
             "weak3cardEarlyPlayRate": _pct(len(weak_early_played), len(weak_early)),
             "premiumFoldRate": _pct(len(premium_folds), len(premium_records)),
+            "facingOpenTrashPlayRate": _pct(len(facing_open_trash_played), len(facing_open_trash)),
+            "facingOpenWeak2CardPlayRate": _pct(
+                len(facing_open_weak_2card_played), len(facing_open_weak_2card)
+            ),
+            "facingOpenWeak3CardPlayRate": _pct(
+                len(facing_open_weak_3card_played), len(facing_open_weak_3card)
+            ),
         },
     }
 
@@ -323,6 +415,7 @@ def compact_decision(record: dict) -> dict:
     return {
         "sampleIndex": record["sampleIndex"],
         "position": record["position"],
+        "spotType": record.get("spotType", "unopened"),
         "action": record["selectedActionName"],
         "toCall": record["toCall"],
         "qValues": record["qValues"],
@@ -349,6 +442,78 @@ def build_findings(records: list[dict]) -> dict:
         "trashPlayedTop20": top_decisions(
             records,
             lambda record: record["hand"]["is_trash"] and is_vpip_action(int(record["selectedAction"])),
+        ),
+        "facingOpenTrashPlayedTop20": top_decisions(
+            records,
+            lambda record: (
+                record.get("spotType") == "facing_open"
+                and record["hand"]["is_trash"]
+                and is_vpip_action(int(record["selectedAction"]))
+            ),
+        ),
+        "coFacingOpenTrashPlayedTop20": top_decisions(
+            records,
+            lambda record: (
+                record["position"] == "CO"
+                and record.get("spotType") == "facing_open"
+                and record["hand"]["is_trash"]
+                and is_vpip_action(int(record["selectedAction"]))
+            ),
+        ),
+        "btnFacingOpenTrashPlayedTop20": top_decisions(
+            records,
+            lambda record: (
+                record["position"] == "BTN"
+                and record.get("spotType") == "facing_open"
+                and record["hand"]["is_trash"]
+                and is_vpip_action(int(record["selectedAction"]))
+            ),
+        ),
+        "sbFacingOpenTrashPlayedTop20": top_decisions(
+            records,
+            lambda record: (
+                record["position"] == "SB"
+                and record.get("spotType") == "facing_open"
+                and record["hand"]["is_trash"]
+                and is_vpip_action(int(record["selectedAction"]))
+            ),
+        ),
+        "bbFacingOpenTrashPlayedTop20": top_decisions(
+            records,
+            lambda record: (
+                record["position"] == "BB"
+                and record.get("spotType") == "facing_open"
+                and record["hand"]["is_trash"]
+                and is_vpip_action(int(record["selectedAction"]))
+            ),
+        ),
+        "facingOpenWeak2CardPlayedTop20": top_decisions(
+            records,
+            lambda record: (
+                record.get("spotType") == "facing_open"
+                and "weak_2card" in record["hand"]["class_labels"]
+                and is_vpip_action(int(record["selectedAction"]))
+            ),
+        ),
+        "facingOpenWeak3CardPlayedTop20": top_decisions(
+            records,
+            lambda record: (
+                record.get("spotType") == "facing_open"
+                and "weak_3card" in record["hand"]["class_labels"]
+                and is_vpip_action(int(record["selectedAction"]))
+            ),
+        ),
+        "facingOpenWeakHandRaisedTop20": top_decisions(
+            records,
+            lambda record: (
+                record.get("spotType") == "facing_open"
+                and (
+                    record["hand"]["is_trash"]
+                    or "weak_2card" in record["hand"]["class_labels"]
+                    or "weak_3card" in record["hand"]["class_labels"]
+                )
+                and is_pfr_action(int(record["selectedAction"]))
+            ),
         ),
         "weak3cardEarlyPlayedTop20": top_decisions(
             records,
@@ -377,6 +542,8 @@ def build_warnings(summary: dict) -> list[str]:
     warnings: list[str] = []
     overall_vpip = summary["overall"]["vpipPct"]
     by_pos = summary["byPosition"]
+    by_pos_spot = summary.get("byPositionAndSpot", {})
+    by_pos_spot_hand = summary.get("byPositionSpotAndHandClass", {})
     rates = summary["rates"]
     utg_vpip = by_pos["UTG"]["vpipPct"]
     btn_vpip = by_pos["BTN"]["vpipPct"]
@@ -395,6 +562,45 @@ def build_warnings(summary: dict) -> list[str]:
         warnings.append(f"weak_3card_early_play_rate > 20 ({rates['weak3cardEarlyPlayRate']:.2f})")
     if rates["premiumFoldRate"] > 5.0:
         warnings.append(f"premium_fold_rate > 5 ({rates['premiumFoldRate']:.2f})")
+    if rates.get("facingOpenTrashPlayRate", 0.0) > 15.0:
+        warnings.append(f"facing_open_trash_play_rate > 15 ({rates['facingOpenTrashPlayRate']:.2f})")
+    if rates.get("facingOpenWeak2CardPlayRate", 0.0) > 20.0:
+        warnings.append(f"facing_open_weak_2card_play_rate > 20 ({rates['facingOpenWeak2CardPlayRate']:.2f})")
+    if rates.get("facingOpenWeak3CardPlayRate", 0.0) > 25.0:
+        warnings.append(f"facing_open_weak_3card_play_rate > 25 ({rates['facingOpenWeak3CardPlayRate']:.2f})")
+    facing_open_trash_limits = {
+        "CO": 10.0,
+        "BTN": 15.0,
+        "SB": 10.0,
+        "BB": 25.0,
+    }
+    for position, limit in facing_open_trash_limits.items():
+        key = f"{position}.facing_open.trash"
+        rate = by_pos_spot_hand.get(key, {}).get("vpipPct", 0.0)
+        if rate > limit:
+            warnings.append(f"{position}_facing_open_trash_play_rate > {limit:.0f} ({rate:.2f})")
+    facing_open_weak2_limits = {
+        "CO": 15.0,
+        "BTN": 25.0,
+        "SB": 15.0,
+        "BB": 35.0,
+    }
+    for position, limit in facing_open_weak2_limits.items():
+        key = f"{position}.facing_open.weak_2card"
+        rate = by_pos_spot_hand.get(key, {}).get("vpipPct", 0.0)
+        if rate > limit:
+            warnings.append(f"{position}_facing_open_weak2card_play_rate > {limit:.0f} ({rate:.2f})")
+    facing_open_position_limits = {
+        "CO": 30.0,
+        "BTN": 45.0,
+        "SB": 40.0,
+        "BB": 65.0,
+    }
+    for position, limit in facing_open_position_limits.items():
+        key = f"{position}.facing_open"
+        vpip = by_pos_spot.get(key, {}).get("vpipPct", 0.0)
+        if vpip > limit:
+            warnings.append(f"{position}_facing_open_vpip > {limit:.0f} ({vpip:.2f})")
     if utg_vpip > co_vpip or utg_vpip > btn_vpip:
         warnings.append(
             f"UTG_play_rate_above_CO_or_BTN (UTG={utg_vpip:.2f}, CO={co_vpip:.2f}, BTN={btn_vpip:.2f})"

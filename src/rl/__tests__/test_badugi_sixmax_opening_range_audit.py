@@ -15,13 +15,15 @@ from rl.training.audit_badugi_sixmax_opening_ranges import (
     main as audit_main,
     summarize_decisions,
     build_warnings,
+    spot_type,
 )
 
 
-def _record(position: str, action: int, *, labels=None, premium=False, trash=False):
+def _record(position: str, action: int, *, labels=None, premium=False, trash=False, spot="unopened"):
     labels = labels or ["3-card"]
     return {
         "position": position,
+        "spotType": spot,
         "selectedAction": action,
         "selectedActionName": str(action),
         "qValues": {"FOLD": 0.0, "CALL": 1.0, "RAISE": 2.0},
@@ -62,6 +64,22 @@ class BadugiSixMaxOpeningRangeAuditTest(unittest.TestCase):
         self.assertIn("2-card", hand.class_labels)
         self.assertEqual(hand.hand_class, "2-card")
 
+    def test_weak_two_card_hand_adds_weak_two_card_label(self):
+        hand = classify_opening_hand([(0, 0), (8, 1), (12, 0), (12, 1)])
+
+        self.assertEqual(hand.made_cards, 2)
+        self.assertIn("2-card", hand.class_labels)
+        self.assertIn("weak_2card", hand.class_labels)
+        self.assertIn("trash", hand.class_labels)
+        self.assertTrue(hand.is_trash)
+
+    def test_spot_type_classification_matches_blind_and_open_thresholds(self):
+        self.assertEqual(spot_type(position="UTG", current_bet=2, to_call=2), "unopened")
+        self.assertEqual(spot_type(position="CO", current_bet=4, to_call=4), "facing_open")
+        self.assertEqual(spot_type(position="CO", current_bet=2, to_call=3), "facing_open")
+        self.assertEqual(spot_type(position="SB", current_bet=2, to_call=1), "sb_completion")
+        self.assertEqual(spot_type(position="BB", current_bet=2, to_call=0), "bb_option")
+
     def test_summary_calculates_position_vpip(self):
         summary = summarize_decisions(
             [
@@ -74,6 +92,89 @@ class BadugiSixMaxOpeningRangeAuditTest(unittest.TestCase):
         self.assertEqual(summary["byPosition"]["UTG"]["samples"], 2)
         self.assertEqual(summary["byPosition"]["UTG"]["vpipPct"], 50.0)
         self.assertEqual(summary["byPosition"]["BTN"]["vpipPct"], 100.0)
+
+    def test_unopened_record_does_not_count_as_facing_open(self):
+        summary = summarize_decisions(
+            [
+                _record("UTG", CALL, spot="unopened"),
+                _record("CO", CALL, spot="facing_open"),
+            ]
+        )
+
+        self.assertEqual(summary["bySpot"]["unopened"]["samples"], 1)
+        self.assertEqual(summary["bySpot"]["facing_open"]["samples"], 1)
+
+    def test_by_spot_summary_calculates_vpip_pfr_and_fold(self):
+        summary = summarize_decisions(
+            [
+                _record("CO", FOLD, spot="facing_open"),
+                _record("BTN", CALL, spot="facing_open"),
+                _record("BB", BET, spot="facing_open"),
+            ]
+        )
+
+        facing_open = summary["bySpot"]["facing_open"]
+
+        self.assertEqual(facing_open["samples"], 3)
+        self.assertEqual(facing_open["vpipPct"], 66.6667)
+        self.assertEqual(facing_open["pfrPct"], 33.3333)
+        self.assertEqual(facing_open["foldPct"], 33.3333)
+        self.assertEqual(facing_open["callCheckPct"], 33.3333)
+        self.assertEqual(facing_open["raiseBetPct"], 33.3333)
+
+    def test_position_and_hand_class_spot_summaries_are_available(self):
+        summary = summarize_decisions(
+            [
+                _record(
+                    "CO",
+                    CALL,
+                    labels=["2-card", "weak_2card", "trash"],
+                    trash=True,
+                    spot="facing_open",
+                ),
+                _record("UTG", FOLD, labels=["3-card", "weak_3card"], spot="unopened"),
+            ]
+        )
+
+        self.assertEqual(summary["byPositionAndSpot"]["CO.facing_open"]["vpipPct"], 100.0)
+        self.assertEqual(summary["byPositionAndSpot"]["UTG.unopened"]["foldPct"], 100.0)
+        self.assertEqual(summary["byHandClassAndSpot"]["weak_2card.facing_open"]["vpipPct"], 100.0)
+        self.assertEqual(summary["byHandClassAndSpot"]["weak_3card.unopened"]["foldPct"], 100.0)
+        self.assertEqual(summary["byPositionSpotAndHandClass"]["CO.facing_open.weak_2card"]["vpipPct"], 100.0)
+        self.assertEqual(summary["byPositionSpotAndHandClass"]["UTG.unopened.weak_3card"]["foldPct"], 100.0)
+
+    def test_position_and_spot_summary_has_expected_keys(self):
+        summary = summarize_decisions([])
+
+        expected = [
+            "UTG.unopened",
+            "MP.unopened",
+            "CO.unopened",
+            "CO.facing_open",
+            "BTN.unopened",
+            "BTN.facing_open",
+            "SB.sb_completion",
+            "SB.facing_open",
+            "BB.bb_option",
+            "BB.facing_open",
+        ]
+
+        for key in expected:
+            self.assertIn(key, summary["byPositionAndSpot"])
+
+    def test_position_spot_and_hand_class_calculates_trash_facing_open_play_rate(self):
+        summary = summarize_decisions(
+            [
+                _record("CO", CALL, labels=["2-card", "weak_2card", "trash"], trash=True, spot="facing_open"),
+                _record("CO", FOLD, labels=["1-card", "trash"], trash=True, spot="facing_open"),
+            ]
+        )
+
+        trash_bucket = summary["byPositionSpotAndHandClass"]["CO.facing_open.trash"]
+
+        self.assertEqual(trash_bucket["samples"], 2)
+        self.assertEqual(trash_bucket["vpipPct"], 50.0)
+        self.assertEqual(trash_bucket["foldPct"], 50.0)
 
     def test_check_is_not_vpip_and_has_separate_check_pct(self):
         summary = summarize_decisions(
@@ -111,6 +212,84 @@ class BadugiSixMaxOpeningRangeAuditTest(unittest.TestCase):
         warnings = build_warnings(summary)
 
         self.assertTrue(any("BTN_vpip < UTG_vpip" in warning for warning in warnings))
+
+    def test_warning_for_co_facing_open_trash_play_rate(self):
+        summary = summarize_decisions(
+            [
+                _record(
+                    "CO",
+                    CALL,
+                    labels=["2-card", "weak_2card", "trash"],
+                    trash=True,
+                    spot="facing_open",
+                ),
+                _record(
+                    "BTN",
+                    FOLD,
+                    labels=["2-card", "weak_2card", "trash"],
+                    trash=True,
+                    spot="facing_open",
+                ),
+            ]
+        )
+
+        warnings = build_warnings(summary)
+
+        self.assertTrue(any("CO_facing_open_trash_play_rate > 10" in warning for warning in warnings))
+
+    def test_warning_for_bb_facing_open_trash_play_rate_threshold(self):
+        summary = summarize_decisions(
+            [
+                _record("BB", CALL, labels=["1-card", "trash"], trash=True, spot="facing_open"),
+                _record("BB", FOLD, labels=["1-card", "trash"], trash=True, spot="facing_open"),
+                _record("BB", FOLD, labels=["1-card", "trash"], trash=True, spot="facing_open"),
+            ]
+        )
+
+        warnings = build_warnings(summary)
+
+        self.assertTrue(any("BB_facing_open_trash_play_rate > 25" in warning for warning in warnings))
+
+    def test_warning_for_facing_open_weak_2card_play_rate(self):
+        summary = summarize_decisions(
+            [
+                _record(
+                    "CO",
+                    CALL,
+                    labels=["2-card", "weak_2card", "trash"],
+                    trash=True,
+                    spot="facing_open",
+                ),
+                _record(
+                    "BTN",
+                    FOLD,
+                    labels=["2-card", "weak_2card", "trash"],
+                    trash=True,
+                    spot="facing_open",
+                ),
+            ]
+        )
+
+        warnings = build_warnings(summary)
+
+        self.assertTrue(any("facing_open_weak_2card_play_rate > 20" in warning for warning in warnings))
+
+    def test_sb_completion_does_not_fire_facing_open_warnings(self):
+        summary = summarize_decisions(
+            [
+                _record(
+                    "SB",
+                    CALL,
+                    labels=["2-card", "weak_2card", "trash"],
+                    trash=True,
+                    spot="sb_completion",
+                )
+            ]
+        )
+
+        warnings = build_warnings(summary)
+
+        self.assertFalse(any("facing_open" in warning for warning in warnings))
 
     def test_cli_smoke_runs_small_sample(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -52,6 +52,11 @@ BB_AMOUNT = 2
 # Action indices
 FOLD, CHECK, CALL, BET, RAISE, ALL_IN = 0, 1, 2, 3, 4, 5
 
+WEAK_HAND_UNOPENED_EARLY_CALL_PENALTY = -0.05
+WEAK_HAND_UNOPENED_EARLY_AGGRESSIVE_PENALTY = -0.10
+WEAK_HAND_FACING_OPEN_CALL_PENALTY = -0.10
+WEAK_HAND_FACING_OPEN_AGGRESSIVE_PENALTY = -0.20
+
 
 # ---------------------------------------------------------------------------
 # Player state helper
@@ -369,6 +374,37 @@ class SixMaxBadugiEnv:
         equity_missed = strength - pot_odds
         return -max(0.30, min(0.90, 0.20 + equity_missed * 1.5))
 
+    def _weak_hand_play_penalty(self, seat: int, action: int) -> float:
+        """Discourage loose pre-draw weak hand participation in risky spots."""
+        if (
+            seat != self.hero_seat
+            or self.phase != "BET"
+            or self.draw_round != 0
+            or action not in (CALL, BET, RAISE, ALL_IN)
+        ):
+            return 0.0
+
+        f = _evaluate_badugi_features(self.players[seat]["hand"])
+        high = f["highest_rank"] if f["highest_rank"] is not None else 13
+        is_weak_3card = f["count"] == 3 and high >= 7
+        is_weak_2card = f["count"] == 2 and high >= 8
+        if not (is_weak_3card or is_weak_2card):
+            return 0.0
+
+        player = self.players[seat]
+        to_call = max(0, self.current_bet - player["bet"])
+        facing_open = self.current_bet > BB_AMOUNT or to_call > BB_AMOUNT
+        if facing_open:
+            if action == CALL:
+                return WEAK_HAND_FACING_OPEN_CALL_PENALTY
+            return WEAK_HAND_FACING_OPEN_AGGRESSIVE_PENALTY
+
+        if not self._is_early_position(seat):
+            return 0.0
+        if action == CALL:
+            return WEAK_HAND_UNOPENED_EARLY_CALL_PENALTY
+        return WEAK_HAND_UNOPENED_EARLY_AGGRESSIVE_PENALTY
+
     def _apply_action(self, seat: int, action: int) -> tuple[bool, float, dict]:
         """Apply a BET-phase action for seat. Returns (done, shaping_reward, info)."""
         p = self.players[seat]
@@ -398,6 +434,7 @@ class SixMaxBadugiEnv:
             return False, 0.0, {}
 
         elif action == CALL:
+            reward += self._weak_hand_play_penalty(seat, action)
             paid = min(to_call, p["stack"])
             p["stack"] -= paid
             p["bet"] += paid
@@ -405,9 +442,10 @@ class SixMaxBadugiEnv:
             if p["stack"] == 0:
                 p["all_in"] = True
             self.bet_queue.popleft()
-            return False, 0.0, {}
+            return False, reward, {}
 
         elif action == BET:
+            reward += self._weak_hand_play_penalty(seat, action)
             paid = min(bet_size, p["stack"])
             p["stack"] -= paid
             p["bet"] += paid
@@ -415,9 +453,10 @@ class SixMaxBadugiEnv:
             self.current_bet = p["bet"]
             p["opened_current_round"] = True
             self._on_raise(seat)
-            return False, 0.0, {}
+            return False, reward, {}
 
         elif action == RAISE:
+            reward += self._weak_hand_play_penalty(seat, action)
             paid = min(to_call + bet_size, p["stack"])
             p["stack"] -= paid
             p["bet"] += paid
@@ -426,16 +465,17 @@ class SixMaxBadugiEnv:
             self.raise_count += 1
             p["opened_current_round"] = True
             self._on_raise(seat)
-            return False, 0.0, {}
+            return False, reward, {}
 
         # ALL_IN: treat as all-in call/raise
+        reward += self._weak_hand_play_penalty(seat, action)
         paid = p["stack"]
         p["stack"] = 0
         p["bet"] += paid
         self.pot += paid
         p["all_in"] = True
         self.bet_queue.popleft()
-        return False, 0.0, {}
+        return False, reward, {}
 
     def _on_raise(self, aggressor: int) -> None:
         """After a bet/raise, re-queue all active players who haven't matched."""
@@ -698,6 +738,11 @@ class SixMaxBadugiEnv:
         except ValueError:
             pos = 0
         return pos / (NUM_PLAYERS - 1)
+
+    def _is_early_position(self, seat: int) -> bool:
+        """True for UTG/MP by the same button-relative mapping used in telemetry."""
+        offset = (seat - self.dealer_seat) % NUM_PLAYERS
+        return offset in (3, 4)
 
     def _is_first_to_act(self, seat: int) -> bool:
         if not self.bet_queue:

@@ -57,6 +57,7 @@ WEAK_HAND_UNOPENED_EARLY_AGGRESSIVE_PENALTY = -0.10
 WEAK_HAND_FACING_OPEN_CALL_PENALTY = -0.10
 WEAK_HAND_FACING_OPEN_AGGRESSIVE_PENALTY = -0.20
 BLIND_FACING_OPEN_WEAK_AGGRESSIVE_EXTRA_PENALTY = -0.15
+SB_FACING_OPEN_WEAK_3CARD_CALL_EXTRA_PENALTY = -0.08
 
 
 # ---------------------------------------------------------------------------
@@ -399,7 +400,10 @@ class SixMaxBadugiEnv:
             if action == CALL:
                 if not is_weak_hand:
                     return 0.0
-                return WEAK_HAND_FACING_OPEN_CALL_PENALTY
+                penalty = WEAK_HAND_FACING_OPEN_CALL_PENALTY
+                if self._is_small_blind_position(seat) and is_weak_3card:
+                    penalty += SB_FACING_OPEN_WEAK_3CARD_CALL_EXTRA_PENALTY
+                return penalty
             if self._is_blind_position(seat) and (is_weak_hand or is_trash):
                 return (
                     WEAK_HAND_FACING_OPEN_AGGRESSIVE_PENALTY
@@ -761,6 +765,11 @@ class SixMaxBadugiEnv:
         """True for SB/BB by the same button-relative mapping used in telemetry."""
         offset = (seat - self.dealer_seat) % NUM_PLAYERS
         return offset in (1, 2)
+
+    def _is_small_blind_position(self, seat: int) -> bool:
+        """True for SB by the same button-relative mapping used in telemetry."""
+        offset = (seat - self.dealer_seat) % NUM_PLAYERS
+        return offset == 1
 
     def _is_first_to_act(self, seat: int) -> bool:
         if not self.bet_queue:

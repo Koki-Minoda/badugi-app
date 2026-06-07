@@ -209,6 +209,145 @@ def test_weak_3card_btn_facing_open_raise_gets_penalty():
     assert reward == pytest.approx(-0.20)
 
 
+def test_sb_facing_open_weak_3card_raise_gets_stronger_aggressive_penalty():
+    weak_3card_eight_high = [(0, 0), (3, 1), (7, 2), (12, 2)]
+    env = SixMaxBadugiEnv(seed=101, opp_epsilon=0.0)
+    env.reset(seed=101)
+    _set_predraw_spot(
+        env,
+        position="SB",
+        hero_hand=weak_3card_eight_high,
+        current_bet=4,
+        hero_bet=1,
+    )
+
+    _done, reward, _info = env._apply_action(env.hero_seat, RAISE)
+
+    assert reward == pytest.approx(-0.35)
+
+
+def test_sb_facing_open_weak_2card_raise_gets_stronger_aggressive_penalty():
+    weak_2card_nine_high = [(0, 0), (8, 1), (12, 0), (12, 1)]
+    env = SixMaxBadugiEnv(seed=131, opp_epsilon=0.0)
+    env.reset(seed=131)
+    _set_predraw_spot(
+        env,
+        position="SB",
+        hero_hand=weak_2card_nine_high,
+        current_bet=4,
+        hero_bet=1,
+    )
+
+    _done, reward, _info = env._apply_action(env.hero_seat, RAISE)
+
+    assert reward == pytest.approx(-0.35)
+
+
+def test_sb_facing_open_1card_trash_raise_gets_aggressive_penalty():
+    one_card_trash = [(12, 0), (12, 1), (12, 2), (12, 3)]
+    env = SixMaxBadugiEnv(seed=137, opp_epsilon=0.0)
+    env.reset(seed=137)
+    _set_predraw_spot(
+        env,
+        position="SB",
+        hero_hand=one_card_trash,
+        current_bet=4,
+        hero_bet=1,
+    )
+
+    _done, reward, _info = env._apply_action(env.hero_seat, RAISE)
+
+    assert reward == pytest.approx(-0.35)
+
+
+def test_bb_facing_open_weak_3card_raise_gets_stronger_aggressive_penalty():
+    weak_3card_eight_high = [(0, 0), (3, 1), (7, 2), (12, 2)]
+    env = SixMaxBadugiEnv(seed=103, opp_epsilon=0.0)
+    env.reset(seed=103)
+    _set_predraw_spot(
+        env,
+        position="BB",
+        hero_hand=weak_3card_eight_high,
+        current_bet=4,
+        hero_bet=2,
+    )
+
+    _done, reward, _info = env._apply_action(env.hero_seat, RAISE)
+
+    assert reward == pytest.approx(-0.35)
+
+
+def test_bb_facing_open_weak_3card_call_keeps_normal_call_penalty():
+    weak_3card_eight_high = [(0, 0), (3, 1), (7, 2), (12, 2)]
+    env = SixMaxBadugiEnv(seed=107, opp_epsilon=0.0)
+    env.reset(seed=107)
+    _set_predraw_spot(
+        env,
+        position="BB",
+        hero_hand=weak_3card_eight_high,
+        current_bet=4,
+        hero_bet=2,
+    )
+
+    _done, reward, _info = env._apply_action(env.hero_seat, CALL)
+
+    assert reward == pytest.approx(-0.10)
+
+
+def test_btn_facing_open_weak_3card_raise_keeps_existing_penalty():
+    weak_3card_eight_high = [(0, 0), (3, 1), (7, 2), (12, 2)]
+    env = SixMaxBadugiEnv(seed=109, opp_epsilon=0.0)
+    env.reset(seed=109)
+    _set_predraw_spot(env, position="BTN", hero_hand=weak_3card_eight_high, current_bet=4)
+
+    _done, reward, _info = env._apply_action(env.hero_seat, RAISE)
+
+    assert reward == pytest.approx(-0.20)
+
+
+@pytest.mark.parametrize(
+    ("action", "expected"),
+    [
+        (CALL, 0.0),
+        (RAISE, 0.0),
+    ],
+)
+def test_sb_completion_weak_3card_is_not_affected_by_facing_open_aggressive_penalty(action, expected):
+    weak_3card_eight_high = [(0, 0), (3, 1), (7, 2), (12, 2)]
+    env = SixMaxBadugiEnv(seed=113, opp_epsilon=0.0)
+    env.reset(seed=113)
+    _set_predraw_spot(
+        env,
+        position="SB",
+        hero_hand=weak_3card_eight_high,
+        current_bet=2,
+        hero_bet=1,
+    )
+
+    _done, reward, _info = env._apply_action(env.hero_seat, action)
+
+    assert reward == pytest.approx(expected)
+
+
+@pytest.mark.parametrize("position", ["SB", "BB"])
+def test_strong_3card_blind_facing_open_raise_not_penalized(position):
+    strong_3card_seven_high = [(0, 0), (3, 1), (6, 2), (12, 2)]
+    hero_bet = 1 if position == "SB" else 2
+    env = SixMaxBadugiEnv(seed=127, opp_epsilon=0.0)
+    env.reset(seed=127)
+    _set_predraw_spot(
+        env,
+        position=position,
+        hero_hand=strong_3card_seven_high,
+        current_bet=4,
+        hero_bet=hero_bet,
+    )
+
+    _done, reward, _info = env._apply_action(env.hero_seat, RAISE)
+
+    assert reward == pytest.approx(0.0)
+
+
 def test_strong_3card_early_not_penalized():
     strong_3card_seven_high = [(0, 0), (3, 1), (6, 2), (12, 2)]
     env = SixMaxBadugiEnv(seed=37, opp_epsilon=0.0)

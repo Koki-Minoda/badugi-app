@@ -56,6 +56,7 @@ WEAK_HAND_UNOPENED_EARLY_CALL_PENALTY = -0.05
 WEAK_HAND_UNOPENED_EARLY_AGGRESSIVE_PENALTY = -0.10
 WEAK_HAND_FACING_OPEN_CALL_PENALTY = -0.10
 WEAK_HAND_FACING_OPEN_AGGRESSIVE_PENALTY = -0.20
+BLIND_FACING_OPEN_WEAK_AGGRESSIVE_EXTRA_PENALTY = -0.15
 
 
 # ---------------------------------------------------------------------------
@@ -388,17 +389,29 @@ class SixMaxBadugiEnv:
         high = f["highest_rank"] if f["highest_rank"] is not None else 13
         is_weak_3card = f["count"] == 3 and high >= 7
         is_weak_2card = f["count"] == 2 and high >= 8
-        if not (is_weak_3card or is_weak_2card):
-            return 0.0
+        is_trash = f["count"] <= 1 or is_weak_2card or (f["count"] == 3 and high >= 10)
+        is_weak_hand = is_weak_3card or is_weak_2card
 
         player = self.players[seat]
         to_call = max(0, self.current_bet - player["bet"])
         facing_open = self.current_bet > BB_AMOUNT or to_call > BB_AMOUNT
         if facing_open:
             if action == CALL:
+                if not is_weak_hand:
+                    return 0.0
                 return WEAK_HAND_FACING_OPEN_CALL_PENALTY
-            return WEAK_HAND_FACING_OPEN_AGGRESSIVE_PENALTY
+            if self._is_blind_position(seat) and (is_weak_hand or is_trash):
+                return (
+                    WEAK_HAND_FACING_OPEN_AGGRESSIVE_PENALTY
+                    + BLIND_FACING_OPEN_WEAK_AGGRESSIVE_EXTRA_PENALTY
+                )
+            if not is_weak_hand:
+                return 0.0
+            penalty = WEAK_HAND_FACING_OPEN_AGGRESSIVE_PENALTY
+            return penalty
 
+        if not is_weak_hand:
+            return 0.0
         if not self._is_early_position(seat):
             return 0.0
         if action == CALL:
@@ -743,6 +756,11 @@ class SixMaxBadugiEnv:
         """True for UTG/MP by the same button-relative mapping used in telemetry."""
         offset = (seat - self.dealer_seat) % NUM_PLAYERS
         return offset in (3, 4)
+
+    def _is_blind_position(self, seat: int) -> bool:
+        """True for SB/BB by the same button-relative mapping used in telemetry."""
+        offset = (seat - self.dealer_seat) % NUM_PLAYERS
+        return offset in (1, 2)
 
     def _is_first_to_act(self, seat: int) -> bool:
         if not self.bet_queue:

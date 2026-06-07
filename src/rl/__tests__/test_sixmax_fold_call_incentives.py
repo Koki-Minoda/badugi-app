@@ -46,7 +46,7 @@ def test_weak_hero_fold_is_shaped_better_than_showdown_call_multiway():
     assert terminated is True
     assert info["terminal_reason"] == "hero_fold"
     assert fold_env.terminal_reason == "hero_fold"
-    assert fold_reward == pytest.approx(0.15)
+    assert fold_reward == pytest.approx(0.30)
 
     call_env = SixMaxBadugiEnv(seed=7, opp_epsilon=0.0)
     call_env.reset(seed=7)
@@ -95,7 +95,7 @@ def test_good_fold_routes_to_fold_buffer():
         call_buffer=call_buffer,
         obs=obs,
         action=FOLD,
-        reward=0.15,
+        reward=0.30,
         next_obs=next_obs,
         done=True,
         next_action_mask=mask,
@@ -105,6 +105,15 @@ def test_good_fold_routes_to_fold_buffer():
     assert len(fold_buffer) == 1
     assert len(call_buffer) == 0
     assert fold_buffer.sample(1)["actions"][0] == FOLD
+
+
+def test_good_fold_shaping_returns_enhanced_reward():
+    weak_hand = [(12, 0), (12, 1), (12, 2), (12, 3)]
+    env = SixMaxBadugiEnv(seed=19, opp_epsilon=0.0)
+    env.reset(seed=19)
+    _set_final_street_facing_bet(env, hero_hand=weak_hand)
+
+    assert env._fold_shaping(env.hero_seat) == pytest.approx(0.30)
 
 
 def test_call_buffer_margin_update_pushes_call_above_fold():

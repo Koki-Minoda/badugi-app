@@ -351,7 +351,7 @@ class SixMaxBadugiEnv:
     def _fold_shaping(self, seat: int) -> float:
         """Immediate fold shaping for hero, mirroring DualAgentBadugiEnv._apply_hero_bet.
 
-        Good fold (equity < pot odds): +0.15, folding was correct.
+        Good fold (equity < pot odds): +0.30, folding was correct.
         Bad fold  (equity > pot odds): -0.30 to -0.90, discourages folding equity.
 
         Only applied when *hero* folds so opponent auto-play logic is unchanged.
@@ -365,7 +365,7 @@ class SixMaxBadugiEnv:
         strength = float(f["strength"])
         pot_odds = to_call / max(1, self.pot + to_call) if to_call > 0 else 0.0
         if strength < pot_odds:
-            return 0.15
+            return 0.30
         equity_missed = strength - pot_odds
         return -max(0.30, min(0.90, 0.20 + equity_missed * 1.5))
 

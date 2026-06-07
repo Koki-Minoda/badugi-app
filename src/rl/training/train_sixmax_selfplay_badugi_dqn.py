@@ -379,7 +379,7 @@ def train_sixmax_selfplay_badugi_dqn(
     replay = ReplayBuffer(capacity=cfg.buffer_capacity)
     expert = ReplayBuffer(capacity=min(80_000, cfg.buffer_capacity // 4))
     # fold_buffer: good-fold states (shaping > 0) train Q(FOLD) > Q(CALL)
-    fold_buffer = ReplayBuffer(capacity=15_000, alpha=0.0)
+    fold_buffer = ReplayBuffer(capacity=30_000, alpha=0.0)
     # call_buffer: bad-fold states (shaping < 0) train Q(CALL) > Q(FOLD)
     call_buffer = ReplayBuffer(capacity=15_000, alpha=0.0)
 

@@ -142,6 +142,113 @@ def test_good_fold_shaping_returns_enhanced_reward():
     assert env._fold_shaping(env.hero_seat) == pytest.approx(0.30)
 
 
+def test_sb_facing_open_weak_3card_fold_is_not_bad_fold():
+    weak_3card_eight_high = [(0, 0), (3, 1), (7, 2), (12, 2)]
+    env = SixMaxBadugiEnv(seed=167, opp_epsilon=0.0)
+    env.reset(seed=167)
+    _set_predraw_spot(
+        env,
+        position="SB",
+        hero_hand=weak_3card_eight_high,
+        current_bet=4,
+        hero_bet=1,
+    )
+
+    done, reward, info = env._apply_action(env.hero_seat, FOLD)
+
+    assert done is True
+    assert info["terminal_reason"] == "hero_fold"
+    assert reward == pytest.approx(0.0)
+
+
+def test_sb_facing_open_trashy_3card_fold_gets_small_good_fold():
+    trashy_3card_ten_high = [(0, 0), (4, 1), (9, 2), (12, 2)]
+    env = SixMaxBadugiEnv(seed=173, opp_epsilon=0.0)
+    env.reset(seed=173)
+    _set_predraw_spot(
+        env,
+        position="SB",
+        hero_hand=trashy_3card_ten_high,
+        current_bet=4,
+        hero_bet=1,
+    )
+
+    _done, reward, _info = env._apply_action(env.hero_seat, FOLD)
+
+    assert reward == pytest.approx(0.10)
+
+
+def test_sb_facing_open_strong_3card_fold_remains_bad_fold():
+    strong_3card_seven_high = [(0, 0), (3, 1), (6, 2), (12, 2)]
+    env = SixMaxBadugiEnv(seed=179, opp_epsilon=0.0)
+    env.reset(seed=179)
+    _set_predraw_spot(
+        env,
+        position="SB",
+        hero_hand=strong_3card_seven_high,
+        current_bet=4,
+        hero_bet=1,
+    )
+
+    _done, reward, _info = env._apply_action(env.hero_seat, FOLD)
+
+    assert reward < 0.0
+
+
+def test_bb_facing_open_weak_3card_fold_unchanged():
+    weak_3card_eight_high = [(0, 0), (3, 1), (7, 2), (12, 2)]
+    env = SixMaxBadugiEnv(seed=181, opp_epsilon=0.0)
+    env.reset(seed=181)
+    _set_predraw_spot(
+        env,
+        position="BB",
+        hero_hand=weak_3card_eight_high,
+        current_bet=4,
+        hero_bet=2,
+    )
+    env.pot = 20
+
+    _done, reward, _info = env._apply_action(env.hero_seat, FOLD)
+
+    assert reward < 0.0
+
+
+def test_btn_facing_open_weak_3card_fold_unchanged():
+    weak_3card_eight_high = [(0, 0), (3, 1), (7, 2), (12, 2)]
+    env = SixMaxBadugiEnv(seed=191, opp_epsilon=0.0)
+    env.reset(seed=191)
+    _set_predraw_spot(
+        env,
+        position="BTN",
+        hero_hand=weak_3card_eight_high,
+        current_bet=4,
+        hero_bet=0,
+    )
+    env.pot = 30
+
+    _done, reward, _info = env._apply_action(env.hero_seat, FOLD)
+
+    assert reward < 0.0
+
+
+def test_sb_completion_weak_3card_fold_unchanged():
+    weak_3card_eight_high = [(0, 0), (3, 1), (7, 2), (12, 2)]
+    env = SixMaxBadugiEnv(seed=193, opp_epsilon=0.0)
+    env.reset(seed=193)
+    _set_predraw_spot(
+        env,
+        position="SB",
+        hero_hand=weak_3card_eight_high,
+        current_bet=2,
+        hero_bet=1,
+    )
+    env.pot = 20
+
+    _done, reward, _info = env._apply_action(env.hero_seat, FOLD)
+
+    assert reward < 0.0
+
+
 def test_weak_3card_early_raise_gets_penalty():
     weak_3card_eight_high = [(0, 0), (3, 1), (7, 2), (12, 2)]
     env = SixMaxBadugiEnv(seed=23, opp_epsilon=0.0)

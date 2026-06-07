@@ -369,6 +369,17 @@ class SixMaxBadugiEnv:
         p = self.players[seat]
         to_call = max(0, self.current_bet - p["bet"])
         f = _evaluate_badugi_features(p["hand"])
+        sb_facing_open_weak_3card_fold = (
+            self.phase == "BET"
+            and self.draw_round == 0
+            and self._is_small_blind_position(seat)
+            and self._is_facing_open(to_call)
+            and f["count"] == 3
+            and f["highest_rank"] >= 7
+        )
+        if sb_facing_open_weak_3card_fold:
+            return 0.10 if f["highest_rank"] >= 9 else 0.0
+
         strength = float(f["strength"])
         pot_odds = to_call / max(1, self.pot + to_call) if to_call > 0 else 0.0
         if strength < pot_odds:
@@ -395,7 +406,7 @@ class SixMaxBadugiEnv:
 
         player = self.players[seat]
         to_call = max(0, self.current_bet - player["bet"])
-        facing_open = self.current_bet > BB_AMOUNT or to_call > BB_AMOUNT
+        facing_open = self._is_facing_open(to_call)
         if facing_open:
             if action == CALL:
                 if not is_weak_hand:
@@ -770,6 +781,9 @@ class SixMaxBadugiEnv:
         """True for SB by the same button-relative mapping used in telemetry."""
         offset = (seat - self.dealer_seat) % NUM_PLAYERS
         return offset == 1
+
+    def _is_facing_open(self, to_call: int) -> bool:
+        return self.current_bet > BB_AMOUNT or to_call > BB_AMOUNT
 
     def _is_first_to_act(self, seat: int) -> bool:
         if not self.bet_queue:

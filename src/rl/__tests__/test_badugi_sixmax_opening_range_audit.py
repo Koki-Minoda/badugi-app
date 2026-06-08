@@ -11,24 +11,64 @@ from rl.training.audit_badugi_sixmax_opening_ranges import (
     CALL,
     CHECK,
     FOLD,
+    RAISE,
+    aggression_hand_class,
+    bet_round_key,
     classify_opening_hand,
     main as audit_main,
+    build_findings,
+    facing_action_type,
     summarize_decisions,
+    summarize_aggression_decisions,
     build_warnings,
     spot_type,
 )
 
 
-def _record(position: str, action: int, *, labels=None, premium=False, trash=False, spot="unopened"):
+def _record(
+    position: str,
+    action: int,
+    *,
+    labels=None,
+    premium=False,
+    trash=False,
+    spot="unopened",
+    draw_round=0,
+    to_call=0,
+    aggression_hand_class=None,
+):
     labels = labels or ["3-card"]
+    made_cards = 4 if "made_badugi" in labels else 3 if any("3card" in label or label == "3-card" for label in labels) else 2
+    bet_round = f"round{draw_round}"
     return {
+        "sampleIndex": 0,
         "position": position,
         "spotType": spot,
+        "betRound": bet_round,
+        "facingAction": "facing_bet" if to_call > 0 else "unopened",
+        "aggressionHandClass": aggression_hand_class,
+        "drawRound": draw_round,
+        "toCall": to_call,
         "selectedAction": action,
-        "selectedActionName": str(action),
-        "qValues": {"FOLD": 0.0, "CALL": 1.0, "RAISE": 2.0},
+        "selectedActionName": {
+            FOLD: "FOLD",
+            CHECK: "CHECK",
+            CALL: "CALL",
+            BET: "BET",
+            RAISE: "RAISE",
+        }.get(action, str(action)),
+        "qValues": {"FOLD": 0.0, "CALL": 1.0, "RAISE": 2.0, "BET": 2.0, "CHECK": 1.0},
+        "selectedQ": float(action),
         "hand": {
+            "cards": ["Ac", "2d", "3h", "4s"],
+            "hand_class": aggression_hand_class or labels[0],
             "class_labels": labels,
+            "made_cards": made_cards,
+            "high_card_label": "4",
+            "smoothness": 1.0,
+            "roughness": 0.25,
+            "paired_rank_count": 0,
+            "duplicate_suit_count": 0,
             "is_premium": premium,
             "is_playable": not trash,
             "is_trash": trash,
@@ -188,6 +228,129 @@ class BadugiSixMaxOpeningRangeAuditTest(unittest.TestCase):
         self.assertEqual(summary["byPosition"]["BB"]["checkPct"], 50.0)
         self.assertEqual(summary["byPosition"]["BB"]["callCheckPct"], 100.0)
 
+    def test_aggression_hand_class_made_badugi(self):
+        record = _record("BTN", CHECK, labels=["made_badugi"])
+
+        self.assertEqual(aggression_hand_class(record), "made_badugi")
+
+    def test_aggression_hand_class_strong_3card(self):
+        record = _record("BTN", CHECK, labels=["3-card"])
+
+        self.assertEqual(aggression_hand_class(record), "strong_3card")
+
+    def test_aggression_hand_class_weak_3card(self):
+        record = _record("BTN", CHECK, labels=["3-card", "weak_3card"])
+
+        self.assertEqual(aggression_hand_class(record), "weak_3card")
+
+    def test_aggression_hand_class_trash(self):
+        record = _record("BTN", CHECK, labels=["1-card", "trash"], trash=True)
+
+        self.assertEqual(aggression_hand_class(record), "trash")
+
+    def test_bet_round_key_clamps_boundaries(self):
+        self.assertEqual(bet_round_key(-1), "round0")
+        self.assertEqual(bet_round_key(0), "round0")
+        self.assertEqual(bet_round_key(2), "round2")
+        self.assertEqual(bet_round_key(9), "round3")
+
+    def test_facing_action_type_returns_correct_string(self):
+        self.assertEqual(facing_action_type(to_call=0), "unopened")
+        self.assertEqual(facing_action_type(to_call=1), "facing_bet")
+
+    def test_aggression_summary_groups_by_bet_round(self):
+        summary = summarize_aggression_decisions(
+            [
+                _record("CO", FOLD, draw_round=2, to_call=4, aggression_hand_class="strong_3card"),
+                _record("BTN", CALL, draw_round=2, to_call=4, aggression_hand_class="weak_3card"),
+                _record("BB", RAISE, draw_round=2, to_call=4, aggression_hand_class="made_badugi"),
+                _record("BB", CHECK, draw_round=3, to_call=0, aggression_hand_class="made_badugi"),
+            ]
+        )
+
+        round2 = summary["byBetRound"]["round2"]
+        facing = summary["byBetRoundFacingAction"]["round2.facing_bet"]
+        made_round3 = summary["byBetRoundAndHandClass"]["round3.made_badugi"]
+
+        self.assertEqual(round2["samples"], 3)
+        self.assertEqual(round2["foldPct"], 33.3333)
+        self.assertEqual(round2["callPct"], 33.3333)
+        self.assertEqual(round2["raisePct"], 33.3333)
+        self.assertEqual(round2["vpipPct"], 66.6667)
+        self.assertEqual(facing["samples"], 3)
+        self.assertEqual(made_round3["samples"], 1)
+        self.assertEqual(made_round3["callPct"], 100.0)
+
+    def test_aggression_warnings_cover_late_round_overfold_and_underraise(self):
+        def warnings_for(aggression_records):
+            summary = summarize_decisions([_record("BTN", FOLD)])
+            summary.update(summarize_aggression_decisions(aggression_records))
+            return build_warnings(summary)
+
+        under_sampled_strong_round2 = warnings_for(
+            [
+                _record("CO", FOLD, draw_round=2, to_call=4, aggression_hand_class="strong_3card")
+                for _ in range(4)
+            ]
+        )
+        under_sampled_made_round2 = warnings_for(
+            [
+                _record("CO", FOLD, draw_round=2, to_call=4, aggression_hand_class="made_badugi", labels=["made_badugi"])
+                for _ in range(4)
+            ]
+        )
+        under_sampled_made_round3 = warnings_for(
+            [
+                _record("CO", FOLD, draw_round=3, to_call=4, aggression_hand_class="made_badugi", labels=["made_badugi"])
+                for _ in range(4)
+            ]
+        )
+
+        self.assertFalse(any("round2_facing_bet_fold_rate > 75" in warning for warning in under_sampled_strong_round2))
+        self.assertFalse(any("strong_3card_round2_fold_rate > 60" in warning for warning in under_sampled_strong_round2))
+        self.assertFalse(any("made_badugi_round2_raise_rate < 20" in warning for warning in under_sampled_made_round2))
+        self.assertFalse(any("round3_facing_bet_fold_rate > 70" in warning for warning in under_sampled_made_round3))
+        self.assertFalse(any("made_badugi_round3_raise_rate < 25" in warning for warning in under_sampled_made_round3))
+
+        warnings = warnings_for(
+            [
+                *[
+                    _record("CO", FOLD, draw_round=2, to_call=4, aggression_hand_class="strong_3card")
+                    for _ in range(5)
+                ],
+                *[
+                    _record("CO", FOLD, draw_round=2, to_call=4, aggression_hand_class="made_badugi", labels=["made_badugi"])
+                    for _ in range(5)
+                ],
+                *[
+                    _record("CO", FOLD, draw_round=3, to_call=4, aggression_hand_class="made_badugi", labels=["made_badugi"])
+                    for _ in range(5)
+                ],
+            ]
+        )
+
+        self.assertTrue(any("round2_facing_bet_fold_rate > 75" in warning for warning in warnings))
+        self.assertTrue(any("round3_facing_bet_fold_rate > 70" in warning for warning in warnings))
+        self.assertTrue(any("made_badugi_round2_raise_rate < 20" in warning for warning in warnings))
+        self.assertTrue(any("made_badugi_round3_raise_rate < 25" in warning for warning in warnings))
+        self.assertTrue(any("strong_3card_round2_fold_rate > 60" in warning for warning in warnings))
+
+    def test_aggression_findings_include_requested_top20_buckets(self):
+        opening_records = [_record("BTN", FOLD)]
+        aggression_records = [
+            _record("CO", FOLD, draw_round=2, to_call=4, aggression_hand_class="strong_3card"),
+            _record("BB", CHECK, draw_round=3, to_call=0, labels=["made_badugi"], aggression_hand_class="made_badugi"),
+            _record("BB", CALL, draw_round=3, to_call=4, labels=["made_badugi"], aggression_hand_class="made_badugi"),
+            _record("BB", FOLD, draw_round=3, to_call=4, aggression_hand_class="strong_3card"),
+        ]
+
+        findings = build_findings(opening_records, aggression_records)
+
+        self.assertEqual(len(findings["round2_strong_hand_folded"]), 1)
+        self.assertEqual(len(findings["round3_made_badugi_checked"]), 1)
+        self.assertEqual(len(findings["round3_made_badugi_called_not_raised"]), 1)
+        self.assertEqual(len(findings["round3_strong_3card_folded"]), 1)
+
     def test_warning_for_overall_vpip_above_40(self):
         summary = summarize_decisions(
             [
@@ -321,6 +484,10 @@ class BadugiSixMaxOpeningRangeAuditTest(unittest.TestCase):
 
             self.assertTrue(output_json.exists())
             self.assertEqual(report["samplesCollected"], 2)
+            self.assertGreaterEqual(report["betRoundSamplesCollected"], 2)
+            self.assertIn("byBetRound", report["summary"])
+            self.assertIn("round2.facing_bet", report["summary"]["byBetRoundFacingAction"])
+            self.assertIn("round3.made_badugi", report["summary"]["byBetRoundAndHandClass"])
             self.assertEqual(report["model"]["obsDim"], 96)
 
 

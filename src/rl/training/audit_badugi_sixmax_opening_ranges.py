@@ -1,8 +1,8 @@
 """Audit 6-max Badugi DQN pre-draw opening ranges.
 
 This tool intentionally does not train or mutate checkpoints. It loads a
-checkpoint through DQNAgent.load, runs SixMaxBadugiEnv, and records only the
-hero's first pre-draw betting decision in each sampled hand.
+checkpoint through DQNAgent.load, runs SixMaxBadugiEnv, preserves the opening
+range audit, and also records hero betting decisions by Badugi bet round.
 """
 
 from __future__ import annotations
@@ -50,6 +50,8 @@ ACTION_NAMES = {
 }
 POSITION_ORDER = ("BTN", "CO", "MP", "UTG", "SB", "BB")
 SPOT_ORDER = ("unopened", "facing_open", "sb_completion", "bb_option")
+BET_ROUND_ORDER = ("round0", "round1", "round2", "round3")
+FACING_ACTION_ORDER = ("facing_bet", "unopened")
 HAND_CLASS_ORDER = (
     "made_badugi",
     "3-card",
@@ -58,6 +60,13 @@ HAND_CLASS_ORDER = (
     "premium_3card",
     "weak_2card",
     "weak_3card",
+    "trash",
+)
+AGGRESSION_HAND_CLASS_ORDER = (
+    "made_badugi",
+    "strong_3card",
+    "weak_3card",
+    "weak_2card",
     "trash",
 )
 
@@ -182,6 +191,42 @@ def action_bucket(action: int) -> str:
     return "other"
 
 
+def bet_round_key(draw_round: int) -> str:
+    return f"round{max(0, min(3, int(draw_round)))}"
+
+
+def facing_action_type(*, to_call: int) -> str:
+    return "facing_bet" if int(to_call) > 0 else "unopened"
+
+
+def aggression_hand_class_from_info(hand_info: OpeningHandInfo) -> str:
+    labels = set(hand_info.class_labels)
+    if hand_info.made_cards >= 4 or "made_badugi" in labels:
+        return "made_badugi"
+    if "weak_3card" in labels:
+        return "weak_3card"
+    if "weak_2card" in labels:
+        return "weak_2card"
+    if hand_info.made_cards == 3 and not hand_info.is_trash:
+        return "strong_3card"
+    return "trash"
+
+
+def aggression_hand_class(record: dict) -> str:
+    hand = record.get("hand", {})
+    labels = set(hand.get("class_labels", []))
+    made_cards = int(hand.get("made_cards", 0) or 0)
+    if made_cards >= 4 or "made_badugi" in labels:
+        return "made_badugi"
+    if "weak_3card" in labels:
+        return "weak_3card"
+    if "weak_2card" in labels:
+        return "weak_2card"
+    if made_cards == 3 and not bool(hand.get("is_trash", False)):
+        return "strong_3card"
+    return "trash"
+
+
 def is_vpip_action(action: int) -> bool:
     return action in (CALL, BET, RAISE, ALL_IN)
 
@@ -228,6 +273,9 @@ def make_decision_record(
         "sampleIndex": int(sample_index),
         "position": position,
         "spotType": spot_type(position=position, current_bet=int(env.current_bet), to_call=int(to_call)),
+        "betRound": bet_round_key(int(env.draw_round)),
+        "facingAction": facing_action_type(to_call=int(to_call)),
+        "aggressionHandClass": aggression_hand_class_from_info(hand_info),
         "handClass": hand_info.hand_class,
         "heroSeat": hero_seat,
         "dealerSeat": int(env.dealer_seat),
@@ -297,6 +345,77 @@ def _summarize_bucket(records: list[dict]) -> dict:
         "avgQCall": round(float(np.mean(q_call)), 6) if q_call else None,
         "avgQRaise": round(float(np.mean(q_raise)), 6) if q_raise else None,
         "actionCounts": dict(counts),
+    }
+
+
+def _summarize_aggression_bucket(records: list[dict], *, include_vpip: bool = True) -> dict:
+    fold = 0
+    call = 0
+    raise_count = 0
+    vpip = 0
+    counts = Counter({name: 0 for name in ACTION_NAMES.values()})
+    for record in records:
+        action = int(record["selectedAction"])
+        action_name = ACTION_NAMES.get(action, str(action))
+        counts[action_name] += 1
+        fold += int(action == FOLD)
+        call += int(action in (CHECK, CALL))
+        raise_count += int(action in (BET, RAISE, ALL_IN))
+        vpip += int(is_vpip_action(action))
+    n = len(records)
+    summary = {
+        "samples": n,
+        "foldPct": _pct(fold, n),
+        "callPct": _pct(call, n),
+        "raisePct": _pct(raise_count, n),
+        "actionCounts": dict(counts),
+    }
+    if include_vpip:
+        summary["vpipPct"] = _pct(vpip, n)
+    return summary
+
+
+def summarize_aggression_decisions(records: list[dict]) -> dict:
+    by_bet_round_records: dict[str, list[dict]] = {round_key: [] for round_key in BET_ROUND_ORDER}
+    by_bet_round_facing_action_records: dict[str, list[dict]] = {
+        f"{round_key}.{facing_action}": []
+        for round_key in BET_ROUND_ORDER
+        for facing_action in FACING_ACTION_ORDER
+    }
+    by_bet_round_and_hand_class_records: dict[str, list[dict]] = {
+        f"{round_key}.{hand_class}": []
+        for round_key in BET_ROUND_ORDER
+        for hand_class in AGGRESSION_HAND_CLASS_ORDER
+    }
+
+    for record in records:
+        round_key = record.get("betRound") or bet_round_key(int(record.get("drawRound", 0)))
+        facing_action = record.get("facingAction") or facing_action_type(to_call=int(record.get("toCall", 0)))
+        hand_class = record.get("aggressionHandClass") or aggression_hand_class(record)
+        by_bet_round_records.setdefault(round_key, []).append(record)
+        by_bet_round_facing_action_records.setdefault(f"{round_key}.{facing_action}", []).append(record)
+        by_bet_round_and_hand_class_records.setdefault(f"{round_key}.{hand_class}", []).append(record)
+
+    return {
+        "byBetRound": {
+            round_key: _summarize_aggression_bucket(by_bet_round_records.get(round_key, []))
+            for round_key in BET_ROUND_ORDER
+        },
+        "byBetRoundFacingAction": {
+            f"{round_key}.{facing_action}": _summarize_aggression_bucket(
+                by_bet_round_facing_action_records.get(f"{round_key}.{facing_action}", [])
+            )
+            for round_key in BET_ROUND_ORDER
+            for facing_action in FACING_ACTION_ORDER
+        },
+        "byBetRoundAndHandClass": {
+            f"{round_key}.{hand_class}": _summarize_aggression_bucket(
+                by_bet_round_and_hand_class_records.get(f"{round_key}.{hand_class}", []),
+                include_vpip=False,
+            )
+            for round_key in BET_ROUND_ORDER
+            for hand_class in AGGRESSION_HAND_CLASS_ORDER
+        },
     }
 
 
@@ -416,6 +535,9 @@ def compact_decision(record: dict) -> dict:
         "sampleIndex": record["sampleIndex"],
         "position": record["position"],
         "spotType": record.get("spotType", "unopened"),
+        "betRound": record.get("betRound") or bet_round_key(int(record.get("drawRound", 0))),
+        "facingAction": record.get("facingAction") or facing_action_type(to_call=int(record.get("toCall", 0))),
+        "aggressionHandClass": record.get("aggressionHandClass") or aggression_hand_class(record),
         "action": record["selectedActionName"],
         "toCall": record["toCall"],
         "qValues": record["qValues"],
@@ -437,7 +559,8 @@ def top_decisions(records: list[dict], predicate, *, limit: int = 20) -> list[di
     return [compact_decision(record) for record in matches[:limit]]
 
 
-def build_findings(records: list[dict]) -> dict:
+def build_findings(records: list[dict], aggression_records: list[dict] | None = None) -> dict:
+    aggression_records = records if aggression_records is None else aggression_records
     return {
         "trashPlayedTop20": top_decisions(
             records,
@@ -535,6 +658,39 @@ def build_findings(records: list[dict]) -> dict:
                 and int(record["selectedAction"]) == FOLD
             ),
         ),
+        "round2_strong_hand_folded": top_decisions(
+            aggression_records,
+            lambda record: (
+                (record.get("betRound") or bet_round_key(int(record.get("drawRound", 0)))) == "round2"
+                and (record.get("aggressionHandClass") or aggression_hand_class(record))
+                in ("made_badugi", "strong_3card")
+                and int(record["selectedAction"]) == FOLD
+            ),
+        ),
+        "round3_made_badugi_checked": top_decisions(
+            aggression_records,
+            lambda record: (
+                (record.get("betRound") or bet_round_key(int(record.get("drawRound", 0)))) == "round3"
+                and (record.get("aggressionHandClass") or aggression_hand_class(record)) == "made_badugi"
+                and int(record["selectedAction"]) == CHECK
+            ),
+        ),
+        "round3_made_badugi_called_not_raised": top_decisions(
+            aggression_records,
+            lambda record: (
+                (record.get("betRound") or bet_round_key(int(record.get("drawRound", 0)))) == "round3"
+                and (record.get("aggressionHandClass") or aggression_hand_class(record)) == "made_badugi"
+                and int(record["selectedAction"]) == CALL
+            ),
+        ),
+        "round3_strong_3card_folded": top_decisions(
+            aggression_records,
+            lambda record: (
+                (record.get("betRound") or bet_round_key(int(record.get("drawRound", 0)))) == "round3"
+                and (record.get("aggressionHandClass") or aggression_hand_class(record)) == "strong_3card"
+                and int(record["selectedAction"]) == FOLD
+            ),
+        ),
     }
 
 
@@ -544,6 +700,8 @@ def build_warnings(summary: dict) -> list[str]:
     by_pos = summary["byPosition"]
     by_pos_spot = summary.get("byPositionAndSpot", {})
     by_pos_spot_hand = summary.get("byPositionSpotAndHandClass", {})
+    by_round_facing = summary.get("byBetRoundFacingAction", {})
+    by_round_hand = summary.get("byBetRoundAndHandClass", {})
     rates = summary["rates"]
     utg_vpip = by_pos["UTG"]["vpipPct"]
     btn_vpip = by_pos["BTN"]["vpipPct"]
@@ -605,6 +763,31 @@ def build_warnings(summary: dict) -> list[str]:
         warnings.append(
             f"UTG_play_rate_above_CO_or_BTN (UTG={utg_vpip:.2f}, CO={co_vpip:.2f}, BTN={btn_vpip:.2f})"
         )
+    round2_facing_bet = by_round_facing.get("round2.facing_bet", {})
+    if round2_facing_bet.get("samples", 0) >= 5 and round2_facing_bet.get("foldPct", 0.0) > 75.0:
+        warnings.append(
+            f"round2_facing_bet_fold_rate > 75 ({round2_facing_bet.get('foldPct', 0.0):.2f})"
+        )
+    round3_facing_bet = by_round_facing.get("round3.facing_bet", {})
+    if round3_facing_bet.get("samples", 0) >= 5 and round3_facing_bet.get("foldPct", 0.0) > 70.0:
+        warnings.append(
+            f"round3_facing_bet_fold_rate > 70 ({round3_facing_bet.get('foldPct', 0.0):.2f})"
+        )
+    made_badugi_round2 = by_round_hand.get("round2.made_badugi", {})
+    if made_badugi_round2.get("samples", 0) >= 5 and made_badugi_round2.get("raisePct", 0.0) < 20.0:
+        warnings.append(
+            f"made_badugi_round2_raise_rate < 20 ({made_badugi_round2.get('raisePct', 0.0):.2f})"
+        )
+    made_badugi_round3 = by_round_hand.get("round3.made_badugi", {})
+    if made_badugi_round3.get("samples", 0) >= 5 and made_badugi_round3.get("raisePct", 0.0) < 25.0:
+        warnings.append(
+            f"made_badugi_round3_raise_rate < 25 ({made_badugi_round3.get('raisePct', 0.0):.2f})"
+        )
+    strong_3card_round2 = by_round_hand.get("round2.strong_3card", {})
+    if strong_3card_round2.get("samples", 0) >= 5 and strong_3card_round2.get("foldPct", 0.0) > 60.0:
+        warnings.append(
+            f"strong_3card_round2_fold_rate > 60 ({strong_3card_round2.get('foldPct', 0.0):.2f})"
+        )
     return warnings
 
 
@@ -632,6 +815,7 @@ def audit_checkpoint(
         raise ValueError(f"unexpected Badugi observation size: {obs_dim}")
 
     records: list[dict] = []
+    aggression_records: list[dict] = []
     hands_seen = 0
     skipped = Counter()
     max_hands = int(episodes) if episodes is not None else max(int(samples or 0) * 50, int(samples or 0) + 50)
@@ -647,25 +831,55 @@ def audit_checkpoint(
         if not getattr(env, "bet_queue", None) or env.bet_queue[0] != env.hero_seat:
             skipped["hero_not_to_act"] += 1
             continue
-        action_mask = env.legal_action_mask()
-        with torch.no_grad():
-            obs_t = torch.as_tensor(obs, dtype=torch.float32, device=device_t).reshape(1, -1)
-            q_values = agent.q_network(obs_t).detach().cpu().numpy()[0]
-        action = legal_argmax(q_values, action_mask)
-        records.append(
-            make_decision_record(
-                env=env,
-                obs=obs,
-                q_values=q_values,
-                action_mask=action_mask,
-                action=action,
-                sample_index=len(records),
-            )
-        )
+        recorded_opening = False
+        done = False
+        steps_this_hand = 0
+        while not done and steps_this_hand < 100:
+            steps_this_hand += 1
+            if env.phase == "BET":
+                if not getattr(env, "bet_queue", None) or env.bet_queue[0] != env.hero_seat:
+                    skipped["hero_not_to_act_midhand"] += 1
+                    break
+                action_mask = env.legal_action_mask()
+                with torch.no_grad():
+                    obs_t = torch.as_tensor(obs, dtype=torch.float32, device=device_t).reshape(1, -1)
+                    q_values = agent.q_network(obs_t).detach().cpu().numpy()[0]
+                action = legal_argmax(q_values, action_mask)
+                aggression_record = make_decision_record(
+                    env=env,
+                    obs=obs,
+                    q_values=q_values,
+                    action_mask=action_mask,
+                    action=action,
+                    sample_index=len(aggression_records),
+                )
+                aggression_records.append(aggression_record)
+                if not recorded_opening and int(env.draw_round) == 0:
+                    opening_record = dict(aggression_record)
+                    opening_record["sampleIndex"] = len(records)
+                    opening_record["betDecisionIndex"] = int(aggression_record["sampleIndex"])
+                    records.append(opening_record)
+                    recorded_opening = True
+                obs, _reward, terminated, truncated, _info = env.step(action)
+                done = bool(terminated or truncated)
+            elif env.phase == "DRAW":
+                action_mask = env.legal_action_mask()
+                with torch.no_grad():
+                    obs_t = torch.as_tensor(obs, dtype=torch.float32, device=device_t).reshape(1, -1)
+                    q_values = agent.q_network(obs_t).detach().cpu().numpy()[0]
+                action = legal_argmax(q_values, action_mask)
+                obs, _reward, terminated, truncated, _info = env.step(action)
+                done = bool(terminated or truncated)
+            else:
+                skipped[f"unknown_phase_{env.phase}"] += 1
+                break
+        if steps_this_hand >= 100:
+            skipped["hand_step_cap"] += 1
 
     summary = summarize_decisions(records)
+    summary.update(summarize_aggression_decisions(aggression_records))
     report = {
-        "schemaVersion": "badugi-sixmax-opening-range-audit-v1",
+        "schemaVersion": "badugi-sixmax-opening-range-audit-v2",
         "createdAt": datetime.utcnow().isoformat(timespec="seconds") + "Z",
         "checkpoint": str(checkpoint),
         "device": str(device),
@@ -674,6 +888,7 @@ def audit_checkpoint(
         "samplesRequested": samples,
         "handsSeen": int(hands_seen),
         "samplesCollected": len(records),
+        "betRoundSamplesCollected": len(aggression_records),
         "skipped": dict(skipped),
         "model": {
             "obsDim": int(agent.obs_dim),
@@ -683,8 +898,9 @@ def audit_checkpoint(
         },
         "summary": summary,
         "warnings": build_warnings(summary),
-        "findings": build_findings(records),
+        "findings": build_findings(records, aggression_records),
         "decisions": records,
+        "betRoundDecisions": aggression_records,
     }
     return report
 

@@ -375,6 +375,26 @@ def _summarize_aggression_bucket(records: list[dict], *, include_vpip: bool = Tr
     return summary
 
 
+def _summarize_aggression_q_bucket(records: list[dict]) -> dict:
+    q_fold: list[float] = []
+    q_call: list[float] = []
+    q_raise: list[float] = []
+    for record in records:
+        q = record.get("qValues", {})
+        if "FOLD" in q:
+            q_fold.append(float(q["FOLD"]))
+        if "CALL" in q:
+            q_call.append(float(q["CALL"]))
+        if "RAISE" in q:
+            q_raise.append(float(q["RAISE"]))
+    return {
+        "samples": len(records),
+        "avgQFold": round(float(np.mean(q_fold)), 6) if q_fold else None,
+        "avgQCall": round(float(np.mean(q_call)), 6) if q_call else None,
+        "avgQRaise": round(float(np.mean(q_raise)), 6) if q_raise else None,
+    }
+
+
 def summarize_aggression_decisions(records: list[dict]) -> dict:
     by_bet_round_records: dict[str, list[dict]] = {round_key: [] for round_key in BET_ROUND_ORDER}
     by_bet_round_facing_action_records: dict[str, list[dict]] = {
@@ -387,14 +407,22 @@ def summarize_aggression_decisions(records: list[dict]) -> dict:
         for round_key in BET_ROUND_ORDER
         for hand_class in AGGRESSION_HAND_CLASS_ORDER
     }
+    by_bet_round_hand_class_position_records: dict[str, list[dict]] = {
+        f"{round_key}.{hand_class}.{position}": []
+        for round_key in BET_ROUND_ORDER
+        for hand_class in AGGRESSION_HAND_CLASS_ORDER
+        for position in POSITION_ORDER
+    }
 
     for record in records:
         round_key = record.get("betRound") or bet_round_key(int(record.get("drawRound", 0)))
         facing_action = record.get("facingAction") or facing_action_type(to_call=int(record.get("toCall", 0)))
         hand_class = record.get("aggressionHandClass") or aggression_hand_class(record)
+        position = record.get("position", "NA")
         by_bet_round_records.setdefault(round_key, []).append(record)
         by_bet_round_facing_action_records.setdefault(f"{round_key}.{facing_action}", []).append(record)
         by_bet_round_and_hand_class_records.setdefault(f"{round_key}.{hand_class}", []).append(record)
+        by_bet_round_hand_class_position_records.setdefault(f"{round_key}.{hand_class}.{position}", []).append(record)
 
     return {
         "byBetRound": {
@@ -412,6 +440,22 @@ def summarize_aggression_decisions(records: list[dict]) -> dict:
             f"{round_key}.{hand_class}": _summarize_aggression_bucket(
                 by_bet_round_and_hand_class_records.get(f"{round_key}.{hand_class}", []),
                 include_vpip=False,
+            )
+            for round_key in BET_ROUND_ORDER
+            for hand_class in AGGRESSION_HAND_CLASS_ORDER
+        },
+        "byBetRoundHandClassPosition": {
+            f"{round_key}.{hand_class}.{position}": _summarize_aggression_bucket(
+                by_bet_round_hand_class_position_records.get(f"{round_key}.{hand_class}.{position}", []),
+                include_vpip=False,
+            )
+            for round_key in BET_ROUND_ORDER
+            for hand_class in AGGRESSION_HAND_CLASS_ORDER
+            for position in POSITION_ORDER
+        },
+        "byBetRoundAndHandClassQ": {
+            f"{round_key}.{hand_class}": _summarize_aggression_q_bucket(
+                by_bet_round_and_hand_class_records.get(f"{round_key}.{hand_class}", [])
             )
             for round_key in BET_ROUND_ORDER
             for hand_class in AGGRESSION_HAND_CLASS_ORDER
@@ -559,6 +603,34 @@ def top_decisions(records: list[dict], predicate, *, limit: int = 20) -> list[di
     return [compact_decision(record) for record in matches[:limit]]
 
 
+def compact_weak_aggression_decision(record: dict) -> dict:
+    q = record.get("qValues", {})
+    return {
+        "round": record.get("betRound") or bet_round_key(int(record.get("drawRound", 0))),
+        "position": record.get("position"),
+        "hand": record.get("hand", {}).get("cards", []),
+        "handClass": record.get("aggressionHandClass") or aggression_hand_class(record),
+        "action": record.get("selectedActionName"),
+        "qFold": q.get("FOLD"),
+        "qCall": q.get("CALL"),
+        "qRaise": q.get("RAISE"),
+        "pot": record.get("pot"),
+        "toCall": record.get("toCall"),
+    }
+
+
+def top_weak_aggression_decisions(records: list[dict], predicate, *, limit: int = 20) -> list[dict]:
+    matches = [record for record in records if predicate(record)]
+    matches.sort(
+        key=lambda record: (
+            float(record.get("qValues", {}).get("RAISE", -1e9) or -1e9),
+            record["selectedQ"] if record.get("selectedQ") is not None else -1e9,
+        ),
+        reverse=True,
+    )
+    return [compact_weak_aggression_decision(record) for record in matches[:limit]]
+
+
 def build_findings(records: list[dict], aggression_records: list[dict] | None = None) -> dict:
     aggression_records = records if aggression_records is None else aggression_records
     return {
@@ -691,6 +763,38 @@ def build_findings(records: list[dict], aggression_records: list[dict] | None = 
                 and int(record["selectedAction"]) == FOLD
             ),
         ),
+        "round1_trash_raised_top20": top_weak_aggression_decisions(
+            aggression_records,
+            lambda record: (
+                (record.get("betRound") or bet_round_key(int(record.get("drawRound", 0)))) == "round1"
+                and (record.get("aggressionHandClass") or aggression_hand_class(record)) == "trash"
+                and is_pfr_action(int(record["selectedAction"]))
+            ),
+        ),
+        "round2_trash_raised_top20": top_weak_aggression_decisions(
+            aggression_records,
+            lambda record: (
+                (record.get("betRound") or bet_round_key(int(record.get("drawRound", 0)))) == "round2"
+                and (record.get("aggressionHandClass") or aggression_hand_class(record)) == "trash"
+                and is_pfr_action(int(record["selectedAction"]))
+            ),
+        ),
+        "round1_weak3_raised_top20": top_weak_aggression_decisions(
+            aggression_records,
+            lambda record: (
+                (record.get("betRound") or bet_round_key(int(record.get("drawRound", 0)))) == "round1"
+                and (record.get("aggressionHandClass") or aggression_hand_class(record)) == "weak_3card"
+                and is_pfr_action(int(record["selectedAction"]))
+            ),
+        ),
+        "round2_weak3_raised_top20": top_weak_aggression_decisions(
+            aggression_records,
+            lambda record: (
+                (record.get("betRound") or bet_round_key(int(record.get("drawRound", 0)))) == "round2"
+                and (record.get("aggressionHandClass") or aggression_hand_class(record)) == "weak_3card"
+                and is_pfr_action(int(record["selectedAction"]))
+            ),
+        ),
     }
 
 
@@ -788,6 +892,18 @@ def build_warnings(summary: dict) -> list[str]:
         warnings.append(
             f"strong_3card_round2_fold_rate > 60 ({strong_3card_round2.get('foldPct', 0.0):.2f})"
         )
+    round1_trash = by_round_hand.get("round1.trash", {})
+    if round1_trash.get("samples", 0) >= 20 and round1_trash.get("raisePct", 0.0) > 50.0:
+        warnings.append(f"round1_trash_raise_rate > 50 ({round1_trash.get('raisePct', 0.0):.2f})")
+    round2_trash = by_round_hand.get("round2.trash", {})
+    if round2_trash.get("samples", 0) >= 20 and round2_trash.get("raisePct", 0.0) > 40.0:
+        warnings.append(f"round2_trash_raise_rate > 40 ({round2_trash.get('raisePct', 0.0):.2f})")
+    round1_weak3 = by_round_hand.get("round1.weak_3card", {})
+    if round1_weak3.get("samples", 0) >= 20 and round1_weak3.get("raisePct", 0.0) > 50.0:
+        warnings.append(f"round1_weak3_raise_rate > 50 ({round1_weak3.get('raisePct', 0.0):.2f})")
+    round2_weak3 = by_round_hand.get("round2.weak_3card", {})
+    if round2_weak3.get("samples", 0) >= 20 and round2_weak3.get("raisePct", 0.0) > 40.0:
+        warnings.append(f"round2_weak3_raise_rate > 40 ({round2_weak3.get('raisePct', 0.0):.2f})")
     return warnings
 
 

@@ -36,6 +36,10 @@ def _record(
     draw_round=0,
     to_call=0,
     aggression_hand_class=None,
+    q_fold=0.0,
+    q_call=1.0,
+    q_raise=2.0,
+    pot=12,
 ):
     labels = labels or ["3-card"]
     made_cards = 4 if "made_badugi" in labels else 3 if any("3card" in label or label == "3-card" for label in labels) else 2
@@ -48,6 +52,7 @@ def _record(
         "facingAction": "facing_bet" if to_call > 0 else "unopened",
         "aggressionHandClass": aggression_hand_class,
         "drawRound": draw_round,
+        "pot": pot,
         "toCall": to_call,
         "selectedAction": action,
         "selectedActionName": {
@@ -57,7 +62,7 @@ def _record(
             BET: "BET",
             RAISE: "RAISE",
         }.get(action, str(action)),
-        "qValues": {"FOLD": 0.0, "CALL": 1.0, "RAISE": 2.0, "BET": 2.0, "CHECK": 1.0},
+        "qValues": {"FOLD": q_fold, "CALL": q_call, "RAISE": q_raise, "BET": q_raise, "CHECK": q_call},
         "selectedQ": float(action),
         "hand": {
             "cards": ["Ac", "2d", "3h", "4s"],
@@ -281,6 +286,75 @@ class BadugiSixMaxOpeningRangeAuditTest(unittest.TestCase):
         self.assertEqual(made_round3["samples"], 1)
         self.assertEqual(made_round3["callPct"], 100.0)
 
+    def test_aggression_q_summary_averages_by_round_and_hand_class(self):
+        summary = summarize_aggression_decisions(
+            [
+                _record(
+                    "BTN",
+                    RAISE,
+                    draw_round=1,
+                    labels=["3-card", "weak_3card"],
+                    aggression_hand_class="weak_3card",
+                    q_fold=-1.0,
+                    q_call=0.5,
+                    q_raise=3.0,
+                ),
+                _record(
+                    "CO",
+                    CALL,
+                    draw_round=1,
+                    labels=["3-card", "weak_3card"],
+                    aggression_hand_class="weak_3card",
+                    q_fold=1.0,
+                    q_call=1.5,
+                    q_raise=5.0,
+                ),
+                _record(
+                    "SB",
+                    BET,
+                    draw_round=2,
+                    labels=["1-card", "trash"],
+                    trash=True,
+                    aggression_hand_class="trash",
+                    q_fold=2.0,
+                    q_call=4.0,
+                    q_raise=8.0,
+                ),
+            ]
+        )
+
+        weak3_q = summary["byBetRoundAndHandClassQ"]["round1.weak_3card"]
+        trash_q = summary["byBetRoundAndHandClassQ"]["round2.trash"]
+
+        self.assertEqual(weak3_q["samples"], 2)
+        self.assertEqual(weak3_q["avgQFold"], 0.0)
+        self.assertEqual(weak3_q["avgQCall"], 1.0)
+        self.assertEqual(weak3_q["avgQRaise"], 4.0)
+        self.assertEqual(trash_q["avgQFold"], 2.0)
+        self.assertEqual(trash_q["avgQCall"], 4.0)
+        self.assertEqual(trash_q["avgQRaise"], 8.0)
+
+    def test_by_bet_round_hand_class_position_summary(self):
+        summary = summarize_aggression_decisions(
+            [
+                _record("BTN", RAISE, draw_round=1, labels=["3-card", "weak_3card"], aggression_hand_class="weak_3card"),
+                _record("BTN", CALL, draw_round=1, labels=["3-card", "weak_3card"], aggression_hand_class="weak_3card"),
+                _record("CO", FOLD, draw_round=1, labels=["3-card", "weak_3card"], aggression_hand_class="weak_3card"),
+                _record("SB", BET, draw_round=2, labels=["1-card", "trash"], trash=True, aggression_hand_class="trash"),
+            ]
+        )
+
+        btn_bucket = summary["byBetRoundHandClassPosition"]["round1.weak_3card.BTN"]
+        co_bucket = summary["byBetRoundHandClassPosition"]["round1.weak_3card.CO"]
+        sb_trash_bucket = summary["byBetRoundHandClassPosition"]["round2.trash.SB"]
+
+        self.assertEqual(btn_bucket["samples"], 2)
+        self.assertEqual(btn_bucket["callPct"], 50.0)
+        self.assertEqual(btn_bucket["raisePct"], 50.0)
+        self.assertEqual(co_bucket["samples"], 1)
+        self.assertEqual(co_bucket["foldPct"], 100.0)
+        self.assertEqual(sb_trash_bucket["raisePct"], 100.0)
+
     def test_aggression_warnings_cover_late_round_overfold_and_underraise(self):
         def warnings_for(aggression_records):
             summary = summarize_decisions([_record("BTN", FOLD)])
@@ -335,6 +409,52 @@ class BadugiSixMaxOpeningRangeAuditTest(unittest.TestCase):
         self.assertTrue(any("made_badugi_round3_raise_rate < 25" in warning for warning in warnings))
         self.assertTrue(any("strong_3card_round2_fold_rate > 60" in warning for warning in warnings))
 
+    def test_round1_trash_raise_rate_warning_requires_20_samples(self):
+        def warnings_for(sample_count):
+            summary = summarize_decisions([_record("BTN", FOLD)])
+            summary.update(
+                summarize_aggression_decisions(
+                    [
+                        _record(
+                            "BTN",
+                            BET,
+                            draw_round=1,
+                            labels=["1-card", "trash"],
+                            trash=True,
+                            aggression_hand_class="trash",
+                        )
+                        for _ in range(sample_count)
+                    ]
+                )
+            )
+            return build_warnings(summary)
+
+        self.assertFalse(any("round1_trash_raise_rate > 50" in warning for warning in warnings_for(19)))
+        self.assertTrue(any("round1_trash_raise_rate > 50" in warning for warning in warnings_for(20)))
+
+    def test_round2_trash_raise_rate_warning_requires_20_samples(self):
+        def warnings_for(sample_count):
+            summary = summarize_decisions([_record("BTN", FOLD)])
+            summary.update(
+                summarize_aggression_decisions(
+                    [
+                        _record(
+                            "CO",
+                            RAISE,
+                            draw_round=2,
+                            labels=["1-card", "trash"],
+                            trash=True,
+                            aggression_hand_class="trash",
+                        )
+                        for _ in range(sample_count)
+                    ]
+                )
+            )
+            return build_warnings(summary)
+
+        self.assertFalse(any("round2_trash_raise_rate > 40" in warning for warning in warnings_for(19)))
+        self.assertTrue(any("round2_trash_raise_rate > 40" in warning for warning in warnings_for(20)))
+
     def test_aggression_findings_include_requested_top20_buckets(self):
         opening_records = [_record("BTN", FOLD)]
         aggression_records = [
@@ -350,6 +470,45 @@ class BadugiSixMaxOpeningRangeAuditTest(unittest.TestCase):
         self.assertEqual(len(findings["round3_made_badugi_checked"]), 1)
         self.assertEqual(len(findings["round3_made_badugi_called_not_raised"]), 1)
         self.assertEqual(len(findings["round3_strong_3card_folded"]), 1)
+
+    def test_weak_hand_raised_findings_include_q_and_context(self):
+        opening_records = [_record("BTN", FOLD)]
+        aggression_records = [
+            _record(
+                "BTN",
+                BET,
+                draw_round=1,
+                labels=["1-card", "trash"],
+                trash=True,
+                aggression_hand_class="trash",
+                q_fold=-1.0,
+                q_call=0.0,
+                q_raise=9.0,
+                pot=44,
+                to_call=0,
+            ),
+            _record("CO", RAISE, draw_round=2, labels=["1-card", "trash"], trash=True, aggression_hand_class="trash"),
+            _record("SB", BET, draw_round=1, labels=["3-card", "weak_3card"], aggression_hand_class="weak_3card"),
+            _record("BB", RAISE, draw_round=2, labels=["3-card", "weak_3card"], aggression_hand_class="weak_3card"),
+        ]
+
+        findings = build_findings(opening_records, aggression_records)
+        round1_trash = findings["round1_trash_raised_top20"][0]
+
+        self.assertEqual(len(findings["round1_trash_raised_top20"]), 1)
+        self.assertEqual(len(findings["round2_trash_raised_top20"]), 1)
+        self.assertEqual(len(findings["round1_weak3_raised_top20"]), 1)
+        self.assertEqual(len(findings["round2_weak3_raised_top20"]), 1)
+        self.assertEqual(round1_trash["round"], "round1")
+        self.assertEqual(round1_trash["position"], "BTN")
+        self.assertEqual(round1_trash["hand"], ["Ac", "2d", "3h", "4s"])
+        self.assertEqual(round1_trash["handClass"], "trash")
+        self.assertEqual(round1_trash["action"], "BET")
+        self.assertEqual(round1_trash["qFold"], -1.0)
+        self.assertEqual(round1_trash["qCall"], 0.0)
+        self.assertEqual(round1_trash["qRaise"], 9.0)
+        self.assertEqual(round1_trash["pot"], 44)
+        self.assertEqual(round1_trash["toCall"], 0)
 
     def test_warning_for_overall_vpip_above_40(self):
         summary = summarize_decisions(
@@ -488,6 +647,8 @@ class BadugiSixMaxOpeningRangeAuditTest(unittest.TestCase):
             self.assertIn("byBetRound", report["summary"])
             self.assertIn("round2.facing_bet", report["summary"]["byBetRoundFacingAction"])
             self.assertIn("round3.made_badugi", report["summary"]["byBetRoundAndHandClass"])
+            self.assertIn("round1.weak_3card.BTN", report["summary"]["byBetRoundHandClassPosition"])
+            self.assertIn("round1.weak_3card", report["summary"]["byBetRoundAndHandClassQ"])
             self.assertEqual(report["model"]["obsDim"], 96)
 
 

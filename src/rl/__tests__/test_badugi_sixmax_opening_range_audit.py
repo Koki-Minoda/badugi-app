@@ -1,6 +1,8 @@
+import io
+import json
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 import torch
@@ -650,6 +652,50 @@ class BadugiSixMaxOpeningRangeAuditTest(unittest.TestCase):
             self.assertIn("round1.weak_3card.BTN", report["summary"]["byBetRoundHandClassPosition"])
             self.assertIn("round1.weak_3card", report["summary"]["byBetRoundAndHandClassQ"])
             self.assertEqual(report["model"]["obsDim"], 96)
+
+    def test_cli_progress_and_checkpoint_keep_stdout_json_compatible(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            checkpoint = root / "tiny_badugi_sixmax.pt"
+            output_json = root / "audit.json"
+            agent = DQNAgent(obs_dim=96, n_actions=6, hidden_dim=16, device="cpu")
+            with torch.no_grad():
+                for param in agent.q_network.parameters():
+                    param.zero_()
+                agent.q_network.net[-1].bias.copy_(torch.tensor([0.0, 8.0, 10.0, 9.0, 7.0, 6.0]))
+                agent.target_network.load_state_dict(agent.q_network.state_dict())
+            agent.save(str(checkpoint))
+
+            stdout = io.StringIO()
+            stderr = io.StringIO()
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                report = audit_main(
+                    [
+                        "--checkpoint",
+                        str(checkpoint),
+                        "--samples",
+                        "1",
+                        "--device",
+                        "cpu",
+                        "--output-json",
+                        str(output_json),
+                        "--progress-interval",
+                        "1",
+                        "--checkpoint-output-interval",
+                        "1",
+                    ]
+                )
+
+            stdout_payload = json.loads(stdout.getvalue())
+            output_payload = json.loads(output_json.read_text(encoding="utf8"))
+
+            self.assertEqual(stdout_payload["schemaVersion"], "badugi-sixmax-opening-range-audit-v2")
+            self.assertEqual(stdout_payload["samplesCollected"], report["samplesCollected"])
+            self.assertEqual(output_payload["samplesCollected"], report["samplesCollected"])
+            self.assertIn("[progress]", stderr.getvalue())
+            self.assertIn("%", stderr.getvalue())
+            self.assertIn("eta=", stderr.getvalue())
+            self.assertIn("[checkpoint]", stderr.getvalue())
 
 
 if __name__ == "__main__":

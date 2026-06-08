@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
+import time
 from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass
 from datetime import datetime
@@ -907,94 +909,44 @@ def build_warnings(summary: dict) -> list[str]:
     return warnings
 
 
-def audit_checkpoint(
+def _format_duration(seconds: float | None) -> str:
+    if seconds is None:
+        return "unknown"
+    total = max(0, int(seconds))
+    hours, remainder = divmod(total, 3600)
+    minutes, secs = divmod(remainder, 60)
+    if hours:
+        return f"{hours}h{minutes:02d}m{secs:02d}s"
+    if minutes:
+        return f"{minutes}m{secs:02d}s"
+    return f"{secs}s"
+
+
+def _write_report_json(path: Path, report: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = json.dumps(report, indent=2, sort_keys=True) + "\n"
+    tmp_path = path.with_name(f".{path.name}.tmp")
+    tmp_path.write_text(payload, encoding="utf8")
+    os.replace(tmp_path, path)
+
+
+def build_report(
     *,
     checkpoint: Path,
-    episodes: int | None = None,
-    samples: int | None = None,
-    device: str = "cpu",
-    seed: int = 20260607,
+    device: str,
+    seed: int,
+    episodes: int | None,
+    samples: int | None,
+    hands_seen: int,
+    skipped: Counter,
+    records: list[dict],
+    aggression_records: list[dict],
+    agent: DQNAgent,
+    obs_dim: int,
 ) -> dict:
-    if episodes is None and samples is None:
-        raise ValueError("episodes or samples is required")
-    agent = DQNAgent.load(str(checkpoint), device=device)
-    env = SixMaxBadugiEnv(seed=seed, opp_epsilon=0.0)
-    env.set_agents(agent, agent)
-    obs_dim = int(env.observation_space.shape[0])
-    n_actions = int(env.action_space.n)
-    if int(agent.obs_dim) != obs_dim or int(agent.n_actions) != n_actions:
-        raise ValueError(
-            f"checkpoint shape mismatch: checkpoint obs_dim={agent.obs_dim} n_actions={agent.n_actions}, "
-            f"env obs_dim={obs_dim} n_actions={n_actions}"
-        )
-    if obs_dim != BADUGI_OBSERVATION_VECTOR_SIZE:
-        raise ValueError(f"unexpected Badugi observation size: {obs_dim}")
-
-    records: list[dict] = []
-    aggression_records: list[dict] = []
-    hands_seen = 0
-    skipped = Counter()
-    max_hands = int(episodes) if episodes is not None else max(int(samples or 0) * 50, int(samples or 0) + 50)
-    target_samples = int(samples) if samples is not None else None
-    device_t = torch.device(device)
-
-    while hands_seen < max_hands and (target_samples is None or len(records) < target_samples):
-        hands_seen += 1
-        obs, _ = env.reset()
-        if env.phase != "BET" or env.draw_round != 0:
-            skipped["not_initial_predraw_bet"] += 1
-            continue
-        if not getattr(env, "bet_queue", None) or env.bet_queue[0] != env.hero_seat:
-            skipped["hero_not_to_act"] += 1
-            continue
-        recorded_opening = False
-        done = False
-        steps_this_hand = 0
-        while not done and steps_this_hand < 100:
-            steps_this_hand += 1
-            if env.phase == "BET":
-                if not getattr(env, "bet_queue", None) or env.bet_queue[0] != env.hero_seat:
-                    skipped["hero_not_to_act_midhand"] += 1
-                    break
-                action_mask = env.legal_action_mask()
-                with torch.no_grad():
-                    obs_t = torch.as_tensor(obs, dtype=torch.float32, device=device_t).reshape(1, -1)
-                    q_values = agent.q_network(obs_t).detach().cpu().numpy()[0]
-                action = legal_argmax(q_values, action_mask)
-                aggression_record = make_decision_record(
-                    env=env,
-                    obs=obs,
-                    q_values=q_values,
-                    action_mask=action_mask,
-                    action=action,
-                    sample_index=len(aggression_records),
-                )
-                aggression_records.append(aggression_record)
-                if not recorded_opening and int(env.draw_round) == 0:
-                    opening_record = dict(aggression_record)
-                    opening_record["sampleIndex"] = len(records)
-                    opening_record["betDecisionIndex"] = int(aggression_record["sampleIndex"])
-                    records.append(opening_record)
-                    recorded_opening = True
-                obs, _reward, terminated, truncated, _info = env.step(action)
-                done = bool(terminated or truncated)
-            elif env.phase == "DRAW":
-                action_mask = env.legal_action_mask()
-                with torch.no_grad():
-                    obs_t = torch.as_tensor(obs, dtype=torch.float32, device=device_t).reshape(1, -1)
-                    q_values = agent.q_network(obs_t).detach().cpu().numpy()[0]
-                action = legal_argmax(q_values, action_mask)
-                obs, _reward, terminated, truncated, _info = env.step(action)
-                done = bool(terminated or truncated)
-            else:
-                skipped[f"unknown_phase_{env.phase}"] += 1
-                break
-        if steps_this_hand >= 100:
-            skipped["hand_step_cap"] += 1
-
     summary = summarize_decisions(records)
     summary.update(summarize_aggression_decisions(aggression_records))
-    report = {
+    return {
         "schemaVersion": "badugi-sixmax-opening-range-audit-v2",
         "createdAt": datetime.utcnow().isoformat(timespec="seconds") + "Z",
         "checkpoint": str(checkpoint),
@@ -1018,7 +970,171 @@ def audit_checkpoint(
         "decisions": records,
         "betRoundDecisions": aggression_records,
     }
-    return report
+
+
+def progress_line(
+    *,
+    hands_seen: int,
+    max_hands: int,
+    samples_requested: int | None,
+    samples_collected: int,
+    bet_round_samples_collected: int,
+    started_at: float,
+) -> str:
+    elapsed = max(0.0, time.monotonic() - started_at)
+    if samples_requested is not None:
+        completed = samples_collected
+        target = max(1, int(samples_requested))
+        unit = "samples"
+    else:
+        completed = hands_seen
+        target = max(1, int(max_hands))
+        unit = "hands"
+    progress = min(1.0, float(completed) / float(target))
+    eta = (elapsed / progress * (1.0 - progress)) if progress > 0 else None
+    return (
+        f"[progress] {progress * 100.0:6.2f}% "
+        f"{completed}/{target} {unit} "
+        f"handsSeen={hands_seen} "
+        f"samplesCollected={samples_collected} "
+        f"betRoundSamplesCollected={bet_round_samples_collected} "
+        f"elapsed={_format_duration(elapsed)} "
+        f"eta={_format_duration(eta)}"
+    )
+
+
+def audit_checkpoint(
+    *,
+    checkpoint: Path,
+    episodes: int | None = None,
+    samples: int | None = None,
+    device: str = "cpu",
+    seed: int = 20260607,
+    output_json: Path | None = None,
+    progress_interval: int = 10000,
+    checkpoint_output_interval: int = 100000,
+) -> dict:
+    if episodes is None and samples is None:
+        raise ValueError("episodes or samples is required")
+    agent = DQNAgent.load(str(checkpoint), device=device)
+    env = SixMaxBadugiEnv(seed=seed, opp_epsilon=0.0)
+    env.set_agents(agent, agent)
+    obs_dim = int(env.observation_space.shape[0])
+    n_actions = int(env.action_space.n)
+    if int(agent.obs_dim) != obs_dim or int(agent.n_actions) != n_actions:
+        raise ValueError(
+            f"checkpoint shape mismatch: checkpoint obs_dim={agent.obs_dim} n_actions={agent.n_actions}, "
+            f"env obs_dim={obs_dim} n_actions={n_actions}"
+        )
+    if obs_dim != BADUGI_OBSERVATION_VECTOR_SIZE:
+        raise ValueError(f"unexpected Badugi observation size: {obs_dim}")
+
+    records: list[dict] = []
+    aggression_records: list[dict] = []
+    hands_seen = 0
+    skipped = Counter()
+    max_hands = int(episodes) if episodes is not None else max(int(samples or 0) * 50, int(samples or 0) + 50)
+    target_samples = int(samples) if samples is not None else None
+    device_t = torch.device(device)
+    started_at = time.monotonic()
+
+    def current_report() -> dict:
+        return build_report(
+            checkpoint=checkpoint,
+            device=device,
+            seed=seed,
+            episodes=episodes,
+            samples=samples,
+            hands_seen=hands_seen,
+            skipped=skipped,
+            records=records,
+            aggression_records=aggression_records,
+            agent=agent,
+            obs_dim=obs_dim,
+        )
+
+    def maybe_emit_progress_and_checkpoint() -> None:
+        if progress_interval > 0 and hands_seen % progress_interval == 0:
+            print(
+                progress_line(
+                    hands_seen=hands_seen,
+                    max_hands=max_hands,
+                    samples_requested=target_samples,
+                    samples_collected=len(records),
+                    bet_round_samples_collected=len(aggression_records),
+                    started_at=started_at,
+                ),
+                file=sys.stderr,
+                flush=True,
+            )
+        if output_json is not None and checkpoint_output_interval > 0 and hands_seen % checkpoint_output_interval == 0:
+            _write_report_json(output_json, current_report())
+            print(f"[checkpoint] wrote intermediate audit JSON to {output_json}", file=sys.stderr, flush=True)
+
+    try:
+        while hands_seen < max_hands and (target_samples is None or len(records) < target_samples):
+            hands_seen += 1
+            try:
+                obs, _ = env.reset()
+                if env.phase != "BET" or env.draw_round != 0:
+                    skipped["not_initial_predraw_bet"] += 1
+                    continue
+                if not getattr(env, "bet_queue", None) or env.bet_queue[0] != env.hero_seat:
+                    skipped["hero_not_to_act"] += 1
+                    continue
+                recorded_opening = False
+                done = False
+                steps_this_hand = 0
+                while not done and steps_this_hand < 100:
+                    steps_this_hand += 1
+                    if env.phase == "BET":
+                        if not getattr(env, "bet_queue", None) or env.bet_queue[0] != env.hero_seat:
+                            skipped["hero_not_to_act_midhand"] += 1
+                            break
+                        action_mask = env.legal_action_mask()
+                        with torch.no_grad():
+                            obs_t = torch.as_tensor(obs, dtype=torch.float32, device=device_t).reshape(1, -1)
+                            q_values = agent.q_network(obs_t).detach().cpu().numpy()[0]
+                        action = legal_argmax(q_values, action_mask)
+                        aggression_record = make_decision_record(
+                            env=env,
+                            obs=obs,
+                            q_values=q_values,
+                            action_mask=action_mask,
+                            action=action,
+                            sample_index=len(aggression_records),
+                        )
+                        aggression_records.append(aggression_record)
+                        if not recorded_opening and int(env.draw_round) == 0:
+                            opening_record = dict(aggression_record)
+                            opening_record["sampleIndex"] = len(records)
+                            opening_record["betDecisionIndex"] = int(aggression_record["sampleIndex"])
+                            records.append(opening_record)
+                            recorded_opening = True
+                        obs, _reward, terminated, truncated, _info = env.step(action)
+                        done = bool(terminated or truncated)
+                    elif env.phase == "DRAW":
+                        action_mask = env.legal_action_mask()
+                        with torch.no_grad():
+                            obs_t = torch.as_tensor(obs, dtype=torch.float32, device=device_t).reshape(1, -1)
+                            q_values = agent.q_network(obs_t).detach().cpu().numpy()[0]
+                        action = legal_argmax(q_values, action_mask)
+                        obs, _reward, terminated, truncated, _info = env.step(action)
+                        done = bool(terminated or truncated)
+                    else:
+                        skipped[f"unknown_phase_{env.phase}"] += 1
+                        break
+                if steps_this_hand >= 100:
+                    skipped["hand_step_cap"] += 1
+            finally:
+                maybe_emit_progress_and_checkpoint()
+    except KeyboardInterrupt:
+        if output_json is not None:
+            _write_report_json(output_json, current_report())
+            print(f"[interrupt] saved partial audit JSON to {output_json}", file=sys.stderr, flush=True)
+        raise
+
+    return current_report()
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -1030,22 +1146,29 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--seed", type=int, default=20260607)
     parser.add_argument("--output-json", type=Path)
+    parser.add_argument("--progress-interval", type=int, default=10000)
+    parser.add_argument("--checkpoint-output-interval", type=int, default=100000)
     return parser.parse_args(argv)
 
 
 def main(argv: Sequence[str] | None = None) -> dict:
     args = parse_args(argv)
-    report = audit_checkpoint(
-        checkpoint=args.checkpoint,
-        episodes=args.episodes,
-        samples=args.samples,
-        device=args.device,
-        seed=args.seed,
-    )
+    try:
+        report = audit_checkpoint(
+            checkpoint=args.checkpoint,
+            episodes=args.episodes,
+            samples=args.samples,
+            device=args.device,
+            seed=args.seed,
+            output_json=args.output_json,
+            progress_interval=args.progress_interval,
+            checkpoint_output_interval=args.checkpoint_output_interval,
+        )
+    except KeyboardInterrupt as exc:
+        raise SystemExit(130) from exc
     payload = json.dumps(report, indent=2, sort_keys=True) + "\n"
     if args.output_json:
-        args.output_json.parent.mkdir(parents=True, exist_ok=True)
-        args.output_json.write_text(payload, encoding="utf8")
+        _write_report_json(args.output_json, report)
     print(payload, end="")
     return report
 

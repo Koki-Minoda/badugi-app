@@ -249,6 +249,50 @@ def test_sb_completion_weak_3card_fold_unchanged():
     assert reward < 0.0
 
 
+@pytest.mark.parametrize(
+    ("draw_round", "hero_hand", "expected"),
+    [
+        (1, [(0, 0), (3, 1), (7, 2), (12, 2)], 0.10),
+        (2, [(0, 0), (4, 1), (10, 2), (12, 2)], 0.20),
+    ],
+)
+def test_postdraw_weak_trash_folds_get_positive_fold_shaping(draw_round, hero_hand, expected):
+    env = SixMaxBadugiEnv(seed=197, opp_epsilon=0.0)
+    env.reset(seed=197)
+    _set_predraw_spot(
+        env,
+        position="UTG",
+        hero_hand=hero_hand,
+        draw_round=draw_round,
+        current_bet=4,
+    )
+    env.pot = 20
+
+    _done, reward, _info = env._apply_action(env.hero_seat, FOLD)
+
+    assert reward == pytest.approx(expected)
+
+
+def test_postdraw_strong_3card_fold_uses_existing_equity_shaping():
+    strong_3card_seven_high = [(0, 0), (3, 1), (6, 2), (12, 2)]
+    env = SixMaxBadugiEnv(seed=199, opp_epsilon=0.0)
+    env.reset(seed=199)
+    _set_predraw_spot(
+        env,
+        position="UTG",
+        hero_hand=strong_3card_seven_high,
+        draw_round=1,
+        current_bet=4,
+    )
+    env.pot = 20
+
+    _done, reward, _info = env._apply_action(env.hero_seat, FOLD)
+
+    assert reward < 0.0
+    assert reward != pytest.approx(0.10)
+    assert reward != pytest.approx(0.20)
+
+
 def test_weak_3card_early_raise_gets_penalty():
     weak_3card_eight_high = [(0, 0), (3, 1), (7, 2), (12, 2)]
     env = SixMaxBadugiEnv(seed=23, opp_epsilon=0.0)

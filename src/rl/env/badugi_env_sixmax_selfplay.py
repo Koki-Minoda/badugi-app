@@ -373,6 +373,11 @@ class SixMaxBadugiEnv:
         p = self.players[seat]
         to_call = max(0, self.current_bet - p["bet"])
         f = _evaluate_badugi_features(p["hand"])
+        high = (
+            f["highest_rank"]
+            if f["highest_rank"] is not None
+            else 13
+        )
         sb_facing_open_weak_3card_fold = (
             self.phase == "BET"
             and self.draw_round == 0
@@ -383,6 +388,24 @@ class SixMaxBadugiEnv:
         )
         if sb_facing_open_weak_3card_fold:
             return 0.10 if f["highest_rank"] >= 9 else 0.0
+
+        if self.draw_round in (1, 2) and to_call > 0:
+            is_postdraw_weak_3card = (
+                f["count"] == 3
+                and 7 <= high <= 9
+            )
+
+            is_postdraw_trash = (
+                f["count"] <= 1
+                or (f["count"] == 2 and high >= 9)
+                or (f["count"] == 3 and high >= 10)
+            )
+
+            if is_postdraw_trash:
+                return 0.20
+
+            if is_postdraw_weak_3card:
+                return 0.10
 
         strength = float(f["strength"])
         pot_odds = to_call / max(1, self.pot + to_call) if to_call > 0 else 0.0

@@ -39,6 +39,7 @@ from rl.env.draw_lowball_env_sixmax_selfplay import (
     RAISE,
     SixMaxDrawLowballEnv,
 )
+from rl.training.draw_lowball_starting_ranges import position_name, sixmax_draw_teacher_action
 from rl.utils.replay_buffer import ReplayBuffer
 
 
@@ -73,9 +74,14 @@ class DrawLowballSixMaxConfig:
     seed: int | None = None
     fold_margin: float = 0.20
     fold_margin_weight: float = 0.40
-    call_margin: float = 0.20
-    call_margin_weight: float = 0.40
     fold_margin_interval: int = 8
+    # Teacher-fold injection: when teacher recommends FOLD but hero didn't fold,
+    # inject a FOLD transition into fold_buffer to keep it populated even when
+    # the model's own fold rate is low (replaces the defunct call_margin mechanism).
+    teacher_fold_inject_prob: float = 0.30
+    teacher_warmup_episodes: int = 5_000
+    teacher_epsilon: float = 0.50
+    teacher_epsilon_floor: float = 0.15
 
 
 def variant_params(variant_id: str) -> tuple[str, int]:
@@ -141,24 +147,18 @@ def _terminal_win(terminal_reason: str | None, terminal_reward: float) -> bool:
 def _add_fold_margin_transition(
     *,
     fold_buffer: ReplayBuffer,
-    call_buffer: ReplayBuffer,
     obs: np.ndarray,
     action: int,
     reward: float,
     next_obs: np.ndarray,
     done: bool,
     next_action_mask: np.ndarray,
-) -> str | None:
-    """Route hero-fold transitions to the margin buffer with the right direction."""
-    if action != FOLD:
-        return None
-    if reward > 0:
-        fold_buffer.add(obs, FOLD, reward, next_obs, done, next_action_mask=next_action_mask)
-        return "fold"
-    if reward < 0:
-        call_buffer.add(obs, CALL, reward, next_obs, done, next_action_mask=next_action_mask)
-        return "call"
-    return None
+) -> bool:
+    """Add profitable hero-fold transitions to the fold margin buffer."""
+    if action != FOLD or reward <= 0:
+        return False
+    fold_buffer.add(obs, FOLD, reward, next_obs, done, next_action_mask=next_action_mask)
+    return True
 
 
 class _LazyDQNAgent:
@@ -371,8 +371,7 @@ def train_draw_lowball_sixmax_dqn(
     opp.target_network.load_state_dict(hero.target_network.state_dict())
 
     replay = ReplayBuffer(capacity=cfg.buffer_capacity, seed=cfg.seed)
-    fold_buffer = ReplayBuffer(capacity=10_000, alpha=0.0)
-    call_buffer = ReplayBuffer(capacity=10_000, alpha=0.0)
+    fold_buffer = ReplayBuffer(capacity=20_000, alpha=0.0)
     env = SixMaxDrawLowballEnv(
         family=family,
         max_draws=max_draws,
@@ -381,18 +380,39 @@ def train_draw_lowball_sixmax_dqn(
     )
     env.set_agents(hero, opp)
 
+    if cfg.teacher_warmup_episodes > 0:
+        teacher_rewards: list[float] = []
+        for ep in range(1, cfg.teacher_warmup_episodes + 1):
+            t_seed = None if cfg.seed is None else cfg.seed + ep
+            t_obs, _ = env.reset(seed=t_seed)
+            t_total = 0.0
+            for _ in range(cfg.max_steps_per_episode):
+                pos = position_name(env.hero_seat, env.dealer_seat)
+                t_action = sixmax_draw_teacher_action(env, position=pos, max_draws=max_draws)
+                t_next, t_reward, t_term, t_trunc, _ = env.step(t_action)
+                t_done = bool(t_term or t_trunc)
+                replay.add(t_obs, t_action, t_reward, t_next, t_done,
+                           next_action_mask=env.legal_action_mask())
+                t_obs = t_next
+                t_total += float(t_reward)
+                if t_done:
+                    break
+            teacher_rewards.append(t_total)
+        print(
+            f"[DrawLowball6max teacher warmup] variant={cfg.variant_id} "
+            f"episodes={cfg.teacher_warmup_episodes} buffer={len(replay)} "
+            f"avg_reward={sum(teacher_rewards) / max(1, len(teacher_rewards)):.3f}"
+        )
+
     rewards: deque[float] = deque(maxlen=100_000)
     global_step = 0
     loss = 0.0
     mean_q = 0.0
     fold_margin_loss = 0.0
-    call_margin_loss = 0.0
     fold_margin_satisfied = 0.0
-    call_margin_satisfied = 0.0
     fold_margin_updates = 0
-    call_margin_updates = 0
     fold_margin_transitions = 0
-    call_margin_transitions = 0
+    teacher_fold_injections = 0
     opponent_updates = 0
     last_checkpoint: Path | None = None
 
@@ -441,7 +461,15 @@ def train_draw_lowball_sixmax_dqn(
         for _step in range(cfg.max_steps_per_episode):
             global_step += 1
             mask = env.legal_action_mask()
-            action = hero.act(obs, epsilon, action_mask=mask)
+            teacher_eps = max(
+                cfg.teacher_epsilon_floor,
+                cfg.teacher_epsilon * (epsilon / max(1e-9, cfg.epsilon_start)),
+            )
+            if random.random() < teacher_eps:
+                pos = position_name(env.hero_seat, env.dealer_seat)
+                action = sixmax_draw_teacher_action(env, position=pos, max_draws=max_draws)
+            else:
+                action = hero.act(obs, epsilon, action_mask=mask)
 
             if env.phase == "BET":
                 total_bet_decisions += 1
@@ -468,26 +496,37 @@ def train_draw_lowball_sixmax_dqn(
                     if env.draw_round == 0:
                         episode_vpip = True
 
+            # Teacher-fold injection: when pre-draw BET phase and teacher says FOLD
+            # but hero didn't fold, probabilistically add a FOLD transition to
+            # fold_buffer. Keeps fold_buffer populated even when the model folds rarely.
+            if (
+                env.phase == "BET"
+                and int(env.draw_round) == 0
+                and action != FOLD
+                and cfg.teacher_fold_inject_prob > 0
+                and random.random() < cfg.teacher_fold_inject_prob
+            ):
+                t_pos = position_name(env.hero_seat, env.dealer_seat)
+                if sixmax_draw_teacher_action(env, position=t_pos, max_draws=max_draws) == FOLD:
+                    fold_buffer.add(obs, FOLD, 0.20, obs, False, next_action_mask=mask)
+                    teacher_fold_injections += 1
+
             next_obs, reward, terminated, truncated, info = env.step(action)
             done = bool(terminated or truncated)
             next_mask = env.legal_action_mask()
             replay.add(obs, action, reward, next_obs, done, next_action_mask=next_mask)
             if action == FOLD and done:
                 if isinstance(info, dict) and info.get("terminal_reason") == "hero_fold":
-                    routed_margin = _add_fold_margin_transition(
+                    if _add_fold_margin_transition(
                         fold_buffer=fold_buffer,
-                        call_buffer=call_buffer,
                         obs=obs,
                         action=action,
                         reward=reward,
                         next_obs=next_obs,
                         done=done,
                         next_action_mask=next_mask,
-                    )
-                    if routed_margin == "fold":
+                    ):
                         fold_margin_transitions += 1
-                    elif routed_margin == "call":
-                        call_margin_transitions += 1
             obs = next_obs
             total_reward += float(reward)
 
@@ -509,14 +548,6 @@ def train_draw_lowball_sixmax_dqn(
                             loss_weight=cfg.fold_margin_weight,
                         )
                         fold_margin_updates += 1
-                    if len(call_buffer) >= margin_batch:
-                        call_margin_loss, call_margin_satisfied = hero.action_margin_update(
-                            call_buffer.sample(margin_batch),
-                            avoid_action=FOLD,
-                            margin=cfg.call_margin,
-                            loss_weight=cfg.call_margin_weight,
-                        )
-                        call_margin_updates += 1
 
             if done:
                 terminal_reward = float(reward)
@@ -559,10 +590,9 @@ def train_draw_lowball_sixmax_dqn(
                 f"betRaiseRate={_rate(window_bets + window_raises, window_bet_decisions):.3f} "
                 f"vpip={_rate(window_vpip_hands, cfg.log_interval):.3f} "
                 f"epsilon={epsilon:.3f} replay={len(replay)} loss={loss:.5f} q={mean_q:.3f} "
-                f"foldBuf={len(fold_buffer)} callBuf={len(call_buffer)} "
+                f"foldBuf={len(fold_buffer)} teacherFoldInj={teacher_fold_injections} "
                 f"foldMarginLoss={fold_margin_loss:.5f} foldMarginSat={fold_margin_satisfied:.3f} "
-                f"callMarginLoss={call_margin_loss:.5f} callMarginSat={call_margin_satisfied:.3f} "
-                f"marginUpdates={fold_margin_updates}/{call_margin_updates} "
+                f"marginUpdates={fold_margin_updates} "
                 f"oppUpdates={opponent_updates} eps/s={episode / max(1e-9, elapsed):.2f}"
             )
             window_bet_decisions = 0
@@ -615,24 +645,22 @@ def train_draw_lowball_sixmax_dqn(
         "replaySize": int(len(replay)),
         "replayCapacity": int(replay.capacity),
         "foldMarginBufferSize": int(len(fold_buffer)),
-        "callMarginBufferSize": int(len(call_buffer)),
         "foldMarginTransitions": int(fold_margin_transitions),
-        "callMarginTransitions": int(call_margin_transitions),
+        "teacherFoldInjections": int(teacher_fold_injections),
         "foldMarginUpdates": int(fold_margin_updates),
-        "callMarginUpdates": int(call_margin_updates),
         "foldMarginLoss": float(fold_margin_loss),
-        "callMarginLoss": float(call_margin_loss),
         "foldMarginSatisfied": float(fold_margin_satisfied),
-        "callMarginSatisfied": float(call_margin_satisfied),
         "foldMargin": float(cfg.fold_margin),
-        "callMargin": float(cfg.call_margin),
         "foldMarginWeight": float(cfg.fold_margin_weight),
-        "callMarginWeight": float(cfg.call_margin_weight),
         "foldMarginInterval": int(cfg.fold_margin_interval),
+        "teacherFoldInjectProb": float(cfg.teacher_fold_inject_prob),
         "opponentUpdates": int(opponent_updates),
         "checkpoint": str(last_checkpoint),
         "latestCheckpoint": str(latest),
         "evalEvery": int(cfg.eval_every),
+        "teacherWarmupEpisodes": int(cfg.teacher_warmup_episodes),
+        "teacherEpsilon": float(cfg.teacher_epsilon),
+        "teacherEpsilonFloor": float(cfg.teacher_epsilon_floor),
         "seed": cfg.seed,
         "obsDim": 96,
         "nActions": 11,
@@ -675,6 +703,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--hidden-dim", type=int, default=DrawLowballSixMaxConfig.hidden_dim)
     parser.add_argument("--learning-rate", type=float, default=DrawLowballSixMaxConfig.learning_rate)
     parser.add_argument("--log-interval", type=int, default=DrawLowballSixMaxConfig.log_interval)
+    parser.add_argument("--teacher-warmup-episodes", type=int, default=DrawLowballSixMaxConfig.teacher_warmup_episodes)
+    parser.add_argument("--teacher-epsilon", type=float, default=DrawLowballSixMaxConfig.teacher_epsilon)
+    parser.add_argument("--teacher-epsilon-floor", type=float, default=DrawLowballSixMaxConfig.teacher_epsilon_floor)
+    parser.add_argument("--teacher-fold-inject-prob", type=float, default=DrawLowballSixMaxConfig.teacher_fold_inject_prob)
     return parser.parse_args()
 
 
@@ -701,5 +733,9 @@ if __name__ == "__main__":
         log_interval=args.log_interval,
         output_dir=args.output_dir,
         seed=args.seed,
+        teacher_warmup_episodes=args.teacher_warmup_episodes,
+        teacher_epsilon=args.teacher_epsilon,
+        teacher_epsilon_floor=args.teacher_epsilon_floor,
+        teacher_fold_inject_prob=args.teacher_fold_inject_prob,
     )
     train_draw_lowball_sixmax_dqn(cfg=cfg, device=device)

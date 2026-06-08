@@ -59,13 +59,11 @@ def test_draw_lowball_sixmax_trainer_cli_smoke(tmp_path: Path, variant_id: str):
     assert payload["episodes"] == 1
     assert Path(payload["checkpoint"]).exists()
     assert payload["foldMarginBufferSize"] >= 0
-    assert payload["callMarginBufferSize"] >= 0
     assert payload["foldMarginTransitions"] >= 0
-    assert payload["callMarginTransitions"] >= 0
+    assert payload["teacherFoldInjections"] >= 0
     assert payload["foldMarginUpdates"] >= 0
-    assert payload["callMarginUpdates"] >= 0
     assert payload["foldMargin"] == 0.20
-    assert payload["callMargin"] == 0.20
     assert payload["foldMarginWeight"] == 0.40
-    assert payload["callMarginWeight"] == 0.40
     assert payload["foldMarginInterval"] == 8
+    assert "teacherFoldInjectProb" in payload
+    assert "teacherEpsilonFloor" in payload

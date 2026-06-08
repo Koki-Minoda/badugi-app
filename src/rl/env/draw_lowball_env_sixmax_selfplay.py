@@ -294,7 +294,7 @@ class SixMaxDrawLowballEnv:
         features = evaluate_lowball(player["hand"], self.family)
         effective_strength = _draw_adjusted_strength(player["hand"], self.family, features)
         if effective_strength < pot_odds:
-            return 0.15
+            return 0.30
         equity_missed = effective_strength - pot_odds
         return -max(0.30, min(0.90, 0.20 + equity_missed * 1.5))
 
@@ -614,6 +614,15 @@ class SixMaxDrawLowballEnv:
         vector[78] = 0.0
         vector[79] = 0.0
         vector[80] = self.max_draws / 3.0
+
+        # 6-position one-hot: SB=81, BB=82, UTG=83, MP=84, CO=85, BTN=86
+        seats_in_order = [(self.dealer_seat + 1 + i) % NUM_PLAYERS for i in range(NUM_PLAYERS)]
+        try:
+            pos_idx = seats_in_order.index(seat)
+        except ValueError:
+            pos_idx = 0
+        vector[81 + pos_idx] = 1.0
+
         return vector
 
     def _position_fraction(self, seat: int) -> float:

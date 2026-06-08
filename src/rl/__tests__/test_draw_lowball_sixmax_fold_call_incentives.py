@@ -131,24 +131,21 @@ def test_s01_fold_call_action_indices_preserved():
 
 def test_draw_trainer_fold_margin_transition_routes_good_and_bad_folds():
     fold_buffer = ReplayBuffer(capacity=4, alpha=0.0)
-    call_buffer = ReplayBuffer(capacity=4, alpha=0.0)
     obs = np.zeros(96, dtype=np.float32)
     next_obs = np.ones(96, dtype=np.float32)
     mask = np.ones(11, dtype=np.float32)
 
     good_route = _add_fold_margin_transition(
         fold_buffer=fold_buffer,
-        call_buffer=call_buffer,
         obs=obs,
         action=FOLD,
-        reward=0.15,
+        reward=0.30,
         next_obs=next_obs,
         done=True,
         next_action_mask=mask,
     )
     bad_route = _add_fold_margin_transition(
         fold_buffer=fold_buffer,
-        call_buffer=call_buffer,
         obs=obs,
         action=FOLD,
         reward=-0.30,
@@ -158,7 +155,6 @@ def test_draw_trainer_fold_margin_transition_routes_good_and_bad_folds():
     )
     ignored_route = _add_fold_margin_transition(
         fold_buffer=fold_buffer,
-        call_buffer=call_buffer,
         obs=obs,
         action=CALL,
         reward=-0.30,
@@ -167,13 +163,11 @@ def test_draw_trainer_fold_margin_transition_routes_good_and_bad_folds():
         next_action_mask=mask,
     )
 
-    assert good_route == "fold"
-    assert bad_route == "call"
-    assert ignored_route is None
+    assert good_route is True
+    assert bad_route is False
+    assert ignored_route is False
     assert len(fold_buffer) == 1
-    assert len(call_buffer) == 1
     assert fold_buffer.sample(1)["actions"][0] == FOLD
-    assert call_buffer.sample(1)["actions"][0] == CALL
 
 
 def test_lazy_draw_agent_action_margin_update_pushes_call_above_fold():
@@ -387,4 +381,4 @@ def test_low27_weak_hand_fold_path_shared_by_s01_and_d01(max_draws: int):
     assert terminated is True
     assert info["terminal_reason"] == "hero_fold"
     assert env.terminal_reason == "hero_fold"
-    assert reward == pytest.approx(0.15)
+    assert reward == pytest.approx(0.30)

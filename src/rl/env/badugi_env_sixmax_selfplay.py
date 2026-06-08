@@ -58,6 +58,10 @@ WEAK_HAND_FACING_OPEN_CALL_PENALTY = -0.10
 WEAK_HAND_FACING_OPEN_AGGRESSIVE_PENALTY = -0.20
 BLIND_FACING_OPEN_WEAK_AGGRESSIVE_EXTRA_PENALTY = -0.15
 SB_FACING_OPEN_WEAK_3CARD_CALL_EXTRA_PENALTY = -0.08
+POSTDRAW_R1_WEAK_3CARD_AGGRESSIVE_PENALTY = -0.10
+POSTDRAW_R1_TRASH_AGGRESSIVE_PENALTY = -0.15
+POSTDRAW_R2_WEAK_3CARD_AGGRESSIVE_PENALTY = -0.15
+POSTDRAW_R2_TRASH_AGGRESSIVE_PENALTY = -0.20
 
 
 # ---------------------------------------------------------------------------
@@ -388,17 +392,40 @@ class SixMaxBadugiEnv:
         return -max(0.30, min(0.90, 0.20 + equity_missed * 1.5))
 
     def _weak_hand_play_penalty(self, seat: int, action: int) -> float:
-        """Discourage loose pre-draw weak hand participation in risky spots."""
+        """Discourage loose weak hand participation in targeted risky spots."""
         if (
             seat != self.hero_seat
             or self.phase != "BET"
-            or self.draw_round != 0
             or action not in (CALL, BET, RAISE, ALL_IN)
         ):
             return 0.0
 
         f = _evaluate_badugi_features(self.players[seat]["hand"])
         high = f["highest_rank"] if f["highest_rank"] is not None else 13
+        if self.draw_round in (1, 2):
+            if action not in (BET, RAISE, ALL_IN):
+                return 0.0
+            is_postdraw_weak_3card = f["count"] == 3 and 7 <= high <= 9
+            is_postdraw_trash = (
+                f["count"] <= 1
+                or (f["count"] == 2 and high >= 9)
+                or (f["count"] == 3 and high >= 10)
+            )
+            if self.draw_round == 1:
+                if is_postdraw_trash:
+                    return POSTDRAW_R1_TRASH_AGGRESSIVE_PENALTY
+                if is_postdraw_weak_3card:
+                    return POSTDRAW_R1_WEAK_3CARD_AGGRESSIVE_PENALTY
+            if self.draw_round == 2:
+                if is_postdraw_trash:
+                    return POSTDRAW_R2_TRASH_AGGRESSIVE_PENALTY
+                if is_postdraw_weak_3card:
+                    return POSTDRAW_R2_WEAK_3CARD_AGGRESSIVE_PENALTY
+            return 0.0
+
+        if self.draw_round != 0:
+            return 0.0
+
         is_weak_3card = f["count"] == 3 and high >= 7
         is_weak_2card = f["count"] == 2 and high >= 8
         is_trash = f["count"] <= 1 or is_weak_2card or (f["count"] == 3 and high >= 10)

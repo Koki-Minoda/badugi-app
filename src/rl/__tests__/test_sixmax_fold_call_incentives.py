@@ -551,11 +551,66 @@ def test_strong_3card_early_not_penalized():
     assert reward == pytest.approx(0.0)
 
 
-def test_postdraw_weak_3card_not_penalized():
+def test_postdraw_r1_weak_3card_raise_gets_penalty():
     weak_3card_eight_high = [(0, 0), (3, 1), (7, 2), (12, 2)]
     env = SixMaxBadugiEnv(seed=41, opp_epsilon=0.0)
     env.reset(seed=41)
     _set_predraw_spot(env, position="UTG", hero_hand=weak_3card_eight_high, draw_round=1)
+
+    _done, reward, _info = env._apply_action(env.hero_seat, RAISE)
+
+    assert reward == pytest.approx(-0.10)
+
+
+def test_postdraw_r2_weak_3card_raise_gets_stronger_penalty():
+    weak_3card_nine_high = [(0, 0), (3, 1), (8, 2), (12, 2)]
+    env = SixMaxBadugiEnv(seed=43, opp_epsilon=0.0)
+    env.reset(seed=43)
+    _set_predraw_spot(env, position="CO", hero_hand=weak_3card_nine_high, draw_round=2)
+
+    _done, reward, _info = env._apply_action(env.hero_seat, RAISE)
+
+    assert reward == pytest.approx(-0.15)
+
+
+def test_postdraw_r1_trash_raise_gets_penalty():
+    trash_one_card = [(12, 0), (12, 1), (12, 2), (12, 3)]
+    env = SixMaxBadugiEnv(seed=47, opp_epsilon=0.0)
+    env.reset(seed=47)
+    _set_predraw_spot(env, position="BTN", hero_hand=trash_one_card, draw_round=1)
+
+    _done, reward, _info = env._apply_action(env.hero_seat, RAISE)
+
+    assert reward == pytest.approx(-0.15)
+
+
+def test_postdraw_r3_weak_3card_raise_not_penalized():
+    weak_3card_eight_high = [(0, 0), (3, 1), (7, 2), (12, 2)]
+    env = SixMaxBadugiEnv(seed=49, opp_epsilon=0.0)
+    env.reset(seed=49)
+    _set_predraw_spot(env, position="UTG", hero_hand=weak_3card_eight_high, draw_round=3)
+
+    _done, reward, _info = env._apply_action(env.hero_seat, RAISE)
+
+    assert reward == pytest.approx(0.0)
+
+
+def test_postdraw_r1_weak_3card_call_not_penalized():
+    weak_3card_eight_high = [(0, 0), (3, 1), (7, 2), (12, 2)]
+    env = SixMaxBadugiEnv(seed=51, opp_epsilon=0.0)
+    env.reset(seed=51)
+    _set_predraw_spot(env, position="UTG", hero_hand=weak_3card_eight_high, draw_round=1)
+
+    _done, reward, _info = env._apply_action(env.hero_seat, CALL)
+
+    assert reward == pytest.approx(0.0)
+
+
+def test_postdraw_r1_strong_3card_raise_not_penalized():
+    strong_3card_seven_high = [(0, 0), (3, 1), (6, 2), (12, 2)]
+    env = SixMaxBadugiEnv(seed=52, opp_epsilon=0.0)
+    env.reset(seed=52)
+    _set_predraw_spot(env, position="UTG", hero_hand=strong_3card_seven_high, draw_round=1)
 
     _done, reward, _info = env._apply_action(env.hero_seat, RAISE)
 

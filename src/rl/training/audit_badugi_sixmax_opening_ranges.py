@@ -972,6 +972,64 @@ def build_report(
     }
 
 
+def build_partial_report(
+    *,
+    checkpoint: Path,
+    device: str,
+    seed: int,
+    episodes: int | None,
+    samples: int | None,
+    hands_seen: int,
+    skipped: Counter,
+    records: list[dict],
+    aggression_records: list[dict],
+    agent: DQNAgent,
+    obs_dim: int,
+) -> dict:
+    full_summary = summarize_decisions(records)
+    full_summary.update(summarize_aggression_decisions(aggression_records))
+    summary_keys = (
+        "overall",
+        "rates",
+        "byPosition",
+        "byPositionAndSpot",
+        "byPositionSpotAndHandClass",
+        "byBetRound",
+        "byBetRoundFacingAction",
+        "byBetRoundAndHandClass",
+        "byBetRoundAndHandClassQ",
+    )
+    summary = {key: full_summary[key] for key in summary_keys if key in full_summary}
+    return {
+        "schemaVersion": "badugi-sixmax-opening-range-audit-v2",
+        "partialOutputMode": "summary",
+        "partial": True,
+        "createdAt": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "checkpoint": str(checkpoint),
+        "device": str(device),
+        "seed": int(seed),
+        "episodesRequested": episodes,
+        "samplesRequested": samples,
+        "handsSeen": int(hands_seen),
+        "samplesCollected": len(records),
+        "betRoundSamplesCollected": len(aggression_records),
+        "skipped": dict(skipped),
+        "model": {
+            "obsDim": int(agent.obs_dim),
+            "envObsDim": obs_dim,
+            "hiddenDim": int(agent.q_network.net[0].out_features),
+            "nActions": int(agent.n_actions),
+        },
+        "summary": summary,
+        "warnings": build_warnings(full_summary),
+        "omitted": {
+            "decisions": len(records),
+            "betRoundDecisions": len(aggression_records),
+            "findings": True,
+        },
+    }
+
+
 def progress_line(
     *,
     hands_seen: int,
@@ -1013,9 +1071,12 @@ def audit_checkpoint(
     output_json: Path | None = None,
     progress_interval: int = 10000,
     checkpoint_output_interval: int = 100000,
+    partial_output_mode: str = "summary",
 ) -> dict:
     if episodes is None and samples is None:
         raise ValueError("episodes or samples is required")
+    if partial_output_mode not in ("summary", "full"):
+        raise ValueError("partial_output_mode must be 'summary' or 'full'")
     agent = DQNAgent.load(str(checkpoint), device=device)
     env = SixMaxBadugiEnv(seed=seed, opp_epsilon=0.0)
     env.set_agents(agent, agent)
@@ -1053,6 +1114,23 @@ def audit_checkpoint(
             obs_dim=obs_dim,
         )
 
+    def current_partial_report() -> dict:
+        if partial_output_mode == "full":
+            return current_report()
+        return build_partial_report(
+            checkpoint=checkpoint,
+            device=device,
+            seed=seed,
+            episodes=episodes,
+            samples=samples,
+            hands_seen=hands_seen,
+            skipped=skipped,
+            records=records,
+            aggression_records=aggression_records,
+            agent=agent,
+            obs_dim=obs_dim,
+        )
+
     def maybe_emit_progress_and_checkpoint() -> None:
         if progress_interval > 0 and hands_seen % progress_interval == 0:
             print(
@@ -1068,7 +1146,7 @@ def audit_checkpoint(
                 flush=True,
             )
         if output_json is not None and checkpoint_output_interval > 0 and hands_seen % checkpoint_output_interval == 0:
-            _write_report_json(output_json, current_report())
+            _write_report_json(output_json, current_partial_report())
             print(f"[checkpoint] wrote intermediate audit JSON to {output_json}", file=sys.stderr, flush=True)
 
     try:
@@ -1130,7 +1208,7 @@ def audit_checkpoint(
                 maybe_emit_progress_and_checkpoint()
     except KeyboardInterrupt:
         if output_json is not None:
-            _write_report_json(output_json, current_report())
+            _write_report_json(output_json, current_partial_report())
             print(f"[interrupt] saved partial audit JSON to {output_json}", file=sys.stderr, flush=True)
         raise
 
@@ -1148,6 +1226,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--output-json", type=Path)
     parser.add_argument("--progress-interval", type=int, default=10000)
     parser.add_argument("--checkpoint-output-interval", type=int, default=100000)
+    parser.add_argument("--partial-output-mode", choices=("summary", "full"), default="summary")
     return parser.parse_args(argv)
 
 
@@ -1163,6 +1242,7 @@ def main(argv: Sequence[str] | None = None) -> dict:
             output_json=args.output_json,
             progress_interval=args.progress_interval,
             checkpoint_output_interval=args.checkpoint_output_interval,
+            partial_output_mode=args.partial_output_mode,
         )
     except KeyboardInterrupt as exc:
         raise SystemExit(130) from exc

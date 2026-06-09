@@ -15,6 +15,7 @@ from rl.training.audit_badugi_sixmax_opening_ranges import (
     FOLD,
     RAISE,
     aggression_hand_class,
+    audit_checkpoint,
     bet_round_key,
     classify_opening_hand,
     main as audit_main,
@@ -696,6 +697,43 @@ class BadugiSixMaxOpeningRangeAuditTest(unittest.TestCase):
             self.assertIn("%", stderr.getvalue())
             self.assertIn("eta=", stderr.getvalue())
             self.assertIn("[checkpoint]", stderr.getvalue())
+
+    def test_partial_checkpoint_summary_omits_raw_decision_fields(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            checkpoint = root / "tiny_badugi_sixmax.pt"
+            output_json = root / "audit.json"
+            agent = DQNAgent(obs_dim=96, n_actions=6, hidden_dim=16, device="cpu")
+            with torch.no_grad():
+                for param in agent.q_network.parameters():
+                    param.zero_()
+                agent.q_network.net[-1].bias.copy_(torch.tensor([0.0, 8.0, 10.0, 9.0, 7.0, 6.0]))
+                agent.target_network.load_state_dict(agent.q_network.state_dict())
+            agent.save(str(checkpoint))
+
+            report = audit_checkpoint(
+                checkpoint=checkpoint,
+                samples=1,
+                device="cpu",
+                output_json=output_json,
+                progress_interval=0,
+                checkpoint_output_interval=1,
+                partial_output_mode="summary",
+            )
+            payload = json.loads(output_json.read_text(encoding="utf8"))
+            serialized = json.dumps(payload)
+
+            self.assertEqual(report["samplesCollected"], 1)
+            self.assertTrue(payload["partial"])
+            self.assertEqual(payload["partialOutputMode"], "summary")
+            self.assertNotIn("decisions", payload)
+            self.assertNotIn("betRoundDecisions", payload)
+            self.assertNotIn("findings", payload)
+            self.assertIn("byBetRoundAndHandClass", payload["summary"])
+            self.assertIn("byBetRoundAndHandClassQ", payload["summary"])
+            self.assertIn("omitted", payload)
+            self.assertNotIn("legalActions", serialized)
+            self.assertNotIn("qValues", serialized)
 
 
 if __name__ == "__main__":

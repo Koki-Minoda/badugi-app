@@ -13,11 +13,22 @@ from rl.env.badugi_env_sixmax_selfplay import (
     CALL,
     FOLD,
     MAX_DRAWS,
+    POSTDRAW_R1_WEAK_3CARD_AGGRESSIVE_PENALTY,
+    POSTDRAW_R1_WEAK_3CARD_CALL_PENALTY,
+    POSTDRAW_R1_TRASH_AGGRESSIVE_PENALTY,
+    POSTDRAW_R2_WEAK_3CARD_AGGRESSIVE_PENALTY,
+    POSTDRAW_R2_WEAK_3CARD_CALL_PENALTY,
+    POSTDRAW_R2_TRASH_AGGRESSIVE_PENALTY,
+    POSTDRAW_TRASH_CALL_PENALTY,
     RAISE,
     SMALL_BET,
     SixMaxBadugiEnv,
 )
-from rl.training.train_sixmax_selfplay_badugi_dqn import _add_fold_margin_transition
+from rl.training.train_sixmax_selfplay_badugi_dqn import (
+    SixMaxSelfPlayConfig,
+    _add_fold_margin_transition,
+    _apply_good_fold_margin_updates,
+)
 from rl.utils.replay_buffer import ReplayBuffer
 
 
@@ -142,6 +153,88 @@ def test_good_fold_routes_to_fold_buffer():
     assert len(fold_buffer) == 1
     assert len(call_buffer) == 0
     assert fold_buffer.sample(1)["actions"][0] == FOLD
+
+
+def test_good_fold_margin_updates_apply_against_call_and_raise_from_same_buffer():
+    batch = {
+        "obs": np.zeros((32, 4), dtype=np.float32),
+        "actions": np.full((32,), FOLD, dtype=np.int64),
+    }
+
+    class FakeFoldBuffer:
+        def __init__(self):
+            self.sample_calls = 0
+
+        def __len__(self):
+            return 32
+
+        def sample(self, batch_size):
+            self.sample_calls += 1
+            assert batch_size == 32
+            return batch
+
+    class FakeHero:
+        def __init__(self):
+            self.calls = []
+
+        def action_margin_update(self, sampled_batch, *, avoid_action, margin, loss_weight):
+            self.calls.append(
+                {
+                    "batch_id": id(sampled_batch),
+                    "avoid_action": avoid_action,
+                    "margin": margin,
+                    "loss_weight": loss_weight,
+                }
+            )
+            return float(avoid_action), 1.0
+
+    cfg = SixMaxSelfPlayConfig()
+    fold_buffer = FakeFoldBuffer()
+    hero = FakeHero()
+
+    loss, satisfied = _apply_good_fold_margin_updates(
+        hero=hero,
+        fold_buffer=fold_buffer,
+        cfg=cfg,
+        margin_batch=32,
+    )
+
+    assert fold_buffer.sample_calls == 1
+    assert [call["avoid_action"] for call in hero.calls] == [CALL, RAISE]
+    assert {call["batch_id"] for call in hero.calls} == {id(batch)}
+    assert all(call["margin"] == pytest.approx(0.20) for call in hero.calls)
+    assert all(call["loss_weight"] == pytest.approx(0.40) for call in hero.calls)
+    assert loss == pytest.approx((CALL + RAISE) / 2)
+    assert satisfied == {CALL: 1.0, RAISE: 1.0}
+
+
+def test_good_fold_margin_updates_skip_when_fold_buffer_is_too_small():
+    class EmptyFoldBuffer:
+        def __len__(self):
+            return 31
+
+        def sample(self, _batch_size):
+            raise AssertionError("should not sample undersized fold buffer")
+
+    loss, satisfied = _apply_good_fold_margin_updates(
+        hero=object(),
+        fold_buffer=EmptyFoldBuffer(),
+        cfg=SixMaxSelfPlayConfig(),
+        margin_batch=32,
+    )
+
+    assert loss is None
+    assert satisfied == {}
+
+
+def test_postdraw_env_reward_constants_unchanged_by_fold_margin_trainer_change():
+    assert POSTDRAW_R1_WEAK_3CARD_CALL_PENALTY == pytest.approx(-0.10)
+    assert POSTDRAW_R2_WEAK_3CARD_CALL_PENALTY == pytest.approx(-0.15)
+    assert POSTDRAW_TRASH_CALL_PENALTY == pytest.approx(-0.20)
+    assert POSTDRAW_R1_WEAK_3CARD_AGGRESSIVE_PENALTY == pytest.approx(-0.10)
+    assert POSTDRAW_R2_WEAK_3CARD_AGGRESSIVE_PENALTY == pytest.approx(-0.15)
+    assert POSTDRAW_R1_TRASH_AGGRESSIVE_PENALTY == pytest.approx(-0.20)
+    assert POSTDRAW_R2_TRASH_AGGRESSIVE_PENALTY == pytest.approx(-0.20)
 
 
 def test_good_fold_shaping_returns_enhanced_reward():

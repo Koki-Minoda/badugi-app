@@ -15,6 +15,7 @@ from rl.training.train_sixmax_selfplay_badugi_dqn import (
     SixMaxSelfPlayConfig,
     _effective_teacher_warmup_episodes,
     _episode_epsilon,
+    _margin_batch_size,
     _maybe_imitation_update,
     train_sixmax_selfplay_badugi_dqn,
 )
@@ -56,8 +57,16 @@ def test_sixmax_trainer_defaults_counter_vpip_plateau():
     assert cfg.epsilon_end == pytest.approx(0.05)
     assert cfg.fold_margin == pytest.approx(0.20)
     assert cfg.fold_margin_weight == pytest.approx(0.40)
+    assert cfg.fold_margin_interval == 4
+    assert _margin_batch_size(cfg) == 32
     assert cfg.call_margin == pytest.approx(0.20)
     assert cfg.call_margin_weight == pytest.approx(0.40)
+
+
+def test_sixmax_fold_margin_batch_size_scales_with_config_batch_size():
+    cfg = SixMaxSelfPlayConfig(batch_size=256)
+
+    assert _margin_batch_size(cfg) == 64
 
 
 def test_sixmax_pretrained_without_resume_keeps_existing_epsilon_schedule():

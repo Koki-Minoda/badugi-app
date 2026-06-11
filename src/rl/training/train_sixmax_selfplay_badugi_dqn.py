@@ -38,7 +38,7 @@ if str(SRC_ROOT) not in sys.path:
 
 from rl.agents.dqn_agent import DQNAgent, DQNHyperParams
 from rl.env.badugi_env import BadugiEnv
-from rl.env.badugi_env_sixmax_selfplay import CALL, FOLD, SixMaxBadugiEnv
+from rl.env.badugi_env_sixmax_selfplay import CALL, FOLD, RAISE, SixMaxBadugiEnv
 from rl.env.badugi_env_selfplay import _best_badugi_keep
 from rl.training.sixmax_action_telemetry import (
     SixMaxActionTelemetry,
@@ -77,10 +77,10 @@ class SixMaxSelfPlayConfig:
     imitation_pretrain_steps: int = 1_000
     imitation_loss_weight: float = 0.35
     expert_replay_ratio: float = 0.15
-    # Fold margin: trains Q(FOLD) > Q(CALL) in good-fold states (equity < pot odds).
+    # Fold margin: trains Q(FOLD) > Q(CALL/RAISE) in good-fold states.
     fold_margin: float = 0.20
     fold_margin_weight: float = 0.40
-    fold_margin_interval: int = 8
+    fold_margin_interval: int = 4
     # Call margin (symmetric): trains Q(CALL) > Q(FOLD) in bad-fold states.
     call_margin: float = 0.20
     call_margin_weight: float = 0.40
@@ -247,6 +247,35 @@ def _add_fold_margin_transition(
     return None
 
 
+def _margin_batch_size(cfg: SixMaxSelfPlayConfig) -> int:
+    return max(32, cfg.batch_size // 4)
+
+
+def _apply_good_fold_margin_updates(
+    *,
+    hero: DQNAgent,
+    fold_buffer: ReplayBuffer,
+    cfg: SixMaxSelfPlayConfig,
+    margin_batch: int,
+) -> tuple[float | None, dict[int, float]]:
+    if len(fold_buffer) < margin_batch:
+        return None, {}
+
+    batch = fold_buffer.sample(margin_batch)
+    losses: list[float] = []
+    satisfied_by_action: dict[int, float] = {}
+    for avoid_action in (CALL, RAISE):
+        loss, satisfied = hero.action_margin_update(
+            batch,
+            avoid_action=avoid_action,
+            margin=cfg.fold_margin,
+            loss_weight=cfg.fold_margin_weight,
+        )
+        losses.append(loss)
+        satisfied_by_action[avoid_action] = satisfied
+    return float(sum(losses) / len(losses)), satisfied_by_action
+
+
 def _maybe_imitation_update(
     *,
     cfg: SixMaxSelfPlayConfig,
@@ -277,7 +306,7 @@ def _teacher_warmup(
 ) -> None:
     """Fill replay with 6-player BadugiEnv transitions.
 
-    fold_buffer: good-fold states (reward > 0): trains Q(FOLD) > Q(CALL).
+    fold_buffer: good-fold states (reward > 0): trains Q(FOLD) > Q(CALL/RAISE).
     call_buffer: bad-fold states (reward < 0): trains Q(CALL) > Q(FOLD).
                    Stored with action=CALL so action_margin_update pushes
                    Q(CALL) above Q(FOLD) in states where hero folded wrongly.
@@ -378,7 +407,7 @@ def train_sixmax_selfplay_badugi_dqn(
 
     replay = ReplayBuffer(capacity=cfg.buffer_capacity)
     expert = ReplayBuffer(capacity=min(80_000, cfg.buffer_capacity // 4))
-    # fold_buffer: good-fold states (shaping > 0) train Q(FOLD) > Q(CALL)
+    # fold_buffer: good-fold states (shaping > 0) train Q(FOLD) > Q(CALL/RAISE)
     fold_buffer = ReplayBuffer(capacity=30_000, alpha=0.0)
     # call_buffer: bad-fold states (shaping < 0) train Q(CALL) > Q(FOLD)
     call_buffer = ReplayBuffer(capacity=15_000, alpha=0.0)
@@ -531,16 +560,17 @@ def train_sixmax_selfplay_badugi_dqn(
                     imitation_loss = next_imitation_loss or 0.0
                     imitation_accuracy = next_imitation_accuracy or 0.0
 
-                margin_batch = max(16, cfg.batch_size // 8)
+                margin_batch = _margin_batch_size(cfg)
                 if global_step % cfg.fold_margin_interval == 0:
-                    if len(fold_buffer) >= margin_batch:
-                        # Good-fold states: Q(FOLD) > Q(CALL) by margin.
-                        fold_margin_loss, _ = hero.action_margin_update(
-                            fold_buffer.sample(margin_batch),
-                            avoid_action=CALL,
-                            margin=cfg.fold_margin,
-                            loss_weight=cfg.fold_margin_weight,
-                        )
+                    # Good-fold states: Q(FOLD) > Q(CALL) and Q(FOLD) > Q(RAISE).
+                    next_fold_margin_loss, _ = _apply_good_fold_margin_updates(
+                        hero=hero,
+                        fold_buffer=fold_buffer,
+                        cfg=cfg,
+                        margin_batch=margin_batch,
+                    )
+                    if next_fold_margin_loss is not None:
+                        fold_margin_loss = next_fold_margin_loss
                     if len(call_buffer) >= margin_batch:
                         # Bad-fold states: Q(CALL) > Q(FOLD) by margin.
                         hero.action_margin_update(

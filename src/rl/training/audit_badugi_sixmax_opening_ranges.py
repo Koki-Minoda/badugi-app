@@ -80,6 +80,9 @@ PHASE2_BUCKET_ORDER = (
     "phase2_trash",
     "unknown",
 )
+# High-card sub-buckets for phase2_weak_3card only; non-weak_3card records are excluded (not bucketed as "na").
+WEAK3_HIGH_BY_RANK = {7: "high8", 8: "high9", 9: "highT"}
+WEAK3_HIGH_ORDER = ("high8", "high9", "highT")
 
 
 @dataclass(frozen=True)
@@ -289,6 +292,32 @@ def phase2_bucket(record: dict) -> str:
     return "unknown"
 
 
+def phase2_weak3_high_from_info(hand_info: OpeningHandInfo) -> str:
+    """Return card-label high bucket for phase2_weak_3card hands, else 'na'."""
+    if int(hand_info.made_cards) == 3:
+        high = int(hand_info.high_card) if hand_info.high_card >= 0 else -1
+        if high in WEAK3_HIGH_BY_RANK:
+            return WEAK3_HIGH_BY_RANK[high]
+    return "na"
+
+
+def phase2_weak3_high(record: dict) -> str:
+    """Return card-label high bucket for phase2_weak_3card records, else 'na'."""
+    cached = record.get("phase2Weak3High")
+    if cached in WEAK3_HIGH_ORDER:
+        return cached
+    hand = record.get("hand", {})
+    made_cards = int(hand.get("made_cards", 0) or 0)
+    if made_cards == 3:
+        try:
+            high = int(hand.get("high_card", -1))
+        except (TypeError, ValueError):
+            return "na"
+        if high in WEAK3_HIGH_BY_RANK:
+            return WEAK3_HIGH_BY_RANK[high]
+    return "na"
+
+
 def is_vpip_action(action: int) -> bool:
     return action in (CALL, BET, RAISE, ALL_IN)
 
@@ -339,6 +368,7 @@ def make_decision_record(
         "facingAction": facing_action_type(to_call=int(to_call)),
         "aggressionHandClass": aggression_hand_class_from_info(hand_info),
         "phase2Bucket": phase2_bucket_from_info(hand_info),
+        "phase2Weak3High": phase2_weak3_high_from_info(hand_info),
         "handClass": hand_info.hand_class,
         "heroSeat": hero_seat,
         "dealerSeat": int(env.dealer_seat),
@@ -487,6 +517,14 @@ def summarize_aggression_decisions(records: list[dict]) -> dict:
         for hand_class in AGGRESSION_HAND_CLASS_ORDER
         for position in POSITION_ORDER
     }
+    # phase2_weak_3card split by card-label high bucket (rank index 7=eight-high, 8=nine-high, 9=ten-high).
+    # Records with phase2Weak3High == "na" (non-weak_3card buckets) are excluded entirely.
+    by_bet_round_facing_action_phase2_bucket_high_records: dict[str, list[dict]] = {
+        f"{round_key}.{facing_action}.phase2_weak_3card.{high}": []
+        for round_key in BET_ROUND_ORDER
+        for facing_action in FACING_ACTION_ORDER
+        for high in WEAK3_HIGH_ORDER
+    }
 
     for record in records:
         round_key = record.get("betRound") or bet_round_key(int(record.get("drawRound", 0)))
@@ -502,6 +540,11 @@ def summarize_aggression_decisions(records: list[dict]) -> dict:
             f"{round_key}.{facing_action}.{phase2}", []
         ).append(record)
         by_bet_round_hand_class_position_records.setdefault(f"{round_key}.{hand_class}.{position}", []).append(record)
+        weak3_high = phase2_weak3_high(record)
+        if weak3_high != "na":
+            by_bet_round_facing_action_phase2_bucket_high_records.setdefault(
+                f"{round_key}.{facing_action}.phase2_weak_3card.{weak3_high}", []
+            ).append(record)
 
     return {
         "byBetRound": {
@@ -570,6 +613,27 @@ def summarize_aggression_decisions(records: list[dict]) -> dict:
             for round_key in BET_ROUND_ORDER
             for facing_action in FACING_ACTION_ORDER
             for bucket in PHASE2_BUCKET_ORDER
+        },
+        "byBetRoundFacingActionAndPhase2BucketHigh": {
+            f"{round_key}.{facing_action}.phase2_weak_3card.{high}": _summarize_aggression_bucket(
+                by_bet_round_facing_action_phase2_bucket_high_records.get(
+                    f"{round_key}.{facing_action}.phase2_weak_3card.{high}", []
+                ),
+                include_vpip=False,
+            )
+            for round_key in BET_ROUND_ORDER
+            for facing_action in FACING_ACTION_ORDER
+            for high in WEAK3_HIGH_ORDER
+        },
+        "byBetRoundFacingActionAndPhase2BucketHighQ": {
+            f"{round_key}.{facing_action}.phase2_weak_3card.{high}": _summarize_aggression_q_bucket(
+                by_bet_round_facing_action_phase2_bucket_high_records.get(
+                    f"{round_key}.{facing_action}.phase2_weak_3card.{high}", []
+                )
+            )
+            for round_key in BET_ROUND_ORDER
+            for facing_action in FACING_ACTION_ORDER
+            for high in WEAK3_HIGH_ORDER
         },
     }
 
@@ -1111,6 +1175,8 @@ def build_partial_report(
         "byBetRoundAndPhase2BucketQ",
         "byBetRoundFacingActionAndPhase2Bucket",
         "byBetRoundFacingActionAndPhase2BucketQ",
+        "byBetRoundFacingActionAndPhase2BucketHigh",
+        "byBetRoundFacingActionAndPhase2BucketHighQ",
     )
     summary = {key: full_summary[key] for key in summary_keys if key in full_summary}
     return {

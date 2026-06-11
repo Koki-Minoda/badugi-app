@@ -829,6 +829,116 @@ class BadugiSixMaxOpeningRangeAuditTest(unittest.TestCase):
 
         self.assertFalse(any("facing_open" in warning for warning in warnings))
 
+    def test_aggression_summary_includes_weak3_high_split_keys(self):
+        summary = summarize_aggression_decisions([])
+
+        self.assertIn("byBetRoundFacingActionAndPhase2BucketHigh", summary)
+        self.assertIn("byBetRoundFacingActionAndPhase2BucketHighQ", summary)
+        high = summary["byBetRoundFacingActionAndPhase2BucketHigh"]
+        for round_key in ("round1", "round2"):
+            for sub in ("high8", "high9", "highT"):
+                self.assertIn(f"{round_key}.facing_bet.phase2_weak_3card.{sub}", high)
+        self.assertFalse(any(key.endswith(".high7") for key in high))
+
+    def test_aggression_summary_routes_records_to_correct_weak3_high_bucket(self):
+        summary = summarize_aggression_decisions(
+            [
+                _record("CO", CALL, draw_round=1, made_cards=3, high_card=7, to_call=4),
+                _record("CO", FOLD, draw_round=1, made_cards=3, high_card=8, to_call=4),
+                _record("CO", RAISE, draw_round=1, made_cards=3, high_card=9, to_call=4),
+            ]
+        )
+
+        high = summary["byBetRoundFacingActionAndPhase2BucketHigh"]
+        self.assertEqual(high["round1.facing_bet.phase2_weak_3card.high8"]["samples"], 1)
+        self.assertEqual(high["round1.facing_bet.phase2_weak_3card.high8"]["callPct"], 100.0)
+        self.assertEqual(high["round1.facing_bet.phase2_weak_3card.high9"]["samples"], 1)
+        self.assertEqual(high["round1.facing_bet.phase2_weak_3card.high9"]["foldPct"], 100.0)
+        self.assertEqual(high["round1.facing_bet.phase2_weak_3card.highT"]["samples"], 1)
+        self.assertEqual(high["round1.facing_bet.phase2_weak_3card.highT"]["raisePct"], 100.0)
+        self.assertNotIn("round1.facing_bet.phase2_weak_3card.high7", high)
+
+    def test_aggression_summary_non_weak3_records_excluded_from_high_buckets(self):
+        summary = summarize_aggression_decisions(
+            [
+                _record("CO", FOLD, draw_round=1, made_cards=4, high_card=3, to_call=4),   # made_badugi
+                _record("CO", CALL, draw_round=1, made_cards=3, high_card=5, to_call=4),   # strong_3card
+                _record("CO", RAISE, draw_round=1, made_cards=2, high_card=8, to_call=4),  # weak_2card
+                _record("CO", FOLD, draw_round=1, made_cards=1, high_card=2, to_call=4),   # phase2_trash
+                _record("CO", FOLD, draw_round=1, made_cards=3, high_card=10, to_call=4),  # phase2_trash (high>=10)
+            ]
+        )
+
+        high = summary["byBetRoundFacingActionAndPhase2BucketHigh"]
+        for sub in ("high8", "high9", "highT"):
+            key = f"round1.facing_bet.phase2_weak_3card.{sub}"
+            self.assertEqual(high[key]["samples"], 0, msg=f"{key} should be empty")
+
+    def test_aggression_q_summary_for_weak3_high_buckets(self):
+        summary = summarize_aggression_decisions(
+            [
+                _record("CO", CALL, draw_round=2, made_cards=3, high_card=7, to_call=4,
+                        q_fold=-0.13, q_call=0.09, q_raise=-0.05),
+                _record("SB", FOLD, draw_round=2, made_cards=3, high_card=7, to_call=4,
+                        q_fold=0.30, q_call=-0.01, q_raise=-0.07),
+            ]
+        )
+
+        high_q = summary["byBetRoundFacingActionAndPhase2BucketHighQ"]
+        key = "round2.facing_bet.phase2_weak_3card.high8"
+        self.assertIn(key, high_q)
+        self.assertEqual(high_q[key]["samples"], 2)
+        self.assertAlmostEqual(high_q[key]["avgQFold"], (-0.13 + 0.30) / 2, places=4)
+        self.assertAlmostEqual(high_q[key]["avgQCall"], (0.09 + -0.01) / 2, places=4)
+        self.assertAlmostEqual(high_q[key]["avgQRaise"], (-0.05 + -0.07) / 2, places=4)
+
+    def test_partial_summary_output_preserves_weak3_high_bucket_keys(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            checkpoint = root / "tiny_badugi_sixmax.pt"
+            output_json = root / "partial.json"
+            agent = DQNAgent(obs_dim=96, n_actions=6, hidden_dim=16, device="cpu")
+            with torch.no_grad():
+                for param in agent.q_network.parameters():
+                    param.zero_()
+                agent.q_network.net[-1].bias.copy_(torch.tensor([0.0, 8.0, 10.0, 9.0, 7.0, 6.0]))
+                agent.target_network.load_state_dict(agent.q_network.state_dict())
+            agent.save(str(checkpoint))
+
+            audit_checkpoint(
+                checkpoint=checkpoint,
+                samples=1,
+                device="cpu",
+                output_json=output_json,
+                progress_interval=0,
+                checkpoint_output_interval=1,
+                partial_output_mode="summary",
+            )
+            payload = json.loads(output_json.read_text(encoding="utf8"))
+
+            self.assertTrue(payload["partial"])
+            self.assertIn("byBetRoundFacingActionAndPhase2BucketHigh", payload["summary"])
+            self.assertIn("byBetRoundFacingActionAndPhase2BucketHighQ", payload["summary"])
+
+    def test_existing_phase2_summary_keys_unchanged_by_high_split(self):
+        summary = summarize_aggression_decisions(
+            [
+                _record("CO", CALL, draw_round=1, made_cards=3, high_card=8, to_call=4),
+            ]
+        )
+
+        for key in (
+            "byBetRoundAndPhase2Bucket",
+            "byBetRoundAndPhase2BucketQ",
+            "byBetRoundFacingActionAndPhase2Bucket",
+            "byBetRoundFacingActionAndPhase2BucketQ",
+        ):
+            self.assertIn(key, summary, msg=f"Existing key '{key}' missing after high split added")
+        self.assertEqual(
+            summary["byBetRoundFacingActionAndPhase2Bucket"]["round1.facing_bet.phase2_weak_3card"]["samples"],
+            1,
+        )
+
     def test_cli_smoke_runs_small_sample(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

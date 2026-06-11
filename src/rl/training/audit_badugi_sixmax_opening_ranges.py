@@ -1174,6 +1174,30 @@ def progress_line(
     )
 
 
+def _advance_bet_phase_until_hero(env: SixMaxBadugiEnv, skipped: Counter) -> str:
+    """Audit-only opponent autoplay until hero can act, the hand ends, or audit must skip."""
+    if env.phase != "BET":
+        return "advanced"
+
+    bet_queue = getattr(env, "bet_queue", None)
+    if bet_queue and bet_queue[0] == env.hero_seat:
+        return "hero"
+
+    autoplay_until_hero = getattr(env, "_autoplay_until_hero", None)
+    if bet_queue and callable(autoplay_until_hero):
+        autoplay_until_hero()
+        if bool(getattr(env, "_game_ended", False)):
+            return "done"
+        if env.phase != "BET":
+            return "advanced"
+        bet_queue = getattr(env, "bet_queue", None)
+        if bet_queue and bet_queue[0] == env.hero_seat:
+            return "hero"
+
+    skipped["hero_not_to_act_midhand"] += 1
+    return "skip"
+
+
 def audit_checkpoint(
     *,
     checkpoint: Path,
@@ -1279,9 +1303,16 @@ def audit_checkpoint(
                 while not done and steps_this_hand < 100:
                     steps_this_hand += 1
                     if env.phase == "BET":
-                        if not getattr(env, "bet_queue", None) or env.bet_queue[0] != env.hero_seat:
-                            skipped["hero_not_to_act_midhand"] += 1
+                        hero_bet_status = _advance_bet_phase_until_hero(env, skipped)
+                        if hero_bet_status == "done":
+                            done = True
                             break
+                        if hero_bet_status == "skip":
+                            break
+                        if hero_bet_status == "advanced":
+                            obs = env._obs_for(env.hero_seat)
+                            continue
+                        obs = env._obs_for(env.hero_seat)
                         action_mask = env.legal_action_mask()
                         with torch.no_grad():
                             obs_t = torch.as_tensor(obs, dtype=torch.float32, device=device_t).reshape(1, -1)

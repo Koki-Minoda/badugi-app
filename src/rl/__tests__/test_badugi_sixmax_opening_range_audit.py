@@ -2,6 +2,7 @@ import io
 import json
 import tempfile
 import unittest
+from collections import Counter, deque
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
@@ -14,6 +15,7 @@ from rl.training.audit_badugi_sixmax_opening_ranges import (
     CHECK,
     FOLD,
     RAISE,
+    _advance_bet_phase_until_hero,
     aggression_hand_class,
     audit_checkpoint,
     bet_round_key,
@@ -311,6 +313,49 @@ class BadugiSixMaxOpeningRangeAuditTest(unittest.TestCase):
     def test_facing_action_type_returns_correct_string(self):
         self.assertEqual(facing_action_type(to_call=0), "unopened")
         self.assertEqual(facing_action_type(to_call=1), "facing_bet")
+
+    def test_audit_autoplays_non_hero_bet_actor_until_hero(self):
+        class FakeEnv:
+            phase = "BET"
+            hero_seat = 2
+            _game_ended = False
+
+            def __init__(self):
+                self.bet_queue = deque([0, 1, self.hero_seat])
+                self.autoplay_calls = 0
+
+            def _autoplay_until_hero(self):
+                self.autoplay_calls += 1
+                self.bet_queue = deque([self.hero_seat])
+
+        env = FakeEnv()
+        skipped = Counter()
+
+        status = _advance_bet_phase_until_hero(env, skipped)
+
+        self.assertEqual(status, "hero")
+        self.assertEqual(env.autoplay_calls, 1)
+        self.assertEqual(skipped["hero_not_to_act_midhand"], 0)
+
+    def test_audit_autoplay_terminal_hand_does_not_record_skip(self):
+        class FakeEnv:
+            phase = "BET"
+            hero_seat = 2
+
+            def __init__(self):
+                self.bet_queue = deque([0, 1, self.hero_seat])
+                self._game_ended = False
+
+            def _autoplay_until_hero(self):
+                self._game_ended = True
+                self.bet_queue = deque()
+
+        skipped = Counter()
+
+        status = _advance_bet_phase_until_hero(FakeEnv(), skipped)
+
+        self.assertEqual(status, "done")
+        self.assertEqual(skipped["hero_not_to_act_midhand"], 0)
 
     def test_aggression_summary_groups_by_bet_round(self):
         summary = summarize_aggression_decisions(
@@ -821,6 +866,40 @@ class BadugiSixMaxOpeningRangeAuditTest(unittest.TestCase):
             self.assertIn("round1.weak_3card.BTN", report["summary"]["byBetRoundHandClassPosition"])
             self.assertIn("round1.weak_3card", report["summary"]["byBetRoundAndHandClassQ"])
             self.assertEqual(report["model"]["obsDim"], 96)
+
+    def test_audit_collects_postdraw_bet_records_for_non_sb_hero_positions(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            checkpoint = root / "tiny_badugi_sixmax.pt"
+            agent = DQNAgent(obs_dim=96, n_actions=6, hidden_dim=16, device="cpu")
+            with torch.no_grad():
+                for param in agent.q_network.parameters():
+                    param.zero_()
+                agent.q_network.net[-1].bias.copy_(torch.tensor([0.0, 8.0, 10.0, 9.0, 7.0, 6.0]))
+                agent.target_network.load_state_dict(agent.q_network.state_dict())
+            agent.save(str(checkpoint))
+
+            report = audit_checkpoint(
+                checkpoint=checkpoint,
+                samples=12,
+                device="cpu",
+                progress_interval=0,
+                checkpoint_output_interval=0,
+            )
+
+            round2_positions = {
+                record["position"]
+                for record in report["betRoundDecisions"]
+                if record["betRound"] == "round2"
+            }
+
+            self.assertGreaterEqual(report["summary"]["byBetRound"]["round2"]["samples"], 1)
+            self.assertTrue(any(position != "SB" for position in round2_positions))
+            self.assertEqual(report["skipped"].get("hero_not_to_act_midhand", 0), 0)
+            self.assertIn("byBetRoundAndPhase2Bucket", report["summary"])
+            self.assertIn("byBetRoundAndPhase2BucketQ", report["summary"])
+            self.assertIn("byBetRoundFacingActionAndPhase2Bucket", report["summary"])
+            self.assertIn("byBetRoundFacingActionAndPhase2BucketQ", report["summary"])
 
     def test_cli_progress_and_checkpoint_keep_stdout_json_compatible(self):
         with tempfile.TemporaryDirectory() as tmp:

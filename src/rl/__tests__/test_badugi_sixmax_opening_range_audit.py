@@ -854,6 +854,8 @@ class BadugiSixMaxOpeningRangeAuditTest(unittest.TestCase):
             self.assertNotIn("findings", payload)
             self.assertIn("byBetRoundAndHandClass", payload["summary"])
             self.assertIn("byBetRoundAndHandClassQ", payload["summary"])
+            self.assertIn("byBetRoundAndPhase2Bucket", payload["summary"])
+            self.assertIn("byBetRoundAndPhase2BucketQ", payload["summary"])
             self.assertIn("omitted", payload)
             self.assertNotIn("legalActions", serialized)
             self.assertNotIn("qValues", serialized)

@@ -1081,6 +1081,8 @@ def build_partial_report(
         "byBetRoundFacingAction",
         "byBetRoundAndHandClass",
         "byBetRoundAndHandClassQ",
+        "byBetRoundAndPhase2Bucket",
+        "byBetRoundAndPhase2BucketQ",
     )
     summary = {key: full_summary[key] for key in summary_keys if key in full_summary}
     return {

@@ -21,6 +21,8 @@ from rl.training.audit_badugi_sixmax_opening_ranges import (
     main as audit_main,
     build_findings,
     facing_action_type,
+    phase2_bucket,
+    phase2_bucket_from_info,
     summarize_decisions,
     summarize_aggression_decisions,
     build_warnings,
@@ -43,11 +45,18 @@ def _record(
     q_call=1.0,
     q_raise=2.0,
     pot=12,
+    made_cards=None,
+    high_card=None,
+    phase2_bucket=None,
 ):
     labels = labels or ["3-card"]
-    made_cards = 4 if "made_badugi" in labels else 3 if any("3card" in label or label == "3-card" for label in labels) else 2
+    made_cards = (
+        made_cards
+        if made_cards is not None
+        else 4 if "made_badugi" in labels else 3 if any("3card" in label or label == "3-card" for label in labels) else 2
+    )
     bet_round = f"round{draw_round}"
-    return {
+    record = {
         "sampleIndex": 0,
         "position": position,
         "spotType": spot,
@@ -72,6 +81,7 @@ def _record(
             "hand_class": aggression_hand_class or labels[0],
             "class_labels": labels,
             "made_cards": made_cards,
+            "high_card": 3 if high_card is None else high_card,
             "high_card_label": "4",
             "smoothness": 1.0,
             "roughness": 0.25,
@@ -82,6 +92,9 @@ def _record(
             "is_trash": trash,
         },
     }
+    if phase2_bucket is not None:
+        record["phase2Bucket"] = phase2_bucket
+    return record
 
 
 class BadugiSixMaxOpeningRangeAuditTest(unittest.TestCase):
@@ -120,6 +133,39 @@ class BadugiSixMaxOpeningRangeAuditTest(unittest.TestCase):
         self.assertIn("weak_2card", hand.class_labels)
         self.assertIn("trash", hand.class_labels)
         self.assertTrue(hand.is_trash)
+
+    def test_phase2_bucket_mapping_matches_env_postdraw_buckets(self):
+        cases = [
+            ([(12, 0), (12, 1), (12, 2), (12, 3)], "phase2_trash"),
+            ([(0, 0), (6, 1), (12, 0), (12, 1)], "strong_2card"),
+            ([(0, 0), (8, 1), (12, 0), (12, 1)], "weak_2card"),
+            ([(0, 0), (9, 1), (12, 0), (12, 1)], "phase2_trash"),
+            ([(0, 0), (3, 1), (8, 2), (12, 2)], "phase2_weak_3card"),
+            ([(0, 0), (3, 1), (10, 2), (12, 2)], "phase2_trash"),
+            ([(0, 0), (3, 1), (6, 2), (12, 2)], "strong_3card"),
+            ([(0, 0), (2, 1), (4, 2), (6, 3)], "made_badugi"),
+        ]
+
+        for cards, expected in cases:
+            with self.subTest(cards=cards):
+                self.assertEqual(phase2_bucket_from_info(classify_opening_hand(cards)), expected)
+
+    def test_phase2_bucket_from_record_uses_count_and_high_card(self):
+        cases = [
+            (1, 12, "phase2_trash"),
+            (2, 6, "strong_2card"),
+            (2, 8, "weak_2card"),
+            (2, 9, "phase2_trash"),
+            (3, 8, "phase2_weak_3card"),
+            (3, 10, "phase2_trash"),
+            (3, 6, "strong_3card"),
+            (4, 6, "made_badugi"),
+        ]
+
+        for made_cards, high_card, expected in cases:
+            record = _record("BTN", CHECK, made_cards=made_cards, high_card=high_card)
+            with self.subTest(made_cards=made_cards, high_card=high_card):
+                self.assertEqual(phase2_bucket(record), expected)
 
     def test_spot_type_classification_matches_blind_and_open_thresholds(self):
         self.assertEqual(spot_type(position="UTG", current_bet=2, to_call=2), "unopened")
@@ -289,6 +335,43 @@ class BadugiSixMaxOpeningRangeAuditTest(unittest.TestCase):
         self.assertEqual(made_round3["samples"], 1)
         self.assertEqual(made_round3["callPct"], 100.0)
 
+    def test_aggression_summary_includes_phase2_bucket_keys(self):
+        summary = summarize_aggression_decisions(
+            [
+                _record("CO", FOLD, draw_round=1, made_cards=2, high_card=6, aggression_hand_class="trash"),
+                _record("CO", CALL, draw_round=1, made_cards=3, high_card=8, aggression_hand_class="weak_3card"),
+                _record("CO", RAISE, draw_round=1, made_cards=3, high_card=10, aggression_hand_class="weak_3card"),
+            ]
+        )
+
+        self.assertIn("byBetRoundAndHandClass", summary)
+        self.assertIn("byBetRoundAndPhase2Bucket", summary)
+        self.assertIn("byBetRoundAndPhase2BucketQ", summary)
+
+    def test_phase2_summary_excludes_strong_2card_from_phase2_trash(self):
+        summary = summarize_aggression_decisions(
+            [
+                _record("CO", RAISE, draw_round=1, made_cards=2, high_card=6, aggression_hand_class="trash"),
+                _record("CO", CALL, draw_round=1, made_cards=2, high_card=9, aggression_hand_class="weak_2card"),
+            ]
+        )
+
+        self.assertEqual(summary["byBetRoundAndHandClass"]["round1.trash"]["samples"], 1)
+        self.assertEqual(summary["byBetRoundAndPhase2Bucket"]["round1.strong_2card"]["samples"], 1)
+        self.assertEqual(summary["byBetRoundAndPhase2Bucket"]["round1.phase2_trash"]["samples"], 1)
+
+    def test_phase2_weak_3card_excludes_three_card_ten_high(self):
+        summary = summarize_aggression_decisions(
+            [
+                _record("CO", CALL, draw_round=1, made_cards=3, high_card=8, aggression_hand_class="weak_3card"),
+                _record("CO", RAISE, draw_round=1, made_cards=3, high_card=10, aggression_hand_class="weak_3card"),
+            ]
+        )
+
+        self.assertEqual(summary["byBetRoundAndHandClass"]["round1.weak_3card"]["samples"], 2)
+        self.assertEqual(summary["byBetRoundAndPhase2Bucket"]["round1.phase2_weak_3card"]["samples"], 1)
+        self.assertEqual(summary["byBetRoundAndPhase2Bucket"]["round1.phase2_trash"]["samples"], 1)
+
     def test_aggression_q_summary_averages_by_round_and_hand_class(self):
         summary = summarize_aggression_decisions(
             [
@@ -336,6 +419,46 @@ class BadugiSixMaxOpeningRangeAuditTest(unittest.TestCase):
         self.assertEqual(trash_q["avgQFold"], 2.0)
         self.assertEqual(trash_q["avgQCall"], 4.0)
         self.assertEqual(trash_q["avgQRaise"], 8.0)
+
+    def test_phase2_bucket_q_summary_uses_phase2_bucket(self):
+        summary = summarize_aggression_decisions(
+            [
+                _record(
+                    "BTN",
+                    RAISE,
+                    draw_round=1,
+                    made_cards=2,
+                    high_card=6,
+                    aggression_hand_class="trash",
+                    q_fold=-1.0,
+                    q_call=0.5,
+                    q_raise=3.0,
+                ),
+                _record(
+                    "SB",
+                    BET,
+                    draw_round=1,
+                    made_cards=3,
+                    high_card=10,
+                    aggression_hand_class="weak_3card",
+                    q_fold=2.0,
+                    q_call=4.0,
+                    q_raise=8.0,
+                ),
+            ]
+        )
+
+        strong2_q = summary["byBetRoundAndPhase2BucketQ"]["round1.strong_2card"]
+        phase2_trash_q = summary["byBetRoundAndPhase2BucketQ"]["round1.phase2_trash"]
+
+        self.assertEqual(strong2_q["samples"], 1)
+        self.assertEqual(strong2_q["avgQFold"], -1.0)
+        self.assertEqual(strong2_q["avgQCall"], 0.5)
+        self.assertEqual(strong2_q["avgQRaise"], 3.0)
+        self.assertEqual(phase2_trash_q["samples"], 1)
+        self.assertEqual(phase2_trash_q["avgQFold"], 2.0)
+        self.assertEqual(phase2_trash_q["avgQCall"], 4.0)
+        self.assertEqual(phase2_trash_q["avgQRaise"], 8.0)
 
     def test_by_bet_round_hand_class_position_summary(self):
         summary = summarize_aggression_decisions(

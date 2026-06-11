@@ -71,6 +71,15 @@ AGGRESSION_HAND_CLASS_ORDER = (
     "weak_2card",
     "trash",
 )
+PHASE2_BUCKET_ORDER = (
+    "made_badugi",
+    "strong_2card",
+    "weak_2card",
+    "strong_3card",
+    "phase2_weak_3card",
+    "phase2_trash",
+    "unknown",
+)
 
 
 @dataclass(frozen=True)
@@ -229,6 +238,57 @@ def aggression_hand_class(record: dict) -> str:
     return "trash"
 
 
+def phase2_bucket_from_info(hand_info: OpeningHandInfo) -> str:
+    count = int(hand_info.made_cards)
+    high = int(hand_info.high_card) if hand_info.high_card >= 0 else 13
+    if count >= 4:
+        return "made_badugi"
+    if count <= 1:
+        return "phase2_trash"
+    if count == 2 and high >= 9:
+        return "phase2_trash"
+    if count == 2 and high <= 7:
+        return "strong_2card"
+    if count == 2 and high == 8:
+        return "weak_2card"
+    if count == 3 and high >= 10:
+        return "phase2_trash"
+    if count == 3 and 7 <= high <= 9:
+        return "phase2_weak_3card"
+    if count == 3 and high <= 6:
+        return "strong_3card"
+    return "unknown"
+
+
+def phase2_bucket(record: dict) -> str:
+    hand = record.get("hand", {})
+    made_cards = int(hand.get("made_cards", 0) or 0)
+    high_card = hand.get("high_card", -1)
+    try:
+        high = int(high_card)
+    except (TypeError, ValueError):
+        high = -1
+    if high < 0:
+        high = 13
+    if made_cards >= 4:
+        return "made_badugi"
+    if made_cards <= 1:
+        return "phase2_trash"
+    if made_cards == 2 and high >= 9:
+        return "phase2_trash"
+    if made_cards == 2 and high <= 7:
+        return "strong_2card"
+    if made_cards == 2 and high == 8:
+        return "weak_2card"
+    if made_cards == 3 and high >= 10:
+        return "phase2_trash"
+    if made_cards == 3 and 7 <= high <= 9:
+        return "phase2_weak_3card"
+    if made_cards == 3 and high <= 6:
+        return "strong_3card"
+    return "unknown"
+
+
 def is_vpip_action(action: int) -> bool:
     return action in (CALL, BET, RAISE, ALL_IN)
 
@@ -278,6 +338,7 @@ def make_decision_record(
         "betRound": bet_round_key(int(env.draw_round)),
         "facingAction": facing_action_type(to_call=int(to_call)),
         "aggressionHandClass": aggression_hand_class_from_info(hand_info),
+        "phase2Bucket": phase2_bucket_from_info(hand_info),
         "handClass": hand_info.hand_class,
         "heroSeat": hero_seat,
         "dealerSeat": int(env.dealer_seat),
@@ -409,6 +470,11 @@ def summarize_aggression_decisions(records: list[dict]) -> dict:
         for round_key in BET_ROUND_ORDER
         for hand_class in AGGRESSION_HAND_CLASS_ORDER
     }
+    by_bet_round_and_phase2_bucket_records: dict[str, list[dict]] = {
+        f"{round_key}.{bucket}": []
+        for round_key in BET_ROUND_ORDER
+        for bucket in PHASE2_BUCKET_ORDER
+    }
     by_bet_round_hand_class_position_records: dict[str, list[dict]] = {
         f"{round_key}.{hand_class}.{position}": []
         for round_key in BET_ROUND_ORDER
@@ -420,10 +486,12 @@ def summarize_aggression_decisions(records: list[dict]) -> dict:
         round_key = record.get("betRound") or bet_round_key(int(record.get("drawRound", 0)))
         facing_action = record.get("facingAction") or facing_action_type(to_call=int(record.get("toCall", 0)))
         hand_class = record.get("aggressionHandClass") or aggression_hand_class(record)
+        phase2 = record.get("phase2Bucket") or phase2_bucket(record)
         position = record.get("position", "NA")
         by_bet_round_records.setdefault(round_key, []).append(record)
         by_bet_round_facing_action_records.setdefault(f"{round_key}.{facing_action}", []).append(record)
         by_bet_round_and_hand_class_records.setdefault(f"{round_key}.{hand_class}", []).append(record)
+        by_bet_round_and_phase2_bucket_records.setdefault(f"{round_key}.{phase2}", []).append(record)
         by_bet_round_hand_class_position_records.setdefault(f"{round_key}.{hand_class}.{position}", []).append(record)
 
     return {
@@ -446,6 +514,14 @@ def summarize_aggression_decisions(records: list[dict]) -> dict:
             for round_key in BET_ROUND_ORDER
             for hand_class in AGGRESSION_HAND_CLASS_ORDER
         },
+        "byBetRoundAndPhase2Bucket": {
+            f"{round_key}.{bucket}": _summarize_aggression_bucket(
+                by_bet_round_and_phase2_bucket_records.get(f"{round_key}.{bucket}", []),
+                include_vpip=False,
+            )
+            for round_key in BET_ROUND_ORDER
+            for bucket in PHASE2_BUCKET_ORDER
+        },
         "byBetRoundHandClassPosition": {
             f"{round_key}.{hand_class}.{position}": _summarize_aggression_bucket(
                 by_bet_round_hand_class_position_records.get(f"{round_key}.{hand_class}.{position}", []),
@@ -461,6 +537,13 @@ def summarize_aggression_decisions(records: list[dict]) -> dict:
             )
             for round_key in BET_ROUND_ORDER
             for hand_class in AGGRESSION_HAND_CLASS_ORDER
+        },
+        "byBetRoundAndPhase2BucketQ": {
+            f"{round_key}.{bucket}": _summarize_aggression_q_bucket(
+                by_bet_round_and_phase2_bucket_records.get(f"{round_key}.{bucket}", [])
+            )
+            for round_key in BET_ROUND_ORDER
+            for bucket in PHASE2_BUCKET_ORDER
         },
     }
 

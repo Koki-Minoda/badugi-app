@@ -58,8 +58,11 @@ WEAK_HAND_FACING_OPEN_CALL_PENALTY = -0.10
 WEAK_HAND_FACING_OPEN_AGGRESSIVE_PENALTY = -0.20
 BLIND_FACING_OPEN_WEAK_AGGRESSIVE_EXTRA_PENALTY = -0.15
 SB_FACING_OPEN_WEAK_3CARD_CALL_EXTRA_PENALTY = -0.08
+POSTDRAW_R1_WEAK_3CARD_CALL_PENALTY = -0.10
+POSTDRAW_R2_WEAK_3CARD_CALL_PENALTY = -0.15
+POSTDRAW_TRASH_CALL_PENALTY = -0.20
 POSTDRAW_R1_WEAK_3CARD_AGGRESSIVE_PENALTY = -0.10
-POSTDRAW_R1_TRASH_AGGRESSIVE_PENALTY = -0.15
+POSTDRAW_R1_TRASH_AGGRESSIVE_PENALTY = -0.20
 POSTDRAW_R2_WEAK_3CARD_AGGRESSIVE_PENALTY = -0.15
 POSTDRAW_R2_TRASH_AGGRESSIVE_PENALTY = -0.20
 
@@ -81,6 +84,17 @@ def _new_player(stack: int) -> dict:
         "opened_current_round": False,
         "discarded": [],
     }
+
+
+def _postdraw_weak_trash_bucket(features: dict) -> str | None:
+    high = features["highest_rank"] if features["highest_rank"] is not None else 13
+    if features["count"] <= 1 or (features["count"] == 2 and high >= 9) or (
+        features["count"] == 3 and high >= 10
+    ):
+        return "trash"
+    if features["count"] == 3 and 7 <= high <= 9:
+        return "weak_3card"
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -373,11 +387,6 @@ class SixMaxBadugiEnv:
         p = self.players[seat]
         to_call = max(0, self.current_bet - p["bet"])
         f = _evaluate_badugi_features(p["hand"])
-        high = (
-            f["highest_rank"]
-            if f["highest_rank"] is not None
-            else 13
-        )
         sb_facing_open_weak_3card_fold = (
             self.phase == "BET"
             and self.draw_round == 0
@@ -389,23 +398,9 @@ class SixMaxBadugiEnv:
         if sb_facing_open_weak_3card_fold:
             return 0.10 if f["highest_rank"] >= 9 else 0.0
 
-        if self.draw_round in (1, 2) and to_call > 0:
-            is_postdraw_weak_3card = (
-                f["count"] == 3
-                and 7 <= high <= 9
-            )
-
-            is_postdraw_trash = (
-                f["count"] <= 1
-                or (f["count"] == 2 and high >= 9)
-                or (f["count"] == 3 and high >= 10)
-            )
-
-            if is_postdraw_trash:
-                return 0.20
-
-            if is_postdraw_weak_3card:
-                return 0.10
+        if self.phase == "BET" and self.draw_round in (1, 2, 3) and to_call > 0:
+            if _postdraw_weak_trash_bucket(f) in {"weak_3card", "trash"}:
+                return 0.30
 
         strength = float(f["strength"])
         pot_odds = to_call / max(1, self.pot + to_call) if to_call > 0 else 0.0
@@ -424,38 +419,44 @@ class SixMaxBadugiEnv:
             return 0.0
 
         f = _evaluate_badugi_features(self.players[seat]["hand"])
-        high = f["highest_rank"] if f["highest_rank"] is not None else 13
+        player = self.players[seat]
+        to_call = max(0, self.current_bet - player["bet"])
+
         if self.draw_round in (1, 2):
-            if action not in (BET, RAISE, ALL_IN):
+            if to_call <= 0 or action not in (CALL, RAISE):
                 return 0.0
-            is_postdraw_weak_3card = f["count"] == 3 and 7 <= high <= 9
-            is_postdraw_trash = (
-                f["count"] <= 1
-                or (f["count"] == 2 and high >= 9)
-                or (f["count"] == 3 and high >= 10)
-            )
+            bucket = _postdraw_weak_trash_bucket(f)
+            if action == CALL:
+                if bucket == "trash":
+                    return POSTDRAW_TRASH_CALL_PENALTY
+                if bucket == "weak_3card":
+                    return (
+                        POSTDRAW_R1_WEAK_3CARD_CALL_PENALTY
+                        if self.draw_round == 1
+                        else POSTDRAW_R2_WEAK_3CARD_CALL_PENALTY
+                    )
+                return 0.0
             if self.draw_round == 1:
-                if is_postdraw_trash:
+                if bucket == "trash":
                     return POSTDRAW_R1_TRASH_AGGRESSIVE_PENALTY
-                if is_postdraw_weak_3card:
+                if bucket == "weak_3card":
                     return POSTDRAW_R1_WEAK_3CARD_AGGRESSIVE_PENALTY
             if self.draw_round == 2:
-                if is_postdraw_trash:
+                if bucket == "trash":
                     return POSTDRAW_R2_TRASH_AGGRESSIVE_PENALTY
-                if is_postdraw_weak_3card:
+                if bucket == "weak_3card":
                     return POSTDRAW_R2_WEAK_3CARD_AGGRESSIVE_PENALTY
             return 0.0
 
         if self.draw_round != 0:
             return 0.0
 
+        high = f["highest_rank"] if f["highest_rank"] is not None else 13
         is_weak_3card = f["count"] == 3 and high >= 7
         is_weak_2card = f["count"] == 2 and high >= 8
         is_trash = f["count"] <= 1 or is_weak_2card or (f["count"] == 3 and high >= 10)
         is_weak_hand = is_weak_3card or is_weak_2card
 
-        player = self.players[seat]
-        to_call = max(0, self.current_bet - player["bet"])
         facing_open = self._is_facing_open(to_call)
         if facing_open:
             if action == CALL:

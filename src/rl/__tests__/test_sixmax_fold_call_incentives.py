@@ -5,7 +5,18 @@ import pytest
 import torch
 
 from rl.agents.dqn_agent import DQNAgent, DQNHyperParams
-from rl.env.badugi_env_sixmax_selfplay import BET, CHECK, CALL, FOLD, MAX_DRAWS, RAISE, SixMaxBadugiEnv
+from rl.env.badugi_env import BADUGI_OBSERVATION_VECTOR_SIZE
+from rl.env.badugi_env_sixmax_selfplay import (
+    BET,
+    BIG_BET,
+    CHECK,
+    CALL,
+    FOLD,
+    MAX_DRAWS,
+    RAISE,
+    SMALL_BET,
+    SixMaxBadugiEnv,
+)
 from rl.training.train_sixmax_selfplay_badugi_dqn import _add_fold_margin_transition
 from rl.utils.replay_buffer import ReplayBuffer
 
@@ -1062,6 +1073,37 @@ def test_draw_phase_resets_current_bet_and_observation_ignores_stale_bet():
     assert stale_obs[30] == pytest.approx(0.0)
     for idx in (28, 30, 50, 51):
         assert stale_obs[idx] == pytest.approx(clean_obs[idx])
+
+
+@pytest.mark.parametrize(
+    ("draw_round", "expected_bet_size"),
+    [
+        (0, SMALL_BET),
+        (1, SMALL_BET),
+        (2, BIG_BET),
+        (3, BIG_BET),
+    ],
+)
+def test_observation_raise_ev_uses_street_bet_size(draw_round, expected_bet_size):
+    env = SixMaxBadugiEnv(seed=13, opp_epsilon=0.0)
+    env.reset(seed=13)
+    hero = env.hero_seat
+    _set_predraw_spot(
+        env,
+        position="BTN",
+        hero_hand=[(0, 0), (3, 1), (8, 2), (12, 2)],
+        draw_round=draw_round,
+        current_bet=0,
+        hero_bet=0,
+    )
+    env.pot = 20
+
+    obs = env._obs_for(hero)
+    equity = float(obs[48])
+    expected_raise_ev = (equity * (env.pot + expected_bet_size) - expected_bet_size) / 10.0
+
+    assert len(obs) == BADUGI_OBSERVATION_VECTOR_SIZE
+    assert obs[51] == pytest.approx(max(-1.0, min(1.0, expected_raise_ev)))
 
 
 def _semibluff_obs(

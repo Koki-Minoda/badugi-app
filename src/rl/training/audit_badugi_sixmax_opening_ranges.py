@@ -475,6 +475,12 @@ def summarize_aggression_decisions(records: list[dict]) -> dict:
         for round_key in BET_ROUND_ORDER
         for bucket in PHASE2_BUCKET_ORDER
     }
+    by_bet_round_facing_action_phase2_bucket_records: dict[str, list[dict]] = {
+        f"{round_key}.{facing_action}.{bucket}": []
+        for round_key in BET_ROUND_ORDER
+        for facing_action in FACING_ACTION_ORDER
+        for bucket in PHASE2_BUCKET_ORDER
+    }
     by_bet_round_hand_class_position_records: dict[str, list[dict]] = {
         f"{round_key}.{hand_class}.{position}": []
         for round_key in BET_ROUND_ORDER
@@ -492,6 +498,9 @@ def summarize_aggression_decisions(records: list[dict]) -> dict:
         by_bet_round_facing_action_records.setdefault(f"{round_key}.{facing_action}", []).append(record)
         by_bet_round_and_hand_class_records.setdefault(f"{round_key}.{hand_class}", []).append(record)
         by_bet_round_and_phase2_bucket_records.setdefault(f"{round_key}.{phase2}", []).append(record)
+        by_bet_round_facing_action_phase2_bucket_records.setdefault(
+            f"{round_key}.{facing_action}.{phase2}", []
+        ).append(record)
         by_bet_round_hand_class_position_records.setdefault(f"{round_key}.{hand_class}.{position}", []).append(record)
 
     return {
@@ -522,6 +531,15 @@ def summarize_aggression_decisions(records: list[dict]) -> dict:
             for round_key in BET_ROUND_ORDER
             for bucket in PHASE2_BUCKET_ORDER
         },
+        "byBetRoundFacingActionAndPhase2Bucket": {
+            f"{round_key}.{facing_action}.{bucket}": _summarize_aggression_bucket(
+                by_bet_round_facing_action_phase2_bucket_records.get(f"{round_key}.{facing_action}.{bucket}", []),
+                include_vpip=False,
+            )
+            for round_key in BET_ROUND_ORDER
+            for facing_action in FACING_ACTION_ORDER
+            for bucket in PHASE2_BUCKET_ORDER
+        },
         "byBetRoundHandClassPosition": {
             f"{round_key}.{hand_class}.{position}": _summarize_aggression_bucket(
                 by_bet_round_hand_class_position_records.get(f"{round_key}.{hand_class}.{position}", []),
@@ -543,6 +561,14 @@ def summarize_aggression_decisions(records: list[dict]) -> dict:
                 by_bet_round_and_phase2_bucket_records.get(f"{round_key}.{bucket}", [])
             )
             for round_key in BET_ROUND_ORDER
+            for bucket in PHASE2_BUCKET_ORDER
+        },
+        "byBetRoundFacingActionAndPhase2BucketQ": {
+            f"{round_key}.{facing_action}.{bucket}": _summarize_aggression_q_bucket(
+                by_bet_round_facing_action_phase2_bucket_records.get(f"{round_key}.{facing_action}.{bucket}", [])
+            )
+            for round_key in BET_ROUND_ORDER
+            for facing_action in FACING_ACTION_ORDER
             for bucket in PHASE2_BUCKET_ORDER
         },
     }
@@ -1083,6 +1109,8 @@ def build_partial_report(
         "byBetRoundAndHandClassQ",
         "byBetRoundAndPhase2Bucket",
         "byBetRoundAndPhase2BucketQ",
+        "byBetRoundFacingActionAndPhase2Bucket",
+        "byBetRoundFacingActionAndPhase2BucketQ",
     )
     summary = {key: full_summary[key] for key in summary_keys if key in full_summary}
     return {

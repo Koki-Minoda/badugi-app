@@ -766,8 +766,9 @@ class SixMaxBadugiEnv:
 
         # Slots 48-60: EV + 6-max features
         equity = street_str
+        bet_size = BIG_BET if self.draw_round >= 2 else SMALL_BET
         call_ev = (equity * (self.pot + to_call) - to_call) / 10.0 if to_call > 0 else equity * self.pot / 10.0
-        raise_ev = (equity * (self.pot + SMALL_BET) - SMALL_BET) / 10.0
+        raise_ev = (equity * (self.pot + bet_size) - bet_size) / 10.0
         draw_equity = max(0.0, (4 - f["count"]) * 0.12)
         obs[48] = equity
         obs[49] = pot_odds_val

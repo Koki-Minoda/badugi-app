@@ -347,6 +347,8 @@ class BadugiSixMaxOpeningRangeAuditTest(unittest.TestCase):
         self.assertIn("byBetRoundAndHandClass", summary)
         self.assertIn("byBetRoundAndPhase2Bucket", summary)
         self.assertIn("byBetRoundAndPhase2BucketQ", summary)
+        self.assertIn("byBetRoundFacingActionAndPhase2Bucket", summary)
+        self.assertIn("byBetRoundFacingActionAndPhase2BucketQ", summary)
 
     def test_phase2_summary_excludes_strong_2card_from_phase2_trash(self):
         summary = summarize_aggression_decisions(
@@ -459,6 +461,49 @@ class BadugiSixMaxOpeningRangeAuditTest(unittest.TestCase):
         self.assertEqual(phase2_trash_q["avgQFold"], 2.0)
         self.assertEqual(phase2_trash_q["avgQCall"], 4.0)
         self.assertEqual(phase2_trash_q["avgQRaise"], 8.0)
+
+    def test_phase2_bucket_summary_splits_by_facing_action(self):
+        summary = summarize_aggression_decisions(
+            [
+                _record(
+                    "CO",
+                    BET,
+                    draw_round=2,
+                    to_call=0,
+                    made_cards=3,
+                    high_card=8,
+                    aggression_hand_class="weak_3card",
+                    q_fold=-1.0,
+                    q_call=0.5,
+                    q_raise=3.0,
+                ),
+                _record(
+                    "CO",
+                    RAISE,
+                    draw_round=2,
+                    to_call=4,
+                    made_cards=3,
+                    high_card=8,
+                    aggression_hand_class="weak_3card",
+                    q_fold=1.0,
+                    q_call=1.5,
+                    q_raise=5.0,
+                ),
+            ]
+        )
+
+        unopened = summary["byBetRoundFacingActionAndPhase2Bucket"]["round2.unopened.phase2_weak_3card"]
+        facing_bet = summary["byBetRoundFacingActionAndPhase2Bucket"]["round2.facing_bet.phase2_weak_3card"]
+        facing_bet_q = summary["byBetRoundFacingActionAndPhase2BucketQ"]["round2.facing_bet.phase2_weak_3card"]
+
+        self.assertEqual(unopened["samples"], 1)
+        self.assertEqual(unopened["raisePct"], 100.0)
+        self.assertEqual(facing_bet["samples"], 1)
+        self.assertEqual(facing_bet["raisePct"], 100.0)
+        self.assertEqual(facing_bet_q["samples"], 1)
+        self.assertEqual(facing_bet_q["avgQFold"], 1.0)
+        self.assertEqual(facing_bet_q["avgQCall"], 1.5)
+        self.assertEqual(facing_bet_q["avgQRaise"], 5.0)
 
     def test_by_bet_round_hand_class_position_summary(self):
         summary = summarize_aggression_decisions(
@@ -856,6 +901,8 @@ class BadugiSixMaxOpeningRangeAuditTest(unittest.TestCase):
             self.assertIn("byBetRoundAndHandClassQ", payload["summary"])
             self.assertIn("byBetRoundAndPhase2Bucket", payload["summary"])
             self.assertIn("byBetRoundAndPhase2BucketQ", payload["summary"])
+            self.assertIn("byBetRoundFacingActionAndPhase2Bucket", payload["summary"])
+            self.assertIn("byBetRoundFacingActionAndPhase2BucketQ", payload["summary"])
             self.assertIn("omitted", payload)
             self.assertNotIn("legalActions", serialized)
             self.assertNotIn("qValues", serialized)

@@ -24,7 +24,7 @@ describe("modelRouter", () => {
     expect(entry?.modelId).toBe("model-badugi-hu-beginner-dqn-100000");
 
     const standard = resolveTierModelInfo({ variantId: "D03", tierId: "standard" });
-    expect(standard?.modelId).toBe("model-badugi-sixmax-standard-1m");
+    expect(standard?.modelId).toBe("model-badugi-sixmax-standard-dqn-v2");
 
     const generic = resolveTierModelInfo({ variantId: "UNKNOWN", tierId: "beginner" });
     expect(generic?.modelId).toBe("model-generic-v1");
@@ -32,7 +32,7 @@ describe("modelRouter", () => {
 
   it("supports character-specific standard Badugi model overrides", () => {
     expect(selectModelForVariant({ variantId: "D03", tierId: "standard" })?.id).toBe(
-      "model-badugi-sixmax-standard-1m",
+      "model-badugi-sixmax-standard-dqn-v2",
     );
     expect(
       selectModelForVariant({
@@ -40,7 +40,7 @@ describe("modelRouter", () => {
         tierId: "standard",
         characterId: "badugi-sixmax-standard-ryo",
       })?.id,
-    ).toBe("model-badugi-sixmax-standard-1m");
+    ).toBe("model-badugi-sixmax-standard-dqn-v2");
 
     const characterModel = resolveCpuCharacterModelInfo({
       characterId: "badugi-sixmax-standard-ryo",
@@ -51,15 +51,24 @@ describe("modelRouter", () => {
     expect(characterModel).toMatchObject({
       characterId: "badugi-sixmax-standard-ryo",
       characterLabel: "Ryo",
-      modelId: "model-badugi-sixmax-standard-1m",
+      modelId: "model-badugi-sixmax-standard-dqn-v2",
       tierId: "standard",
       style: "pat-pressure",
     });
   });
 
-  it("uses sixmax 1M as the shared Badugi Standard base while preserving character styles", () => {
+  it("uses sixmax Standard v2 as the shared Badugi Standard base while preserving character styles", () => {
+    expect(getModelEntry("model-badugi-sixmax-standard-dqn-v2")).toMatchObject({
+      tier: "standard",
+      variantIds: ["D03"],
+      onnx: "models/badugi_sixmax_standard_dqn_v2.onnx",
+      sourceCheckpoint:
+        "rl/models/badugi_sixmax_foldmargin_100k_from_raiseev_fix/badugi_sixmax_dqn_latest.pt",
+      productionRequired: true,
+    });
+
     expect(resolveTierModelInfo({ variantId: "D03", tierId: "standard" })).toMatchObject({
-      modelId: "model-badugi-sixmax-standard-1m",
+      modelId: "model-badugi-sixmax-standard-dqn-v2",
       tierId: "standard",
     });
 
@@ -69,7 +78,7 @@ describe("modelRouter", () => {
       tierId: "standard",
     })).toMatchObject({
       characterLabel: "Reading Standard",
-      modelId: "model-badugi-sixmax-standard-1m",
+      modelId: "model-badugi-sixmax-standard-dqn-v2",
       style: "opponent-reading",
     });
 
@@ -79,7 +88,7 @@ describe("modelRouter", () => {
       tierId: "standard",
     })).toMatchObject({
       characterLabel: "Balanced Standard",
-      modelId: "model-badugi-sixmax-standard-1m",
+      modelId: "model-badugi-sixmax-standard-dqn-v2",
       style: "baseline-balanced",
     });
 
@@ -97,7 +106,7 @@ describe("modelRouter", () => {
         characterId,
         characterLabel,
         personality: characterLabel,
-        modelId: "model-badugi-sixmax-standard-1m",
+        modelId: "model-badugi-sixmax-standard-dqn-v2",
         tierId: "standard",
         style,
       });
@@ -108,12 +117,16 @@ describe("modelRouter", () => {
     const legacy = getModelEntry("model-badugi-standard-dqn-v1");
     expect(legacy?.trainingStatus).toBe("legacy");
     expect(legacy?.productionRequired).toBe(false);
+    expect(getModelEntry("model-badugi-sixmax-standard-1m")).toMatchObject({
+      tier: "standard",
+      productionRequired: true,
+    });
 
     expect(resolveCpuCharacterModelInfo({
       characterId: "badugi-sixmax-standard-ryo",
       variantId: "D03",
       tierId: "standard",
-    })?.modelId).toBe("model-badugi-sixmax-standard-1m");
+    })?.modelId).toBe("model-badugi-sixmax-standard-dqn-v2");
   });
 
   it("does not route legacy beginner DQN to normal Badugi beginner CPU", () => {
@@ -136,7 +149,7 @@ describe("modelRouter", () => {
       outputShape: [6],
     });
     expect(resolveTierModelInfo({ variantId: "D03", tierId: "standard" })?.modelId).toBe(
-      "model-badugi-sixmax-standard-1m",
+      "model-badugi-sixmax-standard-dqn-v2",
     );
     expect(resolveTierModelInfo({ variantId: "D03", tierId: "pro" })?.modelId).toBe(
       "model-badugi-pro-v1",

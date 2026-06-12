@@ -404,6 +404,36 @@
     ]
   },
   {
+    "id": "model-badugi-sixmax-standard-dqn-v2",
+    "version": "v2",
+    "variant": "Badugi",
+    "variantIds": [
+      "D03"
+    ],
+    "characterIds": [],
+    "tier": "standard",
+    "onnx": "models/badugi_sixmax_standard_dqn_v2.onnx",
+    "checksumSha256": "bf6da2e1a1004717436a820d187c87a47503b5e8c4af9532aa4d2897593693c9",
+    "trainingRun": "badugi_sixmax_foldmargin_100k_from_raiseev_fix",
+    "trainingCheckpoint": "badugi_sixmax_dqn_latest.pt",
+    "trainingMode": "sixmax-selfplay",
+    "trainingEpisodes": 50000,
+    "trainingStatus": "active",
+    "sourceCheckpoint": "rl/models/badugi_sixmax_foldmargin_100k_from_raiseev_fix/badugi_sixmax_dqn_latest.pt",
+    "personality": "Ryo",
+    "style": "pat-pressure",
+    "notes": "Selected Badugi six-max Standard v2 checkpoint. Clean eval PASS; Standard tier only.",
+    "trainingNotes": "Badugi 6-max fold-margin candidate selected as Standard v2. Clean eval PASS: off.avg=0.531, off.worst=0.224, on.avg=0.267, on.worst=-0.002, on.overlay=32.3%. Key action diagnostics: round1 phase2_weak_3card fold=99.9267%, round1 phase2_trash fold=98.8654%, round2 strong_3card fold=0.3831%, made_badugi fold=0.0%, raise=80.6481%. Keep Pro, Iron, and WorldMaster routing on their existing models.",
+    "featureSet": "badugi-observation-v1-ev-range",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
     "id": "model-badugi-sixmax-standard-1m",
     "version": "v20260606",
     "variant": "Badugi",

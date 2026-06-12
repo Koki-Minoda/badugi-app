@@ -4,26 +4,26 @@
     "label": "Ryo",
     "variantIds": ["D03"],
     "tierId": "standard",
-    "modelId": "model-badugi-sixmax-standard-1m",
+    "modelId": "model-badugi-sixmax-standard-dqn-v2",
     "style": "pat-pressure",
-    "notes": "Badugi Standard six-max 1M checkpoint. Strong vs pat-heavy/tight, weak vs loose/draw-heavy; Standard tier only."
+    "notes": "Badugi Standard six-max v2 fold-margin checkpoint. Clean eval PASS; Standard tier only."
   },
   {
     "id": "badugi-standard-reader",
     "label": "Reading Standard",
     "variantIds": ["D03"],
     "tierId": "standard",
-    "modelId": "model-badugi-sixmax-standard-1m",
+    "modelId": "model-badugi-sixmax-standard-dqn-v2",
     "style": "opponent-reading",
-    "notes": "Routes to the shared Badugi Standard six-max 1M base model; opponent-reading behavior is applied as character style metadata."
+    "notes": "Routes to the shared Badugi Standard six-max v2 base model; opponent-reading behavior is applied as character style metadata."
   },
   {
     "id": "badugi-standard-balanced",
     "label": "Balanced Standard",
     "variantIds": ["D03"],
     "tierId": "standard",
-    "modelId": "model-badugi-sixmax-standard-1m",
+    "modelId": "model-badugi-sixmax-standard-dqn-v2",
     "style": "baseline-balanced",
-    "notes": "Routes to the shared Badugi Standard six-max 1M base model. Older v1/v2/v3 models are retained only for offline comparison and rollback."
+    "notes": "Routes to the shared Badugi Standard six-max v2 base model. Older v1/v2/v3 and six-max 1M models are retained only for offline comparison and rollback."
   }
 ]

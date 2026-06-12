@@ -237,7 +237,7 @@ class BadugiSixMaxCleanEvalTest(unittest.TestCase):
                     min_showdown_win_rate=0.35,
                     max_fold_rate=0.45,
                     min_worst_profile_avg_reward=0.0,
-                    min_baseline_avg_delta=0.25,
+                    min_baseline_avg_delta=0.0,
                     min_onnx_usage_rate=0.99,
                     max_fallback_rate=0.01,
                 )
@@ -289,7 +289,7 @@ class BadugiSixMaxCleanEvalTest(unittest.TestCase):
                     min_showdown_win_rate=0.35,
                     max_fold_rate=0.45,
                     min_worst_profile_avg_reward=0.0,
-                    min_baseline_avg_delta=0.25,
+                    min_baseline_avg_delta=0.0,
                     min_onnx_usage_rate=0.99,
                     max_fallback_rate=0.01,
                 )

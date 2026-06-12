@@ -36,11 +36,12 @@ PROMOTION_TIERS = [
     },
     {
         "tier": "pro",
-        "minAvgReward": 0.5,
-        "minShowdownWinRate": 0.35,
-        "maxFoldRate": 0.40,
-        "minBaselineAvgDelta": 0.50,
-        "minWorstProfileAvgReward": 0.25,
+        "minAvgReward": 0.55,
+        "minShowdownWinRate": 0.50,
+        "maxFoldRate": 0.38,
+        "minBaselineAvgDelta": 0.05,
+        "minWorstProfileAvgReward": 0.35,
+        "maxProOverlayRate": 0.15,
     },
     {
         "tier": "iron",
@@ -59,6 +60,16 @@ PROMOTION_TIERS = [
         "minWorstProfileAvgReward": 1.00,
     },
 ]
+
+
+def promotion_tiers(*, max_pro_overlay_rate: float | None = None) -> list[dict]:
+    tiers = [dict(tier) for tier in PROMOTION_TIERS]
+    if max_pro_overlay_rate is None:
+        return tiers
+    for tier in tiers:
+        if "maxProOverlayRate" in tier:
+            tier["maxProOverlayRate"] = float(max_pro_overlay_rate)
+    return tiers
 
 
 def parse_seeds(value: str) -> list[int]:
@@ -143,10 +154,32 @@ def summarize_runs(runs: list[dict]) -> dict:
     }
 
 
-def build_promotion_report(candidate_summary: dict, avg_delta: float | None) -> dict:
+def baseline_delta_check(avg_delta: float | None, min_delta: float) -> bool:
+    if float(min_delta) <= 0:
+        return True
+    return avg_delta is not None and avg_delta >= float(min_delta)
+
+
+def pro_overlay_check(candidate_summary: dict, max_rate: float | None) -> bool:
+    if max_rate is None:
+        return True
+    overlay_rate = candidate_summary.get("proOverlayRate")
+    if overlay_rate is None:
+        return False
+    return float(overlay_rate) <= float(max_rate)
+
+
+def build_promotion_report(
+    candidate_summary: dict,
+    avg_delta: float | None,
+    *,
+    max_pro_overlay_rate: float | None = None,
+) -> dict:
     eligible = []
     failed = {}
-    for tier in PROMOTION_TIERS:
+    tiers = promotion_tiers(max_pro_overlay_rate=max_pro_overlay_rate)
+    for tier in tiers:
+        max_overlay_rate = tier.get("maxProOverlayRate")
         checks = {
             "avgReward": candidate_summary["avgReward"] >= tier["minAvgReward"],
             "showdownWinRate": candidate_summary["showdownWinRate"] >= tier["minShowdownWinRate"],
@@ -155,10 +188,10 @@ def build_promotion_report(candidate_summary: dict, avg_delta: float | None) -> 
                 candidate_summary.get("worstProfileAvgReward", 0.0)
                 >= tier["minWorstProfileAvgReward"]
             ),
-            "baselineAvgDelta": (
-                True if avg_delta is None else avg_delta >= tier["minBaselineAvgDelta"]
-            ),
+            "baselineAvgDelta": baseline_delta_check(avg_delta, tier["minBaselineAvgDelta"]),
         }
+        if max_overlay_rate is not None:
+            checks["proOverlayRate"] = pro_overlay_check(candidate_summary, max_overlay_rate)
         if all(checks.values()):
             eligible.append(tier["tier"])
         else:
@@ -168,7 +201,7 @@ def build_promotion_report(candidate_summary: dict, avg_delta: float | None) -> 
         "recommendedTier": recommended,
         "eligibleTiers": eligible,
         "failedTierChecks": failed,
-        "tierThresholds": PROMOTION_TIERS,
+        "tierThresholds": tiers,
     }
 
 
@@ -261,8 +294,24 @@ def extract_clean_eval_summaries(report: dict, mode: str) -> list[dict]:
     return summaries
 
 
+def load_clean_eval_baseline_summary(report_path: str | None, mode: str) -> dict | None:
+    if not report_path:
+        return None
+    path = Path(report_path)
+    if not path.exists():
+        return None
+    report = json.loads(path.read_text(encoding="utf8"))
+    summaries = extract_clean_eval_summaries(report, mode)
+    if not summaries:
+        return None
+    return summaries[-1]["summary"]
+
+
 def build_clean_eval_gate_report(args) -> dict:
     report_path = Path(args.clean_eval_report)
+    baseline_report_path = getattr(args, "baseline_clean_eval_report", None)
+    baseline_mode = getattr(args, "baseline_clean_eval_mode", None) or args.clean_eval_mode
+    max_pro_overlay_rate = getattr(args, "max_pro_overlay_rate", None)
     if not report_path.exists():
         empty_summary = normalize_gate_summary({})
         return {
@@ -282,11 +331,16 @@ def build_clean_eval_gate_report(args) -> dict:
                 "maxFoldRate": args.max_fold_rate,
                 "minWorstProfileAvgReward": args.min_worst_profile_avg_reward,
                 "minBaselineAvgDelta": args.min_baseline_avg_delta,
+                "maxProOverlayRate": max_pro_overlay_rate,
                 "minOnnxUsageRate": args.min_onnx_usage_rate,
                 "maxFallbackRate": args.max_fallback_rate,
             },
             "avgRewardDeltaVsBaseline": None,
-            "promotion": build_promotion_report(empty_summary, avg_delta=None),
+            "promotion": build_promotion_report(
+                empty_summary,
+                avg_delta=None,
+                max_pro_overlay_rate=max_pro_overlay_rate,
+            ),
             "candidate": {
                 "model": str(report_path),
                 "summary": empty_summary,
@@ -302,10 +356,12 @@ def build_clean_eval_gate_report(args) -> dict:
         }
     clean_report = json.loads(report_path.read_text(encoding="utf8"))
     summaries = extract_clean_eval_summaries(clean_report, args.clean_eval_mode)
+    baseline_summary = load_clean_eval_baseline_summary(baseline_report_path, baseline_mode)
     missing_milestones = clean_report.get("missingMilestones", [])
     checkpoint_checks = {
         "cleanEvalReportExists": report_path.exists(),
         "checkpointExists": not missing_milestones and bool(summaries),
+        "baselineExists": baseline_summary is not None or float(args.min_baseline_avg_delta) <= 0,
     }
     checkpoint_fail_reasons = []
     if missing_milestones:
@@ -314,27 +370,37 @@ def build_clean_eval_gate_report(args) -> dict:
         )
     if not summaries:
         checkpoint_fail_reasons.append(f"CLEAN_EVAL_MODE_NOT_FOUND:{args.clean_eval_mode}")
+    if baseline_summary is None and float(args.min_baseline_avg_delta) > 0:
+        checkpoint_fail_reasons.append("BASELINE_REQUIRED_FOR_DELTA")
 
     evaluated = []
     for row in summaries:
         summary = row["summary"]
-        avg_delta = None
+        avg_delta = (
+            summary["avgReward"] - baseline_summary["avgReward"]
+            if baseline_summary is not None
+            else None
+        )
         metric_checks = {
             "avgReward": summary["avgReward"] >= args.min_avg_reward,
             "showdownWinRate": summary["showdownWinRate"] >= args.min_showdown_win_rate,
             "foldRate": summary["foldRate"] <= args.max_fold_rate,
             "worstProfileAvgReward": summary["worstProfileAvgReward"]
             >= args.min_worst_profile_avg_reward,
-            "baselineAvgDelta": (
-                True if avg_delta is None else avg_delta >= args.min_baseline_avg_delta
-            ),
+            "baselineAvgDelta": baseline_delta_check(avg_delta, args.min_baseline_avg_delta),
         }
+        if max_pro_overlay_rate is not None:
+            metric_checks["proOverlayRate"] = pro_overlay_check(summary, max_pro_overlay_rate)
         source_gate = build_source_health_gate(
             summary,
             min_onnx_usage_rate=args.min_onnx_usage_rate,
             max_fallback_rate=args.max_fallback_rate,
         )
-        promotion = build_promotion_report(summary, avg_delta)
+        promotion = build_promotion_report(
+            summary,
+            avg_delta,
+            max_pro_overlay_rate=max_pro_overlay_rate,
+        )
         evaluated.append(
             {
                 **row,
@@ -342,6 +408,7 @@ def build_clean_eval_gate_report(args) -> dict:
                 "sourceGate": source_gate,
                 "passed": all(metric_checks.values()) and source_gate["passed"],
                 "promotion": promotion,
+                "avgRewardDeltaVsBaseline": avg_delta,
             }
         )
 
@@ -371,17 +438,32 @@ def build_clean_eval_gate_report(args) -> dict:
             "maxFoldRate": args.max_fold_rate,
             "minWorstProfileAvgReward": args.min_worst_profile_avg_reward,
             "minBaselineAvgDelta": args.min_baseline_avg_delta,
+            "maxProOverlayRate": max_pro_overlay_rate,
             "minOnnxUsageRate": args.min_onnx_usage_rate,
             "maxFallbackRate": args.max_fallback_rate,
         },
-        "avgRewardDeltaVsBaseline": None,
-        "promotion": build_promotion_report(candidate_summary, avg_delta=None),
+        "avgRewardDeltaVsBaseline": (
+            candidate_summary["avgReward"] - baseline_summary["avgReward"]
+            if baseline_summary is not None
+            else None
+        ),
+        "promotion": build_promotion_report(
+            candidate_summary,
+            candidate_summary["avgReward"] - baseline_summary["avgReward"]
+            if baseline_summary is not None
+            else None,
+            max_pro_overlay_rate=max_pro_overlay_rate,
+        ),
         "candidate": {
             "model": str(report_path),
             "summary": candidate_summary,
             "runs": [],
         },
-        "baseline": None,
+        "baseline": {
+            "report": str(baseline_report_path) if baseline_report_path else None,
+            "mode": baseline_mode,
+            "summary": baseline_summary,
+        } if baseline_summary is not None else None,
         "cleanEvaluation": {
             "report": str(report_path),
             "mode": args.clean_eval_mode,
@@ -425,6 +507,7 @@ def evaluate_across_seeds(
 def build_gate_report(args) -> dict:
     if args.clean_eval_report:
         return build_clean_eval_gate_report(args)
+    max_pro_overlay_rate = getattr(args, "max_pro_overlay_rate", None)
 
     candidate = evaluate_across_seeds(
         Path(args.candidate),
@@ -462,12 +545,16 @@ def build_gate_report(args) -> dict:
         "foldRate": candidate_summary["foldRate"] <= args.max_fold_rate,
         "worstProfileAvgReward": candidate_summary["worstProfileAvgReward"]
         >= args.min_worst_profile_avg_reward,
-        "baselineAvgDelta": (
-            True if avg_delta is None else avg_delta >= args.min_baseline_avg_delta
-        ),
+        "baselineAvgDelta": baseline_delta_check(avg_delta, args.min_baseline_avg_delta),
     }
+    if max_pro_overlay_rate is not None:
+        checks["proOverlayRate"] = pro_overlay_check(candidate_summary, max_pro_overlay_rate)
     passed = all(checks.values())
-    promotion = build_promotion_report(candidate_summary, avg_delta)
+    promotion = build_promotion_report(
+        candidate_summary,
+        avg_delta,
+        max_pro_overlay_rate=max_pro_overlay_rate,
+    )
     return {
         "passed": passed,
         "checks": checks,
@@ -477,6 +564,7 @@ def build_gate_report(args) -> dict:
             "maxFoldRate": args.max_fold_rate,
             "minWorstProfileAvgReward": args.min_worst_profile_avg_reward,
             "minBaselineAvgDelta": args.min_baseline_avg_delta,
+            "maxProOverlayRate": max_pro_overlay_rate,
         },
         "avgRewardDeltaVsBaseline": avg_delta,
         "promotion": promotion,
@@ -490,9 +578,15 @@ def parse_args():
     parser.add_argument("--candidate", default=str(DEFAULT_CANDIDATE))
     parser.add_argument("--baseline", default=str(DEFAULT_BASELINE))
     parser.add_argument("--clean-eval-report", default=None)
+    parser.add_argument("--baseline-clean-eval-report", default=None)
     parser.add_argument(
         "--clean-eval-mode",
         default="proOverlayOff",
+        choices=["proOverlayOff", "proOverlayOn"],
+    )
+    parser.add_argument(
+        "--baseline-clean-eval-mode",
+        default=None,
         choices=["proOverlayOff", "proOverlayOn"],
     )
     parser.add_argument("--episodes", type=int, default=500)
@@ -519,6 +613,7 @@ def parse_args():
     parser.add_argument("--max-fold-rate", type=float, default=0.45)
     parser.add_argument("--min-worst-profile-avg-reward", type=float, default=0.0)
     parser.add_argument("--min-baseline-avg-delta", type=float, default=0.25)
+    parser.add_argument("--max-pro-overlay-rate", type=float, default=None)
     parser.add_argument("--min-onnx-usage-rate", type=float, default=DEFAULT_MIN_ONNX_USAGE_RATE)
     parser.add_argument("--max-fallback-rate", type=float, default=DEFAULT_MAX_FALLBACK_RATE)
     parser.add_argument("--json", action="store_true")
@@ -528,6 +623,8 @@ def parse_args():
 
 def main():
     args = parse_args()
+    if args.baseline_clean_eval_mode is None:
+        args.baseline_clean_eval_mode = args.clean_eval_mode
     report = build_gate_report(args)
     if args.json:
         print(json.dumps(report, indent=2))
@@ -540,6 +637,7 @@ def main():
             f"candidateAvgReward={candidate['avgReward']:.3f} "
             f"candidateShowdownWinRate={candidate['showdownWinRate']:.3f} "
             f"candidateFoldRate={candidate['foldRate']:.3f} "
+            f"candidateProOverlayRate={candidate.get('proOverlayRate')} "
             f"candidateWorstProfile={candidate.get('worstProfile')} "
             f"candidateWorstProfileAvgReward={candidate.get('worstProfileAvgReward', 0.0):.3f} "
             f"avgRewardDeltaVsBaseline={report['avgRewardDeltaVsBaseline']}"

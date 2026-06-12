@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+import torch
 
 from rl.agents.dqn_agent import DQNAgent, DQNHyperParams
 from rl.training.train_selfplay_badugi_dqn import (
@@ -15,6 +16,7 @@ from rl.training.train_sixmax_selfplay_badugi_dqn import (
     SixMaxSelfPlayConfig,
     _effective_teacher_warmup_episodes,
     _episode_epsilon,
+    _load_initial_opponent_agent,
     _margin_batch_size,
     _maybe_imitation_update,
     train_sixmax_selfplay_badugi_dqn,
@@ -76,6 +78,95 @@ def test_sixmax_pretrained_without_resume_keeps_existing_epsilon_schedule():
 
     assert _episode_epsilon(cfg, 1) == pytest.approx(0.55, abs=0.001)
     assert _effective_teacher_warmup_episodes(cfg) == 5_000
+
+
+def _fill_agent_weights(agent: DQNAgent, value: float):
+    for network in (agent.q_network, agent.target_network):
+        for parameter in network.parameters():
+            parameter.data.fill_(value)
+
+
+def _agents_have_equal_weights(left: DQNAgent, right: DQNAgent) -> bool:
+    for left_state, right_state in (
+        (left.q_network.state_dict(), right.q_network.state_dict()),
+        (left.target_network.state_dict(), right.target_network.state_dict()),
+    ):
+        for key, left_tensor in left_state.items():
+            if not torch.equal(left_tensor, right_state[key]):
+                return False
+    return True
+
+
+def test_sixmax_pretrained_opponent_loads_separate_checkpoint(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+):
+    hero = DQNAgent(
+        obs_dim=96,
+        n_actions=6,
+        hidden_dim=8,
+        hyperparams=DQNHyperParams(batch_size=2),
+    )
+    saved_opponent = DQNAgent(
+        obs_dim=96,
+        n_actions=6,
+        hidden_dim=8,
+        hyperparams=DQNHyperParams(batch_size=2),
+    )
+    _fill_agent_weights(hero, 1.0)
+    _fill_agent_weights(saved_opponent, 2.0)
+    checkpoint = tmp_path / "opponent.pt"
+    saved_opponent.save(str(checkpoint))
+    cfg = SixMaxSelfPlayConfig(pretrained_opponent=str(checkpoint), batch_size=2)
+
+    opponent = _load_initial_opponent_agent(cfg, hero, device="cpu")
+    captured = capsys.readouterr().out
+
+    assert _agents_have_equal_weights(opponent, saved_opponent)
+    assert not _agents_have_equal_weights(opponent, hero)
+    assert f"[6max-SelfPlay] Opponent checkpoint: {checkpoint}" in captured
+
+
+def test_sixmax_pretrained_opponent_missing_falls_back_to_hero_copy(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+):
+    hero = DQNAgent(
+        obs_dim=96,
+        n_actions=6,
+        hidden_dim=8,
+        hyperparams=DQNHyperParams(batch_size=2),
+    )
+    _fill_agent_weights(hero, 3.0)
+    missing_checkpoint = tmp_path / "missing.pt"
+    cfg = SixMaxSelfPlayConfig(pretrained_opponent=str(missing_checkpoint), batch_size=2)
+
+    opponent = _load_initial_opponent_agent(cfg, hero, device="cpu")
+    captured = capsys.readouterr().out
+
+    assert opponent is not hero
+    assert _agents_have_equal_weights(opponent, hero)
+    assert "[6max-SelfPlay] Opponent checkpoint not found, using hero copy" in captured
+
+
+def test_sixmax_without_pretrained_opponent_keeps_hero_copy_behavior(
+    capsys: pytest.CaptureFixture[str],
+):
+    hero = DQNAgent(
+        obs_dim=96,
+        n_actions=6,
+        hidden_dim=8,
+        hyperparams=DQNHyperParams(batch_size=2),
+    )
+    _fill_agent_weights(hero, 4.0)
+    cfg = SixMaxSelfPlayConfig(batch_size=2)
+
+    opponent = _load_initial_opponent_agent(cfg, hero, device="cpu")
+    captured = capsys.readouterr().out
+
+    assert opponent is not hero
+    assert _agents_have_equal_weights(opponent, hero)
+    assert "[6max-SelfPlay] Opponent checkpoint: hero copy" in captured
 
 
 def test_sixmax_resume_continuation_skips_teacher_warmup(

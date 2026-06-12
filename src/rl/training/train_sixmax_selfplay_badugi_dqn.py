@@ -40,6 +40,7 @@ from rl.agents.dqn_agent import DQNAgent, DQNHyperParams
 from rl.env.badugi_env import BadugiEnv
 from rl.env.badugi_env_sixmax_selfplay import CALL, FOLD, RAISE, SixMaxBadugiEnv
 from rl.env.badugi_env_selfplay import _best_badugi_keep
+from rl.training.onnx_opponent_agent import OnnxOpponentAgent
 from rl.training.sixmax_action_telemetry import (
     SixMaxActionTelemetry,
     betting_round_name,
@@ -94,6 +95,7 @@ class SixMaxSelfPlayConfig:
     log_interval: int = 1_000
     output_dir: str = "rl/models/badugi_sixmax_selfplay"
     pretrained: str = ""
+    pretrained_opponent: str = ""
     resume_continuation: bool = False
     resume_epsilon: float = 0.25
 
@@ -130,6 +132,90 @@ def _effective_teacher_warmup_episodes(cfg: SixMaxSelfPlayConfig) -> int:
 
 def _teacher_warmup_skipped(cfg: SixMaxSelfPlayConfig) -> bool:
     return _effective_teacher_warmup_episodes(cfg) == 0
+
+
+def _resolve_checkpoint_path(checkpoint: str) -> Path:
+    checkpoint_path = Path(checkpoint)
+    if not checkpoint_path.is_absolute():
+        checkpoint_path = PROJECT_ROOT / checkpoint_path
+    return checkpoint_path
+
+
+def _build_hero_copy_opponent(
+    hero: DQNAgent,
+    cfg: SixMaxSelfPlayConfig,
+    device: str | torch.device,
+) -> DQNAgent:
+    hero_hidden = hero.q_network.net[0].out_features
+    opp = DQNAgent(
+        obs_dim=96,
+        n_actions=6,
+        device=device,
+        hidden_dim=hero_hidden,
+        hyperparams=DQNHyperParams(gamma=0.990, lr=cfg.learning_rate, batch_size=cfg.batch_size),
+    )
+    opp.q_network.load_state_dict(hero.q_network.state_dict())
+    opp.target_network.load_state_dict(hero.target_network.state_dict())
+    return opp
+
+
+def _agent_network_shapes_match(left: DQNAgent, right: DQNAgent) -> bool:
+    for left_state, right_state in (
+        (left.q_network.state_dict(), right.q_network.state_dict()),
+        (left.target_network.state_dict(), right.target_network.state_dict()),
+    ):
+        if left_state.keys() != right_state.keys():
+            return False
+        for key, left_tensor in left_state.items():
+            if left_tensor.shape != right_state[key].shape:
+                return False
+    return True
+
+
+def _load_initial_opponent_agent(
+    cfg: SixMaxSelfPlayConfig,
+    hero: DQNAgent,
+    device: str | torch.device,
+) -> DQNAgent:
+    if not cfg.pretrained_opponent:
+        print("[6max-SelfPlay] Opponent checkpoint: hero copy")
+        return _build_hero_copy_opponent(hero, cfg, device)
+
+    opponent_path = _resolve_checkpoint_path(cfg.pretrained_opponent)
+    if not opponent_path.exists():
+        print(
+            "[6max-SelfPlay] Opponent checkpoint not found, using hero copy: "
+            f"{opponent_path}"
+        )
+        return _build_hero_copy_opponent(hero, cfg, device)
+
+    if opponent_path.suffix.lower() == ".onnx":
+        try:
+            opponent = OnnxOpponentAgent(opponent_path, device=device)
+        except Exception as exc:
+            print(f"[6max-SelfPlay] ONNX opponent failed, using hero copy: {exc}")
+            return _build_hero_copy_opponent(hero, cfg, device)
+        print(f"[6max-SelfPlay] ONNX opponent: {opponent_path}")
+        return opponent
+
+    try:
+        opponent = DQNAgent.load(str(opponent_path), device=device)
+    except Exception as exc:
+        print(
+            "[6max-SelfPlay] Opponent checkpoint load failed, using hero copy: "
+            f"{opponent_path} ({exc})"
+        )
+        return _build_hero_copy_opponent(hero, cfg, device)
+
+    if not _agent_network_shapes_match(hero, opponent):
+        print(
+            "[6max-SelfPlay] Opponent checkpoint incompatible with hero network, "
+            f"using hero copy: {opponent_path}"
+        )
+        return _build_hero_copy_opponent(hero, cfg, device)
+
+    print(f"[6max-SelfPlay] Opponent checkpoint: {opponent_path}")
+    return opponent
 
 
 def hero_position_name(hero_seat: int, dealer_seat: int) -> str:
@@ -211,6 +297,7 @@ def _build_summary(
         **action_telemetry.summary(),
         "opponent_updates": int(opponent_updates),
         "pretrained": cfg.pretrained,
+        "pretrained_opponent": cfg.pretrained_opponent,
         "resume_continuation": bool(cfg.resume_continuation),
         "resume_epsilon": float(cfg.resume_epsilon),
         "epsilon_start_effective": _effective_epsilon_start(cfg),
@@ -369,12 +456,12 @@ def train_sixmax_selfplay_badugi_dqn(
 
     # pretrained があれば checkpoint の hidden_dim を自動検出してロード
     # なければ cfg.hidden_dim でフレッシュスタート
+    hero_checkpoint_label = "fresh"
     if cfg.pretrained:
-        pretrained_path = Path(cfg.pretrained)
-        if not pretrained_path.is_absolute():
-            pretrained_path = PROJECT_ROOT / pretrained_path
+        pretrained_path = _resolve_checkpoint_path(cfg.pretrained)
         if pretrained_path.exists():
             hero = DQNAgent.load(str(pretrained_path), device=device)
+            hero_checkpoint_label = str(pretrained_path)
             # lr / gamma / tau を上書き
             for pg in hero.optimizer.param_groups:
                 pg["lr"] = cfg.learning_rate
@@ -395,15 +482,9 @@ def train_sixmax_selfplay_badugi_dqn(
             hyperparams=DQNHyperParams(gamma=0.990, lr=cfg.learning_rate,
                                        batch_size=cfg.batch_size, tau=3e-3),
         )
+    print(f"[6max-SelfPlay] Hero checkpoint: {hero_checkpoint_label}")
 
-    # opp は hero と同じ hidden_dim で作成（checkpoint 由来の場合も正しく一致）
-    hero_hidden = hero.q_network.net[0].out_features
-    opp = DQNAgent(
-        obs_dim=96, n_actions=6, device=device, hidden_dim=hero_hidden,
-        hyperparams=DQNHyperParams(gamma=0.990, lr=cfg.learning_rate, batch_size=cfg.batch_size),
-    )
-    opp.q_network.load_state_dict(hero.q_network.state_dict())
-    opp.target_network.load_state_dict(hero.target_network.state_dict())
+    opp = _load_initial_opponent_agent(cfg, hero, device)
 
     replay = ReplayBuffer(capacity=cfg.buffer_capacity)
     expert = ReplayBuffer(capacity=min(80_000, cfg.buffer_capacity // 4))
@@ -693,6 +774,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="6-max self-play DQN for Badugi Iron.")
     parser.add_argument("--episodes", type=int, default=SixMaxSelfPlayConfig.total_episodes)
     parser.add_argument("--pretrained", default=SixMaxSelfPlayConfig.pretrained)
+    parser.add_argument("--pretrained-opponent", default=SixMaxSelfPlayConfig.pretrained_opponent)
     parser.add_argument("--output-dir", default=SixMaxSelfPlayConfig.output_dir)
     parser.add_argument("--save-interval", type=int, default=SixMaxSelfPlayConfig.save_interval)
     parser.add_argument("--log-interval", type=int, default=SixMaxSelfPlayConfig.log_interval)
@@ -719,6 +801,7 @@ if __name__ == "__main__":
     cfg = SixMaxSelfPlayConfig(
         total_episodes=args.episodes,
         pretrained=args.pretrained,
+        pretrained_opponent=args.pretrained_opponent,
         output_dir=args.output_dir,
         save_interval=args.save_interval,
         log_interval=args.log_interval,
@@ -732,5 +815,8 @@ if __name__ == "__main__":
         resume_epsilon=args.resume_epsilon,
         resume_epsilon_decay_episodes=args.resume_epsilon_decay_episodes,
     )
-    print(f"[6max-SelfPlay] device={device} episodes={cfg.total_episodes} pretrained={cfg.pretrained!r}")
+    print(
+        f"[6max-SelfPlay] device={device} episodes={cfg.total_episodes} "
+        f"pretrained={cfg.pretrained!r} pretrained_opponent={cfg.pretrained_opponent!r}"
+    )
     train_sixmax_selfplay_badugi_dqn(cfg=cfg, device=device)

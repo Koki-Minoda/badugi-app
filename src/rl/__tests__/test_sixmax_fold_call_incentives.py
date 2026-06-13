@@ -495,7 +495,7 @@ def test_weak_3card_co_facing_open_call_gets_penalty():
 
     _done, reward, _info = env._apply_action(env.hero_seat, CALL)
 
-    assert reward == pytest.approx(-0.10)
+    assert reward == pytest.approx(WEAK_HAND_FACING_OPEN_CALL_PENALTY)
 
 
 def test_weak_3card_btn_facing_open_raise_gets_penalty():
@@ -651,7 +651,7 @@ def test_btn_facing_open_weak_3card_call_stays_normal_call_penalty():
 
     _done, reward, _info = env._apply_action(env.hero_seat, CALL)
 
-    assert reward == pytest.approx(-0.10)
+    assert reward == pytest.approx(WEAK_HAND_FACING_OPEN_CALL_PENALTY)
 
 
 def test_sb_facing_open_strong_3card_call_not_penalized():
@@ -784,7 +784,7 @@ def test_postdraw_r1_weak_3card_raise_gets_penalty():
 
     _done, reward, _info = env._apply_action(env.hero_seat, RAISE)
 
-    assert reward == pytest.approx(-0.10)
+    assert reward == pytest.approx(POSTDRAW_R1_WEAK_3CARD_AGGRESSIVE_PENALTY)
 
 
 def test_postdraw_r2_weak_3card_raise_matches_call_penalty():
@@ -828,7 +828,7 @@ def test_postdraw_r1_weak_3card_call_gets_penalty():
 
     _done, reward, _info = env._apply_action(env.hero_seat, CALL)
 
-    assert reward == pytest.approx(-0.10)
+    assert reward == pytest.approx(POSTDRAW_R1_WEAK_3CARD_CALL_PENALTY)
 
 
 def test_postdraw_r2_weak_3card_call_gets_stronger_penalty_than_round1():
@@ -962,7 +962,7 @@ def test_round0_weak_3card_call_keeps_existing_predraw_penalty():
 
     _done, reward, _info = env._apply_action(env.hero_seat, CALL)
 
-    assert reward == pytest.approx(-0.10)
+    assert reward == pytest.approx(WEAK_HAND_FACING_OPEN_CALL_PENALTY)
 
 
 @pytest.mark.parametrize("action", [CALL, RAISE])

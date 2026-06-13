@@ -38,6 +38,7 @@ if str(SRC_ROOT) not in sys.path:
 
 from rl.agents.dqn_agent import DQNAgent, DQNHyperParams
 from rl.env.badugi_env import BadugiEnv
+from rl.env.badugi_env_sixmax_profiled import ProfiledSixMaxBadugiEnv
 from rl.env.badugi_env_sixmax_selfplay import CALL, FOLD, RAISE, SixMaxBadugiEnv
 from rl.env.badugi_env_selfplay import _best_badugi_keep
 from rl.training.onnx_opponent_agent import OnnxOpponentAgent
@@ -87,6 +88,8 @@ class SixMaxSelfPlayConfig:
     call_margin_weight: float = 0.40
     # Self-play
     opp_epsilon: float = 0.05
+    profile_mix_rate: float = 0.0
+    training_profiles: tuple[str, ...] = ("loose_passive", "draw_heavy", "loose_aggressive")
     opponent_update_interval: int = 1_000  # less frequent than heads-up (more stable)
     train_every_steps: int = 4             # slightly less frequent due to 6x more steps/ep
     hidden_dim: int = 192                  # Pro v3と同じサイズ（warm-startとの互換性）
@@ -132,6 +135,41 @@ def _effective_teacher_warmup_episodes(cfg: SixMaxSelfPlayConfig) -> int:
 
 def _teacher_warmup_skipped(cfg: SixMaxSelfPlayConfig) -> bool:
     return _effective_teacher_warmup_episodes(cfg) == 0
+
+
+def _parse_training_profiles(value: str) -> tuple[str, ...]:
+    profiles = tuple(profile.strip() for profile in value.split(",") if profile.strip())
+    if not profiles:
+        raise argparse.ArgumentTypeError("at least one training profile is required")
+    return profiles
+
+
+def _build_profile_envs(cfg: SixMaxSelfPlayConfig) -> tuple[ProfiledSixMaxBadugiEnv, ...]:
+    if cfg.profile_mix_rate <= 0:
+        return ()
+    return tuple(
+        ProfiledSixMaxBadugiEnv(
+            opponent_profile=profile,
+            opp_epsilon=cfg.opp_epsilon,
+        )
+        for profile in cfg.training_profiles
+    )
+
+
+def _select_episode_env(
+    *,
+    cfg: SixMaxSelfPlayConfig,
+    episode: int,
+    sp_env: SixMaxBadugiEnv,
+    profile_envs: tuple[ProfiledSixMaxBadugiEnv, ...],
+    random_value: float | None = None,
+) -> SixMaxBadugiEnv:
+    if cfg.profile_mix_rate <= 0 or not profile_envs:
+        return sp_env
+    sample = np.random.random() if random_value is None else random_value
+    if sample < cfg.profile_mix_rate:
+        return profile_envs[(episode - 1) % len(profile_envs)]
+    return sp_env
 
 
 def _resolve_checkpoint_path(checkpoint: str) -> Path:
@@ -304,6 +342,8 @@ def _build_summary(
         "epsilon_end": float(cfg.epsilon_end),
         "teacher_warmup_episodes": _effective_teacher_warmup_episodes(cfg),
         "teacher_warmup_skipped": _teacher_warmup_skipped(cfg),
+        "profile_mix_rate": float(cfg.profile_mix_rate),
+        "training_profiles": list(cfg.training_profiles),
         "checkpoint": str(latest),
         "obs_dim": 96,
         "n_actions": 6,
@@ -509,6 +549,12 @@ def train_sixmax_selfplay_badugi_dqn(
 
     sp_env = SixMaxBadugiEnv(opp_epsilon=cfg.opp_epsilon)
     sp_env.set_agents(hero, opp)
+    profile_envs = _build_profile_envs(cfg)
+    if profile_envs:
+        print(
+            "[6max-SelfPlay] Profile mix: "
+            f"rate={cfg.profile_mix_rate:.3f} profiles={','.join(cfg.training_profiles)}"
+        )
 
     global_step = 0
     rewards: deque[float] = deque(maxlen=TELEMETRY_HISTORY_MAXLEN)
@@ -527,9 +573,15 @@ def train_sixmax_selfplay_badugi_dqn(
     print(f"[6max-SelfPlay] Starting: {cfg.total_episodes} episodes, device={device}")
 
     for episode in range(1, cfg.total_episodes + 1):
-        obs, _ = sp_env.reset()
-        hero_seat = sp_env.hero_seat
-        hero_position = hero_position_name(hero_seat, sp_env.dealer_seat)
+        active_env = _select_episode_env(
+            cfg=cfg,
+            episode=episode,
+            sp_env=sp_env,
+            profile_envs=profile_envs,
+        )
+        obs, _ = active_env.reset()
+        hero_seat = active_env.hero_seat
+        hero_position = hero_position_name(hero_seat, active_env.dealer_seat)
         window_actions.start_episode(position=hero_position)
         total_actions.start_episode(position=hero_position)
         total_reward = 0.0
@@ -542,26 +594,26 @@ def train_sixmax_selfplay_badugi_dqn(
         for _ in range(cfg.max_steps_per_episode):
             global_step += 1
             episode_steps += 1
-            mask = sp_env.legal_action_mask()
+            mask = active_env.legal_action_mask()
             action = hero.act(obs, epsilon, action_mask=mask)
 
-            if sp_env.phase == "BET":
-                hero_state = sp_env.players[hero_seat]
-                facing_bet = max(0, sp_env.current_bet - hero_state["bet"]) > 0 or mask[0] > 0
-                street = betting_round_name(sp_env.draw_round)
+            if active_env.phase == "BET":
+                hero_state = active_env.players[hero_seat]
+                facing_bet = max(0, active_env.current_bet - hero_state["bet"]) > 0 or mask[0] > 0
+                street = betting_round_name(active_env.draw_round)
                 no_voluntary_action = (
-                    sp_env.draw_round == 0
+                    active_env.draw_round == 0
                     and pre_draw_no_voluntary_action_before_hero(
-                        players=sp_env.players,
-                        dealer_seat=sp_env.dealer_seat,
+                        players=active_env.players,
+                        dealer_seat=active_env.dealer_seat,
                         hero_seat=hero_seat,
                     )
                 )
                 three_bet_opportunity = conservative_three_bet_opportunity(
-                    draw_round=sp_env.draw_round,
+                    draw_round=active_env.draw_round,
                     facing_bet=facing_bet,
                     raise_legal=mask[4] > 0,
-                    raise_count=sp_env.raise_count,
+                    raise_count=active_env.raise_count,
                 )
                 steal_opportunity = conservative_steal_opportunity(
                     position=hero_position,
@@ -582,20 +634,20 @@ def train_sixmax_selfplay_badugi_dqn(
                         facing_bet=facing_bet,
                         position=hero_position,
                         betting_round=street,
-                        is_pre_draw=sp_env.draw_round == 0,
+                        is_pre_draw=active_env.draw_round == 0,
                         three_bet_opportunity=three_bet_opportunity,
                         steal_opportunity=steal_opportunity,
                         blind_pressure_opportunity=blind_pressure_opportunity,
                         hand_strength_class="unknown",
                     )
-            elif sp_env.phase == "DRAW":
+            elif active_env.phase == "DRAW":
                 draw_count = max(0, min(3, action))
                 window_actions.record_draw(draw_count)
                 total_actions.record_draw(draw_count)
 
-            next_obs, reward, terminated, truncated, info = sp_env.step(action)
+            next_obs, reward, terminated, truncated, info = active_env.step(action)
             done = terminated or truncated
-            next_mask = sp_env.legal_action_mask()
+            next_mask = active_env.legal_action_mask()
             replay.add(obs, action, reward, next_obs, done, next_action_mask=next_mask)
             # ---- fold / call buffer fill (self-play) ----
             # After fold shaping was added to the env, hero-fold transitions are
@@ -619,7 +671,7 @@ def train_sixmax_selfplay_badugi_dqn(
             if done:
                 episode_done = True
                 episode_truncated = bool(truncated)
-                terminal_reason = info.get("terminal_reason") or getattr(sp_env, "terminal_reason", None)
+                terminal_reason = info.get("terminal_reason") or getattr(active_env, "terminal_reason", None)
 
             if (
                 global_step >= cfg.warmup_steps
@@ -770,7 +822,7 @@ def train_sixmax_selfplay_badugi_dqn(
     return summary
 
 
-def parse_args():
+def parse_args(argv: list[str] | None = None):
     parser = argparse.ArgumentParser(description="6-max self-play DQN for Badugi Iron.")
     parser.add_argument("--episodes", type=int, default=SixMaxSelfPlayConfig.total_episodes)
     parser.add_argument("--pretrained", default=SixMaxSelfPlayConfig.pretrained)
@@ -780,6 +832,12 @@ def parse_args():
     parser.add_argument("--log-interval", type=int, default=SixMaxSelfPlayConfig.log_interval)
     parser.add_argument("--opponent-update-interval", type=int, default=SixMaxSelfPlayConfig.opponent_update_interval)
     parser.add_argument("--opp-epsilon", type=float, default=SixMaxSelfPlayConfig.opp_epsilon)
+    parser.add_argument("--profile-mix-rate", type=float, default=SixMaxSelfPlayConfig.profile_mix_rate)
+    parser.add_argument(
+        "--training-profiles",
+        type=_parse_training_profiles,
+        default=",".join(SixMaxSelfPlayConfig.training_profiles),
+    )
     parser.add_argument("--hidden-dim", type=int, default=SixMaxSelfPlayConfig.hidden_dim)
     parser.add_argument("--batch-size", type=int, default=SixMaxSelfPlayConfig.batch_size)
     parser.add_argument("--buffer-capacity", type=int, default=SixMaxSelfPlayConfig.buffer_capacity)
@@ -792,7 +850,7 @@ def parse_args():
         default=SixMaxSelfPlayConfig.resume_epsilon_decay_episodes,
     )
     parser.add_argument("--device", default=None)
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 if __name__ == "__main__":
@@ -807,6 +865,12 @@ if __name__ == "__main__":
         log_interval=args.log_interval,
         opponent_update_interval=args.opponent_update_interval,
         opp_epsilon=args.opp_epsilon,
+        profile_mix_rate=args.profile_mix_rate,
+        training_profiles=(
+            args.training_profiles
+            if isinstance(args.training_profiles, tuple)
+            else _parse_training_profiles(args.training_profiles)
+        ),
         hidden_dim=args.hidden_dim,
         batch_size=args.batch_size,
         buffer_capacity=args.buffer_capacity,

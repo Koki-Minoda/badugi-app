@@ -25,8 +25,13 @@ SRC_ROOT = PROJECT_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from rl.env.badugi_env import OpponentProfile, resolve_opponent_profile
-from rl.env.badugi_env_selfplay import _best_badugi_keep, _evaluate_badugi_features
+from rl.env.badugi_env import resolve_opponent_profile
+from rl.env.badugi_env_selfplay import _evaluate_badugi_features
+from rl.env.badugi_env_sixmax_profiled import (
+    ProfiledSixMaxBadugiEnv,
+    deterministic_profile_action,
+    ideal_draw_count,
+)
 from rl.env.badugi_env_sixmax_selfplay import (
     BET,
     CALL,
@@ -133,11 +138,6 @@ def position_label(env: SixMaxBadugiEnv, seat: int) -> str:
         return "UNKNOWN"
 
 
-def ideal_draw_count(hand: list) -> int:
-    keep = _best_badugi_keep(hand)
-    return max(0, min(3, len(hand) - len(keep)))
-
-
 def hand_strength_class(hand: list) -> str:
     features = _evaluate_badugi_features(hand)
     if features["count"] == 4 and features["highest_rank"] <= 7:
@@ -157,60 +157,6 @@ def legal_argmax(q_values: np.ndarray, action_mask: np.ndarray) -> int:
     q = np.asarray(q_values, dtype=np.float32).reshape(-1).copy()
     q[np.asarray(action_mask) <= 0] = -1e9
     return int(np.argmax(q))
-
-
-def deterministic_profile_action(
-    env: SixMaxBadugiEnv,
-    seat: int,
-    profile: OpponentProfile,
-    *,
-    phase: str,
-) -> int:
-    mask = env._mask_for(seat)
-    player = env.players[seat]
-    if phase == "DRAW":
-        return max(0, min(3, ideal_draw_count(player["hand"]) + int(profile.draw_bias)))
-
-    features = _evaluate_badugi_features(player["hand"])
-    strength = float(features["strength"])
-    to_call = max(0, env.current_bet - player["bet"])
-    can_raise = mask[RAISE] > 0
-    can_bet = mask[BET] > 0
-    can_call = mask[CALL] > 0
-    can_check = mask[CHECK] > 0
-
-    if to_call > 0:
-        if strength < profile.fold_strength_threshold and profile.fold_probability >= 0.5:
-            return FOLD
-        if can_raise and (
-            strength >= profile.raise_strength_threshold
-            or (strength < profile.open_strength_threshold and profile.bluff_raise_probability >= 0.30)
-        ):
-            return RAISE
-        if can_call:
-            return CALL
-        return FOLD
-
-    if can_bet and (
-        strength >= profile.open_strength_threshold
-        or (strength < profile.open_strength_threshold and profile.bluff_frequency >= 0.12)
-    ):
-        return BET
-    return CHECK if can_check else FOLD
-
-
-class ProfiledSixMaxBadugiEnv(SixMaxBadugiEnv):
-    """Evaluation-only opponent profiles without touching training code."""
-
-    def __init__(self, *, opponent_profile: str, seed: int | None = None) -> None:
-        self.eval_opponent_profile = resolve_opponent_profile(opponent_profile)
-        super().__init__(seed=seed, opp_epsilon=0.0)
-
-    def _get_opp_actions_batched(self, seats: list[int], phase: str) -> list[int]:
-        return [
-            deterministic_profile_action(self, seat, self.eval_opponent_profile, phase=phase)
-            for seat in seats
-        ]
 
 
 @dataclass
@@ -482,7 +428,7 @@ def evaluate_policy_once(
     if allow_torch_fallback and checkpoint is not None and checkpoint.exists():
         fallback_policy = TorchPolicy(checkpoint)
 
-    env = ProfiledSixMaxBadugiEnv(opponent_profile=opponent_profile, seed=seed)
+    env = ProfiledSixMaxBadugiEnv(opponent_profile=opponent_profile, seed=seed, opp_epsilon=0.0)
     rows: list[dict] = []
     counters = DecisionCounters()
     position_rows: dict[str, list[dict]] = {label: [] for label in POSITION_LABELS}

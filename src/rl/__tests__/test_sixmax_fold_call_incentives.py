@@ -7,8 +7,6 @@ import torch
 from rl.agents.dqn_agent import DQNAgent, DQNHyperParams
 from rl.env.badugi_env import BADUGI_OBSERVATION_VECTOR_SIZE
 from rl.env.badugi_env_sixmax_selfplay import (
-    BB_FACING_OPEN_TRASH_CALL_EXTRA_PENALTY,
-    BB_FACING_OPEN_WEAK_3CARD_CALL_EXTRA_PENALTY,
     BET,
     BIG_BET,
     CHECK,
@@ -577,7 +575,7 @@ def test_bb_facing_open_weak_3card_raise_gets_stronger_aggressive_penalty():
     assert reward == pytest.approx(-0.35)
 
 
-def test_bb_facing_open_trash_call_gets_extra_call_penalty():
+def test_bb_facing_open_trash_call_gets_normal_call_penalty():
     one_card_trash = [(12, 0), (12, 1), (12, 2), (12, 3)]
     env = SixMaxBadugiEnv(seed=107, opp_epsilon=0.0)
     env.reset(seed=107)
@@ -591,10 +589,7 @@ def test_bb_facing_open_trash_call_gets_extra_call_penalty():
 
     _done, reward, _info = env._apply_action(env.hero_seat, CALL)
 
-    assert reward == pytest.approx(
-        WEAK_HAND_FACING_OPEN_CALL_PENALTY
-        + BB_FACING_OPEN_TRASH_CALL_EXTRA_PENALTY
-    )
+    assert reward == pytest.approx(WEAK_HAND_FACING_OPEN_CALL_PENALTY)
 
 
 def test_sb_facing_open_weak_3card_call_gets_extra_call_penalty():
@@ -617,7 +612,7 @@ def test_sb_facing_open_weak_3card_call_gets_extra_call_penalty():
     )
 
 
-def test_bb_facing_open_weak_3card_call_gets_extra_call_penalty():
+def test_bb_facing_open_weak_3card_call_gets_normal_call_penalty():
     weak_3card_eight_high = [(0, 0), (3, 1), (7, 2), (12, 2)]
     env = SixMaxBadugiEnv(seed=149, opp_epsilon=0.0)
     env.reset(seed=149)
@@ -631,10 +626,7 @@ def test_bb_facing_open_weak_3card_call_gets_extra_call_penalty():
 
     _done, reward, _info = env._apply_action(env.hero_seat, CALL)
 
-    assert reward == pytest.approx(
-        WEAK_HAND_FACING_OPEN_CALL_PENALTY
-        + BB_FACING_OPEN_WEAK_3CARD_CALL_EXTRA_PENALTY
-    )
+    assert reward == pytest.approx(WEAK_HAND_FACING_OPEN_CALL_PENALTY)
 
 
 def test_btn_facing_open_weak_3card_call_stays_normal_call_penalty():
@@ -1082,7 +1074,7 @@ def test_bb_option_weak_2card_no_penalty(action):
     assert reward == pytest.approx(0.0)
 
 
-def test_bb_facing_raise_weak_2card_call_gets_trash_extra_penalty():
+def test_bb_facing_raise_weak_2card_call_gets_normal_call_penalty():
     weak_2card_nine_high = [(0, 0), (8, 1), (12, 0), (12, 1)]
     env = SixMaxBadugiEnv(seed=79, opp_epsilon=0.0)
     env.reset(seed=79)
@@ -1096,10 +1088,7 @@ def test_bb_facing_raise_weak_2card_call_gets_trash_extra_penalty():
 
     _done, reward, _info = env._apply_action(env.hero_seat, CALL)
 
-    assert reward == pytest.approx(
-        WEAK_HAND_FACING_OPEN_CALL_PENALTY
-        + BB_FACING_OPEN_TRASH_CALL_EXTRA_PENALTY
-    )
+    assert reward == pytest.approx(WEAK_HAND_FACING_OPEN_CALL_PENALTY)
 
 
 def test_weak_2card_facing_open_raise_gets_aggressive_penalty():

@@ -58,8 +58,6 @@ WEAK_HAND_FACING_OPEN_CALL_PENALTY = -0.15
 WEAK_HAND_FACING_OPEN_AGGRESSIVE_PENALTY = -0.20
 BLIND_FACING_OPEN_WEAK_AGGRESSIVE_EXTRA_PENALTY = -0.15
 SB_FACING_OPEN_WEAK_3CARD_CALL_EXTRA_PENALTY = -0.08
-BB_FACING_OPEN_TRASH_CALL_EXTRA_PENALTY = -0.25
-BB_FACING_OPEN_WEAK_3CARD_CALL_EXTRA_PENALTY = -0.12
 POSTDRAW_R1_WEAK_3CARD_CALL_PENALTY = -0.10
 POSTDRAW_R2_WEAK_3CARD_CALL_PENALTY = -0.15
 POSTDRAW_TRASH_CALL_PENALTY = -0.20
@@ -467,11 +465,6 @@ class SixMaxBadugiEnv:
                 penalty = WEAK_HAND_FACING_OPEN_CALL_PENALTY
                 if self._is_small_blind_position(seat) and is_weak_3card:
                     penalty += SB_FACING_OPEN_WEAK_3CARD_CALL_EXTRA_PENALTY
-                if self._is_blind_position(seat) and not self._is_small_blind_position(seat):
-                    if is_trash:
-                        penalty += BB_FACING_OPEN_TRASH_CALL_EXTRA_PENALTY
-                    elif is_weak_3card:
-                        penalty += BB_FACING_OPEN_WEAK_3CARD_CALL_EXTRA_PENALTY
                 return penalty
             if self._is_blind_position(seat) and (is_weak_hand or is_trash):
                 return (

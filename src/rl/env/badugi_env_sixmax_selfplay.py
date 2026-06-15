@@ -31,8 +31,8 @@ from rl.env.badugi_env import (
     compare_badugi_scores,
     evaluate_badugi,
 )
+from rl.env.badugi_draw_policy import ideal_draw_count
 from rl.env.badugi_env_selfplay import (
-    _best_badugi_keep,
     _draw_toward_badugi,
     _evaluate_badugi_features,
 )
@@ -65,6 +65,7 @@ POSTDRAW_R1_WEAK_3CARD_AGGRESSIVE_PENALTY = -0.10
 POSTDRAW_R1_TRASH_AGGRESSIVE_PENALTY = -0.20
 POSTDRAW_R2_WEAK_3CARD_AGGRESSIVE_PENALTY = -0.15
 POSTDRAW_R2_TRASH_AGGRESSIVE_PENALTY = -0.20
+DRAW_DECISION_SHAPING_WEIGHT = 0.06
 
 
 # ---------------------------------------------------------------------------
@@ -193,6 +194,11 @@ class SixMaxBadugiEnv:
 
         elif self.phase == "DRAW":
             draw_count = max(0, min(3, hero_action))
+            cumulative_reward += self._draw_decision_shaping_reward(
+                self.hero_seat,
+                draw_count,
+                hand=list(self.players[self.hero_seat]["hand"]),
+            )
             self._apply_draw(self.hero_seat, draw_count)
             self._apply_all_opponent_draws()
             self._end_draw_round()
@@ -484,6 +490,36 @@ class SixMaxBadugiEnv:
             return WEAK_HAND_UNOPENED_EARLY_CALL_PENALTY
         return WEAK_HAND_UNOPENED_EARLY_AGGRESSIVE_PENALTY
 
+    def _draw_decision_shaping_reward(
+        self,
+        seat: int,
+        draw_count: int,
+        *,
+        hand: list | None = None,
+    ) -> float:
+        """Small immediate reward for matching the ideal hero draw count."""
+        if (
+            seat != self.hero_seat
+            or self.phase != "DRAW"
+            or self._game_ended
+            or self.terminal_reason is not None
+            or self.players[seat]["folded"]
+        ):
+            return 0.0
+        if hasattr(self, "draw_order") and (
+            not self.draw_order or self.draw_order[0] != self.hero_seat
+        ):
+            return 0.0
+
+        actual = max(0, min(3, int(draw_count)))
+        ideal = ideal_draw_count(hand if hand is not None else self.players[seat]["hand"])
+        delta = abs(actual - ideal)
+        if delta == 0:
+            return DRAW_DECISION_SHAPING_WEIGHT
+        if delta == 1:
+            return -DRAW_DECISION_SHAPING_WEIGHT * 0.5
+        return -DRAW_DECISION_SHAPING_WEIGHT * 1.5
+
     def _apply_action(self, seat: int, action: int) -> tuple[bool, float, dict]:
         """Apply a BET-phase action for seat. Returns (done, shaping_reward, info)."""
         p = self.players[seat]
@@ -643,9 +679,7 @@ class SixMaxBadugiEnv:
         return CALL if to_call > 0 else CHECK
 
     def _fallback_draw(self, seat: int) -> int:
-        hand = self.players[seat]["hand"]
-        keep = _best_badugi_keep(hand)
-        return min(3, len(hand) - len(keep))
+        return ideal_draw_count(self.players[seat]["hand"])
 
     # ------------------------------------------------------------------
     # Legal action masks

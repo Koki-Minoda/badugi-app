@@ -5,7 +5,8 @@ from __future__ import annotations
 import numpy as np
 
 from rl.env.badugi_env import OpponentProfile, resolve_opponent_profile
-from rl.env.badugi_env_selfplay import _best_badugi_keep, _evaluate_badugi_features
+from rl.env.badugi_draw_policy import ideal_draw_count
+from rl.env.badugi_env_selfplay import _evaluate_badugi_features
 from rl.env.badugi_env_sixmax_selfplay import (
     BET,
     CALL,
@@ -14,11 +15,6 @@ from rl.env.badugi_env_sixmax_selfplay import (
     RAISE,
     SixMaxBadugiEnv,
 )
-
-
-def ideal_draw_count(hand: list) -> int:
-    keep = _best_badugi_keep(hand)
-    return max(0, min(3, len(hand) - len(keep)))
 
 
 def deterministic_profile_action(

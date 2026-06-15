@@ -26,11 +26,11 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from rl.env.badugi_env import resolve_opponent_profile
+from rl.env.badugi_draw_policy import ideal_draw_count
 from rl.env.badugi_env_selfplay import _evaluate_badugi_features
 from rl.env.badugi_env_sixmax_profiled import (
     ProfiledSixMaxBadugiEnv,
     deterministic_profile_action,
-    ideal_draw_count,
 )
 from rl.env.badugi_env_sixmax_selfplay import (
     BET,

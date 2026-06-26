@@ -80,34 +80,35 @@ def test_ideal_draw_count_representative_badugi_hands(hand, expected):
         (WEAK_ONE_CARD, 3),
     ],
 )
-def test_draw_decision_shaping_rewards_ideal_hero_draw(monkeypatch, hand, action):
+def test_draw_decision_shaping_disabled_for_ideal_hero_draw(monkeypatch, hand, action):
     reward = _step_draw_reward(monkeypatch, hero_hand=hand, action=action)
 
-    assert reward == pytest.approx(DRAW_DECISION_SHAPING_WEIGHT)
+    assert DRAW_DECISION_SHAPING_WEIGHT == pytest.approx(0.0)
+    assert reward == pytest.approx(0.0)
 
 
 def test_draw_decision_shaping_penalizes_one_card_miss(monkeypatch):
     reward = _step_draw_reward(monkeypatch, hero_hand=MADE_BADUGI, action=1)
 
-    assert reward == pytest.approx(-0.03)
+    assert reward == pytest.approx(0.0)
 
 
 def test_draw_decision_shaping_penalizes_pat_with_three_card_hand(monkeypatch):
     reward = _step_draw_reward(monkeypatch, hero_hand=STRONG_THREE_CARD, action=0)
 
-    assert reward == pytest.approx(-0.03)
+    assert reward == pytest.approx(0.0)
 
 
 def test_draw_decision_shaping_penalizes_overdraw_with_three_card_hand(monkeypatch):
     reward = _step_draw_reward(monkeypatch, hero_hand=STRONG_THREE_CARD, action=2)
 
-    assert reward == pytest.approx(-0.03)
+    assert reward == pytest.approx(0.0)
 
 
 def test_draw_decision_shaping_penalizes_two_or_more_card_miss(monkeypatch):
     reward = _step_draw_reward(monkeypatch, hero_hand=MADE_BADUGI, action=2)
 
-    assert reward == pytest.approx(-0.09)
+    assert reward == pytest.approx(0.0)
 
 
 def test_draw_decision_shaping_does_not_apply_to_opponent_seat():

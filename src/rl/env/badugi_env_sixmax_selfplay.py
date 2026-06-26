@@ -65,7 +65,8 @@ POSTDRAW_R1_WEAK_3CARD_AGGRESSIVE_PENALTY = -0.10
 POSTDRAW_R1_TRASH_AGGRESSIVE_PENALTY = -0.20
 POSTDRAW_R2_WEAK_3CARD_AGGRESSIVE_PENALTY = -0.15
 POSTDRAW_R2_TRASH_AGGRESSIVE_PENALTY = -0.20
-DRAW_DECISION_SHAPING_WEIGHT = 0.06
+DRAW_DECISION_SHAPING_WEIGHT = 0.0
+POSTDRAW_VALUE_BET_SHAPING_WEIGHT = 0.04
 
 
 # ---------------------------------------------------------------------------
@@ -498,6 +499,8 @@ class SixMaxBadugiEnv:
         hand: list | None = None,
     ) -> float:
         """Small immediate reward for matching the ideal hero draw count."""
+        if DRAW_DECISION_SHAPING_WEIGHT <= 0.0:
+            return 0.0
         if (
             seat != self.hero_seat
             or self.phase != "DRAW"
@@ -519,6 +522,28 @@ class SixMaxBadugiEnv:
         if delta == 1:
             return -DRAW_DECISION_SHAPING_WEIGHT * 0.5
         return -DRAW_DECISION_SHAPING_WEIGHT * 1.5
+
+    def _postdraw_value_bet_shaping(self, seat: int, action: int) -> float:
+        """Reward hero first-in post-draw value bets with strong hands."""
+        if (
+            seat != self.hero_seat
+            or self.phase != "BET"
+            or action != BET
+            or self.draw_round < 1
+            or self._game_ended
+            or self.terminal_reason is not None
+            or self.players[seat]["folded"]
+        ):
+            return 0.0
+
+        to_call = max(0, self.current_bet - self.players[seat]["bet"])
+        if to_call > 0:
+            return 0.0
+
+        f = _evaluate_badugi_features(self.players[seat]["hand"])
+        high = f["highest_rank"] if f["highest_rank"] is not None else 13
+        is_strong = f["count"] >= 4 or (f["count"] == 3 and high <= 6)
+        return POSTDRAW_VALUE_BET_SHAPING_WEIGHT if is_strong else 0.0
 
     def _apply_action(self, seat: int, action: int) -> tuple[bool, float, dict]:
         """Apply a BET-phase action for seat. Returns (done, shaping_reward, info)."""
@@ -561,6 +586,7 @@ class SixMaxBadugiEnv:
 
         elif action == BET:
             reward += self._weak_hand_play_penalty(seat, action)
+            reward += self._postdraw_value_bet_shaping(seat, action)
             paid = min(bet_size, p["stack"])
             p["stack"] -= paid
             p["bet"] += paid

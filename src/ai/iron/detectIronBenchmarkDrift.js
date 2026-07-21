@@ -95,7 +95,7 @@ export function detectIronBenchmarkDrift({
   const determinism = current?.determinism ?? {};
   pushCheck(
     "deterministicReplay",
-    Boolean(determinism?.deterministic) ? "PASS" : "FAIL",
+    determinism?.deterministic ? "PASS" : "FAIL",
     `value=${Boolean(determinism?.deterministic)}`,
   );
   pushCheck(

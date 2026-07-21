@@ -15,7 +15,7 @@ import FriendMatchSetupScreen from "./ui/screens/FriendMatchSetupScreen.jsx";
 import LeaderboardScreen from "./ui/screens/LeaderboardScreen.jsx";
 import LearningDashboardPreviewScreen from "./ui/screens/LearningDashboardPreviewScreen.jsx";
 import { isCoachingPreviewEnabled } from "./ui/coaching/previewFeatureFlags.js";
-import { GameEngineProvider } from "./ui/engine/GameEngineContext";
+import { GameEngineProvider } from "./ui/engine/GameEngineContext.jsx";
 import { MixedGameProvider } from "./ui/mixed/MixedGameContext.jsx";
 
 export default function RootApp() {

@@ -91,10 +91,13 @@ async function withMutedConsole(callback) {
   }
 }
 
-export async function runEvaluationCli(argv = process.argv.slice(2)) {
+export async function runEvaluationCli(
+  argv = process.argv.slice(2),
+  { outputPath: outputPathOverride } = {},
+) {
   const options = parseArgs(argv);
   const report = await withMutedConsole(() => runProVsStandardEvaluationSuite(options));
-  const outputPath = getDefaultEvalOutputPath(options.seed);
+  const outputPath = outputPathOverride ?? getDefaultEvalOutputPath(options.seed);
   await writeEvaluationJson(report, outputPath);
   await writeDivergenceReplaySamples(report, { seed: options.seed });
   return {

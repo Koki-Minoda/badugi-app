@@ -1,3 +1,7 @@
+import os from "node:os";
+import path from "node:path";
+import fs from "node:fs/promises";
+
 import { describe, expect, it } from "vitest";
 
 import { runEvaluationCli } from "../runProVsStandardEvaluation.js";
@@ -10,7 +14,10 @@ describe("AI pro evaluation CLI", () => {
       typeof variantArg === "string" && variantArg.length
         ? variantArg.replace("--variants=", "").split(",").map((entry) => entry.trim()).filter(Boolean)
         : ["D03"];
-    const { summary, outputPath } = await runEvaluationCli(forwardedArgs);
+    const outputDirectory = await fs.mkdtemp(path.join(os.tmpdir(), "mgx-pro-eval-"));
+    const { summary, outputPath } = await runEvaluationCli(forwardedArgs, {
+      outputPath: path.join(outputDirectory, "evaluation.json"),
+    });
     expect(summary.runId).toMatch(/^pro-vs-standard-\d+$/);
     expect(summary.variants[expectedVariants[0]]).toBeTruthy();
     expect(typeof outputPath).toBe("string");

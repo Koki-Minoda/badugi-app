@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:artifacts": "vitest run --config vitest.artifacts.config.js",
     "test:game:progress": "vitest run src/games/testing/progress src/games/testing/regression src/games/testing/scenario",
     "test:game:known-bugs": "vitest run src/games/testing/regression/gameProgressKnownBugs.test.js",
     "test:game:family": "vitest run src/games/testing/scenario/*FamilyProgress.test.js",

@@ -588,6 +588,7 @@ export default function App() {
   const gameControllerRef = useRef(null);
   const controllerVariantRef = useRef(null);
   const controllerStreetRef = useRef(null);
+  const lastControllerActionFailureRef = useRef(null);
   const studStreetPauseUntilRef = useRef(0);
   const [studStreetPauseToken, setStudStreetPauseToken] = useState(0);
   const uiAdapterRef = useRef(null);

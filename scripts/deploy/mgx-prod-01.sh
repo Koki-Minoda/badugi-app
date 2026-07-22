@@ -46,6 +46,9 @@ verify_frontend_asset_sync() {
 }
 
 verify_live_frontend() {
+  local attempt
+  local max_attempts="${HEALTH_CHECK_MAX_ATTEMPTS:-12}"
+  local retry_seconds="${HEALTH_CHECK_RETRY_SECONDS:-5}"
   local live_index
   local live_manifest
   local live_health
@@ -53,7 +56,21 @@ verify_live_frontend() {
 
   echo "[mgx-deploy] verifying live frontend at ${LIVE_ORIGIN}"
   expected_assets="$(asset_refs_from_index "${FRONTEND_DIST}/index.html")"
-  live_index="$(curl -fsSL "${LIVE_ORIGIN}/")" || fail "failed to fetch ${LIVE_ORIGIN}/"
+
+  for ((attempt = 1; attempt <= max_attempts; attempt++)); do
+    if live_index="$(curl -fsSL "${LIVE_ORIGIN}/")" &&
+      live_manifest="$(curl -fsSL "${LIVE_ORIGIN}/manifest.webmanifest")" &&
+      live_health="$(curl -fsSL "${LIVE_ORIGIN}/api/health")"; then
+      break
+    fi
+
+    if ((attempt == max_attempts)); then
+      fail "live endpoints did not become ready after ${max_attempts} attempts"
+    fi
+
+    echo "[mgx-deploy] live endpoints not ready (attempt ${attempt}/${max_attempts}); retrying in ${retry_seconds}s"
+    sleep "$retry_seconds"
+  done
 
   while IFS= read -r asset_ref; do
     if [ -z "$asset_ref" ]; then
@@ -66,8 +83,6 @@ verify_live_frontend() {
     fi
   done <<<"$expected_assets"
 
-  live_manifest="$(curl -fsSL "${LIVE_ORIGIN}/manifest.webmanifest")" ||
-    fail "failed to fetch ${LIVE_ORIGIN}/manifest.webmanifest"
   if grep -qi '<!doctype html' <<<"$live_manifest"; then
     fail "manifest.webmanifest returned SPA HTML fallback"
   fi
@@ -75,8 +90,6 @@ verify_live_frontend() {
     fail "manifest.webmanifest does not look like JSON manifest"
   fi
 
-  live_health="$(curl -fsSL "${LIVE_ORIGIN}/api/health")" ||
-    fail "failed to fetch ${LIVE_ORIGIN}/api/health"
   if ! grep -q '"status"[[:space:]]*:[[:space:]]*"ok"' <<<"$live_health"; then
     fail "api health status is not ok: ${live_health}"
   fi

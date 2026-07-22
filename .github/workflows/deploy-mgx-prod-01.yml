@@ -1,31 +1,84 @@
 name: Deploy mgx-prod-01
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
+    inputs:
+      deploy_branch:
+        description: Branch to deploy (must match the current production line)
+        required: true
+        default: feature/d-04-next-actor-unify
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mgx-prod-01
+  cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DEPLOY_BRANCH: ${{ inputs.deploy_branch }}
+      MGX_PROD_HOST: ${{ secrets.MGX_PROD_HOST }}
+      MGX_PROD_USER: ${{ secrets.MGX_PROD_USER }}
     steps:
-      - name: Checkout (optional)
-        uses: actions/checkout@v4
-
-      - name: Setup SSH key
-        run: |
-          mkdir -p ~/.ssh
-          echo "$MGX_PROD_SSH_KEY" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan "$MGX_PROD_HOST" >> ~/.ssh/known_hosts
+      - name: Validate deploy inputs and secrets
         env:
           MGX_PROD_SSH_KEY: ${{ secrets.MGX_PROD_SSH_KEY }}
-          MGX_PROD_HOST: ${{ secrets.MGX_PROD_HOST }}
-
-      - name: Deploy to mgx-prod-01
+          MGX_PROD_KNOWN_HOSTS: ${{ secrets.MGX_PROD_KNOWN_HOSTS }}
         run: |
-          ssh "${MGX_PROD_USER}@${MGX_PROD_HOST}" 'cd ~/badugi-app && scripts/deploy/mgx-prod-01.sh'
+          set -euo pipefail
+          [[ "$DEPLOY_BRANCH" =~ ^[A-Za-z0-9._/-]+$ ]]
+          test -n "$MGX_PROD_HOST"
+          test -n "$MGX_PROD_USER"
+          test -n "$MGX_PROD_SSH_KEY"
+          test -n "$MGX_PROD_KNOWN_HOSTS"
+
+      - name: Configure pinned SSH identity
         env:
-          MGX_PROD_HOST: ${{ secrets.MGX_PROD_HOST }}
-          MGX_PROD_USER: ${{ secrets.MGX_PROD_USER }}
+          MGX_PROD_SSH_KEY: ${{ secrets.MGX_PROD_SSH_KEY }}
+          MGX_PROD_KNOWN_HOSTS: ${{ secrets.MGX_PROD_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$MGX_PROD_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$MGX_PROD_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Production preflight
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes \
+            "${MGX_PROD_USER}@${MGX_PROD_HOST}" \
+            "bash -s -- '$DEPLOY_BRANCH'" <<'REMOTE'
+          set -euo pipefail
+          branch="$1"
+          cd /home/mgx/badugi-app
+          test -z "$(git status --porcelain --untracked-files=no)"
+          git fetch origin "$branch"
+          git rev-parse --verify "origin/$branch"
+          sudo -n /usr/sbin/nginx -t
+          REMOTE
+
+      - name: Deploy selected production branch
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes \
+            "${MGX_PROD_USER}@${MGX_PROD_HOST}" \
+            "cd /home/mgx/badugi-app && APP_DIR=/home/mgx/badugi-app GIT_BRANCH='$DEPLOY_BRANCH' scripts/deploy/mgx-prod-01.sh"
+
+      - name: Verify production health
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            echo "Health check attempt ${attempt}/5"
+            if curl --fail --silent --show-error https://mgx-poker.com/api/health | grep -q '"status":"ok"' \
+              && curl --fail --silent --show-error https://mgx-poker.com/ >/dev/null; then
+              exit 0
+            fi
+            sleep 5
+          done
+          exit 1

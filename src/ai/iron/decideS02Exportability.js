@@ -87,7 +87,7 @@ export async function decideS02Exportability({
   };
 }
 
-function decideForcedReplay({ forcedReplay, entropy, repair, subBuckets }) {
+function decideForcedReplay({ forcedReplay, entropy, subBuckets }) {
   const exportableSubBuckets = (subBuckets?.subBuckets ?? []).filter((row) => row.verdict === "EXPORTABLE_CANDIDATE");
   const blockers = [];
   if (!forcedReplay?.forcedReplayValid) blockers.push("forced-replay-invalid");

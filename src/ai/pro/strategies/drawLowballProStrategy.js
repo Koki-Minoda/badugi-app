@@ -597,7 +597,6 @@ function chooseA5DrawDiscardIndexes({
 function chooseSingleDrawFinalBettingAction({
   variantId = "",
   snapshot = {},
-  lowType = "27",
   singleDrawClass = "weak",
   a5SingleDrawClass = "",
   a5SingleDrawDetail = {},
@@ -610,7 +609,6 @@ function chooseSingleDrawFinalBettingAction({
   smoothMadeLow = false,
   betSizeBucket = "small",
   toCall = 0,
-  drawRound = 0,
   highestRank = 99,
   lowTexture = {},
   penaltyHand = false,
@@ -1139,12 +1137,6 @@ export function chooseDrawLowballProStrategy({
   const weakFinalHand = pairedHand || penaltyHand || highestRank >= weakThreshold;
   const smoothMadeLow = cleanLow && lowTexture.isSmooth;
   const roughMadeLow = !pairedHand && cleanLow && lowTexture.isRough;
-  const marginalMadeLow =
-    cleanLow &&
-    !pairedHand &&
-    !premiumPat &&
-    !smoothMadeLow &&
-    highestRank <= weakThreshold;
   const openValueRaise =
     !facingBet &&
     !pairedHand &&

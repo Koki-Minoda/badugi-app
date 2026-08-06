@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import CoachingPreviewCard from "./CoachingPreviewCard.jsx";
 import CoachingSummaryPanel from "./CoachingSummaryPanel.jsx";
 import { buildReplayReviewContract } from "../feedback/replayReviewContract.js";
@@ -224,7 +224,10 @@ export default function TournamentResultOverlay({
   onPlayAgain,
 }) {
   const shownKeyRef = useRef(null);
-  const visibleLessons = coachingPreview?.summary?.topLessons ?? coachingPreview?.lessons?.slice(0, 2) ?? [];
+  const visibleLessons = useMemo(
+    () => coachingPreview?.summary?.topLessons ?? coachingPreview?.lessons?.slice(0, 2) ?? [],
+    [coachingPreview],
+  );
   const useSummaryPanel = Boolean(coachingPreview?.summary);
   useEffect(() => {
     if (!visible || !visibleLessons.length || typeof onCoachingTelemetry !== "function") return;

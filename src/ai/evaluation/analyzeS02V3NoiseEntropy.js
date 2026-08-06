@@ -23,7 +23,7 @@ function round(value, digits = 4) {
   return Number(Number(value ?? 0).toFixed(digits));
 }
 
-function actionType(action = null) {
+function _actionType(action = null) {
   return String(action?.type ?? action?.action ?? action ?? "").toUpperCase();
 }
 

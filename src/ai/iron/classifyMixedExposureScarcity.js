@@ -6,7 +6,7 @@ export const DEFAULT_STEP44_SCARCITY_CLASSIFICATION_OUTPUT_PATH = path.resolve(
   "reports/ai-iron/step44-scarcity-classification.json",
 );
 
-export function summarizeMixedExposureScarcity({ funnel = {}, collapse = {}, divergence = {}, safety = {} } = {}) {
+export function summarizeMixedExposureScarcity({ funnel = {}, divergence = {}, safety = {} } = {}) {
   let classification = "NATURAL_SCARCITY";
   const reason = [];
   if (Number(safety.illegal ?? 0) > 0 || Number(safety.freeze ?? 0) > 0) {

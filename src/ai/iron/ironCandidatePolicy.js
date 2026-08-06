@@ -14,7 +14,7 @@ import { bucketSpecificityScore, SOURCE_PRIORITY_ORDER } from "./scoreBucketSpec
 export const STEP41_S02_DEEP_RAISE_CHECK_TARGET = "S02_DEEP_RAISE_CHECK";
 export const STEP41_S02_DEEP_RAISE_CHECK_FAMILY = "S02 deep RAISE-vs-CHECK";
 
-function normalizeCard(card = "") {
+function _normalizeCard(card = "") {
   return String(card ?? "").trim().toUpperCase();
 }
 

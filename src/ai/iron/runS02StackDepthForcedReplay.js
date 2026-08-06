@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { parseReplaySampleFilename } from "../evaluation/counterfactualBuckets.js";
-import { roundNumber, writeJsonReport } from "./coverageAuditUtils.js";
+import { writeJsonReport } from "./coverageAuditUtils.js";
 import { runForcedActionReplay, summarizeForcedReplayResults } from "./runForcedActionReplay.js";
 import { actionName, stackDepth } from "./s02CounterfactualUtils.js";
 

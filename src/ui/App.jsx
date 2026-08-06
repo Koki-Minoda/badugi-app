@@ -1917,6 +1917,8 @@ export default function App() {
     console.warn("[LEGACY][SINGLE-TABLE] Fallback path:", reason);
   };
 
+  // Render-local legacy bridge; the consuming callback deliberately tracks its identity.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const syncLegacyFromControllerSnapshot = (
     snapshot,
     { seatIndex = null, scheduleAfterBet = false } = {},
@@ -7840,6 +7842,8 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [handResultVisible, mode, startNextHand]);
 
+  // E2E-only bridge intentionally reads the latest render closure without reinstallation.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const forceHeroDraw = () => drawSelectedRef.current();
     const forceSeatDrawForTest = (seat = turn, payload = {}) => {

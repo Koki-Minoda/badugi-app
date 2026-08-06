@@ -4,7 +4,7 @@ function normalizeCard(card = "") {
   return String(card ?? "").trim().toUpperCase();
 }
 
-function rankValue(card = "") {
+function _rankValue(card = "") {
   const normalized = normalizeCard(card);
   const rank = normalized.slice(0, -1);
   if (rank === "A") return 14;
@@ -155,4 +155,3 @@ export function classifyD01SubBucket(sample = {}) {
     },
   };
 }
-

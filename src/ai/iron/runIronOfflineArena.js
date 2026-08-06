@@ -245,7 +245,6 @@ async function playArenaHand({
   variantId,
   seed,
   sourceSeed = seed,
-  handIndex,
   evaluatedSeat,
   evaluatedPolicy,
   candidatePolicy = null,
@@ -455,7 +454,6 @@ function summarizePolicyRuns(runs = []) {
   let fallbackOnlySeatDeltaSum = 0;
   completed.forEach((run) => {
     const runBucketDistribution = run.metrics?.bucketHitDistribution ?? {};
-    const bucketKeys = Object.keys(runBucketDistribution);
     if (Number(run.metrics?.datasetHits ?? 0) > 0) {
       hitHands += 1;
       hitSeatDeltaSum += Number(run.seatDelta ?? 0);

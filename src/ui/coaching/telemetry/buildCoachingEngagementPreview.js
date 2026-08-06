@@ -25,7 +25,7 @@ function timestamp(baseMs, offsetSeconds) {
 export function buildStep52TelemetryEvents({ annotations = [], sessionId = "step52-preview" } = {}) {
   const base = Date.parse("2026-05-15T03:00:00.000Z");
   return annotations.flatMap((lesson, lessonIndex) =>
-    EVENT_PLAN.map((entry, entryIndex) =>
+    EVENT_PLAN.map((entry) =>
       createCoachingTelemetryEvent({
         type: entry.type,
         lesson,

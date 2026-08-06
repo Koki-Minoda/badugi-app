@@ -7842,8 +7842,6 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [handResultVisible, mode, startNextHand]);
 
-  // E2E-only bridge intentionally reads the latest render closure without reinstallation.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const forceHeroDraw = () => drawSelectedRef.current();
     const forceSeatDrawForTest = (seat = turn, payload = {}) => {
@@ -9130,6 +9128,8 @@ export default function App() {
         return legacyResult;
       },
     };
+  // E2E-only bridge intentionally reads render-local pots and finish behavior.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     queueForcedSeatAction,
     tryControllerBetAction,

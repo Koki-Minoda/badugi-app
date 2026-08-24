@@ -70,7 +70,7 @@ function classifyCpu(summary, cpuMode) {
   if (raiseRate < 0.025 || openRate < 0.02) classifications.push("CPU_TOO_PASSIVE");
   if (fallbackRate > 0.2) classifications.push("RL_FALLBACK_RISK");
   if (foldRate <= 0.75 && raiseRate >= 0.025 && openRate >= 0.02) classifications.push("CPU_REALISTIC_ENOUGH_FOR_AUDIT");
-  if (cpuMode === "rl" && (foldRate > 0.8 || raiseRate < 0.02)) classifications.push("PRO_OVERLAY_NEEDS_TUNING_LATER");
+  if (cpuMode === "pro-overlay" && (foldRate > 0.8 || raiseRate < 0.02)) classifications.push("PRO_OVERLAY_NEEDS_TUNING_LATER");
   return {
     cpuMode,
     foldRate: round(foldRate),
@@ -131,7 +131,11 @@ function main() {
   const proOverlay = runCpuAudit("rl", variants, hands);
   const cpuSummaries = [
     { cpuMode: "heuristic", summary: heuristic, classification: classifyCpu(heuristic, "heuristic") },
-    { cpuMode: "pro-overlay", summary: proOverlay, classification: classifyCpu(proOverlay, "rl") },
+    {
+      cpuMode: "pro-overlay",
+      summary: proOverlay,
+      classification: classifyCpu(proOverlay, "pro-overlay"),
+    },
   ];
   const badugiGap = variants.includes("badugi")
     ? {

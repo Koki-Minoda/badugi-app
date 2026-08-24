@@ -1,7 +1,9 @@
 import { TOURNAMENT_STAGE_IDS } from "../../config/tournamentStages.js";
 import { getTierById, resolveTierForContext } from "../../ai/tierManager.js";
 
-export const DEFAULT_CASH_AI_TIER_ID = "pro";
+// Friend Alpha favors the audited, balanced policy. Pro remains available as
+// an explicit development/tier override until its fold-heavy profile is tuned.
+export const DEFAULT_CASH_AI_TIER_ID = "standard";
 export const DEFAULT_TOURNAMENT_STAGE_ID = "store";
 
 function normalizeStageCandidate(value) {

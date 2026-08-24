@@ -20,7 +20,7 @@ describe("ai tier context resolution", () => {
     ).toBe(expectedTierId);
   });
 
-  it("keeps cash on the legacy pro default", () => {
+  it("keeps cash on the friend-alpha standard default", () => {
     expect(resolveAiTierForGameContext({ mode: "cash" })?.id).toBe(
       DEFAULT_CASH_AI_TIER_ID,
     );

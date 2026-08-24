@@ -25,23 +25,6 @@ function round(value, digits = 3) {
   return Math.round(Number(value || 0) * factor) / factor;
 }
 
-function buildLevels(preset, count = 18) {
-  const levels = [];
-  for (let index = 0; index < count; index += 1) {
-    const level = index + 1;
-    const bb = Math.max(1, Math.round(preset.startingBb * preset.growth ** index / 5) * 5);
-    const sb = Math.max(1, Math.round(bb / 2));
-    const ante =
-      level < preset.anteStartLevel
-        ? 0
-        : preset.anteType === "FULL_ANTE"
-          ? Math.max(1, Math.round(bb * 0.125))
-          : bb;
-    levels.push({ level, minute: index * preset.blindIntervalMinutes, sb, bb, ante });
-  }
-  return levels;
-}
-
 function simulateStructure(preset, players = 6) {
   const simulation = simulateTournamentStructure(preset, { players });
   const classifications = [];

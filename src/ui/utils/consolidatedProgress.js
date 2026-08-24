@@ -28,10 +28,6 @@ const DEFAULT_STATISTICS = {
   totalPrize: 0,
 };
 
-function cloneJson(value) {
-  return JSON.parse(JSON.stringify(value));
-}
-
 function safeParseStorage(key) {
   return safeGetItem(key, null, { silent: true });
 }

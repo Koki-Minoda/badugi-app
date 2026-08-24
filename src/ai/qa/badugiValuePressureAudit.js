@@ -430,7 +430,11 @@ export function runBadugiValueBetAudit({ paths = ["heuristic", "pro-overlay", "f
   return {
     generatedAt: new Date().toISOString(),
     scope: "Badugi value betting and action-pressure audit; no strategy tuning.",
-    scenarios: scenarios.map(({ hand: _hand, ...scenario }) => scenario),
+    scenarios: scenarios.map((scenario) => {
+      const { hand, ...publicScenario } = scenario;
+      void hand;
+      return publicScenario;
+    }),
     rows,
     comparison: summarizeBadugiValueAuditRows(rows),
   };

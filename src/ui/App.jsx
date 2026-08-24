@@ -179,7 +179,7 @@ import {
   computeDrawDecision,
 } from "../ai/policyRouter.js";
 import { chooseProAction } from "../ai/pro/proDecisionOverlay.js";
-import { useGameEngine } from "./engine/useGameEngine";
+import { useGameEngine } from "./engine/useGameEngine.js";
 import { mergeEngineSnapshot } from "./utils/engineSnapshotUtils.js";
 import {
   assertNoHandShapeContamination,
@@ -513,6 +513,21 @@ function npcAutoDrawCount(evalResult = {}) {
 }
 
 const STUD_STREET_AUTOPLAY_PAUSE_MS = 900;
+
+function clonePlayerState(player) {
+  if (!player) return null;
+  return {
+    ...player,
+    hand: Array.isArray(player.hand) ? [...player.hand] : player.hand,
+    cards: Array.isArray(player.cards) ? [...player.cards] : player.cards,
+    holeCards: Array.isArray(player.holeCards)
+      ? [...player.holeCards]
+      : player.holeCards,
+    selected: Array.isArray(player.selected)
+      ? [...player.selected]
+      : player.selected,
+  };
+}
 
 export default function App() {
   const [tournamentSession, setTournamentSession] = useState(() =>
@@ -2469,6 +2484,9 @@ export default function App() {
         };
       }
     },
+    // logE2EEvent is a hoisted diagnostic helper and intentionally stays outside
+    // the dependency list to avoid changing the action callback's lifecycle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       ensureGameController,
       isControllerDrivenSingleTable,
@@ -2506,7 +2524,7 @@ export default function App() {
     }
     uiAdapterRef.current = getGameUIAdapter(normalizedVariant) ?? null;
   }, [ensureGameController, gameDefinition, gameVariant]);
-  function setDrawRoundValue(value) {
+  const setDrawRoundValue = useCallback((value) => {
     const previous = drawRoundTracker.current;
     const raw = typeof value === "function" ? value(previous) : value;
     const numeric = Number(raw);
@@ -2524,9 +2542,9 @@ export default function App() {
       `[ROUND-TRACK] setDrawRoundValue ${normalized} (prev=${previous}, tracker=${drawRoundTracker.current})`,
     );
     return normalized;
-  }
+  }, [MAX_DRAWS]);
 
-  function setBetRoundValue(value) {
+  const setBetRoundValue = useCallback((value) => {
     const previous = betRoundTracker.current;
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) {
@@ -2543,7 +2561,7 @@ export default function App() {
       `[ROUND-TRACK] setBetRoundValue ${normalized} (prev=${previous}, tracker=${betRoundTracker.current})`,
     );
     return normalized;
-  }
+  }, [MAX_DRAWS]);
 
   function getPhaseRoundLabel(targetPhase) {
     const drawIdx = Math.max(0, Number(drawRoundTracker.current) || 0);
@@ -2914,9 +2932,9 @@ export default function App() {
   }, []);
 
   const [debugMode, setDebugMode] = useState(false);
-  function debugLog(...args) {
+  const debugLog = useCallback((...args) => {
     if (debugMode) console.log(...args);
-  }
+  }, [debugMode]);
   const debugLogRef = useRef(() => {});
   debugLogRef.current = debugLog;
 
@@ -3414,6 +3432,7 @@ export default function App() {
     pots,
     currentBet,
     betHead,
+    betRoundIndex,
     lastAggressor,
     getAiDecisionContextForActor,
     activeAiTierConfig,
@@ -3430,34 +3449,19 @@ export default function App() {
     console.log(`[TRACE ${now}] [HAND ${hand}] [${phaseLabel}] ${tag}`, extra);
   }
 
-  function clonePlayerState(player) {
-    if (!player) return null;
-    return {
-      ...player,
-      hand: Array.isArray(player.hand) ? [...player.hand] : player.hand,
-      cards: Array.isArray(player.cards) ? [...player.cards] : player.cards,
-      holeCards: Array.isArray(player.holeCards)
-        ? [...player.holeCards]
-        : player.holeCards,
-      selected: Array.isArray(player.selected)
-        ? [...player.selected]
-        : player.selected,
-    };
-  }
-
-  function sanitizePlayerSnapshotForVariant(
-    snapshot,
-    variantId = gameVariantRef.current ?? gameVariant,
-  ) {
-    if (!Array.isArray(snapshot)) return [];
-    return snapshot
-      .map((player) => {
-        const cloned = clonePlayerState(player);
-        if (!cloned) return null;
-        return sanitizeSeatHandShapeForVariant(cloned, variantId);
-      })
-      .filter(Boolean);
-  }
+  const sanitizePlayerSnapshotForVariant = useCallback(
+    (snapshot, variantId = gameVariantRef.current ?? gameVariant) => {
+      if (!Array.isArray(snapshot)) return [];
+      return snapshot
+        .map((player) => {
+          const cloned = clonePlayerState(player);
+          if (!cloned) return null;
+          return sanitizeSeatHandShapeForVariant(cloned, variantId);
+        })
+        .filter(Boolean);
+    },
+    [gameVariant],
+  );
 
   function setPlayerSnapshot(snap) {
     const normalized = sanitizePlayerSnapshotForVariant(snap);
@@ -3697,7 +3701,13 @@ export default function App() {
         setCurrentScreen(navigateTo);
       }
     },
-    [buildPlayersFromSeatTypes, heroProfile, setCurrentScreen],
+    [
+      buildPlayersFromSeatTypes,
+      heroProfile,
+      setBetRoundValue,
+      setCurrentScreen,
+      setDrawRoundValue,
+    ],
   );
 
   const handleFatalTableError = useCallback(
@@ -4988,7 +4998,7 @@ export default function App() {
 
   const CASH_CPU_RESEAT_HAND_DELAY = 10;
 
-  function isCashCpuLifecycleEnabled() {
+  const isCashCpuLifecycleEnabled = useCallback(() => {
     const activeMode = modeRef.current ?? mode;
     const activeVariant = normalizeAppVariantId(
       gameVariantRef.current ?? gameVariant,
@@ -4998,7 +5008,7 @@ export default function App() {
       (activeVariant === APP_VARIANT_IDS.BADUGI ||
         isDrawLowballAppVariant(activeVariant))
     );
-  }
+  }, [gameVariant, mode]);
 
   function isCashCpuSeat(player, seatType, idx) {
     return (
@@ -5180,7 +5190,7 @@ export default function App() {
         };
       });
     },
-    [buildPlayersFromSeatTypes, heroProfile],
+    [buildPlayersFromSeatTypes, heroProfile, isCashCpuLifecycleEnabled],
   );
 
   const buildTournamentEntrants = useCallback(
@@ -5483,7 +5493,6 @@ export default function App() {
         heroTableId: heroPlayer?.tableId ?? heroTableIdRef.current ?? null,
         fallbackSeatsPerTable: nextState.config?.seatsPerTable ?? NUM_PLAYERS,
       });
-      const hudPayloadHands = hudPayload?.handsPlayedThisLevel;
       if (hudPayload) {
         hudPayload.handsPlayedThisLevel = resolveHandsPlayedThisLevel(
           hudPayload.handsPlayedThisLevel,
@@ -5754,6 +5763,7 @@ export default function App() {
       setTournamentTitle,
       triggerHeroTableAnimation,
       authIsAuthenticated,
+      debugLog,
     ],
   );
 
@@ -6426,6 +6436,9 @@ export default function App() {
       resetInitialButtonState,
       resetTournamentState,
       resetTableStateToSafeDefaults,
+      sanitizePlayerSnapshotForVariant,
+      setBetRoundValue,
+      setDrawRoundValue,
       tournamentSession,
     ],
   );
@@ -6559,6 +6572,9 @@ export default function App() {
       initializeVariantRotation,
       resetTableStateToSafeDefaults,
       resetTournamentState,
+      sanitizePlayerSnapshotForVariant,
+      setBetRoundValue,
+      setDrawRoundValue,
       setHandResultVisible,
       setPlayers,
       setShowNextButton,
@@ -7696,7 +7712,17 @@ export default function App() {
       }
       return success;
     },
-    [buildCashNextHandSnapshot, dealerIdx, mode, phase, players, pots],
+    [
+      buildCashNextHandSnapshot,
+      dealerIdx,
+      gameVariant,
+      isCashCpuLifecycleEnabled,
+      mode,
+      phase,
+      players,
+      pots,
+      sanitizePlayerSnapshotForVariant,
+    ],
   );
   startNextHandRef.current = startNextHand;
 
@@ -8050,7 +8076,7 @@ export default function App() {
           ) {
             controllerSnapshotForAudit = controller.getUiSnapshot();
           }
-        } catch (error) {
+        } catch {
           controllerSnapshotForAudit = null;
         }
         const row = {
@@ -9148,6 +9174,8 @@ export default function App() {
     players,
     turn,
     drawRound,
+    debugLog,
+    debugLog,
     betRoundIndex,
     raiseCountThisRound,
     dealerIdx,
@@ -12085,6 +12113,7 @@ export default function App() {
     betSize,
     betRoundIndex,
     drawRound,
+    debugLog,
     getAiDecisionContextForActor,
     activeAiTierConfig,
     applyForcedBetAction,

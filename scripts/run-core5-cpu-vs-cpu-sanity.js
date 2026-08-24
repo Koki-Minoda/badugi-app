@@ -47,10 +47,6 @@ function getSnapshot(controller, state) {
   return controller.getUiSnapshot(state);
 }
 
-function getEngineState(state) {
-  return state?.engineState ?? state?.snapshot ?? state ?? {};
-}
-
 function getPhase(snapshot) {
   return snapshot?.phase ?? snapshot?.street ?? "UNKNOWN";
 }
@@ -153,7 +149,7 @@ function normalizeActionForController(variantId, action, snapshot) {
   };
 }
 
-function getCpuActionForVariant(controller, variantId, state, seatIndex, cpuMode, snapshot, legalActions) {
+function getCpuActionForVariant(controller, variantId, state, seatIndex, cpuMode) {
   if (typeof controller.getCpuAction === "function") {
     const action = controller.getCpuAction(state, seatIndex, {
       tierConfig: cpuMode === "rl" ? { id: "pro" } : { id: "standard" },
@@ -197,8 +193,6 @@ function simulateVariant({ variantId, hands, seats, mode, cpuMode, trace }) {
       state,
       actor,
       cpuMode,
-      snapshot,
-      legalActions,
     );
     if (!cpuAction?.type) {
       freezes += 1;

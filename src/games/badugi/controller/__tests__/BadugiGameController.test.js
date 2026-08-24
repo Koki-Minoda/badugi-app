@@ -402,7 +402,7 @@ describe("BadugiGameController – syncFromSnapshot null turn handling", () => {
     controller.legacy.state.nextTurn = null;
 
     const snap = controller.getUiSnapshot(state);
-    const synced = controller.syncFromExternalState({
+    controller.syncFromExternalState({
       snapshot: {
         ...snap,
         turn: undefined,     // not a number → falls through to legacy state

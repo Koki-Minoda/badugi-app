@@ -232,6 +232,10 @@ function getSnapshotPot(state = {}, metadata = {}) {
   return Math.max(0, (metadata.potAmount ?? sumPots(state?.pots ?? [])) + sumStreetBets(state?.players ?? []));
 }
 
+function getActivePlayers(players = []) {
+  return players.filter((player) => !player.folded && !player.sittingOut);
+}
+
 const COMPONENT_LABELS = {
   badugi: "Badugi half",
   low27: "2-7 Low half",
@@ -684,7 +688,7 @@ export class DeuceToSevenTripleDrawController extends GameController {
           observation,
           legalActions: drawLegalActions,
         });
-      } catch (_) {
+      } catch {
         // fall through to heuristic
       }
       if (typeof onnxDecision?.drawCount === "number") {
@@ -728,7 +732,7 @@ export class DeuceToSevenTripleDrawController extends GameController {
           observation,
           legalActions: betLegalStrings,
         });
-      } catch (_) {
+      } catch {
         // fall through to heuristic
       }
       if (onnxDecision?.action) {

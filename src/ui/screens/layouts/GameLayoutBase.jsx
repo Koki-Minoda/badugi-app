@@ -100,7 +100,7 @@ function TournamentMilestoneBanner({ event }) {
   const eventKey = event
     ? `${event.type}:${event.sequence ?? ""}:${event.playersRemaining ?? ""}`
     : "";
-  const copy = useMemo(() => buildTournamentMilestoneCopy(event), [eventKey, event]);
+  const copy = useMemo(() => buildTournamentMilestoneCopy(event), [event]);
   const [visible, setVisible] = useState(Boolean(copy));
 
   useEffect(() => {

@@ -6284,6 +6284,18 @@ export default function App() {
         ...DEFAULT_STORE_TOURNAMENT_CONFIG,
         ...configOverride,
       };
+      const overridesCapacity =
+        Object.prototype.hasOwnProperty.call(configOverride, "tables") ||
+        Object.prototype.hasOwnProperty.call(configOverride, "seatsPerTable");
+      const overridesTotalPlayers = Object.prototype.hasOwnProperty.call(
+        configOverride,
+        "totalPlayers",
+      );
+      if (overridesCapacity && !overridesTotalPlayers) {
+        baseConfig.totalPlayers =
+          Math.max(1, Number(baseConfig.tables) || 1) *
+          Math.max(1, Number(baseConfig.seatsPerTable) || NUM_PLAYERS);
+      }
       const activeTournamentSession = loadActiveTournamentSession();
       const stageId = resolveTournamentStageId({
         config: baseConfig,

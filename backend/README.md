@@ -113,18 +113,19 @@ Tables created by the ORM:
 - `badugi_hand_actions` – child rows for every betting/draw action (`seat_index`, `action`, `amount`, round, phase).
 - `badugi_hand_results` – child rows summarizing final stacks/payouts (`is_winner`, `pot_share`, `hand_label`).
 
-Run `Base.metadata.create_all(bind=engine)` (automatic on startup) or later use Alembic migrations for schema changes.
+Local development runs `Base.metadata.create_all(bind=engine)` automatically.
+Non-local environments require the Alembic schema revision to match the application.
 
-### Upcoming migrations
+### Database migrations
 
-An Alembic setup will be added in a future step. Once available:
+Apply committed migrations before starting a non-local backend:
 
 ```bash
 cd backend
 alembic upgrade head
 ```
 
-Until then, the startup hook will create tables automatically for local/dev usage.
+The repository includes `alembic.ini` and versioned migrations under `backend/alembic/`.
 
 ## Tests
 

@@ -5946,6 +5946,9 @@ export default function App() {
 
   function goShowdownNow(playersSnap, options = {}) {
     debugLog("[SHOWDOWN] goShowdownNow (All-in shortcut) called");
+    if (tableMetadataRef.current?.endTimestamp) {
+      return;
+    }
     const forceShowdown = options.force === true;
     const bypassEngine = options.bypassEngine === true;
 
@@ -6240,7 +6243,12 @@ export default function App() {
       const active = base.filter((p) => !isFoldedOrOut(p) && !p.allIn);
       if (active.length === 1) {
         const showdownSnap = base.map(clonePlayerState).filter(Boolean);
-        goShowdownNowRef.current(showdownSnap);
+        // A fold-to-one result has no showdown decision left for the engine.
+        // Resolve it directly so a stale variant engine cannot re-award the pot.
+        goShowdownNowRef.current(showdownSnap, {
+          force: true,
+          bypassEngine: true,
+        });
         return true;
       }
       return false;
@@ -7894,9 +7902,6 @@ export default function App() {
         canonicalPhase;
       if (canonicalPhase !== "DRAW" && snapshotPhase !== "DRAW") return false;
       if (typeof seat !== "number") return false;
-      if (seat === 0) {
-        return drawSelectedRef.current();
-      }
       const basePlayers = (playersRef.current ?? players ?? [])
         .map(clonePlayerState)
         .filter(Boolean);
@@ -10468,16 +10473,14 @@ export default function App() {
       endTimestamp: finishedAt,
       lastSummary: summaryWithContext,
     };
-    if (!isTournament) {
-      updateShowdown({
-        phase: "SHOWDOWN",
-        players: finalPlayers.map((player) => ({ ...player })),
-        pots: summary.map((pot) => ({ ...pot })),
-        handResultVisible: true,
-        handResultSummary: summaryWithContext,
-        showNextButton: true,
-      });
-    }
+    updateShowdown({
+      phase: "SHOWDOWN",
+      players: finalPlayers.map((player) => ({ ...player })),
+      pots: summary.map((pot) => ({ ...pot })),
+      handResultVisible: true,
+      handResultSummary: summaryWithContext,
+      showNextButton: true,
+    });
     setPhase("HAND_RESULT");
     const finalizedRecord = finalizeHandHistoryRecord({
       players: finalPlayers,
@@ -10546,9 +10549,11 @@ export default function App() {
     });
     const canPlayNext = canContinueGame(finalPlayers);
     if (canPlayNext) {
+      phaseRef.current = "WAITING_NEXT_HAND";
       setPhase("WAITING_NEXT_HAND");
       setShowNextButton(true);
     } else {
+      phaseRef.current = "TABLE_FINISHED";
       setPhase("TABLE_FINISHED");
       setShowNextButton(false);
     }
@@ -11330,6 +11335,10 @@ export default function App() {
         });
         return;
       }
+      console.warn(
+        "[CTRL][DRAW] controller-driven hero draw returned no snapshot; legacy deck fallback blocked",
+      );
+      return;
     }
     const activeCardsBeforeDraw = collectActiveCards(basePlayers);
     const stackBefore = p.stack;

@@ -413,7 +413,7 @@ function normalizePhase(value) {
 }
 
 function bool(value) {
-  return Boolean(value) ? 1 : 0;
+  return value ? 1 : 0;
 }
 
 function ensureSafeDbPath(dbPath) {

@@ -31,6 +31,8 @@ BACKEND_ENV=local BACKEND_DB_DRIVER=sqlite BACKEND_DB_NAME=mgx-local.db \
 ```
 
 Vite proxies `/api` and `/ws` to the local backend on port 8000.
+Set `VITE_MGX_REMOTE_DEV=1` only when serving the remote `/dev/` preview that
+requires the `wss://mgx-poker.com` HMR endpoint.
 
 ## Required checks
 

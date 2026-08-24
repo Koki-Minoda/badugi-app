@@ -23,7 +23,7 @@ const BADUGI_PROFILE = Object.freeze({
   layoutGroup: LAYOUT_GROUPS.BADUGI,
   handCardCount: 4,
   mobilePortrait: Object.freeze({
-    tableAspectRatio: "9 / 14",
+    tableAspectRatio: "5 / 8",
     tableRows: "minmax(0, 0.78fr) minmax(0, 0.88fr) minmax(0, 0.72fr)",
     playerWidth: "clamp(86px, 27dvw, 112px)",
     foldedPlayerWidth: "clamp(76px, 24dvw, 96px)",
@@ -42,7 +42,7 @@ const DRAW_LOWBALL_5CARD_PROFILE = Object.freeze({
   layoutGroup: LAYOUT_GROUPS.DRAW_LOWBALL_5CARD,
   handCardCount: 5,
   mobilePortrait: Object.freeze({
-    tableAspectRatio: "9 / 14",
+    tableAspectRatio: "5 / 8",
     tableRows: "minmax(0, 0.78fr) minmax(0, 0.88fr) minmax(0, 0.72fr)",
     playerWidth: "clamp(96px, 30dvw, 122px)",
     foldedPlayerWidth: "clamp(78px, 23dvw, 102px)",

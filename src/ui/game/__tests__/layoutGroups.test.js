@@ -10,6 +10,7 @@ describe("layoutGroups", () => {
     expect(getVariantLayoutProfile("badugi")).toMatchObject({
       layoutGroup: LAYOUT_GROUPS.BADUGI,
       handCardCount: 4,
+      mobilePortrait: { tableAspectRatio: "5 / 8" },
     });
   });
 
@@ -24,6 +25,7 @@ describe("layoutGroups", () => {
       expect(getVariantLayoutProfile(variantId)).toMatchObject({
         layoutGroup: LAYOUT_GROUPS.DRAW_LOWBALL_5CARD,
         handCardCount: 5,
+        mobilePortrait: { tableAspectRatio: "5 / 8" },
       });
       expect(isDrawLowballFiveCardLayout(variantId)).toBe(true);
     },

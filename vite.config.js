@@ -20,6 +20,7 @@ function readGitCommit() {
 
 export default defineConfig(({ command }) => {
   const isDev = command === "serve";
+  const isRemoteDev = process.env.VITE_MGX_REMOTE_DEV === "1";
   const buildInfo = {
     commit: process.env.VITE_MGX_BUILD_COMMIT || readGitCommit(),
     buildTime: process.env.VITE_MGX_BUILD_TIME || new Date().toISOString(),
@@ -54,12 +55,14 @@ export default defineConfig(({ command }) => {
         ],
       },
       // iPhoneから https 経由で /dev/ に来るので HMR も wss に寄せる（白画面/更新不能の回避）
-      hmr: {
-        protocol: "wss",
-        host: "mgx-poker.com",
-        clientPort: 443,
-        path: "/dev/",
-      },
+      hmr: isRemoteDev
+        ? {
+            protocol: "wss",
+            host: "mgx-poker.com",
+            clientPort: 443,
+            path: "/dev/",
+          }
+        : undefined,
       proxy: {
         "/api": {
           target: "http://127.0.0.1:8000",

@@ -42,8 +42,8 @@ async function expectNoHorizontalOverflow(page: Page) {
 }
 
 async function expectPotAndPhaseVisible(page: Page) {
-  await expect(page.getByText(/Total Pot/i).first()).toBeVisible({ timeout: 10000 });
-  await expect(page.getByText(/Phase/i).first()).toBeVisible({ timeout: 10000 });
+  await expect(page.getByTestId("table-total-pot").first()).toBeVisible({ timeout: 10000 });
+  await expect(page.getByTestId("table-phase-badge").first()).toBeVisible({ timeout: 10000 });
 }
 
 test.describe("alpha mobile gameplay layout", () => {

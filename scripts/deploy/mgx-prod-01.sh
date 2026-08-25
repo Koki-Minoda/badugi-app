@@ -110,7 +110,17 @@ git checkout "$GIT_BRANCH"
 git pull "$GIT_REMOTE" "$GIT_BRANCH"
 
 echo "[mgx-deploy] installing frontend dependencies"
-npm install --legacy-peer-deps
+NPM_CACHE_DIR="${NPM_CACHE_DIR:-/tmp/mgx-npm-cache-$(id -u)}"
+install -d -m 700 "$NPM_CACHE_DIR"
+
+# Older production runs created parts of node_modules as root. npm cannot
+# replace those files during a clean install, so normalize only this generated
+# dependency tree while leaving application files untouched.
+if [ -d "node_modules" ]; then
+  sudo chown -R "$(id -u):$(id -g)" node_modules
+fi
+
+npm ci --legacy-peer-deps --cache "$NPM_CACHE_DIR"
 
 echo "[mgx-deploy] building frontend"
 npm run build

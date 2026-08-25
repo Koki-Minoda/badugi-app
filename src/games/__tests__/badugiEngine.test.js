@@ -131,11 +131,12 @@ describe("BadugiEngine", () => {
     };
 
     const forced = engine.applyForcedBets(custom);
-    // Seat 1 is seatOut, so SB should move to seat 2 and BB wraps to seat 0.
-    expect(forced.players[2].betThisRound).toBe(3);
-    expect(forced.players[0].betThisRound).toBe(5);
-    expect(forced.lastAggressorIndex).toBe(0);
-    expect(forced.actingPlayerIndex).toBe(2); // next active after BB (seat 0) is seat 2
+    // Seat 1 is seatOut, so the effective heads-up blind rule makes BTN seat 0 the SB.
+    expect(forced.players[0].betThisRound).toBe(3);
+    expect(forced.players[2].betThisRound).toBe(5);
+    expect(forced.lastAggressorIndex).toBe(2);
+    expect(forced.actingPlayerIndex).toBeNull();
+    expect(forced.metadata?.actingPlayerIndex).toBeNull();
   });
 
   it("handles CALL actions without metadata by computing toCall internally", () => {

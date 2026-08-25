@@ -72,6 +72,14 @@ function legalActionTypes(player = {}) {
   return new Set(legal.map((action) => String(action?.type ?? action?.action ?? action ?? "").toUpperCase()));
 }
 
+const TERMINAL_PHASES = new Set([
+  "SHOWDOWN",
+  "HAND_RESULT",
+  "WAITING_NEXT_HAND",
+  "COMPLETE",
+  "TERMINAL",
+]);
+
 export function getAuthoritativeActorIndex(state = {}) {
   const actor =
     toIndex(state.currentActor) ??
@@ -152,6 +160,19 @@ export function findNextEligibleActor(state = {}, options = {}) {
 export function normalizeTurnState(state = {}, options = {}) {
   const phase = String(options.phase ?? state.phase ?? state.street ?? "BET").toUpperCase();
   const players = Array.isArray(state.players) ? state.players : [];
+  if (TERMINAL_PHASES.has(phase) || state.lastHandResult) {
+    return {
+      ...state,
+      currentActor: null,
+      actingPlayerIndex: null,
+      turn: null,
+      nextTurn: null,
+      players: players.map((player) => ({
+        ...player,
+        isTurn: false,
+      })),
+    };
+  }
   const preferredActor = toIndex(options.actor) ?? getAuthoritativeActorIndex(state);
   const actorIsEligible =
     preferredActor != null &&
@@ -161,7 +182,7 @@ export function normalizeTurnState(state = {}, options = {}) {
       : isSeatEligibleForBetting(
           { seatIndex: preferredActor, ...players[preferredActor] },
           state,
-          { ...options, ignoreActionCompletion: true },
+          options,
         ));
   const actor = actorIsEligible
     ? preferredActor
@@ -173,6 +194,10 @@ export function normalizeTurnState(state = {}, options = {}) {
     actingPlayerIndex: actor,
     turn: actor,
     nextTurn: actor,
+    metadata:
+      state.metadata && typeof state.metadata === "object"
+        ? { ...state.metadata, actingPlayerIndex: actor }
+        : { actingPlayerIndex: actor },
     players: players.map((player, seatIndex) => ({
       ...player,
       isTurn: actor === seatIndex,

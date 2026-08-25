@@ -1,0 +1,534 @@
+"""6-max Badugi チェックポイント監視・評価スクリプト。
+
+10kエピソードごとに:
+- 処理速度（eps/秒）
+- 全6ポジション別の avg_reward
+- fold率 / raise率（モード崩壊検知）
+- ベースライン比較（標準モデルとの対戦）
+を出力する。
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+import numpy as np
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+SRC_ROOT = PROJECT_ROOT / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
+
+from rl.env.badugi_env_sixmax_selfplay import SixMaxBadugiEnv
+from rl.training.export_badugi_dqn_onnx import export_checkpoint
+from rl.training.sixmax_action_telemetry import (
+    SixMaxActionTelemetry,
+    betting_round_name,
+    blind_pre_draw_pressure_opportunity,
+    conservative_steal_opportunity,
+    conservative_three_bet_opportunity,
+    pre_draw_no_voluntary_action_before_hero,
+)
+from rl.training.train_sixmax_selfplay_badugi_dqn import hero_position_name
+
+try:
+    import onnxruntime as ort
+    import torch
+    from rl.agents.dqn_agent import DQNAgent, DQNHyperParams
+except ImportError as exc:
+    raise SystemExit(f"依存ライブラリが不足しています: {exc}") from exc
+
+
+def _checkpoint_episode(path: Path) -> int:
+    for part in path.stem.split("_"):
+        if part.isdigit():
+            return int(part)
+    return 0
+
+
+def _eval_sixmax(checkpoint: Path, n_episodes: int = 600, hidden_dim: int = 256) -> dict:
+    """6-max環境でチェックポイントを評価。全ポジションを均等に経験させる。"""
+    device = "cpu"
+    agent = DQNAgent.load(str(checkpoint), device=device)
+
+    env = SixMaxBadugiEnv(seed=20260602)
+    env.set_agents(agent, agent)  # 対自己（両方同じ重み）
+
+    all_rewards: list[float] = []
+    pos_rewards: dict[int, list[float]] = {i: [] for i in range(6)}
+    position_rewards: dict[str, list[float]] = {
+        position: [] for position in ("BTN", "CO", "MP", "UTG", "SB", "BB")
+    }
+    telemetry = SixMaxActionTelemetry(max_draw_count=4)
+
+    eps_per_pos = max(1, n_episodes // 6)
+    for pos in range(6):
+        env._hero_seat_counter = pos  # 指定ポジションから開始
+        for _ in range(eps_per_pos):
+            obs, _ = env.reset()
+            ep_r = 0.0
+            ep_steps = 0
+            done = False
+            terminal_reason = None
+            episode_truncated = False
+            hero_seat = env.hero_seat
+            hero_position = hero_position_name(hero_seat, env.dealer_seat)
+            telemetry.start_episode(position=hero_position)
+            for _ in range(100):
+                ep_steps += 1
+                mask = env.legal_action_mask()
+                if env.phase == "BET":
+                    q = agent.q_network(
+                        __import__("torch").tensor(obs.reshape(1, -1), dtype=__import__("torch").float32)
+                    ).detach().numpy()[0]
+                    q_masked = q.copy()
+                    q_masked[mask <= 0] = -1e9
+                    action = int(np.argmax(q_masked))
+                    facing_bet = max(0, env.current_bet - env.players[hero_seat]["bet"]) > 0 or mask[0] > 0
+                    street = betting_round_name(env.draw_round)
+                    no_voluntary_action = (
+                        env.draw_round == 0
+                        and pre_draw_no_voluntary_action_before_hero(
+                            players=env.players,
+                            dealer_seat=env.dealer_seat,
+                            hero_seat=hero_seat,
+                        )
+                    )
+                    three_bet_opportunity = conservative_three_bet_opportunity(
+                        draw_round=env.draw_round,
+                        facing_bet=facing_bet,
+                        raise_legal=mask[4] > 0,
+                        raise_count=env.raise_count,
+                    )
+                    steal_opportunity = conservative_steal_opportunity(
+                        position=hero_position,
+                        betting_round=street,
+                        no_voluntary_action_before_hero=no_voluntary_action,
+                        bet_legal=mask[3] > 0,
+                        raise_legal=mask[4] > 0,
+                    )
+                    blind_pressure_opportunity = blind_pre_draw_pressure_opportunity(
+                        position=hero_position,
+                        betting_round=street,
+                        facing_bet=facing_bet,
+                        fold_legal=mask[0] > 0,
+                    )
+                    telemetry.record_bet(
+                        action,
+                        facing_bet=facing_bet,
+                        position=hero_position,
+                        betting_round=street,
+                        is_pre_draw=env.draw_round == 0,
+                        three_bet_opportunity=three_bet_opportunity,
+                        steal_opportunity=steal_opportunity,
+                        blind_pressure_opportunity=blind_pressure_opportunity,
+                        hand_strength_class="unknown",
+                    )
+                else:
+                    # DRAW phase: greedily draw toward best badugi
+                    q = agent.q_network(
+                        __import__("torch").tensor(obs.reshape(1, -1), dtype=__import__("torch").float32)
+                    ).detach().numpy()[0]
+                    q_masked = q.copy()
+                    q_masked[mask <= 0] = -1e9
+                    action = int(np.argmax(q_masked))
+                    telemetry.record_draw(max(0, min(3, action)))
+                obs, r, terminated, truncated, info = env.step(action)
+                ep_r += r
+                if terminated or truncated:
+                    done = True
+                    episode_truncated = bool(truncated)
+                    terminal_reason = info.get("terminal_reason") or getattr(env, "terminal_reason", None)
+                    break
+            all_rewards.append(ep_r)
+            pos_rewards[hero_seat % 6].append(ep_r)
+            position_rewards.setdefault(hero_position, []).append(ep_r)
+            max_step_hit = not done
+            telemetry.record_episode(
+                reward=ep_r,
+                length=ep_steps,
+                terminal_reason=terminal_reason or ("truncated" if max_step_hit else None),
+                truncated=episode_truncated or max_step_hit,
+                max_step_hit=max_step_hit,
+                position=hero_position,
+            )
+
+    n = len(all_rewards)
+    rates = telemetry.rates(include_all_in=True, include_fold_to_bet=True, include_draw_average=True)
+    position_ev = {
+        position: float(np.mean(rewards)) if rewards else None
+        for position, rewards in position_rewards.items()
+    }
+    warnings = []
+    if position_ev.get("BTN") is not None and position_ev.get("UTG") is not None and position_ev["BTN"] < position_ev["UTG"]:
+        warnings.append(f"BTN_EV_BELOW_UTG:BTN={position_ev['BTN']:.3f}<UTG={position_ev['UTG']:.3f}")
+    if position_ev.get("BTN") is not None and position_ev.get("CO") is not None and position_ev["BTN"] < position_ev["CO"]:
+        warnings.append(f"BTN_EV_BELOW_CO:BTN={position_ev['BTN']:.3f}<CO={position_ev['CO']:.3f}")
+    position_stats = telemetry.position_summaries()
+    return {
+        "n_episodes": n,
+        "avg_reward": float(np.mean(all_rewards)) if n else 0.0,
+        "std_reward": float(np.std(all_rewards)) if n else 0.0,
+        "fold_rate": rates["foldRate"],
+        "pure_raise_rate": rates["pureRaiseRate"],
+        "agg_rate": rates["aggressionRate"],
+        "raise_rate": rates["pureRaiseRate"],
+        "vpip": rates["vpip"],
+        "pfr": rates["pfr"],
+        "steal_opportunity_count": rates["stealOpportunityCount"],
+        "steal_attempt_count": rates["stealAttemptCount"],
+        "steal_success_count": rates["stealSuccessCount"],
+        "steal_rate": rates["stealRate"],
+        "fold_bb_to_steal_rate": rates["foldBbToStealRate"],
+        "fold_sb_to_steal_rate": rates["foldSbToStealRate"],
+        "bb_fold_to_predraw_pressure_rate": rates["bbFoldToPreDrawPressureRate"],
+        "sb_fold_to_predraw_pressure_rate": rates["sbFoldToPreDrawPressureRate"],
+        "pos_rewards": {
+            i: float(np.mean(pos_rewards[i])) if pos_rewards[i] else None
+            for i in range(6)
+        },
+        "position_ev": position_ev,
+        "position_steal_counts": {
+            position: {
+                "opportunities": int(position_stats.get(position, {}).get("stealOpportunityCount") or 0),
+                "attempts": int(position_stats.get(position, {}).get("stealAttemptCount") or 0),
+                "successes": int(position_stats.get(position, {}).get("stealSuccessCount") or 0),
+            }
+            for position in ("BTN", "CO", "SB")
+        },
+        "warnings": warnings,
+    }
+
+
+def _parse_log(log_path: Path, episode: int) -> dict | None:
+    """学習ログから指定エピソード付近の統計を抽出。"""
+    if not log_path or not log_path.exists():
+        return None
+    try:
+        text = log_path.read_text()
+        # 直近のログ行を検索
+        pattern = rf"\[6max\s+{episode:8d}\](.+)"
+        match = re.search(pattern, text)
+        if not match:
+            # 範囲検索
+            pattern = rf"\[6max\s+(\d+)\](.+)"
+            matches = re.findall(pattern, text)
+            if not matches:
+                return None
+            # 最も近いものを選ぶ
+            closest = min(matches, key=lambda m: abs(int(m[0]) - episode))
+            line = closest[1]
+        else:
+            line = match.group(1)
+
+        def _extract(key):
+            m = re.search(rf"{key}=\s*([0-9.\-]+)", line)
+            return float(m.group(1)) if m else None
+
+        return {
+            "train_avg_reward": _extract("avg"),
+            "epsilon": _extract("ε"),
+            "buffer": _extract("buf"),
+            "loss": _extract("loss"),
+            "mean_q": _extract("q"),
+            "fold_pct": _extract("fold%"),
+            "check_pct": _extract("chk%"),
+            "call_pct": _extract("call%"),
+            "bet_pct": _extract("bet%"),
+            "raise_pct": _extract("raise%"),
+            "aggression_pct": _extract("agg%"),
+            "steal_pct": _extract("steal%"),
+            "btn_steal_pct": _extract("BTNsteal%"),
+            "co_steal_pct": _extract("COsteal%"),
+            "sb_steal_pct": _extract("SBsteal%"),
+            "steal_opportunity_count": _extract("stealOpp"),
+            "steal_attempt_count": _extract("stealAtt"),
+            "steal_success_count": _extract("stealSucc"),
+            "btn_steal_opportunity_count": _extract("BTNstealOpp"),
+            "btn_steal_attempt_count": _extract("BTNstealAtt"),
+            "btn_steal_success_count": _extract("BTNstealSucc"),
+            "co_steal_opportunity_count": _extract("COstealOpp"),
+            "co_steal_attempt_count": _extract("COstealAtt"),
+            "co_steal_success_count": _extract("COstealSucc"),
+            "sb_steal_opportunity_count": _extract("SBstealOpp"),
+            "sb_steal_attempt_count": _extract("SBstealAtt"),
+            "sb_steal_success_count": _extract("SBstealSucc"),
+            "bb_ftp_pct": _extract("bbFtp%"),
+            "sb_ftp_pct": _extract("sbFtp%"),
+            "speed_eps_per_sec": _extract("spd"),
+        }
+    except Exception:
+        return None
+
+
+def _run_clean_eval_cli(checkpoint: Path, args, episode: int) -> dict:
+    """Run the official clean eval CLI for one checkpoint and read its report."""
+    clean_report_dir = Path(args.clean_eval_report_dir)
+    clean_report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = clean_report_dir / f"badugi-sixmax-clean-eval-{episode:06d}.json"
+    cmd = [
+        sys.executable,
+        str(PROJECT_ROOT / "src/rl/training/evaluate_badugi_sixmax_clean.py"),
+        "--checkpoint",
+        str(checkpoint),
+        "--episodes",
+        str(args.clean_eval_episodes),
+        "--max-steps",
+        str(args.clean_eval_max_steps),
+        "--seeds",
+        args.clean_eval_seeds,
+        "--opponent-profiles",
+        args.clean_eval_profiles,
+        "--report",
+        str(report_path),
+        "--onnx-dir",
+        str(clean_report_dir / "onnx"),
+        "--min-onnx-usage-rate",
+        str(args.clean_eval_min_onnx_usage_rate),
+        "--max-fallback-rate",
+        str(args.clean_eval_max_fallback_rate),
+        "--report-only",
+    ]
+    completed = subprocess.run(
+        cmd,
+        cwd=PROJECT_ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    report = None
+    if report_path.exists():
+        report = json.loads(report_path.read_text(encoding="utf8"))
+    fail_reasons = []
+    if completed.returncode != 0:
+        fail_reasons.append(f"CLEAN_EVAL_CLI_ERROR:{completed.returncode}")
+    if report is None:
+        fail_reasons.append("CLEAN_EVAL_REPORT_MISSING")
+    elif not report.get("passed", False):
+        fail_reasons.append("CLEAN_EVAL_FAILED")
+        fail_reasons.extend(report.get("gate", {}).get("failReasons", []))
+        for result in report.get("results", []):
+            for mode_name, mode_result in result.get("cleanEval", {}).items():
+                if not mode_result.get("passed", False):
+                    fail_reasons.extend(
+                        f"{mode_name}:{reason}"
+                        for reason in mode_result.get("gate", {}).get("failReasons", [])
+                    )
+    return {
+        "passed": completed.returncode == 0 and report is not None and report.get("passed", False),
+        "report": str(report_path),
+        "returncode": completed.returncode,
+        "failReasons": fail_reasons,
+        "stdout": completed.stdout[-2000:],
+        "stderr": completed.stderr[-2000:],
+        "summary": report,
+    }
+
+
+def watch(args):
+    checkpoint_dir = Path(args.checkpoint_dir)
+    eval_dir = Path(args.eval_dir)
+    eval_dir.mkdir(parents=True, exist_ok=True)
+    log_path = Path(args.train_log) if args.train_log else None
+
+    seen: set[Path] = set()
+    prev_ckpt: Path | None = None
+    prev_ckpt_time: float | None = None
+    report: list[dict] = []
+
+    pos_labels = ["BTN", "CO", "MP", "UTG", "SB", "BB"]
+
+    print(f"[watch] {checkpoint_dir} を監視中 (間隔: {args.poll_interval}s)")
+    print(f"[watch] 評価エピソード数: {args.eval_episodes} (6ポジション均等)")
+    print("-" * 80)
+
+    while True:
+        candidates = sorted(
+            checkpoint_dir.glob("badugi_sixmax_dqn_[0-9]*.pt"),
+            key=_checkpoint_episode,
+        )
+        new_ones = [c for c in candidates if c not in seen]
+
+        for ckpt in new_ones:
+            seen.add(ckpt)
+            now = time.time()
+            ep = _checkpoint_episode(ckpt)
+
+            # 速度計測
+            if prev_ckpt is not None and prev_ckpt_time is not None:
+                ep_diff = ep - _checkpoint_episode(prev_ckpt)
+                elapsed = now - prev_ckpt_time
+                speed = ep_diff / elapsed if elapsed > 0 else None
+            else:
+                ep_diff = None
+                elapsed = None
+                speed = None
+            prev_ckpt = ckpt
+            prev_ckpt_time = now
+
+            print(f"\n{'='*80}")
+            print(f"[CP] ep={ep:>8,}  {ckpt.name}")
+
+            if speed is not None:
+                flag = " ⚠ 激重" if speed < 3.0 else (" △ やや重" if speed < 8.0 else "")
+                print(f"[速度] {ep_diff:,} ep / {elapsed:.0f}s = {speed:.1f} eps/秒{flag}")
+            else:
+                print("[速度] (最初のチェックポイント)")
+
+            # 学習ログから統計
+            log_stats = _parse_log(log_path, ep)
+            if log_stats:
+                def _fmt(value, spec: str) -> str:
+                    return "?" if value is None else format(value, spec)
+
+                print(
+                    f"[学習] avg={_fmt(log_stats.get('train_avg_reward'), '.3f')}  "
+                    f"ε={_fmt(log_stats.get('epsilon'), '.3f')}  "
+                    f"buf={_fmt(log_stats.get('buffer'), '.0f')}  "
+                    f"loss={_fmt(log_stats.get('loss'), '.5f')}  "
+                    f"fold%={_fmt(log_stats.get('fold_pct'), '.1f')}  "
+                    f"chk%={_fmt(log_stats.get('check_pct'), '.1f')}  "
+                    f"call%={_fmt(log_stats.get('call_pct'), '.1f')}  "
+                    f"bet%={_fmt(log_stats.get('bet_pct'), '.1f')}  "
+                    f"raise%={_fmt(log_stats.get('raise_pct'), '.1f')}  "
+                    f"agg%={_fmt(log_stats.get('aggression_pct'), '.1f')}  "
+                    f"spd={_fmt(log_stats.get('speed_eps_per_sec'), '.1f')} ep/s"
+                )
+
+            # 6-max評価
+            print(f"[eval] 6-max評価中 ({args.eval_episodes} ep)...")
+            try:
+                t0 = time.time()
+                result = _eval_sixmax(ckpt, n_episodes=args.eval_episodes)
+                eval_time = time.time() - t0
+
+                avg_r = result["avg_reward"]
+                std_r = result["std_reward"]
+                fold_r = result["fold_rate"]
+                raise_r = result["pure_raise_rate"]
+                agg_r = result["agg_rate"]
+                position_ev = result.get("position_ev") or {}
+
+                # ポジション別表示
+                pos_str = "  ".join(
+                    f"{label}={position_ev[label]:.2f}" if position_ev.get(label) is not None else f"{label}=N/A"
+                    for label in pos_labels
+                )
+                print(f"[結果] avg={avg_r:.3f}±{std_r:.3f}  fold={fold_r:.1%}  raise={raise_r:.1%}  agg={agg_r:.1%}  ({eval_time:.0f}s)")
+                print(f"[ポジ] {pos_str}")
+
+                # 問題検知
+                issues = []
+                if avg_r < -1.5:
+                    issues.append("avg_reward が低すぎる（学習崩壊の可能性）")
+                if fold_r > 0.65:
+                    issues.append(f"フォールド率過多 ({fold_r:.1%}) — HIGH-FOLD崩壊")
+                if agg_r < 0.03:
+                    issues.append(f"攻撃頻度過少 ({agg_r:.1%}) — LOW-AGGRESSION崩壊")
+                valid_positions = [label for label in pos_labels if position_ev.get(label) is not None]
+                if valid_positions:
+                    worst_pos = min(valid_positions, key=lambda label: position_ev[label] or 0)
+                    if position_ev[worst_pos] is not None and position_ev[worst_pos] < -2.0:
+                        issues.append(f"ポジション {worst_pos} の報酬が極端に低い ({position_ev[worst_pos]:.2f})")
+                issues.extend(result.get("warnings") or [])
+
+                # ティア推定
+                if avg_r >= 1.5:
+                    tier_est = "Iron候補"
+                elif avg_r >= 0.8:
+                    tier_est = "Pro候補"
+                elif avg_r >= 0.2:
+                    tier_est = "Standard+"
+                else:
+                    tier_est = "学習中"
+
+                print(f"[ティア推定] {tier_est}  {'⚠ ' + ' / '.join(issues) if issues else '✓ 問題なし'}")
+
+                row = {
+                    "episode": ep,
+                    "checkpoint": str(ckpt),
+                    "speed_eps_per_sec": round(speed, 2) if speed else None,
+                    "train_avg_reward": log_stats.get("train_avg_reward") if log_stats else None,
+                    "eval_avg_reward": avg_r,
+                    "eval_std_reward": std_r,
+                    "fold_rate": fold_r,
+                    "pure_raise_rate": raise_r,
+                    "agg_rate": agg_r,
+                    "position_rewards": position_ev,
+                    "steal_opportunity_count": result.get("steal_opportunity_count"),
+                    "steal_attempt_count": result.get("steal_attempt_count"),
+                    "steal_success_count": result.get("steal_success_count"),
+                    "position_steal_counts": result.get("position_steal_counts"),
+                    "tier_estimate": tier_est,
+                    "issues": issues,
+                }
+
+                if args.clean_eval:
+                    print(f"[clean-eval] clean評価CLI実行中 ({args.clean_eval_episodes} ep/profile/seed)...")
+                    clean_result = _run_clean_eval_cli(ckpt, args, ep)
+                    row["clean_eval"] = {
+                        "passed": clean_result["passed"],
+                        "report": clean_result["report"],
+                        "returncode": clean_result["returncode"],
+                        "failReasons": clean_result["failReasons"],
+                    }
+                    if clean_result["passed"]:
+                        print(f"[clean-eval] PASS report={clean_result['report']}")
+                    else:
+                        print(f"[clean-eval] FAIL report={clean_result['report']} reasons={clean_result['failReasons']}")
+                        issues.extend(clean_result["failReasons"])
+
+                report.append(row)
+                (eval_dir / "sixmax_eval_report.json").write_text(
+                    json.dumps(report, indent=2, ensure_ascii=False)
+                )
+
+            except Exception as exc:
+                print(f"[eval] エラー: {exc}")
+
+        # 終了検出
+        summary_path = checkpoint_dir / "badugi_sixmax_dqn_latest_summary.json"
+        if summary_path.exists() and args.target_episodes > 0:
+            try:
+                s = json.loads(summary_path.read_text())
+                if s.get("episodes", 0) >= args.target_episodes:
+                    print(f"\n[watch] target_episodes={args.target_episodes:,} 到達。終了します。")
+                    break
+            except Exception:
+                pass
+
+        time.sleep(args.poll_interval)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="6-max チェックポイント監視・評価")
+    parser.add_argument("--checkpoint-dir", required=True)
+    parser.add_argument("--eval-dir", default="rl/evaluations/sixmax_watch")
+    parser.add_argument("--train-log", default=None)
+    parser.add_argument("--eval-episodes", type=int, default=600)
+    parser.add_argument("--poll-interval", type=float, default=30.0)
+    parser.add_argument("--target-episodes", type=int, default=1_000_000)
+    parser.add_argument("--hidden-dim", type=int, default=256)
+    parser.add_argument("--clean-eval", action="store_true", help="Run clean eval CLI for each checkpoint")
+    parser.add_argument("--clean-eval-report-dir", default="reports/ai-eval")
+    parser.add_argument("--clean-eval-episodes", type=int, default=120)
+    parser.add_argument("--clean-eval-max-steps", type=int, default=120)
+    parser.add_argument("--clean-eval-seeds", default="20260602,20260603")
+    parser.add_argument(
+        "--clean-eval-profiles",
+        default="balanced,loose_passive,loose_aggressive,tight_passive,tight_aggressive,pat_heavy,draw_heavy",
+    )
+    parser.add_argument("--clean-eval-min-onnx-usage-rate", type=float, default=0.99)
+    parser.add_argument("--clean-eval-max-fallback-rate", type=float, default=0.01)
+    args = parser.parse_args()
+    watch(args)
+
+
+if __name__ == "__main__":
+    main()

@@ -15,7 +15,7 @@ function actionType(action = null) {
   return String(action?.type ?? action ?? "").toUpperCase();
 }
 
-function sumDistribution(distribution = {}, keys = []) {
+function _sumDistribution(distribution = {}, keys = []) {
   return keys.reduce((sum, key) => sum + Number(distribution[key] ?? 0), 0);
 }
 

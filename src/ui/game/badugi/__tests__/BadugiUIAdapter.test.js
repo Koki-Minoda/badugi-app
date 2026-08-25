@@ -78,6 +78,94 @@ describe("BadugiUIAdapter", () => {
     });
   });
 
+  it("uses dealerIndex for HUD dealer name when dealerIdx is absent", () => {
+    const adapter = new BadugiUIAdapter({});
+    const props = adapter.buildViewProps({
+      controllerSnapshot: mockSnapshot({
+        dealerIdx: undefined,
+        dealerIndex: 2,
+        players: [
+          { name: "Hero", stack: 500, hand: ["AS", "2H", "3C", "4D"] },
+          { name: "CPU 1", stack: 500, hand: ["5S", "6H", "7C", "8D"] },
+          { name: "CPU 2", stack: 500, hand: ["9S", "TH", "JC", "QD"] },
+        ],
+      }),
+      tableConfig: mockTableConfig,
+    });
+
+    expect(props.hudInfo.dealerName).toBe("CPU 2");
+  });
+
+  it("falls back to dealerIdx for HUD dealer name", () => {
+    const adapter = new BadugiUIAdapter({});
+    const props = adapter.buildViewProps({
+      controllerSnapshot: mockSnapshot({
+        dealerIdx: 1,
+        players: [
+          { name: "Hero", stack: 500, hand: ["AS", "2H", "3C", "4D"] },
+          { name: "CPU 1", stack: 500, hand: ["5S", "6H", "7C", "8D"] },
+          { name: "CPU 2", stack: 500, hand: ["9S", "TH", "JC", "QD"] },
+        ],
+      }),
+      tableConfig: mockTableConfig,
+    });
+
+    expect(props.hudInfo.dealerName).toBe("CPU 1");
+  });
+
+  it("hides Raise when the fixed-limit cap is reached", () => {
+    const adapter = new BadugiUIAdapter({});
+    const cappedSnapshot = mockSnapshot({
+      raiseCountThisRound: 4,
+      raiseCap: 4,
+      metadata: {
+        raiseCountThisRound: 4,
+        raiseCap: 4,
+      },
+    });
+    const props = adapter.buildViewProps({
+      controllerSnapshot: cappedSnapshot,
+      tableConfig: mockTableConfig,
+    });
+
+    expect(props.controlsConfig.canRaise).toBe(false);
+    expect(
+      adapter.getAvailableActions({ controllerSnapshot: cappedSnapshot, seatIndex: 0 }),
+    ).not.toContain("raise");
+  });
+
+  it("hides Raise when no active non-all-in opponent can respond", () => {
+    const adapter = new BadugiUIAdapter({});
+    const allInOpponentSnapshot = mockSnapshot({
+      players: [
+        {
+          name: "Hero",
+          stack: 490,
+          betThisRound: 10,
+          hand: ["AS", "KH", "QC", "JD"],
+          selected: [0],
+        },
+        {
+          name: "CPU 1",
+          stack: 0,
+          betThisRound: 10,
+          hand: ["2S", "3H", "4C", "5D"],
+          allIn: true,
+        },
+      ],
+    });
+    const props = adapter.buildViewProps({
+      controllerSnapshot: allInOpponentSnapshot,
+      tableConfig: mockTableConfig,
+    });
+
+    expect(props.controlsConfig.canCheck).toBe(true);
+    expect(props.controlsConfig.canRaise).toBe(false);
+    expect(
+      adapter.getAvailableActions({ controllerSnapshot: allInOpponentSnapshot, seatIndex: 0 }),
+    ).not.toContain("raise");
+  });
+
   it("uses player avatarUrl as the seat avatar when present", () => {
     const adapter = new BadugiUIAdapter({});
     const props = adapter.buildViewProps({

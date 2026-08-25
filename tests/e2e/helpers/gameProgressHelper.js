@@ -3,6 +3,68 @@ import { expect } from "@playwright/test";
 const BET_PHASES = new Set(["BET", "PREFLOP", "FLOP", "TURN", "RIVER"]);
 const DRAW_PHASES = new Set(["DRAW"]);
 
+function collectBrowserSignals() {
+  const isVisible = (element) => {
+    if (!element) return false;
+    const box = element.getBoundingClientRect();
+    const style = window.getComputedStyle(element);
+    return box.width > 0 && box.height > 0 && style.display !== "none" && style.visibility !== "hidden";
+  };
+  const hasHiddenAncestor = (element) => {
+    let current = element;
+    while (current && current !== document.documentElement) {
+      const style = window.getComputedStyle(current);
+      if (
+        style.display === "none" ||
+        style.visibility === "hidden" ||
+        Number(style.opacity) === 0 ||
+        style.pointerEvents === "none"
+      ) {
+        return true;
+      }
+      current = current.parentElement;
+    }
+    return false;
+  };
+  const isInteractable = (element) => {
+    if (
+      !isVisible(element) ||
+      hasHiddenAncestor(element) ||
+      element.disabled ||
+      element.getAttribute("aria-disabled") === "true"
+    ) {
+      return false;
+    }
+    const box = element.getBoundingClientRect();
+    if (box.bottom <= 0 || box.right <= 0 || box.left >= window.innerWidth || box.top >= window.innerHeight) return false;
+    const x = Math.min(Math.max(box.left + box.width / 2, 0), window.innerWidth - 1);
+    const y = Math.min(Math.max(box.top + box.height / 2, 0), window.innerHeight - 1);
+    const topElement = document.elementFromPoint(x, y);
+    return Boolean(topElement && (element === topElement || element.contains(topElement)));
+  };
+  const actionIds = [
+    "action-check",
+    "action-call",
+    "action-raise",
+    "action-fold",
+    "action-draw-selected",
+  ];
+  const actions = actionIds.filter((id) => isInteractable(document.querySelector(`[data-testid="${id}"]`)));
+  const displayedPhase = document.querySelector('[data-testid="table-phase-badge"]')?.textContent?.trim() ?? "";
+  const resultVisible =
+    isVisible(document.querySelector('[data-testid="hand-result-pot"]')) ||
+    isVisible(document.querySelector('[data-testid="hand-result-follow-up"]')) ||
+    /\bHAND_RESULT\b|Hand Result/i.test(displayedPhase);
+  const nextHandButton = [...document.querySelectorAll("button")].find((button) => /next hand/i.test(button.textContent ?? ""));
+  return {
+    actions,
+    displayedPhase,
+    resultVisible,
+    nextHandVisible: isVisible(nextHandButton),
+    nextHandInteractable: isInteractable(nextHandButton),
+  };
+}
+
 export async function waitForE2EDriver(page) {
   await page.waitForFunction(
     () => {
@@ -33,31 +95,55 @@ export async function invokeE2E(page, method, ...args) {
 }
 
 export async function getProgressState(page) {
-  return page.evaluate(() => {
+  return page.evaluate((browserSignalSource) => {
+    const collectBrowserSignals = new Function(`return (${browserSignalSource})`)();
     const api = window.__BADUGI_E2E__;
     const state = api?.getStateSnapshot?.() ?? null;
     const phaseState = api?.getPhaseState?.() ?? null;
     const snapshot = state?.controllerSnapshot ?? null;
-    const phase =
-      phaseState?.phase ??
+    const ui = collectBrowserSignals();
+    const variantId = state?.gameVariant ?? snapshot?.variantId ?? null;
+    const rawPhase =
       snapshot?.phase ??
       snapshot?.street ??
+      phaseState?.phase ??
       state?.phase ??
       null;
+    const uiTerminal =
+      ui.resultVisible ||
+      ui.nextHandVisible ||
+      ["HAND_RESULT", "SHOWDOWN", "WAITING_NEXT_HAND", "COMPLETE", "TERMINAL"].some((marker) =>
+        String(ui.displayedPhase ?? "").toUpperCase().includes(marker),
+      );
+    const phase = uiTerminal ? "HAND_RESULT" : rawPhase;
     const actor =
-      typeof phaseState?.turn === "number"
-        ? phaseState.turn
+      uiTerminal
+        ? null
         : typeof snapshot?.currentActor === "number"
           ? snapshot.currentActor
           : typeof snapshot?.turn === "number"
             ? snapshot.turn
-            : typeof state?.turn === "number"
-              ? state.turn
-              : null;
-    const players = phaseState?.players ?? snapshot?.players ?? state?.players ?? [];
-    const currentBet = Number(snapshot?.currentBet ?? phaseState?.currentBet ?? state?.currentBet ?? 0);
+            : typeof snapshot?.nextTurn === "number"
+              ? snapshot.nextTurn
+              : typeof phaseState?.turn === "number"
+                ? phaseState.turn
+                : typeof state?.turn === "number"
+                  ? state.turn
+                  : null;
+    const players = snapshot?.players ?? phaseState?.players ?? state?.players ?? [];
     const pot = Number(snapshot?.pot ?? state?.potTotal ?? 0);
-    const handId = phaseState?.handId ?? state?.handId ?? null;
+    const handId = snapshot?.handId ?? phaseState?.handId ?? state?.handId ?? null;
+    const maxExplicitStreetBet = Math.max(
+      0,
+      ...(players ?? []).map((player) => Number(player?.betThisStreet ?? player?.committedThisStreet ?? 0) || 0),
+    );
+    const maxFallbackBet = Math.max(
+      0,
+      ...(players ?? []).map((player) => Number(player?.betThisRound ?? player?.bet ?? 0) || 0),
+    );
+    const useFallbackBet = String(variantId ?? "").toLowerCase() !== "badugi";
+    const maxPlayerStreetBet = maxExplicitStreetBet > 0 ? maxExplicitStreetBet : useFallbackBet ? maxFallbackBet : 0;
+    const currentBet = Math.max(Number(snapshot?.currentBet ?? phaseState?.currentBet ?? state?.currentBet ?? 0) || 0, maxPlayerStreetBet);
     return {
       state,
       phaseState,
@@ -68,6 +154,7 @@ export async function getProgressState(page) {
       currentBet,
       pot,
       handId,
+      ui,
       drawRoundIndex:
         snapshot?.drawRoundIndex ??
         snapshot?.drawRound ??
@@ -75,12 +162,13 @@ export async function getProgressState(page) {
         state?.drawRound ??
         null,
       isTerminal: Boolean(
+        uiTerminal ||
         ["SHOWDOWN", "HAND_RESULT", "WAITING_NEXT_HAND", "COMPLETE", "TERMINAL"].includes(String(phase)) ||
           snapshot?.lastHandResult ||
           state?.lastHandResult,
       ),
     };
-  });
+  }, collectBrowserSignals.toString());
 }
 
 export async function getCurrentActor(page) {
@@ -92,21 +180,25 @@ export async function getCurrentPhase(page) {
 }
 
 export async function getLegalActions(page) {
-  return page.evaluate(() => {
-    const ids = [
-      "action-check",
-      "action-call",
-      "action-raise",
-      "action-fold",
-      "action-draw-selected",
-    ];
-    return ids.filter((id) => {
-      const element = document.querySelector(`[data-testid="${id}"]`);
-      if (!element) return false;
-      const box = element.getBoundingClientRect();
-      return box.width > 0 && box.height > 0 && !element.disabled;
-    });
-  });
+  return page.evaluate((browserSignalSource) => {
+    const collectBrowserSignals = new Function(`return (${browserSignalSource})`)();
+    return collectBrowserSignals().actions;
+  }, collectBrowserSignals.toString());
+}
+
+export async function getProgressDecisionSnapshot(page) {
+  const progress = await getProgressState(page);
+  return {
+    handId: progress?.handId ?? null,
+    phase: progress?.phase ?? null,
+    actor: progress?.actor ?? null,
+    currentBet: progress?.currentBet ?? null,
+    pot: progress?.pot ?? null,
+    drawRoundIndex: progress?.drawRoundIndex ?? null,
+    isTerminal: Boolean(progress?.isTerminal),
+    ui: progress?.ui ?? null,
+    summary: summarizeProgressState(progress),
+  };
 }
 
 export function summarizeProgressState(progress) {
@@ -189,7 +281,8 @@ function controllerActionFor(progress, { policy = "safe" } = {}) {
     return { type: "fold" };
   }
   const actorBet = Number(player?.betThisStreet ?? player?.betThisRound ?? player?.bet ?? 0);
-  const toCall = Math.max(0, Number(progress?.currentBet ?? progress?.snapshot?.currentBet ?? 0) - actorBet);
+  const currentBet = Number(progress?.currentBet ?? progress?.snapshot?.currentBet ?? 0) || 0;
+  const toCall = Math.max(0, currentBet - actorBet);
   return toCall > 0 ? { type: "call", amount: toCall } : { type: "check", amount: 0 };
 }
 
@@ -206,16 +299,27 @@ export async function performSafeAction(page, options = {}) {
   }
 
   if (actor === 0) {
+    const actorBet = Number(progress?.players?.[actor]?.betThisStreet ?? progress?.players?.[actor]?.betThisRound ?? progress?.players?.[actor]?.bet ?? 0);
+    const toCall = Math.max(0, Number(progress?.currentBet ?? 0) - actorBet);
     const order =
       DRAW_PHASES.has(phase) || progress?.snapshot?.street === "DRAW"
         ? ["action-draw-selected"]
+        : toCall > 0
+          ? options.policy === "heroAggressive"
+            ? ["action-raise", "action-call", "action-fold"]
+            : ["action-call", "action-fold", "action-raise"]
         : options.policy === "heroAggressive"
           ? ["action-raise", "action-call", "action-check", "action-fold"]
           : ["action-check", "action-call", "action-raise", "action-fold"];
     const action = await firstClickableAction(page, order);
     if (action) {
       await action.locator.click();
-      return { acted: true, clickedAction: action.id, actor, before: summarizeProgressState(progress) };
+      const changed = await waitForProgressChange(page, beforeKey, { timeout: 1200 })
+        .then(() => true)
+        .catch(() => false);
+      if (changed) {
+        return { acted: true, clickedAction: action.id, actor, before: summarizeProgressState(progress) };
+      }
     }
   }
 
@@ -231,6 +335,9 @@ export async function performSafeAction(page, options = {}) {
 
   const payload = controllerActionFor(progress, options);
   let snapshot = await invokeE2E(page, "forceControllerAction", actor, payload);
+  if (!snapshot && payload.type === "draw") {
+    snapshot = await invokeE2E(page, "forceSeatDraw", actor, payload).catch(() => null);
+  }
   if (!snapshot) {
     snapshot = await invokeE2E(page, "forceSeatAction", actor, payload);
   }
@@ -252,26 +359,50 @@ export async function performSafeAction(page, options = {}) {
 
 export async function waitForProgressChange(page, previousKey, { timeout = 8000 } = {}) {
   await page.waitForFunction(
-    (key) => {
+    ({ key, browserSignalSource }) => {
+      const collectBrowserSignals = new Function(`return (${browserSignalSource})`)();
       const api = window.__BADUGI_E2E__;
       const state = api?.getStateSnapshot?.() ?? null;
       const phaseState = api?.getPhaseState?.() ?? null;
       const snapshot = state?.controllerSnapshot ?? null;
-      const phase = phaseState?.phase ?? snapshot?.phase ?? snapshot?.street ?? state?.phase ?? null;
+      const ui = collectBrowserSignals();
+      const variantId = state?.gameVariant ?? snapshot?.variantId ?? null;
+      const rawPhase = phaseState?.phase ?? snapshot?.phase ?? snapshot?.street ?? state?.phase ?? null;
+      const uiTerminal =
+        ui.resultVisible ||
+        ui.nextHandVisible ||
+        ["HAND_RESULT", "SHOWDOWN", "WAITING_NEXT_HAND", "COMPLETE", "TERMINAL"].some((marker) =>
+          String(ui.displayedPhase ?? "").toUpperCase().includes(marker),
+        );
+      const phase = uiTerminal ? "HAND_RESULT" : rawPhase;
       const actor =
-        typeof phaseState?.turn === "number"
-          ? phaseState.turn
+        uiTerminal
+          ? null
           : typeof snapshot?.currentActor === "number"
             ? snapshot.currentActor
             : typeof snapshot?.turn === "number"
               ? snapshot.turn
-              : typeof state?.turn === "number"
-                ? state.turn
-                : null;
-      const players = phaseState?.players ?? snapshot?.players ?? state?.players ?? [];
-      const currentBet = Number(snapshot?.currentBet ?? phaseState?.currentBet ?? state?.currentBet ?? 0);
+              : typeof snapshot?.nextTurn === "number"
+                ? snapshot.nextTurn
+                : typeof phaseState?.turn === "number"
+                  ? phaseState.turn
+                  : typeof state?.turn === "number"
+                    ? state.turn
+                    : null;
+      const players = snapshot?.players ?? phaseState?.players ?? state?.players ?? [];
       const pot = Number(snapshot?.pot ?? state?.potTotal ?? 0);
       const handId = phaseState?.handId ?? state?.handId ?? null;
+      const maxExplicitStreetBet = Math.max(
+        0,
+        ...(players ?? []).map((player) => Number(player?.betThisStreet ?? player?.committedThisStreet ?? 0) || 0),
+      );
+      const maxFallbackBet = Math.max(
+        0,
+        ...(players ?? []).map((player) => Number(player?.betThisRound ?? player?.bet ?? 0) || 0),
+      );
+      const useFallbackBet = String(variantId ?? "").toLowerCase() !== "badugi";
+      const maxPlayerStreetBet = maxExplicitStreetBet > 0 ? maxExplicitStreetBet : useFallbackBet ? maxFallbackBet : 0;
+      const currentBet = Math.max(Number(snapshot?.currentBet ?? phaseState?.currentBet ?? state?.currentBet ?? 0) || 0, maxPlayerStreetBet);
       const drawRoundIndex = snapshot?.drawRoundIndex ?? snapshot?.drawRound ?? phaseState?.drawRound ?? state?.drawRound ?? null;
       const playerSummary = players.map((player, seat) => ({
         seat,
@@ -284,9 +415,9 @@ export async function waitForProgressChange(page, previousKey, { timeout = 8000 
         hasDrawn: Boolean(player?.hasDrawn),
       }));
       const nextKey = JSON.stringify({ handId, phase, actor, currentBet, pot, drawRoundIndex, players: playerSummary });
-      return nextKey !== key || phase === "HAND_RESULT" || phase === "SHOWDOWN" || snapshot?.lastHandResult;
+      return nextKey !== key || uiTerminal || phase === "HAND_RESULT" || phase === "SHOWDOWN" || snapshot?.lastHandResult;
     },
-    previousKey,
+    { key: previousKey, browserSignalSource: collectBrowserSignals.toString() },
     { timeout },
   );
 }
@@ -299,13 +430,15 @@ export async function waitForTurnChange(page, prevActor) {
       const phaseState = api?.getPhaseState?.() ?? null;
       const snapshot = state?.controllerSnapshot ?? null;
       const current =
-        typeof phaseState?.turn === "number"
-          ? phaseState.turn
-          : typeof snapshot?.currentActor === "number"
-            ? snapshot.currentActor
-            : typeof snapshot?.turn === "number"
-              ? snapshot.turn
-              : state?.turn;
+        typeof snapshot?.currentActor === "number"
+          ? snapshot.currentActor
+          : typeof snapshot?.turn === "number"
+            ? snapshot.turn
+            : typeof snapshot?.nextTurn === "number"
+              ? snapshot.nextTurn
+              : typeof phaseState?.turn === "number"
+                ? phaseState.turn
+                : state?.turn;
       return current !== actor || phaseState?.phase === "HAND_RESULT" || snapshot?.lastHandResult;
     },
     prevActor,
@@ -373,6 +506,9 @@ export async function playOneHandProgression(page, options = {}) {
     }
     trace.push({ step, ...summarizeProgressState(progress), legalActions: await getLegalActions(page) });
     assertProgressState(progress, { step, trace: trace.slice(-3) });
+    if (typeof options.onStep === "function") {
+      await options.onStep({ step, progress, trace });
+    }
     visitedPhases.add(String(progress.phase));
     if (String(progress.phase) === "DRAW" || progress?.snapshot?.street === "DRAW") {
       visitedDrawRounds.add(Number(progress.drawRoundIndex ?? progress.snapshot?.drawRoundIndex ?? 0));
@@ -432,9 +568,17 @@ export async function playOneHandProgression(page, options = {}) {
 
 export async function expectMobileActionsInViewport(page) {
   const viewport = page.viewportSize();
-  const action = page
-    .locator("[data-testid='action-check'],[data-testid='action-call'],[data-testid='action-raise'],[data-testid='action-fold'],[data-testid='action-draw-selected']")
-    .first();
+  const progress = await getProgressState(page);
+  const heroIsActor = progress?.actor === 0;
+  const actions = page.locator(
+    "[data-testid='action-check'],[data-testid='action-call'],[data-testid='action-raise'],[data-testid='action-fold'],[data-testid='action-draw-selected']",
+  );
+  if (!heroIsActor) {
+    await expect(actions).toHaveCount(0);
+    return;
+  }
+
+  const action = actions.first();
   await expect(action).toBeVisible({ timeout: 30000 });
   const box = await action.boundingBox();
   expect(box, "action button should have a bounding box").toBeTruthy();

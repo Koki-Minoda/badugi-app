@@ -14,7 +14,7 @@ import {
   classifyHandClassForVariant,
   createS02OpportunityContext,
   deriveTablePositionLabel,
-  evaluateSpecializedS02Match,
+  evaluateSpecializedS02Match as _evaluateSpecializedS02Match,
   getActorHand,
   getFacingAction,
 } from "./ironCandidatePolicy.js";
@@ -30,7 +30,7 @@ export const DEFAULT_STEP17_NEAR_MISS_OUTPUT_PATH = path.resolve("reports/ai-iro
 export const DEFAULT_STEP17_PLAYERCOUNT_OUTPUT_PATH = path.resolve("reports/ai-iron/s02-playercount-opportunity-step17.json");
 const RELAXED_ALLOWED_PRESSURE_CHAINS = new Set(["firstRaiseAfterCall", "repeatedPressure"]);
 
-function round(value, digits = 4) {
+function _round(value, digits = 4) {
   return Number(Number(value ?? 0).toFixed(digits));
 }
 
@@ -110,7 +110,6 @@ export function classifyS02RelaxedOpportunityDecision({
   const repeatedPressureRaw = normalizeRepeatedPressureFlag(facingAction);
   const bucket = buildBucketMatch({ variantId, snapshot, seatIndex, legalActions });
   const context = createS02OpportunityContext({ snapshot, seatIndex, legalActions, bucket });
-  const specializedMatch = context ? evaluateSpecializedS02Match({ rows: specializedRows, context }) : null;
   const pressureChainRaw = context?.axes?.pressureChain ?? classifyS02V3IsolationAxes({
     actorSeat: seatIndex,
     position: positionLabel,

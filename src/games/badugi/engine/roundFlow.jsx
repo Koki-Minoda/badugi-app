@@ -45,6 +45,43 @@ export function resetBetRoundFlags(players = []) {
   return changed ? normalized : players;
 }
 
+export function resetDrawRoundFlags(players = []) {
+  if (!Array.isArray(players)) return [];
+  return players.map((player) => {
+    if (!player) return player;
+    const out =
+      isFoldedOrOut(player) ||
+      player?.isBusted ||
+      player?.isActiveInGame === false;
+    return {
+      ...player,
+      lastAction: out ? player.lastAction ?? "" : "",
+      hasDrawn: out ? true : false,
+      canDraw: !out,
+      hasActedThisRound: out ? true : false,
+    };
+  });
+}
+
+export function resetBetStreetForNextRound(players = []) {
+  if (!Array.isArray(players)) return [];
+  return players.map((player) => {
+    if (!player) return player;
+    const out =
+      isFoldedOrOut(player) ||
+      player?.seatOut ||
+      player?.isBusted ||
+      player?.isActiveInGame === false;
+    return {
+      ...player,
+      betThisRound: 0,
+      bet: 0,
+      lastAction: out ? player.lastAction ?? "" : "",
+      hasActedThisRound: Boolean(out || player?.allIn),
+    };
+  });
+}
+
 export function shouldSkipDrawRound(state = {}) {
   if (state?.meta?.forceDrawRound) return false;
   const players = Array.isArray(state?.players) ? state.players : [];
@@ -172,8 +209,10 @@ export function transitionToBetPhase({
   fromPhase = null,
   onPhaseTransition,
 } = {}) {
+  const nextPlayers =
+    fromPhase === "DRAW" ? resetBetStreetForNextRound(players) : players;
   if (typeof setPlayers === "function" && players) {
-    setPlayers(players);
+    setPlayers(nextPlayers);
   }
   setPhase?.("BET");
   onPhaseTransition?.(fromPhase, "BET");
@@ -200,17 +239,6 @@ function sanitizeStacks(snap, setPlayers) {
 
   if (setPlayers) setPlayers(corrected);
 
-  console.table(
-    corrected.map((p, i) => ({
-      i,
-      name: p.name,
-      allIn: p.allIn,
-      hasDrawn: p.hasDrawn,
-      stack: p.stack,
-      folded: p.folded,
-      isBusted: p.isBusted,
-    }))
-  );
   return corrected;
 }
 
@@ -373,33 +401,7 @@ export function finishBetRoundFrom({
 
 }) {
 
-  console.log("[DEBUG][finishBetRoundFrom args]", {
-
-    phaseBefore: "BET",
-
-    dealerIdx,
-
-    drawRound,
-
-    typeofDrawRound: typeof drawRound,
-
-    MAX_DRAWS,
-
-    playerStates: players.map((p, i) => ({
-
-      i,
-
-      name: p.name,
-
-      folded: p.folded,
-
-      allIn: p.allIn,
-
-      betThisRound: p.betThisRound,
-
-    })),
-
-  });
+  debugLog(`[BET] finishBetRoundFrom args dealerIdx=${dealerIdx} drawRound=${drawRound} MAX_DRAWS=${MAX_DRAWS}`);
 
 
 
@@ -413,7 +415,6 @@ export function finishBetRoundFrom({
 
   }
 
-  console.log(`[TRACE ${new Date().toISOString()}]  finishBetRoundFrom START`, { drawRound });
   debugLog(`[ BET] finishBetRoundFrom start drawRound=${drawRound}`);
 
   const handleDrawRoundSkipped = ({
@@ -422,7 +423,7 @@ export function finishBetRoundFrom({
     nextRoundIndex = drawRound + 1,
     actingPlayerIndex = null,
   } = {}) => {
-    const betReady = resetBetRoundFlags(skipPlayers);
+    const betReady = resetBetStreetForNextRound(skipPlayers);
     const playerCount = NUM_PLAYERS || betReady.length || 1;
     const startSeat = ((dealerIdx + 1) % playerCount + playerCount) % playerCount;
     const resolvedTurn =
@@ -477,12 +478,13 @@ export function finishBetRoundFrom({
         const nextPlayers = outcome.players ?? outcome.state.players ?? players;
         const nextPots = outcome.pots ?? outcome.state.pots ?? pots;
 
-        const activeNonAllIn = (nextPlayers || []).filter(
-          (p) => p && !p.folded && !p.allIn
+        const drawReadyPlayers = resetDrawRoundFlags(nextPlayers);
+        const hasNonAllInEligibleDrawer = drawReadyPlayers.some(
+          (p) => p && !p.allIn && isSeatEligibleForDraw(p)
         );
         const earlyShowdown =
           (outcome.showdown || outcome.street === "SHOWDOWN") &&
-          activeNonAllIn.length > 0 &&
+          hasNonAllInEligibleDrawer &&
           drawRound < MAX_DRAWS;
 
         if (!earlyShowdown && (outcome.showdown || outcome.street === "SHOWDOWN")) {
@@ -517,7 +519,7 @@ export function finishBetRoundFrom({
 
         const nextRound = outcome.drawRoundIndex ?? drawRound + 1;
         const enteredDraw = transitionToDrawPhase({
-          players: nextPlayers,
+          players: drawReadyPlayers,
           pots: nextPots,
           setPlayers,
           setPots,
@@ -534,7 +536,7 @@ export function finishBetRoundFrom({
           meta: outcome?.state?.metadata ?? outcome?.metadata ?? null,
           onSkipDrawRound: ({ players: skipPlayers, pots: skipPots }) =>
             handleDrawRoundSkipped({
-              players: skipPlayers ?? nextPlayers,
+              players: skipPlayers ?? drawReadyPlayers,
               pots: skipPots ?? nextPots,
               nextRoundIndex: nextRound,
               actingPlayerIndex: outcome.actingPlayerIndex,
@@ -706,16 +708,7 @@ export function finishBetRoundFrom({
 
   // ---  hasDrawnfalseRAW#1--
 
-  const resetPlayers = clearedPlayers.map((p) => {
-    const out = isFoldedOrOut(p) || p?.isBusted || p?.isActiveInGame === false;
-    return {
-      ...p,
-      lastAction: "",
-      hasDrawn: out ? true : false,
-      canDraw: !out,
-      hasActedThisRound: out ? true : false,
-    };
-  });
+  const resetPlayers = resetDrawRoundFlags(clearedPlayers);
 
   const enteredDraw = transitionToDrawPhase({
     players: resetPlayers,
@@ -761,46 +754,11 @@ export function finishBetRoundFrom({
 
   debugLog(`[SYNC] Phase=DRAW, round=${nextRound}, start=${firstToDraw}`);
 
-  console.table(
-    resetPlayers.map((p, i) => ({
-      seat: i,
-      name: p.name,
-      folded: p.folded ? "Y" : "",
-      drawn: p.hasDrawn ? "Y" : "",
-    })),
-  );
-
-  console.log(`[TRACE ${new Date().toISOString()}] finishBetRoundFrom END nextPhase=DRAW`);
+  debugLog(`[BET] finishBetRoundFrom END nextPhase=DRAW round=${nextRound}`);
 
 
 
   // finishBetRoundFrom anitizeStacks 
-
-  console.groupCollapsed("[DEBUG][AFTER ROUND TRANSITION]");
-
-  console.table(resetPlayers.map((p, i) => ({
-
-    seat: i,
-
-    name: p.name,
-
-    folded: p.folded,
-
-    allIn: p.allIn,
-
-    hasDrawn: p.hasDrawn,
-
-    canDraw: p.canDraw,
-
-    stack: p.stack,
-
-    lastAction: p.lastAction,
-
-  })));
-
-  console.groupEnd();
-
-
 
   //  
 

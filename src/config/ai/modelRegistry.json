@@ -341,18 +341,18 @@
   },
   {
     "id": "model-badugi-pro-v1",
-    "version": "v2",
+    "version": "v3",
     "variantIds": [
       "D03"
     ],
     "characterIds": [],
     "tier": "pro",
     "onnx": "models/badugi_pro_v1.onnx",
-    "checksumSha256": "4325e670b9b0a4360060fa5285f372b6cb85d4264b49dc5ccd0d5f3ba8211b5d",
-    "trainingRun": "badugi_sixmax_open_spot_20k_20260502",
-    "trainingCheckpoint": "badugi_dqn_015000_20260502-145626.pt",
+    "checksumSha256": "7735e4367f9e24eab5481075855ed6ef221a5d06c053cf70bc449ec3d7fba3ce",
+    "trainingRun": "badugi_v2obs_perf_50k_20260602",
+    "trainingCheckpoint": "badugi_dqn_050000_20260602-150628.pt",
     "trainingStatus": "active",
-    "trainingNotes": "6-max open-spot/range-equity checkpoint selected for Pro. 7-profile x 2-seed checkpoint gate: avgReward 2.307, showdownWinRate 0.674, foldRate 0.159, Standard v3 delta +0.911. This is a synthetic RL gate result, not a verified 60%+ win rate against human players. Not promoted to Iron because negative raise-EV actions remain high.",
+    "trainingNotes": "v2obs (slots 61-74 追加: hero/opp bet履歴・draw軌跡・deadカード・OOPフラグ・stack比) + 学習高速化（evaluate_badugi lru_cache・counterfactual_continue間引き）で50kエピソード学習。gate: avgReward 1.711, showdownWinRate 64.4%, foldRate 24.4%, vs-pro delta +1.077（standard/pro/iron/worldmaster全通過）。分散±3.49・worst_profile 1.172を考慮しPro適用。Iron昇格にはstronger opponent profilingと追加学習が必要。",
     "featureSet": "badugi-observation-v1-ev-range",
     "productionRequired": true,
     "inputShape": [
@@ -395,6 +395,66 @@
     "checksumSha256": "5be226ebed765ff6b018d3b5b798437498eb0f705b58c9e72c908e527e9b998c",
     "trainingStatus": "bootstrap",
     "trainingNotes": "Bootstrap heuristic ONNX used to exercise the frontend ONNX path. Not validated as world-class or clearly stronger than human players; replace after full 6-max and human/practice benchmark gates pass.",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
+    "id": "model-badugi-sixmax-standard-dqn-v2",
+    "version": "v2",
+    "variant": "Badugi",
+    "variantIds": [
+      "D03"
+    ],
+    "characterIds": [],
+    "tier": "standard",
+    "onnx": "models/badugi_sixmax_standard_dqn_v2.onnx",
+    "checksumSha256": "bf6da2e1a1004717436a820d187c87a47503b5e8c4af9532aa4d2897593693c9",
+    "trainingRun": "badugi_sixmax_foldmargin_100k_from_raiseev_fix",
+    "trainingCheckpoint": "badugi_sixmax_dqn_latest.pt",
+    "trainingMode": "sixmax-selfplay",
+    "trainingEpisodes": 50000,
+    "trainingStatus": "active",
+    "sourceCheckpoint": "rl/models/badugi_sixmax_foldmargin_100k_from_raiseev_fix/badugi_sixmax_dqn_latest.pt",
+    "personality": "Ryo",
+    "style": "pat-pressure",
+    "notes": "Selected Badugi six-max Standard v2 checkpoint. Clean eval PASS; Standard tier only.",
+    "trainingNotes": "Badugi 6-max fold-margin candidate selected as Standard v2. Clean eval PASS: off.avg=0.531, off.worst=0.224, on.avg=0.267, on.worst=-0.002, on.overlay=32.3%. Key action diagnostics: round1 phase2_weak_3card fold=99.9267%, round1 phase2_trash fold=98.8654%, round2 strong_3card fold=0.3831%, made_badugi fold=0.0%, raise=80.6481%. Keep Pro, Iron, and WorldMaster routing on their existing models.",
+    "featureSet": "badugi-observation-v1-ev-range",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
+    "id": "model-badugi-sixmax-standard-1m",
+    "version": "v20260606",
+    "variant": "Badugi",
+    "variantIds": [
+      "D03"
+    ],
+    "characterIds": [],
+    "tier": "standard",
+    "onnx": "models/badugi_sixmax_standard_1m_20260606.onnx",
+    "checksumSha256": "4271fcf898c6882b44e6697ee6e722ffa56dba8a6710201b2c798c89ae210e31",
+    "trainingRun": "badugi_sixmax_1m_from_200k",
+    "trainingCheckpoint": "badugi_sixmax_dqn_1000000_20260606-121025.pt",
+    "trainingMode": "sixmax-selfplay",
+    "trainingEpisodes": 1000000,
+    "trainingStatus": "active",
+    "sourceCheckpoint": "rl/models/badugi_sixmax_1m_from_200k/badugi_sixmax_dqn_1000000_20260606-121025.pt",
+    "personality": "Ryo",
+    "style": "pat-pressure",
+    "notes": "Strong vs pat-heavy/tight, weak vs loose/draw-heavy; Standard tier only.",
+    "trainingNotes": "Completed Badugi 6-max 1M self-play checkpoint promoted as the in-game Badugi Standard candidate for Ryo / pat-pressure. Clean eval passed; 800k evaluation indicated Standard tier suitability. Keep Pro, Iron, and WorldMaster routing on their existing models.",
+    "featureSet": "badugi-observation-v1-ev-range",
     "productionRequired": true,
     "inputShape": [
       96
@@ -460,6 +520,34 @@
     "trainingStatus": "legacy",
     "trainingNotes": "Retained for historical comparison only. Do not route to live CPU; trained before the current positive shaping cap fix.",
     "productionRequired": false,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
+    "id": "model-badugi-hu-beginner-dqn-100000",
+    "version": "v100000",
+    "variantIds": [
+      "D03"
+    ],
+    "characterIds": [],
+    "tier": "beginner",
+    "onnx": "models/badugi_hu_beginner_dqn_100000.onnx",
+    "checksumSha256": "ed09a11c1e27b3f3ceb8e022cdc0db7aff07d7240f5a232c331071f287ea92f1",
+    "trainingRun": "badugi_wsl_100k_v2_20260604",
+    "trainingCheckpoint": "badugi_selfplay_dqn_100000_20260604-030709.pt",
+    "trainingMode": "heads-up-selfplay",
+    "trainingEpisodes": 100000,
+    "trainingStatus": "beginner",
+    "sourceCheckpoint": "rl/models/badugi_wsl_100k_v2/badugi_selfplay_dqn_100000_20260604-030709.pt",
+    "cleanEvalReport": "reports/ai-eval/badugi-clean-eval-100k-20260604.json",
+    "note": "Six-max clean eval recommends beginner; not eligible for standard/pro/iron.",
+    "trainingNotes": "Heads-up Badugi self-play DQN trained for 100k episodes on WSL local CPU. Six-max clean eval recommends beginner only: avgReward is negative, showdownWinRate is low, and eligibleTiers is empty. Connected only to Beginner routing and not promoted to standard/pro/iron.",
+    "featureSet": "badugi-observation-v1-ev-range",
+    "productionRequired": true,
     "inputShape": [
       96
     ],
@@ -565,17 +653,16 @@
     "id": "model-a5draw-standard-dqn-v1",
     "version": "v1",
     "variantIds": [
-      "D02",
-      "S02"
+      "D02"
     ],
     "characterIds": [],
     "tier": "standard",
     "onnx": "models/a5draw_standard_dqn_v1.onnx",
-    "checksumSha256": "1583317d33cfb577adfe8e6432d8db439e08881547a5dbdd9ef1ef3ca2be1368",
-    "trainingRun": "draw_a5_standard_5k_20260505",
-    "trainingCheckpoint": "low-a5_draw_dqn_latest.pt",
+    "checksumSha256": "fbf39b14f8d8489d3b5688727fa108f1f8fc9591ed9e3a05fef68cacc56a2a46",
+    "trainingRun": "draw_a5_selfplay_td_25k_20260602",
+    "trainingCheckpoint": "low-a5_selfplay_dqn_latest.pt",
     "trainingStatus": "active",
-    "trainingNotes": "Current-env A-5 draw DQN for standard D02/S02 CPUs. Trained 5k episodes against mixed opponent profiles with teacher warmup, fixture replay, and imitation support. Last 500 episode reward was positive; requires human/practice gate before promotion.",
+    "trainingNotes": "A-5 Triple Draw専用モデル（D02のみ）。DualAgentDrawLowballEnv self-playで累計25kエピソード学習、avg_reward=0.53。S02（A-5 SD）はプリドローレンジが別物のため未学習・別途立て直し予定。",
     "featureSet": "draw-lowball-observation-v1",
     "productionRequired": true,
     "inputShape": [
@@ -610,6 +697,39 @@
     ]
   },
   {
+    "id": "model-d01-td-pro-dqn-025000",
+    "version": "v025000",
+    "variantId": "D01",
+    "variantIds": [
+      "D01"
+    ],
+    "family": "low-27",
+    "maxDraws": 3,
+    "characterIds": [],
+    "tier": "pro",
+    "activeTier": "pro",
+    "ironPassed": true,
+    "onnx": "models/d01_td_pro_dqn_025000.onnx",
+    "checksumSha256": "9c6156b70745d899ccd35d609f087dbd5c5dffd7d58f70742368ee664b14657e",
+    "trainingRun": "d01_local_25k_20260604",
+    "trainingCheckpoint": "low-27_selfplay_dqn_025000_20260604-012200.pt",
+    "sourceCheckpoint": "rl/models/draw/d01_local_25k/low-27_selfplay_dqn_025000_20260604-012200.pt",
+    "evaluationReport": "reports/ai-eval/draw-lowball-eval-D01-local-25k-20260604.json",
+    "gateReport": "reports/ai-eval/draw-lowball-gate-D01-pro-local-25k-20260604.json",
+    "standardGateReport": "reports/ai-eval/draw-lowball-gate-D01-standard-local-25k-20260604.json",
+    "ironGateReport": "reports/ai-eval/draw-lowball-gate-D01-iron-local-25k-20260604.json",
+    "trainingStatus": "active",
+    "trainingNotes": "D01 2-7 Triple Draw local 25k self-play DQN. Gate reports pass standard/pro/iron, but runtime exposes this checkpoint only for the Pro tier while D01 Iron remains on the existing iron entry.",
+    "featureSet": "draw-lowball-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      11
+    ]
+  },
+  {
     "id": "model-a5draw-pro-dqn-v1",
     "version": "v1",
     "variantIds": [
@@ -624,6 +744,36 @@
     "trainingCheckpoint": "low-a5_draw_dqn_latest.pt",
     "trainingStatus": "active",
     "trainingNotes": "Current-env A-5 draw DQN for Pro D02/S02 CPUs. Trained 2.5k episodes against standard/tight/aggressive profiles with teacher warmup, imitation pretrain, fixture replay, and low exploration floor. This clears the draw ONNX fixture gate and is the first Pro routing checkpoint; it still needs 20k+ checkpoint comparison and human/practice benchmark before promotion to Iron/WorldMaster.",
+    "featureSet": "draw-lowball-observation-v1",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      11
+    ]
+  },
+  {
+    "id": "model-s02-sd-pro-dqn-v2-025000",
+    "version": "v2-025000",
+    "variantId": "S02",
+    "variantIds": [
+      "S02"
+    ],
+    "family": "low-a5",
+    "maxDraws": 1,
+    "characterIds": [],
+    "tier": "pro",
+    "activeTier": "pro",
+    "ironPassed": true,
+    "onnx": "models/s02_sd_pro_dqn_v2_025000.onnx",
+    "checksumSha256": "4872578177762e63ca0e4b23524f63093b31ed71bb56c9532f25d026014b6f7a",
+    "trainingRun": "s02_sd_v2_25k_20260603",
+    "trainingCheckpoint": "s02_sd_pro_dqn_v2_025000.pt",
+    "sourceCheckpoint": "rl/models/draw/s02_sd_v2_25k/low-a5_selfplay_dqn_020000_20260603-191333.pt",
+    "gateReport": "reports/ai-eval/draw-lowball-gate-S02-pro-25k-v2-20260603-rerun.json",
+    "trainingStatus": "active",
+    "trainingNotes": "S02 A-5 Single Draw v2 self-play DQN trained to 25k total episodes. Gate reports pass standard/pro/iron, but distribution uses activeTier=pro and does not expose this model as Iron until follow-up evaluation approves promotion.",
     "featureSet": "draw-lowball-observation-v1",
     "productionRequired": true,
     "inputShape": [
@@ -672,6 +822,46 @@
     ],
     "trainingStatus": "bootstrap",
     "trainingNotes": "Teacher-initialized draw bootstrap ONNX. This is not a full self-play RL checkpoint; replace after variant-specific draw RL and human/practice gates pass."
+  },
+  {
+    "id": "model-27draw-selfplay-v1",
+    "version": "v1",
+    "variantIds": [],
+    "characterIds": [],
+    "tier": "standard",
+    "onnx": "models/27draw_selfplay_v1.onnx",
+    "checksumSha256": "",
+    "trainingRun": "",
+    "trainingStatus": "pending",
+    "trainingNotes": "Self-play DQN for 2-7 Triple Draw / Single Draw. Trained with DualAgentDrawLowballEnv \u2014 both seats use DQN policies with periodic opponent freeze and call_buffer / fold_buffer margin shaping. variantIds is intentionally empty until human/practice benchmark passes; deploy by adding [\"D01\",\"S01\"] and re-running export_draw_dqn_onnx.py with --model-id model-27draw-selfplay-v1.",
+    "featureSet": "draw-lowball-observation-v1",
+    "productionRequired": false,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      11
+    ]
+  },
+  {
+    "id": "model-a5draw-selfplay-v1",
+    "version": "v1",
+    "variantIds": [],
+    "characterIds": [],
+    "tier": "standard",
+    "onnx": "models/a5draw_selfplay_v1.onnx",
+    "checksumSha256": "",
+    "trainingRun": "",
+    "trainingStatus": "pending",
+    "trainingNotes": "Self-play DQN for A-5 Triple Draw / Single Draw. Trained with DualAgentDrawLowballEnv \u2014 both seats use DQN policies with periodic opponent freeze and call_buffer / fold_buffer margin shaping. variantIds is intentionally empty until human/practice benchmark passes; deploy by adding [\"D02\",\"S02\"] and re-running export_draw_dqn_onnx.py with --model-id model-a5draw-selfplay-v1.",
+    "featureSet": "draw-lowball-observation-v1",
+    "productionRequired": false,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      11
+    ]
   },
   {
     "id": "model-generic-v1",

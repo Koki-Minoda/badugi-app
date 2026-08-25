@@ -60,6 +60,30 @@ describe("Player", () => {
     expect(image?.getAttribute("src")).toBe("/characters/akira.png");
   });
 
+  test("renders tournament rival title and personality badge", () => {
+    render(
+      <Player
+        player={{
+          ...basePlayer,
+          name: "Mika",
+          titleBadge: "Store Regular",
+          personalityBadge: "Calling Station",
+        }}
+        index={1}
+        selfIndex={0}
+        turn={0}
+        dealerIdx={0}
+        phase="BET"
+        positionLabel="BB"
+      />,
+    );
+
+    expect(screen.getByText("Store Regular")).toBeTruthy();
+    expect(screen.getByTestId("seat-1-personality-badge").textContent).toBe(
+      "CALLING STATION",
+    );
+  });
+
   test("recovers CPU character images from roster metadata when avatar fields are missing", () => {
     render(
       <Player
@@ -343,5 +367,99 @@ describe("Player", () => {
         displayVariant: "nl_holdem",
       }).map(({ card }) => card),
     ).toEqual(["AS", "KD", "QH", "2C"]);
+  });
+
+  test("shows a compact draw badge from lastDrawCount", () => {
+    render(
+      <Player
+        player={{ ...basePlayer, lastDrawCount: 2 }}
+        index={1}
+        selfIndex={0}
+        turn={0}
+        dealerIdx={0}
+        phase="BET"
+        compact
+      />,
+    );
+
+    expect(screen.getByTestId("seat-1-draw-badge").textContent).toBe("D2");
+  });
+
+  test("shows PAT compact draw badge for zero-card draws", () => {
+    render(
+      <Player
+        player={{ ...basePlayer, lastDrawCount: 0 }}
+        index={1}
+        selfIndex={0}
+        turn={0}
+        dealerIdx={0}
+        phase="BET"
+        compact
+      />,
+    );
+
+    expect(screen.getByTestId("seat-1-draw-badge").textContent).toBe("PAT");
+  });
+
+  test("parses compact draw badge from lastAction when lastDrawCount is missing", () => {
+    render(
+      <Player
+        player={{ ...basePlayer, lastAction: "DRAW(3)" }}
+        index={1}
+        selfIndex={0}
+        turn={0}
+        dealerIdx={0}
+        phase="BET"
+        compact
+      />,
+    );
+
+    expect(screen.getByTestId("seat-1-draw-badge").textContent).toBe("D3");
+  });
+
+  test("keeps non-compact last action text visible", () => {
+    render(
+      <Player
+        player={{ ...basePlayer, lastAction: "DRAW(2)" }}
+        index={1}
+        selfIndex={0}
+        turn={0}
+        dealerIdx={0}
+        phase="BET"
+      />,
+    );
+
+    expect(screen.getByText("[DRAW(2)]")).toBeTruthy();
+    expect(screen.queryByTestId("seat-1-draw-badge")).toBeNull();
+  });
+
+  test("does not show compact draw badges for folded or out players", () => {
+    const { rerender } = render(
+      <Player
+        player={{ ...basePlayer, lastDrawCount: 2, folded: true }}
+        index={1}
+        selfIndex={0}
+        turn={0}
+        dealerIdx={0}
+        phase="BET"
+        compact
+      />,
+    );
+
+    expect(screen.queryByTestId("seat-1-draw-badge")).toBeNull();
+
+    rerender(
+      <Player
+        player={{ ...basePlayer, lastDrawCount: 2, seatOut: true }}
+        index={1}
+        selfIndex={0}
+        turn={0}
+        dealerIdx={0}
+        phase="BET"
+        compact
+      />,
+    );
+
+    expect(screen.queryByTestId("seat-1-draw-badge")).toBeNull();
   });
 });

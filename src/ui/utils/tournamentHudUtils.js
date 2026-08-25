@@ -10,6 +10,50 @@ function formatLevelLabel(level, fallbackLabel) {
   return `Level ${level.levelIndex ?? "?"}  ${level.smallBlind}/${level.bigBlind} (Ante ${ante})`;
 }
 
+function formatTournamentEvent(event) {
+  if (!event?.type) return null;
+  if (event.type === "TABLE_MERGE") {
+    const players = Number.isFinite(event.playersRemaining)
+      ? event.playersRemaining
+      : "?";
+    const tables = Number.isFinite(event.toTables) ? event.toTables : "?";
+    return `TABLE MERGE: ${players} players / ${tables} tables`;
+  }
+  if (event.type === "FINAL_TABLE") {
+    return "FINAL TABLE";
+  }
+  if (event.type === "MONEY_BUBBLE") {
+    return "MONEY BUBBLE";
+  }
+  if (event.type === "TOP_THREE") {
+    return "FINAL 3";
+  }
+  if (event.type === "HEADS_UP") {
+    return "HEADS-UP";
+  }
+  return null;
+}
+
+function buildTournamentTimeline({ totalEntrants, seatsPerTable, playersRemaining }) {
+  const total = Number(totalEntrants);
+  const seats = Math.max(2, Number(seatsPerTable) || DEFAULT_SEATS_PER_TABLE);
+  if (!Number.isFinite(total) || total <= 0) return [];
+  const steps = [total];
+  const twoTables = seats * 2;
+  if (total > twoTables) steps.push(twoTables);
+  if (total > seats) steps.push(seats);
+  steps.push(3, 2, 1);
+  return [...new Set(steps)]
+    .filter((step) => step > 0 && step <= total)
+    .sort((a, b) => b - a)
+    .map((step) => ({
+      value: step,
+      active:
+        Number.isFinite(Number(playersRemaining)) &&
+        Number(playersRemaining) <= step,
+    }));
+}
+
 /**
  * Build the base HUD payload for the tournament view.
  * @param {Object} params
@@ -46,11 +90,18 @@ export function buildTournamentHudPayload({
     (Math.max(1, Number(config.tables) || 1) *
       Math.max(1, Number(seatsPerTable) || fallbackSeatsPerTable)) ||
     fallbackSeatsPerTable;
-  const totalEntrants = Math.max(state.totalPlayers ?? 0, entrantsFallback);
+  const stateTotalPlayers = Number(state.totalPlayers);
+  const totalEntrants =
+    Number.isFinite(stateTotalPlayers) && stateTotalPlayers > 0
+      ? stateTotalPlayers
+      : entrantsFallback;
 
   const alivePlayers = Object.values(state.players ?? {}).filter((player) => !player?.busted);
+  const statePlayersRemaining = Number(state.playersRemaining);
   const playersRemaining =
-    alivePlayers.length || Math.max(0, Number(state.playersRemaining) || 0);
+    Number.isFinite(statePlayersRemaining) && statePlayersRemaining >= 0
+      ? statePlayersRemaining
+      : alivePlayers.length || 0;
   const totalChipsInPlay = alivePlayers.reduce(
     (sum, player) => sum + Math.max(0, Number(player?.stack) || 0),
     0,
@@ -95,6 +146,14 @@ export function buildTournamentHudPayload({
   const isFinalTable =
     tablesActive <= 1 &&
     playersRemaining <= Math.max(1, Number(seatsPerTable) || fallbackSeatsPerTable);
+  const tournamentEvent =
+    state.lastEvent ?? (Array.isArray(state.events) ? state.events.at(-1) : null) ?? null;
+  const tournamentEventText = formatTournamentEvent(tournamentEvent);
+  const tournamentTimeline = buildTournamentTimeline({
+    totalEntrants,
+    seatsPerTable,
+    playersRemaining,
+  });
 
   return {
     tournamentName: config.name ?? "Store Tournament",
@@ -113,10 +172,18 @@ export function buildTournamentHudPayload({
         }
       : null,
     playersRemainingText: `Players Remaining: ${playersRemaining} / ${totalEntrants}`,
-    tablesActiveText: tablesActive <= 1 ? "Tables: Final" : `Tables: ${tablesActive}`,
+    tablesActiveText:
+      playersRemaining === 2
+        ? "HEADS-UP"
+        : tablesActive <= 1
+          ? "Tables: Final"
+          : `Tables: ${tablesActive}`,
     heroPositionText: `Table ${tableLabel}  Seat ${heroSeatNumber}`,
     payoutSummaryText,
     isFinalTable,
+    tournamentEvent,
+    tournamentEventText,
+    tournamentTimeline,
     playersRemaining,
     totalPlayers: totalEntrants,
     totalEntrants,
@@ -126,6 +193,80 @@ export function buildTournamentHudPayload({
     handsPlayedThisLevel,
     handsThisLevel,
     nextBreakLabel: null,
+  };
+}
+
+export function resolveHandsPlayedThisLevel(engineHandsPlayed, appCounterFallback) {
+  if (typeof engineHandsPlayed === "number" && engineHandsPlayed > 0) {
+    return engineHandsPlayed;
+  }
+  return typeof appCounterFallback === "number" ? appCounterFallback : 0;
+}
+
+function normalizeHudBlindLevel(level, index = 0) {
+  if (!level) return null;
+  const smallBlind = Number(level.sb ?? level.smallBlind);
+  const bigBlind = Number(level.bb ?? level.bigBlind);
+  if (!Number.isFinite(smallBlind) || !Number.isFinite(bigBlind)) {
+    return null;
+  }
+  const rawLevelNumber = Number(level.level ?? level.levelIndex);
+  const levelNumber = Number.isFinite(rawLevelNumber) ? rawLevelNumber : index + 1;
+  const ante = Number(level.ante ?? 0);
+  return {
+    levelNumber,
+    smallBlind,
+    bigBlind,
+    ante: Number.isFinite(ante) ? ante : 0,
+    handsThisLevel: level.handsThisLevel ?? level.hands ?? null,
+  };
+}
+
+export function applyActualBlindDisplayToHud(
+  payload,
+  { blindStructure, blindLevelIndex } = {},
+) {
+  if (!payload) return null;
+  const levels = Array.isArray(blindStructure) ? blindStructure : [];
+  if (levels.length === 0) return payload;
+
+  const requestedIndex = Number(blindLevelIndex);
+  const boundedIndex = Number.isFinite(requestedIndex)
+    ? Math.min(Math.max(0, Math.trunc(requestedIndex)), levels.length - 1)
+    : 0;
+  const actualLevel = normalizeHudBlindLevel(levels[boundedIndex], boundedIndex);
+  if (!actualLevel) return payload;
+
+  const nextLevel = normalizeHudBlindLevel(
+    levels[boundedIndex + 1],
+    boundedIndex + 1,
+  );
+
+  return {
+    ...payload,
+    levelLabel: formatLevelLabel(
+      {
+        levelIndex: actualLevel.levelNumber,
+        smallBlind: actualLevel.smallBlind,
+        bigBlind: actualLevel.bigBlind,
+        ante: actualLevel.ante,
+      },
+      `Level ${actualLevel.levelNumber}`,
+    ),
+    currentLevelNumber: actualLevel.levelNumber,
+    currentBlinds: {
+      sb: actualLevel.smallBlind,
+      bb: actualLevel.bigBlind,
+      ante: actualLevel.ante,
+    },
+    nextLevelBlinds: nextLevel
+      ? {
+          sb: nextLevel.smallBlind,
+          bb: nextLevel.bigBlind,
+          ante: nextLevel.ante,
+        }
+      : payload.nextLevelBlinds ?? null,
+    handsThisLevel: payload.handsThisLevel ?? actualLevel.handsThisLevel,
   };
 }
 

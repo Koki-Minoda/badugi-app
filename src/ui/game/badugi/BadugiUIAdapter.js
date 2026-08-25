@@ -9,6 +9,11 @@ import {
   getFixedLimitBetSize,
   isBigBetStreet,
 } from "../../../games/badugi/logic/bettingRules.js";
+import {
+  isSeatEligibleForBetting,
+  isSeatEligibleForDrawing,
+} from "../../../games/core/turn/actorEligibility.js";
+import { shouldRevealPlayerHand } from "../../../games/_core/allInVisibilityPolicy.js";
 import { getBlindSeatIndexes, getPositionNameForSeat } from "../../utils/positionLabels.js";
 
 function sumPotAmounts(pots = [], fallbackPlayers = []) {
@@ -42,21 +47,76 @@ function defaultStructureMeta(tableConfig = {}) {
   };
 }
 
+function hasActiveNonAllInOpponent(players = [], seatIndex) {
+  return players.some((entry, idx) => {
+    if (idx === seatIndex || !entry) return false;
+    if (
+      entry.folded ||
+      entry.hasFolded ||
+      entry.sittingOut ||
+      entry.seatOut ||
+      entry.isBusted ||
+      entry.busted ||
+      entry.allIn
+    ) {
+      return false;
+    }
+    return Number(entry.stack) > 0;
+  });
+}
+
 function buildControlsConfig(snapshot, tableConfig) {
   const players = snapshot.players ?? [];
   const hero = players[0] ?? null;
   const phase = snapshot.phase ?? "BET";
-  const heroTurn = hero && snapshot.turn === 0 && !hero.folded && !hero.seatOut;
+  const canonicalHeroTurn = Boolean(hero && snapshot.turn === 0 && !hero.folded && !hero.seatOut);
   const heroBet = hero?.betThisRound ?? 0;
   const currentBet = snapshot.currentBet ?? 0;
   const needsToCall = hero ? currentBet > heroBet : false;
   const heroStack = hero?.stack ?? 0;
+  const metadata = snapshot.metadata ?? {};
+  const raiseStats = snapshot.raiseStats ?? {};
+  const raiseCount = Math.max(
+    0,
+    Number(
+      raiseStats.raiseCountThisRound ??
+        snapshot.raiseCountThisRound ??
+        metadata.raiseCountThisRound,
+    ) || 0,
+  );
+  const raiseCap = Math.max(
+    1,
+    Number(raiseStats.raiseCap ?? snapshot.raiseCap ?? metadata.raiseCap) || 4,
+  );
   const hasCardsToDraw = Boolean(hero?.hand && hero.hand.length && (hero.selected ?? []).length);
+  const heroTurn =
+    phase === "BET"
+      ? Boolean(
+          canonicalHeroTurn &&
+            isSeatEligibleForBetting(hero, { ...snapshot, phase: "BET", currentBet, players }),
+        )
+      : phase === "DRAW"
+      ? Boolean(
+          canonicalHeroTurn &&
+            isSeatEligibleForDrawing(
+              hero,
+              { ...snapshot, phase: "DRAW", players },
+              { allowAllInDraw: true },
+            ),
+        )
+      : false;
 
   const canFold = Boolean(heroTurn && phase === "BET" && !hero?.allIn);
   const canCall = Boolean(heroTurn && phase === "BET" && heroStack > 0);
   const canCheck = Boolean(heroTurn && phase === "BET" && !needsToCall);
-  const canRaise = Boolean(heroTurn && phase === "BET" && heroStack > 0 && !hero?.allIn);
+  const canRaise = Boolean(
+    heroTurn &&
+      phase === "BET" &&
+      heroStack > 0 &&
+      !hero?.allIn &&
+      raiseCount < raiseCap &&
+      hasActiveNonAllInOpponent(players, 0),
+  );
   const canDraw = Boolean(
     heroTurn &&
       phase === "DRAW" &&
@@ -88,18 +148,40 @@ function buildControlsConfig(snapshot, tableConfig) {
     canDraw,
     drawSelections: hero?.selected ?? [],
     maxDraws: tableConfig.maxDraws ?? 3,
+    raiseCount,
+    raiseCap,
     betSize,
     isBigBetStreet: bigBetStreet,
   };
 }
 
-function mapSeatViews(snapshot, structureMeta) {
+function mapSeatViews(snapshot, structureMeta, variantId = "badugi") {
   const players = snapshot.players ?? [];
-  const dealerIdx = snapshot.dealerIdx ?? 0;
+  const dealerIdx =
+    snapshot.dealerIdx ??
+    snapshot.dealerIndex ??
+    snapshot.dealerSeat ??
+    snapshot.buttonSeat ??
+    snapshot.metadata?.dealerIndex ??
+    snapshot.metadata?.buttonSeat ??
+    0;
   const { sbIdx, bbIdx } = getBlindSeatIndexes(players, dealerIdx);
 
   return players.map((player, idx) => {
     const sanitizedPlayer = player ? { ...player } : {};
+    const showHand = shouldRevealPlayerHand({
+      variantId,
+      player: sanitizedPlayer,
+      seatIndex: idx,
+      heroSeat: 0,
+      phase: snapshot.phase,
+      street: snapshot.street,
+      allInActionComplete: Boolean(
+        snapshot.allInActionComplete ??
+          snapshot.bettingActionComplete ??
+          snapshot.metadata?.allInActionComplete,
+      ),
+    });
     return {
       ...sanitizedPlayer,
       seatIndex: idx,
@@ -119,7 +201,7 @@ function mapSeatViews(snapshot, structureMeta) {
       isBusted: Boolean(sanitizedPlayer.isBusted),
       lastAction: sanitizedPlayer.lastAction ?? "",
       hand: Array.isArray(sanitizedPlayer.hand) ? [...sanitizedPlayer.hand] : [],
-      showHand: sanitizedPlayer.showHand ?? idx === 0,
+      showHand,
       selected: Array.isArray(sanitizedPlayer.selected) ? [...sanitizedPlayer.selected] : [],
       hasDrawn: Boolean(sanitizedPlayer.hasDrawn),
       hasActedThisRound: Boolean(sanitizedPlayer.hasActedThisRound),
@@ -139,7 +221,7 @@ function buildHudInfo(snapshot, tableConfig, totalPot) {
     phaseTag: snapshot.phaseTag ?? snapshot.phase ?? "BET",
     drawRound: snapshot.drawRound ?? 0,
     betRoundIndex: snapshot.betRoundIndex ?? 0,
-    dealerName: snapshot.players?.[snapshot.dealerIdx ?? 0]?.name ?? "-",
+    dealerName: snapshot.players?.[snapshot.dealerIndex ?? snapshot.dealerIdx ?? 0]?.name ?? "-",
   };
 }
 
@@ -159,7 +241,16 @@ export class BadugiUIAdapter extends BaseGameUIAdapter {
   buildViewProps({ controllerSnapshot = {}, tableConfig = {} } = {}) {
     const phase = controllerSnapshot.phase ?? "BET";
     const structureMeta = defaultStructureMeta(tableConfig);
-    const seatViews = mapSeatViews(controllerSnapshot, structureMeta);
+    const variantId =
+      controllerSnapshot.variantId ??
+      controllerSnapshot.gameVariant ??
+      controllerSnapshot.metadata?.variantId ??
+      tableConfig.variantId ??
+      tableConfig.gameVariant ??
+      this.gameDefinition?.id ??
+      this.gameDefinition?.variantId ??
+      "badugi";
+    const seatViews = mapSeatViews(controllerSnapshot, structureMeta, variantId);
     const totalPot = sumPotAmounts(controllerSnapshot.pots, controllerSnapshot.players);
 
     const potView = {

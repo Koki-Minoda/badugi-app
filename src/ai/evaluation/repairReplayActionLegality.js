@@ -1,5 +1,5 @@
 import { clone, getCurrentBet, normalizeActionType } from "./runAiEvaluationBatch.js";
-import { getActorIndex, isReplayActionStillLegal } from "./replayDivergenceAction.js";
+import { getActorIndex } from "./replayDivergenceAction.js";
 
 function toNumber(value, fallback = 0) {
   const numeric = Number(value);

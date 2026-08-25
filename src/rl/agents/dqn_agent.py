@@ -94,12 +94,20 @@ class DQNAgent:
                 tau * param.data + (1.0 - tau) * target_param.data
             )
 
-    def update(self, batch) -> Tuple[float, float]:
+    def update(
+        self,
+        batch,
+        weights: np.ndarray | None = None,
+    ) -> Tuple[float, float, np.ndarray]:
         """Perform one gradient step given a batch from replay buffer.
 
-        batch: dict with keys 'obs', 'actions', 'rewards', 'next_obs', 'dones'
+        Args:
+            batch: dict with keys 'obs', 'actions', 'rewards', 'next_obs', 'dones'
+            weights: optional importance-sampling weights from PER (shape: [batch])
+
         Returns:
-            loss_value, mean_q_value
+            (loss_value, mean_q_value, td_errors) — td_errors are used to
+            update PER priorities after the step.
         """
         obs = torch.as_tensor(batch["obs"], dtype=torch.float32, device=self.device)
         actions = torch.as_tensor(
@@ -119,7 +127,7 @@ class DQNAgent:
         q_values = self.q_network(obs).gather(1, actions)
 
         with torch.no_grad():
-            # Double DQN style: action from online net, value from target net
+            # Double DQN: action from online net, value from target net
             next_q_online = self.q_network(next_obs)
             if "next_action_masks" in batch:
                 next_masks = torch.as_tensor(
@@ -133,7 +141,16 @@ class DQNAgent:
             next_q_target = next_q_target_all.gather(1, next_actions)
             target_q = rewards + self.hyper.gamma * (1.0 - dones) * next_q_target
 
-        loss = self.loss_fn(q_values, target_q)
+        # Per-sample TD errors (for PER priority updates)
+        td_errors_t = (q_values - target_q).detach()
+
+        # Weighted loss for PER; plain MSE when weights are None
+        elementwise_loss = F.mse_loss(q_values, target_q, reduction="none")
+        if weights is not None:
+            w_t = torch.as_tensor(weights, dtype=torch.float32, device=self.device).unsqueeze(-1)
+            loss = (elementwise_loss * w_t).mean()
+        else:
+            loss = elementwise_loss.mean()
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -146,7 +163,8 @@ class DQNAgent:
         with torch.no_grad():
             mean_q = q_values.mean().item()
 
-        return float(loss.item()), float(mean_q)
+        td_errors = td_errors_t.cpu().numpy().squeeze(-1)
+        return float(loss.item()), float(mean_q), td_errors
 
     def imitation_update(self, batch, loss_weight: float = 1.0) -> Tuple[float, float]:
         """Supervised behavior-cloning step over expert state/action pairs."""

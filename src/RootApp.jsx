@@ -7,6 +7,7 @@ import HistoryScreen from "./ui/screens/HistoryScreen.jsx";
 import GameSelectorScreen from "./ui/screens/GameSelectorScreen.jsx";
 import TitleSettingsScreen from "./ui/screens/TitleSettingsScreen";
 import TournamentScreen from "./ui/screens/TournamentScreen";
+import CareerScreen from "./ui/screens/CareerScreen.jsx";
 import MixedGameScreen from "./ui/screens/MixedGameScreen";
 import MultiGameScreen from "./ui/screens/MultiGameScreen.jsx";
 import DealersChoiceScreen from "./ui/screens/DealersChoiceScreen.jsx";
@@ -65,6 +66,9 @@ export default function RootApp() {
           }
         />
         <Route path="/settings" element={<TitleSettingsScreen />} />
+        <Route path="/dev/career" element={<CareerScreen />} />
+        <Route path="/career" element={<CareerScreen />} />
+        <Route path="/dev/tournament" element={<TournamentScreen />} />
         <Route path="/tournament" element={<TournamentScreen />} />
         <Route path="/leaderboard" element={<LeaderboardScreen />} />
         <Route path="/profile" element={<ProfileStats />} />

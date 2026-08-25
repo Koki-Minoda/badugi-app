@@ -58,6 +58,48 @@ describe("findNextActorSeatForPhase", () => {
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
   });
+
+  // TASK-07: explicit null guard for each terminal / non-action phase.
+  test.each([
+    ["POST_BLINDS"],
+    ["SHOWDOWN"],
+    ["COLLECT"],
+    ["RESULT"],
+  ])("%s returns null and does not throw", (phase) => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    let result;
+    expect(() => {
+      result = findNextActorSeatForPhase({ phase, players: samplePlayers });
+    }).not.toThrow();
+    expect(result).toBeNull();
+    warn.mockRestore();
+  });
+
+  // TASK-07: BET with eligible players returns a concrete seat, not null.
+  test("BET returns the first eligible seat that has not yet matched the current bet", () => {
+    // Seat 0 has already raised and acted; seat 1 still owes chips; seat 2 is folded.
+    const players = [
+      { name: "Seat0", isSeated: true, isActiveInGame: true, folded: false, allIn: false, betThisRound: 10, hasActedThisRound: true, stack: 490 },
+      { name: "Seat1", isSeated: true, isActiveInGame: true, folded: false, allIn: false, betThisRound: 0,  hasActedThisRound: false, stack: 500 },
+      { name: "Seat2", isSeated: true, isActiveInGame: true, folded: true,  allIn: false, betThisRound: 0,  hasActedThisRound: false, stack: 500 },
+    ];
+    const seat = findNextActorSeatForPhase({ phase: "BET", players, startIdx: 0, currentBet: 10 });
+    expect(typeof seat).toBe("number");
+    expect(seat).toBe(1);
+  });
+
+  // TASK-07: DRAW with eligible players returns a concrete seat, not null.
+  test("DRAW returns the first seat that has not yet drawn this round", () => {
+    // Seat 0 has already taken a draw; seat 1 is next; seat 2 is folded.
+    const players = [
+      { name: "Seat0", isSeated: true, isActiveInGame: true, folded: false, allIn: false, hasDrawn: true,  hasActedThisRound: true,  stack: 490 },
+      { name: "Seat1", isSeated: true, isActiveInGame: true, folded: false, allIn: false, hasDrawn: false, hasActedThisRound: false, stack: 500 },
+      { name: "Seat2", isSeated: true, isActiveInGame: true, folded: true,  allIn: false, hasDrawn: false, hasActedThisRound: false, stack: 500 },
+    ];
+    const seat = findNextActorSeatForPhase({ phase: "DRAW", players, startIdx: 0 });
+    expect(typeof seat).toBe("number");
+    expect(seat).toBe(1);
+  });
 });
 
 describe("findNextActiveSeatUnified", () => {

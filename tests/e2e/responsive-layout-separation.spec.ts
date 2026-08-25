@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type BrowserContext } from "@playwright/test";
-import { APP_URL, createAuthenticatedSession, enterTitleIfPresent, gotoWithRetry, openAuthenticatedGame } from "./authHelper";
+import { APP_URL, openAuthenticatedGame } from "./authHelper";
 
 async function openMobileLandscape(browser: Browser) {
   const context = await browser.newContext({
@@ -32,14 +32,29 @@ test.describe("responsive game layout separation", () => {
     const metrics = await page.evaluate(() => ({
       bodyOverflow: getComputedStyle(document.body).overflow,
       horizontalScroll: document.documentElement.scrollWidth > window.innerWidth + 2,
+      table: (() => {
+        const box = document.querySelector('[data-testid="game-table-surface"]')?.getBoundingClientRect();
+        return box
+          ? {
+              width: box.width,
+              height: box.height,
+              ratio: box.width / Math.max(1, box.height),
+            }
+          : null;
+      })(),
     }));
     expect(metrics.bodyOverflow).not.toBe("hidden");
     expect(metrics.horizontalScroll).toBe(false);
+    expect(metrics.table?.ratio).toBeGreaterThan(1.2);
+    expect(metrics.table?.ratio).toBeLessThan(2.6);
   });
 
   test("mobile landscape uses fixed mobile root and hides desktop-only chrome", async ({ browser }) => {
     const { context, page } = await openMobileLandscape(browser);
     try {
+      await page.addInitScript(() => {
+        window.localStorage.setItem("mgx.previewVariants", "true");
+      });
       await openAuthenticatedGame(page, `${APP_URL}?variant=badugi`);
 
       await expect(page.locator(".mgx-mobile-landscape")).toBeVisible();
@@ -68,7 +83,7 @@ test.describe("responsive game layout separation", () => {
     }
   });
 
-  test("mobile portrait blocks game layout with rotate guidance", async ({ browser }) => {
+  test("mobile portrait allows Core 5 gameplay without a hard orientation block", async ({ browser }) => {
     const context = await browser.newContext({
       viewport: { width: 390, height: 844 },
       isMobile: true,
@@ -79,15 +94,12 @@ test.describe("responsive game layout separation", () => {
     });
     const page = await context.newPage();
     try {
-      await createAuthenticatedSession(page);
-      await gotoWithRetry(page, APP_URL);
-      await enterTitleIfPresent(page);
-      await page.getByTestId("menu-ring").click();
-      await page.getByTestId("game-selector-play-badugi").click();
+      await openAuthenticatedGame(page, `${APP_URL}?variant=D01`);
 
-      await expect(page.getByText("Landscape mode required")).toBeVisible({ timeout: 20000 });
-      await expect(page.getByText("MGXはスマホ横画面に最適化されています")).toBeVisible();
-      await expect(page.locator(".mgx-mobile-landscape")).toHaveCount(0);
+      await expect(page.getByText("Landscape mode required")).toHaveCount(0);
+      await expect(page.getByText("MGXはスマホ横画面に最適化されています")).toHaveCount(0);
+      await expect(page.locator(".mgx-mobile-landscape")).toBeVisible({ timeout: 20000 });
+      await expect(page.getByTestId("decision-panel")).toBeVisible();
     } finally {
       await closeContext(context);
     }

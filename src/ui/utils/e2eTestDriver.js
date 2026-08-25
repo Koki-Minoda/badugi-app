@@ -16,15 +16,39 @@ export function installE2eTestDriver(apiRef) {
     forceSeatAction: (...args) => apiRef.current?.forceSeatAction?.(...args),
     forceControllerAction: (...args) =>
       apiRef.current?.forceControllerAction?.(...args),
+    getLastControllerActionFailure: (...args) =>
+      apiRef.current?.getLastControllerActionFailure?.(...args),
+    getControllerDebug: (...args) => apiRef.current?.getControllerDebug?.(...args),
+    getCrossVariantStateAudit: (...args) =>
+      apiRef.current?.getCrossVariantStateAudit?.(...args),
     forceMarkSeatFoldedForTest: (...args) =>
       apiRef.current?.forceMarkSeatFoldedForTest?.(...args),
     forceSequentialFolds: (...args) => apiRef.current?.forceSequentialFolds?.(...args),
     forceAllIn: (...args) => apiRef.current?.forceAllIn?.(...args),
     setupFixedLimitCapFixtureForTest: (...args) =>
       apiRef.current?.setupFixedLimitCapFixtureForTest?.(...args),
+    setupBadugiWaitingFreezeFixtureForTest: (...args) =>
+      apiRef.current?.setupBadugiWaitingFreezeFixtureForTest?.(...args),
+    setupBadugiBetToDrawFixtureForTest: (...args) =>
+      apiRef.current?.setupBadugiBetToDrawFixtureForTest?.(...args),
+    setupBadugiTournamentCpuDrawFixtureForTest: (...args) =>
+      apiRef.current?.setupBadugiTournamentCpuDrawFixtureForTest?.(...args),
+    setupBadugiHandShapeContaminationFixtureForTest: (...args) =>
+      apiRef.current?.setupBadugiHandShapeContaminationFixtureForTest?.(...args),
+    setupBadugiFoldedDrawFreezeFixtureForTest: (...args) =>
+      apiRef.current?.setupBadugiFoldedDrawFreezeFixtureForTest?.(...args),
+    setupTournamentBustedSeatDisplayFixtureForTest: (...args) =>
+      apiRef.current?.setupTournamentBustedSeatDisplayFixtureForTest?.(...args),
+    setupMobileTournamentHeroActionFixtureForTest: (...args) =>
+      apiRef.current?.setupMobileTournamentHeroActionFixtureForTest?.(...args),
+    setupTournamentReviewOverlayFixtureForTest: (...args) =>
+      apiRef.current?.setupTournamentReviewOverlayFixtureForTest?.(...args),
+    getReplayState: (...args) => apiRef.current?.getReplayState?.(...args),
     forceHeroDraw: (...args) => apiRef.current?.forceHeroDraw?.(...args),
     forceFinishRoundForTest: (...args) =>
       apiRef.current?.forceFinishRoundForTest?.(...args),
+    forceBadugiBetToDrawTransitionForTest: (...args) =>
+      apiRef.current?.forceBadugiBetToDrawTransitionForTest?.(...args),
     resolveHandNow: (...args) => apiRef.current?.resolveHandNow?.(...args),
     dealNewHandNow: (...args) => apiRef.current?.dealNewHandNow?.(...args),
     forceDealNewHandNow: (...args) =>

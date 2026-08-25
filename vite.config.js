@@ -2,15 +2,37 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import { fileURLToPath } from "url";
+import { execSync } from "child_process";
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
+function readGitCommit() {
+  try {
+    return execSync("git rev-parse HEAD", {
+      cwd: projectRoot,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return "unknown";
+  }
+}
+
 export default defineConfig(({ command }) => {
   const isDev = command === "serve";
+  const isRemoteDev = process.env.VITE_MGX_REMOTE_DEV === "1";
+  const buildInfo = {
+    commit: process.env.VITE_MGX_BUILD_COMMIT || readGitCommit(),
+    buildTime: process.env.VITE_MGX_BUILD_TIME || new Date().toISOString(),
+    appVersion: process.env.npm_package_version || "0.0.0",
+  };
 
   return {
     plugins: [react()],
     base: isDev ? "/dev/" : "/",
+    define: {
+      __MGX_BUILD_INFO__: JSON.stringify(buildInfo),
+    },
     resolve: {
       alias: {
         "@core": path.resolve(projectRoot, "src/core"),
@@ -33,12 +55,14 @@ export default defineConfig(({ command }) => {
         ],
       },
       // iPhoneから https 経由で /dev/ に来るので HMR も wss に寄せる（白画面/更新不能の回避）
-      hmr: {
-        protocol: "wss",
-        host: "mgx-poker.com",
-        clientPort: 443,
-        path: "/dev/",
-      },
+      hmr: isRemoteDev
+        ? {
+            protocol: "wss",
+            host: "mgx-poker.com",
+            clientPort: 443,
+            path: "/dev/",
+          }
+        : undefined,
       proxy: {
         "/api": {
           target: "http://127.0.0.1:8000",

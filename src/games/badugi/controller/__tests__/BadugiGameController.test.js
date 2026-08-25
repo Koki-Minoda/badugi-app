@@ -1,6 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import { BadugiGameController } from "../BadugiGameController.js";
 import { GAME_VARIANTS } from "../../../core/variants.js";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.doUnmock("../../../core/draw/normalizeDrawAction.js");
+});
 
 function createController(config = {}) {
   const factory = GAME_VARIANTS.badugi.controllerFactory;
@@ -191,6 +196,230 @@ describe("BadugiGameController – betting", () => {
     expect(invalid).toBeTruthy();
     expect(invalid?.code).toBe("FL_RAISE_CAP");
   });
+
+  it("does not expose Raise when the normal four-raise cap is reached", () => {
+    const controller = createController();
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU"],
+    });
+    const state = controller.createNewHandState(initial, {});
+    const snapshot = controller.getUiSnapshot(state);
+    const seeded = controller.syncFromExternalState({
+      snapshot: {
+        ...snapshot,
+        turn: 0,
+        nextTurn: 0,
+        raiseCap: 4,
+        raiseCountThisRound: 4,
+        metadata: {
+          ...(snapshot.metadata ?? {}),
+          raiseCap: 4,
+          raiseCountThisRound: 4,
+        },
+      },
+      context: state?.context ?? null,
+      handIndex: state?.handIndex ?? 0,
+    });
+
+    expect(controller.getLegalActions(seeded, 0).map((action) => action.type)).not.toContain(
+      "RAISE",
+    );
+    const { events } = controller.applyAction(seeded, {
+      seatIndex: 0,
+      payload: { type: "raise", amount: 10 },
+    });
+    expect(events.find((event) => event.type === "invalidAction")?.code).toBe("FL_RAISE_CAP");
+  });
+
+  it("does not expose Raise when every opponent is all-in or out", () => {
+    const controller = createController();
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU"],
+    });
+    const state = controller.createNewHandState(initial, {});
+    const snapshot = controller.getUiSnapshot(state);
+    const seeded = controller.syncFromExternalState({
+      snapshot: {
+        ...snapshot,
+        phase: "BET",
+        turn: 0,
+        nextTurn: 0,
+        currentBet: 10,
+        players: snapshot.players.map((player, seatIndex) => ({
+          ...player,
+          betThisRound: 10,
+          folded: false,
+          hasFolded: false,
+          seatOut: false,
+          isBusted: false,
+          allIn: seatIndex !== 0,
+          stack: seatIndex === 0 ? 490 : 0,
+        })),
+      },
+      context: state?.context ?? null,
+      handIndex: state?.handIndex ?? 0,
+    });
+
+    expect(controller.getLegalActions(seeded, 0).map((action) => action.type)).toEqual([
+      "FOLD",
+      "CHECK",
+    ]);
+  });
+
+  it("exposes only FOLD and CALL when last remaining opponent goes all-in mid-round", () => {
+    const controller = createController();
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU"],
+    });
+    const state = controller.createNewHandState(initial, {});
+    const snapshot = controller.getUiSnapshot(state);
+    const seeded = controller.syncFromExternalState({
+      snapshot: {
+        ...snapshot,
+        phase: "BET",
+        drawRound: 1,
+        turn: 0,
+        nextTurn: 0,
+        currentBet: 10,
+        raiseCountThisRound: 0,
+        players: snapshot.players.map((player, seatIndex) => ({
+          ...player,
+          betThisRound: seatIndex === 1 ? 10 : 0,
+          folded: seatIndex > 1,
+          hasFolded: seatIndex > 1,
+          seatOut: false,
+          isBusted: false,
+          allIn: seatIndex === 1,
+          stack: seatIndex === 0 ? 490 : 0,
+          hasActedThisRound: seatIndex !== 0,
+        })),
+      },
+      context: state?.context ?? null,
+      handIndex: state?.handIndex ?? 0,
+    });
+
+    expect(controller.getLegalActions(seeded, 0).map((action) => action.type)).toEqual([
+      "FOLD",
+      "CALL",
+    ]);
+  });
+
+  it("keeps Raise available when one active opponent can still respond", () => {
+    const controller = createController();
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU"],
+    });
+    const state = controller.createNewHandState(initial, {});
+    const snapshot = controller.getUiSnapshot(state);
+    const seeded = controller.syncFromExternalState({
+      snapshot: {
+        ...snapshot,
+        phase: "BET",
+        turn: 0,
+        nextTurn: 0,
+        currentBet: 10,
+        players: snapshot.players.map((player, seatIndex) => ({
+          ...player,
+          betThisRound: 10,
+          folded: false,
+          hasFolded: false,
+          seatOut: false,
+          isBusted: false,
+          allIn: seatIndex > 1,
+          stack: seatIndex === 0 ? 490 : seatIndex === 1 ? 490 : 0,
+        })),
+      },
+      context: state?.context ?? null,
+      handIndex: state?.handIndex ?? 0,
+    });
+
+    expect(controller.getLegalActions(seeded, 0).map((action) => action.type)).toContain("RAISE");
+  });
+
+  it("uses reference snapshot street context for advanceStreet when legacy state is stale", () => {
+    const controller = createController();
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU"],
+    });
+    const state = controller.createNewHandState(initial, {});
+    const snapshot = controller.getUiSnapshot(state);
+    const referenceState = {
+      ...state,
+      snapshot: {
+        ...snapshot,
+        dealerIdx: 2,
+        drawRound: 2,
+        betHead: 1,
+        lastAggressorIdx: 3,
+        players: (snapshot.players ?? []).map((player) => ({
+          ...player,
+          folded: false,
+          seatOut: false,
+          allIn: false,
+          betThisRound: 20,
+          hasActedThisRound: true,
+        })),
+      },
+    };
+
+    controller.legacy.state.dealerIdx = 0;
+    controller.legacy.state.drawRound = 0;
+    controller.legacy.state.betHead = null;
+    controller.legacy.state.lastAggressorIdx = null;
+
+    vi.spyOn(controller.legacy, "applyPlayerAction").mockReturnValue({ success: true });
+    const advanceStreet = vi
+      .spyOn(controller.legacy, "advanceStreet")
+      .mockReturnValue({ shouldAdvance: false });
+
+    controller.applyAction(referenceState, {
+      seatIndex: 0,
+      payload: { type: "call" },
+    });
+
+    expect(advanceStreet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dealerIdx: 2,
+        drawRound: 2,
+        betHead: 1,
+        lastAggressorIdx: 3,
+      }),
+    );
+  });
+});
+
+describe("BadugiGameController – syncFromSnapshot null turn handling", () => {
+  it("preserves null turn when all turn sources are absent (RISK-04 regression)", () => {
+    const controller = createController();
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU"],
+    });
+    const state = controller.createNewHandState(initial, {});
+
+    // Simulate the post-bust/terminal state that BadugiEngine.applyForcedBets
+    // can produce: legacy state has null turns (e.g. heads-up seatOut scenario).
+    controller.legacy.state.turn = null;
+    controller.legacy.state.nextTurn = null;
+
+    const snap = controller.getUiSnapshot(state);
+    controller.syncFromExternalState({
+      snapshot: {
+        ...snap,
+        turn: undefined,     // not a number → falls through to legacy state
+        nextTurn: undefined, // not a number → falls through to legacy state
+      },
+      context: state?.context ?? null,
+      handIndex: state?.handIndex ?? 0,
+    });
+
+    // With the fix: null ?? null ?? null → null, not coerced to 0.
+    // syncExternalState does a plain object spread so legacy.state.turn
+    // directly reflects the nextTurn value computed at line 614.
+    // normalizeTurnState post-processes the *snapshot* but does not
+    // write back to legacy.state, so this is the correct observation point.
+    expect(controller.legacy.state.turn).toBeNull();
+    expect(controller.legacy.state.nextTurn).toBeNull();
+  });
 });
 
 describe("BadugiGameController – draw", () => {
@@ -224,5 +453,107 @@ describe("BadugiGameController – draw", () => {
     expect(heroAfter.hasDrawn).toBe(true);
     expect(heroAfter.lastDrawCount).toBe(drawCount);
     expect(Array.isArray(events)).toBe(true);
+  });
+
+  it("auto-completes the post-draw BET round when all opponents are all-in", () => {
+    const controller = createController();
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU"],
+    });
+    const state = controller.createNewHandState(initial, {});
+    const snapshot = controller.getUiSnapshot(state);
+    const players = snapshot.players.map((player, seatIndex) => ({
+      ...player,
+      stack: seatIndex === 0 ? 480 : 0,
+      folded: false,
+      hasFolded: false,
+      seatOut: false,
+      isBusted: false,
+      allIn: seatIndex !== 0,
+      betThisRound: 0,
+      hasActedThisRound: false,
+      hasDrawn: true,
+    }));
+
+    controller.legacy.state.players = players;
+    controller.legacy.state.phase = "DRAW";
+    controller.legacy.state.drawRound = 1;
+    controller.legacy.state.dealerIdx = 0;
+
+    controller._finishDrawRound(players, 0);
+
+    expect(controller.legacy.state.phase).toBe("DRAW");
+    expect(controller.legacy.state.turn).not.toBe(0);
+    expect(controller.legacy.state.currentBet).toBe(0);
+  });
+
+  it("uses reference snapshot draw round for draw normalization when legacy state is stale", async () => {
+    let capturedNormalizeArgs = null;
+    vi.resetModules();
+    vi.doMock("../../../core/draw/normalizeDrawAction.js", async () => {
+      const actual = await vi.importActual("../../../core/draw/normalizeDrawAction.js");
+      return {
+        ...actual,
+        normalizeDrawAction: vi.fn((args) => {
+          capturedNormalizeArgs = args;
+          return actual.normalizeDrawAction(args);
+        }),
+      };
+    });
+    const { BadugiGameController: IsolatedBadugiGameController } = await import(
+      "../BadugiGameController.js"
+    );
+    const controller = new IsolatedBadugiGameController({
+      numSeats: 4,
+      seatConfig: ["HERO", "CPU", "CPU", "CPU"],
+      startingStack: 500,
+      blindStructure: [{ sb: 5, bb: 10, ante: 0 }],
+    });
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU"],
+    });
+    const state = controller.createNewHandState(initial, {});
+    const snapshot = controller.getUiSnapshot(state);
+    const referenceState = {
+      ...state,
+      snapshot: {
+        ...snapshot,
+        phase: "DRAW",
+        dealerIdx: 1,
+        drawRound: 2,
+        drawRoundIndex: 2,
+        turn: 0,
+        nextTurn: 0,
+        players: (snapshot.players ?? []).map((player) => ({
+          ...player,
+          hand:
+            Array.isArray(player.hand) && player.hand.length === 4
+              ? [...player.hand]
+              : ["AS", "2C", "3D", "4H"],
+          hasDrawn: false,
+          hasActedThisRound: false,
+          folded: false,
+          seatOut: false,
+          isBusted: false,
+          allIn: false,
+          isActiveInGame: true,
+        })),
+      },
+    };
+    controller.legacy.state.drawRound = 0;
+    controller.legacy.state.dealerIdx = 0;
+
+    const heroHand = referenceState.snapshot.players[0].hand;
+    controller.applyAction(referenceState, {
+      seatIndex: 0,
+      payload: {
+        type: "draw",
+        drawCount: 0,
+        drawIndexes: [],
+        handAfter: [...heroHand],
+      },
+    });
+
+    expect(capturedNormalizeArgs?.state?.drawRoundIndex).toBe(2);
   });
 });

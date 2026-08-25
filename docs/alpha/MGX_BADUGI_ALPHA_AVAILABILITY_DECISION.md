@@ -4,41 +4,44 @@ Date: 2026-05-16
 
 ## Decision
 
-`KEEP_PREVIEW_ONLY`
+`BADUGI_ALPHA_PLAYABLE_FOR_FRIEND_ALPHA`
+
+## Rationale
+
+Badugi is a core MGX game and should be part of the closed friend alpha. The previous safety-first `preview_only` gate protected the alpha scope while Badugi progression, pot continuity, terminal transition, portrait mobile, and orientation blockers were being audited. Those automated gates now pass.
+
+This change accepts remaining non-P0 risk for closed alpha while keeping all known risks visible in `docs/bugs/current_bugs.md`.
 
 ## Evidence
 
 | Gate | Result |
 | --- | --- |
-| Playwright full 3-draw | PASS |
+| focused full 3-draw browser flow | PASS |
 | pot regression | PASS |
-| desktop preview full-hand smoke | PASS |
-| desktop active-hand pot continuity | PASS, min observed pot `30` |
-| post-draw betting observed | PASS |
-| hand result reached | PASS |
-| mobile variant disabled-state visibility | PASS |
-| mobile Badugi full-hand gameplay | PENDING |
-| physical mobile QA | PENDING |
-| new P0 | none observed |
+| long-run active-pot / terminal restore | PASS |
+| active-hand `Total Pot 0` | PASS, 0 observed in long-run restore gate |
+| stale actor / terminal transition | PASS |
+| portrait mobile blocker | PASS in automation |
+| landscape / orientation | PASS in automation |
+| actor order | PASS in Core5 audit |
+| Core5 mobile tournament layout | PASS in automation and deployed smoke |
+| P0 in automation | none confirmed |
 
-## Rationale
-
-The Badugi P0 automation blocker is fixed and the deployed preview URL can complete a desktop preview full-hand smoke with pot continuity intact. However, the friend alpha policy is safety-first. Badugi should not return to `alpha_playable` until physical mobile or equivalent full-hand mobile gameplay confirms:
-
-- pot remains visible
-- action buttons remain tappable
-- phase labels remain readable
-- next-hand flow is usable
-
-## Current Availability
+## Availability
 
 | Variant | Availability |
 | --- | --- |
-| Badugi | `preview_only` |
+| Badugi | `alpha_playable` |
 
-## Required Before Reclassification
+## Known Limitations Accepted For Closed Alpha
 
-1. Run Badugi full hand on mobile portrait and landscape.
-2. Confirm pot/action controls visibility through Draw 1-3.
-3. Confirm next hand from result overlay.
-4. Rerun targeted Playwright gates after any UI adjustment.
+- Physical mobile QA is still required before broad sharing.
+- Continue monitoring Badugi pot continuity, terminal transition, actor state, and next-hand behavior.
+- If any P0 is reproduced on real devices, pause friend alpha and revert Badugi to `preview_only`.
+
+## Guardrails
+
+- Production routing unchanged.
+- Live RL unchanged.
+- Model promotion unchanged.
+- Badugi-family side variants remain preview-only unless separately cleared.

@@ -17,6 +17,26 @@ describe("policyRouter", () => {
     opponentStats: {},
   });
 
+  it("adds opponent personality to AI decision context with balanced fallback", () => {
+    const lagContext = buildAiContext({
+      variantId: "D03",
+      tierConfig: tier,
+      opponentStats: {},
+      personalityId: "lag",
+    });
+    const fallbackContext = buildAiContext({
+      variantId: "D03",
+      tierConfig: tier,
+      opponentStats: {},
+      personalityId: "missing",
+    });
+
+    expect(lagContext.tier).toBe(tier);
+    expect(lagContext.personalityId).toBe("lag");
+    expect(lagContext.personality.label).toBe("LAG");
+    expect(fallbackContext.personalityId).toBe("balanced");
+  });
+
   it("returns fold when toCall high and made cards low", () => {
     vi.spyOn(Math, "random").mockReturnValue(0);
     const decision = computeBetDecision({

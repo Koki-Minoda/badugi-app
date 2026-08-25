@@ -32,6 +32,7 @@ def get_badugi_stats(
                 BadugiHandAction.phase == "BET",
             )
             .order_by(desc(BadugiHandAction.ts))
+            .limit(limit_hands * 10)
         )
         actions = db.execute(stmt).scalars().all()
     except SQLAlchemyError:

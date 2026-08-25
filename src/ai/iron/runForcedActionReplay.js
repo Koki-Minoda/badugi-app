@@ -7,7 +7,6 @@ import { roundNumber, writeJsonReport } from "./coverageAuditUtils.js";
 import {
   average,
   callBand,
-  countBy,
   loadFocusedS02Samples,
   playerCountBucket,
   sampleAxisValue,

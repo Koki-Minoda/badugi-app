@@ -7,6 +7,7 @@ import {
   computePayouts,
   simulateBackgroundTables,
 } from "../tournamentMTT.js";
+import { STORE_STANDARD_BLIND_LEVELS } from "../../../../config/tournamentBlindSheets.js";
 
 const BASE_CONFIG = {
   id: "store-mtt",
@@ -30,10 +31,91 @@ const SINGLE_TABLE_CONFIG = {
   tables: 1,
 };
 
+const STORE_15_LEVEL_CONFIG = {
+  ...BASE_CONFIG,
+  levels: STORE_STANDARD_BLIND_LEVELS,
+};
+
 const entrants = Array.from({ length: 18 }, (_, idx) => ({
   id: `player-${idx + 1}`,
   name: `Player ${idx + 1}`,
 }));
+
+const entrantsWithHero = [
+  { id: "hero", name: "Hero" },
+  ...Array.from({ length: 17 }, (_, idx) => ({
+    id: `cpu-${idx + 1}`,
+    name: `CPU ${idx + 1}`,
+    cpuCharacterId: idx === 0 ? "akira" : null,
+    cpuStyle: idx === 0 ? "balanced" : null,
+  })),
+];
+
+function activeTableCount(state) {
+  return state.tables.filter((table) => table.isActive).length;
+}
+
+function seatedPlayerIds(state) {
+  return new Set(
+    state.tables.flatMap((table) =>
+      table.seats.map((seat) => seat.playerId).filter(Boolean),
+    ),
+  );
+}
+
+function assignmentSnapshot(state) {
+  return Object.fromEntries(
+    Object.values(state.players)
+      .filter((player) => !player.busted)
+      .map((player) => [
+        player.id,
+        {
+          tableId: player.tableId,
+          seatIndex: player.seatIndex,
+        },
+      ]),
+  );
+}
+
+function tableOccupantSnapshot(state) {
+  return state.tables.map((table) => ({
+    tableId: table.tableId,
+    isActive: table.isActive,
+    seats: table.seats.map((seat) => seat.playerId),
+  }));
+}
+
+function activeTableCounts(state) {
+  return state.tables
+    .filter((table) => table.isActive)
+    .map((table) => table.seats.filter((seat) => seat.playerId !== null).length)
+    .sort((a, b) => b - a);
+}
+
+function changedAssignments(before, after) {
+  return Object.entries(after).filter(([playerId, assignment]) => {
+    const previous = before[playerId];
+    return (
+      previous &&
+      (previous.tableId !== assignment.tableId || previous.seatIndex !== assignment.seatIndex)
+    );
+  });
+}
+
+function bustAlivePlayers(state, count, handIndex = 1) {
+  const playersToBust = Object.values(state.players)
+    .filter((player) => !player.busted)
+    .slice(0, count);
+  return onTableHandCompleted(state, playersToBust[0].tableId, {
+    handIndex,
+    seatResults: playersToBust.map((player) => ({
+      seatIndex: player.seatIndex ?? 0,
+      playerId: player.id,
+      stack: 0,
+      startingStack: player.stack,
+    })),
+  });
+}
 
 describe("tournamentMTT engine", () => {
   it("seats entrants round-robin across 3 tables", () => {
@@ -55,12 +137,28 @@ describe("tournamentMTT engine", () => {
         cpuCharacterId: "akira",
         cpuStyle: "balanced",
         avatarUrl: "/characters/akira.png",
+        opponentProfileId: "store-mika",
+        opponentTitle: "Store Regular",
+        titleBadge: "Store Regular",
+        tierId: "standard",
+        personalityId: "calling-station",
+        personality: { id: "calling-station", label: "Calling Station" },
+        personalityBadge: "Calling Station",
+        avatarId: "mika",
+        flavorText: "Calls too much, but never gives up.",
+        traits: ["loose", "sticky"],
       },
     ]);
     expect(state.players["cpu-akira"].name).toBe("Akira");
     expect(state.players["cpu-akira"].cpuCharacterId).toBe("akira");
     expect(state.players["cpu-akira"].cpuStyle).toBe("balanced");
     expect(state.players["cpu-akira"].avatarUrl).toBe("/characters/akira.png");
+    expect(state.players["cpu-akira"].opponentProfileId).toBe("store-mika");
+    expect(state.players["cpu-akira"].opponentTitle).toBe("Store Regular");
+    expect(state.players["cpu-akira"].tierId).toBe("standard");
+    expect(state.players["cpu-akira"].personalityId).toBe("calling-station");
+    expect(state.players["cpu-akira"].personalityBadge).toBe("Calling Station");
+    expect(state.players["cpu-akira"].traits).toEqual(["loose", "sticky"]);
   });
 
   it("advances levels once all active tables meet handsThisLevel", () => {
@@ -82,6 +180,50 @@ describe("tournamentMTT engine", () => {
     expect(getCurrentLevel(state).levelIndex).toBe(2);
   });
 
+  it("advances store blind sheet through level 4 without terminal 999 hands", () => {
+    let state = createMTTTournamentState(STORE_15_LEVEL_CONFIG, entrants);
+    expect(STORE_15_LEVEL_CONFIG.levels).toHaveLength(15);
+    expect(getCurrentLevel(state).levelIndex).toBe(1);
+
+    for (let targetLevelIndex = 1; targetLevelIndex <= 3; targetLevelIndex += 1) {
+      for (let hand = 0; hand < 5; hand += 1) {
+        const activeTableIds = state.tables
+          .filter((table) => table.isActive)
+          .map((table) => table.tableId);
+        activeTableIds.forEach((tableId) => {
+          state = onTableHandCompleted(state, tableId, {
+            handIndex: hand + 1,
+            seatResults: [],
+          });
+        });
+      }
+
+      expect(state.levelIndex).toBe(targetLevelIndex);
+      expect(getCurrentLevel(state).levelIndex).toBe(targetLevelIndex + 1);
+      expect(getCurrentLevel(state).handsThisLevel).toBe(5);
+    }
+
+    expect(getCurrentLevel(state).smallBlind).toBe(30);
+    expect(getCurrentLevel(state).bigBlind).toBe(60);
+  });
+
+  it("increments handsPlayedAtThisLevel before level advancement", () => {
+    let state = createMTTTournamentState(BASE_CONFIG, entrants);
+    const tableId = state.tables[0].tableId;
+
+    state = onTableHandCompleted(state, tableId, {
+      handIndex: 1,
+      seatResults: [],
+    });
+    expect(state.tables[0].handsPlayedAtThisLevel).toBe(1);
+
+    state = onTableHandCompleted(state, tableId, {
+      handIndex: 2,
+      seatResults: [],
+    });
+    expect(state.tables[0].handsPlayedAtThisLevel).toBe(2);
+  });
+
   it("marks players busted and reduces playersRemaining", () => {
     let state = createMTTTournamentState(BASE_CONFIG, entrants);
     const targetTable = state.tables[0];
@@ -94,6 +236,167 @@ describe("tournamentMTT engine", () => {
     expect(busted.busted).toBe(true);
     expect(busted.finishPlace).toBe(18);
     expect(state.playersRemaining).toBe(17);
+  });
+
+  it("keeps table and seat assignments unchanged when no one busts", () => {
+    let state = createMTTTournamentState(BASE_CONFIG, entrants);
+    const before = assignmentSnapshot(state);
+    const tableId = state.tables[0].tableId;
+
+    state = onTableHandCompleted(state, tableId, {
+      handIndex: 1,
+      seatResults: state.tables[0].seats
+        .filter((seat) => seat.playerId)
+        .map((seat) => ({
+          seatIndex: seat.seatIndex,
+          playerId: seat.playerId,
+          stack: state.players[seat.playerId].stack,
+          startingStack: state.players[seat.playerId].stack,
+        })),
+    });
+
+    expect(assignmentSnapshot(state)).toEqual(before);
+    expect(activeTableCounts(state)).toEqual([6, 6, 6]);
+  });
+
+  it("keeps opponents unchanged across normal hand progression", () => {
+    let state = createMTTTournamentState(BASE_CONFIG, entrants);
+    const before = tableOccupantSnapshot(state);
+
+    for (let hand = 0; hand < 2; hand += 1) {
+      state.tables
+        .filter((table) => table.isActive)
+        .forEach((table) => {
+          state = onTableHandCompleted(state, table.tableId, {
+            handIndex: hand + 1,
+            seatResults: [],
+          });
+        });
+    }
+
+    expect(state.levelIndex).toBe(1);
+    expect(tableOccupantSnapshot(state)).toEqual(before);
+  });
+
+  it("does not rebalance a 6/6/5 population after one bust", () => {
+    let state = createMTTTournamentState(BASE_CONFIG, entrants);
+    const bustSeat = state.tables[2].seats[0];
+    const before = assignmentSnapshot(state);
+
+    state = onTableHandCompleted(state, state.tables[2].tableId, {
+      handIndex: 1,
+      seatResults: [
+        {
+          seatIndex: bustSeat.seatIndex,
+          playerId: bustSeat.playerId,
+          stack: 0,
+          startingStack: state.players[bustSeat.playerId].stack,
+        },
+      ],
+    });
+
+    const after = assignmentSnapshot(state);
+    delete before[bustSeat.playerId];
+    expect(after).toEqual(before);
+    expect(activeTableCounts(state)).toEqual([6, 6, 5]);
+  });
+
+  it("minimally rebalances a 6/6/4 population by moving one player", () => {
+    let state = createMTTTournamentState(BASE_CONFIG, entrants);
+    const before = assignmentSnapshot(state);
+    const bustSeats = state.tables[2].seats.slice(0, 2);
+
+    state = onTableHandCompleted(state, state.tables[2].tableId, {
+      handIndex: 1,
+      seatResults: bustSeats.map((seat) => ({
+        seatIndex: seat.seatIndex,
+        playerId: seat.playerId,
+        stack: 0,
+        startingStack: state.players[seat.playerId].stack,
+      })),
+    });
+
+    const after = assignmentSnapshot(state);
+    bustSeats.forEach((seat) => {
+      delete before[seat.playerId];
+    });
+
+    expect(activeTableCounts(state)).toEqual([6, 5, 5]);
+    expect(changedAssignments(before, after)).toHaveLength(1);
+  });
+
+  it("merges tables by moving only players from a closed table", () => {
+    let state = createMTTTournamentState(BASE_CONFIG, entrants);
+    const before = assignmentSnapshot(state);
+    const tableToEmpty = state.tables[2];
+
+    state = onTableHandCompleted(state, tableToEmpty.tableId, {
+      handIndex: 1,
+      seatResults: tableToEmpty.seats.map((seat) => ({
+        seatIndex: seat.seatIndex,
+        playerId: seat.playerId,
+        stack: 0,
+        startingStack: state.players[seat.playerId].stack,
+      })),
+    });
+
+    const after = assignmentSnapshot(state);
+    tableToEmpty.seats.forEach((seat) => {
+      delete before[seat.playerId];
+    });
+
+    expect(activeTableCount(state)).toBe(2);
+    expect(changedAssignments(before, after)).toHaveLength(0);
+    expect(state.tables[2].isActive).toBe(false);
+    expect(state.tables[2].seats.every((seat) => seat.playerId === null)).toBe(true);
+  });
+
+  it("preserves hero table and seat when rebalance can avoid moving hero", () => {
+    let state = createMTTTournamentState(BASE_CONFIG, entrantsWithHero);
+    const beforeHero = assignmentSnapshot(state).hero;
+    const tableToEmpty = state.tables[2];
+
+    state = onTableHandCompleted(state, tableToEmpty.tableId, {
+      handIndex: 1,
+      seatResults: tableToEmpty.seats.map((seat) => ({
+        seatIndex: seat.seatIndex,
+        playerId: seat.playerId,
+        stack: 0,
+        startingStack: state.players[seat.playerId].stack,
+      })),
+    });
+
+    expect(state.players.hero.busted).toBe(false);
+    expect(assignmentSnapshot(state).hero).toEqual(beforeHero);
+  });
+
+  it("preserves CPU identity metadata through no-op and minimal rebalances", () => {
+    let state = createMTTTournamentState(BASE_CONFIG, entrantsWithHero);
+    const cpuId = "cpu-1";
+    const beforeCpu = { ...state.players[cpuId] };
+    const bustSeats = state.tables[2].seats.slice(0, 2);
+
+    state = onTableHandCompleted(state, state.tables[0].tableId, {
+      handIndex: 1,
+      seatResults: [],
+    });
+    state = onTableHandCompleted(state, state.tables[2].tableId, {
+      handIndex: 2,
+      seatResults: bustSeats.map((seat) => ({
+        seatIndex: seat.seatIndex,
+        playerId: seat.playerId,
+        stack: 0,
+        startingStack: state.players[seat.playerId].stack,
+      })),
+    });
+
+    expect(state.players[cpuId]).toMatchObject({
+      id: beforeCpu.id,
+      name: beforeCpu.name,
+      cpuCharacterId: "akira",
+      cpuStyle: "balanced",
+      busted: false,
+    });
   });
 
   it("breaks tables as player count drops", () => {
@@ -119,6 +422,99 @@ describe("tournamentMTT engine", () => {
     expect(state.tables.filter((t) => t.isActive)).toHaveLength(1);
   });
 
+  it("emits TABLE_MERGE when 18 players contract to 12 across two tables", () => {
+    const state = bustAlivePlayers(createMTTTournamentState(BASE_CONFIG, entrants), 6);
+    const mergeEvent = state.events.find((event) => event.type === "TABLE_MERGE");
+
+    expect(state.playersRemaining).toBe(12);
+    expect(activeTableCount(state)).toBe(2);
+    expect(mergeEvent).toMatchObject({
+      type: "TABLE_MERGE",
+      fromTables: 3,
+      toTables: 2,
+      playersRemaining: 12,
+    });
+    expect(state.lastEvent).toEqual(mergeEvent);
+  });
+
+  it("emits FINAL_TABLE when 12 players contract to one active table", () => {
+    let state = bustAlivePlayers(createMTTTournamentState(BASE_CONFIG, entrants), 6, 1);
+    state = bustAlivePlayers(state, 6, 2);
+    const finalTableEvent = state.events.find((event) => event.type === "FINAL_TABLE");
+
+    expect(state.playersRemaining).toBe(6);
+    expect(activeTableCount(state)).toBe(1);
+    expect(finalTableEvent).toMatchObject({
+      type: "FINAL_TABLE",
+      fromTables: 2,
+      toTables: 1,
+      playersRemaining: 6,
+    });
+    expect(state.lastEvent).toEqual(finalTableEvent);
+  });
+
+  it("emits HEADS_UP at two players without reseating busted players", () => {
+    let state = bustAlivePlayers(createMTTTournamentState(BASE_CONFIG, entrants), 6, 1);
+    state = bustAlivePlayers(state, 6, 2);
+    const playersToBust = Object.values(state.players)
+      .filter((player) => !player.busted)
+      .slice(0, 4);
+    state = onTableHandCompleted(state, playersToBust[0].tableId, {
+      handIndex: 3,
+      seatResults: playersToBust.map((player) => ({
+        seatIndex: player.seatIndex ?? 0,
+        playerId: player.id,
+        stack: 0,
+        startingStack: player.stack,
+      })),
+    });
+    const headsUpEvent = state.events.find((event) => event.type === "HEADS_UP");
+    const seatedIds = seatedPlayerIds(state);
+
+    expect(state.playersRemaining).toBe(2);
+    expect(activeTableCount(state)).toBe(1);
+    expect(headsUpEvent).toMatchObject({
+      type: "HEADS_UP",
+      playersRemaining: 2,
+      tablesActive: 1,
+    });
+    playersToBust.forEach((player) => {
+      expect(state.players[player.id].busted).toBe(true);
+      expect(seatedIds.has(player.id)).toBe(false);
+    });
+    expect(state.lastEvent).toEqual(headsUpEvent);
+  });
+
+  it("emits MONEY_BUBBLE at four players remaining", () => {
+    let state = bustAlivePlayers(createMTTTournamentState(BASE_CONFIG, entrants), 6, 1);
+    state = bustAlivePlayers(state, 6, 2);
+    state = bustAlivePlayers(state, 2, 3);
+    const bubbleEvent = state.events.find((event) => event.type === "MONEY_BUBBLE");
+
+    expect(state.playersRemaining).toBe(4);
+    expect(bubbleEvent).toMatchObject({
+      type: "MONEY_BUBBLE",
+      playersRemaining: 4,
+      paidPlaces: 3,
+    });
+    expect(state.lastEvent).toEqual(bubbleEvent);
+  });
+
+  it("emits TOP_THREE at three players remaining", () => {
+    let state = bustAlivePlayers(createMTTTournamentState(BASE_CONFIG, entrants), 6, 1);
+    state = bustAlivePlayers(state, 6, 2);
+    state = bustAlivePlayers(state, 2, 3);
+    state = bustAlivePlayers(state, 1, 4);
+    const topThreeEvent = state.events.find((event) => event.type === "TOP_THREE");
+
+    expect(state.playersRemaining).toBe(3);
+    expect(topThreeEvent).toMatchObject({
+      type: "TOP_THREE",
+      playersRemaining: 3,
+    });
+    expect(state.lastEvent).toEqual(topThreeEvent);
+  });
+
   it("balances 14 remaining players across three tables as 5/5/4 instead of leaving a 3-way table", () => {
     let state = createMTTTournamentState(BASE_CONFIG, entrants);
     const playersToBust = Object.values(state.players).slice(0, 4);
@@ -139,6 +535,57 @@ describe("tournamentMTT engine", () => {
       .sort((a, b) => b - a);
     expect(activeCounts).toEqual([5, 5, 4]);
     expect(Math.max(...activeCounts) - Math.min(...activeCounts)).toBeLessThanOrEqual(1);
+  });
+
+  it("preserves playersRemaining and blind progression after CPU bust rebalance", () => {
+    let state = createMTTTournamentState(BASE_CONFIG, entrants);
+    const targetTable = state.tables[0];
+    const cpuSeat = targetTable.seats.find((seat) => seat.playerId !== null);
+    state = onTableHandCompleted(state, targetTable.tableId, {
+      handIndex: 1,
+      seatResults: [
+        {
+          seatIndex: cpuSeat.seatIndex,
+          playerId: cpuSeat.playerId,
+          stack: 0,
+          startingStack: state.players[cpuSeat.playerId].stack,
+        },
+      ],
+    });
+    state = rebalanceTables(state);
+
+    expect(state.totalPlayers).toBe(18);
+    expect(state.playersRemaining).toBe(17);
+    expect(Object.values(state.players).filter((player) => !player.busted)).toHaveLength(17);
+    expect(
+      state.tables
+        .filter((table) => table.isActive)
+        .map((table) => table.seats.filter((seat) => seat.playerId !== null).length)
+        .sort((a, b) => b - a),
+    ).toEqual([6, 6, 5]);
+    expect(state.levelIndex).toBe(0);
+
+    for (let cycle = 0; cycle < 2; cycle += 1) {
+      const activeTableIds = state.tables
+        .filter((table) => table.isActive)
+        .map((table) => table.tableId);
+      activeTableIds.forEach((tableId) => {
+        state = onTableHandCompleted(state, tableId, {
+          handIndex: cycle + 2,
+          seatResults: [],
+        });
+      });
+    }
+
+    expect(state.playersRemaining).toBe(17);
+    expect(state.levelIndex).toBe(1);
+    expect(getCurrentLevel(state).smallBlind).toBe(10);
+    expect(getCurrentLevel(state).bigBlind).toBe(20);
+    state.tables
+      .filter((table) => table.isActive)
+      .forEach((table) => {
+        expect(table.handsPlayedAtThisLevel).toBe(0);
+      });
   });
 
   it("completes the tournament and assigns champion", () => {
@@ -290,6 +737,72 @@ describe("tournamentMTT engine", () => {
     expect(state.players[high.id].busted).toBe(true);
     expect(state.players[high.id].finishPlace).toBeLessThan(state.players[mid.id].finishPlace);
     expect(state.players[mid.id].finishPlace).toBeLessThan(state.players[low.id].finishPlace);
+  });
+
+  it("PLAYERS-REMAINING-001 18 players, 1 bust -> playersRemaining is 17 and never reverts", () => {
+    let state = createMTTTournamentState(BASE_CONFIG, entrants);
+    expect(state.playersRemaining).toBe(18);
+    const targetTable = state.tables[0];
+    const seat = targetTable.seats[0];
+    state = onTableHandCompleted(state, targetTable.tableId, {
+      handIndex: 1,
+      seatResults: [
+        { seatIndex: seat.seatIndex, playerId: seat.playerId, stack: 0, startingStack: 500 },
+      ],
+    });
+    expect(state.playersRemaining).toBe(17);
+    expect(state.players[seat.playerId].busted).toBe(true);
+    // Verify count is not reverted by a no-op hand
+    state = onTableHandCompleted(state, targetTable.tableId, { seatResults: [] });
+    expect(state.playersRemaining).toBe(17);
+  });
+
+  it("PLAYERS-REMAINING-002 18 players, 3 busts -> playersRemaining is 15 and holds", () => {
+    let state = createMTTTournamentState(BASE_CONFIG, entrants);
+    const table = state.tables[0];
+    const bustSeats = table.seats.slice(0, 3);
+    state = onTableHandCompleted(state, table.tableId, {
+      handIndex: 1,
+      seatResults: bustSeats.map((s) => ({
+        seatIndex: s.seatIndex,
+        playerId: s.playerId,
+        stack: 0,
+        startingStack: 500,
+      })),
+    });
+    expect(state.playersRemaining).toBe(15);
+    bustSeats.forEach((s) => expect(state.players[s.playerId].busted).toBe(true));
+    // Background simulation should not revive them
+    const nextState = simulateBackgroundTables(state, table.tableId, { maxHandsPerTable: 1 });
+    expect(nextState.playersRemaining).toBeLessThanOrEqual(15);
+    bustSeats.forEach((s) => expect(nextState.players[s.playerId].busted).toBe(true));
+  });
+
+  it("PLAYERS-REMAINING-003 playersRemaining is stable after rebalance with 15 alive", () => {
+    let state = createMTTTournamentState(BASE_CONFIG, entrants);
+    // Bust 3 players to reach 15
+    const table = state.tables[0];
+    const bustSeats = table.seats.slice(0, 3);
+    state = onTableHandCompleted(state, table.tableId, {
+      handIndex: 1,
+      seatResults: bustSeats.map((s) => ({
+        seatIndex: s.seatIndex,
+        playerId: s.playerId,
+        stack: 0,
+        startingStack: 500,
+      })),
+    });
+    expect(state.playersRemaining).toBe(15);
+    // Explicit rebalance must not change the count
+    state = rebalanceTables(state);
+    expect(state.playersRemaining).toBe(15);
+    const alivePlayers = Object.values(state.players).filter((p) => !p.busted);
+    expect(alivePlayers.length).toBe(15);
+    // busted players must not reappear in any table seat
+    const allSeatedIds = new Set(
+      state.tables.flatMap((t) => t.seats.map((s) => s.playerId).filter(Boolean)),
+    );
+    bustSeats.forEach((s) => expect(allSeatedIds.has(s.playerId)).toBe(false));
   });
 
   it("produces contiguous finish places when tournament completes", () => {

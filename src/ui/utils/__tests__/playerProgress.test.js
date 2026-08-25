@@ -1,11 +1,29 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   computeUnlockState,
+  loadPlayerProgress,
   recordStageWin,
+  resetPlayerProgress,
   updateProgressAfterWorldChampClear,
 } from "../playerProgress.js";
+import { STORAGE_KEYS } from "../../../storage/keys.js";
 
 describe("playerProgress helpers", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  it("loads default player progress through storage fallback", () => {
+    expect(loadPlayerProgress()).toMatchObject({
+      worldChampCleared: false,
+      firstClearTimestamp: null,
+      clearCount: 0,
+      stageWins: { store: 0, local: 0, national: 0, world: 0 },
+      lastUnlockPopupAt: null,
+    });
+  });
+
   it("computes unlock chain with pending steps", () => {
     const unlock = computeUnlockState({
       worldChampCleared: false,
@@ -31,5 +49,48 @@ describe("playerProgress helpers", () => {
     expect(progress.worldChampCleared).toBe(true);
     expect(progress.clearCount).toBeGreaterThan(0);
     expect(typeof isFirstClear).toBe("boolean");
+  });
+
+  it("dispatches player progress changed events", () => {
+    const eventSpy = vi.fn();
+    window.addEventListener("badugi:playerProgress-changed", eventSpy);
+
+    resetPlayerProgress();
+
+    expect(eventSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          stageWins: { store: 0, local: 0, national: 0, world: 0 },
+        }),
+      }),
+    );
+    window.removeEventListener("badugi:playerProgress-changed", eventSpy);
+  });
+
+  it("dispatches world champion unlock events", () => {
+    const eventSpy = vi.fn();
+    window.addEventListener("badugi:worldChampUnlocked", eventSpy);
+
+    updateProgressAfterWorldChampClear();
+
+    expect(eventSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          isFirstClear: true,
+          progress: expect.objectContaining({ worldChampCleared: true }),
+        }),
+      }),
+    );
+    window.removeEventListener("badugi:worldChampUnlocked", eventSpy);
+  });
+
+  it("falls back safely when player progress storage is corrupted", () => {
+    window.localStorage.setItem(STORAGE_KEYS.PLAYER_PROGRESS, "{bad json");
+
+    expect(() => loadPlayerProgress()).not.toThrow();
+    expect(loadPlayerProgress()).toMatchObject({
+      worldChampCleared: false,
+      stageWins: { store: 0, local: 0, national: 0, world: 0 },
+    });
   });
 });

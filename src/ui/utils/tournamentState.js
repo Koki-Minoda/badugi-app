@@ -1,8 +1,11 @@
 import { getStageById, TOURNAMENT_STAGES } from "../../config/tournamentStages";
+import { safeGetItem, safeRemoveItem, safeSetItem } from "../../storage/core.js";
+import { STORAGE_KEYS } from "../../storage/keys.js";
+import { recordCareerTournamentResult } from "../career/careerProfile.js";
 import { recordStageWin, updateProgressAfterWorldChampClear } from "./playerProgress";
 
-const PROGRESS_KEY = "progress.tournament";
-const HISTORY_KEY = "history.tournaments";
+const PROGRESS_KEY = STORAGE_KEYS.TOURNAMENT_PROGRESS;
+const HISTORY_KEY = STORAGE_KEYS.TOURNAMENT_HISTORY;
 
 function randomId(prefix = "tourney") {
   if (typeof globalThis !== "undefined" && globalThis.crypto?.randomUUID) {
@@ -20,64 +23,51 @@ const DEFAULT_PROGRESS = {
     national: 0,
     world: 0,
   },
+  completedTournaments: [],
   lastResult: null,
 };
-
-function hasStorage() {
-  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
-}
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
 export function loadTournamentProgress() {
-  if (!hasStorage()) return clone(DEFAULT_PROGRESS);
-  try {
-    const raw = window.localStorage.getItem(PROGRESS_KEY);
-    if (!raw) return clone(DEFAULT_PROGRESS);
-    const parsed = JSON.parse(raw);
-    return {
-      ...clone(DEFAULT_PROGRESS),
-      ...parsed,
-      wins: { ...clone(DEFAULT_PROGRESS).wins, ...(parsed?.wins ?? {}) },
-    };
-  } catch (err) {
-    console.warn("Failed to load tournament progress:", err);
-    return clone(DEFAULT_PROGRESS);
-  }
+  const parsed = safeGetItem(PROGRESS_KEY, null, { silent: true });
+  if (!parsed) return clone(DEFAULT_PROGRESS);
+  return {
+    ...clone(DEFAULT_PROGRESS),
+    ...parsed,
+    wins: { ...clone(DEFAULT_PROGRESS).wins, ...(parsed?.wins ?? {}) },
+    completedTournaments: Array.isArray(parsed?.completedTournaments)
+      ? parsed.completedTournaments
+      : [],
+  };
 }
 
 export function saveTournamentProgress(progress) {
-  if (!hasStorage()) return progress;
   const next = {
     ...clone(DEFAULT_PROGRESS),
     ...progress,
     wins: { ...clone(DEFAULT_PROGRESS).wins, ...(progress?.wins ?? {}) },
+    completedTournaments: Array.isArray(progress?.completedTournaments)
+      ? progress.completedTournaments
+      : [],
   };
-  window.localStorage.setItem(PROGRESS_KEY, JSON.stringify(next));
+  safeSetItem(PROGRESS_KEY, next, { silent: true });
   return next;
 }
 
 export function resetTournamentProgress() {
-  if (!hasStorage()) return clone(DEFAULT_PROGRESS);
-  window.localStorage.removeItem(PROGRESS_KEY);
+  safeRemoveItem(PROGRESS_KEY, { silent: true });
   return clone(DEFAULT_PROGRESS);
 }
 
 export function getTournamentHistory() {
-  if (!hasStorage()) return [];
-  try {
-    const raw = window.localStorage.getItem(HISTORY_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch (err) {
-    console.warn("Failed to load tournament history:", err);
-    return [];
-  }
+  const history = safeGetItem(HISTORY_KEY, [], { silent: true });
+  return Array.isArray(history) ? history : [];
 }
 
 export function appendTournamentHistory(entry) {
-  if (!hasStorage()) return [];
   const history = getTournamentHistory();
   const next = [
     {
@@ -87,7 +77,7 @@ export function appendTournamentHistory(entry) {
     },
     ...history,
   ].slice(0, 200);
-  window.localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+  safeSetItem(HISTORY_KEY, next, { silent: true });
   return next;
 }
 
@@ -143,7 +133,57 @@ export function deductEntryFee(stageId) {
   return { ok: true, progress: next };
 }
 
-export function applyTournamentResult({ stageId, placement, prize = 0, feedback, reason }) {
+function normalizeCompletedTournamentEntry({
+  variant = "badugi",
+  stage,
+  stageId,
+  finishPlace,
+  placement,
+  tournamentId,
+  completedAt = Date.now(),
+} = {}) {
+  return {
+    variant,
+    stage: stage ?? stageId,
+    finishPlace: Number(finishPlace ?? placement),
+    tournamentId: tournamentId ?? null,
+    completedAt,
+  };
+}
+
+export function recordCompletedTournament(result = {}) {
+  const progress = loadTournamentProgress();
+  const entry = normalizeCompletedTournamentEntry(result);
+  if (!entry.stage || !Number.isFinite(entry.finishPlace)) {
+    return progress;
+  }
+  return saveTournamentProgress({
+    ...progress,
+    completedTournaments: [
+      ...(Array.isArray(progress.completedTournaments)
+        ? progress.completedTournaments
+        : []),
+      entry,
+    ],
+  });
+}
+
+export function applyTournamentResult({
+  stageId,
+  variant = "badugi",
+  placement,
+  prize = 0,
+  feedback,
+  reason,
+  tournamentId = null,
+}) {
+  recordCareerTournamentResult({
+    variant,
+    stageId,
+    finishPlace: placement,
+    prize,
+    tournamentId,
+  });
   const progress = loadTournamentProgress();
   const wins = { ...progress.wins };
   if (placement === 1 && wins[stageId] !== undefined) {
@@ -155,6 +195,7 @@ export function applyTournamentResult({ stageId, placement, prize = 0, feedback,
   }
   const bankroll = Math.max(0, (progress.bankroll ?? 0) + (prize ?? 0));
   const lastResult = {
+    variant,
     stageId,
     placement,
     prize,
@@ -166,9 +207,22 @@ export function applyTournamentResult({ stageId, placement, prize = 0, feedback,
     ...progress,
     wins,
     bankroll,
+    completedTournaments: [
+      ...(Array.isArray(progress.completedTournaments)
+        ? progress.completedTournaments
+        : []),
+      normalizeCompletedTournamentEntry({
+        variant,
+        stageId,
+        finishPlace: placement,
+        tournamentId,
+        completedAt: lastResult.finishedAt,
+      }),
+    ],
     lastResult,
   });
   appendTournamentHistory({
+    variant,
     stageId,
     placement,
     prize,

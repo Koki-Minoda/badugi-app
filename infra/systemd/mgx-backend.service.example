@@ -18,7 +18,7 @@ User=<USER>
 WorkingDirectory=/home/<USER>/badugi-app/backend
 Environment=PYTHONUNBUFFERED=1
 Environment=MGX_LOG_LEVEL=info
-ExecStart=/home/<USER>/badugi-app/backend/.venv/bin/uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --log-level ${MGX_LOG_LEVEL}
+ExecStart=/home/<USER>/badugi-app/backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --log-level ${MGX_LOG_LEVEL}
 Restart=on-failure
 
 [Install]

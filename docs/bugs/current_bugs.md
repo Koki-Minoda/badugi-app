@@ -1,59 +1,67 @@
 ---
-title: Current blocker list
+title: Current bug tracking index
 ---
 
 # Current Bug Index
 
-Last updated: 2026-05-16
+Last updated: 2026-05-26
 
-This file is now a compact index of **currently open or partially guaranteed** issues. Historical Badugi regressions such as SB fold freeze, draw rollback, single-pot side-pot duplication, next-hand button loss, all-in betting actor selection, stale turn metadata, and draw hand rollback are consolidated in `docs/testing/MGX_GAME_PROGRESS_BUGFIX_LEDGER.md` and are covered by automated regression suites.
+This file is now a compact index. The mixed ledger has been split into focused tracking files so release status is visible without losing historical evidence.
 
-## Active / Residual Items
+Primary source before reorganization:
+- `docs/bugs/current_bugs.md` as of 2026-05-20
+- `docs/testing/MGX_GAME_PROGRESS_BUGFIX_LEDGER.md`
+- release/testing/alpha docs and reports referenced by the migrated rows
 
-| ID | Area | Current Status | Priority | Verification / Source | Next Action |
-|---|---|---|---|---|---|
-| `RL-SAFE-03` | Backend QA | Backend full pytest is not green: 32 passed / 4 failed in non-RL Badugi stats and variants API areas. | P2 | `docs/testing/MGX_RL_RESUME_READINESS_REPORT.md` | Fix stats/variant API failures and rerun full backend pytest. |
-| `MIX-PROG-06` | RL / 8-10Game | PLO/Stud/Razz real hand-history EV / position / showdown gate is not yet built. | P2 | `docs/badugi_rl_and_variant_status.md` | Add real-log EV gate before promoting board/stud RL tiers. |
-| `EV-GUARD-06` | EV integrity | Board/Omaha/Stud terminal evaluator replay against real hand history is still open. | P2 | `docs/testing/MGX_EV_INTEGRITY_REPORT.md` | Replay terminal hands and compare evaluator winner/result. |
-| `EV-GUARD-07` | EV integrity | Strict chip conservation is not yet enabled for every controller because terminal pot echo differs by controller. | P2 | `docs/testing/MGX_EV_INTEGRITY_REPORT.md` | Normalize terminal snapshots and enable strict conservation. |
-| `EV-GUARD-08` | Split pot | Odd-chip policy is deterministic but not yet aligned to every TDA/variant-specific position rule. | P2 | `docs/testing/MGX_EV_INTEGRITY_REPORT.md` | Define per-variant odd-chip policy and add fixtures. |
-| `BADUGI-ALPHA-01` | Badugi browser progression | Fixed in the alpha hardening sprint: full 3-draw browser flow now reaches `Hand Result` with the preview flag enabled. Keep as monitor until manual preview QA. | P2 | `tests/e2e/badugi-flow.spec.ts` full 3-draw regression PASS | Keep Badugi `preview_only` until manual browser/mobile QA confirms the fix outside CI. |
-| `BADUGI-ALPHA-02` | Badugi pot display | Fixed: active-hand pot now falls back to controller `totalInvested` when street bets reset and explicit pots are not present. | P2 | `src/ui/__tests__/badugiPotSnapshotMerge.test.jsx`; `tests/e2e/badugi-full-round-pot-regression.spec.ts` PASS | Monitor in preview deploy; do not promote Badugi to friend-alpha playable yet. |
-| `BADUGI-ALPHA-03` | Badugi actor election | Fixed/covered: canonical controller `nextTurn` wins over stale metadata and no-next-alive path transitions instead of re-electing checked Hero. | P2 | `src/ui/__tests__/badugiTurnSnapshotMerge.test.jsx`; `src/games/badugi/__tests__/badugiNoNextAliveRegression.test.js` PASS | Keep regression in alpha gate. |
-| `TEST-GAP-ALPHA-01` | Test coverage | Closed for the immediate Badugi P0 class: browser pot continuity, snapshot pot merge, stale turn merge, and no-next-alive regressions now have tests. | P2 | `docs/testing/MGX_ALPHA_TEST_COVERAGE_GAP_AUDIT.md` | Remaining gap is real-device mobile/manual QA. |
-| `PREVIEW-DEPLOY-01` | Deploy readiness | Preview deploy completed from a clean snapshot after stashing unrelated Step59-65 files. Remaining risk is branch not pushed and physical mobile QA pending. | P2 | `docs/deploy/MGX_ALPHA_PREVIEW_DEPLOY_CHECK.md` | Push or otherwise preserve the deployed commits before wider sharing. |
-| `PREVIEW-DEPLOY-02` | Remote sync | Local branch is ahead of origin and HTTPS dry-run push is blocked by missing credentials; `gh` CLI is not installed in this environment. | P1 | `docs/deploy/MGX_ALPHA_REMOTE_SYNC_STATUS.md` | Configure GitHub CLI, SSH, or a credential helper outside logs, then push the deployed commits. |
-| `ALPHA-SCOPE-01` | Variant availability | Friend alpha variant gate is now required: D02/S01/S02 playable, Badugi/board/stud/dramaha preview-only, Chinese/OFC coming soon. | P1 | `docs/alpha/MGX_ALPHA_VARIANT_AVAILABILITY_AUDIT.md`; `docs/alpha/MGX_ALPHA_FRIEND_LAUNCH_SCOPE.md` | Keep gate enabled until each variant clears its blocker list. |
-| `ALPHA-MOBILE-01` | Mobile gameplay layout | Fixed/covered in emulation: D02/S01/S02 controls fit 390x844, 430x932, and 844x390, with one-hand result reachability on 390x844. | P2 | `docs/alpha/MGX_ALPHA_PLAYABLE_MOBILE_EMULATION_SMOKE.md`; `tests/e2e/alpha-playable-variants-smoke.spec.ts`; `tests/e2e/alpha-mobile-gameplay-layout.spec.ts` PASS | Keep monitoring during physical mobile QA. |
-| `PV90-16` | Badugi E2E fixture | Full 3-draw E2E is green again, but still depends on preview launch gating and should stay in the alpha gate. | P2 | `tests/e2e/badugi-flow.spec.ts` PASS | Keep fixed-stack/no-all-in coverage on the deploy checklist. |
-| `DRAW-NAT-01` | Draw UI E2E | Natural Draw#1-#3 UI path reaches result locally and on the deployed preview desktop smoke. Mobile full-hand gameplay is still pending. | P2 | `tests/e2e/badugi-flow.spec.ts`; `tests/e2e/badugi-full-round-pot-regression.spec.ts`; `docs/alpha/MGX_BADUGI_ALPHA_AVAILABILITY_DECISION.md` | Keep Badugi `preview_only` until mobile full-hand QA passes. |
-| `HIST-REG-06` | History / Replay | Chinese/OFC history/replay smoke is separate from the 35 betting/draw variants and remains incomplete. | P3 | `docs/badugi_rl_and_variant_status.md` | Add CP1/OFC handId/action/result/replay frame smoke. |
-| `FB-REG-06-MANUAL` | Feedback | Feedback variant separation and replay links are unit-tested; real OpenAI-key manual quality check is still pending. | P3 | `docs/testing/MGX_GAME_PROGRESS_BUGFIX_LEDGER.md` | Run production-like 30+ hand feedback checks per variant. |
-| `CHINESE-03` | Chinese / OFC | CP1 controller smoke passes, but OFC street-by-street and fantasyland are not fully playable/verified. | P3 | `docs/testing/MGX_VARIANT_FAMILY_COVERAGE_REPORT.md` | Implement/verify OFC street progression and fantasyland. |
-| `CAP-NAT-01` | Fixed-limit cap | FLH/FLO8/Stud cap UI E2E passes; CPU-natural cap long-run smoke remains open. | P3 | `docs/badugi_rl_and_variant_status.md` | Add long-run CPU cap arrival and post-cap continuation smoke. |
-| `BG-005` | Mobile manual QA | Playwright mobile emulation passes for alpha variant gate, dashboard preview, and D02/S01/S02 gameplay controls. Physical device QA remains incomplete. | P1 | `docs/alpha/MGX_ALPHA_MOBILE_MANUAL_QA.md`; `docs/alpha/MGX_ALPHA_PHYSICAL_MOBILE_QA_CHECKLIST.md` | Run real Android/iOS QA before external friend alpha. |
+## Friend Alpha Status
 
-## Quantitative Snapshot
+Status: HOLD
 
-| Area | Current Estimate | Basis | Main Gap |
-|---|---:|---|---|
-| Game implementation | 84% | 36 variants are reachable/playable enough for one-hand controller tests; Chinese/OFC and special/mixed polish remain. | OFC/fantasyland, Dramaha/split result UX depth. |
-| Progression guarantee | 84% | Controller, one-hand, EV, safety gates, and targeted Badugi browser full-flow regressions pass. | Manual preview/mobile QA and broader long-run browser coverage. |
-| UI/UX completion | 68% | Core table UI improved, mobile landscape exists, Stud up/down and HUD improved. | Friend/manual polish, result clarity for split games, real phone QA. |
-| History/replay | 86% | 35 playable variants have replay smoke; feedback replay links are covered. | Chinese/OFC replay and richer frame semantics. |
-| Feedback pipeline | 70% | Variant selection, 30-hand gate, replay links are tested. | Real OpenAI-key output quality and latency checks. |
-| RL safety | 82% | 96-dim gates, transition validator, EV reward guard, clean-dataset requirement exist. | Backend full pytest and real hand-history EV gates. |
-| RL strength | 58% | 10-Game Beginner/Standard routing and entrypoints exist. | Long-run training/evaluation, Pro/Iron/WorldMaster promotion gates. |
+Blocking reasons:
+- Active P0/P1 rows remain in `ACTIVE_BLOCKERS.md`.
+- Physical mobile proof is still missing for required iPhone/PWA/Android rows in `PHYSICAL_QA_PENDING.md`.
+- Remote sync is still unresolved.
+- CPU decision-source / nit-passive quality rows still need targeted deployed-session evidence.
 
-## Historical Archive
+## New Tracking Files
 
-The old entries that previously lived here are no longer considered active blockers:
+| File | Purpose |
+|---|---|
+| `docs/bugs/ACTIVE_BLOCKERS.md` | Actual unresolved P0/P1 release blockers and user-visible failures. |
+| `docs/bugs/PHYSICAL_QA_PENDING.md` | Rows that cannot be closed from Playwright emulation alone. |
+| `docs/bugs/VERIFIED_MONITORS.md` | Fixed/covered rows intentionally retained in regression gates. |
+| `docs/bugs/AUDIT_FINDINGS.md` | Spec, semantics, evidence, expected-fail, and non-blocking correctness gaps. |
+| `docs/bugs/RELEASE_GATES.md` | Mandatory friend-alpha GO gates. Not a bug list. |
+| `docs/bugs/HISTORICAL_ARCHIVE.md` | Readable archive of resolved historical regressions; detailed ledger remains in `docs/testing/MGX_GAME_PROGRESS_BUGFIX_LEDGER.md`. |
 
-- SB fold did not hand turn to BB/UTG.
-- Stale `metadata.actingPlayerIndex` overrode the real actor.
-- All-in seats were selected for betting action.
-- Draw round / hand rollback after card exchange.
-- Single-pot results rendered fake side-pot blocks.
-- Result overlay blocked next-hand controls.
+## Summary Counts
 
-Regression coverage for these is tracked in `docs/testing/MGX_GAME_PROGRESS_BUGFIX_LEDGER.md`.
+Counts are based on the 95 table rows from the old `current_bugs.md`.
+
+| Category | Primary row count | Notes |
+|---|---:|---|
+| Active blockers | 6 primary active-only rows; 22 active blocker entries total | 16 physical QA rows are also listed as active blockers because they block friend alpha. |
+| Physical QA pending | 28 | Primary owner for real-device proof rows. |
+| Verified monitors | 47 | Fixed/covered or release-gate monitor rows. |
+| Audit findings | 14 | Non-blocking spec/evidence/semantics gaps. |
+| Historical archive | 0 current table rows; 6 historical groups | Historical evidence preserved in archive plus `MGX_GAME_PROGRESS_BUGFIX_LEDGER.md`. |
+
+Primary classification total: 95 rows.
+
+## Primary Classification Map
+
+| Category | IDs |
+|---|---|
+| Active blockers | `PREVIEW-DEPLOY-02`, `UI-REPLAY-READABILITY-001`, `CORE5-CPU-FOLD-001`, `BADUGI-CPU-VALUE-BET-001`, `CPU-TOO-NIT-001`, `MEANINGFUL-DECISION-001` |
+| Physical QA pending | `BADUGI-BET-DRAW-TRANSITION-001`, `BADUGI-DRAW1-CPU-ACTION-001`, `BADUGI-HAND-SHAPE-001`, `BADUGI-FOLD-DRAW-FREEZE-001`, `PHYSICAL-MOBILE-BADUGI-WAITING-001`, `TOUR-SEAT-LIFECYCLE-001`, `UI-MOBILE-TOURNAMENT-LANDSCAPE-001`, `UI-MOBILE-TABLE-DENSITY-001`, `UI-MOBILE-HUD-OVERLAY-001`, `UI-MOBILE-LANDSCAPE-CONTROLS-001`, `UI-MOBILE-LAYOUT-MODE-001`, `BADUGI-CASH-OPENING-ACTOR-001`, `BADUGI-DRAW-BET-MIX-001`, `CROSS-VARIANT-STATE-001`, `D01-BLIND-POSTING-001`, `DRAW-OPENING-ACTOR-001`, `ALPHA-MOBILE-01`, `UI-CORE5-003`, `CORE5-UI-TOURNAMENT-001`, `CORE5-UI-TOURNAMENT-002`, `CORE5-MOBILE-BROWSER-001`, `CORE5-UI-CONTROLS-001`, `TD-ALPHA-02`, `DRAW-NAT-01`, `CORE5-BET-CAP-001`, `CORE5-DRAW-FELT-001`, `UI-POSITION-CLARITY-001`, `BG-005` |
+| Verified monitors | `BADUGI-ALPHA-01`, `BADUGI-ALPHA-02`, `BADUGI-ALPHA-03`, `BADUGI-ALPHA-04`, `BADUGI-PROG-001`, `BADUGI-BET-REOPEN-001`, `CORE5-PHASE-MACHINE-001`, `CORE5-IMPOSSIBLE-TRANSITION-001`, `CORE5-DRAW-BET-MIX-001`, `CORE5-STALE-PHASE-MERGE-001`, `BADUGI-PROG-002`, `TEST-GAP-ALPHA-01`, `PREVIEW-DEPLOY-01`, `DEPLOY-LIVE-001`, `ALPHA-SCOPE-01`, `CORE5-ACTOR-001`, `CORE5-ORDER-LIVE-001`, `CORE5-ORIENT-001`, `CORE5-LIFECYCLE-001`, `TOUR-INTEGRATION-001`, `UI-CORE5-001`, `UI-CORE5-002`, `CORE5-UI-LIVE-001`, `CORE5-TOUR-LIVE-001`, `BROWSER-GAMEPLAY-001`, `CORE5-BROWSER-ACTOR-001`, `CORE5-BROWSER-TERMINAL-001`, `CORE5-BROWSER-POT-001`, `BROWSER-SOAK-001`, `CORE5-BROWSER-MATRIX-001`, `CORE5-BROWSER-DRAW-001`, `CORE5-BROWSER-RUNTIME-001`, `CORE5-BROWSER-TERMINAL-COLLECT-001`, `CORE5-BROWSER-HELPER-001`, `CORE5-UI-POT-001`, `TD-ALPHA-01`, `27TD-PROG-001`, `A5TD-PROG-001`, `SD-POT-001`, `27SD-PROG-001`, `A5SD-PROG-001`, `CORE5-ALLIN-VISIBILITY-001`, `PV90-16`, `UI-ACTION-VISIBILITY-001`, `TOURNAMENT-STRUCTURE-001`, `HU-ENDLESS-001`, `CORE5-LONG-SOAK-001` |
+| Audit findings | `RL-SAFE-03`, `MIX-PROG-06`, `EV-GUARD-06`, `EV-GUARD-07`, `EV-GUARD-08`, `27TD-PROG-002`, `A5TD-PROG-002`, `SD-PROG-002`, `HIST-REG-06`, `FB-REG-06-MANUAL`, `CHINESE-03`, `CORE5-CPU-TELEMETRY-001`, `UI-MOBILE-ERGONOMICS-001`, `CAP-NAT-01` |
+| Historical archive | No primary current table rows. Historical groups are summarized in `HISTORICAL_ARCHIVE.md` and detailed in `MGX_GAME_PROGRESS_BUGFIX_LEDGER.md`. |
+
+## Duplication Rule
+
+Rows in `PHYSICAL_QA_PENDING.md` may also appear in `ACTIVE_BLOCKERS.md` when they still block friend alpha. In that case:
+- `PHYSICAL_QA_PENDING.md` owns closure evidence.
+- `ACTIVE_BLOCKERS.md` explains release impact and next action.
+
+No row should be silently downgraded. Do not move a row out of its owner file unless the required evidence is attached.

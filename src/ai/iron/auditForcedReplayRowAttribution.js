@@ -28,12 +28,9 @@ export function summarizeForcedReplayRowAttribution({ arena = {}, preexportRows 
   let hitCount = 0;
   let exactOpportunityCount = 0;
   let fallbackCount = 0;
-  let actionCount = 0;
   for (const result of arena.results ?? []) {
     hitCount += sumDistribution(result.bucketHitDistribution ?? {}, buckets);
     exactOpportunityCount += sumDistribution(result.candidateBucketObservations ?? {}, buckets);
-    actionCount += Number(result.ironActionSourceBreakdown?.["dataset-hit"] ?? 0);
-    actionCount += Number(result.ironActionSourceBreakdown?.["pro-fallback"] ?? 0);
     for (const bucket of buckets) {
       const reasons = result.fallbackReasonByBucket?.[bucket] ?? {};
       fallbackCount += Object.values(reasons).reduce((sum, value) => sum + Number(value ?? 0), 0);

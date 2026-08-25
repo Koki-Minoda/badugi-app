@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getCpuCharacterById,
   getCpuCharacterByName,
   getCpuCharacterForIndex,
   getCpuDisplayName,
@@ -20,5 +21,13 @@ describe("cpuRoster", () => {
   it("resolves roster avatar metadata by display name for UI fallback", () => {
     expect(getCpuCharacterByName("Sora")?.avatarUrl).toBe("/characters/sora.png");
     expect(getCpuCharacterByName("unknown")).toBeNull();
+  });
+
+  it("resolves roster metadata by stable id", () => {
+    expect(getCpuCharacterById("mina")).toMatchObject({
+      name: "Mina",
+      style: "tight-aggressive",
+    });
+    expect(getCpuCharacterById("unknown")).toBeNull();
   });
 });

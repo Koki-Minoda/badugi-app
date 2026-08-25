@@ -6,7 +6,8 @@ description = "Backend skeleton for Badugi multi-game app"
 authors = [{ name = "Badugi Dev" }]
 requires-python = ">=3.10"
 dependencies = [
-    "fastapi>=0.110.0",
+    "fastapi>=0.115.14,<0.116",
+    "alembic>=1.13,<2.0",
     "pydantic-settings>=2.0.0",
     "email-validator>=2.0.0",
     "uvicorn[standard]>=0.27.0",
@@ -16,6 +17,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "python-jose>=3.3.0",
     "passlib[bcrypt]>=1.7.4",
+    "bcrypt>=4.0,<4.1",
 ]
 
 [project.optional-dependencies]

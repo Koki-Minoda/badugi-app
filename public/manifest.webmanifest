@@ -1,0 +1,25 @@
+{
+  "name": "MGX - Mixed Game eXperience",
+  "short_name": "MGX",
+  "description": "Mixed Game eXperience poker preview",
+  "start_url": "/?mgxQa=mobile",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/mgx_favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/mgx_favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

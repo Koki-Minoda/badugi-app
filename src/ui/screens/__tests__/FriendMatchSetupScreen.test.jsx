@@ -204,6 +204,7 @@ describe("FriendMatchSetupScreen", () => {
     render(<FriendMatchSetupScreen language="en" />);
     fireEvent.click(screen.getByRole("button", { name: /create room/i }));
     expect(await screen.findByText(/room created/i)).toBeTruthy();
+    await waitFor(() => expect(sockets).toHaveLength(1));
 
     await act(async () => {
       sockets[0].listeners.error();

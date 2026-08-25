@@ -9,7 +9,9 @@ export const PREVIEW_VARIANTS_STORAGE_KEY = "mgx.previewVariants";
 export const ALPHA_ONLY_VARIANTS_STORAGE_KEY = "mgx.alphaOnlyVariants";
 
 const ALPHA_REASON =
-  "Core draw-game flow is enabled for friend alpha while Badugi blockers are isolated.";
+  "Core draw-game flow is enabled for friend alpha.";
+const BADUGI_ALPHA_REASON =
+  "Core MGX alpha game; automated progression, pot, terminal, orientation gates passed.";
 const PREVIEW_REASON =
   "Playable for development review, but long-run natural UI, mobile, replay, or split-result coverage is not alpha-ready.";
 
@@ -71,10 +73,14 @@ const comingSoon = (label, reason, blockers = []) =>
   });
 
 export const VARIANT_AVAILABILITY = Object.freeze({
-  badugi: preview("Badugi", "Round progression and pot display regression are under investigation.", [
-    "BADUGI-ALPHA-01",
-    "BADUGI-ALPHA-02",
-  ]),
+  badugi: makeEntry({
+    availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
+    label: "Badugi",
+    statusLabel: "Alpha",
+    statusLabelJa: "Alpha",
+    reason: BADUGI_ALPHA_REASON,
+    requiredBeforeAlpha: [],
+  }),
   nlh: preview("No-Limit Hold'em"),
   flh: preview("Fixed-Limit Hold'em"),
   super_holdem: preview("NL Super Hold'em"),
@@ -96,7 +102,7 @@ export const VARIANT_AVAILABILITY = Object.freeze({
   five_card_plo: preview("5-Card PLO", "Five-card Omaha flow exists, but mobile/replay/EV gates are not alpha-ready.", [
     "EV-GUARD-06",
   ]),
-  deuce_to_seven_triple_draw: preview("2-7 Triple Draw", "D01 remains excluded from Iron teacher/RL paths and is not friend-alpha selectable."),
+  deuce_to_seven_triple_draw: alpha("2-7 Triple Draw"),
   ace_to_five_triple_draw: alpha("A-5 Triple Draw"),
   badeucey_triple_draw: preview("Badeucey TD", "Split draw flow exists, but split-result/replay/mobile coverage is not alpha-ready."),
   badacey_triple_draw: preview("Badacey TD", "Split draw flow exists, but split-result/replay/mobile coverage is not alpha-ready."),
@@ -276,4 +282,3 @@ export function listVariantAvailability() {
     .sort()
     .map((key) => ({ key, ...VARIANT_AVAILABILITY[key] }));
 }
-

@@ -1,5 +1,7 @@
 const STORAGE_KEY = "rl_hand_histories_v1";
 const HUMAN_BENCHMARK_STORAGE_KEY = "badugi_human_benchmark_logs_v1";
+const MAX_RL_RECORDS = 200;
+const MAX_HUMAN_BENCHMARK_RECORDS = 500;
 const HUMAN_BENCHMARK_SCHEMA_VERSION = "human-benchmark-v1";
 
 function getStorage() {
@@ -25,10 +27,24 @@ function readJsonlStorage(key) {
 function appendJsonlStorage(key, record) {
   const storage = getStorage();
   if (!storage) return;
-  const existing = storage.getItem(key);
+  const maxRecords = key === STORAGE_KEY ? MAX_RL_RECORDS : MAX_HUMAN_BENCHMARK_RECORDS;
   const line = JSON.stringify(record);
-  const payload = existing && existing.length ? `${existing}\n${line}` : line;
-  storage.setItem(key, payload);
+  const existing = storage.getItem(key) ?? "";
+  const lines = existing ? existing.split("\n").filter(Boolean) : [];
+  lines.push(line);
+  const trimmed = lines.slice(-maxRecords).join("\n");
+  try {
+    storage.setItem(key, trimmed);
+  } catch (e) {
+    if (e?.name === "QuotaExceededError" || e?.code === 22) {
+      const half = lines.slice(-Math.floor(maxRecords / 2)).join("\n");
+      try {
+        storage.setItem(key, half);
+      } catch {
+        /* skip silently */
+      }
+    }
+  }
 }
 
 function normalizeVariantId(record) {

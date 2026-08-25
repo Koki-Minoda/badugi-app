@@ -84,15 +84,29 @@ describe("fixed-limit betting constraints (engine source of truth)", () => {
       }),
     ).toThrow();
 
-    const unlimitedByDefault = baseState({
+    const defaultCapped = baseState({
       metadata: {
         raiseCap: getFixedLimitRaiseCap(undefined),
-        raiseCountThisRound: 8,
+        raiseCountThisRound: 4,
       },
     });
-    expect(unlimitedByDefault.metadata.raiseCap).toBe(null);
+    expect(defaultCapped.metadata.raiseCap).toBe(4);
     expect(() =>
-      engine.applyPlayerAction(unlimitedByDefault, {
+      engine.applyPlayerAction(defaultCapped, {
+        seatIndex: 0,
+        type: "RAISE",
+        metadata: { amount: 40 },
+      }),
+    ).toThrow();
+
+    const underDefaultCap = baseState({
+      metadata: {
+        raiseCap: getFixedLimitRaiseCap(undefined),
+        raiseCountThisRound: 3,
+      },
+    });
+    expect(() =>
+      engine.applyPlayerAction(underDefaultCap, {
         seatIndex: 0,
         type: "RAISE",
         metadata: { amount: 40 },

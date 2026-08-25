@@ -19,7 +19,7 @@ export function runDrawRound({
   onActionLog = () => {},
 }) {
   if (!Array.isArray(players)) return;
-  console.log(`[TRACE ${new Date().toISOString()}] runDrawRound START turn=${turn}, drawRound=${drawRound}`);
+  debugLog("[DRAW][TRACE]", `runDrawRound START turn=${turn}, drawRound=${drawRound}`);
   const actor = players[turn];
   if (!actor || actor.folded || actor.seatOut || actor.hasDrawn) {
     const nxt = findNextActorSeatForPhase({
@@ -157,7 +157,7 @@ export function runDrawRound({
     debugLog(`[DRAW] All active players have drawn (round=${drawRound}).`);
   }
 
-  console.log(`[TRACE ${new Date().toISOString()}] runDrawRound END turn=${turn}`);
+  debugLog("[DRAW][TRACE]", `runDrawRound END turn=${turn}`);
 }
 
 export function runDrawRoundSafe(options) {

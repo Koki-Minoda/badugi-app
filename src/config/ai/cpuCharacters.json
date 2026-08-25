@@ -1,20 +1,29 @@
 [
   {
+    "id": "badugi-sixmax-standard-ryo",
+    "label": "Ryo",
+    "variantIds": ["D03"],
+    "tierId": "standard",
+    "modelId": "model-badugi-sixmax-standard-dqn-v2",
+    "style": "pat-pressure",
+    "notes": "Badugi Standard six-max v2 fold-margin checkpoint. Clean eval PASS; Standard tier only."
+  },
+  {
     "id": "badugi-standard-reader",
     "label": "Reading Standard",
     "variantIds": ["D03"],
     "tierId": "standard",
-    "modelId": "model-badugi-standard-dqn-v3",
+    "modelId": "model-badugi-sixmax-standard-dqn-v2",
     "style": "opponent-reading",
-    "notes": "Current standard-strength Badugi CPU trained with 6-max teacher replay, first-in value betting, and profitable continue support. Not promoted to Pro because min reward stability is still below Pro v1."
+    "notes": "Routes to the shared Badugi Standard six-max v2 base model; opponent-reading behavior is applied as character style metadata."
   },
   {
     "id": "badugi-standard-balanced",
     "label": "Balanced Standard",
     "variantIds": ["D03"],
     "tierId": "standard",
-    "modelId": "model-badugi-standard-dqn-v3",
+    "modelId": "model-badugi-sixmax-standard-dqn-v2",
     "style": "baseline-balanced",
-    "notes": "Routes to the current standard DQN. Older v1/v2 models are retained only for offline comparison and rollback."
+    "notes": "Routes to the shared Badugi Standard six-max v2 base model. Older v1/v2/v3 and six-max 1M models are retained only for offline comparison and rollback."
   }
 ]

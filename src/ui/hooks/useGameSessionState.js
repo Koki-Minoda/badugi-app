@@ -29,6 +29,8 @@ function normalizeSnapshot(snapshot = {}) {
       ? snapshot.nextTurn
       : typeof snapshot.turn === "number"
       ? snapshot.turn
+      : typeof snapshot.currentActor === "number"
+      ? snapshot.currentActor
       : typeof metadata.actingPlayerIndex === "number"
       ? metadata.actingPlayerIndex
       : null;
@@ -38,6 +40,7 @@ function normalizeSnapshot(snapshot = {}) {
     dealerSeat:
       snapshot.dealerSeat ??
       snapshot.dealerIdx ??
+      snapshot.dealerIndex ??
       metadata.dealerSeat ??
       null,
     heroSeat: snapshot.heroSeat ?? null,

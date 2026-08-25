@@ -46,7 +46,7 @@ export class BadugiGameController {
       sbIndex: null,
       bbIndex: null,
       raiseCountThisRound: 0,
-      raiseCap: null,
+      raiseCap: 4,
     };
   }
 
@@ -73,7 +73,7 @@ export class BadugiGameController {
       ...this.state,
       ...partial,
       raiseCountThisRound: Math.max(0, Number(nextRaiseCount) || 0),
-      raiseCap: nextRaiseCap ?? null,
+      raiseCap: nextRaiseCap ?? 4,
     };
   }
 
@@ -132,6 +132,19 @@ export class BadugiGameController {
     this.state.phase = "BET";
     this.state.lastHandResult = null;
     this.state.raiseCountThisRound = 0;
+    this.state.metadata = {
+      ...(this.state.metadata ?? {}),
+      currentBet: nextHandState.initialCurrentBet ?? 0,
+      betHead: nextHandState.resolvedTurn,
+      lastAggressor: nextHandState.bbIdx ?? null,
+      actingPlayerIndex: nextHandState.resolvedTurn,
+      buttonSeat: nextDealerIdx,
+      sbSeat: nextHandState.sbIdx ?? null,
+      bbSeat: nextHandState.bbIdx ?? null,
+      phase: "BET",
+      drawRound: 0,
+      betRoundIndex: 0,
+    };
     this.config.betSize = nextHandState.blindValues?.bb ?? this.config.betSize;
 
     return { ...nextHandState };

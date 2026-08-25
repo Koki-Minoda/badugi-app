@@ -10,24 +10,18 @@ Source artifacts:
 
 | Corpus | Tag | Samples | Valid Replays | Invalid Replays | Notes |
 | ------ | --- | ------: | ------------: | --------------: | ----- |
-| Historical | `step4w` | 14884 | 10000 | 0 | Step4-W baseline corpus |
-| Fresh | `step4w` | 14884 | 10000 | 0 | Live post-patch Step4-X policy corpus |
+| Historical | `step4w` | 112 | 8 | 0 | Step4-W baseline corpus |
+| Fresh | `step4w` | 112 | 8 | 0 | Live post-patch Step4-X policy corpus |
 | Postpatch tag presence | `step4x` | 0 | n/a | n/a | Dedicated Step4-X replay tag does not exist; fresh Step4-Y corpus is the current post-patch source of truth |
 
 ## Bucket Comparison
 
 | Bucket | Historical Count | Fresh Count | Historical Delta | Fresh Delta | Status |
 | ------ | ---------------: | ----------: | ---------------: | ----------: | ------ |
-| D02 `mediumA5 small-pressure` | 0 | 0 | -16.67 | -16.67 | `NOISY` |
-| D02 `premiumA5 value spots` | 10 | 10 | 0 | 0 | `NOISY` |
-| D02 `strongA5 second-pressure` | 47 | 47 | -232.98 | -232.98 | `STABLE` |
-| D02 `trashA5 FOLD/CALL verify` | 3444 | 3444 | -4.79 | -4.79 | `NOISY` |
-| S01 `strongSD27 top-end pressure` | 51 | 51 | n/a | n/a | `NOISY` |
-| S01 `trashSD27 FOLD/CALL verify` | 5667 | 5667 | n/a | n/a | `NOISY` |
-| S01 `upperMediumSD27 small-pressure` | 12 | 12 | n/a | n/a | `NOISY` |
-| S02 `premiumSDA5 CALL/RAISE` | 25 | 25 | n/a | n/a | `NOISY` |
-| S02 `strongSDA5 CALL/FOLD/RAISE` | 60 | 60 | n/a | n/a | `NOISY` |
-| S02 `trashSDA5 FOLD/CALL verify` | 5568 | 5568 | n/a | n/a | `NOISY` |
+| D02 `strongA5 second-pressure` | 1 | 1 | -345 | -345 | `NOISY` |
+| D02 `trashA5 FOLD/CALL verify` | 40 | 40 | n/a | n/a | `NOISY` |
+| S01 `trashSD27 FOLD/CALL verify` | 33 | 33 | n/a | n/a | `NOISY` |
+| S02 `trashSDA5 FOLD/CALL verify` | 38 | 38 | n/a | n/a | `NOISY` |
 
 ## Notes
 

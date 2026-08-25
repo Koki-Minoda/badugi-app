@@ -145,6 +145,44 @@ def compare_lowball(left: Sequence[Card], right: Sequence[Card], family: DrawFam
     return 0
 
 
+def _must_discard_rank(rank: int, family: DrawFamily) -> bool:
+    """True when a card is so high it should always be discarded in draw lowball.
+
+    In low-27, aces (rank 14) and tens-or-higher are unplayable without a draw.
+    In low-a5, ace counts as 1 (excellent). Ranks 6-8 are part of strong made lows
+    (6-low through 8-low) and must NOT be force-discarded. Only effective rank 9+
+    warrants a mandatory discard; 6/7/8 in a made low should be patted.
+    """
+    if family == "low-27":
+        return rank >= 10
+    eff = 1 if rank == 14 else rank
+    return eff > 8
+
+
+def _draw_adjusted_strength(hand: Sequence[Card], family: DrawFamily, features: LowballFeatures) -> float:
+    """Betting strength accounting for planned discards of high-rank or flush cards."""
+    bad_indexes = [i for i, (r, _s) in enumerate(hand) if _must_discard_rank(r, family)]
+    if not bad_indexes:
+        # No rank issues.  For a full flush in 2-7, the 5-card strength carries a
+        # heavy penalty but the hand has real draw equity (draw 1 to break the flush).
+        # Boost eff toward the expected non-flush equity so teacher doesn't always fold.
+        if family == "low-27" and features.flush:
+            non_flush_ranks = sorted(r for r, _s in hand)
+            # Treat as a non-flush hand with the same ranks to estimate draw target.
+            target_feat = evaluate_lowball(
+                [(r, i) for i, r in enumerate(non_flush_ranks)], family
+            )
+            draw_discount = 0.75  # drawing 1 card, ~74% chance of non-flush draw
+            return target_feat.strength * draw_discount
+        return features.strength
+    keep = [card for i, card in enumerate(hand) if i not in bad_indexes]
+    if not keep:
+        return 0.0
+    keep_features = evaluate_lowball(keep, family)
+    draw_discount = max(0.35, 1.0 - len(bad_indexes) * 0.15)
+    return keep_features.strength * draw_discount
+
+
 def discard_indexes_for_family(hand: Sequence[Card], family: DrawFamily, target_count: int | None = None) -> list[int]:
     features = evaluate_lowball(hand, family)
     if target_count == 0:
@@ -168,6 +206,13 @@ def discard_indexes_for_family(hand: Sequence[Card], family: DrawFamily, target_
         if best_keep and best_keep[0] > 0:
             break
     keep = set(best_keep[2] if best_keep else ())
+    # Always drop very high cards remaining in keep (ranks 10+ in 2-7; eff-rank 6+ in A-5).
+    # This runs regardless of whether structural discards were already found so that
+    # hands like K-K-8-5-2 discard BOTH kings (structural removes one, rank removes the other)
+    # and BET/DRAW teacher decisions stay consistent.
+    for i in list(keep):
+        if _must_discard_rank(hand[i][0], family):
+            keep.discard(i)
     discards = [index for index in range(len(hand)) if index not in keep]
     if target_count is not None:
         if len(discards) > target_count:
@@ -209,6 +254,9 @@ class DrawLowballEnv(gym.Env):
         self.action_space = spaces.Discrete(len(DRAW_ACTIONS))
         self.starting_stack = 100
         self.small_bet = 2
+        # Populated in reset(); declared here so attribute always exists.
+        self.hero_is_button: bool = True
+        self.opp_last_draw_count: int = 0
         self.reset()
 
     def set_opponent_profile(self, profile: str):
@@ -231,6 +279,22 @@ class DrawLowballEnv(gym.Env):
         self.current_bet = 2
         self.hero_bet = 1
         self.opp_bet = 2
+        self.hero_is_button = self.random.random() < 0.5
+        # Opponent draw/bet history.
+        self.opp_last_draw_count: int = 0
+        self.opp_draw_history: list[int] = [0, 0, 0]
+        self.opp_total_draws: int = 0
+        self.opp_opened_current_round: bool = False
+        self.opp_bet_history: list[bool] = [False, False, False]
+        # Hero draw/bet history (v2: used for action-history features).
+        self.hero_last_draw_count: int = 0
+        self.hero_draw_history: list[int] = [0, 0, 0]
+        self.hero_total_draws: int = 0
+        self.hero_opened_current_round: bool = False
+        self.hero_bet_history: list[bool] = [False, False, False]
+        self.hero_raised_predraw: bool = False
+        # Dead card tracking: cards hero discarded across all draw rounds.
+        self.hero_discarded_cards: list[Card] = []
         return self._observation(), {}
 
     def legal_action_mask(self):
@@ -270,6 +334,7 @@ class DrawLowballEnv(gym.Env):
             self.phase = "DRAW"
         elif self.phase == "DRAW":
             draw_count = action - 5
+            pre_draw_ideal = len(discard_indexes_for_family(self.hero_hand, self.family))
             self._draw_for("hero", draw_count)
             self._draw_for("opponent", self._opponent_draw_count())
             self.draw_round += 1
@@ -278,7 +343,13 @@ class DrawLowballEnv(gym.Env):
             self.current_bet = 0
             self.hero_bet = 0
             self.opp_bet = 0
-            reward += self._draw_quality_reward(draw_count)
+            # Record this round's BET aggression (both hero and opp) before resetting.
+            round_idx = min(2, max(0, self.draw_round - 1))
+            self.opp_bet_history[round_idx] = self.opp_opened_current_round
+            self.hero_bet_history[round_idx] = self.hero_opened_current_round
+            self.opp_opened_current_round = False
+            self.hero_opened_current_round = False
+            reward += self._draw_quality_reward(draw_count, pre_draw_ideal)
         return self._observation(), reward, False, False, {}
 
     def _commit(self, who: str, amount: int):
@@ -296,22 +367,41 @@ class DrawLowballEnv(gym.Env):
         return paid
 
     def _apply_bet_action(self, action: int) -> float:
-        if action == 0:
-            return -0.6
-        if action == 2:
+        feat = evaluate_lowball(self.hero_hand, self.family)
+        eff = _draw_adjusted_strength(self.hero_hand, self.family, feat)
+        if action == 0:  # fold
+            to_call = max(0, self.current_bet - self.hero_bet)
+            pot_odds = to_call / max(1, self.pot + to_call)
+            if eff < pot_odds:
+                # Good fold: equity is below pot odds — folding is correct, reward it
+                return +0.15
+            else:
+                # Bad fold: had enough equity to call — penalty scaled to missed edge
+                equity_missed = eff - pot_odds
+                return -max(0.30, min(0.90, 0.20 + equity_missed * 1.5))
+        if action == 2:  # call — bonus when equity clearly exceeds pot odds
             to_call = max(0, self.current_bet - self.hero_bet)
             self._commit("hero", to_call)
-            return 0.05
-        if action == 3:
+            equity_edge = max(0.0, eff - self._pot_odds())
+            return 0.05 + 0.10 * equity_edge
+        # Value bonus when opponent is likely still drawing
+        opp_draw_bonus = 0.05 if self.opp_last_draw_count >= 3 else 0.0
+        if action == 3:  # bet
             self.current_bet = self.small_bet
             self._commit("hero", self.small_bet)
-            return 0.08 if evaluate_lowball(self.hero_hand, self.family).strength >= 0.58 else -0.08
-        if action == 4:
+            self.hero_opened_current_round = True
+            base = 0.15 if eff >= 0.58 else -0.12
+            return base + opp_draw_bonus
+        if action == 4:  # raise
             to_call = max(0, self.current_bet - self.hero_bet)
             self.current_bet += self.small_bet
             self.raise_count += 1
             self._commit("hero", to_call + self.small_bet)
-            return 0.10 if evaluate_lowball(self.hero_hand, self.family).strength >= 0.70 else -0.16
+            self.hero_opened_current_round = True
+            if self.draw_round == 0:
+                self.hero_raised_predraw = True
+            base = 0.20 if eff >= 0.70 else -0.25
+            return base + opp_draw_bonus
         return 0.0
 
     def _opponent_bet_response(self) -> tuple[bool, float]:
@@ -324,32 +414,44 @@ class DrawLowballEnv(gym.Env):
                 self.current_bet += self.small_bet
                 self.raise_count += 1
                 self._commit("opponent", to_call + self.small_bet)
+                self.opp_opened_current_round = True
                 return False, -0.05
             self._commit("opponent", to_call)
             return False, 0.0
         if features.strength >= self.profile.open_strength or self.random.random() < self.profile.bluff_frequency:
             self.current_bet = self.small_bet
             self._commit("opponent", self.small_bet)
+            self.opp_opened_current_round = True
             return False, -0.04
         return False, 0.0
 
     def _draw_for(self, who: str, draw_count: int):
         hand = self.hero_hand if who == "hero" else self.opp_hand
         discards = discard_indexes_for_family(hand, self.family, target_count=draw_count)
+        discarded_cards = [hand[i] for i in discards]
         keep = [card for index, card in enumerate(hand) if index not in discards]
         while len(keep) < 5 and self.deck:
             keep.append(self.deck.pop())
+        round_idx = min(2, max(0, self.draw_round))
         if who == "hero":
             self.hero_hand = keep
+            self.hero_last_draw_count = draw_count
+            self.hero_draw_history[round_idx] = draw_count
+            self.hero_total_draws += draw_count
+            self.hero_discarded_cards.extend(discarded_cards)
         else:
             self.opp_hand = keep
+            self.opp_last_draw_count = draw_count
+            self.opp_draw_history[round_idx] = draw_count
+            self.opp_total_draws += draw_count
 
     def _opponent_draw_count(self) -> int:
         base = len(discard_indexes_for_family(self.opp_hand, self.family))
         return max(0, min(5, base + self.profile.draw_extra))
 
-    def _draw_quality_reward(self, draw_count: int) -> float:
-        ideal = len(discard_indexes_for_family(self.hero_hand, self.family))
+    def _draw_quality_reward(self, draw_count: int, pre_draw_ideal: int | None = None) -> float:
+        # Use pre-draw ideal when available so drawing into a worse hand is penalised.
+        ideal = pre_draw_ideal if pre_draw_ideal is not None else len(discard_indexes_for_family(self.hero_hand, self.family))
         distance = abs(draw_count - ideal)
         return 0.12 - distance * 0.08
 
@@ -361,12 +463,36 @@ class DrawLowballEnv(gym.Env):
             return -1.0
         return 0.05
 
+    def _pot_odds(self) -> float:
+        to_call = max(0, self.current_bet - self.hero_bet)
+        if to_call <= 0:
+            return 0.0
+        return to_call / max(1, self.pot + to_call)
+
+    def _is_final_street(self) -> bool:
+        """True on the last BET round before showdown (post final draw)."""
+        return self.phase == "BET" and self.draw_round >= self.max_draws
+
     def _observation(self):
         vector = np.zeros(DRAW_OBSERVATION_VECTOR_SIZE, dtype=np.float32)
         features = evaluate_lowball(self.hero_hand, self.family)
+
+        # ---- v1 既存フィーチャー ----
         vector[0] = self.draw_round / max(1, self.max_draws)
         vector[1] = 1.0 if self.phase == "BET" else 0.0
         vector[2] = 1.0 if self.phase == "DRAW" else 0.0
+        vector[3] = self._pot_odds()
+        vector[4] = min(self.pot, 100) / 100.0
+        vector[5] = 1.0 if self.hero_is_button else 0.0
+        vector[6] = 1.0 if self._is_final_street() else 0.0
+        vector[7] = self.opp_last_draw_count / 5.0
+        vector[8] = self.profile.bluff_frequency
+        vector[9] = self.profile.open_strength
+        vector[10] = self.profile.call_strength
+        vector[11] = self.profile.raise_strength
+        vector[12] = (self.max_draws - self.draw_round) / max(1, self.max_draws)
+        vector[13] = self.opp_draw_history[0] / 5.0
+        vector[14] = self.opp_draw_history[1] / 5.0
         vector[15] = features.made_cards / 5.0
         vector[16] = features.highest_rank / 14.0
         vector[17] = features.rank_sum / 70.0
@@ -375,11 +501,103 @@ class DrawLowballEnv(gym.Env):
         vector[20] = 1.0 if features.straight else 0.0
         vector[21] = 1.0 if features.flush else 0.0
         vector[22] = features.strength
+        vector[23] = self.opp_draw_history[2] / 5.0
+        vector[24] = self.opp_total_draws / 15.0
         vector[25] = self.current_bet / 20.0
         vector[26] = self.raise_count / 4.0
+        vector[27] = 1.0 if (self.opp_last_draw_count == 0 and self.draw_round > 0) else 0.0
+        vector[28] = 1.0 if self.opp_opened_current_round else 0.0
+        vector[29] = 1.0 if self.opp_bet_history[0] else 0.0
+        vector[30] = 1.0 if self.opp_bet_history[1] else 0.0
         vector[40] = 0.0
         vector[41] = 1.0 if self.family == "low-27" else 0.0
         vector[42] = 1.0 if self.family == "low-a5" else 0.0
+
+        # ---- v2 共通計算 ----
+        # ドロー先の手（最適捨て牌後の kept cards）を一度だけ計算して複数スロットで使う
+        _discards = discard_indexes_for_family(self.hero_hand, self.family)
+        _kept = [c for i, c in enumerate(self.hero_hand) if i not in _discards]
+        _discount = max(0.40, 1.0 - len(_discards) * 0.12)
+        if _kept:
+            _kf = evaluate_lowball(_kept, self.family)
+            _draw_target_str = _kf.strength * _discount
+            _draw_target_rank = _kf.highest_rank / 14.0
+        else:
+            _draw_target_str = 0.0
+            _draw_target_rank = 1.0
+
+        # slot 31: v2 修正版 draw_adjusted_strength（重複カードも正しく扱う）
+        vector[31] = _draw_target_str
+        vector[32] = len(_discards) / 5.0
+
+        # プレミアムランク・ブロッカー定義
+        _is_a5 = self.family == "low-a5"
+        _premium_ranks = {14, 2, 3, 4, 5} if _is_a5 else {2, 3, 4, 5}
+        _blocker_rank = 14 if _is_a5 else 2
+
+        # ---- グループA: テーブル状況（HU プレースホルダー） ----
+        vector[33] = 2.0 / 6.0   # active_players=2 (HU固定)
+        vector[34] = 1.0 if self.hero_is_button else 0.0   # hero position
+        vector[35] = 0.0   # players_yet_to_act: HU は hero が先行するため常に0
+
+        # ---- グループC: 進展性・ブロッカー ----
+        vector[36] = _draw_target_str
+        vector[37] = _draw_target_rank
+        vector[38] = sum(1 for r, _ in self.hero_hand if r in _premium_ranks) / 5.0
+        vector[39] = sum(1 for r, _ in self.hero_hand if r == _blocker_rank) / 4.0
+
+        # ---- グループA続き: BET前状況（HU簡易版） ----
+        # HU ではheroが常に先行するため callers/raises_before は簡易化
+        _opp_pos = 0.0 if self.hero_is_button else 1.0   # HU での opp 位置
+        vector[43] = _opp_pos if self.opp_bet_history[0] else 0.0  # original_raiser_pos
+        vector[44] = 0.0   # callers_in_pot: HU では常に0
+        vector[45] = 1.0 if self.opp_opened_current_round else 0.0  # raises_before_hero 近似
+
+        # ---- グループB: BET構造 ----
+        _big_bet = self.small_bet * 2
+        _remaining = max(1, self.max_draws - self.draw_round + (1 if self.phase == "BET" else 0))
+        vector[46] = self.hero_stack / max(1, _big_bet * 4 * _remaining)
+        vector[47] = 1.0 if self.draw_round >= 2 else 0.0
+
+        # ---- グループD: アクション履歴 ----
+        vector[59] = 1.0 if self.hero_raised_predraw else 0.0
+        vector[60] = 1.0 if self.hero_bet_history[0] else 0.0
+        vector[61] = 1.0 if self.hero_bet_history[1] else 0.0
+        # passive street: 双方チェックで終わったラウンド
+        vector[62] = 1.0 if (not self.hero_bet_history[0] and not self.opp_bet_history[0]
+                              and self.draw_round >= 1) else 0.0
+        vector[63] = 1.0 if (not self.hero_bet_history[1] and not self.opp_bet_history[1]
+                              and self.draw_round >= 2) else 0.0
+
+        # ---- グループE: ドロー情報 ----
+        vector[64] = 0.0 if self.hero_is_button else 1.0  # OOP が先ドロー
+        vector[65] = self.hero_draw_history[0] / 5.0
+        vector[66] = self.hero_draw_history[1] / 5.0
+        vector[67] = (self.opp_draw_history[0] - self.opp_draw_history[1]) / 5.0
+        vector[68] = (self.opp_draw_history[1] - self.opp_draw_history[2]) / 5.0
+        vector[69] = (self.opp_last_draw_count - self.hero_last_draw_count) / 5.0
+
+        # ---- グループF: デッドカード・最終BET ----
+        vector[70] = sum(1 for r, _ in self.hero_discarded_cards if r == _blocker_rank) / 4.0
+        _dead_denom = 20.0 if _is_a5 else 16.0
+        vector[71] = min(1.0, sum(1 for r, _ in self.hero_discarded_cards
+                                  if r in _premium_ranks) / _dead_denom)
+        vector[72] = 1.0 - self.opp_last_draw_count / 5.0
+        vector[73] = sum(1 for h in self.opp_draw_history[:self.draw_round] if h == 0) / max(1, self.max_draws)
+
+        # ---- グループG: スタック情報 ----
+        vector[74] = self.opp_stack / max(1, self.starting_stack)
+        vector[75] = self.hero_stack / max(1, self.starting_stack)
+        vector[76] = min(2.0, self.opp_stack / max(1, self.hero_stack)) / 2.0
+
+        # ---- グループH: ICM（キャッシュゲームモードでは0） ----
+        vector[77] = self.hero_stack / max(1, self.hero_stack + self.opp_stack)
+        vector[78] = 0.0
+        vector[79] = 0.0
+
+        # ---- SD/TD 区別フラグ ----
+        vector[80] = self.max_draws / 3.0  # SD=0.333, TD=1.000
+
         mask = self.legal_action_mask()
         vector[48 : 48 + len(mask)] = mask
         return vector
@@ -391,13 +609,78 @@ def draw_teacher_action(env: DrawLowballEnv) -> int:
     if env.phase == "DRAW":
         draw_count = len(discard_indexes_for_family(env.hero_hand, env.family))
         return 5 + max(0, min(5, draw_count))
+
+    effective_strength = _draw_adjusted_strength(env.hero_hand, env.family, features)
     to_call = max(0, env.current_bet - env.hero_bet)
+    pot_odds = env._pot_odds()
+    is_final = env._is_final_street()
+    is_ip = env.hero_is_button
+    is_single_draw = env.max_draws == 1
+    opp_drew_many = env.opp_last_draw_count >= 3
+
+    # Position: IP looser, OOP tighter. Amplified for single draw.
+    position_adj = 0.06 if is_ip else -0.06
+    if is_single_draw:
+        position_adj *= 1.5
+
+    # Final street: only made hands should continue.
+    final_street_adj = -0.08 if is_final else 0.0
+
+    # Opponent drew 3+ → likely still drawing, our equity higher.
+    opp_draw_adj = 0.04 if opp_drew_many else 0.0
+
+    # Draw progress: tighten as draws are used up (fewer streets to improve).
+    draws_remaining = max(0, env.max_draws - env.draw_round)
+    draw_progress_adj = (1.0 - draws_remaining / max(1, env.max_draws)) * 0.05
+
+    # Opponent raised heavily → they likely have a strong hand, fold looser.
+    raise_pressure_adj = -0.06 if env.raise_count >= 2 else 0.0
+
+    # Bluff frequency from opponent profile — fold more vs tight, less vs aggressive.
+    bluff_adj = (env.profile.bluff_frequency - 0.05) * 0.4  # baseline: standard=0.05
+
+    # Opponent hand inference signals
+    opp_is_pat = env.opp_last_draw_count == 0 and env.draw_round > 0
+    opp_heavy_total = env.opp_total_draws >= 6   # drew many cards total → weak hand
+    opp_opened = env.opp_opened_current_round
+
+    # Pat opponent → likely 7-low or better; raise min call floor dramatically
+    # Heavy-draw opponent → probably still weak; widen calling range
+    # Opponent opened (bet/raised) on late streets → represents strength
+    pat_adj = -0.15 if opp_is_pat else 0.0
+    heavy_draw_adj = 0.06 if opp_heavy_total else 0.0
+    opp_bet_adj = -0.04 if (opp_opened and env.draw_round >= 2) else 0.0
+
+    # When opponent is pat, they likely have a strong made hand.
+    # Scale min threshold by how far into the game we are:
+    #   final street pat → almost certainly 7-low or better → need 8-low+ to call
+    #   early pat → possible bluff or one-card draw made early, be cautious but not extreme
+    if opp_is_pat:
+        pat_round_fraction = env.draw_round / max(1, env.max_draws)
+        min_call_threshold = 0.55 + pat_round_fraction * 0.30  # 0.55 early → 0.85 final
+    else:
+        min_call_threshold = 0.40
+
     if to_call > 0:
-        if features.strength >= 0.52 and mask[2] > 0:
-            if features.strength >= 0.78 and mask[4] > 0:
+        call_threshold = max(min_call_threshold, min(0.68,
+            pot_odds + 0.08
+            + position_adj + final_street_adj + opp_draw_adj
+            - draw_progress_adj + raise_pressure_adj - bluff_adj
+            + pat_adj + heavy_draw_adj + opp_bet_adj))
+        raise_threshold = max(0.70, min(0.90,
+            0.78 - position_adj * 0.5 - opp_draw_adj + draw_progress_adj))
+        if effective_strength >= call_threshold and mask[2] > 0:
+            if effective_strength >= raise_threshold and mask[4] > 0:
                 return 4
             return 2
         return 0
-    if features.strength >= 0.58 and mask[3] > 0:
+
+    # open-bet threshold: lower when opponent is weak (more value in betting),
+    # tighten at end of hand. draw_progress_adj is NOT applied here because
+    # tightening mid-draw bets hurts value extraction vs still-drawing opponents.
+    open_threshold = max(0.48, min(0.68,
+        0.58 - position_adj + final_street_adj - opp_draw_adj
+        + pat_adj * 0.5 - heavy_draw_adj))
+    if effective_strength >= open_threshold and mask[3] > 0:
         return 3
     return 1

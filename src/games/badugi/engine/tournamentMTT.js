@@ -41,6 +41,16 @@ export function createMTTTournamentState(config, entrants) {
       cpuCharacterId: entry?.cpuCharacterId ?? null,
       cpuStyle: entry?.cpuStyle ?? null,
       avatarUrl: entry?.avatarUrl ?? null,
+      opponentProfileId: entry?.opponentProfileId ?? null,
+      opponentTitle: entry?.opponentTitle ?? entry?.titleBadge ?? null,
+      titleBadge: entry?.titleBadge ?? entry?.opponentTitle ?? null,
+      tierId: entry?.tierId ?? null,
+      personalityId: entry?.personalityId ?? null,
+      personality: entry?.personality ?? null,
+      personalityBadge: entry?.personalityBadge ?? null,
+      avatarId: entry?.avatarId ?? null,
+      flavorText: entry?.flavorText ?? null,
+      traits: Array.isArray(entry?.traits) ? [...entry.traits] : [],
       startingStack,
       stack: startingStack,
       busted: false,
@@ -81,6 +91,8 @@ export function createMTTTournamentState(config, entrants) {
     championId: null,
     finishOrder: [],
     abstractHandCounter: 0,
+    events: [],
+    lastEvent: null,
   };
 }
 
@@ -105,6 +117,8 @@ function cloneState(state) {
       Object.entries(state.players).map(([id, player]) => [id, { ...player }]),
     ),
     finishOrder: [...(state.finishOrder ?? [])],
+    events: (state.events ?? []).map((event) => ({ ...event })),
+    lastEvent: state.lastEvent ? { ...state.lastEvent } : null,
   };
 }
 
@@ -150,10 +164,7 @@ export function onTableHandCompleted(state, tableId, handSummary) {
     });
     bustQueue.forEach((entry) => {
       markPlayerBusted(next, entry.player, handSummary.handIndex ?? null);
-      const seat = table.seats[entry.seatIndex];
-      if (seat && seat.playerId === entry.player.id) {
-        seat.playerId = null;
-      }
+      clearPlayerFromAllTables(next, entry.player.id);
     });
   }
 
@@ -219,55 +230,263 @@ function maybeAdvanceLevel(state) {
 }
 
 function maybeRebalance(state) {
-  applyRebalance(state);
+  if (shouldRebalance(state)) {
+    applyRebalance(state);
+  }
+  maybeEmitTournamentMilestoneEvents(state);
 }
 
-function applyRebalance(state) {
+function hasTournamentEvent(state, type) {
+  return (state.events ?? []).some((event) => event?.type === type);
+}
+
+function getPaidPlaces(state) {
+  const payouts = Array.isArray(state?.config?.payouts) ? state.config.payouts : [];
+  const paidPlaces = payouts
+    .map((payout) => Number(payout?.place))
+    .filter((place) => Number.isFinite(place) && place > 0);
+  return paidPlaces.length ? Math.max(...paidPlaces) : 3;
+}
+
+function appendTournamentEvent(state, event) {
+  const nextEvent = {
+    ...event,
+    sequence: (state.events?.length ?? 0) + 1,
+  };
+  state.events = [...(state.events ?? []), nextEvent];
+  state.lastEvent = nextEvent;
+}
+
+function targetActiveTableCount(state) {
   const seatsPerTable = state.config.seatsPerTable;
-  const targetTables = Math.max(
+  return Math.max(
     1,
     Math.min(
       state.config.tables,
       Math.ceil(Math.max(1, state.playersRemaining) / seatsPerTable),
     ),
   );
-  const activePlayers = Object.values(state.players)
-    .filter((p) => !p.busted)
-    .sort((a, b) => {
-      if (a.tableId === b.tableId) {
-        return (a.seatIndex ?? 0) - (b.seatIndex ?? 0);
-      }
-      return (a.tableId ?? "").localeCompare(b.tableId ?? "");
+}
+
+function tableActivePlayerIds(state, table) {
+  return table.seats
+    .map((seat) => seat.playerId)
+    .filter((playerId) => playerId && !state.players[playerId]?.busted);
+}
+
+function tablePopulation(state, table) {
+  return tableActivePlayerIds(state, table).length;
+}
+
+function activeTables(state) {
+  return state.tables.filter((table) => table.isActive);
+}
+
+function isHeroPlayer(player) {
+  return player?.id === "hero" || String(player?.name ?? "").toLowerCase() === "hero";
+}
+
+function getHeroTableId(state) {
+  const hero = Object.values(state.players).find(
+    (player) => !player.busted && isHeroPlayer(player),
+  );
+  return hero?.tableId ?? null;
+}
+
+function shouldRebalance(state) {
+  const active = activeTables(state);
+  if (!active.length) return false;
+  const targetTables = targetActiveTableCount(state);
+  if (active.length !== targetTables) return true;
+  const counts = active.map((table) => tablePopulation(state, table));
+  if (counts.length <= 1) return false;
+  return Math.max(...counts) - Math.min(...counts) > 1;
+}
+
+function maybeEmitTournamentMilestoneEvents(state) {
+  const tablesActive = Math.max(1, activeTables(state).length || targetActiveTableCount(state));
+  const paidPlaces = getPaidPlaces(state);
+  if (
+    state.playersRemaining === paidPlaces + 1 &&
+    !hasTournamentEvent(state, "MONEY_BUBBLE")
+  ) {
+    appendTournamentEvent(state, {
+      type: "MONEY_BUBBLE",
+      playersRemaining: state.playersRemaining,
+      paidPlaces,
     });
+  }
+  if (state.playersRemaining === 3 && !hasTournamentEvent(state, "TOP_THREE")) {
+    appendTournamentEvent(state, {
+      type: "TOP_THREE",
+      playersRemaining: state.playersRemaining,
+    });
+  }
+  if (state.playersRemaining === 2 && !hasTournamentEvent(state, "HEADS_UP")) {
+    appendTournamentEvent(state, {
+      type: "HEADS_UP",
+      playersRemaining: state.playersRemaining,
+      tablesActive,
+    });
+  }
+}
 
-  const tables = Array.from({ length: state.config.tables }, (_, idx) => ({
-    tableId: `${DEFAULT_TABLE_PREFIX}-${idx + 1}`,
-  }));
+function clearPlayerFromTable(table, playerId) {
+  const seat = table.seats.find((entry) => entry.playerId === playerId);
+  if (seat) {
+    seat.playerId = null;
+  }
+}
 
-  state.tables = tables.map((meta, idx) => {
-    const isActive = idx < targetTables;
-    return {
-      tableId: meta.tableId,
-      seats: Array.from({ length: seatsPerTable }, (_, seatIdx) => ({
-        seatIndex: seatIdx,
-        playerId: null,
-      })),
-      isActive,
-      handsPlayedAtThisLevel: isActive ? state.tables[idx]?.handsPlayedAtThisLevel ?? 0 : 0,
-    };
+function clearPlayerFromAllTables(state, playerId) {
+  state.tables.forEach((table) => clearPlayerFromTable(table, playerId));
+}
+
+function findFirstOpenSeat(table) {
+  return table.seats.find((seat) => seat.playerId === null) ?? null;
+}
+
+function movePlayerToTable(state, playerId, fromTable, toTable) {
+  const player = state.players[playerId];
+  const openSeat = findFirstOpenSeat(toTable);
+  if (!player || !openSeat) {
+    return false;
+  }
+  if (fromTable?.tableId !== toTable.tableId) {
+    clearPlayerFromTable(fromTable, playerId);
+  }
+  openSeat.playerId = playerId;
+  player.tableId = toTable.tableId;
+  player.seatIndex = openSeat.seatIndex;
+  return true;
+}
+
+function chooseTablesToDeactivate(state, targetTables) {
+  const active = activeTables(state);
+  const removeCount = Math.max(0, active.length - targetTables);
+  if (removeCount <= 0) return [];
+  const heroTableId = getHeroTableId(state);
+  return [...active]
+    .sort((a, b) => {
+      const heroDelta = Number(a.tableId === heroTableId) - Number(b.tableId === heroTableId);
+      if (heroDelta !== 0) return heroDelta;
+      const populationDelta = tablePopulation(state, a) - tablePopulation(state, b);
+      if (populationDelta !== 0) return populationDelta;
+      return a.tableId.localeCompare(b.tableId);
+    })
+    .slice(0, removeCount);
+}
+
+function chooseRecipientTable(state, excludedTableIds = new Set()) {
+  return activeTables(state)
+    .filter((table) => !excludedTableIds.has(table.tableId) && findFirstOpenSeat(table))
+    .sort((a, b) => {
+      const populationDelta = tablePopulation(state, a) - tablePopulation(state, b);
+      if (populationDelta !== 0) return populationDelta;
+      return a.tableId.localeCompare(b.tableId);
+    })[0] ?? null;
+}
+
+function compactInactiveTables(state) {
+  state.tables.forEach((table) => {
+    if (!table.isActive) {
+      table.seats.forEach((seat) => {
+        seat.playerId = null;
+      });
+      table.handsPlayedAtThisLevel = 0;
+    }
+  });
+}
+
+function mergeTables(state, targetTables) {
+  const previousActiveTables = activeTables(state).length;
+  const closingTables = chooseTablesToDeactivate(state, targetTables);
+  const closingIds = new Set(closingTables.map((table) => table.tableId));
+  const movers = closingTables.flatMap((table) =>
+    table.seats
+      .filter((seat) => seat.playerId && !state.players[seat.playerId]?.busted)
+      .map((seat) => ({ playerId: seat.playerId, fromTable: table, seatIndex: seat.seatIndex }))
+      .sort((a, b) => a.seatIndex - b.seatIndex),
+  );
+
+  closingTables.forEach((table) => {
+    table.isActive = false;
+    table.handsPlayedAtThisLevel = 0;
+    table.seats.forEach((seat) => {
+      seat.playerId = null;
+    });
   });
 
-  activePlayers.forEach((player, idx) => {
-    const tableIndex = idx % targetTables;
-    const seatIndex = Math.floor(idx / targetTables);
-    if (seatIndex >= seatsPerTable) {
+  movers.forEach(({ playerId, fromTable }) => {
+    const recipient = chooseRecipientTable(state, closingIds);
+    if (!recipient || !movePlayerToTable(state, playerId, fromTable, recipient)) {
       throw new Error("Not enough seats per table during rebalance");
     }
-    const table = state.tables[tableIndex];
-    table.seats[seatIndex].playerId = player.id;
-    player.tableId = table.tableId;
-    player.seatIndex = seatIndex;
   });
+
+  if (previousActiveTables > targetTables) {
+    appendTournamentEvent(state, {
+      type: targetTables === 1 ? "FINAL_TABLE" : "TABLE_MERGE",
+      fromTables: previousActiveTables,
+      toTables: targetTables,
+      playersRemaining: state.playersRemaining,
+    });
+  }
+  compactInactiveTables(state);
+}
+
+function rebalanceImbalancedTables(state) {
+  let safety = state.config.tables * state.config.seatsPerTable;
+  while (safety > 0) {
+    safety -= 1;
+    const active = activeTables(state);
+    if (active.length <= 1) return;
+    const sorted = [...active].sort((a, b) => {
+      const populationDelta = tablePopulation(state, a) - tablePopulation(state, b);
+      if (populationDelta !== 0) return populationDelta;
+      return a.tableId.localeCompare(b.tableId);
+    });
+    const low = sorted[0];
+    const highCandidates = [...sorted].reverse();
+    const high = highCandidates.find((table) => {
+      const movableSeats = table.seats.filter((seat) => {
+        const player = state.players[seat.playerId];
+        return player && !player.busted && !isHeroPlayer(player);
+      });
+      return movableSeats.length > 0;
+    }) ?? highCandidates[0];
+    if (tablePopulation(state, high) - tablePopulation(state, low) <= 1) {
+      return;
+    }
+    const fromSeat = [...high.seats]
+      .reverse()
+      .find((seat) => {
+        const player = state.players[seat.playerId];
+        return player && !player.busted && !isHeroPlayer(player);
+      }) ??
+      [...high.seats]
+        .reverse()
+        .find((seat) => seat.playerId && !state.players[seat.playerId]?.busted);
+    if (!fromSeat || !findFirstOpenSeat(low)) return;
+    movePlayerToTable(state, fromSeat.playerId, high, low);
+  }
+}
+
+function applyRebalance(state) {
+  const targetTables = targetActiveTableCount(state);
+
+  if (activeTables(state).length > targetTables) {
+    mergeTables(state, targetTables);
+  }
+
+  if (activeTables(state).length < targetTables) {
+    state.tables.slice(0, targetTables).forEach((table) => {
+      table.isActive = true;
+    });
+  }
+
+  rebalanceImbalancedTables(state);
+  maybeEmitTournamentMilestoneEvents(state);
   if (DEBUG_TOURNAMENT) {
     logMTT("BREAK", {
       playersRemaining: state.playersRemaining,
@@ -482,4 +701,6 @@ function sanitizeStack(value) {
  * @property {boolean} isFinished
  * @property {string|null} championId
  * @property {string[]} finishOrder
+ * @property {Array<Object>} events
+ * @property {Object|null} lastEvent
  */

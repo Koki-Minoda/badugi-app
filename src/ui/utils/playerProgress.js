@@ -1,6 +1,8 @@
+import { safeGetItem, safeSetItem } from "../../storage/core.js";
+import { STORAGE_KEYS } from "../../storage/keys.js";
 import { appendSystemEvent } from "./systemLog.js";
 
-const STORAGE_KEY = "playerProgress";
+const STORAGE_KEY = STORAGE_KEYS.PLAYER_PROGRESS;
 const TOURNAMENT_STAGE_IDS = ["store", "local", "national", "world"];
 const DEFAULT_STAGE_WINS = {
   store: 0,
@@ -15,10 +17,6 @@ const DEFAULT_PROGRESS = {
   stageWins: { ...DEFAULT_STAGE_WINS },
   lastUnlockPopupAt: null,
 };
-
-function hasStorage() {
-  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
-}
 
 function normalizeStageWins(stageWins = {}) {
   return TOURNAMENT_STAGE_IDS.reduce(
@@ -77,16 +75,9 @@ function broadcastProgress(progress) {
 }
 
 export function loadPlayerProgress() {
-  if (!hasStorage()) return cloneProgress(DEFAULT_PROGRESS);
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return cloneProgress(DEFAULT_PROGRESS);
-    const parsed = JSON.parse(raw);
-    return cloneProgress({ ...DEFAULT_PROGRESS, ...parsed });
-  } catch (err) {
-    console.warn("[PlayerProgress] Failed to load, resetting", err);
-    return cloneProgress(DEFAULT_PROGRESS);
-  }
+  const parsed = safeGetItem(STORAGE_KEY, null, { silent: true });
+  if (!parsed) return cloneProgress(DEFAULT_PROGRESS);
+  return cloneProgress({ ...DEFAULT_PROGRESS, ...parsed });
 }
 
 export function savePlayerProgress(partialProgress) {
@@ -99,12 +90,8 @@ export function savePlayerProgress(partialProgress) {
     ),
   };
   const normalized = cloneProgress(merged);
-  if (hasStorage()) {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
-    } catch (err) {
-      console.warn("[PlayerProgress] Failed to save", err);
-    }
+  if (!safeSetItem(STORAGE_KEY, normalized, { silent: true })) {
+    console.warn("[PlayerProgress] Failed to save");
   }
   broadcastProgress(normalized);
   return normalized;
@@ -112,12 +99,8 @@ export function savePlayerProgress(partialProgress) {
 
 export function resetPlayerProgress() {
   const next = cloneProgress(DEFAULT_PROGRESS);
-  if (hasStorage()) {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch (err) {
-      console.warn("[PlayerProgress] Failed to reset", err);
-    }
+  if (!safeSetItem(STORAGE_KEY, next, { silent: true })) {
+    console.warn("[PlayerProgress] Failed to reset");
   }
   broadcastProgress(next);
   return next;

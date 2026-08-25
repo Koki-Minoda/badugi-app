@@ -5035,6 +5035,21 @@ describe("chooseProAction", () => {
     expect(result.type).toBe("BET");
   });
 
+  it("PRO-D03-EV-001B final-round medium Badugi open value raises when fixed-limit open is encoded as raise", () => {
+    const result = chooseProAction({
+      variantId: "D03",
+      snapshot: buildSnapshot({
+        variantId: "D03",
+        street: "BET",
+        drawRoundIndex: 3,
+        hand: ["AS", "2D", "6H", "9C"],
+      }),
+      legalActions: ["FOLD", "CHECK", "RAISE"],
+    });
+    expect(result.type).toBe("RAISE");
+    expect(result.reason).toBe("final-round-medium-badugi-value-bet");
+  });
+
   it("PRO-D03-EV-002 weak made Badugi does not over-raise", () => {
     const result = chooseProAction({
       variantId: "D03",
@@ -5045,6 +5060,20 @@ describe("chooseProAction", () => {
         hand: ["2S", "4D", "8C", "QH"],
       }),
       legalActions: ["CHECK", "RAISE"],
+    });
+    expect(result.type).toBe("CHECK");
+  });
+
+  it("PRO-D03-EV-002B weak made Badugi keeps final-round check against encoded open raise", () => {
+    const result = chooseProAction({
+      variantId: "D03",
+      snapshot: buildSnapshot({
+        variantId: "D03",
+        street: "BET",
+        drawRoundIndex: 3,
+        hand: ["AS", "3D", "5H", "JC"],
+      }),
+      legalActions: ["FOLD", "CHECK", "RAISE"],
     });
     expect(result.type).toBe("CHECK");
   });

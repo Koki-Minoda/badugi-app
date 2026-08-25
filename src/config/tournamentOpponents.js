@@ -1,3 +1,33 @@
+import {
+  getPersonalityById,
+  normalizePersonalityId,
+} from "./ai/personalities.js";
+
+const STAGE_TIER_ID = {
+  store: "standard",
+  local: "pro",
+  national: "iron",
+  world: "worldmaster",
+};
+
+const STYLE_PERSONALITY_ID = {
+  aggro: "lag",
+  balanced: "balanced",
+  lag: "lag",
+  loose: "calling-station",
+  "math tag": "tag",
+  rock: "nit",
+  solver: "tag",
+  tag: "tag",
+  tight: "nit",
+  "hyper aggro": "maniac",
+};
+
+function styleToPersonalityId(style = "balanced") {
+  const key = String(style ?? "").trim().toLowerCase();
+  return STYLE_PERSONALITY_ID[key] ?? "balanced";
+}
+
 export const TOURNAMENT_OPPONENTS = [
   // 店舗ステージ
   {
@@ -287,3 +317,85 @@ export const TOURNAMENT_OPPONENTS = [
     notes: "状況に応じて打ち筋を切り替える最終ボス。",
   },
 ];
+
+export const FALLBACK_TOURNAMENT_OPPONENT = {
+  id: "unknown-rival",
+  name: "Rival",
+  title: "Tournament Rival",
+  stageId: "store",
+  variantId: "badugi",
+  tierId: "standard",
+  personalityId: "balanced",
+  avatarId: "rival",
+  flavorText: "A quiet opponent with a balanced Badugi game.",
+  traits: ["balanced"],
+};
+
+export function normalizeTournamentOpponentProfile(raw = {}) {
+  const stageId = raw.stageId ?? "store";
+  const personalityId = normalizePersonalityId(
+    raw.personalityId ?? styleToPersonalityId(raw.style),
+  );
+  const personality = getPersonalityById(personalityId);
+  return {
+    id: raw.id ?? FALLBACK_TOURNAMENT_OPPONENT.id,
+    name: raw.name ?? FALLBACK_TOURNAMENT_OPPONENT.name,
+    title: raw.title ?? raw.nickname ?? FALLBACK_TOURNAMENT_OPPONENT.title,
+    stageId,
+    variantId: raw.variantId ?? "badugi",
+    tierId: raw.tierId ?? STAGE_TIER_ID[stageId] ?? "standard",
+    personalityId,
+    personality,
+    avatarId: raw.avatarId ?? raw.cpuCharacterId ?? raw.id ?? "rival",
+    flavorText:
+      raw.flavorText ?? raw.notes ?? FALLBACK_TOURNAMENT_OPPONENT.flavorText,
+    traits:
+      Array.isArray(raw.traits) && raw.traits.length
+        ? [...raw.traits]
+        : [
+            String(raw.style ?? personality?.label ?? "balanced")
+              .trim()
+              .toLowerCase()
+              .replace(/\s+/g, "-"),
+          ],
+    legacy: {
+      tier: raw.tier ?? null,
+      style: raw.style ?? null,
+      strength: raw.strength ?? null,
+      aggression: raw.aggression ?? null,
+      tightness: raw.tightness ?? null,
+      drawRate: raw.drawRate ?? null,
+      bluffFreq: raw.bluffFreq ?? null,
+    },
+  };
+}
+
+export function getTournamentOpponentProfiles() {
+  return TOURNAMENT_OPPONENTS.map(normalizeTournamentOpponentProfile);
+}
+
+export function getTournamentOpponentProfile(profileId) {
+  const profile = TOURNAMENT_OPPONENTS.find(
+    (opponent) => opponent.id === profileId,
+  );
+  return normalizeTournamentOpponentProfile(
+    profile ?? FALLBACK_TOURNAMENT_OPPONENT,
+  );
+}
+
+export function getTournamentOpponentRosterForStage(stageId = "store") {
+  const roster = TOURNAMENT_OPPONENTS.filter(
+    (opponent) => opponent.stageId === stageId,
+  ).map(normalizeTournamentOpponentProfile);
+  return roster.length
+    ? roster
+    : [normalizeTournamentOpponentProfile(FALLBACK_TOURNAMENT_OPPONENT)];
+}
+
+export function getTournamentOpponentForSeat(stageId = "store", index = 0) {
+  const roster = getTournamentOpponentRosterForStage(stageId);
+  const numericIndex = Number.isFinite(Number(index))
+    ? Math.trunc(Number(index))
+    : 0;
+  return roster[((numericIndex % roster.length) + roster.length) % roster.length];
+}

@@ -1,6 +1,8 @@
 import type { Page } from "@playwright/test";
 
-export const APP_URL = "http://127.0.0.1:3000/";
+export const APP_URL =
+  process.env.E2E_APP_URL ??
+  (process.env.LIVE_PREVIEW === "1" ? "https://mgx-poker.com/" : "http://127.0.0.1:3000/");
 export const API_URL = `${APP_URL.replace(/\/$/, "")}/api`;
 
 const DEFAULT_PASSWORD = "MgxE2E!2026";

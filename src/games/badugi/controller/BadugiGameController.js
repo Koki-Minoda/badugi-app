@@ -53,6 +53,28 @@ function clonePlayers(players = []) {
   );
 }
 
+function collectBadugiHandShapeViolations(players = []) {
+  if (!Array.isArray(players)) return [];
+  const violations = [];
+  players.forEach((player, seatIndex) => {
+    if (!player) return;
+    [
+      ["hand", player.hand],
+      ["cards", player.cards],
+      ["holeCards", player.holeCards],
+    ].forEach(([field, cards]) => {
+      if (Array.isArray(cards) && cards.length > 0 && cards.length !== 4) {
+        violations.push({ seatIndex, field, actualCardCount: cards.length, expectedCardCount: 4 });
+      }
+    });
+  });
+  return violations;
+}
+
+function hasBadugiHandShapeMismatch(snapshot = {}) {
+  return collectBadugiHandShapeViolations(snapshot?.players ?? []).length > 0;
+}
+
 function findNextDrawableSeat(players = [], { startIndex = null, dealerIdx = 0 } = {}) {
   const seatCount = Array.isArray(players) ? players.length : 0;
   if (!seatCount) return null;
@@ -61,6 +83,14 @@ function findNextDrawableSeat(players = [], { startIndex = null, dealerIdx = 0 }
       ? startIndex
       : ((dealerIdx ?? 0) + 1) % seatCount;
   return findNextDrawActorSeat(players, normalizedBase);
+}
+
+function hasActiveNonAllInOpponent(players = [], seatIndex) {
+  return players.some((entry, idx) => {
+    if (idx === seatIndex || !entry || isFoldedOrOut(entry)) return false;
+    if (entry.allIn || entry.sittingOut || entry.isBusted || entry.busted) return false;
+    return Number(entry.stack) > 0;
+  });
 }
 
 function deriveLegalActions(snapshot, seatIndex) {
@@ -88,7 +118,22 @@ function deriveLegalActions(snapshot, seatIndex) {
     baseActions.push({ type: "CALL" });
   }
 
-  if (!player.allIn && player.stack > 0) {
+  const metadata = snapshot?.metadata ?? {};
+  const raiseCount = Math.max(
+    0,
+    Number(snapshot?.raiseCountThisRound ?? metadata.raiseCountThisRound) || 0,
+  );
+  const raiseCap = Math.max(
+    0,
+    Number(snapshot?.raiseCap ?? metadata.raiseCap ?? 4) || 4,
+  );
+
+  if (
+    !player.allIn &&
+    player.stack > 0 &&
+    raiseCount < raiseCap &&
+    hasActiveNonAllInOpponent(players, seatIndex)
+  ) {
     baseActions.push({ type: "RAISE" });
   }
 
@@ -204,13 +249,33 @@ export class BadugiGameController extends GameController {
       return { state, events };
     }
 
+    const referenceSnapshot = referenceState?.snapshot ?? {};
+    const referenceMetadata = referenceSnapshot?.metadata ?? {};
     const advanceSnapshot = this.legacy.advanceStreet({
       players: this.legacy.state.players,
       actedIndex: seatIndex,
-      dealerIdx: this.legacy.state.dealerIdx,
-      drawRound: this.legacy.state.drawRound,
-      betHead: this.legacy.state.betHead,
-      lastAggressorIdx: this.legacy.state.lastAggressorIdx,
+      dealerIdx:
+        referenceSnapshot.dealerIdx ??
+        referenceSnapshot.dealerSeat ??
+        referenceMetadata.dealerIdx ??
+        referenceMetadata.dealerSeat ??
+        this.legacy.state.dealerIdx,
+      drawRound:
+        referenceSnapshot.drawRound ??
+        referenceSnapshot.drawRoundIndex ??
+        referenceMetadata.drawRound ??
+        referenceMetadata.drawRoundIndex ??
+        this.legacy.state.drawRound,
+      betHead:
+        referenceSnapshot.betHead ??
+        referenceMetadata.betHead ??
+        this.legacy.state.betHead,
+      lastAggressorIdx:
+        referenceSnapshot.lastAggressorIdx ??
+        referenceSnapshot.lastAggressor ??
+        referenceMetadata.lastAggressorIdx ??
+        referenceMetadata.lastAggressor ??
+        this.legacy.state.lastAggressorIdx,
     });
     if (advanceSnapshot?.shouldAdvance) {
       this._finishBetRound();
@@ -271,7 +336,30 @@ export class BadugiGameController extends GameController {
         events: [{ type: "invalidAction", error: "seat not found" }],
       };
     }
+    if (Array.isArray(actor.hand) && actor.hand.length > 0 && actor.hand.length !== 4) {
+      const fallbackState = baseState ?? this._buildControllerState({ handIndex, context });
+      return {
+        state: fallbackState,
+        events: [
+          {
+            type: "invalidAction",
+            error: "Badugi draw action rejected because hand shape is not four cards",
+            code: "SNAPSHOT_REJECTED_HAND_SHAPE_MISMATCH",
+            meta: { seatIndex, actualCardCount: actor.hand.length, expectedCardCount: 4 },
+          },
+        ],
+      };
+    }
 
+    const referenceSnapshot = referenceState?.snapshot ?? {};
+    const referenceMetadata = referenceSnapshot?.metadata ?? {};
+    const drawRoundIndex =
+      referenceSnapshot.drawRound ??
+      referenceSnapshot.drawRoundIndex ??
+      referenceMetadata.drawRound ??
+      referenceMetadata.drawRoundIndex ??
+      this.legacy.state.drawRound ??
+      0;
     let normalizedDraw;
     try {
       normalizedDraw = normalizeDrawAction({
@@ -279,7 +367,7 @@ export class BadugiGameController extends GameController {
         player: { ...actor, seatIndex },
         state: {
           phase: "DRAW",
-          drawRoundIndex: this.legacy.state.drawRound ?? 0,
+          drawRoundIndex,
           maxDiscardCount: 4,
         },
         variant: { handCardCount: 4 },
@@ -386,7 +474,13 @@ export class BadugiGameController extends GameController {
     const players = (this.legacy.state.players ?? []).map((player) => ({
       ...player,
       betThisRound: 0,
-      hasActedThisRound: Boolean(player.folded || player.seatOut || player.allIn),
+      hasDrawn: Boolean(player.folded || player.seatOut || player.isBusted || player.isActiveInGame === false),
+      hasActedThisRound: Boolean(
+        player.folded ||
+          player.seatOut ||
+          player.isBusted ||
+          player.isActiveInGame === false
+      ),
     }));
     this.legacy.state.players = players;
     this.legacy.state.currentBet = 0;
@@ -435,11 +529,15 @@ export class BadugiGameController extends GameController {
     this.legacy.state.lastAggressorIdx = null;
     this.legacy.state.raiseCountThisRound = 0;
     const nextTurn = nextAliveFrom(nextPlayers, dealerIdx);
+    const activeBettingCount = nextPlayers.filter(
+      (p) => !isFoldedOrOut(p) && !p.allIn
+    ).length;
+    if (nextTurn == null || activeBettingCount <= 1) {
+      this._finishBetRound();
+      return;
+    }
     this.legacy.state.turn = nextTurn;
     this.legacy.state.nextTurn = nextTurn;
-    if (nextTurn == null) {
-      this._finishBetRound();
-    }
   }
 
   _resolveShowdownAndApplyPayouts() {
@@ -529,6 +627,23 @@ export class BadugiGameController extends GameController {
 
   syncFromExternalState({ snapshot = {}, context = null, handIndex = null } = {}) {
     const normalized = cloneSnapshot(snapshot);
+    if (hasBadugiHandShapeMismatch(normalized)) {
+      const fallbackState = this._lastState ?? this._buildControllerState({
+        handIndex: typeof handIndex === "number" ? handIndex : 0,
+        context,
+      });
+      const violations = collectBadugiHandShapeViolations(normalized.players);
+      fallbackState.lastEvents = [
+        ...(fallbackState.lastEvents ?? []),
+        {
+          type: "snapshotRejected",
+          code: "SNAPSHOT_REJECTED_HAND_SHAPE_MISMATCH",
+          severity: "P0",
+          violations,
+        },
+      ];
+      return fallbackState;
+    }
     const metadata = normalized.metadata ?? {};
     const dealerIdx =
       normalized.dealerIdx ??
@@ -542,7 +657,7 @@ export class BadugiGameController extends GameController {
         ? normalized.nextTurn
         : typeof normalized.turn === "number"
         ? normalized.turn
-        : this.legacy.state.turn ?? this.legacy.state.nextTurn ?? 0;
+        : this.legacy.state.turn ?? this.legacy.state.nextTurn ?? null;
 
     this.legacy.syncExternalState({
       players: normalized.players ?? [],

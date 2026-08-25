@@ -10,6 +10,7 @@ let flushing = false;
 let timer = null;
 let authBlockedToken = null;
 const ABSOLUTE_URL_REGEX = /^https?:\/\//i;
+const MAX_QUEUE_JOBS = 300;
 
 function loadQueue() {
   if (typeof window === "undefined") return [];
@@ -24,10 +25,20 @@ function loadQueue() {
 
 function saveQueue(queue) {
   if (typeof window === "undefined") return;
+  const toSave = queue.length > MAX_QUEUE_JOBS ? queue.slice(-MAX_QUEUE_JOBS) : queue;
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(queue));
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
   } catch (err) {
-    console.warn("[sync] failed to persist queue", err);
+    if (err?.name === "QuotaExceededError" || err?.code === 22) {
+      const half = toSave.slice(-Math.floor(MAX_QUEUE_JOBS / 2));
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(half));
+      } catch {
+        /* skip */
+      }
+    } else {
+      console.warn("[sync] failed to persist queue", err);
+    }
   }
 }
 

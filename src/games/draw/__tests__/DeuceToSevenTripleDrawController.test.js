@@ -53,7 +53,7 @@ describe("DeuceToSevenTripleDrawController", () => {
     expect(snapshot.players[0].selected).toEqual([]);
     expect(snapshot.maxDiscardCount).toBe(5);
     expect(snapshot.handCardCount).toBe(5);
-    expect(snapshot.turn).toBe(1);
+    expect(snapshot.turn).toBe(0);
     expect(snapshot.currentBet).toBe(20);
   });
 
@@ -95,12 +95,210 @@ describe("DeuceToSevenTripleDrawController", () => {
     ]);
     const state = controller.createNewHandState(controller.createInitialState());
 
-    expect(controller.getLegalActions(state, 0)).toEqual([]);
-    expect(controller.getLegalActions(state, 1).map((action) => action.type)).toEqual([
+    expect(controller.getLegalActions(state, 1)).toEqual([]);
+    expect(controller.getLegalActions(state, 0).map((action) => action.type)).toEqual([
       "FOLD",
       "CALL",
       "RAISE",
     ]);
+  });
+
+  it("does not expose BET or RAISE when every opponent is all-in", () => {
+    const controller = buildController([
+      "2S", "3S", "4S", "5S", "7S",
+      "2H", "3H", "4H", "5H", "8H",
+    ]);
+    const state = controller.createNewHandState(controller.createInitialState());
+    state.engineState.street = "BET";
+    state.engineState.actingPlayerIndex = 0;
+    state.engineState.metadata.currentBet = 20;
+    state.engineState.players[0] = {
+      ...state.engineState.players[0],
+      bet: 20,
+      stack: 480,
+      allIn: false,
+    };
+    state.engineState.players[1] = {
+      ...state.engineState.players[1],
+      bet: 20,
+      stack: 0,
+      allIn: true,
+      folded: false,
+      sittingOut: false,
+      seatOut: false,
+    };
+
+    expect(controller.getLegalActions(state, 0).map((action) => action.type)).toEqual([
+      "FOLD",
+      "CHECK",
+    ]);
+  });
+
+  it("exposes only FOLD and CALL when last remaining opponent goes all-in mid-round", () => {
+    const controller = buildController([
+      "2S", "3S", "4S", "5S", "7S",
+      "2H", "3H", "4H", "5H", "8H",
+    ]);
+    const state = controller.createNewHandState(controller.createInitialState());
+    state.engineState.street = "BET";
+    state.engineState.drawRoundIndex = 1;
+    state.engineState.actingPlayerIndex = 0;
+    state.engineState.metadata.currentBet = 20;
+    state.engineState.metadata.raiseCountThisRound = 0;
+    state.engineState.players[0] = {
+      ...state.engineState.players[0],
+      bet: 0,
+      stack: 480,
+      allIn: false,
+      hasActedThisRound: false,
+    };
+    state.engineState.players[1] = {
+      ...state.engineState.players[1],
+      bet: 20,
+      stack: 0,
+      allIn: true,
+      folded: false,
+      sittingOut: false,
+      seatOut: false,
+      hasActedThisRound: true,
+    };
+
+    expect(controller.getLegalActions(state, 0).map((action) => action.type)).toEqual([
+      "FOLD",
+      "CALL",
+    ]);
+  });
+
+  it("keeps RAISE available when one active opponent can still respond", () => {
+    const controller = buildController([
+      "2S", "3S", "4S", "5S", "7S",
+      "2H", "3H", "4H", "5H", "8H",
+    ]);
+    const state = controller.createNewHandState(controller.createInitialState());
+    state.engineState.street = "BET";
+    state.engineState.actingPlayerIndex = 0;
+    state.engineState.metadata.currentBet = 20;
+    state.engineState.players[0] = {
+      ...state.engineState.players[0],
+      bet: 20,
+      stack: 480,
+      allIn: false,
+    };
+    state.engineState.players[1] = {
+      ...state.engineState.players[1],
+      bet: 20,
+      stack: 480,
+      allIn: false,
+      folded: false,
+      sittingOut: false,
+      seatOut: false,
+    };
+
+    expect(controller.getLegalActions(state, 0).map((action) => action.type)).toContain("RAISE");
+  });
+
+  it("auto-completes a post-draw BET round when all opponents are all-in", () => {
+    const controller = buildController([
+      "2S", "3S", "4S", "5S", "7S",
+      "2H", "3H", "4H", "5H", "8H",
+    ]);
+    const state = controller.createNewHandState(controller.createInitialState());
+    state.engineState.street = "DRAW";
+    state.engineState.drawRoundIndex = 1;
+    state.engineState.actingPlayerIndex = null;
+    state.engineState.players[0] = {
+      ...state.engineState.players[0],
+      stack: 480,
+      bet: 0,
+      allIn: false,
+      folded: false,
+      sittingOut: false,
+      seatOut: false,
+    };
+    state.engineState.players[1] = {
+      ...state.engineState.players[1],
+      stack: 0,
+      bet: 0,
+      allIn: true,
+      folded: false,
+      sittingOut: false,
+      seatOut: false,
+    };
+
+    const next = controller.engine.transitionToBet(state.engineState);
+
+    expect(next.street).toBe("DRAW");
+    expect(next.drawRoundIndex).toBe(2);
+  });
+
+  it("syncs an external D01 opening snapshot so CPU betting can progress", () => {
+    const controller = buildController([
+      "2S", "3S", "4S", "5S", "7S",
+      "2H", "3H", "4H", "5H", "8H",
+      "2C", "3C", "4C", "5C", "9C",
+      "2D", "3D", "4D", "5D", "9D",
+      "6S", "7C", "8D", "9H", "TC",
+      "6H", "7D", "8C", "9S", "TD",
+    ]);
+    const initial = controller.createInitialState();
+    const synced = controller.syncFromExternalState({
+      handIndex: 1,
+      snapshot: {
+        handId: "d01-hand-1",
+        gameId: "deuce_to_seven_triple_draw",
+        variantId: "deuce_to_seven_triple_draw",
+        phase: "BET",
+        street: "BET",
+        drawRound: 0,
+        drawRoundIndex: 0,
+        dealerIdx: 0,
+        turn: 3,
+        nextTurn: 3,
+        actingPlayerIndex: 3,
+        currentBet: 20,
+        sbSeat: 1,
+        bbSeat: 2,
+        players: initial.snapshot.players.length
+          ? initial.snapshot.players
+          : Array.from({ length: 6 }, (_, seat) => ({
+              id: `seat-${seat}`,
+              playerId: `seat-${seat}`,
+              name: seat === 0 ? "You" : `CPU ${seat + 1}`,
+              seatType: seat === 0 ? "HUMAN" : "CPU",
+              isCPU: seat !== 0,
+              stack: seat === 1 ? 490 : seat === 2 ? 480 : 500,
+              betThisRound: seat === 1 ? 10 : seat === 2 ? 20 : 0,
+              bet: seat === 1 ? 10 : seat === 2 ? 20 : 0,
+              hand: ["2S", "3S", "4S", "5S", "7S"],
+              folded: false,
+              allIn: false,
+              seatOut: false,
+              hasActedThisRound: false,
+              lastAction: seat === 1 ? "SB" : seat === 2 ? "BB" : "",
+            })),
+      },
+    });
+
+    const opening = controller.getUiSnapshot(synced);
+    expect(opening.phase).toBe("BET");
+    expect(opening.turn).toBe(3);
+    expect(controller.getLegalActions(synced, 3).map((action) => action.type)).toEqual([
+      "FOLD",
+      "CALL",
+      "RAISE",
+    ]);
+
+    const result = controller.applyAction(synced, {
+      seatIndex: 3,
+      type: "CALL",
+      amount: 20,
+    });
+    const after = controller.getUiSnapshot(result.state);
+
+    expect(result.events[0]?.type).toBe("actionApplied");
+    expect(after.turn).toBe(4);
+    expect(after.players[3].lastAction).toBe("Call");
+    expect(after.players[3].betThisRound).toBe(20);
   });
 
   it("exposes legal DRAW action only for the current draw actor", () => {
@@ -109,8 +307,8 @@ describe("DeuceToSevenTripleDrawController", () => {
       "2H", "3H", "4H", "5H", "8H",
     ]);
     let state = controller.createNewHandState(controller.createInitialState());
-    state = controller.applyAction(state, { seatIndex: 1, type: "CALL" }).state;
-    state = controller.applyAction(state, { seatIndex: 0, type: "CHECK" }).state;
+    state = controller.applyAction(state, { seatIndex: 0, type: "CALL" }).state;
+    state = controller.applyAction(state, { seatIndex: 1, type: "CHECK" }).state;
 
     expect(state.snapshot.phase).toBe("DRAW");
     expect(state.snapshot.turn).toBe(1);
@@ -153,6 +351,7 @@ describe("DeuceToSevenTripleDrawController", () => {
       "2H", "3H", "4H", "5H", "8H",
     ]);
     const state = controller.createNewHandState(controller.createInitialState());
+    state.engineState.actingPlayerIndex = 1;
     state.engineState.players[1].hand = ["7S", "5D", "4C", "3H", "2S"];
 
     expect(controller.getCpuAction(state, 1)).toMatchObject({
@@ -169,6 +368,7 @@ describe("DeuceToSevenTripleDrawController", () => {
       "2H", "3H", "4H", "5H", "8H",
     ]);
     const state = controller.createNewHandState(controller.createInitialState());
+    state.engineState.actingPlayerIndex = 1;
     state.engineState.players[1].hand = ["7S", "5D", "4C", "3H", "2S"];
 
     const action = controller.getCpuAction(state, 1, {
@@ -192,6 +392,7 @@ describe("DeuceToSevenTripleDrawController", () => {
       "2H", "3H", "4H", "5H", "8H",
     ]);
     const state = controller.createNewHandState(controller.createInitialState());
+    state.engineState.actingPlayerIndex = 1;
     state.engineState.players[1].hand = ["7S", "5D", "4C", "3H", "2S"];
 
     const standardAction = controller.getCpuAction(state, 1);
@@ -212,14 +413,14 @@ describe("DeuceToSevenTripleDrawController", () => {
     let state = controller.createNewHandState(controller.createInitialState());
 
     let result = controller.applyAction(state, {
-      seatIndex: 1,
+      seatIndex: 0,
       type: "CALL",
     });
-    expect(result.events[0]).toMatchObject({ type: "actionApplied", seatIndex: 1 });
+    expect(result.events[0]).toMatchObject({ type: "actionApplied", seatIndex: 0 });
     state = result.state;
 
     result = controller.applyAction(state, {
-      seatIndex: 0,
+      seatIndex: 1,
       type: "CHECK",
     });
 
@@ -236,8 +437,8 @@ describe("DeuceToSevenTripleDrawController", () => {
       "9S", "10S",
     ]);
     let state = controller.createNewHandState(controller.createInitialState());
-    state = controller.applyAction(state, { seatIndex: 1, type: "CALL" }).state;
-    state = controller.applyAction(state, { seatIndex: 0, type: "CHECK" }).state;
+    state = controller.applyAction(state, { seatIndex: 0, type: "CALL" }).state;
+    state = controller.applyAction(state, { seatIndex: 1, type: "CHECK" }).state;
 
     let result = controller.applyAction(state, {
       seatIndex: 1,
@@ -270,7 +471,7 @@ describe("DeuceToSevenTripleDrawController", () => {
     });
     expect(missingSeat.state).toBe(state);
 
-    const outOfTurn = controller.applyAction(state, { seatIndex: 0, type: "CALL" });
+    const outOfTurn = controller.applyAction(state, { seatIndex: 1, type: "CALL" });
     expect(outOfTurn.events[0]).toMatchObject({
       type: "invalidAction",
     });
@@ -312,7 +513,7 @@ describe("DeuceToSevenTripleDrawController", () => {
     const state = controller.createNewHandState(controller.createInitialState());
 
     const result = controller.applyAction(state, {
-      seatIndex: 1,
+      seatIndex: 0,
       type: "FOLD",
     });
 
@@ -324,7 +525,7 @@ describe("DeuceToSevenTripleDrawController", () => {
     expect(controller.isHandFinished(result.state)).toBe(true);
     expect(controller.getWinners(result.state)).toEqual([
       expect.objectContaining({
-        seatIndex: 0,
+        seatIndex: 1,
         payout: 30,
       }),
     ]);

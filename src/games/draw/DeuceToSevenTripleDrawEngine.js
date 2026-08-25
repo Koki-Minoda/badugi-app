@@ -320,6 +320,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
       patHighRank: DEFAULT_PAT_HIGH_RANK,
       raiseHighRank: DEFAULT_RAISE_HIGH_RANK,
       drawKeepMaxRank: DEFAULT_DRAW_KEEP_MAX_RANK,
+      weakLateDrawRound: 3,
     };
     this.deckManager = deckManager ?? new DeckManager();
   }
@@ -453,7 +454,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
       }
       case "BET":
       case "RAISE": {
-        if (raiseCount >= getRaiseCap(next) - 1) {
+        if (raiseCount >= getRaiseCap(next)) {
           throw new IllegalActionError("Fixed-limit raise cap reached", {
             seatIndex,
             raiseCount,
@@ -583,7 +584,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
       raiseCountThisRound: 0,
       pendingDrawSeats: [],
     };
-    if (next.actingPlayerIndex == null) {
+    if (next.actingPlayerIndex == null || hasBettingRoundCompleted(next)) {
       return this.advanceAfterBet(next);
     }
     return next;
@@ -734,10 +735,13 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     const playerBet = player.bet ?? 0;
     const facingBet = currentBet > playerBet;
     const raiseCount = Number(state.metadata?.raiseCountThisRound) || 0;
-    const canRaise = (player.stack ?? 0) > 0 && raiseCount < getRaiseCap(state) - 1;
+    const canRaise = (player.stack ?? 0) > 0 && raiseCount < getRaiseCap(state);
     const strongPat = cleanLow && highestRank <= this.drawHeuristic.raiseHighRank;
     const strongOneDraw = drawCount <= 1 && highestRank <= this.drawHeuristic.patHighRank;
-    const weakLateDraw = drawCount >= 3 && (state.drawRoundIndex ?? 0) >= 2;
+    const weakLateDraw =
+      drawCount >= 3 &&
+      (state.drawRoundIndex ?? 0) >= (this.drawHeuristic.weakLateDrawRound ?? 3) &&
+      highestRank > (this.drawHeuristic.patHighRank ?? 8);
 
     if (canRaise && (strongPat || (!facingBet && strongOneDraw))) {
       return {
@@ -913,12 +917,39 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     working.isHandOver = true;
     working.actingPlayerIndex = null;
     working.pots = [];
-    working.players = working.players.map((player) => ({
-      ...player,
-      bet: 0,
-      hasActedThisRound: false,
-      canDraw: false,
-    }));
+    working.players = working.players.map((player) => {
+      const isBusted =
+        Number(player?.stack) <= 0 || player?.isBusted || player?.seatOut;
+      if (isBusted) {
+        return {
+          ...player,
+          stack: 0,
+          bet: 0,
+          betThisRound: 0,
+          totalInvested: 0,
+          folded: true,
+          hasFolded: true,
+          allIn: false,
+          sittingOut: true,
+          seatOut: true,
+          isBusted: true,
+          busted: true,
+          hand: [],
+          selected: [],
+          hasActedThisRound: true,
+          hasDrawn: true,
+          canDraw: false,
+          lastDrawCount: 0,
+          lastAction: "OUT",
+        };
+      }
+      return {
+        ...player,
+        bet: 0,
+        hasActedThisRound: false,
+        canDraw: false,
+      };
+    });
     working.metadata = {
       ...(working.metadata ?? {}),
       currentBet: 0,

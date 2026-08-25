@@ -1,6 +1,6 @@
 # Badugi RL / Multi-Game 実行計画
 
-更新日: 2026-04-30
+更新日: 2026-06-02
 目的: この文書を、Badugi RL と Draw 系マルチゲーム実装の作業基準書として使う。
 
 ## 1. この文書の使い方
@@ -42,8 +42,12 @@
 - UI の variant 選択は一部先行しており、`badugi` と `nlh` が enabled 扱い。
   - `src/ui/game/variants.js`
 
-### 2.2 Badugi RL の現状
+### 2.2 Badugi RL の現状（2026-06-02更新）
 
+- **観測ベクトル v2 実装済み**（slots 61-74 に14軸追加、`src/rl/env/badugi_env.py`）
+  - hero アクション履歴（bet/raise per round）、ドロー軌跡、デッドカード、スタック比など
+  - v2 軸を使った 10k 再学習で iron 比 +1.44（avgReward 2.455 vs 1.018）→ 方針正しいと確認
+  - 現在 50k 本格再学習中（iron warm-start）
 - 学習用コードはある。
   - `src/rl/env/badugi_env.py`
   - `src/rl/agents/dqn_agent.py`
@@ -67,7 +71,7 @@
   - frontend ONNX: Badugi / Draw schema v1 / 96-dim
   - model registry: Badugi / Draw model entries は `[96]`
 
-### 2.3 2-7 / A-5 系の現状
+### 2.3 2-7 / A-5 系の現状（2026-06-02更新）
 
 - 仕様書と variant 定義はある。
 - evaluator はある。
@@ -76,6 +80,18 @@
   - `src/config/mixed/proAiProfiles.js`
 - `D01` / `D02` / `S01` / `S02` の draw engine / controller / unit / e2e / RL observation 基盤は実装済み。
 - UI 本格接続、実ブラウザ / 実スマホでの通し確認、catalog status の最終整理は追加確認対象。
+
+**RL 学習状況（2026-06-02）:**
+
+| バリアント | 状態 | 備考 |
+|---|---|---|
+| A-5 TD (D02) | ✅ self-play 25k完了、standard適用済み | avg_reward=0.53、`a5draw_standard_dqn_v1.onnx` 更新済み |
+| 2-7 TD (D01) | 🔄 self-play +20k 学習中 | 累計50k相当 |
+| A-5 SD (S02) | ❌ **未学習** | TD流用は不可。`max_draws=1`で独立学習が必要 |
+| 2-7 SD (S01) | ❌ **未学習** | 同上 |
+
+**v2 観測ベクトル実装済み**（`draw_lowball_env.py` / `draw_lowball_env_selfplay.py`）
+- slots 31-80 に33軸（グループA-H）追加。形状は 96 次元のまま変更なし。
 
 ### 2.4 方針決定済み事項
 
@@ -93,7 +109,7 @@
 - Draw 系は Board / Stud より先に進める。
 - 非 Badugi の最初の実装対象は `D01 2-7 Triple Draw`。
 - 次点は `D02 A-5 Triple Draw`。
-- `S01/S02` は `D01/D02` の draw 回数違いとして後追いする。
+- `S01/S02` は **D01/D02 の draw 回数違いではなく別のゲームとして立て直す**（→ DEC-05 参照）。
 - `D04/D05` は split pot 実装の上に乗せる。
 - `S03/S04-S07`、`Hxx`、`STx` は Draw family の共通部完成後に着手する。
 
@@ -109,6 +125,11 @@
 - `DEC-04`
   - Badugi の不具合管理は専用 bug tracker `md` で行う。
   - 実ブラウザ / 実スマホで再現した不具合を優先記録する。
+- `DEC-05` （2026-06-02）
+  - **SD（S01/S02）は TD の draw 回数違いではなく独立したゲームとして扱う。**
+  - プリドローレンジが TD と大幅に異なるため、TD チェックポイントの流用は不可。
+  - SD 専用学習は `max_draws=1` で独立したモデルとして立てる。TD 完了後に着手。
+  - 現行デプロイ済み S01/S02 ONNX は TD 学習モデルの流用であり、SD として機能していない（未学習扱い）。
 
 ## 5. ゴール定義
 

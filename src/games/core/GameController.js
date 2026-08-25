@@ -84,6 +84,17 @@ export class GameController {
   }
 
   /**
+   * Returns a raw state snapshot for external consumers (e.g. actor resolution
+   * in actorSourceOfTruth.js). Concrete controllers may override with a richer
+   * implementation. The base default returns null so callers can safely
+   * distinguish "not implemented" from a real snapshot.
+   * @returns {object|null}
+   */
+  getSnapshot() {
+    return null;
+  }
+
+  /**
    * Optional RL encoding hook.
    * @param {object} state
    * @param {number} seatIndex

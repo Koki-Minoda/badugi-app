@@ -37,6 +37,21 @@ MODEL_BY_FAMILY = {
         "model_id": "model-a5draw-iron-v1",
         "training_run": "draw_a5_dqn",
     },
+    # Self-play checkpoints — export after training with train_selfplay_draw_dqn.py.
+    # After export, set variantIds in modelRegistry.json to ["D01","S01"] or
+    # ["D02","S02"] once human/practice benchmark passes.
+    "low-27-selfplay": {
+        "checkpoint": PROJECT_ROOT / "rl/models/draw/low-27_selfplay_dqn_latest.pt",
+        "output": PROJECT_ROOT / "public/models/27draw_selfplay_v1.onnx",
+        "model_id": "model-27draw-selfplay-v1",
+        "training_run": "draw_low27_selfplay_dqn",
+    },
+    "low-a5-selfplay": {
+        "checkpoint": PROJECT_ROOT / "rl/models/draw/low-a5_selfplay_dqn_latest.pt",
+        "output": PROJECT_ROOT / "public/models/a5draw_selfplay_v1.onnx",
+        "model_id": "model-a5draw-selfplay-v1",
+        "training_run": "draw_a5_selfplay_dqn",
+    },
 }
 
 

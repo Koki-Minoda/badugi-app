@@ -1,3 +1,5 @@
+import { sanitizeSeatHandShapeForVariant } from "./handShapeInvariant.js";
+
 const REVEAL_HAND_PHASES = new Set([
   "SHOWDOWN",
   "HAND_RESULT",
@@ -16,6 +18,7 @@ export function mergeSeatViewsForDisplay({
   baseSeats = [],
   adapterSeatViews = [],
   phase = null,
+  variantId = null,
 } = {}) {
   const revealPhase = REVEAL_HAND_PHASES.has(phase);
   return baseSeats.map((base, idx) => {
@@ -37,12 +40,12 @@ export function mergeSeatViewsForDisplay({
       const reveal =
         Boolean(base?.isHero) ||
         (revealPhase && (Boolean(base?.showHand) || shouldRevealSeatHand(phase, base)));
-      return {
+      return sanitizeSeatHandShapeForVariant({
         ...base,
         avatar,
         avatarUrl,
         showHand: reveal,
-      };
+      }, variantId);
     }
 
     const merged = {
@@ -53,7 +56,7 @@ export function mergeSeatViewsForDisplay({
       cards: overrideCards.length > 0 ? overrideCards : baseCards,
       hand: overrideHand.length > 0 ? overrideHand : baseHand,
     };
-    return {
+    return sanitizeSeatHandShapeForVariant({
       ...merged,
       showHand:
         Boolean(merged?.isHero) ||
@@ -61,6 +64,6 @@ export function mergeSeatViewsForDisplay({
           (Boolean(base?.showHand) ||
             Boolean(override.showHand) ||
             shouldRevealSeatHand(phase, merged))),
-    };
+    }, variantId);
   });
 }

@@ -276,7 +276,10 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
                     False,
                     next_action_mask=action_mask,
                 )
-            counterfactual_continue = profitable_continue_action(env)
+            if global_step % max(1, cfg.train_every_steps) == 0:
+                counterfactual_continue = profitable_continue_action(env)
+            else:
+                counterfactual_continue = None
             if counterfactual_continue is not None:
                 profitable_continue_buffer.add(
                     obs,
@@ -301,7 +304,7 @@ def train_dqn(cfg: TrainConfig | None = None, device: str | torch.device = "cpu"
                 and global_step % max(1, cfg.train_every_steps) == 0
             ):
                 batch = replay_buffer.sample(hyper.batch_size)
-                loss, mean_q = agent.update(batch)
+                loss, mean_q, _td_errors = agent.update(batch)
                 expert_batch_size = int(round(hyper.batch_size * max(0.0, cfg.expert_replay_ratio)))
                 if expert_batch_size > 0 and len(expert_buffer) >= expert_batch_size:
                     expert_batch = expert_buffer.sample(expert_batch_size)

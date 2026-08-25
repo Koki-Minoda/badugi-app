@@ -1,3 +1,4 @@
+import { getPersonalityById } from "../config/ai/personalities.js";
 import { getVariantById } from "../games/config/variantCatalog.js";
 
 function clamp(value, min, max) {
@@ -64,12 +65,21 @@ function chooseDiscardIndexes({ hand = [], evaluation, drawCount = 0 }) {
   return selected.sort((a, b) => a - b);
 }
 
-export function buildAiContext({ variantId, tierConfig, opponentStats }) {
+export function buildAiContext({
+  variantId,
+  tierConfig,
+  opponentStats,
+  personalityId = "balanced",
+  personality = null,
+}) {
   const variant = getVariantById(variantId) ?? {};
+  const resolvedPersonality = personality ?? getPersonalityById(personalityId);
   return {
     variant,
     tier: tierConfig,
     opponent: opponentStats,
+    personalityId: resolvedPersonality?.id ?? "balanced",
+    personality: resolvedPersonality,
   };
 }
 
@@ -86,20 +96,37 @@ export function computeBetDecision({
   betRound = 0,
 }) {
   const tier = context.tier ?? {};
+  const personality = context.personality ?? getPersonalityById(context.personalityId);
   const tierId = tier.id ?? "standard";
   const eliteRank = tierId === "worldmaster" ? 3 : tierId === "iron" ? 2 : tierId === "pro" ? 1 : 0;
   const isWorld = tierId === "worldmaster";
   const isElite = eliteRank > 0;
   const raiseMultiplier = (tier.raiseSizeMultiplier ?? 1.1) * (isWorld ? 1.1 : isElite ? 1.04 : 1);
-  const aggression = tier.aggression ?? 0.5;
-  const bluffFreq = tier.bluffFrequency ?? 0.1;
+  const aggression = clamp(
+    (tier.aggression ?? 0.5) + ((personality?.aggression ?? 0.5) - 0.5) * 0.18,
+    0.05,
+    0.95,
+  );
+  const bluffFreq = clamp(
+    (tier.bluffFrequency ?? 0.1) + ((personality?.bluff ?? 0.22) - 0.22) * 0.16,
+    0,
+    0.7,
+  );
+  const callDown = personality?.callDown ?? 0.5;
   const eliteFoldDiscount = eliteRank * 0.015;
   const foldThreshold = Math.max(
     0.03,
-    (tier.foldThreshold ?? 0.2) - (isWorld ? 0.02 : 0) - eliteFoldDiscount,
+    (tier.foldThreshold ?? 0.2) -
+      (isWorld ? 0.02 : 0) -
+      eliteFoldDiscount -
+      (callDown - 0.5) * 0.12 +
+      ((personality?.looseness ?? 0.5) < 0.3 ? 0.04 : 0),
   );
   const raiseThreshold = clamp(
-    (tier.raiseThreshold ?? 0.85) - (isWorld ? 0.05 : 0) - eliteRank * 0.025,
+    (tier.raiseThreshold ?? 0.85) -
+      (isWorld ? 0.05 : 0) -
+      eliteRank * 0.025 -
+      ((personality?.aggression ?? 0.5) - 0.5) * 0.12,
     0.55,
     0.95,
   );
@@ -110,7 +137,7 @@ export function computeBetDecision({
     liveOpponents >= 5 ? 0.26 : liveOpponents >= 4 ? 0.22 : liveOpponents >= 3 ? 0.14 : liveOpponents >= 2 ? 0.07 : 0;
   const lateStreetPressure = Math.max(0, Number(drawRound) || 0) >= 2 || Math.max(0, Number(betRound) || 0) >= 2 ? 0.08 : 0;
   const riskFactor = clamp((context.variant?.risk ?? 0.5) * 0.16, 0, 0.16);
-  const raiseCutoff = clamp(raiseThreshold - aggression * 0.1, 0.6, 0.95);
+  const raiseCutoff = clamp(raiseThreshold - aggression * 0.1, 0.5, 0.95);
   const lowballRanks = Array.isArray(evaluation?.ranks) ? evaluation.ranks : [];
   const highCard = lowballRanks.length ? Math.max(...lowballRanks) : 13;
   const lowRanks = lowballRanks.filter((rank) => rank <= 7).length;
@@ -233,7 +260,10 @@ export function computeBetDecision({
 export function computeDrawDecision({ context, evaluation, hand = [] }) {
   const baseRanks = evaluation?.ranks ?? [];
   const defaultDraws = baseRanks.length <= 1 ? 3 : baseRanks.length === 2 ? 2 : baseRanks.length === 3 ? 1 : 0;
-  const bias = context.tier?.drawAggression ?? 0;
+  const personality = context.personality ?? getPersonalityById(context.personalityId);
+  const bias =
+    (context.tier?.drawAggression ?? 0) +
+    Math.max(0, (personality?.drawGreed ?? 0.45) - 0.45) * 0.18;
   const roll = Math.random();
   let drawCount = defaultDraws;
   if (bias > 0 && roll < Math.min(1, bias)) {

@@ -11,21 +11,25 @@ import {
 
 describe("onnxPolicyAdapter Badugi schema", () => {
   it("selects tier-specific Badugi models for Beginner, Standard, Pro, Iron, and WorldMaster", () => {
-    expect(selectModelForVariant({ variantId: "D03", tierId: "beginner" })?.id).toBe(
-      "model-generic-v1",
-    );
+    expect(selectModelForVariant({ variantId: "D03", tierId: "beginner" })).toMatchObject({
+      id: "model-badugi-hu-beginner-dqn-100000",
+      trainingMode: "heads-up-selfplay",
+      trainingEpisodes: 100000,
+      trainingStatus: "beginner",
+      onnx: "models/badugi_hu_beginner_dqn_100000.onnx",
+      inputShape: [96],
+      outputShape: [6],
+    });
     expect(selectModelForVariant({ variantId: "D03", tierId: "standard" })?.id).toBe(
-      "model-badugi-standard-dqn-v3",
+      "model-badugi-sixmax-standard-dqn-v2",
     );
     expect(
       selectModelForVariant({
         variantId: "D03",
         tierId: "standard",
-        characterId: "badugi-standard-reader",
+        characterId: "badugi-sixmax-standard-ryo",
       })?.id,
-    ).toBe(
-      "model-badugi-standard-dqn-v3",
-    );
+    ).toBe("model-badugi-sixmax-standard-dqn-v2");
     expect(selectModelForVariant({ variantId: "D03", tierId: "pro" })?.id).toBe(
       "model-badugi-pro-v1",
     );
@@ -90,14 +94,25 @@ describe("onnxPolicyAdapter Badugi schema", () => {
     expect(selectModelForVariant({ variantId: "D01", tierId: "standard" })?.id).toBe(
       "model-27draw-standard-dqn-v1",
     );
-    expect(selectModelForVariant({ variantId: "D01", tierId: "pro" })?.id).toBe(
-      "model-27draw-pro-dqn-v1",
-    );
+    expect(selectModelForVariant({ variantId: "D01", tierId: "pro" })).toMatchObject({
+      id: "model-d01-td-pro-dqn-025000",
+      variantId: "D01",
+      variantIds: ["D01"],
+      family: "low-27",
+      maxDraws: 3,
+      tier: "pro",
+      activeTier: "pro",
+      ironPassed: true,
+      onnx: "models/d01_td_pro_dqn_025000.onnx",
+    });
     expect(selectModelForVariant({ variantId: "D01", tierId: "iron" })?.id).toBe(
       "model-27draw-iron-v1",
     );
     expect(selectModelForVariant({ variantId: "S01", tierId: "standard" })?.id).toBe(
       "model-27draw-standard-dqn-v1",
+    );
+    expect(selectModelForVariant({ variantId: "S01", tierId: "pro" })?.id).toBe(
+      "model-27draw-pro-dqn-v1",
     );
     expect(selectModelForVariant({ variantId: "D02", tierId: "beginner" })?.id).toBe(
       "model-a5draw-beginner-dqn-v1",
@@ -108,11 +123,17 @@ describe("onnxPolicyAdapter Badugi schema", () => {
     expect(selectModelForVariant({ variantId: "D02", tierId: "pro" })?.id).toBe(
       "model-a5draw-pro-dqn-v1",
     );
+    expect(selectModelForVariant({ variantId: "S02", tierId: "pro" })).toMatchObject({
+      id: "model-s02-sd-pro-dqn-v2-025000",
+      family: "low-a5",
+      maxDraws: 1,
+      tier: "pro",
+      activeTier: "pro",
+      ironPassed: true,
+      onnx: "models/s02_sd_pro_dqn_v2_025000.onnx",
+    });
     expect(selectModelForVariant({ variantId: "D02", tierId: "iron" })?.id).toBe(
       "model-a5draw-iron-v1",
-    );
-    expect(selectModelForVariant({ variantId: "S02", tierId: "standard" })?.id).toBe(
-      "model-a5draw-standard-dqn-v1",
     );
     const entry = selectModelForVariant({ variantId: "D01", tierId: "iron" });
     const tensor = buildDrawOnnxFeatures(entry, {

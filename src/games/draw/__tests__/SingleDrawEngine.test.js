@@ -80,8 +80,8 @@ describe("Single draw lowball engines", () => {
     expect(state.street).toBe("BET");
     expect(state.drawRoundIndex).toBe(0);
 
-    state = engine.applyBettingAction(state, { seatIndex: 1, type: "CALL" });
-    state = engine.applyBettingAction(state, { seatIndex: 0, type: "CHECK" });
+    state = engine.applyBettingAction(state, { seatIndex: 0, type: "CALL" });
+    state = engine.applyBettingAction(state, { seatIndex: 1, type: "CHECK" });
     expect(state.street).toBe("DRAW");
     expect(state.drawRoundIndex).toBe(1);
 

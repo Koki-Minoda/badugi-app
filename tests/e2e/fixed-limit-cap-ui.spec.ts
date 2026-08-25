@@ -12,36 +12,44 @@ type CapCase = {
 
 const CAP_UI_CASES: CapCase[] = [
   {
-    variant: "flh",
-    title: /FL Hold'em|Fixed-Limit Hold'em/i,
-    street: "FLOP",
-    currentBet: 80,
-    heroBet: 60,
-    expectedAction: "call",
-  },
-  {
-    variant: "flo8",
-    title: /FLO8|Omaha Hi-Lo/i,
-    street: "FLOP",
+    variant: "badugi",
+    title: /Badugi/i,
+    street: "BET",
     currentBet: 40,
     heroBet: 20,
     expectedAction: "call",
   },
   {
-    variant: "stud",
-    title: /^Stud$/i,
-    street: "FOURTH",
+    variant: "D01",
+    title: /2-7 Triple Draw/i,
+    street: "BET",
     currentBet: 40,
     heroBet: 20,
     expectedAction: "call",
   },
   {
-    variant: "flh",
-    title: /FL Hold'em|Fixed-Limit Hold'em/i,
-    street: "FLOP",
-    currentBet: 80,
-    heroBet: 80,
-    expectedAction: "check",
+    variant: "D02",
+    title: /A-5 Triple Draw/i,
+    street: "BET",
+    currentBet: 40,
+    heroBet: 20,
+    expectedAction: "call",
+  },
+  {
+    variant: "S01",
+    title: /2-7 Single Draw/i,
+    street: "BET",
+    currentBet: 40,
+    heroBet: 20,
+    expectedAction: "call",
+  },
+  {
+    variant: "S02",
+    title: /A-5 Single Draw/i,
+    street: "BET",
+    currentBet: 40,
+    heroBet: 20,
+    expectedAction: "call",
   },
 ];
 
@@ -53,6 +61,8 @@ async function waitForE2EDriver(page: Page) {
         api &&
           typeof api.forceDealNewHandNow === "function" &&
           typeof api.setupFixedLimitCapFixtureForTest === "function" &&
+          typeof api.forceControllerAction === "function" &&
+          typeof api.getLastControllerActionFailure === "function" &&
           typeof api.getStateSnapshot === "function" &&
           typeof api.getCurrentHandHistory === "function",
       );
@@ -129,7 +139,22 @@ test.describe("CAP-REG-05 fixed-limit cap UI", () => {
       const capSnapshot = await page.evaluate(
         () => window.__BADUGI_E2E__?.getStateSnapshot?.() ?? null,
       );
-      expect(capSnapshot?.controllerRaiseCount).toBe(4);
+      const effectiveRaiseCount =
+        capSnapshot?.controllerRaiseCount ??
+        capSnapshot?.controllerSnapshot?.raiseStats?.raiseCountThisRound ??
+        capSnapshot?.controllerSnapshot?.metadata?.raiseCountThisRound ??
+        capSnapshot?.raiseCountThisRound;
+      expect(effectiveRaiseCount).toBe(4);
+
+      const rejectedRaise = await invokeE2E(page, "forceControllerAction", 0, {
+        type: "raise",
+        amount: 20,
+      });
+      expect(rejectedRaise).toBeFalsy();
+      const failure = await invokeE2E(page, "getLastControllerActionFailure");
+      expect(
+        `${failure?.code ?? ""} ${failure?.message ?? ""} ${JSON.stringify(failure?.events ?? [])}`,
+      ).toMatch(/cap|FL_RAISE_CAP|raise cap/i);
 
       const actionButton =
         testCase.expectedAction === "call"

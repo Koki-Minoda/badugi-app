@@ -96,8 +96,8 @@ describe("D01 2-7 Triple Draw e2e hand flow", () => {
     let state = controller.createNewHandState(controller.createInitialState());
     const events = [...state.lastEvents];
 
-    state = controller.applyAction(state, { seatIndex: 1, type: "CALL" }).state;
-    state = controller.applyAction(state, { seatIndex: 0, type: "CHECK" }).state;
+    state = controller.applyAction(state, { seatIndex: 0, type: "CALL" }).state;
+    state = controller.applyAction(state, { seatIndex: 1, type: "CHECK" }).state;
 
     let result = controller.applyAction(state, {
       seatIndex: 1,

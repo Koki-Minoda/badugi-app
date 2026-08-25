@@ -15,6 +15,7 @@
     "test:tier3": "node -e \"console.log('Tier3 includes AI/report-data dependent suites; ensure reports/data fixtures exist when needed.')\" && vitest run --project=tier3 --silent=passed-only",
     "test:ai-evaluation": "vitest run --project=tier3 src/ai/evaluation --silent=passed-only",
     "test:all:serial": "npm run test:tier1 -- --pool=forks --maxWorkers=1 --no-file-parallelism --silent=passed-only && npm run test:tier2 -- --pool=forks --maxWorkers=1 --no-file-parallelism --silent=passed-only && npm run test:tier3",
+    "test:artifacts": "vitest run --config vitest.artifacts.config.js",
     "test:game:progress": "vitest run src/games/testing/progress src/games/testing/regression src/games/testing/scenario",
     "test:game:known-bugs": "vitest run src/games/testing/regression/gameProgressKnownBugs.test.js",
     "test:game:family": "vitest run src/games/testing/scenario/*FamilyProgress.test.js",

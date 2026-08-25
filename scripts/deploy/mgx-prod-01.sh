@@ -119,7 +119,6 @@ install -d -m 700 "$NPM_CACHE_DIR"
 if [ -d "node_modules" ]; then
   test "$APP_DIR" = "$(pwd)"
   test "$APP_DIR" != "/"
-  sudo -n chown -R "$(id -u):$(id -g)" "$APP_DIR/node_modules"
   rm -rf -- "$APP_DIR/node_modules"
 fi
 

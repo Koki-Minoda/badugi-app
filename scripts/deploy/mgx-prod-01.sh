@@ -113,14 +113,16 @@ echo "[mgx-deploy] installing frontend dependencies"
 NPM_CACHE_DIR="${NPM_CACHE_DIR:-/tmp/mgx-npm-cache-$(id -u)}"
 install -d -m 700 "$NPM_CACHE_DIR"
 
-# Older production runs created parts of node_modules as root. npm cannot
-# replace those files during a clean install, so normalize only this generated
-# dependency tree while leaving application files untouched.
+# Older production runs left a partially installed, root-owned dependency
+# tree. npm cannot reliably repair that tree in place, so remove only this
+# generated directory and recreate it from package-lock.json.
 if [ -d "node_modules" ]; then
-  sudo chown -R "$(id -u):$(id -g)" node_modules
+  test "$APP_DIR" = "$(pwd)"
+  test "$APP_DIR" != "/"
+  sudo rm -rf -- "$APP_DIR/node_modules"
 fi
 
-npm ci --legacy-peer-deps --cache "$NPM_CACHE_DIR"
+env npm_config_cache="$NPM_CACHE_DIR" npm ci --legacy-peer-deps
 
 echo "[mgx-deploy] building frontend"
 npm run build

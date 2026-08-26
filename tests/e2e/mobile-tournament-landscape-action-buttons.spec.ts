@@ -66,6 +66,19 @@ async function openFixture(page: Page, variantId: string) {
   await waitForE2EDriver(page);
   await invokeE2E(page, "setupMobileTournamentHeroActionFixtureForTest", { variantId });
   await expect(page.getByTestId("decision-panel")).toBeVisible({ timeout: 10000 });
+  const authenticatedUsername = await page.evaluate(() => {
+    const raw = window.localStorage.getItem("mgx_auth");
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw)?.user?.username ?? null;
+    } catch {
+      return null;
+    }
+  });
+  expect(authenticatedUsername, "authenticated username should be available").toBeTruthy();
+  await expect(page.getByTestId("seat-0-name")).toHaveText(
+    String(authenticatedUsername),
+  );
 }
 
 async function boxFor(locator: Locator) {

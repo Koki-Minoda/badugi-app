@@ -123,6 +123,10 @@ Write-Host "Output=$resolvedOutput"
 Write-Host "Log=$logPath"
 Push-Location $repoRoot
 try {
+    # Keep trainer telemetry portable across Japanese Windows PowerShell,
+    # whose redirected native-process output otherwise defaults to CP932.
+    $env:PYTHONUTF8 = "1"
+    $env:PYTHONIOENCODING = "utf-8"
     # Windows PowerShell 5 wraps native stderr as ErrorRecord objects. Keep
     # warnings in the combined log without letting ErrorActionPreference=Stop
     # abort before the native exit code can be checked.

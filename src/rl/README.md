@@ -188,6 +188,36 @@ health and baseline-regression checks, then ranks survivors by worst-profile
 reward, average reward, and value-bet rate. If none pass, the report explicitly
 recommends retaining the baseline.
 
+## Windows Phase 2 experiment matrix
+
+The controlled 10k probes use one pinned baseline SHA, one fixed seed, separate
+output directories, and refuse to start while another six-max trainer is
+running. Run them serially:
+
+```powershell
+.\scripts\windows-badugi-rl-phase2.ps1 -Experiment E0
+.\scripts\windows-badugi-rl-phase2.ps1 -Experiment E1
+.\scripts\windows-badugi-rl-phase2.ps1 -Experiment E2
+.\scripts\windows-badugi-rl-phase2.ps1 -Experiment E3
+```
+
+E0 is the control, E1 mixes 50% named profile opponents, E2 uses learning rate
+`3e-5`, and E3 lowers continuation epsilon to `0.10`. Each command trains from
+the same baseline and immediately runs the fixed seven-profile, two-seed clean
+screen. It will not overwrite a partial directory containing checkpoints.
+After all four screens complete, aggregate the extension decision with:
+
+```powershell
+npm run ai:summarize-badugi-phase2 -- `
+  --root rl/models/badugi_phase2_20260827 `
+  --output rl/models/badugi_phase2_20260827/phase2-comparison.json
+```
+
+Only a run that passes the regression screen and avoids every declared stop
+threshold is eligible for a 25k extension. Run that winner from the same common
+baseline with `-Episodes 25000`; other episode counts are rejected so result
+directories cannot collide through rounded names.
+
 Do not promote a checkpoint to Pro / Iron / WorldMaster unless it was trained
 after the latest `BadugiEnv` reward/showdown fixes, has positive or clearly
 tier-appropriate avgReward across multiple opponent profiles, and passes ONNX

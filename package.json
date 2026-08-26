@@ -71,6 +71,7 @@
     "ai:gate-badugi-model": "node scripts/runPythonTool.mjs src/rl/training/gate_badugi_model.py",
     "ai:evaluate-badugi-sixmax-clean": "node scripts/runPythonTool.mjs src/rl/training/evaluate_badugi_sixmax_clean.py",
     "ai:inventory-badugi-sixmax": "node scripts/runPythonTool.mjs src/rl/training/inventory_badugi_sixmax_checkpoints.py",
+    "ai:summarize-badugi-phase2": "node scripts/runPythonTool.mjs src/rl/training/summarize_badugi_phase2_experiments.py",
     "ai:benchmark-badugi-human-practice": "node scripts/runPythonTool.mjs src/rl/training/benchmark_badugi_human_practice.py",
     "ai:evaluate-badugi-checkpoints": "node scripts/runPythonTool.mjs src/rl/training/evaluate_badugi_checkpoints.py",
     "ai:train-draw": "node scripts/runPythonTool.mjs src/rl/training/train_draw_dqn.py",

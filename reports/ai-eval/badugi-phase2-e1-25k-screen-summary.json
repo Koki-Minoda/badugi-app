@@ -1,0 +1,311 @@
+{
+  "schemaVersion": "badugi-sixmax-checkpoint-inventory-summary-v1",
+  "updatedAt": "2026-08-26T23:52:01+00:00",
+  "status": "complete",
+  "config": {
+    "checkpointDir": "C:\\Users\\KokiF\\Worktrees\\badugi-app\\windows-rl\\rl\\models\\badugi_phase2_20260827\\e1_profile_diversity_25k",
+    "baseline": "C:\\Users\\KokiF\\Worktrees\\badugi-app\\windows-rl\\rl\\models\\badugi_sixmax_foldmargin_100k_from_raiseev_fix\\badugi_sixmax_dqn_latest.pt",
+    "milestones": [
+      25000
+    ],
+    "episodesPerSeedProfile": 120,
+    "maxSteps": 120,
+    "seeds": [
+      20260602,
+      20260603
+    ],
+    "opponentProfiles": [
+      "balanced",
+      "loose_passive",
+      "loose_aggressive",
+      "tight_passive",
+      "tight_aggressive",
+      "pat_heavy",
+      "draw_heavy"
+    ],
+    "selectionPolicy": "pass all regression checks, then maximize worst-profile reward, average reward, and value-bet rate",
+    "thresholds": {
+      "minAvgDelta": 0.0,
+      "minWorstDelta": -0.02,
+      "guardProfile": "loose_aggressive",
+      "minGuardProfileDelta": -0.02,
+      "minValueBetDelta": -0.05
+    }
+  },
+  "missingMilestones": [],
+  "baseline": {
+    "checkpoint": "C:\\Users\\KokiF\\Worktrees\\badugi-app\\windows-rl\\rl\\models\\badugi_sixmax_foldmargin_100k_from_raiseev_fix\\badugi_sixmax_dqn_latest.pt",
+    "sha256": "d93fad43dce8266d6b725eb7e598d2e961db0fbbfafca4eaae993bc78c734079",
+    "summary": {
+      "runs": 14,
+      "episodes": 1680,
+      "avgReward": 0.5267843602677589,
+      "minAvgReward": 0.1729449472096531,
+      "minReward": -1.35,
+      "maxReward": 3.0,
+      "showdowns": 434,
+      "wins": 251,
+      "folds": 0,
+      "showdownWinRate": 0.5783410138248848,
+      "profileSummaries": {
+        "balanced": {
+          "runs": 2,
+          "episodes": 240,
+          "avgReward": 0.5707083333333334,
+          "showdownWinRate": 0.5434343434343434,
+          "foldRate": 0.2850653003326159,
+          "valueBetRate": 0.719361334867664,
+          "bluffRate": 0.49404761904761907,
+          "patFrequency": 0.07785278305509519,
+          "drawDecisionAccuracy": 0.24497756578681434
+        },
+        "loose_passive": {
+          "runs": 2,
+          "episodes": 240,
+          "avgReward": 0.22573796505781796,
+          "showdownWinRate": 0.2890756302521008,
+          "foldRate": 0.3103868553508841,
+          "valueBetRate": 0.4003322259136213,
+          "bluffRate": 0.49404761904761907,
+          "patFrequency": 0.13972666301092504,
+          "drawDecisionAccuracy": 0.2183110473699751
+        },
+        "loose_aggressive": {
+          "runs": 2,
+          "episodes": 240,
+          "avgReward": 0.2658129257775985,
+          "showdownWinRate": 0.3951724137931034,
+          "foldRate": 0.3050757786280755,
+          "valueBetRate": 0.43049568965517243,
+          "bluffRate": 0.0,
+          "patFrequency": 0.41120689655172415,
+          "drawDecisionAccuracy": 0.10004537205081669
+        },
+        "tight_passive": {
+          "runs": 2,
+          "episodes": 240,
+          "avgReward": 0.6153888574660633,
+          "showdownWinRate": 0.8963210702341138,
+          "foldRate": 0.5101437024513947,
+          "valueBetRate": 0.9575892857142857,
+          "bluffRate": 0.9,
+          "patFrequency": 0.030612244897959183,
+          "drawDecisionAccuracy": 0.25891156462585035
+        },
+        "tight_aggressive": {
+          "runs": 2,
+          "episodes": 240,
+          "avgReward": 0.6399721907993967,
+          "showdownWinRate": 0.8897435897435897,
+          "foldRate": 0.46805581296830734,
+          "valueBetRate": 0.9195427092320967,
+          "bluffRate": 0.9166666666666667,
+          "patFrequency": 0.026785714285714284,
+          "drawDecisionAccuracy": 0.26453488372093026
+        },
+        "pat_heavy": {
+          "runs": 2,
+          "episodes": 240,
+          "avgReward": 1.1463406177156177,
+          "showdownWinRate": 0.9194594594594595,
+          "foldRate": 0.2562767094017094,
+          "valueBetRate": 0.8561969439728354,
+          "bluffRate": 0.534965034965035,
+          "patFrequency": 0.047455728984391404,
+          "drawDecisionAccuracy": 0.29341359277665013
+        },
+        "draw_heavy": {
+          "runs": 2,
+          "episodes": 240,
+          "avgReward": 0.22352963172448467,
+          "showdownWinRate": 0.2890756302521008,
+          "foldRate": 0.30872002085505734,
+          "valueBetRate": 0.4003322259136213,
+          "bluffRate": 0.49404761904761907,
+          "patFrequency": 0.13972666301092504,
+          "drawDecisionAccuracy": 0.22149576074577126
+        }
+      },
+      "positionSummaries": {
+        "SB": {
+          "runs": 14,
+          "episodes": 178,
+          "avgReward": 0.6296768707482993,
+          "showdownWinRate": 0.5285714285714286,
+          "foldRate": 0.24786930502229101,
+          "drawDecisionAccuracy": 0.2661139722346619
+        },
+        "BB": {
+          "runs": 14,
+          "episodes": 202,
+          "avgReward": 0.6888810448421793,
+          "showdownWinRate": 0.5731292517006803,
+          "foldRate": 0.1677785258755474,
+          "drawDecisionAccuracy": 0.22560377563649173
+        },
+        "UTG": {
+          "runs": 14,
+          "episodes": 340,
+          "avgReward": 0.3195172787738577,
+          "showdownWinRate": 0.38095238095238093,
+          "foldRate": 0.7472397055922402,
+          "drawDecisionAccuracy": 0.1598639455782313
+        },
+        "MP": {
+          "runs": 14,
+          "episodes": 290,
+          "avgReward": 0.48382639100030406,
+          "showdownWinRate": 0.49047619047619045,
+          "foldRate": 0.5784477859396614,
+          "drawDecisionAccuracy": 0.08343453931689226
+        },
+        "CO": {
+          "runs": 14,
+          "episodes": 318,
+          "avgReward": 0.5052535165414817,
+          "showdownWinRate": 0.6137755102040817,
+          "foldRate": 0.34818030786427995,
+          "drawDecisionAccuracy": 0.20555070367361802
+        },
+        "BTN": {
+          "runs": 14,
+          "episodes": 352,
+          "avgReward": 0.620363146113146,
+          "showdownWinRate": 0.6205743661100804,
+          "foldRate": 0.2628164031033061,
+          "drawDecisionAccuracy": 0.2519452304788136
+        }
+      },
+      "positionEV": {
+        "SB": 0.6296768707482993,
+        "BB": 0.6888810448421793,
+        "UTG": 0.3195172787738577,
+        "MP": 0.48382639100030406,
+        "CO": 0.5052535165414817,
+        "BTN": 0.620363146113146
+      },
+      "warnings": [],
+      "worstProfile": "draw_heavy",
+      "worstProfileAvgReward": 0.22352963172448467,
+      "valueBetRate": 0.7063037249283668,
+      "bluffRate": 0.5873015873015873,
+      "patFrequency": 0.12528604118993136,
+      "foldRate": 0.3310477235326385,
+      "drawDecisionAccuracy": 0.2305491990846682,
+      "onnxUsageRate": 1.0,
+      "fallbackRate": 0.0,
+      "proOverlayRate": 0.0,
+      "actionCounts": {
+        "0": 1426,
+        "1": 138,
+        "2": 2139,
+        "3": 769,
+        "4": 922,
+        "5": 0
+      },
+      "decisionCounts": {
+        "decisions": 5394,
+        "betDecisions": 3646,
+        "drawDecisions": 1748,
+        "foldActions": 1207,
+        "valueBetOpportunities": 698,
+        "valueBetActions": 493,
+        "bluffOpportunities": 126,
+        "bluffActions": 74,
+        "patActions": 219,
+        "drawCorrect": 403,
+        "onnxCalls": 5394,
+        "fallbackActions": 0,
+        "proOverlayActions": 0
+      },
+      "evDiagnostics": {}
+    }
+  },
+  "comparisons": [
+    {
+      "checkpoint": "C:\\Users\\KokiF\\Worktrees\\badugi-app\\windows-rl\\rl\\models\\badugi_phase2_20260827\\e1_profile_diversity_25k\\badugi_sixmax_dqn_0025000_20260827-085132.pt",
+      "episode": 25000,
+      "passedRegressionGate": true,
+      "checks": {
+        "sourceHealth": true,
+        "avgRewardDelta": true,
+        "worstProfileDelta": true,
+        "guardProfileDelta": true,
+        "valueBetRateDelta": true
+      },
+      "deltas": {
+        "avgReward": 0.07476429940590079,
+        "worstProfileAvgReward": 0.08434536827551534,
+        "guardProfile": 0.04206207422240149,
+        "valueBetRate": 0.10174225208312748
+      },
+      "candidate": {
+        "avgReward": 0.6015486596736597,
+        "worstProfile": "loose_aggressive",
+        "worstProfileAvgReward": 0.307875,
+        "guardProfile": "loose_aggressive",
+        "guardProfileAvgReward": 0.307875,
+        "valueBetRate": 0.8080459770114943,
+        "foldRate": 0.308890679559495,
+        "showdownWinRate": 0.6073619631901841
+      }
+    }
+  ],
+  "bestCheckpoint": {
+    "checkpoint": "C:\\Users\\KokiF\\Worktrees\\badugi-app\\windows-rl\\rl\\models\\badugi_phase2_20260827\\e1_profile_diversity_25k\\badugi_sixmax_dqn_0025000_20260827-085132.pt",
+    "episode": 25000,
+    "passedRegressionGate": true,
+    "checks": {
+      "sourceHealth": true,
+      "avgRewardDelta": true,
+      "worstProfileDelta": true,
+      "guardProfileDelta": true,
+      "valueBetRateDelta": true
+    },
+    "deltas": {
+      "avgReward": 0.07476429940590079,
+      "worstProfileAvgReward": 0.08434536827551534,
+      "guardProfile": 0.04206207422240149,
+      "valueBetRate": 0.10174225208312748
+    },
+    "candidate": {
+      "avgReward": 0.6015486596736597,
+      "worstProfile": "loose_aggressive",
+      "worstProfileAvgReward": 0.307875,
+      "guardProfile": "loose_aggressive",
+      "guardProfileAvgReward": 0.307875,
+      "valueBetRate": 0.8080459770114943,
+      "foldRate": 0.308890679559495,
+      "showdownWinRate": 0.6073619631901841
+    }
+  },
+  "bestObservedCheckpoint": {
+    "checkpoint": "C:\\Users\\KokiF\\Worktrees\\badugi-app\\windows-rl\\rl\\models\\badugi_phase2_20260827\\e1_profile_diversity_25k\\badugi_sixmax_dqn_0025000_20260827-085132.pt",
+    "episode": 25000,
+    "passedRegressionGate": true,
+    "checks": {
+      "sourceHealth": true,
+      "avgRewardDelta": true,
+      "worstProfileDelta": true,
+      "guardProfileDelta": true,
+      "valueBetRateDelta": true
+    },
+    "deltas": {
+      "avgReward": 0.07476429940590079,
+      "worstProfileAvgReward": 0.08434536827551534,
+      "guardProfile": 0.04206207422240149,
+      "valueBetRate": 0.10174225208312748
+    },
+    "candidate": {
+      "avgReward": 0.6015486596736597,
+      "worstProfile": "loose_aggressive",
+      "worstProfileAvgReward": 0.307875,
+      "guardProfile": "loose_aggressive",
+      "guardProfileAvgReward": 0.307875,
+      "valueBetRate": 0.8080459770114943,
+      "foldRate": 0.308890679559495,
+      "showdownWinRate": 0.6073619631901841
+    }
+  },
+  "recommendedAction": "promote-checkpoint-for-confirmation"
+}

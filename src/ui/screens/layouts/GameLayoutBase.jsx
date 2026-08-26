@@ -35,6 +35,24 @@ const MOBILE_SEAT_ALIGN_CLASS = {
   5: "items-end",
 };
 
+const MOBILE_LANDSCAPE_SEAT_GRID_AREA = {
+  0: "hero",
+  1: "bottomLeft",
+  2: "topLeft",
+  3: "topCenter",
+  4: "topRight",
+  5: "bottomRight",
+};
+
+const MOBILE_LANDSCAPE_SEAT_ALIGN_CLASS = {
+  0: "items-center justify-end pb-1",
+  1: "items-start justify-end pb-5",
+  2: "items-start justify-start pt-2",
+  3: "items-center justify-start pt-1",
+  4: "items-end justify-start pt-2",
+  5: "items-end justify-end pb-5",
+};
+
 const MOBILE_TABLE_GRID_STYLE = {
   gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
   gridTemplateRows: "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.92fr)",
@@ -42,6 +60,16 @@ const MOBILE_TABLE_GRID_STYLE = {
     "topLeft topCenter topRight"
     "leftMid pot rightMid"
     ". hero ."
+  `,
+};
+
+const MOBILE_LANDSCAPE_TABLE_GRID_STYLE = {
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gridTemplateRows: "minmax(0, 1fr) minmax(0, 0.3fr) minmax(0, 1fr)",
+  gridTemplateAreas: `
+    "topLeft topCenter topRight"
+    ". pot ."
+    "bottomLeft hero bottomRight"
   `,
 };
 
@@ -425,14 +453,16 @@ export default function GameLayoutBase({
       : "inset-x-[18%] inset-y-[42%]"
     : "inset-x-[14%] inset-y-[34%]";
   const mobileTableGridStyle =
-    isMobileLayout && isMobilePortraitMode
-      ? {
+    isMobileLayout && isMobileLandscapeTournament
+      ? MOBILE_LANDSCAPE_TABLE_GRID_STYLE
+      : isMobileLayout && isMobilePortraitMode
+        ? {
           ...MOBILE_TABLE_GRID_STYLE,
           gridTemplateRows:
             mobilePortraitProfile.tableRows ??
             "minmax(0, 0.86fr) minmax(0, 0.9fr) minmax(0, 1.14fr)",
-        }
-      : MOBILE_TABLE_GRID_STYLE;
+          }
+        : MOBILE_TABLE_GRID_STYLE;
   const rootStyle = isMobileLayout
     ? {
         ...cardScaleVars,
@@ -909,7 +939,10 @@ export default function GameLayoutBase({
                         ? { ...seat, selected: heroDrawSelection }
                         : seat;
                     const seatAlignClass = isMobileLayout
-                      ? (MOBILE_SEAT_ALIGN_CLASS[idx] ?? "items-center")
+                      ? isMobileLandscapeTournament
+                        ? (MOBILE_LANDSCAPE_SEAT_ALIGN_CLASS[idx] ??
+                          "items-center")
+                        : (MOBILE_SEAT_ALIGN_CLASS[idx] ?? "items-center")
                       : "items-center";
                     const mobileSeatLiftClass =
                       isMobileLayout && seat.seatIndex === heroSeatIndex
@@ -929,7 +962,9 @@ export default function GameLayoutBase({
                           isMobileLayout
                             ? {
                                 gridArea:
-                                  MOBILE_SEAT_GRID_AREA[idx] ?? "topCenter",
+                                  (isMobileLandscapeTournament
+                                    ? MOBILE_LANDSCAPE_SEAT_GRID_AREA[idx]
+                                    : MOBILE_SEAT_GRID_AREA[idx]) ?? "topCenter",
                               }
                             : undefined
                         }

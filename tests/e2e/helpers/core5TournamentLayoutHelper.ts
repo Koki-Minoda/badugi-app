@@ -18,6 +18,7 @@ export const TOURNAMENT_VIEWPORTS = [
   { name: "portrait-390x844", width: 390, height: 844, orientation: "portrait" },
   { name: "portrait-430x932", width: 430, height: 932, orientation: "portrait" },
   { name: "landscape-844x390", width: 844, height: 390, orientation: "landscape" },
+  { name: "pixel9-chrome-869x303", width: 869, height: 303, orientation: "landscape" },
   { name: "landscape-932x430", width: 932, height: 430, orientation: "landscape" },
 ] as const;
 
@@ -128,6 +129,83 @@ function classifyMetricFailures({
   }
 }
 
+function centerOf(box: NonNullable<Awaited<ReturnType<typeof visibleBox>>>) {
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+function validateLandscapeSeatGeometry({
+  viewport,
+  tableBox,
+  seatBoxes,
+  issues,
+}: {
+  viewport: TournamentViewport;
+  tableBox: Awaited<ReturnType<typeof visibleBox>>;
+  seatBoxes: Awaited<ReturnType<typeof visibleBox>>[];
+  issues: AuditIssue[];
+}) {
+  if (viewport.orientation !== "landscape" || !tableBox || seatBoxes.some((box) => !box)) return;
+  const boxes = seatBoxes as NonNullable<Awaited<ReturnType<typeof visibleBox>>>[];
+  const centers = boxes.map(centerOf);
+  const tableCenter = centerOf(tableBox);
+
+  for (let index = 0; index < boxes.length; index += 1) {
+    const box = boxes[index];
+    const insideTable =
+      box.x >= tableBox.x - 1 &&
+      box.y >= tableBox.y - 1 &&
+      box.x + box.width <= tableBox.x + tableBox.width + 1 &&
+      box.y + box.height <= tableBox.y + tableBox.height + 1;
+    if (!insideTable) {
+      issues.push({ priority: "P0", issue: "SEAT_OUTSIDE_TABLE", testId: `seat-${index}`, value: box });
+    }
+    for (let other = index + 1; other < boxes.length; other += 1) {
+      const x = Math.max(
+        0,
+        Math.min(box.x + box.width, boxes[other].x + boxes[other].width) - Math.max(box.x, boxes[other].x),
+      );
+      const y = Math.max(
+        0,
+        Math.min(box.y + box.height, boxes[other].y + boxes[other].height) - Math.max(box.y, boxes[other].y),
+      );
+      if (x * y > 1) {
+        issues.push({
+          priority: "P0",
+          issue: "SEAT_OVERLAP",
+          message: `seat-${index} overlaps seat-${other}`,
+          value: { overlapArea: x * y },
+        });
+      }
+    }
+  }
+
+  const topOrderValid = centers[2].x < centers[3].x && centers[3].x < centers[4].x;
+  const bottomOrderValid = centers[1].x < centers[0].x && centers[0].x < centers[5].x;
+  const verticalArcValid =
+    [2, 3, 4].every((index) => centers[index].y < tableCenter.y) &&
+    [0, 1, 5].every((index) => centers[index].y > tableCenter.y);
+  if (!topOrderValid || !bottomOrderValid || !verticalArcValid) {
+    issues.push({ priority: "P0", issue: "SEAT_RING_ORDER_INVALID", value: centers });
+  }
+
+  const pairToleranceX = tableBox.width * 0.08;
+  const pairToleranceY = tableBox.height * 0.08;
+  for (const [left, right] of [[1, 5], [2, 4]] as const) {
+    const mirroredCenterX = centers[left].x + centers[right].x;
+    if (
+      Math.abs(mirroredCenterX - tableCenter.x * 2) > pairToleranceX ||
+      Math.abs(centers[left].y - centers[right].y) > pairToleranceY
+    ) {
+      issues.push({
+        priority: "P1",
+        issue: "SEAT_RING_ASYMMETRIC",
+        message: `seat-${left}/seat-${right}`,
+        value: { left: centers[left], right: centers[right], tableCenter },
+      });
+    }
+  }
+}
+
 export async function evaluateTournamentMobileLayout(
   page: Page,
   variant: Core5Variant,
@@ -191,7 +269,11 @@ export async function evaluateTournamentMobileLayout(
   const potBox = await visibleBox(page, "table-total-pot");
   const heroBox = await visibleBox(page, "seat-0");
   const decisionBox = await visibleBox(page, "decision-panel");
+  const seatBoxes = await Promise.all(
+    Array.from({ length: 6 }, (_, index) => visibleBox(page, `seat-${index}`)),
+  );
   classifyMetricFailures({ viewport, tableBox, hudBox, potBox, heroBox, decisionBox, issues });
+  validateLandscapeSeatGeometry({ viewport, tableBox, seatBoxes, issues });
 
   return {
     status: statusFor(issues),
@@ -202,7 +284,7 @@ export async function evaluateTournamentMobileLayout(
         visibleActionButtons,
         minActionButtonHeight: Number.isFinite(minActionButtonHeight) ? minActionButtonHeight : null,
       },
-      boxes: { tableBox, hudBox, potBox, heroBox, decisionBox, foldBox },
+      boxes: { tableBox, hudBox, potBox, heroBox, decisionBox, foldBox, seatBoxes },
     },
   };
 }

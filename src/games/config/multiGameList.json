@@ -3,7 +3,7 @@
         "id":  "B01",
         "name":  "NL Hold\u0027em",
         "category":  "board",
-        "holeCards":  4,
+        "holeCards":  2,
         "drawRounds":  0,
         "board":  {
                       "type":  "flop-turn-river",
@@ -248,7 +248,7 @@
         "id":  "B09",
         "name":  "FLO8",
         "category":  "board",
-        "holeCards":  2,
+        "holeCards":  4,
         "drawRounds":  0,
         "board":  {
                       "type":  "flop-turn-river",

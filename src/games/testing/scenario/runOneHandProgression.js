@@ -177,7 +177,10 @@ export async function runOneHandProgression({
     };
   }
 
-  const harness = createProgressHarness(variantId, { seatCount: playerCount ?? 6 });
+  const harness = createProgressHarness(variantId, {
+    seatCount: playerCount ?? 6,
+    seed,
+  });
   const beforeHandSnapshot = cloneSnapshot(snapshotOf(harness));
   const trace = [];
   let previousSignature = null;

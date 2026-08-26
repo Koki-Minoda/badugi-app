@@ -43,8 +43,8 @@ function buildPlayerFromSeat(seat, idx) {
   };
 }
 
-function defaultDeckFactory() {
-  return new DeckManager();
+function defaultDeckFactory(options = {}) {
+  return new DeckManager(options);
 }
 
 function defaultTableConfig() {
@@ -142,8 +142,8 @@ export class NLHGameController {
 
   resetDeck() {
     const deckInstance = this.config.deckFactory
-      ? this.config.deckFactory()
-      : defaultDeckFactory();
+      ? this.config.deckFactory({ rng: this.config.rng })
+      : defaultDeckFactory({ rng: this.config.rng });
     this.deck = deckInstance;
     if (typeof this.deck.reset === "function") {
       this.deck.reset();

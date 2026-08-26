@@ -123,8 +123,18 @@ Write-Host "Output=$resolvedOutput"
 Write-Host "Log=$logPath"
 Push-Location $repoRoot
 try {
-    & $venvPython @trainArgs 2>&1 | Tee-Object -FilePath $logPath
-    if ($LASTEXITCODE -ne 0) { throw "Training command failed with exit code $LASTEXITCODE." }
+    # Windows PowerShell 5 wraps native stderr as ErrorRecord objects. Keep
+    # warnings in the combined log without letting ErrorActionPreference=Stop
+    # abort before the native exit code can be checked.
+    $previousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        & $venvPython @trainArgs 2>&1 | Tee-Object -FilePath $logPath
+        $trainingExitCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+    if ($trainingExitCode -ne 0) { throw "Training command failed with exit code $trainingExitCode." }
 } finally {
     Pop-Location
 }

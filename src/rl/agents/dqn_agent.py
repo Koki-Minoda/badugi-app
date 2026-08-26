@@ -235,7 +235,7 @@ class DQNAgent:
     @classmethod
     def load(cls, path: str, device: torch.device | str = "cpu") -> "DQNAgent":
         try:
-            payload = torch.load(path, map_location=device)
+            payload = torch.load(path, map_location=device, weights_only=True)
         except Exception:
             # Project-generated checkpoints include small Python metadata
             # alongside tensor weights. Only use this fallback for trusted local

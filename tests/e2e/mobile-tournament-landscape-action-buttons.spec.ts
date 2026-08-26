@@ -8,8 +8,14 @@ const REPORT_PATH = path.resolve("reports/ui/mobile-tournament-landscape-action-
 const SCREENSHOT_DIR = path.resolve("reports/screenshots/mobile-tournament-landscape-action-buttons");
 
 const PWA_LANDSCAPE_VIEWPORTS = [
-  { name: "iphone-pwa-landscape-844x390", width: 844, height: 390 },
-  { name: "iphone-pwa-tight-landscape-844x360", width: 844, height: 360 },
+  { name: "iphone-pwa-landscape-844x390", width: 844, height: 390, platform: "ios" },
+  { name: "iphone-pwa-tight-landscape-844x360", width: 844, height: 360, platform: "ios" },
+  {
+    name: "pixel9-chrome-toolbar-landscape-869x303",
+    width: 869,
+    height: 303,
+    platform: "android",
+  },
 ] as const;
 
 const SANITY_VIEWPORTS = [
@@ -22,14 +28,19 @@ function ensureReportDirs() {
   fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
 }
 
-async function openPwaPage(browser: Browser, viewport: { width: number; height: number }) {
+async function openPwaPage(
+  browser: Browser,
+  viewport: { width: number; height: number; platform: "ios" | "android" },
+) {
+  const isAndroid = viewport.platform === "android";
   const context = await browser.newContext({
     viewport: { width: viewport.width, height: viewport.height },
     isMobile: true,
     hasTouch: true,
-    deviceScaleFactor: 3,
-    userAgent:
-      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
+    deviceScaleFactor: isAndroid ? 2.625 : 3,
+    userAgent: isAndroid
+      ? "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Mobile Safari/537.36"
+      : "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
   });
   const page = await context.newPage();
   return { context, page };
@@ -76,6 +87,7 @@ async function assertButtonFullyUsable(page: Page, testId: string) {
   ).toBeGreaterThanOrEqual(0.9);
   expect(box!.x, `${testId} left should be inside viewport`).toBeGreaterThanOrEqual(0);
   expect(box!.x + box!.width, `${testId} right should be inside viewport`).toBeLessThanOrEqual(viewport.width + 1);
+  expect(box!.y, `${testId} top should be inside viewport`).toBeGreaterThanOrEqual(0);
   expect(box!.y + box!.height, `${testId} bottom should be inside viewport`).toBeLessThanOrEqual(viewport.height + 1);
   await locator.click({ trial: true, timeout: 1500 });
 }

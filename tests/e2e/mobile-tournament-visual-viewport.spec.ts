@@ -75,14 +75,17 @@ test.describe("mobile tournament visual viewport sizing", () => {
     const initial = await visualState(page);
     expectButtonsInside(initial);
 
-    await page.setViewportSize({ width: 844, height: 300 });
+    // Pixel 9 + Chrome 151 landscape with the browser toolbar visible exposes
+    // a 869x303 CSS-pixel visual viewport on the emulator. Keep this exact
+    // production geometry covered so off-screen controls cannot pass CI.
+    await page.setViewportSize({ width: 869, height: 303 });
     await page.waitForFunction(() => {
       const value = getComputedStyle(document.documentElement).getPropertyValue("--mgx-visual-vh");
-      return value.trim().startsWith("300");
+      return value.trim().startsWith("303");
     });
     const shrunk = await visualState(page);
     expectButtonsInside(shrunk);
-    const screenshotPath = path.join(SCREENSHOT_DIR, "badugi-landscape-shrunk-844x300.png");
+    const screenshotPath = path.join(SCREENSHOT_DIR, "badugi-pixel9-chrome-toolbar-869x303.png");
     rows.push({ status: "PASS", initial, shrunk, screenshotPath });
     await page.screenshot({ path: screenshotPath, fullPage: true });
   });

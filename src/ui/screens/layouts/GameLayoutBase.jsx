@@ -45,12 +45,12 @@ const MOBILE_LANDSCAPE_SEAT_GRID_AREA = {
 };
 
 const MOBILE_LANDSCAPE_SEAT_ALIGN_CLASS = {
-  0: "items-center justify-end pb-1",
-  1: "items-start justify-end pb-5",
-  2: "items-start justify-start pt-2",
-  3: "items-center justify-start pt-1",
-  4: "items-end justify-start pt-2",
-  5: "items-end justify-end pb-5",
+  0: "items-center justify-end pb-[clamp(2px,1.2dvh,6px)]",
+  1: "items-start justify-end pb-[clamp(6px,5dvh,20px)]",
+  2: "items-start justify-start pt-[clamp(4px,2.5dvh,10px)]",
+  3: "items-center justify-start pt-[clamp(2px,1.2dvh,6px)]",
+  4: "items-end justify-start pt-[clamp(4px,2.5dvh,10px)]",
+  5: "items-end justify-end pb-[clamp(6px,5dvh,20px)]",
 };
 
 const MOBILE_TABLE_GRID_STYLE = {

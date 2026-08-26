@@ -17,9 +17,12 @@ import {
 export const TOURNAMENT_VIEWPORTS = [
   { name: "portrait-390x844", width: 390, height: 844, orientation: "portrait" },
   { name: "portrait-430x932", width: 430, height: 932, orientation: "portrait" },
+  { name: "compact-landscape-720x280", width: 720, height: 280, orientation: "landscape" },
   { name: "landscape-844x390", width: 844, height: 390, orientation: "landscape" },
   { name: "pixel9-chrome-869x303", width: 869, height: 303, orientation: "landscape" },
+  { name: "short-wide-932x280", width: 932, height: 280, orientation: "landscape" },
   { name: "landscape-932x430", width: 932, height: 430, orientation: "landscape" },
+  { name: "foldable-landscape-1180x540", width: 1180, height: 540, orientation: "landscape" },
 ] as const;
 
 export type TournamentViewport = (typeof TOURNAMENT_VIEWPORTS)[number];
@@ -148,6 +151,10 @@ function validateLandscapeSeatGeometry({
   const boxes = seatBoxes as NonNullable<Awaited<ReturnType<typeof visibleBox>>>[];
   const centers = boxes.map(centerOf);
   const tableCenter = centerOf(tableBox);
+  const normalized = centers.map((center) => ({
+    x: (center.x - tableBox.x) / tableBox.width,
+    y: (center.y - tableBox.y) / tableBox.height,
+  }));
 
   for (let index = 0; index < boxes.length; index += 1) {
     const box = boxes[index];
@@ -186,6 +193,21 @@ function validateLandscapeSeatGeometry({
     [0, 1, 5].every((index) => centers[index].y > tableCenter.y);
   if (!topOrderValid || !bottomOrderValid || !verticalArcValid) {
     issues.push({ priority: "P0", issue: "SEAT_RING_ORDER_INVALID", value: centers });
+  }
+
+  const relativeArcValid =
+    [2, 3, 4].every((index) => normalized[index].y < 0.4) &&
+    [0, 1, 5].every((index) => normalized[index].y > 0.6) &&
+    normalized[0].x > 0.35 && normalized[0].x < 0.65 &&
+    [1, 2].every((index) => normalized[index].x < 0.3) &&
+    [4, 5].every((index) => normalized[index].x > 0.7);
+  if (!relativeArcValid) {
+    issues.push({
+      priority: "P0",
+      issue: "SEAT_RING_RELATIVE_POSITION_INVALID",
+      message: "seat centers left their viewport-relative table bands",
+      value: normalized,
+    });
   }
 
   const pairToleranceX = tableBox.width * 0.08;

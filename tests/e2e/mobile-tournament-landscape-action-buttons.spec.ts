@@ -8,12 +8,24 @@ const REPORT_PATH = path.resolve("reports/ui/mobile-tournament-landscape-action-
 const SCREENSHOT_DIR = path.resolve("reports/screenshots/mobile-tournament-landscape-action-buttons");
 
 const PWA_LANDSCAPE_VIEWPORTS = [
+  {
+    name: "compact-android-landscape-720x280",
+    width: 720,
+    height: 280,
+    platform: "android",
+  },
   { name: "iphone-pwa-landscape-844x390", width: 844, height: 390, platform: "ios" },
   { name: "iphone-pwa-tight-landscape-844x360", width: 844, height: 360, platform: "ios" },
   {
     name: "pixel9-chrome-toolbar-landscape-869x303",
     width: 869,
     height: 303,
+    platform: "android",
+  },
+  {
+    name: "foldable-android-landscape-1180x540",
+    width: 1180,
+    height: 540,
     platform: "android",
   },
 ] as const;

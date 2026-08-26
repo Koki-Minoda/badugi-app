@@ -9,6 +9,7 @@ describe("Core5 CPU strategy sanity", () => {
       seats: 6,
       mode: "cash",
       cpu: "heuristic",
+      seed: 20260826,
     });
 
     for (const result of summary.results) {

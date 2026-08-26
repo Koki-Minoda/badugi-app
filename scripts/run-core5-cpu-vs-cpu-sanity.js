@@ -28,12 +28,13 @@ function parseArgs(argv) {
     seats: 6,
     mode: "cash",
     cpu: "heuristic",
+    seed: 20260826,
     outDir: "reports/ai",
   };
   for (const arg of argv.slice(2)) {
     const [rawKey, rawValue = "true"] = arg.replace(/^--/, "").split("=");
     if (rawKey in options) {
-      options[rawKey] = rawKey === "hands" || rawKey === "seats" ? Number(rawValue) : rawValue;
+      options[rawKey] = ["hands", "seats", "seed"].includes(rawKey) ? Number(rawValue) : rawValue;
     }
   }
   options.variantList = String(options.variants)
@@ -41,6 +42,17 @@ function parseArgs(argv) {
     .map((entry) => entry.trim())
     .filter(Boolean);
   return options;
+}
+
+function createSeededRandom(seed) {
+  let state = Number(seed) >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
 function getSnapshot(controller, state) {
@@ -257,6 +269,9 @@ function simulateVariant({ variantId, hands, seats, mode, cpuMode, trace }) {
 
 export function runCore5CpuVsCpuSanity(options) {
   const originalLog = console.log;
+  const originalRandom = Math.random;
+  const seed = Number.isFinite(Number(options.seed)) ? Number(options.seed) : 20260826;
+  Math.random = createSeededRandom(seed);
   console.log = (...args) => {
     if (String(args[0] ?? "").startsWith("[DECK]")) return;
     originalLog(...args);
@@ -298,12 +313,14 @@ export function runCore5CpuVsCpuSanity(options) {
         seats: options.seats,
         mode: options.mode,
         cpu: options.cpu,
+        seed,
       },
       results,
       decisionSummary: trace.summarize(),
     };
     return { trace, summary };
   } finally {
+    Math.random = originalRandom;
     console.log = originalLog;
   }
 }

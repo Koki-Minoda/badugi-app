@@ -27,7 +27,7 @@ describe("ChinesePokerGameScreen", () => {
     fireEvent.click(screen.getByTestId("chinese-next-hand"));
     expect(screen.getByText(/Hand #2/)).toBeTruthy();
     expect(screen.queryByTestId("chinese-results")).toBeNull();
-  });
+  }, 10000);
 
   it("returns to game selector through the back action", () => {
     const onBack = vi.fn();

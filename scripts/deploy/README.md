@@ -20,5 +20,4 @@ chmod +x scripts/deploy/mgx-prod-01.sh   # one-time
 5. `sudo systemctl restart mgx-backend.service`
 6. `sudo nginx -t && sudo systemctl reload nginx`
 
-> **Note:** The script assumes `/var/www/mgx-poker` exists and nginx is already configured to serve that directory.
-
+> **Note:** The script assumes `/var/www/mgx-poker` exists and nginx is already configured to serve that directory. Friend Match also requires the checked-in `/ws/` proxy location to be applied to the live nginx site before deployment; deploy verification fails unless an unauthenticated WSS handshake reaches FastAPI and returns the expected 403 rejection.

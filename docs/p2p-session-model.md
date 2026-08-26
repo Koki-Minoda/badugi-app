@@ -1,57 +1,58 @@
-# P2P Session Model
+# P2P Friend Match
 
-This document fixes the MVP persistence boundary for MGX friend matches.
+MGX Friend Match currently exposes one quality-gated mode: authenticated,
+heads-up Badugi. Other catalogue games are intentionally hidden until they
+have the same server-authoritative rules and browser coverage.
 
-## Scope
+## Play flow
 
-The first playable P2P slice is a private Badugi room:
+1. A signed-in host creates a room at `/friend-match`.
+2. The host shares the six-character room code.
+3. A second signed-in user joins with the code.
+4. Both players press Ready. The server deals four private cards, posts the
+   blinds and controls turn order.
+5. The hand runs through four betting rounds and three draws. Each player can
+   replace zero to four selected cards. The server evaluates Badugi hands and
+   distributes the pot.
+6. Both players can press Ready again for a new hand. The dealer rotates. If a
+   player was busted, the button explicitly starts a new match and resets both
+   stacks to the configured starting stack.
 
-- Host creates a room from Friend Match.
-- Host is joined automatically.
-- Guest joins by room code.
-- Both clients connect to `/ws/room/{roomId}/play`.
-- Server broadcasts `room_state`, `secure_deal`, `updated_state`, `showdown`, `history`, and `error`.
+REST endpoints live under `/api/p2p/rooms`. Live state uses
+`/ws/p2p/{roomCode}`. The access token is sent as a WebSocket subprotocol so it
+does not appear in proxy access-log URLs. Nginx must proxy `/ws/` with WebSocket
+upgrade headers; the checked-in HTTP and HTTPS templates include this rule.
 
-Public lobbies, invite links, reconnect recovery, result sync, and spectator mode remain follow-up items.
+## Authority and privacy
 
-## Server State
+- The FastAPI `backend/app` process owns the deck, private hands, stacks, pot,
+  legal actions, current actor and showdown result.
+- The player identity comes from the signed access token. Client-supplied
+  player IDs and display names are not trusted.
+- Each socket receives an individualized state. A player sees only their own
+  cards until a showdown reveal.
+- Illegal, out-of-turn and duplicate draw actions are rejected by the server.
+- The UI renders only the server's `legalActions` and submits card indexes for
+  a draw; it does not run a second local game engine.
 
-The current in-memory room state is the runtime source of truth during MVP:
+## Reconnect boundary
 
-- `rooms.id`
-- `players`
-- `spectators`
-- `phase`
-- `metadata`
-- `sequence_id`
-- `history`
-- `hand_id`
-- `stacks`
-- `bets`
-- `pot`
-- `turn_order`
-- `current_turn_index`
-- `folded`
-- `anti_cheat_warnings`
+Refreshing or temporarily losing the network reconnects the socket and asks
+for the latest authoritative state. A newer connection for the same user
+replaces the older socket.
 
-Persistence target for a DB-backed version:
+Rooms are currently held in backend memory. They survive browser reconnects
+but do **not** survive a backend restart or work across multiple backend
+processes. Production scaling requires a shared room snapshot/event store and
+cross-process broadcast before multiple workers are enabled.
 
-- `p2p_rooms`: room lifecycle, mode, variant, owner, phase, max players.
-- `p2p_room_participants`: player/spectator membership, seat, ready, last seen.
-- `p2p_room_events`: append-only event log with sequence id, hand id, event type, payload.
-- `p2p_room_snapshots`: compact latest state for reconnect and fast load.
-- `p2p_match_results`: finished hand/match result for rating and RL export.
+## Current exclusions
 
-## Conflict Rules
+- More than two players
+- Spectators and public lobbies
+- Invite links and matchmaking
+- Durable recovery after backend restart
+- Ratings or RL export from friend-match results
+- Non-Badugi variants
 
-- Server-assigned `sequenceId` is authoritative.
-- Client must ignore stale events whose `sequenceId` is lower than the latest applied sequence.
-- Client may keep observing events before full table sync is wired, but must not mutate the local Badugi engine from P2P events until conflict handling is implemented.
-- Reconnect must request latest room info plus recent history before resuming actions.
-
-## Current Implementation Status
-
-- REST room create/join/info/list exists under `/api/rooms`.
-- WebSocket skeleton exists under `/ws/room/{roomId}/play`.
-- Friend Match can create a room, auto-join host, join by room code, and display received sync events.
-- Actual game table synchronization is intentionally not connected yet.
+These exclusions are product boundaries, not implied support.

@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: mgx-prod-01
+  group: mgx-prod-01-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -58,11 +58,31 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run test:tournament:pr-e2e
 
+  p2p-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - run: npm ci --legacy-peer-deps
+      - run: python -m pip install -e './backend[test]'
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:p2p
+
   deploy:
     needs:
       - quality
       - backend
       - tournament-qa
+      - p2p-qa
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30

@@ -1,42 +1,21 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { GAME_VARIANT_CATEGORIES } from "../../games/config/variantCatalog.js";
-import { listVariantProfiles } from "../../games/config/variantProfiles.js";
 import { designTokens } from "../../styles/designTokens.js";
 import { LANGUAGE_STORAGE_KEY, MGX_DEFAULT_LOCALE } from "../../config/mgxLocaleConfig.js";
-import variantJa from "../../i18n/variants.ja.json";
-import { getEnabledVariants } from "../game/variants.js";
-import { buildRoomWebSocketUrl, createRoom, getRoomInfo, joinRoom } from "../utils/roomApi.js";
+import {
+  buildRoomWebSocketUrl,
+  buildRoomWebSocketProtocols,
+  createRoom,
+  joinRoom,
+  leaveRoom,
+  readRoomAuth,
+} from "../utils/roomApi.js";
 
 const ACTIVE_ROOM_STORAGE_KEY = "mgx_friend_match_active_room_v1";
-const FRIEND_VARIANT_ALL_CATEGORY = "all";
-
-const FRIEND_VARIANT_CATEGORY_ORDER = [
-  FRIEND_VARIANT_ALL_CATEGORY,
-  GAME_VARIANT_CATEGORIES.BOARD,
-  GAME_VARIANT_CATEGORIES.TRIPLE_DRAW,
-  GAME_VARIANT_CATEGORIES.SINGLE_DRAW,
-  GAME_VARIANT_CATEGORIES.DRAMAHA,
-  GAME_VARIANT_CATEGORIES.STUD,
-];
-
-const FRIEND_VARIANT_CATEGORY_LABELS = Object.freeze({
-  en: {
-    [FRIEND_VARIANT_ALL_CATEGORY]: "All",
-    [GAME_VARIANT_CATEGORIES.BOARD]: "Board / Hold'em / Omaha",
-    [GAME_VARIANT_CATEGORIES.TRIPLE_DRAW]: "Triple Draw",
-    [GAME_VARIANT_CATEGORIES.SINGLE_DRAW]: "Single Draw",
-    [GAME_VARIANT_CATEGORIES.DRAMAHA]: "Dramaha",
-    [GAME_VARIANT_CATEGORIES.STUD]: "Stud",
-  },
-  ja: {
-    [FRIEND_VARIANT_ALL_CATEGORY]: "すべて",
-    [GAME_VARIANT_CATEGORIES.BOARD]: "ボード / ホールデム / オマハ",
-    [GAME_VARIANT_CATEGORIES.TRIPLE_DRAW]: "トリプルドロー",
-    [GAME_VARIANT_CATEGORIES.SINGLE_DRAW]: "シングルドロー",
-    [GAME_VARIANT_CATEGORIES.DRAMAHA]: "ドラマハ",
-    [GAME_VARIANT_CATEGORIES.STUD]: "スタッド",
-  },
+const BADUGI_VARIANT = Object.freeze({
+  id: "badugi",
+  label: "Badugi",
+  description: "Heads-up / 4 cards / 3 draws",
 });
 
 function loadStoredActiveRoom() {
@@ -100,9 +79,21 @@ const FRIEND_COPY = {
     liveTable: "現在の卓",
     hand: "ハンド",
     ready: "準備完了",
+    check: "チェック",
     call: "コール",
+    betAction: "ベット",
+    raise: "レイズ",
     draw: "ドロー",
+    standPat: "スタンドパット",
     fold: "フォールド",
+    selectCards: "交換するカードを選択",
+    leave: "ルームを退出",
+    copyCode: "コードをコピー",
+    copied: "ルームコードをコピーしました。",
+    loginRequired: "フレンドマッチを利用するにはログインしてください。",
+    roomClosed: "ホストが退出したため、ルームを終了しました。",
+    sessionReplaced: "このルームは別の画面で開かれました。",
+    newMatch: "新しいマッチを開始",
     waitingPlayers: "参加者を待っています...",
     readyState: "準備済み",
     notReadyState: "未準備",
@@ -159,9 +150,21 @@ const FRIEND_COPY = {
     liveTable: "Live Table State",
     hand: "Hand",
     ready: "Ready",
+    check: "Check",
     call: "Call",
+    betAction: "Bet",
+    raise: "Raise",
     draw: "Draw",
+    standPat: "Stand pat",
     fold: "Fold",
+    selectCards: "Select cards to replace",
+    leave: "Leave room",
+    copyCode: "Copy code",
+    copied: "Room code copied.",
+    loginRequired: "Log in to use Friend Match.",
+    roomClosed: "The room was closed because the host left.",
+    sessionReplaced: "This room was opened in another window.",
+    newMatch: "Start new match",
     waitingPlayers: "Waiting for players...",
     readyState: "ready",
     notReadyState: "not ready",
@@ -184,38 +187,6 @@ const FRIEND_COPY = {
     guestName: "Guest",
   },
 };
-
-function localizeFriendVariantProfile(profile, language) {
-  if (!profile) return profile;
-  const translation = language === "ja" ? variantJa[profile.id] : null;
-  const name = translation?.name || profile.name;
-  const description = translation?.description || profile.description || profile.summary || "";
-  return {
-    ...profile,
-    name,
-    description,
-    searchText: `${profile.id} ${profile.engineKey ?? ""} ${name} ${description} ${(
-      profile.tags ?? []
-    ).join(" ")}`.toLowerCase(),
-  };
-}
-
-function decorateFriendVariant(variant, profilesByAppId, language) {
-  const profile = profilesByAppId.get(variant.id);
-  const localizedProfile = localizeFriendVariantProfile(profile, language);
-  const label = localizedProfile?.name ?? variant.label;
-  const description = localizedProfile?.description ?? "";
-  const searchText = `${variant.id} ${variant.label} ${label} ${description} ${(
-    localizedProfile?.tags ?? []
-  ).join(" ")}`.toLowerCase();
-  return {
-    ...variant,
-    label,
-    description,
-    category: localizedProfile?.category ?? FRIEND_VARIANT_ALL_CATEGORY,
-    searchText,
-  };
-}
 
 function VariantOption({ variant, isSelected, onSelect, copy }) {
   return (
@@ -284,6 +255,12 @@ const EMPTY_TABLE_STATE = {
   secureDeals: [],
   showdown: null,
   currentTurnPlayerId: null,
+  legalActions: [],
+  hand: [],
+  toCall: 0,
+  currentBet: 0,
+  history: [],
+  config: { startingStack: 2000, smallBlind: 10, bigBlind: 20, ante: 0 },
 };
 
 function mergePlayerStates(players = [], playerStates = [], stacks = {}, bets = {}) {
@@ -303,6 +280,26 @@ function mergePlayerStates(players = [], playerStates = [], stacks = {}, bets = 
 
 function applyRoomEventToTableState(current, entry) {
   const payload = entry?.payload ?? {};
+  if (entry?.event === "state") {
+    const playerStates = Array.isArray(payload.players) ? payload.players : [];
+    return {
+      ...current,
+      roomId: payload.roomCode ?? current.roomId,
+      phase: payload.phase ?? current.phase,
+      handId: payload.handId ?? current.handId,
+      players: playerStates.map((player) => player.id),
+      playerStates,
+      pot: Number(payload.pot ?? 0),
+      currentBet: Number(payload.currentBet ?? 0),
+      toCall: Number(payload.toCall ?? 0),
+      currentTurnPlayerId: payload.currentTurnPlayerId ?? null,
+      legalActions: Array.isArray(payload.legalActions) ? payload.legalActions : [],
+      hand: Array.isArray(payload.hand) ? payload.hand : [],
+      showdown: payload.showdown ?? null,
+      history: Array.isArray(payload.history) ? payload.history : [],
+      config: { ...current.config, ...(payload.config ?? {}) },
+    };
+  }
   if (entry?.event === "room_state") {
     const players = payload.players ?? current.players;
     return {
@@ -362,26 +359,9 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
       FRIEND_COPY.en,
     [languageKey],
   );
-  const enabledVariants = useMemo(() => getEnabledVariants(), []);
-  const variantProfilesByAppId = useMemo(() => {
-    const map = new Map();
-    listVariantProfiles().forEach((profile) => {
-      if (profile.id) map.set(profile.id, profile);
-      if (profile.engineKey) map.set(profile.engineKey, profile);
-    });
-    return map;
-  }, []);
-  const friendVariants = useMemo(
-    () =>
-      enabledVariants.map((variant) =>
-        decorateFriendVariant(variant, variantProfilesByAppId, languageKey),
-      ),
-    [enabledVariants, languageKey, variantProfilesByAppId],
-  );
-  const [variantId, setVariantId] = useState(enabledVariants[0]?.id ?? "badugi");
-  const [variantSearch, setVariantSearch] = useState("");
-  const [variantCategory, setVariantCategory] = useState(FRIEND_VARIANT_ALL_CATEGORY);
-  const [seats, setSeats] = useState(4);
+  const friendVariants = useMemo(() => [BADUGI_VARIANT], []);
+  const [variantId, setVariantId] = useState("badugi");
+  const [seats] = useState(2);
   const [stack, setStack] = useState(2000);
   const [smallBlind, setSmallBlind] = useState(10);
   const [bigBlind, setBigBlind] = useState(20);
@@ -396,8 +376,11 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
   const [p2pTableState, setP2pTableState] = useState(EMPTY_TABLE_STATE);
   const [latestSequenceId, setLatestSequenceId] = useState(0);
   const [staleEventCount, setStaleEventCount] = useState(0);
+  const [selectedCardIndexes, setSelectedCardIndexes] = useState([]);
   const socketRef = useRef(null);
   const latestSequenceRef = useRef(0);
+  const reconnectTimerRef = useRef(null);
+  const heartbeatTimerRef = useRef(null);
 
   useEffect(() => {
     persistActiveRoom(createdRoom);
@@ -408,6 +391,8 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
     const url = buildRoomWebSocketUrl(createdRoom.roomId);
     if (!url) return undefined;
 
+    let cancelled = false;
+    let reconnectAttempt = 0;
     setSyncStatus("connecting");
     setRoomEvents([]);
     setP2pTableState({
@@ -415,28 +400,35 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
       roomId: createdRoom.roomId,
       phase: createdRoom.phase ?? "waiting",
       handId: createdRoom.handId ?? null,
-      players: createdRoom.players ?? [],
-      playerStates: mergePlayerStates(createdRoom.players ?? [], [], {}, {}),
+      players: (createdRoom.players ?? []).map((player) =>
+        typeof player === "string" ? player : player.id,
+      ),
+      playerStates: (createdRoom.players ?? []).map((player) =>
+        typeof player === "string"
+          ? mergePlayerStates([player], [], {}, {})[0]
+          : player,
+      ),
     });
     setLatestSequenceId(0);
     setStaleEventCount(0);
     latestSequenceRef.current = 0;
-    const socket = new WebSocket(url);
-    socketRef.current = socket;
-
-    socket.addEventListener("open", () => {
-      setSyncStatus("connected");
-      socket.send(
-        JSON.stringify({
-          event: "join_room",
-          payload: {
-            playerId: createdRoom.ownerId,
-            displayName: createdRoom.displayName ?? copy.hostName,
-          },
-        }),
-      );
-    });
-    socket.addEventListener("message", (event) => {
+    const connect = () => {
+      if (cancelled) return;
+      setSyncStatus(reconnectAttempt > 0 ? "reconnecting" : "connecting");
+      const socket = new WebSocket(url, buildRoomWebSocketProtocols());
+      socketRef.current = socket;
+      socket.addEventListener("open", () => {
+        reconnectAttempt = 0;
+        setSyncStatus("connected");
+        socket.send(JSON.stringify({ event: "sync", payload: {} }));
+        if (heartbeatTimerRef.current) window.clearInterval(heartbeatTimerRef.current);
+        heartbeatTimerRef.current = window.setInterval(() => {
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ event: "heartbeat", payload: {} }));
+          }
+        }, 25_000);
+      });
+      socket.addEventListener("message", (event) => {
       const parsed = (() => {
         try {
           return JSON.parse(event.data);
@@ -444,6 +436,17 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
           return { event: "message", payload: event.data };
         }
       })();
+      if (parsed?.event === "error") {
+        setStatusMessage(parsed?.payload?.message ?? copy.socketNotConnected);
+        return;
+      }
+      if (parsed?.event === "room_closed") {
+        setStatusMessage(copy.roomClosed);
+        persistActiveRoom(null);
+        setCreatedRoom(null);
+        setP2pTableState(EMPTY_TABLE_STATE);
+        return;
+      }
       const normalizedEvents = normalizeRoomEvent(parsed);
       const accepted = [];
       let staleCount = 0;
@@ -468,31 +471,63 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
         );
         setRoomEvents((prev) => [...accepted.reverse(), ...prev].slice(0, 8));
       }
-    });
-    socket.addEventListener("close", () => {
-      setSyncStatus("closed");
-    });
-    socket.addEventListener("error", () => {
-      setSyncStatus("error");
-    });
+      });
+      socket.addEventListener("close", (event) => {
+        if (cancelled) return;
+        if (heartbeatTimerRef.current) window.clearInterval(heartbeatTimerRef.current);
+        if ([4001, 4004, 4401].includes(event.code)) {
+          setSyncStatus("closed");
+          setStatusMessage(
+            event.code === 4001
+              ? copy.sessionReplaced
+              : event.code === 4401
+                ? copy.loginRequired
+                : copy.roomClosed,
+          );
+          persistActiveRoom(null);
+          setCreatedRoom(null);
+          setP2pTableState(EMPTY_TABLE_STATE);
+          return;
+        }
+        setSyncStatus("reconnecting");
+        reconnectAttempt += 1;
+        const delay = Math.min(5000, 500 * 2 ** Math.min(reconnectAttempt, 4));
+        reconnectTimerRef.current = window.setTimeout(connect, delay);
+      });
+      socket.addEventListener("error", () => setSyncStatus("error"));
+    };
+    connect();
 
     return () => {
+      cancelled = true;
+      if (reconnectTimerRef.current) window.clearTimeout(reconnectTimerRef.current);
+      if (heartbeatTimerRef.current) window.clearInterval(heartbeatTimerRef.current);
+      const socket = socketRef.current;
       socketRef.current = null;
-      socket.close();
+      if (socket) socket.close();
     };
-  }, [createdRoom, copy.hostName]);
+  }, [
+    createdRoom?.handId,
+    createdRoom?.phase,
+    createdRoom?.players,
+    createdRoom?.roomId,
+    copy.roomClosed,
+    copy.sessionReplaced,
+    copy.loginRequired,
+    copy.socketNotConnected,
+  ]);
+
+  useEffect(() => {
+    setSelectedCardIndexes([]);
+  }, [p2pTableState.handId, p2pTableState.phase]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setIsCreating(true);
     setStatusMessage("");
     setCreatedRoom(null);
-    const ownerId = `local-${Date.now().toString(36)}`;
     try {
       const room = await createRoom({
-        ownerId,
-        maxPlayers: seats,
-        mode: "friend",
         metadata: {
           variantId,
           startingStack: String(stack),
@@ -501,17 +536,8 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
           ante: String(ante),
         },
       });
-      await joinRoom({
-        roomId: room.roomId,
-        playerId: ownerId,
-        displayName: copy.hostName,
-        seatHint: "0",
-      });
       setCreatedRoom({
         ...room,
-        ownerId,
-        displayName: copy.hostName,
-        players: [ownerId],
         websocketUrl: buildRoomWebSocketUrl(room.roomId),
       });
       setStatusMessage(copy.roomCreated);
@@ -532,23 +558,10 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
     setIsJoining(true);
     setStatusMessage("");
     setCreatedRoom(null);
-    const playerId = `guest-${Date.now().toString(36)}`;
     try {
-      const info = await getRoomInfo(roomId);
-      await joinRoom({
-        roomId,
-        playerId,
-        displayName: copy.guestName,
-        seatHint: String(info.players?.length ?? 0),
-      });
+      const info = await joinRoom({ roomId });
       setCreatedRoom({
-        roomId,
-        phase: info.phase,
-        metadata: info.metadata,
-        maxPlayers: info.maxPlayers ?? info.metadata?.maxPlayers,
-        ownerId: playerId,
-        displayName: copy.guestName,
-        players: info.players?.map((player) => player.id) ?? [playerId],
+        ...info,
         websocketUrl: buildRoomWebSocketUrl(roomId),
       });
       setStatusMessage(copy.joinedRoom);
@@ -575,48 +588,45 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
 
   const sendReady = () => {
     if (!createdRoom?.ownerId) return;
-    sendRoomMessage("reaction", {
-      playerId: createdRoom.ownerId,
-      type: "ready",
-    });
+    sendRoomMessage("ready", {});
   };
 
   const sendAction = (type, amount = 0) => {
     if (!createdRoom?.ownerId) return;
     sendRoomMessage("action", {
-      playerId: createdRoom.ownerId,
       type,
       amount,
     });
+  };
+  const sendDraw = () => {
+    sendRoomMessage("draw", { cardIndexes: selectedCardIndexes });
+  };
+  const handleLeave = async () => {
+    if (!createdRoom?.roomId) return;
+    try {
+      await leaveRoom(createdRoom.roomId);
+    } finally {
+      persistActiveRoom(null);
+      setCreatedRoom(null);
+      setP2pTableState(EMPTY_TABLE_STATE);
+    }
   };
   const canSendAction =
     Boolean(createdRoom?.ownerId) &&
     (!p2pTableState.currentTurnPlayerId ||
       p2pTableState.currentTurnPlayerId === createdRoom.ownerId);
-  const normalizedVariantSearch = variantSearch.trim().toLowerCase();
-  const filteredVariants = useMemo(
-    () =>
-      friendVariants.filter((variant) => {
-        const matchesCategory =
-          variantCategory === FRIEND_VARIANT_ALL_CATEGORY ||
-          variant.category === variantCategory;
-        const matchesSearch =
-          !normalizedVariantSearch || variant.searchText.includes(normalizedVariantSearch);
-        return matchesCategory && matchesSearch;
-      }),
-    [friendVariants, normalizedVariantSearch, variantCategory],
-  );
-  const categoryLabels =
-    FRIEND_VARIANT_CATEGORY_LABELS[languageKey] ?? FRIEND_VARIANT_CATEGORY_LABELS.en;
+  const tableBigBlind = Number(p2pTableState.config?.bigBlind ?? bigBlind);
+  const filteredVariants = friendVariants;
+  const hasAuth = Boolean(readRoomAuth());
 
   return (
     <div
-      className="min-h-screen px-4 py-10 text-white"
+      className="min-h-screen overflow-x-clip px-4 py-10 text-white"
       style={{
         background: `radial-gradient(120% 120% at 50% 0%, ${designTokens.colors.surface} 0%, ${designTokens.colors.background} 60%)`,
       }}
     >
-      <div className="max-w-3xl mx-auto space-y-6">
+      <div className="mx-auto min-w-0 max-w-3xl space-y-6">
         <header className="space-y-2">
           <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">{copy.eyebrow}</p>
           <h1 className="text-3xl font-bold text-white">{copy.title}</h1>
@@ -627,57 +637,18 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
 
         <form
           onSubmit={handleSubmit}
-          className="rounded-3xl border border-white/10 bg-slate-900/80 p-6 space-y-8"
+          className="min-w-0 rounded-3xl border border-white/10 bg-slate-900/80 p-4 space-y-8 sm:p-6"
         >
           <section aria-label="Game variant" className="space-y-3">
             <div>
               <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">{copy.variant}</p>
               <h2 className="text-xl font-semibold text-white">{copy.chooseGame}</h2>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4 space-y-3">
-              <p className="text-xs uppercase tracking-[0.25em] text-emerald-300">
-                {copy.searchGame}
-              </p>
-              <div className="relative">
-                <input
-                  type="search"
-                  data-testid="friend-variant-search"
-                  value={variantSearch}
-                  onChange={(event) => setVariantSearch(event.target.value)}
-                  placeholder={copy.searchPlaceholder}
-                  className="w-full rounded-2xl border border-white/15 bg-slate-950/70 px-4 py-3 pr-16 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-                {variantSearch ? (
-                  <button
-                    type="button"
-                    onClick={() => setVariantSearch("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 hover:text-emerald-200"
-                  >
-                    {copy.clearSearch}
-                  </button>
-                ) : null}
-              </div>
-              <div className="flex flex-wrap gap-2" aria-label="Friend match variant categories">
-                {FRIEND_VARIANT_CATEGORY_ORDER.map((category) => (
-                  <button
-                    key={category}
-                    type="button"
-                    data-testid={`friend-variant-category-${category}`}
-                    onClick={() => setVariantCategory(category)}
-                    className={`rounded-full px-3 py-2 text-xs font-semibold transition ${
-                      category === variantCategory
-                        ? "bg-emerald-500 text-slate-950"
-                        : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                    }`}
-                  >
-                    {categoryLabels[category] ?? category}
-                  </button>
-                ))}
-              </div>
-              <p className="text-xs text-slate-400">
-                {copy.showingVariants(filteredVariants.length, friendVariants.length)}
-              </p>
-            </div>
+            <p className="rounded-2xl border border-emerald-400/20 bg-slate-950/40 px-4 py-3 text-xs text-slate-300">
+              {languageKey === "ja"
+                ? "現在は品質保証済みの2人Badugiのみ利用できます。"
+                : "Friend Match currently supports the quality-gated heads-up Badugi game."}
+            </p>
             <div
               className="space-y-3"
               role="radiogroup"
@@ -711,20 +682,20 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
               <h2 className="text-xl font-semibold text-white">{copy.setParams}</h2>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="flex flex-col text-sm text-slate-300 gap-1">
+              <div className="flex min-w-0 flex-col gap-1 text-sm text-slate-300">
                 <label htmlFor="friend-seats">{copy.seats}</label>
                 <input
                   id="friend-seats"
                   name="seats"
                   type="number"
                   min="2"
-                  max="8"
+                  max="2"
                   value={seats}
-                  onChange={(event) => setSeats(Number(event.target.value))}
-                  className="rounded-2xl border border-white/15 bg-slate-950/60 px-4 py-3 text-white"
+                  readOnly
+                  className="min-w-0 w-full rounded-2xl border border-white/15 bg-slate-950/60 px-4 py-3 text-white"
                 />
               </div>
-              <div className="flex flex-col text-sm text-slate-300 gap-1">
+              <div className="flex min-w-0 flex-col gap-1 text-sm text-slate-300">
                 <label htmlFor="friend-starting-stack">{copy.startingStack}</label>
                 <input
                   id="friend-starting-stack"
@@ -734,10 +705,10 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
                   step="100"
                   value={stack}
                   onChange={(event) => setStack(Number(event.target.value))}
-                  className="rounded-2xl border border-white/15 bg-slate-950/60 px-4 py-3 text-white"
+                  className="min-w-0 w-full rounded-2xl border border-white/15 bg-slate-950/60 px-4 py-3 text-white"
                 />
               </div>
-              <div className="flex flex-col text-sm text-slate-300 gap-1">
+              <div className="flex min-w-0 flex-col gap-1 text-sm text-slate-300">
                 <label htmlFor="friend-small-blind">{copy.smallBlind}</label>
                 <input
                   id="friend-small-blind"
@@ -746,10 +717,10 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
                   min="1"
                   value={smallBlind}
                   onChange={(event) => setSmallBlind(Number(event.target.value))}
-                  className="rounded-2xl border border-white/15 bg-slate-950/60 px-4 py-3 text-white"
+                  className="min-w-0 w-full rounded-2xl border border-white/15 bg-slate-950/60 px-4 py-3 text-white"
                 />
               </div>
-              <div className="flex flex-col text-sm text-slate-300 gap-1">
+              <div className="flex min-w-0 flex-col gap-1 text-sm text-slate-300">
                 <label htmlFor="friend-big-blind">{copy.bigBlind}</label>
                 <input
                   id="friend-big-blind"
@@ -758,10 +729,10 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
                   min="2"
                   value={bigBlind}
                   onChange={(event) => setBigBlind(Number(event.target.value))}
-                  className="rounded-2xl border border-white/15 bg-slate-950/60 px-4 py-3 text-white"
+                  className="min-w-0 w-full rounded-2xl border border-white/15 bg-slate-950/60 px-4 py-3 text-white"
                 />
               </div>
-              <div className="flex flex-col text-sm text-slate-300 gap-1 md:col-span-2">
+              <div className="flex min-w-0 flex-col gap-1 text-sm text-slate-300 md:col-span-2">
                 <label htmlFor="friend-ante">{copy.ante}</label>
                 <input
                   id="friend-ante"
@@ -770,7 +741,7 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
                   min="0"
                   value={ante}
                   onChange={(event) => setAnte(Number(event.target.value))}
-                  className="rounded-2xl border border-white/15 bg-slate-950/60 px-4 py-3 text-white"
+                  className="min-w-0 w-full rounded-2xl border border-white/15 bg-slate-950/60 px-4 py-3 text-white"
                 />
               </div>
             </div>
@@ -779,7 +750,7 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
           <div className="flex flex-col gap-3 md:flex-row md:items-center">
             <button
               type="submit"
-              disabled={isCreating}
+              disabled={isCreating || !hasAuth}
               className="flex-1 rounded-3xl bg-emerald-500/90 px-6 py-3 text-lg font-semibold text-slate-950 hover:bg-emerald-400 transition"
             >
               {isCreating ? copy.creating : copy.createRoom}
@@ -798,24 +769,38 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
               {statusMessage}
             </p>
           )}
+          {!hasAuth ? (
+            <p className="rounded-2xl border border-rose-400/40 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">
+              {copy.loginRequired}
+            </p>
+          ) : null}
           {createdRoom && (
             <section className="rounded-2xl border border-emerald-400/40 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100 space-y-2">
-              <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col gap-1">
                 <span className="text-xs uppercase tracking-[0.25em] text-emerald-300">
                   {copy.roomCode}
                 </span>
-              <strong className="text-lg text-white">{createdRoom.roomId}</strong>
+                  <strong className="break-all text-lg text-white">{createdRoom.roomId}</strong>
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await navigator.clipboard?.writeText(createdRoom.roomId);
+                    setStatusMessage(copy.copied);
+                  }}
+                  className="rounded-xl border border-emerald-300/50 px-3 py-2 text-xs font-semibold"
+                >
+                  {copy.copyCode}
+                </button>
               </div>
-              <p className="text-xs text-emerald-200/80">
-                WebSocket: {createdRoom.websocketUrl}
-              </p>
             </section>
           )}
         </form>
 
         <form
           onSubmit={handleJoinExistingRoom}
-          className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 space-y-4"
+          className="min-w-0 rounded-3xl border border-white/10 bg-slate-900/70 p-4 space-y-4 sm:p-6"
         >
           <div>
             <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">{copy.joinRoom}</p>
@@ -827,11 +812,11 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
               value={joinCode}
               onChange={(event) => setJoinCode(event.target.value)}
               placeholder="room-..."
-              className="flex-1 rounded-2xl border border-white/15 bg-slate-950/60 px-4 py-3 text-white"
+              className="min-w-0 flex-1 rounded-2xl border border-white/15 bg-slate-950/60 px-4 py-3 text-white"
             />
             <button
               type="submit"
-              disabled={isJoining}
+              disabled={isJoining || !hasAuth}
               className="rounded-2xl border border-emerald-400/50 px-6 py-3 font-semibold text-emerald-100 hover:bg-emerald-400/10"
             >
               {isJoining ? copy.joining : copy.join}
@@ -840,7 +825,7 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
         </form>
 
         {createdRoom && (
-          <section className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300 space-y-3">
+          <section className="min-w-0 rounded-3xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300 space-y-3 sm:p-6">
             <div className="flex items-center justify-between gap-3">
               <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">
                 {copy.syncStatus}
@@ -882,37 +867,115 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
                     onClick={sendReady}
                     className="rounded-xl border border-emerald-300/60 px-3 py-2 text-xs font-semibold text-emerald-50 hover:bg-emerald-300/10"
                   >
-                    {copy.ready}
+                    {p2pTableState.phase === "showdown" &&
+                    p2pTableState.playerStates.some((player) => player.stack <= 0)
+                      ? copy.newMatch
+                      : copy.ready}
                   </button>
+                  {p2pTableState.legalActions.includes("check") ? (
+                    <button
+                      type="button"
+                      data-testid="p2p-check"
+                      onClick={() => sendAction("check")}
+                      className="rounded-xl border border-sky-300/60 px-3 py-2 text-xs font-semibold text-sky-50"
+                    >
+                      {copy.check}
+                    </button>
+                  ) : null}
+                  {p2pTableState.legalActions.includes("bet") ? (
+                    <button
+                      type="button"
+                      data-testid="p2p-bet"
+                      onClick={() => sendAction("bet", tableBigBlind)}
+                      className="rounded-xl border border-sky-300/60 px-3 py-2 text-xs font-semibold text-sky-50"
+                    >
+                      {copy.betAction} {tableBigBlind}
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     data-testid="p2p-call"
-                    disabled={!canSendAction}
-                    onClick={() => sendAction("call", bigBlind)}
+                    disabled={!canSendAction || !p2pTableState.legalActions.includes("call")}
+                    onClick={() => sendAction("call")}
                     className="rounded-xl border border-sky-300/60 px-3 py-2 text-xs font-semibold text-sky-50 hover:bg-sky-300/10 disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    {copy.call} {bigBlind}
+                    {copy.call} {p2pTableState.toCall || ""}
                   </button>
+                  {p2pTableState.legalActions.includes("raise") ? (
+                    <button
+                      type="button"
+                      data-testid="p2p-raise"
+                      onClick={() => sendAction("raise", p2pTableState.toCall + tableBigBlind)}
+                      className="rounded-xl border border-violet-300/60 px-3 py-2 text-xs font-semibold text-violet-50"
+                    >
+                      {copy.raise} {p2pTableState.toCall + tableBigBlind}
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     data-testid="p2p-draw"
-                    disabled={!canSendAction}
-                    onClick={() => sendAction("draw", 0)}
+                    disabled={!p2pTableState.legalActions.includes("draw")}
+                    onClick={sendDraw}
                     className="rounded-xl border border-amber-300/60 px-3 py-2 text-xs font-semibold text-amber-50 hover:bg-amber-300/10 disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    {copy.draw}
+                    {selectedCardIndexes.length === 0
+                      ? copy.standPat
+                      : `${copy.draw} ${selectedCardIndexes.length}`}
                   </button>
                   <button
                     type="button"
                     data-testid="p2p-fold"
-                    disabled={!canSendAction}
+                    disabled={!canSendAction || !p2pTableState.legalActions.includes("fold")}
                     onClick={() => sendAction("fold", 0)}
                     className="rounded-xl border border-rose-300/60 px-3 py-2 text-xs font-semibold text-rose-50 hover:bg-rose-300/10 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {copy.fold}
                   </button>
+                  <button
+                    type="button"
+                    data-testid="p2p-leave"
+                    onClick={handleLeave}
+                    className="rounded-xl border border-white/30 px-3 py-2 text-xs font-semibold text-white"
+                  >
+                    {copy.leave}
+                  </button>
                 </div>
               </div>
+              {p2pTableState.hand.length > 0 ? (
+                <div className="mt-4">
+                  <p className="mb-2 text-xs text-emerald-100/80">
+                    {p2pTableState.legalActions.includes("draw") ? copy.selectCards : copy.hand}
+                  </p>
+                  <div className="grid grid-cols-4 gap-2" data-testid="p2p-private-hand">
+                    {p2pTableState.hand.map((card, index) => {
+                      const selected = selectedCardIndexes.includes(index);
+                      return (
+                        <button
+                          key={`${p2pTableState.handId}-${index}-${card}`}
+                          type="button"
+                          data-testid={`p2p-card-${index}`}
+                          disabled={!p2pTableState.legalActions.includes("draw")}
+                          aria-pressed={selected}
+                          onClick={() =>
+                            setSelectedCardIndexes((current) =>
+                              current.includes(index)
+                                ? current.filter((entry) => entry !== index)
+                                : [...current, index],
+                            )
+                          }
+                          className={`min-h-16 rounded-xl border px-2 py-3 text-lg font-bold ${
+                            selected
+                              ? "border-amber-300 bg-amber-300/20 text-amber-100"
+                              : "border-white/25 bg-white text-slate-900"
+                          } disabled:opacity-90`}
+                        >
+                          {card}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
               <div className="mt-4 grid gap-2 md:grid-cols-2">
                 {p2pTableState.playerStates.length === 0 ? (
                   <p className="text-sm text-emerald-100/70">{copy.waitingPlayers}</p>
@@ -923,9 +986,9 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
                       data-testid={`p2p-player-${player.id}`}
                       className="rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2"
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <strong className="text-white">{player.displayName}</strong>
-                        <span className="text-xs text-emerald-100/70">
+                      <div className="flex min-w-0 items-center justify-between gap-2">
+                        <strong className="min-w-0 break-all text-white">{player.displayName}</strong>
+                        <span className="shrink-0 text-xs text-emerald-100/70">
                           {player.ready ? copy.readyState : copy.notReadyState}
                           {player.folded ? copy.foldedState : ""}
                         </span>
@@ -938,10 +1001,22 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
                 )}
               </div>
               {p2pTableState.showdown ? (
-                <p className="mt-3 rounded-xl border border-yellow-300/40 bg-yellow-300/10 px-3 py-2 text-yellow-100">
-                  {copy.showdownWinner}: {p2pTableState.showdown.winner ?? copy.noWinner} / Pot{" "}
-                  {p2pTableState.showdown.pot ?? 0}
-                </p>
+                <div className="mt-3 rounded-xl border border-yellow-300/40 bg-yellow-300/10 px-3 py-2 text-yellow-100">
+                  <p>
+                    {copy.showdownWinner}:{" "}
+                    {(p2pTableState.showdown.winnerIds ?? [])
+                      .map((id) =>
+                        p2pTableState.playerStates.find((player) => player.id === id)?.displayName ?? id,
+                      )
+                      .join(", ") || copy.noWinner}{" "}
+                    / Pot {p2pTableState.showdown.pot ?? 0}
+                  </p>
+                  {Object.entries(p2pTableState.showdown.hands ?? {}).map(([id, cards]) => (
+                    <p key={id} className="text-xs">
+                      {p2pTableState.playerStates.find((player) => player.id === id)?.displayName ?? id}: {cards.join(" ")}
+                    </p>
+                  ))}
+                </div>
               ) : null}
             </div>
             <div className="space-y-2">

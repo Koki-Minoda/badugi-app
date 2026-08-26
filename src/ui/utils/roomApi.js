@@ -2,7 +2,7 @@ const API_BASE_RAW = import.meta.env?.VITE_API_BASE ?? "/api";
 const API_BASE = API_BASE_RAW.endsWith("/api")
   ? API_BASE_RAW
   : `${API_BASE_RAW.replace(/\/$/, "")}/api`;
-
+const AUTH_STORAGE_KEY = "mgx_auth";
 const ABSOLUTE_URL_REGEX = /^https?:\/\//i;
 
 function buildApiBaseUrl() {
@@ -13,68 +13,105 @@ function buildApiBaseUrl() {
   return API_BASE;
 }
 
+export function readRoomAuth() {
+  if (typeof window === "undefined") return null;
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(AUTH_STORAGE_KEY) ?? "null");
+    if (!parsed?.accessToken) return null;
+    return {
+      accessToken: parsed.accessToken,
+      tokenType:
+        String(parsed.tokenType ?? "Bearer").toLowerCase() === "bearer"
+          ? "Bearer"
+          : parsed.tokenType,
+      user: parsed.user ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function normalizeRoom(data) {
+  if (!data) return data;
+  return {
+    ...data,
+    roomId: data.roomCode ?? data.roomId,
+    ownerId: data.viewerId ?? data.ownerId,
+    displayName:
+      data.players?.find((player) => player.id === data.viewerId)?.displayName ??
+      readRoomAuth()?.user?.username ??
+      "Player",
+    metadata: {
+      variantId: data.variantId ?? "badugi",
+      ...(data.config ?? {}),
+    },
+  };
+}
+
 async function requestJson(path, { method = "GET", body } = {}) {
+  const auth = readRoomAuth();
+  if (!auth?.accessToken) throw new Error("login_required");
   const response = await fetch(`${buildApiBaseUrl()}${path}`, {
     method,
-    headers: body ? { "Content-Type": "application/json" } : undefined,
+    headers: {
+      Authorization: `${auth.tokenType ?? "Bearer"} ${auth.accessToken}`,
+      ...(body ? { "Content-Type": "application/json" } : {}),
+    },
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await response.json().catch(() => null);
   if (!response.ok) {
-    const detail = data?.detail ?? data?.message ?? data?.error ?? response.statusText;
-    throw new Error(`Room API failed ${response.status}: ${detail}`);
+    const detail = data?.detail;
+    const message = detail?.message ?? detail ?? data?.message ?? data?.error ?? response.statusText;
+    throw new Error(typeof message === "string" ? message : JSON.stringify(message));
   }
-  return data?.data ?? data;
+  return normalizeRoom(data?.data ?? data);
 }
 
-export async function createRoom({ ownerId, maxPlayers = 2, mode = "ring", metadata = {} }) {
-  if (!ownerId) throw new Error("ownerId is required");
-  return requestJson("/rooms/create", {
+export async function createRoom({ metadata = {} }) {
+  return requestJson("/p2p/rooms", {
     method: "POST",
     body: {
-      owner_id: ownerId,
-      max_players: maxPlayers,
-      mode,
-      metadata,
+      variantId: metadata.variantId ?? "badugi",
+      startingStack: Number(metadata.startingStack ?? 2000),
+      smallBlind: Number(metadata.smallBlind ?? 10),
+      bigBlind: Number(metadata.bigBlind ?? 20),
+      ante: Number(metadata.ante ?? 0),
     },
   });
 }
 
-export async function joinRoom({
-  roomId,
-  playerId,
-  displayName,
-  seatHint = null,
-  role = "player",
-}) {
+export async function joinRoom({ roomId }) {
   if (!roomId) throw new Error("roomId is required");
-  if (!playerId) throw new Error("playerId is required");
-  return requestJson("/rooms/join", {
+  return requestJson("/p2p/rooms/join", {
     method: "POST",
-    body: {
-      room_id: roomId,
-      player_id: playerId,
-      display_name: displayName ?? playerId,
-      seat_hint: seatHint,
-      role,
-    },
+    body: { roomCode: roomId.trim().toUpperCase() },
   });
 }
 
 export async function getRoomInfo(roomId) {
   if (!roomId) throw new Error("roomId is required");
-  return requestJson(`/rooms/info/${encodeURIComponent(roomId)}`);
+  return requestJson(`/p2p/rooms/${encodeURIComponent(roomId.trim().toUpperCase())}`);
 }
 
-export async function listRooms() {
-  return requestJson("/rooms/list");
+export async function leaveRoom(roomId) {
+  if (!roomId) throw new Error("roomId is required");
+  return requestJson("/p2p/rooms/leave", {
+    method: "POST",
+    body: { roomCode: roomId.trim().toUpperCase() },
+  });
 }
 
 export function buildRoomWebSocketUrl(roomId) {
   if (!roomId) return null;
   if (typeof window === "undefined" || !window.location) {
-    return `/ws/room/${encodeURIComponent(roomId)}/play`;
+    return `/ws/p2p/${encodeURIComponent(roomId)}`;
   }
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${protocol}//${window.location.host}/ws/room/${encodeURIComponent(roomId)}/play`;
+  return `${protocol}//${window.location.host}/ws/p2p/${encodeURIComponent(roomId)}`;
+}
+
+export function buildRoomWebSocketProtocols() {
+  const token = readRoomAuth()?.accessToken;
+  return token ? ["mgx-auth", token] : [];
 }

@@ -104,6 +104,8 @@ Available endpoints (always safe, even without a DB):
 - `GET /api/badugi/hands/{hand_id}` – fetches a fully structured hand with actions/results.
 - `GET /api/badugi/hands/by-table/{table_id}` – returns the latest hands for a table (limit=5 by default).
 - `GET /api/badugi/hands/recent` – temporary in-memory buffer mirroring the last few accepted payloads (used while the UI migrates to DB-backed feeds).
+- `POST /api/p2p/rooms` and `POST /api/p2p/rooms/join` – authenticated heads-up Badugi friend rooms.
+- `WS /ws/p2p/{roomCode}?token=...` – server-authoritative private cards, betting, three draws, showdown, and browser reconnect. Rooms are in-memory and do not survive a backend restart.
 
 ### Schema overview
 

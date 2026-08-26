@@ -1,4 +1,4 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   timeout: 30000,
@@ -25,6 +25,32 @@ export default defineConfig({
     {
       name: 'badugi-regression',
       testDir: './tests/badugi-regression',
+    },
+    {
+      name: 'tournament-pr-chromium',
+      testDir: './tests/e2e',
+      testMatch: /tournament-reconnect-ui\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+    },
+    {
+      name: 'tournament-android-chromium',
+      testDir: './tests/e2e',
+      testMatch: /tournament-device-project-smoke\.spec\.ts/,
+      use: {
+        ...devices['Pixel 7 landscape'],
+        browserName: 'chromium',
+      },
+    },
+    {
+      name: 'tournament-iphone-webkit',
+      testDir: './tests/e2e',
+      testMatch: /tournament-device-project-smoke\.spec\.ts/,
+      use: {
+        ...devices['iPhone 13 landscape'],
+        browserName: 'webkit',
+      },
     },
   ],
 });

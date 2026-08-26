@@ -45,8 +45,8 @@ describe("tournament button and blind assignment policy", () => {
       activeSeats: seats,
       previousButtonSeat: 0,
     });
-    expect(seats).toContain(1);
-    expect(assignment.buttonSeat).toBe(1);
+    expect(seats).not.toContain(bustedSeat.seatIndex);
+    expect(assignment.buttonSeat).toBe(2);
     expect(assignment.bbSeat).not.toBeNull();
   });
 });

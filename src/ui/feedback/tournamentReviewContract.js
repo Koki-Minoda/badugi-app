@@ -1,5 +1,5 @@
 export const TOURNAMENT_REVIEW_CONTRACT_TYPE = "mgx.tournament-review";
-export const TOURNAMENT_REVIEW_SCHEMA_VERSION = 1;
+export const TOURNAMENT_REVIEW_SCHEMA_VERSION = 2;
 
 export const TOURNAMENT_REVIEW_FEEDBACK_STATUS = Object.freeze({
   SUMMARY: "summary",
@@ -146,6 +146,52 @@ function getHandHeroNet(hand = {}) {
 
 function getHandPot(hand = {}) {
   return toNumber(hand.totalPot ?? hand.pot ?? hand.result?.totalPot, 0);
+}
+
+function dedupeHandsById(hands = [], heroSeat = 0) {
+  const byId = new Map();
+  const anonymous = [];
+  (Array.isArray(hands) ? hands : []).forEach((hand) => {
+    const handId = getHandId(hand);
+    if (!handId) {
+      anonymous.push(hand);
+      return;
+    }
+    const current = byId.get(handId);
+    if (!current) {
+      byId.set(handId, hand);
+      return;
+    }
+    const currentActions = collectHeroActions(current, heroSeat).length;
+    const candidateActions = collectHeroActions(hand, heroSeat).length;
+    const primary = candidateActions > currentActions ? hand : current;
+    const secondary = primary === hand ? current : hand;
+    byId.set(handId, {
+      ...secondary,
+      ...primary,
+      handId,
+      heroBusted: Boolean(
+        current.heroBusted ||
+        hand.heroBusted ||
+        [current, hand].some((record) =>
+          (Array.isArray(record?.seats) ? record.seats : []).some(
+            (seat) =>
+              isHeroSeat(seat, heroSeat) &&
+              (seat.busted === true || seat.stack === 0),
+          ),
+        )
+      ),
+      bustHand: Boolean(current.bustHand || hand.bustHand),
+      showdown: hasShowdownEvidence(current) || hasShowdownEvidence(hand),
+      heroNet:
+        getHandHeroNet(primary) !== 0
+          ? getHandHeroNet(primary)
+          : getHandHeroNet(secondary),
+      pot: Math.max(getHandPot(current), getHandPot(hand)),
+      totalPot: Math.max(getHandPot(current), getHandPot(hand)),
+    });
+  });
+  return [...byId.values(), ...anonymous];
 }
 
 function normalizePlacement(entry = {}) {
@@ -314,7 +360,7 @@ function buildKeyHand({ hand, reason, label, title, description, heroSeat = 0 })
     selectedAction?.phase ?? selectedAction?.street ?? hand.phase ?? hand.street,
   );
   return {
-    keyHandId: `${reason}:${normalized.handId}`,
+    keyHandId: normalized.handId,
     handId: normalized.handId,
     variantId: normalized.variantId,
     reason,
@@ -328,25 +374,65 @@ function buildKeyHand({ hand, reason, label, title, description, heroSeat = 0 })
     heroNet: normalized.heroNet,
     resultDelta: normalized.heroNet,
     actionSeqRange: selectedRange,
+    reasonTags: [reason],
+    evidence: [
+      {
+        reason,
+        handId: normalized.handId,
+        actionSeqRange: selectedRange,
+        phase,
+        heroAction: selectedAction ? normalizeActionType(selectedAction) : null,
+      },
+    ],
     replayRef,
   };
 }
 
-function uniqueKeyHands(entries = []) {
-  const seen = new Set();
-  return entries.filter((entry) => {
-    if (!entry?.handId) return false;
-    const key = `${entry.reason}:${entry.handId}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
+function mergeKeyHands(entries = []) {
+  const merged = new Map();
+  entries.filter(Boolean).forEach((entry) => {
+    if (!entry?.handId) return;
+    const current = merged.get(entry.handId);
+    if (!current) {
+      merged.set(entry.handId, {
+        ...entry,
+        keyHandId: entry.handId,
+        reasonTags: [...new Set(entry.reasonTags ?? [entry.reason])],
+        evidence: [...(entry.evidence ?? [])],
+      });
+      return;
+    }
+    const reasonTags = [
+      ...(current.reasonTags ?? [current.reason]),
+      ...(entry.reasonTags ?? [entry.reason]),
+    ].filter(Boolean);
+    const evidence = [...(current.evidence ?? []), ...(entry.evidence ?? [])].filter(
+      (item, index, list) =>
+        list.findIndex(
+          (candidate) =>
+            candidate.reason === item.reason &&
+            candidate.handId === item.handId &&
+            candidate.actionSeqRange?.start === item.actionSeqRange?.start &&
+            candidate.actionSeqRange?.end === item.actionSeqRange?.end,
+        ) === index,
+    );
+    merged.set(entry.handId, {
+      ...current,
+      reasonTags: [...new Set(reasonTags)],
+      evidence,
+    });
   });
+  return [...merged.values()];
 }
 
 function buildTournamentKeyHands(hands = [], heroSeat = 0) {
   const safeHands = Array.isArray(hands) ? hands : [];
-  const biggestWinHand = [...safeHands].sort((a, b) => getHandHeroNet(b) - getHandHeroNet(a))[0] ?? null;
-  const biggestLossHand = [...safeHands].sort((a, b) => getHandHeroNet(a) - getHandHeroNet(b))[0] ?? null;
+  const biggestWinHand = [...safeHands]
+    .filter((hand) => getHandHeroNet(hand) > 0)
+    .sort((a, b) => getHandHeroNet(b) - getHandHeroNet(a))[0] ?? null;
+  const biggestLossHand = [...safeHands]
+    .filter((hand) => getHandHeroNet(hand) < 0)
+    .sort((a, b) => getHandHeroNet(a) - getHandHeroNet(b))[0] ?? null;
   const bustHand =
     [...safeHands].reverse().find((hand) => {
       if (hand?.bustHand === true || hand?.heroBusted === true) return true;
@@ -380,7 +466,7 @@ function buildTournamentKeyHands(hands = [], heroSeat = 0) {
     label: "Bust hand",
     heroSeat,
   });
-  const keyHands = uniqueKeyHands([
+  const keyHands = mergeKeyHands([
     bust,
     biggestLoss,
     biggestWin,
@@ -396,7 +482,7 @@ function buildTournamentKeyHands(hands = [], heroSeat = 0) {
     biggestWin,
     biggestLoss,
     keyHands,
-    replayRefs: uniqueKeyHands(keyHands).map((entry) => entry.replayRef).filter(Boolean),
+    replayRefs: keyHands.map((entry) => entry.replayRef).filter(Boolean),
   };
 }
 
@@ -480,37 +566,246 @@ function normalizeFeedbackStatus({
   };
 }
 
-function buildNextImprovements({ handCount = 0, heroActionCount = 0, result = {} } = {}) {
-  if (handCount === 0 || heroActionCount === 0) {
-    return ["次回はハンド履歴が残る状態でプレイすると、重要局面を振り返れます。"];
-  }
-  const items = ["大きくチップが動いたハンドをリプレイで確認しましょう。"];
-  if (Number.isFinite(result.roi) && result.roi < 0) {
-    items.push("入賞前後のリスクを取りすぎた局面がないか確認しましょう。");
-  } else {
-    items.push("良い結果につながった参加レンジとドロー判断を次回も再現しましょう。");
-  }
-  return items;
+function evidenceForKeyHand(keyHand) {
+  if (!keyHand?.handId) return [];
+  const evidence = Array.isArray(keyHand.evidence) ? keyHand.evidence : [];
+  if (evidence.length) return evidence;
+  return [
+    {
+      reason: keyHand.reason ?? "key-hand",
+      handId: keyHand.handId,
+      actionSeqRange: keyHand.actionSeqRange ?? null,
+      phase: keyHand.phase ?? null,
+      heroAction: keyHand.heroAction ?? null,
+    },
+  ];
 }
 
-function buildReviewSummary({ feedbackStatus = {}, handCount = 0, heroActionCount = 0, result = {}, keyHands = [] } = {}) {
-  const goodPoints = [];
-  if (Number.isFinite(result.roi) && result.roi > 0) {
-    goodPoints.push("入賞結果につながった判断を振り返れます。");
-  } else if (result.placement != null) {
-    goodPoints.push("最終順位とチップ変動の大きい局面を確認できます。");
-  } else {
-    goodPoints.push("大会終了時点の結果を整理できます。");
+function reviewItem({ text, kind, keyHand = null, caveat = null }) {
+  return {
+    kind,
+    text,
+    evidence: evidenceForKeyHand(keyHand),
+    caveat,
+  };
+}
+
+function findKeyHand(keyHands = [], reason) {
+  return keyHands.find((hand) =>
+    (hand.reasonTags ?? [hand.reason]).includes(reason),
+  ) ?? null;
+}
+
+function buildLocalReviewSummary({
+  feedbackStatus = {},
+  handCount = 0,
+  heroActionCount = 0,
+  result = {},
+  keyHands = [],
+} = {}) {
+  const biggestWin = findKeyHand(keyHands, "biggest-win");
+  const biggestLoss = findKeyHand(keyHands, "biggest-loss");
+  const drawDecision = findKeyHand(keyHands, "draw-decision");
+  const firstEvidenceHand = keyHands[0] ?? null;
+  const facts = [
+    reviewItem({
+      kind: "fact",
+      text: `記録されたハンドは${handCount}件、Heroのアクションは${heroActionCount}件です。`,
+    }),
+  ];
+  if (result.placement != null || Number.isFinite(result.payout)) {
+    facts.push(
+      reviewItem({
+        kind: "fact",
+        text: `大会結果は${result.placement ?? "--"}位、獲得賞金は${toNumber(result.payout, 0)}です。`,
+      }),
+    );
   }
-  const improvementPoints = buildNextImprovements({ handCount, heroActionCount, result });
+  if (biggestWin) {
+    facts.push(
+      reviewItem({
+        kind: "fact",
+        text: `Hand ${biggestWin.handId}で記録上最大のチップ増加（${biggestWin.heroNet >= 0 ? "+" : ""}${biggestWin.heroNet}）がありました。`,
+        keyHand: biggestWin,
+      }),
+    );
+  }
+  if (biggestLoss) {
+    facts.push(
+      reviewItem({
+        kind: "fact",
+        text: `Hand ${biggestLoss.handId}で記録上最大のチップ減少（${biggestLoss.heroNet}）がありました。`,
+        keyHand: biggestLoss,
+      }),
+    );
+  }
+
+  const goodPoints = [];
+  if (biggestWin) {
+    goodPoints.push(
+      reviewItem({
+        kind: "interpretation",
+        text: `Hand ${biggestWin.handId}は獲得局面の判断過程を確認する候補です。`,
+        keyHand: biggestWin,
+        caveat: "チップ増加だけでは、その判断が最善だったとは断定できません。",
+      }),
+    );
+  } else if (firstEvidenceHand) {
+    goodPoints.push(
+      reviewItem({
+        kind: "interpretation",
+        text: `Hand ${firstEvidenceHand.handId}には具体的なアクション記録があり、判断過程を振り返れます。`,
+        keyHand: firstEvidenceHand,
+        caveat: "大会順位や収支だけから判断の質は評価しません。",
+      }),
+    );
+  }
+
+  const improvementPoints = [];
+  if (biggestLoss) {
+    improvementPoints.push(
+      reviewItem({
+        kind: "interpretation",
+        text: `Hand ${biggestLoss.handId}は損失局面の選択肢を比較する候補です。`,
+        keyHand: biggestLoss,
+        caveat: "損失した事実だけでは、ミスだったとは断定できません。",
+      }),
+    );
+  }
+  if (drawDecision && drawDecision.handId !== biggestLoss?.handId) {
+    improvementPoints.push(
+      reviewItem({
+        kind: "interpretation",
+        text: `Hand ${drawDecision.handId}のドロー枚数と、その時点の選択肢を再確認できます。`,
+        keyHand: drawDecision,
+        caveat: "最終結果だけではドロー判断の良否は決まりません。",
+      }),
+    );
+  }
+
+  const actionTarget = biggestLoss ?? drawDecision ?? biggestWin ?? firstEvidenceHand;
+  const nextActions = actionTarget
+    ? [
+        reviewItem({
+          kind: "next-action",
+          text: `Hand ${actionTarget.handId}をリプレイし、表示されたHero actionと当時のlegal actionsを比較してください。`,
+          keyHand: actionTarget,
+        }),
+      ]
+    : [
+        reviewItem({
+          kind: "next-action",
+          text: "次回はハンド履歴とHero actionが残る状態でプレイしてください。",
+        }),
+      ];
+
   return {
     state: feedbackStatus.state ?? TOURNAMENT_REVIEW_FEEDBACK_STATUS.SUMMARY,
-    source: feedbackStatus.source ?? "local-summary",
+    source: "local-summary",
     reviewedHands: handCount,
     heroActionCount,
     keyHandCount: keyHands.length,
+    facts,
     goodPoints,
     improvementPoints,
+    interpretations: [...goodPoints, ...improvementPoints],
+    nextActions,
+    causalDisclaimer:
+      "順位・ROI・単一ハンドの結果だけから、意思決定の良否や結果との因果関係は断定しません。",
+  };
+}
+
+function normalizeAiEvidence(evidence, knownHands, heroActions) {
+  if (!Array.isArray(evidence) || evidence.length === 0) return null;
+  const normalized = evidence.map((entry) => {
+    const handId = nullableString(entry?.handId);
+    if (!handId || !knownHands.has(handId)) return null;
+    const start = Number(entry?.actionSeqStart ?? entry?.actionSeqRange?.start);
+    const end = Number(entry?.actionSeqEnd ?? entry?.actionSeqRange?.end ?? start);
+    if (!Number.isInteger(start) || !Number.isInteger(end) || start <= 0 || end < start) {
+      return null;
+    }
+    const actionExists = heroActions.some(
+      (action) =>
+        action.handId === handId &&
+        Number.isInteger(action.actionSeq) &&
+        action.actionSeq >= start &&
+        action.actionSeq <= end,
+    );
+    if (!actionExists) return null;
+    return { handId, actionSeqRange: { start, end } };
+  });
+  return normalized.every(Boolean) ? normalized : null;
+}
+
+function normalizeAiItems(items, kind, knownHands, heroActions) {
+  if (!Array.isArray(items)) return null;
+  const normalized = items.slice(0, 4).map((item) => {
+    if (!item || typeof item !== "object") return null;
+    const text = nullableString(item.text);
+    const evidence = normalizeAiEvidence(item.evidence, knownHands, heroActions);
+    if (!text || text.length > 240 || !evidence) return null;
+    return {
+      kind,
+      text,
+      evidence,
+      caveat:
+        kind === "interpretation"
+          ? nullableString(item.caveat) ??
+            "結果だけから意思決定の良否や因果関係は断定できません。"
+          : null,
+    };
+  });
+  return normalized.every(Boolean) ? normalized : null;
+}
+
+function normalizeStructuredAiReview(response, keyHands, heroActions) {
+  const payload = response?.reviewV2 ?? response?.structuredReview ?? null;
+  if (!payload || typeof payload !== "object" || Number(payload.schemaVersion) !== 2) {
+    return { accepted: false, reason: "structured-review-v2-missing", summary: null };
+  }
+  const knownHands = new Set(keyHands.map((hand) => hand.handId));
+  const facts = normalizeAiItems(payload.facts, "fact", knownHands, heroActions);
+  const goodPoints = normalizeAiItems(
+    payload.goodPoints,
+    "interpretation",
+    knownHands,
+    heroActions,
+  );
+  const improvementPoints = normalizeAiItems(
+    payload.improvementPoints,
+    "interpretation",
+    knownHands,
+    heroActions,
+  );
+  const nextActions = normalizeAiItems(
+    payload.nextActions,
+    "next-action",
+    knownHands,
+    heroActions,
+  );
+  if (
+    !facts ||
+    !facts.length ||
+    !goodPoints ||
+    !improvementPoints ||
+    !nextActions ||
+    !nextActions.length
+  ) {
+    return { accepted: false, reason: "invalid-or-ungrounded-ai-review", summary: null };
+  }
+  return {
+    accepted: true,
+    reason: null,
+    summary: {
+      facts,
+      goodPoints,
+      improvementPoints,
+      interpretations: [...goodPoints, ...improvementPoints],
+      nextActions,
+      causalDisclaimer:
+        "AIの解釈は参考情報です。順位・ROI・結果だけから因果関係を断定しません。",
+    },
   };
 }
 
@@ -548,7 +843,7 @@ export function buildTournamentReviewContract({
   savedFeedback = null,
   hasAuth = false,
 } = {}) {
-  const safeHands = Array.isArray(hands) ? hands : [];
+  const safeHands = dedupeHandsById(hands, heroSeat);
   const tournamentId = getTournamentId(tournament);
   const normalizedHands = safeHands.map((hand) => normalizeHand(hand, heroSeat));
   const variantIds = [...new Set(normalizedHands.map((hand) => hand.variantId).filter(Boolean))];
@@ -573,6 +868,26 @@ export function buildTournamentReviewContract({
     handCount,
     heroActionCount,
   });
+  const localReviewSummary = buildLocalReviewSummary({
+    feedbackStatus,
+    handCount,
+    heroActionCount,
+    result,
+    keyHands,
+  });
+  const rawAiResponse = requestState.response ?? savedFeedback?.response ?? null;
+  const structuredAiReview = normalizeStructuredAiReview(
+    rawAiResponse,
+    keyHands,
+    heroActions,
+  );
+  const reviewSummary = structuredAiReview.accepted
+    ? {
+        ...localReviewSummary,
+        ...structuredAiReview.summary,
+        source: "structured-ai",
+      }
+    : localReviewSummary;
   const limitations = [];
   if (!handCount) limitations.push("hand-history-missing");
   if (!heroActionCount) limitations.push("hero-actions-missing");
@@ -601,15 +916,9 @@ export function buildTournamentReviewContract({
     keyHands,
     result,
     replayRefs,
-    reviewSummary: buildReviewSummary({
-      feedbackStatus,
-      handCount,
-      heroActionCount,
-      result,
-      keyHands,
-    }),
+    reviewSummary,
     reviewDepth:
-      feedbackStatus.state === TOURNAMENT_REVIEW_FEEDBACK_STATUS.COMPLETE
+      structuredAiReview.accepted
         ? "ai-assisted"
         : handCount && heroActionCount
           ? "hand-history"
@@ -624,8 +933,8 @@ export function buildTournamentReviewContract({
       limitations,
     },
     nextImprovements: {
-      source: feedbackStatus.state === TOURNAMENT_REVIEW_FEEDBACK_STATUS.COMPLETE ? "ai" : "local-summary",
-      items: buildNextImprovements({ handCount, heroActionCount, result }),
+      source: reviewSummary.source,
+      items: reviewSummary.nextActions.map((item) => item.text),
     },
     feedbackStatus: {
       ...feedbackStatus,
@@ -634,11 +943,13 @@ export function buildTournamentReviewContract({
       heroActionCount,
     },
     aiFeedback: {
-      enabled: false,
+      enabled: structuredAiReview.accepted,
       optional: true,
       state: feedbackStatus.state,
-      source: feedbackStatus.source,
-      response: requestState.response ?? savedFeedback?.response ?? null,
+      source: structuredAiReview.accepted ? "structured-ai" : "local-summary",
+      accepted: structuredAiReview.accepted,
+      rejectionReason: structuredAiReview.reason,
+      response: structuredAiReview.accepted ? rawAiResponse : null,
       error: feedbackStatus.error,
     },
   };

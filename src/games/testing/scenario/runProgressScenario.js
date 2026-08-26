@@ -32,6 +32,10 @@ import RazzdugiGameDefinition from "../../stud/RazzdugiGameDefinition.js";
 import RazzduceyGameDefinition from "../../stud/RazzduceyGameDefinition.js";
 import { assertGameProgressInvariants, getActorIndex } from "../progress/gameProgressInvariants.js";
 import { chooseSafeAction } from "./safeActionPolicy.js";
+import { DeckManager } from "../../badugi/utils/deck.js";
+import { GAME_VARIANTS as CATALOG_VARIANTS } from "../../config/variantCatalog.js";
+import { createDeterministicRng } from "../deterministicRng.js";
+import { validateStrictVariantSettlement } from "../ev/strictVariantSettlementGate.js";
 
 const DEFAULT_SEATS = ["HUMAN", "CPU", "CPU", "CPU", "CPU", "CPU"];
 const DEFAULT_BLINDS = { sb: 10, bb: 20, ante: 0 };
@@ -148,11 +152,13 @@ export function getProgressHarnessStatus(variantId) {
 
 export function createProgressHarness(variantId, options = {}) {
   const normalizedVariantId = normalizeProgressVariantId(variantId);
+  const rng = createDeterministicRng(options.seed ?? `mgx-progress-${variantId}`);
   const seats = createProgressSeats({ count: options.seatCount ?? 6, stack: options.startingStack ?? 500 });
   if (BOARD_CONTROLLERS[normalizedVariantId]) {
     const Controller = BOARD_CONTROLLERS[normalizedVariantId];
     const controller = new Controller({
       tableConfig: { seats, blinds: { ...DEFAULT_BLINDS, ...(options.blinds ?? {}) } },
+      rng,
     });
     controller.startNewHand({ handId: `${normalizedVariantId}-progress-1` });
     return { family: "board", controller };
@@ -162,6 +168,7 @@ export function createProgressHarness(variantId, options = {}) {
       variant: normalizedVariantId,
       gameDefinition: STUD_DEFINITIONS[normalizedVariantId],
       tableConfig: { seats, blinds: { sb: 10, bb: 20, ante: 2, ...(options.blinds ?? {}) } },
+      rng,
     });
     controller.startNewHand({ handId: `${normalizedVariantId}-progress-1` });
     return { family: "stud", controller };
@@ -170,6 +177,7 @@ export function createProgressHarness(variantId, options = {}) {
     const controller = new DramahaGameController({
       variant: normalizedVariantId,
       tableConfig: { seats, blinds: { ...DEFAULT_BLINDS, ...(options.blinds ?? {}) } },
+      rng,
     });
     controller.startNewHand({ handId: `${normalizedVariantId}-progress-1` });
     return { family: "dramaha", controller };
@@ -196,6 +204,9 @@ export function createProgressHarness(variantId, options = {}) {
             structure: { ...DEFAULT_BLINDS, ...(options.blinds ?? {}) },
           },
         });
+    if (!isBadugi && controller.engine) {
+      controller.engine.deckManager = new DeckManager({ rng });
+    }
     let state = controller.createInitialState();
     state = controller.createNewHandState(state, {
       handId: `${normalizedVariantId}-progress-1`,
@@ -331,19 +342,25 @@ export function runProgressScenario({
   scenarioId = "cash-10-hands-smoke",
   seed = "mgx-progress-default",
   maxSteps = 160,
+  handCount = null,
   invariantContext = {},
 } = {}) {
   const status = getProgressHarnessStatus(variantId);
   if (!status.supported) {
     return { variantId, scenarioId, seed, status: "skipped", reason: status.reason };
   }
-  const harness = createProgressHarness(variantId);
+  const targetHandCount = handCount ?? resolveScenarioHandCount(scenarioId);
+  const harness = createProgressHarness(variantId, { seed });
   let repeated = 0;
   let previousSignature = null;
   const visited = [];
   const drawRoundIndexes = [];
+  const strictSettlements = [];
+  let handsCompleted = 0;
+  let handSteps = 0;
+  let beforeHandSnapshot = JSON.parse(JSON.stringify(snapshotOf(harness)));
 
-  for (let step = 0; step < maxSteps; step += 1) {
+  for (let step = 0; step < maxSteps * targetHandCount; step += 1) {
     const snapshot = snapshotOf(harness);
     const context = { variantId, scenarioId, seed, step, snapshot, ...invariantContext };
     assertGameProgressInvariants(snapshot, context);
@@ -352,7 +369,52 @@ export function runProgressScenario({
       drawRoundIndexes.push(Number(snapshot.drawRoundIndex ?? snapshot.drawRound ?? snapshot.metadata?.drawRoundIndex ?? 0));
     }
     if (isTerminal(snapshot)) {
-      return { variantId, scenarioId, seed, status: "passed", steps: step, visited, drawRoundIndexes };
+      handsCompleted += 1;
+      const catalogVariant = CATALOG_VARIANTS.find(
+        (variant) => variant.id === variantId || variant.engineKey === normalizeProgressVariantId(variantId),
+      );
+      if (catalogVariant) {
+        const strictGate = validateStrictVariantSettlement({
+          variantId: catalogVariant.id,
+          beforeState: beforeHandSnapshot,
+          afterState: snapshot,
+        });
+        strictSettlements.push({
+          hand: handsCompleted,
+          status: strictGate.policy.status,
+          reason: strictGate.policy.reason,
+          ok: strictGate.ok,
+        });
+        if (strictGate.policy.status === "ENFORCED" && !strictGate.ok) {
+          throw new Error(
+            `[MGX_STRICT_SETTLEMENT] ${JSON.stringify({
+              variantId: catalogVariant.id,
+              hand: handsCompleted,
+              errors: strictGate.errors,
+            })}`,
+          );
+        }
+      }
+      if (handsCompleted >= targetHandCount) {
+        return {
+          variantId,
+          scenarioId,
+          seed,
+          status: "passed",
+          steps: step,
+          handsCompleted,
+          targetHandCount,
+          visited,
+          drawRoundIndexes,
+          strictSettlements,
+        };
+      }
+      startNextHarnessHand(harness, { variantId, handNumber: handsCompleted + 1 });
+      beforeHandSnapshot = JSON.parse(JSON.stringify(snapshotOf(harness)));
+      repeated = 0;
+      previousSignature = null;
+      handSteps = 0;
+      continue;
     }
     const signature = buildSignature(snapshot);
     repeated = signature === previousSignature ? repeated + 1 : 0;
@@ -363,12 +425,49 @@ export function runProgressScenario({
       );
     }
     stepHarness(harness);
+    handSteps += 1;
+    if (handSteps >= maxSteps && !isTerminal(snapshotOf(harness))) {
+      throw new Error(
+        `[MGX_PROGRESS_TIMEOUT] per-hand maxSteps reached ${JSON.stringify(
+          describeFailure(snapshotOf(harness), {
+            variantId,
+            scenarioId,
+            seed,
+            hand: handsCompleted + 1,
+            maxSteps,
+          }),
+        )}`,
+      );
+    }
   }
   throw new Error(
     `[MGX_PROGRESS_TIMEOUT] maxSteps reached ${JSON.stringify(
       describeFailure(snapshotOf(harness), { variantId, scenarioId, seed, maxSteps }),
     )}`,
   );
+}
+
+export function resolveScenarioHandCount(scenarioId) {
+  const match = String(scenarioId ?? "").match(/(?:cash|tournament)-(\d+)-hands?/i);
+  return match ? Math.max(1, Number(match[1]) || 1) : 1;
+}
+
+function startNextHarnessHand(harness, { variantId, handNumber }) {
+  const snapshot = snapshotOf(harness);
+  if (harness.family === "draw") {
+    harness.state = harness.controller.createNewHandState(harness.state, {
+      handId: `${normalizeProgressVariantId(variantId)}-progress-${handNumber}`,
+      currentPlayers: snapshot.players,
+      dealerIndex:
+        typeof snapshot.dealerIndex === "number"
+          ? (snapshot.dealerIndex + 1) % Math.max(1, snapshot.players?.length ?? 1)
+          : undefined,
+    });
+    return snapshotOf(harness);
+  }
+  return harness.controller.startNewHand({
+    handId: `${normalizeProgressVariantId(variantId)}-progress-${handNumber}`,
+  });
 }
 
 export function buildSyntheticSnapshot(overrides = {}) {

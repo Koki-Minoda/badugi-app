@@ -319,7 +319,9 @@ export function validateHandEvIntegrity({
     }
   });
 
-  if (!resolvedResult && options.allowMissingResult !== true) {
+  if (!resolvedResult && options.requireResult === true) {
+    addError(errors, "missing_result", { message: "No terminal result was available for EV validation." });
+  } else if (!resolvedResult && options.allowMissingResult !== true) {
     warnings.push({ code: "missing_result", message: "No terminal result was available for EV validation." });
   }
 
@@ -364,8 +366,16 @@ export function validateHandEvIntegrity({
   }
 
   if (options.strictChipConservation) {
+    const terminalPotIsResultEcho = options.terminalPotIsResultEcho === true;
+    if (
+      terminalPotIsResultEcho &&
+      resolvedResult &&
+      !approxEqual(afterLivePot, potTotal, options.potEpsilon ?? EPSILON)
+    ) {
+      addError(errors, "terminal_pot_echo_mismatch", { afterLivePot, potTotal });
+    }
     const beforeTotal = beforeStackTotal + getLivePot(beforeState);
-    const afterTotal = afterStackTotal + afterLivePot;
+    const afterTotal = afterStackTotal + (terminalPotIsResultEcho ? 0 : afterLivePot);
     if (!approxEqual(beforeTotal, afterTotal, options.chipEpsilon ?? EPSILON)) {
       addError(errors, "chip_conservation_mismatch", { beforeTotal, afterTotal });
     }

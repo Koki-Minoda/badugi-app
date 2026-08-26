@@ -26,6 +26,7 @@ export class DeckManager {
     const normalized =
       typeof options === "boolean" ? { debug: options } : options ?? {};
     this.debug = Boolean(normalized.debug);
+    this.rng = typeof normalized.rng === "function" ? normalized.rng : Math.random;
     this.seedDeck = Array.isArray(normalized.seedDeck)
       ? [...normalized.seedDeck]
       : null;
@@ -50,7 +51,7 @@ export class DeckManager {
 
   #shuffle(array) {
     for (let i = array.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(this.rng() * (i + 1));
       [array[i], array[j]] = [array[j], array[i]];
     }
     return array;

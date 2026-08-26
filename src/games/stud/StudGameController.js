@@ -104,9 +104,10 @@ export class StudGameController {
     tableConfig = defaultTableConfig(),
     gameDefinition = StudGameDefinition,
     variant = "stud",
-    deckFactory = () => new DeckManager(),
+    rng = Math.random,
+    deckFactory = ({ rng: deckRng } = {}) => new DeckManager({ rng: deckRng }),
   } = {}) {
-    this.config = { tableConfig, gameDefinition, deckFactory };
+    this.config = { tableConfig, gameDefinition, deckFactory, rng };
     this.variant = variant;
     this.handCounter = 0;
     this.raiseCap = 4;
@@ -194,7 +195,7 @@ export class StudGameController {
   }
 
   resetDeck() {
-    this.deck = this.config.deckFactory();
+    this.deck = this.config.deckFactory({ rng: this.config.rng });
     if (typeof this.deck.reset === "function") this.deck.reset();
   }
 

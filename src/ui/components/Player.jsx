@@ -673,6 +673,19 @@ export default function Player({
             {drawBadgeLabel}
           </div>
         )}
+        {mobileHeroCardOnly && (
+          <div className="relative z-10 flex min-w-0 items-center justify-center gap-1 leading-none text-white">
+            <span
+              data-testid={`seat-${seatIndex}-name`}
+              className="max-w-full truncate font-semibold"
+              title={player.name}
+              style={{ fontSize: "var(--player-name-size, 12px)" }}
+            >
+              {player.name}
+            </span>
+            {index === dealerIdx && <StatusPill label="D" tone="yellow" />}
+          </div>
+        )}
         {!mobileHeroCardOnly && (
           <div
             className={`relative z-10 flex items-start justify-between ${isDrawTableMobileLayout ? "gap-1" : "gap-2"}`}
@@ -697,7 +710,9 @@ export default function Player({
                     </span>
                   )}
                   <span
+                    data-testid={`seat-${seatIndex}-name`}
                     className="truncate"
+                    title={player.name}
                     style={{
                       fontSize: "var(--player-name-size, 14px)",
                       maxWidth: "var(--player-name-maxw, 150px)",

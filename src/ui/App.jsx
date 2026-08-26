@@ -150,7 +150,10 @@ import {
   readPersistedHandHistory,
 } from "./utils/persistedHandHistory.js";
 import { useLocation, useNavigate } from "react-router-dom";
-import { loadTitleSettings } from "./utils/titleSettings";
+import {
+  loadTitleSettings,
+  resolveHeroPlayerName,
+} from "./utils/titleSettings";
 import { useRatingState } from "./hooks/useRatingState.js";
 import { summarizeAiDecisionLog } from "./utils/aiDecisionLog.js";
 import {
@@ -536,6 +539,7 @@ export default function App() {
   const initialModeRef = useRef(getRequestedModeFromURL());
   const authUserIdRef = useRef(null);
   const [authUserId, setAuthUserId] = useState(null);
+  const [authUsername, setAuthUsername] = useState(null);
   const [authToken, setAuthToken] = useState(null);
   const [authTokenType, setAuthTokenType] = useState(null);
   const [mode, setMode] = useState(initialModeRef.current);
@@ -816,11 +820,11 @@ export default function App() {
   const [titleSettings, setTitleSettings] = useState(() => loadTitleSettings());
   const heroProfile = useMemo(
     () => ({
-      name: titleSettings.playerName?.trim() || "You",
+      name: resolveHeroPlayerName(titleSettings.playerName, authUsername),
       titleBadge: titleSettings.playerTitle?.trim() || "",
       avatar: titleSettings.avatar || "default_avatar",
     }),
-    [titleSettings],
+    [authUsername, titleSettings],
   );
   const buildPlayersFromSeatTypes = useCallback(
     (seatConfig, stackValue = DEFAULT_STARTING_STACK, profile = heroProfile) =>
@@ -8642,7 +8646,7 @@ export default function App() {
           seat,
           name:
             seat === 0
-              ? "You"
+              ? (heroProfile?.name ?? "You")
               : (["Sora", "Mina", "Ren", "Hana", "Jun"][seat - 1] ??
                 `CPU ${seat + 1}`),
           tournamentPlayerId:
@@ -12947,6 +12951,7 @@ export default function App() {
   function handleAuthStateChange(state) {
     authUserIdRef.current = state?.user?.id ?? null;
     setAuthUserId(state?.user?.id ?? null);
+    setAuthUsername(state?.user?.username ?? null);
     setAuthToken(state?.accessToken ?? null);
     setAuthTokenType(state?.tokenType ?? null);
     if (typeof state?.isAuthenticated === "boolean") {

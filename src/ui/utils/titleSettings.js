@@ -65,3 +65,19 @@ export function resetTitleSettings() {
 export function getDefaultTitleSettings() {
   return { ...DEFAULT_SETTINGS };
 }
+
+export function resolveHeroPlayerName(playerName, authenticatedUsername) {
+  const configuredName =
+    typeof playerName === "string" ? playerName.trim() : "";
+  const accountName =
+    typeof authenticatedUsername === "string"
+      ? authenticatedUsername.trim()
+      : "";
+
+  // The shipped "You" value is a placeholder, not a deliberate profile
+  // override. Once authentication is hydrated, show the account identity.
+  if (configuredName && configuredName !== DEFAULT_SETTINGS.playerName) {
+    return configuredName;
+  }
+  return accountName || configuredName || DEFAULT_SETTINGS.playerName;
+}

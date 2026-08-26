@@ -8,7 +8,11 @@ if (!scriptPath) {
   process.exit(2);
 }
 
-const python = existsSync(".venv/bin/python") ? ".venv/bin/python" : "python3";
+const pythonCandidates = process.platform === "win32"
+  ? [".venv-rl/Scripts/python.exe", ".venv/Scripts/python.exe"]
+  : [".venv/bin/python"];
+const python = pythonCandidates.find((candidate) => existsSync(candidate))
+  ?? (process.platform === "win32" ? "python" : "python3");
 const result = spawnSync(python, [scriptPath, ...args], {
   stdio: "inherit",
   env: process.env,

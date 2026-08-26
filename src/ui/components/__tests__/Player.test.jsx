@@ -18,6 +18,26 @@ describe("Player", () => {
     cleanup();
   });
 
+  test("keeps the hero player name visible in the mobile card-only layout", () => {
+    render(
+      <Player
+        player={{ ...basePlayer, name: "Koki" }}
+        index={0}
+        selfIndex={0}
+        turn={0}
+        dealerIdx={0}
+        phase="BET"
+        compact
+        mobileHeroCardOnly
+      />,
+    );
+
+    expect(screen.getByTestId("seat-0-name").textContent).toBe("Koki");
+    expect(screen.getByTestId("seat-0-name").getAttribute("title")).toBe(
+      "Koki",
+    );
+  });
+
   test("renders character avatar images and falls back to initials if the image is missing", () => {
     render(
       <Player

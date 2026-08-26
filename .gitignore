@@ -60,7 +60,9 @@ desktop.ini
 
 # add this to .gitignore
 runs/
-structure.txt# RL artifacts
+structure.txt
+
+# RL artifacts
 rl/models/*
 !rl/models/.gitkeep
 rl/evaluations/*

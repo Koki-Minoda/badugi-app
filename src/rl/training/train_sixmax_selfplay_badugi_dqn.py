@@ -841,6 +841,12 @@ def parse_args(argv: list[str] | None = None):
     parser.add_argument("--hidden-dim", type=int, default=SixMaxSelfPlayConfig.hidden_dim)
     parser.add_argument("--batch-size", type=int, default=SixMaxSelfPlayConfig.batch_size)
     parser.add_argument("--buffer-capacity", type=int, default=SixMaxSelfPlayConfig.buffer_capacity)
+    parser.add_argument("--max-steps-per-episode", type=int, default=SixMaxSelfPlayConfig.max_steps_per_episode)
+    parser.add_argument("--warmup-steps", type=int, default=SixMaxSelfPlayConfig.warmup_steps)
+    parser.add_argument("--train-every-steps", type=int, default=SixMaxSelfPlayConfig.train_every_steps)
+    parser.add_argument("--learning-rate", type=float, default=SixMaxSelfPlayConfig.learning_rate)
+    parser.add_argument("--imitation-pretrain-steps", type=int, default=SixMaxSelfPlayConfig.imitation_pretrain_steps)
+    parser.add_argument("--expert-replay-ratio", type=float, default=SixMaxSelfPlayConfig.expert_replay_ratio)
     parser.add_argument("--teacher-warmup-episodes", type=int, default=None)
     parser.add_argument("--resume-continuation", action="store_true")
     parser.add_argument("--resume-epsilon", type=float, default=SixMaxSelfPlayConfig.resume_epsilon)
@@ -874,6 +880,12 @@ if __name__ == "__main__":
         hidden_dim=args.hidden_dim,
         batch_size=args.batch_size,
         buffer_capacity=args.buffer_capacity,
+        max_steps_per_episode=args.max_steps_per_episode,
+        warmup_steps=args.warmup_steps,
+        train_every_steps=args.train_every_steps,
+        learning_rate=args.learning_rate,
+        imitation_pretrain_steps=args.imitation_pretrain_steps,
+        expert_replay_ratio=args.expert_replay_ratio,
         teacher_warmup_episodes=args.teacher_warmup_episodes,
         resume_continuation=args.resume_continuation,
         resume_epsilon=args.resume_epsilon,

@@ -14,7 +14,7 @@ const TOURNAMENT_REVIEW_STATUS_COPY = {
   },
   complete: {
     label: "レビュー完了",
-    body: "保存済みレビューを表示しています。",
+    body: "根拠を構造化できた内容のみ採用し、ローカルレビューも保持しています。",
   },
   insufficient_logs: {
     label: "簡易レビューのみ",
@@ -25,8 +25,8 @@ const TOURNAMENT_REVIEW_STATUS_COPY = {
     body: "ログインすると詳細AIレビューを保存できます。",
   },
   error: {
-    label: "レビュー未作成",
-    body: "レビューを作成できませんでした。",
+    label: "ローカルレビュー",
+    body: "AIレビューを取得できなかったため、端末内の履歴から振り返ります。",
   },
 };
 
@@ -50,6 +50,51 @@ function getVariantLabel(review) {
   return variants[0] ?? review?.variantId ?? "Unknown";
 }
 
+function normalizeReviewItems(items = []) {
+  return (Array.isArray(items) ? items : []).map((item) =>
+    typeof item === "string"
+      ? { text: item, evidence: [], caveat: null }
+      : {
+          text: item?.text ?? "",
+          evidence: Array.isArray(item?.evidence) ? item.evidence : [],
+          caveat: item?.caveat ?? null,
+        },
+  ).filter((item) => item.text);
+}
+
+function formatEvidence(entry = {}) {
+  const handId = entry.handId ?? "--";
+  const range = entry.actionSeqRange;
+  if (!range?.start) return `Hand ${handId}`;
+  const seq = range.end && range.end !== range.start
+    ? `${range.start}-${range.end}`
+    : range.start;
+  return `Hand ${handId} · action ${seq}`;
+}
+
+function ReviewItemList({ items, emptyText }) {
+  if (!items.length) {
+    return <p className="mt-1 text-xs text-slate-400">{emptyText}</p>;
+  }
+  return (
+    <ul className="mt-1 space-y-2 text-xs text-slate-200">
+      {items.map((item, index) => (
+        <li key={`${item.text}:${index}`}>
+          <p>{item.text}</p>
+          {item.evidence.length ? (
+            <p className="mt-0.5 text-[10px] text-sky-200">
+              根拠: {item.evidence.map(formatEvidence).join(" / ")}
+            </p>
+          ) : null}
+          {item.caveat ? (
+            <p className="mt-0.5 text-[10px] text-slate-400">注記: {item.caveat}</p>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function buildReviewView(review) {
   const result = review?.result ?? {};
   const totalHands =
@@ -63,7 +108,17 @@ function buildReviewView(review) {
   const improvementItems = Array.isArray(review?.nextImprovements?.items)
     ? review.nextImprovements.items.slice(0, 2)
     : [];
-  const response = review?.aiFeedback?.response ?? null;
+  const summary = review?.reviewSummary ?? {};
+  const facts = normalizeReviewItems(summary.facts).slice(0, 4);
+  const interpretations = normalizeReviewItems(
+    summary.interpretations ?? [
+      ...(summary.goodPoints ?? []),
+      ...(summary.improvementPoints ?? []),
+    ],
+  ).slice(0, 4);
+  const nextActions = normalizeReviewItems(
+    summary.nextActions ?? improvementItems,
+  ).slice(0, 3);
   return {
     status,
     statusCopy: TOURNAMENT_REVIEW_STATUS_COPY[status],
@@ -73,13 +128,16 @@ function buildReviewView(review) {
     variantLabel: getVariantLabel(review),
     keyHands,
     improvementItems,
-    completeText: response?.adviceJa ?? response?.summaryJa ?? response?.summary ?? null,
+    facts,
+    interpretations,
+    nextActions,
+    causalDisclaimer: summary.causalDisclaimer ?? null,
   };
 }
 
 function TournamentReviewSection({ tournamentReview, onOpenReviewReplay }) {
   const view = buildReviewView(tournamentReview);
-  const showReviewLists = view.status === "summary" || view.status === "complete";
+  const showReviewLists = Boolean(tournamentReview);
   return (
     <section
       className="rounded-2xl border border-emerald-300/20 bg-black/25 px-4 py-3 text-sm text-slate-100"
@@ -120,7 +178,7 @@ function TournamentReviewSection({ tournamentReview, onOpenReviewReplay }) {
       ) : null}
       {view.status === "error" ? (
         <p className="mt-3 rounded-xl bg-red-500/10 px-3 py-2 text-xs text-red-100">
-          レビューを作成できませんでした。順位と賞金結果は保存済みです。
+          AIレビューは取得できませんでした。以下のローカルレビューは引き続き利用できます。
         </p>
       ) : null}
       {view.status === "insufficient_logs" ? (
@@ -134,28 +192,41 @@ function TournamentReviewSection({ tournamentReview, onOpenReviewReplay }) {
         </p>
       ) : null}
       {showReviewLists ? (
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-xl bg-white/5 px-3 py-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
-              良かった点
-            </p>
-            <p className="mt-1 text-xs text-slate-200">
-              {view.completeText ?? "入賞結果と大きな変動ハンドを確認できます。"}
-            </p>
+        <div className="mt-3 space-y-3">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-xl bg-white/5 px-3 py-2">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
+                確認できた事実
+              </p>
+              <ReviewItemList
+                items={view.facts}
+                emptyText="記録から確認できる事実はまだありません。"
+              />
+            </div>
+            <div className="rounded-xl bg-white/5 px-3 py-2">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200">
+                解釈
+              </p>
+              <ReviewItemList
+                items={view.interpretations}
+                emptyText="結果だけから判断の良否は解釈しません。"
+              />
+            </div>
+            <div className="rounded-xl bg-white/5 px-3 py-2">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-200">
+                次の一手
+              </p>
+              <ReviewItemList
+                items={view.nextActions}
+                emptyText="次回はHero actionが残る状態でプレイしてください。"
+              />
+            </div>
           </div>
-          <div className="rounded-xl bg-white/5 px-3 py-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200">
-              改善点
+          {view.causalDisclaimer ? (
+            <p className="rounded-xl border border-slate-500/20 bg-slate-950/40 px-3 py-2 text-[10px] text-slate-400">
+              {view.causalDisclaimer}
             </p>
-            <ul className="mt-1 space-y-1 text-xs text-slate-200">
-              {(view.improvementItems.length
-                ? view.improvementItems
-                : ["大きくチップが動いたハンドをリプレイで確認しましょう。"]
-              ).map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </div>
+          ) : null}
           <div className="rounded-xl bg-white/5 px-3 py-2">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-200">
               Key Hands
@@ -176,6 +247,16 @@ function TournamentReviewSection({ tournamentReview, onOpenReviewReplay }) {
                     </div>
                     {hand.description ? (
                       <p className="text-[11px] text-slate-300">{hand.description}</p>
+                    ) : null}
+                    {Array.isArray(hand.reasonTags) && hand.reasonTags.length ? (
+                      <p className="text-[10px] text-sky-200">
+                        Tags: {hand.reasonTags.join(" / ")}
+                      </p>
+                    ) : null}
+                    {Array.isArray(hand.evidence) && hand.evidence.length ? (
+                      <p className="text-[10px] text-slate-400">
+                        根拠: {hand.evidence.map(formatEvidence).join(" / ")}
+                      </p>
                     ) : null}
                     {typeof onOpenReviewReplay === "function" && hand.replayRef?.target ? (
                       <button
@@ -251,7 +332,7 @@ export default function TournamentResultOverlay({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
       <div
-        className="w-full max-w-2xl bg-slate-900 text-white rounded-3xl p-8 space-y-6 shadow-2xl border border-emerald-500/20"
+        className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl space-y-4 overflow-y-auto rounded-3xl border border-emerald-500/20 bg-slate-900 p-4 text-white shadow-2xl sm:space-y-6 sm:p-8"
         data-testid="mtt-result-overlay"
       >
         <header className="text-center space-y-2">

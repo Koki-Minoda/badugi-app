@@ -369,30 +369,146 @@ describe("tournamentReviewContract", () => {
       "bust-hand",
       "biggest-loss",
       "biggest-win",
-      "hero-all-in",
-      "showdown",
-      "large-pot",
       "draw-decision",
-      "final-hand",
     ]);
-    expect(contract.keyHands.find((hand) => hand.reason === "hero-all-in")).toMatchObject({
+    expect(
+      contract.keyHands.find((hand) => hand.reasonTags.includes("hero-all-in")),
+    ).toMatchObject({
       handId: "t-hand-1",
-      title: "Hero all-in",
+      title: "Biggest loss",
       phase: "BET",
-      heroAction: "raise",
       pot: 900,
       heroNet: -500,
-      replayRef: expect.objectContaining({
-        target: expect.objectContaining({
-          handId: "t-hand-1",
-          actionSeqStart: 3,
-        }),
-      }),
+      reasonTags: expect.arrayContaining(["biggest-loss", "hero-all-in", "large-pot"]),
+      evidence: expect.arrayContaining([
+        expect.objectContaining({ reason: "hero-all-in", handId: "t-hand-1" }),
+      ]),
     });
-    expect(contract.keyHands.find((hand) => hand.reason === "draw-decision")).toMatchObject({
-      title: "Draw decision",
-      phase: "DRAW",
-      heroAction: "draw",
+    expect(contract.keyHands.find((hand) => hand.reasonTags.includes("showdown"))).toMatchObject({
+      handId: "t-hand-2",
+      reasonTags: expect.arrayContaining(["biggest-win", "showdown"]),
+    });
+  });
+
+  it("only emits biggest win/loss when a matching signed result exists", () => {
+    const lossesOnly = buildTournamentReviewContract({
+      hands: [makeHand(1, { heroNet: -20 }), makeHand(2, { heroNet: 0 })],
+      hasAuth: false,
+    });
+    const winsOnly = buildTournamentReviewContract({
+      hands: [makeHand(1, { heroNet: 20 }), makeHand(2, { heroNet: 0 })],
+      hasAuth: false,
+    });
+
+    expect(lossesOnly.biggestWin).toBeNull();
+    expect(lossesOnly.keyHands.some((hand) => hand.reasonTags.includes("biggest-win"))).toBe(false);
+    expect(winsOnly.biggestLoss).toBeNull();
+    expect(winsOnly.keyHands.some((hand) => hand.reasonTags.includes("biggest-loss"))).toBe(false);
+  });
+
+  it("deduplicates repeated hand records and aggregates reason tags and action evidence", () => {
+    const repeated = makeHand(4, { heroNet: 300, pot: 900, showdown: true });
+    const contract = buildTournamentReviewContract({
+      hands: [repeated, { ...repeated, bustHand: true }],
+      hasAuth: true,
+    });
+
+    expect(contract.totalHands).toBe(1);
+    expect(contract.keyHands).toHaveLength(1);
+    expect(contract.replayRefs).toHaveLength(1);
+    expect(contract.keyHands[0]).toMatchObject({
+      handId: "t-hand-4",
+      reasonTags: expect.arrayContaining([
+        "bust-hand",
+        "biggest-win",
+        "showdown",
+        "large-pot",
+        "draw-decision",
+        "final-hand",
+      ]),
+    });
+    expect(contract.keyHands[0].evidence.length).toBeGreaterThan(1);
+  });
+
+  it("keeps a grounded local fallback for unauthenticated and API-error states", () => {
+    const base = { hands: [makeHand(0), makeHand(1)], hasAuth: false };
+    const unauthenticated = buildTournamentReviewContract(base);
+    const apiError = buildTournamentReviewContract({
+      ...base,
+      hasAuth: true,
+      requestState: { error: "offline" },
+    });
+
+    for (const contract of [unauthenticated, apiError]) {
+      expect(contract.reviewSummary.source).toBe("local-summary");
+      expect(contract.reviewSummary.facts.length).toBeGreaterThan(0);
+      expect(contract.reviewSummary.nextActions.length).toBeGreaterThan(0);
+      expect(contract.reviewSummary.nextActions[0].evidence[0]).toMatchObject({
+        handId: expect.any(String),
+        actionSeqRange: expect.objectContaining({ start: expect.any(Number) }),
+      });
+    }
+  });
+
+  it("separates facts, interpretations, and next actions without result-only causal claims", () => {
+    const contract = buildTournamentReviewContract({
+      tournament: { buyIn: 100 },
+      placements: [{ id: "hero", place: 1, payout: 500 }],
+      heroPlayerId: "hero",
+      hands: [makeHand(0, { heroNet: 80 }), makeHand(1, { heroNet: -40 })],
+      hasAuth: true,
+    });
+    const summaryText = JSON.stringify(contract.reviewSummary);
+
+    expect(contract.reviewSummary.facts.every((item) => item.kind === "fact")).toBe(true);
+    expect(contract.reviewSummary.interpretations.every((item) => item.kind === "interpretation")).toBe(true);
+    expect(contract.reviewSummary.interpretations.every((item) => item.caveat)).toBe(true);
+    expect(contract.reviewSummary.nextActions.every((item) => item.kind === "next-action")).toBe(true);
+    expect(summaryText).not.toContain("結果につながった");
+    expect(summaryText).not.toContain("良い結果");
+    expect(summaryText).not.toContain("取りすぎた");
+    expect(summaryText).toContain("因果関係は断定しません");
+  });
+
+  it("accepts only structured AI review V2 with valid hand/action evidence", () => {
+    const hands = [makeHand(0, { heroNet: 80 })];
+    const unsafe = buildTournamentReviewContract({
+      hands,
+      hasAuth: true,
+      requestState: { response: { adviceJa: "収支が良いので判断も良かった。" } },
+    });
+    const item = {
+      text: "Hand t-hand-0のaction 1を比較できます。",
+      evidence: [{ handId: "t-hand-0", actionSeqStart: 1, actionSeqEnd: 1 }],
+    };
+    const safe = buildTournamentReviewContract({
+      hands,
+      hasAuth: true,
+      requestState: {
+        response: {
+          reviewV2: {
+            schemaVersion: 2,
+            facts: [item],
+            goodPoints: [{ ...item, caveat: "結果だけでは断定できません。" }],
+            improvementPoints: [{ ...item, caveat: "結果だけでは断定できません。" }],
+            nextActions: [item],
+          },
+        },
+      },
+    });
+
+    expect(unsafe.aiFeedback).toMatchObject({
+      enabled: false,
+      accepted: false,
+      rejectionReason: "structured-review-v2-missing",
+      response: null,
+    });
+    expect(unsafe.reviewSummary.source).toBe("local-summary");
+    expect(safe.aiFeedback).toMatchObject({ enabled: true, accepted: true });
+    expect(safe.reviewSummary.source).toBe("structured-ai");
+    expect(safe.reviewSummary.goodPoints[0].evidence[0]).toMatchObject({
+      handId: "t-hand-0",
+      actionSeqRange: { start: 1, end: 1 },
     });
   });
 });

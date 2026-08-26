@@ -134,8 +134,8 @@ test.describe("Tournament Review result overlay", () => {
       }),
     );
 
-    await expect(page.getByTestId("mtt-tournament-review-status")).toContainText("レビュー未作成");
-    await expect(page.getByTestId("mtt-tournament-review")).toContainText("レビューを作成できませんでした");
+    await expect(page.getByTestId("mtt-tournament-review-status")).toContainText("ローカルレビュー");
+    await expect(page.getByTestId("mtt-tournament-review")).toContainText("ローカルレビューは引き続き利用できます");
     await expect(page.getByTestId("mtt-result-champion")).toContainText("Champion");
     await expect(page.getByTestId("mtt-result-payout").first()).toContainText(/Payout \d+/);
   });

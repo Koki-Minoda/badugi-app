@@ -36,6 +36,35 @@ function makeTournamentReview(state = "summary", overrides = {}) {
       source: "local-summary",
       items: ["大きくチップが動いたハンドをリプレイで確認しましょう。"],
     },
+    reviewSummary: {
+      source: "local-summary",
+      facts: [{ kind: "fact", text: "12ハンドを記録しました。", evidence: [] }],
+      goodPoints: [
+        {
+          kind: "interpretation",
+          text: "Hand h-7は獲得局面を確認する候補です。",
+          evidence: [{ handId: "h-7", actionSeqRange: { start: 2, end: 2 } }],
+          caveat: "獲得結果だけでは判断の良否を断定できません。",
+        },
+      ],
+      improvementPoints: [],
+      interpretations: [
+        {
+          kind: "interpretation",
+          text: "Hand h-7は獲得局面を確認する候補です。",
+          evidence: [{ handId: "h-7", actionSeqRange: { start: 2, end: 2 } }],
+          caveat: "獲得結果だけでは判断の良否を断定できません。",
+        },
+      ],
+      nextActions: [
+        {
+          kind: "next-action",
+          text: "Hand h-7をリプレイしてください。",
+          evidence: [{ handId: "h-7", actionSeqRange: { start: 2, end: 2 } }],
+        },
+      ],
+      causalDisclaimer: "結果だけから因果関係を断定しません。",
+    },
     keyHands: [
       {
         keyHandId: "biggest-win:h-7",
@@ -222,7 +251,7 @@ describe("TournamentResultOverlay", () => {
     expect(screen.queryByTestId("mtt-tournament-review-replay")).toBeNull();
   });
 
-  it("shows the complete tournament review state without numeric EV claims", () => {
+  it("ignores unstructured AI prose and keeps the grounded local review", () => {
     render(
       <TournamentResultOverlay
         visible
@@ -240,7 +269,9 @@ describe("TournamentResultOverlay", () => {
 
     const review = screen.getByTestId("mtt-tournament-review");
     expect(screen.getByTestId("mtt-tournament-review-status").textContent).toContain("レビュー完了");
-    expect(review.textContent).toContain("終盤のリスク管理");
+    expect(review.textContent).not.toContain("終盤のリスク管理");
+    expect(review.textContent).toContain("Hand h-7");
+    expect(review.textContent).toContain("根拠: Hand h-7 · action 2");
     expect(review.textContent).not.toMatch(/EV\s*[+-]?\d/i);
   });
 
@@ -291,8 +322,9 @@ describe("TournamentResultOverlay", () => {
     );
 
     const review = screen.getByTestId("mtt-tournament-review");
-    expect(screen.getByTestId("mtt-tournament-review-status").textContent).toContain("レビュー未作成");
-    expect(review.textContent).toContain("レビューを作成できませんでした");
+    expect(screen.getByTestId("mtt-tournament-review-status").textContent).toContain("ローカルレビュー");
+    expect(review.textContent).toContain("以下のローカルレビューは引き続き利用できます");
+    expect(review.textContent).toContain("Hand h-7");
     expect(screen.getByTestId("mtt-result-champion").textContent).toContain("Hero");
     expect(screen.getAllByTestId("mtt-result-payout").map((node) => node.textContent)).toEqual([
       "Payout 500",

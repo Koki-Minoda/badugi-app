@@ -44,10 +44,25 @@ jobs:
       - run: python -m pip install -e './backend[test]'
       - run: python -m pytest backend/tests
 
+  tournament-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - run: npm run test:tournament:review
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:tournament:pr-e2e
+
   deploy:
     needs:
       - quality
       - backend
+      - tournament-qa
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30

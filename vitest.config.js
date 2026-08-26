@@ -71,6 +71,7 @@ export default defineConfig({
             "src/games/**/*.{test,spec}.{js,jsx,ts,tsx}",
             "src/games/_core/**/*.{test,spec}.{js,jsx,ts,tsx}",
             "src/games/testing/**/*.{test,spec}.{js,jsx,ts,tsx}",
+            "src/tournament/**/*.{test,spec}.{js,jsx,ts,tsx}",
             "src/ui/**/*.{test,spec}.{js,jsx,ts,tsx}",
             "src/components/**/*.{test,spec}.{js,jsx,ts,tsx}",
             "src/storage/**/*.{test,spec}.{js,jsx,ts,tsx}",

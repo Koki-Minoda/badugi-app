@@ -28,6 +28,58 @@ export const TOURNAMENT_VIEWPORTS = [
 export type TournamentViewport = (typeof TOURNAMENT_VIEWPORTS)[number];
 export type Core5Variant = (typeof CORE5_VARIANTS)[number];
 
+export type TournamentViewportLike = {
+  name: string;
+  width: number;
+  height: number;
+  orientation: "portrait" | "landscape";
+};
+
+type LayoutBox = NonNullable<Awaited<ReturnType<typeof visibleBox>>>;
+
+function overlapRatio(a: LayoutBox | null, b: LayoutBox | null) {
+  if (!a || !b) return 0;
+  const x = Math.max(
+    0,
+    Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x),
+  );
+  const y = Math.max(
+    0,
+    Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y),
+  );
+  const overlap = x * y;
+  const smallerArea = Math.max(
+    1,
+    Math.min(a.width * a.height, b.width * b.height),
+  );
+  return overlap / smallerArea;
+}
+
+function recordUnexpectedOverlap({
+  issues,
+  left,
+  right,
+  leftBox,
+  rightBox,
+  threshold = 0.08,
+}: {
+  issues: AuditIssue[];
+  left: string;
+  right: string;
+  leftBox: LayoutBox | null;
+  rightBox: LayoutBox | null;
+  threshold?: number;
+}) {
+  const ratio = overlapRatio(leftBox, rightBox);
+  if (ratio <= threshold) return;
+  issues.push({
+    priority: "P0",
+    issue: "LAYOUT_ELEMENT_OVERLAP",
+    message: `${left} overlaps ${right}`,
+    value: { ratio, leftBox, rightBox },
+  });
+}
+
 export async function openMobileTournamentContext(
   browser: Browser,
   viewport: TournamentViewport,
@@ -88,7 +140,7 @@ function classifyMetricFailures({
   decisionBox,
   issues,
 }: {
-  viewport: TournamentViewport;
+  viewport: TournamentViewportLike;
   tableBox: Awaited<ReturnType<typeof visibleBox>>;
   hudBox: Awaited<ReturnType<typeof visibleBox>>;
   potBox: Awaited<ReturnType<typeof visibleBox>>;
@@ -142,7 +194,7 @@ function validateLandscapeSeatGeometry({
   seatBoxes,
   issues,
 }: {
-  viewport: TournamentViewport;
+  viewport: TournamentViewportLike;
   tableBox: Awaited<ReturnType<typeof visibleBox>>;
   seatBoxes: Awaited<ReturnType<typeof visibleBox>>[];
   issues: AuditIssue[];
@@ -231,7 +283,7 @@ function validateLandscapeSeatGeometry({
 export async function evaluateTournamentMobileLayout(
   page: Page,
   variant: Core5Variant,
-  viewport: TournamentViewport,
+  viewport: TournamentViewportLike,
 ) {
   const issues: AuditIssue[] = [];
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -268,12 +320,46 @@ export async function evaluateTournamentMobileLayout(
   const actionCount = await actionButtons.count();
   let visibleActionButtons = 0;
   let minActionButtonHeight = Number.POSITIVE_INFINITY;
+  const actionBoxes: Array<{ testId: string; box: LayoutBox }> = [];
+  const visualViewport = await page.evaluate(() => ({
+    x: window.visualViewport?.pageLeft ?? window.scrollX,
+    y: window.visualViewport?.pageTop ?? window.scrollY,
+    width: window.visualViewport?.width ?? window.innerWidth,
+    height: window.visualViewport?.height ?? window.innerHeight,
+  }));
   for (let index = 0; index < actionCount; index += 1) {
     const button = actionButtons.nth(index);
     if (!(await button.isVisible().catch(() => false))) continue;
     visibleActionButtons += 1;
     const box = await button.boundingBox();
-    if (box) minActionButtonHeight = Math.min(minActionButtonHeight, box.height);
+    const testId = (await button.getAttribute("data-testid")) ?? `action-${index}`;
+    if (box) {
+      minActionButtonHeight = Math.min(minActionButtonHeight, box.height);
+      actionBoxes.push({ testId, box });
+      const withinVisualViewport =
+        box.x >= visualViewport.x - 1 &&
+        box.y >= visualViewport.y - 1 &&
+        box.x + box.width <= visualViewport.x + visualViewport.width + 1 &&
+        box.y + box.height <= visualViewport.y + visualViewport.height + 1;
+      if (!withinVisualViewport) {
+        issues.push({
+          priority: "P0",
+          issue: "ACTION_OUTSIDE_VISUAL_VIEWPORT",
+          testId,
+          value: { box, visualViewport },
+        });
+      }
+    }
+    if (await button.isEnabled().catch(() => false)) {
+      await button.click({ trial: true, timeout: 2_000 }).catch((error) => {
+        issues.push({
+          priority: "P0",
+          issue: "ACTION_NOT_CLICKABLE",
+          testId,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      });
+    }
   }
   if (visibleActionButtons > 0 && minActionButtonHeight < 40) {
     issues.push({ priority: "P1", issue: "action button below target size", value: minActionButtonHeight });
@@ -291,11 +377,129 @@ export async function evaluateTournamentMobileLayout(
   const potBox = await visibleBox(page, "table-total-pot");
   const heroBox = await visibleBox(page, "seat-0");
   const decisionBox = await visibleBox(page, "decision-panel");
+  const phaseBox = await visibleBox(page, "table-phase-badge");
+  const heroCardBox = await visibleBox(page, variant.heroCardTestId);
   const seatBoxes = await Promise.all(
     Array.from({ length: 6 }, (_, index) => visibleBox(page, `seat-${index}`)),
   );
   classifyMetricFailures({ viewport, tableBox, hudBox, potBox, heroBox, decisionBox, issues });
   validateLandscapeSeatGeometry({ viewport, tableBox, seatBoxes, issues });
+
+  const cardLocators = page.locator("[data-testid^='player-'][data-testid*='-card-']");
+  const cardBoxes: Array<{ testId: string; ownerSeat: number | null; box: LayoutBox }> = [];
+  for (let index = 0; index < (await cardLocators.count()); index += 1) {
+    const card = cardLocators.nth(index);
+    if (!(await card.isVisible().catch(() => false))) continue;
+    const box = await card.boundingBox();
+    if (!box) continue;
+    const testId = (await card.getAttribute("data-testid")) ?? `card-${index}`;
+    const ownerMatch = /^player-(\d+)-card-/.exec(testId);
+    cardBoxes.push({
+      testId,
+      ownerSeat: ownerMatch ? Number(ownerMatch[1]) : null,
+      box,
+    });
+  }
+
+  seatBoxes.forEach((seatBox, seatIndex) => {
+    recordUnexpectedOverlap({
+      issues,
+      left: `seat-${seatIndex}`,
+      right: "pot",
+      leftBox: seatBox,
+      rightBox: potBox,
+    });
+    recordUnexpectedOverlap({
+      issues,
+      left: `seat-${seatIndex}`,
+      right: "phase",
+      leftBox: seatBox,
+      rightBox: phaseBox,
+    });
+    recordUnexpectedOverlap({
+      issues,
+      left: `seat-${seatIndex}`,
+      right: "HUD",
+      leftBox: seatBox,
+      rightBox: hudBox,
+      threshold: 0.01,
+    });
+    for (const action of actionBoxes) {
+      recordUnexpectedOverlap({
+        issues,
+        left: `seat-${seatIndex}`,
+        right: action.testId,
+        leftBox: seatBox,
+        rightBox: action.box,
+        threshold: 0.01,
+      });
+    }
+  });
+
+  for (const card of cardBoxes) {
+    recordUnexpectedOverlap({
+      issues,
+      left: card.testId,
+      right: "pot",
+      leftBox: card.box,
+      rightBox: potBox,
+    });
+    recordUnexpectedOverlap({
+      issues,
+      left: card.testId,
+      right: "phase",
+      leftBox: card.box,
+      rightBox: phaseBox,
+    });
+    seatBoxes.forEach((seatBox, seatIndex) => {
+      if (card.ownerSeat === seatIndex) return;
+      recordUnexpectedOverlap({
+        issues,
+        left: card.testId,
+        right: `foreign-seat-${seatIndex}`,
+        leftBox: card.box,
+        rightBox: seatBox,
+        threshold: 0.12,
+      });
+    });
+  }
+
+  for (let leftIndex = 0; leftIndex < cardBoxes.length; leftIndex += 1) {
+    for (
+      let rightIndex = leftIndex + 1;
+      rightIndex < cardBoxes.length;
+      rightIndex += 1
+    ) {
+      const left = cardBoxes[leftIndex];
+      const right = cardBoxes[rightIndex];
+      if (left.ownerSeat === right.ownerSeat) continue;
+      recordUnexpectedOverlap({
+        issues,
+        left: left.testId,
+        right: right.testId,
+        leftBox: left.box,
+        rightBox: right.box,
+        threshold: 0.12,
+      });
+    }
+  }
+
+  for (const action of actionBoxes) {
+    for (const [name, box] of [
+      ["pot", potBox],
+      ["phase", phaseBox],
+      ["HUD", hudBox],
+    ] as const) {
+      recordUnexpectedOverlap({
+        issues,
+        left: action.testId,
+        right: name,
+        leftBox: action.box,
+        rightBox: box,
+        threshold: 0.01,
+      });
+    }
+  }
 
   return {
     status: statusFor(issues),
@@ -306,7 +510,20 @@ export async function evaluateTournamentMobileLayout(
         visibleActionButtons,
         minActionButtonHeight: Number.isFinite(minActionButtonHeight) ? minActionButtonHeight : null,
       },
-      boxes: { tableBox, hudBox, potBox, heroBox, decisionBox, foldBox, seatBoxes },
+      visualViewport,
+      boxes: {
+        tableBox,
+        hudBox,
+        potBox,
+        phaseBox,
+        heroBox,
+        heroCardBox,
+        decisionBox,
+        foldBox,
+        seatBoxes,
+        cardBoxes,
+        actionBoxes,
+      },
     },
   };
 }

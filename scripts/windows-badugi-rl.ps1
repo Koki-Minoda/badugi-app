@@ -7,6 +7,20 @@ param(
     [int]$Episodes = 100000,
     [int]$SaveInterval = 10000,
     [int]$LogInterval = 1000,
+    [ValidateRange(0.0, 1.0)]
+    [double]$ProfileMixRate = 0.0,
+    [string]$TrainingProfiles = "loose_passive,draw_heavy,loose_aggressive",
+    [ValidateRange(0.0000001, 1.0)]
+    [double]$LearningRate = 0.0001,
+    [ValidateRange(0.0, 1.0)]
+    [double]$ResumeEpsilon = 0.25,
+    [ValidateRange(1, 1000000000)]
+    [int]$ResumeEpsilonDecayEpisodes = 200000,
+    [ValidateRange(1, 1000000000)]
+    [int]$OpponentUpdateInterval = 1000,
+    [ValidateRange(0.0, 1.0)]
+    [double]$OpponentEpsilon = 0.05,
+    [Nullable[int]]$Seed = $null,
     [string]$OutputDir = "rl/models/badugi_sixmax_windows",
     [string]$Checkpoint = "rl/models/badugi_sixmax_foldmargin_100k_from_raiseev_fix/badugi_sixmax_dqn_latest.pt",
     [string]$OpponentCheckpoint = "",
@@ -17,6 +31,21 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $venvPython = Join-Path $repoRoot ".venv-rl\Scripts\python.exe"
 $trainer = Join-Path $repoRoot "src\rl\training\train_sixmax_selfplay_badugi_dqn.py"
+$validProfiles = @(
+    "balanced", "loose_passive", "loose_aggressive", "tight_passive",
+    "tight_aggressive", "pat_heavy", "draw_heavy", "random"
+)
+
+function Validate-TrainingConfig {
+    if ($Episodes -le 0 -or $SaveInterval -le 0 -or $LogInterval -le 0) {
+        throw "Episodes, SaveInterval, and LogInterval must be positive."
+    }
+    $profiles = @($TrainingProfiles.Split(',') | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    if ($profiles.Count -eq 0) { throw "TrainingProfiles must include at least one profile." }
+    foreach ($profile in $profiles) {
+        if ($validProfiles -notcontains $profile) { throw "Unknown training profile: $profile" }
+    }
+}
 
 function Resolve-RepoPath([string]$PathValue) {
     if ([System.IO.Path]::IsPathRooted($PathValue)) { return $PathValue }
@@ -32,6 +61,8 @@ function Require-Python {
 function Show-Diagnostics {
     Write-Host "Repository: $repoRoot"
     Write-Host "Virtual environment: $venvPython"
+    Write-Host "Training config: ProfileMixRate=$ProfileMixRate LearningRate=$LearningRate ResumeEpsilon=$ResumeEpsilon ResumeEpsilonDecayEpisodes=$ResumeEpsilonDecayEpisodes"
+    Write-Host "Opponent config: UpdateInterval=$OpponentUpdateInterval Epsilon=$OpponentEpsilon Profiles=$TrainingProfiles Seed=$Seed"
     if (-not (Test-Path $venvPython)) {
         Write-Host "Python environment: NOT SET UP"
         return
@@ -92,14 +123,19 @@ if ($Mode -eq "Smoke") {
         "--batch-size", 2, "--buffer-capacity", 64, "--device", $resolvedDevice
     )
 } else {
-    if ($Episodes -le 0 -or $SaveInterval -le 0 -or $LogInterval -le 0) {
-        throw "Episodes, SaveInterval, and LogInterval must be positive."
-    }
+    Validate-TrainingConfig
     $trainArgs = @(
         $trainer, "--episodes", $Episodes, "--output-dir", $resolvedOutput,
         "--save-interval", $SaveInterval, "--log-interval", $LogInterval,
         "--device", $resolvedDevice,
-        "--batch-size", 128, "--buffer-capacity", 300000
+        "--batch-size", 128, "--buffer-capacity", 300000,
+        "--profile-mix-rate", $ProfileMixRate,
+        "--training-profiles", $TrainingProfiles,
+        "--learning-rate", $LearningRate,
+        "--resume-epsilon", $ResumeEpsilon,
+        "--resume-epsilon-decay-episodes", $ResumeEpsilonDecayEpisodes,
+        "--opponent-update-interval", $OpponentUpdateInterval,
+        "--opp-epsilon", $OpponentEpsilon
     )
     if ($Mode -eq "Resume") {
         if (-not (Test-Path $resolvedCheckpoint)) {
@@ -116,9 +152,15 @@ if ($Mode -eq "Smoke") {
     }
 }
 
+if ($null -ne $Seed) {
+    $trainArgs += @("--seed", $Seed)
+}
+
 New-Item -ItemType Directory -Force -Path $resolvedOutput | Out-Null
 $logPath = Join-Path $resolvedOutput ("training-{0}.log" -f (Get-Date -Format "yyyyMMdd-HHmmss"))
 Write-Host "Mode=$Mode Device=$resolvedDevice Episodes=$Episodes"
+Write-Host "ProfileMixRate=$ProfileMixRate Profiles=$TrainingProfiles LearningRate=$LearningRate Seed=$Seed"
+Write-Host "ResumeEpsilon=$ResumeEpsilon ResumeEpsilonDecayEpisodes=$ResumeEpsilonDecayEpisodes OpponentUpdateInterval=$OpponentUpdateInterval OpponentEpsilon=$OpponentEpsilon"
 Write-Host "Output=$resolvedOutput"
 Write-Host "Log=$logPath"
 Push-Location $repoRoot

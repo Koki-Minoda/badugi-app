@@ -131,13 +131,62 @@ tracked 50k checkpoint:
   -OutputDir rl/models/badugi_sixmax_windows_100k
 ```
 
+Controlled continuation experiments can expose the trainer settings without
+editing the launcher. For example, a deterministic 10k profile-mix probe is:
+
+```powershell
+.\scripts\windows-badugi-rl.ps1 `
+  -Mode Resume `
+  -Device cpu `
+  -Episodes 10000 `
+  -SaveInterval 10000 `
+  -OutputDir rl/models/badugi_probe_profile_mix `
+  -ProfileMixRate 0.5 `
+  -TrainingProfiles "loose_aggressive,draw_heavy,loose_passive" `
+  -LearningRate 0.00003 `
+  -ResumeEpsilon 0.10 `
+  -ResumeEpsilonDecayEpisodes 200000 `
+  -OpponentUpdateInterval 1000 `
+  -OpponentEpsilon 0.05 `
+  -Seed 20260827
+```
+
+`Diagnose` prints these effective settings. The launcher rejects out-of-range
+rates, non-positive intervals, and unknown profile names before training.
+
 The default checkpoint is
 `rl/models/badugi_sixmax_foldmargin_100k_from_raiseev_fix/badugi_sixmax_dqn_latest.pt`.
 `Resume` loads its weights, uses continuation epsilon decay, and skips teacher
 warm-up/imitation. Checkpoints, the latest summary JSON, and a timestamped log
 are kept under the output directory. This is a continuation run, not a
-bit-for-bit process resume: replay-buffer contents and the previous episode
-counter are not stored in the checkpoint.
+bit-for-bit process resume. New-format checkpoints restore optimizer state,
+training step/episode counters, global RNG state, and six-max environment RNG
+state. Legacy checkpoints remain loadable but do not contain those fields.
+Replay, expert, fold, and call buffers plus rolling telemetry histories are
+intentionally not stored yet because the current 300k replay design needs a
+separate size/compatibility decision.
+Every run writes `badugi_sixmax_run_manifest.json` with the exact configuration,
+runtime versions, Git commit, input hashes, and this resume-capability boundary.
+
+## Resumable six-max checkpoint inventory
+
+Evaluate existing 10k through 100k checkpoints with one fixed clean-evaluation
+matrix and atomically save progress after each checkpoint:
+
+```powershell
+npm run ai:inventory-badugi-sixmax -- `
+  --checkpoint-dir rl/models/badugi_sixmax_windows_100k_20260827 `
+  --baseline rl/models/badugi_sixmax_foldmargin_100k_from_raiseev_fix/badugi_sixmax_dqn_latest.pt `
+  --onnx-dir rl/evaluations/badugi_sixmax_windows_100k_20260827 `
+  --report reports/ai-eval/badugi-sixmax-windows-100k-inventory.json `
+  --device cpu
+```
+
+Rerunning the same command resumes from the JSON report and skips checkpoints
+whose SHA-256 result is already complete. Selection first requires source
+health and baseline-regression checks, then ranks survivors by worst-profile
+reward, average reward, and value-bet rate. If none pass, the report explicitly
+recommends retaining the baseline.
 
 Do not promote a checkpoint to Pro / Iron / WorldMaster unless it was trained
 after the latest `BadugiEnv` reward/showdown fixes, has positive or clearly

@@ -58,6 +58,9 @@ class DQNAgent:
         self.loss_fn = nn.MSELoss()
 
         self.train_steps = 0
+        self.checkpoint_training_state: dict = {}
+        self.checkpoint_has_optimizer = False
+        self.checkpoint_rng_state: dict = {}
 
     @torch.no_grad()
     def act(self, obs: np.ndarray, epsilon: float, action_mask: np.ndarray | None = None) -> int:
@@ -219,7 +222,53 @@ class DQNAgent:
 
         return float(loss.item()), float(satisfied)
 
-    def save(self, path: str):
+    @staticmethod
+    def _rng_state_payload() -> dict:
+        numpy_state = np.random.get_state()
+        payload = {
+            "python": random.getstate(),
+            "numpy": {
+                "bit_generator": numpy_state[0],
+                "state": torch.as_tensor(numpy_state[1], dtype=torch.int64),
+                "position": int(numpy_state[2]),
+                "has_gauss": int(numpy_state[3]),
+                "cached_gaussian": float(numpy_state[4]),
+            },
+            "torch": torch.get_rng_state(),
+        }
+        if torch.cuda.is_available():
+            payload["torch_cuda"] = torch.cuda.get_rng_state_all()
+        return payload
+
+    @staticmethod
+    def _restore_rng_state(payload: dict | None) -> None:
+        if not payload:
+            return
+        if payload.get("python") is not None:
+            random.setstate(payload["python"])
+        numpy_state = payload.get("numpy")
+        if isinstance(numpy_state, dict):
+            state_values = numpy_state["state"]
+            if torch.is_tensor(state_values):
+                state_values = state_values.cpu().numpy()
+            np.random.set_state(
+                (
+                    numpy_state["bit_generator"],
+                    np.asarray(state_values, dtype=np.uint32),
+                    int(numpy_state["position"]),
+                    int(numpy_state["has_gauss"]),
+                    float(numpy_state["cached_gaussian"]),
+                )
+            )
+        elif numpy_state is not None:
+            # Version 2 prerelease checkpoints stored numpy's native tuple.
+            np.random.set_state(numpy_state)
+        if payload.get("torch") is not None:
+            torch.set_rng_state(payload["torch"].cpu())
+        if torch.cuda.is_available() and payload.get("torch_cuda") is not None:
+            torch.cuda.set_rng_state_all(payload["torch_cuda"])
+
+    def save(self, path: str, *, training_state: dict | None = None):
         first_layer = self.q_network.net[0]
         hidden_dim = int(first_layer.out_features) if hasattr(first_layer, "out_features") else 256
         payload = {
@@ -229,11 +278,22 @@ class DQNAgent:
             "obs_dim": self.obs_dim,
             "n_actions": self.n_actions,
             "hidden_dim": hidden_dim,
+            "optimizer": self.optimizer.state_dict(),
+            "train_steps": int(self.train_steps),
+            "rng_state": self._rng_state_payload(),
+            "training_state": dict(training_state or {}),
+            "checkpoint_format_version": 2,
         }
         torch.save(payload, path)
 
     @classmethod
-    def load(cls, path: str, device: torch.device | str = "cpu") -> "DQNAgent":
+    def load(
+        cls,
+        path: str,
+        device: torch.device | str = "cpu",
+        *,
+        restore_training_state: bool = False,
+    ) -> "DQNAgent":
         try:
             payload = torch.load(path, map_location=device, weights_only=True)
         except Exception:
@@ -251,4 +311,13 @@ class DQNAgent:
         )
         agent.q_network.load_state_dict(payload["q_network"])
         agent.target_network.load_state_dict(payload["target_network"])
+        agent.checkpoint_training_state = dict(payload.get("training_state", {}))
+        agent.checkpoint_rng_state = dict(payload.get("rng_state", {}))
+        optimizer_state = payload.get("optimizer")
+        if restore_training_state and optimizer_state:
+            agent.optimizer.load_state_dict(optimizer_state)
+            agent.checkpoint_has_optimizer = True
+        if restore_training_state:
+            agent.train_steps = int(payload.get("train_steps", 0))
+            cls._restore_rng_state(agent.checkpoint_rng_state)
         return agent

@@ -19,6 +19,7 @@ from rl.training.train_sixmax_selfplay_badugi_dqn import (
     _load_initial_opponent_agent,
     _margin_batch_size,
     _maybe_imitation_update,
+    parse_args as parse_sixmax_args,
     train_sixmax_selfplay_badugi_dqn,
 )
 from rl.training.sixmax_action_telemetry import SixMaxActionTelemetry
@@ -63,6 +64,26 @@ def test_sixmax_trainer_defaults_counter_vpip_plateau():
     assert _margin_batch_size(cfg) == 32
     assert cfg.call_margin == pytest.approx(0.20)
     assert cfg.call_margin_weight == pytest.approx(0.40)
+
+
+def test_sixmax_cli_exposes_windows_training_controls():
+    args = parse_sixmax_args([
+        "--episodes", "12",
+        "--max-steps-per-episode", "7",
+        "--warmup-steps", "4",
+        "--train-every-steps", "2",
+        "--learning-rate", "0.0002",
+        "--imitation-pretrain-steps", "3",
+        "--expert-replay-ratio", "0.2",
+    ])
+
+    assert args.episodes == 12
+    assert args.max_steps_per_episode == 7
+    assert args.warmup_steps == 4
+    assert args.train_every_steps == 2
+    assert args.learning_rate == pytest.approx(0.0002)
+    assert args.imitation_pretrain_steps == 3
+    assert args.expert_replay_ratio == pytest.approx(0.2)
 
 
 def test_sixmax_fold_margin_batch_size_scales_with_config_batch_size():

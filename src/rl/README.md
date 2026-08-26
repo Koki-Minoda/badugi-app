@@ -101,6 +101,44 @@ npm run ai:gate-badugi-model -- \
 ```
 
 Use `--device cuda` only when the host has a compatible GPU setup.
+
+## Windows GPU training
+
+The PowerShell launcher is safe by default: without arguments it only reports
+the local Python, PyTorch, CUDA, and GPU status. From PowerShell in
+`C:\projects\badugi-app`:
+
+```powershell
+.\scripts\windows-badugi-rl.ps1 -Mode Setup
+.\scripts\windows-badugi-rl.ps1 -Mode Smoke
+```
+
+`Setup` creates the isolated `.venv-rl` environment. If the default PyTorch
+package cannot see the NVIDIA GPU, obtain the current Windows CUDA wheel index
+URL from the official PyTorch installer and pass it explicitly with
+`-TorchIndexUrl`. The launcher refuses `-Device cuda` when CUDA is unavailable.
+`Train` starts a fresh run; `Resume` is the only mode that loads `-Checkpoint`.
+
+After the smoke run succeeds, start an explicit 100k continuation from the
+tracked 50k checkpoint:
+
+```powershell
+.\scripts\windows-badugi-rl.ps1 `
+  -Mode Resume `
+  -Device auto `
+  -Episodes 100000 `
+  -SaveInterval 10000 `
+  -OutputDir rl/models/badugi_sixmax_windows_100k
+```
+
+The default checkpoint is
+`rl/models/badugi_sixmax_foldmargin_100k_from_raiseev_fix/badugi_sixmax_dqn_latest.pt`.
+`Resume` loads its weights, uses continuation epsilon decay, and skips teacher
+warm-up/imitation. Checkpoints, the latest summary JSON, and a timestamped log
+are kept under the output directory. This is a continuation run, not a
+bit-for-bit process resume: replay-buffer contents and the previous episode
+counter are not stored in the checkpoint.
+
 Do not promote a checkpoint to Pro / Iron / WorldMaster unless it was trained
 after the latest `BadugiEnv` reward/showdown fixes, has positive or clearly
 tier-appropriate avgReward across multiple opponent profiles, and passes ONNX

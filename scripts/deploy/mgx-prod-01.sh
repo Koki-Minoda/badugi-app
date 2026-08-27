@@ -170,11 +170,14 @@ verify_frontend_asset_sync
 echo "[mgx-deploy] restarting backend service"
 sudo systemctl restart mgx-backend.service
 
+echo "[mgx-deploy] ensuring live WebSocket proxy route"
+scripts/deploy/ensure_mgx_nginx_websocket_proxy.sh
+
 echo "[mgx-deploy] testing nginx config"
-sudo nginx -t
+sudo -n /usr/sbin/nginx -t
 
 echo "[mgx-deploy] reloading nginx"
-sudo systemctl reload nginx
+sudo -n /usr/bin/systemctl reload nginx
 verify_live_frontend
 verify_live_websocket_route
 

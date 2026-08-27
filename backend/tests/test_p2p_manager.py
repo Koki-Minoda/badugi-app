@@ -1,4 +1,5 @@
 import asyncio
+import time
 from types import SimpleNamespace
 
 import pytest
@@ -7,10 +8,18 @@ from starlette.websockets import WebSocketDisconnect
 
 from app.core.security import create_access_token
 from app.dependencies.auth import get_current_user
-from app.api.p2p import RoomSockets
+from app.api.p2p import (
+    STATE_READ_MAX_REQUESTS,
+    RoomSockets,
+    StateReadRateLimiter,
+    state_read_rate_limiter,
+)
 from app.main import app
 from app.p2p.manager import (
     MAX_ACTIVE_ROOMS_PER_OWNER,
+    MAX_COMMAND_RECEIPTS_PER_ROOM,
+    COMMAND_RECEIPT_TTL_SECONDS,
+    CommandReceipt,
     ROOM_TTL_SECONDS,
     P2PError,
     P2PRoomManager,
@@ -206,6 +215,24 @@ def test_room_limit_and_expiry_bound_in_memory_rooms():
     assert replacement.code != rooms[0].code
 
 
+def test_command_receipts_have_ttl_and_per_room_upper_bound():
+    manager, room = _heads_up_room()
+    for index in range(MAX_COMMAND_RECEIPTS_PER_ROOM + 5):
+        room.command_receipts[("host", f"command-{index}")] = CommandReceipt(
+            created_at=time.time(),
+            fingerprint=("ready", None, "waiting", "", 0, ()),
+            state={"sequenceId": index},
+        )
+    manager._prune_command_receipts(room)
+    assert len(room.command_receipts) == MAX_COMMAND_RECEIPTS_PER_ROOM
+    assert ("host", "command-0") not in room.command_receipts
+
+    oldest_key = next(iter(room.command_receipts))
+    room.command_receipts[oldest_key].created_at -= COMMAND_RECEIPT_TTL_SECONDS + 1
+    manager._prune_command_receipts(room)
+    assert oldest_key not in room.command_receipts
+
+
 def test_replaced_socket_cannot_mark_new_connection_disconnected():
     class FakeSocket:
         def __init__(self):
@@ -234,6 +261,7 @@ def test_replaced_socket_cannot_mark_new_connection_disconnected():
 @pytest.fixture(autouse=True)
 def clear_runtime():
     p2p_room_manager.reset()
+    state_read_rate_limiter.reset()
     app.dependency_overrides.clear()
     yield
     p2p_room_manager.reset()
@@ -264,6 +292,303 @@ def test_authenticated_rest_room_create_join_and_private_info():
     app.dependency_overrides[get_current_user] = lambda: _user(3, "Intruder")
     forbidden = client.get(f"/api/p2p/rooms/{room_code}")
     assert forbidden.status_code == 403
+
+
+def test_authenticated_rest_fallback_runs_two_player_ready_draw_and_fold_flow():
+    client = TestClient(app)
+    host = _user(1, "Host")
+    guest = _user(2, "Guest")
+
+    app.dependency_overrides[get_current_user] = lambda: host
+    created = client.post("/api/p2p/rooms", json={"variantId": "badugi"})
+    room_code = created.json()["roomCode"]
+    app.dependency_overrides[get_current_user] = lambda: guest
+    assert client.post("/api/p2p/rooms/join", json={"roomCode": room_code}).status_code == 200
+
+    assert client.post(
+        f"/api/p2p/rooms/{room_code}/action",
+        json={"type": "bet", "amount": "20"},
+    ).status_code == 422
+    assert client.post(
+        f"/api/p2p/rooms/{room_code}/draw",
+        json={"cardIndexes": [True]},
+    ).status_code == 422
+
+    app.dependency_overrides[get_current_user] = lambda: host
+    host_ready = client.post(
+        f"/api/p2p/rooms/{room_code}/ready",
+        json={"commandId": "ready-host-0001", "handId": None, "expectedPhase": "waiting"},
+    )
+    assert host_ready.status_code == 200
+    app.dependency_overrides[get_current_user] = lambda: guest
+    started = client.post(
+        f"/api/p2p/rooms/{room_code}/ready",
+        json={"commandId": "ready-guest-001", "handId": None, "expectedPhase": "waiting"},
+    )
+    assert started.status_code == 200
+
+    def state_for(user):
+        app.dependency_overrides[get_current_user] = lambda: user
+        response = client.get(f"/api/p2p/rooms/{room_code}/state")
+        assert response.status_code == 200
+        return response.json()
+
+    host_state = state_for(host)
+    guest_state = state_for(guest)
+    assert len(host_state["hand"]) == len(guest_state["hand"]) == 4
+    assert set(host_state["hand"]).isdisjoint(guest_state["hand"])
+    assert all("hand" not in player for player in host_state["players"])
+    app.dependency_overrides[get_current_user] = lambda: host
+    private_response = client.get(f"/api/p2p/rooms/{room_code}/state")
+    assert private_response.headers["cache-control"] == "private, no-store"
+
+    actor, other = (
+        (host, guest) if host_state["currentTurnPlayerId"] == "1" else (guest, host)
+    )
+    app.dependency_overrides[get_current_user] = lambda: actor
+    action_command = {
+        "commandId": "opening-call-001",
+        "handId": host_state["handId"],
+        "expectedPhase": "bet_0",
+        "type": "call",
+        "amount": 0,
+    }
+    called = client.post(
+        f"/api/p2p/rooms/{room_code}/action",
+        json=action_command,
+    )
+    assert called.status_code == 200
+    room_after_call = p2p_room_manager.get_room(room_code)
+    chips_after_call = (
+        room_after_call.pot,
+        tuple(player.stack for player in room_after_call.players.values()),
+    )
+    duplicate_call = client.post(
+        f"/api/p2p/rooms/{room_code}/action",
+        json=action_command,
+    )
+    assert duplicate_call.status_code == 200
+    assert duplicate_call.json() == called.json()
+    assert chips_after_call == (
+        room_after_call.pot,
+        tuple(player.stack for player in room_after_call.players.values()),
+    )
+
+    sequence_before_stale = room_after_call.sequence_id
+    stale = client.post(
+        f"/api/p2p/rooms/{room_code}/action",
+        json={
+            **action_command,
+            "commandId": "stale-action-001",
+            "handId": "OLD-HAND-1",
+        },
+    )
+    assert stale.status_code == 409
+    assert stale.json()["detail"]["code"] == "stale_command"
+    assert room_after_call.sequence_id == sequence_before_stale
+
+    stale_phase = client.post(
+        f"/api/p2p/rooms/{room_code}/action",
+        json={
+            **action_command,
+            "commandId": "stale-phase-0001",
+            "expectedPhase": "draw_1",
+        },
+    )
+    assert stale_phase.status_code == 409
+    assert stale_phase.json()["detail"]["code"] == "stale_command"
+    assert room_after_call.sequence_id == sequence_before_stale
+
+    app.dependency_overrides[get_current_user] = lambda: other
+    checked = client.post(
+        f"/api/p2p/rooms/{room_code}/action",
+        json={
+            "commandId": "opening-check-01",
+            "handId": called.json()["handId"],
+            "expectedPhase": "bet_0",
+            "type": "check",
+            "amount": 0,
+        },
+    )
+    assert checked.status_code == 200
+    assert checked.json()["phase"] == "draw_1"
+
+    for _ in range(2):
+        host_state = state_for(host)
+        drawer = host if "draw" in host_state["legalActions"] else guest
+        app.dependency_overrides[get_current_user] = lambda drawer=drawer: drawer
+        draw_command = {
+            "commandId": f"draw-command-{_}",
+            "handId": host_state["handId"],
+            "expectedPhase": "draw_1",
+            "cardIndexes": [0] if drawer is host else [],
+        }
+        drawn = client.post(
+            f"/api/p2p/rooms/{room_code}/draw",
+            json=draw_command,
+        )
+        assert drawn.status_code == 200
+        if _ == 0:
+            room_after_draw = p2p_room_manager.get_room(room_code)
+            draw_state_after_ack = (
+                tuple(room_after_draw.deck),
+                tuple(
+                    (player.user_id, tuple(player.hand), player.stack)
+                    for player in room_after_draw.players.values()
+                ),
+                room_after_draw.pot,
+                room_after_draw.sequence_id,
+            )
+            duplicate_draw = client.post(
+                f"/api/p2p/rooms/{room_code}/draw",
+                json=draw_command,
+            )
+            assert duplicate_draw.status_code == 200
+            assert duplicate_draw.json() == drawn.json()
+            assert draw_state_after_ack == (
+                tuple(room_after_draw.deck),
+                tuple(
+                    (player.user_id, tuple(player.hand), player.stack)
+                    for player in room_after_draw.players.values()
+                ),
+                room_after_draw.pot,
+                room_after_draw.sequence_id,
+            )
+    assert drawn.json()["phase"] == "bet_1"
+
+    host_state = state_for(host)
+    bettor, folder = (
+        (host, guest) if "bet" in host_state["legalActions"] else (guest, host)
+    )
+    app.dependency_overrides[get_current_user] = lambda: bettor
+    assert client.post(
+        f"/api/p2p/rooms/{room_code}/action",
+        json={
+            "commandId": "post-draw-bet-01",
+            "handId": host_state["handId"],
+            "expectedPhase": "bet_1",
+            "type": "bet",
+            "amount": 20,
+        },
+    ).status_code == 200
+    app.dependency_overrides[get_current_user] = lambda: folder
+    folded = client.post(
+        f"/api/p2p/rooms/{room_code}/action",
+        json={
+            "commandId": "post-draw-fold-1",
+            "handId": host_state["handId"],
+            "expectedPhase": "bet_1",
+            "type": "fold",
+            "amount": 0,
+        },
+    )
+    assert folded.status_code == 200
+    assert folded.json()["phase"] == "showdown"
+    assert folded.json()["showdown"]["reason"] == "fold"
+
+
+def test_rest_fallback_state_requires_authentication():
+    client = TestClient(app)
+    response = client.get("/api/p2p/rooms/ABC234/state")
+    assert response.status_code == 401
+
+
+def test_state_reads_are_rate_limited_per_authenticated_user_and_room():
+    client = TestClient(app)
+    host = _user(1, "Host")
+    guest = _user(2, "Guest")
+    app.dependency_overrides[get_current_user] = lambda: host
+    room_code = client.post("/api/p2p/rooms", json={"variantId": "badugi"}).json()["roomCode"]
+    app.dependency_overrides[get_current_user] = lambda: guest
+    assert client.post("/api/p2p/rooms/join", json={"roomCode": room_code}).status_code == 200
+
+    app.dependency_overrides[get_current_user] = lambda: host
+    for _ in range(STATE_READ_MAX_REQUESTS):
+        assert client.get(f"/api/p2p/rooms/{room_code}/state").status_code == 200
+    limited = client.get(f"/api/p2p/rooms/{room_code}/state")
+    assert limited.status_code == 429
+    assert int(limited.headers["retry-after"]) >= 1
+    assert limited.headers["cache-control"] == "private, no-store"
+
+    app.dependency_overrides[get_current_user] = lambda: guest
+    assert client.get(f"/api/p2p/rooms/{room_code}/state").status_code == 200
+
+
+def test_state_rate_limiter_expires_and_bounds_buckets():
+    now = [100.0]
+    limiter = StateReadRateLimiter(
+        max_requests=1,
+        window_seconds=5,
+        bucket_ttl_seconds=10,
+        max_buckets=2,
+        clock=lambda: now[0],
+    )
+    assert limiter.check(user_id="one", room_code="ROOM01") is None
+    assert limiter.check(user_id="one", room_code="ROOM01") == 5
+    assert limiter.check(user_id="two", room_code="ROOM02") is None
+    assert len(limiter._buckets) == 2
+    assert limiter.check(user_id="three", room_code="ROOM03") is None
+    assert len(limiter._buckets) == 2
+
+    now[0] += 11
+    assert limiter.check(user_id="four", room_code="ROOM04") is None
+    assert list(limiter._buckets) == [("four", "ROOM04")]
+
+
+def test_lost_websocket_ack_retries_same_command_over_rest_without_mutation():
+    client = TestClient(app)
+    host = _user(1, "Host")
+    guest = _user(2, "Guest")
+
+    app.dependency_overrides[get_current_user] = lambda: host
+    room_code = client.post("/api/p2p/rooms", json={"variantId": "badugi"}).json()["roomCode"]
+    app.dependency_overrides[get_current_user] = lambda: guest
+    assert client.post("/api/p2p/rooms/join", json={"roomCode": room_code}).status_code == 200
+
+    for user, command_id in ((host, "ready-ws-host-1"), (guest, "ready-ws-guest1")):
+        app.dependency_overrides[get_current_user] = lambda user=user: user
+        assert client.post(
+            f"/api/p2p/rooms/{room_code}/ready",
+            json={"commandId": command_id, "handId": None, "expectedPhase": "waiting"},
+        ).status_code == 200
+
+    room = p2p_room_manager.get_room(room_code)
+    actor_id = room.current_actor_id
+    actor = host if actor_id == "1" else guest
+    command = {
+        "commandId": "ws-to-rest-call-1",
+        "handId": room.hand_id,
+        "expectedPhase": room.phase,
+        "type": "call",
+        "amount": 0,
+    }
+    token = create_access_token({"sub": actor_id})
+    with client.websocket_connect(
+        f"/ws/p2p/{room_code}", subprotocols=["mgx-auth", token]
+    ) as websocket:
+        assert websocket.receive_json()["event"] == "state"
+        websocket.send_json({"event": "action", "payload": command})
+        websocket_ack = websocket.receive_json()
+        assert websocket_ack["event"] == "state"
+        assert websocket_ack["commandId"] == command["commandId"]
+
+    room_after_socket = p2p_room_manager.get_room(room_code)
+    game_state_after_socket = (
+        room_after_socket.pot,
+        tuple(player.stack for player in room_after_socket.players.values()),
+        tuple(room_after_socket.deck),
+        tuple(tuple(player.hand) for player in room_after_socket.players.values()),
+    )
+    app.dependency_overrides[get_current_user] = lambda: actor
+    retried = client.post(f"/api/p2p/rooms/{room_code}/action", json=command)
+    assert retried.status_code == 200
+    assert retried.json() == websocket_ack["payload"]
+    assert game_state_after_socket == (
+        room_after_socket.pot,
+        tuple(player.stack for player in room_after_socket.players.values()),
+        tuple(room_after_socket.deck),
+        tuple(tuple(player.hand) for player in room_after_socket.players.values()),
+    )
 
 
 def test_websocket_requires_token_and_membership():

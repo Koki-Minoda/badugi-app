@@ -48,9 +48,36 @@ function normalizeRoom(data) {
   };
 }
 
-async function requestJson(path, { method = "GET", body } = {}) {
+function parseRetryAfterMs(value) {
+  if (!value) return null;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.ceil(seconds * 1_000);
+  const deadline = Date.parse(value);
+  if (!Number.isFinite(deadline)) return null;
+  return Math.max(0, deadline - Date.now());
+}
+
+export class RoomApiError extends Error {
+  constructor(message, { status = 0, code = null, retryAfterMs = null } = {}) {
+    super(message);
+    this.name = "RoomApiError";
+    this.status = status;
+    this.code = code;
+    this.retryAfterMs = retryAfterMs;
+    this.terminalCode =
+      status === 401 || status === 403
+        ? 4401
+        : status === 404 || code === "room_missing"
+          ? 4004
+          : null;
+  }
+}
+
+async function requestJson(path, { method = "GET", body, signal } = {}) {
   const auth = readRoomAuth();
-  if (!auth?.accessToken) throw new Error("login_required");
+  if (!auth?.accessToken) {
+    throw new RoomApiError("login_required", { status: 401, code: "login_required" });
+  }
   const response = await fetch(`${buildApiBaseUrl()}${path}`, {
     method,
     headers: {
@@ -58,12 +85,20 @@ async function requestJson(path, { method = "GET", body } = {}) {
       ...(body ? { "Content-Type": "application/json" } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,
+    signal,
   });
   const data = await response.json().catch(() => null);
   if (!response.ok) {
     const detail = data?.detail;
     const message = detail?.message ?? detail ?? data?.message ?? data?.error ?? response.statusText;
-    throw new Error(typeof message === "string" ? message : JSON.stringify(message));
+    throw new RoomApiError(
+      typeof message === "string" ? message : JSON.stringify(message),
+      {
+        status: response.status,
+        code: detail?.code ?? data?.code ?? null,
+        retryAfterMs: parseRetryAfterMs(response.headers.get("Retry-After")),
+      },
+    );
   }
   return normalizeRoom(data?.data ?? data);
 }
@@ -92,6 +127,40 @@ export async function joinRoom({ roomId }) {
 export async function getRoomInfo(roomId) {
   if (!roomId) throw new Error("roomId is required");
   return requestJson(`/p2p/rooms/${encodeURIComponent(roomId.trim().toUpperCase())}`);
+}
+
+export async function getRoomState(roomId, { signal } = {}) {
+  if (!roomId) throw new Error("roomId is required");
+  return requestJson(`/p2p/rooms/${encodeURIComponent(roomId.trim().toUpperCase())}/state`, {
+    signal,
+  });
+}
+
+export async function readyRoom(roomId, command, { signal } = {}) {
+  if (!roomId) throw new Error("roomId is required");
+  return requestJson(`/p2p/rooms/${encodeURIComponent(roomId.trim().toUpperCase())}/ready`, {
+    method: "POST",
+    body: command,
+    signal,
+  });
+}
+
+export async function actInRoom(roomId, command, { signal } = {}) {
+  if (!roomId) throw new Error("roomId is required");
+  return requestJson(`/p2p/rooms/${encodeURIComponent(roomId.trim().toUpperCase())}/action`, {
+    method: "POST",
+    body: command,
+    signal,
+  });
+}
+
+export async function drawInRoom(roomId, command, { signal } = {}) {
+  if (!roomId) throw new Error("roomId is required");
+  return requestJson(`/p2p/rooms/${encodeURIComponent(roomId.trim().toUpperCase())}/draw`, {
+    method: "POST",
+    body: command,
+    signal,
+  });
 }
 
 export async function leaveRoom(roomId) {

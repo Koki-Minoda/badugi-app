@@ -101,18 +101,13 @@ verify_live_frontend() {
   fi
 }
 
-verify_live_websocket_route() {
-  local websocket_status
-  echo "[mgx-deploy] verifying live WebSocket proxy route"
-  websocket_status="$(curl --http1.1 -sS -o /dev/null -w '%{http_code}' \
-    -H 'Connection: Upgrade' \
-    -H 'Upgrade: websocket' \
-    -H 'Sec-WebSocket-Version: 13' \
-    -H 'Sec-WebSocket-Key: bWd4LXByb2Qtd3Mtc21va2U=' \
-    -H 'Sec-WebSocket-Protocol: mgx-auth, invalid-smoke-token' \
-    "${LIVE_ORIGIN}/ws/p2p/INVALID" || true)"
-  if [ "$websocket_status" != "403" ]; then
-    fail "WebSocket route did not reach the backend (expected auth rejection 403, got ${websocket_status})"
+verify_live_p2p_rest_route() {
+  local p2p_status
+  echo "[mgx-deploy] verifying authenticated P2P REST fallback route"
+  p2p_status="$(curl -sS -o /dev/null -w '%{http_code}' \
+    "${LIVE_ORIGIN}/api/p2p/rooms/INVALID/state" || true)"
+  if [ "$p2p_status" != "401" ]; then
+    fail "P2P REST route did not enforce authentication (expected 401, got ${p2p_status})"
   fi
 }
 
@@ -170,15 +165,7 @@ verify_frontend_asset_sync
 echo "[mgx-deploy] restarting backend service"
 sudo systemctl restart mgx-backend.service
 
-echo "[mgx-deploy] ensuring live WebSocket proxy route"
-scripts/deploy/ensure_mgx_nginx_websocket_proxy.sh
-
-echo "[mgx-deploy] testing nginx config"
-sudo -n /usr/sbin/nginx -t
-
-echo "[mgx-deploy] reloading nginx"
-sudo -n /usr/bin/systemctl reload nginx
 verify_live_frontend
-verify_live_websocket_route
+verify_live_p2p_rest_route
 
 echo "[mgx-deploy] deployment complete"

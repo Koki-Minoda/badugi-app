@@ -18,7 +18,6 @@ chmod +x scripts/deploy/mgx-prod-01.sh   # one-time
 3. `cd backend && source .venv/bin/activate && pip install -r requirements.txt`
 4. `rsync dist/ -> /var/www/mgx-poker`
 5. `sudo systemctl restart mgx-backend.service`
-6. Add the `/ws/` proxy to the active MGX site only when missing, with a timestamped backup and automatic rollback if `nginx -t` rejects it
-7. `sudo -n nginx -t && sudo -n systemctl reload nginx`
+6. Verify the existing HTTP health endpoints and authenticated P2P REST route
 
-> **Note:** The script assumes `/var/www/mgx-poker` and `/etc/nginx/sites-enabled/mgx-poker.com` exist. It requires passwordless `sudo -n` for the narrowly scoped nginx operations. Existing `/ws/` configuration is left unchanged; an inserted managed block is backed up under `/var/backups/mgx-nginx/`. Deploy verification fails unless an unauthenticated WSS handshake reaches FastAPI and returns the expected 403 rejection.
+> **Note:** The deploy user does not modify nginx configuration. Friend Match prefers WebSocket when the route is available and automatically falls back to the authenticated HTTPS REST transport when it is not. Deploy verification checks that the P2P REST endpoint reaches FastAPI and rejects an unauthenticated request.

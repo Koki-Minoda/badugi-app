@@ -18,10 +18,22 @@ have the same server-authoritative rules and browser coverage.
    player was busted, the button explicitly starts a new match and resets both
    stacks to the configured starting stack.
 
-REST endpoints live under `/api/p2p/rooms`. Live state uses
-`/ws/p2p/{roomCode}`. The access token is sent as a WebSocket subprotocol so it
-does not appear in proxy access-log URLs. Nginx must proxy `/ws/` with WebSocket
-upgrade headers; the checked-in HTTP and HTTPS templates include this rule.
+REST endpoints live under `/api/p2p/rooms`. WebSocket remains the preferred
+live transport at `/ws/p2p/{roomCode}`. The access token is sent as a WebSocket
+subprotocol so it does not appear in proxy access-log URLs. If the browser
+cannot establish a socket after three consecutive transient failures, it
+automatically switches to authenticated HTTPS polling. State, Ready, betting
+actions and draws all remain server-authoritative over this fallback path, so
+Friend Match does not depend on a production nginx WebSocket change.
+
+Every mutation carries a client-generated `commandId` plus the observed
+`handId` and `expectedPhase`. The same command and ID are retained if a lost
+WebSocket acknowledgement is retried over REST. The backend validates and
+records the command in the same room lock as the game mutation: an exact retry
+returns the original viewer state without changing cards or chips, while an
+old hand/phase or conflicting reuse returns HTTP 409. Receipts expire after
+ten minutes and are capped per room. All incoming states share one monotonic
+sequence gate, so late socket or polling responses cannot rewind the UI.
 
 ## Authority and privacy
 
@@ -29,8 +41,9 @@ upgrade headers; the checked-in HTTP and HTTPS templates include this rule.
   legal actions, current actor and showdown result.
 - The player identity comes from the signed access token. Client-supplied
   player IDs and display names are not trusted.
-- Each socket receives an individualized state. A player sees only their own
-  cards until a showdown reveal.
+- Each socket or authenticated state response receives an individualized,
+  non-cacheable state. A player sees only their own cards until a showdown
+  reveal.
 - Illegal, out-of-turn and duplicate draw actions are rejected by the server.
 - The UI renders only the server's `legalActions` and submits card indexes for
   a draw; it does not run a second local game engine.
@@ -39,7 +52,15 @@ upgrade headers; the checked-in HTTP and HTTPS templates include this rule.
 
 Refreshing or temporarily losing the network reconnects the socket and asks
 for the latest authoritative state. A newer connection for the same user
-replaces the older socket.
+replaces the older socket. Close codes 4001, 4004 and 4401 remain terminal and
+do not fall back. Other repeated connection failures switch to HTTPS polling
+with the next read scheduled only after the previous one completes. Successful
+foreground reads use a one-second delay; hidden tabs slow down, and network,
+5xx or 429 responses use jittered exponential backoff while honoring
+`Retry-After`. Successful REST actions apply their returned state immediately.
+The backend also bounds state reads per authenticated user and room, with
+expiring, size-limited in-memory counters, so extra tabs cannot create
+unbounded polling load.
 
 Rooms are currently held in backend memory. They survive browser reconnects
 but do **not** survive a backend restart or work across multiple backend

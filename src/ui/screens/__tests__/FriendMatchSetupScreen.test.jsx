@@ -7,6 +7,26 @@ const mockNavigate = vi.fn();
 const mockCreateRoom = vi.fn();
 const mockJoinRoom = vi.fn();
 const mockLeaveRoom = vi.fn();
+const mockGetRoomState = vi.fn();
+const mockReadyRoom = vi.fn();
+const mockActInRoom = vi.fn();
+const mockDrawInRoom = vi.fn();
+const { MockRoomApiError } = vi.hoisted(() => ({
+  MockRoomApiError: class RoomApiError extends Error {
+    constructor(message, options = {}) {
+      super(message);
+      if (typeof options === "number") {
+        this.terminalCode = options;
+        this.status = 0;
+        this.retryAfterMs = null;
+        return;
+      }
+      this.status = options.status ?? 0;
+      this.retryAfterMs = options.retryAfterMs ?? null;
+      this.terminalCode = options.terminalCode ?? null;
+    }
+  },
+}));
 
 vi.mock("react-router-dom", async () => ({
   ...(await vi.importActual("react-router-dom")),
@@ -17,9 +37,14 @@ vi.mock("../../utils/roomApi.js", () => ({
   buildRoomWebSocketUrl: (roomId) => `ws://localhost/ws/p2p/${roomId}?token=test`,
   buildRoomWebSocketProtocols: () => ["mgx-auth", "test"],
   createRoom: (...args) => mockCreateRoom(...args),
+  getRoomState: (...args) => mockGetRoomState(...args),
+  readyRoom: (...args) => mockReadyRoom(...args),
+  actInRoom: (...args) => mockActInRoom(...args),
+  drawInRoom: (...args) => mockDrawInRoom(...args),
   joinRoom: (...args) => mockJoinRoom(...args),
   leaveRoom: (...args) => mockLeaveRoom(...args),
   readRoomAuth: () => ({ accessToken: "test", user: { username: "Hero" } }),
+  RoomApiError: MockRoomApiError,
 }));
 
 class MockWebSocket {
@@ -65,6 +90,15 @@ async function sendState(socket, payload) {
   });
 }
 
+async function forceRestPolling(firstSocket) {
+  await act(async () => firstSocket.listeners.close({ code: 1006 }));
+  await act(async () => vi.advanceTimersByTimeAsync(1_000));
+  await act(async () => MockWebSocket.sockets.at(-1).listeners.close({ code: 1006 }));
+  await act(async () => vi.advanceTimersByTimeAsync(2_000));
+  await act(async () => MockWebSocket.sockets.at(-1).listeners.close({ code: 1006 }));
+  await act(async () => Promise.resolve());
+}
+
 describe("FriendMatchSetupScreen", () => {
   const originalWebSocket = globalThis.WebSocket;
 
@@ -75,6 +109,10 @@ describe("FriendMatchSetupScreen", () => {
     mockCreateRoom.mockReset().mockResolvedValue(room);
     mockJoinRoom.mockReset().mockResolvedValue({ ...room, ownerId: "guest-2" });
     mockLeaveRoom.mockReset().mockResolvedValue({ closed: false });
+    mockGetRoomState.mockReset().mockResolvedValue({ ...room, roomCode: room.roomId, sequenceId: 1 });
+    mockReadyRoom.mockReset().mockResolvedValue({ ...room, roomCode: room.roomId, sequenceId: 2 });
+    mockActInRoom.mockReset().mockResolvedValue({ ...room, roomCode: room.roomId, sequenceId: 3 });
+    mockDrawInRoom.mockReset().mockResolvedValue({ ...room, roomCode: room.roomId, sequenceId: 4 });
   });
 
   afterEach(() => {
@@ -127,9 +165,16 @@ describe("FriendMatchSetupScreen", () => {
     fireEvent.click(screen.getByTestId("p2p-card-1"));
     fireEvent.click(screen.getByTestId("p2p-card-3"));
     fireEvent.click(screen.getByTestId("p2p-draw"));
-    expect(socket.send).toHaveBeenCalledWith(
-      '{"event":"draw","payload":{"cardIndexes":[1,3]}}',
-    );
+    const drawCommand = JSON.parse(socket.send.mock.calls.at(-1)[0]);
+    expect(drawCommand).toEqual({
+      event: "draw",
+      payload: expect.objectContaining({
+        cardIndexes: [1, 3],
+        commandId: expect.any(String),
+        handId: "ABC234-1",
+        expectedPhase: "draw_1",
+      }),
+    });
   });
 
   it("only enables legal betting actions and shows named showdown winners", async () => {
@@ -156,9 +201,17 @@ describe("FriendMatchSetupScreen", () => {
       history: [],
     });
     fireEvent.click(screen.getByTestId("p2p-call"));
-    expect(socket.send).toHaveBeenCalledWith(
-      '{"event":"action","payload":{"type":"call","amount":0}}',
-    );
+    const actionCommand = JSON.parse(socket.send.mock.calls.at(-1)[0]);
+    expect(actionCommand).toEqual({
+      event: "action",
+      payload: expect.objectContaining({
+        type: "call",
+        amount: 0,
+        commandId: expect.any(String),
+        handId: "ABC234-1",
+        expectedPhase: "bet_0",
+      }),
+    });
     expect(screen.getByTestId("p2p-raise").textContent).toContain("120");
     await sendState(socket, {
       roomCode: room.roomId,
@@ -173,6 +226,33 @@ describe("FriendMatchSetupScreen", () => {
       history: [],
     });
     expect(screen.getByText(/Showdown winner: Hero/i)).toBeTruthy();
+  });
+
+  it("rejects equal or older authoritative sequences", async () => {
+    render(<FriendMatchSetupScreen language="en" />);
+    const socket = await createAndOpen();
+    await sendState(socket, {
+      ...room,
+      roomCode: room.roomId,
+      sequenceId: 8,
+      phase: "bet_0",
+      pot: 30,
+      legalActions: [],
+      hand: [],
+      history: [],
+    });
+    await sendState(socket, {
+      ...room,
+      roomCode: room.roomId,
+      sequenceId: 7,
+      phase: "showdown",
+      pot: 999,
+      legalActions: [],
+      hand: [],
+      history: [],
+    });
+    expect(screen.getByText(/BET_0 \/ Pot 30/i)).toBeTruthy();
+    expect(screen.queryByText(/SHOWDOWN \/ Pot 999/i)).toBeNull();
   });
 
   it("leaves the room and clears reconnect state", async () => {
@@ -192,5 +272,278 @@ describe("FriendMatchSetupScreen", () => {
     expect(screen.queryByText("ABC234")).toBeNull();
     expect(window.sessionStorage.getItem("mgx_friend_match_active_room_v1")).toBeNull();
     expect(MockWebSocket.sockets).toHaveLength(1);
+  });
+
+  it.each([
+    [4001, /opened in another window/i],
+    [4401, /log in to use Friend Match/i],
+  ])("keeps websocket close code %i terminal", async (code, message) => {
+    render(<FriendMatchSetupScreen language="en" />);
+    const socket = await createAndOpen();
+    await act(async () => socket.listeners.close({ code }));
+    expect(screen.getByText(message)).toBeTruthy();
+    expect(screen.queryByText(/^polling$/i)).toBeNull();
+    expect(MockWebSocket.sockets).toHaveLength(1);
+  });
+
+  it("falls back to REST polling after bounded transient socket failures", async () => {
+    render(<FriendMatchSetupScreen language="en" />);
+    const firstSocket = await createAndOpen();
+    vi.useFakeTimers();
+    try {
+      await act(async () => firstSocket.listeners.close({ code: 1006 }));
+      await act(async () => vi.advanceTimersByTimeAsync(1_000));
+      const secondSocket = MockWebSocket.sockets.at(-1);
+      await act(async () => secondSocket.listeners.close({ code: 1006 }));
+      await act(async () => vi.advanceTimersByTimeAsync(2_000));
+      const thirdSocket = MockWebSocket.sockets.at(-1);
+
+      mockGetRoomState.mockResolvedValue({
+        ...room,
+        roomCode: room.roomId,
+        sequenceId: 5,
+        phase: "waiting",
+        legalActions: [],
+        hand: [],
+        history: [],
+      });
+      await act(async () => thirdSocket.listeners.close({ code: 1006 }));
+      await act(async () => Promise.resolve());
+      expect(screen.getByText(/^polling$/i)).toBeTruthy();
+      expect(mockGetRoomState).toHaveBeenCalledWith(
+        "ABC234",
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
+
+      mockReadyRoom.mockResolvedValue({
+        ...room,
+        roomCode: room.roomId,
+        sequenceId: 6,
+        phase: "draw_1",
+        handId: "ABC234-1",
+        legalActions: ["draw"],
+        hand: ["As", "2h", "7d", "Kc"],
+        history: [],
+      });
+      fireEvent.click(screen.getByTestId("p2p-ready"));
+      await act(async () => Promise.resolve());
+      expect(mockReadyRoom).toHaveBeenCalledWith(
+        "ABC234",
+        expect.objectContaining({
+          commandId: expect.any(String),
+          handId: null,
+          expectedPhase: "waiting",
+        }),
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
+
+      mockDrawInRoom.mockResolvedValue({
+        ...room,
+        roomCode: room.roomId,
+        sequenceId: 7,
+        phase: "bet_1",
+        currentTurnPlayerId: "hero-1",
+        legalActions: ["call", "fold"],
+        hand: ["3s", "2h", "7d", "Kc"],
+        history: [],
+      });
+      fireEvent.click(screen.getByTestId("p2p-card-0"));
+      fireEvent.click(screen.getByTestId("p2p-draw"));
+      await act(async () => Promise.resolve());
+      expect(mockDrawInRoom).toHaveBeenCalledWith(
+        "ABC234",
+        expect.objectContaining({
+          cardIndexes: [0],
+          commandId: expect.any(String),
+          handId: "ABC234-1",
+          expectedPhase: "draw_1",
+        }),
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
+
+      fireEvent.click(screen.getByTestId("p2p-call"));
+      await act(async () => Promise.resolve());
+      expect(mockActInRoom).toHaveBeenCalledWith(
+        "ABC234",
+        expect.objectContaining({
+          type: "call",
+          amount: 0,
+          commandId: expect.any(String),
+          handId: "ABC234-1",
+          expectedPhase: "bet_1",
+        }),
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("reuses an unacknowledged websocket commandId when REST takes over", async () => {
+    render(<FriendMatchSetupScreen language="en" />);
+    const firstSocket = await createAndOpen();
+    await sendState(firstSocket, {
+      ...room,
+      roomCode: room.roomId,
+      sequenceId: 2,
+      phase: "bet_0",
+      handId: "ABC234-1",
+      currentTurnPlayerId: "hero-1",
+      legalActions: ["call", "fold"],
+      hand: ["As", "2h", "7d", "Kc"],
+      history: [],
+    });
+    fireEvent.click(screen.getByTestId("p2p-call"));
+    const websocketCommand = JSON.parse(firstSocket.send.mock.calls.at(-1)[0]);
+
+    mockActInRoom.mockResolvedValue({
+      ...room,
+      roomCode: room.roomId,
+      sequenceId: 3,
+      phase: "bet_0",
+      handId: "ABC234-1",
+      acknowledgedCommandId: websocketCommand.payload.commandId,
+      legalActions: [],
+      hand: ["As", "2h", "7d", "Kc"],
+      history: [],
+    });
+    vi.useFakeTimers();
+    try {
+      await act(async () => firstSocket.listeners.close({ code: 1006 }));
+      await act(async () => vi.advanceTimersByTimeAsync(1_000));
+      await act(async () => MockWebSocket.sockets.at(-1).listeners.close({ code: 1006 }));
+      await act(async () => vi.advanceTimersByTimeAsync(2_000));
+      await act(async () => MockWebSocket.sockets.at(-1).listeners.close({ code: 1006 }));
+      await act(async () => Promise.resolve());
+
+      expect(mockActInRoom).toHaveBeenCalledTimes(1);
+      expect(mockActInRoom.mock.calls[0][1].commandId).toBe(websocketCommand.payload.commandId);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("replays an unacknowledged command with the same ID after websocket reconnect", async () => {
+    render(<FriendMatchSetupScreen language="en" />);
+    const firstSocket = await createAndOpen();
+    await sendState(firstSocket, {
+      ...room,
+      roomCode: room.roomId,
+      sequenceId: 2,
+      phase: "bet_0",
+      handId: "ABC234-1",
+      currentTurnPlayerId: "hero-1",
+      legalActions: ["call", "fold"],
+      hand: ["As", "2h", "7d", "Kc"],
+      history: [],
+    });
+    fireEvent.click(screen.getByTestId("p2p-call"));
+    const originalCommand = JSON.parse(firstSocket.send.mock.calls.at(-1)[0]);
+
+    vi.useFakeTimers();
+    try {
+      await act(async () => firstSocket.listeners.close({ code: 1006 }));
+      await act(async () => vi.advanceTimersByTimeAsync(1_000));
+      const reconnectedSocket = MockWebSocket.sockets.at(-1);
+      await act(async () => reconnectedSocket.listeners.open());
+      expect(reconnectedSocket.send).toHaveBeenCalledWith(JSON.stringify(originalCommand));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("stops polling after a terminal REST response", async () => {
+    render(<FriendMatchSetupScreen language="en" />);
+    const firstSocket = await createAndOpen();
+    vi.useFakeTimers();
+    try {
+      await act(async () => firstSocket.listeners.close({ code: 1006 }));
+      await act(async () => vi.advanceTimersByTimeAsync(1_000));
+      await act(async () => MockWebSocket.sockets.at(-1).listeners.close({ code: 1006 }));
+      await act(async () => vi.advanceTimersByTimeAsync(2_000));
+      mockGetRoomState.mockRejectedValue(new MockRoomApiError("Room closed", 4004));
+      await act(async () => MockWebSocket.sockets.at(-1).listeners.close({ code: 1006 }));
+      await act(async () => Promise.resolve());
+
+      expect(screen.getByText(/room was closed because the host left/i)).toBeTruthy();
+      const callsAtClose = mockGetRoomState.mock.calls.length;
+      await act(async () => vi.advanceTimersByTimeAsync(5_000));
+      expect(mockGetRoomState).toHaveBeenCalledTimes(callsAtClose);
+      expect(screen.queryByText(/^polling$/i)).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("never overlaps a slow state poll and schedules the next read after completion", async () => {
+    render(<FriendMatchSetupScreen language="en" />);
+    const firstSocket = await createAndOpen();
+    let resolveSlowPoll;
+    mockGetRoomState
+      .mockReturnValueOnce(new Promise((resolve) => {
+        resolveSlowPoll = resolve;
+      }))
+      .mockResolvedValue({ ...room, roomCode: room.roomId, sequenceId: 3 });
+
+    vi.useFakeTimers();
+    try {
+      await forceRestPolling(firstSocket);
+      expect(mockGetRoomState).toHaveBeenCalledTimes(1);
+      await act(async () => vi.advanceTimersByTimeAsync(10_000));
+      expect(mockGetRoomState).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        resolveSlowPoll({ ...room, roomCode: room.roomId, sequenceId: 2 });
+        await Promise.resolve();
+      });
+      await act(async () => vi.advanceTimersByTimeAsync(999));
+      expect(mockGetRoomState).toHaveBeenCalledTimes(1);
+      await act(async () => vi.advanceTimersByTimeAsync(1));
+      expect(mockGetRoomState).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("honors Retry-After on 429 before polling again", async () => {
+    render(<FriendMatchSetupScreen language="en" />);
+    const firstSocket = await createAndOpen();
+    mockGetRoomState
+      .mockRejectedValueOnce(
+        new MockRoomApiError("Too many requests", { status: 429, retryAfterMs: 3_000 }),
+      )
+      .mockResolvedValue({ ...room, roomCode: room.roomId, sequenceId: 2 });
+
+    vi.useFakeTimers();
+    try {
+      await forceRestPolling(firstSocket);
+      expect(mockGetRoomState).toHaveBeenCalledTimes(1);
+      await act(async () => vi.advanceTimersByTimeAsync(2_999));
+      expect(mockGetRoomState).toHaveBeenCalledTimes(1);
+      await act(async () => vi.advanceTimersByTimeAsync(1));
+      expect(mockGetRoomState).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("slows successful polling while the document is hidden", async () => {
+    const hiddenDescriptor = Object.getOwnPropertyDescriptor(document, "hidden");
+    Object.defineProperty(document, "hidden", { configurable: true, value: true });
+    render(<FriendMatchSetupScreen language="en" />);
+    const firstSocket = await createAndOpen();
+    vi.useFakeTimers();
+    try {
+      await forceRestPolling(firstSocket);
+      expect(mockGetRoomState).toHaveBeenCalledTimes(1);
+      await act(async () => vi.advanceTimersByTimeAsync(4_999));
+      expect(mockGetRoomState).toHaveBeenCalledTimes(1);
+      await act(async () => vi.advanceTimersByTimeAsync(1));
+      expect(mockGetRoomState).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+      if (hiddenDescriptor) Object.defineProperty(document, "hidden", hiddenDescriptor);
+      else delete document.hidden;
+    }
   });
 });

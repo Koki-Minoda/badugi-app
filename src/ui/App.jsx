@@ -126,6 +126,7 @@ import {
   normalizeAppVariantId,
 } from "./game/appVariantRouting.js";
 import { getVariantLayoutProfile } from "./game/layoutGroups.js";
+import { resolveEffectiveControllerSnapshot } from "./game/controllerSnapshotResolver.js";
 import {
   createVariantRotationController,
   advanceVariantRotation,
@@ -1000,7 +1001,7 @@ export default function App() {
   const handsInLevelDisplay = Math.max(handsInLevel, 1);
   const handsCapDisplay = currentStructure.hands ?? "INF";
   const [seatManagerOpen, setSeatManagerOpen] = useState(false);
-  const [statusBoardOpen, setStatusBoardOpen] = useState(true);
+  const [statusBoardOpen, setStatusBoardOpen] = useState(false);
   const [dealerIdx, setDealerIdx] = useState(0);
   const [betHead, setBetHead] = useState(null);
   const [lastAggressor, setLastAggressor] = useState(null);
@@ -1379,75 +1380,18 @@ export default function App() {
   const isControllerDrivenSingleTable =
     isSingleTableBadugi || isSingleTableDrawLowball || isSingleTableBoardGame;
   const safeEngineState = engineState ?? {};
-  const effectiveControllerSnapshot = (() => {
-    const sessionController = sessionControllerRef.current;
-    const sessionState = sessionControllerStateRef.current;
-    try {
-      if (
-        sessionController &&
-        sessionState &&
-        typeof sessionController.getUiSnapshot === "function"
-      ) {
-        const snapshot = sessionController.getUiSnapshot(sessionState);
-        if (
-          snapshot?.phase !== "IDLE" &&
-          snapshotVariantMatchesAppVariant(snapshot, normalizedGameVariant)
-        ) {
-          return snapshot;
-        }
-      }
-    } catch (error) {
-      console.warn("[UI-ADAPTER] session controller snapshot failed", error);
-    }
-    if (
-      snapshotVariantMatchesAppVariant(
-        controllerUiSnapshotState,
-        normalizedGameVariant,
-      )
-    )
-      return controllerUiSnapshotState;
-    if (
-      snapshotVariantMatchesAppVariant(
-        controllerSnapshot,
-        normalizedGameVariant,
-      )
-    )
-      return controllerSnapshot;
-    try {
-      if (
-        sessionController &&
-        sessionState &&
-        typeof sessionController.getUiSnapshot === "function"
-      ) {
-        const snapshot = sessionController.getUiSnapshot(sessionState);
-        if (
-          snapshot?.phase !== "IDLE" &&
-          snapshotVariantMatchesAppVariant(snapshot, normalizedGameVariant)
-        ) {
-          return snapshot;
-        }
-      }
-    } catch (error) {
-      console.warn(
-        "[UI-ADAPTER] fallback session controller snapshot failed",
-        error,
-      );
-    }
-    if (
-      snapshotVariantMatchesAppVariant(
-        engineStateRef.current,
-        normalizedGameVariant,
-      )
-    ) {
-      return engineStateRef.current;
-    }
-    return snapshotVariantMatchesAppVariant(
+  const effectiveControllerSnapshot = resolveEffectiveControllerSnapshot({
+    sessionController: sessionControllerRef.current,
+    sessionState: sessionControllerStateRef.current,
+    candidates: [
+      controllerUiSnapshotState,
+      controllerSnapshot,
+      engineStateRef.current,
       safeEngineState,
-      normalizedGameVariant,
-    )
-      ? safeEngineState
-      : null;
-  })();
+    ],
+    variantId: normalizedGameVariant,
+    matchesVariant: snapshotVariantMatchesAppVariant,
+  });
   const controllerActor =
     typeof effectiveControllerSnapshot?.currentActor === "number"
       ? effectiveControllerSnapshot.currentActor
@@ -1793,7 +1737,12 @@ export default function App() {
   const tournamentHud =
     isTournament && liveTournamentHudState ? (
       <>
-        <TournamentHUD {...liveTournamentHudState} compact placement="side" />
+        <TournamentHUD
+          {...liveTournamentHudState}
+          compact
+          placement="side"
+          mobileCompact={isMobileDevice}
+        />
         <TournamentBreakOverlay
           breakState={tournamentBreakState}
           onComplete={completeTournamentBreak}
@@ -2469,7 +2418,7 @@ export default function App() {
       const usingFallbackDrawController =
         !sessionControllerRef.current && Boolean(fallbackDrawController);
       const controller = sessionControllerRef.current ?? fallbackDrawController;
-      const controllerState =
+      let controllerState =
         sessionControllerStateRef.current ??
         (usingFallbackDrawController
           ? (fallbackDrawController?._lastState ?? null)
@@ -2486,12 +2435,76 @@ export default function App() {
           events: [],
         };
       }
+      if (
+        activeMode === "tournament-mtt" &&
+        phase === "BET" &&
+        typeof controller.syncFromExternalState === "function"
+      ) {
+        const livePlayers = (playersRef.current ?? [])
+          .map(clonePlayerState)
+          .filter(Boolean);
+        const livePots = (potsRef.current ?? []).map((pot) => ({ ...pot }));
+        const liveActor =
+          typeof turn === "number"
+            ? turn
+            : typeof engineStateRef.current?.currentActor === "number"
+              ? engineStateRef.current.currentActor
+              : typeof engineStateRef.current?.nextTurn === "number"
+                ? engineStateRef.current.nextTurn
+                : null;
+        const liveCurrentBet = Math.max(
+          Math.max(0, Number(currentBet) || 0),
+          ...livePlayers.map((player) =>
+            Math.max(
+              0,
+              Number(
+                player?.betThisStreet ??
+                  player?.betThisRound ??
+                  player?.bet ??
+                  0,
+              ) || 0,
+            ),
+          ),
+        );
+        const sourceSnapshot = controller.getUiSnapshot(controllerState) ?? {};
+        const liveSnapshot = {
+          ...sourceSnapshot,
+          variantId: normalizedGameVariant,
+          handId: handIdRef.current ?? sourceSnapshot.handId,
+          phase,
+          street: phase,
+          players: livePlayers,
+          pots: livePots,
+          dealerIdx,
+          dealerSeat: dealerIdx,
+          currentBet: liveCurrentBet,
+          currentActor: liveActor,
+          actingPlayerIndex: liveActor,
+          nextTurn: liveActor,
+          turn: liveActor,
+          metadata: {
+            ...(sourceSnapshot.metadata ?? {}),
+            currentBet: liveCurrentBet,
+            actingPlayerIndex: liveActor,
+          },
+        };
+        const syncedState = controller.syncFromExternalState({
+          snapshot: liveSnapshot,
+          context: controllerState.context ?? null,
+          handIndex: controllerState.handIndex ?? null,
+        });
+        if (syncedState) {
+          controllerState = syncedState;
+          sessionControllerStateRef.current = syncedState;
+        }
+      }
       try {
         const sanitizedMetadata = { ...(metadata ?? {}) };
         delete sanitizedMetadata.raiseCap;
         delete sanitizedMetadata.raiseCountThisRound;
         const actionPayload = {
           seatIndex,
+          betSize,
           payload: {
             type:
               normalizedType.toUpperCase() === "DRAW" ? "DRAW" : normalizedType,
@@ -2569,8 +2582,13 @@ export default function App() {
       isControllerDrivenSingleTable,
       isDrawLowballControllerGame,
       isSingleTableBoardGame,
+      currentBet,
+      dealerIdx,
+      betSize,
       mode,
       normalizedGameVariant,
+      phase,
+      turn,
       updateAfterActionFromSnapshot,
     ],
   );
@@ -11905,17 +11923,37 @@ export default function App() {
     if (controllerDrawOutcome?.snapshot) {
       const controllerPlayers = controllerDrawOutcome.snapshot.players ?? [];
       const heroAfter = controllerPlayers[0] ?? p;
-      if (heroDrawLogEntry) {
-        recordActionToLog({
-          ...heroDrawLogEntry,
-          playerState: heroAfter,
+      const controllerDrawPhase = String(
+        controllerDrawOutcome.snapshot.phase ??
+          controllerDrawOutcome.snapshot.street ??
+          "",
+      ).toUpperCase();
+      const controllerDrawActor =
+        controllerDrawOutcome.snapshot.currentActor ??
+        controllerDrawOutcome.snapshot.actingPlayerIndex ??
+        controllerDrawOutcome.snapshot.nextTurn ??
+        controllerDrawOutcome.snapshot.turn ??
+        null;
+      const controllerDrawProgressed =
+        controllerDrawPhase !== "DRAW" ||
+        heroAfter?.hasDrawn === true ||
+        (typeof controllerDrawActor === "number" && controllerDrawActor !== 0);
+      if (controllerDrawProgressed) {
+        if (heroDrawLogEntry) {
+          recordActionToLog({
+            ...heroDrawLogEntry,
+            playerState: heroAfter,
+          });
+        }
+        syncLegacyFromControllerSnapshot(controllerDrawOutcome.snapshot, {
+          seatIndex: 0,
+          scheduleAfterBet: true,
         });
+        return;
       }
-      syncLegacyFromControllerSnapshot(controllerDrawOutcome.snapshot, {
-        seatIndex: 0,
-        scheduleAfterBet: true,
-      });
-      return;
+      console.warn(
+        "[CTRL][DRAW] controller returned a non-progressing hero snapshot; using committed table draw",
+      );
     }
     if (isSingleTableBadugi) {
       warnLegacySingleTablePath("hero-draw fallback");

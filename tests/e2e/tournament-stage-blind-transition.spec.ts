@@ -205,7 +205,8 @@ async function completeProductionTournament(page: Page, stageId: string) {
   let realHeroHands = 0;
   let backgroundCyclesAfterHeroBust = 0;
 
-  for (let step = 0; step < 500; step += 1) {
+  const maxCompletionCycles = Math.max(1_200, config.totalPlayers * 40);
+  for (let step = 0; step < maxCompletionCycles; step += 1) {
     const hud = await getHud(page);
     expect(hud).toBeTruthy();
     levelsVisited.add(hud.currentLevelNumber);
@@ -343,7 +344,17 @@ async function completeProductionTournament(page: Page, stageId: string) {
     }
   }
 
-  throw new Error(`Tournament did not finish: ${stageId}`);
+  const finalHud = await getHud(page);
+  throw new Error(
+    `Tournament did not finish: ${stageId} ${JSON.stringify({
+      maxCompletionCycles,
+      realHeroHands,
+      backgroundCyclesAfterHeroBust,
+      playersRemaining: finalHud?.playersRemaining ?? null,
+      currentLevelNumber: finalHud?.currentLevelNumber ?? null,
+      phase: finalHud?.phase ?? null,
+    })}`,
+  );
 }
 
 test.describe.configure({ timeout: 180_000 });

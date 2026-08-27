@@ -639,6 +639,18 @@ export class BadugiGameController extends GameController {
       ...this.config,
       ...partial,
     };
+    if (partial.betSize == null) {
+      const blindIndex = Math.max(
+        0,
+        Number(partial.blindState?.blindLevelIndex) || 0,
+      );
+      const activeBigBlind =
+        Number(partial.structure?.bb) ||
+        Number(partial.blindStructure?.[blindIndex]?.bb) ||
+        Number(partial.blindStructure?.[0]?.bb) ||
+        null;
+      if (activeBigBlind != null) merged.betSize = activeBigBlind;
+    }
     if (!merged.seatConfig || merged.seatConfig.length === 0) {
       merged.seatConfig = DEFAULT_SEAT_CONFIG;
     }

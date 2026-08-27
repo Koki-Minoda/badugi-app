@@ -104,6 +104,34 @@ describe("BadugiGameController – new hand", () => {
     expect(typeof (snap.turn ?? snap.nextTurn)).toBe("number");
     expect(typeof (snap.dealerSeat ?? snap.dealerIdx)).toBe("number");
   });
+
+  it("uses the active tournament blind as the fixed-limit raise unit", () => {
+    const controller = createController({
+      blindStructure: [{ sb: 1, bb: 2, ante: 0 }],
+    });
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU"],
+      structure: { sb: 1, bb: 2, ante: 0 },
+    });
+    const state = controller.createNewHandState(initial, {
+      blindStructure: [{ sb: 25, bb: 50, ante: 0 }],
+      blindState: { blindLevelIndex: 0, handsInLevel: 0 },
+      structure: { sb: 25, bb: 50, ante: 0 },
+    });
+    const snapshot = controller.getUiSnapshot(state);
+    const actingSeat = snapshot.turn ?? snapshot.nextTurn;
+    const actorBet = snapshot.players[actingSeat]?.betThisRound ?? 0;
+    const toCall = Math.max(0, Number(snapshot.currentBet) - actorBet);
+    const { events, state: raisedState } = controller.applyAction(state, {
+      seatIndex: actingSeat,
+      payload: { type: "raise", amount: toCall + 50 },
+    });
+
+    expect(events.some((event) => event.type === "invalidAction")).toBe(false);
+    expect(controller.getUiSnapshot(raisedState).players[actingSeat].betThisRound).toBe(
+      actorBet + toCall + 50,
+    );
+  });
 });
 
 describe("BadugiGameController – betting", () => {

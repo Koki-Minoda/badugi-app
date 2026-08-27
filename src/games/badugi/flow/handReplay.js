@@ -29,16 +29,29 @@ function firstRecordedHand(seat = {}) {
   return [];
 }
 
-function clonePlayers(seats = []) {
+function legacyForcedContribution(seat = {}) {
+  return (seat?.actions ?? []).reduce((sum, action) => {
+    const type = String(action?.type ?? "").toLowerCase();
+    if (type !== "blind" && type !== "ante") return sum;
+    return sum + Math.max(0, Number(action?.amount) || 0);
+  }, 0);
+}
+
+function clonePlayers(seats = [], replaySchemaVersion = 1) {
   return seats.map((seat, index) => {
     const seatNumber = Number.isInteger(seat?.seat) ? seat.seat : index;
+    const recordedStart = finiteNumber(seat?.startStack, seat?.initialStack, seat?.stack, 0);
+    const adjustedStart =
+      replaySchemaVersion >= 2 || !Number.isFinite(seat?.startStack)
+        ? recordedStart
+        : recordedStart + legacyForcedContribution(seat);
     return {
       seat: seatNumber,
       name: seat?.name ?? `Seat ${seatNumber}`,
       isHero: Boolean(seat?.isHero) || seatNumber === 0,
       stack: Math.max(
         0,
-        Number(finiteNumber(seat?.startStack, seat?.initialStack, seat?.stack, 0)),
+        Number(adjustedStart),
       ),
       totalInvested: 0,
       betThisRound: 0,
@@ -48,6 +61,24 @@ function clonePlayers(seats = []) {
       hand: firstRecordedHand(seat),
     };
   });
+}
+
+function resolveHandEndWinners(history, event) {
+  if (Array.isArray(event?.winners) && event.winners.length > 0) return event.winners;
+  const potWinners = (history?.pots ?? []).flatMap((pot) =>
+    (pot?.winners ?? []).map((winner) => ({
+      seat: winner?.seat ?? winner?.seatIndex,
+      amount: winner?.amount ?? winner?.collect ?? winner?.payout,
+    })),
+  );
+  if (potWinners.length > 0) return potWinners;
+  const summaryWinners = Array.isArray(history?.uiSummary?.winners)
+    ? history.uiSummary.winners
+    : (history?.uiSummary?.potDetails ?? []).flatMap((pot) => pot?.winners ?? []);
+  return summaryWinners.map((winner) => ({
+    seat: winner?.seat ?? winner?.seatIndex,
+    amount: winner?.amount ?? winner?.collect ?? winner?.payout,
+  }));
 }
 
 function findPlayer(players, seat) {
@@ -128,7 +159,7 @@ function expectedEndStack(history, seat) {
  */
 export function replayHandFromHistory(history) {
   if (!history || !Array.isArray(history.events)) return [];
-  const players = clonePlayers(history.seats);
+  const players = clonePlayers(history.seats, history.replaySchemaVersion ?? 1);
   const actionDetails = historyActionsBySequence(history);
   let pot = 0;
   let phase = "HAND_START";
@@ -220,7 +251,7 @@ export function replayHandFromHistory(history) {
         const recordedPot = Math.max(0, Number(event.totalPot) || 0);
         awardedPot = recordedPot || pot;
         pot = awardedPot;
-        (event?.winners ?? []).forEach((winner) => {
+        resolveHandEndWinners(history, event).forEach((winner) => {
           const target = findPlayer(players, winner?.seat);
           if (!target) return;
           const payout = Math.max(0, Number(winner?.amount) || 0);

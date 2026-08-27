@@ -131,4 +131,35 @@ describe("replayHandFromHistory", () => {
     ]);
     expect(frames.at(-1).pot).toBe(15);
   });
+
+  it("recovers old post-blind start stacks and winners from the saved UI summary", () => {
+    const frames = replayHandFromHistory({
+      seats: [
+        {
+          seat: 0,
+          name: "Hero",
+          startStack: 90,
+          endStack: 120,
+          actions: [{ seq: 1, street: "BET", type: "blind", amount: 10 }],
+        },
+        {
+          seat: 1,
+          name: "Guest",
+          startStack: 80,
+          endStack: 80,
+          actions: [{ seq: 2, street: "BET", type: "blind", amount: 20 }],
+        },
+      ],
+      events: [
+        { type: "HAND_START" },
+        { type: "BLINDS_POSTED", sbSeat: 0, sbAmount: 10, bbSeat: 1, bbAmount: 20 },
+        { type: "HAND_END", totalPot: 30, winners: [] },
+      ],
+      uiSummary: { winners: [{ seatIndex: 0, payout: 30 }] },
+    });
+
+    expect(frames[0].players.map((player) => player.stack)).toEqual([100, 100]);
+    expect(frames.at(-1).players.map((player) => player.stack)).toEqual([120, 80]);
+    expect(frames.at(-1).integrity).toMatchObject({ valid: true, stackMismatches: [] });
+  });
 });

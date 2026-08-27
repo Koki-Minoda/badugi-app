@@ -26,7 +26,7 @@ QA/QM result: **PASS for PR review**. No known P0/P1 product blocker remains in 
 - Dependency audit: 0 vulnerabilities.
 - Tier1: 301 files / 2,066 tests PASS.
 - Tier2: 78 files / 165 tests PASS.
-- Backend: 64 tests PASS, including account deletion and P2P persistence.
+- Backend: 66 tests PASS, including account deletion, P2P persistence, and clean-install migration coverage.
 - Game progression: 170 tests PASS; game EV: 25 tests PASS; one-hand gate: 53 tests PASS.
 - Core5 standard soak: cash 10/10 and tournament 10/10 PASS across two seeds per variant.
 - Tournament PR browser gate: 15/15 PASS. Store completed after 33 real Hero hands plus 57 background hands; local completed after 25 real Hero hands plus 140 background hands.
@@ -43,6 +43,7 @@ QA/QM result: **PASS for PR review**. No known P0/P1 product blocker remains in 
 3. A controller could return a successful but non-progressing Hero draw when remaining opponents were all-in. Non-progressing snapshots are rejected and the already-committed table draw is used.
 4. The desktop player status board covered the table by default. It is now collapsed initially.
 5. Chinese Poker's real ten-hand gate exceeded the generic five-second test budget. It retains all ten hands with a variant-specific bounded timeout.
+6. A clean Alembic database omitted users and hand-history tables, and its SQLite action-log key could not autoincrement. A non-destructive reconciliation migration now creates only missing legacy tables, repairs the SQLite key, preserves existing data, and is covered by clean/existing-install tests.
 
 ## Controlled follow-up debt
 

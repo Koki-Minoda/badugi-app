@@ -53,6 +53,34 @@ function ensureDrawPhase(controller, state, seatIndex = 0) {
 }
 
 describe("BadugiGameController – new hand", () => {
+  it("provides the legacy-compatible UI surface from the canonical controller path", () => {
+    const controller = new BadugiGameController({
+      numSeats: 2,
+      seatConfig: ["HUMAN", "CPU"],
+      startingStack: 200,
+      blindStructure: [{ sb: 5, bb: 10, ante: 0 }],
+    });
+
+    controller.updateConfig({ lastStructureIndex: 0 });
+    const started = controller.startNewHand({
+      currentPlayers: [],
+      numSeats: 2,
+      seatConfig: ["HUMAN", "CPU"],
+      startingStack: 200,
+      heroProfile: { name: "Hero" },
+      nextDealerIdx: 0,
+      blindStructure: [{ sb: 5, bb: 10, ante: 0 }],
+      drawCardsForSeat: () => ["AS", "2H", "3D", "4C"],
+    });
+
+    expect(started.players).toHaveLength(2);
+    expect(controller.getSnapshot().players).toHaveLength(2);
+    expect(typeof controller.syncExternalState).toBe("function");
+    expect(typeof controller.applyPlayerAction).toBe("function");
+    expect(typeof controller.advanceStreet).toBe("function");
+    expect(typeof controller.resolveShowdown).toBe("function");
+  });
+
   it("creates a new hand with players, stacks, and blinds", () => {
     const controller = createController();
     const initial = controller.createInitialState({

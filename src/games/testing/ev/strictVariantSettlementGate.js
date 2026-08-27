@@ -1,15 +1,19 @@
 import { getVariantById } from "../../config/variantCatalog.js";
 import { compareNlhHands, evaluateNlhHand } from "../../nlh/utils/nlhEvaluator.js";
+import { comparePloHands, evaluatePloHand } from "../../plo/utils/ploEvaluator.js";
+import { evaluateOmahaEightLow } from "../../plo/PLO8GameController.js";
 import { extractPayouts, validateHandEvIntegrity } from "./evIntegrityChecker.js";
+
+const STRICT_BOARD_VARIANTS = new Set(["B01", "B02", "B05", "B06", "B09"]);
 
 const FAMILY_ALLOWLISTS = Object.freeze([
   {
-    ids: ["B02", "B03", "B04"],
-    reason: "Board pilot expansion awaits variant-specific fixed-limit and three-hole settlement fixtures.",
+    ids: ["B03", "B04"],
+    reason: "Three-hole board settlement awaits variant-specific evaluator and side-pot fixtures.",
   },
   {
-    ids: ["B05", "B06", "B07", "B08", "B09"],
-    reason: "Omaha settlement awaits strict must-use-two, side-pot, hi/lo, quartering, and odd-chip fixtures.",
+    ids: ["B07", "B08"],
+    reason: "Five-card Omaha settlement awaits strict must-use-two and side-pot fixtures.",
   },
   {
     ids: ["D01", "D02", "D03", "D04", "D05", "D06", "D07", "S01", "S02", "S03", "S04", "S05", "S06", "S07"],
@@ -40,7 +44,7 @@ export function getStrictSettlementPolicy(variantId) {
   if (!variant) {
     return { variantId, status: "UNKNOWN", reason: "Variant is absent from the canonical catalog." };
   }
-  if (variant.id === "B01") {
+  if (STRICT_BOARD_VARIANTS.has(variant.id)) {
     return { variantId: variant.id, status: "ENFORCED", reason: null };
   }
   const reason = STRICT_SETTLEMENT_ALLOWLIST[variant.id];
@@ -55,21 +59,56 @@ function seatIndexOf(player, fallback) {
   return player?.seatIndex ?? fallback;
 }
 
-function verifyNlhPotWinners(afterState, result) {
-  const errors = [];
+function buildBoardEvaluations(variantId, afterState, result) {
   const board = afterState?.boardCards ?? result?.board ?? [];
-  const players = afterState?.players ?? [];
-  const evaluations = players
-    .map((player, index) => ({
-      player,
-      seatIndex: seatIndexOf(player, index),
-      evaluation:
-        !player?.folded && !player?.seatOut && player?.holeCards?.length === 2 && board.length === 5
-          ? evaluateNlhHand({ cards: [...player.holeCards, ...board] })
+  return (afterState?.players ?? [])
+    .map((player, index) => {
+      const seatIndex = seatIndexOf(player, index);
+      if (player?.folded || player?.seatOut) return null;
+      if (variantId === "B01" || variantId === "B02") {
+        if (player?.holeCards?.length !== 2 || board.length !== 5) return null;
+        return {
+          player,
+          seatIndex,
+          high: evaluateNlhHand({ cards: [...player.holeCards, ...board] }),
+          low: null,
+        };
+      }
+      if (!Array.isArray(player?.holeCards) || player.holeCards.length < 4 || board.length !== 5) {
+        return null;
+      }
+      return {
+        player,
+        seatIndex,
+        high: evaluatePloHand({ holeCards: player.holeCards, boardCards: board }),
+        low: variantId === "B06" || variantId === "B09"
+          ? evaluateOmahaEightLow({ holeCards: player.holeCards, boardCards: board })
           : null,
-    }))
-    .filter((entry) => entry.evaluation);
+      };
+    })
+    .filter(Boolean);
+}
+
+function expectedWinnerSeats(entries, evaluationKey, compareEvaluations) {
+  const candidates = entries.filter((entry) => entry[evaluationKey]);
+  if (!candidates.length) return [];
+  const best = candidates.reduce((current, entry) =>
+    !current || compareEvaluations(entry[evaluationKey], current[evaluationKey]) < 0
+      ? entry
+      : current,
+  null);
+  return candidates
+    .filter((entry) => compareEvaluations(entry[evaluationKey], best[evaluationKey]) === 0)
+    .map((entry) => entry.seatIndex)
+    .sort((left, right) => left - right);
+}
+
+function verifyBoardPotWinners(variantId, afterState, result) {
+  const errors = [];
+  const evaluations = buildBoardEvaluations(variantId, afterState, result);
   const payouts = extractPayouts(result);
+  const compareHigh = variantId === "B01" || variantId === "B02" ? compareNlhHands : comparePloHands;
+  const split = variantId === "B06" || variantId === "B09";
 
   for (const [potIndex, pot] of (result?.potDetails ?? []).entries()) {
     const eligible = new Set(pot.eligibleSeatIndexes ?? evaluations.map((entry) => entry.seatIndex));
@@ -78,19 +117,47 @@ function verifyNlhPotWinners(afterState, result) {
       errors.push({ code: "strict_nlh_pot_has_no_evaluable_player", potIndex });
       continue;
     }
-    const best = candidates.reduce((current, entry) =>
-      !current || compareNlhHands(entry.evaluation, current.evaluation) < 0 ? entry : current,
-    null);
-    const expected = candidates
-      .filter((entry) => compareNlhHands(entry.evaluation, best.evaluation) === 0)
-      .map((entry) => entry.seatIndex)
-      .sort((left, right) => left - right);
-    const actual = payouts
-      .filter((payout) => (payout.potIndex ?? 0) === potIndex && Number(payout.amount) > 0)
+    const expectedHigh = expectedWinnerSeats(candidates, "high", compareHigh);
+    const actualHigh = payouts
+      .filter((payout) =>
+        (payout.potIndex ?? 0) === potIndex &&
+        Number(payout.amount) > 0 &&
+        (!split || payout.component === "high"),
+      )
       .map((payout) => payout.seatIndex)
       .sort((left, right) => left - right);
-    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
-      errors.push({ code: "strict_nlh_evaluator_winner_mismatch", potIndex, expected, actual });
+    if (JSON.stringify(actualHigh) !== JSON.stringify(expectedHigh)) {
+      errors.push({
+        code: "strict_board_high_winner_mismatch",
+        variantId,
+        potIndex,
+        expected: expectedHigh,
+        actual: actualHigh,
+      });
+    }
+    if (split) {
+      const expectedLow = expectedWinnerSeats(
+        candidates,
+        "low",
+        (left, right) => left.rankPrimary - right.rankPrimary,
+      );
+      const actualLow = payouts
+        .filter((payout) =>
+          (payout.potIndex ?? 0) === potIndex &&
+          Number(payout.amount) > 0 &&
+          payout.component === "low",
+        )
+        .map((payout) => payout.seatIndex)
+        .sort((left, right) => left - right);
+      if (JSON.stringify(actualLow) !== JSON.stringify(expectedLow)) {
+        errors.push({
+          code: "strict_board_low_winner_mismatch",
+          variantId,
+          potIndex,
+          expected: expectedLow,
+          actual: actualLow,
+        });
+      }
     }
   }
   return errors;
@@ -134,8 +201,7 @@ export function validateStrictVariantSettlement({
       });
     }
   }
-  strictErrors.push(...verifyNlhPotWinners(afterState, result));
+  strictErrors.push(...verifyBoardPotWinners(variantId, afterState, result));
   const errors = [...check.errors, ...strictErrors];
   return { ok: errors.length === 0, policy, errors, check };
 }
-

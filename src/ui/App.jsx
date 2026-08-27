@@ -86,7 +86,7 @@ import {
   isBetRoundComplete,
   needsActionForBet,
 } from "../games/badugi/flow/betRoundUtils.js";
-import BadugiGameController from "../games/badugi/BadugiGameController.js";
+import BadugiGameController from "../games/badugi/controller/BadugiGameController.js";
 import ChinesePokerController from "../games/chinese/ChinesePokerController.js";
 import DramahaGameController from "../games/dramaha/DramahaGameController.js";
 import FLHGameController from "../games/nlh/FLHGameController.js";

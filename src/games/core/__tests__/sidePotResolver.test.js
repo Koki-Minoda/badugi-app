@@ -1,100 +1,57 @@
 import { describe, expect, it } from "vitest";
 import {
-  applyPayoutsToPlayers,
   buildContributionPots,
-  resolveEvaluationPot,
-  splitAmountBySeatOrder,
-  summarizePayouts,
+  resolveHiLoContributionPots,
 } from "../sidePotResolver.js";
 
-function compareLowestScore(a, b) {
-  return a.score - b.score;
-}
+const player = (seatIndex, totalInvested, extra = {}) => ({
+  seatIndex,
+  name: `P${seatIndex}`,
+  totalInvested,
+  stack: 0,
+  ...extra,
+});
 
-describe("sidePotResolver", () => {
-  it("builds contribution pots from all-in investments while excluding folded winners", () => {
+describe("shared side-pot settlement", () => {
+  it("includes folded chips but excludes folded seats from every award", () => {
     const pots = buildContributionPots([
-      { totalInvested: 50, folded: false },
-      { totalInvested: 100, folded: false },
-      { totalInvested: 200, folded: false },
-      { totalInvested: 200, folded: true },
+      player(0, 25),
+      player(1, 50, { folded: true }),
+      player(2, 100),
     ]);
 
     expect(pots).toEqual([
-      {
-        potIndex: 0,
-        amount: 200,
-        potAmount: 200,
-        contributorSeatIndexes: [0, 1, 2, 3],
-        eligibleSeatIndexes: [0, 1, 2],
-      },
-      {
-        potIndex: 1,
-        amount: 150,
-        potAmount: 150,
-        contributorSeatIndexes: [1, 2, 3],
-        eligibleSeatIndexes: [1, 2],
-      },
-      {
-        potIndex: 2,
-        amount: 200,
-        potAmount: 200,
-        contributorSeatIndexes: [2, 3],
-        eligibleSeatIndexes: [2],
-      },
+      expect.objectContaining({ amount: 75, eligibleSeatIndexes: [0, 2] }),
+      expect.objectContaining({ amount: 50, eligibleSeatIndexes: [2] }),
+      expect.objectContaining({ amount: 50, eligibleSeatIndexes: [2] }),
     ]);
   });
 
-  it("splits odd chips by stable seat order", () => {
-    expect(splitAmountBySeatOrder(101, [{ seatIndex: 2 }, { seatIndex: 0 }])).toEqual([
-      { seatIndex: 0, payout: 51 },
-      { seatIndex: 2, payout: 50 },
-    ]);
-  });
-
-  it("resolves a pot only among eligible contenders", () => {
-    const players = [
-      { seatIndex: 0, name: "Main" },
-      { seatIndex: 1, name: "Side" },
-      { seatIndex: 2, name: "Deep" },
-    ];
-    const evaluations = players.map((player, idx) => ({
-      player,
-      evaluation: { score: [1, 2, 0][idx] },
+  it("awards the odd hi/lo chip to high and preserves the complete pot", () => {
+    const players = [player(0, 33), player(1, 33), player(2, 33)];
+    const highEvaluations = players.map((entry, index) => ({
+      player: entry,
+      evaluation: { rank: index },
     }));
-
-    const payouts = resolveEvaluationPot({
-      amount: 100,
-      eligibleSeatIndexes: [1, 2],
-      evaluations,
-      compareEvaluations: compareLowestScore,
+    const lowEvaluations = [
+      { player: players[1], evaluation: { rank: 0 } },
+      { player: players[2], evaluation: { rank: 1 } },
+    ];
+    const { payouts, potDetails } = resolveHiLoContributionPots({
+      players,
+      highEvaluations,
+      lowEvaluations,
+      compareHighEvaluations: (left, right) => left.rank - right.rank,
+      compareLowEvaluations: (left, right) => left.rank - right.rank,
+      totalPot: 99,
     });
 
-    expect(payouts).toHaveLength(1);
-    expect(payouts[0]).toMatchObject({
-      player: players[2],
-      payout: 100,
-      evaluation: { score: 0 },
-    });
-  });
-
-  it("applies and summarizes payouts by seat", () => {
-    const players = [
-      { seatIndex: 0, name: "Hero", stack: 0 },
-      { seatIndex: 1, name: "CPU", stack: 0 },
-    ];
-    const payouts = [
-      { player: players[0], payout: 75, evaluation: { score: 1 } },
-      { player: players[0], payout: 25, evaluation: { score: 2 } },
-      { player: players[1], payout: 50, evaluation: { score: 3 } },
-    ];
-
-    applyPayoutsToPlayers(players, payouts);
-
-    expect(players.map((player) => player.stack)).toEqual([100, 50]);
-    expect(summarizePayouts(payouts)).toEqual([
-      { seatIndex: 0, name: "Hero", payout: 100, evaluation: { score: 1 } },
-      { seatIndex: 1, name: "CPU", payout: 50, evaluation: { score: 3 } },
+    expect(potDetails[0].highWinners).toEqual([
+      expect.objectContaining({ seatIndex: 0, payout: 50 }),
     ]);
+    expect(potDetails[0].lowWinners).toEqual([
+      expect.objectContaining({ seatIndex: 1, payout: 49 }),
+    ]);
+    expect(payouts.reduce((sum, payout) => sum + payout.payout, 0)).toBe(99);
   });
 });

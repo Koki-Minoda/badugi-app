@@ -4,8 +4,7 @@ import { evaluatePloHand, comparePloHands } from "./utils/ploEvaluator.js";
 import { estimateBoardHandStrength } from "../core/cpuTeacherPolicy.js";
 import {
   applyPayoutsToPlayers,
-  buildContributionPots,
-  resolveEvaluationPot,
+  resolveHighContributionPots,
   summarizePayouts,
 } from "../core/sidePotResolver.js";
 
@@ -116,42 +115,11 @@ export class PLOGameController extends NLHGameController {
       this.state.lastHandResult = summary;
       return summary;
     }
-    const winners = evaluations.filter(
-      (entry) => comparePloHands(entry.evaluation, best.evaluation) === 0,
-    );
-    const contributionPots = buildContributionPots(this.state.players);
-    const potsToResolve = contributionPots.length
-      ? contributionPots
-      : [
-          {
-            potIndex: 0,
-            amount: resolvedPot,
-            potAmount: resolvedPot,
-            eligibleSeatIndexes: winners.map((entry) => entry.player.seatIndex),
-          },
-        ];
-    const allPayouts = [];
-    const potDetails = potsToResolve.map((pot, potIndex) => {
-      const payouts = resolveEvaluationPot({
-        amount: pot.amount,
-        eligibleSeatIndexes: pot.eligibleSeatIndexes,
-        evaluations,
-        compareEvaluations: comparePloHands,
-      });
-      allPayouts.push(...payouts);
-      return {
-        potIndex: pot.potIndex ?? potIndex,
-        amount: pot.amount,
-        potAmount: pot.amount,
-        eligibleSeatIndexes: [...(pot.eligibleSeatIndexes ?? [])],
-        winnerSeatIndexes: payouts.map((winner) => winner.player.seatIndex),
-        winners: payouts.map((winner) => ({
-          seatIndex: winner.player.seatIndex,
-          name: winner.player.name,
-          payout: winner.payout,
-          evaluation: winner.evaluation,
-        })),
-      };
+    const { payouts: allPayouts, potDetails } = resolveHighContributionPots({
+      players: this.state.players,
+      evaluations,
+      compareEvaluations: comparePloHands,
+      totalPot: resolvedPot,
     });
     applyPayoutsToPlayers(this.state.players, allPayouts);
     const winnerSummaries = summarizePayouts(allPayouts);

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { GAME_VARIANTS } from "../../config/variantCatalog.js";
 import { NLHGameController } from "../../nlh/NLHGameController.js";
+import { FLHGameController } from "../../nlh/FLHGameController.js";
+import { PLOGameController } from "../../plo/PLOGameController.js";
+import { PLO8GameController } from "../../plo/PLO8GameController.js";
+import { FLO8GameController } from "../../plo/FLO8GameController.js";
 import { createDeterministicRng } from "../deterministicRng.js";
 import {
   STRICT_SETTLEMENT_ALLOWLIST,
@@ -37,9 +41,11 @@ function playPassiveHand(controller) {
 describe("strict per-variant settlement gate", () => {
   it("classifies every non-pilot catalog variant with a documented reason", () => {
     const policies = GAME_VARIANTS.map((variant) => getStrictSettlementPolicy(variant.id));
-    expect(policies.filter((policy) => policy.status === "ENFORCED").map((policy) => policy.variantId)).toEqual(["B01"]);
+    expect(policies.filter((policy) => policy.status === "ENFORCED").map((policy) => policy.variantId)).toEqual([
+      "B01", "B02", "B05", "B06", "B09",
+    ]);
     expect(policies.filter((policy) => policy.status === "UNCLASSIFIED")).toEqual([]);
-    expect(Object.keys(STRICT_SETTLEMENT_ALLOWLIST)).toHaveLength(35);
+    expect(Object.keys(STRICT_SETTLEMENT_ALLOWLIST)).toHaveLength(31);
     policies.filter((policy) => policy.status === "ALLOWLISTED").forEach((policy) => {
       expect(policy.reason).toEqual(expect.any(String));
       expect(policy.reason.length).toBeGreaterThan(30);
@@ -73,6 +79,21 @@ describe("strict per-variant settlement gate", () => {
     }));
     const gate = validateStrictVariantSettlement({ variantId: "B01", ...hand, result });
     expect(gate.ok).toBe(false);
-    expect(gate.errors.map((error) => error.code)).toContain("strict_nlh_evaluator_winner_mismatch");
+    expect(gate.errors.map((error) => error.code)).toContain("strict_board_high_winner_mismatch");
+  });
+
+  it.each([
+    ["B02", FLHGameController],
+    ["B05", PLOGameController],
+    ["B06", PLO8GameController],
+    ["B09", FLO8GameController],
+  ])("enforces strict multi-pot settlement for %s", (variantId, Controller) => {
+    const controller = new Controller({
+      tableConfig: { seats: seats(), blinds: { sb: 5, bb: 10, ante: 0 } },
+      rng: createDeterministicRng(`strict-${variantId}`),
+    });
+    const hand = playPassiveHand(controller);
+    const gate = validateStrictVariantSettlement({ variantId, ...hand });
+    expect(gate.ok, JSON.stringify(gate.errors, null, 2)).toBe(true);
   });
 });

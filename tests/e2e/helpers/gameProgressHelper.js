@@ -306,6 +306,23 @@ export async function performSafeAction(page, options = {}) {
     return { acted: false, reason: "terminal", before: summarizeProgressState(progress) };
   }
   if (typeof actor !== "number") {
+    // Between a CPU action and the next street/actor assignment the app can
+    // briefly publish a non-terminal BET/DRAW snapshot with no actor. Treat
+    // that as an asynchronous transition, but keep the bounded timeout so a
+    // genuine null-actor freeze still fails the progression gate.
+    if (BET_PHASES.has(phase) || DRAW_PHASES.has(phase)) {
+      const changed = await waitForProgressChange(page, beforeKey, { timeout: 3000 })
+        .then(() => true)
+        .catch(() => false);
+      if (changed) {
+        return {
+          acted: true,
+          clickedAction: "auto-transition",
+          actor: null,
+          before: summarizeProgressState(progress),
+        };
+      }
+    }
     return { acted: false, reason: "no-actor", before: summarizeProgressState(progress) };
   }
 

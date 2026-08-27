@@ -2714,15 +2714,23 @@ export default function App() {
       variantId = null,
       variantName = null,
       seatsSnapshot = [],
+      startingStacksSnapshot = [],
     }) => {
       const seats = seatsSnapshot.map((player, seat) => ({
         seat,
         name: player?.name ?? `Seat ${seat}`,
         isHero: Boolean(player?.isHero) || seat === 0,
-        initialStack: Math.max(0, Number(player?.stack) || 0),
+        initialStack: Math.max(
+          0,
+          Number.isFinite(startingStacksSnapshot?.[seat])
+            ? startingStacksSnapshot[seat]
+            : Number(player?.stack) || 0,
+        ),
+        initialHand: Array.isArray(player?.hand) ? [...player.hand] : [],
       }));
       const startedAt = Date.now();
       handHistoryRef.current = {
+        replaySchemaVersion: 2,
         handId,
         handCount,
         tableId,
@@ -2795,9 +2803,17 @@ export default function App() {
         type: "HAND_END",
         winners: normalizedWinners,
         totalPot: Math.max(0, Number(totalPot) || 0),
+        finalStacks: Array.isArray(playersSnapshot)
+          ? playersSnapshot.map((player, seat) => ({
+              seat,
+              stack: Math.max(0, Number(player?.stack) || 0),
+            }))
+          : [],
       });
       handHistoryRef.current.endedAt = Date.now();
       if (legacyRecord) {
+        handHistoryRef.current.replaySchemaVersion =
+          legacyRecord.replaySchemaVersion ?? handHistoryRef.current.replaySchemaVersion ?? 1;
         handHistoryRef.current.variantId =
           legacyRecord.variantId ?? handHistoryRef.current.variantId ?? null;
         handHistoryRef.current.variantName =
@@ -4169,22 +4185,23 @@ export default function App() {
       ...(metadata || {}),
       actionId: nextActionId,
     };
-    const normalizedDrawInfo = drawInfo
+    const sourceDrawInfo = drawInfo ?? metadata?.drawInfo;
+    const normalizedDrawInfo = sourceDrawInfo
       ? {
-          ...drawInfo,
-          replacedCards: Array.isArray(drawInfo.replacedCards)
-            ? drawInfo.replacedCards.map((entry) => ({
+          ...sourceDrawInfo,
+          replacedCards: Array.isArray(sourceDrawInfo.replacedCards)
+            ? sourceDrawInfo.replacedCards.map((entry) => ({
                 index: entry?.index ?? null,
                 oldCard: entry?.oldCard,
                 newCard: entry?.newCard,
               }))
-            : drawInfo.replacedCards,
-          before: Array.isArray(drawInfo.before)
-            ? [...drawInfo.before]
-            : drawInfo.before,
-          after: Array.isArray(drawInfo.after)
-            ? [...drawInfo.after]
-            : drawInfo.after,
+            : sourceDrawInfo.replacedCards,
+          before: Array.isArray(sourceDrawInfo.before)
+            ? [...sourceDrawInfo.before]
+            : sourceDrawInfo.before,
+          after: Array.isArray(sourceDrawInfo.after)
+            ? [...sourceDrawInfo.after]
+            : sourceDrawInfo.after,
         }
       : undefined;
     if (normalizedDrawInfo) mergedMeta.drawInfo = normalizedDrawInfo;
@@ -4363,16 +4380,50 @@ export default function App() {
       }
     }
     if (idx !== null) {
+      const replayPlayersAfter = (sourcePlayers ?? []).map((player, seat) => {
+        const resolvedPlayer = seat === idx && seatSnapshot ? seatSnapshot : player;
+        return {
+          seat,
+          stack: Math.max(0, Number(resolvedPlayer?.stack) || 0),
+          betThisRound: Math.max(0, Number(resolvedPlayer?.betThisRound) || 0),
+          totalInvested: Math.max(0, Number(resolvedPlayer?.totalInvested) || 0),
+          folded: Boolean(resolvedPlayer?.folded ?? resolvedPlayer?.hasFolded),
+          allIn: Boolean(resolvedPlayer?.allIn),
+          hand: Array.isArray(resolvedPlayer?.hand) ? [...resolvedPlayer.hand] : [],
+        };
+      });
+      const replayPotAfter = Number.isFinite(potAfter)
+        ? potAfter
+        : replayPlayersAfter.reduce(
+            (sum, player) => sum + Math.max(0, Number(player.totalInvested) || 0),
+            0,
+          );
       if (normalizedDrawInfo) {
         appendCanonicalHandEvent({
           type: "DRAW_ACTION",
           seat: idx,
           actionSeq: historyAction?.seq ?? null,
+          drawCount: normalizedDrawInfo.drawCount ?? 0,
           discarded: Array.isArray(normalizedDrawInfo.drawIndexes)
             ? normalizedDrawInfo.drawIndexes.filter((val) =>
                 Number.isInteger(val),
               )
             : [],
+          before: Array.isArray(normalizedDrawInfo.before)
+            ? [...normalizedDrawInfo.before]
+            : undefined,
+          after: Array.isArray(normalizedDrawInfo.after)
+            ? [...normalizedDrawInfo.after]
+            : Array.isArray(normalizedDrawInfo.handAfter)
+              ? [...normalizedDrawInfo.handAfter]
+              : undefined,
+          replacedCards: Array.isArray(normalizedDrawInfo.replacedCards)
+            ? normalizedDrawInfo.replacedCards.map((entry) => ({ ...entry }))
+            : [],
+          stackBefore: resolvedStackBefore,
+          stackAfter: resolvedStackAfter,
+          potAfter: replayPotAfter,
+          playersAfter: replayPlayersAfter,
         });
       } else {
         const normalizedType = normalizeHandHistoryType(type);
@@ -4386,6 +4437,12 @@ export default function App() {
           action: normalizedType,
           actionSeq: historyAction?.seq ?? null,
           amount: amountDelta,
+          stackBefore: resolvedStackBefore,
+          stackAfter: resolvedStackAfter,
+          betBefore: resolvedBetBefore,
+          betAfter: resolvedBetAfter,
+          potAfter: replayPotAfter,
+          playersAfter: replayPlayersAfter,
           metadata: canonicalActionMetadata,
         });
       }
@@ -7519,7 +7576,15 @@ export default function App() {
         seats: newPlayers.map((player, seat) => ({
           seat,
           name: player.name,
-          startStack: player.stack,
+          isHero: Boolean(player.isHero) || seat === 0,
+          startStack: Math.max(
+            Number.isFinite(handStartingStacksById?.[seat])
+              ? handStartingStacksById[seat]
+              : 0,
+            Math.max(0, Number(player.stack) || 0) +
+              Math.max(0, Number(player.totalInvested ?? player.betThisRound) || 0),
+          ),
+          initialHand: Array.isArray(player.hand) ? [...player.hand] : [],
         })),
         startedAt: Date.now(),
         userId: authUserIdRef.current,
@@ -7540,6 +7605,15 @@ export default function App() {
         sbSeat: typeof sbIdx === "number" ? sbIdx : null,
         bbSeat: typeof bbIdx === "number" ? bbIdx : null,
         seatsSnapshot: newPlayers,
+        startingStacksSnapshot: newPlayers.map((player, seat) =>
+          Math.max(
+            Number.isFinite(handStartingStacksById?.[seat])
+              ? handStartingStacksById[seat]
+              : 0,
+            Math.max(0, Number(player?.stack) || 0) +
+              Math.max(0, Number(player?.totalInvested ?? player?.betThisRound) || 0),
+          ),
+        ),
       });
 
       if (usesAppDeckForCurrentHand) {
@@ -7567,6 +7641,11 @@ export default function App() {
             totalInvested: newPlayers[seat]?.totalInvested ?? amount,
             metadata: { ante: blindValues.ante },
             userId: authUserIdRef.current,
+          });
+          appendCanonicalHandEvent({
+            type: "ANTE_POSTED",
+            seat,
+            amount: Math.max(0, Number(amount) || 0),
           });
         });
       }
@@ -7602,7 +7681,9 @@ export default function App() {
         bbAmount: Math.max(0, Number(bbPay) || 0),
       });
 
-      handStartStacksRef.current = newPlayers.map((p) => p.stack);
+      handStartStacksRef.current = Array.isArray(handStartingStacksById)
+        ? [...handStartingStacksById]
+        : newPlayers.map((p) => p.stack);
       setPots([]);
       setCurrentBet(initialCurrentBet);
       setDealerIdx(nextDealerIdx);
@@ -10024,8 +10105,13 @@ export default function App() {
     playersSnapshot = [],
   ) {
     const winnersMap = new Map();
-    summary.forEach((pot) => {
-      (pot?.payouts ?? []).forEach((payout) => {
+    const potEntries = Array.isArray(summary)
+      ? summary
+      : Array.isArray(summary?.potDetails)
+        ? summary.potDetails
+        : [];
+    potEntries.forEach((pot) => {
+      (pot?.payouts ?? pot?.winners ?? []).forEach((payout) => {
         const seat =
           typeof payout?.seat === "number"
             ? payout.seat
@@ -10037,6 +10123,15 @@ export default function App() {
         winnersMap.set(seat, (winnersMap.get(seat) ?? 0) + amount);
       });
     });
+    if (winnersMap.size === 0 && !Array.isArray(summary)) {
+      (summary?.winners ?? []).forEach((winner) => {
+        const seat = Number.isInteger(winner?.seatIndex) ? winner.seatIndex : winner?.seat;
+        const amount = Number(winner?.payout ?? winner?.amount ?? 0);
+        if (Number.isInteger(seat) && Number.isFinite(amount)) {
+          winnersMap.set(seat, (winnersMap.get(seat) ?? 0) + amount);
+        }
+      });
+    }
     if (
       winnersMap.size === 0 &&
       Array.isArray(playersSnapshot) &&
@@ -10717,6 +10812,22 @@ export default function App() {
           ? resolvedSummary.bbSeat
           : bbSeatMeta,
     };
+    const historyPotSource =
+      Array.isArray(summary) && summary.length > 0
+        ? summary
+        : (summaryWithContext.potDetails ?? []).map((pot, potIndex) => ({
+            potIndex: Number.isInteger(pot?.potIndex) ? pot.potIndex : potIndex,
+            potAmount: Math.max(0, Number(pot?.potAmount) || 0),
+            eligible: finalPlayers
+              .map((player, seat) => ({ player, seat }))
+              .filter(({ player }) => player && !player.folded)
+              .map(({ seat }) => seat),
+            payouts: (pot?.winners ?? []).map((winner) => ({
+              ...winner,
+              seat: Number.isInteger(winner?.seatIndex) ? winner.seatIndex : winner?.seat,
+              payout: Math.max(0, Number(winner?.payout ?? winner?.amount) || 0),
+            })),
+          }));
     setHandResultSummary(summaryWithContext);
     setHandResultVisible(true);
     const finishedAt = Date.now();
@@ -10729,7 +10840,7 @@ export default function App() {
     updateShowdown({
       phase: "SHOWDOWN",
       players: finalPlayers.map((player) => ({ ...player })),
-      pots: summary.map((pot) => ({ ...pot })),
+      pots: historyPotSource.map((pot) => ({ ...pot })),
       handResultVisible: true,
       handResultSummary: summaryWithContext,
       showNextButton: true,
@@ -10737,7 +10848,7 @@ export default function App() {
     setPhase("HAND_RESULT");
     const finalizedRecord = finalizeHandHistoryRecord({
       players: finalPlayers,
-      pots: summary,
+      pots: historyPotSource,
       uiSummary: summaryWithContext,
       endedAt: finishedAt,
     });
@@ -10790,7 +10901,7 @@ export default function App() {
       currentHandHistoryRef.current = null;
     }
     const canonicalWinners = buildCanonicalWinnersFromSummary(
-      summary,
+      historyPotSource.length ? historyPotSource : summaryWithContext,
       summaryWithContext?.pot ?? totalPotValue,
       finalPlayers,
     );

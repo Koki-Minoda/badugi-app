@@ -141,6 +141,7 @@ export function startHandHistoryRecord({
   // userId allows the backend to associate logs with a specific player but
   // remains optional so offline sessions continue to work.
   currentRecord = {
+    replaySchemaVersion: 2,
     handId: handId ?? `unknown-${Date.now()}`,
     variantId: normalizeVariantId(variantId),
     variantName: variantName ?? null,
@@ -151,7 +152,13 @@ export function startHandHistoryRecord({
       ? seats.map((seat) => ({
           seat: seat?.seat ?? seat?.seatIndex ?? 0,
           name: seat?.name ?? `Seat ${seat?.seat ?? seat?.seatIndex ?? 0}`,
+          isHero: Boolean(seat?.isHero) || (seat?.seat ?? seat?.seatIndex ?? 0) === 0,
           startStack: seat?.startStack ?? 0,
+          initialHand: Array.isArray(seat?.initialHand)
+            ? [...seat.initialHand]
+            : Array.isArray(seat?.hand)
+              ? [...seat.hand]
+              : [],
           endStack: seat?.startStack ?? 0,
           finalAction: null,
           actions: [],

@@ -32,6 +32,8 @@ function eventToLabel(event = {}) {
       return "Hand start";
     case "BLINDS_POSTED":
       return `Blinds · SB ${event.sbSeat}(${event.sbAmount}) · BB ${event.bbSeat}(${event.bbAmount})`;
+    case "ANTE_POSTED":
+      return `Seat ${event.seat} ante Δ${event.amount}`;
     case "BET_ACTION":
       return `Seat ${event.seat} ${event.action} Δ${event.amount}${
         event.actionSeq ? ` · #${event.actionSeq}` : ""
@@ -361,6 +363,19 @@ function ReplayTableView({ frame, flashSeat = null, hoverSeat = null }) {
             <div className="mt-1 text-xs text-slate-300">
               Stack {player?.stack ?? 0} · Invested {player?.totalInvested ?? 0}
             </div>
+            {Array.isArray(player?.hand) &&
+            player.hand.length > 0 &&
+            (player.isHero ||
+              (["SHOWDOWN", "HAND_END", "HAND_RESULT"].includes(phase) && !player.folded)) ? (
+              <div
+                className="mt-1 font-mono text-xs text-sky-100"
+                data-testid={`replay-seat-${player.seat}-hand`}
+              >
+                {player.hand.join(" ")}
+              </div>
+            ) : Array.isArray(player?.hand) && player.hand.length > 0 ? (
+              <div className="mt-1 font-mono text-xs text-slate-500">Hidden cards</div>
+            ) : null}
             <div className="mt-1 text-xs text-slate-400">
               {player?.folded ? "Folded · " : ""}
               {player?.allIn ? "All-in · " : ""}
@@ -369,7 +384,11 @@ function ReplayTableView({ frame, flashSeat = null, hoverSeat = null }) {
           </div>
         ))}
       </div>
-      <div className="mt-4 text-sm text-emerald-200">Pot: {frame?.pot ?? 0}</div>
+      <div className="mt-4 text-sm text-emerald-200">
+        {Number.isFinite(frame?.awardedPot)
+          ? `Awarded pot: ${frame.awardedPot} · Remaining: ${frame?.pot ?? 0}`
+          : `Pot: ${frame?.pot ?? 0}`}
+      </div>
     </div>
   );
 }

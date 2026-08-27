@@ -3,6 +3,7 @@
 set -euo pipefail
 
 readonly DEFAULT_SITE_PATH="/etc/nginx/sites-enabled/mgx-poker.com"
+readonly DEFAULT_ENABLED_DIR="/etc/nginx/sites-enabled"
 readonly DEFAULT_BACKUP_DIR="/var/backups/mgx-nginx"
 readonly BEGIN_MARKER="# BEGIN MGX MANAGED P2P WEBSOCKET"
 readonly END_MARKER="# END MGX MANAGED P2P WEBSOCKET"
@@ -14,15 +15,17 @@ fail() {
 
 if [ "${MGX_NGINX_TEST_MODE:-0}" = "1" ]; then
   SITE_PATH="${MGX_NGINX_SITE_PATH:-$DEFAULT_SITE_PATH}"
+  ENABLED_DIR="${MGX_NGINX_ENABLED_DIR:-$DEFAULT_ENABLED_DIR}"
   BACKUP_DIR="${MGX_NGINX_BACKUP_DIR:-$DEFAULT_BACKUP_DIR}"
   SUDO_BIN="${MGX_NGINX_SUDO_BIN:-sudo}"
   NGINX_BIN="${MGX_NGINX_BIN:-/usr/sbin/nginx}"
 else
   SITE_PATH="$DEFAULT_SITE_PATH"
+  ENABLED_DIR="$DEFAULT_ENABLED_DIR"
   BACKUP_DIR="$DEFAULT_BACKUP_DIR"
   SUDO_BIN="sudo"
   NGINX_BIN="/usr/sbin/nginx"
-  if [ -n "${MGX_NGINX_SITE_PATH:-}" ] || [ -n "${MGX_NGINX_BACKUP_DIR:-}" ] || [ -n "${MGX_NGINX_SUDO_BIN:-}" ] || [ -n "${MGX_NGINX_BIN:-}" ]; then
+  if [ -n "${MGX_NGINX_SITE_PATH:-}" ] || [ -n "${MGX_NGINX_ENABLED_DIR:-}" ] || [ -n "${MGX_NGINX_BACKUP_DIR:-}" ] || [ -n "${MGX_NGINX_SUDO_BIN:-}" ] || [ -n "${MGX_NGINX_BIN:-}" ]; then
     fail "path and command overrides are allowed only in test mode"
   fi
 fi
@@ -39,30 +42,21 @@ count_exact_lines() {
 
 snapshot="$(mktemp "${TMPDIR:-/tmp}/mgx-nginx-ws.XXXXXX")"
 candidate="$(mktemp "${TMPDIR:-/tmp}/mgx-nginx-ws-candidate.XXXXXX")"
-nginx_dump="$(mktemp "${TMPDIR:-/tmp}/mgx-nginx-dump.XXXXXX")"
+enabled_snapshot="$(mktemp -d "${TMPDIR:-/tmp}/mgx-nginx-enabled.XXXXXX")"
 cleanup() {
-  rm -f -- "$snapshot" "$candidate" "$nginx_dump"
+  rm -f -- "$snapshot" "$candidate"
+  rm -rf -- "$enabled_snapshot"
 }
 trap cleanup EXIT
 
 if ! run_sudo rsync -rL -- "$SITE_PATH" "$snapshot" 2>/dev/null; then
-  run_sudo "$NGINX_BIN" -T >"$nginx_dump" 2>&1 || fail "could not inspect active nginx configuration"
-  site_candidates="$(awk '
-    /^# configuration file / {
-      current = $0
-      sub(/^# configuration file /, "", current)
-      sub(/:$/, "", current)
-      next
-    }
-    /^[[:space:]]*server_name[[:space:]].*mgx-poker\.com.*;/ {
-      if (current != "") print current
-    }
-  ' "$nginx_dump" | sort -u)"
+  run_sudo rsync -rL -- "${ENABLED_DIR}/" "${enabled_snapshot}/" || fail "could not inspect enabled nginx sites"
+  site_candidates="$(grep -El '^[[:space:]]*server_name[[:space:]].*mgx-poker\.com.*;' "$enabled_snapshot"/* 2>/dev/null | sort -u || true)"
   site_count="$(printf '%s\n' "$site_candidates" | awk 'NF { count++ } END { print count + 0 }')"
   if [ "$site_count" -ne 1 ]; then
     fail "expected exactly one active mgx-poker.com config file, found $site_count"
   fi
-  SITE_PATH="$site_candidates"
+  SITE_PATH="${ENABLED_DIR}/${site_candidates#"${enabled_snapshot}"/}"
   run_sudo rsync -rL -- "$SITE_PATH" "$snapshot" || fail "could not read active nginx site: $SITE_PATH"
 fi
 

@@ -67,8 +67,9 @@ test.describe("tournament reconnect UI", () => {
     await expect(page.getByTestId("tournament-hud")).toBeVisible({ timeout: 20_000 });
     await expect(page.getByTestId("seat-0-name")).toHaveText("Reconnect Hero");
     const nextHand = page.getByRole("button", { name: /Next Hand|次のハンド/i });
-    await expect(nextHand).toBeVisible({ timeout: 10_000 });
-    await nextHand.click();
+    if (await nextHand.isVisible().catch(() => false)) {
+      await nextHand.click();
+    }
 
     await page.waitForFunction(
       () => {
@@ -83,6 +84,15 @@ test.describe("tournament reconnect UI", () => {
       undefined,
       { timeout: 20_000 },
     );
+    const resumedState = await page.evaluate(() =>
+      window.__BADUGI_E2E__?.getStateSnapshot?.(),
+    );
+    expect(resumedState?.handId).toEqual(expect.any(String));
+    expect(
+      ["WAITING_NEXT_HAND", "SAFE_RESET"].includes(
+        String(resumedState?.phase ?? "").toUpperCase(),
+      ),
+    ).toBe(false);
 
     await page.goto(TOURNAMENT_URL, { waitUntil: "load" });
     await expect(page.getByTestId("tournament-resume-panel")).toBeVisible();

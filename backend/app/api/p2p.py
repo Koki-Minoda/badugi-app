@@ -5,8 +5,8 @@ import asyncio
 from collections import defaultdict
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, Response, WebSocket, WebSocketDisconnect, status
+from pydantic import BaseModel, Field, field_validator
 
 from ..core.security import decode_access_token
 from ..dependencies.auth import get_current_user
@@ -28,6 +28,24 @@ class CreateRoomRequest(BaseModel):
 
 class RoomCodeRequest(BaseModel):
     roomCode: str = Field(..., min_length=6, max_length=12)
+
+
+class RoomActionRequest(BaseModel):
+    type: str = Field(..., min_length=1, max_length=16)
+    amount: int = Field(0, ge=0, le=1_000_000, strict=True)
+
+
+class RoomDrawRequest(BaseModel):
+    cardIndexes: list[int] = Field(default_factory=list, max_length=4)
+
+    @field_validator("cardIndexes", mode="before")
+    @classmethod
+    def validate_card_indexes(cls, value):
+        if not isinstance(value, list) or any(
+            isinstance(index, bool) or not isinstance(index, int) for index in value
+        ):
+            raise ValueError("cardIndexes must be an array of integers")
+        return value
 
 
 def _user_id(user: User) -> str:
@@ -55,8 +73,25 @@ def _response(room: Room, user_id: str) -> dict[str, Any]:
     return p2p_room_manager.public_state(room, viewer_id=user_id)
 
 
+def _mark_private(response: Response) -> None:
+    response.headers["Cache-Control"] = "private, no-store"
+    response.headers["Pragma"] = "no-cache"
+
+
+def _viewer_room(room_code: str, user: User) -> Room:
+    room = p2p_room_manager.get_room(room_code)
+    if _user_id(user) not in room.players:
+        raise P2PError("not_in_room", "Player is not in this room")
+    return room
+
+
 @router.post("/rooms")
-def create_room(payload: CreateRoomRequest, user: User = Depends(get_current_user)):
+def create_room(
+    payload: CreateRoomRequest,
+    response: Response,
+    user: User = Depends(get_current_user),
+):
+    _mark_private(response)
     if payload.variantId.lower() != "badugi":
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -77,7 +112,12 @@ def create_room(payload: CreateRoomRequest, user: User = Depends(get_current_use
 
 
 @router.post("/rooms/join")
-def join_room(payload: RoomCodeRequest, user: User = Depends(get_current_user)):
+def join_room(
+    payload: RoomCodeRequest,
+    response: Response,
+    user: User = Depends(get_current_user),
+):
+    _mark_private(response)
     try:
         room = p2p_room_manager.join_room(
             payload.roomCode,
@@ -90,13 +130,83 @@ def join_room(payload: RoomCodeRequest, user: User = Depends(get_current_user)):
 
 
 @router.get("/rooms/{room_code}")
-def get_room(room_code: str, user: User = Depends(get_current_user)):
+def get_room(room_code: str, response: Response, user: User = Depends(get_current_user)):
+    _mark_private(response)
     try:
-        room = p2p_room_manager.get_room(room_code)
-        if _user_id(user) not in room.players:
-            raise P2PError("not_in_room", "Player is not in this room")
+        room = _viewer_room(room_code, user)
     except P2PError as exc:
         raise _http_error(exc) from exc
+    return _response(room, _user_id(user))
+
+
+@router.get("/rooms/{room_code}/state")
+def get_room_state(
+    room_code: str,
+    response: Response,
+    user: User = Depends(get_current_user),
+):
+    """Return only the authenticated viewer's authoritative room state."""
+    _mark_private(response)
+    try:
+        room = _viewer_room(room_code, user)
+    except P2PError as exc:
+        raise _http_error(exc) from exc
+    return _response(room, _user_id(user))
+
+
+@router.post("/rooms/{room_code}/ready")
+async def ready_room(
+    room_code: str,
+    response: Response,
+    user: User = Depends(get_current_user),
+):
+    _mark_private(response)
+    try:
+        room = p2p_room_manager.ready(room_code, user_id=_user_id(user))
+    except P2PError as exc:
+        raise _http_error(exc) from exc
+    await room_sockets.broadcast_state(room)
+    return _response(room, _user_id(user))
+
+
+@router.post("/rooms/{room_code}/action")
+async def act_in_room(
+    room_code: str,
+    payload: RoomActionRequest,
+    response: Response,
+    user: User = Depends(get_current_user),
+):
+    _mark_private(response)
+    try:
+        room = p2p_room_manager.act(
+            room_code,
+            user_id=_user_id(user),
+            action=payload.type,
+            amount=payload.amount,
+        )
+    except P2PError as exc:
+        raise _http_error(exc) from exc
+    await room_sockets.broadcast_state(room)
+    return _response(room, _user_id(user))
+
+
+@router.post("/rooms/{room_code}/draw")
+async def draw_in_room(
+    room_code: str,
+    payload: RoomDrawRequest,
+    response: Response,
+    user: User = Depends(get_current_user),
+):
+    _mark_private(response)
+    try:
+        room = p2p_room_manager.draw(
+            room_code,
+            user_id=_user_id(user),
+            card_indexes=payload.cardIndexes,
+        )
+    except P2PError as exc:
+        raise _http_error(exc) from exc
+    await room_sockets.broadcast_state(room)
     return _response(room, _user_id(user))
 
 

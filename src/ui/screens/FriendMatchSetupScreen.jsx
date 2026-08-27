@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { designTokens } from "../../styles/designTokens.js";
 import { LANGUAGE_STORAGE_KEY, MGX_DEFAULT_LOCALE } from "../../config/mgxLocaleConfig.js";
@@ -6,12 +6,19 @@ import {
   buildRoomWebSocketUrl,
   buildRoomWebSocketProtocols,
   createRoom,
+  actInRoom,
+  drawInRoom,
+  getRoomState,
   joinRoom,
   leaveRoom,
   readRoomAuth,
+  readyRoom,
+  RoomApiError,
 } from "../utils/roomApi.js";
 
 const ACTIVE_ROOM_STORAGE_KEY = "mgx_friend_match_active_room_v1";
+const WS_MAX_RECONNECT_ATTEMPTS = 3;
+const REST_POLL_INTERVAL_MS = 1_000;
 const BADUGI_VARIANT = Object.freeze({
   id: "badugi",
   label: "Badugi",
@@ -381,18 +388,59 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
   const latestSequenceRef = useRef(0);
   const reconnectTimerRef = useRef(null);
   const heartbeatTimerRef = useRef(null);
+  const pollingTimerRef = useRef(null);
+  const transportModeRef = useRef("websocket");
+
+  const acceptRoomEvent = useCallback((event) => {
+    const normalizedEvents = normalizeRoomEvent(event);
+    const accepted = [];
+    let staleCount = 0;
+    normalizedEvents.forEach((entry) => {
+      const sequenceId = getEventSequenceId(entry);
+      if (sequenceId !== null && sequenceId < latestSequenceRef.current) {
+        staleCount += 1;
+        return;
+      }
+      if (sequenceId !== null) {
+        latestSequenceRef.current = sequenceId;
+        setLatestSequenceId(sequenceId);
+      }
+      accepted.push(entry);
+    });
+    if (staleCount > 0) setStaleEventCount((count) => count + staleCount);
+    if (accepted.length > 0) {
+      setP2pTableState((current) =>
+        accepted.reduce((nextState, entry) => applyRoomEventToTableState(nextState, entry), current),
+      );
+      setRoomEvents((previous) => [...accepted.slice().reverse(), ...previous].slice(0, 8));
+    }
+  }, []);
+
+  const closeTerminalSession = useCallback((code) => {
+    setSyncStatus("closed");
+    setStatusMessage(
+      code === 4001
+        ? copy.sessionReplaced
+        : code === 4401
+          ? copy.loginRequired
+          : copy.roomClosed,
+    );
+    persistActiveRoom(null);
+    setCreatedRoom(null);
+    setP2pTableState(EMPTY_TABLE_STATE);
+  }, [copy.loginRequired, copy.roomClosed, copy.sessionReplaced]);
 
   useEffect(() => {
     persistActiveRoom(createdRoom);
   }, [createdRoom]);
 
   useEffect(() => {
-    if (!createdRoom?.roomId || typeof WebSocket === "undefined") return undefined;
+    if (!createdRoom?.roomId) return undefined;
     const url = buildRoomWebSocketUrl(createdRoom.roomId);
-    if (!url) return undefined;
 
     let cancelled = false;
     let reconnectAttempt = 0;
+    transportModeRef.current = "websocket";
     setSyncStatus("connecting");
     setRoomEvents([]);
     setP2pTableState({
@@ -412,13 +460,59 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
     setLatestSequenceId(0);
     setStaleEventCount(0);
     latestSequenceRef.current = 0;
+
+    const pollState = async () => {
+      try {
+        const state = await getRoomState(createdRoom.roomId);
+        if (!cancelled) acceptRoomEvent({ event: "state", payload: state });
+      } catch (error) {
+        if (cancelled) return;
+        if (error instanceof RoomApiError && error.terminalCode) {
+          closeTerminalSession(error.terminalCode);
+          return;
+        }
+        setStatusMessage(error instanceof Error ? error.message : copy.socketNotConnected);
+      }
+    };
+
+    const startPolling = () => {
+      if (cancelled || transportModeRef.current === "polling") return;
+      transportModeRef.current = "polling";
+      socketRef.current = null;
+      setSyncStatus("polling");
+      void pollState();
+      pollingTimerRef.current = window.setInterval(pollState, REST_POLL_INTERVAL_MS);
+    };
+
+    const scheduleReconnect = () => {
+      reconnectAttempt += 1;
+      if (reconnectAttempt >= WS_MAX_RECONNECT_ATTEMPTS) {
+        startPolling();
+        return;
+      }
+      setSyncStatus("reconnecting");
+      const delay = Math.min(5_000, 500 * 2 ** Math.min(reconnectAttempt, 4));
+      reconnectTimerRef.current = window.setTimeout(connect, delay);
+    };
+
     const connect = () => {
       if (cancelled) return;
+      if (!url || typeof WebSocket === "undefined") {
+        startPolling();
+        return;
+      }
       setSyncStatus(reconnectAttempt > 0 ? "reconnecting" : "connecting");
-      const socket = new WebSocket(url, buildRoomWebSocketProtocols());
+      let socket;
+      try {
+        socket = new WebSocket(url, buildRoomWebSocketProtocols());
+      } catch {
+        scheduleReconnect();
+        return;
+      }
       socketRef.current = socket;
       socket.addEventListener("open", () => {
         reconnectAttempt = 0;
+        transportModeRef.current = "websocket";
         setSyncStatus("connected");
         socket.send(JSON.stringify({ event: "sync", payload: {} }));
         if (heartbeatTimerRef.current) window.clearInterval(heartbeatTimerRef.current);
@@ -441,58 +535,19 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
         return;
       }
       if (parsed?.event === "room_closed") {
-        setStatusMessage(copy.roomClosed);
-        persistActiveRoom(null);
-        setCreatedRoom(null);
-        setP2pTableState(EMPTY_TABLE_STATE);
+        closeTerminalSession(4004);
         return;
       }
-      const normalizedEvents = normalizeRoomEvent(parsed);
-      const accepted = [];
-      let staleCount = 0;
-      normalizedEvents.forEach((entry) => {
-        const sequenceId = getEventSequenceId(entry);
-        if (sequenceId !== null && sequenceId < latestSequenceRef.current) {
-          staleCount += 1;
-          return;
-        }
-        if (sequenceId !== null) {
-          latestSequenceRef.current = sequenceId;
-          setLatestSequenceId(sequenceId);
-        }
-        accepted.push(entry);
-      });
-      if (staleCount > 0) {
-        setStaleEventCount((count) => count + staleCount);
-      }
-      if (accepted.length > 0) {
-        setP2pTableState((current) =>
-          accepted.reduce((nextState, entry) => applyRoomEventToTableState(nextState, entry), current),
-        );
-        setRoomEvents((prev) => [...accepted.reverse(), ...prev].slice(0, 8));
-      }
+      acceptRoomEvent(parsed);
       });
       socket.addEventListener("close", (event) => {
         if (cancelled) return;
         if (heartbeatTimerRef.current) window.clearInterval(heartbeatTimerRef.current);
         if ([4001, 4004, 4401].includes(event.code)) {
-          setSyncStatus("closed");
-          setStatusMessage(
-            event.code === 4001
-              ? copy.sessionReplaced
-              : event.code === 4401
-                ? copy.loginRequired
-                : copy.roomClosed,
-          );
-          persistActiveRoom(null);
-          setCreatedRoom(null);
-          setP2pTableState(EMPTY_TABLE_STATE);
+          closeTerminalSession(event.code);
           return;
         }
-        setSyncStatus("reconnecting");
-        reconnectAttempt += 1;
-        const delay = Math.min(5000, 500 * 2 ** Math.min(reconnectAttempt, 4));
-        reconnectTimerRef.current = window.setTimeout(connect, delay);
+        scheduleReconnect();
       });
       socket.addEventListener("error", () => setSyncStatus("error"));
     };
@@ -502,6 +557,7 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
       cancelled = true;
       if (reconnectTimerRef.current) window.clearTimeout(reconnectTimerRef.current);
       if (heartbeatTimerRef.current) window.clearInterval(heartbeatTimerRef.current);
+      if (pollingTimerRef.current) window.clearInterval(pollingTimerRef.current);
       const socket = socketRef.current;
       socketRef.current = null;
       if (socket) socket.close();
@@ -511,9 +567,8 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
     createdRoom?.phase,
     createdRoom?.players,
     createdRoom?.roomId,
-    copy.roomClosed,
-    copy.sessionReplaced,
-    copy.loginRequired,
+    acceptRoomEvent,
+    closeTerminalSession,
     copy.socketNotConnected,
   ]);
 
@@ -576,7 +631,26 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
     navigate("/menu");
   };
 
-  const sendRoomMessage = (event, payload) => {
+  const sendRoomMessage = async (event, payload) => {
+    if (!createdRoom?.roomId) return;
+    if (transportModeRef.current === "polling") {
+      try {
+        const state =
+          event === "ready"
+            ? await readyRoom(createdRoom.roomId)
+            : event === "draw"
+              ? await drawInRoom(createdRoom.roomId, payload.cardIndexes)
+              : await actInRoom(createdRoom.roomId, payload);
+        acceptRoomEvent({ event: "state", payload: state });
+      } catch (error) {
+        if (error instanceof RoomApiError && error.terminalCode) {
+          closeTerminalSession(error.terminalCode);
+          return;
+        }
+        setStatusMessage(error instanceof Error ? error.message : copy.socketNotConnected);
+      }
+      return;
+    }
     const socket = socketRef.current;
     const openState = typeof WebSocket !== "undefined" && WebSocket.OPEN ? WebSocket.OPEN : 1;
     if (!socket || socket.readyState !== openState) {
@@ -588,18 +662,18 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
 
   const sendReady = () => {
     if (!createdRoom?.ownerId) return;
-    sendRoomMessage("ready", {});
+    void sendRoomMessage("ready", {});
   };
 
   const sendAction = (type, amount = 0) => {
     if (!createdRoom?.ownerId) return;
-    sendRoomMessage("action", {
+    void sendRoomMessage("action", {
       type,
       amount,
     });
   };
   const sendDraw = () => {
-    sendRoomMessage("draw", { cardIndexes: selectedCardIndexes });
+    void sendRoomMessage("draw", { cardIndexes: selectedCardIndexes });
   };
   const handleLeave = async () => {
     if (!createdRoom?.roomId) return;

@@ -7,6 +7,10 @@ const mockNavigate = vi.fn();
 const mockCreateRoom = vi.fn();
 const mockJoinRoom = vi.fn();
 const mockLeaveRoom = vi.fn();
+const mockGetRoomState = vi.fn();
+const mockReadyRoom = vi.fn();
+const mockActInRoom = vi.fn();
+const mockDrawInRoom = vi.fn();
 
 vi.mock("react-router-dom", async () => ({
   ...(await vi.importActual("react-router-dom")),
@@ -17,9 +21,19 @@ vi.mock("../../utils/roomApi.js", () => ({
   buildRoomWebSocketUrl: (roomId) => `ws://localhost/ws/p2p/${roomId}?token=test`,
   buildRoomWebSocketProtocols: () => ["mgx-auth", "test"],
   createRoom: (...args) => mockCreateRoom(...args),
+  getRoomState: (...args) => mockGetRoomState(...args),
+  readyRoom: (...args) => mockReadyRoom(...args),
+  actInRoom: (...args) => mockActInRoom(...args),
+  drawInRoom: (...args) => mockDrawInRoom(...args),
   joinRoom: (...args) => mockJoinRoom(...args),
   leaveRoom: (...args) => mockLeaveRoom(...args),
   readRoomAuth: () => ({ accessToken: "test", user: { username: "Hero" } }),
+  RoomApiError: class RoomApiError extends Error {
+    constructor(message, terminalCode = null) {
+      super(message);
+      this.terminalCode = terminalCode;
+    }
+  },
 }));
 
 class MockWebSocket {
@@ -75,6 +89,10 @@ describe("FriendMatchSetupScreen", () => {
     mockCreateRoom.mockReset().mockResolvedValue(room);
     mockJoinRoom.mockReset().mockResolvedValue({ ...room, ownerId: "guest-2" });
     mockLeaveRoom.mockReset().mockResolvedValue({ closed: false });
+    mockGetRoomState.mockReset().mockResolvedValue({ ...room, roomCode: room.roomId, sequenceId: 1 });
+    mockReadyRoom.mockReset().mockResolvedValue({ ...room, roomCode: room.roomId, sequenceId: 2 });
+    mockActInRoom.mockReset().mockResolvedValue({ ...room, roomCode: room.roomId, sequenceId: 3 });
+    mockDrawInRoom.mockReset().mockResolvedValue({ ...room, roomCode: room.roomId, sequenceId: 4 });
   });
 
   afterEach(() => {
@@ -192,5 +210,80 @@ describe("FriendMatchSetupScreen", () => {
     expect(screen.queryByText("ABC234")).toBeNull();
     expect(window.sessionStorage.getItem("mgx_friend_match_active_room_v1")).toBeNull();
     expect(MockWebSocket.sockets).toHaveLength(1);
+  });
+
+  it.each([
+    [4001, /opened in another window/i],
+    [4401, /log in to use Friend Match/i],
+  ])("keeps websocket close code %i terminal", async (code, message) => {
+    render(<FriendMatchSetupScreen language="en" />);
+    const socket = await createAndOpen();
+    await act(async () => socket.listeners.close({ code }));
+    expect(screen.getByText(message)).toBeTruthy();
+    expect(screen.queryByText(/^polling$/i)).toBeNull();
+    expect(MockWebSocket.sockets).toHaveLength(1);
+  });
+
+  it("falls back to REST polling after bounded transient socket failures", async () => {
+    render(<FriendMatchSetupScreen language="en" />);
+    const firstSocket = await createAndOpen();
+    vi.useFakeTimers();
+    try {
+      await act(async () => firstSocket.listeners.close({ code: 1006 }));
+      await act(async () => vi.advanceTimersByTimeAsync(1_000));
+      const secondSocket = MockWebSocket.sockets.at(-1);
+      await act(async () => secondSocket.listeners.close({ code: 1006 }));
+      await act(async () => vi.advanceTimersByTimeAsync(2_000));
+      const thirdSocket = MockWebSocket.sockets.at(-1);
+
+      mockGetRoomState.mockResolvedValue({
+        ...room,
+        roomCode: room.roomId,
+        sequenceId: 5,
+        phase: "waiting",
+        legalActions: [],
+        hand: [],
+        history: [],
+      });
+      await act(async () => thirdSocket.listeners.close({ code: 1006 }));
+      await act(async () => Promise.resolve());
+      expect(screen.getByText(/^polling$/i)).toBeTruthy();
+      expect(mockGetRoomState).toHaveBeenCalledWith("ABC234");
+
+      mockReadyRoom.mockResolvedValue({
+        ...room,
+        roomCode: room.roomId,
+        sequenceId: 6,
+        phase: "draw_1",
+        handId: "ABC234-1",
+        legalActions: ["draw"],
+        hand: ["As", "2h", "7d", "Kc"],
+        history: [],
+      });
+      fireEvent.click(screen.getByTestId("p2p-ready"));
+      await act(async () => Promise.resolve());
+      expect(mockReadyRoom).toHaveBeenCalledWith("ABC234");
+
+      mockDrawInRoom.mockResolvedValue({
+        ...room,
+        roomCode: room.roomId,
+        sequenceId: 7,
+        phase: "bet_1",
+        currentTurnPlayerId: "hero-1",
+        legalActions: ["call", "fold"],
+        hand: ["3s", "2h", "7d", "Kc"],
+        history: [],
+      });
+      fireEvent.click(screen.getByTestId("p2p-card-0"));
+      fireEvent.click(screen.getByTestId("p2p-draw"));
+      await act(async () => Promise.resolve());
+      expect(mockDrawInRoom).toHaveBeenCalledWith("ABC234", [0]);
+
+      fireEvent.click(screen.getByTestId("p2p-call"));
+      await act(async () => Promise.resolve());
+      expect(mockActInRoom).toHaveBeenCalledWith("ABC234", { type: "call", amount: 0 });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

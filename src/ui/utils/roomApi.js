@@ -48,9 +48,26 @@ function normalizeRoom(data) {
   };
 }
 
+export class RoomApiError extends Error {
+  constructor(message, { status = 0, code = null } = {}) {
+    super(message);
+    this.name = "RoomApiError";
+    this.status = status;
+    this.code = code;
+    this.terminalCode =
+      status === 401 || status === 403
+        ? 4401
+        : status === 404 || code === "room_missing"
+          ? 4004
+          : null;
+  }
+}
+
 async function requestJson(path, { method = "GET", body } = {}) {
   const auth = readRoomAuth();
-  if (!auth?.accessToken) throw new Error("login_required");
+  if (!auth?.accessToken) {
+    throw new RoomApiError("login_required", { status: 401, code: "login_required" });
+  }
   const response = await fetch(`${buildApiBaseUrl()}${path}`, {
     method,
     headers: {
@@ -63,7 +80,10 @@ async function requestJson(path, { method = "GET", body } = {}) {
   if (!response.ok) {
     const detail = data?.detail;
     const message = detail?.message ?? detail ?? data?.message ?? data?.error ?? response.statusText;
-    throw new Error(typeof message === "string" ? message : JSON.stringify(message));
+    throw new RoomApiError(
+      typeof message === "string" ? message : JSON.stringify(message),
+      { status: response.status, code: detail?.code ?? data?.code ?? null },
+    );
   }
   return normalizeRoom(data?.data ?? data);
 }
@@ -92,6 +112,34 @@ export async function joinRoom({ roomId }) {
 export async function getRoomInfo(roomId) {
   if (!roomId) throw new Error("roomId is required");
   return requestJson(`/p2p/rooms/${encodeURIComponent(roomId.trim().toUpperCase())}`);
+}
+
+export async function getRoomState(roomId) {
+  if (!roomId) throw new Error("roomId is required");
+  return requestJson(`/p2p/rooms/${encodeURIComponent(roomId.trim().toUpperCase())}/state`);
+}
+
+export async function readyRoom(roomId) {
+  if (!roomId) throw new Error("roomId is required");
+  return requestJson(`/p2p/rooms/${encodeURIComponent(roomId.trim().toUpperCase())}/ready`, {
+    method: "POST",
+  });
+}
+
+export async function actInRoom(roomId, { type, amount = 0 }) {
+  if (!roomId) throw new Error("roomId is required");
+  return requestJson(`/p2p/rooms/${encodeURIComponent(roomId.trim().toUpperCase())}/action`, {
+    method: "POST",
+    body: { type, amount },
+  });
+}
+
+export async function drawInRoom(roomId, cardIndexes = []) {
+  if (!roomId) throw new Error("roomId is required");
+  return requestJson(`/p2p/rooms/${encodeURIComponent(roomId.trim().toUpperCase())}/draw`, {
+    method: "POST",
+    body: { cardIndexes },
+  });
 }
 
 export async function leaveRoom(roomId) {

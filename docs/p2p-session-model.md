@@ -18,10 +18,13 @@ have the same server-authoritative rules and browser coverage.
    player was busted, the button explicitly starts a new match and resets both
    stacks to the configured starting stack.
 
-REST endpoints live under `/api/p2p/rooms`. Live state uses
-`/ws/p2p/{roomCode}`. The access token is sent as a WebSocket subprotocol so it
-does not appear in proxy access-log URLs. Nginx must proxy `/ws/` with WebSocket
-upgrade headers; the checked-in HTTP and HTTPS templates include this rule.
+REST endpoints live under `/api/p2p/rooms`. WebSocket remains the preferred
+live transport at `/ws/p2p/{roomCode}`. The access token is sent as a WebSocket
+subprotocol so it does not appear in proxy access-log URLs. If the browser
+cannot establish a socket after three consecutive transient failures, it
+automatically switches to authenticated HTTPS polling. State, Ready, betting
+actions and draws all remain server-authoritative over this fallback path, so
+Friend Match does not depend on a production nginx WebSocket change.
 
 ## Authority and privacy
 
@@ -29,8 +32,9 @@ upgrade headers; the checked-in HTTP and HTTPS templates include this rule.
   legal actions, current actor and showdown result.
 - The player identity comes from the signed access token. Client-supplied
   player IDs and display names are not trusted.
-- Each socket receives an individualized state. A player sees only their own
-  cards until a showdown reveal.
+- Each socket or authenticated state response receives an individualized,
+  non-cacheable state. A player sees only their own cards until a showdown
+  reveal.
 - Illegal, out-of-turn and duplicate draw actions are rejected by the server.
 - The UI renders only the server's `legalActions` and submits card indexes for
   a draw; it does not run a second local game engine.
@@ -39,7 +43,10 @@ upgrade headers; the checked-in HTTP and HTTPS templates include this rule.
 
 Refreshing or temporarily losing the network reconnects the socket and asks
 for the latest authoritative state. A newer connection for the same user
-replaces the older socket.
+replaces the older socket. Close codes 4001, 4004 and 4401 remain terminal and
+do not fall back. Other repeated connection failures switch to HTTPS polling
+at one-second intervals; successful REST actions apply their returned state
+immediately.
 
 Rooms are currently held in backend memory. They survive browser reconnects
 but do **not** survive a backend restart or work across multiple backend

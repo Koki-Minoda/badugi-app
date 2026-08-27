@@ -266,6 +266,100 @@ def test_authenticated_rest_room_create_join_and_private_info():
     assert forbidden.status_code == 403
 
 
+def test_authenticated_rest_fallback_runs_two_player_ready_draw_and_fold_flow():
+    client = TestClient(app)
+    host = _user(1, "Host")
+    guest = _user(2, "Guest")
+
+    app.dependency_overrides[get_current_user] = lambda: host
+    created = client.post("/api/p2p/rooms", json={"variantId": "badugi"})
+    room_code = created.json()["roomCode"]
+    app.dependency_overrides[get_current_user] = lambda: guest
+    assert client.post("/api/p2p/rooms/join", json={"roomCode": room_code}).status_code == 200
+
+    assert client.post(
+        f"/api/p2p/rooms/{room_code}/action",
+        json={"type": "bet", "amount": "20"},
+    ).status_code == 422
+    assert client.post(
+        f"/api/p2p/rooms/{room_code}/draw",
+        json={"cardIndexes": [True]},
+    ).status_code == 422
+
+    app.dependency_overrides[get_current_user] = lambda: host
+    assert client.post(f"/api/p2p/rooms/{room_code}/ready").status_code == 200
+    app.dependency_overrides[get_current_user] = lambda: guest
+    started = client.post(f"/api/p2p/rooms/{room_code}/ready")
+    assert started.status_code == 200
+
+    def state_for(user):
+        app.dependency_overrides[get_current_user] = lambda: user
+        response = client.get(f"/api/p2p/rooms/{room_code}/state")
+        assert response.status_code == 200
+        return response.json()
+
+    host_state = state_for(host)
+    guest_state = state_for(guest)
+    assert len(host_state["hand"]) == len(guest_state["hand"]) == 4
+    assert set(host_state["hand"]).isdisjoint(guest_state["hand"])
+    assert all("hand" not in player for player in host_state["players"])
+    app.dependency_overrides[get_current_user] = lambda: host
+    private_response = client.get(f"/api/p2p/rooms/{room_code}/state")
+    assert private_response.headers["cache-control"] == "private, no-store"
+
+    actor, other = (
+        (host, guest) if host_state["currentTurnPlayerId"] == "1" else (guest, host)
+    )
+    app.dependency_overrides[get_current_user] = lambda: actor
+    called = client.post(
+        f"/api/p2p/rooms/{room_code}/action",
+        json={"type": "call", "amount": 0},
+    )
+    assert called.status_code == 200
+    app.dependency_overrides[get_current_user] = lambda: other
+    checked = client.post(
+        f"/api/p2p/rooms/{room_code}/action",
+        json={"type": "check", "amount": 0},
+    )
+    assert checked.status_code == 200
+    assert checked.json()["phase"] == "draw_1"
+
+    for _ in range(2):
+        host_state = state_for(host)
+        drawer = host if "draw" in host_state["legalActions"] else guest
+        app.dependency_overrides[get_current_user] = lambda drawer=drawer: drawer
+        drawn = client.post(
+            f"/api/p2p/rooms/{room_code}/draw",
+            json={"cardIndexes": [0] if drawer is host else []},
+        )
+        assert drawn.status_code == 200
+    assert drawn.json()["phase"] == "bet_1"
+
+    host_state = state_for(host)
+    bettor, folder = (
+        (host, guest) if "bet" in host_state["legalActions"] else (guest, host)
+    )
+    app.dependency_overrides[get_current_user] = lambda: bettor
+    assert client.post(
+        f"/api/p2p/rooms/{room_code}/action",
+        json={"type": "bet", "amount": 20},
+    ).status_code == 200
+    app.dependency_overrides[get_current_user] = lambda: folder
+    folded = client.post(
+        f"/api/p2p/rooms/{room_code}/action",
+        json={"type": "fold", "amount": 0},
+    )
+    assert folded.status_code == 200
+    assert folded.json()["phase"] == "showdown"
+    assert folded.json()["showdown"]["reason"] == "fold"
+
+
+def test_rest_fallback_state_requires_authentication():
+    client = TestClient(app)
+    response = client.get("/api/p2p/rooms/ABC234/state")
+    assert response.status_code == 401
+
+
 def test_websocket_requires_token_and_membership():
     client = TestClient(app)
     app.dependency_overrides[get_current_user] = lambda: _user(1, "Host")

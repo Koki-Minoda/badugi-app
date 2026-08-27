@@ -1,4 +1,7 @@
 from pathlib import Path
+import random
+
+import numpy as np
 
 import pytest
 import torch
@@ -19,6 +22,7 @@ from rl.training.train_sixmax_selfplay_badugi_dqn import (
     _load_initial_opponent_agent,
     _margin_batch_size,
     _maybe_imitation_update,
+    _validate_config as validate_sixmax_config,
     parse_args as parse_sixmax_args,
     train_sixmax_selfplay_badugi_dqn,
 )
@@ -75,6 +79,7 @@ def test_sixmax_cli_exposes_windows_training_controls():
         "--learning-rate", "0.0002",
         "--imitation-pretrain-steps", "3",
         "--expert-replay-ratio", "0.2",
+        "--seed", "41",
     ])
 
     assert args.episodes == 12
@@ -84,6 +89,14 @@ def test_sixmax_cli_exposes_windows_training_controls():
     assert args.learning_rate == pytest.approx(0.0002)
     assert args.imitation_pretrain_steps == 3
     assert args.expert_replay_ratio == pytest.approx(0.2)
+    assert args.seed == 41
+
+
+def test_sixmax_config_rejects_unsafe_windows_values():
+    with pytest.raises(ValueError, match="profile_mix_rate"):
+        validate_sixmax_config(SixMaxSelfPlayConfig(profile_mix_rate=1.1))
+    with pytest.raises(ValueError, match="learning_rate"):
+        validate_sixmax_config(SixMaxSelfPlayConfig(learning_rate=0.0))
 
 
 def test_sixmax_fold_margin_batch_size_scales_with_config_batch_size():
@@ -327,6 +340,41 @@ def test_atomic_save_agent_writes_readable_checkpoint(tmp_path: Path):
     assert loaded.obs_dim == 96
     assert loaded.n_actions == 6
     assert not list(tmp_path.glob(".*.tmp"))
+
+
+def test_dqn_checkpoint_restores_optimizer_counters_rng_and_external_state(tmp_path: Path):
+    checkpoint = tmp_path / "resume.pt"
+    random.seed(17)
+    np.random.seed(17)
+    torch.manual_seed(17)
+    agent = DQNAgent(
+        obs_dim=4,
+        n_actions=2,
+        hidden_dim=8,
+        hyperparams=DQNHyperParams(batch_size=2),
+    )
+    batch = {
+        "obs": np.zeros((2, 4), dtype=np.float32),
+        "actions": np.array([0, 1]),
+        "rewards": np.array([0.1, -0.1], dtype=np.float32),
+        "next_obs": np.ones((2, 4), dtype=np.float32),
+        "dones": np.array([0, 1], dtype=np.float32),
+    }
+    agent.update(batch)
+    agent.save(str(checkpoint), training_state={"completed_episodes": 123})
+    expected_rng = (random.random(), float(np.random.random()), float(torch.rand(1).item()))
+
+    random.seed(99)
+    np.random.seed(99)
+    torch.manual_seed(99)
+    loaded = DQNAgent.load(str(checkpoint), device="cpu", restore_training_state=True)
+
+    assert loaded.train_steps == agent.train_steps
+    assert loaded.checkpoint_has_optimizer is True
+    assert loaded.checkpoint_training_state["completed_episodes"] == 123
+    assert loaded.optimizer.state_dict()["state"]
+    restored_rng = (random.random(), float(np.random.random()), float(torch.rand(1).item()))
+    assert restored_rng == pytest.approx(expected_rng)
 
 
 def test_tiny_selfplay_run_falls_back_from_corrupted_pretrained(tmp_path: Path):

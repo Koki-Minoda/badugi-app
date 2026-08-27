@@ -21,12 +21,16 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import platform
 import sys
 import time
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
+import subprocess
 
 import numpy as np
 import torch
@@ -101,6 +105,7 @@ class SixMaxSelfPlayConfig:
     pretrained_opponent: str = ""
     resume_continuation: bool = False
     resume_epsilon: float = 0.25
+    seed: int | None = None
 
 
 def _linear_decay(episode: int, start: float, end: float, decay_episodes: int) -> float:
@@ -144,15 +149,104 @@ def _parse_training_profiles(value: str) -> tuple[str, ...]:
     return profiles
 
 
+def _validate_config(cfg: SixMaxSelfPlayConfig) -> None:
+    if cfg.total_episodes < 0:
+        raise ValueError("total_episodes must be non-negative")
+    if cfg.max_steps_per_episode <= 0:
+        raise ValueError("max_steps_per_episode must be positive")
+    if cfg.batch_size <= 0 or cfg.buffer_capacity < cfg.batch_size:
+        raise ValueError("buffer_capacity must be >= positive batch_size")
+    if cfg.train_every_steps <= 0 or cfg.opponent_update_interval <= 0:
+        raise ValueError("training and opponent update intervals must be positive")
+    if cfg.save_interval < 0 or cfg.log_interval < 0:
+        raise ValueError("save_interval and log_interval must be non-negative")
+    if not 0.0 <= cfg.profile_mix_rate <= 1.0:
+        raise ValueError("profile_mix_rate must be between 0 and 1")
+    if not 0.0 <= cfg.opp_epsilon <= 1.0:
+        raise ValueError("opp_epsilon must be between 0 and 1")
+    if not 0.0 <= cfg.resume_epsilon <= 1.0:
+        raise ValueError("resume_epsilon must be between 0 and 1")
+    if cfg.learning_rate <= 0:
+        raise ValueError("learning_rate must be positive")
+
+
+def _seed_everything(seed: int | None) -> None:
+    if seed is None:
+        return
+    import random
+
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+
+
+def _sha256(path: Path) -> str | None:
+    if not path.exists() or not path.is_file():
+        return None
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _git_commit() -> str | None:
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=PROJECT_ROOT, text=True, stderr=subprocess.DEVNULL
+        ).strip()
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
+def _write_run_manifest(cfg: SixMaxSelfPlayConfig, output_dir: Path) -> Path:
+    pretrained = _resolve_checkpoint_path(cfg.pretrained) if cfg.pretrained else None
+    opponent = _resolve_checkpoint_path(cfg.pretrained_opponent) if cfg.pretrained_opponent else None
+    payload = {
+        "schemaVersion": "badugi-sixmax-training-run-v1",
+        "generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "gitCommit": _git_commit(),
+        "platform": platform.platform(),
+        "python": platform.python_version(),
+        "torch": torch.__version__,
+        "config": asdict(cfg),
+        "inputs": {
+            "pretrained": str(pretrained) if pretrained else None,
+            "pretrainedSha256": _sha256(pretrained) if pretrained else None,
+            "pretrainedOpponent": str(opponent) if opponent else None,
+            "pretrainedOpponentSha256": _sha256(opponent) if opponent else None,
+        },
+        "resumeCapabilities": {
+            "weights": True,
+            "targetNetwork": True,
+            "optimizer": True,
+            "trainSteps": True,
+            "globalRng": True,
+            "environmentRng": True,
+            "episodeCounters": True,
+            "replayBuffers": False,
+            "telemetryHistories": False,
+            "note": (
+                "Replay, expert, fold and call buffers plus rolling telemetry histories "
+                "are intentionally not checkpointed yet."
+            ),
+        },
+    }
+    path = output_dir / "badugi_sixmax_run_manifest.json"
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf8")
+    return path
+
+
 def _build_profile_envs(cfg: SixMaxSelfPlayConfig) -> tuple[ProfiledSixMaxBadugiEnv, ...]:
     if cfg.profile_mix_rate <= 0:
         return ()
     return tuple(
         ProfiledSixMaxBadugiEnv(
             opponent_profile=profile,
+            seed=None if cfg.seed is None else cfg.seed + 100 + index,
             opp_epsilon=cfg.opp_epsilon,
         )
-        for profile in cfg.training_profiles
+        for index, profile in enumerate(cfg.training_profiles)
     )
 
 
@@ -443,7 +537,8 @@ def _teacher_warmup(
     env = BadugiEnv(opponent_profile=cfg.teacher_profiles[0], table_size=6)
     for episode in range(1, teacher_warmup_episodes + 1):
         env.set_opponent_profile(cfg.teacher_profiles[(episode - 1) % len(cfg.teacher_profiles)])
-        obs, _ = env.reset()
+        reset_seed = None if cfg.seed is None else cfg.seed + episode
+        obs, _ = env.reset(seed=reset_seed)
         for _ in range(cfg.max_steps_per_episode):
             mask = env.legal_action_mask()
             if np.random.random() < 0.25:
@@ -491,8 +586,11 @@ def train_sixmax_selfplay_badugi_dqn(
     device: str | torch.device = "cpu",
 ) -> dict:
     cfg = cfg or SixMaxSelfPlayConfig()
+    _validate_config(cfg)
+    _seed_everything(cfg.seed)
     output_dir = Path(cfg.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    manifest_path = _write_run_manifest(cfg, output_dir)
 
     # pretrained があれば checkpoint の hidden_dim を自動検出してロード
     # なければ cfg.hidden_dim でフレッシュスタート
@@ -500,7 +598,11 @@ def train_sixmax_selfplay_badugi_dqn(
     if cfg.pretrained:
         pretrained_path = _resolve_checkpoint_path(cfg.pretrained)
         if pretrained_path.exists():
-            hero = DQNAgent.load(str(pretrained_path), device=device)
+            hero = DQNAgent.load(
+                str(pretrained_path),
+                device=device,
+                restore_training_state=cfg.resume_continuation,
+            )
             hero_checkpoint_label = str(pretrained_path)
             # lr / gamma / tau を上書き
             for pg in hero.optimizer.param_groups:
@@ -525,6 +627,11 @@ def train_sixmax_selfplay_badugi_dqn(
     print(f"[6max-SelfPlay] Hero checkpoint: {hero_checkpoint_label}")
 
     opp = _load_initial_opponent_agent(cfg, hero, device)
+    # Opponent construction initializes a network and consumes torch RNG.
+    # Re-apply the saved state after all agent construction for a faithful
+    # continuation of the checkpoint's global random streams.
+    if cfg.resume_continuation:
+        DQNAgent._restore_rng_state(hero.checkpoint_rng_state)
 
     replay = ReplayBuffer(capacity=cfg.buffer_capacity)
     expert = ReplayBuffer(capacity=min(80_000, cfg.buffer_capacity // 4))
@@ -547,7 +654,7 @@ def train_sixmax_selfplay_badugi_dqn(
         skip_reason = "for continuation" if cfg.resume_continuation else "(0 episodes configured)"
         print(f"[6max-SelfPlay] Teacher warm-up skipped {skip_reason}")
 
-    sp_env = SixMaxBadugiEnv(opp_epsilon=cfg.opp_epsilon)
+    sp_env = SixMaxBadugiEnv(seed=cfg.seed, opp_epsilon=cfg.opp_epsilon)
     sp_env.set_agents(hero, opp)
     profile_envs = _build_profile_envs(cfg)
     if profile_envs:
@@ -556,7 +663,9 @@ def train_sixmax_selfplay_badugi_dqn(
             f"rate={cfg.profile_mix_rate:.3f} profiles={','.join(cfg.training_profiles)}"
         )
 
-    global_step = 0
+    resumed_state = hero.checkpoint_training_state if cfg.resume_continuation else {}
+    global_step = int(resumed_state.get("global_step", 0))
+    completed_episodes_before = int(resumed_state.get("completed_episodes", 0))
     rewards: deque[float] = deque(maxlen=TELEMETRY_HISTORY_MAXLEN)
     # Position-stratified tracking (6 positions)
     pos_rewards: list[deque[float]] = [deque(maxlen=TELEMETRY_HISTORY_MAXLEN) for _ in range(6)]
@@ -567,7 +676,18 @@ def train_sixmax_selfplay_badugi_dqn(
     window_actions = SixMaxActionTelemetry(max_draw_count=4, position_names=POSITION_NAMES_BY_BUTTON_OFFSET)
     total_actions = SixMaxActionTelemetry(max_draw_count=4, position_names=POSITION_NAMES_BY_BUTTON_OFFSET)
     loss = mean_q = imitation_loss = imitation_accuracy = fold_margin_loss = 0.0
-    opponent_updates = 0
+    opponent_updates = int(resumed_state.get("opponent_updates", 0))
+    if cfg.resume_continuation:
+        sp_env_state = resumed_state.get("selfplay_env", {})
+        if sp_env_state.get("rng") is not None:
+            sp_env.rng.setstate(sp_env_state["rng"])
+        sp_env._hero_seat_counter = int(sp_env_state.get("hero_seat_counter", 0))
+        saved_profiles = tuple(resumed_state.get("training_profiles", ()))
+        if saved_profiles == cfg.training_profiles:
+            for env, state in zip(profile_envs, resumed_state.get("profile_envs", [])):
+                if state.get("rng") is not None:
+                    env.rng.setstate(state["rng"])
+                env._hero_seat_counter = int(state.get("hero_seat_counter", 0))
     t_start = time.time()
 
     print(f"[6max-SelfPlay] Starting: {cfg.total_episodes} episodes, device={device}")
@@ -775,8 +895,26 @@ def train_sixmax_selfplay_badugi_dqn(
         if cfg.save_interval > 0 and episode % cfg.save_interval == 0:
             ts = time.strftime("%Y%m%d-%H%M%S")
             ckpt = output_dir / f"badugi_sixmax_dqn_{episode:07d}_{ts}.pt"
-            hero.save(str(ckpt))
-            hero.save(str(output_dir / "badugi_sixmax_dqn_latest.pt"))
+            checkpoint_state = {
+                "completed_episodes": completed_episodes_before + episode,
+                "global_step": global_step,
+                "opponent_updates": opponent_updates,
+                "selfplay_env": {
+                    "rng": sp_env.rng.getstate(),
+                    "hero_seat_counter": sp_env._hero_seat_counter,
+                },
+                "profile_envs": [
+                    {"rng": env.rng.getstate(), "hero_seat_counter": env._hero_seat_counter}
+                    for env in profile_envs
+                ],
+                "training_profiles": list(cfg.training_profiles),
+                "replay_buffers_restored": False,
+            }
+            hero.save(str(ckpt), training_state=checkpoint_state)
+            hero.save(
+                str(output_dir / "badugi_sixmax_dqn_latest.pt"),
+                training_state=checkpoint_state,
+            )
             # Per-position reward summary at checkpoint
             pos_avg = {
                 f"pos_{i}": _recent_mean(pos_rewards[i], 1000)
@@ -803,7 +941,22 @@ def train_sixmax_selfplay_badugi_dqn(
             print(f"[6max-SelfPlay] Saved → {ckpt} | pos_avgs={pos_avg} pos_name_avgs={pos_name_avg}")
 
     latest = output_dir / "badugi_sixmax_dqn_latest.pt"
-    hero.save(str(latest))
+    final_training_state = {
+        "completed_episodes": completed_episodes_before + cfg.total_episodes,
+        "global_step": global_step,
+        "opponent_updates": opponent_updates,
+        "selfplay_env": {
+            "rng": sp_env.rng.getstate(),
+            "hero_seat_counter": sp_env._hero_seat_counter,
+        },
+        "profile_envs": [
+            {"rng": env.rng.getstate(), "hero_seat_counter": env._hero_seat_counter}
+            for env in profile_envs
+        ],
+        "training_profiles": list(cfg.training_profiles),
+        "replay_buffers_restored": False,
+    }
+    hero.save(str(latest), training_state=final_training_state)
 
     summary = _build_summary(
         cfg=cfg,
@@ -815,6 +968,12 @@ def train_sixmax_selfplay_badugi_dqn(
         opponent_updates=opponent_updates,
         latest=latest,
     )
+    summary["completed_episodes_before"] = completed_episodes_before
+    summary["completed_episodes_total"] = completed_episodes_before + cfg.total_episodes
+    summary["optimizer_restored"] = bool(hero.checkpoint_has_optimizer)
+    summary["replay_buffers_restored"] = False
+    summary["seed"] = cfg.seed
+    summary["run_manifest"] = str(manifest_path)
     (output_dir / "badugi_sixmax_dqn_latest_summary.json").write_text(
         json.dumps(summary, indent=2) + "\n", encoding="utf8"
     )
@@ -855,6 +1014,7 @@ def parse_args(argv: list[str] | None = None):
         type=int,
         default=SixMaxSelfPlayConfig.resume_epsilon_decay_episodes,
     )
+    parser.add_argument("--seed", type=int, default=SixMaxSelfPlayConfig.seed)
     parser.add_argument("--device", default=None)
     return parser.parse_args(argv)
 
@@ -890,6 +1050,7 @@ if __name__ == "__main__":
         resume_continuation=args.resume_continuation,
         resume_epsilon=args.resume_epsilon,
         resume_epsilon_decay_episodes=args.resume_epsilon_decay_episodes,
+        seed=args.seed,
     )
     print(
         f"[6max-SelfPlay] device={device} episodes={cfg.total_episodes} "

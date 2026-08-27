@@ -42,6 +42,29 @@ export default defineConfig(({ command }) => {
         "@audio": path.resolve(projectRoot, "src/audio"),
       },
     },
+    build: {
+      chunkSizeWarningLimit: 600,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes("node_modules")) {
+              if (id.includes("onnxruntime-web")) return "onnx-runtime";
+              if (id.includes("react-router")) return "react-router";
+              if (id.includes("react-dom") || id.includes("/react/")) return "react-vendor";
+              return "vendor";
+            }
+            if (
+              id.includes("/src/ai/") ||
+              id.includes("/src/rl/") ||
+              id.includes("/src/games/")
+            ) return "game-runtime";
+            if (id.includes("/src/tournament/")) return "tournament-engine";
+            if (id.includes("/src/ui/") && !id.endsWith("/src/ui/App.jsx")) return "ui-support";
+            return undefined;
+          },
+        },
+      },
+    },
     server: {
       // ★ここが重要：Host ブロック回避
       allowedHosts: ["mgx-poker.com", "www.mgx-poker.com", "162.43.19.143"],

@@ -18,6 +18,7 @@ import {
 
 const ACTIVE_ROOM_STORAGE_KEY = "mgx_friend_match_active_room_v1";
 const WS_MAX_RECONNECT_ATTEMPTS = 3;
+const WS_HEARTBEAT_MS = 2_000;
 const REST_POLL_INTERVAL_MS = 1_000;
 const REST_POLL_HIDDEN_INTERVAL_MS = 5_000;
 const REST_POLL_MAX_BACKOFF_MS = 30_000;
@@ -654,7 +655,7 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
           if (socket.readyState === WebSocket.OPEN) {
             socket.send(JSON.stringify({ event: "heartbeat", payload: {} }));
           }
-        }, 25_000);
+        }, WS_HEARTBEAT_MS);
       });
       socket.addEventListener("message", (event) => {
       const parsed = (() => {

@@ -20,7 +20,8 @@ from .api.auth import router as auth_router
 from .api.variants import router as variants_router
 from .api.p2p import router as p2p_router, ws_router as p2p_ws_router
 from .core.config import get_settings
-from .core.db import engine
+from .core.db import SessionLocal, engine
+from .p2p.manager import p2p_room_manager
 
 
 settings = get_settings()
@@ -94,6 +95,20 @@ def _assert_migrations_up_to_date() -> None:
 
 app = FastAPI(title="Badugi Multi-Game Backend", version="0.1.0")
 app.add_event_handler("startup", bootstrap_schema)
+
+
+def configure_p2p_persistence() -> None:
+    """Enable durable room recovery outside isolated test runs."""
+
+    if (settings.backend_env or "local").lower() == "test":
+        p2p_room_manager.attach_store(None)
+        return
+    from .p2p.persistence import SQLAlchemyRoomStore
+
+    p2p_room_manager.attach_store(SQLAlchemyRoomStore(SessionLocal))
+
+
+app.add_event_handler("startup", configure_p2p_persistence)
 
 app.add_middleware(
     CORSMiddleware,

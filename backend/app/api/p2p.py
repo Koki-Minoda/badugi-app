@@ -148,6 +148,7 @@ def _http_error(exc: P2PError) -> HTTPException:
         "active_room_limit": status.HTTP_409_CONFLICT,
         "stale_command": status.HTTP_409_CONFLICT,
         "command_conflict": status.HTTP_409_CONFLICT,
+        "state_conflict": status.HTTP_409_CONFLICT,
     }
     return HTTPException(
         status_code=code_to_status.get(exc.code, status.HTTP_400_BAD_REQUEST),

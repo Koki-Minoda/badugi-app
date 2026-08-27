@@ -30,6 +30,7 @@ jobs:
       - run: npm run lint
       - run: npm run build
       - run: npm run test:tier1
+      - run: npm run test:deploy:static
 
   backend:
     runs-on: ubuntu-latest

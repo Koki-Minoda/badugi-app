@@ -54,6 +54,7 @@ describe("NLHGameController", () => {
       "AS", "KS", "QD",
       "JC", "10H", "9D",
       "2C", "2D", "2H", "2S", "3C", "3D",
+      "4C", "4D", "4H", "4S",
     ];
     blinds = { sb: 10, bb: 20, ante: 0 };
   });
@@ -74,6 +75,26 @@ describe("NLHGameController", () => {
     expect(sbPlayer.betThisStreet).toBe(blinds.sb);
     expect(bbPlayer.betThisStreet).toBe(blinds.bb);
     expect(snapshot.currentActor).toBe(0);
+  });
+
+  it("posts the button as small blind and gives it first action heads-up", () => {
+    const controller = createController({
+      seats: [
+        { name: "Button", stack: 1000 },
+        { name: "Big Blind", stack: 1000 },
+      ],
+      deckCards,
+      blinds,
+    });
+
+    const snapshot = controller.startNewHand();
+
+    expect(snapshot.dealerIndex).toBe(0);
+    expect(snapshot.smallBlindIndex).toBe(0);
+    expect(snapshot.bigBlindIndex).toBe(1);
+    expect(snapshot.currentActor).toBe(0);
+    expect(snapshot.players[0].betThisStreet).toBe(10);
+    expect(snapshot.players[1].betThisStreet).toBe(20);
   });
 
   it("preserves character metadata from table config", () => {
@@ -154,6 +175,72 @@ describe("NLHGameController", () => {
 
     controller.advanceStreet();
     expect(controller.state.street).toBe("SHOWDOWN");
+    expect(controller.burnedCards).toHaveLength(3);
+    expect(controller.getSnapshot()).not.toHaveProperty("burnedCards");
+  });
+
+  it("rejects out-of-turn and illegal betting actions without changing chips", () => {
+    const controller = createController({ seats, deckCards, blinds });
+    controller.startNewHand();
+    const before = controller.getSnapshot();
+
+    expect(controller.applyPlayerAction({ seatIndex: 1, action: "call" })).toMatchObject({
+      success: false,
+      reason: "Action is out of turn",
+    });
+    expect(controller.applyPlayerAction({ seatIndex: 0, action: "check" })).toMatchObject({
+      success: false,
+      reason: "Cannot check while facing a bet",
+    });
+    expect(controller.applyPlayerAction({ seatIndex: 0, action: "bet", amount: 40 })).toMatchObject({
+      success: false,
+      reason: "Cannot bet after betting has opened; use raise",
+    });
+    expect(controller.getSnapshot().players).toEqual(before.players);
+    expect(controller.state.currentActor).toBe(before.currentActor);
+  });
+
+  it("enforces a full minimum raise and reopens action for earlier callers", () => {
+    const controller = createController({ seats, deckCards, blinds });
+    controller.startNewHand();
+
+    expect(controller.applyPlayerAction({ seatIndex: 0, action: "call" }).success).toBe(true);
+    expect(controller.applyPlayerAction({ seatIndex: 1, action: "call" }).success).toBe(true);
+    const shortRaise = controller.applyPlayerAction({ seatIndex: 2, action: "raise", amount: 10 });
+    expect(shortRaise).toMatchObject({ success: false, reason: "Minimum raise is 20" });
+
+    const fullRaise = controller.applyPlayerAction({ seatIndex: 2, action: "raise", amount: 20 });
+    expect(fullRaise.success).toBe(true);
+    expect(controller.state.currentBet).toBe(40);
+    expect(controller.state.currentActor).toBe(0);
+    expect(controller.state.players[0].hasActedThisStreet).toBe(false);
+    expect(controller.state.players[1].hasActedThisStreet).toBe(false);
+  });
+
+  it("allows calling but not reraising after a short all-in that did not reopen betting", () => {
+    const controller = createController({
+      seats: [
+        { name: "Hero", stack: 1000 },
+        { name: "Short", stack: 25 },
+        { name: "Big Blind", stack: 1000 },
+      ],
+      deckCards,
+      blinds,
+    });
+    controller.startNewHand();
+
+    expect(controller.applyPlayerAction({ seatIndex: 0, action: "call" }).success).toBe(true);
+    expect(controller.applyPlayerAction({ seatIndex: 1, action: "all-in" }).success).toBe(true);
+    expect(controller.state.currentBet).toBe(25);
+    expect(controller.state.raiseRestrictedSeatIndexes).toContain(0);
+    expect(controller.applyPlayerAction({ seatIndex: 2, action: "call" }).success).toBe(true);
+
+    const illegalReraise = controller.applyPlayerAction({ seatIndex: 0, action: "raise", amount: 25 });
+    expect(illegalReraise).toMatchObject({
+      success: false,
+      reason: "Betting was not reopened by the short all-in",
+    });
+    expect(controller.applyPlayerAction({ seatIndex: 0, action: "call" }).success).toBe(true);
   });
 
   it("advances to the flop when the preflop betting round completes", () => {
@@ -188,6 +275,7 @@ describe("NLHGameController", () => {
     controller.state.street = "FLOP";
     controller.state.boardCards = ["2C", "7D", "9H"];
     controller.state.currentBet = 0;
+    controller.state.currentActor = 0;
     controller.raiseCountThisStreet = 0;
     controller.state.players = controller.state.players.map((player) => ({
       ...player,

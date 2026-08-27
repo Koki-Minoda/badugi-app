@@ -1304,11 +1304,21 @@ export default function App() {
   );
 
   useEffect(() => {
-    // ensureSessionController owns the mode/variant policy.  It deliberately
-    // supports Badugi and draw-lowball tournament hands; clearing those refs
-    // here after the mode transition split the UI from its canonical deck.
+    if (mode === "tournament-mtt") {
+      const variant = normalizeAppVariantId(gameVariantRef.current ?? gameVariant);
+      const supportsTournamentController =
+        variant === APP_VARIANT_IDS.BADUGI || isDrawLowballAppVariant(variant);
+      // Tournament hand creation initializes the controller with the actual
+      // seats/stacks.  Never replace that populated state with an empty
+      // createInitialState during the mode-transition effect.
+      if (!supportsTournamentController) {
+        sessionControllerRef.current = null;
+        sessionControllerStateRef.current = null;
+      }
+      return;
+    }
     ensureSessionController();
-  }, [ensureSessionController, mode]);
+  }, [ensureSessionController, gameVariant, mode]);
 
   const sessionSnapshot = !isTournament && uiFromSession ? uiFromSession : null;
   const tournamentHeroBustTerminal =

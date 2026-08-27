@@ -523,16 +523,24 @@ function maybeFinalizeTournament(state) {
  */
 export function computePayouts(state) {
   const payouts = state.config?.payouts ?? [];
+  const rewards = state.config?.rewards ?? [];
   const prizePool =
+    Math.max(0, Number(state.config?.prizePoolTotal) || 0) ||
     Math.max(0, Number(state.totalPlayers) || 0) *
-    Math.max(0, Number(state.config?.startingStack) || 0);
+      Math.max(0, Number(state.config?.startingStack) || 0);
   const payoutMap = new Map(
     payouts.map((payout) => [payout.place, Math.max(0, Number(payout.percent) || 0)]),
   );
+  const rewardMap = new Map(
+    rewards.map((reward) => [reward.place, Math.max(0, Number(reward.amount) || 0)]),
+  );
   Object.values(state.players).forEach((player) => {
+    const reward = rewardMap.get(player.finishPlace);
     const percent = payoutMap.get(player.finishPlace);
     player.payout =
-      typeof percent === "number" && percent > 0
+      typeof reward === "number" && reward > 0
+        ? reward
+        : typeof percent === "number" && percent > 0
         ? Math.floor((percent / 100) * prizePool)
         : 0;
   });

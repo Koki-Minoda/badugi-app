@@ -5784,10 +5784,12 @@ export default function App() {
     const startingStackValue = Math.max(0, Number(config.startingStack) || 0);
     const totalPlayers = state.totalPlayers ?? 0;
     const playersRemaining = state.playersRemaining ?? 0;
-    const prizePoolTotal = startingStackValue * Math.max(0, totalPlayers);
+    const totalChips = startingStackValue * Math.max(0, totalPlayers);
+    const prizePoolTotal =
+      Math.max(0, Number(config.prizePoolTotal) || 0) || totalChips;
     const averageStack =
       playersRemaining > 0
-        ? Math.floor(prizePoolTotal / playersRemaining)
+        ? Math.floor(totalChips / playersRemaining)
         : null;
     const levelInfo = getCurrentLevel(state);
     const currentLevelNumber =
@@ -5813,10 +5815,17 @@ export default function App() {
       }
     }
     const payoutList = Array.isArray(config.payouts) ? config.payouts : [];
+    const rewardMap = new Map(
+      (Array.isArray(config.rewards) ? config.rewards : []).map((reward) => [
+        reward.place,
+        Math.max(0, Number(reward.amount) || 0),
+      ]),
+    );
     const payoutBreakdown = payoutList.slice(0, 3).map((entry, idx) => {
       const percent = typeof entry.percent === "number" ? entry.percent : null;
       const amount =
-        percent != null ? Math.floor((percent / 100) * prizePoolTotal) : null;
+        rewardMap.get(entry.place ?? idx + 1) ??
+        (percent != null ? Math.floor((percent / 100) * prizePoolTotal) : null);
       return {
         place: entry.place ?? idx + 1,
         percent,
@@ -7842,6 +7851,38 @@ export default function App() {
     return nextState;
   }, [mode, applyTournamentStateUpdate]);
 
+  const forceHeroChampionNow = useCallback(() => {
+    if (mode !== "tournament-mtt") return tournamentStateRef.current;
+    let nextState = tournamentStateRef.current;
+    if (!nextState) return null;
+    const heroId = heroTournamentPlayerIdRef.current;
+    const opponentIds = Object.values(nextState.players ?? {})
+      .filter((player) => player && player.id !== heroId && !player.busted)
+      .map((player) => player.id);
+    let handIndex = Math.max(0, Number(nextState.abstractHandCounter) || 0) + 1;
+
+    for (const opponentId of opponentIds) {
+      const opponent = nextState.players?.[opponentId];
+      if (!opponent || opponent.busted || !opponent.tableId) continue;
+      nextState = onTableHandCompleted(nextState, opponent.tableId, {
+        handIndex,
+        seatResults: [
+          {
+            seatIndex: opponent.seatIndex ?? 0,
+            playerId: opponent.id,
+            startingStack: Math.max(0, Number(opponent.stack) || 0),
+            stack: 0,
+          },
+        ],
+      });
+      handIndex += 1;
+      if (nextState.isFinished) break;
+    }
+
+    applyTournamentStateUpdate(nextState, { hydrate: true });
+    return nextState;
+  }, [mode, applyTournamentStateUpdate]);
+
   const fastForwardMTTComplete = useCallback(
     async ({ suppressResultOverlay = false } = {}) => {
       if (mode !== "tournament-mtt") return tournamentStateRef.current;
@@ -9135,6 +9176,7 @@ export default function App() {
       getLastPotSummary: () => lastPotSummaryRef.current,
       getTournamentHudState: () => getTournamentHudSnapshotRef.current(),
       getTournamentPlacements: () => [...tournamentPlacements],
+      getTournamentReview: () => tournamentReview,
       isTournamentOverlayVisible: () => tournamentOverlayVisible,
       getReplayState: () => ({
         currentScreen,
@@ -9146,6 +9188,7 @@ export default function App() {
         runTournamentBackgroundSimulation(iterations),
       completeHeroHands: (hands = 1) => runHeroHandsForE2E(hands),
       forceHeroBust: () => forceHeroBustNow(),
+      forceHeroChampion: () => forceHeroChampionNow(),
       fastForwardMTTComplete: () => fastForwardMTTComplete(),
       getTournamentReplay: () => getStoredTournamentReplay(),
       recordTournamentStageWin: (stageId = "store") => {
@@ -9208,8 +9251,10 @@ export default function App() {
     runTournamentBackgroundSimulation,
     runHeroHandsForE2E,
     forceHeroBustNow,
+    forceHeroChampionNow,
     fastForwardMTTComplete,
     tournamentPlacements,
+    tournamentReview,
     tournamentOverlayVisible,
     tournamentHeroBustTerminal,
     replayHandId,

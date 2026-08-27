@@ -49,10 +49,10 @@ function entrantsFor(config) {
   }));
 }
 
-function completeTableHand(state, tableId, handIndex) {
+function completeTableHand(state, tableId, handIndex, seatResults = []) {
   return onTableHandCompleted(state, tableId, {
     handIndex,
-    seatResults: [],
+    seatResults,
   });
 }
 
@@ -64,6 +64,27 @@ function completeSynchronizedTableRound(state, handIndex) {
   activeTableIds.forEach((tableId) => {
     next = completeTableHand(next, tableId, handIndex);
   });
+  return next;
+}
+
+function finishWithHeroChampion(state) {
+  let next = state;
+  let handIndex = 1;
+  const opponentIds = Object.keys(next.players).filter((playerId) => playerId !== "hero");
+  for (const opponentId of opponentIds) {
+    const opponent = next.players[opponentId];
+    if (!opponent || opponent.busted || !opponent.tableId) continue;
+    next = completeTableHand(next, opponent.tableId, handIndex, [
+      {
+        seatIndex: opponent.seatIndex ?? 0,
+        playerId: opponent.id,
+        startingStack: opponent.stack,
+        stack: 0,
+      },
+    ]);
+    handIndex += 1;
+    if (next.isFinished) break;
+  }
   return next;
 }
 
@@ -128,5 +149,46 @@ describe("canonical tournament stage blind progression", () => {
     expect(state.events.map((event) => event.type)).toEqual(
       expect.arrayContaining(["FINAL_TABLE", "TOP_THREE", "HEADS_UP"]),
     );
+  });
+
+  it.each([
+    ["store", 1_000, 0],
+    ["local", 12_000, 1_000],
+  ])(
+    "finishes the production %s stage with Hero as champion and the configured cash result",
+    (stageId, championPayout, entryFee) => {
+      const config = buildTournamentConfigFromStage(stageId);
+      const state = finishWithHeroChampion(
+        createMTTTournamentState(config, entrantsFor(config)),
+      );
+
+      expect(config.entryFee).toBe(entryFee);
+      expect(state).toMatchObject({
+        isFinished: true,
+        championId: "hero",
+        playersRemaining: 1,
+      });
+      expect(state.players.hero).toMatchObject({
+        finishPlace: 1,
+        payout: championPayout,
+      });
+      expect(state.finishOrder).toHaveLength(config.totalPlayers - 1);
+    },
+  );
+
+  it("expands Local payout ranges without dropping fourth through eighth place", () => {
+    const config = buildTournamentConfigFromStage("local");
+
+    expect(config.rewards).toEqual([
+      expect.objectContaining({ place: 1, amount: 12_000 }),
+      expect.objectContaining({ place: 2, amount: 7_500 }),
+      expect.objectContaining({ place: 3, amount: 4_000 }),
+      expect.objectContaining({ place: 4, amount: 2_200 }),
+      expect.objectContaining({ place: 5, amount: 2_200 }),
+      expect.objectContaining({ place: 6, amount: 1_000 }),
+      expect.objectContaining({ place: 7, amount: 1_000 }),
+      expect.objectContaining({ place: 8, amount: 1_000 }),
+    ]);
+    expect(config.prizePoolTotal).toBe(30_900);
   });
 });

@@ -109,13 +109,22 @@ export function buildTournamentHudPayload({
   const averageStack =
     playersRemaining > 0 ? Math.floor(totalChipsInPlay / playersRemaining) : null;
   const startingStackValue = Math.max(1, Number(config.startingStack) || 1);
-  const prizePoolTotal = startingStackValue * totalEntrants;
+  const prizePoolTotal =
+    Math.max(0, Number(config.prizePoolTotal) || 0) ||
+    startingStackValue * totalEntrants;
 
   const payoutList = Array.isArray(config.payouts) ? [...config.payouts] : [];
+  const rewardMap = new Map(
+    (Array.isArray(config.rewards) ? config.rewards : []).map((reward) => [
+      reward.place,
+      Math.max(0, Number(reward.amount) || 0),
+    ]),
+  );
   const payoutBreakdown = payoutList.slice(0, 3).map((entry, idx) => {
     const percent = typeof entry?.percent === "number" ? entry.percent : null;
     const amount =
-      percent != null ? Math.floor((percent / 100) * prizePoolTotal) : null;
+      rewardMap.get(entry?.place ?? idx + 1) ??
+      (percent != null ? Math.floor((percent / 100) * prizePoolTotal) : null);
     return {
       place: entry?.place ?? idx + 1,
       percent,

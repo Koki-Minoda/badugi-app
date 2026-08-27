@@ -19,6 +19,7 @@ function buildConfigFromStage(stage, blindSheet) {
   const seatsPerTable = Number(stage.tableSize) || DEFAULT_TABLE_SIZE;
   const totalPlayers = resolveTournamentEntrants(stage);
   const payoutStructure = normalizePayoutStructure(stage.prizeTable);
+  const rewards = payoutStructure.rewards ?? [];
   const gameSettings = {
     gameId: stage.gameId ?? stage.eligibility?.gameId ?? "D03",
     gameVariant: stage.gameVariant ?? stage.eligibility?.gameVariant ?? "badugi",
@@ -37,9 +38,15 @@ function buildConfigFromStage(stage, blindSheet) {
     seatsPerTable,
     totalPlayers,
     startingStack: stage.startingStack,
+    entryFee: Number(stage.entryFee) || 0,
+    prizePoolTotal: rewards.reduce(
+      (sum, reward) => sum + Math.max(0, Number(reward.amount) || 0),
+      0,
+    ),
     ...gameSettings,
     levels: blindSheet?.levels ?? [],
     payouts: payoutStructure.payouts,
+    rewards,
   };
 }
 

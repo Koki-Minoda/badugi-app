@@ -61,6 +61,7 @@ export function installE2eTestDriver(apiRef) {
       apiRef.current?.getCurrentHandHistory?.(...args),
     getTournamentHudState: (...args) => apiRef.current?.getTournamentHudState?.(...args),
     getTournamentPlacements: (...args) => apiRef.current?.getTournamentPlacements?.(...args),
+    getTournamentReview: (...args) => apiRef.current?.getTournamentReview?.(...args),
     isTournamentOverlayVisible: (...args) =>
       apiRef.current?.isTournamentOverlayVisible?.(...args),
     startTournamentMTT: (...args) => apiRef.current?.startTournamentMTT?.(...args),
@@ -68,6 +69,7 @@ export function installE2eTestDriver(apiRef) {
       apiRef.current?.simulateTournamentBackground?.(...args),
     completeHeroHands: (...args) => apiRef.current?.completeHeroHands?.(...args),
     forceHeroBust: (...args) => apiRef.current?.forceHeroBust?.(...args),
+    forceHeroChampion: (...args) => apiRef.current?.forceHeroChampion?.(...args),
     fastForwardMTTComplete: (...args) =>
       apiRef.current?.fastForwardMTTComplete?.(...args),
     getTournamentReplay: (...args) => apiRef.current?.getTournamentReplay?.(...args),

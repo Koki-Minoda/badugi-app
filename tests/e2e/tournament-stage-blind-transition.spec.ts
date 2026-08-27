@@ -157,3 +157,96 @@ test("World Championship starts at production scale, advances a level, and reach
   expect(completed.championId).toBeTruthy();
   expect(completed.finishOrder).toHaveLength(config.totalPlayers - 1);
 });
+
+for (const stage of [
+  { stageId: "store", entryFee: 0, payout: 1_000, netResult: 1_000 },
+  { stageId: "local", entryFee: 1_000, payout: 12_000, netResult: 11_000 },
+]) {
+  test(`${stage.stageId} reaches a Hero championship and produces a grounded tournament review`, async ({
+    page,
+  }) => {
+    const config = await startProductionStage(page, stage.stageId);
+    expect(config.entryFee).toBe(stage.entryFee);
+
+    // Build genuine hand/action history before deterministically closing the
+    // remaining field. Review assertions below must stay grounded in these hands.
+    await completeHeroHands(page, 3);
+    const completed = await page.evaluate(() =>
+      window.__BADUGI_E2E__.forceHeroChampion(),
+    );
+
+    expect(completed).toMatchObject({
+      isFinished: true,
+      championId: "hero-player",
+      playersRemaining: 1,
+    });
+    expect(completed.players["hero-player"]).toMatchObject({
+      finishPlace: 1,
+      payout: stage.payout,
+    });
+    expect(completed.finishOrder).toHaveLength(config.totalPlayers - 1);
+
+    const overlay = page.getByTestId("mtt-result-overlay");
+    await expect(overlay).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("mtt-champion-celebration")).toContainText("1st Place");
+    await expect(page.getByTestId("mtt-result-champion")).toContainText(
+      "Stage Gate Hero",
+    );
+    await expect(page.getByTestId("mtt-tournament-review")).toBeVisible();
+
+    await expect
+      .poll(async () =>
+        page.evaluate(() => window.__BADUGI_E2E__.getTournamentReview()),
+      )
+      .toMatchObject({
+        placement: 1,
+        payout: stage.payout,
+        bustHand: null,
+        result: {
+          placement: 1,
+          payout: stage.payout,
+          buyIn: stage.entryFee,
+          netResult: stage.netResult,
+          championId: "hero-player",
+        },
+      });
+
+    // expect.poll assertions do not return the sampled value, so read the
+    // settled review once more for cross-reference integrity checks.
+    const settledReview = await page.evaluate(() =>
+      window.__BADUGI_E2E__.getTournamentReview(),
+    );
+    expect(settledReview.totalHands).toBeGreaterThanOrEqual(3);
+    expect(settledReview.heroActions.length).toBeGreaterThan(0);
+    expect(settledReview.reviewDepth).toBe("hand-history");
+    expect(settledReview.reviewSummary.facts.length).toBeGreaterThan(0);
+    expect(settledReview.reviewSummary.nextActions.length).toBeGreaterThan(0);
+    expect(settledReview.dataQuality.limitations).not.toEqual(
+      expect.arrayContaining([
+        "hand-history-missing",
+        "hero-actions-missing",
+        "bust-hand-not-identified",
+      ]),
+    );
+
+    const handIds = new Set(settledReview.hands.map((hand) => hand.handId));
+    const actionKeys = new Set(
+      settledReview.heroActions.map((action) => `${action.handId}:${action.actionSeq}`),
+    );
+    settledReview.keyHands.forEach((keyHand) => {
+      expect(handIds.has(keyHand.handId)).toBe(true);
+      keyHand.evidence.forEach((evidence) => {
+        expect(handIds.has(evidence.handId)).toBe(true);
+        if (Number.isFinite(evidence.actionSeq)) {
+          expect(actionKeys.has(`${evidence.handId}:${evidence.actionSeq}`)).toBe(true);
+        }
+      });
+    });
+
+    const reviewPanel = page.getByTestId("mtt-tournament-review");
+    await expect(reviewPanel).toContainText("確認できた事実");
+    await expect(reviewPanel).toContainText("解釈");
+    await expect(reviewPanel).toContainText("次の一手");
+    await expect(reviewPanel).toContainText(String(stage.payout));
+  });
+}

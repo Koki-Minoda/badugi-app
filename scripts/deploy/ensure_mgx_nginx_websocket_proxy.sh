@@ -39,13 +39,37 @@ count_exact_lines() {
 
 snapshot="$(mktemp "${TMPDIR:-/tmp}/mgx-nginx-ws.XXXXXX")"
 candidate="$(mktemp "${TMPDIR:-/tmp}/mgx-nginx-ws-candidate.XXXXXX")"
+nginx_dump="$(mktemp "${TMPDIR:-/tmp}/mgx-nginx-dump.XXXXXX")"
 cleanup() {
-  rm -f -- "$snapshot" "$candidate"
+  rm -f -- "$snapshot" "$candidate" "$nginx_dump"
 }
 trap cleanup EXIT
 
-test -r "$SITE_PATH" || fail "active nginx site is not readable: $SITE_PATH"
-cat -- "$SITE_PATH" >"$snapshot"
+if ! run_sudo rsync -rL -- "$SITE_PATH" "$snapshot" 2>/dev/null; then
+  run_sudo "$NGINX_BIN" -T >"$nginx_dump" 2>&1 || fail "could not inspect active nginx configuration"
+  site_candidates="$(awk '
+    /^# configuration file / {
+      current = $0
+      sub(/^# configuration file /, "", current)
+      sub(/:$/, "", current)
+      next
+    }
+    /^[[:space:]]*server_name[[:space:]].*mgx-poker\.com.*;/ {
+      if (current != "") print current
+    }
+  ' "$nginx_dump" | sort -u)"
+  site_count="$(printf '%s\n' "$site_candidates" | awk 'NF { count++ } END { print count + 0 }')"
+  if [ "$site_count" -ne 1 ]; then
+    fail "expected exactly one active mgx-poker.com config file, found $site_count"
+  fi
+  SITE_PATH="$site_candidates"
+  run_sudo rsync -rL -- "$SITE_PATH" "$snapshot" || fail "could not read active nginx site: $SITE_PATH"
+fi
+
+resolved_site_path="$(readlink -f "$SITE_PATH" 2>/dev/null || true)"
+if [ -n "$resolved_site_path" ]; then
+  SITE_PATH="$resolved_site_path"
+fi
 
 server_name_count="$(count_exact_lines "^[[:space:]]*server_name[[:space:]].*mgx-poker\\.com.*;[[:space:]]*$" "$snapshot")"
 if [ "$server_name_count" -lt 1 ]; then
@@ -104,13 +128,13 @@ fi
 timestamp="$(date -u +%Y%m%dT%H%M%SZ).$$"
 backup_path="${BACKUP_DIR}/mgx-poker.com.${timestamp}.conf"
 run_sudo mkdir -p -- "$BACKUP_DIR"
-run_sudo rsync -a -- "$SITE_PATH" "$backup_path"
+run_sudo rsync -rL -- "$SITE_PATH" "$backup_path"
 chmod 0644 "$candidate"
-run_sudo rsync -a -- "$candidate" "$SITE_PATH"
+run_sudo rsync -r --inplace -- "$candidate" "$SITE_PATH"
 
 if ! run_sudo "$NGINX_BIN" -t; then
   echo "[mgx-nginx-ws] nginx validation failed; restoring $backup_path" >&2
-  run_sudo rsync -a -- "$backup_path" "$SITE_PATH"
+  run_sudo rsync -r --inplace -- "$backup_path" "$SITE_PATH"
   run_sudo "$NGINX_BIN" -t >/dev/null 2>&1 || true
   fail "candidate rejected by nginx; original site restored"
 fi

@@ -1,10 +1,13 @@
 import React from "react";
+import { TournamentReviewSection } from "./TournamentResultOverlay.jsx";
 
 export default function HeroBustOverlay({
   visible,
   title = "In-the-money Results",
   heroSummary,
   inMoneyPlacements = [],
+  tournamentReview = null,
+  onOpenReviewReplay,
   onBackToMenu,
 }) {
   if (!visible) return null;
@@ -29,7 +32,7 @@ export default function HeroBustOverlay({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
       <div
-        className="w-full max-w-xl bg-slate-900 text-white rounded-3xl p-8 space-y-6 shadow-2xl border border-rose-400/30"
+        className="max-h-[calc(100dvh-2rem)] w-full max-w-xl space-y-6 overflow-y-auto rounded-3xl border border-rose-400/30 bg-slate-900 p-5 text-white shadow-2xl sm:p-8"
         data-testid="mtt-hero-bust-overlay"
       >
         <header className="text-center space-y-2">
@@ -79,6 +82,13 @@ export default function HeroBustOverlay({
             )}
           </div>
         </div>
+
+        {tournamentReview ? (
+          <TournamentReviewSection
+            tournamentReview={tournamentReview}
+            onOpenReviewReplay={onOpenReviewReplay}
+          />
+        ) : null}
 
         <div className="flex justify-center">
           <button

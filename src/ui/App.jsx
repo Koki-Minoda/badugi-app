@@ -5943,6 +5943,29 @@ export default function App() {
       heroTableId: heroPlayer?.tableId ?? null,
       heroSeatIndex:
         typeof heroPlayer?.seatIndex === "number" ? heroPlayer.seatIndex : null,
+      heroBusted: Boolean(heroPlayer?.busted),
+      heroFinishPlace: heroPlayer?.finishPlace ?? null,
+      finishOrderCount: Array.isArray(state.finishOrder)
+        ? state.finishOrder.length
+        : 0,
+      abstractHandCounter: Number(state.abstractHandCounter) || 0,
+      levelEvents: (state.events ?? [])
+        .filter((event) => event?.type === "LEVEL_ADVANCED")
+        .map((event) => ({
+          fromLevel: event.fromLevel,
+          toLevel: event.toLevel,
+          playersRemaining: event.playersRemaining,
+        })),
+      milestoneEvents: (state.events ?? [])
+        .filter((event) =>
+          [
+            "MONEY_BUBBLE",
+            "FINAL_TABLE",
+            "TOP_THREE",
+            "HEADS_UP",
+          ].includes(event?.type),
+        )
+        .map((event) => event.type),
       currentVariantLabel:
         tournamentHudState?.currentVariantLabel ??
         baseHud.currentVariantLabel ??

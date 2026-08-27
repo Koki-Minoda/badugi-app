@@ -135,7 +135,10 @@ function buildReviewView(review) {
   };
 }
 
-function TournamentReviewSection({ tournamentReview, onOpenReviewReplay }) {
+export function TournamentReviewSection({
+  tournamentReview,
+  onOpenReviewReplay,
+}) {
   const view = buildReviewView(tournamentReview);
   const showReviewLists = Boolean(tournamentReview);
   return (

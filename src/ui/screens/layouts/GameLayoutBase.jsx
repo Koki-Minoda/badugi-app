@@ -1403,6 +1403,8 @@ export default function GameLayoutBase({
         title={heroBustSummary?.title}
         heroSummary={heroBustSummary?.hero}
         inMoneyPlacements={heroBustSummary?.inMoney ?? []}
+        tournamentReview={tournamentReview}
+        onOpenReviewReplay={onOpenTournamentReviewReplay}
         onBackToMenu={onTournamentBackToMenu}
       />
       <TournamentResultOverlay

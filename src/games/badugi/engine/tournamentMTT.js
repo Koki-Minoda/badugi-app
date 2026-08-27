@@ -214,7 +214,14 @@ function maybeAdvanceLevel(state) {
     pending.every((table) => table.handsPlayedAtThisLevel >= currentLevel.handsThisLevel)
   ) {
     if (state.levelIndex < state.config.levels.length - 1) {
+      const previousLevel = state.levelIndex + 1;
       state.levelIndex += 1;
+      appendTournamentEvent(state, {
+        type: "LEVEL_ADVANCED",
+        fromLevel: previousLevel,
+        toLevel: state.levelIndex + 1,
+        playersRemaining: state.playersRemaining,
+      });
       if (DEBUG_TOURNAMENT) {
         const level = state.config.levels[state.levelIndex];
         logMTT("LEVEL", {
@@ -307,7 +314,7 @@ function maybeEmitTournamentMilestoneEvents(state) {
   const tablesActive = Math.max(1, activeTables(state).length || targetActiveTableCount(state));
   const paidPlaces = getPaidPlaces(state);
   if (
-    state.playersRemaining === paidPlaces + 1 &&
+    state.playersRemaining <= paidPlaces + 1 &&
     !hasTournamentEvent(state, "MONEY_BUBBLE")
   ) {
     appendTournamentEvent(state, {
@@ -316,13 +323,13 @@ function maybeEmitTournamentMilestoneEvents(state) {
       paidPlaces,
     });
   }
-  if (state.playersRemaining === 3 && !hasTournamentEvent(state, "TOP_THREE")) {
+  if (state.playersRemaining <= 3 && !hasTournamentEvent(state, "TOP_THREE")) {
     appendTournamentEvent(state, {
       type: "TOP_THREE",
       playersRemaining: state.playersRemaining,
     });
   }
-  if (state.playersRemaining === 2 && !hasTournamentEvent(state, "HEADS_UP")) {
+  if (state.playersRemaining <= 2 && !hasTournamentEvent(state, "HEADS_UP")) {
     appendTournamentEvent(state, {
       type: "HEADS_UP",
       playersRemaining: state.playersRemaining,

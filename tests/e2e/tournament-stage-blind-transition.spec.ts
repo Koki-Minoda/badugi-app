@@ -32,6 +32,13 @@ async function installLocalAuthenticatedSession(page: Page, stageId: string) {
     });
   });
   await page.addInitScript(({ selectedStageId }) => {
+    let randomState = selectedStageId === "local" ? 0x10ca1 : 0x570ae;
+    Math.random = () => {
+      randomState = (randomState + 0x6d2b79f5) | 0;
+      let value = Math.imul(randomState ^ (randomState >>> 15), 1 | randomState);
+      value = (value + Math.imul(value ^ (value >>> 7), 61 | value)) ^ value;
+      return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+    };
     window.localStorage.setItem(
       "mgx_auth",
       JSON.stringify({
@@ -158,6 +165,172 @@ async function completeHeroHands(page: Page, hands: number, policy = "safe") {
   }
 }
 
+async function advanceFromCompletedHand(page: Page) {
+  const breakOverlay = page.getByTestId("tournament-break-overlay");
+  if (await breakOverlay.isVisible().catch(() => false)) {
+    await page
+      .getByRole("button", { name: "休憩を終了して続ける" })
+      .click();
+    await expect(breakOverlay).toBeHidden();
+  }
+  const nextHand = page.getByRole("button", { name: /Next Hand|次のハンド/i });
+  await expect(nextHand).toBeVisible({ timeout: 10_000 });
+  await nextHand.click({ timeout: 5_000 }).catch(async (error) => {
+    const phase = await page.evaluate(
+      () => window.__BADUGI_E2E__?.getStateSnapshot?.()?.phase,
+    );
+    if (["SHOWDOWN", "HAND_RESULT", "WAITING_NEXT_HAND"].includes(
+      String(phase ?? "").toUpperCase(),
+    )) {
+      throw error;
+    }
+  });
+  await page.waitForFunction(
+    () => {
+      const phase = window.__BADUGI_E2E__?.getStateSnapshot?.()?.phase;
+      return !["SHOWDOWN", "HAND_RESULT", "WAITING_NEXT_HAND"].includes(
+        String(phase ?? "").toUpperCase(),
+      );
+    },
+    undefined,
+    { timeout: 10_000 },
+  );
+}
+
+async function completeProductionTournament(page: Page, stageId: string) {
+  const config = await startProductionStage(page, stageId);
+  const levelsVisited = new Set<number>();
+  const remainingTrace: number[] = [];
+  let realHeroHands = 0;
+  let backgroundCyclesAfterHeroBust = 0;
+
+  for (let step = 0; step < 500; step += 1) {
+    const hud = await getHud(page);
+    expect(hud).toBeTruthy();
+    levelsVisited.add(hud.currentLevelNumber);
+    remainingTrace.push(hud.playersRemaining);
+    expect(hud.playersRemaining).toBeGreaterThan(0);
+    expect(hud.playersRemaining).toBeLessThanOrEqual(config.totalPlayers);
+    expect(hud.tablesActive).toBeGreaterThan(0);
+    expect(hud.tablesActive).toBeLessThanOrEqual(
+      Math.ceil(hud.playersRemaining / config.seatsPerTable),
+    );
+
+    const expectedLevel = config.levels.find(
+      (level) => level.levelIndex === hud.currentLevelNumber,
+    );
+    expect(expectedLevel).toBeTruthy();
+    expect(hud.currentBlinds).toEqual({
+      sb: expectedLevel.smallBlind,
+      bb: expectedLevel.bigBlind,
+      ante: expectedLevel.ante,
+    });
+
+    if (hud.isFinished) {
+      expect(hud.championId).toBeTruthy();
+      expect(hud.playersRemaining).toBe(1);
+      expect(hud.finishOrderCount).toBe(config.totalPlayers - 1);
+      for (let index = 1; index < remainingTrace.length; index += 1) {
+        expect(remainingTrace[index]).toBeLessThanOrEqual(
+          remainingTrace[index - 1],
+        );
+      }
+      expect(hud.levelEvents).toEqual(
+        Array.from(
+          { length: Math.max(0, hud.currentLevelNumber - 1) },
+          (_, index) =>
+            expect.objectContaining({
+              fromLevel: index + 1,
+              toLevel: index + 2,
+            }),
+        ),
+      );
+      expect(hud.milestoneEvents).toEqual(
+        expect.arrayContaining(["FINAL_TABLE", "TOP_THREE", "HEADS_UP"]),
+      );
+      await expect
+        .poll(() =>
+          page.evaluate(() => ({
+            resultVisible: Boolean(
+              document.querySelector('[data-testid="mtt-result-overlay"]') ||
+                document.querySelector(
+                  '[data-testid="mtt-hero-bust-overlay"]',
+                ),
+            ),
+            placements: window.__BADUGI_E2E__.getTournamentPlacements(),
+            review: window.__BADUGI_E2E__.getTournamentReview(),
+          })),
+        )
+        .toMatchObject({
+          resultVisible: true,
+          placements: expect.arrayContaining([
+            expect.objectContaining({ place: 1, id: hud.championId }),
+          ]),
+          review: expect.objectContaining({
+            placement: hud.heroFinishPlace,
+            totalHands: expect.any(Number),
+          }),
+        });
+      const review = await page.evaluate(() =>
+        window.__BADUGI_E2E__.getTournamentReview(),
+      );
+      await expect(page.getByTestId("mtt-tournament-review")).toBeVisible();
+      expect(review.totalHands).toBeGreaterThan(0);
+      expect(review.heroActions.length).toBeGreaterThan(0);
+      expect(review.reviewSummary.facts.length).toBeGreaterThan(0);
+      expect(review.reviewSummary.nextActions.length).toBeGreaterThan(0);
+      const handIds = new Set(review.hands.map((hand) => hand.handId));
+      const actionKeys = new Set(
+        review.heroActions.map(
+          (action) => `${action.handId}:${action.actionSeq}`,
+        ),
+      );
+      review.keyHands.forEach((keyHand) => {
+        expect(handIds.has(keyHand.handId)).toBe(true);
+        keyHand.evidence.forEach((evidence) => {
+          expect(handIds.has(evidence.handId)).toBe(true);
+          if (Number.isFinite(evidence.actionSeq)) {
+            expect(
+              actionKeys.has(`${evidence.handId}:${evidence.actionSeq}`),
+            ).toBe(true);
+          }
+        });
+      });
+      return {
+        config,
+        hud,
+        realHeroHands,
+        backgroundCyclesAfterHeroBust,
+        levelsVisited: [...levelsVisited],
+        review,
+      };
+    }
+
+    if (hud.heroBusted) {
+      await page.evaluate(() =>
+        window.__BADUGI_E2E__.simulateTournamentBackground(1),
+      );
+      backgroundCyclesAfterHeroBust += 1;
+      continue;
+    }
+
+    const result = await playOneHandProgression(page, {
+      maxSteps: 110,
+      policy: "safe",
+      requireHeroButtonClick: false,
+    });
+    expect(result.status).toBe("PASS");
+    realHeroHands += 1;
+
+    const afterHand = await getHud(page);
+    if (!afterHand.isFinished && !afterHand.heroBusted) {
+      await advanceFromCompletedHand(page);
+    }
+  }
+
+  throw new Error(`Tournament did not finish: ${stageId}`);
+}
+
 test.describe.configure({ timeout: 180_000 });
 
 for (const stage of [
@@ -239,36 +412,34 @@ test("scheduled tournament break blocks the next hand, counts down, and resumes"
   await expect.poll(async () => (await getHud(page))?.currentLevelNumber).toBe(2);
 });
 
-test("Store survives a 20-hand real-action soak without actor or phase freeze", async ({ page }) => {
-  await startProductionStage(page, "store");
-  await completeHeroHands(page, 20, "heroFold");
-
-  await expectCurrentBlindDisplay(page, { level: 5, sb: 50, bb: 100, ante: 5 });
-  const audit = await page.evaluate(() => ({
-    hud: window.__BADUGI_E2E__.getTournamentHudState(),
-    hands: window.__BADUGI_E2E__.getHandHistory(),
-    phase: window.__BADUGI_E2E__.getStateSnapshot().phase,
+test("Store runs from its production field to a verified champion", async ({ page }) => {
+  const completed = await completeProductionTournament(page, "store");
+  expect(completed.realHeroHands).toBeGreaterThan(0);
+  expect(completed.levelsVisited.length).toBeGreaterThan(1);
+  console.info("[MTT_COMPLETION]", JSON.stringify({
+    stageId: "store",
+    realHeroHands: completed.realHeroHands,
+    backgroundHands: completed.hud.abstractHandCounter,
+    finalLevel: completed.hud.currentLevelNumber,
+    heroPlace: completed.hud.heroFinishPlace,
+    championId: completed.hud.championId,
   }));
-  expect(audit.hands.length).toBeGreaterThanOrEqual(20);
-  expect(["SHOWDOWN", "HAND_RESULT", "WAITING_NEXT_HAND"]).not.toContain(
-    String(audit.phase).toUpperCase(),
-  );
-  expect(audit.hud.playersRemaining).toBeGreaterThan(1);
 });
 
-test("Local survives 15 real-action hands across ante levels", async ({ page }) => {
-  await startProductionStage(page, "local");
-  await completeHeroHands(page, 15, "heroFold");
-
-  await expectCurrentBlindDisplay(page, { level: 4, sb: 100, bb: 200, ante: 25 });
-  const audit = await page.evaluate(() => ({
-    hands: window.__BADUGI_E2E__.getHandHistory(),
-    phase: window.__BADUGI_E2E__.getStateSnapshot().phase,
+test("Local runs from its production field through ante levels to a verified champion", async ({
+  page,
+}) => {
+  const completed = await completeProductionTournament(page, "local");
+  expect(completed.realHeroHands).toBeGreaterThan(0);
+  expect(completed.hud.currentLevelNumber).toBeGreaterThanOrEqual(4);
+  console.info("[MTT_COMPLETION]", JSON.stringify({
+    stageId: "local",
+    realHeroHands: completed.realHeroHands,
+    backgroundHands: completed.hud.abstractHandCounter,
+    finalLevel: completed.hud.currentLevelNumber,
+    heroPlace: completed.hud.heroFinishPlace,
+    championId: completed.hud.championId,
   }));
-  expect(audit.hands.length).toBeGreaterThanOrEqual(15);
-  expect(["SHOWDOWN", "HAND_RESULT", "WAITING_NEXT_HAND"]).not.toContain(
-    String(audit.phase).toUpperCase(),
-  );
 });
 
 for (const stage of [

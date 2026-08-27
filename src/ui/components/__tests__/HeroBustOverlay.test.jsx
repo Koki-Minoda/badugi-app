@@ -46,6 +46,30 @@ describe("HeroBustOverlay", () => {
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps the grounded tournament review available after elimination", () => {
+    render(
+      <HeroBustOverlay
+        visible
+        heroSummary={{ place: 9, payout: 0 }}
+        tournamentReview={{
+          result: { placement: 9, payout: 0 },
+          hands: [{ handId: "hand-1" }],
+          reviewSummary: {
+            facts: [{ text: "Hand hand-1でコールを記録", evidence: [] }],
+            interpretations: [],
+            nextActions: [{ text: "次回はポジションを確認", evidence: [] }],
+          },
+          keyHands: [],
+        }}
+        onBackToMenu={() => {}}
+      />,
+    );
+
+    expect(screen.getByTestId("mtt-tournament-review")).toBeTruthy();
+    expect(screen.getByText("確認できた事実")).toBeTruthy();
+    expect(screen.getByText("次の一手")).toBeTruthy();
+  });
+
   it("returns null when not visible", () => {
     const { container } = render(<HeroBustOverlay visible={false} />);
     expect(container.firstChild).toBeNull();

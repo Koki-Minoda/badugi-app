@@ -54,8 +54,13 @@ Refreshing or temporarily losing the network reconnects the socket and asks
 for the latest authoritative state. A newer connection for the same user
 replaces the older socket. Close codes 4001, 4004 and 4401 remain terminal and
 do not fall back. Other repeated connection failures switch to HTTPS polling
-at one-second intervals; successful REST actions apply their returned state
-immediately.
+with the next read scheduled only after the previous one completes. Successful
+foreground reads use a one-second delay; hidden tabs slow down, and network,
+5xx or 429 responses use jittered exponential backoff while honoring
+`Retry-After`. Successful REST actions apply their returned state immediately.
+The backend also bounds state reads per authenticated user and room, with
+expiring, size-limited in-memory counters, so extra tabs cannot create
+unbounded polling load.
 
 Rooms are currently held in backend memory. They survive browser reconnects
 but do **not** survive a backend restart or work across multiple backend

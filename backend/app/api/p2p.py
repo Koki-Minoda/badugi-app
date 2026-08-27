@@ -2,9 +2,13 @@
 from __future__ import annotations
 
 import asyncio
-from collections import defaultdict
+from collections import defaultdict, deque
+from dataclasses import dataclass, field
+import math
 import re
-from typing import Any
+import threading
+import time
+from typing import Any, Callable
 
 from fastapi import APIRouter, Depends, HTTPException, Response, WebSocket, WebSocketDisconnect, status
 from pydantic import BaseModel, Field, field_validator
@@ -17,6 +21,75 @@ from ..p2p.manager import P2PError, Room, p2p_room_manager
 
 router = APIRouter(prefix="/p2p", tags=["p2p"])
 ws_router = APIRouter()
+
+STATE_READ_WINDOW_SECONDS = 10.0
+STATE_READ_MAX_REQUESTS = 30
+STATE_READ_BUCKET_TTL_SECONDS = 10 * 60
+STATE_READ_MAX_BUCKETS = 4096
+
+
+@dataclass
+class _StateReadBucket:
+    timestamps: deque[float] = field(default_factory=deque)
+    last_seen: float = 0.0
+
+
+class StateReadRateLimiter:
+    """Bound authenticated room-state reads without unbounded key growth."""
+
+    def __init__(
+        self,
+        *,
+        max_requests: int = STATE_READ_MAX_REQUESTS,
+        window_seconds: float = STATE_READ_WINDOW_SECONDS,
+        bucket_ttl_seconds: float = STATE_READ_BUCKET_TTL_SECONDS,
+        max_buckets: int = STATE_READ_MAX_BUCKETS,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+        self.bucket_ttl_seconds = bucket_ttl_seconds
+        self.max_buckets = max_buckets
+        self._clock = clock
+        self._buckets: dict[tuple[str, str], _StateReadBucket] = {}
+        self._lock = threading.Lock()
+
+    def reset(self) -> None:
+        with self._lock:
+            self._buckets.clear()
+
+    def check(self, *, user_id: str, room_code: str) -> int | None:
+        """Return Retry-After seconds when limited, otherwise consume one read."""
+
+        now = self._clock()
+        cutoff = now - self.window_seconds
+        key = (user_id, room_code)
+        with self._lock:
+            self._prune(now)
+            bucket = self._buckets.get(key)
+            if bucket is None:
+                if len(self._buckets) >= self.max_buckets:
+                    oldest = min(self._buckets, key=lambda item: self._buckets[item].last_seen)
+                    self._buckets.pop(oldest, None)
+                bucket = _StateReadBucket()
+                self._buckets[key] = bucket
+            while bucket.timestamps and bucket.timestamps[0] <= cutoff:
+                bucket.timestamps.popleft()
+            bucket.last_seen = now
+            if len(bucket.timestamps) >= self.max_requests:
+                return max(1, math.ceil(bucket.timestamps[0] + self.window_seconds - now))
+            bucket.timestamps.append(now)
+            return None
+
+    def _prune(self, now: float) -> None:
+        stale_before = now - self.bucket_ttl_seconds
+        for key in [
+            key for key, bucket in self._buckets.items() if bucket.last_seen < stale_before
+        ]:
+            self._buckets.pop(key, None)
+
+
+state_read_rate_limiter = StateReadRateLimiter()
 
 
 class CreateRoomRequest(BaseModel):
@@ -164,6 +237,20 @@ def get_room_state(
         room = _viewer_room(room_code, user)
     except P2PError as exc:
         raise _http_error(exc) from exc
+    retry_after = state_read_rate_limiter.check(
+        user_id=_user_id(user),
+        room_code=room.code,
+    )
+    if retry_after is not None:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={"code": "state_rate_limited", "message": "Too many room state requests"},
+            headers={
+                "Retry-After": str(retry_after),
+                "Cache-Control": "private, no-store",
+                "Pragma": "no-cache",
+            },
+        )
     return _response(room, _user_id(user))
 
 

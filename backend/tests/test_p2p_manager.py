@@ -8,7 +8,12 @@ from starlette.websockets import WebSocketDisconnect
 
 from app.core.security import create_access_token
 from app.dependencies.auth import get_current_user
-from app.api.p2p import RoomSockets
+from app.api.p2p import (
+    STATE_READ_MAX_REQUESTS,
+    RoomSockets,
+    StateReadRateLimiter,
+    state_read_rate_limiter,
+)
 from app.main import app
 from app.p2p.manager import (
     MAX_ACTIVE_ROOMS_PER_OWNER,
@@ -256,6 +261,7 @@ def test_replaced_socket_cannot_mark_new_connection_disconnected():
 @pytest.fixture(autouse=True)
 def clear_runtime():
     p2p_room_manager.reset()
+    state_read_rate_limiter.reset()
     app.dependency_overrides.clear()
     yield
     p2p_room_manager.reset()
@@ -485,6 +491,48 @@ def test_rest_fallback_state_requires_authentication():
     client = TestClient(app)
     response = client.get("/api/p2p/rooms/ABC234/state")
     assert response.status_code == 401
+
+
+def test_state_reads_are_rate_limited_per_authenticated_user_and_room():
+    client = TestClient(app)
+    host = _user(1, "Host")
+    guest = _user(2, "Guest")
+    app.dependency_overrides[get_current_user] = lambda: host
+    room_code = client.post("/api/p2p/rooms", json={"variantId": "badugi"}).json()["roomCode"]
+    app.dependency_overrides[get_current_user] = lambda: guest
+    assert client.post("/api/p2p/rooms/join", json={"roomCode": room_code}).status_code == 200
+
+    app.dependency_overrides[get_current_user] = lambda: host
+    for _ in range(STATE_READ_MAX_REQUESTS):
+        assert client.get(f"/api/p2p/rooms/{room_code}/state").status_code == 200
+    limited = client.get(f"/api/p2p/rooms/{room_code}/state")
+    assert limited.status_code == 429
+    assert int(limited.headers["retry-after"]) >= 1
+    assert limited.headers["cache-control"] == "private, no-store"
+
+    app.dependency_overrides[get_current_user] = lambda: guest
+    assert client.get(f"/api/p2p/rooms/{room_code}/state").status_code == 200
+
+
+def test_state_rate_limiter_expires_and_bounds_buckets():
+    now = [100.0]
+    limiter = StateReadRateLimiter(
+        max_requests=1,
+        window_seconds=5,
+        bucket_ttl_seconds=10,
+        max_buckets=2,
+        clock=lambda: now[0],
+    )
+    assert limiter.check(user_id="one", room_code="ROOM01") is None
+    assert limiter.check(user_id="one", room_code="ROOM01") == 5
+    assert limiter.check(user_id="two", room_code="ROOM02") is None
+    assert len(limiter._buckets) == 2
+    assert limiter.check(user_id="three", room_code="ROOM03") is None
+    assert len(limiter._buckets) == 2
+
+    now[0] += 11
+    assert limiter.check(user_id="four", room_code="ROOM04") is None
+    assert list(limiter._buckets) == [("four", "ROOM04")]
 
 
 def test_lost_websocket_ack_retries_same_command_over_rest_without_mutation():

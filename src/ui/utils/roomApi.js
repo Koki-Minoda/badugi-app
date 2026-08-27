@@ -48,12 +48,22 @@ function normalizeRoom(data) {
   };
 }
 
+function parseRetryAfterMs(value) {
+  if (!value) return null;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.ceil(seconds * 1_000);
+  const deadline = Date.parse(value);
+  if (!Number.isFinite(deadline)) return null;
+  return Math.max(0, deadline - Date.now());
+}
+
 export class RoomApiError extends Error {
-  constructor(message, { status = 0, code = null } = {}) {
+  constructor(message, { status = 0, code = null, retryAfterMs = null } = {}) {
     super(message);
     this.name = "RoomApiError";
     this.status = status;
     this.code = code;
+    this.retryAfterMs = retryAfterMs;
     this.terminalCode =
       status === 401 || status === 403
         ? 4401
@@ -83,7 +93,11 @@ async function requestJson(path, { method = "GET", body, signal } = {}) {
     const message = detail?.message ?? detail ?? data?.message ?? data?.error ?? response.statusText;
     throw new RoomApiError(
       typeof message === "string" ? message : JSON.stringify(message),
-      { status: response.status, code: detail?.code ?? data?.code ?? null },
+      {
+        status: response.status,
+        code: detail?.code ?? data?.code ?? null,
+        retryAfterMs: parseRetryAfterMs(response.headers.get("Retry-After")),
+      },
     );
   }
   return normalizeRoom(data?.data ?? data);

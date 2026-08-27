@@ -13,9 +13,17 @@ const mockActInRoom = vi.fn();
 const mockDrawInRoom = vi.fn();
 const { MockRoomApiError } = vi.hoisted(() => ({
   MockRoomApiError: class RoomApiError extends Error {
-    constructor(message, terminalCode = null) {
+    constructor(message, options = {}) {
       super(message);
-      this.terminalCode = terminalCode;
+      if (typeof options === "number") {
+        this.terminalCode = options;
+        this.status = 0;
+        this.retryAfterMs = null;
+        return;
+      }
+      this.status = options.status ?? 0;
+      this.retryAfterMs = options.retryAfterMs ?? null;
+      this.terminalCode = options.terminalCode ?? null;
     }
   },
 }));
@@ -80,6 +88,15 @@ async function sendState(socket, payload) {
   await act(async () => {
     socket.listeners.message({ data: JSON.stringify({ event: "state", payload }) });
   });
+}
+
+async function forceRestPolling(firstSocket) {
+  await act(async () => firstSocket.listeners.close({ code: 1006 }));
+  await act(async () => vi.advanceTimersByTimeAsync(1_000));
+  await act(async () => MockWebSocket.sockets.at(-1).listeners.close({ code: 1006 }));
+  await act(async () => vi.advanceTimersByTimeAsync(2_000));
+  await act(async () => MockWebSocket.sockets.at(-1).listeners.close({ code: 1006 }));
+  await act(async () => Promise.resolve());
 }
 
 describe("FriendMatchSetupScreen", () => {
@@ -455,6 +472,78 @@ describe("FriendMatchSetupScreen", () => {
       expect(screen.queryByText(/^polling$/i)).toBeNull();
     } finally {
       vi.useRealTimers();
+    }
+  });
+
+  it("never overlaps a slow state poll and schedules the next read after completion", async () => {
+    render(<FriendMatchSetupScreen language="en" />);
+    const firstSocket = await createAndOpen();
+    let resolveSlowPoll;
+    mockGetRoomState
+      .mockReturnValueOnce(new Promise((resolve) => {
+        resolveSlowPoll = resolve;
+      }))
+      .mockResolvedValue({ ...room, roomCode: room.roomId, sequenceId: 3 });
+
+    vi.useFakeTimers();
+    try {
+      await forceRestPolling(firstSocket);
+      expect(mockGetRoomState).toHaveBeenCalledTimes(1);
+      await act(async () => vi.advanceTimersByTimeAsync(10_000));
+      expect(mockGetRoomState).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        resolveSlowPoll({ ...room, roomCode: room.roomId, sequenceId: 2 });
+        await Promise.resolve();
+      });
+      await act(async () => vi.advanceTimersByTimeAsync(999));
+      expect(mockGetRoomState).toHaveBeenCalledTimes(1);
+      await act(async () => vi.advanceTimersByTimeAsync(1));
+      expect(mockGetRoomState).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("honors Retry-After on 429 before polling again", async () => {
+    render(<FriendMatchSetupScreen language="en" />);
+    const firstSocket = await createAndOpen();
+    mockGetRoomState
+      .mockRejectedValueOnce(
+        new MockRoomApiError("Too many requests", { status: 429, retryAfterMs: 3_000 }),
+      )
+      .mockResolvedValue({ ...room, roomCode: room.roomId, sequenceId: 2 });
+
+    vi.useFakeTimers();
+    try {
+      await forceRestPolling(firstSocket);
+      expect(mockGetRoomState).toHaveBeenCalledTimes(1);
+      await act(async () => vi.advanceTimersByTimeAsync(2_999));
+      expect(mockGetRoomState).toHaveBeenCalledTimes(1);
+      await act(async () => vi.advanceTimersByTimeAsync(1));
+      expect(mockGetRoomState).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("slows successful polling while the document is hidden", async () => {
+    const hiddenDescriptor = Object.getOwnPropertyDescriptor(document, "hidden");
+    Object.defineProperty(document, "hidden", { configurable: true, value: true });
+    render(<FriendMatchSetupScreen language="en" />);
+    const firstSocket = await createAndOpen();
+    vi.useFakeTimers();
+    try {
+      await forceRestPolling(firstSocket);
+      expect(mockGetRoomState).toHaveBeenCalledTimes(1);
+      await act(async () => vi.advanceTimersByTimeAsync(4_999));
+      expect(mockGetRoomState).toHaveBeenCalledTimes(1);
+      await act(async () => vi.advanceTimersByTimeAsync(1));
+      expect(mockGetRoomState).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+      if (hiddenDescriptor) Object.defineProperty(document, "hidden", hiddenDescriptor);
+      else delete document.hidden;
     }
   });
 });

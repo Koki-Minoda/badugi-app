@@ -1304,11 +1304,9 @@ export default function App() {
   );
 
   useEffect(() => {
-    if (mode === "tournament-mtt") {
-      sessionControllerRef.current = null;
-      sessionControllerStateRef.current = null;
-      return;
-    }
+    // ensureSessionController owns the mode/variant policy.  It deliberately
+    // supports Badugi and draw-lowball tournament hands; clearing those refs
+    // here after the mode transition split the UI from its canonical deck.
     ensureSessionController();
   }, [ensureSessionController, mode]);
 
@@ -4204,6 +4202,32 @@ export default function App() {
             : sourceDrawInfo.after,
         }
       : undefined;
+    if (normalizedDrawInfo) {
+      const beforeCards = Array.isArray(normalizedDrawInfo.before)
+        ? normalizedDrawInfo.before
+        : [];
+      const afterCards = Array.isArray(normalizedDrawInfo.after)
+        ? normalizedDrawInfo.after
+        : Array.isArray(normalizedDrawInfo.handAfter)
+          ? normalizedDrawInfo.handAfter
+          : [];
+      const drawIndexes = Array.isArray(normalizedDrawInfo.drawIndexes)
+        ? normalizedDrawInfo.drawIndexes.filter((index) => Number.isInteger(index))
+        : [];
+      const drawIndexSet = new Set(drawIndexes);
+      if (!Array.isArray(normalizedDrawInfo.replacedCards)) {
+        normalizedDrawInfo.replacedCards = drawIndexes.map((index) => ({
+          index,
+          oldCard: beforeCards[index],
+          newCard: afterCards[index],
+        }));
+      }
+      if (!Array.isArray(normalizedDrawInfo.keptCards)) {
+        normalizedDrawInfo.keptCards = beforeCards.filter(
+          (_card, index) => !drawIndexSet.has(index),
+        );
+      }
+    }
     if (normalizedDrawInfo) mergedMeta.drawInfo = normalizedDrawInfo;
     if (extra && typeof extra === "object") {
       mergedMeta.extra = { ...extra };
@@ -11651,7 +11675,11 @@ export default function App() {
       0,
       isSingleTableDramaha ? 5 : MAX_DRAW_SELECTION,
     );
-    if (isSingleTableControllerDrawGame) {
+    // Draw-lowball tournament tables are controller-driven too.  Routing them
+    // through the legacy deck first duplicates cards because the tournament
+    // controller owns a separate canonical deck.  Submit even a zero-card
+    // draw directly so "Draw Selected" also acts as a legal stand-pat.
+    if (isDrawLowballControllerGame || isSingleTableDramaha) {
       const controllerDrawOutcome = tryControllerBetAction({
         actionType: "draw",
         seatIndex: drawActionSeat,

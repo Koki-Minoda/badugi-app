@@ -4,17 +4,11 @@ import { comparePloHands, evaluatePloHand } from "../../plo/utils/ploEvaluator.j
 import { evaluateOmahaEightLow } from "../../plo/PLO8GameController.js";
 import { extractPayouts, validateHandEvIntegrity } from "./evIntegrityChecker.js";
 
-const STRICT_BOARD_VARIANTS = new Set(["B01", "B02", "B05", "B06", "B09"]);
+const STRICT_BOARD_VARIANTS = new Set([
+  "B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08", "B09",
+]);
 
 const FAMILY_ALLOWLISTS = Object.freeze([
-  {
-    ids: ["B03", "B04"],
-    reason: "Three-hole board settlement awaits variant-specific evaluator and side-pot fixtures.",
-  },
-  {
-    ids: ["B07", "B08"],
-    reason: "Five-card Omaha settlement awaits strict must-use-two and side-pot fixtures.",
-  },
   {
     ids: ["D01", "D02", "D03", "D04", "D05", "D06", "D07", "S01", "S02", "S03", "S04", "S05", "S06", "S07"],
     reason: "Draw settlement awaits normalized terminal pot snapshots and component-pot winner replay.",
@@ -65,8 +59,9 @@ function buildBoardEvaluations(variantId, afterState, result) {
     .map((player, index) => {
       const seatIndex = seatIndexOf(player, index);
       if (player?.folded || player?.seatOut) return null;
-      if (variantId === "B01" || variantId === "B02") {
-        if (player?.holeCards?.length !== 2 || board.length !== 5) return null;
+      if (["B01", "B02", "B03", "B04"].includes(variantId)) {
+        const requiredHoleCards = variantId === "B03" || variantId === "B04" ? 3 : 2;
+        if (player?.holeCards?.length !== requiredHoleCards || board.length !== 5) return null;
         return {
           player,
           seatIndex,
@@ -74,7 +69,8 @@ function buildBoardEvaluations(variantId, afterState, result) {
           low: null,
         };
       }
-      if (!Array.isArray(player?.holeCards) || player.holeCards.length < 4 || board.length !== 5) {
+      const requiredHoleCards = variantId === "B07" || variantId === "B08" ? 5 : 4;
+      if (!Array.isArray(player?.holeCards) || player.holeCards.length < requiredHoleCards || board.length !== 5) {
         return null;
       }
       return {
@@ -107,7 +103,9 @@ function verifyBoardPotWinners(variantId, afterState, result) {
   const errors = [];
   const evaluations = buildBoardEvaluations(variantId, afterState, result);
   const payouts = extractPayouts(result);
-  const compareHigh = variantId === "B01" || variantId === "B02" ? compareNlhHands : comparePloHands;
+  const compareHigh = ["B01", "B02", "B03", "B04"].includes(variantId)
+    ? compareNlhHands
+    : comparePloHands;
   const split = variantId === "B06" || variantId === "B09";
 
   for (const [potIndex, pot] of (result?.potDetails ?? []).entries()) {

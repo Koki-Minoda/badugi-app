@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import { GAME_VARIANTS } from "../../config/variantCatalog.js";
 import { NLHGameController } from "../../nlh/NLHGameController.js";
 import { FLHGameController } from "../../nlh/FLHGameController.js";
+import { FLSuperHoldemGameController, SuperHoldemGameController } from "../../nlh/SuperHoldemGameController.js";
+import { BigOGameController } from "../../plo/BigOGameController.js";
+import { FiveCardPLOGameController } from "../../plo/FiveCardPLOGameController.js";
 import { PLOGameController } from "../../plo/PLOGameController.js";
 import { PLO8GameController } from "../../plo/PLO8GameController.js";
 import { FLO8GameController } from "../../plo/FLO8GameController.js";
@@ -42,10 +45,10 @@ describe("strict per-variant settlement gate", () => {
   it("classifies every non-pilot catalog variant with a documented reason", () => {
     const policies = GAME_VARIANTS.map((variant) => getStrictSettlementPolicy(variant.id));
     expect(policies.filter((policy) => policy.status === "ENFORCED").map((policy) => policy.variantId)).toEqual([
-      "B01", "B02", "B05", "B06", "B09",
+      "B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08", "B09",
     ]);
     expect(policies.filter((policy) => policy.status === "UNCLASSIFIED")).toEqual([]);
-    expect(Object.keys(STRICT_SETTLEMENT_ALLOWLIST)).toHaveLength(31);
+    expect(Object.keys(STRICT_SETTLEMENT_ALLOWLIST)).toHaveLength(27);
     policies.filter((policy) => policy.status === "ALLOWLISTED").forEach((policy) => {
       expect(policy.reason).toEqual(expect.any(String));
       expect(policy.reason.length).toBeGreaterThan(30);
@@ -84,8 +87,12 @@ describe("strict per-variant settlement gate", () => {
 
   it.each([
     ["B02", FLHGameController],
+    ["B03", SuperHoldemGameController],
+    ["B04", FLSuperHoldemGameController],
     ["B05", PLOGameController],
     ["B06", PLO8GameController],
+    ["B07", BigOGameController],
+    ["B08", FiveCardPLOGameController],
     ["B09", FLO8GameController],
   ])("enforces strict multi-pot settlement for %s", (variantId, Controller) => {
     const controller = new Controller({

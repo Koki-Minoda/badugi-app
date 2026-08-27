@@ -343,6 +343,14 @@ export async function performSafeAction(page, options = {}) {
           : ["action-check", "action-call", "action-raise", "action-fold"];
     const action = await firstClickableAction(page, order);
     if (action) {
+      if (action.id === "action-draw-selected" && Array.isArray(options.drawCardIndexes)) {
+        for (const cardIndex of options.drawCardIndexes) {
+          const card = page.getByTestId(`player-${actor}-card-${cardIndex}`);
+          if (await card.isVisible().catch(() => false)) {
+            await card.click();
+          }
+        }
+      }
       const clicked = await action.locator
         .click({ timeout: 1500 })
         .then(() => true)
@@ -585,6 +593,7 @@ export async function playOneHandProgression(page, options = {}) {
       policy: effectivePolicy,
       autoCpu: options.autoCpu,
       autoCpuTimeout: options.autoCpuTimeout,
+      drawCardIndexes: options.drawCardIndexes,
     });
     if (!action.acted) {
       throw new Error(`No safe action available: ${JSON.stringify({ step, action, trace: trace.slice(-4) })}`);

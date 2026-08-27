@@ -5474,8 +5474,10 @@ export default function App() {
         handleVariantRotationTrigger("level");
         if (Number.isFinite(nextState.levelIndex)) {
           setBlindLevelIndex(nextState.levelIndex);
-          setHandsInLevel(1);
-          handsInLevelRef.current = 1;
+          // The completed hand closes the previous level. The next level has
+          // no dealt hand yet; startNextHand advances this display to H1.
+          setHandsInLevel(0);
+          handsInLevelRef.current = 0;
         }
       }
       // RC-1 FIX: always sync the ref to tournamentMTT authority

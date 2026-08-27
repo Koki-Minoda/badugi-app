@@ -50,6 +50,10 @@ const room = {
 async function createAndOpen() {
   fireEvent.click(screen.getByRole("button", { name: /create room/i }));
   expect(await screen.findByText(/room created/i)).toBeTruthy();
+  await waitFor(() => {
+    expect(MockWebSocket.sockets).toHaveLength(1);
+    expect(MockWebSocket.sockets[0].listeners.open).toBeTypeOf("function");
+  });
   const socket = MockWebSocket.sockets.at(-1);
   await act(async () => socket.listeners.open());
   return socket;

@@ -416,6 +416,23 @@ class RoomSockets:
 room_sockets = RoomSockets()
 
 
+async def terminate_user_p2p_sessions(user_id: str) -> None:
+    """Remove a deleted account from all process-local rooms and sockets."""
+
+    for room_code in p2p_room_manager.room_codes_for_user(user_id):
+        try:
+            room = p2p_room_manager.leave_room(room_code, user_id=user_id)
+        except P2PError as exc:
+            if exc.code == "room_missing":
+                continue
+            raise
+        await room_sockets.close_user(room_code, user_id, reason="account_deleted")
+        if room is None:
+            await room_sockets.close_room(room_code, reason="owner_account_deleted")
+        else:
+            await room_sockets.broadcast_state(room)
+
+
 async def _send_error(
     websocket: WebSocket,
     exc: P2PError,

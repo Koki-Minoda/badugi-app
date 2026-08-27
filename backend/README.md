@@ -99,6 +99,10 @@ Available endpoints (always safe, even without a DB):
 
 - `GET /api/health` – reports backend environment & DB reachability (`db: "ok"` or `"unreachable"`).
 - `GET /api/users` – placeholder users API that returns an empty list when the DB is offline.
+- `DELETE /api/auth/account` – permanently deletes the authenticated user after
+  current-password confirmation. It removes the user's tournament snapshot,
+  saved play-feedback payloads, and active P2P participation. Existing bearer
+  tokens stop working because the user record no longer exists.
 - `POST /api/badugi/rl/decision` – backend comparison fallback for Badugi RL schema v1. It accepts a 96-dim state vector + valid actions and responds with deterministic-safe action/scores while frontend ONNX remains the primary inference path.
 - `POST /api/badugi/hands` – validates Badugi hand-log payloads and persists them to the configured database (or returns `accepted:false` if the DB is unreachable).
 - `GET /api/badugi/hands/{hand_id}` – fetches a fully structured hand with actions/results.

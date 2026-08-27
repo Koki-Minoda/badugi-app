@@ -251,11 +251,28 @@ export function replayHandFromHistory(history) {
         const recordedPot = Math.max(0, Number(event.totalPot) || 0);
         awardedPot = recordedPot || pot;
         pot = awardedPot;
+        const recordedFinalStacks = new Map(
+          (event?.finalStacks ?? [])
+            .filter(
+              (snapshot) =>
+                Number.isInteger(snapshot?.seat) &&
+                Number.isFinite(snapshot?.stack),
+            )
+            .map((snapshot) => [snapshot.seat, snapshot.stack]),
+        );
         resolveHandEndWinners(history, event).forEach((winner) => {
           const target = findPlayer(players, winner?.seat);
           if (!target) return;
           const payout = Math.max(0, Number(winner?.amount) || 0);
-          target.stack += payout;
+          // Some controller paths record a final COLLECT action with an
+          // authoritative playersAfter snapshot before HAND_END. In that case
+          // the award is already in the winner's stack and must not be applied
+          // a second time by the replay ledger.
+          const recordedFinalStack = recordedFinalStacks.get(target.seat);
+          const payoutAlreadyApplied =
+            Number.isFinite(recordedFinalStack) &&
+            target.stack === recordedFinalStack;
+          if (!payoutAlreadyApplied) target.stack += payout;
           pot = Math.max(0, pot - payout);
         });
         handEndReconciliation = (event?.finalStacks ?? [])

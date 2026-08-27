@@ -1,7 +1,6 @@
 import { evaluateBadugi } from "../utils/badugiEvaluator.js";
 import { resolveBadugiWinners } from "./badugiComparison.js";
 import { buildSidePots } from "./roundFlow.jsx";
-import { saveTournamentHistory, saveHandHistory } from "../../../utils/history.js";
 
 export function runShowdown({
   players = [],
@@ -117,36 +116,6 @@ export function runShowdown({
 
   if (typeof setDrawRound === "function") {
     setDrawRound((prev = drawRound) => Math.min((prev ?? drawRound) + 1, 4));
-  }
-
-  try {
-    saveHandHistory({
-      ts: Date.now(),
-      dealerIdx,
-      players: updatedPlayers.map((p, i) => ({
-        name: p.name,
-        seat: i,
-        stack: p.stack,
-        folded: p.folded,
-      })),
-      pot: totalPot,
-    });
-  } catch (err) {
-    console.warn("[SHOWDOWN] Failed to save hand history", err);
-  }
-
-  try {
-    saveTournamentHistory({
-      tsStart: Date.now() - 300000,
-      tsEnd: Date.now(),
-      tier: "store",
-      buyIn: 1000,
-      entries: players.length,
-      finish: 1,
-      prize: totalPot,
-    });
-  } catch (err) {
-    console.warn("[SHOWDOWN] Failed to save tournament history", err);
   }
 
   if (typeof onShowdownComplete === "function") {

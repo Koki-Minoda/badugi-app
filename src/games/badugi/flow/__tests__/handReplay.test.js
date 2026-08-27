@@ -162,4 +162,44 @@ describe("replayHandFromHistory", () => {
     expect(frames.at(-1).players.map((player) => player.stack)).toEqual([120, 80]);
     expect(frames.at(-1).integrity).toMatchObject({ valid: true, stackMismatches: [] });
   });
+
+  it("does not award the pot twice when a collect snapshot already contains the payout", () => {
+    const finalStacks = [
+      { seat: 0, stack: 90 },
+      { seat: 1, stack: 110 },
+    ];
+    const frames = replayHandFromHistory({
+      replaySchemaVersion: 2,
+      seats: [
+        { seat: 0, startStack: 100, endStack: 90 },
+        { seat: 1, startStack: 100, endStack: 110 },
+      ],
+      events: [
+        { type: "HAND_START" },
+        { type: "BLINDS_POSTED", sbSeat: 0, sbAmount: 10, bbSeat: 1, bbAmount: 10 },
+        {
+          type: "BET_ACTION",
+          seat: 1,
+          action: "collect",
+          amount: 0,
+          potAfter: 0,
+          playersAfter: finalStacks,
+        },
+        {
+          type: "HAND_END",
+          totalPot: 20,
+          winners: [{ seat: 1, amount: 20 }],
+          finalStacks,
+        },
+      ],
+    });
+
+    expect(frames.at(-1).players.map((player) => player.stack)).toEqual([90, 110]);
+    expect(frames.at(-1).integrity).toEqual({
+      valid: true,
+      stackMismatches: [],
+      reconciliationMismatches: [],
+      remainingPot: 0,
+    });
+  });
 });

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { buildTournamentConfigFromStage } from "../../src/config/tournamentStages.js";
+import { replayHandFromHistory } from "../../src/games/badugi/flow/handReplay.js";
 import { APP_URL } from "./authHelper";
 import {
   playOneHandProgression,
@@ -373,6 +374,71 @@ for (const stage of [
     await expect.poll(async () => (await getHud(page))?.handsPlayedThisLevel).toBe(1);
   });
 }
+
+test("Store persists a real tournament hand and replays its exact final state", async ({ page }) => {
+  const config = await startProductionStage(page, "store");
+  await completeHeroHands(page, 1);
+
+  const persisted = await page.evaluate(() => ({
+    tournamentHands: JSON.parse(
+      window.localStorage.getItem("badugi.history.tournamentHands") ?? "[]",
+    ),
+    cashHands: JSON.parse(
+      window.localStorage.getItem("badugi.history.hands") ?? "[]",
+    ),
+  }));
+  expect(persisted.cashHands).toEqual([]);
+  expect(persisted.tournamentHands).toHaveLength(1);
+
+  const record = persisted.tournamentHands[0];
+  expect(record).toMatchObject({
+    tournamentId: config.id,
+    replaySchemaVersion: 2,
+  });
+
+  const frames = replayHandFromHistory(record);
+  const actionBySeq = new Map(
+    (record.seats ?? []).flatMap((seat: any) =>
+      (seat.actions ?? []).map((action: any) => [
+        action.seq,
+        { ...action, seat: seat.seat },
+      ]),
+    ),
+  );
+  const actionMismatches = frames
+    .filter((frame: any) => ["BET_ACTION", "DRAW_ACTION"].includes(frame.event?.type))
+    .filter((frame: any) => {
+      const source: any = actionBySeq.get(frame.event.actionSeq);
+      return (
+        !source ||
+        frame.event.seat !== source.seat ||
+        (frame.event.type === "BET_ACTION" &&
+          (String(source.type).toLowerCase() !==
+            String(frame.event.action).toLowerCase() ||
+            (frame.event.amount ?? 0) !== (source.amount ?? 0)))
+      );
+    });
+  expect(actionMismatches).toEqual([]);
+
+  const drawFrames = frames.filter(
+    (frame: any) => frame.event?.type === "DRAW_ACTION",
+  );
+  expect(drawFrames.length).toBeGreaterThan(0);
+  for (const frame of drawFrames) {
+    expect(
+      frame.players.find((player: any) => player.seat === frame.event.seat)?.hand,
+    ).toEqual(frame.event.after);
+  }
+
+  const finalFrame = frames.at(-1);
+  expect(finalFrame?.event?.type).toBe("HAND_END");
+  expect(finalFrame?.integrity, JSON.stringify(record)).toEqual({
+    valid: true,
+    stackMismatches: [],
+    reconciliationMismatches: [],
+    remainingPot: 0,
+  });
+});
 
 test("World Championship starts at production scale, advances a level, and reaches a champion", async ({ page }) => {
   const config = await startProductionStage(page, "world");

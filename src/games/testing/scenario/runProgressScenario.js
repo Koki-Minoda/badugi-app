@@ -36,6 +36,7 @@ import { DeckManager } from "../../badugi/utils/deck.js";
 import { GAME_VARIANTS as CATALOG_VARIANTS } from "../../config/variantCatalog.js";
 import { createDeterministicRng } from "../deterministicRng.js";
 import { validateStrictVariantSettlement } from "../ev/strictVariantSettlementGate.js";
+import { ChinesePokerController } from "../../chinese/ChinesePokerController.js";
 
 const DEFAULT_SEATS = ["HUMAN", "CPU", "CPU", "CPU", "CPU", "CPU"];
 const DEFAULT_BLINDS = { sb: 10, bb: 20, ante: 0 };
@@ -147,6 +148,7 @@ export function getProgressHarnessStatus(variantId) {
   if (STUD_DEFINITIONS[normalizedVariantId]) return { supported: true, family: "stud" };
   if (DRAW_CONTROLLERS[normalizedVariantId]) return { supported: true, family: "draw" };
   if (DRAMAHA_VARIANTS.has(normalizedVariantId)) return { supported: true, family: "dramaha" };
+  if (normalizedVariantId === "chinese_poker") return { supported: true, family: "chinese" };
   return { supported: false, family: "unknown", reason: "No progress harness controller mapping yet." };
 }
 
@@ -222,6 +224,18 @@ export function createProgressHarness(variantId, options = {}) {
     });
     return { family: "draw", controller, state };
   }
+  if (normalizedVariantId === "chinese_poker") {
+    const controller = new ChinesePokerController({
+      seats: seats.slice(0, 2).map((seat, index) => ({
+        id: seat.id,
+        name: seat.name,
+        isHero: index === 0,
+      })),
+      random: rng,
+    });
+    controller.startNewHand();
+    return { family: "chinese", controller };
+  }
   const status = getProgressHarnessStatus(variantId);
   throw new Error(`Unsupported progress harness variant=${variantId} reason=${status.reason}`);
 }
@@ -275,6 +289,14 @@ function normalizeActionType(action) {
 
 export function stepHarness(harness) {
   const snapshot = snapshotOf(harness);
+  if (harness.family === "chinese") {
+    if (String(snapshot.phase).toLowerCase() === "set") {
+      const hero = snapshot.players.find((player) => player.isHero) ?? snapshot.players[0];
+      harness.controller.autoSetRows(hero.id);
+      return { progressed: true, snapshot: harness.controller.resolveShowdown() };
+    }
+    return { progressed: false, snapshot };
+  }
   const actor = getActorIndex(snapshot);
   if (actor == null || isTerminal(snapshot)) return { progressed: false, snapshot };
 
@@ -465,6 +487,7 @@ function startNextHarnessHand(harness, { variantId, handNumber }) {
     });
     return snapshotOf(harness);
   }
+  if (harness.family === "chinese") return harness.controller.nextHand();
   return harness.controller.startNewHand({
     handId: `${normalizeProgressVariantId(variantId)}-progress-${handNumber}`,
   });

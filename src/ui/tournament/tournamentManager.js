@@ -28,6 +28,32 @@ function cloneJson(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+export function getTournamentBreakSchedule(blindStructure, currentLevelIndex = 0) {
+  const every = Math.max(0, Math.trunc(Number(blindStructure?.breakEveryLevels) || 0));
+  const durationMinutes = Math.max(
+    0,
+    Math.trunc(Number(blindStructure?.breakDurationMinutes) || 0),
+  );
+  if (!every || !durationMinutes) return null;
+  const currentLevelNumber = Math.max(1, Math.trunc(Number(currentLevelIndex) || 0) + 1);
+  const nextBreakAfterLevel = Math.ceil(currentLevelNumber / every) * every;
+  return { every, durationMinutes, nextBreakAfterLevel };
+}
+
+export function formatTournamentBreakLabel(blindStructure, currentLevelIndex = 0) {
+  const schedule = getTournamentBreakSchedule(blindStructure, currentLevelIndex);
+  if (!schedule) return null;
+  return `L${schedule.nextBreakAfterLevel}後 · ${schedule.durationMinutes}分`;
+}
+
+export function shouldStartTournamentBreak(blindStructure, completedLevelNumber) {
+  const schedule = getTournamentBreakSchedule(blindStructure, 0);
+  const completed = Math.max(0, Math.trunc(Number(completedLevelNumber) || 0));
+  return Boolean(
+    schedule && completed > 0 && completed % schedule.every === 0,
+  );
+}
+
 function buildPlacementsFromState(state) {
   return Object.values(state?.players ?? {})
     .filter((player) => Number.isFinite(Number(player?.finishPlace)))
@@ -209,6 +235,8 @@ export function createMTTSaveSnapshot({
       handsThisLevel: hud?.handsThisLevel ?? null,
       currentBlinds: cloneJson(hud?.currentBlinds ?? null),
       currentLevelNumber: hud?.currentLevelNumber ?? null,
+      nextBreakLabel: hud?.nextBreakLabel ?? null,
+      breakState: cloneJson(hud?.breakState ?? null),
     },
   };
 }

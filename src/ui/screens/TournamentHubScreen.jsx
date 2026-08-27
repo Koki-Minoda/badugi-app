@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   TOURNAMENT_STAGES,
   buildTournamentConfigFromStage,
@@ -14,6 +14,10 @@ import {
 import { resolveAiTierForGameContext } from "../utils/aiTierContext.js";
 import { loadConsolidatedProgress } from "../utils/consolidatedProgress.js";
 import {
+  canAffordEntry,
+  getStageEligibility,
+} from "../utils/tournamentState.js";
+import {
   clearActiveMTTSnapshot,
   isResumeableMTTSnapshot,
   loadActiveMTTSnapshot,
@@ -24,7 +28,7 @@ function formatNumber(value) {
   return Number.isFinite(number) ? number.toLocaleString() : "--";
 }
 
-function buildStageViewModel(stage, unlockState) {
+function buildStageViewModel(stage, unlockState, progress) {
   const config = buildTournamentConfigFromStage(stage.id);
   const blindSheet = getStageBlindSheet(stage.id);
   const aiTier = resolveAiTierForGameContext({
@@ -37,6 +41,17 @@ function buildStageViewModel(stage, unlockState) {
     stage.gameVariant ??
     "badugi";
   const variantUnlocked = unlockState.unlockedVariants.includes(variantId);
+  const isCanonicalStage = TOURNAMENT_STAGES.some(({ id }) => id === stage.id);
+  const eligibility = isCanonicalStage
+    ? getStageEligibility(stage.id, progress)
+    : { eligible: true, reason: stage.eligibility?.text ?? "" };
+  const affordability = isCanonicalStage
+    ? canAffordEntry(stage.id, progress)
+    : {
+        ok: (progress?.bankroll ?? 0) >= (stage.entryFee ?? 0),
+        remaining: (progress?.bankroll ?? 0) - (stage.entryFee ?? 0),
+        reason: "",
+      };
   const hasPlayableConfig =
     Boolean(config) &&
     Array.isArray(config.levels) &&
@@ -47,9 +62,18 @@ function buildStageViewModel(stage, unlockState) {
     config,
     blindSheet,
     aiTier,
-    playable: hasPlayableConfig && variantUnlocked,
-    status: variantUnlocked ? "PLAYABLE" : "LOCKED",
+    playable:
+      hasPlayableConfig &&
+      variantUnlocked &&
+      eligibility.eligible &&
+      affordability.ok,
+    status:
+      variantUnlocked && eligibility.eligible && affordability.ok
+        ? "PLAYABLE"
+        : "LOCKED",
     variantUnlocked,
+    eligibility,
+    affordability,
     title: stage.tournamentName ?? config?.name ?? stage.label ?? stage.id,
     subtitle: stage.seriesLabel ?? stage.description ?? "",
     stageLabel: String(stage.id ?? "").toUpperCase(),
@@ -73,6 +97,11 @@ export default function TournamentHubScreen({
   const [savedSnapshot, setSavedSnapshot] = useState(
     () => activeSnapshot ?? loadActiveMTTSnapshot(),
   );
+  const startPendingRef = useRef(false);
+  const [startError, setStartError] = useState(null);
+  useEffect(() => {
+    if (activeSnapshot) setSavedSnapshot(activeSnapshot);
+  }, [activeSnapshot]);
   const effectiveProgress = useMemo(
     () => progress ?? loadConsolidatedProgress().tournament,
     [progress],
@@ -85,8 +114,8 @@ export default function TournamentHubScreen({
     [effectiveProgress],
   );
   const stageViews = useMemo(
-    () => stages.map((stage) => buildStageViewModel(stage, unlockState)),
-    [stages, unlockState],
+    () => stages.map((stage) => buildStageViewModel(stage, unlockState, effectiveProgress)),
+    [effectiveProgress, stages, unlockState],
   );
   const [selectedStageId, setSelectedStageId] = useState(
     stageViews[0]?.stage?.id ?? null,
@@ -95,10 +124,22 @@ export default function TournamentHubScreen({
     stageViews.find((view) => view.stage.id === selectedStageId) ??
     stageViews[0] ??
     null;
+  const canStartSelected = Boolean(selected?.playable && !resumeableSnapshot);
 
   const handleStart = () => {
-    if (!selected?.playable || !selected.config) return;
-    onStartTournament?.(selected.config, selected.stage);
+    if (!canStartSelected || !selected?.config || startPendingRef.current) return;
+    startPendingRef.current = true;
+    setStartError(null);
+    try {
+      const started = onStartTournament?.(selected.config, selected.stage);
+      if (started === false) {
+        setStartError("大会を開始できませんでした。進行条件と残高を確認してください。");
+        startPendingRef.current = false;
+      }
+    } catch (error) {
+      startPendingRef.current = false;
+      setStartError(error?.message ?? "大会を開始できませんでした。");
+    }
   };
   const handleResume = () => {
     if (!resumeableSnapshot) return;
@@ -163,6 +204,10 @@ export default function TournamentHubScreen({
                       <span className="rounded-md border border-red-300/40 px-2 py-1 text-[10px] font-black uppercase text-red-200">
                         Locked
                       </span>
+                    ) : !view.eligibility.eligible || !view.affordability.ok ? (
+                      <span className="rounded-md border border-red-300/40 px-2 py-1 text-[10px] font-black uppercase text-red-200">
+                        Locked
+                      </span>
                     ) : !view.playable ? (
                       <span className="rounded-md border border-amber-300/40 px-2 py-1 text-[10px] font-black uppercase text-amber-200">
                         Coming Soon
@@ -190,6 +235,15 @@ export default function TournamentHubScreen({
                   <p className="mt-3 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-200">
                     {view.status}
                   </p>
+                  {!view.eligibility.eligible ? (
+                    <p className="mt-2 text-xs font-semibold text-red-200">
+                      {view.eligibility.reason}
+                    </p>
+                  ) : !view.affordability.ok ? (
+                    <p className="mt-2 text-xs font-semibold text-red-200">
+                      {view.affordability.reason}
+                    </p>
+                  ) : null}
                 </button>
               );
             })}
@@ -236,16 +290,42 @@ export default function TournamentHubScreen({
                       {selected.blindSheetLabel}
                     </dd>
                   </div>
+                  <div className="flex justify-between gap-4 border-b border-white/10 pb-2">
+                    <dt className="text-slate-400">Entry / Bankroll</dt>
+                    <dd className="text-right font-black text-white">
+                      {formatNumber(selected.stage.entryFee)} / {formatNumber(effectiveProgress.bankroll)}
+                    </dd>
+                  </div>
                 </dl>
+
+                {!selected.eligibility.eligible || !selected.affordability.ok ? (
+                  <p className="mt-4 text-sm font-semibold text-red-200" role="status">
+                    {!selected.eligibility.eligible
+                      ? selected.eligibility.reason
+                      : selected.affordability.reason}
+                  </p>
+                ) : null}
+
+                {startError ? (
+                  <p className="mt-4 text-sm font-semibold text-red-200" role="alert">
+                    {startError}
+                  </p>
+                ) : null}
+
+                {resumeableSnapshot ? (
+                  <p className="mt-4 text-sm font-semibold text-yellow-200" role="status">
+                    進行中の大会を再開するかリタイアしてから、新しい大会を開始してください。
+                  </p>
+                ) : null}
 
                 <button
                   type="button"
                   data-testid="tournament-start"
-                  disabled={!selected.playable}
+                  disabled={!canStartSelected}
                   onClick={handleStart}
                   className="mt-6 w-full rounded-md bg-emerald-400 px-4 py-3 text-sm font-black uppercase tracking-[0.18em] text-slate-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
                 >
-                  {selected.variantUnlocked
+                  {selected.variantUnlocked && selected.eligibility.eligible && selected.affordability.ok
                     ? selected.playable
                       ? "Start Tournament"
                       : "Coming Soon"

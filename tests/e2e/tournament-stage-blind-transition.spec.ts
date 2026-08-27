@@ -15,7 +15,7 @@ type BlindExpectation = {
   ante: number;
 };
 
-async function installLocalAuthenticatedSession(page: Page) {
+async function installLocalAuthenticatedSession(page: Page, stageId: string) {
   await page.route("**/api/**", async (route) => {
     const pathname = new URL(route.request().url()).pathname;
     const body = pathname.endsWith("/auth/me")
@@ -31,7 +31,7 @@ async function installLocalAuthenticatedSession(page: Page) {
       body: JSON.stringify(body),
     });
   });
-  await page.addInitScript(() => {
+  await page.addInitScript(({ selectedStageId }) => {
     window.localStorage.setItem(
       "mgx_auth",
       JSON.stringify({
@@ -46,14 +46,51 @@ async function installLocalAuthenticatedSession(page: Page) {
       }),
     );
     window.localStorage.setItem("mgx.previewVariants", "true");
-  });
+    const requirements = {
+      store: { bankroll: 0, stageWins: { store: 0, local: 0, national: 0, world: 0 } },
+      local: { bankroll: 1_000, stageWins: { store: 1, local: 0, national: 0, world: 0 } },
+      national: { bankroll: 3_000, stageWins: { store: 0, local: 1, national: 0, world: 0 } },
+      world: { bankroll: 7_500, stageWins: { store: 0, local: 0, national: 2, world: 0 } },
+    }[selectedStageId];
+    window.localStorage.setItem(
+      "mgx.tournament.v2",
+      JSON.stringify({
+        version: 2,
+        tournament: {
+          ...requirements,
+          completedTournaments: [],
+          lastResult: null,
+          history: [],
+        },
+        career: {
+          unlockedVariants: ["badugi"],
+          achievements: [],
+          statistics: {
+            tournamentsPlayed: 0,
+            tournamentsWon: 0,
+            finalTables: 0,
+            headsUps: 0,
+            totalPrize: 0,
+          },
+          worldChampionship: {
+            cleared: false,
+            firstClearTimestamp: null,
+            clearCount: 0,
+            lastUnlockPopupAt: null,
+          },
+        },
+        rivals: {},
+        _meta: { migratedFrom: [], migratedAt: null, legacyKeysRetained: true },
+      }),
+    );
+  }, { selectedStageId: stageId });
 }
 
 async function startProductionStage(page: Page, stageId: string) {
   const config = buildTournamentConfigFromStage(stageId);
   if (!config) throw new Error(`Missing tournament config for ${stageId}`);
 
-  await installLocalAuthenticatedSession(page);
+  await installLocalAuthenticatedSession(page, stageId);
   await page.goto(TOURNAMENT_URL, { waitUntil: "load" });
   await page.getByTestId(`tournament-stage-${stageId}`).click();
   await expect(page.getByTestId("tournament-stage-detail")).toContainText(config.name);
@@ -85,17 +122,29 @@ async function expectCurrentBlindDisplay(page: Page, expected: BlindExpectation)
   await expect(hud.getByText(`${expected.sb} / ${expected.bb}`, { exact: true }).first()).toBeVisible();
 }
 
-async function completeHeroHands(page: Page, hands: number) {
+async function completeHeroHands(page: Page, hands: number, policy = "safe") {
   for (let hand = 0; hand < hands; hand += 1) {
     const result = await playOneHandProgression(page, {
       maxSteps: 110,
-      policy: "safe",
+      policy,
       requireHeroButtonClick: false,
     });
     expect(result.status).toBe("PASS");
     const nextHand = page.getByRole("button", { name: /Next Hand|次のハンド/i });
     await expect(nextHand).toBeVisible({ timeout: 10_000 });
-    await nextHand.click();
+    await nextHand.click({ timeout: 5_000 }).catch(async (error) => {
+      // A successful click immediately replaces the result controls. On long
+      // soaks Chromium can report that replacement as a detached locator even
+      // though the next hand is already live; only tolerate that exact state.
+      const phase = await page.evaluate(
+        () => window.__BADUGI_E2E__?.getStateSnapshot?.()?.phase,
+      );
+      if (["SHOWDOWN", "HAND_RESULT", "WAITING_NEXT_HAND"].includes(
+        String(phase ?? "").toUpperCase(),
+      )) {
+        throw error;
+      }
+    });
     await page.waitForFunction(
       () => {
         const phase = window.__BADUGI_E2E__?.getStateSnapshot?.()?.phase;
@@ -156,6 +205,70 @@ test("World Championship starts at production scale, advances a level, and reach
   });
   expect(completed.championId).toBeTruthy();
   expect(completed.finishOrder).toHaveLength(config.totalPlayers - 1);
+});
+
+test("scheduled tournament break blocks the next hand, counts down, and resumes", async ({ page }) => {
+  const baseConfig = await startProductionStage(page, "store");
+  await page.evaluate((config) => {
+    window.__BADUGI_E2E__.startTournamentMTT({
+      ...config,
+      totalPlayers: 6,
+      tables: 1,
+      breakEveryLevels: 1,
+      breakDurationMinutes: 1,
+      levels: config.levels.slice(0, 2).map((level) => ({
+        ...level,
+        hands: 1,
+        handsThisLevel: 1,
+      })),
+    });
+  }, baseConfig);
+
+  const result = await playOneHandProgression(page, {
+    maxSteps: 110,
+    policy: "safe",
+    requireHeroButtonClick: false,
+  });
+  expect(result.status).toBe("PASS");
+  await expect(page.getByTestId("tournament-break-overlay")).toBeVisible();
+  await expect(page.getByTestId("tournament-break-clock")).toContainText(/00:5\d|01:00/);
+
+  await page.getByRole("button", { name: "休憩を終了して続ける" }).click();
+  await expect(page.getByTestId("tournament-break-overlay")).toBeHidden();
+  await page.getByRole("button", { name: /Next Hand|次のハンド/i }).click();
+  await expect.poll(async () => (await getHud(page))?.currentLevelNumber).toBe(2);
+});
+
+test("Store survives a 20-hand real-action soak without actor or phase freeze", async ({ page }) => {
+  await startProductionStage(page, "store");
+  await completeHeroHands(page, 20, "heroFold");
+
+  await expectCurrentBlindDisplay(page, { level: 5, sb: 50, bb: 100, ante: 5 });
+  const audit = await page.evaluate(() => ({
+    hud: window.__BADUGI_E2E__.getTournamentHudState(),
+    hands: window.__BADUGI_E2E__.getHandHistory(),
+    phase: window.__BADUGI_E2E__.getStateSnapshot().phase,
+  }));
+  expect(audit.hands.length).toBeGreaterThanOrEqual(20);
+  expect(["SHOWDOWN", "HAND_RESULT", "WAITING_NEXT_HAND"]).not.toContain(
+    String(audit.phase).toUpperCase(),
+  );
+  expect(audit.hud.playersRemaining).toBeGreaterThan(1);
+});
+
+test("Local survives 15 real-action hands across ante levels", async ({ page }) => {
+  await startProductionStage(page, "local");
+  await completeHeroHands(page, 15, "heroFold");
+
+  await expectCurrentBlindDisplay(page, { level: 4, sb: 100, bb: 200, ante: 25 });
+  const audit = await page.evaluate(() => ({
+    hands: window.__BADUGI_E2E__.getHandHistory(),
+    phase: window.__BADUGI_E2E__.getStateSnapshot().phase,
+  }));
+  expect(audit.hands.length).toBeGreaterThanOrEqual(15);
+  expect(["SHOWDOWN", "HAND_RESULT", "WAITING_NEXT_HAND"]).not.toContain(
+    String(audit.phase).toUpperCase(),
+  );
 });
 
 for (const stage of [
@@ -248,5 +361,29 @@ for (const stage of [
     await expect(reviewPanel).toContainText("解釈");
     await expect(reviewPanel).toContainText("次の一手");
     await expect(reviewPanel).toContainText(String(stage.payout));
+
+    await expect
+      .poll(async () =>
+        page.evaluate(() => {
+          const saved = JSON.parse(
+            window.localStorage.getItem("mgx.tournament.v2") ?? "{}",
+          );
+          return saved?.tournament?.bankroll ?? null;
+        }),
+      )
+      .toBe(stage.payout);
+
+    await page.getByRole("button", { name: "Play Again" }).click();
+    await expect(page.getByTestId("tournament-hud")).toBeVisible();
+    await expect
+      .poll(async () =>
+        page.evaluate(() => {
+          const saved = JSON.parse(
+            window.localStorage.getItem("mgx.tournament.v2") ?? "{}",
+          );
+          return saved?.tournament?.bankroll ?? null;
+        }),
+      )
+      .toBe(stage.payout - stage.entryFee);
   });
 }

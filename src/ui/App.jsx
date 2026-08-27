@@ -13,7 +13,10 @@ import {
   DEFAULT_STARTING_STACK,
   TOURNAMENT_STRUCTURE,
 } from "../tournament/tournamentStructure";
-import { buildTournamentConfigFromStage } from "../config/tournamentStages.js";
+import {
+  buildTournamentConfigFromStage,
+  getStageById,
+} from "../config/tournamentStages.js";
 import { formatComment } from "./utils/commentCatalog.js";
 import GameRegistry from "../games/_core/GameRegistry";
 import { DEBUG_TOURNAMENT, logMTT } from "../config/debugFlags.js";
@@ -194,7 +197,9 @@ import {
   isResumeableMTTSnapshot,
   loadActiveMTTSnapshot,
   loadActiveTournamentSession,
+  formatTournamentBreakLabel,
   saveActiveMTTSnapshot,
+  shouldStartTournamentBreak,
 } from "./tournament/tournamentManager";
 import { installE2eTestDriver } from "./utils/e2eTestDriver.js";
 import {
@@ -204,17 +209,23 @@ import {
   getTournamentReplay as getStoredTournamentReplay,
   resetTournamentReplay,
 } from "./utils/tournamentReplayStore.js";
-import { applyTournamentResult } from "./utils/tournamentState.js";
+import {
+  applyTournamentResult,
+  deductConsolidatedEntryFee,
+} from "./utils/tournamentState.js";
 import {
   detectLegacyProgressDrift,
+  loadConsolidatedProgress,
   migrateLegacyProgressToV2,
   recordConsolidatedTournamentResult,
+  saveConsolidatedProgress,
 } from "./utils/consolidatedProgress.js";
 import {
   initializeButtonForFirstHand,
   nextAliveSeat,
 } from "./utils/buttonSeatUtils.js";
 import TournamentHUD from "./components/TournamentHUD.jsx";
+import TournamentBreakOverlay from "./components/TournamentBreakOverlay.jsx";
 import TitleScreen from "./screens/TitleScreen.jsx";
 import MainMenuScreen from "./screens/MainMenuScreen.jsx";
 import GameScreen from "./screens/GameScreen.jsx";
@@ -256,7 +267,11 @@ import { isCoachingPreviewEnabled } from "./coaching/previewFeatureFlags.js";
 import {
   enqueueBadugiActions,
   enqueueHandRecord,
+  enqueueTournamentSnapshot,
+  discardQueuedTournamentSnapshots,
   fetchSeatStats,
+  resumeTournamentSnapshot,
+  retireTournamentSnapshot,
   startAutoSync,
 } from "./utils/syncManager.js";
 import {
@@ -471,7 +486,6 @@ function formatHandIdentifier({
   return `${tableSegment}-${sequenceSegment}-${dealerSegment}-${timestamp.toString(36)}`;
 }
 
-const TOURNAMENT_CLOCK_PLACEHOLDER = "--:--";
 const LEGACY_LANGUAGE_STORAGE_KEY = "mgx.language";
 function getInitialLanguage() {
   if (typeof window === "undefined") return MGX_DEFAULT_LOCALE;
@@ -547,6 +561,7 @@ export default function App() {
   const [language, setLanguage] = useState(() => getInitialLanguage());
   // MGX branding: kitsune title screen + title → menu → game flow (2025-11-28)
   const [currentScreen, setCurrentScreen] = useState("title");
+  const [hubActiveSnapshot, setHubActiveSnapshot] = useState(null);
   const [gameUtilityModal, setGameUtilityModal] = useState(null);
   const pendingRingStartRef = useRef(false);
   const [debugScale, setDebugScale] = useState(null);
@@ -595,6 +610,40 @@ export default function App() {
   const [tournamentPlacements, setTournamentPlacements] = useState([]);
   const [tournamentTitle, setTournamentTitle] = useState("Tournament Results");
   const [tournamentReview, setTournamentReview] = useState(null);
+  const [tournamentBreakState, setTournamentBreakState] = useState(null);
+  const tournamentBreakStateRef = useRef(null);
+  const updateTournamentBreakState = useCallback((next) => {
+    tournamentBreakStateRef.current = next;
+    setTournamentBreakState(next);
+  }, []);
+  const completeTournamentBreak = useCallback(() => {
+    updateTournamentBreakState(null);
+  }, [updateTournamentBreakState]);
+  const persistTournamentSnapshot = useCallback(
+    (input) => {
+      const snapshot = saveActiveMTTSnapshot(input);
+      if (!snapshot) return null;
+      setHubActiveSnapshot(snapshot);
+      enqueueTournamentSnapshot(snapshot, {
+        accessToken: authToken,
+        tokenType: authTokenType,
+      });
+      return snapshot;
+    },
+    [authToken, authTokenType],
+  );
+  const retirePersistedTournament = useCallback(() => {
+    clearActiveMTTSnapshot();
+    discardQueuedTournamentSnapshots();
+    setHubActiveSnapshot(null);
+    if (!authToken) return;
+    retireTournamentSnapshot({
+      accessToken: authToken,
+      tokenType: authTokenType,
+    }).catch((error) => {
+      console.warn("[MTT] remote retire failed", error);
+    });
+  }, [authToken, authTokenType]);
   const [heroBustSummary, setHeroBustSummary] = useState(null);
   const [heroBustOverlayVisible, setHeroBustOverlayVisible] = useState(false);
   const tournamentStateRef = useRef(null);
@@ -1725,7 +1774,13 @@ export default function App() {
   }, [isTournament, playersSrc, tournamentHudState]);
   const tournamentHud =
     isTournament && liveTournamentHudState ? (
-      <TournamentHUD {...liveTournamentHudState} compact placement="side" />
+      <>
+        <TournamentHUD {...liveTournamentHudState} compact placement="side" />
+        <TournamentBreakOverlay
+          breakState={tournamentBreakState}
+          onComplete={completeTournamentBreak}
+        />
+      </>
     ) : null;
   const [uiPerf, setUiPerf] = useState({
     loadTime: null,
@@ -5479,6 +5534,20 @@ export default function App() {
           setHandsInLevel(0);
           handsInLevelRef.current = 0;
         }
+        const completedLevelNumber = Number(previousState.levelIndex) + 1;
+        if (
+          !nextState.isFinished &&
+          shouldStartTournamentBreak(nextState.config, completedLevelNumber)
+        ) {
+          updateTournamentBreakState({
+            afterLevel: completedLevelNumber,
+            durationMinutes: nextState.config.breakDurationMinutes,
+            endsAt:
+              Date.now() +
+              Math.max(1, Number(nextState.config.breakDurationMinutes) || 1) *
+                60_000,
+          });
+        }
       }
       // RC-1 FIX: always sync the ref to tournamentMTT authority
       // regardless of whether level actually changed this call.
@@ -5507,8 +5576,11 @@ export default function App() {
         const currentLevelDef = getCurrentLevel(nextState);
         hudPayload.handsThisLevel =
           hudPayload.handsThisLevel ?? currentLevelDef?.handsThisLevel ?? null;
-        hudPayload.nextBreakLabel =
-          hudPayload.nextBreakLabel ?? TOURNAMENT_CLOCK_PLACEHOLDER;
+        hudPayload.nextBreakLabel = formatTournamentBreakLabel(
+          nextState.config,
+          nextState.levelIndex,
+        );
+        hudPayload.breakState = tournamentBreakStateRef.current;
       }
       const hudLevelIndex = Number.isFinite(nextState.levelIndex)
         ? nextState.levelIndex
@@ -5520,9 +5592,9 @@ export default function App() {
       const attachedHudPayload = attachVariantLabels(displayHudPayload);
       setTournamentHudState(attachedHudPayload);
       if (nextState.isFinished) {
-        clearActiveMTTSnapshot();
+        retirePersistedTournament();
       } else {
-        saveActiveMTTSnapshot({
+        persistTournamentSnapshot({
           tournamentState: nextState,
           heroPlayerId: heroTournamentPlayerIdRef.current,
           hud: attachedHudPayload,
@@ -5770,6 +5842,9 @@ export default function App() {
       triggerHeroTableAnimation,
       authIsAuthenticated,
       debugLog,
+      persistTournamentSnapshot,
+      retirePersistedTournament,
+      updateTournamentBreakState,
     ],
   );
 
@@ -5896,7 +5971,11 @@ export default function App() {
       startingStack: startingStackValue,
       handsPlayedThisLevel: handsProgress,
       handsThisLevel: baseHud.handsThisLevel ?? levelInfo?.handsThisLevel ?? null,
-      nextBreakLabel: TOURNAMENT_CLOCK_PLACEHOLDER,
+      nextBreakLabel: formatTournamentBreakLabel(
+        config,
+        state.levelIndex ?? blindLevelIndexRef.current,
+      ),
+      breakState: tournamentBreakStateRef.current,
     };
   }
   const getTournamentHudSnapshotRef = useRef(() => null);
@@ -6289,6 +6368,7 @@ export default function App() {
     );
     setTournamentPlacements([]);
     setTournamentReview(null);
+    updateTournamentBreakState(null);
     setTournamentOverlayVisible(false);
     setHeroBustSummary(null);
     setHeroBustOverlayVisible(false);
@@ -6299,7 +6379,7 @@ export default function App() {
       policy: "fixed",
       initialVariant: gameVariantRef.current ?? DEFAULT_GAME_VARIANT,
     });
-  }, [initializeVariantRotation]);
+  }, [initializeVariantRotation, updateTournamentBreakState]);
 
   const startTournamentMTT = useCallback(
     (configOverride = DEFAULT_STORE_TOURNAMENT_CONFIG) => {
@@ -6405,8 +6485,8 @@ export default function App() {
         const currentLevelDef = getCurrentLevel(tournamentState);
         hudPayload.handsThisLevel =
           hudPayload.handsThisLevel ?? currentLevelDef?.handsThisLevel ?? null;
-        hudPayload.nextBreakLabel =
-          hudPayload.nextBreakLabel ?? TOURNAMENT_CLOCK_PLACEHOLDER;
+        hudPayload.nextBreakLabel = formatTournamentBreakLabel(config, 0);
+        hudPayload.breakState = null;
       }
       initializeVariantRotation({
         rotation: normalizedRotation,
@@ -6419,7 +6499,7 @@ export default function App() {
       });
       const attachedInitialHudPayload = attachVariantLabels(displayHudPayload);
       setTournamentHudState(attachedInitialHudPayload);
-      saveActiveMTTSnapshot({
+      persistTournamentSnapshot({
         tournamentState,
         heroPlayerId: heroTournamentPlayerIdRef.current,
         hud: attachedInitialHudPayload,
@@ -6468,6 +6548,7 @@ export default function App() {
       getDeckManager,
       hydrateHeroTableFromTournamentState,
       initializeVariantRotation,
+      persistTournamentSnapshot,
       resetInitialButtonState,
       resetTournamentState,
       resetTableStateToSafeDefaults,
@@ -6511,6 +6592,12 @@ export default function App() {
       gameVariantRef.current = restoredVariant;
       setGameVariant(restoredVariant);
       resetTournamentState();
+      const restoredBreakState = snapshot.hud?.breakState;
+      updateTournamentBreakState(
+        restoredBreakState && Number(restoredBreakState.endsAt) > Date.now()
+          ? restoredBreakState
+          : null,
+      );
       setTournamentStageTierConfig(resolvedTournamentTier);
       initializeVariantRotation({
         rotation: restoredRotation,
@@ -6573,8 +6660,11 @@ export default function App() {
         const currentLevelDef = getCurrentLevel(restoredState);
         hudPayload.handsThisLevel =
           hudPayload.handsThisLevel ?? currentLevelDef?.handsThisLevel ?? null;
-        hudPayload.nextBreakLabel =
-          hudPayload.nextBreakLabel ?? TOURNAMENT_CLOCK_PLACEHOLDER;
+        hudPayload.nextBreakLabel = formatTournamentBreakLabel(
+          config,
+          restoredLevelIndex,
+        );
+        hudPayload.breakState = tournamentBreakStateRef.current;
       }
       const displayHudPayload = applyActualBlindDisplayToHud(hudPayload, {
         blindStructure,
@@ -6614,6 +6704,7 @@ export default function App() {
       setPlayers,
       setShowNextButton,
       tournamentSession,
+      updateTournamentBreakState,
     ],
   );
 
@@ -6635,14 +6726,53 @@ export default function App() {
     setCurrentScreen,
   ]);
 
+  const handleStartTournamentFromHub = useCallback(
+    (config, stage) => {
+      if (!config || !stage?.id) return false;
+      const entry = deductConsolidatedEntryFee(stage.id);
+      if (!entry.ok) {
+        setCurrentScreen("tournamentHub");
+        return false;
+      }
+      const entryFee = entry.entryFee;
+      try {
+        startTournamentMTT({
+          ...config,
+          entryFee,
+          buyIn: entryFee,
+        });
+        // Starting a paid tournament persists progress and an active snapshot.
+        // Keep navigation as the final state transition so those synchronous
+        // persistence updates cannot leave the newly-created event in the Hub.
+        setCurrentScreen("gameTournament");
+        return true;
+      } catch (error) {
+        if (entryFee > 0) {
+          const latest = loadConsolidatedProgress();
+          saveConsolidatedProgress({
+            ...latest,
+            tournament: {
+              ...latest.tournament,
+              bankroll: latest.tournament.bankroll + entryFee,
+            },
+          });
+        }
+        throw error;
+      }
+    },
+    [setCurrentScreen, startTournamentMTT],
+  );
+
   const handleTournamentPlayAgain = useCallback(() => {
     const config =
       tournamentStateRef.current?.config ?? DEFAULT_STORE_TOURNAMENT_CONFIG;
-    startTournamentMTT(config);
-  }, [startTournamentMTT]);
+    const stage = getStageById(config.stageId ?? "store");
+    handleStartTournamentFromHub(config, stage);
+  }, [handleStartTournamentFromHub]);
 
   useEffect(() => {
     if (!location?.state?.startTournamentMTT && !location?.state?.resumeTournamentMTT) return;
+    if (autoModeInitRef.current) return;
     autoModeInitRef.current = true;
     ensureURLModeParam("store_tournament");
     if (location.state.resumeTournamentMTT) {
@@ -6652,11 +6782,10 @@ export default function App() {
         location.state.stageId ??
         new URLSearchParams(location.search).get("stage") ??
         "store";
-      startTournamentMTT(
+      const config =
         buildTournamentConfigFromStage(requestedStageId) ??
-          DEFAULT_STORE_TOURNAMENT_CONFIG,
-      );
-      setCurrentScreen("gameTournament");
+        DEFAULT_STORE_TOURNAMENT_CONFIG;
+      handleStartTournamentFromHub(config, getStageById(requestedStageId));
     }
     const nextState = { ...location.state };
     delete nextState.startTournamentMTT;
@@ -6666,11 +6795,11 @@ export default function App() {
     navigate(location.pathname, { replace: true, state: nextState });
   }, [
     ensureURLModeParam,
+    handleStartTournamentFromHub,
     location,
     navigate,
     resumeTournamentMTT,
     setCurrentScreen,
-    startTournamentMTT,
   ]);
 
   useEffect(() => {
@@ -6688,13 +6817,12 @@ export default function App() {
       if (shouldResume && resumeTournamentMTT()) {
         return;
       }
-      startTournamentMTT(
+      const config =
         buildTournamentConfigFromStage(requestedStageId) ??
-          DEFAULT_STORE_TOURNAMENT_CONFIG,
-      );
-      setCurrentScreen("gameTournament");
+        DEFAULT_STORE_TOURNAMENT_CONFIG;
+      handleStartTournamentFromHub(config, getStageById(requestedStageId));
     }
-  }, [location.search, resumeTournamentMTT, setCurrentScreen, startTournamentMTT]);
+  }, [handleStartTournamentFromHub, location.search, resumeTournamentMTT]);
 
   const handleEnterFromTitle = () => {
     setCurrentScreen("menu");
@@ -6810,22 +6938,13 @@ export default function App() {
       return;
     }
     const config = configOverride;
-    setCurrentScreen("gameTournament");
-    startTournamentMTT(config);
+    const stage = getStageById(config.stageId ?? "store");
+    handleStartTournamentFromHub(config, stage);
   };
 
   const handleOpenCareerScreen = useCallback(() => {
     setCurrentScreen("career");
   }, []);
-
-  const handleStartTournamentFromHub = useCallback(
-    (config) => {
-      if (!config) return;
-      setCurrentScreen("gameTournament");
-      startTournamentMTT(config);
-    },
-    [setCurrentScreen, startTournamentMTT],
-  );
 
   const handleResumeTournamentFromHub = useCallback(
     (snapshot) => {
@@ -6835,8 +6954,38 @@ export default function App() {
   );
 
   const handleRetireTournamentFromHub = useCallback(() => {
-    clearActiveMTTSnapshot();
-  }, []);
+    retirePersistedTournament();
+  }, [retirePersistedTournament]);
+
+  useEffect(() => {
+    if (currentScreen !== "tournamentHub") return undefined;
+    const localSnapshot = loadActiveMTTSnapshot();
+    setHubActiveSnapshot(localSnapshot);
+    if (!authToken) return undefined;
+    let cancelled = false;
+    resumeTournamentSnapshot({
+      accessToken: authToken,
+      tokenType: authTokenType,
+    })
+      .then((response) => {
+        if (cancelled || !response?.hasSnapshot || response.snapshot?.version !== 1) {
+          return;
+        }
+        const remoteSavedAt = Date.parse(response.snapshot.savedAt ?? "") || 0;
+        const localSavedAt = Date.parse(localSnapshot?.savedAt ?? "") || 0;
+        const selectedSnapshot =
+          remoteSavedAt >= localSavedAt ? response.snapshot : localSnapshot;
+        if (!selectedSnapshot) return;
+        saveActiveMTTSnapshot(selectedSnapshot);
+        setHubActiveSnapshot(selectedSnapshot);
+      })
+      .catch((error) => {
+        if (!cancelled) console.warn("[MTT] remote resume lookup failed", error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [authToken, authTokenType, currentScreen]);
 
   const handleOpenHandHistoryScreen = useCallback(() => {
     setCurrentScreen("handHistory");
@@ -7637,6 +7786,13 @@ export default function App() {
         console.warn("[HAND] dealNewHand busy; next request ignored");
         return false;
       }
+      if (tournamentBreakStateRef.current) {
+        if (Number(tournamentBreakStateRef.current.endsAt) > Date.now()) {
+          console.warn("[MTT] next hand blocked during scheduled break");
+          return false;
+        }
+        completeTournamentBreak();
+      }
       const currentPhase = phaseRef.current ?? phase;
       const allowedStartPhases = new Set([
         SAFE_RESET_PHASE,
@@ -7757,6 +7913,7 @@ export default function App() {
       players,
       pots,
       sanitizePlayerSnapshotForVariant,
+      completeTournamentBreak,
     ],
   );
   startNextHandRef.current = startNextHand;
@@ -9402,7 +9559,35 @@ export default function App() {
 
   useEffect(() => {
     setPlayers((prev) => applyHeroProfile(prev, heroProfile));
-  }, [heroProfile]);
+    const tournamentState = tournamentStateRef.current;
+    const heroPlayerId = heroTournamentPlayerIdRef.current;
+    const tournamentHero = tournamentState?.players?.[heroPlayerId];
+    if (
+      tournamentHero &&
+      heroProfile?.name &&
+      tournamentHero.name !== heroProfile.name
+    ) {
+      const nextState = {
+        ...tournamentState,
+        players: {
+          ...tournamentState.players,
+          [heroPlayerId]: {
+            ...tournamentHero,
+            name: heroProfile.name,
+          },
+        },
+      };
+      tournamentStateRef.current = nextState;
+      if (!nextState.isFinished) {
+        persistTournamentSnapshot({
+          tournamentState: nextState,
+          heroPlayerId,
+          hud: tournamentHudState,
+          variantId: gameVariantRef.current,
+        });
+      }
+    }
+  }, [heroProfile, persistTournamentSnapshot, tournamentHudState]);
 
   function ensureLastActionLabelsForSnapshot(snapshotPlayers = []) {
     const base = Array.isArray(snapshotPlayers) ? snapshotPlayers : [];
@@ -13122,6 +13307,7 @@ export default function App() {
     return (
       <>
         <TournamentHubScreen
+          activeSnapshot={hubActiveSnapshot}
           onBack={handleBackToMenu}
           onStartTournament={handleStartTournamentFromHub}
           onResumeTournament={handleResumeTournamentFromHub}

@@ -39,6 +39,29 @@ def sample_snapshot():
     }
 
 
+def sample_client_snapshot():
+    return {
+        "version": 1,
+        "savedAt": "2026-08-27T04:00:00.000Z",
+        "stageId": "local",
+        "variantId": "badugi",
+        "config": {"id": "local-mtt", "stageId": "local"},
+        "tournamentState": {
+            "config": {"id": "local-mtt", "stageId": "local"},
+            "players": {"hero-player": {"id": "hero-player", "stack": 760}},
+            "tables": [],
+            "levelIndex": 1,
+            "isFinished": False,
+        },
+        "hero": {"playerId": "hero-player", "stack": 760},
+        "hud": {
+            "handsPlayedThisLevel": 2,
+            "nextBreakLabel": "L5後 · 7分",
+            "breakState": None,
+        },
+    }
+
+
 def setup_sqlite(monkeypatch):
     engine = create_engine(
         "sqlite+pysqlite://",
@@ -98,6 +121,43 @@ def test_save_resume_and_retire_flow(monkeypatch):
         )
         assert resume_after_retire.status_code == 200
         assert resume_after_retire.json()["hasSnapshot"] is False
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+        teardown_sqlite(engine, SessionTesting)
+
+
+def test_save_and_resume_lossless_product_client_snapshot(monkeypatch):
+    engine, SessionTesting = setup_sqlite(monkeypatch)
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=2, name="player")
+    try:
+        snapshot = sample_client_snapshot()
+        saved = client.post(
+            "/api/tournament/save",
+            json={"snapshot": snapshot},
+            headers=auth_headers(),
+        )
+        assert saved.status_code == 200
+
+        resumed = client.post("/api/tournament/resume", headers=auth_headers())
+        assert resumed.status_code == 200
+        assert resumed.json() == {"hasSnapshot": True, "snapshot": snapshot}
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+        teardown_sqlite(engine, SessionTesting)
+
+
+def test_rejects_oversized_product_client_snapshot(monkeypatch):
+    engine, SessionTesting = setup_sqlite(monkeypatch)
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=3, name="player")
+    try:
+        snapshot = sample_client_snapshot()
+        snapshot["tournamentState"]["padding"] = "x" * 2_000_000
+        response = client.post(
+            "/api/tournament/save",
+            json={"snapshot": snapshot},
+            headers=auth_headers(),
+        )
+        assert response.status_code == 422
     finally:
         app.dependency_overrides.pop(get_current_user, None)
         teardown_sqlite(engine, SessionTesting)

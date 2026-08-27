@@ -3,6 +3,10 @@ import { safeGetItem, safeRemoveItem, safeSetItem } from "../../storage/core.js"
 import { STORAGE_KEYS } from "../../storage/keys.js";
 import { recordCareerTournamentResult } from "../career/careerProfile.js";
 import { recordStageWin, updateProgressAfterWorldChampClear } from "./playerProgress";
+import {
+  loadConsolidatedProgress,
+  saveConsolidatedProgress,
+} from "./consolidatedProgress.js";
 
 const PROGRESS_KEY = STORAGE_KEYS.TOURNAMENT_PROGRESS;
 const HISTORY_KEY = STORAGE_KEYS.TOURNAMENT_HISTORY;
@@ -90,7 +94,7 @@ export function getStageEligibility(stageId, progress = loadTournamentProgress()
   if (!requires) {
     return { eligible: true, reason: stage.eligibility?.text ?? "" };
   }
-  const wins = progress?.wins ?? {};
+  const wins = progress?.stageWins ?? progress?.wins ?? {};
   if (requires.storeWins && (wins.store ?? 0) < requires.storeWins) {
     return { eligible: false, reason: `店舗優勝が${requires.storeWins}回必要` };
   }
@@ -131,6 +135,32 @@ export function deductEntryFee(stageId) {
     bankroll: bankroll - stage.entryFee,
   });
   return { ok: true, progress: next };
+}
+
+export function deductConsolidatedEntryFee(stageId) {
+  const consolidated = loadConsolidatedProgress();
+  const progress = consolidated.tournament;
+  const eligibility = getStageEligibility(stageId, progress);
+  if (!eligibility.eligible) {
+    return { ok: false, progress, reason: eligibility.reason };
+  }
+  const affordability = canAffordEntry(stageId, progress);
+  if (!affordability.ok) {
+    return { ok: false, progress, reason: affordability.reason };
+  }
+  const stage = getStageById(stageId);
+  const entryFee = Math.max(0, Number(stage?.entryFee) || 0);
+  if (entryFee === 0) {
+    return { ok: true, progress, entryFee: 0 };
+  }
+  const saved = saveConsolidatedProgress({
+    ...consolidated,
+    tournament: {
+      ...progress,
+      bankroll: affordability.remaining,
+    },
+  });
+  return { ok: true, progress: saved.tournament, entryFee };
 }
 
 function normalizeCompletedTournamentEntry({

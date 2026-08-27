@@ -9,6 +9,7 @@ const API_BASE = API_BASE_RAW.endsWith("/api")
 let flushing = false;
 let timer = null;
 let authBlockedToken = null;
+let tournamentFlushTimer = null;
 const ABSOLUTE_URL_REGEX = /^https?:\/\//i;
 const MAX_QUEUE_JOBS = 300;
 
@@ -63,6 +64,12 @@ function buildApiBaseUrl() {
 
 function enqueueJob(type, payload) {
   const queue = loadQueue();
+  if (type === "tournament-snapshot") {
+    const retained = queue.filter((job) => job.type !== type);
+    retained.push({ id: `${type}-${Date.now()}`, type, payload, ts: Date.now() });
+    saveQueue(retained);
+    return;
+  }
   queue.push({ id: `${type}-${Date.now()}`, type, payload, ts: Date.now() });
   saveQueue(queue);
 }
@@ -71,7 +78,7 @@ async function postJson(path, body, options = {}) {
   const res = await fetch(`${buildApiBaseUrl()}${path}`, {
     method: "POST",
     headers: authHeaders(options.accessToken, options.tokenType),
-    body: JSON.stringify(body),
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   if (!res.ok) {
     const text = await res.text();
@@ -397,8 +404,33 @@ export function enqueueRatingUpdate(payload) {
   enqueueJob("rating-update", payload);
 }
 
-export function enqueueTournamentSnapshot(snapshot) {
+export function enqueueTournamentSnapshot(snapshot, options = {}) {
   enqueueJob("tournament-snapshot", snapshot);
+  if (typeof window !== "undefined" && options.accessToken) {
+    if (tournamentFlushTimer) window.clearTimeout(tournamentFlushTimer);
+    tournamentFlushTimer = window.setTimeout(() => {
+      tournamentFlushTimer = null;
+      flushQueue(options).catch((err) => {
+        console.warn("[sync] tournament snapshot flush failed", err);
+      });
+    }, Math.max(0, Number(options.debounceMs) || 750));
+  }
+}
+
+export function discardQueuedTournamentSnapshots() {
+  saveQueue(loadQueue().filter((job) => job.type !== "tournament-snapshot"));
+  if (typeof window !== "undefined" && tournamentFlushTimer) {
+    window.clearTimeout(tournamentFlushTimer);
+    tournamentFlushTimer = null;
+  }
+}
+
+export function resumeTournamentSnapshot(options = {}) {
+  return postJson("/tournament/resume", undefined, options);
+}
+
+export function retireTournamentSnapshot(options = {}) {
+  return postJson("/tournament/retire", undefined, options);
 }
 
 export function enqueueRlBuffer(entry) {

@@ -1,7 +1,8 @@
 """Pydantic schemas for tournament snapshot APIs."""
-from typing import List, Optional
+import json
+from typing import Any, Dict, List, Literal, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class SnapshotPlayer(BaseModel):
@@ -52,12 +53,37 @@ class TournamentSnapshotPayload(BaseModel):
     currentState: SnapshotState
 
 
+class TournamentClientSnapshotPayload(BaseModel):
+    """Lossless browser MTT snapshot used by the current product client."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    version: Literal[1]
+    savedAt: Optional[str] = None
+    stageId: Optional[str] = None
+    variantId: Optional[str] = None
+    config: Dict[str, Any]
+    tournamentState: Dict[str, Any]
+    hero: Dict[str, Any]
+    hud: Dict[str, Any]
+
+    @model_validator(mode="after")
+    def validate_resume_contract(self):
+        if not self.config.get("id") and not self.tournamentState.get("config", {}).get("id"):
+            raise ValueError("snapshot tournament id is required")
+        if not isinstance(self.tournamentState.get("players"), dict):
+            raise ValueError("snapshot players must be an object")
+        if len(json.dumps(self.model_dump(), separators=(",", ":"))) > 2_000_000:
+            raise ValueError("snapshot exceeds 2 MB limit")
+        return self
+
+
 class TournamentSaveRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    snapshot: TournamentSnapshotPayload
+    snapshot: Union[TournamentClientSnapshotPayload, TournamentSnapshotPayload]
 
 
 class TournamentResumeResponse(BaseModel):
     hasSnapshot: bool
-    snapshot: Optional[TournamentSnapshotPayload] = None
+    snapshot: Optional[Union[TournamentClientSnapshotPayload, TournamentSnapshotPayload]] = None

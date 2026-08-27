@@ -304,6 +304,8 @@ export async function performSafeAction(page, options = {}) {
     const order =
       DRAW_PHASES.has(phase) || progress?.snapshot?.street === "DRAW"
         ? ["action-draw-selected"]
+        : options.policy === "heroFold"
+          ? ["action-fold", "action-check", "action-call", "action-raise"]
         : toCall > 0
           ? options.policy === "heroAggressive"
             ? ["action-raise", "action-call", "action-fold"]

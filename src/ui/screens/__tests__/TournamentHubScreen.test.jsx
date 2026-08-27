@@ -65,12 +65,17 @@ describe("TournamentHubScreen", () => {
   });
 
   it.each([
-    ["local", "local-mtt", "Pro"],
-    ["national", "national-mtt", "Iron"],
-    ["world", "world-mtt", "WorldMaster"],
-  ])("starts %s config from the selected detail", (stageId, configId, tierLabel) => {
+    ["local", "local-mtt", "Pro", { store: 1 }, 1_000],
+    ["national", "national-mtt", "Iron", { local: 1 }, 3_000],
+    ["world", "world-mtt", "WorldMaster", { national: 2 }, 7_500],
+  ])("starts %s config from the selected detail", (stageId, configId, tierLabel, stageWins, bankroll) => {
     const handleStart = vi.fn();
-    render(<TournamentHubScreen onStartTournament={handleStart} />);
+    render(
+      <TournamentHubScreen
+        progress={{ stageWins, bankroll, completedTournaments: [] }}
+        onStartTournament={handleStart}
+      />,
+    );
 
     fireEvent.click(screen.getByTestId(`tournament-stage-${stageId}`));
     expect(screen.getByTestId("tournament-stage-detail").textContent).toContain(
@@ -85,6 +90,19 @@ describe("TournamentHubScreen", () => {
       gameVariant: "badugi",
     });
     expect(handleStart.mock.calls[0][0].levels.length).toBeGreaterThan(0);
+  });
+
+  it("blocks upper stages until both the win requirement and entry fee are met", () => {
+    const handleStart = vi.fn();
+    render(<TournamentHubScreen onStartTournament={handleStart} />);
+
+    fireEvent.click(screen.getByTestId("tournament-stage-world"));
+    expect(screen.getByTestId("tournament-stage-detail").textContent).toContain(
+      "全国優勝が2回必要",
+    );
+    expect(screen.getByTestId("tournament-start").disabled).toBe(true);
+    fireEvent.click(screen.getByTestId("tournament-start"));
+    expect(handleStart).not.toHaveBeenCalled();
   });
 
   it("shows COMING SOON and blocks start when a stage has no playable config", () => {

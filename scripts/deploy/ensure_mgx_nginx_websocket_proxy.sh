@@ -44,9 +44,8 @@ cleanup() {
 }
 trap cleanup EXIT
 
-run_sudo true || fail "passwordless sudo is required (sudo -n)"
-run_sudo test -f "$SITE_PATH" || fail "active nginx site not found: $SITE_PATH"
-run_sudo cat -- "$SITE_PATH" >"$snapshot"
+test -r "$SITE_PATH" || fail "active nginx site is not readable: $SITE_PATH"
+cat -- "$SITE_PATH" >"$snapshot"
 
 server_name_count="$(count_exact_lines "^[[:space:]]*server_name[[:space:]].*mgx-poker\\.com.*;[[:space:]]*$" "$snapshot")"
 if [ "$server_name_count" -lt 1 ]; then
@@ -102,16 +101,16 @@ if [ "$candidate_ws_count" -ne 1 ] || [ "$candidate_begin_count" -ne 1 ] || [ "$
   fail "generated nginx candidate failed managed-block validation"
 fi
 
-timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
+timestamp="$(date -u +%Y%m%dT%H%M%SZ).$$"
 backup_path="${BACKUP_DIR}/mgx-poker.com.${timestamp}.conf"
-run_sudo install -d -m 0700 -- "$BACKUP_DIR"
-run_sudo test ! -e "$backup_path" || fail "timestamp backup already exists: $backup_path"
-run_sudo cp -p -- "$SITE_PATH" "$backup_path"
-run_sudo cp -- "$candidate" "$SITE_PATH"
+run_sudo mkdir -p -- "$BACKUP_DIR"
+run_sudo rsync -a -- "$SITE_PATH" "$backup_path"
+chmod 0644 "$candidate"
+run_sudo rsync -a -- "$candidate" "$SITE_PATH"
 
 if ! run_sudo "$NGINX_BIN" -t; then
   echo "[mgx-nginx-ws] nginx validation failed; restoring $backup_path" >&2
-  run_sudo cp -- "$backup_path" "$SITE_PATH"
+  run_sudo rsync -a -- "$backup_path" "$SITE_PATH"
   run_sudo "$NGINX_BIN" -t >/dev/null 2>&1 || true
   fail "candidate rejected by nginx; original site restored"
 fi

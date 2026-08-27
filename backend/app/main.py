@@ -18,6 +18,7 @@ from .api.tournament_state import router as tournament_state_router
 from .api.analysis_chatgpt import router as analysis_router  # [tournament-feedback]
 from .api.auth import router as auth_router
 from .api.variants import router as variants_router
+from .api.p2p import router as p2p_router, ws_router as p2p_ws_router
 from .core.config import get_settings
 from .core.db import engine
 
@@ -113,6 +114,8 @@ app.include_router(tournament_state_router, prefix="/api")
 app.include_router(analysis_router, prefix="/api/analysis", tags=["analysis"])  # [tournament-feedback]
 app.include_router(auth_router, prefix="/api")
 app.include_router(variants_router, prefix="/api")
+app.include_router(p2p_router, prefix="/api")
+app.include_router(p2p_ws_router)
 
 
 @app.get("/")

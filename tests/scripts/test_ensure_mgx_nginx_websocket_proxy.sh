@@ -43,12 +43,6 @@ set -euo pipefail
 test "$1" = "-n"
 shift
 if [ "$1" = "mock-nginx" ]; then
-  if [ "$2" = "-T" ]; then
-    test -n "${MGX_TEST_DISCOVERY_SITE:-}"
-    printf '# configuration file %s:\n' "$MGX_TEST_DISCOVERY_SITE"
-    cat "$MGX_TEST_DISCOVERY_SITE"
-    exit 0
-  fi
   test "$2" = "-t"
   result="$(cat "$MGX_TEST_NGINX_RESULT")"
   if [ "$result" = "fail-once" ]; then
@@ -65,11 +59,11 @@ chmod +x "$MOCK_SUDO"
 run_script() {
   MGX_NGINX_TEST_MODE=1 \
     MGX_NGINX_SITE_PATH="${SITE_OVERRIDE:-$SITE}" \
+    MGX_NGINX_ENABLED_DIR="${ENABLED_OVERRIDE:-$TEST_DIR/enabled}" \
     MGX_NGINX_BACKUP_DIR="$BACKUP_DIR" \
     MGX_NGINX_SUDO_BIN="$MOCK_SUDO" \
     MGX_NGINX_BIN="mock-nginx" \
     MGX_TEST_NGINX_RESULT="$NGINX_RESULT" \
-    MGX_TEST_DISCOVERY_SITE="${DISCOVERY_SITE:-}" \
     "$SCRIPT"
 }
 
@@ -91,13 +85,15 @@ test "$backup_count" -eq 1 || fail "expected one timestamp backup"
 
 rm -f -- "$BACKUP_DIR"/mgx-poker.com.*.conf
 write_base_site
-DISCOVERY_SITE="$TEST_DIR/custom-live-site.conf"
+mkdir -p -- "$TEST_DIR/enabled"
+DISCOVERY_SITE="$TEST_DIR/enabled/custom-live-site.conf"
 mv -- "$SITE" "$DISCOVERY_SITE"
 SITE_OVERRIDE="$TEST_DIR/missing-site.conf"
+ENABLED_OVERRIDE="$TEST_DIR/enabled"
 run_script
 test "$(grep -c 'location /ws/ {' "$DISCOVERY_SITE")" -eq 1 || fail "discovered site was not updated"
-unset DISCOVERY_SITE SITE_OVERRIDE
-cp -- "$TEST_DIR/custom-live-site.conf" "$SITE"
+unset DISCOVERY_SITE SITE_OVERRIDE ENABLED_OVERRIDE
+cp -- "$TEST_DIR/enabled/custom-live-site.conf" "$SITE"
 
 before_noop="$(cksum "$SITE")"
 run_script

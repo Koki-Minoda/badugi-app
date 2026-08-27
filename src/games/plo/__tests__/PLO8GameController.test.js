@@ -184,6 +184,7 @@ describe("PLO8GameController", () => {
     controller.state.street = "FLOP";
     controller.state.boardCards = ["2S", "3S", "4H"];
     controller.state.currentBet = 0;
+    controller.state.currentActor = 0;
     controller.raiseCountThisStreet = 0;
     controller.state.players = controller.state.players.map((player) => ({
       ...player,

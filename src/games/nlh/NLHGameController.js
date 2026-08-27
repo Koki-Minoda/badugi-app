@@ -80,8 +80,11 @@ export class NLHGameController {
       handId: null,
       lastHandResult: null,
       currentBet: 0,
+      lastFullRaiseSize: 0,
+      raiseRestrictedSeatIndexes: [],
     };
     this.deck = null;
+    this.burnedCards = [];
     this.handCounter = 0;
   }
 
@@ -183,6 +186,8 @@ export class NLHGameController {
       holeCards: [],
     }));
     this.state.boardCards = [];
+    this.burnedCards = [];
+    this.state.raiseRestrictedSeatIndexes = [];
     this.state.street = "PREFLOP";
     this.resetDeck();
 
@@ -194,7 +199,13 @@ export class NLHGameController {
       this.state.dealerIndex = 0;
     }
 
-    const sbIndex = this.nextOccupiedSeat(this.state.dealerIndex, { allowSame: false, players });
+    const occupiedSeats = players.filter(
+      (player) => player && !player.seatOut && !player.isBusted && player.stack > 0,
+    );
+    const headsUp = occupiedSeats.length === 2;
+    const sbIndex = headsUp
+      ? this.state.dealerIndex
+      : this.nextOccupiedSeat(this.state.dealerIndex, { allowSame: false, players });
     const bbIndex = this.nextOccupiedSeat(sbIndex, { allowSame: false, players });
     this.state.smallBlindIndex = sbIndex;
     this.state.bigBlindIndex = bbIndex;
@@ -207,7 +218,8 @@ export class NLHGameController {
       players[sbIndex]?.betThisStreet ?? 0,
       players[bbIndex]?.betThisStreet ?? 0,
     );
-    this.state.currentActor = this.nextActiveSeat(bbIndex, players);
+    this.state.lastFullRaiseSize = Math.max(1, this.blinds.bb ?? 2);
+    this.state.currentActor = headsUp ? sbIndex : this.nextActiveSeat(bbIndex, players);
     this.state.players = players;
     this.state.pot = this.calculatePot(players);
     return this.getSnapshot();
@@ -297,8 +309,15 @@ export class NLHGameController {
     if (player.folded || player.seatOut || player.allIn) {
       return { success: false, reason: "Player cannot act" };
     }
+    if (this.state.currentActor != null && seatIndex !== this.state.currentActor) {
+      return { success: false, reason: "Action is out of turn" };
+    }
 
     const actionName = (action || "").toLowerCase();
+    const playerBet = Math.max(0, Number(player.betThisStreet ?? 0) || 0);
+    const currentBet = Math.max(0, Number(this.state.currentBet ?? 0) || 0);
+    const toCall = Math.max(0, currentBet - playerBet);
+    let fullRaise = false;
     switch (actionName) {
       case "fold":
         player.folded = true;
@@ -306,10 +325,12 @@ export class NLHGameController {
         player.lastAction = "Fold";
         break;
       case "check":
+        if (toCall > 0) {
+          return { success: false, reason: "Cannot check while facing a bet" };
+        }
         player.lastAction = "Check";
         break;
       case "call": {
-        const toCall = Math.max(0, this.state.currentBet - (player.betThisStreet ?? 0));
         this.commitChips(player, toCall);
         player.lastAction = toCall > 0 ? "Call" : "Check";
         break;
@@ -317,14 +338,76 @@ export class NLHGameController {
       case "bet":
       case "raise":
       case "all-in": {
-        const raiseAmount = amount > 0 ? amount : player.stack;
-        this.commitChips(player, raiseAmount);
-        this.state.currentBet = Math.max(this.state.currentBet, player.betThisStreet ?? 0);
-        player.lastAction = actionName === "all-in" ? "All-in" : actionName === "raise" ? "Raise" : "Bet";
+        if (
+          (actionName === "raise" || actionName === "all-in") &&
+          (this.state.raiseRestrictedSeatIndexes ?? []).includes(seatIndex) &&
+          playerBet + player.stack > currentBet
+        ) {
+          return { success: false, reason: "Betting was not reopened by the short all-in" };
+        }
+        if (actionName === "bet" && currentBet > 0) {
+          return { success: false, reason: "Cannot bet after betting has opened; use raise" };
+        }
+        if (actionName === "raise" && currentBet === 0) {
+          return { success: false, reason: "Cannot raise before betting has opened; use bet" };
+        }
+        const requestedCommit = actionName === "all-in"
+          ? player.stack
+          : Math.max(0, Number(amount) || 0);
+        if (requestedCommit <= 0) {
+          return { success: false, reason: "Bet amount must be positive" };
+        }
+        const actualCommit = Math.min(player.stack, requestedCommit);
+        const nextPlayerBet = playerBet + actualCommit;
+        if (nextPlayerBet <= currentBet && actionName !== "all-in") {
+          return { success: false, reason: "Raise must increase the current bet" };
+        }
+        const raiseSize = Math.max(0, nextPlayerBet - currentBet);
+        const minimumRaise = currentBet === 0
+          ? Math.max(1, this.blinds.bb ?? 2)
+          : Math.max(1, this.state.lastFullRaiseSize ?? this.blinds.bb ?? 2);
+        const isAllInCommit = actualCommit === player.stack;
+        if (raiseSize > 0 && raiseSize < minimumRaise && !isAllInCommit) {
+          return { success: false, reason: `Minimum raise is ${minimumRaise}` };
+        }
+        this.commitChips(player, actualCommit);
+        if ((player.betThisStreet ?? 0) > currentBet) {
+          this.state.currentBet = player.betThisStreet;
+          fullRaise = raiseSize >= minimumRaise;
+          if (fullRaise) {
+            this.state.lastFullRaiseSize = raiseSize;
+            this.state.raiseRestrictedSeatIndexes = [];
+          } else if (raiseSize > 0) {
+            this.state.raiseRestrictedSeatIndexes = this.state.players
+              .map((entry, index) =>
+                index !== seatIndex &&
+                entry &&
+                !entry.folded &&
+                !entry.seatOut &&
+                !entry.allIn &&
+                entry.hasActedThisStreet === true
+                  ? index
+                  : null,
+              )
+              .filter((index) => index != null);
+          }
+        }
+        player.lastAction = player.allIn
+          ? "All-in"
+          : actionName === "raise"
+            ? "Raise"
+            : "Bet";
         break;
       }
       default:
         return { success: false, reason: "Unsupported action" };
+    }
+    if (fullRaise) {
+      this.state.players.forEach((entry, index) => {
+        if (index !== seatIndex && entry && !entry.folded && !entry.seatOut && !entry.allIn) {
+          entry.hasActedThisStreet = false;
+        }
+      });
     }
     player.hasActedThisStreet = true;
 
@@ -400,11 +483,14 @@ export class NLHGameController {
     const betAmount =
       this.config.gameDefinition?.betting?.structure === "fixed-limit" && typeof this.getLimitUnit === "function"
         ? this.getLimitUnit()
-        : Math.max(this.blinds.bb ?? 2, toCall);
+        : toCall + Math.max(this.blinds.bb ?? 2, this.state.lastFullRaiseSize ?? 0);
     const decision = chooseTeacherBetAction({
       strength,
       toCall,
-      canRaise: !player.allIn && (player.stack ?? 0) > 0,
+      canRaise:
+        !player.allIn &&
+        (player.stack ?? 0) > 0 &&
+        !(this.state.raiseRestrictedSeatIndexes ?? []).includes(seatIndex),
       tierConfig: options.tierConfig,
       betAmount,
       currentBet,
@@ -444,8 +530,10 @@ export class NLHGameController {
       return this.getSnapshot();
     }
     if (nextStreet === "FLOP") {
+      this.burnCard();
       this.state.boardCards = [...this.state.boardCards, ...this.drawCards(3)];
     } else if (nextStreet === "TURN" || nextStreet === "RIVER") {
+      this.burnCard();
       this.state.boardCards = [...this.state.boardCards, ...this.drawCards(1)];
     }
     this.resetStreetBets();
@@ -466,6 +554,16 @@ export class NLHGameController {
       hasActedThisStreet: false,
     }));
     this.state.currentBet = 0;
+    this.state.lastFullRaiseSize = Math.max(1, this.blinds.bb ?? 2);
+    this.state.raiseRestrictedSeatIndexes = [];
+  }
+
+  burnCard() {
+    const [card] = this.drawCards(1);
+    if (card) {
+      this.burnedCards = [...this.burnedCards, card];
+    }
+    return card ?? null;
   }
 
   getNextStreet(currentStreet) {

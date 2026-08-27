@@ -68,6 +68,7 @@ Frontend calls these routes via `/api/*`:
 - `/api/auth/login`
 - `/api/auth/me`
 - `/api/auth/logout`
+- `/api/auth/account` (`DELETE`, bearer token and current password required)
 - `/api/badugi/hands`
 - `/api/badugi/hands/recent`
 - `/api/tournament/save`

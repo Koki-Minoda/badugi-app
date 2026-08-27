@@ -1,7 +1,10 @@
+import logging
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, EmailStr
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from pydantic import BaseModel, EmailStr, Field
+from sqlalchemy import delete
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from ..core.security import (
@@ -11,10 +14,11 @@ from ..core.security import (
 )
 from ..core.db import get_db
 from ..dependencies.auth import get_current_user
-from ..models import User
+from ..models import PlayFeedbackResult, TournamentSnapshot, User
 from ..schemas.user import UserPublic
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
 
 
 class SignupRequest(BaseModel):
@@ -25,6 +29,10 @@ class SignupRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
+
+class DeleteAccountRequest(BaseModel):
+    password: str = Field(..., min_length=1, max_length=1024)
 
 
 # NOTE: /auth/signup returns a minimal acknowledgement payload so the client
@@ -82,3 +90,59 @@ def read_current_user(current_user: User = Depends(get_current_user)):
 @router.post("/logout")
 def logout(_: User = Depends(get_current_user)):
     return {"ok": True}
+
+
+@router.delete("/account")
+async def delete_account(
+    payload: DeleteAccountRequest,
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Permanently delete the authenticated account and linked private data."""
+
+    response.headers["Cache-Control"] = "private, no-store"
+    response.headers["Pragma"] = "no-cache"
+    if not verify_password(payload.password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="invalid_password",
+            headers={
+                "Cache-Control": "private, no-store",
+                "Pragma": "no-cache",
+            },
+        )
+
+    user_id = current_user.id
+    try:
+        db.execute(
+            delete(TournamentSnapshot).where(TournamentSnapshot.user_id == user_id),
+        )
+        # Feedback payloads are removed instead of anonymized because they can
+        # contain user-provided hand context even when the top-level flag says
+        # PII was stripped.
+        db.execute(
+            delete(PlayFeedbackResult).where(PlayFeedbackResult.user_id == user_id),
+        )
+        db.delete(current_user)
+        db.commit()
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="account_deletion_failed",
+        ) from exc
+
+    # Import lazily to avoid coupling authentication module initialization to
+    # the P2P router. The database deletion remains authoritative even if no
+    # process-local room exists.
+    from .p2p import terminate_user_p2p_sessions
+
+    try:
+        await terminate_user_p2p_sessions(str(user_id))
+    except Exception:
+        # The account and private persisted data are already deleted. A stale
+        # process-local room must not turn a successful permanent deletion into
+        # a misleading error response.
+        logger.exception("Failed to terminate P2P state for deleted user %s", user_id)
+    return {"deleted": True}

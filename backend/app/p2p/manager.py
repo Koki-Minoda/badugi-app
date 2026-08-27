@@ -123,6 +123,17 @@ class P2PRoomManager:
         with self._lock:
             self._rooms.clear()
 
+    def room_codes_for_user(self, user_id: str) -> list[str]:
+        """Return active room codes containing a user."""
+
+        with self._lock:
+            self._prune_expired_rooms()
+            return [
+                room.code
+                for room in self._rooms.values()
+                if not room.closed and user_id in room.players
+            ]
+
     def create_room(
         self,
         *,

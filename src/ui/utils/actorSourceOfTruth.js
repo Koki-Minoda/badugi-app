@@ -90,6 +90,35 @@ export function resolveCanonicalActionSeat({
   return null;
 }
 
+export function resolveActionSeatWithFallback({
+  phase,
+  controllerTurn,
+  legacyTurn,
+  players,
+} = {}) {
+  const canonicalSeat = resolveCanonicalActionSeat({
+    phase,
+    controllerTurn,
+    legacyTurn,
+    players,
+  });
+  if (typeof canonicalSeat === "number") return canonicalSeat;
+  if (!ACTION_PHASES.has(String(phase ?? "").toUpperCase())) return null;
+  if (!Array.isArray(players) || players.length === 0) return null;
+
+  const staleSeat =
+    typeof controllerTurn === "number" && Number.isFinite(controllerTurn)
+      ? controllerTurn
+      : typeof legacyTurn === "number" && Number.isFinite(legacyTurn)
+        ? legacyTurn
+        : -1;
+  for (let offset = 1; offset <= players.length; offset += 1) {
+    const seat = ((staleSeat + offset) % players.length + players.length) % players.length;
+    if (isSeatActionEligibleForPhase(players, seat, phase)) return seat;
+  }
+  return null;
+}
+
 export function shouldSyncLegacyTurnToController({
   phase,
   controllerTurn,

@@ -262,7 +262,7 @@ export default function GameLayoutBase({
     tournamentEvent,
     onOpenTournamentReviewReplay,
     onTournamentBackToMenu,
-    onTournamentPlayAgain,
+    onEnterNewTournament,
   } = overlaysProps;
 
   const {
@@ -1414,7 +1414,7 @@ export default function GameLayoutBase({
         tournamentReview={tournamentReview}
         onOpenReviewReplay={onOpenTournamentReviewReplay}
         onBackToMenu={onTournamentBackToMenu}
-        onPlayAgain={onTournamentPlayAgain}
+        onEnterNewTournament={onEnterNewTournament}
       />
     </div>
   );

@@ -13,6 +13,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   isSeatActionEligibleForPhase,
+  resolveActionSeatWithFallback,
   resolveActorFromSnapshot,
   resolveCanonicalActionSeat,
   resolveSessionPreferredActor,
@@ -354,6 +355,45 @@ describe("resolveCanonicalActionSeat", () => {
     const players = makePlayers(3);
     expect(
       resolveCanonicalActionSeat({ phase: "BET", controllerTurn: undefined, legacyTurn: undefined, players }),
+    ).toBeNull();
+  });
+});
+
+describe("resolveActionSeatWithFallback", () => {
+  it("advances a stale DRAW actor past an empty folded seat after table consolidation", () => {
+    const players = makePlayers(5);
+    players[1] = makePlayer({ allIn: true, stack: 0 });
+    players[2] = makePlayer({
+      name: "(Empty Seat 2)",
+      folded: true,
+      allIn: true,
+      stack: 0,
+      seatOut: true,
+    });
+    players[4] = makePlayer({ allIn: true, stack: 0 });
+
+    expect(
+      resolveActionSeatWithFallback({
+        phase: "DRAW",
+        controllerTurn: 2,
+        legacyTurn: 2,
+        players,
+      }),
+    ).toBe(3);
+  });
+
+  it("returns null when no seat can act", () => {
+    const players = makePlayers(3).map((player) => ({
+      ...player,
+      folded: true,
+    }));
+    expect(
+      resolveActionSeatWithFallback({
+        phase: "BET",
+        controllerTurn: 1,
+        legacyTurn: 1,
+        players,
+      }),
     ).toBeNull();
   });
 });

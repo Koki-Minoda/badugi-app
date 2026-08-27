@@ -46,6 +46,7 @@ import { buildBadugiValueTelemetryFields } from "../ai/qa/badugiValuePressureAud
 import { normalizeCpuAction } from "../ai/normalizeCpuAction.js";
 import { getMobileQaSessionId } from "./qa/mobileQaSession.js";
 import {
+  resolveActionSeatWithFallback,
   resolveCanonicalActionSeat,
   resolveSessionPreferredActor,
   shouldSyncLegacyTurnToController,
@@ -1498,11 +1499,20 @@ export default function App() {
               : typeof controllerActor === "number"
                 ? controllerActor
                 : turn;
-  const controllerTurn = tournamentHeroBustTerminal
-    ? null
-    : typeof snapshotTurn === "number" && !Number.isNaN(snapshotTurn)
+  const rawControllerTurn =
+    typeof snapshotTurn === "number" && !Number.isNaN(snapshotTurn)
       ? snapshotTurn
       : null;
+  const controllerTurn = tournamentHeroBustTerminal
+    ? null
+    : isTableActionPhase
+      ? resolveActionSeatWithFallback({
+          phase: tablePhase,
+          controllerTurn: rawControllerTurn,
+          legacyTurn: turnSeatSrc,
+          players: playersSrc,
+        })
+      : rawControllerTurn;
   const isMobileDevice = deviceProfile.isMobile;
   const layoutMode = isMobileDevice ? "mobile" : "desktop";
   const shouldUseDesktopCanvasScale = false;
@@ -3410,15 +3420,21 @@ export default function App() {
             });
           }
           setTurn(nextSeat);
-        } else if (!transitioning) {
-          setTransitioning(true);
+        } else if (
+          !transitioningRef.current &&
+          !scheduledFinishDrawRef.current
+        ) {
+          scheduledFinishDrawRef.current = true;
           setTimeout(() => {
-            forceFinishRoundRef.current({
-              reason: "auto-draw-controller-finish",
-              phaseOverride: "DRAW",
-              playersSnapshot: playersRef.current ?? normalizedPlayers,
-            });
-            setTransitioning(false);
+            try {
+              forceFinishRoundRef.current({
+                reason: "auto-draw-controller-finish",
+                phaseOverride: "DRAW",
+                playersSnapshot: playersRef.current ?? normalizedPlayers,
+              });
+            } finally {
+              scheduledFinishDrawRef.current = false;
+            }
           }, 50);
         }
         return true;
@@ -3459,10 +3475,9 @@ export default function App() {
       }
       if (nextAfter !== null) {
         setTurn(nextAfter);
-      } else if (!transitioning) {
+      } else if (!transitioningRef.current) {
         if (scheduledFinishDrawRef.current) return true;
         scheduledFinishDrawRef.current = true;
-        setTransitioning(true);
         setTimeout(() => {
           try {
             forceFinishRoundRef.current({
@@ -3472,7 +3487,6 @@ export default function App() {
             });
           } finally {
             scheduledFinishDrawRef.current = false;
-            setTransitioning(false);
           }
         }, 50);
       }
@@ -3787,7 +3801,7 @@ export default function App() {
 
   useEffect(() => {
     if (phase !== "BET" && phase !== "DRAW") return;
-    if (transitioningRef.current || transitioning) return;
+    if (transitioningRef.current) return;
     const roster = playersRef.current ?? players;
     const seatCount = Array.isArray(roster) ? roster.length : 0;
     if (seatCount === 0) return;
@@ -3818,6 +3832,29 @@ export default function App() {
         }
         return;
       }
+    }
+    if (phase === "DRAW" && !isSeatEligibleForDraw(roster[turn])) {
+      const drawFallback = findNextDrawActorSeatRef.current(
+        roster,
+        Number.isInteger(turn) ? turn + 1 : null,
+      );
+      if (typeof drawFallback === "number") {
+        setTurn(drawFallback);
+        return;
+      }
+      const handled = forceFinishRoundRef.current({
+        reason: "draw-closed-guard",
+        phaseOverride: "DRAW",
+        playersSnapshot: roster,
+      });
+      if (!handled) {
+        handleFatalTableError("draw-closed-guard", {
+          phase,
+          turn,
+          seatCount,
+        });
+      }
+      return;
     }
     if (!Number.isInteger(turn) || turn < 0 || turn >= seatCount) {
       if (phase === "DRAW") {
@@ -6786,11 +6823,18 @@ export default function App() {
     [setCurrentScreen, startTournamentMTT],
   );
 
-  const handleTournamentPlayAgain = useCallback(() => {
+  const handleEnterNewTournament = useCallback(() => {
+    const completedTournament = tournamentStateRef.current;
+    if (!completedTournament?.isFinished || !completedTournament?.championId) {
+      console.warn(
+        "[MTT] new tournament blocked until the active tournament is complete",
+      );
+      return false;
+    }
     const config =
-      tournamentStateRef.current?.config ?? DEFAULT_STORE_TOURNAMENT_CONFIG;
+      completedTournament.config ?? DEFAULT_STORE_TOURNAMENT_CONFIG;
     const stage = getStageById(config.stageId ?? "store");
-    handleStartTournamentFromHub(config, stage);
+    return handleStartTournamentFromHub(config, stage);
   }, [handleStartTournamentFromHub]);
 
   useEffect(() => {
@@ -7417,14 +7461,7 @@ export default function App() {
       handStartingStacksRef.current = handStartingStacksById;
       seatOutWarnings.forEach((msg) => console.warn(msg));
 
-      if (activeCount === 2) {
-        console.log("[FINALS] Start heads-up match!");
-        setPlayers(newPlayers);
-        releaseDealingLock();
-        setPhase("TOURNAMENT_FINAL");
-        setTimeout(() => dealHeadsUpFinal(newPlayers), 800);
-        return true;
-      } else if (activeCount < 2) {
+      if (activeCount < 2) {
         console.warn(
           `[TOURNAMENT END] Only ${activeCount} active players remain.`,
         );
@@ -8194,8 +8231,8 @@ export default function App() {
         gameVariant: gameVariantRef.current,
         handId: handIdRef.current,
       };
-      syncEngineSnapshot(snapshot);
       if (nextSeat !== null) {
+        syncEngineSnapshot(snapshot);
         setTurn(nextSeat);
       } else {
         forceFinishRoundRef.current({
@@ -9177,7 +9214,7 @@ export default function App() {
       setPlayerHands: applyCustomHands,
       getStateSnapshot: () => ({
         phase: tournamentHeroBustTerminal ? "TABLE_FINISHED" : phase,
-        turn: tournamentHeroBustTerminal ? null : turn,
+        turn: tournamentHeroBustTerminal ? null : controllerTurn,
         drawRound,
         betRound: betRoundIndex,
         raiseCountThisRound,
@@ -9259,29 +9296,54 @@ export default function App() {
             const activeMode = modeRef.current ?? mode;
             if (
               activeMode === "tournament-mtt" &&
-              isDrawLowballAppVariant(normalizeAppVariantId(activeVariant))
+              (normalizeAppVariantId(activeVariant) === APP_VARIANT_IDS.BADUGI ||
+                isDrawLowballAppVariant(normalizeAppVariantId(activeVariant)))
             ) {
               const livePlayers = (playersRef.current ?? players ?? [])
                 .map(clonePlayerState)
                 .filter(Boolean);
+              const liveTurn = resolveActionSeatWithFallback({
+                phase,
+                controllerTurn,
+                legacyTurn: turn,
+                players: livePlayers,
+              });
+              const liveCurrentBet = Math.max(
+                Math.max(0, Number(currentBet) || 0),
+                ...livePlayers.map((player) =>
+                  Math.max(
+                    0,
+                    Number(
+                      player?.betThisStreet ??
+                        player?.betThisRound ??
+                        player?.bet ??
+                        0,
+                    ) || 0,
+                  ),
+                ),
+              );
               return {
                 variantId: activeVariant,
                 gameVariant: activeVariant,
                 handId: handIdRef.current,
                 phase: tournamentHeroBustTerminal ? "TABLE_FINISHED" : phase,
                 street: tournamentHeroBustTerminal ? "TABLE_FINISHED" : phase,
-                turn: tournamentHeroBustTerminal ? null : turn,
-                nextTurn: tournamentHeroBustTerminal ? null : turn,
-                currentActor: tournamentHeroBustTerminal ? null : turn,
-                actingPlayerIndex: tournamentHeroBustTerminal ? null : turn,
+                turn: tournamentHeroBustTerminal ? null : liveTurn,
+                nextTurn: tournamentHeroBustTerminal ? null : liveTurn,
+                currentActor: tournamentHeroBustTerminal ? null : liveTurn,
+                actingPlayerIndex: tournamentHeroBustTerminal
+                  ? null
+                  : liveTurn,
                 metadata: {
-                  actingPlayerIndex: tournamentHeroBustTerminal ? null : turn,
+                  actingPlayerIndex: tournamentHeroBustTerminal
+                    ? null
+                    : liveTurn,
                 },
                 drawRoundIndex: drawRoundTracker.current,
                 drawRound: drawRoundTracker.current,
                 betRound: betRoundIndex,
                 betRoundIndex,
-                currentBet,
+                currentBet: liveCurrentBet,
                 pot: totalPotRef.current,
                 players: livePlayers,
                 pots: potsRef.current ?? pots ?? [],
@@ -9419,6 +9481,7 @@ export default function App() {
     phase,
     players,
     turn,
+    controllerTurn,
     drawRound,
     debugLog,
     debugLog,
@@ -9442,93 +9505,6 @@ export default function App() {
   ]);
 
   useEffect(() => installE2eTestDriver(e2eDriverApiRef), []);
-
-  function dealHeadsUpFinal(prevPlayers) {
-    debugLog("[FINALS] dealHeadsUpFinal start");
-
-    const heads = prevPlayers.filter((p) => !p.seatOut);
-    if (heads.length !== 2) {
-      console.warn("[FINALS] Cannot start: not exactly 2 active players");
-      setPhase("TOURNAMENT_END");
-      return;
-    }
-
-    const nextDealerIdx = 0;
-    const deckManager = getDeckManager();
-    deckManager?.reset();
-    const structure =
-      activeBlindStructure[blindLevelIndex] ??
-      activeBlindStructure[lastStructureIndex] ??
-      TOURNAMENT_STRUCTURE[0];
-    const sbValue = structure.sb;
-    const bbValue = structure.bb;
-    const anteValue = structure.ante ?? 0;
-
-    const newPlayers = heads.map((p, i) => ({
-      ...p,
-      folded: false,
-      allIn: false,
-      seatOut: false,
-      isBusted: false,
-      hand: getDeckManager()?.draw(4) ?? [],
-      betThisRound: 0,
-      hasDrawn: false,
-      lastAction: "",
-      isDealer: i === nextDealerIdx,
-      hasActedThisRound: false,
-    }));
-    if (newPlayers[0]) {
-      newPlayers[0] = {
-        ...newPlayers[0],
-        name: heroProfile.name,
-        titleBadge: heroProfile.titleBadge,
-        avatar: heroProfile.avatar,
-      };
-    }
-
-    if (anteValue > 0) {
-      newPlayers.forEach((pl) => {
-        if (pl.stack <= 0) return;
-        const applied = applyChips(pl, anteValue);
-        pl.betThisRound += applied;
-        if (pl.stack === 0) {
-          pl.allIn = true;
-          pl.hasActedThisRound = true;
-        }
-      });
-    }
-
-    const sbPay = applyChips(newPlayers[0], sbValue);
-    newPlayers[0].betThisRound += sbPay;
-    if (newPlayers[0].stack === 0) {
-      newPlayers[0].allIn = true;
-      newPlayers[0].hasActedThisRound = true;
-    }
-    const bbPay = applyChips(newPlayers[1], bbValue);
-    newPlayers[1].betThisRound += bbPay;
-    if (newPlayers[1].stack === 0) {
-      newPlayers[1].allIn = true;
-      newPlayers[1].hasActedThisRound = true;
-    }
-
-    setPlayers(newPlayers);
-    handStartStacksRef.current = newPlayers.map((p) => p.stack);
-    setPots([]);
-    setCurrentBet(Math.max(sbPay, bbPay));
-    setLastAggressor(1);
-    setDealerIdx(nextDealerIdx);
-    setDrawRoundValue(0);
-    setPhase("BET");
-    setTurn(1); // UTG = BB
-    setBetHead(1);
-    setShowNextButton(false);
-    setTransitioning(false);
-
-    console.log(
-      "[FINALS] Heads-up match started:",
-      newPlayers.map((p) => p.name),
-    );
-  }
 
   useEffect(() => {
     resetInitialButtonState();
@@ -10278,9 +10254,27 @@ export default function App() {
     }
 
     if (phaseNow === "DRAW") {
-      if (transitioningRef.current || transitioning) {
-        debugLog("[ROUND_FORCE] Skip DRAW finish (transitioning)", { reason });
-        return false;
+      if (transitioningRef.current) {
+        debugLog("[ROUND_FORCE] Defer DRAW finish while transitioning", {
+          reason,
+          retryCount,
+        });
+        if (retryCount < 5) {
+          setTimeout(() => {
+            forceFinishRound({
+              reason,
+              phaseOverride,
+              playersSnapshot,
+              potsSnapshot,
+              drawRoundIndex,
+              dealerIndex,
+              retryCount: retryCount + 1,
+            });
+          }, 120);
+          return true;
+        }
+        console.warn("[ROUND_FORCE] DRAW finish retry exhausted", { reason });
+        transitioningRef.current = false;
       }
       const basePlayers =
         Array.isArray(playersSnapshot) && playersSnapshot.length
@@ -11787,8 +11781,15 @@ export default function App() {
     }
     setPlayerSnapshot(committedSnapshot);
     const nextHeroTurn = findNextDrawActorSeat(committedSnapshot, 1);
-    const safeHeroDrawTurn =
-      typeof nextHeroTurn === "number" ? nextHeroTurn : 0;
+    if (nextHeroTurn === null) {
+      forceFinishRoundRef.current({
+        reason: "hero-draw-complete",
+        phaseOverride: "DRAW",
+        playersSnapshot: committedSnapshot,
+      });
+      return;
+    }
+    const safeHeroDrawTurn = nextHeroTurn;
     const heroDrawSnapshot = applyDeckSnapshot({
       players: committedSnapshot,
       pots,
@@ -13541,7 +13542,7 @@ export default function App() {
     tournamentEvent: liveTournamentHudState?.tournamentEvent ?? null,
     onOpenTournamentReviewReplay: handleOpenReplayTarget,
     onTournamentBackToMenu: handleTournamentBackToMenu,
-    onTournamentPlayAgain: handleTournamentPlayAgain,
+    onEnterNewTournament: handleEnterNewTournament,
   };
 
   const controlsProps = {

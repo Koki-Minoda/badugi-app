@@ -305,7 +305,7 @@ export default function TournamentResultOverlay({
   onCoachingReplay,
   onCoachingTelemetry,
   onBackToMenu,
-  onPlayAgain,
+  onEnterNewTournament,
 }) {
   const shownKeyRef = useRef(null);
   const visibleLessons = useMemo(
@@ -485,13 +485,13 @@ export default function TournamentResultOverlay({
           >
             Back to Menu
           </button>
-          {typeof onPlayAgain === "function" ? (
+          {typeof onEnterNewTournament === "function" ? (
             <button
               type="button"
-              onClick={onPlayAgain}
+              onClick={onEnterNewTournament}
               className="px-5 py-3 rounded-full bg-emerald-500 text-slate-900 font-semibold hover:bg-emerald-400 transition"
             >
-              Play Again
+              Enter New Tournament
             </button>
           ) : null}
         </div>

@@ -306,6 +306,20 @@ async function completeProductionTournament(page: Page, stageId: string) {
       };
     }
 
+    expect(
+      await page
+        .getByRole("button", { name: "Enter New Tournament" })
+        .count(),
+    ).toBe(0);
+
+    const finishBreakButton = page.getByRole("button", {
+      name: "休憩を終了して続ける",
+    });
+    if (await finishBreakButton.isVisible().catch(() => false)) {
+      await finishBreakButton.click();
+      await expect(page.getByTestId("tournament-break-overlay")).toBeHidden();
+    }
+
     if (hud.heroBusted) {
       await page.evaluate(() =>
         window.__BADUGI_E2E__.simulateTournamentBackground(1),
@@ -544,7 +558,9 @@ for (const stage of [
       )
       .toBe(stage.payout);
 
-    await page.getByRole("button", { name: "Play Again" }).click();
+    await page
+      .getByRole("button", { name: "Enter New Tournament" })
+      .click();
     await expect(page.getByTestId("tournament-hud")).toBeVisible();
     await expect
       .poll(async () =>

@@ -891,7 +891,7 @@ export function buildTournamentReviewContract({
   const limitations = [];
   if (!handCount) limitations.push("hand-history-missing");
   if (!heroActionCount) limitations.push("hero-actions-missing");
-  if (!bustHand) limitations.push("bust-hand-not-identified");
+  if (result.placement !== 1 && !bustHand) limitations.push("bust-hand-not-identified");
   if (!replayRefs.length) limitations.push("replay-refs-missing");
 
   return {

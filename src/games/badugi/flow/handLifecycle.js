@@ -241,7 +241,10 @@ export function buildNextHandState({
     numActivePlayers,
   } = assignBlinds(players, nextDealerIdx, sbValue, bbValue);
 
-  const initialCurrentBet = Math.max(sbPay, bbPay);
+  // betThisRound contains both the dead ante and the live blind. Keep the
+  // round target in the same coordinate system so a caller pays the full BB
+  // instead of under-calling by the ante amount.
+  const initialCurrentBet = anteValue + Math.max(sbPay, bbPay);
   const resolvedTurn = firstBetterAfterBlinds(players, nextDealerIdx);
   const activeCount = numActivePlayers;
 

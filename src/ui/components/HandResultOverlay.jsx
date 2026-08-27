@@ -296,7 +296,7 @@ export default function HandResultOverlay({
   const singlePot = potSections.length <= 1;
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 px-4">
-      <div className="w-full max-w-3xl bg-slate-900 rounded-3xl border border-emerald-400/40 p-6 space-y-4 shadow-2xl">
+      <div className="max-h-[calc(100dvh-2rem)] w-full max-w-3xl space-y-4 overflow-y-auto rounded-3xl border border-emerald-400/40 bg-slate-900 p-4 shadow-2xl sm:p-6">
         <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em] text-emerald-300">
           <span>Hand Result</span>
           {summary.handId && <span>#{summary.handId}</span>}

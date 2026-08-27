@@ -515,6 +515,22 @@ describe("tournamentMTT engine", () => {
     expect(state.lastEvent).toEqual(topThreeEvent);
   });
 
+  it("does not skip bubble, top-three, or heads-up milestones on a multi-bust hand", () => {
+    let state = bustAlivePlayers(
+      createMTTTournamentState(BASE_CONFIG, entrants),
+      6,
+      1,
+    );
+    state = bustAlivePlayers(state, 6, 2);
+    state = bustAlivePlayers(state, 5, 3);
+
+    expect(state.playersRemaining).toBe(1);
+    expect(state.isFinished).toBe(true);
+    expect(state.events.map((event) => event.type)).toEqual(
+      expect.arrayContaining(["MONEY_BUBBLE", "TOP_THREE", "HEADS_UP"]),
+    );
+  });
+
   it("balances 14 remaining players across three tables as 5/5/4 instead of leaving a 3-way table", () => {
     let state = createMTTTournamentState(BASE_CONFIG, entrants);
     const playersToBust = Object.values(state.players).slice(0, 4);

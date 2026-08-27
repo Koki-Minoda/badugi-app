@@ -29,7 +29,7 @@ export default defineConfig({
     {
       name: 'tournament-pr-chromium',
       testDir: './tests/e2e',
-      testMatch: /tournament-reconnect-ui\.spec\.ts/,
+      testMatch: /tournament-(reconnect-ui|stage-blind-transition)\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
       },

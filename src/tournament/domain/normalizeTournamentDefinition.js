@@ -66,11 +66,17 @@ export function normalizeBlindStructure(raw = null) {
 export function normalizePayoutStructure(raw = []) {
   const rows = Array.isArray(raw) ? raw : raw?.payouts ?? raw?.prizeTable ?? [];
   const amountRows = rows
-    .filter((row) => Array.isArray(row?.places) && row.places[0] === row.places[1])
-    .map((row) => ({
-      place: toPositiveInteger(row.places[0], 0),
-      amount: toFiniteNumber(row.payout ?? row.amount, 0),
-    }))
+    .flatMap((row) => {
+      if (!Array.isArray(row?.places)) return [];
+      const first = toPositiveInteger(row.places[0], 0);
+      const last = toPositiveInteger(row.places[1], first);
+      const amount = toFiniteNumber(row.payout ?? row.amount, 0);
+      if (!first || last < first || amount <= 0) return [];
+      return Array.from({ length: last - first + 1 }, (_, offset) => ({
+        place: first + offset,
+        amount,
+      }));
+    })
     .filter((row) => row.place > 0 && row.amount > 0);
   const amountTotal = amountRows.reduce((sum, row) => sum + row.amount, 0);
   if (amountTotal > 0) {

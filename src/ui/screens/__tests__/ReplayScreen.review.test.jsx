@@ -13,8 +13,8 @@ function makeReviewHand() {
     startedAt: Date.now() - 2000,
     endedAt: Date.now(),
     seats: [
-      { seat: 0, name: "Hero", stack: 1000 },
-      { seat: 1, name: "Sora", stack: 1000 },
+      { seat: 0, name: "Hero", stack: 1000, isHero: true, initialHand: ["AS", "2D", "3C", "4H"] },
+      { seat: 1, name: "Sora", stack: 1000, initialHand: ["5S", "6D", "7C", "8H"] },
     ],
     events: [
       { type: "HAND_START", timestamp: Date.now() - 1800 },
@@ -110,5 +110,23 @@ describe("ReplayScreen review integration", () => {
     expect(await screen.findByTestId("hand-replay-screen")).toBeTruthy();
     expect(screen.queryByTestId("replay-review-panel")).toBeNull();
     expect(screen.queryByTestId("replay-review-timeline-marker")).toBeNull();
+  });
+
+  it("shows Hero cards throughout but reveals an active opponent only at the result", async () => {
+    const hand = makeReviewHand();
+    setHandHistoryAccessors({
+      readCurrent: () => hand,
+      readBuffer: () => [hand],
+      findById: () => hand,
+    });
+
+    render(<ReplayScreen handId={hand.handId} />);
+
+    expect((await screen.findByTestId("replay-seat-0-hand")).textContent).toContain(
+      "AS 2D 3C 4H",
+    );
+    expect(screen.queryByTestId("replay-seat-1-hand")).toBeNull();
+    fireEvent.click(screen.getByTestId("replay-last-frame"));
+    expect(screen.getByTestId("replay-seat-1-hand").textContent).toContain("5S 6D 7C 8H");
   });
 });

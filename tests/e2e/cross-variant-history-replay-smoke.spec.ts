@@ -171,6 +171,9 @@ test.describe("cross variant hand history replay smoke", () => {
   for (const { variant, title } of VARIANT_CASES) {
     test(`${variant} records handId/actions/result and supports replay frame jumps`, async ({ page }) => {
       await page.setViewportSize({ width: 1440, height: 900 });
+      await page.addInitScript(() => {
+        window.localStorage.setItem("mgx.previewVariants", "true");
+      });
       await openAuthenticatedGame(page, `${APP_URL}?variant=${variant}`);
       await waitForE2EDriver(page);
       await expect(page.getByText(title).first()).toBeVisible({ timeout: 20000 });

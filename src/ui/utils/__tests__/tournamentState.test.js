@@ -2,12 +2,19 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   appendTournamentHistory,
   applyTournamentResult,
+  deductConsolidatedEntryFee,
+  getStageEligibility,
   getTournamentHistory,
   loadTournamentProgress,
   resetTournamentProgress,
   saveTournamentProgress,
 } from "../tournamentState.js";
 import { STORAGE_KEYS } from "../../../storage/keys.js";
+import {
+  createDefaultConsolidatedProgress,
+  loadConsolidatedProgress,
+  saveConsolidatedProgress,
+} from "../consolidatedProgress.js";
 
 describe("tournament progress state", () => {
   afterEach(() => {
@@ -84,5 +91,37 @@ describe("tournament progress state", () => {
       }),
     ]);
     expect(progress.wins.world).toBe(1);
+  });
+
+  it("reads stage wins from consolidated progress and blocks skipped stages", () => {
+    expect(getStageEligibility("local", { stageWins: { store: 0 } })).toMatchObject({
+      eligible: false,
+    });
+    expect(getStageEligibility("local", { stageWins: { store: 1 } })).toMatchObject({
+      eligible: true,
+    });
+    expect(getStageEligibility("world", { stageWins: { national: 1 } })).toMatchObject({
+      eligible: false,
+    });
+  });
+
+  it("charges an eligible paid entry exactly once per accepted start", () => {
+    const defaults = createDefaultConsolidatedProgress();
+    saveConsolidatedProgress({
+      ...defaults,
+      tournament: {
+        ...defaults.tournament,
+        bankroll: 1_000,
+        stageWins: { ...defaults.tournament.stageWins, store: 1 },
+      },
+    });
+
+    expect(deductConsolidatedEntryFee("local")).toMatchObject({
+      ok: true,
+      entryFee: 1_000,
+      progress: { bankroll: 0 },
+    });
+    expect(deductConsolidatedEntryFee("local")).toMatchObject({ ok: false });
+    expect(loadConsolidatedProgress().tournament.bankroll).toBe(0);
   });
 });

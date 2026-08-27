@@ -116,20 +116,26 @@ export async function getProgressState(page) {
         String(ui.displayedPhase ?? "").toUpperCase().includes(marker),
       );
     const phase = uiTerminal ? "HAND_RESULT" : rawPhase;
-    const actor =
-      uiTerminal
-        ? null
-        : typeof snapshot?.currentActor === "number"
+    const snapshotDeclaresActor =
+      snapshot &&
+      ["currentActor", "turn", "nextTurn"].some((field) =>
+        Object.prototype.hasOwnProperty.call(snapshot, field),
+      );
+    const actor = uiTerminal
+      ? null
+      : snapshotDeclaresActor
+        ? typeof snapshot?.currentActor === "number"
           ? snapshot.currentActor
           : typeof snapshot?.turn === "number"
             ? snapshot.turn
             : typeof snapshot?.nextTurn === "number"
               ? snapshot.nextTurn
-              : typeof phaseState?.turn === "number"
-                ? phaseState.turn
-                : typeof state?.turn === "number"
-                  ? state.turn
-                  : null;
+              : null
+        : typeof phaseState?.turn === "number"
+          ? phaseState.turn
+          : typeof state?.turn === "number"
+            ? state.turn
+            : null;
     const players = snapshot?.players ?? phaseState?.players ?? state?.players ?? [];
     const pot = Number(snapshot?.pot ?? state?.potTotal ?? 0);
     const handId = snapshot?.handId ?? phaseState?.handId ?? state?.handId ?? null;
@@ -209,6 +215,7 @@ export function summarizeProgressState(progress) {
     bet: Number(player?.betThisStreet ?? player?.betThisRound ?? player?.bet ?? 0),
     folded: Boolean(player?.folded || player?.hasFolded),
     allIn: Boolean(player?.allIn),
+    hasDrawn: Boolean(player?.hasDrawn),
     seatOut: Boolean(player?.seatOut || player?.isBusted),
     lastAction: player?.lastAction ?? null,
   }));
@@ -251,11 +258,15 @@ export function assertProgressState(progress, context = {}) {
 }
 
 function hasInvalidActor(progress) {
-  if (progress?.isTerminal || typeof progress?.actor !== "number") return false;
+  if (progress?.isTerminal) return false;
+  if (typeof progress?.actor !== "number") {
+    return ["BET", "DRAW"].includes(String(progress?.phase ?? "").toUpperCase());
+  }
   const actor = progress.players?.[progress.actor];
   if (!actor) return true;
   if (actor?.folded || actor?.hasFolded || actor?.seatOut || actor?.isBusted) return true;
   if (String(progress.phase) === "BET" && actor?.allIn) return true;
+  if (String(progress.phase) === "DRAW" && actor?.hasDrawn) return true;
   return false;
 }
 
@@ -304,6 +315,8 @@ export async function performSafeAction(page, options = {}) {
     const order =
       DRAW_PHASES.has(phase) || progress?.snapshot?.street === "DRAW"
         ? ["action-draw-selected"]
+        : options.policy === "heroFold"
+          ? ["action-fold", "action-check", "action-call", "action-raise"]
         : toCall > 0
           ? options.policy === "heroAggressive"
             ? ["action-raise", "action-call", "action-fold"]
@@ -313,12 +326,23 @@ export async function performSafeAction(page, options = {}) {
           : ["action-check", "action-call", "action-raise", "action-fold"];
     const action = await firstClickableAction(page, order);
     if (action) {
-      await action.locator.click();
+      const clicked = await action.locator
+        .click({ timeout: 1500 })
+        .then(() => true)
+        .catch(() => false);
       const changed = await waitForProgressChange(page, beforeKey, { timeout: 1200 })
         .then(() => true)
         .catch(() => false);
-      if (changed) {
+      if (clicked && changed) {
         return { acted: true, clickedAction: action.id, actor, before: summarizeProgressState(progress) };
+      }
+      if (!clicked && changed) {
+        return {
+          acted: true,
+          clickedAction: `${action.id}:state-advanced-before-click`,
+          actor,
+          before: summarizeProgressState(progress),
+        };
       }
     }
   }
@@ -334,9 +358,15 @@ export async function performSafeAction(page, options = {}) {
   }
 
   const payload = controllerActionFor(progress, options);
-  let snapshot = await invokeE2E(page, "forceControllerAction", actor, payload);
+  // DRAW must use the app's canonical draw lifecycle first. The generic
+  // controller bridge can acknowledge a tournament draw without committing
+  // the legacy hasDrawn flag, leaving the UI and controller snapshots split.
+  let snapshot =
+    payload.type === "draw"
+      ? await invokeE2E(page, "forceSeatDraw", actor, payload).catch(() => null)
+      : await invokeE2E(page, "forceControllerAction", actor, payload);
   if (!snapshot && payload.type === "draw") {
-    snapshot = await invokeE2E(page, "forceSeatDraw", actor, payload).catch(() => null);
+    snapshot = await invokeE2E(page, "forceControllerAction", actor, payload);
   }
   if (!snapshot) {
     snapshot = await invokeE2E(page, "forceSeatAction", actor, payload);

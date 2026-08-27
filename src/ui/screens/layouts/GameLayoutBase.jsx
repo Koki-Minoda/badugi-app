@@ -262,7 +262,7 @@ export default function GameLayoutBase({
     tournamentEvent,
     onOpenTournamentReviewReplay,
     onTournamentBackToMenu,
-    onTournamentPlayAgain,
+    onEnterNewTournament,
   } = overlaysProps;
 
   const {
@@ -1403,6 +1403,8 @@ export default function GameLayoutBase({
         title={heroBustSummary?.title}
         heroSummary={heroBustSummary?.hero}
         inMoneyPlacements={heroBustSummary?.inMoney ?? []}
+        tournamentReview={tournamentReview}
+        onOpenReviewReplay={onOpenTournamentReviewReplay}
         onBackToMenu={onTournamentBackToMenu}
       />
       <TournamentResultOverlay
@@ -1412,7 +1414,7 @@ export default function GameLayoutBase({
         tournamentReview={tournamentReview}
         onOpenReviewReplay={onOpenTournamentReviewReplay}
         onBackToMenu={onTournamentBackToMenu}
-        onPlayAgain={onTournamentPlayAgain}
+        onEnterNewTournament={onEnterNewTournament}
       />
     </div>
   );

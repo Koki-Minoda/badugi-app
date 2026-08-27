@@ -61,6 +61,43 @@ function makeHand(index, overrides = {}) {
 }
 
 describe("tournamentReviewContract", () => {
+  it("treats a champion without a bust hand as complete data and computes the configured net result", () => {
+    const contract = buildTournamentReviewContract({
+      tournament: {
+        tournamentId: "local-champion",
+        name: "Local Tournament",
+        entryFee: 1_000,
+        championId: "hero-player",
+      },
+      hands: [makeHand(0, { heroNet: 120 }), makeHand(1, { heroNet: 240 })],
+      placements: [
+        { id: "hero-player", place: 1, name: "Hero", stack: 36_000, payout: 12_000 },
+        { id: "cpu-1", place: 2, name: "Sora", stack: 0, payout: 7_500 },
+      ],
+      heroSeat: 0,
+      heroPlayerId: "hero-player",
+      hasAuth: true,
+    });
+
+    expect(contract).toMatchObject({
+      placement: 1,
+      payout: 12_000,
+      roi: 11,
+      bustHand: null,
+      result: {
+        placement: 1,
+        payout: 12_000,
+        buyIn: 1_000,
+        netResult: 11_000,
+        roi: 11,
+        championId: "hero-player",
+      },
+    });
+    expect(contract.dataQuality.limitations).not.toContain("bust-hand-not-identified");
+    expect(contract.reviewSummary.facts.length).toBeGreaterThan(0);
+    expect(contract.reviewSummary.nextActions.length).toBeGreaterThan(0);
+  });
+
   it("builds a tournament-only review contract with result, hero actions, key hands, and replay refs", () => {
     const hands = [makeHand(0), makeHand(1), makeHand(2, { heroBusted: true, heroNet: -420 })];
     const contract = buildTournamentReviewContract({

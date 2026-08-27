@@ -63,7 +63,7 @@ export class RoomApiError extends Error {
   }
 }
 
-async function requestJson(path, { method = "GET", body } = {}) {
+async function requestJson(path, { method = "GET", body, signal } = {}) {
   const auth = readRoomAuth();
   if (!auth?.accessToken) {
     throw new RoomApiError("login_required", { status: 401, code: "login_required" });
@@ -75,6 +75,7 @@ async function requestJson(path, { method = "GET", body } = {}) {
       ...(body ? { "Content-Type": "application/json" } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,
+    signal,
   });
   const data = await response.json().catch(() => null);
   if (!response.ok) {
@@ -114,31 +115,37 @@ export async function getRoomInfo(roomId) {
   return requestJson(`/p2p/rooms/${encodeURIComponent(roomId.trim().toUpperCase())}`);
 }
 
-export async function getRoomState(roomId) {
+export async function getRoomState(roomId, { signal } = {}) {
   if (!roomId) throw new Error("roomId is required");
-  return requestJson(`/p2p/rooms/${encodeURIComponent(roomId.trim().toUpperCase())}/state`);
+  return requestJson(`/p2p/rooms/${encodeURIComponent(roomId.trim().toUpperCase())}/state`, {
+    signal,
+  });
 }
 
-export async function readyRoom(roomId) {
+export async function readyRoom(roomId, command, { signal } = {}) {
   if (!roomId) throw new Error("roomId is required");
   return requestJson(`/p2p/rooms/${encodeURIComponent(roomId.trim().toUpperCase())}/ready`, {
     method: "POST",
+    body: command,
+    signal,
   });
 }
 
-export async function actInRoom(roomId, { type, amount = 0 }) {
+export async function actInRoom(roomId, command, { signal } = {}) {
   if (!roomId) throw new Error("roomId is required");
   return requestJson(`/p2p/rooms/${encodeURIComponent(roomId.trim().toUpperCase())}/action`, {
     method: "POST",
-    body: { type, amount },
+    body: command,
+    signal,
   });
 }
 
-export async function drawInRoom(roomId, cardIndexes = []) {
+export async function drawInRoom(roomId, command, { signal } = {}) {
   if (!roomId) throw new Error("roomId is required");
   return requestJson(`/p2p/rooms/${encodeURIComponent(roomId.trim().toUpperCase())}/draw`, {
     method: "POST",
-    body: { cardIndexes },
+    body: command,
+    signal,
   });
 }
 

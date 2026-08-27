@@ -6,6 +6,7 @@ restart; durable room persistence is a separate production-scaling concern.
 """
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass, field
 from itertools import combinations
 import secrets
@@ -23,6 +24,8 @@ BETTING_PHASES = ("bet_0", "bet_1", "bet_2", "bet_3")
 DRAWING_PHASES = ("draw_1", "draw_2", "draw_3")
 ROOM_TTL_SECONDS = 6 * 60 * 60
 MAX_ACTIVE_ROOMS_PER_OWNER = 3
+COMMAND_RECEIPT_TTL_SECONDS = 10 * 60
+MAX_COMMAND_RECEIPTS_PER_ROOM = 256
 
 
 class P2PError(RuntimeError):
@@ -66,6 +69,20 @@ class Player:
 
 
 @dataclass
+class CommandReceipt:
+    created_at: float
+    fingerprint: tuple[Any, ...]
+    state: dict[str, Any]
+
+
+@dataclass
+class CommandResult:
+    room: "Room"
+    state: dict[str, Any]
+    duplicate: bool
+
+
+@dataclass
 class Room:
     code: str
     owner_id: str
@@ -88,6 +105,7 @@ class Room:
     pending_draw: set[str] = field(default_factory=set)
     history: list[dict[str, Any]] = field(default_factory=list)
     showdown: dict[str, Any] | None = None
+    command_receipts: dict[tuple[str, str], CommandReceipt] = field(default_factory=dict)
     closed: bool = False
 
     @property
@@ -279,6 +297,80 @@ class P2PRoomManager:
                 self._bump(room)
             return room
 
+    def execute_command(
+        self,
+        code: str,
+        *,
+        user_id: str,
+        command_id: str,
+        hand_id: str | None,
+        expected_phase: str,
+        command_type: str,
+        action: str = "",
+        amount: int = 0,
+        card_indexes: list[int] | None = None,
+    ) -> CommandResult:
+        """Validate, deduplicate and apply one client command atomically."""
+
+        with self._lock:
+            room = self.get_room(code)
+            self._player(room, user_id)
+            self._prune_command_receipts(room)
+            normalized_type = command_type.strip().lower()
+            normalized_action = action.strip().lower()
+            normalized_indexes = tuple(sorted(set(card_indexes or [])))
+            fingerprint = (
+                normalized_type,
+                hand_id,
+                expected_phase,
+                normalized_action,
+                int(amount),
+                normalized_indexes,
+            )
+            receipt_key = (user_id, command_id)
+            receipt = room.command_receipts.get(receipt_key)
+            if receipt is not None:
+                if receipt.fingerprint != fingerprint:
+                    raise P2PError(
+                        "command_conflict",
+                        "commandId was already used for a different command",
+                    )
+                return CommandResult(room, deepcopy(receipt.state), True)
+
+            if room.hand_id != hand_id or room.phase != expected_phase:
+                raise P2PError(
+                    "stale_command",
+                    "The hand or phase changed before this command was applied",
+                )
+
+            if normalized_type == "ready":
+                room = self.ready(room.code, user_id=user_id)
+            elif normalized_type == "action":
+                room = self.act(
+                    room.code,
+                    user_id=user_id,
+                    action=normalized_action,
+                    amount=amount,
+                )
+            elif normalized_type == "draw":
+                room = self.draw(
+                    room.code,
+                    user_id=user_id,
+                    card_indexes=list(normalized_indexes),
+                )
+            else:
+                raise P2PError("invalid_command", "Unsupported command type")
+
+            state = self.public_state(room, viewer_id=user_id)
+            state["acknowledgedCommandId"] = command_id
+            room.command_receipts[receipt_key] = CommandReceipt(
+                created_at=time.time(),
+                fingerprint=fingerprint,
+                state=deepcopy(state),
+            )
+            self._prune_command_receipts(room)
+            return CommandResult(room, state, False)
+
     def legal_actions(self, room: Room, user_id: str) -> list[str]:
         if room.phase in DRAWING_PHASES:
             return ["draw"] if user_id == room.current_actor_id else []
@@ -360,6 +452,19 @@ class P2PRoomManager:
         ]
         for code in expired:
             self._rooms.pop(code, None)
+
+    @staticmethod
+    def _prune_command_receipts(room: Room) -> None:
+        cutoff = time.time() - COMMAND_RECEIPT_TTL_SECONDS
+        expired = [
+            key
+            for key, receipt in room.command_receipts.items()
+            if receipt.created_at < cutoff
+        ]
+        for key in expired:
+            room.command_receipts.pop(key, None)
+        while len(room.command_receipts) > MAX_COMMAND_RECEIPTS_PER_ROOM:
+            room.command_receipts.pop(next(iter(room.command_receipts)))
 
     @staticmethod
     def _player(room: Room, user_id: str) -> Player:

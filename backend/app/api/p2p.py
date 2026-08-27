@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 from collections import defaultdict
+import re
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response, WebSocket, WebSocketDisconnect, status
@@ -30,12 +31,22 @@ class RoomCodeRequest(BaseModel):
     roomCode: str = Field(..., min_length=6, max_length=12)
 
 
-class RoomActionRequest(BaseModel):
+class RoomCommandRequest(BaseModel):
+    commandId: str = Field(..., min_length=8, max_length=64, pattern=r"^[A-Za-z0-9._:-]+$")
+    handId: str | None = Field(..., max_length=32)
+    expectedPhase: str = Field(..., min_length=3, max_length=16)
+
+
+class RoomReadyRequest(RoomCommandRequest):
+    pass
+
+
+class RoomActionRequest(RoomCommandRequest):
     type: str = Field(..., min_length=1, max_length=16)
     amount: int = Field(0, ge=0, le=1_000_000, strict=True)
 
 
-class RoomDrawRequest(BaseModel):
+class RoomDrawRequest(RoomCommandRequest):
     cardIndexes: list[int] = Field(default_factory=list, max_length=4)
 
     @field_validator("cardIndexes", mode="before")
@@ -62,6 +73,8 @@ def _http_error(exc: P2PError) -> HTTPException:
         "not_in_room": status.HTTP_403_FORBIDDEN,
         "room_unavailable": status.HTTP_409_CONFLICT,
         "active_room_limit": status.HTTP_409_CONFLICT,
+        "stale_command": status.HTTP_409_CONFLICT,
+        "command_conflict": status.HTTP_409_CONFLICT,
     }
     return HTTPException(
         status_code=code_to_status.get(exc.code, status.HTTP_400_BAD_REQUEST),
@@ -157,16 +170,25 @@ def get_room_state(
 @router.post("/rooms/{room_code}/ready")
 async def ready_room(
     room_code: str,
+    payload: RoomReadyRequest,
     response: Response,
     user: User = Depends(get_current_user),
 ):
     _mark_private(response)
     try:
-        room = p2p_room_manager.ready(room_code, user_id=_user_id(user))
+        result = p2p_room_manager.execute_command(
+            room_code,
+            user_id=_user_id(user),
+            command_id=payload.commandId,
+            hand_id=payload.handId,
+            expected_phase=payload.expectedPhase,
+            command_type="ready",
+        )
     except P2PError as exc:
         raise _http_error(exc) from exc
-    await room_sockets.broadcast_state(room)
-    return _response(room, _user_id(user))
+    if not result.duplicate:
+        await room_sockets.broadcast_state(result.room)
+    return result.state
 
 
 @router.post("/rooms/{room_code}/action")
@@ -178,16 +200,21 @@ async def act_in_room(
 ):
     _mark_private(response)
     try:
-        room = p2p_room_manager.act(
+        result = p2p_room_manager.execute_command(
             room_code,
             user_id=_user_id(user),
+            command_id=payload.commandId,
+            hand_id=payload.handId,
+            expected_phase=payload.expectedPhase,
+            command_type="action",
             action=payload.type,
             amount=payload.amount,
         )
     except P2PError as exc:
         raise _http_error(exc) from exc
-    await room_sockets.broadcast_state(room)
-    return _response(room, _user_id(user))
+    if not result.duplicate:
+        await room_sockets.broadcast_state(result.room)
+    return result.state
 
 
 @router.post("/rooms/{room_code}/draw")
@@ -199,15 +226,20 @@ async def draw_in_room(
 ):
     _mark_private(response)
     try:
-        room = p2p_room_manager.draw(
+        result = p2p_room_manager.execute_command(
             room_code,
             user_id=_user_id(user),
+            command_id=payload.commandId,
+            hand_id=payload.handId,
+            expected_phase=payload.expectedPhase,
+            command_type="draw",
             card_indexes=payload.cardIndexes,
         )
     except P2PError as exc:
         raise _http_error(exc) from exc
-    await room_sockets.broadcast_state(room)
-    return _response(room, _user_id(user))
+    if not result.duplicate:
+        await room_sockets.broadcast_state(result.room)
+    return result.state
 
 
 @router.post("/rooms/leave")
@@ -266,14 +298,28 @@ class RoomSockets:
             except (RuntimeError, WebSocketDisconnect):
                 pass
 
-    async def send_state(self, room: Room, user_id: str, websocket: WebSocket) -> None:
+    async def send_state(
+        self,
+        room: Room,
+        user_id: str,
+        websocket: WebSocket,
+        *,
+        state: dict[str, Any] | None = None,
+        command_id: str | None = None,
+    ) -> None:
         await websocket.send_json(
-            {"event": "state", "payload": p2p_room_manager.public_state(room, viewer_id=user_id)}
+            {
+                "event": "state",
+                "payload": state or p2p_room_manager.public_state(room, viewer_id=user_id),
+                **({"commandId": command_id} if command_id else {}),
+            }
         )
 
-    async def broadcast_state(self, room: Room) -> None:
+    async def broadcast_state(self, room: Room, *, exclude_user_id: str | None = None) -> None:
         connections = list(self._connections.get(room.code, {}).items())
         for user_id, websocket in connections:
+            if user_id == exclude_user_id:
+                continue
             try:
                 await self.send_state(room, user_id, websocket)
             except (RuntimeError, WebSocketDisconnect):
@@ -283,13 +329,36 @@ class RoomSockets:
 room_sockets = RoomSockets()
 
 
-async def _send_error(websocket: WebSocket, exc: P2PError) -> None:
+async def _send_error(
+    websocket: WebSocket,
+    exc: P2PError,
+    *,
+    command_id: str | None = None,
+) -> None:
     await websocket.send_json(
         {
             "event": "error",
             "payload": {"code": exc.code, "message": str(exc), "recoverable": True},
+            **({"commandId": command_id} if command_id else {}),
         }
     )
+
+
+def _command_metadata(payload: dict[str, Any]) -> tuple[str, str | None, str]:
+    command_id = payload.get("commandId")
+    hand_id = payload.get("handId")
+    expected_phase = payload.get("expectedPhase")
+    if (
+        not isinstance(command_id, str)
+        or not 8 <= len(command_id) <= 64
+        or re.fullmatch(r"[A-Za-z0-9._:-]+", command_id) is None
+    ):
+        raise P2PError("invalid_payload", "commandId is invalid")
+    if hand_id is not None and (not isinstance(hand_id, str) or len(hand_id) > 32):
+        raise P2PError("invalid_payload", "handId must be a string or null")
+    if not isinstance(expected_phase, str) or not 3 <= len(expected_phase) <= 16:
+        raise P2PError("invalid_payload", "expectedPhase is invalid")
+    return command_id, hand_id, expected_phase
 
 
 @ws_router.websocket("/ws/p2p/{room_code}")
@@ -340,6 +409,7 @@ async def friend_match_socket(
                 )
                 continue
             try:
+                command_id = None
                 if not isinstance(message, dict):
                     raise P2PError("invalid_payload", "WebSocket message must be an object")
                 event = str(message.get("event") or "").lower()
@@ -347,18 +417,32 @@ async def friend_match_socket(
                 if not isinstance(payload, dict):
                     raise P2PError("invalid_payload", "Event payload must be an object")
                 if event == "ready":
-                    room = p2p_room_manager.ready(room.code, user_id=user_id)
+                    command_id, hand_id, expected_phase = _command_metadata(payload)
+                    result = p2p_room_manager.execute_command(
+                        room.code,
+                        user_id=user_id,
+                        command_id=command_id,
+                        hand_id=hand_id,
+                        expected_phase=expected_phase,
+                        command_type="ready",
+                    )
                 elif event == "action":
+                    command_id, hand_id, expected_phase = _command_metadata(payload)
                     amount = payload.get("amount", 0)
                     if isinstance(amount, bool) or not isinstance(amount, int):
                         raise P2PError("invalid_payload", "Action amount must be an integer")
-                    room = p2p_room_manager.act(
+                    result = p2p_room_manager.execute_command(
                         room.code,
                         user_id=user_id,
+                        command_id=command_id,
+                        hand_id=hand_id,
+                        expected_phase=expected_phase,
+                        command_type="action",
                         action=str(payload.get("type") or ""),
                         amount=int(amount),
                     )
                 elif event == "draw":
+                    command_id, hand_id, expected_phase = _command_metadata(payload)
                     card_indexes = payload.get("cardIndexes", [])
                     if not isinstance(card_indexes, list) or any(
                         isinstance(index, bool) or not isinstance(index, int)
@@ -367,13 +451,19 @@ async def friend_match_socket(
                         raise P2PError(
                             "invalid_payload", "cardIndexes must be an array of integers"
                         )
-                    room = p2p_room_manager.draw(
+                    result = p2p_room_manager.execute_command(
                         room.code,
                         user_id=user_id,
+                        command_id=command_id,
+                        hand_id=hand_id,
+                        expected_phase=expected_phase,
+                        command_type="draw",
                         card_indexes=card_indexes,
                     )
                 elif event in {"sync", "heartbeat"}:
                     room = p2p_room_manager.get_room(room.code)
+                    await room_sockets.send_state(room, user_id, websocket)
+                    continue
                 elif event == "leave":
                     room_after_leave = p2p_room_manager.leave_room(room.code, user_id=user_id)
                     await room_sockets.disconnect(room.code, user_id, websocket)
@@ -386,9 +476,18 @@ async def friend_match_socket(
                 else:
                     raise P2PError("invalid_event", f"Unsupported event: {event}")
             except P2PError as exc:
-                await _send_error(websocket, exc)
+                await _send_error(websocket, exc, command_id=command_id)
                 continue
-            await room_sockets.broadcast_state(room)
+            room = result.room
+            await room_sockets.send_state(
+                room,
+                user_id,
+                websocket,
+                state=result.state,
+                command_id=command_id,
+            )
+            if not result.duplicate:
+                await room_sockets.broadcast_state(room, exclude_user_id=user_id)
     except WebSocketDisconnect:
         pass
     finally:

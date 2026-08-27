@@ -26,6 +26,15 @@ automatically switches to authenticated HTTPS polling. State, Ready, betting
 actions and draws all remain server-authoritative over this fallback path, so
 Friend Match does not depend on a production nginx WebSocket change.
 
+Every mutation carries a client-generated `commandId` plus the observed
+`handId` and `expectedPhase`. The same command and ID are retained if a lost
+WebSocket acknowledgement is retried over REST. The backend validates and
+records the command in the same room lock as the game mutation: an exact retry
+returns the original viewer state without changing cards or chips, while an
+old hand/phase or conflicting reuse returns HTTP 409. Receipts expire after
+ten minutes and are capped per room. All incoming states share one monotonic
+sequence gate, so late socket or polling responses cannot rewind the UI.
+
 ## Authority and privacy
 
 - The FastAPI `backend/app` process owns the deck, private hands, stacks, pot,

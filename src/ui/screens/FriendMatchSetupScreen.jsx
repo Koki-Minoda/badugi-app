@@ -25,6 +25,17 @@ const BADUGI_VARIANT = Object.freeze({
   description: "Heads-up / 4 cards / 3 draws",
 });
 
+function createCommandId() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  return `cmd-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
+async function sendRoomCommandOverRest(roomId, command, { signal } = {}) {
+  if (command.event === "ready") return readyRoom(roomId, command.payload, { signal });
+  if (command.event === "draw") return drawInRoom(roomId, command.payload, { signal });
+  return actInRoom(roomId, command.payload, { signal });
+}
+
 function loadStoredActiveRoom() {
   if (typeof window === "undefined") return null;
   try {
@@ -384,12 +395,25 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
   const [latestSequenceId, setLatestSequenceId] = useState(0);
   const [staleEventCount, setStaleEventCount] = useState(0);
   const [selectedCardIndexes, setSelectedCardIndexes] = useState([]);
+  const [commandPending, setCommandPending] = useState(false);
   const socketRef = useRef(null);
   const latestSequenceRef = useRef(0);
   const reconnectTimerRef = useRef(null);
   const heartbeatTimerRef = useRef(null);
   const pollingTimerRef = useRef(null);
+  const pollingAbortRef = useRef(null);
   const transportModeRef = useRef("websocket");
+  const transportGenerationRef = useRef(0);
+  const pendingCommandRef = useRef(null);
+  const restCommandInFlightRef = useRef(false);
+  const replayPendingCommandRef = useRef(() => {});
+
+  const clearPendingCommand = useCallback((commandId = null) => {
+    if (commandId && pendingCommandRef.current?.payload?.commandId !== commandId) return;
+    pendingCommandRef.current = null;
+    restCommandInFlightRef.current = false;
+    setCommandPending(false);
+  }, []);
 
   const acceptRoomEvent = useCallback((event) => {
     const normalizedEvents = normalizeRoomEvent(event);
@@ -397,7 +421,7 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
     let staleCount = 0;
     normalizedEvents.forEach((entry) => {
       const sequenceId = getEventSequenceId(entry);
-      if (sequenceId !== null && sequenceId < latestSequenceRef.current) {
+      if (sequenceId !== null && sequenceId <= latestSequenceRef.current) {
         staleCount += 1;
         return;
       }
@@ -414,9 +438,16 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
       );
       setRoomEvents((previous) => [...accepted.slice().reverse(), ...previous].slice(0, 8));
     }
-  }, []);
+    const acknowledgedCommandId = event?.commandId ?? event?.payload?.acknowledgedCommandId;
+    if (acknowledgedCommandId) clearPendingCommand(acknowledgedCommandId);
+  }, [clearPendingCommand]);
 
   const closeTerminalSession = useCallback((code) => {
+    transportGenerationRef.current += 1;
+    pollingAbortRef.current?.abort();
+    pollingAbortRef.current = null;
+    if (pollingTimerRef.current) window.clearInterval(pollingTimerRef.current);
+    clearPendingCommand();
     setSyncStatus("closed");
     setStatusMessage(
       code === 4001
@@ -428,7 +459,7 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
     persistActiveRoom(null);
     setCreatedRoom(null);
     setP2pTableState(EMPTY_TABLE_STATE);
-  }, [copy.loginRequired, copy.roomClosed, copy.sessionReplaced]);
+  }, [clearPendingCommand, copy.loginRequired, copy.roomClosed, copy.sessionReplaced]);
 
   useEffect(() => {
     persistActiveRoom(createdRoom);
@@ -440,6 +471,9 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
 
     let cancelled = false;
     let reconnectAttempt = 0;
+    const generation = transportGenerationRef.current + 1;
+    transportGenerationRef.current = generation;
+    const isCurrent = () => !cancelled && transportGenerationRef.current === generation;
     transportModeRef.current = "websocket";
     setSyncStatus("connecting");
     setRoomEvents([]);
@@ -463,10 +497,12 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
 
     const pollState = async () => {
       try {
-        const state = await getRoomState(createdRoom.roomId);
-        if (!cancelled) acceptRoomEvent({ event: "state", payload: state });
+        const state = await getRoomState(createdRoom.roomId, {
+          signal: pollingAbortRef.current?.signal,
+        });
+        if (isCurrent()) acceptRoomEvent({ event: "state", payload: state });
       } catch (error) {
-        if (cancelled) return;
+        if (!isCurrent() || error?.name === "AbortError") return;
         if (error instanceof RoomApiError && error.terminalCode) {
           closeTerminalSession(error.terminalCode);
           return;
@@ -475,13 +511,51 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
       }
     };
 
+    const replayPendingCommand = async () => {
+      const command = pendingCommandRef.current;
+      if (!command || restCommandInFlightRef.current || !isCurrent()) return;
+      restCommandInFlightRef.current = true;
+      try {
+        const state = await sendRoomCommandOverRest(createdRoom.roomId, command, {
+          signal: pollingAbortRef.current?.signal,
+        });
+        if (!isCurrent()) return;
+        acceptRoomEvent({
+          event: "state",
+          payload: state,
+          commandId: command.payload.commandId,
+        });
+      } catch (error) {
+        if (!isCurrent() || error?.name === "AbortError") return;
+        if (error instanceof RoomApiError && error.terminalCode) {
+          closeTerminalSession(error.terminalCode);
+          return;
+        }
+        if (error instanceof RoomApiError && error.status >= 400 && error.status < 500) {
+          clearPendingCommand(command.payload.commandId);
+        }
+        setStatusMessage(error instanceof Error ? error.message : copy.socketNotConnected);
+      } finally {
+        restCommandInFlightRef.current = false;
+      }
+    };
+    replayPendingCommandRef.current = () => {
+      void replayPendingCommand();
+    };
+
     const startPolling = () => {
       if (cancelled || transportModeRef.current === "polling") return;
       transportModeRef.current = "polling";
       socketRef.current = null;
+      pollingAbortRef.current?.abort();
+      pollingAbortRef.current = new AbortController();
       setSyncStatus("polling");
+      void replayPendingCommand();
       void pollState();
-      pollingTimerRef.current = window.setInterval(pollState, REST_POLL_INTERVAL_MS);
+      pollingTimerRef.current = window.setInterval(() => {
+        void replayPendingCommand();
+        void pollState();
+      }, REST_POLL_INTERVAL_MS);
     };
 
     const scheduleReconnect = () => {
@@ -512,9 +586,15 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
       socketRef.current = socket;
       socket.addEventListener("open", () => {
         reconnectAttempt = 0;
+        pollingAbortRef.current?.abort();
+        pollingAbortRef.current = null;
+        if (pollingTimerRef.current) window.clearInterval(pollingTimerRef.current);
         transportModeRef.current = "websocket";
         setSyncStatus("connected");
         socket.send(JSON.stringify({ event: "sync", payload: {} }));
+        if (pendingCommandRef.current) {
+          socket.send(JSON.stringify(pendingCommandRef.current));
+        }
         if (heartbeatTimerRef.current) window.clearInterval(heartbeatTimerRef.current);
         heartbeatTimerRef.current = window.setInterval(() => {
           if (socket.readyState === WebSocket.OPEN) {
@@ -531,6 +611,9 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
         }
       })();
       if (parsed?.event === "error") {
+        if (parsed?.commandId && pendingCommandRef.current?.payload?.commandId === parsed.commandId) {
+          clearPendingCommand(parsed.commandId);
+        }
         setStatusMessage(parsed?.payload?.message ?? copy.socketNotConnected);
         return;
       }
@@ -555,9 +638,13 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
 
     return () => {
       cancelled = true;
+      transportGenerationRef.current += 1;
       if (reconnectTimerRef.current) window.clearTimeout(reconnectTimerRef.current);
       if (heartbeatTimerRef.current) window.clearInterval(heartbeatTimerRef.current);
       if (pollingTimerRef.current) window.clearInterval(pollingTimerRef.current);
+      pollingAbortRef.current?.abort();
+      pollingAbortRef.current = null;
+      replayPendingCommandRef.current = () => {};
       const socket = socketRef.current;
       socketRef.current = null;
       if (socket) socket.close();
@@ -568,6 +655,7 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
     createdRoom?.players,
     createdRoom?.roomId,
     acceptRoomEvent,
+    clearPendingCommand,
     closeTerminalSession,
     copy.socketNotConnected,
   ]);
@@ -631,52 +719,53 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
     navigate("/menu");
   };
 
-  const sendRoomMessage = async (event, payload) => {
-    if (!createdRoom?.roomId) return;
-    if (transportModeRef.current === "polling") {
-      try {
-        const state =
-          event === "ready"
-            ? await readyRoom(createdRoom.roomId)
-            : event === "draw"
-              ? await drawInRoom(createdRoom.roomId, payload.cardIndexes)
-              : await actInRoom(createdRoom.roomId, payload);
-        acceptRoomEvent({ event: "state", payload: state });
-      } catch (error) {
-        if (error instanceof RoomApiError && error.terminalCode) {
-          closeTerminalSession(error.terminalCode);
-          return;
-        }
-        setStatusMessage(error instanceof Error ? error.message : copy.socketNotConnected);
-      }
-      return;
-    }
+  const sendRoomMessage = (event, payload) => {
+    if (!createdRoom?.roomId || pendingCommandRef.current) return;
+    const isPolling = transportModeRef.current === "polling";
     const socket = socketRef.current;
     const openState = typeof WebSocket !== "undefined" && WebSocket.OPEN ? WebSocket.OPEN : 1;
-    if (!socket || socket.readyState !== openState) {
+    if (!isPolling && (!socket || socket.readyState !== openState)) {
       setStatusMessage(copy.socketNotConnected);
       return;
     }
-    socket.send(JSON.stringify({ event, payload }));
+    const command = {
+      event,
+      payload: {
+        ...payload,
+        commandId: createCommandId(),
+        handId: p2pTableState.handId ?? null,
+        expectedPhase: p2pTableState.phase,
+      },
+    };
+    pendingCommandRef.current = command;
+    setCommandPending(true);
+    if (isPolling) {
+      replayPendingCommandRef.current();
+      return;
+    }
+    socket.send(JSON.stringify(command));
   };
 
   const sendReady = () => {
     if (!createdRoom?.ownerId) return;
-    void sendRoomMessage("ready", {});
+    sendRoomMessage("ready", {});
   };
 
   const sendAction = (type, amount = 0) => {
     if (!createdRoom?.ownerId) return;
-    void sendRoomMessage("action", {
+    sendRoomMessage("action", {
       type,
       amount,
     });
   };
   const sendDraw = () => {
-    void sendRoomMessage("draw", { cardIndexes: selectedCardIndexes });
+    sendRoomMessage("draw", { cardIndexes: selectedCardIndexes });
   };
   const handleLeave = async () => {
     if (!createdRoom?.roomId) return;
+    transportGenerationRef.current += 1;
+    pollingAbortRef.current?.abort();
+    clearPendingCommand();
     try {
       await leaveRoom(createdRoom.roomId);
     } finally {
@@ -687,6 +776,7 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
   };
   const canSendAction =
     Boolean(createdRoom?.ownerId) &&
+    !commandPending &&
     (!p2pTableState.currentTurnPlayerId ||
       p2pTableState.currentTurnPlayerId === createdRoom.ownerId);
   const tableBigBlind = Number(p2pTableState.config?.bigBlind ?? bigBlind);
@@ -938,6 +1028,7 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
                   <button
                     type="button"
                     data-testid="p2p-ready"
+                    disabled={commandPending}
                     onClick={sendReady}
                     className="rounded-xl border border-emerald-300/60 px-3 py-2 text-xs font-semibold text-emerald-50 hover:bg-emerald-300/10"
                   >
@@ -950,6 +1041,7 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
                     <button
                       type="button"
                       data-testid="p2p-check"
+                      disabled={commandPending}
                       onClick={() => sendAction("check")}
                       className="rounded-xl border border-sky-300/60 px-3 py-2 text-xs font-semibold text-sky-50"
                     >
@@ -960,6 +1052,7 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
                     <button
                       type="button"
                       data-testid="p2p-bet"
+                      disabled={commandPending}
                       onClick={() => sendAction("bet", tableBigBlind)}
                       className="rounded-xl border border-sky-300/60 px-3 py-2 text-xs font-semibold text-sky-50"
                     >
@@ -979,6 +1072,7 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
                     <button
                       type="button"
                       data-testid="p2p-raise"
+                      disabled={commandPending}
                       onClick={() => sendAction("raise", p2pTableState.toCall + tableBigBlind)}
                       className="rounded-xl border border-violet-300/60 px-3 py-2 text-xs font-semibold text-violet-50"
                     >
@@ -988,7 +1082,7 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
                   <button
                     type="button"
                     data-testid="p2p-draw"
-                    disabled={!p2pTableState.legalActions.includes("draw")}
+                    disabled={commandPending || !p2pTableState.legalActions.includes("draw")}
                     onClick={sendDraw}
                     className="rounded-xl border border-amber-300/60 px-3 py-2 text-xs font-semibold text-amber-50 hover:bg-amber-300/10 disabled:cursor-not-allowed disabled:opacity-40"
                   >

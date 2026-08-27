@@ -4,6 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from app.models import Base
 from app.p2p.manager import P2PRoomManager
 from app.p2p.persistence import SQLAlchemyRoomStore
+from app.p2p.manager import ROOM_TTL_SECONDS
 
 
 def build_store(tmp_path):
@@ -106,3 +107,20 @@ def test_sequential_commands_converge_across_two_managers(tmp_path):
     assert recovered.phase == "bet_0"
     assert recovered.hand_number == 1
     assert len(recovered.deck) == 44
+
+
+def test_expired_uncached_room_is_pruned_from_database(tmp_path):
+    store = build_store(tmp_path)
+    first = P2PRoomManager()
+    first.attach_store(store)
+    room = first.create_room(user_id="expired-owner", display_name="Expired")
+
+    stale = store.load(room.code)
+    stale.updated_at -= ROOM_TTL_SECONDS + 1
+    stale.sequence_id += 1
+    assert store.save(stale) is True
+
+    restarted = P2PRoomManager()
+    restarted.attach_store(store)
+    restarted.create_room(user_id="active-owner", display_name="Active")
+    assert store.load(room.code) is None

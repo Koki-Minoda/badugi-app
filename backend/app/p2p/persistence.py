@@ -180,3 +180,17 @@ class SQLAlchemyRoomStore:
                     P2PRoomState.closed.is_(False),
                 ),
             )))
+
+    def prune_expired(self, cutoff_timestamp: float) -> int:
+        """Delete closed or inactive snapshots even when no worker cached them."""
+        with self._session() as session:
+            rows = list(session.scalars(select(P2PRoomState)))
+            expired = [
+                row
+                for row in rows
+                if row.closed
+                or float((row.snapshot or {}).get("updated_at", 0)) < cutoff_timestamp
+            ]
+            for row in expired:
+                session.delete(row)
+            return len(expired)

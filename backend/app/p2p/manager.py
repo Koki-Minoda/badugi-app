@@ -1,9 +1,4 @@
-"""In-memory, server-authoritative heads-up Badugi friend matches.
-
-The runtime intentionally supports one well-defined game before advertising
-the wider MGX catalogue.  Rooms survive browser reconnects, but not a backend
-restart; durable room persistence is a separate production-scaling concern.
-"""
+"""Server-authoritative, durably persisted heads-up Badugi friend matches."""
 from __future__ import annotations
 
 from copy import deepcopy
@@ -41,6 +36,7 @@ class RoomStore(Protocol):
     def delete(self, room_code: str) -> None: ...
     def room_codes_for_user(self, user_id: str) -> list[str]: ...
     def active_owner_count(self, user_id: str) -> int: ...
+    def prune_expired(self, cutoff_timestamp: float) -> int: ...
 
 
 def _rank_value(card: str) -> int:
@@ -509,6 +505,8 @@ class P2PRoomManager:
 
     def _prune_expired_rooms(self) -> None:
         now = time.time()
+        if self._store:
+            self._store.prune_expired(now - ROOM_TTL_SECONDS)
         expired = [
             code
             for code, room in self._rooms.items()

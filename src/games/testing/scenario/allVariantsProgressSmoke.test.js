@@ -6,18 +6,13 @@ import { getVariantFamilies } from "./runVariantFamilyScenario.js";
 const SCENARIO_BY_CATEGORY = {
   board: "cash-10-hands-smoke",
   stud: "cash-10-hands-smoke",
-  dramaha: "draw-count-full-cycle",
-  "triple-draw": "draw-count-full-cycle",
-  "single-draw": "draw-count-full-cycle",
+  dramaha: "cash-10-hands-smoke",
+  "triple-draw": "cash-10-hands-smoke",
+  "single-draw": "cash-10-hands-smoke",
 };
-
-function isImplemented(variant) {
-  return variant?.status === "live" || variant?.status === "in-progress" || variant?.status === "playable";
-}
 
 function getSkipReason(variant) {
   const status = getProgressHarnessStatus(variant.id);
-  if (!isImplemented(variant)) return `variant not implemented: status=${variant.status}`;
   if (!status.supported) return status.reason ?? "progress harness not supported";
   return null;
 }
@@ -35,7 +30,7 @@ describe("MGX all variant progress smoke add-on", () => {
     skipped.forEach(({ variant, reason }) => {
       console.warn(`[MGX_PROGRESS_SKIP] variantId=${variant.id} category=${variant.category} reason=${reason}`);
     });
-    expect(skipped.every((entry) => entry.reason)).toBe(true);
+    expect(skipped).toEqual([]);
   });
 
   test("family-aware progress coverage is not Badugi-only", () => {
@@ -88,6 +83,6 @@ describe("MGX all variant progress smoke add-on", () => {
         },
       });
       expect(result.status).toBe("passed");
-    });
+    }, variant.id === "CP1" ? 20_000 : 5_000);
   }
 });

@@ -2,10 +2,8 @@ import { combinations } from "../evaluators/core.js";
 import { evaluateLowHand } from "../evaluators/low.js";
 import {
   applyPayoutsToPlayers,
-  buildContributionPots,
-  resolveEvaluationPot,
+  resolveHiLoContributionPots,
   summarizePayouts,
-  splitAmountBySeatOrder,
 } from "../core/sidePotResolver.js";
 import PLOGameController from "./PLOGameController.js";
 import PLO8GameDefinition from "./PLO8GameDefinition.js";
@@ -70,50 +68,13 @@ export class PLO8GameController extends PLOGameController {
       }))
       .filter((entry) => entry.evaluation?.qualifies);
     const resolvedPot = totalPot ?? this.calculatePot();
-    const contributionPots = buildContributionPots(this.state.players);
-    const potsToResolve = contributionPots.length
-      ? contributionPots
-      : [{ potIndex: 0, amount: resolvedPot, potAmount: resolvedPot, eligibleSeatIndexes: contenders.map((p) => p.seatIndex) }];
-    const allPayouts = [];
-    const potDetails = potsToResolve.map((pot, potIndex) => {
-      const eligibleLow = lowEvaluations.filter((entry) =>
-        (pot.eligibleSeatIndexes ?? []).includes(entry.player.seatIndex),
-      );
-      const highAmount = eligibleLow.length ? Math.ceil(pot.amount / 2) : pot.amount;
-      const lowAmount = eligibleLow.length ? pot.amount - highAmount : 0;
-      const highPayouts = resolveEvaluationPot({
-        amount: highAmount,
-        eligibleSeatIndexes: pot.eligibleSeatIndexes,
-        evaluations: highEvaluations,
-        compareEvaluations: comparePloHands,
-      });
-      const lowBest = eligibleLow.reduce(
-        (best, entry) => (!best || compareLowHands(entry.evaluation, best.evaluation) < 0 ? entry : best),
-        null,
-      );
-      const lowWinners = lowBest
-        ? eligibleLow.filter((entry) => compareLowHands(entry.evaluation, lowBest.evaluation) === 0)
-        : [];
-      const lowPayouts = splitAmountBySeatOrder(lowAmount, lowWinners);
-      allPayouts.push(...highPayouts, ...lowPayouts);
-      return {
-        potIndex: pot.potIndex ?? potIndex,
-        amount: pot.amount,
-        potAmount: pot.amount,
-        eligibleSeatIndexes: [...(pot.eligibleSeatIndexes ?? [])],
-        highWinners: highPayouts.map((winner) => ({
-          seatIndex: winner.player.seatIndex,
-          name: winner.player.name,
-          payout: winner.payout,
-          evaluation: winner.evaluation,
-        })),
-        lowWinners: lowPayouts.map((winner) => ({
-          seatIndex: winner.player.seatIndex,
-          name: winner.player.name,
-          payout: winner.payout,
-          evaluation: winner.evaluation,
-        })),
-      };
+    const { payouts: allPayouts, potDetails } = resolveHiLoContributionPots({
+      players: this.state.players,
+      highEvaluations,
+      lowEvaluations,
+      compareHighEvaluations: comparePloHands,
+      compareLowEvaluations: compareLowHands,
+      totalPot: resolvedPot,
     });
     applyPayoutsToPlayers(this.state.players, allPayouts);
     const summary = {

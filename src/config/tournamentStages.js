@@ -39,6 +39,7 @@ export const TOURNAMENT_STAGES = [
     gameVariant: "badugi",
     gameRotation: ["badugi"],
     rotationPolicy: "fixed",
+    reentryPolicy: { allowed: false, maxEntries: 1, closesAtLevel: 0 },
   },
   {
     id: "local",
@@ -71,6 +72,7 @@ export const TOURNAMENT_STAGES = [
     gameVariant: "badugi",
     gameRotation: ["badugi"],
     rotationPolicy: "fixed",
+    reentryPolicy: { allowed: false, maxEntries: 1, closesAtLevel: 0 },
   },
   {
     id: "national",
@@ -105,6 +107,7 @@ export const TOURNAMENT_STAGES = [
     gameVariant: "badugi",
     gameRotation: ["badugi"],
     rotationPolicy: "fixed",
+    reentryPolicy: { allowed: false, maxEntries: 1, closesAtLevel: 0 },
     proBlindSheetId: "national-premier-pro",
   },
   {
@@ -142,6 +145,7 @@ export const TOURNAMENT_STAGES = [
     gameVariant: "badugi",
     gameRotation: ["badugi"],
     rotationPolicy: "fixed",
+    reentryPolicy: { allowed: false, maxEntries: 1, closesAtLevel: 0 },
     proBlindSheetId: "world-championship-pro",
   },
 ];

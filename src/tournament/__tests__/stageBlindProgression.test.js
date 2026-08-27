@@ -191,4 +191,16 @@ describe("canonical tournament stage blind progression", () => {
     ]);
     expect(config.prizePoolTotal).toBe(30_900);
   });
+
+  it.each(STAGE_EXPECTATIONS)(
+    "$stageId explicitly forbids re-entry at every level, including the final table",
+    ({ stageId }) => {
+      const config = buildTournamentConfigFromStage(stageId);
+      expect(config.reentryPolicy).toEqual({
+        allowed: false,
+        maxEntries: 1,
+        closesAtLevel: 0,
+      });
+    },
+  );
 });

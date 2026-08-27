@@ -167,6 +167,52 @@ export class BadugiGameController extends GameController {
     this._lastState = null;
   }
 
+  // Compatibility surface for the UI while all callers migrate to the
+  // GameController state/action API. Keeping it here makes this wrapper the
+  // single public Badugi controller path instead of importing the legacy
+  // implementation directly from App.
+  updateConfig(partial = {}) {
+    this.config = { ...this.config, ...partial };
+    this.legacy.updateConfig(partial);
+  }
+
+  syncExternalState(partial = {}) {
+    this.legacy.syncExternalState(partial);
+    this._lastState = this._buildControllerState({
+      handIndex: this._lastState?.handIndex ?? 0,
+      context: this._lastState?.context ?? null,
+    });
+  }
+
+  setHandContext(context = {}) {
+    this.legacy.setHandContext(context);
+  }
+
+  getSnapshot() {
+    return this.legacy.getSnapshot();
+  }
+
+  startNewHand(options = {}) {
+    const result = this.legacy.startNewHand(options);
+    this._lastState = this._buildControllerState({
+      handIndex: (this._lastState?.handIndex ?? 0) + 1,
+      context: result,
+    });
+    return result;
+  }
+
+  applyPlayerAction(options = {}) {
+    return this.legacy.applyPlayerAction(options);
+  }
+
+  advanceStreet(options = {}) {
+    return this.legacy.advanceStreet(options);
+  }
+
+  resolveShowdown(options = {}) {
+    return this.legacy.resolveShowdown(options);
+  }
+
   createInitialState(tableConfig = {}) {
     this._applyTableConfig(tableConfig);
     return this._buildControllerState({
@@ -593,6 +639,18 @@ export class BadugiGameController extends GameController {
       ...this.config,
       ...partial,
     };
+    if (partial.betSize == null) {
+      const blindIndex = Math.max(
+        0,
+        Number(partial.blindState?.blindLevelIndex) || 0,
+      );
+      const activeBigBlind =
+        Number(partial.structure?.bb) ||
+        Number(partial.blindStructure?.[blindIndex]?.bb) ||
+        Number(partial.blindStructure?.[0]?.bb) ||
+        null;
+      if (activeBigBlind != null) merged.betSize = activeBigBlind;
+    }
     if (!merged.seatConfig || merged.seatConfig.length === 0) {
       merged.seatConfig = DEFAULT_SEAT_CONFIG;
     }

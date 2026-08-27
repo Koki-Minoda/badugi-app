@@ -1,9 +1,4 @@
-"""In-memory, server-authoritative heads-up Badugi friend matches.
-
-The runtime intentionally supports one well-defined game before advertising
-the wider MGX catalogue.  Rooms survive browser reconnects, but not a backend
-restart; durable room persistence is a separate production-scaling concern.
-"""
+"""Server-authoritative, durably persisted heads-up Badugi friend matches."""
 from __future__ import annotations
 
 from copy import deepcopy
@@ -13,7 +8,7 @@ import secrets
 import string
 import threading
 import time
-from typing import Any
+from typing import Any, Protocol
 
 
 RANKS = "A23456789TJQK"
@@ -32,6 +27,16 @@ class P2PError(RuntimeError):
     def __init__(self, code: str, message: str):
         super().__init__(message)
         self.code = code
+
+
+class RoomStore(Protocol):
+    def load(self, room_code: str) -> "Room | None": ...
+    def exists(self, room_code: str) -> bool: ...
+    def save(self, room: "Room") -> bool: ...
+    def delete(self, room_code: str) -> None: ...
+    def room_codes_for_user(self, user_id: str) -> list[str]: ...
+    def active_owner_count(self, user_id: str) -> int: ...
+    def prune_expired(self, cutoff_timestamp: float) -> int: ...
 
 
 def _rank_value(card: str) -> int:
@@ -118,6 +123,24 @@ class P2PRoomManager:
         self._rooms: dict[str, Room] = {}
         self._lock = threading.RLock()
         self._rng = secrets.SystemRandom()
+        self._store: RoomStore | None = None
+
+    def attach_store(self, store: RoomStore | None) -> None:
+        with self._lock:
+            self._store = store
+
+    def _persist(self, room: Room) -> None:
+        if not self._store:
+            return
+        if self._store.save(room):
+            return
+        latest = self._store.load(room.code)
+        if latest is not None:
+            self._rooms[room.code] = latest
+        raise P2PError(
+            "state_conflict",
+            "Room state changed on another server; retry with the latest sequence",
+        )
 
     def reset(self) -> None:
         with self._lock:
@@ -128,11 +151,14 @@ class P2PRoomManager:
 
         with self._lock:
             self._prune_expired_rooms()
-            return [
+            codes = {
                 room.code
                 for room in self._rooms.values()
                 if not room.closed and user_id in room.players
-            ]
+            }
+            if self._store:
+                codes.update(self._store.room_codes_for_user(user_id))
+            return sorted(codes)
 
     def create_room(
         self,
@@ -155,6 +181,8 @@ class P2PRoomManager:
                 for room in self._rooms.values()
                 if room.owner_id == user_id and not room.closed
             )
+            if self._store:
+                owner_room_count = max(owner_room_count, self._store.active_owner_count(user_id))
             if owner_room_count >= MAX_ACTIVE_ROOMS_PER_OWNER:
                 raise P2PError(
                     "active_room_limit",
@@ -171,6 +199,7 @@ class P2PRoomManager:
             )
             room.players[user_id] = Player(user_id, display_name, 0, starting_stack)
             self._rooms[code] = room
+            self._persist(room)
             return room
 
     def get_room(self, code: str) -> Room:
@@ -178,6 +207,11 @@ class P2PRoomManager:
         with self._lock:
             self._prune_expired_rooms()
             room = self._rooms.get(normalized)
+            if self._store:
+                persisted = self._store.load(normalized)
+                if persisted and (room is None or persisted.sequence_id > room.sequence_id):
+                    room = persisted
+                    self._rooms[normalized] = room
             if not room or room.closed:
                 raise P2PError("room_missing", "Room not found")
             return room
@@ -186,12 +220,16 @@ class P2PRoomManager:
         with self._lock:
             room = self.get_room(code)
             if user_id in room.players:
-                room.players[user_id].display_name = display_name
+                if room.players[user_id].display_name != display_name:
+                    room.players[user_id].display_name = display_name
+                    self._record(room, "player_profile_updated", user_id=user_id)
+                    self._persist(room)
                 return room
             if len(room.players) >= 2 or room.phase != "waiting":
                 raise P2PError("room_unavailable", "Room is full or already playing")
             room.players[user_id] = Player(user_id, display_name, 1, room.starting_stack)
             self._record(room, "player_joined", user_id=user_id)
+            self._persist(room)
             return room
 
     def leave_room(self, code: str, *, user_id: str) -> Room | None:
@@ -207,8 +245,11 @@ class P2PRoomManager:
             self._record(room, "player_left", user_id=user_id)
             if not room.players or user_id == room.owner_id:
                 room.closed = True
+                self._record(room, "room_closed", user_id=user_id)
+                self._persist(room)
                 return None
             room.phase = "waiting"
+            self._persist(room)
             return room
 
     def set_connected(self, code: str, *, user_id: str, connected: bool) -> Room:
@@ -217,9 +258,10 @@ class P2PRoomManager:
             player = self._player(room, user_id)
             player.connected = connected
             self._bump(room)
+            self._persist(room)
             return room
 
-    def ready(self, code: str, *, user_id: str) -> Room:
+    def ready(self, code: str, *, user_id: str, persist: bool = True) -> Room:
         with self._lock:
             room = self.get_room(code)
             if room.phase not in {"waiting", "showdown"}:
@@ -229,9 +271,11 @@ class P2PRoomManager:
             self._record(room, "ready", user_id=user_id)
             if len(room.players) == 2 and all(player.ready for player in room.players.values()):
                 self._start_hand(room)
+            if persist:
+                self._persist(room)
             return room
 
-    def act(self, code: str, *, user_id: str, action: str, amount: int = 0) -> Room:
+    def act(self, code: str, *, user_id: str, action: str, amount: int = 0, persist: bool = True) -> Room:
         with self._lock:
             room = self.get_room(code)
             player = self._player(room, user_id)
@@ -253,6 +297,8 @@ class P2PRoomManager:
                     winner_ids=[opponent.user_id] if opponent else [],
                     reason="fold",
                 )
+                if persist:
+                    self._persist(room)
                 return room
             if action == "check":
                 paid = 0
@@ -279,9 +325,11 @@ class P2PRoomManager:
             else:
                 room.current_actor_id = self._other_player(room, user_id).user_id
                 self._bump(room)
+            if persist:
+                self._persist(room)
             return room
 
-    def draw(self, code: str, *, user_id: str, card_indexes: list[int]) -> Room:
+    def draw(self, code: str, *, user_id: str, card_indexes: list[int], persist: bool = True) -> Room:
         with self._lock:
             room = self.get_room(code)
             player = self._player(room, user_id)
@@ -306,6 +354,8 @@ class P2PRoomManager:
             else:
                 room.current_actor_id = next(iter(room.pending_draw))
                 self._bump(room)
+            if persist:
+                self._persist(room)
             return room
 
     def execute_command(
@@ -355,19 +405,21 @@ class P2PRoomManager:
                 )
 
             if normalized_type == "ready":
-                room = self.ready(room.code, user_id=user_id)
+                room = self.ready(room.code, user_id=user_id, persist=False)
             elif normalized_type == "action":
                 room = self.act(
                     room.code,
                     user_id=user_id,
                     action=normalized_action,
                     amount=amount,
+                    persist=False,
                 )
             elif normalized_type == "draw":
                 room = self.draw(
                     room.code,
                     user_id=user_id,
                     card_indexes=list(normalized_indexes),
+                    persist=False,
                 )
             else:
                 raise P2PError("invalid_command", "Unsupported command type")
@@ -380,6 +432,7 @@ class P2PRoomManager:
                 state=deepcopy(state),
             )
             self._prune_command_receipts(room)
+            self._persist(room)
             return CommandResult(room, state, False)
 
     def legal_actions(self, room: Room, user_id: str) -> list[str]:
@@ -446,12 +499,14 @@ class P2PRoomManager:
     def _new_code(self) -> str:
         for _ in range(100):
             code = "".join(self._rng.choice(ROOM_ALPHABET) for _ in range(6))
-            if code not in self._rooms:
+            if code not in self._rooms and not (self._store and self._store.exists(code)):
                 return code
         raise P2PError("room_code_exhausted", "Could not allocate a room code")
 
     def _prune_expired_rooms(self) -> None:
         now = time.time()
+        if self._store:
+            self._store.prune_expired(now - ROOM_TTL_SECONDS)
         expired = [
             code
             for code, room in self._rooms.items()
@@ -463,6 +518,8 @@ class P2PRoomManager:
         ]
         for code in expired:
             self._rooms.pop(code, None)
+            if self._store:
+                self._store.delete(code)
 
     @staticmethod
     def _prune_command_receipts(room: Room) -> None:

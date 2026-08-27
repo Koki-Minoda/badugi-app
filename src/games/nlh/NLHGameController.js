@@ -6,8 +6,7 @@ import { DeckManager } from "../badugi/utils/deck.js";
 import { applyChips } from "../core/applyChips.js";
 import {
   applyPayoutsToPlayers,
-  buildContributionPots,
-  resolveEvaluationPot,
+  resolveHighContributionPots,
   summarizePayouts,
 } from "../core/sidePotResolver.js";
 import {
@@ -619,42 +618,11 @@ export class NLHGameController {
       this.state.lastHandResult = summary;
       return summary;
     }
-    const winners = evaluations.filter(
-      (entry) => compareNlhHands(entry.evaluation, best.evaluation) === 0,
-    );
-    const contributionPots = buildContributionPots(this.state.players);
-    const potsToResolve = contributionPots.length
-      ? contributionPots
-      : [
-          {
-            potIndex: 0,
-            amount: resolvedPot,
-            potAmount: resolvedPot,
-            eligibleSeatIndexes: winners.map((entry) => entry.player.seatIndex),
-          },
-        ];
-    const allPayouts = [];
-    const potDetails = potsToResolve.map((pot, potIndex) => {
-      const payouts = resolveEvaluationPot({
-        amount: pot.amount,
-        eligibleSeatIndexes: pot.eligibleSeatIndexes,
-        evaluations,
-        compareEvaluations: compareNlhHands,
-      });
-      allPayouts.push(...payouts);
-      return {
-        potIndex: pot.potIndex ?? potIndex,
-        amount: pot.amount,
-        potAmount: pot.amount,
-        eligibleSeatIndexes: [...(pot.eligibleSeatIndexes ?? [])],
-        winnerSeatIndexes: payouts.map((winner) => winner.player.seatIndex),
-        winners: payouts.map((winner) => ({
-          seatIndex: winner.player.seatIndex,
-          name: winner.player.name,
-          payout: winner.payout,
-          evaluation: winner.evaluation,
-        })),
-      };
+    const { payouts: allPayouts, potDetails } = resolveHighContributionPots({
+      players: this.state.players,
+      evaluations,
+      compareEvaluations: compareNlhHands,
+      totalPot: resolvedPot,
     });
     applyPayoutsToPlayers(this.state.players, allPayouts);
     const winnerSummaries = summarizePayouts(allPayouts);

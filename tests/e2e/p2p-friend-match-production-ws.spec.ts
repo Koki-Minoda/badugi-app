@@ -17,8 +17,13 @@ const DATABASE_PATH = path.join(
 let backendProcess: ChildProcessWithoutNullStreams | null = null;
 
 function resolvePythonCommand() {
+  if (process.env.P2P_E2E_PYTHON) {
+    return path.isAbsolute(process.env.P2P_E2E_PYTHON)
+      ? process.env.P2P_E2E_PYTHON
+      : path.resolve(process.cwd(), process.env.P2P_E2E_PYTHON);
+  }
   if (process.platform === "win32") return "python";
-  for (const candidate of [".venv-p2p/bin/python", ".venv/bin/python"]) {
+  for (const candidate of [".venv-p2p/bin/python", ".venv-qa/bin/python", ".venv/bin/python"]) {
     const absolute = path.join(process.cwd(), candidate);
     if (existsSync(absolute)) return absolute;
   }

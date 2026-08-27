@@ -154,6 +154,8 @@ else
   echo "[mgx-deploy] missing backend requirements.txt or pyproject.toml"
   exit 1
 fi
+echo "[mgx-deploy] applying backend database migrations"
+alembic upgrade head
 deactivate
 cd "$APP_DIR"
 

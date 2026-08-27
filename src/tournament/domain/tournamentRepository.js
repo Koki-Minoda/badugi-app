@@ -50,6 +50,11 @@ function buildConfigFromStage(stage, blindSheet) {
     levels: blindSheet?.levels ?? [],
     payouts: payoutStructure.payouts,
     rewards,
+    reentryPolicy: {
+      allowed: stage.reentryPolicy?.allowed === true,
+      maxEntries: Math.max(1, Number(stage.reentryPolicy?.maxEntries) || 1),
+      closesAtLevel: Math.max(0, Number(stage.reentryPolicy?.closesAtLevel) || 0),
+    },
   };
 }
 

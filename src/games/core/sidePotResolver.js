@@ -96,3 +96,91 @@ export function summarizePayouts(payouts = []) {
   });
   return [...bySeat.values()].sort((a, b) => a.seatIndex - b.seatIndex);
 }
+
+function contributionPotsOrFallback(players, totalPot, evaluations) {
+  const contributionPots = buildContributionPots(players);
+  if (contributionPots.length) return contributionPots;
+  return [{
+    potIndex: 0,
+    amount: totalPot,
+    potAmount: totalPot,
+    eligibleSeatIndexes: evaluations.map((entry) => entry.player.seatIndex),
+  }];
+}
+
+function payoutSummary(entry) {
+  return {
+    seatIndex: entry.player.seatIndex,
+    name: entry.player.name,
+    payout: entry.payout,
+    evaluation: entry.evaluation,
+  };
+}
+
+export function resolveHighContributionPots({
+  players = [],
+  evaluations = [],
+  compareEvaluations,
+  totalPot = 0,
+} = {}) {
+  const payouts = [];
+  const potDetails = contributionPotsOrFallback(players, totalPot, evaluations)
+    .map((pot, potIndex) => {
+      const potPayouts = resolveEvaluationPot({
+        amount: pot.amount,
+        eligibleSeatIndexes: pot.eligibleSeatIndexes,
+        evaluations,
+        compareEvaluations,
+      });
+      payouts.push(...potPayouts);
+      return {
+        potIndex: pot.potIndex ?? potIndex,
+        amount: pot.amount,
+        potAmount: pot.amount,
+        eligibleSeatIndexes: [...(pot.eligibleSeatIndexes ?? [])],
+        winnerSeatIndexes: potPayouts.map((winner) => winner.player.seatIndex),
+        winners: potPayouts.map(payoutSummary),
+      };
+    });
+  return { payouts, potDetails };
+}
+
+export function resolveHiLoContributionPots({
+  players = [],
+  highEvaluations = [],
+  lowEvaluations = [],
+  compareHighEvaluations,
+  compareLowEvaluations,
+  totalPot = 0,
+} = {}) {
+  const payouts = [];
+  const potDetails = contributionPotsOrFallback(players, totalPot, highEvaluations)
+    .map((pot, potIndex) => {
+      const eligible = new Set(pot.eligibleSeatIndexes ?? []);
+      const eligibleLow = lowEvaluations.filter((entry) => eligible.has(entry.player.seatIndex));
+      const highAmount = eligibleLow.length ? Math.ceil(pot.amount / 2) : pot.amount;
+      const lowAmount = eligibleLow.length ? pot.amount - highAmount : 0;
+      const highPayouts = resolveEvaluationPot({
+        amount: highAmount,
+        eligibleSeatIndexes: pot.eligibleSeatIndexes,
+        evaluations: highEvaluations,
+        compareEvaluations: compareHighEvaluations,
+      });
+      const lowPayouts = resolveEvaluationPot({
+        amount: lowAmount,
+        eligibleSeatIndexes: pot.eligibleSeatIndexes,
+        evaluations: lowEvaluations,
+        compareEvaluations: compareLowEvaluations,
+      });
+      payouts.push(...highPayouts, ...lowPayouts);
+      return {
+        potIndex: pot.potIndex ?? potIndex,
+        amount: pot.amount,
+        potAmount: pot.amount,
+        eligibleSeatIndexes: [...(pot.eligibleSeatIndexes ?? [])],
+        highWinners: highPayouts.map(payoutSummary),
+        lowWinners: lowPayouts.map(payoutSummary),
+      };
+    });
+  return { payouts, potDetails };
+}

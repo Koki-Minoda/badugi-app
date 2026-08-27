@@ -260,6 +260,7 @@ export class DeckManager {
   }
 
   logState(label, extra = {}) {
+    if (!this.debug) return;
     if (typeof console === "undefined" || typeof console.log !== "function") return;
     try {
       console.log("[DECK][STATE]", {

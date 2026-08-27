@@ -4,6 +4,8 @@
  * @property {string} suit // 'C' | 'D' | 'H' | 'S'
  */
 
+import { debugLog } from "../../../utils/debugLog.js";
+
 /**
  * @typedef {Object} EvaluatedHand
  * @property {number} count
@@ -182,11 +184,12 @@ export function getWinnersByBadugi(players = []) {
   const winners = evaluated.filter(
     (entry) => compareBadugiEvaluations(entry.evaluation, bestEval) === 0,
   );
-  console.log(
-    "[SHOWDOWN] Evaluated order:",
+  debugLog(
+    "[SHOWDOWN]",
+    "Evaluated order",
     evaluated.map((entry) => describeEvaluation(entry.name, entry.evaluation)),
   );
-  console.log("[SHOWDOWN] Winners:", winners.map((entry) => entry.name));
+  debugLog("[SHOWDOWN]", "Winners", winners.map((entry) => entry.name));
   return winners.map((winner) => ({
     seat: winner.seat,
     seatIndex: winner.seatIndex,

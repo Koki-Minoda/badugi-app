@@ -88,30 +88,35 @@ describe("resolveOpeningBetActor", () => {
   it("emits opening actor diagnostic context via debugLog", () => {
     // debugLog routes through console.log with a formatted string prefix.
     const spy = vi.spyOn(console, "log").mockImplementation(() => {});
-    resolveOpeningBetActor({
-      seats: seats(6),
-      buttonSeat: 0,
-      smallBlindSeat: 1,
-      bigBlindSeat: 2,
-      phase: "BET",
-      round: 1,
-    });
+    globalThis.__MGX_DEBUG_LOGS__ = true;
+    try {
+      resolveOpeningBetActor({
+        seats: seats(6),
+        buttonSeat: 0,
+        smallBlindSeat: 1,
+        bigBlindSeat: 2,
+        phase: "BET",
+        round: 1,
+      });
 
-    // debugLog call signature: console.log(`%c[time] TAG msg`, color, payload)
-    const diagnosticCall = spy.mock.calls.find(
-      ([msg]) => typeof msg === "string" && msg.includes("[BET][OPENING_ACTOR]"),
-    );
-    expect(diagnosticCall).toBeTruthy();
-    // payload is the third argument (after the formatted string and the color)
-    expect(diagnosticCall[2]).toMatchObject({
-      buttonSeat: 0,
-      sbSeat: 1,
-      bbSeat: 2,
-      resolvedOpeningActor: 3,
-      activeEligibleSeats: [0, 1, 2, 3, 4, 5],
-      round: 1,
-      phase: "BET",
-    });
-    spy.mockRestore();
+      // debugLog call signature: console.log(`%c[time] TAG msg`, color, payload)
+      const diagnosticCall = spy.mock.calls.find(
+        ([msg]) => typeof msg === "string" && msg.includes("[BET][OPENING_ACTOR]"),
+      );
+      expect(diagnosticCall).toBeTruthy();
+      // payload is the third argument (after the formatted string and the color)
+      expect(diagnosticCall[2]).toMatchObject({
+        buttonSeat: 0,
+        sbSeat: 1,
+        bbSeat: 2,
+        resolvedOpeningActor: 3,
+        activeEligibleSeats: [0, 1, 2, 3, 4, 5],
+        round: 1,
+        phase: "BET",
+      });
+    } finally {
+      delete globalThis.__MGX_DEBUG_LOGS__;
+      spy.mockRestore();
+    }
   });
 });

@@ -46,6 +46,14 @@ export default defineConfig(({ command }) => {
       chunkSizeWarningLimit: 600,
       rollupOptions: {
         output: {
+          // onnxruntime-web resolves its worker WASM by this stable basename at
+          // runtime. A content hash makes the generated JS request a missing
+          // path, which nginx then turns into the SPA HTML fallback.
+          assetFileNames(assetInfo) {
+            const originalName = assetInfo.names?.[0] ?? assetInfo.name ?? "";
+            if (originalName.endsWith(".wasm")) return "assets/[name][extname]";
+            return "assets/[name]-[hash][extname]";
+          },
           manualChunks(id) {
             if (id.includes("node_modules")) {
               if (id.includes("onnxruntime-web")) return "onnx-runtime";

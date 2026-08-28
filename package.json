@@ -18,6 +18,7 @@
     "test:tournament:devices": "playwright test --project=tournament-android-chromium --project=tournament-iphone-webkit",
     "test:p2p": "vitest run src/ui/screens/__tests__/FriendMatchSetupScreen.test.jsx --project=tier2 && playwright test tests/e2e/p2p-friend-match-production-ws.spec.ts tests/e2e/p2p-friend-match-rest-fallback.spec.ts --project=badugi-flow",
     "test:deploy:static": "bash scripts/deploy/test-mgx-prod-01-static.sh",
+    "test:build:onnx": "node scripts/deploy/verify-built-onnx-assets.mjs",
     "test:ai-evaluation": "vitest run --project=tier3 src/ai/evaluation --silent=passed-only",
     "test:all:serial": "npm run test:tier1 -- --pool=forks --maxWorkers=1 --no-file-parallelism --silent=passed-only && npm run test:tier2 -- --pool=forks --maxWorkers=1 --no-file-parallelism --silent=passed-only && npm run test:tier3",
     "test:artifacts": "vitest run --config vitest.artifacts.config.js",

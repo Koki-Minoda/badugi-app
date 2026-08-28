@@ -57,6 +57,7 @@ jobs:
       - name: Audit resolved backend dependencies
         run: |
           python -m venv .audit-venv
+          .audit-venv/bin/python -m pip install --upgrade pip
           .audit-venv/bin/python -m pip install -e ./backend pip-audit
           .audit-venv/bin/python -m pip_audit --local
 

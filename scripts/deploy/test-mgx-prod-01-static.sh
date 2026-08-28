@@ -15,6 +15,8 @@ grep -q 'BACKEND_ENV_FILE="${BACKEND_ENV_FILE:-/etc/mgx/mgx-backend.env}"' "$scr
 grep -q 'scripts/deploy/run-with-dotenv.py' "$script"
 # shellcheck disable=SC2016
 grep -q '"\$env_file" "\$alembic_bin" upgrade head' "$script"
+# shellcheck disable=SC2016
+grep -q 'sudo -n -- "\$python_bin"' "$script"
 if grep -q 'source .*BACKEND_ENV_FILE' "$script"; then
   echo "backend environment file must not be evaluated as shell code" >&2
   exit 1

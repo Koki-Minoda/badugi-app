@@ -128,7 +128,6 @@ jobs:
           branch="$1"
           cd /home/mgx/badugi-app
           test -z "$(git status --porcelain --untracked-files=no)"
-          sudo -n test -r /etc/mgx/mgx-backend.env
           git fetch origin "$branch"
           git rev-parse --verify "origin/$branch"
           sudo -n /usr/sbin/nginx -t

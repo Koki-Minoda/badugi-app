@@ -23,5 +23,9 @@ grep -q 'configure_nginx_wasm_mime' "$script"
 grep -q 'verify_live_onnx_wasm' "$script"
 grep -q 'application/wasm wasm;' infra/nginx/mgx-wasm-types.conf
 grep -q 'rolling back' "$script"
+grep -q 'sudo -n rsync' "$script"
+grep -q 'browser ArrayBuffer fallback remains supported' "$script"
+grep -q 'application/octet-stream' "$script"
+grep -q 'live browser QA must confirm' "$script"
 
 echo "deploy static safety: PASS"

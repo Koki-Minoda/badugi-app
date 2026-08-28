@@ -2437,7 +2437,7 @@ export default function App() {
       }
       if (
         activeMode === "tournament-mtt" &&
-        phase === "BET" &&
+        isTableActionPhase &&
         typeof controller.syncFromExternalState === "function"
       ) {
         const livePlayers = (playersRef.current ?? [])
@@ -2445,8 +2445,10 @@ export default function App() {
           .filter(Boolean);
         const livePots = (potsRef.current ?? []).map((pot) => ({ ...pot }));
         const liveActor =
-          typeof turn === "number"
-            ? turn
+          typeof controllerTurn === "number"
+            ? controllerTurn
+            : typeof turn === "number"
+              ? turn
             : typeof engineStateRef.current?.currentActor === "number"
               ? engineStateRef.current.currentActor
               : typeof engineStateRef.current?.nextTurn === "number"
@@ -2588,6 +2590,8 @@ export default function App() {
       mode,
       normalizedGameVariant,
       phase,
+      controllerTurn,
+      isTableActionPhase,
       turn,
       updateAfterActionFromSnapshot,
     ],

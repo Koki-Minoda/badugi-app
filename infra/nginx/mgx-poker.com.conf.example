@@ -13,6 +13,10 @@ server {
     root /var/www/mgx-poker;
     index index.html;
 
+    types {
+        application/wasm wasm;
+    }
+
     access_log /var/log/nginx/mgx-poker.access.log;
     error_log  /var/log/nginx/mgx-poker.error.log;
 

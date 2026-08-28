@@ -150,6 +150,7 @@ export class ChinesePokerController {
     this.phase = "idle";
     this.players = [];
     this.results = null;
+    this.history = null;
   }
 
   startNewHand() {
@@ -174,6 +175,22 @@ export class ChinesePokerController {
         ready: !seat.isHero,
       };
     });
+    this.history = {
+      schemaVersion: 1,
+      handId: `chinese-${this.handId}`,
+      handNumber: this.handId,
+      variantId: "chinese_poker",
+      startedAt: Date.now(),
+      seats: this.players.map((player) => ({
+        id: player.id,
+        name: player.name,
+        isHero: player.isHero,
+        initialHand: [...player.hand],
+      })),
+      events: [{ type: "HAND_START", sequence: 0 }],
+      results: null,
+      endedAt: null,
+    };
     return this.getSnapshot();
   }
 
@@ -193,6 +210,16 @@ export class ChinesePokerController {
     player.rows = nextRows;
     player.evaluation = evaluateChineseRows(nextRows);
     player.ready = true;
+    this.history?.events.push({
+      type: "ROWS_SET",
+      sequence: this.history.events.length,
+      playerId: player.id,
+      rows: {
+        front: [...nextRows.front],
+        middle: [...nextRows.middle],
+        back: [...nextRows.back],
+      },
+    });
     return this.getSnapshot();
   }
 
@@ -226,6 +253,15 @@ export class ChinesePokerController {
     }
     this.phase = "showdown";
     this.results = { totals, matchups };
+    if (this.history) {
+      this.history.results = JSON.parse(JSON.stringify(this.results));
+      this.history.endedAt = Date.now();
+      this.history.events.push({
+        type: "SHOWDOWN",
+        sequence: this.history.events.length,
+        results: JSON.parse(JSON.stringify(this.results)),
+      });
+    }
     return this.getSnapshot();
   }
 
@@ -254,6 +290,10 @@ export class ChinesePokerController {
       })),
       results: this.results,
     };
+  }
+
+  getHandHistory() {
+    return this.history ? JSON.parse(JSON.stringify(this.history)) : null;
   }
 }
 

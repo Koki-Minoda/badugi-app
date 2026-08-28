@@ -55,6 +55,7 @@ verify_live_frontend() {
   local live_index
   local live_manifest
   local live_health
+  local live_friend_match
   local expected_assets
 
   echo "[mgx-deploy] verifying live frontend at ${LIVE_ORIGIN}"
@@ -63,7 +64,8 @@ verify_live_frontend() {
   for ((attempt = 1; attempt <= max_attempts; attempt++)); do
     if live_index="$(curl -fsSL "${LIVE_ORIGIN}/")" &&
       live_manifest="$(curl -fsSL "${LIVE_ORIGIN}/manifest.webmanifest")" &&
-      live_health="$(curl -fsSL "${LIVE_ORIGIN}/api/health")"; then
+      live_health="$(curl -fsSL "${LIVE_ORIGIN}/api/health")" &&
+      live_friend_match="$(curl -fsSL "${LIVE_ORIGIN}/friend-match")"; then
       break
     fi
 
@@ -83,6 +85,12 @@ verify_live_frontend() {
       echo "[mgx-deploy] live index:" >&2
       echo "$live_index" >&2
       fail "live index does not reference expected asset ${asset_ref}"
+    fi
+  done <<<"$expected_assets"
+
+  while IFS= read -r asset_ref; do
+    if [ -n "$asset_ref" ] && ! grep -Fq "$asset_ref" <<<"$live_friend_match"; then
+      fail "friend-match deep link did not return the current SPA asset ${asset_ref}"
     fi
   done <<<"$expected_assets"
 

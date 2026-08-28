@@ -1,0 +1,73 @@
+name: Production live nightly
+
+on:
+  schedule:
+    - cron: "40 19 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-live-nightly
+  cancel-in-progress: true
+
+jobs:
+  live-product:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - run: npx playwright install --with-deps chromium
+      - name: Core5 cash and tournament production smoke
+        run: npx playwright test tests/e2e/live-core5-alpha-smoke.spec.ts --project=badugi-flow
+      - name: P2P production create-to-cleanup smoke
+        env:
+          MGX_LIVE_P2P: "1"
+          E2E_APP_URL: https://mgx-poker.com/
+        run: npx playwright test tests/e2e/live-p2p-friend-match.spec.ts --project=badugi-flow
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: production-live-playwright
+          path: |
+            playwright-report
+            test-results
+            reports/screenshots
+          if-no-files-found: ignore
+          retention-days: 14
+
+  live-ai-telemetry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        ai-tier: [standard, pro]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - run: npx playwright install --with-deps chromium
+      - name: Validate live Badugi decision telemetry
+        env:
+          E2E_AI_TIER_OVERRIDE: ${{ matrix.ai-tier }}
+        run: npx playwright test tests/e2e/badugi-value-bet-observation.spec.ts --project=badugi-flow
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-ai-${{ matrix.ai-tier }}
+          path: |
+            playwright-report
+            test-results
+            reports/ai-observation
+          if-no-files-found: ignore
+          retention-days: 14

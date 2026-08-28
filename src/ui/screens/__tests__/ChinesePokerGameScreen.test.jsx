@@ -22,6 +22,8 @@ describe("ChinesePokerGameScreen", () => {
 
     fireEvent.click(screen.getByTestId("chinese-submit"));
     expect(screen.getByTestId("chinese-results")).toBeTruthy();
+    expect(screen.getByTestId("chinese-replay-integrity").textContent).toContain("verified");
+    expect(screen.getByTestId("chinese-history-replay").textContent).toContain("ROWS_SET");
     expect(screen.getByText("Next Hand")).toBeTruthy();
 
     fireEvent.click(screen.getByTestId("chinese-next-hand"));

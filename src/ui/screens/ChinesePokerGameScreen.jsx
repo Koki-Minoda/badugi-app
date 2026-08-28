@@ -1,5 +1,9 @@
 import React, { useState } from "react";
 import ChinesePokerController from "../../games/chinese/ChinesePokerController.js";
+import {
+  persistChinesePokerHistory,
+  replayChinesePokerHistory,
+} from "../../games/chinese/chinesePokerHistory.js";
 
 const ROWS = [
   { key: "front", size: 3 },
@@ -34,6 +38,8 @@ const COPY = {
     foul: "ファウル",
     ready: "準備完了",
     hidden: "相手の手はショーダウンまで非表示です。",
+    history: "ハンド履歴",
+    replayVerified: "同じ配置・採点を再現済み",
     rowLabels: {
       front: "フロント 3枚",
       middle: "ミドル 5枚",
@@ -61,6 +67,8 @@ const COPY = {
     foul: "Foul",
     ready: "Ready",
     hidden: "Opponent hands are hidden until showdown.",
+    history: "Hand History",
+    replayVerified: "Exact rows and scoring replay verified",
     rowLabels: {
       front: "Front 3",
       middle: "Middle 5",
@@ -168,7 +176,7 @@ function PlayerRows({ player, copy, phase }) {
   );
 }
 
-function ResultPanel({ snapshot, copy }) {
+function ResultPanel({ snapshot, copy, completedHistory, replayAudit }) {
   if (snapshot.phase !== "showdown" || !snapshot.results) return null;
   const totals = snapshot.results.totals ?? {};
   const nameById = Object.fromEntries(snapshot.players.map((player) => [player.id, player.name]));
@@ -203,6 +211,21 @@ function ResultPanel({ snapshot, copy }) {
           </div>
         ))}
       </div>
+      {completedHistory ? (
+        <div className="mt-4 rounded-2xl border border-sky-300/25 bg-sky-400/10 p-3" data-testid="chinese-history-replay">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="font-bold text-sky-100">{copy.history} · {completedHistory.handId}</span>
+            <span className={replayAudit?.valid ? "text-emerald-300" : "text-red-300"} data-testid="chinese-replay-integrity">
+              {replayAudit?.valid ? copy.replayVerified : replayAudit?.errors?.join(", ")}
+            </span>
+          </div>
+          <ol className="mt-2 space-y-1 text-xs text-slate-300">
+            {(completedHistory.events ?? []).map((event) => (
+              <li key={`${event.sequence}-${event.type}`}>#{event.sequence} · {event.type}{event.playerId ? ` · ${event.playerId}` : ""}</li>
+            ))}
+          </ol>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -220,6 +243,8 @@ export default function ChinesePokerGameScreen({ language = "ja", onBack = null 
   const [snapshot, setSnapshot] = useState(controllerState.snapshot);
   const [selectedCard, setSelectedCard] = useState(null);
   const [rowError, setRowError] = useState("");
+  const [completedHistory, setCompletedHistory] = useState(null);
+  const [replayAudit, setReplayAudit] = useState(null);
   const hero = snapshot.players.find((player) => player.isHero) ?? snapshot.players[0];
   const [rows, setRows] = useState(hero?.rows ?? { front: [], middle: [], back: [] });
   const assignedCards = new Set([...rows.front, ...rows.middle, ...rows.back]);
@@ -265,13 +290,21 @@ export default function ChinesePokerGameScreen({ language = "ja", onBack = null 
   const handleSubmit = () => {
     try {
       controller.setRows(hero.id, rows);
-      refresh(controller.resolveShowdown());
+      const result = controller.resolveShowdown();
+      const history = controller.getHandHistory();
+      const audit = replayChinesePokerHistory(history);
+      persistChinesePokerHistory(history);
+      setCompletedHistory(history);
+      setReplayAudit(audit);
+      refresh(result);
     } catch (error) {
       setRowError(error?.message ?? "Unable to score hand");
     }
   };
 
   const handleNextHand = () => {
+    setCompletedHistory(null);
+    setReplayAudit(null);
     refresh(controller.nextHand());
   };
 
@@ -395,7 +428,7 @@ export default function ChinesePokerGameScreen({ language = "ja", onBack = null 
 
         <aside className="space-y-4">
           <PlayerRows player={{ ...hero, rows, evaluation: hero?.evaluation }} copy={copy} phase="showdown" />
-          <ResultPanel snapshot={snapshot} copy={copy} />
+          <ResultPanel snapshot={snapshot} copy={copy} completedHistory={completedHistory} replayAudit={replayAudit} />
           {snapshot.phase !== "showdown" && (
             <div className="rounded-3xl border border-white/10 bg-slate-950/75 p-4 text-sm text-slate-300">
               {copy.hidden}

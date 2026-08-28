@@ -97,7 +97,19 @@ async function collectCpuTrace(page: Page, targetRows = 8) {
     await clickHeroIfNeeded(page);
     await page.waitForTimeout(450);
     const rows = await page.evaluate(() => window.__MGX_CPU_DECISION_TRACE__ ?? []);
-    if (Array.isArray(rows) && rows.length >= targetRows) return rows;
+    const hasAttributedPolicyDecision =
+      Array.isArray(rows) &&
+      rows.some((row) => {
+        const source = String(row?.decisionSource ?? "unknown");
+        return source !== "unknown" && source !== "forced";
+      });
+    if (
+      Array.isArray(rows) &&
+      rows.length >= targetRows &&
+      hasAttributedPolicyDecision
+    ) {
+      return rows;
+    }
   }
   return page.evaluate(() => window.__MGX_CPU_DECISION_TRACE__ ?? []);
 }
@@ -169,7 +181,13 @@ test("Badugi live CPU telemetry classifies friend-alpha runtime path and pressur
       const summary = summarizeRows(mode, rows);
       summaries.push(summary);
       expect(summary.decisions, `${mode} CPU telemetry rows`).toBeGreaterThan(0);
-      expect(summary.decisionSources, `${mode} source attribution`).not.toEqual({ unknown: summary.decisions });
+      expect(
+        Object.entries(summary.decisionSources).some(
+          ([source, count]) =>
+            source !== "unknown" && source !== "forced" && count > 0,
+        ),
+        `${mode} policy source attribution`,
+      ).toBe(true);
     } finally {
       await deleteAuthenticatedSession(page, session);
     }

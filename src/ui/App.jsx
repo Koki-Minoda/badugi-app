@@ -3217,6 +3217,8 @@ export default function App() {
             betAfter: actorAfter.betThisRound ?? me.betThisRound,
             raiseCountTable: raiseCountThisRound,
             metadata: {
+              ...(payload?.metadata ?? {}),
+              ...payload,
               drawInfo: {
                 drawCount:
                   payload.discardIndexes?.length ??
@@ -4601,6 +4603,13 @@ export default function App() {
             betBefore: seatBefore?.betThisRound ?? 0,
             betAfter: actorAfter?.betThisRound ?? seatBefore?.betThisRound ?? 0,
             raiseCountTable: raiseCountThisRound,
+            // Preserve the policy/tier decision envelope through the
+            // controller bridge. Without it, controller-backed CPU actions
+            // are persisted as unattributed "unknown" decisions.
+            metadata: {
+              ...(payload?.metadata ?? {}),
+              ...payload,
+            },
           });
           forcedSeatActionsRef.current.delete(seat);
           helpers.syncLegacyFromControllerSnapshot(controllerOutcome.snapshot, {
@@ -4670,6 +4679,10 @@ export default function App() {
         betBefore,
         betAfter,
         raiseCountTable: raiseCountThisRound,
+        metadata: {
+          ...(payload?.metadata ?? {}),
+          ...payload,
+        },
       });
 
       if (actor.folded) {
@@ -12491,6 +12504,10 @@ export default function App() {
               betBefore: me.betThisRound ?? 0,
               betAfter: actorAfter?.betThisRound ?? me.betThisRound ?? 0,
               raiseCountTable: raiseCountThisRound,
+              metadata: {
+                ...(payload?.metadata ?? {}),
+                ...payload,
+              },
             });
             betHelpers.syncLegacyFromControllerSnapshot?.(
               controllerOutcome.snapshot,

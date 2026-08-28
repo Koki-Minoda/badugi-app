@@ -35,6 +35,31 @@ jobs:
       - run: npm run test:game:ev
       - run: npm run test:deploy:static
 
+  dependency-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - run: npm ci --legacy-peer-deps
+      - name: Audit production and development npm dependencies
+        run: |
+          npm audit --omit=dev --audit-level=high
+          npm audit --audit-level=high
+      - name: Audit resolved backend dependencies
+        run: |
+          python -m venv .audit-venv
+          .audit-venv/bin/python -m pip install -e ./backend pip-audit
+          .audit-venv/bin/python -m pip_audit --local
+
   backend:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -46,7 +71,8 @@ jobs:
           cache: pip
           cache-dependency-path: backend/pyproject.toml
       - run: python -m pip install -e './backend[test]'
-      - run: python -m pytest backend/tests
+      - name: Verify Alembic clean install and backend contracts
+        run: python -m pytest backend/tests
 
   tournament-qa:
     runs-on: ubuntu-latest
@@ -57,10 +83,17 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
       - run: npm ci --legacy-peer-deps
+      - run: python -m pip install -e './backend[test]'
+      - run: npm run test:tournament:resume
       - run: npm run test:tournament:review
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:tournament:pr-e2e
+      - run: bash scripts/ci/run-with-backend.sh npm run test:tournament:pr-e2e
 
   p2p-qa:
     runs-on: ubuntu-latest
@@ -78,8 +111,9 @@ jobs:
           cache-dependency-path: backend/pyproject.toml
       - run: npm ci --legacy-peer-deps
       - run: python -m pip install -e './backend[test]'
+      - run: npm run test:p2p:contract
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:p2p
+      - run: bash scripts/ci/run-with-backend.sh npm run test:p2p
 
   history-qa:
     runs-on: ubuntu-latest
@@ -97,36 +131,63 @@ jobs:
           cache-dependency-path: backend/pyproject.toml
       - run: npm ci --legacy-peer-deps
       - run: python -m pip install -e './backend[test]'
+      - run: npm run test:history:contract
       - run: npx playwright install --with-deps chromium
       - name: Exact cash and cross-variant history replay
         run: |
-          set -euo pipefail
-          db_path="${RUNNER_TEMP}/mgx-history-${GITHUB_RUN_ID}.sqlite3"
-          (
-            cd backend
-            env BACKEND_ENV=local BACKEND_DB_DRIVER=sqlite BACKEND_DB_NAME="$db_path" \
-              SECRET_KEY=history-ci-only-secret CORS_ORIGINS='["http://127.0.0.1:3000"]' \
-              python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
-          ) &
-          backend_pid=$!
-          trap 'kill "$backend_pid" 2>/dev/null || true' EXIT
-          for attempt in {1..40}; do
-            curl -fsS http://127.0.0.1:8000/api/health >/dev/null && break
-            sleep 0.25
-          done
-          curl -fsS http://127.0.0.1:8000/api/health >/dev/null
-          npx playwright test \
+          bash scripts/ci/run-with-backend.sh npx playwright test \
             tests/e2e/hand-history-replay-fidelity.spec.ts \
             tests/e2e/cross-variant-history-replay-smoke.spec.ts \
             --project=badugi-flow
 
+  core5-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - run: npm ci --legacy-peer-deps
+      - run: python -m pip install -e './backend[test]'
+      - run: npx playwright install --with-deps chromium
+      - run: bash scripts/ci/run-with-backend.sh npm run test:core5:pr-e2e
+
+  mobile-webkit-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - run: npm ci --legacy-peer-deps
+      - run: python -m pip install -e './backend[test]'
+      - run: npx playwright install --with-deps webkit
+      - run: bash scripts/ci/run-with-backend.sh npm run test:tournament:webkit
+
   deploy:
     needs:
       - quality
+      - dependency-security
       - backend
       - tournament-qa
       - p2p-qa
       - history-qa
+      - core5-qa
+      - mobile-webkit-qa
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30

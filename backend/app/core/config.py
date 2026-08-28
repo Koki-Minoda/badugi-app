@@ -44,12 +44,28 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def validate_sensitive_config(self):
         env = (self.backend_env or "local").lower()
+        if env not in {"local", "test", "prod"}:
+            raise ValueError("BACKEND_ENV must be one of: local, test, prod.")
         if env == "test":
             # Test-only relaxation so pytest can run without production secrets.
             return self
 
         if not (self.secret_key or "").strip():
             raise ValueError("SECRET_KEY must be set.")
+
+        if env == "prod":
+            if len((self.secret_key or "").strip()) < 32:
+                raise ValueError("SECRET_KEY must contain at least 32 characters in production.")
+            if not self.cors_origins or any(
+                origin == "*"
+                or not origin.startswith("https://")
+                or "localhost" in origin
+                or "127.0.0.1" in origin
+                for origin in self.cors_origins
+            ):
+                raise ValueError(
+                    "CORS_ORIGINS must contain explicit HTTPS origins in production."
+                )
 
         driver = (self.db_driver or "").lower()
         if driver not in {"sqlite", "sqlite3"} and not (self.db_password or "").strip():

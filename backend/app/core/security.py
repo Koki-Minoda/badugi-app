@@ -2,7 +2,8 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import InvalidTokenError
 from passlib.context import CryptContext
 
 from .config import get_settings
@@ -12,7 +13,10 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 settings = get_settings()
 if settings.backend_env == "test":
     # Test-only fallback to keep isolated pytest runs working without real secrets.
-    SECRET_KEY = (getattr(settings, "secret_key", None) or "test-only-secret-key").strip()
+    SECRET_KEY = (
+        getattr(settings, "secret_key", None)
+        or "test-only-secret-key-32-bytes-minimum"
+    ).strip()
 else:
     SECRET_KEY = (getattr(settings, "secret_key", None) or "").strip()
     if not SECRET_KEY:
@@ -41,5 +45,5 @@ def create_access_token(data: dict[str, Any], expires_delta: Optional[timedelta]
 def decode_access_token(token: str) -> dict[str, Any]:
     try:
         return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    except JWTError as exc:
+    except InvalidTokenError as exc:
         raise ValueError("Invalid token") from exc

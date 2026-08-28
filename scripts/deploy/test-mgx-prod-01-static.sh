@@ -3,6 +3,9 @@ set -euo pipefail
 
 script="scripts/deploy/mgx-prod-01.sh"
 bash -n "$script"
+bash -n scripts/ci/run-with-backend.sh
+bash -n scripts/deploy/backup_mgx_prod_01.sh
+bash -n scripts/deploy/rollback_mgx_prod_01.sh
 
 restart_line="$(grep -n 'systemctl restart mgx-backend.service' "$script" | cut -d: -f1)"
 backend_health_line="$(grep -n '^verify_backend_after_restart$' "$script" | cut -d: -f1)"
@@ -28,5 +31,9 @@ grep -q 'sudo -n rsync' "$script"
 grep -q 'browser ArrayBuffer fallback remains supported' "$script"
 grep -q 'application/octet-stream' "$script"
 grep -q 'live browser QA must confirm' "$script"
+grep -q 'NoNewPrivileges=true' infra/systemd/mgx-backend.service.example
+grep -q 'ProtectSystem=strict' infra/systemd/mgx-backend.service.example
+grep -q 'Strict-Transport-Security' infra/nginx/mgx-poker.com-ssl.conf.example
+grep -q 'X-Content-Type-Options' infra/nginx/mgx-poker.com-ssl.conf.example
 
 echo "deploy static safety: PASS"

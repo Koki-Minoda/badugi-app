@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -109,10 +110,6 @@ def _assert_migrations_up_to_date() -> None:
         raise RuntimeError("Database migration required before startup.")
 
 
-app = FastAPI(title="Badugi Multi-Game Backend", version="0.1.0")
-app.add_event_handler("startup", bootstrap_schema)
-
-
 def configure_p2p_persistence() -> None:
     """Enable durable room recovery outside isolated test runs."""
 
@@ -124,7 +121,16 @@ def configure_p2p_persistence() -> None:
     p2p_room_manager.attach_store(SQLAlchemyRoomStore(SessionLocal))
 
 
-app.add_event_handler("startup", configure_p2p_persistence)
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Complete schema and persistence checks before serving requests."""
+
+    bootstrap_schema()
+    configure_p2p_persistence()
+    yield
+
+
+app = FastAPI(title="Badugi Multi-Game Backend", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

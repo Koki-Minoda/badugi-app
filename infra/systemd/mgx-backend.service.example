@@ -10,7 +10,8 @@
 
 [Unit]
 Description=MGX Badugi FastAPI backend
-After=network.target
+Wants=network-online.target
+After=network-online.target
 
 [Service]
 Type=simple
@@ -20,6 +21,18 @@ Environment=PYTHONUNBUFFERED=1
 Environment=MGX_LOG_LEVEL=info
 ExecStart=/home/<USER>/badugi-app/backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --log-level ${MGX_LOG_LEVEL}
 Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=30s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+UMask=0027
 
 [Install]
 WantedBy=multi-user.target

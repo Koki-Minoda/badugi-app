@@ -301,6 +301,56 @@ describe("DeuceToSevenTripleDrawController", () => {
     expect(after.players[3].betThisRound).toBe(20);
   });
 
+  it("syncs an external DRAW actor and lets an all-in seat stand pat", () => {
+    const controller = buildController([
+      "2S", "3S", "4S", "5S", "7S",
+      "2H", "3H", "4H", "5H", "8H",
+      "9S", "TS", "JS", "QS", "KS",
+    ]);
+    const hand = controller.createNewHandState(controller.createInitialState());
+    const opening = controller.getUiSnapshot(hand);
+    const players = opening.players.map((player, seat) => ({
+      ...player,
+      stack: seat === 0 ? 0 : 480,
+      bet: 0,
+      betThisRound: 0,
+      allIn: seat === 0,
+      folded: false,
+      seatOut: false,
+      hasDrawn: false,
+      hasActedThisRound: false,
+    }));
+    const synced = controller.syncFromExternalState({
+      handIndex: 31,
+      snapshot: {
+        ...opening,
+        handId: "local-h31-draw",
+        phase: "DRAW",
+        street: "DRAW",
+        drawRound: 1,
+        drawRoundIndex: 1,
+        turn: 0,
+        nextTurn: 0,
+        actingPlayerIndex: 0,
+        currentBet: 0,
+        players,
+      },
+    });
+
+    expect(controller.getUiSnapshot(synced)).toMatchObject({ phase: "DRAW", turn: 0 });
+    expect(controller.getLegalActions(synced, 0).map((action) => action.type)).toEqual(["DRAW"]);
+
+    const result = controller.applyAction(synced, {
+      seatIndex: 0,
+      payload: { type: "DRAW", discardIndexes: [] },
+    });
+    const after = controller.getUiSnapshot(result.state);
+
+    expect(result.events.some((event) => event.type === "invalidAction")).toBe(false);
+    expect(after.players[0]).toMatchObject({ allIn: true, hasDrawn: true });
+    expect(after.turn).toBe(1);
+  });
+
   it("exposes legal DRAW action only for the current draw actor", () => {
     const controller = buildController([
       "2S", "3S", "4S", "5S", "7S",

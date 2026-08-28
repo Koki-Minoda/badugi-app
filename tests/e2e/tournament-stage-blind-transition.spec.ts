@@ -789,6 +789,36 @@ for (const stage of [
     await expect(reviewPanel).toContainText("次の一手");
     await expect(reviewPanel).toContainText(String(stage.payout));
 
+    const firstKeyHand = settledReview.keyHands.find(
+      (keyHand) => keyHand.replayRef?.target?.handId,
+    );
+    expect(firstKeyHand, JSON.stringify(settledReview.keyHands, null, 2)).toBeTruthy();
+    const firstReplayButton = page
+      .getByTestId("mtt-tournament-review-key-hand")
+      .filter({ hasText: firstKeyHand!.handId })
+      .getByTestId("mtt-tournament-review-replay");
+    await expect(firstReplayButton).toBeVisible();
+    await firstReplayButton.click();
+    await expect(page.getByTestId("hand-replay-screen")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("replay-review-panel")).toBeVisible();
+    const replayState = await page.evaluate(() =>
+      window.__BADUGI_E2E__.getReplayState(),
+    );
+    expect(replayState.currentScreen).toBe("handReplay");
+    expect(replayState.replayTarget.handId).toBe(firstKeyHand!.handId);
+    expect(replayState.replayTarget.replayReview.reviewMode).toBe("tournament");
+    expect(handIds.has(replayState.replayTarget.handId)).toBe(true);
+    if (Number.isFinite(replayState.replayTarget.actionSeqStart)) {
+      expect(
+        actionKeys.has(
+          `${replayState.replayTarget.handId}:${replayState.replayTarget.actionSeqStart}`,
+        ),
+      ).toBe(true);
+    }
+
+    await page.getByRole("button", { name: "Back to Results" }).click();
+    await expect(overlay).toBeVisible();
+
     await expect
       .poll(async () =>
         page.evaluate(() => {

@@ -570,6 +570,7 @@ export default function App() {
   const [authIsAuthenticated, setAuthIsAuthenticated] = useState(null);
   const [replayHandId, setReplayHandId] = useState(null);
   const [replayTarget, setReplayTarget] = useState(null);
+  const [replayReturnScreen, setReplayReturnScreen] = useState(null);
   const isTournament = mode === "tournament-mtt";
   const initialVariantIdRef = useRef(getRequestedVariantIdFromURL());
   const [gameVariant, setGameVariant] = useState(
@@ -7255,6 +7256,7 @@ export default function App() {
     }
     setReplayHandId(handId);
     setReplayTarget(target);
+    setReplayReturnScreen(null);
     setCurrentScreen("handReplay");
   }, []);
 
@@ -7267,15 +7269,30 @@ export default function App() {
     [handleOpenReplayFromHistory, replayHandId],
   );
 
-  const handleBackFromReplayToHistory = useCallback(() => {
-    setCurrentScreen("handHistory");
+  const handleOpenTournamentReviewReplay = useCallback((target = null) => {
+    const handId = target?.handId;
+    if (!handId || !findHandHistoryById(handId)) {
+      console.warn("[TOURNAMENT_REVIEW] Unable to locate replay snapshot", handId);
+      return;
+    }
+    setReplayHandId(handId);
+    setReplayTarget(target);
+    setReplayReturnScreen("gameTournament");
+    setCurrentScreen("handReplay");
   }, []);
 
+  const handleBackFromReplayToHistory = useCallback(() => {
+    setCurrentScreen(replayReturnScreen ?? "handHistory");
+    setReplayReturnScreen(null);
+  }, [replayReturnScreen]);
+
   const handleExitReplayToMenu = useCallback(() => {
+    const returnScreen = replayReturnScreen;
     setReplayHandId(null);
     setReplayTarget(null);
-    setCurrentScreen("menu");
-  }, []);
+    setReplayReturnScreen(null);
+    setCurrentScreen(returnScreen ?? "menu");
+  }, [replayReturnScreen]);
 
   const handleNavigateToTitle = useCallback(() => {
     resetTournamentState();
@@ -13712,6 +13729,11 @@ export default function App() {
           target={replayTarget}
           onBack={handleBackFromReplayToHistory}
           onClose={handleExitReplayToMenu}
+          backLabel={
+            replayTarget?.replayReview?.reviewMode === "tournament"
+              ? "Back to Results"
+              : "Back to History"
+          }
         />
         <DebugHud
           enabled={debugFlags.enabled}
@@ -13862,7 +13884,7 @@ export default function App() {
     tournamentPlacements,
     tournamentReview,
     tournamentEvent: liveTournamentHudState?.tournamentEvent ?? null,
-    onOpenTournamentReviewReplay: handleOpenReplayTarget,
+    onOpenTournamentReviewReplay: handleOpenTournamentReviewReplay,
     onTournamentBackToMenu: handleTournamentBackToMenu,
     onEnterNewTournament: handleEnterNewTournament,
   };

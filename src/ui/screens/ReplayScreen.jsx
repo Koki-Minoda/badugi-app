@@ -405,6 +405,7 @@ export default function ReplayScreen({
   onCoachingTelemetry,
   onClose = () => {},
   onBack = () => {},
+  backLabel = "Back to History",
 }) {
   const [handSnapshot, setHandSnapshot] = useState(() =>
     initialHandSnapshot ?? (handId ? findHandHistoryById(handId) ?? null : null),
@@ -670,7 +671,7 @@ export default function ReplayScreen({
               className="rounded-full border border-white/30 px-4 py-2 text-xs uppercase tracking-[0.35em] text-white/90 hover:border-emerald-300/70 hover:text-emerald-200"
               onClick={onBack}
             >
-              Back to History
+              {backLabel}
             </button>
             <button
               type="button"

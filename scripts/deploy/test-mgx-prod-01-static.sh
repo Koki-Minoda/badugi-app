@@ -19,5 +19,9 @@ fi
 grep -q 'verify_live_frontend' "$script"
 grep -q 'verify_live_p2p_rest_route' "$script"
 grep -q 'npm run test:build:onnx' "$script"
+grep -q 'configure_nginx_wasm_mime' "$script"
+grep -q 'verify_live_onnx_wasm' "$script"
+grep -q 'application/wasm wasm;' infra/nginx/mgx-wasm-types.conf
+grep -q 'rolling back' "$script"
 
 echo "deploy static safety: PASS"

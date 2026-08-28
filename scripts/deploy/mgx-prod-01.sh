@@ -9,6 +9,9 @@ LIVE_ORIGIN="${LIVE_ORIGIN:-https://mgx-poker.com}"
 DEFAULT_BRANCH="main"
 GIT_REMOTE="${GIT_REMOTE:-origin}"
 GIT_BRANCH="${GIT_BRANCH:-$DEFAULT_BRANCH}"
+NGINX_WASM_TYPES_SOURCE="${NGINX_WASM_TYPES_SOURCE:-$APP_DIR/infra/nginx/mgx-wasm-types.conf}"
+NGINX_WASM_TYPES_DISABLED_SOURCE="${NGINX_WASM_TYPES_DISABLED_SOURCE:-$APP_DIR/infra/nginx/mgx-wasm-types.disabled}"
+NGINX_WASM_TYPES_TARGET="${NGINX_WASM_TYPES_TARGET:-/etc/nginx/conf.d/mgx-wasm-types.conf}"
 
 fail() {
   echo "[mgx-deploy] ERROR: $*" >&2
@@ -111,6 +114,35 @@ verify_live_p2p_rest_route() {
   fi
 }
 
+configure_nginx_wasm_mime() {
+  echo "[mgx-deploy] configuring WebAssembly MIME type"
+  test -f "$NGINX_WASM_TYPES_SOURCE"
+  test -f "$NGINX_WASM_TYPES_DISABLED_SOURCE"
+
+  sudo rsync -a "$NGINX_WASM_TYPES_SOURCE" "$NGINX_WASM_TYPES_TARGET"
+  if ! sudo /usr/sbin/nginx -t; then
+    echo "[mgx-deploy] nginx rejected WASM MIME configuration; rolling back" >&2
+    sudo rsync -a "$NGINX_WASM_TYPES_DISABLED_SOURCE" "$NGINX_WASM_TYPES_TARGET"
+    sudo /usr/sbin/nginx -t
+    fail "nginx WASM MIME configuration failed validation"
+  fi
+  sudo systemctl reload nginx
+}
+
+verify_live_onnx_wasm() {
+  local headers
+  local wasm_url="${LIVE_ORIGIN}/assets/ort-wasm-simd-threaded.jsep.wasm"
+
+  echo "[mgx-deploy] verifying live ONNX WASM response"
+  headers="$(curl -fsSIL "$wasm_url" | tr -d '\r')"
+  if ! grep -qi '^content-type:[[:space:]]*application/wasm\([;[:space:]]\|$\)' <<<"$headers"; then
+    fail "live ONNX WASM does not use application/wasm"
+  fi
+  if ! grep -qi '^content-length:[[:space:]]*[1-9][0-9]\{6,\}$' <<<"$headers"; then
+    fail "live ONNX WASM response is unexpectedly small"
+  fi
+}
+
 verify_backend_after_restart() {
   local attempt
   local max_attempts="${BACKEND_HEALTH_MAX_ATTEMPTS:-12}"
@@ -139,6 +171,8 @@ echo "[mgx-deploy] pulling latest code (${GIT_REMOTE}/${GIT_BRANCH})"
 git fetch "$GIT_REMOTE" "$GIT_BRANCH"
 git checkout "$GIT_BRANCH"
 git pull "$GIT_REMOTE" "$GIT_BRANCH"
+
+configure_nginx_wasm_mime
 
 echo "[mgx-deploy] installing frontend dependencies"
 NPM_CACHE_DIR="${NPM_CACHE_DIR:-/tmp/mgx-npm-cache-$(id -u)}"
@@ -189,6 +223,7 @@ sudo rsync -av --delete "${FRONTEND_DIST}/" "${DEPLOY_TARGET}/"
 verify_frontend_asset_sync
 
 verify_live_frontend
+verify_live_onnx_wasm
 verify_live_p2p_rest_route
 
 echo "[mgx-deploy] deployment complete"

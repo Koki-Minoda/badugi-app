@@ -24,7 +24,7 @@ QA/QM result: **PASS for the 1–10 implementation scope**. Tasks 1–4 were int
 - ESLint: PASS.
 - Production build: PASS; ONNX WASM asset 23,824,254 bytes.
 - Dependency audit: 0 vulnerabilities.
-- Tier1: 303 files / 2,072 tests PASS.
+- Tier1: 303 files / 2,073 tests PASS.
 - Tier2: 78 files / 165 tests PASS.
 - Backend: 69 tests PASS, including deletion, P2P persistence, migration and tournament state.
 - Game progression: 170 tests PASS; game EV: 25 tests PASS.
@@ -32,9 +32,9 @@ QA/QM result: **PASS for the 1–10 implementation scope**. Tasks 1–4 were int
 - Production P2P: create/join/privacy/reload/action/leave/delete PASS in 13.8 seconds.
 - Cash exact history replay: PASS.
 - Tournament exact history replay: PASS.
-- Store completion: 35 real Hero hands + 53 background hands; champion verified.
-- Local completion: 25 real Hero hands + 140 background hands; ante level and champion verified.
-- World completion: 44 real Hero hands + 796 background hands; final level 18 and champion verified.
+- Store completion: 37 real Hero hands + 57 background hands; level 12 and champion verified.
+- Local completion: 15 real Hero hands + 150 background hands; level 11, ante and champion verified.
+- World completion: 32 real Hero hands + 807 background hands; 275-player field, FT/top three/heads-up, level 17 and champion verified.
 - Store/local Hero-champion paths produce grounded post-tournament reviews.
 - Chinese Poker controller/history/UI: 10 tests PASS; replay integrity is surfaced in the result screen.
 
@@ -46,6 +46,9 @@ QA/QM result: **PASS for the 1–10 implementation scope**. Tasks 1–4 were int
 4. Nightly production QA runs Core5 cash/tournament and P2P lifecycle checks with screenshots/artifacts retained for 14 days.
 5. Nightly AI QA runs standard and pro telemetry separately; test users are deleted and stale tokens must return 401.
 6. Test failures record screenshots and browser artifacts; production P2P cleanup is independent of the page lifecycle so timeout does not skip deletion.
+7. Tournament QA advances only when the visible result hand ID is replaced by a new physical hand ID. Re-reading one result can no longer masquerade as hundreds of completed hands.
+8. Tournament blind displays use the MTT engine's completed-hand counter as the authority. Store/local fifth-hand boundary tests prevent the ring controller from advancing a level one hand early.
+9. Tournament completion is idempotent by table and hand ID, and a Next Hand request made during the short deal lock is queued once instead of being discarded or double-dealt.
 
 ## Explicit boundaries
 

@@ -396,19 +396,22 @@ export async function performSafeAction(page, options = {}) {
   if (!snapshot) {
     snapshot = await invokeE2E(page, "forceSeatAction", actor, payload);
   }
-  let changed = false;
-  if (!snapshot) {
-    await waitForProgressChange(page, beforeKey, { timeout: 3000 })
-      .then(() => {
-        changed = true;
-      })
-      .catch(() => {});
-  }
+  const changed = await waitForProgressChange(page, beforeKey, { timeout: 3000 })
+    .then(() => true)
+    .catch(() => false);
+  const controllerFailure = changed
+    ? null
+    : await invokeE2E(page, "getLastControllerActionFailure").catch(() => null);
   return {
-    acted: Boolean(snapshot) || changed,
+    // A returned snapshot is only an acknowledgement.  Long-running QA used
+    // to count stale/rejected snapshots as progress and spin until the whole
+    // test timed out.  Require the browser-visible canonical state to move.
+    acted: changed,
     clickedAction: `controller:${payload.type}`,
     actor,
     before: summarizeProgressState(progress),
+    snapshot: snapshot ? summarizeProgressState({ ...progress, snapshot }) : null,
+    controllerFailure,
   };
 }
 

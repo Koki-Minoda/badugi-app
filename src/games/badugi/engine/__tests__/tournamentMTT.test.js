@@ -224,6 +224,23 @@ describe("tournamentMTT engine", () => {
     expect(state.tables[0].handsPlayedAtThisLevel).toBe(2);
   });
 
+  it("counts the same completed hand exactly once across showdown callbacks", () => {
+    const initial = createMTTTournamentState(BASE_CONFIG, entrants);
+    const tableId = initial.tables[0].tableId;
+    const completion = {
+      handId: "table-1-hand-1",
+      handIndex: 1,
+      seatResults: [],
+    };
+
+    const once = onTableHandCompleted(initial, tableId, completion);
+    const duplicate = onTableHandCompleted(once, tableId, completion);
+
+    expect(duplicate).toBe(once);
+    expect(duplicate.tables[0].handsPlayedAtThisLevel).toBe(1);
+    expect(duplicate.completedHandIds).toEqual(["table-1:table-1-hand-1"]);
+  });
+
   it("marks players busted and reduces playersRemaining", () => {
     let state = createMTTTournamentState(BASE_CONFIG, entrants);
     const targetTable = state.tables[0];

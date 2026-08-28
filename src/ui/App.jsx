@@ -2692,6 +2692,7 @@ export default function App() {
   const [showNextButton, setShowNextButton] = useState(false);
 
   const handSavedRef = useRef(false);
+  const tournamentCompletedHandIdRef = useRef(null);
   const sentHandIdsRef = useRef(new Set());
   const handIdRef = useRef(null);
   const showdownTokenRef = useRef(0);
@@ -3584,6 +3585,12 @@ export default function App() {
 
   function setPlayerSnapshot(snap) {
     const normalized = sanitizePlayerSnapshotForVariant(snap);
+    // Action handlers intentionally read playersRef so consecutive controller
+    // transitions do not wait for a React render.  Keep that authoritative
+    // snapshot in lockstep with the rendered state; otherwise a late DRAW
+    // action can be followed by another transition built from the stale
+    // pre-draw players and leave the hero action permanently visible.
+    playersRef.current = normalized;
     setPlayers(normalized);
     return normalized;
   }
@@ -6219,6 +6226,39 @@ export default function App() {
     totalPotRef.current = totalPotForDisplay;
   }, [totalPotForDisplay]);
 
+  function applyHeroTournamentHandCompletion(playersSnapshot) {
+    if (mode !== "tournament-mtt" || !tournamentStateRef.current) return null;
+    const completedHandId = handIdRef.current;
+    if (
+      completedHandId &&
+      tournamentCompletedHandIdRef.current === completedHandId
+    ) {
+      return tournamentStateRef.current;
+    }
+    const tournamentSummary =
+      buildTournamentHandSummaryFromPlayers(playersSnapshot);
+    if (!tournamentSummary) return null;
+    // Mark before updating React/tournament state. Both the controller and the
+    // legacy showdown callback can report the same physical hand in one tick.
+    // Advancing blinds/eliminations twice is never valid.
+    tournamentCompletedHandIdRef.current = completedHandId;
+    const tableId = heroTableIdRef.current ?? heroTableMetaRef.current.tableId;
+    recordHeroHandForReplay(tableId, tournamentSummary);
+    let nextState = onTableHandCompleted(
+      tournamentStateRef.current,
+      tableId,
+      tournamentSummary,
+    );
+    if (!nextState.isFinished) {
+      nextState = simulateBackgroundTables(nextState, tableId, {
+        maxHandsPerTable: 1,
+        onHandSimulated: recordCpuHandForReplay,
+      });
+    }
+    applyTournamentStateUpdate(nextState);
+    return nextState;
+  }
+
   function goShowdownNow(playersSnap, options = {}) {
     debugLog("[SHOWDOWN] goShowdownNow (All-in shortcut) called");
     if (tableMetadataRef.current?.endTimestamp) {
@@ -6478,26 +6518,7 @@ export default function App() {
         `Seat ${p.name}: ${(p.hand ?? []).join(" ")} | type=${rankLabel} ranks=${rankValues}`,
       );
     });
-    if (mode === "tournament-mtt" && tournamentStateRef.current) {
-      const tournamentSummary = buildTournamentHandSummaryFromPlayers(updated);
-      if (tournamentSummary) {
-        const tableId =
-          heroTableIdRef.current ?? heroTableMetaRef.current.tableId;
-        recordHeroHandForReplay(tableId, tournamentSummary);
-        let nextState = onTableHandCompleted(
-          tournamentStateRef.current,
-          tableId,
-          tournamentSummary,
-        );
-        if (!nextState.isFinished) {
-          nextState = simulateBackgroundTables(nextState, tableId, {
-            maxHandsPerTable: 1,
-            onHandSimulated: recordCpuHandForReplay,
-          });
-        }
-        applyTournamentStateUpdate(nextState);
-      }
-    }
+    applyHeroTournamentHandCompletion(updated);
     triggerRotationAndRefreshHud("hand");
     console.log("[SHOWDOWN] Waiting for Next Hand button...");
   }
@@ -6532,6 +6553,7 @@ export default function App() {
   );
 
   const dealingRef = useRef(false);
+  const pendingNextHandRetryRef = useRef(null);
   const startNextHandRef = useRef(() => {});
 
   const resetTournamentState = useCallback(() => {
@@ -7324,8 +7346,27 @@ export default function App() {
         return initialDealResult?.hands?.[seat] ?? [];
       };
       const fallbackStack = startingStackRef.current;
-      const blindLevelSnapshot = blindLevelIndexRef.current ?? 0;
-      const handsInLevelSnapshot = handsInLevelRef.current ?? 0;
+      const tournamentBlindAuthority = activeHandIsTournament
+        ? tournamentStateRef.current
+        : null;
+      const tournamentHeroTableId =
+        heroTableIdRef.current ?? heroTableMetaRef.current?.tableId ?? null;
+      const tournamentHeroTable = tournamentBlindAuthority?.tables?.find(
+        (table) => table?.tableId === tournamentHeroTableId,
+      );
+      // Ring controllers count dealt hands. MTT levels count completed hands
+      // across active tables. Never feed the ring counter back into an MTT
+      // deal: duplicate initial/render triggers can otherwise advance blinds
+      // one hand early even though the tournament engine is still correct.
+      const blindLevelSnapshot = tournamentBlindAuthority
+        ? Math.max(0, Number(tournamentBlindAuthority.levelIndex) || 0)
+        : (blindLevelIndexRef.current ?? 0);
+      const handsInLevelSnapshot = tournamentBlindAuthority
+        ? Math.max(
+            0,
+            Number(tournamentHeroTable?.handsPlayedAtThisLevel) || 0,
+          )
+        : (handsInLevelRef.current ?? 0);
       const handBlindStructure = activeHandIsTournament
         ? getBlindStructureForTournamentConfig(
             tournamentStateRef.current?.config ??
@@ -7576,8 +7617,16 @@ export default function App() {
         });
       }
 
-      setBlindLevelIndex(resolvedBlindIdx);
-      setHandsInLevel(resolvedHandCount);
+      const authoritativeBlindIndex = tournamentBlindAuthority
+        ? blindLevelSnapshot
+        : resolvedBlindIdx;
+      const authoritativeCompletedHands = tournamentBlindAuthority
+        ? Math.max(1, handsInLevelSnapshot)
+        : resolvedHandCount;
+      blindLevelIndexRef.current = authoritativeBlindIndex;
+      handsInLevelRef.current = authoritativeCompletedHands;
+      setBlindLevelIndex(authoritativeBlindIndex);
+      setHandsInLevel(authoritativeCompletedHands);
 
       handStartingStacksRef.current = handStartingStacksById;
       seatOutWarnings.forEach((msg) => console.warn(msg));
@@ -7616,6 +7665,7 @@ export default function App() {
       };
       handSavedRef.current = false;
       handIdRef.current = newHandId;
+      tournamentCompletedHandIdRef.current = null;
       if (legacyGameController?.state) {
         legacyGameController.state.metadata = {
           ...(legacyGameController.state.metadata ?? {}),
@@ -7988,9 +8038,38 @@ export default function App() {
   const startNextHand = useCallback(
     ({ dealerOverride = null, prevPlayers = null } = {}) => {
       if (dealingRef.current) {
-        console.warn("[HAND] dealNewHand busy; next request ignored");
-        return false;
+        // A very short/all-in hand can expose its result before the previous
+        // deal's 100ms safety lock is released.  Do not lose the user's Next
+        // hand click in that window.  Keep one bounded, idempotent retry; a
+        // second click updates nothing and cannot deal twice.
+        if (!pendingNextHandRetryRef.current) {
+          const retry = { dealerOverride, prevPlayers, attempts: 0 };
+          pendingNextHandRetryRef.current = retry;
+          const retryWhenUnlocked = () => {
+            if (pendingNextHandRetryRef.current !== retry) return;
+            retry.attempts += 1;
+            if (dealingRef.current && retry.attempts < 20) {
+              setTimeout(retryWhenUnlocked, 100);
+              return;
+            }
+            pendingNextHandRetryRef.current = null;
+            if (dealingRef.current) {
+              console.error(
+                "[HAND] next-hand retry exhausted while deal lock remained active",
+              );
+              return;
+            }
+            startNextHandRef.current({
+              dealerOverride: retry.dealerOverride,
+              prevPlayers: retry.prevPlayers,
+            });
+          };
+          setTimeout(retryWhenUnlocked, 100);
+        }
+        console.warn("[HAND] dealNewHand busy; next request queued");
+        return true;
       }
+      pendingNextHandRetryRef.current = null;
       if (tournamentBreakStateRef.current) {
         if (Number(tournamentBreakStateRef.current.endsAt) > Date.now()) {
           console.warn("[MTT] next hand blocked during scheduled break");
@@ -9344,6 +9423,27 @@ export default function App() {
       },
       resolveHandNow: resolveHandImmediately,
       dealNewHandNow: startNextHand,
+      getNextHandDebug: () => {
+        const roster = playersRef.current ?? players ?? [];
+        return {
+          dealing: dealingRef.current,
+          phase: phaseRef.current ?? phase,
+          renderedPhase: phase,
+          handId: handIdRef.current,
+          handCount: handCountRef.current,
+          breakState: tournamentBreakStateRef.current,
+          canContinue: canContinueGame(roster),
+          activePlayers: roster.filter(
+            (player) =>
+              player &&
+              !player.folded &&
+              !player.hasFolded &&
+              !player.seatOut &&
+              !player.isBusted &&
+              (Number(player.stack) > 0 || player.allIn),
+          ).length,
+        };
+      },
       forceDealNewHandNow: () => {
         const nextHandNumber = handCountRef.current + 1;
         const success = dealNewHandRef.current(
@@ -11005,27 +11105,7 @@ export default function App() {
       });
       return;
     }
-    if (mode === "tournament-mtt" && tournamentStateRef.current) {
-      const tournamentSummary =
-        buildTournamentHandSummaryFromPlayers(updatedPlayers);
-      if (tournamentSummary) {
-        const tableId =
-          heroTableIdRef.current ?? heroTableMetaRef.current.tableId;
-        recordHeroHandForReplay(tableId, tournamentSummary);
-        let nextState = onTableHandCompleted(
-          tournamentStateRef.current,
-          tableId,
-          tournamentSummary,
-        );
-        if (!nextState.isFinished) {
-          nextState = simulateBackgroundTables(nextState, tableId, {
-            maxHandsPerTable: 1,
-            onHandSimulated: recordCpuHandForReplay,
-          });
-        }
-        applyTournamentStateUpdate(nextState);
-      }
-    }
+    applyHeroTournamentHandCompletion(updatedPlayers);
     finishHand({
       playersSnapshot: updatedPlayers,
       summary: Array.isArray(summary) ? summary : [],

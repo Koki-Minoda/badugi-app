@@ -138,31 +138,7 @@ async function completeHeroHands(page: Page, hands: number, policy = "safe") {
       requireHeroButtonClick: false,
     });
     expect(result.status).toBe("PASS");
-    const nextHand = page.getByRole("button", { name: /Next Hand|次のハンド/i });
-    await expect(nextHand).toBeVisible({ timeout: 10_000 });
-    await nextHand.click({ timeout: 5_000 }).catch(async (error) => {
-      // A successful click immediately replaces the result controls. On long
-      // soaks Chromium can report that replacement as a detached locator even
-      // though the next hand is already live; only tolerate that exact state.
-      const phase = await page.evaluate(
-        () => window.__BADUGI_E2E__?.getStateSnapshot?.()?.phase,
-      );
-      if (["SHOWDOWN", "HAND_RESULT", "WAITING_NEXT_HAND"].includes(
-        String(phase ?? "").toUpperCase(),
-      )) {
-        throw error;
-      }
-    });
-    await page.waitForFunction(
-      () => {
-        const phase = window.__BADUGI_E2E__?.getStateSnapshot?.()?.phase;
-        return !["SHOWDOWN", "HAND_RESULT", "WAITING_NEXT_HAND"].includes(
-          String(phase ?? "").toUpperCase(),
-        );
-      },
-      undefined,
-      { timeout: 10_000 },
-    );
+    await advanceFromCompletedHand(page);
   }
 }
 
@@ -174,28 +150,54 @@ async function advanceFromCompletedHand(page: Page) {
       .click();
     await expect(breakOverlay).toBeHidden();
   }
-  const nextHand = page.getByRole("button", { name: /Next Hand|次のハンド/i });
-  await expect(nextHand).toBeVisible({ timeout: 10_000 });
-  await nextHand.click({ timeout: 5_000 }).catch(async (error) => {
-    const phase = await page.evaluate(
-      () => window.__BADUGI_E2E__?.getStateSnapshot?.()?.phase,
-    );
-    if (["SHOWDOWN", "HAND_RESULT", "WAITING_NEXT_HAND"].includes(
-      String(phase ?? "").toUpperCase(),
-    )) {
-      throw error;
-    }
+  const previous = await page.evaluate(() => {
+    const state = window.__BADUGI_E2E__?.getStateSnapshot?.() ?? null;
+    const snapshot = state?.controllerSnapshot ?? null;
+    return {
+      handId: snapshot?.handId ?? state?.handId ?? null,
+      resultVisible: Boolean(document.querySelector('[data-testid="hand-result-pot"]')),
+    };
   });
-  await page.waitForFunction(
-    () => {
-      const phase = window.__BADUGI_E2E__?.getStateSnapshot?.()?.phase;
-      return !["SHOWDOWN", "HAND_RESULT", "WAITING_NEXT_HAND"].includes(
-        String(phase ?? "").toUpperCase(),
-      );
-    },
-    undefined,
-    { timeout: 10_000 },
-  );
+  expect(
+    previous.resultVisible,
+    "a completed hand must expose its result before advancing",
+  ).toBe(true);
+  expect(
+    previous.handId,
+    "a completed tournament hand must have an identity",
+  ).toBeTruthy();
+  const nextHand = page
+    .getByRole("button", { name: /Next Hand|次のハンド/i })
+    .last();
+  await expect(nextHand).toBeVisible({ timeout: 10_000 });
+  await nextHand.click({ timeout: 5_000 }).catch(() => {});
+  try {
+    await page.waitForFunction(
+      (previousHandId) => {
+        const api = window.__BADUGI_E2E__;
+        const state = api?.getStateSnapshot?.() ?? null;
+        const snapshot = state?.controllerSnapshot ?? null;
+        const handId = snapshot?.handId ?? state?.handId ?? null;
+        const hud = api?.getTournamentHudState?.() ?? null;
+        const resultVisible = Boolean(
+          document.querySelector('[data-testid="hand-result-pot"]'),
+        );
+        if (hud?.isFinished || hud?.heroBusted) return true;
+        return !resultVisible && Boolean(handId) && handId !== previousHandId;
+      },
+      previous.handId,
+      { timeout: 10_000 },
+    );
+  } catch (error) {
+    const diagnostic = await page.evaluate(() => ({
+      nextHand: window.__BADUGI_E2E__?.getNextHandDebug?.() ?? null,
+      hud: window.__BADUGI_E2E__?.getTournamentHudState?.() ?? null,
+      resultVisible: Boolean(document.querySelector('[data-testid="hand-result-pot"]')),
+    }));
+    throw new Error(`Next hand did not start: ${JSON.stringify(diagnostic)}`, {
+      cause: error,
+    });
+  }
 }
 
 async function completeProductionTournament(page: Page, stageId: string) {

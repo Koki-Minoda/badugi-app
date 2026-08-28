@@ -157,6 +157,7 @@ env npm_config_cache="$NPM_CACHE_DIR" npm ci --legacy-peer-deps
 
 echo "[mgx-deploy] building frontend"
 npm run build
+npm run test:build:onnx
 
 echo "[mgx-deploy] installing backend dependencies"
 cd backend

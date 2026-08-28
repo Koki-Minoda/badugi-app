@@ -18,5 +18,6 @@ if grep -q 'source .*BACKEND_ENV_FILE' "$script"; then
 fi
 grep -q 'verify_live_frontend' "$script"
 grep -q 'verify_live_p2p_rest_route' "$script"
+grep -q 'npm run test:build:onnx' "$script"
 
 echo "deploy static safety: PASS"

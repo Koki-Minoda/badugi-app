@@ -9,14 +9,14 @@ this change.
 | Family | Variant IDs | Catalog status | Deterministic multi-hand | Strict settlement | History/replay UI |
 |---|---|---:|---:|---:|---:|
 | Board | B01-B09 | 9 live | 10 hands | Enforced | Covered |
-| Triple draw | D01-D07 | 5 live, 2 wip (D01/D02) | 10 hands | Allowlisted | Covered |
-| Single draw | S01-S07 | 5 live, 2 wip (S01/S02) | 10 hands | Allowlisted | Covered |
+| Triple draw | D01-D07 | 5 live, 2 wip (D01/D02) | 10 hands | Enforced | Covered |
+| Single draw | S01-S07 | 5 live, 2 wip (S01/S02) | 10 hands | Enforced | Covered |
 | Dramaha | H01-H06 | 6 wip | 10 hands | Allowlisted | Covered |
 | Stud | ST1-ST6 | 6 live | 10 hands | Enforced | Covered |
 | Chinese Poker | CP1 | 1 live | 10 hands | Points gate only; chip-pot gate not applicable | Not in the cross-variant browser replay matrix |
 
-Totals: 36 selector/controller routes, 26 `live`, 10 `wip`, 15 strict
-chip-settlement variants, and 21 explicitly allowlisted variants. CP1 is
+Totals: 36 selector/controller routes, 26 `live`, 10 `wip`, 29 strict
+chip-settlement variants, and 7 explicitly allowlisted variants. CP1 is
 classic Chinese Poker only; OFC street progression and fantasyland are not
 implemented and must not be implied by its `live` status.
 
@@ -38,10 +38,13 @@ implemented and must not be implied by its `live` status.
   tested.
 - Add a deterministic Stud all-in main/side-pot case proving the short-stack
   main-pot winner, deep-stack side-pot winner, and exact chip conservation.
+- Promote D01-D07 and S01-S07 to strict settlement using independently
+  recomputed 2-7, A-5, high, Badugi-low, Badugi-high, and split-component
+  winners for ten deterministic hands per variant.
 
 ## Remaining highest-risk maturity gaps
 
-1. Draw and Dramaha settlement remains allowlisted pending normalized
+1. Dramaha settlement remains allowlisted pending normalized board/draw
    component-pot results and evaluator replay.
 2. Variant-specific odd-chip position rules remain broader work; current Stud
    splits are deterministic but use seat-order allocation.

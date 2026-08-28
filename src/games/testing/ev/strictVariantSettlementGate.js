@@ -5,6 +5,7 @@ import { evaluateOmahaEightLow } from "../../plo/PLO8GameController.js";
 import { evaluateBadugiHand } from "../../evaluators/badugi.js";
 import { evaluateHighHand } from "../../evaluators/high.js";
 import { evaluateLowHand } from "../../evaluators/low.js";
+import { compareEvaluations } from "../../evaluators/registry.js";
 import { extractPayouts, validateHandEvIntegrity } from "./evIntegrityChecker.js";
 
 const STRICT_BOARD_VARIANTS = new Set([
@@ -13,11 +14,12 @@ const STRICT_BOARD_VARIANTS = new Set([
 
 const STRICT_STUD_VARIANTS = new Set(["ST1", "ST2", "ST3", "ST4", "ST5", "ST6"]);
 
+const STRICT_DRAW_VARIANTS = new Set([
+  "D01", "D02", "D03", "D04", "D05", "D06", "D07",
+  "S01", "S02", "S03", "S04", "S05", "S06", "S07",
+]);
+
 const FAMILY_ALLOWLISTS = Object.freeze([
-  {
-    ids: ["D01", "D02", "D03", "D04", "D05", "D06", "D07", "S01", "S02", "S03", "S04", "S05", "S06", "S07"],
-    reason: "Draw settlement awaits normalized terminal pot snapshots and component-pot winner replay.",
-  },
   {
     ids: ["H01", "H02", "H03", "H04", "H05", "H06"],
     reason: "Dramaha settlement awaits board/draw component winner and odd-chip verification.",
@@ -39,7 +41,11 @@ export function getStrictSettlementPolicy(variantId) {
   if (!variant) {
     return { variantId, status: "UNKNOWN", reason: "Variant is absent from the canonical catalog." };
   }
-  if (STRICT_BOARD_VARIANTS.has(variant.id) || STRICT_STUD_VARIANTS.has(variant.id)) {
+  if (
+    STRICT_BOARD_VARIANTS.has(variant.id) ||
+    STRICT_STUD_VARIANTS.has(variant.id) ||
+    STRICT_DRAW_VARIANTS.has(variant.id)
+  ) {
     return { variantId: variant.id, status: "ENFORCED", reason: null };
   }
   const reason = STRICT_SETTLEMENT_ALLOWLIST[variant.id];
@@ -48,6 +54,156 @@ export function getStrictSettlementPolicy(variantId) {
     status: reason ? "ALLOWLISTED" : "UNCLASSIFIED",
     reason: reason ?? "Strict settlement policy is missing.",
   };
+}
+
+function drawCards(player = {}) {
+  if (Array.isArray(player.hand)) return player.hand;
+  if (Array.isArray(player.cards)) return player.cards;
+  if (Array.isArray(player.holeCards)) return player.holeCards;
+  return [];
+}
+
+function evaluateArchieHigh(cards) {
+  const evaluation = evaluateHighHand({ cards });
+  const qualifies = [
+    "one-pair",
+    "two-pair",
+    "three-of-a-kind",
+    "straight",
+    "flush",
+    "full-house",
+    "four-of-a-kind",
+    "straight-flush",
+  ].includes(evaluation.metadata?.category);
+  return qualifies ? evaluation : null;
+}
+
+function buildDrawEvaluations(variantId, afterState) {
+  return (afterState?.players ?? [])
+    .map((player, index) => {
+      const cards = drawCards(player);
+      if (!cards.length) return null;
+      const low27 = evaluateLowHand({ cards, lowType: "27" });
+      const lowA5 = evaluateLowHand({
+        cards,
+        lowType: "A5",
+        requireQualifier: variantId === "D07" ? 8 : null,
+      });
+      return {
+        seatIndex: seatIndexOf(player, index),
+        folded: Boolean(player?.folded || player?.hasFolded),
+        high: evaluateHighHand({ cards }),
+        archieHigh: evaluateArchieHigh(cards),
+        low27,
+        lowA5,
+        badugi: evaluateBadugiHand({ cards, mode: "low" }),
+        badugiHigh: evaluateBadugiHand({ cards, mode: "high" }),
+      };
+    })
+    .filter(Boolean);
+}
+
+function drawEvaluationKey(variantId, component) {
+  if (component === "badugi") return "badugi";
+  if (component === "low27") return "low27";
+  if (component === "lowA5") return "lowA5";
+  if (component === "archieHigh") return "archieHigh";
+  if (component === "archieLow") return "lowA5";
+  if (["D01", "S01"].includes(variantId)) return "low27";
+  if (["D02", "S02"].includes(variantId)) return "lowA5";
+  if (["D03", "S04"].includes(variantId)) return "badugi";
+  if (["D06", "S07"].includes(variantId)) return "badugiHigh";
+  if (variantId === "S03") return "high";
+  return null;
+}
+
+function verifyDrawPotWinners(variantId, afterState, result) {
+  const errors = [];
+  const evaluations = buildDrawEvaluations(variantId, afterState);
+  const payouts = extractPayouts(result);
+  const liveSeats = evaluations
+    .filter((entry) => !entry.folded)
+    .map((entry) => entry.seatIndex)
+    .sort((left, right) => left - right);
+
+  for (const [resultPotIndex, pot] of (result?.potDetails ?? []).entries()) {
+    const amount = Math.max(0, Number(pot?.amount ?? pot?.potAmount) || 0);
+    const component = pot.component ?? "main";
+    const evaluationKey = drawEvaluationKey(variantId, component);
+    const explicitEligible = Array.isArray(pot.eligibleSeatIndexes) && pot.eligibleSeatIndexes.length
+      ? pot.eligibleSeatIndexes
+      : null;
+    const eligible = new Set(explicitEligible ?? liveSeats);
+    const candidates = evaluations.filter((entry) => {
+      if (!eligible.has(entry.seatIndex)) return false;
+      const evaluation = entry[evaluationKey];
+      return Boolean(
+        evaluation &&
+        evaluation.qualifies !== false &&
+        evaluation.metadata?.qualifies !== false &&
+        Number.isFinite(evaluation.rankPrimary) &&
+        (evaluation.rankSecondary == null || Number.isFinite(evaluation.rankSecondary)),
+      );
+    });
+    const actual = payouts
+      .filter((payout) => payout.potIndex === resultPotIndex && Number(payout.amount) > 0)
+      .map((payout) => payout.seatIndex)
+      .sort((left, right) => left - right);
+    if (amount === 0) {
+      if (actual.length) {
+        errors.push({
+          code: "strict_draw_zero_pot_has_payout",
+          variantId,
+          resultPotIndex,
+          component,
+          actual,
+        });
+      }
+      continue;
+    }
+    if (candidates.length === 1) {
+      const expected = [candidates[0].seatIndex];
+      if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+        errors.push({
+          code: "strict_draw_uncontested_winner_mismatch",
+          variantId,
+          resultPotIndex,
+          component,
+          expected,
+          actual,
+        });
+      }
+      continue;
+    }
+    if (!evaluationKey || !candidates.length) {
+      errors.push({
+        code: "strict_draw_pot_has_no_evaluable_player",
+        variantId,
+        resultPotIndex,
+        component,
+        eligible: [...eligible],
+        evaluatedSeats: evaluations.map((entry) => entry.seatIndex),
+        playerShapes: (afterState?.players ?? []).map((player, seatIndex) => ({
+          seatIndex: seatIndexOf(player, seatIndex),
+          handCount: drawCards(player).length,
+          folded: Boolean(player?.folded || player?.hasFolded),
+        })),
+      });
+      continue;
+    }
+    const expected = expectedWinnerSeats(candidates, evaluationKey, compareEvaluations);
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+      errors.push({
+        code: "strict_draw_component_winner_mismatch",
+        variantId,
+        resultPotIndex,
+        component,
+        expected,
+        actual,
+      });
+    }
+  }
+  return errors;
 }
 
 function buildStudEvaluations(variantId, afterState) {
@@ -276,7 +432,7 @@ export function validateStrictVariantSettlement({
     options: {
       requireResult: true,
       strictChipConservation: true,
-      terminalPotIsResultEcho: true,
+      terminalPotIsResultEcho: !STRICT_DRAW_VARIANTS.has(variantId),
     },
   });
   const strictErrors = [];
@@ -299,6 +455,8 @@ export function validateStrictVariantSettlement({
     strictErrors.push(...verifyBoardPotWinners(variantId, afterState, result));
   } else if (STRICT_STUD_VARIANTS.has(variantId)) {
     strictErrors.push(...verifyStudPotWinners(variantId, afterState, result));
+  } else if (STRICT_DRAW_VARIANTS.has(variantId)) {
+    strictErrors.push(...verifyDrawPotWinners(variantId, afterState, result));
   }
   const errors = [...check.errors, ...strictErrors];
   return { ok: errors.length === 0, policy, errors, check };

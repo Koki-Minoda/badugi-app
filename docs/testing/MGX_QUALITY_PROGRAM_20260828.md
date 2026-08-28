@@ -49,6 +49,7 @@ QA/QM result: **PASS for the 1–10 implementation scope**. Tasks 1–4 were int
 7. Tournament QA advances only when the visible result hand ID is replaced by a new physical hand ID. Re-reading one result can no longer masquerade as hundreds of completed hands.
 8. Tournament blind displays use the MTT engine's completed-hand counter as the authority. Store/local fifth-hand boundary tests prevent the ring controller from advancing a level one hand early.
 9. Tournament completion is idempotent by table and hand ID, and a Next Hand request made during the short deal lock is queued once instead of being discarded or double-dealt.
+10. CPU decision telemetry preserves policy source and AI tier through controller-backed actions. Live standard/pro checks require at least one attributed policy decision in both cash and tournament modes; unknown row counts alone cannot pass.
 
 ## Explicit boundaries
 

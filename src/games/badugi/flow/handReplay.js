@@ -9,6 +9,10 @@ function cloneCards(cards) {
   return Array.isArray(cards) ? [...cards] : [];
 }
 
+function sameValue(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
 function historyActionsBySequence(history) {
   const actions = new Map();
   (history?.seats ?? []).forEach((seat) => {
@@ -192,13 +196,16 @@ export function replayHandFromHistory(history) {
         actingPlayerIndex = null;
         break;
       case "BLINDS_POSTED":
+        phase = "POST_BLINDS";
         pot += applyPayment(findPlayer(players, event.sbSeat), event.sbAmount);
         pot += applyPayment(findPlayer(players, event.bbSeat), event.bbAmount);
         break;
       case "ANTE_POSTED":
+        phase = "POST_BLINDS";
         pot += applyPayment(findPlayer(players, event.seat), event.amount);
         break;
       case "BET_ACTION": {
+        phase = event?.street ?? detail?.street ?? "BET";
         actingPlayerIndex = Number.isInteger(event.seat) && event.seat >= 0 ? event.seat : null;
         const target = findPlayer(players, actingPlayerIndex);
         if (target) {
@@ -219,6 +226,7 @@ export function replayHandFromHistory(history) {
         break;
       }
       case "DRAW_ACTION": {
+        phase = event?.street ?? detail?.street ?? "DRAW";
         actingPlayerIndex = Number.isInteger(event.seat) && event.seat >= 0 ? event.seat : null;
         const target = findPlayer(players, actingPlayerIndex);
         if (target) {
@@ -317,4 +325,289 @@ export function replayHandFromHistory(history) {
   }
 
   return frames;
+}
+
+function pushIssue(issues, code, details = {}) {
+  issues.push({ code, ...details });
+}
+
+function comparablePlayerSnapshot(player = {}) {
+  return {
+    stack: Math.max(0, Number(player.stack) || 0),
+    betThisRound: Math.max(0, Number(player.betThisRound) || 0),
+    totalInvested: Math.max(0, Number(player.totalInvested) || 0),
+    folded: Boolean(player.folded),
+    allIn: Boolean(player.allIn),
+    hand: cloneCards(player.hand),
+  };
+}
+
+/**
+ * Verify that a canonical v2 hand record is sufficient to reproduce the hand,
+ * rather than merely render a plausible timeline. The audit cross-checks the
+ * per-seat action ledger against the ordered event ledger and checks every
+ * authoritative card/chip snapshot plus the final settlement.
+ */
+export function auditHandReplayFidelity(history, replayFrames = null) {
+  const frames = replayFrames ?? replayHandFromHistory(history);
+  const issues = [];
+  const events = Array.isArray(history?.events) ? history.events : [];
+  const seats = Array.isArray(history?.seats) ? history.seats : [];
+
+  if ((history?.replaySchemaVersion ?? 0) < 2) {
+    pushIssue(issues, "NON_CANONICAL_SCHEMA", {
+      expectedMinimum: 2,
+      actual: history?.replaySchemaVersion ?? null,
+    });
+  }
+  if (!events.length) pushIssue(issues, "EVENT_LEDGER_MISSING");
+  if (events[0]?.type !== "HAND_START") {
+    pushIssue(issues, "HAND_START_MISSING", { actual: events[0]?.type ?? null });
+  }
+  if (events.at(-1)?.type !== "HAND_END") {
+    pushIssue(issues, "HAND_END_MISSING", { actual: events.at(-1)?.type ?? null });
+  }
+  if (frames.length !== events.length) {
+    pushIssue(issues, "FRAME_COUNT_MISMATCH", {
+      expected: events.length,
+      actual: frames.length,
+    });
+  }
+
+  const seatNumbers = seats.map((seat, index) =>
+    Number.isInteger(seat?.seat) ? seat.seat : index,
+  );
+  if (new Set(seatNumbers).size !== seatNumbers.length) {
+    pushIssue(issues, "DUPLICATE_SEAT");
+  }
+  seats.forEach((seat, seatIndex) => {
+    const seatNumber = seatNumbers[seatIndex];
+    if (!Number.isFinite(seat?.startStack) || !Number.isFinite(seat?.endStack)) {
+      pushIssue(issues, "SEAT_STACK_SNAPSHOT_MISSING", { seat: seatNumber });
+    }
+    if (!Array.isArray(seat?.initialHand)) {
+      pushIssue(issues, "INITIAL_CARDS_MISSING", { seat: seatNumber });
+    }
+  });
+
+  const actionLedger = new Map();
+  seats.forEach((seat, seatIndex) => {
+    const seatNumber = Number.isInteger(seat?.seat) ? seat.seat : seatIndex;
+    (seat?.actions ?? []).forEach((action) => {
+      if (!Number.isInteger(action?.seq)) {
+        pushIssue(issues, "ACTION_SEQUENCE_MISSING", { seat: seatNumber });
+        return;
+      }
+      if (actionLedger.has(action.seq)) {
+        pushIssue(issues, "DUPLICATE_ACTION_SEQUENCE", { actionSeq: action.seq });
+        return;
+      }
+      actionLedger.set(action.seq, { ...action, seat: seatNumber });
+    });
+  });
+
+  const replayedActionSequences = new Set();
+  let priorActionSequence = -Infinity;
+  let priorTimestamp = -Infinity;
+
+  events.forEach((event, eventIndex) => {
+    const frame = frames[eventIndex];
+    const priorFrame = eventIndex > 0 ? frames[eventIndex - 1] : null;
+    const expectedEventPhase = {
+      HAND_START: "HAND_START",
+      BLINDS_POSTED: "POST_BLINDS",
+      ANTE_POSTED: "POST_BLINDS",
+      PHASE_TRANSITION: event?.to,
+      SHOWDOWN: "SHOWDOWN",
+      HAND_END: "HAND_END",
+    }[event?.type];
+    if (expectedEventPhase && frame?.phase !== expectedEventPhase) {
+      pushIssue(issues, "EVENT_PHASE_MISMATCH", {
+        eventIndex,
+        expected: expectedEventPhase,
+        actual: frame?.phase ?? null,
+      });
+    }
+    if (Number.isFinite(event?.timestamp)) {
+      if (event.timestamp < priorTimestamp) {
+        pushIssue(issues, "EVENT_TIMESTAMP_REGRESSION", {
+          eventIndex,
+          previous: priorTimestamp,
+          actual: event.timestamp,
+        });
+      }
+      priorTimestamp = event.timestamp;
+    }
+
+    if (event?.type === "BET_ACTION" || event?.type === "DRAW_ACTION") {
+      if (!Number.isFinite(event?.potAfter)) {
+        pushIssue(issues, "POT_SNAPSHOT_MISSING", { eventIndex });
+      }
+      if (!Array.isArray(event?.playersAfter) || event.playersAfter.length !== seats.length) {
+        pushIssue(issues, "PLAYER_SNAPSHOT_MISSING", { eventIndex });
+      }
+      if (!Number.isInteger(event.actionSeq)) {
+        pushIssue(issues, "EVENT_ACTION_SEQUENCE_MISSING", { eventIndex });
+      } else {
+        if (replayedActionSequences.has(event.actionSeq)) {
+          pushIssue(issues, "DUPLICATE_REPLAYED_ACTION", {
+            eventIndex,
+            actionSeq: event.actionSeq,
+          });
+        }
+        if (event.actionSeq <= priorActionSequence) {
+          pushIssue(issues, "ACTION_ORDER_MISMATCH", {
+            eventIndex,
+            previous: priorActionSequence,
+            actual: event.actionSeq,
+          });
+        }
+        priorActionSequence = event.actionSeq;
+        replayedActionSequences.add(event.actionSeq);
+        const source = actionLedger.get(event.actionSeq);
+        if (!source) {
+          pushIssue(issues, "ACTION_LEDGER_ENTRY_MISSING", {
+            eventIndex,
+            actionSeq: event.actionSeq,
+          });
+        } else {
+          if (source.seat !== event.seat) {
+            pushIssue(issues, "ACTION_SEAT_MISMATCH", {
+              eventIndex,
+              actionSeq: event.actionSeq,
+              expected: source.seat,
+              actual: event.seat,
+            });
+          }
+          const sourceType = String(source.type ?? "").toLowerCase();
+          const expectedType = event.type === "DRAW_ACTION"
+            ? (Number(event.drawCount) === 0 ? ["draw", "pat"] : ["draw"])
+            : [String(event.action ?? "").toLowerCase()];
+          if (!expectedType.includes(sourceType)) {
+            pushIssue(issues, "ACTION_TYPE_MISMATCH", {
+              eventIndex,
+              actionSeq: event.actionSeq,
+              expected: source.type,
+              actual: event.type === "DRAW_ACTION" ? "draw" : event.action,
+            });
+          }
+          if (
+            event.type === "DRAW_ACTION" &&
+            Number.isFinite(source.drawCount) &&
+            Number(source.drawCount) !== Number(event.drawCount)
+          ) {
+            pushIssue(issues, "DRAW_COUNT_MISMATCH", {
+              eventIndex,
+              actionSeq: event.actionSeq,
+              expected: source.drawCount,
+              actual: event.drawCount,
+            });
+          }
+          if (
+            event.type === "BET_ACTION" &&
+            Math.max(0, Number(source.amount) || 0) !== Math.max(0, Number(event.amount) || 0)
+          ) {
+            pushIssue(issues, "ACTION_AMOUNT_MISMATCH", {
+              eventIndex,
+              actionSeq: event.actionSeq,
+              expected: source.amount,
+              actual: event.amount,
+            });
+          }
+        }
+      }
+    }
+
+    if (event?.type === "BET_ACTION" && frame?.phase !== (event?.street ?? actionLedger.get(event.actionSeq)?.street ?? "BET")) {
+      pushIssue(issues, "BET_PHASE_MISMATCH", { eventIndex, actual: frame?.phase ?? null });
+    }
+    if (event?.type === "DRAW_ACTION") {
+      const expectedPhase = event?.street ?? actionLedger.get(event.actionSeq)?.street ?? "DRAW";
+      if (frame?.phase !== expectedPhase) {
+        pushIssue(issues, "DRAW_PHASE_MISMATCH", { eventIndex, actual: frame?.phase ?? null });
+      }
+      const beforePlayer = priorFrame?.players?.find((player) => player.seat === event.seat);
+      const afterPlayer = frame?.players?.find((player) => player.seat === event.seat);
+      const recordedAfter = event?.playersAfter?.find(
+        (player) => player?.seat === event.seat,
+      );
+      const hasBeforeCards = Array.isArray(event.before) || Array.isArray(beforePlayer?.hand);
+      const hasAfterCards = Array.isArray(event.after) || Array.isArray(recordedAfter?.hand);
+      if (!hasBeforeCards || !hasAfterCards) {
+        pushIssue(issues, "DRAW_CARD_SNAPSHOT_MISSING", { eventIndex, seat: event.seat });
+      }
+      if (Array.isArray(event.before) && !sameValue(beforePlayer?.hand ?? [], event.before)) {
+        pushIssue(issues, "DRAW_BEFORE_CARDS_MISMATCH", { eventIndex, seat: event.seat });
+      }
+      if (Array.isArray(event.after) && !sameValue(afterPlayer?.hand ?? [], event.after)) {
+        pushIssue(issues, "DRAW_AFTER_CARDS_MISMATCH", { eventIndex, seat: event.seat });
+      }
+    }
+
+    if (Array.isArray(event?.playersAfter)) {
+      event.playersAfter.forEach((snapshot) => {
+        const replayed = frame?.players?.find((player) => player.seat === snapshot?.seat);
+        if (!replayed || !sameValue(comparablePlayerSnapshot(replayed), comparablePlayerSnapshot(snapshot))) {
+          pushIssue(issues, "PLAYER_SNAPSHOT_MISMATCH", {
+            eventIndex,
+            seat: snapshot?.seat ?? null,
+          });
+        }
+      });
+    }
+    if (Number.isFinite(event?.potAfter) && frame?.pot !== Math.max(0, event.potAfter)) {
+      pushIssue(issues, "POT_SNAPSHOT_MISMATCH", {
+        eventIndex,
+        expected: event.potAfter,
+        actual: frame?.pot ?? null,
+      });
+    }
+  });
+
+  actionLedger.forEach((action, actionSeq) => {
+    const type = String(action?.type ?? "").toLowerCase();
+    if (!["blind", "ante"].includes(type) && !replayedActionSequences.has(actionSeq)) {
+      pushIssue(issues, "ACTION_EVENT_MISSING", { actionSeq, seat: action.seat });
+    }
+  });
+
+  const finalFrame = frames.at(-1);
+  if (finalFrame?.event?.type === "HAND_END") {
+    if (
+      !Array.isArray(finalFrame.event.finalStacks) ||
+      finalFrame.event.finalStacks.length !== seats.length
+    ) {
+      pushIssue(issues, "FINAL_STACK_SNAPSHOT_MISSING");
+    }
+    if (!finalFrame.integrity?.valid) {
+      pushIssue(issues, "FINAL_RECONCILIATION_FAILED", {
+        integrity: finalFrame.integrity ?? null,
+      });
+    }
+    const startTotal = seats.reduce(
+      (sum, seat) => sum + Math.max(0, Number(finiteNumber(seat?.startStack, seat?.initialStack, seat?.stack, 0)) || 0),
+      0,
+    );
+    const endTotal = finalFrame.players.reduce(
+      (sum, player) => sum + Math.max(0, Number(player?.stack) || 0),
+      0,
+    );
+    if (startTotal !== endTotal) {
+      pushIssue(issues, "CHIP_CONSERVATION_FAILED", {
+        expected: startTotal,
+        actual: endTotal,
+      });
+    }
+  }
+
+  return {
+    valid: issues.length === 0,
+    schemaVersion: history?.replaySchemaVersion ?? null,
+    historySource: history?.tournamentId || history?.historySource === "tournament"
+      ? "tournament"
+      : "cash",
+    eventCount: events.length,
+    actionCount: replayedActionSequences.size,
+    issues,
+  };
 }

@@ -1,6 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { buildTournamentConfigFromStage } from "../../src/config/tournamentStages.js";
-import { replayHandFromHistory } from "../../src/games/badugi/flow/handReplay.js";
+import {
+  auditHandReplayFidelity,
+  replayHandFromHistory,
+} from "../../src/games/badugi/flow/handReplay.js";
 import { APP_URL } from "./authHelper";
 import {
   playOneHandProgression,
@@ -410,6 +413,11 @@ test("Store persists a real tournament hand and replays its exact final state", 
   });
 
   const frames = replayHandFromHistory(record);
+  const fidelity = auditHandReplayFidelity(record, frames);
+  expect(fidelity, JSON.stringify(fidelity.issues)).toMatchObject({
+    valid: true,
+    historySource: "tournament",
+  });
   const actionBySeq = new Map(
     (record.seats ?? []).flatMap((seat: any) =>
       (seat.actions ?? []).map((action: any) => [

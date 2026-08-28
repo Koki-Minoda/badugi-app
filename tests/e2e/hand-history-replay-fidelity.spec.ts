@@ -1,6 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { replayHandFromHistory } from "../../src/games/badugi/flow/handReplay.js";
+import {
+  auditHandReplayFidelity,
+  replayHandFromHistory,
+} from "../../src/games/badugi/flow/handReplay.js";
 import { openAuthenticatedGame } from "./authHelper";
 
 async function invoke(page: Page, method: string, ...args: unknown[]) {
@@ -67,6 +70,7 @@ test("a real Badugi hand replays the same actions, chips, pot, and draw cards", 
     return history.find((entry: any) => entry?.handId === completedHandId) ?? null;
   }, handId);
   const frames = replayHandFromHistory(record);
+  const fidelity = auditHandReplayFidelity(record, frames);
   const actionBySeq = new Map(
     (record?.seats ?? []).flatMap((seat: any) =>
       (seat?.actions ?? []).map((action: any) => [action.seq, { ...action, seat: seat.seat }]),
@@ -102,6 +106,10 @@ test("a real Badugi hand replays the same actions, chips, pot, and draw cards", 
   expect(audit.handId).toEqual(expect.any(String));
   expect(audit.replaySchemaVersion, JSON.stringify(record)).toBe(2);
   expect(audit.frameCount).toBeGreaterThan(4);
+  expect(fidelity, JSON.stringify(fidelity.issues)).toMatchObject({
+    valid: true,
+    historySource: "cash",
+  });
   expect(audit.actionMismatches).toEqual([]);
   expect(audit.drawFrames.length).toBeGreaterThan(0);
   for (const draw of audit.drawFrames) {

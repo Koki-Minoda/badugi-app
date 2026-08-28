@@ -4103,8 +4103,16 @@ export default function App() {
               ? (...args) => console.warn(...args)
               : undefined,
         });
+    // Tournament rebalancing can update the canonical/controller actor before
+    // the legacy `turn` state catches up. Controls are rendered from
+    // `controllerTurn`, so the click guard must use that same source or a
+    // visible Hero DRAW button can be rejected forever on a later hand.
     const expectedTurn =
-      typeof controllerActionSeat === "number" ? controllerActionSeat : turn;
+      isTableActionPhase && typeof controllerTurn === "number"
+        ? controllerTurn
+        : typeof controllerActionSeat === "number"
+          ? controllerActionSeat
+          : turn;
     if (expectedTurn !== seat) {
       logE2EError("turn mismatch before action", {
         seat,

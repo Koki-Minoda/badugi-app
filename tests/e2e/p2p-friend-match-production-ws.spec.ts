@@ -191,6 +191,25 @@ async function waitForEnabledPage(
   throw new Error(`${testId} did not become enabled for either player`);
 }
 
+async function waitForEnabledAction(
+  candidates: Array<{ label: string; page: Page }>,
+  testIds: string[],
+  timeoutMs = 15_000,
+) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    for (const candidate of candidates) {
+      for (const testId of testIds) {
+        if (await candidate.page.locator(`[data-testid="${testId}"]:not([disabled])`).count()) {
+          return { ...candidate, testId };
+        }
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`No P2P player received an enabled action: ${testIds.join(", ")}`);
+}
+
 test.beforeAll(async () => {
   if (await backendIsHealthy()) return;
   backendProcess = spawn(
@@ -280,9 +299,21 @@ test.describe("production P2P friend match websocket", () => {
       await expect(guest.getByTestId(`p2p-player-${guestSession.user.id}`)).toBeVisible();
 
       await expectNoHorizontalOverflow(host);
-      const opener = await clickFirstEnabled(host, ["p2p-call", "p2p-check"]);
-      expect(opener).toBe("p2p-call");
-      await clickFirstEnabled(guest, ["p2p-check", "p2p-call"]);
+      const opener = await waitForEnabledAction(
+        [
+          { label: "host", page: host },
+          { label: "guest", page: guest },
+        ],
+        ["p2p-call", "p2p-check"],
+      );
+      expect(opener.testId).toBe("p2p-call");
+      await opener.page.getByTestId(opener.testId).click();
+      const responder = opener.label === "host" ? guest : host;
+      const response = await waitForEnabledAction(
+        [{ label: opener.label === "host" ? "guest" : "host", page: responder }],
+        ["p2p-check", "p2p-call"],
+      );
+      await response.page.getByTestId(response.testId).click();
 
       const firstDrawer = await waitForEnabledPage(
         [

@@ -9,6 +9,7 @@ import {
 describe("tournament start, resume, and retire fixtures", () => {
   it("creates a valid new tournament snapshot", () => {
     const { state } = buildTournamentTestFixture("default", { variant: "D01" });
+    expect(state.tournamentRunId).toEqual(expect.any(String));
     expect(state.config.gameVariant).toBe("D01");
     expect(state.playersRemaining).toBe(6);
     expect(state.tables[0].seats.filter((seat) => seat.playerId).length).toBe(6);
@@ -18,6 +19,7 @@ describe("tournament start, resume, and retire fixtures", () => {
     let state = buildTournamentTestFixture("blindLevelUp").state;
     state = completeHand(state, state.tables[0].tableId, [], 1);
     const restored = restoreResumeSnapshot(serializeResumeSnapshot(state));
+    expect(restored.tournamentRunId).toBe(state.tournamentRunId);
     expect(restored.levelIndex).toBe(state.levelIndex);
     expect(restored.players.hero.stack).toBe(state.players.hero.stack);
     expect(restored.tables[0].seats[0].playerId).toBe("hero");

@@ -2869,25 +2869,32 @@ export default function App() {
         );
         return null;
       }
-      handHistoryBufferRef.current = [
-        ...handHistoryBufferRef.current,
-        snapshot,
-      ];
-      try {
-        if (isTournament) {
-          saveTournamentHandHistory({
+      const persistAsTournament =
+        isTournament || modeRef.current === "tournament-mtt";
+      const storedSnapshot = persistAsTournament
+        ? {
             ...snapshot,
             tournamentId:
               tournamentStateRef.current?.config?.id ?? "active-mtt",
-          });
+            tournamentRunId:
+              tournamentStateRef.current?.tournamentRunId ?? null,
+          }
+        : snapshot;
+      handHistoryBufferRef.current = [
+        ...handHistoryBufferRef.current,
+        storedSnapshot,
+      ];
+      try {
+        if (persistAsTournament) {
+          saveTournamentHandHistory(storedSnapshot);
         } else {
-          saveHandHistory(snapshot);
+          saveHandHistory(storedSnapshot);
         }
       } catch (error) {
         console.warn("[HAND_HISTORY] Failed to persist finalized hand", error);
       }
       handHistoryRef.current = null;
-      return snapshot;
+      return storedSnapshot;
     },
     [appendCanonicalHandEvent, isTournament],
   );
@@ -5884,9 +5891,19 @@ export default function App() {
         }
         computePayouts(nextState);
         const placements = buildTournamentPlacementsPayload(nextState);
-        const tournamentHands = Array.isArray(handHistoryBufferRef.current)
+        const inMemoryTournamentHands = Array.isArray(
+          handHistoryBufferRef.current,
+        )
           ? handHistoryBufferRef.current.filter(Boolean)
           : [];
+        const tournamentHands = nextState.tournamentRunId
+          ? mergeHandHistoryLists(
+              inMemoryTournamentHands,
+              readPersistedHandHistory({ limit: 2_000 }),
+            ).filter(
+              (hand) => hand?.tournamentRunId === nextState.tournamentRunId,
+            )
+          : inMemoryTournamentHands;
         const heroPlayerSnapshot =
           nextState.players?.[heroTournamentPlayerIdRef.current] ?? null;
         if (heroPlayerSnapshot?.finishPlace) {
@@ -6824,6 +6841,15 @@ export default function App() {
       tournamentStateRef.current = restoredState;
       heroTournamentPlayerIdRef.current =
         snapshot.hero?.playerId ?? HERO_TOURNAMENT_PLAYER_ID;
+      const restoredTournamentHands = restoredState.tournamentRunId
+        ? readPersistedHandHistory({ limit: 2_000 }).filter(
+            (hand) =>
+              hand?.historySource === "tournament" &&
+              hand?.tournamentRunId === restoredState.tournamentRunId,
+          )
+        : [];
+      handHistoryBufferRef.current = restoredTournamentHands;
+      handCountRef.current = restoredTournamentHands.length;
       const blindStructure = getBlindStructureForTournamentConfig(config);
       setTournamentBlindStructure(blindStructure);
       initTournamentReplay(config);

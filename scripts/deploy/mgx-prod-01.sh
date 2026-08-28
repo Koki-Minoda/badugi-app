@@ -9,36 +9,10 @@ LIVE_ORIGIN="${LIVE_ORIGIN:-https://mgx-poker.com}"
 DEFAULT_BRANCH="main"
 GIT_REMOTE="${GIT_REMOTE:-origin}"
 GIT_BRANCH="${GIT_BRANCH:-$DEFAULT_BRANCH}"
-BACKEND_ENV_FILE="${BACKEND_ENV_FILE:-/etc/mgx/mgx-backend.env}"
 
 fail() {
   echo "[mgx-deploy] ERROR: $*" >&2
   exit 1
-}
-
-run_backend_migrations() {
-  local env_file="$1"
-  local alembic_bin
-  local python_bin
-
-  if ! sudo -n test -f "$env_file" || ! sudo -n test -r "$env_file"; then
-    fail "backend environment file is not readable: ${env_file}"
-  fi
-  alembic_bin="$(command -v alembic)"
-  python_bin="$(command -v python)"
-  if [ -z "$alembic_bin" ]; then
-    fail "alembic executable is unavailable in the backend virtual environment"
-  fi
-  if [ -z "$python_bin" ]; then
-    fail "python executable is unavailable in the backend virtual environment"
-  fi
-
-  # Parse the systemd-compatible dotenv file without evaluating it as shell
-  # code. The production file is intentionally root-readable only, so the
-  # narrowly scoped migration child runs through non-interactive sudo. Secrets
-  # stay in that child environment and are never printed or placed on argv.
-  sudo -n -- "$python_bin" "$APP_DIR/scripts/deploy/run-with-dotenv.py" \
-    "$env_file" "$alembic_bin" upgrade head
 }
 
 asset_refs_from_index() {
@@ -137,6 +111,27 @@ verify_live_p2p_rest_route() {
   fi
 }
 
+verify_backend_after_restart() {
+  local attempt
+  local max_attempts="${BACKEND_HEALTH_MAX_ATTEMPTS:-12}"
+  local retry_seconds="${BACKEND_HEALTH_RETRY_SECONDS:-5}"
+  local live_health
+
+  echo "[mgx-deploy] waiting for migrated backend health"
+  for ((attempt = 1; attempt <= max_attempts; attempt++)); do
+    if live_health="$(curl -fsSL "${LIVE_ORIGIN}/api/health")" &&
+      grep -q '"status"[[:space:]]*:[[:space:]]*"ok"' <<<"$live_health" &&
+      grep -q '"env"[[:space:]]*:[[:space:]]*"prod"' <<<"$live_health" &&
+      grep -q '"db"[[:space:]]*:[[:space:]]*"ok"' <<<"$live_health"; then
+      return 0
+    fi
+    if ((attempt == max_attempts)); then
+      fail "backend did not become healthy after startup migrations"
+    fi
+    sleep "$retry_seconds"
+  done
+}
+
 echo "[mgx-deploy] switching to ${APP_DIR}"
 cd "$APP_DIR"
 
@@ -180,18 +175,17 @@ else
   echo "[mgx-deploy] missing backend requirements.txt or pyproject.toml"
   exit 1
 fi
-echo "[mgx-deploy] applying backend database migrations"
-run_backend_migrations "$BACKEND_ENV_FILE"
 deactivate
 cd "$APP_DIR"
+
+echo "[mgx-deploy] restarting backend service (startup applies migrations)"
+sudo systemctl restart mgx-backend.service
+verify_backend_after_restart
 
 echo "[mgx-deploy] syncing frontend dist -> ${DEPLOY_TARGET}"
 sudo mkdir -p "$DEPLOY_TARGET"
 sudo rsync -av --delete "${FRONTEND_DIST}/" "${DEPLOY_TARGET}/"
 verify_frontend_asset_sync
-
-echo "[mgx-deploy] restarting backend service"
-sudo systemctl restart mgx-backend.service
 
 verify_live_frontend
 verify_live_p2p_rest_route

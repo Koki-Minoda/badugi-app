@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 def bootstrap_schema() -> None:
-    """Migrations-first bootstrap: local-only create_all + non-local migration checks."""
+    """Migrations-first bootstrap: local create_all, production upgrade + check."""
 
     env = (settings.backend_env or "local").lower()
     if env == "local":
@@ -44,28 +44,44 @@ def bootstrap_schema() -> None:
     if env == "test":
         return
 
+    _upgrade_database_to_head()
     _assert_migrations_up_to_date()
 
 
-def _assert_migrations_up_to_date() -> None:
+def _alembic_config():
+    from alembic.config import Config
+
     backend_dir = Path(__file__).resolve().parents[1]
-    alembic_ini = backend_dir / "alembic.ini"
-    script_location = backend_dir / "alembic"
+    config = Config(str(backend_dir / "alembic.ini"))
+    config.set_main_option("script_location", str(backend_dir / "alembic"))
+    return config
+
+
+def _upgrade_database_to_head() -> None:
+    """Apply committed migrations before accepting production traffic."""
 
     try:
-        from alembic.config import Config
+        from alembic import command
+
+        command.upgrade(_alembic_config(), "head")
+    except Exception as exc:
+        logger.exception("Database migration failed during backend startup")
+        raise RuntimeError("Database migration failed during startup.") from exc
+
+
+def _assert_migrations_up_to_date() -> None:
+    try:
         from alembic.script import ScriptDirectory
     except Exception as exc:
-        logger.warning("Alembic unavailable; cannot verify migration status: %s", exc)
-        return
+        logger.exception("Alembic unavailable; cannot verify migration status")
+        raise RuntimeError("Alembic is required outside local/test environments.") from exc
 
     try:
-        config = Config(str(alembic_ini))
-        config.set_main_option("script_location", str(script_location))
+        config = _alembic_config()
         head_revision = ScriptDirectory.from_config(config).get_current_head()
     except Exception as exc:
-        logger.warning("Failed to resolve alembic head revision: %s", exc)
-        return
+        logger.exception("Failed to resolve alembic head revision")
+        raise RuntimeError("Failed to resolve database migration head.") from exc
 
     try:
         with engine.connect() as connection:

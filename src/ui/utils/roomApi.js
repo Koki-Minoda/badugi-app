@@ -171,6 +171,13 @@ export async function leaveRoom(roomId) {
   });
 }
 
+export async function closeRoom(roomId) {
+  if (!roomId) throw new Error("roomId is required");
+  return requestJson(`/p2p/rooms/${encodeURIComponent(roomId.trim().toUpperCase())}`, {
+    method: "DELETE",
+  });
+}
+
 export function buildRoomWebSocketUrl(roomId) {
   if (!roomId) return null;
   if (typeof window === "undefined" || !window.location) {

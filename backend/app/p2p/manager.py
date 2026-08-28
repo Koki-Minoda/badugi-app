@@ -252,6 +252,15 @@ class P2PRoomManager:
             self._persist(room)
             return room
 
+    def close_room(self, code: str, *, user_id: str) -> None:
+        """Close a room explicitly, restricted to its owner."""
+
+        with self._lock:
+            room = self.get_room(code)
+            if room.owner_id != user_id:
+                raise P2PError("not_room_owner", "Only the room owner can close this room")
+            self.leave_room(room.code, user_id=user_id)
+
     def set_connected(self, code: str, *, user_id: str, connected: bool) -> Room:
         with self._lock:
             room = self.get_room(code)

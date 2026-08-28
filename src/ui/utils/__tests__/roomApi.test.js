@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getRoomState, RoomApiError } from "../roomApi.js";
+import { closeRoom, getRoomState, RoomApiError } from "../roomApi.js";
 
 describe("roomApi retry metadata", () => {
   beforeEach(() => {
@@ -30,5 +30,24 @@ describe("roomApi retry metadata", () => {
     expect(error.status).toBe(429);
     expect(error.code).toBe("state_rate_limited");
     expect(error.retryAfterMs).toBe(3_000);
+  });
+
+  it("closes a normalized room through the owner-only DELETE API", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      json: async () => ({ roomCode: "ABC234", closed: true }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(closeRoom(" abc234 ")).resolves.toMatchObject({
+      roomId: "ABC234",
+      closed: true,
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/p2p/rooms/ABC234"),
+      expect.objectContaining({ method: "DELETE" }),
+    );
   });
 });

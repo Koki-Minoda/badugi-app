@@ -309,7 +309,11 @@ test.describe("production P2P friend match websocket", () => {
       expect(opener.testId).toBe("p2p-call");
       await opener.page.getByTestId(opener.testId).click();
       const responder = opener.label === "host" ? guest : host;
-      await clickFirstEnabled(responder, ["p2p-check", "p2p-call"]);
+      const response = await waitForEnabledAction(
+        [{ label: opener.label === "host" ? "guest" : "host", page: responder }],
+        ["p2p-check", "p2p-call"],
+      );
+      await response.page.getByTestId(response.testId).click();
 
       const firstDrawer = await waitForEnabledPage(
         [

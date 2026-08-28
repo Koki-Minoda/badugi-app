@@ -19,19 +19,25 @@ fail() {
 run_backend_migrations() {
   local env_file="$1"
   local alembic_bin
+  local python_bin
 
-  if [ ! -f "$env_file" ] || [ ! -r "$env_file" ]; then
+  if ! sudo -n test -f "$env_file" || ! sudo -n test -r "$env_file"; then
     fail "backend environment file is not readable: ${env_file}"
   fi
   alembic_bin="$(command -v alembic)"
+  python_bin="$(command -v python)"
   if [ -z "$alembic_bin" ]; then
     fail "alembic executable is unavailable in the backend virtual environment"
   fi
+  if [ -z "$python_bin" ]; then
+    fail "python executable is unavailable in the backend virtual environment"
+  fi
 
   # Parse the systemd-compatible dotenv file without evaluating it as shell
-  # code. Secrets are passed only through the child process environment and
-  # are never printed or placed on the command line.
-  python "$APP_DIR/scripts/deploy/run-with-dotenv.py" \
+  # code. The production file is intentionally root-readable only, so the
+  # narrowly scoped migration child runs through non-interactive sudo. Secrets
+  # stay in that child environment and are never printed or placed on argv.
+  sudo -n -- "$python_bin" "$APP_DIR/scripts/deploy/run-with-dotenv.py" \
     "$env_file" "$alembic_bin" upgrade head
 }
 

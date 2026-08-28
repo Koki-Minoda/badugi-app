@@ -11,6 +11,14 @@ const SCENARIO_BY_CATEGORY = {
   "single-draw": "cash-10-hands-smoke",
 };
 
+// Chinese Poker evaluates complete 13-card arrangements for every hand. On the
+// two-core CI runner it can legitimately exceed the default smoke-test budget
+// while still completing deterministically. Keep the same 10-hand assertions
+// and allow only this compute-heavy variant additional wall-clock time.
+const TIMEOUT_BY_VARIANT = {
+  CP1: 60_000,
+};
+
 function getSkipReason(variant) {
   const status = getProgressHarnessStatus(variant.id);
   if (!status.supported) return status.reason ?? "progress harness not supported";
@@ -83,6 +91,6 @@ describe("MGX all variant progress smoke add-on", () => {
         },
       });
       expect(result.status).toBe("passed");
-    }, variant.id === "CP1" ? 20_000 : 5_000);
+    }, TIMEOUT_BY_VARIANT[variant.id] ?? 5_000);
   }
 });

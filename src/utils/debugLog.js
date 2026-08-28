@@ -1,9 +1,20 @@
+const isTestRuntime =
+  import.meta.env?.MODE === "test" ||
+  (typeof process !== "undefined" && process.env?.NODE_ENV === "test");
+
 export const debugEnabled =
-  typeof import.meta.env?.DEV === "boolean"
+  !isTestRuntime &&
+  (typeof import.meta.env?.DEV === "boolean"
     ? import.meta.env.DEV
     : typeof process !== "undefined"
       ? process.env?.NODE_ENV !== "production"
-      : false;
+      : false);
+
+function isDebugLoggingEnabled() {
+  if (debugEnabled) return true;
+  if (globalThis.__MGX_DEBUG_LOGS__ === true) return true;
+  return typeof process !== "undefined" && process.env?.MGX_DEBUG_LOGS === "1";
+}
 
 /**
  * Lightweight logging helper used throughout the app.
@@ -12,7 +23,7 @@ export const debugEnabled =
  * @param {object} [obj] - optional payload to dump alongside the message
  */
 export function debugLog(tag, msg, obj = null) {
-  if (!debugEnabled) return;
+  if (!isDebugLoggingEnabled()) return;
   const time = new Date().toISOString().split("T")[1].slice(0, 8);
 
   // Simple color coding per category.

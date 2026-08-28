@@ -680,6 +680,8 @@ export class StudGameController {
         return {
           potIndex: pot.potIndex ?? potIndex,
           amount: pot.amount,
+          potAmount: pot.amount,
+          eligibleSeatIndexes: [...(pot.eligibleSeatIndexes ?? [])],
           highWinners: highPayouts.map((winner) => ({ seatIndex: winner.player.seatIndex, payout: winner.payout, evaluation: winner.evaluation })),
           lowWinners: lowPayouts.map((winner) => ({ seatIndex: winner.player.seatIndex, payout: winner.payout, evaluation: winner.evaluation })),
         };
@@ -703,6 +705,8 @@ export class StudGameController {
         return {
           potIndex: pot.potIndex ?? potIndex,
           amount: pot.amount,
+          potAmount: pot.amount,
+          eligibleSeatIndexes: [...(pot.eligibleSeatIndexes ?? [])],
           badugiWinners: badugiPayouts.map((winner) => ({ seatIndex: winner.player.seatIndex, payout: winner.payout, evaluation: winner.evaluation })),
           lowWinners: lowPayouts.map((winner) => ({ seatIndex: winner.player.seatIndex, payout: winner.payout, evaluation: winner.evaluation })),
         };
@@ -717,6 +721,9 @@ export class StudGameController {
       return {
         potIndex: pot.potIndex ?? potIndex,
         amount: pot.amount,
+        potAmount: pot.amount,
+        eligibleSeatIndexes: [...(pot.eligibleSeatIndexes ?? [])],
+        winnerSeatIndexes: payouts.map((winner) => winner.player.seatIndex),
         winners: payouts.map((winner) => ({ seatIndex: winner.player.seatIndex, payout: winner.payout, evaluation: winner.evaluation })),
       };
     });
@@ -747,7 +754,14 @@ export class StudGameController {
       board: [],
       totalPot: pot,
       winners: winner ? [{ seatIndex: winner.seatIndex, name: winner.name, payout: pot, evaluation: null }] : [],
-      potDetails: [{ potIndex: 0, amount: pot, winnerSeatIndexes: winner ? [winner.seatIndex] : [] }],
+      potDetails: [{
+        potIndex: 0,
+        amount: pot,
+        potAmount: pot,
+        eligibleSeatIndexes: winner ? [winner.seatIndex] : [],
+        winnerSeatIndexes: winner ? [winner.seatIndex] : [],
+        winners: winner ? [{ seatIndex: winner.seatIndex, payout: pot, evaluation: null }] : [],
+      }],
     };
     return this.state.lastHandResult;
   }

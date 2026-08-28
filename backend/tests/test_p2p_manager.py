@@ -294,6 +294,30 @@ def test_authenticated_rest_room_create_join_and_private_info():
     assert forbidden.status_code == 403
 
 
+def test_owner_can_explicitly_close_room_but_guest_cannot():
+    client = TestClient(app)
+    host = _user(1, "Host")
+    guest = _user(2, "Guest")
+
+    app.dependency_overrides[get_current_user] = lambda: host
+    created = client.post("/api/p2p/rooms", json={"variantId": "badugi"})
+    room_code = created.json()["roomCode"]
+
+    app.dependency_overrides[get_current_user] = lambda: guest
+    assert client.post("/api/p2p/rooms/join", json={"roomCode": room_code}).status_code == 200
+    forbidden = client.delete(f"/api/p2p/rooms/{room_code}")
+    assert forbidden.status_code == 403
+    assert forbidden.json()["detail"]["code"] == "not_room_owner"
+    assert p2p_room_manager.get_room(room_code).closed is False
+
+    app.dependency_overrides[get_current_user] = lambda: host
+    closed = client.delete(f"/api/p2p/rooms/{room_code.lower()}")
+    assert closed.status_code == 200
+    assert closed.json() == {"roomCode": room_code, "closed": True}
+    assert closed.headers["cache-control"] == "private, no-store"
+    assert client.get(f"/api/p2p/rooms/{room_code}").status_code == 404
+
+
 def test_authenticated_rest_fallback_runs_two_player_ready_draw_and_fold_flow():
     client = TestClient(app)
     host = _user(1, "Host")

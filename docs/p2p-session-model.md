@@ -25,6 +25,10 @@ cannot establish a socket after three consecutive transient failures, it
 automatically switches to authenticated HTTPS polling. State, Ready, betting
 actions and draws all remain server-authoritative over this fallback path, so
 Friend Match does not depend on a production nginx WebSocket change.
+Hosts can explicitly close a room with `DELETE /api/p2p/rooms/{roomCode}`;
+non-owners receive HTTP 403, and all connected players receive the terminal
+`room_closed` event. Any player can still leave through
+`POST /api/p2p/rooms/leave`; an owner leaving also closes the room.
 
 Every mutation carries a client-generated `commandId` plus the observed
 `handId` and `expectedPhase`. The same command and ID are retained if a lost
@@ -62,17 +66,16 @@ The backend also bounds state reads per authenticated user and room, with
 expiring, size-limited in-memory counters, so extra tabs cannot create
 unbounded polling load.
 
-Rooms are currently held in backend memory. They survive browser reconnects
-but do **not** survive a backend restart or work across multiple backend
-processes. Production scaling requires a shared room snapshot/event store and
-cross-process broadcast before multiple workers are enabled.
+Room snapshots are durably stored in the database and recover after a backend
+restart. Database optimistic concurrency prevents two workers from silently
+overwriting the same state. WebSocket fan-out remains process-local, so
+production keeps one P2P backend worker until cross-process pub/sub is added.
 
 ## Current exclusions
 
 - More than two players
 - Spectators and public lobbies
 - Invite links and matchmaking
-- Durable recovery after backend restart
 - Ratings or RL export from friend-match results
 - Non-Badugi variants
 

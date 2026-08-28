@@ -1,6 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { buildTournamentConfigFromStage } from "../../src/config/tournamentStages.js";
-import { replayHandFromHistory } from "../../src/games/badugi/flow/handReplay.js";
+import {
+  auditHandReplayFidelity,
+  replayHandFromHistory,
+} from "../../src/games/badugi/flow/handReplay.js";
 import { APP_URL } from "./authHelper";
 import {
   playOneHandProgression,
@@ -8,6 +11,7 @@ import {
 } from "./helpers/gameProgressHelper.js";
 
 const TOURNAMENT_URL = `${APP_URL.replace(/\/$/, "")}/dev/tournament`;
+const ACTIVE_MTT_KEY = "mgx.tournament.mtt.active";
 
 type BlindExpectation = {
   level: number;
@@ -60,37 +64,39 @@ async function installLocalAuthenticatedSession(page: Page, stageId: string) {
       national: { bankroll: 3_000, stageWins: { store: 0, local: 1, national: 0, world: 0 } },
       world: { bankroll: 7_500, stageWins: { store: 0, local: 0, national: 2, world: 0 } },
     }[selectedStageId];
-    window.localStorage.setItem(
-      "mgx.tournament.v2",
-      JSON.stringify({
-        version: 2,
-        tournament: {
-          ...requirements,
-          completedTournaments: [],
-          lastResult: null,
-          history: [],
-        },
-        career: {
-          unlockedVariants: ["badugi"],
-          achievements: [],
-          statistics: {
-            tournamentsPlayed: 0,
-            tournamentsWon: 0,
-            finalTables: 0,
-            headsUps: 0,
-            totalPrize: 0,
+    if (!window.localStorage.getItem("mgx.tournament.v2")) {
+      window.localStorage.setItem(
+        "mgx.tournament.v2",
+        JSON.stringify({
+          version: 2,
+          tournament: {
+            ...requirements,
+            completedTournaments: [],
+            lastResult: null,
+            history: [],
           },
-          worldChampionship: {
-            cleared: false,
-            firstClearTimestamp: null,
-            clearCount: 0,
-            lastUnlockPopupAt: null,
+          career: {
+            unlockedVariants: ["badugi"],
+            achievements: [],
+            statistics: {
+              tournamentsPlayed: 0,
+              tournamentsWon: 0,
+              finalTables: 0,
+              headsUps: 0,
+              totalPrize: 0,
+            },
+            worldChampionship: {
+              cleared: false,
+              firstClearTimestamp: null,
+              clearCount: 0,
+              lastUnlockPopupAt: null,
+            },
           },
-        },
-        rivals: {},
-        _meta: { migratedFrom: [], migratedAt: null, legacyKeysRetained: true },
-      }),
-    );
+          rivals: {},
+          _meta: { migratedFrom: [], migratedAt: null, legacyKeysRetained: true },
+        }),
+      );
+    }
   }, { selectedStageId: stageId });
 }
 
@@ -128,6 +134,58 @@ async function expectCurrentBlindDisplay(page: Page, expected: BlindExpectation)
   const hud = page.getByTestId("tournament-hud");
   await expect(hud.getByText(`Level ${expected.level}`, { exact: false }).first()).toBeVisible();
   await expect(hud.getByText(`${expected.sb} / ${expected.bb}`, { exact: true }).first()).toBeVisible();
+}
+
+async function reloadAndResumeAtBoundary(
+  page: Page,
+  stageId: string,
+  expected: BlindExpectation,
+) {
+  const saved = await page.evaluate((key) => {
+    const raw = window.localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  }, ACTIVE_MTT_KEY);
+  const persistedHands = await page.evaluate(() =>
+    JSON.parse(
+      window.localStorage.getItem("badugi.history.tournamentHands") ?? "[]",
+    ),
+  );
+  expect(saved).toMatchObject({
+    version: 1,
+    stageId,
+    hero: { playerId: "hero-player" },
+    hud: {
+      currentLevelNumber: expected.level,
+      currentBlinds: {
+        sb: expected.sb,
+        bb: expected.bb,
+        ante: expected.ante,
+      },
+    },
+  });
+  expect(
+    persistedHands.filter(
+      (hand) => hand?.tournamentRunId === saved?.tournamentState?.tournamentRunId,
+    ),
+  ).toHaveLength(5);
+
+  await page.goto(TOURNAMENT_URL, { waitUntil: "load" });
+  await page.reload({ waitUntil: "load" });
+  await expect(page.getByTestId("tournament-resume-panel")).toBeVisible();
+  await page.getByTestId("tournament-resume").click();
+  await expect(page.getByTestId("tournament-hud")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId("seat-0-name")).toHaveText("Stage Gate Hero");
+  await expectCurrentBlindDisplay(page, expected);
+  await expect
+    .poll(() =>
+      page.evaluate((runId) =>
+        window.__BADUGI_E2E__
+          .getHandHistory()
+          .filter((hand) => hand?.tournamentRunId === runId).length,
+      saved.tournamentState.tournamentRunId),
+    )
+    .toBe(5);
+  return saved.tournamentState.tournamentRunId;
 }
 
 async function completeHeroHands(page: Page, hands: number, policy = "safe") {
@@ -410,6 +468,11 @@ test("Store persists a real tournament hand and replays its exact final state", 
   });
 
   const frames = replayHandFromHistory(record);
+  const fidelity = auditHandReplayFidelity(record, frames);
+  expect(fidelity, JSON.stringify(fidelity.issues)).toMatchObject({
+    valid: true,
+    historySource: "tournament",
+  });
   const actionBySeq = new Map(
     (record.seats ?? []).flatMap((seat: any) =>
       (seat.actions ?? []).map((action: any) => [
@@ -603,10 +666,22 @@ test("World never offers re-entry after an FT bust and only offers a new event a
 });
 
 for (const stage of [
-  { stageId: "store", entryFee: 0, payout: 1_000, netResult: 1_000 },
-  { stageId: "local", entryFee: 1_000, payout: 12_000, netResult: 11_000 },
+  {
+    stageId: "store",
+    entryFee: 0,
+    payout: 1_000,
+    netResult: 1_000,
+    levelAfterFiveHands: { level: 2, sb: 10, bb: 20, ante: 1 },
+  },
+  {
+    stageId: "local",
+    entryFee: 1_000,
+    payout: 12_000,
+    netResult: 11_000,
+    levelAfterFiveHands: { level: 2, sb: 50, bb: 100, ante: 0 },
+  },
 ]) {
-  test(`${stage.stageId} reaches a Hero championship and produces a grounded tournament review`, async ({
+  test(`${stage.stageId} resumes after a blind transition, reaches a Hero championship, and produces a grounded tournament review`, async ({
     page,
   }) => {
     const config = await startProductionStage(page, stage.stageId);
@@ -614,7 +689,28 @@ for (const stage of [
 
     // Build genuine hand/action history before deterministically closing the
     // remaining field. Review assertions below must stay grounded in these hands.
-    await completeHeroHands(page, 3);
+    await completeHeroHands(page, 5);
+    await expectCurrentBlindDisplay(page, stage.levelAfterFiveHands);
+    const tournamentRunId = await reloadAndResumeAtBoundary(
+      page,
+      stage.stageId,
+      stage.levelAfterFiveHands,
+    );
+    await completeHeroHands(page, 2);
+    const historyAfterResume = await page.evaluate(() =>
+      window.__BADUGI_E2E__.getHandHistory().map((hand) => ({
+        handId: hand.handId,
+        handCount: hand.handCount,
+        tournamentId: hand.tournamentId,
+        tournamentRunId: hand.tournamentRunId,
+      })),
+    );
+    expect(
+      historyAfterResume.filter(
+        (hand) => hand.tournamentRunId === tournamentRunId,
+      ),
+      JSON.stringify(historyAfterResume.slice(0, 10), null, 2),
+    ).toHaveLength(7);
     const completed = await page.evaluate(() =>
       window.__BADUGI_E2E__.forceHeroChampion(),
     );
@@ -660,7 +756,7 @@ for (const stage of [
     const settledReview = await page.evaluate(() =>
       window.__BADUGI_E2E__.getTournamentReview(),
     );
-    expect(settledReview.totalHands).toBeGreaterThanOrEqual(3);
+    expect(settledReview.totalHands).toBeGreaterThanOrEqual(7);
     expect(settledReview.heroActions.length).toBeGreaterThan(0);
     expect(settledReview.reviewDepth).toBe("hand-history");
     expect(settledReview.reviewSummary.facts.length).toBeGreaterThan(0);
@@ -692,6 +788,36 @@ for (const stage of [
     await expect(reviewPanel).toContainText("解釈");
     await expect(reviewPanel).toContainText("次の一手");
     await expect(reviewPanel).toContainText(String(stage.payout));
+
+    const firstKeyHand = settledReview.keyHands.find(
+      (keyHand) => keyHand.replayRef?.target?.handId,
+    );
+    expect(firstKeyHand, JSON.stringify(settledReview.keyHands, null, 2)).toBeTruthy();
+    const firstReplayButton = page
+      .getByTestId("mtt-tournament-review-key-hand")
+      .filter({ hasText: firstKeyHand!.handId })
+      .getByTestId("mtt-tournament-review-replay");
+    await expect(firstReplayButton).toBeVisible();
+    await firstReplayButton.click();
+    await expect(page.getByTestId("hand-replay-screen")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("replay-review-panel")).toBeVisible();
+    const replayState = await page.evaluate(() =>
+      window.__BADUGI_E2E__.getReplayState(),
+    );
+    expect(replayState.currentScreen).toBe("handReplay");
+    expect(replayState.replayTarget.handId).toBe(firstKeyHand!.handId);
+    expect(replayState.replayTarget.replayReview.reviewMode).toBe("tournament");
+    expect(handIds.has(replayState.replayTarget.handId)).toBe(true);
+    if (Number.isFinite(replayState.replayTarget.actionSeqStart)) {
+      expect(
+        actionKeys.has(
+          `${replayState.replayTarget.handId}:${replayState.replayTarget.actionSeqStart}`,
+        ),
+      ).toBe(true);
+    }
+
+    await page.getByRole("button", { name: "Back to Results" }).click();
+    await expect(overlay).toBeVisible();
 
     await expect
       .poll(async () =>

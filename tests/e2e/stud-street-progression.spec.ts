@@ -284,7 +284,7 @@ test.describe("Stud-family street progression UI", () => {
       page,
     }) => {
       await page.setViewportSize({ width: 1440, height: 900 });
-      await openAuthenticatedGame(page, `${APP_URL}?variant=${variant}`);
+      await openAuthenticatedGame(page, `${APP_URL}?variant=${variant}&previewVariants=1`);
       await waitForE2EDriver(page);
       await expectStudVisibilityUi(page);
 
@@ -314,7 +314,7 @@ test.describe("Stud-family street progression UI", () => {
   for (const variant of ["stud", "razz"]) {
     test(`${variant} visits every street before showdown`, async ({ page }) => {
       await page.setViewportSize({ width: 1440, height: 900 });
-      await openAuthenticatedGame(page, `${APP_URL}?variant=${variant}`);
+      await openAuthenticatedGame(page, `${APP_URL}?variant=${variant}&previewVariants=1`);
       await waitForE2EDriver(page);
       await page.evaluate(() => window.__BADUGI_E2E__?.forceDealNewHandNow?.());
       await page.waitForTimeout(300);
@@ -332,7 +332,7 @@ test.describe("Stud-family street progression UI", () => {
 
   test("Stud does not jump to showdown immediately after a visible street check", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
-    await openAuthenticatedGame(page, `${APP_URL}?variant=stud`);
+    await openAuthenticatedGame(page, `${APP_URL}?variant=stud&previewVariants=1`);
     await waitForE2EDriver(page);
 
     for (let step = 0; step < 60; step += 1) {
@@ -354,7 +354,7 @@ test.describe("Stud-family street progression UI", () => {
 
   test("Stud Call button advances controller turn without leaving hero stuck", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
-    await openAuthenticatedGame(page, `${APP_URL}?variant=stud`);
+    await openAuthenticatedGame(page, `${APP_URL}?variant=stud&previewVariants=1`);
     await waitForE2EDriver(page);
     await page.evaluate(() => window.__BADUGI_E2E__?.forceDealNewHandNow?.());
     await page.waitForTimeout(300);

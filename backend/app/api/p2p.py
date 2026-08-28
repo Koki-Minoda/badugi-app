@@ -144,6 +144,7 @@ def _http_error(exc: P2PError) -> HTTPException:
     code_to_status = {
         "room_missing": status.HTTP_404_NOT_FOUND,
         "not_in_room": status.HTTP_403_FORBIDDEN,
+        "not_room_owner": status.HTTP_403_FORBIDDEN,
         "room_unavailable": status.HTTP_409_CONFLICT,
         "active_room_limit": status.HTTP_409_CONFLICT,
         "stale_command": status.HTTP_409_CONFLICT,
@@ -343,6 +344,24 @@ async def leave_room(payload: RoomCodeRequest, user: User = Depends(get_current_
     else:
         await room_sockets.broadcast_state(room)
     return {"roomCode": payload.roomCode.upper(), "closed": room is None}
+
+
+@router.delete("/rooms/{room_code}")
+async def close_room(
+    room_code: str,
+    response: Response,
+    user: User = Depends(get_current_user),
+):
+    """Close a Friend Match explicitly; only the room owner may do so."""
+
+    _mark_private(response)
+    normalized_code = room_code.strip().upper()
+    try:
+        p2p_room_manager.close_room(normalized_code, user_id=_user_id(user))
+    except P2PError as exc:
+        raise _http_error(exc) from exc
+    await room_sockets.close_room(normalized_code, reason="owner_closed")
+    return {"roomCode": normalized_code, "closed": True}
 
 
 class RoomSockets:

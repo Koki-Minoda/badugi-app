@@ -8,6 +8,13 @@ import { DEBUG_TOURNAMENT, logMTT } from "../../../config/debugFlags.js";
 
 const DEFAULT_TABLE_PREFIX = "table";
 
+function createTournamentRunId() {
+  if (typeof globalThis.crypto?.randomUUID === "function") {
+    return globalThis.crypto.randomUUID();
+  }
+  return `mtt-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
+}
+
 /**
  * Create an initial tournament state.
  * @param {TournamentConfigMTT} config
@@ -81,6 +88,7 @@ export function createMTTTournamentState(config, entrants) {
   });
 
   return {
+    tournamentRunId: createTournamentRunId(),
     config,
     levelIndex: 0,
     tables,

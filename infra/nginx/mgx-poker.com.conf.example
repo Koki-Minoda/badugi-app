@@ -13,6 +13,11 @@ server {
     root /var/www/mgx-poker;
     index index.html;
 
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header X-Frame-Options "DENY" always;
+    client_max_body_size 1m;
+
     types {
         application/wasm wasm;
     }
@@ -32,6 +37,8 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 60s;
     }
 
     # Authenticated Friend Match WebSocket sessions.
@@ -45,6 +52,7 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_read_timeout 75s;
+        proxy_send_timeout 75s;
     }
 
     # Optional health endpoint passthrough

@@ -240,6 +240,30 @@ export async function createAuthenticatedSession(
   return { email, password, authState };
 }
 
+export async function deleteAuthenticatedSession(
+  page: Page,
+  session: Awaited<ReturnType<typeof createAuthenticatedSession>>,
+) {
+  const token = session?.authState?.accessToken;
+  const scheme = session?.authState?.tokenType ?? "Bearer";
+  if (!token) throw new Error("Cannot delete E2E account without an access token");
+  const deletion = await page.request.delete(`${API_URL}/auth/account`, {
+    headers: { Authorization: `${scheme} ${token}` },
+    data: { password: session.password },
+  });
+  if (!deletion.ok()) {
+    throw new Error(`E2E account deletion failed: ${deletion.status()} ${await deletion.text()}`);
+  }
+  const payload = await deletion.json();
+  if (payload?.deleted !== true) throw new Error("E2E account deletion was not confirmed");
+  const staleAuth = await page.request.get(`${API_URL}/auth/me`, {
+    headers: { Authorization: `${scheme} ${token}` },
+  });
+  if (staleAuth.status() !== 401) {
+    throw new Error(`Deleted E2E account remained accessible: ${staleAuth.status()}`);
+  }
+}
+
 export async function enterTitleIfPresent(page: Page) {
   const titleButton = page.getByTestId("title-enter-button").first();
   if (await titleButton.count()) {
@@ -255,15 +279,16 @@ export async function enterTitleIfPresent(page: Page) {
 }
 
 export async function openAuthenticatedMenu(page: Page, url = APP_URL) {
-  await createAuthenticatedSession(page);
+  const session = await createAuthenticatedSession(page);
   await gotoWithRetry(page, url);
   await dismissTranslateOverlay(page);
   await enterTitleIfPresent(page);
   await page.getByTestId("menu-ring").waitFor({ state: "visible", timeout: 20000 });
+  return session;
 }
 
 export async function openAuthenticatedGame(page: Page, url = APP_URL) {
-  await openAuthenticatedMenu(page, url);
+  const session = await openAuthenticatedMenu(page, url);
   await page.getByTestId("menu-ring").click();
   const variantTestId = variantTestIdFromUrl(url);
   const playButton = page.getByTestId(`game-selector-play-${variantTestId}`).first();
@@ -275,4 +300,5 @@ export async function openAuthenticatedGame(page: Page, url = APP_URL) {
   }
   await page.getByTestId(`game-selector-play-${variantTestId}`).first().click();
   await waitForGameLaunchReady(page);
+  return session;
 }

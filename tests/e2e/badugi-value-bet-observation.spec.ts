@@ -1,11 +1,16 @@
 import fs from "node:fs";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
-import { APP_URL, openAuthenticatedGame } from "./authHelper";
+import {
+  APP_URL,
+  deleteAuthenticatedSession,
+  openAuthenticatedGame,
+} from "./authHelper";
 import { getProgressState, invokeE2E, waitForE2EDriver } from "./helpers/gameProgressHelper.js";
 
 const REPORT_DIR = path.resolve("reports/ai");
 const REPORT_PATH = path.join(REPORT_DIR, "badugi-value-bet-live-observation.json");
+const AI_TIER_OVERRIDE = process.env.E2E_AI_TIER_OVERRIDE?.trim() || null;
 
 function ensureReportDir() {
   fs.mkdirSync(REPORT_DIR, { recursive: true });
@@ -25,12 +30,16 @@ function countBy<T extends string>(values: T[]) {
 }
 
 async function openBadugiRuntime(page: Page, mode: "cash" | "tournament") {
-  await page.addInitScript(() => {
+  await page.addInitScript((tierOverride) => {
     window.localStorage.setItem("mgx.previewVariants", "true");
-    window.localStorage.removeItem("dev.aiTierOverride");
+    if (tierOverride) {
+      window.localStorage.setItem("dev.aiTierOverride", tierOverride);
+    } else {
+      window.localStorage.removeItem("dev.aiTierOverride");
+    }
     window.__MGX_CPU_DECISION_TRACE__ = [];
-  });
-  await openAuthenticatedGame(page, `${APP_URL}?variant=badugi&mode=${mode}&mgxQa=mobile`);
+  }, AI_TIER_OVERRIDE);
+  const session = await openAuthenticatedGame(page, `${APP_URL}?variant=badugi&mode=${mode}&mgxQa=mobile`);
   await waitForE2EDriver(page);
   if (mode === "tournament") {
     await invokeE2E(page, "startTournamentMTT", {
@@ -52,6 +61,7 @@ async function openBadugiRuntime(page: Page, mode: "cash" | "tournament") {
   await page.evaluate(() => {
     window.__MGX_CPU_DECISION_TRACE__ = [];
   });
+  return session;
 }
 
 async function clickHeroIfNeeded(page: Page) {
@@ -153,12 +163,16 @@ test("Badugi live CPU telemetry classifies friend-alpha runtime path and pressur
   const summaries = [];
 
   for (const mode of ["cash", "tournament"] as const) {
-    await openBadugiRuntime(page, mode);
-    const rows = await collectCpuTrace(page, mode === "tournament" ? 6 : 8);
-    const summary = summarizeRows(mode, rows);
-    summaries.push(summary);
-    expect(summary.decisions, `${mode} CPU telemetry rows`).toBeGreaterThan(0);
-    expect(summary.decisionSources, `${mode} source attribution`).not.toEqual({ unknown: summary.decisions });
+    const session = await openBadugiRuntime(page, mode);
+    try {
+      const rows = await collectCpuTrace(page, mode === "tournament" ? 6 : 8);
+      const summary = summarizeRows(mode, rows);
+      summaries.push(summary);
+      expect(summary.decisions, `${mode} CPU telemetry rows`).toBeGreaterThan(0);
+      expect(summary.decisionSources, `${mode} source attribution`).not.toEqual({ unknown: summary.decisions });
+    } finally {
+      await deleteAuthenticatedSession(page, session);
+    }
   }
 
   const aggregateRows = summaries.flatMap((summary) => summary.sampleRows);
@@ -176,6 +190,7 @@ test("Badugi live CPU telemetry classifies friend-alpha runtime path and pressur
   );
   const report = {
     generatedAt: new Date().toISOString(),
+    requestedTierOverride: AI_TIER_OVERRIDE,
     liveClassification,
     passiveConfirmed,
     summaries,

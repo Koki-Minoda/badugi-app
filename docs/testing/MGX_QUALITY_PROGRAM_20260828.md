@@ -2,51 +2,53 @@
 
 ## Release decision
 
-QA/QM result: **PASS for PR review**. No known P0/P1 product blocker remains in the ten-item scope. Production promotion still requires the normal PR, CI, manual deployment, and post-deploy health checks.
+QA/QM result: **PASS for the 1–10 implementation scope**. Tasks 1–4 were integrated, reviewed, merged and deployed first. Tasks 5–10 passed locally and are protected by PR and nightly gates before their production promotion.
 
-## Ten-item acceptance matrix
+## Acceptance matrix
 
-| # | Scope | Result | Quality evidence |
+| # | Scope | Result | Evidence |
 |---|---|---|---|
-| 1 | NLH side pots | PASS | Contribution-tier settlement, folded-player eligibility, multi-all-in and odd-chip tests |
-| 2 | Shared PLO/PLO8/FLH settlement | PASS | High-only and hi/lo contribution-pot resolvers shared by B01-B09; chip-conservation and payout tests |
-| 3 | Core5 real-action tournaments | PASS | Badugi, 2-7 TD, A-5 TD, 2-7 SD and A-5 SD use visible UI actions before a verified champion and grounded review |
-| 4 | World tournament scale | PASS | Production field starts, advances blind level and reaches one champion with complete finish order |
-| 5 | Re-entry rules | PASS | Store/local/national/world explicitly declare no re-entry; no bust/final-table re-entry CTA exists; a new tournament is offered only after completion |
-| 6 | Hand history and replay | PASS | Exact final-state replay plus 35 playable variants preserving hand id, ordered actions, results, pots and frame navigation |
-| 7 | P2P durability | PASS | Room snapshots persist in the database, survive process restart, reject stale sequence writes, prune expired database-only rooms, and preserve viewer privacy; WebSocket and REST fallback flows pass |
-| 8 | 36-game quality gates | PASS | All 36 catalog variants run deterministic ten-hand progression with no skip; one-hand, progression and EV suites are CI gates |
-| 9 | App/controller consolidation | PASS with controlled P2 debt | Badugi uses one public controller path; snapshot selection is extracted and unit-tested; tournament state is synchronized before betting actions. Continued App.jsx decomposition remains maintainability work, not a release blocker |
-| 10 | CI and operations | PASS | CI runs lint, build, Tier1, backend, tournament QA, game progression and EV; production build is chunked without size warnings; dependency audit is clean; migration and deploy static checks pass |
+| 1 | Integration baseline | PASS | Canonical production line integrated through PRs; unrelated worktrees and existing changes preserved |
+| 2 | Release gates | PASS | Lint, build, ONNX asset, Tier1/Tier2, backend, tournament, P2P, progression, EV and dependency gates pass |
+| 3 | Main integration | PASS | PR review and required CI completed before merge; no direct unreviewed main update |
+| 4 | Production deployment | PASS | Manual deployment completed; health reports prod/db ok; Core5 cash+tournament and standard/pro telemetry smokes passed with test-account deletion |
+| 5 | World Championship | PASS | Real production configuration starts with 275 players / 46 tables and runs through FT, top three and heads-up to one verified champion |
+| 6 | Re-entry contract | PASS | World explicitly disables re-entry; no re-entry/new-event CTA appears before or after FT bust while the event is live; only a separate new tournament is offered after completion |
+| 7 | Hand history and replay | PASS | Cash and tournament ledger replay preserve ordered actions, draw cards, pot and final stacks; UI groups streets and shows action order, player name and position |
+| 8 | P2P production usability | PASS | Two real production accounts create/join, preserve eight-card privacy, reconnect, act, leave and are deleted. When WSS is unavailable, bounded REST polling completes the flow |
+| 9 | Unfinished-game quality | PASS for CP1 scope | Chinese Poker now records initial cards, row placements and showdown scoring; deterministic replay recomputes the same rows/results; up to 50 unique histories persist |
+| 10 | Permanent QA/QM | PASS | History replay is a required deploy gate; tournament completion remains a PR gate; nightly production Core5/P2P and standard/pro telemetry jobs retain artifacts; GitHub actions use Node 24-compatible major versions |
 
-## Final QA evidence
+## Final automated evidence
 
 - ESLint: PASS.
-- Production build: PASS, with no chunk-size warning.
+- Production build: PASS; ONNX WASM asset 23,824,254 bytes.
 - Dependency audit: 0 vulnerabilities.
-- Tier1: 301 files / 2,066 tests PASS.
+- Tier1: 303 files / 2,072 tests PASS.
 - Tier2: 78 files / 165 tests PASS.
-- Backend: 66 tests PASS, including account deletion, P2P persistence, and clean-install migration coverage.
-- Game progression: 170 tests PASS; game EV: 25 tests PASS; one-hand gate: 53 tests PASS.
-- Core5 standard soak: cash 10/10 and tournament 10/10 PASS across two seeds per variant.
-- Tournament PR browser gate: 15/15 PASS. Store completed after 33 real Hero hands plus 57 background hands; local completed after 25 real Hero hands plus 140 background hands.
-- Store completion stability: repeated twice after the all-in DRAW fix, both reached a champion.
-- Android Chromium and iPhone WebKit tournament device gate: 2/2 PASS across Core5 layout/action audits.
-- Cross-variant history/replay: 35/35 PASS.
-- P2P: 17 UI tests plus WebSocket and REST-fallback browser flows PASS; backend P2P persistence is included in the full backend suite.
-- Deployment static safety and Alembic upgrade-to-head: PASS.
+- Backend: 69 tests PASS, including deletion, P2P persistence, migration and tournament state.
+- Game progression: 170 tests PASS; game EV: 25 tests PASS.
+- P2P: 17 UI tests, canonical WebSocket E2E and forced REST-fallback E2E PASS.
+- Production P2P: create/join/privacy/reload/action/leave/delete PASS in 13.8 seconds.
+- Cash exact history replay: PASS.
+- Tournament exact history replay: PASS.
+- Store completion: 35 real Hero hands + 53 background hands; champion verified.
+- Local completion: 25 real Hero hands + 140 background hands; ante level and champion verified.
+- World completion: 44 real Hero hands + 796 background hands; final level 18 and champion verified.
+- Store/local Hero-champion paths produce grounded post-tournament reviews.
+- Chinese Poker controller/history/UI: 10 tests PASS; replay integrity is surfaced in the result screen.
 
-## Defects found and closed during QA
+## Quality-management controls added
 
-1. Mobile tournament HUD was clipped above the visual viewport on Android/iPhone landscape. The compact HUD is now passed to the actual HUD child rather than its fragment wrapper.
-2. Tournament Badugi raised using a stale pre-tournament fixed-limit unit. The active blind is now authoritative in controller configuration and action payloads.
-3. A controller could return a successful but non-progressing Hero draw when remaining opponents were all-in. Non-progressing snapshots are rejected and the already-committed table draw is used.
-4. The desktop player status board covered the table by default. It is now collapsed initially.
-5. Chinese Poker's real ten-hand gate exceeded the generic five-second test budget. It retains all ten hands with a variant-specific bounded timeout.
-6. A clean Alembic database omitted users and hand-history tables, and its SQLite action-log key could not autoincrement. A non-destructive reconciliation migration now creates only missing legacy tables, repairs the SQLite key, preserves existing data, and is covered by clean/existing-install tests.
+1. PRs cannot deploy unless quality, backend, tournament, P2P and exact-history jobs all pass.
+2. The history job starts a real backend and verifies cash replay plus all supported cross-variant replay paths.
+3. The deploy script verifies `/friend-match` resolves to the same current hashed SPA assets as `/`.
+4. Nightly production QA runs Core5 cash/tournament and P2P lifecycle checks with screenshots/artifacts retained for 14 days.
+5. Nightly AI QA runs standard and pro telemetry separately; test users are deleted and stale tokens must return 401.
+6. Test failures record screenshots and browser artifacts; production P2P cleanup is independent of the page lifecycle so timeout does not skip deletion.
 
-## Controlled follow-up debt
+## Explicit boundaries
 
-- P2P room state is durable and multi-worker safe through database snapshots and sequence conflicts, but real-time socket fanout remains process-local with polling convergence; cross-node pub/sub is a future scale optimization.
-- B01-B09 have strict shared settlement assertions. The other families have deterministic multi-hand/replay gates, while family-specific payout-oracle expansion remains P2 quality work.
-- App.jsx is still large. Controller snapshot resolution is extracted and the duplicate Badugi public path is removed; further feature-slice extraction should continue in small, regression-gated changes.
+- Production P2P currently remains usable through authenticated REST polling when WSS is unavailable. Cross-process real-time fanout/pub-sub remains a scale optimization, not a two-player correctness blocker.
+- Chinese Poker classic placement/scoring/history is covered. OFC street-by-street dealing and Fantasyland are separate product features and are not falsely marked complete.
+- The Badugi `pro-overlay` production path is heuristic overlay logic. The Windows-trained ONNX checkpoint is not yet directly wired as the live Badugi action candidate and must not be described as deployed model inference.

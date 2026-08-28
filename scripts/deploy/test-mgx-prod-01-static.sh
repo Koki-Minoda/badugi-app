@@ -18,6 +18,7 @@ if grep -q 'source .*BACKEND_ENV_FILE' "$script"; then
 fi
 grep -q 'verify_live_frontend' "$script"
 grep -q 'verify_live_p2p_rest_route' "$script"
+grep -q 'friend-match deep link did not return the current SPA asset' "$script"
 grep -q 'npm run test:build:onnx' "$script"
 grep -q 'configure_nginx_wasm_mime' "$script"
 grep -q 'verify_live_onnx_wasm' "$script"

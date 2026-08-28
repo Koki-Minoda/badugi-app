@@ -11,6 +11,7 @@ import {
   getHandHistoryBufferSnapshot,
 } from "../state/handHistoryStore.js";
 import { findReplayFrameIndex } from "./replayFrameUtils.js";
+import { buildReplayTimeline } from "./replayTimelineViewModel.js";
 import ReplayCoachingOverlay from "../components/ReplayCoachingOverlay.jsx";
 import {
   buildReplayReviewContract,
@@ -421,6 +422,10 @@ export default function ReplayScreen({
   const frames = useMemo(
     () => (handSnapshot ? replayHandFromHistory(handSnapshot) : []),
     [handSnapshot],
+  );
+  const timelineGroups = useMemo(
+    () => buildReplayTimeline(frames, handSnapshot),
+    [frames, handSnapshot],
   );
   const maxFrameIndex = Math.max(frames.length - 1, 0);
   const clampedIndex = Math.min(Math.max(frameIndex, 0), maxFrameIndex);
@@ -1009,8 +1014,17 @@ export default function ReplayScreen({
                 No replay data available for this hand.
               </div>
             )}
-            {frames.map((frame, idx) => (
-              (() => {
+            {timelineGroups.map((group) => (
+              <section key={group.id} data-testid={`replay-street-group-${group.id}`}>
+                <div className="mb-2 mt-3 flex items-center gap-3" data-testid="replay-street-heading">
+                  <span className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3 py-1 text-xs font-semibold tracking-[0.2em] text-emerald-100">
+                    {group.phase.replaceAll("_", " ")}{group.occurrence > 1 ? ` ${group.occurrence}` : ""}
+                  </span>
+                  <span className="h-px flex-1 bg-white/10" />
+                </div>
+                <div className="grid gap-2">
+                {group.rows.map(({ frame, frameIndex: idx, actionOrder, playerName, position, description }) => (
+                  (() => {
                 const actionSeq = Number(frame?.event?.actionSeq ?? idx);
                 const isLessonAction =
                   lessonActionIndex !== null && (idx === lessonActionIndex || actionSeq === lessonActionIndex);
@@ -1071,7 +1085,14 @@ export default function ReplayScreen({
                   </span>
                 </div>
                 <div className="mt-1 text-base font-semibold text-white">
-                  {eventToLabel(frame?.event)}
+                  {actionOrder ? <span className="mr-2 text-emerald-200">#{actionOrder}</span> : null}
+                  {playerName ? (
+                    <span>
+                      {playerName} <span className="text-sm font-normal text-slate-400">({position ?? `Seat ${idx + 1}`})</span>
+                      <span className="mx-2 text-slate-500">·</span>
+                    </span>
+                  ) : null}
+                  {description || eventToLabel(frame?.event)}
                 </div>
                 <div className="mt-1 text-xs text-slate-400">
                   Pot {frame?.pot ?? 0} · Acting{" "}
@@ -1082,6 +1103,9 @@ export default function ReplayScreen({
               </button>
                 );
               })()
+                ))}
+                </div>
+              </section>
             ))}
           </div>
         </div>

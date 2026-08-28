@@ -66,6 +66,32 @@ export async function createLiveAuthenticatedSession(page: Page) {
   await page.addInitScript((state) => {
     window.localStorage.setItem("mgx_auth", JSON.stringify(state));
   }, authState);
+
+  let deleted = false;
+  return {
+    email,
+    async deleteAccount() {
+      if (deleted) return;
+      const deletion = await page.request.delete(`${LIVE_API_URL}/auth/account`, {
+        headers: { Authorization: `${scheme} ${token}` },
+        data: { password: DEFAULT_PASSWORD },
+      });
+      if (!deletion.ok()) {
+        throw new Error(`Live account deletion failed: ${deletion.status()} ${await deletion.text()}`);
+      }
+      const payload = await deletion.json();
+      if (payload?.deleted !== true) {
+        throw new Error("Live account deletion did not confirm deleted=true");
+      }
+      const staleAuth = await page.request.get(`${LIVE_API_URL}/auth/me`, {
+        headers: { Authorization: `${scheme} ${token}` },
+      });
+      if (staleAuth.status() !== 401) {
+        throw new Error(`Deleted live account remained accessible: ${staleAuth.status()}`);
+      }
+      deleted = true;
+    },
+  };
 }
 
 export async function gotoLiveWithRetry(page: Page, url = LIVE_URL, timeout = 60000) {
@@ -98,14 +124,15 @@ async function enterTitleIfPresent(page: Page) {
 }
 
 export async function openLiveMenu(page: Page, url = LIVE_URL) {
-  await createLiveAuthenticatedSession(page);
+  const session = await createLiveAuthenticatedSession(page);
   await gotoLiveWithRetry(page, url);
   await enterTitleIfPresent(page);
   await page.getByTestId("menu-ring").waitFor({ state: "visible", timeout: 30000 });
+  return session;
 }
 
 export async function openLiveGame(page: Page, variant: Core5Variant | { variant: string }) {
-  await openLiveMenu(page, `${LIVE_URL}?variant=${variant.variant}&buildInfo=1`);
+  const session = await openLiveMenu(page, `${LIVE_URL}?variant=${variant.variant}&buildInfo=1`);
   await page.getByTestId("menu-ring").click();
   const canonical = {
     badugi: "badugi",
@@ -128,6 +155,7 @@ export async function openLiveGame(page: Page, variant: Core5Variant | { variant
   }
   await waitForE2EDriver(page);
   await page.getByTestId("decision-panel").waitFor({ state: "visible", timeout: 30000 });
+  return session;
 }
 
 export async function openLiveMobileContext(browser: Browser, viewport: LiveLayoutViewport) {
@@ -149,7 +177,7 @@ export async function closeLiveContext(context: BrowserContext) {
 }
 
 export async function openLiveTournament(page: Page, variant: Core5Variant) {
-  await openLiveGame(page, variant);
+  const session = await openLiveGame(page, variant);
   await page.waitForFunction(
     () => typeof window.__BADUGI_E2E__?.startTournamentMTT === "function",
     undefined,
@@ -171,6 +199,7 @@ export async function openLiveTournament(page: Page, variant: Core5Variant) {
   }, variant.variant);
   await page.getByTestId("decision-panel").waitFor({ state: "visible", timeout: 30000 });
   await page.getByTestId("tournament-hud").waitFor({ state: "visible", timeout: 30000 });
+  return session;
 }
 
 export async function getLiveBuildInfo(page: Page) {

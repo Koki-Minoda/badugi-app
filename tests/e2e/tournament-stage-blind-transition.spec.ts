@@ -535,6 +535,71 @@ test("Local runs from its production field through ante levels to a verified cha
   }));
 });
 
+test("World runs from its 275-player production field through FT to a verified champion and review", async ({
+  page,
+}) => {
+  test.setTimeout(900_000);
+  const completed = await completeProductionTournament(page, "world");
+  expect(completed.config).toMatchObject({ totalPlayers: 275, tables: 46 });
+  expect(completed.realHeroHands).toBeGreaterThan(0);
+  expect(completed.levelsVisited.length).toBeGreaterThan(1);
+  expect(completed.hud.milestoneEvents).toEqual(
+    expect.arrayContaining(["FINAL_TABLE", "TOP_THREE", "HEADS_UP"]),
+  );
+  expect(completed.review.reviewDepth).toBe("hand-history");
+  console.info("[MTT_COMPLETION]", JSON.stringify({
+    stageId: "world",
+    realHeroHands: completed.realHeroHands,
+    backgroundHands: completed.hud.abstractHandCounter,
+    finalLevel: completed.hud.currentLevelNumber,
+    heroPlace: completed.hud.heroFinishPlace,
+    championId: completed.hud.championId,
+  }));
+});
+
+test("World never offers re-entry after an FT bust and only offers a new event after completion", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  const config = await startProductionStage(page, "world");
+  expect(config.reentryPolicy).toEqual({
+    allowed: false,
+    maxEntries: 1,
+    closesAtLevel: 0,
+  });
+  await page.evaluate((worldConfig) => {
+    window.__BADUGI_E2E__.startTournamentMTT({
+      ...worldConfig,
+      id: "world-ft-reentry-contract",
+      totalPlayers: 6,
+      tables: 1,
+    });
+  }, config);
+  await expect(page.getByTestId("tournament-hud")).toBeVisible();
+  await expect(page.getByRole("button", { name: /re-?entry|re-?enter/i })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Enter New Tournament" })).toHaveCount(0);
+
+  const state = await page.evaluate(() =>
+    window.__BADUGI_E2E__.simulateTournamentBackground(1),
+  );
+  expect(state.playersRemaining).toBeLessThanOrEqual(6);
+  expect(state.isFinished).toBe(false);
+  expect(state.tables.filter((table) => table.isActive)).toHaveLength(1);
+
+  const busted = await page.evaluate(() => window.__BADUGI_E2E__.forceHeroBust());
+  expect(busted.players["hero-player"]).toMatchObject({ busted: true });
+  expect(busted.isFinished).toBe(false);
+  await expect(page.getByRole("button", { name: /re-?entry|re-?enter/i })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Enter New Tournament" })).toHaveCount(0);
+
+  const completed = await page.evaluate(() =>
+    window.__BADUGI_E2E__.fastForwardMTTComplete(),
+  );
+  expect(completed).toMatchObject({ isFinished: true, playersRemaining: 1 });
+  await expect(page.getByRole("button", { name: /re-?entry|re-?enter/i })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Enter New Tournament" })).toBeVisible();
+});
+
 for (const stage of [
   { stageId: "store", entryFee: 0, payout: 1_000, netResult: 1_000 },
   { stageId: "local", entryFee: 1_000, payout: 12_000, netResult: 11_000 },

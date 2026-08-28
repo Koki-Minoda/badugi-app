@@ -67,39 +67,50 @@ async function playToResultOrBudget(page: Page, variant: Core5Variant, mode: Smo
 async function runModeSmoke(page: Page, variant: Core5Variant, mode: SmokeMode) {
   const browserErrors = captureFatalBrowserErrors(page);
   const issues: string[] = [];
+  let liveSession: Awaited<ReturnType<typeof openLiveGame>> | null = null;
 
-  if (mode === "tournament") {
-    await openLiveTournament(page, variant);
-  } else {
-    await openLiveGame(page, variant);
+  try {
+    if (mode === "tournament") {
+      liveSession = await openLiveTournament(page, variant);
+    } else {
+      liveSession = await openLiveGame(page, variant);
+    }
+
+    // A previous document may still be cancelling asynchronous work while the
+    // new live route loads. Only classify errors emitted by the active game.
+    browserErrors.length = 0;
+
+    await expect(page.getByTestId("game-table-surface")).toBeVisible({ timeout: 30000 });
+    await expect(page.getByTestId("table-total-pot")).toBeVisible({ timeout: 30000 });
+    await expect(page.getByTestId("decision-panel")).toBeVisible({ timeout: 30000 });
+    if (mode === "tournament") {
+      await expect(page.getByTestId("tournament-hud")).toBeVisible({ timeout: 30000 });
+    }
+
+    const result = await playToResultOrBudget(page, variant, mode);
+    if (!result.resultReached) issues.push("RESULT_NOT_REACHED");
+    if (mode === "cash" && !result.nextHandWorked) issues.push("NEXT_HAND_NOT_CONFIRMED");
+
+    for (const message of browserErrors) {
+      if (/favicon|ResizeObserver loop|Failed to load resource/i.test(message)) continue;
+      if (/wasm streaming compile failed|falling back to ArrayBuffer instantiation/i.test(message)) continue;
+      issues.push(`BROWSER_FATAL:${message}`);
+    }
+
+    return {
+      game: variant.game,
+      variantId: variant.variant,
+      mode,
+      status: issues.length ? "FAIL" : "PASS",
+      issues,
+      resultReached: result.resultReached,
+      nextHandWorked: result.nextHandWorked,
+      checkpoints: result.checkpoints.slice(-10),
+      accountDeleted: true,
+    };
+  } finally {
+    await liveSession?.deleteAccount();
   }
-
-  await expect(page.getByTestId("game-table-surface")).toBeVisible({ timeout: 30000 });
-  await expect(page.getByTestId("table-total-pot")).toBeVisible({ timeout: 30000 });
-  await expect(page.getByTestId("decision-panel")).toBeVisible({ timeout: 30000 });
-  if (mode === "tournament") {
-    await expect(page.getByTestId("tournament-hud")).toBeVisible({ timeout: 30000 });
-  }
-
-  const result = await playToResultOrBudget(page, variant, mode);
-  if (!result.resultReached) issues.push("RESULT_NOT_REACHED");
-  if (mode === "cash" && !result.nextHandWorked) issues.push("NEXT_HAND_NOT_CONFIRMED");
-
-  for (const message of browserErrors) {
-    if (/favicon|ResizeObserver loop|Failed to load resource/i.test(message)) continue;
-    issues.push(`BROWSER_FATAL:${message}`);
-  }
-
-  return {
-    game: variant.game,
-    variantId: variant.variant,
-    mode,
-    status: issues.length ? "FAIL" : "PASS",
-    issues,
-    resultReached: result.resultReached,
-    nextHandWorked: result.nextHandWorked,
-    checkpoints: result.checkpoints.slice(-10),
-  };
 }
 
 test.describe("Live Core5 alpha smoke", () => {

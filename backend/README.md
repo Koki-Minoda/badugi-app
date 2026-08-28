@@ -59,6 +59,11 @@ Then add this under `[Service]` in `/etc/systemd/system/mgx-backend.service`:
 EnvironmentFile=/etc/mgx/mgx-backend.env
 ```
 
+The production deploy helper reads this same file with `python-dotenv` before
+running Alembic. It does not evaluate the file as shell code and does not place
+secret values in process arguments or deployment logs. If production uses a
+different path, set `BACKEND_ENV_FILE` explicitly for the deploy command.
+
 Reload and restart:
 
 ```bash

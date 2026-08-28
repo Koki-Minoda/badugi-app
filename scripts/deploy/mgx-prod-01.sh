@@ -9,10 +9,30 @@ LIVE_ORIGIN="${LIVE_ORIGIN:-https://mgx-poker.com}"
 DEFAULT_BRANCH="main"
 GIT_REMOTE="${GIT_REMOTE:-origin}"
 GIT_BRANCH="${GIT_BRANCH:-$DEFAULT_BRANCH}"
+BACKEND_ENV_FILE="${BACKEND_ENV_FILE:-/etc/mgx/mgx-backend.env}"
 
 fail() {
   echo "[mgx-deploy] ERROR: $*" >&2
   exit 1
+}
+
+run_backend_migrations() {
+  local env_file="$1"
+  local alembic_bin
+
+  if [ ! -f "$env_file" ] || [ ! -r "$env_file" ]; then
+    fail "backend environment file is not readable: ${env_file}"
+  fi
+  alembic_bin="$(command -v alembic)"
+  if [ -z "$alembic_bin" ]; then
+    fail "alembic executable is unavailable in the backend virtual environment"
+  fi
+
+  # Parse the systemd-compatible dotenv file without evaluating it as shell
+  # code. Secrets are passed only through the child process environment and
+  # are never printed or placed on the command line.
+  python "$APP_DIR/scripts/deploy/run-with-dotenv.py" \
+    "$env_file" "$alembic_bin" upgrade head
 }
 
 asset_refs_from_index() {
@@ -155,7 +175,7 @@ else
   exit 1
 fi
 echo "[mgx-deploy] applying backend database migrations"
-alembic upgrade head
+run_backend_migrations "$BACKEND_ENV_FILE"
 deactivate
 cd "$APP_DIR"
 

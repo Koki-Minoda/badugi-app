@@ -187,6 +187,8 @@ export function createProgressHarness(variantId, options = {}) {
   if (DRAW_CONTROLLERS[normalizedVariantId]) {
     const Controller = DRAW_CONTROLLERS[normalizedVariantId];
     const isBadugi = normalizedVariantId === "badugi";
+    const badugiDeck = isBadugi ? new DeckManager({ rng }) : null;
+    const drawCardsForSeat = badugiDeck ? () => badugiDeck.draw(4) : null;
     const controller = isBadugi
       ? new Controller({
           seatConfig: DEFAULT_SEATS,
@@ -221,8 +223,15 @@ export function createProgressHarness(variantId, options = {}) {
           ante: options.blinds?.ante ?? DEFAULT_BLINDS.ante,
         },
       ],
+      drawCardsForSeat,
     });
-    return { family: "draw", controller, state };
+    return {
+      family: "draw",
+      controller,
+      state,
+      drawCardsForSeat,
+      resetDrawDeck: badugiDeck ? () => badugiDeck.reset() : null,
+    };
   }
   if (normalizedVariantId === "chinese_poker") {
     const controller = new ChinesePokerController({
@@ -477,6 +486,7 @@ export function resolveScenarioHandCount(scenarioId) {
 function startNextHarnessHand(harness, { variantId, handNumber }) {
   const snapshot = snapshotOf(harness);
   if (harness.family === "draw") {
+    harness.resetDrawDeck?.();
     harness.state = harness.controller.createNewHandState(harness.state, {
       handId: `${normalizeProgressVariantId(variantId)}-progress-${handNumber}`,
       currentPlayers: snapshot.players,
@@ -484,6 +494,7 @@ function startNextHarnessHand(harness, { variantId, handNumber }) {
         typeof snapshot.dealerIndex === "number"
           ? (snapshot.dealerIndex + 1) % Math.max(1, snapshot.players?.length ?? 1)
           : undefined,
+      drawCardsForSeat: harness.drawCardsForSeat ?? null,
     });
     return snapshotOf(harness);
   }

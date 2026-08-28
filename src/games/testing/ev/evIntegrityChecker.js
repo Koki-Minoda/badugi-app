@@ -374,7 +374,10 @@ export function validateHandEvIntegrity({
     ) {
       addError(errors, "terminal_pot_echo_mismatch", { afterLivePot, potTotal });
     }
-    const beforeTotal = beforeStackTotal + getLivePot(beforeState);
+    // Some engines expose unsettled blind/street contributions on the players
+    // instead of folding them into `pot` immediately. Count whichever source is
+    // larger so a preflop snapshot still represents every chip on the table.
+    const beforeTotal = beforeStackTotal + getCommittedTotal(beforeState);
     const afterTotal = afterStackTotal + (terminalPotIsResultEcho ? 0 : afterLivePot);
     if (!approxEqual(beforeTotal, afterTotal, options.chipEpsilon ?? EPSILON)) {
       addError(errors, "chip_conservation_mismatch", { beforeTotal, afterTotal });

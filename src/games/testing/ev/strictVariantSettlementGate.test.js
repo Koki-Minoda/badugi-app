@@ -22,6 +22,7 @@ import {
   getStrictSettlementPolicy,
   validateStrictVariantSettlement,
 } from "./strictVariantSettlementGate.js";
+import { runProgressScenario } from "../scenario/runProgressScenario.js";
 
 function seats() {
   return Array.from({ length: 6 }, (_, seatIndex) => ({
@@ -54,14 +55,31 @@ describe("strict per-variant settlement gate", () => {
     const policies = GAME_VARIANTS.map((variant) => getStrictSettlementPolicy(variant.id));
     expect(policies.filter((policy) => policy.status === "ENFORCED").map((policy) => policy.variantId)).toEqual([
       "B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08", "B09",
+      "D01", "D02", "D03", "D04", "D05", "D06", "D07",
+      "S01", "S02", "S03", "S04", "S05", "S06", "S07",
       "ST1", "ST2", "ST3", "ST4", "ST5", "ST6",
     ]);
     expect(policies.filter((policy) => policy.status === "UNCLASSIFIED")).toEqual([]);
-    expect(Object.keys(STRICT_SETTLEMENT_ALLOWLIST)).toHaveLength(21);
+    expect(Object.keys(STRICT_SETTLEMENT_ALLOWLIST)).toHaveLength(7);
     policies.filter((policy) => policy.status === "ALLOWLISTED").forEach((policy) => {
       expect(policy.reason).toEqual(expect.any(String));
       expect(policy.reason.length).toBeGreaterThan(30);
     });
+  });
+
+  it.each([
+    "D01", "D02", "D03", "D04", "D05", "D06", "D07",
+    "S01", "S02", "S03", "S04", "S05", "S06", "S07",
+  ])("enforces evaluator-backed draw settlement for ten seeded %s hands", (variantId) => {
+    const result = runProgressScenario({
+      variantId,
+      scenarioId: "cash-10-hands-smoke",
+      seed: `strict-draw-${variantId}`,
+      maxSteps: 260,
+    });
+    expect(result.status).toBe("passed");
+    expect(result.strictSettlements).toHaveLength(10);
+    expect(result.strictSettlements.every((entry) => entry.status === "ENFORCED" && entry.ok)).toBe(true);
   });
 
   it("passes strict result, pot, evaluator, and chip conservation for seeded NLH", () => {

@@ -91,6 +91,7 @@ export function createMTTTournamentState(config, entrants) {
     championId: null,
     finishOrder: [],
     abstractHandCounter: 0,
+    completedHandIds: [],
     events: [],
     lastEvent: null,
   };
@@ -117,6 +118,7 @@ function cloneState(state) {
       Object.entries(state.players).map(([id, player]) => [id, { ...player }]),
     ),
     finishOrder: [...(state.finishOrder ?? [])],
+    completedHandIds: [...(state.completedHandIds ?? [])],
     events: (state.events ?? []).map((event) => ({ ...event })),
     lastEvent: state.lastEvent ? { ...state.lastEvent } : null,
   };
@@ -127,12 +129,22 @@ function cloneState(state) {
  * @param {TournamentStateMTT} state
  * @param {string} tableId
  * @param {{
+ *   handId?: string,
  *   handIndex?: number,
  *   seatResults: Array<{ seatIndex: number, playerId: string, stack: number, startingStack?: number }>
  * }} handSummary
  */
 export function onTableHandCompleted(state, tableId, handSummary) {
   if (state.isFinished) return state;
+  const completionKey = handSummary?.handId
+    ? `${tableId}:${handSummary.handId}`
+    : null;
+  // The UI has more than one showdown completion path for compatibility with
+  // controller and legacy games.  They may converge on the same real hand;
+  // tournament progression must remain exactly-once even if both report it.
+  if (completionKey && (state.completedHandIds ?? []).includes(completionKey)) {
+    return state;
+  }
   const next = cloneState(state);
   const table = next.tables.find((t) => t.tableId === tableId);
   if (!table) {
@@ -169,6 +181,12 @@ export function onTableHandCompleted(state, tableId, handSummary) {
   }
 
   table.handsPlayedAtThisLevel += 1;
+  if (completionKey) {
+    next.completedHandIds.push(completionKey);
+    if (next.completedHandIds.length > 4096) {
+      next.completedHandIds.splice(0, next.completedHandIds.length - 4096);
+    }
+  }
   maybeAdvanceLevel(next);
   maybeRebalance(next);
   maybeFinalizeTournament(next);
@@ -716,6 +734,7 @@ function sanitizeStack(value) {
  * @property {boolean} isFinished
  * @property {string|null} championId
  * @property {string[]} finishOrder
+ * @property {string[]} completedHandIds
  * @property {Array<Object>} events
  * @property {Object|null} lastEvent
  */

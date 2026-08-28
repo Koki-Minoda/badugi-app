@@ -59,6 +59,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Validate live Badugi decision telemetry
         env:
+          E2E_APP_URL: https://mgx-poker.com/
           E2E_AI_TIER_OVERRIDE: ${{ matrix.ai-tier }}
         run: npx playwright test tests/e2e/badugi-value-bet-observation.spec.ts --project=badugi-flow
       - uses: actions/upload-artifact@v4

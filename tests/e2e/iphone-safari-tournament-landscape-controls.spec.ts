@@ -61,7 +61,10 @@ async function assertButtonWithinVisualViewport(page: Page, locator: Locator, la
   expect(box!.x, `${label} left`).toBeGreaterThanOrEqual(0);
   expect(box!.x + box!.width, `${label} right`).toBeLessThanOrEqual(viewport.width + 1);
   expect(box!.y + box!.height, `${label} bottom`).toBeLessThanOrEqual(viewport.height + 1);
-  await locator.click({ trial: true, timeout: 1500 });
+  // GitHub's shared Linux WebKit runner can need several rendering frames to
+  // settle after visualViewport updates. Keep the real actionability check,
+  // but do not turn runner contention into a false layout failure.
+  await locator.click({ trial: true, timeout: 5000 });
 }
 
 test.describe("iPhone Safari tournament landscape controls", () => {

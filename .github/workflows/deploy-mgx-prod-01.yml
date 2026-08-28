@@ -178,6 +178,17 @@ jobs:
       - run: python -m pip install -e './backend[test]'
       - run: npx playwright install --with-deps webkit
       - run: bash scripts/ci/run-with-backend.sh npm run test:tournament:webkit
+      - name: Upload WebKit failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-webkit-qa-failure
+          path: |
+            test-results/
+            reports/ui/iphone-safari-tournament-landscape-controls.json
+            reports/screenshots/iphone-safari-tournament-landscape-controls/
+          if-no-files-found: ignore
+          retention-days: 14
 
   deploy:
     needs:

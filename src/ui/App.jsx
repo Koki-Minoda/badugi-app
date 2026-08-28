@@ -86,26 +86,6 @@ import {
   isBetRoundComplete,
   needsActionForBet,
 } from "../games/badugi/flow/betRoundUtils.js";
-import BadugiGameController from "../games/badugi/controller/BadugiGameController.js";
-import ChinesePokerController from "../games/chinese/ChinesePokerController.js";
-import DramahaGameController from "../games/dramaha/DramahaGameController.js";
-import FLHGameController from "../games/nlh/FLHGameController.js";
-import NLHGameController from "../games/nlh/NLHGameController.js";
-import SuperHoldemGameController, {
-  FLSuperHoldemGameController,
-} from "../games/nlh/SuperHoldemGameController.js";
-import BigOGameController from "../games/plo/BigOGameController.js";
-import FiveCardPLOGameController from "../games/plo/FiveCardPLOGameController.js";
-import FLO8GameController from "../games/plo/FLO8GameController.js";
-import PLO8GameController from "../games/plo/PLO8GameController.js";
-import PLOGameController from "../games/plo/PLOGameController.js";
-import StudGameController, {
-  Razz27GameController,
-  RazzGameController,
-  RazzduceyGameController,
-  RazzdugiGameController,
-  Stud8GameController,
-} from "../games/stud/StudGameController.js";
 import { GAME_VARIANTS } from "../games/core/variants.js";
 import { canLaunchVariant } from "../games/config/canLaunchVariant.js";
 import { buildHandResultSummary } from "../games/badugi/flow/handResultUtils.js";
@@ -127,6 +107,7 @@ import {
 } from "./game/appVariantRouting.js";
 import { getVariantLayoutProfile } from "./game/layoutGroups.js";
 import { resolveEffectiveControllerSnapshot } from "./game/controllerSnapshotResolver.js";
+import { createAppGameController } from "./game/createAppGameController.js";
 import {
   createVariantRotationController,
   advanceVariantRotation,
@@ -2252,99 +2233,25 @@ export default function App() {
         engineStateRef.current = null;
         setEngineState(null);
       }
-      if (variantId === APP_VARIANT_IDS.NLH) {
-        gameControllerRef.current = new NLHGameController({
-          tableConfig: buildNlhTableConfig(),
-        });
-      } else if (variantId === APP_VARIANT_IDS.FLH) {
-        gameControllerRef.current = new FLHGameController({
-          tableConfig: buildNlhTableConfig(),
-        });
-      } else if (variantId === APP_VARIANT_IDS.SUPER_HOLDEM) {
-        gameControllerRef.current = new SuperHoldemGameController({
-          tableConfig: buildNlhTableConfig(),
-        });
-      } else if (variantId === APP_VARIANT_IDS.FL_SUPER_HOLDEM) {
-        gameControllerRef.current = new FLSuperHoldemGameController({
-          tableConfig: buildNlhTableConfig(),
-        });
-      } else if (variantId === APP_VARIANT_IDS.PLO) {
-        gameControllerRef.current = new PLOGameController({
-          tableConfig: buildNlhTableConfig(),
-        });
-      } else if (variantId === APP_VARIANT_IDS.PLO8) {
-        gameControllerRef.current = new PLO8GameController({
-          tableConfig: buildNlhTableConfig(),
-        });
-      } else if (variantId === APP_VARIANT_IDS.FLO8) {
-        gameControllerRef.current = new FLO8GameController({
-          tableConfig: buildNlhTableConfig(),
-        });
-      } else if (variantId === APP_VARIANT_IDS.BIG_O) {
-        gameControllerRef.current = new BigOGameController({
-          tableConfig: buildNlhTableConfig(),
-        });
-      } else if (variantId === APP_VARIANT_IDS.FIVE_CARD_PLO) {
-        gameControllerRef.current = new FiveCardPLOGameController({
-          tableConfig: buildNlhTableConfig(),
-        });
-      } else if (DRAMAHA_APP_VARIANT_IDS.has(variantId)) {
-        gameControllerRef.current = new DramahaGameController({
-          tableConfig: buildNlhTableConfig(),
-          variant: variantId,
-        });
-      } else if (variantId === APP_VARIANT_IDS.STUD) {
-        gameControllerRef.current = new StudGameController({
-          tableConfig: buildNlhTableConfig(),
-        });
-      } else if (variantId === APP_VARIANT_IDS.STUD8) {
-        gameControllerRef.current = new Stud8GameController({
-          tableConfig: buildNlhTableConfig(),
-        });
-      } else if (variantId === APP_VARIANT_IDS.RAZZ) {
-        gameControllerRef.current = new RazzGameController({
-          tableConfig: buildNlhTableConfig(),
-        });
-      } else if (variantId === APP_VARIANT_IDS.RAZZ27) {
-        gameControllerRef.current = new Razz27GameController({
-          tableConfig: buildNlhTableConfig(),
-        });
-      } else if (variantId === APP_VARIANT_IDS.RAZZDUGI) {
-        gameControllerRef.current = new RazzdugiGameController({
-          tableConfig: buildNlhTableConfig(),
-        });
-      } else if (variantId === APP_VARIANT_IDS.RAZZDUCEY) {
-        gameControllerRef.current = new RazzduceyGameController({
-          tableConfig: buildNlhTableConfig(),
-        });
-      } else if (variantId === APP_VARIANT_IDS.CHINESE_POKER) {
-        gameControllerRef.current = new ChinesePokerController({
-          seats: [
-            { id: "hero", name: "You", isHero: true },
-            { id: "mina", name: "Mina" },
-            { id: "ren", name: "Ren" },
-            { id: "sora", name: "Sora" },
-          ],
-        });
-      } else if (isDrawLowballAppVariant(variantId)) {
-        gameControllerRef.current =
-          GAME_VARIANTS[variantId]?.controllerFactory?.({
-            seatConfig: Array.isArray(seatConfigRef.current)
-              ? [...seatConfigRef.current]
-              : [...DEFAULT_SEAT_TYPES],
-            startingStack: startingStackRef.current ?? DEFAULT_STARTING_STACK,
-            heroProfile,
-            dealerIndex: dealerIdx,
-            structure: { sb: SB, bb: BB, ante: currentAnte },
-          }) ?? null;
-      } else {
-        gameControllerRef.current = new BadugiGameController({
+      gameControllerRef.current = createAppGameController({
+        variantId,
+        tableConfig: buildNlhTableConfig(),
+        drawConfig: {
+          seatConfig: Array.isArray(seatConfigRef.current)
+            ? [...seatConfigRef.current]
+            : [...DEFAULT_SEAT_TYPES],
+          startingStack: startingStackRef.current ?? DEFAULT_STARTING_STACK,
+          heroProfile,
+          dealerIndex: dealerIdx,
+          structure: { sb: SB, bb: BB, ante: currentAnte },
+        },
+        badugiConfig: {
           numSeats: NUM_PLAYERS,
           blindStructure: activeBlindStructure,
           lastStructureIndex,
           evaluateHand: evaluateBadugi,
-        });
-      }
+        },
+      });
       controllerVariantRef.current = variantId;
     } else if (variantId === APP_VARIANT_IDS.BADUGI) {
       gameControllerRef.current.updateConfig({

@@ -7,7 +7,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { flushSync } from "react-dom";
 import {
   DEFAULT_SEAT_TYPES,
   DEFAULT_STARTING_STACK,
@@ -1247,6 +1246,14 @@ export default function App() {
           structure: { sb: SB, bb: BB, ante: currentAnte },
         });
     }
+    if (typeof sessionControllerRef.current?.updateConfig === "function") {
+      sessionControllerRef.current.updateConfig({
+        blindStructure: activeBlindStructure,
+        lastStructureIndex,
+        betSize: BB,
+        structure: { sb: SB, bb: BB, ante: currentAnte },
+      });
+    }
     return sessionControllerRef.current;
   }, [
     SB,
@@ -2039,9 +2046,7 @@ export default function App() {
     syncEngineSnapshot(engineSnapshot);
     setControllerUiSnapshotState(engineSnapshot);
     if (typeof snapshotNextTurn === "number" || snapshotNextTurn === null) {
-      flushSync(() => {
-        setTurn(snapshotNextTurn);
-      });
+      setTurn(snapshotNextTurn);
     }
     bumpControllerSyncVersion((version) => version + 1);
     const shouldApplyControllerSnapshotDirectly =
@@ -10700,9 +10705,12 @@ export default function App() {
   }
 
   function playerFold() {
-    if (phase !== "BET") return;
+    if ((isControllerDrivenSingleTable ? controlsPhase : phase) !== "BET") return;
 
-    const basePlayers = playersRef.current ?? players;
+    const basePlayers =
+      (isControllerDrivenSingleTable ? effectiveControllerSnapshot?.players : null) ??
+      playersRef.current ??
+      players;
     if (!ensureSeatCanAct(0, "playerFold")) return;
     const heroBefore = basePlayers[0] ? { ...basePlayers[0] } : null;
     if (!heroBefore || heroBefore.folded || isFoldedOrOut(heroBefore)) return;
@@ -11376,9 +11384,13 @@ export default function App() {
   }
 
   function playerCall() {
-    if (phase !== "BET") return;
+    if ((isControllerDrivenSingleTable ? controlsPhase : phase) !== "BET") return;
     if (!ensureSeatCanAct(0, "playerCall")) return;
-    const basePlayers = playersRef.current ?? players;
+    const liveControllerSnapshot = isControllerDrivenSingleTable
+      ? effectiveControllerSnapshot
+      : null;
+    const basePlayers =
+      liveControllerSnapshot?.players ?? playersRef.current ?? players;
     const snap = basePlayers.map(clonePlayerState).filter(Boolean);
     const me = snap[0] ? { ...snap[0] } : null;
     if (!me) return;
@@ -11390,12 +11402,6 @@ export default function App() {
     const stackBefore = me.stack;
     const betBefore = me.betThisRound;
 
-    const liveControllerSnapshot =
-      isSingleTableBoardGame &&
-      gameControllerRef.current &&
-      typeof gameControllerRef.current.getSnapshot === "function"
-        ? gameControllerRef.current.getSnapshot()
-        : null;
     const controllerHero =
       liveControllerSnapshot?.players?.[0] &&
       typeof liveControllerSnapshot.players[0] === "object"
@@ -11497,18 +11503,16 @@ export default function App() {
   }
 
   function playerCheck() {
-    if (phase !== "BET") return;
+    if ((isControllerDrivenSingleTable ? controlsPhase : phase) !== "BET") return;
     if (!ensureSeatCanAct(0, "playerCheck")) return;
-    const basePlayers = playersRef.current ?? players;
+    const liveControllerSnapshot = isControllerDrivenSingleTable
+      ? effectiveControllerSnapshot
+      : null;
+    const basePlayers =
+      liveControllerSnapshot?.players ?? playersRef.current ?? players;
     const snap = basePlayers.map(clonePlayerState).filter(Boolean);
     const me = snap[0] ? { ...snap[0] } : null;
     if (!me) return;
-    const liveControllerSnapshot =
-      isSingleTableBoardGame &&
-      gameControllerRef.current &&
-      typeof gameControllerRef.current.getSnapshot === "function"
-        ? gameControllerRef.current.getSnapshot()
-        : null;
     const controllerHero =
       liveControllerSnapshot?.players?.[0] &&
       typeof liveControllerSnapshot.players[0] === "object"
@@ -11524,7 +11528,7 @@ export default function App() {
         : Number.isFinite(Number(me.betThisRound))
           ? Number(me.betThisRound)
           : 0;
-    if (isSingleTableBoardGame && maxNow > heroCommitted) {
+    if (isControllerDrivenSingleTable && maxNow > heroCommitted) {
       playerCall();
       return;
     }
@@ -11595,9 +11599,13 @@ export default function App() {
   }
 
   function playerRaise() {
-    if (phase !== "BET") return;
+    if ((isControllerDrivenSingleTable ? controlsPhase : phase) !== "BET") return;
     if (!ensureSeatCanAct(0, "playerRaise")) return;
-    const basePlayers = playersRef.current ?? players;
+    const liveControllerSnapshot = isControllerDrivenSingleTable
+      ? effectiveControllerSnapshot
+      : null;
+    const basePlayers =
+      liveControllerSnapshot?.players ?? playersRef.current ?? players;
     const snap = basePlayers.map(clonePlayerState).filter(Boolean);
     const me = snap[0] ? { ...snap[0] } : null;
     if (!me) return;
@@ -11610,9 +11618,17 @@ export default function App() {
       return;
     }
 
-    const maxNow = maxBetThisRound(snap);
-    const toCall = Math.max(0, maxNow - me.betThisRound);
-    const raiseAmt = betSize;
+    const maxNow = Number.isFinite(Number(liveControllerSnapshot?.currentBet))
+      ? Number(liveControllerSnapshot.currentBet)
+      : maxBetThisRound(snap);
+    const heroCommitted = Number(
+      liveControllerSnapshot?.players?.[0]?.betThisStreet ??
+        liveControllerSnapshot?.players?.[0]?.betThisRound ??
+        me.betThisRound ??
+        0,
+    );
+    const toCall = Math.max(0, maxNow - heroCommitted);
+    const raiseAmt = isControllerDrivenSingleTable ? currentRaiseUnit : betSize;
     const total = toCall + raiseAmt;
 
     const controllerOutcome = tryControllerBetAction({

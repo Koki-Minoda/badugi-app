@@ -135,6 +135,120 @@ describe("BadugiGameController – new hand", () => {
 });
 
 describe("BadugiGameController – betting", () => {
+  it("reconciles stale legacy street bets before accepting a visible check", () => {
+    const controller = createController();
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU"],
+    });
+    const started = controller.createNewHandState(initial, {});
+    const snapshot = controller.getUiSnapshot(started);
+    const state = controller.syncFromExternalState({
+      snapshot: {
+        ...snapshot,
+        phase: "BET",
+        drawRound: 1,
+        betRoundIndex: 1,
+        currentBet: 0,
+        turn: 0,
+        nextTurn: 0,
+        players: snapshot.players.map((player, seatIndex) => ({
+          ...player,
+          betThisRound: 0,
+          bet: 0,
+          folded: seatIndex > 1,
+          hasFolded: seatIndex > 1,
+          hasActedThisRound: seatIndex > 1,
+        })),
+      },
+      handIndex: 5,
+    });
+
+    controller.legacy.syncExternalState({
+      players: controller.getUiSnapshot(state).players.map((player, seatIndex) => ({
+        ...player,
+        betThisRound: seatIndex === 1 ? 40 : 0,
+      })),
+      currentBet: 40,
+    });
+
+    const result = controller.applyAction(state, {
+      seatIndex: 0,
+      payload: { type: "check" },
+    });
+
+    expect(result.events.some((event) => event.type === "invalidAction")).toBe(false);
+    expect(controller.getUiSnapshot(result.state).players[0].lastAction).toBe("Check");
+  });
+
+  it("does not double an already doubled post-draw raise unit from the UI", () => {
+    const controller = createSixMaxController();
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU", "CPU", "CPU"],
+      structure: { sb: 10, bb: 20, ante: 0 },
+    });
+    const started = controller.createNewHandState(initial, {});
+    const snapshot = controller.getUiSnapshot(started);
+    const state = controller.syncFromExternalState({
+      snapshot: {
+        ...snapshot,
+        phase: "BET",
+        drawRound: 1,
+        betRoundIndex: 1,
+        currentBet: 0,
+        turn: 0,
+        nextTurn: 0,
+        players: snapshot.players.map((player, seatIndex) => ({
+          ...player,
+          betThisRound: 0,
+          bet: 0,
+          folded: seatIndex > 1,
+          hasFolded: seatIndex > 1,
+          hasActedThisRound: seatIndex > 1,
+        })),
+      },
+      handIndex: 5,
+    });
+
+    const result = controller.applyAction(state, {
+      seatIndex: 0,
+      betSize: 40,
+      payload: { type: "raise", amount: 40 },
+    });
+
+    expect(result.events.some((event) => event.type === "invalidAction")).toBe(false);
+    expect(controller.getUiSnapshot(result.state).players[0].betThisRound).toBe(40);
+  });
+
+  it("uses an updated cash blind level for the next opening-street raise", () => {
+    const controller = createSixMaxController();
+    controller.updateConfig({
+      betSize: 40,
+      blindStructure: [{ sb: 20, bb: 40, ante: 5 }],
+    });
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU", "CPU", "CPU"],
+      structure: { sb: 20, bb: 40, ante: 5 },
+    });
+    const started = controller.createNewHandState(initial, {
+      blindStructure: [{ sb: 20, bb: 40, ante: 5 }],
+      structure: { sb: 20, bb: 40, ante: 5 },
+    });
+    const snapshot = controller.getUiSnapshot(started);
+    const actingSeat = snapshot.turn ?? snapshot.nextTurn;
+    const actorBet = snapshot.players[actingSeat].betThisRound;
+    const toCall = snapshot.currentBet - actorBet;
+
+    const result = controller.applyAction(started, {
+      seatIndex: actingSeat,
+      payload: { type: "raise", amount: toCall + 40 },
+    });
+
+    expect(result.events.some((event) => event.type === "invalidAction")).toBe(false);
+    expect(controller.getUiSnapshot(result.state).players[actingSeat].betThisRound).toBe(
+      actorBet + toCall + 40,
+    );
+  });
+
   it("handles a fold and advances turn", () => {
     const controller = createController();
     const initial = controller.createInitialState({

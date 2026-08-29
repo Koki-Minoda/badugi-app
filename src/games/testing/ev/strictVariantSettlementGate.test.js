@@ -8,6 +8,8 @@ import { FiveCardPLOGameController } from "../../plo/FiveCardPLOGameController.j
 import { PLOGameController } from "../../plo/PLOGameController.js";
 import { PLO8GameController } from "../../plo/PLO8GameController.js";
 import { FLO8GameController } from "../../plo/FLO8GameController.js";
+import { DramahaGameController } from "../../dramaha/DramahaGameController.js";
+import { ChinesePokerController } from "../../chinese/ChinesePokerController.js";
 import {
   Razz27GameController,
   RazzduceyGameController,
@@ -51,20 +53,145 @@ function playPassiveHand(controller) {
 }
 
 describe("strict per-variant settlement gate", () => {
-  it("classifies every non-pilot catalog variant with a documented reason", () => {
+  it("enforces a dedicated settlement or points policy for every catalog variant", () => {
     const policies = GAME_VARIANTS.map((variant) => getStrictSettlementPolicy(variant.id));
-    expect(policies.filter((policy) => policy.status === "ENFORCED").map((policy) => policy.variantId)).toEqual([
-      "B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08", "B09",
-      "D01", "D02", "D03", "D04", "D05", "D06", "D07",
-      "S01", "S02", "S03", "S04", "S05", "S06", "S07",
-      "ST1", "ST2", "ST3", "ST4", "ST5", "ST6",
-    ]);
+    expect(policies.every((policy) => policy.status === "ENFORCED")).toBe(true);
+    expect(policies).toHaveLength(36);
     expect(policies.filter((policy) => policy.status === "UNCLASSIFIED")).toEqual([]);
-    expect(Object.keys(STRICT_SETTLEMENT_ALLOWLIST)).toHaveLength(7);
-    policies.filter((policy) => policy.status === "ALLOWLISTED").forEach((policy) => {
-      expect(policy.reason).toEqual(expect.any(String));
-      expect(policy.reason.length).toBeGreaterThan(30);
+    expect(Object.keys(STRICT_SETTLEMENT_ALLOWLIST)).toHaveLength(0);
+  });
+
+  it.each(["H01", "H02", "H03", "H04", "H05", "H06"])(
+    "enforces board/draw split settlement for ten seeded %s hands",
+    (variantId) => {
+      const result = runProgressScenario({
+        variantId,
+        scenarioId: "cash-10-hands-smoke",
+        seed: `strict-dramaha-${variantId}`,
+        maxSteps: 260,
+      });
+      expect(result.status).toBe("passed");
+      expect(result.strictSettlements).toHaveLength(10);
+      expect(result.strictSettlements.every((entry) => entry.status === "ENFORCED" && entry.ok)).toBe(true);
+    },
+  );
+
+  it("rejects a Dramaha component winner tamper even when the total payout is unchanged", () => {
+    const controller = new DramahaGameController({
+      variant: "dramaha_badugi",
+      tableConfig: { seats: seats(), blinds: { sb: 5, bb: 10, ante: 0 } },
+      rng: createDeterministicRng("strict-dramaha-tamper"),
     });
+    const hand = playPassiveHand(controller);
+    const result = structuredClone(hand.afterState.lastHandResult);
+    const boardPot = result.potDetails.find((pot) => pot.component === "board");
+    const actualWinner = boardPot.winnerSeatIndexes[0];
+    const wrongWinner = boardPot.eligibleSeatIndexes.find((seatIndex) => seatIndex !== actualWinner);
+    boardPot.winnerSeatIndexes = [wrongWinner];
+    boardPot.winners = boardPot.winners.map((winner) => ({ ...winner, seatIndex: wrongWinner }));
+    const gate = validateStrictVariantSettlement({ variantId: "H06", ...hand, result });
+    expect(gate.ok).toBe(false);
+    expect(gate.errors.map((error) => error.code)).toContain("strict_dramaha_component_winner_mismatch");
+  });
+
+  it("rejects a Dramaha odd chip assigned to the board half", () => {
+    const controller = new DramahaGameController({
+      variant: "dramaha_hi",
+      tableConfig: { seats: seats().slice(0, 3), blinds: { sb: 5, bb: 10, ante: 1 } },
+      rng: createDeterministicRng("strict-dramaha-odd-chip-tamper"),
+    });
+    const hand = playPassiveHand(controller);
+    const result = structuredClone(hand.afterState.lastHandResult);
+    const boardPot = result.potDetails.find((pot) => pot.component === "board");
+    const drawPot = result.potDetails.find((pot) => pot.component === "draw");
+    boardPot.oddChipAmount = 1;
+    drawPot.oddChipAmount = 0;
+    const gate = validateStrictVariantSettlement({ variantId: "H01", ...hand, result });
+    expect(gate.ok).toBe(false);
+    expect(gate.errors.map((error) => error.code)).toContain("strict_dramaha_odd_chip_mismatch");
+  });
+
+  it("enforces Dramaha main/side-pot eligibility before splitting each pot", () => {
+    const controller = new DramahaGameController({
+      variant: "dramaha_hi",
+      tableConfig: { seats: seats().slice(0, 3), blinds: { sb: 5, bb: 10, ante: 0 } },
+    });
+    controller.startNewHand();
+    controller.state.street = "SHOWDOWN";
+    controller.state.boardCards = ["2C", "7D", "7H"];
+    controller.state.players = controller.state.players.map((player, index) => ({
+      ...player,
+      folded: false,
+      seatOut: false,
+      holeCards: [
+        ["2S", "2D", "AS", "KD", "QC"],
+        ["AH", "KH", "QH", "JH", "10H"],
+        ["3S", "4D", "5C", "6H", "8S"],
+      ][index],
+      totalInvested: [50, 100, 200][index],
+      stack: 0,
+    }));
+    controller.state.pot = controller.calculatePot();
+    const beforeState = structuredClone(controller.getSnapshot());
+    controller.resolveShowdown();
+    const afterState = controller.getSnapshot();
+    const gate = validateStrictVariantSettlement({ variantId: "H01", beforeState, afterState });
+    expect(gate.ok, JSON.stringify(gate.errors, null, 2)).toBe(true);
+    expect(afterState.lastHandResult.potDetails).toHaveLength(6);
+
+    const result = structuredClone(afterState.lastHandResult);
+    result.potDetails[2].eligibleSeatIndexes = [0, 1, 2];
+    result.potDetails[3].eligibleSeatIndexes = [0, 1, 2];
+    const tampered = validateStrictVariantSettlement({ variantId: "H01", beforeState, afterState, result });
+    expect(tampered.ok).toBe(false);
+    expect(tampered.errors.map((error) => error.code)).toContain("strict_dramaha_source_pot_mismatch");
+  });
+
+  it("recomputes four-player Chinese Poker points for ten seeded hands", () => {
+    const result = runProgressScenario({
+      variantId: "CP1",
+      scenarioId: "cash-10-hands-smoke",
+      seed: "strict-chinese-ten-hands",
+      maxSteps: 10,
+    });
+    expect(result.status).toBe("passed");
+    expect(result.strictSettlements).toHaveLength(10);
+    expect(result.strictSettlements.every((entry) => entry.status === "ENFORCED" && entry.ok)).toBe(true);
+  }, 60_000);
+
+  it("rejects Chinese Poker point and matchup tampering", () => {
+    const controller = new ChinesePokerController({
+      seats: [
+        { id: "hero", name: "Hero", isHero: true },
+        { id: "cpu-1", name: "CPU 1" },
+        { id: "cpu-2", name: "CPU 2" },
+        { id: "cpu-3", name: "CPU 3" },
+      ],
+      random: createDeterministicRng("strict-chinese-tamper"),
+    });
+    const started = controller.startNewHand();
+    controller.autoSetRows(started.players[0].id);
+    const afterState = controller.resolveShowdown();
+    const result = structuredClone(afterState.results);
+    result.matchups[0].royalties += 1;
+    result.matchups[0].points += 1;
+    result.totals[result.matchups[0].playerA] += 1;
+    const gate = validateStrictVariantSettlement({ variantId: "CP1", afterState, result });
+    expect(gate.ok).toBe(false);
+    expect(gate.errors.map((error) => error.code)).toEqual(expect.arrayContaining([
+      "strict_chinese_matchups_mismatch",
+      "strict_chinese_totals_mismatch",
+      "strict_chinese_points_not_zero_sum",
+    ]));
+
+    const duplicatePlayerState = structuredClone(afterState);
+    duplicatePlayerState.players[1].id = duplicatePlayerState.players[0].id;
+    const duplicatePlayerGate = validateStrictVariantSettlement({
+      variantId: "CP1",
+      afterState: duplicatePlayerState,
+      result: afterState.results,
+    });
+    expect(duplicatePlayerGate.errors.map((error) => error.code)).toContain("strict_chinese_player_ids_invalid");
   });
 
   it.each([

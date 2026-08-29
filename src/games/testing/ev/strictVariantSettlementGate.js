@@ -6,6 +6,12 @@ import { evaluateBadugiHand } from "../../evaluators/badugi.js";
 import { evaluateHighHand } from "../../evaluators/high.js";
 import { evaluateLowHand } from "../../evaluators/low.js";
 import { compareEvaluations } from "../../evaluators/registry.js";
+import {
+  compareDramahaBoard,
+  compareDramahaDraw,
+  evaluateDramahaHand,
+} from "../../dramaha/utils/dramahaEvaluator.js";
+import { compareChineseScore, evaluateChineseRows } from "../../chinese/chinesePokerScorer.js";
 import { extractPayouts, validateHandEvIntegrity } from "./evIntegrityChecker.js";
 
 const STRICT_BOARD_VARIANTS = new Set([
@@ -19,22 +25,19 @@ const STRICT_DRAW_VARIANTS = new Set([
   "S01", "S02", "S03", "S04", "S05", "S06", "S07",
 ]);
 
-const FAMILY_ALLOWLISTS = Object.freeze([
-  {
-    ids: ["H01", "H02", "H03", "H04", "H05", "H06"],
-    reason: "Dramaha settlement awaits board/draw component winner and odd-chip verification.",
-  },
-  {
-    ids: ["CP1"],
-    reason: "Classic Chinese Poker uses points rather than chip-pot settlement; a dedicated strict points gate is required.",
-  },
-]);
+const STRICT_DRAMAHA_VARIANTS = new Set(["H01", "H02", "H03", "H04", "H05", "H06"]);
+const STRICT_CHINESE_VARIANTS = new Set(["CP1"]);
 
-export const STRICT_SETTLEMENT_ALLOWLIST = Object.freeze(
-  Object.fromEntries(
-    FAMILY_ALLOWLISTS.flatMap(({ ids, reason }) => ids.map((id) => [id, reason])),
-  ),
-);
+const DRAMAHA_ENGINE_KEY_BY_VARIANT = Object.freeze({
+  H01: "dramaha_hi",
+  H02: "dramaha_27",
+  H03: "dramaha_a5",
+  H04: "dramaha_zero",
+  H05: "dramaha_hidugi",
+  H06: "dramaha_badugi",
+});
+
+export const STRICT_SETTLEMENT_ALLOWLIST = Object.freeze({});
 
 export function getStrictSettlementPolicy(variantId) {
   const variant = getVariantById(variantId);
@@ -44,7 +47,9 @@ export function getStrictSettlementPolicy(variantId) {
   if (
     STRICT_BOARD_VARIANTS.has(variant.id) ||
     STRICT_STUD_VARIANTS.has(variant.id) ||
-    STRICT_DRAW_VARIANTS.has(variant.id)
+    STRICT_DRAW_VARIANTS.has(variant.id) ||
+    STRICT_DRAMAHA_VARIANTS.has(variant.id) ||
+    STRICT_CHINESE_VARIANTS.has(variant.id)
   ) {
     return { variantId: variant.id, status: "ENFORCED", reason: null };
   }
@@ -54,6 +59,270 @@ export function getStrictSettlementPolicy(variantId) {
     status: reason ? "ALLOWLISTED" : "UNCLASSIFIED",
     reason: reason ?? "Strict settlement policy is missing.",
   };
+}
+
+function sortedUnique(values = []) {
+  return [...new Set(values)].sort((left, right) => left - right);
+}
+
+function sameJson(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function expectedPayouts(amount, winnerSeatIndexes) {
+  const seats = sortedUnique(winnerSeatIndexes);
+  if (!seats.length || amount <= 0) return [];
+  const base = Math.floor(amount / seats.length);
+  let remainder = amount - base * seats.length;
+  return seats.map((seatIndex) => {
+    const payout = base + (remainder > 0 ? 1 : 0);
+    remainder -= 1;
+    return { seatIndex, payout };
+  });
+}
+
+function buildExpectedDramahaPots(players = [], fallbackAmount = 0) {
+  const contributions = players.map((player, seatIndex) => ({
+    seatIndex: seatIndexOf(player, seatIndex),
+    amount: Math.max(0, Number(player?.totalInvested) || 0),
+    eligible: Boolean(player) && !player.folded && !player.seatOut && !player.sittingOut,
+  }));
+  const levels = sortedUnique(contributions.map((entry) => entry.amount).filter((amount) => amount > 0));
+  let previous = 0;
+  const pots = levels.map((level, sourcePotIndex) => {
+    const contributors = contributions.filter((entry) => entry.amount >= level);
+    const pot = {
+      sourcePotIndex,
+      amount: (level - previous) * contributors.length,
+      eligibleSeatIndexes: contributors.filter((entry) => entry.eligible).map((entry) => entry.seatIndex),
+    };
+    previous = level;
+    return pot;
+  });
+  if (pots.length) return pots;
+  return [{
+    sourcePotIndex: 0,
+    amount: Math.max(0, Number(fallbackAmount) || 0),
+    eligibleSeatIndexes: contributions.filter((entry) => entry.eligible).map((entry) => entry.seatIndex),
+  }];
+}
+
+function verifyDramahaSettlement(variantId, afterState, result) {
+  const errors = [];
+  const engineKey = DRAMAHA_ENGINE_KEY_BY_VARIANT[variantId];
+  const boardCards = afterState?.boardCards ?? result?.board ?? [];
+  const evaluations = (afterState?.players ?? [])
+    .map((player, index) => {
+      const seatIndex = seatIndexOf(player, index);
+      if (player?.folded || player?.seatOut || !Array.isArray(player?.holeCards) || player.holeCards.length !== 5) {
+        return null;
+      }
+      if (!Array.isArray(boardCards) || boardCards.length !== 3) return null;
+      return {
+        seatIndex,
+        evaluation: evaluateDramahaHand({
+          holeCards: player.holeCards,
+          boardCards,
+          variant: engineKey,
+        }),
+      };
+    })
+    .filter(Boolean);
+  const details = Array.isArray(result?.potDetails) ? result.potDetails : [];
+  const sourceIndexes = sortedUnique(details.map((pot) => Number(pot?.sourcePotIndex)));
+  const expectedSourcePots = buildExpectedDramahaPots(
+    afterState?.players ?? [],
+    result?.totalPot ?? result?.pot,
+  );
+  const expectedSourceIndexes = expectedSourcePots.map((pot) => pot.sourcePotIndex);
+  if (!sameJson(sourceIndexes, expectedSourceIndexes)) {
+    errors.push({
+      code: "strict_dramaha_source_pot_indexes_mismatch",
+      variantId,
+      expected: expectedSourceIndexes,
+      actual: sourceIndexes,
+    });
+  }
+
+  for (const sourcePotIndex of sourceIndexes) {
+    const components = details.filter((pot) => Number(pot?.sourcePotIndex) === sourcePotIndex);
+    const boardPot = components.find((pot) => pot?.component === "board");
+    const drawPot = components.find((pot) => pot?.component === "draw");
+    if (components.length !== 2 || !boardPot || !drawPot) {
+      errors.push({ code: "strict_dramaha_component_pair_missing", variantId, sourcePotIndex });
+      continue;
+    }
+    const boardAmount = Math.max(0, Number(boardPot.amount ?? boardPot.potAmount) || 0);
+    const drawAmount = Math.max(0, Number(drawPot.amount ?? drawPot.potAmount) || 0);
+    const sourceAmount = boardAmount + drawAmount;
+    if (boardAmount !== Math.floor(sourceAmount / 2) || drawAmount !== Math.ceil(sourceAmount / 2)) {
+      errors.push({
+        code: "strict_dramaha_component_split_mismatch",
+        variantId,
+        sourcePotIndex,
+        boardAmount,
+        drawAmount,
+      });
+    }
+    const expectedOddChip = sourceAmount % 2;
+    if (Number(boardPot.oddChipAmount ?? 0) !== 0 || Number(drawPot.oddChipAmount ?? 0) !== expectedOddChip) {
+      errors.push({
+        code: "strict_dramaha_odd_chip_mismatch",
+        variantId,
+        sourcePotIndex,
+        expectedOddChip,
+      });
+    }
+    const boardEligible = sortedUnique(boardPot.eligibleSeatIndexes ?? []);
+    const drawEligible = sortedUnique(drawPot.eligibleSeatIndexes ?? []);
+    if (!sameJson(boardEligible, drawEligible)) {
+      errors.push({
+        code: "strict_dramaha_component_eligibility_mismatch",
+        variantId,
+        sourcePotIndex,
+        boardEligible,
+        drawEligible,
+      });
+      continue;
+    }
+    const expectedSourcePot = expectedSourcePots.find((pot) => pot.sourcePotIndex === sourcePotIndex);
+    if (
+      !expectedSourcePot ||
+      sourceAmount !== expectedSourcePot.amount ||
+      !sameJson(boardEligible, sortedUnique(expectedSourcePot.eligibleSeatIndexes))
+    ) {
+      errors.push({
+        code: "strict_dramaha_source_pot_mismatch",
+        variantId,
+        sourcePotIndex,
+        expected: expectedSourcePot ?? null,
+        actual: { amount: sourceAmount, eligibleSeatIndexes: boardEligible },
+      });
+      continue;
+    }
+    const candidates = evaluations.filter((entry) => boardEligible.includes(entry.seatIndex));
+    if (!candidates.length) {
+      errors.push({ code: "strict_dramaha_pot_has_no_evaluable_player", variantId, sourcePotIndex });
+      continue;
+    }
+    for (const [component, pot, compare] of [
+      ["board", boardPot, compareDramahaBoard],
+      ["draw", drawPot, compareDramahaDraw],
+    ]) {
+      const best = candidates.reduce((current, entry) =>
+        !current || compare(entry.evaluation, current.evaluation) < 0 ? entry : current,
+      null);
+      const expectedSeats = sortedUnique(
+        candidates.filter((entry) => compare(entry.evaluation, best.evaluation) === 0).map((entry) => entry.seatIndex),
+      );
+      const actualSeats = sortedUnique(pot.winnerSeatIndexes ?? pot.winners?.map((winner) => winner.seatIndex) ?? []);
+      if (!sameJson(actualSeats, expectedSeats)) {
+        errors.push({
+          code: "strict_dramaha_component_winner_mismatch",
+          variantId,
+          sourcePotIndex,
+          component,
+          expected: expectedSeats,
+          actual: actualSeats,
+        });
+      }
+      const amount = Math.max(0, Number(pot.amount ?? pot.potAmount) || 0);
+      const actualPayouts = (pot.winners ?? [])
+        .map((winner) => ({ seatIndex: winner.seatIndex, payout: Number(winner.payout) || 0 }))
+        .sort((left, right) => left.seatIndex - right.seatIndex);
+      const payouts = expectedPayouts(amount, expectedSeats);
+      if (!sameJson(actualPayouts, payouts)) {
+        errors.push({
+          code: "strict_dramaha_component_payout_mismatch",
+          variantId,
+          sourcePotIndex,
+          component,
+          expected: payouts,
+          actual: actualPayouts,
+        });
+      }
+    }
+  }
+  return errors;
+}
+
+function scoreChineseMatchup(left, right) {
+  if (left.evaluation.foul && right.evaluation.foul) {
+    return { points: 0, rows: {}, royalties: 0, scoop: 0, foul: "both" };
+  }
+  if (left.evaluation.foul) {
+    return { points: -6, rows: { front: -1, middle: -1, back: -1 }, royalties: 0, scoop: -3, foul: left.id };
+  }
+  if (right.evaluation.foul) {
+    return { points: 6, rows: { front: 1, middle: 1, back: 1 }, royalties: 0, scoop: 3, foul: right.id };
+  }
+  const rows = {};
+  let rowPoints = 0;
+  for (const row of ["front", "middle", "back"]) {
+    const comparison = compareChineseScore(left.evaluation[row], right.evaluation[row]);
+    rows[row] = comparison < 0 ? 1 : comparison > 0 ? -1 : 0;
+    rowPoints += rows[row];
+  }
+  const scoop = rowPoints === 3 ? 3 : rowPoints === -3 ? -3 : 0;
+  const royalties = left.evaluation.royalties.total - right.evaluation.royalties.total;
+  return { points: rowPoints + scoop + royalties, rows, royalties, scoop, foul: null };
+}
+
+export function validateChinesePokerPoints({ afterState, result = afterState?.results } = {}) {
+  const errors = [];
+  const players = Array.isArray(afterState?.players) ? afterState.players : [];
+  if (players.length < 2 || players.length > 4) {
+    errors.push({ code: "strict_chinese_player_count_invalid", count: players.length });
+  }
+  const playerIds = players
+    .map((player) => player?.id)
+    .filter((id) => typeof id === "string" && id.length > 0);
+  if (playerIds.length !== players.length || new Set(playerIds).size !== players.length) {
+    errors.push({ code: "strict_chinese_player_ids_invalid", playerIds });
+  }
+  const evaluations = [];
+  const allCards = [];
+  for (const player of players) {
+    const rows = player?.rows ?? {};
+    const cards = [...(rows.front ?? []), ...(rows.middle ?? []), ...(rows.back ?? [])];
+    const hand = Array.isArray(player?.hand) ? player.hand : [];
+    if ((rows.front?.length ?? 0) !== 3 || (rows.middle?.length ?? 0) !== 5 || (rows.back?.length ?? 0) !== 5) {
+      errors.push({ code: "strict_chinese_row_shape_invalid", playerId: player?.id });
+      continue;
+    }
+    if (new Set(cards).size !== 13 || hand.length !== 13 || !sameJson([...cards].sort(), [...hand].sort())) {
+      errors.push({ code: "strict_chinese_card_ownership_invalid", playerId: player?.id });
+      continue;
+    }
+    allCards.push(...cards);
+    evaluations.push({ id: player.id, evaluation: evaluateChineseRows(rows) });
+  }
+  if (new Set(allCards).size !== allCards.length) {
+    errors.push({ code: "strict_chinese_cross_player_duplicate_card" });
+  }
+  const expectedTotals = Object.fromEntries(players.map((player) => [player.id, 0]));
+  const expectedMatchups = [];
+  for (let leftIndex = 0; leftIndex < evaluations.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < evaluations.length; rightIndex += 1) {
+      const left = evaluations[leftIndex];
+      const right = evaluations[rightIndex];
+      const matchup = scoreChineseMatchup(left, right);
+      expectedTotals[left.id] += matchup.points;
+      expectedTotals[right.id] -= matchup.points;
+      expectedMatchups.push({ playerA: left.id, playerB: right.id, ...matchup });
+    }
+  }
+  if (!sameJson(result?.matchups ?? [], expectedMatchups)) {
+    errors.push({ code: "strict_chinese_matchups_mismatch", expected: expectedMatchups, actual: result?.matchups ?? [] });
+  }
+  if (!sameJson(result?.totals ?? {}, expectedTotals)) {
+    errors.push({ code: "strict_chinese_totals_mismatch", expected: expectedTotals, actual: result?.totals ?? {} });
+  }
+  const totalPoints = Object.values(result?.totals ?? {}).reduce((sum, value) => sum + Number(value || 0), 0);
+  if (!Number.isFinite(totalPoints) || totalPoints !== 0) {
+    errors.push({ code: "strict_chinese_points_not_zero_sum", totalPoints });
+  }
+  return { ok: errors.length === 0, errors, expectedTotals, expectedMatchups };
 }
 
 function drawCards(player = {}) {
@@ -417,11 +686,21 @@ export function validateStrictVariantSettlement({
   variantId,
   beforeState,
   afterState,
-  result = afterState?.lastHandResult,
+  result = afterState?.lastHandResult ?? afterState?.results,
 } = {}) {
   const policy = getStrictSettlementPolicy(variantId);
   if (policy.status !== "ENFORCED") {
     return { ok: policy.status === "ALLOWLISTED", policy, errors: [], check: null };
+  }
+
+  if (STRICT_CHINESE_VARIANTS.has(variantId)) {
+    const pointsCheck = validateChinesePokerPoints({ afterState, result });
+    return {
+      ok: pointsCheck.ok,
+      policy,
+      errors: pointsCheck.errors,
+      check: pointsCheck,
+    };
   }
 
   const check = validateHandEvIntegrity({
@@ -457,6 +736,8 @@ export function validateStrictVariantSettlement({
     strictErrors.push(...verifyStudPotWinners(variantId, afterState, result));
   } else if (STRICT_DRAW_VARIANTS.has(variantId)) {
     strictErrors.push(...verifyDrawPotWinners(variantId, afterState, result));
+  } else if (STRICT_DRAMAHA_VARIANTS.has(variantId)) {
+    strictErrors.push(...verifyDramahaSettlement(variantId, afterState, result));
   }
   const errors = [...check.errors, ...strictErrors];
   return { ok: errors.length === 0, policy, errors, check };

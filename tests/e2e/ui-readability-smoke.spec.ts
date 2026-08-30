@@ -177,7 +177,12 @@ async function captureReplayEvidence(page: Page) {
     )
     .toBe(true);
 
-  await page.getByRole("button", { name: /履歴|History/i }).first().click();
+  const resultHistory = page.getByTestId("hand-result-history");
+  if (await resultHistory.isVisible().catch(() => false)) {
+    await resultHistory.click();
+  } else {
+    await page.getByRole("button", { name: /履歴|History/i }).first().click();
+  }
   await expect(page.getByTestId("game-utility-modal")).toBeVisible({ timeout: 10000 });
   await page.getByTestId(`hand-history-row-${handId}`).click();
   await expect(page.getByTestId("hand-replay-screen")).toBeVisible({ timeout: 10000 });

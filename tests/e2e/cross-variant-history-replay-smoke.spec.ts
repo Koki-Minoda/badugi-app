@@ -121,7 +121,12 @@ async function waitForFinalizedHistory(page: Page, handId: string) {
 }
 
 async function openReplayFromHistoryUi(page: Page, handId: string) {
-  await page.getByRole("button", { name: /履歴|History/i }).first().click();
+  const resultHistory = page.getByTestId("hand-result-history");
+  if (await resultHistory.isVisible().catch(() => false)) {
+    await resultHistory.click();
+  } else {
+    await page.getByRole("button", { name: /履歴|History/i }).first().click();
+  }
   const modal = page.getByTestId("game-utility-modal");
   await expect(modal).toBeVisible({ timeout: 10000 });
   await modal.getByTestId(`hand-history-row-${handId}`).click();

@@ -141,7 +141,7 @@ test("a real Badugi hand replays the same actions, chips, pot, and draw cards", 
 
   await page.mouse.move(4, 4);
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: /履歴|History/i }).first().click();
+  await page.getByTestId("hand-result-history").click();
   await page.getByTestId(`hand-history-row-${audit.handId}`).click();
   await expect(page.getByTestId("hand-replay-screen")).toBeVisible();
   await page.getByTestId("replay-last-frame").click();

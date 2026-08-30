@@ -50,7 +50,7 @@ export async function playCashHand(page: Page, variant: (typeof CORE5_VARIANTS)[
 }
 
 export async function cashOutToSelector(page: Page) {
-  await page.getByRole("button", { name: /Cash Out/i }).click();
+  await page.getByTestId("hand-result-cash-out").click();
   const dialog = page.getByRole("dialog", { name: /Cash out result/i });
   await expect(dialog).toBeVisible({ timeout: 15000 });
   await dialog.getByRole("button", { name: /ゲーム選択|Game Select|Select Game/i }).click();

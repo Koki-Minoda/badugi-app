@@ -7,12 +7,14 @@ export default defineConfig({
     headless: true,
     screenshot: 'only-on-failure',
   },
-  webServer: {
-    command: 'npm run dev -- --host 127.0.0.1 --port 3000',
-    port: 3000,
-    timeout: 120000,
-    reuseExistingServer: true,
-  },
+  webServer: process.env.E2E_APP_URL || process.env.LIVE_PREVIEW === '1'
+    ? undefined
+    : {
+        command: 'npm run dev -- --host 127.0.0.1 --port 3000',
+        port: 3000,
+        timeout: 120000,
+        reuseExistingServer: true,
+      },
   projects: [
     {
       name: 'legacy-e2e',

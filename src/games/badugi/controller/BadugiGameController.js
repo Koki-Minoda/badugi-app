@@ -154,6 +154,13 @@ export class BadugiGameController extends GameController {
       startingStack: config.startingStack ?? 500,
       heroProfile: config.heroProfile ?? {},
       blindStructure: config.blindStructure ?? DEFAULT_BLINDS,
+      // Controller actions accept the table's base big blind. The legacy
+      // controller derives the doubled fixed-limit unit for later streets.
+      betSize:
+        config.betSize ??
+        config.structure?.bb ??
+        config.blindStructure?.[0]?.bb ??
+        DEFAULT_BLINDS[0].bb,
       lastStructureIndex:
         config.lastStructureIndex ??
         Math.max(0, (config.blindStructure?.length ?? DEFAULT_BLINDS.length) - 1),
@@ -279,10 +286,18 @@ export class BadugiGameController extends GameController {
       return this._applyDrawAction({ referenceState, seatIndex, payload });
     }
 
+    // The immutable controller state is the action source of truth. Legacy UI
+    // helpers can also touch the compatibility controller between actions;
+    // without this reconciliation an old street contribution can survive a
+    // draw transition and make a visible Check/Bet button reject forever.
+    if (referenceState?.snapshot) {
+      this._syncLegacyFromSnapshot(referenceState.snapshot);
+    }
+
     const result = this.legacy.applyPlayerAction({
       seatIndex,
       payload: { ...payload, type: normalizedType },
-      betSize: action.betSize ?? this.config.betSize,
+      betSize: this.config.betSize ?? action.betSize,
       players: action.players ?? null,
     });
     const events = [];
@@ -514,6 +529,47 @@ export class BadugiGameController extends GameController {
       return Math.max(0, actor.lastDrawCount);
     }
     return 0;
+  }
+
+  _syncLegacyFromSnapshot(snapshot = {}) {
+    const metadata = snapshot?.metadata ?? {};
+    const nextTurn =
+      typeof snapshot.nextTurn === "number"
+        ? snapshot.nextTurn
+        : typeof snapshot.turn === "number"
+          ? snapshot.turn
+          : typeof snapshot.currentActor === "number"
+            ? snapshot.currentActor
+            : null;
+    this.legacy.syncExternalState({
+      players: clonePlayers(snapshot.players ?? []),
+      dealerIdx:
+        snapshot.dealerIdx ??
+        snapshot.dealerSeat ??
+        metadata.dealerIdx ??
+        metadata.dealerSeat ??
+        this.legacy.state.dealerIdx,
+      currentBet: snapshot.currentBet ?? metadata.currentBet ?? 0,
+      betHead: snapshot.betHead ?? metadata.betHead ?? null,
+      lastAggressorIdx:
+        snapshot.lastAggressorIdx ??
+        snapshot.lastAggressor ??
+        metadata.lastAggressorIdx ??
+        metadata.lastAggressor ??
+        null,
+      raiseCountThisRound:
+        snapshot.raiseCountThisRound ?? metadata.raiseCountThisRound ?? 0,
+      raiseCap: snapshot.raiseCap ?? metadata.raiseCap ?? this.legacy.state.raiseCap,
+      phase: snapshot.phase ?? snapshot.street ?? metadata.phase ?? "BET",
+      drawRound:
+        snapshot.drawRound ??
+        snapshot.drawRoundIndex ??
+        metadata.drawRound ??
+        metadata.drawRoundIndex ??
+        0,
+      turn: nextTurn,
+      nextTurn,
+    });
   }
 
   _finishBetRound() {

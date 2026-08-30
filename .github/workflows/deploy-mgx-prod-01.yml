@@ -159,6 +159,26 @@ jobs:
       - run: python -m pip install -e './backend[test]'
       - run: npx playwright install --with-deps chromium
       - run: bash scripts/ci/run-with-backend.sh npm run test:core5:pr-e2e
+      - name: Real-button Badugi cash playability through blind increase
+        env:
+          MGX_CASH_QA: "1"
+          MGX_CASH_DESKTOP_HANDS: "16"
+          MGX_CASH_ANDROID_HANDS: "5"
+        run: |
+          bash scripts/ci/run-with-backend.sh npx playwright test \
+            tests/e2e/production-cash-playability.spec.ts \
+            --project=badugi-flow \
+            --workers=1
+      - name: Upload cash-playability failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cash-playability-failure
+          path: |
+            test-results/
+            reports/production-cash/
+          if-no-files-found: ignore
+          retention-days: 14
 
   mobile-webkit-qa:
     runs-on: ubuntu-latest

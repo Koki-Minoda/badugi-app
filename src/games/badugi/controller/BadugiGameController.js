@@ -310,6 +310,24 @@ export class BadugiGameController extends GameController {
       return { state, events };
     }
 
+    const liveContenders = (this.legacy.state.players ?? []).filter(
+      (player) => player && !isFoldedOrOut(player),
+    );
+    if (liveContenders.length === 1) {
+      this.legacy.state.phase = "SHOWDOWN";
+      this.legacy.state.turn = null;
+      this.legacy.state.nextTurn = null;
+      this._resolveShowdownAndApplyPayouts();
+      events.push({ type: "handComplete", reason: "uncontested" });
+      return {
+        state: this._buildControllerState({
+          handIndex: referenceState?.handIndex ?? 0,
+          context: referenceState?.context ?? null,
+        }),
+        events,
+      };
+    }
+
     const referenceSnapshot = referenceState?.snapshot ?? {};
     const referenceMetadata = referenceSnapshot?.metadata ?? {};
     const advanceSnapshot = this.legacy.advanceStreet({
@@ -814,7 +832,11 @@ export class BadugiGameController extends GameController {
       phase: normalized.phase ?? metadata.phase ?? this.legacy.state.phase ?? "BET",
       drawRound:
         normalized.drawRound ??
+        normalized.drawRoundIndex ??
+        normalized.betRoundIndex ??
         metadata.drawRound ??
+        metadata.drawRoundIndex ??
+        metadata.betRoundIndex ??
         this.legacy.state.drawRound ??
         0,
       turn: nextTurn,

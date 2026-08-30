@@ -11633,7 +11633,11 @@ export default function App() {
 
     const controllerOutcome = tryControllerBetAction({
       actionType: "raise",
-      amount: raiseAmt,
+      // Fixed-limit controllers derive the only legal contribution from their
+      // canonical state.  Omitting an explicit amount prevents a render-lagged
+      // street counter from turning a visible Raise button into a rejected no-op.
+      amount:
+        isSingleTableBadugi || isSingleTableDrawLowball ? null : raiseAmt,
       seatIndex: 0,
     });
     if (controllerOutcome?.snapshot) {
@@ -13235,8 +13239,16 @@ export default function App() {
   );
   const currentRaiseUnit = getFixedLimitBetSize({
     baseBet: BB,
-    drawRound: drawRoundSrc,
-    betRound: betRoundIndexSrc,
+    drawRound:
+      effectiveControllerSnapshot?.drawRound ??
+      effectiveControllerSnapshot?.drawRoundIndex ??
+      effectiveControllerSnapshot?.metadata?.drawRound ??
+      effectiveControllerSnapshot?.metadata?.drawRoundIndex ??
+      drawRoundSrc,
+    betRound:
+      effectiveControllerSnapshot?.betRoundIndex ??
+      effectiveControllerSnapshot?.metadata?.betRoundIndex ??
+      betRoundIndexSrc,
   });
   const heroSeatIndex =
     typeof heroSeatView?.seatIndex === "number" ? heroSeatView.seatIndex : 0;

@@ -146,7 +146,8 @@ describe("BadugiGameController – betting", () => {
       snapshot: {
         ...snapshot,
         phase: "BET",
-        drawRound: 1,
+        drawRound: undefined,
+        drawRoundIndex: 1,
         betRoundIndex: 1,
         currentBet: 0,
         turn: 0,
@@ -217,6 +218,68 @@ describe("BadugiGameController – betting", () => {
 
     expect(result.events.some((event) => event.type === "invalidAction")).toBe(false);
     expect(controller.getUiSnapshot(result.state).players[0].betThisRound).toBe(40);
+  });
+
+  it("derives an implicit fixed-limit raise when the UI sends null", () => {
+    const controller = createSixMaxController();
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU", "CPU", "CPU"],
+      structure: { sb: 10, bb: 20, ante: 0 },
+    });
+    const started = controller.createNewHandState(initial, {});
+    const snapshot = controller.getUiSnapshot(started);
+    const actor = snapshot.turn ?? snapshot.nextTurn;
+    const actorBefore = snapshot.players[actor].betThisRound;
+    const toCall = snapshot.currentBet - actorBefore;
+
+    const result = controller.applyAction(started, {
+      seatIndex: actor,
+      payload: { type: "raise", amount: null },
+    });
+    const actorAfter = controller.getUiSnapshot(result.state).players[actor];
+
+    expect(result.events.some((event) => event.type === "invalidAction")).toBe(false);
+    expect(actorAfter.betThisRound).toBe(actorBefore + toCall + 20);
+  });
+
+  it("settles immediately when the final opponent folds", () => {
+    const controller = createSixMaxController();
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU", "CPU", "CPU"],
+      structure: { sb: 10, bb: 20, ante: 0 },
+    });
+    const started = controller.createNewHandState(initial, {});
+    const snapshot = controller.getUiSnapshot(started);
+    const state = controller.syncFromExternalState({
+      snapshot: {
+        ...snapshot,
+        phase: "BET",
+        currentBet: 20,
+        turn: 1,
+        nextTurn: 1,
+        players: snapshot.players.map((player, seatIndex) => ({
+          ...player,
+          stack: seatIndex === 0 ? 480 : seatIndex === 1 ? 480 : 500,
+          totalInvested: seatIndex <= 1 ? 20 : 0,
+          betThisRound: seatIndex <= 1 ? 20 : 0,
+          folded: seatIndex > 1,
+          hasFolded: seatIndex > 1,
+          seatOut: false,
+        })),
+      },
+      handIndex: 10,
+    });
+
+    const result = controller.applyAction(state, {
+      seatIndex: 1,
+      payload: { type: "fold" },
+    });
+    const settled = controller.getUiSnapshot(result.state);
+
+    expect(result.events).toContainEqual({ type: "handComplete", reason: "uncontested" });
+    expect(settled.phase).toBe("SHOWDOWN");
+    expect(settled.players[0].stack).toBe(520);
+    expect(settled.lastHandResult?.totalPot ?? settled.lastHandResult?.pot).toBe(40);
   });
 
   it("uses an updated cash blind level for the next opening-street raise", () => {

@@ -119,7 +119,9 @@ async function driveHandLikePlayer(page: Page, hand: number) {
     if (actions.includes("action-draw-selected")) {
       if (hand % 3 === 0) {
         const firstCard = page.getByTestId("player-0-card-0").first();
-        if (await firstCard.isVisible().catch(() => false)) await firstCard.click();
+        if (await firstCard.isVisible().catch(() => false)) {
+          await firstCard.click({ timeout: 5_000 });
+        }
       }
       target = "action-draw-selected";
       drawClicks += 1;
@@ -132,7 +134,7 @@ async function driveHandLikePlayer(page: Page, hand: number) {
     }
 
     if (!target) throw new Error(`No playable Hero action: ${JSON.stringify({ hand, actions, trace })}`);
-    await page.getByTestId(target).first().click();
+    await page.getByTestId(target).first().click({ timeout: 5_000 });
     heroButtonClicks += 1;
     await page.waitForTimeout(100);
   }
@@ -190,7 +192,7 @@ async function runHands(page: Page, handCount: number) {
 
       const nextHand = page.getByRole("button", { name: /next hand/i }).first();
       await expect(nextHand).toBeVisible({ timeout: 10_000 });
-      await nextHand.click();
+      await nextHand.click({ timeout: 5_000 });
       await expect(page.getByText("Hand Result").first()).toBeHidden({ timeout: 15_000 });
       await expect(page.getByTestId("decision-panel")).toBeVisible({ timeout: 20_000 });
     }

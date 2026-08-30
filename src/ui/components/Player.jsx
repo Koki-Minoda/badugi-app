@@ -462,7 +462,7 @@ export default function Player({
   const playerDetailTitle = playerDetailLines.join("\n");
 
   const openHud = useCallback(() => {
-    if (isHero && phase === "DRAW") {
+    if (isHero && (phase === "DRAW" || canSelectForDraw)) {
       setHudOpen(false);
       return;
     }
@@ -503,7 +503,13 @@ export default function Player({
       width: `${width}px`,
     });
     setHudOpen(true);
-  }, [isHero, phase]);
+  }, [canSelectForDraw, isHero, phase]);
+
+  useEffect(() => {
+    if (isHero && (phase === "DRAW" || canSelectForDraw)) {
+      setHudOpen(false);
+    }
+  }, [canSelectForDraw, isHero, phase]);
 
   const scheduleCloseHud = useCallback(() => {
     if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
@@ -916,7 +922,13 @@ export default function Player({
                       selected={
                         isHero && (player.selected || []).includes(sourceIndex)
                       }
-                      onClick={() => handleCardClick(sourceIndex)}
+                      onClick={(event) => {
+                        event?.stopPropagation?.();
+                        handleCardClick(sourceIndex);
+                      }}
+                      onFocus={(event) => {
+                        if (isHero && canSelectForDraw) event.stopPropagation();
+                      }}
                       folded={isFolded}
                       studDown={isStudDownCard && !isHiddenFromHero}
                       data-testid={`player-${index}-card-${sourceIndex}`}

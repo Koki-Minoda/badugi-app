@@ -148,8 +148,13 @@ describe("Player", () => {
     fireEvent.mouseEnter(screen.getByTestId("seat-0"));
     expect(screen.queryByTestId("seat-0-detail")).toBeNull();
 
-    fireEvent.click(screen.getByTestId("player-0-card-0"));
+    const drawCard = screen.getByTestId("player-0-card-0");
+    fireEvent.focus(drawCard);
+    expect(screen.queryByTestId("seat-0-detail")).toBeNull();
+
+    fireEvent.click(drawCard);
     expect(handleCardClick).toHaveBeenCalledWith(0);
+    expect(screen.queryByTestId("seat-0-detail")).toBeNull();
   });
 
   test("keeps non-hero draw cards face down before showdown", () => {

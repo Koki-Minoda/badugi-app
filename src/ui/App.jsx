@@ -88,6 +88,7 @@ import {
 import { GAME_VARIANTS } from "../games/core/variants.js";
 import { canLaunchVariant } from "../games/config/canLaunchVariant.js";
 import { buildHandResultSummary } from "../games/badugi/flow/handResultUtils.js";
+import { computeNextBlindLevel } from "../games/badugi/flow/handLifecycle.js";
 import { getGameUIAdapter } from "./game/GameUIAdapterRegistry.js";
 import { ensureBadugiUIAdapterRegistered } from "./game/badugi/registerBadugiUIAdapter.js";
 import { ensureNLHUIAdapterRegistered } from "./game/nlh/registerNLHUIAdapter.js";
@@ -757,8 +758,12 @@ export default function App() {
     [],
   );
   const stageGameId = useMemo(
-    () => tournamentSession?.gameId ?? DEFAULT_GAME_ID,
-    [tournamentSession],
+    () =>
+      tournamentSession?.gameId ??
+      (mode === "cash"
+        ? normalizeAppVariantId(gameVariant, DEFAULT_GAME_VARIANT)
+        : DEFAULT_GAME_ID),
+    [gameVariant, mode, tournamentSession],
   );
 
   useEffect(() => {
@@ -2764,7 +2769,6 @@ export default function App() {
           legacyRecord.variantName ??
           handHistoryRef.current.variantName ??
           null;
-        handHistoryRef.current.legacyRecord = legacyRecord;
         handHistoryRef.current.seats = Array.isArray(legacyRecord.seats)
           ? legacyRecord.seats.map((seat) => ({ ...seat }))
           : handHistoryRef.current.seats;
@@ -3681,9 +3685,11 @@ export default function App() {
       if (!preserveHandCount) {
         handCountRef.current = 0;
       }
-      handHistoryBufferRef.current = [];
-      handHistoryRef.current = null;
-      currentHandHistoryRef.current = null;
+      if (!preserveHandCount || destroyControllers) {
+        handHistoryBufferRef.current = [];
+        handHistoryRef.current = null;
+        currentHandHistoryRef.current = null;
+      }
       lastPotSummaryRef.current = [];
       tableMetadataRef.current = {};
       handIdRef.current = null;
@@ -3884,10 +3890,14 @@ export default function App() {
     const seatState =
       playerSnapshot ??
       (seatIdx !== null ? playersRef.current?.[seatIdx] : null);
+    const normalizedTraceAction = String(entry.action ?? "").toLowerCase();
+    const isFoldedSeatBookkeeping = ["fold", "out"].includes(
+      normalizedTraceAction,
+    );
     if (
       seatState &&
       (seatState.folded || seatState.hasFolded) &&
-      entry.action !== "Fold"
+      !isFoldedSeatBookkeeping
     ) {
       logE2EError("folded seat acted", {
         seat: seatIdx,
@@ -4152,8 +4162,12 @@ export default function App() {
       ...(metadata || {}),
       actionId: nextActionId,
     };
+    const normalizedActionLabel = String(type ?? "").toLowerCase();
+    const isDrawAction =
+      normalizedActionLabel.includes("draw") ||
+      normalizedActionLabel.includes("pat");
     const sourceDrawInfo = drawInfo ?? metadata?.drawInfo;
-    const normalizedDrawInfo = sourceDrawInfo
+    const normalizedDrawInfo = sourceDrawInfo && isDrawAction
       ? {
           ...sourceDrawInfo,
           replacedCards: Array.isArray(sourceDrawInfo.replacedCards)
@@ -4226,7 +4240,6 @@ export default function App() {
         : seatSnapshot && typeof seatSnapshot.betThisRound === "number"
           ? seatSnapshot.betThisRound
           : 0;
-    const normalizedActionLabel = String(type ?? "").toLowerCase();
     const resolvedIsForced =
       typeof metadata?.isForced === "boolean"
         ? metadata.isForced
@@ -7159,7 +7172,7 @@ export default function App() {
     setCurrentScreen("menu");
   }, []);
 
-  const handleOpenReplayFromHistory = useCallback((handId, target = null) => {
+  const handleOpenReplayFromHistory = useCallback((handId, target = null, returnScreen = null) => {
     if (!handId) return;
     const snapshot = findHandHistoryById(handId);
     if (!snapshot) {
@@ -7168,7 +7181,7 @@ export default function App() {
     }
     setReplayHandId(handId);
     setReplayTarget(target);
-    setReplayReturnScreen(null);
+    setReplayReturnScreen(returnScreen);
     setCurrentScreen("handReplay");
   }, []);
 
@@ -7342,6 +7355,20 @@ export default function App() {
           )
         : activeBlindStructure;
       const handLastStructureIndex = Math.max(0, handBlindStructure.length - 1);
+      const nextDrawRingBlindState = activeHandIsSingleTableDrawLowball
+        ? computeNextBlindLevel({
+            isFreshStart: !prevPlayers,
+            currentBlindLevelIndex: blindLevelSnapshot,
+            currentHandsInLevel: handsInLevelSnapshot,
+            blindStructure: handBlindStructure,
+            lastStructureIndex: handLastStructureIndex,
+          })
+        : null;
+      const nextDrawRingStructure = nextDrawRingBlindState
+        ? (handBlindStructure[nextDrawRingBlindState.blindLevelIndex] ??
+          handBlindStructure[handLastStructureIndex] ??
+          handBlindStructure[0])
+        : null;
 
       const legacyGameController = ensureGameController();
       let controllerHandSnapshot = null;
@@ -7425,6 +7452,13 @@ export default function App() {
                   handsInLevel: handsInLevelSnapshot,
                 },
                 lastStructureIndex: handLastStructureIndex,
+                structure: nextDrawRingStructure
+                  ? {
+                      sb: nextDrawRingStructure.sb ?? 0,
+                      bb: nextDrawRingStructure.bb ?? 0,
+                      ante: nextDrawRingStructure.ante ?? 0,
+                    }
+                  : undefined,
                 drawCardsForSeat: assignInitialHands,
               },
             );
@@ -7468,9 +7502,17 @@ export default function App() {
                   );
                 nextHandState = {
                   players: snapshotPlayers,
-                  blindLevelIndex: blindLevelSnapshot,
-                  handsInLevel: handsInLevelSnapshot,
-                  blindValues: { sb: SB, bb: BB, ante: currentAnte },
+                  blindLevelIndex:
+                    nextDrawRingBlindState?.blindLevelIndex ?? blindLevelSnapshot,
+                  handsInLevel:
+                    nextDrawRingBlindState?.handsInLevel ?? handsInLevelSnapshot,
+                  blindValues: nextDrawRingStructure
+                    ? {
+                        sb: nextDrawRingStructure.sb ?? 0,
+                        bb: nextDrawRingStructure.bb ?? 0,
+                        ante: nextDrawRingStructure.ante ?? 0,
+                      }
+                    : { sb: SB, bb: BB, ante: currentAnte },
                   sbIdx: resolvedSbIdx,
                   bbIdx: resolvedBbIdx,
                   sbPay: investedForSeat(resolvedSbIdx),
@@ -7905,6 +7947,7 @@ export default function App() {
           });
       const nextHandSnapshot = {
         ...seedSnapshot,
+        lastHandResult: null,
         phase: "BET",
         drawRound: 0,
         betRoundIndex: 0,
@@ -7914,6 +7957,11 @@ export default function App() {
         lastAggressor: bbIdx ?? null,
         nextTurn: resolvedTurn,
         turn: resolvedTurn,
+        overlays: {
+          ...(seedSnapshot?.overlays ?? {}),
+          handResult: { visible: false, summary: null },
+          showNextButton: false,
+        },
         metadata: {
           ...(seedSnapshot?.metadata ?? {}),
           phase: "BET",
@@ -9438,6 +9486,11 @@ export default function App() {
         dealerIdx,
         handId: handIdRef.current,
         handCount: handCountRef.current,
+        blindLevelIndex: blindLevelIndexRef.current,
+        handsInLevel: handsInLevelRef.current,
+        smallBlind: SB,
+        bigBlind: BB,
+        ante: currentAnte,
         gameVariant: gameVariantRef.current,
         potTotal: totalPotRef.current,
         pots: (potsRef.current ?? pots ?? []).map((potEntry, potIndex) => ({
@@ -11040,12 +11093,49 @@ export default function App() {
       summaryWithContext?.pot ?? totalPotValue,
       finalPlayers,
     );
-    finalizeCanonicalHandHistory({
+    const canonicalHistory = finalizeCanonicalHandHistory({
       winners: canonicalWinners,
       totalPot: summaryWithContext?.pot ?? totalPotValue,
       legacyRecord: legacySnapshot,
       playersSnapshot: finalPlayers,
     });
+    const existingCanonicalHistory = legacySnapshot?.handId
+      ? [
+          ...(handHistoryBufferRef.current ?? []),
+          ...readPersistedHandHistory({ limit: 200 }),
+        ].find(
+          (entry) =>
+            entry?.handId === legacySnapshot.handId &&
+            Array.isArray(entry?.events) &&
+            entry.events.length > 0,
+        )
+      : null;
+    if (
+      !canonicalHistory &&
+      !existingCanonicalHistory &&
+      legacySnapshot &&
+      !isTournament
+    ) {
+      console.warn(
+        "[HAND_HISTORY] canonical cash record unavailable; persisting finalized replay record",
+        { handId: legacySnapshot.handId, variantId: legacySnapshot.variantId },
+      );
+      const fallbackHistory = {
+        ...legacySnapshot,
+        historySource: "cash",
+      };
+      handHistoryBufferRef.current = [
+        ...handHistoryBufferRef.current.filter(
+          (entry) => entry?.handId !== fallbackHistory.handId,
+        ),
+        fallbackHistory,
+      ];
+      try {
+        saveHandHistory(fallbackHistory);
+      } catch (error) {
+        console.warn("[HAND_HISTORY] fallback cash persistence failed", error);
+      }
+    }
     const canPlayNext = canContinueGame(finalPlayers);
     if (canPlayNext) {
       phaseRef.current = "WAITING_NEXT_HAND";
@@ -13896,7 +13986,7 @@ export default function App() {
       onClose={handleCloseGameUtilityModal}
       onReplay={(handId, target) => {
         handleCloseGameUtilityModal();
-        handleOpenReplayFromHistory(handId, target);
+        handleOpenReplayFromHistory(handId, target, currentScreen);
       }}
     />
   ) : null;
@@ -13980,7 +14070,7 @@ function GameUtilityModal({ modalName, language, onClose, onReplay }) {
 
   return (
     <div
-      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 px-4 py-6 backdrop-blur-sm"
+      className="fixed inset-0 z-[310] flex items-center justify-center bg-black/75 px-4 py-6 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-label={title}

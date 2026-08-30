@@ -54,11 +54,13 @@ export default function TableSummaryPanel({
       <div className="mt-2 space-y-1 text-[11px] font-semibold text-slate-100">
         <div className="flex justify-between gap-2">
           <span className="text-slate-400">Level</span>
-          <span>{levelNumber}: {sbValue}/{bbValue} (Ante {anteValue})</span>
+          <span data-testid="table-summary-blinds">
+            {levelNumber}: {sbValue}/{bbValue} (Ante {anteValue})
+          </span>
         </div>
         <div className="flex justify-between gap-2">
           <span className="text-slate-400">Hand</span>
-          <span>{handCount}/{handsCap}</span>
+          <span data-testid="table-summary-hand-count">{handCount}/{handsCap}</span>
         </div>
         <div className="flex justify-between gap-2">
           <span className="text-slate-400">Start</span>

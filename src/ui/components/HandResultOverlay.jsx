@@ -272,6 +272,8 @@ export default function HandResultOverlay({
   buttonLabel,
   nextHandLabel,
   onReplayTarget,
+  onHistory,
+  onCashOut,
 }) {
   if (!visible || !summary) return null;
   const winners = summary.winners ?? [];
@@ -295,7 +297,10 @@ export default function HandResultOverlay({
       : [];
   const singlePot = potSections.length <= 1;
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 px-4">
+    <div
+      className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 px-4"
+      data-testid="hand-result-overlay"
+    >
       <div className="max-h-[calc(100dvh-2rem)] w-full max-w-3xl space-y-4 overflow-y-auto rounded-3xl border border-emerald-400/40 bg-slate-900 p-4 shadow-2xl sm:p-6">
         <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em] text-emerald-300">
           <span>Hand Result</span>
@@ -370,9 +375,34 @@ export default function HandResultOverlay({
             </div>
           </div>
         )}
+        {(typeof onHistory === "function" || typeof onCashOut === "function") && (
+          <div className="grid gap-2 sm:grid-cols-2">
+            {typeof onHistory === "function" && (
+              <button
+                type="button"
+                onClick={onHistory}
+                data-testid="hand-result-history"
+                className="rounded-2xl border border-white/20 py-3 font-semibold text-white transition hover:bg-white/10"
+              >
+                History &amp; Replay
+              </button>
+            )}
+            {typeof onCashOut === "function" && (
+              <button
+                type="button"
+                onClick={onCashOut}
+                data-testid="hand-result-cash-out"
+                className="rounded-2xl border border-yellow-300/40 bg-yellow-400/10 py-3 font-semibold text-yellow-100 transition hover:bg-yellow-400 hover:text-slate-950"
+              >
+                Cash Out
+              </button>
+            )}
+          </div>
+        )}
         <button
           type="button"
           onClick={handleNext}
+          data-testid="hand-result-next-hand"
           className="w-full rounded-2xl bg-emerald-500 py-3 text-slate-900 font-semibold hover:bg-emerald-400 transition"
         >
           {resolvedButtonLabel}

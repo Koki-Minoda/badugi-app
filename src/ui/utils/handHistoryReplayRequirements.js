@@ -56,6 +56,9 @@ export function getHandHistoryReplayRequirements(variantId = "badugi") {
 export function validateReplayReadyHandHistory(record, { variantId = record?.variantId } = {}) {
   const requirements = getHandHistoryReplayRequirements(variantId);
   const d01 = isD01Variant(requirements.variantId);
+  const reachedShowdown = (record?.events ?? []).some(
+    (event) => event?.type === "SHOWDOWN",
+  );
   const missing = [];
 
   pushMissing(missing, "record", requirements.topLevel, record);
@@ -86,7 +89,7 @@ export function validateReplayReadyHandHistory(record, { variantId = record?.var
       pushMissing(
         missing,
         `record.pots[${potIndex}].winners[${winnerIndex}]`,
-        requirements.winner,
+        d01 && !reachedShowdown ? BASE_REQUIRED_WINNER_FIELDS : requirements.winner,
         winner,
       );
     });

@@ -51,14 +51,16 @@ function collectBrowserSignals() {
   ];
   const actions = actionIds.filter((id) => isInteractable(document.querySelector(`[data-testid="${id}"]`)));
   const displayedPhase = document.querySelector('[data-testid="table-phase-badge"]')?.textContent?.trim() ?? "";
-  const resultVisible =
+  const resultContentVisible =
     isVisible(document.querySelector('[data-testid="hand-result-pot"]')) ||
-    isVisible(document.querySelector('[data-testid="hand-result-follow-up"]')) ||
-    /\bHAND_RESULT\b|Hand Result/i.test(displayedPhase);
+    isVisible(document.querySelector('[data-testid="hand-result-follow-up"]'));
+  const resultVisible =
+    resultContentVisible || /\bHAND_RESULT\b|Hand Result/i.test(displayedPhase);
   const nextHandButton = [...document.querySelectorAll("button")].find((button) => /next hand/i.test(button.textContent ?? ""));
   return {
     actions,
     displayedPhase,
+    resultContentVisible,
     resultVisible,
     nextHandVisible: isVisible(nextHandButton),
     nextHandInteractable: isInteractable(nextHandButton),
@@ -109,13 +111,25 @@ export async function getProgressState(page) {
       phaseState?.phase ??
       state?.phase ??
       null;
+    const rawPhaseUpper = String(rawPhase ?? "").toUpperCase();
+    const rawPhaseIsLive = ["BET", "DRAW", "POST_BLINDS"].some((marker) =>
+      rawPhaseUpper.includes(marker),
+    );
     const uiTerminal =
-      ui.resultVisible ||
+      ui.resultContentVisible ||
       ui.nextHandVisible ||
-      ["HAND_RESULT", "SHOWDOWN", "WAITING_NEXT_HAND", "COMPLETE", "TERMINAL"].some((marker) =>
-        String(ui.displayedPhase ?? "").toUpperCase().includes(marker),
-      );
-    const phase = uiTerminal ? "HAND_RESULT" : rawPhase;
+      (!rawPhaseIsLive &&
+        ["HAND_RESULT", "SHOWDOWN", "WAITING_NEXT_HAND", "COMPLETE", "TERMINAL"].some((marker) =>
+          String(ui.displayedPhase ?? "").toUpperCase().includes(marker),
+        ));
+    const uiActivelyPlayable = Array.isArray(ui.actions) && ui.actions.length > 0;
+    const displayedPhaseUpper = String(ui.displayedPhase ?? "").toUpperCase();
+    const displayedLivePhase = displayedPhaseUpper.includes("DRAW")
+      ? "DRAW"
+      : displayedPhaseUpper.includes("BET")
+        ? "BET"
+        : null;
+    const phase = uiTerminal ? "HAND_RESULT" : displayedLivePhase ?? rawPhase;
     const snapshotDeclaresActor =
       snapshot &&
       ["currentActor", "turn", "nextTurn"].some((field) =>
@@ -168,10 +182,9 @@ export async function getProgressState(page) {
         state?.drawRound ??
         null,
       isTerminal: Boolean(
-        uiTerminal ||
-        ["SHOWDOWN", "HAND_RESULT", "WAITING_NEXT_HAND", "COMPLETE", "TERMINAL"].includes(String(phase)) ||
-          snapshot?.lastHandResult ||
-          state?.lastHandResult,
+        !uiActivelyPlayable &&
+          (uiTerminal ||
+            ["SHOWDOWN", "HAND_RESULT", "WAITING_NEXT_HAND", "COMPLETE", "TERMINAL"].includes(String(phase))),
       ),
     };
   }, collectBrowserSignals.toString());

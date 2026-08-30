@@ -381,4 +381,22 @@ describe("HandResultOverlay", () => {
     fireEvent.click(screen.getByTestId("hand-result-follow-up-replay"));
     expect(onReplayTarget).toHaveBeenCalledWith(replayTarget);
   });
+
+  test("offers history and cash out without dealing another hand", () => {
+    const onHistory = vi.fn();
+    const onCashOut = vi.fn();
+    render(
+      <HandResultOverlay
+        visible
+        summary={baseSummary}
+        onHistory={onHistory}
+        onCashOut={onCashOut}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("hand-result-history"));
+    fireEvent.click(screen.getByTestId("hand-result-cash-out"));
+    expect(onHistory).toHaveBeenCalledTimes(1);
+    expect(onCashOut).toHaveBeenCalledTimes(1);
+  });
 });

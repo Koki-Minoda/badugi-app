@@ -1393,6 +1393,8 @@ export default function GameLayoutBase({
         onNext={onNextHand}
         buttonLabel={nextHandLabel}
         onReplayTarget={onReplayTarget}
+        onHistory={onNavigateHistory}
+        onCashOut={isCashGame ? onCashOut : null}
       />
       <ShowdownResultToast
         visible={handResultVisible}

@@ -107,6 +107,7 @@ reports/invariant/
 reports/phase-machine/
 reports/physical/
 reports/production-cash/
+reports/all-live-cash/
 reports/soak/
 reports/tournament/
 reports/ui/

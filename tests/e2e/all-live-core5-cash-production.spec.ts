@@ -131,7 +131,14 @@ async function playOneRealButtonHand(page: Page, handNumber: number) {
   while (Date.now() < deadline) {
     const progress = await getProgressState(page);
     phases.add(String(progress.phase));
-    if (progress.isTerminal) {
+    const resultOverlayVisible = await page
+      .getByTestId("hand-result-overlay")
+      .isVisible()
+      .catch(() => false);
+    // The shared driver intentionally treats any rendered HAND_RESULT marker
+    // as terminal. React can retain that marker for one paint after Next Hand,
+    // so this production gate requires the authoritative result overlay too.
+    if (progress.isTerminal && resultOverlayVisible) {
       return {
         heroButtonClicks,
         drawClicks,

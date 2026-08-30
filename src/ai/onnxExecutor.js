@@ -5,14 +5,24 @@ const sessionCache = new Map();
 
 export async function getOrt() {
   if (!ortPromise) {
-    ortPromise = import("onnxruntime-web")
-      .then((mod) => {
+    ortPromise = Promise.all([
+      import("onnxruntime-web"),
+      fetch(ortWasmJsepUrl).then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`ONNX WASM request failed (${response.status})`);
+        }
+        return new Uint8Array(await response.arrayBuffer());
+      }),
+    ])
+      .then(([mod, wasmBinary]) => {
         const ort = mod.default ?? mod;
         // onnxruntime-web derives its WASM location from its transformed module
         // URL. Vite's development base and production asset base differ, so the
-        // derived URL can resolve to the SPA HTML fallback. Importing the binary
-        // as a Vite asset gives both environments one authoritative URL.
+        // derived URL can resolve to the SPA HTML fallback. Supplying the binary
+        // directly also prevents compileStreaming from failing when an existing
+        // production proxy serves .wasm as application/octet-stream.
         ort.env.wasm.wasmPaths = { wasm: ortWasmJsepUrl };
+        ort.env.wasm.wasmBinary = wasmBinary;
         return ort;
       })
       .catch((err) => {

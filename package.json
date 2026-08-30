@@ -22,6 +22,7 @@
     "test:p2p:contract": "vitest run --project=tier1 src/ui/utils/__tests__/roomApi.test.js && python -m pytest backend/tests/test_p2p_manager.py backend/tests/test_p2p_persistence.py",
     "test:history:contract": "vitest run --project=tier1 src/games/badugi/flow/__tests__/handReplay.test.js src/ui/utils/__tests__/handHistory.test.js src/ui/utils/__tests__/persistedHandHistory.test.js",
     "test:core5:pr-e2e": "playwright test tests/e2e/core5-cash-full-lifecycle-gate.spec.ts tests/e2e/core5-tournament-full-lifecycle-gate.spec.ts tests/e2e/core5-tournament-champion-lifecycle.spec.ts --project=badugi-flow",
+    "test:cash:all-live": "MGX_ALL_LIVE_CASH_QA=1 playwright test tests/e2e/all-live-core5-cash-production.spec.ts --project=badugi-flow --workers=1",
     "test:deploy:static": "bash scripts/deploy/test-mgx-prod-01-static.sh",
     "test:build:onnx": "node scripts/deploy/verify-built-onnx-assets.mjs",
     "test:ai-evaluation": "vitest run --project=tier3 src/ai/evaluation --silent=passed-only",

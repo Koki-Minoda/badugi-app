@@ -49,9 +49,12 @@ function getTotalPotLabel(hand) {
 
 function getActionCount(hand) {
   if (Array.isArray(hand?.events)) {
-    return hand.events.filter((event) => event?.type === "ACTION").length;
+    const eventCount = hand.events.filter((event) =>
+      ["ACTION", "BET_ACTION", "DRAW_ACTION"].includes(event?.type),
+    ).length;
+    if (eventCount > 0) return eventCount;
   }
-  return hand?.legacyRecord?.seats?.reduce(
+  return (hand?.seats ?? hand?.legacyRecord?.seats)?.reduce(
     (sum, seat) => sum + (Array.isArray(seat.actions) ? seat.actions.length : 0),
     0,
   ) ?? 0;

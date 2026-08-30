@@ -283,4 +283,28 @@ describe("handHistory", () => {
       ]),
     );
   });
+
+  it("does not require a low-hand label when D01 ends before showdown", () => {
+    const record = {
+      handId: "d01-fold-win",
+      variantId: "D01",
+      variantName: "2-7 Triple Draw",
+      seats: [
+        {
+          seat: 0,
+          name: "Hero",
+          startStack: 500,
+          endStack: 520,
+          actions: [{ seq: 1, street: "BET", type: "fold" }],
+        },
+      ],
+      pots: [{ potId: "main", amount: 20, winners: [{ seat: 1, collect: 20 }] }],
+      events: [{ type: "HAND_START" }, { type: "HAND_END" }],
+    };
+
+    expect(validateReplayReadyHandHistory(record, { variantId: "D01" })).toMatchObject({
+      valid: true,
+      missing: [],
+    });
+  });
 });

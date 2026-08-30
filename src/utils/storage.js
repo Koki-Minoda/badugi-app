@@ -65,7 +65,17 @@ export function pushToArray(key, item, { limit = 500 } = {}) {
   const arr = getJSON(key, []);
   arr.unshift(item);
   if (arr.length > limit) arr.length = limit;
-  setJSON(key, arr);
+  while (arr.length > 0) {
+    try {
+      setJSON(key, arr);
+      break;
+    } catch (error) {
+      if (arr.length === 1) throw error;
+      // localStorage is intentionally a bounded cache. Preserve the newest
+      // replayable hands and evict the oldest complete hand on quota pressure.
+      arr.pop();
+    }
+  }
   return arr;
 }
 
@@ -99,4 +109,3 @@ export function getWithTTL(key, fallback = null) {
   if (Date.now() > wrap.e) return fallback;
   return wrap.v;
 }
-

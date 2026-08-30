@@ -385,21 +385,39 @@ export async function evaluateTournamentMobileLayout(
   classifyMetricFailures({ viewport, tableBox, hudBox, potBox, heroBox, decisionBox, issues });
   validateLandscapeSeatGeometry({ viewport, tableBox, seatBoxes, issues });
 
-  const cardLocators = page.locator("[data-testid^='player-'][data-testid*='-card-']");
-  const cardBoxes: Array<{ testId: string; ownerSeat: number | null; box: LayoutBox }> = [];
-  for (let index = 0; index < (await cardLocators.count()); index += 1) {
-    const card = cardLocators.nth(index);
-    if (!(await card.isVisible().catch(() => false))) continue;
-    const box = await card.boundingBox();
-    if (!box) continue;
-    const testId = (await card.getAttribute("data-testid")) ?? `card-${index}`;
-    const ownerMatch = /^player-(\d+)-card-/.exec(testId);
-    cardBoxes.push({
-      testId,
-      ownerSeat: ownerMatch ? Number(ownerMatch[1]) : null,
-      box,
+  // Cards may be replaced between async locator calls while CPUs act. Capture all
+  // geometry in one browser frame so a disappearing nth() cannot stall WebKit QA.
+  const cardBoxes = (await page.evaluate(() => {
+    const boxes: Array<{
+      testId: string;
+      ownerSeat: number | null;
+      box: { x: number; y: number; width: number; height: number };
+    }> = [];
+    const cards = document.querySelectorAll<HTMLElement>(
+      "[data-testid^='player-'][data-testid*='-card-']",
+    );
+    cards.forEach((card, index) => {
+      const style = window.getComputedStyle(card);
+      const rect = card.getBoundingClientRect();
+      if (
+        style.display === "none" ||
+        style.visibility === "hidden" ||
+        Number(style.opacity) === 0 ||
+        rect.width <= 0 ||
+        rect.height <= 0
+      ) {
+        return;
+      }
+      const testId = card.dataset.testid ?? `card-${index}`;
+      const ownerMatch = /^player-(\d+)-card-/.exec(testId);
+      boxes.push({
+        testId,
+        ownerSeat: ownerMatch ? Number(ownerMatch[1]) : null,
+        box: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+      });
     });
-  }
+    return boxes;
+  })) as Array<{ testId: string; ownerSeat: number | null; box: LayoutBox }>;
 
   seatBoxes.forEach((seatBox, seatIndex) => {
     recordUnexpectedOverlap({

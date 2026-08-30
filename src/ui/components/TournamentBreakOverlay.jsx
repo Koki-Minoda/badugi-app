@@ -32,7 +32,7 @@ export default function TournamentBreakOverlay({ breakState, onComplete }) {
 
   return (
     <div
-      className="fixed inset-0 z-[95] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[305] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
       data-testid="tournament-break-overlay"
       role="dialog"
       aria-modal="true"

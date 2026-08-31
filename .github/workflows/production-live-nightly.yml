@@ -6,7 +6,9 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
+  issues: write
 
 concurrency:
   group: production-live-nightly
@@ -108,3 +110,101 @@ jobs:
             reports/ai-observation
           if-no-files-found: ignore
           retention-days: 14
+
+  notify-production-qm:
+    if: always()
+    needs:
+      - public-cash-qm
+      - live-product
+      - live-ai-telemetry
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open, update, or resolve the production QM incident
+        uses: actions/github-script@v8
+        env:
+          PUBLIC_CASH_RESULT: ${{ needs.public-cash-qm.result }}
+          LIVE_PRODUCT_RESULT: ${{ needs.live-product.result }}
+          LIVE_AI_RESULT: ${{ needs.live-ai-telemetry.result }}
+        with:
+          script: |
+            const title = "[QM] Production live nightly failure";
+            const results = {
+              "public-cash-qm": process.env.PUBLIC_CASH_RESULT,
+              "live-product": process.env.LIVE_PRODUCT_RESULT,
+              "live-ai-telemetry": process.env.LIVE_AI_RESULT,
+            };
+            const failed = Object.entries(results)
+              .filter(([, result]) => result !== "success")
+              .map(([name, result]) => `${name}: ${result}`);
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+
+            const openIssues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              per_page: 100,
+            });
+            const incident = openIssues.find((issue) => issue.title === title && !issue.pull_request);
+
+            if (failed.length === 0) {
+              if (incident) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: incident.number,
+                  body: `Recovered on ${new Date().toISOString()}. All production QM jobs passed.\n\nRun: ${runUrl}\nCommit: ${context.sha}`,
+                });
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: incident.number,
+                  state: "closed",
+                  state_reason: "completed",
+                });
+              }
+              core.notice("Production QM passed; no open incident remains.");
+              return;
+            }
+
+            const successfulRuns = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: "production-live-nightly.yml",
+              status: "success",
+              per_page: 10,
+            });
+            const previousSuccess = successfulRuns.data.workflow_runs.find(
+              (run) => String(run.id) !== String(context.runId),
+            );
+            const previousLine = previousSuccess
+              ? `[Previous successful run](${previousSuccess.html_url}) at ${previousSuccess.updated_at} (commit ${previousSuccess.head_sha.slice(0, 12)})`
+              : "No previous successful run was found.";
+            const body = [
+              `Production QM failed on ${new Date().toISOString()}.`,
+              "",
+              `Failed or incomplete jobs: ${failed.join(", ")}`,
+              `Current run: ${runUrl}`,
+              `Current commit: ${context.sha}`,
+              previousLine,
+              "",
+              "Artifacts and screenshots are attached to the workflow run. Keep this issue open until a later full pass closes it automatically.",
+            ].join("\n");
+
+            if (incident) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: incident.number,
+                body,
+              });
+              core.setFailed(`Production QM failed; updated issue #${incident.number}.`);
+              return;
+            }
+
+            const created = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+            });
+            core.setFailed(`Production QM failed; opened issue #${created.data.number}.`);

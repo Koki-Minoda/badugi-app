@@ -128,7 +128,7 @@ test.beforeAll(async () => {
       BACKEND_ENV: "local",
       BACKEND_DB_DRIVER: "sqlite",
       BACKEND_DB_NAME: DATABASE_PATH,
-      SECRET_KEY: "p2p-rest-e2e-secret",
+      SECRET_KEY: "p2p-rest-e2e-secret-key-at-least-32",
       CORS_ORIGINS: '["http://127.0.0.1:3000"]',
     },
   });
@@ -188,6 +188,13 @@ test("two players finish a major Badugi flow after WebSocket failure", async ({ 
     await folder.getByTestId("p2p-fold").click();
     await expect(host.getByText(/Showdown winner|ショーダウン勝者/i)).toBeVisible({ timeout: 10_000 });
   } finally {
+    // Polling can still have a proxied request in flight when the assertion
+    // completes. Drain route handlers before closing their browser contexts so
+    // teardown cannot turn a successful flow into a route.fetch failure.
+    await Promise.all([
+      host.unrouteAll({ behavior: "ignoreErrors" }),
+      guest.unrouteAll({ behavior: "ignoreErrors" }),
+    ]);
     await hostContext.close();
     await guestContext.close();
   }

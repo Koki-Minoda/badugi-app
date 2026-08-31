@@ -94,6 +94,8 @@ async function driveHandLikePlayer(page: Page, hand: number) {
   const trace: unknown[] = [];
   let heroButtonClicks = 0;
   let drawClicks = 0;
+  let selectedDrawCard = false;
+  let consecutiveTransientClickRetries = 0;
 
   while (Date.now() - startedAt < 90_000) {
     const resultVisible = await page
@@ -117,14 +119,14 @@ async function driveHandLikePlayer(page: Page, hand: number) {
 
     let target: string | undefined;
     if (actions.includes("action-draw-selected")) {
-      if (hand % 3 === 0) {
+      if (hand % 3 === 0 && !selectedDrawCard) {
         const firstCard = page.getByTestId("player-0-card-0").first();
         if (await firstCard.isVisible().catch(() => false)) {
           await firstCard.click({ timeout: 5_000 });
+          selectedDrawCard = true;
         }
       }
       target = "action-draw-selected";
-      drawClicks += 1;
     } else if (hand % 5 === 0 && actions.includes("action-raise")) {
       target = "action-raise";
     } else {
@@ -134,7 +136,27 @@ async function driveHandLikePlayer(page: Page, hand: number) {
     }
 
     if (!target) throw new Error(`No playable Hero action: ${JSON.stringify({ hand, actions, trace })}`);
-    await page.getByTestId(target).first().click({ timeout: 5_000 });
+    try {
+      await page.getByTestId(target).first().click({ timeout: 1_000 });
+      consecutiveTransientClickRetries = 0;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const transientDomChange = /detached from the DOM|intercepts pointer events/i.test(message);
+      consecutiveTransientClickRetries += 1;
+      trace.push({
+        elapsedMs: Date.now() - startedAt,
+        clickRetry: {
+          target,
+          latestActions: await visibleHeroActions(page),
+          attempt: consecutiveTransientClickRetries,
+        },
+      });
+      if (!transientDomChange || consecutiveTransientClickRetries > 5) throw error;
+      expect(await visibleLayoutIssues(page), `hand ${hand} transient action replacement`).toEqual([]);
+      await page.waitForTimeout(50);
+      continue;
+    }
+    if (target === "action-draw-selected") drawClicks += 1;
     heroButtonClicks += 1;
     await page.waitForTimeout(100);
   }

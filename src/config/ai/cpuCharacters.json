@@ -4,26 +4,26 @@
     "label": "Ryo",
     "variantIds": ["D03"],
     "tierId": "standard",
-    "modelId": "model-badugi-sixmax-standard-dqn-v2",
-    "style": "pat-pressure",
-    "notes": "Badugi Standard six-max v2 fold-margin checkpoint. Clean eval PASS; Standard tier only."
+    "modelId": "model-badugi-sixmax-standard-e11",
+    "style": "profile-diverse",
+    "notes": "Badugi Standard E11 fixed 3k checkpoint. Regression gate PASS across 3 seeds and 7 opponent profiles."
   },
   {
     "id": "badugi-standard-reader",
     "label": "Reading Standard",
     "variantIds": ["D03"],
     "tierId": "standard",
-    "modelId": "model-badugi-sixmax-standard-dqn-v2",
+    "modelId": "model-badugi-sixmax-standard-e11",
     "style": "opponent-reading",
-    "notes": "Routes to the shared Badugi Standard six-max v2 base model; opponent-reading behavior is applied as character style metadata."
+    "notes": "Routes to the shared Badugi Standard E11 base model; opponent-reading behavior is applied as character style metadata."
   },
   {
     "id": "badugi-standard-balanced",
     "label": "Balanced Standard",
     "variantIds": ["D03"],
     "tierId": "standard",
-    "modelId": "model-badugi-sixmax-standard-dqn-v2",
+    "modelId": "model-badugi-sixmax-standard-e11",
     "style": "baseline-balanced",
-    "notes": "Routes to the shared Badugi Standard six-max v2 base model. Older v1/v2/v3 and six-max 1M models are retained only for offline comparison and rollback."
+    "notes": "Routes to the shared Badugi Standard E11 base model. The former Standard v2 is now Beginner; older models remain comparison-only."
   }
 ]

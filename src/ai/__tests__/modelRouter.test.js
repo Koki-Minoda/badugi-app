@@ -21,10 +21,10 @@ describe("modelRouter", () => {
 
   it("uses exact variant-tier model before a generic tier model", () => {
     const entry = resolveTierModelInfo({ variantId: "D03", tierId: "beginner" });
-    expect(entry?.modelId).toBe("model-badugi-hu-beginner-dqn-100000");
+    expect(entry?.modelId).toBe("model-badugi-sixmax-standard-dqn-v2");
 
     const standard = resolveTierModelInfo({ variantId: "D03", tierId: "standard" });
-    expect(standard?.modelId).toBe("model-badugi-sixmax-standard-dqn-v2");
+    expect(standard?.modelId).toBe("model-badugi-sixmax-standard-e11");
 
     const generic = resolveTierModelInfo({ variantId: "UNKNOWN", tierId: "beginner" });
     expect(generic?.modelId).toBe("model-generic-v1");
@@ -32,7 +32,7 @@ describe("modelRouter", () => {
 
   it("supports character-specific standard Badugi model overrides", () => {
     expect(selectModelForVariant({ variantId: "D03", tierId: "standard" })?.id).toBe(
-      "model-badugi-sixmax-standard-dqn-v2",
+      "model-badugi-sixmax-standard-e11",
     );
     expect(
       selectModelForVariant({
@@ -40,7 +40,7 @@ describe("modelRouter", () => {
         tierId: "standard",
         characterId: "badugi-sixmax-standard-ryo",
       })?.id,
-    ).toBe("model-badugi-sixmax-standard-dqn-v2");
+    ).toBe("model-badugi-sixmax-standard-e11");
 
     const characterModel = resolveCpuCharacterModelInfo({
       characterId: "badugi-sixmax-standard-ryo",
@@ -51,24 +51,24 @@ describe("modelRouter", () => {
     expect(characterModel).toMatchObject({
       characterId: "badugi-sixmax-standard-ryo",
       characterLabel: "Ryo",
-      modelId: "model-badugi-sixmax-standard-dqn-v2",
+      modelId: "model-badugi-sixmax-standard-e11",
       tierId: "standard",
-      style: "pat-pressure",
+      style: "profile-diverse",
     });
   });
 
-  it("uses sixmax Standard v2 as the shared Badugi Standard base while preserving character styles", () => {
-    expect(getModelEntry("model-badugi-sixmax-standard-dqn-v2")).toMatchObject({
+  it("uses E11 as the shared Badugi Standard base while preserving character styles", () => {
+    expect(getModelEntry("model-badugi-sixmax-standard-e11")).toMatchObject({
       tier: "standard",
       variantIds: ["D03"],
-      onnx: "models/badugi_sixmax_standard_dqn_v2.onnx",
+      onnx: "models/badugi_sixmax_standard_e11.onnx",
       sourceCheckpoint:
-        "rl/models/badugi_sixmax_foldmargin_100k_from_raiseev_fix/badugi_sixmax_dqn_latest.pt",
+        "rl/models/badugi_phase4_20260828/e11_epsilon_005_3k/badugi_sixmax_dqn_0003000_20260828-211540.pt",
       productionRequired: true,
     });
 
     expect(resolveTierModelInfo({ variantId: "D03", tierId: "standard" })).toMatchObject({
-      modelId: "model-badugi-sixmax-standard-dqn-v2",
+      modelId: "model-badugi-sixmax-standard-e11",
       tierId: "standard",
     });
 
@@ -78,7 +78,7 @@ describe("modelRouter", () => {
       tierId: "standard",
     })).toMatchObject({
       characterLabel: "Reading Standard",
-      modelId: "model-badugi-sixmax-standard-dqn-v2",
+      modelId: "model-badugi-sixmax-standard-e11",
       style: "opponent-reading",
     });
 
@@ -88,7 +88,7 @@ describe("modelRouter", () => {
       tierId: "standard",
     })).toMatchObject({
       characterLabel: "Balanced Standard",
-      modelId: "model-badugi-sixmax-standard-dqn-v2",
+      modelId: "model-badugi-sixmax-standard-e11",
       style: "baseline-balanced",
     });
 
@@ -106,7 +106,7 @@ describe("modelRouter", () => {
         characterId,
         characterLabel,
         personality: characterLabel,
-        modelId: "model-badugi-sixmax-standard-dqn-v2",
+        modelId: "model-badugi-sixmax-standard-e11",
         tierId: "standard",
         style,
       });
@@ -126,30 +126,34 @@ describe("modelRouter", () => {
       characterId: "badugi-sixmax-standard-ryo",
       variantId: "D03",
       tierId: "standard",
-    })?.modelId).toBe("model-badugi-sixmax-standard-dqn-v2");
+    })?.modelId).toBe("model-badugi-sixmax-standard-e11");
   });
 
-  it("does not route legacy beginner DQN to normal Badugi beginner CPU", () => {
+  it("routes the former Standard v2 as Beginner and keeps legacy beginner assets offline", () => {
     const legacy = getModelEntry("model-badugi-beginner-dqn-v1");
     expect(legacy?.trainingStatus).toBe("legacy");
     expect(legacy?.productionRequired).toBe(false);
 
     expect(selectModelForVariant({ variantId: "D03", tierId: "beginner" })?.id).toBe(
-      "model-badugi-hu-beginner-dqn-100000",
+      "model-badugi-sixmax-standard-dqn-v2",
     );
+    expect(getModelEntry("model-badugi-sixmax-standard-dqn-v2")).toMatchObject({
+      tier: "beginner",
+      trainingStatus: "active-beginner-demoted",
+    });
   });
 
-  it("routes Badugi beginner to HU self-play without changing stronger tiers", () => {
+  it("routes Badugi Beginner to the former Standard without changing stronger tiers", () => {
     expect(resolveTierModelInfo({ variantId: "D03", tierId: "beginner" })).toMatchObject({
-      modelId: "model-badugi-hu-beginner-dqn-100000",
+      modelId: "model-badugi-sixmax-standard-dqn-v2",
       tierId: "beginner",
       variantIds: ["D03"],
-      onnx: "models/badugi_hu_beginner_dqn_100000.onnx",
+      onnx: "models/badugi_sixmax_standard_dqn_v2.onnx",
       inputShape: [96],
       outputShape: [6],
     });
     expect(resolveTierModelInfo({ variantId: "D03", tierId: "standard" })?.modelId).toBe(
-      "model-badugi-sixmax-standard-dqn-v2",
+      "model-badugi-sixmax-standard-e11",
     );
     expect(resolveTierModelInfo({ variantId: "D03", tierId: "pro" })?.modelId).toBe(
       "model-badugi-pro-v1",
@@ -157,15 +161,6 @@ describe("modelRouter", () => {
     expect(resolveTierModelInfo({ variantId: "D03", tierId: "iron" })?.modelId).toBe(
       "model-badugi-iron-v1",
     );
-    expect(getModelEntry("model-badugi-hu-beginner-dqn-100000")).toMatchObject({
-      trainingMode: "heads-up-selfplay",
-      trainingEpisodes: 100000,
-      trainingStatus: "beginner",
-      sourceCheckpoint:
-        "rl/models/badugi_wsl_100k_v2/badugi_selfplay_dqn_100000_20260604-030709.pt",
-      cleanEvalReport: "reports/ai-eval/badugi-clean-eval-100k-20260604.json",
-      note: "Six-max clean eval recommends beginner; not eligible for standard/pro/iron.",
-    });
   });
 
   it("routes 2-7 and A-5 draw beginner/standard tiers to trained draw DQN models", () => {

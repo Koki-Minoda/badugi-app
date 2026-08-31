@@ -404,6 +404,38 @@
     ]
   },
   {
+    "id": "model-badugi-sixmax-standard-e11",
+    "version": "e11-3000",
+    "variant": "Badugi",
+    "variantIds": [
+      "D03"
+    ],
+    "characterIds": [],
+    "tier": "standard",
+    "onnx": "models/badugi_sixmax_standard_e11.onnx",
+    "checksumSha256": "3f0dbc5a947beabf41c8c998b50285d63358490c6399044eee8c83e18c442aab",
+    "trainingRun": "badugi_phase4_e11_epsilon_005_3k_20260828",
+    "trainingCheckpoint": "badugi_sixmax_dqn_0003000_20260828-211540.pt",
+    "trainingMode": "sixmax-selfplay-profile-diversity",
+    "trainingEpisodes": 3000,
+    "trainingStatus": "active-standard",
+    "sourceCheckpoint": "rl/models/badugi_phase4_20260828/e11_epsilon_005_3k/badugi_sixmax_dqn_0003000_20260828-211540.pt",
+    "sourceCheckpointSha256": "5b44a23972d98a7d4e86c0a742b80b37f70297cff2ac2683683a9f57d065d1ef",
+    "cleanEvalReport": "reports/ai-eval/badugi-e11-standard-promotion-20260831.json",
+    "personality": "Ryo",
+    "style": "profile-diverse",
+    "notes": "E11 is the active Badugi Standard. It passed the regression gate against the former Standard over 3 seeds x 7 opponent profiles x 500 episodes with 100% ONNX usage and zero fallback. It is not Pro: worst-profile reward remains below the Pro threshold.",
+    "trainingNotes": "E11 fixed checkpoint only. Confirmed avgReward 0.655405 (+0.043465), worst/loose-aggressive 0.298439 (+0.018472), valueBetRate 0.839954 (+0.225634). Continue Pro-oriented experiments from this exact checkpoint; do not substitute the unevaluated latest alias.",
+    "featureSet": "badugi-observation-v1-ev-range",
+    "productionRequired": true,
+    "inputShape": [
+      96
+    ],
+    "outputShape": [
+      6
+    ]
+  },
+  {
     "id": "model-badugi-sixmax-standard-dqn-v2",
     "version": "v2",
     "variant": "Badugi",
@@ -411,19 +443,19 @@
       "D03"
     ],
     "characterIds": [],
-    "tier": "standard",
+    "tier": "beginner",
     "onnx": "models/badugi_sixmax_standard_dqn_v2.onnx",
     "checksumSha256": "bf6da2e1a1004717436a820d187c87a47503b5e8c4af9532aa4d2897593693c9",
     "trainingRun": "badugi_sixmax_foldmargin_100k_from_raiseev_fix",
     "trainingCheckpoint": "badugi_sixmax_dqn_latest.pt",
     "trainingMode": "sixmax-selfplay",
     "trainingEpisodes": 50000,
-    "trainingStatus": "active",
+    "trainingStatus": "active-beginner-demoted",
     "sourceCheckpoint": "rl/models/badugi_sixmax_foldmargin_100k_from_raiseev_fix/badugi_sixmax_dqn_latest.pt",
     "personality": "Ryo",
     "style": "pat-pressure",
-    "notes": "Selected Badugi six-max Standard v2 checkpoint. Clean eval PASS; Standard tier only.",
-    "trainingNotes": "Badugi 6-max fold-margin candidate selected as Standard v2. Clean eval PASS: off.avg=0.531, off.worst=0.224, on.avg=0.267, on.worst=-0.002, on.overlay=32.3%. Key action diagnostics: round1 phase2_weak_3card fold=99.9267%, round1 phase2_trash fold=98.8654%, round2 strong_3card fold=0.3831%, made_badugi fold=0.0%, raise=80.6481%. Keep Pro, Iron, and WorldMaster routing on their existing models.",
+    "notes": "Former Badugi Standard v2, now the active Beginner model after E11 promotion. The stable model id and asset filename are retained for saved-hand and replay compatibility.",
+    "trainingNotes": "Demoted from Standard to Beginner on 2026-08-31. The E11 fixed checkpoint beat this baseline on avgReward, worst/loose-aggressive reward, and valueBetRate across 3 seeds x 7 profiles x 500 episodes. Keep Pro, Iron, and WorldMaster routing unchanged.",
     "featureSet": "badugi-observation-v1-ev-range",
     "productionRequired": true,
     "inputShape": [
@@ -541,13 +573,13 @@
     "trainingCheckpoint": "badugi_selfplay_dqn_100000_20260604-030709.pt",
     "trainingMode": "heads-up-selfplay",
     "trainingEpisodes": 100000,
-    "trainingStatus": "beginner",
+    "trainingStatus": "superseded-beginner",
     "sourceCheckpoint": "rl/models/badugi_wsl_100k_v2/badugi_selfplay_dqn_100000_20260604-030709.pt",
     "cleanEvalReport": "reports/ai-eval/badugi-clean-eval-100k-20260604.json",
-    "note": "Six-max clean eval recommends beginner; not eligible for standard/pro/iron.",
-    "trainingNotes": "Heads-up Badugi self-play DQN trained for 100k episodes on WSL local CPU. Six-max clean eval recommends beginner only: avgReward is negative, showdownWinRate is low, and eligibleTiers is empty. Connected only to Beginner routing and not promoted to standard/pro/iron.",
+    "note": "Superseded by the demoted former Standard v2. Retained for offline comparison and saved-history compatibility.",
+    "trainingNotes": "Heads-up Badugi self-play DQN trained for 100k episodes on WSL local CPU. It is no longer routed to live Beginner after the former six-max Standard v2 was demoted to Beginner on 2026-08-31.",
     "featureSet": "badugi-observation-v1-ev-range",
-    "productionRequired": true,
+    "productionRequired": false,
     "inputShape": [
       96
     ],

@@ -11,6 +11,10 @@ import { getProgressState, invokeE2E, waitForE2EDriver } from "./helpers/gamePro
 const REPORT_DIR = path.resolve("reports/ai");
 const REPORT_PATH = path.join(REPORT_DIR, "badugi-value-bet-live-observation.json");
 const AI_TIER_OVERRIDE = process.env.E2E_AI_TIER_OVERRIDE?.trim() || null;
+const EXPECTED_ONNX_MODEL_BY_TIER: Record<string, string> = {
+  beginner: "model-badugi-sixmax-standard-dqn-v2",
+  standard: "model-badugi-sixmax-standard-e11",
+};
 
 function ensureReportDir() {
   fs.mkdirSync(REPORT_DIR, { recursive: true });
@@ -126,6 +130,7 @@ function summarizeRows(mode: string, rows: any[]) {
     decisions: rows.length,
     betDecisions: betRows.length,
     decisionSources: countBy(rows.map((row) => String(row?.decisionSource ?? "unknown"))),
+    modelIds: countBy(rows.map((row) => String(row?.modelId ?? "unknown"))),
     aiTiers: countBy(rows.map((row) => String(row?.aiTier ?? "unknown"))),
     cpuPolicies: countBy(rows.map((row) => String(row?.cpuPolicy ?? "unknown"))),
     handStrengthBuckets: countBy(rows.map((row) => String(row?.handStrengthBucket ?? "unknown"))),
@@ -149,6 +154,7 @@ function summarizeRows(mode: string, rows: any[]) {
       mode: row?.mode ?? null,
       phase: row?.phase ?? null,
       decisionSource: row?.decisionSource ?? null,
+      modelId: row?.modelId ?? null,
       aiTier: row?.aiTier ?? null,
       cpuPolicy: row?.cpuPolicy ?? null,
       finalAction: row?.finalAction ?? null,
@@ -196,6 +202,8 @@ test("Badugi live CPU telemetry classifies friend-alpha runtime path and pressur
   const aggregateRows = summaries.flatMap((summary) => summary.sampleRows);
   const liveClassification = summaries.some((summary) => summary.decisionSources["pro-overlay"] > 0)
     ? "pro-overlay"
+    : summaries.some((summary) => summary.decisionSources.onnx > 0)
+      ? "onnx"
     : summaries.some((summary) => summary.decisionSources.heuristic > 0)
       ? "heuristic"
       : summaries.some((summary) => summary.decisionSources.fallback > 0)
@@ -217,4 +225,19 @@ test("Badugi live CPU telemetry classifies friend-alpha runtime path and pressur
   fs.writeFileSync(REPORT_PATH, `${JSON.stringify(report, null, 2)}\n`);
 
   expect(liveClassification).not.toBe("unknown");
+  const expectedOnnxModel = AI_TIER_OVERRIDE
+    ? EXPECTED_ONNX_MODEL_BY_TIER[AI_TIER_OVERRIDE]
+    : null;
+  if (expectedOnnxModel) {
+    for (const summary of summaries) {
+      expect(summary.decisionSources.onnx, `${summary.mode} all decisions use ONNX`).toBe(
+        summary.decisions,
+      );
+      expect(summary.decisionSources.fallback ?? 0, `${summary.mode} ONNX fallback`).toBe(0);
+      expect(
+        summary.modelIds[expectedOnnxModel] ?? 0,
+        `${summary.mode} exact model attribution`,
+      ).toBe(summary.decisions);
+    }
+  }
 });

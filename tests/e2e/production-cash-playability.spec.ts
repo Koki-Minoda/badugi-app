@@ -20,7 +20,14 @@ const isCashQaRun = Boolean(
 );
 const desktopHandCount = Number(process.env.MGX_CASH_DESKTOP_HANDS ?? 30);
 const androidHandCount = Number(process.env.MGX_CASH_ANDROID_HANDS ?? 20);
-const isLocalDevRun = APP_URL.startsWith("http://127.0.0.1:3000");
+const isLocalDevRun = (() => {
+  try {
+    const hostname = new URL(APP_URL).hostname;
+    return hostname === "127.0.0.1" || hostname === "localhost";
+  } catch {
+    return false;
+  }
+})();
 
 function ensureReportDir() {
   fs.mkdirSync(REPORT_DIR, { recursive: true });
@@ -220,14 +227,18 @@ async function runHands(page: Page, handCount: number) {
     }
 
     const unexpectedResponses = failedResponses.filter(
-      (entry) => !(isLocalDevRun && /404:GET:http:\/\/127\.0\.0\.1:3000\/characters\/.+\.png$/.test(entry)),
+      (entry) =>
+        !(
+          isLocalDevRun &&
+          /404:GET:http:\/\/(?:127\.0\.0\.1|localhost):\d+\/characters\/.+\.png$/.test(entry)
+        ),
     );
     const unexpectedBrowserErrors = browserErrors.filter(
       (entry) =>
         !(
           isLocalDevRun &&
           entry === "console:Failed to load resource: the server responded with a status of 404 (Not Found)"
-        ),
+        ) && !/\[W:onnxruntime:.*Unknown CPU vendor/i.test(entry),
     );
     const rejectedPlayerActions = controllerWarnings.filter((entry) => entry.startsWith("[CTRL]"));
     expect(unexpectedResponses).toEqual([]);

@@ -91,6 +91,7 @@ export function buildCpuDecisionTraceRow({
     legalActions: normalizedLegal,
     selectedAction: normalizeCpuActionType(selectedAction),
     decisionSource: source,
+    modelId: metadata?.modelId ?? null,
     fallbackReason,
     handStrengthBucket: classifyHandStrengthBucket({
       variantId,

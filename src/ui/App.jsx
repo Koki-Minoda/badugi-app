@@ -167,6 +167,11 @@ import {
   computeBetDecision,
   computeDrawDecision,
 } from "../ai/policyRouter.js";
+import {
+  inferBetActionWithOnnx,
+  inferDrawDecisionWithOnnx,
+} from "../ai/onnxPolicyAdapter.js";
+import { buildBadugiObservationPayload } from "../rl/badugiObservationSchema.js";
 import { chooseProAction } from "../ai/pro/proDecisionOverlay.js";
 import { useGameEngine } from "./engine/useGameEngine.js";
 import { mergeEngineSnapshot } from "./utils/engineSnapshotUtils.js";
@@ -1022,6 +1027,8 @@ export default function App() {
   const handCountRef = useRef(0);
   const tableMetadataRef = useRef({});
   const [turn, setTurn] = useState(0);
+  const turnRef = useRef(turn);
+  turnRef.current = turn;
   const [, bumpControllerSyncVersion] = useState(0);
   const normalizedDrawVariantForRounds = normalizeAppVariantId(gameVariant);
   const MAX_DRAWS = [
@@ -3026,6 +3033,7 @@ export default function App() {
           ? controllerTurn
           : turn;
       if (typeof drawTurn === "number" && drawTurn !== turn) {
+        turnRef.current = drawTurn;
         setTurn(drawTurn);
       }
       const ensureNextSeat = () => {
@@ -3198,6 +3206,48 @@ export default function App() {
         evaluation: drawEvaluator,
         hand: me.hand,
       });
+      const onnxTier = activeAiTierConfig?.id;
+      const shouldUseOnnx = onnxTier === "beginner" || onnxTier === "standard";
+      let onnxDrawDecision = null;
+      if (shouldUseOnnx) {
+        const inferenceHandId = handIdRef.current;
+        const drawLegalActions = ["draw_0", "draw_1", "draw_2", "draw_3"];
+        const observation = buildBadugiObservationPayload({
+          state: {
+            variantId: "D03",
+            players: snapshot,
+            phase: "DRAW",
+            street: "DRAW",
+            drawRoundIndex: drawRound,
+            maxDrawRounds: MAX_DRAWS,
+            currentBet: maxBetThisRound(snapshot),
+            raiseCount: raiseCountThisRound,
+            dealerIndex: dealerIdx,
+            actingPlayerIndex: seatToAct,
+            turn: seatToAct,
+            pots: potsRef.current,
+          },
+          seatIndex: seatToAct,
+          legalActions: drawLegalActions,
+        });
+        onnxDrawDecision = await inferDrawDecisionWithOnnx({
+          variantId: "D03",
+          tierId: onnxTier,
+          characterId: me?.characterId ?? me?.cpuCharacterId ?? null,
+          observation,
+          legalActions: drawLegalActions,
+        });
+        const liveSeat = playersRef.current?.[seatToAct];
+        if (
+          phaseRef.current !== "DRAW" ||
+          handIdRef.current !== inferenceHandId ||
+          turnRef.current !== seatToAct ||
+          !liveSeat ||
+          liveSeat.hasDrawn
+        ) {
+          return true;
+        }
+      }
       const aiDrawDecision =
         activeAiTierConfig?.id === "pro"
           ? chooseProAction({
@@ -3226,7 +3276,20 @@ export default function App() {
                 personality: me?.personality ?? null,
               },
             })
-          : standardDrawDecision;
+          : onnxDrawDecision
+            ? {
+                ...standardDrawDecision,
+                ...onnxDrawDecision,
+                source: "onnx",
+              }
+            : shouldUseOnnx
+              ? {
+                  ...standardDrawDecision,
+                  source: "onnx-fallback",
+                  tierId: onnxTier,
+                  fallbackReason: "ONNX_INFERENCE_UNAVAILABLE",
+                }
+              : standardDrawDecision;
       const fallbackDrawCount = npcAutoDrawCount(drawEvaluator);
       const requestedDrawCount = Number.isInteger(aiDrawDecision?.drawCount)
         ? aiDrawDecision.drawCount
@@ -3355,6 +3418,10 @@ export default function App() {
         actionLabel: me.lastAction,
         decisionSource: aiDrawDecision?.source ?? "npcAutoDrawCount",
         tierId: aiDrawDecision?.tierId ?? activeAiTierConfig?.id,
+        modelId: aiDrawDecision?.modelId ?? null,
+        fallbackReason: aiDrawDecision?.fallbackReason ?? null,
+        rlRequestSent: shouldUseOnnx,
+        rlResponseValid: Boolean(onnxDrawDecision),
         ...buildBadugiValueTelemetryFields({
           hand: oldHand,
           phase: "DRAW",
@@ -3490,6 +3557,8 @@ export default function App() {
     turn,
     transitioning,
     drawRound,
+    MAX_DRAWS,
+    dealerIdx,
     debugMode,
     raiseCountThisRound,
     pots,
@@ -9779,6 +9848,7 @@ export default function App() {
     turn,
     controllerTurn,
     drawRound,
+    MAX_DRAWS,
     debugLog,
     debugLog,
     betRoundIndex,
@@ -12650,6 +12720,56 @@ export default function App() {
           drawRound,
           betRound: betRoundIndex,
         });
+        const onnxTier = activeAiTierConfig?.id;
+        const shouldUseOnnx = onnxTier === "beginner" || onnxTier === "standard";
+        let onnxBetDecision = null;
+        if (shouldUseOnnx) {
+          const inferenceHandId = handIdRef.current;
+          const inferenceBet = me.betThisRound ?? 0;
+          const onnxLegalActions = toCall > 0
+            ? ["FOLD", "CALL", ...(canRaise ? ["RAISE"] : [])]
+            : ["CHECK", ...(canRaise ? ["BET"] : [])];
+          const observation = buildBadugiObservationPayload({
+            state: {
+              variantId: "D03",
+              players: snap,
+              phase: "BET",
+              street: "BET",
+              drawRoundIndex: drawRound,
+              maxDrawRounds: MAX_DRAWS,
+              currentBet: maxNow,
+              raiseCount: raiseCountThisRound,
+              dealerIndex: dealerIdx,
+              actingPlayerIndex: activeSeat,
+              turn: activeSeat,
+              pots: potsRef.current,
+            },
+            seatIndex: activeSeat,
+            legalActions: onnxLegalActions,
+          });
+          onnxBetDecision = await inferBetActionWithOnnx({
+            variantId: "D03",
+            tierId: onnxTier,
+            characterId: me?.characterId ?? me?.cpuCharacterId ?? null,
+            observation,
+            legalActions: onnxLegalActions,
+            betSize,
+          });
+          const livePlayers = playersRef.current ?? [];
+          const liveSeat = livePlayers[activeSeat];
+          if (
+            phaseRef.current !== "BET" ||
+            handIdRef.current !== inferenceHandId ||
+            turnRef.current !== activeSeat ||
+            !liveSeat ||
+            isFoldedOrOut(liveSeat) ||
+            liveSeat.allIn ||
+            (liveSeat.betThisRound ?? 0) !== inferenceBet ||
+            maxBetThisRound(livePlayers) !== maxNow
+          ) {
+            return;
+          }
+        }
         const betDecision =
           activeAiTierConfig?.id === "pro"
             ? chooseProAction({
@@ -12678,7 +12798,20 @@ export default function App() {
                   personality: me?.personality ?? null,
                 },
               })
-            : standardBetDecision;
+            : onnxBetDecision
+              ? {
+                  ...standardBetDecision,
+                  ...onnxBetDecision,
+                  source: "onnx",
+                }
+              : shouldUseOnnx
+                ? {
+                    ...standardBetDecision,
+                    source: "onnx-fallback",
+                    tierId: onnxTier,
+                    fallbackReason: "ONNX_INFERENCE_UNAVAILABLE",
+                  }
+                : standardBetDecision;
         const legalBetActions = [
           "FOLD",
           toCall === 0 ? "CHECK" : "CALL",
@@ -12723,7 +12856,10 @@ export default function App() {
           __forceInstant: true,
           decisionSource: betDecision?.source ?? "policy-router",
           tierId: betDecision?.tierId ?? activeAiTierConfig?.id,
+          modelId: betDecision?.modelId ?? null,
           decisionReason: betDecision?.reason,
+          rlRequestSent: shouldUseOnnx,
+          rlResponseValid: Boolean(onnxBetDecision),
           rawDecisionType: betDecision?.type ?? null,
           rawDecisionAction: betDecision?.action ?? null,
           rawActionSource: normalizedCpuAction.sourceActionField,
@@ -12781,6 +12917,7 @@ export default function App() {
     betSize,
     betRoundIndex,
     drawRound,
+    MAX_DRAWS,
     debugLog,
     getAiDecisionContextForActor,
     activeAiTierConfig,

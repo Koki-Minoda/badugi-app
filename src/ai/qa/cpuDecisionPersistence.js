@@ -148,6 +148,11 @@ export function buildCpuDecisionTelemetry({
     nestedDecision?.fallbackReason ??
     findMetadataValue(metadata, ["fallbackReason", "fallback_reason"]) ??
     null;
+  const modelId =
+    metadata?.modelId ??
+    nestedDecision?.modelId ??
+    findMetadataValue(metadata, ["modelId", "model_id"]) ??
+    null;
   const handStrengthBucket =
     metadata?.handStrengthBucket ??
     nestedDecision?.handStrengthBucket ??
@@ -232,6 +237,7 @@ export function buildCpuDecisionTelemetry({
     fallbackReason,
     metadata: {
       ...metadata,
+      modelId,
       handStrengthBucket,
       madeBadugi: madeBadugi === true,
       patState,

@@ -176,6 +176,50 @@ def test_same_command_is_atomic_and_deduplicated_across_workers(tmp_path):
     assert sum(player.stack for player in latest.players.values()) + latest.pot == 4000
 
 
+def test_durable_command_mutates_only_the_cas_snapshot(tmp_path, monkeypatch):
+    """A command retry must not refresh manager state during its CAS mutation."""
+
+    store = build_store(tmp_path)
+    manager = P2PRoomManager()
+    manager.attach_store(store)
+    room = manager.create_room(user_id="1", display_name="Host")
+    manager.join_room(room.code, user_id="2", display_name="Guest")
+    manager.execute_command(
+        room.code,
+        user_id="1",
+        command_id="snapshot-ready-host",
+        hand_id=None,
+        expected_phase="waiting",
+        command_type="ready",
+    )
+    manager.execute_command(
+        room.code,
+        user_id="2",
+        command_id="snapshot-ready-guest",
+        hand_id=None,
+        expected_phase="waiting",
+        command_type="ready",
+    )
+    started = store.load(room.code)
+
+    def fail_if_refreshed(_code):
+        raise AssertionError("execute_command refreshed outside its CAS snapshot")
+
+    monkeypatch.setattr(manager, "get_room", fail_if_refreshed)
+    result = manager.execute_command(
+        room.code,
+        user_id=started.current_actor_id,
+        command_id="snapshot-only-action",
+        hand_id=started.hand_id,
+        expected_phase=started.phase,
+        command_type="action",
+        action="call",
+    )
+
+    assert result.duplicate is False
+    assert result.state["acknowledgedCommandId"] == "snapshot-only-action"
+
+
 def test_two_workers_survive_restart_and_complete_ten_hands(tmp_path):
     store = build_store(tmp_path)
     workers = [P2PRoomManager(), P2PRoomManager()]

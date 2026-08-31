@@ -361,99 +361,106 @@ class P2PRoomManager:
     def ready(self, code: str, *, user_id: str, persist: bool = True) -> Room:
         with self._lock:
             room = self.get_room(code)
-            if room.phase not in {"waiting", "showdown"}:
-                raise P2PError("hand_in_progress", "The current hand is still in progress")
-            player = self._player(room, user_id)
-            player.ready = True
-            self._record(room, "ready", user_id=user_id)
-            if len(room.players) == 2 and all(player.ready for player in room.players.values()):
-                self._start_hand(room)
+            self._ready_on_room(room, user_id=user_id)
             if persist:
                 self._persist(room)
             return room
+
+    def _ready_on_room(self, room: Room, *, user_id: str) -> None:
+        if room.phase not in {"waiting", "showdown"}:
+            raise P2PError("hand_in_progress", "The current hand is still in progress")
+        player = self._player(room, user_id)
+        player.ready = True
+        self._record(room, "ready", user_id=user_id)
+        if len(room.players) == 2 and all(player.ready for player in room.players.values()):
+            self._start_hand(room)
 
     def act(self, code: str, *, user_id: str, action: str, amount: int = 0, persist: bool = True) -> Room:
         with self._lock:
             room = self.get_room(code)
-            player = self._player(room, user_id)
-            action = action.strip().lower()
-            if room.phase not in BETTING_PHASES:
-                raise P2PError("invalid_phase", "Betting action is not available now")
-            if room.current_actor_id != user_id:
-                raise P2PError("out_of_turn", "It is not your turn")
-            legal = self.legal_actions(room, user_id)
-            if action not in legal:
-                raise P2PError("illegal_action", f"{action} is not legal in this state")
-            to_call = max(0, room.current_bet - player.bet)
-            if action == "fold":
-                player.folded = True
-                opponent = self._other_player(room, user_id)
-                self._record(room, action, user_id=user_id, amount=0)
-                self._finish_hand(
-                    room,
-                    winner_ids=[opponent.user_id] if opponent else [],
-                    reason="fold",
-                )
-                if persist:
-                    self._persist(room)
-                return room
-            if action == "check":
-                paid = 0
-            elif action == "call":
-                paid = self._pay(room, player, to_call)
-            else:
-                minimum = to_call + room.big_blind
-                requested = max(minimum, int(amount or 0))
-                opponent = self._other_player(room, user_id)
-                if opponent:
-                    # Heads-up has no side pot. Never accept chips the opponent
-                    # cannot match; excess all-in chips stay in the bettor's stack.
-                    maximum_target = opponent.bet + opponent.stack
-                    requested = min(requested, max(0, maximum_target - player.bet))
-                paid = self._pay(room, player, requested)
-                room.current_bet = max(room.current_bet, player.bet)
-                room.acted = {user_id}
-            if action in {"check", "call"}:
-                room.acted.add(user_id)
-            self._record(room, action, user_id=user_id, amount=paid)
-            if self._betting_round_complete(room):
-                self._refund_uncalled_bet(room)
-                self._advance_from_betting(room)
-            else:
-                room.current_actor_id = self._other_player(room, user_id).user_id
-                self._bump(room)
+            self._act_on_room(room, user_id=user_id, action=action, amount=amount)
             if persist:
                 self._persist(room)
             return room
 
+    def _act_on_room(self, room: Room, *, user_id: str, action: str, amount: int = 0) -> None:
+        player = self._player(room, user_id)
+        action = action.strip().lower()
+        if room.phase not in BETTING_PHASES:
+            raise P2PError("invalid_phase", "Betting action is not available now")
+        if room.current_actor_id != user_id:
+            raise P2PError("out_of_turn", "It is not your turn")
+        legal = self.legal_actions(room, user_id)
+        if action not in legal:
+            raise P2PError("illegal_action", f"{action} is not legal in this state")
+        to_call = max(0, room.current_bet - player.bet)
+        if action == "fold":
+            player.folded = True
+            opponent = self._other_player(room, user_id)
+            self._record(room, action, user_id=user_id, amount=0)
+            self._finish_hand(
+                room,
+                winner_ids=[opponent.user_id] if opponent else [],
+                reason="fold",
+            )
+            return
+        if action == "check":
+            paid = 0
+        elif action == "call":
+            paid = self._pay(room, player, to_call)
+        else:
+            minimum = to_call + room.big_blind
+            requested = max(minimum, int(amount or 0))
+            opponent = self._other_player(room, user_id)
+            if opponent:
+                # Heads-up has no side pot. Never accept chips the opponent
+                # cannot match; excess all-in chips stay in the bettor's stack.
+                maximum_target = opponent.bet + opponent.stack
+                requested = min(requested, max(0, maximum_target - player.bet))
+            paid = self._pay(room, player, requested)
+            room.current_bet = max(room.current_bet, player.bet)
+            room.acted = {user_id}
+        if action in {"check", "call"}:
+            room.acted.add(user_id)
+        self._record(room, action, user_id=user_id, amount=paid)
+        if self._betting_round_complete(room):
+            self._refund_uncalled_bet(room)
+            self._advance_from_betting(room)
+        else:
+            room.current_actor_id = self._other_player(room, user_id).user_id
+            self._bump(room)
+
     def draw(self, code: str, *, user_id: str, card_indexes: list[int], persist: bool = True) -> Room:
         with self._lock:
             room = self.get_room(code)
-            player = self._player(room, user_id)
-            if room.phase not in DRAWING_PHASES:
-                raise P2PError("invalid_phase", "Drawing is not available now")
-            if room.current_actor_id != user_id:
-                raise P2PError("out_of_turn", "It is not your turn to draw")
-            if user_id not in room.pending_draw:
-                raise P2PError("already_drew", "Draw action was already submitted")
-            indexes = sorted(set(card_indexes))
-            if len(indexes) > 4 or any(index < 0 or index >= len(player.hand) for index in indexes):
-                raise P2PError("invalid_draw", "Invalid card selection")
-            kept = [card for index, card in enumerate(player.hand) if index not in indexes]
-            replacements = [room.deck.pop() for _ in indexes]
-            player.hand = kept + replacements
-            room.pending_draw.remove(user_id)
-            self._record(room, "draw", user_id=user_id, amount=len(indexes))
-            if not room.pending_draw:
-                round_number = int(room.phase[-1])
-                room.phase = f"bet_{round_number}"
-                self._reset_betting_round(room)
-            else:
-                room.current_actor_id = next(iter(room.pending_draw))
-                self._bump(room)
+            self._draw_on_room(room, user_id=user_id, card_indexes=card_indexes)
             if persist:
                 self._persist(room)
             return room
+
+    def _draw_on_room(self, room: Room, *, user_id: str, card_indexes: list[int]) -> None:
+        player = self._player(room, user_id)
+        if room.phase not in DRAWING_PHASES:
+            raise P2PError("invalid_phase", "Drawing is not available now")
+        if room.current_actor_id != user_id:
+            raise P2PError("out_of_turn", "It is not your turn to draw")
+        if user_id not in room.pending_draw:
+            raise P2PError("already_drew", "Draw action was already submitted")
+        indexes = sorted(set(card_indexes))
+        if len(indexes) > 4 or any(index < 0 or index >= len(player.hand) for index in indexes):
+            raise P2PError("invalid_draw", "Invalid card selection")
+        kept = [card for index, card in enumerate(player.hand) if index not in indexes]
+        replacements = [room.deck.pop() for _ in indexes]
+        player.hand = kept + replacements
+        room.pending_draw.remove(user_id)
+        self._record(room, "draw", user_id=user_id, amount=len(indexes))
+        if not room.pending_draw:
+            round_number = int(room.phase[-1])
+            room.phase = f"bet_{round_number}"
+            self._reset_betting_round(room)
+        else:
+            room.current_actor_id = next(iter(room.pending_draw))
+            self._bump(room)
 
     def execute_command(
         self,
@@ -548,21 +555,19 @@ class P2PRoomManager:
                 )
 
             if normalized_type == "ready":
-                room = self.ready(room.code, user_id=user_id, persist=False)
+                self._ready_on_room(room, user_id=user_id)
             elif normalized_type == "action":
-                room = self.act(
-                    room.code,
+                self._act_on_room(
+                    room,
                     user_id=user_id,
                     action=normalized_action,
                     amount=amount,
-                    persist=False,
                 )
             elif normalized_type == "draw":
-                room = self.draw(
-                    room.code,
+                self._draw_on_room(
+                    room,
                     user_id=user_id,
                     card_indexes=list(normalized_indexes),
-                    persist=False,
                 )
             else:
                 raise P2PError("invalid_command", "Unsupported command type")

@@ -19,7 +19,7 @@ from .api.tournament_state import router as tournament_state_router
 from .api.analysis_chatgpt import router as analysis_router  # [tournament-feedback]
 from .api.auth import router as auth_router
 from .api.variants import router as variants_router
-from .api.p2p import router as p2p_router, ws_router as p2p_ws_router
+from .api.p2p import room_sockets, router as p2p_router, ws_router as p2p_ws_router
 from .core.config import get_settings
 from .core.db import SessionLocal, engine
 from .p2p.manager import p2p_room_manager
@@ -127,7 +127,11 @@ async def lifespan(_app: FastAPI):
 
     bootstrap_schema()
     configure_p2p_persistence()
-    yield
+    await room_sockets.start_fanout()
+    try:
+        yield
+    finally:
+        await room_sockets.stop_fanout()
 
 
 app = FastAPI(title="Badugi Multi-Game Backend", version="0.1.0", lifespan=lifespan)

@@ -1,7 +1,7 @@
 """Durable server-authoritative Friend Match room snapshots."""
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, JSON, String, func
+from sqlalchemy import Boolean, DateTime, Float, Integer, JSON, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from . import Base
@@ -22,3 +22,13 @@ class P2PRoomState(Base):
         nullable=False,
         index=True,
     )
+
+
+class P2PStateReadLimit(Base):
+    __tablename__ = "p2p_state_read_limits"
+
+    room_code: Mapped[str] = mapped_column(String(12), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    window_started_at: Mapped[float] = mapped_column(Float, nullable=False)
+    request_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    updated_at: Mapped[float] = mapped_column(Float, nullable=False)

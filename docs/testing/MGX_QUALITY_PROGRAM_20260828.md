@@ -50,9 +50,23 @@ QA/QM result: **PASS for the 1–10 implementation scope**. Tasks 1–4 were int
 8. Tournament blind displays use the MTT engine's completed-hand counter as the authority. Store/local fifth-hand boundary tests prevent the ring controller from advancing a level one hand early.
 9. Tournament completion is idempotent by table and hand ID, and a Next Hand request made during the short deal lock is queued once instead of being discarded or double-dealt.
 10. CPU decision telemetry preserves policy source and AI tier through controller-backed actions. Live standard/pro checks require at least one attributed policy decision in both cash and tournament modes; unknown row counts alone cannot pass.
+11. Browser progression waits compare the exact same canonical state shape used by freeze detection. A UI click can no longer pass merely because the wait-side key omitted or reordered player fields.
+12. The scheduled-break progression path is repeated under the corrected state gate; unchanged DRAW state now fails instead of being counted as successful action progress.
+13. `dependency-security` is protected on `main`; npm runtime/full and clean resolved Python audits must remain at zero known findings before deployment.
+
+## 2026-08-31 verification addendum
+
+- Scheduled tournament break, real DRAW action, level transition, and resume: 20/20 consecutive browser runs PASS after correcting the progression-key contract.
+- npm runtime audit: 0 vulnerabilities.
+- npm full audit: 0 vulnerabilities.
+- clean Python 3.11 resolved-environment audit: 0 known vulnerabilities.
+- MGX-SEC-001 is eligible for closure; its obsolete draft PR against the retired production branch is superseded by canonical `main`.
+- Core5 weekly long-soak coverage is 400 completed hands per browser target (Desktop Chromium, Android Chromium, and iPhone WebKit), 1,200 hands total, with SHA-256 evidence.
+- Store and Local tournament QM each complete seven real Hero hands, Level 2, reload/resume, six-player final table, championship, exact replay, grounded review, and result return.
+- The pre-deploy production baseline still remains at Level 1 after five Store/Local hands; deployment and post-deploy QM are required before this defect is closed.
 
 ## Explicit boundaries
 
-- Production P2P currently remains usable through authenticated REST polling when WSS is unavailable. Cross-process real-time fanout/pub-sub remains a scale optimization, not a two-player correctness blocker.
+- Production P2P supports durable multi-worker rooms, cross-worker state refresh, shared rate limits, command deduplication, restart recovery, and authenticated REST fallback when WSS is unavailable. The current design remains database-backed polling rather than an external pub/sub service.
 - Chinese Poker classic placement/scoring/history is covered. OFC street-by-street dealing and Fantasyland are separate product features and are not falsely marked complete.
 - The Badugi `pro-overlay` production path is heuristic overlay logic. The Windows-trained ONNX checkpoint is not yet directly wired as the live Badugi action candidate and must not be described as deployed model inference.

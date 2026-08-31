@@ -235,7 +235,7 @@ export function createProgressHarness(variantId, options = {}) {
   }
   if (normalizedVariantId === "chinese_poker") {
     const controller = new ChinesePokerController({
-      seats: seats.slice(0, 2).map((seat, index) => ({
+      seats: seats.slice(0, 4).map((seat, index) => ({
         id: seat.id,
         name: seat.name,
         isHero: index === 0,

@@ -19,11 +19,25 @@ export type AuditIssue = {
 };
 
 const CORE5_QA_METADATA = Object.freeze({
-  badugi: { heroCardTestId: "player-0-card-3", maxSteps: 120 },
-  D01: { heroCardTestId: "player-0-card-4", maxSteps: 110 },
-  D02: { heroCardTestId: "player-0-card-4", maxSteps: 110 },
-  S01: { heroCardTestId: "player-0-card-4", maxSteps: 90 },
-  S02: { heroCardTestId: "player-0-card-4", maxSteps: 90 },
+  badugi: { heroCardTestId: "player-0-card-3", maxSteps: 120, expectsDraw: true, expectsBlindIncrease: true },
+  D01: { heroCardTestId: "player-0-card-4", maxSteps: 110, expectsDraw: true, expectsBlindIncrease: true },
+  D02: { heroCardTestId: "player-0-card-4", maxSteps: 110, expectsDraw: true, expectsBlindIncrease: true },
+  S01: { heroCardTestId: "player-0-card-4", maxSteps: 90, expectsDraw: true, expectsBlindIncrease: true },
+  S02: { heroCardTestId: "player-0-card-4", maxSteps: 90, expectsDraw: true, expectsBlindIncrease: true },
+});
+
+// Release candidates stay outside PUBLIC_PLAYABLE_VARIANTS until their full
+// readiness packet is reviewed. They can still run through the exact same
+// cash lifecycle gate via MGX_ALL_LIVE_CASH_VARIANTS.
+export const NLH_READINESS_VARIANT = Object.freeze({
+  game: "NL Hold'em",
+  variant: "nlh",
+  displayName: "NL Hold'em",
+  heroCardTestId: "player-0-card-1",
+  maxSteps: 90,
+  expectsDraw: false,
+  expectsBlindIncrease: false,
+  requiresPreview: true,
 });
 
 export const CORE5_VARIANTS = PUBLIC_PLAYABLE_VARIANTS.map((entry) => {

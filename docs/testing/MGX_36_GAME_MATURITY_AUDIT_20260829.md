@@ -11,12 +11,13 @@ this change.
 | Board | B01-B09 | 9 live | 10 hands | Enforced | Covered |
 | Triple draw | D01-D07 | 5 live, 2 wip (D01/D02) | 10 hands | Enforced | Covered |
 | Single draw | S01-S07 | 5 live, 2 wip (S01/S02) | 10 hands | Enforced | Covered |
-| Dramaha | H01-H06 | 6 wip | 10 hands | Allowlisted | Covered |
+| Dramaha | H01-H06 | 6 wip | 10 hands | Enforced: board/draw components | Covered |
 | Stud | ST1-ST6 | 6 live | 10 hands | Enforced | Covered |
-| Chinese Poker | CP1 | 1 live | 10 hands | Points gate only; chip-pot gate not applicable | Not in the cross-variant browser replay matrix |
+| Chinese Poker | CP1 | 1 live | 10 hands | Enforced: zero-sum points gate; chip-pot gate not applicable | Dedicated deterministic history replay |
 
-Totals: 36 selector/controller routes, 26 `live`, 10 `wip`, 29 strict
-chip-settlement variants, and 7 explicitly allowlisted variants. CP1 is
+Totals: 36 selector/controller routes, 26 `live`, 10 `wip`, 35 strict
+chip-settlement variants plus CP1's dedicated strict points gate, and no
+settlement allowlist. CP1 is
 classic Chinese Poker only; OFC street progression and fantasyland are not
 implemented and must not be implied by its `live` status.
 
@@ -41,13 +42,18 @@ implemented and must not be implied by its `live` status.
 - Promote D01-D07 and S01-S07 to strict settlement using independently
   recomputed 2-7, A-5, high, Badugi-low, Badugi-high, and split-component
   winners for ten deterministic hands per variant.
+- Promote H01-H06 to strict settlement. Each source pot is reconstructed from
+  player contributions, its board/draw halves and eligibility are checked,
+  board and draw winners are independently evaluated, exact tied payouts are
+  recomputed, and the odd chip is required on the draw half.
+- Add CP1's non-chip strict points gate for 2-4 players. It independently
+  recomputes every row, foul, scoop and royalty for every pair, then requires
+  the published matchup list and totals to match exactly and sum to zero.
 
 ## Remaining highest-risk maturity gaps
 
-1. Dramaha settlement remains allowlisted pending normalized board/draw
-   component-pot results and evaluator replay.
-2. Variant-specific odd-chip position rules remain broader work; current Stud
+1. Variant-specific odd-chip position rules remain broader work; current Stud
    splits are deterministic but use seat-order allocation.
-3. CP1 still needs browser history/replay coverage and a dedicated strict
-   points-conservation gate.
-4. OFC street-by-street play and fantasyland remain unimplemented.
+2. CP1 remains classic 13-card Chinese Poker; its strict points gate does not
+   imply OFC street-by-street play.
+3. OFC street-by-street play and fantasyland remain unimplemented.

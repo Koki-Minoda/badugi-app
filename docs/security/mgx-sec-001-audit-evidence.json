@@ -1,48 +1,58 @@
 {
   "task_id": "MGX-SEC-001",
-  "captured_at": "2026-08-11T11:29:00+09:00",
+  "status": "remediated",
+  "captured_at": "2026-08-31T15:00:00+09:00",
   "repository": "Koki-Minoda/badugi-app",
-  "audited_ref": "feature/d-04-next-actor-unify",
-  "audited_commit": "6a0cd89",
+  "audited_ref": "main",
+  "audited_commit": "1d965f9a234038a20acbe680928d8ca704056905",
   "commands": [
+    "npm audit --omit=dev --json",
     "npm audit --json",
-    "npm audit --omit=dev --json"
+    "python -m pip_audit --local"
   ],
   "historical_baseline": {
     "source_run": 29959098089,
     "captured_at": "2026-07-23T06:25:15+09:00",
-    "counts": {"low": 2, "moderate": 11, "high": 21, "critical": 2, "total": 36},
-    "note": "The deploy log retained aggregate counts only; it did not retain machine-readable advisory identities."
+    "counts": {
+      "low": 2,
+      "moderate": 11,
+      "high": 21,
+      "critical": 2,
+      "total": 36
+    },
+    "note": "The historical deploy log retained aggregate counts only."
   },
-  "current_full_audit": {
-    "counts": {"low": 1, "moderate": 3, "high": 14, "critical": 2, "total": 20},
-    "packages": [
-      {"name": "@babel/core", "severity": "low", "classification": "build-only"},
-      {"name": "@protobufjs/utf8", "severity": "moderate", "classification": "runtime"},
-      {"name": "ajv", "severity": "moderate", "classification": "build-only"},
-      {"name": "brace-expansion", "severity": "high", "classification": "build-only"},
-      {"name": "flatted", "severity": "high", "classification": "build-only"},
-      {"name": "form-data", "severity": "high", "classification": "build-only"},
-      {"name": "glob", "severity": "high", "classification": "build-only"},
-      {"name": "js-yaml", "severity": "high", "classification": "build-only"},
-      {"name": "minimatch", "severity": "high", "classification": "build-only"},
-      {"name": "nanoid", "severity": "high", "classification": "build-only"},
-      {"name": "picomatch", "severity": "high", "classification": "build-only"},
-      {"name": "postcss", "severity": "high", "classification": "build-only"},
-      {"name": "protobufjs", "severity": "critical", "classification": "runtime"},
-      {"name": "react-router", "severity": "high", "classification": "runtime"},
-      {"name": "react-router-dom", "severity": "high", "classification": "runtime"},
-      {"name": "rollup", "severity": "high", "classification": "build-only"},
-      {"name": "vite", "severity": "high", "classification": "build-only"},
-      {"name": "vitest", "severity": "critical", "classification": "build-only"},
-      {"name": "ws", "severity": "high", "classification": "build-only"},
-      {"name": "yaml", "severity": "moderate", "classification": "build-only"}
-    ]
+  "classified_baseline": {
+    "audited_commit": "6a0cd89",
+    "full_graph_total": 20,
+    "runtime_total": 4
   },
-  "current_production_omit_dev_audit": {
-    "counts": {"low": 0, "moderate": 1, "high": 2, "critical": 1, "total": 4},
-    "packages": ["@protobufjs/utf8", "protobufjs", "react-router", "react-router-dom"]
+  "closure": {
+    "npm_runtime": {
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "npm_full": {
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "python_resolved": {
+      "known_vulnerabilities": 0,
+      "skipped_local_packages": [
+        "badugi-backend"
+      ]
+    }
   },
-  "classification_totals": {"runtime": 4, "build-only": 16, "not-applicable": 0},
-  "integrity_note": "No dependency versions or production deployment state were changed by this audit."
+  "continuous_control": {
+    "workflow": ".github/workflows/deploy-mgx-prod-01.yml",
+    "required_context": "dependency-security",
+    "blocks_deploy": true
+  },
+  "residual_risk": "No known resolved dependency advisories at capture time; future advisory changes remain gated by CI."
 }

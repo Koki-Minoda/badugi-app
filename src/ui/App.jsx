@@ -529,14 +529,28 @@ function clonePlayerState(player) {
   };
 }
 
+function readStoredAuthIdentity() {
+  if (typeof window === "undefined") return {};
+  try {
+    const auth = JSON.parse(window.localStorage.getItem("mgx_auth") ?? "null");
+    return {
+      id: auth?.user?.id ?? null,
+      username: auth?.user?.username ?? null,
+    };
+  } catch {
+    return {};
+  }
+}
+
 export default function App() {
   const [tournamentSession, setTournamentSession] = useState(() =>
     loadActiveTournamentSession(),
   );
   const initialModeRef = useRef(getRequestedModeFromURL());
-  const authUserIdRef = useRef(null);
-  const [authUserId, setAuthUserId] = useState(null);
-  const [authUsername, setAuthUsername] = useState(null);
+  const initialAuthIdentityRef = useRef(readStoredAuthIdentity());
+  const authUserIdRef = useRef(initialAuthIdentityRef.current.id ?? null);
+  const [authUserId, setAuthUserId] = useState(initialAuthIdentityRef.current.id ?? null);
+  const [authUsername, setAuthUsername] = useState(initialAuthIdentityRef.current.username ?? null);
   const [authToken, setAuthToken] = useState(null);
   const [authTokenType, setAuthTokenType] = useState(null);
   const [mode, setMode] = useState(initialModeRef.current);
@@ -857,7 +871,10 @@ export default function App() {
   const [titleSettings, setTitleSettings] = useState(() => loadTitleSettings());
   const heroProfile = useMemo(
     () => ({
-      name: resolveHeroPlayerName(titleSettings.playerName, authUsername),
+      name: resolveHeroPlayerName(
+        titleSettings.playerName,
+        authUsername ?? readStoredAuthIdentity().username,
+      ),
       titleBadge: titleSettings.playerTitle?.trim() || "",
       avatar: titleSettings.avatar || "default_avatar",
     }),
@@ -5373,9 +5390,10 @@ export default function App() {
             Math.max(1, Number(config?.seatsPerTable) || NUM_PLAYERS);
       return Array.from({ length: totalPlayersForConfig }, (_, idx) => {
         if (idx === 0) {
+          const storedUsername = readStoredAuthIdentity().username;
           return {
             id: HERO_TOURNAMENT_PLAYER_ID,
-            name: heroProfile?.name ?? "You",
+            name: resolveHeroPlayerName(heroProfile?.name, storedUsername),
           };
         }
         const cpuCharacter = getCpuCharacterForIndex(idx);
@@ -6183,7 +6201,11 @@ export default function App() {
   }, [totalPotForDisplay]);
 
   function applyHeroTournamentHandCompletion(playersSnapshot) {
-    if (mode !== "tournament-mtt" || !tournamentStateRef.current) return null;
+    // Public-menu tournament entry changes mode in the same render cycle that
+    // creates the first table controller. Controller callbacks may therefore
+    // retain the previous cash-mode render value; the ref is the authoritative
+    // live mode for every subsequent hand completion.
+    if (modeRef.current !== "tournament-mtt" || !tournamentStateRef.current) return null;
     const completedHandId = handIdRef.current;
     if (
       completedHandId &&
@@ -6688,17 +6710,25 @@ export default function App() {
       resetInitialButtonState();
       const deckManager = getDeckManager();
       deckManager?.reset();
-      if (hydration) {
-        startNextHandRef.current({
-          dealerOverride: 0,
-          prevPlayers: sanitizePlayerSnapshotForVariant(
+      const initialTournamentPlayers = hydration
+        ? sanitizePlayerSnapshotForVariant(
             hydration.tablePlayers,
             initialTournamentVariant,
-          ),
+          )
+        : null;
+      // Entering from the public menu starts from a cash-mode render. Let the
+      // tournament mode/reset commit before constructing the first controller;
+      // otherwise that controller retains cash-mode completion callbacks and
+      // only the first hand advances the MTT blind counter.
+      window.setTimeout(() => {
+        if (tournamentStateRef.current !== tournamentState) return;
+        startNextHandRef.current({
+          dealerOverride: 0,
+          ...(initialTournamentPlayers
+            ? { prevPlayers: initialTournamentPlayers }
+            : {}),
         });
-      } else {
-        startNextHandRef.current({ dealerOverride: 0 });
-      }
+      }, 0);
     },
     // dealNewHand is a stable function declaration; no need to include in deps.
     [
@@ -9830,6 +9860,7 @@ export default function App() {
     if (
       tournamentHero &&
       heroProfile?.name &&
+      (heroProfile.name !== "You" || !tournamentHero.name) &&
       tournamentHero.name !== heroProfile.name
     ) {
       const nextState = {

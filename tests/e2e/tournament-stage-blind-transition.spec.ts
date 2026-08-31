@@ -1,17 +1,35 @@
 import { expect, test, type Page } from "@playwright/test";
+import fs from "node:fs";
+import path from "node:path";
 import { buildTournamentConfigFromStage } from "../../src/config/tournamentStages.js";
 import {
   auditHandReplayFidelity,
   replayHandFromHistory,
 } from "../../src/games/badugi/flow/handReplay.js";
-import { APP_URL } from "./authHelper";
+import { APP_URL, dismissTranslateOverlay, enterTitleIfPresent } from "./authHelper";
 import {
   playOneHandProgression,
   waitForE2EDriver,
 } from "./helpers/gameProgressHelper.js";
 
-const TOURNAMENT_URL = `${APP_URL.replace(/\/$/, "")}/dev/tournament`;
 const ACTIVE_MTT_KEY = "mgx.tournament.mtt.active";
+const QM_REPORT_LABEL = process.env.TOURNAMENT_QM_REPORT_LABEL ?? "production-tournament-qm";
+const QM_REPORT_PATH = path.resolve("reports/tournament-qm", `${QM_REPORT_LABEL}-results.json`);
+const qmRows: any[] = [];
+
+test.afterAll(() => {
+  if (!process.env.TOURNAMENT_QM_REPORT_LABEL) return;
+  fs.mkdirSync(path.dirname(QM_REPORT_PATH), { recursive: true });
+  fs.writeFileSync(
+    QM_REPORT_PATH,
+    `${JSON.stringify({
+      generatedAt: new Date().toISOString(),
+      sourceUrl: APP_URL,
+      status: qmRows.length === 2 && qmRows.every((row) => row.status === "PASS") ? "PASS" : "FAIL",
+      stages: qmRows,
+    }, null, 2)}\n`,
+  );
+});
 
 type BlindExpectation = {
   level: number;
@@ -105,7 +123,10 @@ async function startProductionStage(page: Page, stageId: string) {
   if (!config) throw new Error(`Missing tournament config for ${stageId}`);
 
   await installLocalAuthenticatedSession(page, stageId);
-  await page.goto(TOURNAMENT_URL, { waitUntil: "load" });
+  await page.goto(APP_URL, { waitUntil: "load" });
+  await dismissTranslateOverlay(page);
+  await enterTitleIfPresent(page);
+  await page.getByTestId("menu-tournament").click();
   await page.getByTestId(`tournament-stage-${stageId}`).click();
   await expect(page.getByTestId("tournament-stage-detail")).toContainText(config.name);
   await page.getByTestId("tournament-start").click();
@@ -163,14 +184,20 @@ async function reloadAndResumeAtBoundary(
       },
     },
   });
+  expect(saved.tournamentState.players["hero-player"].name).toBe("Stage Gate Hero");
+  expect(
+    await page.evaluate(() => JSON.parse(window.localStorage.getItem("mgx_auth") ?? "null")?.user?.username),
+  ).toBe("Stage Gate Hero");
   expect(
     persistedHands.filter(
       (hand) => hand?.tournamentRunId === saved?.tournamentState?.tournamentRunId,
     ),
   ).toHaveLength(5);
 
-  await page.goto(TOURNAMENT_URL, { waitUntil: "load" });
   await page.reload({ waitUntil: "load" });
+  await dismissTranslateOverlay(page);
+  await enterTitleIfPresent(page);
+  await page.getByTestId("menu-tournament").click();
   await expect(page.getByTestId("tournament-resume-panel")).toBeVisible();
   await page.getByTestId("tournament-resume").click();
   await expect(page.getByTestId("tournament-hud")).toBeVisible({ timeout: 20_000 });
@@ -185,10 +212,15 @@ async function reloadAndResumeAtBoundary(
       saved.tournamentState.tournamentRunId),
     )
     .toBe(5);
+  const resumedNextHand = page.getByRole("button", { name: /Next Hand|次のハンド/i }).last();
+  await expect(resumedNextHand).toBeVisible();
+  await resumedNextHand.click();
+  await expect(page.getByTestId("decision-panel")).toBeVisible({ timeout: 20_000 });
   return saved.tournamentState.tournamentRunId;
 }
 
 async function completeHeroHands(page: Page, hands: number, policy = "safe") {
+  let heroButtonClicks = 0;
   for (let hand = 0; hand < hands; hand += 1) {
     const result = await playOneHandProgression(page, {
       maxSteps: 110,
@@ -196,8 +228,56 @@ async function completeHeroHands(page: Page, hands: number, policy = "safe") {
       requireHeroButtonClick: false,
     });
     expect(result.status).toBe("PASS");
+    heroButtonClicks += Number(result.heroButtonClicks ?? 0);
     await advanceFromCompletedHand(page);
+    if (process.env.TOURNAMENT_QM_DEBUG === "1") {
+      console.info("[TOURNAMENT_QM_HAND]", JSON.stringify({
+        requestedHand: hand + 1,
+        hud: await getHud(page),
+        historyCount: await page.evaluate(() => window.__BADUGI_E2E__.getHandHistory().length),
+        state: await page.evaluate(() => window.__BADUGI_E2E__.getStateSnapshot()),
+      }));
+    }
   }
+  return { handsCompleted: hands, heroButtonClicks };
+}
+
+function verifyExactReplay(record: any) {
+  const frames = replayHandFromHistory(record);
+  const audit = auditHandReplayFidelity(record, frames);
+  expect(audit, `${record.handId}: ${JSON.stringify(audit.issues)}`).toMatchObject({
+    valid: true,
+    historySource: "tournament",
+  });
+  const sourceActions = new Map(
+    (record.seats ?? []).flatMap((seat: any) =>
+      (seat.actions ?? []).map((action: any) => [
+        Number(action.seq ?? action.actionSeq),
+        { ...action, seat: seat.seat },
+      ]),
+    ),
+  );
+  for (const frame of frames.filter((entry: any) =>
+    ["BET_ACTION", "DRAW_ACTION"].includes(entry.event?.type),
+  )) {
+    const source: any = sourceActions.get(Number(frame.event.actionSeq));
+    expect(source, `${record.handId}:${frame.event.actionSeq}`).toBeTruthy();
+    expect(frame.event.seat).toBe(source.seat);
+    if (frame.event.type === "BET_ACTION") {
+      expect(String(frame.event.action).toLowerCase()).toBe(String(source.type).toLowerCase());
+      expect(Number(frame.event.amount ?? 0)).toBe(Number(source.amount ?? 0));
+    } else {
+      expect(
+        frame.players.find((player: any) => player.seat === frame.event.seat)?.hand,
+      ).toEqual(frame.event.after);
+    }
+  }
+  expect(frames.at(-1)?.integrity).toEqual({
+    valid: true,
+    stackMismatches: [],
+    reconciliationMismatches: [],
+    remainingPot: 0,
+  });
 }
 
 async function advanceFromCompletedHand(page: Page) {
@@ -681,22 +761,30 @@ for (const stage of [
     levelAfterFiveHands: { level: 2, sb: 50, bb: 100, ante: 0 },
   },
 ]) {
-  test(`${stage.stageId} resumes after a blind transition, reaches a Hero championship, and produces a grounded tournament review`, async ({
+  test(`[production QM] ${stage.stageId} resumes after a blind transition, reaches a Hero championship, and produces a grounded tournament review`, async ({
     page,
   }) => {
     const config = await startProductionStage(page, stage.stageId);
     expect(config.entryFee).toBe(stage.entryFee);
+    expect(config.reentryPolicy).toEqual({
+      allowed: false,
+      maxEntries: 1,
+      closesAtLevel: 0,
+    });
+    await expect(page.getByRole("button", { name: /re-?entry|re-?enter/i })).toHaveCount(0);
 
     // Build genuine hand/action history before deterministically closing the
     // remaining field. Review assertions below must stay grounded in these hands.
-    await completeHeroHands(page, 5);
+    const beforeReload = await completeHeroHands(page, 5);
     await expectCurrentBlindDisplay(page, stage.levelAfterFiveHands);
     const tournamentRunId = await reloadAndResumeAtBoundary(
       page,
       stage.stageId,
       stage.levelAfterFiveHands,
     );
-    await completeHeroHands(page, 2);
+    const afterReload = await completeHeroHands(page, 2);
+    const heroButtonClicks = beforeReload.heroButtonClicks + afterReload.heroButtonClicks;
+    expect(heroButtonClicks, "Hero must act through a visible UI control during the QM run").toBeGreaterThan(0);
     const historyAfterResume = await page.evaluate(() =>
       window.__BADUGI_E2E__.getHandHistory().map((hand) => ({
         handId: hand.handId,
@@ -711,6 +799,26 @@ for (const stage of [
       ),
       JSON.stringify(historyAfterResume.slice(0, 10), null, 2),
     ).toHaveLength(7);
+    const completeHistory = await page.evaluate((runId) =>
+      window.__BADUGI_E2E__
+        .getHandHistory()
+        .filter((hand) => hand?.tournamentRunId === runId),
+    tournamentRunId);
+    expect(completeHistory).toHaveLength(7);
+    completeHistory.forEach(verifyExactReplay);
+    await expect(page.getByRole("button", { name: /re-?entry|re-?enter/i })).toHaveCount(0);
+
+    const finalTableState = await page.evaluate(() => {
+      let state = window.__BADUGI_E2E__.getTournamentHudState();
+      for (let index = 0; index < 200 && state?.playersRemaining > 6; index += 1) {
+        window.__BADUGI_E2E__.simulateTournamentBackground(1);
+        state = window.__BADUGI_E2E__.getTournamentHudState();
+      }
+      return state;
+    });
+    expect(finalTableState.playersRemaining).toBeLessThanOrEqual(6);
+    expect(finalTableState.milestoneEvents).toContain("FINAL_TABLE");
+    await expect(page.getByRole("button", { name: /re-?entry|re-?enter/i })).toHaveCount(0);
     const completed = await page.evaluate(() =>
       window.__BADUGI_E2E__.forceHeroChampion(),
     );
@@ -728,6 +836,7 @@ for (const stage of [
 
     const overlay = page.getByTestId("mtt-result-overlay");
     await expect(overlay).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("button", { name: /re-?entry|re-?enter/i })).toHaveCount(0);
     await expect(page.getByTestId("mtt-champion-celebration")).toContainText("1st Place");
     await expect(page.getByTestId("mtt-result-champion")).toContainText(
       "Stage Gate Hero",
@@ -844,5 +953,23 @@ for (const stage of [
         }),
       )
       .toBe(stage.payout - stage.entryFee);
+
+    qmRows.push({
+      stageId: stage.stageId,
+      status: "PASS",
+      tournamentRunId,
+      realHands: completeHistory.length,
+      heroButtonClicks,
+      replayHandsVerified: completeHistory.length,
+      blindLevel: stage.levelAfterFiveHands.level,
+      blinds: stage.levelAfterFiveHands,
+      finalTablePlayers: finalTableState.playersRemaining,
+      reentryPolicy: config.reentryPolicy,
+      championId: completed.championId,
+      payout: stage.payout,
+      reviewDepth: settledReview.reviewDepth,
+      keyHands: settledReview.keyHands.map((keyHand) => keyHand.handId),
+      returnedToResults: true,
+    });
   });
 }

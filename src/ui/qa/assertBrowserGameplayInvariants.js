@@ -122,8 +122,21 @@ export function assertBrowserGameplayInvariants(row, previousRows = []) {
       }),
     );
   }
-  if (!terminal && Number(controller.pot ?? 0) === 0 && (controller.players ?? []).some((p) => Number(p?.betThisRound ?? p?.bet ?? 0) > 0)) {
-    violations.push(issue("POT", "P0", "active hand has invested chips but controller pot is zero"));
+  const investedThisRound = (controller.players ?? []).reduce(
+    (sum, player) => sum + Number(player?.betThisStreet ?? player?.betThisRound ?? player?.bet ?? 0),
+    0,
+  );
+  // Some controllers keep live street wagers outside `controller.pot` until the
+  // street closes. Treat a zero *displayed total* as the money-loss invariant;
+  // a zero settled pot with visible blinds is a valid opening snapshot.
+  if (!terminal && investedThisRound > 0 && Number(ui.displayedPot ?? 0) === 0) {
+    violations.push(
+      issue("POT", "P0", "active hand has invested chips but displayed total pot is zero", {
+        controllerPot: controller.pot,
+        investedThisRound,
+        displayedPot: ui.displayedPot,
+      }),
+    );
   }
 
   const displayedPhase = normalizePhase(ui.displayedPhase);

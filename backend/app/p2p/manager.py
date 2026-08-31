@@ -8,7 +8,7 @@ import secrets
 import string
 import threading
 import time
-from typing import Any, Protocol
+from typing import Any, Callable, Protocol, TypeVar
 
 
 RANKS = "A23456789TJQK"
@@ -21,6 +21,7 @@ ROOM_TTL_SECONDS = 6 * 60 * 60
 MAX_ACTIVE_ROOMS_PER_OWNER = 3
 COMMAND_RECEIPT_TTL_SECONDS = 10 * 60
 MAX_COMMAND_RECEIPTS_PER_ROOM = 256
+StoreResult = TypeVar("StoreResult")
 
 
 class P2PError(RuntimeError):
@@ -31,12 +32,28 @@ class P2PError(RuntimeError):
 
 class RoomStore(Protocol):
     def load(self, room_code: str) -> "Room | None": ...
+    def load_many(self, room_codes: list[str]) -> dict[str, "Room"]: ...
     def exists(self, room_code: str) -> bool: ...
     def save(self, room: "Room") -> bool: ...
+    def mutate(
+        self,
+        room_code: str,
+        mutation: Callable[["Room"], StoreResult],
+    ) -> tuple["Room", StoreResult]: ...
     def delete(self, room_code: str) -> None: ...
     def room_codes_for_user(self, user_id: str) -> list[str]: ...
     def active_owner_count(self, user_id: str) -> int: ...
     def prune_expired(self, cutoff_timestamp: float) -> int: ...
+    def consume_state_read(
+        self,
+        *,
+        user_id: str,
+        room_code: str,
+        max_requests: int,
+        window_seconds: float,
+        bucket_ttl_seconds: float,
+        max_buckets: int,
+    ) -> int | None: ...
 
 
 def _rank_value(card: str) -> int:
@@ -129,6 +146,15 @@ class P2PRoomManager:
         with self._lock:
             self._store = store
 
+    @property
+    def has_shared_store(self) -> bool:
+        return self._store is not None
+
+    def consume_state_read(self, **kwargs) -> int | None:
+        if not self._store:
+            return None
+        return self._store.consume_state_read(**kwargs)
+
     def _persist(self, room: Room) -> None:
         if not self._store:
             return
@@ -159,6 +185,24 @@ class P2PRoomManager:
             if self._store:
                 codes.update(self._store.room_codes_for_user(user_id))
             return sorted(codes)
+
+    def refresh_rooms(self, room_codes: list[str]) -> dict[str, Room]:
+        """Load durable snapshots in one query for process-local socket fanout."""
+
+        normalized = sorted({code.strip().upper() for code in room_codes if code.strip()})
+        with self._lock:
+            if not self._store:
+                return {code: self._rooms[code] for code in normalized if code in self._rooms}
+            durable = self._store.load_many(normalized)
+            for code, room in durable.items():
+                cached = self._rooms.get(code)
+                if cached is None or room.sequence_id > cached.sequence_id or room.closed:
+                    self._rooms[code] = room
+            return {
+                code: self._rooms[code]
+                for code in normalized
+                if code in durable and code in self._rooms and not self._rooms[code].closed
+            }
 
     def create_room(
         self,
@@ -218,48 +262,92 @@ class P2PRoomManager:
 
     def join_room(self, code: str, *, user_id: str, display_name: str) -> Room:
         with self._lock:
-            room = self.get_room(code)
-            if user_id in room.players:
-                if room.players[user_id].display_name != display_name:
-                    room.players[user_id].display_name = display_name
-                    self._record(room, "player_profile_updated", user_id=user_id)
-                    self._persist(room)
+            if self._store:
+                room, _ = self._store.mutate(
+                    code,
+                    lambda persisted: self._join_room_on_snapshot(
+                        persisted,
+                        user_id=user_id,
+                        display_name=display_name,
+                    ),
+                )
+                self._rooms[room.code] = room
                 return room
-            if len(room.players) >= 2 or room.phase != "waiting":
-                raise P2PError("room_unavailable", "Room is full or already playing")
-            room.players[user_id] = Player(user_id, display_name, 1, room.starting_stack)
-            self._record(room, "player_joined", user_id=user_id)
-            self._persist(room)
+            room = self.get_room(code)
+            self._join_room_on_snapshot(room, user_id=user_id, display_name=display_name)
             return room
+
+    def _join_room_on_snapshot(
+        self,
+        room: Room,
+        *,
+        user_id: str,
+        display_name: str,
+    ) -> None:
+        if user_id in room.players:
+            if room.players[user_id].display_name != display_name:
+                room.players[user_id].display_name = display_name
+                self._record(room, "player_profile_updated", user_id=user_id)
+            return
+        if len(room.players) >= 2 or room.phase != "waiting":
+            raise P2PError("room_unavailable", "Room is full or already playing")
+        room.players[user_id] = Player(user_id, display_name, 1, room.starting_stack)
+        self._record(room, "player_joined", user_id=user_id)
 
     def leave_room(self, code: str, *, user_id: str) -> Room | None:
         with self._lock:
+            if self._store:
+                room, _ = self._store.mutate(
+                    code,
+                    lambda persisted: self._leave_room_on_snapshot(
+                        persisted,
+                        user_id=user_id,
+                    ),
+                )
+                self._rooms[room.code] = room
+                return None if room.closed else room
             room = self.get_room(code)
-            if user_id not in room.players:
-                raise P2PError("not_in_room", "Player is not in this room")
-            if room.phase not in {"waiting", "showdown"}:
-                other = self._other_player(room, user_id)
-                if other:
-                    self._finish_hand(room, winner_ids=[other.user_id], reason="opponent_left")
-            room.players.pop(user_id, None)
-            self._record(room, "player_left", user_id=user_id)
-            if not room.players or user_id == room.owner_id:
-                room.closed = True
-                self._record(room, "room_closed", user_id=user_id)
-                self._persist(room)
-                return None
-            room.phase = "waiting"
+            self._leave_room_on_snapshot(room, user_id=user_id)
             self._persist(room)
-            return room
+            return None if room.closed else room
+
+    def _leave_room_on_snapshot(self, room: Room, *, user_id: str) -> None:
+        if user_id not in room.players:
+            raise P2PError("not_in_room", "Player is not in this room")
+        if room.phase not in {"waiting", "showdown"}:
+            other = self._other_player(room, user_id)
+            if other:
+                self._finish_hand(room, winner_ids=[other.user_id], reason="opponent_left")
+        room.players.pop(user_id, None)
+        self._record(room, "player_left", user_id=user_id)
+        if not room.players or user_id == room.owner_id:
+            room.closed = True
+            self._record(room, "room_closed", user_id=user_id)
+            return
+        room.phase = "waiting"
 
     def close_room(self, code: str, *, user_id: str) -> None:
         """Close a room explicitly, restricted to its owner."""
 
         with self._lock:
+            if self._store:
+                room, _ = self._store.mutate(
+                    code,
+                    lambda persisted: self._close_room_on_snapshot(
+                        persisted,
+                        user_id=user_id,
+                    ),
+                )
+                self._rooms[room.code] = room
+                return
             room = self.get_room(code)
-            if room.owner_id != user_id:
-                raise P2PError("not_room_owner", "Only the room owner can close this room")
-            self.leave_room(room.code, user_id=user_id)
+            self._close_room_on_snapshot(room, user_id=user_id)
+            self._persist(room)
+
+    def _close_room_on_snapshot(self, room: Room, *, user_id: str) -> None:
+        if room.owner_id != user_id:
+            raise P2PError("not_room_owner", "Only the room owner can close this room")
+        self._leave_room_on_snapshot(room, user_id=user_id)
 
     def set_connected(self, code: str, *, user_id: str, connected: bool) -> Room:
         with self._lock:
@@ -383,7 +471,53 @@ class P2PRoomManager:
         """Validate, deduplicate and apply one client command atomically."""
 
         with self._lock:
+            if self._store:
+                room, result = self._store.mutate(
+                    code,
+                    lambda persisted: self._execute_command_on_room(
+                        persisted,
+                        user_id=user_id,
+                        command_id=command_id,
+                        hand_id=hand_id,
+                        expected_phase=expected_phase,
+                        command_type=command_type,
+                        action=action,
+                        amount=amount,
+                        card_indexes=card_indexes,
+                    ),
+                )
+                self._rooms[room.code] = room
+                return CommandResult(room, result.state, result.duplicate)
             room = self.get_room(code)
+            return self._execute_command_on_room(
+                room,
+                user_id=user_id,
+                command_id=command_id,
+                hand_id=hand_id,
+                expected_phase=expected_phase,
+                command_type=command_type,
+                action=action,
+                amount=amount,
+                card_indexes=card_indexes,
+            )
+
+    def _execute_command_on_room(
+        self,
+        room: Room,
+        *,
+        user_id: str,
+        command_id: str,
+        hand_id: str | None,
+        expected_phase: str,
+        command_type: str,
+        action: str = "",
+        amount: int = 0,
+        card_indexes: list[int] | None = None,
+    ) -> CommandResult:
+        """Apply one command to a caller-supplied authoritative snapshot."""
+
+        self._rooms[room.code] = room
+        with self._lock:
             self._player(room, user_id)
             self._prune_command_receipts(room)
             normalized_type = command_type.strip().lower()
@@ -441,7 +575,6 @@ class P2PRoomManager:
                 state=deepcopy(state),
             )
             self._prune_command_receipts(room)
-            self._persist(room)
             return CommandResult(room, state, False)
 
     def legal_actions(self, room: Room, user_id: str) -> list[str]:
@@ -526,8 +659,8 @@ class P2PRoomManager:
             )
         ]
         for code in expired:
-            self._rooms.pop(code, None)
-            if self._store:
+            room = self._rooms.pop(code, None)
+            if self._store and room and not room.closed:
                 self._store.delete(code)
 
     @staticmethod

@@ -1,0 +1,67 @@
+name: Core5 weekly long soak
+
+on:
+  schedule:
+    - cron: "15 16 * * 6"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: core5-weekly-long-soak
+  cancel-in-progress: false
+
+jobs:
+  nightly-soak-gate:
+    name: ${{ matrix.target }} 400-hand gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: desktop-chromium
+            project: core5-soak-desktop-chromium
+            viewport: desktop
+          - target: android-chromium
+            project: core5-soak-android-chromium
+            viewport: landscape
+          - target: iphone-webkit
+            project: core5-soak-iphone-webkit
+            viewport: portrait
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - run: npm ci --legacy-peer-deps
+      - run: python -m pip install -e './backend[test]'
+      - run: npx playwright install --with-deps chromium webkit
+      - name: Run deterministic Core5 multi-seed soak
+        run: >-
+          bash scripts/ci/run-with-backend.sh
+          node scripts/run-core5-long-run-soak.js
+          --label=core5-weekly-${{ matrix.target }}
+          --project=${{ matrix.project }}
+          --viewports=${{ matrix.viewport }}
+          --variants=badugi,D01,D02,S01,S02
+          --modes=cash,tournament
+          --seeds=101,127
+          --hands=20
+          --timeout-ms=7200000
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: core5-weekly-${{ matrix.target }}
+          path: |
+            reports/browser-gameplay
+            reports/screenshots
+            playwright-report
+            test-results
+          if-no-files-found: error
+          retention-days: 30

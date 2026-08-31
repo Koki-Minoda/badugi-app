@@ -52,6 +52,16 @@ describe("variantAvailability", () => {
     expect(badugi.reason).toMatch(/Core MGX alpha game/i);
   });
 
+  it("keeps NLH preview-only until the remaining promotion gates are reviewed", () => {
+    const nlh = getVariantAvailability("nlh");
+    expect(nlh.availability).toBe(VARIANT_AVAILABILITY_STATES.PREVIEW_ONLY);
+    expect(nlh.reason).toMatch(/Desktop and Android cash lifecycle QA is complete/i);
+    expect(nlh.requiredBeforeAlpha).toEqual([
+      "NLH tournament lifecycle parity",
+      "NLH iPhone/WebKit parity",
+    ]);
+  });
+
   it("marks Chinese/OFC as coming soon and keeps unknown variants unavailable", () => {
     expect(getVariantAvailability("ofc").availability).toBe(
       VARIANT_AVAILABILITY_STATES.COMING_SOON,

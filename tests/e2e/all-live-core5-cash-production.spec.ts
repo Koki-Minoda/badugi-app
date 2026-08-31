@@ -385,7 +385,11 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
     await page.getByTestId("hand-result-cash-out").click();
     const cashOut = page.getByRole("dialog", { name: /Cash out result/i });
     await expect(cashOut).toBeVisible({ timeout: 15_000 });
-    await expect(cashOut.getByTestId("cash-out-hands")).toHaveText(String(HANDS));
+    const handsValue = cashOut
+      .getByText("Hands", { exact: true })
+      .locator("..")
+      .getByText(String(HANDS), { exact: true });
+    await expect(handsValue).toBeVisible();
     await cashOut.getByRole("button", { name: /ゲーム選択|Game Select/i }).click();
     await expect(page.getByText(/Select Your Variant|ゲームを選択/i)).toBeVisible({ timeout: 20_000 });
     mark("cash-out-complete");

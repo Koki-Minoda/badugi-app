@@ -12,16 +12,16 @@ import {
 describe("onnxPolicyAdapter Badugi schema", () => {
   it("selects tier-specific Badugi models for Beginner, Standard, Pro, Iron, and WorldMaster", () => {
     expect(selectModelForVariant({ variantId: "D03", tierId: "beginner" })).toMatchObject({
-      id: "model-badugi-hu-beginner-dqn-100000",
-      trainingMode: "heads-up-selfplay",
-      trainingEpisodes: 100000,
-      trainingStatus: "beginner",
-      onnx: "models/badugi_hu_beginner_dqn_100000.onnx",
+      id: "model-badugi-sixmax-standard-dqn-v2",
+      trainingMode: "sixmax-selfplay",
+      trainingEpisodes: 50000,
+      trainingStatus: "active-beginner-demoted",
+      onnx: "models/badugi_sixmax_standard_dqn_v2.onnx",
       inputShape: [96],
       outputShape: [6],
     });
     expect(selectModelForVariant({ variantId: "D03", tierId: "standard" })?.id).toBe(
-      "model-badugi-sixmax-standard-dqn-v2",
+      "model-badugi-sixmax-standard-e11",
     );
     expect(
       selectModelForVariant({
@@ -29,7 +29,7 @@ describe("onnxPolicyAdapter Badugi schema", () => {
         tierId: "standard",
         characterId: "badugi-sixmax-standard-ryo",
       })?.id,
-    ).toBe("model-badugi-sixmax-standard-dqn-v2");
+    ).toBe("model-badugi-sixmax-standard-e11");
     expect(selectModelForVariant({ variantId: "D03", tierId: "pro" })?.id).toBe(
       "model-badugi-pro-v1",
     );

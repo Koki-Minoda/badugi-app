@@ -1,0 +1,64 @@
+{
+  "schemaVersion": "badugi-standard-promotion-v1",
+  "decision": "promote-e11-to-standard",
+  "candidate": {
+    "id": "E11",
+    "checkpoint": "badugi_sixmax_dqn_0003000_20260828-211540.pt",
+    "checkpointSha256": "5b44a23972d98a7d4e86c0a742b80b37f70297cff2ac2683683a9f57d065d1ef",
+    "onnx": "badugi_sixmax_standard_e11.onnx",
+    "onnxSha256": "3f0dbc5a947beabf41c8c998b50285d63358490c6399044eee8c83e18c442aab"
+  },
+  "baseline": {
+    "modelId": "model-badugi-sixmax-standard-dqn-v2",
+    "checkpointSha256": "d93fad43dce8266d6b725eb7e598d2e961db0fbbfafca4eaae993bc78c734079",
+    "newTier": "beginner"
+  },
+  "evaluation": {
+    "episodesPerSeedProfile": 500,
+    "seeds": [20270501, 20270502, 20270503],
+    "profiles": [
+      "balanced",
+      "loose_passive",
+      "loose_aggressive",
+      "tight_passive",
+      "tight_aggressive",
+      "pat_heavy",
+      "draw_heavy"
+    ],
+    "totalEpisodes": 10500,
+    "onnxUsageRate": 1.0,
+    "fallbackRate": 0.0,
+    "candidateMetrics": {
+      "avgReward": 0.6554048712720848,
+      "worstProfile": "loose_aggressive",
+      "worstProfileAvgReward": 0.29843893899204244,
+      "valueBetRate": 0.8399538486896324,
+      "showdownWinRate": 0.6176019625881631
+    },
+    "baselineMetrics": {
+      "avgReward": 0.6119402653975343,
+      "worstProfile": "loose_aggressive",
+      "worstProfileAvgReward": 0.27996666666666664,
+      "valueBetRate": 0.6143199852371286,
+      "showdownWinRate": 0.6063618290258449
+    },
+    "deltas": {
+      "avgReward": 0.04346460587455048,
+      "worstProfileAvgReward": 0.018472272325375794,
+      "looseAggressiveAvgReward": 0.018472272325375794,
+      "valueBetRate": 0.2256338634525038
+    },
+    "regressionGate": "pass"
+  },
+  "tierDecision": {
+    "candidateTier": "standard",
+    "baselineTier": "beginner",
+    "proEligible": false,
+    "reason": "E11 passes every regression check, but worst-profile reward remains below the Pro threshold of 0.35 and average improvement remains below the Pro delta target of 0.05."
+  },
+  "lineage": {
+    "nextTrainingBase": "E11 fixed 3k checkpoint",
+    "latestAliasEligible": false,
+    "latestAliasReason": "The latest ONNX alias is not byte- or inference-equivalent to the evaluated fixed 3k export."
+  }
+}

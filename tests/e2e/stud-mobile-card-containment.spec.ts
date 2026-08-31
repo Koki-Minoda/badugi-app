@@ -124,6 +124,29 @@ async function playStudHandToResult(page: Page, handNumber: number) {
         .first();
       await expect(action).toBeVisible({ timeout: 10000 });
       await expect(action).toBeEnabled({ timeout: 10000 });
+      const actionGeometry = await action.evaluate((element) => {
+        const box = element.getBoundingClientRect();
+        const viewport = window.visualViewport ?? {
+          offsetLeft: 0,
+          offsetTop: 0,
+          width: window.innerWidth,
+          height: window.innerHeight,
+        };
+        return {
+          left: box.left,
+          top: box.top,
+          right: box.right,
+          bottom: box.bottom,
+          viewportLeft: viewport.offsetLeft,
+          viewportTop: viewport.offsetTop,
+          viewportRight: viewport.offsetLeft + viewport.width,
+          viewportBottom: viewport.offsetTop + viewport.height,
+        };
+      });
+      expect(actionGeometry.left).toBeGreaterThanOrEqual(actionGeometry.viewportLeft - 1);
+      expect(actionGeometry.top).toBeGreaterThanOrEqual(actionGeometry.viewportTop - 1);
+      expect(actionGeometry.right).toBeLessThanOrEqual(actionGeometry.viewportRight + 1);
+      expect(actionGeometry.bottom).toBeLessThanOrEqual(actionGeometry.viewportBottom + 1);
       await action.click();
       heroButtonClicks += 1;
     } else if (typeof actor === "number") {

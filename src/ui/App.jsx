@@ -14148,7 +14148,9 @@ function CashOutResultModal({ summary, onClose, onBackToMenu, onNewSession }) {
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
             <p className="text-slate-500">Hands</p>
-            <p className="text-xl font-black">{summary?.hands ?? 0}</p>
+            <p className="text-xl font-black" data-testid="cash-out-hands">
+              {summary?.hands ?? 0}
+            </p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
             <p className="text-slate-500">Net</p>

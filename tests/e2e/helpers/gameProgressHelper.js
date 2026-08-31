@@ -417,15 +417,19 @@ export async function performSafeAction(page, options = {}) {
 
 export async function waitForProgressChange(page, previousKey, { timeout = 8000 } = {}) {
   await page.waitForFunction(
-    ({ key, browserSignalSource }) => {
+    ({ key, browserSignalSource, progressSummarySource }) => {
       const collectBrowserSignals = new Function(`return (${browserSignalSource})`)();
+      const summarizeProgress = new Function(`return (${progressSummarySource})`)();
       const api = window.__BADUGI_E2E__;
       const state = api?.getStateSnapshot?.() ?? null;
       const phaseState = api?.getPhaseState?.() ?? null;
       const snapshot = state?.controllerSnapshot ?? null;
       const ui = collectBrowserSignals();
       const variantId = state?.gameVariant ?? snapshot?.variantId ?? null;
-      const rawPhase = phaseState?.phase ?? snapshot?.phase ?? snapshot?.street ?? state?.phase ?? null;
+      // Keep this source precedence and the summary shape identical to
+      // getProgressState()/progressKey(). A looser key used to report progress
+      // immediately even when the canonical controller snapshot was unchanged.
+      const rawPhase = snapshot?.phase ?? snapshot?.street ?? phaseState?.phase ?? state?.phase ?? null;
       const uiTerminal =
         ui.resultVisible ||
         ui.nextHandVisible ||
@@ -449,7 +453,7 @@ export async function waitForProgressChange(page, previousKey, { timeout = 8000 
                     : null;
       const players = snapshot?.players ?? phaseState?.players ?? state?.players ?? [];
       const pot = Number(snapshot?.pot ?? state?.potTotal ?? 0);
-      const handId = phaseState?.handId ?? state?.handId ?? null;
+      const handId = snapshot?.handId ?? phaseState?.handId ?? state?.handId ?? null;
       const maxExplicitStreetBet = Math.max(
         0,
         ...(players ?? []).map((player) => Number(player?.betThisStreet ?? player?.committedThisStreet ?? 0) || 0),
@@ -462,20 +466,16 @@ export async function waitForProgressChange(page, previousKey, { timeout = 8000 
       const maxPlayerStreetBet = maxExplicitStreetBet > 0 ? maxExplicitStreetBet : useFallbackBet ? maxFallbackBet : 0;
       const currentBet = Math.max(Number(snapshot?.currentBet ?? phaseState?.currentBet ?? state?.currentBet ?? 0) || 0, maxPlayerStreetBet);
       const drawRoundIndex = snapshot?.drawRoundIndex ?? snapshot?.drawRound ?? phaseState?.drawRound ?? state?.drawRound ?? null;
-      const playerSummary = players.map((player, seat) => ({
-        seat,
-        stack: Number(player?.stack ?? 0),
-        bet: Number(player?.betThisStreet ?? player?.betThisRound ?? player?.bet ?? 0),
-        folded: Boolean(player?.folded || player?.hasFolded),
-        allIn: Boolean(player?.allIn),
-        seatOut: Boolean(player?.seatOut || player?.isBusted),
-        lastAction: player?.lastAction ?? null,
-        hasDrawn: Boolean(player?.hasDrawn),
-      }));
-      const nextKey = JSON.stringify({ handId, phase, actor, currentBet, pot, drawRoundIndex, players: playerSummary });
+      const nextKey = JSON.stringify(
+        summarizeProgress({ handId, phase, actor, currentBet, pot, drawRoundIndex, players }),
+      );
       return nextKey !== key || uiTerminal || phase === "HAND_RESULT" || phase === "SHOWDOWN" || snapshot?.lastHandResult;
     },
-    { key: previousKey, browserSignalSource: collectBrowserSignals.toString() },
+    {
+      key: previousKey,
+      browserSignalSource: collectBrowserSignals.toString(),
+      progressSummarySource: summarizeProgressState.toString(),
+    },
     { timeout },
   );
 }
@@ -604,7 +604,10 @@ export async function playOneHandProgression(page, options = {}) {
     if (action.actor === 0 && !String(action.clickedAction).startsWith("controller:")) {
       heroButtonClicks += 1;
     }
-    await waitForProgressChange(page, key);
+    // performSafeAction only returns acted=true after the canonical state has
+    // already moved away from `key`. Waiting for a second transition here can
+    // race through CPU actions and land back on an equivalent Hero decision,
+    // turning valid progress into an 8-second false timeout.
   }
 
   const finalProgress = await getProgressState(page);

@@ -288,6 +288,7 @@ test.describe("Stud-family mobile card containment", () => {
         variant === "stud8" ? { width: 390, height: 844 } : { width: 844, height: 390 };
       await page.setViewportSize(deviceViewports?.initial ?? fallbackViewport);
       await openLocallyAuthenticatedStudGame(page, variant);
+      await expectEveryCardInsideItsSeat(page);
 
       let totalHeroButtonClicks = 0;
 

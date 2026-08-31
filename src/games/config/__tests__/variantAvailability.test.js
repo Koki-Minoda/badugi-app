@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  PUBLIC_PLAYABLE_VARIANTS,
   VARIANT_AVAILABILITY,
   VARIANT_AVAILABILITY_STATES,
   getVariantAvailability,
@@ -23,6 +24,24 @@ describe("variantAvailability", () => {
     expect(getVariantAvailability("S02").availability).toBe(
       VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
     );
+  });
+
+  it("keeps the public release manifest equal to every alpha-playable variant", () => {
+    const manifestKeys = PUBLIC_PLAYABLE_VARIANTS.map((entry) => entry.availabilityKey).sort();
+    const alphaKeys = listVariantAvailability()
+      .filter((entry) => entry.availability === VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE)
+      .map((entry) => entry.key)
+      .sort();
+
+    expect(manifestKeys).toEqual(alphaKeys);
+    expect(new Set(PUBLIC_PLAYABLE_VARIANTS.map((entry) => entry.id)).size).toBe(
+      PUBLIC_PLAYABLE_VARIANTS.length,
+    );
+    for (const entry of PUBLIC_PLAYABLE_VARIANTS) {
+      expect(getVariantAvailability(entry.id).availability).toBe(
+        VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
+      );
+    }
   });
 
   it("includes Badugi in the friend alpha scope", () => {

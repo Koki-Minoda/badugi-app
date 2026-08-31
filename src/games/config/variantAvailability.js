@@ -8,6 +8,33 @@ export const VARIANT_AVAILABILITY_STATES = Object.freeze({
 export const PREVIEW_VARIANTS_STORAGE_KEY = "mgx.previewVariants";
 export const ALPHA_ONLY_VARIANTS_STORAGE_KEY = "mgx.alphaOnlyVariants";
 
+// Product-owned source of truth for variants that are available without a
+// preview flag. Release and production-QM tooling must derive their coverage
+// from this list so a newly published game cannot silently miss its gates.
+export const PUBLIC_PLAYABLE_VARIANTS = Object.freeze([
+  Object.freeze({ id: "badugi", availabilityKey: "badugi", displayName: "Badugi" }),
+  Object.freeze({
+    id: "D01",
+    availabilityKey: "deuce_to_seven_triple_draw",
+    displayName: "2-7 Triple Draw",
+  }),
+  Object.freeze({
+    id: "D02",
+    availabilityKey: "ace_to_five_triple_draw",
+    displayName: "A-5 Triple Draw",
+  }),
+  Object.freeze({
+    id: "S01",
+    availabilityKey: "deuce_to_seven_single_draw",
+    displayName: "2-7 Single Draw",
+  }),
+  Object.freeze({
+    id: "S02",
+    availabilityKey: "ace_to_five_single_draw",
+    displayName: "A-5 Single Draw",
+  }),
+]);
+
 const ALPHA_REASON =
   "Core draw-game flow is enabled for friend alpha.";
 const BADUGI_ALPHA_REASON =

@@ -33,6 +33,7 @@ jobs:
       - run: npm run test:tier1
       - run: npm run test:game:progress
       - run: npm run test:game:ev
+      - run: npm run test:qm:public-games
       - run: npm run test:deploy:static
 
   dependency-security:
@@ -168,6 +169,10 @@ jobs:
             tests/e2e/all-live-core5-cash-production.spec.ts \
             --project=badugi-flow \
             --workers=1
+      - name: Enforce complete public-game QM evidence
+        env:
+          MGX_ALL_LIVE_CASH_HANDS: "10"
+        run: npm run qm:cash:summary
       - name: Real-button Badugi cash playability through blind increase
         env:
           MGX_CASH_QA: "1"
@@ -178,17 +183,17 @@ jobs:
             tests/e2e/production-cash-playability.spec.ts \
             --project=badugi-flow \
             --workers=1
-      - name: Upload cash-playability failure evidence
-        if: failure()
+      - name: Upload public cash QM evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cash-playability-failure
+          name: public-cash-qm
           path: |
             test-results/
             reports/production-cash/
             reports/all-live-cash/
           if-no-files-found: ignore
-          retention-days: 14
+          retention-days: 30
 
   mobile-webkit-qa:
     runs-on: ubuntu-latest

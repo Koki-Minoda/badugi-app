@@ -36,6 +36,7 @@
     "test:game:known-bugs": "vitest run src/games/testing/regression/gameProgressKnownBugs.test.js",
     "test:game:family": "vitest run src/games/testing/scenario/*FamilyProgress.test.js",
     "test:game:stud": "vitest run src/games/testing/scenario/studFamilyProgress.test.js",
+    "test:qm:stud-razz-devices": "playwright test --project=stud-desktop-chromium --project=stud-android-chromium --project=stud-iphone-webkit --workers=1",
     "test:game:flop": "vitest run src/games/testing/scenario/flopFamilyProgress.test.js",
     "test:game:draw-family": "vitest run src/games/testing/scenario/drawFamilyProgress.test.js",
     "test:game:chinese": "vitest run src/games/testing/scenario/chineseFamilyProgress.test.js",

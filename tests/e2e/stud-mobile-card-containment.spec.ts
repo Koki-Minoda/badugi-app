@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import {
   APP_URL,
   dismissTranslateOverlay,
@@ -14,6 +14,12 @@ async function openLocallyAuthenticatedStudGame(page: Page, variant: string) {
   };
   await page.route("**/api/auth/me", async (route) => {
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(user) });
+  });
+  await page.route("**/api/history/hand", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+  });
+  await page.route("**/api/badugi/**", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
   });
   await page.addInitScript((authUser) => {
     window.localStorage.setItem(
@@ -79,6 +85,7 @@ async function forceToSeventhStreet(page: Page) {
 
 async function playStudHandToResult(page: Page, handNumber: number) {
   const visited = new Set<string>();
+  let heroButtonClicks = 0;
   let previousSignature = "";
   let repeated = 0;
 
@@ -88,7 +95,7 @@ async function playStudHandToResult(page: Page, handNumber: number) {
     if (snapshot?.street) visited.add(snapshot.street);
     if (snapshot?.lastHandResult || snapshot?.street === "SHOWDOWN" || state?.phase === "HAND_RESULT") {
       await expect(page.getByTestId("hand-result-pot").first()).toBeVisible({ timeout: 15000 });
-      return { state, visited };
+      return { state, visited, heroButtonClicks };
     }
 
     const actor = snapshot?.currentActor;
@@ -108,7 +115,18 @@ async function playStudHandToResult(page: Page, handNumber: number) {
       throw new Error(`Hand ${handNumber} froze at ${signature}`);
     }
 
-    if (typeof actor === "number") {
+    if (actor === 0) {
+      const action = page
+        .locator(
+          "[data-testid='action-check'],[data-testid='action-call'],[data-testid='action-raise'],[data-testid='action-fold']",
+        )
+        .filter({ visible: true })
+        .first();
+      await expect(action).toBeVisible({ timeout: 10000 });
+      await expect(action).toBeEnabled({ timeout: 10000 });
+      await action.click();
+      heroButtonClicks += 1;
+    } else if (typeof actor === "number") {
       await page.evaluate(
         ({ seat, amount }) =>
           window.__BADUGI_E2E__?.forceControllerAction?.(seat, {
@@ -121,6 +139,39 @@ async function playStudHandToResult(page: Page, handNumber: number) {
     await page.waitForTimeout(80);
   }
   throw new Error(`Hand ${handNumber} did not reach a result`);
+}
+
+function getDeviceViewports(testInfo: TestInfo) {
+  if (testInfo.project.name === "stud-android-chromium") {
+    return {
+      initial: { width: 412, height: 915 },
+      rotated: { width: 915, height: 412 },
+    };
+  }
+  if (testInfo.project.name === "stud-iphone-webkit") {
+    return {
+      initial: { width: 390, height: 844 },
+      rotated: { width: 844, height: 390 },
+    };
+  }
+  if (testInfo.project.name === "stud-desktop-chromium") {
+    return {
+      initial: { width: 1440, height: 900 },
+      rotated: { width: 1280, height: 720 },
+    };
+  }
+  return null;
+}
+
+async function expectNoHorizontalOverflow(page: Page) {
+  const geometry = await page.evaluate(() => ({
+    documentWidth: document.documentElement.scrollWidth,
+    viewportWidth: document.documentElement.clientWidth,
+    visualViewportWidth: window.visualViewport?.width ?? window.innerWidth,
+  }));
+  expect(geometry.documentWidth).toBeLessThanOrEqual(
+    Math.ceil(Math.max(geometry.viewportWidth, geometry.visualViewportWidth)) + 1,
+  );
 }
 
 async function advanceToNextHand(page: Page, previousHandId: string | null) {
@@ -207,26 +258,35 @@ test.describe("Stud-family mobile card containment", () => {
     });
   });
 
-  [
-    { variant: "stud8", viewport: { width: 390, height: 844 } },
-    { variant: "razz", viewport: { width: 844, height: 390 } },
-  ].forEach(({ variant, viewport }) => {
-    test(`${variant} completes 20 browser hands at ${viewport.width}x${viewport.height}`, async ({ page }) => {
-      await page.setViewportSize(viewport);
+  ["stud8", "razz"].forEach((variant) => {
+    test(`${variant} completes 20 browser hands with real Hero buttons`, async ({ page }, testInfo) => {
+      const deviceViewports = getDeviceViewports(testInfo);
+      const fallbackViewport =
+        variant === "stud8" ? { width: 390, height: 844 } : { width: 844, height: 390 };
+      await page.setViewportSize(deviceViewports?.initial ?? fallbackViewport);
       await openLocallyAuthenticatedStudGame(page, variant);
 
+      let totalHeroButtonClicks = 0;
+
       for (let handNumber = 1; handNumber <= 20; handNumber += 1) {
-        const { state, visited } = await playStudHandToResult(page, handNumber);
+        if (handNumber === 11 && deviceViewports) {
+          await page.setViewportSize(deviceViewports.rotated);
+          await page.waitForTimeout(300);
+        }
+        const { state, visited, heroButtonClicks } = await playStudHandToResult(page, handNumber);
+        totalHeroButtonClicks += heroButtonClicks;
         expect(
           [...visited],
           `${variant} hand ${handNumber} should visit every Stud street`,
         ).toEqual(
           expect.arrayContaining(["THIRD", "FOURTH", "FIFTH", "SIXTH", "SEVENTH", "SHOWDOWN"]),
         );
+        await expectNoHorizontalOverflow(page);
         if (handNumber < 20) {
           await advanceToNextHand(page, state?.handId ?? null);
         }
       }
+      expect(totalHeroButtonClicks).toBeGreaterThan(0);
     });
   });
 });

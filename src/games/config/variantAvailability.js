@@ -108,7 +108,11 @@ export const VARIANT_AVAILABILITY = Object.freeze({
     reason: BADUGI_ALPHA_REASON,
     requiredBeforeAlpha: [],
   }),
-  nlh: preview("No-Limit Hold'em"),
+  nlh: preview(
+    "No-Limit Hold'em",
+    "Desktop and Android cash lifecycle QA is complete; friend-alpha promotion waits for tournament and iPhone/WebKit parity.",
+    ["NLH tournament lifecycle parity", "NLH iPhone/WebKit parity"],
+  ),
   flh: preview("Fixed-Limit Hold'em"),
   super_holdem: preview("NL Super Hold'em"),
   fl_super_holdem: preview("FL Super Hold'em"),

@@ -11,6 +11,13 @@ availability set differ, or when the browser QA matrix lacks metadata for a
 public game. Preview and coming-soon games are deliberately excluded until a
 separate promotion decision changes the product manifest.
 
+An explicit release candidate can be exercised without changing that manifest
+by setting `MGX_ALL_LIVE_CASH_VARIANTS`. NL Hold'em uses this path to run the
+same 10-hand Desktop/Android lifecycle contract while remaining preview-only.
+Variant metadata keeps rule-specific assertions honest: NLH must expose no Draw
+action and preserve fixed cash blinds, while the public draw games must
+exercise Draw and their configured ring blind progression.
+
 ## Release gate
 
 Every pull request runs the public-scope contract together with the existing

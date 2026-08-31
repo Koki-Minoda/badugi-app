@@ -8,7 +8,10 @@ import {
   deleteAuthenticatedSession,
   openAuthenticatedGame,
 } from "./authHelper";
-import { CORE5_VARIANTS } from "./helpers/core5LayoutAuditHelper";
+import {
+  CORE5_VARIANTS,
+  NLH_READINESS_VARIANT,
+} from "./helpers/core5LayoutAuditHelper";
 import {
   getProgressState,
   summarizeProgressState,
@@ -30,7 +33,10 @@ const deviceFilter = new Set(
     .map((value) => value.trim().toLowerCase())
     .filter(Boolean),
 );
-const selectedVariants = CORE5_VARIANTS.filter(
+const readinessCandidates = variantFilter.has(NLH_READINESS_VARIANT.variant)
+  ? [NLH_READINESS_VARIANT]
+  : [];
+const selectedVariants = [...CORE5_VARIANTS, ...readinessCandidates].filter(
   (variant) => variantFilter.size === 0 || variantFilter.has(variant.variant.toLowerCase()),
 );
 
@@ -314,6 +320,11 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
     });
   try {
     mark("opening-game");
+    if (variant.requiresPreview) {
+      await page.addInitScript(() => {
+        window.localStorage.setItem("mgx.previewVariants", "true");
+      });
+    }
     session = await openAuthenticatedGame(
       page,
       `${APP_URL}?variant=${variant.variant}&mode=cash&mgxQa=mobile`,
@@ -371,12 +382,22 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
       totalHeroButtonClicks,
       `${variant.displayName} must exercise real Hero buttons across the session`,
     ).toBeGreaterThanOrEqual(Math.ceil(HANDS / 2));
-    expect(totalDrawClicks, `${variant.displayName} must exercise Draw`).toBeGreaterThan(0);
+    if (variant.expectsDraw) {
+      expect(totalDrawClicks, `${variant.displayName} must exercise Draw`).toBeGreaterThan(0);
+    } else {
+      expect(totalDrawClicks, `${variant.displayName} must not expose Draw`).toBe(0);
+    }
     const closingBlind = await blindSnapshot(page);
-    expect(closingBlind.level, `${variant.displayName} blind level must rise within ${HANDS} hands`).toBeGreaterThan(
-      openingBlind.level,
-    );
-    expect(closingBlind.bigBlind, `${variant.displayName} big blind must rise`).toBeGreaterThan(openingBlind.bigBlind);
+    if (variant.expectsBlindIncrease) {
+      expect(closingBlind.level, `${variant.displayName} blind level must rise within ${HANDS} hands`).toBeGreaterThan(
+        openingBlind.level,
+      );
+      expect(closingBlind.bigBlind, `${variant.displayName} big blind must rise`).toBeGreaterThan(openingBlind.bigBlind);
+    } else {
+      expect(closingBlind.level, `${variant.displayName} cash blind level must remain fixed`).toBe(openingBlind.level);
+      expect(closingBlind.smallBlind, `${variant.displayName} cash small blind must remain fixed`).toBe(openingBlind.smallBlind);
+      expect(closingBlind.bigBlind, `${variant.displayName} cash big blind must remain fixed`).toBe(openingBlind.bigBlind);
+    }
     mark("history-audit-start", { handIds });
     const history = await verifyHistoryAndReplay(page, handIds, mark);
     mark("history-audit-complete", { history });
@@ -427,7 +448,7 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
   }
 }
 
-test.describe("all publicly playable Core5 cash production gate", () => {
+test.describe("public games and explicit release candidates cash production gate", () => {
   test.skip(!enabled, "MGX_ALL_LIVE_CASH_QA=1 is required");
   test.describe.configure({ mode: "serial", timeout: 20 * 60_000 });
 

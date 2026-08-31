@@ -1499,7 +1499,8 @@ export default function App() {
     isMobileDevice &&
     !(
       normalizedGameVariant === APP_VARIANT_IDS.BADUGI ||
-      isDrawLowballAppVariant(normalizedGameVariant)
+      isDrawLowballAppVariant(normalizedGameVariant) ||
+      STUD_APP_VARIANT_IDS.has(normalizedGameVariant)
     );
   useEffect(() => {
     if (!shouldUseDesktopCanvasScale) {

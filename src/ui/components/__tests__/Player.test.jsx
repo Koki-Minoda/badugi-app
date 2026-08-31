@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { afterEach, describe, expect, test, vi } from "vitest";
 import Player from "../Player.jsx";
 import { getDisplayCards } from "../../utils/cardDisplayOrder.js";
+import { LAYOUT_GROUPS } from "../../game/layoutGroups.js";
 
 const basePlayer = {
   name: "Akira",
@@ -304,7 +305,7 @@ describe("Player", () => {
     expect(screen.getByTestId("seat-0-stud-summary").textContent).toContain("Down 2");
   });
 
-  test("renders Stud hero down-cards with a diagonal back overlay instead of text-only labels", () => {
+  test("renders every Stud hero card fully face-up without a back overlay", () => {
     render(
       <Player
         player={{
@@ -324,8 +325,41 @@ describe("Player", () => {
     );
 
     const downCard = screen.getByTestId("player-0-card-0");
-    expect(downCard.querySelector('[style*="polygon"]')).toBeTruthy();
+    expect(downCard.querySelector('[style*="polygon"]')).toBeNull();
     expect(screen.getByTestId("player-0-card-2").querySelector('[style*="polygon"]')).toBeNull();
+  });
+
+  test("contains seven-card Stud rows inside fixed-width compact player panels", () => {
+    render(
+      <Player
+        player={{
+          ...basePlayer,
+          hand: ["AS", "KD", "2C", "7H", "8S", "9D", "3C"],
+          cardVisibility: ["down", "down", "up", "up", "up", "up", "down"],
+          showHand: false,
+        }}
+        index={1}
+        selfIndex={0}
+        turn={0}
+        dealerIdx={0}
+        phase="BET"
+        positionLabel="UTG"
+        displayVariant="stud"
+        compact
+        layoutProfile={{
+          layoutGroup: LAYOUT_GROUPS.STUD,
+          mobilePortrait: { foldedSeatMode: "footer-badge" },
+        }}
+      />,
+    );
+
+    const seat = screen.getByTestId("seat-1");
+    const cardRow = screen.getByTestId("player-1-card-row");
+    expect(seat.className).toContain("overflow-hidden");
+    expect(seat.style.width).toContain("--compact-player-w");
+    expect(cardRow.children).toHaveLength(7);
+    expect(screen.queryByTestId("seat-1-stud-summary")).toBeNull();
+    expect(screen.queryByTestId("player-1-card-0-visibility")).toBeNull();
   });
 
   test("marks seventh street down card and bring-in / complete actions clearly", () => {

@@ -30,4 +30,15 @@ describe("layoutGroups", () => {
       expect(isDrawLowballFiveCardLayout(variantId)).toBe(true);
     },
   );
+
+  it.each(["stud", "stud8", "razz"])(
+    "maps %s to the seven-card Stud layout group",
+    (variantId) => {
+      expect(getVariantLayoutProfile(variantId)).toMatchObject({
+        layoutGroup: LAYOUT_GROUPS.STUD,
+        handCardCount: 7,
+        mobilePortrait: { tableAspectRatio: "5 / 8" },
+      });
+    },
+  );
 });

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { Page } from "@playwright/test";
+import { PUBLIC_PLAYABLE_VARIANTS } from "../../../src/games/config/variantAvailability.js";
 import { APP_URL, openAuthenticatedGame } from "../authHelper";
 import {
   expectMobileActionsInViewport,
@@ -17,48 +18,25 @@ export type AuditIssue = {
   message?: string;
 };
 
-export const CORE5_VARIANTS = [
-  {
-    game: "Badugi",
-    variant: "badugi",
-    displayName: "Badugi",
-    heroCardTestId: "player-0-card-3",
-    requiresPreview: true,
-    maxSteps: 120,
-  },
-  {
-    game: "2-7 Triple Draw",
-    variant: "D01",
-    displayName: "2-7 Triple Draw",
-    heroCardTestId: "player-0-card-4",
+const CORE5_QA_METADATA = Object.freeze({
+  badugi: { heroCardTestId: "player-0-card-3", maxSteps: 120 },
+  D01: { heroCardTestId: "player-0-card-4", maxSteps: 110 },
+  D02: { heroCardTestId: "player-0-card-4", maxSteps: 110 },
+  S01: { heroCardTestId: "player-0-card-4", maxSteps: 90 },
+  S02: { heroCardTestId: "player-0-card-4", maxSteps: 90 },
+});
+
+export const CORE5_VARIANTS = PUBLIC_PLAYABLE_VARIANTS.map((entry) => {
+  const metadata = CORE5_QA_METADATA[entry.id as keyof typeof CORE5_QA_METADATA];
+  if (!metadata) throw new Error(`Missing Core5 QA metadata for public variant ${entry.id}`);
+  return Object.freeze({
+    game: entry.displayName,
+    variant: entry.id,
+    displayName: entry.displayName,
+    ...metadata,
     requiresPreview: false,
-    maxSteps: 110,
-  },
-  {
-    game: "A-5 Triple Draw",
-    variant: "D02",
-    displayName: "A-5 Triple Draw",
-    heroCardTestId: "player-0-card-4",
-    requiresPreview: false,
-    maxSteps: 110,
-  },
-  {
-    game: "2-7 Single Draw",
-    variant: "S01",
-    displayName: "2-7 Single Draw",
-    heroCardTestId: "player-0-card-4",
-    requiresPreview: false,
-    maxSteps: 90,
-  },
-  {
-    game: "A-5 Single Draw",
-    variant: "S02",
-    displayName: "A-5 Single Draw",
-    heroCardTestId: "player-0-card-4",
-    requiresPreview: false,
-    maxSteps: 90,
-  },
-] as const;
+  });
+});
 
 export function ensureDirFor(filePath: string) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });

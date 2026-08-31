@@ -13,6 +13,42 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  public-cash-qm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - run: npx playwright install --with-deps chromium
+      - name: Verify public scope is fully managed
+        run: npm run test:qm:public-games
+      - name: Play every public cash game for ten hands on desktop and Android
+        env:
+          E2E_APP_URL: https://mgx-poker.com/
+          MGX_ALL_LIVE_CASH_QA: "1"
+          MGX_ALL_LIVE_CASH_HANDS: "10"
+          MGX_ALL_LIVE_CASH_DEVICES: desktop,android
+        run: npm run test:cash:all-live
+      - name: Enforce complete production evidence
+        env:
+          E2E_APP_URL: https://mgx-poker.com/
+          MGX_ALL_LIVE_CASH_HANDS: "10"
+        run: npm run qm:cash:summary
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: public-cash-qm
+          path: |
+            reports/all-live-cash
+            playwright-report
+            test-results
+          if-no-files-found: ignore
+          retention-days: 30
+
   live-product:
     runs-on: ubuntu-latest
     timeout-minutes: 35

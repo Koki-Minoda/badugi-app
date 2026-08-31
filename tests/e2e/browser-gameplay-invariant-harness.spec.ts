@@ -17,6 +17,7 @@ import {
   createBrowserGameplayRuntimeTelemetry,
   writeBrowserGameplayRuntimeTelemetry,
 } from "../../src/ui/qa/browserGameplayRuntimeTelemetry.js";
+import { installSoakSeed } from "./helpers/gameplaySoakHarness.ts";
 
 const REPORT_DIR = path.resolve("reports/browser-gameplay");
 const RUNTIME_REPORT_DIR = path.resolve("reports/browser-gameplay/runtime");
@@ -46,6 +47,10 @@ const selectedVariants = CORE5_VARIANTS.filter((variant) =>
 );
 const selectedModes = selected(process.env.BROWSER_GAMEPLAY_MODES, MODE_CONFIG);
 const selectedViewports = selected(process.env.BROWSER_GAMEPLAY_VIEWPORTS, Object.keys(VIEWPORTS) as Array<keyof typeof VIEWPORTS>);
+const selectedSeeds = (process.env.BROWSER_GAMEPLAY_SEEDS ?? "101")
+  .split(",")
+  .map((seed) => Number(seed.trim()))
+  .filter((seed) => Number.isFinite(seed));
 const handsPerCombo = Math.max(1, Number(process.env.BROWSER_GAMEPLAY_HANDS ?? 1));
 const maxSteps = Math.max(20, Number(process.env.BROWSER_GAMEPLAY_MAX_STEPS ?? 90));
 const runtimeTelemetryEnabled = process.env.BROWSER_RUNTIME_TELEMETRY === "1";
@@ -110,7 +115,8 @@ function playerBet(player: any) {
   return Number(player?.betThisStreet ?? player?.betThisRound ?? player?.bet ?? 0) || 0;
 }
 
-async function openVariantMode(page: Page, variant: (typeof CORE5_VARIANTS)[number], mode: string) {
+async function openVariantMode(page: Page, variant: (typeof CORE5_VARIANTS)[number], mode: string, seed: number) {
+  await installSoakSeed(page, seed);
   await page.addInitScript(() => {
     window.localStorage.setItem("mgx.previewVariants", "true");
   });
@@ -186,6 +192,8 @@ async function collect(page: Page, context: any, action: any, traceRows: any[], 
     failures.push({
       severity: violation.severity,
       type: violation.type,
+      seed: context.seed,
+      browserProject: context.browserProject,
       variantId: context.variantId,
       mode: context.mode,
       viewport: context.viewport,
@@ -457,6 +465,8 @@ async function playHands(page: Page, context: any, telemetry: any = null) {
         failures.push({
           severity: "P0",
           type: "ACTION_APPLICATION_FAILED",
+          seed: context.seed,
+          browserProject: context.browserProject,
           variantId: context.variantId,
           mode: context.mode,
           viewport: context.viewport,
@@ -522,6 +532,8 @@ async function playHands(page: Page, context: any, telemetry: any = null) {
       failures.push({
         severity: "P0",
         type: "HAND_COMPLETION_TIMEOUT",
+        seed: context.seed,
+        browserProject: context.browserProject,
         variantId: context.variantId,
         mode: context.mode,
         viewport: context.viewport,
@@ -554,6 +566,8 @@ test.describe("Browser gameplay invariant harness", () => {
       variantsTested: [...new Set(summaryRows.map((row) => row.variantId))],
       modesTested: [...new Set(summaryRows.map((row) => row.mode))],
       viewportsTested: [...new Set(summaryRows.map((row) => row.viewport))],
+      seedsTested: [...new Set(summaryRows.map((row) => row.seed))],
+      browserProjectsTested: [...new Set(summaryRows.map((row) => row.browserProject))],
       handsAttempted: summaryRows.reduce((sum, row) => sum + row.handsAttempted, 0),
       handsCompleted: summaryRows.reduce((sum, row) => sum + row.handsCompleted, 0),
       actionsObserved: summaryRows.reduce((sum, row) => sum + row.actionsObserved, 0),
@@ -581,64 +595,75 @@ test.describe("Browser gameplay invariant harness", () => {
   for (const variant of selectedVariants) {
     for (const mode of selectedModes) {
       for (const viewportName of selectedViewports) {
-        test(`${variant.game} ${mode} ${viewportName} browser gameplay invariants`, async ({ page }) => {
-          const viewport = VIEWPORTS[viewportName];
-          await page.setViewportSize(viewport);
-          await openVariantMode(page, variant, mode);
-          const anticipatedTracePath = path.join(
-            REPORT_DIR,
-            `${REPORT_LABEL}-trace-${variant.variant.toLowerCase()}-${mode}-${viewportName}.jsonl`,
-          );
-          const context = { variantId: variant.variant, mode, viewport: viewportName, tracePath: anticipatedTracePath };
-          const telemetry = runtimeTelemetryEnabled
-            ? createBrowserGameplayRuntimeTelemetry({
-                variantId: variant.variant,
-                mode,
-                viewport: viewportName,
-                handsTarget: handsPerCombo,
-                traceMode,
-              })
-            : null;
-          const { traceRows, counters } = await playHands(page, context, telemetry);
-          const traceWriteStart = Date.now();
-          const tracePath = writeTrace(
-            `${REPORT_LABEL}-trace-${variant.variant.toLowerCase()}-${mode}-${viewportName}.jsonl`,
-            traceRows,
-          );
-          telemetry?.recordTraceWrite({
-            rows: traceRows.length,
-            bytes: fs.statSync(tracePath).size,
-            elapsedMs: Date.now() - traceWriteStart,
-          });
-          let runtimeTelemetryPath: string | null = null;
-          let runtimeSummary: any = null;
-          if (telemetry) {
-            runtimeTelemetryPath = path.join(
-              RUNTIME_REPORT_DIR,
-              `${variant.variant.toLowerCase()}-${mode}-${viewportName}-runtime-telemetry.json`,
+        for (const seed of selectedSeeds) {
+          test(`${variant.game} ${mode} ${viewportName} seed ${seed} browser gameplay invariants`, async ({ page }, testInfo) => {
+            const viewport = VIEWPORTS[viewportName];
+            await page.setViewportSize(viewport);
+            await openVariantMode(page, variant, mode, seed);
+            const anticipatedTracePath = path.join(
+              REPORT_DIR,
+              `${REPORT_LABEL}-trace-${variant.variant.toLowerCase()}-${mode}-${viewportName}-seed-${seed}.jsonl`,
             );
-            runtimeSummary = telemetry.summary({
-              tracePath,
-              failures: failures.filter(
-                (failure) =>
-                  failure.variantId === variant.variant &&
-                  failure.mode === mode &&
-                  failure.viewport === viewportName,
-              ),
+            const context = {
+              variantId: variant.variant,
+              mode,
+              viewport: viewportName,
+              seed,
+              browserProject: testInfo.project.name,
+              tracePath: anticipatedTracePath,
+            };
+            const telemetry = runtimeTelemetryEnabled
+              ? createBrowserGameplayRuntimeTelemetry({
+                  variantId: variant.variant,
+                  mode,
+                  viewport: viewportName,
+                  handsTarget: handsPerCombo,
+                  traceMode,
+                })
+              : null;
+            const { traceRows, counters } = await playHands(page, context, telemetry);
+            const traceWriteStart = Date.now();
+            const tracePath = writeTrace(
+              `${REPORT_LABEL}-trace-${variant.variant.toLowerCase()}-${mode}-${viewportName}-seed-${seed}.jsonl`,
+              traceRows,
+            );
+            telemetry?.recordTraceWrite({
+              rows: traceRows.length,
+              bytes: fs.statSync(tracePath).size,
+              elapsedMs: Date.now() - traceWriteStart,
             });
-            const writeStats = writeBrowserGameplayRuntimeTelemetry(runtimeTelemetryPath, runtimeSummary);
-            telemetry.recordTraceWrite({ rows: 1, bytes: writeStats.bytes, elapsedMs: writeStats.elapsedMs });
-          }
-          summaryRows.push({
-            ...context,
-            status: traceRows.some((row) => row.violations?.some((v: any) => v.severity === "P0")) ? "FAIL" : "PASS",
-            handsAttempted: handsPerCombo,
-            ...counters,
-            tracePath,
-            runtimeTelemetryPath,
-            runtimeClassification: runtimeSummary?.classification ?? null,
+            let runtimeTelemetryPath: string | null = null;
+            let runtimeSummary: any = null;
+            if (telemetry) {
+              runtimeTelemetryPath = path.join(
+                RUNTIME_REPORT_DIR,
+                `${REPORT_LABEL}-${variant.variant.toLowerCase()}-${mode}-${viewportName}-seed-${seed}-runtime-telemetry.json`,
+              );
+              runtimeSummary = telemetry.summary({
+                tracePath,
+                failures: failures.filter(
+                  (failure) =>
+                    failure.variantId === variant.variant &&
+                    failure.mode === mode &&
+                    failure.viewport === viewportName &&
+                    failure.seed === seed &&
+                    failure.browserProject === testInfo.project.name,
+                ),
+              });
+              const writeStats = writeBrowserGameplayRuntimeTelemetry(runtimeTelemetryPath, runtimeSummary);
+              telemetry.recordTraceWrite({ rows: 1, bytes: writeStats.bytes, elapsedMs: writeStats.elapsedMs });
+            }
+            summaryRows.push({
+              ...context,
+              status: traceRows.some((row) => row.violations?.some((v: any) => v.severity === "P0")) ? "FAIL" : "PASS",
+              handsAttempted: handsPerCombo,
+              ...counters,
+              tracePath,
+              runtimeTelemetryPath,
+              runtimeClassification: runtimeSummary?.classification ?? null,
+            });
           });
-        });
+        }
       }
     }
   }

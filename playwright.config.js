@@ -54,5 +54,31 @@ export default defineConfig({
         browserName: 'webkit',
       },
     },
+    {
+      name: 'core5-soak-desktop-chromium',
+      testDir: './tests/e2e',
+      testMatch: /browser-gameplay-invariant-harness\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+    },
+    {
+      name: 'core5-soak-android-chromium',
+      testDir: './tests/e2e',
+      testMatch: /browser-gameplay-invariant-harness\.spec\.ts/,
+      use: {
+        ...devices['Pixel 7'],
+        browserName: 'chromium',
+      },
+    },
+    {
+      name: 'core5-soak-iphone-webkit',
+      testDir: './tests/e2e',
+      testMatch: /browser-gameplay-invariant-harness\.spec\.ts/,
+      use: {
+        ...devices['iPhone 13'],
+        browserName: 'webkit',
+      },
+    },
   ],
 });

@@ -111,12 +111,40 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  live-tournament-qm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - run: npx playwright install --with-deps chromium
+      - name: Complete Store and Local tournaments on production
+        env:
+          E2E_APP_URL: https://mgx-poker.com/
+          TOURNAMENT_QM_REPORT_LABEL: production-live-tournament-qm
+        run: npm run test:qm:tournament-production
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: production-live-tournament-qm
+          path: |
+            reports/tournament-qm
+            playwright-report
+            test-results
+          if-no-files-found: error
+          retention-days: 30
+
   notify-production-qm:
     if: always()
     needs:
       - public-cash-qm
       - live-product
       - live-ai-telemetry
+      - live-tournament-qm
     runs-on: ubuntu-latest
     steps:
       - name: Open, update, or resolve the production QM incident
@@ -125,6 +153,7 @@ jobs:
           PUBLIC_CASH_RESULT: ${{ needs.public-cash-qm.result }}
           LIVE_PRODUCT_RESULT: ${{ needs.live-product.result }}
           LIVE_AI_RESULT: ${{ needs.live-ai-telemetry.result }}
+          LIVE_TOURNAMENT_RESULT: ${{ needs.live-tournament-qm.result }}
         with:
           script: |
             const title = "[QM] Production live nightly failure";
@@ -132,6 +161,7 @@ jobs:
               "public-cash-qm": process.env.PUBLIC_CASH_RESULT,
               "live-product": process.env.LIVE_PRODUCT_RESULT,
               "live-ai-telemetry": process.env.LIVE_AI_RESULT,
+              "live-tournament-qm": process.env.LIVE_TOURNAMENT_RESULT,
             };
             const failed = Object.entries(results)
               .filter(([, result]) => result !== "success")

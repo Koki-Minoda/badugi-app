@@ -32,7 +32,7 @@ function backendEnvironment() {
     BACKEND_ENV: "local",
     BACKEND_DB_DRIVER: "sqlite",
     BACKEND_DB_NAME: DATABASE_PATH,
-    SECRET_KEY: "p2p-multiprocess-e2e-secret",
+    SECRET_KEY: "p2p-multiprocess-e2e-secret-key-32",
     CORS_ORIGINS: '["http://127.0.0.1:3000"]',
   };
 }

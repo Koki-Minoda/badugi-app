@@ -37,21 +37,31 @@ function backendEnvironment() {
   };
 }
 
-async function waitForBackend() {
+async function waitForBackend(expectedProcess: ChildProcessWithoutNullStreams) {
   const deadline = Date.now() + 30_000;
+  let consecutiveHealthyChecks = 0;
   while (Date.now() < deadline) {
+    if (expectedProcess.exitCode !== null || expectedProcess.signalCode !== null) {
+      throw new Error(`Two-worker backend exited before becoming healthy (${expectedProcess.exitCode ?? expectedProcess.signalCode})`);
+    }
     try {
-      if ((await fetch(`${ORIGIN}/api/health`)).ok) return;
+      if ((await fetch(`${ORIGIN}/api/health`, { cache: "no-store" })).ok) {
+        consecutiveHealthyChecks += 1;
+        if (consecutiveHealthyChecks >= 3) return;
+      } else {
+        consecutiveHealthyChecks = 0;
+      }
     } catch {
+      consecutiveHealthyChecks = 0;
       // Workers are still starting.
     }
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await new Promise((resolve) => setTimeout(resolve, 250));
   }
   throw new Error(`Two-worker backend did not become healthy on ${ORIGIN}`);
 }
 
 async function startBackend() {
-  backend = spawn(
+  const child = spawn(
     pythonCommand(),
     [
       "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", String(PORT),
@@ -59,8 +69,9 @@ async function startBackend() {
     ],
     { cwd: path.join(process.cwd(), "backend"), env: backendEnvironment() },
   );
-  backend.stderr.on("data", (chunk) => process.stderr.write(`[p2p-multi] ${chunk}`));
-  await waitForBackend();
+  backend = child;
+  child.stderr.on("data", (chunk) => process.stderr.write(`[p2p-multi] ${chunk}`));
+  await waitForBackend(child);
 }
 
 async function migrateDatabase() {
@@ -83,6 +94,16 @@ async function stopBackend() {
   const exited = new Promise<void>((resolve) => processToStop.once("exit", () => resolve()));
   processToStop.kill("SIGTERM");
   await Promise.race([exited, new Promise((resolve) => setTimeout(resolve, 10_000))]);
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    try {
+      await fetch(`${ORIGIN}/api/health`, { cache: "no-store" });
+    } catch {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`Two-worker backend still accepts connections on ${ORIGIN} after shutdown`);
 }
 
 async function authenticate(page: Page, label: string) {
@@ -113,9 +134,19 @@ async function authenticate(page: Page, label: string) {
 async function connectToBackend(page: Page, forceRest: boolean) {
   await page.route("**/api/**", async (route) => {
     const incoming = new URL(route.request().url());
-    await route.fulfill({
-      response: await route.fetch({ url: `${ORIGIN}${incoming.pathname}${incoming.search}` }),
-    });
+    try {
+      await route.fulfill({
+        response: await route.fetch({ url: `${ORIGIN}${incoming.pathname}${incoming.search}` }),
+      });
+    } catch {
+      // A rolling restart creates a short, legitimate outage. Model it as a
+      // retryable upstream response so the product's REST backoff is exercised.
+      await route.fulfill({
+        status: 503,
+        headers: { "content-type": "application/json", "retry-after": "1" },
+        body: JSON.stringify({ detail: "backend_restarting" }),
+      });
+    }
   });
   await page.addInitScript(({ backendPort, restOnly }) => {
     if (restOnly) {
@@ -265,6 +296,10 @@ test("two workers preserve a mixed WS/REST room across restart and ten hands", a
       timeout: 20_000,
     });
   } finally {
+    await Promise.all([
+      host.unrouteAll({ behavior: "ignoreErrors" }),
+      guest.unrouteAll({ behavior: "ignoreErrors" }),
+    ]);
     await hostContext.close();
     await guestContext.close();
   }

@@ -309,8 +309,11 @@ export default function GameLayoutBase({
       tableLayoutGroup === LAYOUT_GROUPS.DRAW_LOWBALL_5CARD);
   const isFiveCardDrawLayout =
     tableLayoutGroup === LAYOUT_GROUPS.DRAW_LOWBALL_5CARD;
-  const useRailPhasePanel = isPortraitDrawTable;
-  const useDenseActionPanel = isMobileTournament || isPortraitDrawTable;
+  const isStudTable = tableLayoutGroup === LAYOUT_GROUPS.STUD;
+  const isPortraitStudTable = isMobilePortraitMode && isStudTable;
+  const isPortraitCompactTable = isPortraitDrawTable || isPortraitStudTable;
+  const useRailPhasePanel = isPortraitCompactTable;
+  const useDenseActionPanel = isMobileTournament || isPortraitCompactTable;
   const renderedTournamentHud =
     isMobileTournament && React.isValidElement(tournamentHud)
       ? React.cloneElement(tournamentHud, { mobileCompact: true })
@@ -563,6 +566,42 @@ export default function GameLayoutBase({
               "--compact-hero-card-strip-maxw":
                 mobilePortraitProfile.heroCardStripMaxWidth,
               "--player-bet-minw": "clamp(30px, 8dvw, 42px)",
+            }
+          : {}),
+        ...(isStudTable
+          ? {
+              "--compact-player-w": isMobilePortraitMode
+                ? mobilePortraitProfile.playerWidth
+                : "clamp(142px, 22dvw, 188px)",
+              "--compact-folded-player-w": isMobilePortraitMode
+                ? mobilePortraitProfile.foldedPlayerWidth
+                : "clamp(92px, 14dvw, 118px)",
+              "--compact-cpu-card-w": isMobilePortraitMode
+                ? mobilePortraitProfile.cpuCardWidth
+                : "clamp(13px, 2.1dvw, 18px)",
+              "--compact-cpu-card-h": isMobilePortraitMode
+                ? mobilePortraitProfile.cpuCardHeight
+                : "clamp(19px, 3dvw, 26px)",
+              "--compact-cpu-card-font-size": isMobilePortraitMode
+                ? "clamp(6px, 1.7dvw, 8px)"
+                : "clamp(7px, 1.1dvw, 10px)",
+              "--compact-cpu-card-gap": "clamp(1px, 0.3dvw, 2px)",
+              "--compact-cpu-card-strip-maxw": isMobilePortraitMode
+                ? mobilePortraitProfile.cpuCardStripMaxWidth
+                : "clamp(104px, 16dvw, 142px)",
+              "--compact-hero-card-w": isMobilePortraitMode
+                ? mobilePortraitProfile.heroCardWidth
+                : "clamp(20px, 3dvw, 28px)",
+              "--compact-hero-card-h": isMobilePortraitMode
+                ? mobilePortraitProfile.heroCardHeight
+                : "clamp(29px, 4.3dvw, 40px)",
+              "--compact-hero-card-font-size": isMobilePortraitMode
+                ? "clamp(8px, 2.2dvw, 11px)"
+                : "clamp(9px, 1.4dvw, 12px)",
+              "--compact-hero-card-gap": "clamp(1px, 0.35dvw, 3px)",
+              "--compact-hero-card-strip-maxw": isMobilePortraitMode
+                ? mobilePortraitProfile.heroCardStripMaxWidth
+                : "clamp(150px, 25dvw, 214px)",
             }
           : {}),
         height: disableVh ? "100vh" : "var(--mgx-visual-vh, 100dvh)",
@@ -825,7 +864,7 @@ export default function GameLayoutBase({
             <div
               className={`relative grid ${
                 isMobileLayout
-                  ? isMobilePortraitTournament || isPortraitDrawTable
+                  ? isMobilePortraitTournament || isPortraitCompactTable
                     ? "h-full min-h-0 grid-cols-1 grid-rows-[minmax(0,1fr)_auto] gap-1"
                     : isMobileLandscapeTournament
                       ? "h-full min-h-0 grid-cols-[minmax(0,1fr)_clamp(186px,24dvw,228px)] grid-rows-1 gap-1.5"
@@ -987,7 +1026,7 @@ export default function GameLayoutBase({
                           displayVariant={gameVariant}
                           layoutProfile={tableLayoutProfile}
                           mobileHeroCardOnly={
-                            isPortraitDrawTable &&
+                            isPortraitCompactTable &&
                             !isMobileTournament &&
                             seat.seatIndex === heroSeatIndex
                           }

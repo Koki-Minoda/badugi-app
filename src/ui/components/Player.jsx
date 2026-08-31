@@ -407,11 +407,12 @@ export default function Player({
     player.personality?.label ??
     player.personalityId ??
     null;
-  const isDrawTableMobileLayout =
+  const isCompactTableMobileLayout =
     compact &&
-    ["badugi", "draw-lowball-5card"].includes(layoutProfile?.layoutGroup);
+    ["badugi", "draw-lowball-5card", "stud"].includes(layoutProfile?.layoutGroup);
+  const isCompactStudLayout = compact && layoutProfile?.layoutGroup === "stud";
   const useCompactFoldedBadge =
-    isDrawTableMobileLayout &&
+    isCompactTableMobileLayout &&
     layoutProfile?.mobilePortrait?.foldedSeatMode === "footer-badge";
   const shouldRevealLarge =
     revealMode &&
@@ -577,7 +578,7 @@ export default function Player({
         onMouseLeave={scheduleCloseHud}
         onFocus={openHud}
         onBlur={scheduleCloseHud}
-        className={`relative overflow-visible rounded-[18px] border shadow-[0_10px_20px_rgba(0,0,0,0.35)] backdrop-blur flex flex-col outline-none transition hover:z-[80] focus:z-[80] focus-within:z-[80] focus-visible:ring-2 focus-visible:ring-sky-300 ${
+        className={`relative ${isCompactStudLayout ? "overflow-hidden" : "overflow-visible"} rounded-[18px] border shadow-[0_10px_20px_rgba(0,0,0,0.35)] backdrop-blur flex flex-col outline-none transition hover:z-[80] focus:z-[80] focus-within:z-[80] focus-visible:ring-2 focus-visible:ring-sky-300 ${
           isFolded
             ? "border-slate-500/25 bg-slate-950/50 grayscale"
             : isHero
@@ -587,7 +588,7 @@ export default function Player({
           isWinner ? "ring-4 ring-emerald-400 animate-pulse" : ""
         } ${shouldRevealLarge ? "z-[90] scale-[1.06]" : ""} ${
           compact && isFolded && !isActive && !isHero
-            ? isDrawTableMobileLayout
+            ? isCompactTableMobileLayout
               ? "opacity-55 scale-[0.92]"
               : "opacity-60 scale-[0.96]"
             : ""
@@ -595,7 +596,7 @@ export default function Player({
         style={{
           padding: "var(--player-pad, 10px)",
           gap: "var(--player-gap, 8px)",
-          ...(isDrawTableMobileLayout && !isHero
+          ...(isCompactTableMobileLayout && !isHero
             ? {
                 width: isFolded
                   ? "var(--compact-folded-player-w, clamp(76px, 24dvw, 102px))"
@@ -616,37 +617,37 @@ export default function Player({
             : {}),
           ...(compact && !isHero
             ? {
-                "--card-w": isDrawTableMobileLayout
+                "--card-w": isCompactTableMobileLayout
                   ? "var(--compact-cpu-card-w, clamp(16px, 4.8dvw, 22px))"
                   : "var(--compact-cpu-card-w, clamp(24px, 4.4dvw, 36px))",
-                "--card-h": isDrawTableMobileLayout
+                "--card-h": isCompactTableMobileLayout
                   ? "var(--compact-cpu-card-h, clamp(22px, 6.8dvw, 31px))"
                   : "var(--compact-cpu-card-h, clamp(34px, 6.2dvw, 51px))",
-                "--card-font-size": isDrawTableMobileLayout
+                "--card-font-size": isCompactTableMobileLayout
                   ? "var(--compact-cpu-card-font-size, clamp(7px, 1.4dvw, 9px))"
                   : "var(--compact-cpu-card-font-size, clamp(9px, 1.35dvw, 12px))",
-                "--player-card-gap": isDrawTableMobileLayout
+                "--player-card-gap": isCompactTableMobileLayout
                   ? "var(--compact-cpu-card-gap, 2px)"
                   : "var(--compact-cpu-card-gap, clamp(2px, 0.5dvw, 5px))",
-                "--player-card-strip-maxw": isDrawTableMobileLayout
+                "--player-card-strip-maxw": isCompactTableMobileLayout
                   ? "var(--compact-cpu-card-strip-maxw, clamp(86px, 28dvw, 112px))"
                   : "var(--compact-cpu-card-strip-maxw, clamp(124px, 28dvw, 176px))",
               }
             : compact && isHero
               ? {
-                  "--card-w": isDrawTableMobileLayout
+                  "--card-w": isCompactTableMobileLayout
                     ? "var(--compact-hero-card-w, clamp(22px, 6.4dvw, 34px))"
                     : "var(--compact-hero-card-w, clamp(30px, 5.6dvw, 50px))",
-                  "--card-h": isDrawTableMobileLayout
+                  "--card-h": isCompactTableMobileLayout
                     ? "var(--compact-hero-card-h, clamp(31px, 9dvw, 48px))"
                     : "var(--compact-hero-card-h, clamp(42px, 7.8dvw, 70px))",
-                  "--card-font-size": isDrawTableMobileLayout
+                  "--card-font-size": isCompactTableMobileLayout
                     ? "var(--compact-hero-card-font-size, clamp(8px, 1.7dvw, 11px))"
                     : "var(--compact-hero-card-font-size, clamp(12px, 1.8dvw, 16px))",
-                  "--player-card-gap": isDrawTableMobileLayout
+                  "--player-card-gap": isCompactTableMobileLayout
                     ? "var(--compact-hero-card-gap, 2px)"
                     : "var(--compact-hero-card-gap, clamp(3px, 0.6dvw, 6px))",
-                  "--player-card-strip-maxw": isDrawTableMobileLayout
+                  "--player-card-strip-maxw": isCompactTableMobileLayout
                     ? "var(--compact-hero-card-strip-maxw, clamp(108px, 38dvw, 162px))"
                     : "var(--compact-hero-card-strip-maxw, clamp(158px, 42dvw, 240px))",
                 }
@@ -694,10 +695,10 @@ export default function Player({
         )}
         {!mobileHeroCardOnly && (
           <div
-            className={`relative z-10 flex items-start justify-between ${isDrawTableMobileLayout ? "gap-1" : "gap-2"}`}
+            className={`relative z-10 flex items-start justify-between ${isCompactTableMobileLayout ? "gap-1" : "gap-2"}`}
           >
             <div
-              className={`min-w-0 flex items-center text-white font-semibold ${isDrawTableMobileLayout ? "gap-1" : "gap-2"}`}
+              className={`min-w-0 flex items-center text-white font-semibold ${isCompactTableMobileLayout ? "gap-1" : "gap-2"}`}
             >
               <AvatarChip
                 avatar={avatarSource}
@@ -708,7 +709,7 @@ export default function Player({
               />
               <div className="min-w-0 leading-tight">
                 <div
-                  className={`flex items-center gap-1 ${isDrawTableMobileLayout ? "flex-nowrap" : "flex-wrap"}`}
+                  className={`flex items-center gap-1 ${isCompactTableMobileLayout ? "flex-nowrap" : "flex-wrap"}`}
                 >
                   {positionLabel && (
                     <span data-testid={`seat-${seatIndex}-pos`}>
@@ -768,7 +769,7 @@ export default function Player({
                       ))}
                     </div>
                   )}
-                {hasStudVisibility && (
+                {hasStudVisibility && !compact && (
                   <div
                     data-testid={`seat-${seatIndex}-stud-summary`}
                     className="mt-1 flex flex-wrap items-center gap-1 text-[9px] font-black uppercase tracking-wide text-slate-300"
@@ -805,7 +806,7 @@ export default function Player({
               style={{ fontSize: "var(--player-stack-size, 11px)" }}
             >
               <div className="rounded-full border border-white/10 bg-black/45 px-2 py-1 font-semibold">
-                {!isDrawTableMobileLayout && (
+                {!isCompactTableMobileLayout && (
                   <>
                     <span className="text-slate-400">Stack</span>{" "}
                   </>
@@ -895,7 +896,7 @@ export default function Player({
                 <div
                   key={`${card}-${sourceIndex}`}
                   className={`flex min-w-0 flex-col items-center gap-0.5 ${
-                    hasStudVisibility
+                    hasStudVisibility && !compact
                       ? isPublicCard
                         ? "-translate-y-2"
                         : "translate-y-1"
@@ -930,11 +931,11 @@ export default function Player({
                         if (isHero && canSelectForDraw) event.stopPropagation();
                       }}
                       folded={isFolded}
-                      studDown={isStudDownCard && !isHiddenFromHero}
+                      studDown={!isHero && isStudDownCard && !isHiddenFromHero}
                       data-testid={`player-${index}-card-${sourceIndex}`}
                     />
                   </div>
-                  {hasStudVisibility && (
+                  {hasStudVisibility && !compact && (
                     <span
                       data-testid={`player-${index}-card-${sourceIndex}-visibility`}
                       className={`rounded-full px-1.5 py-0.5 text-[8px] font-black uppercase leading-none ${

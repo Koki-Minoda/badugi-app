@@ -62,14 +62,21 @@ with the next read scheduled only after the previous one completes. Successful
 foreground reads use a one-second delay; hidden tabs slow down, and network,
 5xx or 429 responses use jittered exponential backoff while honoring
 `Retry-After`. Successful REST actions apply their returned state immediately.
-The backend also bounds state reads per authenticated user and room, with
-expiring, size-limited in-memory counters, so extra tabs cannot create
-unbounded polling load.
+The backend also bounds state reads per authenticated user and room. Durable
+fixed-window counters are shared by all workers, expire when inactive and have
+a hard row cap, so extra tabs cannot multiply the allowance per process or
+create unbounded polling load.
 
 Room snapshots are durably stored in the database and recover after a backend
-restart. Database optimistic concurrency prevents two workers from silently
-overwriting the same state. WebSocket fan-out remains process-local, so
-production keeps one P2P backend worker until cross-process pub/sub is added.
+restart. Each mutation is re-evaluated inside a database compare-and-swap loop,
+so two workers cannot execute the same command twice or silently overwrite a
+newer sequence. Every worker batches its locally connected room codes into a
+single durable-state read four times per second and broadcasts newer sequences
+to its own sockets. This database-backed fan-out also carries terminal owner
+closure across processes without exposing another player's private cards.
+
+Deployment and rollback sequencing is documented in
+[`p2p-multiprocess-operations.md`](./p2p-multiprocess-operations.md).
 
 ## Current exclusions
 

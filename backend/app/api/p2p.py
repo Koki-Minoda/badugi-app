@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 from collections import defaultdict, deque
+from contextlib import suppress
 from dataclasses import dataclass, field
 import math
 import re
@@ -16,7 +17,7 @@ from pydantic import BaseModel, Field, field_validator
 from ..core.security import decode_access_token
 from ..dependencies.auth import get_current_user
 from ..models import User
-from ..p2p.manager import P2PError, Room, p2p_room_manager
+from ..p2p.manager import P2PError, P2PRoomManager, Room, p2p_room_manager
 
 
 router = APIRouter(prefix="/p2p", tags=["p2p"])
@@ -239,9 +240,21 @@ def get_room_state(
         room = _viewer_room(room_code, user)
     except P2PError as exc:
         raise _http_error(exc) from exc
-    retry_after = state_read_rate_limiter.check(
-        user_id=_user_id(user),
-        room_code=room.code,
+    limiter_args = {
+        "user_id": _user_id(user),
+        "room_code": room.code,
+        "max_requests": STATE_READ_MAX_REQUESTS,
+        "window_seconds": STATE_READ_WINDOW_SECONDS,
+        "bucket_ttl_seconds": STATE_READ_BUCKET_TTL_SECONDS,
+        "max_buckets": STATE_READ_MAX_BUCKETS,
+    }
+    retry_after = (
+        p2p_room_manager.consume_state_read(**limiter_args)
+        if p2p_room_manager.has_shared_store
+        else state_read_rate_limiter.check(
+            user_id=limiter_args["user_id"],
+            room_code=limiter_args["room_code"],
+        )
     )
     if retry_after is not None:
         raise HTTPException(
@@ -365,9 +378,46 @@ async def close_room(
 
 
 class RoomSockets:
-    def __init__(self) -> None:
+    def __init__(self, manager: P2PRoomManager = p2p_room_manager) -> None:
+        self._manager = manager
         self._connections: dict[str, dict[str, WebSocket]] = defaultdict(dict)
         self._lock = asyncio.Lock()
+        self._last_broadcast_sequence: dict[str, int] = {}
+        self._fanout_task: asyncio.Task | None = None
+
+    async def start_fanout(self) -> None:
+        if self._fanout_task and not self._fanout_task.done():
+            return
+        self._fanout_task = asyncio.create_task(self._fanout_loop())
+
+    async def stop_fanout(self) -> None:
+        task = self._fanout_task
+        self._fanout_task = None
+        if not task:
+            return
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
+
+    async def _fanout_loop(self) -> None:
+        while True:
+            await asyncio.sleep(0.25)
+            await self.fanout_once()
+
+    async def fanout_once(self) -> None:
+        """Forward newer durable room snapshots to sockets on this worker."""
+
+        async with self._lock:
+            room_codes = list(self._connections)
+        rooms = await asyncio.to_thread(self._manager.refresh_rooms, room_codes)
+        for room_code in room_codes:
+            room = rooms.get(room_code)
+            if room is None:
+                await self.close_room(room_code, reason="owner_closed")
+                continue
+            if room.sequence_id <= self._last_broadcast_sequence.get(room_code, -1):
+                continue
+            await self.broadcast_state(room)
 
     async def connect(self, room: Room, user_id: str, websocket: WebSocket) -> None:
         await websocket.accept(subprotocol="mgx-auth")
@@ -398,6 +448,7 @@ class RoomSockets:
     async def close_room(self, room_code: str, *, reason: str) -> None:
         async with self._lock:
             connections = list(self._connections.pop(room_code, {}).values())
+            self._last_broadcast_sequence.pop(room_code, None)
         for websocket in connections:
             try:
                 await websocket.send_json({"event": "room_closed", "payload": {"reason": reason}})
@@ -417,12 +468,16 @@ class RoomSockets:
         await websocket.send_json(
             {
                 "event": "state",
-                "payload": state or p2p_room_manager.public_state(room, viewer_id=user_id),
+                "payload": state or self._manager.public_state(room, viewer_id=user_id),
                 **({"commandId": command_id} if command_id else {}),
             }
         )
 
     async def broadcast_state(self, room: Room, *, exclude_user_id: str | None = None) -> None:
+        self._last_broadcast_sequence[room.code] = max(
+            room.sequence_id,
+            self._last_broadcast_sequence.get(room.code, -1),
+        )
         connections = list(self._connections.get(room.code, {}).items())
         for user_id, websocket in connections:
             if user_id == exclude_user_id:

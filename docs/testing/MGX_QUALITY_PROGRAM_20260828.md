@@ -61,9 +61,12 @@ QA/QM result: **PASS for the 1–10 implementation scope**. Tasks 1–4 were int
 - npm full audit: 0 vulnerabilities.
 - clean Python 3.11 resolved-environment audit: 0 known vulnerabilities.
 - MGX-SEC-001 is eligible for closure; its obsolete draft PR against the retired production branch is superseded by canonical `main`.
+- Core5 weekly long-soak coverage is 400 completed hands per browser target (Desktop Chromium, Android Chromium, and iPhone WebKit), 1,200 hands total, with SHA-256 evidence.
+- Store and Local tournament QM each complete seven real Hero hands, Level 2, reload/resume, six-player final table, championship, exact replay, grounded review, and result return.
+- The pre-deploy production baseline still remains at Level 1 after five Store/Local hands; deployment and post-deploy QM are required before this defect is closed.
 
 ## Explicit boundaries
 
-- Production P2P currently remains usable through authenticated REST polling when WSS is unavailable. Cross-process real-time fanout/pub-sub remains a scale optimization, not a two-player correctness blocker.
+- Production P2P supports durable multi-worker rooms, cross-worker state refresh, shared rate limits, command deduplication, restart recovery, and authenticated REST fallback when WSS is unavailable. The current design remains database-backed polling rather than an external pub/sub service.
 - Chinese Poker classic placement/scoring/history is covered. OFC street-by-street dealing and Fantasyland are separate product features and are not falsely marked complete.
 - The Badugi `pro-overlay` production path is heuristic overlay logic. The Windows-trained ONNX checkpoint is not yet directly wired as the live Badugi action candidate and must not be described as deployed model inference.

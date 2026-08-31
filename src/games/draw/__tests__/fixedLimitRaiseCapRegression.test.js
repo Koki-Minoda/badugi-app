@@ -28,6 +28,39 @@ function buildController(ControllerClass, EngineClass) {
 }
 
 describe("Core draw lowball fixed-limit raise cap", () => {
+  it.each(CASES)("%s exposes a short all-in overcall instead of a rejected check", (_, ControllerClass, EngineClass) => {
+    const controller = buildController(ControllerClass, EngineClass);
+    const state = controller.createNewHandState(controller.createInitialState());
+    state.engineState.street = "BET";
+    state.engineState.actingPlayerIndex = 0;
+    state.engineState.metadata.currentBet = 30;
+    state.engineState.players[0] = {
+      ...state.engineState.players[0],
+      stack: 100,
+      bet: 30,
+      hasActedThisRound: false,
+      folded: false,
+      allIn: false,
+    };
+    state.engineState.players[1] = {
+      ...state.engineState.players[1],
+      stack: 0,
+      bet: 40,
+      hasActedThisRound: true,
+      folded: false,
+      allIn: true,
+    };
+
+    const snapshot = controller.getUiSnapshot(state.engineState);
+    expect(snapshot.currentBet).toBe(40);
+    const legalActions = controller.getLegalActions(state, 0).map((action) => action.type);
+    expect(legalActions).toContain("CALL");
+    expect(legalActions).not.toContain("CHECK");
+
+    const result = controller.applyAction(state, { seatIndex: 0, type: "CALL" });
+    expect(result.events.find((event) => event.type === "invalidAction")).toBeUndefined();
+  });
+
   it.each(CASES)("%s hides/rejects raises after the five-bet cap", (_, ControllerClass, EngineClass) => {
     const controller = buildController(ControllerClass, EngineClass);
     const state = controller.createNewHandState(controller.createInitialState());

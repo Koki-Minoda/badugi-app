@@ -14,6 +14,13 @@ import {
   isDrawRlVariant,
 } from "../rl/drawObservationSchema.js";
 
+const BADUGI_DRAW_ACTIONS = Object.freeze([
+  "draw_0",
+  "draw_1",
+  "draw_2",
+  "draw_3",
+]);
+
 function toFloat32Array(length, builder) {
   const vector = new Float32Array(length);
   for (let i = 0; i < length; i += 1) {
@@ -260,10 +267,17 @@ function decodeDrawOutput(result, payload = {}) {
   const data = Array.from(result.data);
   const legalActions = getLegalActions(payload).map((action) => action.toLowerCase());
   const legalSet = new Set(legalActions);
+  // Badugi's six-output policy is phase-dependent: indices 0..3 mean
+  // pat/draw 1/draw 2/draw 3 during DRAW. Other draw variants use the
+  // eleven-output shared draw action table.
+  const actionTable = payload.variantId === "D03"
+    ? BADUGI_DRAW_ACTIONS
+    : DRAW_RL_ACTIONS;
   let bestAction = null;
   let maxVal = -Infinity;
   for (let i = 0; i < data.length; i += 1) {
-    const action = DRAW_RL_ACTIONS[i] ?? `draw_${i}`;
+    const action = actionTable[i] ?? null;
+    if (!action) continue;
     if (legalSet.size > 0 && !legalSet.has(action.toLowerCase())) {
       continue;
     }
@@ -303,7 +317,10 @@ export async function inferBetActionWithOnnx(payload) {
   try {
     const outputs = await session.run({ [inputName]: tensor });
     const outputName = session.outputNames[0];
-    return decodeBetOutput(outputs[outputName], payload);
+    const decision = decodeBetOutput(outputs[outputName], payload);
+    return decision
+      ? { ...decision, modelId: entry.id, tierId: entry.tier }
+      : null;
   } catch (err) {
     console.warn("[ONNX] bet inference failed", err);
     return null;
@@ -335,7 +352,10 @@ export async function inferDrawDecisionWithOnnx(payload) {
   try {
     const outputs = await session.run({ [inputName]: tensor });
     const outputName = session.outputNames[0];
-    return decodeDrawOutput(outputs[outputName], payload);
+    const decision = decodeDrawOutput(outputs[outputName], payload);
+    return decision
+      ? { ...decision, modelId: entry.id, tierId: entry.tier }
+      : null;
   } catch (err) {
     console.warn("[ONNX] draw inference failed", err);
     return null;

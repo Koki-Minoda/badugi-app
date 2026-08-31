@@ -70,7 +70,11 @@ describe("onnxPolicyAdapter inference fallback", () => {
       legalActions: ["fold", "check", "call", "raise"],
     });
 
-    expect(decision).toMatchObject({ action: "CALL", source: "onnx" });
+    expect(decision).toMatchObject({
+      action: "CALL",
+      source: "onnx",
+      modelId: "available-model",
+    });
   });
 
   it("masks illegal ONNX bet outputs instead of remapping by modulo", async () => {
@@ -104,7 +108,34 @@ describe("onnxPolicyAdapter inference fallback", () => {
       legalActions: ["draw_0", "draw_1", "draw_2", "draw_3"],
     });
 
-    expect(decision).toEqual({ drawCount: 2, source: "onnx" });
+    expect(decision).toMatchObject({ drawCount: 2, source: "onnx" });
+  });
+
+  it("decodes Badugi's phase-dependent six outputs as pat through draw three", async () => {
+    runMock.mockResolvedValueOnce({
+      output: { data: [0.1, 0.2, 0.95, 0.4, 9.0, 8.0] },
+    });
+
+    const decision = await inferDrawDecisionWithOnnx({
+      variantId: "D03",
+      tierId: "standard",
+      observation: {
+        state: {
+          variantId: "D03",
+          street: "DRAW",
+          players: [{ hand: ["AS", "2D", "3C", "4H"], stack: 500 }],
+        },
+        seatIndex: 0,
+        legalActions: ["draw_0", "draw_1", "draw_2", "draw_3"],
+      },
+      legalActions: ["draw_0", "draw_1", "draw_2", "draw_3"],
+    });
+
+    expect(decision).toMatchObject({
+      drawCount: 2,
+      source: "onnx",
+      modelId: "available-model",
+    });
   });
 
   it("returns null when no model session is available", async () => {

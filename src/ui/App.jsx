@@ -171,6 +171,10 @@ import {
   inferBetActionWithOnnx,
   inferDrawDecisionWithOnnx,
 } from "../ai/onnxPolicyAdapter.js";
+import {
+  matchesPendingOnnxInference,
+  runOnnxInferenceWithDeadline,
+} from "../ai/onnxInferenceDeadline.js";
 import { buildBadugiObservationPayload } from "../rl/badugiObservationSchema.js";
 import { chooseProAction } from "../ai/pro/proDecisionOverlay.js";
 import { useGameEngine } from "./engine/useGameEngine.js";
@@ -3010,6 +3014,7 @@ export default function App() {
   const resolvingDrawRef = useRef(false);
   const scheduledFinishDrawRef = useRef(false);
   const autoProgressWatchdogRef = useRef({ key: null, at: 0 });
+  const onnxInferencePendingRef = useRef(null);
   const autoDrawHelpersRef = useRef({});
   const forcedBetHelpersRef = useRef({});
   const customHandHelpersRef = useRef({});
@@ -3209,8 +3214,23 @@ export default function App() {
       const onnxTier = activeAiTierConfig?.id;
       const shouldUseOnnx = onnxTier === "beginner" || onnxTier === "standard";
       let onnxDrawDecision = null;
+      let onnxDrawTimedOut = false;
       if (shouldUseOnnx) {
         const inferenceHandId = handIdRef.current;
+        const pendingInference = {
+          handId: inferenceHandId,
+          phase: "DRAW",
+          seatIndex: seatToAct,
+        };
+        if (
+          matchesPendingOnnxInference(
+            onnxInferencePendingRef.current,
+            pendingInference,
+          )
+        ) {
+          return true;
+        }
+        onnxInferencePendingRef.current = pendingInference;
         const drawLegalActions = ["draw_0", "draw_1", "draw_2", "draw_3"];
         const observation = buildBadugiObservationPayload({
           state: {
@@ -3230,13 +3250,23 @@ export default function App() {
           seatIndex: seatToAct,
           legalActions: drawLegalActions,
         });
-        onnxDrawDecision = await inferDrawDecisionWithOnnx({
-          variantId: "D03",
-          tierId: onnxTier,
-          characterId: me?.characterId ?? me?.cpuCharacterId ?? null,
-          observation,
-          legalActions: drawLegalActions,
-        });
+        const inferenceResult = await runOnnxInferenceWithDeadline(() =>
+          inferDrawDecisionWithOnnx({
+            variantId: "D03",
+            tierId: onnxTier,
+            characterId: me?.characterId ?? me?.cpuCharacterId ?? null,
+            observation,
+            legalActions: drawLegalActions,
+          }),
+        );
+        if (onnxInferencePendingRef.current === pendingInference) {
+          onnxInferencePendingRef.current = null;
+        }
+        if (inferenceResult.error) {
+          console.warn("[ONNX] draw inference failed before fallback", inferenceResult.error);
+        }
+        onnxDrawDecision = inferenceResult.decision;
+        onnxDrawTimedOut = inferenceResult.timedOut;
         const liveSeat = playersRef.current?.[seatToAct];
         if (
           phaseRef.current !== "DRAW" ||
@@ -3287,7 +3317,9 @@ export default function App() {
                   ...standardDrawDecision,
                   source: "onnx-fallback",
                   tierId: onnxTier,
-                  fallbackReason: "ONNX_INFERENCE_UNAVAILABLE",
+                  fallbackReason: onnxDrawTimedOut
+                    ? "ONNX_INFERENCE_TIMEOUT"
+                    : "ONNX_INFERENCE_UNAVAILABLE",
                 }
               : standardDrawDecision;
       const fallbackDrawCount = npcAutoDrawCount(drawEvaluator);
@@ -12723,9 +12755,24 @@ export default function App() {
         const onnxTier = activeAiTierConfig?.id;
         const shouldUseOnnx = onnxTier === "beginner" || onnxTier === "standard";
         let onnxBetDecision = null;
+        let onnxBetTimedOut = false;
         if (shouldUseOnnx) {
           const inferenceHandId = handIdRef.current;
           const inferenceBet = me.betThisRound ?? 0;
+          const pendingInference = {
+            handId: inferenceHandId,
+            phase: "BET",
+            seatIndex: activeSeat,
+          };
+          if (
+            matchesPendingOnnxInference(
+              onnxInferencePendingRef.current,
+              pendingInference,
+            )
+          ) {
+            return;
+          }
+          onnxInferencePendingRef.current = pendingInference;
           const onnxLegalActions = toCall > 0
             ? ["FOLD", "CALL", ...(canRaise ? ["RAISE"] : [])]
             : ["CHECK", ...(canRaise ? ["BET"] : [])];
@@ -12747,14 +12794,24 @@ export default function App() {
             seatIndex: activeSeat,
             legalActions: onnxLegalActions,
           });
-          onnxBetDecision = await inferBetActionWithOnnx({
-            variantId: "D03",
-            tierId: onnxTier,
-            characterId: me?.characterId ?? me?.cpuCharacterId ?? null,
-            observation,
-            legalActions: onnxLegalActions,
-            betSize,
-          });
+          const inferenceResult = await runOnnxInferenceWithDeadline(() =>
+            inferBetActionWithOnnx({
+              variantId: "D03",
+              tierId: onnxTier,
+              characterId: me?.characterId ?? me?.cpuCharacterId ?? null,
+              observation,
+              legalActions: onnxLegalActions,
+              betSize,
+            }),
+          );
+          if (onnxInferencePendingRef.current === pendingInference) {
+            onnxInferencePendingRef.current = null;
+          }
+          if (inferenceResult.error) {
+            console.warn("[ONNX] bet inference failed before fallback", inferenceResult.error);
+          }
+          onnxBetDecision = inferenceResult.decision;
+          onnxBetTimedOut = inferenceResult.timedOut;
           const livePlayers = playersRef.current ?? [];
           const liveSeat = livePlayers[activeSeat];
           if (
@@ -12809,7 +12866,9 @@ export default function App() {
                     ...standardBetDecision,
                     source: "onnx-fallback",
                     tierId: onnxTier,
-                    fallbackReason: "ONNX_INFERENCE_UNAVAILABLE",
+                    fallbackReason: onnxBetTimedOut
+                      ? "ONNX_INFERENCE_TIMEOUT"
+                      : "ONNX_INFERENCE_UNAVAILABLE",
                   }
                 : standardBetDecision;
         const legalBetActions = [
@@ -12949,6 +13008,7 @@ export default function App() {
   useEffect(() => {
     if (phase !== "BET" && phase !== "DRAW") {
       autoProgressWatchdogRef.current = { key: null, at: 0 };
+      onnxInferencePendingRef.current = null;
       return;
     }
     const roster = playersRef.current ?? [];
@@ -13038,6 +13098,17 @@ export default function App() {
           });
           return;
         }
+        if (
+          (activeAiTierConfig?.id === "beginner" ||
+            activeAiTierConfig?.id === "standard") &&
+          matchesPendingOnnxInference(onnxInferencePendingRef.current, {
+            handId: handIdRef.current,
+            phase: "BET",
+            seatIndex: currentSeat,
+          })
+        ) {
+          return;
+        }
         if (currentSeat !== turn) {
           setTurn(currentSeat);
           return;
@@ -13113,6 +13184,17 @@ export default function App() {
           });
           return;
         }
+        if (
+          (activeAiTierConfig?.id === "beginner" ||
+            activeAiTierConfig?.id === "standard") &&
+          matchesPendingOnnxInference(onnxInferencePendingRef.current, {
+            handId: handIdRef.current,
+            phase: "DRAW",
+            seatIndex: currentSeat,
+          })
+        ) {
+          return;
+        }
         if (currentSeat !== turn) {
           setTurn(currentSeat);
           return;
@@ -13129,6 +13211,7 @@ export default function App() {
     drawRound,
     currentBet,
     players,
+    activeAiTierConfig,
     isSingleTableBoardGame,
     applyForcedBetAction,
     autoResolveCpuDrawIfNeeded,

@@ -11,6 +11,7 @@ import { getProgressState, invokeE2E, waitForE2EDriver } from "./helpers/gamePro
 const REPORT_DIR = path.resolve("reports/ai");
 const REPORT_PATH = path.join(REPORT_DIR, "badugi-value-bet-live-observation.json");
 const AI_TIER_OVERRIDE = process.env.E2E_AI_TIER_OVERRIDE?.trim() || null;
+const ONNX_RESPONSE_DELAY_MS = Number(process.env.E2E_ONNX_RESPONSE_DELAY_MS ?? 0);
 const EXPECTED_ONNX_MODEL_BY_TIER: Record<string, string> = {
   beginner: "model-badugi-sixmax-standard-dqn-v2",
   standard: "model-badugi-sixmax-standard-e11",
@@ -179,6 +180,12 @@ test("Badugi live CPU telemetry classifies friend-alpha runtime path and pressur
   test.setTimeout(120000);
   ensureReportDir();
   const summaries = [];
+  if (ONNX_RESPONSE_DELAY_MS > 0) {
+    await page.route("**/models/badugi_sixmax_standard_e11.onnx", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, ONNX_RESPONSE_DELAY_MS));
+      await route.continue();
+    });
+  }
 
   for (const mode of ["cash", "tournament"] as const) {
     const session = await openBadugiRuntime(page, mode);
@@ -217,6 +224,7 @@ test("Badugi live CPU telemetry classifies friend-alpha runtime path and pressur
   const report = {
     generatedAt: new Date().toISOString(),
     requestedTierOverride: AI_TIER_OVERRIDE,
+    onnxResponseDelayMs: ONNX_RESPONSE_DELAY_MS,
     liveClassification,
     passiveConfirmed,
     summaries,

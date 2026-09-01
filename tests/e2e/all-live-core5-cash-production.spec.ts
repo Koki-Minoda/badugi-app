@@ -194,6 +194,7 @@ async function playOneRealButtonHand(
   page: Page,
   handNumber: number,
   maxDiscard: number | null = null,
+  requireDraw = false,
 ) {
   const deadline = Date.now() + 90_000;
   let heroButtonClicks = 0;
@@ -250,12 +251,17 @@ async function playOneRealButtonHand(
       target = "action-draw-selected";
       drawClicks += 1;
     } else if (
+      !requireDraw &&
       handNumber % 5 === 0 &&
       heroButtonClicks === 0 &&
       actions.includes("action-raise")
     ) {
       target = "action-raise";
-    } else if (handNumber % 3 !== 0 && actions.includes("action-fold")) {
+    } else if (
+      !requireDraw &&
+      handNumber % 3 !== 0 &&
+      actions.includes("action-fold")
+    ) {
       target = "action-fold";
     } else {
       target = ["action-check", "action-call", "action-fold", "action-raise"].find((id) =>
@@ -431,6 +437,7 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
         page,
         hand,
         "maxDiscard" in variant ? variant.maxDiscard : null,
+        variant.expectsDraw && totalDrawClicks === 0,
       );
       mark("hand-reported-terminal", { hand, result });
       totalDrawClicks += result.drawClicks;

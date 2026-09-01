@@ -51,12 +51,16 @@ export function summarizeCore5CashQm({ reportDir, minimumHands = 10 } = {}) {
         identity: report.variant === variant.id && report.device === device,
         hands: Number(report.handsCompleted) >= minimumHands,
         nextHand: Number(report.nextHandClicks) >= minimumHands - 1,
-        blindLevel:
-          Number(report.closingBlind?.level) > Number(report.openingBlind?.level),
-        blindAmount:
-          Number(report.closingBlind?.bigBlind) > Number(report.openingBlind?.bigBlind),
+        blindLevel: variant.cashQm?.expectsBlindIncrease === false
+          ? Number(report.closingBlind?.level) === Number(report.openingBlind?.level)
+          : Number(report.closingBlind?.level) > Number(report.openingBlind?.level),
+        blindAmount: variant.cashQm?.expectsBlindIncrease === false
+          ? Number(report.closingBlind?.bigBlind) === Number(report.openingBlind?.bigBlind)
+          : Number(report.closingBlind?.bigBlind) > Number(report.openingBlind?.bigBlind),
         heroActions: Number(report.totalHeroButtonClicks) >= Math.ceil(minimumHands / 2),
-        drawActions: Number(report.totalDrawClicks) > 0,
+        drawActions: variant.cashQm?.expectsDraw === false
+          ? Number(report.totalDrawClicks) === 0
+          : Number(report.totalDrawClicks) > 0,
         history: Number(report.history?.records) >= minimumHands,
         cashOut: report.cashOut === true,
         rowCount: Array.isArray(report.rows) && report.rows.length >= minimumHands,

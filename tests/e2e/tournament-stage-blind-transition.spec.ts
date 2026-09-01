@@ -13,6 +13,8 @@ import {
 } from "./helpers/gameProgressHelper.js";
 
 const ACTIVE_MTT_KEY = "mgx.tournament.mtt.active";
+const TOURNAMENT_QM_VARIANT = String(process.env.TOURNAMENT_QM_VARIANT ?? "")
+  .trim();
 const QM_REPORT_LABEL = process.env.TOURNAMENT_QM_REPORT_LABEL ?? "production-tournament-qm";
 const QM_REPORT_PATH = path.resolve("reports/tournament-qm", `${QM_REPORT_LABEL}-results.json`);
 const qmRows: any[] = [];
@@ -119,8 +121,16 @@ async function installLocalAuthenticatedSession(page: Page, stageId: string) {
 }
 
 async function startProductionStage(page: Page, stageId: string) {
-  const config = buildTournamentConfigFromStage(stageId);
-  if (!config) throw new Error(`Missing tournament config for ${stageId}`);
+  const stageConfig = buildTournamentConfigFromStage(stageId);
+  if (!stageConfig) throw new Error(`Missing tournament config for ${stageId}`);
+  const config = TOURNAMENT_QM_VARIANT
+    ? {
+        ...stageConfig,
+        gameVariant: TOURNAMENT_QM_VARIANT,
+        gameRotation: [TOURNAMENT_QM_VARIANT],
+        rotationPolicy: "fixed",
+      }
+    : stageConfig;
 
   await installLocalAuthenticatedSession(page, stageId);
   await page.goto(APP_URL, { waitUntil: "load" });
@@ -128,10 +138,62 @@ async function startProductionStage(page: Page, stageId: string) {
   await enterTitleIfPresent(page);
   await page.getByTestId("menu-tournament").click();
   await page.getByTestId(`tournament-stage-${stageId}`).click();
-  await expect(page.getByTestId("tournament-stage-detail")).toContainText(config.name);
+  await expect(page.getByTestId("tournament-stage-detail")).toContainText(stageConfig.name);
   await page.getByTestId("tournament-start").click();
   await expect(page.getByTestId("tournament-hud")).toBeVisible({ timeout: 20_000 });
   await waitForE2EDriver(page);
+  if (TOURNAMENT_QM_VARIANT) {
+    await page.evaluate((releaseConfig) => {
+      window.__BADUGI_E2E__.startTournamentMTT(releaseConfig);
+    }, config);
+    await expect(page.getByTestId("tournament-hud")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("decision-panel")).toBeVisible({ timeout: 20_000 });
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          window.__BADUGI_E2E__?.getStateSnapshot?.()?.gameVariant ??
+          window.__BADUGI_E2E__?.getStateSnapshot?.()?.controllerSnapshot?.variantId ??
+          null,
+        ),
+      )
+      .toBe(TOURNAMENT_QM_VARIANT);
+    await expect
+      .poll(
+        () =>
+          page.evaluate(() => {
+            const state = window.__BADUGI_E2E__?.getStateSnapshot?.() ?? null;
+            const snapshot = state?.controllerSnapshot ?? null;
+            const snapshotVariant =
+              state?.gameVariant ?? snapshot?.variantId ?? null;
+            return {
+              variant: snapshotVariant,
+              hasHand: Boolean(snapshot?.handId),
+              hasActor: typeof snapshot?.currentActor === "number",
+              hasForcedBets: Number(snapshot?.pot ?? 0) > 0,
+              terminal: Boolean(snapshot?.lastHandResult),
+            };
+          }),
+        { timeout: 20_000 },
+      )
+      .toMatchObject({
+        variant: TOURNAMENT_QM_VARIANT,
+        hasHand: true,
+        hasActor: true,
+        hasForcedBets: true,
+        terminal: false,
+      });
+    if (process.env.TOURNAMENT_QM_DEBUG === "1") {
+      console.info(
+        "[TOURNAMENT_QM_START]",
+        JSON.stringify(
+          await page.evaluate(() => ({
+            debug: window.__BADUGI_E2E__?.getControllerDebug?.() ?? null,
+            state: window.__BADUGI_E2E__?.getStateSnapshot?.() ?? null,
+          })),
+        ),
+      );
+    }
+  }
   return config;
 }
 
@@ -288,6 +350,19 @@ async function advanceFromCompletedHand(page: Page) {
       .click();
     await expect(breakOverlay).toBeHidden();
   }
+  // WebKit can publish the terminal controller snapshot one paint before the
+  // React result overlay.  Keep the product requirement strict (the overlay
+  // must appear), while observing it after the browser has rendered that
+  // terminal state instead of treating a sub-frame timing gap as a failure.
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() =>
+          Boolean(document.querySelector('[data-testid="hand-result-pot"]')),
+        ),
+      { timeout: 5_000 },
+    )
+    .toBe(true);
   const previous = await page.evaluate(() => {
     const state = window.__BADUGI_E2E__?.getStateSnapshot?.() ?? null;
     const snapshot = state?.controllerSnapshot ?? null;
@@ -956,6 +1031,7 @@ for (const stage of [
 
     qmRows.push({
       stageId: stage.stageId,
+      variant: config.gameVariant,
       status: "PASS",
       tournamentRunId,
       realHands: completeHistory.length,

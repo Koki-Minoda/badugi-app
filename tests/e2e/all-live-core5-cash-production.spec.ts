@@ -8,10 +8,7 @@ import {
   deleteAuthenticatedSession,
   openAuthenticatedGame,
 } from "./authHelper";
-import {
-  CORE5_VARIANTS,
-  NLH_READINESS_VARIANT,
-} from "./helpers/core5LayoutAuditHelper";
+import { CORE5_VARIANTS } from "./helpers/core5LayoutAuditHelper";
 import {
   getProgressState,
   summarizeProgressState,
@@ -33,14 +30,11 @@ const deviceFilter = new Set(
     .map((value) => value.trim().toLowerCase())
     .filter(Boolean),
 );
-const readinessCandidates = variantFilter.has(NLH_READINESS_VARIANT.variant)
-  ? [NLH_READINESS_VARIANT]
-  : [];
-const selectedVariants = [...CORE5_VARIANTS, ...readinessCandidates].filter(
+const selectedVariants = CORE5_VARIANTS.filter(
   (variant) => variantFilter.size === 0 || variantFilter.has(variant.variant.toLowerCase()),
 );
 
-type DeviceName = "desktop" | "android";
+type DeviceName = "desktop" | "android" | "iphone";
 
 function writeReport(fileName: string, value: unknown) {
   fs.mkdirSync(REPORT_DIR, { recursive: true });
@@ -282,7 +276,16 @@ async function verifyHistoryAndReplay(
 
 async function createDevicePage(browser: Browser, device: DeviceName) {
   const context = await browser.newContext(
-    device === "android"
+    device === "iphone"
+      ? {
+          viewport: { width: 844, height: 390 },
+          isMobile: true,
+          hasTouch: true,
+          deviceScaleFactor: 3,
+          userAgent:
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
+        }
+      : device === "android"
       ? {
           viewport: { width: 844, height: 390 },
           isMobile: true,
@@ -453,7 +456,7 @@ test.describe("public games and explicit release candidates cash production gate
   test.describe.configure({ mode: "serial", timeout: 20 * 60_000 });
 
   for (const variant of selectedVariants) {
-    for (const device of ["desktop", "android"] as const) {
+    for (const device of ["desktop", "android", "iphone"] as const) {
       if (!deviceFilter.has(device)) continue;
       test(`${variant.displayName} ${device} completes ${HANDS} real-button hands`, async ({ browser }) => {
         try {

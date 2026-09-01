@@ -106,5 +106,31 @@ export default defineConfig({
         browserName: 'webkit',
       },
     },
+    {
+      name: 'nlh-cash-iphone-webkit',
+      testDir: './tests/e2e',
+      testMatch: /all-live-core5-cash-production\.spec\.ts/,
+      use: {
+        ...devices['iPhone 13 landscape'],
+        browserName: 'webkit',
+      },
+    },
+    {
+      name: 'nlh-tournament-desktop-chromium',
+      testDir: './tests/e2e',
+      testMatch: /tournament-stage-blind-transition\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+    },
+    {
+      name: 'nlh-tournament-iphone-webkit',
+      testDir: './tests/e2e',
+      testMatch: /tournament-stage-blind-transition\.spec\.ts/,
+      use: {
+        ...devices['iPhone 13 landscape'],
+        browserName: 'webkit',
+      },
+    },
   ],
 });

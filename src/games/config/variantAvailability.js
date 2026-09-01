@@ -12,26 +12,41 @@ export const ALPHA_ONLY_VARIANTS_STORAGE_KEY = "mgx.alphaOnlyVariants";
 // preview flag. Release and production-QM tooling must derive their coverage
 // from this list so a newly published game cannot silently miss its gates.
 export const PUBLIC_PLAYABLE_VARIANTS = Object.freeze([
-  Object.freeze({ id: "badugi", availabilityKey: "badugi", displayName: "Badugi" }),
+  Object.freeze({
+    id: "badugi",
+    availabilityKey: "badugi",
+    displayName: "Badugi",
+    cashQm: Object.freeze({ expectsDraw: true, expectsBlindIncrease: true }),
+  }),
+  Object.freeze({
+    id: "nlh",
+    availabilityKey: "nlh",
+    displayName: "NL Hold'em",
+    cashQm: Object.freeze({ expectsDraw: false, expectsBlindIncrease: false }),
+  }),
   Object.freeze({
     id: "D01",
     availabilityKey: "deuce_to_seven_triple_draw",
     displayName: "2-7 Triple Draw",
+    cashQm: Object.freeze({ expectsDraw: true, expectsBlindIncrease: true }),
   }),
   Object.freeze({
     id: "D02",
     availabilityKey: "ace_to_five_triple_draw",
     displayName: "A-5 Triple Draw",
+    cashQm: Object.freeze({ expectsDraw: true, expectsBlindIncrease: true }),
   }),
   Object.freeze({
     id: "S01",
     availabilityKey: "deuce_to_seven_single_draw",
     displayName: "2-7 Single Draw",
+    cashQm: Object.freeze({ expectsDraw: true, expectsBlindIncrease: true }),
   }),
   Object.freeze({
     id: "S02",
     availabilityKey: "ace_to_five_single_draw",
     displayName: "A-5 Single Draw",
+    cashQm: Object.freeze({ expectsDraw: true, expectsBlindIncrease: true }),
   }),
 ]);
 
@@ -108,11 +123,15 @@ export const VARIANT_AVAILABILITY = Object.freeze({
     reason: BADUGI_ALPHA_REASON,
     requiredBeforeAlpha: [],
   }),
-  nlh: preview(
-    "No-Limit Hold'em",
-    "Desktop and Android cash lifecycle QA is complete; friend-alpha promotion waits for tournament and iPhone/WebKit parity.",
-    ["NLH tournament lifecycle parity", "NLH iPhone/WebKit parity"],
-  ),
+  nlh: makeEntry({
+    availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
+    label: "No-Limit Hold'em",
+    statusLabel: "Alpha",
+    statusLabelJa: "Alpha",
+    reason:
+      "Cash, store/local tournament, exact replay, cash-out, Android, and iPhone/WebKit release gates passed.",
+    requiredBeforeAlpha: [],
+  }),
   flh: preview("Fixed-Limit Hold'em"),
   super_holdem: preview("NL Super Hold'em"),
   fl_super_holdem: preview("FL Super Hold'em"),

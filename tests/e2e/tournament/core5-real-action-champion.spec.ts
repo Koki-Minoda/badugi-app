@@ -10,6 +10,7 @@ import {
 async function startLocalTournament(page: any, variantId: string) {
   const selectorId: Record<string, string> = {
     badugi: "badugi",
+    nlh: "nlh",
     D01: "deuce_to_seven_triple_draw",
     D02: "ace_to_five_triple_draw",
     S01: "deuce_to_seven_single_draw",
@@ -35,7 +36,9 @@ async function startLocalTournament(page: any, variantId: string) {
   await enterTitleIfPresent(page);
   await page.getByTestId("menu-ring").waitFor({ state: "visible", timeout: 20_000 });
   await page.getByTestId("menu-ring").click();
-  if (variantId === "S01" || variantId === "S02") {
+  if (variantId === "nlh") {
+    await page.getByRole("button", { name: /Board|Hold'em|ボード|ホールデム/i }).click();
+  } else if (variantId === "S01" || variantId === "S02") {
     await page.getByRole("button", { name: /Single Draw|シングルドロー/i }).click();
   }
   await page.getByTestId(`game-selector-play-${selectorId[variantId]}`).click();
@@ -70,11 +73,15 @@ test.describe("Core5 real-action tournament champion and review gate", () => {
         maxSteps: variant.maxSteps,
         policy: "safe",
         requireHeroButtonClick: true,
-        requireDrawVisit: true,
+        requireDrawVisit: variant.expectsDraw !== false,
         drawCardIndexes: [0],
       });
       expect(hand.heroButtonClicks).toBeGreaterThan(0);
-      expect(hand.visitedPhases).toContain("DRAW");
+      if (variant.expectsDraw === false) {
+        expect(hand.visitedPhases).not.toContain("DRAW");
+      } else {
+        expect(hand.visitedPhases).toContain("DRAW");
+      }
 
       const persistedHands = await page.evaluate(() => JSON.parse(
         window.localStorage.getItem("badugi.history.tournamentHands") ?? "[]",
@@ -86,12 +93,17 @@ test.describe("Core5 real-action tournament champion and review gate", () => {
       });
       expect(replayCheck.valid, replayCheck.missing.join(", ")).toBe(true);
       const recordedActions = record.seats.flatMap((seat: any) => seat.actions ?? []);
-      expect(
-        recordedActions.some((action: any) =>
-          Number(action?.drawCount ?? action?.metadata?.drawInfo?.drawCount ?? 0) > 0,
-        ),
-        "replay history should preserve at least one real card exchange",
-      ).toBe(true);
+      const hasRecordedDraw = recordedActions.some((action: any) =>
+        Number(action?.drawCount ?? action?.metadata?.drawInfo?.drawCount ?? 0) > 0,
+      );
+      if (variant.expectsDraw === false) {
+        expect(hasRecordedDraw, "board games must not fabricate draw actions").toBe(false);
+      } else {
+        expect(
+          hasRecordedDraw,
+          "replay history should preserve at least one real card exchange",
+        ).toBe(true);
+      }
 
       await page.evaluate(() => window.__BADUGI_E2E__.forceHeroChampion());
       await expect(page.getByTestId("mtt-result-overlay")).toBeVisible({ timeout: 20_000 });

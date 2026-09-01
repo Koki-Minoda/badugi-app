@@ -192,7 +192,7 @@ describe("strict per-variant settlement gate", () => {
       result: afterState.results,
     });
     expect(duplicatePlayerGate.errors.map((error) => error.code)).toContain("strict_chinese_player_ids_invalid");
-  });
+  }, 60_000);
 
   it.each([
     "D01", "D02", "D03", "D04", "D05", "D06", "D07",

@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { Browser, BrowserContext, Page } from "@playwright/test";
+import type { Browser, BrowserContext, Locator, Page } from "@playwright/test";
 import {
   APP_URL,
   openAuthenticatedGame,
@@ -36,6 +36,36 @@ export type TournamentViewportLike = {
 };
 
 type LayoutBox = NonNullable<Awaited<ReturnType<typeof visibleBox>>>;
+
+async function waitForStableActionBox(button: Locator, timeoutMs = 5_000) {
+  const deadline = Date.now() + timeoutMs;
+  let previous: LayoutBox | null = null;
+  let stableSamples = 0;
+
+  while (Date.now() < deadline) {
+    const box = await button.boundingBox().catch(() => null);
+    if (!box) {
+      stableSamples = 0;
+      previous = null;
+    } else if (
+      previous &&
+      Math.abs(box.x - previous.x) <= 0.5 &&
+      Math.abs(box.y - previous.y) <= 0.5 &&
+      Math.abs(box.width - previous.width) <= 0.5 &&
+      Math.abs(box.height - previous.height) <= 0.5
+    ) {
+      stableSamples += 1;
+      if (stableSamples >= 3) return;
+      previous = box;
+    } else {
+      stableSamples = 0;
+      previous = box;
+    }
+    await button.page().waitForTimeout(100);
+  }
+
+  throw new Error("action button did not settle before the clickability audit");
+}
 
 function overlapRatio(a: LayoutBox | null, b: LayoutBox | null) {
   if (!a || !b) return 0;
@@ -351,14 +381,16 @@ export async function evaluateTournamentMobileLayout(
       }
     }
     if (await button.isEnabled().catch(() => false)) {
-      await button.click({ trial: true, timeout: 2_000 }).catch((error) => {
-        issues.push({
-          priority: "P0",
-          issue: "ACTION_NOT_CLICKABLE",
-          testId,
-          message: error instanceof Error ? error.message : String(error),
+      await waitForStableActionBox(button)
+        .then(() => button.click({ trial: true, timeout: 5_000 }))
+        .catch((error) => {
+          issues.push({
+            priority: "P0",
+            issue: "ACTION_NOT_CLICKABLE",
+            testId,
+            message: error instanceof Error ? error.message : String(error),
+          });
         });
-      });
     }
   }
   if (visibleActionButtons > 0 && minActionButtonHeight < 40) {

@@ -148,13 +148,26 @@ async function driveHandLikePlayer(page: Page, hand: number) {
       consecutiveTransientClickRetries = 0;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      const transientDomChange = /detached from the DOM|intercepts pointer events/i.test(message);
+      const latestActions = await visibleHeroActions(page);
+      const resultBecameVisible = await page
+        .getByText("Hand Result")
+        .first()
+        .isVisible()
+        .catch(() => false);
+      const targetWasReplaced =
+        resultBecameVisible || !latestActions.includes(target);
+      const transientDomChange =
+        /detached from the DOM|intercepts pointer events/i.test(message) ||
+        (/TimeoutError: locator\.click|Timeout \d+ms exceeded/i.test(message) &&
+          targetWasReplaced);
       consecutiveTransientClickRetries += 1;
       trace.push({
         elapsedMs: Date.now() - startedAt,
         clickRetry: {
           target,
-          latestActions: await visibleHeroActions(page),
+          latestActions,
+          resultBecameVisible,
+          targetWasReplaced,
           attempt: consecutiveTransientClickRetries,
         },
       });

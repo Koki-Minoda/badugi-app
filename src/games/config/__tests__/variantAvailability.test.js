@@ -99,6 +99,19 @@ describe("variantAvailability", () => {
     }
   });
 
+  it("publishes the five completed Omaha games only with their release contract", () => {
+    for (const id of ["plo", "plo8", "flo8", "big_o", "five_card_plo"]) {
+      const entry = getVariantAvailability(id);
+      expect(entry.availability).toBe(VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE);
+      expect(entry.reason).toMatch(/all-in\/side-pot and Hi\/Lo settlement/i);
+      expect(entry.requiredBeforeAlpha).toEqual([]);
+      expect(PUBLIC_PLAYABLE_VARIANTS.find((variant) => variant.id === id)?.cashQm).toEqual({
+        expectsDraw: false,
+        expectsBlindIncrease: false,
+      });
+    }
+  });
+
   it("marks Chinese/OFC as coming soon and keeps unknown variants unavailable", () => {
     expect(getVariantAvailability("ofc").availability).toBe(
       VARIANT_AVAILABILITY_STATES.COMING_SOON,

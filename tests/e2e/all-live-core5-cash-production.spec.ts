@@ -31,6 +31,11 @@ const deviceFilter = new Set(
     .filter(Boolean),
 );
 const RELEASE_CANDIDATE_VARIANTS = [
+  { variant: "plo", displayName: "Pot-Limit Omaha", initialCardCount: 4 },
+  { variant: "plo8", displayName: "PLO8", initialCardCount: 4 },
+  { variant: "flo8", displayName: "FLO8", initialCardCount: 4 },
+  { variant: "big_o", displayName: "Big-O", initialCardCount: 5 },
+  { variant: "five_card_plo", displayName: "5-Card PLO", initialCardCount: 5 },
   { variant: "dramaha_hi", displayName: "Dramaha Hi", maxDiscard: 5 },
   { variant: "dramaha_27", displayName: "Dramaha 2-7", maxDiscard: 5 },
   { variant: "dramaha_a5", displayName: "Dramaha A-5", maxDiscard: 5 },
@@ -40,10 +45,10 @@ const RELEASE_CANDIDATE_VARIANTS = [
 ].map((variant) => ({
   ...variant,
   game: variant.displayName,
-  heroCardTestId: "player-0-card-4",
-  initialCardCount: 5,
-  maxSteps: 160,
-  expectsDraw: true,
+  heroCardTestId: `player-0-card-${(variant.initialCardCount ?? 5) - 1}`,
+  initialCardCount: variant.initialCardCount ?? 5,
+  maxSteps: variant.maxDiscard == null ? 120 : 160,
+  expectsDraw: variant.maxDiscard != null,
   expectsBlindIncrease: false,
   requiresPreview: true,
 }));

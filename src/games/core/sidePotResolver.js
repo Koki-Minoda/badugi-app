@@ -139,6 +139,8 @@ export function resolveHighContributionPots({
   evaluations = [],
   compareEvaluations,
   totalPot = 0,
+  oddChipStartSeatIndex = null,
+  seatCount = null,
 } = {}) {
   const payouts = [];
   const potDetails = contributionPotsOrFallback(players, totalPot, evaluations)
@@ -148,6 +150,8 @@ export function resolveHighContributionPots({
         eligibleSeatIndexes: pot.eligibleSeatIndexes,
         evaluations,
         compareEvaluations,
+        oddChipStartSeatIndex,
+        seatCount,
       });
       payouts.push(...potPayouts);
       return {
@@ -169,6 +173,8 @@ export function resolveHiLoContributionPots({
   compareHighEvaluations,
   compareLowEvaluations,
   totalPot = 0,
+  oddChipStartSeatIndex = null,
+  seatCount = null,
 } = {}) {
   const payouts = [];
   const potDetails = contributionPotsOrFallback(players, totalPot, highEvaluations)
@@ -182,12 +188,16 @@ export function resolveHiLoContributionPots({
         eligibleSeatIndexes: pot.eligibleSeatIndexes,
         evaluations: highEvaluations,
         compareEvaluations: compareHighEvaluations,
+        oddChipStartSeatIndex,
+        seatCount,
       });
       const lowPayouts = resolveEvaluationPot({
         amount: lowAmount,
         eligibleSeatIndexes: pot.eligibleSeatIndexes,
         evaluations: lowEvaluations,
         compareEvaluations: compareLowEvaluations,
+        oddChipStartSeatIndex,
+        seatCount,
       });
       payouts.push(...highPayouts, ...lowPayouts);
       return {

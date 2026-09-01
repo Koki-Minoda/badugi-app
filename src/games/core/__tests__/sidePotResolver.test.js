@@ -54,4 +54,22 @@ describe("shared side-pot settlement", () => {
     ]);
     expect(payouts.reduce((sum, payout) => sum + payout.payout, 0)).toBe(99);
   });
+
+  it("orders tied odd-chip payouts clockwise from the seat left of the button", () => {
+    const players = [player(0, 0), player(1, 0), player(2, 0)];
+    const evaluations = players.map((entry) => ({ player: entry, evaluation: { rank: 0 } }));
+    const { payouts } = resolveHiLoContributionPots({
+      players,
+      highEvaluations: evaluations,
+      lowEvaluations: [],
+      compareHighEvaluations: (left, right) => left.rank - right.rank,
+      compareLowEvaluations: (left, right) => left.rank - right.rank,
+      totalPot: 16,
+      oddChipStartSeatIndex: 2,
+      seatCount: 3,
+    });
+
+    expect(payouts.map((entry) => entry.player.seatIndex)).toEqual([2, 0, 1]);
+    expect(payouts.map((entry) => entry.payout)).toEqual([6, 5, 5]);
+  });
 });

@@ -30,6 +30,7 @@ import {
   updateHandHistorySeat,
   finalizeHandHistoryRecord,
   resetHandHistoryRecord,
+  normalizeCanonicalEventTimestamp,
 } from "./utils/handHistory";
 import { buildPostMatchFollowUpSummary } from "../games/badugi/analysis/followUpAnalyzer.js";
 import {
@@ -2692,7 +2693,11 @@ export default function App() {
     if (!handHistoryRef.current || !event) return null;
     const payload = {
       ...event,
-      timestamp: event.timestamp ?? Date.now(),
+      timestamp: normalizeCanonicalEventTimestamp({
+        events: handHistoryRef.current.events,
+        startedAt: handHistoryRef.current.startedAt,
+        timestamp: event.timestamp,
+      }),
     };
     handHistoryRef.current.events.push(payload);
     return payload;

@@ -59,11 +59,32 @@ describe("FiveCardPLOGameController", () => {
     expect(evaluation.boardCardsUsed).toHaveLength(3);
   });
 
-  it("Big-O uses the same five-card Omaha high route for now", () => {
+  it("Big-O deals five cards and uses Hi-Lo 8-or-better settlement", () => {
     const controller = createController(BigOGameController);
-    const snapshot = controller.startNewHand();
+    controller.startNewHand();
+    controller.state.street = "SHOWDOWN";
+    controller.state.boardCards = ["2S", "3S", "4H", "9S", "KC"];
+    controller.state.players = controller.state.players.map((player, index) => ({
+      ...player,
+      folded: index === 2,
+      seatOut: false,
+      holeCards: index === 0
+        ? ["AS", "QS", "KS", "QH", "JD"]
+        : ["AH", "5D", "7D", "8C", "TC"],
+      totalInvested: index === 2 ? 0 : 100,
+      stack: index === 2 ? 1000 : 900,
+    }));
 
-    expect(snapshot.players[0].holeCards).toHaveLength(5);
+    const summary = controller.resolveShowdown();
+
+    expect(controller.state.players[0].holeCards).toHaveLength(5);
     expect(controller.config.gameDefinition.variant).toBe("big_o");
+    expect(summary.splitMode).toBe("hiLo");
+    expect(summary.potDetails[0].highWinners).toEqual([
+      expect.objectContaining({ seatIndex: 0, payout: 100 }),
+    ]);
+    expect(summary.potDetails[0].lowWinners).toEqual([
+      expect.objectContaining({ seatIndex: 1, payout: 100 }),
+    ]);
   });
 });

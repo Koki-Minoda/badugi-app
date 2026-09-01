@@ -16,6 +16,28 @@ function clone(obj) {
   return obj == null ? obj : JSON.parse(JSON.stringify(obj));
 }
 
+export function normalizeCanonicalEventTimestamp({
+  events = [],
+  startedAt = null,
+  timestamp = null,
+  now = Date.now,
+} = {}) {
+  const requestedTimestamp = Number(timestamp);
+  const fallbackTimestamp = Number(now());
+  const candidate = Number.isFinite(requestedTimestamp)
+    ? requestedTimestamp
+    : fallbackTimestamp;
+  const lastEventTimestamp = Number(events.at(-1)?.timestamp);
+  const recordStartTimestamp = Number(startedAt);
+  const previousTimestamp = Number.isFinite(lastEventTimestamp)
+    ? lastEventTimestamp
+    : Number.isFinite(recordStartTimestamp)
+      ? recordStartTimestamp
+      : candidate;
+
+  return Math.max(previousTimestamp, candidate);
+}
+
 function normalizeVariantId(value) {
   return typeof value === "string" && value.trim() ? value.trim() : "badugi";
 }

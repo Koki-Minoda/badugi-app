@@ -16,6 +16,13 @@ test.describe("alpha variant availability gate", () => {
     await expect(page.getByTestId("game-selector-play-ace_to_five_triple_draw")).toBeEnabled();
     await expect(page.getByTestId("game-selector-play-deuce_to_seven_triple_draw")).toBeEnabled();
 
+    await page.getByRole("button", { name: /Board|Hold'em|Omaha|ボード|ホールデム|オマハ/i }).click();
+    await expect(page.getByTestId("game-selector-play-plo")).toBeEnabled();
+    await expect(page.getByTestId("game-selector-play-plo8")).toBeEnabled();
+    await expect(page.getByTestId("game-selector-play-flo8")).toBeEnabled();
+    await expect(page.getByTestId("game-selector-play-big_o")).toBeEnabled();
+    await expect(page.getByTestId("game-selector-play-five_card_plo")).toBeEnabled();
+
     await page.getByRole("button", { name: /Single Draw|シングルドロー/i }).click();
     await expect(page.getByTestId("game-selector-play-deuce_to_seven_single_draw")).toBeEnabled();
     await expect(page.getByTestId("game-selector-play-ace_to_five_single_draw")).toBeEnabled();
@@ -36,7 +43,7 @@ test.describe("alpha variant availability gate", () => {
     await openGameSelector(page);
 
     await page.getByRole("button", { name: /Board|Hold'em|Omaha|ボード|ホールデム|オマハ/i }).click();
-    await expect(page.getByTestId("game-selector-play-plo")).toBeEnabled();
+    await expect(page.getByTestId("game-selector-play-flh")).toBeEnabled();
   });
 
   test("mobile viewport keeps status labels visible", async ({ page }) => {

@@ -3,8 +3,9 @@
 ## Managed product scope
 
 The public, no-preview game scope is owned by `PUBLIC_PLAYABLE_VARIANTS` in
-`src/games/config/variantAvailability.js`. As of 2026-08-31 it contains Badugi,
-2-7 Triple Draw, A-5 Triple Draw, 2-7 Single Draw and A-5 Single Draw.
+`src/games/config/variantAvailability.js`. It currently contains the Core draw
+games, NL Hold'em, Stud/Razz, Dramaha, and the five released Omaha games: PLO,
+PLO8, FLO8, Big-O, and 5-Card PLO.
 
 A pull request fails when the public manifest and the `alpha_playable` product
 availability set differ, or when the browser QA matrix lacks metadata for a
@@ -12,11 +13,10 @@ public game. Preview and coming-soon games are deliberately excluded until a
 separate promotion decision changes the product manifest.
 
 An explicit release candidate can be exercised without changing that manifest
-by setting `MGX_ALL_LIVE_CASH_VARIANTS`. NL Hold'em uses this path to run the
-same 10-hand Desktop/Android lifecycle contract while remaining preview-only.
-Variant metadata keeps rule-specific assertions honest: NLH must expose no Draw
-action and preserve fixed cash blinds, while the public draw games must
-exercise Draw and their configured ring blind progression.
+by setting `MGX_ALL_LIVE_CASH_VARIANTS`. Variant metadata keeps rule-specific
+assertions honest: board and stud games must expose no Draw action and preserve
+fixed cash blinds, while public draw games must exercise Draw and their
+configured ring blind progression.
 
 ## Release gate
 
@@ -31,8 +31,8 @@ Desktop Chromium and Android Chromium. A run passes only when all ten expected
 game/device cases exist and every case proves:
 
 - at least ten settled hands and nine successful Next Hand transitions;
-- real Hero button presses and at least one Draw action;
-- a visible blind-level and big-blind increase;
+- real Hero button presses and a Draw action only for draw variants;
+- the variant's declared blind policy (progressive draw-ring blinds or fixed cash blinds);
 - ten replay-ready, deterministically audited history records;
 - a working replay settlement and cash-out return to game selection;
 - no fatal browser error, failed application response, clipped action, blocked

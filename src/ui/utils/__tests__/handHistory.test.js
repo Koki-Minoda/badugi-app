@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   appendHandHistoryAction,
   finalizeHandHistoryRecord,
+  normalizeCanonicalEventTimestamp,
   resetHandHistoryRecord,
   startHandHistoryRecord,
 } from "../handHistory.js";
@@ -13,6 +14,24 @@ import {
 describe("handHistory", () => {
   afterEach(() => {
     resetHandHistoryRecord();
+  });
+
+  it("keeps canonical replay timestamps monotonic when the browser clock moves backwards", () => {
+    const events = [
+      { type: "BET", actionSeq: 13, timestamp: 3_008 },
+    ];
+
+    const timestamp = normalizeCanonicalEventTimestamp({
+      events,
+      startedAt: 1_000,
+      timestamp: 1_187,
+      now: () => 9_999,
+    });
+
+    expect(timestamp).toBe(3_008);
+    expect(events).toEqual([
+      { type: "BET", actionSeq: 13, timestamp: 3_008 },
+    ]);
   });
 
   it("keeps Badugi as the default hand history variant", () => {

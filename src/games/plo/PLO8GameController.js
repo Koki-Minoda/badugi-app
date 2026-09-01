@@ -75,6 +75,8 @@ export class PLO8GameController extends PLOGameController {
       compareHighEvaluations: comparePloHands,
       compareLowEvaluations: compareLowHands,
       totalPot: resolvedPot,
+      oddChipStartSeatIndex: (this.state.dealerIndex + 1) % this.state.players.length,
+      seatCount: this.state.players.length,
     });
     applyPayoutsToPlayers(this.state.players, allPayouts);
     const summary = {

@@ -79,6 +79,26 @@ describe("variantAvailability", () => {
     }
   });
 
+  it("publishes all six Dramaha games only with their completed release contract", () => {
+    for (const id of [
+      "dramaha_hi",
+      "dramaha_27",
+      "dramaha_a5",
+      "dramaha_zero",
+      "dramaha_hidugi",
+      "dramaha_badugi",
+    ]) {
+      const entry = getVariantAvailability(id);
+      expect(entry.availability).toBe(VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE);
+      expect(entry.reason).toMatch(/split and odd-chip settlement/i);
+      expect(entry.requiredBeforeAlpha).toEqual([]);
+      expect(PUBLIC_PLAYABLE_VARIANTS.find((variant) => variant.id === id)?.cashQm).toEqual({
+        expectsDraw: true,
+        expectsBlindIncrease: false,
+      });
+    }
+  });
+
   it("marks Chinese/OFC as coming soon and keeps unknown variants unavailable", () => {
     expect(getVariantAvailability("ofc").availability).toBe(
       VARIANT_AVAILABILITY_STATES.COMING_SOON,

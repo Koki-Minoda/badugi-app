@@ -22,10 +22,10 @@ const VARIANT_IDS = {
   dramaha_badugi: { id: "game-dramaha-badugi", label: "Dramaha Badugi" },
 };
 
-function normalizeDiscardIndexes(indexes = [], handLength = 5) {
+function normalizeDiscardIndexes(indexes = [], handLength = 5, maxDiscard = handLength) {
   return [...new Set(indexes)]
     .filter((idx) => Number.isInteger(idx) && idx >= 0 && idx < handLength)
-    .slice(0, handLength);
+    .slice(0, Math.min(handLength, Math.max(0, maxDiscard)));
 }
 
 export class DramahaGameController extends NLHGameController {
@@ -59,6 +59,7 @@ export class DramahaGameController extends NLHGameController {
 
   getSnapshot() {
     const snapshot = super.getSnapshot();
+    const variantConfig = getDramahaVariantConfig(this.variant);
     const phase = this.state.street === "DRAW"
       ? "DRAW"
       : this.state.street === "SHOWDOWN"
@@ -70,7 +71,8 @@ export class DramahaGameController extends NLHGameController {
       drawRound: this.state.street === "DRAW" ? 0 : snapshot.drawRound,
       drawRoundIndex: this.state.street === "DRAW" ? 0 : snapshot.drawRoundIndex,
       variant: this.variant,
-      variantLabel: getDramahaVariantConfig(this.variant).label,
+      variantLabel: variantConfig.label,
+      maxDiscard: variantConfig.maxDiscard,
     };
   }
 
@@ -87,13 +89,14 @@ export class DramahaGameController extends NLHGameController {
       return { success: false, reason: "Not in draw street" };
     }
     const player = this.state.players[seatIndex];
-    if (!player || player.folded || player.seatOut || player.allIn) {
+    if (!player || player.folded || player.seatOut || player.hasDrawn) {
       return { success: false, reason: "Player cannot draw" };
     }
     const hand = Array.isArray(player.holeCards) ? [...player.holeCards] : [];
     const discardIndexes = normalizeDiscardIndexes(
       metadata.discardIndexes ?? metadata.drawIndexes ?? [],
       hand.length,
+      getDramahaVariantConfig(this.variant).maxDiscard,
     );
     discardIndexes.forEach((idx) => {
       const [newCard] = this.drawCards(1);
@@ -112,15 +115,27 @@ export class DramahaGameController extends NLHGameController {
     if (this.isDrawRoundComplete()) {
       this.advanceStreet();
     } else {
-      this.state.currentActor = this.nextActiveSeat(seatIndex);
+      this.state.currentActor = this.nextDrawableSeat(seatIndex);
     }
     return { success: true, player: { ...player, holeCards: [...hand] } };
   }
 
   isDrawRoundComplete() {
     return this.state.players
-      .filter((player) => player && !player.folded && !player.seatOut && !player.allIn)
+      .filter((player) => player && !player.folded && !player.seatOut)
       .every((player) => player.hasDrawn === true);
+  }
+
+  nextDrawableSeat(fromIndex) {
+    const players = this.state.players ?? [];
+    for (let distance = 1; distance <= players.length; distance += 1) {
+      const seatIndex = (fromIndex + distance) % players.length;
+      const player = players[seatIndex];
+      if (player && !player.folded && !player.seatOut && !player.hasDrawn) {
+        return seatIndex;
+      }
+    }
+    return null;
   }
 
   advanceStreet() {
@@ -129,6 +144,7 @@ export class DramahaGameController extends NLHGameController {
       return this.getSnapshot();
     }
     if (nextStreet === "FLOP") {
+      this.burnCard();
       this.state.boardCards = [...this.state.boardCards, ...this.drawCards(3)];
       this.resetStreetBets();
       this.state.currentActor = this.nextActiveSeat(this.state.dealerIndex);
@@ -137,9 +153,12 @@ export class DramahaGameController extends NLHGameController {
         ...player,
         hasDrawn: false,
         hasActedThisStreet: false,
+        hasActedThisRound: false,
       }));
-      this.state.currentActor = this.nextActiveSeat(this.state.dealerIndex);
-    } else if (nextStreet === "FINAL") {
+      this.state.currentActor = this.nextDrawableSeat(this.state.dealerIndex);
+    } else if (nextStreet === "TURN" || nextStreet === "RIVER") {
+      this.burnCard();
+      this.state.boardCards = [...this.state.boardCards, ...this.drawCards(1)];
       this.resetStreetBets();
       this.state.currentActor = this.nextActiveSeat(this.state.dealerIndex);
     } else if (nextStreet === "SHOWDOWN") {
@@ -148,6 +167,8 @@ export class DramahaGameController extends NLHGameController {
     this.state.street = nextStreet;
     if (nextStreet === "SHOWDOWN") {
       this.resolveShowdown();
+    } else if (nextStreet !== "DRAW" && this.state.currentActor == null) {
+      this.advanceStreet();
     }
     return this.getSnapshot();
   }
@@ -159,8 +180,10 @@ export class DramahaGameController extends NLHGameController {
       case "FLOP":
         return "DRAW";
       case "DRAW":
-        return "FINAL";
-      case "FINAL":
+        return "TURN";
+      case "TURN":
+        return "RIVER";
+      case "RIVER":
         return "SHOWDOWN";
       default:
         return "PREFLOP";
@@ -239,6 +262,8 @@ export class DramahaGameController extends NLHGameController {
           eligibleSeatIndexes: pot.eligibleSeatIndexes,
           evaluations,
           compareEvaluations: component.compare,
+          oddChipStartSeatIndex: (this.state.dealerIndex + 1) % this.state.players.length,
+          seatCount: this.state.players.length,
         });
         allPayouts.push(
           ...payouts.map((payout) => ({
@@ -246,6 +271,10 @@ export class DramahaGameController extends NLHGameController {
             [`${component.component}Win`]: true,
           })),
         );
+        const tiedWinnerBase = payouts.length ? Math.floor(component.amount / payouts.length) : 0;
+        const tieOddChipRecipientSeatIndexes = payouts
+          .filter((winner) => winner.payout > tiedWinnerBase)
+          .map((winner) => winner.player.seatIndex);
         potDetails.push({
           potIndex: potDetails.length,
           sourcePotIndex: pot.potIndex ?? sourcePotIndex,
@@ -262,6 +291,9 @@ export class DramahaGameController extends NLHGameController {
                 componentLabel: component.componentLabel,
               }
             : null,
+          tieOddChipAmount: tieOddChipRecipientSeatIndexes.length,
+          tieOddChipRecipientSeatIndexes,
+          tieOddChipRule: "clockwise-from-button",
           eligibleSeatIndexes: [...(pot.eligibleSeatIndexes ?? [])],
           winnerSeatIndexes: payouts.map((winner) => winner.player.seatIndex),
           winners: payouts.map((winner) => ({
@@ -293,6 +325,10 @@ export class DramahaGameController extends NLHGameController {
       pot: resolvedPot,
       totalPot: resolvedPot,
       splitMode: "boardAndDraw",
+      oddChipRules: {
+        splitPot: "draw-half",
+        tiedComponent: "clockwise-from-button",
+      },
       winners,
       potDetails,
     };

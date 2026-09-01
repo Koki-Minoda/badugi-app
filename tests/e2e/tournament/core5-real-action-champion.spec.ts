@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { validateReplayReadyHandHistory } from "../../../src/ui/utils/handHistoryReplayRequirements.js";
-import { APP_URL, enterTitleIfPresent } from "../authHelper";
+import {
+  APP_URL,
+  enterTitleIfPresent,
+  selectGameVariantFromSelector,
+} from "../authHelper";
 import { playOneHandProgression, waitForE2EDriver } from "../helpers/gameProgressHelper.js";
 import {
   CORE5_VARIANTS,
@@ -8,20 +12,6 @@ import {
 } from "./tournamentIntegrationHelper";
 
 async function startLocalTournament(page: any, variantId: string) {
-  const selectorId: Record<string, string> = {
-    badugi: "badugi",
-    nlh: "nlh",
-    D01: "deuce_to_seven_triple_draw",
-    D02: "ace_to_five_triple_draw",
-    S01: "deuce_to_seven_single_draw",
-    S02: "ace_to_five_single_draw",
-    stud: "stud",
-    stud8: "stud8",
-    razz: "razz",
-    razzdugi: "razzdugi",
-    razzducey: "razzducey",
-    razz27: "razz27",
-  };
   await page.route("**/api/**", async (route: any) => {
     const pathname = new URL(route.request().url()).pathname;
     const body = pathname.endsWith("/auth/me")
@@ -42,14 +32,7 @@ async function startLocalTournament(page: any, variantId: string) {
   await enterTitleIfPresent(page);
   await page.getByTestId("menu-ring").waitFor({ state: "visible", timeout: 20_000 });
   await page.getByTestId("menu-ring").click();
-  if (variantId === "nlh") {
-    await page.getByRole("button", { name: /Board|Hold'em|ボード|ホールデム/i }).click();
-  } else if (variantId === "S01" || variantId === "S02") {
-    await page.getByRole("button", { name: /Single Draw|シングルドロー/i }).click();
-  } else if (["stud", "stud8", "razz", "razzdugi", "razzducey", "razz27"].includes(variantId)) {
-    await page.getByRole("button", { name: /Stud|スタッド/i }).first().click();
-  }
-  await page.getByTestId(`game-selector-play-${selectorId[variantId]}`).click();
+  await selectGameVariantFromSelector(page, variantId);
   await waitForE2EDriver(page);
   await expect(page.getByTestId("decision-panel")).toBeVisible({ timeout: 20_000 });
   await page.evaluate((selectedVariant: string) => {
@@ -79,7 +62,7 @@ test.describe("Core5 real-action tournament champion and review gate", () => {
       await startLocalTournament(page, variant.variant);
       const hand = await playOneHandProgression(page, {
         maxSteps: variant.maxSteps,
-        policy: "safe",
+        policy: variant.expectsDraw === false ? "safe" : "heroStay",
         requireHeroButtonClick: true,
         requireDrawVisit: variant.expectsDraw !== false,
         drawCardIndexes: [0],
@@ -107,9 +90,15 @@ test.describe("Core5 real-action tournament champion and review gate", () => {
       if (variant.expectsDraw === false) {
         expect(hasRecordedDraw, "board games must not fabricate draw actions").toBe(false);
       } else {
+        const drawTrace = hand.trace
+          .filter((entry: any) => entry.phase === "DRAW")
+          .map((entry: any) => ({
+            actor: entry.actor,
+            performedAction: entry.performedAction,
+          }));
         expect(
           hasRecordedDraw,
-          "replay history should preserve at least one real card exchange",
+          `replay history should preserve at least one real card exchange: ${JSON.stringify({ recordedActions, trace: drawTrace })}`,
         ).toBe(true);
       }
 

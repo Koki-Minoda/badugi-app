@@ -116,6 +116,15 @@ export default defineConfig({
       },
     },
     {
+      name: 'release-candidate-cash-iphone-webkit',
+      testDir: './tests/e2e',
+      testMatch: /all-live-core5-cash-production\.spec\.ts/,
+      use: {
+        ...devices['iPhone 13 landscape'],
+        browserName: 'webkit',
+      },
+    },
+    {
       name: 'nlh-tournament-desktop-chromium',
       testDir: './tests/e2e',
       testMatch: /tournament-stage-blind-transition\.spec\.ts/,

@@ -30,9 +30,35 @@ const deviceFilter = new Set(
     .map((value) => value.trim().toLowerCase())
     .filter(Boolean),
 );
-const selectedVariants = CORE5_VARIANTS.filter(
+const RELEASE_CANDIDATE_VARIANTS = [
+  { variant: "dramaha_hi", displayName: "Dramaha Hi", maxDiscard: 5 },
+  { variant: "dramaha_27", displayName: "Dramaha 2-7", maxDiscard: 5 },
+  { variant: "dramaha_a5", displayName: "Dramaha A-5", maxDiscard: 5 },
+  { variant: "dramaha_zero", displayName: "Dramaha Zero", maxDiscard: 3 },
+  { variant: "dramaha_hidugi", displayName: "Dramaha Hidugi", maxDiscard: 3 },
+  { variant: "dramaha_badugi", displayName: "Dramaha Badugi", maxDiscard: 3 },
+].map((variant) => ({
+  ...variant,
+  game: variant.displayName,
+  heroCardTestId: "player-0-card-4",
+  initialCardCount: 5,
+  maxSteps: 160,
+  expectsDraw: true,
+  expectsBlindIncrease: false,
+  requiresPreview: true,
+}));
+const publicVariants = CORE5_VARIANTS.filter(
   (variant) => variantFilter.size === 0 || variantFilter.has(variant.variant.toLowerCase()),
 );
+const publicIds = new Set(publicVariants.map((variant) => variant.variant.toLowerCase()));
+const requestedReleaseCandidates = variantFilter.size === 0
+  ? []
+  : RELEASE_CANDIDATE_VARIANTS.filter(
+      (variant) =>
+        variantFilter.has(variant.variant.toLowerCase()) &&
+        !publicIds.has(variant.variant.toLowerCase()),
+    );
+const selectedVariants = [...publicVariants, ...requestedReleaseCandidates];
 
 type DeviceName = "desktop" | "android" | "iphone";
 
@@ -122,7 +148,48 @@ async function blindSnapshot(page: Page) {
   });
 }
 
-async function playOneRealButtonHand(page: Page, handNumber: number) {
+async function verifyDramahaSplitResult(page: Page) {
+  const result = await page.evaluate(() => {
+    const snapshot = window.__BADUGI_E2E__?.getStateSnapshot?.()?.controllerSnapshot ?? {};
+    return {
+      boardCards: snapshot.boardCards ?? [],
+      lastHandResult: snapshot.lastHandResult ?? null,
+    };
+  });
+  expect(result.boardCards).toHaveLength(5);
+  expect(result.lastHandResult?.splitMode).toBe("boardAndDraw");
+  expect(result.lastHandResult?.oddChipRules).toEqual({
+    splitPot: "draw-half",
+    tiedComponent: "clockwise-from-button",
+  });
+  const details = result.lastHandResult?.potDetails ?? [];
+  const sourceIndexes = [...new Set(details.map((pot: any) => pot.sourcePotIndex))];
+  expect(sourceIndexes.length).toBeGreaterThan(0);
+  for (const sourcePotIndex of sourceIndexes) {
+    const components = details.filter((pot: any) => pot.sourcePotIndex === sourcePotIndex);
+    expect(components.map((pot: any) => pot.component).sort()).toEqual(["board", "draw"]);
+    const board = components.find((pot: any) => pot.component === "board");
+    const draw = components.find((pot: any) => pot.component === "draw");
+    const sourceAmount = Number(board.amount) + Number(draw.amount);
+    expect(board.amount).toBe(Math.floor(sourceAmount / 2));
+    expect(draw.amount).toBe(Math.ceil(sourceAmount / 2));
+    expect(board.oddChipAmount ?? 0).toBe(0);
+    expect(draw.oddChipAmount ?? 0).toBe(sourceAmount % 2);
+    expect(board.winners.length).toBeGreaterThan(0);
+    expect(draw.winners.length).toBeGreaterThan(0);
+  }
+  const components = await page.getByTestId("hand-result-pot").evaluateAll((nodes) =>
+    nodes.map((node) => node.getAttribute("data-component")).filter(Boolean),
+  );
+  expect(components).toContain("board");
+  expect(components).toContain("draw");
+}
+
+async function playOneRealButtonHand(
+  page: Page,
+  handNumber: number,
+  maxDiscard: number | null = null,
+) {
   const deadline = Date.now() + 90_000;
   let heroButtonClicks = 0;
   let drawClicks = 0;
@@ -161,9 +228,18 @@ async function playOneRealButtonHand(page: Page, handNumber: number) {
     let target: string | undefined;
     if (actions.includes("action-draw-selected")) {
       if (handNumber % 3 === 0) {
-        const firstCard = page.getByTestId("player-0-card-0").first();
-        if (await firstCard.isVisible().catch(() => false)) {
-          await firstCard.click({ timeout: 5_000 });
+        const requestedCardCount = maxDiscard === 3 ? 5 : 1;
+        for (let cardIndex = 0; cardIndex < requestedCardCount; cardIndex += 1) {
+          const card = page.getByTestId(`player-0-card-${cardIndex}`).first();
+          if (await card.isVisible().catch(() => false)) {
+            await card.click({ timeout: 5_000 });
+          }
+        }
+        if (maxDiscard === 3) {
+          const selectedCards = page.locator(
+            '[data-testid^="player-0-card-"][aria-pressed="true"]',
+          );
+          await expect(selectedCards, "Zero/Badugi-family draw selection must stop at three").toHaveCount(3);
         }
       }
       target = "action-draw-selected";
@@ -346,12 +422,19 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
       await expect(page.getByTestId("hand-result-overlay")).toBeHidden({ timeout: 15_000 });
       const before = await getProgressState(page);
       expect(before.handId).toEqual(expect.any(String));
-      const result = await playOneRealButtonHand(page, hand);
+      const result = await playOneRealButtonHand(
+        page,
+        hand,
+        "maxDiscard" in variant ? variant.maxDiscard : null,
+      );
       mark("hand-reported-terminal", { hand, result });
       totalDrawClicks += result.drawClicks;
       totalHeroButtonClicks += result.heroButtonClicks;
       await expect(page.getByText("Hand Result").first()).toBeVisible({ timeout: 15_000 });
       await expect(page.getByTestId("hand-result-pot").first()).toBeVisible({ timeout: 15_000 });
+      if (variant.variant.startsWith("dramaha_")) {
+        await verifyDramahaSplitResult(page);
+      }
       await expect
         .poll(async () => (await historyRecords(page)).length, { timeout: 15_000 })
         .toBeGreaterThanOrEqual(openingHistoryCount + hand);

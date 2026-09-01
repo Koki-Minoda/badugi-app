@@ -84,6 +84,21 @@ export const PUBLIC_PLAYABLE_VARIANTS = Object.freeze([
     displayName: "2-7 Razz",
     cashQm: Object.freeze({ expectsDraw: false, expectsBlindIncrease: false }),
   }),
+  ...[
+    ["dramaha_hi", "Dramaha Hi"],
+    ["dramaha_27", "Dramaha 2-7"],
+    ["dramaha_a5", "Dramaha A-5"],
+    ["dramaha_zero", "Dramaha Zero"],
+    ["dramaha_hidugi", "Dramaha Hidugi"],
+    ["dramaha_badugi", "Dramaha Badugi"],
+  ].map(([id, displayName]) =>
+    Object.freeze({
+      id,
+      availabilityKey: id,
+      displayName,
+      cashQm: Object.freeze({ expectsDraw: true, expectsBlindIncrease: false }),
+    }),
+  ),
 ]);
 
 const ALPHA_REASON =
@@ -92,6 +107,8 @@ const BADUGI_ALPHA_REASON =
   "Core MGX alpha game; automated progression, pot, terminal, orientation gates passed.";
 const STUD_ALPHA_REASON =
   "Bring-in, third-through-seventh street, all-in/side-pot settlement, exact replay, and three-device long-run gates passed.";
+const DRAMAHA_ALPHA_REASON =
+  "Five-card board/draw flow, split and odd-chip settlement, exact replay, and desktop/Android/WebKit ten-hand gates passed.";
 const PREVIEW_REASON =
   "Playable for development review, but long-run natural UI, mobile, replay, or split-result coverage is not alpha-ready.";
 
@@ -203,12 +220,12 @@ export const VARIANT_AVAILABILITY = Object.freeze({
   badeucey_single_draw: preview("Badeucey Single Draw", "Split draw flow exists, but split-result/replay/mobile coverage is not alpha-ready."),
   badacey_single_draw: preview("Badacey Single Draw", "Split draw flow exists, but split-result/replay/mobile coverage is not alpha-ready."),
   hidugi_single_draw: preview("Hidugi Single Draw", "Special draw evaluator exists, but natural long-run/mobile/replay coverage is not alpha-ready."),
-  dramaha_hi: preview("Dramaha Hi", "Dramaha flow exists, but split result UX and replay/mobile QA are not alpha-ready."),
-  dramaha_27: preview("Dramaha 2-7", "Dramaha flow exists, but split result UX and replay/mobile QA are not alpha-ready."),
-  dramaha_a5: preview("Dramaha A-5", "Dramaha flow exists, but split result UX and replay/mobile QA are not alpha-ready."),
-  dramaha_zero: preview("Dramaha Zero", "Dramaha flow exists, but split result UX and replay/mobile QA are not alpha-ready."),
-  dramaha_hidugi: preview("Dramaha Hidugi", "Dramaha flow exists, but split result UX and replay/mobile QA are not alpha-ready."),
-  dramaha_badugi: preview("Dramaha Badugi", "Dramaha/Badugi split flow exists, but Badugi blockers and split-result QA remain."),
+  dramaha_hi: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "Dramaha Hi", statusLabel: "Alpha", reason: DRAMAHA_ALPHA_REASON }),
+  dramaha_27: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "Dramaha 2-7", statusLabel: "Alpha", reason: DRAMAHA_ALPHA_REASON }),
+  dramaha_a5: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "Dramaha A-5", statusLabel: "Alpha", reason: DRAMAHA_ALPHA_REASON }),
+  dramaha_zero: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "Dramaha Zero", statusLabel: "Alpha", reason: DRAMAHA_ALPHA_REASON }),
+  dramaha_hidugi: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "Dramaha Hidugi", statusLabel: "Alpha", reason: DRAMAHA_ALPHA_REASON }),
+  dramaha_badugi: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "Dramaha Badugi", statusLabel: "Alpha", reason: DRAMAHA_ALPHA_REASON }),
   stud: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "Stud", statusLabel: "Alpha", reason: STUD_ALPHA_REASON }),
   stud8: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "Stud 8", statusLabel: "Alpha", reason: STUD_ALPHA_REASON }),
   razz: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "Razz", statusLabel: "Alpha", reason: STUD_ALPHA_REASON }),

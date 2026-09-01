@@ -268,6 +268,35 @@ jobs:
           if-no-files-found: ignore
           retention-days: 30
 
+  dramaha-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - run: npm ci --legacy-peer-deps
+      - run: python -m pip install -e './backend[test]'
+      - run: npx playwright install --with-deps chromium webkit
+      - run: bash scripts/ci/run-with-backend.sh npm run test:qm:dramaha-release
+      - name: Upload Dramaha release evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dramaha-release-qm
+          path: |
+            test-results/
+            reports/all-live-cash/dramaha_*.json
+          if-no-files-found: ignore
+          retention-days: 30
+
   deploy:
     needs:
       - quality
@@ -280,6 +309,7 @@ jobs:
       - mobile-webkit-qa
       - stud-razz-qa
       - nlh-qa
+      - dramaha-qa
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30

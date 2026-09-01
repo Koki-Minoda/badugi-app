@@ -41,7 +41,7 @@ describe("GameRegistry", () => {
     expect(GameRegistry.get("dramaha_hi")?.label).toBe("Dramaha Hi");
     expect(GameRegistry.get("dramaha_27")?.handStructure).toMatchObject({
       hole: 5,
-      community: 3,
+      community: 5,
       mustUseHole: 2,
       mustUseBoard: 3,
     });

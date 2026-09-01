@@ -1,10 +1,26 @@
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import {
+  auditHandReplayFidelity,
+  replayHandFromHistory,
+} from "../../src/games/badugi/flow/handReplay.js";
+import { validateReplayReadyHandHistory } from "../../src/ui/utils/handHistoryReplayRequirements.js";
+import {
   APP_URL,
   dismissTranslateOverlay,
   enterTitleIfPresent,
   gotoWithRetry,
 } from "./authHelper";
+
+const STUD_RELEASE_CASES = [
+  { variant: "stud", minimumHands: 10 },
+  { variant: "stud8", minimumHands: 20 },
+  { variant: "razz", minimumHands: 20 },
+  { variant: "razzdugi", minimumHands: 10 },
+  { variant: "razzducey", minimumHands: 10 },
+  { variant: "razz27", minimumHands: 10 },
+] as const;
+
+const SPLIT_STUD_VARIANTS = new Set(["stud8", "razzdugi", "razzducey"]);
 
 async function openLocallyAuthenticatedStudGame(page: Page, variant: string) {
   const user = {
@@ -86,6 +102,7 @@ async function forceToSeventhStreet(page: Page) {
 async function playStudHandToResult(page: Page, handNumber: number) {
   const visited = new Set<string>();
   let heroButtonClicks = 0;
+  let bringInObserved = false;
   let previousSignature = "";
   let repeated = 0;
 
@@ -93,9 +110,20 @@ async function playStudHandToResult(page: Page, handNumber: number) {
     const state = await page.evaluate(() => window.__BADUGI_E2E__?.getStateSnapshot?.() ?? null);
     const snapshot = state?.controllerSnapshot;
     if (snapshot?.street) visited.add(snapshot.street);
-    if (snapshot?.lastHandResult || snapshot?.street === "SHOWDOWN" || state?.phase === "HAND_RESULT") {
-      await expect(page.getByTestId("hand-result-pot").first()).toBeVisible({ timeout: 15000 });
-      return { state, visited, heroButtonClicks };
+    if (
+      snapshot?.street === "THIRD" &&
+      Number.isInteger(snapshot?.bringInIndex) &&
+      Number(snapshot?.bringInAmount) > 0 &&
+      Number(snapshot?.completeAmount) >= Number(snapshot?.bringInAmount)
+    ) {
+      bringInObserved = true;
+    }
+    if (snapshot?.lastHandResult) {
+      const resultOverlay = page.getByTestId("hand-result-overlay");
+      if (await resultOverlay.isVisible().catch(() => false)) {
+        await expect(page.getByTestId("hand-result-pot").first()).toBeVisible({ timeout: 15000 });
+        return { state, visited, heroButtonClicks, bringInObserved };
+      }
     }
 
     const actor = snapshot?.currentActor;
@@ -116,12 +144,18 @@ async function playStudHandToResult(page: Page, handNumber: number) {
     }
 
     if (actor === 0) {
-      const action = page
-        .locator(
-          "[data-testid='action-check'],[data-testid='action-call'],[data-testid='action-raise'],[data-testid='action-fold']",
-        )
-        .filter({ visible: true })
-        .first();
+      const actionCandidates = [
+        page.getByTestId("action-check"),
+        page.getByTestId("action-call"),
+        page.getByTestId("action-raise"),
+      ];
+      let action = actionCandidates[0];
+      for (const candidate of actionCandidates) {
+        if (await candidate.isVisible().catch(() => false)) {
+          action = candidate;
+          break;
+        }
+      }
       await expect(action).toBeVisible({ timeout: 10000 });
       await expect(action).toBeEnabled({ timeout: 10000 });
       const actionGeometry = await action.evaluate((element) => {
@@ -213,7 +247,7 @@ async function advanceToNextHand(page: Page, previousHandId: string | null) {
     .not.toBeNull();
 }
 
-async function expectEveryCardInsideItsSeat(page: Page) {
+async function expectEveryCardInsideItsSeat(page: Page, minimumCards = 3) {
   for (let seatIndex = 0; seatIndex < 6; seatIndex += 1) {
     const seat = page.getByTestId(`seat-${seatIndex}`);
     const row = page.getByTestId(`player-${seatIndex}-card-row`);
@@ -245,7 +279,7 @@ async function expectEveryCardInsideItsSeat(page: Page) {
       };
     }, seatIndex);
 
-    expect(geometry.cards.length).toBeGreaterThanOrEqual(3);
+    expect(geometry.cards.length).toBeGreaterThanOrEqual(minimumCards);
     geometry.cards.forEach((card) => {
       expect(card.left).toBeGreaterThanOrEqual(geometry.seat.left - 1);
       expect(card.right).toBeLessThanOrEqual(geometry.seat.right + 1);
@@ -255,13 +289,75 @@ async function expectEveryCardInsideItsSeat(page: Page) {
   }
 }
 
+async function verifyStudHistoryAndReplay(page: Page, expectedHandIds: string[]) {
+  const records = await page.evaluate(() => {
+    const memory = window.__BADUGI_E2E__?.getHandHistory?.() ?? [];
+    let persisted = [];
+    try {
+      persisted = JSON.parse(window.localStorage.getItem("badugi.history.hands") ?? "[]");
+    } catch {
+      persisted = [];
+    }
+    const seen = new Set();
+    return [...persisted, ...memory].filter((record) => {
+      if (!record?.handId || seen.has(record.handId)) return false;
+      seen.add(record.handId);
+      return true;
+    });
+  });
+  const selected = expectedHandIds.map((handId) =>
+    records.find((record: any) => record?.handId === handId),
+  );
+  expect(selected.filter(Boolean)).toHaveLength(expectedHandIds.length);
+  for (const record of selected) {
+    const replayReady = validateReplayReadyHandHistory(record, {
+      variantId: record.variantId,
+    });
+    expect(
+      replayReady.valid,
+      `${record.handId} is not replay-ready: ${replayReady.missing.join(", ")}`,
+    ).toBe(true);
+    const fidelity = auditHandReplayFidelity(record);
+    expect(
+      fidelity.valid,
+      `${record.handId} replay differs from the played hand: ${JSON.stringify(fidelity.issues)}`,
+    ).toBe(true);
+    const replayFrames = replayHandFromHistory(record);
+    const terminalFrame = replayFrames.at(-1);
+    const replayCardTrace = replayFrames.map((frame) => ({
+      phase: frame.phase,
+      cards: frame.players?.map((player) => player.hand?.length ?? 0),
+    }));
+    expect(
+      terminalFrame?.players?.every((player) => player.folded || player.hand?.length === 7),
+      `${record.handId} replay must preserve all seven cards for every live seat: ${JSON.stringify(replayCardTrace)}`,
+    ).toBe(true);
+  }
+
+  const lastHandId = expectedHandIds.at(-1)!;
+  await page.getByTestId("hand-result-history").click({ timeout: 5_000 });
+  const modal = page.getByTestId("game-utility-modal");
+  await expect(modal).toBeVisible({ timeout: 10_000 });
+  await expect(modal.getByTestId(`hand-history-row-${lastHandId}`)).toBeVisible();
+  await modal.getByTestId(`hand-history-row-${lastHandId}`).click();
+  await expect(page.getByTestId("hand-replay-screen")).toBeVisible({ timeout: 10_000 });
+  const counter = page.getByTestId("replay-frame-counter");
+  await expect(counter).toContainText(/Frame 1 \/ \d+/, { timeout: 5_000 });
+  const frameCount = Number(((await counter.textContent()) ?? "").match(/Frame 1 \/ (\d+)/)?.[1] ?? 0);
+  expect(frameCount).toBeGreaterThan(1);
+  await page.getByTestId("replay-last-frame").click({ timeout: 5_000 });
+  await expect(page.getByText(/Awarded pot:/)).toBeVisible({ timeout: 10_000 });
+  await page.getByRole("button", { name: /Back to History/i }).click();
+  await expect(page.getByTestId("hand-result-overlay")).toBeVisible({ timeout: 10_000 });
+}
+
 test.describe("Stud-family mobile card containment", () => {
   test.describe.configure({ timeout: 300000 });
 
-  [
-    { variant: "stud8", viewport: { width: 390, height: 844 } },
-    { variant: "razz", viewport: { width: 844, height: 390 } },
-  ].forEach(({ variant, viewport }) => {
+  STUD_RELEASE_CASES.forEach(({ variant }, caseIndex) => {
+    const viewport = caseIndex % 2 === 0
+      ? { width: 390, height: 844 }
+      : { width: 844, height: 390 };
     test(`${variant} keeps all cards inside player panels at ${viewport.width}x${viewport.height}`, async ({ page }) => {
       await page.setViewportSize(viewport);
       await openLocallyAuthenticatedStudGame(page, variant);
@@ -281,8 +377,8 @@ test.describe("Stud-family mobile card containment", () => {
     });
   });
 
-  ["stud8", "razz"].forEach((variant) => {
-    test(`${variant} completes 20 browser hands with real Hero buttons`, async ({ page }, testInfo) => {
+  STUD_RELEASE_CASES.forEach(({ variant, minimumHands }) => {
+    test(`${variant} completes ${minimumHands} browser hands with real Hero buttons`, async ({ page }, testInfo) => {
       const deviceViewports = getDeviceViewports(testInfo);
       const fallbackViewport =
         variant === "stud8" ? { width: 390, height: 844 } : { width: 844, height: 390 };
@@ -291,26 +387,38 @@ test.describe("Stud-family mobile card containment", () => {
       await expectEveryCardInsideItsSeat(page);
 
       let totalHeroButtonClicks = 0;
+      const completedHandIds: string[] = [];
 
-      for (let handNumber = 1; handNumber <= 20; handNumber += 1) {
-        if (handNumber === 11 && deviceViewports) {
+      for (let handNumber = 1; handNumber <= minimumHands; handNumber += 1) {
+        if (handNumber === Math.floor(minimumHands / 2) + 1 && deviceViewports) {
           await page.setViewportSize(deviceViewports.rotated);
           await page.waitForTimeout(300);
         }
-        const { state, visited, heroButtonClicks } = await playStudHandToResult(page, handNumber);
+        const { state, visited, heroButtonClicks, bringInObserved } =
+          await playStudHandToResult(page, handNumber);
         totalHeroButtonClicks += heroButtonClicks;
+        expect(bringInObserved, `${variant} hand ${handNumber} must post a bring-in`).toBe(true);
         expect(
           [...visited],
           `${variant} hand ${handNumber} should visit every Stud street`,
         ).toEqual(
           expect.arrayContaining(["THIRD", "FOURTH", "FIFTH", "SIXTH", "SEVENTH", "SHOWDOWN"]),
         );
+        const handId = String(state?.handId ?? "");
+        expect(handId).not.toBe("");
+        completedHandIds.push(handId);
+        await expectEveryCardInsideItsSeat(page, 7);
+        if (SPLIT_STUD_VARIANTS.has(variant)) {
+          await expect(page.getByTestId("hand-result-component-detail").first()).toBeVisible();
+        }
         await expectNoHorizontalOverflow(page);
-        if (handNumber < 20) {
+        if (handNumber < minimumHands) {
           await advanceToNextHand(page, state?.handId ?? null);
         }
       }
       expect(totalHeroButtonClicks).toBeGreaterThan(0);
+      expect(new Set(completedHandIds).size).toBe(minimumHands);
+      await verifyStudHistoryAndReplay(page, completedHandIds);
     });
   });
 });

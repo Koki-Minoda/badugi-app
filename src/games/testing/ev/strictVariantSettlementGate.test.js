@@ -355,6 +355,59 @@ describe("strict per-variant settlement gate", () => {
     expect(gate.check.metrics.afterStackTotal).toBe(300);
   });
 
+  it.each([
+    ["ST1", StudGameController],
+    ["ST2", Stud8GameController],
+    ["ST3", RazzGameController],
+    ["ST4", RazzdugiGameController],
+    ["ST5", RazzduceyGameController],
+    ["ST6", Razz27GameController],
+  ])("enforces multiway all-in side-pot settlement for %s", (variantId, Controller) => {
+    const controller = new Controller({
+      tableConfig: {
+        seats: seats().slice(0, 3).map((seat) => ({ ...seat, stack: 100 })),
+        blinds: { sb: 5, bb: 10, ante: 0 },
+      },
+    });
+    controller.startNewHand();
+    controller.state = {
+      ...controller.state,
+      handId: `stud-family-side-pot-${variantId}`,
+      street: "SEVENTH",
+      currentActor: null,
+      players: controller.state.players.map((player, index) => ({
+        ...player,
+        stack: [90, 80, 70][index],
+        totalInvested: [10, 20, 30][index],
+        betThisStreet: 0,
+        allIn: true,
+        folded: false,
+        seatOut: false,
+        holeCards: [
+          ["AS", "KS", "QS", "JS", "TS", "9C", "8D"],
+          ["2C", "3D", "4H", "5S", "7C", "9D", "JH"],
+          ["2D", "2H", "2S", "3C", "3H", "4D", "6S"],
+        ][index],
+      })),
+    };
+    controller.state.pot = controller.calculatePot();
+    const beforeState = structuredClone(controller.getSnapshot());
+
+    controller.resolveShowdown();
+    const afterState = controller.getSnapshot();
+    const gate = validateStrictVariantSettlement({ variantId, beforeState, afterState });
+
+    expect(gate.ok, JSON.stringify(gate.errors, null, 2)).toBe(true);
+    expect(afterState.lastHandResult.potDetails.map((pot) => pot.amount)).toEqual([30, 20, 10]);
+    expect(afterState.lastHandResult.potDetails.map((pot) => pot.eligibleSeatIndexes)).toEqual([
+      [0, 1, 2],
+      [1, 2],
+      [2],
+    ]);
+    expect(gate.check.metrics.payoutTotal).toBe(60);
+    expect(gate.check.metrics.afterStackTotal).toBe(300);
+  });
+
   it("enforces an early uncontested Stud payout before five cards are dealt", () => {
     const controller = new StudGameController({
       tableConfig: { seats: seats().slice(0, 3), blinds: { sb: 5, bb: 10, ante: 0 } },

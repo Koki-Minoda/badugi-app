@@ -4271,6 +4271,15 @@ export default function App() {
   }) {
     const idx = typeof seat === "number" ? seat : null;
     const sourcePlayers = playersRef.current ?? players;
+    const controllerPlayersAfter = (() => {
+      if (!isControllerDrivenSingleTable) return null;
+      try {
+        const snapshot = gameControllerRef.current?.getSnapshot?.();
+        return Array.isArray(snapshot?.players) ? snapshot.players : null;
+      } catch {
+        return null;
+      }
+    })();
     const seatSnapshot = playerState
       ? clonePlayerState(playerState)
       : idx !== null
@@ -4483,8 +4492,12 @@ export default function App() {
         : {
             before: Array.isArray(seatSnapshot?.hand)
               ? [...seatSnapshot.hand]
+              : Array.isArray(seatSnapshot?.holeCards)
+                ? [...seatSnapshot.holeCards]
               : Array.isArray(playerState?.hand)
                 ? [...playerState.hand]
+                : Array.isArray(playerState?.holeCards)
+                  ? [...playerState.holeCards]
                 : undefined,
             toCall: resolvedToCall ?? 0,
             raiseCountTable: Number.isFinite(raiseCountTable)
@@ -4516,8 +4529,13 @@ export default function App() {
       }
     }
     if (idx !== null) {
-      const replayPlayersAfter = (sourcePlayers ?? []).map((player, seat) => {
+      const replayPlayersAfter = (controllerPlayersAfter ?? sourcePlayers ?? []).map((player, seat) => {
         const resolvedPlayer = seat === idx && seatSnapshot ? seatSnapshot : player;
+        const resolvedHand = Array.isArray(resolvedPlayer?.hand)
+          ? resolvedPlayer.hand
+          : Array.isArray(resolvedPlayer?.holeCards)
+            ? resolvedPlayer.holeCards
+            : [];
         return {
           seat,
           stack: Math.max(0, Number(resolvedPlayer?.stack) || 0),
@@ -4525,7 +4543,7 @@ export default function App() {
           totalInvested: Math.max(0, Number(resolvedPlayer?.totalInvested) || 0),
           folded: Boolean(resolvedPlayer?.folded ?? resolvedPlayer?.hasFolded),
           allIn: Boolean(resolvedPlayer?.allIn),
-          hand: Array.isArray(resolvedPlayer?.hand) ? [...resolvedPlayer.hand] : [],
+          hand: [...resolvedHand],
         };
       });
       const replayPotAfter = Number.isFinite(potAfter)
@@ -8533,7 +8551,10 @@ export default function App() {
 
   useEffect(() => {
     if (!handResultVisible) return undefined;
-    if (mode === "tournament-mtt" && tournamentStateRef.current?.isFinished) {
+    // Cash results remain visible until the player explicitly chooses Next
+    // Hand. Auto-advancing made the result, history and replay controls vanish
+    // while mobile players were still reading them.
+    if (mode !== "tournament-mtt" || tournamentStateRef.current?.isFinished) {
       return undefined;
     }
     const timer = setTimeout(() => {

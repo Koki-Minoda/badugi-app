@@ -895,7 +895,7 @@ export default function Player({
               return (
                 <div
                   key={`${card}-${sourceIndex}`}
-                  className={`flex min-w-0 flex-col items-center gap-0.5 ${
+                  className={`flex w-full min-w-0 flex-col items-center gap-0.5 ${
                     hasStudVisibility && !compact
                       ? isPublicCard
                         ? "-translate-y-2"
@@ -920,6 +920,15 @@ export default function Player({
                     <Card
                       value={card}
                       hidden={isHiddenFromHero}
+                      style={
+                        hasStudVisibility
+                          ? {
+                              maxWidth: "100%",
+                              height: "auto",
+                              aspectRatio: "var(--card-aspect-ratio, 5 / 7)",
+                            }
+                          : undefined
+                      }
                       selected={
                         isHero && (player.selected || []).includes(sourceIndex)
                       }

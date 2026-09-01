@@ -66,6 +66,19 @@ describe("variantAvailability", () => {
     });
   });
 
+  it("publishes all six Stud-family games only with the completed release contract", () => {
+    for (const id of ["stud", "stud8", "razz", "razzdugi", "razzducey", "razz27"]) {
+      const entry = getVariantAvailability(id);
+      expect(entry.availability).toBe(VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE);
+      expect(entry.reason).toMatch(/all-in\/side-pot settlement/i);
+      expect(entry.requiredBeforeAlpha).toEqual([]);
+      expect(PUBLIC_PLAYABLE_VARIANTS.find((variant) => variant.id === id)?.cashQm).toEqual({
+        expectsDraw: false,
+        expectsBlindIncrease: false,
+      });
+    }
+  });
+
   it("marks Chinese/OFC as coming soon and keeps unknown variants unavailable", () => {
     expect(getVariantAvailability("ofc").availability).toBe(
       VARIANT_AVAILABILITY_STATES.COMING_SOON,

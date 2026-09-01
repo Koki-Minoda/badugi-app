@@ -119,7 +119,12 @@ function applyPlayersAfter(players, snapshots) {
     }
     if (typeof snapshot.folded === "boolean") target.folded = snapshot.folded;
     if (typeof snapshot.allIn === "boolean") target.allIn = snapshot.allIn;
-    if (Array.isArray(snapshot.hand)) target.hand = cloneCards(snapshot.hand);
+    // A sparse legacy/action snapshot can carry `hand: []` even though the
+    // canonical seat already has dealt cards. Treat that as "not supplied";
+    // otherwise one action permanently erases the hero's cards from replay.
+    if (Array.isArray(snapshot.hand) && snapshot.hand.length > 0) {
+      target.hand = cloneCards(snapshot.hand);
+    }
   });
 }
 

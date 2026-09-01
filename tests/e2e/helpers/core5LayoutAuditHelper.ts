@@ -25,6 +25,12 @@ const CORE5_QA_METADATA = Object.freeze({
   D02: { heroCardTestId: "player-0-card-4", maxSteps: 110, expectsDraw: true, expectsBlindIncrease: true },
   S01: { heroCardTestId: "player-0-card-4", maxSteps: 90, expectsDraw: true, expectsBlindIncrease: true },
   S02: { heroCardTestId: "player-0-card-4", maxSteps: 90, expectsDraw: true, expectsBlindIncrease: true },
+  stud: { heroCardTestId: "player-0-card-2", maxSteps: 180, expectsDraw: false, expectsBlindIncrease: false },
+  stud8: { heroCardTestId: "player-0-card-2", maxSteps: 180, expectsDraw: false, expectsBlindIncrease: false },
+  razz: { heroCardTestId: "player-0-card-2", maxSteps: 180, expectsDraw: false, expectsBlindIncrease: false },
+  razzdugi: { heroCardTestId: "player-0-card-2", maxSteps: 180, expectsDraw: false, expectsBlindIncrease: false },
+  razzducey: { heroCardTestId: "player-0-card-2", maxSteps: 180, expectsDraw: false, expectsBlindIncrease: false },
+  razz27: { heroCardTestId: "player-0-card-2", maxSteps: 180, expectsDraw: false, expectsBlindIncrease: false },
 });
 
 export const CORE5_VARIANTS = PUBLIC_PLAYABLE_VARIANTS.map((entry) => {

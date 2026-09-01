@@ -80,5 +80,31 @@ export default defineConfig({
         browserName: 'webkit',
       },
     },
+    {
+      name: 'stud-desktop-chromium',
+      testDir: './tests/e2e',
+      testMatch: /stud-mobile-card-containment\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+    },
+    {
+      name: 'stud-android-chromium',
+      testDir: './tests/e2e',
+      testMatch: /stud-mobile-card-containment\.spec\.ts/,
+      use: {
+        ...devices['Pixel 7'],
+        browserName: 'chromium',
+      },
+    },
+    {
+      name: 'stud-iphone-webkit',
+      testDir: './tests/e2e',
+      testMatch: /stud-mobile-card-containment\.spec\.ts/,
+      use: {
+        ...devices['iPhone 13'],
+        browserName: 'webkit',
+      },
+    },
   ],
 });

@@ -226,6 +226,19 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  stud-razz-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run test:qm:stud-razz-devices
+
   deploy:
     needs:
       - quality
@@ -236,6 +249,7 @@ jobs:
       - history-qa
       - core5-qa
       - mobile-webkit-qa
+      - stud-razz-qa
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30

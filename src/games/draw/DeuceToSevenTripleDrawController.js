@@ -377,10 +377,7 @@ function deriveLegalActions(state = {}, seatIndex) {
     return [];
   }
   if (state.street !== "BET") return [];
-  const currentBet = Math.max(
-    state.metadata?.currentBet ?? 0,
-    ...state.players.map((entry) => entry?.bet ?? 0),
-  );
+  const currentBet = resolveAuthoritativeCurrentBet(state);
   const playerBet = player.bet ?? 0;
   const actions = [{ type: "FOLD" }];
   actions.push(playerBet >= currentBet ? { type: "CHECK" } : { type: "CALL" });
@@ -394,6 +391,13 @@ function deriveLegalActions(state = {}, seatIndex) {
     actions.push({ type: currentBet > 0 ? "RAISE" : "BET" });
   }
   return actions;
+}
+
+function resolveAuthoritativeCurrentBet(state = {}) {
+  const activeBets = (state.players ?? [])
+    .filter((player) => player && !player.folded && !player.sittingOut)
+    .map((player) => Number(player.bet ?? 0) || 0);
+  return Math.max(0, Number(state.metadata?.currentBet ?? 0) || 0, ...activeBets);
 }
 
 export class DeuceToSevenTripleDrawController extends GameController {
@@ -497,11 +501,13 @@ export class DeuceToSevenTripleDrawController extends GameController {
       0,
       Number(snapshot.drawRoundIndex ?? snapshot.drawRound ?? metadata.drawRoundIndex ?? metadata.drawRound ?? 0) || 0,
     );
-    const currentBet = Math.max(
-      0,
-      Number(snapshot.currentBet ?? metadata.currentBet ?? 0) || 0,
-      ...players.map((player) => Number(player.bet ?? 0) || 0),
-    );
+    const currentBet = resolveAuthoritativeCurrentBet({
+      players,
+      metadata: {
+        ...metadata,
+        currentBet: snapshot.currentBet ?? metadata.currentBet ?? 0,
+      },
+    });
     const engineState = {
       handId: snapshot.handId ?? this._lastState?.engineState?.handId ?? `external-${Date.now()}`,
       gameId: snapshot.gameId ?? this.gameId,
@@ -600,7 +606,7 @@ export class DeuceToSevenTripleDrawController extends GameController {
       turn: cloned.actingPlayerIndex,
       nextTurn: cloned.actingPlayerIndex,
       actingPlayerIndex: cloned.actingPlayerIndex,
-      currentBet: metadata.currentBet ?? 0,
+      currentBet: resolveAuthoritativeCurrentBet(cloned),
       raiseStats: {
         raiseCountThisRound: Math.max(0, Number(metadata.raiseCountThisRound) || 0),
         raiseCap: Math.max(1, Number(metadata.raiseCap) || 4),

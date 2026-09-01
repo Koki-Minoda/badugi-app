@@ -419,6 +419,13 @@ export async function evaluateTournamentMobileLayout(
         });
     }
   }
+  if (visibleActionButtons === 0) {
+    issues.push({
+      priority: "P0",
+      issue: "HERO_ACTIONS_NOT_VISIBLE",
+      message: "the static hero-action fixture drifted away from the hero turn",
+    });
+  }
   if (visibleActionButtons > 0 && minActionButtonHeight < 40) {
     issues.push({ priority: "P1", issue: "action button below target size", value: minActionButtonHeight });
   }

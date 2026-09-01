@@ -359,4 +359,34 @@ describe("replayHandFromHistory", () => {
       remainingPot: 0,
     });
   });
+
+  it("does not erase dealt cards when a sparse action snapshot has an empty hand", () => {
+    const frames = replayHandFromHistory({
+      replaySchemaVersion: 2,
+      seats: [
+        { seat: 0, startStack: 100, endStack: 100, initialHand: ["AS", "2D", "3C"] },
+        { seat: 1, startStack: 100, endStack: 100, initialHand: ["KH", "QD", "JC"] },
+      ],
+      events: [
+        { type: "HAND_START" },
+        {
+          type: "BET_ACTION",
+          seat: 0,
+          action: "check",
+          amount: 0,
+          potAfter: 0,
+          playersAfter: [
+            { seat: 0, stack: 100, hand: [] },
+            { seat: 1, stack: 100, hand: ["KH", "QD", "JC", "TS"] },
+          ],
+        },
+        { type: "HAND_END", totalPot: 0, winners: [] },
+      ],
+    });
+
+    expect(frames.at(-1).players.map((player) => player.hand)).toEqual([
+      ["AS", "2D", "3C"],
+      ["KH", "QD", "JC", "TS"],
+    ]);
+  });
 });

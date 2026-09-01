@@ -15,6 +15,12 @@ async function startLocalTournament(page: any, variantId: string) {
     D02: "ace_to_five_triple_draw",
     S01: "deuce_to_seven_single_draw",
     S02: "ace_to_five_single_draw",
+    stud: "stud",
+    stud8: "stud8",
+    razz: "razz",
+    razzdugi: "razzdugi",
+    razzducey: "razzducey",
+    razz27: "razz27",
   };
   await page.route("**/api/**", async (route: any) => {
     const pathname = new URL(route.request().url()).pathname;
@@ -40,6 +46,8 @@ async function startLocalTournament(page: any, variantId: string) {
     await page.getByRole("button", { name: /Board|Hold'em|ボード|ホールデム/i }).click();
   } else if (variantId === "S01" || variantId === "S02") {
     await page.getByRole("button", { name: /Single Draw|シングルドロー/i }).click();
+  } else if (["stud", "stud8", "razz", "razzdugi", "razzducey", "razz27"].includes(variantId)) {
+    await page.getByRole("button", { name: /Stud|スタッド/i }).first().click();
   }
   await page.getByTestId(`game-selector-play-${selectorId[variantId]}`).click();
   await waitForE2EDriver(page);

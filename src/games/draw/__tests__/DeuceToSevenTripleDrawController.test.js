@@ -231,6 +231,65 @@ describe("DeuceToSevenTripleDrawController", () => {
     expect(next.drawRoundIndex).toBe(2);
   });
 
+  it("returns the exact all-in call snapshot before terminal showdown clears a busted seat", () => {
+    const controller = buildController([
+      "2S", "3S", "4S", "5S", "7S",
+      "2H", "3H", "4H", "5H", "8H",
+    ]);
+    const state = controller.createNewHandState(controller.createInitialState());
+    state.engineState.street = "BET";
+    state.engineState.drawRoundIndex = 3;
+    state.engineState.actingPlayerIndex = 1;
+    state.engineState.pots = [{ amount: 200, eligiblePlayerIds: ["seat-0", "seat-1"] }];
+    state.engineState.metadata.currentBet = 40;
+    state.engineState.players[0] = {
+      ...state.engineState.players[0],
+      playerId: "seat-0",
+      hand: ["2S", "3H", "4C", "5D", "7S"],
+      stack: 460,
+      bet: 40,
+      totalInvested: 140,
+      allIn: false,
+      folded: false,
+      hasActedThisRound: true,
+    };
+    state.engineState.players[1] = {
+      ...state.engineState.players[1],
+      playerId: "seat-1",
+      hand: ["2H", "3C", "4D", "5S", "8H"],
+      stack: 20,
+      bet: 0,
+      totalInvested: 100,
+      allIn: false,
+      folded: false,
+      sittingOut: false,
+      seatOut: false,
+      isBusted: false,
+      hasActedThisRound: false,
+    };
+
+    const result = controller.applyAction(state, { seatIndex: 1, type: "CALL" });
+
+    expect(result.actionSnapshot.players[1]).toMatchObject({
+      stack: 0,
+      betThisRound: 20,
+      totalInvested: 120,
+      folded: false,
+      allIn: true,
+      seatOut: false,
+      hand: ["2H", "3C", "4D", "5S", "8H"],
+      lastAction: "Call",
+    });
+    expect(result.state.snapshot.phase).toBe("SHOWDOWN");
+    expect(result.state.snapshot.players[1]).toMatchObject({
+      stack: 0,
+      folded: true,
+      seatOut: true,
+      hand: [],
+      lastAction: "OUT",
+    });
+  });
+
   it("syncs an external D01 opening snapshot so CPU betting can progress", () => {
     const controller = buildController([
       "2S", "3S", "4S", "5S", "7S",

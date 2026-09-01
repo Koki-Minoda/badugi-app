@@ -596,6 +596,15 @@ export default function Player({
         style={{
           padding: "var(--player-pad, 10px)",
           gap: "var(--player-gap, 8px)",
+          ...(compact
+            ? {
+                // A hero Stud hand can be intrinsically wider than its grid
+                // column. Constrain every compact seat to the responsive
+                // table cell so the bottom arc never overlaps adjacent seats.
+                minWidth: 0,
+                maxWidth: "100%",
+              }
+            : {}),
           ...(isCompactTableMobileLayout && !isHero
             ? {
                 width: isFolded
@@ -895,7 +904,7 @@ export default function Player({
               return (
                 <div
                   key={`${card}-${sourceIndex}`}
-                  className={`flex min-w-0 flex-col items-center gap-0.5 ${
+                  className={`flex w-full min-w-0 flex-col items-center gap-0.5 ${
                     hasStudVisibility && !compact
                       ? isPublicCard
                         ? "-translate-y-2"
@@ -920,6 +929,15 @@ export default function Player({
                     <Card
                       value={card}
                       hidden={isHiddenFromHero}
+                      style={
+                        hasStudVisibility
+                          ? {
+                              maxWidth: "100%",
+                              height: "auto",
+                              aspectRatio: "var(--card-aspect-ratio, 5 / 7)",
+                            }
+                          : undefined
+                      }
                       selected={
                         isHero && (player.selected || []).includes(sourceIndex)
                       }

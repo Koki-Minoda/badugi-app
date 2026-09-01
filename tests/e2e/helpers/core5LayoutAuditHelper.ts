@@ -19,12 +19,18 @@ export type AuditIssue = {
 };
 
 const CORE5_QA_METADATA = Object.freeze({
-  badugi: { heroCardTestId: "player-0-card-3", maxSteps: 120, expectsDraw: true, expectsBlindIncrease: true },
-  nlh: { heroCardTestId: "player-0-card-1", maxSteps: 90, expectsDraw: false, expectsBlindIncrease: false },
-  D01: { heroCardTestId: "player-0-card-4", maxSteps: 110, expectsDraw: true, expectsBlindIncrease: true },
-  D02: { heroCardTestId: "player-0-card-4", maxSteps: 110, expectsDraw: true, expectsBlindIncrease: true },
-  S01: { heroCardTestId: "player-0-card-4", maxSteps: 90, expectsDraw: true, expectsBlindIncrease: true },
-  S02: { heroCardTestId: "player-0-card-4", maxSteps: 90, expectsDraw: true, expectsBlindIncrease: true },
+  badugi: { heroCardTestId: "player-0-card-3", initialCardCount: 4, maxSteps: 120, expectsDraw: true, expectsBlindIncrease: true },
+  nlh: { heroCardTestId: "player-0-card-1", initialCardCount: 2, maxSteps: 90, expectsDraw: false, expectsBlindIncrease: false },
+  D01: { heroCardTestId: "player-0-card-4", initialCardCount: 5, maxSteps: 110, expectsDraw: true, expectsBlindIncrease: true },
+  D02: { heroCardTestId: "player-0-card-4", initialCardCount: 5, maxSteps: 110, expectsDraw: true, expectsBlindIncrease: true },
+  S01: { heroCardTestId: "player-0-card-4", initialCardCount: 5, maxSteps: 90, expectsDraw: true, expectsBlindIncrease: true },
+  S02: { heroCardTestId: "player-0-card-4", initialCardCount: 5, maxSteps: 90, expectsDraw: true, expectsBlindIncrease: true },
+  stud: { heroCardTestId: "player-0-card-2", initialCardCount: 3, maxSteps: 180, expectsDraw: false, expectsBlindIncrease: false },
+  stud8: { heroCardTestId: "player-0-card-2", initialCardCount: 3, maxSteps: 180, expectsDraw: false, expectsBlindIncrease: false },
+  razz: { heroCardTestId: "player-0-card-2", initialCardCount: 3, maxSteps: 180, expectsDraw: false, expectsBlindIncrease: false },
+  razzdugi: { heroCardTestId: "player-0-card-2", initialCardCount: 3, maxSteps: 180, expectsDraw: false, expectsBlindIncrease: false },
+  razzducey: { heroCardTestId: "player-0-card-2", initialCardCount: 3, maxSteps: 180, expectsDraw: false, expectsBlindIncrease: false },
+  razz27: { heroCardTestId: "player-0-card-2", initialCardCount: 3, maxSteps: 180, expectsDraw: false, expectsBlindIncrease: false },
 });
 
 export const CORE5_VARIANTS = PUBLIC_PLAYABLE_VARIANTS.map((entry) => {

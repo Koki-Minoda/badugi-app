@@ -48,12 +48,50 @@ export const PUBLIC_PLAYABLE_VARIANTS = Object.freeze([
     displayName: "A-5 Single Draw",
     cashQm: Object.freeze({ expectsDraw: true, expectsBlindIncrease: true }),
   }),
+  Object.freeze({
+    id: "stud",
+    availabilityKey: "stud",
+    displayName: "Seven Card Stud",
+    cashQm: Object.freeze({ expectsDraw: false, expectsBlindIncrease: false }),
+  }),
+  Object.freeze({
+    id: "stud8",
+    availabilityKey: "stud8",
+    displayName: "Seven Card Stud Hi/Lo",
+    cashQm: Object.freeze({ expectsDraw: false, expectsBlindIncrease: false }),
+  }),
+  Object.freeze({
+    id: "razz",
+    availabilityKey: "razz",
+    displayName: "Razz",
+    cashQm: Object.freeze({ expectsDraw: false, expectsBlindIncrease: false }),
+  }),
+  Object.freeze({
+    id: "razzdugi",
+    availabilityKey: "razzdugi",
+    displayName: "Razzdugi",
+    cashQm: Object.freeze({ expectsDraw: false, expectsBlindIncrease: false }),
+  }),
+  Object.freeze({
+    id: "razzducey",
+    availabilityKey: "razzducey",
+    displayName: "Razzducey",
+    cashQm: Object.freeze({ expectsDraw: false, expectsBlindIncrease: false }),
+  }),
+  Object.freeze({
+    id: "razz27",
+    availabilityKey: "razz27",
+    displayName: "2-7 Razz",
+    cashQm: Object.freeze({ expectsDraw: false, expectsBlindIncrease: false }),
+  }),
 ]);
 
 const ALPHA_REASON =
   "Core draw-game flow is enabled for friend alpha.";
 const BADUGI_ALPHA_REASON =
   "Core MGX alpha game; automated progression, pot, terminal, orientation gates passed.";
+const STUD_ALPHA_REASON =
+  "Bring-in, third-through-seventh street, all-in/side-pot settlement, exact replay, and three-device long-run gates passed.";
 const PREVIEW_REASON =
   "Playable for development review, but long-run natural UI, mobile, replay, or split-result coverage is not alpha-ready.";
 
@@ -171,12 +209,12 @@ export const VARIANT_AVAILABILITY = Object.freeze({
   dramaha_zero: preview("Dramaha Zero", "Dramaha flow exists, but split result UX and replay/mobile QA are not alpha-ready."),
   dramaha_hidugi: preview("Dramaha Hidugi", "Dramaha flow exists, but split result UX and replay/mobile QA are not alpha-ready."),
   dramaha_badugi: preview("Dramaha Badugi", "Dramaha/Badugi split flow exists, but Badugi blockers and split-result QA remain."),
-  stud: preview("Stud", "Stud flow exists, but alpha mobile/replay/result QA is not complete."),
-  stud8: preview("Stud 8", "Stud split flow exists, but split-result/mobile/replay QA is not alpha-ready."),
-  razz: preview("Razz", "Razz flow exists, but alpha mobile/replay/result QA is not complete."),
-  razzdugi: preview("Razzdugi", "Stud/Badugi hybrid flow is not friend-alpha ready."),
-  razzducey: preview("Razzducey", "Stud/draw hybrid flow is not friend-alpha ready."),
-  razz27: preview("2-7 Razz", "Razz variant flow exists, but alpha mobile/replay/result QA is not complete."),
+  stud: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "Stud", statusLabel: "Alpha", reason: STUD_ALPHA_REASON }),
+  stud8: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "Stud 8", statusLabel: "Alpha", reason: STUD_ALPHA_REASON }),
+  razz: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "Razz", statusLabel: "Alpha", reason: STUD_ALPHA_REASON }),
+  razzdugi: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "Razzdugi", statusLabel: "Alpha", reason: STUD_ALPHA_REASON }),
+  razzducey: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "Razzducey", statusLabel: "Alpha", reason: STUD_ALPHA_REASON }),
+  razz27: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "2-7 Razz", statusLabel: "Alpha", reason: STUD_ALPHA_REASON }),
   chinese_poker: comingSoon("Chinese Poker / OFC", "Chinese/OFC street progression and fantasyland are incomplete.", [
     "CHINESE-03",
   ]),

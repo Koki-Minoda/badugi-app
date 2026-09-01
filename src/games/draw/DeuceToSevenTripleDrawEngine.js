@@ -400,7 +400,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     return next;
   }
 
-  applyBettingAction(state, action = {}) {
+  applyBettingAction(state, action = {}, options = {}) {
     if (!state) {
       throw new IllegalActionError("Table state is required");
     }
@@ -508,15 +508,23 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
       },
     };
 
+    // Preserve the exact post-wager state before an automatic round
+    // transition/showdown mutates busted seats and clears street bets.
+    const actionState = cloneTableState(next);
+    const withActionState = (resolvedState) =>
+      options?.withActionState
+        ? { state: resolvedState, actionState }
+        : resolvedState;
+
     const active = getActivePlayers(next.players);
     if (active.length === 1) {
-      return this.resolveFoldWin(next);
+      return withActionState(this.resolveFoldWin(next));
     }
     if (hasBettingRoundCompleted(next)) {
-      return this.advanceAfterBet(next);
+      return withActionState(this.advanceAfterBet(next));
     }
     next.actingPlayerIndex = getNextBettingSeat(next, seatIndex);
-    return next;
+    return withActionState(next);
   }
 
   advanceAfterBet(state) {

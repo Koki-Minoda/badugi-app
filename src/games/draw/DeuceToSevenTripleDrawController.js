@@ -769,7 +769,16 @@ export class DeuceToSevenTripleDrawController extends GameController {
       return { state, events: [{ type: "invalidAction", error: "seatIndex is required" }] };
     }
     try {
-      const nextEngineState = this.engine.applyPlayerAction(engineState, normalizedAction);
+      const isDrawAction = String(normalizedAction.type ?? "").toUpperCase() === "DRAW";
+      const transition = isDrawAction
+        ? {
+            state: this.engine.applyPlayerAction(engineState, normalizedAction),
+            actionState: null,
+          }
+        : this.engine.applyBettingAction(engineState, normalizedAction, {
+            withActionState: true,
+          });
+      const nextEngineState = transition.state;
       const events = [buildEvent(engineState, nextEngineState, normalizedAction)];
       const nextState = {
         handIndex: state?.handIndex ?? this._lastState?.handIndex ?? 0,
@@ -778,7 +787,13 @@ export class DeuceToSevenTripleDrawController extends GameController {
         lastEvents: events,
       };
       this._lastState = nextState;
-      return { state: nextState, events };
+      return {
+        state: nextState,
+        events,
+        actionSnapshot: transition.actionState
+          ? this.getUiSnapshot(transition.actionState)
+          : nextState.snapshot,
+      };
     } catch (error) {
       return {
         state,

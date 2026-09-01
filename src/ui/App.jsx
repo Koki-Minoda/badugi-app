@@ -2522,6 +2522,7 @@ export default function App() {
         }
         return {
           snapshot,
+          actionSnapshot: result.actionSnapshot ?? snapshot,
           events,
         };
       } catch (error) {
@@ -4268,6 +4269,7 @@ export default function App() {
     metadata,
     drawInfo,
     extra,
+    playersAfterSnapshot,
   }) {
     const idx = typeof seat === "number" ? seat : null;
     const sourcePlayers = playersRef.current ?? players;
@@ -4529,7 +4531,9 @@ export default function App() {
       }
     }
     if (idx !== null) {
-      const replayPlayersAfter = (controllerPlayersAfter ?? sourcePlayers ?? []).map((player, seat) => {
+      const replayPlayersAfter = (
+        playersAfterSnapshot ?? controllerPlayersAfter ?? sourcePlayers ?? []
+      ).map((player, seat) => {
         const resolvedPlayer = seat === idx && seatSnapshot ? seatSnapshot : player;
         const resolvedHand = Array.isArray(resolvedPlayer?.hand)
           ? resolvedPlayer.hand
@@ -4664,8 +4668,12 @@ export default function App() {
           metadata: payload,
         });
         if (controllerOutcome?.snapshot) {
+          const actionPlayers =
+            controllerOutcome.actionSnapshot?.players ??
+            controllerOutcome.snapshot.players ??
+            [];
           const actorAfter =
-            controllerOutcome.snapshot.players?.[seat] ?? seatBefore;
+            actionPlayers[seat] ?? seatBefore;
           helpers.logAction(
             seat,
             actorAfter?.lastAction ?? payload?.type ?? "call",
@@ -4691,6 +4699,7 @@ export default function App() {
               ...(payload?.metadata ?? {}),
               ...payload,
             },
+            playersAfterSnapshot: actionPlayers,
           });
           forcedSeatActionsRef.current.delete(seat);
           helpers.syncLegacyFromControllerSnapshot(controllerOutcome.snapshot, {
@@ -10971,7 +10980,11 @@ export default function App() {
       seatIndex: 0,
     });
     if (controllerHandled?.snapshot) {
-      const heroAfter = controllerHandled.snapshot.players?.[0] ?? heroBefore;
+      const actionPlayers =
+        controllerHandled.actionSnapshot?.players ??
+        controllerHandled.snapshot.players ??
+        [];
+      const heroAfter = actionPlayers[0] ?? heroBefore;
       recordActionToLog({
         phase: "BET",
         round: currentBetRoundIndex(),
@@ -10983,6 +10996,7 @@ export default function App() {
         betBefore: heroBefore.betThisRound ?? 0,
         betAfter: heroAfter?.betThisRound ?? heroBefore.betThisRound ?? 0,
         raiseCountTable: raiseCountThisRound,
+        playersAfterSnapshot: actionPlayers,
       });
       syncLegacyFromControllerSnapshot(controllerHandled.snapshot, {
         seatIndex: 0,
@@ -11717,7 +11731,11 @@ export default function App() {
       seatIndex: 0,
     });
     if (controllerOutcome?.snapshot) {
-      const heroAfter = controllerOutcome.snapshot.players?.[0] ?? me;
+      const actionPlayers =
+        controllerOutcome.actionSnapshot?.players ??
+        controllerOutcome.snapshot.players ??
+        [];
+      const heroAfter = actionPlayers[0] ?? me;
       const heroAfterBet =
         heroAfter.betThisRound ?? heroAfter.betThisStreet ?? betBefore;
       const effectiveRaiseCountTable = raiseCountBeforeControllerAction;
@@ -11743,6 +11761,7 @@ export default function App() {
         betBefore,
         betAfter: heroAfterBet,
         raiseCountTable: effectiveRaiseCountTable,
+        playersAfterSnapshot: actionPlayers,
       });
       syncLegacyFromControllerSnapshot(controllerOutcome.snapshot, {
         seatIndex: 0,
@@ -11830,7 +11849,11 @@ export default function App() {
       seatIndex: 0,
     });
     if (controllerOutcome?.snapshot) {
-      const heroAfter = controllerOutcome.snapshot.players?.[0] ?? me;
+      const actionPlayers =
+        controllerOutcome.actionSnapshot?.players ??
+        controllerOutcome.snapshot.players ??
+        [];
+      const heroAfter = actionPlayers[0] ?? me;
       const heroAfterBet =
         heroAfter.betThisRound ?? heroAfter.betThisStreet ?? me.betThisRound;
       const effectiveRaiseCountTable = raiseCountBeforeControllerAction;
@@ -11846,6 +11869,7 @@ export default function App() {
         betBefore: me.betThisRound,
         betAfter: heroAfterBet,
         raiseCountTable: effectiveRaiseCountTable,
+        playersAfterSnapshot: actionPlayers,
       });
       syncLegacyFromControllerSnapshot(controllerOutcome.snapshot, {
         seatIndex: 0,
@@ -11929,7 +11953,11 @@ export default function App() {
       seatIndex: 0,
     });
     if (controllerOutcome?.snapshot) {
-      const heroAfter = controllerOutcome.snapshot.players?.[0] ?? me;
+      const actionPlayers =
+        controllerOutcome.actionSnapshot?.players ??
+        controllerOutcome.snapshot.players ??
+        [];
+      const heroAfter = actionPlayers[0] ?? me;
       const heroAfterBet =
         heroAfter.betThisRound ?? heroAfter.betThisStreet ?? betBefore;
       const payApplied = heroAfterBet - betBefore;
@@ -11960,6 +11988,7 @@ export default function App() {
         betBefore,
         betAfter: heroAfterBet,
         raiseCountTable: raiseCountThisRound + 1,
+        playersAfterSnapshot: actionPlayers,
       });
       syncLegacyFromControllerSnapshot(controllerOutcome.snapshot, {
         seatIndex: 0,
@@ -12736,8 +12765,12 @@ export default function App() {
             controllerOutcome = applyControllerPayload(safePayload);
           }
           if (controllerOutcome?.snapshot) {
+            const actionPlayers =
+              controllerOutcome.actionSnapshot?.players ??
+              controllerOutcome.snapshot.players ??
+              [];
             const actorAfter =
-              controllerOutcome.snapshot.players?.[activeSeat] ?? me;
+              actionPlayers[activeSeat] ?? me;
             betHelpers.logAction?.(
               activeSeat,
               actorAfter?.lastAction ??
@@ -12766,6 +12799,7 @@ export default function App() {
                 ...(payload?.metadata ?? {}),
                 ...payload,
               },
+              playersAfterSnapshot: actionPlayers,
             });
             betHelpers.syncLegacyFromControllerSnapshot?.(
               controllerOutcome.snapshot,

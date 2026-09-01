@@ -37,7 +37,17 @@ function completeReportDir() {
     for (const device of QM_DEVICES) {
       fs.writeFileSync(
         path.join(dir, `${variant.id.toLowerCase()}-${device}-10-hands.json`),
-        JSON.stringify(report({ variant: variant.id, device })),
+        JSON.stringify(report({
+          variant: variant.id,
+          device,
+          ...(variant.cashQm?.expectsDraw === false ? { totalDrawClicks: 0 } : {}),
+          ...(variant.cashQm?.expectsBlindIncrease === false
+            ? {
+                openingBlind: { level: 0, bigBlind: 20 },
+                closingBlind: { level: 0, bigBlind: 20 },
+              }
+            : {}),
+        })),
       );
     }
   }
@@ -48,7 +58,7 @@ describe("Core5 cash QM summary", () => {
   it("passes only when every public game and device meets every threshold", () => {
     const summary = summarizeCore5CashQm({ reportDir: completeReportDir(), minimumHands: 10 });
     expect(summary.status).toBe("PASS");
-    expect(summary.completedCases).toBe(10);
+    expect(summary.completedCases).toBe(PUBLIC_PLAYABLE_VARIANTS.length * QM_DEVICES.length);
     expect(summary.issues).toEqual([]);
   });
 

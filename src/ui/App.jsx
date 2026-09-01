@@ -1386,14 +1386,16 @@ export default function App() {
   const isDrawLowballControllerGame = isDrawLowballAppVariant(
     normalizedGameVariant,
   );
+  // Board/stud controllers are also authoritative for the hero table in an
+  // MTT.  Excluding tournament mode here silently sent those variants through
+  // the legacy Badugi deal path (no board-game blind posting or street state).
   const isSingleTableBoardGame =
-    mode !== "tournament-mtt" &&
-    (BOARD_APP_VARIANT_IDS.has(normalizedGameVariant) ||
-      STUD_APP_VARIANT_IDS.has(normalizedGameVariant) ||
-      DRAMAHA_APP_VARIANT_IDS.has(normalizedGameVariant));
-  const isSingleTableStudGame =
-    mode !== "tournament-mtt" &&
-    STUD_APP_VARIANT_IDS.has(normalizedGameVariant);
+    BOARD_APP_VARIANT_IDS.has(normalizedGameVariant) ||
+    STUD_APP_VARIANT_IDS.has(normalizedGameVariant) ||
+    DRAMAHA_APP_VARIANT_IDS.has(normalizedGameVariant);
+  const isSingleTableStudGame = STUD_APP_VARIANT_IDS.has(
+    normalizedGameVariant,
+  );
   const isSingleTableDramaha =
     mode !== "tournament-mtt" &&
     DRAMAHA_APP_VARIANT_IDS.has(normalizedGameVariant);
@@ -2098,6 +2100,13 @@ export default function App() {
       setTurn(snapshotNextTurn);
       const drawResultSummary = snapshot.lastHandResult ?? null;
       if (drawResultSummary) {
+        // Board/stud controllers settle their own showdown.  The legacy
+        // tournament path used to advance the MTT only from the Badugi
+        // showdown callback, so an NLH hand could finish visually while the
+        // field, blind clock, and persisted tournament stayed on hand one.
+        // The completion helper is hand-idempotent and is therefore safe if a
+        // second legacy callback reports the same physical hand.
+        applyHeroTournamentHandCompletion(normalizedPlayers);
         const showdownHandId =
           snapshot.metadata?.handId ??
           snapshot.handId ??
@@ -2233,6 +2242,8 @@ export default function App() {
         avatarUrl: player?.avatarUrl ?? null,
         cpuCharacterId: player?.cpuCharacterId ?? null,
         cpuStyle: player?.cpuStyle ?? null,
+        tournamentPlayerId: player?.tournamentPlayerId ?? null,
+        tournamentSeatIndex: player?.tournamentSeatIndex ?? null,
         stack: player?.stack ?? 0,
         seatOut: player?.seatOut ?? false,
       })),
@@ -7390,10 +7401,9 @@ export default function App() {
         activeHandMode !== "tournament-mtt" &&
         DRAMAHA_APP_VARIANT_IDS.has(activeHandVariant);
       const activeHandIsSingleTableBoardGame =
-        activeHandMode !== "tournament-mtt" &&
-        (BOARD_APP_VARIANT_IDS.has(activeHandVariant) ||
-          STUD_APP_VARIANT_IDS.has(activeHandVariant) ||
-          DRAMAHA_APP_VARIANT_IDS.has(activeHandVariant));
+        BOARD_APP_VARIANT_IDS.has(activeHandVariant) ||
+        STUD_APP_VARIANT_IDS.has(activeHandVariant) ||
+        DRAMAHA_APP_VARIANT_IDS.has(activeHandVariant);
       const activeHandIsSingleTableControllerDraw =
         activeHandIsSingleTableDrawLowball || activeHandIsSingleTableDramaha;
       const basePlayersSnapshot = sanitizePlayerSnapshotForVariant(
@@ -7544,16 +7554,24 @@ export default function App() {
             resolvedTurn: controllerHandSnapshot.currentActor ?? null,
             activeCount: snapshotPlayers.filter((player) => !player?.seatOut)
               .length,
-            handStartingStacksById: snapshotPlayers.map((player) =>
-              Math.max(
-                0,
-                Number(player?.stack) +
-                  Math.max(
-                    Number(player?.totalInvested) || 0,
-                    Number(player?.betThisRound) || 0,
-                    Number(player?.bet) || 0,
-                  ),
-              ),
+            handStartingStacksById: snapshotPlayers.reduce(
+              (startingStacks, player, seat) => {
+                const startingStack = Math.max(
+                  0,
+                  Number(player?.stack) +
+                    Math.max(
+                      Number(player?.totalInvested) || 0,
+                      Number(player?.betThisRound) || 0,
+                      Number(player?.bet) || 0,
+                    ),
+                );
+                startingStacks[seat] = startingStack;
+                if (player?.tournamentPlayerId) {
+                  startingStacks[player.tournamentPlayerId] = startingStack;
+                }
+                return startingStacks;
+              },
+              {},
             ),
             seatOutWarnings: [],
           };
@@ -9906,8 +9924,17 @@ export default function App() {
   useEffect(() => installE2eTestDriver(e2eDriverApiRef), []);
 
   useEffect(() => {
+    // Direct game-ring routes may still need the legacy initial deal, but the
+    // app normally opens on title/menu and explicit ring/tournament handlers
+    // own their first hand.  WebKit can defer this mount effect until after a
+    // fast tournament Resume click; without the screen guard it starts a hand
+    // behind the resume flow and removes the required Next Hand confirmation.
+    if (currentScreen !== "gameRing" || modeRef.current !== "cash") return;
     resetInitialButtonState();
     startNextHandRef.current({ dealerOverride: 0 });
+    // This is intentionally a mount/direct-route compatibility effect. Screen
+    // transitions use pendingRingStartRef or the tournament start/resume path.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetInitialButtonState]);
 
   useEffect(() => {
@@ -9918,7 +9945,23 @@ export default function App() {
 
   useEffect(() => {
     if (!gameControllerRef.current) return;
-    if (isSingleTableBoardGame) return;
+    // Read the live refs as well as the render-local flag.  During a WebKit
+    // tournament variant switch, the NLH controller can be installed one
+    // render before `gameVariant` commits.  The stale Badugi effect used to
+    // call syncExternalState in that gap and overwrite the freshly dealt NLH
+    // hole cards with the old empty-hand snapshot.
+    const liveControllerVariant = normalizeAppVariantId(
+      controllerVariantRef.current ?? gameVariantRef.current,
+      null,
+    );
+    if (
+      isSingleTableBoardGame ||
+      BOARD_APP_VARIANT_IDS.has(liveControllerVariant) ||
+      STUD_APP_VARIANT_IDS.has(liveControllerVariant) ||
+      DRAMAHA_APP_VARIANT_IDS.has(liveControllerVariant)
+    ) {
+      return;
+    }
     if (typeof gameControllerRef.current.syncExternalState !== "function")
       return;
     const phaseTag = phaseTagLocalRef.current();

@@ -24,6 +24,9 @@ describe("variantAvailability", () => {
     expect(getVariantAvailability("S02").availability).toBe(
       VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
     );
+    expect(getVariantAvailability("nlh").availability).toBe(
+      VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
+    );
   });
 
   it("keeps the public release manifest equal to every alpha-playable variant", () => {
@@ -52,14 +55,15 @@ describe("variantAvailability", () => {
     expect(badugi.reason).toMatch(/Core MGX alpha game/i);
   });
 
-  it("keeps NLH preview-only until the remaining promotion gates are reviewed", () => {
+  it("publishes NLH only with its completed release contract", () => {
     const nlh = getVariantAvailability("nlh");
-    expect(nlh.availability).toBe(VARIANT_AVAILABILITY_STATES.PREVIEW_ONLY);
-    expect(nlh.reason).toMatch(/Desktop and Android cash lifecycle QA is complete/i);
-    expect(nlh.requiredBeforeAlpha).toEqual([
-      "NLH tournament lifecycle parity",
-      "NLH iPhone/WebKit parity",
-    ]);
+    expect(nlh.availability).toBe(VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE);
+    expect(nlh.reason).toMatch(/store\/local tournament/i);
+    expect(nlh.requiredBeforeAlpha).toEqual([]);
+    expect(PUBLIC_PLAYABLE_VARIANTS.find((entry) => entry.id === "nlh")?.cashQm).toEqual({
+      expectsDraw: false,
+      expectsBlindIncrease: false,
+    });
   });
 
   it("marks Chinese/OFC as coming soon and keeps unknown variants unavailable", () => {

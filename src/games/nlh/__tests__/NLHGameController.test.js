@@ -132,6 +132,63 @@ describe("NLHGameController", () => {
     });
   });
 
+  it("refreshes tournament seats and preserves stable identity between hands", () => {
+    const controller = createController({
+      seats: [
+        {
+          name: "Hero",
+          stack: 1000,
+          tournamentPlayerId: "entrant-hero",
+          tournamentSeatIndex: 0,
+        },
+        {
+          name: "CPU 1",
+          stack: 1000,
+          tournamentPlayerId: "entrant-cpu-1",
+          tournamentSeatIndex: 1,
+        },
+      ],
+      deckCards,
+      blinds,
+    });
+
+    const firstHand = controller.startNewHand();
+    expect(firstHand.players[0]).toMatchObject({
+      tournamentPlayerId: "entrant-hero",
+      tournamentSeatIndex: 0,
+    });
+
+    controller.updateTableConfig({
+      seats: [
+        {
+          name: "Hero",
+          stack: 760,
+          tournamentPlayerId: "entrant-hero",
+          tournamentSeatIndex: 3,
+        },
+        {
+          name: "CPU 2",
+          stack: 1240,
+          tournamentPlayerId: "entrant-cpu-2",
+          tournamentSeatIndex: 4,
+        },
+      ],
+    });
+
+    const secondHand = controller.startNewHand();
+    expect(secondHand.players).toHaveLength(2);
+    expect(secondHand.players[0]).toMatchObject({
+      name: "Hero",
+      tournamentPlayerId: "entrant-hero",
+      tournamentSeatIndex: 3,
+    });
+    expect(secondHand.players[1]).toMatchObject({
+      name: "CPU 2",
+      tournamentPlayerId: "entrant-cpu-2",
+      tournamentSeatIndex: 4,
+    });
+  });
+
   it("skips busted seats when assigning blinds", () => {
     const controller = createController({
       seats: [

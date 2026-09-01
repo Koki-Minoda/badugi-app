@@ -31,6 +31,8 @@ function buildPlayerFromSeat(seat, idx) {
     avatarUrl: seat?.avatarUrl ?? null,
     cpuCharacterId: seat?.cpuCharacterId ?? null,
     cpuStyle: seat?.cpuStyle ?? null,
+    tournamentPlayerId: seat?.tournamentPlayerId ?? null,
+    tournamentSeatIndex: seat?.tournamentSeatIndex ?? null,
     stack: seat?.stack ?? 0,
     totalInvested: seat?.totalInvested ?? 0,
     betThisStreet: 0,
@@ -166,8 +168,13 @@ export class NLHGameController {
   }
 
   startNewHand({ handId = null } = {}) {
-    if (!this.state.players.length) {
-      this.state.players = (this.config.tableConfig?.seats ?? []).map(buildPlayerFromSeat);
+    const configuredSeats = this.config.tableConfig?.seats ?? [];
+    if (configuredSeats.length) {
+      // The app's table config is the authority between tournament hands: it
+      // contains eliminations, rebalances, and the stable tournament identity
+      // used to report settlement back to the MTT engine.  Keeping only the
+      // previous controller players dropped that identity after hand one.
+      this.state.players = configuredSeats.map(buildPlayerFromSeat);
     }
     this.handCounter += 1;
     this.state.handId = handId ?? `nlh-hand-${this.handCounter}`;

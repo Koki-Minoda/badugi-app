@@ -35,8 +35,23 @@ export function buildContributionPots(players = []) {
   return pots;
 }
 
-export function splitAmountBySeatOrder(amount, winners = []) {
-  const normalizedWinners = [...winners].sort((a, b) => a.seatIndex - b.seatIndex);
+export function splitAmountBySeatOrder(
+  amount,
+  winners = [],
+  { oddChipStartSeatIndex = null, seatCount = null } = {},
+) {
+  const canUseClockwiseOrder =
+    Number.isInteger(oddChipStartSeatIndex) &&
+    Number.isInteger(seatCount) &&
+    seatCount > 0;
+  const normalizedWinners = [...winners].sort((a, b) => {
+    const aSeat = a.player?.seatIndex ?? a.seatIndex;
+    const bSeat = b.player?.seatIndex ?? b.seatIndex;
+    if (!canUseClockwiseOrder) return aSeat - bSeat;
+    const aDistance = (aSeat - oddChipStartSeatIndex + seatCount) % seatCount;
+    const bDistance = (bSeat - oddChipStartSeatIndex + seatCount) % seatCount;
+    return aDistance - bDistance || aSeat - bSeat;
+  });
   if (!normalizedWinners.length || amount <= 0) return [];
   const base = Math.floor(amount / normalizedWinners.length);
   let remainder = amount - base * normalizedWinners.length;
@@ -55,6 +70,8 @@ export function resolveEvaluationPot({
   eligibleSeatIndexes = [],
   evaluations = [],
   compareEvaluations,
+  oddChipStartSeatIndex = null,
+  seatCount = null,
 } = {}) {
   const eligible = new Set(eligibleSeatIndexes);
   const contenders = evaluations.filter((entry) => eligible.has(entry.player?.seatIndex));
@@ -69,7 +86,7 @@ export function resolveEvaluationPot({
   const winners = contenders.filter(
     (entry) => compareEvaluations(entry.evaluation, best.evaluation) === 0,
   );
-  return splitAmountBySeatOrder(amount, winners);
+  return splitAmountBySeatOrder(amount, winners, { oddChipStartSeatIndex, seatCount });
 }
 
 export function applyPayoutsToPlayers(players = [], payouts = []) {

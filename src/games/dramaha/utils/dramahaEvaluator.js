@@ -4,29 +4,36 @@ import { evaluateLowHand } from "../../evaluators/low.js";
 import { comparePloHands, evaluatePloHand } from "../../plo/utils/ploEvaluator.js";
 
 const DRAMAHA_VARIANT_CONFIG = {
-  dramaha_hi: { label: "Dramaha Hi", drawMode: "high" },
-  dramaha_27: { label: "Dramaha 2-7", drawMode: "low27" },
-  dramaha_a5: { label: "Dramaha A-5", drawMode: "lowA5" },
-  dramaha_zero: { label: "Dramaha Zero", drawMode: "zero" },
-  dramaha_hidugi: { label: "Dramaha Hidugi", drawMode: "badugiHigh" },
-  dramaha_badugi: { label: "Dramaha Badugi", drawMode: "badugiLow" },
+  dramaha_hi: { label: "Dramaha Hi", drawMode: "high", maxDiscard: 5 },
+  dramaha_27: { label: "Dramaha 2-7", drawMode: "low27", maxDiscard: 5 },
+  dramaha_a5: { label: "Dramaha A-5", drawMode: "lowA5", maxDiscard: 5 },
+  dramaha_zero: { label: "Dramaha Zero", drawMode: "zero", maxDiscard: 3 },
+  dramaha_hidugi: { label: "Dramaha Hidugi", drawMode: "badugiHigh", maxDiscard: 3 },
+  dramaha_badugi: { label: "Dramaha Badugi", drawMode: "badugiLow", maxDiscard: 3 },
 };
 
 function evaluateZeroHand(cards = []) {
-  const high = evaluateHighHand({ cards });
-  const ranks = Array.isArray(high.metadata?.ranks) ? high.metadata.ranks : [];
-  const zeroScore = ranks.reduce((sum, rank) => {
-    if (rank >= 1 && rank <= 5) return sum;
-    return sum + rank;
-  }, 0);
+  const pointValues = cards.map((card) => {
+    const rank = String(card ?? "").slice(0, -1).toUpperCase();
+    if (["J", "Q", "K"].includes(rank)) return 0;
+    if (rank === "A") return 1;
+    const numericRank = Number(rank);
+    return numericRank >= 2 && numericRank <= 10
+      ? numericRank
+      : Number.POSITIVE_INFINITY;
+  });
+  const isValid = cards.length === 5 && pointValues.every(Number.isFinite);
+  const zeroScore = isValid
+    ? pointValues.reduce((sum, pointValue) => sum + pointValue, 0)
+    : Number.POSITIVE_INFINITY;
   return {
-    rankPrimary: zeroScore * 1_000_000 + (high.rankPrimary ?? 0),
+    rankPrimary: zeroScore,
     rankSecondary: null,
-    handName: "Zero",
-    isValid: high.isValid,
+    handName: isValid ? "Zero" : "Invalid",
+    isValid,
     metadata: {
-      ...(high.metadata ?? {}),
       zeroScore,
+      pointValues,
     },
   };
 }

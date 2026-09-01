@@ -684,7 +684,7 @@ describe("playable invariant smoke", () => {
   it.each(dramahaStreetCases)("%s visits Dramaha streets without skipping", (name, createController) => {
     expectExactStreetProgression(
       driveDirectControllerStreetProgression(createController()),
-      ["PREFLOP", "FLOP", "DRAW", "FINAL", "SHOWDOWN"],
+      ["PREFLOP", "FLOP", "DRAW", "TURN", "RIVER", "SHOWDOWN"],
       name,
     );
   });

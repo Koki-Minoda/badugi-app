@@ -118,7 +118,7 @@ describe("strict per-variant settlement gate", () => {
     });
     controller.startNewHand();
     controller.state.street = "SHOWDOWN";
-    controller.state.boardCards = ["2C", "7D", "7H"];
+    controller.state.boardCards = ["2C", "7D", "7H", "9C", "JD"];
     controller.state.players = controller.state.players.map((player, index) => ({
       ...player,
       folded: false,

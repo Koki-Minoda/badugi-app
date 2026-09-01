@@ -12120,7 +12120,7 @@ export default function App() {
 
     const sel = heroDrawSelection.slice(
       0,
-      isSingleTableDramaha ? 5 : MAX_DRAW_SELECTION,
+      heroMaxDrawSelection,
     );
     // Draw-lowball tournament tables are controller-driven too.  Routing them
     // through the legacy deck first duplicates cards because the tournament
@@ -13844,7 +13844,9 @@ export default function App() {
     heroPhaseNeedsAction &&
     controllerTurn === heroSeatIndex;
   const heroCanDraw = controlsPhase === "DRAW" && heroCanAct;
-  const heroMaxDrawSelection = isSingleTableDramaha ? 5 : MAX_DRAW_SELECTION;
+  const heroMaxDrawSelection = isSingleTableDramaha
+    ? Math.max(0, Number(controllerSnapshot?.maxDiscard ?? 5))
+    : MAX_DRAW_SELECTION;
 
   useEffect(() => {
     if (!heroCanDraw && heroDrawSelection.length > 0) {

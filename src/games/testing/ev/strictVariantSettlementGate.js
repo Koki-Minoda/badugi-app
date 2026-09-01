@@ -69,8 +69,17 @@ function sameJson(left, right) {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
-function expectedPayouts(amount, winnerSeatIndexes) {
-  const seats = sortedUnique(winnerSeatIndexes);
+function expectedPayouts(
+  amount,
+  winnerSeatIndexes = [],
+  { buttonSeat = 0, seatCount = Math.max(1, ...winnerSeatIndexes.map((seat) => seat + 1)) } = {},
+) {
+  const firstSeat = (buttonSeat + 1) % seatCount;
+  const seats = sortedUnique(winnerSeatIndexes).sort((left, right) => {
+    const leftDistance = (left - firstSeat + seatCount) % seatCount;
+    const rightDistance = (right - firstSeat + seatCount) % seatCount;
+    return leftDistance - rightDistance || left - right;
+  });
   if (!seats.length || amount <= 0) return [];
   const base = Math.floor(amount / seats.length);
   let remainder = amount - base * seats.length;
@@ -117,7 +126,7 @@ function verifyDramahaSettlement(variantId, afterState, result) {
       if (player?.folded || player?.seatOut || !Array.isArray(player?.holeCards) || player.holeCards.length !== 5) {
         return null;
       }
-      if (!Array.isArray(boardCards) || boardCards.length !== 3) return null;
+      if (!Array.isArray(boardCards) || boardCards.length !== 5) return null;
       return {
         seatIndex,
         evaluation: evaluateDramahaHand({
@@ -230,7 +239,10 @@ function verifyDramahaSettlement(variantId, afterState, result) {
       const actualPayouts = (pot.winners ?? [])
         .map((winner) => ({ seatIndex: winner.seatIndex, payout: Number(winner.payout) || 0 }))
         .sort((left, right) => left.seatIndex - right.seatIndex);
-      const payouts = expectedPayouts(amount, expectedSeats);
+      const payouts = expectedPayouts(amount, expectedSeats, {
+        buttonSeat: Number(afterState?.dealerIndex ?? 0),
+        seatCount: Math.max(1, afterState?.players?.length ?? 0),
+      }).sort((left, right) => left.seatIndex - right.seatIndex);
       if (!sameJson(actualPayouts, payouts)) {
         errors.push({
           code: "strict_dramaha_component_payout_mismatch",

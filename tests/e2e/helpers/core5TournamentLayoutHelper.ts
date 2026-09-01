@@ -67,6 +67,33 @@ async function waitForStableActionBox(button: Locator, timeoutMs = 5_000) {
   throw new Error("action button did not settle before the clickability audit");
 }
 
+async function trialClickCurrentAction(page: Page, testId: string) {
+  let lastError: unknown = null;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const current = page.getByTestId(testId).first();
+    const isCurrentAction =
+      (await current.isVisible().catch(() => false)) &&
+      (await current.isEnabled().catch(() => false));
+    if (!isCurrentAction) return;
+
+    try {
+      await waitForStableActionBox(current, 2_000);
+      await current.click({ trial: true, timeout: 2_000 });
+      return;
+    } catch (error) {
+      lastError = error;
+      const message = error instanceof Error ? error.message : String(error);
+      const replacedDuringAudit =
+        /detached from the DOM/i.test(message) ||
+        /TimeoutError: locator\.click|Timeout \d+ms exceeded/i.test(message);
+      if (!replacedDuringAudit) throw error;
+    }
+  }
+
+  throw lastError ?? new Error(`${testId} did not remain clickable`);
+}
+
 function overlapRatio(a: LayoutBox | null, b: LayoutBox | null) {
   if (!a || !b) return 0;
   const x = Math.max(
@@ -381,8 +408,7 @@ export async function evaluateTournamentMobileLayout(
       }
     }
     if (await button.isEnabled().catch(() => false)) {
-      await waitForStableActionBox(button)
-        .then(() => button.click({ trial: true, timeout: 5_000 }))
+      await trialClickCurrentAction(page, testId)
         .catch((error) => {
           issues.push({
             priority: "P0",

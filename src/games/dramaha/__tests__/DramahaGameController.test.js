@@ -67,6 +67,11 @@ describe("DramahaGameController", () => {
     });
     expect(controller.state.street).toBe("DRAW");
     expect(controller.getSnapshot().phase).toBe("DRAW");
+    controller.state.players.forEach((player) => {
+      expect(player.hasDrawn).toBe(false);
+      expect(player.hasActedThisStreet).toBe(false);
+      expect(player.hasActedThisRound).toBe(false);
+    });
 
     [1, 2, 0].forEach((seatIndex) => {
       controller.applyPlayerAction({

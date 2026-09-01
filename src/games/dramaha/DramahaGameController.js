@@ -153,6 +153,7 @@ export class DramahaGameController extends NLHGameController {
         ...player,
         hasDrawn: false,
         hasActedThisStreet: false,
+        hasActedThisRound: false,
       }));
       this.state.currentActor = this.nextDrawableSeat(this.state.dealerIndex);
     } else if (nextStreet === "TURN" || nextStreet === "RIVER") {

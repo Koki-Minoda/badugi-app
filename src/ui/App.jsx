@@ -1397,9 +1397,12 @@ export default function App() {
   const isSingleTableStudGame = STUD_APP_VARIANT_IDS.has(
     normalizedGameVariant,
   );
-  const isSingleTableDramaha =
-    mode !== "tournament-mtt" &&
-    DRAMAHA_APP_VARIANT_IDS.has(normalizedGameVariant);
+  // Dramaha owns its deck and draw transition in both cash and the Hero's MTT
+  // table. Sending tournament draws through the legacy Badugi deck can reject
+  // a visible Hero action and silently auto-pat the seat.
+  const isSingleTableDramaha = DRAMAHA_APP_VARIANT_IDS.has(
+    normalizedGameVariant,
+  );
   const isSingleTableControllerDrawGame =
     isSingleTableDrawLowball || isSingleTableDramaha;
   const isControllerDrivenSingleTable =
@@ -7426,7 +7429,6 @@ export default function App() {
         activeHandMode !== "tournament-mtt" &&
         activeHandIsDrawLowballController;
       const activeHandIsSingleTableDramaha =
-        activeHandMode !== "tournament-mtt" &&
         DRAMAHA_APP_VARIANT_IDS.has(activeHandVariant);
       const activeHandIsSingleTableBoardGame =
         BOARD_APP_VARIANT_IDS.has(activeHandVariant) ||
@@ -12145,9 +12147,11 @@ export default function App() {
           round: drawRound + 1,
           seat: drawActionSeat,
           playerState: heroAfter,
-          type:
-            heroAfter.lastAction ??
-            (sel.length === 0 ? "Pat" : `DRAW (${sel.length})`),
+          // The controller may advance to TURN immediately after the final
+          // draw and clear lastAction in the returned snapshot. Preserve the
+          // submitted draw intent as the canonical history action instead of
+          // depending on that post-transition UI field.
+          type: sel.length === 0 ? "Pat" : `DRAW (${sel.length})`,
           stackBefore: p.stack,
           stackAfter: heroAfter.stack ?? p.stack,
           betBefore: p.betThisRound,
@@ -13807,9 +13811,13 @@ export default function App() {
     !heroPlayerForControls.seatOut;
   const isActionPhase = controlsPhase === "BET" || controlsPhase === "DRAW";
 
-  const enginePlayersSnapshot = Array.isArray(engineState?.players)
-    ? engineState.players
-    : playersSrc;
+  const enginePlayersSnapshot =
+    isControllerDrivenSingleTable &&
+    Array.isArray(effectiveControllerSnapshot?.players)
+      ? effectiveControllerSnapshot.players
+      : Array.isArray(engineState?.players)
+        ? engineState.players
+        : playersSrc;
   const heroEngineSeat =
     enginePlayersSnapshot &&
     typeof heroSeatIndex === "number" &&

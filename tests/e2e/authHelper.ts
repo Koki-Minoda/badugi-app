@@ -135,6 +135,28 @@ function variantTestIdFromUrl(url: string) {
   }
 }
 
+export async function selectGameVariantFromSelector(
+  page: Page,
+  variantId: string,
+) {
+  const alias = String(variantId || "badugi").toLowerCase();
+  const variantTestId = VARIANT_TEST_ID_BY_ALIAS[alias];
+  if (!variantTestId) {
+    throw new Error(`Missing game selector mapping for variant ${variantId}`);
+  }
+  const playButton = page
+    .getByTestId(`game-selector-play-${variantTestId}`)
+    .first();
+  if (!(await playButton.count())) {
+    const categoryName = VARIANT_CATEGORY_BUTTON_BY_TEST_ID[variantTestId];
+    if (!categoryName) {
+      throw new Error(`Missing game selector category mapping for variant ${variantId}`);
+    }
+    await page.getByRole("button", { name: categoryName }).first().click();
+  }
+  await page.getByTestId(`game-selector-play-${variantTestId}`).first().click();
+}
+
 async function waitForGameLaunchReady(page: Page, timeout = 20000) {
   const deadline = Date.now() + timeout;
   while (Date.now() < deadline) {
@@ -306,14 +328,7 @@ export async function openAuthenticatedGame(page: Page, url = APP_URL) {
   const session = await openAuthenticatedMenu(page, url);
   await page.getByTestId("menu-ring").click();
   const variantTestId = variantTestIdFromUrl(url);
-  const playButton = page.getByTestId(`game-selector-play-${variantTestId}`).first();
-  if (!(await playButton.count())) {
-    const categoryName = VARIANT_CATEGORY_BUTTON_BY_TEST_ID[variantTestId];
-    if (categoryName) {
-      await page.getByRole("button", { name: categoryName }).first().click();
-    }
-  }
-  await page.getByTestId(`game-selector-play-${variantTestId}`).first().click();
+  await selectGameVariantFromSelector(page, variantTestId);
   await waitForGameLaunchReady(page);
   return session;
 }

@@ -335,26 +335,54 @@ export async function performSafeAction(page, options = {}) {
         : options.policy === "heroFold"
           ? ["action-fold", "action-check", "action-call", "action-raise"]
         : toCall > 0
-          ? options.policy === "heroAggressive"
+          ? options.policy === "heroStay"
+            ? ["action-call", "action-raise"]
+            : options.policy === "heroAggressive"
             ? ["action-raise", "action-call", "action-fold"]
             : ["action-call", "action-fold", "action-raise"]
-        : options.policy === "heroAggressive"
+        : options.policy === "heroStay"
+          ? ["action-check", "action-call", "action-raise"]
+          : options.policy === "heroAggressive"
           ? ["action-raise", "action-call", "action-check", "action-fold"]
           : ["action-check", "action-call", "action-raise", "action-fold"];
+    if (
+      order[0] === "action-draw-selected" &&
+      Array.isArray(options.drawCardIndexes)
+    ) {
+      for (const cardIndex of options.drawCardIndexes) {
+        const card = page
+          .getByTestId(`player-${actor}-card-${cardIndex}`)
+          .first();
+        await expect(
+          card,
+          `draw card for seat ${actor} card ${cardIndex} must be visible`,
+        ).toBeVisible();
+        await card.click();
+        await expect(
+          card,
+          `draw selection for seat ${actor} card ${cardIndex} must commit before submit`,
+        ).toHaveAttribute("aria-pressed", "true");
+      }
+    }
     const action = await firstClickableAction(page, order);
     if (action) {
-      if (action.id === "action-draw-selected" && Array.isArray(options.drawCardIndexes)) {
-        for (const cardIndex of options.drawCardIndexes) {
-          const card = page.getByTestId(`player-${actor}-card-${cardIndex}`);
-          if (await card.isVisible().catch(() => false)) {
-            await card.click();
-          }
-        }
-      }
-      const clicked = await action.locator
-        .click({ timeout: 1500 })
-        .then(() => true)
-        .catch(() => false);
+      // Selecting a card re-renders the decision panel. Re-acquire the submit
+      // button so the test never clicks a detached pre-selection element and
+      // mistakes an unrelated CPU transition for a Hero action.
+      const committedAction =
+        action.id === "action-draw-selected"
+          ? await firstClickableAction(page, [action.id])
+          : action;
+      let clickError = null;
+      const clicked = committedAction
+        ? await committedAction.locator
+            .click({ timeout: 5000 })
+            .then(() => true)
+            .catch((error) => {
+              clickError = error;
+              return false;
+            })
+        : false;
       const changed = await waitForProgressChange(page, beforeKey, { timeout: 1200 })
         .then(() => true)
         .catch(() => false);
@@ -368,6 +396,11 @@ export async function performSafeAction(page, options = {}) {
           actor,
           before: summarizeProgressState(progress),
         };
+      }
+      if (clickError) {
+        throw new Error(
+          `Hero action ${action.id} could not be clicked: ${clickError.message ?? String(clickError)}`,
+        );
       }
     }
   }
@@ -601,6 +634,8 @@ export async function playOneHandProgression(page, options = {}) {
     if (!action.acted) {
       throw new Error(`No safe action available: ${JSON.stringify({ step, action, trace: trace.slice(-4) })}`);
     }
+    trace[trace.length - 1].performedAction =
+      action.clickedAction ?? action.reason ?? null;
     if (action.actor === 0 && !String(action.clickedAction).startsWith("controller:")) {
       heroButtonClicks += 1;
     }

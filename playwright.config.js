@@ -48,7 +48,7 @@ export default defineConfig({
     {
       name: 'tournament-iphone-webkit',
       testDir: './tests/e2e',
-      testMatch: /(?:tournament-device-project-smoke|iphone-safari-tournament-landscape-controls)\.spec\.ts/,
+      testMatch: /(?:tournament-device-project-smoke|iphone-safari-tournament-landscape-controls|title-screen-mobile-landscape)\.spec\.ts/,
       use: {
         ...devices['iPhone 13 landscape'],
         browserName: 'webkit',

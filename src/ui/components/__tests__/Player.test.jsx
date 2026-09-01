@@ -357,9 +357,36 @@ describe("Player", () => {
     const cardRow = screen.getByTestId("player-1-card-row");
     expect(seat.className).toContain("overflow-hidden");
     expect(seat.style.width).toContain("--compact-player-w");
+    expect(seat.style.maxWidth).toBe("100%");
+    expect(seat.style.minWidth).toBe("0");
     expect(cardRow.children).toHaveLength(7);
     expect(screen.queryByTestId("seat-1-stud-summary")).toBeNull();
     expect(screen.queryByTestId("player-1-card-0-visibility")).toBeNull();
+  });
+
+  test("constrains the compact Stud hero to its responsive table column", () => {
+    render(
+      <Player
+        player={{
+          ...basePlayer,
+          hand: ["AS", "KD", "2C", "7H", "8S", "9D", "3C"],
+          cardVisibility: ["down", "down", "up", "up", "up", "up", "down"],
+        }}
+        index={0}
+        selfIndex={0}
+        turn={0}
+        dealerIdx={0}
+        phase="BET"
+        positionLabel="BTN"
+        displayVariant="stud"
+        compact
+        layoutProfile={{ layoutGroup: LAYOUT_GROUPS.STUD }}
+      />,
+    );
+
+    const heroSeat = screen.getByTestId("seat-0");
+    expect(heroSeat.style.maxWidth).toBe("100%");
+    expect(heroSeat.style.minWidth).toBe("0");
   });
 
   test("marks seventh street down card and bring-in / complete actions clearly", () => {

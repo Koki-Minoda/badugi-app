@@ -596,6 +596,15 @@ export default function Player({
         style={{
           padding: "var(--player-pad, 10px)",
           gap: "var(--player-gap, 8px)",
+          ...(compact
+            ? {
+                // A hero Stud hand can be intrinsically wider than its grid
+                // column. Constrain every compact seat to the responsive
+                // table cell so the bottom arc never overlaps adjacent seats.
+                minWidth: 0,
+                maxWidth: "100%",
+              }
+            : {}),
           ...(isCompactTableMobileLayout && !isHero
             ? {
                 width: isFolded

@@ -111,16 +111,31 @@ export async function gotoLiveWithRetry(page: Page, url = LIVE_URL, timeout = 60
 
 async function enterTitleIfPresent(page: Page) {
   const titleButton = page.getByTestId("title-enter-button").first();
-  if (await titleButton.count()) {
-    await titleButton.waitFor({ state: "visible", timeout: 15000 });
-    await titleButton.click();
-    return;
+  const legacyStartButton = page.getByRole("button", { name: /start|press enter/i }).first();
+  const readyScreen = page.getByTestId("menu-ring").or(page.getByTestId("decision-panel")).first();
+  const deadline = Date.now() + 15000;
+  let lastClickError: unknown = null;
+
+  while (Date.now() < deadline) {
+    if (await readyScreen.isVisible().catch(() => false)) return;
+
+    const button = (await titleButton.isVisible().catch(() => false))
+      ? titleButton
+      : (await legacyStartButton.isVisible().catch(() => false))
+        ? legacyStartButton
+        : null;
+    if (button) {
+      try {
+        await button.click({ timeout: 2500 });
+        return;
+      } catch (error) {
+        lastClickError = error;
+      }
+    }
+    await page.waitForTimeout(200);
   }
 
-  const legacyStartButton = page.getByRole("button", { name: /start|press enter/i }).first();
-  if (await legacyStartButton.count()) {
-    await legacyStartButton.click().catch(() => {});
-  }
+  if (lastClickError) throw lastClickError;
 }
 
 export async function openLiveMenu(page: Page, url = LIVE_URL) {

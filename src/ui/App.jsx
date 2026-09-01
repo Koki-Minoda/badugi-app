@@ -86,6 +86,7 @@ import {
   needsActionForBet,
 } from "../games/badugi/flow/betRoundUtils.js";
 import { GAME_VARIANTS } from "../games/core/variants.js";
+import { GAME_VARIANTS as VARIANT_CATALOG } from "../games/config/variantCatalog.js";
 import { canLaunchVariant } from "../games/config/canLaunchVariant.js";
 import { buildHandResultSummary } from "../games/badugi/flow/handResultUtils.js";
 import { computeNextBlindLevel } from "../games/badugi/flow/handLifecycle.js";
@@ -9313,9 +9314,35 @@ export default function App() {
       } = {}) => {
         const normalizedVariant = String(variantId || "badugi");
         const isBadugiFixture = normalizedVariant.toLowerCase() === "badugi";
-        const heroHand = isBadugiFixture
-          ? ["AS", "2H", "3C", "4D"]
-          : ["AS", "2H", "3C", "4D", "5S"];
+        const catalogVariant = VARIANT_CATALOG.find(
+          (entry) =>
+            String(entry?.id ?? "").toLowerCase() ===
+              normalizedVariant.toLowerCase() ||
+            String(entry?.engineKey ?? "").toLowerCase() ===
+              normalizedVariant.toLowerCase(),
+        );
+        const thirdStreet = catalogVariant?.stud?.thirdStreet ?? null;
+        const initialHandCardCount = thirdStreet
+          ? Math.max(
+              0,
+              Number(thirdStreet.down ?? 0) + Number(thirdStreet.up ?? 0),
+            )
+          : Math.max(1, Number(catalogVariant?.holeCards ?? 4) || 4);
+        const heroHand = [
+          "AS",
+          "2H",
+          "3C",
+          "4D",
+          "5S",
+          "6H",
+          "7C",
+          "8D",
+          "9S",
+          "10H",
+          "JC",
+          "QD",
+          "KS",
+        ].slice(0, initialHandCardCount);
         setMode("tournament-mtt");
         modeRef.current = "tournament-mtt";
         gameVariantRef.current = normalizedVariant;

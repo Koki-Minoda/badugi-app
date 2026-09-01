@@ -155,6 +155,9 @@ test("configured mobile browser keeps the tournament table and actions usable", 
     await expect(page.getByTestId("decision-panel")).toBeVisible();
     await expect(page.getByTestId("seat-0-name")).toHaveText("Device Hero");
     await expect(page.getByTestId(variant.heroCardTestId)).toBeVisible();
+    await expect(page.getByTestId(/^player-0-card-\d+$/)).toHaveCount(
+      variant.initialCardCount,
+    );
 
     const result = await evaluateTournamentMobileLayout(
       page,

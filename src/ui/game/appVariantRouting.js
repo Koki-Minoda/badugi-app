@@ -211,6 +211,25 @@ export const BOARD_APP_VARIANT_IDS = new Set([
   APP_VARIANT_IDS.FIVE_CARD_PLO,
 ]);
 
+export const NO_LIMIT_APP_VARIANT_IDS = new Set([
+  APP_VARIANT_IDS.NLH,
+  APP_VARIANT_IDS.SUPER_HOLDEM,
+]);
+
+export const POT_LIMIT_APP_VARIANT_IDS = new Set([
+  APP_VARIANT_IDS.PLO,
+  APP_VARIANT_IDS.PLO8,
+  APP_VARIANT_IDS.BIG_O,
+  APP_VARIANT_IDS.FIVE_CARD_PLO,
+]);
+
+export function getVariableBettingStructure(variantId) {
+  const normalized = normalizeAppVariantId(variantId, null);
+  if (NO_LIMIT_APP_VARIANT_IDS.has(normalized)) return "no-limit";
+  if (POT_LIMIT_APP_VARIANT_IDS.has(normalized)) return "pot-limit";
+  return null;
+}
+
 export const STUD_APP_VARIANT_IDS = new Set([
   APP_VARIANT_IDS.STUD,
   APP_VARIANT_IDS.STUD8,

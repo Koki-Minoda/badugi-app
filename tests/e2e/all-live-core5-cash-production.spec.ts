@@ -64,6 +64,14 @@ const requestedReleaseCandidates = variantFilter.size === 0
         !publicIds.has(variant.variant.toLowerCase()),
     );
 const selectedVariants = [...publicVariants, ...requestedReleaseCandidates];
+const VARIABLE_BETTING_VARIANTS = new Set([
+  "nlh",
+  "super_holdem",
+  "plo",
+  "plo8",
+  "big_o",
+  "five_card_plo",
+]);
 
 type DeviceName = "desktop" | "android" | "iphone";
 
@@ -109,6 +117,7 @@ async function visibleLayoutIssues(page: Page) {
       "action-raise",
       "action-fold",
       "action-draw-selected",
+      "bet-sizing-controls",
     ]) {
       const element = document.querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
       if (!element || element.offsetParent === null) continue;
@@ -200,6 +209,7 @@ async function playOneRealButtonHand(
   let heroButtonClicks = 0;
   let drawClicks = 0;
   let steps = 0;
+  let sizingActions = 0;
   const phases = new Set<string>();
   while (Date.now() < deadline) {
     const progress = await getProgressState(page);
@@ -216,6 +226,7 @@ async function playOneRealButtonHand(
         heroButtonClicks,
         drawClicks,
         steps,
+        sizingActions,
         phases: [...phases],
         walk: heroButtonClicks === 0,
         terminalProgress: {
@@ -269,6 +280,22 @@ async function playOneRealButtonHand(
       );
     }
     if (!target) throw new Error(`No real Hero action for hand ${handNumber}: ${actions.join(",")}`);
+    if (
+      target === "action-raise" &&
+      (await page.getByTestId("bet-sizing-controls").isVisible().catch(() => false))
+    ) {
+      const potPreset = page.getByTestId("bet-preset-pot");
+      if (await potPreset.isVisible().catch(() => false)) {
+        await potPreset.click({ timeout: 5_000 });
+      }
+      const chosen = Number(await page.getByTestId("bet-size-input").inputValue());
+      const min = Number(await page.getByTestId("bet-size-input").getAttribute("min"));
+      const max = Number(await page.getByTestId("bet-size-input").getAttribute("max"));
+      expect(chosen).toBeGreaterThanOrEqual(min);
+      expect(chosen).toBeLessThanOrEqual(max);
+      await expect(page.getByTestId("action-raise")).toContainText(/^(Bet|Raise) \d+$/);
+      sizingActions += 1;
+    }
     await page.getByTestId(target).first().click({ timeout: 5_000 });
     heroButtonClicks += 1;
     steps += 1;
@@ -428,6 +455,7 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
     const handIds: string[] = [];
     let totalDrawClicks = 0;
     let totalHeroButtonClicks = 0;
+    let totalSizingActions = 0;
     for (let hand = 1; hand <= HANDS; hand += 1) {
       mark("hand-start", { hand });
       await expect(page.getByTestId("hand-result-overlay")).toBeHidden({ timeout: 15_000 });
@@ -442,6 +470,7 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
       mark("hand-reported-terminal", { hand, result });
       totalDrawClicks += result.drawClicks;
       totalHeroButtonClicks += result.heroButtonClicks;
+      totalSizingActions += result.sizingActions;
       await expect(page.getByText("Hand Result").first()).toBeVisible({ timeout: 15_000 });
       await expect(page.getByTestId("hand-result-pot").first()).toBeVisible({ timeout: 15_000 });
       if (variant.variant.startsWith("dramaha_")) {
@@ -484,6 +513,12 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
       expect(totalDrawClicks, `${variant.displayName} must exercise Draw`).toBeGreaterThan(0);
     } else {
       expect(totalDrawClicks, `${variant.displayName} must not expose Draw`).toBe(0);
+    }
+    if (VARIABLE_BETTING_VARIANTS.has(variant.variant)) {
+      expect(
+        totalSizingActions,
+        `${variant.displayName} must submit at least one explicit legal bet size`,
+      ).toBeGreaterThan(0);
     }
     const closingBlind = await blindSnapshot(page);
     if (variant.expectsBlindIncrease) {
@@ -536,6 +571,7 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
       closingBlind,
       totalDrawClicks,
       totalHeroButtonClicks,
+      totalSizingActions,
       history,
       cashOut: true,
       rows,

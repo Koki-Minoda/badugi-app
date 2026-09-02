@@ -15,6 +15,10 @@ import {
 } from "../feedback/playFeedbackStore.js";
 import { buildReplayReviewContract } from "../feedback/replayReviewContract.js";
 import ReplayScreen from "./ReplayScreen.jsx";
+import {
+  createHistoryExportPayload,
+  downloadHistoryExport,
+} from "../utils/historyExport.js";
 
 const fmt = new Intl.DateTimeFormat("ja-JP", {
   month: "2-digit",
@@ -126,6 +130,7 @@ export default function HistoryScreen() {
   const navigate = useNavigate();
   const cashHands = useMemo(() => getHands({ limit: 100 }), []);
   const tournaments = useMemo(() => getTournaments({ limit: 200 }), []);
+  const tournamentHands = useMemo(() => getTournamentHands({ limit: 2000 }), []);
   const [selectedId, setSelectedId] = useState(tournaments[0]?.tournamentId ?? null);
   const [search, setSearch] = useState("");
   const [feedbackState, setFeedbackState] = useState({
@@ -238,6 +243,12 @@ export default function HistoryScreen() {
     }
   }
 
+  function handleExportHistory() {
+    downloadHistoryExport(
+      createHistoryExportPayload({ cashHands, tournaments, tournamentHands }),
+    );
+  }
+
   if (activeFeedbackReplay) {
     return (
       <ReplayScreen
@@ -263,6 +274,14 @@ export default function HistoryScreen() {
           <p className="text-xs uppercase tracking-[0.3em] text-emerald-300">History</p>
           <h1 className="text-2xl sm:text-3xl font-extrabold">トーナメント & ハンド履歴</h1>
         </div>
+        <button
+          type="button"
+          onClick={handleExportHistory}
+          data-testid="export-hand-history"
+          className="px-4 py-2 rounded-full border border-emerald-300/40 text-emerald-100 hover:bg-emerald-300/10 transition text-sm"
+        >
+          履歴をJSON保存
+        </button>
         <button
           type="button"
           onClick={() => navigate("/menu")}

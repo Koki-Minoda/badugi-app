@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { afterEach, describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
 import Player from "../components/Player.jsx";
@@ -209,5 +209,54 @@ describe("Mobile betting controls", () => {
     expect(buttons.map((button) => button.textContent)).toEqual(["Fold", "Check", "Bet"]);
     expect(buttons[2].disabled).toBe(true);
     expect(screen.queryByTestId("action-raise")).toBeNull();
+  });
+
+  it("submits the selected legal contribution and names Bet versus Raise", () => {
+    const onRaise = vi.fn();
+    const { rerender } = render(
+      <Controls
+        phase="BET"
+        currentBet={0}
+        player={bettingPlayer}
+        onFold={() => {}}
+        onCheck={() => {}}
+        onRaise={onRaise}
+        betSizing={{
+          enabled: true,
+          actionType: "bet",
+          minCommit: 20,
+          maxCommit: 500,
+          presets: [
+            { key: "min", label: "Min", amount: 20 },
+            { key: "pot", label: "Pot", amount: 60 },
+          ],
+        }}
+        layoutMode="mobile-landscape"
+      />,
+    );
+    fireEvent.click(screen.getByTestId("bet-preset-pot"));
+    expect(screen.getByTestId("action-raise").textContent).toBe("Bet 60");
+    fireEvent.click(screen.getByTestId("action-raise"));
+    expect(onRaise).toHaveBeenLastCalledWith(60);
+
+    rerender(
+      <Controls
+        phase="BET"
+        currentBet={40}
+        player={{ ...bettingPlayer, betThisRound: 10 }}
+        onFold={() => {}}
+        onCall={() => {}}
+        onRaise={onRaise}
+        betSizing={{
+          enabled: true,
+          actionType: "raise",
+          minCommit: 50,
+          maxCommit: 300,
+          presets: [{ key: "min", label: "Min", amount: 50 }],
+        }}
+        layoutMode="mobile-landscape"
+      />,
+    );
+    expect(screen.getByTestId("action-raise").textContent).toBe("Raise 50");
   });
 });

@@ -271,6 +271,7 @@ export default function GameLayoutBase({
     controlsPhase,
     controlsCurrentBet,
     actionPanelInfo,
+    betSizingModel,
     playerFold,
     playerCall,
     playerCheck,
@@ -313,7 +314,8 @@ export default function GameLayoutBase({
   const isPortraitStudTable = isMobilePortraitMode && isStudTable;
   const isPortraitCompactTable = isPortraitDrawTable || isPortraitStudTable;
   const useRailPhasePanel = isPortraitCompactTable;
-  const useDenseActionPanel = isMobileTournament || isPortraitCompactTable;
+  const useDenseActionPanel =
+    isMobileTournament || isPortraitCompactTable || isMobileLandscapeMode;
   const renderedTournamentHud =
     isMobileTournament && React.isValidElement(tournamentHud)
       ? React.cloneElement(tournamentHud, { mobileCompact: true })
@@ -624,6 +626,7 @@ export default function GameLayoutBase({
             onCheck={playerCheck}
             onRaise={playerRaise}
             canRaise={!actionPanelInfo?.capReached}
+            betSizing={betSizingModel}
             layoutMode={mobileLayoutMode}
             className={isMobileLayout ? "w-full" : undefined}
           />
@@ -1059,7 +1062,7 @@ export default function GameLayoutBase({
                 )}
                 <div
                   data-testid="phase-compact-strip"
-                  className={`${isMobileLayout ? (useRailPhasePanel ? "rounded-lg px-1 py-0.5 text-[10px]" : isMobileTournament ? "rounded-lg px-2 py-0.5 text-[10px]" : "rounded-2xl p-2 text-base") : "rounded-2xl p-3"} flex items-center justify-between border font-black shadow-lg ${phaseAccentClass}`}
+                  className={`${isMobileLayout ? (useRailPhasePanel ? "rounded-lg px-1 py-0.5 text-[10px]" : useDenseActionPanel ? "rounded-lg px-2 py-0.5 text-[10px]" : "rounded-2xl p-2 text-base") : "rounded-2xl p-3"} flex items-center justify-between border font-black shadow-lg ${phaseAccentClass}`}
                 >
                   {useRailPhasePanel ? (
                     <div className="grid w-full grid-cols-4 overflow-hidden rounded-md border border-white/10 bg-black/20">
@@ -1088,7 +1091,7 @@ export default function GameLayoutBase({
                         </div>
                       ))}
                     </div>
-                  ) : isMobileTournament ? (
+                  ) : useDenseActionPanel ? (
                     <>
                       <span className="truncate">
                         {phasePrimaryText} | {phaseSecondaryText}

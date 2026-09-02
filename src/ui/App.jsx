@@ -103,10 +103,12 @@ import {
   BOARD_APP_VARIANT_IDS,
   DRAMAHA_APP_VARIANT_IDS,
   STUD_APP_VARIANT_IDS,
+  getVariableBettingStructure,
   isControllerBackedAppVariant,
   isDrawLowballAppVariant,
   normalizeAppVariantId,
 } from "./game/appVariantRouting.js";
+import { buildBetSizingModel } from "./game/betSizing.js";
 import { getVariantLayoutProfile } from "./game/layoutGroups.js";
 import { resolveEffectiveControllerSnapshot } from "./game/controllerSnapshotResolver.js";
 import { createAppGameController } from "./game/createAppGameController.js";
@@ -11973,7 +11975,7 @@ export default function App() {
     }
   }
 
-  function playerRaise() {
+  function playerRaise(requestedCommit = null) {
     if ((isControllerDrivenSingleTable ? controlsPhase : phase) !== "BET") return;
     if (!ensureSeatCanAct(0, "playerRaise")) return;
     const liveControllerSnapshot = isControllerDrivenSingleTable
@@ -12003,11 +12005,25 @@ export default function App() {
         0,
     );
     const toCall = Math.max(0, maxNow - heroCommitted);
-    const raiseAmt = isControllerDrivenSingleTable ? currentRaiseUnit : betSize;
-    const total = toCall + raiseAmt;
+    const usesVariableSizing = betSizingModel?.enabled === true;
+    const actionType = usesVariableSizing
+      ? betSizingModel.actionType
+      : "raise";
+    const raiseAmt = usesVariableSizing
+      ? Math.max(
+          betSizingModel.minCommit,
+          Math.min(
+            betSizingModel.maxCommit,
+            Math.floor(Number(requestedCommit) || betSizingModel.minCommit),
+          ),
+        )
+      : isControllerDrivenSingleTable
+        ? currentRaiseUnit
+        : betSize;
+    const total = usesVariableSizing ? raiseAmt : toCall + raiseAmt;
 
     const controllerOutcome = tryControllerBetAction({
-      actionType: "raise",
+      actionType,
       // Fixed-limit controllers derive the only legal contribution from their
       // canonical state.  Omitting an explicit amount prevents a render-lagged
       // street counter from turning a visible Raise button into a rejected no-op.
@@ -12024,11 +12040,13 @@ export default function App() {
       const heroAfterBet =
         heroAfter.betThisRound ?? heroAfter.betThisStreet ?? betBefore;
       const payApplied = heroAfterBet - betBefore;
-      const actionLabel =
-        heroAfter.stack === 0 && payApplied < total
-          ? "Raise (All-in)"
-          : "Raise";
-      setRaiseCountThisRound((c) => c + 1);
+      const actionBaseLabel = actionType === "bet" ? "Bet" : "Raise";
+      const actionLabel = heroAfter.stack === 0
+        ? `${actionBaseLabel} (All-in)`
+        : actionBaseLabel;
+      const nextRaiseCount =
+        raiseCountThisRound + (actionType === "raise" ? 1 : 0);
+      if (actionType === "raise") setRaiseCountThisRound((c) => c + 1);
       setBetHead(0);
       setLastAggressor(0);
       logAction(0, actionLabel, {
@@ -12036,7 +12054,7 @@ export default function App() {
         raise: raiseAmt,
         pay: payApplied,
         newBet: heroAfterBet,
-        raiseCount: raiseCountThisRound + 1,
+        raiseCount: nextRaiseCount,
       });
       const newMax = maxBetThisRound(controllerOutcome.snapshot.players ?? []);
       if (currentBet !== newMax) setCurrentBet(newMax);
@@ -12050,7 +12068,7 @@ export default function App() {
         stackAfter: heroAfter.stack ?? me.stack,
         betBefore,
         betAfter: heroAfterBet,
-        raiseCountTable: raiseCountThisRound + 1,
+        raiseCountTable: nextRaiseCount,
         playersAfterSnapshot: actionPlayers,
       });
       syncLegacyFromControllerSnapshot(controllerOutcome.snapshot, {
@@ -13717,7 +13735,10 @@ export default function App() {
   const controlsCurrentBet = controlsConfig?.currentBet ?? currentBetSrc;
   const heroBetThisRound = Math.max(
     0,
-    Number(heroPlayerForControls?.betThisRound) || 0,
+    Number(
+      heroPlayerForControls?.betThisStreet ??
+        heroPlayerForControls?.betThisRound,
+    ) || 0,
   );
   const heroToCall = Math.max(
     0,
@@ -13757,6 +13778,21 @@ export default function App() {
       effectiveControllerSnapshot?.betRoundIndex ??
       effectiveControllerSnapshot?.metadata?.betRoundIndex ??
       betRoundIndexSrc,
+  });
+  const variableBettingStructure = getVariableBettingStructure(
+    normalizedGameVariant,
+  );
+  const betSizingModel = buildBetSizingModel({
+    structure: variableBettingStructure,
+    currentBet: controlsCurrentBet,
+    heroBet: heroBetThisRound,
+    heroStack: heroPlayerForControls?.stack,
+    pot: totalPotForDisplay,
+    bigBlind: BB,
+    lastFullRaiseSize:
+      effectiveControllerSnapshot?.lastFullRaiseSize ??
+      effectiveControllerSnapshot?.metadata?.lastFullRaiseSize ??
+      BB,
   });
   const heroSeatIndex =
     typeof heroSeatView?.seatIndex === "number" ? heroSeatView.seatIndex : 0;
@@ -14344,6 +14380,7 @@ export default function App() {
     controlsPhase,
     controlsCurrentBet,
     actionPanelInfo,
+    betSizingModel,
     playerFold,
     playerCall,
     playerCheck,

@@ -296,7 +296,7 @@
                      "lowball"
                  ],
         "priorityPhase":  1,
-        "status":  "wip",
+        "status":  "live",
         "engineKey":  "deuce_to_seven_triple_draw",
         "description":  "Triple-draw 2-7 lowball using three draws and fixed-limit betting streets."
     },
@@ -319,7 +319,7 @@
                      "lowball"
                  ],
         "priorityPhase":  1,
-        "status":  "wip",
+        "status":  "live",
         "engineKey":  "ace_to_five_triple_draw",
         "description":  "Triple-draw A-5 lowball using three draws and fixed-limit betting streets."
     },
@@ -454,7 +454,7 @@
                      "lowball"
                  ],
         "priorityPhase":  1,
-        "status":  "wip",
+        "status":  "live",
         "engineKey":  "deuce_to_seven_single_draw",
         "description":  "Single-draw 2-7 lowball using one draw and two fixed-limit betting streets."
     },
@@ -477,7 +477,7 @@
                      "lowball"
                  ],
         "priorityPhase":  1,
-        "status":  "wip",
+        "status":  "live",
         "engineKey":  "ace_to_five_single_draw",
         "description":  "Single-draw A-5 lowball using one draw and two fixed-limit betting streets."
     },
@@ -599,7 +599,7 @@
     {
         "id":  "H01",
         "name":  "Dramaha Hi",
-        "status":  "wip",
+        "status":  "live",
         "engineKey":  "dramaha_hi",
         "category":  "dramaha",
         "holeCards":  5,
@@ -626,7 +626,7 @@
     {
         "id":  "H02",
         "name":  "Dramaha 2-7",
-        "status":  "wip",
+        "status":  "live",
         "engineKey":  "dramaha_27",
         "category":  "dramaha",
         "holeCards":  5,
@@ -653,7 +653,7 @@
     {
         "id":  "H03",
         "name":  "Dramaha A-5",
-        "status":  "wip",
+        "status":  "live",
         "engineKey":  "dramaha_a5",
         "category":  "dramaha",
         "holeCards":  5,
@@ -680,7 +680,7 @@
     {
         "id":  "H04",
         "name":  "Dramaha Zero",
-        "status":  "wip",
+        "status":  "live",
         "engineKey":  "dramaha_zero",
         "category":  "dramaha",
         "holeCards":  5,
@@ -707,7 +707,7 @@
     {
         "id":  "H05",
         "name":  "Dramaha Hidugi",
-        "status":  "wip",
+        "status":  "live",
         "engineKey":  "dramaha_hidugi",
         "category":  "dramaha",
         "holeCards":  5,
@@ -734,7 +734,7 @@
     {
         "id":  "H06",
         "name":  "Dramaha Badugi",
-        "status":  "wip",
+        "status":  "live",
         "engineKey":  "dramaha_badugi",
         "category":  "dramaha",
         "holeCards":  5,

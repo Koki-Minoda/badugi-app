@@ -1,5 +1,5 @@
 // src/components/Controls.jsx
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import getAvailableActions from "../utils/getAvailableActions.js";
 
 export default function Controls({
@@ -13,9 +13,24 @@ export default function Controls({
   onDraw,
   canDraw = true,
   canRaise = true,
+  betSizing = null,
   layoutMode = "desktop",
   className,
 }) {
+  const [selectedCommit, setSelectedCommit] = useState(
+    () => betSizing?.minCommit ?? 0,
+  );
+  useEffect(() => {
+    if (!betSizing?.enabled) return;
+    setSelectedCommit(betSizing.minCommit);
+  }, [
+    betSizing?.enabled,
+    betSizing?.actionType,
+    betSizing?.minCommit,
+    betSizing?.maxCommit,
+    currentBet,
+    phase,
+  ]);
   const betActions = useMemo(() => {
     if (phase !== "BET") return [];
     return getAvailableActions({ currentBet, player, canRaise });
@@ -67,7 +82,11 @@ export default function Controls({
       onCheck,
       onRaise,
     };
-    const handleClick = disabled ? undefined : handlerMap[action?.handler];
+    const rawHandler = disabled ? undefined : handlerMap[action?.handler];
+    const handleClick =
+      action?.handler === "onRaise" && betSizing?.enabled && rawHandler
+        ? () => rawHandler(selectedCommit)
+        : rawHandler;
     if (!disabled && !handleClick) return null;
     return (
       <button
@@ -90,7 +109,11 @@ export default function Controls({
     const raiseAction = betActions.find((action) => action.variant === "raise");
     const playerBet = typeof player?.betThisRound === "number" ? player.betThisRound : 0;
     const toCall = Math.max(0, Number(currentBet || 0) - playerBet);
-    const raiseLabel = toCall > 0 ? "Raise" : "Bet";
+    const raiseLabel = betSizing?.enabled
+      ? `${betSizing.actionType === "bet" ? "Bet" : "Raise"} ${selectedCommit}`
+      : toCall > 0
+        ? "Raise"
+        : "Bet";
     const slots = [
       foldAction
         ? renderBetButton(foldAction, { testId: "action-fold" })
@@ -108,14 +131,91 @@ export default function Controls({
     return <div className="grid w-full grid-cols-3 gap-1.5">{slots}</div>;
   };
 
+  const renderBetSizing = () => {
+    const hasAggressiveAction = betActions.some(
+      (action) => action?.handler === "onRaise",
+    );
+    if (
+      phase !== "BET" ||
+      !canRaise ||
+      !hasAggressiveAction ||
+      !betSizing?.enabled
+    ) return null;
+    const updateAmount = (value) => {
+      const next = Math.max(
+        betSizing.minCommit,
+        Math.min(betSizing.maxCommit, Math.floor(Number(value) || 0)),
+      );
+      setSelectedCommit(next);
+    };
+    return (
+      <div
+        data-testid="bet-sizing-controls"
+        className={`${isMobile ? "rounded-xl px-1 py-1" : "rounded-lg px-2 py-2"} bg-slate-950/70`}
+      >
+        <div className="flex min-w-0 items-center gap-1.5">
+          <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
+            {betSizing.presets.map((preset) => (
+              <button
+                key={preset.key}
+                type="button"
+                data-testid={`bet-preset-${preset.key}`}
+                onClick={() => setSelectedCommit(preset.amount)}
+                className={`shrink-0 rounded-lg border px-2 py-1 text-[10px] font-semibold touch-manipulation ${
+                  selectedCommit === preset.amount
+                    ? "border-amber-300 bg-amber-300 text-slate-950"
+                    : "border-white/15 bg-white/5 text-white"
+                }`}
+              >
+                {preset.label} {preset.amount}
+              </button>
+            ))}
+          </div>
+          <label className="shrink-0 text-[9px] uppercase tracking-wide text-slate-300">
+            Chips
+            <input
+              type="number"
+              inputMode="numeric"
+              data-testid="bet-size-input"
+              min={betSizing.minCommit}
+              max={betSizing.maxCommit}
+              value={selectedCommit}
+              onChange={(event) => updateAmount(event.target.value)}
+              className="ml-1 w-[64px] rounded-md border border-white/15 bg-slate-900 px-1.5 py-1 text-right text-xs text-white"
+            />
+          </label>
+        </div>
+        {!isMobile && betSizing.maxCommit > betSizing.minCommit && (
+          <input
+            type="range"
+            aria-label="Bet size"
+            min={betSizing.minCommit}
+            max={betSizing.maxCommit}
+            value={selectedCommit}
+            onChange={(event) => updateAmount(event.target.value)}
+            className="mt-2 w-full accent-amber-400"
+          />
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className={containerClass}>
+      {renderBetSizing()}
       {phase === "BET" && betActions.length > 0 && (
         isMobile ? (
           renderMobileBetActions()
         ) : (
           <div className="flex gap-2">
-            {betActions.map((action) => renderBetButton(action))}
+            {betActions.map((action) =>
+              renderBetButton(action, {
+                label:
+                  action.handler === "onRaise" && betSizing?.enabled
+                    ? `${betSizing.actionType === "bet" ? "Bet" : "Raise"} ${selectedCommit}`
+                    : null,
+              }),
+            )}
           </div>
         )
       )}

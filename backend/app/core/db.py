@@ -2,7 +2,7 @@
 import sys
 from urllib.parse import quote_plus
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 
@@ -41,12 +41,35 @@ def _build_db_url() -> str:
 
 
 DATABASE_URL = _build_db_url()
+IS_SQLITE = DATABASE_URL.startswith("sqlite+")
+
+
+def _configure_sqlite_connection(dbapi_connection, _connection_record=None) -> None:
+    """Make file-backed SQLite tolerate concurrent API reads and writes."""
+
+    cursor = dbapi_connection.cursor()
+    try:
+        cursor.execute("PRAGMA busy_timeout=30000")
+        cursor.execute("PRAGMA foreign_keys=ON")
+        if (settings.db_name or ":memory:") != ":memory:":
+            cursor.execute("PRAGMA journal_mode=WAL")
+    finally:
+        cursor.close()
 
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,
     future=True,
+    connect_args=(
+        {"timeout": 30, "check_same_thread": False}
+        if IS_SQLITE
+        else {}
+    ),
 )
+
+if IS_SQLITE:
+    event.listen(engine, "connect", _configure_sqlite_connection)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 

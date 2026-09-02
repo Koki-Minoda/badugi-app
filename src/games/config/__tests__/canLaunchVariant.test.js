@@ -11,8 +11,8 @@ describe("canLaunchVariant", () => {
   });
 
   it("allows preview variants only with the explicit preview flag", () => {
-    expect(canLaunchVariant("plo").canLaunch).toBe(false);
-    expect(canLaunchVariant("plo", { previewVariants: true }).canLaunch).toBe(true);
+    expect(canLaunchVariant("flh").canLaunch).toBe(false);
+    expect(canLaunchVariant("flh", { previewVariants: true }).canLaunch).toBe(true);
     expect(canLaunchVariant("chinese_poker", { previewVariants: true }).canLaunch).toBe(false);
   });
 
@@ -21,7 +21,7 @@ describe("canLaunchVariant", () => {
       getItem: (key) => (key === "mgx.previewVariants" ? "true" : null),
     };
     expect(resolveVariantGateFlags({ storage }).previewVariants).toBe(true);
-    expect(canLaunchVariant("plo", { storage }).canLaunch).toBe(true);
-    expect(canLaunchVariant("plo", { storage: null }).canLaunch).toBe(false);
+    expect(canLaunchVariant("flh", { storage }).canLaunch).toBe(true);
+    expect(canLaunchVariant("flh", { storage: null }).canLaunch).toBe(false);
   });
 });

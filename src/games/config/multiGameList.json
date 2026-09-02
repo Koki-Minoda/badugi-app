@@ -200,17 +200,19 @@
                   },
         "betting":  "pot-limit",
         "evaluators":  [
-                           "high"
+                           "high",
+                           "hi-lo-8-split"
                        ],
         "features":  [
-                         "must-use-two"
+                         "must-use-two",
+                         "hi-lo"
                      ],
         "tags":  [
                      "omaha",
                      "five-card"
                  ],
         "priorityPhase":  2,
-        "description":  "Five-card Omaha (pot-limit).",
+        "description":  "Five-card Omaha Hi-Lo (8-or-better), pot-limit.",
         "status":  "live",
         "engineKey":  "big_o"
     },

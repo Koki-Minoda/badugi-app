@@ -127,7 +127,7 @@ async function installDeviceSession(page: Page) {
 test("configured mobile browser keeps the tournament table and actions usable", async ({
   page,
 }, testInfo) => {
-  test.setTimeout(90_000);
+  test.setTimeout(180_000);
   test.skip(
     ![
       "tournament-android-chromium",

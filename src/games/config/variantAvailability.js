@@ -24,6 +24,20 @@ export const PUBLIC_PLAYABLE_VARIANTS = Object.freeze([
     displayName: "NL Hold'em",
     cashQm: Object.freeze({ expectsDraw: false, expectsBlindIncrease: false }),
   }),
+  ...[
+    ["plo", "Pot-Limit Omaha"],
+    ["plo8", "PLO8"],
+    ["flo8", "FLO8"],
+    ["big_o", "Big-O"],
+    ["five_card_plo", "5-Card PLO"],
+  ].map(([id, displayName]) =>
+    Object.freeze({
+      id,
+      availabilityKey: id,
+      displayName,
+      cashQm: Object.freeze({ expectsDraw: false, expectsBlindIncrease: false }),
+    }),
+  ),
   Object.freeze({
     id: "D01",
     availabilityKey: "deuce_to_seven_triple_draw",
@@ -109,6 +123,8 @@ const STUD_ALPHA_REASON =
   "Bring-in, third-through-seventh street, all-in/side-pot settlement, exact replay, and three-device long-run gates passed.";
 const DRAMAHA_ALPHA_REASON =
   "Five-card board/draw flow, split and odd-chip settlement, exact replay, and desktop/Android/WebKit ten-hand gates passed.";
+const OMAHA_ALPHA_REASON =
+  "Must-use-two evaluation, all-in/side-pot and Hi/Lo settlement, odd-chip ordering, exact replay, cash-out, and desktop/Android/WebKit ten-hand gates passed.";
 const PREVIEW_REASON =
   "Playable for development review, but long-run natural UI, mobile, replay, or split-result coverage is not alpha-ready.";
 
@@ -190,23 +206,11 @@ export const VARIANT_AVAILABILITY = Object.freeze({
   flh: preview("Fixed-Limit Hold'em"),
   super_holdem: preview("NL Super Hold'em"),
   fl_super_holdem: preview("FL Super Hold'em"),
-  plo: preview("Pot-Limit Omaha", "Board-game flow exists, but replay/mobile/EV gates are not alpha-ready.", [
-    "EV-GUARD-06",
-  ]),
-  plo8: preview("PLO8", "Split-pot board-game flow exists, but split-result/mobile/EV gates are not alpha-ready.", [
-    "EV-GUARD-06",
-    "EV-GUARD-08",
-  ]),
-  flo8: preview("FLO8", "Fixed-limit split-pot flow exists, but split-result/mobile/EV gates are not alpha-ready.", [
-    "EV-GUARD-06",
-    "EV-GUARD-08",
-  ]),
-  big_o: preview("Big-O", "Five-card Omaha flow exists, but mobile/replay/EV gates are not alpha-ready.", [
-    "EV-GUARD-06",
-  ]),
-  five_card_plo: preview("5-Card PLO", "Five-card Omaha flow exists, but mobile/replay/EV gates are not alpha-ready.", [
-    "EV-GUARD-06",
-  ]),
+  plo: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "Pot-Limit Omaha", statusLabel: "Alpha", reason: OMAHA_ALPHA_REASON }),
+  plo8: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "PLO8", statusLabel: "Alpha", reason: OMAHA_ALPHA_REASON }),
+  flo8: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "FLO8", statusLabel: "Alpha", reason: OMAHA_ALPHA_REASON }),
+  big_o: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "Big-O", statusLabel: "Alpha", reason: OMAHA_ALPHA_REASON }),
+  five_card_plo: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "5-Card PLO", statusLabel: "Alpha", reason: OMAHA_ALPHA_REASON }),
   deuce_to_seven_triple_draw: alpha("2-7 Triple Draw"),
   ace_to_five_triple_draw: alpha("A-5 Triple Draw"),
   badeucey_triple_draw: preview("Badeucey TD", "Split draw flow exists, but split-result/replay/mobile coverage is not alpha-ready."),

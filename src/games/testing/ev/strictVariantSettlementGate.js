@@ -610,7 +610,7 @@ function buildBoardEvaluations(variantId, afterState, result) {
         player,
         seatIndex,
         high: evaluatePloHand({ holeCards: player.holeCards, boardCards: board }),
-        low: variantId === "B06" || variantId === "B09"
+        low: variantId === "B06" || variantId === "B07" || variantId === "B09"
           ? evaluateOmahaEightLow({ holeCards: player.holeCards, boardCards: board })
           : null,
       };
@@ -639,7 +639,7 @@ function verifyBoardPotWinners(variantId, afterState, result) {
   const compareHigh = ["B01", "B02", "B03", "B04"].includes(variantId)
     ? compareNlhHands
     : comparePloHands;
-  const split = variantId === "B06" || variantId === "B09";
+  const split = variantId === "B06" || variantId === "B07" || variantId === "B09";
 
   for (const [potIndex, pot] of (result?.potDetails ?? []).entries()) {
     const eligible = new Set(pot.eligibleSeatIndexes ?? evaluations.map((entry) => entry.seatIndex));

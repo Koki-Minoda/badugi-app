@@ -120,6 +120,8 @@ export class PLOGameController extends NLHGameController {
       evaluations,
       compareEvaluations: comparePloHands,
       totalPot: resolvedPot,
+      oddChipStartSeatIndex: (this.state.dealerIndex + 1) % this.state.players.length,
+      seatCount: this.state.players.length,
     });
     applyPayoutsToPlayers(this.state.players, allPayouts);
     const winnerSummaries = summarizePayouts(allPayouts);

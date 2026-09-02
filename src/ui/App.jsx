@@ -30,6 +30,7 @@ import {
   updateHandHistorySeat,
   finalizeHandHistoryRecord,
   resetHandHistoryRecord,
+  normalizeCanonicalEventTimestamp,
 } from "./utils/handHistory";
 import { buildPostMatchFollowUpSummary } from "../games/badugi/analysis/followUpAnalyzer.js";
 import {
@@ -2692,7 +2693,11 @@ export default function App() {
     if (!handHistoryRef.current || !event) return null;
     const payload = {
       ...event,
-      timestamp: event.timestamp ?? Date.now(),
+      timestamp: normalizeCanonicalEventTimestamp({
+        events: handHistoryRef.current.events,
+        startedAt: handHistoryRef.current.startedAt,
+        timestamp: event.timestamp,
+      }),
     };
     handHistoryRef.current.events.push(payload);
     return payload;
@@ -2863,6 +2868,7 @@ export default function App() {
 
   const forcedSeatActionsRef = useRef(new Map());
   const e2eDriverApiRef = useRef({});
+  const e2eStaticMobileFixtureRef = useRef(false);
   const lastControllerActionFailureRef = useRef(null);
 
   const consoleLogBuffer = useRef([]);
@@ -9314,6 +9320,10 @@ export default function App() {
       setupMobileTournamentHeroActionFixtureForTest: ({
         variantId = "badugi",
       } = {}) => {
+        // Keep layout/clickability fixtures deterministic. A controller timer
+        // from the live table can otherwise advance the actor while WebKit is
+        // collecting geometry, starving the browser main thread in CI.
+        e2eStaticMobileFixtureRef.current = true;
         const normalizedVariant = String(variantId || "badugi");
         const isBadugiFixture = normalizedVariant.toLowerCase() === "badugi";
         const catalogVariant = VARIANT_CATALOG.find(
@@ -12425,6 +12435,7 @@ export default function App() {
 
   /* --- NPC auto --- */
   useEffect(() => {
+    if (e2eStaticMobileFixtureRef.current) return;
     const activePlayers = playersRef.current ?? [];
     if (!Array.isArray(activePlayers) || activePlayers.length === 0) return;
     const betHelpers = forcedBetHelpersRef.current;
@@ -12634,6 +12645,7 @@ export default function App() {
     if (phase === "BET" && isSingleTableBoardGame) {
       const seatToActHint = autoTurn;
       const timer = setTimeout(() => {
+        if (e2eStaticMobileFixtureRef.current) return;
         const liveControllerSnapshot =
           gameControllerRef.current &&
           typeof gameControllerRef.current.getSnapshot === "function"
@@ -12686,6 +12698,7 @@ export default function App() {
     }
 
     const timer = setTimeout(async () => {
+      if (e2eStaticMobileFixtureRef.current) return;
       if (phase === "BET") {
         if ((phaseRef.current ?? phase) !== "BET") return;
         const basePlayers = playersRef.current ?? activePlayers;

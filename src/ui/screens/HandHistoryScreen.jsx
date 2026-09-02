@@ -13,6 +13,10 @@ import {
   getLatestPlayFeedbackResult,
   savePlayFeedbackResult,
 } from "../feedback/playFeedbackStore.js";
+import {
+  createHistoryExportPayload,
+  downloadHistoryExport,
+} from "../utils/historyExport.js";
 
 function formatTimestamp(ts) {
   if (!Number.isFinite(ts)) return "–";
@@ -223,6 +227,7 @@ export default function HandHistoryScreen({
         description:
           "現在進行中のハンドと直近の完了ハンドを確認できます。行を選ぶとリプレイを開きます。",
         refresh: "更新",
+        export: "JSON保存",
         back: "ゲーム選択へ戻る",
         search: "検索",
         searchPlaceholder: "handId を検索…",
@@ -253,6 +258,7 @@ export default function HandHistoryScreen({
         description:
           "Review the live hand plus recently completed hands. Tap any row to open the replay.",
         refresh: "Refresh",
+        export: "Export JSON",
         back: "Back",
         search: "Search",
         searchPlaceholder: "Search handId…",
@@ -304,6 +310,15 @@ export default function HandHistoryScreen({
     }
   }
 
+  function handleExportHistory() {
+    downloadHistoryExport(
+      createHistoryExportPayload({
+        cashHands: completedSnapshotList,
+        liveHand: liveHandSnapshot,
+      }),
+    );
+  }
+
   return (
     <div className={`${embedded ? "bg-transparent" : "min-h-screen bg-slate-950"} px-4 py-6 text-slate-100`}>
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
@@ -316,6 +331,14 @@ export default function HandHistoryScreen({
             </p>
           </div>
           <div className="flex gap-3">
+            <button
+              type="button"
+              data-testid="export-hand-history"
+              className="rounded-full border border-emerald-300/40 px-4 py-2 text-xs uppercase tracking-[0.2em] text-emerald-100 hover:bg-emerald-300/10"
+              onClick={handleExportHistory}
+            >
+              {copy.export}
+            </button>
             <button
               type="button"
               className="rounded-full border border-white/20 px-4 py-2 text-xs uppercase tracking-[0.35em] text-white/90 hover:border-emerald-300/70 hover:text-emerald-200"

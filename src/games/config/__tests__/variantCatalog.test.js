@@ -60,28 +60,30 @@ describe("variantCatalog", () => {
     });
   });
 
-  it("marks implemented lowball draw variants as wip with engine keys", () => {
+  it("marks released lowball draw variants live with engine keys", () => {
     expect(getVariantById("D01")).toMatchObject({
-      status: "wip",
+      status: "live",
       engineKey: "deuce_to_seven_triple_draw",
     });
     expect(getVariantById("D02")).toMatchObject({
-      status: "wip",
+      status: "live",
       engineKey: "ace_to_five_triple_draw",
     });
+    expect(getVariantById("S01")).toMatchObject({ status: "live" });
+    expect(getVariantById("S02")).toMatchObject({ status: "live" });
   });
 
-  it("marks Dramaha family variants as wip with engine keys", () => {
+  it("marks the released Dramaha family live with engine keys", () => {
     expect(getVariantById("H01")).toMatchObject({
-      status: "wip",
+      status: "live",
       engineKey: "dramaha_hi",
     });
     expect(getVariantById("H02")).toMatchObject({
-      status: "wip",
+      status: "live",
       engineKey: "dramaha_27",
     });
     expect(getVariantById("H06")).toMatchObject({
-      status: "wip",
+      status: "live",
       engineKey: "dramaha_badugi",
     });
   });

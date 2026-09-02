@@ -22,6 +22,9 @@ param(
     [double]$OpponentEpsilon = 0.05,
     [Nullable[int]]$Seed = $null,
     [string]$OutputDir = "rl/models/badugi_sixmax_windows",
+    [string]$ArtifactRoot = "",
+    [ValidateRange(1.0, 1000.0)]
+    [double]$MinimumFreeGB = 8.0,
     [string]$Checkpoint = "rl/models/badugi_sixmax_foldmargin_100k_from_raiseev_fix/badugi_sixmax_dqn_latest.pt",
     [string]$OpponentCheckpoint = "",
     [string]$TorchIndexUrl = ""
@@ -50,6 +53,13 @@ function Validate-TrainingConfig {
 function Resolve-RepoPath([string]$PathValue) {
     if ([System.IO.Path]::IsPathRooted($PathValue)) { return $PathValue }
     return Join-Path $repoRoot $PathValue
+}
+
+function Resolve-ArtifactRoot {
+    if ($ArtifactRoot) { return [System.IO.Path]::GetFullPath($ArtifactRoot) }
+    if ($env:MGX_RL_ARTIFACT_ROOT) { return [System.IO.Path]::GetFullPath($env:MGX_RL_ARTIFACT_ROOT) }
+    if (Test-Path "D:\") { return "D:\MGX-RL" }
+    return ""
 }
 
 function Require-Python {
@@ -106,7 +116,15 @@ if ($Device -eq "cuda" -and -not $cudaAvailable) {
 }
 $resolvedDevice = if ($Device -eq "auto") { if ($cudaAvailable) { "cuda" } else { "cpu" } } else { $Device }
 
-$resolvedOutput = Resolve-RepoPath $OutputDir
+$resolvedArtifactRoot = Resolve-ArtifactRoot
+$resolvedOutput = if ([System.IO.Path]::IsPathRooted($OutputDir)) {
+    $OutputDir
+} elseif ($resolvedArtifactRoot) {
+    Join-Path $resolvedArtifactRoot $OutputDir
+} else {
+    Resolve-RepoPath $OutputDir
+}
+if (-not $resolvedArtifactRoot) { $resolvedArtifactRoot = $resolvedOutput }
 $resolvedCheckpoint = Resolve-RepoPath $Checkpoint
 $resolvedOpponent = if ($OpponentCheckpoint) { Resolve-RepoPath $OpponentCheckpoint } else { "" }
 
@@ -115,6 +133,7 @@ if ($Mode -eq "Smoke") {
     $SaveInterval = 2
     $LogInterval = 1
     $resolvedOutput = Join-Path $env:TEMP "mgx-badugi-sixmax-smoke"
+    $resolvedArtifactRoot = $resolvedOutput
     $trainArgs = @(
         $trainer, "--episodes", $Episodes, "--output-dir", $resolvedOutput,
         "--save-interval", $SaveInterval, "--log-interval", $LogInterval,
@@ -124,6 +143,11 @@ if ($Mode -eq "Smoke") {
     )
 } else {
     Validate-TrainingConfig
+    $outputDrive = [System.IO.DriveInfo]::new([System.IO.Path]::GetPathRoot($resolvedOutput))
+    $freeGB = [math]::Round($outputDrive.AvailableFreeSpace / 1GB, 2)
+    if ($freeGB -lt $MinimumFreeGB) {
+        throw "Artifact drive has only $freeGB GB free; at least $MinimumFreeGB GB is required. Set -ArtifactRoot or MGX_RL_ARTIFACT_ROOT to another drive."
+    }
     $trainArgs = @(
         $trainer, "--episodes", $Episodes, "--output-dir", $resolvedOutput,
         "--save-interval", $SaveInterval, "--log-interval", $LogInterval,
@@ -157,11 +181,17 @@ if ($null -ne $Seed) {
 }
 
 New-Item -ItemType Directory -Force -Path $resolvedOutput | Out-Null
+New-Item -ItemType Directory -Force -Path $resolvedArtifactRoot | Out-Null
+$markerPath = Join-Path $resolvedArtifactRoot ".mgx-rl-artifacts"
+if (-not (Test-Path $markerPath)) {
+    "MGX RL artifact root. Retention is allowed only below this directory." | Set-Content -Path $markerPath -Encoding UTF8
+}
 $logPath = Join-Path $resolvedOutput ("training-{0}.log" -f (Get-Date -Format "yyyyMMdd-HHmmss"))
 Write-Host "Mode=$Mode Device=$resolvedDevice Episodes=$Episodes"
 Write-Host "ProfileMixRate=$ProfileMixRate Profiles=$TrainingProfiles LearningRate=$LearningRate Seed=$Seed"
 Write-Host "ResumeEpsilon=$ResumeEpsilon ResumeEpsilonDecayEpisodes=$ResumeEpsilonDecayEpisodes OpponentUpdateInterval=$OpponentUpdateInterval OpponentEpsilon=$OpponentEpsilon"
 Write-Host "Output=$resolvedOutput"
+Write-Host "ArtifactRoot=$resolvedArtifactRoot"
 Write-Host "Log=$logPath"
 Push-Location $repoRoot
 try {

@@ -185,7 +185,6 @@ import { useGameEngine } from "./engine/useGameEngine.js";
 import { mergeEngineSnapshot } from "./utils/engineSnapshotUtils.js";
 import {
   assertNoHandShapeContamination,
-  isValidHandShapeForVariant,
   sanitizeSeatHandShapeForVariant,
 } from "./utils/handShapeInvariant.js";
 import {
@@ -288,82 +287,17 @@ import {
   dealInitialHands,
   validatePreflopState,
 } from "../games/badugi/utils/deckHelpers.js";
-
-function snapshotVariantMatchesAppVariant(snapshot, appVariant) {
-  if (!snapshot) return false;
-  const expected = normalizeAppVariantId(appVariant);
-  const actual = normalizeAppVariantId(
-    snapshot.variantId ??
-      snapshot.gameVariant ??
-      snapshot.gameId ??
-      snapshot.metadata?.variantId,
-    null,
-  );
-  if (actual && actual !== expected) return false;
-  return isValidHandShapeForVariant({ variantId: expected, snapshot });
-}
-
-function normalizeControllerLegalActionType(action) {
-  return String(
-    typeof action === "string" ? action : (action?.type ?? ""),
-  ).toUpperCase();
-}
-
-function buildSafeControllerBetAction({
-  legalActions = [],
-  currentBet = 0,
-  actorBet = 0,
-} = {}) {
-  const legal = new Set(
-    (legalActions ?? [])
-      .map(normalizeControllerLegalActionType)
-      .filter(Boolean),
-  );
-  const toCall = Math.max(0, Number(currentBet ?? 0) - Number(actorBet ?? 0));
-  if (toCall > 0 && legal.has("CALL")) {
-    return {
-      type: "CALL",
-      amount: toCall,
-      decisionSource: "controller-safe-fallback",
-      fallbackReason: "cpu-action-unavailable",
-    };
-  }
-  if (toCall === 0 && legal.has("CHECK")) {
-    return {
-      type: "CHECK",
-      amount: 0,
-      decisionSource: "controller-safe-fallback",
-      fallbackReason: "cpu-action-unavailable",
-    };
-  }
-  if (legal.has("FOLD")) {
-    return {
-      type: "FOLD",
-      amount: 0,
-      decisionSource: "controller-safe-fallback",
-      fallbackReason: "cpu-action-unavailable",
-    };
-  }
-  return null;
-}
-
-function cloneHandHistory(value) {
-  if (value == null) return null;
-  try {
-    const cloned = JSON.parse(JSON.stringify(value));
-    if (
-      process.env.NODE_ENV !== "production" &&
-      cloned &&
-      typeof cloned === "object"
-    ) {
-      Object.freeze(cloned);
-    }
-    return cloned;
-  } catch (error) {
-    console.warn("Failed to clone hand history snapshot", error);
-    return null;
-  }
-}
+import {
+  buildSafeControllerBetAction,
+  clonePlayerState,
+  snapshotVariantMatchesAppVariant,
+} from "./app/gameProgressSupport.js";
+import { npcAutoDrawCount } from "./app/aiSupport.js";
+import {
+  cloneHandHistory,
+  formatHandIdentifier,
+} from "./app/historySupport.js";
+import { getBlindStructureForTournamentConfig } from "./app/tournamentSupport.js";
 
 const DEFAULT_GAME_ID = "D03";
 const DEFAULT_GAME_VARIANT = "badugi";
@@ -375,27 +309,6 @@ function getPositionName(index, dealer, players = []) {
   return getPositionNameForSeat(index, dealer, players);
 }
 const DEFAULT_STORE_TOURNAMENT_CONFIG = buildTournamentConfigFromStage("store");
-
-function normalizeTournamentBlindLevel(level = {}, index = 0) {
-  const levelNumber = level.level ?? level.levelIndex ?? index + 1;
-  return {
-    level: levelNumber,
-    levelIndex: levelNumber,
-    sb: level.sb ?? level.smallBlind ?? 0,
-    bb: level.bb ?? level.bigBlind ?? 0,
-    ante: level.ante ?? 0,
-    hands: level.hands ?? level.handsThisLevel ?? 999,
-    handsThisLevel: level.handsThisLevel ?? level.hands ?? 999,
-  };
-}
-
-function getBlindStructureForTournamentConfig(config) {
-  const levels = Array.isArray(config?.levels) ? config.levels : [];
-  if (!levels.length) return TOURNAMENT_STRUCTURE;
-  return levels.map((level, index) =>
-    normalizeTournamentBlindLevel(level, index),
-  );
-}
 
 const API_BASE_RAW = import.meta.env?.VITE_API_BASE ?? "/api";
 const API_BASE = API_BASE_RAW.endsWith("/api")
@@ -463,25 +376,6 @@ function readDebugMetrics() {
   };
 }
 
-function formatHandIdentifier({
-  tableId,
-  handNumber,
-  dealerSeat,
-  timestamp = Date.now(),
-}) {
-  const tableSegment =
-    typeof tableId === "string" && tableId.trim().length
-      ? tableId.trim().replace(/\s+/g, "-")
-      : "table";
-  const sequenceSegment =
-    Number.isFinite(handNumber) && handNumber >= 0
-      ? `h${handNumber}`
-      : `h${timestamp}`;
-  const dealerSegment =
-    Number.isFinite(dealerSeat) && dealerSeat >= 0 ? `d${dealerSeat}` : "dX";
-  return `${tableSegment}-${sequenceSegment}-${dealerSegment}-${timestamp.toString(36)}`;
-}
-
 const LEGACY_LANGUAGE_STORAGE_KEY = "mgx.language";
 function getInitialLanguage() {
   if (typeof window === "undefined") return MGX_DEFAULT_LOCALE;
@@ -504,43 +398,7 @@ function getInitialLanguage() {
   return MGX_DEFAULT_LOCALE;
 }
 
-function npcAutoDrawCount(evalResult = {}) {
-  const ranks = evalResult?.ranks ?? [];
-  const kicker = evalResult?.kicker ?? 13;
-  const uniqueCount = ranks.length;
-
-  if (uniqueCount <= 1) {
-    return 3;
-  }
-  if (uniqueCount === 2) {
-    if (kicker >= 10) return 3;
-    if (kicker >= 7) return 2;
-    return 1;
-  }
-  if (uniqueCount === 3) {
-    if (kicker >= 10) return 2;
-    if (kicker >= 7) return 1;
-    return 0;
-  }
-  return kicker >= 11 ? 1 : 0;
-}
-
 const STUD_STREET_AUTOPLAY_PAUSE_MS = 900;
-
-function clonePlayerState(player) {
-  if (!player) return null;
-  return {
-    ...player,
-    hand: Array.isArray(player.hand) ? [...player.hand] : player.hand,
-    cards: Array.isArray(player.cards) ? [...player.cards] : player.cards,
-    holeCards: Array.isArray(player.holeCards)
-      ? [...player.holeCards]
-      : player.holeCards,
-    selected: Array.isArray(player.selected)
-      ? [...player.selected]
-      : player.selected,
-  };
-}
 
 function readStoredAuthIdentity() {
   if (typeof window === "undefined") return {};

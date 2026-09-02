@@ -22,10 +22,16 @@
    unauthenticated P2P state request returns 401, authenticated state returns
    `Cache-Control: private, no-store`, and one two-player room completes.
 4. Increase to two workers. Run the multiprocess E2E gate, including restart,
-   mixed WebSocket/REST transport, ten hands and owner closure.
+   mixed WebSocket/REST transport, 50 hands and owner closure.
 5. Increase further only after database query latency and 429 rate are stable.
    Fan-out cost is one batched query per active worker every 250 ms, not one
    query per room.
+
+The gate restarts both workers at the midpoint, keeps one client on WebSocket
+and the other on REST polling, verifies private cards and chip conservation,
+then closes the room through the owner-only API. The backend unit suite
+separately advances an inactive room beyond the six-hour TTL and proves that
+both cache and durable database state are removed.
 
 ## Rollback
 

@@ -28,12 +28,14 @@ test.describe("alpha variant availability gate", () => {
     await expect(page.getByTestId("game-selector-play-ace_to_five_single_draw")).toBeEnabled();
   });
 
-  test("coming-soon variants stay disabled", async ({ page }) => {
+  test("Classic Chinese Poker is playable while OFC stays disabled", async ({ page }) => {
     await openGameSelector(page);
     await page.getByRole("button", { name: /Chinese|OFC|チャイニーズ/i }).click();
 
-    await expect(page.getByTestId("game-selector-play-chinese_poker")).toBeDisabled();
-    await expect(page.getByTestId("game-selector-card-chinese_poker")).toContainText(/Coming Soon|準備中/);
+    await expect(page.getByTestId("game-selector-play-chinese_poker")).toBeEnabled();
+    await expect(page.getByTestId("game-selector-card-chinese_poker")).toContainText(/Alpha/i);
+    await expect(page.getByTestId("game-selector-play-ofc")).toBeDisabled();
+    await expect(page.getByTestId("game-selector-card-ofc")).toContainText(/Coming Soon|準備中/);
   });
 
   test("preview-only variants can be launched only with explicit preview flag", async ({ page }) => {

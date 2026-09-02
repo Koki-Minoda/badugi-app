@@ -84,7 +84,7 @@ const VARIANT_TEST_ID_BY_ALIAS: Record<string, string> = {
   chinese_poker: "chinese_poker",
   chinese: "chinese_poker",
   cp1: "chinese_poker",
-  ofc: "chinese_poker",
+  ofc: "ofc",
 };
 
 const VARIANT_CATEGORY_BUTTON_BY_TEST_ID: Record<string, RegExp> = {
@@ -123,6 +123,7 @@ const VARIANT_CATEGORY_BUTTON_BY_TEST_ID: Record<string, RegExp> = {
   dramaha_hidugi: /Dramaha|ドラマハ/i,
   dramaha_badugi: /Dramaha|ドラマハ/i,
   chinese_poker: /Chinese|OFC|チャイニーズ/i,
+  ofc: /Open-Face Chinese|OFC/i,
 };
 
 function variantTestIdFromUrl(url: string) {

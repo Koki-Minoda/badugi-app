@@ -45,6 +45,7 @@ This matrix tracks add-on progress coverage by variant family. It does not repla
 | SPECIAL | H01-H06 Dramaha | WIP | progress scenario + result UI E2E | CPU discard strategy / official odd-chip documentation | SPECIAL-001 / DRAMAHA-RESULT-001 | Added | Result overlay now separates High/Board half, Draw half, component pot, and odd chip |
 | MIXED | H.O.R.S.E. / 8-game / Dealer's Choice | Mode-level | manual / UI routes + MIX-PROG-05 E2E | H.O.R.S.E. / Dealer's Choice specific rotation E2E | MIXED-001, MIX-PROG-05 | Partial | 8Game/10Game rotation boundary covered; no direct registry variant |
 | CHINESE | CP1 Chinese Poker | Yes | scorer/controller tests | OFC street-by-street / fantasyland / history replay | CHINESE-001 | Added | CP1 set/result/next-hand covered; OFC remains separate |
+| CHINESE | CP2 Open-Face Chinese Poker | No | identity/availability tests only | Full street placement, Fantasyland, replay | CHINESE-003 | Planned | Separate coming-soon game; not routed to CP1 |
 
 ## Family Test IDs
 

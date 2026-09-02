@@ -11,7 +11,7 @@ export const ALPHA_ONLY_VARIANTS_STORAGE_KEY = "mgx.alphaOnlyVariants";
 // Product-owned source of truth for variants that are available without a
 // preview flag. Release and production-QM tooling must derive their coverage
 // from this list so a newly published game cannot silently miss its gates.
-export const PUBLIC_PLAYABLE_VARIANTS = Object.freeze([
+export const PUBLIC_RING_PLAYABLE_VARIANTS = Object.freeze([
   Object.freeze({
     id: "badugi",
     availabilityKey: "badugi",
@@ -115,6 +115,21 @@ export const PUBLIC_PLAYABLE_VARIANTS = Object.freeze([
   ),
 ]);
 
+export const PUBLIC_DEDICATED_PLAYABLE_VARIANTS = Object.freeze([
+  Object.freeze({
+    id: "chinese_poker",
+    availabilityKey: "chinese_poker",
+    displayName: "Chinese Poker",
+    qmKind: "classic-chinese-poker",
+    cashQm: Object.freeze({ expectsDraw: false, expectsBlindIncrease: false }),
+  }),
+]);
+
+export const PUBLIC_PLAYABLE_VARIANTS = Object.freeze([
+  ...PUBLIC_RING_PLAYABLE_VARIANTS,
+  ...PUBLIC_DEDICATED_PLAYABLE_VARIANTS,
+]);
+
 const ALPHA_REASON =
   "Core draw-game flow is enabled for friend alpha.";
 const BADUGI_ALPHA_REASON =
@@ -125,6 +140,8 @@ const DRAMAHA_ALPHA_REASON =
   "Five-card board/draw flow, split and odd-chip settlement, exact replay, and desktop/Android/WebKit ten-hand gates passed.";
 const OMAHA_ALPHA_REASON =
   "Must-use-two evaluation, all-in/side-pot and Hi/Lo settlement, odd-chip ordering, exact replay, cash-out, and desktop/Android/WebKit ten-hand gates passed.";
+const CHINESE_POKER_ALPHA_REASON =
+  "Classic 13-card placement, foul/royalty points, exact deterministic replay, and desktop/Android/WebKit ten-hand gates passed. This does not include OFC.";
 const PREVIEW_REASON =
   "Playable for development review, but long-run natural UI, mobile, replay, or split-result coverage is not alpha-ready.";
 
@@ -236,7 +253,13 @@ export const VARIANT_AVAILABILITY = Object.freeze({
   razzdugi: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "Razzdugi", statusLabel: "Alpha", reason: STUD_ALPHA_REASON }),
   razzducey: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "Razzducey", statusLabel: "Alpha", reason: STUD_ALPHA_REASON }),
   razz27: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "2-7 Razz", statusLabel: "Alpha", reason: STUD_ALPHA_REASON }),
-  chinese_poker: comingSoon("Chinese Poker / OFC", "Chinese/OFC street progression and fantasyland are incomplete.", [
+  chinese_poker: makeEntry({
+    availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
+    label: "Chinese Poker",
+    statusLabel: "Alpha",
+    reason: CHINESE_POKER_ALPHA_REASON,
+  }),
+  ofc: comingSoon("Open-Face Chinese Poker", "OFC street-by-street placement and Fantasyland are incomplete.", [
     "CHINESE-03",
   ]),
 });
@@ -280,7 +303,7 @@ const VARIANT_ALIASES = Object.freeze({
   st5: "razzducey",
   st6: "razz27",
   cp1: "chinese_poker",
-  ofc: "chinese_poker",
+  cp2: "ofc",
   chinese: "chinese_poker",
   "chinese-poker": "chinese_poker",
 });

@@ -55,8 +55,11 @@ function playPassiveHand(controller) {
 describe("strict per-variant settlement gate", () => {
   it("enforces a dedicated settlement or points policy for every catalog variant", () => {
     const policies = GAME_VARIANTS.map((variant) => getStrictSettlementPolicy(variant.id));
-    expect(policies.every((policy) => policy.status === "ENFORCED")).toBe(true);
-    expect(policies).toHaveLength(36);
+    expect(policies.filter((policy) => policy.status === "ENFORCED")).toHaveLength(36);
+    expect(policies).toHaveLength(37);
+    expect(policies.filter((policy) => policy.status === "DEFERRED")).toEqual([
+      expect.objectContaining({ variantId: "CP2", status: "DEFERRED" }),
+    ]);
     expect(policies.filter((policy) => policy.status === "UNCLASSIFIED")).toEqual([]);
     expect(Object.keys(STRICT_SETTLEMENT_ALLOWLIST)).toHaveLength(0);
   });

@@ -973,10 +973,36 @@
                      ],
         "tags":  [
                      "chinese",
-                     "ofc"
+                     "classic-chinese"
                  ],
         "priorityPhase":  5,
         "status":  "live",
         "engineKey":  "chinese_poker"
+    },
+    {
+        "id":  "CP2",
+        "name":  "Open-Face Chinese Poker",
+        "description":  "OFC is tracked separately from Classic Chinese Poker and remains unavailable until street-by-street placement and Fantasyland are complete.",
+        "category":  "chinese",
+        "holeCards":  5,
+        "drawRounds":  0,
+        "board":  null,
+        "betting":  "points",
+        "evaluators":  [
+                           "chinese-high"
+                       ],
+        "features":  [
+                         "open-face",
+                         "street-placement",
+                         "fantasyland"
+                     ],
+        "tags":  [
+                     "ofc",
+                     "open-face-chinese",
+                     "fantasyland"
+                 ],
+        "priorityPhase":  6,
+        "status":  "wip",
+        "engineKey":  "ofc"
     }
 ]

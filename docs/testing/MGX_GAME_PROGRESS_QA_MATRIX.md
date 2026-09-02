@@ -92,6 +92,7 @@ This matrix tracks add-on coverage for game progression regressions. Existing Vi
 | ST5 | Razzducey | Yes | Yes | No | Yes | Yes | split stud result | scenario smoke | component-pot UI E2E | Added | Alias `razzducey` |
 | ST6 | 2-7 Razz | Yes | Yes | No | Yes | Yes | bring-in/2-7 low/showdown | scenario smoke | low result UI E2E | Added | Alias `razz27` |
 | CP1 | Chinese Poker | Yes | No | No | No | No | set/result/next hand | CP1 set/result/next-hand + one-hand controller guarantee | OFC street-by-street/fantasyland | Added | Classic Chinese Poker path covered; OFC remains separate |
+| CP2 | Open-Face Chinese Poker | No | No | No | No | No | 5-card initial + street placement | Dedicated OFC controller/fantasyland required | Entire playable flow | Planned | Separate unavailable game; never aliases to CP1 |
 
 ## QA Matrix 2b: One Hand Progression Guarantee
 
@@ -135,6 +136,7 @@ This matrix tracks add-on coverage for game progression regressions. Existing Vi
 | ST5 | Razzducey | STUD | Yes | Yes | PASS | <=320 | HAND_RESULT/TERMINAL | - | Add split component result E2E |
 | ST6 | 2-7 Razz | STUD | Yes | Yes | PASS | <=320 | HAND_RESULT/TERMINAL | - | Add low-result UI E2E |
 | CP1 | Chinese Poker | CHINESE | Yes | Yes | PASS | <=320 | SHOWDOWN/HAND_RESULT | - | Add OFC street-by-street/fantasyland |
+| CP2 | Open-Face Chinese Poker | CHINESE | No | No | NOT RUN | - | - | - | Street placement and Fantasyland incomplete |
 
 ## One Hand Family Summary
 

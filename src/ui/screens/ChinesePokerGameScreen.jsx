@@ -289,7 +289,14 @@ export default function ChinesePokerGameScreen({ language = "ja", onBack = null 
 
   const handleSubmit = () => {
     try {
-      controller.setRows(hero.id, rows);
+      const rowsAlreadyRecorded =
+        hero?.ready &&
+        ROWS.every((row) =>
+          JSON.stringify(hero?.rows?.[row.key] ?? []) === JSON.stringify(rows[row.key] ?? []),
+        );
+      if (!rowsAlreadyRecorded) {
+        controller.setRows(hero.id, rows);
+      }
       const result = controller.resolveShowdown();
       const history = controller.getHandHistory();
       const audit = replayChinesePokerHistory(history);

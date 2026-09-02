@@ -16,11 +16,12 @@ chmod +x scripts/deploy/mgx-prod-01.sh   # one-time
 1. `cd ~/badugi-app` then `git pull origin main` (remote/branch can be overridden with `GIT_REMOTE` / `GIT_BRANCH` environment variables)
 2. Recreate frontend dependencies with `npm ci`, build, and verify packaged ONNX assets
 3. Install the backend project into the existing virtual environment
-4. Restart the backend; startup applies Alembic migrations and fails closed unless the database reaches `head`
-5. `rsync dist/ -> /var/www/mgx-poker`
-6. Verify frontend asset hashes, production database health, ONNX WASM delivery, and authenticated P2P REST routing
+4. Start one backend worker to apply/verify migrations, then switch to two workers with automatic override rollback on failure
+5. `rsync dist/ -> /var/www/mgx-poker` and remove stale nested `/dev/assets`
+6. Add the `/ws/` proxy to the active MGX site only when missing, with a timestamped backup and automatic rollback if `nginx -t` rejects it
+7. Verify frontend asset hashes, production database health, ONNX WASM delivery, authenticated P2P REST routing, and the WSS handshake
 
-> **Note:** The deploy user does not modify nginx configuration. Friend Match prefers WebSocket when the route is available and automatically falls back to the authenticated HTTPS REST transport when it is not. Deploy verification checks that the P2P REST endpoint reaches FastAPI and rejects an unauthenticated request.
+> **Note:** nginx changes are restricted to `/etc/nginx/sites-enabled/mgx-poker.com`. Existing `/ws/` configuration is left unchanged; an inserted managed block is backed up under `/var/backups/mgx-nginx/`. The deploy identity needs passwordless `sudo -n` only for the documented nginx and systemd operations.
 
 ## Production prerequisites
 

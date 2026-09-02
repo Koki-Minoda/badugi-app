@@ -48,6 +48,17 @@ verify_frontend_asset_sync() {
   fi
 }
 
+remove_stale_nested_frontend_assets() {
+  # Relative Vite assets resolve below a deep-link directory. Old deployments
+  # left /dev/assets behind, which could serve obsolete JavaScript on a SPA
+  # fallback route. The production app owns only the root assets directory.
+  local stale_dir="${DEPLOY_TARGET}/dev/assets"
+  if sudo -n test -d "$stale_dir"; then
+    echo "[mgx-deploy] removing stale nested frontend assets"
+    sudo -n rm -rf -- "$stale_dir"
+  fi
+}
+
 verify_live_frontend() {
   local attempt
   local max_attempts="${HEALTH_CHECK_MAX_ATTEMPTS:-12}"
@@ -109,6 +120,21 @@ verify_live_frontend() {
   fi
   if ! grep -q '"db"[[:space:]]*:[[:space:]]*"ok"' <<<"$live_health"; then
     fail "api health db is not ok: ${live_health}"
+  fi
+}
+
+verify_live_websocket_route() {
+  local websocket_status
+  echo "[mgx-deploy] verifying live WebSocket proxy route"
+  websocket_status="$(curl --http1.1 -sS -o /dev/null -w '%{http_code}' \
+    -H 'Connection: Upgrade' \
+    -H 'Upgrade: websocket' \
+    -H 'Sec-WebSocket-Version: 13' \
+    -H 'Sec-WebSocket-Key: bWd4LXByb2Qtd3Mtc21va2U=' \
+    -H 'Sec-WebSocket-Protocol: mgx-auth, invalid-smoke-token' \
+    "${LIVE_ORIGIN}/ws/p2p/INVALID" || true)"
+  if [ "$websocket_status" != "403" ]; then
+    fail "WebSocket route did not reach the backend (expected auth rejection 403, got ${websocket_status})"
   fi
 }
 
@@ -229,17 +255,28 @@ fi
 deactivate
 cd "$APP_DIR"
 
-echo "[mgx-deploy] restarting backend service (startup applies migrations)"
-sudo systemctl restart mgx-backend.service
+echo "[mgx-deploy] applying migrations with one worker, then starting the two-worker backend"
+APP_DIR="$APP_DIR" MGX_BACKEND_WORKERS="${MGX_BACKEND_WORKERS:-2}" \
+  bash scripts/deploy/configure-mgx-backend-workers.sh
 verify_backend_after_restart
 
 echo "[mgx-deploy] syncing frontend dist -> ${DEPLOY_TARGET}"
 sudo mkdir -p "$DEPLOY_TARGET"
 sudo rsync -av --delete "${FRONTEND_DIST}/" "${DEPLOY_TARGET}/"
+remove_stale_nested_frontend_assets
 verify_frontend_asset_sync
 
+echo "[mgx-deploy] ensuring live WebSocket proxy route"
+scripts/deploy/ensure_mgx_nginx_websocket_proxy.sh
+
+echo "[mgx-deploy] testing nginx config"
+sudo -n /usr/sbin/nginx -t
+
+echo "[mgx-deploy] reloading nginx"
+sudo -n /usr/bin/systemctl reload nginx
 verify_live_frontend
 verify_live_onnx_wasm
 verify_live_p2p_rest_route
+verify_live_websocket_route
 
 echo "[mgx-deploy] deployment complete"

@@ -6,10 +6,10 @@ import {
 } from "../variantManifestValidator.js";
 
 describe("canonical variant manifest validator", () => {
-  it("joins all runtime registries around the 36-entry catalog", () => {
+  it("joins all runtime registries around the 37-entry catalog", () => {
     const manifest = buildCanonicalVariantManifest();
-    expect(manifest).toHaveLength(36);
-    expect(new Set(manifest.map((entry) => entry.id))).toHaveProperty("size", 36);
+    expect(manifest).toHaveLength(37);
+    expect(new Set(manifest.map((entry) => entry.id))).toHaveProperty("size", 37);
   });
 
   it("rejects every unclassified registry or definition inconsistency", () => {

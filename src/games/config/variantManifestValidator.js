@@ -29,6 +29,10 @@ export const KNOWN_VARIANT_MANIFEST_EXCEPTIONS = Object.freeze({
     "Classic Chinese Poker uses its dedicated set/showdown controller rather than the street GameDefinition contract.",
   "CP1:controller-registry-missing":
     "Classic Chinese Poker is routed through its dedicated controller outside the shared controller registry.",
+  "CP2:controller-registry-missing":
+    "OFC is intentionally unavailable until its street-placement controller and Fantasyland state machine are complete.",
+  "CP2:game-definition-missing":
+    "OFC is intentionally unavailable until its separate GameDefinition is complete.",
 });
 
 const REQUIRED_DEFINITION_FIELDS = Object.freeze([
@@ -168,4 +172,3 @@ export function auditVariantManifest({
     allowlistedIssues: classified.filter((issue) => issue.allowlisted),
   };
 }
-

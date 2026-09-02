@@ -7,13 +7,15 @@ describe("canLaunchVariant", () => {
     expect(canLaunchVariant("D02").canLaunch).toBe(true);
     expect(canLaunchVariant("S01").canLaunch).toBe(true);
     expect(canLaunchVariant("badugi").canLaunch).toBe(true);
-    expect(canLaunchVariant("chinese_poker").canLaunch).toBe(false);
+    expect(canLaunchVariant("chinese_poker").canLaunch).toBe(true);
+    expect(canLaunchVariant("ofc").canLaunch).toBe(false);
   });
 
   it("allows preview variants only with the explicit preview flag", () => {
     expect(canLaunchVariant("flh").canLaunch).toBe(false);
     expect(canLaunchVariant("flh", { previewVariants: true }).canLaunch).toBe(true);
-    expect(canLaunchVariant("chinese_poker", { previewVariants: true }).canLaunch).toBe(false);
+    expect(canLaunchVariant("chinese_poker", { previewVariants: true }).canLaunch).toBe(true);
+    expect(canLaunchVariant("ofc", { previewVariants: true }).canLaunch).toBe(false);
   });
 
   it("reads safe local preview flags without requiring storage", () => {

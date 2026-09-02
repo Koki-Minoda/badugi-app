@@ -27,6 +27,9 @@ const STRICT_DRAW_VARIANTS = new Set([
 
 const STRICT_DRAMAHA_VARIANTS = new Set(["H01", "H02", "H03", "H04", "H05", "H06"]);
 const STRICT_CHINESE_VARIANTS = new Set(["CP1"]);
+const DEFERRED_SETTLEMENT_VARIANTS = Object.freeze({
+  CP2: "Open-Face Chinese Poker is unavailable until street placement and Fantasyland settlement are implemented.",
+});
 
 const DRAMAHA_ENGINE_KEY_BY_VARIANT = Object.freeze({
   H01: "dramaha_hi",
@@ -52,6 +55,13 @@ export function getStrictSettlementPolicy(variantId) {
     STRICT_CHINESE_VARIANTS.has(variant.id)
   ) {
     return { variantId: variant.id, status: "ENFORCED", reason: null };
+  }
+  if (DEFERRED_SETTLEMENT_VARIANTS[variant.id]) {
+    return {
+      variantId: variant.id,
+      status: "DEFERRED",
+      reason: DEFERRED_SETTLEMENT_VARIANTS[variant.id],
+    };
   }
   const reason = STRICT_SETTLEMENT_ALLOWLIST[variant.id];
   return {

@@ -35,6 +35,7 @@ export const GAME_VARIANTS = [
   { id: "dramaha_hidugi", label: "Dramaha Hidugi", enabled: true },
   { id: "dramaha_badugi", label: "Dramaha Badugi", enabled: true },
   { id: "chinese_poker", label: "Chinese Poker", enabled: true },
+  { id: "ofc", label: "Open-Face Chinese Poker", enabled: false },
 ];
 
 export function getEnabledVariants() {

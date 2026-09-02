@@ -125,6 +125,32 @@ export default defineConfig({
       },
     },
     {
+      name: 'chinese-desktop-chromium',
+      testDir: './tests/e2e',
+      testMatch: /chinese-poker-release-qm\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+    },
+    {
+      name: 'chinese-android-chromium',
+      testDir: './tests/e2e',
+      testMatch: /chinese-poker-release-qm\.spec\.ts/,
+      use: {
+        ...devices['Pixel 7'],
+        browserName: 'chromium',
+      },
+    },
+    {
+      name: 'chinese-iphone-webkit',
+      testDir: './tests/e2e',
+      testMatch: /chinese-poker-release-qm\.spec\.ts/,
+      use: {
+        ...devices['iPhone 13'],
+        browserName: 'webkit',
+      },
+    },
+    {
       name: 'nlh-tournament-desktop-chromium',
       testDir: './tests/e2e',
       testMatch: /tournament-stage-blind-transition\.spec\.ts/,

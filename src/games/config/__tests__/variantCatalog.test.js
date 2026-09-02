@@ -16,7 +16,7 @@ const EXPECTED_COUNTS = Object.freeze({
   [GAME_VARIANT_CATEGORIES.SINGLE_DRAW]: 7,
   [GAME_VARIANT_CATEGORIES.DRAMAHA]: 6,
   [GAME_VARIANT_CATEGORIES.STUD]: 6,
-  [GAME_VARIANT_CATEGORIES.CHINESE]: 1,
+  [GAME_VARIANT_CATEGORIES.CHINESE]: 2,
 });
 
 describe("variantCatalog", () => {
@@ -26,7 +26,7 @@ describe("variantCatalog", () => {
       expect(ids.has(variant.id)).toBe(false);
       ids.add(variant.id);
     });
-    expect(ids.size).toBe(36);
+    expect(ids.size).toBe(37);
   });
 
   it("maintains expected counts per category", () => {
@@ -49,6 +49,14 @@ describe("variantCatalog", () => {
       status: "live",
       engineKey: "chinese_poker",
       holeCards: 13,
+    });
+  });
+
+  it("tracks OFC as a separate unfinished game", () => {
+    expect(getVariantById("CP2")).toMatchObject({
+      category: GAME_VARIANT_CATEGORIES.CHINESE,
+      status: "wip",
+      engineKey: "ofc",
     });
   });
 

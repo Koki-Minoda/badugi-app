@@ -31,6 +31,17 @@ describe("ChinesePokerGameScreen", () => {
     expect(screen.queryByTestId("chinese-results")).toBeNull();
   }, 10000);
 
+  it("does not duplicate the row-set history event after auto arrange", () => {
+    render(<ChinesePokerGameScreen language="en" />);
+
+    fireEvent.click(screen.getByText("Auto Arrange"));
+    fireEvent.click(screen.getByTestId("chinese-submit"));
+
+    const history = screen.getByTestId("chinese-history-replay").textContent;
+    expect(history.match(/ROWS_SET/g)).toHaveLength(1);
+    expect(screen.getByTestId("chinese-replay-integrity").textContent).toContain("verified");
+  }, 10000);
+
   it("returns to game selector through the back action", () => {
     const onBack = vi.fn();
     render(<ChinesePokerGameScreen language="ja" onBack={onBack} />);

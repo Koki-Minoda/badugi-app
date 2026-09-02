@@ -112,10 +112,19 @@ describe("variantAvailability", () => {
     }
   });
 
-  it("marks Chinese/OFC as coming soon and keeps unknown variants unavailable", () => {
+  it("publishes Classic Chinese Poker without claiming OFC is complete", () => {
+    const classic = getVariantAvailability("chinese_poker");
+    expect(classic.availability).toBe(VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE);
+    expect(classic.reason).toMatch(/does not include OFC/i);
+    expect(PUBLIC_PLAYABLE_VARIANTS.find((variant) => variant.id === "chinese_poker")?.qmKind)
+      .toBe("classic-chinese-poker");
     expect(getVariantAvailability("ofc").availability).toBe(
       VARIANT_AVAILABILITY_STATES.COMING_SOON,
     );
+    expect(getVariantAvailability("CP2").label).toBe("Open-Face Chinese Poker");
+  });
+
+  it("keeps unknown variants unavailable", () => {
     expect(getVariantAvailability("unknown_variant").availability).toBe(
       VARIANT_AVAILABILITY_STATES.COMING_SOON,
     );

@@ -38,7 +38,12 @@ describe("MGX all variant progress smoke add-on", () => {
     skipped.forEach(({ variant, reason }) => {
       console.warn(`[MGX_PROGRESS_SKIP] variantId=${variant.id} category=${variant.category} reason=${reason}`);
     });
-    expect(skipped).toEqual([]);
+    expect(skipped).toEqual([
+      expect.objectContaining({
+        variant: expect.objectContaining({ id: "CP2", status: "wip" }),
+        reason: expect.stringMatching(/controller|harness|support/i),
+      }),
+    ]);
   });
 
   test("family-aware progress coverage is not Badugi-only", () => {

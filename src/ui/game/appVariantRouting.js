@@ -35,6 +35,7 @@ export const APP_VARIANT_IDS = {
   S06: "badacey_single_draw",
   S07: "hidugi_single_draw",
   CHINESE_POKER: "chinese_poker",
+  OFC: "ofc",
 };
 
 const VARIANT_ALIASES = new Map([
@@ -168,9 +169,9 @@ const VARIANT_ALIASES = new Map([
   ["chinese", APP_VARIANT_IDS.CHINESE_POKER],
   ["chinese_poker", APP_VARIANT_IDS.CHINESE_POKER],
   ["chinese-poker", APP_VARIANT_IDS.CHINESE_POKER],
-  ["ofc", APP_VARIANT_IDS.CHINESE_POKER],
-  ["open_face_chinese", APP_VARIANT_IDS.CHINESE_POKER],
-  ["open-face-chinese", APP_VARIANT_IDS.CHINESE_POKER],
+  ["ofc", APP_VARIANT_IDS.OFC],
+  ["open_face_chinese", APP_VARIANT_IDS.OFC],
+  ["open-face-chinese", APP_VARIANT_IDS.OFC],
 ]);
 
 export const DRAW_LOWBALL_APP_VARIANTS = new Set([

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { Page } from "@playwright/test";
-import { PUBLIC_PLAYABLE_VARIANTS } from "../../../src/games/config/variantAvailability.js";
+import { PUBLIC_RING_PLAYABLE_VARIANTS } from "../../../src/games/config/variantAvailability.js";
 import { APP_URL, openAuthenticatedGame } from "../authHelper";
 import {
   expectMobileActionsInViewport,
@@ -44,7 +44,7 @@ const CORE5_QA_METADATA = Object.freeze({
   dramaha_badugi: { heroCardTestId: "player-0-card-4", initialCardCount: 5, maxSteps: 160, expectsDraw: true, expectsBlindIncrease: false },
 });
 
-export const CORE5_VARIANTS = PUBLIC_PLAYABLE_VARIANTS.map((entry) => {
+export const CORE5_VARIANTS = PUBLIC_RING_PLAYABLE_VARIANTS.map((entry) => {
   const metadata = CORE5_QA_METADATA[entry.id as keyof typeof CORE5_QA_METADATA];
   if (!metadata) throw new Error(`Missing Core5 QA metadata for public variant ${entry.id}`);
   return Object.freeze({

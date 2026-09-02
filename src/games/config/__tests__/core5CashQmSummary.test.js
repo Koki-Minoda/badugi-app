@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { PUBLIC_PLAYABLE_VARIANTS } from "../variantAvailability.js";
+import { PUBLIC_RING_PLAYABLE_VARIANTS } from "../variantAvailability.js";
 import {
   QM_DEVICES,
   summarizeCore5CashQm,
@@ -33,7 +33,7 @@ function report(overrides = {}) {
 function completeReportDir() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mgx-core5-qm-"));
   dirs.push(dir);
-  for (const variant of PUBLIC_PLAYABLE_VARIANTS) {
+  for (const variant of PUBLIC_RING_PLAYABLE_VARIANTS) {
     for (const device of QM_DEVICES) {
       fs.writeFileSync(
         path.join(dir, `${variant.id.toLowerCase()}-${device}-10-hands.json`),
@@ -58,7 +58,7 @@ describe("Core5 cash QM summary", () => {
   it("passes only when every public game and device meets every threshold", () => {
     const summary = summarizeCore5CashQm({ reportDir: completeReportDir(), minimumHands: 10 });
     expect(summary.status).toBe("PASS");
-    expect(summary.completedCases).toBe(PUBLIC_PLAYABLE_VARIANTS.length * QM_DEVICES.length);
+    expect(summary.completedCases).toBe(PUBLIC_RING_PLAYABLE_VARIANTS.length * QM_DEVICES.length);
     expect(summary.issues).toEqual([]);
   });
 

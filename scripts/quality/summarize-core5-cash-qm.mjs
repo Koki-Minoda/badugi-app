@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { PUBLIC_PLAYABLE_VARIANTS } from "../../src/games/config/variantAvailability.js";
+import { PUBLIC_RING_PLAYABLE_VARIANTS } from "../../src/games/config/variantAvailability.js";
 
 export const QM_DEVICES = Object.freeze(["desktop", "android"]);
 
@@ -24,7 +24,7 @@ export function summarizeCore5CashQm({ reportDir, minimumHands = 10 } = {}) {
   const rows = [];
   const issues = [];
 
-  for (const variant of PUBLIC_PLAYABLE_VARIANTS) {
+  for (const variant of PUBLIC_RING_PLAYABLE_VARIANTS) {
     for (const device of QM_DEVICES) {
       const fileName = `${variant.id.toLowerCase()}-${device}-${minimumHands}-hands.json`;
       const filePath = path.join(reportDir, fileName);
@@ -100,9 +100,9 @@ export function summarizeCore5CashQm({ reportDir, minimumHands = 10 } = {}) {
     commit: currentCommit(),
     target: process.env.E2E_APP_URL ?? "local",
     status: issues.length === 0 ? "PASS" : "FAIL",
-    expectedVariants: PUBLIC_PLAYABLE_VARIANTS.map((entry) => entry.id),
+    expectedVariants: PUBLIC_RING_PLAYABLE_VARIANTS.map((entry) => entry.id),
     expectedDevices: [...QM_DEVICES],
-    expectedCases: PUBLIC_PLAYABLE_VARIANTS.length * QM_DEVICES.length,
+    expectedCases: PUBLIC_RING_PLAYABLE_VARIANTS.length * QM_DEVICES.length,
     completedCases: rows.length,
     minimumHands,
     issues,

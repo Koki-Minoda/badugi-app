@@ -43,6 +43,7 @@
     "test:game:flop": "vitest run src/games/testing/scenario/flopFamilyProgress.test.js",
     "test:game:draw-family": "vitest run src/games/testing/scenario/drawFamilyProgress.test.js",
     "test:game:chinese": "vitest run src/games/testing/scenario/chineseFamilyProgress.test.js",
+    "test:qm:chinese-release": "playwright test tests/e2e/chinese-poker-release-qm.spec.ts --project=chinese-desktop-chromium --project=chinese-android-chromium --project=chinese-iphone-webkit --workers=1",
     "test:game:one-hand": "vitest run src/games/testing/scenario/allVariantsOneHandProgression.test.js src/games/testing/scenario/familyOneHandProgression.test.js",
     "test:game:ev": "vitest run src/games/testing/ev",
     "test:mgx:safety": "npm run test:game:known-bugs && npm run test:game:one-hand && npm run test:game:ev && npm run test:rl:safety",

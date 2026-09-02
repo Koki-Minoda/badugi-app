@@ -9418,6 +9418,30 @@ export default function App() {
             handId: `UI-MOBILE-TOURNAMENT-LANDSCAPE-001-${normalizedVariant}`,
           },
         };
+        // The live controller that created the table may still own an async
+        // actor loop. A timer guard alone is not enough because controller
+        // snapshots can independently overwrite this fixture on a slow
+        // browser. Replace it with a read-only controller for this E2E-only
+        // path so every geometry read observes the same Hero turn.
+        try {
+          gameControllerRef.current?.destroy?.();
+          gameControllerRef.current?.dispose?.();
+        } catch (error) {
+          console.warn("[E2E] mobile fixture controller disposal failed", error);
+        }
+        const staticControllerVariant = normalizeAppVariantId(normalizedVariant);
+        gameControllerRef.current = {
+          __appVariantId: staticControllerVariant,
+          getSnapshot: () => snapshot,
+          getUiSnapshot: () => snapshot,
+          updateConfig: () => {},
+          updateTableConfig: () => {},
+          destroy: () => {},
+          dispose: () => {},
+        };
+        controllerVariantRef.current = staticControllerVariant;
+        sessionControllerRef.current = null;
+        sessionControllerStateRef.current = null;
         playersRef.current = nextPlayers;
         setPlayers(nextPlayers);
         potsRef.current = snapshot.pots;

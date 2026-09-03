@@ -24,6 +24,13 @@ grep -q 'verify_live_frontend' "$script"
 grep -q 'remove_stale_nested_frontend_assets' "$script"
 grep -q 'DEPLOY_TARGET}/dev/assets' "$script"
 grep -q 'verify_live_p2p_rest_route' "$script"
+grep -q -- '--max-time 5' "$script"
+grep -q 'Sec-WebSocket-Key: MDEyMzQ1Njc4OWFiY2RlZg==' "$script"
+grep -q 'expected protocol upgrade 101' "$script"
+if grep -q 'bWd4LXByb2Qtd3Mtc21va2U=' "$script"; then
+  echo "deploy WebSocket smoke must not use the invalid 17-byte legacy key" >&2
+  exit 1
+fi
 grep -q 'friend-match deep link did not return the current SPA asset' "$script"
 grep -q 'npm run test:build:onnx' "$script"
 grep -q 'configure_nginx_wasm_mime' "$script"

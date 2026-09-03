@@ -290,7 +290,11 @@ export async function deleteAuthenticatedSession(
 export async function enterTitleIfPresent(page: Page) {
   const titleButton = page.getByTestId("title-enter-button").first();
   const legacyStartButton = page.getByRole("button", { name: /start|press enter/i }).first();
-  const readyScreen = page.getByTestId("menu-ring").or(page.getByTestId("decision-panel")).first();
+  const readyScreen = page
+    .getByTestId("menu-ring")
+    .or(page.getByTestId("decision-panel"))
+    .or(page.getByTestId("auth-email"))
+    .first();
   const deadline = Date.now() + 15000;
   let lastClickError: unknown = null;
 
@@ -305,7 +309,12 @@ export async function enterTitleIfPresent(page: Page) {
     if (button) {
       try {
         await button.click({ timeout: 2500 });
-        return;
+        // The production title transition is animated and can briefly leave the
+        // button visible after the click.  Do not report success until the
+        // destination screen is actually ready; otherwise the caller can time
+        // out on the title screen during long serial device-QM runs.
+        await page.waitForTimeout(200);
+        continue;
       } catch (error) {
         lastClickError = error;
       }

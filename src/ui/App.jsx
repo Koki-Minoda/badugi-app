@@ -12063,8 +12063,13 @@ export default function App() {
         },
       });
       if (controllerDrawOutcome?.snapshot) {
-        const heroAfter =
-          controllerDrawOutcome.snapshot.players?.[drawActionSeat] ?? p;
+        const { actionPlayers, actorAfter: heroAfter, actionLabel } =
+          resolveControllerDrawHistory({
+            outcome: controllerDrawOutcome,
+            seat: drawActionSeat,
+            playerBefore: p,
+            payload: { discardIndexes: sel },
+          });
         setHeroDrawSelection([]);
         recordActionToLog({
           phase: "DRAW",
@@ -12075,7 +12080,7 @@ export default function App() {
           // draw and clear lastAction in the returned snapshot. Preserve the
           // submitted draw intent as the canonical history action instead of
           // depending on that post-transition UI field.
-          type: sel.length === 0 ? "Pat" : `DRAW (${sel.length})`,
+          type: actionLabel,
           stackBefore: p.stack,
           stackAfter: heroAfter.stack ?? p.stack,
           betBefore: p.betThisRound,
@@ -12089,6 +12094,7 @@ export default function App() {
               after: Array.isArray(heroAfter.hand) ? [...heroAfter.hand] : [],
             },
           },
+          playersAfterSnapshot: actionPlayers,
         });
         syncLegacyFromControllerSnapshot(controllerDrawOutcome.snapshot, {
           seatIndex: drawActionSeat,

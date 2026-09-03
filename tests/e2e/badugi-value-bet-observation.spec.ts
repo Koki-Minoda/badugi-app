@@ -120,6 +120,9 @@ async function collectCpuTrace(page: Page, targetRows = 8) {
 }
 
 function summarizeRows(mode: string, rows: any[]) {
+  const policyRows = rows.filter(
+    (row) => String(row?.decisionSource ?? "unknown") !== "forced",
+  );
   const betRows = rows.filter((row) => String(row?.phase ?? "").toUpperCase() === "BET");
   const valueRows = betRows.filter((row) => row?.valueBetOpportunity === true);
   const pressureRows = betRows.filter((row) => ["raise", "bet"].includes(normalizeAction(row?.finalAction)));
@@ -129,6 +132,7 @@ function summarizeRows(mode: string, rows: any[]) {
   return {
     mode,
     decisions: rows.length,
+    policyDecisions: policyRows.length,
     betDecisions: betRows.length,
     decisionSources: countBy(rows.map((row) => String(row?.decisionSource ?? "unknown"))),
     modelIds: countBy(rows.map((row) => String(row?.modelId ?? "unknown"))),
@@ -238,14 +242,20 @@ test("Badugi live CPU telemetry classifies friend-alpha runtime path and pressur
     : null;
   if (expectedOnnxModel) {
     for (const summary of summaries) {
-      expect(summary.decisionSources.onnx, `${summary.mode} all decisions use ONNX`).toBe(
-        summary.decisions,
+      expect(
+        summary.policyDecisions,
+        `${summary.mode} has model-eligible CPU decisions`,
+      ).toBeGreaterThan(0);
+      expect(summary.decisionSources.onnx, `${summary.mode} all policy decisions use ONNX`).toBe(
+        summary.policyDecisions,
       );
       expect(summary.decisionSources.fallback ?? 0, `${summary.mode} ONNX fallback`).toBe(0);
+      expect(summary.decisionSources.heuristic ?? 0, `${summary.mode} heuristic fallback`).toBe(0);
+      expect(summary.decisionSources.unknown ?? 0, `${summary.mode} unknown policy source`).toBe(0);
       expect(
         summary.modelIds[expectedOnnxModel] ?? 0,
         `${summary.mode} exact model attribution`,
-      ).toBe(summary.decisions);
+      ).toBe(summary.policyDecisions);
     }
   }
 });

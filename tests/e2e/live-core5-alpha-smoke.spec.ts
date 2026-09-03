@@ -16,6 +16,10 @@ import {
 } from "./helpers/gameProgressHelper.js";
 
 const REPORT_PATH = path.resolve("reports/alpha/live-core5-alpha-smoke.json");
+const LIVE_CORE5_IDS = new Set(["badugi", "D01", "D02", "S01", "S02"]);
+const LIVE_CORE5_VARIANTS = CORE5_VARIANTS.filter((variant) =>
+  LIVE_CORE5_IDS.has(variant.variant),
+);
 
 type SmokeMode = "cash" | "tournament";
 
@@ -121,7 +125,7 @@ test.describe("Live Core5 alpha smoke", () => {
     expect(rows.filter((row) => row.status === "FAIL"), JSON.stringify(rows, null, 2)).toEqual([]);
   });
 
-  for (const variant of CORE5_VARIANTS) {
+  for (const variant of LIVE_CORE5_VARIANTS) {
     test(`${variant.game} live cash and tournament smoke`, async ({ page }) => {
       const cash = await runModeSmoke(page, variant, "cash");
       rows.push(cash);

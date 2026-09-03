@@ -24,11 +24,23 @@ grep -q 'verify_live_frontend' "$script"
 grep -q 'remove_stale_nested_frontend_assets' "$script"
 grep -q 'DEPLOY_TARGET}/dev/assets' "$script"
 grep -q 'verify_live_p2p_rest_route' "$script"
+grep -q -- '--max-time 5' "$script"
+grep -q 'Sec-WebSocket-Key: MDEyMzQ1Njc4OWFiY2RlZg==' "$script"
+grep -q 'expected protocol upgrade 101' "$script"
+if grep -q 'bWd4LXByb2Qtd3Mtc21va2U=' "$script"; then
+  echo "deploy WebSocket smoke must not use the invalid 17-byte legacy key" >&2
+  exit 1
+fi
 grep -q 'friend-match deep link did not return the current SPA asset' "$script"
 grep -q 'npm run test:build:onnx' "$script"
 grep -q 'configure_nginx_wasm_mime' "$script"
 grep -q 'verify_live_onnx_wasm' "$script"
-grep -q 'application/wasm wasm;' infra/nginx/mgx-wasm-types.conf
+if grep -q '^[[:space:]]*types[[:space:]]*{' infra/nginx/mgx-wasm-types.conf; then
+  echo "global WASM config must not replace nginx's inherited MIME map" >&2
+  exit 1
+fi
+grep -q 'default_type application/wasm;' infra/nginx/mgx-poker.com.conf.example
+grep -q 'default_type application/wasm;' infra/nginx/mgx-poker.com-ssl.conf.example
 grep -q 'rolling back' "$script"
 grep -q 'sudo -n rsync' "$script"
 grep -q 'browser ArrayBuffer fallback remains supported' "$script"

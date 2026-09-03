@@ -284,8 +284,12 @@ test(`${LIVE_ORIGIN ? "production preserves" : "two workers preserve"} a mixed W
       }
       throw new Error("P2P state rate limit did not recover within 30 seconds");
     };
+    // Carry the authoritative command response into the next hand. A player
+    // receives these transitions through WS/REST responses; polling twice per
+    // hand here only creates synthetic load and can starve the browser's real
+    // fallback poll under the production per-user limiter.
+    let state = await stateFor(hostSession);
     for (let hand = 0; hand < HANDS; hand += 1) {
-      let state = await stateFor(hostSession);
       let guestReadyState: Awaited<ReturnType<typeof stateFor>> | null = null;
       for (const session of [hostSession, guestSession]) {
         const ready = await host.request.post(`${ORIGIN}/api/p2p/rooms/${roomCode}/ready`, {
@@ -327,6 +331,7 @@ test(`${LIVE_ORIGIN ? "production preserves" : "two workers preserve"} a mixed W
       if ((hand + 1) % 5 === 0 || hand + 1 === HANDS) {
         console.info(`[p2p-soak] completed=${hand + 1}/${HANDS} sequence=${finished.sequenceId}`);
       }
+      state = finished;
       if (!LIVE_ORIGIN && hand === Math.floor(HANDS / 2) - 1) {
         await stopBackend();
         await startBackend();

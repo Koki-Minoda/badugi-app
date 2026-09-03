@@ -8,13 +8,13 @@ upstream mgx_backend {
 
 server {
     listen 80;
-    server_name mgx-poker.com;
+    server_name mgx-poker.com www.mgx-poker.com;
     return 301 https://$host$request_uri;
 }
 
 server {
     listen 443 ssl http2;
-    server_name mgx-poker.com;
+    server_name mgx-poker.com www.mgx-poker.com;
 
     ssl_certificate /etc/letsencrypt/live/mgx-poker.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/mgx-poker.com/privkey.pem;

@@ -8,7 +8,7 @@ upstream mgx_backend {
 
 server {
     listen 80;
-    server_name mgx-poker.com;
+    server_name mgx-poker.com www.mgx-poker.com;
 
     root /var/www/mgx-poker;
     index index.html;

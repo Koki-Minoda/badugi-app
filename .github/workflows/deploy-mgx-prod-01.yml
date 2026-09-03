@@ -53,11 +53,11 @@ jobs:
       - run: npm ci --legacy-peer-deps --no-audit
       - name: Audit production and development npm dependencies
         run: |
-          # Audit the reproducible lockfile directly. The installed tree uses
-          # --legacy-peer-deps and npm's retiring quick-audit endpoint can
-          # reject that otherwise valid tree before querying advisories.
-          npm audit --omit=dev --audit-level=high --package-lock-only --legacy-peer-deps
-          npm audit --audit-level=high --package-lock-only --legacy-peer-deps
+          # Query OSV with the exact package-lock versions. npm's retiring
+          # quick-audit endpoint rejects otherwise valid legacy-peer trees.
+          # Any known advisory fails this production gate.
+          node scripts/ci/audit-package-lock.mjs --omit-dev
+          node scripts/ci/audit-package-lock.mjs
       - name: Audit resolved backend dependencies
         run: |
           python -m venv .audit-venv

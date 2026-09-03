@@ -52,6 +52,7 @@ import {
   shouldSyncLegacyTurnToController,
 } from "./utils/actorSourceOfTruth.js";
 import { runNpcDrawAllInAutoFastPath } from "./utils/npcAutoActionTiming.js";
+import { resolveControllerDrawHistory } from "./utils/controllerDrawHistory.js";
 
 import {
   nextAliveFrom,
@@ -3039,15 +3040,24 @@ export default function App() {
           },
         });
         if (controllerOutcome?.snapshot) {
-          const actorAfter =
-            controllerOutcome.snapshot.players?.[seatToAct] ?? me;
-          helpers.logAction(seatToAct, actorAfter.lastAction ?? "DRAW");
+          const { actionPlayers, actorAfter, actionLabel, drawIndexes } =
+            resolveControllerDrawHistory({
+              outcome: controllerOutcome,
+              seat: seatToAct,
+              playerBefore: me,
+              payload,
+            });
+          helpers.logAction(seatToAct, actionLabel);
           helpers.recordActionToLog({
             phase: "DRAW",
             round: drawRound + 1,
             seat: seatToAct,
             playerState: actorAfter,
-            type: actorAfter.lastAction ?? "DRAW",
+            // A final draw can advance the controller through settlement and
+            // turn the returned UI player into an empty `Out` seat.  History
+            // must preserve the submitted draw and the pre-settlement action
+            // snapshot, not that later presentation state.
+            type: actionLabel,
             stackBefore: me.stack,
             stackAfter: actorAfter.stack ?? me.stack,
             betBefore: me.betThisRound,
@@ -3057,18 +3067,15 @@ export default function App() {
               ...(payload?.metadata ?? {}),
               ...payload,
               drawInfo: {
-                drawCount:
-                  payload.discardIndexes?.length ??
-                  payload.drawIndexes?.length ??
-                  0,
-                drawIndexes:
-                  payload.discardIndexes ?? payload.drawIndexes ?? [],
+                drawCount: drawIndexes.length,
+                drawIndexes,
                 before: Array.isArray(me.hand) ? [...me.hand] : [],
                 after: Array.isArray(actorAfter.hand)
                   ? [...actorAfter.hand]
                   : [],
               },
             },
+            playersAfterSnapshot: actionPlayers,
           });
           helpers.syncLegacyFromControllerSnapshot(controllerOutcome.snapshot);
           return true;
@@ -3357,20 +3364,27 @@ export default function App() {
       });
       if (controllerOutcome?.snapshot) {
         const controllerPlayers = controllerOutcome.snapshot.players ?? [];
-        const actorAfter = controllerPlayers[seatToAct] ?? me;
-        helpers.logAction(seatToAct, actorAfter.lastAction ?? me.lastAction);
+        const { actionPlayers, actorAfter, actionLabel } =
+          resolveControllerDrawHistory({
+            outcome: controllerOutcome,
+            seat: seatToAct,
+            playerBefore: me,
+            payload: { drawIndexes: npcControllerMetadata.drawIndexes },
+          });
+        helpers.logAction(seatToAct, actionLabel);
         helpers.recordActionToLog({
           phase: "DRAW",
           round: drawRound + 1,
           seat: seatToAct,
           playerState: actorAfter,
-          type: actorAfter.lastAction ?? me.lastAction,
+          type: actionLabel,
           stackBefore: actorAfter.stack,
           stackAfter: actorAfter.stack,
           betBefore: actorAfter.betThisRound,
           betAfter: actorAfter.betThisRound,
           raiseCountTable: raiseCountThisRound,
           metadata: { drawInfo: npcControllerMetadata },
+          playersAfterSnapshot: actionPlayers,
         });
         const legacyFanout = helpers.syncLegacyFromControllerSnapshot(
           controllerOutcome.snapshot,

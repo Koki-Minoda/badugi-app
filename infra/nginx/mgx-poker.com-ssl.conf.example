@@ -30,8 +30,9 @@ server {
     root /var/www/mgx-poker;
     index index.html;
 
-    types {
-        application/wasm wasm;
+    location ~* \.wasm$ {
+        default_type application/wasm;
+        try_files $uri =404;
     }
 
     access_log /var/log/nginx/mgx-poker.access.log;

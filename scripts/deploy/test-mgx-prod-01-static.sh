@@ -35,7 +35,12 @@ grep -q 'friend-match deep link did not return the current SPA asset' "$script"
 grep -q 'npm run test:build:onnx' "$script"
 grep -q 'configure_nginx_wasm_mime' "$script"
 grep -q 'verify_live_onnx_wasm' "$script"
-grep -q 'application/wasm wasm;' infra/nginx/mgx-wasm-types.conf
+if grep -q '^[[:space:]]*types[[:space:]]*{' infra/nginx/mgx-wasm-types.conf; then
+  echo "global WASM config must not replace nginx's inherited MIME map" >&2
+  exit 1
+fi
+grep -q 'default_type application/wasm;' infra/nginx/mgx-poker.com.conf.example
+grep -q 'default_type application/wasm;' infra/nginx/mgx-poker.com-ssl.conf.example
 grep -q 'rolling back' "$script"
 grep -q 'sudo -n rsync' "$script"
 grep -q 'browser ArrayBuffer fallback remains supported' "$script"

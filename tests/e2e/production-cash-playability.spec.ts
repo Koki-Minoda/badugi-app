@@ -283,7 +283,9 @@ async function runHands(page: Page, handCount: number) {
 
 test.describe("production cash playability", () => {
   test.skip(!isCashQaRun, "MGX_CASH_QA=1, E2E_APP_URL, or LIVE_PREVIEW=1 is required");
-  test.describe.configure({ timeout: 15 * 60_000 });
+  // The CI gate intentionally plays 16 desktop hands. Keep enough budget for
+  // the final authenticated-account deletion and its post-delete verification.
+  test.describe.configure({ timeout: 25 * 60_000 });
 
   test(`desktop completes ${desktopHandCount} real-button Badugi hands`, async ({ page }) => {
     ensureReportDir();

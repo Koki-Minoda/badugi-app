@@ -21,9 +21,12 @@
 not be added back to it. The first explicit slices are:
 
 - `src/ui/app/gameProgressSupport.js`: snapshot compatibility, legal-action
-  fallback and immutable player-state cloning;
-- `src/ui/app/tournamentSupport.js`: blind-level normalization;
-- `src/ui/app/historySupport.js`: history cloning and hand identifiers;
+  fallback, immutable player-state cloning, seat rotation/profile application,
+  and cash CPU bust/reseat transformations;
+- `src/ui/app/tournamentSupport.js`: blind-level normalization plus placement
+  and opponent-profile projections;
+- `src/ui/app/historySupport.js`: history cloning, hand identifiers and Hero
+  outcome projection;
 - `src/ui/app/aiSupport.js`: legacy NPC draw heuristic.
 
 Controller construction is isolated in `src/ui/game/createAppGameController.js`.

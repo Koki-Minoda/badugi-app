@@ -20,3 +20,29 @@ export function getBlindStructureForTournamentConfig(config) {
     normalizeTournamentBlindLevel(level, index),
   );
 }
+
+export function buildTournamentPlacements(state) {
+  if (!state?.players) return [];
+  return Object.values(state.players)
+    .filter((player) => Number(player?.finishPlace) > 0)
+    .sort((a, b) => a.finishPlace - b.finishPlace)
+    .map((player) => ({
+      id: player.id,
+      place: player.finishPlace,
+      name: player.name ?? player.id,
+      stack: Math.max(0, Number(player.stack) || 0),
+      payout: Math.max(0, Number(player.payout) || 0),
+    }));
+}
+
+export function collectTournamentOpponentProfileIds(state, {
+  heroId,
+  tableId = null,
+  heroTableOnly = false,
+} = {}) {
+  if (!state?.players || (heroTableOnly && !tableId)) return [];
+  return Object.values(state.players)
+    .filter((player) => player && player.id !== heroId && player.opponentProfileId)
+    .filter((player) => !heroTableOnly || (!player.busted && player.tableId === tableId))
+    .map((player) => player.opponentProfileId);
+}

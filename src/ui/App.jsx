@@ -289,16 +289,26 @@ import {
   validatePreflopState,
 } from "../games/badugi/utils/deckHelpers.js";
 import {
+  applyHeroProfile,
   buildSafeControllerBetAction,
+  canContinueGame,
   clonePlayerState,
+  getCashCpuReseatStack,
+  markCashCpuOut,
+  rotateSeatBlueprint,
   snapshotVariantMatchesAppVariant,
 } from "./app/gameProgressSupport.js";
 import { npcAutoDrawCount } from "./app/aiSupport.js";
 import {
   cloneHandHistory,
+  deriveHeroOutcome,
   formatHandIdentifier,
 } from "./app/historySupport.js";
-import { getBlindStructureForTournamentConfig } from "./app/tournamentSupport.js";
+import {
+  buildTournamentPlacements,
+  collectTournamentOpponentProfileIds as selectTournamentOpponentProfileIds,
+  getBlindStructureForTournamentConfig,
+} from "./app/tournamentSupport.js";
 
 const DEFAULT_GAME_ID = "D03";
 const DEFAULT_GAME_VARIANT = "badugi";
@@ -5112,23 +5122,6 @@ export default function App() {
     exportP2PMatchesAsJSONL();
   };
 
-  function deriveHeroOutcome(record) {
-    const hero = record.players?.[0];
-    if (!hero) return null;
-    const winners = Array.isArray(record.winners) ? record.winners : [];
-    const heroWon = hero.name ? winners.includes(hero.name) : false;
-    const isSplit = heroWon && winners.length > 1;
-    const value = heroWon ? (isSplit ? 0.5 : 1) : 0;
-    const label = heroWon
-      ? isSplit
-        ? "Split pot"
-        : "Win"
-      : hero.folded
-        ? "Fold"
-        : "Loss";
-    return { label, value };
-  }
-
   function recordHeroTracker(record, outcome, ratingAfter, ratingDelta) {
     if (!outcome) return;
     setHeroTracker((prev) => {
@@ -5168,45 +5161,6 @@ export default function App() {
   }
 
   /* --- utils --- */
-  function rotateSeatBlueprint(config = [], direction = 1) {
-    if (!Array.isArray(config) || config.length <= 1) return [...config];
-    const head = config[0];
-    const rest = config.slice(1);
-    if (rest.length === 0) return [head];
-    const len = rest.length;
-    const offset = ((direction % len) + len) % len;
-    const rotatedRest = rest.map((_, idx) => rest[(idx - offset + len) % len]);
-    return [head, ...rotatedRest];
-  }
-
-  function applyHeroProfile(list = [], profile) {
-    if (!profile) return list;
-    return list.map((player, idx) =>
-      idx === 0
-        ? {
-            ...player,
-            name: profile.name,
-            titleBadge: profile.titleBadge,
-            avatar: profile.avatar,
-          }
-        : player,
-    );
-  }
-
-  function canContinueGame(snapshot) {
-    const roster = Array.isArray(snapshot) ? snapshot : [];
-    const alive = roster.filter(
-      (player) =>
-        player &&
-        isPlayerSeated(player) &&
-        !player.seatOut &&
-        !player.isBusted &&
-        typeof player.stack === "number" &&
-        player.stack > 0,
-    );
-    return alive.length >= 2;
-  }
-
   const CASH_CPU_RESEAT_HAND_DELAY = 10;
 
   const isCashCpuLifecycleEnabled = useCallback(() => {
@@ -5228,45 +5182,6 @@ export default function App() {
     );
   }
 
-  function getCashCpuReseatStack(player = {}, baseline = {}) {
-    const stack =
-      Number(player.rebuyStack) ||
-      Number(player.initialStack) ||
-      Number(baseline.rebuyStack) ||
-      Number(baseline.initialStack) ||
-      Number(startingStackRef.current) ||
-      DEFAULT_STARTING_STACK;
-    return Math.max(1, stack || DEFAULT_STARTING_STACK);
-  }
-
-  function markCashCpuOut(player = {}, bustHandIndex = handCountRef.current) {
-    return {
-      ...player,
-      stack: 0,
-      isBusted: true,
-      busted: true,
-      seatOut: true,
-      folded: true,
-      hasFolded: true,
-      allIn: false,
-      hand: [],
-      cards: [],
-      selected: [],
-      bet: 0,
-      betThisRound: 0,
-      totalInvested: 0,
-      hasActedThisRound: true,
-      hasDrawn: true,
-      canDraw: false,
-      lastDrawCount: 0,
-      lastAction: "OUT",
-      bustHandIndex:
-        typeof player.bustHandIndex === "number"
-          ? player.bustHandIndex
-          : bustHandIndex,
-    };
-  }
-
   function markCashCpuBustsForShowdown(roster = []) {
     if (!isCashCpuLifecycleEnabled()) return roster;
     return roster.map((player, idx) => {
@@ -5274,7 +5189,7 @@ export default function App() {
       const seatType = player.seatType ?? seatConfigRef.current?.[idx];
       if (!isCashCpuSeat(player, seatType, idx)) return player;
       if (Number(player.stack) <= 0 || player.isBusted || player.seatOut) {
-        return markCashCpuOut(player);
+        return markCashCpuOut(player, handCountRef.current);
       }
       return player;
     });
@@ -5345,7 +5260,7 @@ export default function App() {
               existingBustHandIndex,
             );
           }
-          const reseatStack = getCashCpuReseatStack(player, baseline);
+          const reseatStack = getCashCpuReseatStack(player, baseline, rebuyStack);
           return {
             ...baseline,
             seatType,
@@ -5409,7 +5324,7 @@ export default function App() {
         if (cpuSeat >= 0) {
           const baseline = configuredPlayers[cpuSeat] ?? {};
           const player = nextPlayers[cpuSeat] ?? baseline;
-          const reseatStack = getCashCpuReseatStack(player, baseline);
+          const reseatStack = getCashCpuReseatStack(player, baseline, rebuyStack);
           nextPlayers[cpuSeat] = {
             ...baseline,
             ...player,
@@ -5625,46 +5540,15 @@ export default function App() {
     };
   }
 
-  function buildTournamentPlacementsPayload(state) {
-    if (!state?.players) return [];
-    return Object.values(state.players)
-      .filter(
-        (player) =>
-          typeof player?.finishPlace === "number" && player.finishPlace > 0,
-      )
-      .sort((a, b) => a.finishPlace - b.finishPlace)
-      .map((player) => ({
-        id: player.id,
-        place: player.finishPlace,
-        name: player.name ?? player.id,
-        stack: Math.max(0, Number(player.stack) || 0),
-        payout: Math.max(0, Number(player.payout) || 0),
-      }));
-  }
-
-  function collectTournamentOpponentProfileIds(
-    state,
-    { heroTableOnly = false } = {},
-  ) {
-    if (!state?.players) return [];
+  function getTournamentOpponentProfileIds(state, { heroTableOnly = false } = {}) {
     const heroId = heroTournamentPlayerIdRef.current;
-    let tableId = null;
-    if (heroTableOnly) {
-      tableId =
-        state.players?.[heroId]?.tableId ?? heroTableIdRef.current ?? null;
-      if (!tableId) return [];
-    }
-    return Object.values(state.players)
-      .filter((player) => {
-        if (!player || player.id === heroId || !player.opponentProfileId) {
-          return false;
-        }
-        if (heroTableOnly) {
-          return !player.busted && player.tableId === tableId;
-        }
-        return true;
-      })
-      .map((player) => player.opponentProfileId);
+    return selectTournamentOpponentProfileIds(state, {
+      heroId,
+      heroTableOnly,
+      tableId: heroTableOnly
+        ? state?.players?.[heroId]?.tableId ?? heroTableIdRef.current ?? null
+        : null,
+    });
   }
 
   const recordHeroHandForReplay = useCallback((tableId, summary) => {
@@ -5712,7 +5596,7 @@ export default function App() {
       }
       tournamentStateRef.current = nextState;
       recordRivalHandPlayed(
-        collectTournamentOpponentProfileIds(nextState, { heroTableOnly: true }),
+        getTournamentOpponentProfileIds(nextState, { heroTableOnly: true }),
       );
       const levelChanged =
         typeof previousState?.levelIndex === "number" &&
@@ -5813,7 +5697,7 @@ export default function App() {
       }
       const publishHeroBustOverlay = (finalState, heroPlayerSnapshot) => {
         if (!finalState || !heroPlayerSnapshot) return;
-        const placements = buildTournamentPlacementsPayload(finalState);
+        const placements = buildTournamentPlacements(finalState);
         const heroPlacement = placements.find(
           (entry) => entry.id === heroPlayerSnapshot.id,
         ) ?? {
@@ -5897,7 +5781,7 @@ export default function App() {
           });
         }
         computePayouts(nextState);
-        const placements = buildTournamentPlacementsPayload(nextState);
+        const placements = buildTournamentPlacements(nextState);
         const inMemoryTournamentHands = Array.isArray(
           handHistoryBufferRef.current,
         )
@@ -5957,7 +5841,7 @@ export default function App() {
               console.warn("[TD1][V2_WRITE_FAILED]", error);
             }
             recordRivalTournamentResult(
-              collectTournamentOpponentProfileIds(nextState),
+              getTournamentOpponentProfileIds(nextState),
               nextState.championId === heroTournamentPlayerIdRef.current,
             );
             tournamentProgressRecordedRef.current = resultKey;

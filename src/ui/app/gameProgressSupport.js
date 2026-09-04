@@ -73,3 +73,64 @@ export function clonePlayerState(player) {
       : player.selected,
   };
 }
+
+export function rotateSeatBlueprint(config = [], direction = 1) {
+  if (!Array.isArray(config) || config.length <= 1) return [...config];
+  const head = config[0];
+  const rest = config.slice(1);
+  const offset = ((direction % rest.length) + rest.length) % rest.length;
+  return [head, ...rest.map((_, index) => rest[(index - offset + rest.length) % rest.length])];
+}
+
+export function applyHeroProfile(list = [], profile) {
+  if (!profile) return list;
+  return list.map((player, index) => index === 0 ? {
+    ...player,
+    name: profile.name,
+    titleBadge: profile.titleBadge,
+    avatar: profile.avatar,
+  } : player);
+}
+
+export function canContinueGame(snapshot = []) {
+  return (Array.isArray(snapshot) ? snapshot : []).filter((player) =>
+    player &&
+    !player.seatOut &&
+    !player.isBusted &&
+    player.isSeated !== false &&
+    player.isActiveInGame !== false &&
+    String(player.seatType ?? "").toUpperCase() !== "EMPTY" &&
+    Number(player.stack) > 0
+  ).length >= 2;
+}
+
+export function getCashCpuReseatStack(player = {}, baseline = {}, fallbackStack = 0) {
+  const stack = Number(player.rebuyStack) || Number(player.initialStack) ||
+    Number(baseline.rebuyStack) || Number(baseline.initialStack) || Number(fallbackStack);
+  return Math.max(1, stack || 1);
+}
+
+export function markCashCpuOut(player = {}, bustHandIndex = 0) {
+  return {
+    ...player,
+    stack: 0,
+    isBusted: true,
+    busted: true,
+    seatOut: true,
+    folded: true,
+    hasFolded: true,
+    allIn: false,
+    hand: [],
+    cards: [],
+    selected: [],
+    bet: 0,
+    betThisRound: 0,
+    totalInvested: 0,
+    hasActedThisRound: true,
+    hasDrawn: true,
+    canDraw: false,
+    lastDrawCount: 0,
+    lastAction: "OUT",
+    bustHandIndex: typeof player.bustHandIndex === "number" ? player.bustHandIndex : bustHandIndex,
+  };
+}

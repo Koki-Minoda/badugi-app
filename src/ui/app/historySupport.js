@@ -34,3 +34,15 @@ export function formatHandIdentifier({
     Number.isFinite(dealerSeat) && dealerSeat >= 0 ? `d${dealerSeat}` : "dX";
   return `${tableSegment}-${sequenceSegment}-${dealerSegment}-${timestamp.toString(36)}`;
 }
+
+export function deriveHeroOutcome(record = {}, heroSeat = 0) {
+  const hero = record.players?.[heroSeat];
+  if (!hero) return null;
+  const winners = Array.isArray(record.winners) ? record.winners : [];
+  const heroWon = Boolean(hero.name && winners.includes(hero.name));
+  const isSplit = heroWon && winners.length > 1;
+  return {
+    label: heroWon ? (isSplit ? "Split pot" : "Win") : hero.folded ? "Fold" : "Loss",
+    value: heroWon ? (isSplit ? 0.5 : 1) : 0,
+  };
+}

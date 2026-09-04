@@ -177,6 +177,34 @@ jobs:
         env:
           MGX_ALL_LIVE_CASH_HANDS: "10"
         run: npm run qm:cash:summary
+      - name: Upload public cash QM evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-cash-qm
+          path: |
+            test-results/
+            reports/all-live-cash/
+          if-no-files-found: ignore
+          retention-days: 30
+
+  cash-playability-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - run: npm ci --legacy-peer-deps
+      - run: python -m pip install -e './backend[test]'
+      - run: npx playwright install --with-deps chromium
       - name: Real-button Badugi cash playability through blind increase
         env:
           MGX_CASH_QA: "1"
@@ -187,15 +215,14 @@ jobs:
             tests/e2e/production-cash-playability.spec.ts \
             --project=badugi-flow \
             --workers=1
-      - name: Upload public cash QM evidence
+      - name: Upload Badugi cash playability evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: public-cash-qm
+          name: cash-playability-qa
           path: |
             test-results/
             reports/production-cash/
-            reports/all-live-cash/
           if-no-files-found: ignore
           retention-days: 30
 
@@ -372,6 +399,7 @@ jobs:
       - p2p-qa
       - history-qa
       - core5-qa
+      - cash-playability-qa
       - mobile-webkit-qa
       - stud-razz-qa
       - nlh-qa

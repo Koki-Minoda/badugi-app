@@ -310,7 +310,7 @@ export default function HandResultOverlay({
           <h2 className="text-3xl font-bold text-white">
             Pot ¥{formatAmount(summary.pot ?? 0)}
           </h2>
-          <span className="text-sm text-slate-400">Preparing next hand</span>
+          <span className="text-sm text-slate-400">Choose your next action</span>
         </div>
         <div className="space-y-4 text-sm text-slate-200">
           {potSections.map((pot, idx) => (

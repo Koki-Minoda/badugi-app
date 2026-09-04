@@ -318,4 +318,46 @@ test.describe("production cash playability", () => {
       await context.close();
     }
   });
+
+  test("busted Hero can explicitly rebuy and complete the next hand", async ({ page }) => {
+    const session = await openAuthenticatedGame(
+      page,
+      `${APP_URL}?variant=badugi&mode=cash&mgxQa=rebuy`,
+    );
+    try {
+      await waitForE2EDriver(page);
+      await page.evaluate(() => {
+        const driver = (window as typeof window & {
+          __BADUGI_E2E__?: {
+            setupCashRebuyTerminalFixtureForTest?: () => unknown;
+          };
+        }).__BADUGI_E2E__;
+        if (!driver?.setupCashRebuyTerminalFixtureForTest) {
+          throw new Error("cash rebuy fixture is unavailable");
+        }
+        driver.setupCashRebuyTerminalFixtureForTest();
+      });
+
+      const rebuy = page.getByRole("button", {
+        name: /rebuy & next hand|再購入して次のハンドへ/i,
+      });
+      await expect(rebuy).toBeVisible({ timeout: 10_000 });
+      await rebuy.click();
+      await expect(page.getByText("Hand Result").first()).toBeHidden({ timeout: 15_000 });
+      await expect(page.getByTestId("decision-panel")).toBeVisible({ timeout: 20_000 });
+
+      const restarted = await getProgressState(page);
+      expect(Number(restarted?.players?.[0]?.stack)).toBeGreaterThan(0);
+      expect(
+        restarted.players.filter(
+          (player) => !player.seatOut && !player.isBusted && Number(player.stack) > 0,
+        ).length,
+      ).toBeGreaterThanOrEqual(2);
+
+      await driveHandLikePlayer(page, 1);
+      await expect(page.getByText("Hand Result").first()).toBeVisible({ timeout: 15_000 });
+    } finally {
+      await deleteAuthenticatedSession(page, session);
+    }
+  });
 });

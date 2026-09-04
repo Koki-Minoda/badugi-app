@@ -5281,7 +5281,7 @@ export default function App() {
   }
 
   const buildCashNextHandSnapshot = useCallback(
-    (snapshot = []) => {
+    (snapshot = [], { forcePlayableTable = false } = {}) => {
       const configuredPlayers = applyHeroProfile(
         buildPlayersFromSeatTypes(
           seatConfigRef.current,
@@ -5296,7 +5296,7 @@ export default function App() {
           : configuredPlayers;
       const rebuyStack = startingStackRef.current ?? DEFAULT_STARTING_STACK;
 
-      return configuredPlayers.map((baseline, idx) => {
+      const nextPlayers = configuredPlayers.map((baseline, idx) => {
         const player = source[idx] ? clonePlayerState(source[idx]) : baseline;
         const seatType =
           player?.seatType ??
@@ -5400,6 +5400,45 @@ export default function App() {
           showHand: isHeroSeat,
         };
       });
+
+      if (forcePlayableTable && !canContinueGame(nextPlayers)) {
+        const cpuSeat = nextPlayers.findIndex((player, idx) => {
+          const seatType = player?.seatType ?? seatConfigRef.current?.[idx];
+          return isCashCpuSeat(player, seatType, idx);
+        });
+        if (cpuSeat >= 0) {
+          const baseline = configuredPlayers[cpuSeat] ?? {};
+          const player = nextPlayers[cpuSeat] ?? baseline;
+          const reseatStack = getCashCpuReseatStack(player, baseline);
+          nextPlayers[cpuSeat] = {
+            ...baseline,
+            ...player,
+            stack: reseatStack,
+            initialStack: reseatStack,
+            hand: [],
+            cards: [],
+            selected: [],
+            folded: false,
+            hasFolded: false,
+            allIn: false,
+            isBusted: false,
+            busted: false,
+            seatOut: false,
+            hasActedThisRound: false,
+            hasDrawn: false,
+            canDraw: false,
+            bet: 0,
+            betThisRound: 0,
+            totalInvested: 0,
+            lastDrawCount: 0,
+            lastAction: "",
+            bustHandIndex: null,
+            showHand: false,
+          };
+        }
+      }
+
+      return nextPlayers;
     },
     [buildPlayersFromSeatTypes, heroProfile, isCashCpuLifecycleEnabled],
   );
@@ -7868,6 +7907,10 @@ export default function App() {
       handStartStacksRef.current = Array.isArray(handStartingStacksById)
         ? [...handStartingStacksById]
         : newPlayers.map((p) => p.stack);
+      // React state is asynchronous. Keep the imperative actor loop on the
+      // same newly dealt roster immediately; otherwise a CPU timer can read
+      // the previous busted roster and restore the just-finished showdown.
+      playersRef.current = newPlayers;
       setPots([]);
       setCurrentBet(initialCurrentBet);
       setDealerIdx(nextDealerIdx);
@@ -8196,7 +8239,9 @@ export default function App() {
       }
       if (!canContinueGame(snapshot)) {
         if (mode !== "tournament-mtt") {
-          const recoveredSnapshot = buildCashNextHandSnapshot(snapshot);
+          const recoveredSnapshot = buildCashNextHandSnapshot(snapshot, {
+            forcePlayableTable: true,
+          });
           if (canContinueGame(recoveredSnapshot)) {
             console.warn(
               "[HAND] cash table recovered with rebuy stacks for next hand.",
@@ -8253,6 +8298,13 @@ export default function App() {
         }
       }
       const nextHandNumber = handCountRef.current + 1;
+      if (mode !== "tournament-mtt") {
+        // Make the rebuy/reseat roster authoritative before the controller
+        // and any pending actor work observe the next hand. This is placed
+        // after the previous-hand persistence fallback above on purpose.
+        playersRef.current = snapshot;
+        setPlayers(snapshot);
+      }
       const success = dealNewHandRef.current(
         targetDealerIdx,
         snapshot,
@@ -8547,6 +8599,69 @@ export default function App() {
       return snapshot;
     };
     e2eDriverApiRef.current = {
+      setupCashRebuyTerminalFixtureForTest: () => {
+        const source = buildCashNextHandSnapshot(
+          (playersRef.current ?? players ?? [])
+            .map(clonePlayerState)
+            .filter(Boolean),
+        );
+        const terminalPlayers = source.map((player, seat) => {
+          if (seat === 3) {
+            return {
+              ...player,
+              stack: 3500,
+              folded: false,
+              hasFolded: false,
+              allIn: false,
+              isBusted: false,
+              busted: false,
+              seatOut: false,
+              lastAction: "",
+            };
+          }
+          return {
+            ...player,
+            stack: 0,
+            folded: seat !== 0,
+            hasFolded: seat !== 0,
+            allIn: true,
+            isBusted: seat !== 0,
+            busted: seat !== 0,
+            seatOut: seat !== 0,
+            lastAction: seat === 0 ? "Call" : "OUT",
+          };
+        });
+        const winner = {
+          seat: 3,
+          seatIndex: 3,
+          name: terminalPlayers[3]?.name ?? "Sora",
+          amount: 30,
+          payout: 30,
+        };
+        playersRef.current = terminalPlayers;
+        setPlayers(terminalPlayers);
+        finishHand({
+          playersSnapshot: terminalPlayers,
+          totalPot: 30,
+          summary: [
+            {
+              potIndex: 0,
+              potAmount: 30,
+              eligible: [0, 3],
+              payouts: [winner],
+            },
+          ],
+          precomputedResult: {
+            handId: handIdRef.current,
+            pot: 30,
+            winners: [winner],
+            potDetails: [
+              { potIndex: 0, potAmount: 30, winners: [winner] },
+            ],
+          },
+        });
+        return terminalPlayers;
+      },
       forceSeatAction: (seat, payload = {}) =>
         queueForcedSeatAction(seat, { ...payload, __forceInstant: true }),
       forceControllerAction: (seat, payload = {}) => {
@@ -11286,7 +11401,12 @@ export default function App() {
       }
     }
     const canPlayNext = canContinueGame(finalPlayers);
-    if (canPlayNext) {
+    const configuredCashSeats = (seatConfigRef.current ?? []).filter(
+      (seatType) => String(seatType ?? "").toUpperCase() !== "EMPTY",
+    ).length;
+    const canRestartCashTable = !isTournament && configuredCashSeats >= 2;
+    const canOfferNextHand = canPlayNext || canRestartCashTable;
+    if (canOfferNextHand) {
       phaseRef.current = "WAITING_NEXT_HAND";
       setPhase("WAITING_NEXT_HAND");
       setShowNextButton(true);
@@ -11295,6 +11415,11 @@ export default function App() {
       setPhase("TABLE_FINISHED");
       setShowNextButton(false);
     }
+    updateShowdown({
+      phase: canOfferNextHand ? "WAITING_NEXT_HAND" : "TABLE_FINISHED",
+      players: finalPlayers.map((player) => ({ ...player })),
+      showNextButton: canOfferNextHand,
+    });
     return summaryWithContext;
   }
 
@@ -13902,7 +14027,14 @@ export default function App() {
     { load: loadStatus, interaction: interactionStatus },
     locale,
   );
-  const nextHandLabel = formatComment("nextHandButton", {}, locale);
+  const cashRebuyRequired =
+    mode === "cash" &&
+    (!canContinueGame(playersSrc) || Number(playersSrc?.[0]?.stack) <= 0);
+  const nextHandLabel = formatComment(
+    cashRebuyRequired ? "rebuyNextHandButton" : "nextHandButton",
+    {},
+    locale,
+  );
   function handleAuthSuccess() {
     setCurrentScreen("menu");
   }

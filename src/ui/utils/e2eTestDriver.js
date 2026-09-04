@@ -23,6 +23,8 @@ export function installE2eTestDriver(apiRef) {
       apiRef.current?.getCrossVariantStateAudit?.(...args),
     forceMarkSeatFoldedForTest: (...args) =>
       apiRef.current?.forceMarkSeatFoldedForTest?.(...args),
+    setupCashRebuyTerminalFixtureForTest: (...args) =>
+      apiRef.current?.setupCashRebuyTerminalFixtureForTest?.(...args),
     forceSequentialFolds: (...args) => apiRef.current?.forceSequentialFolds?.(...args),
     forceAllIn: (...args) => apiRef.current?.forceAllIn?.(...args),
     setupFixedLimitCapFixtureForTest: (...args) =>

@@ -1,4 +1,5 @@
 {
   "nextHandButton": "次のハンドへ",
+  "rebuyNextHandButton": "再購入して次のハンドへ",
   "uiPerfNotification": "ロード {load}(3秒目標) · 操作 {interaction}(100ms目標)"
 }

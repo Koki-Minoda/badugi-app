@@ -1,4 +1,5 @@
 {
   "nextHandButton": "Next hand",
+  "rebuyNextHandButton": "Rebuy & next hand",
   "uiPerfNotification": "Load {load} (<3s target) · Interaction {interaction} (<100ms target)"
 }

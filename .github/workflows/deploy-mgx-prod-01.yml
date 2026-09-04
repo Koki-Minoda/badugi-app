@@ -273,7 +273,9 @@ jobs:
 
   dramaha-qa:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    # The three-engine, six-variant real-play matrix takes about 27 minutes
+    # after dependencies are ready. Leave room for a cold npm/Playwright setup.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6

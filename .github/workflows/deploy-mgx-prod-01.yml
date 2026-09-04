@@ -442,6 +442,7 @@ jobs:
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes \
+            -o ServerAliveInterval=30 -o ServerAliveCountMax=20 \
             "${MGX_PROD_USER}@${MGX_PROD_HOST}" \
             "bash -s -- '$DEPLOY_BRANCH'" <<'REMOTE'
           set -euo pipefail
@@ -457,6 +458,7 @@ jobs:
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes \
+            -o ServerAliveInterval=30 -o ServerAliveCountMax=20 \
             "${MGX_PROD_USER}@${MGX_PROD_HOST}" \
             "cd /home/mgx/badugi-app && git fetch origin '$DEPLOY_BRANCH' && git checkout '$DEPLOY_BRANCH' && git pull --ff-only origin '$DEPLOY_BRANCH' && env APP_DIR=/home/mgx/badugi-app GIT_BRANCH='$DEPLOY_BRANCH' bash scripts/deploy/mgx-prod-01.sh"
 

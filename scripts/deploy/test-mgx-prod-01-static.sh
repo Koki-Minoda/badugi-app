@@ -2,6 +2,7 @@
 set -euo pipefail
 
 script="scripts/deploy/mgx-prod-01.sh"
+workflow=".github/workflows/deploy-mgx-prod-01.yml"
 bash -n "$script"
 bash -n scripts/ci/run-with-backend.sh
 bash -n scripts/deploy/backup_mgx_prod_01.sh
@@ -33,6 +34,7 @@ if grep -q 'bWd4LXByb2Qtd3Mtc21va2U=' "$script"; then
 fi
 grep -q 'friend-match deep link did not return the current SPA asset' "$script"
 grep -q 'npm run test:build:onnx' "$script"
+test "$(grep -c -- '-o ServerAliveInterval=30 -o ServerAliveCountMax=20' "$workflow")" -eq 2
 grep -q 'mktemp -d /tmp/mgx-frontend-build' "$script"
 grep -q 'git archive --format=tar HEAD' "$script"
 # Match the literal guard against shared node_modules deletion.

@@ -566,6 +566,64 @@ describe("DeuceToSevenTripleDrawController", () => {
     expect(result.state.snapshot.players[0].lastAction).toBe("Pat");
   });
 
+  it("preserves the pre-settlement draw snapshot when the final pat ends an all-in hand", () => {
+    const controller = buildController([
+      "2S", "3S", "4S", "5S", "7S",
+      "2H", "3H", "4H", "5H", "8H",
+    ]);
+    let state = controller.createNewHandState(controller.createInitialState());
+    const engineState = state.engineState;
+
+    engineState.street = "DRAW";
+    engineState.drawRoundIndex = controller.engine.maxDrawRounds;
+    engineState.actingPlayerIndex = 1;
+    engineState.pots = [{ amount: 120, eligibleSeatIndexes: [0, 1] }];
+    engineState.players[0] = {
+      ...engineState.players[0],
+      stack: 0,
+      bet: 0,
+      totalInvested: 60,
+      allIn: true,
+      folded: false,
+      canDraw: false,
+      hasDrawn: true,
+      hasActedThisRound: true,
+    };
+    engineState.players[1] = {
+      ...engineState.players[1],
+      stack: 140,
+      bet: 0,
+      totalInvested: 60,
+      allIn: false,
+      folded: false,
+      canDraw: true,
+      hasDrawn: false,
+      hasActedThisRound: false,
+    };
+    engineState.metadata = {
+      ...engineState.metadata,
+      pendingDrawSeats: [1],
+    };
+    state.snapshot = controller.getUiSnapshot(engineState);
+
+    const result = controller.applyAction(state, {
+      seatIndex: 1,
+      type: "DRAW",
+      discardIndexes: [],
+    });
+
+    expect(result.state.snapshot.phase).toBe("SHOWDOWN");
+    expect(result.actionSnapshot.phase).toBe("DRAW");
+    expect(result.actionSnapshot.players[0]).toMatchObject({
+      stack: 0,
+      totalInvested: 60,
+      folded: false,
+      allIn: true,
+    });
+    expect(result.actionSnapshot.players[0].hand).toHaveLength(5);
+    expect(result.actionSnapshot.players[1].lastAction).toBe("Pat");
+  });
+
   it("returns invalidAction events without mutating state for bad controller input", () => {
     const controller = buildController([
       "2S", "3S", "4S", "5S", "7S",

@@ -771,10 +771,9 @@ export class DeuceToSevenTripleDrawController extends GameController {
     try {
       const isDrawAction = String(normalizedAction.type ?? "").toUpperCase() === "DRAW";
       const transition = isDrawAction
-        ? {
-            state: this.engine.applyPlayerAction(engineState, normalizedAction),
-            actionState: null,
-          }
+        ? this.engine.applyPlayerAction(engineState, normalizedAction, {
+            withActionState: true,
+          })
         : this.engine.applyBettingAction(engineState, normalizedAction, {
             withActionState: true,
           });

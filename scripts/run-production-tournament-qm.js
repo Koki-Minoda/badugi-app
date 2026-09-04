@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 
 const label = process.env.TOURNAMENT_QM_REPORT_LABEL ?? "production-tournament-qm";
+const project = process.env.TOURNAMENT_QM_PROJECT ?? "tournament-pr-chromium";
 const reportDir = path.resolve("reports/tournament-qm");
 const resultsPath = path.join(reportDir, `${label}-results.json`);
 const gatePath = path.join(reportDir, `${label}-gate.json`);
@@ -17,7 +18,7 @@ const result = spawnSync(
     "playwright",
     "test",
     "tests/e2e/tournament-stage-blind-transition.spec.ts",
-    "--project=tournament-pr-chromium",
+    `--project=${project}`,
     "--grep=production QM",
   ],
   {
@@ -66,6 +67,7 @@ const files = [resultsPath, gatePath].filter((filePath) => fs.existsSync(filePat
 const manifest = {
   generatedAt: new Date().toISOString(),
   label,
+  project,
   status: gate.status,
   files: files.map((filePath) => ({
     path: filePath,

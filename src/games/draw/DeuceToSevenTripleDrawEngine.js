@@ -598,15 +598,15 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     return next;
   }
 
-  applyPlayerAction(state, action = {}) {
+  applyPlayerAction(state, action = {}, options = {}) {
     const actionType = normalizeActionType(action);
     if (actionType === "DRAW") {
-      return this.applyDrawAction(state, action);
+      return this.applyDrawAction(state, action, options);
     }
-    return this.applyBettingAction(state, { ...action, type: actionType });
+    return this.applyBettingAction(state, { ...action, type: actionType }, options);
   }
 
-  applyDrawAction(state, action = {}) {
+  applyDrawAction(state, action = {}, options = {}) {
     if (!state) {
       throw new IllegalActionError("Table state is required");
     }
@@ -695,11 +695,20 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
       },
     };
 
+    // Preserve the exact post-draw state before an automatic transition can
+    // settle the hand and clear cards/wagers from busted seats. Replay history
+    // must describe the action as it happened, not the later settled UI state.
+    const actionState = cloneTableState(next);
+    const withActionState = (resolvedState) =>
+      options?.withActionState
+        ? { state: resolvedState, actionState }
+        : resolvedState;
+
     if (!pendingDrawSeats.length) {
-      return this.transitionToBet(next);
+      return withActionState(this.transitionToBet(next));
     }
     next.actingPlayerIndex = pendingDrawSeats[0];
-    return next;
+    return withActionState(next);
   }
 
   evaluateShowdownHand(cards = []) {

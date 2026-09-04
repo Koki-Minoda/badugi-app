@@ -33,6 +33,14 @@ if grep -q 'bWd4LXByb2Qtd3Mtc21va2U=' "$script"; then
 fi
 grep -q 'friend-match deep link did not return the current SPA asset' "$script"
 grep -q 'npm run test:build:onnx' "$script"
+grep -q 'mktemp -d /tmp/mgx-frontend-build' "$script"
+grep -q 'git archive --format=tar HEAD' "$script"
+# Match the literal guard against shared node_modules deletion.
+# shellcheck disable=SC2016
+if grep -q 'rm -rf -- "$APP_DIR/node_modules"' "$script"; then
+  echo "deploy must not mutate a possibly root-owned shared node_modules tree" >&2
+  exit 1
+fi
 grep -q 'configure_nginx_wasm_mime' "$script"
 grep -q 'verify_live_onnx_wasm' "$script"
 if grep -q '^[[:space:]]*types[[:space:]]*{' infra/nginx/mgx-wasm-types.conf; then

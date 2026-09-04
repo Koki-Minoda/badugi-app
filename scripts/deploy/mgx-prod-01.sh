@@ -3,7 +3,7 @@
 set -euo pipefail
 
 APP_DIR="${APP_DIR:-$HOME/badugi-app}"
-FRONTEND_DIST="$APP_DIR/dist"
+FRONTEND_DIST=""
 DEPLOY_TARGET="/var/www/mgx-poker"
 LIVE_ORIGIN="${LIVE_ORIGIN:-https://mgx-poker.com}"
 DEFAULT_BRANCH="main"
@@ -222,20 +222,24 @@ echo "[mgx-deploy] installing frontend dependencies"
 NPM_CACHE_DIR="${NPM_CACHE_DIR:-/tmp/mgx-npm-cache-$(id -u)}"
 install -d -m 700 "$NPM_CACHE_DIR"
 
-# Older production runs left a partially installed, root-owned dependency
-# tree. npm cannot reliably repair that tree in place, so remove only this
-# generated directory and recreate it from package-lock.json.
-if [ -d "node_modules" ]; then
-  test "$APP_DIR" = "$(pwd)"
-  test "$APP_DIR" != "/"
-  rm -rf -- "$APP_DIR/node_modules"
-fi
+# Build from a fresh, deploy-user-owned snapshot. Older production runs may
+# have left root-owned files in node_modules; the deploy identity must neither
+# depend on nor attempt to mutate that shared generated directory.
+FRONTEND_BUILD_DIR="$(mktemp -d /tmp/mgx-frontend-build.XXXXXX)"
+cleanup_frontend_build() {
+  rm -rf -- "$FRONTEND_BUILD_DIR"
+}
+trap cleanup_frontend_build EXIT
+git archive --format=tar HEAD | tar -xf - -C "$FRONTEND_BUILD_DIR"
 
+cd "$FRONTEND_BUILD_DIR"
 env npm_config_cache="$NPM_CACHE_DIR" npm ci --legacy-peer-deps
 
 echo "[mgx-deploy] building frontend"
 npm run build
 npm run test:build:onnx
+FRONTEND_DIST="$FRONTEND_BUILD_DIR/dist"
+cd "$APP_DIR"
 
 echo "[mgx-deploy] installing backend dependencies"
 cd backend

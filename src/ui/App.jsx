@@ -3055,6 +3055,7 @@ export default function App() {
               outcome: controllerOutcome,
               seat: seatToAct,
               playerBefore: me,
+              playersBefore: snapshot,
               payload,
             });
           helpers.logAction(seatToAct, actionLabel);
@@ -3379,6 +3380,7 @@ export default function App() {
             outcome: controllerOutcome,
             seat: seatToAct,
             playerBefore: me,
+            playersBefore: snapshot,
             payload: { drawIndexes: npcControllerMetadata.drawIndexes },
           });
         helpers.logAction(seatToAct, actionLabel);
@@ -12077,6 +12079,7 @@ export default function App() {
             outcome: controllerDrawOutcome,
             seat: drawActionSeat,
             playerBefore: p,
+            playersBefore: basePlayers,
             payload: { discardIndexes: sel },
           });
         setHeroDrawSelection([]);

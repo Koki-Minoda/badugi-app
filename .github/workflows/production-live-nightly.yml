@@ -185,7 +185,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --legacy-peer-deps
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium webkit
       - name: Complete Store and Local tournaments on production
         env:
           E2E_APP_URL: https://mgx-poker.com/

@@ -1,3 +1,4 @@
+import VariantRuleReminder from "../../learning/VariantRuleReminder.jsx";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Player from "../../components/Player";
 import Card from "../../components/Card";
@@ -184,6 +185,7 @@ export default function GameLayoutBase({
     onNavigateSettings,
     onNavigateProfile,
     onNavigateHistory,
+    language = "ja",
   } = headerProps;
 
   const {
@@ -762,6 +764,7 @@ export default function GameLayoutBase({
           >
             {labels.history ?? "History"}
           </button>
+          {!isMobileLayout && <VariantRuleReminder variantId={gameVariant} language={language} />}
         </nav>
       </header>
 
@@ -1283,6 +1286,8 @@ export default function GameLayoutBase({
                     </div>
                   )}
                   <div>{renderControlsContent()}</div>
+                  <div className="flex items-center gap-2">
+                  {isMobileLayout && <VariantRuleReminder variantId={gameVariant} language={language} mobile />}
                   {isCashGame && (
                     <button
                       type="button"
@@ -1301,6 +1306,7 @@ export default function GameLayoutBase({
                       Sit Out
                     </button>
                   )}
+                  </div>
                   {nextHandButton}
                 </div>
               </div>

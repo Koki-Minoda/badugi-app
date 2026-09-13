@@ -1,3 +1,4 @@
+import { LEARNING_PRESETS } from "../learning/learningCatalog.js";
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { GAME_VARIANT_CATEGORIES } from "../../games/config/variantCatalog.js";
@@ -285,7 +286,7 @@ export default function MixedGameScreen({ language = readStoredLanguage() }) {
       setMessage(`${existing.name}を読み込みました。`);
       setError("");
     } else {
-      const presetDef = proPresets.find((preset) => preset.id === presetId);
+      const presetDef = [...proPresets, ...LEARNING_PRESETS.map(p => ({ ...p, description: p.description[language === "ja" ? "ja" : "en"] }))].find((preset) => preset.id === presetId);
       if (presetDef) {
         const saved = saveProfile(presetDef);
         setSelectedProfileId(saved.id);
@@ -295,7 +296,7 @@ export default function MixedGameScreen({ language = readStoredLanguage() }) {
       }
     }
     navigate("/mixed", { replace: true });
-  }, [location.search, proPresets, profiles, navigate, saveProfile]);
+  }, [location.search, proPresets, profiles, navigate, saveProfile, language]);
 
   const variantOptions = useMemo(() => {
     const profiles = listVariantProfiles().map((profile) =>
@@ -340,7 +341,7 @@ export default function MixedGameScreen({ language = readStoredLanguage() }) {
       setError("");
       return;
     }
-    const presetDef = proPresets.find((preset) => preset.id === presetId);
+    const presetDef = [...proPresets, ...LEARNING_PRESETS.map(p => ({ ...p, description: p.description[language === "ja" ? "ja" : "en"] }))].find((preset) => preset.id === presetId);
     if (!presetDef) {
       setError("指定されたプリセットが見つかりません。");
       return;

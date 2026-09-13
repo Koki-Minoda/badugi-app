@@ -19,6 +19,8 @@ import { isCoachingPreviewEnabled } from "./ui/coaching/previewFeatureFlags.js";
 import { GameEngineProvider } from "./ui/engine/GameEngineContext.jsx";
 import { MixedGameProvider } from "./ui/mixed/MixedGameContext.jsx";
 
+import LearningHubScreen from "./ui/learning/LearningHubScreen.jsx";
+
 export default function RootApp() {
   const location = useLocation();
   const coachingPreviewEnabled = isCoachingPreviewEnabled({ search: location.search });
@@ -53,6 +55,8 @@ export default function RootApp() {
         />
         <Route path="/friend-match" element={<FriendMatchSetupScreen />} />
         <Route path="/dev/friend-match" element={<FriendMatchSetupScreen />} />
+        <Route path="/learn" element={<LearningHubScreen />} />
+        <Route path="/dev/learn" element={<LearningHubScreen />} />
         <Route path="/mixed" element={<MixedGameScreen />} />
         <Route path="/games" element={<GameSelectorScreen />} />
         <Route path="/multigame" element={<MultiGameScreen />} />

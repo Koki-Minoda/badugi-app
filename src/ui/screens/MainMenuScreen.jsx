@@ -511,6 +511,11 @@ export default function MainMenuScreen({
               onHover={() => setActiveMode("history")}
               onBlur={resetInfoPanel}
             />
+            <ModeButton
+              label={language === "ja" ? "種目を学ぶ・MIX練習" : "Learn Games & MIX Practice"}
+              testId="menu-learn"
+              onClick={() => navigate("/learn")}
+            />
             {coachingPreviewEnabled && (
               <ModeButton
                 label={language === "ja" ? "学習ダッシュボード Preview" : "Learning Dashboard Preview"}

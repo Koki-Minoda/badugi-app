@@ -1,3 +1,4 @@
+import LearningGameLaunch from "./learning/LearningGameLaunch.jsx";
 // src/ui/App.jsx
 import React, {
   useCallback,
@@ -425,6 +426,7 @@ function readStoredAuthIdentity() {
 }
 
 export default function App() {
+  const location = useLocation();
   const [tournamentSession, setTournamentSession] = useState(() =>
     loadActiveTournamentSession(),
   );
@@ -439,7 +441,7 @@ export default function App() {
   const modeRef = useRef(initialModeRef.current);
   const [language, setLanguage] = useState(() => getInitialLanguage());
   // MGX branding: kitsune title screen + title → menu → game flow (2025-11-28)
-  const [currentScreen, setCurrentScreen] = useState("title");
+  const [currentScreen, setCurrentScreen] = useState(() => location.state?.learningVariant ? "menu" : "title");
   const [hubActiveSnapshot, setHubActiveSnapshot] = useState(null);
   const [gameUtilityModal, setGameUtilityModal] = useState(null);
   const pendingRingStartRef = useRef(false);
@@ -673,7 +675,6 @@ export default function App() {
     return undefined;
   }, []);
   const navigate = useNavigate();
-  const location = useLocation();
   const coachingPreviewEnabled = isCoachingPreviewEnabled({
     search: location.search,
   });
@@ -13959,7 +13960,13 @@ export default function App() {
             onAuthenticated={handleAuthSuccess}
             onAuthStateChange={handleAuthStateChange}
           >
-            <MenuScreenWithLogout
+            {location.state?.learningVariant ? <LearningGameLaunch
+              variantId={location.state.learningVariant}
+              onLaunch={(variantId) => {
+                navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
+                handleSelectRing(variantId);
+              }}
+            /> : <MenuScreenWithLogout
               language={language}
               onChangeLanguage={(nextLanguage) => {
                 const next =
@@ -13982,7 +13989,7 @@ export default function App() {
               onSelectHandHistory={handleOpenHandHistoryScreen}
               coachingPreviewEnabled={coachingPreviewEnabled}
               onLogoutComplete={handleNavigateToTitle}
-            />
+            />}
           </AuthGate>
         </AuthProvider>
         <DebugHud
@@ -14165,6 +14172,7 @@ export default function App() {
     "MGX Poker";
 
   const headerProps = {
+    language,
     ratingState,
     rankInfo,
     gameTitle: currentGameTitle,

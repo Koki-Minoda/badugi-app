@@ -14,6 +14,10 @@ describe.each(PRACTICE_GAMES)('$name practice', game => {
     expect(session.finished).toBe(true);
     expect(session.snapshot.players.reduce((sum, player) => sum + player.stack, 0)).toBe(12000);
     expect(session.record().mode).toBe('practice');
+    expect(session.record().seats.map(seat => seat.name)).toEqual(['You', 'CPU 1', 'CPU 2', 'CPU 3', 'CPU 4', 'CPU 5']);
+    for (const winner of session.record().events.find(event => event.type === 'HAND_END').winners) {
+      expect(winner.name).toBe(session.record().seats[winner.seat].name);
+    }
     expect(session.record().events.filter(event => event.type === 'BET_ACTION').reduce((sum, event) => sum + event.amount, 30)).toBe(session.record().pot);
     expect(session.record().events.filter(event => event.type === 'DRAW_ACTION')).toHaveLength(18);
     const again = new PracticeSession(game.id, game.defaults);

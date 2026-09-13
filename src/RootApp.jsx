@@ -2,7 +2,7 @@ import PracticeScreen from "./ui/practice/PracticeScreen.jsx";
 import ReviewScreen from "./ui/review/ReviewScreen.jsx";
 import RuleQuizScreen from "./ui/learning/RuleQuizScreen.jsx";
 // src/RootApp.jsx
-import React from "react";
+import React, { useLayoutEffect } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import App from "@ui/App";
 import ProfileStats from "./components/ProfileStats";
@@ -26,6 +26,9 @@ import LearningHubScreen from "./ui/learning/LearningHubScreen.jsx";
 
 export default function RootApp() {
   const location = useLocation();
+  useLayoutEffect(() => {
+    if (/^\/(dev\/)?learn(?:\/|$)/.test(location.pathname)) window.scrollTo(0, 0);
+  }, [location.pathname]);
   const coachingPreviewEnabled = isCoachingPreviewEnabled({ search: location.search });
   return (
     <MixedGameProvider>

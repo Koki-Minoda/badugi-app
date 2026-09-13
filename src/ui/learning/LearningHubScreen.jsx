@@ -27,11 +27,11 @@ export default function LearningHubScreen() {
     try { persisted = JSON.parse(localStorage.getItem('mixedGameProfiles') ?? '[]').some(p => p.id === saved.id); } catch { /* Display memory-only status. */ }
     setMessage(persisted ? (ja ? 'この端末に保存しました。MIX設定で編集できます。' : 'Saved on this device. Edit it in MIX settings.') : (ja ? 'この画面で読み込みました。端末への保存はできませんでした。' : 'Loaded for this session; device storage was unavailable.'));
   };
-  return <main className="min-h-screen bg-slate-950 px-4 py-8 text-white sm:px-8">
+  return <main className="learning-screen min-h-screen bg-slate-950 px-4 py-8 text-white sm:px-8">
     <div className="mx-auto max-w-6xl space-y-7">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div><p className="text-xs tracking-widest text-emerald-300">MGX LEARN</p><h1 className="mt-2 text-3xl font-bold">{ja ? '種目を覚えて、プレイする' : 'Learn a game. Play a hand.'}</h1></div>
-        <div className="flex items-center gap-4"><label className="text-sm">{ja ? '言語' : 'Language'} <select aria-label="Language" className="rounded bg-slate-800 p-2" value={language} onChange={e => { setLanguage(e.target.value); try { localStorage.setItem(LANGUAGE_STORAGE_KEY, e.target.value); } catch { /* Session-only language. */ } }}><option value="ja">日本語</option><option value="en">English</option></select></label><Link to="/menu" className="text-emerald-200 underline">{ja ? 'メニュー' : 'Menu'}</Link></div>
+        <div className="flex items-center gap-4"><label className="text-sm">{ja ? '言語' : 'Language'} <select aria-label="Language" className="rounded bg-slate-800 p-2 text-base" value={language} onChange={e => { setLanguage(e.target.value); try { localStorage.setItem(LANGUAGE_STORAGE_KEY, e.target.value); } catch { /* Session-only language. */ } }}><option value="ja">日本語</option><option value="en">English</option></select></label><Link to="/menu" className="text-emerald-200 underline">{ja ? 'メニュー' : 'Menu'}</Link></div>
       </header>
       <p className="max-w-3xl text-slate-300">{ja ? '勝ち方・カード・手番を確認してから対局へ。練習プランでは前の種目との違いを確認できます。' : 'Review the winning hand, cards and action order before playing. A practice plan highlights what changes between games.'}</p>
       <LearningDashboard language={language} />

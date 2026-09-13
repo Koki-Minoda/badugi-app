@@ -23,6 +23,7 @@ for (const game of games) test(`${game.id}: play selected cards, repeat, save, a
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/learn');
   await page.getByRole('link', { name: /開始手札を決めて練習する/ }).click();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   await page.getByRole('combobox', { name: '種目', exact: true }).selectOption(game.id);
   await page.getByRole('button', { name: '選択をクリア' }).click();
   await expect(page.getByRole('button', { name: 'この手札で練習する' })).toBeDisabled();
@@ -44,6 +45,10 @@ for (const game of games) test(`${game.id}: play selected cards, repeat, save, a
   await page.getByTestId('practice-result').getByRole('button', { name: 'あとで復習に保存' }).click();
   await expect(page.getByRole('button', { name: '復習に保存済み' })).toBeDisabled();
   const record = await page.evaluate(() => JSON.parse(localStorage.getItem('mgx.handReviews.v1')!).entries[0].hand);
+  expect(record.seats.map(seat => seat.name)).toEqual(['You', 'CPU 1', 'CPU 2', 'CPU 3', 'CPU 4', 'CPU 5']);
+  for (const winner of record.events.find(event => event.type === 'HAND_END').winners) {
+    expect(winner.name).toBe(record.seats[winner.seat].name);
+  }
   expect(record.mode).toBe('practice');
   expect(record.variantId).toBe(game.id);
   expect(record.events.some(event => event.type === 'DRAW_ACTION')).toBe(true);

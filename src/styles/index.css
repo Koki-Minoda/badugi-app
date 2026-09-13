@@ -54,3 +54,15 @@ body {
 .kitsune-glow {
   animation: kitsune-glow 3s ease-in-out infinite;
 }
+
+/* Keep learning controls clear of the camera cutout in landscape Safari. */
+main.learning-screen {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+@media (min-width: 640px) {
+  main.learning-screen {
+    padding-left: max(2rem, env(safe-area-inset-left));
+    padding-right: max(2rem, env(safe-area-inset-right));
+  }
+}

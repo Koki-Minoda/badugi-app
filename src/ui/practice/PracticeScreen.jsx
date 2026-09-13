@@ -63,7 +63,7 @@ function PracticeContent({ incoming }) {
     return () => clearTimeout(timer);
   }, [session, version, finished, actor, error, ja]);
 
-  return <main className="min-h-screen bg-slate-950 px-4 py-6 text-white sm:px-8">
+  return <main className="learning-screen min-h-screen bg-slate-950 px-4 py-6 text-white sm:px-8">
     <div className="mx-auto max-w-5xl space-y-5">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">{ja ? '開始手札を決めて練習' : 'Practice a starting hand'}</h1>

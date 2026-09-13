@@ -19,6 +19,7 @@ class PracticeDeck extends DeckManager {
   }
 }
 const clone = value => JSON.parse(JSON.stringify(value));
+const practiceName = seat => seat === 0 ? 'You' : `CPU ${seat}`;
 export class PracticeSession {
   constructor(variant, cards, { rng = Math.random } = {}) {
     if (!validatePracticeSetup(variant, cards)) throw new Error('Invalid practice hand');
@@ -83,7 +84,7 @@ export class PracticeSession {
     this.assertCards();
     if (this.finished) {
       this.endedAt = Date.now();
-      this.events.push({ type: 'HAND_END', totalPot: after.lastHandResult?.pot ?? 0, winners: (after.lastHandResult?.winners ?? []).map(winner => ({ seat: winner.seatIndex, name: winner.name, amount: winner.payout })), finalStacks: after.players.map((player, seatIndex) => ({ seat: seatIndex, stack: player.stack })), timestamp: this.endedAt });
+      this.events.push({ type: 'HAND_END', totalPot: after.lastHandResult?.pot ?? 0, winners: (after.lastHandResult?.winners ?? []).map(winner => ({ seat: winner.seatIndex, name: practiceName(winner.seatIndex), amount: winner.payout })), finalStacks: after.players.map((player, seatIndex) => ({ seat: seatIndex, stack: player.stack })), timestamp: this.endedAt });
     }
     return true;
   }
@@ -102,6 +103,6 @@ export class PracticeSession {
   record() {
     if (!this.finished) return null;
     const snapshot = this.snapshot;
-    return { handId: this.handId, variantId: this.variant, variantName: PRACTICE_GAMES.find(game => game.id === this.variant).name, startedAt: this.startedAt, endedAt: this.endedAt, mode: 'practice', historySource: 'practice', buttonSeat: 0, sbSeat: 1, bbSeat: 2, pot: snapshot.lastHandResult?.pot ?? 0, events: clone(this.events), seats: snapshot.players.map((player, seat) => ({ seat, name: player.name, isHero: seat === 0, initialHand: [...this.initialPlayers[seat].hand], hand: [...player.hand], startStack: 2000, endStack: player.stack, folded: player.folded })), practiceSetup: { variant: this.variant, cards: [...this.initialCards] } };
+    return { handId: this.handId, variantId: this.variant, variantName: PRACTICE_GAMES.find(game => game.id === this.variant).name, startedAt: this.startedAt, endedAt: this.endedAt, mode: 'practice', historySource: 'practice', buttonSeat: 0, sbSeat: 1, bbSeat: 2, pot: snapshot.lastHandResult?.pot ?? 0, events: clone(this.events), seats: snapshot.players.map((player, seat) => ({ seat, name: practiceName(seat), isHero: seat === 0, initialHand: [...this.initialPlayers[seat].hand], hand: [...player.hand], startStack: 2000, endStack: player.stack, folded: player.folded })), practiceSetup: { variant: this.variant, cards: [...this.initialCards] } };
   }
 }

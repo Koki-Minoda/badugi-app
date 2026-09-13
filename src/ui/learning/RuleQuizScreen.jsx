@@ -21,7 +21,7 @@ export default function RuleQuizScreen() {
   const progress = useLearningProgress();
   const retry = params.get('retry') === 'missed';
   const missed = progressSummary(progress.data).missedIds;
-  return <main className="min-h-screen bg-slate-950 p-4 py-8 text-white sm:p-8">
+  return <main className="learning-screen min-h-screen bg-slate-950 p-4 py-8 text-white sm:p-8">
     <div className="mx-auto max-w-3xl space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-4"><h1 className="text-2xl font-bold">{ja ? 'ルール・役比較クイズ' : 'Rules and hand comparison quiz'}</h1><Link className="text-emerald-200 underline" to="/learn">{ja ? '学習に戻る' : 'Back to learning'}</Link></header>
       <p className="text-slate-300">{retry ? (ja ? '以前間違えた問題を最大6問。正解すると次回の復習候補から外れます。' : 'Up to six previously missed questions. Correct answers leave the next review queue.') : (ja ? '1回6問。回答すると正解と理由を確認できます。' : 'Six questions per round. Answer to see the correct choice and explanation.')}</p>

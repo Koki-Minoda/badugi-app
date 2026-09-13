@@ -3,6 +3,8 @@
 2026-09-13。練習条件保存 `751b042` に続く変更。
 作業ブランチ: `codex/mgx-learning-entry`。本番反映は未実施。
 
+追加のiPhone Simulator・Android Emulator確認と、そこで見つかった4点の修正は [IOS-ANDROID-SIMULATOR-QA.md](./IOS-ANDROID-SIMULATOR-QA.md) に記録した。以下の初回検証結果とは区別する。
+
 ## 利用できる機能
 
 - 学習ホームの「今日やること」に、累計の練習完了数・クイズ正解率・復習済み数と、その日の件数を表示。

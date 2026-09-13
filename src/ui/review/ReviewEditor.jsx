@@ -21,11 +21,11 @@ export default function ReviewEditor({ entry, language }) {
   }
   return <form onSubmit={save} className="space-y-3 rounded-xl border border-white/15 bg-slate-950/50 p-4">
     <label htmlFor={`${id}-note`} className="block text-sm">{ja ? 'メモ' : 'Notes'}
-      <textarea id={`${id}-note`} value={note} maxLength={MAX_NOTE_LENGTH} rows={4} onChange={event => { setNote(event.target.value); setMessage(''); }} className="mt-2 block w-full rounded-lg bg-slate-800 p-3" />
+      <textarea id={`${id}-note`} value={note} maxLength={MAX_NOTE_LENGTH} rows={4} onChange={event => { setNote(event.target.value); setMessage(''); }} className="mt-2 block w-full text-base rounded-lg bg-slate-800 p-3" />
     </label>
     <p className="text-xs text-slate-400">{note.length} / {MAX_NOTE_LENGTH}</p>
     <label htmlFor={`${id}-tags`} className="block text-sm">{ja ? 'タグ（カンマ区切り）' : 'Tags (comma separated)'}
-      <input id={`${id}-tags`} value={tags} onChange={event => { setTags(event.target.value); setMessage(''); }} className="mt-2 block w-full rounded-lg bg-slate-800 p-3" />
+      <input id={`${id}-tags`} value={tags} onChange={event => { setTags(event.target.value); setMessage(''); }} className="mt-2 block w-full text-base rounded-lg bg-slate-800 p-3" />
     </label>
     <p className="text-xs text-slate-400">{ja ? '8個まで、各24文字以内。例：ドロー判断, リバー' : 'Up to eight tags, 24 characters each. Example: Draw decisions, River'}</p>
     <div className="flex flex-wrap gap-3">

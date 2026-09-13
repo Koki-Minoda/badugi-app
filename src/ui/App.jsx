@@ -14312,6 +14312,7 @@ export default function App() {
   };
 
   const overlaysProps = {
+    reviewHandId: handIdRef.current,
     handResultVisible:
       sessionSnapshot?.overlays?.handResult?.visible ?? handResultVisible,
     handResultSummary:

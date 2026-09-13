@@ -1,3 +1,4 @@
+import ReviewBookmarkButton from "../review/ReviewBookmarkButton.jsx";
 import React from "react";
 
 function formatAmount(value) {
@@ -264,6 +265,7 @@ function PotSection({ pot, index, singlePot }) {
 }
 
 export default function HandResultOverlay({
+  reviewHandId,
   visible,
   summary,
   mixedInfo,
@@ -375,6 +377,7 @@ export default function HandResultOverlay({
             </div>
           </div>
         )}
+        {(reviewHandId || summary.handId) && <ReviewBookmarkButton key={reviewHandId ?? summary.handId} handId={reviewHandId ?? summary.handId} />}
         {(typeof onHistory === "function" || typeof onCashOut === "function") && (
           <div className="grid gap-2 sm:grid-cols-2">
             {typeof onHistory === "function" && (

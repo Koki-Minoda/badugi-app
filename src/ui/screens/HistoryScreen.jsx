@@ -1,3 +1,5 @@
+import { reviewKey } from "../review/reviewStore.js";
+import ReviewBookmarkButton from "../review/ReviewBookmarkButton.jsx";
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { designTokens } from "../../styles/designTokens.js";
@@ -274,6 +276,7 @@ export default function HistoryScreen() {
           <p className="text-xs uppercase tracking-[0.3em] text-emerald-300">History</p>
           <h1 className="text-2xl sm:text-3xl font-extrabold">トーナメント & ハンド履歴</h1>
         </div>
+        <button type="button" onClick={() => navigate("/learn/review")} className="min-h-11 rounded-full border border-emerald-300/40 px-4 text-emerald-200">復習一覧</button>
         <button
           type="button"
           onClick={handleExportHistory}
@@ -432,7 +435,7 @@ export default function HistoryScreen() {
                 const evaluatorLabel = getEvaluatorLabel(hand);
                 return (
                   <details
-                    key={hand.handId}
+                    key={reviewKey(hand)}
                     className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3"
                   >
                     <summary className="flex flex-col gap-3 cursor-pointer md:flex-row md:items-center md:justify-between">
@@ -458,6 +461,7 @@ export default function HistoryScreen() {
                         </span>
                       </div>
                     </summary>
+                    <div className="mt-3"><ReviewBookmarkButton hand={hand} /></div>
                     <div className="mt-3 grid gap-3 text-sm text-slate-200 md:grid-cols-2">
                       <div className="rounded-xl border border-white/5 bg-slate-900/50 p-3">
                         <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Table</p>
@@ -619,7 +623,7 @@ export default function HistoryScreen() {
             <div className="space-y-3">
               {hands.map((hand) => (
                 <details
-                  key={hand.handId}
+                  key={reviewKey(hand)}
                   className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3"
                 >
                   <summary className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 cursor-pointer">
@@ -642,6 +646,7 @@ export default function HistoryScreen() {
                       </span>
                     </div>
                   </summary>
+                  <div className="mt-3"><ReviewBookmarkButton hand={hand} /></div>
                   <div className="mt-3 space-y-3 text-sm text-slate-200">
                     <div className="overflow-x-auto rounded-xl border border-white/5">
                       <table className="min-w-full text-xs">

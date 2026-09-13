@@ -250,6 +250,7 @@ export default function GameLayoutBase({
   } = tableProps;
 
   const {
+    reviewHandId,
     handResultVisible,
     handResultSummary,
     onNextHand,
@@ -1456,6 +1457,7 @@ export default function GameLayoutBase({
       </Modal>
 
       <HandResultOverlay
+        reviewHandId={reviewHandId}
         visible={handResultVisible}
         summary={handResultSummary}
         onNext={onNextHand}

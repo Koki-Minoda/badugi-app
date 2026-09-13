@@ -1,3 +1,4 @@
+import PracticeScreen from "./ui/practice/PracticeScreen.jsx";
 import ReviewScreen from "./ui/review/ReviewScreen.jsx";
 import RuleQuizScreen from "./ui/learning/RuleQuizScreen.jsx";
 // src/RootApp.jsx
@@ -57,6 +58,8 @@ export default function RootApp() {
         />
         <Route path="/friend-match" element={<FriendMatchSetupScreen />} />
         <Route path="/dev/friend-match" element={<FriendMatchSetupScreen />} />
+        <Route path="/learn/practice" element={<PracticeScreen />} />
+        <Route path="/dev/learn/practice" element={<PracticeScreen />} />
         <Route path="/learn/review" element={<ReviewScreen />} />
         <Route path="/dev/learn/review" element={<ReviewScreen />} />
         <Route path="/learn/quiz" element={<RuleQuizScreen />} />

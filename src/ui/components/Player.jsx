@@ -400,7 +400,7 @@ export default function Player({
   const isActive = turn === index;
   const isFolded = Boolean(player.folded);
   const isOut = Boolean(player.isBusted || player.seatOut);
-  const drawBadgeLabel = resolveDrawBadgeLabel(player);
+  const drawBadgeLabel = layoutProfile?.layoutGroup === "stud" ? null : resolveDrawBadgeLabel(player);
   const playerTitleBadge = player.titleBadge ?? player.opponentTitle ?? null;
   const personalityBadge =
     player.personalityBadge ??
@@ -596,6 +596,9 @@ export default function Player({
         style={{
           padding: "var(--player-pad, 10px)",
           gap: "var(--player-gap, 8px)",
+          ...(layoutProfile?.layoutGroup === "stud" && !compact
+            ? { width: "100%", minWidth: 0, "--player-card-gap": "3px" }
+            : {}),
           ...(compact
             ? {
                 // A hero Stud hand can be intrinsically wider than its grid

@@ -1,3 +1,4 @@
+import RuleQuizScreen from "./ui/learning/RuleQuizScreen.jsx";
 // src/RootApp.jsx
 import React from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
@@ -55,6 +56,8 @@ export default function RootApp() {
         />
         <Route path="/friend-match" element={<FriendMatchSetupScreen />} />
         <Route path="/dev/friend-match" element={<FriendMatchSetupScreen />} />
+        <Route path="/learn/quiz" element={<RuleQuizScreen />} />
+        <Route path="/dev/learn/quiz" element={<RuleQuizScreen />} />
         <Route path="/learn" element={<LearningHubScreen />} />
         <Route path="/dev/learn" element={<LearningHubScreen />} />
         <Route path="/mixed" element={<MixedGameScreen />} />

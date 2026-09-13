@@ -1,3 +1,5 @@
+import { resolveInitialGame } from "../mixed/rotationUtils.js";
+import { normalizeAppVariantId } from "../game/appVariantRouting.js";
 import { LEARNING_PRESETS } from "../learning/learningCatalog.js";
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -114,9 +116,17 @@ const buildDraftFromProfile = (profile = {}) => ({
 
 const parseIdList = (value = "") =>
   value
-    .split(/[,\\s]+/)
-    .map((id) => id.trim())
+    .split(/[,\s]+/)
+    .map((id) => id.trim().toUpperCase())
     .filter(Boolean);
+
+function IdListInput({ ids, onCommit, ...props }) {
+  const [text, setText] = useState(() => ids.join(", "));
+  useEffect(() => { setText(ids.join(", ")); }, [ids]);
+  return <input {...props} type="text" value={text}
+    onChange={event => setText(event.target.value)}
+    onBlur={() => onCommit(parseIdList(text))} />;
+}
 
 function SelectedList({ draft, setDraft, isVariantPlayable }) {
   const selectionMode = draft.selectionMode;
@@ -230,7 +240,6 @@ export default function MixedGameScreen({ language = readStoredLanguage() }) {
     profiles,
     saveProfile,
     deleteProfile,
-    activateProfile,
     proPresets = [],
     activeProfileId,
     isVariantPlayable,
@@ -423,18 +432,15 @@ export default function MixedGameScreen({ language = readStoredLanguage() }) {
 
   const handleStart = () => {
     if (blockWhenLocked()) return;
-    if (!draft.selectedGameIds.some((id) => isVariantPlayable(id))) {
+    const resolved = resolveInitialGame(draft, null, isVariantPlayable);
+    if (!resolved) {
       setError("プレイ可能なゲームが含まれていません。Badugi などを追加してください。");
       return;
     }
     const saved = saveProfile(draft);
-    const result = activateProfile(saved.id);
-    if (!result) {
-      setError("Mixed Game の開始に失敗しました。");
-      return;
-    }
     setMessage(`${saved.name} を開始します。`);
-    setTimeout(() => navigate("/game"), 200);
+    const initialId = resolved.gameId;
+    navigate(`/game?variant=${normalizeAppVariantId(initialId)}`, { state: { mixedProfileId: saved.id } });
   };
 
   const builderDisabled = mixedLocked;
@@ -769,30 +775,18 @@ export default function MixedGameScreen({ language = readStoredLanguage() }) {
             <div className="grid gap-4 md:grid-cols-2">
               <label className="flex flex-col gap-2 text-sm text-slate-300">
                 Hard Ban（必ず除外）
-                <input
-                  type="text"
-                  value={(draft.hardBans || []).join(", ")}
-                  onChange={(e) =>
-                    setDraft((prev) => ({
-                      ...prev,
-                      hardBans: parseIdList(e.target.value),
-                    }))
-                  }
+                <IdListInput
+                  ids={draft.hardBans}
+                  onCommit={(ids) => setDraft(prev => ({ ...prev, hardBans: ids }))}
                   className="rounded-xl bg-slate-950/60 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   placeholder="例: B09, ST4"
                 />
               </label>
               <label className="flex flex-col gap-2 text-sm text-slate-300">
                 Soft Ban（優先度を下げる）
-                <input
-                  type="text"
-                  value={(draft.softBans || []).join(", ")}
-                  onChange={(e) =>
-                    setDraft((prev) => ({
-                      ...prev,
-                      softBans: parseIdList(e.target.value),
-                    }))
-                  }
+                <IdListInput
+                  ids={draft.softBans}
+                  onCommit={(ids) => setDraft(prev => ({ ...prev, softBans: ids }))}
                   className="rounded-xl bg-slate-950/60 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   placeholder="例: B09"
                 />

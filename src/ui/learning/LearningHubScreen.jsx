@@ -33,13 +33,17 @@ export default function LearningHubScreen() {
         <div className="flex items-center gap-4"><label className="text-sm">{ja ? '言語' : 'Language'} <select aria-label="Language" className="rounded bg-slate-800 p-2" value={language} onChange={e => { setLanguage(e.target.value); try { localStorage.setItem(LANGUAGE_STORAGE_KEY, e.target.value); } catch { /* Session-only language. */ } }}><option value="ja">日本語</option><option value="en">English</option></select></label><Link to="/menu" className="text-emerald-200 underline">{ja ? 'メニュー' : 'Menu'}</Link></div>
       </header>
       <p className="max-w-3xl text-slate-300">{ja ? '勝ち方・カード・手番を確認してから対局へ。練習プランでは前の種目との違いを確認できます。' : 'Review the winning hand, cards and action order before playing. A practice plan highlights what changes between games.'}</p>
+      <Link to="/learn/quiz" className="block rounded-2xl border border-emerald-300/40 bg-emerald-400/10 p-5">
+        <span className="block text-lg font-bold">{ja ? 'クイズでルールを確認する' : 'Check your rules knowledge'}</span>
+        <span className="mt-2 block text-sm text-slate-300">{ja ? 'A-5・2-7の役比較、Badugiの有効枚数、8以下のロー。1回6問。' : 'A-5 and 2-7 comparisons, Badugi card counts and eight-or-better low. Six questions.'}</span>
+      </Link>
       <section aria-label={ja ? '目的別MIXテンプレート' : 'MIX practice templates'} className="grid gap-3 md:grid-cols-3">{LEARNING_PRESETS.map(p => <button key={p.id} type="button" aria-pressed={plan?.id === p.id} onClick={() => { setParams({ plan: p.id }); setMessage(''); }} className={`rounded-2xl border p-5 text-left ${plan?.id === p.id ? 'border-emerald-300 bg-emerald-400/10' : 'border-white/20 bg-slate-900 hover:border-emerald-300'}`}>
         <span className="block text-lg font-bold">{p.title[language]}</span><span className="mt-2 block text-sm text-slate-300">{p.description[language]}</span><span className="mt-3 block text-xs text-emerald-200">{p.selectedGameIds.length}{ja ? '種目 · 各' : ' games · '}{p.handsPerGame}{ja ? 'ハンド／1巡' : ' hands each per rotation'}</span>
       </button>)}</section>
       {plan && <section className="space-y-3 rounded-2xl border border-emerald-400/30 p-4" aria-label={ja ? '練習する順番' : 'Practice order'}>
         <h2 className="font-bold">{ja ? '練習する順番' : 'Practice order'}</h2>
         <ol className="flex flex-wrap gap-2">{plan.selectedGameIds.map((id, index) => { const game = getLearningGame(id); return <li key={id}><button type="button" onClick={() => selectVariant(game)} aria-current={selected.id === game.id ? 'step' : undefined} className={`min-h-11 rounded-lg border px-3 text-sm ${selected.id === game.id ? 'border-emerald-300 bg-emerald-400/20' : 'border-white/20'}`}>{index + 1}. {game.name}</button></li>; })}</ol>
-        <p className="text-sm text-slate-300">{ja ? 'この画面では種目ごとに開始します。テンプレートは種目順と切替ハンド数を保存し、MIX設定で確認・編集できます。大会の解放条件は変わりません。' : 'Start each game separately here. Save the game order and hands per game to review and edit in MIX settings. Existing unlock requirements still apply.'}</p>
+        <p className="text-sm text-slate-300">{ja ? '種目別に始めるか、MIX設定から連続プレイできます。公開前の種目は自動で飛ばします。MIXの解放条件は変わりません。' : 'Play a single game here or start a continuous session from MIX settings. Unreleased games are skipped. Existing MIX unlock requirements still apply.'}</p>
         <div className="flex flex-wrap gap-3"><button onClick={savePlan} type="button" className="min-h-11 rounded-lg bg-emerald-300 px-4 font-semibold text-slate-950">{ja ? 'テンプレートを保存' : 'Save template'}</button><Link to={`/mixed?preset=${plan.id}`} className="rounded-lg border border-white/25 px-4 py-3">{ja ? 'MIX設定で確認' : 'Review MIX settings'}</Link></div>
         {message && <p role="status" className="text-sm text-emerald-200">{message}</p>}
       </section>}

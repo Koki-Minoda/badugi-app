@@ -244,6 +244,7 @@ export default function GameLayoutBase({
     boardCards = [],
     streetLabel = "",
     gameVariant = "badugi",
+    mixedRotation = null,
     layoutProfile,
     eliminatedRailEntries = [],
   } = tableProps;
@@ -314,8 +315,16 @@ export default function GameLayoutBase({
     tableLayoutGroup === LAYOUT_GROUPS.DRAW_LOWBALL_5CARD;
   const isStudTable = tableLayoutGroup === LAYOUT_GROUPS.STUD;
   const isPortraitStudTable = isMobilePortraitMode && isStudTable;
+  const desktopStudSeats = [
+    "absolute bottom-0 left-1/2 -translate-x-1/2 w-[31%]",
+    "absolute bottom-0 left-0 w-[31%]",
+    "absolute top-0 left-0 w-[31%]",
+    "absolute top-0 left-1/2 -translate-x-1/2 w-[31%]",
+    "absolute top-0 right-0 w-[31%]",
+    "absolute bottom-0 right-0 w-[31%]",
+  ];
   const isPortraitCompactTable = isPortraitDrawTable || isPortraitStudTable;
-  const useRailPhasePanel = isPortraitCompactTable;
+  const useRailPhasePanel = isPortraitDrawTable;
   const useDenseActionPanel =
     isMobileTournament || isPortraitCompactTable || isMobileLandscapeMode;
   const renderedTournamentHud =
@@ -345,9 +354,12 @@ export default function GameLayoutBase({
     1,
     (Number(betRoundValue) || 0) + 1,
   );
-  const phaseCompactText = `${displayPhase} | D${drawNumberForDisplay} | R${betRoundNumberForDisplay}`;
+  const usesStreetProgress = isStudTable || (Boolean(streetLabel) && tableLayoutGroup === LAYOUT_GROUPS.DEFAULT);
+  const phaseCompactText = usesStreetProgress
+    ? `${displayPhase} | ${streetLabel}`
+    : `${displayPhase} | D${drawNumberForDisplay} | R${betRoundNumberForDisplay}`;
   const phasePrimaryText = displayPhase;
-  const phaseSecondaryText = `R${betRoundNumberForDisplay}`;
+  const phaseSecondaryText = usesStreetProgress ? streetLabel : `R${betRoundNumberForDisplay}`;
   const drawRailItems = [
     { key: "R1", label: `R${betRoundNumberForDisplay}`, value: displayPhase },
     {
@@ -949,7 +961,7 @@ export default function GameLayoutBase({
                       {isDrawDisplayPhase
                         ? `${phaseCompactText} · DRAW RUSHER`
                         : useDenseActionPanel
-                          ? `${displayPhase} | R${betRoundNumberForDisplay}`
+                          ? `${displayPhase} | ${phaseSecondaryText}`
                           : boardCards.length > 0 || streetLabel
                             ? `${displayPhase} · ${streetLabel || "Board"}`
                             : phaseCompactText}
@@ -1001,7 +1013,7 @@ export default function GameLayoutBase({
                       <div
                         key={seat.seatIndex ?? idx}
                         className={`flex flex-col ${seatAlignClass} ${mobileSeatLiftClass} ${isMobileLayout ? "gap-1" : "gap-3"} overflow-visible hover:z-[180] focus-within:z-[180] ${
-                          isMobileLayout ? "" : (seatLayouts[idx] ?? "")
+                          isMobileLayout ? "" : ((isStudTable ? desktopStudSeats[idx] : seatLayouts[idx]) ?? "")
                         }`}
                         style={
                           isMobileLayout
@@ -1067,6 +1079,9 @@ export default function GameLayoutBase({
                   data-testid="phase-compact-strip"
                   className={`${isMobileLayout ? (useRailPhasePanel ? "rounded-lg px-1 py-0.5 text-[10px]" : useDenseActionPanel ? "rounded-lg px-2 py-0.5 text-[10px]" : "rounded-2xl p-2 text-base") : "rounded-2xl p-3"} flex items-center justify-between border font-black shadow-lg ${phaseAccentClass}`}
                 >
+                  {mixedRotation && <span data-testid="mixed-rotation-status" className="mr-2 shrink-0 text-xs text-emerald-200">
+                    MIX {mixedRotation.handsPlayedInCurrentGame + 1}/{mixedRotation.handsPerGame}
+                  </span>}
                   {useRailPhasePanel ? (
                     <div className="grid w-full grid-cols-4 overflow-hidden rounded-md border border-white/10 bg-black/20">
                       {drawRailItems.map((item, itemIndex) => (
@@ -1122,7 +1137,12 @@ export default function GameLayoutBase({
                           </p>
                         )}
                       </div>
-                      <div className="text-right">
+                      {usesStreetProgress ? (
+                        <div className="text-right">
+                          <p className="text-[10px] uppercase tracking-wider text-slate-400">Street</p>
+                          <p className="text-base font-semibold text-white">{streetLabel}</p>
+                        </div>
+                      ) : <div className="text-right">
                         <p className="text-[10px] uppercase tracking-wider text-slate-400">
                           Draw
                         </p>
@@ -1135,7 +1155,7 @@ export default function GameLayoutBase({
                         <p className="text-base font-semibold text-white">
                           R{betRoundNumberForDisplay}
                         </p>
-                      </div>
+                      </div>}
                     </>
                   )}
                 </div>

@@ -1,5 +1,7 @@
 # MGX 学習入口・ルール確認・MIXテンプレート 実装とQA/QM
 
+追記: この記録にあるMIX自動進行の未接続は、[追加実装とQA/QM](MIX-QUIZ-QA-QM.md)で解消済み。以下は前回 `a705cb3` 時点の記録。
+
 2026-09-13。今回の3機能について、ローカル実装・QA・QMを完了。
 基準: リリース済み `origin/main` (`dec0cd17f7af93e8d85b2f41dd9b08416cbf6131`)。
 作業ブランチ: `codex/mgx-learning-entry`。本番への反映は未実施。

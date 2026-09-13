@@ -1,7 +1,11 @@
+import { MixedGameContext } from "./mixed/mixedGameContext.js";
+import { computeUnlockState } from "./utils/playerProgress.js";
+import { getPlayerProgressFromConsolidated } from "./utils/consolidatedProgress.js";
 import LearningGameLaunch from "./learning/LearningGameLaunch.jsx";
 // src/ui/App.jsx
 import React, {
   useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -427,6 +431,10 @@ function readStoredAuthIdentity() {
 
 export default function App() {
   const location = useLocation();
+  const mixedGame = useContext(MixedGameContext);
+  const mixedGameRef = useRef(mixedGame);
+  mixedGameRef.current = mixedGame;
+  const cashMixActiveRef = useRef(false);
   const [tournamentSession, setTournamentSession] = useState(() =>
     loadActiveTournamentSession(),
   );
@@ -441,7 +449,7 @@ export default function App() {
   const modeRef = useRef(initialModeRef.current);
   const [language, setLanguage] = useState(() => getInitialLanguage());
   // MGX branding: kitsune title screen + title → menu → game flow (2025-11-28)
-  const [currentScreen, setCurrentScreen] = useState(() => location.state?.learningVariant ? "menu" : "title");
+  const [currentScreen, setCurrentScreen] = useState(() => (location.state?.learningVariant || location.state?.mixedProfileId) ? "menu" : "title");
   const [hubActiveSnapshot, setHubActiveSnapshot] = useState(null);
   const [gameUtilityModal, setGameUtilityModal] = useState(null);
   const pendingRingStartRef = useRef(false);
@@ -629,7 +637,7 @@ export default function App() {
   const controllerStreetRef = useRef(null);
   const studStreetPauseUntilRef = useRef(0);
   const [studStreetPauseToken, setStudStreetPauseToken] = useState(0);
-  const uiAdapterRef = useRef(null);
+  const [uiAdapterSelection, setUIAdapterSelection] = useState(null);
 
   useEffect(() => {
     migrateLegacyProgressToV2();
@@ -1040,7 +1048,9 @@ export default function App() {
     }
   })();
   const adapterViewProps = useMemo(() => {
-    const adapter = uiAdapterRef.current;
+    const adapter = uiAdapterSelection?.variantId === normalizeAppVariantId(gameVariant)
+      ? uiAdapterSelection.adapter
+      : null;
     if (!adapter || !controllerSnapshot) return null;
     try {
       return adapter.buildViewProps({
@@ -1051,7 +1061,7 @@ export default function App() {
       console.warn("[UI-ADAPTER] buildViewProps error", error);
       return null;
     }
-  }, [controllerSnapshot, tableConfig]);
+  }, [controllerSnapshot, tableConfig, gameVariant, uiAdapterSelection]);
   const [deck, setDeck] = useState([]);
   const [engineState, setEngineState] = useState(null);
   const [controllerUiSnapshotState, setControllerUiSnapshotState] =
@@ -2110,8 +2120,8 @@ export default function App() {
   );
 
   const buildNlhTableConfig = useCallback(
-    () => ({
-      seats: players.map((player, idx) => ({
+    (roster = players) => ({
+      seats: roster.map((player, idx) => ({
         seatIndex: idx,
         playerId: player?.playerId ?? null,
         name: player?.name ?? `Seat ${idx + 1}`,
@@ -2457,7 +2467,12 @@ export default function App() {
     } else {
       ensureBadugiUIAdapterRegistered({ gameDefinition });
     }
-    uiAdapterRef.current = getGameUIAdapter(normalizedVariant) ?? null;
+    const adapter = getGameUIAdapter(normalizedVariant) ?? null;
+    setUIAdapterSelection((previous) =>
+      previous?.variantId === normalizedVariant && previous.adapter === adapter
+        ? previous
+        : { variantId: normalizedVariant, adapter },
+    );
   }, [ensureGameController, gameDefinition, gameVariant]);
   const setDrawRoundValue = useCallback((value) => {
     const previous = drawRoundTracker.current;
@@ -7013,6 +7028,8 @@ export default function App() {
   }, []);
 
   const handleCashOutBackToMenu = () => {
+    cashMixActiveRef.current = false;
+    mixedGameRef.current?.deactivateMixedGame();
     setCashOutSummary(null);
     resetTableStateToSafeDefaults({
       reason: "cash-out-back-to-menu",
@@ -7040,7 +7057,12 @@ export default function App() {
 
   const handleSelectRing = (
     variantId = gameVariantRef.current ?? DEFAULT_GAME_VARIANT,
+    { keepMixed = false } = {},
   ) => {
+    if (!keepMixed) {
+      cashMixActiveRef.current = false;
+      mixedGameRef.current?.deactivateMixedGame();
+    }
     const normalizedVariant = normalizeAppVariantId(
       variantId,
       DEFAULT_GAME_VARIANT,
@@ -7070,6 +7092,7 @@ export default function App() {
       setCurrentScreen("chinesePoker");
       return;
     }
+    initializeVariantRotation({ rotation: [normalizedVariant], policy: "fixed", initialVariant: normalizedVariant });
     resetInitialButtonState();
     modeRef.current = "cash";
     setMode("cash");
@@ -7088,6 +7111,8 @@ export default function App() {
   };
 
   const handleSelectTournament = (configOverride = null) => {
+    cashMixActiveRef.current = false;
+    mixedGameRef.current?.deactivateMixedGame();
     if (!configOverride) {
       setCurrentScreen("tournamentHub");
       return;
@@ -7356,7 +7381,17 @@ export default function App() {
         legacyGameController?.startNewHand
       ) {
         try {
-          legacyGameController.updateTableConfig?.(buildNlhTableConfig());
+          legacyGameController.updateTableConfig?.(buildNlhTableConfig(
+            cashMixActiveRef.current ? resolvedPrevPlayers : undefined,
+          ));
+          if (cashMixActiveRef.current) {
+            // These controllers advance from the preceding seat in startNewHand.
+            // Seed the canonical button even when crossing controller families.
+            legacyGameController.syncExternalState?.({
+              players: resolvedPrevPlayers.map((player, seatIndex) => ({ ...player, seatIndex })),
+              dealerIndex: (nextDealerIdx - 1 + resolvedPrevPlayers.length) % resolvedPrevPlayers.length,
+            });
+          }
           controllerHandSnapshot = legacyGameController.startNewHand({
             handId: `board-hand-${nextHandNumber}`,
           });
@@ -8182,6 +8217,14 @@ export default function App() {
           setShowNextButton(false);
           setHandResultVisible(false);
           return false;
+        }
+      }
+      if (mode !== "tournament-mtt" && cashMixActiveRef.current && handCountRef.current > 0) {
+        const completed = mixedGameRef.current?.handleHandCompletion(handIdRef.current);
+        if (completed?.nextGameId) {
+          const nextVariant = normalizeAppVariantId(completed.nextGameId);
+          gameVariantRef.current = nextVariant;
+          setGameVariant(nextVariant);
         }
       }
       const nextHandNumber = handCountRef.current + 1;
@@ -13960,11 +14003,20 @@ export default function App() {
             onAuthenticated={handleAuthSuccess}
             onAuthStateChange={handleAuthStateChange}
           >
-            {location.state?.learningVariant ? <LearningGameLaunch
-              variantId={location.state.learningVariant}
+            {(location.state?.learningVariant || location.state?.mixedProfileId) ? <LearningGameLaunch
+              variantId={location.state.learningVariant ?? location.state.mixedProfileId}
               onLaunch={(variantId) => {
                 navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
-                handleSelectRing(variantId);
+                if (location.state?.mixedProfileId) {
+                  if (computeUnlockState(getPlayerProgressFromConsolidated()).mixedGameLocked) {
+                    navigate("/mixed", { replace: true });
+                    return;
+                  }
+                  const result = mixedGameRef.current?.activateProfile(variantId);
+                  if (!result) { navigate("/mixed", { replace: true }); return; }
+                  cashMixActiveRef.current = true;
+                  handleSelectRing(normalizeAppVariantId(result.gameId), { keepMixed: true });
+                } else handleSelectRing(variantId);
               }}
             /> : <MenuScreenWithLogout
               language={language}
@@ -14226,6 +14278,7 @@ export default function App() {
   const tablePots = potsSrc;
 
   const tableProps = {
+    mixedRotation: cashMixActiveRef.current && mode === "cash" ? mixedGame?.runtimeState : null,
     tableOuterBg,
     tournamentHud,
     tableSurfaceBg,

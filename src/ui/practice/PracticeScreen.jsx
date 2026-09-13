@@ -5,6 +5,7 @@ import ReviewBookmarkButton from '../review/ReviewBookmarkButton.jsx';
 import { PRACTICE_GAMES, PRACTICE_CARDS, PracticeSession, validatePracticeSetup } from './practiceSession.js';
 import { parsePracticeUrl } from './practiceTransfer.js';
 import PracticePresets from './PracticePresets.jsx';
+import { recordPracticeCompletion, progressError } from '../learning/progress/progressStore.js';
 
 const cardLabel = card => card.replace(/S$/, '♠').replace(/H$/, '♥').replace(/D$/, '♦').replace(/C$/, '♣');
 const actionLabels = { FOLD: ['フォールド', 'Fold'], CHECK: ['チェック', 'Check'], CALL: ['コール', 'Call'], RAISE: ['レイズ', 'Raise'], BET: ['ベット', 'Bet'] };
@@ -22,6 +23,7 @@ function PracticeContent({ incoming }) {
   const [session, setSession] = useState(null);
   const [version, setVersion] = useState(0);
   const [selection, setSelection] = useState([]);
+  const [progressSaveError, setProgressSaveError] = useState('');
   const [error, setError] = useState(incoming?.error ? (ja ? '練習条件を読み込めませんでした。種目と開始手札を選び直してください。' : 'Could not load this setup. Choose the game and starting cards again.') : '');
   const game = PRACTICE_GAMES.find(item => item.id === variant);
   const snapshot = session?.snapshot;
@@ -34,11 +36,17 @@ function PracticeContent({ incoming }) {
   const hero = snapshot?.players?.[0];
   const toCall = Math.min(hero?.stack ?? 0, Math.max(0, (snapshot?.currentBet ?? 0) - (hero?.betThisRound ?? hero?.bet ?? 0)));
   const betSize = (snapshot?.drawRound ?? 0) >= 2 ? 40 : 20;
+  useEffect(() => {
+    if (!session || !finished) return;
+    try { recordPracticeCompletion(session.record()); setProgressSaveError(''); }
+    catch (failure) { setProgressSaveError(failure.message); }
+  }, [session, finished]);
   function start() {
     try {
       setSession(new PracticeSession(variant, cards));
       setSelection([]);
       setError('');
+      setProgressSaveError('');
     } catch { setError(ja ? '練習を開始できませんでした。手札を選び直してください。' : 'Could not start practice. Please choose your hand again.'); }
   }
   function act(action) {
@@ -88,6 +96,7 @@ function PracticeContent({ incoming }) {
             <div className="flex flex-wrap justify-center gap-2">{legal.map(action => action.type === 'DRAW' ? <button type="button" key="DRAW" disabled={Boolean(error)} className={`${buttonClass} bg-emerald-300 text-slate-950`} onClick={() => act({ type: 'DRAW', discardIndexes: selection })}>{ja ? `${selection.length}枚交換する` : `Draw ${selection.length} cards`}</button> : <button type="button" key={action.type} disabled={Boolean(error)} className={buttonClass} onClick={() => act({ type: action.type })}>{actionLabels[action.type]?.[ja ? 0 : 1] ?? action.type}{action.type === 'CALL' ? ` ${toCall}` : ['RAISE', 'BET'].includes(action.type) ? ` +${betSize}` : ''}</button>)}</div>
           </div>}
           {finished && <div className="space-y-4" data-testid="practice-result">
+            {progressSaveError && <div className="text-sm text-amber-200"><p role="alert">{progressError(progressSaveError, ja)}</p><button type="button" className="min-h-11 underline" onClick={() => { try { recordPracticeCompletion(session.record()); setProgressSaveError(''); } catch (failure) { setProgressSaveError(failure.message); } }}>{ja ? '進捗の保存を再試行' : 'Retry saving progress'}</button></div>}
             <p className="text-center text-sm text-emerald-200">{ja ? '勝者' : 'Winner'}: {(snapshot.lastHandResult?.winners ?? []).map(winner => winner.seatIndex === 0 ? (ja ? '自分' : 'You') : `CPU ${winner.seatIndex}`).join(', ')}</p>
             <p className="text-center text-lg font-bold">{ja ? 'このハンドの増減' : 'This hand’s change'}: {hero.stack - 2000 >= 0 ? '+' : ''}{hero.stack - 2000}</p>
             <ReviewBookmarkButton key={session.handId} hand={session.record()} language={language} />

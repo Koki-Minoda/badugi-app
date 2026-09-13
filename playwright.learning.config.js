@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './tests/e2e',
-  testMatch: ['learning-entry.spec.ts', 'mixed-learning.spec.ts', 'hand-review.spec.ts', 'practice-hand.spec.ts', 'practice-presets.spec.ts'],
+  testMatch: ['learning-entry.spec.ts', 'mixed-learning.spec.ts', 'hand-review.spec.ts', 'practice-hand.spec.ts', 'practice-presets.spec.ts', 'learning-progress.spec.ts'],
   timeout: 30000,
   workers: 1,
   reporter: [['list'], ['json', { outputFile: 'reports/learning-entry/e2e-results.json' }]],

@@ -7,7 +7,7 @@ import RuleQuizScreen from '../RuleQuizScreen.jsx';
 
 afterEach(() => { cleanup(); localStorage.clear(); vi.restoreAllMocks(); });
 describe('quiz answers verified independently of engine output', () => {
-  const expected = ['left', 'right', 'left', 'right', 'right', 'right', 'left', 'right', 'tie', 'tie', '4', '1', '3', '3', '2', '4', 'yes', 'yes', 'no', 'no', 'no', 'yes'];
+  const expected = ['left', 'right', 'left', 'right', 'right', 'right', 'left', 'right', 'tie', 'tie', '4', '1', '3', '3', '2', '4', 'yes', 'yes', 'no', 'no', 'no', 'yes', 'three', 'one', 'zero', 'four', 'both', 'no', 'high', 'no'];
   it.each(QUIZ_QUESTIONS.map((question, i) => [question.id, question, expected[i]]))('%s has the reviewed answer', (_id, question, answer) => {
     expect(answerForQuestion(question)).toBe(answer);
   });

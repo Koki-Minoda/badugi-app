@@ -5,6 +5,7 @@ import { useMixedGame } from '../mixed/useMixedGame.js';
 import { LEARNING_GAMES, LEARNING_PRESETS, getLearningGame, readLearningLanguage } from './learningCatalog.js';
 import RuleCard from './RuleCard.jsx';
 import { LANGUAGE_STORAGE_KEY } from '../../config/mgxLocaleConfig.js';
+import LearningDashboard from './progress/LearningDashboard.jsx';
 
 export default function LearningHubScreen() {
   const [params, setParams] = useSearchParams();
@@ -33,6 +34,7 @@ export default function LearningHubScreen() {
         <div className="flex items-center gap-4"><label className="text-sm">{ja ? '言語' : 'Language'} <select aria-label="Language" className="rounded bg-slate-800 p-2" value={language} onChange={e => { setLanguage(e.target.value); try { localStorage.setItem(LANGUAGE_STORAGE_KEY, e.target.value); } catch { /* Session-only language. */ } }}><option value="ja">日本語</option><option value="en">English</option></select></label><Link to="/menu" className="text-emerald-200 underline">{ja ? 'メニュー' : 'Menu'}</Link></div>
       </header>
       <p className="max-w-3xl text-slate-300">{ja ? '勝ち方・カード・手番を確認してから対局へ。練習プランでは前の種目との違いを確認できます。' : 'Review the winning hand, cards and action order before playing. A practice plan highlights what changes between games.'}</p>
+      <LearningDashboard language={language} />
       <Link to="/learn/practice" className="block rounded-2xl border border-emerald-300/40 bg-emerald-400/10 p-5">
         <span className="block text-lg font-bold">{ja ? '開始手札を決めて練習する' : 'Practice a starting hand'}</span>
         <span className="mt-2 block text-sm text-slate-300">{ja ? 'Badugi・A-5・2-7。自分の手札を選んで繰り返し練習できます。' : 'Badugi, A-5 and 2-7. Choose your cards and repeat a practice hand.'}</span>

@@ -84,7 +84,7 @@ test('save different game histories with reused IDs, edit in English, and remove
   }
   await page.goto('/learn');
   await page.getByRole('combobox', { name: 'Language' }).selectOption('en');
-  await page.getByRole('link', { name: /Review saved hands/ }).click();
+  await page.locator('a[href="/learn/review"]').filter({ hasText: 'Review saved hands' }).click();
   await expect(page.getByRole('heading', { name: 'Saved hands' })).toBeVisible();
   await page.getByRole('combobox', { name: 'Game', exact: true }).selectOption('stud');
   const item = page.getByTestId('saved-hand');

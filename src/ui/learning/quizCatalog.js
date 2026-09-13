@@ -1,7 +1,9 @@
 import { evaluateLowHand } from '../../games/evaluators/low.js';
 import { evaluateBadugi } from '../../games/badugi/utils/badugiEvaluator.js';
+import { DRAW_RULE_QUESTIONS } from './drawRuleQuestions.js';
 
 export const QUIZ_TOPICS = [
+  { id: 'draw_rules', ja: '種目切り替えと交換ルール', en: 'Game switching and draw rules' },
   { id: 'lowball', ja: 'A-5と2-7の役比較', en: 'A-5 and 2-7 comparisons' },
   { id: 'badugi', ja: 'Badugiの有効枚数', en: 'Badugi card counts' },
   { id: 'low8', ja: '8-or-betterの成立条件', en: 'Eight-or-better qualification' },
@@ -25,9 +27,11 @@ export const QUIZ_QUESTIONS = [
     ['9C', '7D', '5H', '3S', 'AC'], ['2S', '2H', '3D', '4C', '5D'],
     ['AC', 'AD', '3H', '4S', '5C'], ['8S', '7S', '6S', '5S', '4S'],
   ].map((cards, index) => ({ id: `low8-${index}`, topic: 'low8', kind: 'qualifier', cards })),
+  ...DRAW_RULE_QUESTIONS,
 ];
 
 export function answerForQuestion(question) {
+  if (question.kind === 'rule') return question.answer;
   if (question.kind === 'count') return String(evaluateBadugi(question.cards).count);
   if (question.kind === 'qualifier') {
     // The five-card qualifier also requires distinct ranks. The generic low
@@ -41,6 +45,7 @@ export function answerForQuestion(question) {
 }
 
 export function quizExplanation(question, language = 'ja') {
+  if (question.kind === 'rule') return question.explanation[language];
   const ja = language === 'ja';
   if (question.kind === 'count') return ja
     ? `ランクとスートがどちらも重複しない組合せの最大は${answerForQuestion(question)}枚です。`

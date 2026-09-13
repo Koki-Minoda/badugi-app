@@ -51,8 +51,9 @@ for (const game of games) test(`${game.id}: play selected cards, repeat, save, a
   await page.getByRole('button', { name: '同じ開始手札でもう一度' }).click();
   await expect(page.getByTestId('practice-result')).toHaveCount(0);
   await expect(page.getByTestId('practice-hero-hand').getByRole('button')).toHaveText(game.cards);
-  const after = await page.evaluate(() => { const all = { ...localStorage }; delete all['mgx.handReviews.v1']; return all; });
+  const after = await page.evaluate(() => { const all = { ...localStorage }; delete all['mgx.handReviews.v1']; delete all['mgx.learningProgress.v1']; return all; });
   expect(after).toEqual(before);
+  expect(await page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('mgx.learningProgress.v1')!).practices).length)).toBe(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
   await page.getByRole('button', { name: '条件を変更' }).click();
   await expect(page.getByRole('button', { name: 'この手札で練習する' })).toBeVisible();
@@ -60,6 +61,8 @@ for (const game of games) test(`${game.id}: play selected cards, repeat, save, a
   await expect(page.getByTestId('saved-hand')).toContainText('配牌練習');
   await page.getByTestId('saved-hand').locator('summary').click();
   await expect(page.getByRole('heading', { name: '自分の最初の手札' })).toBeVisible();
+  await page.getByRole('link', { name: '学習に戻る', exact: true }).click();
+  await expect(page.getByTestId('learning-totals')).toContainText(/練習完了\s*1/);
   expect(errors).toEqual([]);
 });
 

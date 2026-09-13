@@ -58,6 +58,15 @@ test('save a real hand result, annotate, reload, retain after history removal, a
   await expect(item).toHaveCount(0);
   await page.getByRole('button', { name: '絞り込みを解除' }).click();
   await expect(item).toHaveCount(1);
+  await item.locator('summary').click();
+  await item.getByRole('link', { name: 'この開始手札で練習', exact: true }).click();
+  await expect(page.getByRole('combobox', { name: '種目', exact: true })).toHaveValue('ace_to_five_triple_draw');
+  const hero = saved[0].hand.seats.find(seat => seat.isHero) ?? saved[0].hand.seats.find(seat => seat.seat === 0);
+  for (const card of hero.initialHand) {
+    const label = card.replace(/S$/, '♠').replace(/H$/, '♥').replace(/D$/, '♦').replace(/C$/, '♣');
+    await expect(page.getByRole('button', { name: label, exact: true })).toHaveAttribute('aria-pressed', 'true');
+  }
+  await expect(page.getByTestId('practice-table')).toHaveCount(0);
 });
 
 test('save different game histories with reused IDs, edit in English, and remove only one review', async ({ page }) => {

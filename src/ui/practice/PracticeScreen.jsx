@@ -1,22 +1,28 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { readLearningLanguage } from '../learning/learningCatalog.js';
 import ReviewBookmarkButton from '../review/ReviewBookmarkButton.jsx';
 import { PRACTICE_GAMES, PRACTICE_CARDS, PracticeSession, validatePracticeSetup } from './practiceSession.js';
+import { parsePracticeUrl } from './practiceTransfer.js';
+import PracticePresets from './PracticePresets.jsx';
 
 const cardLabel = card => card.replace(/S$/, '♠').replace(/H$/, '♥').replace(/D$/, '♦').replace(/C$/, '♣');
 const actionLabels = { FOLD: ['フォールド', 'Fold'], CHECK: ['チェック', 'Check'], CALL: ['コール', 'Call'], RAISE: ['レイズ', 'Raise'], BET: ['ベット', 'Bet'] };
 const buttonClass = 'min-h-11 rounded-xl border border-white/25 px-4 py-2 font-semibold';
 
 export default function PracticeScreen() {
+  const location = useLocation();
+  return <PracticeContent key={location.key} incoming={parsePracticeUrl(location.search)} />;
+}
+function PracticeContent({ incoming }) {
   const language = readLearningLanguage();
   const ja = language === 'ja';
-  const [variant, setVariant] = useState(PRACTICE_GAMES[0].id);
-  const [cards, setCards] = useState([...PRACTICE_GAMES[0].defaults]);
+  const [variant, setVariant] = useState(incoming?.variant ?? PRACTICE_GAMES[0].id);
+  const [cards, setCards] = useState(incoming?.cards ?? (incoming?.error ? [] : [...PRACTICE_GAMES[0].defaults]));
   const [session, setSession] = useState(null);
   const [version, setVersion] = useState(0);
   const [selection, setSelection] = useState([]);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(incoming?.error ? (ja ? '練習条件を読み込めませんでした。種目と開始手札を選び直してください。' : 'Could not load this setup. Choose the game and starting cards again.') : '');
   const game = PRACTICE_GAMES.find(item => item.id === variant);
   const snapshot = session?.snapshot;
   const finished = session?.finished ?? false;
@@ -58,6 +64,7 @@ export default function PracticeScreen() {
       <p className="rounded-xl border border-amber-200/30 bg-amber-200/5 p-3 text-sm text-amber-100" data-testid="practice-mode-notice">{ja ? '練習専用 · レート・通常の対局成績には反映されません。' : 'Practice only · Does not affect ratings or regular game statistics.'}</p>
       {error && <p role="alert" className="text-amber-200">{error}</p>}
       {!session ? <section className="space-y-5 rounded-2xl border border-white/15 bg-slate-900 p-4 sm:p-6">
+        {incoming && !incoming.error && <p className="text-sm text-emerald-200">{ja ? '開始手札を読み込みました。条件を確認して練習を開始してください。' : 'Starting hand loaded. Check the setup before starting practice.'}</p>}
         <label className="block">{ja ? '種目' : 'Game'}<select aria-label={ja ? '種目' : 'Game'} value={variant} onChange={event => { const next = PRACTICE_GAMES.find(item => item.id === event.target.value); setVariant(next.id); setCards([...next.defaults]); setError(''); }} className="mt-2 block w-full rounded-xl bg-slate-800 p-3">{PRACTICE_GAMES.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
         <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-bold">{ja ? '自分の開始手札' : 'Your starting hand'} · {cards.length} / {game.count}</h2><button type="button" className={buttonClass} onClick={() => setCards([])}>{ja ? '選択をクリア' : 'Clear selection'}</button></div>
         <div className="flex min-h-12 flex-wrap gap-2" aria-label={ja ? '選んだ手札' : 'Selected hand'}>{cards.map(card => <span key={card} className={`rounded-lg bg-white px-3 py-3 font-bold ${/[HD]$/.test(card) ? 'text-red-700' : 'text-slate-950'}`}>{cardLabel(card)}</span>)}</div>
@@ -65,6 +72,7 @@ export default function PracticeScreen() {
         <div className="space-y-3">{['S', 'H', 'D', 'C'].map(suit => <div key={suit} className="grid grid-cols-7 gap-2 sm:grid-cols-[repeat(13,minmax(0,1fr))]">{PRACTICE_CARDS.filter(card => card.endsWith(suit)).map(card => <button type="button" key={card} aria-pressed={cards.includes(card)} disabled={!cards.includes(card) && cards.length === game.count} onClick={() => setCards(previous => previous.includes(card) ? previous.filter(value => value !== card) : [...previous, card])} className={`min-h-11 min-w-0 rounded-lg border px-1 text-sm font-bold disabled:opacity-40 ${cards.includes(card) ? 'border-emerald-300 bg-emerald-300 text-slate-950' : /[HD]$/.test(card) ? 'border-white/20 bg-slate-800 text-red-300' : 'border-white/20 bg-slate-800 text-white'}`}>{cardLabel(card)}</button>)}</div>)}</div>
         <p className="text-sm leading-relaxed text-slate-300">{ja ? '6人卓、自分はボタン、持ち点は全員2,000、ブラインド10/20。相手5人はCPUです。自分の開始手札を固定し、相手の手札と山札は毎回配り直します。' : 'Six seats, you on the button, 2,000 chips each, blinds 10/20. Five CPU opponents. Your starting hand stays fixed; opponents and the remaining deck are dealt again each time.'}</p>
         <button type="button" onClick={start} disabled={!validatePracticeSetup(variant, cards)} className="min-h-12 w-full rounded-xl bg-emerald-300 px-5 py-3 font-bold text-slate-950 disabled:opacity-40">{ja ? 'この手札で練習する' : 'Practice this hand'}</button>
+        <PracticePresets variant={variant} cards={cards} language={language} onLoad={setup => { setVariant(setup.variant); setCards(setup.cards); setError(''); }} />
       </section> : <section className="space-y-5" data-testid="practice-table">
         <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-bold">{game.name}</h2><button type="button" className={buttonClass} onClick={() => { setSession(null); setError(''); setSelection([]); }}>{ja ? '条件を変更' : 'Change setup'}</button></div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{snapshot.players.slice(1).map((player, index) => <div key={index} data-testid={`practice-cpu-${index + 1}`} className={`min-w-0 space-y-2 rounded-xl border p-3 ${actor === index + 1 && !finished ? 'border-amber-200' : 'border-white/15'} ${player.folded ? 'opacity-50' : ''}`}><p className="truncate text-sm font-semibold">CPU {index + 1}</p><p className="text-sm">{player.stack} <span className="text-slate-400">· {ja ? 'ベット' : 'Bet'} {player.betThisRound ?? player.bet ?? 0}</span></p><p className="flex flex-wrap gap-1 text-sm">{player.hand.map((card, cardIndex) => <span key={cardIndex} className="rounded bg-slate-800 px-1">{finished && !player.folded ? cardLabel(card) : '▧'}</span>)}</p><p className="text-xs text-slate-300">{player.folded ? (ja ? 'フォールド' : 'Folded') : player.lastAction}</p></div>)}</div>

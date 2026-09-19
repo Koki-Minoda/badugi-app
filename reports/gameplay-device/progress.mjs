@@ -6,7 +6,7 @@ export async function readProgress() {
   catch (e) { if (e.code !== 'ENOENT') throw e; }
   return {
     updated: new Date().toISOString(),
-    scope: '37種目（公開24・検証中12・未実装1）、学習、通常対局、トーナメント、MIX、履歴／リプレイ、通信、端末操作',
+    scope: '37種目（公開設定25・検証中12）、学習、通常対局、トーナメント、MIX、履歴／リプレイ、通信、端末操作',
     games: Object.entries(VARIANT_AVAILABILITY).map(([id, v]) => ({ id, name: v.label, availability: v.availability, cashDesktop: '未確認', cashIphone: '未確認', tournament: '未確認', portrait: '未確認', landscape: '未確認', replay: '未確認', bugs: [] })),
     features: [
       { name: '学習：クイズ・3種目練習・復習・英語', status: 'iPhone実機で6グループ合格（9/19）', evidence: '../learning-entry/IPHONE-PHYSICAL-QA.md' },
@@ -14,7 +14,7 @@ export async function readProgress() {
       ...['トーナメント開始・中断・再開・敗退・優勝', 'MIXの種目交代', '履歴・リプレイ・復習への保存', 'ログイン・登録・ログアウト', '友達対戦・通信復帰', 'PWAインストール・再起動', '実キーボード・タッチ操作', '実機の縦横回転・セーフエリア'].map(name => ({ name, status: '未確認', evidence: '' })),
     ],
     bugs: [],
-    notes: ['判定は実施した範囲に限る。起動だけ・1ハンドだけの確認を、全機能合格とは記載しない。', '未実装OFCと検証中12種目は公開中種目と分ける。', '専用ローカルAPI／DBと検査用ブラウザを使用。本番配信・本番成績は変更しない。', '物理iPhone、ブラウザでの端末再現、ユニットテストを区別する。'],
+    notes: ['判定は実施した範囲に限る。起動だけ・1ハンドだけの確認を、全機能合格とは記載しない。', '検証中12種目は公開設定25種目と分ける。', '専用ローカルAPI／DBと検査用ブラウザを使用。本番配信・本番成績は変更しない。', '物理iPhone、ブラウザでの端末再現、ユニットテストを区別する。'],
   };
 }
 export async function updateProgress(change) {

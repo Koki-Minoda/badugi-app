@@ -1,62 +1,61 @@
-# MGX 全種目・実プレイ確認（2026-09-19）
+# MGX 全種目・実プレイ確認と修正
 
-[種目別の完了状況と不具合一覧](STATUS.md)を主台帳とする。機械可読の台帳は[progress.json](progress.json)、実行したブラウザ検査の集計は[evidence-summary.json](evidence-summary.json)。
+[37種目の完了状況・不具合一覧](STATUS.md)を主台帳とする。[画面の使いやすさQA](USABILITY-QA.md)、[修正後の検査結果](completion-evidence.json)、[機械可読の台帳](progress.json)も保存した。
 
-対象アプリは `c0fa8fad8e6dfe455352cc4a8da7dc78873b8956` の production build。この調査ではアプリの修正・再配信は行っていない。QAの誤判定を修正し、再現検査と台帳を追加した。下記の合格は各検査の対象条件に限る。未解決不具合があるため、全機能のQA完了・リリース可とは判定しない。
+最初の調査対象は `c0fa8fa`、調査記録の基点は `bc35b25`。修正コミットは認証 `c667560`、ゲーム・画面 `9d72e29`。今回、そのローカル修正版をproduction buildして検査した。本番への配信はしていない。旧調査の[evidence-summary.json](evidence-summary.json)は修正前の証拠として維持している。
 
-## 実施結果
+未実装だったOFCとMulti-Game Tournamentの3形式を実装し、Dealer’s Choiceの開始・種目交代を修正した。表示、交換バッジ、大会の参加者引継ぎ、削除後の認証にも修正を加えた。物理iPhoneの通常対局・指による操作などは検査接続が応答せず未完了であり、全QA完了とは判定していない。
+
+## 修正後の検査
 
 | 検査 | 結果 | 範囲・限界 |
 | --- | --- | --- |
-| 公開リング23種目 | 各10ハンド、計230ハンド完了 | 画面ボタン、履歴、記録からの再現、画面リプレイ、精算、退出。表示のQA-003は別途検出 |
-| Chinese Poker | PC・Android相当・iPhone相当各10ハンド＋iPhone相当横画面10ハンド | 13枚配置・結果・カード重複なし・収支ゼロサム・履歴完全再現 |
-| 検証中12種目 | PCとiPhone相当横画面で各1ハンド完了 | ユーザー操作、履歴の必要項目、退出。公開昇格や完全再現は未判定 |
-| 公開23種目のiPhone相当縦横 | 修正後46件合格 | 11種目は縦横で1ハンド、12種目は横1ハンド＋縦の回転案内。物理端末ではない |
-| タイトル・短い横画面の大会操作 | 3件合格 | iPhone相当WebKit。`iphone-webkit-layout.json`の特殊3件 |
-| トーナメント回帰 | 47件合格 | 23種目の開始・1ハンド・強制終了場面、中断再開・敗退・戻る |
-| 店舗・地域・世界大会の決着 | 3件合格 | 強制優勝なし。Hero計77ハンド、Hero敗退後はCPUの進行を試験用に加速。世界大会275人。Hero優勝の証明ではない |
-| MIX・クイズ | 3ブラウザでMIX6件＋クイズ3件合格 | 種目交代・残高/席/ボタン位置・禁止種目・手数制限。APIモックと試験用進行操作を使用 |
-| 友達対戦 | 2件合格 | 2人の再接続、カード非公開、WebSocket障害後のREST継続。ローカルAPI |
-| 登録・ログイン・再読込・ログアウト | PC合格 | パスワード確認不一致も確認。実機は登録・ログインまで |
-| エンジン/既知不具合/公開設定 | 4ファイル111件合格 | `artifacts/engine-regression.log` |
-| ポット表示の追加監査 | 11種目合格・12種目不合格 | QA-003。合格済みの対局進行検査では拾えなかった表示不良 |
-| Dealer’s Choice | 2回再現、不合格 | QA-002。開始すると選択ゲームではなくタイトルが表示される |
-| PWA | Chromeの要件エラー0、アイコン宣言不一致 | QA-001。物理端末のインストール・再起動未確認。Service Worker未実装 |
+| OFC | 5画面構成で各10ハンド、計50ハンド合格 | classic 13枚・2人戦。手動配置/取消/確定、おまかせ、再開、履歴完全再現。Fantasylandの条件はユニットでも確認 |
+| Multi-Game 3形式 | 5画面構成×3形式の15件合格 | 実操作1ハンド、再開、試験用の強制優勝による結果/次大会/順位点、通常成績を変えないこと |
+| Multi-Game連続プレイ | 3形式すべて完了、Hero計179ハンド | Hero卓は通常の対局操作とCPU操作用テストドライバー。強制優勝なし。他卓は既存の抽象シミュレーション。Hero敗退後のみCPU進行加速 |
+| 公開リング23種目のスマホ縦横 | 46件合格 | Draw/Stud11種目は縦横の対局。Board/Dramaha12種目は横対局と縦の回転案内 |
+| 検証中12種目 | PC/横WebKit各10ハンド、計240ハンド合格 | 操作、履歴要件と完全再現、精算、退出。公開設定は検証中を維持 |
+| 検証中12種目の縦画面 | 12件合格 | Draw9種目は対局と結果操作、Board3種目は回転案内。はみ出しなし |
+| 大会35種目 | 35件合格 | 各種目で1ハンドUI→CPU加速決着→6人の順位→メニュー。各種目を自然決着まで長時間プレイしたという意味ではない |
+| 画面の使いやすさ | 代表5種目×5画面構成25件合格 | 手番案内、交換操作、入力文字サイズ、勝者表示、結果ボタンの位置・大きさ・遮蔽、画面の横はみ出し |
+| ポット、Dealer’s Choice、認証、友達対戦、PWA | 合計28件合格 | 全23種目の結果金額、実対局2種目、実API、WS再接続/REST継続、PNG実体/宣言とChromeインストール要件 |
+| 関連ユニット | 37ファイル266件＋全種目進行54件合格 | 後の交換バッジ修正はPlayer25件、次種目案内はMulti-Game4件でも再検査。重複があるため単純合算しない |
+| バックエンド | 全83件合格 | 同一ID・メール・パスワードで再登録した場合も古い認証をREST/WSで拒否 |
+| ビルド・変更箇所lint | 合格 | 既存の全リポジトリlintを無条件に合格扱いしたものではない |
 
-OFCは未実装（既存CHINESE-03）。Multi-Game Tournamentの3形式もPrototypeであり、実装済みとは数えない。
+連続プレイの内訳はStage RelayがBadugi 42・NLH 33・Stud 40ハンド、Survival Mixが29、Championship Relayが35ハンド。今回の成功実行ではHero敗退後の加速呼出しは0回だった。
 
-## 物理iPhoneの結果と残り
+5画面構成はPC Chrome、Android相当Chromium縦/横、iPhone相当WebKit縦/横。Board/Dramahaは縦で案内後、横向きへ切り替えて対局する仕様。
 
-iPhone17,3／iOS 26.5.2／Safari 26.5.2。USB Web Inspectorで専用の `https://example.com/` タブへローカルビルドを供給した。外部へアプリをアップロードしたものではない。本番の配信、証明書、通信品質、PWAの検証とは異なる。
+先行確認として、公開リング23×10＝230ハンド、Chinese Pokerの4画面構成×10＝40ハンド、店舗/地域/世界大会の通常決着3件（Hero計77ハンド）、3ブラウザのMIX6件とクイズ3件を保存している。これらは修正前の実行結果であり、今回の再検査と区別する。
 
-- 先行の学習6グループは[実機QA](../learning-entry/IPHONE-PHYSICAL-QA.md)参照。クイズ、Badugi/A-5/2-7練習、復習、英語表示を確認済み。
-- 今回は実機で新規登録・ログインが成功し、メニューを表示した。縦画面でNLH、FLH、Super Hold’em、FL Super Hold’em、PLO、PLO8の横向き案内を確認した。
-- 接続が停止したため検査用の接続プロセスを再起動し、一度復旧。その後再び `Runtime.evaluate timed out` となり、通常対局の実機1ハンド完了は確認できていない。アプリ自体の停止と接続問題の切り分けは未完了。
-- 中断ログの `FAIL` は、そのままゲーム不具合件数に数えていない。ログイン画面へ戻ったケースも検査経路の影響を分離できていない。
-- 指でのタップ、ネイティブキーボード、実機を横へ回転した状態、ホーム画面への追加と再起動は残作業。DOMによる入力・クリックとは区別する。
+## 実装仕様と残る制約
 
-## QA自体の修正
+- OFCは最初に5枚、以後1枚ずつ配置するclassicルール。13枚Fantasyland、QQ以上で突入、継続条件とロイヤリティを画面に記載。Pineappleや14枚Fantasylandは対象外。CPUは受け取ったカードだけを使う簡易判断で、ソルバーではない。[ルール参照](https://www.ofcstrategy.com/rules.html)。
+- Stage Relayは6人の3大会の順位点合計。Survival Mixは18人・3卓、卓ごとに異なる種目を3ハンドずつ。Championship Relayは18人から決勝6人で選択順の1ハンド交代へ切り替える。他卓の進行は既存の大会シミュレーション。
+- 新しい大会形式の参加費は0、通常大会の賞金・解放実績へ加算しない。進行と順位点は端末に保存。中断再開は最後の完了ハンドから。
+- 認証はアカウントの登録実体と結び付けるよう変更した。この版を今後配信する場合、従来のトークンは再ログインが必要になる。今回はローカル検査のみ。
+- PWAの画像・起動URL・Chromeのインストール要件を確認。実機インストールと再起動は未。Service Workerによるオフライン対局は実装していない。
 
-従来のモバイル監査はStud/BoardにもDRAW到達を要求し、横向き限定の種目を縦向きで起動して失敗していた。また、監査結果をJSONへ保存するだけでPlaywright自体は成功していた。
+## 物理iPhone
 
-`expectsDraw`を参照し、縦の回転案内を明示的に検査し、検出した問題がある場合はテストも失敗するよう変更。46件を再実行し、監査JSONとテスト結果の両方が合格した。最初の誤判定ログは`artifacts/iphone-layout-before-test-fix.json`に保存した。
+iPhone17,3／iOS 26.5.2／Safari 26.5.2。先行の[学習実機QA](../learning-entry/IPHONE-PHYSICAL-QA.md)では6グループ合格。登録・ログインと6種目の縦画面の回転案内も確認した。USB Web Inspectorで専用 `https://example.com/` タブにローカルビルドを供給しており、本番配信を検査したものではない。
 
-登録検査の初回には検査用`.test`メールがローカルAPIの検証で拒否されたため、`.com`へ変更して再実行した。これも製品不具合に数えていない。
+通常対局の検査中に接続が停止し、再接続しても `Runtime.enable` / `Runtime.evaluate` がタイムアウトした。代替の端末操作経路も応答しなかった。実機通常対局1ハンド、指によるタップ、ネイティブキーボード、実際の横回転・セーフエリア、ホーム画面への追加・再起動は未完了。DOMクリックやブラウザ再現を物理タッチの合格には数えない。アプリ停止と検査接続停止の切り分けも残る。
 
 ## 再現と証拠
 
-`artifacts/`のJSON・画像・実行ログはローカル保存し、Git対象外。`evidence-summary.json`は個人情報やトークンを含めず、検査名・判定・ポット表示の値・大会結果を保存する。
-
-`local-proxy.mjs`はループバック限定で4178の静的プレビューと8011の専用FastAPIを4179へまとめる。APIは今回用SQLiteを使用し、本番アカウント・履歴・成績を変更しない。
+`artifacts/`の画像・JSON・ログはローカル保存でGit対象外。`completion-evidence.json`はテスト名・判定・時間・匿名のハンド数のみを抽出し、トークンやアカウント情報は転記しない。重複した実行を含むため全行を機能数として合算しない。`summarize-completion.mjs`で再生成できる。
 
 ```sh
-# 4178のプレビュー、8011の専用API、4179のlocal-proxy起動後
+# 静的プレビュー4178、専用API8011、local-proxy4179の起動後
 E2E_APP_URL=http://127.0.0.1:4179/ node_modules/.bin/playwright test \
-  core5-mobile-interaction.spec.ts --config=playwright.device-audit.config.js --workers=1
+  -c playwright.completion.config.js tests/e2e/ofc-completion.spec.ts \
+  tests/e2e/multigame-completion.spec.ts tests/e2e/gameplay-usability-completion.spec.ts
 
-# 未修正不具合の再現は明示的に有効化する。QA-002とQA-003が残っていれば失敗する。
-E2E_APP_URL=http://127.0.0.1:4179/ MGX_GAMEPLAY_AUDIT=1 node_modules/.bin/playwright test \
-  gameplay-device-features.spec.ts gameplay-result-pot-audit.spec.ts --project=badugi-flow --workers=1
+E2E_APP_URL=http://127.0.0.1:4179/ node_modules/.bin/playwright test \
+  -c playwright.completion.config.js tests/e2e/multigame-natural-completion.spec.ts \
+  --project=completion-desktop
 ```
 
-`iphone-client.mjs`・`physical-games.mjs`は専用検査タブのみを対象とする実機確認用。今回の通常対局検査は中断したため、このハーネス全体の動作保証は未完了。再開時はiPhoneのロック解除・Safari表示・横向き状態を確認し、まず1種目で操作と履歴の取得を確かめてから対象を広げる。
+検査側の修正も記録する。Studは配札段階が変わっても「BET・同じ相手・同じ残高」が続く場合があり、進行判定へstreetを追加した。WebKitでONNXがconsole.errorに出す既知のCPU識別警告だけを除外し、実際のランタイム例外は引き続き失敗にしている。削除アカウントの認証が再登録後に有効になる現象は検査の誤判定ではなく製品の問題として修正した。

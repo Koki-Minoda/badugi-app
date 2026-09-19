@@ -1,0 +1,1524 @@
+{
+  "generatedAt": "2026-09-19T14:58:08.179Z",
+  "baselineCommit": "bc35b25",
+  "implementationCommit": "9d72e29",
+  "unitChecks": [
+    {
+      "scope": "related frontend suites",
+      "files": 37,
+      "passed": 266
+    },
+    {
+      "scope": "all variant progression",
+      "files": 2,
+      "passed": 54
+    },
+    {
+      "scope": "final Player, HandResultOverlay, MultiGame",
+      "files": 3,
+      "passed": 40
+    },
+    {
+      "scope": "all backend tests",
+      "passed": 83
+    }
+  ],
+  "notes": [
+    "Each suite records its own run; overlapping runs are not distinct feature counts.",
+    "The initial stage natural-play audit failed because the progress key omitted the Stud street. See the later multi-stage-natural-final run.",
+    "Browser device emulation is not physical-device verification."
+  ],
+  "suites": [
+    {
+      "run": "completion-final",
+      "startedAt": "2026-09-19T14:27:29.118Z",
+      "durationMs": 203616.59699999998,
+      "tests": [
+        {
+          "title": "badugi: readable actions and persistent result controls",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 3036
+        },
+        {
+          "title": "stud: readable actions and persistent result controls",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 3788
+        },
+        {
+          "title": "nlh: readable actions and persistent result controls",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2527
+        },
+        {
+          "title": "plo: readable actions and persistent result controls",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2615
+        },
+        {
+          "title": "dramaha_hi: readable actions and persistent result controls",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 3019
+        },
+        {
+          "title": "badugi: readable actions and persistent result controls",
+          "project": "completion-android",
+          "status": "passed",
+          "durationMs": 3357
+        },
+        {
+          "title": "stud: readable actions and persistent result controls",
+          "project": "completion-android",
+          "status": "passed",
+          "durationMs": 2901
+        },
+        {
+          "title": "nlh: readable actions and persistent result controls",
+          "project": "completion-android",
+          "status": "passed",
+          "durationMs": 2783
+        },
+        {
+          "title": "plo: readable actions and persistent result controls",
+          "project": "completion-android",
+          "status": "passed",
+          "durationMs": 3117
+        },
+        {
+          "title": "dramaha_hi: readable actions and persistent result controls",
+          "project": "completion-android",
+          "status": "passed",
+          "durationMs": 3490
+        },
+        {
+          "title": "badugi: readable actions and persistent result controls",
+          "project": "completion-android-landscape",
+          "status": "passed",
+          "durationMs": 3681
+        },
+        {
+          "title": "stud: readable actions and persistent result controls",
+          "project": "completion-android-landscape",
+          "status": "passed",
+          "durationMs": 3276
+        },
+        {
+          "title": "nlh: readable actions and persistent result controls",
+          "project": "completion-android-landscape",
+          "status": "passed",
+          "durationMs": 2972
+        },
+        {
+          "title": "plo: readable actions and persistent result controls",
+          "project": "completion-android-landscape",
+          "status": "passed",
+          "durationMs": 3137
+        },
+        {
+          "title": "dramaha_hi: readable actions and persistent result controls",
+          "project": "completion-android-landscape",
+          "status": "passed",
+          "durationMs": 3414
+        },
+        {
+          "title": "badugi: readable actions and persistent result controls",
+          "project": "completion-iphone",
+          "status": "passed",
+          "durationMs": 4960
+        },
+        {
+          "title": "stud: readable actions and persistent result controls",
+          "project": "completion-iphone",
+          "status": "passed",
+          "durationMs": 3729
+        },
+        {
+          "title": "nlh: readable actions and persistent result controls",
+          "project": "completion-iphone",
+          "status": "passed",
+          "durationMs": 3579
+        },
+        {
+          "title": "plo: readable actions and persistent result controls",
+          "project": "completion-iphone",
+          "status": "passed",
+          "durationMs": 3751
+        },
+        {
+          "title": "dramaha_hi: readable actions and persistent result controls",
+          "project": "completion-iphone",
+          "status": "passed",
+          "durationMs": 4176
+        },
+        {
+          "title": "badugi: readable actions and persistent result controls",
+          "project": "completion-iphone-landscape",
+          "status": "passed",
+          "durationMs": 5043
+        },
+        {
+          "title": "stud: readable actions and persistent result controls",
+          "project": "completion-iphone-landscape",
+          "status": "passed",
+          "durationMs": 3869
+        },
+        {
+          "title": "nlh: readable actions and persistent result controls",
+          "project": "completion-iphone-landscape",
+          "status": "passed",
+          "durationMs": 3481
+        },
+        {
+          "title": "plo: readable actions and persistent result controls",
+          "project": "completion-iphone-landscape",
+          "status": "passed",
+          "durationMs": 3696
+        },
+        {
+          "title": "dramaha_hi: readable actions and persistent result controls",
+          "project": "completion-iphone-landscape",
+          "status": "passed",
+          "durationMs": 4169
+        },
+        {
+          "title": "Multi-game stage: play, restore, finish and preserve career",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 5874
+        },
+        {
+          "title": "Multi-game survival: play, restore, finish and preserve career",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 3341
+        },
+        {
+          "title": "Multi-game championship: play, restore, finish and preserve career",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2996
+        },
+        {
+          "title": "Multi-game stage: play, restore, finish and preserve career",
+          "project": "completion-android",
+          "status": "passed",
+          "durationMs": 5857
+        },
+        {
+          "title": "Multi-game survival: play, restore, finish and preserve career",
+          "project": "completion-android",
+          "status": "passed",
+          "durationMs": 3294
+        },
+        {
+          "title": "Multi-game championship: play, restore, finish and preserve career",
+          "project": "completion-android",
+          "status": "passed",
+          "durationMs": 3299
+        },
+        {
+          "title": "Multi-game stage: play, restore, finish and preserve career",
+          "project": "completion-android-landscape",
+          "status": "passed",
+          "durationMs": 5979
+        },
+        {
+          "title": "Multi-game survival: play, restore, finish and preserve career",
+          "project": "completion-android-landscape",
+          "status": "passed",
+          "durationMs": 3277
+        },
+        {
+          "title": "Multi-game championship: play, restore, finish and preserve career",
+          "project": "completion-android-landscape",
+          "status": "passed",
+          "durationMs": 3316
+        },
+        {
+          "title": "Multi-game stage: play, restore, finish and preserve career",
+          "project": "completion-iphone",
+          "status": "passed",
+          "durationMs": 8623
+        },
+        {
+          "title": "Multi-game survival: play, restore, finish and preserve career",
+          "project": "completion-iphone",
+          "status": "passed",
+          "durationMs": 3986
+        },
+        {
+          "title": "Multi-game championship: play, restore, finish and preserve career",
+          "project": "completion-iphone",
+          "status": "passed",
+          "durationMs": 4167
+        },
+        {
+          "title": "Multi-game stage: play, restore, finish and preserve career",
+          "project": "completion-iphone-landscape",
+          "status": "passed",
+          "durationMs": 7934
+        },
+        {
+          "title": "Multi-game survival: play, restore, finish and preserve career",
+          "project": "completion-iphone-landscape",
+          "status": "passed",
+          "durationMs": 3493
+        },
+        {
+          "title": "Multi-game championship: play, restore, finish and preserve career",
+          "project": "completion-iphone-landscape",
+          "status": "passed",
+          "durationMs": 3518
+        },
+        {
+          "title": "OFC: ten hands, immutable streets, reload, scores and exact replay",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 8236
+        },
+        {
+          "title": "OFC: ten hands, immutable streets, reload, scores and exact replay",
+          "project": "completion-android",
+          "status": "passed",
+          "durationMs": 8328
+        },
+        {
+          "title": "OFC: ten hands, immutable streets, reload, scores and exact replay",
+          "project": "completion-android-landscape",
+          "status": "passed",
+          "durationMs": 8487
+        },
+        {
+          "title": "OFC: ten hands, immutable streets, reload, scores and exact replay",
+          "project": "completion-iphone",
+          "status": "passed",
+          "durationMs": 10634
+        },
+        {
+          "title": "OFC: ten hands, immutable streets, reload, scores and exact replay",
+          "project": "completion-iphone-landscape",
+          "status": "passed",
+          "durationMs": 8335
+        }
+      ]
+    },
+    {
+      "run": "usability-last",
+      "startedAt": "2026-09-19T14:37:20.716Z",
+      "durationMs": 127550.336,
+      "tests": [
+        {
+          "title": "badugi: readable actions and persistent result controls",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 3050
+        },
+        {
+          "title": "stud: readable actions and persistent result controls",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2618
+        },
+        {
+          "title": "nlh: readable actions and persistent result controls",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2408
+        },
+        {
+          "title": "plo: readable actions and persistent result controls",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2451
+        },
+        {
+          "title": "dramaha_hi: readable actions and persistent result controls",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2735
+        },
+        {
+          "title": "badugi: readable actions and persistent result controls",
+          "project": "completion-android",
+          "status": "passed",
+          "durationMs": 3041
+        },
+        {
+          "title": "stud: readable actions and persistent result controls",
+          "project": "completion-android",
+          "status": "passed",
+          "durationMs": 2819
+        },
+        {
+          "title": "nlh: readable actions and persistent result controls",
+          "project": "completion-android",
+          "status": "passed",
+          "durationMs": 2878
+        },
+        {
+          "title": "plo: readable actions and persistent result controls",
+          "project": "completion-android",
+          "status": "passed",
+          "durationMs": 2998
+        },
+        {
+          "title": "dramaha_hi: readable actions and persistent result controls",
+          "project": "completion-android",
+          "status": "passed",
+          "durationMs": 3382
+        },
+        {
+          "title": "badugi: readable actions and persistent result controls",
+          "project": "completion-android-landscape",
+          "status": "passed",
+          "durationMs": 3545
+        },
+        {
+          "title": "stud: readable actions and persistent result controls",
+          "project": "completion-android-landscape",
+          "status": "passed",
+          "durationMs": 3216
+        },
+        {
+          "title": "nlh: readable actions and persistent result controls",
+          "project": "completion-android-landscape",
+          "status": "passed",
+          "durationMs": 3135
+        },
+        {
+          "title": "plo: readable actions and persistent result controls",
+          "project": "completion-android-landscape",
+          "status": "passed",
+          "durationMs": 3104
+        },
+        {
+          "title": "dramaha_hi: readable actions and persistent result controls",
+          "project": "completion-android-landscape",
+          "status": "passed",
+          "durationMs": 3388
+        },
+        {
+          "title": "badugi: readable actions and persistent result controls",
+          "project": "completion-iphone",
+          "status": "passed",
+          "durationMs": 4783
+        },
+        {
+          "title": "stud: readable actions and persistent result controls",
+          "project": "completion-iphone",
+          "status": "passed",
+          "durationMs": 3603
+        },
+        {
+          "title": "nlh: readable actions and persistent result controls",
+          "project": "completion-iphone",
+          "status": "passed",
+          "durationMs": 3545
+        },
+        {
+          "title": "plo: readable actions and persistent result controls",
+          "project": "completion-iphone",
+          "status": "passed",
+          "durationMs": 3486
+        },
+        {
+          "title": "dramaha_hi: readable actions and persistent result controls",
+          "project": "completion-iphone",
+          "status": "passed",
+          "durationMs": 4463
+        },
+        {
+          "title": "badugi: readable actions and persistent result controls",
+          "project": "completion-iphone-landscape",
+          "status": "passed",
+          "durationMs": 4232
+        },
+        {
+          "title": "stud: readable actions and persistent result controls",
+          "project": "completion-iphone-landscape",
+          "status": "passed",
+          "durationMs": 3382
+        },
+        {
+          "title": "nlh: readable actions and persistent result controls",
+          "project": "completion-iphone-landscape",
+          "status": "passed",
+          "durationMs": 3170
+        },
+        {
+          "title": "plo: readable actions and persistent result controls",
+          "project": "completion-iphone-landscape",
+          "status": "passed",
+          "durationMs": 3295
+        },
+        {
+          "title": "dramaha_hi: readable actions and persistent result controls",
+          "project": "completion-iphone-landscape",
+          "status": "passed",
+          "durationMs": 3708
+        },
+        {
+          "title": "OFC: ten hands, immutable streets, reload, scores and exact replay",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 8019
+        },
+        {
+          "title": "OFC: ten hands, immutable streets, reload, scores and exact replay",
+          "project": "completion-android",
+          "status": "passed",
+          "durationMs": 8279
+        },
+        {
+          "title": "OFC: ten hands, immutable streets, reload, scores and exact replay",
+          "project": "completion-android-landscape",
+          "status": "passed",
+          "durationMs": 8823
+        },
+        {
+          "title": "OFC: ten hands, immutable streets, reload, scores and exact replay",
+          "project": "completion-iphone",
+          "status": "passed",
+          "durationMs": 9205
+        },
+        {
+          "title": "OFC: ten hands, immutable streets, reload, scores and exact replay",
+          "project": "completion-iphone-landscape",
+          "status": "passed",
+          "durationMs": 8518
+        }
+      ]
+    },
+    {
+      "run": "preview-ten-final",
+      "startedAt": "2026-09-19T14:28:14.770Z",
+      "durationMs": 475986.22000000003,
+      "tests": [
+        {
+          "title": "flh: preview hand, history, exit",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 11386
+        },
+        {
+          "title": "super_holdem: preview hand, history, exit",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 12278
+        },
+        {
+          "title": "fl_super_holdem: preview hand, history, exit",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 11691
+        },
+        {
+          "title": "badeucey_triple_draw: preview hand, history, exit",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 25115
+        },
+        {
+          "title": "badacey_triple_draw: preview hand, history, exit",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 25340
+        },
+        {
+          "title": "hidugi_triple_draw: preview hand, history, exit",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 24656
+        },
+        {
+          "title": "archie_triple_draw: preview hand, history, exit",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 26078
+        },
+        {
+          "title": "five_card_single_draw: preview hand, history, exit",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 10872
+        },
+        {
+          "title": "badugi_single_draw: preview hand, history, exit",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 9035
+        },
+        {
+          "title": "badeucey_single_draw: preview hand, history, exit",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 8916
+        },
+        {
+          "title": "badacey_single_draw: preview hand, history, exit",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 9466
+        },
+        {
+          "title": "hidugi_single_draw: preview hand, history, exit",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 9027
+        },
+        {
+          "title": "flh: preview hand, history, exit",
+          "project": "completion-iphone-landscape",
+          "status": "passed",
+          "durationMs": 22658
+        },
+        {
+          "title": "super_holdem: preview hand, history, exit",
+          "project": "completion-iphone-landscape",
+          "status": "passed",
+          "durationMs": 22005
+        },
+        {
+          "title": "fl_super_holdem: preview hand, history, exit",
+          "project": "completion-iphone-landscape",
+          "status": "passed",
+          "durationMs": 23317
+        },
+        {
+          "title": "badeucey_triple_draw: preview hand, history, exit",
+          "project": "completion-iphone-landscape",
+          "status": "passed",
+          "durationMs": 28106
+        },
+        {
+          "title": "badacey_triple_draw: preview hand, history, exit",
+          "project": "completion-iphone-landscape",
+          "status": "passed",
+          "durationMs": 35371
+        },
+        {
+          "title": "hidugi_triple_draw: preview hand, history, exit",
+          "project": "completion-iphone-landscape",
+          "status": "passed",
+          "durationMs": 23655
+        },
+        {
+          "title": "archie_triple_draw: preview hand, history, exit",
+          "project": "completion-iphone-landscape",
+          "status": "passed",
+          "durationMs": 33813
+        },
+        {
+          "title": "five_card_single_draw: preview hand, history, exit",
+          "project": "completion-iphone-landscape",
+          "status": "passed",
+          "durationMs": 21472
+        },
+        {
+          "title": "badugi_single_draw: preview hand, history, exit",
+          "project": "completion-iphone-landscape",
+          "status": "passed",
+          "durationMs": 20952
+        },
+        {
+          "title": "badeucey_single_draw: preview hand, history, exit",
+          "project": "completion-iphone-landscape",
+          "status": "passed",
+          "durationMs": 19659
+        },
+        {
+          "title": "badacey_single_draw: preview hand, history, exit",
+          "project": "completion-iphone-landscape",
+          "status": "passed",
+          "durationMs": 20282
+        },
+        {
+          "title": "hidugi_single_draw: preview hand, history, exit",
+          "project": "completion-iphone-landscape",
+          "status": "passed",
+          "durationMs": 19267
+        }
+      ]
+    },
+    {
+      "run": "preview-portrait-final",
+      "startedAt": "2026-09-19T14:53:04.233Z",
+      "durationMs": 34466.797000000006,
+      "tests": [
+        {
+          "title": "flh: portrait controls or orientation guidance",
+          "project": "completion-iphone",
+          "status": "passed",
+          "durationMs": 1885
+        },
+        {
+          "title": "super_holdem: portrait controls or orientation guidance",
+          "project": "completion-iphone",
+          "status": "passed",
+          "durationMs": 1713
+        },
+        {
+          "title": "fl_super_holdem: portrait controls or orientation guidance",
+          "project": "completion-iphone",
+          "status": "passed",
+          "durationMs": 1716
+        },
+        {
+          "title": "badeucey_triple_draw: portrait controls or orientation guidance",
+          "project": "completion-iphone",
+          "status": "passed",
+          "durationMs": 3862
+        },
+        {
+          "title": "badacey_triple_draw: portrait controls or orientation guidance",
+          "project": "completion-iphone",
+          "status": "passed",
+          "durationMs": 3791
+        },
+        {
+          "title": "hidugi_triple_draw: portrait controls or orientation guidance",
+          "project": "completion-iphone",
+          "status": "passed",
+          "durationMs": 3618
+        },
+        {
+          "title": "archie_triple_draw: portrait controls or orientation guidance",
+          "project": "completion-iphone",
+          "status": "passed",
+          "durationMs": 3729
+        },
+        {
+          "title": "five_card_single_draw: portrait controls or orientation guidance",
+          "project": "completion-iphone",
+          "status": "passed",
+          "durationMs": 2694
+        },
+        {
+          "title": "badugi_single_draw: portrait controls or orientation guidance",
+          "project": "completion-iphone",
+          "status": "passed",
+          "durationMs": 2665
+        },
+        {
+          "title": "badeucey_single_draw: portrait controls or orientation guidance",
+          "project": "completion-iphone",
+          "status": "passed",
+          "durationMs": 2640
+        },
+        {
+          "title": "badacey_single_draw: portrait controls or orientation guidance",
+          "project": "completion-iphone",
+          "status": "passed",
+          "durationMs": 2662
+        },
+        {
+          "title": "hidugi_single_draw: portrait controls or orientation guidance",
+          "project": "completion-iphone",
+          "status": "passed",
+          "durationMs": 2857
+        }
+      ]
+    },
+    {
+      "run": "mobile-all-final",
+      "startedAt": "2026-09-19T14:44:08.351Z",
+      "durationMs": 119731.754,
+      "tests": [
+        {
+          "title": "Badugi portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 3263
+        },
+        {
+          "title": "Badugi landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 3195
+        },
+        {
+          "title": "NL Hold'em portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 1358
+        },
+        {
+          "title": "NL Hold'em landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 2394
+        },
+        {
+          "title": "Pot-Limit Omaha portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 1460
+        },
+        {
+          "title": "Pot-Limit Omaha landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 2528
+        },
+        {
+          "title": "PLO8 portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 1455
+        },
+        {
+          "title": "PLO8 landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 2587
+        },
+        {
+          "title": "FLO8 portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 1443
+        },
+        {
+          "title": "FLO8 landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 2953
+        },
+        {
+          "title": "Big-O portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 1542
+        },
+        {
+          "title": "Big-O landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 2703
+        },
+        {
+          "title": "5-Card PLO portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 1669
+        },
+        {
+          "title": "5-Card PLO landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 3660
+        },
+        {
+          "title": "2-7 Triple Draw portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 3486
+        },
+        {
+          "title": "2-7 Triple Draw landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 3721
+        },
+        {
+          "title": "A-5 Triple Draw portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 3735
+        },
+        {
+          "title": "A-5 Triple Draw landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 3726
+        },
+        {
+          "title": "2-7 Single Draw portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 2270
+        },
+        {
+          "title": "2-7 Single Draw landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 2381
+        },
+        {
+          "title": "A-5 Single Draw portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 2447
+        },
+        {
+          "title": "A-5 Single Draw landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 2580
+        },
+        {
+          "title": "Seven Card Stud portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 2913
+        },
+        {
+          "title": "Seven Card Stud landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 2788
+        },
+        {
+          "title": "Seven Card Stud Hi/Lo portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 2677
+        },
+        {
+          "title": "Seven Card Stud Hi/Lo landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 2735
+        },
+        {
+          "title": "Razz portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 2658
+        },
+        {
+          "title": "Razz landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 2894
+        },
+        {
+          "title": "Razzdugi portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 2713
+        },
+        {
+          "title": "Razzdugi landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 2866
+        },
+        {
+          "title": "Razzducey portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 2851
+        },
+        {
+          "title": "Razzducey landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 2859
+        },
+        {
+          "title": "2-7 Razz portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 2682
+        },
+        {
+          "title": "2-7 Razz landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 3031
+        },
+        {
+          "title": "Dramaha Hi portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 1561
+        },
+        {
+          "title": "Dramaha Hi landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 3245
+        },
+        {
+          "title": "Dramaha 2-7 portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 1770
+        },
+        {
+          "title": "Dramaha 2-7 landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 3174
+        },
+        {
+          "title": "Dramaha A-5 portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 1619
+        },
+        {
+          "title": "Dramaha A-5 landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 3080
+        },
+        {
+          "title": "Dramaha Zero portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 1788
+        },
+        {
+          "title": "Dramaha Zero landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 3120
+        },
+        {
+          "title": "Dramaha Hidugi portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 1526
+        },
+        {
+          "title": "Dramaha Hidugi landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 3105
+        },
+        {
+          "title": "Dramaha Badugi portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 1588
+        },
+        {
+          "title": "Dramaha Badugi landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "passed",
+          "durationMs": 3022
+        }
+      ]
+    },
+    {
+      "run": "regression-after-auth",
+      "startedAt": "2026-09-19T14:44:25.290Z",
+      "durationMs": 83000.901,
+      "tests": [
+        {
+          "title": "registration, login, reload and logout use the real local API",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 1860
+        },
+        {
+          "title": "Dealer Choice launches the selected queue into a playable table",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 3607
+        },
+        {
+          "title": "badugi: result pot headline agrees with payout sections",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2871
+        },
+        {
+          "title": "nlh: result pot headline agrees with payout sections",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2234
+        },
+        {
+          "title": "plo: result pot headline agrees with payout sections",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2522
+        },
+        {
+          "title": "plo8: result pot headline agrees with payout sections",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2444
+        },
+        {
+          "title": "flo8: result pot headline agrees with payout sections",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2461
+        },
+        {
+          "title": "big_o: result pot headline agrees with payout sections",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2489
+        },
+        {
+          "title": "five_card_plo: result pot headline agrees with payout sections",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2495
+        },
+        {
+          "title": "D01: result pot headline agrees with payout sections",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 3308
+        },
+        {
+          "title": "D02: result pot headline agrees with payout sections",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 3418
+        },
+        {
+          "title": "S01: result pot headline agrees with payout sections",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2392
+        },
+        {
+          "title": "S02: result pot headline agrees with payout sections",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2794
+        },
+        {
+          "title": "stud: result pot headline agrees with payout sections",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2629
+        },
+        {
+          "title": "stud8: result pot headline agrees with payout sections",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2494
+        },
+        {
+          "title": "razz: result pot headline agrees with payout sections",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2517
+        },
+        {
+          "title": "razzdugi: result pot headline agrees with payout sections",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2488
+        },
+        {
+          "title": "razzducey: result pot headline agrees with payout sections",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 3039
+        },
+        {
+          "title": "razz27: result pot headline agrees with payout sections",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2470
+        },
+        {
+          "title": "dramaha_hi: result pot headline agrees with payout sections",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2613
+        },
+        {
+          "title": "dramaha_27: result pot headline agrees with payout sections",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2575
+        },
+        {
+          "title": "dramaha_a5: result pot headline agrees with payout sections",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2519
+        },
+        {
+          "title": "dramaha_zero: result pot headline agrees with payout sections",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2524
+        },
+        {
+          "title": "dramaha_hidugi: result pot headline agrees with payout sections",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2510
+        },
+        {
+          "title": "dramaha_badugi: result pot headline agrees with payout sections",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2838
+        },
+        {
+          "title": "two authenticated mobile players can reconnect, draw, and act without leaking cards",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2286
+        },
+        {
+          "title": "two players finish a major Badugi flow after WebSocket failure",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 12572
+        },
+        {
+          "title": "PWA metadata: decodable PNG, dimensions, start URL and installability",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 219
+        }
+      ]
+    },
+    {
+      "run": "variant-tournament-final",
+      "startedAt": "2026-09-19T14:45:28.131Z",
+      "durationMs": 88929.136,
+      "tests": [
+        {
+          "title": "badugi: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 3601
+        },
+        {
+          "title": "nlh: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2370
+        },
+        {
+          "title": "flh: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2363
+        },
+        {
+          "title": "super_holdem: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2430
+        },
+        {
+          "title": "fl_super_holdem: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2415
+        },
+        {
+          "title": "plo: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2644
+        },
+        {
+          "title": "plo8: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2462
+        },
+        {
+          "title": "flo8: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2549
+        },
+        {
+          "title": "big_o: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2474
+        },
+        {
+          "title": "five_card_plo: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2613
+        },
+        {
+          "title": "deuce_to_seven_triple_draw: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 3181
+        },
+        {
+          "title": "ace_to_five_triple_draw: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 3055
+        },
+        {
+          "title": "badeucey_triple_draw: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 3111
+        },
+        {
+          "title": "badacey_triple_draw: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 3084
+        },
+        {
+          "title": "hidugi_triple_draw: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2901
+        },
+        {
+          "title": "archie_triple_draw: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2920
+        },
+        {
+          "title": "deuce_to_seven_single_draw: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2069
+        },
+        {
+          "title": "ace_to_five_single_draw: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2096
+        },
+        {
+          "title": "five_card_single_draw: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2045
+        },
+        {
+          "title": "badugi_single_draw: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 1994
+        },
+        {
+          "title": "badeucey_single_draw: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 1996
+        },
+        {
+          "title": "badacey_single_draw: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2031
+        },
+        {
+          "title": "hidugi_single_draw: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 1995
+        },
+        {
+          "title": "dramaha_hi: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2481
+        },
+        {
+          "title": "dramaha_27: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2496
+        },
+        {
+          "title": "dramaha_a5: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2529
+        },
+        {
+          "title": "dramaha_zero: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2513
+        },
+        {
+          "title": "dramaha_hidugi: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2463
+        },
+        {
+          "title": "dramaha_badugi: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2428
+        },
+        {
+          "title": "stud: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2499
+        },
+        {
+          "title": "stud8: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2462
+        },
+        {
+          "title": "razz: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2429
+        },
+        {
+          "title": "razzdugi: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2446
+        },
+        {
+          "title": "razzducey: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2483
+        },
+        {
+          "title": "razz27: tournament hand, placement and return",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 2476
+        }
+      ]
+    },
+    {
+      "run": "multi-natural-final",
+      "startedAt": "2026-09-19T14:44:07.079Z",
+      "durationMs": 417127.077,
+      "tests": [
+        {
+          "title": "stage: natural tournament completion",
+          "project": "completion-desktop",
+          "status": "failed",
+          "durationMs": 326048
+        },
+        {
+          "title": "survival: natural tournament completion",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 32749,
+          "naturalCompletion": {
+            "format": "survival",
+            "events": [
+              {
+                "event": 0,
+                "played": 29,
+                "background": 0,
+                "variants": [
+                  "badugi",
+                  "nlh",
+                  "stud"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "title": "championship: natural tournament completion",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 40863,
+          "naturalCompletion": {
+            "format": "championship",
+            "events": [
+              {
+                "event": 0,
+                "played": 35,
+                "background": 0,
+                "variants": [
+                  "badugi",
+                  "nlh",
+                  "stud"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "run": "multi-stage-natural-final",
+      "startedAt": "2026-09-19T14:52:13.418Z",
+      "durationMs": 283194.89300000004,
+      "tests": [
+        {
+          "title": "stage: natural tournament completion",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 282366,
+          "naturalCompletion": {
+            "format": "stage",
+            "events": [
+              {
+                "event": 0,
+                "played": 42,
+                "background": 0,
+                "variants": [
+                  "badugi"
+                ]
+              },
+              {
+                "event": 1,
+                "played": 33,
+                "background": 0,
+                "variants": [
+                  "nlh"
+                ]
+              },
+              {
+                "event": 2,
+                "played": 40,
+                "background": 0,
+                "variants": [
+                  "stud"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "run": "multi-hud-final",
+      "startedAt": "2026-09-19T14:52:14.690Z",
+      "durationMs": 12921.883,
+      "tests": [
+        {
+          "title": "Multi-game stage: play, restore, finish and preserve career",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 6074
+        },
+        {
+          "title": "Multi-game survival: play, restore, finish and preserve career",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 3263
+        },
+        {
+          "title": "Multi-game championship: play, restore, finish and preserve career",
+          "project": "completion-desktop",
+          "status": "passed",
+          "durationMs": 3106
+        }
+      ]
+    }
+  ]
+}

@@ -1,100 +1,157 @@
 # MGX 全体確認・プレイ不具合一覧
 
-更新（UTC）: 2026-09-19T13:35:51.304Z
+更新（UTC）: 2026-09-19T14:57:35.461Z
 
-37種目（公開24・検証中12・未実装1）、学習、通常対局、トーナメント、MIX、履歴／リプレイ、通信、端末操作。
+37種目（公開設定25・検証中12）、学習、通常対局、トーナメント、MIX、履歴／リプレイ、通信、端末操作。
 
-PCでは実装済み36種目を対局確認。公開24種目は各10ハンドまで確認済み。未修正の不具合3件、OFCとMulti-Gameの未実装、実機通常対局の確認残りがあるため、全QA完了ではない。詳しい検査条件と残作業は [README](README.md) を参照。
+未実装だったOFCとMulti-Gameの3形式を実装し、Dealer’s Choiceの開始・種目交代、表示と認証の不具合を修正。37種目すべてで通常対局を確認。実機の通常対局・指のタッチ・キーボード・横回転・PWA追加は接続応答待ちで未完了。ブラウザ再現の合格を実機合格とは扱わない。詳細は [README](README.md) と [画面の使いやすさQA](USABILITY-QA.md)。
 
-- 判定は実施した範囲に限る。起動だけ・1ハンドだけの確認を、全機能合格とは記載しない。
-- 未実装OFCと検証中12種目は公開中種目と分ける。
-- 専用ローカルAPI／DBと検査用ブラウザを使用。本番配信・本番成績は変更しない。
-- 物理iPhoneとブラウザの端末再現を区別する。「縦画面／横画面」は実機と明記した項目以外はブラウザ上の確認。
+- 判定は実施した範囲に限る。1ハンドと連続プレイ、自然決着と強制終了の検査を区別する。
+- OFCはclassic 13枚・2人戦を実装。Pineappleではない。検証中12種目の公開設定は維持。
+- 専用ローカルAPI／SQLiteと検査用ブラウザを使用。本番配信・本番成績は変更していない。
+- 物理iPhoneとブラウザの端末再現を区別。「縦画面／横画面」は実機と明記した項目以外はブラウザ上の確認。
+- QA-001〜QA-009は修正済み。物理操作未確認のため、全QA完了・リリース承認とはしない。
 
 ## 種目別
 
 | 種目 | 提供状態 | PC通常対局 | iPhone通常対局 | トーナメント | 縦画面 | 横画面 | リプレイ | 不具合 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Badugi | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査応答が途切れた | PC：1ハンドUI＋強制終了場面 合格（種目別の自然決着は未） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | 未検出／未確認 |
-| No-Limit Hold'em | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査応答が途切れた | PC：1ハンドUI＋強制終了場面 合格（種目別の自然決着は未） | 実機：横向き必須の案内確認（対局未） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | QA-003 |
-| Fixed-Limit Hold'em | 検証中 | 1ハンド操作・履歴要件・退出 合格（公開可否は未判定） | 未完了：USB検査応答が途切れた | 未確認 | 実機：横向き必須の案内確認（対局未） | iPhone相当WebKit：1ハンド/退出 合格・実機未 | PC/WebKit：履歴の必要項目 合格（完全再現未） | QA-003 |
-| NL Super Hold'em | 検証中 | 1ハンド操作・履歴要件・退出 合格（公開可否は未判定） | 未完了：USB検査応答が途切れた | 未確認 | 実機：横向き必須の案内確認（対局未） | iPhone相当WebKit：1ハンド/退出 合格・実機未 | PC/WebKit：履歴の必要項目 合格（完全再現未） | 未検出／未確認 |
-| FL Super Hold'em | 検証中 | 1ハンド操作・履歴要件・退出 合格（公開可否は未判定） | 未完了：USB検査応答が途切れた | 未確認 | 実機：横向き必須の案内確認（対局未） | iPhone相当WebKit：1ハンド/退出 合格・実機未 | PC/WebKit：履歴の必要項目 合格（完全再現未） | 未検出／未確認 |
-| Pot-Limit Omaha | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査応答が途切れた | PC：1ハンドUI＋強制終了場面 合格（種目別の自然決着は未） | 実機：横向き必須の案内確認（対局未） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | QA-003 |
-| PLO8 | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査応答が途切れた | PC：1ハンドUI＋強制終了場面 合格（種目別の自然決着は未） | 実機：横向き必須の案内確認（対局未） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | QA-003 |
-| FLO8 | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査応答が途切れた | PC：1ハンドUI＋強制終了場面 合格（種目別の自然決着は未） | 横向き必須の案内 合格（プレイ不可） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | QA-003 |
-| Big-O | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査応答が途切れた | PC：1ハンドUI＋強制終了場面 合格（種目別の自然決着は未） | 横向き必須の案内 合格（プレイ不可） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | QA-003 |
-| 5-Card PLO | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査応答が途切れた | PC：1ハンドUI＋強制終了場面 合格（種目別の自然決着は未） | 横向き必須の案内 合格（プレイ不可） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | QA-003 |
-| 2-7 Triple Draw | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査応答が途切れた | PC：1ハンドUI＋強制終了場面 合格（種目別の自然決着は未） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | 未検出／未確認 |
-| A-5 Triple Draw | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査応答が途切れた | PC：1ハンドUI＋強制終了場面 合格（種目別の自然決着は未） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | 未検出／未確認 |
-| Badeucey TD | 検証中 | 1ハンド操作・履歴要件・退出 合格（公開可否は未判定） | 未完了：USB検査応答が途切れた | 未確認 | 未確認 | iPhone相当WebKit：1ハンド/退出 合格・実機未 | PC/WebKit：履歴の必要項目 合格（完全再現未） | 未検出／未確認 |
-| Badacey TD | 検証中 | 1ハンド操作・履歴要件・退出 合格（公開可否は未判定） | 未完了：USB検査応答が途切れた | 未確認 | 未確認 | iPhone相当WebKit：1ハンド/退出 合格・実機未 | PC/WebKit：履歴の必要項目 合格（完全再現未） | 未検出／未確認 |
-| Hidugi TD | 検証中 | 1ハンド操作・履歴要件・退出 合格（公開可否は未判定） | 未完了：USB検査応答が途切れた | 未確認 | 未確認 | iPhone相当WebKit：1ハンド/退出 合格・実機未 | PC/WebKit：履歴の必要項目 合格（完全再現未） | 未検出／未確認 |
-| Archie TD | 検証中 | 1ハンド操作・履歴要件・退出 合格（公開可否は未判定） | 未完了：USB検査応答が途切れた | 未確認 | 未確認 | iPhone相当WebKit：1ハンド/退出 合格・実機未 | PC/WebKit：履歴の必要項目 合格（完全再現未） | 未検出／未確認 |
-| 2-7 Single Draw | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査応答が途切れた | PC：1ハンドUI＋強制終了場面 合格（種目別の自然決着は未） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | 未検出／未確認 |
-| A-5 Single Draw | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査応答が途切れた | PC：1ハンドUI＋強制終了場面 合格（種目別の自然決着は未） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | 未検出／未確認 |
-| 5-Card Single Draw | 検証中 | 1ハンド操作・履歴要件・退出 合格（公開可否は未判定） | 未完了：USB検査応答が途切れた | 未確認 | 未確認 | iPhone相当WebKit：1ハンド/退出 合格・実機未 | PC/WebKit：履歴の必要項目 合格（完全再現未） | 未検出／未確認 |
-| Badugi Single Draw | 検証中 | 1ハンド操作・履歴要件・退出 合格（公開可否は未判定） | 未完了：USB検査応答が途切れた | 未確認 | 未確認 | iPhone相当WebKit：1ハンド/退出 合格・実機未 | PC/WebKit：履歴の必要項目 合格（完全再現未） | 未検出／未確認 |
-| Badeucey Single Draw | 検証中 | 1ハンド操作・履歴要件・退出 合格（公開可否は未判定） | 未完了：USB検査応答が途切れた | 未確認 | 未確認 | iPhone相当WebKit：1ハンド/退出 合格・実機未 | PC/WebKit：履歴の必要項目 合格（完全再現未） | 未検出／未確認 |
-| Badacey Single Draw | 検証中 | 1ハンド操作・履歴要件・退出 合格（公開可否は未判定） | 未完了：USB検査応答が途切れた | 未確認 | 未確認 | iPhone相当WebKit：1ハンド/退出 合格・実機未 | PC/WebKit：履歴の必要項目 合格（完全再現未） | 未検出／未確認 |
-| Hidugi Single Draw | 検証中 | 1ハンド操作・履歴要件・退出 合格（公開可否は未判定） | 未完了：USB検査応答が途切れた | 未確認 | 未確認 | iPhone相当WebKit：1ハンド/退出 合格・実機未 | PC/WebKit：履歴の必要項目 合格（完全再現未） | 未検出／未確認 |
-| Dramaha Hi | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査応答が途切れた | PC：1ハンドUI＋強制終了場面 合格（種目別の自然決着は未） | 横向き必須の案内 合格（プレイ不可） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | 未検出／未確認 |
-| Dramaha 2-7 | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査応答が途切れた | PC：1ハンドUI＋強制終了場面 合格（種目別の自然決着は未） | 横向き必須の案内 合格（プレイ不可） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | 未検出／未確認 |
-| Dramaha A-5 | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査応答が途切れた | PC：1ハンドUI＋強制終了場面 合格（種目別の自然決着は未） | 横向き必須の案内 合格（プレイ不可） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | 未検出／未確認 |
-| Dramaha Zero | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査応答が途切れた | PC：1ハンドUI＋強制終了場面 合格（種目別の自然決着は未） | 横向き必須の案内 合格（プレイ不可） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | 未検出／未確認 |
-| Dramaha Hidugi | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査応答が途切れた | PC：1ハンドUI＋強制終了場面 合格（種目別の自然決着は未） | 横向き必須の案内 合格（プレイ不可） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | 未検出／未確認 |
-| Dramaha Badugi | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査応答が途切れた | PC：1ハンドUI＋強制終了場面 合格（種目別の自然決着は未） | 横向き必須の案内 合格（プレイ不可） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | 未検出／未確認 |
-| Stud | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査応答が途切れた | PC：1ハンドUI＋強制終了場面 合格（種目別の自然決着は未） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | QA-003 |
-| Stud 8 | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査応答が途切れた | PC：1ハンドUI＋強制終了場面 合格（種目別の自然決着は未） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | QA-003 |
-| Razz | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査応答が途切れた | PC：1ハンドUI＋強制終了場面 合格（種目別の自然決着は未） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | QA-003 |
-| Razzdugi | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査応答が途切れた | PC：1ハンドUI＋強制終了場面 合格（種目別の自然決着は未） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | QA-003 |
-| Razzducey | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査応答が途切れた | PC：1ハンドUI＋強制終了場面 合格（種目別の自然決着は未） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | QA-003 |
-| 2-7 Razz | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査応答が途切れた | PC：1ハンドUI＋強制終了場面 合格（種目別の自然決着は未） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | QA-003 |
-| Chinese Poker | 公開中 | PC・Android/iPhone相当 各10ハンド合格 | 未完了：USB検査応答が途切れた | 専用種目：対象外 | Android/iPhone相当 合格・実機未 | iPhone相当WebKit：10ハンド合格・実機未 | 3ブラウザ各10ハンド完全再現 合格 | 未検出／未確認 |
-| Open-Face Chinese Poker | 未実装 | 不可：未実装 | 不可：未実装 | 不可：未実装 | 不可：未実装 | 不可：未実装 | 不可：未実装 | 既存 CHINESE-03 |
+| Badugi | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | 未検出／未確認 |
+| No-Limit Hold'em | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | 実機：横向き必須の案内確認（対局未） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | QA-003（修正済み） |
+| Fixed-Limit Hold'em | 検証中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | 横向き案内・はみ出しなし 合格・実機未 | iPhone相当WebKit：10ハンド・退出 合格・実機未 | PC/WebKit各10ハンド：完全再現監査 合格 | QA-003（修正済み） |
+| NL Super Hold'em | 検証中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | 横向き案内・はみ出しなし 合格・実機未 | iPhone相当WebKit：10ハンド・退出 合格・実機未 | PC/WebKit各10ハンド：完全再現監査 合格 | 未検出／未確認 |
+| FL Super Hold'em | 検証中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | 横向き案内・はみ出しなし 合格・実機未 | iPhone相当WebKit：10ハンド・退出 合格・実機未 | PC/WebKit各10ハンド：完全再現監査 合格 | 未検出／未確認 |
+| Pot-Limit Omaha | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | 実機：横向き必須の案内確認（対局未） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | QA-003（修正済み） |
+| PLO8 | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | 実機：横向き必須の案内確認（対局未） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | QA-003（修正済み） |
+| FLO8 | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | 横向き必須の案内 合格（プレイ不可） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | QA-003（修正済み） |
+| Big-O | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | 横向き必須の案内 合格（プレイ不可） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | QA-003（修正済み） |
+| 5-Card PLO | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | 横向き必須の案内 合格（プレイ不可） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | QA-003（修正済み） |
+| 2-7 Triple Draw | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | 未検出／未確認 |
+| A-5 Triple Draw | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | 未検出／未確認 |
+| Badeucey TD | 検証中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | iPhone相当WebKit：1ハンド・結果ボタン 合格・実機未 | iPhone相当WebKit：10ハンド・退出 合格・実機未 | PC/WebKit各10ハンド：完全再現監査 合格 | 未検出／未確認 |
+| Badacey TD | 検証中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | iPhone相当WebKit：1ハンド・結果ボタン 合格・実機未 | iPhone相当WebKit：10ハンド・退出 合格・実機未 | PC/WebKit各10ハンド：完全再現監査 合格 | 未検出／未確認 |
+| Hidugi TD | 検証中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | iPhone相当WebKit：1ハンド・結果ボタン 合格・実機未 | iPhone相当WebKit：10ハンド・退出 合格・実機未 | PC/WebKit各10ハンド：完全再現監査 合格 | 未検出／未確認 |
+| Archie TD | 検証中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | iPhone相当WebKit：1ハンド・結果ボタン 合格・実機未 | iPhone相当WebKit：10ハンド・退出 合格・実機未 | PC/WebKit各10ハンド：完全再現監査 合格 | 未検出／未確認 |
+| 2-7 Single Draw | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | 未検出／未確認 |
+| A-5 Single Draw | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | 未検出／未確認 |
+| 5-Card Single Draw | 検証中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | iPhone相当WebKit：1ハンド・結果ボタン 合格・実機未 | iPhone相当WebKit：10ハンド・退出 合格・実機未 | PC/WebKit各10ハンド：完全再現監査 合格 | 未検出／未確認 |
+| Badugi Single Draw | 検証中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | iPhone相当WebKit：1ハンド・結果ボタン 合格・実機未 | iPhone相当WebKit：10ハンド・退出 合格・実機未 | PC/WebKit各10ハンド：完全再現監査 合格 | 未検出／未確認 |
+| Badeucey Single Draw | 検証中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | iPhone相当WebKit：1ハンド・結果ボタン 合格・実機未 | iPhone相当WebKit：10ハンド・退出 合格・実機未 | PC/WebKit各10ハンド：完全再現監査 合格 | 未検出／未確認 |
+| Badacey Single Draw | 検証中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | iPhone相当WebKit：1ハンド・結果ボタン 合格・実機未 | iPhone相当WebKit：10ハンド・退出 合格・実機未 | PC/WebKit各10ハンド：完全再現監査 合格 | 未検出／未確認 |
+| Hidugi Single Draw | 検証中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | iPhone相当WebKit：1ハンド・結果ボタン 合格・実機未 | iPhone相当WebKit：10ハンド・退出 合格・実機未 | PC/WebKit各10ハンド：完全再現監査 合格 | 未検出／未確認 |
+| Dramaha Hi | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | 横向き必須の案内 合格（プレイ不可） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | 未検出／未確認 |
+| Dramaha 2-7 | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | 横向き必須の案内 合格（プレイ不可） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | 未検出／未確認 |
+| Dramaha A-5 | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | 横向き必須の案内 合格（プレイ不可） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | 未検出／未確認 |
+| Dramaha Zero | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | 横向き必須の案内 合格（プレイ不可） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | 未検出／未確認 |
+| Dramaha Hidugi | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | 横向き必須の案内 合格（プレイ不可） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | 未検出／未確認 |
+| Dramaha Badugi | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | 横向き必須の案内 合格（プレイ不可） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | 未検出／未確認 |
+| Stud | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | QA-003（修正済み） |
+| Stud 8 | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | QA-003（修正済み） |
+| Razz | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | QA-003（修正済み） |
+| Razzdugi | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | QA-003（修正済み） |
+| Razzducey | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | QA-003（修正済み） |
+| 2-7 Razz | 公開中 | 画面操作10ハンド・履歴・精算・退出 合格 | 未完了：USB検査のRuntime応答なし | PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない） | iPhone相当WebKit：1ハンド/操作 合格・実機未 | iPhone相当WebKit：1ハンド/操作 合格・実機未 | PC：記録監査＋画面再生 合格 | QA-003（修正済み） |
+| Chinese Poker | 公開中 | PC・Android/iPhone相当 各10ハンド合格 | 未完了：USB検査のRuntime応答なし | 専用種目：対象外 | Android/iPhone相当 合格・実機未 | iPhone相当WebKit：10ハンド合格・実機未 | 3ブラウザ各10ハンド完全再現 合格 | 未検出／未確認 |
+| Open-Face Chinese Poker | 公開中 | 10ハンド・配置・再開・履歴 合格 | 未完了：USB検査のRuntime応答なし | 専用2人種目：対象外 | Android/iPhone相当 各10ハンド 合格・実機未 | Android/iPhone相当 各10ハンド 合格・実機未 | 5画面構成×10ハンド完全再現 合格 | 未検出／未確認 |
 
 ## 機能別
 
 | 機能 | 状態 | 証拠 |
 | --- | --- | --- |
 | 学習：クイズ・3種目練習・復習・英語 | iPhone実機で6グループ合格（9/19） | [../learning-entry/IPHONE-PHYSICAL-QA.md](../learning-entry/IPHONE-PHYSICAL-QA.md) |
-| ゲーム進行・既知不具合・種目公開設定の回帰 | 今回111件合格（4ファイル） | [artifacts/engine-regression.log](artifacts/engine-regression.log) |
-| トーナメント開始・中断・再開・敗退・優勝 | 47件回帰合格＋店舗/地域/世界の通常決着3件合格（Hero計77ハンド、敗退後CPU進行を試験用に加速） | [artifacts/tournament-completion.json](artifacts/tournament-completion.json) |
+| ゲーム進行・既知不具合・種目公開設定の回帰 | 関連ユニット266件＋全種目進行54件合格。Playerは修正後25件合格。バックエンド全83件合格 | [completion-evidence.json](completion-evidence.json) |
+| トーナメント開始・中断・再開・敗退・優勝 | 35種目で1ハンドUI＋CPU加速決着・順位・退出 合格。先行の店舗/地域/世界自然決着3件も保存 | [artifacts/variant-tournament-final.json](artifacts/variant-tournament-final.json) |
 | MIXの種目交代 | 3ブラウザでMIX6件合格＋クイズ3件合格：種目交代・チップ/席維持・禁止種目/手数制限（APIモック・試験用進行操作） | [artifacts/mix-three-browsers.json](artifacts/mix-three-browsers.json) |
-| 履歴・リプレイ・復習への保存 | 通常対局23種目×10ハンドの履歴監査・再生合格。Chineseは3ブラウザ各10ハンド。復習保存は学習実機QA参照 | [artifacts/desktop-cash-10hands.json](artifacts/desktop-cash-10hands.json) |
-| ログイン・登録・ログアウト | PC実API：登録/ログイン/再読込/ログアウト合格。実機：登録/ログイン合格、以後の継続は未確認 | [artifacts/features-confirmed.json](artifacts/features-confirmed.json) |
-| 友達対戦・通信復帰 | PC上のモバイル再現2件合格：2人の再接続・カード非公開・WS障害後REST継続（実機は未） | [artifacts/friend-match.json](artifacts/friend-match.json) |
-| PWAインストール・再起動 | Chromeインストール要件エラー0。実機インストール・再起動は未。Service Worker未実装 | [artifacts/pwa-installability.json](artifacts/pwa-installability.json) |
+| 履歴・リプレイ・復習への保存 | 公開リング23×10ハンド、検証中12×PC/WebKit各10ハンド、Chinese40ハンド、OFC50ハンドの記録再現合格。復習は学習実機QA参照 | [completion-evidence.json](completion-evidence.json) |
+| ログイン・登録・ログアウト | 修正後PC実APIで登録/ログイン/再読込/ログアウト/削除合格。削除アカウントの古い認証が別アカウントに通る問題も修正 | [artifacts/regression-after-auth.json](artifacts/regression-after-auth.json) |
+| 友達対戦・通信復帰 | 修正後、2人のWS再接続・手札非公開・WS障害後REST継続 合格。実機は未 | [artifacts/regression-after-auth.json](artifacts/regression-after-auth.json) |
+| PWAインストール・再起動 | PNG実体と1024px宣言一致・起動URL・Chrome要件エラー0を確認。実機追加/再起動は未。オフライン機能なし | [artifacts/regression-after-auth.json](artifacts/regression-after-auth.json) |
 | 実キーボード・タッチ操作 | 未確認 | — |
 | 実機の縦横回転・セーフエリア | 縦393pxで学習とログイン、6種目の回転案内を確認。横向き・通常対局は接続応答待ち | — |
-| Multi-Game Tournament | 未実装の3形式（Stage Relay / Survival Mix / Championship Relay）。画面はPrototype | [../../src/ui/screens/MultiGameScreen.jsx](../../src/ui/screens/MultiGameScreen.jsx) |
-| Dealer’s Choice | 不具合 QA-002：すぐスタートでタイトルに遷移し選択ゲームが起動しない | [artifacts/features-confirmed.json](artifacts/features-confirmed.json) |
+| Multi-Game Tournament | 3形式を実装。5画面構成×3形式の開始・再開・結果・成績不変 合格。強制優勝なしの連続プレイ：Stage 42+33+40、Survival 29、Championship 35、計179ハンドで全大会完了 | [completion-evidence.json](completion-evidence.json) |
+| Dealer’s Choice | 修正済み：NLH→Badugiの実対局2ハンド・キュー消費合格。手動選択/ルーレット/順序設定を実装 | [artifacts/regression-after-auth.json](artifacts/regression-after-auth.json) |
+| OFC：配置・Fantasyland・履歴・再開 | 実装済み。5画面構成各10ハンド計50、完全再現・再開・手動配置/取消/確定 合格。Fantasylandの突入/継続条件はユニット確認 | [completion-evidence.json](completion-evidence.json) |
+| 一目で操作できる画面 | 5代表種目×5画面構成25件＋公開種目縦横46件＋検証中縦12件合格。手番/交換枚数/勝者/結果操作の位置を確認 | [USABILITY-QA.md](USABILITY-QA.md) |
 
 ## 不具合・制約
 
 ### QA-001 PWAアイコンの形式・サイズ宣言が実ファイルと不一致
 
-- 状態: 確認済み・未修正（インストール不能とは未判定）
+- 状態: 修正済み・再検査合格
 - 環境: 公開候補c0fa8faのmanifestと画像／PC Chrome
 - 再現: manifest.webmanifestのiconsとmgx_favicon.pngのヘッダーを照合
-- 実際: image/pngの192px・512pxと宣言されているが、実体は32/64/128/256pxのICO。ChromeのinstallabilityErrorsは0
+- 実際: 修正前：image/pngの192px・512pxと宣言されているが、実体は32/64/128/256pxのICO。ChromeのinstallabilityErrorsは0
 - 期待: 宣言と実体が一致するアイコンを配信する
-- 証拠: public/manifest.webmanifest、public/mgx_favicon.png、artifacts/pwa-installability.json
+- 証拠: public/manifest.webmanifest、public/mgx_favicon.png、artifacts/pwa-installability.json。修正後：artifacts/regression-after-auth.json
 
 ### QA-002 Dealer’s Choiceの「すぐスタート」で選択ゲームが始まらない
 
-- 状態: P1・2回再現・未修正
+- 状態: 修正済み・再検査合格
 - 環境: 公開候補c0fa8fa／PC Chrome／World解放状態を検査用に設定
 - 再現: Dealer’s Choiceを開く→NL Hold’emをキュー追加→「このゲームですぐスタート」
-- 実際: /game?mode=dealers-choiceへ遷移するがPRESS ENTERのタイトル表示。キューは[B01,B01]のまま、対局/HUDが表示されない。App側にキュー消費処理の参照なし
+- 実際: 修正前：/game?mode=dealers-choiceへ遷移するがPRESS ENTERのタイトル表示。キューは[B01,B01]のまま、対局/HUDが表示されない。App側にキュー消費処理の参照なし
 - 期待: 選択種目で対局が始まり、キューを消費する
-- 証拠: artifacts/features-confirmed.json、features-confirmed-testsの画面／tests/e2e/gameplay-device-features.spec.ts
+- 証拠: artifacts/features-confirmed.json、features-confirmed-testsの画面／tests/e2e/gameplay-device-features.spec.ts。修正後：artifacts/regression-after-auth.json
 
 ### QA-003 結果画面のポット総額が0と表示され、内訳と一致しない
 
-- 状態: P2・公開12種目で再現・未修正（進行/履歴/精算の合格とは別）
+- 状態: 修正済み・再検査合格
 - 環境: c0fa8fa／PC Chrome：Board6種目＋Stud6種目。検証中FLHはiPhone相当WebKit画面でも確認
 - 再現: 各種目でコール/チェックしてショーダウン→結果画面の見出しと内訳を比較
-- 実際: Boardは見出しPot ¥0・内訳¥120、Studは見出しPot ¥0・内訳¥60。残り公開11種目では整合
+- 実際: 修正前：Boardは見出しPot ¥0・内訳¥120、Studは見出しPot ¥0・内訳¥60。残り公開11種目では整合
 - 期待: 見出しに各ポット内訳の合計を表示する。払戻し自体の誤りは今回未検出
-- 証拠: artifacts/pot-audit.json（11合格/12失敗）、tests/e2e/gameplay-result-pot-audit.spec.ts、WebKit FLH結果画像
+- 証拠: artifacts/pot-audit.json（11合格/12失敗）、tests/e2e/gameplay-result-pot-audit.spec.ts、WebKit FLH結果画像。修正後：artifacts/regression-after-auth.json
+
+### QA-004 短い横画面で結果の勝者と操作が離れる
+
+- 状態: 修正済み・再検査合格
+- 環境: bc35b25以降のローカル修正版
+- 再現: スマホ横画面でショーダウン
+- 実際: 修正前：詳細が長いと勝者や次の操作までスクロールが必要
+- 期待: 勝者を上部に固定し、履歴/精算/次へは下部に固定。詳細だけスクロール
+- 証拠: artifacts/usability-last.json
+
+### QA-005 小さいカードで数字・スートの重複が重なる
+
+- 状態: 修正済み・再検査合格
+- 環境: bc35b25以降のローカル修正版
+- 再現: スマホでStud/Drawの手札を表示
+- 実際: 修正前：隅と中央のランク表示が重なり判読しにくい
+- 期待: コンパクトカードは数字とスートを1組で表示
+- 証拠: artifacts/usability-last/ のplaying.png
+
+### QA-006 交換前のPAT表示と5枚交換バッジの欠落
+
+- 状態: 修正済み・再検査合格
+- 環境: bc35b25以降のローカル修正版
+- 再現: Draw種目の開始時と5枚交換時
+- 実際: 修正前：nullが0へ変換され交換前にPAT。D5が範囲外
+- 期待: 未交換はバッジなし。0枚はPAT、5枚はD5
+- 証拠: Player.test.jsx 25件合格
+
+### QA-007 大会の種目変更時に参加者情報が失われる
+
+- 状態: 修正済み・再検査合格
+- 環境: bc35b25以降のローカル修正版
+- 再現: Multi-GameでDrawからBoard/Studへ変更し連続プレイ
+- 実際: 修正前：古いキャッシュ対局の参加者を参照し大会のハンド数が進まない
+- 期待: 大会の席/参加者ID/残高/ボタンを次のコントローラーへ引き継ぐ
+- 証拠: artifacts/variant-tournament-final.json、completion-evidence.json
+
+### QA-008 削除済み認証が再利用されたアカウント番号に通る
+
+- 状態: 修正済み・再検査合格
+- 環境: bc35b25以降のローカル修正版
+- 再現: 削除後に同一ID・メール・パスワードで再登録し古い認証を送信
+- 実際: 修正前：SQLiteの行番号再利用により別の登録へ認証できる
+- 期待: 登録時のパスワードハッシュに結びつけた署名を照合。REST401/WS4401で拒否
+- 証拠: backend/tests/test_account_deletion.py、バックエンド全83件合格
+
+### QA-009 Multi-Gameの次種目表示が通常大会の固定設定を参照
+
+- 状態: 修正済み・再検査合格
+- 環境: bc35b25以降のローカル修正版
+- 再現: Survival/Championshipで卓や決勝の種目順を変更
+- 実際: 修正前：実際の次の種目と案内が一致しない可能性
+- 期待: 卓別の進行と決勝順から次種目を表示
+- 証拠: multiGameSeries.test.js、artifacts/multi-hud-final.json

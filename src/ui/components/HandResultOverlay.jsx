@@ -266,6 +266,9 @@ function PotSection({ pot, index, singlePot }) {
 
 export default function HandResultOverlay({
   reviewHandId,
+  players = [],
+  heroSeat = null,
+  language = "en",
   visible,
   summary,
   mixedInfo,
@@ -278,13 +281,18 @@ export default function HandResultOverlay({
   onCashOut,
 }) {
   if (!visible || !summary) return null;
-  const winners = summary.winners ?? [];
-  const potDetails = summary.potDetails ?? [];
+  const resolveWinner = winner => ({ ...winner, name: Number.isInteger(heroSeat) && winner.seatIndex === heroSeat ? (language === 'ja' ? 'あなた' : 'You') : winner.name ?? players[winner.seatIndex]?.name });
+  const winners = (summary.winners ?? []).map(resolveWinner);
+  const potDetails = (summary.potDetails ?? []).map(pot => ({ ...pot, ...Object.fromEntries(['winners', 'highWinners', 'lowWinners', 'badugiWinners'].filter(key => Array.isArray(pot[key])).map(key => [key, pot[key].map(resolveWinner)])) }));
   const followUpSummary = summary.followUpSummary ?? null;
   const topIssue = followUpSummary?.topIssue ?? null;
   const replayTarget = followUpSummary?.replayTarget ?? null;
   const handleNext = typeof onNext === "function" ? onNext : onNextHand;
   const resolvedButtonLabel = buttonLabel ?? nextHandLabel ?? "Next hand";
+  // Board and Stud controllers expose totalPot; draw controllers expose pot.
+  const totalPot = summary.pot ?? summary.totalPot ?? potDetails.reduce(
+    (sum, pot) => sum + Number(pot.potAmount ?? pot.amount ?? 0), 0,
+  );
   const potSections =
     potDetails.length > 0
       ? potDetails
@@ -292,28 +300,33 @@ export default function HandResultOverlay({
       ? [
           {
             potIndex: 0,
-            potAmount: summary.pot ?? 0,
+            potAmount: totalPot,
             winners,
           },
         ]
       : [];
   const singlePot = potSections.length <= 1;
+  const winnerNames = [...new Set(potSections.flatMap(pot => buildWinnerGroups(pot).flatMap(group => group.winners)).map(winner =>
+    winner.name ?? (Number.isInteger(winner.seatIndex) ? `Seat ${winner.seatIndex + 1}` : 'Winner'),
+  ))];
   return (
     <div
       className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 px-4"
       data-testid="hand-result-overlay"
     >
-      <div className="max-h-[calc(100dvh-2rem)] w-full max-w-3xl space-y-4 overflow-y-auto rounded-3xl border border-emerald-400/40 bg-slate-900 p-4 shadow-2xl sm:p-6">
-        <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em] text-emerald-300">
+      <div role="dialog" aria-modal="true" aria-label="Hand Result" className="flex max-h-[calc(100dvh-2rem)] w-full max-w-3xl flex-col gap-3 overflow-hidden rounded-3xl border border-emerald-400/40 bg-slate-900 p-3 shadow-2xl sm:p-4">
+        <div className="flex shrink-0 items-center justify-between gap-2 text-xs uppercase tracking-[0.15em] text-emerald-300">
           <span>Hand Result</span>
           {summary.handId && <span>#{summary.handId}</span>}
         </div>
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-3xl font-bold text-white">
-            Pot ¥{formatAmount(summary.pot ?? 0)}
+        <div className="flex shrink-0 flex-wrap items-baseline justify-between gap-2">
+          <h2 data-testid="hand-result-total" className="text-2xl font-bold text-white">
+            Pot ¥{formatAmount(totalPot)}
           </h2>
           <span className="text-sm text-slate-400">Choose your next action</span>
         </div>
+        {winnerNames.length > 0 && <p data-testid="hand-result-winner-summary" className="shrink-0 text-sm font-semibold leading-snug text-emerald-200">{language === 'ja' ? '獲得したプレイヤー' : `Winner${winnerNames.length > 1 ? 's' : ''}`}: {winnerNames.join(' / ')}</p>}
+        <div className="min-h-0 space-y-3 overflow-y-auto overscroll-contain" data-testid="hand-result-details">
         <div className="space-y-4 text-sm text-slate-200">
           {potSections.map((pot, idx) => (
             <PotSection key={`pot-${pot.potIndex ?? idx}`} pot={pot} index={idx} singlePot={singlePot} />
@@ -378,8 +391,10 @@ export default function HandResultOverlay({
           </div>
         )}
         {(reviewHandId || summary.handId) && <ReviewBookmarkButton key={reviewHandId ?? summary.handId} handId={reviewHandId ?? summary.handId} />}
+        </div>
+        <div className="grid shrink-0 grid-cols-2 gap-2 border-t border-white/10 pt-3 sm:grid-cols-3" data-testid="hand-result-actions">
         {(typeof onHistory === "function" || typeof onCashOut === "function") && (
-          <div className="grid gap-2 sm:grid-cols-2">
+          <>
             {typeof onHistory === "function" && (
               <button
                 type="button"
@@ -400,16 +415,17 @@ export default function HandResultOverlay({
                 Cash Out
               </button>
             )}
-          </div>
+          </>
         )}
         <button
           type="button"
           onClick={handleNext}
           data-testid="hand-result-next-hand"
-          className="w-full rounded-2xl bg-emerald-500 py-3 text-slate-900 font-semibold hover:bg-emerald-400 transition"
+          className="col-span-2 min-h-11 rounded-2xl bg-emerald-500 px-3 py-3 text-slate-900 font-semibold hover:bg-emerald-400 transition sm:col-span-1"
         >
           {resolvedButtonLabel}
         </button>
+        </div>
       </div>
     </div>
   );

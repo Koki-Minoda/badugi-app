@@ -241,6 +241,7 @@ export const STUD_APP_VARIANT_IDS = new Set([
 
 export const CHINESE_APP_VARIANT_IDS = new Set([
   APP_VARIANT_IDS.CHINESE_POKER,
+  APP_VARIANT_IDS.OFC,
 ]);
 
 export function normalizeAppVariantId(variantId, fallback = APP_VARIANT_IDS.BADUGI) {

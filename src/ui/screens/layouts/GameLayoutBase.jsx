@@ -653,6 +653,8 @@ export default function GameLayoutBase({
             phase="DRAW"
             player={heroPlayerForControls}
             onDraw={drawSelected}
+            selectedDrawCount={heroDrawSelection.length}
+            language={language}
             canDraw={controlsHeroCanDraw}
             layoutMode={mobileLayoutMode}
             className={isMobileLayout ? "w-full" : undefined}
@@ -660,6 +662,7 @@ export default function GameLayoutBase({
         );
       }
     }
+    if (isMobileLayout) return null;
     return (
       <p className="text-sm text-slate-400 text-center w-full">
         {actionPanelInfo?.waitingLabel ?? "Waiting for other players…"}
@@ -1188,9 +1191,16 @@ export default function GameLayoutBase({
                   >
                     Hero Controls
                   </h2>
+                  <p role="status" aria-live="polite" data-testid="player-action-hint" className={`rounded-lg px-2 py-1 text-xs font-semibold leading-snug ${heroCanAct ? 'bg-emerald-400/15 text-emerald-100' : 'text-slate-300'}`}>
+                    {heroCanAct
+                      ? (language === 'ja'
+                        ? (controlsPhase === 'DRAW' ? 'あなたの番：交換するカードを選んで確定' : `あなたの番：${actionPanelInfo?.toCall > 0 ? `コール ${Math.min(actionPanelInfo.toCall, heroPlayerForControls?.stack ?? 0)}` : 'チェックできます'}`)
+                        : (controlsPhase === 'DRAW' ? 'Your turn: select cards, then confirm' : `Your turn · ${actionPanelInfo?.toCall > 0 ? `Call ${Math.min(actionPanelInfo.toCall, heroPlayerForControls?.stack ?? 0)}` : 'Check available'}`))
+                      : (language === 'ja' ? `${actionPanelInfo?.currentActorName ?? '他のプレイヤー'}の操作を待っています` : `Waiting for ${actionPanelInfo?.currentActorName ?? 'other players'}`)}
+                  </p>
                   <div
                     data-testid="actor-readability-strip"
-                    className={`${isPortraitDrawTable && heroCanAct ? "hidden" : "grid"} ${useDenseActionPanel ? "grid-cols-2 gap-1 text-[9px]" : "grid-cols-3 gap-2 text-[11px]"} text-slate-200`}
+                    className={`${useDenseActionPanel || (isPortraitDrawTable && heroCanAct) ? "hidden" : "grid"} grid-cols-3 gap-2 text-[11px] text-slate-200`}
                   >
                     <div
                       className={`rounded-xl border ${isDrawDisplayPhase ? "border-red-300/30 bg-red-500/10" : "border-emerald-300/20 bg-emerald-400/10"} ${useDenseActionPanel ? "rounded-lg px-1 py-0.5" : "px-2 py-1.5"}`}
@@ -1229,7 +1239,7 @@ export default function GameLayoutBase({
                   </div>
                   <div
                     data-testid="action-context-panel"
-                    className={`grid ${useDenseActionPanel ? `${isMobilePortraitMode ? "hidden" : "grid"} grid-cols-4 gap-1 text-[8px]` : "grid-cols-2 gap-2 text-[11px]"} text-slate-200`}
+                    className={`${useDenseActionPanel ? "hidden" : "grid grid-cols-2 gap-2 text-[11px]"} text-slate-200`}
                   >
                     <div
                       className={`rounded-xl border border-white/10 bg-black/30 ${useDenseActionPanel ? "rounded-lg px-1 py-0.5" : "px-2 py-1.5"}`}
@@ -1457,6 +1467,9 @@ export default function GameLayoutBase({
       </Modal>
 
       <HandResultOverlay
+        players={statusSeatViews}
+        heroSeat={statusHeroIndex}
+        language={language}
         reviewHandId={reviewHandId}
         visible={handResultVisible}
         summary={handResultSummary}

@@ -982,7 +982,7 @@
     {
         "id":  "CP2",
         "name":  "Open-Face Chinese Poker",
-        "description":  "OFC is tracked separately from Classic Chinese Poker and remains unavailable until street-by-street placement and Fantasyland are complete.",
+        "description":  "Classic OFC: place five cards, then one card per street. Build three legal rows, earn royalties and 13-card Fantasyland, and replay every placement.",
         "category":  "chinese",
         "holeCards":  5,
         "drawRounds":  0,
@@ -1002,7 +1002,7 @@
                      "fantasyland"
                  ],
         "priorityPhase":  6,
-        "status":  "wip",
+        "status":  "live",
         "engineKey":  "ofc"
     }
 ]

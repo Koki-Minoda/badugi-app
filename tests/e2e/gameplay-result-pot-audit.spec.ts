@@ -5,7 +5,6 @@ import { playOneHandProgression } from './helpers/gameProgressHelper.js';
 
 for (const variant of CORE5_VARIANTS) {
   test(`${variant.variant}: result pot headline agrees with payout sections`, async ({ page }, info) => {
-    test.skip(process.env.MGX_GAMEPLAY_AUDIT !== '1', 'QA-003: opt-in audit includes confirmed open defects');
     const session = await openAuthenticatedGame(page, `${APP_URL}?variant=${variant.variant}`);
     try {
       await playOneHandProgression(page, { maxSteps: 220, policy: 'heroStay', requireHeroButtonClick: true, requireDrawVisit: variant.expectsDraw });

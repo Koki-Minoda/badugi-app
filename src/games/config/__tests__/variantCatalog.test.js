@@ -52,10 +52,10 @@ describe("variantCatalog", () => {
     });
   });
 
-  it("tracks OFC as a separate unfinished game", () => {
+  it("registers OFC separately from Classic Chinese Poker", () => {
     expect(getVariantById("CP2")).toMatchObject({
       category: GAME_VARIANT_CATEGORIES.CHINESE,
-      status: "wip",
+      status: "live",
       engineKey: "ofc",
     });
   });

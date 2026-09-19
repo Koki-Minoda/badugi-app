@@ -92,15 +92,15 @@ function StudActionBadge({ lastAction = "" }) {
 }
 
 function resolveDrawBadgeLabel(player = {}) {
-  const drawCount = Number(player.lastDrawCount);
-  if (Number.isInteger(drawCount) && drawCount >= 0 && drawCount <= 4) {
+  const drawCount = player.lastDrawCount == null || player.lastDrawCount === "" ? NaN : Number(player.lastDrawCount);
+  if (Number.isInteger(drawCount) && drawCount >= 0 && drawCount <= 5) {
     return drawCount === 0 ? "PAT" : `D${drawCount}`;
   }
 
   const action = String(player.lastAction ?? "").trim();
   if (!action) return null;
   if (/^pat$/i.test(action)) return "PAT";
-  const drawMatch = action.match(/\bDRAW\s*\(?\s*([0-4])\s*\)?/i);
+  const drawMatch = action.match(/\bDRAW\s*\(?\s*([0-5])\s*\)?/i);
   if (!drawMatch) return null;
   const parsedCount = Number(drawMatch[1]);
   return parsedCount === 0 ? "PAT" : `D${parsedCount}`;
@@ -930,6 +930,7 @@ export default function Player({
                     }`}
                   >
                     <Card
+                      compact={compact}
                       value={card}
                       hidden={isHiddenFromHero}
                       style={

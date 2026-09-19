@@ -1,0 +1,2 @@
+import { evaluateOfcRows } from './ofcRules.js';
+export default Object.freeze({ id: 'game-open-face-chinese', label: 'Open-Face Chinese Poker', variant: 'ofc', category: 'chinese', controllerName: 'OpenFaceChineseController', streets: ['OPENING', 'CARD_6', 'CARD_7', 'CARD_8', 'CARD_9', 'CARD_10', 'CARD_11', 'CARD_12', 'CARD_13'], handStructure: { front: 3, middle: 5, back: 5 }, evaluateHand: evaluateOfcRows });

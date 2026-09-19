@@ -116,6 +116,7 @@ export const PUBLIC_RING_PLAYABLE_VARIANTS = Object.freeze([
 ]);
 
 export const PUBLIC_DEDICATED_PLAYABLE_VARIANTS = Object.freeze([
+  Object.freeze({ id: 'ofc', availabilityKey: 'ofc', displayName: 'Open-Face Chinese Poker', qmKind: 'open-face-chinese-poker', cashQm: Object.freeze({ expectsDraw: false, expectsBlindIncrease: false }) }),
   Object.freeze({
     id: "chinese_poker",
     availabilityKey: "chinese_poker",
@@ -259,9 +260,7 @@ export const VARIANT_AVAILABILITY = Object.freeze({
     statusLabel: "Alpha",
     reason: CHINESE_POKER_ALPHA_REASON,
   }),
-  ofc: comingSoon("Open-Face Chinese Poker", "OFC street-by-street placement and Fantasyland are incomplete.", [
-    "CHINESE-03",
-  ]),
+  ofc: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: 'Open-Face Chinese Poker', statusLabel: 'Alpha', reason: 'Classic five-card opening, single-card streets, 13-card Fantasyland, royalties and placement replay.' }),
 });
 
 const VARIANT_ALIASES = Object.freeze({

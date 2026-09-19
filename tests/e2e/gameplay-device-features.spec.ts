@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { APP_URL, API_URL, createAuthenticatedSession, deleteAuthenticatedSession } from './authHelper';
+import { playOneHandProgression } from './helpers/gameProgressHelper.js';
 
 test('registration, login, reload and logout use the real local API', async ({ page }) => {
   const email = `device-audit-${Date.now()}@example.com`;
@@ -37,7 +38,6 @@ test('registration, login, reload and logout use the real local API', async ({ p
 });
 
 test('Dealer Choice launches the selected queue into a playable table', async ({ page }, info) => {
-  test.skip(process.env.MGX_GAMEPLAY_AUDIT !== '1', 'QA-002: opt-in reproduction of a confirmed open defect');
   const session = await createAuthenticatedSession(page);
   await page.addInitScript(() => {
     localStorage.setItem('mgx.tournament.v2', JSON.stringify({ version: 2, tournament: { stageWins: {}, completedTournaments: [], history: [] }, career: { statistics: {}, worldChampionship: { cleared: true } }, rivals: {}, _meta: {} }));
@@ -46,10 +46,19 @@ test('Dealer Choice launches the selected queue into a playable table', async ({
     await page.goto(`${APP_URL}dealers-choice`);
     await page.getByTestId('roulette-add').click();
     await expect(page.getByTestId('roulette-clear')).toContainText('(1)');
+    await page.getByRole('combobox', { name: '遊ぶ種目' }).selectOption('D03');
+    await page.getByTestId('roulette-add').click();
     await page.getByTestId('roulette-launch').click();
     await expect(page).toHaveURL(/game\?mode=dealers-choice/);
     await page.screenshot({ path: info.outputPath('dealer-choice-launch.png') });
     await info.attach('launch-state', { body: JSON.stringify(await page.evaluate(() => ({ url: location.href, queue: localStorage.getItem('dealersChoice.queue'), mode: localStorage.getItem('dealersChoice.mode'), text: document.body.innerText }))), contentType: 'application/json' });
-    await expect(page.getByTestId('dealers-choice-hud')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId('mixed-rotation-status')).toBeVisible();
+    await expect.poll(() => page.evaluate(() => (window as any).__BADUGI_E2E__?.getStateSnapshot()?.gameVariant)).toBe('nlh');
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('dealersChoice.queue')!))).toEqual(['D03']);
+    await playOneHandProgression(page, { maxSteps: 120, policy: 'heroStay', requireHeroButtonClick: true });
+    await page.getByTestId('hand-result-next-hand').click();
+    await expect.poll(() => page.evaluate(() => (window as any).__BADUGI_E2E__?.getStateSnapshot()?.gameVariant)).toBe('badugi');
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('dealersChoice.queue')!))).toEqual([]);
+    await playOneHandProgression(page, { maxSteps: 140, policy: 'heroStay', requireHeroButtonClick: true, requireDrawVisit: true });
   } finally { await deleteAuthenticatedSession(page, session); }
 });

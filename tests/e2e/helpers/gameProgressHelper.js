@@ -197,6 +197,7 @@ export async function getProgressDecisionSnapshot(page) {
   return {
     handId: progress?.handId ?? null,
     phase: progress?.phase ?? null,
+    street: progress?.snapshot?.street ?? null,
     actor: progress?.actor ?? null,
     currentBet: progress?.currentBet ?? null,
     pot: progress?.pot ?? null,
@@ -222,6 +223,7 @@ export function summarizeProgressState(progress) {
   return {
     handId: progress?.handId ?? null,
     phase: progress?.phase ?? null,
+    street: progress?.snapshot?.street ?? null,
     actor: progress?.actor ?? null,
     currentBet: progress?.currentBet ?? null,
     pot: progress?.pot ?? null,
@@ -500,7 +502,7 @@ export async function waitForProgressChange(page, previousKey, { timeout = 8000 
       const currentBet = Math.max(Number(snapshot?.currentBet ?? phaseState?.currentBet ?? state?.currentBet ?? 0) || 0, maxPlayerStreetBet);
       const drawRoundIndex = snapshot?.drawRoundIndex ?? snapshot?.drawRound ?? phaseState?.drawRound ?? state?.drawRound ?? null;
       const nextKey = JSON.stringify(
-        summarizeProgress({ handId, phase, actor, currentBet, pot, drawRoundIndex, players }),
+        summarizeProgress({ handId, phase, actor, currentBet, pot, drawRoundIndex, players, snapshot }),
       );
       return nextKey !== key || uiTerminal || phase === "HAND_RESULT" || phase === "SHOWDOWN" || snapshot?.lastHandResult;
     },

@@ -1,4 +1,5 @@
 import { DEBUG_TOURNAMENT, logMTT } from "../../../config/debugFlags.js";
+import { multiGameVariantForTable } from '../../config/multiGameTournament.js';
 
 /**
  * Multi-table Badugi Tournament controller.
@@ -87,6 +88,7 @@ export function createMTTTournamentState(config, entrants) {
     players[playerId] = player;
   });
 
+  if (config.multiGame) for (const table of tables) table.variantId = multiGameVariantForTable({ config, tables, playersRemaining: contestantList.length }, table.tableId);
   return {
     tournamentRunId: createTournamentRunId(),
     config,
@@ -189,6 +191,7 @@ export function onTableHandCompleted(state, tableId, handSummary) {
   }
 
   table.handsPlayedAtThisLevel += 1;
+  if (next.config.multiGame) table.totalHandsPlayed = (table.totalHandsPlayed ?? 0) + 1;
   if (completionKey) {
     next.completedHandIds.push(completionKey);
     if (next.completedHandIds.length > 4096) {
@@ -197,6 +200,10 @@ export function onTableHandCompleted(state, tableId, handSummary) {
   }
   maybeAdvanceLevel(next);
   maybeRebalance(next);
+  if (next.config.multiGame) for (const t of next.tables) {
+    if (next.config.multiGame.format === 'championship' && next.playersRemaining <= 6 && t.finalStartHand == null) t.finalStartHand = t.totalHandsPlayed ?? 0;
+    t.variantId = multiGameVariantForTable(next, t.tableId);
+  }
   maybeFinalizeTournament(next);
   return next;
 }

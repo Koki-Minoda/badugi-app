@@ -87,6 +87,9 @@ export function captureFatalBrowserErrors(page: Page) {
     if (/favicon|ResizeObserver loop|Failed to load resource: the server responded with a status of 404/i.test(text)) {
       return;
     }
+    // ONNX emits this environment-identification warning through console.error in WebKit.
+    // Keep real runtime errors fatal; only this exact non-fatal CPU-vendor warning is excluded.
+    if (/\[W:onnxruntime:Default, cpuid_info\.cc:91 LogEarlyWarning\] Unknown CPU vendor\. cpuinfo_vendor value: 0/.test(text)) return;
     errors.push(text);
   });
   return errors;

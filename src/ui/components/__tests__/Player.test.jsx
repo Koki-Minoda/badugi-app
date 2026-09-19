@@ -455,6 +455,14 @@ describe("Player", () => {
     ).toEqual(["AS", "KD", "QH", "2C"]);
   });
 
+  test("does not report a pat before the first draw", () => {
+    render(<Player player={{ ...basePlayer, lastDrawCount: null, lastAction: null }} index={1} selfIndex={0} turn={0} dealerIdx={0} phase="BET" compact />);
+    expect(screen.queryByTestId('seat-1-draw-badge')).toBeNull();
+  });
+  test("shows all five discarded cards", () => {
+    render(<Player player={{ ...basePlayer, lastDrawCount: 5 }} index={1} selfIndex={0} turn={0} dealerIdx={0} phase="BET" compact />);
+    expect(screen.getByTestId('seat-1-draw-badge').textContent).toBe('D5');
+  });
   test("shows a compact draw badge from lastDrawCount", () => {
     render(
       <Player

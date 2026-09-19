@@ -123,7 +123,7 @@ const VARIANT_CATEGORY_BUTTON_BY_TEST_ID: Record<string, RegExp> = {
   dramaha_hidugi: /Dramaha|ドラマハ/i,
   dramaha_badugi: /Dramaha|ドラマハ/i,
   chinese_poker: /Chinese|OFC|チャイニーズ/i,
-  ofc: /Open-Face Chinese|OFC/i,
+  ofc: /Chinese|OFC|チャイニーズ/i,
 };
 
 function variantTestIdFromUrl(url: string) {
@@ -169,6 +169,7 @@ async function waitForGameLaunchReady(page: Page, timeout = 20000) {
         .catch(() => false),
       page.getByTestId("decision-panel").isVisible().catch(() => false),
       page.getByTestId("chinese-poker-screen").isVisible().catch(() => false),
+      page.getByTestId("ofc-screen").isVisible().catch(() => false),
     ]);
     if (ready.some(Boolean)) {
       return;

@@ -254,11 +254,11 @@ export default function GameSelectorScreen({
           },
           multigame: {
             title: "Multi-Game Tournament",
-            description: "複数ゲーム対応MTTのプロトタイプロビーです。",
+            description: "3種目の順位点リレー、卓別MIX、決勝Dealer’s Choiceの大会をプレイします。",
           },
           dealersChoice: {
             title: "Dealer's Choice",
-            description: "次のゲームをルーレットで選ぶディーラーズチョイスを確認できます。",
+            description: "種目を選ぶかルーレットで決め、1ハンドずつ順番にプレイします。",
           },
         },
         categoryLabels: JA_CATEGORY_LABELS,
@@ -316,11 +316,11 @@ export default function GameSelectorScreen({
           },
           multigame: {
             title: "Multi-Game Tournament",
-            description: "Prototype lobby for multi-variant MTTs.",
+            description: "Play a three-event relay, table-by-table survival mix, or a championship with a Dealer’s Choice final.",
           },
           dealersChoice: {
             title: "Dealer's Choice",
-            description: "Preview the roulette animation that picks the next variant each hand.",
+            description: "Choose games directly or by roulette, then play one hand of each in order.",
           },
         },
         categoryLabels: EN_CATEGORY_LABELS,

@@ -8,6 +8,7 @@ export default function Card({
   onClick,
   folded,
   studDown = false,
+  compact = false,
   ...rest
 }) {
   const { style: restStyle, ...restProps } = rest;
@@ -128,15 +129,14 @@ export default function Card({
           </div>
         </div>
       )}
-      <span className={`absolute left-1 top-0.5 leading-none ${color}`} style={{ fontSize: "0.7em" }}>
+      {!compact && <><span className={`absolute left-1 top-0.5 leading-none ${color}`} style={{ fontSize: "0.7em" }}>
         {rank}
       </span>
       <span className={`absolute bottom-0.5 right-1 leading-none ${color}`} style={{ fontSize: "0.7em" }}>
         {symbol}
-      </span>
-      <span className={color}>
-        {rank}
-        {symbol}
+      </span></>}
+      <span className={`${color} ${compact ? "flex flex-col items-center leading-none" : ""}`}>
+        <span>{rank}</span><span>{symbol}</span>
       </span>
     </div>
   );

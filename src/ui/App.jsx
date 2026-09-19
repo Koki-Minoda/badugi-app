@@ -1,4 +1,6 @@
 import { MixedGameContext } from "./mixed/mixedGameContext.js";
+import { shiftDealerChoiceVariant, setDealerChoiceModeActive } from './dealersChoice/dealerChoiceManager.js';
+import { multiGameVariantForTable, recordMultiGameResult } from './multigame/multiGameSeries.js';
 import { computeUnlockState } from "./utils/playerProgress.js";
 import { getPlayerProgressFromConsolidated } from "./utils/consolidatedProgress.js";
 import LearningGameLaunch from "./learning/LearningGameLaunch.jsx";
@@ -242,6 +244,7 @@ import {
   recordRivalTournamentResult,
 } from "./career/rivalHistory.js";
 import ChinesePokerGameScreen from "./screens/ChinesePokerGameScreen.jsx";
+import OpenFaceChineseScreen from './screens/OpenFaceChineseScreen.jsx';
 import TitleSettingsScreen from "./screens/TitleSettingsScreen.jsx";
 import ProfileStats from "../components/ProfileStats.jsx";
 import { useGameSessionState } from "./hooks/useGameSessionState.js";
@@ -435,6 +438,7 @@ export default function App() {
   const mixedGameRef = useRef(mixedGame);
   mixedGameRef.current = mixedGame;
   const cashMixActiveRef = useRef(false);
+  const dealerChoiceActiveRef = useRef(false);
   const [tournamentSession, setTournamentSession] = useState(() =>
     loadActiveTournamentSession(),
   );
@@ -449,7 +453,7 @@ export default function App() {
   const modeRef = useRef(initialModeRef.current);
   const [language, setLanguage] = useState(() => getInitialLanguage());
   // MGX branding: kitsune title screen + title → menu → game flow (2025-11-28)
-  const [currentScreen, setCurrentScreen] = useState(() => (location.state?.learningVariant || location.state?.mixedProfileId) ? "menu" : "title");
+  const [currentScreen, setCurrentScreen] = useState(() => (location.state?.learningVariant || location.state?.mixedProfileId || location.state?.multiGameConfig || location.state?.multiGameResume) ? "menu" : "title");
   const [hubActiveSnapshot, setHubActiveSnapshot] = useState(null);
   const [gameUtilityModal, setGameUtilityModal] = useState(null);
   const pendingRingStartRef = useRef(false);
@@ -548,7 +552,11 @@ export default function App() {
       attachVariantLabelsToHud(hudPayload, {
         currentVariantLabel: formatVariantLabel(gameVariantRef.current),
         nextVariantLabel: formatVariantLabel(
-          getNextVariant(variantRotationRef.current),
+          multiGameVariantForTable(
+            tournamentStateRef.current,
+            hudPayload?.heroTableId ?? heroTableIdRef.current,
+            { nextRotation: true },
+          ) ?? getNextVariant(variantRotationRef.current),
         ),
       }),
     [formatVariantLabel],
@@ -5800,6 +5808,7 @@ export default function App() {
         }
         computePayouts(nextState);
         const placements = buildTournamentPlacements(nextState);
+        if (nextState.config?.multiGame) recordMultiGameResult(nextState, placements);
         const inMemoryTournamentHands = Array.isArray(
           handHistoryBufferRef.current,
         )
@@ -5815,7 +5824,7 @@ export default function App() {
           : inMemoryTournamentHands;
         const heroPlayerSnapshot =
           nextState.players?.[heroTournamentPlayerIdRef.current] ?? null;
-        if (heroPlayerSnapshot?.finishPlace) {
+        if (heroPlayerSnapshot?.finishPlace && !nextState.config?.multiGame) {
           const resultKey = [
             nextState.config?.id ?? "active-mtt",
             heroPlayerSnapshot.id ?? heroTournamentPlayerIdRef.current,
@@ -5965,7 +5974,7 @@ export default function App() {
     const playersRemaining = state.playersRemaining ?? 0;
     const totalChips = startingStackValue * Math.max(0, totalPlayers);
     const prizePoolTotal =
-      Math.max(0, Number(config.prizePoolTotal) || 0) || totalChips;
+      config.multiGame ? 0 : Math.max(0, Number(config.prizePoolTotal) || 0) || totalChips;
     const averageStack =
       playersRemaining > 0
         ? Math.floor(totalChips / playersRemaining)
@@ -6872,6 +6881,7 @@ export default function App() {
   );
 
   const handleTournamentBackToMenu = useCallback(() => {
+    const returnToMulti = Boolean(tournamentStateRef.current?.config?.multiGame);
     resetTableStateToSafeDefaults({
       reason: "tournament-back-to-menu",
       preserveHandCount: false,
@@ -6881,7 +6891,7 @@ export default function App() {
     modeRef.current = "cash";
     setMode("cash");
     setCurrentScreen("menu");
-    navigate("/");
+    navigate(returnToMulti ? '/multigame' : '/');
   }, [
     navigate,
     resetTableStateToSafeDefaults,
@@ -6928,6 +6938,7 @@ export default function App() {
 
   const handleEnterNewTournament = useCallback(() => {
     const completedTournament = tournamentStateRef.current;
+    if (completedTournament?.config?.multiGame) { navigate('/multigame'); return true; }
     if (!completedTournament?.isFinished || !completedTournament?.championId) {
       console.warn(
         "[MTT] new tournament blocked until the active tournament is complete",
@@ -7028,6 +7039,8 @@ export default function App() {
   }, []);
 
   const handleCashOutBackToMenu = () => {
+    dealerChoiceActiveRef.current = false;
+    setDealerChoiceModeActive(false);
     cashMixActiveRef.current = false;
     mixedGameRef.current?.deactivateMixedGame();
     setCashOutSummary(null);
@@ -7060,6 +7073,8 @@ export default function App() {
     { keepMixed = false } = {},
   ) => {
     if (!keepMixed) {
+      dealerChoiceActiveRef.current = false;
+      setDealerChoiceModeActive(false);
       cashMixActiveRef.current = false;
       mixedGameRef.current?.deactivateMixedGame();
     }
@@ -7086,10 +7101,10 @@ export default function App() {
       gameVariantRef.current = normalizedVariant;
       setGameVariant(normalizedVariant);
     }
-    if (normalizedVariant === APP_VARIANT_IDS.CHINESE_POKER) {
+    if ([APP_VARIANT_IDS.CHINESE_POKER, APP_VARIANT_IDS.OFC].includes(normalizedVariant)) {
       modeRef.current = "cash";
       setMode("cash");
-      setCurrentScreen("chinesePoker");
+      setCurrentScreen(normalizedVariant === APP_VARIANT_IDS.OFC ? 'openFaceChinese' : 'chinesePoker');
       return;
     }
     initializeVariantRotation({ rotation: [normalizedVariant], policy: "fixed", initialVariant: normalizedVariant });
@@ -7246,6 +7261,11 @@ export default function App() {
       }, 100);
     };
     try {
+      const multiVariant = modeRef.current === 'tournament-mtt' ? multiGameVariantForTable(tournamentStateRef.current, heroTableIdRef.current) : null;
+      if (multiVariant && multiVariant !== gameVariantRef.current) {
+        gameVariantRef.current = multiVariant;
+        setGameVariant(multiVariant);
+      }
       const activeHandVariant = normalizeAppVariantId(
         gameVariantRef.current ?? gameVariant,
       );
@@ -7382,14 +7402,15 @@ export default function App() {
       ) {
         try {
           legacyGameController.updateTableConfig?.(buildNlhTableConfig(
-            cashMixActiveRef.current ? resolvedPrevPlayers : undefined,
+            (cashMixActiveRef.current || activeHandIsTournament) ? (resolvedPrevPlayers ?? basePlayersSnapshot) : undefined,
           ));
-          if (cashMixActiveRef.current) {
+          if (cashMixActiveRef.current || activeHandIsTournament) {
+            const handRoster = resolvedPrevPlayers ?? basePlayersSnapshot;
             // These controllers advance from the preceding seat in startNewHand.
             // Seed the canonical button even when crossing controller families.
             legacyGameController.syncExternalState?.({
-              players: resolvedPrevPlayers.map((player, seatIndex) => ({ ...player, seatIndex })),
-              dealerIndex: (nextDealerIdx - 1 + resolvedPrevPlayers.length) % resolvedPrevPlayers.length,
+              players: handRoster.map((player, seatIndex) => ({ ...player, seatIndex })),
+              dealerIndex: (nextDealerIdx - 1 + handRoster.length) % handRoster.length,
             });
           }
           controllerHandSnapshot = legacyGameController.startNewHand({
@@ -8222,6 +8243,7 @@ export default function App() {
       if (mode !== "tournament-mtt" && cashMixActiveRef.current && handCountRef.current > 0) {
         const completed = mixedGameRef.current?.handleHandCompletion(handIdRef.current);
         if (completed?.nextGameId) {
+          if (dealerChoiceActiveRef.current) shiftDealerChoiceVariant();
           const nextVariant = normalizeAppVariantId(completed.nextGameId);
           gameVariantRef.current = nextVariant;
           setGameVariant(nextVariant);
@@ -14003,10 +14025,22 @@ export default function App() {
             onAuthenticated={handleAuthSuccess}
             onAuthStateChange={handleAuthStateChange}
           >
-            {(location.state?.learningVariant || location.state?.mixedProfileId) ? <LearningGameLaunch
-              variantId={location.state.learningVariant ?? location.state.mixedProfileId}
+            {(location.state?.learningVariant || location.state?.mixedProfileId || location.state?.multiGameConfig || location.state?.multiGameResume) ? <LearningGameLaunch
+              variantId={location.state.learningVariant ?? location.state.mixedProfileId ?? 'multi-game'}
               onLaunch={(variantId) => {
                 navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
+                if (location.state?.multiGameConfig || location.state?.multiGameResume) {
+                  if (computeUnlockState(getPlayerProgressFromConsolidated()).multiGameLocked) { navigate('/multigame', { replace: true }); return; }
+                  if (location.state.multiGameResume) {
+                    const snapshot = loadActiveMTTSnapshot();
+                    if (snapshot?.config?.multiGame) resumeTournamentMTT(snapshot);
+                    else navigate('/multigame', { replace: true });
+                  } else {
+                    startTournamentMTT(location.state.multiGameConfig);
+                    setCurrentScreen('gameTournament');
+                  }
+                  return;
+                }
                 if (location.state?.mixedProfileId) {
                   if (computeUnlockState(getPlayerProgressFromConsolidated()).mixedGameLocked) {
                     navigate("/mixed", { replace: true });
@@ -14015,6 +14049,8 @@ export default function App() {
                   const result = mixedGameRef.current?.activateProfile(variantId);
                   if (!result) { navigate("/mixed", { replace: true }); return; }
                   cashMixActiveRef.current = true;
+                  dealerChoiceActiveRef.current = Boolean(location.state?.dealerChoice);
+                  if (dealerChoiceActiveRef.current) shiftDealerChoiceVariant();
                   handleSelectRing(normalizeAppVariantId(result.gameId), { keepMixed: true });
                 } else handleSelectRing(variantId);
               }}
@@ -14187,7 +14223,7 @@ export default function App() {
     );
   }
 
-  if (currentScreen === "chinesePoker") {
+  if (currentScreen === "chinesePoker" || currentScreen === 'openFaceChinese') {
     return (
       <>
         <AuthProvider>
@@ -14195,10 +14231,10 @@ export default function App() {
             onAuthenticated={handleAuthSuccess}
             onAuthStateChange={handleAuthStateChange}
           >
-            <ChinesePokerGameScreen
+            {currentScreen === 'openFaceChinese' ? <OpenFaceChineseScreen onBack={handleOpenGameSelector} /> : <ChinesePokerGameScreen
               language={language}
               onBack={handleOpenGameSelector}
-            />
+            />}
           </AuthGate>
         </AuthProvider>
         <DebugHud

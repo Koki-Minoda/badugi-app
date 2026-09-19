@@ -16,6 +16,8 @@ export default function Controls({
   betSizing = null,
   layoutMode = "desktop",
   className,
+  selectedDrawCount,
+  language = 'en',
 }) {
   const [selectedCommit, setSelectedCommit] = useState(
     () => betSizing?.minCommit ?? 0,
@@ -161,7 +163,7 @@ export default function Controls({
                 type="button"
                 data-testid={`bet-preset-${preset.key}`}
                 onClick={() => setSelectedCommit(preset.amount)}
-                className={`shrink-0 rounded-lg border px-2 py-1 text-[10px] font-semibold touch-manipulation ${
+                className={`min-h-9 shrink-0 rounded-lg border px-2 py-1 text-xs font-semibold touch-manipulation ${
                   selectedCommit === preset.amount
                     ? "border-amber-300 bg-amber-300 text-slate-950"
                     : "border-white/15 bg-white/5 text-white"
@@ -181,7 +183,7 @@ export default function Controls({
               max={betSizing.maxCommit}
               value={selectedCommit}
               onChange={(event) => updateAmount(event.target.value)}
-              className="ml-1 w-[64px] rounded-md border border-white/15 bg-slate-900 px-1.5 py-1 text-right text-xs text-white"
+              className="ml-1 min-h-9 w-[72px] rounded-md border border-white/15 bg-slate-900 px-1.5 py-1 text-right text-base text-white"
             />
           </label>
         </div>
@@ -234,7 +236,9 @@ export default function Controls({
               : "bg-slate-600 text-slate-300 cursor-not-allowed opacity-70"
           }`}
         >
-          Draw Selected
+          {selectedDrawCount == null ? 'Draw Selected' : language === 'ja'
+            ? (selectedDrawCount ? `${selectedDrawCount}枚を交換` : '交換しない（パット）')
+            : (selectedDrawCount ? `Draw ${selectedDrawCount} cards` : 'Stand pat (keep all)')}
         </button>
       )}
     </div>

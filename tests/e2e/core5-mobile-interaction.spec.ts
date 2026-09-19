@@ -33,18 +33,28 @@ test.describe("core five mobile interaction audit", () => {
         const issues: AuditIssue[] = [];
         const browserErrors = captureFatalBrowserErrors(page);
         let metrics: Record<string, unknown> = {};
+        const landscapeOnly = ['nlh', 'plo', 'plo8', 'flo8', 'big_o', 'five_card_plo'].includes(variant.variant) || variant.variant.startsWith('dramaha_');
+        const expectedPortraitGate = landscapeOnly && viewport.width < viewport.height;
 
         try {
-          await launchCore5Variant(page, variant, viewport);
-          const initial = await evaluateInitialLayout(page, variant);
-          const interaction = await evaluateMobileInteraction(page);
-          const result = await evaluateResultFlow(page, variant);
-          issues.push(...initial.issues, ...interaction.issues, ...result.issues);
-          metrics = {
-            initial: initial.metrics,
-            interaction: interaction.metrics,
-            result: result.metrics,
-          };
+          await launchCore5Variant(page, variant, expectedPortraitGate ? VIEWPORTS[1] : viewport);
+          if (expectedPortraitGate) {
+            await page.setViewportSize(viewport);
+            await expect(page.getByRole('heading', { name: '横向きでプレイしてください' })).toBeVisible();
+            const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+            expect(overflow).toBeLessThanOrEqual(2);
+            metrics = { expectedPortraitGate: true, overflow };
+          } else {
+            const initial = await evaluateInitialLayout(page, variant);
+            const interaction = await evaluateMobileInteraction(page);
+            const result = await evaluateResultFlow(page, variant);
+            issues.push(...initial.issues, ...interaction.issues, ...result.issues);
+            metrics = {
+              initial: initial.metrics,
+              interaction: interaction.metrics,
+              result: result.metrics,
+            };
+          }
         } catch (error) {
           issues.push({
             priority: "P0",
@@ -67,9 +77,8 @@ test.describe("core five mobile interaction audit", () => {
         };
         rows.push(row);
 
-        expect(row.variantId).toBe(variant.variant);
+        expect(issues, JSON.stringify(row)).toEqual([]);
       });
     }
   }
 });
-

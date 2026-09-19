@@ -235,7 +235,7 @@ export async function evaluateResultFlow(
     maxSteps: variant.maxSteps,
     policy: "safe",
     requireHeroButtonClick: true,
-    requireDrawVisit: true,
+    requireDrawVisit: variant.expectsDraw,
   }).catch((error) => {
     issues.push({ priority: "P0", issue: "one-hand result flow did not complete", message: error.message });
     return null;

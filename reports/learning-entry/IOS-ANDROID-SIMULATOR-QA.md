@@ -1,5 +1,7 @@
 # iPhone Simulator / Android Emulator 追加 QA・QM
 
+2026-09-19追記: 物理iPhoneのSafariでも学習機能6グループを確認した。方法・結果・未確認範囲は [iPhone実機QA](./IPHONE-PHYSICAL-QA.md) を参照。以下は9月13日のシミュレータ／エミュレータ結果を保持する。
+
 2026-09-13。`e095279` の公開候補に対する追加確認と修正。本番配信・mainへのマージは行っていない。
 
 ## 確認環境

@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 export async function connectDevice() {
+const origin = process.env.MGX_DEVICE_ORIGIN || 'https://example.com';
+const intercept = origin === 'https://example.com';
 const output = new URL('./artifacts/', import.meta.url);
 await mkdir(output, { recursive: true });
 const targets = await (await fetch('http://127.0.0.1:9231/json/list')).json();
-const candidates = targets.filter(t => t.url.startsWith('https://example.com/') && (!process.env.MGX_TEST_TAB || t.id === process.env.MGX_TEST_TAB));
+const candidates = targets.filter(t => t.url.startsWith(origin + '/') && (!process.env.MGX_TEST_TAB || t.id === process.env.MGX_TEST_TAB));
 assert.equal(candidates.length, 1, 'Open one dedicated Example Domain tab, or set MGX_TEST_TAB to its ID');
 const target = candidates[0];
 const socket = new WebSocket(target.webSocketDebuggerUrl);
@@ -75,7 +77,7 @@ async function field(label, value, byText = false, scope = 'body') {
 }
 async function navigate(path, reload = false) {
   await evaluate(() => { window.__mgxQaOldDocument = true; });
-  await send(reload ? 'Page.reload' : 'Page.navigate', reload ? {} : { url: `https://example.com${path}` });
+  await send(reload ? 'Page.reload' : 'Page.navigate', reload ? {} : { url: `${origin}${path}` });
   await until(() => !window.__mgxQaOldDocument && !!document.querySelector('#root')?.firstElementChild, undefined, 30000);
   console.log('Loaded', path || '(reload)');
 }
@@ -87,8 +89,8 @@ async function shot(name) {
   await writeFile(new URL(`${name}.png`, output), Buffer.from(r.data, 'base64'));
 }
 
-async function start() { await send('Runtime.enable'); await send('Page.enable'); await send('Network.enable'); await send('Fetch.enable', { patterns: [{ urlPattern: 'https://example.com/*', requestStage: 'Request' }] }); }
-async function close() { try { await send('Fetch.disable', {}, 3000); } catch {} socket.close(); for (const p of pending.values()) clearTimeout(p.timer); }
+async function start() { await send('Runtime.enable'); await send('Page.enable'); await send('Network.enable'); if (intercept) await send('Fetch.enable', { patterns: [{ urlPattern: 'https://example.com/*', requestStage: 'Request' }] }); }
+async function close() { try { if (intercept) await send('Fetch.disable', {}, 3000); } catch {} socket.close(); for (const p of pending.values()) clearTimeout(p.timer); }
 return { send, evaluate, until, click, field, navigate, textAt, assertText, shot, start, close, errors, fixtureErrors, apiResponses };
 
 }

@@ -12,7 +12,7 @@ export function loadMultiGameSeries(storage = globalThis.localStorage) { try { c
 const persist = (s, storage) => { storage?.setItem(KEY, JSON.stringify(s)); return s; };
 export function createMultiGameSeries(format, sequence, finalSequence = sequence, storage = globalThis.localStorage) {
   if (!MULTI_FORMATS[format] || sequence.length !== 3 || sequence.some(id=>!allowed.has(id)) || !finalSequence.length || finalSequence.some(id=>!allowed.has(id))) throw Error('Choose three supported games');
-  return persist({ version:1, id:globalThis.crypto.randomUUID(), format, sequence:[...sequence], finalSequence:[...finalSequence], results:[], standings:{}, completed:false, createdAt:Date.now() }, storage);
+  return persist({ version:1, id:globalThis.crypto?.randomUUID?.() ?? `series-${Date.now()}-${Math.random().toString(36).slice(2)}`, format, sequence:[...sequence], finalSequence:[...finalSequence], results:[], standings:{}, completed:false, createdAt:Date.now() }, storage);
 }
 export function buildMultiGameConfig(series) {
   if (!series || series.completed || !MULTI_FORMATS[series.format]) throw Error('No pending event');

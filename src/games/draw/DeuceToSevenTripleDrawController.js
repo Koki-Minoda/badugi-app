@@ -112,7 +112,7 @@ function hydratePlayersFromCurrentStacks(generatedPlayers = [], sourcePlayers = 
       isBusted: source.isBusted ?? player.isBusted,
       hasActedThisRound: false,
       hasDrawn: false,
-      lastDrawCount: 0,
+      lastDrawCount: null,
       lastAction: "",
     };
   });
@@ -192,7 +192,7 @@ function normalizeExternalPlayer(player = {}, seatIndex = 0) {
           ),
     hasDrawn: Boolean(player.hasDrawn || player.hasDrawnThisRound),
     canDraw: player.canDraw,
-    lastDrawCount: Number(player.lastDrawCount ?? 0) || 0,
+    lastDrawCount: player.lastDrawCount == null ? null : Number(player.lastDrawCount) || 0,
     lastAction,
   };
 }

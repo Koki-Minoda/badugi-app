@@ -22,9 +22,11 @@ export default function Controls({
   const [selectedCommit, setSelectedCommit] = useState(
     () => betSizing?.minCommit ?? 0,
   );
+  const [commitInput, setCommitInput] = useState(() => String(betSizing?.minCommit ?? 0));
   useEffect(() => {
     if (!betSizing?.enabled) return;
     setSelectedCommit(betSizing.minCommit);
+    setCommitInput(String(betSizing.minCommit));
   }, [
     betSizing?.enabled,
     betSizing?.actionType,
@@ -143,12 +145,13 @@ export default function Controls({
       !hasAggressiveAction ||
       !betSizing?.enabled
     ) return null;
-    const updateAmount = (value) => {
+    const updateAmount = (value, preserveInput = false) => {
       const next = Math.max(
         betSizing.minCommit,
         Math.min(betSizing.maxCommit, Math.floor(Number(value) || 0)),
       );
       setSelectedCommit(next);
+      setCommitInput(preserveInput ? value : String(next));
     };
     return (
       <div
@@ -156,14 +159,14 @@ export default function Controls({
         className={`${isMobile ? "rounded-xl px-1 py-1" : "rounded-lg px-2 py-2"} bg-slate-950/70`}
       >
         <div className="flex min-w-0 items-center gap-1.5">
-          <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
+          <div className={isMobile ? "grid min-w-0 flex-1 grid-cols-2 gap-1" : "flex min-w-0 flex-1 gap-1 overflow-x-auto"}>
             {betSizing.presets.map((preset) => (
               <button
                 key={preset.key}
                 type="button"
                 data-testid={`bet-preset-${preset.key}`}
-                onClick={() => setSelectedCommit(preset.amount)}
-                className={`min-h-9 shrink-0 rounded-lg border px-2 py-1 text-xs font-semibold touch-manipulation ${
+                onClick={() => updateAmount(preset.amount)}
+                className={`${isMobile ? "min-h-11 min-w-0 px-1" : "min-h-9 shrink-0 px-2"} rounded-lg border py-1 text-xs font-semibold touch-manipulation ${
                   selectedCommit === preset.amount
                     ? "border-amber-300 bg-amber-300 text-slate-950"
                     : "border-white/15 bg-white/5 text-white"
@@ -173,7 +176,7 @@ export default function Controls({
               </button>
             ))}
           </div>
-          <label className="shrink-0 text-[9px] uppercase tracking-wide text-slate-300">
+          <label className={`${isMobile ? "flex flex-col items-end gap-1" : ""} shrink-0 text-[9px] uppercase tracking-wide text-slate-300`}>
             Chips
             <input
               type="number"
@@ -181,9 +184,10 @@ export default function Controls({
               data-testid="bet-size-input"
               min={betSizing.minCommit}
               max={betSizing.maxCommit}
-              value={selectedCommit}
-              onChange={(event) => updateAmount(event.target.value)}
-              className="ml-1 min-h-9 w-[72px] rounded-md border border-white/15 bg-slate-900 px-1.5 py-1 text-right text-base text-white"
+              value={commitInput}
+              onChange={(event) => updateAmount(event.target.value, true)}
+              onBlur={() => setCommitInput(String(selectedCommit))}
+              className="ml-1 min-h-11 w-[72px] rounded-md border border-white/15 bg-slate-900 px-1.5 py-1 text-right text-base text-white"
             />
           </label>
         </div>

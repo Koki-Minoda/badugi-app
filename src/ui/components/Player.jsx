@@ -407,9 +407,7 @@ export default function Player({
     player.personality?.label ??
     player.personalityId ??
     null;
-  const isCompactTableMobileLayout =
-    compact &&
-    ["badugi", "draw-lowball-5card", "stud"].includes(layoutProfile?.layoutGroup);
+  const isCompactTableMobileLayout = compact;
   const isCompactStudLayout = compact && layoutProfile?.layoutGroup === "stud";
   const useCompactFoldedBadge =
     isCompactTableMobileLayout &&

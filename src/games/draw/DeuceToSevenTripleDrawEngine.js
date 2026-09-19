@@ -37,7 +37,7 @@ function createPlayers({ seatConfig = DEFAULT_SEAT_CONFIG, startingStack = 500, 
       seatOut: sittingOut,
       hasActedThisRound: false,
       hasDrawn: false,
-      lastDrawCount: 0,
+      lastDrawCount: null,
       lastAction: "",
     };
   });
@@ -956,7 +956,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
           hasActedThisRound: true,
           hasDrawn: true,
           canDraw: false,
-          lastDrawCount: 0,
+          lastDrawCount: null,
           lastAction: "OUT",
         };
       }

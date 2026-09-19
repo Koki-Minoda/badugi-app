@@ -1,9 +1,17 @@
-import { beforeEach, describe,it,expect } from 'vitest';
+import { beforeEach, afterEach, describe,it,expect,vi } from 'vitest';
 import { createMultiGameSeries,buildMultiGameConfig,recordMultiGameResult,multiGameVariantForTable,loadMultiGameSeries } from '../multiGameSeries.js';
 import {createMTTTournamentState,onTableHandCompleted} from '../../../games/badugi/engine/tournamentMTT.js';
 const sequence=['badugi','nlh','stud'];
 describe('Multi-game tournaments',()=>{
  beforeEach(()=>localStorage.clear());
+ afterEach(()=>vi.unstubAllGlobals());
+ it('creates and restores distinct local series without secure-context UUID support',()=>{
+  vi.stubGlobal('crypto',{});
+  const first=createMultiGameSeries('stage',sequence);
+  const second=createMultiGameSeries('survival',sequence);
+  expect(first.id).toBeTruthy();expect(first.id).not.toBe(second.id);
+  expect(loadMultiGameSeries()).toEqual(second);expect(buildMultiGameConfig(second).multiGame.seriesId).toBe(second.id);
+ });
  it('keeps three independent stages and awards points only once per finished event',()=>{
   let s=createMultiGameSeries('stage',sequence);
   for(let i=0;i<3;i++){

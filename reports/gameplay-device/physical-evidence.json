@@ -1,0 +1,1497 @@
+{
+  "updated": "2026-09-19T16:59:24.895Z",
+  "device": {
+    "model": "iPhone17,3",
+    "os": "iOS 26.5.2",
+    "browser": "Safari 26.5.2",
+    "connection": "USB Web Inspector; dedicated local LAN origin",
+    "viewport": {
+      "portrait": [
+        393,
+        695
+      ],
+      "landscape": [
+        852,
+        283
+      ]
+    },
+    "nativeTouch": "awaiting user input",
+    "pwa": "not yet verified on device"
+  },
+  "interaction": "DOM activation on physical Safari; natural CPU progression, no forced wins",
+  "ringPortrait": [
+    {
+      "id": "deuce_to_seven_triple_draw",
+      "profileId": "D01",
+      "status": "PASS",
+      "heroActionCount": 8,
+      "viewport": {
+        "width": 393,
+        "height": 695
+      },
+      "result": {
+        "headline": "Pot ¥600",
+        "parts": [
+          "¥600"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "ace_to_five_triple_draw",
+      "profileId": "D02",
+      "status": "PASS",
+      "heroActionCount": 7,
+      "viewport": {
+        "width": 393,
+        "height": 695
+      },
+      "result": {
+        "headline": "Pot ¥620",
+        "parts": [
+          "¥620"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "badugi",
+      "profileId": "D03",
+      "status": "PASS",
+      "heroActionCount": 8,
+      "viewport": {
+        "width": 393,
+        "height": 695
+      },
+      "result": {
+        "headline": "Pot ¥330",
+        "parts": [
+          "¥330"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "badeucey_triple_draw",
+      "profileId": "D04",
+      "status": "PASS",
+      "heroActionCount": 7,
+      "viewport": {
+        "width": 393,
+        "height": 695
+      },
+      "result": {
+        "headline": "Pot ¥720",
+        "parts": [
+          "¥360",
+          "¥360"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "badacey_triple_draw",
+      "profileId": "D05",
+      "status": "PASS",
+      "heroActionCount": 7,
+      "viewport": {
+        "width": 393,
+        "height": 695
+      },
+      "result": {
+        "headline": "Pot ¥720",
+        "parts": [
+          "¥360",
+          "¥360"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "hidugi_triple_draw",
+      "profileId": "D06",
+      "status": "PASS",
+      "heroActionCount": 8,
+      "viewport": {
+        "width": 393,
+        "height": 695
+      },
+      "result": {
+        "headline": "Pot ¥840",
+        "parts": [
+          "¥840"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "archie_triple_draw",
+      "profileId": "D07",
+      "status": "PASS",
+      "heroActionCount": 7,
+      "viewport": {
+        "width": 393,
+        "height": 695
+      },
+      "result": {
+        "headline": "Pot ¥600",
+        "parts": [
+          "¥300",
+          "¥300"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "deuce_to_seven_single_draw",
+      "profileId": "S01",
+      "status": "PASS",
+      "heroActionCount": 3,
+      "viewport": {
+        "width": 393,
+        "height": 695
+      },
+      "result": {
+        "headline": "Pot ¥120",
+        "parts": [
+          "¥120"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "ace_to_five_single_draw",
+      "profileId": "S02",
+      "status": "PASS",
+      "heroActionCount": 3,
+      "viewport": {
+        "width": 393,
+        "height": 695
+      },
+      "result": {
+        "headline": "Pot ¥120",
+        "parts": [
+          "¥120"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "five_card_single_draw",
+      "profileId": "S03",
+      "status": "PASS",
+      "heroActionCount": 4,
+      "viewport": {
+        "width": 393,
+        "height": 695
+      },
+      "result": {
+        "headline": "Pot ¥400",
+        "parts": [
+          "¥400"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "badugi_single_draw",
+      "profileId": "S04",
+      "status": "PASS",
+      "heroActionCount": 3,
+      "viewport": {
+        "width": 393,
+        "height": 695
+      },
+      "result": {
+        "headline": "Pot ¥360",
+        "parts": [
+          "¥360"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "badeucey_single_draw",
+      "profileId": "S05",
+      "status": "PASS",
+      "heroActionCount": 3,
+      "viewport": {
+        "width": 393,
+        "height": 695
+      },
+      "result": {
+        "headline": "Pot ¥360",
+        "parts": [
+          "¥180",
+          "¥180"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "badacey_single_draw",
+      "profileId": "S06",
+      "status": "PASS",
+      "heroActionCount": 3,
+      "viewport": {
+        "width": 393,
+        "height": 695
+      },
+      "result": {
+        "headline": "Pot ¥360",
+        "parts": [
+          "¥180",
+          "¥180"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "hidugi_single_draw",
+      "profileId": "S07",
+      "status": "PASS",
+      "heroActionCount": 3,
+      "viewport": {
+        "width": 393,
+        "height": 695
+      },
+      "result": {
+        "headline": "Pot ¥360",
+        "parts": [
+          "¥360"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "stud",
+      "profileId": "ST1",
+      "status": "PASS",
+      "heroActionCount": 5,
+      "viewport": {
+        "width": 393,
+        "height": 695
+      },
+      "result": {
+        "headline": "Pot ¥60",
+        "parts": [
+          "¥60"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "stud8",
+      "profileId": "ST2",
+      "status": "PASS",
+      "heroActionCount": 5,
+      "viewport": {
+        "width": 393,
+        "height": 695
+      },
+      "result": {
+        "headline": "Pot ¥60",
+        "parts": [
+          "¥60"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "razz",
+      "profileId": "ST3",
+      "status": "PASS",
+      "heroActionCount": 5,
+      "viewport": {
+        "width": 393,
+        "height": 695
+      },
+      "result": {
+        "headline": "Pot ¥60",
+        "parts": [
+          "¥60"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "razzdugi",
+      "profileId": "ST4",
+      "status": "PASS",
+      "heroActionCount": 5,
+      "viewport": {
+        "width": 393,
+        "height": 695
+      },
+      "result": {
+        "headline": "Pot ¥60",
+        "parts": [
+          "¥60"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "razzducey",
+      "profileId": "ST5",
+      "status": "PASS",
+      "heroActionCount": 5,
+      "viewport": {
+        "width": 393,
+        "height": 695
+      },
+      "result": {
+        "headline": "Pot ¥60",
+        "parts": [
+          "¥60"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "razz27",
+      "profileId": "ST6",
+      "status": "PASS",
+      "heroActionCount": 5,
+      "viewport": {
+        "width": 393,
+        "height": 695
+      },
+      "result": {
+        "headline": "Pot ¥60",
+        "parts": [
+          "¥60"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    }
+  ],
+  "ringLandscape": [
+    {
+      "id": "nlh",
+      "profileId": "B01",
+      "status": "PASS",
+      "heroActionCount": 4,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥120",
+        "parts": [
+          "¥120"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "flh",
+      "profileId": "B02",
+      "status": "PASS",
+      "heroActionCount": 4,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥120",
+        "parts": [
+          "¥120"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "super_holdem",
+      "profileId": "B03",
+      "status": "PASS",
+      "heroActionCount": 4,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥120",
+        "parts": [
+          "¥120"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "fl_super_holdem",
+      "profileId": "B04",
+      "status": "PASS",
+      "heroActionCount": 4,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥120",
+        "parts": [
+          "¥120"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "plo",
+      "profileId": "B05",
+      "status": "PASS",
+      "heroActionCount": 4,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥120",
+        "parts": [
+          "¥120"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "plo8",
+      "profileId": "B06",
+      "status": "PASS",
+      "heroActionCount": 4,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥120",
+        "parts": [
+          "¥120"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "big_o",
+      "profileId": "B07",
+      "status": "PASS",
+      "heroActionCount": 4,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥120",
+        "parts": [
+          "¥120"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "five_card_plo",
+      "profileId": "B08",
+      "status": "PASS",
+      "heroActionCount": 4,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥120",
+        "parts": [
+          "¥120"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "flo8",
+      "profileId": "B09",
+      "status": "PASS",
+      "heroActionCount": 4,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥120",
+        "parts": [
+          "¥120"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "deuce_to_seven_triple_draw",
+      "profileId": "D01",
+      "status": "PASS",
+      "heroActionCount": 8,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥840",
+        "parts": [
+          "¥840"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "ace_to_five_triple_draw",
+      "profileId": "D02",
+      "status": "PASS",
+      "heroActionCount": 8,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥840",
+        "parts": [
+          "¥840"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "badugi",
+      "profileId": "D03",
+      "status": "PASS",
+      "heroActionCount": 7,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥450",
+        "parts": [
+          "¥450"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "badeucey_triple_draw",
+      "profileId": "D04",
+      "status": "PASS",
+      "heroActionCount": 7,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥720",
+        "parts": [
+          "¥360",
+          "¥360"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "badacey_triple_draw",
+      "profileId": "D05",
+      "status": "PASS",
+      "heroActionCount": 8,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥840",
+        "parts": [
+          "¥420",
+          "¥420"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "hidugi_triple_draw",
+      "profileId": "D06",
+      "status": "PASS",
+      "heroActionCount": 7,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥720",
+        "parts": [
+          "¥720"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "archie_triple_draw",
+      "profileId": "D07",
+      "status": "PASS",
+      "heroActionCount": 7,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥720",
+        "parts": [
+          "¥0",
+          "¥720"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "deuce_to_seven_single_draw",
+      "profileId": "S01",
+      "status": "PASS",
+      "heroActionCount": 4,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥480",
+        "parts": [
+          "¥480"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "ace_to_five_single_draw",
+      "profileId": "S02",
+      "status": "PASS",
+      "heroActionCount": 4,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥480",
+        "parts": [
+          "¥480"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "five_card_single_draw",
+      "profileId": "S03",
+      "status": "PASS",
+      "heroActionCount": 3,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥320",
+        "parts": [
+          "¥320"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "badugi_single_draw",
+      "profileId": "S04",
+      "status": "PASS",
+      "heroActionCount": 4,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥480",
+        "parts": [
+          "¥480"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "badeucey_single_draw",
+      "profileId": "S05",
+      "status": "PASS",
+      "heroActionCount": 3,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥360",
+        "parts": [
+          "¥180",
+          "¥180"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "badacey_single_draw",
+      "profileId": "S06",
+      "status": "PASS",
+      "heroActionCount": 3,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥360",
+        "parts": [
+          "¥180",
+          "¥180"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "hidugi_single_draw",
+      "profileId": "S07",
+      "status": "PASS",
+      "heroActionCount": 4,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥480",
+        "parts": [
+          "¥480"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "dramaha_hi",
+      "profileId": "H01",
+      "status": "PASS",
+      "heroActionCount": 5,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥120",
+        "parts": [
+          "¥60",
+          "¥60"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "dramaha_27",
+      "profileId": "H02",
+      "status": "PASS",
+      "heroActionCount": 5,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥120",
+        "parts": [
+          "¥60",
+          "¥60"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "dramaha_a5",
+      "profileId": "H03",
+      "status": "PASS",
+      "heroActionCount": 5,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥120",
+        "parts": [
+          "¥60",
+          "¥60"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "dramaha_zero",
+      "profileId": "H04",
+      "status": "PASS",
+      "heroActionCount": 5,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥120",
+        "parts": [
+          "¥60",
+          "¥60"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "dramaha_hidugi",
+      "profileId": "H05",
+      "status": "PASS",
+      "heroActionCount": 5,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥120",
+        "parts": [
+          "¥60",
+          "¥60"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "dramaha_badugi",
+      "profileId": "H06",
+      "status": "PASS",
+      "heroActionCount": 5,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥120",
+        "parts": [
+          "¥60",
+          "¥60"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "stud",
+      "profileId": "ST1",
+      "status": "PASS",
+      "heroActionCount": 5,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥60",
+        "parts": [
+          "¥60"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "stud8",
+      "profileId": "ST2",
+      "status": "PASS",
+      "heroActionCount": 5,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥60",
+        "parts": [
+          "¥60"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "razz",
+      "profileId": "ST3",
+      "status": "PASS",
+      "heroActionCount": 4,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥60",
+        "parts": [
+          "¥60"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "razzdugi",
+      "profileId": "ST4",
+      "status": "PASS",
+      "heroActionCount": 5,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥60",
+        "parts": [
+          "¥60"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "razzducey",
+      "profileId": "ST5",
+      "status": "PASS",
+      "heroActionCount": 5,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥60",
+        "parts": [
+          "¥60"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "razz27",
+      "profileId": "ST6",
+      "status": "PASS",
+      "heroActionCount": 5,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥60",
+        "parts": [
+          "¥60"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    }
+  ],
+  "drawLayoutRetest": [
+    {
+      "id": "badeucey_triple_draw",
+      "profileId": "D04",
+      "status": "PASS",
+      "heroActionCount": 8,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥840",
+        "parts": [
+          "¥420",
+          "¥420"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "badacey_triple_draw",
+      "profileId": "D05",
+      "status": "PASS",
+      "heroActionCount": 7,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥720",
+        "parts": [
+          "¥360",
+          "¥360"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "hidugi_triple_draw",
+      "profileId": "D06",
+      "status": "PASS",
+      "heroActionCount": 8,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥840",
+        "parts": [
+          "¥840"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "archie_triple_draw",
+      "profileId": "D07",
+      "status": "PASS",
+      "heroActionCount": 7,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥720",
+        "parts": [
+          "¥360",
+          "¥360"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "badeucey_single_draw",
+      "profileId": "S05",
+      "status": "PASS",
+      "heroActionCount": 4,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥480",
+        "parts": [
+          "¥240",
+          "¥240"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "badacey_single_draw",
+      "profileId": "S06",
+      "status": "PASS",
+      "heroActionCount": 3,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥360",
+        "parts": [
+          "¥180",
+          "¥180"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    },
+    {
+      "id": "hidugi_single_draw",
+      "profileId": "S07",
+      "status": "PASS",
+      "heroActionCount": 3,
+      "viewport": {
+        "width": 852,
+        "height": 283
+      },
+      "initialDrawBadges": [],
+      "result": {
+        "headline": "Pot ¥360",
+        "parts": [
+          "¥360"
+        ],
+        "overflow": 0
+      },
+      "replayFieldsValid": true
+    }
+  ],
+  "chinesePortrait": [
+    {
+      "id": "chinese_poker",
+      "status": "PASS",
+      "hands": [
+        {
+          "handId": "chinese-1",
+          "exactReplay": true
+        },
+        {
+          "handId": "chinese-2",
+          "exactReplay": true
+        },
+        {
+          "handId": "chinese-3",
+          "exactReplay": true
+        }
+      ]
+    },
+    {
+      "id": "ofc",
+      "status": "PASS",
+      "hands": [
+        {
+          "handId": "ofc-1789835675839-1",
+          "exactReplay": true,
+          "points": [
+            -6,
+            6
+          ]
+        },
+        {
+          "handId": "ofc-1789835675971-2",
+          "exactReplay": true,
+          "points": [
+            -6,
+            6
+          ]
+        },
+        {
+          "handId": "ofc-1789835676086-3",
+          "exactReplay": true,
+          "points": [
+            -6,
+            6
+          ]
+        }
+      ]
+    }
+  ],
+  "chineseLandscape": [
+    {
+      "id": "chinese_poker",
+      "status": "PASS",
+      "hands": [
+        {
+          "handId": "chinese-1",
+          "exactReplay": true
+        },
+        {
+          "handId": "chinese-2",
+          "exactReplay": true
+        },
+        {
+          "handId": "chinese-3",
+          "exactReplay": true
+        }
+      ],
+      "viewport": {
+        "width": 852,
+        "height": 283
+      }
+    },
+    {
+      "id": "ofc",
+      "status": "PASS",
+      "hands": [
+        {
+          "handId": "ofc-1789836490323-9",
+          "exactReplay": true,
+          "points": [
+            -6,
+            6
+          ]
+        },
+        {
+          "handId": "ofc-1789836490444-10",
+          "exactReplay": true,
+          "points": [
+            0,
+            0
+          ]
+        },
+        {
+          "handId": "ofc-1789836490553-11",
+          "exactReplay": true,
+          "points": [
+            1,
+            -1
+          ]
+        }
+      ],
+      "viewport": {
+        "width": 852,
+        "height": 283
+      }
+    }
+  ],
+  "features": [
+    {
+      "id": "stage",
+      "status": "PASS",
+      "play": {
+        "handId": "table-1-h1-d0-mu8mdtd2",
+        "actions": [
+          "action-call",
+          "action-draw-selected",
+          "action-check",
+          "action-draw-selected",
+          "action-check",
+          "action-draw-selected",
+          "action-check"
+        ]
+      },
+      "saved": {
+        "id": "series-1789836405700-ijhfr3c3uk:0",
+        "format": "stage"
+      },
+      "resumedPlay": {
+        "handId": "table-1-h2-d1-mu8me1i8",
+        "actions": [
+          "action-call",
+          "action-call",
+          "action-draw-selected",
+          "action-check",
+          "action-draw-selected",
+          "action-check",
+          "action-draw-selected",
+          "action-check"
+        ]
+      },
+      "resumed": true
+    },
+    {
+      "id": "survival",
+      "status": "PASS",
+      "play": {
+        "handId": "table-1-h1-d0-mu8me8wa",
+        "actions": [
+          "action-call",
+          "action-draw-selected",
+          "action-check",
+          "action-draw-selected",
+          "action-check",
+          "action-draw-selected",
+          "action-check"
+        ]
+      },
+      "saved": {
+        "id": "series-1789836425837-fnn21cs0xg6:0",
+        "format": "survival"
+      },
+      "resumedPlay": {
+        "handId": "table-1-h2-d1-mu8meedz",
+        "actions": [
+          "action-call",
+          "action-call",
+          "action-draw-selected",
+          "action-check",
+          "action-draw-selected",
+          "action-check",
+          "action-draw-selected",
+          "action-check"
+        ]
+      },
+      "resumed": true
+    },
+    {
+      "id": "championship",
+      "status": "PASS",
+      "play": {
+        "handId": "table-1-h1-d0-mu8melr1",
+        "actions": [
+          "action-call",
+          "action-call",
+          "action-draw-selected",
+          "action-check",
+          "action-draw-selected",
+          "action-check",
+          "action-draw-selected",
+          "action-check"
+        ]
+      },
+      "saved": {
+        "id": "series-1789836442503-mskw27s5tis:0",
+        "format": "championship"
+      },
+      "resumedPlay": {
+        "handId": "table-1-h2-d1-mu8metdi",
+        "actions": [
+          "action-call",
+          "action-draw-selected",
+          "action-check",
+          "action-draw-selected",
+          "action-check",
+          "action-draw-selected",
+          "action-check"
+        ]
+      },
+      "resumed": true
+    },
+    {
+      "id": "dealers-choice",
+      "status": "PASS",
+      "hands": [
+        {
+          "handId": "nlh-h1-d0-mu8mf04h",
+          "actions": [
+            "action-call",
+            "action-check",
+            "action-check",
+            "action-check"
+          ]
+        },
+        {
+          "handId": "nlh-h2-d1-mu8mf4r0",
+          "actions": [
+            "action-call",
+            "action-draw-selected",
+            "action-call",
+            "action-draw-selected",
+            "action-call",
+            "action-draw-selected",
+            "action-check"
+          ]
+        }
+      ]
+    }
+  ],
+  "exactReplay": {
+    "count": 69,
+    "passed": 69,
+    "failures": []
+  },
+  "unitChecks": [
+    {
+      "scope": "draw initialization / app support",
+      "tests": 312,
+      "passed": true
+    },
+    {
+      "scope": "layout profiles / Player / Multi-Game IDs",
+      "tests": 45,
+      "passed": true
+    },
+    {
+      "scope": "Chinese screen",
+      "tests": 4,
+      "passed": true
+    },
+    {
+      "scope": "numeric entry and Draw controls",
+      "tests": 11,
+      "passed": true
+    },
+    {
+      "scope": "final mobile seats and profiles",
+      "tests": 40,
+      "passed": true
+    }
+  ],
+  "browserRegression": {
+    "shortLandscape": {
+      "viewport": [
+        852,
+        283
+      ],
+      "variants": 15,
+      "passed": 15
+    },
+    "representativeUsability": {
+      "variants": 5,
+      "passed": 5
+    }
+  },
+  "limits": [
+    "Each ring variant: one completed hand, not exhaustive rules or long-duration coverage.",
+    "Multi-Game physical test: one hand, reload/resume, one more hand per format; full tournament completion was tested separately in browser automation.",
+    "The local HTTP origin does not verify production HTTPS or PWA installation."
+  ]
+}

@@ -4,13 +4,16 @@ import { listVariantProfiles } from '../../src/games/config/variantProfiles.js';
 import { VARIANT_AVAILABILITY } from '../../src/games/config/variantAvailability.js';
 import { validateReplayReadyHandHistory } from '../../src/ui/utils/handHistoryReplayRequirements.js';
 
-export async function auditPhysicalGames(c, { ids = [], email, password } = {}) {
+export async function auditPhysicalGames(c, { ids = [], email, password, outputName = "physical-games" } = {}) {
   const rows = [];
-  const save = () => writeFile(new URL('./artifacts/physical-games.json', import.meta.url), JSON.stringify({ updated: new Date().toISOString(), interaction: 'DOM clicks with center hit testing; no native touch/keyboard', rows, errors: c.errors, fixtureErrors: c.fixtureErrors }, null, 2));
+  const save = () => writeFile(new URL(`./artifacts/${outputName}.json`, import.meta.url), JSON.stringify({ updated: new Date().toISOString(), interaction: 'DOM clicks with center hit testing; no native touch/keyboard', rows, errors: c.errors, fixtureErrors: c.fixtureErrors }, null, 2));
   const clickId = async id => c.until(id => {
     const e = document.querySelector(`[data-testid="${id}"]`);
     if (!e || e.disabled || !e.getClientRects().length) return false;
-    e.scrollIntoView({ block: 'center', inline: 'center' });
+    // Center-scrolling can scroll an overflow:hidden table on iOS.
+    // Preserve the visible board; only reveal controls that are outside it.
+    const before = e.getBoundingClientRect();
+    if (before.top < 0 || before.bottom > innerHeight || before.left < 0 || before.right > innerWidth) e.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     const r = e.getBoundingClientRect();
     const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
     if (!hit || !e.contains(hit)) return false;
@@ -46,6 +49,12 @@ export async function auditPhysicalGames(c, { ids = [], email, password } = {}) 
       });
       row.viewport = { width: start.width, height: start.height };
       if (start.gate) { row.status = 'LANDSCAPE_REQUIRED'; await save(); console.log(id, row.status); continue; }
+      row.initialLayout = await c.evaluate(() => ({
+        width: innerWidth, height: innerHeight,
+        badges: [...document.querySelectorAll('[data-testid$="-draw-badge"]')].map(e => e.textContent),
+        seats: [...document.querySelectorAll('[data-testid]')].filter(e => /^seat-\d+$/.test(e.dataset.testid) && e.getClientRects().length).map(e => { const r=e.getBoundingClientRect(); return {id:e.dataset.testid,x:r.x,y:r.y,width:r.width,height:r.height}; }),
+      }));
+      assert.equal(row.initialLayout.badges.length, 0, 'No draw badge before the first exchange');
       const before = await c.evaluate(() => JSON.parse(localStorage.getItem('badugi.history.hands') || '[]').map(h => h.handId));
       const deadline = Date.now() + 180000;
       let lastDrawKey = '';
@@ -62,7 +71,7 @@ export async function auditPhysicalGames(c, { ids = [], email, password } = {}) 
             const key = `${s.handId}:${s.drawRound}`;
             if (key !== lastDrawKey) { await clickId('player-0-card-0'); lastDrawKey = key; }
           }
-          await clickId(action); row.heroActions.push(action);
+          await clickId(action); row.heroActions.push(action); await save();
         }
         await new Promise(resolve => setTimeout(resolve, 250));
       }
@@ -76,10 +85,10 @@ export async function auditPhysicalGames(c, { ids = [], email, password } = {}) 
       row.records = histories.map(h => ({ handId: h.handId, variantId: h.variantId, replay: validateReplayReadyHandHistory(h, { variantId: h.variantId }) }));
       assert.ok(row.records.every(h => h.replay.valid), 'History must contain replay fields');
       assert.ok(row.result.overflow <= 2, 'No horizontal overflow');
-      await c.shot(`physical-${id}-result`);
+      await c.shot(`${outputName}-${id}-result`);
       await clickId('hand-result-cash-out');
-      await c.click('Game Select');
-      await c.until(() => !!document.querySelector('input[type=search]'));
+      await c.until(() => { const e = [...document.querySelectorAll('button')].find(e => /^(ゲーム選択|Game Select)$/.test(e.textContent.trim()) && e.getClientRects().length); if (!e) return false; e.click(); return true; });
+      await c.until(() => !!document.querySelector('input[type=search],[data-testid=menu-ring]'));
       row.status = 'PASS';
     } catch (error) {
       row.error = String(error);
@@ -87,7 +96,7 @@ export async function auditPhysicalGames(c, { ids = [], email, password } = {}) 
         row.status = 'DEVICE_CONNECTION_BLOCKED'; await save(); break;
       }
       row.status = 'FAIL';
-      try { await c.shot(`physical-${id}-failure`); } catch {}
+      try { await c.shot(`${outputName}-${id}-failure`); } catch {}
     }
     await save(); console.log(id, row.status, row.error || '');
   }

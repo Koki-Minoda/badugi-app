@@ -316,7 +316,7 @@ export default function ChinesePokerGameScreen({ language = "ja", onBack = null 
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 px-4 py-5 text-slate-100 sm:px-6" data-testid="chinese-poker-screen">
+    <div className="min-h-screen bg-slate-950 px-4 pb-28 pt-5 text-slate-100 sm:px-6" data-testid="chinese-poker-screen">
       <header className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">MGX / Chinese</p>
@@ -351,9 +351,7 @@ export default function ChinesePokerGameScreen({ language = "ja", onBack = null 
                 {copy.clear}
               </button>
               {snapshot.phase === "showdown" ? (
-                <button type="button" onClick={handleNextHand} className="rounded-xl bg-amber-400 px-4 py-2 text-sm font-bold text-slate-950" data-testid="chinese-next-hand">
-                  {copy.next}
-                </button>
+                <span className="px-4 py-2 text-sm font-bold text-emerald-200">{copy.results}</span>
               ) : (
                 <button
                   type="button"
@@ -443,6 +441,10 @@ export default function ChinesePokerGameScreen({ language = "ja", onBack = null 
           )}
         </aside>
       </main>
+      {snapshot.phase === "showdown" && <footer className="fixed inset-x-0 bottom-0 z-20 flex flex-wrap items-center justify-center gap-3 border-t border-emerald-300/30 bg-slate-950/95 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-2 backdrop-blur">
+        <p role="status" data-testid="chinese-result-summary" className="font-bold text-emerald-100">{hero?.name ?? "You"}: {snapshot.results.totals[hero?.id] > 0 ? '+' : ''}{snapshot.results.totals[hero?.id]} · {hero?.evaluation?.foul ? copy.foul : copy.results}</p>
+        <button type="button" onClick={handleNextHand} className="min-h-11 rounded-xl bg-amber-400 px-6 py-2 text-sm font-bold text-slate-950" data-testid="chinese-next-hand">{copy.next}</button>
+      </footer>}
     </div>
   );
 }

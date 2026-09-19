@@ -168,3 +168,30 @@ def test_delete_account_requires_authentication(monkeypatch):
     finally:
         close_all_sessions()
         engine.dispose()
+
+
+def test_deleted_token_cannot_authenticate_reused_user_id_or_websocket(monkeypatch):
+    import pytest
+    from starlette.websockets import WebSocketDisconnect
+    engine, _ = _setup_database(monkeypatch)
+    client = TestClient(app)
+    try:
+        old = _signup_and_login(client, 'reused@example.com')
+        old_id = client.get('/api/auth/me', headers=_auth(old)).json()['id']
+        assert client.request('DELETE', '/api/auth/account', headers=_auth(old), json={'password': PASSWORD}).status_code == 200
+        # Same email and password, and SQLite reuses the deleted highest row ID.
+        fresh = _signup_and_login(client, 'reused@example.com')
+        assert client.get('/api/auth/me', headers=_auth(fresh)).json()['id'] == old_id
+        assert client.get('/api/auth/me', headers=_auth(old)).status_code == 401
+        room = client.post('/api/p2p/rooms', headers=_auth(fresh), json={'variantId': 'badugi'}).json()['roomCode']
+        with client.websocket_connect(f'/ws/p2p/{room}', subprotocols=['mgx-auth', old]) as ws:
+            with pytest.raises(WebSocketDisconnect) as closed:
+                ws.receive_json()
+            assert closed.value.code == 4401
+        with client.websocket_connect(f'/ws/p2p/{room}', subprotocols=['mgx-auth', fresh]) as ws:
+            assert ws.receive_json()['event'] == 'state'
+    finally:
+        p2p_room_manager.reset()
+        app.dependency_overrides.clear()
+        close_all_sessions()
+        engine.dispose()

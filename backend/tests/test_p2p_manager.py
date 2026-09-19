@@ -6,7 +6,12 @@ import pytest
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
-from app.core.security import create_access_token
+from app.core.security import create_access_token, account_binding
+from app.core import db
+from app.models import Base, User
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 from app.dependencies.auth import get_current_user
 from app.api.p2p import (
     STATE_READ_MAX_REQUESTS,
@@ -259,17 +264,25 @@ def test_replaced_socket_cannot_mark_new_connection_disconnected():
 
 
 @pytest.fixture(autouse=True)
-def clear_runtime():
+def clear_runtime(monkeypatch):
+    engine = create_engine("sqlite+pysqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    Base.metadata.create_all(engine)
+    sessions = sessionmaker(bind=engine)
+    monkeypatch.setattr(db, "SessionLocal", sessions)
+    with sessions() as session:
+        session.add_all([User(id=i, name=f"User {i}", email=f"user{i}@example.com", hashed_password=f"test-hash-{i}") for i in (1, 2, 99)])
+        session.commit()
     p2p_room_manager.reset()
     state_read_rate_limiter.reset()
     app.dependency_overrides.clear()
     yield
+    engine.dispose()
     p2p_room_manager.reset()
     app.dependency_overrides.clear()
 
 
 def _user(user_id, name):
-    return SimpleNamespace(id=user_id, name=name, email=f"{name.lower()}@example.com")
+    return SimpleNamespace(id=user_id, name=name, email=f"{name.lower()}@example.com", hashed_password=f"test-hash-{user_id}")
 
 
 def test_authenticated_rest_room_create_join_and_private_info():
@@ -586,7 +599,7 @@ def test_lost_websocket_ack_retries_same_command_over_rest_without_mutation():
         "type": "call",
         "amount": 0,
     }
-    token = create_access_token({"sub": actor_id})
+    token = create_access_token({"sub": actor_id, "account_binding": account_binding(actor)})
     with client.websocket_connect(
         f"/ws/p2p/{room_code}", subprotocols=["mgx-auth", token]
     ) as websocket:
@@ -625,7 +638,7 @@ def test_websocket_requires_token_and_membership():
             websocket.receive_json()
         assert closed.value.code == 4401
 
-    outsider_token = create_access_token({"sub": "99"})
+    outsider_token = create_access_token({"sub": "99", "account_binding": account_binding(_user(99, "Other"))})
     with client.websocket_connect(
         f"/ws/p2p/{room_code}", subprotocols=["mgx-auth", outsider_token]
     ) as websocket:
@@ -633,7 +646,7 @@ def test_websocket_requires_token_and_membership():
             websocket.receive_json()
         assert closed.value.code == 4401
 
-    host_token = create_access_token({"sub": "1"})
+    host_token = create_access_token({"sub": "1", "account_binding": account_binding(_user(1, "Host"))})
     with client.websocket_connect(
         f"/ws/p2p/{room_code}", subprotocols=["mgx-auth", host_token]
     ) as websocket:

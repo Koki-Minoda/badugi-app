@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 from ..core.db import get_db
-from ..core.security import decode_access_token
+from ..core.security import decode_access_token, token_matches_account
 from ..models import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
@@ -33,8 +33,12 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
         )
-    user = db.query(User).filter(User.id == int(user_id)).one_or_none()
-    if not user:
+    try:
+        numeric_user_id = int(user_id)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+    user = db.query(User).filter(User.id == numeric_user_id).one_or_none()
+    if not user or not token_matches_account(payload, user):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",

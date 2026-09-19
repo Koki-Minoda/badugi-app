@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from ..core.security import (
     create_access_token,
+    account_binding,
     get_password_hash,
     verify_password,
 )
@@ -72,7 +73,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
 
     access_token_expires = timedelta(days=7)
     token = create_access_token(
-        data={"sub": str(user.id)},
+        data={"sub": str(user.id), "account_binding": account_binding(user)},
         expires_delta=access_token_expires,
     )
     return {"access_token": token, "token_type": "bearer"}

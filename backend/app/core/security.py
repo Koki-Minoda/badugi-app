@@ -2,6 +2,9 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
+import hashlib
+import hmac
+
 import jwt
 from jwt.exceptions import InvalidTokenError
 from passlib.context import CryptContext
@@ -47,3 +50,13 @@ def decode_access_token(token: str) -> dict[str, Any]:
         return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except InvalidTokenError as exc:
         raise ValueError("Invalid token") from exc
+
+
+def account_binding(user) -> str:
+    """Bind a signed token to this account incarnation, not a reusable row ID."""
+    return hmac.new(SECRET_KEY.encode(), f"{user.id}:{user.hashed_password}".encode(), hashlib.sha256).hexdigest()
+
+
+def token_matches_account(payload, user) -> bool:
+    binding = payload.get("account_binding")
+    return isinstance(binding, str) and hmac.compare_digest(binding, account_binding(user))

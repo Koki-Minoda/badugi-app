@@ -14,7 +14,7 @@ from typing import Any, Callable
 from fastapi import APIRouter, Depends, HTTPException, Response, WebSocket, WebSocketDisconnect, status
 from pydantic import BaseModel, Field, field_validator
 
-from ..core.security import decode_access_token
+from ..core import db as database
 from ..dependencies.auth import get_current_user
 from ..models import User
 from ..p2p.manager import P2PError, P2PRoomManager, Room, p2p_room_manager
@@ -554,14 +554,15 @@ async def friend_match_socket(
         if len(offered_protocols) != 2 or offered_protocols[0] != "mgx-auth":
             raise ValueError("missing authentication protocol")
         token = offered_protocols[1]
-        claims = decode_access_token(token)
-        user_id = str(claims.get("sub") or "")
+        with database.SessionLocal() as session:
+            authenticated_user = get_current_user(token=token, db=session)
+            user_id = str(authenticated_user.id)
         if not user_id:
             raise ValueError("missing subject")
         room = p2p_room_manager.get_room(room_code)
         if user_id not in room.players:
             raise P2PError("not_in_room", "Player is not in this room")
-    except (ValueError, P2PError):
+    except (ValueError, P2PError, HTTPException):
         offered_auth_protocol = (
             "mgx-auth"
             if websocket.headers.get("sec-websocket-protocol", "")

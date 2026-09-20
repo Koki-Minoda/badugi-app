@@ -1,4 +1,6 @@
 import React, { useRef, useState } from 'react';
+import {TableCard} from './layouts/MobileTableSeat.jsx';
+import '../../styles/mobile-table.css';
 import OpenFaceChineseController, { replayOfcHistory } from '../../games/chinese/OpenFaceChineseController.js';
 import { OFC_ROWS } from '../../games/chinese/ofcRules.js';
 const SESSION = 'mgx.ofc.session.v1';
@@ -19,9 +21,7 @@ function resume() {
 }
 function save(c) { localStorage.setItem(SESSION, JSON.stringify({ version: 1, handId: c.handId, handNumber: c.handNumber, deck: c.deck, initial: c.initial, events: c.events })); }
 function Card({ card, onClick, selected, testId }) {
-  const rank = card.slice(0, -1), suit = card.slice(-1), symbols = { C: '♣', D: '♦', H: '♥', S: '♠' };
-  const style = `flex min-h-14 min-w-11 items-center justify-center rounded-lg border bg-slate-50 px-1 text-lg font-bold ${selected ? 'ring-2 ring-emerald-400' : ''} ${suit === 'H' || suit === 'D' ? 'text-red-700' : 'text-slate-950'}`;
-  return onClick ? <button aria-label={`${rank}${symbols[suit]}`} aria-pressed={!!selected} data-testid={testId} onClick={onClick} className={style}>{rank}{symbols[suit]}</button> : <span className={style}>{rank}{symbols[suit]}</span>;
+  return <TableCard card={card} onClick={onClick} selected={selected} testId={testId} />;
 }
 export default function OpenFaceChineseScreen({ onBack }) {
   const ref = useRef(null);
@@ -48,7 +48,7 @@ export default function OpenFaceChineseScreen({ onBack }) {
     const hidden = player.seat === 1 && player.fantasy && !finished;
     return <div key={row} className="rounded-xl border border-white/10 bg-slate-950/70 p-2"><div className="mb-2 flex items-center justify-between gap-2 text-xs text-slate-300"><span>{labels[row]}</span><span>{cards.length}/{OFC_ROWS[row]}</span></div><div className="flex flex-wrap gap-1">{cards.map(card => hidden ? <span key={card} className="flex min-h-14 w-10 items-center justify-center rounded-lg bg-indigo-950 text-indigo-300">?</span> : <Card key={card} card={card} selected={additions.includes(card)} onClick={additions.includes(card) ? () => setDraft(draft.filter(d => d.card !== card)) : null} />)}{!cards.length && <span className="flex h-14 items-center text-xs text-slate-500">未配置</span>}</div>{editable && !finished && <button data-testid={`ofc-place-${row}`} disabled={!activeCard || cards.length >= OFC_ROWS[row]} onClick={() => place(row)} className="mt-2 min-h-11 w-full rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-2 text-sm font-semibold text-emerald-100 disabled:opacity-30">{activeCard ? `${activeCard} を配置` : '配置先'}</button>}</div>;
   })}</div>;
-  return <main data-testid="ofc-screen" className="min-h-screen bg-slate-950 px-3 pb-36 pt-4 text-white sm:px-6">
+  return <main data-testid="ofc-screen" className="mgx-arrange-page min-h-screen bg-slate-950 px-3 pb-36 pt-4 text-white sm:px-6">
     <div className="mx-auto max-w-5xl space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs text-emerald-300">CLASSIC OFC · 最初に5枚、以後1枚ずつ</p><h1 className="text-2xl font-bold">Open-Face Chinese Poker</h1><p className="mt-1 text-sm text-slate-300">ハンド #{state.handNumber} · {finished ? '結果' : hero.fantasy ? 'Fantasyland · 13枚を配置' : `配置 ${state.street + 1}/9`} · 累計 {state.scores[0]}点</p></div><button onClick={() => { save(c); onBack(); }} className="min-h-11 rounded-lg border border-white/20 px-4">保存してゲーム選択へ</button></header>
       <details className="rounded-xl border border-white/15 p-3 text-sm text-slate-300"><summary className="cursor-pointer py-1 font-semibold">遊び方・得点・Fantasyland</summary><p className="mt-2">フロント3枚 ≤ ミドル5枚 ≤ バック5枚の強さにします。確定したカードは動かせません。相手と各行を比較して1点、3行すべて勝つと追加3点。ファウルは6点と相手のロイヤリティを失います。</p><p className="mt-2">フロントQQ以上で次のハンドは13枚を一度に配置。継続条件はフロントのスリーカード、ミドルのフルハウス以上、またはバックのフォーカード以上。ファウルでは入場・継続できません。</p><p className="mt-2">ロイヤリティ：バックのストレート/フラッシュ/フルハウス/フォーカード/SF/ロイヤルは2/4/6/10/15/25点。ミドルはその2倍、スリーカードは2点。フロントは66から1点ずつ、スリーカードは222の10点からAAAの22点まで。</p></details>

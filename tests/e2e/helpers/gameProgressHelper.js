@@ -385,6 +385,9 @@ export async function performSafeAction(page, options = {}) {
               return false;
             })
         : false;
+      if (clicked && action.id === 'action-raise' && await page.getByTestId('bet-amount-sheet').isVisible()) {
+        await page.getByTestId('bet-amount-confirm').click();
+      }
       const changed = await waitForProgressChange(page, beforeKey, { timeout: 1200 })
         .then(() => true)
         .catch(() => false);

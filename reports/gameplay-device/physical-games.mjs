@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
+import {measureMobileLayout} from './mobile-layout-check.mjs';
 import { writeFile } from 'node:fs/promises';
 import { listVariantProfiles } from '../../src/games/config/variantProfiles.js';
 import { VARIANT_AVAILABILITY } from '../../src/games/config/variantAvailability.js';
 import { validateReplayReadyHandHistory } from '../../src/ui/utils/handHistoryReplayRequirements.js';
 
-export async function auditPhysicalGames(c, { ids = [], email, password, outputName = "physical-games" } = {}) {
+export async function auditPhysicalGames(c, { ids = [], email, password, outputName = "physical-games", checkLayout = false } = {}) {
   const rows = [];
   const save = () => writeFile(new URL(`./artifacts/${outputName}.json`, import.meta.url), JSON.stringify({ updated: new Date().toISOString(), interaction: 'DOM clicks with center hit testing; no native touch/keyboard', rows, errors: c.errors, fixtureErrors: c.fixtureErrors }, null, 2));
   const clickId = async id => c.until(id => {
@@ -55,6 +56,7 @@ export async function auditPhysicalGames(c, { ids = [], email, password, outputN
         seats: [...document.querySelectorAll('[data-testid]')].filter(e => /^seat-\d+$/.test(e.dataset.testid) && e.getClientRects().length).map(e => { const r=e.getBoundingClientRect(); return {id:e.dataset.testid,x:r.x,y:r.y,width:r.width,height:r.height}; }),
       }));
       assert.equal(row.initialLayout.badges.length, 0, 'No draw badge before the first exchange');
+      if(checkLayout){row.geometryChecks=0;row.maxHeroCards=0;row.maxBoardCards=0;await c.shot(`${outputName}-${id}-playing`);}
       const before = await c.evaluate(() => JSON.parse(localStorage.getItem('badugi.history.hands') || '[]').map(h => h.handId));
       const deadline = Date.now() + 180000;
       let lastDrawKey = '';
@@ -65,6 +67,7 @@ export async function auditPhysicalGames(c, { ids = [], email, password, outputN
           return { phase: st?.phase, drawRound: st?.drawRoundIndex ?? st?.drawRound, handId: st?.handId, result: visible(document.querySelector('[data-testid=hand-result-overlay]')), actions: ['action-check', 'action-call', 'action-draw-selected', 'action-raise'].filter(id => visible(document.querySelector(`[data-testid="${id}"]`))) };
         });
         if (s.result) break;
+        if(checkLayout){const geometry=await c.evaluate(measureMobileLayout);row.geometryChecks++;if((geometry.heroCards||0)>row.maxHeroCards||(geometry.boardCards||0)>row.maxBoardCards)await c.shot(`${outputName}-${id}-cards-${geometry.heroCards}-${geometry.boardCards}`);row.maxHeroCards=Math.max(row.maxHeroCards,geometry.heroCards||0);row.maxBoardCards=Math.max(row.maxBoardCards,geometry.boardCards||0);assert.deepEqual(geometry.issues,[],JSON.stringify(geometry));}
         const action = s.actions[0];
         if (action) {
           if (action === 'action-draw-selected') {

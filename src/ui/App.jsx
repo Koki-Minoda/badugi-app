@@ -1392,13 +1392,8 @@ export default function App() {
     baseWidth: DESKTOP_CANVAS_BASE_WIDTH,
     baseHeight: DESKTOP_CANVAS_BASE_HEIGHT,
   });
-  const shouldGateOrientation =
-    isMobileDevice &&
-    !(
-      normalizedGameVariant === APP_VARIANT_IDS.BADUGI ||
-      isDrawLowballAppVariant(normalizedGameVariant) ||
-      STUD_APP_VARIANT_IDS.has(normalizedGameVariant)
-    );
+  // Every poker family shares the same responsive mobile table.
+  const shouldGateOrientation = false;
   useEffect(() => {
     if (!shouldUseDesktopCanvasScale) {
       setDebugScale(1);

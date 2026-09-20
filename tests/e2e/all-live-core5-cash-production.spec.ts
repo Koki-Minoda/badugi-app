@@ -297,6 +297,10 @@ async function playOneRealButtonHand(
       sizingActions += 1;
     }
     await page.getByTestId(target).first().click({ timeout: 5_000 });
+    if (target === 'action-raise' && await page.getByTestId('bet-amount-sheet').isVisible()) {
+      await page.getByTestId('bet-amount-confirm').click();
+      sizingActions += 1;
+    }
     heroButtonClicks += 1;
     steps += 1;
     await page.waitForTimeout(100);

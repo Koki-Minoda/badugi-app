@@ -3,15 +3,15 @@ import {APP_URL,openAuthenticatedGame,deleteAuthenticatedSession} from './authHe
 import {playOneHandProgression} from './helpers/gameProgressHelper.js';
 for(const variant of ['badugi','stud','nlh','plo','dramaha_hi'])test(`${variant}: readable actions and persistent result controls`,async({page},info)=>{
  page.setDefaultTimeout(15000);
- const portrait=page.viewportSize()!.height>page.viewportSize()!.width;
- const rotationNeeded=portrait&&['nlh','plo','dramaha_hi'].includes(variant);
- if(rotationNeeded)await page.setViewportSize({width:844,height:390});
  const session=await openAuthenticatedGame(page,`${APP_URL}?variant=${variant}`);
  try{
   await expect(page.getByTestId('player-action-hint')).toBeVisible();
   await page.mouse.move(0,0);await page.waitForTimeout(350);await page.screenshot({path:info.outputPath('playing.png')});
   const input=page.getByTestId('bet-size-input');
-  if(await input.isVisible())expect(await input.evaluate(el=>parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(16);
+  if(await input.isVisible()){
+   if(await input.evaluate(el=>el.tagName==='INPUT'))expect(await input.evaluate(el=>parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(16);
+   else expect((await input.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  }
   const result=await playOneHandProgression(page,{maxSteps:200,policy:'heroStay',requireHeroButtonClick:true,requireDrawVisit:variant==='badugi'||variant.startsWith('dramaha')});
   expect(result.status).toBe('PASS');
   await expect(page.getByTestId('hand-result-overlay')).toBeVisible();

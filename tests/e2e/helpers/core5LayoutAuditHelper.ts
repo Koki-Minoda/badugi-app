@@ -200,19 +200,21 @@ export async function evaluateMobileInteraction(page: Page) {
   const buttons = page.locator(actionSelector);
   const count = await buttons.count();
   let visibleActionButtons = 0;
+  let enabledActionButtons = 0;
   let minActionButtonHeight = Number.POSITIVE_INFINITY;
   for (let index = 0; index < count; index += 1) {
     const button = buttons.nth(index);
     if (!(await button.isVisible().catch(() => false))) continue;
     visibleActionButtons += 1;
+    if (await button.isEnabled()) enabledActionButtons += 1;
     const box = await button.boundingBox();
     if (box) minActionButtonHeight = Math.min(minActionButtonHeight, box.height);
   }
   if (heroIsActor && visibleActionButtons === 0) {
     issues.push({ priority: "P0", issue: "no visible action buttons" });
   }
-  if (!heroIsActor && visibleActionButtons > 0) {
-    issues.push({ priority: "P0", issue: "hero action buttons visible for non-hero actor", value: progress?.actor });
+  if (!heroIsActor && enabledActionButtons > 0) {
+    issues.push({ priority: "P0", issue: "hero action buttons enabled for non-hero actor", value: progress?.actor });
   }
   if (Number.isFinite(minActionButtonHeight) && minActionButtonHeight < 40) {
     issues.push({ priority: "P1", issue: "action button below target size", value: minActionButtonHeight });

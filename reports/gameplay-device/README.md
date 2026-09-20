@@ -1,5 +1,7 @@
 # MGX 全種目・実プレイ確認と修正
 
+**9/20 再設計後の最新結果:** [デザイン再検査](DESIGN-REVIEW.md)と[更新済み一覧](STATUS.md)を参照。利用者の指摘を受け、旧UIの使いやすさ合格判定を見直した。以下は再設計前までの検査履歴。
+
 [37種目の完了状況・不具合一覧](STATUS.md)を主台帳とする。[画面の使いやすさQA](USABILITY-QA.md)、[修正後の検査結果](completion-evidence.json)、[機械可読の台帳](progress.json)も保存した。
 
 最初の調査対象は `c0fa8fa`、調査記録の基点は `bc35b25`。修正コミットは認証 `c667560`、ゲーム・画面 `9d72e29`。今回、そのローカル修正版をproduction buildして検査した。本番への配信はしていない。旧調査の[evidence-summary.json](evidence-summary.json)は修正前の証拠として維持している。

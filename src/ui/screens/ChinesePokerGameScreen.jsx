@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import {TableCard} from "./layouts/MobileTableSeat.jsx";
+import "../../styles/mobile-table.css";
 import ChinesePokerController from "../../games/chinese/ChinesePokerController.js";
 import {
   persistChinesePokerHistory,
@@ -81,59 +83,10 @@ function getCopy(language) {
   return COPY[language] ?? COPY.en;
 }
 
-function parseCard(card) {
-  const raw = String(card ?? "");
-  const suit = raw.slice(-1);
-  const rank = raw.slice(0, -1);
-  return { rank, suit };
-}
-
-function suitSymbol(suit) {
-  return {
-    C: "♣",
-    D: "♦",
-    H: "♥",
-    S: "♠",
-  }[suit] ?? suit;
-}
-
-function suitClass(suit) {
-  if (suit === "D") return "text-blue-600";
-  if (suit === "H") return "text-red-500";
-  if (suit === "C") return "text-emerald-700";
-  return "text-slate-900";
-}
-
-function cardLabel(card) {
-  const { rank, suit } = parseCard(card);
-  return `${rank}${suitSymbol(suit)}`;
-}
-
 function Card({ card, selected = false, onClick = null }) {
-  const { rank, suit } = parseCard(card);
-  const clickable = typeof onClick === "function";
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={!clickable}
-      className={`flex h-16 w-11 shrink-0 flex-col justify-between rounded-lg border bg-slate-50 px-1.5 py-1 text-left font-bold shadow ${
-        selected ? "border-amber-300 ring-2 ring-amber-300" : "border-slate-300"
-      } ${clickable ? "cursor-pointer hover:-translate-y-0.5" : "cursor-default"}`}
-      aria-label={cardLabel(card)}
-      data-testid={`chinese-card-${card}`}
-    >
-      <span className={`text-sm leading-none ${suitClass(suit)}`}>{rank}</span>
-      <span className={`self-end text-lg leading-none ${suitClass(suit)}`}>{suitSymbol(suit)}</span>
-    </button>
-  );
+  return <TableCard card={card} selected={selected} onClick={onClick} testId={`chinese-card-${card}`} />;
 }
-
-function BackCard() {
-  return (
-    <div className="h-16 w-11 shrink-0 rounded-lg border border-amber-400/70 bg-slate-950 bg-[radial-gradient(circle_at_center,#d6a800_0_12%,transparent_13%)] shadow" />
-  );
-}
+function BackCard() { return <TableCard hidden />; }
 
 function scoreName(evaluation, rowKey) {
   return evaluation?.[rowKey]?.handName ?? "-";
@@ -316,7 +269,7 @@ export default function ChinesePokerGameScreen({ language = "ja", onBack = null 
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 px-4 pb-28 pt-5 text-slate-100 sm:px-6" data-testid="chinese-poker-screen">
+    <div className="mgx-arrange-page min-h-screen bg-slate-950 px-4 pb-28 pt-5 text-slate-100 sm:px-6" data-testid="chinese-poker-screen">
       <header className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">MGX / Chinese</p>

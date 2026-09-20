@@ -138,6 +138,24 @@ describe("FriendMatchSetupScreen", () => {
     expect(screen.getByText("ABC234")).toBeTruthy();
   });
 
+  it("shows a manual-copy instruction when clipboard access is unavailable", async () => {
+    const clipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    const exec = Object.getOwnPropertyDescriptor(document, "execCommand");
+    try {
+      Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined });
+      Object.defineProperty(document, "execCommand", { configurable: true, value: () => false });
+      render(<FriendMatchSetupScreen language="en" />);
+      await createAndOpen();
+      fireEvent.click(screen.getByRole("button", { name: "Copy code" }));
+      expect(await screen.findByText(/Could not copy/)).toBeTruthy();
+      expect(screen.queryByText("Room code copied.")).toBeNull();
+      expect(screen.getByTestId("p2p-room-code").textContent).toBe("ABC234");
+    } finally {
+      if (clipboard) Object.defineProperty(navigator, "clipboard", clipboard); else delete navigator.clipboard;
+      if (exec) Object.defineProperty(document, "execCommand", exec); else delete document.execCommand;
+    }
+  });
+
   it("joins directly with a room code instead of reading private state first", async () => {
     render(<FriendMatchSetupScreen language="en" />);
     fireEvent.change(screen.getByLabelText(/room code/i), { target: { value: "abc234" } });

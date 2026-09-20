@@ -7,12 +7,16 @@ const server = http.createServer((req, res) => {
 });
 const ws = new WebSocketServer({ noServer: true });
 server.on('upgrade', (req, socket, head) => ws.handleUpgrade(req, socket, head, downstream => {
-  const upstream = new WebSocket('ws://127.0.0.1:8011' + req.url, { headers: { origin: 'http://127.0.0.1:4179' } });
+  const protocols = String(req.headers['sec-websocket-protocol'] || '').split(',').map(p => p.trim()).filter(Boolean);
+  const upstream = new WebSocket('ws://127.0.0.1:8011' + req.url, protocols, { headers: { origin: 'http://127.0.0.1:4179' } });
   const queue = [];
   downstream.on('message', (data, binary) => upstream.readyState === WebSocket.OPEN ? upstream.send(data, { binary }) : queue.push([data, binary]));
   upstream.on('open', () => queue.splice(0).forEach(([data, binary]) => upstream.send(data, { binary })));
   upstream.on('message', (data, binary) => downstream.readyState === WebSocket.OPEN && downstream.send(data, { binary }));
-  upstream.on('close', () => downstream.close()); downstream.on('close', () => upstream.close());
+  upstream.on('close', (code, reason) => downstream.close([1005, 1006, 1015].includes(code) ? 1011 : code, reason));
+  downstream.on('close', (code, reason) => upstream.close([1005, 1006, 1015].includes(code) ? 1011 : code, reason));
   upstream.on('error', () => downstream.close());
 }));
-server.listen(4179, '127.0.0.1', () => console.log('Local QA frontend/API proxy ready on 4179'));
+const port = Number(process.env.MGX_QA_PROXY_PORT || 4179);
+const host = process.env.MGX_QA_PROXY_HOST || '127.0.0.1';
+server.listen(port, host, () => console.log(`Local QA frontend/API proxy ready on ${host}:${port}`));

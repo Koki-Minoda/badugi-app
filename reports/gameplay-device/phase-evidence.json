@@ -1,0 +1,686 @@
+{
+  "updated": "2026-09-20T02:49:50.032Z",
+  "baseCommit": "25023ce",
+  "scope": "Oval-table phase colors, clipboard feedback, storage pressure and pending physical QA; local build only",
+  "phaseConvention": "Green felt throughout. Red rail and draw labels during DRAW, neutral rail during BET. Same source as action controls.",
+  "physical": {
+    "device": "iPhone17,3 / iOS 26.5.2 / Safari 26.5.2",
+    "method": "USB Web Inspector, real LAN preview/API; DOM activations with hit testing, not native finger input",
+    "portrait": {
+      "passed": 35,
+      "viewport": [
+        393,
+        695
+      ],
+      "scope": "1 natural CPU hand per variant, layout, phase colors, saved replay requirements, cash out and exit",
+      "rows": [
+        {
+          "id": "nlh",
+          "status": "PASS",
+          "actions": 4,
+          "phases": [
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "nlh-h1-d0-mu96iogm",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "flh",
+          "status": "PASS",
+          "actions": 4,
+          "phases": [
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "flh-h1-d0-mu96itnb",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "super_holdem",
+          "status": "PASS",
+          "actions": 4,
+          "phases": [
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "super_holdem-h1-d0-mu96izct",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "fl_super_holdem",
+          "status": "PASS",
+          "actions": 4,
+          "phases": [
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "fl_super_holdem-h1-d0-mu96j4l1",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "plo",
+          "status": "PASS",
+          "actions": 4,
+          "phases": [
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "plo-h1-d0-mu96j9zt",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "plo8",
+          "status": "PASS",
+          "actions": 4,
+          "phases": [
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "plo8-h1-d0-mu96jfli",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "big_o",
+          "status": "PASS",
+          "actions": 4,
+          "phases": [
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "big_o-h1-d0-mu96jkvx",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "five_card_plo",
+          "status": "PASS",
+          "actions": 4,
+          "phases": [
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "five_card_plo-h1-d0-mu96jq5r",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "flo8",
+          "status": "PASS",
+          "actions": 4,
+          "phases": [
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "flo8-h1-d0-mu96jvid",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "deuce_to_seven_triple_draw",
+          "status": "PASS",
+          "actions": 8,
+          "phases": [
+            "BET",
+            "DRAW",
+            "BET",
+            "DRAW",
+            "BET",
+            "DRAW",
+            "BET",
+            "WAITING_NEXT_HAND"
+          ],
+          "history": [
+            {
+              "handId": "deuce_to_seven_triple_draw-h1-d0-mu96k0vv",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "ace_to_five_triple_draw",
+          "status": "PASS",
+          "actions": 7,
+          "phases": [
+            "BET",
+            "DRAW",
+            "BET",
+            "DRAW",
+            "BET",
+            "DRAW",
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "ace_to_five_triple_draw-h1-d0-mu96kcx8",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "badugi",
+          "status": "PASS",
+          "actions": 8,
+          "phases": [
+            "BET",
+            "DRAW",
+            "BET",
+            "DRAW",
+            "BET",
+            "DRAW",
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "badugi-h1-d0-mu96klgh",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "badeucey_triple_draw",
+          "status": "PASS",
+          "actions": 7,
+          "phases": [
+            "BET",
+            "DRAW",
+            "BET",
+            "DRAW",
+            "BET",
+            "DRAW",
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "badeucey_triple_draw-h1-d0-mu96krjl",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "badacey_triple_draw",
+          "status": "PASS",
+          "actions": 7,
+          "phases": [
+            "BET",
+            "DRAW",
+            "BET",
+            "DRAW",
+            "BET",
+            "DRAW",
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "badacey_triple_draw-h1-d0-mu96l6ck",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "hidugi_triple_draw",
+          "status": "PASS",
+          "actions": 7,
+          "phases": [
+            "BET",
+            "DRAW",
+            "BET",
+            "DRAW",
+            "BET",
+            "DRAW",
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "hidugi_triple_draw-h1-d0-mu96lj22",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "archie_triple_draw",
+          "status": "PASS",
+          "actions": 7,
+          "phases": [
+            "BET",
+            "DRAW",
+            "BET",
+            "DRAW",
+            "BET",
+            "DRAW",
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "archie_triple_draw-h1-d0-mu96lvgm",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "deuce_to_seven_single_draw",
+          "status": "PASS",
+          "actions": 4,
+          "phases": [
+            "BET",
+            "DRAW",
+            "BET",
+            "WAITING_NEXT_HAND"
+          ],
+          "history": [
+            {
+              "handId": "deuce_to_seven_single_draw-h1-d0-mu96m603",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "ace_to_five_single_draw",
+          "status": "PASS",
+          "actions": 3,
+          "phases": [
+            "BET",
+            "DRAW",
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "ace_to_five_single_draw-h1-d0-mu96rm0j",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "five_card_single_draw",
+          "status": "PASS",
+          "actions": 3,
+          "phases": [
+            "BET",
+            "DRAW",
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "five_card_single_draw-h1-d0-mu96mfph",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "badugi_single_draw",
+          "status": "PASS",
+          "actions": 3,
+          "phases": [
+            "BET",
+            "DRAW",
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "badugi_single_draw-h1-d0-mu96mkdu",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "badeucey_single_draw",
+          "status": "PASS",
+          "actions": 3,
+          "phases": [
+            "BET",
+            "DRAW",
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "badeucey_single_draw-h1-d0-mu96mpaa",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "badacey_single_draw",
+          "status": "PASS",
+          "actions": 4,
+          "phases": [
+            "BET",
+            "DRAW",
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "badacey_single_draw-h1-d0-mu96n00q",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "hidugi_single_draw",
+          "status": "PASS",
+          "actions": 3,
+          "phases": [
+            "BET",
+            "DRAW",
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "hidugi_single_draw-h1-d0-mu96n625",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "dramaha_hi",
+          "status": "PASS",
+          "actions": 5,
+          "phases": [
+            "BET",
+            "DRAW",
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "dramaha_hi-h1-d0-mu96nar0",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "dramaha_27",
+          "status": "PASS",
+          "actions": 5,
+          "phases": [
+            "BET",
+            "DRAW",
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "dramaha_27-h1-d0-mu96nhwp",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "dramaha_a5",
+          "status": "PASS",
+          "actions": 5,
+          "phases": [
+            "BET",
+            "DRAW",
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "dramaha_a5-h1-d0-mu96noje",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "dramaha_zero",
+          "status": "PASS",
+          "actions": 5,
+          "phases": [
+            "BET",
+            "DRAW",
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "dramaha_zero-h1-d0-mu96nv1h",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "dramaha_hidugi",
+          "status": "PASS",
+          "actions": 5,
+          "phases": [
+            "BET",
+            "DRAW",
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "dramaha_hidugi-h1-d0-mu96o1ph",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "dramaha_badugi",
+          "status": "PASS",
+          "actions": 5,
+          "phases": [
+            "BET",
+            "DRAW",
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "dramaha_badugi-h1-d0-mu96o8cy",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "stud",
+          "status": "PASS",
+          "actions": 5,
+          "phases": [
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "stud-h1-d0-mu96oez9",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "stud8",
+          "status": "PASS",
+          "actions": 5,
+          "phases": [
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "stud8-h1-d0-mu96on10",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "razz",
+          "status": "PASS",
+          "actions": 5,
+          "phases": [
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "razz-h1-d0-mu96oteu",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "razzdugi",
+          "status": "PASS",
+          "actions": 5,
+          "phases": [
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "razzdugi-h1-d0-mu96p2ch",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "razzducey",
+          "status": "PASS",
+          "actions": 5,
+          "phases": [
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "razzducey-h1-d0-mu96pb45",
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "razz27",
+          "status": "PASS",
+          "actions": 5,
+          "phases": [
+            "BET"
+          ],
+          "history": [
+            {
+              "handId": "razz27-h1-d0-mu96pjrj",
+              "valid": true
+            }
+          ]
+        }
+      ],
+      "sources": [
+        "artifacts/phase-physical-portrait.json",
+        "artifacts/phase-physical-portrait-a5-recheck.json"
+      ]
+    },
+    "arrangement": {
+      "passed": 2,
+      "handsPerVariant": 3,
+      "exactReplay": true,
+      "evidence": "artifacts/phase-physical-chinese-portrait.json"
+    },
+    "features": {
+      "rows": [
+        {
+          "id": "stage",
+          "status": "PASS",
+          "resumed": true
+        },
+        {
+          "id": "survival",
+          "status": "PASS",
+          "resumed": true
+        },
+        {
+          "id": "championship",
+          "status": "PASS",
+          "resumed": true
+        },
+        {
+          "id": "dealers-choice",
+          "status": "PASS"
+        }
+      ],
+      "evidence": "artifacts/phase-physical-features-verified.json"
+    },
+    "network": {
+      "updated": "2026-09-20T02:22:23.585Z",
+      "status": "PASS",
+      "method": "iPhone Safari DOM controls + second Chromium player; local real API/WebSocket; deliberate transport interruption, not radio switching",
+      "steps": [
+        "Real room created/joined; both private hands; opposing hands absent from received player state",
+        "Closed live socket; automatic reconnect preserved cards",
+        "Repeated WebSocket failure switched iPhone to REST polling",
+        "Temporary HTTP interruption recovered without losing the hand",
+        "Both players drew; bet/fold finished the hand through the fallback",
+        "Reload restored the room, final hand and result"
+      ],
+      "viewport": {
+        "width": 393,
+        "height": 695
+      },
+      "controls": {
+        "minButtonHeight": 44,
+        "minInputFont": 16
+      },
+      "transport": {
+        "successfulReads": 3,
+        "successfulCommands": 4
+      },
+      "evidence": "artifacts/phase-physical-network-final.json"
+    },
+    "family": {
+      "status": "PASS",
+      "evidence": "artifacts/phase-physical-comparison.json"
+    },
+    "keypad": {
+      "status": "PASS",
+      "evidence": "artifacts/phase-physical-keypad.json"
+    },
+    "landscape": {
+      "status": "PENDING",
+      "reason": "Current page remains 393×695 portrait. Rotation requested; no new landscape measurement yet."
+    },
+    "homeScreen": {
+      "status": "PENDING",
+      "reason": "Safari share/add-to-home UI is outside page automation. User asked to add and launch; no standalone launch observed."
+    }
+  },
+  "browser": {
+    "webkitFinal": {
+      "passed": 13,
+      "notApplicable": 2,
+      "scope": "8 phase cases, 3 family geometry comparisons, 2 storage-pressure cases; desktop-only cases excluded from mobile profile",
+      "evidence": "artifacts/phase-final-browser"
+    },
+    "desktopPhase": {
+      "passed": 2,
+      "evidence": "artifacts/phase-final-desktop"
+    },
+    "multigame": {
+      "passed": 3,
+      "scope": "Play/resume + explicit championship fixtures for result paths, not natural full tournament completion",
+      "evidence": "artifacts/phase-save-browser"
+    },
+    "friendAndManifest": {
+      "passed": 2,
+      "evidence": "artifacts/phase-friend-browser"
+    }
+  },
+  "unit": {
+    "phaseAndSeats": 10,
+    "clipboard": 4,
+    "friendScreen": 18,
+    "storageAndResumeAndNotice": 29
+  },
+  "build": "PASS",
+  "lint": "0 errors; 2 pre-existing App.jsx warnings",
+  "productionDeployment": false
+}

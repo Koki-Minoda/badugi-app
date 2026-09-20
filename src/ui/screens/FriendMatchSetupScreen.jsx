@@ -1,3 +1,4 @@
+import { copyTextToClipboard } from '../utils/copyTextToClipboard.js';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { designTokens } from "../../styles/designTokens.js";
@@ -126,6 +127,7 @@ const FRIEND_COPY = {
     leave: "ルームを退出",
     copyCode: "コードをコピー",
     copied: "ルームコードをコピーしました。",
+    copyFailed: "コピーできませんでした。表示されたコードを長押ししてコピーしてください。",
     loginRequired: "フレンドマッチを利用するにはログインしてください。",
     roomClosed: "ホストが退出したため、ルームを終了しました。",
     sessionReplaced: "このルームは別の画面で開かれました。",
@@ -197,6 +199,7 @@ const FRIEND_COPY = {
     leave: "Leave room",
     copyCode: "Copy code",
     copied: "Room code copied.",
+    copyFailed: "Could not copy. Press and hold the displayed code to copy it.",
     loginRequired: "Log in to use Friend Match.",
     roomClosed: "The room was closed because the host left.",
     sessionReplaced: "This room was opened in another window.",
@@ -846,8 +849,11 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
 
   return (
     <div
-      className="min-h-screen overflow-x-clip px-4 py-10 text-white"
+      data-testid="friend-match-layout"
+      className="min-h-screen overflow-x-clip px-4 py-10 text-white [&_button]:min-h-11 [&_input]:min-h-11 [&_input]:text-base"
       style={{
+        paddingLeft: "max(16px, env(safe-area-inset-left))",
+        paddingRight: "max(16px, env(safe-area-inset-right))",
         background: `radial-gradient(120% 120% at 50% 0%, ${designTokens.colors.surface} 0%, ${designTokens.colors.background} 60%)`,
       }}
     >
@@ -1006,13 +1012,13 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
                 <span className="text-xs uppercase tracking-[0.25em] text-emerald-300">
                   {copy.roomCode}
                 </span>
-                  <strong className="break-all text-lg text-white">{createdRoom.roomId}</strong>
+                  <strong data-testid="p2p-room-code" className="break-all select-text text-lg text-white">{createdRoom.roomId}</strong>
                 </div>
                 <button
                   type="button"
                   onClick={async () => {
-                    await navigator.clipboard?.writeText(createdRoom.roomId);
-                    setStatusMessage(copy.copied);
+                    const copied = await copyTextToClipboard(createdRoom.roomId);
+                    setStatusMessage(copied ? copy.copied : copy.copyFailed);
                   }}
                   className="rounded-xl border border-emerald-300/50 px-3 py-2 text-xs font-semibold"
                 >

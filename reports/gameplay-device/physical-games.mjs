@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {readSettledPhaseTone} from './phase-tone-check.mjs?settled=2';
 import {measureMobileLayout} from './mobile-layout-check.mjs';
 import { writeFile } from 'node:fs/promises';
 import { listVariantProfiles } from '../../src/games/config/variantProfiles.js';
@@ -56,7 +57,7 @@ export async function auditPhysicalGames(c, { ids = [], email, password, outputN
         seats: [...document.querySelectorAll('[data-testid]')].filter(e => /^seat-\d+$/.test(e.dataset.testid) && e.getClientRects().length).map(e => { const r=e.getBoundingClientRect(); return {id:e.dataset.testid,x:r.x,y:r.y,width:r.width,height:r.height}; }),
       }));
       assert.equal(row.initialLayout.badges.length, 0, 'No draw badge before the first exchange');
-      if(checkLayout){row.geometryChecks=0;row.maxHeroCards=0;row.maxBoardCards=0;await c.shot(`${outputName}-${id}-playing`);}
+      if(checkLayout){row.phaseTransitions=[];row.geometryChecks=0;row.maxHeroCards=0;row.maxBoardCards=0;await c.shot(`${outputName}-${id}-playing`);}
       const before = await c.evaluate(() => JSON.parse(localStorage.getItem('badugi.history.hands') || '[]').map(h => h.handId));
       const deadline = Date.now() + 180000;
       let lastDrawKey = '';
@@ -67,7 +68,10 @@ export async function auditPhysicalGames(c, { ids = [], email, password, outputN
           return { phase: st?.phase, drawRound: st?.drawRoundIndex ?? st?.drawRound, handId: st?.handId, result: visible(document.querySelector('[data-testid=hand-result-overlay]')), actions: ['action-check', 'action-call', 'action-draw-selected', 'action-raise'].filter(id => visible(document.querySelector(`[data-testid="${id}"]`))) };
         });
         if (s.result) break;
-        if(checkLayout){const geometry=await c.evaluate(measureMobileLayout);row.geometryChecks++;if((geometry.heroCards||0)>row.maxHeroCards||(geometry.boardCards||0)>row.maxBoardCards)await c.shot(`${outputName}-${id}-cards-${geometry.heroCards}-${geometry.boardCards}`);row.maxHeroCards=Math.max(row.maxHeroCards,geometry.heroCards||0);row.maxBoardCards=Math.max(row.maxBoardCards,geometry.boardCards||0);assert.deepEqual(geometry.issues,[],JSON.stringify(geometry));}
+        if(checkLayout){const geometry=await c.evaluate(measureMobileLayout);row.geometryChecks++;
+         const tone=await readSettledPhaseTone(c);assert.deepEqual(tone.issues,[]);
+         if(tone.phase&&row.phaseTransitions.at(-1)?.phase!==tone.phase){row.phaseTransitions.push(tone);await c.shot(`${outputName}-${id}-phase-${tone.phase}-${row.phaseTransitions.length}`);}
+         if((geometry.heroCards||0)>row.maxHeroCards||(geometry.boardCards||0)>row.maxBoardCards)await c.shot(`${outputName}-${id}-cards-${geometry.heroCards}-${geometry.boardCards}`);row.maxHeroCards=Math.max(row.maxHeroCards,geometry.heroCards||0);row.maxBoardCards=Math.max(row.maxBoardCards,geometry.boardCards||0);assert.deepEqual(geometry.issues,[],JSON.stringify(geometry));}
         const action = s.actions[0];
         if (action) {
           if (action === 'action-draw-selected') {

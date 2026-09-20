@@ -25,9 +25,10 @@
   "build": "PASS",
   "lint": "PASS",
   "physical": {
-    "status": "PENDING",
-    "reason": "Connected iPhone Safari test page does not respond. User asked to bring the MGX Safari page to foreground; no reply yet.",
-    "previousEvidenceAppliesTo": "Previous rectangular UI only"
+    "status": "PORTRAIT_PASS_LANDSCAPE_PENDING",
+    "latestEvidence": "phase-evidence.json",
+    "portraitVariants": 35,
+    "reason": "Physical portrait reconnected and verified. Current landscape and home-screen checks await native device actions."
   },
   "productionDeployment": false
 }

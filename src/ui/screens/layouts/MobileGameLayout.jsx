@@ -1,4 +1,5 @@
 import React,{useEffect,useLayoutEffect,useState} from 'react';
+import {getTablePhaseColors} from '../../game/tablePhaseColors.js';
 import MobileTableSeat,{TableCard} from './MobileTableSeat.jsx';
 import BetAmountSheet from '../../components/BetAmountSheet.jsx';
 import getAvailableActions from '../../utils/getAvailableActions.js';
@@ -37,13 +38,15 @@ export default function MobileGameLayout({headerProps:h,sidePanelProps:s,tablePr
  const call=action('call'),raise=action('raise'),fold=action('fold');
  const variableBet=Boolean(c.betSizingModel?.enabled);
  const next=c.showNextButton&&!o.handResultVisible;
- const draw=c.controlsPhase==='DRAW';const info=c.actionPanelInfo??{};
+ const draw=c.controlsPhase==='DRAW';
+ const phaseTone=getTablePhaseColors(c.controlsPhase??t.tablePhase??t.phase).phaseTone;
+ const info=c.actionPanelInfo??{};
  const hint=c.heroCanAct?(draw?(ja?'交換するカードをタップ':'Select cards to exchange'):(info.toCall>0?(ja?`あなたの番 · コール ${info.toCall}`:`Your turn · Call ${info.toCall}`):(ja?'あなたの番 · チェックできます':'Your turn · Check available'))):(ja?(info.currentActorName?`${info.currentActorName} の番`:'次の操作を待っています'):(info.waitingLabel||'Waiting'));
  const street=ja?({Preflop:'プリフロップ',Flop:'フロップ',Turn:'ターン',River:'リバー','3rd Street':'3番街','4th Street':'4番街','5th Street':'5番街','6th Street':'6番街','7th Street':'7番街'}[t.streetLabel]||t.streetLabel):t.streetLabel;
  const phase=draw?(ja?`交換 ${Math.max(1,Number(t.drawRoundValue)||1)}/${t.tableSummaryProps?.maxDraws??3}`:'Draw'):(street || (ja?`ベット ${Number(t.betRoundValue||0)+1}`:'Betting'));
  const invoke=a=>{if(!a)return;const fn={onFold:c.playerFold,onCall:c.playerCall,onCheck:c.playerCheck,onRaise:c.playerRaise}[a.handler];fn?.();};
  const renderSeat=({seat,index},isHero=false)=><MobileTableSeat seat={seat} index={index} hero={isHero} active={t.controllerTurn===index} dealer={t.controllerDealerIdx===index} position={t.positionNameFn(index,t.controllerDealerIdx,t.seatLayouts.length)} variant={t.gameVariant} language={h.language} selection={isHero?t.heroDrawSelection:[]} canDraw={isHero&&t.heroCanDraw} onCardClick={t.handleCardClick}/>;
- return <div className={`mgx-play mgx-play--oval ${viewport.width>viewport.height?'is-landscape':'is-portrait'}`} data-layout-mode={viewport.width>viewport.height?'mobile-landscape':'mobile-portrait'} data-testid="mobile-play-layout" style={{width:viewport.width,height:viewport.height,left:viewport.left,top:viewport.top}}>
+ return <div className={`mgx-play mgx-play--oval ${viewport.width>viewport.height?'is-landscape':'is-portrait'}`} data-layout-mode={viewport.width>viewport.height?'mobile-landscape':'mobile-portrait'} data-testid="mobile-play-layout" data-phase-tone={phaseTone} style={{width:viewport.width,height:viewport.height,left:viewport.left,top:viewport.top}}>
   <header className="mgx-play-header"><div><span className="mgx-wordmark">MGX</span><h1>{h.gameTitle}</h1></div><div className="mgx-play-tools"><VariantRuleReminder variantId={t.gameVariant} language={h.language} mobile/><details><summary aria-label={ja?'対局メニュー':'Table menu'}>{ja?'メニュー':'Menu'}</summary><nav><button onClick={h.onNavigateHistory}>{ja?'履歴':'History'}</button><button onClick={h.onNavigateSettings}>{ja?'設定':'Settings'}</button><button onClick={c.isCashGame?c.onCashOut:h.onNavigateTitle}>{ja?(c.isCashGame?'精算して退出':'大会を中断'):(c.isCashGame?'Cash out':'Pause tournament')}</button></nav></details></div></header>
   <main className="mgx-play-main">
    <div className="mgx-table-scene" data-testid="game-table-surface">

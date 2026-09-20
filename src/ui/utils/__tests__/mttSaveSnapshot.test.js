@@ -169,7 +169,7 @@ describe("MTT save snapshot", () => {
     expect(loadActiveMTTSnapshot()).toBeNull();
   });
 
-  it("warns and returns the snapshot when active MTT snapshot save fails", () => {
+  it("warns and returns null when active MTT snapshot save fails", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       throw new Error("quota");
@@ -180,7 +180,7 @@ describe("MTT save snapshot", () => {
       heroPlayerId: "hero-player",
     });
 
-    expect(snapshot).toMatchObject({ version: 1, stageId: "store" });
+    expect(snapshot).toBeNull();
     expect(warnSpy).toHaveBeenCalledWith("[TD2][SNAPSHOT_SAVE_FAILED]");
   });
 

@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-20T02:00:24.957Z",
+  "updated": "2026-09-20T02:49:50.034Z",
   "scope": "37種目（公開設定25・検証中12）、学習、通常対局、トーナメント、MIX、履歴／リプレイ、通信、端末操作",
   "games": [
     {
@@ -7,10 +7,10 @@
       "name": "Badugi",
       "availability": "alpha_playable",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC：記録監査＋画面再生 合格／実機の記録：完全再現合格",
       "bugs": []
     },
@@ -19,10 +19,10 @@
       "name": "No-Limit Hold'em",
       "availability": "alpha_playable",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC：記録監査＋画面再生 合格／実機の記録：完全再現合格",
       "bugs": [
         "QA-003（修正済み）"
@@ -33,10 +33,10 @@
       "name": "Fixed-Limit Hold'em",
       "availability": "preview_only",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC/WebKit各10ハンド：完全再現監査 合格／実機の記録：完全再現合格",
       "bugs": [
         "QA-003（修正済み）"
@@ -47,10 +47,10 @@
       "name": "NL Super Hold'em",
       "availability": "preview_only",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC/WebKit各10ハンド：完全再現監査 合格／実機の記録：完全再現合格",
       "bugs": []
     },
@@ -59,10 +59,10 @@
       "name": "FL Super Hold'em",
       "availability": "preview_only",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC/WebKit各10ハンド：完全再現監査 合格／実機の記録：完全再現合格",
       "bugs": []
     },
@@ -71,10 +71,10 @@
       "name": "Pot-Limit Omaha",
       "availability": "alpha_playable",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC：記録監査＋画面再生 合格／実機の記録：完全再現合格",
       "bugs": [
         "QA-003（修正済み）"
@@ -85,10 +85,10 @@
       "name": "PLO8",
       "availability": "alpha_playable",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC：記録監査＋画面再生 合格／実機の記録：完全再現合格",
       "bugs": [
         "QA-003（修正済み）"
@@ -99,10 +99,10 @@
       "name": "FLO8",
       "availability": "alpha_playable",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC：記録監査＋画面再生 合格／実機の記録：完全再現合格",
       "bugs": [
         "QA-003（修正済み）"
@@ -113,10 +113,10 @@
       "name": "Big-O",
       "availability": "alpha_playable",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC：記録監査＋画面再生 合格／実機の記録：完全再現合格",
       "bugs": [
         "QA-003（修正済み）"
@@ -127,10 +127,10 @@
       "name": "5-Card PLO",
       "availability": "alpha_playable",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC：記録監査＋画面再生 合格／実機の記録：完全再現合格",
       "bugs": [
         "QA-003（修正済み）"
@@ -141,10 +141,10 @@
       "name": "2-7 Triple Draw",
       "availability": "alpha_playable",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC：記録監査＋画面再生 合格／実機の記録：完全再現合格",
       "bugs": []
     },
@@ -153,10 +153,10 @@
       "name": "A-5 Triple Draw",
       "availability": "alpha_playable",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC：記録監査＋画面再生 合格／実機の記録：完全再現合格",
       "bugs": []
     },
@@ -165,10 +165,10 @@
       "name": "Badeucey TD",
       "availability": "preview_only",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC/WebKit各10ハンド：完全再現監査 合格／実機の記録：完全再現合格",
       "bugs": []
     },
@@ -177,10 +177,10 @@
       "name": "Badacey TD",
       "availability": "preview_only",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC/WebKit各10ハンド：完全再現監査 合格／実機の記録：完全再現合格",
       "bugs": []
     },
@@ -189,10 +189,10 @@
       "name": "Hidugi TD",
       "availability": "preview_only",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC/WebKit各10ハンド：完全再現監査 合格／実機の記録：完全再現合格",
       "bugs": []
     },
@@ -201,10 +201,10 @@
       "name": "Archie TD",
       "availability": "preview_only",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC/WebKit各10ハンド：完全再現監査 合格／実機の記録：完全再現合格",
       "bugs": []
     },
@@ -213,10 +213,10 @@
       "name": "2-7 Single Draw",
       "availability": "alpha_playable",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC：記録監査＋画面再生 合格／実機の記録：完全再現合格",
       "bugs": []
     },
@@ -225,10 +225,10 @@
       "name": "A-5 Single Draw",
       "availability": "alpha_playable",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC：記録監査＋画面再生 合格／実機の記録：完全再現合格",
       "bugs": []
     },
@@ -237,10 +237,10 @@
       "name": "5-Card Single Draw",
       "availability": "preview_only",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC/WebKit各10ハンド：完全再現監査 合格／実機の記録：完全再現合格",
       "bugs": []
     },
@@ -249,10 +249,10 @@
       "name": "Badugi Single Draw",
       "availability": "preview_only",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC/WebKit各10ハンド：完全再現監査 合格／実機の記録：完全再現合格",
       "bugs": []
     },
@@ -261,10 +261,10 @@
       "name": "Badeucey Single Draw",
       "availability": "preview_only",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC/WebKit各10ハンド：完全再現監査 合格／実機の記録：完全再現合格",
       "bugs": []
     },
@@ -273,10 +273,10 @@
       "name": "Badacey Single Draw",
       "availability": "preview_only",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC/WebKit各10ハンド：完全再現監査 合格／実機の記録：完全再現合格",
       "bugs": []
     },
@@ -285,10 +285,10 @@
       "name": "Hidugi Single Draw",
       "availability": "preview_only",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC/WebKit各10ハンド：完全再現監査 合格／実機の記録：完全再現合格",
       "bugs": []
     },
@@ -297,10 +297,10 @@
       "name": "Dramaha Hi",
       "availability": "alpha_playable",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC：記録監査＋画面再生 合格／実機の記録：完全再現合格",
       "bugs": []
     },
@@ -309,10 +309,10 @@
       "name": "Dramaha 2-7",
       "availability": "alpha_playable",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC：記録監査＋画面再生 合格／実機の記録：完全再現合格",
       "bugs": []
     },
@@ -321,10 +321,10 @@
       "name": "Dramaha A-5",
       "availability": "alpha_playable",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC：記録監査＋画面再生 合格／実機の記録：完全再現合格",
       "bugs": []
     },
@@ -333,10 +333,10 @@
       "name": "Dramaha Zero",
       "availability": "alpha_playable",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC：記録監査＋画面再生 合格／実機の記録：完全再現合格",
       "bugs": []
     },
@@ -345,10 +345,10 @@
       "name": "Dramaha Hidugi",
       "availability": "alpha_playable",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC：記録監査＋画面再生 合格／実機の記録：完全再現合格",
       "bugs": []
     },
@@ -357,10 +357,10 @@
       "name": "Dramaha Badugi",
       "availability": "alpha_playable",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC：記録監査＋画面再生 合格／実機の記録：完全再現合格",
       "bugs": []
     },
@@ -369,10 +369,10 @@
       "name": "Stud",
       "availability": "alpha_playable",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC：記録監査＋画面再生 合格／実機の記録：完全再現合格",
       "bugs": [
         "QA-003（修正済み）"
@@ -383,10 +383,10 @@
       "name": "Stud 8",
       "availability": "alpha_playable",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC：記録監査＋画面再生 合格／実機の記録：完全再現合格",
       "bugs": [
         "QA-003（修正済み）"
@@ -397,10 +397,10 @@
       "name": "Razz",
       "availability": "alpha_playable",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC：記録監査＋画面再生 合格／実機の記録：完全再現合格",
       "bugs": [
         "QA-003（修正済み）"
@@ -411,10 +411,10 @@
       "name": "Razzdugi",
       "availability": "alpha_playable",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC：記録監査＋画面再生 合格／実機の記録：完全再現合格",
       "bugs": [
         "QA-003（修正済み）"
@@ -425,10 +425,10 @@
       "name": "Razzducey",
       "availability": "alpha_playable",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC：記録監査＋画面再生 合格／実機の記録：完全再現合格",
       "bugs": [
         "QA-003（修正済み）"
@@ -439,10 +439,10 @@
       "name": "2-7 Razz",
       "availability": "alpha_playable",
       "cashDesktop": "画面操作10ハンド・履歴・精算・退出 合格",
-      "cashIphone": "丸テーブル実機：確認待ち／旧UI：新UI実機Safari：横1ハンド・履歴・精算・退出 合格（DOM操作）",
+      "cashIphone": "丸テーブル実機縦：1ハンド・履歴要件・精算・退出 合格（DOM操作）",
       "tournament": "PC：1ハンドUI＋CPU加速決着・順位・退出 合格（全種目の自然決着ではない）",
-      "portrait": "丸テーブル WebKit393×695：1ハンド・配置 合格／今回の実機は確認待ち",
-      "landscape": "丸テーブル WebKit852×283：1ハンド・配置 合格／今回の実機は確認待ち",
+      "portrait": "実機393×695：丸テーブル配置・フェーズ色・1ハンド 合格",
+      "landscape": "丸テーブルWebKit852×283 合格／最新の実機横は回転待ち",
       "replay": "PC：記録監査＋画面再生 合格／実機の記録：完全再現合格",
       "bugs": [
         "QA-003（修正済み）"
@@ -453,9 +453,9 @@
       "name": "Chinese Poker",
       "availability": "alpha_playable",
       "cashDesktop": "PC・Android/iPhone相当 各10ハンド合格",
-      "cashIphone": "実機Safari：縦横各3ハンド・履歴完全再現 合格（DOM操作）",
+      "cashIphone": "最新実機縦3ハンド合格／横3ハンドは先行版で合格（DOM操作）",
       "tournament": "専用種目：対象外",
-      "portrait": "実機：3ハンド合格。結果表示の追加修正は再検査中",
+      "portrait": "最新実機縦：3ハンド・固定得点・履歴完全再現 合格",
       "landscape": "共通カード/操作へ更新後、実機横3ハンド・完全再現 合格",
       "replay": "3ブラウザ各10ハンド完全再現 合格",
       "bugs": []
@@ -465,9 +465,9 @@
       "name": "Open-Face Chinese Poker",
       "availability": "alpha_playable",
       "cashDesktop": "10ハンド・配置・再開・履歴 合格",
-      "cashIphone": "実機Safari：縦横各3ハンド・履歴完全再現 合格（DOM操作）",
+      "cashIphone": "最新実機縦3ハンド合格／横3ハンドは先行版で合格（DOM操作）",
       "tournament": "専用2人種目：対象外",
-      "portrait": "実機：3ハンド合格。結果表示の追加修正は再検査中",
+      "portrait": "最新実機縦：3ハンド・固定得点・履歴完全再現 合格",
       "landscape": "共通カード/操作へ更新後、実機横3ハンド・完全再現 合格",
       "replay": "5画面構成×10ハンド完全再現 合格",
       "bugs": []
@@ -506,33 +506,33 @@
     },
     {
       "name": "友達対戦・通信復帰",
-      "status": "修正後、2人のWS再接続・手札非公開・WS障害後REST継続 合格。実機は未",
-      "evidence": "artifacts/regression-after-auth.json"
+      "status": "実機：2人参加・手札非公開・WS再接続・RESTへの切替・HTTP中断復帰・終了・再読込 合格",
+      "evidence": "PHASE-AND-PENDING-QA.md"
     },
     {
       "name": "PWAインストール・再起動",
-      "status": "PNG実体と1024px宣言一致・起動URL・Chrome要件エラー0を確認。実機追加/再起動は未。オフライン機能なし",
-      "evidence": "artifacts/regression-after-auth.json"
+      "status": "manifest/PNG実体/起動URLの再検査合格。実機の共有→ホーム追加→起動は依頼済み、未確認。オフライン機能なし",
+      "evidence": "PHASE-AND-PENDING-QA.md"
     },
     {
       "name": "実キーボード・タッチ操作",
-      "status": "新数字キーを利用者がタッチ：88→削除→80→確定を観測。表示高さ283pxを維持。押しやすさの主観回答は未",
-      "evidence": "redesign-evidence.json"
+      "status": "最新実機DOM：88→削除→80・取消・確定・113×48pxの数字キー当たり判定 合格。指で80確定は先行版で利用者操作を確認",
+      "evidence": "PHASE-AND-PENDING-QA.md"
     },
     {
       "name": "実機の縦横回転・セーフエリア",
-      "status": "実際の端末回転を確認。393×695縦／852×283横。Safariバー表示時のカード見切れを修正。実機代表2種目と短い横WebKit15種目で再検査",
-      "evidence": "physical-evidence.json"
+      "status": "最新丸テーブル：実機縦393×695 合格。横はWebKit852×283確認済み、実機は回転待ち",
+      "evidence": "PHASE-AND-PENDING-QA.md"
     },
     {
       "name": "Multi-Game Tournament",
-      "status": "3形式実装。ブラウザ自然決着179ハンドに加え、実機で各形式1ハンド→再読込→再開後1ハンド 合格。解放実績のみ検査用設定",
-      "evidence": "physical-evidence.json"
+      "status": "最新実機：3形式で各1ハンド→再読込→再開後1ハンド 合格。容量不足時の保存も修正",
+      "evidence": "PHASE-AND-PENDING-QA.md"
     },
     {
       "name": "Dealer’s Choice",
-      "status": "実機でNLH→Badugi交代、各1ハンド・キュー消費 合格",
-      "evidence": "physical-evidence.json"
+      "status": "最新実機：NLH→Badugi、各1ハンド・キュー消費・色・配置 合格",
+      "evidence": "PHASE-AND-PENDING-QA.md"
     },
     {
       "name": "OFC：配置・Fantasyland・履歴・再開",
@@ -541,13 +541,13 @@
     },
     {
       "name": "一目で操作できる画面",
-      "status": "種目間の席・操作位置・カード寸法を直接比較。NLH/2−7 TD/SDの実機測定一致。全種目を含む87件＋最終寸法11件＋大会6件のブラウザ検査合格",
-      "evidence": "FAMILY-CONSISTENCY.md"
+      "status": "利用者から丸テーブルのレイアウトに肯定的な反応。実機NLH/2−7 TD/SDで席・カード・操作欄の寸法一致。主観評価と機械検査は区別",
+      "evidence": "PHASE-AND-PENDING-QA.md"
     },
     {
       "name": "丸テーブル・周囲の6席・共通対局デザイン",
-      "status": "WebKit全35種目の縦横＋小画面＋入力＋大会93件。最終調整後15件合格。実機確認待ち",
-      "evidence": "OVAL-TABLE-REVIEW.md"
+      "status": "最新実機縦35種目・色切替・種目間比較 合格。WebKitは縦横検査済み。最新の実機横は回転待ち",
+      "evidence": "PHASE-AND-PENDING-QA.md"
     }
   ],
   "bugs": [
@@ -644,7 +644,7 @@
     {
       "id": "QA-010",
       "title": "短い横画面で席が重なり手札下端が隠れる",
-      "status": "旧UIは実機解消済み。丸テーブル共通配置ではWebKit全35種目の縦横検査合格",
+      "status": "丸テーブル：最新実機縦35種目とWebKit縦横で合格。最新実機横は待ち",
       "environment": "iPhone Safari 852×283、Safari上部バー表示",
       "steps": "Badaceyなど7種目／Board・Dramahaを開始",
       "actual": "専用レイアウトの分類漏れと既定の大きい席表示。Hero高さ152pxで画面外。",
@@ -714,12 +714,52 @@
     {
       "id": "QA-017",
       "title": "NLHと2−7で情報行の有無により席・操作欄が移動する",
-      "status": "矩形UIは実機3種目で一致。丸テーブルもWebKit3サイズで直接比較合格／今回の実機は確認待ち",
+      "status": "丸テーブルも実機縦NLH/2−7 TD/SDで一致。WebKit3サイズ比較も合格",
       "environment": "iPhone縦393×695／縦横・小画面WebKit",
       "steps": "NLHから2−7 TDへ切り替え、さらにベットから交換へ進める",
       "actual": "前回は共通部品でも可変ベットの行が固定リミットで消えた。交換時は3ボタンから1ボタンへ変わり、同じMGXとしての見た目が揃っていなかった。",
       "expected": "ゲームの規則だけが変わり、席・ポット・手番・操作行は同じ位置と寸法を保つ",
       "evidence": "FAMILY-CONSISTENCY.md／family-consistency-evidence.json／OVAL-TABLE-REVIEW.md"
+    },
+    {
+      "id": "QA-018",
+      "title": "丸テーブルでドロー中の赤い縁が失われた",
+      "status": "修正済み・実機縦35種目とWebKit/PCで再検査合格",
+      "environment": "モバイル丸テーブル、Badugiなどのフェーズ切替",
+      "steps": "ベット→ドロー→次のベットへ進行",
+      "actual": "丸テーブルに色分岐がなく、旧phase値も操作側とずれることがあった",
+      "expected": "操作と同じ進行状態で縁・交換ラベルを赤にし、ベットで戻す。フェルトは緑",
+      "evidence": "phase-evidence.json"
+    },
+    {
+      "id": "QA-019",
+      "title": "クリップボードが使えなくてもコピー成功と表示",
+      "status": "代替コピーと失敗表示を実装・部品22件合格",
+      "environment": "HTTPのiPhone Safariなど",
+      "steps": "友達対戦のルームコードをコピー",
+      "actual": "Clipboard API不在を成功扱いし、拒否時はエラー処理がなかった",
+      "expected": "代替処理も含め成功時だけ成功表示。失敗時は長押しコピー案内",
+      "evidence": "src/ui/utils/__tests__/copyTextToClipboard.test.js / FriendMatchSetupScreen.test.jsx"
+    },
+    {
+      "id": "QA-020",
+      "title": "実機検査プロキシがWebSocket認証情報を転送しない",
+      "status": "検査環境を修正・実機友達対戦と再接続合格",
+      "environment": "ローカル4179/4180プロキシ",
+      "steps": "友達対戦へ接続",
+      "actual": "認証サブプロトコルと異常切断コードが欠落して再接続を繰り返した",
+      "expected": "認証プロトコルと切断理由を転送。本番APIの不具合とは分ける",
+      "evidence": "artifacts/phase-physical-network-final.json"
+    },
+    {
+      "id": "QA-021",
+      "title": "保存容量不足でも大会進行を保存済みとして返す",
+      "status": "補助ログ整理・再試行・失敗通知へ修正。実機3形式再開、容量制限ユニットとブラウザ2ケース合格",
+      "environment": "長期プレイ後のiPhone localStorage",
+      "steps": "履歴・補助ログが蓄積した端末で大会を進めて再開",
+      "actual": "実機でQuotaExceededError。保存失敗でもsnapshotを返し、同期キューの再試行も同じ容量で失敗",
+      "expected": "補助ログだけ古い順に整理し保存・同期キューを再試行。対局履歴/成績/認証を削除せず、失敗はnullと画面通知",
+      "evidence": "artifacts/phase-storage-before-fix.json / artifacts/phase-physical-features-verified.json / artifacts/phase-storage-after-fix.json / artifacts/phase-final-browser"
     }
   ],
   "notes": [
@@ -728,5 +768,5 @@
     "専用ローカルAPI／SQLiteと検査用ブラウザを使用。本番配信・本番成績は変更していない。",
     "物理iPhoneとブラウザの端末再現を区別。「縦画面／横画面」は実機と明記した項目以外はブラウザ上の確認。"
   ],
-  "summary": "iPhone対局画面を、中央の丸テーブルをプレイヤーが囲むデザインへ変更。全35種目の縦横など93件、最終寸法調整後15件が合格。今回の実機再確認はSafariの確認ページが応答せず待機中。過去の実機結果は矩形UIのもの。[最新の確認記録](OVAL-TABLE-REVIEW.md)。"
+  "summary": "丸テーブルのドロー色を復元。色と操作状態の参照元、コピー成功の誤表示、保存容量不足時の大会保存を修正。実機縦35種目、大会3形式の再開、Dealer’s Choice、友達対戦の通信復帰、Chinese/OFC各3ハンド、数字入力・種目間配置比較が合格。最新の実機横画面とホーム画面追加・再起動は利用者の端末操作待ち。"
 }

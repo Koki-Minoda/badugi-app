@@ -1,3 +1,4 @@
+import SaveFailureNotice from './components/SaveFailureNotice.jsx';
 import { MixedGameContext } from "./mixed/mixedGameContext.js";
 import { shiftDealerChoiceVariant, setDealerChoiceModeActive } from './dealersChoice/dealerChoiceManager.js';
 import { multiGameVariantForTable, recordMultiGameResult } from './multigame/multiGameSeries.js';
@@ -13645,7 +13646,9 @@ export default function App() {
     tableBorderColor,
     tableAccentRing,
     phaseTone,
-  } = getTablePhaseColors(tablePhase);
+  } = getTablePhaseColors(
+    effectiveControllerSnapshot?.phase ?? controlsConfig?.phase ?? tablePhase,
+  );
 
   const tableSummaryProps = {
     phaseTag: hudInfo?.phaseTag ?? phaseTagLocal(),
@@ -14001,6 +14004,7 @@ export default function App() {
     return (
       <>
         <TitleScreen onEnter={handleEnterFromTitle} />
+        <SaveFailureNotice language={language} />
         <DebugHud
           enabled={debugFlags.enabled}
           deviceProfile={deviceProfile}
@@ -14075,6 +14079,7 @@ export default function App() {
             />}
           </AuthGate>
         </AuthProvider>
+        <SaveFailureNotice language={language} />
         <DebugHud
           enabled={debugFlags.enabled}
           deviceProfile={deviceProfile}
@@ -14108,6 +14113,7 @@ export default function App() {
             {MGX_LOCALES[language]?.common?.backToMenu ?? "Back to Menu"}
           </button>
         </div>
+        <SaveFailureNotice language={language} />
         <DebugHud
           enabled={debugFlags.enabled}
           deviceProfile={deviceProfile}
@@ -14127,6 +14133,7 @@ export default function App() {
           onBack={handleBackToMenu}
           onLaunchVariant={handleSelectRing}
         />
+        <SaveFailureNotice language={language} />
         <DebugHud
           enabled={debugFlags.enabled}
           deviceProfile={deviceProfile}
@@ -14148,6 +14155,7 @@ export default function App() {
           onResumeTournament={handleResumeTournamentFromHub}
           onRetireTournament={handleRetireTournamentFromHub}
         />
+        <SaveFailureNotice language={language} />
         <DebugHud
           enabled={debugFlags.enabled}
           deviceProfile={deviceProfile}
@@ -14163,6 +14171,7 @@ export default function App() {
     return (
       <>
         <CareerScreen onBack={handleBackToMenu} />
+        <SaveFailureNotice language={language} />
         <DebugHud
           enabled={debugFlags.enabled}
           deviceProfile={deviceProfile}
@@ -14182,6 +14191,7 @@ export default function App() {
           onReplay={handleOpenReplayFromHistory}
           language={language}
         />
+        <SaveFailureNotice language={language} />
         <DebugHud
           enabled={debugFlags.enabled}
           deviceProfile={deviceProfile}
@@ -14207,6 +14217,7 @@ export default function App() {
               : "Back to History"
           }
         />
+        <SaveFailureNotice language={language} />
         <DebugHud
           enabled={debugFlags.enabled}
           deviceProfile={deviceProfile}
@@ -14232,6 +14243,7 @@ export default function App() {
             />}
           </AuthGate>
         </AuthProvider>
+        <SaveFailureNotice language={language} />
         <DebugHud
           enabled={debugFlags.enabled}
           deviceProfile={deviceProfile}
@@ -14467,6 +14479,7 @@ export default function App() {
           )}
         </AuthGate>
       </AuthProvider>
+      <SaveFailureNotice language={language} />
       <DebugHud
         enabled={debugFlags.enabled}
         deviceProfile={deviceProfile}

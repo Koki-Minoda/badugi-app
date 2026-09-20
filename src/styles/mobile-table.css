@@ -126,3 +126,46 @@
  .mgx-play .mgx-table-seat.is-long-hand:not(.is-hero) .mgx-seat-cards{display:grid;grid-template-columns:repeat(4,minmax(0,20px));gap:2px}
  .mgx-play .mgx-table-seat.is-long-hand:not(.is-hero) .mgx-table-card{width:100%;height:22px;font-size:11px}
 }
+
+/* The same reserved rows apply to every poker family and every decision phase. */
+.mgx-play-actions{display:grid;grid-template-rows:20px 34px 100px 14px;gap:6px;height:206px;padding:10px}
+.mgx-game-context{min-width:0;align-items:center;height:20px;white-space:nowrap;overflow:hidden}
+.mgx-game-context>span:first-child{overflow:hidden;text-overflow:ellipsis}
+.mgx-game-context>span:last-child{flex-shrink:0}
+.mgx-turn-message,.mgx-play.is-landscape .mgx-turn-message{height:34px;min-height:0;overflow:hidden}
+.mgx-action-space{display:grid;grid-template-rows:46px 48px;gap:6px;min-height:0}
+.mgx-action-setting,.mgx-action-setting>.mgx-amount-launch{width:100%;height:46px;min-height:0}
+.mgx-action-setting>.mgx-amount-launch{white-space:nowrap;flex-wrap:nowrap}
+.mgx-action-setting .mgx-amount-launch>span{overflow:hidden;text-overflow:ellipsis}
+.mgx-setting-value{color:#c3d6cc}
+.mgx-bet-actions{height:48px;min-height:0}
+.mgx-bet-actions>button,.mgx-bet-actions>button.mgx-primary{height:48px;min-height:0;line-height:16px;padding:4px 3px}
+.mgx-action-note,.mgx-play.is-landscape .mgx-action-note{margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mgx-play.is-landscape .mgx-play-actions{height:100%;padding:10px;gap:6px;align-content:start}
+.mgx-community{height:74px;display:grid;grid-template-rows:22px 29px 13px;gap:5px;align-self:center;align-items:center;justify-content:stretch}
+.mgx-board-cards,.mgx-board-cards:empty{display:flex;min-height:29px}
+.mgx-community-phase{display:block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mgx-play.is-landscape .mgx-community{height:56px;grid-template-rows:20px 22px 10px;gap:2px}
+.mgx-play.is-landscape .mgx-board-cards{min-height:22px}
+.mgx-play.is-landscape .mgx-board-cards .mgx-table-card{height:22px;font-size:10px}
+.mgx-tournament-info{width:100%;min-width:0}
+.mgx-tournament-info .mgx-hud-compact{padding:0;border:0;background:transparent;box-shadow:none}
+.mgx-tournament-info details[open]{position:absolute;z-index:100;right:12px;max-width:calc(100% - 24px);padding:8px;background:#10271d;border:1px solid #456b54;border-radius:8px}
+@media(orientation:portrait){
+ .mgx-play .mgx-table-scene,.mgx-play .mgx-table-scene:has(.is-long-hand){grid-template-rows:minmax(106px,1fr) minmax(106px,1.15fr) auto}
+ .mgx-play .mgx-table-seat:not(.is-hero) .mgx-seat-cards{height:46px;align-items:center}
+}
+@media(orientation:portrait) and (max-height:640px){
+ .mgx-play .mgx-table-scene,.mgx-play .mgx-table-scene:has(.is-long-hand){grid-template-rows:minmax(92px,1fr) minmax(92px,1.15fr) auto}
+ .mgx-play .mgx-table-seat:not(.is-hero) .mgx-seat-position{display:none}
+ .mgx-play .mgx-table-seat:not(.is-hero) .mgx-seat-heading strong{grid-row:1}
+ .mgx-play .mgx-table-seat.is-hero .mgx-table-card{height:46px}
+}
+
+.mgx-community>*{min-width:0;width:100%}
+@media(orientation:portrait){
+ .mgx-play .mgx-table-seat:not(.is-hero):not(.is-long-hand) .mgx-table-card{flex:0 0 min(20px,calc((100% - 8px)/5))}
+}
+@media(orientation:portrait) and (max-height:640px){
+ .mgx-play .mgx-table-seat:not(.is-hero) .mgx-table-card{font-size:11px}
+}

@@ -34,9 +34,12 @@ export default function MobileGameLayout({headerProps:h,sidePanelProps:s,tablePr
  const actions=c.heroCanAct?getAvailableActions({currentBet:c.controlsCurrentBet,player:c.heroPlayerForControls,canRaise:!c.actionPanelInfo?.capReached}):[];
  const action=kind=>actions.find(a=>kind==='call'?['call','check','allin'].includes(a.variant):a.variant===kind);
  const call=action('call'),raise=action('raise'),fold=action('fold');
+ const variableBet=Boolean(c.betSizingModel?.enabled);
+ const next=c.showNextButton&&!o.handResultVisible;
  const draw=c.controlsPhase==='DRAW';const info=c.actionPanelInfo??{};
  const hint=c.heroCanAct?(draw?(ja?'交換するカードをタップ':'Select cards to exchange'):(info.toCall>0?(ja?`あなたの番 · コール ${info.toCall}`:`Your turn · Call ${info.toCall}`):(ja?'あなたの番 · チェックできます':'Your turn · Check available'))):(ja?(info.currentActorName?`${info.currentActorName} の番`:'次の操作を待っています'):(info.waitingLabel||'Waiting'));
- const phase=draw?(ja?`交換 ${Math.max(1,Number(t.drawRoundValue)||1)}/${t.tableSummaryProps?.maxDraws??3}`:'Draw'):(t.streetLabel || (ja?`ベット ${Number(t.betRoundValue||0)+1}`:'Betting'));
+ const street=ja?({Preflop:'プリフロップ',Flop:'フロップ',Turn:'ターン',River:'リバー','3rd Street':'3番街','4th Street':'4番街','5th Street':'5番街','6th Street':'6番街','7th Street':'7番街'}[t.streetLabel]||t.streetLabel):t.streetLabel;
+ const phase=draw?(ja?`交換 ${Math.max(1,Number(t.drawRoundValue)||1)}/${t.tableSummaryProps?.maxDraws??3}`:'Draw'):(street || (ja?`ベット ${Number(t.betRoundValue||0)+1}`:'Betting'));
  const invoke=a=>{if(!a)return;const fn={onFold:c.playerFold,onCall:c.playerCall,onCheck:c.playerCheck,onRaise:c.playerRaise}[a.handler];fn?.();};
  const renderSeat=({seat,index},isHero=false)=><MobileTableSeat seat={seat} index={index} hero={isHero} active={t.controllerTurn===index} dealer={t.controllerDealerIdx===index} position={t.positionNameFn(index,t.controllerDealerIdx,t.seatLayouts.length)} variant={t.gameVariant} language={h.language} selection={isHero?t.heroDrawSelection:[]} canDraw={isHero&&t.heroCanDraw} onCardClick={t.handleCardClick}/>;
  return <div className={`mgx-play ${viewport.width>viewport.height?'is-landscape':'is-portrait'}`} data-layout-mode={viewport.width>viewport.height?'mobile-landscape':'mobile-portrait'} data-testid="mobile-play-layout" style={{width:viewport.width,height:viewport.height,left:viewport.left,top:viewport.top}}>
@@ -48,17 +51,25 @@ export default function MobileGameLayout({headerProps:h,sidePanelProps:s,tablePr
     {hero&&<div className="mgx-seat-slot slot-hero">{renderSeat(hero,true)}</div>}
    </div>
    <aside className="mgx-play-actions" data-testid="decision-panel">
-    <div className="mgx-game-context"><span>{phase}</span><span>{t.tableSummaryProps?.sbValue}/{t.tableSummaryProps?.bbValue}</span></div>
-    {t.mixedRotation&&<p data-testid="mixed-rotation-status">MIX {t.mixedRotation.handsPlayedInCurrentGame+1}/{t.mixedRotation.handsPerGame}</p>}
-    {t.isTournament&&<div className="mgx-tournament-info">{t.tournamentHud}</div>}
+    <div className="mgx-game-context">
+     {t.isTournament?<div className="mgx-tournament-info">{t.tournamentHud}</div>:<><span>{phase}</span><span>{t.tableSummaryProps?.sbValue}/{t.tableSummaryProps?.bbValue}</span></>}
+     {t.mixedRotation&&<span data-testid="mixed-rotation-status">MIX {t.mixedRotation.handsPlayedInCurrentGame+1}/{t.mixedRotation.handsPerGame}</span>}
+    </div>
     <p className={`mgx-turn-message ${c.heroCanAct?'is-your-turn':''}`} role="status" aria-live="polite" data-testid="player-action-hint">{hint}</p>
     <div className="mgx-action-space">
-    {c.showNextButton&&!o.handResultVisible?<button className="mgx-primary" data-testid="action-next-hand" onClick={c.onNextHand}>{c.nextHandLabel}</button>:draw?<button className="mgx-primary" data-testid="action-draw-selected" disabled={!c.heroCanAct||!c.heroCanDraw} onClick={c.drawSelected}>{t.heroDrawSelection.length?(ja?`${t.heroDrawSelection.length}枚を交換`:`Draw ${t.heroDrawSelection.length}`):(ja?'交換しない（パット）':'Stand pat')}</button>:<>
-     {c.betSizingModel?.enabled&&<button className="mgx-amount-launch" data-testid="bet-size-input" disabled={!raise} onClick={()=>setAmountOpen(true)}><span>{ja?'ベット金額を指定':'Choose bet amount'}</span><strong>{c.betSizingModel.minCommit}–{c.betSizingModel.maxCommit}<span aria-hidden="true"> ›</span></strong></button>}
-     <div className="mgx-bet-actions"><button data-testid="action-fold" disabled={!fold} onClick={()=>invoke(fold)}>{ja?'フォールド':'Fold'}</button><button className="mgx-primary" data-testid={call?.variant==='check'?'action-check':'action-call'} disabled={!call} onClick={()=>invoke(call)}>{call?.variant==='check'?(ja?'チェック':'Check'):call?.variant==='allin'?(ja?'オールイン':'All in'):(ja?`コール ${info.toCall??0}`:`Call ${info.toCall??0}`)}</button><button className="mgx-raise" data-testid="action-raise" disabled={!raise} onClick={()=>c.betSizingModel?.enabled?setAmountOpen(true):invoke(raise)}>{ja?(info.toCall>0?'レイズ':'ベット'):(info.toCall>0?'Raise':'Bet')}</button></div>
-    </>}
+     <div className="mgx-action-setting" data-testid="action-setting-slot">
+      {!draw&&!next&&variableBet?<button className="mgx-amount-launch" data-testid="bet-size-input" disabled={!raise} onClick={()=>setAmountOpen(true)}><span>{ja?'ベット金額を指定':'Choose bet amount'}</span><strong>{c.betSizingModel.minCommit}–{c.betSizingModel.maxCommit}<span aria-hidden="true"> ›</span></strong></button>:<div className="mgx-amount-launch mgx-setting-value">
+       <span>{next?(ja?'ハンド終了':'Hand finished'):draw?(ja?'カード交換':'Draw cards'):(ja?'固定ベット':'Fixed limit')}</span>
+       <strong>{next?(ja?'次のハンドへ':'Next hand'):draw?(ja?`${t.heroDrawSelection.length}枚を選択`:`${t.heroDrawSelection.length} selected`):(ja?`${info.raiseUnit??0} チップ`:`${info.raiseUnit??0} chips`)}</strong>
+      </div>}
+     </div>
+     <div className="mgx-bet-actions" data-testid="action-buttons-slot">
+      <button data-testid="action-fold" disabled={draw||next||!fold} onClick={()=>invoke(fold)}>{ja?'フォールド':'Fold'}</button>
+      {next?<button className="mgx-primary" data-testid="action-next-hand" onClick={c.onNextHand}>{c.nextHandLabel}</button>:draw?<button className="mgx-primary" data-testid="action-draw-selected" disabled={!c.heroCanAct||!c.heroCanDraw} onClick={c.drawSelected}>{t.heroDrawSelection.length?(ja?`${t.heroDrawSelection.length}枚交換`:`Draw ${t.heroDrawSelection.length}`):(ja?'交換しない':'Stand pat')}</button>:<button className="mgx-primary" data-testid={call?.variant==='check'||!call&&!(info.toCall>0)?'action-check':'action-call'} disabled={!call} onClick={()=>invoke(call)}>{call?.variant==='check'||!call&&!(info.toCall>0)?(ja?'チェック':'Check'):call?.variant==='allin'?(ja?'オールイン':'All in'):(ja?`コール ${info.toCall??0}`:`Call ${info.toCall??0}`)}</button>}
+      <button className="mgx-raise" data-testid="action-raise" disabled={draw||next||!raise} onClick={()=>variableBet?setAmountOpen(true):invoke(raise)}>{ja?(info.toCall>0?'レイズ':'ベット'):(info.toCall>0?'Raise':'Bet')}</button>
+     </div>
     </div>
-    <p className="mgx-action-note">{draw?(ja?'選んだカードだけを交換します':'Only selected cards will be exchanged'):(ja?'持ち点とポットはチップ単位です':'Stacks and pot are shown in chips')}</p>
+    <p className="mgx-action-note">{draw?(ja?'0枚なら交換しません（パット）':'Select zero cards to stand pat'):(ja?'持ち点とポットはチップ単位です':'Stacks and pot are shown in chips')}</p>
    </aside>
   </main>
   {amountOpen&&c.heroCanAct&&<BetAmountSheet key={`${t.gameVariant}:${c.controlsCurrentBet}`} model={c.betSizingModel} language={h.language} onClose={()=>setAmountOpen(false)} onConfirm={amount=>{setAmountOpen(false);c.playerRaise(amount);}}/>}

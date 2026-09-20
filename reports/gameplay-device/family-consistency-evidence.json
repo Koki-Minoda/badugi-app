@@ -1,0 +1,352 @@
+{
+  "updated": "2026-09-20T01:30:27.121Z",
+  "scope": "iPhone table consistency between NLH, 2-7 TD and 2-7 SD",
+  "browser": {
+    "allVariantsAndComparison": 87,
+    "finalCardSizes": 11,
+    "multiGamePortraitLandscape": 6
+  },
+  "physical": {
+    "comparison": {
+      "updated": "2026-09-20T01:29:01.594Z",
+      "status": "PASS",
+      "interaction": "Physical Safari DOM controls",
+      "rows": [
+        {
+          "id": "nlh",
+          "metrics": {
+            "viewport": {
+              "width": 393,
+              "height": 695
+            },
+            "boxes": {
+              "game-table-surface": {
+                "x": 8,
+                "y": 54,
+                "w": 377,
+                "h": 421
+              },
+              "seat-0": {
+                "x": 17,
+                "y": 377,
+                "w": 359,
+                "h": 89
+              },
+              "seat-1": {
+                "x": 17,
+                "y": 237.21875,
+                "w": 115.65625,
+                "h": 106
+              },
+              "seat-2": {
+                "x": 17,
+                "y": 80.21875,
+                "w": 115.65625,
+                "h": 106
+              },
+              "seat-3": {
+                "x": 138.65625,
+                "y": 80.21875,
+                "w": 115.671875,
+                "h": 106
+              },
+              "seat-4": {
+                "x": 260.328125,
+                "y": 80.21875,
+                "w": 115.671875,
+                "h": 106
+              },
+              "seat-5": {
+                "x": 260.328125,
+                "y": 237.21875,
+                "w": 115.671875,
+                "h": 106
+              },
+              "decision-panel": {
+                "x": 8,
+                "y": 483,
+                "w": 377,
+                "h": 206
+              },
+              "table-total-pot": {
+                "x": 138.65625,
+                "y": 254.21875,
+                "w": 115.671875,
+                "h": 20
+              },
+              "player-action-hint": {
+                "x": 19,
+                "y": 520,
+                "w": 355,
+                "h": 34
+              },
+              "action-setting-slot": {
+                "x": 19,
+                "y": 560,
+                "w": 355,
+                "h": 46
+              },
+              "action-buttons-slot": {
+                "x": 19,
+                "y": 612,
+                "w": 355,
+                "h": 48
+              }
+            },
+            "cards": {
+              "player-0-card-0": {
+                "w": 44,
+                "h": 54
+              },
+              "player-1-card-0": {
+                "w": 19.125,
+                "h": 29
+              }
+            }
+          }
+        },
+        {
+          "id": "deuce_to_seven_triple_draw",
+          "metrics": {
+            "viewport": {
+              "width": 393,
+              "height": 695
+            },
+            "boxes": {
+              "game-table-surface": {
+                "x": 8,
+                "y": 54,
+                "w": 377,
+                "h": 421
+              },
+              "seat-0": {
+                "x": 17,
+                "y": 377,
+                "w": 359,
+                "h": 89
+              },
+              "seat-1": {
+                "x": 17,
+                "y": 237.21875,
+                "w": 115.65625,
+                "h": 106
+              },
+              "seat-2": {
+                "x": 17,
+                "y": 80.21875,
+                "w": 115.65625,
+                "h": 106
+              },
+              "seat-3": {
+                "x": 138.65625,
+                "y": 80.21875,
+                "w": 115.671875,
+                "h": 106
+              },
+              "seat-4": {
+                "x": 260.328125,
+                "y": 80.21875,
+                "w": 115.671875,
+                "h": 106
+              },
+              "seat-5": {
+                "x": 260.328125,
+                "y": 237.21875,
+                "w": 115.671875,
+                "h": 106
+              },
+              "decision-panel": {
+                "x": 8,
+                "y": 483,
+                "w": 377,
+                "h": 206
+              },
+              "table-total-pot": {
+                "x": 138.65625,
+                "y": 254.21875,
+                "w": 115.671875,
+                "h": 20
+              },
+              "player-action-hint": {
+                "x": 19,
+                "y": 520,
+                "w": 355,
+                "h": 34
+              },
+              "action-setting-slot": {
+                "x": 19,
+                "y": 560,
+                "w": 355,
+                "h": 46
+              },
+              "action-buttons-slot": {
+                "x": 19,
+                "y": 612,
+                "w": 355,
+                "h": 48
+              }
+            },
+            "cards": {
+              "player-0-card-0": {
+                "w": 44,
+                "h": 54
+              },
+              "player-1-card-0": {
+                "w": 19.125,
+                "h": 29
+              }
+            }
+          }
+        },
+        {
+          "id": "deuce_to_seven_single_draw",
+          "metrics": {
+            "viewport": {
+              "width": 393,
+              "height": 695
+            },
+            "boxes": {
+              "game-table-surface": {
+                "x": 8,
+                "y": 54,
+                "w": 377,
+                "h": 421
+              },
+              "seat-0": {
+                "x": 17,
+                "y": 377,
+                "w": 359,
+                "h": 89
+              },
+              "seat-1": {
+                "x": 17,
+                "y": 237.21875,
+                "w": 115.65625,
+                "h": 106
+              },
+              "seat-2": {
+                "x": 17,
+                "y": 80.21875,
+                "w": 115.65625,
+                "h": 106
+              },
+              "seat-3": {
+                "x": 138.65625,
+                "y": 80.21875,
+                "w": 115.671875,
+                "h": 106
+              },
+              "seat-4": {
+                "x": 260.328125,
+                "y": 80.21875,
+                "w": 115.671875,
+                "h": 106
+              },
+              "seat-5": {
+                "x": 260.328125,
+                "y": 237.21875,
+                "w": 115.671875,
+                "h": 106
+              },
+              "decision-panel": {
+                "x": 8,
+                "y": 483,
+                "w": 377,
+                "h": 206
+              },
+              "table-total-pot": {
+                "x": 138.65625,
+                "y": 254.21875,
+                "w": 115.671875,
+                "h": 20
+              },
+              "player-action-hint": {
+                "x": 19,
+                "y": 520,
+                "w": 355,
+                "h": 34
+              },
+              "action-setting-slot": {
+                "x": 19,
+                "y": 560,
+                "w": 355,
+                "h": 46
+              },
+              "action-buttons-slot": {
+                "x": 19,
+                "y": 612,
+                "w": 355,
+                "h": 48
+              }
+            },
+            "cards": {
+              "player-0-card-0": {
+                "w": 44,
+                "h": 54
+              },
+              "player-1-card-0": {
+                "w": 19.125,
+                "h": 29
+              }
+            }
+          }
+        }
+      ]
+    },
+    "gameplay": [
+      {
+        "id": "nlh",
+        "status": "PASS",
+        "viewport": {
+          "width": 393,
+          "height": 695
+        },
+        "geometryChecks": 22,
+        "handIds": [
+          "nlh-h1-d0-mu94tsbc"
+        ]
+      },
+      {
+        "id": "deuce_to_seven_triple_draw",
+        "status": "PASS",
+        "viewport": {
+          "width": 393,
+          "height": 695
+        },
+        "geometryChecks": 55,
+        "handIds": [
+          "deuce_to_seven_triple_draw-h1-d0-mu94txgo"
+        ]
+      },
+      {
+        "id": "deuce_to_seven_single_draw",
+        "status": "PASS",
+        "viewport": {
+          "width": 393,
+          "height": 695
+        },
+        "geometryChecks": 27,
+        "handIds": [
+          "deuce_to_seven_single_draw-h1-d0-mu94u9e5"
+        ]
+      },
+      {
+        "id": "stud",
+        "status": "PASS",
+        "viewport": {
+          "width": 393,
+          "height": 695
+        },
+        "geometryChecks": 39,
+        "handIds": [
+          "stud-h1-d0-mu94ufil"
+        ]
+      }
+    ]
+  },
+  "limits": [
+    "Gameplay uses actual Safari with DOM controls.",
+    "Only the four listed variants have current physical portrait gameplay evidence.",
+    "Local build only; no production deployment."
+  ]
+}

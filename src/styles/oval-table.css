@@ -1,0 +1,91 @@
+/* The same six-seat ring serves board, draw and stud games at every phase. */
+.mgx-play--oval{background:radial-gradient(ellipse at 50% 35%,#263331 0%,#101b1a 58%,#080e0e 100%)}
+.mgx-play--oval .mgx-table-scene{position:relative;display:block;padding:0;border:0;border-radius:0;background:none;isolation:isolate}
+.mgx-table-felt{position:absolute;inset:34px 35px 34px;border:8px solid #323c3b;border-radius:50%;background:radial-gradient(ellipse at 48% 35%,#256653,#174b3d 65%,#10372e);box-shadow:0 0 0 2px #101a19,0 0 0 3px #57605a,0 14px 22px #0008,inset 0 0 0 2px #8ba58a55,inset 0 0 35px #001e17b3;z-index:-1;pointer-events:none}
+.mgx-table-felt:before{content:'';position:absolute;inset:13px;border:1px solid #add0b42b;border-radius:50%}
+.mgx-play--oval .mgx-seat-slot{position:absolute;display:block;width:26%;max-width:104px;height:120px}
+.mgx-play--oval .slot-top-center{left:50%;top:0;transform:translateX(-50%)}
+.mgx-play--oval .slot-top-left{left:0;top:20%}
+.mgx-play--oval .slot-top-right{right:0;top:20%}
+.mgx-play--oval .slot-left{left:0;bottom:94px}
+.mgx-play--oval .slot-right{right:0;bottom:94px}
+.mgx-play--oval .slot-hero{left:50%;bottom:0;transform:translateX(-50%);width:min(100%,348px);max-width:none;height:86px}
+.mgx-play--oval .mgx-table-seat{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:0;width:100%;height:100%;padding:0;border:0;border-radius:0;background:none;box-shadow:none}
+.mgx-play--oval .mgx-seat-avatar{position:absolute;top:0;left:50%;transform:translateX(-50%);width:34px;height:34px;border:2px solid #91a499;border-radius:50%;background:linear-gradient(145deg,hsl(var(--seat-hue) 24% 40%),hsl(var(--seat-hue) 24% 17%));box-shadow:0 3px 8px #0008;overflow:hidden}
+.mgx-seat-avatar svg{width:100%;height:100%;fill:#e0e9e1b3}
+.mgx-play--oval .is-active .mgx-seat-avatar{border-color:#b5ffcd;box-shadow:0 0 0 3px #71dbac40,0 0 14px #6bdfa76b}
+.mgx-play--oval .mgx-seat-heading{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:0 3px;width:100%;height:29px;min-height:29px;padding:2px 5px;border:1px solid #61766a;border-radius:6px;background:linear-gradient(#263831,#14241e);font-size:10px;line-height:12px;box-shadow:0 2px 5px #0007}
+.mgx-play--oval .is-active .mgx-seat-heading{border-color:#a7f7c2;background:linear-gradient(#355b44,#183d2b)}
+.mgx-play--oval .mgx-seat-name{grid-column:1;grid-row:1;max-width:100%;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mgx-play--oval .mgx-seat-position{display:block;grid-column:2;grid-row:1/3;font-size:8px;line-height:11px;color:#d3c89c}
+.mgx-play--oval .mgx-seat-heading strong{grid-column:1;grid-row:2;margin:0;text-align:center;font-size:11px;line-height:12px;color:#f4e8c0}
+.mgx-play--oval .mgx-seat-cards{width:100%;height:24px;min-height:24px;display:flex;align-items:center;justify-content:center;gap:2px}
+.mgx-play--oval .mgx-table-seat:not(.is-hero) .mgx-seat-cards{height:46px;min-height:46px;display:flex;align-items:center;gap:1px}
+.mgx-play--oval .mgx-table-seat:not(.is-hero) .mgx-table-card{flex:0 0 min(17px,calc((100% - 4px)/5));width:min(17px,calc((100% - 4px)/5));height:22px;font-size:10px;border-radius:3px}
+.mgx-play--oval .mgx-table-card.is-hidden{background:repeating-linear-gradient(45deg,#344d72 0 2px,#29405f 2px 4px);border-color:#95a9ba;color:#e1e9ef}
+.mgx-play--oval .mgx-seat-meta{width:100%;height:12px;min-height:12px;font-size:8px;line-height:12px;justify-content:center;gap:5px;color:#e7e5d2;text-shadow:0 1px 2px #000}
+.mgx-play--oval .mgx-table-seat.is-hero .mgx-seat-avatar{display:none}
+.mgx-play--oval .mgx-table-seat.is-hero .mgx-seat-heading{order:2;width:164px;height:25px;min-height:25px;display:flex;justify-content:center;gap:8px;padding:3px 8px;font-size:11px;line-height:16px}
+.mgx-play--oval .mgx-table-seat.is-hero .mgx-seat-heading strong{font-size:13px;margin-left:auto}
+.mgx-play--oval .mgx-table-seat.is-hero .mgx-seat-position{font-size:9px}
+.mgx-play--oval .mgx-table-seat.is-hero .mgx-seat-cards{height:61px;min-height:61px;gap:5px;align-items:center}
+.mgx-play--oval .mgx-table-seat.is-hero .mgx-table-card{flex:0 1 44px;width:44px;height:54px;font-size:20px;border-radius:6px}
+.mgx-play--oval .mgx-table-seat.is-hero .mgx-seat-meta{display:none}
+.mgx-play--oval .mgx-community{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);width:42%;height:74px;grid-template-rows:22px 29px 13px;gap:5px}
+.mgx-play--oval .mgx-community [data-testid=table-total-pot]{background:#0b3027a6;border:1px solid #9aba9840;border-radius:20px;padding:2px 8px;width:120px;max-width:100%;justify-self:center;flex-wrap:nowrap}
+.mgx-play--oval .mgx-community [data-testid=table-total-pot] strong{font-size:17px}
+.mgx-play--oval .mgx-community-phase{color:#d3e2d7;text-shadow:0 1px 2px #000}
+.mgx-play--oval .mgx-play-actions{background:linear-gradient(#172923,#0f211a);border-color:#405b4b;box-shadow:0 4px 15px #0004}
+@media(orientation:portrait) and (max-height:692px){
+ .mgx-play--oval .mgx-seat-slot{height:92px}
+ .mgx-play--oval .slot-top-left,.mgx-play--oval .slot-top-right{top:8%}
+ .mgx-play--oval .slot-left,.mgx-play--oval .slot-right{bottom:82px}
+ .mgx-play--oval .slot-hero{height:78px}
+ .mgx-play--oval .mgx-seat-avatar{width:27px;height:27px}
+ .mgx-play--oval .mgx-table-seat.is-hero .mgx-seat-cards{height:53px;min-height:53px}
+ .mgx-play--oval .mgx-table-seat.is-hero .mgx-table-card{height:46px}
+ .mgx-play--oval .mgx-community{top:46%;width:43%}
+ .mgx-play--oval .mgx-table-felt{inset:28px 26px}
+}
+@media(orientation:landscape){
+ .mgx-play--oval .mgx-table-felt{inset:20px 25px 18px;border-width:7px}
+ .mgx-play--oval .mgx-seat-slot{width:23%;max-width:106px;height:76px}
+ .mgx-play--oval .slot-top-left,.mgx-play--oval .slot-top-right{top:0}
+ .mgx-play--oval .slot-left,.mgx-play--oval .slot-right{bottom:0}
+ .mgx-play--oval .slot-hero{width:calc(100% - 190px);max-width:348px;min-width:232px;height:76px}
+ .mgx-play--oval .mgx-seat-avatar{width:26px;height:26px}
+ .mgx-play--oval .mgx-seat-heading{height:30px;min-height:30px}
+ .mgx-play--oval .mgx-table-seat.is-hero .mgx-seat-cards{height:51px;min-height:51px;gap:3px}
+ .mgx-play--oval .mgx-table-seat.is-hero .mgx-table-card{height:44px;font-size:19px}
+ .mgx-play--oval .mgx-community{top:76px;transform:translateX(-50%);width:42%;height:56px;grid-template-rows:20px 22px 10px;gap:2px}
+}
+
+.mgx-play--oval .mgx-table-seat.is-folded{opacity:.52}
+@media(orientation:landscape){
+ .mgx-play--oval .mgx-seat-slot:not(.slot-hero){width:21%;max-width:92px}
+ .mgx-play--oval .mgx-seat-avatar{left:0;transform:none}
+ .mgx-play--oval.is-landscape .mgx-seat-heading{align-self:flex-end;width:calc(100% - 26px);padding:2px 3px}
+ .mgx-play--oval.is-landscape .mgx-table-seat.is-hero .mgx-seat-heading{width:164px;align-self:center}
+ .mgx-play--oval .mgx-seat-position{font-size:7px}
+}
+
+
+/* Seven-card hands wrap within a reserved card area; seats never move. */
+.mgx-play--oval .mgx-table-seat.is-long-hand:not(.is-hero) .mgx-seat-cards{display:grid;grid-template-columns:repeat(4,minmax(0,20px));grid-template-rows:22px 22px;gap:1px;align-content:center}
+.mgx-play--oval .mgx-table-seat.is-long-hand:not(.is-hero) .mgx-table-card{width:100%;height:22px;font-size:10px;line-height:1}
+.mgx-play--oval .mgx-seat-meta{display:flex;white-space:nowrap}
+.mgx-play--oval .mgx-seat-heading strong{font-variant-numeric:tabular-nums}
+@media(orientation:portrait) and (max-height:692px){
+ .mgx-play--oval .mgx-seat-avatar{left:0;transform:none;width:25px;height:25px;top:5px}
+ .mgx-play--oval .mgx-seat-heading{align-self:flex-end;width:calc(100% - 25px);padding:2px}
+ .mgx-play--oval .mgx-table-seat.is-hero .mgx-seat-heading{width:164px;align-self:center}
+}
+@media(orientation:landscape){
+ .mgx-play--oval .mgx-table-seat:not(.is-hero) .mgx-seat-cards{height:37px;min-height:37px}
+ .mgx-play--oval .mgx-seat-meta{height:9px;min-height:9px;line-height:9px}
+ .mgx-play--oval .mgx-table-seat.is-long-hand:not(.is-hero) .mgx-seat-cards{grid-template-rows:18px 18px}
+ .mgx-play--oval .mgx-table-seat.is-long-hand:not(.is-hero) .mgx-table-card{height:18px;line-height:.8}
+}
+@media(orientation:landscape) and (max-width:700px){
+ .mgx-play--oval .mgx-bet-actions>button{font-size:11px;padding:4px 1px;white-space:nowrap;letter-spacing:-.2px}
+}

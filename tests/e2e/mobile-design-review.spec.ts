@@ -5,7 +5,7 @@ const variants=listVariantProfiles().map(v=>v.engineKey).filter(v=>!['ofc','chin
 import {APP_URL,openAuthenticatedGame,deleteAuthenticatedSession} from './authHelper';
 import {playOneHandProgression} from './helpers/gameProgressHelper.js';
 const sizes=[{width:852,height:283},{width:393,height:695}];
-for(const variant of variants)for(const viewport of [...sizes,...(['nlh','stud','badugi','dramaha_hi','big_o'].includes(variant)?[{width:320,height:568},{width:667,height:265}]:[])])test(`${variant} ${viewport.width}x${viewport.height}: readable stable table`,async({page},info)=>{
+for(const variant of variants)for(const viewport of [...sizes,...(['nlh','stud','badugi','dramaha_hi','big_o'].includes(variant)?[{width:320,height:568},{width:667,height:265}]:[]),...(['nlh','stud'].includes(variant)?[{width:393,height:650},{width:393,height:680}]:[])])test(`${variant} ${viewport.width}x${viewport.height}: readable stable table`,async({page},info)=>{
  await page.setViewportSize(viewport);await page.addInitScript(()=>localStorage.setItem('mgx.previewVariants','true'));
  const session=await openAuthenticatedGame(page,`${APP_URL}?variant=${variant}`);
  try{

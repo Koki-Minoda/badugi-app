@@ -1,4 +1,4 @@
-/* One layout contract for every mobile poker family. No seat is absolutely positioned. */
+/* Shared mobile controls, cards, and placement-game styling. */
 .mgx-play{position:fixed;z-index:1;display:flex;flex-direction:column;background:#081512;color:#eaf2ed;font:14px/1.3 system-ui,sans-serif;padding:0 max(8px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));overflow:auto;overscroll-behavior:contain}
 .mgx-play *,.mgx-amount-sheet *{box-sizing:border-box}
 .mgx-play button,.mgx-play summary,.mgx-amount-sheet button{touch-action:manipulation;cursor:pointer;-webkit-tap-highlight-color:transparent}
@@ -15,30 +15,11 @@
 .mgx-play-tools nav{position:absolute;z-index:200;top:46px;right:0;width:180px;display:grid;padding:6px;border:1px solid #476657;border-radius:12px;background:#10251d;box-shadow:0 12px 40px #0009}
 .mgx-play-tools nav button{min-height:46px;text-align:left;padding:8px 12px;border-radius:7px}
 .mgx-play-main{display:grid;grid-template-rows:minmax(290px,1fr) auto;gap:8px;min-height:0;flex:1}
-.mgx-table-scene{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:minmax(72px,1fr) minmax(94px,1.15fr) auto;grid-template-areas:'top-left top-center top-right' 'left community right' 'hero hero hero';gap:6px;min-width:0;min-height:0;border-radius:14px;background:#10362a;border:1px solid #254e3e;padding:8px}
-.slot-top-left{grid-area:top-left}.slot-top-center{grid-area:top-center}.slot-top-right{grid-area:top-right}.slot-left{grid-area:left}.slot-right{grid-area:right}.slot-hero{grid-area:hero}
-.mgx-seat-slot{display:flex;align-items:center;min-width:0;min-height:0}
-.mgx-table-seat{width:100%;min-width:0;border:1px solid #345849;border-radius:9px;background:#0a2119;padding:5px;display:flex;flex-direction:column;gap:5px}
-.mgx-table-seat.is-active{border-color:#92f0b5;box-shadow:0 0 0 1px #92f0b5;background:#163e2c}
-.mgx-table-seat.is-folded{opacity:.52}
-.mgx-seat-heading{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:1px 4px;font-size:10px;line-height:13px}
-.mgx-seat-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:650}
-.mgx-seat-position{grid-column:1;color:#94b3a2;font-size:9px}
-.mgx-seat-heading strong{grid-column:2;grid-row:1/3;font-size:12px;font-variant-numeric:tabular-nums}
-.mgx-seat-cards{display:flex;justify-content:center;gap:2px;min-width:0}
 .mgx-table-card{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;flex:0 1 20px;min-width:0;width:20px;height:29px;border-radius:4px;background:#f9faf5;border:1px solid #d8e1d9;color:#1a2821;font-size:12px;line-height:1.05;font-weight:700;box-shadow:0 1px 1px #0004;overflow:hidden}
 .mgx-table-card.heart{color:#b5273a}.mgx-table-card.diamond{color:#2656a8}.mgx-table-card.club{color:#0c7151}
 .mgx-table-card.is-hidden{background:#284c3c;color:#79a28b;border-color:#476d58;font-size:16px}
 .mgx-table-card.is-down{border-bottom:3px solid #83978b}
 .mgx-table-card.is-selected{border:2px solid #4ddd9f;box-shadow:0 0 0 2px #4ddd9f;background:#e9fff3;transform:translateY(-3px)}
-.mgx-seat-meta{display:flex;justify-content:space-between;gap:2px;font-size:9px;min-height:11px;line-height:11px;color:#9cc5af;white-space:nowrap}
-.mgx-table-seat.is-hero{background:#133c2b;padding:6px 10px;gap:5px;border-color:#477f60}
-.mgx-table-seat.is-hero .mgx-seat-heading{display:flex;gap:8px;font-size:12px;line-height:16px}
-.mgx-table-seat.is-hero .mgx-seat-heading strong{margin-left:auto;font-size:14px}
-.mgx-table-seat.is-hero .mgx-seat-position{font-size:10px}
-.mgx-table-seat.is-hero .mgx-seat-cards{gap:5px}
-.mgx-table-seat.is-hero .mgx-table-card{flex:0 1 44px;width:44px;height:54px;font-size:20px;border-radius:6px}
-.mgx-table-seat.is-hero .mgx-seat-meta{display:none}
 .mgx-community{grid-area:community;display:flex;flex-direction:column;gap:5px;justify-content:center;align-items:center;min-width:0;text-align:center}
 .mgx-community [data-testid=table-total-pot]{display:flex;align-items:center;justify-content:center;gap:5px;flex-wrap:wrap}
 .mgx-community [data-testid=table-total-pot] span{color:#91b39e;font-size:9px;letter-spacing:.1em}
@@ -62,21 +43,12 @@
 .mgx-tournament-info{font-size:10px;min-width:0}.mgx-tournament-info>div{max-width:100%}
 .mgx-play.is-landscape .mgx-play-header{height:46px;min-height:46px;margin-bottom:4px}
 .mgx-play.is-landscape .mgx-play-main{grid-template-columns:minmax(0,1fr) 240px;grid-template-rows:minmax(0,1fr);gap:8px;min-height:216px}
-.mgx-play.is-landscape .mgx-table-scene{grid-template-rows:minmax(56px,1fr) minmax(56px,1fr) auto;padding:5px;gap:4px}
-.mgx-play.is-landscape .mgx-table-seat{gap:3px;padding:4px}
-.mgx-play.is-landscape .mgx-seat-heading{display:flex;gap:4px;line-height:14px}
-.mgx-play.is-landscape .mgx-seat-name{flex:1}
-.mgx-play.is-landscape .mgx-seat-heading strong{font-size:11px}
-.mgx-play.is-landscape .mgx-seat-position{font-size:9px}
-.mgx-play.is-landscape .mgx-table-seat.is-hero{padding:5px 10px}
-.mgx-play.is-landscape .mgx-table-seat.is-hero .mgx-table-card{height:48px}
-.mgx-play.is-landscape .mgx-table-seat.is-hero .mgx-seat-heading strong{font-size:13px}
 .mgx-play.is-landscape .mgx-play-actions{padding:10px;gap:8px;overflow:auto}
 .mgx-play.is-landscape .mgx-action-note{margin-top:auto}
 .mgx-play.is-landscape .mgx-amount-launch{flex-wrap:wrap;gap:2px}
 .mgx-play.is-landscape .mgx-community-phase{font-size:9px}
 .mgx-play.is-landscape .mgx-turn-message{min-height:36px}
-@media(max-width:700px) and (orientation:landscape){.mgx-play.is-landscape .mgx-play-main{grid-template-columns:minmax(0,1fr) 212px}.mgx-play.is-landscape .mgx-seat-position{display:none}.mgx-play.is-landscape .mgx-seat-meta{font-size:8px}.mgx-play.is-landscape .mgx-seat-heading{font-size:9px}}
+@media(max-width:700px) and (orientation:landscape){.mgx-play.is-landscape .mgx-play-main{grid-template-columns:minmax(0,1fr) 212px}}
 /* Numeric entry is a self-contained touch surface; it never requests the OS keyboard. */
 .mgx-amount-backdrop{position:fixed;inset:0;z-index:1000;background:#020a07dd;display:flex;align-items:center;justify-content:center;padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));color:#eaf2ed}
 .mgx-amount-sheet{width:min(100%,420px);max-height:100%;overflow:auto;outline:none;border:1px solid #456b54;border-radius:16px;background:#10271d;padding:12px;font:14px/1.3 system-ui,sans-serif;box-shadow:0 20px 80px #0009}
@@ -95,12 +67,7 @@
 @media(orientation:portrait){.mgx-amount-body{display:grid}.mgx-amount-details{display:contents}.mgx-amount-display{order:0}.mgx-amount-presets{order:1}.mgx-number-pad{order:2}.mgx-amount-error{order:3}.mgx-amount-details>.mgx-primary{order:4}}
 @media(orientation:landscape){.mgx-amount-sheet{width:min(100%,640px);padding:8px 12px}.mgx-amount-sheet header{margin-bottom:4px}.mgx-amount-sheet header button{min-height:32px}.mgx-amount-sheet h2{font-size:14px}.mgx-amount-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}.mgx-amount-details{gap:5px}.mgx-amount-display{min-height:52px;padding:4px 8px}.mgx-amount-display>span{width:100%}.mgx-amount-display output{font-size:25px;margin-left:0}.mgx-amount-presets{grid-template-columns:repeat(2,minmax(0,1fr))}.mgx-amount-presets button{min-height:32px;flex-direction:row;gap:4px}.mgx-amount-details>.mgx-primary{min-height:44px}.mgx-number-pad{gap:4px}.mgx-number-pad button{min-height:44px}.mgx-amount-error{font-size:10px;min-height:12px}}
 @media(max-height:340px) and (orientation:landscape){
- .mgx-play.is-landscape .mgx-table-seat{padding:3px;gap:2px}
- .mgx-play.is-landscape .mgx-seat-heading{line-height:12px}
  .mgx-play.is-landscape .mgx-table-card{height:22px;font-size:10px}
- .mgx-play.is-landscape .mgx-seat-meta{font-size:8px;line-height:10px;min-height:10px}
- .mgx-play.is-landscape .mgx-table-seat.is-hero .mgx-seat-heading{line-height:16px}
- .mgx-play.is-landscape .mgx-table-seat.is-hero .mgx-table-card{height:44px;font-size:19px}
  .mgx-play.is-landscape .mgx-play-main{min-height:208px}
 }
 @media(orientation:landscape){
@@ -120,12 +87,6 @@
 .mgx-arrange-page footer{background:#10271df5;border-color:#3b634c;padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
 .mgx-arrange-page [data-testid=chinese-hero-arrange],.mgx-arrange-page section{border-radius:12px}
 @media(orientation:landscape){.mgx-arrange-page [data-testid=ofc-actions]>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,.9fr);gap:12px;align-items:center}.mgx-arrange-page [data-testid=ofc-actions]>div>*{margin:0}.mgx-arrange-page [data-testid=ofc-actions] [data-testid=ofc-result-summary]{font-size:14px}.mgx-arrange-page [data-testid=ofc-actions] .mgx-table-card{flex-basis:36px;width:36px;height:46px}}
-
-@media(orientation:portrait){
- .mgx-play .mgx-table-scene:has(.is-long-hand){grid-template-rows:minmax(106px,1fr) minmax(106px,1.15fr) auto}
- .mgx-play .mgx-table-seat.is-long-hand:not(.is-hero) .mgx-seat-cards{display:grid;grid-template-columns:repeat(4,minmax(0,20px));gap:2px}
- .mgx-play .mgx-table-seat.is-long-hand:not(.is-hero) .mgx-table-card{width:100%;height:22px;font-size:11px}
-}
 
 /* The same reserved rows apply to every poker family and every decision phase. */
 .mgx-play-actions{display:grid;grid-template-rows:20px 34px 100px 14px;gap:6px;height:206px;padding:10px}
@@ -151,21 +112,5 @@
 .mgx-tournament-info{width:100%;min-width:0}
 .mgx-tournament-info .mgx-hud-compact{padding:0;border:0;background:transparent;box-shadow:none}
 .mgx-tournament-info details[open]{position:absolute;z-index:100;right:12px;max-width:calc(100% - 24px);padding:8px;background:#10271d;border:1px solid #456b54;border-radius:8px}
-@media(orientation:portrait){
- .mgx-play .mgx-table-scene,.mgx-play .mgx-table-scene:has(.is-long-hand){grid-template-rows:minmax(106px,1fr) minmax(106px,1.15fr) auto}
- .mgx-play .mgx-table-seat:not(.is-hero) .mgx-seat-cards{height:46px;align-items:center}
-}
-@media(orientation:portrait) and (max-height:640px){
- .mgx-play .mgx-table-scene,.mgx-play .mgx-table-scene:has(.is-long-hand){grid-template-rows:minmax(92px,1fr) minmax(92px,1.15fr) auto}
- .mgx-play .mgx-table-seat:not(.is-hero) .mgx-seat-position{display:none}
- .mgx-play .mgx-table-seat:not(.is-hero) .mgx-seat-heading strong{grid-row:1}
- .mgx-play .mgx-table-seat.is-hero .mgx-table-card{height:46px}
-}
 
 .mgx-community>*{min-width:0;width:100%}
-@media(orientation:portrait){
- .mgx-play .mgx-table-seat:not(.is-hero):not(.is-long-hand) .mgx-table-card{flex:0 0 min(20px,calc((100% - 8px)/5))}
-}
-@media(orientation:portrait) and (max-height:640px){
- .mgx-play .mgx-table-seat:not(.is-hero) .mgx-table-card{font-size:11px}
-}

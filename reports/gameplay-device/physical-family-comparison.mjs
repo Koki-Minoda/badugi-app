@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {writeFile} from 'node:fs/promises';
 import {openPhysicalVariant} from './physical-layout.mjs';
-export async function comparePhysicalFamilies(c){
+export async function comparePhysicalFamilies(c,{outputName='family'}={}){
  const rows=[];
  for(const [id,profile] of [['nlh','B01'],['deuce_to_seven_triple_draw','D01'],['deuce_to_seven_single_draw','S01']]){
   await openPhysicalVariant(c,id,profile);
@@ -12,9 +12,9 @@ export async function comparePhysicalFamilies(c){
    const cards=Object.fromEntries(['player-0-card-0','player-1-card-0'].map(id=>{const {w,h}=dimensions(id);return [id,{w,h}];}));
    return {viewport:{width:innerWidth,height:innerHeight},boxes,cards};
   });
-  await c.shot(`family-verified-${id}`);rows.push({id,metrics});
+  await c.shot(`${outputName}-verified-${id}`);rows.push({id,metrics});
  }
  for(const row of rows.slice(1))assert.deepEqual(row.metrics,rows[0].metrics);
- await writeFile(new URL('./artifacts/family-physical-comparison.json',import.meta.url),JSON.stringify({updated:new Date().toISOString(),status:'PASS',interaction:'Physical Safari DOM controls',rows},null,2));
+ await writeFile(new URL(`./artifacts/${outputName}-physical-comparison.json`,import.meta.url),JSON.stringify({updated:new Date().toISOString(),status:'PASS',interaction:'Physical Safari DOM controls',rows},null,2));
  return {status:'PASS',ids:rows.map(r=>r.id),viewport:rows[0].metrics.viewport};
 }

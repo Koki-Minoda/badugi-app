@@ -1,3 +1,4 @@
+import { GAME_VARIANTS } from '../../games/config/variantCatalog.js';
 import { normalizeAppVariantId } from '../game/appVariantRouting.js';
 import { LANGUAGE_STORAGE_KEY, MGX_DEFAULT_LOCALE } from '../../config/mgxLocaleConfig.js';
 
@@ -41,9 +42,46 @@ const rows = [
   ['deuce_to_seven_triple_draw', 'D01', '2-7 Triple Draw', 'low27', 'draw3', 'fixed-limit', 'draw'],
   ['ace_to_five_triple_draw', 'D02', 'A-5 Triple Draw', 'lowA5', 'draw3', 'fixed-limit', 'draw'],
   ['badugi', 'D03', 'Badugi', 'badugi', 'badugi', 'fixed-limit', 'draw'],
-  ['deuce_to_seven_single_draw', 'S01', '2-7 Single Draw', 'low27', 'draw1', 'fixed-limit', 'draw'],
+  ['deuce_to_seven_single_draw', 'S01', '2-7 Single Draw', 'low27', 'draw1', 'no-limit', 'draw'],
   ['ace_to_five_single_draw', 'S02', 'A-5 Single Draw', 'lowA5', 'draw1', 'fixed-limit', 'draw'],
 ];
+Object.assign(outcomes, {
+  razzducey: text('MGXではBadugi（Aは低い）と2-7ロー（Aは高い）で半分ずつ分配します。', 'MGX splits between ace-low Badugi and ace-high 2-7 low.'),
+  splitA5: text('ポットの半分ずつをBadugiとA-5ローで争います。それぞれ別のカードを使えます。', 'Half the pot goes to Badugi, half to A-5 low. Each half can use different cards.'),
+  split27: text('ポットの半分ずつをBadugi（Aは高い）と2-7ローで争います。2-7側はAが高く、ストレートとフラッシュは不利です。', 'Split between Ace-high Badugi and 2-7 low. Aces are high and straights/flushes count against the 2-7 half.'),
+  hidugi: text('ランクとスートが重複しない枚数を優先。同枚数なら高いカードが勝ちます。', 'More distinct ranks and suits win; higher cards break ties.'),
+  archie: text('ハイは9のペア以上、ローは8以下の異なる5ランクが条件。片側だけ成立なら総取り。両側とも不成立なら、最も強いハイが総取りします。', 'High needs a pair of nines or better; low needs five distinct ranks eight or lower. A lone qualifying half scoops. If neither qualifies, best high takes all.'),
+  dramahaHigh: text('半分はOmahaのハイ、半分は手札5枚のハイで争います。', 'Half for Omaha high, half for the high hand in your five hole cards.'),
+  dramaha27: text('半分はOmahaのハイ、半分は手札5枚の2-7ローで争います。', 'Split between Omaha high and 2-7 low in your five hole cards.'),
+  dramahaA5: text('半分はOmahaのハイ、半分は手札5枚のA-5ローで争います。', 'Split between Omaha high and A-5 low in your five hole cards.'),
+  dramahaZero: text('半分はOmahaのハイ、半分は手札の合計が小さい方へ。Aは1、絵札は0です。', 'Split between Omaha high and the lowest hole-card total. Ace is 1; face cards are 0.'),
+  dramahaBadugi: text('半分はOmahaのハイ、半分は手札から作るBadugiで争います。', 'Split between Omaha high and Badugi made from your hole cards.'),
+  dramahaHidugi: text('半分はOmahaのハイ、半分は手札から作る高いBadugiで争います。', 'Split between Omaha high and high Badugi made from your hole cards.'),
+  chinese: text('前3枚・中5枚・後5枚を相手と比較。後の役を中以上、中の役を前以上に揃えます。', 'Compare front (3), middle (5) and back (5) rows. Back must be at least as strong as middle, and middle at least as strong as front.'),
+});
+Object.assign(structures, {
+  omaha5: text('手札5枚から必ず2枚、ボードから必ず3枚を使います。交換はありません。', 'Use exactly two of five hole cards and three board cards. No draws.'),
+  super: text('手札3枚とボード5枚から最善の5枚を使います。交換はありません。', 'Choose the best five from three hole cards and five board cards. No draws.'),
+  badugi1: text('手札4枚。交換は1回です。', 'Four hole cards and one draw.'),
+  dramaha: text('手札5枚、フロップ後に1回交換。Omaha側は手札2枚とボード3枚を使います。', 'Five hole cards, one draw after the flop. Omaha uses two hole cards and three board cards.'),
+  dramaha3: text('手札5枚、フロップ後に最大3枚を1回交換。Omaha側は手札2枚とボード3枚。', 'Five hole cards; draw up to three once after the flop. Omaha uses two hole cards and three board cards.'),
+  chinese: text('13枚を前・中・後へ配置し、すべて揃えてから確定します。', 'Place all 13 cards into front, middle and back, then confirm.'),
+  ofc: text('最初に5枚、以後は1枚ずつ配置。確定したカードは動かせません。', 'Place five cards initially, then one at a time. Confirmed cards cannot move.'),
+});
+betting.points = text('ベットはなく、列の勝敗とボーナスを点数で精算します。', 'No betting. Score the rows and bonuses in points.');
+actions.chinese = text('配置を確認して確定します。', 'Review your placement, then confirm.');
+const extraRules = {
+ B03:['high','super','board'], B04:['high','super','board'], B07:['split8','omaha5','board'], B08:['high','omaha5','board'],
+ D04:['split27','draw3','draw'], D05:['splitA5','draw3','draw'], D06:['hidugi','badugi','draw'], D07:['archie','draw3','draw'],
+ S03:['high','draw1','draw'], S04:['badugi','badugi1','draw'], S05:['split27','draw1','draw'], S06:['splitA5','draw1','draw'], S07:['hidugi','badugi1','draw'],
+ H01:['dramahaHigh','dramaha','board'], H02:['dramaha27','dramaha','board'], H03:['dramahaA5','dramaha','board'], H04:['dramahaZero','dramaha3','board'], H05:['dramahaHidugi','dramaha3','board'], H06:['dramahaBadugi','dramaha3','board'],
+ ST4:['splitA5','stud','razz'], ST5:['razzducey','stud','razz'], ST6:['low27','stud','razz'], CP1:['chinese','chinese','chinese'], CP2:['chinese','ofc','chinese'],
+};
+for (const game of GAME_VARIANTS) {
+  if (rows.some(row => row[1] === game.id)) continue;
+  const [outcome, structure, action] = extraRules[game.id] ?? [];
+  if (outcome) rows.push([game.engineKey, game.id, game.name, outcome, structure, game.betting, action]);
+}
 export const LEARNING_GAMES = rows.map(([id, catalogId, name, outcome, structure, limit, action]) => ({
   id, catalogId, name, outcome, structure, betting: limit, action,
 }));

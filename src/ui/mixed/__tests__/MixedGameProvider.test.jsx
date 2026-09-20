@@ -12,7 +12,7 @@ describe('cash MIX session', () => {
   it('supports released board and stud controllers but preserves release gates', () => {
     expect(isMixedVariantPlayable('B01')).toBe(true);
     expect(isMixedVariantPlayable('ST1')).toBe(true);
-    expect(isMixedVariantPlayable('B02')).toBe(false);
+    expect(isMixedVariantPlayable('B02')).toBe(true);
     expect(isMixedVariantPlayable('unknown')).toBe(false);
   });
   it('activates a freshly saved object and counts each completed hand once without stale renders', () => {
@@ -46,7 +46,7 @@ describe('cash MIX session', () => {
     expect(advanceRotationState({ activeGameId: 'D03', currentIndex: 1, handsPlayedInCurrentGame: 1 }, profile, () => true).nextGameId).toBe('D03');
   });
   it('selects a playable category and respects weighted exclusions', () => {
-    const profile = buildProfileFromPreset({ selectedGameIds: ['D01', 'D02'], selectionMode: 'CATEGORY', categoryRules: { weights: { board: 100, 'triple-draw': 1 }, pools: { board: ['B02'], 'triple-draw': ['D02'] } } });
+    const profile = buildProfileFromPreset({ selectedGameIds: ['D01', 'D02'], selectionMode: 'CATEGORY', categoryRules: { weights: { board: 100, 'triple-draw': 1 }, pools: { board: ['B04'], 'triple-draw': ['D02'] } } });
     expect(resolveInitialGame(profile, null, isMixedVariantPlayable).gameId).toBe('D02');
     const weighted = buildProfileFromPreset({ selectedGameIds: ['D01', 'D02'], selectionMode: 'WEIGHTED', weightedTable: { D01: 1000, D02: 1 }, hardBans: ['D01'] });
     expect(resolveInitialGame(weighted, null, isMixedVariantPlayable).gameId).toBe('D02');
@@ -60,4 +60,9 @@ describe('cash MIX session', () => {
     act(() => result.current.deactivateMixedGame());
     expect(localStorage.getItem('session.tournament.active')).toBe(before);
   });
+});
+it('migrates an old standard preset without losing a custom hand count',()=>{
+ localStorage.setItem('mixedGameProfiles',JSON.stringify([{id:'mix-horse-pro',name:'HORSE Pro',selectedGameIds:['B02','B06','ST3','ST1','ST2'],handsPerGame:3,selectionMode:'FIXED'}]));
+ const {result}=renderHook(useMixedGame,{wrapper});
+ const horse=result.current.profiles[0];expect(horse.selectedGameIds).toEqual(['B02','B09','ST3','ST1','ST2']);expect(horse.handsPerGame).toBe(3);expect(horse.selectedGameIds.every(isMixedVariantPlayable)).toBe(true);
 });

@@ -25,6 +25,7 @@ export const PUBLIC_RING_PLAYABLE_VARIANTS = Object.freeze([
     cashQm: Object.freeze({ expectsDraw: false, expectsBlindIncrease: false }),
   }),
   ...[
+    ["flh", "FL Hold’em"],
     ["plo", "Pot-Limit Omaha"],
     ["plo8", "PLO8"],
     ["flo8", "FLO8"],
@@ -221,7 +222,7 @@ export const VARIANT_AVAILABILITY = Object.freeze({
       "Cash, store/local tournament, exact replay, cash-out, Android, and iPhone/WebKit release gates passed.",
     requiredBeforeAlpha: [],
   }),
-  flh: preview("Fixed-Limit Hold'em"),
+  flh: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "Fixed-Limit Hold'em", statusLabel: "Alpha", reason: "Ten-hand cash, legal actions, replay and settlement verified on desktop and iPhone-size WebKit (2026-09-20).", requiredBeforeAlpha: [] }),
   super_holdem: preview("NL Super Hold'em"),
   fl_super_holdem: preview("FL Super Hold'em"),
   plo: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "Pot-Limit Omaha", statusLabel: "Alpha", reason: OMAHA_ALPHA_REASON }),

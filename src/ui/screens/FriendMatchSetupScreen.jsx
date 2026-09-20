@@ -1,8 +1,12 @@
+import FriendLiveTable from './layouts/FriendLiveTable.jsx';
+import FriendTableScene from './layouts/FriendTableScene.jsx';
+import { useLanguage } from '../preferences/language.js';
+import LanguageSelect from '../preferences/LanguageSelect.jsx';
+import ShareLink from '../sharing/ShareLink.jsx';
 import { copyTextToClipboard } from '../utils/copyTextToClipboard.js';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { designTokens } from "../../styles/designTokens.js";
-import { LANGUAGE_STORAGE_KEY, MGX_DEFAULT_LOCALE } from "../../config/mgxLocaleConfig.js";
 import {
   buildRoomWebSocketUrl,
   buildRoomWebSocketProtocols,
@@ -26,7 +30,7 @@ const REST_POLL_MAX_BACKOFF_MS = 30_000;
 const BADUGI_VARIANT = Object.freeze({
   id: "badugi",
   label: "Badugi",
-  description: "Heads-up / 4 cards / 3 draws",
+  description: "2–6 players / 4 cards / 3 draws / FL",
 });
 
 function createCommandId() {
@@ -74,11 +78,6 @@ function persistActiveRoom(room) {
   window.sessionStorage.setItem(ACTIVE_ROOM_STORAGE_KEY, JSON.stringify(room));
 }
 
-function getInitialFriendMatchLanguage(language) {
-  if (language) return language;
-  if (typeof window === "undefined") return MGX_DEFAULT_LOCALE;
-  return window.localStorage.getItem(LANGUAGE_STORAGE_KEY) ?? MGX_DEFAULT_LOCALE;
-}
 
 const FRIEND_COPY = {
   ja: {
@@ -307,6 +306,7 @@ function mergePlayerStates(players = [], playerStates = [], stacks = {}, bets = 
   return players.map((playerId) => {
     const state = byId.get(playerId) ?? {};
     return {
+      ...state,
       id: playerId,
       displayName: state.displayName ?? playerId,
       ready: Boolean(state.ready),
@@ -326,6 +326,9 @@ function applyRoomEventToTableState(current, entry) {
       roomId: payload.roomCode ?? current.roomId,
       phase: payload.phase ?? current.phase,
       handId: payload.handId ?? current.handId,
+      variantId: payload.variantId ?? current.variantId,
+      dealerSeat: payload.dealerSeat ?? current.dealerSeat,
+      betUnit: payload.betUnit ?? current.betUnit,
       players: playerStates.map((player) => player.id),
       playerStates,
       pot: Number(payload.pot ?? 0),
@@ -390,17 +393,18 @@ function applyRoomEventToTableState(current, entry) {
 
 export default function FriendMatchSetupScreen({ language = null } = {}) {
   const navigate = useNavigate();
-  const languageKey = getInitialFriendMatchLanguage(language);
+  const sharedLanguage = useLanguage();
+  const languageKey = language ?? sharedLanguage;
   const copy = useMemo(
     () =>
       FRIEND_COPY[languageKey] ??
-      FRIEND_COPY[MGX_DEFAULT_LOCALE] ??
+      FRIEND_COPY.ja ??
       FRIEND_COPY.en,
     [languageKey],
   );
-  const friendVariants = useMemo(() => [BADUGI_VARIANT], []);
+  const friendVariants = useMemo(() => [BADUGI_VARIANT, { id:"ace_to_five_triple_draw", label:"A-5 Triple Draw", description:"2–6 players / 5 cards / 3 draws / FL" }, { id:"deuce_to_seven_triple_draw", label:"2-7 Triple Draw", description:"2–6 players / 5 cards / 3 draws / FL" }], []);
   const [variantId, setVariantId] = useState("badugi");
-  const [seats] = useState(2);
+  const [seats, setSeats] = useState(2);
   const [stack, setStack] = useState(2000);
   const [smallBlind, setSmallBlind] = useState(10);
   const [bigBlind, setBigBlind] = useState(20);
@@ -408,7 +412,7 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
   const [statusMessage, setStatusMessage] = useState("");
   const [createdRoom, setCreatedRoom] = useState(() => loadStoredActiveRoom());
   const [isCreating, setIsCreating] = useState(false);
-  const [joinCode, setJoinCode] = useState("");
+  const [joinCode, setJoinCode] = useState(() => { const code = new URLSearchParams(window.location.search).get("room") ?? ""; return /^[A-Za-z0-9-]{1,32}$/.test(code) ? code : ""; });
   const [isJoining, setIsJoining] = useState(false);
   const [syncStatus, setSyncStatus] = useState("idle");
   const [roomEvents, setRoomEvents] = useState([]);
@@ -733,6 +737,7 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
       const room = await createRoom({
         metadata: {
           variantId,
+          seats,
           startingStack: String(stack),
           smallBlind: String(smallBlind),
           bigBlind: String(bigBlind),
@@ -843,9 +848,10 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
     !commandPending &&
     (!p2pTableState.currentTurnPlayerId ||
       p2pTableState.currentTurnPlayerId === createdRoom.ownerId);
-  const tableBigBlind = Number(p2pTableState.config?.bigBlind ?? bigBlind);
+  const tableBigBlind = Number(p2pTableState.betUnit ?? p2pTableState.config?.bigBlind ?? bigBlind);
   const filteredVariants = friendVariants;
   const hasAuth = Boolean(readRoomAuth());
+  if (createdRoom && p2pTableState.hand.length > 0) return <FriendLiveTable state={p2pTableState} room={createdRoom} language={languageKey} selected={selectedCardIndexes} onSelect={index=>setSelectedCardIndexes(current=>current.includes(index)?current.filter(i=>i!==index):[...current,index])} pending={commandPending} onAction={sendAction} onDraw={sendDraw} onReady={sendReady} onLeave={handleLeave} status={syncStatus} message={['error','closed'].includes(syncStatus) ? statusMessage : ''}/>;
 
   return (
     <div
@@ -858,6 +864,8 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
       }}
     >
       <div className="mx-auto min-w-0 max-w-3xl space-y-6">
+        <LanguageSelect />
+        <button type="button" className="min-h-11 rounded-xl border border-white/25 px-4 text-emerald-200" onClick={() => navigate('/meetups')}>{languageKey === 'ja' ? '友人との練習会・結果' : 'Meetups & results'}</button>
         <header className="space-y-2">
           <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">{copy.eyebrow}</p>
           <h1 className="text-3xl font-bold text-white">{copy.title}</h1>
@@ -877,8 +885,8 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
             </div>
             <p className="rounded-2xl border border-emerald-400/20 bg-slate-950/40 px-4 py-3 text-xs text-slate-300">
               {languageKey === "ja"
-                ? "現在は品質保証済みの2人Badugiのみ利用できます。"
-                : "Friend Match currently supports the quality-gated heads-up Badugi game."}
+                ? "Badugi・A-5 TD・2-7 TDを2〜6人で遊べます。全員が参加して「準備完了」を押すと始まります。"
+                : "Play Badugi, A-5 TD or 2-7 TD with 2–6 players. Play starts when every seat is filled and ready."}
             </p>
             <div
               className="space-y-3"
@@ -920,9 +928,9 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
                   name="seats"
                   type="number"
                   min="2"
-                  max="2"
+                  max="6"
                   value={seats}
-                  readOnly
+                  onChange={event => setSeats(Number(event.target.value))}
                   className="min-w-0 w-full rounded-2xl border border-white/15 bg-slate-950/60 px-4 py-3 text-white"
                 />
               </div>
@@ -1012,6 +1020,7 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
                 <span className="text-xs uppercase tracking-[0.25em] text-emerald-300">
                   {copy.roomCode}
                 </span>
+                  <ShareLink url={`${window.location.origin}/friend-match?room=${encodeURIComponent(createdRoom.roomId)}`} />
                   <strong data-testid="p2p-room-code" className="break-all select-text text-lg text-white">{createdRoom.roomId}</strong>
                 </div>
                 <button
@@ -1176,41 +1185,7 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
                   </button>
                 </div>
               </div>
-              {p2pTableState.hand.length > 0 ? (
-                <div className="mt-4">
-                  <p className="mb-2 text-xs text-emerald-100/80">
-                    {p2pTableState.legalActions.includes("draw") ? copy.selectCards : copy.hand}
-                  </p>
-                  <div className="grid grid-cols-4 gap-2" data-testid="p2p-private-hand">
-                    {p2pTableState.hand.map((card, index) => {
-                      const selected = selectedCardIndexes.includes(index);
-                      return (
-                        <button
-                          key={`${p2pTableState.handId}-${index}-${card}`}
-                          type="button"
-                          data-testid={`p2p-card-${index}`}
-                          disabled={!p2pTableState.legalActions.includes("draw")}
-                          aria-pressed={selected}
-                          onClick={() =>
-                            setSelectedCardIndexes((current) =>
-                              current.includes(index)
-                                ? current.filter((entry) => entry !== index)
-                                : [...current, index],
-                            )
-                          }
-                          className={`min-h-16 rounded-xl border px-2 py-3 text-lg font-bold ${
-                            selected
-                              ? "border-amber-300 bg-amber-300/20 text-amber-100"
-                              : "border-white/25 bg-white text-slate-900"
-                          } disabled:opacity-90`}
-                        >
-                          {card}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : null}
+              {p2pTableState.hand.length > 0 && <FriendTableScene state={p2pTableState} viewerId={createdRoom.ownerId} selected={selectedCardIndexes} language={languageKey} onSelect={index => setSelectedCardIndexes(current => current.includes(index) ? current.filter(i => i !== index) : [...current,index])} />}
               <div className="mt-4 grid gap-2 md:grid-cols-2">
                 {p2pTableState.playerStates.length === 0 ? (
                   <p className="text-sm text-emerald-100/70">{copy.waitingPlayers}</p>

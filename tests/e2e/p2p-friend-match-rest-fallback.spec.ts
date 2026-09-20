@@ -162,10 +162,10 @@ test("two players finish a major Badugi flow after WebSocket failure", async ({ 
 
     await host.getByTestId("p2p-ready").click();
     await guest.getByTestId("p2p-ready").click();
-    await expect(host.getByTestId("p2p-private-hand").locator("button")).toHaveCount(4, { timeout: 10_000 });
-    await expect(guest.getByTestId("p2p-private-hand").locator("button")).toHaveCount(4, { timeout: 10_000 });
-    const hostCards = await host.getByTestId("p2p-private-hand").locator("button").allTextContents();
-    const guestCards = await guest.getByTestId("p2p-private-hand").locator("button").allTextContents();
+    await expect(host.getByTestId("p2p-private-hand").locator('[data-testid^="p2p-card-"]')).toHaveCount(4, { timeout: 10_000 });
+    await expect(guest.getByTestId("p2p-private-hand").locator('[data-testid^="p2p-card-"]')).toHaveCount(4, { timeout: 10_000 });
+    const hostCards = await host.getByTestId("p2p-private-hand").locator('[data-testid^="p2p-card-"]').allTextContents();
+    const guestCards = await guest.getByTestId("p2p-private-hand").locator('[data-testid^="p2p-card-"]').allTextContents();
     expect(hostCards.filter((card) => guestCards.includes(card))).toEqual([]);
 
     const caller = await enabledPlayer(players, "p2p-call");

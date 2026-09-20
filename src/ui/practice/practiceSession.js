@@ -21,11 +21,19 @@ class PracticeDeck extends DeckManager {
 const clone = value => JSON.parse(JSON.stringify(value));
 const practiceName = seat => seat === 0 ? 'You' : `CPU ${seat}`;
 export class PracticeSession {
-  constructor(variant, cards, { rng = Math.random } = {}) {
+  constructor(variant, cards, { rng = Math.random, neverFold = false, selfPlay = false, showAll = false, cpuDelay = 700 } = {}) {
     if (!validatePracticeSetup(variant, cards)) throw new Error('Invalid practice hand');
+    this.options = Object.freeze({ neverFold: Boolean(neverFold), selfPlay: Boolean(selfPlay), showAll: Boolean(showAll), cpuDelay: [150, 700, 1500].includes(cpuDelay) ? cpuDelay : 700 });
+    this.undoHistory = [];
+    this.randomTape = [];
+    this.randomIndex = 0;
+    const replayableRng = () => {
+      if (this.randomIndex === this.randomTape.length) this.randomTape.push(rng());
+      return this.randomTape[this.randomIndex++];
+    };
     this.variant = variant;
     this.initialCards = [...cards];
-    this.deck = new PracticeDeck(cards, rng);
+    this.deck = new PracticeDeck(cards, replayableRng);
     this.handId = `practice-${crypto.randomUUID()}`;
     this.startedAt = Date.now();
     const config = { numSeats: 6, seatConfig: ['HUMAN', 'CPU', 'CPU', 'CPU', 'CPU', 'CPU'], startingStack: 2000, heroProfile: { name: 'You' }, blindStructure: [{ sb: 10, bb: 20, ante: 0 }], structure: { sb: 10, bb: 20, ante: 0 } };
@@ -64,6 +72,10 @@ export class PracticeSession {
     const before = this.snapshot;
     const indexes = input.discardIndexes ?? [];
     if (type === 'DRAW' && (!Array.isArray(indexes) || new Set(indexes).size !== indexes.length || indexes.some(index => !Number.isInteger(index) || index < 0 || index >= before.players[seat].hand.length))) throw new Error('Invalid draw selection');
+    const checkpoint = this.options.selfPlay ? {
+      state: clone(this.state), legacyState: this.controller.legacy ? clone(this.controller.legacy.state) : null, events: clone(this.events), randomIndex: this.randomIndex,
+      deck: { deck: [...this.deck.deck], discardPile: [...this.deck.discardPile], burnPile: [...this.deck.burnPile], drawCount: this.deck.drawCount, inPlaySet: [...this.deck.inPlaySet] },
+    } : null;
     const payload = { type, discardIndexes: indexes };
     if (this.variant === 'badugi' && type === 'DRAW') {
       const hand = [...before.players[seat].hand];
@@ -75,6 +87,7 @@ export class PracticeSession {
     }
     const result = this.controller.applyAction(this.state, { seatIndex: seat, type, discardIndexes: indexes, payload });
     if (result.events?.some(event => ['error', 'invalidAction'].includes(event.type))) throw new Error('Practice action was rejected');
+    if (checkpoint) this.undoHistory.push(checkpoint);
     this.state = result.state;
     this.revision += 1;
     const after = this.snapshot;
@@ -88,10 +101,24 @@ export class PracticeSession {
     }
     return true;
   }
+  undo() {
+    // Completed hands may already have been saved. They cannot be rewritten.
+    if (!this.options.selfPlay || this.finished || !this.undoHistory.length) return false;
+    const previous = this.undoHistory.pop();
+    this.state = previous.state;
+    this.controller._lastState = clone(previous.state);
+    if (previous.legacyState) this.controller.legacy.state = previous.legacyState;
+    this.events = previous.events;
+    this.randomIndex = previous.randomIndex;
+    Object.assign(this.deck, previous.deck, { inPlaySet: new Set(previous.deck.inPlaySet) });
+    this.revision += 1;
+    this.assertCards();
+    return true;
+  }
   cpuAction() {
     const seat = this.actor;
-    if (seat === 0 || this.finished) return false;
-    const legal = this.legalActions(seat);
+    if (seat === 0 || this.finished || this.options.selfPlay) return false;
+    const legal = this.legalActions(seat).filter(action => !this.options.neverFold || action.type !== 'FOLD');
     const candidate = this.variant === 'badugi'
       ? chooseBadugiProStrategy({ snapshot: this.snapshot, legalActions: legal, actor: { ...this.snapshot.players[seat], seatIndex: seat } })
       : this.controller.getCpuAction(this.state, seat);
@@ -103,6 +130,6 @@ export class PracticeSession {
   record() {
     if (!this.finished) return null;
     const snapshot = this.snapshot;
-    return { handId: this.handId, variantId: this.variant, variantName: PRACTICE_GAMES.find(game => game.id === this.variant).name, startedAt: this.startedAt, endedAt: this.endedAt, mode: 'practice', historySource: 'practice', buttonSeat: 0, sbSeat: 1, bbSeat: 2, pot: snapshot.lastHandResult?.pot ?? 0, events: clone(this.events), seats: snapshot.players.map((player, seat) => ({ seat, name: practiceName(seat), isHero: seat === 0, initialHand: [...this.initialPlayers[seat].hand], hand: [...player.hand], startStack: 2000, endStack: player.stack, folded: player.folded })), practiceSetup: { variant: this.variant, cards: [...this.initialCards] } };
+    return { handId: this.handId, variantId: this.variant, variantName: PRACTICE_GAMES.find(game => game.id === this.variant).name, startedAt: this.startedAt, endedAt: this.endedAt, mode: 'practice', historySource: 'practice', buttonSeat: 0, sbSeat: 1, bbSeat: 2, pot: snapshot.lastHandResult?.pot ?? 0, events: clone(this.events), seats: snapshot.players.map((player, seat) => ({ seat, name: practiceName(seat), isHero: seat === 0, initialHand: [...this.initialPlayers[seat].hand], hand: [...player.hand], startStack: 2000, endStack: player.stack, folded: player.folded })), practiceSetup: { variant: this.variant, cards: [...this.initialCards], options: this.options } };
   }
 }

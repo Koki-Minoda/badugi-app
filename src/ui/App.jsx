@@ -1,3 +1,6 @@
+import { PUBLIC_PLAYABLE_VARIANTS } from '../games/config/variantAvailability.js';
+import { applyCustomStructure } from './tournament/customStructure.js';
+import { useLanguageState } from './preferences/language.js';
 import SaveFailureNotice from './components/SaveFailureNotice.jsx';
 import { MixedGameContext } from "./mixed/mixedGameContext.js";
 import { shiftDealerChoiceVariant, setDealerChoiceModeActive } from './dealersChoice/dealerChoiceManager.js';
@@ -67,7 +70,6 @@ import {
   maxBetThisRound,
   isFoldedOrOut,
   markPlayerFolded,
-  isPlayerSeated,
   applyChips,
   applyForcedBetActionSnapshot,
   queueForcedSeatAction as queueForcedSeatActionMap,
@@ -396,27 +398,6 @@ function readDebugMetrics() {
   };
 }
 
-const LEGACY_LANGUAGE_STORAGE_KEY = "mgx.language";
-function getInitialLanguage() {
-  if (typeof window === "undefined") return MGX_DEFAULT_LOCALE;
-
-  try {
-    const saved = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
-    if (saved && MGX_LOCALES[saved]) {
-      return saved;
-    }
-
-    const legacy = window.localStorage.getItem(LEGACY_LANGUAGE_STORAGE_KEY);
-    if (legacy && MGX_LOCALES[legacy]) {
-      window.localStorage.setItem(LANGUAGE_STORAGE_KEY, legacy);
-      window.localStorage.removeItem(LEGACY_LANGUAGE_STORAGE_KEY);
-      return legacy;
-    }
-  } catch (err) {
-    console.warn("language detection failed", err);
-  }
-  return MGX_DEFAULT_LOCALE;
-}
 
 const STUD_STREET_AUTOPLAY_PAUSE_MS = 900;
 
@@ -435,6 +416,8 @@ function readStoredAuthIdentity() {
 
 export default function App() {
   const location = useLocation();
+  const trialVariant = new URLSearchParams(location.search).get('variant');
+  const guestTrial = !new URLSearchParams(location.search).get('mode') && new URLSearchParams(location.search).get('trial') === '1' && PUBLIC_PLAYABLE_VARIANTS.some(v => v.availabilityKey === trialVariant);
   const mixedGame = useContext(MixedGameContext);
   const mixedGameRef = useRef(mixedGame);
   mixedGameRef.current = mixedGame;
@@ -452,9 +435,9 @@ export default function App() {
   const [authTokenType, setAuthTokenType] = useState(null);
   const [mode, setMode] = useState(initialModeRef.current);
   const modeRef = useRef(initialModeRef.current);
-  const [language, setLanguage] = useState(() => getInitialLanguage());
+  const [language, setLanguage] = useLanguageState();
   // MGX branding: kitsune title screen + title → menu → game flow (2025-11-28)
-  const [currentScreen, setCurrentScreen] = useState(() => (location.state?.learningVariant || location.state?.mixedProfileId || location.state?.multiGameConfig || location.state?.multiGameResume) ? "menu" : "title");
+  const [currentScreen, setCurrentScreen] = useState(() => (guestTrial || location.state?.learningVariant || location.state?.mixedProfileId || location.state?.multiGameConfig || location.state?.multiGameResume) ? "menu" : "title");
   const [hubActiveSnapshot, setHubActiveSnapshot] = useState(null);
   const [gameUtilityModal, setGameUtilityModal] = useState(null);
   const pendingRingStartRef = useRef(false);
@@ -512,7 +495,12 @@ export default function App() {
     setTournamentBreakState(next);
   }, []);
   const completeTournamentBreak = useCallback(() => {
+    const state = tournamentStateRef.current;
+    const unusedBreak = Math.max(0, (tournamentBreakStateRef.current?.endsAt ?? 0) - Date.now());
+    if (state?.config?.levelProgression === 'clock' && Number.isFinite(state.levelEndsAt)) state.levelEndsAt -= unusedBreak;
     updateTournamentBreakState(null);
+    const saved = loadActiveMTTSnapshot();
+    if (saved && state) saveActiveMTTSnapshot({...saved, tournamentState:state, hud:{...saved.hud,breakState:null}});
   }, [updateTournamentBreakState]);
   const persistTournamentSnapshot = useCallback(
     (input) => {
@@ -1655,6 +1643,8 @@ export default function App() {
       <>
         <TournamentHUD
           {...liveTournamentHudState}
+          levelEndsAt={tournamentStateRef.current?.levelEndsAt}
+          language={language}
           compact
           placement="side"
           mobileCompact={isMobileDevice}
@@ -1700,10 +1690,11 @@ export default function App() {
   const heroHistoryLimit = 4;
   const HERO_TRACKER_STORAGE_KEY = "badugi.heroTracker";
 
-  function getHeroTrackerStorage() {
+  const getHeroTrackerStorage = useCallback(() => {
+    if (guestTrial) return null;
     if (typeof window === "undefined" || !window.localStorage) return null;
     return window.localStorage;
-  }
+  }, [guestTrial]);
 
   function loadHeroTrackerState() {
     const storage = getHeroTrackerStorage();
@@ -1730,7 +1721,7 @@ export default function App() {
     } catch (err) {
       console.warn("Failed to persist hero tracker state", err);
     }
-  }, []);
+  }, [getHeroTrackerStorage]);
 
   const [heroTracker, setHeroTracker] = useState(
     () =>
@@ -2744,9 +2735,9 @@ export default function App() {
       ];
       try {
         if (persistAsTournament) {
-          saveTournamentHandHistory(storedSnapshot);
+          if (!guestTrial) saveTournamentHandHistory(storedSnapshot);
         } else {
-          saveHandHistory(storedSnapshot);
+          if (!guestTrial) saveHandHistory(storedSnapshot);
         }
       } catch (error) {
         console.warn("[HAND_HISTORY] Failed to persist finalized hand", error);
@@ -2754,7 +2745,7 @@ export default function App() {
       handHistoryRef.current = null;
       return storedSnapshot;
     },
-    [appendCanonicalHandEvent, isTournament],
+    [appendCanonicalHandEvent, isTournament, guestTrial],
   );
 
   const forcedSeatActionsRef = useRef(new Map());
@@ -5617,7 +5608,7 @@ export default function App() {
         });
       }
       tournamentStateRef.current = nextState;
-      recordRivalHandPlayed(
+      if (!nextState.config?.practiceOnly) recordRivalHandPlayed(
         getTournamentOpponentProfileIds(nextState, { heroTableOnly: true }),
       );
       const levelChanged =
@@ -5820,7 +5811,7 @@ export default function App() {
           : inMemoryTournamentHands;
         const heroPlayerSnapshot =
           nextState.players?.[heroTournamentPlayerIdRef.current] ?? null;
-        if (heroPlayerSnapshot?.finishPlace && !nextState.config?.multiGame) {
+        if (heroPlayerSnapshot?.finishPlace && !nextState.config?.multiGame && !nextState.config?.practiceOnly) {
           const resultKey = [
             nextState.config?.id ?? "active-mtt",
             heroPlayerSnapshot.id ?? heroTournamentPlayerIdRef.current,
@@ -6898,7 +6889,7 @@ export default function App() {
   const handleStartTournamentFromHub = useCallback(
     (config, stage) => {
       if (!config || !stage?.id) return false;
-      const entry = deductConsolidatedEntryFee(stage.id);
+      const entry = config.practiceOnly ? { ok: true, entryFee: 0 } : deductConsolidatedEntryFee(stage.id);
       if (!entry.ok) {
         setCurrentScreen("tournamentHub");
         return false;
@@ -6945,10 +6936,10 @@ export default function App() {
       completedTournament.config ?? DEFAULT_STORE_TOURNAMENT_CONFIG;
     const stage = getStageById(config.stageId ?? "store");
     return handleStartTournamentFromHub(config, stage);
-  }, [handleStartTournamentFromHub]);
+  }, [handleStartTournamentFromHub, navigate]);
 
   useEffect(() => {
-    if (!location?.state?.startTournamentMTT && !location?.state?.resumeTournamentMTT) return;
+    if (guestTrial || (!location?.state?.startTournamentMTT && !location?.state?.resumeTournamentMTT)) return;
     if (autoModeInitRef.current) return;
     autoModeInitRef.current = true;
     ensureURLModeParam("store_tournament");
@@ -6962,16 +6953,18 @@ export default function App() {
       const config =
         buildTournamentConfigFromStage(requestedStageId) ??
         DEFAULT_STORE_TOURNAMENT_CONFIG;
-      handleStartTournamentFromHub(config, getStageById(requestedStageId));
+      handleStartTournamentFromHub(location.state?.customStructure ? applyCustomStructure(config, location.state.customStructure) : config, getStageById(requestedStageId));
     }
     const nextState = { ...location.state };
     delete nextState.startTournamentMTT;
     delete nextState.resumeTournamentMTT;
     delete nextState.stageId;
     delete nextState.tournamentConfigId;
+    delete nextState.customStructure;
     navigate(location.pathname, { replace: true, state: nextState });
   }, [
     ensureURLModeParam,
+    guestTrial,
     handleStartTournamentFromHub,
     location,
     navigate,
@@ -6997,9 +6990,9 @@ export default function App() {
       const config =
         buildTournamentConfigFromStage(requestedStageId) ??
         DEFAULT_STORE_TOURNAMENT_CONFIG;
-      handleStartTournamentFromHub(config, getStageById(requestedStageId));
+      handleStartTournamentFromHub(location.state?.customStructure ? applyCustomStructure(config, location.state.customStructure) : config, getStageById(requestedStageId));
     }
-  }, [handleStartTournamentFromHub, location.search, resumeTournamentMTT]);
+  }, [handleStartTournamentFromHub, location.search, location.state?.customStructure, resumeTournamentMTT]);
 
   const handleEnterFromTitle = () => {
     setCurrentScreen("menu");
@@ -11277,12 +11270,12 @@ export default function App() {
           });
         }
         if (isSingleTableDrawLowball) {
-          saveRLHandHistory(legacySnapshot);
+          if (!guestTrial) saveRLHandHistory(legacySnapshot);
           const sendId =
             legacySnapshot.handId ??
             legacySnapshot.hand_id ??
             legacySnapshot.id;
-          if (sendId && !sentHandIdsRef.current.has(sendId)) {
+          if (!guestTrial && sendId && !sentHandIdsRef.current.has(sendId)) {
             try {
               enqueueHandRecord(legacySnapshot, { flushNow: true });
               sentHandIdsRef.current.add(sendId);
@@ -11343,7 +11336,7 @@ export default function App() {
         fallbackHistory,
       ];
       try {
-        saveHandHistory(fallbackHistory);
+        if (!guestTrial) saveHandHistory(fallbackHistory);
       } catch (error) {
         console.warn("[HAND_HISTORY] fallback cash persistence failed", error);
       }
@@ -11973,7 +11966,7 @@ export default function App() {
       // canonical state.  Omitting an explicit amount prevents a render-lagged
       // street counter from turning a visible Raise button into a rejected no-op.
       amount:
-        isSingleTableBadugi || isSingleTableDrawLowball ? null : raiseAmt,
+        (isSingleTableBadugi || isSingleTableDrawLowball) && !usesVariableSizing ? null : raiseAmt,
       seatIndex: 0,
     });
     if (controllerOutcome?.snapshot) {
@@ -13363,6 +13356,7 @@ export default function App() {
   }, [phase, showNextButton]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function trySaveHandOnce({ playersSnap, dealerIdx, pots, potOverride }) {
+    if (guestTrial || tournamentStateRef.current?.config?.practiceOnly) { handSavedRef.current = true; return; }
     debugLog("[HISTORY] trySaveHandOnce called");
     try {
       const fallbackTableId =
@@ -13817,7 +13811,7 @@ export default function App() {
     raiseCount: currentRaiseCount,
     raiseCap: fixedLimitRaiseCap,
     raiseUnit: currentRaiseUnit,
-    capReached: currentRaiseCount >= fixedLimitRaiseCap,
+    capReached: normalizedGameVariant === "deuce_to_seven_single_draw" ? Boolean(heroPlayerForControls?.hasActedThisRound) : currentRaiseCount >= fixedLimitRaiseCap,
     heroPosition: heroPositionLabel,
     currentActorSeat,
     currentActorName: currentActorView?.name ?? null,
@@ -14020,14 +14014,15 @@ export default function App() {
     return (
       <>
         <AuthProvider>
-          <AuthGate
+          <AuthGate allowGuest={guestTrial}
             onAuthenticated={handleAuthSuccess}
             onAuthStateChange={handleAuthStateChange}
           >
-            {(location.state?.learningVariant || location.state?.mixedProfileId || location.state?.multiGameConfig || location.state?.multiGameResume) ? <LearningGameLaunch
-              variantId={location.state.learningVariant ?? location.state.mixedProfileId ?? 'multi-game'}
+            {(guestTrial || location.state?.learningVariant || location.state?.mixedProfileId || location.state?.multiGameConfig || location.state?.multiGameResume) ? <LearningGameLaunch
+              variantId={guestTrial ? trialVariant : location.state.learningVariant ?? location.state.mixedProfileId ?? 'multi-game'}
               onLaunch={(variantId) => {
                 navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
+                if (guestTrial) { handleSelectRing(trialVariant); return; }
                 if (location.state?.multiGameConfig || location.state?.multiGameResume) {
                   if (computeUnlockState(getPlayerProgressFromConsolidated()).multiGameLocked) { navigate('/multigame', { replace: true }); return; }
                   if (location.state.multiGameResume) {
@@ -14233,13 +14228,13 @@ export default function App() {
     return (
       <>
         <AuthProvider>
-          <AuthGate
+          <AuthGate allowGuest={guestTrial}
             onAuthenticated={handleAuthSuccess}
             onAuthStateChange={handleAuthStateChange}
           >
-            {currentScreen === 'openFaceChinese' ? <OpenFaceChineseScreen onBack={handleOpenGameSelector} /> : <ChinesePokerGameScreen
+            {currentScreen === 'openFaceChinese' ? <OpenFaceChineseScreen guest={guestTrial} onBack={guestTrial ? () => navigate('/try') : handleOpenGameSelector} /> : <ChinesePokerGameScreen guest={guestTrial}
               language={language}
-              onBack={handleOpenGameSelector}
+              onBack={guestTrial ? () => navigate('/try') : handleOpenGameSelector}
             />}
           </AuthGate>
         </AuthProvider>
@@ -14270,7 +14265,7 @@ export default function App() {
     language,
     ratingState,
     rankInfo,
-    gameTitle: currentGameTitle,
+    gameTitle: guestTrial ? `${currentGameTitle} · ${language === 'ja' ? '体験' : 'Trial'}` : currentGameTitle,
     labels: headerLabels,
     onNavigateTitle: handleBackToMenu,
     onNavigateLeaderboard: () => navigate("/leaderboard"),
@@ -14321,7 +14316,7 @@ export default function App() {
   const tablePots = potsSrc;
 
   const tableProps = {
-    mixedRotation: cashMixActiveRef.current && mode === "cash" ? mixedGame?.runtimeState : null,
+    mixedRotation: cashMixActiveRef.current && mode === "cash" ? { ...mixedGame?.runtimeState, nextName: dealerChoiceActiveRef.current ? null : mixedGame?.nextVariant?.name, nextId: dealerChoiceActiveRef.current ? null : mixedGame?.nextVariant?.id } : null,
     tableOuterBg,
     tournamentHud,
     tableSurfaceBg,
@@ -14355,13 +14350,13 @@ export default function App() {
   };
 
   const overlaysProps = {
-    reviewHandId: handIdRef.current,
+    reviewHandId: guestTrial ? null : handIdRef.current,
     handResultVisible:
       sessionSnapshot?.overlays?.handResult?.visible ?? handResultVisible,
     handResultSummary:
       sessionSnapshot?.overlays?.handResult?.summary ?? handResultSummary,
-    onNextHand: startNextHand,
-    nextHandLabel,
+    onNextHand: guestTrial ? () => navigate('/try') : startNextHand,
+    nextHandLabel: guestTrial ? (language === 'ja' ? '体験を終了・種目を選ぶ' : 'Finish trial / choose a game') : nextHandLabel,
     onReplayTarget: handleOpenReplayTarget,
     mode,
     heroBustOverlayVisible,
@@ -14390,10 +14385,10 @@ export default function App() {
     drawSelected,
     showNextButton: sessionSnapshot?.overlays?.showNextButton ?? showNextButton,
     heroCanDraw,
-    nextHandLabel,
-    onNextHand: startNextHand,
+    nextHandLabel: guestTrial ? (language === 'ja' ? '体験を終了・種目を選ぶ' : 'Finish trial / choose a game') : nextHandLabel,
+    onNextHand: guestTrial ? () => navigate('/try') : startNextHand,
     isCashGame: mode === "cash",
-    onCashOut: handleCashOut,
+    onCashOut: guestTrial ? () => navigate('/try') : handleCashOut,
   };
 
   const debugProps = {
@@ -14457,7 +14452,7 @@ export default function App() {
   return (
     <>
       <AuthProvider>
-        <AuthGate
+        <AuthGate allowGuest={guestTrial}
           onAuthenticated={handleAuthSuccess}
           onAuthStateChange={handleAuthStateChange}
         >
@@ -14711,7 +14706,7 @@ function DebugHud({
   );
 }
 
-function AuthGate({ children, onAuthenticated, onAuthStateChange }) {
+function AuthGate({ children, onAuthenticated, onAuthStateChange, allowGuest = false }) {
   const { authState } = useAuth();
   useEffect(() => {
     if (typeof onAuthStateChange === "function") {
@@ -14719,7 +14714,7 @@ function AuthGate({ children, onAuthenticated, onAuthStateChange }) {
     }
   }, [authState, onAuthStateChange]);
   useEffect(() => {
-    if (!authState.isAuthenticated || !authState.accessToken) {
+    if (allowGuest || !authState.isAuthenticated || !authState.accessToken) {
       return undefined;
     }
     const stopAutoSync = startAutoSync(30000, {
@@ -14731,8 +14726,8 @@ function AuthGate({ children, onAuthenticated, onAuthStateChange }) {
         stopAutoSync();
       }
     };
-  }, [authState.accessToken, authState.isAuthenticated, authState.tokenType]);
-  if (!authState.isAuthenticated) {
+  }, [authState.accessToken, authState.isAuthenticated, authState.tokenType, allowGuest]);
+  if (!allowGuest && !authState.isAuthenticated) {
     return <AuthScreen onAuthenticated={onAuthenticated} />;
   }
   return children;

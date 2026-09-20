@@ -164,7 +164,7 @@ def test_heads_up_all_in_does_not_put_uncallable_chips_in_the_pot():
     actor = room.players[room.current_actor_id]
     opponent = manager._other_player(room, actor.user_id)
     assert opponent
-    opponent.stack = 30
+    opponent.stack = 10
 
     before_total = sum(player.stack for player in room.players.values()) + room.pot
     manager.act(room.code, user_id=actor.user_id, action="raise", amount=500)

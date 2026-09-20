@@ -1,3 +1,5 @@
+import { useLanguage } from '../preferences/language.js';
+import LanguageSelect from '../preferences/LanguageSelect.jsx';
 import { reviewKey } from "../review/reviewStore.js";
 import ReviewBookmarkButton from "../review/ReviewBookmarkButton.jsx";
 import React, { useMemo, useState } from "react";
@@ -22,12 +24,6 @@ import {
   downloadHistoryExport,
 } from "../utils/historyExport.js";
 
-const fmt = new Intl.DateTimeFormat("ja-JP", {
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-});
 
 function getCashHandEnd(hand) {
   return Array.isArray(hand?.events)
@@ -129,6 +125,8 @@ function getFeedbackKeyHands(entry) {
 }
 
 export default function HistoryScreen() {
+  const ja = useLanguage() === 'ja';
+  const fmt = new Intl.DateTimeFormat(ja ? 'ja-JP' : 'en-US', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
   const navigate = useNavigate();
   const cashHands = useMemo(() => getHands({ limit: 100 }), []);
   const tournaments = useMemo(() => getTournaments({ limit: 200 }), []);
@@ -274,16 +272,16 @@ export default function HistoryScreen() {
       <header className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-emerald-300">History</p>
-          <h1 className="text-2xl sm:text-3xl font-extrabold">トーナメント & ハンド履歴</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold">{ja ? 'トーナメント & ハンド履歴' : 'Tournament & hand history'}</h1><LanguageSelect />
         </div>
-        <button type="button" onClick={() => navigate("/learn/review")} className="min-h-11 rounded-full border border-emerald-300/40 px-4 text-emerald-200">復習一覧</button>
+        <button type="button" onClick={() => navigate("/learn/review")} className="min-h-11 rounded-full border border-emerald-300/40 px-4 text-emerald-200">{ja ? '復習一覧' : 'Review list'}</button>
         <button
           type="button"
           onClick={handleExportHistory}
           data-testid="export-hand-history"
           className="px-4 py-2 rounded-full border border-emerald-300/40 text-emerald-100 hover:bg-emerald-300/10 transition text-sm"
         >
-          履歴をJSON保存
+          {ja ? '履歴をJSON保存' : 'Export history (JSON)'}
         </button>
         <button
           type="button"
@@ -298,17 +296,16 @@ export default function HistoryScreen() {
         <section className="rounded-3xl border border-emerald-400/20 bg-emerald-950/20 p-4 sm:p-6 space-y-4">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h2 className="text-lg font-semibold">プレイフィードバック</h2>
+              <h2 className="text-lg font-semibold">{ja ? 'プレイフィードバック' : 'Play feedback'}</h2>
               <p className="text-sm text-slate-300">
-                30ハンド以上のキャッシュゲームまたは選択中トーナメント履歴を使って、VPIP/PFR、ROI/チップ増減、
-                showdown/all-in/split potをまとめたフィードバックを作成します。
+                {ja ? '30ハンド以上の履歴から、参加率やチップ増減を振り返ります。' : 'Review participation rates and chip changes from at least 30 recorded hands.'}
               </p>
               <p className="mt-2 text-xs text-slate-400">
-                対象: {selectedId ? `Tournament ${selectedId}` : "Cash game"} / Hands:{" "}
+                {ja ? '対象' : 'Scope'}: {selectedId ? `Tournament ${selectedId}` : "Cash game"} / Hands:{" "}
                 {feedbackPayloadResult.handCount} / Minimum: {MIN_FEEDBACK_HANDS}
               </p>
               <label className="mt-3 block max-w-sm text-xs font-semibold text-slate-300">
-                フィードバック対象
+                {ja ? 'フィードバック対象' : 'Hands to review'}
                 <select
                   className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-emerald-300/30"
                   value={selectedFeedbackScope}
@@ -335,17 +332,17 @@ export default function HistoryScreen() {
               }
               className="rounded-full bg-emerald-400 px-4 py-2 text-sm font-bold text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-slate-300"
             >
-              {feedbackState.loading ? "解析中..." : "AIフィードバック作成"}
+              {feedbackState.loading ? (ja ? '解析中...' : 'Analyzing...') : (ja ? 'フィードバックを作成' : 'Create feedback')}
             </button>
           </div>
           {!hasStoredFeedbackAuth() && (
             <p className="rounded-2xl border border-amber-300/20 bg-amber-300/10 p-3 text-sm text-amber-100">
-              ログインするとAIフィードバックを送信できます。
+              {ja ? 'ログインするとAIフィードバックを送信できます。' : 'Log in to request play feedback.'}
             </p>
           )}
           {!feedbackPayloadResult.eligible && (
             <p className="rounded-2xl border border-white/10 bg-slate-950/40 p-3 text-sm text-slate-300">
-              まだフィードバック対象外です。{MIN_FEEDBACK_HANDS}ハンド以上プレイしてください。
+              {ja ? `${MIN_FEEDBACK_HANDS}ハンド以上プレイすると利用できます。` : `Available after ${MIN_FEEDBACK_HANDS} hands.`}
             </p>
           )}
           {feedbackState.error && (
@@ -412,9 +409,9 @@ export default function HistoryScreen() {
         <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-4 sm:p-6 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold">キャッシュゲーム履歴</h2>
+              <h2 className="text-lg font-semibold">{ja ? 'キャッシュゲーム履歴' : 'Cash game history'}</h2>
               <p className="text-sm text-slate-400">
-                直近の完了ハンドを確認できます。ポット、勝者、ショーダウン、アクション数を残します。
+                {ja ? '直近の完了ハンドを確認できます。ポット、勝者、ショーダウン、アクション数を残します。' : 'Completed hands with pots, winners, showdowns and action counts.'}
               </p>
             </div>
             <span className="rounded-full border border-white/10 bg-slate-950/50 px-3 py-1 text-xs text-slate-300">
@@ -422,7 +419,7 @@ export default function HistoryScreen() {
             </span>
           </div>
           {cashHands.length === 0 ? (
-            <div className="p-6 text-sm text-slate-400">まだキャッシュゲームのハンド履歴がありません。</div>
+            <div className="p-6 text-sm text-slate-400">{ja ? 'まだキャッシュゲームのハンド履歴がありません。' : 'No cash game hands yet.'}</div>
           ) : (
             <div className="space-y-3">
               {cashHands.map((hand) => {
@@ -555,27 +552,27 @@ export default function HistoryScreen() {
 
         <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-4 sm:p-6 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold">トーナメント一覧</h2>
+            <h2 className="text-lg font-semibold">{ja ? 'トーナメント一覧' : 'Tournaments'}</h2>
             <input
               type="search"
-              placeholder="ID / Tier を検索..."
+              placeholder={ja ? 'ID / Tier を検索...' : 'Search ID / tier...'}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="rounded-full bg-slate-950/40 border border-white/10 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
           {filtered.length === 0 ? (
-            <div className="p-6 text-sm text-slate-400">まだトーナメント履歴がありません。</div>
+            <div className="p-6 text-sm text-slate-400">{ja ? 'まだトーナメント履歴がありません。' : 'No tournament history yet.'}</div>
           ) : (
             <div className="overflow-x-auto rounded-2xl border border-white/5">
               <table className="min-w-full text-sm">
                 <thead className="bg-slate-950/60 text-slate-300">
                   <tr>
-                    <th className="text-left p-3">日付</th>
+                    <th className="text-left p-3">{ja ? '日付' : 'Date'}</th>
                     <th className="text-right p-3">Buy-in</th>
-                    <th className="text-right p-3">参加数</th>
-                    <th className="text-right p-3">着順</th>
-                    <th className="text-right p-3">賞金</th>
+                    <th className="text-right p-3">{ja ? '参加数' : 'Entrants'}</th>
+                    <th className="text-right p-3">{ja ? '着順' : 'Place'}</th>
+                    <th className="text-right p-3">{ja ? '賞金' : 'Prize'}</th>
                     <th className="text-left p-3">Tier</th>
                   </tr>
                 </thead>
@@ -607,7 +604,7 @@ export default function HistoryScreen() {
 
         <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-4 sm:p-6 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h3 className="text-lg font-semibold">ハンド振り返り</h3>
+            <h3 className="text-lg font-semibold">{ja ? 'ハンド振り返り' : 'Hand review'}</h3>
             {selectedId && (
               <span className="text-xs text-slate-400">
                 Tournament ID:
@@ -616,9 +613,9 @@ export default function HistoryScreen() {
             )}
           </div>
           {!selectedId ? (
-            <p className="text-sm text-slate-400">トーナメントを選択するとハンド履歴が表示されます。</p>
+            <p className="text-sm text-slate-400">{ja ? 'トーナメントを選択するとハンド履歴が表示されます。' : 'Select a tournament to see its hands.'}</p>
           ) : hands.length === 0 ? (
-            <p className="text-sm text-slate-400">このトーナメントのハンド履歴はまだありません。</p>
+            <p className="text-sm text-slate-400">{ja ? 'このトーナメントのハンド履歴はまだありません。' : 'No hands saved for this tournament yet.'}</p>
           ) : (
             <div className="space-y-3">
               {hands.map((hand) => (

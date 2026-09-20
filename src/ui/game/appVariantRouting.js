@@ -212,6 +212,7 @@ export const BOARD_APP_VARIANT_IDS = new Set([
 ]);
 
 export const NO_LIMIT_APP_VARIANT_IDS = new Set([
+  "deuce_to_seven_single_draw",
   APP_VARIANT_IDS.NLH,
   APP_VARIANT_IDS.SUPER_HOLDEM,
 ]);

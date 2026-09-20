@@ -1,3 +1,8 @@
+import MeetupsScreen from './ui/meetups/MeetupsScreen.jsx';
+import TrialScreen from './ui/screens/TrialScreen.jsx';
+import ToolsScreen from './ui/tools/ToolsScreen.jsx';
+import SharedMixScreen from './ui/sharing/SharedMixScreen.jsx';
+import { useLanguageState } from './ui/preferences/language.js';
 import PracticeScreen from "./ui/practice/PracticeScreen.jsx";
 import ReviewScreen from "./ui/review/ReviewScreen.jsx";
 import RuleQuizScreen from "./ui/learning/RuleQuizScreen.jsx";
@@ -26,6 +31,7 @@ import LearningHubScreen from "./ui/learning/LearningHubScreen.jsx";
 
 export default function RootApp() {
   const location = useLocation();
+  const [language, onChangeLanguage] = useLanguageState();
   useLayoutEffect(() => {
     if (/^\/(dev\/)?learn(?:\/|$)/.test(location.pathname)) window.scrollTo(0, 0);
   }, [location.pathname]);
@@ -33,7 +39,8 @@ export default function RootApp() {
   return (
     <MixedGameProvider>
       <Routes>
-        <Route path="/dev/menu" element={<MainMenuScreen coachingPreviewEnabled={coachingPreviewEnabled} />} />
+        <Route path="/shared-mix" element={<SharedMixScreen />} />
+        <Route path="/dev/menu" element={<MainMenuScreen language={language} onChangeLanguage={onChangeLanguage} coachingPreviewEnabled={coachingPreviewEnabled} />} />
         <Route
           path="/dev/learning-dashboard-preview"
           element={coachingPreviewEnabled ? <LearningDashboardPreviewScreen /> : <Navigate to="/dev/menu" replace />}
@@ -54,7 +61,7 @@ export default function RootApp() {
             </GameEngineProvider>
           }
         />
-        <Route path="/menu" element={<MainMenuScreen coachingPreviewEnabled={coachingPreviewEnabled} />} />
+        <Route path="/menu" element={<MainMenuScreen language={language} onChangeLanguage={onChangeLanguage} coachingPreviewEnabled={coachingPreviewEnabled} />} />
         <Route
           path="/learning-dashboard-preview"
           element={coachingPreviewEnabled ? <LearningDashboardPreviewScreen /> : <Navigate to="/menu" replace />}
@@ -67,6 +74,9 @@ export default function RootApp() {
         <Route path="/dev/learn/review" element={<ReviewScreen />} />
         <Route path="/learn/quiz" element={<RuleQuizScreen />} />
         <Route path="/dev/learn/quiz" element={<RuleQuizScreen />} />
+        <Route path="/meetups" element={<MeetupsScreen />} />
+        <Route path="/try" element={<TrialScreen />} />
+        <Route path="/tools" element={<ToolsScreen />} />
         <Route path="/learn" element={<LearningHubScreen />} />
         <Route path="/dev/learn" element={<LearningHubScreen />} />
         <Route path="/mixed" element={<MixedGameScreen />} />

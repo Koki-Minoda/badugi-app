@@ -6,7 +6,7 @@ export const MGX_LOCALES = {
   en: {
     title: {
       modeSelect: "Mode Select",
-      heading: "Poker Platform",
+      heading: "Choose a game",
       description:
         "Choose a mode and start playing. MGX supports cash games, tournaments, friend matches, mixed formats, and CPU practice.",
     },
@@ -27,9 +27,9 @@ export const MGX_LOCALES = {
       jumpIn: "Jump in immediately",
       settingsTitle: "Settings",
       settingsBody:
-        "Settings will be added later. Use table overlays for quick toggles. Language switching is available below.",
+        "Choose your display language.",
       rulesTitle: "Game Rules",
-      rulesBody: "Detailed rules for each variant will appear here in a future update.",
+      rulesBody: "Check how each game is played.",
       language: "Language",
     },
     common: {
@@ -55,7 +55,7 @@ export const MGX_LOCALES = {
     info: {
       defaultTitle: "Need a refresher?",
       defaultBody:
-        "Rules and strategy tips will appear in the overlay accessible via the ? icon. Settings hold audio, table, and animation preferences.",
+        "Open Game Rules to check the rules for each game.",
       cashTitle: "Cash Game",
       cashBody: "Play stack-based cash games and choose from supported variants.",
       tournamentTitle: "Tournament",
@@ -63,7 +63,7 @@ export const MGX_LOCALES = {
       friendTitle: "Friend Match",
       friendBody: "Configure and host a private table for friends.",
       settingsTitle: "Settings",
-      settingsBody: "Adjust table layout, audio, HUD information, and language.",
+      settingsBody: "Change your display language and player profile.",
       historyTitle: "Hand History",
       historyBody: "Review your latest hands, inspect blinds, and jump into replays.",
     },
@@ -71,7 +71,7 @@ export const MGX_LOCALES = {
   ja: {
     title: {
       modeSelect: "モード選択",
-      heading: "ポーカープラットフォーム",
+      heading: "ゲームを選ぶ",
       description:
         "遊びたいモードを選んでください。MGXではキャッシュゲーム、トーナメント、フレンドマッチ、ミックスゲーム、CPU練習を遊べます。",
     },
@@ -92,9 +92,9 @@ export const MGX_LOCALES = {
       jumpIn: "すぐに開始",
       settingsTitle: "設定",
       settingsBody:
-        "詳細設定は今後追加予定です。現在はテーブル上のクイック設定を利用できます。言語はここで切り替えられます。",
+        "表示言語を選んでください。",
       rulesTitle: "ゲームルール",
-      rulesBody: "各ゲームの詳しいルールは今後この画面に追加予定です。",
+      rulesBody: "種目ごとの勝ち方と進め方を確認できます。",
       language: "言語",
     },
     common: {
@@ -120,7 +120,7 @@ export const MGX_LOCALES = {
     info: {
       defaultTitle: "ヘルプ",
       defaultBody:
-        "ルールや戦略のヒントは、左上の「?」アイコンから開くオーバーレイに表示されます。サウンドやテーブル、アニメーションなどは設定から変更できます。",
+        "ルール画面で種目ごとの勝ち方と進め方を確認できます。",
       cashTitle: "キャッシュゲーム",
       cashBody: "スタックを持って参加する通常卓です。対応済みのゲームを選んでプレイできます。",
       tournamentTitle: "トーナメント",
@@ -128,7 +128,7 @@ export const MGX_LOCALES = {
       friendTitle: "フレンドマッチ",
       friendBody: "友人だけの専用テーブルを作成し、プライベートに対戦できます。",
       settingsTitle: "設定",
-      settingsBody: "テーブルレイアウト、サウンド、HUD 情報、言語などを変更します。",
+      settingsBody: "表示言語やプレイヤー情報を変更します。",
       historyTitle: "ハンド履歴",
       historyBody: "直近のハンドを確認し、ブラインドやリプレイを振り返れます。",
     },

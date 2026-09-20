@@ -95,6 +95,7 @@ state_read_rate_limiter = StateReadRateLimiter()
 
 class CreateRoomRequest(BaseModel):
     variantId: str = "badugi"
+    seats: int = Field(2, ge=2, le=6)
     startingStack: int = Field(2000, ge=200, le=1_000_000)
     smallBlind: int = Field(10, ge=1, le=100_000)
     bigBlind: int = Field(20, ge=1, le=200_000)
@@ -121,7 +122,7 @@ class RoomActionRequest(RoomCommandRequest):
 
 
 class RoomDrawRequest(RoomCommandRequest):
-    cardIndexes: list[int] = Field(default_factory=list, max_length=4)
+    cardIndexes: list[int] = Field(default_factory=list, max_length=5)
 
     @field_validator("cardIndexes", mode="before")
     @classmethod
@@ -181,10 +182,10 @@ def create_room(
     user: User = Depends(get_current_user),
 ):
     _mark_private(response)
-    if payload.variantId.lower() != "badugi":
+    if payload.variantId.lower() not in {"badugi", "ace_to_five_triple_draw", "deuce_to_seven_triple_draw"}:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"code": "unsupported_variant", "message": "Friend Match currently supports Badugi only"},
+            detail={"code": "unsupported_variant", "message": "Choose Badugi, A-5 TD or 2-7 TD"},
         )
     try:
         room = p2p_room_manager.create_room(
@@ -194,6 +195,8 @@ def create_room(
             small_blind=payload.smallBlind,
             big_blind=payload.bigBlind,
             ante=payload.ante,
+            variant_id=payload.variantId.lower(),
+            max_players=payload.seats,
         )
     except P2PError as exc:
         raise _http_error(exc) from exc

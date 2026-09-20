@@ -9,6 +9,7 @@ import { PRO_MIXED_PRESETS } from "../../config/mixed/proPresets.js";
 import { listEngines } from "../../games/core/engineRegistry.js";
 import {
   buildProfileFromPreset,
+  findNextPlayableIndex,
   cloneProfile,
   resolveInitialGame,
   advanceRotationState,
@@ -55,7 +56,13 @@ function safeLoadProfiles() {
     if (!Array.isArray(parsed) || parsed.length === 0) {
       return presetProfilesClone();
     }
-    return parsed.map(buildProfileFromPreset).map(cloneProfile);
+    return parsed.map(profile => {
+      const old = { 'mix-horse-pro':['B02','B06','ST3','ST1','ST2'], 'mix-8game-pro':['B01','B02','B06','ST3','ST1','ST2','D01','B05'], 'mix-10game-pro':['B01','B02','B06','ST3','ST1','ST2','D01','B05','D03','S01'] };
+      const current = basePresetMap.get(profile.id);
+      if (current && JSON.stringify(profile.selectedGameIds) === JSON.stringify(old[profile.id]) && profile.name === current.name) return {...profile, selectedGameIds:[...current.selectedGameIds], weightedTable:{...current.weightedTable}, description:current.description};
+      if (profile.id === 'mix-pro-dealers-choice' && profile.name === "Dealer's Choice Pro") return {...profile, name:current.name, formatLabel:current.formatLabel, description:current.description};
+      return profile;
+    }).map(buildProfileFromPreset).map(cloneProfile);
   } catch (err) {
     console.warn("[MixedGame] Failed to load profiles", err);
     return presetProfilesClone();
@@ -192,6 +199,9 @@ export function MixedGameProvider({ children }) {
         )
       : 0;
 
+  const sessionProfile = sessionProfileRef.current;
+  const nextIndex = sessionProfile?.selectionMode === 'FIXED' ? findNextPlayableIndex(sessionProfile, (runtimeState.currentIndex ?? 0) + 1, isVariantPlayable) : null;
+  const nextVariant = nextIndex !== null ? getVariantById(sessionProfile.selectedGameIds[nextIndex]) : null;
   const value = useMemo(
     () => ({
       profiles,
@@ -210,6 +220,7 @@ export function MixedGameProvider({ children }) {
       rotationHistory: runtimeState.history ?? [],
       isMixedMode: Boolean(runtimeState.activeProfileId),
       handleHandCompletion,
+      nextVariant,
       remainingHands,
       isVariantPlayable,
       playableEngines,
@@ -220,6 +231,7 @@ export function MixedGameProvider({ children }) {
       activeProfile,
       activeVariant,
       activeEngineId,
+      nextVariant,
       remainingHands,
       playableEngines,
       isVariantPlayable,

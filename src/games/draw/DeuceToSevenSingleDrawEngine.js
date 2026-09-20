@@ -8,6 +8,7 @@ export class DeuceToSevenSingleDrawEngine extends DeuceToSevenTripleDrawEngine {
       displayName: "2-7 Single Draw",
       variantId: "S01",
       evaluatorTag: "low-27",
+      bettingStructure: "no-limit",
       lowType: "27",
       cpuStrategy: "ruleBasedS01",
       maxDrawRounds: 1,

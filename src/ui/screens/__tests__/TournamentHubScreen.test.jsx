@@ -29,10 +29,10 @@ describe("TournamentHubScreen", () => {
     expect(screen.getAllByText("AI: Iron").length).toBeGreaterThan(0);
     expect(screen.getAllByText("AI: WorldMaster").length).toBeGreaterThan(0);
     expect(screen.getByTestId("variant-unlock-badugi").textContent).toContain(
-      "PLAYABLE",
+      "遊べます",
     );
     expect(screen.getByTestId("variant-unlock-2-7td").textContent).toContain(
-      "LOCKED",
+      "参加条件あり",
     );
   });
 
@@ -45,7 +45,7 @@ describe("TournamentHubScreen", () => {
       "Store Tournament",
     );
     expect(screen.getByTestId("tournament-stage-detail").textContent).toContain(
-      "Players",
+      "参加人数",
     );
     expect(screen.getByTestId("tournament-stage-detail").textContent).toContain(
       "500",
@@ -119,7 +119,7 @@ describe("TournamentHubScreen", () => {
     ];
     render(<TournamentHubScreen stages={stages} onStartTournament={handleStart} />);
 
-    expect(screen.getAllByText(/coming soon/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/準備中/i).length).toBeGreaterThan(0);
     expect(screen.getByTestId("tournament-start").disabled).toBe(true);
     fireEvent.click(screen.getByTestId("tournament-start"));
     expect(handleStart).not.toHaveBeenCalled();
@@ -137,7 +137,7 @@ describe("TournamentHubScreen", () => {
     );
 
     expect(screen.getByTestId("variant-unlock-2-7td").textContent).toContain(
-      "PLAYABLE",
+      "遊べます",
     );
   });
 
@@ -156,7 +156,7 @@ describe("TournamentHubScreen", () => {
     render(<TournamentHubScreen />);
 
     expect(screen.getByTestId("variant-unlock-2-7td").textContent).toContain(
-      "PLAYABLE",
+      "遊べます",
     );
   });
 
@@ -182,7 +182,7 @@ describe("TournamentHubScreen", () => {
     );
 
     expect(screen.getByTestId("tournament-resume-panel").textContent).toContain(
-      "Resume Tournament",
+      "大会を再開",
     );
     fireEvent.click(screen.getByTestId("tournament-resume"));
     expect(handleResume).toHaveBeenCalledWith(snapshot);
@@ -205,7 +205,7 @@ describe("TournamentHubScreen", () => {
     render(<TournamentHubScreen />);
 
     expect(screen.getByTestId("tournament-resume-panel").textContent).toContain(
-      "Resume Tournament",
+      "大会を再開",
     );
   });
 

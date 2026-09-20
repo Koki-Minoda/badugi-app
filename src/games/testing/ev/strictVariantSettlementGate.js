@@ -365,7 +365,7 @@ function evaluateArchieHigh(cards) {
     "full-house",
     "four-of-a-kind",
     "straight-flush",
-  ].includes(evaluation.metadata?.category);
+  ].includes(evaluation.metadata?.category) && (evaluation.metadata?.category !== "one-pair" || (evaluation.metadata?.ranks?.[0] ?? 0) >= 9);
   return qualifies ? evaluation : null;
 }
 
@@ -387,7 +387,7 @@ function buildDrawEvaluations(variantId, afterState) {
         archieHigh: evaluateArchieHigh(cards),
         low27,
         lowA5,
-        badugi: evaluateBadugiHand({ cards, mode: "low" }),
+        badugi: evaluateBadugiHand({ cards, mode: "low", aceHigh: ["D04","S05"].includes(variantId) }),
         badugiHigh: evaluateBadugiHand({ cards, mode: "high" }),
       };
     })
@@ -420,11 +420,12 @@ function verifyDrawPotWinners(variantId, afterState, result) {
   for (const [resultPotIndex, pot] of (result?.potDetails ?? []).entries()) {
     const amount = Math.max(0, Number(pot?.amount ?? pot?.potAmount) || 0);
     const component = pot.component ?? "main";
-    const evaluationKey = drawEvaluationKey(variantId, component);
+    let evaluationKey = drawEvaluationKey(variantId, component);
     const explicitEligible = Array.isArray(pot.eligibleSeatIndexes) && pot.eligibleSeatIndexes.length
       ? pot.eligibleSeatIndexes
       : null;
     const eligible = new Set(explicitEligible ?? liveSeats);
+    if (variantId === 'D07' && component === 'archieHigh' && !evaluations.some(e => eligible.has(e.seatIndex) && e.archieHigh) && !evaluations.some(e => eligible.has(e.seatIndex) && e.lowA5?.qualifies)) evaluationKey = 'high';
     const candidates = evaluations.filter((entry) => {
       if (!eligible.has(entry.seatIndex)) return false;
       const evaluation = entry[evaluationKey];

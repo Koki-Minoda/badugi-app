@@ -433,7 +433,7 @@
         "priorityPhase":  1,
         "status":  "live",
         "engineKey":  "archie_triple_draw",
-        "description":  "Triple-draw split pot between pair-or-better high and 8-or-better A-5 low."
+        "description":  "Triple-draw split pot: nines-or-better high and eight-or-better A-5 low. If neither qualifies, best high wins."
     },
     {
         "id":  "S01",
@@ -442,7 +442,7 @@
         "holeCards":  5,
         "drawRounds":  1,
         "board":  null,
-        "betting":  "fixed-limit",
+        "betting":  "no-limit",
         "evaluators":  [
                            "low-27"
                        ],
@@ -456,7 +456,7 @@
         "priorityPhase":  1,
         "status":  "live",
         "engineKey":  "deuce_to_seven_single_draw",
-        "description":  "Single-draw 2-7 lowball using one draw and two fixed-limit betting streets."
+        "description":  "No-limit 2-7 lowball with one draw."
     },
     {
         "id":  "S02",

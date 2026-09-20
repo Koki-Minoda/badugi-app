@@ -39,7 +39,7 @@ describe("Single draw lowball engines", () => {
       evaluator: "low-27",
       maxDrawRounds: 1,
       bigBetStartsAtDrawRound: 1,
-      raiseCap: 4,
+      bettingStructure: "no-limit",
     });
   });
 
@@ -140,7 +140,7 @@ describe("Single draw lowball engines", () => {
       category: "single-draw",
       drawRounds: 1,
       engineKey: "deuce_to_seven_single_draw",
-      summary: "5 cards; 1 draw; fixed limit",
+      summary: "5 cards; 1 draw; no limit",
     });
     expect(getVariantProfile("S02")).toMatchObject({
       id: "S02",

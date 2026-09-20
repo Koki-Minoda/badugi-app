@@ -61,7 +61,7 @@ describe("Core draw lowball fixed-limit raise cap", () => {
     expect(result.events.find((event) => event.type === "invalidAction")).toBeUndefined();
   });
 
-  it.each(CASES)("%s hides/rejects raises after the five-bet cap", (_, ControllerClass, EngineClass) => {
+  it.each(CASES.filter(([id]) => id !== "S01"))("%s hides/rejects raises after the five-bet cap", (_, ControllerClass, EngineClass) => {
     const controller = buildController(ControllerClass, EngineClass);
     const state = controller.createNewHandState(controller.createInitialState());
     state.engineState.street = "BET";
@@ -84,7 +84,7 @@ describe("Core draw lowball fixed-limit raise cap", () => {
     );
   });
 
-  it.each(CASES)("%s allows exactly the fourth raise before the cap closes", (_, ControllerClass, EngineClass) => {
+  it.each(CASES.filter(([id]) => id !== "S01"))("%s allows exactly the fourth raise before the cap closes", (_, ControllerClass, EngineClass) => {
     const controller = buildController(ControllerClass, EngineClass);
     const state = controller.createNewHandState(controller.createInitialState());
     state.engineState.street = "BET";

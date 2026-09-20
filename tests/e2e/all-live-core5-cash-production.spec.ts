@@ -31,6 +31,7 @@ const deviceFilter = new Set(
     .filter(Boolean),
 );
 const RELEASE_CANDIDATE_VARIANTS = [
+  { variant: "flh", displayName: "Fixed-Limit Holdem", initialCardCount: 2 },
   { variant: "plo", displayName: "Pot-Limit Omaha", initialCardCount: 4 },
   { variant: "plo8", displayName: "PLO8", initialCardCount: 4 },
   { variant: "flo8", displayName: "FLO8", initialCardCount: 4 },
@@ -65,6 +66,8 @@ const requestedReleaseCandidates = variantFilter.size === 0
     );
 const selectedVariants = [...publicVariants, ...requestedReleaseCandidates];
 const VARIABLE_BETTING_VARIANTS = new Set([
+  "S01",
+  "deuce_to_seven_single_draw",
   "nlh",
   "super_holdem",
   "plo",

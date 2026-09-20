@@ -77,6 +77,26 @@ def badugi_rank(cards: list[str]) -> tuple[int, tuple[int, ...]]:
     return best or (0, ())
 
 
+def low_rank(cards: list[str], variant: str) -> tuple:
+    values = [_rank_value(c) for c in cards]
+    if variant == "deuce_to_seven_triple_draw":
+        values = [14 if v == 1 else v for v in values]
+    groups = sorted(((values.count(v), v) for v in set(values)), reverse=True)
+    pattern = [count for count, _ in groups]
+    flush = len({c[1] for c in cards}) == 1 and variant == "deuce_to_seven_triple_draw"
+    straight = len(set(values)) == 5 and max(values) - min(values) == 4 and variant == "deuce_to_seven_triple_draw"
+    if straight and flush: category, ranks = 8, [max(values)]
+    elif pattern[0] == 4: category, ranks = 7, [v for _, v in groups]
+    elif pattern == [3, 2]: category, ranks = 6, [v for _, v in groups]
+    elif flush: category, ranks = 5, sorted(values, reverse=True)
+    elif straight: category, ranks = 4, [max(values)]
+    elif pattern[0] == 3: category, ranks = 3, [v for _, v in groups]
+    elif pattern[:2] == [2, 2]: category, ranks = 2, [v for _, v in groups]
+    elif pattern[0] == 2: category, ranks = 1, [v for _, v in groups]
+    else: category, ranks = 0, sorted(values, reverse=True)
+    return (-category, tuple(-v for v in ranks))
+
+
 @dataclass
 class Player:
     user_id: str
@@ -88,6 +108,8 @@ class Player:
     bet: int = 0
     folded: bool = False
     hand: list[str] = field(default_factory=list)
+    committed: int = 0
+    departed: bool = False
 
 
 @dataclass
@@ -112,6 +134,10 @@ class Room:
     small_blind: int
     big_blind: int
     ante: int
+    variant_id: str = "badugi"
+    max_players: int = 2
+    discard: list[str] = field(default_factory=list)
+    raise_count: int = 0
     created_at: float = field(default_factory=time.time)
     updated_at: float = field(default_factory=time.time)
     players: dict[str, Player] = field(default_factory=dict)
@@ -138,6 +164,7 @@ class Room:
 class P2PRoomManager:
     def __init__(self) -> None:
         self._rooms: dict[str, Room] = {}
+        self._connections: set[tuple[str, str]] = set()
         self._lock = threading.RLock()
         self._rng = secrets.SystemRandom()
         self._store: RoomStore | None = None
@@ -171,6 +198,7 @@ class P2PRoomManager:
     def reset(self) -> None:
         with self._lock:
             self._rooms.clear()
+            self._connections.clear()
 
     def room_codes_for_user(self, user_id: str) -> list[str]:
         """Return active room codes containing a user."""
@@ -213,7 +241,13 @@ class P2PRoomManager:
         small_blind: int = 10,
         big_blind: int = 20,
         ante: int = 0,
+        variant_id: str = "badugi",
+        max_players: int = 2,
     ) -> Room:
+        if variant_id not in {"badugi", "ace_to_five_triple_draw", "deuce_to_seven_triple_draw"}:
+            raise P2PError("unsupported_variant", "Choose Badugi, A-5 TD or 2-7 TD")
+        if isinstance(max_players, bool) or max_players not in range(2, 7):
+            raise P2PError("invalid_seats", "Choose 2 to 6 seats")
         if starting_stack < big_blind * 10:
             raise P2PError("invalid_stack", "Starting stack must be at least 10 big blinds")
         if small_blind <= 0 or big_blind < small_blind or ante < 0:
@@ -240,6 +274,8 @@ class P2PRoomManager:
                 small_blind=small_blind,
                 big_blind=big_blind,
                 ante=ante,
+                variant_id=variant_id,
+                max_players=max_players,
             )
             room.players[user_id] = Player(user_id, display_name, 0, starting_stack)
             self._rooms[code] = room
@@ -289,9 +325,10 @@ class P2PRoomManager:
                 room.players[user_id].display_name = display_name
                 self._record(room, "player_profile_updated", user_id=user_id)
             return
-        if len(room.players) >= 2 or room.phase != "waiting":
+        if len(room.players) >= room.max_players or room.phase != "waiting":
             raise P2PError("room_unavailable", "Room is full or already playing")
-        room.players[user_id] = Player(user_id, display_name, 1, room.starting_stack)
+        seat = next(seat for seat in range(room.max_players) if all(p.seat != seat for p in room.players.values()))
+        room.players[user_id] = Player(user_id, display_name, seat, room.starting_stack)
         self._record(room, "player_joined", user_id=user_id)
 
     def leave_room(self, code: str, *, user_id: str) -> Room | None:
@@ -314,6 +351,35 @@ class P2PRoomManager:
     def _leave_room_on_snapshot(self, room: Room, *, user_id: str) -> None:
         if user_id not in room.players:
             raise P2PError("not_in_room", "Player is not in this room")
+        if room.phase not in {"waiting", "showdown"} and len(room.players) > 2:
+            if user_id == room.owner_id:
+                for p in room.players.values():
+                    p.stack += p.committed
+                    p.committed = 0
+                room.pot = 0
+                room.closed = True
+                self._record(room, "room_closed", user_id=user_id)
+                return
+            player = room.players[user_id]
+            player.folded = True
+            player.departed = True
+            player.connected = False
+            room.acted.add(user_id)
+            room.pending_draw.discard(user_id)
+            active = [p for p in room.players.values() if not p.folded]
+            self._record(room, "player_left", user_id=user_id)
+            if len(active) == 1:
+                self._finish_hand(room, winner_ids=[active[0].user_id], reason="opponent_left")
+            elif room.phase in BETTING_PHASES and self._betting_round_complete(room):
+                self._refund_uncalled_bet(room)
+                self._advance_from_betting(room)
+            elif room.phase in DRAWING_PHASES and not room.pending_draw:
+                room.phase = f"bet_{room.phase[-1]}"
+                self._reset_betting_round(room)
+            elif room.current_actor_id == user_id:
+                predicate = (lambda p: p.user_id in room.pending_draw) if room.phase in DRAWING_PHASES else (lambda p: not p.folded)
+                room.current_actor_id = self._next_player(room, player.seat, predicate).user_id
+            return
         if room.phase not in {"waiting", "showdown"}:
             other = self._other_player(room, user_id)
             if other:
@@ -354,6 +420,10 @@ class P2PRoomManager:
             room = self.get_room(code)
             player = self._player(room, user_id)
             player.connected = connected
+            if connected:
+                self._connections.add((room.code, user_id))
+            else:
+                self._connections.discard((room.code, user_id))
             self._bump(room)
             self._persist(room)
             return room
@@ -370,9 +440,11 @@ class P2PRoomManager:
         if room.phase not in {"waiting", "showdown"}:
             raise P2PError("hand_in_progress", "The current hand is still in progress")
         player = self._player(room, user_id)
+        if any(p.departed for p in room.players.values()):
+            raise P2PError("player_left", "A player left. Create a new room for the next hand.")
         player.ready = True
         self._record(room, "ready", user_id=user_id)
-        if len(room.players) == 2 and all(player.ready for player in room.players.values()):
+        if len(room.players) == room.max_players and all(player.ready for player in room.players.values()):
             self._start_hand(room)
 
     def act(self, code: str, *, user_id: str, action: str, amount: int = 0, persist: bool = True) -> Room:
@@ -396,38 +468,36 @@ class P2PRoomManager:
         to_call = max(0, room.current_bet - player.bet)
         if action == "fold":
             player.folded = True
-            opponent = self._other_player(room, user_id)
-            self._record(room, action, user_id=user_id, amount=0)
-            self._finish_hand(
-                room,
-                winner_ids=[opponent.user_id] if opponent else [],
-                reason="fold",
-            )
-            return
-        if action == "check":
-            paid = 0
-        elif action == "call":
-            paid = self._pay(room, player, to_call)
-        else:
-            minimum = to_call + room.big_blind
-            requested = max(minimum, int(amount or 0))
-            opponent = self._other_player(room, user_id)
-            if opponent:
-                # Heads-up has no side pot. Never accept chips the opponent
-                # cannot match; excess all-in chips stay in the bettor's stack.
-                maximum_target = opponent.bet + opponent.stack
-                requested = min(requested, max(0, maximum_target - player.bet))
-            paid = self._pay(room, player, requested)
-            room.current_bet = max(room.current_bet, player.bet)
-            room.acted = {user_id}
-        if action in {"check", "call"}:
             room.acted.add(user_id)
-        self._record(room, action, user_id=user_id, amount=paid)
+            self._record(room, action, user_id=user_id, amount=0)
+            active = [p for p in room.players.values() if not p.folded]
+            if len(active) == 1:
+                self._finish_hand(room, winner_ids=[active[0].user_id], reason="fold")
+                return
+        else:
+            if action == "check":
+                paid = 0
+            elif action == "call":
+                paid = self._pay(room, player, to_call)
+            else:
+                unit = self._bet_unit(room)
+                target = room.current_bet + unit
+                requested = target - player.bet
+                if len(room.players) == 2:
+                    opponent = self._other_player(room, user_id)
+                    requested = min(requested, max(0, opponent.bet + opponent.stack - player.bet))
+                paid = self._pay(room, player, requested)
+                if player.bet >= target:
+                    room.raise_count += 1
+                    room.acted = set()
+                room.current_bet = max(room.current_bet, player.bet)
+            room.acted.add(user_id)
+            self._record(room, action, user_id=user_id, amount=paid)
         if self._betting_round_complete(room):
             self._refund_uncalled_bet(room)
             self._advance_from_betting(room)
         else:
-            room.current_actor_id = self._other_player(room, user_id).user_id
+            room.current_actor_id = self._next_player(room, player.seat, lambda p: not p.folded and (p.user_id not in room.acted or (p.stack > 0 and p.bet < room.current_bet))).user_id
             self._bump(room)
 
     def draw(self, code: str, *, user_id: str, card_indexes: list[int], persist: bool = True) -> Room:
@@ -446,11 +516,21 @@ class P2PRoomManager:
             raise P2PError("out_of_turn", "It is not your turn to draw")
         if user_id not in room.pending_draw:
             raise P2PError("already_drew", "Draw action was already submitted")
-        indexes = sorted(set(card_indexes))
-        if len(indexes) > 4 or any(index < 0 or index >= len(player.hand) for index in indexes):
+        if not isinstance(card_indexes, list) or any(type(index) is not int for index in card_indexes) or len(set(card_indexes)) != len(card_indexes):
+            raise P2PError("invalid_draw", "Invalid card selection")
+        indexes = sorted(card_indexes)
+        if len(indexes) > len(player.hand) or any(index < 0 or index >= len(player.hand) for index in indexes):
             raise P2PError("invalid_draw", "Invalid card selection")
         kept = [card for index, card in enumerate(player.hand) if index not in indexes]
+        discarded = [card for index, card in enumerate(player.hand) if index in indexes]
+        if len(room.deck) < len(indexes):
+            room.deck.extend(room.discard)
+            room.discard = []
+            self._rng.shuffle(room.deck)
+        if len(room.deck) < len(indexes):
+            raise P2PError("deck_exhausted", "Not enough cards to draw")
         replacements = [room.deck.pop() for _ in indexes]
+        room.discard.extend(discarded)
         player.hand = kept + replacements
         room.pending_draw.remove(user_id)
         self._record(room, "draw", user_id=user_id, amount=len(indexes))
@@ -459,7 +539,7 @@ class P2PRoomManager:
             room.phase = f"bet_{round_number}"
             self._reset_betting_round(room)
         else:
-            room.current_actor_id = next(iter(room.pending_draw))
+            room.current_actor_id = self._next_player(room, player.seat, lambda p: p.user_id in room.pending_draw).user_id
             self._bump(room)
 
     def execute_command(
@@ -582,21 +662,28 @@ class P2PRoomManager:
             self._prune_command_receipts(room)
             return CommandResult(room, state, False)
 
+    @staticmethod
+    def _bet_unit(room: Room) -> int:
+        return room.big_blind * (2 if room.phase in {"bet_2", "bet_3"} else 1)
+
+    @staticmethod
+    def _next_player(room: Room, after_seat: int, predicate=lambda p: True) -> Player | None:
+        ordered = sorted(room.players.values(), key=lambda p: (p.seat - after_seat - 1) % room.max_players)
+        return next((p for p in ordered if predicate(p)), None)
+
     def legal_actions(self, room: Room, user_id: str) -> list[str]:
         if room.phase in DRAWING_PHASES:
             return ["draw"] if user_id == room.current_actor_id else []
         if room.phase not in BETTING_PHASES or room.current_actor_id != user_id:
             return []
         player = self._player(room, user_id)
+        if player.folded:
+            return []
         to_call = max(0, room.current_bet - player.bet)
-        if to_call:
-            actions = ["fold", "call"]
-            if player.stack > to_call:
-                actions.append("raise")
-            return actions
-        actions = ["check"]
-        if player.stack > 0:
-            actions.append("bet")
+        actions = ["fold", "call"] if to_call else ["check"]
+        can_raise = player.stack > to_call and room.raise_count < 4 and user_id not in room.acted and any(p.user_id != user_id and not p.folded and p.stack > 0 for p in room.players.values())
+        if can_raise:
+            actions.append("raise" if room.current_bet else "bet")
         return actions
 
     def public_state(self, room: Room, *, viewer_id: str | None = None) -> dict[str, Any]:
@@ -607,7 +694,10 @@ class P2PRoomManager:
                 "roomCode": room.code,
                 "viewerId": viewer_id,
                 "ownerId": room.owner_id,
-                "variantId": "badugi",
+                "variantId": room.variant_id,
+                "bettingStructure": "fixed-limit",
+                "betUnit": self._bet_unit(room),
+                "maxPlayers": room.max_players,
                 "phase": room.phase,
                 "sequenceId": room.sequence_id,
                 "handId": room.hand_id,
@@ -627,8 +717,9 @@ class P2PRoomManager:
                         "stack": player.stack,
                         "bet": player.bet,
                         "ready": player.ready,
-                        "connected": player.connected,
+                        "connected": not player.departed and ((room.code, player.user_id) in self._connections or player.connected),
                         "folded": player.folded,
+                        "departed": player.departed,
                         "cardCount": len(player.hand),
                     }
                     for player in sorted(room.players.values(), key=lambda entry: entry.seat)
@@ -640,6 +731,7 @@ class P2PRoomManager:
                     "smallBlind": room.small_blind,
                     "bigBlind": room.big_blind,
                     "ante": room.ante,
+                    "seats": room.max_players,
                 },
             }
 
@@ -698,11 +790,13 @@ class P2PRoomManager:
                 player.stack = room.starting_stack
         room.hand_number += 1
         if room.hand_number > 1:
-            room.dealer_seat = 1 - room.dealer_seat
+            room.dealer_seat = self._next_player(room, room.dealer_seat).seat
         room.deck = list(DECK)
         self._rng.shuffle(room.deck)
+        room.discard = []
         room.pot = 0
         room.current_bet = 0
+        room.raise_count = 1
         room.showdown = None
         room.acted.clear()
         room.pending_draw.clear()
@@ -710,16 +804,18 @@ class P2PRoomManager:
             player.ready = False
             player.folded = False
             player.bet = 0
-            player.hand = [room.deck.pop() for _ in range(4)]
+            player.committed = 0
+            player.hand = [room.deck.pop() for _ in range(4 if room.variant_id == "badugi" else 5)]
             self._pay(room, player, room.ante)
+            player.bet = 0  # Antes do not count toward the pre-draw call.
         dealer = next(player for player in room.players.values() if player.seat == room.dealer_seat)
-        opponent = self._other_player(room, dealer.user_id)
-        self._pay(room, dealer, room.small_blind)
-        if opponent:
-            self._pay(room, opponent, room.big_blind)
+        small = dealer if len(room.players) == 2 else self._next_player(room, dealer.seat)
+        big = self._next_player(room, small.seat)
+        self._pay(room, small, room.small_blind)
+        self._pay(room, big, room.big_blind)
         room.current_bet = max(player.bet for player in room.players.values())
         room.phase = "bet_0"
-        room.current_actor_id = dealer.user_id
+        room.current_actor_id = self._next_player(room, big.seat).user_id
         self._record(room, "hand_started", user_id=None, amount=0)
 
     @staticmethod
@@ -727,22 +823,24 @@ class P2PRoomManager:
         paid = max(0, min(int(amount), player.stack))
         player.stack -= paid
         player.bet += paid
+        player.committed += paid
         room.pot += paid
         return paid
 
     def _betting_round_complete(self, room: Room) -> bool:
         active = [player for player in room.players.values() if not player.folded]
-        if any(player.stack == 0 for player in active):
-            return len(room.acted) == len(active) and len({player.bet for player in active if player.stack > 0}) <= 1
-        return len(room.acted) == len(active) and len({player.bet for player in active}) == 1
+        return all(p.user_id in room.acted and (p.stack == 0 or p.bet == room.current_bet) for p in active)
 
     def _refund_uncalled_bet(self, room: Room) -> None:
-        active = [player for player in room.players.values() if not player.folded]
-        if len(active) != 2 or active[0].bet == active[1].bet:
+        ordered = sorted(room.players.values(), key=lambda p: p.bet, reverse=True)
+        if len(ordered) < 2 or ordered[0].folded:
             return
-        higher, lower = sorted(active, key=lambda player: player.bet, reverse=True)
+        higher, lower = ordered[:2]
         refund = higher.bet - lower.bet
+        if refund <= 0:
+            return
         higher.bet -= refund
+        higher.committed -= refund
         higher.stack += refund
         room.pot -= refund
         room.current_bet = lower.bet
@@ -755,7 +853,7 @@ class P2PRoomManager:
             return
         room.phase = f"draw_{round_number + 1}"
         room.pending_draw = {player.user_id for player in room.players.values() if not player.folded}
-        first = next(player for player in room.players.values() if player.seat != room.dealer_seat)
+        first = self._next_player(room, room.dealer_seat, lambda p: not p.folded)
         room.current_actor_id = first.user_id
         room.acted.clear()
         self._bump(room)
@@ -764,8 +862,9 @@ class P2PRoomManager:
         for player in room.players.values():
             player.bet = 0
         room.current_bet = 0
+        room.raise_count = 0
         room.acted.clear()
-        first = next(player for player in room.players.values() if player.seat != room.dealer_seat)
+        first = self._next_player(room, room.dealer_seat, lambda p: not p.folded)
         room.current_actor_id = first.user_id
         self._bump(room)
 
@@ -774,9 +873,30 @@ class P2PRoomManager:
         if not active:
             self._finish_hand(room, winner_ids=[], reason="showdown")
             return
-        best = max(badugi_rank(player.hand) for player in active)
-        winners = [player.user_id for player in active if badugi_rank(player.hand) == best]
-        self._finish_hand(room, winner_ids=winners, reason="showdown", reveal=True)
+        rank = lambda p: badugi_rank(p.hand) if room.variant_id == "badugi" else low_rank(p.hand, room.variant_id)
+        if len(room.players) == 2 and sum(p.committed for p in room.players.values()) != room.pot:
+            # Existing two-seat snapshots predate per-hand contribution tracking.
+            best = max(rank(p) for p in active)
+            self._finish_hand(room, winner_ids=[p.user_id for p in active if rank(p) == best], reason="showdown", reveal=True)
+            return
+        awards = {p.user_id: 0 for p in room.players.values()}
+        pots = []
+        previous = 0
+        for threshold in sorted({p.committed for p in room.players.values() if p.committed > 0}):
+            contributors = [p for p in room.players.values() if p.committed >= threshold]
+            amount = (threshold - previous) * len(contributors)
+            previous = threshold
+            eligible = [p for p in contributors if not p.folded]
+            if not eligible:
+                # Every contributor folded; the remaining contender receives it.
+                eligible = active
+            best = max(rank(p) for p in eligible)
+            winners = sorted([p for p in eligible if rank(p) == best], key=lambda p: (p.seat - room.dealer_seat - 1) % room.max_players)
+            share, remainder = divmod(amount, len(winners))
+            for i, p in enumerate(winners):
+                awards[p.user_id] += share + int(i < remainder)
+            pots.append({"amount": amount, "winnerIds": [p.user_id for p in winners]})
+        self._finish_hand(room, winner_ids=[uid for uid, amount in awards.items() if amount], reason="showdown", reveal=True, awards=awards, pots=pots)
 
     def _finish_hand(
         self,
@@ -785,9 +905,14 @@ class P2PRoomManager:
         winner_ids: list[str],
         reason: str,
         reveal: bool = False,
+        awards: dict[str, int] | None = None,
+        pots: list[dict] | None = None,
     ) -> None:
         pot = room.pot
-        if winner_ids:
+        if awards is not None:
+            for user_id, amount in awards.items():
+                room.players[user_id].stack += amount
+        elif winner_ids:
             share, remainder = divmod(pot, len(winner_ids))
             for index, user_id in enumerate(winner_ids):
                 room.players[user_id].stack += share + (1 if index < remainder else 0)
@@ -799,9 +924,11 @@ class P2PRoomManager:
             "reason": reason,
             "winnerIds": winner_ids,
             "pot": pot,
+            "awards": awards,
+            "pots": pots or [],
             "hands": {
                 player.user_id: list(player.hand)
-                for player in room.players.values()
+                for player in room.players.values() if not player.folded
             } if reveal else {},
         }
         room.pot = 0

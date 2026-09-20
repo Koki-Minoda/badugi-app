@@ -1,15 +1,16 @@
+import { useLanguageState } from '../preferences/language.js';
 import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { canLaunchVariant } from '../../games/config/canLaunchVariant.js';
 import { useMixedGame } from '../mixed/useMixedGame.js';
-import { LEARNING_GAMES, LEARNING_PRESETS, getLearningGame, readLearningLanguage } from './learningCatalog.js';
+import { LEARNING_GAMES, LEARNING_PRESETS, getLearningGame } from './learningCatalog.js';
 import RuleCard from './RuleCard.jsx';
 import { LANGUAGE_STORAGE_KEY } from '../../config/mgxLocaleConfig.js';
 import LearningDashboard from './progress/LearningDashboard.jsx';
 
 export default function LearningHubScreen() {
   const [params, setParams] = useSearchParams();
-  const [language, setLanguage] = useState(readLearningLanguage);
+  const [language, setLanguage] = useLanguageState();
   const [message, setMessage] = useState('');
   const { saveProfile, profiles } = useMixedGame();
   const ja = language === 'ja';
@@ -35,6 +36,7 @@ export default function LearningHubScreen() {
       </header>
       <p className="max-w-3xl text-slate-300">{ja ? '勝ち方・カード・手番を確認してから対局へ。練習プランでは前の種目との違いを確認できます。' : 'Review the winning hand, cards and action order before playing. A practice plan highlights what changes between games.'}</p>
       <LearningDashboard language={language} />
+      <Link to="/tools" className="block rounded-2xl border border-white/25 bg-slate-900 p-5"><span className="block text-lg font-bold">{ja ? '役判定・練習のヒント・リアル卓の時計' : 'Hand checker, practice suggestions and table clock'}</span><span className="mt-2 block text-sm text-slate-300">{ja ? '対局せずに役と分配を比較。手札を選んで練習へ進めます。' : 'Compare hands and pot shares, or choose cards to practice.'}</span></Link>
       <Link to="/learn/practice" className="block rounded-2xl border border-emerald-300/40 bg-emerald-400/10 p-5">
         <span className="block text-lg font-bold">{ja ? '開始手札を決めて練習する' : 'Practice a starting hand'}</span>
         <span className="mt-2 block text-sm text-slate-300">{ja ? 'Badugi・A-5・2-7。自分の手札を選んで繰り返し練習できます。' : 'Badugi, A-5 and 2-7. Choose your cards and repeat a practice hand.'}</span>

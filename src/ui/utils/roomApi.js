@@ -108,6 +108,7 @@ export async function createRoom({ metadata = {} }) {
     method: "POST",
     body: {
       variantId: metadata.variantId ?? "badugi",
+      seats: Number(metadata.seats ?? 2),
       startingStack: Number(metadata.startingStack ?? 2000),
       smallBlind: Number(metadata.smallBlind ?? 10),
       bigBlind: Number(metadata.bigBlind ?? 20),

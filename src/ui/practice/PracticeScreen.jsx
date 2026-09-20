@@ -1,6 +1,9 @@
+import ShareLink from '../sharing/ShareLink.jsx';
+import { practiceUrl } from './practiceTransfer.js';
+import { useLanguage } from '../preferences/language.js';
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { readLearningLanguage } from '../learning/learningCatalog.js';
+import LanguageSelect from '../preferences/LanguageSelect.jsx';
 import ReviewBookmarkButton from '../review/ReviewBookmarkButton.jsx';
 import { PRACTICE_GAMES, PRACTICE_CARDS, PracticeSession, validatePracticeSetup } from './practiceSession.js';
 import { parsePracticeUrl } from './practiceTransfer.js';
@@ -16,11 +19,20 @@ export default function PracticeScreen() {
   return <PracticeContent key={location.key} incoming={parsePracticeUrl(location.search)} />;
 }
 function PracticeContent({ incoming }) {
-  const language = readLearningLanguage();
+  const language = useLanguage();
   const ja = language === 'ja';
   const [variant, setVariant] = useState(incoming?.variant ?? PRACTICE_GAMES[0].id);
   const [cards, setCards] = useState(incoming?.cards ?? (incoming?.error ? [] : [...PRACTICE_GAMES[0].defaults]));
   const [session, setSession] = useState(null);
+  const [options, setOptions] = useState(() => {
+    try { return { cpuDelay: 700, neverFold: false, selfPlay: false, showAll: false, ...JSON.parse(localStorage.getItem('mgx.practice.options') ?? '{}') }; }
+    catch { return { cpuDelay: 700, neverFold: false, selfPlay: false, showAll: false }; }
+  });
+  function changeOption(key, value) {
+    const next = { ...options, [key]: value };
+    setOptions(next);
+    try { localStorage.setItem('mgx.practice.options', JSON.stringify(next)); } catch { /* Usable in this session. */ }
+  }
   const [version, setVersion] = useState(0);
   const [selection, setSelection] = useState([]);
   const [progressSaveError, setProgressSaveError] = useState('');
@@ -30,10 +42,11 @@ function PracticeContent({ incoming }) {
   const finished = session?.finished ?? false;
   const actor = session?.actor;
   const revision = session?.revision;
-  const heroTurn = session && !finished && actor === 0;
+  const activeSeat = session?.options.selfPlay && !finished ? actor : 0;
+  const heroTurn = session && !finished && actor === activeSeat;
   const drawPhase = snapshot?.phase === 'DRAW';
-  const legal = heroTurn ? session.legalActions(0) : [];
-  const hero = snapshot?.players?.[0];
+  const legal = heroTurn ? session.legalActions(activeSeat) : [];
+  const hero = snapshot?.players?.[activeSeat];
   const toCall = Math.min(hero?.stack ?? 0, Math.max(0, (snapshot?.currentBet ?? 0) - (hero?.betThisRound ?? hero?.bet ?? 0)));
   const betSize = (snapshot?.drawRound ?? 0) >= 2 ? 40 : 20;
   useEffect(() => {
@@ -43,7 +56,7 @@ function PracticeContent({ incoming }) {
   }, [session, finished]);
   function start() {
     try {
-      setSession(new PracticeSession(variant, cards));
+      setSession(new PracticeSession(variant, cards, options));
       setSelection([]);
       setError('');
       setProgressSaveError('');
@@ -51,22 +64,22 @@ function PracticeContent({ incoming }) {
   }
   function act(action) {
     try {
-      if (session.act(0, action, revision)) { setSelection([]); setVersion(value => value + 1); }
+      if (session.act(activeSeat, action, revision)) { setSelection([]); setVersion(value => value + 1); }
     } catch { setError(ja ? '操作を続けられませんでした。条件を変更して練習をやり直してください。' : 'The hand could not continue. Change the setup to restart practice.'); }
   }
   useEffect(() => {
-    if (!session || finished || actor === 0 || error) return;
+    if (!session || session.options.selfPlay || finished || actor === 0 || error) return;
     const timer = setTimeout(() => {
       try { session.cpuAction(); setVersion(value => value + 1); }
       catch { setError(ja ? 'CPUの操作を続けられませんでした。条件を変更してやり直してください。' : 'The CPU could not continue. Change the setup to restart.'); }
-    }, 150);
+    }, session.options.cpuDelay);
     return () => clearTimeout(timer);
   }, [session, version, finished, actor, error, ja]);
 
   return <main className="learning-screen min-h-screen bg-slate-950 px-4 py-6 text-white sm:px-8">
     <div className="mx-auto max-w-5xl space-y-5">
       <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">{ja ? '開始手札を決めて練習' : 'Practice a starting hand'}</h1>
+        <LanguageSelect /><h1 className="text-2xl font-bold">{ja ? '開始手札を決めて練習' : 'Practice a starting hand'}</h1>
         <Link to="/learn" className="min-h-11 py-2 text-emerald-200">{ja ? '学習に戻る' : 'Back to learning'}</Link>
       </header>
       <p className="rounded-xl border border-amber-200/30 bg-amber-200/5 p-3 text-sm text-amber-100" data-testid="practice-mode-notice">{ja ? '練習専用 · レート・通常の対局成績には反映されません。' : 'Practice only · Does not affect ratings or regular game statistics.'}</p>
@@ -79,17 +92,26 @@ function PracticeContent({ incoming }) {
         <p className="text-sm text-slate-300">{ja ? `${game.count}枚選んでください。選択中のカードを押すと解除できます。` : `Choose ${game.count} cards. Press a selected card to remove it.`}</p>
         <div className="space-y-3">{['S', 'H', 'D', 'C'].map(suit => <div key={suit} className="grid grid-cols-7 gap-2 sm:grid-cols-[repeat(13,minmax(0,1fr))]">{PRACTICE_CARDS.filter(card => card.endsWith(suit)).map(card => <button type="button" key={card} aria-pressed={cards.includes(card)} disabled={!cards.includes(card) && cards.length === game.count} onClick={() => setCards(previous => previous.includes(card) ? previous.filter(value => value !== card) : [...previous, card])} className={`min-h-11 min-w-0 rounded-lg border px-1 text-sm font-bold disabled:opacity-40 ${cards.includes(card) ? 'border-emerald-300 bg-emerald-300 text-slate-950' : /[HD]$/.test(card) ? 'border-white/20 bg-slate-800 text-red-300' : 'border-white/20 bg-slate-800 text-white'}`}>{cardLabel(card)}</button>)}</div>)}</div>
         <p className="text-sm leading-relaxed text-slate-300">{ja ? '6人卓、自分はボタン、持ち点は全員2,000、ブラインド10/20。相手5人はCPUです。自分の開始手札を固定し、相手の手札と山札は毎回配り直します。' : 'Six seats, you on the button, 2,000 chips each, blinds 10/20. Five CPU opponents. Your starting hand stays fixed; opponents and the remaining deck are dealt again each time.'}</p>
+        <fieldset className="space-y-3 rounded-xl border border-white/15 p-3">
+          <legend className="px-2 font-bold">{ja ? '練習設定' : 'Practice settings'}</legend>
+          <label className="flex flex-wrap items-center justify-between gap-2">{ja ? 'CPUの速さ' : 'CPU speed'}<select className="min-h-11 rounded-lg bg-slate-800 p-2 text-base" value={options.cpuDelay} onChange={event => changeOption('cpuDelay', Number(event.target.value))}><option value={150}>{ja ? '速い' : 'Fast'}</option><option value={700}>{ja ? '標準' : 'Normal'}</option><option value={1500}>{ja ? 'ゆっくり' : 'Slow'}</option></select></label>
+          {[['neverFold', 'CPUはフォールドしない', 'CPU never folds'], ['selfPlay', '全席を自分で操作する', 'Control every seat'], ['showAll', '全員の手札を表示する', 'Show all hands']].map(([key, jp, en]) => <label key={key} className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={Boolean(options[key])} onChange={event => changeOption(key, event.target.checked)} />{ja ? jp : en}</label>)}
+          <p className="text-sm text-slate-300">{ja ? '毎回2,000点から開始します。全席操作では手番の席のカードを表示し、ハンド終了前まで一手戻せます。' : 'Each hand starts with 2,000 chips. In all-seat practice, the acting seat’s cards are shown. Undo is available until the hand ends.'}</p>
+        </fieldset>
         <button type="button" onClick={start} disabled={!validatePracticeSetup(variant, cards)} className="min-h-12 w-full rounded-xl bg-emerald-300 px-5 py-3 font-bold text-slate-950 disabled:opacity-40">{ja ? 'この手札で練習する' : 'Practice this hand'}</button>
+        <ShareLink url={validatePracticeSetup(variant, cards) ? `${window.location.origin}${practiceUrl({ variant, cards })}` : null} />
         <PracticePresets variant={variant} cards={cards} language={language} onLoad={setup => { setVariant(setup.variant); setCards(setup.cards); setError(''); }} />
       </section> : <section className="space-y-5" data-testid="practice-table">
         <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-bold">{game.name}</h2><button type="button" className={buttonClass} onClick={() => { setSession(null); setError(''); setSelection([]); }}>{ja ? '条件を変更' : 'Change setup'}</button></div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{snapshot.players.slice(1).map((player, index) => <div key={index} data-testid={`practice-cpu-${index + 1}`} className={`min-w-0 space-y-2 rounded-xl border p-3 ${actor === index + 1 && !finished ? 'border-amber-200' : 'border-white/15'} ${player.folded ? 'opacity-50' : ''}`}><p className="truncate text-sm font-semibold">CPU {index + 1}</p><p className="text-sm">{player.stack} <span className="text-slate-400">· {ja ? 'ベット' : 'Bet'} {player.betThisRound ?? player.bet ?? 0}</span></p><p className="flex flex-wrap gap-1 text-sm">{player.hand.map((card, cardIndex) => <span key={cardIndex} className="rounded bg-slate-800 px-1">{finished && !player.folded ? cardLabel(card) : '▧'}</span>)}</p><p className="text-xs text-slate-300">{player.folded ? (ja ? 'フォールド' : 'Folded') : player.lastAction}</p></div>)}</div>
+        <p className="text-sm text-slate-300">{session.options.selfPlay ? (ja ? '全席を自分で操作' : 'All-seat practice') : (ja ? `CPUの速さ: ${{150:'速め',700:'標準',1500:'ゆっくり'}[session.options.cpuDelay]}${session.options.neverFold ? ' · フォールドなし' : ''}` : `CPU speed: ${{150:'Fast',700:'Normal',1500:'Slow'}[session.options.cpuDelay]}${session.options.neverFold ? ' · Never folds' : ''}`)} · {ja ? '開始持ち点 2,000' : 'Starting stack 2,000'}</p>
+        {session.options.selfPlay && <button type="button" className={buttonClass} disabled={finished || !session.undoHistory.length} onClick={() => { if (session.undo()) { setSelection([]); setError(''); setVersion(value => value + 1); } }}>{ja ? '一手戻す' : 'Undo'}</button>}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{snapshot.players.slice(1).map((player, index) => <div key={index} data-testid={`practice-cpu-${index + 1}`} className={`min-w-0 space-y-2 rounded-xl border p-3 ${actor === index + 1 && !finished ? 'border-amber-200' : 'border-white/15'} ${player.folded ? 'opacity-50' : ''}`}><p className="truncate text-sm font-semibold">CPU {index + 1}</p><p className="text-sm">{player.stack} <span className="text-slate-400">· {ja ? 'ベット' : 'Bet'} {player.betThisRound ?? player.bet ?? 0}</span></p><p className="flex flex-wrap gap-1 text-sm">{player.hand.map((card, cardIndex) => <span key={cardIndex} className="rounded bg-slate-800 px-1">{(session.options.showAll || (finished && !player.folded)) ? cardLabel(card) : '▧'}</span>)}</p><p className="text-xs text-slate-300">{player.folded ? (ja ? 'フォールド' : 'Folded') : player.lastAction}</p></div>)}</div>
         <div className="rounded-2xl border border-emerald-300/30 bg-emerald-900/20 p-4 text-center">
           <p className="text-lg font-bold">Pot {finished ? snapshot.lastHandResult?.pot ?? 0 : snapshot.pot ?? snapshot.players.reduce((sum, player) => sum + (player.totalInvested ?? 0), 0)}</p>
-          <p role="status" data-testid="practice-turn">{finished ? (ja ? 'ハンド終了' : 'Hand finished') : `${drawPhase ? (ja ? 'カード交換' : 'Draw') : (ja ? 'ベット' : 'Betting')} · ${ja ? '交換' : 'Draw round'} ${snapshot.drawRound ?? 0}/3 · ${heroTurn ? (ja ? 'あなたの番' : 'Your turn') : `CPU ${actor}`}`}</p>
+          <p role="status" data-testid="practice-turn">{finished ? (ja ? 'ハンド終了' : 'Hand finished') : `${drawPhase ? (ja ? 'カード交換' : 'Draw') : (ja ? 'ベット' : 'Betting')} · ${ja ? '交換' : 'Draw round'} ${snapshot.drawRound ?? 0}/3 · ${heroTurn ? (session.options.selfPlay ? (ja ? `席 ${activeSeat + 1} の番` : `Seat ${activeSeat + 1} to act`) : (ja ? 'あなたの番' : 'Your turn')) : `CPU ${actor}`}`}</p>
         </div>
         <div className="space-y-4 rounded-2xl border border-white/20 bg-slate-900 p-4">
-          <div className="flex flex-wrap justify-between gap-2"><h3 className="font-bold">{ja ? '自分の手札' : 'Your hand'} · BTN</h3><p>{ja ? '持ち点' : 'Stack'} {hero.stack}</p></div>
+          <div className="flex flex-wrap justify-between gap-2"><h3 className="font-bold">{session.options.selfPlay ? (ja ? `操作中: 席 ${activeSeat + 1}` : `Controlling seat ${activeSeat + 1}`) : (ja ? '自分の手札 · BTN' : 'Your hand · BTN')}</h3><p>{ja ? '持ち点' : 'Stack'} {hero.stack}</p></div>
           <div className="flex flex-wrap justify-center gap-2" data-testid="practice-hero-hand">{hero.hand.map((card, index) => <button type="button" key={`${index}-${card}`} aria-label={cardLabel(card)} aria-pressed={selection.includes(index)} disabled={!heroTurn || !drawPhase || Boolean(error)} onClick={() => setSelection(previous => previous.includes(index) ? previous.filter(value => value !== index) : [...previous, index])} className={`min-h-16 min-w-12 rounded-lg border-2 bg-white px-2 py-4 text-lg font-bold ${/[HD]$/.test(card) ? 'text-red-700' : 'text-slate-950'} ${selection.includes(index) ? 'border-amber-400 ring-2 ring-amber-400' : 'border-white'}`}>{cardLabel(card)}</button>)}</div>
           {!finished && <div className="space-y-3">
             {heroTurn && drawPhase && <p className="text-sm text-slate-300">{ja ? '交換したいカードを選んでください。0枚ならそのまま進みます。' : 'Select cards to discard. Select none to stand pat.'}</p>}

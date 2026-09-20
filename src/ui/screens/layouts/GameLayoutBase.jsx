@@ -1084,7 +1084,7 @@ export default function GameLayoutBase({
                   className={`${isMobileLayout ? (useRailPhasePanel ? "rounded-lg px-1 py-0.5 text-[10px]" : useDenseActionPanel ? "rounded-lg px-2 py-0.5 text-[10px]" : "rounded-2xl p-2 text-base") : "rounded-2xl p-3"} flex items-center justify-between border font-black shadow-lg ${phaseAccentClass}`}
                 >
                   {mixedRotation && <span data-testid="mixed-rotation-status" className="mr-2 shrink-0 text-xs text-emerald-200">
-                    MIX {mixedRotation.handsPlayedInCurrentGame + 1}/{mixedRotation.handsPerGame}
+                    MIX {mixedRotation.handsPlayedInCurrentGame + 1}/{mixedRotation.handsPerGame}{mixedRotation.nextName ? ` · ${language === 'ja' ? '次' : 'Next'} ${mixedRotation.nextName}` : ''}
                   </span>}
                   {useRailPhasePanel ? (
                     <div className="grid w-full grid-cols-4 overflow-hidden rounded-md border border-white/10 bg-black/20">

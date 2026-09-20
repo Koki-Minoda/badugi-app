@@ -1,3 +1,4 @@
+import LanguageSelect from '../preferences/LanguageSelect.jsx';
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import TitleForm from "../components/TitleForm";
@@ -202,6 +203,7 @@ export default function TitleSettingsScreen({ embedded = false, onClose = null }
 
         <section className="bg-white text-slate-900 rounded-3xl p-6 shadow-xl">
           <h3 className="text-xl font-semibold mb-4">Customize Player Profile</h3>
+          <LanguageSelect />
           <TitleForm initialValues={settings} onSave={handleSave} onReset={handleReset} />
         </section>
       </main>

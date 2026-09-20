@@ -183,7 +183,7 @@ function ResultPanel({ snapshot, copy, completedHistory, replayAudit }) {
   );
 }
 
-export default function ChinesePokerGameScreen({ language = "ja", onBack = null }) {
+export default function ChinesePokerGameScreen({ language = "ja", onBack = null, guest = false }) {
   const copy = getCopy(language);
   const [controllerState] = useState(() => {
     const controller = new ChinesePokerController({ seats: DEFAULT_SEATS });
@@ -253,7 +253,7 @@ export default function ChinesePokerGameScreen({ language = "ja", onBack = null 
       const result = controller.resolveShowdown();
       const history = controller.getHandHistory();
       const audit = replayChinesePokerHistory(history);
-      persistChinesePokerHistory(history);
+      if (!guest) persistChinesePokerHistory(history);
       setCompletedHistory(history);
       setReplayAudit(audit);
       refresh(result);
@@ -265,6 +265,7 @@ export default function ChinesePokerGameScreen({ language = "ja", onBack = null 
   const handleNextHand = () => {
     setCompletedHistory(null);
     setReplayAudit(null);
+    if (guest) { onBack?.(); return; }
     refresh(controller.nextHand());
   };
 

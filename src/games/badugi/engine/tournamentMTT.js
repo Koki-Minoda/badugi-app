@@ -93,6 +93,7 @@ export function createMTTTournamentState(config, entrants) {
     tournamentRunId: createTournamentRunId(),
     config,
     levelIndex: 0,
+    levelEndsAt: config.levelProgression === "clock" ? Date.now() + config.levelDurationMinutes * 60000 : null,
     tables,
     players,
     totalPlayers: contestantList.length,
@@ -238,6 +239,17 @@ function markPlayerBusted(state, player, handIndex) {
 
 function maybeAdvanceLevel(state) {
   const currentLevel = getCurrentLevel(state);
+  if (state.config.levelProgression === 'clock') {
+    if (state.levelEndsAt == null) state.levelEndsAt = Date.now() + state.config.levelDurationMinutes * 60000;
+    if (Date.now() < state.levelEndsAt || state.levelIndex >= state.config.levels.length - 1) return;
+    const previousLevel = state.levelIndex + 1;
+    const breakMs = state.config.breakEveryLevels > 0 && previousLevel % state.config.breakEveryLevels === 0 ? state.config.breakDurationMinutes * 60000 : 0;
+    state.levelIndex += 1;
+    state.levelEndsAt = Date.now() + breakMs + state.config.levelDurationMinutes * 60000;
+    state.tables.forEach(table => { table.handsPlayedAtThisLevel = 0; });
+    appendTournamentEvent(state, { type: 'LEVEL_ADVANCED', fromLevel: previousLevel, toLevel: state.levelIndex + 1, playersRemaining: state.playersRemaining });
+    return;
+  }
   if (!currentLevel || currentLevel.handsThisLevel <= 0) {
     return;
   }

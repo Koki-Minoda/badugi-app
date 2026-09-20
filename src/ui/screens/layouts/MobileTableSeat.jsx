@@ -9,7 +9,7 @@ export function TableCard({card,hidden=false,selected=false,onClick,testId,down=
   {hidden?<span aria-hidden="true">◇</span>:<><b>{value.slice(0,-1)}</b><span>{symbol}</span></>}
  </Tag>;
 }
-export default function MobileTableSeat({seat,index,hero=false,active=false,dealer=false,position,variant,selection=[],canDraw=false,onCardClick,language='ja'}){
+export default function MobileTableSeat({seat,index,hero=false,active=false,dealer=false,position,variant,selection=[],canDraw=false,onCardClick,language='ja',cardTestPrefix}){
  const ja=language==='ja';const hand=Array.isArray(seat.hand)&&seat.hand.length?seat.hand:(seat.holeCards||[]);const stud=Array.isArray(seat.cardVisibility)&&seat.cardVisibility.length>0;
  const folded=seat.folded||seat.isBusted||seat.seatOut;
  const cards=getDisplayCards(hand,{displayVariant:variant});
@@ -21,7 +21,7 @@ export default function MobileTableSeat({seat,index,hero=false,active=false,deal
    {cards.map(({card,sourceIndex})=>{
     const up=stud&&seat.cardVisibility[sourceIndex]==='up';
     const hidden=folded || (!hero&&!seat.showHand&&!up);
-    return <TableCard key={sourceIndex} card={card} hidden={hidden} down={hero&&stud&&!up} selected={selection.includes(sourceIndex)} onClick={hero&&canDraw&&!folded?()=>onCardClick(sourceIndex):undefined} testId={`player-${index}-card-${sourceIndex}`}/>;
+    return <TableCard key={sourceIndex} card={card} hidden={hidden} down={hero&&stud&&!up} selected={selection.includes(sourceIndex)} onClick={hero&&canDraw&&!folded?()=>onCardClick(sourceIndex):undefined} testId={cardTestPrefix ? `${cardTestPrefix}-${sourceIndex}` : `player-${index}-card-${sourceIndex}`}/>;
    })}
   </div>
   <div className="mgx-seat-meta"><span data-testid={!stud&&seat.lastDrawCount!=null&&!folded?`seat-${index}-draw-badge`:undefined}>{action|| (active?(ja?'考え中':'Acting'):'\u00a0')}</span><span data-testid={`seat-${index}-bet`}>{Number(seat.betThisRound??seat.bet??0)>0?`${ja?'ベット':'Bet'} ${seat.betThisRound??seat.bet}`:'\u00a0'}</span></div>

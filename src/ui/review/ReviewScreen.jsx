@@ -1,6 +1,7 @@
+import { useLanguage } from '../preferences/language.js';
 import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { getLearningGame, readLearningLanguage } from '../learning/learningCatalog.js';
+import { getLearningGame } from '../learning/learningCatalog.js';
 import { reviewVariant } from './reviewStore.js';
 import { reviewError } from './reviewCopy.js';
 import { useReviews } from './useReviews.js';
@@ -18,7 +19,7 @@ function dateLabel(hand, language) {
 }
 export default function ReviewScreen() {
   const { entries, error } = useReviews();
-  const language = readLearningLanguage();
+  const language = useLanguage();
   const ja = language === 'ja';
   const [params, setParams] = useSearchParams();
   const progress = useLearningProgress();

@@ -673,7 +673,7 @@ describe("draw lowball fixed-limit all-in betting regressions", () => {
 
       const next = engine.applyPlayerAction(state, {
         seatIndex: 1,
-        type: "RAISE",
+        type: engine.bettingStructure === "no-limit" ? "CALL" : "RAISE",
       });
 
       expect(next.street).toBe("DRAW");

@@ -120,12 +120,12 @@ describe("FriendMatchSetupScreen", () => {
     cleanup();
   });
 
-  it("advertises only the supported two-player Badugi room", () => {
+  it("advertises the three server-supported draw games and 2–6 seats", () => {
     render(<FriendMatchSetupScreen language="en" />);
-    expect(screen.getAllByRole("radio")).toHaveLength(1);
-    expect(screen.getByRole("radio")).toHaveProperty("value", "badugi");
+    expect(screen.getAllByRole("radio")).toHaveLength(3);
+    expect(screen.getAllByRole("radio").map(input => input.value)).toEqual(["badugi", "ace_to_five_triple_draw", "deuce_to_seven_triple_draw"]);
     expect(screen.getByLabelText(/seats/i)).toHaveProperty("value", "2");
-    expect(screen.getByText(/quality-gated heads-up Badugi/i)).toBeTruthy();
+    expect(screen.getByText(/every seat is filled and ready/i)).toBeTruthy();
   });
 
   it("creates an authenticated room and synchronizes with the canonical protocol", async () => {
@@ -230,7 +230,7 @@ describe("FriendMatchSetupScreen", () => {
         expectedPhase: "bet_0",
       }),
     });
-    expect(screen.getByTestId("p2p-raise").textContent).toContain("120");
+    expect(screen.getByTestId("p2p-raise").textContent).toContain("100");
     await sendState(socket, {
       roomCode: room.roomId,
       viewerId: room.ownerId,

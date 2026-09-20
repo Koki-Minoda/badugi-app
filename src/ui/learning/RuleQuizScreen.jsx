@@ -1,7 +1,7 @@
+import { useLanguage } from '../preferences/language.js';
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { QUIZ_TOPICS, QUIZ_QUESTIONS, createQuizRound, answerForQuestion, quizExplanation } from './quizCatalog.js';
-import { readLearningLanguage } from './learningCatalog.js';
 import { useLearningProgress } from './progress/useLearningProgress.js';
 import { progressSummary, recordQuizAnswer, progressError } from './progress/progressStore.js';
 
@@ -16,7 +16,7 @@ function Cards({ cards, label }) {
 export default function RuleQuizScreen() {
   const [params, setParams] = useSearchParams();
   const topic = QUIZ_TOPICS.some(t => t.id === params.get('topic')) ? params.get('topic') : 'lowball';
-  const language = readLearningLanguage();
+  const language = useLanguage();
   const ja = language === 'ja';
   const progress = useLearningProgress();
   const retry = params.get('retry') === 'missed';

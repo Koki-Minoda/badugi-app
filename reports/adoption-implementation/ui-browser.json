@@ -1,0 +1,1250 @@
+[
+  {
+    "engine": "chromium",
+    "orientation": "portrait",
+    "language": "ja",
+    "route": "/try",
+    "title": [
+      "登録せずに1ハンド体験"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "portrait",
+    "language": "ja",
+    "route": "/tools",
+    "title": [
+      "ポーカーツール"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "portrait",
+    "language": "ja",
+    "route": "/tools?tab=clock",
+    "title": [
+      "ポーカーツール"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "portrait",
+    "language": "ja",
+    "route": "/learn/practice",
+    "title": [
+      "開始手札を決めて練習"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "portrait",
+    "language": "ja",
+    "route": "/learn/review",
+    "title": [
+      "復習一覧"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "portrait",
+    "language": "ja",
+    "route": "/history",
+    "title": [
+      "トーナメント & ハンド履歴"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "portrait",
+    "language": "ja",
+    "route": "/tournament",
+    "title": [
+      "BADUGI SERIES"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "portrait",
+    "language": "ja",
+    "route": "/meetups",
+    "title": [
+      "友人との練習会"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "portrait",
+    "language": "ja",
+    "route": "/mixed",
+    "title": [
+      "ミックスローテーションを作成"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "portrait",
+    "language": "ja",
+    "route": "/games",
+    "title": [
+      "ゲームを選択"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "portrait",
+    "language": "ja",
+    "route": "/dealers-choice",
+    "title": [
+      "Dealer’s Choice"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "portrait",
+    "language": "ja",
+    "route": "/multigame",
+    "title": [
+      "Multi-Game Tournament"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "portrait",
+    "language": "ja",
+    "route": "/career",
+    "title": [
+      "BADUGI SERIES"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "portrait",
+    "language": "en",
+    "route": "/try",
+    "title": [
+      "Try a hand without signing up"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "portrait",
+    "language": "en",
+    "route": "/tools",
+    "title": [
+      "Poker tools"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "portrait",
+    "language": "en",
+    "route": "/tools?tab=clock",
+    "title": [
+      "Poker tools"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "portrait",
+    "language": "en",
+    "route": "/learn/practice",
+    "title": [
+      "Practice a starting hand"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "portrait",
+    "language": "en",
+    "route": "/learn/review",
+    "title": [
+      "Saved hands"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "portrait",
+    "language": "en",
+    "route": "/history",
+    "title": [
+      "Tournament & hand history"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "portrait",
+    "language": "en",
+    "route": "/tournament",
+    "title": [
+      "BADUGI SERIES"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "portrait",
+    "language": "en",
+    "route": "/meetups",
+    "title": [
+      "Meetups with friends"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "portrait",
+    "language": "en",
+    "route": "/mixed",
+    "title": [
+      "Build a MIX"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "portrait",
+    "language": "en",
+    "route": "/games",
+    "title": [
+      "Select Your Variant"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "portrait",
+    "language": "en",
+    "route": "/dealers-choice",
+    "title": [
+      "Dealer’s Choice"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "portrait",
+    "language": "en",
+    "route": "/multigame",
+    "title": [
+      "Multi-Game Tournament"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "portrait",
+    "language": "en",
+    "route": "/career",
+    "title": [
+      "BADUGI SERIES"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "landscape",
+    "language": "ja",
+    "route": "/try",
+    "title": [
+      "登録せずに1ハンド体験"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "landscape",
+    "language": "ja",
+    "route": "/tools",
+    "title": [
+      "ポーカーツール"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "landscape",
+    "language": "ja",
+    "route": "/tools?tab=clock",
+    "title": [
+      "ポーカーツール"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "landscape",
+    "language": "ja",
+    "route": "/learn/practice",
+    "title": [
+      "開始手札を決めて練習"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "landscape",
+    "language": "ja",
+    "route": "/learn/review",
+    "title": [
+      "復習一覧"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "landscape",
+    "language": "ja",
+    "route": "/history",
+    "title": [
+      "トーナメント & ハンド履歴"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "landscape",
+    "language": "ja",
+    "route": "/tournament",
+    "title": [
+      "BADUGI SERIES"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "landscape",
+    "language": "ja",
+    "route": "/meetups",
+    "title": [
+      "友人との練習会"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "landscape",
+    "language": "ja",
+    "route": "/mixed",
+    "title": [
+      "ミックスローテーションを作成"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "landscape",
+    "language": "ja",
+    "route": "/games",
+    "title": [
+      "ゲームを選択"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "landscape",
+    "language": "ja",
+    "route": "/dealers-choice",
+    "title": [
+      "Dealer’s Choice"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "landscape",
+    "language": "ja",
+    "route": "/multigame",
+    "title": [
+      "Multi-Game Tournament"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "landscape",
+    "language": "ja",
+    "route": "/career",
+    "title": [
+      "BADUGI SERIES"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "landscape",
+    "language": "en",
+    "route": "/try",
+    "title": [
+      "Try a hand without signing up"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "landscape",
+    "language": "en",
+    "route": "/tools",
+    "title": [
+      "Poker tools"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "landscape",
+    "language": "en",
+    "route": "/tools?tab=clock",
+    "title": [
+      "Poker tools"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "landscape",
+    "language": "en",
+    "route": "/learn/practice",
+    "title": [
+      "Practice a starting hand"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "landscape",
+    "language": "en",
+    "route": "/learn/review",
+    "title": [
+      "Saved hands"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "landscape",
+    "language": "en",
+    "route": "/history",
+    "title": [
+      "Tournament & hand history"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "landscape",
+    "language": "en",
+    "route": "/tournament",
+    "title": [
+      "BADUGI SERIES"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "landscape",
+    "language": "en",
+    "route": "/meetups",
+    "title": [
+      "Meetups with friends"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "landscape",
+    "language": "en",
+    "route": "/mixed",
+    "title": [
+      "Build a MIX"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "landscape",
+    "language": "en",
+    "route": "/games",
+    "title": [
+      "Select Your Variant"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "landscape",
+    "language": "en",
+    "route": "/dealers-choice",
+    "title": [
+      "Dealer’s Choice"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "landscape",
+    "language": "en",
+    "route": "/multigame",
+    "title": [
+      "Multi-Game Tournament"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "chromium",
+    "orientation": "landscape",
+    "language": "en",
+    "route": "/career",
+    "title": [
+      "BADUGI SERIES"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "portrait",
+    "language": "ja",
+    "route": "/try",
+    "title": [
+      "登録せずに1ハンド体験"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "portrait",
+    "language": "ja",
+    "route": "/tools",
+    "title": [
+      "ポーカーツール"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "portrait",
+    "language": "ja",
+    "route": "/tools?tab=clock",
+    "title": [
+      "ポーカーツール"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "portrait",
+    "language": "ja",
+    "route": "/learn/practice",
+    "title": [
+      "開始手札を決めて練習"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "portrait",
+    "language": "ja",
+    "route": "/learn/review",
+    "title": [
+      "復習一覧"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "portrait",
+    "language": "ja",
+    "route": "/history",
+    "title": [
+      "トーナメント & ハンド履歴"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "portrait",
+    "language": "ja",
+    "route": "/tournament",
+    "title": [
+      "BADUGI SERIES"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "portrait",
+    "language": "ja",
+    "route": "/meetups",
+    "title": [
+      "友人との練習会"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "portrait",
+    "language": "ja",
+    "route": "/mixed",
+    "title": [
+      "ミックスローテーションを作成"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "portrait",
+    "language": "ja",
+    "route": "/games",
+    "title": [
+      "ゲームを選択"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "portrait",
+    "language": "ja",
+    "route": "/dealers-choice",
+    "title": [
+      "Dealer’s Choice"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "portrait",
+    "language": "ja",
+    "route": "/multigame",
+    "title": [
+      "Multi-Game Tournament"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "portrait",
+    "language": "ja",
+    "route": "/career",
+    "title": [
+      "BADUGI SERIES"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "portrait",
+    "language": "en",
+    "route": "/try",
+    "title": [
+      "Try a hand without signing up"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "portrait",
+    "language": "en",
+    "route": "/tools",
+    "title": [
+      "Poker tools"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "portrait",
+    "language": "en",
+    "route": "/tools?tab=clock",
+    "title": [
+      "Poker tools"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "portrait",
+    "language": "en",
+    "route": "/learn/practice",
+    "title": [
+      "Practice a starting hand"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "portrait",
+    "language": "en",
+    "route": "/learn/review",
+    "title": [
+      "Saved hands"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "portrait",
+    "language": "en",
+    "route": "/history",
+    "title": [
+      "Tournament & hand history"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "portrait",
+    "language": "en",
+    "route": "/tournament",
+    "title": [
+      "BADUGI SERIES"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "portrait",
+    "language": "en",
+    "route": "/meetups",
+    "title": [
+      "Meetups with friends"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "portrait",
+    "language": "en",
+    "route": "/mixed",
+    "title": [
+      "Build a MIX"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "portrait",
+    "language": "en",
+    "route": "/games",
+    "title": [
+      "Select Your Variant"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "portrait",
+    "language": "en",
+    "route": "/dealers-choice",
+    "title": [
+      "Dealer’s Choice"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "portrait",
+    "language": "en",
+    "route": "/multigame",
+    "title": [
+      "Multi-Game Tournament"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "portrait",
+    "language": "en",
+    "route": "/career",
+    "title": [
+      "BADUGI SERIES"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "landscape",
+    "language": "ja",
+    "route": "/try",
+    "title": [
+      "登録せずに1ハンド体験"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "landscape",
+    "language": "ja",
+    "route": "/tools",
+    "title": [
+      "ポーカーツール"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "landscape",
+    "language": "ja",
+    "route": "/tools?tab=clock",
+    "title": [
+      "ポーカーツール"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "landscape",
+    "language": "ja",
+    "route": "/learn/practice",
+    "title": [
+      "開始手札を決めて練習"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "landscape",
+    "language": "ja",
+    "route": "/learn/review",
+    "title": [
+      "復習一覧"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "landscape",
+    "language": "ja",
+    "route": "/history",
+    "title": [
+      "トーナメント & ハンド履歴"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "landscape",
+    "language": "ja",
+    "route": "/tournament",
+    "title": [
+      "BADUGI SERIES"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "landscape",
+    "language": "ja",
+    "route": "/meetups",
+    "title": [
+      "友人との練習会"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "landscape",
+    "language": "ja",
+    "route": "/mixed",
+    "title": [
+      "ミックスローテーションを作成"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "landscape",
+    "language": "ja",
+    "route": "/games",
+    "title": [
+      "ゲームを選択"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "landscape",
+    "language": "ja",
+    "route": "/dealers-choice",
+    "title": [
+      "Dealer’s Choice"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "landscape",
+    "language": "ja",
+    "route": "/multigame",
+    "title": [
+      "Multi-Game Tournament"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "landscape",
+    "language": "ja",
+    "route": "/career",
+    "title": [
+      "BADUGI SERIES"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "landscape",
+    "language": "en",
+    "route": "/try",
+    "title": [
+      "Try a hand without signing up"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "landscape",
+    "language": "en",
+    "route": "/tools",
+    "title": [
+      "Poker tools"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "landscape",
+    "language": "en",
+    "route": "/tools?tab=clock",
+    "title": [
+      "Poker tools"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "landscape",
+    "language": "en",
+    "route": "/learn/practice",
+    "title": [
+      "Practice a starting hand"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "landscape",
+    "language": "en",
+    "route": "/learn/review",
+    "title": [
+      "Saved hands"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "landscape",
+    "language": "en",
+    "route": "/history",
+    "title": [
+      "Tournament & hand history"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "landscape",
+    "language": "en",
+    "route": "/tournament",
+    "title": [
+      "BADUGI SERIES"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "landscape",
+    "language": "en",
+    "route": "/meetups",
+    "title": [
+      "Meetups with friends"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "landscape",
+    "language": "en",
+    "route": "/mixed",
+    "title": [
+      "Build a MIX"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "landscape",
+    "language": "en",
+    "route": "/games",
+    "title": [
+      "Select Your Variant"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "landscape",
+    "language": "en",
+    "route": "/dealers-choice",
+    "title": [
+      "Dealer’s Choice"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "landscape",
+    "language": "en",
+    "route": "/multigame",
+    "title": [
+      "Multi-Game Tournament"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  },
+  {
+    "engine": "webkit",
+    "orientation": "landscape",
+    "language": "en",
+    "route": "/career",
+    "title": [
+      "BADUGI SERIES"
+    ],
+    "overflow": false,
+    "errors": [],
+    "smallSelects": []
+  }
+]

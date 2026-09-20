@@ -74,3 +74,33 @@ it('does not write game statistics or hand history during practice', () => {
   expect(JSON.stringify({ ...localStorage })).toBe(before);
   localStorage.clear();
 });
+
+it.each(PRACTICE_GAMES)('$name all-seat undo restores cards, bets, actor and replayable draw randomness', game => {
+  const session = new PracticeSession(game.id, game.defaults, { selfPlay: true });
+  for (let i = 0; i < 100 && !session.finished; i++) {
+    const before = JSON.stringify(session.snapshot);
+    const actor = session.actor;
+    const revision = session.revision;
+    const action = session.legalActions().find(a => ['CHECK','CALL','DRAW'].includes(a.type));
+    session.act(actor, { type: action.type, discardIndexes: action.type === 'DRAW' ? [0] : [] });
+    if (session.finished) break;
+    const after = JSON.stringify(session.snapshot);
+    expect(session.undo()).toBe(true);
+    expect(JSON.stringify(session.snapshot)).toBe(before);
+    expect(session.act(actor, { type:action.type }, revision)).toBe(false);
+    session.act(actor, { type:action.type, discardIndexes: action.type === 'DRAW' ? [0] : [] });
+    expect(JSON.stringify(session.snapshot)).toBe(after);
+  }
+  expect(session.finished).toBe(true);
+  expect(session.undo()).toBe(false);
+});
+it.each(PRACTICE_GAMES)('$name never-fold CPU completes all three draws', game => {
+  const session = new PracticeSession(game.id, game.defaults, { neverFold:true });
+  for (let i = 0; i < 300 && !session.finished; i++) {
+    if (session.actor !== 0) session.cpuAction();
+    else session.act(0, { type: session.legalActions().find(a => ['CHECK','CALL','DRAW'].includes(a.type)).type, discardIndexes:[] });
+  }
+  expect(session.finished).toBe(true);
+  expect(session.events.some(e => e.action === 'fold')).toBe(false);
+  expect(session.snapshot.players.reduce((sum,p) => sum+p.stack,0)).toBe(12000);
+});

@@ -94,3 +94,17 @@
 .mgx-play--oval[data-phase-tone="draw"] .mgx-table-felt{border-color:#db7774;box-shadow:0 0 0 2px #4e2225,0 0 0 3px #eeaba0,0 0 22px #e4646659,0 14px 22px #0008,inset 0 0 0 2px #e4a9a455,inset 0 0 35px #001e17b3}
 .mgx-play--oval[data-phase-tone="draw"] .mgx-community-phase{background:#682d35;color:#ffe3df;border-radius:5px}
 .mgx-play--oval[data-phase-tone="draw"] .mgx-action-setting>.mgx-setting-value{border-color:#c77e7b;background:#38242a;color:#f5d3cd}
+
+/* Embedded friend tables use the same seat/felt components without viewport locking. */
+.mgx-friend-scene{border-radius:18px;padding:12px 0;min-width:0}
+.mgx-friend-scene .mgx-table-scene{height:420px;min-height:420px;max-width:640px;margin:auto}
+.mgx-friend-scene .mgx-community{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+.mgx-friend-scene .mgx-table-card{min-height:0!important}
+@media(orientation:landscape){.mgx-friend-scene .mgx-table-scene{height:330px;min-height:330px}.mgx-friend-scene .mgx-seat-avatar{left:50%;transform:translateX(-50%)}}
+
+.mgx-friend-scene-full{min-height:0;min-width:0;height:100%;position:relative}
+.mgx-friend-scene-full .mgx-table-scene{height:100%}
+.mgx-friend-scene-full .mgx-community{display:flex;flex-direction:column;align-items:center;gap:8px}
+.mgx-friend-live .mgx-primary-action{min-height:44px;background:#82dfb4;color:#07261c;border-radius:10px;padding:10px;font-weight:700;width:100%}
+.mgx-friend-live button:disabled{opacity:.4}
+.mgx-friend-live .mgx-play-tools nav{max-height:75dvh;overflow:auto;min-width:min(290px,90vw)}

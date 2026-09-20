@@ -385,7 +385,7 @@ function deriveLegalActions(state = {}, seatIndex) {
   const raiseCap = Math.max(1, Number(state.metadata?.raiseCap) || 4);
   if (
     (player.stack ?? 0) > 0 &&
-    raiseCount < raiseCap &&
+    (state.metadata?.bettingStructure === "no-limit" ? (!player.hasActedThisRound && player.stack > Math.max(0, currentBet - playerBet)) : raiseCount < raiseCap) &&
     hasActiveNonAllInOpponent(state.players, seatIndex)
   ) {
     actions.push({ type: currentBet > 0 ? "RAISE" : "BET" });
@@ -747,7 +747,7 @@ export class DeuceToSevenTripleDrawController extends GameController {
           return {
             seatIndex: targetSeat,
             type: actionType,
-            amount: onnxDecision.raiseSize,
+            amount: engineState.metadata?.bettingStructure === "no-limit" ? undefined : onnxDecision.raiseSize,
             metadata: {
               strategy: `onnx-${tierId}`,
               source: "onnx",

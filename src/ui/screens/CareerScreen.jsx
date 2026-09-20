@@ -1,3 +1,5 @@
+import { useLanguage } from '../preferences/language.js';
+import LanguageSelect from '../preferences/LanguageSelect.jsx';
 import React, { useMemo } from "react";
 import { buildCareerViewModel, loadCareerProfile } from "../career/careerProfile.js";
 
@@ -42,6 +44,7 @@ export default function CareerScreen({
   profile = null,
   onBack = null,
 }) {
+  const ja=useLanguage()==='ja';
   const viewModel = useMemo(
     () => buildCareerViewModel(profile ?? loadCareerProfile()),
     [profile],
@@ -54,9 +57,9 @@ export default function CareerScreen({
         <header className="flex flex-col gap-3 border-b border-white/10 pb-5 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.28em] text-emerald-300">
-              Career
+              {ja ? '大会の成績' : 'Career'}
             </p>
-            <h1 className="mt-2 text-3xl font-black text-white">BADUGI SERIES</h1>
+            <h1 className="mt-2 text-3xl font-black text-white">BADUGI SERIES</h1><LanguageSelect />
           </div>
           {onBack ? (
             <button
@@ -64,7 +67,7 @@ export default function CareerScreen({
               onClick={onBack}
               className="w-fit rounded-md border border-white/20 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-slate-200 hover:border-emerald-300/70 hover:text-emerald-100"
             >
-              Back
+              {ja ? '戻る' : 'Back'}
             </button>
           ) : null}
         </header>
@@ -77,7 +80,7 @@ export default function CareerScreen({
                   Badugi
                 </p>
                 <h2 className="mt-1 text-2xl font-black text-white">
-                  Progress {badugiProgress.percent}%
+                  {ja?'達成率':'Progress'} {badugiProgress.percent}%
                 </h2>
               </div>
               <p className="text-sm font-black text-slate-300">
@@ -103,7 +106,7 @@ export default function CareerScreen({
           <aside className="flex flex-col gap-5">
             <section className="rounded-lg border border-white/10 bg-slate-950/85 p-5">
               <h2 className="text-sm font-black uppercase tracking-[0.22em] text-white">
-                Statistics
+                {ja ? '成績' : 'Statistics'}
               </h2>
               <dl className="mt-4 space-y-3 text-sm" data-testid="career-statistics">
                 <div className="flex justify-between gap-4">
@@ -113,25 +116,25 @@ export default function CareerScreen({
                   </dd>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <dt className="text-slate-400">Tournaments Won</dt>
+                  <dt className="text-slate-400">{ja ? '優勝回数' : 'Tournaments Won'}</dt>
                   <dd className="font-black text-white">
                     {formatNumber(statistics.tournamentsWon)}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <dt className="text-slate-400">Final Tables</dt>
+                  <dt className="text-slate-400">{ja ? '決勝卓進出' : 'Final Tables'}</dt>
                   <dd className="font-black text-white">
                     {formatNumber(statistics.finalTables)}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <dt className="text-slate-400">Heads Up Appearances</dt>
+                  <dt className="text-slate-400">{ja ? 'ヘッズアップ進出' : 'Heads Up Appearances'}</dt>
                   <dd className="font-black text-white">
                     {formatNumber(statistics.headsUps)}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <dt className="text-slate-400">Total Prize</dt>
+                  <dt className="text-slate-400">{ja ? '獲得賞金' : 'Total Prize'}</dt>
                   <dd className="font-black text-white">
                     {formatNumber(statistics.totalPrize)}
                   </dd>
@@ -141,7 +144,7 @@ export default function CareerScreen({
 
             <section className="rounded-lg border border-white/10 bg-slate-950/85 p-5">
               <h2 className="text-sm font-black uppercase tracking-[0.22em] text-white">
-                Variants
+                {ja ? '種目' : 'Variants'}
               </h2>
               <div className="mt-4 space-y-2" data-testid="career-variant-progress">
                 {variants.map((variant) => (
@@ -166,7 +169,7 @@ export default function CareerScreen({
 
           <section className="rounded-lg border border-white/10 bg-slate-950/85 p-5 lg:col-span-2">
             <h2 className="text-sm font-black uppercase tracking-[0.22em] text-white">
-              Champion Record
+              {ja ? '優勝記録' : 'Champion Record'}
             </h2>
             <div className="mt-4 grid gap-3 md:grid-cols-2" data-testid="career-champion-record">
               {championRecords.length ? (
@@ -182,7 +185,7 @@ export default function CareerScreen({
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-slate-400">No championships recorded yet.</p>
+                <p className="text-sm text-slate-400">{ja ? 'まだ優勝記録がありません。' : 'No championships recorded yet.'}</p>
               )}
             </div>
           </section>

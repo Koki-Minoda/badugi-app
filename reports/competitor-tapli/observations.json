@@ -1,0 +1,74 @@
+{
+  "asOf": "2026-09-20",
+  "browser": "Codex in-app browser",
+  "authenticated": false,
+  "tests": [
+    {
+      "target": "TapliMIX NLH guest practice",
+      "actions": [
+        "timer OFF",
+        "COM fast ON",
+        "Non-Fold ON",
+        "Call 3bb",
+        "Call 9bb",
+        "Check",
+        "Call 88bb"
+      ],
+      "observed": "Showdown and Next Hand reached. Hero returned to 100bb next hand.",
+      "limits": "One manually completed hand; no claim of engine correctness across all cases."
+    },
+    {
+      "target": "TapliMIX guest hand history",
+      "observed": "0 hands both after showdown and after Next Hand.",
+      "interpretation": "Persistence condition or defect not established; not a verified superiority."
+    },
+    {
+      "target": "TapliMIX qualifier",
+      "actions": [
+        "NLH Random/Qualify",
+        "Badacey Random/Qualify"
+      ],
+      "observed": "Hand labels and allocation rendered. Badacey sample awarded 50% to each player across two axes.",
+      "limits": "Only sample execution; not exhaustive evaluator validation."
+    },
+    {
+      "target": "TapliMIX recommendation",
+      "actions": [
+        "Generate random four cards"
+      ],
+      "observed": "Best match, five candidates, feature vector and scores rendered.",
+      "limits": "No EV/GTO or accuracy validation."
+    },
+    {
+      "target": "MGX Archie evaluateComponent archieHigh",
+      "input": [
+        [
+          "8S",
+          "8H",
+          "KD",
+          "QC",
+          "2S"
+        ],
+        [
+          "9S",
+          "9H",
+          "KD",
+          "QC",
+          "2S"
+        ]
+      ],
+      "observed": [
+        {
+          "category": "one-pair",
+          "qualifies": true
+        },
+        {
+          "category": "one-pair",
+          "qualifies": true
+        }
+      ],
+      "interpretation": "MGX current qualifier accepts both 88 and 99; Tapli catalog states 99+.",
+      "limits": "Direct evaluator calls; no new full gameplay QA."
+    }
+  ]
+}

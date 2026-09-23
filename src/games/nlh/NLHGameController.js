@@ -225,9 +225,16 @@ export class NLHGameController {
       players[bbIndex]?.betThisStreet ?? 0,
     );
     this.state.lastFullRaiseSize = Math.max(1, this.blinds.bb ?? 2);
-    this.state.currentActor = headsUp ? sbIndex : this.nextActiveSeat(bbIndex, players);
+    // Heads-up starts at the small blind only when that player can act.
+    this.state.currentActor = this.nextActiveSeat(
+      headsUp ? (sbIndex - 1 + players.length) % players.length : bbIndex,
+      players,
+    );
     this.state.players = players;
     this.state.pot = this.calculatePot(players);
+    if (this.state.currentActor === null && occupiedSeats.length > 1) {
+      this.advanceStreet();
+    }
     return this.getSnapshot();
   }
 
@@ -531,6 +538,7 @@ export class NLHGameController {
   }
 
   advanceStreet() {
+    if (this.state.street === "SHOWDOWN") return this.getSnapshot();
     const nextStreet = this.getNextStreet(this.state.street);
     if (nextStreet === this.state.street) {
       return this.getSnapshot();
@@ -549,6 +557,9 @@ export class NLHGameController {
       this.resolveShowdown();
     } else if (nextStreet === "FLOP" || nextStreet === "TURN" || nextStreet === "RIVER") {
       this.state.currentActor = this.nextActiveSeat(this.state.dealerIndex);
+      // No betting decision remains when every contender is all-in. Deal the
+      // remaining streets and settle once instead of waiting for a null actor.
+      if (this.state.currentActor === null) return this.advanceStreet();
     }
     return this.getSnapshot();
   }

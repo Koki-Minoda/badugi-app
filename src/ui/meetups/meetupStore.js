@@ -1,3 +1,4 @@
+import { localRecordId } from '../utils/localRecordId.js';
 const KEY = 'mgx.meetups.v1';
 export function validateMeetup(value) {
   if (!value || typeof value.name !== 'string' || !value.name.trim() || value.name.length > 80 || typeof value.organizer !== 'string' || !value.organizer.trim() || value.organizer.length > 60 || !Number.isFinite(Date.parse(value.startsAt)) || !['once','weekly'].includes(value.repeat) || (value.roomCode && !/^[A-Z2-9]{6}$/.test(value.roomCode))) throw new Error('Invalid meetup');
@@ -5,7 +6,7 @@ export function validateMeetup(value) {
     if (!Number.isFinite(Date.parse(result.date)) || typeof result.note !== 'string' || result.note.length > 2000) throw new Error('Invalid results');
     return { date:result.date, note:result.note };
   }) : [];
-  return { id:typeof value.id === 'string' && /^[a-zA-Z0-9-]{1,80}$/.test(value.id) ? value.id : crypto.randomUUID(), name:value.name.trim(), organizer:value.organizer.trim(), startsAt:new Date(value.startsAt).toISOString(), repeat:value.repeat, roomCode:value.roomCode || '', results };
+  return { id:typeof value.id === 'string' && /^[a-zA-Z0-9-]{1,80}$/.test(value.id) ? value.id : localRecordId(), name:value.name.trim(), organizer:value.organizer.trim(), startsAt:new Date(value.startsAt).toISOString(), repeat:value.repeat, roomCode:value.roomCode || '', results };
 }
 export function readMeetups() { try { return JSON.parse(localStorage.getItem(KEY) ?? '[]').slice(0,50).map(validateMeetup); } catch { return []; } }
 export function saveMeetup(value) { const meeting = validateMeetup(value); const all = readMeetups(); const updated = [meeting,...all.filter(m => m.id !== meeting.id)].slice(0,50); localStorage.setItem(KEY,JSON.stringify(updated)); return updated; }

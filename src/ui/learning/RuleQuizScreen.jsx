@@ -1,3 +1,4 @@
+import { localRecordId } from '../utils/localRecordId.js';
 import { useLanguage } from '../preferences/language.js';
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -59,7 +60,7 @@ function QuizRound({ topic, language, initialQuestions, unavailable }) {
     if (answeredIds.current.has(question.id)) return;
     answeredIds.current.add(question.id);
     setAnswers(previous => ({ ...previous, [question.id]: choice }));
-    pending.current.push({ answer: { attemptId: crypto.randomUUID(), questionId: question.id, correct: choice === answerForQuestion(question) }, at: Date.now() });
+    pending.current.push({ answer: { attemptId: localRecordId(), questionId: question.id, correct: choice === answerForQuestion(question) }, at: Date.now() });
     flushProgress();
   }
   const saveNotice = saveError && <div className="space-y-2 text-sm text-amber-200"><p role="alert">{progressError(saveError, ja)} {ja ? '画面を離れると未保存の回答記録は失われます。' : 'Unsaved answers are lost when you leave this screen.'}</p><button type="button" className="min-h-11 underline" onClick={flushProgress}>{ja ? '進捗の保存を再試行' : 'Retry saving progress'}</button></div>;

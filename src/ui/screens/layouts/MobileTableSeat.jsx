@@ -16,7 +16,7 @@ export default function MobileTableSeat({seat,index,hero=false,active=false,deal
  const action=folded?(ja?'フォールド':'Folded'):seat.allIn?'ALL IN':!stud&&seat.lastDrawCount!=null?(seat.lastDrawCount===0?'PAT':`D${seat.lastDrawCount}`):'';
  return <section data-testid={`seat-${index}`} className={`mgx-table-seat ${hero?'is-hero':''} ${cards.length>5?'is-long-hand':''} ${active?'is-active':''} ${folded?'is-folded':''}`} aria-label={`${hero?(ja?'あなた':'You'):seat.name} ${seat.stack??0}`}>
   <div className="mgx-seat-avatar" aria-hidden="true" style={{'--seat-hue':`${[150,205,32,275,350,175][index%6]}deg`}}><svg viewBox="0 0 32 32"><circle cx="16" cy="11" r="6"/><path d="M4 31v-3a12 12 0 0 1 24 0v3"/></svg></div>
-  <div className="mgx-seat-heading"><span className="mgx-seat-name">{hero?(ja?'あなた':'You'):seat.name}</span><span className="mgx-seat-position">{dealer?'D · ':''}{position}</span><strong data-testid={`seat-${index}-stack`}>{Number(seat.stack??0).toLocaleString()}</strong></div>
+  <div className="mgx-seat-heading"><span className="mgx-seat-name">{hero?(ja?'あなた':'You'):seat.name}</span><span className="mgx-seat-position">{!/^(stud|razz)/i.test(String(variant)) && <>{dealer?'D · ':''}{position}</>}</span><strong data-testid={`seat-${index}-stack`}>{Number(seat.stack??0).toLocaleString()}</strong></div>
   <div className="mgx-seat-cards" data-testid={`player-${index}-card-row`} style={{'--hand-count':Math.max(cards.length,1)}}>
    {cards.map(({card,sourceIndex})=>{
     const up=stud&&seat.cardVisibility[sourceIndex]==='up';

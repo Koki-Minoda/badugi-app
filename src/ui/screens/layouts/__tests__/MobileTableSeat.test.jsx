@@ -15,3 +15,9 @@ it('renders Board holeCards when the generic hand is empty',()=>{
  render(<MobileTableSeat seat={{name:'You',stack:500,hand:[],holeCards:['AS','KH']}} index={0} hero variant="nlh"/>);
  expect(screen.getByLabelText('A♠')).toBeTruthy();expect(screen.getByLabelText('K♥')).toBeTruthy();
 });
+it('omits blind and dealer positions in Stud while keeping them in Holdem',()=>{
+ const {container,rerender}=render(<MobileTableSeat seat={{name:'CPU',stack:500,hand:['AS','KH','2C'],cardVisibility:['down','down','up']}} index={1} dealer position="SB" variant="stud"/>);
+ expect(container.querySelector('.mgx-seat-position').textContent).toBe('');
+ rerender(<MobileTableSeat seat={{name:'CPU',stack:500,hand:['AS','KH'],cardVisibility:['down','down']}} index={1} dealer position="BTN" variant="nlh"/>);
+ expect(container.querySelector('.mgx-seat-position').textContent).toBe('D · BTN');
+});

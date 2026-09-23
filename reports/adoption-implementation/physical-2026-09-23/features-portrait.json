@@ -1,0 +1,286 @@
+{
+  "date": "2026-09-23T01:34:23.365Z",
+  "method": "Physical iPhone Safari with DOM activation; not native finger taps",
+  "rows": [
+    {
+      "id": "keypad-nlh",
+      "initial": {
+        "viewport": [
+          393,
+          695
+        ],
+        "stack": 500,
+        "value": "40"
+      },
+      "typed": 80,
+      "targets": [
+        {
+          "id": "bet-amount-cancel",
+          "width": 72.140625,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-amount-confirm",
+          "width": 351,
+          "height": 46,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-1",
+          "width": 113,
+          "height": 48,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-2",
+          "width": 113,
+          "height": 48,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-3",
+          "width": 113,
+          "height": 48,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-4",
+          "width": 113,
+          "height": 48,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-5",
+          "width": 113,
+          "height": 48,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-6",
+          "width": 113,
+          "height": 48,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-7",
+          "width": 113,
+          "height": 48,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-8",
+          "width": 113,
+          "height": 48,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-9",
+          "width": 113,
+          "height": 48,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-clear",
+          "width": 113,
+          "height": 48,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-0",
+          "width": 113,
+          "height": 48,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-back",
+          "width": 113,
+          "height": 48,
+          "inside": true,
+          "hit": true
+        }
+      ],
+      "cancel": true,
+      "confirmed": true,
+      "after": {
+        "stack": 420,
+        "text": "あなたD · BTN4209♦2♠ ベット 80"
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "keypad-deuce_to_seven_single_draw",
+      "initial": {
+        "viewport": [
+          393,
+          695
+        ],
+        "stack": 500,
+        "value": "40"
+      },
+      "typed": 80,
+      "targets": [
+        {
+          "id": "bet-amount-cancel",
+          "width": 72.140625,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-amount-confirm",
+          "width": 351,
+          "height": 46,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-1",
+          "width": 113,
+          "height": 48,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-2",
+          "width": 113,
+          "height": 48,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-3",
+          "width": 113,
+          "height": 48,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-4",
+          "width": 113,
+          "height": 48,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-5",
+          "width": 113,
+          "height": 48,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-6",
+          "width": 113,
+          "height": 48,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-7",
+          "width": 113,
+          "height": 48,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-8",
+          "width": 113,
+          "height": 48,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-9",
+          "width": 113,
+          "height": 48,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-clear",
+          "width": 113,
+          "height": 48,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-0",
+          "width": 113,
+          "height": 48,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-back",
+          "width": 113,
+          "height": 48,
+          "inside": true,
+          "hit": true
+        }
+      ],
+      "cancel": true,
+      "confirmed": true,
+      "after": {
+        "stack": 420,
+        "text": "あなたD · BTN420A♣A♥10♥10♦4♣ ベット 80"
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "custom-tournament",
+      "stack": 1500,
+      "minutes": 7,
+      "deadlinePreserved": true,
+      "languageKeptInput": true,
+      "status": "PASS"
+    },
+    {
+      "id": "practice-badugi",
+      "status": "FAIL",
+      "error": "AssertionError [ERR_ASSERTION]: legal practice action"
+    },
+    {
+      "id": "practice-ace_to_five_triple_draw",
+      "status": "FAIL",
+      "error": "Error: Condition timed out: ()=>!!document.querySelector('img[alt=\"共有リンクのQRコード\"]') undefined"
+    },
+    {
+      "id": "practice-deuce_to_seven_triple_draw",
+      "status": "FAIL",
+      "error": "AssertionError [ERR_ASSERTION]: legal practice action"
+    },
+    {
+      "id": "clock",
+      "continuedOffscreen": true,
+      "pause": true,
+      "game": "stud",
+      "status": "PASS"
+    },
+    {
+      "id": "meetup",
+      "status": "FAIL",
+      "error": "Error: Condition timed out: ({ name, scope }) => {\n    const root = document.querySelector(scope);\n    const el = [...(root?.querySelectorAll('button,a,summary') || [])].find(e => e.textContent.trim() === name && !e.disabled && e.getClientRects().length);\n    if (!el) return false;\n    el.scrollIntoView({ block: 'center' }); el.click(); return true;\n  } {\"name\":\"予定・ルームコードを編集\",\"scope\":\"body\"}"
+    },
+    {
+      "id": "recommendation",
+      "practiceTransfer": true,
+      "status": "PASS"
+    }
+  ],
+  "errors": [],
+  "transportErrors": []
+}

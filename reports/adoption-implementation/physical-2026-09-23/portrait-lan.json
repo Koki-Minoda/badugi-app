@@ -1,0 +1,93 @@
+{
+  "date": "2026-09-23T01:32:49.203Z",
+  "method": "Physical iPhone Safari via USB Web Inspector; DOM activation and hit tests, not native finger taps",
+  "rows": [
+    {
+      "type": "game",
+      "id": "badugi",
+      "actions": [
+        "action-call",
+        "action-check",
+        "action-draw-selected",
+        "action-call",
+        "action-draw-selected",
+        "action-check",
+        "action-draw-selected",
+        "action-check"
+      ],
+      "layoutIssues": [],
+      "tones": [
+        "bet",
+        "draw"
+      ],
+      "done": true,
+      "geometry": {
+        "width": 393,
+        "height": 695,
+        "visualHeight": 695,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "PASS"
+    },
+    {
+      "type": "game",
+      "id": "nlh",
+      "actions": [],
+      "layoutIssues": [],
+      "tones": [],
+      "done": true,
+      "geometry": {
+        "width": 393,
+        "height": 695,
+        "visualHeight": 695,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "INVALID_TEST_RUN"
+    },
+    {
+      "type": "game",
+      "id": "D01",
+      "actions": [],
+      "layoutIssues": [],
+      "tones": [],
+      "done": true,
+      "geometry": {
+        "width": 393,
+        "height": 695,
+        "visualHeight": 695,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "INVALID_TEST_RUN"
+    },
+    {
+      "type": "game",
+      "id": "S01",
+      "actions": [],
+      "layoutIssues": [],
+      "tones": [],
+      "done": true,
+      "geometry": {
+        "width": 393,
+        "height": 695,
+        "visualHeight": 695,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "INVALID_TEST_RUN"
+    }
+  ],
+  "errors": [],
+  "transportErrors": [],
+  "coverageNote": "First harness attempt. Only Badugi had actual actions. Other rows reused the previous result due to missing route unmount; they are invalid coverage and were replaced by portrait-games.json."
+}

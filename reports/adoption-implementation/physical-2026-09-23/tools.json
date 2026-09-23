@@ -1,0 +1,61 @@
+{
+  "method": "Physical iPhone Safari via DOM actions",
+  "rows": [
+    {
+      "id": "hand-checker-eight-rules",
+      "results": [
+        {
+          "game": "high",
+          "result": "比較結果ハイ手札 1: ハイカード · 7-5-4-3-27♠ 5♥ 4♦ 3♣ 2♠手札 2: ハイカード · 8-6-4-3-28♠ 6♥ 4♣ 3♦ 2♥手札 2 の勝ち手札 1: 0% / 手札 2: 100%ローは高い数字から順に比べます。Badugiは有効枚数が多い方が優先です。片側だけ成立する場合は、その側で全体を分けます。端数チップは卓の規定に従います。"
+        },
+        {
+          "game": "low27",
+          "result": "比較結果2-7ロー手札 1: ペアなし · 7-5-4-3-27♠ 5♥ 4♦ 3♣ 2♠手札 2: ペアなし · 8-6-4-3-28♠ 6♥ 4♣ 3♦ 2♥手札 1 の勝ち手札 1: 100% / 手札 2: 0%ローは高い数字から順に比べます。Badugiは有効枚数が多い方が優先です。片側だけ成立する場合は、その側で全体を分けます。端数チップは卓の規定に従います。"
+        },
+        {
+          "game": "lowA5",
+          "result": "比較結果A-5ロー手札 1: ペアなし · 7-5-4-3-27♠ 5♥ 4♦ 3♣ 2♠手札 2: ペアなし · 8-6-4-3-28♠ 6♥ 4♣ 3♦ 2♥手札 1 の勝ち手札 1: 100% / 手札 2: 0%ローは高い数字から順に比べます。Badugiは有効枚数が多い方が優先です。片側だけ成立する場合は、その側で全体を分けます。端数チップは卓の規定に従います。"
+        },
+        {
+          "game": "badugi",
+          "result": "比較結果Badugi手札 1: 4枚のBadugi3♣ 4♦ 5♥ 7♠手札 2: 4枚のBadugi3♦ 4♣ 6♥ 8♠手札 1 の勝ち手札 1: 100% / 手札 2: 0%ローは高い数字から順に比べます。Badugiは有効枚数が多い方が優先です。片側だけ成立する場合は、その側で全体を分けます。端数チップは卓の規定に従います。"
+        },
+        {
+          "game": "hiLo8",
+          "result": "比較結果ハイ手札 1: ハイカード · 7-5-4-3-27♠ 5♥ 4♦ 3♣ 2♠手札 2: ハイカード · 8-6-4-3-28♠ 6♥ 4♣ 3♦ 2♥手札 2 の勝ち8以下のロー手札 1: ペアなし · 7-5-4-3-27♠ 5♥ 4♦ 3♣ 2♠手札 2: ペアなし · 8-6-4-3-28♠ 6♥ 4♣ 3♦ 2♥手札 1 の勝ち手札 1: 50% / 手札 2: 50%ローは高い数字から順に比べます。Badugiは有効枚数が多い方が優先です。片側だけ成立する場合は、その側で全体を分けます。端数チップは卓の規定に従います。"
+        },
+        {
+          "game": "badeucey",
+          "result": "比較結果Badugi（Aは高い）手札 1: 4枚のBadugi5♥ 4♦ 3♣ 2♠手札 2: 4枚のBadugi8♠ 4♣ 3♦ 2♥手札 1 の勝ち2-7ロー手札 1: ペアなし · 7-5-4-3-27♠ 5♥ 4♦ 3♣ 2♠手札 2: ペアなし · 8-6-4-3-28♠ 6♥ 4♣ 3♦ 2♥手札 1 の勝ち手札 1: 100% / 手札 2: 0%ローは高い数字から順に比べます。Badugiは有効枚数が多い方が優先です。片側だけ成立する場合は、その側で全体を分けます。端数チップは卓の規定に従います。"
+        },
+        {
+          "game": "badacey",
+          "result": "比較結果Badugi手札 1: 4枚のBadugi2♠ 3♣ 4♦ 5♥手札 2: 4枚のBadugi2♥ 3♦ 4♣ 8♠手札 1 の勝ちA-5ロー手札 1: ペアなし · 7-5-4-3-27♠ 5♥ 4♦ 3♣ 2♠手札 2: ペアなし · 8-6-4-3-28♠ 6♥ 4♣ 3♦ 2♥手札 1 の勝ち手札 1: 100% / 手札 2: 0%ローは高い数字から順に比べます。Badugiは有効枚数が多い方が優先です。片側だけ成立する場合は、その側で全体を分けます。端数チップは卓の規定に従います。"
+        },
+        {
+          "game": "archie",
+          "result": "比較結果9のペア以上手札 1: 成立しません7♠ 5♥ 4♦ 3♣ 2♠手札 2: 成立しません8♠ 6♥ 4♣ 3♦ 2♥どちらも成立しません8以下のロー手札 1: ペアなし · 7-5-4-3-27♠ 5♥ 4♦ 3♣ 2♠手札 2: ペアなし · 8-6-4-3-28♠ 6♥ 4♣ 3♦ 2♥手札 1 の勝ち手札 1: 100% / 手札 2: 0%ローは高い数字から順に比べます。Badugiは有効枚数が多い方が優先です。片側だけ成立する場合は、その側で全体を分けます。端数チップは卓の規定に従います。"
+        }
+      ],
+      "status": "PASS"
+    },
+    {
+      "id": "practice-preset-save",
+      "saved": true,
+      "idPrefix": "local",
+      "status": "PASS"
+    },
+    {
+      "id": "quiz-progress",
+      "answerSaved": true,
+      "status": "PASS"
+    },
+    {
+      "id": "mix-share-import",
+      "status": "FAIL",
+      "error": "Error: Condition timed out: ()=>location.pathname==='/mixed'&&location.search.includes('preset=') undefined",
+      "text": "\n    Mixed Game Builderミックスローテーションを作成言語 / Language日本語EnglishMain MenuCatalogリンク・QRで共有世界大会を優勝すると Mixed Game が解放されます。まずはトーナメントで実績を積みましょう。ゲーム検索ローテーションに入れるゲームを探すトリプルドローシングルドローボード / ホールデム / オマハドラマハスタッドD012-7 Triple Drawプレイ可能ストレートとフラッシュが弱点になる2-7ローのトリプルドローです。Aは高いカードとして扱います。fixed-limit / live追加するD02A-5 Triple Drawプレイ可能Aを低く扱い、ストレートとフラッシュを無視するA-5ローのトリプルドローです。fixed-limit / live追加するD03Badugiプレイ可能4枚の異なるスート・ランクで低い役を作るトリプルドローゲームです。fixed-limit / live追加する（1）D04Badeucey TD準備中Badugiと2-7ローの両方でポットを分け合うスプリットポットのトリプルドローです。fixed-limit / live追加するD05Badacey TD準備中BadugiとA-5ローの両方でポットを分け合うスプリットポットのトリプルドローです。fixed-limit / live追加するD06Hidugi TD準備中高いBadugiを目指す特殊なトリプルドローです。通常のBadugiとは逆方向の評価になります。fixed-limit / live追加するD07Archie TD準備中ペアやホイール条件を含むArchie系のトリプルドローです。fixed-limit / live追加するPro Presetsプロ仕様プリセットHORSE / 8-Game / 10-Game / ランダムMIXを選べます。HORSEHORSE ProFixedHORSE形式の5ゲームを固定順で回す、フィックスリミット中心のプロ向けローテーションです。読み込む8-Game8-Game ProFixedNLH、PLO、Stud系、Draw系を含むWSOP形式に近い8ゲームローテーションです。読み込む10-Game10-Game ProFixed8-GameにBadugiとNL 2-7 Single Drawを加えた上位ミックスです。読み込むWeighted RandomWeighted Random MixWeighted出現しやすさと除外する種目を設定し、次の種目を抽選します。読み込むCategory RandomCategory RotationCategoryカテゴリごとの出現しやすさと候補種目を決め、次の種目を抽選します。読み込むプロフィール一覧Badugi Classic固定順· 4ハンドTriple Draw Sampler固定順· 2ハンドHORSE Pro固定順· 8ハンド8-Game Pro固定順· 6ハンド10-Game Pro固定順· 6ハンドWeighted Random Mix固定順· 4ハンドCategory Rotation固定順· 4ハンドBadugi Classic固定順· 4ハンド再読込削除プロフィール名1ゲームあたりのハンド数選択モード固定順 (Classic)Dealer's ChoiceWeighted RandomCategory Random重複を許可フォーマット名必ず除外する種目出現しにくくする種目選択中のゲーム1/20BadugiD03↑↓削除プロフィール保存Mixed Game 開始Badugi Classicを読み込みました。\n  \n\n"
+    }
+  ],
+  "errors": []
+}

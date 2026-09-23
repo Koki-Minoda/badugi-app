@@ -1,3 +1,4 @@
+import { localRecordId } from '../utils/localRecordId.js';
 import { DeckManager } from '../../games/badugi/utils/deck.js';
 import { BadugiGameController } from '../../games/badugi/controller/BadugiGameController.js';
 import { DeuceToSevenTripleDrawController } from '../../games/draw/DeuceToSevenTripleDrawController.js';
@@ -34,7 +35,7 @@ export class PracticeSession {
     this.variant = variant;
     this.initialCards = [...cards];
     this.deck = new PracticeDeck(cards, replayableRng);
-    this.handId = `practice-${crypto.randomUUID()}`;
+    this.handId = `practice-${localRecordId()}`;
     this.startedAt = Date.now();
     const config = { numSeats: 6, seatConfig: ['HUMAN', 'CPU', 'CPU', 'CPU', 'CPU', 'CPU'], startingStack: 2000, heroProfile: { name: 'You' }, blindStructure: [{ sb: 10, bb: 20, ante: 0 }], structure: { sb: 10, bb: 20, ante: 0 } };
     if (variant === 'badugi') {

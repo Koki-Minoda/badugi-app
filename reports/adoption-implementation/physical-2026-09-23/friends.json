@@ -1,0 +1,83 @@
+{
+  "method": "Physical iPhone host + desktop Chromium companions; all actions through UI buttons",
+  "rows": [
+    {
+      "variant": "badugi",
+      "seats": 2,
+      "actions": 14,
+      "phoneActions": 7,
+      "issues": [],
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "overflow": false,
+        "issues": []
+      },
+      "done": true,
+      "reconnected": true,
+      "phases": [
+        "bet_0",
+        "draw_1",
+        "bet_1",
+        "draw_2",
+        "bet_2",
+        "draw_3",
+        "bet_3",
+        "showdown"
+      ],
+      "status": "PASS"
+    },
+    {
+      "variant": "ace_to_five_triple_draw",
+      "seats": 3,
+      "actions": 21,
+      "phoneActions": 7,
+      "issues": [],
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "overflow": false,
+        "issues": []
+      },
+      "done": true,
+      "reconnected": true,
+      "phases": [
+        "bet_0",
+        "draw_1",
+        "bet_1",
+        "draw_2",
+        "bet_2",
+        "draw_3",
+        "bet_3",
+        "showdown"
+      ],
+      "status": "PASS"
+    },
+    {
+      "variant": "deuce_to_seven_triple_draw",
+      "seats": 6,
+      "actions": 42,
+      "phoneActions": 7,
+      "issues": [],
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "overflow": false,
+        "issues": []
+      },
+      "done": true,
+      "reconnected": true,
+      "phases": [
+        "bet_0",
+        "draw_1",
+        "bet_1",
+        "draw_2",
+        "bet_2",
+        "draw_3",
+        "bet_3",
+        "showdown"
+      ],
+      "status": "PASS"
+    }
+  ]
+}

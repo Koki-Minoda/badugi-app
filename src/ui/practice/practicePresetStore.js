@@ -1,3 +1,4 @@
+import { localRecordId } from '../utils/localRecordId.js';
 import { validatePracticeSetup } from './practiceSetup.js';
 
 export const PRESET_STORAGE_KEY = 'mgx.practicePresets.v1';
@@ -27,7 +28,7 @@ export function savePracticePreset(name, setup) {
   if (state.error) throw new Error(state.error);
   if (state.entries.some(entry => entry.name.trim() === name.trim())) throw new Error('duplicate');
   if (state.entries.length >= MAX_PRESETS) throw new Error('limit');
-  const entry = { id: crypto.randomUUID(), name: name.trim(), variant: setup.variant, cards: [...setup.cards], savedAt: Date.now() };
+  const entry = { id: localRecordId(), name: name.trim(), variant: setup.variant, cards: [...setup.cards], savedAt: Date.now() };
   write([entry, ...state.entries]);
   return entry;
 }

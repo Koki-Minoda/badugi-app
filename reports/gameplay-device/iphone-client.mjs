@@ -85,7 +85,8 @@ const textAt = selector => evaluate(s => document.querySelector(s)?.textContent,
 const assertText = (selector, text) => until(({ selector, text }) => document.querySelector(selector)?.textContent.includes(text), { selector, text });
 
 async function shot(name) {
-  const r = await send('Page.captureScreenshot', { format: 'png' }, 10000);
+  const clip = await evaluate(() => ({ x: scrollX, y: scrollY, width: innerWidth, height: innerHeight, scale: 1 }));
+  const r = await send('Page.captureScreenshot', { format: 'png', clip }, 10000);
   await writeFile(new URL(`${name}.png`, output), Buffer.from(r.data, 'base64'));
 }
 

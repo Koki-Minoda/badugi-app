@@ -1,0 +1,347 @@
+{
+  "date": "2026-09-23T01:40:02.048Z",
+  "method": "Physical iPhone Safari with DOM activation; not native finger taps",
+  "rows": [
+    {
+      "id": "keypad-nlh",
+      "viewport": [
+        852,
+        283
+      ],
+      "initial": {
+        "viewport": [
+          852,
+          283
+        ],
+        "stack": 500,
+        "value": "40"
+      },
+      "typed": 80,
+      "targets": [
+        {
+          "id": "bet-amount-cancel",
+          "width": 72.140625,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-amount-confirm",
+          "width": 301,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-1",
+          "width": 97.65625,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-2",
+          "width": 97.671875,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-3",
+          "width": 97.671875,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-4",
+          "width": 97.65625,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-5",
+          "width": 97.671875,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-6",
+          "width": 97.671875,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-7",
+          "width": 97.65625,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-8",
+          "width": 97.671875,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-9",
+          "width": 97.671875,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-clear",
+          "width": 97.65625,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-0",
+          "width": 97.671875,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-back",
+          "width": 97.671875,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        }
+      ],
+      "cancel": true,
+      "confirmed": true,
+      "after": {
+        "stack": 420,
+        "text": "あなた420Q♠8♦ ベット 80"
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "keypad-deuce_to_seven_single_draw",
+      "viewport": [
+        852,
+        283
+      ],
+      "initial": {
+        "viewport": [
+          852,
+          283
+        ],
+        "stack": 500,
+        "value": "40"
+      },
+      "typed": 80,
+      "targets": [
+        {
+          "id": "bet-amount-cancel",
+          "width": 72.140625,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-amount-confirm",
+          "width": 301,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-1",
+          "width": 97.65625,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-2",
+          "width": 97.671875,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-3",
+          "width": 97.671875,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-4",
+          "width": 97.65625,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-5",
+          "width": 97.671875,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-6",
+          "width": 97.671875,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-7",
+          "width": 97.65625,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-8",
+          "width": 97.671875,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-9",
+          "width": 97.671875,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-clear",
+          "width": 97.65625,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-0",
+          "width": 97.671875,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        },
+        {
+          "id": "bet-key-back",
+          "width": 97.671875,
+          "height": 44,
+          "inside": true,
+          "hit": true
+        }
+      ],
+      "cancel": true,
+      "confirmed": true,
+      "after": {
+        "stack": 420,
+        "text": "あなたD · BTN420Q♠8♥7♣6♠3♥ ベット 80"
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "custom-tournament",
+      "viewport": [
+        852,
+        283
+      ],
+      "status": "FAIL",
+      "error": "Error: Condition timed out: id=>{const e=document.querySelector(`[data-testid=\"${id}\"]`);if(!e||e.disabled||!e.getClientRects().length)return false;const b=e.getBoundingClientRect();if(b.top<0||b.bottom>innerHeight)e.scrollIntoView({block:'nearest',inline:'nearest'});const r=e.getBoundingClientRect();const hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);if(!hit||!e.contains(hit))return false;e.click();return true;} \"tournament-start\"",
+      "text": "\n    大会を選ぶBADUGI SERIES戻る言語 / Language日本語English自分で設定した練習大会を開く（Badugi）練習大会の設定参加費・賞金なし。大会の解放条件や成績には反映しません。レベル時間が過ぎると、進行中のハンドの終了後にブラインドが上がります。短め標準じっくり名前開始持ち点1レベル（分）休憩までのレベル数（0でなし）休憩（分）各レベルの強制ベットLvSBBBAnte123456789101112131415Badugiのベット単位はBB / BBの2倍です。この設定を保存この端末に保存しました。練習大会iPhone実機QACPUと対局。成績や参加条件には影響しません。参加人数18卓数3開始持ち点1,500CPUの強さStandardストラクチャーiPhone実機QA参加費 / 持ち点無料（持ち点の消費なし）ストラクチャーを見る7分ごと・ハンド終了後に上昇LvSB / BBベット単位Anteハンド15/1010/200—210/2020/401—320/4040/802—430/6060/1203—550/100100/2005—675/150150/30010—7100/200200/40015—8150/300300/60025—9200/400400/80040—10300/600600/120060—11400/800800/160080—12600/12001200/2400120—13800/16001600/3200160—141000/20002000/4000200—151500/30003000/6000300—再参加なし。種目はBadugi固定です。休憩: 6 Lv / 5 分進行中の大会を再開するかリタイアしてから、新しい大会を開始してください。練習大会を開始進行中の大会大会を再開iPhone実機QA · Players 18大会を再開リタイア大会で遊べる種目Badugi遊べます2-7 Triple Draw参加条件ありWin Badugi World Championship to unlockA-5 Triple Draw参加条件ありWin 2-7 Triple Draw World Championship to unlockRazz参加条件ありWin A-5 Triple Draw World Championship to unlockStud参加条件ありWin Razz World Championship to unlock\n  \n\n"
+    },
+    {
+      "id": "practice-badugi",
+      "viewport": [
+        852,
+        283
+      ],
+      "actions": 43,
+      "undo": true,
+      "qr": true,
+      "options": {
+        "cpuDelay": 150,
+        "neverFold": true,
+        "selfPlay": true,
+        "showAll": false
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "practice-ace_to_five_triple_draw",
+      "viewport": [
+        852,
+        283
+      ],
+      "actions": 43,
+      "undo": true,
+      "qr": true,
+      "options": {
+        "cpuDelay": 150,
+        "neverFold": true,
+        "selfPlay": true,
+        "showAll": false
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "practice-deuce_to_seven_triple_draw",
+      "viewport": [
+        852,
+        283
+      ],
+      "actions": 43,
+      "undo": true,
+      "qr": true,
+      "options": {
+        "cpuDelay": 150,
+        "neverFold": true,
+        "selfPlay": true,
+        "showAll": false
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "clock",
+      "viewport": [
+        852,
+        283
+      ],
+      "continuedOffscreen": true,
+      "pause": true,
+      "game": "stud",
+      "status": "PASS"
+    },
+    {
+      "id": "meetup",
+      "viewport": [
+        852,
+        283
+      ],
+      "saved": true,
+      "editedRoom": true,
+      "qr": true,
+      "articles": 1,
+      "status": "PASS"
+    },
+    {
+      "id": "recommendation",
+      "viewport": [
+        852,
+        283
+      ],
+      "practiceTransfer": true,
+      "status": "PASS"
+    }
+  ],
+  "errors": [],
+  "transportErrors": []
+}

@@ -1,3 +1,4 @@
+import { localRecordId } from '../utils/localRecordId.js';
 import { getVariantById, GAME_VARIANT_CATEGORIES } from '../../games/config/variantCatalog.js';
 import { buildProfileFromPreset } from '../mixed/rotationUtils.js';
 export function readSharedMix(token) {
@@ -12,7 +13,7 @@ export function readSharedMix(token) {
     const keys = Object.values(GAME_VARIANT_CATEGORIES);
     if (!validWeights(data.categories.weights ?? {}, keys) || !data.categories.pools || typeof data.categories.pools !== 'object' || Object.entries(data.categories.pools).some(([key,list]) => !keys.includes(key) || !ids(list))) throw new Error('Invalid categories');
   }
-  return buildProfileFromPreset({ id: `shared-${crypto.randomUUID()}`, name: data.name, selectedGameIds: data.games, handsPerGame: data.hands, selectionMode: data.mode, weightedTable: data.weights, categoryRules: data.categories, hardBans: data.hardBans, softBans: data.softBans });
+  return buildProfileFromPreset({ id: `shared-${localRecordId()}`, name: data.name, selectedGameIds: data.games, handsPerGame: data.hands, selectionMode: data.mode, weightedTable: data.weights, categoryRules: data.categories, hardBans: data.hardBans, softBans: data.softBans });
 }
 export function sharedMixUrl(profile, origin = window.location.origin) {
   const data = { version: 1, name: profile.name, games: profile.selectedGameIds, hands: Number(profile.handsPerGame), mode: profile.selectionMode, weights: profile.weightedTable, categories: profile.categoryRules, hardBans: profile.hardBans, softBans: profile.softBans };

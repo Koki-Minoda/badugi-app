@@ -793,6 +793,10 @@ export class BadugiGameController extends GameController {
 
     this.legacy.syncExternalState({
       players: normalized.players ?? [],
+      handId: normalized.handId ?? metadata.handId ?? this.legacy.state.handId,
+      ...(Object.prototype.hasOwnProperty.call(normalized, 'lastHandResult')
+        ? {lastHandResult: normalized.lastHandResult}
+        : {}),
       dealerIdx,
       blindLevelIndex:
         normalized.blindLevelIndex ??

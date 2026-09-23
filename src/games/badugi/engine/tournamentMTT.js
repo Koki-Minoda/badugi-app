@@ -335,7 +335,7 @@ function activeTables(state) {
 }
 
 function isHeroPlayer(player) {
-  return player?.id === "hero" || String(player?.name ?? "").toLowerCase() === "hero";
+  return player?.id === "hero-player" || player?.id === "hero" || String(player?.name ?? "").toLowerCase() === "hero";
 }
 
 function getHeroTableId(state) {

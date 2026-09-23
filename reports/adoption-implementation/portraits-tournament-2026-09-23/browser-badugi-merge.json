@@ -1,0 +1,380 @@
+{
+  "rows": [
+    {
+      "hand": "table-1-h1-d0-mudi6spg",
+      "tables": 3,
+      "remaining": 18,
+      "hero": 500
+    },
+    {
+      "hand": "table-1-h2-d1-mudi6xzq",
+      "tables": 3,
+      "remaining": 18,
+      "hero": 500
+    },
+    {
+      "hand": "table-1-h3-d2-mudi74bz",
+      "tables": 3,
+      "remaining": 18,
+      "hero": 500
+    },
+    {
+      "hand": "table-1-h4-d3-mudi7atb",
+      "tables": 3,
+      "remaining": 18,
+      "hero": 500
+    },
+    {
+      "hand": "table-1-h5-d4-mudi7go0",
+      "tables": 3,
+      "remaining": 18,
+      "hero": 490
+    },
+    {
+      "hand": "table-1-h6-d5-mudi7k6c",
+      "tables": 3,
+      "remaining": 18,
+      "hero": 485
+    },
+    {
+      "hand": "table-1-h7-d0-mudi7qno",
+      "tables": 3,
+      "remaining": 18,
+      "hero": 485
+    },
+    {
+      "hand": "table-1-h8-d1-mudi7vj5",
+      "tables": 3,
+      "remaining": 18,
+      "hero": 485
+    },
+    {
+      "hand": "table-1-h9-d2-mudi824l",
+      "tables": 3,
+      "remaining": 18,
+      "hero": 485
+    },
+    {
+      "hand": "table-1-h10-d3-mudi878u",
+      "tables": 3,
+      "remaining": 18,
+      "hero": 485
+    },
+    {
+      "hand": "table-1-h11-d4-mudi8doa",
+      "tables": 3,
+      "remaining": 18,
+      "hero": 475
+    },
+    {
+      "hand": "table-1-h12-d5-mudi8jje",
+      "tables": 3,
+      "remaining": 18,
+      "hero": 470
+    },
+    {
+      "hand": "table-1-h13-d0-mudi8q0a",
+      "tables": 2,
+      "remaining": 10,
+      "hero": 470
+    },
+    {
+      "hand": "table-1-h14-d1-mudi8w3o",
+      "tables": 2,
+      "remaining": 8,
+      "hero": 470
+    },
+    {
+      "hand": "table-1-h15-d2-mudi92bq",
+      "tables": 2,
+      "remaining": 8,
+      "hero": 460
+    },
+    {
+      "hand": "table-1-h16-d3-mudi95h5",
+      "tables": 2,
+      "remaining": 8,
+      "hero": 455
+    },
+    {
+      "hand": "table-1-h17-d0-mudi99u3",
+      "tables": 2,
+      "remaining": 8,
+      "hero": 455
+    },
+    {
+      "hand": "table-1-h18-d1-mudi9cst",
+      "tables": 2,
+      "remaining": 8,
+      "hero": 455
+    },
+    {
+      "hand": "table-1-h19-d2-mudi9hfy",
+      "tables": 2,
+      "remaining": 8,
+      "hero": 445
+    },
+    {
+      "hand": "table-1-h20-d3-mudi9lpn",
+      "tables": 2,
+      "remaining": 8,
+      "hero": 440
+    },
+    {
+      "hand": "table-1-h21-d0-mudi9qgh",
+      "tables": 2,
+      "remaining": 8,
+      "hero": 440
+    },
+    {
+      "hand": "table-1-h22-d1-mudi9tqj",
+      "tables": 2,
+      "remaining": 8,
+      "hero": 440
+    },
+    {
+      "hand": "table-1-h23-d2-mudi9yd7",
+      "tables": 2,
+      "remaining": 8,
+      "hero": 430
+    },
+    {
+      "hand": "table-1-h24-d3-mudia2mf",
+      "tables": 2,
+      "remaining": 8,
+      "hero": 425
+    },
+    {
+      "hand": "table-1-h25-d0-mudia7d8",
+      "tables": 2,
+      "remaining": 8,
+      "hero": 425
+    },
+    {
+      "hand": "table-1-h26-d1-mudiac1b",
+      "tables": 2,
+      "remaining": 7,
+      "hero": 425
+    },
+    {
+      "hand": "table-1-h27-d2-mudiagaj",
+      "tables": 1,
+      "remaining": 6,
+      "hero": 415
+    },
+    {
+      "hand": "table-1-h28-d3-mudiakkp",
+      "tables": 1,
+      "remaining": 6,
+      "hero": 323
+    },
+    {
+      "hand": "table-1-h29-d4-mudiarjm",
+      "tables": 1,
+      "remaining": 6,
+      "hero": 243
+    },
+    {
+      "hand": "table-1-h30-d5-mudiaz8w",
+      "tables": 1,
+      "remaining": 6,
+      "hero": 153
+    },
+    {
+      "hand": "table-1-h31-d0-mudib7a8",
+      "tables": 1,
+      "remaining": 6,
+      "hero": 553
+    },
+    {
+      "hand": "table-1-h32-d1-mudibi8o",
+      "tables": 1,
+      "remaining": 6,
+      "hero": 473
+    },
+    {
+      "hand": "table-1-h33-d2-mudiboqx",
+      "tables": 1,
+      "remaining": 5,
+      "hero": 393
+    },
+    {
+      "hand": "table-1-h34-d3-mudibv7c",
+      "tables": 1,
+      "remaining": 5,
+      "hero": 313
+    },
+    {
+      "hand": "table-1-h35-d4-mudic2vn",
+      "tables": 1,
+      "remaining": 5,
+      "hero": 233
+    },
+    {
+      "hand": "table-1-h36-d0-mudic84j",
+      "tables": 1,
+      "remaining": 5,
+      "hero": 153
+    },
+    {
+      "hand": "table-1-h37-d1-mudich6g",
+      "tables": 1,
+      "remaining": 5,
+      "hero": 393
+    },
+    {
+      "hand": "table-1-h38-d2-mudico2l",
+      "tables": 1,
+      "remaining": 5,
+      "hero": 313
+    },
+    {
+      "hand": "table-1-h39-d3-mudicvmc",
+      "tables": 1,
+      "remaining": 4,
+      "hero": 233
+    },
+    {
+      "hand": "table-1-h40-d4-mudid3bn",
+      "tables": 1,
+      "remaining": 4,
+      "hero": 153
+    },
+    {
+      "hand": "table-1-h41-d0-mudid8gd",
+      "tables": 1,
+      "remaining": 4,
+      "hero": 73
+    }
+  ],
+  "terminal": true,
+  "errors": [],
+  "placements": [
+    {
+      "id": "cpu-1",
+      "place": 1,
+      "name": "サトル",
+      "stack": 9000,
+      "payout": 1000
+    },
+    {
+      "id": "cpu-3",
+      "place": 2,
+      "name": "ゴロー",
+      "stack": 0,
+      "payout": 600
+    },
+    {
+      "id": "cpu-6",
+      "place": 3,
+      "name": "サトル",
+      "stack": 0,
+      "payout": 400
+    },
+    {
+      "id": "hero-player",
+      "place": 4,
+      "name": "QA Hero",
+      "stack": 0,
+      "payout": 0
+    },
+    {
+      "id": "cpu-9",
+      "place": 5,
+      "name": "ナオト",
+      "stack": 0,
+      "payout": 0
+    },
+    {
+      "id": "cpu-11",
+      "place": 6,
+      "name": "サトル",
+      "stack": 0,
+      "payout": 0
+    },
+    {
+      "id": "cpu-15",
+      "place": 7,
+      "name": "カリン",
+      "stack": 0,
+      "payout": 0
+    },
+    {
+      "id": "cpu-12",
+      "place": 8,
+      "name": "ミユ",
+      "stack": 0,
+      "payout": 0
+    },
+    {
+      "id": "cpu-17",
+      "place": 9,
+      "name": "ミユ",
+      "stack": 0,
+      "payout": 0
+    },
+    {
+      "id": "cpu-14",
+      "place": 10,
+      "name": "ナオト",
+      "stack": 0,
+      "payout": 0
+    },
+    {
+      "id": "cpu-8",
+      "place": 11,
+      "name": "ゴロー",
+      "stack": 0,
+      "payout": 0
+    },
+    {
+      "id": "cpu-5",
+      "place": 12,
+      "name": "カリン",
+      "stack": 0,
+      "payout": 0
+    },
+    {
+      "id": "cpu-2",
+      "place": 13,
+      "name": "ミユ",
+      "stack": 0,
+      "payout": 0
+    },
+    {
+      "id": "cpu-7",
+      "place": 14,
+      "name": "ミユ",
+      "stack": 0,
+      "payout": 0
+    },
+    {
+      "id": "cpu-4",
+      "place": 15,
+      "name": "ナオト",
+      "stack": 0,
+      "payout": 0
+    },
+    {
+      "id": "cpu-16",
+      "place": 16,
+      "name": "サトル",
+      "stack": 0,
+      "payout": 0
+    },
+    {
+      "id": "cpu-13",
+      "place": 17,
+      "name": "ゴロー",
+      "stack": 0,
+      "payout": 0
+    },
+    {
+      "id": "cpu-10",
+      "place": 18,
+      "name": "カリン",
+      "stack": 0,
+      "payout": 0
+    }
+  ]
+}

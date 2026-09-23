@@ -1,0 +1,192 @@
+{
+  "interaction": "physical Safari, controlled post-settlement cash fixture followed by ten hands using visible next/fold controls",
+  "rows": [
+    {
+      "hand": 2,
+      "player": {
+        "seatIndex": 1,
+        "id": null,
+        "name": "Mina",
+        "stack": 0,
+        "bet": 0,
+        "folded": true,
+        "allIn": true,
+        "seatOut": true,
+        "isBusted": true,
+        "isActiveInGame": false
+      },
+      "cards": [],
+      "portraitLoaded": true,
+      "text": "\nMina\nOUT\n0\n離席\n \n"
+    },
+    {
+      "hand": 3,
+      "player": {
+        "seatIndex": 1,
+        "id": null,
+        "name": "Mina",
+        "stack": 0,
+        "bet": 0,
+        "folded": true,
+        "allIn": true,
+        "seatOut": true,
+        "isBusted": true,
+        "isActiveInGame": false
+      },
+      "cards": [],
+      "portraitLoaded": true,
+      "text": "\nMina\nOUT\n0\n離席\n \n"
+    },
+    {
+      "hand": 4,
+      "player": {
+        "seatIndex": 1,
+        "id": null,
+        "name": "Mina",
+        "stack": 0,
+        "bet": 0,
+        "folded": true,
+        "allIn": true,
+        "seatOut": true,
+        "isBusted": true,
+        "isActiveInGame": false
+      },
+      "cards": [],
+      "portraitLoaded": true,
+      "text": "\nMina\nOUT\n0\n離席\n \n"
+    },
+    {
+      "hand": 5,
+      "player": {
+        "seatIndex": 1,
+        "id": null,
+        "name": "Mina",
+        "stack": 0,
+        "bet": 0,
+        "folded": true,
+        "allIn": true,
+        "seatOut": true,
+        "isBusted": true,
+        "isActiveInGame": false
+      },
+      "cards": [],
+      "portraitLoaded": true,
+      "text": "\nMina\nOUT\n0\n離席\n \n"
+    },
+    {
+      "hand": 6,
+      "player": {
+        "seatIndex": 1,
+        "id": null,
+        "name": "Mina",
+        "stack": 0,
+        "bet": 0,
+        "folded": true,
+        "allIn": true,
+        "seatOut": true,
+        "isBusted": true,
+        "isActiveInGame": false
+      },
+      "cards": [],
+      "portraitLoaded": true,
+      "text": "\nMina\nOUT\n0\n離席\n \n"
+    },
+    {
+      "hand": 7,
+      "player": {
+        "seatIndex": 1,
+        "id": null,
+        "name": "Mina",
+        "stack": 0,
+        "bet": 0,
+        "folded": true,
+        "allIn": true,
+        "seatOut": true,
+        "isBusted": true,
+        "isActiveInGame": false
+      },
+      "cards": [],
+      "portraitLoaded": true,
+      "text": "\nMina\nOUT\n0\n離席\n \n"
+    },
+    {
+      "hand": 8,
+      "player": {
+        "seatIndex": 1,
+        "id": null,
+        "name": "Mina",
+        "stack": 0,
+        "bet": 0,
+        "folded": true,
+        "allIn": true,
+        "seatOut": true,
+        "isBusted": true,
+        "isActiveInGame": false
+      },
+      "cards": [],
+      "portraitLoaded": true,
+      "text": "\nMina\nOUT\n0\n離席\n \n"
+    },
+    {
+      "hand": 9,
+      "player": {
+        "seatIndex": 1,
+        "id": null,
+        "name": "Mina",
+        "stack": 0,
+        "bet": 0,
+        "folded": true,
+        "allIn": true,
+        "seatOut": true,
+        "isBusted": true,
+        "isActiveInGame": false
+      },
+      "cards": [],
+      "portraitLoaded": true,
+      "text": "\nMina\nOUT\n0\n離席\n \n"
+    },
+    {
+      "hand": 10,
+      "player": {
+        "seatIndex": 1,
+        "id": null,
+        "name": "Mina",
+        "stack": 0,
+        "bet": 0,
+        "folded": true,
+        "allIn": true,
+        "seatOut": true,
+        "isBusted": true,
+        "isActiveInGame": false
+      },
+      "cards": [],
+      "portraitLoaded": true,
+      "text": "\nMina\nOUT\n0\n離席\n \n"
+    },
+    {
+      "hand": 11,
+      "player": {
+        "seatIndex": 1,
+        "id": null,
+        "name": "Mina",
+        "stack": 500,
+        "bet": 0,
+        "folded": false,
+        "allIn": false,
+        "seatOut": false,
+        "isBusted": false,
+        "isActiveInGame": true
+      },
+      "cards": [
+        "9C",
+        "8D",
+        "3H",
+        "10H"
+      ],
+      "portraitLoaded": true,
+      "text": "\nMina\nUTG\n500\n◇\n◇\n◇\n◇\n考え中\n \n"
+    }
+  ],
+  "errors": [],
+  "status": "PASS"
+}

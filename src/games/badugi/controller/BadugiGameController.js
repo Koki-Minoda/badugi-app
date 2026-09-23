@@ -5,7 +5,7 @@ import {
   normalizeTurnState,
 } from "../../core/turn/actorEligibility.js";
 import LegacyBadugiController from "../BadugiGameController.js";
-import { analyzeBetSnapshot } from "../flow/betRoundUtils.js";
+import { analyzeBetSnapshot, isBetRoundComplete } from "../flow/betRoundUtils.js";
 import {
   maxBetThisRound,
   nextAliveFrom,
@@ -13,6 +13,7 @@ import {
   findNextDrawActorSeat,
   isSeatEligibleForDraw,
 } from "../flow/actionUtils.js";
+import { BadugiEngine } from "../engine/BadugiEngine.js";
 import { getWinnersByBadugi } from "../utils/badugiEvaluator.js";
 import { normalizeDrawAction } from "../../core/draw/normalizeDrawAction.js";
 
@@ -367,6 +368,22 @@ export class BadugiGameController extends GameController {
     return { state: nextState, events };
   }
 
+  advanceCompletedRound(state, expectedPhase) {
+    const snapshot = this.getUiSnapshot(state);
+    if (snapshot.phase !== expectedPhase || this.isHandFinished(state)) return state;
+    const players = snapshot.players ?? [];
+    const complete = expectedPhase === "BET"
+      ? isBetRoundComplete(players)
+      : expectedPhase === "DRAW" && players.every(
+          (player) => !isSeatEligibleForDraw(player) || player.hasDrawn,
+        );
+    if (!complete) return state;
+    this._syncLegacyFromSnapshot(snapshot);
+    if (expectedPhase === "BET") this._finishBetRound();
+    else this._finishDrawRound(players, snapshot.dealerIdx ?? 0);
+    return this._buildControllerState({handIndex: state.handIndex, context: state.context});
+  }
+
   isStreetFinished(state = {}) {
     const snapshot = state?.snapshot ?? this.legacy.getSnapshot();
     const analysis = analyzeBetSnapshot({
@@ -662,32 +679,14 @@ export class BadugiGameController extends GameController {
 
   _resolveShowdownAndApplyPayouts() {
     const players = this.legacy.state.players ?? [];
-    const contenders = players.filter((player) => player && !player.folded && !player.seatOut);
-    const winners = getWinnersByBadugi(contenders).filter(
-      (winner) => typeof winner.seatIndex === "number",
-    );
-    const totalPot = players.reduce(
-      (sum, player) => sum + Math.max(0, Number(player?.totalInvested) || 0),
-      0,
-    );
-    const basePayout = winners.length ? Math.floor(totalPot / winners.length) : 0;
-    let remainder = winners.length ? totalPot - basePayout * winners.length : 0;
-    const payouts = winners
-      .sort((left, right) => left.seatIndex - right.seatIndex)
-      .map((winner) => {
-        const extra = remainder > 0 ? 1 : 0;
-        remainder -= extra;
-        const payout = basePayout + extra;
-        const player = players[winner.seatIndex];
-        if (player) {
-          player.stack = Math.max(0, Number(player.stack) || 0) + payout;
-        }
-        return { ...winner, payout };
-      });
+    const resolution = new BadugiEngine().resolveShowdown({
+      gameId: "badugi", players, pots: [], metadata: {},
+    });
+    this.legacy.state.players = resolution.state.players;
     this.legacy.resolveShowdown({
-      players,
-      summary: [{ potIndex: 0, potAmount: totalPot, payouts }],
-      totalPot,
+      players: resolution.state.players,
+      summary: resolution.summary,
+      totalPot: resolution.totalPot,
       handId: this.legacy.state.handId,
     });
   }

@@ -10663,7 +10663,28 @@ export default function App() {
     dealerIndex = null,
     retryCount = 0,
   } = {}) {
+    if (modeRef.current === "tournament-mtt" &&
+        tournamentCompletedHandIdRef.current === handIdRef.current && handIdRef.current) return false;
     const phaseNow = phaseOverride ?? phaseRef.current ?? phase;
+    if (modeRef.current === "tournament-mtt" &&
+        normalizeAppVariantId(gameVariantRef.current) === APP_VARIANT_IDS.BADUGI) {
+      const controller = sessionControllerRef.current;
+      let state = sessionControllerStateRef.current;
+      if (controller?.advanceCompletedRound && state) {
+        const snapshot = controller.getUiSnapshot(state);
+        if (snapshot.phase === phaseNow) {
+          state = controller.syncFromExternalState({
+            snapshot: {...snapshot, players: playersSnapshot ?? playersRef.current},
+            handIndex: state.handIndex, context: state.context,
+          });
+        }
+        const nextState = controller.advanceCompletedRound(state, phaseNow);
+        sessionControllerStateRef.current = nextState;
+        syncLegacyFromControllerSnapshot(controller.getUiSnapshot(nextState));
+        return true;
+      }
+    }
+
     if (phaseNow === "BET") {
       const basePlayers =
         Array.isArray(playersSnapshot) && playersSnapshot.length
@@ -12448,6 +12469,8 @@ export default function App() {
   /* --- NPC auto --- */
   useEffect(() => {
     if (e2eStaticMobileFixtureRef.current) return;
+    if (modeRef.current === "tournament-mtt" &&
+        tournamentCompletedHandIdRef.current === handIdRef.current && handIdRef.current) return;
     const activePlayers = playersRef.current ?? [];
     if (!Array.isArray(activePlayers) || activePlayers.length === 0) return;
     const betHelpers = forcedBetHelpersRef.current;

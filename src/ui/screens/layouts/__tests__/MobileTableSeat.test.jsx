@@ -3,6 +3,25 @@ import {afterEach,it,expect,vi} from 'vitest';
 import {render,screen,fireEvent,cleanup} from '@testing-library/react';
 import MobileTableSeat from '../MobileTableSeat.jsx';
 afterEach(cleanup);
+it('restores CPU portraits in both draw and board seats and preserves custom avatars',()=>{
+ const {container,rerender}=render(<MobileTableSeat seat={{name:'Akira',isCPU:true,avatar:'default_avatar',stack:500}} index={1} variant="badugi"/>);
+ expect(container.querySelector('.mgx-seat-avatar img').getAttribute('src')).toBe('/characters/akira.png');
+ rerender(<MobileTableSeat seat={{name:'Ren',cpuCharacterId:'ren',stack:500}} index={1} variant="nlh"/>);
+ expect(container.querySelector('.mgx-seat-avatar img').getAttribute('src')).toBe('/characters/ren.png');
+ rerender(<MobileTableSeat seat={{name:'Ren',cpuCharacterId:'ren',avatarUrl:'/custom.png',stack:500}} index={1} variant="nlh"/>);
+ expect(container.querySelector('.mgx-seat-avatar img').getAttribute('src')).toBe('/custom.png');
+});
+it('recovers from a failed portrait when the table merges and the seat occupant changes',()=>{
+ const {container,rerender}=render(<MobileTableSeat seat={{name:'Akira',isCPU:true,stack:500}} index={1} variant="badugi"/>);
+ fireEvent.error(container.querySelector('.mgx-seat-avatar img'));
+ expect(container.querySelector('.mgx-seat-avatar svg')).toBeTruthy();
+ rerender(<MobileTableSeat seat={{name:'Mina',isCPU:true,stack:900}} index={1} variant="badugi"/>);
+ expect(container.querySelector('.mgx-seat-avatar img').getAttribute('src')).toBe('/characters/mina.png');
+});
+it('does not assign a CPU character to a friend with the same name',()=>{
+ const {container}=render(<MobileTableSeat seat={{name:'Akira',stack:500}} index={1} variant="nlh"/>);
+ expect(container.querySelector('.mgx-seat-avatar img')).toBeNull();
+});
 it('keeps opponent down cards private while displaying Stud up cards',()=>{
  render(<MobileTableSeat seat={{name:'CPU',stack:500,hand:['AS','KH','2C'],cardVisibility:['down','down','up']}} index={1} variant="stud"/>);
  expect(screen.getAllByLabelText('伏せ札')).toHaveLength(2);expect(screen.queryByLabelText('A♠')).toBeNull();expect(screen.getByLabelText('2♣')).toBeTruthy();

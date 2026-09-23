@@ -48,4 +48,16 @@ describe("tournament busted seat display regression", () => {
     const compacted = compactTournamentSeatViews(seats, { isTournament: false });
     expect(compacted[2].hiddenFromTableLayout).not.toBe(true);
   });
+  it('preserves eliminated identities after a merge and never lists empty seats as players', () => {
+    const entries = buildTournamentEliminatedRailEntries([
+      {name:'(Empty Seat 2)', tournamentPlayerId:null, isBusted:true},
+      {name:'New opponent', tournamentPlayerId:'cpu-9', stack:900},
+    ], {tournamentPlayers:{
+      'cpu-2':{id:'cpu-2',name:'Mina',stack:0,busted:true,finishPlace:8},
+      'cpu-9':{id:'cpu-9',name:'New opponent',stack:900,busted:false},
+    }});
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({id:'cpu-2',name:'Mina',status:'#8'});
+    expect(buildTournamentEliminatedRailEntries([{name:'Empty',tournamentPlayerId:null,isBusted:true}])).toEqual([]);
+  });
 });

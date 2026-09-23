@@ -1,0 +1,20 @@
+import React, {useState} from 'react';
+import {getCpuCharacterById, getCpuCharacterByName} from '../../../ai/cpuRoster.js';
+
+export default function SeatPortrait({seat}) {
+ const explicit = [seat.avatarUrl, seat.avatar].find(value => value && !['default', 'default_avatar'].includes(value));
+ const character = seat.isCPU || seat.cpuStyle || seat.cpuCharacterId
+  ? getCpuCharacterById(seat.cpuCharacterId) ?? getCpuCharacterByName(seat.name)
+  : null;
+ const src = explicit ?? character?.avatarUrl;
+ // A new occupant must retry their own image even if the previous image failed.
+ return <PortraitImage key={src ?? 'placeholder'} src={src}/>;
+}
+
+function PortraitImage({src}) {
+ const [failed, setFailed] = useState(false);
+ if (src && !failed && /^(\/|https?:|data:image\/|blob:)/.test(src)) {
+  return <img src={src} alt="" draggable={false} onError={() => setFailed(true)}/>;
+ }
+ return <svg viewBox="0 0 32 32"><circle cx="16" cy="11" r="6"/><path d="M4 31v-3a12 12 0 0 1 24 0v3"/></svg>;
+}

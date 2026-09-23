@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 export default function TournamentEliminatedRail({
   entries = [],
   layoutMode = "desktop",
+  language = "en",
 }) {
   const [expanded, setExpanded] = useState(false);
   const isMobile = String(layoutMode).startsWith("mobile");
@@ -26,7 +27,7 @@ export default function TournamentEliminatedRail({
           className="inline-flex max-w-full items-center gap-1 rounded-full border border-slate-600/60 bg-slate-950/82 px-2 py-0.5 text-[9px] font-black uppercase text-slate-200 shadow"
           aria-expanded={expanded}
         >
-          <span className="text-slate-400">Rail</span>
+          <span className="text-slate-400">{language === 'ja' ? '敗退' : 'Rail'}</span>
           <span>{entries.length}</span>
           <span className="text-rose-200">OUT</span>
         </button>

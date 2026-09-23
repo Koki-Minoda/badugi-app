@@ -1549,9 +1549,9 @@ export default function App() {
   const eliminatedRailEntries = useMemo(
     () =>
       isTournament
-        ? buildTournamentEliminatedRailEntries(seatViews, { limit: 5 })
+        ? buildTournamentEliminatedRailEntries(seatViews, { limit: 5, tournamentPlayers: tournamentStateRef.current?.players })
         : [],
-    [isTournament, seatViews],
+    [isTournament, seatViews, tournamentHudState],
   );
   const hudInfo = adapterViewProps?.hudInfo ?? null;
   const controlsConfig = adapterViewProps?.controlsConfig ?? null;

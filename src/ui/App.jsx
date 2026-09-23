@@ -7437,7 +7437,9 @@ export default function App() {
               .length,
             handStartingStacksById: snapshotPlayers.reduce(
               (startingStacks, player, seat) => {
-                const startingStack = Math.max(
+                const startingStack = controllerHandSnapshot.phase === "SHOWDOWN"
+                  ? Math.max(0, Number((resolvedPrevPlayers ?? basePlayersSnapshot)[seat]?.stack) || 0)
+                  : Math.max(
                   0,
                   Number(player?.stack) +
                     Math.max(
@@ -8068,7 +8070,26 @@ export default function App() {
         }
       }
 
+      if (activeHandVariant === APP_VARIANT_IDS.BADUGI) {
+        // The legacy adapter and the session action controller both read this
+        // deal. Reset them together, so a prior fold/bust cannot disable the
+        // new hand while the React synchronization effect is still pending.
+        legacyGameController.syncExternalState?.(nextHandSnapshot);
+        const sessionController = ensureSessionController();
+        if (sessionController?.syncFromExternalState) {
+          sessionControllerStateRef.current = sessionController.syncFromExternalState({
+            snapshot: nextHandSnapshot,
+            context: nextHandState,
+            handIndex: nextHandNumber,
+          });
+        }
+      }
       syncEngineSnapshot(nextHandSnapshot, nextHandSnapshot);
+      // A blind/ante all-in may already be settled by startNewHand. Publish
+      // that result only after the hand identity and history have been seeded.
+      if (controllerHandSnapshot?.phase === "SHOWDOWN" && controllerHandSnapshot.lastHandResult) {
+        syncLegacyFromControllerSnapshot(controllerHandSnapshot);
+      }
       trace("dealNewHand END", { dealerIdx: nextDealerIdx });
       return true;
     } catch (error) {
@@ -8139,7 +8160,11 @@ export default function App() {
         "TOURNAMENT_END",
         "TOURNAMENT_FINAL",
       ]);
-      if (handCountRef.current > 0 && !allowedStartPhases.has(currentPhase)) {
+      // Legacy draw callbacks can publish BET after the result. The recorded
+      // settlement for this exact hand is authoritative, and resets on deal.
+      const tournamentHandSettled = modeRef.current === "tournament-mtt" &&
+        handIdRef.current && tournamentCompletedHandIdRef.current === handIdRef.current;
+      if (handCountRef.current > 0 && !allowedStartPhases.has(currentPhase) && !tournamentHandSettled) {
         console.warn("[HAND] stale next-hand trigger ignored", {
           phase: currentPhase,
           handId: handIdRef.current,

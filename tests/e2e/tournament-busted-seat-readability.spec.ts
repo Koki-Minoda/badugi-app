@@ -32,12 +32,12 @@ test("busted tournament CPU seats move to rail and do not block mobile table", a
   await page.addInitScript(() => {
     window.localStorage.setItem("mgx.previewVariants", "true");
   });
-  await openAuthenticatedGame(page, `${APP_URL}?variant=badugi&mode=tournament&mgxQa=mobile`);
+  await openAuthenticatedGame(page, `${APP_URL}?variant=badugi&mode=tournament`);
   await waitForE2EDriver(page);
 
   const fixture = await invokeE2E(page, "setupTournamentBustedSeatDisplayFixtureForTest");
   await expect(page.getByTestId("tournament-eliminated-rail")).toBeVisible({ timeout: 10000 });
-  await page.getByTestId("tournament-eliminated-rail").getByRole("button", { name: /rail/i }).click();
+  await page.getByTestId("tournament-eliminated-rail").getByRole("button", { name: /rail|敗退/i }).click();
   await expect(page.getByTestId("eliminated-rail-entry-cpu-2")).toBeVisible();
   await expect(page.getByTestId("eliminated-rail-entry-cpu-4")).toBeVisible();
   await expect(page.getByTestId("seat-2")).toHaveCount(0);

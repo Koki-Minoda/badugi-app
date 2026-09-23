@@ -22,6 +22,16 @@ it('does not assign a CPU character to a friend with the same name',()=>{
  const {container}=render(<MobileTableSeat seat={{name:'Akira',stack:500}} index={1} variant="nlh"/>);
  expect(container.querySelector('.mgx-seat-avatar img')).toBeNull();
 });
+it('distinguishes a busted cash opponent from a folded player and a live all-in',()=>{
+ const seat={name:'Mina',isCPU:true,stack:0,hand:['AS','KH'],allIn:true};
+ const {rerender}=render(<MobileTableSeat seat={seat} index={1} variant="nlh"/>);
+ expect(screen.getByTestId('seat-1').textContent).toContain('ALL IN');
+ expect(screen.getAllByLabelText('伏せ札')).toHaveLength(2);
+ rerender(<MobileTableSeat seat={{...seat,busted:true}} index={1} variant="nlh"/>);
+ expect(screen.getByTestId('seat-1').textContent).toContain('離席');
+ expect(screen.getByTestId('seat-1').textContent).not.toContain('フォールド');
+ expect(screen.queryAllByLabelText('伏せ札')).toHaveLength(0);
+});
 it('keeps opponent down cards private while displaying Stud up cards',()=>{
  render(<MobileTableSeat seat={{name:'CPU',stack:500,hand:['AS','KH','2C'],cardVisibility:['down','down','up']}} index={1} variant="stud"/>);
  expect(screen.getAllByLabelText('伏せ札')).toHaveLength(2);expect(screen.queryByLabelText('A♠')).toBeNull();expect(screen.getByLabelText('2♣')).toBeTruthy();

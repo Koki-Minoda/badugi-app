@@ -14352,7 +14352,8 @@ export default function App() {
   const overlaysProps = {
     reviewHandId: guestTrial ? null : handIdRef.current,
     handResultVisible:
-      sessionSnapshot?.overlays?.handResult?.visible ?? handResultVisible,
+      !heroBustOverlayVisible && !tournamentOverlayVisible &&
+      (sessionSnapshot?.overlays?.handResult?.visible ?? handResultVisible),
     handResultSummary:
       sessionSnapshot?.overlays?.handResult?.summary ?? handResultSummary,
     onNextHand: guestTrial ? () => navigate('/try') : startNextHand,

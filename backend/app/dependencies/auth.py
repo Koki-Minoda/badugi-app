@@ -33,7 +33,13 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
         )
-    user = db.query(User).filter(User.id == int(user_id)).one_or_none()
+    try:
+        user = db.query(User).filter(User.id == int(user_id)).one_or_none()
+    finally:
+        # Authentication only reads a fully loaded identity. Return its pooled
+        # connection before the endpoint acquires another session (P2P) or
+        # waits for sockets; otherwise concurrent requests can exhaust the pool.
+        db.close()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

@@ -125,3 +125,21 @@ def test_badugi_stats_requires_player_id(monkeypatch):
     finally:
         app.dependency_overrides.pop(get_current_user, None)
         teardown_sqlite(engine, SessionTesting)
+
+
+def test_stats_window_uses_composite_index_without_sorting(monkeypatch):
+    from sqlalchemy import text
+
+    engine, session_factory = setup_sqlite(monkeypatch)
+    try:
+        with engine.connect() as connection:
+            plan = connection.execute(text(
+                "EXPLAIN QUERY PLAN SELECT * FROM badugi_action_logs "
+                "WHERE player_id = 'seat-1' AND phase = 'BET' "
+                "ORDER BY ts DESC LIMIT 2000"
+            )).all()
+        details = " ".join(str(row) for row in plan)
+        assert "ix_badugi_action_logs_player_phase_ts" in details
+        assert "TEMP B-TREE" not in details
+    finally:
+        teardown_sqlite(engine, session_factory)

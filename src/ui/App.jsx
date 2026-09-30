@@ -7653,6 +7653,7 @@ export default function App() {
         ...(tableMetadataRef.current ?? {}),
         tableId: baseTableId,
         handId: newHandId,
+        endTimestamp: null,
         handCount: nextHandNumber,
         buttonSeat: nextDealerIdx,
         sbSeat: typeof sbIdx === "number" ? sbIdx : null,

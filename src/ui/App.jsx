@@ -6187,6 +6187,7 @@ export default function App() {
   }
 
   function goShowdownNow(playersSnap, options = {}) {
+    if (modeRef.current === "tournament-mtt" && tournamentStateRef.current?.isFinished) return;
     debugLog("[SHOWDOWN] goShowdownNow (All-in shortcut) called");
     if (tableMetadataRef.current?.endTimestamp) {
       return;
@@ -10584,6 +10585,7 @@ export default function App() {
     dealerIndex = null,
     retryCount = 0,
   } = {}) {
+    if (modeRef.current === "tournament-mtt" && tournamentStateRef.current?.isFinished) return false;
     const phaseNow = phaseOverride ?? phaseRef.current ?? phase;
     if (phaseNow === "BET") {
       const basePlayers =
@@ -12369,6 +12371,7 @@ export default function App() {
   /* --- NPC auto --- */
   useEffect(() => {
     if (e2eStaticMobileFixtureRef.current) return;
+    if (modeRef.current === "tournament-mtt" && tournamentStateRef.current?.isFinished) return;
     const activePlayers = playersRef.current ?? [];
     if (!Array.isArray(activePlayers) || activePlayers.length === 0) return;
     const betHelpers = forcedBetHelpersRef.current;

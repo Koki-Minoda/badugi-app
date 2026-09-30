@@ -45,6 +45,10 @@ test("Badugi tournament can settle consecutive hands without a stale end timesta
     expect(current.handId).not.toBe(previousHandId);
     await invokeTournamentHelper(page, "resolveHandNow");
     await expect(page.getByTestId("hand-result-pot").first()).toBeVisible({ timeout: 10000 });
+    const resultSnapshot = await page.evaluate(() => window.__MGX_GET_GAMEPLAY_SNAPSHOT__?.());
+    expect(resultSnapshot?.phase).toBe("HAND_RESULT");
+    expect(resultSnapshot?.controller?.actorSeat).toBeNull();
+    expect(resultSnapshot?.ui?.heroControlsVisible).toBe(false);
     previousHandId = current.handId;
     if (hand < 2) {
       await page.getByRole("button", { name: /next hand/i }).click();

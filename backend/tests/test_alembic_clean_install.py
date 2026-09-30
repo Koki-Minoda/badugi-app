@@ -27,6 +27,10 @@ def test_alembic_clean_install_creates_every_runtime_table(tmp_path: Path):
     )
 
     with sqlite3.connect(database_path) as connection:
+        stats_indexes = connection.execute(
+            "PRAGMA index_info(ix_badugi_action_logs_player_phase_ts)"
+        ).fetchall()
+        assert [row[2] for row in stats_indexes] == ["player_id", "phase", "ts"]
         tables = {
             row[0]
             for row in connection.execute(

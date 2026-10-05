@@ -8,8 +8,10 @@ bash -n scripts/ci/run-with-backend.sh
 bash -n scripts/deploy/backup_mgx_prod_01.sh
 bash -n scripts/deploy/rollback_mgx_prod_01.sh
 bash -n scripts/deploy/configure-mgx-backend-workers.sh
+bash -n scripts/deploy/install-mgx-prod-admin.sh
+python3 tests/scripts/test_mgx_prod_admin.py
 
-restart_line="$(grep -n 'configure-mgx-backend-workers.sh' "$script" | cut -d: -f1)"
+restart_line="$(grep -n 'mgx-prod-admin workers' "$script" | cut -d: -f1)"
 backend_health_line="$(grep -n '^verify_backend_after_restart$' "$script" | cut -d: -f1)"
 sync_line="$(grep -n 'syncing frontend dist' "$script" | cut -d: -f1)"
 test -n "$restart_line"
@@ -17,12 +19,17 @@ test -n "$backend_health_line"
 test -n "$sync_line"
 test "$restart_line" -lt "$backend_health_line"
 test "$backend_health_line" -lt "$sync_line"
+check_line="$(grep -n 'mgx-prod-admin check' "$script" | cut -d: -f1)"
+pull_line="$(grep -n '^git pull' "$script" | cut -d: -f1)"
+test "$check_line" -lt "$pull_line"
+grep -q 'FRONTEND_DIST="$APP_DIR/dist"' "$script"
+grep -q 'mgx-prod-admin check' "$workflow"
 if grep -q 'source .*BACKEND_ENV_FILE' "$script"; then
   echo "backend environment file must not be evaluated as shell code" >&2
   exit 1
 fi
 grep -q 'verify_live_frontend' "$script"
-grep -q 'remove_stale_nested_frontend_assets' "$script"
+grep -q 'verify_no_stale_nested_frontend_assets' "$script"
 grep -q 'DEPLOY_TARGET}/dev/assets' "$script"
 grep -q 'verify_live_p2p_rest_route' "$script"
 grep -q -- '--max-time 5' "$script"

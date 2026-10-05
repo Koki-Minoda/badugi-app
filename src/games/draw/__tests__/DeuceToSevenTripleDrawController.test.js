@@ -34,6 +34,33 @@ function buildController(cards = []) {
 }
 
 describe("DeuceToSevenTripleDrawController", () => {
+  it.each([1, 2, 3])("preserves draw round %i in partial legacy CPU bet updates", (round) => {
+    const controller = buildController();
+    controller.syncFromExternalState({
+      snapshot: { handId: "round-sync", phase: "BET", drawRound: round, players: [] },
+    });
+    const updated = controller.syncFromExternalState({
+      snapshot: { phase: "BET", players: [], metadata: { currentBet: 20 } },
+    });
+    expect(updated.engineState.handId).toBe("round-sync");
+    expect(controller.getUiSnapshot(updated).drawRound).toBe(round);
+    const nextHand = controller.syncFromExternalState({
+      snapshot: { handId: "next-hand", phase: "BET", drawRound: 0, players: [] },
+    });
+    expect(controller.getUiSnapshot(nextHand).drawRound).toBe(0);
+  });
+
+  it("does not inherit a prior hand's round when a new hand omits it", () => {
+    const controller = buildController();
+    controller.syncFromExternalState({
+      snapshot: { handId: "old", phase: "BET", drawRound: 3, players: [] },
+    });
+    const next = controller.syncFromExternalState({
+      snapshot: { handId: "new", phase: "BET", players: [] },
+    });
+    expect(controller.getUiSnapshot(next).drawRound).toBe(0);
+  });
+
   it("starts a D01 hand and returns a UI-compatible snapshot", () => {
     const controller = buildController([
       "2S", "3S", "4S", "5S", "7S",

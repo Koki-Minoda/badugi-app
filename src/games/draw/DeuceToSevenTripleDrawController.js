@@ -497,9 +497,17 @@ export class DeuceToSevenTripleDrawController extends GameController {
           0,
       ) || 0,
     );
+    // Legacy CPU bet updates omit the round. They belong to the current hand,
+    // so an omitted value must not restart its draw sequence at zero.
+    const previous = this._lastState?.engineState;
+    const sameHand = !snapshot.handId || snapshot.handId === previous?.handId;
     const drawRoundIndex = Math.max(
       0,
-      Number(snapshot.drawRoundIndex ?? snapshot.drawRound ?? metadata.drawRoundIndex ?? metadata.drawRound ?? 0) || 0,
+      Number(
+        snapshot.drawRoundIndex ?? snapshot.drawRound ??
+        metadata.drawRoundIndex ?? metadata.drawRound ??
+        (sameHand ? previous?.drawRoundIndex : 0) ?? 0,
+      ) || 0,
     );
     const currentBet = resolveAuthoritativeCurrentBet({
       players,

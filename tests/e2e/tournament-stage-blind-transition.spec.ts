@@ -908,6 +908,8 @@ for (const stage of [
       payout: stage.payout,
     });
     expect(completed.finishOrder).toHaveLength(config.totalPlayers - 1);
+    // A late settlement callback must not overwrite or crash the final result.
+    await page.evaluate(() => window.__BADUGI_E2E__.resolveHandNow());
 
     const overlay = page.getByTestId("mtt-result-overlay");
     await expect(overlay).toBeVisible({ timeout: 20_000 });

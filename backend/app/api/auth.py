@@ -6,6 +6,7 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import delete
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from ..core.security import (
     create_access_token,
@@ -103,6 +104,22 @@ async def delete_account(
 
     response.headers["Cache-Control"] = "private, no-store"
     response.headers["Pragma"] = "no-cache"
+    user_id = await run_in_threadpool(_delete_account_data, payload, current_user, db)
+
+    # Import lazily to avoid coupling authentication module initialization to
+    # the P2P router. The database deletion remains authoritative even if no
+    # process-local room exists.
+    from .p2p import terminate_user_p2p_sessions
+
+    try:
+        await terminate_user_p2p_sessions(str(user_id))
+    except Exception:
+        logger.exception("Failed to terminate P2P state for deleted user %s", user_id)
+    return {"deleted": True}
+
+
+def _delete_account_data(payload, current_user, db):
+    """Run password verification and synchronous SQL outside the event loop."""
     if not verify_password(payload.password, current_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -133,16 +150,4 @@ async def delete_account(
             detail="account_deletion_failed",
         ) from exc
 
-    # Import lazily to avoid coupling authentication module initialization to
-    # the P2P router. The database deletion remains authoritative even if no
-    # process-local room exists.
-    from .p2p import terminate_user_p2p_sessions
-
-    try:
-        await terminate_user_p2p_sessions(str(user_id))
-    except Exception:
-        # The account and private persisted data are already deleted. A stale
-        # process-local room must not turn a successful permanent deletion into
-        # a misleading error response.
-        logger.exception("Failed to terminate P2P state for deleted user %s", user_id)
-    return {"deleted": True}
+    return user_id

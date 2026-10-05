@@ -94,8 +94,20 @@ export async function invokeE2E(page, method, ...args) {
   );
 }
 
+function resolveProgressActor(snapshot, phaseState, state, uiTerminal) {
+  if (uiTerminal) return null;
+  const declaresActor = snapshot && ["currentActor", "turn", "nextTurn"].some((field) =>
+    Object.prototype.hasOwnProperty.call(snapshot, field),
+  );
+  const candidates = declaresActor
+    ? [snapshot.currentActor, snapshot.turn, snapshot.nextTurn]
+    : [phaseState?.turn, state?.turn];
+  return candidates.find((value) => typeof value === "number") ?? null;
+}
+
 export async function getProgressState(page) {
-  return page.evaluate((browserSignalSource) => {
+  return page.evaluate(({ browserSignalSource, actorResolverSource }) => {
+    const resolveActor = new Function(`return (${actorResolverSource})`)();
     const collectBrowserSignals = new Function(`return (${browserSignalSource})`)();
     const api = window.__BADUGI_E2E__;
     const state = api?.getStateSnapshot?.() ?? null;
@@ -116,26 +128,7 @@ export async function getProgressState(page) {
         String(ui.displayedPhase ?? "").toUpperCase().includes(marker),
       );
     const phase = uiTerminal ? "HAND_RESULT" : rawPhase;
-    const snapshotDeclaresActor =
-      snapshot &&
-      ["currentActor", "turn", "nextTurn"].some((field) =>
-        Object.prototype.hasOwnProperty.call(snapshot, field),
-      );
-    const actor = uiTerminal
-      ? null
-      : snapshotDeclaresActor
-        ? typeof snapshot?.currentActor === "number"
-          ? snapshot.currentActor
-          : typeof snapshot?.turn === "number"
-            ? snapshot.turn
-            : typeof snapshot?.nextTurn === "number"
-              ? snapshot.nextTurn
-              : null
-        : typeof phaseState?.turn === "number"
-          ? phaseState.turn
-          : typeof state?.turn === "number"
-            ? state.turn
-            : null;
+    const actor = resolveActor(snapshot, phaseState, state, uiTerminal);
     const players = snapshot?.players ?? phaseState?.players ?? state?.players ?? [];
     const pot = Number(snapshot?.pot ?? state?.potTotal ?? 0);
     const handId = snapshot?.handId ?? phaseState?.handId ?? state?.handId ?? null;
@@ -174,7 +167,7 @@ export async function getProgressState(page) {
           state?.lastHandResult,
       ),
     };
-  }, collectBrowserSignals.toString());
+  }, { browserSignalSource: collectBrowserSignals.toString(), actorResolverSource: resolveProgressActor.toString() });
 }
 
 export async function getCurrentActor(page) {
@@ -450,7 +443,8 @@ export async function performSafeAction(page, options = {}) {
 
 export async function waitForProgressChange(page, previousKey, { timeout = 8000 } = {}) {
   await page.waitForFunction(
-    ({ key, browserSignalSource, progressSummarySource }) => {
+    ({ key, browserSignalSource, progressSummarySource, actorResolverSource }) => {
+      const resolveActor = new Function(`return (${actorResolverSource})`)();
       const collectBrowserSignals = new Function(`return (${browserSignalSource})`)();
       const summarizeProgress = new Function(`return (${progressSummarySource})`)();
       const api = window.__BADUGI_E2E__;
@@ -470,20 +464,7 @@ export async function waitForProgressChange(page, previousKey, { timeout = 8000 
           String(ui.displayedPhase ?? "").toUpperCase().includes(marker),
         );
       const phase = uiTerminal ? "HAND_RESULT" : rawPhase;
-      const actor =
-        uiTerminal
-          ? null
-          : typeof snapshot?.currentActor === "number"
-            ? snapshot.currentActor
-            : typeof snapshot?.turn === "number"
-              ? snapshot.turn
-              : typeof snapshot?.nextTurn === "number"
-                ? snapshot.nextTurn
-                : typeof phaseState?.turn === "number"
-                  ? phaseState.turn
-                  : typeof state?.turn === "number"
-                    ? state.turn
-                    : null;
+      const actor = resolveActor(snapshot, phaseState, state, uiTerminal);
       const players = snapshot?.players ?? phaseState?.players ?? state?.players ?? [];
       const pot = Number(snapshot?.pot ?? state?.potTotal ?? 0);
       const handId = snapshot?.handId ?? phaseState?.handId ?? state?.handId ?? null;
@@ -508,6 +489,7 @@ export async function waitForProgressChange(page, previousKey, { timeout = 8000 
       key: previousKey,
       browserSignalSource: collectBrowserSignals.toString(),
       progressSummarySource: summarizeProgressState.toString(),
+      actorResolverSource: resolveProgressActor.toString(),
     },
     { timeout },
   );

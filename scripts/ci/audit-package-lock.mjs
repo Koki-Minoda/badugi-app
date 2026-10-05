@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 
 import { readFile } from 'node:fs/promises'
+import { execFileSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
+import { patchedAdvisory, verifyBracesPatch } from './braces-depth-patch.mjs'
 
 const OSV_BATCH_URL = 'https://api.osv.dev/v1/querybatch'
 
@@ -65,6 +68,26 @@ const advisories = response.results.flatMap((result, index) =>
   })),
 )
 
+// A source patch is required while upstream has no fixed release. This is not
+// a version allowlist: every installed copy must match the reviewed full-source
+// hashes and pass adversarial tests. Skipped install scripts or any new advisory
+// still fail this gate. Keep reporting the original advisory for visibility.
+const unresolved = []
+for (const advisory of advisories) {
+  if (advisory.id !== patchedAdvisory || advisory.package !== 'braces' || advisory.version !== '3.0.3') {
+    unresolved.push(advisory)
+    continue
+  }
+  for (const [packagePath, metadata] of Object.entries(lockfile.packages)) {
+    if (!packagePath.endsWith('node_modules/braces') || metadata.version !== '3.0.3') continue
+    await verifyBracesPatch(fileURLToPath(new URL(`../../${packagePath}/`, import.meta.url)))
+  }
+  execFileSync(process.execPath, ['--test', fileURLToPath(new URL('./braces-depth-patch.test.mjs', import.meta.url))], {
+    stdio: 'inherit',
+  })
+  console.log(`${advisory.id} braces@3.0.3: verified source remediation (upstream release pending).`)
+}
+
 console.log(
   `Audited ${Object.keys(dependencies).length} locked ${omitDev ? 'production ' : ''}packages: ` +
     `${advisories.length} known advisories.`,
@@ -74,6 +97,5 @@ for (const advisory of advisories) {
   console.error(`${advisory.id} ${advisory.package}@${advisory.version}`)
 }
 
-// This is intentionally stricter than npm's high-severity release threshold:
-// a fully clean lockfile is required before production deployment.
-if (advisories.length > 0) process.exitCode = 1
+// All unremediated advisories fail, regardless of severity or dev/prod scope.
+if (unresolved.length > 0) process.exitCode = 1

@@ -68,7 +68,7 @@ run_script() {
 
 bash -n "$SCRIPT"
 bash -n "$ROOT_DIR/scripts/deploy/mgx-prod-01.sh"
-ensure_line="$(grep -n '^scripts/deploy/ensure_mgx_nginx_websocket_proxy.sh' "$ROOT_DIR/scripts/deploy/mgx-prod-01.sh" | tail -1 | cut -d: -f1)"
+ensure_line="$(grep -n '^sudo -n /usr/local/sbin/mgx-prod-admin nginx-ws' "$ROOT_DIR/scripts/deploy/mgx-prod-01.sh" | tail -1 | cut -d: -f1)"
 nginx_test_line="$(grep -n 'sudo -n /usr/sbin/nginx -t' "$ROOT_DIR/scripts/deploy/mgx-prod-01.sh" | tail -1 | cut -d: -f1)"
 reload_line="$(grep -n 'sudo -n /usr/bin/systemctl reload nginx' "$ROOT_DIR/scripts/deploy/mgx-prod-01.sh" | tail -1 | cut -d: -f1)"
 test "$ensure_line" -lt "$nginx_test_line" || fail "ensure script must run before the final nginx test"

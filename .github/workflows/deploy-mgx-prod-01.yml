@@ -59,6 +59,7 @@ jobs:
           # requires exact installed-source hashes and adversarial tests.
           node scripts/ci/audit-package-lock.mjs --omit-dev
           node scripts/ci/audit-package-lock.mjs
+          node --test scripts/ci/css-dependency-security.test.mjs
       - name: Audit resolved backend dependencies
         run: |
           python -m venv .audit-venv

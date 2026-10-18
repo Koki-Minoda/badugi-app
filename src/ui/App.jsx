@@ -6199,6 +6199,7 @@ export default function App() {
   }
 
   function goShowdownNow(playersSnap, options = {}) {
+    if (modeRef.current === "tournament-mtt" && tournamentStateRef.current?.isFinished) return;
     debugLog("[SHOWDOWN] goShowdownNow (All-in shortcut) called");
     if (tableMetadataRef.current?.endTimestamp) {
       return;
@@ -7701,6 +7702,7 @@ export default function App() {
         ...(tableMetadataRef.current ?? {}),
         tableId: baseTableId,
         handId: newHandId,
+        endTimestamp: null,
         handCount: nextHandNumber,
         buttonSeat: nextDealerIdx,
         sbSeat: typeof sbIdx === "number" ? sbIdx : null,
@@ -10665,6 +10667,7 @@ export default function App() {
   } = {}) {
     if (modeRef.current === "tournament-mtt" &&
         tournamentCompletedHandIdRef.current === handIdRef.current && handIdRef.current) return false;
+    if (modeRef.current === "tournament-mtt" && tournamentStateRef.current?.isFinished) return false;
     const phaseNow = phaseOverride ?? phaseRef.current ?? phase;
     if (modeRef.current === "tournament-mtt" &&
         normalizeAppVariantId(gameVariantRef.current) === APP_VARIANT_IDS.BADUGI) {
@@ -12471,6 +12474,7 @@ export default function App() {
     if (e2eStaticMobileFixtureRef.current) return;
     if (modeRef.current === "tournament-mtt" &&
         tournamentCompletedHandIdRef.current === handIdRef.current && handIdRef.current) return;
+    if (modeRef.current === "tournament-mtt" && tournamentStateRef.current?.isFinished) return;
     const activePlayers = playersRef.current ?? [];
     if (!Array.isArray(activePlayers) || activePlayers.length === 0) return;
     const betHelpers = forcedBetHelpersRef.current;

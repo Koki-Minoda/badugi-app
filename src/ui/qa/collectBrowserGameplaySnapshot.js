@@ -110,13 +110,17 @@ function collectControllerSnapshot() {
   const snapshot = state?.controllerSnapshot ?? null;
   const variantId = state?.gameVariant ?? snapshot?.variantId ?? null;
   const players = snapshot?.players ?? phaseState?.players ?? state?.players ?? [];
-  const phase = normalizePhase(snapshot?.phase ?? snapshot?.street ?? phaseState?.phase ?? state?.phase);
+  const rawPhase = normalizePhase(snapshot?.phase ?? snapshot?.street ?? phaseState?.phase ?? state?.phase);
   const resultVisible =
     visibleTestId("hand-result-pot") ||
     (typeof document !== "undefined" && /Hand Result/i.test(document.body?.textContent ?? ""));
   const nextHandVisible =
     typeof document !== "undefined" &&
     [...document.querySelectorAll("button")].some((button) => /next hand/i.test(button.textContent ?? ""));
+  // The result overlay already makes the actor terminal below. Report its
+  // phase consistently too: legacy tournament seating can prepare BET behind
+  // that overlay. The unmodified sources remain available in mergeSource.
+  const phase = resultVisible || nextHandVisible ? "HAND_RESULT" : rawPhase;
   const terminal =
     resultVisible ||
     nextHandVisible ||

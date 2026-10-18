@@ -2,7 +2,7 @@
 from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import desc, func, select
+from sqlalchemy import desc, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -60,14 +60,9 @@ def get_badugi_stats(
             "window": {"limit_hands": limit_hands, "distinct_hands": 0},
         }
 
-    try:
-        count_stmt = select(func.count(func.distinct(BadugiHandAction.hand_id))).where(
-            BadugiHandAction.player_id == player_id,
-            BadugiHandAction.hand_id.in_(hand_ids),
-        )
-        hands = db.execute(count_stmt).scalar_one() or 0
-    except SQLAlchemyError:
-        raise HTTPException(status_code=503, detail="db_unreachable")
+    # These IDs came from the selected actions; recounting them queries the
+    # same growing log a second time while holding an authentication connection.
+    hands = len(hand_ids)
 
     vpip_hands = set()
     pfr_hands = set()

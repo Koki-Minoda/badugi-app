@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from sqlalchemy import BigInteger, Integer, Boolean, DateTime, Float, JSON, String, func
+from sqlalchemy import BigInteger, Index, Integer, Boolean, DateTime, Float, JSON, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from . import Base
@@ -24,6 +24,9 @@ class BadugiHandAction(Base):
     """Single ActionLog entry persisted from the frontend."""
 
     __tablename__ = "badugi_action_logs"
+    __table_args__ = (
+        Index("ix_badugi_action_logs_player_phase_ts", "player_id", "phase", "ts"),
+    )
 
     id: Mapped[int] = mapped_column(
         BigInteger().with_variant(Integer, "sqlite"),

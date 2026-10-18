@@ -37,7 +37,11 @@ def get_current_user(
         numeric_user_id = int(user_id)
     except (TypeError, ValueError):
         raise HTTPException(status_code=401, detail="Invalid authentication credentials")
-    user = db.query(User).filter(User.id == numeric_user_id).one_or_none()
+    try:
+        user = db.query(User).filter(User.id == numeric_user_id).one_or_none()
+    finally:
+        # Return the connection before endpoint work opens another session.
+        db.close()
     if not user or not token_matches_account(payload, user):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

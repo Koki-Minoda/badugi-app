@@ -363,6 +363,8 @@ export default function MainMenuScreen({
             <img
               src={mgxKitsune}
               alt="MGX Kitsune"
+              width={1024}
+              height={1024}
               className="mx-auto w-[260px] drop-shadow-[0_0_35px_rgba(234,179,8,0.45)] lg:w-[320px] xl:w-[360px]"
             />
           </div>

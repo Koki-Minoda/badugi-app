@@ -55,9 +55,11 @@ jobs:
         run: |
           # Query OSV with the exact package-lock versions. npm's retiring
           # quick-audit endpoint rejects otherwise valid legacy-peer trees.
-          # Any known advisory fails this production gate.
+          # Any unremediated advisory fails. The temporary braces source patch
+          # requires exact installed-source hashes and adversarial tests.
           node scripts/ci/audit-package-lock.mjs --omit-dev
           node scripts/ci/audit-package-lock.mjs
+          node --test scripts/ci/css-dependency-security.test.mjs
       - name: Audit resolved backend dependencies
         run: |
           python -m venv .audit-venv
@@ -449,6 +451,7 @@ jobs:
           branch="$1"
           cd /home/mgx/badugi-app
           test -z "$(git status --porcelain --untracked-files=no)"
+          sudo -n /usr/local/sbin/mgx-prod-admin check
           git fetch origin "$branch"
           git rev-parse --verify "origin/$branch"
           sudo -n /usr/sbin/nginx -t

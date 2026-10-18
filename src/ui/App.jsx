@@ -8111,16 +8111,45 @@ export default function App() {
   // instead of calling dealNewHand directly so BTN/blinds/metadata stay in sync.
   const startNextHand = useCallback(
     ({ dealerOverride = null, prevPlayers = null } = {}) => {
+      const currentPhase = phaseRef.current ?? phase;
+      const allowedStartPhases = new Set([
+        SAFE_RESET_PHASE,
+        "INIT",
+        "HAND_RESULT",
+        "SHOWDOWN",
+        "WAITING_NEXT_HAND",
+        "TABLE_FINISHED",
+        "TOURNAMENT_END",
+        "TOURNAMENT_FINAL",
+      ]);
+      // Legacy draw callbacks can publish BET after the result. The recorded
+      // settlement for this exact hand is authoritative, and resets on deal.
+      const tournamentHandSettled = modeRef.current === "tournament-mtt" &&
+        handIdRef.current && tournamentCompletedHandIdRef.current === handIdRef.current;
+      if (handCountRef.current > 0 && !allowedStartPhases.has(currentPhase) && !tournamentHandSettled) {
+        console.warn("[HAND] stale next-hand trigger ignored", {
+          phase: currentPhase,
+          handId: handIdRef.current,
+        });
+        return false;
+      }
       if (dealingRef.current) {
         // A very short/all-in hand can expose its result before the previous
         // deal's 100ms safety lock is released.  Do not lose the user's Next
         // hand click in that window.  Keep one bounded, idempotent retry; a
         // second click updates nothing and cannot deal twice.
         if (!pendingNextHandRetryRef.current) {
-          const retry = { dealerOverride, prevPlayers, attempts: 0 };
+          const retry = {
+            dealerOverride, prevPlayers, attempts: 0,
+            handId: handIdRef.current, handNumber: handCountRef.current,
+          };
           pendingNextHandRetryRef.current = retry;
           const retryWhenUnlocked = () => {
             if (pendingNextHandRetryRef.current !== retry) return;
+            if (handIdRef.current !== retry.handId || handCountRef.current !== retry.handNumber) {
+              pendingNextHandRetryRef.current = null;
+              return;
+            }
             retry.attempts += 1;
             if (dealingRef.current && retry.attempts < 20) {
               setTimeout(retryWhenUnlocked, 100);
@@ -8151,28 +8180,9 @@ export default function App() {
         }
         completeTournamentBreak();
       }
-      const currentPhase = phaseRef.current ?? phase;
-      const allowedStartPhases = new Set([
-        SAFE_RESET_PHASE,
-        "INIT",
-        "HAND_RESULT",
-        "SHOWDOWN",
-        "WAITING_NEXT_HAND",
-        "TABLE_FINISHED",
-        "TOURNAMENT_END",
-        "TOURNAMENT_FINAL",
-      ]);
-      // Legacy draw callbacks can publish BET after the result. The recorded
-      // settlement for this exact hand is authoritative, and resets on deal.
-      const tournamentHandSettled = modeRef.current === "tournament-mtt" &&
-        handIdRef.current && tournamentCompletedHandIdRef.current === handIdRef.current;
-      if (handCountRef.current > 0 && !allowedStartPhases.has(currentPhase) && !tournamentHandSettled) {
-        console.warn("[HAND] stale next-hand trigger ignored", {
-          phase: currentPhase,
-          handId: handIdRef.current,
-        });
-        return false;
-      }
+      // React's phase effect runs after this callback. Close the old result
+      // synchronously so a second click cannot queue against the new hand.
+      phaseRef.current = "BET";
       setShowNextButton(false);
       setHandResultVisible(false);
       setHandResultSummary(null);

@@ -104,6 +104,38 @@ test('MIX observes hand limits, skips unreleased variants and ignores repeated n
   }
 });
 
+test('a duplicate Next request cannot carry into a quickly completed following hand', async ({ page }) => {
+  await setup(page, ['D02', 'D01'], 2);
+  await finishHand(page);
+  // Hold the 100ms dealing lock while a second hand settles, reproducing the
+  // stale queued click that otherwise depends on WebKit scheduling speed.
+  await page.clock.install();
+  await page.clock.pauseAt(new Date());
+  await page.evaluate(() => {
+    const api = (window as any).__BADUGI_E2E__;
+    api.dealNewHandNow();
+    api.dealNewHandNow();
+  });
+  await expect.poll(async () => (await snapshot(page)).handCount).toBe(2);
+  await finishHand(page);
+  await page.clock.runFor(250);
+  expect((await snapshot(page)).handCount).toBe(2);
+  expect((await snapshot(page)).gameVariant).toBe('ace_to_five_triple_draw');
+  await page.evaluate(() => (window as any).__BADUGI_E2E__.dealNewHandNow());
+  await expect.poll(async () => (await snapshot(page)).handCount).toBe(3);
+  expect((await snapshot(page)).gameVariant).toBe('deuce_to_seven_triple_draw');
+  // A genuine next-hand request after this short result must still be queued
+  // until the dealing lock clears, and duplicate requests must coalesce.
+  await finishHand(page);
+  await page.evaluate(() => {
+    const api = (window as any).__BADUGI_E2E__;
+    api.dealNewHandNow(); api.dealNewHandNow();
+  });
+  expect((await snapshot(page)).handCount).toBe(3);
+  await page.clock.runFor(250);
+  expect((await snapshot(page)).handCount).toBe(4);
+});
+
 test('quiz supports answers, six-question scoring, retry and topic switching', async ({ page }, info) => {
   await page.addInitScript(() => { Math.random = () => 0.999; });
   await page.goto('/learn');

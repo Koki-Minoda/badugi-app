@@ -255,8 +255,8 @@ test(`${LIVE_ORIGIN ? "production preserves" : "two workers preserve"} a mixed W
     await guest.getByLabel(/Room code|ルームコード/i).fill(roomCode!);
     console.info(`[p2p-soak] joining room=${roomCode}`);
     await guest.getByRole("button", { name: /^Join$|^参加$/i }).click({ timeout: 20_000 });
-    await expect(host.getByText(/^connected$/i)).toBeVisible({ timeout: 20_000 });
-    await expect(guest.getByText(/^polling$/i)).toBeVisible({ timeout: 20_000 });
+    await expect(host.getByTestId("friend-match-layout")).toHaveAttribute("data-connection-status", /^connected$/i, { timeout: 20_000 });
+    await expect(guest.getByTestId("friend-match-layout")).toHaveAttribute("data-connection-status", /^polling$/i, { timeout: 20_000 });
     console.info(`[p2p-soak] joined room=${roomCode} scope=${LIVE_ORIGIN ? "production" : "two-worker"} hands=${HANDS}`);
 
     const privateState = await host.request.get(`${ORIGIN}/api/p2p/rooms/${roomCode}/state`, {
@@ -335,8 +335,8 @@ test(`${LIVE_ORIGIN ? "production preserves" : "two workers preserve"} a mixed W
       if (!LIVE_ORIGIN && hand === Math.floor(HANDS / 2) - 1) {
         await stopBackend();
         await startBackend();
-        await expect(host.getByText(/^(connected|polling)$/i)).toBeVisible({ timeout: 30_000 });
-        await expect(guest.getByText(/^polling$/i)).toBeVisible({ timeout: 30_000 });
+        await expect(host.getByTestId("friend-match-layout")).toHaveAttribute("data-connection-status", /^(connected|polling)$/i, { timeout: 30_000 });
+        await expect(guest.getByTestId("friend-match-layout")).toHaveAttribute("data-connection-status", /^polling$/i, { timeout: 30_000 });
       }
     }
 

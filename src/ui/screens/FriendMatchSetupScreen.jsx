@@ -856,6 +856,7 @@ export default function FriendMatchSetupScreen({ language = null } = {}) {
   return (
     <div
       data-testid="friend-match-layout"
+      data-connection-status={syncStatus}
       className="min-h-screen overflow-x-clip px-4 py-10 text-white [&_button]:min-h-11 [&_input]:min-h-11 [&_input]:text-base"
       style={{
         paddingLeft: "max(16px, env(safe-area-inset-left))",

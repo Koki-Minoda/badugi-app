@@ -279,8 +279,8 @@ test.describe("production P2P friend match websocket", () => {
       await guest.getByRole("button", { name: /^Join$|^参加$/i }).click();
       await expect(guest.getByText(/Joined room|ルームに参加しました/i)).toBeVisible();
 
-      await expect(host.getByText(/^connected$/i)).toBeVisible({ timeout: 15_000 });
-      await expect(guest.getByText(/^connected$/i)).toBeVisible({ timeout: 15_000 });
+      await expect(host.getByTestId("friend-match-layout")).toHaveAttribute("data-connection-status", /^connected$/i, { timeout: 15_000 });
+      await expect(guest.getByTestId("friend-match-layout")).toHaveAttribute("data-connection-status", /^connected$/i, { timeout: 15_000 });
       await host.getByTestId("p2p-ready").click();
       await guest.getByTestId("p2p-ready").click();
 
@@ -293,7 +293,7 @@ test.describe("production P2P friend match websocket", () => {
       expect(await guest.locator("body").innerText()).not.toContain(hostCardsBeforeReload.join(" "));
 
       await host.reload({ waitUntil: "load" });
-      await expect(host.getByText(/^connected$/i)).toBeVisible({ timeout: 15_000 });
+      await expect(host.getByTestId("friend-match-layout")).toHaveAttribute("data-connection-status", /^connected$/i, { timeout: 15_000 });
       expect(await privateCards(host)).toEqual(hostCardsBeforeReload);
       await expect(host.getByTestId(`p2p-player-${hostSession.user.id}`)).toBeVisible();
       await expect(guest.getByTestId(`p2p-player-${guestSession.user.id}`)).toBeVisible();

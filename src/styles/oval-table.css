@@ -21,7 +21,7 @@
 .mgx-play--oval .mgx-seat-heading{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:0 3px;width:100%;height:29px;min-height:29px;padding:2px 5px;border:1px solid #61766a;border-radius:6px;background:linear-gradient(#263831,#14241e);font-size:10px;line-height:12px;box-shadow:0 2px 5px #0007}
 .mgx-play--oval .is-active .mgx-seat-heading{border-color:#a7f7c2;background:linear-gradient(#355b44,#183d2b)}
 .mgx-play--oval .mgx-seat-name{grid-column:1;grid-row:1;max-width:100%;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.mgx-play--oval .mgx-seat-position{display:block;grid-column:2;grid-row:1/3;font-size:8px;line-height:11px;color:#d3c89c}
+.mgx-play--oval .mgx-seat-position{white-space:nowrap;flex-shrink:0;display:block;grid-column:2;grid-row:1/3;font-size:8px;line-height:11px;color:#d3c89c}
 .mgx-play--oval .mgx-seat-heading strong{grid-column:1;grid-row:2;margin:0;text-align:center;font-size:11px;line-height:12px;color:#f4e8c0}
 .mgx-play--oval .mgx-seat-cards{width:100%;height:24px;min-height:24px;display:flex;align-items:center;justify-content:center;gap:2px}
 .mgx-play--oval .mgx-table-seat:not(.is-hero) .mgx-seat-cards{height:46px;min-height:46px;display:flex;align-items:center;gap:1px}
@@ -30,7 +30,7 @@
 .mgx-play--oval .mgx-seat-meta{width:100%;height:12px;min-height:12px;font-size:8px;line-height:12px;justify-content:center;gap:5px;color:#e7e5d2;text-shadow:0 1px 2px #000}
 .mgx-play--oval .mgx-table-seat.is-hero .mgx-seat-avatar{display:none}
 .mgx-play--oval .mgx-table-seat.is-hero .mgx-seat-heading{order:2;width:164px;height:25px;min-height:25px;display:flex;justify-content:center;gap:8px;padding:3px 8px;font-size:11px;line-height:16px}
-.mgx-play--oval .mgx-table-seat.is-hero .mgx-seat-heading strong{font-size:13px;margin-left:auto}
+.mgx-play--oval .mgx-table-seat.is-hero .mgx-seat-heading strong{flex-shrink:0;font-size:13px;margin-left:auto}
 .mgx-play--oval .mgx-table-seat.is-hero .mgx-seat-position{font-size:9px}
 .mgx-play--oval .mgx-table-seat.is-hero .mgx-seat-cards{height:61px;min-height:61px;gap:5px;align-items:center}
 .mgx-play--oval .mgx-table-seat.is-hero .mgx-table-card{flex:0 1 44px;width:44px;height:54px;font-size:20px;border-radius:6px}

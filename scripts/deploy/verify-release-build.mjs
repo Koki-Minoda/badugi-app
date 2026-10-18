@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+const [directory, expected] = process.argv.slice(2);
+assert.match(expected ?? '', /^[0-9a-f]{40}$/, 'A tested full commit SHA is required');
+const release = JSON.parse(readFileSync(join(directory, 'release.json'), 'utf8'));
+assert.equal(release.commit, expected, 'Built release must match the tested commit');
+const html = readFileSync(join(directory, 'index.html'), 'utf8');
+assert.ok(html.includes(`<meta name="mgx-release" content="${expected}">`), 'HTML must identify the same release');
+console.log(`Release identity verified: ${expected}`);

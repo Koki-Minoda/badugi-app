@@ -73,3 +73,5 @@ grep -q 'Strict-Transport-Security' infra/nginx/mgx-poker.com-ssl.conf.example
 grep -q 'X-Content-Type-Options' infra/nginx/mgx-poker.com-ssl.conf.example
 
 echo "deploy static safety: PASS"
+
+node --test scripts/deploy/release-identity.test.mjs

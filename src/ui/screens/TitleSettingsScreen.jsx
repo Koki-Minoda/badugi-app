@@ -1,3 +1,4 @@
+import { BUILD_INFO } from "../../config/buildInfo.js";
 import LanguageSelect from '../preferences/LanguageSelect.jsx';
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -145,6 +146,7 @@ export default function TitleSettingsScreen({ embedded = false, onClose = null }
         </div>
       </header>
 
+      <p className="max-w-6xl mx-auto px-6 pb-4 text-xs text-slate-400" data-testid="release-version">MGX · {BUILD_INFO.commit.slice(0, 12)}</p>
       <main className="max-w-6xl mx-auto px-6 pb-16 grid gap-8 lg:grid-cols-2">
         <section className="bg-slate-900/80 border border-white/10 rounded-3xl p-6 shadow-2xl flex flex-col gap-6">
           <div className="flex items-center gap-4">

@@ -28,7 +28,15 @@ export default defineConfig(({ command }) => {
   };
 
   return {
-    plugins: [react()],
+    plugins: [react(), {
+      name: "mgx-release-identity",
+      generateBundle() {
+        this.emitFile({ type: "asset", fileName: "release.json", source: JSON.stringify(buildInfo) + "\n" });
+      },
+      transformIndexHtml() {
+        return [{ tag: "meta", attrs: { name: "mgx-release", content: buildInfo.commit }, injectTo: "head" }];
+      },
+    }],
     base: isDev ? "/dev/" : "/",
     define: {
       __MGX_BUILD_INFO__: JSON.stringify(buildInfo),

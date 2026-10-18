@@ -52,4 +52,4 @@ try {
   console.log(JSON.stringify(report.at(-1)));
   for(const p of people)await p.context.close();
  }
-} finally {for(const token of accounts){const response=await fetch(origin+'/api/auth/account',{method:'DELETE',headers:{Authorization:`Bearer ${token}`}});assert.equal(response.status,200,'release QA account cleanup');}await writeFile(new URL('./friend-browser.json',reportBase),JSON.stringify(report,null,2)+'\n');await browser.close();}
+} finally {for(const token of accounts){const response=await fetch(origin+'/api/auth/account',{method:'DELETE',body:JSON.stringify({password:'MgxAdoption!2026'}),headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`}});assert.equal(response.status,200,'release QA account cleanup');}await writeFile(new URL('./friend-browser.json',reportBase),JSON.stringify(report,null,2)+'\n');await browser.close();}

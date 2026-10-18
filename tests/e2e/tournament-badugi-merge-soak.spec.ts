@@ -3,7 +3,7 @@ import {writeFile} from 'node:fs/promises';
 import {APP_URL,enterTitleIfPresent,selectGameVariantFromSelector} from './authHelper';
 import {waitForE2EDriver} from './helpers/gameProgressHelper.js';
 
-test('Badugi plays an 18-player tournament through three tables, final table and elimination',async({page})=>{
+test('Badugi plays an 18-player tournament through three tables, final table and elimination',async({page},testInfo)=>{
  test.setTimeout(600000);await page.setViewportSize({width:852,height:283});
  const errors=[];page.on('pageerror',e=>errors.push(String(e)));
  await page.route('**/api/**',r=>r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({id:9001,username:'QA Hero'})}));
@@ -25,13 +25,17 @@ test('Badugi plays an 18-player tournament through three tables, final table and
   }
   if(!s.result){
    for(const id of final?['action-raise','action-check','action-call','action-draw-selected']:['action-fold']){
-    const button=page.getByTestId(id);if(await button.count()&&await button.isEnabled()){await button.click();break;}
+    const button=page.locator(`[data-testid="${id}"]:not([disabled])`);
+    if(await button.count()){
+     try {await button.click({timeout:1000});break;}
+     catch(error){if(await button.count())throw error;} // Phase advanced while locating the old action.
+    }
    }
   }
   await page.waitForTimeout(150);
  }
  const result={rows,terminal,errors,placements:await page.evaluate(()=>window.__BADUGI_E2E__.getTournamentPlacements())};
- await writeFile('reports/adoption-implementation/portraits-tournament-2026-09-23/browser-badugi-merge.json',JSON.stringify(result,null,2));
+ await writeFile(testInfo.outputPath('badugi-merge.json'),JSON.stringify(result,null,2));
  expect(terminal).toBe(true);expect(rows.some(r=>r.tables===2)).toBe(true);expect(final).toBe(true);
  expect(result.placements).toHaveLength(18);expect(new Set(result.placements.map(p=>p.place)).size).toBe(18);
  expect(result.placements.reduce((n,p)=>n+p.stack,0)).toBe(9000);expect(errors).toEqual([]);

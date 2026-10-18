@@ -142,5 +142,84 @@
       "integration": "included",
       "releaseVerification": "pending"
     }
-  ]
+  ],
+  "localVerification": {
+    "backend": {
+      "passed": 107,
+      "poolContentionRegression": "failed before fix; passed after offloading P2P database and lock waits"
+    },
+    "tier1": {
+      "passed": 2423,
+      "skipped": 1
+    },
+    "learning": {
+      "initialPassed": 58,
+      "initialFailures": 8,
+      "correctedLearningAndMixRecheckPassed": 24,
+      "note": "Old unreleased FLH fixture and previous mobile markup updated; all other original cases passed."
+    },
+    "ui": {
+      "screens": 104,
+      "engines": [
+        "Chromium",
+        "WebKit"
+      ],
+      "languages": [
+        "ja",
+        "en"
+      ],
+      "orientations": [
+        "portrait",
+        "landscape"
+      ],
+      "overflow": 0,
+      "pageErrors": 0
+    },
+    "guest": {
+      "variants": 26,
+      "completedHands": 26,
+      "pageErrors": 0,
+      "overflow": 0,
+      "apiWrites": 0,
+      "statisticsUnchanged": true
+    },
+    "friends": {
+      "variants": 3,
+      "seats": [
+        2,
+        3,
+        6
+      ],
+      "allThreeDrawsAndShowdown": true,
+      "reloadReconnect": true,
+      "multiProcessHands": 50,
+      "websocketAndRestFallback": "passed"
+    },
+    "customTournament": {
+      "startingStack": 1500,
+      "minutesPerLevel": 7,
+      "freePractice": true,
+      "resumeDeadlinePreserved": true
+    },
+    "cash": {
+      "desktopHands": 16,
+      "androidLandscapeHands": 5,
+      "heroBustAndRebuy": "passed"
+    },
+    "mobileSafari": {
+      "toolbarHeights": [
+        300,
+        320
+      ],
+      "nameAndCardCounts": "passed",
+      "resultReplaySetup": "passed"
+    },
+    "tournamentMerge": "rechecking transient action locator race; publication gate remains open"
+  },
+  "rollback": {
+    "backupDirectory": "/var/backups/mgx/releases/20261019-before-feature-release",
+    "frontendSha256": "5523f2fd8694b6e3cd38c50dd2f0ef3e2abd31085988ee05473a0caa53dbd057",
+    "databaseArchiveBytes": 19272441,
+    "priorCommit": "b92ec6525e5f83b18ee027ca739ab6cab187d9a2"
+  }
 }

@@ -6,7 +6,9 @@ export default function SeatPortrait({seat}) {
  const character = seat.isCPU || seat.cpuStyle || seat.cpuCharacterId
   ? getCpuCharacterById(seat.cpuCharacterId) ?? getCpuCharacterByName(seat.name)
   : null;
- const src = explicit ?? character?.avatarUrl;
+ const source = explicit ?? character?.avatarUrl;
+ const base = (import.meta.env.BASE_URL ?? '/').replace(/\/?$/, '/');
+ const src = source?.startsWith('/characters/') ? `${base}${source.slice(1)}` : source;
  // A new occupant must retry their own image even if the previous image failed.
  return <PortraitImage key={src ?? 'placeholder'} src={src}/>;
 }

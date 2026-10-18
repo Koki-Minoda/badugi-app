@@ -2,7 +2,7 @@ import React from 'react';
 import {afterEach,it,expect,vi} from 'vitest';
 import {render,screen,fireEvent,cleanup} from '@testing-library/react';
 import MobileTableSeat from '../MobileTableSeat.jsx';
-afterEach(cleanup);
+afterEach(()=>{cleanup();vi.unstubAllEnvs();});
 it('restores CPU portraits in both draw and board seats and preserves custom avatars',()=>{
  const {container,rerender}=render(<MobileTableSeat seat={{name:'Akira',isCPU:true,avatar:'default_avatar',stack:500}} index={1} variant="badugi"/>);
  expect(container.querySelector('.mgx-seat-avatar img').getAttribute('src')).toBe('/characters/akira.png');
@@ -49,4 +49,15 @@ it('omits blind and dealer positions in Stud while keeping them in Holdem',()=>{
  expect(container.querySelector('.mgx-seat-position').textContent).toBe('');
  rerender(<MobileTableSeat seat={{name:'CPU',stack:500,hand:['AS','KH'],cardVisibility:['down','down']}} index={1} dealer position="BTN" variant="nlh"/>);
  expect(container.querySelector('.mgx-seat-position').textContent).toBe('D · BTN');
+});
+
+it('keeps the configured hero name visible on the shared table',()=>{
+ render(<MobileTableSeat seat={{name:'Device Hero',stack:500,hand:['AS','KH']}} index={0} hero variant="nlh"/>);
+ expect(screen.getByTestId('seat-0-name').textContent).toBe('Device Hero');
+});
+
+it('loads saved root-relative character portraits under a mounted development base',()=>{
+ vi.stubEnv('BASE_URL','/dev/');
+ const {container}=render(<MobileTableSeat seat={{name:'Hero',avatar:'/characters/hero.png',stack:500}} index={0} hero variant="nlh"/>);
+ expect(container.querySelector('.mgx-seat-avatar img').getAttribute('src')).toBe('/dev/characters/hero.png');
 });

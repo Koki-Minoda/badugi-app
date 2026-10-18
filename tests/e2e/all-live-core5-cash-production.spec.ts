@@ -1,3 +1,4 @@
+import { visibleHeroActions } from "./helpers/visibleHeroActions";
 import fs from "node:fs";
 import path from "node:path";
 import { expect, test, type Browser, type Page } from "@playwright/test";
@@ -81,28 +82,6 @@ type DeviceName = "desktop" | "android" | "iphone";
 function writeReport(fileName: string, value: unknown) {
   fs.mkdirSync(REPORT_DIR, { recursive: true });
   fs.writeFileSync(path.join(REPORT_DIR, fileName), `${JSON.stringify(value, null, 2)}\n`);
-}
-
-async function visibleHeroActions(page: Page) {
-  const ids = [
-    "action-check",
-    "action-call",
-    "action-raise",
-    "action-fold",
-    "action-draw-selected",
-  ];
-  const visible: string[] = [];
-  for (const id of ids) {
-    const button = page.getByTestId(id).first();
-    if (
-      (await button.count()) > 0 &&
-      (await button.isVisible().catch(() => false)) &&
-      (await button.isEnabled().catch(() => false))
-    ) {
-      visible.push(id);
-    }
-  }
-  return visible;
 }
 
 async function visibleLayoutIssues(page: Page) {

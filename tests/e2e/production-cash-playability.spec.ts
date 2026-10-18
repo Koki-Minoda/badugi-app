@@ -1,3 +1,4 @@
+import { visibleHeroActions } from "./helpers/visibleHeroActions";
 import fs from "node:fs";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
@@ -77,28 +78,6 @@ async function visibleLayoutIssues(page: Page) {
     }
     return issues;
   });
-}
-
-async function visibleHeroActions(page: Page) {
-  const ids = [
-    "action-check",
-    "action-call",
-    "action-raise",
-    "action-fold",
-    "action-draw-selected",
-  ];
-  const visible: string[] = [];
-  for (const id of ids) {
-    const button = page.getByTestId(id).first();
-    if (
-      (await button.count()) > 0 &&
-      (await button.isVisible().catch(() => false)) &&
-      (await button.isEnabled().catch(() => false))
-    ) {
-      visible.push(id);
-    }
-  }
-  return visible;
 }
 
 async function driveHandLikePlayer(page: Page, hand: number) {

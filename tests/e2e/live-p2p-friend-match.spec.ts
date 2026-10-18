@@ -32,7 +32,7 @@ async function openFriendMatch(page: Page) {
 }
 
 async function privateCards(page: Page) {
-  const cards = page.getByTestId("p2p-private-hand").locator("button");
+  const cards = page.getByTestId("p2p-private-hand").locator('[data-testid^="p2p-card-"]');
   await expect(cards).toHaveCount(4, { timeout: 20_000 });
   return cards.allTextContents();
 }

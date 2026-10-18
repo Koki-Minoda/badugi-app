@@ -128,8 +128,8 @@ async function openFriendMatch(page: Page, label: string) {
 
 async function privateCards(page: Page) {
   const hand = page.getByTestId("p2p-private-hand");
-  await expect(hand.locator("button")).toHaveCount(4, { timeout: 15_000 });
-  return hand.locator("button").allTextContents();
+  await expect(hand.locator('[data-testid^="p2p-card-"]')).toHaveCount(4, { timeout: 15_000 });
+  return hand.locator('[data-testid^="p2p-card-"]').allTextContents();
 }
 
 async function expectNoHorizontalOverflow(page: Page) {
@@ -328,7 +328,7 @@ test.describe("production P2P friend match websocket", () => {
       await expect(secondDrawer.getByTestId("p2p-draw")).toBeEnabled({ timeout: 15_000 });
       await secondDrawer.getByTestId("p2p-draw").click();
 
-      await expect(host.getByTestId("p2p-private-hand").locator("button")).toHaveCount(4);
+      await expect(host.getByTestId("p2p-private-hand").locator('[data-testid^="p2p-card-"]')).toHaveCount(4);
       const bettor = await waitForEnabledPage(
         [
           { label: "host", page: host },

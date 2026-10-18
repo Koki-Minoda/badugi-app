@@ -8,7 +8,7 @@ async function setup(page: Page, games: string[], handsPerGame = 1, hardBans = '
     localStorage.setItem('mixedGameProfiles', JSON.stringify([{ id: 'qa-mix', name: 'QA Mix', selectedGameIds: games, handsPerGame, selectionMode: 'FIXED', allowDuplicates: true }]));
   }, { games, handsPerGame });
   await page.goto('/mixed?preset=qa-mix');
-  if (hardBans) await page.getByRole('textbox', { name: 'Hard Ban（必ず除外）' }).fill(hardBans);
+  if (hardBans) await page.getByRole('textbox', { name: '必ず除外する種目' }).fill(hardBans);
   await page.getByRole('button', { name: 'Mixed Game 開始', exact: true }).click();
   await expect(page.getByTestId('mixed-rotation-status')).toBeVisible();
 }
@@ -45,11 +45,19 @@ test('cash MIX crosses draw, stud and board families with chips, seats and butto
     expect(state.players.map(p => p.name)).toEqual(names);
     if (i === 3) {
       await expect(page.getByTestId('mixed-rotation-status')).toBeVisible();
-      await expect(page.getByTestId('phase-compact-strip')).toContainText('3rd Street');
-      await expect(page.getByTestId('phase-compact-strip')).not.toContainText('D1');
+      const mobile = await page.getByTestId('mobile-play-layout').count();
+      const phase = page.getByTestId(mobile ? 'table-phase-badge' : 'phase-compact-strip');
+      await expect(phase).toContainText(mobile ? '3番街' : '3rd Street');
+      await expect(phase).not.toContainText('D1');
       for (let seat = 1; seat < 6; seat++) {
-        await expect(page.getByTestId(`player-${seat}-card-2-up-slot`)).toBeVisible();
-        await expect(page.getByTestId(`player-${seat}-card-0-down-slot`)).toBeVisible();
+        if (mobile) {
+          await expect(page.getByTestId(`player-${seat}-card-2`)).toBeVisible();
+          await expect(page.getByTestId(`player-${seat}-card-2`)).not.toHaveAttribute('aria-label', '伏せ札');
+          await expect(page.getByTestId(`player-${seat}-card-0`)).toHaveAttribute('aria-label', '伏せ札');
+        } else {
+          await expect(page.getByTestId(`player-${seat}-card-2-up-slot`)).toBeVisible();
+          await expect(page.getByTestId(`player-${seat}-card-0-down-slot`)).toBeVisible();
+        }
         await expect(page.getByTestId(`seat-${seat}-draw-badge`)).toHaveCount(0);
       }
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
@@ -81,7 +89,7 @@ test('cash MIX crosses draw, stud and board families with chips, seats and butto
 
 
 test('MIX observes hand limits, skips unreleased variants and ignores repeated next-hand requests', async ({ page }) => {
-  await setup(page, ['B02', 'ST1', 'D02', 'D01'], 2, 'st1 b05');
+  await setup(page, ['D04', 'ST1', 'D02', 'D01'], 2, 'st1 b05');
   await expect(page.getByTestId('mixed-rotation-status')).toContainText('1/2');
   expect((await snapshot(page)).gameVariant).toBe('ace_to_five_triple_draw');
   await page.evaluate(() => (window as any).__BADUGI_E2E__.dealNewHandNow());

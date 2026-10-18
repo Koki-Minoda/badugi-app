@@ -43,7 +43,7 @@ test('compare rules, save once, reload and review an unchanged template', async 
 });
 
 test('English persists and unpublished games remain study-only', async ({ page }) => {
-  await page.goto('/learn?variant=flh');
+  await page.goto('/learn?variant=badeucey_triple_draw');
   await expect(page.getByTestId('learn-play')).toHaveCount(0);
   await expect(page.getByText('この種目は現在、ルールの確認のみ利用できます。')).toBeVisible();
   await page.getByRole('combobox', { name: 'Language' }).selectOption('en');

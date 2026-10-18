@@ -36,6 +36,28 @@ jobs:
       - run: npm run test:qm:public-games
       - run: npm run test:deploy:static
 
+  learning-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --legacy-peer-deps --no-audit
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run build
+      - run: npx playwright test --config playwright.learning.config.js
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: learning-qa
+          path: |
+            reports/learning-entry/e2e-results.json
+            reports/learning-entry/browser-artifacts
+          retention-days: 14
+
   dependency-security:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -395,6 +417,7 @@ jobs:
   deploy:
     needs:
       - quality
+      - learning-qa
       - dependency-security
       - backend
       - tournament-qa

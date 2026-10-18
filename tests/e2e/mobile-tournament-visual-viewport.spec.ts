@@ -23,7 +23,7 @@ async function openFixture(page: Page) {
 
 async function visualState(page: Page) {
   return page.evaluate(() => {
-    const root = document.querySelector(".mgx-mobile-landscape");
+    const root = document.querySelector('[data-testid="mobile-play-layout"]');
     const panel = document.querySelector('[data-testid="decision-panel"]');
     const buttons = ["action-call", "action-raise", "action-fold"].map((testId) => {
       const element = document.querySelector(`[data-testid="${testId}"]`);
@@ -38,8 +38,6 @@ async function visualState(page: Page) {
     return {
       visualViewportHeight: window.visualViewport?.height ?? window.innerHeight,
       visualViewportWidth: window.visualViewport?.width ?? window.innerWidth,
-      cssVisualVh: getComputedStyle(document.documentElement).getPropertyValue("--mgx-visual-vh").trim(),
-      cssVisualVw: getComputedStyle(document.documentElement).getPropertyValue("--mgx-visual-vw").trim(),
       rootBox: rootBox ? { y: rootBox.y, height: rootBox.height, bottom: rootBox.bottom } : null,
       panelBox: panelBox ? { y: panelBox.y, height: panelBox.height, bottom: panelBox.bottom } : null,
       buttons,
@@ -48,7 +46,9 @@ async function visualState(page: Page) {
 }
 
 function expectButtonsInside(state: Awaited<ReturnType<typeof visualState>>) {
-  expect(state.cssVisualVh).toMatch(/px$/);
+  expect(state.rootBox).toBeTruthy();
+  expect(state.panelBox).toBeTruthy();
+  expect(state.rootBox!.height).toBeCloseTo(state.visualViewportHeight, 0);
   expect(state.rootBox?.bottom ?? 0).toBeLessThanOrEqual(state.visualViewportHeight + 1);
   expect(state.panelBox?.bottom ?? 0).toBeLessThanOrEqual(state.visualViewportHeight + 1);
   for (const button of state.buttons) {
@@ -67,7 +67,7 @@ test.describe("mobile tournament visual viewport sizing", () => {
     fs.writeFileSync(REPORT_PATH, `${JSON.stringify({ generatedAt: new Date().toISOString(), rows }, null, 2)}\n`);
   });
 
-  test("updates visual viewport CSS vars and keeps controls visible after landscape height shrinks", async ({ page }) => {
+  test("resizes the table with the visual viewport and keeps controls visible after landscape height shrinks", async ({ page }) => {
     ensureReportDirs();
     await page.setViewportSize({ width: 844, height: 360 });
     await openFixture(page);
@@ -80,8 +80,8 @@ test.describe("mobile tournament visual viewport sizing", () => {
     // production geometry covered so off-screen controls cannot pass CI.
     await page.setViewportSize({ width: 869, height: 303 });
     await page.waitForFunction(() => {
-      const value = getComputedStyle(document.documentElement).getPropertyValue("--mgx-visual-vh");
-      return value.trim().startsWith("303");
+      const height = document.querySelector('[data-testid="mobile-play-layout"]')?.getBoundingClientRect().height;
+      return typeof height === "number" && Math.abs(height - 303) <= 1;
     });
     const shrunk = await visualState(page);
     expectButtonsInside(shrunk);

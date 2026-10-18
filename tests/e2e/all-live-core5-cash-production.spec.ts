@@ -107,6 +107,11 @@ async function visibleHeroActions(page: Page) {
 
 async function visibleLayoutIssues(page: Page) {
   return page.evaluate(() => {
+    // A CPU action can complete the hand between the driver's terminal check
+    // and this DOM snapshot. The result modal intentionally covers the table;
+    // only audit live controls while that modal is absent.
+    const result = document.querySelector('[data-testid="hand-result-overlay"]') as HTMLElement | null;
+    if (result && result.getClientRects().length && getComputedStyle(result).visibility !== 'hidden') return [];
     const viewport = window.visualViewport ?? {
       width: window.innerWidth,
       height: window.innerHeight,

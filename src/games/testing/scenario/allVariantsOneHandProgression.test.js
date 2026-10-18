@@ -20,6 +20,7 @@ describe("all variants one-hand progression guarantee", () => {
         maxSteps: 320,
       });
 
+      expect(result.status, `${variant.id} must have a progression harness`).not.toBe("SKIP");
       if (result.status === "SKIP") {
         console.warn(
           `[MGX_ONE_HAND_SKIP] variantId=${result.variantId} family=${result.family} reason=${result.skipReason}`,

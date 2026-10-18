@@ -21,6 +21,10 @@ const baseSummary = {
 };
 
 describe("HandResultOverlay", () => {
+  test("shows the settled Board/Stud totalPot instead of zero", () => {
+    render(<HandResultOverlay visible summary={{ totalPot: 180, winners: [baseWinner], potDetails: [{ potAmount: 120, winners: [baseWinner] }, { potAmount: 60, winners: [baseWinner] }] }} />);
+    expect(screen.getByTestId('hand-result-total').textContent).toBe('Pot ¥180');
+  });
   afterEach(() => {
     cleanup();
   });

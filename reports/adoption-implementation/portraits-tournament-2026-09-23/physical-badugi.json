@@ -1,0 +1,12 @@
+{
+  "device": "physical iPhone Safari",
+  "interaction": "DOM activation of visible controls; short tournament config only, no forced outcomes",
+  "variant": "badugi",
+  "rows": [],
+  "viewport": [
+    852,
+    283
+  ],
+  "status": "FAIL",
+  "error": "Error: Runtime.evaluate timed out"
+}

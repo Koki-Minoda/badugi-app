@@ -1,6 +1,7 @@
+import { saveCriticalJson, clearSaveFailure } from '../../storage/criticalSave.js';
 import { getStageById } from "../../config/tournamentStages";
 import { TOURNAMENT_OPPONENTS } from "../../config/tournamentOpponents";
-import { safeGetItem, safeRemoveItem, safeSetItem } from "../../storage/core.js";
+import { safeGetItem, safeRemoveItem } from "../../storage/core.js";
 import { STORAGE_KEYS } from "../../storage/keys.js";
 import { disableDealerChoiceMode } from "../dealersChoice/dealerChoiceManager.js";
 
@@ -190,8 +191,9 @@ function ensureTableAssignments(session) {
 }
 
 export function saveActiveTournamentSession(session) {
-  if (!safeSetItem(SESSION_KEY, session, { silent: true })) {
+  if (!saveCriticalJson(SESSION_KEY, session)) {
     console.warn("[TD2][SNAPSHOT_SAVE_FAILED]");
+    return null;
   }
   return session;
 }
@@ -202,6 +204,7 @@ export function loadActiveTournamentSession() {
 
 export function clearActiveTournamentSession() {
   safeRemoveItem(SESSION_KEY, { silent: true });
+  clearSaveFailure(SESSION_KEY);
 }
 
 export function createMTTSaveSnapshot({
@@ -244,8 +247,9 @@ export function createMTTSaveSnapshot({
 export function saveActiveMTTSnapshot(input = {}) {
   const snapshot = input?.version === 1 ? input : createMTTSaveSnapshot(input);
   if (!snapshot) return null;
-  if (!safeSetItem(MTT_ACTIVE_SAVE_KEY, snapshot, { silent: true })) {
+  if (!saveCriticalJson(MTT_ACTIVE_SAVE_KEY, snapshot)) {
     console.warn("[TD2][SNAPSHOT_SAVE_FAILED]");
+    return null;
   }
   return snapshot;
 }
@@ -258,6 +262,7 @@ export function loadActiveMTTSnapshot() {
 
 export function clearActiveMTTSnapshot() {
   safeRemoveItem(MTT_ACTIVE_SAVE_KEY, { silent: true });
+  clearSaveFailure(MTT_ACTIVE_SAVE_KEY);
 }
 
 export function isResumeableMTTSnapshot(snapshot) {

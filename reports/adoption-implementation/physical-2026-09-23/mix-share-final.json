@@ -1,0 +1,14 @@
+{
+  "method": "Physical iPhone Safari via DOM actions",
+  "rows": [
+    {
+      "id": "mix-share-import",
+      "qr": true,
+      "preview": true,
+      "imported": true,
+      "name": "Badugi Classic",
+      "status": "PASS"
+    }
+  ],
+  "errors": []
+}

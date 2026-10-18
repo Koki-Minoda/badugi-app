@@ -64,6 +64,7 @@ export default function TournamentScreen() {
             startTournamentMTT: true,
             stageId: stage.id,
             tournamentConfigId: config.id,
+            customStructure: config.customStructure ?? null,
           },
         });
       }}

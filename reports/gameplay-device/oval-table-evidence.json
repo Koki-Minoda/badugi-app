@@ -1,0 +1,34 @@
+{
+  "updated": "2026-09-20T02:00:24.956Z",
+  "design": "Six seats around an oval felt; shared across mobile poker families",
+  "browser": {
+    "fullRegression": {
+      "passed": 90,
+      "scope": "35 variants × 2 orientations, 5 representatives × 2 small sizes, 4 keypad cases, 3 family comparisons, 3 portrait tournament formats",
+      "evidence": "artifacts/oval-regression"
+    },
+    "landscapeTournaments": {
+      "passed": 3,
+      "evidence": "artifacts/oval-multigame-landscape"
+    },
+    "finalDimensions": {
+      "passed": 15,
+      "scope": "After compact-height and landscape nameplate adjustments: Stud 6 sizes, NLH 2 intermediate heights, keypad 4 sizes, family comparison 3 sizes",
+      "evidence": "artifacts/oval-final-verified"
+    },
+    "method": "WebKit device emulation; UI hero actions and test-driven CPU progression. Tournament result fixtures are distinct from natural completion."
+  },
+  "unit": {
+    "passed": 10,
+    "scope": "BetAmountSheet, MobileTableSeat, ChinesePokerGameScreen"
+  },
+  "build": "PASS",
+  "lint": "PASS",
+  "physical": {
+    "status": "PORTRAIT_PASS_LANDSCAPE_PENDING",
+    "latestEvidence": "phase-evidence.json",
+    "portraitVariants": 35,
+    "reason": "Physical portrait reconnected and verified. Current landscape and home-screen checks await native device actions."
+  },
+  "productionDeployment": false
+}

@@ -1,0 +1,350 @@
+{
+  "date": "2026-09-23T01:30:59.401Z",
+  "method": "Physical iPhone Safari via USB Web Inspector; DOM activation and hit tests, not native finger taps",
+  "rows": [
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/try",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/tools",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/tools?tab=clock",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/tools?tab=recommend",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/learn/practice",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/learn/review",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/history",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/tournament",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/meetups",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/mixed",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/games",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/dealers-choice",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/multigame",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/career",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/friend-match",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/try",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/tools",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/tools?tab=clock",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/tools?tab=recommend",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/learn/practice",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/learn/review",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/history",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/tournament",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/meetups",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/mixed",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/games",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/dealers-choice",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/multigame",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/career",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/friend-match",
+      "width": 393,
+      "height": 695,
+      "visualHeight": 695,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "game",
+      "id": "badugi",
+      "actions": [],
+      "layoutIssues": [],
+      "tones": [],
+      "done": false,
+      "error": "Error: Runtime.evaluate timed out",
+      "status": "FAIL"
+    },
+    {
+      "type": "game",
+      "id": "nlh",
+      "actions": [],
+      "layoutIssues": [],
+      "tones": [],
+      "done": false,
+      "error": "Error: Runtime.evaluate timed out",
+      "status": "FAIL"
+    },
+    {
+      "type": "game",
+      "id": "D01",
+      "actions": [],
+      "layoutIssues": [],
+      "tones": [],
+      "done": false,
+      "error": "Error: Runtime.evaluate timed out",
+      "status": "FAIL"
+    },
+    {
+      "type": "game",
+      "id": "S01",
+      "actions": [],
+      "layoutIssues": [],
+      "tones": [],
+      "done": false,
+      "error": "Error: Runtime.evaluate timed out",
+      "status": "FAIL"
+    }
+  ],
+  "errors": [],
+  "transportErrors": [
+    "Error: Fetch.fulfillRequest timed out"
+  ]
+}

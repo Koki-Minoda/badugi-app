@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 const PLACEHOLDER_TIME = "--:--";
 
@@ -41,6 +41,8 @@ function formatPayoutRows(rows = []) {
 }
 
 export default function TournamentHUD({
+  levelEndsAt = null,
+  language = 'ja',
   tournamentName = "Store Tournament",
   prizePoolTotal = null,
   payoutBreakdown = [],
@@ -64,6 +66,10 @@ export default function TournamentHUD({
   placement = "table",
   mobileCompact = false,
 }) {
+  const [now,setNow] = useState(Date.now);
+  useEffect(() => { if (!levelEndsAt) return; const timer=setInterval(()=>setNow(Date.now()),1000); return ()=>clearInterval(timer); },[levelEndsAt]);
+  const seconds = Math.max(0,Math.ceil((levelEndsAt-now)/1000));
+  const clockDisplay = `${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`;
   const displayPayouts = formatPayoutRows(payoutBreakdown);
   const prizePoolDisplay =
     prizePoolTotal != null ? formatNumber(prizePoolTotal) : "--";
@@ -85,7 +91,7 @@ export default function TournamentHUD({
         nextLevelBlinds.ante != null ? ` (Ante ${nextLevelBlinds.ante})` : ""
       }`
     : "—";
-  const progressDisplay = handsThisLevel
+  const progressDisplay = levelEndsAt ? clockDisplay : handsThisLevel
     ? `${Math.min(handsPlayedThisLevel ?? 0, handsThisLevel)} / ${handsThisLevel}`
     : `${handsPlayedThisLevel ?? 0}`;
   const breakDisplay = nextBreakLabel ?? PLACEHOLDER_TIME;
@@ -148,7 +154,7 @@ export default function TournamentHUD({
                 {playersRemaining ?? 0}/{totalEntrants ?? totalPlayers ?? 0}
               </span>
               <span className="rounded border border-white/10 bg-black/35 px-1.5 py-0.5 font-black text-slate-200">
-                H{progressDisplay}
+                {levelEndsAt ? '⏱ ' : 'H'}{progressDisplay}
               </span>
             </summary>
             <div className="mt-1 grid grid-cols-3 gap-1 text-[9px] text-slate-300">
@@ -198,7 +204,7 @@ export default function TournamentHUD({
             ) : null}
           </div>
           <div className="rounded-xl border border-white/10 bg-black/35 px-3 py-2 text-center">
-            <div className="text-[10px] uppercase tracking-wide text-slate-400">Hands</div>
+            <div className="text-[10px] uppercase tracking-wide text-slate-400">{levelEndsAt ? (language === 'ja' ? '残り時間' : 'Time left') : (language === 'ja' ? 'ハンド' : 'Hands')}</div>
             <div className="text-lg font-black text-white">{progressDisplay}</div>
           </div>
         </div>

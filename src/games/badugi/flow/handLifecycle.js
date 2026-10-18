@@ -85,6 +85,9 @@ export function buildNextHandState({
     return {
       name: prevPlayers?.[seat]?.name ?? currentPlayers?.[seat]?.name ?? defaultName,
       stack: baseStack,
+      bustHandIndex: prevPlayers?.[seat]?.bustHandIndex ?? currentPlayers?.[seat]?.bustHandIndex ?? null,
+      initialStack: prevPlayers?.[seat]?.initialStack ?? currentPlayers?.[seat]?.initialStack ?? startingStack,
+      rebuyStack: prevPlayers?.[seat]?.rebuyStack ?? currentPlayers?.[seat]?.rebuyStack ?? null,
       isBusted:
         prevPlayers?.[seat]?.isBusted ??
         currentPlayers?.[seat]?.isBusted ??
@@ -165,6 +168,9 @@ export function buildNextHandState({
       name: base.name ?? `P${seat + 1}`,
       seatType: seatMeta,
       stack: Math.max(base.stack ?? startingStack, 0),
+      bustHandIndex: base.bustHandIndex,
+      initialStack: base.initialStack,
+      rebuyStack: base.rebuyStack,
       seatOut,
       isBusted: base.isBusted ?? false,
       hand: [],
@@ -174,7 +180,7 @@ export function buildNextHandState({
       betThisRound: 0,
       totalInvested: 0,
       hasDrawn: false,
-      lastDrawCount: 0,
+      lastDrawCount: null,
       selected: [],
       showHand: seatMeta === "HUMAN",
       hasActedThisRound: seatOut,

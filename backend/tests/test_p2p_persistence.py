@@ -331,3 +331,18 @@ def test_state_read_limit_is_shared_across_workers_and_scoped_per_user(tmp_path)
     bounded = {**arguments, "max_buckets": 1}
     assert bounded_store.consume_state_read(**bounded) is None
     assert bounded_store.consume_state_read(**{**bounded, "user_id": "2"}) >= 1
+
+
+def test_socket_presence_survives_durable_reads_but_not_restart(tmp_path):
+    store = build_store(tmp_path)
+    manager = P2PRoomManager()
+    manager.attach_store(store)
+    room = manager.create_room(user_id="host", display_name="Host")
+    manager.set_connected(room.code, user_id="host", connected=True)
+    loaded = manager.get_room(room.code)
+    assert manager.public_state(loaded, viewer_id="host")["players"][0]["connected"] is True
+    restarted = P2PRoomManager()
+    restarted.attach_store(store)
+    assert restarted.public_state(restarted.get_room(room.code), viewer_id="host")["players"][0]["connected"] is False
+    manager.set_connected(room.code, user_id="host", connected=False)
+    assert manager.public_state(manager.get_room(room.code), viewer_id="host")["players"][0]["connected"] is False

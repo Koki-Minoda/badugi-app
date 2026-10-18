@@ -1,0 +1,1075 @@
+[
+  {
+    "id": "B01",
+    "name": "NL Hold'em",
+    "category": "board",
+    "holeCards": 2,
+    "drawRounds": 0,
+    "board": {
+      "type": "flop-turn-river",
+      "cardsByStreet": [
+        3,
+        1,
+        1
+      ]
+    },
+    "betting": "no-limit",
+    "evaluators": [
+      "high"
+    ],
+    "features": [],
+    "tags": [
+      "holdem",
+      "nl",
+      "board"
+    ],
+    "priorityPhase": 2,
+    "description": "Standard NL Hold'em.",
+    "status": "live",
+    "engineKey": "nlh",
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "alpha_playable"
+  },
+  {
+    "id": "B02",
+    "name": "FL Hold'em",
+    "category": "board",
+    "holeCards": 2,
+    "drawRounds": 0,
+    "board": {
+      "type": "flop-turn-river",
+      "cardsByStreet": [
+        3,
+        1,
+        1
+      ]
+    },
+    "betting": "fixed-limit",
+    "evaluators": [
+      "high"
+    ],
+    "features": [],
+    "tags": [
+      "holdem",
+      "fixed"
+    ],
+    "priorityPhase": 2,
+    "description": "Fixed-limit Hold'em.",
+    "status": "live",
+    "engineKey": "flh",
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "preview_only"
+  },
+  {
+    "id": "B03",
+    "name": "NL Super Hold'em",
+    "category": "board",
+    "holeCards": 3,
+    "drawRounds": 0,
+    "board": {
+      "type": "flop-turn-river",
+      "cardsByStreet": [
+        3,
+        1,
+        1
+      ]
+    },
+    "betting": "no-limit",
+    "evaluators": [
+      "high"
+    ],
+    "features": [],
+    "tags": [
+      "holdem",
+      "nl",
+      "three-card"
+    ],
+    "priorityPhase": 2,
+    "description": "Three hole cards; best five-card hand from hole cards and board.",
+    "status": "live",
+    "engineKey": "super_holdem",
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "preview_only"
+  },
+  {
+    "id": "B04",
+    "name": "FL Super Hold'em",
+    "category": "board",
+    "holeCards": 3,
+    "drawRounds": 0,
+    "board": {
+      "type": "flop-turn-river",
+      "cardsByStreet": [
+        3,
+        1,
+        1
+      ]
+    },
+    "betting": "fixed-limit",
+    "evaluators": [
+      "high"
+    ],
+    "features": [],
+    "tags": [
+      "holdem",
+      "fixed",
+      "three-card"
+    ],
+    "priorityPhase": 2,
+    "description": "Three-card Hold'em played fixed-limit.",
+    "status": "live",
+    "engineKey": "fl_super_holdem",
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "preview_only"
+  },
+  {
+    "id": "B05",
+    "name": "Pot-Limit Omaha",
+    "category": "board",
+    "holeCards": 4,
+    "drawRounds": 0,
+    "board": {
+      "type": "flop-turn-river",
+      "cardsByStreet": [
+        3,
+        1,
+        1
+      ]
+    },
+    "betting": "pot-limit",
+    "evaluators": [
+      "high"
+    ],
+    "features": [
+      "must-use-two"
+    ],
+    "tags": [
+      "omaha",
+      "pl"
+    ],
+    "priorityPhase": 2,
+    "description": "Pot-limit Omaha with exact two hole requirement.",
+    "status": "live",
+    "engineKey": "plo",
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "alpha_playable"
+  },
+  {
+    "id": "B06",
+    "name": "PLO8",
+    "category": "board",
+    "holeCards": 4,
+    "drawRounds": 0,
+    "board": {
+      "type": "flop-turn-river",
+      "cardsByStreet": [
+        3,
+        1,
+        1
+      ]
+    },
+    "betting": "pot-limit",
+    "evaluators": [
+      "high",
+      "hi-lo-8-split"
+    ],
+    "features": [
+      "must-use-two",
+      "hi-lo"
+    ],
+    "tags": [
+      "omaha",
+      "hi-lo"
+    ],
+    "priorityPhase": 2,
+    "description": "PLO Hi-Lo split.",
+    "status": "live",
+    "engineKey": "plo8",
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "alpha_playable"
+  },
+  {
+    "id": "B07",
+    "name": "Big-O",
+    "category": "board",
+    "holeCards": 5,
+    "drawRounds": 0,
+    "board": {
+      "type": "flop-turn-river",
+      "cardsByStreet": [
+        3,
+        1,
+        1
+      ]
+    },
+    "betting": "pot-limit",
+    "evaluators": [
+      "high",
+      "hi-lo-8-split"
+    ],
+    "features": [
+      "must-use-two",
+      "hi-lo"
+    ],
+    "tags": [
+      "omaha",
+      "five-card"
+    ],
+    "priorityPhase": 2,
+    "description": "Five-card Omaha Hi-Lo (8-or-better), pot-limit.",
+    "status": "live",
+    "engineKey": "big_o",
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "alpha_playable"
+  },
+  {
+    "id": "B08",
+    "name": "5-Card PLO",
+    "category": "board",
+    "holeCards": 5,
+    "drawRounds": 0,
+    "board": {
+      "type": "flop-turn-river",
+      "cardsByStreet": [
+        3,
+        1,
+        1
+      ]
+    },
+    "betting": "pot-limit",
+    "evaluators": [
+      "high"
+    ],
+    "features": [
+      "must-use-two"
+    ],
+    "tags": [
+      "omaha",
+      "five-card"
+    ],
+    "priorityPhase": 2,
+    "description": "Five-card PLO high only.",
+    "status": "live",
+    "engineKey": "five_card_plo",
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "alpha_playable"
+  },
+  {
+    "id": "B09",
+    "name": "FLO8",
+    "category": "board",
+    "holeCards": 4,
+    "drawRounds": 0,
+    "board": {
+      "type": "flop-turn-river",
+      "cardsByStreet": [
+        3,
+        1,
+        1
+      ]
+    },
+    "betting": "fixed-limit",
+    "evaluators": [
+      "high",
+      "hi-lo-8-split"
+    ],
+    "features": [],
+    "tags": [
+      "holdem",
+      "hi-lo"
+    ],
+    "priorityPhase": 2,
+    "description": "Fixed-limit Omaha Hi-Lo.",
+    "status": "live",
+    "engineKey": "flo8",
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "alpha_playable"
+  },
+  {
+    "id": "D01",
+    "name": "2-7 Triple Draw",
+    "category": "triple-draw",
+    "holeCards": 5,
+    "drawRounds": 3,
+    "board": null,
+    "betting": "fixed-limit",
+    "evaluators": [
+      "low-27"
+    ],
+    "features": [],
+    "tags": [
+      "triple",
+      "lowball"
+    ],
+    "priorityPhase": 1,
+    "status": "live",
+    "engineKey": "deuce_to_seven_triple_draw",
+    "description": "Triple-draw 2-7 lowball using three draws and fixed-limit betting streets.",
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "alpha_playable"
+  },
+  {
+    "id": "D02",
+    "name": "A-5 Triple Draw",
+    "category": "triple-draw",
+    "holeCards": 5,
+    "drawRounds": 3,
+    "board": null,
+    "betting": "fixed-limit",
+    "evaluators": [
+      "low-a5"
+    ],
+    "features": [],
+    "tags": [
+      "triple",
+      "lowball"
+    ],
+    "priorityPhase": 1,
+    "status": "live",
+    "engineKey": "ace_to_five_triple_draw",
+    "description": "Triple-draw A-5 lowball using three draws and fixed-limit betting streets.",
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "alpha_playable"
+  },
+  {
+    "id": "D03",
+    "name": "Badugi",
+    "category": "triple-draw",
+    "holeCards": 4,
+    "drawRounds": 3,
+    "board": null,
+    "betting": "fixed-limit",
+    "evaluators": [
+      "badugi-low"
+    ],
+    "features": [],
+    "tags": [
+      "badugi"
+    ],
+    "priorityPhase": 1,
+    "status": "live",
+    "description": "",
+    "engineKey": "badugi",
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "alpha_playable"
+  },
+  {
+    "id": "D04",
+    "name": "Badeucey TD",
+    "category": "triple-draw",
+    "holeCards": 5,
+    "drawRounds": 3,
+    "board": null,
+    "betting": "fixed-limit",
+    "evaluators": [
+      "split-badugi-27"
+    ],
+    "features": [],
+    "tags": [
+      "split",
+      "badugi"
+    ],
+    "priorityPhase": 1,
+    "status": "live",
+    "engineKey": "badeucey_triple_draw",
+    "description": "Triple-draw split pot between Badugi low and 2-7 lowball.",
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "preview_only"
+  },
+  {
+    "id": "D05",
+    "name": "Badacey TD",
+    "category": "triple-draw",
+    "holeCards": 5,
+    "drawRounds": 3,
+    "board": null,
+    "betting": "fixed-limit",
+    "evaluators": [
+      "split-badugi-a5"
+    ],
+    "features": [],
+    "tags": [
+      "split",
+      "badugi"
+    ],
+    "priorityPhase": 1,
+    "status": "live",
+    "engineKey": "badacey_triple_draw",
+    "description": "Triple-draw split pot between Badugi low and A-5 lowball.",
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "preview_only"
+  },
+  {
+    "id": "D06",
+    "name": "Hidugi TD",
+    "category": "triple-draw",
+    "holeCards": 4,
+    "drawRounds": 3,
+    "board": null,
+    "betting": "fixed-limit",
+    "evaluators": [
+      "badugi-high"
+    ],
+    "features": [],
+    "tags": [
+      "reverse-badugi"
+    ],
+    "priorityPhase": 1,
+    "status": "live",
+    "engineKey": "hidugi_triple_draw",
+    "description": "Triple-draw reverse Badugi where higher valid Badugi ranks win.",
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "preview_only"
+  },
+  {
+    "id": "D07",
+    "name": "Archie TD",
+    "category": "triple-draw",
+    "holeCards": 5,
+    "drawRounds": 3,
+    "board": null,
+    "betting": "fixed-limit",
+    "evaluators": [
+      "archie"
+    ],
+    "features": [],
+    "tags": [
+      "archie"
+    ],
+    "priorityPhase": 1,
+    "status": "live",
+    "engineKey": "archie_triple_draw",
+    "description": "Triple-draw split pot between pair-or-better high and 8-or-better A-5 low.",
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "preview_only"
+  },
+  {
+    "id": "S01",
+    "name": "2-7 Single Draw",
+    "category": "single-draw",
+    "holeCards": 5,
+    "drawRounds": 1,
+    "board": null,
+    "betting": "fixed-limit",
+    "evaluators": [
+      "low-27"
+    ],
+    "features": [],
+    "tags": [
+      "single",
+      "lowball"
+    ],
+    "priorityPhase": 1,
+    "status": "live",
+    "engineKey": "deuce_to_seven_single_draw",
+    "description": "Single-draw 2-7 lowball using one draw and two fixed-limit betting streets.",
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "alpha_playable"
+  },
+  {
+    "id": "S02",
+    "name": "A-5 Single Draw",
+    "category": "single-draw",
+    "holeCards": 5,
+    "drawRounds": 1,
+    "board": null,
+    "betting": "fixed-limit",
+    "evaluators": [
+      "low-a5"
+    ],
+    "features": [],
+    "tags": [
+      "single",
+      "lowball"
+    ],
+    "priorityPhase": 1,
+    "status": "live",
+    "engineKey": "ace_to_five_single_draw",
+    "description": "Single-draw A-5 lowball using one draw and two fixed-limit betting streets.",
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "alpha_playable"
+  },
+  {
+    "id": "S03",
+    "name": "5-Card Single Draw",
+    "category": "single-draw",
+    "holeCards": 5,
+    "drawRounds": 1,
+    "board": null,
+    "betting": "fixed-limit",
+    "evaluators": [
+      "high"
+    ],
+    "features": [],
+    "tags": [
+      "single",
+      "high"
+    ],
+    "priorityPhase": 1,
+    "status": "live",
+    "engineKey": "five_card_single_draw",
+    "description": "Classic five-card draw.",
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "preview_only"
+  },
+  {
+    "id": "S04",
+    "name": "Badugi SD",
+    "category": "single-draw",
+    "holeCards": 4,
+    "drawRounds": 1,
+    "board": null,
+    "betting": "fixed-limit",
+    "evaluators": [
+      "badugi-low"
+    ],
+    "features": [],
+    "tags": [
+      "badugi",
+      "single"
+    ],
+    "priorityPhase": 1,
+    "status": "live",
+    "engineKey": "badugi_single_draw",
+    "description": "Single-draw Badugi.",
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "preview_only"
+  },
+  {
+    "id": "S05",
+    "name": "Badeucey SD",
+    "category": "single-draw",
+    "holeCards": 5,
+    "drawRounds": 1,
+    "board": null,
+    "betting": "fixed-limit",
+    "evaluators": [
+      "split-badugi-27"
+    ],
+    "features": [],
+    "tags": [
+      "split",
+      "single"
+    ],
+    "priorityPhase": 1,
+    "status": "live",
+    "engineKey": "badeucey_single_draw",
+    "description": "Single-draw split pot between Badugi low and 2-7 lowball.",
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "preview_only"
+  },
+  {
+    "id": "S06",
+    "name": "Badacey SD",
+    "category": "single-draw",
+    "holeCards": 5,
+    "drawRounds": 1,
+    "board": null,
+    "betting": "fixed-limit",
+    "evaluators": [
+      "split-badugi-a5"
+    ],
+    "features": [],
+    "tags": [
+      "split",
+      "single"
+    ],
+    "priorityPhase": 1,
+    "status": "live",
+    "engineKey": "badacey_single_draw",
+    "description": "Single-draw split pot between Badugi low and A-5 lowball.",
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "preview_only"
+  },
+  {
+    "id": "S07",
+    "name": "Hidugi SD",
+    "category": "single-draw",
+    "holeCards": 4,
+    "drawRounds": 1,
+    "board": null,
+    "betting": "fixed-limit",
+    "evaluators": [
+      "badugi-high"
+    ],
+    "features": [],
+    "tags": [
+      "reverse-badugi",
+      "single"
+    ],
+    "priorityPhase": 1,
+    "status": "live",
+    "engineKey": "hidugi_single_draw",
+    "description": "Single-draw reverse Badugi where higher valid Badugi ranks win.",
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "preview_only"
+  },
+  {
+    "id": "H01",
+    "name": "Dramaha Hi",
+    "status": "live",
+    "engineKey": "dramaha_hi",
+    "category": "dramaha",
+    "holeCards": 5,
+    "drawRounds": 1,
+    "board": {
+      "type": "flop-only",
+      "cardsByStreet": [
+        3
+      ]
+    },
+    "betting": "fixed-limit",
+    "evaluators": [
+      "high"
+    ],
+    "features": [
+      "flop-board"
+    ],
+    "tags": [
+      "dramaha",
+      "high"
+    ],
+    "priorityPhase": 3,
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "alpha_playable"
+  },
+  {
+    "id": "H02",
+    "name": "Dramaha 2-7",
+    "status": "live",
+    "engineKey": "dramaha_27",
+    "category": "dramaha",
+    "holeCards": 5,
+    "drawRounds": 1,
+    "board": {
+      "type": "flop-only",
+      "cardsByStreet": [
+        3
+      ]
+    },
+    "betting": "fixed-limit",
+    "evaluators": [
+      "low-27"
+    ],
+    "features": [
+      "flop-board"
+    ],
+    "tags": [
+      "dramaha",
+      "lowball"
+    ],
+    "priorityPhase": 3,
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "alpha_playable"
+  },
+  {
+    "id": "H03",
+    "name": "Dramaha A-5",
+    "status": "live",
+    "engineKey": "dramaha_a5",
+    "category": "dramaha",
+    "holeCards": 5,
+    "drawRounds": 1,
+    "board": {
+      "type": "flop-only",
+      "cardsByStreet": [
+        3
+      ]
+    },
+    "betting": "fixed-limit",
+    "evaluators": [
+      "low-a5"
+    ],
+    "features": [
+      "flop-board"
+    ],
+    "tags": [
+      "dramaha",
+      "lowball"
+    ],
+    "priorityPhase": 3,
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "alpha_playable"
+  },
+  {
+    "id": "H04",
+    "name": "Dramaha Zero",
+    "status": "live",
+    "engineKey": "dramaha_zero",
+    "category": "dramaha",
+    "holeCards": 5,
+    "drawRounds": 1,
+    "board": {
+      "type": "flop-only",
+      "cardsByStreet": [
+        3
+      ]
+    },
+    "betting": "fixed-limit",
+    "evaluators": [
+      "zero"
+    ],
+    "features": [
+      "flop-board"
+    ],
+    "tags": [
+      "dramaha",
+      "zero"
+    ],
+    "priorityPhase": 3,
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "alpha_playable"
+  },
+  {
+    "id": "H05",
+    "name": "Dramaha Hidugi",
+    "status": "live",
+    "engineKey": "dramaha_hidugi",
+    "category": "dramaha",
+    "holeCards": 5,
+    "drawRounds": 1,
+    "board": {
+      "type": "flop-only",
+      "cardsByStreet": [
+        3
+      ]
+    },
+    "betting": "fixed-limit",
+    "evaluators": [
+      "badugi-high"
+    ],
+    "features": [
+      "flop-board"
+    ],
+    "tags": [
+      "dramaha",
+      "reverse-badugi"
+    ],
+    "priorityPhase": 3,
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "alpha_playable"
+  },
+  {
+    "id": "H06",
+    "name": "Dramaha Badugi",
+    "status": "live",
+    "engineKey": "dramaha_badugi",
+    "category": "dramaha",
+    "holeCards": 5,
+    "drawRounds": 1,
+    "board": {
+      "type": "flop-only",
+      "cardsByStreet": [
+        3
+      ]
+    },
+    "betting": "fixed-limit",
+    "evaluators": [
+      "badugi-low"
+    ],
+    "features": [
+      "flop-board"
+    ],
+    "tags": [
+      "dramaha",
+      "badugi"
+    ],
+    "priorityPhase": 3,
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "alpha_playable"
+  },
+  {
+    "id": "ST1",
+    "name": "Stud",
+    "category": "stud",
+    "holeCards": 7,
+    "drawRounds": 0,
+    "board": null,
+    "stud": {
+      "thirdStreet": {
+        "down": 2,
+        "up": 1
+      },
+      "middleStreets": 4,
+      "river": {
+        "down": 1
+      }
+    },
+    "betting": "fixed-limit",
+    "evaluators": [
+      "high"
+    ],
+    "features": [
+      "bring-in"
+    ],
+    "tags": [
+      "stud",
+      "high"
+    ],
+    "priorityPhase": 4,
+    "status": "live",
+    "engineKey": "stud",
+    "regenerationEligible": false,
+    "availability": "alpha_playable"
+  },
+  {
+    "id": "ST2",
+    "name": "Stud 8",
+    "category": "stud",
+    "holeCards": 7,
+    "drawRounds": 0,
+    "board": null,
+    "stud": {
+      "thirdStreet": {
+        "down": 2,
+        "up": 1
+      },
+      "middleStreets": 4,
+      "river": {
+        "down": 1
+      }
+    },
+    "betting": "fixed-limit",
+    "evaluators": [
+      "high",
+      "hi-lo-8-split"
+    ],
+    "features": [
+      "bring-in"
+    ],
+    "tags": [
+      "stud",
+      "hi-lo"
+    ],
+    "priorityPhase": 4,
+    "status": "live",
+    "engineKey": "stud8",
+    "regenerationEligible": false,
+    "availability": "alpha_playable"
+  },
+  {
+    "id": "ST3",
+    "name": "Razz",
+    "category": "stud",
+    "holeCards": 7,
+    "drawRounds": 0,
+    "board": null,
+    "stud": {
+      "thirdStreet": {
+        "down": 2,
+        "up": 1
+      },
+      "middleStreets": 4,
+      "river": {
+        "down": 1
+      }
+    },
+    "betting": "fixed-limit",
+    "evaluators": [
+      "low-a5"
+    ],
+    "features": [
+      "bring-in",
+      "low-bring"
+    ],
+    "tags": [
+      "razz",
+      "lowball"
+    ],
+    "priorityPhase": 4,
+    "status": "live",
+    "engineKey": "razz",
+    "regenerationEligible": false,
+    "availability": "alpha_playable"
+  },
+  {
+    "id": "ST4",
+    "name": "Razzdugi",
+    "category": "stud",
+    "holeCards": 7,
+    "drawRounds": 0,
+    "board": null,
+    "stud": {
+      "thirdStreet": {
+        "down": 2,
+        "up": 1
+      },
+      "middleStreets": 4,
+      "river": {
+        "down": 1
+      }
+    },
+    "betting": "fixed-limit",
+    "evaluators": [
+      "split-badugi-a5"
+    ],
+    "features": [
+      "bring-in",
+      "split"
+    ],
+    "tags": [
+      "razz",
+      "badugi"
+    ],
+    "priorityPhase": 4,
+    "status": "live",
+    "engineKey": "razzdugi",
+    "regenerationEligible": false,
+    "availability": "alpha_playable"
+  },
+  {
+    "id": "ST5",
+    "name": "Razzducey",
+    "category": "stud",
+    "holeCards": 7,
+    "drawRounds": 0,
+    "board": null,
+    "stud": {
+      "thirdStreet": {
+        "down": 2,
+        "up": 1
+      },
+      "middleStreets": 4,
+      "river": {
+        "down": 1
+      }
+    },
+    "betting": "fixed-limit",
+    "evaluators": [
+      "split-badugi-27"
+    ],
+    "features": [
+      "bring-in",
+      "split"
+    ],
+    "tags": [
+      "razz",
+      "split"
+    ],
+    "priorityPhase": 4,
+    "status": "live",
+    "engineKey": "razzducey",
+    "regenerationEligible": false,
+    "availability": "alpha_playable"
+  },
+  {
+    "id": "ST6",
+    "name": "2-7 Razz",
+    "category": "stud",
+    "holeCards": 7,
+    "drawRounds": 0,
+    "board": null,
+    "stud": {
+      "thirdStreet": {
+        "down": 2,
+        "up": 1
+      },
+      "middleStreets": 4,
+      "river": {
+        "down": 1
+      }
+    },
+    "betting": "fixed-limit",
+    "evaluators": [
+      "low-27"
+    ],
+    "features": [
+      "bring-in",
+      "high-bring"
+    ],
+    "tags": [
+      "razz",
+      "low-27"
+    ],
+    "priorityPhase": 4,
+    "status": "live",
+    "engineKey": "razz27",
+    "regenerationEligible": false,
+    "availability": "alpha_playable"
+  },
+  {
+    "id": "CP1",
+    "name": "Chinese Poker",
+    "category": "chinese",
+    "holeCards": 13,
+    "drawRounds": 0,
+    "board": null,
+    "betting": "points",
+    "evaluators": [
+      "chinese-high"
+    ],
+    "features": [
+      "front-middle-back",
+      "royalties",
+      "foul"
+    ],
+    "tags": [
+      "chinese",
+      "classic-chinese"
+    ],
+    "priorityPhase": 5,
+    "status": "live",
+    "engineKey": "chinese_poker",
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "alpha_playable"
+  },
+  {
+    "id": "CP2",
+    "name": "Open-Face Chinese Poker",
+    "description": "Classic OFC: place five cards, then one card per street. Build three legal rows, earn royalties and 13-card Fantasyland, and replay every placement.",
+    "category": "chinese",
+    "holeCards": 5,
+    "drawRounds": 0,
+    "board": null,
+    "betting": "points",
+    "evaluators": [
+      "chinese-high"
+    ],
+    "features": [
+      "open-face",
+      "street-placement",
+      "fantasyland"
+    ],
+    "tags": [
+      "ofc",
+      "open-face-chinese",
+      "fantasyland"
+    ],
+    "priorityPhase": 6,
+    "status": "live",
+    "engineKey": "ofc",
+    "stud": null,
+    "regenerationEligible": false,
+    "availability": "alpha_playable"
+  }
+]

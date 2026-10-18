@@ -1,3 +1,4 @@
+import VariantRuleReminder from "../../learning/VariantRuleReminder.jsx";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Player from "../../components/Player";
 import Card from "../../components/Card";
@@ -184,6 +185,7 @@ export default function GameLayoutBase({
     onNavigateSettings,
     onNavigateProfile,
     onNavigateHistory,
+    language = "ja",
   } = headerProps;
 
   const {
@@ -242,11 +244,13 @@ export default function GameLayoutBase({
     boardCards = [],
     streetLabel = "",
     gameVariant = "badugi",
+    mixedRotation = null,
     layoutProfile,
     eliminatedRailEntries = [],
   } = tableProps;
 
   const {
+    reviewHandId,
     handResultVisible,
     handResultSummary,
     onNextHand,
@@ -312,8 +316,16 @@ export default function GameLayoutBase({
     tableLayoutGroup === LAYOUT_GROUPS.DRAW_LOWBALL_5CARD;
   const isStudTable = tableLayoutGroup === LAYOUT_GROUPS.STUD;
   const isPortraitStudTable = isMobilePortraitMode && isStudTable;
+  const desktopStudSeats = [
+    "absolute bottom-0 left-1/2 -translate-x-1/2 w-[31%]",
+    "absolute bottom-0 left-0 w-[31%]",
+    "absolute top-0 left-0 w-[31%]",
+    "absolute top-0 left-1/2 -translate-x-1/2 w-[31%]",
+    "absolute top-0 right-0 w-[31%]",
+    "absolute bottom-0 right-0 w-[31%]",
+  ];
   const isPortraitCompactTable = isPortraitDrawTable || isPortraitStudTable;
-  const useRailPhasePanel = isPortraitCompactTable;
+  const useRailPhasePanel = isPortraitDrawTable;
   const useDenseActionPanel =
     isMobileTournament || isPortraitCompactTable || isMobileLandscapeMode;
   const renderedTournamentHud =
@@ -343,9 +355,12 @@ export default function GameLayoutBase({
     1,
     (Number(betRoundValue) || 0) + 1,
   );
-  const phaseCompactText = `${displayPhase} | D${drawNumberForDisplay} | R${betRoundNumberForDisplay}`;
+  const usesStreetProgress = isStudTable || (Boolean(streetLabel) && tableLayoutGroup === LAYOUT_GROUPS.DEFAULT);
+  const phaseCompactText = usesStreetProgress
+    ? `${displayPhase} | ${streetLabel}`
+    : `${displayPhase} | D${drawNumberForDisplay} | R${betRoundNumberForDisplay}`;
   const phasePrimaryText = displayPhase;
-  const phaseSecondaryText = `R${betRoundNumberForDisplay}`;
+  const phaseSecondaryText = usesStreetProgress ? streetLabel : `R${betRoundNumberForDisplay}`;
   const drawRailItems = [
     { key: "R1", label: `R${betRoundNumberForDisplay}`, value: displayPhase },
     {
@@ -638,6 +653,8 @@ export default function GameLayoutBase({
             phase="DRAW"
             player={heroPlayerForControls}
             onDraw={drawSelected}
+            selectedDrawCount={heroDrawSelection.length}
+            language={language}
             canDraw={controlsHeroCanDraw}
             layoutMode={mobileLayoutMode}
             className={isMobileLayout ? "w-full" : undefined}
@@ -645,6 +662,7 @@ export default function GameLayoutBase({
         );
       }
     }
+    if (isMobileLayout) return null;
     return (
       <p className="text-sm text-slate-400 text-center w-full">
         {actionPanelInfo?.waitingLabel ?? "Waiting for other players…"}
@@ -762,6 +780,7 @@ export default function GameLayoutBase({
           >
             {labels.history ?? "History"}
           </button>
+          {!isMobileLayout && <VariantRuleReminder variantId={gameVariant} language={language} />}
         </nav>
       </header>
 
@@ -946,7 +965,7 @@ export default function GameLayoutBase({
                       {isDrawDisplayPhase
                         ? `${phaseCompactText} · DRAW RUSHER`
                         : useDenseActionPanel
-                          ? `${displayPhase} | R${betRoundNumberForDisplay}`
+                          ? `${displayPhase} | ${phaseSecondaryText}`
                           : boardCards.length > 0 || streetLabel
                             ? `${displayPhase} · ${streetLabel || "Board"}`
                             : phaseCompactText}
@@ -998,7 +1017,7 @@ export default function GameLayoutBase({
                       <div
                         key={seat.seatIndex ?? idx}
                         className={`flex flex-col ${seatAlignClass} ${mobileSeatLiftClass} ${isMobileLayout ? "gap-1" : "gap-3"} overflow-visible hover:z-[180] focus-within:z-[180] ${
-                          isMobileLayout ? "" : (seatLayouts[idx] ?? "")
+                          isMobileLayout ? "" : ((isStudTable ? desktopStudSeats[idx] : seatLayouts[idx]) ?? "")
                         }`}
                         style={
                           isMobileLayout
@@ -1064,6 +1083,9 @@ export default function GameLayoutBase({
                   data-testid="phase-compact-strip"
                   className={`${isMobileLayout ? (useRailPhasePanel ? "rounded-lg px-1 py-0.5 text-[10px]" : useDenseActionPanel ? "rounded-lg px-2 py-0.5 text-[10px]" : "rounded-2xl p-2 text-base") : "rounded-2xl p-3"} flex items-center justify-between border font-black shadow-lg ${phaseAccentClass}`}
                 >
+                  {mixedRotation && <span data-testid="mixed-rotation-status" className="mr-2 shrink-0 text-xs text-emerald-200">
+                    MIX {mixedRotation.handsPlayedInCurrentGame + 1}/{mixedRotation.handsPerGame}{mixedRotation.nextName ? ` · ${language === 'ja' ? '次' : 'Next'} ${mixedRotation.nextName}` : ''}
+                  </span>}
                   {useRailPhasePanel ? (
                     <div className="grid w-full grid-cols-4 overflow-hidden rounded-md border border-white/10 bg-black/20">
                       {drawRailItems.map((item, itemIndex) => (
@@ -1119,7 +1141,12 @@ export default function GameLayoutBase({
                           </p>
                         )}
                       </div>
-                      <div className="text-right">
+                      {usesStreetProgress ? (
+                        <div className="text-right">
+                          <p className="text-[10px] uppercase tracking-wider text-slate-400">Street</p>
+                          <p className="text-base font-semibold text-white">{streetLabel}</p>
+                        </div>
+                      ) : <div className="text-right">
                         <p className="text-[10px] uppercase tracking-wider text-slate-400">
                           Draw
                         </p>
@@ -1132,7 +1159,7 @@ export default function GameLayoutBase({
                         <p className="text-base font-semibold text-white">
                           R{betRoundNumberForDisplay}
                         </p>
-                      </div>
+                      </div>}
                     </>
                   )}
                 </div>
@@ -1164,9 +1191,16 @@ export default function GameLayoutBase({
                   >
                     Hero Controls
                   </h2>
+                  <p role="status" aria-live="polite" data-testid="player-action-hint" className={`rounded-lg px-2 py-1 text-xs font-semibold leading-snug ${heroCanAct ? 'bg-emerald-400/15 text-emerald-100' : 'text-slate-300'}`}>
+                    {heroCanAct
+                      ? (language === 'ja'
+                        ? (controlsPhase === 'DRAW' ? 'あなたの番：交換するカードを選んで確定' : `あなたの番：${actionPanelInfo?.toCall > 0 ? `コール ${Math.min(actionPanelInfo.toCall, heroPlayerForControls?.stack ?? 0)}` : 'チェックできます'}`)
+                        : (controlsPhase === 'DRAW' ? 'Your turn: select cards, then confirm' : `Your turn · ${actionPanelInfo?.toCall > 0 ? `Call ${Math.min(actionPanelInfo.toCall, heroPlayerForControls?.stack ?? 0)}` : 'Check available'}`))
+                      : (language === 'ja' ? `${actionPanelInfo?.currentActorName ?? '他のプレイヤー'}の操作を待っています` : `Waiting for ${actionPanelInfo?.currentActorName ?? 'other players'}`)}
+                  </p>
                   <div
                     data-testid="actor-readability-strip"
-                    className={`${isPortraitDrawTable && heroCanAct ? "hidden" : "grid"} ${useDenseActionPanel ? "grid-cols-2 gap-1 text-[9px]" : "grid-cols-3 gap-2 text-[11px]"} text-slate-200`}
+                    className={`${useDenseActionPanel || (isPortraitDrawTable && heroCanAct) ? "hidden" : "grid"} grid-cols-3 gap-2 text-[11px] text-slate-200`}
                   >
                     <div
                       className={`rounded-xl border ${isDrawDisplayPhase ? "border-red-300/30 bg-red-500/10" : "border-emerald-300/20 bg-emerald-400/10"} ${useDenseActionPanel ? "rounded-lg px-1 py-0.5" : "px-2 py-1.5"}`}
@@ -1205,7 +1239,7 @@ export default function GameLayoutBase({
                   </div>
                   <div
                     data-testid="action-context-panel"
-                    className={`grid ${useDenseActionPanel ? `${isMobilePortraitMode ? "hidden" : "grid"} grid-cols-4 gap-1 text-[8px]` : "grid-cols-2 gap-2 text-[11px]"} text-slate-200`}
+                    className={`${useDenseActionPanel ? "hidden" : "grid grid-cols-2 gap-2 text-[11px]"} text-slate-200`}
                   >
                     <div
                       className={`rounded-xl border border-white/10 bg-black/30 ${useDenseActionPanel ? "rounded-lg px-1 py-0.5" : "px-2 py-1.5"}`}
@@ -1283,6 +1317,8 @@ export default function GameLayoutBase({
                     </div>
                   )}
                   <div>{renderControlsContent()}</div>
+                  <div className="flex items-center gap-2">
+                  {isMobileLayout && <VariantRuleReminder variantId={gameVariant} language={language} mobile />}
                   {isCashGame && (
                     <button
                       type="button"
@@ -1301,6 +1337,7 @@ export default function GameLayoutBase({
                       Sit Out
                     </button>
                   )}
+                  </div>
                   {nextHandButton}
                 </div>
               </div>
@@ -1430,6 +1467,10 @@ export default function GameLayoutBase({
       </Modal>
 
       <HandResultOverlay
+        players={statusSeatViews}
+        heroSeat={statusHeroIndex}
+        language={language}
+        reviewHandId={reviewHandId}
         visible={handResultVisible}
         summary={handResultSummary}
         onNext={onNextHand}

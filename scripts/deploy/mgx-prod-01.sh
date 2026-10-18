@@ -217,8 +217,13 @@ sudo -n /usr/local/sbin/mgx-prod-admin check
 
 echo "[mgx-deploy] pulling latest code (${GIT_REMOTE}/${GIT_BRANCH})"
 git fetch "$GIT_REMOTE" "$GIT_BRANCH"
+if [ -n "${DEPLOY_COMMIT:-}" ]; then
+  [[ "$DEPLOY_COMMIT" =~ ^[0-9a-f]{40}$ ]] || fail "invalid tested commit"
+  test "$(git rev-parse "$GIT_REMOTE/$GIT_BRANCH")" = "$DEPLOY_COMMIT" || fail "branch changed after CI; validate the new commit first"
+fi
 git checkout "$GIT_BRANCH"
-git pull "$GIT_REMOTE" "$GIT_BRANCH"
+git pull --ff-only "$GIT_REMOTE" "$GIT_BRANCH"
+export VITE_MGX_BUILD_COMMIT="$(git rev-parse HEAD)"
 
 configure_nginx_wasm_mime
 
@@ -242,6 +247,7 @@ env npm_config_cache="$NPM_CACHE_DIR" npm ci --legacy-peer-deps
 echo "[mgx-deploy] building frontend"
 npm run build
 npm run test:build:onnx
+node scripts/deploy/verify-release-build.mjs dist "$VITE_MGX_BUILD_COMMIT"
 FRONTEND_DIST="$FRONTEND_BUILD_DIR/dist"
 cd "$APP_DIR"
 
@@ -292,6 +298,7 @@ sudo -n /usr/sbin/nginx -t
 echo "[mgx-deploy] reloading nginx"
 sudo -n /usr/bin/systemctl reload nginx
 verify_live_frontend
+curl --fail --silent --show-error --max-time 20 "${LIVE_ORIGIN}/release.json?commit=${VITE_MGX_BUILD_COMMIT}" | cmp - "${FRONTEND_DIST}/release.json" || fail "published release identity differs from the tested build"
 verify_live_onnx_wasm
 verify_live_p2p_rest_route
 verify_live_websocket_route

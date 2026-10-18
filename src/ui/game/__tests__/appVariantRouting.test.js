@@ -78,6 +78,6 @@ describe("appVariantRouting", () => {
     expect(isControllerBackedAppVariant("razzdugi")).toBe(true);
     expect(isControllerBackedAppVariant("razzducey")).toBe(true);
     expect(isControllerBackedAppVariant("chinese_poker")).toBe(true);
-    expect(isControllerBackedAppVariant("ofc")).toBe(false);
+    expect(isControllerBackedAppVariant("ofc")).toBe(true);
   });
 });

@@ -71,6 +71,7 @@ describe("DeuceToSevenTripleDrawEngine", () => {
     expect(engine.id).toBe("deuce_to_seven_triple_draw");
     expect(engine.variantId).toBe("D01");
     expect(engine.maxDrawRounds).toBe(3);
+    expect(state.players.every(player => player.lastDrawCount === null)).toBe(true);
     expect(state.gameId).toBe("deuce_to_seven_triple_draw");
     expect(state.street).toBe("BET");
     expect(state.drawRoundIndex).toBe(0);
@@ -672,7 +673,7 @@ describe("draw lowball fixed-limit all-in betting regressions", () => {
 
       const next = engine.applyPlayerAction(state, {
         seatIndex: 1,
-        type: "RAISE",
+        type: engine.bettingStructure === "no-limit" ? "CALL" : "RAISE",
       });
 
       expect(next.street).toBe("DRAW");

@@ -125,7 +125,7 @@ describe("HistoryScreen", () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "AIフィードバック作成" }));
+    fireEvent.click(screen.getByRole("button", { name: "フィードバックを作成" }));
 
     await waitFor(() => expect(screen.getByText("良い点と改善点")).toBeTruthy());
     expect(window.localStorage.getItem("mgx.playFeedback.results.v1")).toContain("良い点と改善点");

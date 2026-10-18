@@ -1,5 +1,13 @@
+import MeetupsScreen from './ui/meetups/MeetupsScreen.jsx';
+import TrialScreen from './ui/screens/TrialScreen.jsx';
+import ToolsScreen from './ui/tools/ToolsScreen.jsx';
+import SharedMixScreen from './ui/sharing/SharedMixScreen.jsx';
+import { useLanguageState } from './ui/preferences/language.js';
+import PracticeScreen from "./ui/practice/PracticeScreen.jsx";
+import ReviewScreen from "./ui/review/ReviewScreen.jsx";
+import RuleQuizScreen from "./ui/learning/RuleQuizScreen.jsx";
 // src/RootApp.jsx
-import React from "react";
+import React, { useLayoutEffect } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import App from "@ui/App";
 import ProfileStats from "./components/ProfileStats";
@@ -19,13 +27,20 @@ import { isCoachingPreviewEnabled } from "./ui/coaching/previewFeatureFlags.js";
 import { GameEngineProvider } from "./ui/engine/GameEngineContext.jsx";
 import { MixedGameProvider } from "./ui/mixed/MixedGameContext.jsx";
 
+import LearningHubScreen from "./ui/learning/LearningHubScreen.jsx";
+
 export default function RootApp() {
   const location = useLocation();
+  const [language, onChangeLanguage] = useLanguageState();
+  useLayoutEffect(() => {
+    if (/^\/(dev\/)?learn(?:\/|$)/.test(location.pathname)) window.scrollTo(0, 0);
+  }, [location.pathname]);
   const coachingPreviewEnabled = isCoachingPreviewEnabled({ search: location.search });
   return (
     <MixedGameProvider>
       <Routes>
-        <Route path="/dev/menu" element={<MainMenuScreen coachingPreviewEnabled={coachingPreviewEnabled} />} />
+        <Route path="/shared-mix" element={<SharedMixScreen />} />
+        <Route path="/dev/menu" element={<MainMenuScreen language={language} onChangeLanguage={onChangeLanguage} coachingPreviewEnabled={coachingPreviewEnabled} />} />
         <Route
           path="/dev/learning-dashboard-preview"
           element={coachingPreviewEnabled ? <LearningDashboardPreviewScreen /> : <Navigate to="/dev/menu" replace />}
@@ -46,13 +61,24 @@ export default function RootApp() {
             </GameEngineProvider>
           }
         />
-        <Route path="/menu" element={<MainMenuScreen coachingPreviewEnabled={coachingPreviewEnabled} />} />
+        <Route path="/menu" element={<MainMenuScreen language={language} onChangeLanguage={onChangeLanguage} coachingPreviewEnabled={coachingPreviewEnabled} />} />
         <Route
           path="/learning-dashboard-preview"
           element={coachingPreviewEnabled ? <LearningDashboardPreviewScreen /> : <Navigate to="/menu" replace />}
         />
         <Route path="/friend-match" element={<FriendMatchSetupScreen />} />
         <Route path="/dev/friend-match" element={<FriendMatchSetupScreen />} />
+        <Route path="/learn/practice" element={<PracticeScreen />} />
+        <Route path="/dev/learn/practice" element={<PracticeScreen />} />
+        <Route path="/learn/review" element={<ReviewScreen />} />
+        <Route path="/dev/learn/review" element={<ReviewScreen />} />
+        <Route path="/learn/quiz" element={<RuleQuizScreen />} />
+        <Route path="/dev/learn/quiz" element={<RuleQuizScreen />} />
+        <Route path="/meetups" element={<MeetupsScreen />} />
+        <Route path="/try" element={<TrialScreen />} />
+        <Route path="/tools" element={<ToolsScreen />} />
+        <Route path="/learn" element={<LearningHubScreen />} />
+        <Route path="/dev/learn" element={<LearningHubScreen />} />
         <Route path="/mixed" element={<MixedGameScreen />} />
         <Route path="/games" element={<GameSelectorScreen />} />
         <Route path="/multigame" element={<MultiGameScreen />} />

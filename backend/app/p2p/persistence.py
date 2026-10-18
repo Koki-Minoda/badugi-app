@@ -27,6 +27,10 @@ def room_to_snapshot(room: Room) -> dict:
         "small_blind": room.small_blind,
         "big_blind": room.big_blind,
         "ante": room.ante,
+        "variant_id": room.variant_id,
+        "max_players": room.max_players,
+        "discard": list(room.discard),
+        "raise_count": room.raise_count,
         "created_at": room.created_at,
         "updated_at": room.updated_at,
         "players": {
@@ -38,6 +42,8 @@ def room_to_snapshot(room: Room) -> dict:
                 "ready": player.ready,
                 "connected": False,
                 "bet": player.bet,
+                "committed": player.committed,
+                "departed": player.departed,
                 "folded": player.folded,
                 "hand": list(player.hand),
             }
@@ -82,6 +88,10 @@ def room_from_snapshot(snapshot: dict) -> Room:
         small_blind=int(snapshot["small_blind"]),
         big_blind=int(snapshot["big_blind"]),
         ante=int(snapshot.get("ante", 0)),
+        variant_id=str(snapshot.get("variant_id", "badugi")),
+        max_players=int(snapshot.get("max_players", 2)),
+        discard=list(snapshot.get("discard", [])),
+        raise_count=int(snapshot.get("raise_count", 0)),
         created_at=float(snapshot.get("created_at", 0)),
         updated_at=float(snapshot.get("updated_at", 0)),
     )

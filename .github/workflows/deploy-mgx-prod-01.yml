@@ -36,6 +36,28 @@ jobs:
       - run: npm run test:qm:public-games
       - run: npm run test:deploy:static
 
+  learning-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --legacy-peer-deps --no-audit
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run build
+      - run: npx playwright test --config playwright.learning.config.js
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: learning-qa
+          path: |
+            reports/learning-entry/e2e-results.json
+            reports/learning-entry/browser-artifacts
+          retention-days: 14
+
   dependency-security:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -395,6 +417,7 @@ jobs:
   deploy:
     needs:
       - quality
+      - learning-qa
       - dependency-security
       - backend
       - tournament-qa
@@ -413,6 +436,7 @@ jobs:
     timeout-minutes: 30
     env:
       DEPLOY_BRANCH: main
+      DEPLOY_COMMIT: ${{ github.sha }}
       MGX_PROD_HOST: ${{ secrets.MGX_PROD_HOST }}
       MGX_PROD_USER: ${{ secrets.MGX_PROD_USER }}
     steps:
@@ -446,14 +470,15 @@ jobs:
           ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes \
             -o ServerAliveInterval=30 -o ServerAliveCountMax=20 \
             "${MGX_PROD_USER}@${MGX_PROD_HOST}" \
-            "bash -s -- '$DEPLOY_BRANCH'" <<'REMOTE'
+            "bash -s -- '$DEPLOY_BRANCH' '$DEPLOY_COMMIT'" <<'REMOTE'
           set -euo pipefail
           branch="$1"
+          tested_commit="$2"
           cd /home/mgx/badugi-app
           test -z "$(git status --porcelain --untracked-files=no)"
           sudo -n /usr/local/sbin/mgx-prod-admin check
           git fetch origin "$branch"
-          git rev-parse --verify "origin/$branch"
+          test "$(git rev-parse --verify "origin/$branch")" = "$tested_commit"
           sudo -n /usr/sbin/nginx -t
           REMOTE
 
@@ -463,7 +488,7 @@ jobs:
           ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes \
             -o ServerAliveInterval=30 -o ServerAliveCountMax=20 \
             "${MGX_PROD_USER}@${MGX_PROD_HOST}" \
-            "cd /home/mgx/badugi-app && git fetch origin '$DEPLOY_BRANCH' && git checkout '$DEPLOY_BRANCH' && git pull --ff-only origin '$DEPLOY_BRANCH' && env APP_DIR=/home/mgx/badugi-app GIT_BRANCH='$DEPLOY_BRANCH' bash scripts/deploy/mgx-prod-01.sh"
+            "cd /home/mgx/badugi-app && git fetch origin '$DEPLOY_BRANCH' && test \"\$(git rev-parse origin/'$DEPLOY_BRANCH')\" = '$DEPLOY_COMMIT' && git checkout '$DEPLOY_BRANCH' && git pull --ff-only origin '$DEPLOY_BRANCH' && env APP_DIR=/home/mgx/badugi-app GIT_BRANCH='$DEPLOY_BRANCH' DEPLOY_COMMIT='$DEPLOY_COMMIT' bash scripts/deploy/mgx-prod-01.sh"
 
       - name: Verify production health
         run: |

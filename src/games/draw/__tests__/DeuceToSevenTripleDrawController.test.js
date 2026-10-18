@@ -75,6 +75,7 @@ describe("DeuceToSevenTripleDrawController", () => {
     expect(snapshot.phase).toBe("BET");
     expect(snapshot.drawRound).toBe(0);
     expect(snapshot.players).toHaveLength(2);
+    expect(snapshot.players.every(player => player.lastDrawCount === null)).toBe(true);
     expect(snapshot.players[0].hand).toHaveLength(5);
     expect(snapshot.players[0].cards).toEqual(snapshot.players[0].hand);
     expect(snapshot.players[0].selected).toEqual([]);

@@ -190,6 +190,7 @@ export async function getProgressDecisionSnapshot(page) {
   return {
     handId: progress?.handId ?? null,
     phase: progress?.phase ?? null,
+    street: progress?.snapshot?.street ?? null,
     actor: progress?.actor ?? null,
     currentBet: progress?.currentBet ?? null,
     pot: progress?.pot ?? null,
@@ -215,6 +216,7 @@ export function summarizeProgressState(progress) {
   return {
     handId: progress?.handId ?? null,
     phase: progress?.phase ?? null,
+    street: progress?.snapshot?.street ?? null,
     actor: progress?.actor ?? null,
     currentBet: progress?.currentBet ?? null,
     pot: progress?.pot ?? null,
@@ -376,6 +378,9 @@ export async function performSafeAction(page, options = {}) {
               return false;
             })
         : false;
+      if (clicked && action.id === 'action-raise' && await page.getByTestId('bet-amount-sheet').isVisible()) {
+        await page.getByTestId('bet-amount-confirm').click();
+      }
       const changed = await waitForProgressChange(page, beforeKey, { timeout: 1200 })
         .then(() => true)
         .catch(() => false);
@@ -481,7 +486,7 @@ export async function waitForProgressChange(page, previousKey, { timeout = 8000 
       const currentBet = Math.max(Number(snapshot?.currentBet ?? phaseState?.currentBet ?? state?.currentBet ?? 0) || 0, maxPlayerStreetBet);
       const drawRoundIndex = snapshot?.drawRoundIndex ?? snapshot?.drawRound ?? phaseState?.drawRound ?? state?.drawRound ?? null;
       const nextKey = JSON.stringify(
-        summarizeProgress({ handId, phase, actor, currentBet, pot, drawRoundIndex, players }),
+        summarizeProgress({ handId, phase, actor, currentBet, pot, drawRoundIndex, players, snapshot }),
       );
       return nextKey !== key || uiTerminal || phase === "HAND_RESULT" || phase === "SHOWDOWN" || snapshot?.lastHandResult;
     },
@@ -614,6 +619,10 @@ export async function playOneHandProgression(page, options = {}) {
       drawCardIndexes: options.drawCardIndexes,
     });
     if (!action.acted) {
+      // A CPU settlement can land between the progress snapshot and action
+      // selection. Re-read it through the normal terminal checks, including
+      // required Hero actions and draw visits, instead of reporting a freeze.
+      if (action.reason === "terminal") continue;
       throw new Error(`No safe action available: ${JSON.stringify({ step, action, trace: trace.slice(-4) })}`);
     }
     trace[trace.length - 1].performedAction =

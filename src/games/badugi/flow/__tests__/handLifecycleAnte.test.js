@@ -18,6 +18,7 @@ describe("Badugi hand lifecycle ante accounting", () => {
     expect(state.players[state.sbIdx].betThisRound).toBe(11);
     expect(state.players[state.bbIdx].betThisRound).toBe(21);
     expect(state.initialCurrentBet).toBe(21);
+    expect(state.players.every(player => player.lastDrawCount === null)).toBe(true);
     expect(state.initialCurrentBet - state.players[state.resolvedTurn].betThisRound).toBe(20);
   });
 });

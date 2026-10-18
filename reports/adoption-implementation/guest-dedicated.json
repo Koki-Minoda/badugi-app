@@ -1,0 +1,22 @@
+[
+  {
+    "id": "chinese_poker",
+    "variant": "chinese_poker",
+    "done": true,
+    "actions": 2,
+    "overflow": false,
+    "errors": [],
+    "writes": [],
+    "statsUnchanged": true
+  },
+  {
+    "id": "ofc",
+    "variant": "ofc",
+    "done": true,
+    "actions": 18,
+    "overflow": false,
+    "errors": [],
+    "writes": [],
+    "statsUnchanged": true
+  }
+]

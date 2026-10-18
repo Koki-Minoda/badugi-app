@@ -43,8 +43,7 @@ async function viewportMetrics(page: Page) {
   return page.evaluate(() => ({
     width: window.visualViewport?.width ?? window.innerWidth,
     height: window.visualViewport?.height ?? window.innerHeight,
-    cssVisualVh: getComputedStyle(document.documentElement).getPropertyValue("--mgx-visual-vh").trim(),
-    cssVisualVw: getComputedStyle(document.documentElement).getPropertyValue("--mgx-visual-vw").trim(),
+    layoutHeight: document.querySelector('[data-testid="mobile-play-layout"]')?.getBoundingClientRect().height,
   }));
 }
 
@@ -85,7 +84,7 @@ test.describe("iPhone Safari tournament landscape controls", () => {
         await openHeroActionFixture(page);
         const decisionBox = await page.getByTestId("decision-panel").boundingBox();
         const metrics = await viewportMetrics(page);
-        expect(metrics.cssVisualVh).toMatch(/px$/);
+        expect(metrics.layoutHeight).toBeCloseTo(metrics.height, 0);
         expect(decisionBox?.y ?? 0).toBeGreaterThanOrEqual(0);
         expect((decisionBox?.y ?? 0) + (decisionBox?.height ?? 0)).toBeLessThanOrEqual(metrics.height + 1);
         await assertButtonWithinVisualViewport(page, page.getByTestId("action-call"), "Call");

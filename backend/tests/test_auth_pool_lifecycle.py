@@ -8,6 +8,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from app.api import auth
+from app.core.security import account_binding
 from app.dependencies import auth as auth_dependency
 from app.models import Base, User
 
@@ -24,7 +25,8 @@ def test_authenticated_endpoint_can_borrow_the_only_connection(tmp_path, monkeyp
         session.add(user)
         session.commit()
         user_id = user.id
-    monkeypatch.setattr(auth_dependency, "decode_access_token", lambda _: {"sub": str(user_id)})
+        binding = account_binding(user)
+    monkeypatch.setattr(auth_dependency, "decode_access_token", lambda _: {"sub": str(user_id), "account_binding": binding})
     try:
         with sessions() as request_session:
             identity = auth_dependency.get_current_user("test-token", request_session)

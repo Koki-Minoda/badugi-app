@@ -1,3 +1,4 @@
+import { visibleHeroActions } from "./helpers/visibleHeroActions";
 import fs from "node:fs";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
@@ -35,6 +36,11 @@ function ensureReportDir() {
 
 async function visibleLayoutIssues(page: Page) {
   return page.evaluate(() => {
+    // A CPU action can complete the hand between the driver's terminal check
+    // and this DOM snapshot. The result modal intentionally covers the table;
+    // only audit live controls while that modal is absent.
+    const result = document.querySelector('[data-testid="hand-result-overlay"]') as HTMLElement | null;
+    if (result && result.getClientRects().length && getComputedStyle(result).visibility !== 'hidden') return [];
     const viewport = window.visualViewport ?? {
       width: window.innerWidth,
       height: window.innerHeight,
@@ -74,28 +80,6 @@ async function visibleLayoutIssues(page: Page) {
   });
 }
 
-async function visibleHeroActions(page: Page) {
-  const ids = [
-    "action-check",
-    "action-call",
-    "action-raise",
-    "action-fold",
-    "action-draw-selected",
-  ];
-  const visible: string[] = [];
-  for (const id of ids) {
-    const button = page.getByTestId(id).first();
-    if (
-      (await button.count()) > 0 &&
-      (await button.isVisible().catch(() => false)) &&
-      (await button.isEnabled().catch(() => false))
-    ) {
-      visible.push(id);
-    }
-  }
-  return visible;
-}
-
 async function driveHandLikePlayer(page: Page, hand: number) {
   const startedAt = Date.now();
   const trace: unknown[] = [];
@@ -106,7 +90,7 @@ async function driveHandLikePlayer(page: Page, hand: number) {
 
   while (Date.now() - startedAt < 90_000) {
     const resultVisible = await page
-      .getByText("Hand Result")
+      .getByTestId("hand-result-overlay")
       .first()
       .isVisible()
       .catch(() => false);
@@ -150,7 +134,7 @@ async function driveHandLikePlayer(page: Page, hand: number) {
       const message = error instanceof Error ? error.message : String(error);
       const latestActions = await visibleHeroActions(page);
       const resultBecameVisible = await page
-        .getByText("Hand Result")
+        .getByTestId("hand-result-overlay")
         .first()
         .isVisible()
         .catch(() => false);
@@ -221,7 +205,7 @@ async function runHands(page: Page, handCount: number) {
 
       const result = await driveHandLikePlayer(page, hand);
 
-      await expect(page.getByText("Hand Result").first()).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByTestId("hand-result-overlay").first()).toBeVisible({ timeout: 15_000 });
       await expect(page.getByTestId("hand-result-pot").first()).toBeVisible({ timeout: 15_000 });
       rows.push({
         hand,
@@ -235,7 +219,7 @@ async function runHands(page: Page, handCount: number) {
       const nextHand = page.getByRole("button", { name: /next hand/i }).first();
       await expect(nextHand).toBeVisible({ timeout: 10_000 });
       await nextHand.click({ timeout: 5_000 });
-      await expect(page.getByText("Hand Result").first()).toBeHidden({ timeout: 15_000 });
+      await expect(page.getByTestId("hand-result-overlay").first()).toBeHidden({ timeout: 15_000 });
       await expect(page.getByTestId("decision-panel")).toBeVisible({ timeout: 20_000 });
     }
 
@@ -344,7 +328,7 @@ test.describe("production cash playability", () => {
       });
       await expect(rebuy).toBeVisible({ timeout: 10_000 });
       await rebuy.click();
-      await expect(page.getByText("Hand Result").first()).toBeHidden({ timeout: 15_000 });
+      await expect(page.getByTestId("hand-result-overlay").first()).toBeHidden({ timeout: 15_000 });
       await expect(page.getByTestId("decision-panel")).toBeVisible({ timeout: 20_000 });
 
       const restarted = await getProgressState(page);
@@ -356,7 +340,7 @@ test.describe("production cash playability", () => {
       ).toBeGreaterThanOrEqual(2);
 
       await driveHandLikePlayer(page, 1);
-      await expect(page.getByText("Hand Result").first()).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByTestId("hand-result-overlay").first()).toBeVisible({ timeout: 15_000 });
     } finally {
       await deleteAuthenticatedSession(page, session);
     }

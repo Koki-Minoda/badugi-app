@@ -1,0 +1,998 @@
+{
+  "date": "2026-09-23T01:44:07.513Z",
+  "method": "Physical iPhone Safari via USB Web Inspector; DOM activation and hit tests, not native finger taps",
+  "rows": [
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/try",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/tools",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/tools?tab=clock",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/tools?tab=recommend",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/learn/practice",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/learn/review",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/history",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/tournament",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/meetups",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/mixed",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/games",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/dealers-choice",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/multigame",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/career",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "ja",
+      "route": "/friend-match",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/try",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/tools",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/tools?tab=clock",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/tools?tab=recommend",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/learn/practice",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/learn/review",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/history",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/tournament",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/meetups",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/mixed",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/games",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/dealers-choice",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/multigame",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/career",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "screen",
+      "language": "en",
+      "route": "/friend-match",
+      "width": 852,
+      "height": 283,
+      "visualHeight": 283,
+      "overflow": false,
+      "smallSelects": []
+    },
+    {
+      "type": "game",
+      "id": "badugi",
+      "actions": [
+        "action-call",
+        "action-call",
+        "action-call",
+        "action-draw-selected",
+        "action-call",
+        "action-draw-selected",
+        "action-call",
+        "action-draw-selected",
+        "action-call"
+      ],
+      "layoutIssues": [],
+      "tones": [
+        "bet",
+        "draw"
+      ],
+      "done": true,
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "visualHeight": 283,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "PASS"
+    },
+    {
+      "type": "game",
+      "id": "nlh",
+      "actions": [
+        "action-call",
+        "action-check",
+        "action-check",
+        "action-check"
+      ],
+      "layoutIssues": [],
+      "tones": [
+        "bet"
+      ],
+      "done": true,
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "visualHeight": 283,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "PASS"
+    },
+    {
+      "type": "game",
+      "id": "flh",
+      "actions": [
+        "action-call",
+        "action-check",
+        "action-check",
+        "action-check"
+      ],
+      "layoutIssues": [],
+      "tones": [
+        "bet"
+      ],
+      "done": true,
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "visualHeight": 283,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "PASS"
+    },
+    {
+      "type": "game",
+      "id": "plo",
+      "actions": [
+        "action-call",
+        "action-check",
+        "action-check",
+        "action-check"
+      ],
+      "layoutIssues": [],
+      "tones": [
+        "bet"
+      ],
+      "done": true,
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "visualHeight": 283,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "PASS"
+    },
+    {
+      "type": "game",
+      "id": "plo8",
+      "actions": [
+        "action-call",
+        "action-check",
+        "action-check",
+        "action-check"
+      ],
+      "layoutIssues": [],
+      "tones": [
+        "bet"
+      ],
+      "done": true,
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "visualHeight": 283,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "PASS"
+    },
+    {
+      "type": "game",
+      "id": "flo8",
+      "actions": [
+        "action-call",
+        "action-check",
+        "action-check",
+        "action-check"
+      ],
+      "layoutIssues": [],
+      "tones": [
+        "bet"
+      ],
+      "done": true,
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "visualHeight": 283,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "PASS"
+    },
+    {
+      "type": "game",
+      "id": "big_o",
+      "actions": [
+        "action-call",
+        "action-check",
+        "action-check",
+        "action-check"
+      ],
+      "layoutIssues": [],
+      "tones": [
+        "bet"
+      ],
+      "done": true,
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "visualHeight": 283,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "PASS"
+    },
+    {
+      "type": "game",
+      "id": "five_card_plo",
+      "actions": [
+        "action-call",
+        "action-check",
+        "action-check",
+        "action-check"
+      ],
+      "layoutIssues": [],
+      "tones": [
+        "bet"
+      ],
+      "done": true,
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "visualHeight": 283,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "PASS"
+    },
+    {
+      "type": "game",
+      "id": "D01",
+      "actions": [
+        "action-call",
+        "action-draw-selected",
+        "action-call",
+        "action-draw-selected",
+        "action-call",
+        "action-draw-selected",
+        "action-call"
+      ],
+      "layoutIssues": [],
+      "tones": [
+        "bet",
+        "draw"
+      ],
+      "done": true,
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "visualHeight": 283,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "PASS"
+    },
+    {
+      "type": "game",
+      "id": "D02",
+      "actions": [
+        "action-call",
+        "action-draw-selected",
+        "action-call",
+        "action-draw-selected",
+        "action-call",
+        "action-draw-selected",
+        "action-call"
+      ],
+      "layoutIssues": [],
+      "tones": [
+        "bet",
+        "draw"
+      ],
+      "done": true,
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "visualHeight": 283,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "PASS"
+    },
+    {
+      "type": "game",
+      "id": "S01",
+      "actions": [
+        "action-call",
+        "action-call",
+        "action-draw-selected",
+        "action-call"
+      ],
+      "layoutIssues": [],
+      "tones": [
+        "bet",
+        "draw"
+      ],
+      "done": true,
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "visualHeight": 283,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "PASS"
+    },
+    {
+      "type": "game",
+      "id": "S02",
+      "actions": [
+        "action-call",
+        "action-draw-selected",
+        "action-check"
+      ],
+      "layoutIssues": [],
+      "tones": [
+        "bet",
+        "draw"
+      ],
+      "done": true,
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "visualHeight": 283,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "PASS"
+    },
+    {
+      "type": "game",
+      "id": "stud",
+      "actions": [
+        "action-call",
+        "action-check",
+        "action-check",
+        "action-check",
+        "action-check"
+      ],
+      "layoutIssues": [],
+      "tones": [
+        "bet"
+      ],
+      "done": true,
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "visualHeight": 283,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "PASS"
+    },
+    {
+      "type": "game",
+      "id": "stud8",
+      "actions": [
+        "action-call",
+        "action-check",
+        "action-check",
+        "action-check",
+        "action-check"
+      ],
+      "layoutIssues": [],
+      "tones": [
+        "bet"
+      ],
+      "done": true,
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "visualHeight": 283,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "PASS"
+    },
+    {
+      "type": "game",
+      "id": "razz",
+      "actions": [
+        "action-call",
+        "action-check",
+        "action-check",
+        "action-check",
+        "action-check"
+      ],
+      "layoutIssues": [],
+      "tones": [
+        "bet"
+      ],
+      "done": true,
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "visualHeight": 283,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "PASS"
+    },
+    {
+      "type": "game",
+      "id": "razzdugi",
+      "actions": [
+        "action-call",
+        "action-check",
+        "action-check",
+        "action-check",
+        "action-check"
+      ],
+      "layoutIssues": [],
+      "tones": [
+        "bet"
+      ],
+      "done": true,
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "visualHeight": 283,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "PASS"
+    },
+    {
+      "type": "game",
+      "id": "razzducey",
+      "actions": [
+        "action-call",
+        "action-check",
+        "action-check",
+        "action-check",
+        "action-check"
+      ],
+      "layoutIssues": [],
+      "tones": [
+        "bet"
+      ],
+      "done": true,
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "visualHeight": 283,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "PASS"
+    },
+    {
+      "type": "game",
+      "id": "razz27",
+      "actions": [
+        "action-check",
+        "action-check",
+        "action-check",
+        "action-check"
+      ],
+      "layoutIssues": [],
+      "tones": [
+        "bet"
+      ],
+      "done": true,
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "visualHeight": 283,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "PASS"
+    },
+    {
+      "type": "game",
+      "id": "dramaha_hi",
+      "actions": [
+        "action-call",
+        "action-check",
+        "action-draw-selected",
+        "action-check",
+        "action-check"
+      ],
+      "layoutIssues": [],
+      "tones": [
+        "bet",
+        "draw"
+      ],
+      "done": true,
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "visualHeight": 283,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "PASS"
+    },
+    {
+      "type": "game",
+      "id": "dramaha_27",
+      "actions": [
+        "action-call",
+        "action-check",
+        "action-draw-selected",
+        "action-check",
+        "action-check"
+      ],
+      "layoutIssues": [],
+      "tones": [
+        "bet",
+        "draw"
+      ],
+      "done": true,
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "visualHeight": 283,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "PASS"
+    },
+    {
+      "type": "game",
+      "id": "dramaha_a5",
+      "actions": [
+        "action-call",
+        "action-check",
+        "action-draw-selected",
+        "action-check",
+        "action-check"
+      ],
+      "layoutIssues": [],
+      "tones": [
+        "bet",
+        "draw"
+      ],
+      "done": true,
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "visualHeight": 283,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "PASS"
+    },
+    {
+      "type": "game",
+      "id": "dramaha_zero",
+      "actions": [
+        "action-call",
+        "action-check",
+        "action-draw-selected",
+        "action-check",
+        "action-check"
+      ],
+      "layoutIssues": [],
+      "tones": [
+        "bet",
+        "draw"
+      ],
+      "done": true,
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "visualHeight": 283,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "PASS"
+    },
+    {
+      "type": "game",
+      "id": "dramaha_hidugi",
+      "actions": [
+        "action-call",
+        "action-check",
+        "action-draw-selected",
+        "action-check",
+        "action-check"
+      ],
+      "layoutIssues": [],
+      "tones": [
+        "bet",
+        "draw"
+      ],
+      "done": true,
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "visualHeight": 283,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "PASS"
+    },
+    {
+      "type": "game",
+      "id": "dramaha_badugi",
+      "actions": [
+        "action-call",
+        "action-check",
+        "action-draw-selected",
+        "action-check",
+        "action-check"
+      ],
+      "layoutIssues": [],
+      "tones": [
+        "bet",
+        "draw"
+      ],
+      "done": true,
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "visualHeight": 283,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "PASS"
+    },
+    {
+      "type": "game",
+      "id": "ofc",
+      "actions": [
+        "ofc-suggest",
+        "ofc-confirm",
+        "ofc-suggest",
+        "ofc-confirm",
+        "ofc-suggest",
+        "ofc-confirm",
+        "ofc-suggest",
+        "ofc-confirm",
+        "ofc-suggest",
+        "ofc-confirm",
+        "ofc-suggest",
+        "ofc-confirm",
+        "ofc-suggest",
+        "ofc-confirm",
+        "ofc-suggest",
+        "ofc-confirm",
+        "ofc-suggest",
+        "ofc-confirm"
+      ],
+      "layoutIssues": [],
+      "tones": [],
+      "done": true,
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "visualHeight": 283,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "PASS"
+    },
+    {
+      "type": "game",
+      "id": "chinese_poker",
+      "actions": [
+        "chinese-auto",
+        "chinese-submit"
+      ],
+      "layoutIssues": [],
+      "tones": [],
+      "done": true,
+      "geometry": {
+        "width": 852,
+        "height": 283,
+        "visualHeight": 283,
+        "overflow": false,
+        "smallSelects": []
+      },
+      "statsUnchanged": true,
+      "writes": [],
+      "status": "PASS"
+    }
+  ],
+  "errors": [],
+  "transportErrors": []
+}

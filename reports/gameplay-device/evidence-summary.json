@@ -1,0 +1,3152 @@
+{
+  "date": "2026-09-19",
+  "appRevision": "c0fa8fad8e6dfe455352cc4a8da7dc78873b8956",
+  "environment": "Local dist + isolated FastAPI/SQLite, no production deployment",
+  "suites": [
+    {
+      "name": "desktop-cash-lifecycle",
+      "stats": {
+        "startTime": "2026-09-19T13:05:59.477Z",
+        "duration": 35840.934,
+        "expected": 23,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "tests": [
+        {
+          "title": "Badugi cash full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2161,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "NL Hold'em cash full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1409,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Pot-Limit Omaha cash full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1382,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "PLO8 cash full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1447,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "FLO8 cash full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1397,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Big-O cash full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1413,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "5-Card PLO cash full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1429,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "2-7 Triple Draw cash full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1697,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "A-5 Triple Draw cash full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1714,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "2-7 Single Draw cash full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1363,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "A-5 Single Draw cash full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1361,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Seven Card Stud cash full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1465,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Seven Card Stud Hi/Lo cash full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1463,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Razz cash full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1464,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Razzdugi cash full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1463,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Razzducey cash full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1480,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "2-7 Razz cash full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1480,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha Hi cash full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1497,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha 2-7 cash full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1480,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha A-5 cash full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1480,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha Zero cash full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1480,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha Hidugi cash full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1496,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha Badugi cash full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1524,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "desktop-cash-10hands",
+      "stats": {
+        "startTime": "2026-09-19T13:08:14.105Z",
+        "duration": 1280562.515,
+        "expected": 23,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "tests": [
+        {
+          "title": "Badugi desktop completes 10 real-button hands",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 58623,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "NL Hold'em desktop completes 10 real-button hands",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 44106,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Pot-Limit Omaha desktop completes 10 real-button hands",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 43956,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "PLO8 desktop completes 10 real-button hands",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 44215,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "FLO8 desktop completes 10 real-button hands",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 44045,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Big-O desktop completes 10 real-button hands",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 44260,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "5-Card PLO desktop completes 10 real-button hands",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 44395,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "2-7 Triple Draw desktop completes 10 real-button hands",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 50775,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "A-5 Triple Draw desktop completes 10 real-button hands",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 64492,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "2-7 Single Draw desktop completes 10 real-button hands",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 35997,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "A-5 Single Draw desktop completes 10 real-button hands",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 50245,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Seven Card Stud desktop completes 10 real-button hands",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 64980,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Seven Card Stud Hi/Lo desktop completes 10 real-button hands",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 64337,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Razz desktop completes 10 real-button hands",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 62865,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Razzdugi desktop completes 10 real-button hands",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 61230,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Razzducey desktop completes 10 real-button hands",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 64397,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "2-7 Razz desktop completes 10 real-button hands",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 62725,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha Hi desktop completes 10 real-button hands",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 64238,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha 2-7 desktop completes 10 real-button hands",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 65724,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha A-5 desktop completes 10 real-button hands",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 70936,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha Zero desktop completes 10 real-button hands",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 57938,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha Hidugi desktop completes 10 real-button hands",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 57978,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha Badugi desktop completes 10 real-button hands",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 57546,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "friend-match",
+      "stats": {
+        "startTime": "2026-09-19T13:06:42.032Z",
+        "duration": 16219.968,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "tests": [
+        {
+          "title": "two authenticated mobile players can reconnect, draw, and act without leaking cards",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2058,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "two players finish a major Badugi flow after WebSocket failure",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 13217,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tournament-regression",
+      "stats": {
+        "startTime": "2026-09-19T13:08:54.888Z",
+        "duration": 51347.409,
+        "expected": 47,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "tests": [
+        {
+          "title": "Badugi tournament full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1057,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "NL Hold'em tournament full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1033,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Pot-Limit Omaha tournament full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1056,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "PLO8 tournament full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1036,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "FLO8 tournament full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1056,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Big-O tournament full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1047,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "5-Card PLO tournament full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1047,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "2-7 Triple Draw tournament full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1014,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "A-5 Triple Draw tournament full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1002,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "2-7 Single Draw tournament full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1030,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "A-5 Single Draw tournament full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1026,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Seven Card Stud tournament full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1042,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Seven Card Stud Hi/Lo tournament full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1046,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Razz tournament full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1031,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Razzdugi tournament full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1035,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Razzducey tournament full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1030,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "2-7 Razz tournament full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1057,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha Hi tournament full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1114,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha 2-7 tournament full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1047,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha A-5 tournament full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1048,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha Zero tournament full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1046,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha Hidugi tournament full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1047,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha Badugi tournament full lifecycle",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1047,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Badugi uses UI actions before a verified championship",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1448,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "NL Hold'em uses UI actions before a verified championship",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 982,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Pot-Limit Omaha uses UI actions before a verified championship",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1011,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "PLO8 uses UI actions before a verified championship",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1014,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "FLO8 uses UI actions before a verified championship",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1032,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Big-O uses UI actions before a verified championship",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1027,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "5-Card PLO uses UI actions before a verified championship",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1031,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "2-7 Triple Draw uses UI actions before a verified championship",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1424,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "A-5 Triple Draw uses UI actions before a verified championship",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1413,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "2-7 Single Draw uses UI actions before a verified championship",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 980,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "A-5 Single Draw uses UI actions before a verified championship",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 980,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Seven Card Stud uses UI actions before a verified championship",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1088,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Seven Card Stud Hi/Lo uses UI actions before a verified championship",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1146,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Razz uses UI actions before a verified championship",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1097,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Razzdugi uses UI actions before a verified championship",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1131,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Razzducey uses UI actions before a verified championship",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1130,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "2-7 Razz uses UI actions before a verified championship",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1079,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha Hi uses UI actions before a verified championship",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1181,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha 2-7 uses UI actions before a verified championship",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1197,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha A-5 uses UI actions before a verified championship",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1196,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha Zero uses UI actions before a verified championship",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1181,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha Hidugi uses UI actions before a verified championship",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1248,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha Badugi uses UI actions before a verified championship",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1178,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "reloads the hub, resumes the saved boundary, deals the next hand, and retires",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 553,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tournament-completion",
+      "stats": {
+        "startTime": "2026-09-19T13:16:51.553Z",
+        "duration": 93665.361,
+        "expected": 3,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "tests": [
+        {
+          "title": "Store runs from its production field to a verified champion",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 26221,
+              "evidence": [],
+              "output": [
+                "[MTT_COMPLETION] {\"stageId\":\"store\",\"realHeroHands\":24,\"backgroundHands\":59,\"finalLevel\":9,\"heroPlace\":8,\"championId\":\"cpu-1\"}"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Local runs from its production field through ante levels to a verified champion",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 26996,
+              "evidence": [],
+              "output": [
+                "[MTT_COMPLETION] {\"stageId\":\"local\",\"realHeroHands\":22,\"backgroundHands\":139,\"finalLevel\":11,\"heroPlace\":10,\"championId\":\"cpu-10\"}"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "World runs from its 275-player production field through FT to a verified champion and review",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 39952,
+              "evidence": [],
+              "output": [
+                "[MTT_COMPLETION] {\"stageId\":\"world\",\"realHeroHands\":31,\"backgroundHands\":813,\"finalLevel\":17,\"heroPlace\":45,\"championId\":\"cpu-104\"}"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "chinese-three-browsers",
+      "stats": {
+        "startTime": "2026-09-19T13:09:50.384Z",
+        "duration": 26630.621,
+        "expected": 3,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "tests": [
+        {
+          "title": "completes 10 real-button hands with exact replay and mobile-safe layout",
+          "project": "chinese-desktop-chromium",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 7334,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "completes 10 real-button hands with exact replay and mobile-safe layout",
+          "project": "chinese-android-chromium",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 7347,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "completes 10 real-button hands with exact replay and mobile-safe layout",
+          "project": "chinese-iphone-webkit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 9452,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "preview-games",
+      "stats": {
+        "startTime": "2026-09-19T13:11:04.537Z",
+        "duration": 22332.126,
+        "expected": 12,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "tests": [
+        {
+          "title": "flh: preview hand, history, exit",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1722,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "super_holdem: preview hand, history, exit",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1662,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "fl_super_holdem: preview hand, history, exit",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1630,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "badeucey_triple_draw: preview hand, history, exit",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2080,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "badacey_triple_draw: preview hand, history, exit",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2146,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "hidugi_triple_draw: preview hand, history, exit",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2063,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "archie_triple_draw: preview hand, history, exit",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2164,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "five_card_single_draw: preview hand, history, exit",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1647,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "badugi_single_draw: preview hand, history, exit",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1646,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "badeucey_single_draw: preview hand, history, exit",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1664,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "badacey_single_draw: preview hand, history, exit",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1679,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "hidugi_single_draw: preview hand, history, exit",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1780,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "preview-iphone",
+      "stats": {
+        "startTime": "2026-09-19T13:23:09.757Z",
+        "duration": 183463.65,
+        "expected": 13,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "tests": [
+        {
+          "title": "completes 10 real-button hands with exact replay and mobile-safe layout",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 10256,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "flh: preview hand, history, exit",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 13111,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "super_holdem: preview hand, history, exit",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 13327,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "fl_super_holdem: preview hand, history, exit",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 13668,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "badeucey_triple_draw: preview hand, history, exit",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 15636,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "badacey_triple_draw: preview hand, history, exit",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 14922,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "hidugi_triple_draw: preview hand, history, exit",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 14762,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "archie_triple_draw: preview hand, history, exit",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 14842,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "five_card_single_draw: preview hand, history, exit",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 13748,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "badugi_single_draw: preview hand, history, exit",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 13620,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "badeucey_single_draw: preview hand, history, exit",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 15275,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "badacey_single_draw: preview hand, history, exit",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 14481,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "hidugi_single_draw: preview hand, history, exit",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 15245,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "iphone-webkit-layout-fixed",
+      "stats": {
+        "startTime": "2026-09-19T13:21:33.837Z",
+        "duration": 102429.871,
+        "expected": 46,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "tests": [
+        {
+          "title": "Badugi portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2915,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Badugi landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2764,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "NL Hold'em portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1286,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "NL Hold'em landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2162,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Pot-Limit Omaha portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1326,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Pot-Limit Omaha landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2183,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "PLO8 portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1336,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "PLO8 landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2221,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "FLO8 portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1357,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "FLO8 landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2224,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Big-O portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1378,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Big-O landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2317,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "5-Card PLO portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1348,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "5-Card PLO landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2285,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "2-7 Triple Draw portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2778,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "2-7 Triple Draw landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2876,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "A-5 Triple Draw portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2809,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "A-5 Triple Draw landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2855,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "2-7 Single Draw portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2124,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "2-7 Single Draw landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2129,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "A-5 Single Draw portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2213,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "A-5 Single Draw landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2087,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Seven Card Stud portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2328,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Seven Card Stud landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2313,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Seven Card Stud Hi/Lo portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2310,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Seven Card Stud Hi/Lo landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2357,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Razz portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2242,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Razz landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 3544,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Razzdugi portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2393,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Razzdugi landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2366,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Razzducey portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2345,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Razzducey landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 3529,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "2-7 Razz portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2460,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "2-7 Razz landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2480,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha Hi portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1359,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha Hi landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2597,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha 2-7 portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1355,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha 2-7 landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2615,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha A-5 portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1388,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha A-5 landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2661,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha Zero portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1388,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha Zero landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2469,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha Hidugi portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1371,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha Hidugi landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2706,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha Badugi portrait-390x844 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1459,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dramaha Badugi landscape-844x390 keeps tap targets and result controls reachable",
+          "project": "iphone-device-audit",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2708,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "mix-three-browsers",
+      "stats": {
+        "startTime": "2026-09-19T13:14:30.388Z",
+        "duration": 22629.167,
+        "expected": 9,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "tests": [
+        {
+          "title": "cash MIX crosses draw, stud and board families with chips, seats and button intact",
+          "project": "desktop",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 3279,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "MIX observes hand limits, skips unreleased variants and ignores repeated next-hand requests",
+          "project": "desktop",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2655,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "quiz supports answers, six-question scoring, retry and topic switching",
+          "project": "desktop",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 728,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "cash MIX crosses draw, stud and board families with chips, seats and button intact",
+          "project": "android",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 3154,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "MIX observes hand limits, skips unreleased variants and ignores repeated next-hand requests",
+          "project": "android",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2726,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "quiz supports answers, six-question scoring, retry and topic switching",
+          "project": "android",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 807,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "cash MIX crosses draw, stud and board families with chips, seats and button intact",
+          "project": "iphone",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 3583,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "MIX observes hand limits, skips unreleased variants and ignores repeated next-hand requests",
+          "project": "iphone",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 3226,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "quiz supports answers, six-question scoring, retry and topic switching",
+          "project": "iphone",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 835,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "features-confirmed",
+      "stats": {
+        "startTime": "2026-09-19T13:24:04.814Z",
+        "duration": 11013.876,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "tests": [
+        {
+          "title": "registration, login, reload and logout use the real local API",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1812,
+              "evidence": [],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "Dealer Choice launches the selected queue into a playable table",
+          "project": "badugi-flow",
+          "status": "unexpected",
+          "results": [
+            {
+              "status": "failed",
+              "duration": 8642,
+              "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByTestId('dealers-choice-hud')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" with timeout 5000ms\n  - waiting for getByTestId('dealers-choice-hud')\n",
+              "evidence": [
+                {
+                  "name": "launch-state",
+                  "value": {
+                    "url": "http://127.0.0.1:4179/game?mode=dealers-choice",
+                    "queue": "[\"B01\",\"B01\"]",
+                    "mode": "1",
+                    "text": "PRESS ENTER"
+                  }
+                }
+              ],
+              "output": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "pot-audit",
+      "stats": {
+        "startTime": "2026-09-19T13:26:03.920Z",
+        "duration": 50407.043999999994,
+        "expected": 11,
+        "skipped": 0,
+        "unexpected": 12,
+        "flaky": 0
+      },
+      "tests": [
+        {
+          "title": "badugi: result pot headline agrees with payout sections",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2102,
+              "evidence": [
+                {
+                  "name": "pot-display",
+                  "value": {
+                    "variant": "badugi",
+                    "headline": "Pot ¥120",
+                    "parts": [
+                      "¥120"
+                    ],
+                    "total": 120
+                  }
+                }
+              ],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "nlh: result pot headline agrees with payout sections",
+          "project": "badugi-flow",
+          "status": "unexpected",
+          "results": [
+            {
+              "status": "failed",
+              "duration": 7366,
+              "error": "Error: {\"headline\":\"Pot ¥0\",\"parts\":[\"¥120\"]}\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: 120\nReceived: 0",
+              "evidence": [
+                {
+                  "name": "pot-display",
+                  "value": {
+                    "variant": "nlh",
+                    "headline": "Pot ¥0",
+                    "parts": [
+                      "¥120"
+                    ],
+                    "total": 120
+                  }
+                }
+              ],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "plo: result pot headline agrees with payout sections",
+          "project": "badugi-flow",
+          "status": "unexpected",
+          "results": [
+            {
+              "status": "failed",
+              "duration": 1677,
+              "error": "Error: {\"headline\":\"Pot ¥0\",\"parts\":[\"¥120\"]}\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: 120\nReceived: 0",
+              "evidence": [
+                {
+                  "name": "pot-display",
+                  "value": {
+                    "variant": "plo",
+                    "headline": "Pot ¥0",
+                    "parts": [
+                      "¥120"
+                    ],
+                    "total": 120
+                  }
+                }
+              ],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "plo8: result pot headline agrees with payout sections",
+          "project": "badugi-flow",
+          "status": "unexpected",
+          "results": [
+            {
+              "status": "failed",
+              "duration": 1674,
+              "error": "Error: {\"headline\":\"Pot ¥0\",\"parts\":[\"¥120\"]}\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: 120\nReceived: 0",
+              "evidence": [
+                {
+                  "name": "pot-display",
+                  "value": {
+                    "variant": "plo8",
+                    "headline": "Pot ¥0",
+                    "parts": [
+                      "¥120"
+                    ],
+                    "total": 120
+                  }
+                }
+              ],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "flo8: result pot headline agrees with payout sections",
+          "project": "badugi-flow",
+          "status": "unexpected",
+          "results": [
+            {
+              "status": "failed",
+              "duration": 1710,
+              "error": "Error: {\"headline\":\"Pot ¥0\",\"parts\":[\"¥120\"]}\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: 120\nReceived: 0",
+              "evidence": [
+                {
+                  "name": "pot-display",
+                  "value": {
+                    "variant": "flo8",
+                    "headline": "Pot ¥0",
+                    "parts": [
+                      "¥120"
+                    ],
+                    "total": 120
+                  }
+                }
+              ],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "big_o: result pot headline agrees with payout sections",
+          "project": "badugi-flow",
+          "status": "unexpected",
+          "results": [
+            {
+              "status": "failed",
+              "duration": 1710,
+              "error": "Error: {\"headline\":\"Pot ¥0\",\"parts\":[\"¥120\"]}\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: 120\nReceived: 0",
+              "evidence": [
+                {
+                  "name": "pot-display",
+                  "value": {
+                    "variant": "big_o",
+                    "headline": "Pot ¥0",
+                    "parts": [
+                      "¥120"
+                    ],
+                    "total": 120
+                  }
+                }
+              ],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "five_card_plo: result pot headline agrees with payout sections",
+          "project": "badugi-flow",
+          "status": "unexpected",
+          "results": [
+            {
+              "status": "failed",
+              "duration": 1710,
+              "error": "Error: {\"headline\":\"Pot ¥0\",\"parts\":[\"¥120\"]}\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: 120\nReceived: 0",
+              "evidence": [
+                {
+                  "name": "pot-display",
+                  "value": {
+                    "variant": "five_card_plo",
+                    "headline": "Pot ¥0",
+                    "parts": [
+                      "¥120"
+                    ],
+                    "total": 120
+                  }
+                }
+              ],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "D01: result pot headline agrees with payout sections",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2050,
+              "evidence": [
+                {
+                  "name": "pot-display",
+                  "value": {
+                    "variant": "D01",
+                    "headline": "Pot ¥120",
+                    "parts": [
+                      "¥120"
+                    ],
+                    "total": 120
+                  }
+                }
+              ],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "D02: result pot headline agrees with payout sections",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1947,
+              "evidence": [
+                {
+                  "name": "pot-display",
+                  "value": {
+                    "variant": "D02",
+                    "headline": "Pot ¥120",
+                    "parts": [
+                      "¥120"
+                    ],
+                    "total": 120
+                  }
+                }
+              ],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "S01: result pot headline agrees with payout sections",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1513,
+              "evidence": [
+                {
+                  "name": "pot-display",
+                  "value": {
+                    "variant": "S01",
+                    "headline": "Pot ¥120",
+                    "parts": [
+                      "¥120"
+                    ],
+                    "total": 120
+                  }
+                }
+              ],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "S02: result pot headline agrees with payout sections",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1548,
+              "evidence": [
+                {
+                  "name": "pot-display",
+                  "value": {
+                    "variant": "S02",
+                    "headline": "Pot ¥120",
+                    "parts": [
+                      "¥120"
+                    ],
+                    "total": 120
+                  }
+                }
+              ],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "stud: result pot headline agrees with payout sections",
+          "project": "badugi-flow",
+          "status": "unexpected",
+          "results": [
+            {
+              "status": "failed",
+              "duration": 1655,
+              "error": "Error: {\"headline\":\"Pot ¥0\",\"parts\":[\"¥60\"]}\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: 60\nReceived: 0",
+              "evidence": [
+                {
+                  "name": "pot-display",
+                  "value": {
+                    "variant": "stud",
+                    "headline": "Pot ¥0",
+                    "parts": [
+                      "¥60"
+                    ],
+                    "total": 60
+                  }
+                }
+              ],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "stud8: result pot headline agrees with payout sections",
+          "project": "badugi-flow",
+          "status": "unexpected",
+          "results": [
+            {
+              "status": "failed",
+              "duration": 1760,
+              "error": "Error: {\"headline\":\"Pot ¥0\",\"parts\":[\"¥60\"]}\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: 60\nReceived: 0",
+              "evidence": [
+                {
+                  "name": "pot-display",
+                  "value": {
+                    "variant": "stud8",
+                    "headline": "Pot ¥0",
+                    "parts": [
+                      "¥60"
+                    ],
+                    "total": 60
+                  }
+                }
+              ],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "razz: result pot headline agrees with payout sections",
+          "project": "badugi-flow",
+          "status": "unexpected",
+          "results": [
+            {
+              "status": "failed",
+              "duration": 1751,
+              "error": "Error: {\"headline\":\"Pot ¥0\",\"parts\":[\"¥60\"]}\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: 60\nReceived: 0",
+              "evidence": [
+                {
+                  "name": "pot-display",
+                  "value": {
+                    "variant": "razz",
+                    "headline": "Pot ¥0",
+                    "parts": [
+                      "¥60"
+                    ],
+                    "total": 60
+                  }
+                }
+              ],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "razzdugi: result pot headline agrees with payout sections",
+          "project": "badugi-flow",
+          "status": "unexpected",
+          "results": [
+            {
+              "status": "failed",
+              "duration": 1758,
+              "error": "Error: {\"headline\":\"Pot ¥0\",\"parts\":[\"¥60\"]}\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: 60\nReceived: 0",
+              "evidence": [
+                {
+                  "name": "pot-display",
+                  "value": {
+                    "variant": "razzdugi",
+                    "headline": "Pot ¥0",
+                    "parts": [
+                      "¥60"
+                    ],
+                    "total": 60
+                  }
+                }
+              ],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "razzducey: result pot headline agrees with payout sections",
+          "project": "badugi-flow",
+          "status": "unexpected",
+          "results": [
+            {
+              "status": "failed",
+              "duration": 1833,
+              "error": "Error: {\"headline\":\"Pot ¥0\",\"parts\":[\"¥60\"]}\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: 60\nReceived: 0",
+              "evidence": [
+                {
+                  "name": "pot-display",
+                  "value": {
+                    "variant": "razzducey",
+                    "headline": "Pot ¥0",
+                    "parts": [
+                      "¥60"
+                    ],
+                    "total": 60
+                  }
+                }
+              ],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "razz27: result pot headline agrees with payout sections",
+          "project": "badugi-flow",
+          "status": "unexpected",
+          "results": [
+            {
+              "status": "failed",
+              "duration": 1751,
+              "error": "Error: {\"headline\":\"Pot ¥0\",\"parts\":[\"¥60\"]}\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: 60\nReceived: 0",
+              "evidence": [
+                {
+                  "name": "pot-display",
+                  "value": {
+                    "variant": "razz27",
+                    "headline": "Pot ¥0",
+                    "parts": [
+                      "¥60"
+                    ],
+                    "total": 60
+                  }
+                }
+              ],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "dramaha_hi: result pot headline agrees with payout sections",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1783,
+              "evidence": [
+                {
+                  "name": "pot-display",
+                  "value": {
+                    "variant": "dramaha_hi",
+                    "headline": "Pot ¥120",
+                    "parts": [
+                      "¥60",
+                      "¥60"
+                    ],
+                    "total": 120
+                  }
+                }
+              ],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "dramaha_27: result pot headline agrees with payout sections",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1713,
+              "evidence": [
+                {
+                  "name": "pot-display",
+                  "value": {
+                    "variant": "dramaha_27",
+                    "headline": "Pot ¥120",
+                    "parts": [
+                      "¥60",
+                      "¥60"
+                    ],
+                    "total": 120
+                  }
+                }
+              ],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "dramaha_a5: result pot headline agrees with payout sections",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1712,
+              "evidence": [
+                {
+                  "name": "pot-display",
+                  "value": {
+                    "variant": "dramaha_a5",
+                    "headline": "Pot ¥120",
+                    "parts": [
+                      "¥60",
+                      "¥60"
+                    ],
+                    "total": 120
+                  }
+                }
+              ],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "dramaha_zero: result pot headline agrees with payout sections",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1713,
+              "evidence": [
+                {
+                  "name": "pot-display",
+                  "value": {
+                    "variant": "dramaha_zero",
+                    "headline": "Pot ¥120",
+                    "parts": [
+                      "¥60",
+                      "¥60"
+                    ],
+                    "total": 120
+                  }
+                }
+              ],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "dramaha_hidugi: result pot headline agrees with payout sections",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1681,
+              "evidence": [
+                {
+                  "name": "pot-display",
+                  "value": {
+                    "variant": "dramaha_hidugi",
+                    "headline": "Pot ¥120",
+                    "parts": [
+                      "¥60",
+                      "¥60"
+                    ],
+                    "total": 120
+                  }
+                }
+              ],
+              "output": []
+            }
+          ]
+        },
+        {
+          "title": "dramaha_badugi: result pot headline agrees with payout sections",
+          "project": "badugi-flow",
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 1698,
+              "evidence": [
+                {
+                  "name": "pot-display",
+                  "value": {
+                    "variant": "dramaha_badugi",
+                    "headline": "Pot ¥120",
+                    "parts": [
+                      "¥60",
+                      "¥60"
+                    ],
+                    "total": 120
+                  }
+                }
+              ],
+              "output": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

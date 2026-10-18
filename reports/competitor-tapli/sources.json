@@ -1,0 +1,367 @@
+{
+  "T01": {
+    "id": "T01",
+    "kind": "external",
+    "title": "TapliMIX ホーム・更新履歴",
+    "url": "https://taplimix.app/",
+    "evidenceLevel": "UI／公式更新履歴",
+    "observedAt": "2026-09-20",
+    "note": "画面の版は v1.6.2.2（履歴日付9月19日）。公開対戦入口、Player Card、告知、QR、季節イベントを確認。履歴に書かれた機能の動作までは保証しない。"
+  },
+  "T02": {
+    "id": "T02",
+    "kind": "external",
+    "title": "111種目カタログ",
+    "url": "https://taplimix.app/games",
+    "evidenceLevel": "UI",
+    "observedAt": "2026-09-20",
+    "note": "全111カードの名称・ID・分類・ベット形式を確認。全種目の対局・精算をテストしたという意味ではない。FLOP 41、STUD 19、DRAW 30、HYBRID/COMBI 21。"
+  },
+  "T03": {
+    "id": "T03",
+    "kind": "external",
+    "title": "プリセット一覧",
+    "url": "https://taplimix.app/presets",
+    "evidenceLevel": "UI",
+    "observedAt": "2026-09-20",
+    "note": "16カード。単種／複数種の入口、固定ハンド数、毎ハンドDC、周回DC、自己操作スイッチ。HORSE、8-Game、10-Game、TORSE、Triple Studなど。"
+  },
+  "T04": {
+    "id": "T04",
+    "kind": "external",
+    "title": "NLH ゲスト練習",
+    "url": "https://taplimix.app/practice?gameId=nlh",
+    "evidenceLevel": "実操作",
+    "observedAt": "2026-09-20",
+    "note": "未ログインで6人卓。時間切れの1ハンドと、手動でCall→Call→Check→Callしてショーダウンまで進めた1ハンド。次ハンドで100bbへ戻る。全種目や対人戦の動作保証ではない。"
+  },
+  "T05": {
+    "id": "T05",
+    "kind": "external",
+    "title": "対局設定",
+    "url": "https://taplimix.app/practice?gameId=nlh",
+    "evidenceLevel": "UI＋一部実操作",
+    "observedAt": "2026-09-20",
+    "note": "全席セルフ操作、6/7人、Non-Fold、タイマー、COM高速、音の種類/音量、ダークモード、Hole表示、スリープ防止、自動スケール、配信者モード。タイマーOFF・COM高速・Non-Foldを切り替えて継続プレイした。その他は設定の存在確認。"
+  },
+  "T06": {
+    "id": "T06",
+    "kind": "external",
+    "title": "機能ガイド・ルール図鑑",
+    "url": "https://taplimix.app/help",
+    "evidenceLevel": "公式説明",
+    "observedAt": "2026-09-20",
+    "note": "ルールはベット、進行、使用カード、評価、成立条件、特殊ルールの軸で説明。Private Room、チャット、履歴共有/AIレビュー、Auto Fold、手札役表示、常にDC/UTG等の説明。記載と現行実装の一致は一部未検証。"
+  },
+  "T07": {
+    "id": "T07",
+    "kind": "external",
+    "title": "役・クオリファイ判定",
+    "url": "https://taplimix.app/tools/qualifier",
+    "evidenceLevel": "実操作",
+    "observedAt": "2026-09-20",
+    "note": "NLHとBadaceyでRandom→Qualify。BadaceyではBadugiとA-5を別々に判定し、各席50%の分配を表示した。カードの手入力UIも確認。"
+  },
+  "T08": {
+    "id": "T08",
+    "kind": "external",
+    "title": "Pick’em おすすめ",
+    "url": "https://taplimix.app/tools/recommend",
+    "evidenceLevel": "実操作",
+    "observedAt": "2026-09-20",
+    "note": "4枚をランダム生成し、ベスト候補・5候補・特徴値・スコアを表示。候補の戦略的な正しさやEV/GTO最適性は未検証。"
+  },
+  "T09": {
+    "id": "T09",
+    "kind": "external",
+    "title": "MIXゲームサイネージ",
+    "url": "https://taplimix.app/tools/signage",
+    "evidenceLevel": "UI",
+    "observedAt": "2026-09-20",
+    "note": "公式/カスタムMIX、DC/6-handの進行、2配色、全画面開始の設定画面。実店舗では未使用。"
+  },
+  "T10": {
+    "id": "T10",
+    "kind": "external",
+    "title": "トーナメントタイマー",
+    "url": "https://taplimix.app/tools/timer",
+    "evidenceLevel": "UI",
+    "observedAt": "2026-09-20",
+    "note": "レベル・休憩・SB/BB/Ante・Stud Bet/Ante/Bring-inの編集、自動保存、プリセット、音、横向きMIX札の設定。時間経過・スリープ復帰は未検証。"
+  },
+  "T11": {
+    "id": "T11",
+    "kind": "external",
+    "title": "プライズシミュレーター",
+    "url": "https://taplimix.app/tools/prize-sim",
+    "evidenceLevel": "UI",
+    "observedAt": "2026-09-20",
+    "note": "人数・参加ポイント・控除率・入賞率・1位割合・丸めからtp配分表とチャート。CSVボタンあり。現金サービスと解釈しない。"
+  },
+  "T12": {
+    "id": "T12",
+    "kind": "external",
+    "title": "ビルダー",
+    "url": "https://taplimix.app/builder",
+    "evidenceLevel": "UI＋説明",
+    "observedAt": "2026-09-20",
+    "note": "MIXプリセットと独自ゲームの作成入口。ログインするとアカウント保存・端末間アクセスとの説明。作成保存/同期は未テスト。"
+  },
+  "T13": {
+    "id": "T13",
+    "kind": "external",
+    "title": "Private Room 認証入口",
+    "url": "https://taplimix.app/rooms",
+    "evidenceLevel": "UI",
+    "observedAt": "2026-09-20",
+    "note": "規約同意チェック、Google/Appleログインが表示。アカウント作成・規約同意・入室はしていない。部屋内機能はT06/T01の説明根拠。"
+  },
+  "T14": {
+    "id": "T14",
+    "kind": "external",
+    "title": "公開大会ロビー",
+    "url": "https://taplimix.app/tournament",
+    "evidenceLevel": "UI",
+    "observedAt": "2026-09-20",
+    "note": "大会beta、終了済み大会2件と参加人数・結果表示。観測時に参加可能な大会なし。参加・対戦・運営は未テスト。"
+  },
+  "T15": {
+    "id": "T15",
+    "kind": "external",
+    "title": "シーズン情報",
+    "url": "https://taplimix.app/season",
+    "evidenceLevel": "UI",
+    "observedAt": "2026-09-20",
+    "note": "概要、総合/大会/リングtpランキング、日付カレンダー、決勝進出条件を確認。定期Ring Rushと期間大会を組み合わせる設計。運営の継続性/同時接続規模は不明。"
+  },
+  "T16": {
+    "id": "T16",
+    "kind": "external",
+    "title": "ツール一覧",
+    "url": "https://taplimix.app/tools",
+    "evidenceLevel": "UI",
+    "observedAt": "2026-09-20",
+    "note": "Flip、サウンド、Pick’em、役判定、ゲーム札、タイマー、配分試算、ガイドへの8入口。Flip・音の実行はしていない。"
+  },
+  "T17": {
+    "id": "T17",
+    "kind": "external",
+    "title": "Tapli 交流用サービス",
+    "url": "https://official-tapli.lovable.app/",
+    "evidenceLevel": "公式説明",
+    "observedAt": "2026-09-20",
+    "note": "TapliMIXとは別のサービス。プレイヤーカード、収集、Respect、同卓メモ、店舗/イベントQR。料金・事業指標の詳細は不明。"
+  },
+  "T18": {
+    "id": "T18",
+    "kind": "external",
+    "title": "Tapli 操作マニュアル",
+    "url": "https://official-tapli.lovable.app/manual",
+    "evidenceLevel": "公式説明",
+    "observedAt": "2026-09-20",
+    "note": "カード共有/編集、コレクションのフィルター、Respect5分類、Table Memo。Table Memoは自分だけに表示との説明を展開して確認。実アカウントでの利用は未検証。"
+  },
+  "T19": {
+    "id": "T19",
+    "kind": "external",
+    "title": "WSOP HORSE 構成",
+    "url": "https://wsop.gg-global-cdn.com/wsop/2f5f1259-f5b3-49dd-b2bd-77ad575327a8.pdf#page=41",
+    "evidenceLevel": "主催者資料",
+    "observedAt": "2026-09-20",
+    "note": "2026年構造表の41ページ、Event #37。5種目およびLimit Flop/Studの構造を確認。MGX固有の採用ルールを置換する根拠ではなく、標準名との整合確認に用いる。"
+  },
+  "T20": {
+    "id": "T20",
+    "kind": "external",
+    "title": "WSOP 2026 8-Game 構成",
+    "url": "https://wsop.gg-global-cdn.com/wsop/2f5f1259-f5b3-49dd-b2bd-77ad575327a8.pdf",
+    "evidenceLevel": "主催者資料",
+    "observedAt": "2026-09-20",
+    "note": "2026年構造表92ページ、Event #80。8種目とLimit/Pot-limit/No-limitの構造を確認。"
+  },
+  "T21": {
+    "id": "T21",
+    "kind": "external",
+    "title": "Tapli HORSE 詳細",
+    "url": "https://taplimix.app/presets/horse",
+    "evidenceLevel": "UI",
+    "observedAt": "2026-09-20",
+    "note": "FLH/FLO8/Razz/Stud/Stud8の5種をすべてFLとして表示。6ハンドで順に切替。"
+  },
+  "M01": {
+    "id": "M01",
+    "kind": "local",
+    "title": "公開範囲",
+    "path": "src/games/config/variantAvailability.js",
+    "line": 206,
+    "note": "公開25、preview12。catalogのliveとは別。"
+  },
+  "M02": {
+    "id": "M02",
+    "kind": "local",
+    "title": "種目定義",
+    "path": "src/games/config/multiGameList.json",
+    "line": 3,
+    "note": "37種目、ベット形式/評価軸。生データのスナップショットはmgx-variants.json。"
+  },
+  "M03": {
+    "id": "M03",
+    "kind": "local",
+    "title": "既存 Pro MIX",
+    "path": "src/config/mixed/proPresets.js",
+    "line": 1,
+    "note": "HORSE/8/10のOmaha枠にB06=PLO8、10-GameにS01。"
+  },
+  "M04": {
+    "id": "M04",
+    "kind": "local",
+    "title": "学習用ルールとMIX",
+    "path": "src/ui/learning/learningCatalog.js",
+    "line": 47,
+    "note": "13種目。学習用HORSE/8-GameはB09=FLO8で、Pro側と定義差。"
+  },
+  "M05": {
+    "id": "M05",
+    "kind": "local",
+    "title": "MIX 編集・回転",
+    "path": "src/ui/screens/MixedGameScreen.jsx",
+    "line": 27,
+    "note": "20種上限。固定/加重/カテゴリ、ハンド数、上下移動、保存。rotationUtils.jsは手数基準で回転。"
+  },
+  "M06": {
+    "id": "M06",
+    "kind": "local",
+    "title": "ゲスト練習条件",
+    "path": "src/ui/practice/practiceSetup.js",
+    "line": 1,
+    "note": "手札指定の3種（Badugi/A5TD/27TD）。practiceTransfer.jsは開始手札をURL化。"
+  },
+  "M07": {
+    "id": "M07",
+    "kind": "local",
+    "title": "通常対局の認証・操作",
+    "path": "src/ui/App.jsx",
+    "line": 14714,
+    "note": "通常対局AuthGate。seat設定はあるが、現行共通操作はHero席中心。全席自己操作と同一視しない。"
+  },
+  "M08": {
+    "id": "M08",
+    "kind": "local",
+    "title": "Friend Match API",
+    "path": "backend/app/api/p2p.py",
+    "line": 184,
+    "note": "Badugi以外拒否。ルームコード招待、永続化・再接続基盤あり。"
+  },
+  "M09": {
+    "id": "M09",
+    "kind": "local",
+    "title": "Friend Match 人数",
+    "path": "backend/app/p2p/manager.py",
+    "line": 292,
+    "note": "2席。公開ロビー、多種目、人間6人の同時対戦ではない。"
+  },
+  "M10": {
+    "id": "M10",
+    "kind": "local",
+    "title": "復習保存",
+    "path": "src/ui/review/reviewStore.js",
+    "line": 5,
+    "note": "ブックマーク200件・メモ・タグあり。ReviewScreenは端末保存と明示。"
+  },
+  "M11": {
+    "id": "M11",
+    "kind": "local",
+    "title": "履歴・レビュー導線",
+    "path": "src/ui/screens/HistoryScreen.jsx",
+    "line": 1,
+    "note": "再生・JSON書出し・レビュー依頼。AIフィードバックは既存なので一律未実装にしない。"
+  },
+  "M12": {
+    "id": "M12",
+    "kind": "local",
+    "title": "個人評価画面",
+    "path": "src/ui/screens/LeaderboardScreen.jsx",
+    "line": 24,
+    "note": "個人のratingState履歴。名称はLeaderboardだがオンライン参加者順位表ではない。"
+  },
+  "M13": {
+    "id": "M13",
+    "kind": "local",
+    "title": "設定・統計",
+    "path": "src/ui/screens/TitleSettingsScreen.jsx",
+    "line": 30,
+    "note": "プロフィール/VPIP/PFR表示。音、配信匿名化、スリープ防止の公開設定は探索範囲で見つからず。"
+  },
+  "M14": {
+    "id": "M14",
+    "kind": "local",
+    "title": "画面経路",
+    "path": "src/RootApp.jsx",
+    "line": 27,
+    "note": "一覧/練習/復習/大会などは存在。独立した役判定/リアル卓札/公開イベントカレンダーの経路なし。"
+  },
+  "M15": {
+    "id": "M15",
+    "kind": "local",
+    "title": "直近の実機QA記録",
+    "path": "reports/gameplay-device/PHASE-AND-PENDING-QA.md",
+    "line": 1,
+    "note": "縦35種・専用2種等の既存QA。最新丸卓の実機横とホーム画面起動は未確認。この調査で再試験していない。"
+  },
+  "M16": {
+    "id": "M16",
+    "kind": "local",
+    "title": "手札整列",
+    "path": "src/ui/utils/cardDisplayOrder.js",
+    "line": 73,
+    "note": "種目依存の自動整列あり。利用者の手動並替/自動OFFとは別。"
+  },
+  "M17": {
+    "id": "M17",
+    "kind": "local",
+    "title": "認証画面",
+    "path": "src/ui/screens/AuthScreen.jsx",
+    "line": 60,
+    "note": "メール/パスワード認証。Google/Appleの公開ボタンは未実装。"
+  },
+  "M18": {
+    "id": "M18",
+    "kind": "local",
+    "title": "SDの実装",
+    "path": "src/games/draw/DeuceToSevenTripleDrawEngine.js",
+    "line": 365,
+    "note": "S01/S02はこの固定リミット基底を継承。S01のmaxDrawRoundsのみ1へ変更。"
+  },
+  "M19": {
+    "id": "M19",
+    "kind": "local",
+    "title": "Friend Match UI",
+    "path": "src/ui/screens/FriendMatchSetupScreen.jsx",
+    "line": 26,
+    "note": "対人専用画面。ルーム共有と復帰案内、金額入力の改善あり。共通丸卓とは別実装。"
+  },
+  "M20": {
+    "id": "M20",
+    "kind": "local",
+    "title": "種目検索",
+    "path": "src/ui/screens/GameSelectorScreen.jsx",
+    "line": 212,
+    "note": "分類/検索/ベット表記/公開判定あり。"
+  },
+  "M22": {
+    "id": "M22",
+    "kind": "local",
+    "title": "Archieの成立条件",
+    "path": "src/games/draw/SpecialDrawEngine.js",
+    "line": 232,
+    "note": "MGXはone-pairという役カテゴリで成立とし、ペアランク9以上の判定はない。Tapliの説明99以上とは差がある。"
+  },
+  "M21": {
+    "id": "M21",
+    "kind": "local",
+    "title": "大会機能",
+    "path": "src/ui/screens/TournamentScreen.jsx",
+    "line": 22,
+    "note": "ローカル/CPU大会導線、構造・進行・再開が既存。オンライン大会運営とは区別。"
+  }
+}

@@ -1,3 +1,4 @@
+import { OpenFaceChineseController, replayOfcHistory } from '../../chinese/OpenFaceChineseController.js';
 import { ChinesePokerController } from "../../chinese/ChinesePokerController.js";
 import { GAME_VARIANTS, getVariantById } from "../../config/variantCatalog.js";
 import { validateHandEvIntegrity } from "../ev/evIntegrityChecker.js";
@@ -155,6 +156,19 @@ export async function runOneHandProgression({
     };
   }
 
+  if (variantId === 'CP2') {
+    let state = seed >>> 0;
+    const random = () => { state = (Math.imul(state, 1664525) + 1013904223) >>> 0; return state / 4294967296; };
+    const controller = new OpenFaceChineseController({ random }); controller.startNewHand();
+    const trace = []; let steps = 0;
+    while (controller.phase === 'placing' && steps < maxSteps) {
+      controller.place(controller.actor, controller.suggestPlacement()); steps++;
+      trace.push(buildTraceEntry({ variantId, family: 'CHINESE', seed, step: steps, snapshot: controller.snapshot() }));
+    }
+    const handEnded = controller.phase === 'showdown';
+    const valid = handEnded && replayOfcHistory(controller.history()).valid;
+    return { variantId, family: 'CHINESE', seed, status: valid ? 'PASS' : 'FAIL', terminalPhase: controller.phase.toUpperCase(), steps, handEnded, winnerCount: handEnded ? controller.result.points.filter(p => p >= 0).length : 0, finalPot: 0, reason: 'ofc-placement-replay', skipReason: null, trace };
+  }
   if (variantId === "CP1") {
     return runChineseOneHand({ seed, maxSteps });
   }

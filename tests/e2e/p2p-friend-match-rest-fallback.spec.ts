@@ -153,19 +153,19 @@ test("two players finish a major Badugi flow after WebSocket failure", async ({ 
     await host.getByRole("button", { name: /Create Room|ルームを作成/i }).click();
     const roomCode = (await host.locator("strong").filter({ hasText: /^[A-Z2-9]{6}$/ }).textContent())?.trim();
     expect(roomCode).toMatch(/^[A-Z2-9]{6}$/);
-    await expect(host.getByText(/^polling$/i)).toBeVisible({ timeout: 10_000 });
+    await expect(host.getByTestId("friend-match-layout")).toHaveAttribute("data-connection-status", /^polling$/i, { timeout: 10_000 });
 
     await openPollingPlayer(guest, "guest");
     await guest.getByLabel(/Room code|ルームコード/i).fill(roomCode!);
     await guest.getByRole("button", { name: /^Join$|^参加$/i }).click();
-    await expect(guest.getByText(/^polling$/i)).toBeVisible({ timeout: 10_000 });
+    await expect(guest.getByTestId("friend-match-layout")).toHaveAttribute("data-connection-status", /^polling$/i, { timeout: 10_000 });
 
     await host.getByTestId("p2p-ready").click();
     await guest.getByTestId("p2p-ready").click();
-    await expect(host.getByTestId("p2p-private-hand").locator("button")).toHaveCount(4, { timeout: 10_000 });
-    await expect(guest.getByTestId("p2p-private-hand").locator("button")).toHaveCount(4, { timeout: 10_000 });
-    const hostCards = await host.getByTestId("p2p-private-hand").locator("button").allTextContents();
-    const guestCards = await guest.getByTestId("p2p-private-hand").locator("button").allTextContents();
+    await expect(host.getByTestId("p2p-private-hand").locator('[data-testid^="p2p-card-"]')).toHaveCount(4, { timeout: 10_000 });
+    await expect(guest.getByTestId("p2p-private-hand").locator('[data-testid^="p2p-card-"]')).toHaveCount(4, { timeout: 10_000 });
+    const hostCards = await host.getByTestId("p2p-private-hand").locator('[data-testid^="p2p-card-"]').allTextContents();
+    const guestCards = await guest.getByTestId("p2p-private-hand").locator('[data-testid^="p2p-card-"]').allTextContents();
     expect(hostCards.filter((card) => guestCards.includes(card))).toEqual([]);
 
     const caller = await enabledPlayer(players, "p2p-call");

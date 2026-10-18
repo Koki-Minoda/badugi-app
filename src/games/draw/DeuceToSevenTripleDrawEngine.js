@@ -37,7 +37,7 @@ function createPlayers({ seatConfig = DEFAULT_SEAT_CONFIG, startingStack = 500, 
       seatOut: sittingOut,
       hasActedThisRound: false,
       hasDrawn: false,
-      lastDrawCount: 0,
+      lastDrawCount: null,
       lastAction: "",
     };
   });
@@ -306,9 +306,11 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     maxDrawRounds = 3,
     bigBetStartsAtDrawRound = maxDrawRounds === 1 ? 1 : 2,
     handCardCount = 5,
+    bettingStructure = "fixed-limit",
   } = {}) {
     super({ gameId, displayName, maxDrawRounds });
     this.variantId = variantId;
+    this.bettingStructure = bettingStructure;
     this.evaluatorTag = evaluatorTag;
     this.lowType = lowType;
     this.cpuStrategy = cpuStrategy;
@@ -362,14 +364,15 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
       pots: [],
       metadata: {
         variantId: this.variantId,
-        bettingStructure: "fixed-limit",
+        bettingStructure: this.bettingStructure,
+        lastFullRaiseSize: ctx.structure?.bb ?? 20,
         evaluator: this.evaluatorTag,
         maxDrawRounds: this.maxDrawRounds,
         handCardCount: this.handCardCount,
         smallBetBB: 1,
         bigBetBB: 2,
         bigBetStartsAtDrawRound: this.bigBetStartsAtDrawRound,
-        raiseCap: 4,
+        raiseCap: this.bettingStructure === "no-limit" ? 999999 : 4,
         pendingDrawSeats: [],
         discardCountBySeat: {},
       },
@@ -423,7 +426,8 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     }
 
     const currentBet = getCurrentBet(next);
-    const betUnit = getStreetBetUnit(next);
+    const noLimit = next.metadata?.bettingStructure === "no-limit";
+    const betUnit = noLimit ? Math.max(next.bigBlind, next.metadata?.lastFullRaiseSize ?? next.bigBlind) : getStreetBetUnit(next);
     const raiseCount = Number(next.metadata?.raiseCountThisRound) || 0;
     let nextCurrentBet = currentBet;
     let nextRaiseCount = raiseCount;
@@ -454,14 +458,20 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
       }
       case "BET":
       case "RAISE": {
-        if (raiseCount >= getRaiseCap(next)) {
+        if (!noLimit && raiseCount >= getRaiseCap(next)) {
           throw new IllegalActionError("Fixed-limit raise cap reached", {
             seatIndex,
             raiseCount,
             raiseCap: getRaiseCap(next),
           });
         }
-        const targetBet = currentBet + betUnit;
+        if (noLimit && player.hasActedThisRound) throw new IllegalActionError("A short all-in does not reopen raising");
+        const minimumTarget = currentBet + betUnit;
+        const proposed = action.amount ?? action.payload?.amount;
+        const contribution = noLimit ? (proposed != null ? Number(proposed) : Math.min(player.stack, Math.max(0, minimumTarget - (player.bet ?? 0)))) : Math.max(0, minimumTarget - (player.bet ?? 0));
+        if (noLimit && (!Number.isInteger(contribution) || contribution <= 0 || contribution > player.stack)) throw new IllegalActionError("Invalid bet amount");
+        const targetBet = noLimit ? (player.bet ?? 0) + Math.min(player.stack, contribution) : minimumTarget;
+        if (noLimit && (targetBet <= currentBet || (targetBet < minimumTarget && contribution !== player.stack))) throw new IllegalActionError("Bet must meet the minimum raise or be all-in");
         const toPay = Math.max(0, targetBet - (player.bet ?? 0));
         if (toPay <= 0) {
           throw new IllegalActionError("Raise target must exceed current bet", { seatIndex });
@@ -470,7 +480,8 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
         player.bet = (player.bet ?? 0) + paid;
         player.hasActedThisRound = true;
         if (player.stack === 0) player.allIn = true;
-        const fullFixedLimitRaise = player.bet >= targetBet;
+        const fullFixedLimitRaise = player.bet >= minimumTarget;
+        if (noLimit && player.bet > currentBet) nextCurrentBet = player.bet;
         player.lastAction = fullFixedLimitRaise
           ? currentBet > 0
             ? "Raise"
@@ -481,6 +492,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
           ? "Call"
           : "Check";
         if (fullFixedLimitRaise) {
+          if (noLimit) next.metadata.lastFullRaiseSize = player.bet - currentBet;
           nextCurrentBet = Math.max(currentBet, player.bet ?? 0);
           nextRaiseCount += 1;
           next.lastAggressorIndex = seatIndex;
@@ -590,6 +602,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
       currentBet: 0,
       betUnit: getStreetBetUnit(next),
       raiseCountThisRound: 0,
+      lastFullRaiseSize: next.bigBlind,
       pendingDrawSeats: [],
     };
     if (next.actingPlayerIndex == null || hasBettingRoundCompleted(next)) {
@@ -867,6 +880,19 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
       }
     }
 
+    if (working.metadata?.bettingStructure === 'no-limit') {
+      const invested = working.players.map(p => Math.max(0, p.totalInvested ?? 0));
+      const potTotal = (working.pots ?? []).reduce((sum,p) => sum + p.amount, 0);
+      if (invested.reduce((sum,n) => sum+n,0) === potTotal && potTotal > 0) {
+        let previous = 0;
+        working.pots = [...new Set(invested.filter(n => n > 0))].sort((a,b) => a-b).map(threshold => {
+          const contributors = working.players.filter((p,i) => invested[i] >= threshold);
+          const eligible = contributors.filter(p => !p.folded && !p.sittingOut);
+          const amount = (threshold - previous) * contributors.length; previous = threshold;
+          return { amount, eligiblePlayerIds: (eligible.length ? eligible : getActivePlayers(working.players)).map(p => p.playerId ?? p.id) };
+        });
+      }
+    }
     const summary = [];
     let totalPot = 0;
     const evaluations = working.players.map((player, seatIndex) => {
@@ -956,7 +982,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
           hasActedThisRound: true,
           hasDrawn: true,
           canDraw: false,
-          lastDrawCount: 0,
+          lastDrawCount: null,
           lastAction: "OUT",
         };
       }

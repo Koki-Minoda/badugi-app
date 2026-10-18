@@ -1,0 +1,61 @@
+{
+  "method": "User finger taps on physical iPhone; trusted pointer/click events captured only from the numeric keypad",
+  "beforeStack": 500,
+  "events": [
+    {
+      "id": "bet-key-8",
+      "type": "pointerdown",
+      "trusted": true,
+      "pointerType": "touch",
+      "width": 852,
+      "height": 283
+    },
+    {
+      "id": "bet-key-8",
+      "type": "click",
+      "trusted": true,
+      "pointerType": "mouse",
+      "width": 852,
+      "height": 283
+    },
+    {
+      "id": "bet-key-0",
+      "type": "pointerdown",
+      "trusted": true,
+      "pointerType": "touch",
+      "width": 852,
+      "height": 283
+    },
+    {
+      "id": "bet-key-0",
+      "type": "click",
+      "trusted": true,
+      "pointerType": "mouse",
+      "width": 852,
+      "height": 283
+    },
+    {
+      "id": "bet-amount-confirm",
+      "type": "pointerdown",
+      "trusted": true,
+      "pointerType": "touch",
+      "width": 852,
+      "height": 283
+    },
+    {
+      "id": "bet-amount-confirm",
+      "type": "click",
+      "trusted": true,
+      "pointerType": "mouse",
+      "width": 852,
+      "height": 283
+    }
+  ],
+  "afterStack": 420,
+  "viewport": [
+    852,
+    283
+  ],
+  "panelClosed": true,
+  "status": "PASS"
+}

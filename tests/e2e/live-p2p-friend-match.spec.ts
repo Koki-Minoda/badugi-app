@@ -32,7 +32,7 @@ async function openFriendMatch(page: Page) {
 }
 
 async function privateCards(page: Page) {
-  const cards = page.getByTestId("p2p-private-hand").locator("button");
+  const cards = page.getByTestId("p2p-private-hand").locator('[data-testid^="p2p-card-"]');
   await expect(cards).toHaveCount(4, { timeout: 20_000 });
   return cards.allTextContents();
 }
@@ -106,8 +106,8 @@ test.describe("live P2P friend match", () => {
         guest.getByRole("button", { name: /^Join$|^参加$/i }).click(),
       ]);
       expect(joinResponse.status(), await joinResponse.text()).toBe(200);
-      await expect(host.getByText(/^(connected|polling)$/i)).toBeVisible({ timeout: 20_000 });
-      await expect(guest.getByText(/^(connected|polling)$/i)).toBeVisible({ timeout: 20_000 });
+      await expect(host.getByTestId("friend-match-layout")).toHaveAttribute("data-connection-status", /^(connected|polling)$/i, { timeout: 20_000 });
+      await expect(guest.getByTestId("friend-match-layout")).toHaveAttribute("data-connection-status", /^(connected|polling)$/i, { timeout: 20_000 });
       await host.getByTestId("p2p-ready").click();
       await guest.getByTestId("p2p-ready").click();
 
@@ -118,7 +118,7 @@ test.describe("live P2P friend match", () => {
       expect(await guest.getByTestId("p2p-private-hand").textContent()).not.toContain(hostCards.join(" "));
 
       await host.reload({ waitUntil: "load" });
-      await expect(host.getByText(/^(connected|polling)$/i)).toBeVisible({ timeout: 20_000 });
+      await expect(host.getByTestId("friend-match-layout")).toHaveAttribute("data-connection-status", /^(connected|polling)$/i, { timeout: 20_000 });
       expect(await privateCards(host)).toEqual(hostCards);
       const geometry = await host.evaluate(() => ({
         scrollWidth: document.documentElement.scrollWidth,

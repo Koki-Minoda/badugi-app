@@ -1,3 +1,5 @@
+import { useLanguage } from '../preferences/language.js';
+import LanguageSelect from '../preferences/LanguageSelect.jsx';
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { GAME_VARIANT_CATEGORIES } from "../../games/config/variantCatalog.js";
@@ -68,12 +70,12 @@ const MIXED_PRESET_JA = Object.freeze({
     description: "BadugiとNL 2-7 SDを加えた上位ミックスです。",
   },
   "mix-pro-dealers-choice": {
-    name: "Dealer's Choice Pro",
-    description: "禁止ゲーム設定を含む重み付きディーラーズチョイスです。",
+    name: "重み付きランダムMIX",
+    description: "種目ごとの出現しやすさを決めるランダムMIXです。",
   },
   "mix-pro-category": {
     name: "Category Rotation",
-    description: "カテゴリ単位でゲームプールを切り替えるディーラーズチョイスです。",
+    description: "選んだカテゴリから次の種目を抽選します。",
   },
 });
 
@@ -81,10 +83,6 @@ function localizeBettingLabel(value, language) {
   return BETTING_LABELS[language]?.[value] ?? value;
 }
 
-function readStoredLanguage() {
-  if (typeof window === "undefined") return MGX_DEFAULT_LOCALE;
-  return window.localStorage.getItem(LANGUAGE_STORAGE_KEY) ?? MGX_DEFAULT_LOCALE;
-}
 
 function localizeVariantProfile(profile, language) {
   if (!profile) return profile;
@@ -210,10 +208,12 @@ function VariantCard({ profile, onLaunch, copy }) {
 }
 
 export default function GameSelectorScreen({
-  language = readStoredLanguage(),
+  language: languageProp,
   onBack = null,
   onLaunchVariant = null,
 }) {
+  const sharedLanguage = useLanguage();
+  const language = languageProp ?? sharedLanguage;
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState(DEFAULT_CATEGORY);
   const [search, setSearch] = useState("");
@@ -254,11 +254,11 @@ export default function GameSelectorScreen({
           },
           multigame: {
             title: "Multi-Game Tournament",
-            description: "複数ゲーム対応MTTのプロトタイプロビーです。",
+            description: "3種目の順位点リレー、卓別MIX、決勝Dealer’s Choiceの大会をプレイします。",
           },
           dealersChoice: {
             title: "Dealer's Choice",
-            description: "次のゲームをルーレットで選ぶディーラーズチョイスを確認できます。",
+            description: "種目を選ぶかルーレットで決め、1ハンドずつ順番にプレイします。",
           },
         },
         categoryLabels: JA_CATEGORY_LABELS,
@@ -316,11 +316,11 @@ export default function GameSelectorScreen({
           },
           multigame: {
             title: "Multi-Game Tournament",
-            description: "Prototype lobby for multi-variant MTTs.",
+            description: "Play a three-event relay, table-by-table survival mix, or a championship with a Dealer’s Choice final.",
           },
           dealersChoice: {
             title: "Dealer's Choice",
-            description: "Preview the roulette animation that picks the next variant each hand.",
+            description: "Choose games directly or by roulette, then play one hand of each in order.",
           },
         },
         categoryLabels: EN_CATEGORY_LABELS,
@@ -431,7 +431,7 @@ export default function GameSelectorScreen({
       <header className="max-w-6xl mx-auto px-6 py-8 flex items-center justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.25em] text-emerald-300">{copy.eyebrow}</p>
-          <h1 className="text-3xl font-extrabold">{copy.title}</h1>
+          <h1 className="text-3xl font-extrabold">{copy.title}</h1><LanguageSelect />
           <p className="mt-2 max-w-2xl text-sm text-slate-300">{copy.description}</p>
         </div>
         <div className="flex gap-2">

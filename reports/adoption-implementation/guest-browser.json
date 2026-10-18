@@ -1,0 +1,242 @@
+[
+  {
+    "id": "nlh",
+    "variant": "nlh",
+    "done": true,
+    "actions": 4,
+    "overflow": false,
+    "errors": [],
+    "writes": [],
+    "statsUnchanged": true
+  },
+  {
+    "id": "flh",
+    "variant": "flh",
+    "done": true,
+    "actions": 4,
+    "overflow": false,
+    "errors": [],
+    "writes": [],
+    "statsUnchanged": true
+  },
+  {
+    "id": "badugi",
+    "variant": "badugi",
+    "done": true,
+    "actions": 8,
+    "overflow": false,
+    "errors": [],
+    "writes": [],
+    "statsUnchanged": true
+  },
+  {
+    "id": "plo",
+    "variant": "plo",
+    "done": true,
+    "actions": 4,
+    "overflow": false,
+    "errors": [],
+    "writes": [],
+    "statsUnchanged": true
+  },
+  {
+    "id": "plo8",
+    "variant": "plo8",
+    "done": true,
+    "actions": 4,
+    "overflow": false,
+    "errors": [],
+    "writes": [],
+    "statsUnchanged": true
+  },
+  {
+    "id": "flo8",
+    "variant": "flo8",
+    "done": true,
+    "actions": 4,
+    "overflow": false,
+    "errors": [],
+    "writes": [],
+    "statsUnchanged": true
+  },
+  {
+    "id": "big_o",
+    "variant": "big_o",
+    "done": true,
+    "actions": 4,
+    "overflow": false,
+    "errors": [],
+    "writes": [],
+    "statsUnchanged": true
+  },
+  {
+    "id": "five_card_plo",
+    "variant": "five_card_plo",
+    "done": true,
+    "actions": 4,
+    "overflow": false,
+    "errors": [],
+    "writes": [],
+    "statsUnchanged": true
+  },
+  {
+    "id": "S01",
+    "variant": "deuce_to_seven_single_draw",
+    "done": true,
+    "actions": 4,
+    "overflow": false,
+    "errors": [],
+    "writes": [],
+    "statsUnchanged": true
+  },
+  {
+    "id": "D01",
+    "variant": "deuce_to_seven_triple_draw",
+    "done": true,
+    "actions": 8,
+    "overflow": false,
+    "errors": [],
+    "writes": [],
+    "statsUnchanged": true
+  },
+  {
+    "id": "D02",
+    "variant": "ace_to_five_triple_draw",
+    "done": true,
+    "actions": 7,
+    "overflow": false,
+    "errors": [],
+    "writes": [],
+    "statsUnchanged": true
+  },
+  {
+    "id": "S02",
+    "variant": "ace_to_five_single_draw",
+    "done": true,
+    "actions": 3,
+    "overflow": false,
+    "errors": [],
+    "writes": [],
+    "statsUnchanged": true
+  },
+  {
+    "id": "stud",
+    "variant": "stud",
+    "done": true,
+    "actions": 5,
+    "overflow": false,
+    "errors": [],
+    "writes": [],
+    "statsUnchanged": true
+  },
+  {
+    "id": "stud8",
+    "variant": "stud8",
+    "done": true,
+    "actions": 5,
+    "overflow": false,
+    "errors": [],
+    "writes": [],
+    "statsUnchanged": true
+  },
+  {
+    "id": "razz",
+    "variant": "razz",
+    "done": true,
+    "actions": 5,
+    "overflow": false,
+    "errors": [],
+    "writes": [],
+    "statsUnchanged": true
+  },
+  {
+    "id": "razzdugi",
+    "variant": "razzdugi",
+    "done": true,
+    "actions": 5,
+    "overflow": false,
+    "errors": [],
+    "writes": [],
+    "statsUnchanged": true
+  },
+  {
+    "id": "razzducey",
+    "variant": "razzducey",
+    "done": true,
+    "actions": 5,
+    "overflow": false,
+    "errors": [],
+    "writes": [],
+    "statsUnchanged": true
+  },
+  {
+    "id": "razz27",
+    "variant": "razz27",
+    "done": true,
+    "actions": 5,
+    "overflow": false,
+    "errors": [],
+    "writes": [],
+    "statsUnchanged": true
+  },
+  {
+    "id": "dramaha_hi",
+    "variant": "dramaha_hi",
+    "done": true,
+    "actions": 5,
+    "overflow": false,
+    "errors": [],
+    "writes": [],
+    "statsUnchanged": true
+  },
+  {
+    "id": "dramaha_27",
+    "variant": "dramaha_27",
+    "done": true,
+    "actions": 5,
+    "overflow": false,
+    "errors": [],
+    "writes": [],
+    "statsUnchanged": true
+  },
+  {
+    "id": "dramaha_a5",
+    "variant": "dramaha_a5",
+    "done": true,
+    "actions": 5,
+    "overflow": false,
+    "errors": [],
+    "writes": [],
+    "statsUnchanged": true
+  },
+  {
+    "id": "dramaha_zero",
+    "variant": "dramaha_zero",
+    "done": true,
+    "actions": 5,
+    "overflow": false,
+    "errors": [],
+    "writes": [],
+    "statsUnchanged": true
+  },
+  {
+    "id": "dramaha_hidugi",
+    "variant": "dramaha_hidugi",
+    "done": true,
+    "actions": 5,
+    "overflow": false,
+    "errors": [],
+    "writes": [],
+    "statsUnchanged": true
+  },
+  {
+    "id": "dramaha_badugi",
+    "variant": "dramaha_badugi",
+    "done": true,
+    "actions": 5,
+    "overflow": false,
+    "errors": [],
+    "writes": [],
+    "statsUnchanged": true
+  }
+]

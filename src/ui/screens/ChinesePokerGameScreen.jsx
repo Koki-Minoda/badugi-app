@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import {TableCard} from "./layouts/MobileTableSeat.jsx";
+import "../../styles/mobile-table.css";
 import ChinesePokerController from "../../games/chinese/ChinesePokerController.js";
 import {
   persistChinesePokerHistory,
@@ -81,59 +83,10 @@ function getCopy(language) {
   return COPY[language] ?? COPY.en;
 }
 
-function parseCard(card) {
-  const raw = String(card ?? "");
-  const suit = raw.slice(-1);
-  const rank = raw.slice(0, -1);
-  return { rank, suit };
-}
-
-function suitSymbol(suit) {
-  return {
-    C: "♣",
-    D: "♦",
-    H: "♥",
-    S: "♠",
-  }[suit] ?? suit;
-}
-
-function suitClass(suit) {
-  if (suit === "D") return "text-blue-600";
-  if (suit === "H") return "text-red-500";
-  if (suit === "C") return "text-emerald-700";
-  return "text-slate-900";
-}
-
-function cardLabel(card) {
-  const { rank, suit } = parseCard(card);
-  return `${rank}${suitSymbol(suit)}`;
-}
-
 function Card({ card, selected = false, onClick = null }) {
-  const { rank, suit } = parseCard(card);
-  const clickable = typeof onClick === "function";
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={!clickable}
-      className={`flex h-16 w-11 shrink-0 flex-col justify-between rounded-lg border bg-slate-50 px-1.5 py-1 text-left font-bold shadow ${
-        selected ? "border-amber-300 ring-2 ring-amber-300" : "border-slate-300"
-      } ${clickable ? "cursor-pointer hover:-translate-y-0.5" : "cursor-default"}`}
-      aria-label={cardLabel(card)}
-      data-testid={`chinese-card-${card}`}
-    >
-      <span className={`text-sm leading-none ${suitClass(suit)}`}>{rank}</span>
-      <span className={`self-end text-lg leading-none ${suitClass(suit)}`}>{suitSymbol(suit)}</span>
-    </button>
-  );
+  return <TableCard card={card} selected={selected} onClick={onClick} testId={`chinese-card-${card}`} />;
 }
-
-function BackCard() {
-  return (
-    <div className="h-16 w-11 shrink-0 rounded-lg border border-amber-400/70 bg-slate-950 bg-[radial-gradient(circle_at_center,#d6a800_0_12%,transparent_13%)] shadow" />
-  );
-}
+function BackCard() { return <TableCard hidden />; }
 
 function scoreName(evaluation, rowKey) {
   return evaluation?.[rowKey]?.handName ?? "-";
@@ -230,7 +183,7 @@ function ResultPanel({ snapshot, copy, completedHistory, replayAudit }) {
   );
 }
 
-export default function ChinesePokerGameScreen({ language = "ja", onBack = null }) {
+export default function ChinesePokerGameScreen({ language = "ja", onBack = null, guest = false }) {
   const copy = getCopy(language);
   const [controllerState] = useState(() => {
     const controller = new ChinesePokerController({ seats: DEFAULT_SEATS });
@@ -300,7 +253,7 @@ export default function ChinesePokerGameScreen({ language = "ja", onBack = null 
       const result = controller.resolveShowdown();
       const history = controller.getHandHistory();
       const audit = replayChinesePokerHistory(history);
-      persistChinesePokerHistory(history);
+      if (!guest) persistChinesePokerHistory(history);
       setCompletedHistory(history);
       setReplayAudit(audit);
       refresh(result);
@@ -312,11 +265,12 @@ export default function ChinesePokerGameScreen({ language = "ja", onBack = null 
   const handleNextHand = () => {
     setCompletedHistory(null);
     setReplayAudit(null);
+    if (guest) { onBack?.(); return; }
     refresh(controller.nextHand());
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 px-4 py-5 text-slate-100 sm:px-6" data-testid="chinese-poker-screen">
+    <div className="mgx-arrange-page min-h-screen bg-slate-950 px-4 pb-28 pt-5 text-slate-100 sm:px-6" data-testid="chinese-poker-screen">
       <header className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">MGX / Chinese</p>
@@ -351,9 +305,7 @@ export default function ChinesePokerGameScreen({ language = "ja", onBack = null 
                 {copy.clear}
               </button>
               {snapshot.phase === "showdown" ? (
-                <button type="button" onClick={handleNextHand} className="rounded-xl bg-amber-400 px-4 py-2 text-sm font-bold text-slate-950" data-testid="chinese-next-hand">
-                  {copy.next}
-                </button>
+                <span className="px-4 py-2 text-sm font-bold text-emerald-200">{copy.results}</span>
               ) : (
                 <button
                   type="button"
@@ -443,6 +395,10 @@ export default function ChinesePokerGameScreen({ language = "ja", onBack = null 
           )}
         </aside>
       </main>
+      {snapshot.phase === "showdown" && <footer className="fixed inset-x-0 bottom-0 z-20 flex flex-wrap items-center justify-center gap-3 border-t border-emerald-300/30 bg-slate-950/95 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-2 backdrop-blur">
+        <p role="status" data-testid="chinese-result-summary" className="font-bold text-emerald-100">{hero?.name ?? "You"}: {snapshot.results.totals[hero?.id] > 0 ? '+' : ''}{snapshot.results.totals[hero?.id]} · {hero?.evaluation?.foul ? copy.foul : copy.results}</p>
+        <button type="button" onClick={handleNextHand} className="min-h-11 rounded-xl bg-amber-400 px-6 py-2 text-sm font-bold text-slate-950" data-testid="chinese-next-hand">{copy.next}</button>
+      </footer>}
     </div>
   );
 }

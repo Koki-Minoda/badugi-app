@@ -15,6 +15,13 @@ describe("layoutGroups", () => {
   });
 
   it.each([
+    ["Badeucey TD", "D04"],
+    ["Badacey TD", "D05"],
+    ["Hidugi TD", "D06"],
+    ["Archie TD", "D07"],
+    ["Badeucey SD", "S05"],
+    ["Badacey SD", "S06"],
+    ["Hidugi SD", "S07"],
     ["A-5TD", "D02"],
     ["2-7TD", "D01"],
     ["A-5SD", "S02"],

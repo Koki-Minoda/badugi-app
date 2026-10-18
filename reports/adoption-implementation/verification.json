@@ -1,0 +1,123 @@
+{
+  "baseline": "203fe5f",
+  "checkedAt": "2026-09-20T07:37:33.660648+00:00",
+  "unitTests": {
+    "filesPassed": 415,
+    "testsPassed": 2560,
+    "skipped": 1,
+    "log": "frontend-tests.txt"
+  },
+  "backend": {
+    "testsPassed": 49,
+    "log": "backend-tests.txt"
+  },
+  "ui": {
+    "screensPassed": 104,
+    "browsers": [
+      "Chromium",
+      "WebKit"
+    ],
+    "languages": [
+      "ja",
+      "en"
+    ],
+    "viewports": [
+      "390x844",
+      "844x390"
+    ],
+    "selectMinimumHeight": 44
+  },
+  "guest": {
+    "variantsCompleted": 26,
+    "statsUnchanged": true,
+    "apiWrites": 0
+  },
+  "friends": [
+    {
+      "variant": "badugi",
+      "seats": 2,
+      "steps": 14,
+      "reconnected": true,
+      "errors": [],
+      "phases": [
+        "bet_0",
+        "draw_1",
+        "bet_1",
+        "draw_2",
+        "bet_2",
+        "draw_3",
+        "bet_3",
+        "showdown"
+      ]
+    },
+    {
+      "variant": "ace_to_five_triple_draw",
+      "seats": 3,
+      "steps": 21,
+      "reconnected": true,
+      "errors": [],
+      "phases": [
+        "bet_0",
+        "draw_1",
+        "bet_1",
+        "draw_2",
+        "bet_2",
+        "draw_3",
+        "bet_3",
+        "showdown"
+      ]
+    },
+    {
+      "variant": "deuce_to_seven_triple_draw",
+      "seats": 6,
+      "steps": 42,
+      "reconnected": true,
+      "errors": [],
+      "phases": [
+        "bet_0",
+        "draw_1",
+        "bet_1",
+        "draw_2",
+        "bet_2",
+        "draw_3",
+        "bet_3",
+        "showdown"
+      ]
+    }
+  ],
+  "singleDrawNoLimit": {
+    "engine": "WebKit",
+    "handsCompleted": 10,
+    "explicitSizingActions": 2,
+    "historyRecords": 10,
+    "cashOut": true
+  },
+  "customTournament": {
+    "customPracticeStart": true,
+    "startingStack": 1500,
+    "minutes": 7,
+    "entryFee": 0,
+    "deadlinePreserved": true,
+    "errors": []
+  },
+  "runtimeDependencyAudit": {
+    "vulnerabilities": 0
+  },
+  "physicalDevice": {
+    "state": "not_connected",
+    "error": "Device is not connected",
+    "simulatorResultsAreNotPhysicalResults": true,
+    "usbDevices": []
+  },
+  "deployment": "not_deployed",
+  "finalTargetedTests": {
+    "filesPassed": 7,
+    "testsPassed": 72
+  },
+  "staticChecks": {
+    "errors": 0,
+    "warnings": 0,
+    "diffWhitespace": "passed",
+    "build": "passed"
+  }
+}

@@ -1,3 +1,4 @@
+import { visibleHeroActions } from "./helpers/visibleHeroActions";
 import fs from "node:fs";
 import path from "node:path";
 import { expect, test, type Browser, type Page } from "@playwright/test";
@@ -31,6 +32,7 @@ const deviceFilter = new Set(
     .filter(Boolean),
 );
 const RELEASE_CANDIDATE_VARIANTS = [
+  { variant: "flh", displayName: "Fixed-Limit Holdem", initialCardCount: 2 },
   { variant: "plo", displayName: "Pot-Limit Omaha", initialCardCount: 4 },
   { variant: "plo8", displayName: "PLO8", initialCardCount: 4 },
   { variant: "flo8", displayName: "FLO8", initialCardCount: 4 },
@@ -65,6 +67,8 @@ const requestedReleaseCandidates = variantFilter.size === 0
     );
 const selectedVariants = [...publicVariants, ...requestedReleaseCandidates];
 const VARIABLE_BETTING_VARIANTS = new Set([
+  "S01",
+  "deuce_to_seven_single_draw",
   "nlh",
   "super_holdem",
   "plo",
@@ -80,30 +84,13 @@ function writeReport(fileName: string, value: unknown) {
   fs.writeFileSync(path.join(REPORT_DIR, fileName), `${JSON.stringify(value, null, 2)}\n`);
 }
 
-async function visibleHeroActions(page: Page) {
-  const ids = [
-    "action-check",
-    "action-call",
-    "action-raise",
-    "action-fold",
-    "action-draw-selected",
-  ];
-  const visible: string[] = [];
-  for (const id of ids) {
-    const button = page.getByTestId(id).first();
-    if (
-      (await button.count()) > 0 &&
-      (await button.isVisible().catch(() => false)) &&
-      (await button.isEnabled().catch(() => false))
-    ) {
-      visible.push(id);
-    }
-  }
-  return visible;
-}
-
 async function visibleLayoutIssues(page: Page) {
   return page.evaluate(() => {
+    // A CPU action can complete the hand between the driver's terminal check
+    // and this DOM snapshot. The result modal intentionally covers the table;
+    // only audit live controls while that modal is absent.
+    const result = document.querySelector('[data-testid="hand-result-overlay"]') as HTMLElement | null;
+    if (result && result.getClientRects().length && getComputedStyle(result).visibility !== 'hidden') return [];
     const viewport = window.visualViewport ?? {
       width: window.innerWidth,
       height: window.innerHeight,
@@ -297,6 +284,10 @@ async function playOneRealButtonHand(
       sizingActions += 1;
     }
     await page.getByTestId(target).first().click({ timeout: 5_000 });
+    if (target === 'action-raise' && await page.getByTestId('bet-amount-sheet').isVisible()) {
+      await page.getByTestId('bet-amount-confirm').click();
+      sizingActions += 1;
+    }
     heroButtonClicks += 1;
     steps += 1;
     await page.waitForTimeout(100);

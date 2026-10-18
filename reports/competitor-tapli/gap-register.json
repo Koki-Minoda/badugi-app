@@ -1,0 +1,1726 @@
+{
+  "schema": "mgx-competitor-gap-register/v1",
+  "asOf": "2026-09-20",
+  "baselineCommit": "a44479e9047f48346a9eaba8d7138a3ce1110f61",
+  "scope": "公開UI・公式説明・MGXコードの比較。未実装は探索範囲内。",
+  "items": [
+    {
+      "id": "G001",
+      "category": "入口",
+      "feature": "通常CPU対局を登録なしで体験",
+      "tapliSources": [
+        "T04"
+      ],
+      "mgxSources": [
+        "M06",
+        "M07"
+      ],
+      "status": "部分実装",
+      "priority": "P1",
+      "effort": "M",
+      "decision": "先行採用",
+      "assessment": "3種の手札指定練習はゲスト利用可能。通常37種の導線は認証。公開種目の短い体験→任意登録を追加",
+      "doneWhen": "未ログインで公開種目1ハンドを完了、登録時に練習履歴を引継げる",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G002",
+      "category": "入口",
+      "feature": "Google/Appleでのログイン",
+      "tapliSources": [
+        "T13"
+      ],
+      "mgxSources": [
+        "M17"
+      ],
+      "status": "未実装",
+      "priority": "P2",
+      "effort": "L",
+      "decision": "条件付き採用",
+      "assessment": "Tapliは2種のログインボタン。MGXはメール方式。ゲスト導線の次に検討",
+      "doneWhen": "既存アカウントの重複・連携・復帰まで確認",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G003",
+      "category": "入口",
+      "feature": "単種とMIXを分けた練習入口",
+      "tapliSources": [
+        "T03"
+      ],
+      "mgxSources": [
+        "M14",
+        "M20"
+      ],
+      "status": "既存",
+      "priority": "維持",
+      "effort": "S",
+      "decision": "維持",
+      "assessment": "MGXにも種目一覧/MIX/学習入口あり。追加画面より分かりやすい名称へ整理",
+      "doneWhen": "初回利用者が単種かMIXか迷わず選べる",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G004",
+      "category": "入口",
+      "feature": "公開更新履歴と告知",
+      "tapliSources": [
+        "T01"
+      ],
+      "mgxSources": [
+        "M14"
+      ],
+      "status": "未実装",
+      "priority": "P2",
+      "effort": "S",
+      "decision": "条件付き採用",
+      "assessment": "コード内の履歴だけでなく利用者に改善と開催情報を表示",
+      "doneWhen": "日付・変更内容・既読管理を小さな画面で提供",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G005",
+      "category": "入口",
+      "feature": "友人に渡す招待QR",
+      "tapliSources": [
+        "T01",
+        "T13"
+      ],
+      "mgxSources": [
+        "M19"
+      ],
+      "status": "部分実装",
+      "priority": "P1",
+      "effort": "S",
+      "decision": "先行採用",
+      "assessment": "共有URLとコピーは既存。QR表示を追加すると同じ場所で渡しやすい",
+      "doneWhen": "部屋URLを別端末で読める、期限切れも説明する",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G006",
+      "category": "MIX",
+      "feature": "HORSE/8/10の定義整合",
+      "tapliSources": [
+        "T03",
+        "T19",
+        "T20",
+        "T21"
+      ],
+      "mgxSources": [
+        "M03",
+        "M04",
+        "M02"
+      ],
+      "status": "品質差",
+      "priority": "P0",
+      "effort": "M",
+      "decision": "先行採用",
+      "assessment": "Pro側はB06=PLO8、学習側はB09=FLO8。標準MIXと独自MIXを区別して定義を共通化",
+      "doneWhen": "構成/ベット形式/順番の期待値を検査し全入口で一致",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G007",
+      "category": "MIX",
+      "feature": "NL 2−7 Single Draw",
+      "tapliSources": [
+        "T02"
+      ],
+      "mgxSources": [
+        "M02",
+        "M18",
+        "M03"
+      ],
+      "status": "部分実装",
+      "priority": "P0",
+      "effort": "L",
+      "decision": "先行採用",
+      "assessment": "MGX S01は固定リミット実装。NL表記の10-Gameと不整合。表示だけの変更では足りない",
+      "doneWhen": "NL合法レイズ・最小レイズ・短いall-in・再開権・精算を検証",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G008",
+      "category": "MIX",
+      "feature": "FLHを通常公開へ",
+      "tapliSources": [
+        "T02",
+        "T03"
+      ],
+      "mgxSources": [
+        "M01",
+        "M04"
+      ],
+      "status": "部分実装",
+      "priority": "P1",
+      "effort": "M",
+      "decision": "先行採用",
+      "assessment": "FLHはpreview。HORSE/8-Game全体験のボトルネック",
+      "doneWhen": "既存公開条件の長期進行/履歴/モバイルを通して公開",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G009",
+      "category": "MIX",
+      "feature": "Badacey/Badeucey/Archie/Hidugiを通常公開へ",
+      "tapliSources": [
+        "T02"
+      ],
+      "mgxSources": [
+        "M01"
+      ],
+      "status": "部分実装",
+      "priority": "P1",
+      "effort": "L",
+      "decision": "先行採用",
+      "assessment": "実装済みpreview4種を新規珍種より先に仕上げる",
+      "doneWhen": "分割・クオリファイ・同点・端数・再生を確認し公開",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G010",
+      "category": "MIX",
+      "feature": "Triple Stud/TORSE等の定番プリセット",
+      "tapliSources": [
+        "T03"
+      ],
+      "mgxSources": [
+        "M03",
+        "M05"
+      ],
+      "status": "部分実装",
+      "priority": "P1",
+      "effort": "S",
+      "decision": "先行採用",
+      "assessment": "手動構成は可能。名前付きの定番と構成説明が薄い",
+      "doneWhen": "対応済み種のみを使い構成とルールを明示",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G011",
+      "category": "MIX",
+      "feature": "全111種と比べた種目幅",
+      "tapliSources": [
+        "T02"
+      ],
+      "mgxSources": [
+        "M01",
+        "M02"
+      ],
+      "status": "部分実装",
+      "priority": "P2",
+      "effort": "XL",
+      "decision": "条件付き採用",
+      "assessment": "MGX37種を公開25/preview12に分け、111行の別表で個別比較。単純74種差とはしない",
+      "doneWhen": "追加は需要/既存部品/ルール検証可能性で選別",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G012",
+      "category": "MIX",
+      "feature": "プレイヤーがその場で選ぶDC",
+      "tapliSources": [
+        "T03",
+        "T06"
+      ],
+      "mgxSources": [
+        "M05"
+      ],
+      "status": "部分実装",
+      "priority": "P2",
+      "effort": "L",
+      "decision": "条件付き採用",
+      "assessment": "加重抽選やキューはあるが、担当者へ選択権を渡すDCとは違う",
+      "doneWhen": "選択者・候補・期限・キャンセル・次の選択者が一意",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G013",
+      "category": "MIX",
+      "feature": "周回に追随する種目切替",
+      "tapliSources": [
+        "T03"
+      ],
+      "mgxSources": [
+        "M05"
+      ],
+      "status": "部分実装",
+      "priority": "P2",
+      "effort": "M",
+      "decision": "条件付き採用",
+      "assessment": "MGXはハンド数基準。人数が変わる卓の一周と区別",
+      "doneWhen": "空席/途中参加時を含め周回境界を検証",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G014",
+      "category": "MIX",
+      "feature": "毎ハンド順次切替",
+      "tapliSources": [
+        "T03"
+      ],
+      "mgxSources": [
+        "M05"
+      ],
+      "status": "既存",
+      "priority": "維持",
+      "effort": "S",
+      "decision": "維持",
+      "assessment": "handsPerGame=1とFIXEDで基礎は既存。分かりやすいプリセット化は可能",
+      "doneWhen": "順序と次種目の案内が一致",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G015",
+      "category": "MIX",
+      "feature": "プリセット共有URL/QR・取込",
+      "tapliSources": [
+        "T01",
+        "T12"
+      ],
+      "mgxSources": [
+        "M05",
+        "M06"
+      ],
+      "status": "部分実装",
+      "priority": "P1",
+      "effort": "M",
+      "decision": "先行採用",
+      "assessment": "MIXは端末保存。手札練習URLとは別に構成の持ち運びを追加",
+      "doneWhen": "バージョン/未対応種/重複/公開外種を検証して安全に取込",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G016",
+      "category": "MIX",
+      "feature": "MIXプリセットのアカウント同期",
+      "tapliSources": [
+        "T12"
+      ],
+      "mgxSources": [
+        "M05"
+      ],
+      "status": "未実装",
+      "priority": "P2",
+      "effort": "L",
+      "decision": "条件付き採用",
+      "assessment": "Tapliのビルダーは端末間保存を説明。MGXのMIX構成に同等の利用導線を確認できず",
+      "doneWhen": "別端末で再現、競合時に上書き消失しない",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G017",
+      "category": "MIX",
+      "feature": "Pick’em方式の対局",
+      "tapliSources": [
+        "T03",
+        "T08"
+      ],
+      "mgxSources": [
+        "M05"
+      ],
+      "status": "未実装",
+      "priority": "P3",
+      "effort": "XL",
+      "decision": "条件付き採用",
+      "assessment": "配牌から種目選択する独自進行は既存DCより大きな変更。標準種目を優先",
+      "doneWhen": "配牌保持/選択権/カード再配布/秘匿の仕様から設計",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G018",
+      "category": "MIX",
+      "feature": "手札から種目候補を提案",
+      "tapliSources": [
+        "T08"
+      ],
+      "mgxSources": [
+        "M06",
+        "M04"
+      ],
+      "status": "未実装",
+      "priority": "P2",
+      "effort": "M",
+      "decision": "条件付き採用",
+      "assessment": "候補と理由をルールベースで説明する学習ツールとして採用候補",
+      "doneWhen": "推奨理由と対象種目を表示しEV最適とは表現しない",
+      "solver": "不要（レビュー品質/推奨精度の保証は別評価）",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G019",
+      "category": "MIX",
+      "feature": "ユーザー独自ゲームビルダー",
+      "tapliSources": [
+        "T12",
+        "T01"
+      ],
+      "mgxSources": [
+        "M02"
+      ],
+      "status": "未実装",
+      "priority": "P3",
+      "effort": "XL",
+      "decision": "見送り",
+      "assessment": "追加評価軸や進行の組合せを安全に許す基盤が必要。現時点は見送り",
+      "doneWhen": "無効ルール・資金保存則・再生互換の検証機構が前提",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G020",
+      "category": "練習",
+      "feature": "全席を自分で操作",
+      "tapliSources": [
+        "T03",
+        "T05"
+      ],
+      "mgxSources": [
+        "M07"
+      ],
+      "status": "部分実装",
+      "priority": "P1",
+      "effort": "L",
+      "decision": "先行採用",
+      "assessment": "席のHuman設定はあるがHero中心のUI。1人が各席を切替える学習モードへ統合",
+      "doneWhen": "各席の手番・手札・ドロー選択が正しく切替、対人モードへ混入しない",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G021",
+      "category": "練習",
+      "feature": "CPUが降りないモード",
+      "tapliSources": [
+        "T05"
+      ],
+      "mgxSources": [
+        "M07"
+      ],
+      "status": "未実装",
+      "priority": "P1",
+      "effort": "M",
+      "decision": "先行採用",
+      "assessment": "最後まで役比較を練習できる。通常CPUの成績とは分離",
+      "doneWhen": "全参加者がショーダウンへ進める、練習条件を常時表示",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G022",
+      "category": "練習",
+      "feature": "CPUの進行速度設定",
+      "tapliSources": [
+        "T05"
+      ],
+      "mgxSources": [
+        "M07"
+      ],
+      "status": "未実装",
+      "priority": "P1",
+      "effort": "S",
+      "decision": "先行採用",
+      "assessment": "待機時間の内部実装と利用者の速度切替は別。標準/速いを提供",
+      "doneWhen": "連打/画面復帰でも重複アクションなし",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G023",
+      "category": "練習",
+      "feature": "制限時間ON/OFF",
+      "tapliSources": [
+        "T05"
+      ],
+      "mgxSources": [
+        "M07"
+      ],
+      "status": "要確認",
+      "priority": "P2",
+      "effort": "M",
+      "decision": "追加確認",
+      "assessment": "Tapliは設定で切替。MGX全経路での時間切れ仕様は今回追跡未完。まず整理",
+      "doneWhen": "学習無制限と対人のサーバー期限を混同しない",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G024",
+      "category": "練習",
+      "feature": "毎ハンド同じスタックへ戻す",
+      "tapliSources": [
+        "T04"
+      ],
+      "mgxSources": [
+        "M06",
+        "M07"
+      ],
+      "status": "部分実装",
+      "priority": "P1",
+      "effort": "M",
+      "decision": "先行採用",
+      "assessment": "3種の配牌練習は毎回2000点。通常種目にも練習用スタック固定を展開",
+      "doneWhen": "チップ収支と練習記録を区別、履歴に初期条件保存",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G025",
+      "category": "練習",
+      "feature": "練習中に全員の手札を表示",
+      "tapliSources": [
+        "T05",
+        "T06"
+      ],
+      "mgxSources": [
+        "M07"
+      ],
+      "status": "部分実装",
+      "priority": "P2",
+      "effort": "M",
+      "decision": "条件付き採用",
+      "assessment": "CPUの開示や終了時表示と常時公開練習は別。学習専用設定を整理",
+      "doneWhen": "対人では非公開手札をサーバーから送らない",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G026",
+      "category": "練習",
+      "feature": "常に自分がDCを選ぶ",
+      "tapliSources": [
+        "T01",
+        "T06"
+      ],
+      "mgxSources": [
+        "M05"
+      ],
+      "status": "未実装",
+      "priority": "P2",
+      "effort": "M",
+      "decision": "条件付き採用",
+      "assessment": "固定ポジションと選択権は別。実DC実装後に練習オプション化",
+      "doneWhen": "ボタン位置とは独立して選択者を制御",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G027",
+      "category": "練習",
+      "feature": "UTGなどポジション固定練習",
+      "tapliSources": [
+        "T06"
+      ],
+      "mgxSources": [
+        "M06",
+        "M07"
+      ],
+      "status": "部分実装",
+      "priority": "P2",
+      "effort": "M",
+      "decision": "条件付き採用",
+      "assessment": "席設定はあるが開始条件の反復パネルが不足。説明のみの競合根拠",
+      "doneWhen": "指定位置/人数/ブラインドから反復できる",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G028",
+      "category": "練習",
+      "feature": "人数を選ぶ簡単な入口",
+      "tapliSources": [
+        "T05"
+      ],
+      "mgxSources": [
+        "M07"
+      ],
+      "status": "部分実装",
+      "priority": "P2",
+      "effort": "M",
+      "decision": "条件付き採用",
+      "assessment": "MGXは6席と空席設定。Tapliは6/7選択。7人より先にHU/3/6を明示",
+      "doneWhen": "人数変更で行動順・山札不足・座席配置を確認",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G029",
+      "category": "練習",
+      "feature": "開始手札指定と繰返し",
+      "tapliSources": [
+        "T06"
+      ],
+      "mgxSources": [
+        "M06"
+      ],
+      "status": "既存",
+      "priority": "維持",
+      "effort": "S",
+      "decision": "維持",
+      "assessment": "MGXは3種で手札指定と復習から再練習あり。得意領域として維持",
+      "doneWhen": "既存の同一手札・シード条件を壊さない",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G030",
+      "category": "練習",
+      "feature": "配牌指定練習を全公開種へ",
+      "tapliSources": [
+        "T07"
+      ],
+      "mgxSources": [
+        "M06",
+        "M01"
+      ],
+      "status": "部分実装",
+      "priority": "P2",
+      "effort": "L",
+      "decision": "条件付き採用",
+      "assessment": "Tapliの自由カード入力を参考にNLH/Omaha/Studの状況入力へ拡張",
+      "doneWhen": "ボード/ストリート/重複カード/役の使用枚数を検証",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G031",
+      "category": "学習",
+      "feature": "全公開種の統一ルールカード",
+      "tapliSources": [
+        "T02",
+        "T06"
+      ],
+      "mgxSources": [
+        "M04",
+        "M01"
+      ],
+      "status": "部分実装",
+      "priority": "P1",
+      "effort": "M",
+      "decision": "先行採用",
+      "assessment": "共通の学習説明は13種。公開25種へまず網羅しpreviewも区別",
+      "doneWhen": "25種すべてに勝ち方・A・成立条件・使用枚数・ベット・手番を表示",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G032",
+      "category": "学習",
+      "feature": "分割ポットとクオリファイ図解",
+      "tapliSources": [
+        "T06",
+        "T07"
+      ],
+      "mgxSources": [
+        "M04",
+        "M11"
+      ],
+      "status": "部分実装",
+      "priority": "P1",
+      "effort": "M",
+      "decision": "先行採用",
+      "assessment": "MGXの短い説明を同点/ロー不成立/片側勝利の例まで増やす",
+      "doneWhen": "実エンジンの精算と例題の配分が一致",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G033",
+      "category": "学習",
+      "feature": "自由入力の役判定ツール",
+      "tapliSources": [
+        "T07"
+      ],
+      "mgxSources": [
+        "M14",
+        "M06"
+      ],
+      "status": "未実装",
+      "priority": "P1",
+      "effort": "M",
+      "decision": "先行採用",
+      "assessment": "既存評価器を対局外でも使えるようにする。ソルバー不要",
+      "doneWhen": "重複カード禁止、使用カード強調、Hi/Lo各判定、分配理由を表示",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G034",
+      "category": "学習",
+      "feature": "プレイ中の自分の役説明",
+      "tapliSources": [
+        "T06"
+      ],
+      "mgxSources": [
+        "M04",
+        "M07"
+      ],
+      "status": "部分実装",
+      "priority": "P1",
+      "effort": "M",
+      "decision": "先行採用",
+      "assessment": "各画面のヒントを共通の役説明へ揃える。長押しだけに依存しない",
+      "doneWhen": "タップとキーボードから開けて、隠れた相手カードを使わない",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G035",
+      "category": "学習",
+      "feature": "誤答からの復習・学習進捗",
+      "tapliSources": [
+        "T06"
+      ],
+      "mgxSources": [
+        "M04",
+        "M10"
+      ],
+      "status": "既存",
+      "priority": "維持",
+      "effort": "S",
+      "decision": "維持",
+      "assessment": "MGXにクイズと進捗、復習タグがある。競合の説明ページに合わせて削らない",
+      "doneWhen": "種目追加時にもクイズと進捗対象を連動",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G036",
+      "category": "学習",
+      "feature": "手札特徴で種目間を比較",
+      "tapliSources": [
+        "T08",
+        "T06"
+      ],
+      "mgxSources": [
+        "M04"
+      ],
+      "status": "部分実装",
+      "priority": "P2",
+      "effort": "M",
+      "decision": "条件付き採用",
+      "assessment": "ルール差の表示は既存。具体的な同じ手札の評価差を並べる",
+      "doneWhen": "A5/27/Badugiなどで差の理由を説明",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G037",
+      "category": "表示",
+      "feature": "bb換算表示の統一",
+      "tapliSources": [
+        "T04"
+      ],
+      "mgxSources": [
+        "M07"
+      ],
+      "status": "要確認",
+      "priority": "P1",
+      "effort": "M",
+      "decision": "追加確認",
+      "assessment": "Tapliの卓はbb表示。MGX全画面のchips/bb切替は今回同等実装を確認できず",
+      "doneWhen": "金額入力・ポット・スタック・履歴を同じ単位にし丸めで額を変えない",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G038",
+      "category": "表示",
+      "feature": "音と音量・消音",
+      "tapliSources": [
+        "T05",
+        "T16"
+      ],
+      "mgxSources": [
+        "M13",
+        "M07"
+      ],
+      "status": "未実装",
+      "priority": "P2",
+      "effort": "M",
+      "decision": "条件付き採用",
+      "assessment": "操作音/手番通知の利用者設定が見当たらない。自動再生制約も確認",
+      "doneWhen": "消音を記憶し背景復帰で重複音を鳴らさない",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G039",
+      "category": "表示",
+      "feature": "練習中のスリープ防止",
+      "tapliSources": [
+        "T05"
+      ],
+      "mgxSources": [
+        "M13",
+        "M07"
+      ],
+      "status": "未実装",
+      "priority": "P1",
+      "effort": "S",
+      "decision": "先行採用",
+      "assessment": "長考やリアル卓ツールに有効。端末が対応する時のみ希望者に提供",
+      "doneWhen": "画面復帰時の再取得と解除、非対応表示を確認",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G040",
+      "category": "表示",
+      "feature": "表示スケール調整",
+      "tapliSources": [
+        "T05"
+      ],
+      "mgxSources": [
+        "M13",
+        "M15"
+      ],
+      "status": "未実装",
+      "priority": "P2",
+      "effort": "M",
+      "decision": "条件付き採用",
+      "assessment": "文字を小さくして詰める解決策は避ける。まず操作領域維持と文字拡大",
+      "doneWhen": "小型画面・拡大文字でも入力欄/確定ボタンを操作可能",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G041",
+      "category": "表示",
+      "feature": "ライト/ダーク切替",
+      "tapliSources": [
+        "T05"
+      ],
+      "mgxSources": [
+        "M13"
+      ],
+      "status": "未実装",
+      "priority": "P3",
+      "effort": "M",
+      "decision": "条件付き採用",
+      "assessment": "見やすさ改善だが既存の緑卓・フェーズ色の意味を優先",
+      "doneWhen": "両テーマで文字コントラストとドロー表示を保つ",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G042",
+      "category": "表示",
+      "feature": "配信向け匿名化",
+      "tapliSources": [
+        "T05",
+        "T06"
+      ],
+      "mgxSources": [
+        "M13",
+        "M19"
+      ],
+      "status": "未実装",
+      "priority": "P2",
+      "effort": "M",
+      "decision": "条件付き採用",
+      "assessment": "名前/アバター/招待コードを隠すモード。装飾色変更より優先",
+      "doneWhen": "履歴/通知/画面遷移でも個人情報が再表示されない",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G043",
+      "category": "表示",
+      "feature": "自動整列のON/OFF・手動並替",
+      "tapliSources": [
+        "T06"
+      ],
+      "mgxSources": [
+        "M16"
+      ],
+      "status": "部分実装",
+      "priority": "P2",
+      "effort": "M",
+      "decision": "条件付き採用",
+      "assessment": "種目別自動ソートは既存。任意順で覚えたい利用者向けに選択肢",
+      "doneWhen": "表示順を変えても交換対象のカードIDがずれない",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G044",
+      "category": "表示",
+      "feature": "次の手番だけAuto Fold",
+      "tapliSources": [
+        "T06"
+      ],
+      "mgxSources": [
+        "M07"
+      ],
+      "status": "未実装",
+      "priority": "P3",
+      "effort": "M",
+      "decision": "条件付き採用",
+      "assessment": "対人の時短向け。まず誤操作しない明示操作を優先",
+      "doneWhen": "チェック可能時・次ストリート・復帰時の解除条件を明示",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G045",
+      "category": "表示",
+      "feature": "丸卓と対局UIの統一",
+      "tapliSources": [
+        "T04"
+      ],
+      "mgxSources": [
+        "M15",
+        "M19"
+      ],
+      "status": "部分実装",
+      "priority": "P1",
+      "effort": "M",
+      "decision": "先行採用",
+      "assessment": "CPU卓は改善済み。対人専用画面も同じ座席/手札/操作体系へ揃える",
+      "doneWhen": "CPU・対人・種目切替で同じ操作位置、金額入力領域を維持",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G046",
+      "category": "表示",
+      "feature": "縦横・拡大・実機の品質確認",
+      "tapliSources": [
+        "T04",
+        "T06"
+      ],
+      "mgxSources": [
+        "M15"
+      ],
+      "status": "要確認",
+      "priority": "P0",
+      "effort": "M",
+      "decision": "追加確認",
+      "assessment": "競合の方が品質が高いとは未検証。MGX最新丸卓の実機横/PWA未確認を別課題として残す",
+      "doneWhen": "実機横で入力/交換/確定/結果を操作し証跡、ホーム起動を確認",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G047",
+      "category": "履歴",
+      "feature": "再生・ブックマーク・JSON出力",
+      "tapliSources": [
+        "T01",
+        "T06"
+      ],
+      "mgxSources": [
+        "M10",
+        "M11"
+      ],
+      "status": "既存",
+      "priority": "維持",
+      "effort": "S",
+      "decision": "維持",
+      "assessment": "MGXにも既存。Tapliゲスト実プレイ後は履歴0件だったため、競合の保存成功は未確認",
+      "doneWhen": "既存のexact replayと長期保持を維持",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G048",
+      "category": "履歴",
+      "feature": "匿名化したハンド共有",
+      "tapliSources": [
+        "T01",
+        "T06"
+      ],
+      "mgxSources": [
+        "M10",
+        "M11"
+      ],
+      "status": "部分実装",
+      "priority": "P1",
+      "effort": "M",
+      "decision": "先行採用",
+      "assessment": "JSON保存や開始手札URLはある。閲覧しやすい読取専用共有/画像を追加",
+      "doneWhen": "他者の伏せ札・名前・トークンを除外、公開前プレビュー",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G049",
+      "category": "履歴",
+      "feature": "ブックマーク・メモの端末間同期",
+      "tapliSources": [
+        "T01",
+        "T12"
+      ],
+      "mgxSources": [
+        "M10"
+      ],
+      "status": "部分実装",
+      "priority": "P2",
+      "effort": "L",
+      "decision": "条件付き採用",
+      "assessment": "MGX復習は端末内。Tapliのこの具体的な同期範囲は未確認、MGX独自改善案",
+      "doneWhen": "競合調査に依存せずユーザー単位の復旧/競合解消を設計",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G050",
+      "category": "履歴",
+      "feature": "ストリートごとのAIレビュー",
+      "tapliSources": [
+        "T01",
+        "T06"
+      ],
+      "mgxSources": [
+        "M11"
+      ],
+      "status": "部分実装",
+      "priority": "P2",
+      "effort": "L",
+      "decision": "条件付き採用",
+      "assessment": "MGXにもAIフィードバック導線あり。対象ハンド/場面との結び付きを比較検証",
+      "doneWhen": "根拠となる局面を指し示し、ソルバー未使用の助言をGTOと呼ばない",
+      "solver": "不要（レビュー品質/推奨精度の保証は別評価）",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G051",
+      "category": "履歴",
+      "feature": "VPIP/PFRなど自分の統計",
+      "tapliSources": [
+        "T06"
+      ],
+      "mgxSources": [
+        "M13",
+        "M11"
+      ],
+      "status": "既存",
+      "priority": "維持",
+      "effort": "S",
+      "decision": "維持",
+      "assessment": "基本指標はMGX既存。欠落として数えない",
+      "doneWhen": "分母/期間/モードを明示して継続",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G052",
+      "category": "履歴",
+      "feature": "卓内プレイヤーの統計カード",
+      "tapliSources": [
+        "T01"
+      ],
+      "mgxSources": [
+        "M13",
+        "M07"
+      ],
+      "status": "部分実装",
+      "priority": "P2",
+      "effort": "M",
+      "decision": "条件付き採用",
+      "assessment": "HUDの基盤あり。競合はアイコンから統計を開くと履歴に記載",
+      "doneWhen": "自分の観測範囲と公式集計を区別、サンプル数を表示",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G053",
+      "category": "対人",
+      "feature": "多種目の友人対戦",
+      "tapliSources": [
+        "T06"
+      ],
+      "mgxSources": [
+        "M08"
+      ],
+      "status": "部分実装",
+      "priority": "P2",
+      "effort": "XL",
+      "decision": "条件付き採用",
+      "assessment": "Badugi限定APIをゲーム共通の権威サーバーへ拡張。UIだけでは実現しない",
+      "doneWhen": "各種目で合法手/伏せ札/再接続/精算/履歴を2クライアント確認",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G054",
+      "category": "対人",
+      "feature": "3〜6人の同時対戦",
+      "tapliSources": [
+        "T06"
+      ],
+      "mgxSources": [
+        "M09"
+      ],
+      "status": "部分実装",
+      "priority": "P2",
+      "effort": "XL",
+      "decision": "条件付き採用",
+      "assessment": "現在2人固定。多人数で待機・途中離席・サイドポットも変わる",
+      "doneWhen": "6クライアントと切断者を含む進行/精算/復帰を検証",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G055",
+      "category": "対人",
+      "feature": "公開ロビーとすぐ参加",
+      "tapliSources": [
+        "T01",
+        "T06"
+      ],
+      "mgxSources": [
+        "M08",
+        "M14"
+      ],
+      "status": "未実装",
+      "priority": "P3",
+      "effort": "XL",
+      "decision": "条件付き採用",
+      "assessment": "入口は競合の強み。ただし利用者が分散すると待つ。まず時間限定の同卓募集",
+      "doneWhen": "空卓/満卓/重複着席/マッチ中切断を定義",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G056",
+      "category": "対人",
+      "feature": "PINで部屋を保護",
+      "tapliSources": [
+        "T06"
+      ],
+      "mgxSources": [
+        "M08",
+        "M19"
+      ],
+      "status": "部分実装",
+      "priority": "P2",
+      "effort": "M",
+      "decision": "条件付き採用",
+      "assessment": "ルームコード招待は既存。追加PINを必要とする共有用途で検討",
+      "doneWhen": "推測試行制限、PIN非表示、部屋所有者の変更処理",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G057",
+      "category": "対人",
+      "feature": "部屋チャット",
+      "tapliSources": [
+        "T06"
+      ],
+      "mgxSources": [
+        "M08",
+        "M19"
+      ],
+      "status": "未実装",
+      "priority": "P3",
+      "effort": "L",
+      "decision": "条件付き採用",
+      "assessment": "学習交流には有効だが運営負担も増える。定型リアクションから検討",
+      "doneWhen": "ミュート/通報/送信制限/退室後の閲覧範囲を仕様化",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G058",
+      "category": "対人",
+      "feature": "観戦と観戦者管理",
+      "tapliSources": [
+        "T01"
+      ],
+      "mgxSources": [
+        "M08",
+        "M09"
+      ],
+      "status": "未実装",
+      "priority": "P3",
+      "effort": "L",
+      "decision": "条件付き採用",
+      "assessment": "公開対戦や指導会で有用。プレイヤーと別の権限が必要",
+      "doneWhen": "伏せ札を配信しない、追放/禁止/観戦一覧を検証",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G059",
+      "category": "対人",
+      "feature": "休席と切断を分けた復帰",
+      "tapliSources": [
+        "T01"
+      ],
+      "mgxSources": [
+        "M08",
+        "M09",
+        "M15"
+      ],
+      "status": "部分実装",
+      "priority": "P2",
+      "effort": "L",
+      "decision": "条件付き採用",
+      "assessment": "再接続は既存。意図的休席・席保持期限を追加する差",
+      "doneWhen": "通信断/休席/退室の残チップと席扱いが明確",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G060",
+      "category": "対人",
+      "feature": "部屋内の自由な席移動",
+      "tapliSources": [
+        "T01"
+      ],
+      "mgxSources": [
+        "M09"
+      ],
+      "status": "未実装",
+      "priority": "P3",
+      "effort": "M",
+      "decision": "条件付き採用",
+      "assessment": "2人固定では価値が小さい。多人数実装後に着手",
+      "doneWhen": "ハンド中は禁止/予約などを決め二重着席を防止",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G061",
+      "category": "対人",
+      "feature": "部屋専用の成績・ランキング",
+      "tapliSources": [
+        "T06",
+        "T01"
+      ],
+      "mgxSources": [
+        "M12",
+        "M08"
+      ],
+      "status": "未実装",
+      "priority": "P2",
+      "effort": "L",
+      "decision": "条件付き採用",
+      "assessment": "練習仲間の成績を全体と混ぜない。サーバー集計が必要",
+      "doneWhen": "期間/参加者/通貨単位を分け同一試合を二重計上しない",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G062",
+      "category": "対人",
+      "feature": "コーチングルームと巻き戻し",
+      "tapliSources": [
+        "T01"
+      ],
+      "mgxSources": [
+        "M10",
+        "M11",
+        "M08"
+      ],
+      "status": "部分実装",
+      "priority": "P3",
+      "effort": "XL",
+      "decision": "条件付き採用",
+      "assessment": "個人再生はある。講師主導で同期再生する部屋は別機能",
+      "doneWhen": "講師権限、公開範囲、同期地点、再開条件を確認",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G063",
+      "category": "対人",
+      "feature": "部屋名・イベント表示",
+      "tapliSources": [
+        "T06"
+      ],
+      "mgxSources": [
+        "M19"
+      ],
+      "status": "部分実装",
+      "priority": "P2",
+      "effort": "S",
+      "decision": "条件付き採用",
+      "assessment": "コード中心の招待を目的/種目/人数が分かるカードへ",
+      "doneWhen": "入室前に参加条件を読み取れる",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G064",
+      "category": "大会",
+      "feature": "オンライン対人トーナメント",
+      "tapliSources": [
+        "T14",
+        "T01"
+      ],
+      "mgxSources": [
+        "M21",
+        "M08"
+      ],
+      "status": "部分実装",
+      "priority": "P3",
+      "effort": "XL",
+      "decision": "条件付き採用",
+      "assessment": "ローカルCPU大会は既存。サーバー上の複数卓運営は未提供",
+      "doneWhen": "登録/開始/移卓/休憩/切断/終了/再開をサーバーで管理",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G065",
+      "category": "大会",
+      "feature": "招待制の大会",
+      "tapliSources": [
+        "T01"
+      ],
+      "mgxSources": [
+        "M21",
+        "M08"
+      ],
+      "status": "未実装",
+      "priority": "P3",
+      "effort": "L",
+      "decision": "条件付き採用",
+      "assessment": "友人会に有効だが対人大会が前提",
+      "doneWhen": "招待者だけ登録でき期限/取消/参加者一覧を管理",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G066",
+      "category": "大会",
+      "feature": "定期イベントカレンダー",
+      "tapliSources": [
+        "T15"
+      ],
+      "mgxSources": [
+        "M14",
+        "M21"
+      ],
+      "status": "未実装",
+      "priority": "P2",
+      "effort": "M",
+      "decision": "条件付き採用",
+      "assessment": "同時刻に集まる理由を作る。多人数待合を作る前に少数イベントで試す",
+      "doneWhen": "日時/時差/条件/中止を一画面で表示",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G067",
+      "category": "大会",
+      "feature": "公開結果と過去大会アーカイブ",
+      "tapliSources": [
+        "T14"
+      ],
+      "mgxSources": [
+        "M11",
+        "M21"
+      ],
+      "status": "部分実装",
+      "priority": "P2",
+      "effort": "M",
+      "decision": "条件付き採用",
+      "assessment": "個人の大会履歴はある。運営イベントの公開結果ページが不足",
+      "doneWhen": "参加者の公開範囲を決め結果訂正履歴を残す",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G068",
+      "category": "大会",
+      "feature": "シーズンの公開ランキング",
+      "tapliSources": [
+        "T15"
+      ],
+      "mgxSources": [
+        "M12"
+      ],
+      "status": "部分実装",
+      "priority": "P3",
+      "effort": "L",
+      "decision": "条件付き採用",
+      "assessment": "MGX個人ratingと他者との順位は別。まず期間イベントの成績を試す",
+      "doneWhen": "集計ルール・締切・同点・不正試合除外をサーバーで処理",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G069",
+      "category": "大会",
+      "feature": "リング/大会/総合の別集計",
+      "tapliSources": [
+        "T15"
+      ],
+      "mgxSources": [
+        "M12"
+      ],
+      "status": "部分実装",
+      "priority": "P3",
+      "effort": "M",
+      "decision": "条件付き採用",
+      "assessment": "MGXは個人履歴をモード別表示可能。公開競争を入れる時だけ拡張",
+      "doneWhen": "モードの重みと二重計上のない集計を説明",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G070",
+      "category": "大会",
+      "feature": "シーズン決勝・参加資格",
+      "tapliSources": [
+        "T15"
+      ],
+      "mgxSources": [
+        "M21"
+      ],
+      "status": "未実装",
+      "priority": "P3",
+      "effort": "L",
+      "decision": "条件付き採用",
+      "assessment": "複雑な繰上げ枠は現段階の需要未確認。運営定着後",
+      "doneWhen": "同点/重複/辞退の資格判定と問い合わせ窓口を用意",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G071",
+      "category": "大会",
+      "feature": "日次Ring Rushとポイント消費",
+      "tapliSources": [
+        "T01",
+        "T15"
+      ],
+      "mgxSources": [
+        "M12",
+        "M21"
+      ],
+      "status": "未実装",
+      "priority": "P3",
+      "effort": "L",
+      "decision": "条件付き採用",
+      "assessment": "継続動機は参考。ただし参加者規模と対人基盤が先。tp制度をそのままコピーしない",
+      "doneWhen": "学習達成とゲーム内競争ポイントを区別し収支を再計算可能",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G072",
+      "category": "大会",
+      "feature": "大会再開・盲注進行・精算",
+      "tapliSources": [
+        "T01",
+        "T14"
+      ],
+      "mgxSources": [
+        "M21",
+        "M15"
+      ],
+      "status": "既存",
+      "priority": "維持",
+      "effort": "S",
+      "decision": "維持",
+      "assessment": "MGXのCPU大会には既存。オンライン化の土台として保全",
+      "doneWhen": "保存失敗通知とリロード再開を維持",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G073",
+      "category": "ツール",
+      "feature": "リアル卓のゲーム表示札",
+      "tapliSources": [
+        "T09"
+      ],
+      "mgxSources": [
+        "M14",
+        "M04"
+      ],
+      "status": "未実装",
+      "priority": "P1",
+      "effort": "M",
+      "decision": "先行採用",
+      "assessment": "既存種目説明/MIX順を全画面で再利用。店舗練習会への入口",
+      "doneWhen": "現在種目/FL-NL-PL/次種目が遠目でも読める",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G074",
+      "category": "ツール",
+      "feature": "リアル卓向け大会タイマー",
+      "tapliSources": [
+        "T10"
+      ],
+      "mgxSources": [
+        "M21",
+        "M14"
+      ],
+      "status": "部分実装",
+      "priority": "P2",
+      "effort": "M",
+      "decision": "条件付き採用",
+      "assessment": "ゲーム内盲注構造はある。独立タイマーとしては未提供",
+      "doneWhen": "実時間から再計算、復帰/休憩/手動進行/保存を確認",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G075",
+      "category": "ツール",
+      "feature": "Stud用の強制ベット併記",
+      "tapliSources": [
+        "T10"
+      ],
+      "mgxSources": [
+        "M21",
+        "M02"
+      ],
+      "status": "部分実装",
+      "priority": "P2",
+      "effort": "M",
+      "decision": "条件付き採用",
+      "assessment": "ゲーム内のStud情報を店舗タイマーにも利用する追加用途",
+      "doneWhen": "SB/BBとSmall/Big Bet/Ante/Bring-inを混同しない",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G076",
+      "category": "ツール",
+      "feature": "賞品配分の試算表",
+      "tapliSources": [
+        "T11"
+      ],
+      "mgxSources": [
+        "M21",
+        "M14"
+      ],
+      "status": "部分実装",
+      "priority": "P2",
+      "effort": "M",
+      "decision": "条件付き採用",
+      "assessment": "大会内部の配分処理を独立した事前確認に使う",
+      "doneWhen": "総額一致・端数・同点・最小配分・丸めを検証",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G077",
+      "category": "ツール",
+      "feature": "Flipの余興ツール",
+      "tapliSources": [
+        "T16"
+      ],
+      "mgxSources": [
+        "M14"
+      ],
+      "status": "未実装",
+      "priority": "P3",
+      "effort": "S",
+      "decision": "見送り",
+      "assessment": "実装は軽いがMIX学習への寄与が低いので見送り",
+      "doneWhen": "採用するなら余興と明記、通常成績に混ぜない",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G078",
+      "category": "ツール",
+      "feature": "ツールを集めた入口",
+      "tapliSources": [
+        "T16"
+      ],
+      "mgxSources": [
+        "M14"
+      ],
+      "status": "未実装",
+      "priority": "P1",
+      "effort": "S",
+      "decision": "先行採用",
+      "assessment": "役判定/ルール/リアル卓札が揃った段階でまとめる",
+      "doneWhen": "専門語だけにせず利用目的から選べる",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G079",
+      "category": "交流",
+      "feature": "共有するプレイヤーカード",
+      "tapliSources": [
+        "T17",
+        "T18"
+      ],
+      "mgxSources": [
+        "M13"
+      ],
+      "status": "部分実装",
+      "priority": "P2",
+      "effort": "M",
+      "decision": "条件付き採用",
+      "assessment": "プロフィールは既存。交流用TapliのQRカードを別サービスの参考として扱う",
+      "doneWhen": "見せる名前/成績を自分で選び読取専用で共有",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G080",
+      "category": "交流",
+      "feature": "同卓した人の非公開メモ",
+      "tapliSources": [
+        "T18"
+      ],
+      "mgxSources": [
+        "M10",
+        "M19"
+      ],
+      "status": "部分実装",
+      "priority": "P3",
+      "effort": "M",
+      "decision": "条件付き採用",
+      "assessment": "ハンドメモはあるが人物/セッション単位の記録とは違う",
+      "doneWhen": "自分だけ閲覧・削除可能、公開履歴へ混入しない",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G081",
+      "category": "交流",
+      "feature": "知り合いのコレクション",
+      "tapliSources": [
+        "T17",
+        "T18"
+      ],
+      "mgxSources": [
+        "M13",
+        "M19"
+      ],
+      "status": "未実装",
+      "priority": "P3",
+      "effort": "L",
+      "decision": "見送り",
+      "assessment": "独立SNS的な機能は学習の中心から遠い。需要確認まで見送り",
+      "doneWhen": "採用前に利用場面と相互同意を検証",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G082",
+      "category": "交流",
+      "feature": "Respectの5分類",
+      "tapliSources": [
+        "T17",
+        "T18"
+      ],
+      "mgxSources": [
+        "M13"
+      ],
+      "status": "未実装",
+      "priority": "P3",
+      "effort": "M",
+      "decision": "見送り",
+      "assessment": "他者評価の集計より学習を優先。現段階では見送り",
+      "doneWhen": "採用時は評価の公開範囲と嫌がらせ対策を定義",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G083",
+      "category": "交流",
+      "feature": "店舗・イベントQRと練習の接続",
+      "tapliSources": [
+        "T17"
+      ],
+      "mgxSources": [
+        "M19",
+        "M05"
+      ],
+      "status": "部分実装",
+      "priority": "P2",
+      "effort": "M",
+      "decision": "条件付き採用",
+      "assessment": "店の練習セットURLを渡す小さな機能ならMIX共有を再利用できる",
+      "doneWhen": "QR→ルール→対象MIXの開始まで条件を保持",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G084",
+      "category": "信頼",
+      "feature": "ガイドと実装の一致",
+      "tapliSources": [
+        "T06",
+        "T13"
+      ],
+      "mgxSources": [
+        "M03",
+        "M04",
+        "M01"
+      ],
+      "status": "品質差",
+      "priority": "P0",
+      "effort": "M",
+      "decision": "先行採用",
+      "assessment": "Tapliもガイドにメール登録、実画面はGoogle/Appleという差がある。MGXも定義分散を解消",
+      "doneWhen": "種目説明・公開ラベル・実行ルールを単一データから生成",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G085",
+      "category": "信頼",
+      "feature": "課題のある入力方式を無条件に真似しない",
+      "tapliSources": [
+        "T04"
+      ],
+      "mgxSources": [
+        "M15"
+      ],
+      "status": "既存",
+      "priority": "維持",
+      "effort": "S",
+      "decision": "維持",
+      "assessment": "TapliのSwipe Raiseは参考に留める。MGXはユーザー要望の数値入力/確定を保つ",
+      "doneWhen": "片手タップで入力/取消/確定でき画面回転でも金額保持",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    },
+    {
+      "id": "G086",
+      "category": "ルール差",
+      "feature": "ArchieのHigh成立条件",
+      "tapliSources": [
+        "T02"
+      ],
+      "mgxSources": [
+        "M22",
+        "M01"
+      ],
+      "status": "品質差",
+      "priority": "P0",
+      "effort": "M",
+      "decision": "先行採用",
+      "assessment": "Tapliは99以上、MGXは任意のワンペア以上で成立。採用するルールを明示して評価器・説明を揃える",
+      "doneWhen": "88/99/TTの境界、Low不成立、片側だけ成立、両側不成立を検証",
+      "solver": "不要",
+      "implementationStatus": "調査・提案のみ"
+    }
+  ]
+}

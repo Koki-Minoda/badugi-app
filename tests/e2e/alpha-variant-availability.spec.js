@@ -34,8 +34,8 @@ test.describe("alpha variant availability gate", () => {
 
     await expect(page.getByTestId("game-selector-play-chinese_poker")).toBeEnabled();
     await expect(page.getByTestId("game-selector-card-chinese_poker")).toContainText(/Alpha/i);
-    await expect(page.getByTestId("game-selector-play-ofc")).toBeDisabled();
-    await expect(page.getByTestId("game-selector-card-ofc")).toContainText(/Coming Soon|準備中/);
+    await expect(page.getByTestId("game-selector-play-ofc")).toBeEnabled();
+    await expect(page.getByTestId("game-selector-card-ofc")).toContainText(/Alpha/);
   });
 
   test("preview-only variants can be launched only with explicit preview flag", async ({ page }) => {

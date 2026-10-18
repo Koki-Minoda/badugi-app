@@ -40,7 +40,7 @@ describe("MGX all variant progress smoke add-on", () => {
     });
     expect(skipped).toEqual([
       expect.objectContaining({
-        variant: expect.objectContaining({ id: "CP2", status: "wip" }),
+        variant: expect.objectContaining({ id: "CP2", status: "live" }),
         reason: expect.stringMatching(/controller|harness|support/i),
       }),
     ]);

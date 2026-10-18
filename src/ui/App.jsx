@@ -1,6 +1,17 @@
+import { PUBLIC_PLAYABLE_VARIANTS } from '../games/config/variantAvailability.js';
+import { applyCustomStructure } from './tournament/customStructure.js';
+import { useLanguageState } from './preferences/language.js';
+import SaveFailureNotice from './components/SaveFailureNotice.jsx';
+import { MixedGameContext } from "./mixed/mixedGameContext.js";
+import { shiftDealerChoiceVariant, setDealerChoiceModeActive } from './dealersChoice/dealerChoiceManager.js';
+import { multiGameVariantForTable, recordMultiGameResult } from './multigame/multiGameSeries.js';
+import { computeUnlockState } from "./utils/playerProgress.js";
+import { getPlayerProgressFromConsolidated } from "./utils/consolidatedProgress.js";
+import LearningGameLaunch from "./learning/LearningGameLaunch.jsx";
 // src/ui/App.jsx
 import React, {
   useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -59,7 +70,6 @@ import {
   maxBetThisRound,
   isFoldedOrOut,
   markPlayerFolded,
-  isPlayerSeated,
   applyChips,
   applyForcedBetActionSnapshot,
   queueForcedSeatAction as queueForcedSeatActionMap,
@@ -237,6 +247,7 @@ import {
   recordRivalTournamentResult,
 } from "./career/rivalHistory.js";
 import ChinesePokerGameScreen from "./screens/ChinesePokerGameScreen.jsx";
+import OpenFaceChineseScreen from './screens/OpenFaceChineseScreen.jsx';
 import TitleSettingsScreen from "./screens/TitleSettingsScreen.jsx";
 import ProfileStats from "../components/ProfileStats.jsx";
 import { useGameSessionState } from "./hooks/useGameSessionState.js";
@@ -387,27 +398,6 @@ function readDebugMetrics() {
   };
 }
 
-const LEGACY_LANGUAGE_STORAGE_KEY = "mgx.language";
-function getInitialLanguage() {
-  if (typeof window === "undefined") return MGX_DEFAULT_LOCALE;
-
-  try {
-    const saved = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
-    if (saved && MGX_LOCALES[saved]) {
-      return saved;
-    }
-
-    const legacy = window.localStorage.getItem(LEGACY_LANGUAGE_STORAGE_KEY);
-    if (legacy && MGX_LOCALES[legacy]) {
-      window.localStorage.setItem(LANGUAGE_STORAGE_KEY, legacy);
-      window.localStorage.removeItem(LEGACY_LANGUAGE_STORAGE_KEY);
-      return legacy;
-    }
-  } catch (err) {
-    console.warn("language detection failed", err);
-  }
-  return MGX_DEFAULT_LOCALE;
-}
 
 const STUD_STREET_AUTOPLAY_PAUSE_MS = 900;
 
@@ -425,6 +415,14 @@ function readStoredAuthIdentity() {
 }
 
 export default function App() {
+  const location = useLocation();
+  const trialVariant = new URLSearchParams(location.search).get('variant');
+  const guestTrial = !new URLSearchParams(location.search).get('mode') && new URLSearchParams(location.search).get('trial') === '1' && PUBLIC_PLAYABLE_VARIANTS.some(v => v.availabilityKey === trialVariant);
+  const mixedGame = useContext(MixedGameContext);
+  const mixedGameRef = useRef(mixedGame);
+  mixedGameRef.current = mixedGame;
+  const cashMixActiveRef = useRef(false);
+  const dealerChoiceActiveRef = useRef(false);
   const [tournamentSession, setTournamentSession] = useState(() =>
     loadActiveTournamentSession(),
   );
@@ -437,9 +435,9 @@ export default function App() {
   const [authTokenType, setAuthTokenType] = useState(null);
   const [mode, setMode] = useState(initialModeRef.current);
   const modeRef = useRef(initialModeRef.current);
-  const [language, setLanguage] = useState(() => getInitialLanguage());
+  const [language, setLanguage] = useLanguageState();
   // MGX branding: kitsune title screen + title → menu → game flow (2025-11-28)
-  const [currentScreen, setCurrentScreen] = useState("title");
+  const [currentScreen, setCurrentScreen] = useState(() => (guestTrial || location.state?.learningVariant || location.state?.mixedProfileId || location.state?.multiGameConfig || location.state?.multiGameResume) ? "menu" : "title");
   const [hubActiveSnapshot, setHubActiveSnapshot] = useState(null);
   const [gameUtilityModal, setGameUtilityModal] = useState(null);
   const pendingRingStartRef = useRef(false);
@@ -497,7 +495,12 @@ export default function App() {
     setTournamentBreakState(next);
   }, []);
   const completeTournamentBreak = useCallback(() => {
+    const state = tournamentStateRef.current;
+    const unusedBreak = Math.max(0, (tournamentBreakStateRef.current?.endsAt ?? 0) - Date.now());
+    if (state?.config?.levelProgression === 'clock' && Number.isFinite(state.levelEndsAt)) state.levelEndsAt -= unusedBreak;
     updateTournamentBreakState(null);
+    const saved = loadActiveMTTSnapshot();
+    if (saved && state) saveActiveMTTSnapshot({...saved, tournamentState:state, hud:{...saved.hud,breakState:null}});
   }, [updateTournamentBreakState]);
   const persistTournamentSnapshot = useCallback(
     (input) => {
@@ -538,7 +541,11 @@ export default function App() {
       attachVariantLabelsToHud(hudPayload, {
         currentVariantLabel: formatVariantLabel(gameVariantRef.current),
         nextVariantLabel: formatVariantLabel(
-          getNextVariant(variantRotationRef.current),
+          multiGameVariantForTable(
+            tournamentStateRef.current,
+            hudPayload?.heroTableId ?? heroTableIdRef.current,
+            { nextRotation: true },
+          ) ?? getNextVariant(variantRotationRef.current),
         ),
       }),
     [formatVariantLabel],
@@ -627,7 +634,7 @@ export default function App() {
   const controllerStreetRef = useRef(null);
   const studStreetPauseUntilRef = useRef(0);
   const [studStreetPauseToken, setStudStreetPauseToken] = useState(0);
-  const uiAdapterRef = useRef(null);
+  const [uiAdapterSelection, setUIAdapterSelection] = useState(null);
 
   useEffect(() => {
     migrateLegacyProgressToV2();
@@ -673,7 +680,6 @@ export default function App() {
     return undefined;
   }, []);
   const navigate = useNavigate();
-  const location = useLocation();
   const coachingPreviewEnabled = isCoachingPreviewEnabled({
     search: location.search,
   });
@@ -799,7 +805,7 @@ export default function App() {
           showHand: isHuman,
           lastAction: "",
           hasDrawn: false,
-          lastDrawCount: 0,
+          lastDrawCount: null,
           titleBadge: isHuman ? (profile?.titleBadge ?? "") : "",
           avatar: isHuman ? (profile?.avatar ?? "default_avatar") : undefined,
           avatarUrl: isHuman ? null : (cpuCharacter?.avatarUrl ?? null),
@@ -1039,7 +1045,9 @@ export default function App() {
     }
   })();
   const adapterViewProps = useMemo(() => {
-    const adapter = uiAdapterRef.current;
+    const adapter = uiAdapterSelection?.variantId === normalizeAppVariantId(gameVariant)
+      ? uiAdapterSelection.adapter
+      : null;
     if (!adapter || !controllerSnapshot) return null;
     try {
       return adapter.buildViewProps({
@@ -1050,7 +1058,7 @@ export default function App() {
       console.warn("[UI-ADAPTER] buildViewProps error", error);
       return null;
     }
-  }, [controllerSnapshot, tableConfig]);
+  }, [controllerSnapshot, tableConfig, gameVariant, uiAdapterSelection]);
   const [deck, setDeck] = useState([]);
   const [engineState, setEngineState] = useState(null);
   const [controllerUiSnapshotState, setControllerUiSnapshotState] =
@@ -1373,13 +1381,8 @@ export default function App() {
     baseWidth: DESKTOP_CANVAS_BASE_WIDTH,
     baseHeight: DESKTOP_CANVAS_BASE_HEIGHT,
   });
-  const shouldGateOrientation =
-    isMobileDevice &&
-    !(
-      normalizedGameVariant === APP_VARIANT_IDS.BADUGI ||
-      isDrawLowballAppVariant(normalizedGameVariant) ||
-      STUD_APP_VARIANT_IDS.has(normalizedGameVariant)
-    );
+  // Every poker family shares the same responsive mobile table.
+  const shouldGateOrientation = false;
   useEffect(() => {
     if (!shouldUseDesktopCanvasScale) {
       setDebugScale(1);
@@ -1546,9 +1549,9 @@ export default function App() {
   const eliminatedRailEntries = useMemo(
     () =>
       isTournament
-        ? buildTournamentEliminatedRailEntries(seatViews, { limit: 5 })
+        ? buildTournamentEliminatedRailEntries(seatViews, { limit: 5, tournamentPlayers: tournamentStateRef.current?.players })
         : [],
-    [isTournament, seatViews],
+    [isTournament, seatViews, tournamentHudState],
   );
   const hudInfo = adapterViewProps?.hudInfo ?? null;
   const controlsConfig = adapterViewProps?.controlsConfig ?? null;
@@ -1640,6 +1643,8 @@ export default function App() {
       <>
         <TournamentHUD
           {...liveTournamentHudState}
+          levelEndsAt={tournamentStateRef.current?.levelEndsAt}
+          language={language}
           compact
           placement="side"
           mobileCompact={isMobileDevice}
@@ -1685,10 +1690,11 @@ export default function App() {
   const heroHistoryLimit = 4;
   const HERO_TRACKER_STORAGE_KEY = "badugi.heroTracker";
 
-  function getHeroTrackerStorage() {
+  const getHeroTrackerStorage = useCallback(() => {
+    if (guestTrial) return null;
     if (typeof window === "undefined" || !window.localStorage) return null;
     return window.localStorage;
-  }
+  }, [guestTrial]);
 
   function loadHeroTrackerState() {
     const storage = getHeroTrackerStorage();
@@ -1715,7 +1721,7 @@ export default function App() {
     } catch (err) {
       console.warn("Failed to persist hero tracker state", err);
     }
-  }, []);
+  }, [getHeroTrackerStorage]);
 
   const [heroTracker, setHeroTracker] = useState(
     () =>
@@ -2109,8 +2115,8 @@ export default function App() {
   );
 
   const buildNlhTableConfig = useCallback(
-    () => ({
-      seats: players.map((player, idx) => ({
+    (roster = players) => ({
+      seats: roster.map((player, idx) => ({
         seatIndex: idx,
         playerId: player?.playerId ?? null,
         name: player?.name ?? `Seat ${idx + 1}`,
@@ -2456,7 +2462,12 @@ export default function App() {
     } else {
       ensureBadugiUIAdapterRegistered({ gameDefinition });
     }
-    uiAdapterRef.current = getGameUIAdapter(normalizedVariant) ?? null;
+    const adapter = getGameUIAdapter(normalizedVariant) ?? null;
+    setUIAdapterSelection((previous) =>
+      previous?.variantId === normalizedVariant && previous.adapter === adapter
+        ? previous
+        : { variantId: normalizedVariant, adapter },
+    );
   }, [ensureGameController, gameDefinition, gameVariant]);
   const setDrawRoundValue = useCallback((value) => {
     const previous = drawRoundTracker.current;
@@ -2724,9 +2735,9 @@ export default function App() {
       ];
       try {
         if (persistAsTournament) {
-          saveTournamentHandHistory(storedSnapshot);
+          if (!guestTrial) saveTournamentHandHistory(storedSnapshot);
         } else {
-          saveHandHistory(storedSnapshot);
+          if (!guestTrial) saveHandHistory(storedSnapshot);
         }
       } catch (error) {
         console.warn("[HAND_HISTORY] Failed to persist finalized hand", error);
@@ -2734,7 +2745,7 @@ export default function App() {
       handHistoryRef.current = null;
       return storedSnapshot;
     },
-    [appendCanonicalHandEvent, isTournament],
+    [appendCanonicalHandEvent, isTournament, guestTrial],
   );
 
   const forcedSeatActionsRef = useRef(new Map());
@@ -5283,7 +5294,7 @@ export default function App() {
             bet: 0,
             betThisRound: 0,
             totalInvested: 0,
-            lastDrawCount: 0,
+            lastDrawCount: null,
             lastAction: "",
             bustHandIndex: null,
             showHand: false,
@@ -5313,7 +5324,7 @@ export default function App() {
           totalInvested: 0,
           lastAction: "",
           hasDrawn: false,
-          lastDrawCount: 0,
+          lastDrawCount: null,
           showHand: isHeroSeat,
         };
       });
@@ -5347,7 +5358,7 @@ export default function App() {
             bet: 0,
             betThisRound: 0,
             totalInvested: 0,
-            lastDrawCount: 0,
+            lastDrawCount: null,
             lastAction: "",
             bustHandIndex: null,
             showHand: false,
@@ -5597,7 +5608,7 @@ export default function App() {
         });
       }
       tournamentStateRef.current = nextState;
-      recordRivalHandPlayed(
+      if (!nextState.config?.practiceOnly) recordRivalHandPlayed(
         getTournamentOpponentProfileIds(nextState, { heroTableOnly: true }),
       );
       const levelChanged =
@@ -5784,6 +5795,7 @@ export default function App() {
         }
         computePayouts(nextState);
         const placements = buildTournamentPlacements(nextState);
+        if (nextState.config?.multiGame) recordMultiGameResult(nextState, placements);
         const inMemoryTournamentHands = Array.isArray(
           handHistoryBufferRef.current,
         )
@@ -5799,7 +5811,7 @@ export default function App() {
           : inMemoryTournamentHands;
         const heroPlayerSnapshot =
           nextState.players?.[heroTournamentPlayerIdRef.current] ?? null;
-        if (heroPlayerSnapshot?.finishPlace) {
+        if (heroPlayerSnapshot?.finishPlace && !nextState.config?.multiGame && !nextState.config?.practiceOnly) {
           const resultKey = [
             nextState.config?.id ?? "active-mtt",
             heroPlayerSnapshot.id ?? heroTournamentPlayerIdRef.current,
@@ -5949,7 +5961,7 @@ export default function App() {
     const playersRemaining = state.playersRemaining ?? 0;
     const totalChips = startingStackValue * Math.max(0, totalPlayers);
     const prizePoolTotal =
-      Math.max(0, Number(config.prizePoolTotal) || 0) || totalChips;
+      config.multiGame ? 0 : Math.max(0, Number(config.prizePoolTotal) || 0) || totalChips;
     const averageStack =
       playersRemaining > 0
         ? Math.floor(totalChips / playersRemaining)
@@ -6857,6 +6869,7 @@ export default function App() {
   );
 
   const handleTournamentBackToMenu = useCallback(() => {
+    const returnToMulti = Boolean(tournamentStateRef.current?.config?.multiGame);
     resetTableStateToSafeDefaults({
       reason: "tournament-back-to-menu",
       preserveHandCount: false,
@@ -6866,7 +6879,7 @@ export default function App() {
     modeRef.current = "cash";
     setMode("cash");
     setCurrentScreen("menu");
-    navigate("/");
+    navigate(returnToMulti ? '/multigame' : '/');
   }, [
     navigate,
     resetTableStateToSafeDefaults,
@@ -6877,7 +6890,7 @@ export default function App() {
   const handleStartTournamentFromHub = useCallback(
     (config, stage) => {
       if (!config || !stage?.id) return false;
-      const entry = deductConsolidatedEntryFee(stage.id);
+      const entry = config.practiceOnly ? { ok: true, entryFee: 0 } : deductConsolidatedEntryFee(stage.id);
       if (!entry.ok) {
         setCurrentScreen("tournamentHub");
         return false;
@@ -6913,6 +6926,7 @@ export default function App() {
 
   const handleEnterNewTournament = useCallback(() => {
     const completedTournament = tournamentStateRef.current;
+    if (completedTournament?.config?.multiGame) { navigate('/multigame'); return true; }
     if (!completedTournament?.isFinished || !completedTournament?.championId) {
       console.warn(
         "[MTT] new tournament blocked until the active tournament is complete",
@@ -6923,10 +6937,10 @@ export default function App() {
       completedTournament.config ?? DEFAULT_STORE_TOURNAMENT_CONFIG;
     const stage = getStageById(config.stageId ?? "store");
     return handleStartTournamentFromHub(config, stage);
-  }, [handleStartTournamentFromHub]);
+  }, [handleStartTournamentFromHub, navigate]);
 
   useEffect(() => {
-    if (!location?.state?.startTournamentMTT && !location?.state?.resumeTournamentMTT) return;
+    if (guestTrial || (!location?.state?.startTournamentMTT && !location?.state?.resumeTournamentMTT)) return;
     if (autoModeInitRef.current) return;
     autoModeInitRef.current = true;
     ensureURLModeParam("store_tournament");
@@ -6940,16 +6954,18 @@ export default function App() {
       const config =
         buildTournamentConfigFromStage(requestedStageId) ??
         DEFAULT_STORE_TOURNAMENT_CONFIG;
-      handleStartTournamentFromHub(config, getStageById(requestedStageId));
+      handleStartTournamentFromHub(location.state?.customStructure ? applyCustomStructure(config, location.state.customStructure) : config, getStageById(requestedStageId));
     }
     const nextState = { ...location.state };
     delete nextState.startTournamentMTT;
     delete nextState.resumeTournamentMTT;
     delete nextState.stageId;
     delete nextState.tournamentConfigId;
+    delete nextState.customStructure;
     navigate(location.pathname, { replace: true, state: nextState });
   }, [
     ensureURLModeParam,
+    guestTrial,
     handleStartTournamentFromHub,
     location,
     navigate,
@@ -6975,9 +6991,9 @@ export default function App() {
       const config =
         buildTournamentConfigFromStage(requestedStageId) ??
         DEFAULT_STORE_TOURNAMENT_CONFIG;
-      handleStartTournamentFromHub(config, getStageById(requestedStageId));
+      handleStartTournamentFromHub(location.state?.customStructure ? applyCustomStructure(config, location.state.customStructure) : config, getStageById(requestedStageId));
     }
-  }, [handleStartTournamentFromHub, location.search, resumeTournamentMTT]);
+  }, [handleStartTournamentFromHub, location.search, location.state?.customStructure, resumeTournamentMTT]);
 
   const handleEnterFromTitle = () => {
     setCurrentScreen("menu");
@@ -7013,6 +7029,10 @@ export default function App() {
   }, []);
 
   const handleCashOutBackToMenu = () => {
+    dealerChoiceActiveRef.current = false;
+    setDealerChoiceModeActive(false);
+    cashMixActiveRef.current = false;
+    mixedGameRef.current?.deactivateMixedGame();
     setCashOutSummary(null);
     resetTableStateToSafeDefaults({
       reason: "cash-out-back-to-menu",
@@ -7040,7 +7060,14 @@ export default function App() {
 
   const handleSelectRing = (
     variantId = gameVariantRef.current ?? DEFAULT_GAME_VARIANT,
+    { keepMixed = false } = {},
   ) => {
+    if (!keepMixed) {
+      dealerChoiceActiveRef.current = false;
+      setDealerChoiceModeActive(false);
+      cashMixActiveRef.current = false;
+      mixedGameRef.current?.deactivateMixedGame();
+    }
     const normalizedVariant = normalizeAppVariantId(
       variantId,
       DEFAULT_GAME_VARIANT,
@@ -7064,12 +7091,13 @@ export default function App() {
       gameVariantRef.current = normalizedVariant;
       setGameVariant(normalizedVariant);
     }
-    if (normalizedVariant === APP_VARIANT_IDS.CHINESE_POKER) {
+    if ([APP_VARIANT_IDS.CHINESE_POKER, APP_VARIANT_IDS.OFC].includes(normalizedVariant)) {
       modeRef.current = "cash";
       setMode("cash");
-      setCurrentScreen("chinesePoker");
+      setCurrentScreen(normalizedVariant === APP_VARIANT_IDS.OFC ? 'openFaceChinese' : 'chinesePoker');
       return;
     }
+    initializeVariantRotation({ rotation: [normalizedVariant], policy: "fixed", initialVariant: normalizedVariant });
     resetInitialButtonState();
     modeRef.current = "cash";
     setMode("cash");
@@ -7088,6 +7116,8 @@ export default function App() {
   };
 
   const handleSelectTournament = (configOverride = null) => {
+    cashMixActiveRef.current = false;
+    mixedGameRef.current?.deactivateMixedGame();
     if (!configOverride) {
       setCurrentScreen("tournamentHub");
       return;
@@ -7221,6 +7251,11 @@ export default function App() {
       }, 100);
     };
     try {
+      const multiVariant = modeRef.current === 'tournament-mtt' ? multiGameVariantForTable(tournamentStateRef.current, heroTableIdRef.current) : null;
+      if (multiVariant && multiVariant !== gameVariantRef.current) {
+        gameVariantRef.current = multiVariant;
+        setGameVariant(multiVariant);
+      }
       const activeHandVariant = normalizeAppVariantId(
         gameVariantRef.current ?? gameVariant,
       );
@@ -7356,7 +7391,18 @@ export default function App() {
         legacyGameController?.startNewHand
       ) {
         try {
-          legacyGameController.updateTableConfig?.(buildNlhTableConfig());
+          legacyGameController.updateTableConfig?.(buildNlhTableConfig(
+            (cashMixActiveRef.current || activeHandIsTournament) ? (resolvedPrevPlayers ?? basePlayersSnapshot) : undefined,
+          ));
+          if (cashMixActiveRef.current || activeHandIsTournament) {
+            const handRoster = resolvedPrevPlayers ?? basePlayersSnapshot;
+            // These controllers advance from the preceding seat in startNewHand.
+            // Seed the canonical button even when crossing controller families.
+            legacyGameController.syncExternalState?.({
+              players: handRoster.map((player, seatIndex) => ({ ...player, seatIndex })),
+              dealerIndex: (nextDealerIdx - 1 + handRoster.length) % handRoster.length,
+            });
+          }
           controllerHandSnapshot = legacyGameController.startNewHand({
             handId: `board-hand-${nextHandNumber}`,
           });
@@ -7392,7 +7438,9 @@ export default function App() {
               .length,
             handStartingStacksById: snapshotPlayers.reduce(
               (startingStacks, player, seat) => {
-                const startingStack = Math.max(
+                const startingStack = controllerHandSnapshot.phase === "SHOWDOWN"
+                  ? Math.max(0, Number((resolvedPrevPlayers ?? basePlayersSnapshot)[seat]?.stack) || 0)
+                  : Math.max(
                   0,
                   Number(player?.stack) +
                     Math.max(
@@ -8024,7 +8072,26 @@ export default function App() {
         }
       }
 
+      if (activeHandVariant === APP_VARIANT_IDS.BADUGI) {
+        // The legacy adapter and the session action controller both read this
+        // deal. Reset them together, so a prior fold/bust cannot disable the
+        // new hand while the React synchronization effect is still pending.
+        legacyGameController.syncExternalState?.(nextHandSnapshot);
+        const sessionController = ensureSessionController();
+        if (sessionController?.syncFromExternalState) {
+          sessionControllerStateRef.current = sessionController.syncFromExternalState({
+            snapshot: nextHandSnapshot,
+            context: nextHandState,
+            handIndex: nextHandNumber,
+          });
+        }
+      }
       syncEngineSnapshot(nextHandSnapshot, nextHandSnapshot);
+      // A blind/ante all-in may already be settled by startNewHand. Publish
+      // that result only after the hand identity and history have been seeded.
+      if (controllerHandSnapshot?.phase === "SHOWDOWN" && controllerHandSnapshot.lastHandResult) {
+        syncLegacyFromControllerSnapshot(controllerHandSnapshot);
+      }
       trace("dealNewHand END", { dealerIdx: nextDealerIdx });
       return true;
     } catch (error) {
@@ -8044,16 +8111,45 @@ export default function App() {
   // instead of calling dealNewHand directly so BTN/blinds/metadata stay in sync.
   const startNextHand = useCallback(
     ({ dealerOverride = null, prevPlayers = null } = {}) => {
+      const currentPhase = phaseRef.current ?? phase;
+      const allowedStartPhases = new Set([
+        SAFE_RESET_PHASE,
+        "INIT",
+        "HAND_RESULT",
+        "SHOWDOWN",
+        "WAITING_NEXT_HAND",
+        "TABLE_FINISHED",
+        "TOURNAMENT_END",
+        "TOURNAMENT_FINAL",
+      ]);
+      // Legacy draw callbacks can publish BET after the result. The recorded
+      // settlement for this exact hand is authoritative, and resets on deal.
+      const tournamentHandSettled = modeRef.current === "tournament-mtt" &&
+        handIdRef.current && tournamentCompletedHandIdRef.current === handIdRef.current;
+      if (handCountRef.current > 0 && !allowedStartPhases.has(currentPhase) && !tournamentHandSettled) {
+        console.warn("[HAND] stale next-hand trigger ignored", {
+          phase: currentPhase,
+          handId: handIdRef.current,
+        });
+        return false;
+      }
       if (dealingRef.current) {
         // A very short/all-in hand can expose its result before the previous
         // deal's 100ms safety lock is released.  Do not lose the user's Next
         // hand click in that window.  Keep one bounded, idempotent retry; a
         // second click updates nothing and cannot deal twice.
         if (!pendingNextHandRetryRef.current) {
-          const retry = { dealerOverride, prevPlayers, attempts: 0 };
+          const retry = {
+            dealerOverride, prevPlayers, attempts: 0,
+            handId: handIdRef.current, handNumber: handCountRef.current,
+          };
           pendingNextHandRetryRef.current = retry;
           const retryWhenUnlocked = () => {
             if (pendingNextHandRetryRef.current !== retry) return;
+            if (handIdRef.current !== retry.handId || handCountRef.current !== retry.handNumber) {
+              pendingNextHandRetryRef.current = null;
+              return;
+            }
             retry.attempts += 1;
             if (dealingRef.current && retry.attempts < 20) {
               setTimeout(retryWhenUnlocked, 100);
@@ -8084,24 +8180,9 @@ export default function App() {
         }
         completeTournamentBreak();
       }
-      const currentPhase = phaseRef.current ?? phase;
-      const allowedStartPhases = new Set([
-        SAFE_RESET_PHASE,
-        "INIT",
-        "HAND_RESULT",
-        "SHOWDOWN",
-        "WAITING_NEXT_HAND",
-        "TABLE_FINISHED",
-        "TOURNAMENT_END",
-        "TOURNAMENT_FINAL",
-      ]);
-      if (handCountRef.current > 0 && !allowedStartPhases.has(currentPhase)) {
-        console.warn("[HAND] stale next-hand trigger ignored", {
-          phase: currentPhase,
-          handId: handIdRef.current,
-        });
-        return false;
-      }
+      // React's phase effect runs after this callback. Close the old result
+      // synchronously so a second click cannot queue against the new hand.
+      phaseRef.current = "BET";
       setShowNextButton(false);
       setHandResultVisible(false);
       setHandResultSummary(null);
@@ -8183,6 +8264,15 @@ export default function App() {
           setShowNextButton(false);
           setHandResultVisible(false);
           return false;
+        }
+      }
+      if (mode !== "tournament-mtt" && cashMixActiveRef.current && handCountRef.current > 0) {
+        const completed = mixedGameRef.current?.handleHandCompletion(handIdRef.current);
+        if (completed?.nextGameId) {
+          if (dealerChoiceActiveRef.current) shiftDealerChoiceVariant();
+          const nextVariant = normalizeAppVariantId(completed.nextGameId);
+          gameVariantRef.current = nextVariant;
+          setGameVariant(nextVariant);
         }
       }
       const nextHandNumber = handCountRef.current + 1;
@@ -10585,8 +10675,29 @@ export default function App() {
     dealerIndex = null,
     retryCount = 0,
   } = {}) {
+    if (modeRef.current === "tournament-mtt" &&
+        tournamentCompletedHandIdRef.current === handIdRef.current && handIdRef.current) return false;
     if (modeRef.current === "tournament-mtt" && tournamentStateRef.current?.isFinished) return false;
     const phaseNow = phaseOverride ?? phaseRef.current ?? phase;
+    if (modeRef.current === "tournament-mtt" &&
+        normalizeAppVariantId(gameVariantRef.current) === APP_VARIANT_IDS.BADUGI) {
+      const controller = sessionControllerRef.current;
+      let state = sessionControllerStateRef.current;
+      if (controller?.advanceCompletedRound && state) {
+        const snapshot = controller.getUiSnapshot(state);
+        if (snapshot.phase === phaseNow) {
+          state = controller.syncFromExternalState({
+            snapshot: {...snapshot, players: playersSnapshot ?? playersRef.current},
+            handIndex: state.handIndex, context: state.context,
+          });
+        }
+        const nextState = controller.advanceCompletedRound(state, phaseNow);
+        sessionControllerStateRef.current = nextState;
+        syncLegacyFromControllerSnapshot(controller.getUiSnapshot(nextState));
+        return true;
+      }
+    }
+
     if (phaseNow === "BET") {
       const basePlayers =
         Array.isArray(playersSnapshot) && playersSnapshot.length
@@ -11218,12 +11329,12 @@ export default function App() {
           });
         }
         if (isSingleTableDrawLowball) {
-          saveRLHandHistory(legacySnapshot);
+          if (!guestTrial) saveRLHandHistory(legacySnapshot);
           const sendId =
             legacySnapshot.handId ??
             legacySnapshot.hand_id ??
             legacySnapshot.id;
-          if (sendId && !sentHandIdsRef.current.has(sendId)) {
+          if (!guestTrial && sendId && !sentHandIdsRef.current.has(sendId)) {
             try {
               enqueueHandRecord(legacySnapshot, { flushNow: true });
               sentHandIdsRef.current.add(sendId);
@@ -11284,7 +11395,7 @@ export default function App() {
         fallbackHistory,
       ];
       try {
-        saveHandHistory(fallbackHistory);
+        if (!guestTrial) saveHandHistory(fallbackHistory);
       } catch (error) {
         console.warn("[HAND_HISTORY] fallback cash persistence failed", error);
       }
@@ -11914,7 +12025,7 @@ export default function App() {
       // canonical state.  Omitting an explicit amount prevents a render-lagged
       // street counter from turning a visible Raise button into a rejected no-op.
       amount:
-        isSingleTableBadugi || isSingleTableDrawLowball ? null : raiseAmt,
+        (isSingleTableBadugi || isSingleTableDrawLowball) && !usesVariableSizing ? null : raiseAmt,
       seatIndex: 0,
     });
     if (controllerOutcome?.snapshot) {
@@ -12371,6 +12482,8 @@ export default function App() {
   /* --- NPC auto --- */
   useEffect(() => {
     if (e2eStaticMobileFixtureRef.current) return;
+    if (modeRef.current === "tournament-mtt" &&
+        tournamentCompletedHandIdRef.current === handIdRef.current && handIdRef.current) return;
     if (modeRef.current === "tournament-mtt" && tournamentStateRef.current?.isFinished) return;
     const activePlayers = playersRef.current ?? [];
     if (!Array.isArray(activePlayers) || activePlayers.length === 0) return;
@@ -13305,6 +13418,7 @@ export default function App() {
   }, [phase, showNextButton]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function trySaveHandOnce({ playersSnap, dealerIdx, pots, potOverride }) {
+    if (guestTrial || tournamentStateRef.current?.config?.practiceOnly) { handSavedRef.current = true; return; }
     debugLog("[HISTORY] trySaveHandOnce called");
     try {
       const fallbackTableId =
@@ -13588,7 +13702,9 @@ export default function App() {
     tableBorderColor,
     tableAccentRing,
     phaseTone,
-  } = getTablePhaseColors(tablePhase);
+  } = getTablePhaseColors(
+    effectiveControllerSnapshot?.phase ?? controlsConfig?.phase ?? tablePhase,
+  );
 
   const tableSummaryProps = {
     phaseTag: hudInfo?.phaseTag ?? phaseTagLocal(),
@@ -13757,7 +13873,7 @@ export default function App() {
     raiseCount: currentRaiseCount,
     raiseCap: fixedLimitRaiseCap,
     raiseUnit: currentRaiseUnit,
-    capReached: currentRaiseCount >= fixedLimitRaiseCap,
+    capReached: normalizedGameVariant === "deuce_to_seven_single_draw" ? Boolean(heroPlayerForControls?.hasActedThisRound) : currentRaiseCount >= fixedLimitRaiseCap,
     heroPosition: heroPositionLabel,
     currentActorSeat,
     currentActorName: currentActorView?.name ?? null,
@@ -13944,6 +14060,7 @@ export default function App() {
     return (
       <>
         <TitleScreen onEnter={handleEnterFromTitle} />
+        <SaveFailureNotice language={language} />
         <DebugHud
           enabled={debugFlags.enabled}
           deviceProfile={deviceProfile}
@@ -13959,11 +14076,41 @@ export default function App() {
     return (
       <>
         <AuthProvider>
-          <AuthGate
+          <AuthGate allowGuest={guestTrial}
             onAuthenticated={handleAuthSuccess}
             onAuthStateChange={handleAuthStateChange}
           >
-            <MenuScreenWithLogout
+            {(guestTrial || location.state?.learningVariant || location.state?.mixedProfileId || location.state?.multiGameConfig || location.state?.multiGameResume) ? <LearningGameLaunch
+              variantId={guestTrial ? trialVariant : location.state.learningVariant ?? location.state.mixedProfileId ?? 'multi-game'}
+              onLaunch={(variantId) => {
+                navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
+                if (guestTrial) { handleSelectRing(trialVariant); return; }
+                if (location.state?.multiGameConfig || location.state?.multiGameResume) {
+                  if (computeUnlockState(getPlayerProgressFromConsolidated()).multiGameLocked) { navigate('/multigame', { replace: true }); return; }
+                  if (location.state.multiGameResume) {
+                    const snapshot = loadActiveMTTSnapshot();
+                    if (snapshot?.config?.multiGame) resumeTournamentMTT(snapshot);
+                    else navigate('/multigame', { replace: true });
+                  } else {
+                    startTournamentMTT(location.state.multiGameConfig);
+                    setCurrentScreen('gameTournament');
+                  }
+                  return;
+                }
+                if (location.state?.mixedProfileId) {
+                  if (computeUnlockState(getPlayerProgressFromConsolidated()).mixedGameLocked) {
+                    navigate("/mixed", { replace: true });
+                    return;
+                  }
+                  const result = mixedGameRef.current?.activateProfile(variantId);
+                  if (!result) { navigate("/mixed", { replace: true }); return; }
+                  cashMixActiveRef.current = true;
+                  dealerChoiceActiveRef.current = Boolean(location.state?.dealerChoice);
+                  if (dealerChoiceActiveRef.current) shiftDealerChoiceVariant();
+                  handleSelectRing(normalizeAppVariantId(result.gameId), { keepMixed: true });
+                } else handleSelectRing(variantId);
+              }}
+            /> : <MenuScreenWithLogout
               language={language}
               onChangeLanguage={(nextLanguage) => {
                 const next =
@@ -13986,9 +14133,10 @@ export default function App() {
               onSelectHandHistory={handleOpenHandHistoryScreen}
               coachingPreviewEnabled={coachingPreviewEnabled}
               onLogoutComplete={handleNavigateToTitle}
-            />
+            />}
           </AuthGate>
         </AuthProvider>
+        <SaveFailureNotice language={language} />
         <DebugHud
           enabled={debugFlags.enabled}
           deviceProfile={deviceProfile}
@@ -14022,6 +14170,7 @@ export default function App() {
             {MGX_LOCALES[language]?.common?.backToMenu ?? "Back to Menu"}
           </button>
         </div>
+        <SaveFailureNotice language={language} />
         <DebugHud
           enabled={debugFlags.enabled}
           deviceProfile={deviceProfile}
@@ -14041,6 +14190,7 @@ export default function App() {
           onBack={handleBackToMenu}
           onLaunchVariant={handleSelectRing}
         />
+        <SaveFailureNotice language={language} />
         <DebugHud
           enabled={debugFlags.enabled}
           deviceProfile={deviceProfile}
@@ -14062,6 +14212,7 @@ export default function App() {
           onResumeTournament={handleResumeTournamentFromHub}
           onRetireTournament={handleRetireTournamentFromHub}
         />
+        <SaveFailureNotice language={language} />
         <DebugHud
           enabled={debugFlags.enabled}
           deviceProfile={deviceProfile}
@@ -14077,6 +14228,7 @@ export default function App() {
     return (
       <>
         <CareerScreen onBack={handleBackToMenu} />
+        <SaveFailureNotice language={language} />
         <DebugHud
           enabled={debugFlags.enabled}
           deviceProfile={deviceProfile}
@@ -14096,6 +14248,7 @@ export default function App() {
           onReplay={handleOpenReplayFromHistory}
           language={language}
         />
+        <SaveFailureNotice language={language} />
         <DebugHud
           enabled={debugFlags.enabled}
           deviceProfile={deviceProfile}
@@ -14121,6 +14274,7 @@ export default function App() {
               : "Back to History"
           }
         />
+        <SaveFailureNotice language={language} />
         <DebugHud
           enabled={debugFlags.enabled}
           deviceProfile={deviceProfile}
@@ -14132,20 +14286,21 @@ export default function App() {
     );
   }
 
-  if (currentScreen === "chinesePoker") {
+  if (currentScreen === "chinesePoker" || currentScreen === 'openFaceChinese') {
     return (
       <>
         <AuthProvider>
-          <AuthGate
+          <AuthGate allowGuest={guestTrial}
             onAuthenticated={handleAuthSuccess}
             onAuthStateChange={handleAuthStateChange}
           >
-            <ChinesePokerGameScreen
+            {currentScreen === 'openFaceChinese' ? <OpenFaceChineseScreen guest={guestTrial} onBack={guestTrial ? () => navigate('/try') : handleOpenGameSelector} /> : <ChinesePokerGameScreen guest={guestTrial}
               language={language}
-              onBack={handleOpenGameSelector}
-            />
+              onBack={guestTrial ? () => navigate('/try') : handleOpenGameSelector}
+            />}
           </AuthGate>
         </AuthProvider>
+        <SaveFailureNotice language={language} />
         <DebugHud
           enabled={debugFlags.enabled}
           deviceProfile={deviceProfile}
@@ -14169,9 +14324,10 @@ export default function App() {
     "MGX Poker";
 
   const headerProps = {
+    language,
     ratingState,
     rankInfo,
-    gameTitle: currentGameTitle,
+    gameTitle: guestTrial ? `${currentGameTitle} · ${language === 'ja' ? '体験' : 'Trial'}` : currentGameTitle,
     labels: headerLabels,
     onNavigateTitle: handleBackToMenu,
     onNavigateLeaderboard: () => navigate("/leaderboard"),
@@ -14222,6 +14378,7 @@ export default function App() {
   const tablePots = potsSrc;
 
   const tableProps = {
+    mixedRotation: cashMixActiveRef.current && mode === "cash" ? { ...mixedGame?.runtimeState, nextName: dealerChoiceActiveRef.current ? null : mixedGame?.nextVariant?.name, nextId: dealerChoiceActiveRef.current ? null : mixedGame?.nextVariant?.id } : null,
     tableOuterBg,
     tournamentHud,
     tableSurfaceBg,
@@ -14255,12 +14412,14 @@ export default function App() {
   };
 
   const overlaysProps = {
+    reviewHandId: guestTrial ? null : handIdRef.current,
     handResultVisible:
-      sessionSnapshot?.overlays?.handResult?.visible ?? handResultVisible,
+      !heroBustOverlayVisible && !tournamentOverlayVisible &&
+      (sessionSnapshot?.overlays?.handResult?.visible ?? handResultVisible),
     handResultSummary:
       sessionSnapshot?.overlays?.handResult?.summary ?? handResultSummary,
-    onNextHand: startNextHand,
-    nextHandLabel,
+    onNextHand: guestTrial ? () => navigate('/try') : startNextHand,
+    nextHandLabel: guestTrial ? (language === 'ja' ? '体験を終了・種目を選ぶ' : 'Finish trial / choose a game') : nextHandLabel,
     onReplayTarget: handleOpenReplayTarget,
     mode,
     heroBustOverlayVisible,
@@ -14289,10 +14448,10 @@ export default function App() {
     drawSelected,
     showNextButton: sessionSnapshot?.overlays?.showNextButton ?? showNextButton,
     heroCanDraw,
-    nextHandLabel,
-    onNextHand: startNextHand,
+    nextHandLabel: guestTrial ? (language === 'ja' ? '体験を終了・種目を選ぶ' : 'Finish trial / choose a game') : nextHandLabel,
+    onNextHand: guestTrial ? () => navigate('/try') : startNextHand,
     isCashGame: mode === "cash",
-    onCashOut: handleCashOut,
+    onCashOut: guestTrial ? () => navigate('/try') : handleCashOut,
   };
 
   const debugProps = {
@@ -14356,7 +14515,7 @@ export default function App() {
   return (
     <>
       <AuthProvider>
-        <AuthGate
+        <AuthGate allowGuest={guestTrial}
           onAuthenticated={handleAuthSuccess}
           onAuthStateChange={handleAuthStateChange}
         >
@@ -14378,6 +14537,7 @@ export default function App() {
           )}
         </AuthGate>
       </AuthProvider>
+      <SaveFailureNotice language={language} />
       <DebugHud
         enabled={debugFlags.enabled}
         deviceProfile={deviceProfile}
@@ -14609,7 +14769,7 @@ function DebugHud({
   );
 }
 
-function AuthGate({ children, onAuthenticated, onAuthStateChange }) {
+function AuthGate({ children, onAuthenticated, onAuthStateChange, allowGuest = false }) {
   const { authState } = useAuth();
   useEffect(() => {
     if (typeof onAuthStateChange === "function") {
@@ -14617,7 +14777,7 @@ function AuthGate({ children, onAuthenticated, onAuthStateChange }) {
     }
   }, [authState, onAuthStateChange]);
   useEffect(() => {
-    if (!authState.isAuthenticated || !authState.accessToken) {
+    if (allowGuest || !authState.isAuthenticated || !authState.accessToken) {
       return undefined;
     }
     const stopAutoSync = startAutoSync(30000, {
@@ -14629,8 +14789,8 @@ function AuthGate({ children, onAuthenticated, onAuthStateChange }) {
         stopAutoSync();
       }
     };
-  }, [authState.accessToken, authState.isAuthenticated, authState.tokenType]);
-  if (!authState.isAuthenticated) {
+  }, [authState.accessToken, authState.isAuthenticated, authState.tokenType, allowGuest]);
+  if (!allowGuest && !authState.isAuthenticated) {
     return <AuthScreen onAuthenticated={onAuthenticated} />;
   }
   return children;

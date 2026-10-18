@@ -1,3 +1,4 @@
+import { saveCriticalJson } from '../../storage/criticalSave.js';
 import { normalizeTokenType } from "./auth.js";
 
 const STORAGE_KEY = "sync.queue.v1";
@@ -27,19 +28,8 @@ function loadQueue() {
 function saveQueue(queue) {
   if (typeof window === "undefined") return;
   const toSave = queue.length > MAX_QUEUE_JOBS ? queue.slice(-MAX_QUEUE_JOBS) : queue;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-  } catch (err) {
-    if (err?.name === "QuotaExceededError" || err?.code === 22) {
-      const half = toSave.slice(-Math.floor(MAX_QUEUE_JOBS / 2));
-      try {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(half));
-      } catch {
-        /* skip */
-      }
-    } else {
-      console.warn("[sync] failed to persist queue", err);
-    }
+  if (!saveCriticalJson(STORAGE_KEY, toSave)) {
+    console.warn('[sync] failed to persist queue');
   }
 }
 

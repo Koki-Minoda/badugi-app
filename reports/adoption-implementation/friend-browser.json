@@ -1,0 +1,53 @@
+[
+  {
+    "variant": "badugi",
+    "seats": 2,
+    "steps": 14,
+    "reconnected": true,
+    "errors": [],
+    "phases": [
+      "bet_0",
+      "draw_1",
+      "bet_1",
+      "draw_2",
+      "bet_2",
+      "draw_3",
+      "bet_3",
+      "showdown"
+    ]
+  },
+  {
+    "variant": "ace_to_five_triple_draw",
+    "seats": 3,
+    "steps": 21,
+    "reconnected": true,
+    "errors": [],
+    "phases": [
+      "bet_0",
+      "draw_1",
+      "bet_1",
+      "draw_2",
+      "bet_2",
+      "draw_3",
+      "bet_3",
+      "showdown"
+    ]
+  },
+  {
+    "variant": "deuce_to_seven_triple_draw",
+    "seats": 6,
+    "steps": 42,
+    "reconnected": true,
+    "errors": [],
+    "phases": [
+      "bet_0",
+      "draw_1",
+      "bet_1",
+      "draw_2",
+      "bet_2",
+      "draw_3",
+      "bet_3",
+      "showdown"
+    ]
+  }
+]

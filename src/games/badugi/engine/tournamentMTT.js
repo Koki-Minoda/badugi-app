@@ -1,4 +1,5 @@
 import { DEBUG_TOURNAMENT, logMTT } from "../../../config/debugFlags.js";
+import { multiGameVariantForTable } from '../../config/multiGameTournament.js';
 
 /**
  * Multi-table Badugi Tournament controller.
@@ -87,10 +88,12 @@ export function createMTTTournamentState(config, entrants) {
     players[playerId] = player;
   });
 
+  if (config.multiGame) for (const table of tables) table.variantId = multiGameVariantForTable({ config, tables, playersRemaining: contestantList.length }, table.tableId);
   return {
     tournamentRunId: createTournamentRunId(),
     config,
     levelIndex: 0,
+    levelEndsAt: config.levelProgression === "clock" ? Date.now() + config.levelDurationMinutes * 60000 : null,
     tables,
     players,
     totalPlayers: contestantList.length,
@@ -189,6 +192,7 @@ export function onTableHandCompleted(state, tableId, handSummary) {
   }
 
   table.handsPlayedAtThisLevel += 1;
+  if (next.config.multiGame) table.totalHandsPlayed = (table.totalHandsPlayed ?? 0) + 1;
   if (completionKey) {
     next.completedHandIds.push(completionKey);
     if (next.completedHandIds.length > 4096) {
@@ -197,6 +201,10 @@ export function onTableHandCompleted(state, tableId, handSummary) {
   }
   maybeAdvanceLevel(next);
   maybeRebalance(next);
+  if (next.config.multiGame) for (const t of next.tables) {
+    if (next.config.multiGame.format === 'championship' && next.playersRemaining <= 6 && t.finalStartHand == null) t.finalStartHand = t.totalHandsPlayed ?? 0;
+    t.variantId = multiGameVariantForTable(next, t.tableId);
+  }
   maybeFinalizeTournament(next);
   return next;
 }
@@ -231,6 +239,17 @@ function markPlayerBusted(state, player, handIndex) {
 
 function maybeAdvanceLevel(state) {
   const currentLevel = getCurrentLevel(state);
+  if (state.config.levelProgression === 'clock') {
+    if (state.levelEndsAt == null) state.levelEndsAt = Date.now() + state.config.levelDurationMinutes * 60000;
+    if (Date.now() < state.levelEndsAt || state.levelIndex >= state.config.levels.length - 1) return;
+    const previousLevel = state.levelIndex + 1;
+    const breakMs = state.config.breakEveryLevels > 0 && previousLevel % state.config.breakEveryLevels === 0 ? state.config.breakDurationMinutes * 60000 : 0;
+    state.levelIndex += 1;
+    state.levelEndsAt = Date.now() + breakMs + state.config.levelDurationMinutes * 60000;
+    state.tables.forEach(table => { table.handsPlayedAtThisLevel = 0; });
+    appendTournamentEvent(state, { type: 'LEVEL_ADVANCED', fromLevel: previousLevel, toLevel: state.levelIndex + 1, playersRemaining: state.playersRemaining });
+    return;
+  }
   if (!currentLevel || currentLevel.handsThisLevel <= 0) {
     return;
   }
@@ -316,7 +335,7 @@ function activeTables(state) {
 }
 
 function isHeroPlayer(player) {
-  return player?.id === "hero" || String(player?.name ?? "").toLowerCase() === "hero";
+  return player?.id === "hero-player" || player?.id === "hero" || String(player?.name ?? "").toLowerCase() === "hero";
 }
 
 function getHeroTableId(state) {

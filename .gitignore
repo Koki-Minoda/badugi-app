@@ -112,3 +112,6 @@ reports/soak/
 reports/tournament/
 reports/tournament-qm/
 reports/ui/
+
+reports/learning-entry/simulator-artifacts/
+reports/gameplay-device/artifacts/

@@ -1,0 +1,5 @@
+import { it, expect } from 'vitest';
+import { readSharedMix, sharedMixUrl } from '../mixShare.js';
+import { buildProfileFromPreset } from '../../mixed/rotationUtils.js';
+it('roundtrips Japanese names and full MIX settings without altering the original',()=>{const p=buildProfileFromPreset({name:'週末MIX',selectedGameIds:['D03','D01'],handsPerGame:4,selectionMode:'WEIGHTED',weightedTable:{D03:2,D01:1}});const q=readSharedMix(decodeURIComponent(new URL(sharedMixUrl(p,'https://example.test')).hash.slice(1)));expect(q.name).toBe(p.name);expect(q.selectedGameIds).toEqual(p.selectedGameIds);expect(q.weightedTable).toEqual(p.weightedTable);expect(q.id).not.toBe(p.id);});
+it('rejects unknown games injected through weights and categories',()=>{const base={version:1,name:'Mix',games:['D03'],hands:4,mode:'WEIGHTED'};for(const extra of [{weights:{unknown:1}},{weights:{D03:-1}},{categories:{weights:{board:1},pools:{board:['UNKNOWN']}}},{hardBans:['UNKNOWN']}])expect(()=>readSharedMix(btoa(JSON.stringify({...base,...extra})))).toThrow();});

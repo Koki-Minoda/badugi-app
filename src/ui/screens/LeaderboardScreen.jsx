@@ -1,3 +1,4 @@
+import { useLanguage } from '../preferences/language.js';
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRatingState } from "../hooks/useRatingState.js";
@@ -22,6 +23,7 @@ const STAGE_LABELS = {
 };
 
 export default function LeaderboardScreen() {
+  const ja = useLanguage() === "ja";
   const navigate = useNavigate();
   const ratingState = useRatingState();
   const settings = loadTitleSettings();
@@ -50,7 +52,7 @@ export default function LeaderboardScreen() {
       <header className="max-w-6xl mx-auto px-6 py-6 flex flex-col gap-4">
         <div className="flex flex-col gap-3">
           <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">Leaderboard</p>
-          <h1 className="text-3xl font-black">Global Rating Console</h1>
+          <h1 className="text-3xl font-black">{ja ? "自分の成績" : "My results"}</h1>
           <p className="text-sm text-slate-400">
             {settings.playerName || "プレイヤー"} の現在の Global Rating は{" "}
             <strong>{Math.round(ratingState.globalRating)}</strong>（{rankInfo.label}）。

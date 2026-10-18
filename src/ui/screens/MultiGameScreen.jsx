@@ -1,149 +1,29 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
-import { usePlayerProgress } from "../hooks/usePlayerProgress.js";
-import { computeUnlockState } from "../utils/playerProgress.js";
-
-const plannedFormats = [
-  {
-    title: "Stage Relay",
-    description: "Rotate three variants in a fixed order and award stage points.",
-    status: "Planning",
-  },
-  {
-    title: "Survival Mix",
-    description: "Different tables run different variants and rebalance every few hands.",
-    status: "Planning",
-  },
-  {
-    title: "Championship Relay",
-    description: "Leverages Mixed Game profiles and ends with a Dealer's Choice final table.",
-    status: "Planning",
-  },
-];
-
+import { useLanguage } from '../preferences/language.js';
+import LanguageSelect from '../preferences/LanguageSelect.jsx';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { usePlayerProgress } from '../hooks/usePlayerProgress.js';
+import { computeUnlockState } from '../utils/playerProgress.js';
+import { PUBLIC_RING_PLAYABLE_VARIANTS } from '../../games/config/variantAvailability.js';
+import { loadActiveMTTSnapshot } from '../tournament/tournamentManager.js';
+import { MULTI_FORMATS, loadMultiGameSeries, createMultiGameSeries, buildMultiGameConfig } from '../multigame/multiGameSeries.js';
 export default function MultiGameScreen() {
-  const navigate = useNavigate();
-  const progress = usePlayerProgress();
-  const unlock = computeUnlockState(progress);
-  const locked = unlock.multiGameLocked;
-
-  return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      <header className="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-widest text-emerald-300">
-            Multi-Game Tournament
-          </p>
-          <h1 className="text-3xl font-extrabold">Multi-Game Tournament (Prototype)</h1>
-        </div>
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={() => navigate("/")}
-            className="px-4 py-2 rounded-lg border border-white/20 hover:bg-white/10 transition"
-          >
-            Title へ戻る
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate("/games")}
-            className="px-4 py-2 rounded-lg border border-cyan-400/40 text-cyan-200 hover:bg-cyan-400/10 transition"
-          >
-            Game Catalog
-          </button>
-        </div>
-      </header>
-
-      <main className="max-w-6xl mx-auto px-6 pb-16 space-y-8">
-        {locked && (
-          <div className="rounded-3xl border border-amber-400/40 bg-amber-500/10 text-amber-100 text-sm p-4">
-            Win the World Championship to unlock the Multi-Game prototype. Finish the stage chain first!
-          </div>
-        )}
-
-        <section className="grid gap-6 lg:grid-cols-[380px_1fr]">
-          <div className="bg-slate-900/80 border border-white/10 rounded-3xl p-5 space-y-4">
-            <h2 className="text-lg font-semibold">Progress Summary</h2>
-            <div className="space-y-2 text-sm text-slate-300">
-              <p>- Up to 6 seats per table (mirrors current training table size)</p>
-              <p>- Variants rotate every 6-12 hands depending on stage</p>
-              <p>- Eventually links with Mixed Game profiles and Dealer&apos;s Choice finals</p>
-              <p>- RL logs will store `gameId` and `rotationIndex` for each hand</p>
-            </div>
-            <button
-              type="button"
-              disabled={locked}
-              onClick={() => navigate("/tournament")}
-              className={`w-full px-4 py-3 rounded-2xl font-semibold transition ${
-                locked
-                  ? "bg-slate-800 text-slate-500 cursor-not-allowed"
-                  : "bg-emerald-500 text-slate-900 hover:bg-emerald-400"
-              }`}
-            >
-              {locked ? "COMING SOON" : "Launch Prototype"}
-            </button>
-          </div>
-
-          <div className="bg-slate-900/70 border border-white/10 rounded-3xl p-6 space-y-4">
-            <h2 className="text-lg font-semibold">Formats in Planning</h2>
-            <div className="grid gap-4 md:grid-cols-2">
-              {plannedFormats.map((format) => (
-                <div
-                  key={format.title}
-                  className="rounded-2xl border border-white/10 bg-slate-950/40 p-4 space-y-2"
-                >
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-base font-semibold">{format.title}</h3>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
-                      {format.status}
-                    </span>
-                  </div>
-                  <p className="text-sm text-slate-300 leading-relaxed">{format.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="bg-slate-900/80 border border-white/10 rounded-3xl p-6 space-y-4">
-          <h2 className="text-lg font-semibold">Table Simulation (Mock)</h2>
-          <p className="text-sm text-slate-300">
-            Sample timeline only. Later specs will replace this card with live session data.
-          </p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left border-collapse">
-              <thead>
-                <tr className="text-slate-400 uppercase tracking-wide text-xs">
-                  <th className="py-2 border-b border-white/10">Level</th>
-                  <th className="py-2 border-b border-white/10">Game</th>
-                  <th className="py-2 border-b border-white/10">Hands</th>
-                  <th className="py-2 border-b border-white/10">Notes</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="py-2 border-b border-white/5">1</td>
-                  <td className="py-2 border-b border-white/5">Badugi Draw</td>
-                  <td className="py-2 border-b border-white/5">8 hands</td>
-                  <td className="py-2 border-b border-white/5 text-slate-400">Opening phase</td>
-                </tr>
-                <tr>
-                  <td className="py-2 border-b border-white/5">2</td>
-                  <td className="py-2 border-b border-white/5">2-7 Triple Draw</td>
-                  <td className="py-2 border-b border-white/5">10 hands</td>
-                  <td className="py-2 border-b border-white/5 text-slate-400">Deep stack</td>
-                </tr>
-                <tr>
-                  <td className="py-2 border-b border-white/5">3</td>
-                  <td className="py-2 border-b border-white/5">Dealer&apos;s Choice</td>
-                  <td className="py-2 border-b border-white/5">6 hands</td>
-                  <td className="py-2 border-b border-white/5 text-slate-400">Final two tables</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </main>
-    </div>
-  );
+  const ja=useLanguage()==='ja';
+  const navigate=useNavigate();const locked=computeUnlockState(usePlayerProgress()).multiGameLocked;
+  const [format,setFormat]=useState('stage'),[sequence,setSequence]=useState(['badugi','deuce_to_seven_triple_draw','stud']),[finalGame,setFinalGame]=useState('nlh');
+  const [series,setSeries]=useState(loadMultiGameSeries),[error,setError]=useState('');
+  const active=loadActiveMTTSnapshot();
+  const unfinished=active && !active.tournamentState?.isFinished;
+  const start=()=>{try { if(locked)return; if(unfinished){setError('進行中の大会があります。再開して終了するか、大会メニューでリタイアしてください。');return;}const s=createMultiGameSeries(format,sequence,[finalGame,...sequence]);setSeries(s);navigate('/game',{state:{multiGameConfig:buildMultiGameConfig(s)}});}catch(e){setError(e.message);}};
+  const continueSeries=()=>{ if (unfinished && active.config?.multiGame?.seriesId!==series.id) {setError('別の大会が進行中です。大会メニューで再開して終了するか、リタイアしてください。');return;}navigate('/game',{state:unfinished ? {multiGameResume:true}:{multiGameConfig:buildMultiGameConfig(series)}}); };
+  return <main className="min-h-screen bg-slate-950 p-4 text-white sm:p-8"><div className="mx-auto max-w-4xl space-y-5">
+    <header className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs text-emerald-300">{ja ? '複数種目のトーナメント' : 'Multi-game tournaments'}</p><h1 className="text-2xl font-bold">Multi-Game Tournament</h1><LanguageSelect /></div><button onClick={()=>navigate('/games')} className="min-h-11 rounded-lg border border-white/20 px-4">{ja ? 'ゲーム選択へ' : 'Choose a game'}</button></header>
+    {locked && <p role="status" className="rounded-xl bg-amber-500/10 p-4 text-amber-100">{ja ? 'World Championshipで優勝すると利用できます。' : 'Win the World Championship to unlock this mode.'}</p>}
+    {series && <section data-testid="multi-series-progress" className="rounded-2xl border border-emerald-300/30 bg-emerald-950/30 p-4"><h2 className="font-bold">{MULTI_FORMATS[series.format].name} · {series.completed?(ja?'完了':'Complete'):`${series.results.length}/${series.format==='stage'?3:1} ${ja?'大会終了':'events finished'}`}</h2>{series.results.length>0 && <ol className="my-3 space-y-1">{Object.values(series.standings).sort((a,b)=>b.points-a.points).map((p,i)=><li key={p.id}>{i+1}. {p.name} · {p.points}点</li>)}</ol>}{!series.completed && <button data-testid="multi-continue" onClick={continueSeries} className="mt-3 min-h-11 rounded-xl bg-emerald-400 px-4 font-bold text-slate-950">{unfinished?(ja?'進行中の大会を再開':'Resume tournament'):(ja?'次の大会へ':'Next tournament')}</button>}</section>}
+    <section className="grid gap-3 md:grid-cols-3">{Object.entries(MULTI_FORMATS).map(([id,f])=><button key={id} data-testid={`multi-format-${id}`} disabled={locked} onClick={()=>setFormat(id)} aria-pressed={format===id} className={`rounded-2xl border p-4 text-left disabled:opacity-40 ${format===id?'border-emerald-300 bg-emerald-500/10':'border-white/15 bg-slate-900'}`}><h2 className="font-bold">{f.name}</h2><p className="mt-2 text-sm leading-relaxed text-slate-300">{ja?f.description:({stage:'Three tournaments, one game per event. Rank by total placement points.',survival:'Three tables use different games. Games change when tables merge.',championship:'Mixed games with a Dealer’s Choice final.'}[id]??f.name)}</p></button>)}</section>
+    <section className="space-y-3 rounded-2xl border border-white/15 bg-slate-900 p-4"><h2 className="font-bold">{ja ? 'プレイする3種目' : 'Three games to play'}</h2><div className="grid gap-3 sm:grid-cols-3">{sequence.map((id,i)=><label key={i} className="space-y-1 text-sm"><span>{ja?`${i+1}種目目`:`Game ${i+1}`}</span><select aria-label={`${ja?`${i+1}種目目`:`Game ${i+1}`}`} value={id} disabled={locked} onChange={e=>setSequence(sequence.map((v,j)=>j===i?e.target.value:v))} className="min-h-12 w-full rounded-lg border border-white/20 bg-slate-950 p-2 text-base">{PUBLIC_RING_PLAYABLE_VARIANTS.map(v=><option key={v.id} value={v.availabilityKey}>{v.displayName}</option>)}</select></label>)}</div>{format==='championship' && <label className="block space-y-1 text-sm"><span>{ja ? '決勝Dealer’s Choiceの先頭（以後は選んだ3種目）' : 'First game in the Dealer’s Choice final (then the three selected games)'}</span><select aria-label="決勝の先頭種目" value={finalGame} onChange={e=>setFinalGame(e.target.value)} className="min-h-12 w-full rounded-lg border border-white/20 bg-slate-950 p-2 text-base">{PUBLIC_RING_PLAYABLE_VARIANTS.map(v=><option key={v.id} value={v.availabilityKey}>{v.displayName}</option>)}</select></label>}<p className="text-sm text-slate-300">{ja ? '参加費なし。シリーズの順位点はこの端末に保存されます。通常大会の賞金や解放条件には加算しません。' : 'No entry fee. Series points are saved on this device and do not affect regular tournament prizes or unlocks.'}</p></section>
+    {error && <p role="alert" className="text-amber-200">{error}</p>}
+    <button data-testid="multi-start" disabled={locked || (!!series && !series.completed)} onClick={start} className="min-h-12 w-full rounded-xl bg-emerald-400 px-4 font-bold text-slate-950 disabled:opacity-40">{ja?`${MULTI_FORMATS[format].name}を開始`:`Start ${MULTI_FORMATS[format].name}`}</button>
+    <p className="text-xs text-slate-400">{ja ? '自分の卓は通常のゲーム操作で進行します。他の卓は既存の大会シミュレーションで進行します。中断後は直前のハンド終了時点から再開します。' : 'Play your own table; other tables are simulated. Resume from the last completed hand.'}</p>
+  </div></main>;
 }

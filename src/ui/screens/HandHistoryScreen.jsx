@@ -1,3 +1,4 @@
+import ReviewBookmarkButton from "../review/ReviewBookmarkButton.jsx";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   getCurrentHandHistorySnapshot,
@@ -85,7 +86,7 @@ function buildReplayTargetForSpot(spot = {}, replayLink = null) {
   };
 }
 
-function HandHistoryRow({ entry, onReplay }) {
+function HandHistoryRow({ entry, onReplay, language }) {
   const { hand, isLive } = entry;
   const handEnd = extractHandEndEvent(hand);
   const winners =
@@ -97,6 +98,7 @@ function HandHistoryRow({ entry, onReplay }) {
   const totalPot = handEnd?.totalPot ?? "—";
 
   return (
+    <div className="space-y-2">
     <button
       type="button"
       data-testid={`hand-history-row-${hand?.handId ?? "unknown"}`}
@@ -136,6 +138,8 @@ function HandHistoryRow({ entry, onReplay }) {
         </div>
       </div>
     </button>
+    {!isLive && <ReviewBookmarkButton hand={hand} language={language} />}
+    </div>
   );
 }
 
@@ -516,7 +520,7 @@ export default function HandHistoryScreen({
             </div>
           )}
           {filteredRows.map((entry) => (
-            <HandHistoryRow key={entry.key} entry={entry} onReplay={onReplay} />
+            <HandHistoryRow key={entry.key} entry={entry} onReplay={onReplay} language={language} />
           ))}
         </div>
       </div>

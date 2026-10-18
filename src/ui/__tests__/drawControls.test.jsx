@@ -260,3 +260,22 @@ describe("Mobile betting controls", () => {
     expect(screen.getByTestId("action-raise").textContent).toBe("Raise 50");
   });
 });
+
+
+describe("numeric bet entry", () => {
+  it("allows clearing and typing a multi-digit amount before clamping on blur", () => {
+    const onRaise = vi.fn();
+    render(<Controls phase="BET" currentBet={20} player={{stack:500,betThisRound:0}}
+      onRaise={onRaise} onCall={()=>{}} onFold={()=>{}} layoutMode="mobile-landscape"
+      betSizing={{enabled:true,actionType:'raise',minCommit:40,maxCommit:500,presets:[]}} />);
+    const input=screen.getByTestId('bet-size-input');
+    fireEvent.change(input,{target:{value:''}});expect(input.value).toBe('');
+    fireEvent.change(input,{target:{value:'8'}});expect(input.value).toBe('8');
+    fireEvent.change(input,{target:{value:'80'}});fireEvent.blur(input);
+    expect(input.value).toBe('80');fireEvent.click(screen.getByTestId('action-raise'));
+    expect(onRaise).toHaveBeenLastCalledWith(80);
+    fireEvent.change(input,{target:{value:'999'}});fireEvent.blur(input);
+    expect(input.value).toBe('500');fireEvent.click(screen.getByTestId('action-raise'));
+    expect(onRaise).toHaveBeenLastCalledWith(500);
+  });
+});

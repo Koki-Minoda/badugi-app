@@ -128,8 +128,8 @@ async function openFriendMatch(page: Page, label: string) {
 
 async function privateCards(page: Page) {
   const hand = page.getByTestId("p2p-private-hand");
-  await expect(hand.locator("button")).toHaveCount(4, { timeout: 15_000 });
-  return hand.locator("button").allTextContents();
+  await expect(hand.locator('[data-testid^="p2p-card-"]')).toHaveCount(4, { timeout: 15_000 });
+  return hand.locator('[data-testid^="p2p-card-"]').allTextContents();
 }
 
 async function expectNoHorizontalOverflow(page: Page) {
@@ -279,8 +279,8 @@ test.describe("production P2P friend match websocket", () => {
       await guest.getByRole("button", { name: /^Join$|^参加$/i }).click();
       await expect(guest.getByText(/Joined room|ルームに参加しました/i)).toBeVisible();
 
-      await expect(host.getByText(/^connected$/i)).toBeVisible({ timeout: 15_000 });
-      await expect(guest.getByText(/^connected$/i)).toBeVisible({ timeout: 15_000 });
+      await expect(host.getByTestId("friend-match-layout")).toHaveAttribute("data-connection-status", /^connected$/i, { timeout: 15_000 });
+      await expect(guest.getByTestId("friend-match-layout")).toHaveAttribute("data-connection-status", /^connected$/i, { timeout: 15_000 });
       await host.getByTestId("p2p-ready").click();
       await guest.getByTestId("p2p-ready").click();
 
@@ -293,7 +293,7 @@ test.describe("production P2P friend match websocket", () => {
       expect(await guest.locator("body").innerText()).not.toContain(hostCardsBeforeReload.join(" "));
 
       await host.reload({ waitUntil: "load" });
-      await expect(host.getByText(/^connected$/i)).toBeVisible({ timeout: 15_000 });
+      await expect(host.getByTestId("friend-match-layout")).toHaveAttribute("data-connection-status", /^connected$/i, { timeout: 15_000 });
       expect(await privateCards(host)).toEqual(hostCardsBeforeReload);
       await expect(host.getByTestId(`p2p-player-${hostSession.user.id}`)).toBeVisible();
       await expect(guest.getByTestId(`p2p-player-${guestSession.user.id}`)).toBeVisible();
@@ -328,7 +328,7 @@ test.describe("production P2P friend match websocket", () => {
       await expect(secondDrawer.getByTestId("p2p-draw")).toBeEnabled({ timeout: 15_000 });
       await secondDrawer.getByTestId("p2p-draw").click();
 
-      await expect(host.getByTestId("p2p-private-hand").locator("button")).toHaveCount(4);
+      await expect(host.getByTestId("p2p-private-hand").locator('[data-testid^="p2p-card-"]')).toHaveCount(4);
       const bettor = await waitForEnabledPage(
         [
           { label: "host", page: host },

@@ -12,7 +12,7 @@ const CATEGORY_VARIANT_MAP = CATEGORY_KEYS.reduce((acc, category) => {
   return acc;
 }, {});
 
-const clampHands = (value) => Math.max(1, Math.min(30, Number(value) || 4));
+const clampHands = (value) => Math.max(1, Math.min(30, Math.floor(Number(value)) || 4));
 
 const normalizeList = (list) =>
   Array.isArray(list)
@@ -54,11 +54,11 @@ function sanitizeCategoryRules(rules = {}) {
 }
 
 function ensureSelectedIds(baseIds = [], weightedTable = {}) {
-  const set = new Set(baseIds);
+  const ids = [...baseIds];
   Object.keys(weightedTable || {}).forEach((id) => {
-    set.add(id);
+    if (!ids.includes(id)) ids.push(id);
   });
-  return Array.from(set).slice(0, 20);
+  return ids.slice(0, 20);
 }
 
 export function buildProfileFromPreset(preset = {}) {
@@ -123,7 +123,7 @@ export function findNextPlayableIndex(profile, startIndex, isPlayable) {
   for (let offset = 0; offset < total; offset += 1) {
     const idx = (startIndex + offset) % total;
     const gameId = profile.selectedGameIds[idx];
-    if (!isPlayable || isPlayable(gameId)) {
+    if (!(profile.hardBans ?? []).includes(gameId) && (!isPlayable || isPlayable(gameId))) {
       return idx;
     }
   }
@@ -135,7 +135,7 @@ export function resolveInitialGame(profile, selectionModeOverride, isPlayable) {
   const mode = normalizeSelectionMode(selectionModeOverride || profile.selectionMode);
   if (mode === "RANDOM") {
     const playableIds = profile.selectedGameIds.filter((id) =>
-      isPlayable ? isPlayable(id) : true
+      !(profile.hardBans ?? []).includes(id) && (!isPlayable || isPlayable(id))
     );
     if (playableIds.length === 0) return null;
     const nextId = pickRandom(playableIds);
@@ -198,7 +198,7 @@ export function advanceRotationState(runtimeState, profile, isPlayable) {
       }
     } else if (mode === "RANDOM") {
       const playableIds = profile.selectedGameIds.filter((id) =>
-        isPlayable ? isPlayable(id) : true
+        !(profile.hardBans ?? []).includes(id) && (!isPlayable || isPlayable(id))
       );
       if (playableIds.length > 0) {
         nextGameId = pickRandom(playableIds);
@@ -261,30 +261,16 @@ function pickWeightedGame(profile, isPlayable) {
 
 function pickCategoryGame(profile, isPlayable) {
   const rules = profile.categoryRules || {};
-  const weightsEntries = Object.entries(rules.weights || {}).filter(([, weight]) => weight > 0);
-  if (!weightsEntries.length) return null;
-  const category = selectByWeight(
-    weightsEntries.map(([cat, weight]) => ({ gameId: cat, weight }))
-  );
-  if (!category) return null;
-  const pool =
-    (rules.pools && rules.pools[category] && rules.pools[category].length
-      ? rules.pools[category]
-      : null) ??
-    CATEGORY_VARIANT_MAP[category] ??
-    [];
-  if (!pool.length) return null;
   const hardBans = new Set(profile.hardBans || []);
   const softBans = new Set(profile.softBans || []);
-  const entries = pool
-    .filter(Boolean)
-    .filter((gameId) => !hardBans.has(gameId))
-    .filter((gameId) => (!isPlayable ? true : isPlayable(gameId)))
-    .map((gameId) => ({
-      gameId,
-      weight: softBans.has(gameId) ? 0.25 : 1,
-    }));
-  return selectByWeight(entries);
+  const categories = Object.entries(rules.weights || {}).map(([category, weight]) => {
+    const pool = rules.pools?.[category]?.length ? rules.pools[category] : CATEGORY_VARIANT_MAP[category] ?? [];
+    const entries = pool.filter(id => !hardBans.has(id) && (!isPlayable || isPlayable(id)))
+      .map(gameId => ({ gameId, weight: softBans.has(gameId) ? 0.25 : 1 }));
+    return { gameId: category, weight, entries };
+  }).filter(entry => entry.weight > 0 && entry.entries.length > 0);
+  const selected = selectByWeight(categories);
+  return selected ? selectByWeight(categories.find(entry => entry.gameId === selected).entries) : null;
 }
 
 function selectByWeight(entries = []) {

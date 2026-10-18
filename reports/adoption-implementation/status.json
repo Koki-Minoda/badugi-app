@@ -1,0 +1,128 @@
+{
+  "baseline": "203fe5f",
+  "updatedAt": "2026-09-23T01:53:38.569532+00:00",
+  "deployment": "not_deployed",
+  "physicalDeviceQA": "verified_2026_09_23_with_documented_scope",
+  "items": [
+    {
+      "id": "A01",
+      "title": "言語をすぐ変更",
+      "state": "implemented_verified",
+      "scope": "共通の日本語/English設定。メニュー、学習、練習、対局、大会、履歴、友人戦、各ツールから同じ保存値を利用。主要導線の翻訳も追加",
+      "verification": "言語変更時の入力保持、再読み込み後の復元、日英の画面確認"
+    },
+    {
+      "id": "A02",
+      "title": "短く具体的な説明",
+      "state": "implemented_verified",
+      "scope": "未実装機能の予告を削除。「自分の成績」「CPUの速さ」などに整理。ランダムとDealer’s Choiceを別名に修正",
+      "verification": "実際に使える設定・開始条件との照合。既存のゲーム名や略語は維持"
+    },
+    {
+      "id": "A03",
+      "title": "対局画面の統一",
+      "state": "implemented_verified",
+      "scope": "CPU戦と友人戦で丸テーブル・座席・手札表示を共有。縦は下、横は右に操作を配置。交換時の赤い縁取りを維持",
+      "verification": "縦390×844/横844×390。友人戦2・3・6席。Safariのセレクトも44px以上に修正"
+    },
+    {
+      "id": "A04",
+      "title": "同じ形式のルール説明",
+      "state": "implemented_verified",
+      "scope": "全37種目に「勝敗/A」「カード/交換」「ベット」「手番」の4項目。種目変更時は前の種目との差を表示",
+      "verification": "既存ルール・対局テスト、単ドローのNL表記、Archie条件、BadeuceyのAの扱いを照合"
+    },
+    {
+      "id": "A05",
+      "title": "反復練習の設定",
+      "state": "implemented_verified",
+      "scope": "Badugi/A-5 TD/2-7 TDでCPU速度3段階、CPUがフォールドしない設定、毎回2,000点で再開",
+      "verification": "全3種目のハンド進行・山札52枚・チップ保存。設定保存"
+    },
+    {
+      "id": "A06",
+      "title": "登録前の1ハンド体験",
+      "state": "implemented_verified",
+      "scope": "`/try` から通常公開26種目。終了後は種目選択へ戻る。体験の成績・履歴を保存しない",
+      "verification": "WebKitで26種目を1ハンドずつ完走。ページ例外・横はみ出し・成績変更・API書き込みなし"
+    },
+    {
+      "id": "A07",
+      "title": "リンク/QR共有",
+      "state": "implemented_verified",
+      "scope": "友人戦ルーム、MIX設定、練習開始手札、練習会の招待。QRは端末内で生成",
+      "verification": "日本語名と設定の往復、無効な種目/重み/リンクの拒否。受取時は内容を表示して取り込む"
+    },
+    {
+      "id": "A08",
+      "title": "結果から復習",
+      "state": "implemented_verified",
+      "scope": "既存の履歴→リプレイ→保存した復習・メモ→同じ開始手札の練習を共通導線に接続",
+      "verification": "履歴/復習テストと実対局リプレイ。指定手札での再練習は対応3種目に限定"
+    },
+    {
+      "id": "A09",
+      "title": "遊べる範囲を正確に表示",
+      "state": "implemented_verified",
+      "scope": "公開/試験公開を共通の可否判定で表示。FL Hold’emは新たに通常公開へ。未公開種目を体験一覧に混ぜない",
+      "verification": "公開判定テスト。通常公開24リング種目＋Chinese/OFCの2種目"
+    },
+    {
+      "id": "B01",
+      "title": "トーナメントのストラクチャー",
+      "state": "implemented_verified",
+      "scope": "通常大会の全レベル表。自由設定はBadugiの無料CPU練習大会：短め/標準/じっくり、持ち点・レベル時間・強制ベット・休憩を編集保存",
+      "verification": "1,500点/7分で開始し、再開後も設定・期限が一致。レベル上昇は時間経過後のハンド終了時。参加費・賞金・解放実績なし"
+    },
+    {
+      "id": "B02",
+      "title": "定番MIX/DC",
+      "state": "implemented_verified",
+      "scope": "HORSE/8/10のOmahaをFL Hi/Loへ修正。8-Gameの順を是正。保存済み旧定番も移行。固定順は次種目を予告。ランダムは明確に別名",
+      "verification": "FLHのPC/WebKit実対局とリプレイ。2-7 SDを実際にNL化し、金額指定・短いオールイン・レイズ再開・サイドポットを検証"
+    },
+    {
+      "id": "B03",
+      "title": "自由入力の役判定",
+      "state": "implemented_verified",
+      "scope": "`/tools` に2手の比較。High/2-7/A-5/Badugi/Hi-Lo8/Badeucey/Badacey/Archieの8形式。採用カード・同点・ロー不成立・分配率を表示",
+      "verification": "実対局と同じ評価関数。重複カード、クォーター、ペアのあるロー、Archie不成立、BadeuceyのAを回帰検証"
+    },
+    {
+      "id": "B04",
+      "title": "全席を自分で操作",
+      "state": "implemented_verified",
+      "scope": "対応3種目の練習。手番の席を明示して操作手札を変更。全員の手札表示は任意。一手戻し",
+      "verification": "手札/山札/交換履歴/乱数を戻し、同じ操作が同じ結果になることを確認。古い画面状態からの入力は拒否"
+    },
+    {
+      "id": "B05",
+      "title": "多種目・多人数の友人戦",
+      "state": "implemented_verified",
+      "scope": "Badugi/A-5 TD/2-7 TD、2〜6人。サーバーが合法手・伏せ札・レイズ上限・交換・サイドポットを管理。共通丸テーブル",
+      "verification": "3種目×2〜6席のエンジン検証。ブラウザ2/3/6席で完走＋再読み込み復帰。WebSocket停止時のREST継続も完走"
+    },
+    {
+      "id": "B06",
+      "title": "リアル卓のゲーム札・時計",
+      "state": "implemented_verified",
+      "scope": "`/tools?tab=clock`。種目、残り時間、現在/次の強制ベット。休憩・各レベルを編集。StudのAnte/Bring-in/Small/Bigを別表示",
+      "verification": "実時刻に基づく復帰、複数レベル/休憩の通過、一時停止・再開・最終終了・不正値を検証。アプリ内大会とは別の時計と明示"
+    },
+    {
+      "id": "B07",
+      "title": "手札から練習先を提案",
+      "state": "implemented_verified",
+      "scope": "`/tools?tab=recommend`。低いランクや4スートなど、手札の具体的特徴から最大3候補。対応する練習手札へ移動",
+      "verification": "候補の有効カードと根拠を検証。最適戦略・EV・勝率は提示しない"
+    },
+    {
+      "id": "B08",
+      "title": "小さな定期会と結果一覧",
+      "state": "implemented_operations_not_started",
+      "scope": "`/meetups`。主催者・日時・毎週開催、招待URL/QR、カレンダー追加、当日のルームコード編集、結果メモ",
+      "verification": "保存/編集、結果を招待に含めないこと、日時・コード検証、カレンダー出力。予定/結果は端末内。実際の開催・参加者募集は未実施"
+    }
+  ],
+  "physicalDeviceReport": "physical-2026-09-23/README.md"
+}

@@ -29,7 +29,7 @@ export function buildPlayersFromSeatTypes(seatConfig = [], stackValue = 0, profi
       showHand: isHuman,
       lastAction: "",
       hasDrawn: false,
-      lastDrawCount: 0,
+      lastDrawCount: null,
       titleBadge: isHuman ? profile?.titleBadge ?? "" : "",
       avatar: isHuman ? sanitizeAvatar(profile?.avatar) : undefined,
     };

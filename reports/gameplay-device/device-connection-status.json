@@ -1,0 +1,15 @@
+{
+  "checkedAt": "2026-09-19T16:56:19.676090+00:00",
+  "usbConnected": true,
+  "paired": true,
+  "developerMode": true,
+  "developerImageMounted": true,
+  "nativeScreenshot": "DVT capture succeeded",
+  "nativeAccessibility": "element reading succeeded; press acknowledgement did not activate Safari controls",
+  "appMirroringCapture": "failedToCreateImageDestination",
+  "status": "physical_safari_gameplay_verified_native_input_pending",
+  "physicalGameplayCompletedThisAttempt": true,
+  "transport": "Web Inspector CDP on USB, build/API served over LAN",
+  "physicalGameplay": "35 ring variants landscape; 20 ring portrait; Chinese/OFC both orientations; Multi-Game and Dealer Choice",
+  "inputCaveat": "DOM activations are not native finger taps"
+}

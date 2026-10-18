@@ -120,12 +120,12 @@ describe("FriendMatchSetupScreen", () => {
     cleanup();
   });
 
-  it("advertises only the supported two-player Badugi room", () => {
+  it("advertises the three server-supported draw games and 2–6 seats", () => {
     render(<FriendMatchSetupScreen language="en" />);
-    expect(screen.getAllByRole("radio")).toHaveLength(1);
-    expect(screen.getByRole("radio")).toHaveProperty("value", "badugi");
+    expect(screen.getAllByRole("radio")).toHaveLength(3);
+    expect(screen.getAllByRole("radio").map(input => input.value)).toEqual(["badugi", "ace_to_five_triple_draw", "deuce_to_seven_triple_draw"]);
     expect(screen.getByLabelText(/seats/i)).toHaveProperty("value", "2");
-    expect(screen.getByText(/quality-gated heads-up Badugi/i)).toBeTruthy();
+    expect(screen.getByText(/every seat is filled and ready/i)).toBeTruthy();
   });
 
   it("creates an authenticated room and synchronizes with the canonical protocol", async () => {
@@ -136,6 +136,24 @@ describe("FriendMatchSetupScreen", () => {
     });
     expect(socket.send).toHaveBeenCalledWith('{"event":"sync","payload":{}}');
     expect(screen.getByText("ABC234")).toBeTruthy();
+  });
+
+  it("shows a manual-copy instruction when clipboard access is unavailable", async () => {
+    const clipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    const exec = Object.getOwnPropertyDescriptor(document, "execCommand");
+    try {
+      Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined });
+      Object.defineProperty(document, "execCommand", { configurable: true, value: () => false });
+      render(<FriendMatchSetupScreen language="en" />);
+      await createAndOpen();
+      fireEvent.click(screen.getByRole("button", { name: "Copy code" }));
+      expect(await screen.findByText(/Could not copy/)).toBeTruthy();
+      expect(screen.queryByText("Room code copied.")).toBeNull();
+      expect(screen.getByTestId("p2p-room-code").textContent).toBe("ABC234");
+    } finally {
+      if (clipboard) Object.defineProperty(navigator, "clipboard", clipboard); else delete navigator.clipboard;
+      if (exec) Object.defineProperty(document, "execCommand", exec); else delete document.execCommand;
+    }
   });
 
   it("joins directly with a room code instead of reading private state first", async () => {
@@ -212,7 +230,7 @@ describe("FriendMatchSetupScreen", () => {
         expectedPhase: "bet_0",
       }),
     });
-    expect(screen.getByTestId("p2p-raise").textContent).toContain("120");
+    expect(screen.getByTestId("p2p-raise").textContent).toContain("100");
     await sendState(socket, {
       roomCode: room.roomId,
       viewerId: room.ownerId,

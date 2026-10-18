@@ -1,4 +1,5 @@
-﻿import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { isMixedVariantPlayable } from "./mixedAvailability.js";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   getVariantById,
   getEngineTemplateContext,
@@ -7,13 +8,9 @@ import defaultProfiles from "../../config/mixed/mixedProfiles.json";
 import { PRO_MIXED_PRESETS } from "../../config/mixed/proPresets.js";
 import { listEngines } from "../../games/core/engineRegistry.js";
 import {
-  loadMixedGameStateFromSession,
-  persistMixedGameState,
-} from "../tournament/tournamentManager.js";
-import {
   buildProfileFromPreset,
-  cloneProfile,
   findNextPlayableIndex,
+  cloneProfile,
   resolveInitialGame,
   advanceRotationState,
 } from "./rotationUtils.js";
@@ -59,7 +56,13 @@ function safeLoadProfiles() {
     if (!Array.isArray(parsed) || parsed.length === 0) {
       return presetProfilesClone();
     }
-    return parsed.map(buildProfileFromPreset).map(cloneProfile);
+    return parsed.map(profile => {
+      const old = { 'mix-horse-pro':['B02','B06','ST3','ST1','ST2'], 'mix-8game-pro':['B01','B02','B06','ST3','ST1','ST2','D01','B05'], 'mix-10game-pro':['B01','B02','B06','ST3','ST1','ST2','D01','B05','D03','S01'] };
+      const current = basePresetMap.get(profile.id);
+      if (current && JSON.stringify(profile.selectedGameIds) === JSON.stringify(old[profile.id]) && profile.name === current.name) return {...profile, selectedGameIds:[...current.selectedGameIds], weightedTable:{...current.weightedTable}, description:current.description};
+      if (profile.id === 'mix-pro-dealers-choice' && profile.name === "Dealer's Choice Pro") return {...profile, name:current.name, formatLabel:current.formatLabel, description:current.description};
+      return profile;
+    }).map(buildProfileFromPreset).map(cloneProfile);
   } catch (err) {
     console.warn("[MixedGame] Failed to load profiles", err);
     return presetProfilesClone();
@@ -89,28 +92,15 @@ export function MixedGameProvider({ children }) {
   const [profiles, setProfiles] = useState(() => safeLoadProfiles());
   const [runtimeState, setRuntimeState] = useState(initialRuntimeState);
 
-  const playableEngines = useMemo(() => new Set(listEngines()), []);
-  const isVariantPlayable = useCallback((gameId) => {
-    if (!gameId) return false;
-    const ctx = getEngineTemplateContext(gameId);
-    if (!ctx?.engineId) return false;
-    return playableEngines.has(ctx.engineId);
-  }, [playableEngines]);
-
-  const persistMixedRuntime = useCallback((nextState, profile) => {
-    if (!nextState || !profile) return;
-    persistMixedGameState({
-      profileId: profile.id,
-      profileName: profile.name,
-      formatLabel: profile.formatLabel,
-      selectionMode: nextState.selectionMode,
-      handsPerGame: nextState.handsPerGame,
-      currentIndex: nextState.currentIndex,
-      activeGameId: nextState.activeGameId,
-      handsPlayedInCurrentGame: nextState.handsPlayedInCurrentGame,
-      history: nextState.history ?? [],
-    });
+  const runtimeRef = useRef(initialRuntimeState);
+  const sessionProfileRef = useRef(null);
+  const updateRuntime = useCallback((nextState) => {
+    runtimeRef.current = nextState;
+    setRuntimeState(nextState);
   }, []);
+
+  const playableEngines = useMemo(() => new Set(listEngines()), []);
+  const isVariantPlayable = isMixedVariantPlayable;
 
   const saveProfile = useCallback((draft) => {
     const now = Date.now();
@@ -135,9 +125,9 @@ export function MixedGameProvider({ children }) {
     setProfiles(normalized);
     persistProfiles(normalized);
     if (runtimeState.activeProfileId === profileId) {
-      setRuntimeState(initialRuntimeState);
+      updateRuntime(initialRuntimeState);
     }
-  }, [profiles, runtimeState.activeProfileId]);
+  }, [profiles, runtimeState.activeProfileId, updateRuntime]);
 
   const getProfileById = useCallback(
     (profileId) => profiles.find((p) => p.id === profileId) ?? null,
@@ -145,7 +135,7 @@ export function MixedGameProvider({ children }) {
   );
 
   const activateProfile = useCallback((profileId) => {
-    const profile = getProfileById(profileId);
+    const profile = typeof profileId === "object" ? buildProfileFromPreset(profileId) : getProfileById(profileId);
     if (!profile || profile.selectedGameIds.length === 0) return null;
     const resolved = resolveInitialGame(profile, null, isVariantPlayable);
     if (!resolved?.gameId) {
@@ -161,57 +151,30 @@ export function MixedGameProvider({ children }) {
       handsPerGame: profile.handsPerGame,
       history: [],
     };
-    setRuntimeState(nextState);
-    persistMixedRuntime(nextState, profile);
+    sessionProfileRef.current = cloneProfile(profile);
+    updateRuntime(nextState);
     return { profile, gameId: resolved.gameId };
-  }, [getProfileById, isVariantPlayable, persistMixedRuntime]);
+  }, [getProfileById, isVariantPlayable, updateRuntime]);
 
   const deactivateMixedGame = useCallback(() => {
-    setRuntimeState(initialRuntimeState);
-    persistMixedGameState(null);
-  }, []);
+    updateRuntime(initialRuntimeState);
+    sessionProfileRef.current = null;
+  }, [updateRuntime]);
 
-  const handleHandCompletion = useCallback(() => {
-    if (!runtimeState.activeProfileId) return null;
-    const profile = getProfileById(runtimeState.activeProfileId);
-    if (!profile || profile.selectedGameIds.length === 0) {
-      setRuntimeState(initialRuntimeState);
-      persistMixedGameState(null);
-      return null;
-    }
-
-    const rotationResult = advanceRotationState(
-      runtimeState,
-      profile,
-      isVariantPlayable
-    );
-
-    const history = Array.isArray(runtimeState.history) ? [...runtimeState.history] : [];
-    if (runtimeState.activeGameId) {
-      history.push(runtimeState.activeGameId);
-    }
-    const trimmedHistory = history.slice(history.length > 50 ? history.length - 50 : 0);
+  const handleHandCompletion = useCallback((handId) => {
+    const current = runtimeRef.current;
+    if (!current.activeProfileId || !handId || current.lastCompletedHandId === handId) return null;
+    const profile = sessionProfileRef.current ?? getProfileById(current.activeProfileId);
+    if (!profile) return null;
+    const result = advanceRotationState(current, profile, isVariantPlayable);
     const nextState = {
-      ...rotationResult.nextState,
-      history: trimmedHistory,
+      ...result.nextState,
+      lastCompletedHandId: handId,
+      history: [...(current.history ?? []), current.activeGameId].slice(-50),
     };
-
-    setRuntimeState(nextState);
-    persistMixedRuntime(nextState, profile);
-
-    return {
-      rotated: rotationResult.rotated,
-      previousGameId: rotationResult.previousGameId,
-      nextGameId: rotationResult.nextGameId,
-      profile,
-      handsPerGame: profile.handsPerGame,
-      selectionMode:
-        rotationResult.nextState.selectionMode ?? profile.selectionMode,
-      handsPlayedInCurrentGame:
-        rotationResult.nextState.handsPlayedInCurrentGame,
-      history: trimmedHistory,
-    };
-  }, [getProfileById, isVariantPlayable, persistMixedRuntime, runtimeState]);
+    updateRuntime(nextState);
+    return { ...result, nextState, profile };
+  }, [getProfileById, isVariantPlayable, updateRuntime]);
 
   const activeProfile = runtimeState.activeProfileId
     ? getProfileById(runtimeState.activeProfileId)
@@ -236,34 +199,9 @@ export function MixedGameProvider({ children }) {
         )
       : 0;
 
-  useEffect(() => {
-    if (runtimeState.activeProfileId || typeof window === "undefined") return;
-    const stored = loadMixedGameStateFromSession();
-    if (!stored?.profileId) return;
-    const profile = getProfileById(stored.profileId);
-    if (!profile) return;
-    const fallbackIndex = findNextPlayableIndex(profile, 0, isVariantPlayable);
-    const fallbackGameId =
-      fallbackIndex != null ? profile.selectedGameIds[fallbackIndex] : null;
-    const activeGameId = stored.activeGameId && isVariantPlayable(stored.activeGameId)
-      ? stored.activeGameId
-      : fallbackGameId;
-    if (!activeGameId) return;
-    const nextState = {
-      activeProfileId: profile.id,
-      activeGameId,
-      selectionMode: stored.selectionMode ?? profile.selectionMode,
-      currentIndex:
-        typeof stored.currentIndex === "number"
-          ? stored.currentIndex
-          : fallbackIndex ?? 0,
-      handsPlayedInCurrentGame: stored.handsPlayedInCurrentGame ?? 0,
-      handsPerGame: stored.handsPerGame ?? profile.handsPerGame,
-      history: Array.isArray(stored.history) ? stored.history : [],
-    };
-    setRuntimeState(nextState);
-  }, [runtimeState.activeProfileId, getProfileById, isVariantPlayable]);
-
+  const sessionProfile = sessionProfileRef.current;
+  const nextIndex = sessionProfile?.selectionMode === 'FIXED' ? findNextPlayableIndex(sessionProfile, (runtimeState.currentIndex ?? 0) + 1, isVariantPlayable) : null;
+  const nextVariant = nextIndex !== null ? getVariantById(sessionProfile.selectedGameIds[nextIndex]) : null;
   const value = useMemo(
     () => ({
       profiles,
@@ -282,6 +220,7 @@ export function MixedGameProvider({ children }) {
       rotationHistory: runtimeState.history ?? [],
       isMixedMode: Boolean(runtimeState.activeProfileId),
       handleHandCompletion,
+      nextVariant,
       remainingHands,
       isVariantPlayable,
       playableEngines,
@@ -292,6 +231,7 @@ export function MixedGameProvider({ children }) {
       activeProfile,
       activeVariant,
       activeEngineId,
+      nextVariant,
       remainingHands,
       playableEngines,
       isVariantPlayable,

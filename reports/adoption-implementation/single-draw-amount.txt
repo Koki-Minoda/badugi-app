@@ -1,0 +1,13 @@
+
+Running 1 test using 1 worker
+
+(node:69270) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:69270) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/1] [adoption-webkit] › tests/e2e/all-live-core5-cash-production.spec.ts:621:7 › public games and explicit release candidates cash production gate › 2-7 Single Draw iphone completes 10 real-button hands
+  1 passed (52.9s)

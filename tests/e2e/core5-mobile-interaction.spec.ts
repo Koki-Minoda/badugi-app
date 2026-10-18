@@ -36,15 +36,17 @@ test.describe("core five mobile interaction audit", () => {
 
         try {
           await launchCore5Variant(page, variant, viewport);
-          const initial = await evaluateInitialLayout(page, variant);
-          const interaction = await evaluateMobileInteraction(page);
-          const result = await evaluateResultFlow(page, variant);
-          issues.push(...initial.issues, ...interaction.issues, ...result.issues);
-          metrics = {
-            initial: initial.metrics,
-            interaction: interaction.metrics,
-            result: result.metrics,
-          };
+          {
+            const initial = await evaluateInitialLayout(page, variant);
+            const interaction = await evaluateMobileInteraction(page);
+            const result = await evaluateResultFlow(page, variant);
+            issues.push(...initial.issues, ...interaction.issues, ...result.issues);
+            metrics = {
+              initial: initial.metrics,
+              interaction: interaction.metrics,
+              result: result.metrics,
+            };
+          }
         } catch (error) {
           issues.push({
             priority: "P0",
@@ -67,9 +69,8 @@ test.describe("core five mobile interaction audit", () => {
         };
         rows.push(row);
 
-        expect(row.variantId).toBe(variant.variant);
+        expect(issues, JSON.stringify(row)).toEqual([]);
       });
     }
   }
 });
-

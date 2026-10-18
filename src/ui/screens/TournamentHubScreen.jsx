@@ -1,3 +1,7 @@
+import { useLanguage } from '../preferences/language.js';
+import LanguageSelect from '../preferences/LanguageSelect.jsx';
+import StructureEditor from '../tournament/StructureEditor.jsx';
+import { applyCustomStructure, readStructure } from '../tournament/customStructure.js';
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   TOURNAMENT_STAGES,
@@ -94,6 +98,10 @@ export default function TournamentHubScreen({
   onResumeTournament = null,
   onRetireTournament = null,
 }) {
+  const ja = useLanguage() === 'ja';
+  const [custom, setCustom] = useState(false);
+  const [structure, setStructure] = useState(() => readStructure(buildTournamentConfigFromStage('store').levels));
+  const [structureMessage, setStructureMessage] = useState('');
   const [savedSnapshot, setSavedSnapshot] = useState(
     () => activeSnapshot ?? loadActiveMTTSnapshot(),
   );
@@ -120,25 +128,27 @@ export default function TournamentHubScreen({
   const [selectedStageId, setSelectedStageId] = useState(
     stageViews[0]?.stage?.id ?? null,
   );
-  const selected =
+  const selectedStage =
     stageViews.find((view) => view.stage.id === selectedStageId) ??
     stageViews[0] ??
     null;
-  const canStartSelected = Boolean(selected?.playable && !resumeableSnapshot);
+  const customBase = buildTournamentConfigFromStage('store');
+  const selected = custom ? { ...stageViews.find(v => v.stage.id === 'store'), stage:TOURNAMENT_STAGES[0], config:customBase, stageLabel:ja?'練習大会':'Practice', title:structure.name, subtitle:ja?'CPUと対局。成績や参加条件には影響しません。':'Play against CPUs. Does not affect career progress or unlocks.', players:customBase.totalPlayers, tables:customBase.tables, startingStack:structure.startingStack, aiTierLabel:stageViews[0]?.aiTierLabel ?? 'Standard', blindSheetLabel:structure.name, variantUnlocked:true, playable:true, eligibility:{eligible:true}, affordability:{ok:true} } : selectedStage;
+  const canStartSelected = Boolean((custom || selected?.playable) && !resumeableSnapshot);
 
   const handleStart = () => {
     if (!canStartSelected || !selected?.config || startPendingRef.current) return;
     startPendingRef.current = true;
     setStartError(null);
     try {
-      const started = onStartTournament?.(selected.config, selected.stage);
+      const started = onStartTournament?.(custom ? applyCustomStructure(buildTournamentConfigFromStage('store'), structure) : selected.config, custom ? TOURNAMENT_STAGES[0] : selected.stage);
       if (started === false) {
         setStartError("大会を開始できませんでした。進行条件と残高を確認してください。");
         startPendingRef.current = false;
       }
-    } catch (error) {
+    } catch {
       startPendingRef.current = false;
-      setStartError(error?.message ?? "大会を開始できませんでした。");
+      setStartError(ja ? '大会を開始できませんでした。設定の名前と数値を確認してください。' : 'Could not start. Check the structure name and values.');
     }
   };
   const handleResume = () => {
@@ -157,7 +167,7 @@ export default function TournamentHubScreen({
         <header className="flex flex-col gap-3 border-b border-white/10 pb-5 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.28em] text-emerald-300">
-              Tournament Hub
+              {ja ? '大会を選ぶ' : 'Tournament Hub'}
             </p>
             <h1 className="mt-2 text-3xl font-black text-white">BADUGI SERIES</h1>
           </div>
@@ -167,14 +177,18 @@ export default function TournamentHubScreen({
               className="w-fit rounded-md border border-white/20 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-slate-200 hover:border-emerald-300/70 hover:text-emerald-100"
               onClick={onBack}
             >
-              Back
+              {ja ? '戻る' : 'Back'}
             </button>
           ) : null}
         </header>
 
+        <LanguageSelect />
+        <label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={custom} onChange={e => setCustom(e.target.checked)} />{ja ? '自分で設定した練習大会を開く（Badugi）' : 'Create a custom practice tournament (Badugi)'}</label>
+        {custom && <StructureEditor draft={structure} onChange={setStructure} baseLevels={buildTournamentConfigFromStage('store').levels} ja={ja} onMessage={setStructureMessage} />}
+        {structureMessage && <p role="status">{structureMessage}</p>}
         <main className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
           <section className="grid gap-3 md:grid-cols-2" aria-label="Badugi Series">
-            {stageViews.map((view) => {
+            {!custom && stageViews.map((view) => {
               const active = view.stage.id === selected?.stage?.id;
               return (
                 <button
@@ -202,15 +216,15 @@ export default function TournamentHubScreen({
                     </div>
                     {!view.variantUnlocked ? (
                       <span className="rounded-md border border-red-300/40 px-2 py-1 text-[10px] font-black uppercase text-red-200">
-                        Locked
+                        {ja ? '参加条件あり' : 'Locked'}
                       </span>
                     ) : !view.eligibility.eligible || !view.affordability.ok ? (
                       <span className="rounded-md border border-red-300/40 px-2 py-1 text-[10px] font-black uppercase text-red-200">
-                        Locked
+                        {ja ? '参加条件あり' : 'Locked'}
                       </span>
                     ) : !view.playable ? (
                       <span className="rounded-md border border-amber-300/40 px-2 py-1 text-[10px] font-black uppercase text-amber-200">
-                        Coming Soon
+                        {ja ? '準備中' : 'Coming Soon'}
                       </span>
                     ) : null}
                   </div>
@@ -220,20 +234,20 @@ export default function TournamentHubScreen({
                       <dd>AI: {view.aiTierLabel}</dd>
                     </div>
                     <div>
-                      <dt className="font-black uppercase tracking-wide text-slate-500">Players</dt>
+                      <dt className="font-black uppercase tracking-wide text-slate-500">{ja ? '参加人数' : 'Players'}</dt>
                       <dd>{formatNumber(view.players)}</dd>
                     </div>
                     <div>
-                      <dt className="font-black uppercase tracking-wide text-slate-500">Stack</dt>
+                      <dt className="font-black uppercase tracking-wide text-slate-500">{ja ? '開始持ち点' : 'Stack'}</dt>
                       <dd>{formatNumber(view.startingStack)}</dd>
                     </div>
                     <div>
-                      <dt className="font-black uppercase tracking-wide text-slate-500">Blinds</dt>
+                      <dt className="font-black uppercase tracking-wide text-slate-500">{ja ? 'ストラクチャー' : 'Blinds'}</dt>
                       <dd className="truncate">{view.blindSheetLabel}</dd>
                     </div>
                   </dl>
                   <p className="mt-3 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-200">
-                    {view.status}
+                    {ja ? (view.status === 'PLAYABLE' ? '参加できます' : '参加条件あり') : view.status}
                   </p>
                   {!view.eligibility.eligible ? (
                     <p className="mt-2 text-xs font-semibold text-red-200">
@@ -267,37 +281,38 @@ export default function TournamentHubScreen({
 
                 <dl className="mt-5 space-y-3 text-sm">
                   <div className="flex justify-between gap-4 border-b border-white/10 pb-2">
-                    <dt className="text-slate-400">Players</dt>
+                    <dt className="text-slate-400">{ja ? '参加人数' : 'Players'}</dt>
                     <dd className="font-black text-white">{formatNumber(selected.players)}</dd>
                   </div>
                   <div className="flex justify-between gap-4 border-b border-white/10 pb-2">
-                    <dt className="text-slate-400">Tables</dt>
+                    <dt className="text-slate-400">{ja ? '卓数' : 'Tables'}</dt>
                     <dd className="font-black text-white">{formatNumber(selected.tables)}</dd>
                   </div>
                   <div className="flex justify-between gap-4 border-b border-white/10 pb-2">
-                    <dt className="text-slate-400">Starting Stack</dt>
+                    <dt className="text-slate-400">{ja ? '開始持ち点' : 'Starting Stack'}</dt>
                     <dd className="font-black text-white">
                       {formatNumber(selected.startingStack)}
                     </dd>
                   </div>
                   <div className="flex justify-between gap-4 border-b border-white/10 pb-2">
-                    <dt className="text-slate-400">AI Tier</dt>
+                    <dt className="text-slate-400">{ja ? 'CPUの強さ' : 'AI Tier'}</dt>
                     <dd className="font-black text-white">{selected.aiTierLabel}</dd>
                   </div>
                   <div className="flex justify-between gap-4 border-b border-white/10 pb-2">
-                    <dt className="text-slate-400">Blind Sheet</dt>
+                    <dt className="text-slate-400">{ja ? 'ストラクチャー' : 'Blind Sheet'}</dt>
                     <dd className="text-right font-black text-white">
                       {selected.blindSheetLabel}
                     </dd>
                   </div>
                   <div className="flex justify-between gap-4 border-b border-white/10 pb-2">
-                    <dt className="text-slate-400">Entry / Bankroll</dt>
+                    <dt className="text-slate-400">{ja ? '参加費 / 持ち点' : 'Entry / Bankroll'}</dt>
                     <dd className="text-right font-black text-white">
-                      {formatNumber(selected.stage.entryFee)} / {formatNumber(effectiveProgress.bankroll)}
+                      {custom ? (ja ? '無料（持ち点の消費なし）' : 'Free — no bankroll deduction') : `${formatNumber(selected.stage.entryFee)} / ${formatNumber(effectiveProgress.bankroll)}`}
                     </dd>
                   </div>
                 </dl>
 
+                <details className="mt-4"><summary className="min-h-11 cursor-pointer py-2 text-emerald-200">{ja ? 'ストラクチャーを見る' : 'View structure'}</summary><p className="my-2 text-sm">{custom ? `${structure.levelMinutes}${ja ? '分ごと・ハンド終了後に上昇' : ' minutes per level; rises after the hand'}` : (ja ? '各卓で規定ハンド数を終えると次のレベルへ進みます。' : 'The next level starts after every table completes its required hands.')}</p><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr><th>Lv</th><th>SB / BB</th><th>{ja ? 'ベット単位' : 'Bet sizes'}</th><th>Ante</th><th>{ja ? 'ハンド' : 'Hands'}</th></tr></thead><tbody>{(custom ? structure.levels : (selected.config?.levels ?? [])).map((level,i) => <tr key={i} className="border-t border-white/15"><td className="py-2">{i+1}</td><td>{level.sb}/{level.bb}</td><td>{level.bb}/{level.bb*2}</td><td>{level.ante}</td><td>{custom ? '—' : level.handsThisLevel ?? level.hands}</td></tr>)}</tbody></table></div><p className="mt-2 text-sm">{ja ? '再参加なし。種目はBadugi固定です。' : 'No re-entry. Badugi throughout.'}</p><p className="mt-2 text-sm">{(custom ? structure.breakEvery : selected.config?.breakEveryLevels) ? `${ja ? '休憩' : 'Break'}: ${custom ? structure.breakEvery : selected.config?.breakEveryLevels} Lv / ${custom ? structure.breakMinutes : selected.config?.breakDurationMinutes} ${ja ? '分' : 'min'}` : (ja ? '休憩なし' : 'No breaks')}</p></details>
                 {!selected.eligibility.eligible || !selected.affordability.ok ? (
                   <p className="mt-4 text-sm font-semibold text-red-200" role="status">
                     {!selected.eligibility.eligible
@@ -314,7 +329,7 @@ export default function TournamentHubScreen({
 
                 {resumeableSnapshot ? (
                   <p className="mt-4 text-sm font-semibold text-yellow-200" role="status">
-                    進行中の大会を再開するかリタイアしてから、新しい大会を開始してください。
+                    {ja ? '進行中の大会を再開するかリタイアしてから、新しい大会を開始してください。' : 'Resume or retire the current tournament before starting another.'}
                   </p>
                 ) : null}
 
@@ -325,11 +340,11 @@ export default function TournamentHubScreen({
                   onClick={handleStart}
                   className="mt-6 w-full rounded-md bg-emerald-400 px-4 py-3 text-sm font-black uppercase tracking-[0.18em] text-slate-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
                 >
-                  {selected.variantUnlocked && selected.eligibility.eligible && selected.affordability.ok
+                  {custom ? (ja ? "練習大会を開始" : "Start practice tournament") : selected.variantUnlocked && selected.eligibility.eligible && selected.affordability.ok
                     ? selected.playable
-                      ? "Start Tournament"
-                      : "Coming Soon"
-                    : "Locked"}
+                      ? (ja ? "大会を開始" : "Start Tournament")
+                      : (ja ? "準備中" : "Coming Soon")
+                    : (ja ? "参加条件あり" : "Locked")}
                 </button>
               </>
             ) : (
@@ -346,10 +361,10 @@ export default function TournamentHubScreen({
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.22em] text-yellow-200">
-                  Active Save
+                  {ja ? '進行中の大会' : 'Active Save'}
                 </p>
                 <h2 className="mt-1 text-lg font-black text-white">
-                  Resume Tournament
+                  {ja ? '大会を再開' : 'Resume Tournament'}
                 </h2>
                 <p className="text-sm text-slate-300">
                   {resumeableSnapshot.config?.name ?? "Tournament"} · Players{" "}
@@ -363,7 +378,7 @@ export default function TournamentHubScreen({
                   onClick={handleResume}
                   className="rounded-md bg-yellow-300 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-slate-950 hover:bg-yellow-200"
                 >
-                  Resume Tournament
+                  {ja ? '大会を再開' : 'Resume Tournament'}
                 </button>
                 <button
                   type="button"
@@ -371,7 +386,7 @@ export default function TournamentHubScreen({
                   onClick={handleRetire}
                   className="rounded-md border border-white/20 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-slate-200 hover:border-red-300/60 hover:text-red-100"
                 >
-                  Retire Tournament
+                  {ja ? 'リタイア' : 'Retire Tournament'}
                 </button>
               </div>
             </div>
@@ -384,7 +399,7 @@ export default function TournamentHubScreen({
         >
           <div className="mb-3 flex items-center justify-between gap-3">
             <h2 className="text-sm font-black uppercase tracking-[0.22em] text-white">
-              Variant Unlocks
+              {ja ? '大会で遊べる種目' : 'Variant Unlocks'}
             </h2>
           </div>
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
@@ -407,7 +422,7 @@ export default function TournamentHubScreen({
                       unlocked ? "text-emerald-200" : "text-slate-400"
                     }`}
                   >
-                    {unlocked ? "PLAYABLE" : "LOCKED"}
+                    {unlocked ? (ja ? '遊べます' : 'Playable') : (ja ? '参加条件あり' : 'Locked')}
                   </p>
                   {!unlocked && unlock ? (
                     <p className="mt-2 text-xs text-slate-400">

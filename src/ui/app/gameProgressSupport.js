@@ -129,7 +129,7 @@ export function markCashCpuOut(player = {}, bustHandIndex = 0) {
     hasActedThisRound: true,
     hasDrawn: true,
     canDraw: false,
-    lastDrawCount: 0,
+    lastDrawCount: null,
     lastAction: "OUT",
     bustHandIndex: typeof player.bustHandIndex === "number" ? player.bustHandIndex : bustHandIndex,
   };

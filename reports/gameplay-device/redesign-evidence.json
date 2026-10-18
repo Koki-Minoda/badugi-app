@@ -1,0 +1,518 @@
+{
+  "updated": "2026-09-20T00:56:32.082Z",
+  "scope": "Mobile visual redesign; local production build; no deployment",
+  "physical": {
+    "ring": [
+      {
+        "id": "nlh",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 23,
+        "maxHeroCards": 2,
+        "maxBoardCards": 5
+      },
+      {
+        "id": "flh",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 23,
+        "maxHeroCards": 2,
+        "maxBoardCards": 5
+      },
+      {
+        "id": "super_holdem",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 23,
+        "maxHeroCards": 3,
+        "maxBoardCards": 5
+      },
+      {
+        "id": "fl_super_holdem",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 23,
+        "maxHeroCards": 3,
+        "maxBoardCards": 5
+      },
+      {
+        "id": "plo",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 23,
+        "maxHeroCards": 4,
+        "maxBoardCards": 5
+      },
+      {
+        "id": "plo8",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 23,
+        "maxHeroCards": 4,
+        "maxBoardCards": 5
+      },
+      {
+        "id": "big_o",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 23,
+        "maxHeroCards": 5,
+        "maxBoardCards": 5
+      },
+      {
+        "id": "five_card_plo",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 23,
+        "maxHeroCards": 5,
+        "maxBoardCards": 5
+      },
+      {
+        "id": "flo8",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 23,
+        "maxHeroCards": 4,
+        "maxBoardCards": 5
+      },
+      {
+        "id": "deuce_to_seven_triple_draw",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 69,
+        "maxHeroCards": 5,
+        "maxBoardCards": 0
+      },
+      {
+        "id": "ace_to_five_triple_draw",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 37,
+        "maxHeroCards": 5,
+        "maxBoardCards": 0
+      },
+      {
+        "id": "badugi",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 28,
+        "maxHeroCards": 4,
+        "maxBoardCards": 0
+      },
+      {
+        "id": "badeucey_triple_draw",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 54,
+        "maxHeroCards": 5,
+        "maxBoardCards": 0
+      },
+      {
+        "id": "badacey_triple_draw",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 51,
+        "maxHeroCards": 5,
+        "maxBoardCards": 0
+      },
+      {
+        "id": "hidugi_triple_draw",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 51,
+        "maxHeroCards": 4,
+        "maxBoardCards": 0
+      },
+      {
+        "id": "archie_triple_draw",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 80,
+        "maxHeroCards": 5,
+        "maxBoardCards": 0
+      },
+      {
+        "id": "deuce_to_seven_single_draw",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 25,
+        "maxHeroCards": 5,
+        "maxBoardCards": 0
+      },
+      {
+        "id": "ace_to_five_single_draw",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 31,
+        "maxHeroCards": 5,
+        "maxBoardCards": 0
+      },
+      {
+        "id": "five_card_single_draw",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 52,
+        "maxHeroCards": 5,
+        "maxBoardCards": 0
+      },
+      {
+        "id": "badugi_single_draw",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 30,
+        "maxHeroCards": 4,
+        "maxBoardCards": 0
+      },
+      {
+        "id": "badeucey_single_draw",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 47,
+        "maxHeroCards": 5,
+        "maxBoardCards": 0
+      },
+      {
+        "id": "badacey_single_draw",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 24,
+        "maxHeroCards": 5,
+        "maxBoardCards": 0
+      },
+      {
+        "id": "hidugi_single_draw",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 29,
+        "maxHeroCards": 4,
+        "maxBoardCards": 0
+      },
+      {
+        "id": "dramaha_hi",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 28,
+        "maxHeroCards": 5,
+        "maxBoardCards": 5
+      },
+      {
+        "id": "dramaha_27",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 28,
+        "maxHeroCards": 5,
+        "maxBoardCards": 5
+      },
+      {
+        "id": "dramaha_a5",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 28,
+        "maxHeroCards": 5,
+        "maxBoardCards": 5
+      },
+      {
+        "id": "dramaha_zero",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 28,
+        "maxHeroCards": 5,
+        "maxBoardCards": 5
+      },
+      {
+        "id": "dramaha_hidugi",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 28,
+        "maxHeroCards": 5,
+        "maxBoardCards": 5
+      },
+      {
+        "id": "dramaha_badugi",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 29,
+        "maxHeroCards": 5,
+        "maxBoardCards": 5
+      },
+      {
+        "id": "stud",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 42,
+        "maxHeroCards": 7,
+        "maxBoardCards": 0
+      },
+      {
+        "id": "stud8",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 35,
+        "maxHeroCards": 7,
+        "maxBoardCards": 0
+      },
+      {
+        "id": "razz",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 35,
+        "maxHeroCards": 7,
+        "maxBoardCards": 0
+      },
+      {
+        "id": "razzdugi",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 31,
+        "maxHeroCards": 7,
+        "maxBoardCards": 0
+      },
+      {
+        "id": "razzducey",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 41,
+        "maxHeroCards": 7,
+        "maxBoardCards": 0
+      },
+      {
+        "id": "razz27",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 41,
+        "maxHeroCards": 7,
+        "maxBoardCards": 0
+      }
+    ],
+    "finalMountFix": [
+      {
+        "id": "nlh",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 22,
+        "maxHeroCards": 2,
+        "maxBoardCards": 5
+      },
+      {
+        "id": "badeucey_triple_draw",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 91,
+        "maxHeroCards": 5,
+        "maxBoardCards": 0
+      },
+      {
+        "id": "stud",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "geometryChecks": 38,
+        "maxHeroCards": 7,
+        "maxBoardCards": 0
+      }
+    ],
+    "arrangement": [
+      {
+        "id": "chinese_poker",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "hands": 3
+      },
+      {
+        "id": "ofc",
+        "status": "PASS",
+        "viewport": {
+          "width": 852,
+          "height": 283
+        },
+        "hands": 3
+      }
+    ],
+    "portrait": "Awaiting physical rotation",
+    "features": [
+      {
+        "id": "stage",
+        "status": "PASS",
+        "resumed": true
+      },
+      {
+        "id": "survival",
+        "status": "PASS",
+        "resumed": true
+      },
+      {
+        "id": "championship",
+        "status": "PASS",
+        "resumed": true
+      },
+      {
+        "id": "dealers-choice",
+        "status": "PASS",
+        "hands": 2
+      }
+    ],
+    "nativeAmount": {
+      "observedDigits": [
+        "bet-key-8",
+        "bet-key-8",
+        "bet-key-back",
+        "bet-key-0",
+        "bet-amount-confirm"
+      ],
+      "confirmed": 80,
+      "heroStackAfter": 420,
+      "viewport": {
+        "w": 852,
+        "h": 283,
+        "visualHeight": 283
+      },
+      "subjectiveComfort": "No response"
+    }
+  },
+  "browser": {
+    "existingMobileCompatibility": {
+      "passed": 46,
+      "scope": "Public ring variants portrait/landscape; prior layout audit updated for disabled waiting controls"
+    },
+    "finalStudAndKeypadRegression": {
+      "passed": 18,
+      "scope": "6 Stud-family variants at portrait/landscape, small Stud screens, 4 keypad sizes after final fixes"
+    },
+    "mobileDesignAndPortraitRegression": {
+      "passed": 101,
+      "composition": "35 variants × 2 sizes + 5 variants × 2 smaller sizes + 4 keypad sizes + 12 preview portrait + 5 usability"
+    },
+    "multiGame": {
+      "passed": 6,
+      "scope": "3 formats × portrait and short landscape; UI hand and resume; explicit champion fixture for completion"
+    },
+    "arrangementRegression": {
+      "passed": 4,
+      "scope": "Chinese/OFC each 10 hands × portrait/landscape; part of earlier 10-test batch"
+    }
+  },
+  "unit": {
+    "passed": 10
+  },
+  "limitations": [
+    "Physical game actions use DOM control activation; only the recorded keypad interaction was native user touch.",
+    "One hand is not exhaustive poker-state coverage.",
+    "PWA home-screen install/restart remains unverified."
+  ]
+}

@@ -14,7 +14,7 @@ from typing import Any, Callable
 from fastapi import APIRouter, Depends, HTTPException, Response, WebSocket, WebSocketDisconnect, status
 from pydantic import BaseModel, Field, field_validator
 
-from ..core.security import decode_access_token
+from ..core import db as database
 from ..dependencies.auth import get_current_user
 from ..models import User
 from ..p2p.manager import P2PError, P2PRoomManager, Room, p2p_room_manager
@@ -95,6 +95,7 @@ state_read_rate_limiter = StateReadRateLimiter()
 
 class CreateRoomRequest(BaseModel):
     variantId: str = "badugi"
+    seats: int = Field(2, ge=2, le=6)
     startingStack: int = Field(2000, ge=200, le=1_000_000)
     smallBlind: int = Field(10, ge=1, le=100_000)
     bigBlind: int = Field(20, ge=1, le=200_000)
@@ -121,7 +122,7 @@ class RoomActionRequest(RoomCommandRequest):
 
 
 class RoomDrawRequest(RoomCommandRequest):
-    cardIndexes: list[int] = Field(default_factory=list, max_length=4)
+    cardIndexes: list[int] = Field(default_factory=list, max_length=5)
 
     @field_validator("cardIndexes", mode="before")
     @classmethod
@@ -181,10 +182,10 @@ def create_room(
     user: User = Depends(get_current_user),
 ):
     _mark_private(response)
-    if payload.variantId.lower() != "badugi":
+    if payload.variantId.lower() not in {"badugi", "ace_to_five_triple_draw", "deuce_to_seven_triple_draw"}:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"code": "unsupported_variant", "message": "Friend Match currently supports Badugi only"},
+            detail={"code": "unsupported_variant", "message": "Choose Badugi, A-5 TD or 2-7 TD"},
         )
     try:
         room = p2p_room_manager.create_room(
@@ -194,6 +195,8 @@ def create_room(
             small_blind=payload.smallBlind,
             big_blind=payload.bigBlind,
             ante=payload.ante,
+            variant_id=payload.variantId.lower(),
+            max_players=payload.seats,
         )
     except P2PError as exc:
         raise _http_error(exc) from exc
@@ -278,7 +281,7 @@ async def ready_room(
 ):
     _mark_private(response)
     try:
-        result = p2p_room_manager.execute_command(
+        result = await asyncio.to_thread(p2p_room_manager.execute_command,
             room_code,
             user_id=_user_id(user),
             command_id=payload.commandId,
@@ -302,7 +305,7 @@ async def act_in_room(
 ):
     _mark_private(response)
     try:
-        result = p2p_room_manager.execute_command(
+        result = await asyncio.to_thread(p2p_room_manager.execute_command,
             room_code,
             user_id=_user_id(user),
             command_id=payload.commandId,
@@ -328,7 +331,7 @@ async def draw_in_room(
 ):
     _mark_private(response)
     try:
-        result = p2p_room_manager.execute_command(
+        result = await asyncio.to_thread(p2p_room_manager.execute_command,
             room_code,
             user_id=_user_id(user),
             command_id=payload.commandId,
@@ -348,7 +351,7 @@ async def draw_in_room(
 async def leave_room(payload: RoomCodeRequest, user: User = Depends(get_current_user)):
     user_id = _user_id(user)
     try:
-        room = p2p_room_manager.leave_room(payload.roomCode, user_id=user_id)
+        room = await asyncio.to_thread(p2p_room_manager.leave_room, payload.roomCode, user_id=user_id)
     except P2PError as exc:
         raise _http_error(exc) from exc
     await room_sockets.close_user(payload.roomCode.upper(), user_id, reason="left_room")
@@ -370,7 +373,7 @@ async def close_room(
     _mark_private(response)
     normalized_code = room_code.strip().upper()
     try:
-        p2p_room_manager.close_room(normalized_code, user_id=_user_id(user))
+        await asyncio.to_thread(p2p_room_manager.close_room, normalized_code, user_id=_user_id(user))
     except P2PError as exc:
         raise _http_error(exc) from exc
     await room_sockets.close_room(normalized_code, reason="owner_closed")
@@ -468,7 +471,7 @@ class RoomSockets:
         await websocket.send_json(
             {
                 "event": "state",
-                "payload": state or self._manager.public_state(room, viewer_id=user_id),
+                "payload": state or await asyncio.to_thread(self._manager.public_state, room, viewer_id=user_id),
                 **({"commandId": command_id} if command_id else {}),
             }
         )
@@ -494,9 +497,9 @@ room_sockets = RoomSockets()
 async def terminate_user_p2p_sessions(user_id: str) -> None:
     """Remove a deleted account from all process-local rooms and sockets."""
 
-    for room_code in p2p_room_manager.room_codes_for_user(user_id):
+    for room_code in await asyncio.to_thread(p2p_room_manager.room_codes_for_user, user_id):
         try:
-            room = p2p_room_manager.leave_room(room_code, user_id=user_id)
+            room = await asyncio.to_thread(p2p_room_manager.leave_room, room_code, user_id=user_id)
         except P2PError as exc:
             if exc.code == "room_missing":
                 continue
@@ -540,6 +543,12 @@ def _command_metadata(payload: dict[str, Any]) -> tuple[str, str | None, str]:
     return command_id, hand_id, expected_phase
 
 
+def _socket_user_id(token: str) -> str:
+    # Open, authenticate and close the session on the same worker thread.
+    with database.SessionLocal() as session:
+        return str(get_current_user(token=token, db=session).id)
+
+
 @ws_router.websocket("/ws/p2p/{room_code}")
 async def friend_match_socket(
     websocket: WebSocket,
@@ -554,14 +563,13 @@ async def friend_match_socket(
         if len(offered_protocols) != 2 or offered_protocols[0] != "mgx-auth":
             raise ValueError("missing authentication protocol")
         token = offered_protocols[1]
-        claims = decode_access_token(token)
-        user_id = str(claims.get("sub") or "")
+        user_id = await asyncio.to_thread(_socket_user_id, token)
         if not user_id:
             raise ValueError("missing subject")
-        room = p2p_room_manager.get_room(room_code)
+        room = await asyncio.to_thread(p2p_room_manager.get_room, room_code)
         if user_id not in room.players:
             raise P2PError("not_in_room", "Player is not in this room")
-    except (ValueError, P2PError):
+    except (ValueError, P2PError, HTTPException):
         offered_auth_protocol = (
             "mgx-auth"
             if websocket.headers.get("sec-websocket-protocol", "")
@@ -575,7 +583,7 @@ async def friend_match_socket(
         return
 
     await room_sockets.connect(room, user_id, websocket)
-    room = p2p_room_manager.set_connected(room.code, user_id=user_id, connected=True)
+    room = await asyncio.to_thread(p2p_room_manager.set_connected, room.code, user_id=user_id, connected=True)
     await room_sockets.broadcast_state(room)
     try:
         while True:
@@ -597,7 +605,7 @@ async def friend_match_socket(
                     raise P2PError("invalid_payload", "Event payload must be an object")
                 if event == "ready":
                     command_id, hand_id, expected_phase = _command_metadata(payload)
-                    result = p2p_room_manager.execute_command(
+                    result = await asyncio.to_thread(p2p_room_manager.execute_command,
                         room.code,
                         user_id=user_id,
                         command_id=command_id,
@@ -610,7 +618,7 @@ async def friend_match_socket(
                     amount = payload.get("amount", 0)
                     if isinstance(amount, bool) or not isinstance(amount, int):
                         raise P2PError("invalid_payload", "Action amount must be an integer")
-                    result = p2p_room_manager.execute_command(
+                    result = await asyncio.to_thread(p2p_room_manager.execute_command,
                         room.code,
                         user_id=user_id,
                         command_id=command_id,
@@ -630,7 +638,7 @@ async def friend_match_socket(
                         raise P2PError(
                             "invalid_payload", "cardIndexes must be an array of integers"
                         )
-                    result = p2p_room_manager.execute_command(
+                    result = await asyncio.to_thread(p2p_room_manager.execute_command,
                         room.code,
                         user_id=user_id,
                         command_id=command_id,
@@ -640,11 +648,11 @@ async def friend_match_socket(
                         card_indexes=card_indexes,
                     )
                 elif event in {"sync", "heartbeat"}:
-                    room = p2p_room_manager.get_room(room.code)
+                    room = await asyncio.to_thread(p2p_room_manager.get_room, room.code)
                     await room_sockets.send_state(room, user_id, websocket)
                     continue
                 elif event == "leave":
-                    room_after_leave = p2p_room_manager.leave_room(room.code, user_id=user_id)
+                    room_after_leave = await asyncio.to_thread(p2p_room_manager.leave_room, room.code, user_id=user_id)
                     await room_sockets.disconnect(room.code, user_id, websocket)
                     if room_after_leave is None:
                         await room_sockets.close_room(room.code, reason="owner_left")
@@ -673,7 +681,7 @@ async def friend_match_socket(
         removed_current = await room_sockets.disconnect(room.code, user_id, websocket)
         if removed_current:
             try:
-                room = p2p_room_manager.set_connected(room.code, user_id=user_id, connected=False)
+                room = await asyncio.to_thread(p2p_room_manager.set_connected, room.code, user_id=user_id, connected=False)
                 await room_sockets.broadcast_state(room)
             except P2PError:
                 pass

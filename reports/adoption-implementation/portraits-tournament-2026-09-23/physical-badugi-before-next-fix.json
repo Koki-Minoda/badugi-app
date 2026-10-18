@@ -1,0 +1,972 @@
+{
+  "device": "physical iPhone Safari",
+  "interaction": "DOM activation of visible controls; short tournament config only, no forced outcomes",
+  "variant": "badugi",
+  "rows": [
+    {
+      "handId": "table-1-h1-d0-mudh2xcg",
+      "actions": [
+        "action-fold"
+      ],
+      "remaining": 18,
+      "tables": 3,
+      "heroStack": 500,
+      "busted": [],
+      "events": [],
+      "state": {
+        "tournamentRunId": "mtt-1790129830477-873285",
+        "config": {
+          "id": "physical-bust-badugi",
+          "name": "実機・敗退と卓統合確認",
+          "stageId": "store",
+          "blindSheetId": "store-standard",
+          "tables": 3,
+          "seatsPerTable": 6,
+          "totalPlayers": 18,
+          "startingStack": 500,
+          "entryFee": 0,
+          "prizePoolTotal": 2000,
+          "levelDurationMinutes": 8,
+          "breakEveryLevels": 6,
+          "breakDurationMinutes": 5,
+          "gameId": "D03",
+          "gameVariant": "badugi",
+          "gameRotation": [
+            "badugi"
+          ],
+          "rotationPolicy": "fixed",
+          "levels": [
+            {
+              "levelIndex": 1,
+              "smallBlind": 5,
+              "bigBlind": 10,
+              "ante": 0,
+              "handsThisLevel": 999
+            }
+          ],
+          "payouts": [
+            {
+              "place": 1,
+              "percent": 50
+            },
+            {
+              "place": 2,
+              "percent": 30
+            },
+            {
+              "place": 3,
+              "percent": 20
+            }
+          ],
+          "rewards": [
+            {
+              "place": 1,
+              "amount": 1000,
+              "percent": 50
+            },
+            {
+              "place": 2,
+              "amount": 600,
+              "percent": 30
+            },
+            {
+              "place": 3,
+              "amount": 400,
+              "percent": 20
+            }
+          ],
+          "reentryPolicy": {
+            "allowed": false,
+            "maxEntries": 1,
+            "closesAtLevel": 0
+          },
+          "practiceOnly": true,
+          "aiTierId": "standard"
+        },
+        "levelIndex": 0,
+        "levelEndsAt": null,
+        "tables": [
+          {
+            "tableId": "table-1",
+            "seats": [
+              {
+                "seatIndex": 0,
+                "playerId": "hero-player"
+              },
+              {
+                "seatIndex": 1,
+                "playerId": "cpu-3"
+              },
+              {
+                "seatIndex": 2,
+                "playerId": "cpu-6"
+              },
+              {
+                "seatIndex": 3,
+                "playerId": "cpu-9"
+              },
+              {
+                "seatIndex": 4,
+                "playerId": "cpu-12"
+              },
+              {
+                "seatIndex": 5,
+                "playerId": "cpu-15"
+              }
+            ],
+            "isActive": true,
+            "handsPlayedAtThisLevel": 1
+          },
+          {
+            "tableId": "table-2",
+            "seats": [
+              {
+                "seatIndex": 0,
+                "playerId": "cpu-1"
+              },
+              {
+                "seatIndex": 1,
+                "playerId": "cpu-4"
+              },
+              {
+                "seatIndex": 2,
+                "playerId": "cpu-7"
+              },
+              {
+                "seatIndex": 3,
+                "playerId": "cpu-10"
+              },
+              {
+                "seatIndex": 4,
+                "playerId": "cpu-13"
+              },
+              {
+                "seatIndex": 5,
+                "playerId": "cpu-16"
+              }
+            ],
+            "isActive": true,
+            "handsPlayedAtThisLevel": 1
+          },
+          {
+            "tableId": "table-3",
+            "seats": [
+              {
+                "seatIndex": 0,
+                "playerId": "cpu-2"
+              },
+              {
+                "seatIndex": 1,
+                "playerId": "cpu-5"
+              },
+              {
+                "seatIndex": 2,
+                "playerId": "cpu-8"
+              },
+              {
+                "seatIndex": 3,
+                "playerId": "cpu-11"
+              },
+              {
+                "seatIndex": 4,
+                "playerId": "cpu-14"
+              },
+              {
+                "seatIndex": 5,
+                "playerId": "cpu-17"
+              }
+            ],
+            "isActive": true,
+            "handsPlayedAtThisLevel": 1
+          }
+        ],
+        "players": {
+          "hero-player": {
+            "id": "hero-player",
+            "name": "physical.friend.1790128015100.0@example.com",
+            "cpuCharacterId": null,
+            "cpuStyle": null,
+            "avatarUrl": null,
+            "opponentProfileId": null,
+            "opponentTitle": null,
+            "titleBadge": null,
+            "tierId": null,
+            "personalityId": null,
+            "personality": null,
+            "personalityBadge": null,
+            "avatarId": null,
+            "flavorText": null,
+            "traits": [],
+            "startingStack": 500,
+            "stack": 500,
+            "busted": false,
+            "bustHandIndex": null,
+            "finishPlace": null,
+            "payout": null,
+            "tableId": "table-1",
+            "seatIndex": 0
+          },
+          "cpu-1": {
+            "id": "cpu-1",
+            "name": "サトル",
+            "cpuCharacterId": "mina",
+            "cpuStyle": "balanced",
+            "avatarUrl": "/characters/mina.png",
+            "opponentProfileId": "store-satoru",
+            "opponentTitle": "慎重派の学生",
+            "titleBadge": "慎重派の学生",
+            "tierId": "standard",
+            "personalityId": "balanced",
+            "personality": {
+              "id": "balanced",
+              "label": "Balanced",
+              "aggression": 0.5,
+              "looseness": 0.5,
+              "bluff": 0.22,
+              "callDown": 0.5,
+              "drawGreed": 0.45,
+              "tiltResistance": 0.65
+            },
+            "personalityBadge": "Balanced",
+            "avatarId": "store-satoru",
+            "flavorText": "序盤はほぼリンプ。堅実にショーダウンまで粘るタイプ。",
+            "traits": [
+              "balanced"
+            ],
+            "startingStack": 500,
+            "stack": 1125,
+            "busted": false,
+            "bustHandIndex": null,
+            "finishPlace": null,
+            "payout": null,
+            "tableId": "table-2",
+            "seatIndex": 0
+          },
+          "cpu-2": {
+            "id": "cpu-2",
+            "name": "ミユ",
+            "cpuCharacterId": "ren",
+            "cpuStyle": "calling-station",
+            "avatarUrl": "/characters/ren.png",
+            "opponentProfileId": "store-miyu",
+            "opponentTitle": "自由奔放",
+            "titleBadge": "自由奔放",
+            "tierId": "standard",
+            "personalityId": "calling-station",
+            "personality": {
+              "id": "calling-station",
+              "label": "Calling Station",
+              "aggression": 0.28,
+              "looseness": 0.7,
+              "bluff": 0.08,
+              "callDown": 0.88,
+              "drawGreed": 0.54,
+              "tiltResistance": 0.62
+            },
+            "personalityBadge": "Calling Station",
+            "avatarId": "store-miyu",
+            "flavorText": "ドロー枚数を恐れず、ヒットすれば一気に押し切る。",
+            "traits": [
+              "loose"
+            ],
+            "startingStack": 500,
+            "stack": 375,
+            "busted": false,
+            "bustHandIndex": null,
+            "finishPlace": null,
+            "payout": null,
+            "tableId": "table-3",
+            "seatIndex": 0
+          },
+          "cpu-3": {
+            "id": "cpu-3",
+            "name": "ゴロー",
+            "cpuCharacterId": "sora",
+            "cpuStyle": "nit",
+            "avatarUrl": "/characters/sora.png",
+            "opponentProfileId": "store-goro",
+            "opponentTitle": "アナリティクス厨",
+            "titleBadge": "アナリティクス厨",
+            "tierId": "standard",
+            "personalityId": "nit",
+            "personality": {
+              "id": "nit",
+              "label": "Nit",
+              "aggression": 0.25,
+              "looseness": 0.18,
+              "bluff": 0.08,
+              "callDown": 0.22,
+              "drawGreed": 0.2,
+              "tiltResistance": 0.82
+            },
+            "personalityBadge": "Nit",
+            "avatarId": "store-goro",
+            "flavorText": "3カード以下で固める守備型。BTN以外ではほぼフォールド。",
+            "traits": [
+              "tight"
+            ],
+            "startingStack": 500,
+            "stack": 540,
+            "busted": false,
+            "bustHandIndex": null,
+            "finishPlace": null,
+            "payout": null,
+            "tableId": "table-1",
+            "seatIndex": 1
+          },
+          "cpu-4": {
+            "id": "cpu-4",
+            "name": "ナオト",
+            "cpuCharacterId": "hana",
+            "cpuStyle": "lag",
+            "avatarUrl": "/characters/hana.png",
+            "opponentProfileId": "store-naoto",
+            "opponentTitle": "先制のSB",
+            "titleBadge": "先制のSB",
+            "tierId": "standard",
+            "personalityId": "lag",
+            "personality": {
+              "id": "lag",
+              "label": "LAG",
+              "aggression": 0.72,
+              "looseness": 0.62,
+              "bluff": 0.46,
+              "callDown": 0.52,
+              "drawGreed": 0.58,
+              "tiltResistance": 0.58
+            },
+            "personalityBadge": "LAG",
+            "avatarId": "store-naoto",
+            "flavorText": "SB/BBでのスチール率が高い。3ベット頻度も高め。",
+            "traits": [
+              "aggro"
+            ],
+            "startingStack": 500,
+            "stack": 375,
+            "busted": false,
+            "bustHandIndex": null,
+            "finishPlace": null,
+            "payout": null,
+            "tableId": "table-2",
+            "seatIndex": 1
+          },
+          "cpu-5": {
+            "id": "cpu-5",
+            "name": "カリン",
+            "cpuCharacterId": "jun",
+            "cpuStyle": "tag",
+            "avatarUrl": "/characters/jun.png",
+            "opponentProfileId": "store-karin",
+            "opponentTitle": "読み鋭い店員",
+            "titleBadge": "読み鋭い店員",
+            "tierId": "standard",
+            "personalityId": "tag",
+            "personality": {
+              "id": "tag",
+              "label": "TAG",
+              "aggression": 0.55,
+              "looseness": 0.35,
+              "bluff": 0.25,
+              "callDown": 0.45,
+              "drawGreed": 0.4,
+              "tiltResistance": 0.7
+            },
+            "personalityBadge": "TAG",
+            "avatarId": "store-karin",
+            "flavorText": "BTNでのトリプルバレルが得意。終盤のショーダウン率が低い。",
+            "traits": [
+              "tag"
+            ],
+            "startingStack": 500,
+            "stack": 375,
+            "busted": false,
+            "bustHandIndex": null,
+            "finishPlace": null,
+            "payout": null,
+            "tableId": "table-3",
+            "seatIndex": 1
+          },
+          "cpu-6": {
+            "id": "cpu-6",
+            "name": "サトル",
+            "cpuCharacterId": "rei",
+            "cpuStyle": "balanced",
+            "avatarUrl": "/characters/rei.png",
+            "opponentProfileId": "store-satoru",
+            "opponentTitle": "慎重派の学生",
+            "titleBadge": "慎重派の学生",
+            "tierId": "standard",
+            "personalityId": "balanced",
+            "personality": {
+              "id": "balanced",
+              "label": "Balanced",
+              "aggression": 0.5,
+              "looseness": 0.5,
+              "bluff": 0.22,
+              "callDown": 0.5,
+              "drawGreed": 0.45,
+              "tiltResistance": 0.65
+            },
+            "personalityBadge": "Balanced",
+            "avatarId": "store-satoru",
+            "flavorText": "序盤はほぼリンプ。堅実にショーダウンまで粘るタイプ。",
+            "traits": [
+              "balanced"
+            ],
+            "startingStack": 500,
+            "stack": 480,
+            "busted": false,
+            "bustHandIndex": null,
+            "finishPlace": null,
+            "payout": null,
+            "tableId": "table-1",
+            "seatIndex": 2
+          },
+          "cpu-7": {
+            "id": "cpu-7",
+            "name": "ミユ",
+            "cpuCharacterId": "yuki",
+            "cpuStyle": "calling-station",
+            "avatarUrl": "/characters/yuki.png",
+            "opponentProfileId": "store-miyu",
+            "opponentTitle": "自由奔放",
+            "titleBadge": "自由奔放",
+            "tierId": "standard",
+            "personalityId": "calling-station",
+            "personality": {
+              "id": "calling-station",
+              "label": "Calling Station",
+              "aggression": 0.28,
+              "looseness": 0.7,
+              "bluff": 0.08,
+              "callDown": 0.88,
+              "drawGreed": 0.54,
+              "tiltResistance": 0.62
+            },
+            "personalityBadge": "Calling Station",
+            "avatarId": "store-miyu",
+            "flavorText": "ドロー枚数を恐れず、ヒットすれば一気に押し切る。",
+            "traits": [
+              "loose"
+            ],
+            "startingStack": 500,
+            "stack": 375,
+            "busted": false,
+            "bustHandIndex": null,
+            "finishPlace": null,
+            "payout": null,
+            "tableId": "table-2",
+            "seatIndex": 2
+          },
+          "cpu-8": {
+            "id": "cpu-8",
+            "name": "ゴロー",
+            "cpuCharacterId": "nagi",
+            "cpuStyle": "nit",
+            "avatarUrl": "/characters/nagi.png",
+            "opponentProfileId": "store-goro",
+            "opponentTitle": "アナリティクス厨",
+            "titleBadge": "アナリティクス厨",
+            "tierId": "standard",
+            "personalityId": "nit",
+            "personality": {
+              "id": "nit",
+              "label": "Nit",
+              "aggression": 0.25,
+              "looseness": 0.18,
+              "bluff": 0.08,
+              "callDown": 0.22,
+              "drawGreed": 0.2,
+              "tiltResistance": 0.82
+            },
+            "personalityBadge": "Nit",
+            "avatarId": "store-goro",
+            "flavorText": "3カード以下で固める守備型。BTN以外ではほぼフォールド。",
+            "traits": [
+              "tight"
+            ],
+            "startingStack": 500,
+            "stack": 375,
+            "busted": false,
+            "bustHandIndex": null,
+            "finishPlace": null,
+            "payout": null,
+            "tableId": "table-3",
+            "seatIndex": 2
+          },
+          "cpu-9": {
+            "id": "cpu-9",
+            "name": "ナオト",
+            "cpuCharacterId": "kei",
+            "cpuStyle": "lag",
+            "avatarUrl": "/characters/kei.png",
+            "opponentProfileId": "store-naoto",
+            "opponentTitle": "先制のSB",
+            "titleBadge": "先制のSB",
+            "tierId": "standard",
+            "personalityId": "lag",
+            "personality": {
+              "id": "lag",
+              "label": "LAG",
+              "aggression": 0.72,
+              "looseness": 0.62,
+              "bluff": 0.46,
+              "callDown": 0.52,
+              "drawGreed": 0.58,
+              "tiltResistance": 0.58
+            },
+            "personalityBadge": "LAG",
+            "avatarId": "store-naoto",
+            "flavorText": "SB/BBでのスチール率が高い。3ベット頻度も高め。",
+            "traits": [
+              "aggro"
+            ],
+            "startingStack": 500,
+            "stack": 500,
+            "busted": false,
+            "bustHandIndex": null,
+            "finishPlace": null,
+            "payout": null,
+            "tableId": "table-1",
+            "seatIndex": 3
+          },
+          "cpu-10": {
+            "id": "cpu-10",
+            "name": "カリン",
+            "cpuCharacterId": "rio",
+            "cpuStyle": "tag",
+            "avatarUrl": "/characters/rio.png",
+            "opponentProfileId": "store-karin",
+            "opponentTitle": "読み鋭い店員",
+            "titleBadge": "読み鋭い店員",
+            "tierId": "standard",
+            "personalityId": "tag",
+            "personality": {
+              "id": "tag",
+              "label": "TAG",
+              "aggression": 0.55,
+              "looseness": 0.35,
+              "bluff": 0.25,
+              "callDown": 0.45,
+              "drawGreed": 0.4,
+              "tiltResistance": 0.7
+            },
+            "personalityBadge": "TAG",
+            "avatarId": "store-karin",
+            "flavorText": "BTNでのトリプルバレルが得意。終盤のショーダウン率が低い。",
+            "traits": [
+              "tag"
+            ],
+            "startingStack": 500,
+            "stack": 375,
+            "busted": false,
+            "bustHandIndex": null,
+            "finishPlace": null,
+            "payout": null,
+            "tableId": "table-2",
+            "seatIndex": 3
+          },
+          "cpu-11": {
+            "id": "cpu-11",
+            "name": "サトル",
+            "cpuCharacterId": "toma",
+            "cpuStyle": "balanced",
+            "avatarUrl": "/characters/toma.png",
+            "opponentProfileId": "store-satoru",
+            "opponentTitle": "慎重派の学生",
+            "titleBadge": "慎重派の学生",
+            "tierId": "standard",
+            "personalityId": "balanced",
+            "personality": {
+              "id": "balanced",
+              "label": "Balanced",
+              "aggression": 0.5,
+              "looseness": 0.5,
+              "bluff": 0.22,
+              "callDown": 0.5,
+              "drawGreed": 0.45,
+              "tiltResistance": 0.65
+            },
+            "personalityBadge": "Balanced",
+            "avatarId": "store-satoru",
+            "flavorText": "序盤はほぼリンプ。堅実にショーダウンまで粘るタイプ。",
+            "traits": [
+              "balanced"
+            ],
+            "startingStack": 500,
+            "stack": 1125,
+            "busted": false,
+            "bustHandIndex": null,
+            "finishPlace": null,
+            "payout": null,
+            "tableId": "table-3",
+            "seatIndex": 3
+          },
+          "cpu-12": {
+            "id": "cpu-12",
+            "name": "ミユ",
+            "cpuCharacterId": "emi",
+            "cpuStyle": "calling-station",
+            "avatarUrl": "/characters/emi.png",
+            "opponentProfileId": "store-miyu",
+            "opponentTitle": "自由奔放",
+            "titleBadge": "自由奔放",
+            "tierId": "standard",
+            "personalityId": "calling-station",
+            "personality": {
+              "id": "calling-station",
+              "label": "Calling Station",
+              "aggression": 0.28,
+              "looseness": 0.7,
+              "bluff": 0.08,
+              "callDown": 0.88,
+              "drawGreed": 0.54,
+              "tiltResistance": 0.62
+            },
+            "personalityBadge": "Calling Station",
+            "avatarId": "store-miyu",
+            "flavorText": "ドロー枚数を恐れず、ヒットすれば一気に押し切る。",
+            "traits": [
+              "loose"
+            ],
+            "startingStack": 500,
+            "stack": 500,
+            "busted": false,
+            "bustHandIndex": null,
+            "finishPlace": null,
+            "payout": null,
+            "tableId": "table-1",
+            "seatIndex": 4
+          },
+          "cpu-13": {
+            "id": "cpu-13",
+            "name": "ゴロー",
+            "cpuCharacterId": "kai",
+            "cpuStyle": "nit",
+            "avatarUrl": "/characters/kai.png",
+            "opponentProfileId": "store-goro",
+            "opponentTitle": "アナリティクス厨",
+            "titleBadge": "アナリティクス厨",
+            "tierId": "standard",
+            "personalityId": "nit",
+            "personality": {
+              "id": "nit",
+              "label": "Nit",
+              "aggression": 0.25,
+              "looseness": 0.18,
+              "bluff": 0.08,
+              "callDown": 0.22,
+              "drawGreed": 0.2,
+              "tiltResistance": 0.82
+            },
+            "personalityBadge": "Nit",
+            "avatarId": "store-goro",
+            "flavorText": "3カード以下で固める守備型。BTN以外ではほぼフォールド。",
+            "traits": [
+              "tight"
+            ],
+            "startingStack": 500,
+            "stack": 375,
+            "busted": false,
+            "bustHandIndex": null,
+            "finishPlace": null,
+            "payout": null,
+            "tableId": "table-2",
+            "seatIndex": 4
+          },
+          "cpu-14": {
+            "id": "cpu-14",
+            "name": "ナオト",
+            "cpuCharacterId": "mio",
+            "cpuStyle": "lag",
+            "avatarUrl": "/characters/mio.png",
+            "opponentProfileId": "store-naoto",
+            "opponentTitle": "先制のSB",
+            "titleBadge": "先制のSB",
+            "tierId": "standard",
+            "personalityId": "lag",
+            "personality": {
+              "id": "lag",
+              "label": "LAG",
+              "aggression": 0.72,
+              "looseness": 0.62,
+              "bluff": 0.46,
+              "callDown": 0.52,
+              "drawGreed": 0.58,
+              "tiltResistance": 0.58
+            },
+            "personalityBadge": "LAG",
+            "avatarId": "store-naoto",
+            "flavorText": "SB/BBでのスチール率が高い。3ベット頻度も高め。",
+            "traits": [
+              "aggro"
+            ],
+            "startingStack": 500,
+            "stack": 375,
+            "busted": false,
+            "bustHandIndex": null,
+            "finishPlace": null,
+            "payout": null,
+            "tableId": "table-3",
+            "seatIndex": 4
+          },
+          "cpu-15": {
+            "id": "cpu-15",
+            "name": "カリン",
+            "cpuCharacterId": "ryo",
+            "cpuStyle": "tag",
+            "avatarUrl": "/characters/ryo.png",
+            "opponentProfileId": "store-karin",
+            "opponentTitle": "読み鋭い店員",
+            "titleBadge": "読み鋭い店員",
+            "tierId": "standard",
+            "personalityId": "tag",
+            "personality": {
+              "id": "tag",
+              "label": "TAG",
+              "aggression": 0.55,
+              "looseness": 0.35,
+              "bluff": 0.25,
+              "callDown": 0.45,
+              "drawGreed": 0.4,
+              "tiltResistance": 0.7
+            },
+            "personalityBadge": "TAG",
+            "avatarId": "store-karin",
+            "flavorText": "BTNでのトリプルバレルが得意。終盤のショーダウン率が低い。",
+            "traits": [
+              "tag"
+            ],
+            "startingStack": 500,
+            "stack": 480,
+            "busted": false,
+            "bustHandIndex": null,
+            "finishPlace": null,
+            "payout": null,
+            "tableId": "table-1",
+            "seatIndex": 5
+          },
+          "cpu-16": {
+            "id": "cpu-16",
+            "name": "サトル",
+            "cpuCharacterId": "aoi",
+            "cpuStyle": "balanced",
+            "avatarUrl": "/characters/aoi.png",
+            "opponentProfileId": "store-satoru",
+            "opponentTitle": "慎重派の学生",
+            "titleBadge": "慎重派の学生",
+            "tierId": "standard",
+            "personalityId": "balanced",
+            "personality": {
+              "id": "balanced",
+              "label": "Balanced",
+              "aggression": 0.5,
+              "looseness": 0.5,
+              "bluff": 0.22,
+              "callDown": 0.5,
+              "drawGreed": 0.45,
+              "tiltResistance": 0.65
+            },
+            "personalityBadge": "Balanced",
+            "avatarId": "store-satoru",
+            "flavorText": "序盤はほぼリンプ。堅実にショーダウンまで粘るタイプ。",
+            "traits": [
+              "balanced"
+            ],
+            "startingStack": 500,
+            "stack": 375,
+            "busted": false,
+            "bustHandIndex": null,
+            "finishPlace": null,
+            "payout": null,
+            "tableId": "table-2",
+            "seatIndex": 5
+          },
+          "cpu-17": {
+            "id": "cpu-17",
+            "name": "ミユ",
+            "cpuCharacterId": "zen",
+            "cpuStyle": "calling-station",
+            "avatarUrl": "/characters/zen.png",
+            "opponentProfileId": "store-miyu",
+            "opponentTitle": "自由奔放",
+            "titleBadge": "自由奔放",
+            "tierId": "standard",
+            "personalityId": "calling-station",
+            "personality": {
+              "id": "calling-station",
+              "label": "Calling Station",
+              "aggression": 0.28,
+              "looseness": 0.7,
+              "bluff": 0.08,
+              "callDown": 0.88,
+              "drawGreed": 0.54,
+              "tiltResistance": 0.62
+            },
+            "personalityBadge": "Calling Station",
+            "avatarId": "store-miyu",
+            "flavorText": "ドロー枚数を恐れず、ヒットすれば一気に押し切る。",
+            "traits": [
+              "loose"
+            ],
+            "startingStack": 500,
+            "stack": 375,
+            "busted": false,
+            "bustHandIndex": null,
+            "finishPlace": null,
+            "payout": null,
+            "tableId": "table-3",
+            "seatIndex": 5
+          }
+        },
+        "totalPlayers": 18,
+        "playersRemaining": 18,
+        "isFinished": false,
+        "championId": null,
+        "finishOrder": [],
+        "abstractHandCounter": 2,
+        "completedHandIds": [
+          "table-1:table-1-h1-d0-mudh2xcg",
+          "table-2:cpu-table-2-1",
+          "table-3:cpu-table-3-2"
+        ],
+        "events": [],
+        "lastEvent": null,
+        "placements": [
+          {
+            "id": "hero-player",
+            "name": "physical.friend.1790128015100.0@example.com",
+            "place": 0,
+            "stack": 500,
+            "payout": 0
+          },
+          {
+            "id": "cpu-1",
+            "name": "サトル",
+            "place": 0,
+            "stack": 1125,
+            "payout": 0
+          },
+          {
+            "id": "cpu-2",
+            "name": "ミユ",
+            "place": 0,
+            "stack": 375,
+            "payout": 0
+          },
+          {
+            "id": "cpu-3",
+            "name": "ゴロー",
+            "place": 0,
+            "stack": 540,
+            "payout": 0
+          },
+          {
+            "id": "cpu-4",
+            "name": "ナオト",
+            "place": 0,
+            "stack": 375,
+            "payout": 0
+          },
+          {
+            "id": "cpu-5",
+            "name": "カリン",
+            "place": 0,
+            "stack": 375,
+            "payout": 0
+          },
+          {
+            "id": "cpu-6",
+            "name": "サトル",
+            "place": 0,
+            "stack": 480,
+            "payout": 0
+          },
+          {
+            "id": "cpu-7",
+            "name": "ミユ",
+            "place": 0,
+            "stack": 375,
+            "payout": 0
+          },
+          {
+            "id": "cpu-8",
+            "name": "ゴロー",
+            "place": 0,
+            "stack": 375,
+            "payout": 0
+          },
+          {
+            "id": "cpu-9",
+            "name": "ナオト",
+            "place": 0,
+            "stack": 500,
+            "payout": 0
+          },
+          {
+            "id": "cpu-10",
+            "name": "カリン",
+            "place": 0,
+            "stack": 375,
+            "payout": 0
+          },
+          {
+            "id": "cpu-11",
+            "name": "サトル",
+            "place": 0,
+            "stack": 1125,
+            "payout": 0
+          },
+          {
+            "id": "cpu-12",
+            "name": "ミユ",
+            "place": 0,
+            "stack": 500,
+            "payout": 0
+          },
+          {
+            "id": "cpu-13",
+            "name": "ゴロー",
+            "place": 0,
+            "stack": 375,
+            "payout": 0
+          },
+          {
+            "id": "cpu-14",
+            "name": "ナオト",
+            "place": 0,
+            "stack": 375,
+            "payout": 0
+          },
+          {
+            "id": "cpu-15",
+            "name": "カリン",
+            "place": 0,
+            "stack": 480,
+            "payout": 0
+          },
+          {
+            "id": "cpu-16",
+            "name": "サトル",
+            "place": 0,
+            "stack": 375,
+            "payout": 0
+          },
+          {
+            "id": "cpu-17",
+            "name": "ミユ",
+            "place": 0,
+            "stack": 375,
+            "payout": 0
+          }
+        ]
+      }
+    }
+  ],
+  "viewport": [
+    852,
+    283
+  ],
+  "status": "FAIL",
+  "error": "Badugi next-hand trigger rejected because a late BET callback overwrote the displayed phase after settlement. Reproduced by browser regression."
+}

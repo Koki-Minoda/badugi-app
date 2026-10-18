@@ -1,0 +1,116 @@
+/* Shared mobile controls, cards, and placement-game styling. */
+.mgx-play{position:fixed;z-index:1;display:flex;flex-direction:column;background:#081512;color:#eaf2ed;font:14px/1.3 system-ui,sans-serif;padding:0 max(8px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));overflow:auto;overscroll-behavior:contain}
+.mgx-play *,.mgx-amount-sheet *{box-sizing:border-box}
+.mgx-play button,.mgx-play summary,.mgx-amount-sheet button{touch-action:manipulation;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.mgx-play button:disabled,.mgx-amount-sheet button:disabled{opacity:.38;cursor:default}
+.mgx-play button:focus-visible,.mgx-play summary:focus-visible,.mgx-amount-sheet button:focus-visible{outline:3px solid #a5f3cb;outline-offset:2px}
+.mgx-play-header{height:48px;min-height:48px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid #ffffff15;margin-bottom:6px}
+.mgx-play-header>div:first-child{display:flex;gap:8px;align-items:center;min-width:0}
+.mgx-wordmark{font-size:11px;font-weight:900;letter-spacing:.12em;color:#7eddad}
+.mgx-play-header h1{font-size:13px;font-weight:700;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.mgx-play-tools{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.mgx-play-tools>button,.mgx-play-tools summary{min-height:44px;display:flex;align-items:center;border:0;background:transparent;padding:0 10px;color:#c3d6cc;font-size:12px;border-radius:8px}
+.mgx-play-tools details{position:relative}
+.mgx-play-tools summary{list-style:none}.mgx-play-tools summary::-webkit-details-marker{display:none}
+.mgx-play-tools nav{position:absolute;z-index:200;top:46px;right:0;width:180px;display:grid;padding:6px;border:1px solid #476657;border-radius:12px;background:#10251d;box-shadow:0 12px 40px #0009}
+.mgx-play-tools nav button{min-height:46px;text-align:left;padding:8px 12px;border-radius:7px}
+.mgx-play-main{display:grid;grid-template-rows:minmax(290px,1fr) auto;gap:8px;min-height:0;flex:1}
+.mgx-table-card{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;flex:0 1 20px;min-width:0;width:20px;height:29px;border-radius:4px;background:#f9faf5;border:1px solid #d8e1d9;color:#1a2821;font-size:12px;line-height:1.05;font-weight:700;box-shadow:0 1px 1px #0004;overflow:hidden}
+.mgx-table-card.heart{color:#b5273a}.mgx-table-card.diamond{color:#2656a8}.mgx-table-card.club{color:#0c7151}
+.mgx-table-card.is-hidden{background:#284c3c;color:#79a28b;border-color:#476d58;font-size:16px}
+.mgx-table-card.is-down{border-bottom:3px solid #83978b}
+.mgx-table-card.is-selected{border:2px solid #4ddd9f;box-shadow:0 0 0 2px #4ddd9f;background:#e9fff3;transform:translateY(-3px)}
+.mgx-community{grid-area:community;display:flex;flex-direction:column;gap:5px;justify-content:center;align-items:center;min-width:0;text-align:center}
+.mgx-community [data-testid=table-total-pot]{display:flex;align-items:center;justify-content:center;gap:5px;flex-wrap:wrap}
+.mgx-community [data-testid=table-total-pot] span{color:#91b39e;font-size:9px;letter-spacing:.1em}
+.mgx-community [data-testid=table-total-pot] strong{font-size:19px;line-height:1.1;font-variant-numeric:tabular-nums;color:#f4e6b7}
+.mgx-board-cards{display:flex;justify-content:center;gap:2px;max-width:100%}
+.mgx-board-cards:empty{display:none}
+.mgx-community-phase{font-size:10px;color:#bdd4c6}
+.mgx-play-actions{display:flex;flex-direction:column;gap:8px;min-width:0;background:#0c2119;border:1px solid #294b3b;border-radius:12px;padding:10px}
+.mgx-game-context{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:#91b09d}
+.mgx-turn-message{min-height:30px;display:flex;align-items:center;margin:0;font-size:13px;font-weight:650;color:#a8c0b2;line-height:1.35}
+.mgx-turn-message.is-your-turn{color:#b4f7ce}
+.mgx-action-space{display:flex;flex-direction:column;gap:8px}
+.mgx-play .mgx-primary,.mgx-amount-sheet .mgx-primary{background:#88e5b2;color:#072a18;font-weight:750;border:1px solid #9cedc2;border-radius:9px;min-height:46px;padding:8px}
+.mgx-bet-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.mgx-bet-actions>button{min-height:46px;padding:8px 3px;border-radius:9px;font-size:12px;font-weight:650;background:#1a3026;border:1px solid #385545}
+.mgx-bet-actions>button.mgx-primary{background:#88e5b2;color:#072a18;border-color:#9cedc2}
+.mgx-bet-actions>button.mgx-raise{background:#244f3b;border-color:#598a6b;color:#d8f3e1}
+.mgx-amount-launch{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:46px;border:1px solid #456a53;border-radius:8px;background:#102a1d;padding:8px 10px;font-size:12px;text-align:left}
+.mgx-amount-launch strong{font-size:13px;white-space:nowrap;color:#e4eddc}
+.mgx-action-note{margin:0;font-size:10px;color:#86a391;line-height:1.4}
+.mgx-tournament-info{font-size:10px;min-width:0}.mgx-tournament-info>div{max-width:100%}
+.mgx-play.is-landscape .mgx-play-header{height:46px;min-height:46px;margin-bottom:4px}
+.mgx-play.is-landscape .mgx-play-main{grid-template-columns:minmax(0,1fr) 240px;grid-template-rows:minmax(0,1fr);gap:8px;min-height:216px}
+.mgx-play.is-landscape .mgx-play-actions{padding:10px;gap:8px;overflow:auto}
+.mgx-play.is-landscape .mgx-action-note{margin-top:auto}
+.mgx-play.is-landscape .mgx-amount-launch{flex-wrap:wrap;gap:2px}
+.mgx-play.is-landscape .mgx-community-phase{font-size:9px}
+.mgx-play.is-landscape .mgx-turn-message{min-height:36px}
+@media(max-width:700px) and (orientation:landscape){.mgx-play.is-landscape .mgx-play-main{grid-template-columns:minmax(0,1fr) 212px}}
+/* Numeric entry is a self-contained touch surface; it never requests the OS keyboard. */
+.mgx-amount-backdrop{position:fixed;inset:0;z-index:1000;background:#020a07dd;display:flex;align-items:center;justify-content:center;padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));color:#eaf2ed}
+.mgx-amount-sheet{width:min(100%,420px);max-height:100%;overflow:auto;outline:none;border:1px solid #456b54;border-radius:16px;background:#10271d;padding:12px;font:14px/1.3 system-ui,sans-serif;box-shadow:0 20px 80px #0009}
+.mgx-amount-sheet header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.mgx-amount-sheet h2{font-size:16px;font-weight:750}.mgx-amount-sheet header button{min-height:44px;padding:8px;font-size:12px;color:#bbd2c4}
+.mgx-amount-body{display:flex;flex-direction:column;gap:10px}
+.mgx-amount-details{display:flex;flex-direction:column;gap:8px}
+.mgx-amount-display{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#081c12;border:1px solid #4c765b;border-radius:8px;padding:8px 12px}
+.mgx-amount-display>span{font-size:10px;color:#a7c5b2}.mgx-amount-display output{font-size:28px;font-weight:750;margin-left:auto;color:#c5ffd9;font-variant-numeric:tabular-nums}.mgx-amount-display small{font-size:10px;color:#98b09f}
+.mgx-amount-presets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+.mgx-amount-presets button{min-height:44px;padding:4px;border:1px solid #3b5e49;border-radius:7px;font-size:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:#193625}
+.mgx-amount-presets strong{font-size:13px}.mgx-amount-error{margin:0;font-size:11px;color:#bdd4c5;min-height:14px}
+.mgx-number-pad{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.mgx-number-pad button{min-height:48px;border:1px solid #4f715b;border-radius:8px;font-size:23px;font-weight:600;background:#254432}
+.mgx-amount-sheet button:active{background:#456d4f}
+@media(orientation:portrait){.mgx-amount-body{display:grid}.mgx-amount-details{display:contents}.mgx-amount-display{order:0}.mgx-amount-presets{order:1}.mgx-number-pad{order:2}.mgx-amount-error{order:3}.mgx-amount-details>.mgx-primary{order:4}}
+@media(orientation:landscape){.mgx-amount-sheet{width:min(100%,640px);padding:8px 12px}.mgx-amount-sheet header{margin-bottom:4px}.mgx-amount-sheet header button{min-height:32px}.mgx-amount-sheet h2{font-size:14px}.mgx-amount-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}.mgx-amount-details{gap:5px}.mgx-amount-display{min-height:52px;padding:4px 8px}.mgx-amount-display>span{width:100%}.mgx-amount-display output{font-size:25px;margin-left:0}.mgx-amount-presets{grid-template-columns:repeat(2,minmax(0,1fr))}.mgx-amount-presets button{min-height:32px;flex-direction:row;gap:4px}.mgx-amount-details>.mgx-primary{min-height:44px}.mgx-number-pad{gap:4px}.mgx-number-pad button{min-height:44px}.mgx-amount-error{font-size:10px;min-height:12px}}
+@media(max-height:340px) and (orientation:landscape){
+ .mgx-play.is-landscape .mgx-table-card{height:22px;font-size:10px}
+ .mgx-play.is-landscape .mgx-play-main{min-height:208px}
+}
+@media(orientation:landscape){
+ .mgx-amount-sheet header button{min-height:44px}
+ .mgx-amount-presets{grid-template-columns:repeat(4,minmax(0,1fr))}
+ .mgx-amount-presets button{min-height:44px;flex-direction:column;gap:2px}
+}
+/* Chinese and OFC keep their placement workflow, with the same cards and controls. */
+.mgx-arrange-page.mgx-arrange-page{background:#081512;color:#eaf2ed;padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
+.mgx-arrange-page>header,.mgx-arrange-page>div>header{border-bottom:1px solid #ffffff20;padding-bottom:12px}
+.mgx-arrange-page h1{font-size:20px;line-height:1.3;letter-spacing:0;font-weight:750}
+.mgx-arrange-page h2{font-size:15px;font-weight:700}
+.mgx-arrange-page button{min-height:44px;touch-action:manipulation;border-radius:9px}
+.mgx-arrange-page .mgx-table-card{flex:0 0 44px;width:44px;height:54px;font-size:19px;border-radius:6px}
+.mgx-arrange-page .mgx-table-card.is-hidden{background:#284c3c;color:#79a28b}
+.mgx-arrange-page button[class*="bg-amber-400"],.mgx-arrange-page button[class*="bg-emerald-400"],.mgx-arrange-page button[class*="bg-emerald-500"]{background:#88e5b2;color:#072a18}
+.mgx-arrange-page footer{background:#10271df5;border-color:#3b634c;padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
+.mgx-arrange-page [data-testid=chinese-hero-arrange],.mgx-arrange-page section{border-radius:12px}
+@media(orientation:landscape){.mgx-arrange-page [data-testid=ofc-actions]>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,.9fr);gap:12px;align-items:center}.mgx-arrange-page [data-testid=ofc-actions]>div>*{margin:0}.mgx-arrange-page [data-testid=ofc-actions] [data-testid=ofc-result-summary]{font-size:14px}.mgx-arrange-page [data-testid=ofc-actions] .mgx-table-card{flex-basis:36px;width:36px;height:46px}}
+
+/* The same reserved rows apply to every poker family and every decision phase. */
+.mgx-play-actions{display:grid;grid-template-rows:20px 34px 100px 14px;gap:6px;height:206px;padding:10px}
+.mgx-game-context{min-width:0;align-items:center;height:20px;white-space:nowrap;overflow:hidden}
+.mgx-game-context>span:first-child{overflow:hidden;text-overflow:ellipsis}
+.mgx-game-context>span:last-child{flex-shrink:0}
+.mgx-turn-message,.mgx-play.is-landscape .mgx-turn-message{height:34px;min-height:0;overflow:hidden}
+.mgx-action-space{display:grid;grid-template-rows:46px 48px;gap:6px;min-height:0}
+.mgx-action-setting,.mgx-action-setting>.mgx-amount-launch{width:100%;height:46px;min-height:0}
+.mgx-action-setting>.mgx-amount-launch{white-space:nowrap;flex-wrap:nowrap}
+.mgx-action-setting .mgx-amount-launch>span{overflow:hidden;text-overflow:ellipsis}
+.mgx-setting-value{color:#c3d6cc}
+.mgx-bet-actions{height:48px;min-height:0}
+.mgx-bet-actions>button,.mgx-bet-actions>button.mgx-primary{height:48px;min-height:0;line-height:16px;padding:4px 3px}
+.mgx-action-note,.mgx-play.is-landscape .mgx-action-note{margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mgx-play.is-landscape .mgx-play-actions{height:100%;padding:10px;gap:6px;align-content:start}
+.mgx-community{height:74px;display:grid;grid-template-rows:22px 29px 13px;gap:5px;align-self:center;align-items:center;justify-content:stretch}
+.mgx-board-cards,.mgx-board-cards:empty{display:flex;min-height:29px}
+.mgx-community-phase{display:block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mgx-play.is-landscape .mgx-community{height:56px;grid-template-rows:20px 22px 10px;gap:2px}
+.mgx-play.is-landscape .mgx-board-cards{min-height:22px}
+.mgx-play.is-landscape .mgx-board-cards .mgx-table-card{height:22px;font-size:10px}
+.mgx-tournament-info{width:100%;min-width:0}
+.mgx-tournament-info .mgx-hud-compact{padding:0;border:0;background:transparent;box-shadow:none}
+.mgx-tournament-info details[open]{position:absolute;z-index:100;right:12px;max-width:calc(100% - 24px);padding:8px;background:#10271d;border:1px solid #456b54;border-radius:8px}
+
+.mgx-community>*{min-width:0;width:100%}

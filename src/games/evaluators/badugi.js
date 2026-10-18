@@ -15,7 +15,7 @@ function encodeRankValues(values = []) {
   return values.reduce((acc, val) => acc * 20 + val, 0);
 }
 
-export function evaluateBadugiHand({ cards = [], mode = "low" } = {}) {
+export function evaluateBadugiHand({ cards = [], mode = "low", aceHigh = false } = {}) {
   const parsed = parseCards(cards);
   if (!parsed.length) {
     return {
@@ -24,6 +24,17 @@ export function evaluateBadugiHand({ cards = [], mode = "low" } = {}) {
       handName: "Invalid Badugi",
       metadata: {},
     };
+  }
+  if (aceHigh) {
+    let best = null;
+    for (let mask=1; mask<(1 << parsed.length); mask++) {
+      const subset=parsed.filter((_,i)=>mask & (1 << i));
+      if (subset.length>4 || new Set(subset.map(c=>c.suit)).size!==subset.length || new Set(subset.map(c=>c.value)).size!==subset.length) continue;
+      const ranks=subset.map(c=>c.value).sort((a,b)=>b-a);
+      const score=(4-subset.length)*SIZE_WEIGHT+encodeRankValues(ranks);
+      if (!best || score<best.rankPrimary) best={rankPrimary:score,rankSecondary:null,handName:BADUGI_SIZE_LABEL[subset.length],isValid:true,metadata:{ranks:[...ranks].reverse(),cards:subset.map(c=>c.raw),size:subset.length,mode,aceHigh:true}};
+    }
+    return best;
   }
   const rawCards = parsed.map((card) => card.raw ?? `${card.rank}${card.suit}`);
   const evaluation = evaluateBadugi(rawCards);

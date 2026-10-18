@@ -1,5 +1,6 @@
+import { visibleHeroActions } from "./helpers/visibleHeroActions";
 import { expect, test } from '@playwright/test';
-import { getProgressState, progressKey, waitForProgressChange } from './helpers/gameProgressHelper.js';
+import { getProgressState, progressKey, waitForProgressChange, playOneHandProgression } from './helpers/gameProgressHelper.js';
 
 async function installDrawSnapshot(page, actorFields = { currentActor: null, turn: null, nextTurn: null }) {
   await page.setContent('<div data-testid="table-phase-badge">DRAW | D1</div>');
@@ -50,4 +51,54 @@ test('legacy actor remains a fallback only when the snapshot omits actor fields'
   });
   await waitForProgressChange(page, progressKey(before), { timeout: 2000 });
   expect((await getProgressState(page)).actor).toBe(0);
+});
+
+test('hand completion between the progress read and action selection is terminal, not a freeze', async ({ page }) => {
+  await installDrawSnapshot(page, { currentActor: 0, turn: 0, nextTurn: 0 });
+  const result = await playOneHandProgression(page, {
+    maxSteps: 3,
+    onStep: async ({ step }) => {
+      if (step !== 0) return;
+      await page.evaluate(() => {
+        const snapshot = window.__BADUGI_E2E__.getStateSnapshot().controllerSnapshot;
+        snapshot.phase = 'HAND_RESULT';
+        snapshot.currentActor = snapshot.turn = snapshot.nextTurn = null;
+        document.querySelector('[data-testid="table-phase-badge"]').textContent = 'HAND_RESULT';
+      });
+    },
+  });
+  expect(result.status).toBe('PASS');
+  expect(result.visitedPhases).toContain('HAND_RESULT');
+});
+
+
+test('action snapshot does not wait for a button removed during a phase change', async ({ page }) => {
+  page.setDefaultTimeout(700);
+  await page.setContent('<button data-testid="action-call">Call</button>');
+  // Reproduce the phase transition between separate visibility/enabled reads.
+  const transitioningPage = new Proxy(page, {
+    get(target, key) {
+      if (key === 'getByTestId') return (id) => {
+        const button = target.getByTestId(id).first();
+        return { first: () => ({
+          count: () => button.count(),
+          isVisible: async () => {
+            const visible = await button.isVisible();
+            if (visible) await button.evaluate((element) => element.remove());
+            return visible;
+          },
+          isEnabled: () => button.isEnabled(),
+        }) };
+      };
+      const value = Reflect.get(target, key);
+      return typeof value === 'function' ? value.bind(target) : value;
+    },
+  });
+  const startedAt = Date.now();
+  await visibleHeroActions(transitioningPage);
+  expect(Date.now() - startedAt).toBeLessThan(500);
+  await page.setContent('<button data-testid="action-fold" disabled>Fold</button><button data-testid="action-check" hidden>Check</button><button data-testid="action-draw-selected">Draw</button>');
+  expect(await visibleHeroActions(page)).toEqual(['action-draw-selected']);
+  await page.setContent('');
+  expect(await visibleHeroActions(page)).toEqual([]);
 });

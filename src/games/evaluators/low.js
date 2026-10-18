@@ -170,7 +170,7 @@ export function evaluateLowHand({
 
   if (requireQualifier != null) {
     const highest = best.metadata.ranks[0];
-    const qualifies = highest <= requireQualifier;
+    const qualifies = highest <= requireQualifier && best.metadata.categoryRank === 0;
     best = {
       ...best,
       qualifies,
@@ -180,7 +180,7 @@ export function evaluateLowHand({
         qualifier: requireQualifier,
       },
     };
-    if (highest > requireQualifier) {
+    if (!qualifies) {
       return {
         ...best,
         rankSecondary: Number.POSITIVE_INFINITY,

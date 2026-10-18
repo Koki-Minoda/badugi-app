@@ -119,7 +119,7 @@ describe("variantAvailability", () => {
     expect(PUBLIC_PLAYABLE_VARIANTS.find((variant) => variant.id === "chinese_poker")?.qmKind)
       .toBe("classic-chinese-poker");
     expect(getVariantAvailability("ofc").availability).toBe(
-      VARIANT_AVAILABILITY_STATES.COMING_SOON,
+      VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
     );
     expect(getVariantAvailability("CP2").label).toBe("Open-Face Chinese Poker");
   });

@@ -92,15 +92,15 @@ function StudActionBadge({ lastAction = "" }) {
 }
 
 function resolveDrawBadgeLabel(player = {}) {
-  const drawCount = Number(player.lastDrawCount);
-  if (Number.isInteger(drawCount) && drawCount >= 0 && drawCount <= 4) {
+  const drawCount = player.lastDrawCount == null || player.lastDrawCount === "" ? NaN : Number(player.lastDrawCount);
+  if (Number.isInteger(drawCount) && drawCount >= 0 && drawCount <= 5) {
     return drawCount === 0 ? "PAT" : `D${drawCount}`;
   }
 
   const action = String(player.lastAction ?? "").trim();
   if (!action) return null;
   if (/^pat$/i.test(action)) return "PAT";
-  const drawMatch = action.match(/\bDRAW\s*\(?\s*([0-4])\s*\)?/i);
+  const drawMatch = action.match(/\bDRAW\s*\(?\s*([0-5])\s*\)?/i);
   if (!drawMatch) return null;
   const parsedCount = Number(drawMatch[1]);
   return parsedCount === 0 ? "PAT" : `D${parsedCount}`;
@@ -400,16 +400,14 @@ export default function Player({
   const isActive = turn === index;
   const isFolded = Boolean(player.folded);
   const isOut = Boolean(player.isBusted || player.seatOut);
-  const drawBadgeLabel = resolveDrawBadgeLabel(player);
+  const drawBadgeLabel = layoutProfile?.layoutGroup === "stud" ? null : resolveDrawBadgeLabel(player);
   const playerTitleBadge = player.titleBadge ?? player.opponentTitle ?? null;
   const personalityBadge =
     player.personalityBadge ??
     player.personality?.label ??
     player.personalityId ??
     null;
-  const isCompactTableMobileLayout =
-    compact &&
-    ["badugi", "draw-lowball-5card", "stud"].includes(layoutProfile?.layoutGroup);
+  const isCompactTableMobileLayout = compact;
   const isCompactStudLayout = compact && layoutProfile?.layoutGroup === "stud";
   const useCompactFoldedBadge =
     isCompactTableMobileLayout &&
@@ -596,6 +594,9 @@ export default function Player({
         style={{
           padding: "var(--player-pad, 10px)",
           gap: "var(--player-gap, 8px)",
+          ...(layoutProfile?.layoutGroup === "stud" && !compact
+            ? { width: "100%", minWidth: 0, "--player-card-gap": "3px" }
+            : {}),
           ...(compact
             ? {
                 // A hero Stud hand can be intrinsically wider than its grid
@@ -927,6 +928,7 @@ export default function Player({
                     }`}
                   >
                     <Card
+                      compact={compact}
                       value={card}
                       hidden={isHiddenFromHero}
                       style={

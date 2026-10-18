@@ -121,7 +121,7 @@ test.describe("P2P friend match real websocket smoke", () => {
       await expect(guest.getByText(/PLAYING \/ Pot 0/i)).toBeVisible({ timeout: 20000 });
 
       await host.reload();
-      await expect(host.getByText(/^connected$/i)).toBeVisible({ timeout: 20000 });
+      await expect(host.getByTestId("friend-match-layout")).toHaveAttribute("data-connection-status", /^connected$/i, { timeout: 20000 });
       await expect(host.getByText(/PLAYING \/ Pot 0/i)).toBeVisible({ timeout: 20000 });
 
       await host.getByTestId("p2p-call").click();

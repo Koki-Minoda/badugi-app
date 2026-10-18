@@ -19,6 +19,7 @@ export type AuditIssue = {
 };
 
 const CORE5_QA_METADATA = Object.freeze({
+  flh: { heroCardTestId: "player-0-card-1", initialCardCount: 2, maxSteps: 120, expectsDraw: false, expectsBlindIncrease: false },
   badugi: { heroCardTestId: "player-0-card-3", initialCardCount: 4, maxSteps: 120, expectsDraw: true, expectsBlindIncrease: true },
   nlh: { heroCardTestId: "player-0-card-1", initialCardCount: 2, maxSteps: 90, expectsDraw: false, expectsBlindIncrease: false },
   plo: { heroCardTestId: "player-0-card-3", initialCardCount: 4, maxSteps: 120, expectsDraw: false, expectsBlindIncrease: false },
@@ -87,6 +88,9 @@ export function captureFatalBrowserErrors(page: Page) {
     if (/favicon|ResizeObserver loop|Failed to load resource: the server responded with a status of 404/i.test(text)) {
       return;
     }
+    // ONNX emits this environment-identification warning through console.error in WebKit.
+    // Keep real runtime errors fatal; only this exact non-fatal CPU-vendor warning is excluded.
+    if (/\[W:onnxruntime:Default, cpuid_info\.cc:91 LogEarlyWarning\] Unknown CPU vendor\. cpuinfo_vendor value: 0/.test(text)) return;
     errors.push(text);
   });
   return errors;
@@ -197,19 +201,21 @@ export async function evaluateMobileInteraction(page: Page) {
   const buttons = page.locator(actionSelector);
   const count = await buttons.count();
   let visibleActionButtons = 0;
+  let enabledActionButtons = 0;
   let minActionButtonHeight = Number.POSITIVE_INFINITY;
   for (let index = 0; index < count; index += 1) {
     const button = buttons.nth(index);
     if (!(await button.isVisible().catch(() => false))) continue;
     visibleActionButtons += 1;
+    if (await button.isEnabled()) enabledActionButtons += 1;
     const box = await button.boundingBox();
     if (box) minActionButtonHeight = Math.min(minActionButtonHeight, box.height);
   }
   if (heroIsActor && visibleActionButtons === 0) {
     issues.push({ priority: "P0", issue: "no visible action buttons" });
   }
-  if (!heroIsActor && visibleActionButtons > 0) {
-    issues.push({ priority: "P0", issue: "hero action buttons visible for non-hero actor", value: progress?.actor });
+  if (!heroIsActor && enabledActionButtons > 0) {
+    issues.push({ priority: "P0", issue: "hero action buttons enabled for non-hero actor", value: progress?.actor });
   }
   if (Number.isFinite(minActionButtonHeight) && minActionButtonHeight < 40) {
     issues.push({ priority: "P1", issue: "action button below target size", value: minActionButtonHeight });
@@ -235,7 +241,7 @@ export async function evaluateResultFlow(
     maxSteps: variant.maxSteps,
     policy: "safe",
     requireHeroButtonClick: true,
-    requireDrawVisit: true,
+    requireDrawVisit: variant.expectsDraw,
   }).catch((error) => {
     issues.push({ priority: "P0", issue: "one-hand result flow did not complete", message: error.message });
     return null;

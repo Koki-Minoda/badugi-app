@@ -1,0 +1,172 @@
+[
+  {
+    "id": "badugi",
+    "profileId": "D03",
+    "status": "PASS",
+    "heroActions": [
+      "action-call",
+      "action-draw-selected",
+      "action-call",
+      "action-draw-selected",
+      "action-call",
+      "action-draw-selected",
+      "action-call"
+    ],
+    "started": "2026-09-23T01:47:58.037Z",
+    "viewport": {
+      "width": 852,
+      "height": 283
+    },
+    "initialLayout": {
+      "width": 852,
+      "height": 283,
+      "badges": [],
+      "seats": [
+        {
+          "id": "seat-1",
+          "x": 59,
+          "y": 10,
+          "width": 92,
+          "height": 76
+        },
+        {
+          "id": "seat-2",
+          "x": 59,
+          "y": -127,
+          "width": 92,
+          "height": 76
+        },
+        {
+          "id": "seat-3",
+          "x": 256,
+          "y": -127,
+          "width": 92,
+          "height": 76
+        },
+        {
+          "id": "seat-4",
+          "x": 453,
+          "y": -127,
+          "width": 92,
+          "height": 76
+        },
+        {
+          "id": "seat-5",
+          "x": 453,
+          "y": 10,
+          "width": 92,
+          "height": 76
+        },
+        {
+          "id": "seat-0",
+          "x": 154,
+          "y": 10,
+          "width": 296,
+          "height": 76
+        }
+      ]
+    },
+    "phaseTransitions": [
+      {
+        "phase": "BET",
+        "tone": "bet",
+        "rail": "rgb(50, 60, 59)",
+        "felt": "radial-gradient(at 48% 35%, rgb(37, 102, 83), rgb(23, 75, 61) 65%, rgb(16, 55, 46))",
+        "issues": []
+      },
+      {
+        "phase": "DRAW",
+        "tone": "draw",
+        "rail": "rgb(219, 119, 116)",
+        "felt": "radial-gradient(at 48% 35%, rgb(37, 102, 83), rgb(23, 75, 61) 65%, rgb(16, 55, 46))",
+        "issues": []
+      },
+      {
+        "phase": "BET",
+        "tone": "bet",
+        "rail": "rgb(50, 60, 59)",
+        "felt": "radial-gradient(at 48% 35%, rgb(37, 102, 83), rgb(23, 75, 61) 65%, rgb(16, 55, 46))",
+        "issues": []
+      },
+      {
+        "phase": "DRAW",
+        "tone": "draw",
+        "rail": "rgb(219, 119, 116)",
+        "felt": "radial-gradient(at 48% 35%, rgb(37, 102, 83), rgb(23, 75, 61) 65%, rgb(16, 55, 46))",
+        "issues": []
+      },
+      {
+        "phase": "BET",
+        "tone": "bet",
+        "rail": "rgb(50, 60, 59)",
+        "felt": "radial-gradient(at 48% 35%, rgb(37, 102, 83), rgb(23, 75, 61) 65%, rgb(16, 55, 46))",
+        "issues": []
+      },
+      {
+        "phase": "DRAW",
+        "tone": "draw",
+        "rail": "rgb(219, 119, 116)",
+        "felt": "radial-gradient(at 48% 35%, rgb(37, 102, 83), rgb(23, 75, 61) 65%, rgb(16, 55, 46))",
+        "issues": []
+      },
+      {
+        "phase": "BET",
+        "tone": "bet",
+        "rail": "rgb(50, 60, 59)",
+        "felt": "radial-gradient(at 48% 35%, rgb(37, 102, 83), rgb(23, 75, 61) 65%, rgb(16, 55, 46))",
+        "issues": []
+      }
+    ],
+    "geometryChecks": 31,
+    "maxHeroCards": 4,
+    "maxBoardCards": 0,
+    "result": {
+      "headline": "Pot ¥620",
+      "parts": [
+        "¥620"
+      ],
+      "overflow": 0
+    },
+    "records": [
+      {
+        "handId": "badugi-h1-d0-mudg1dd8",
+        "variantId": "D03",
+        "replay": {
+          "valid": true,
+          "missing": [],
+          "requirements": {
+            "variantId": "D03",
+            "topLevel": [
+              "handId",
+              "seats",
+              "pots"
+            ],
+            "seat": [
+              "seat",
+              "name",
+              "startStack",
+              "endStack",
+              "actions"
+            ],
+            "action": [
+              "seq",
+              "street",
+              "type"
+            ],
+            "drawAction": [],
+            "pot": [
+              "potId",
+              "amount",
+              "winners"
+            ],
+            "winner": [
+              "seat",
+              "collect"
+            ],
+            "finalSeatResult": []
+          }
+        }
+      }
+    ]
+  }
+]

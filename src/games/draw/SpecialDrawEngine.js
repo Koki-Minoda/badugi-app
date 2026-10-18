@@ -220,7 +220,7 @@ export class SpecialDrawEngine extends DeuceToSevenTripleDrawEngine {
   }
 
   evaluateComponent(cards = [], component) {
-    if (component === "badugi") return evaluateBadugiHand({ cards, mode: "low" });
+    if (component === "badugi") return evaluateBadugiHand({ cards, mode: "low", aceHigh: this.specialConfig?.split?.lowType === "27" });
     if (component === "low27") {
       const evaluation = evaluateLowHand({ cards, lowType: "27" });
       return { ...evaluation, handName: formatLowHandLabel(evaluation, { lowType: "27" }) };
@@ -240,7 +240,8 @@ export class SpecialDrawEngine extends DeuceToSevenTripleDrawEngine {
         "full-house",
         "four-of-a-kind",
         "straight-flush",
-      ].includes(evaluation.metadata?.category);
+      ].includes(evaluation.metadata?.category) &&
+        (evaluation.metadata?.category !== "one-pair" || (evaluation.metadata?.ranks?.[0] ?? 0) >= 9);
       return { ...evaluation, qualifies, rankPrimary: qualifies ? evaluation.rankPrimary : Number.POSITIVE_INFINITY };
     }
     if (component === "archieLow") {
@@ -366,13 +367,12 @@ export class SpecialDrawEngine extends DeuceToSevenTripleDrawEngine {
           awardedAmounts[qualifyingComponents[0]] += amount;
         });
       } else if (components.length) {
-        // Archie can have no pair-or-better high and no 8-or-better low.
-        // In that rare case, keep accounting stable by awarding the whole pot
-        // through the primary component using all live eligible seats.
+        // If neither side qualifies, the best unqualified high scoops.
         const fallbackComponent = components[0];
         contendersByComponent[fallbackComponent] = eligibleSeats
           .map((seatIndex) => evaluations[seatIndex])
-          .filter(Boolean);
+          .filter(Boolean)
+          .map(entry => ({ ...entry, components: { ...entry.components, [fallbackComponent]: evaluateHighHand({ cards: entry.hand }) } }));
         components.forEach((component) => {
           awardedAmounts[component] = component === fallbackComponent ? potAmount : 0;
         });

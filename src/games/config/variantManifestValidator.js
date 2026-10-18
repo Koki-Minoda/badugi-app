@@ -30,9 +30,7 @@ export const KNOWN_VARIANT_MANIFEST_EXCEPTIONS = Object.freeze({
   "CP1:controller-registry-missing":
     "Classic Chinese Poker is routed through its dedicated controller outside the shared controller registry.",
   "CP2:controller-registry-missing":
-    "OFC is intentionally unavailable until its street-placement controller and Fantasyland state machine are complete.",
-  "CP2:game-definition-missing":
-    "OFC is intentionally unavailable until its separate GameDefinition is complete.",
+    "Classic OFC uses its dedicated placement/Fantasyland controller outside the betting controller registry.",
 });
 
 const REQUIRED_DEFINITION_FIELDS = Object.freeze([

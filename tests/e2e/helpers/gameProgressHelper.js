@@ -619,6 +619,10 @@ export async function playOneHandProgression(page, options = {}) {
       drawCardIndexes: options.drawCardIndexes,
     });
     if (!action.acted) {
+      // A CPU settlement can land between the progress snapshot and action
+      // selection. Re-read it through the normal terminal checks, including
+      // required Hero actions and draw visits, instead of reporting a freeze.
+      if (action.reason === "terminal") continue;
       throw new Error(`No safe action available: ${JSON.stringify({ step, action, trace: trace.slice(-4) })}`);
     }
     trace[trace.length - 1].performedAction =

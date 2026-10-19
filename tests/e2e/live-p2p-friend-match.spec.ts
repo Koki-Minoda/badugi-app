@@ -132,7 +132,8 @@ test.describe("live P2P friend match", () => {
       const reply = await waitForActor([responder], ["p2p-check", "p2p-call"]);
       await reply.page.getByTestId(reply.id).click();
 
-      await guest.getByTestId("p2p-leave").click();
+      await guest.locator(".mgx-play-header summary").click();
+      await guest.getByRole("button", { name: /Leave table|退出する/i }).click();
       await expect(guest.getByRole("heading", { name: /Create a Room|プライベート卓を作成/i })).toBeVisible();
     } finally {
       await hostContext.close().catch(() => {});

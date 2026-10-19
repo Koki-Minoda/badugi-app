@@ -25,12 +25,23 @@ try {
   await host.getByRole('button',{name:/ルームを作成|Create Room/i}).click();
   const code=await host.getByTestId('p2p-room-code').textContent({timeout:15000});
   for(const {page} of people.slice(1)) {await page.getByLabel(/ルームコード|Room code/).fill(code);await page.getByRole('button',{name:/^参加$|^Join$/}).click();await page.getByTestId('p2p-ready').waitFor();}
-  for(const {page} of people) await page.getByTestId('p2p-ready').click();
+  for(const {page} of people) {
+   await page.waitForFunction(()=>!!document.querySelector('[data-testid=friend-match-layout][data-connection-status=connected], [data-testid=friend-match-layout][data-connection-status=polling]'));
+   await page.getByTestId('p2p-ready').click();
+  }
   await host.getByTestId('p2p-private-hand').waitFor();
-  let step=0;let reconnected=false;let snapshots=[];
+  let step=0;let reconnected=false;let snapshots=[];let stateReadRetries=0;
   for(;step<100;step++) {
    // One authoritative snapshot per turn. The action itself is always a visible browser button.
-   const state=await (await host.request.get(`${origin}/api/p2p/rooms/${code}/state`,{headers:{Authorization:`Bearer ${people[0].token}`}})).json();
+   let response;
+   for(let attempt=0;attempt<3;attempt++){
+    response=await host.request.get(`${origin}/api/p2p/rooms/${code}/state`,{headers:{Authorization:`Bearer ${people[0].token}`}});
+    if(response.status()!==429)break;
+    stateReadRetries++;const retryAfter=Number(response.headers()['retry-after']);
+    await host.waitForTimeout((Number.isFinite(retryAfter)?Math.max(1,retryAfter):1)*1000);
+   }
+   assert(response.ok(),`room state ${response.status()}: ${await response.text()}`);
+   const state=await response.json();
    const s=state.data??state;
    assert.equal(s.variantId,variant);assert.equal(s.players.length,seats);
    if(s.phase==='showdown') {assert.equal(s.players.reduce((sum,p)=>sum+p.stack,0),seats*2000);snapshots.push({phase:s.phase,pot:s.showdown.pot});break;}
@@ -48,8 +59,8 @@ try {
    snapshots.push({phase:s.phase,step});
   }
   assert(step<100,'hand completed');assert.deepEqual(errors,[]);
-  report.push({variant,seats,steps:step,reconnected,errors,phases:[...new Set(snapshots.map(s=>s.phase))]});
+  report.push({variant,seats,steps:step,reconnected,stateReadRetries,errors,phases:[...new Set(snapshots.map(s=>s.phase))]});
   console.log(JSON.stringify(report.at(-1)));
   for(const p of people)await p.context.close();
  }
-} finally {for(const token of accounts){const response=await fetch(origin+'/api/auth/account',{method:'DELETE',body:JSON.stringify({password:'MgxAdoption!2026'}),headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`}});assert.equal(response.status,200,'release QA account cleanup');}await writeFile(new URL('./friend-browser.json',reportBase),JSON.stringify(report,null,2)+'\n');await browser.close();}
+} finally {await browser.close();for(const token of accounts){const response=await fetch(origin+'/api/auth/account',{method:'DELETE',body:JSON.stringify({password:'MgxAdoption!2026'}),headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`}});assert.equal(response.status,200,'release QA account cleanup');}await writeFile(new URL('./friend-browser.json',reportBase),JSON.stringify(report,null,2)+'\n');}

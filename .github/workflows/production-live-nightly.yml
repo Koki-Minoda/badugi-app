@@ -120,12 +120,22 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
+      - name: Verify published release, assets and application drift
+        env:
+          MGX_QA_SOURCE_COMMIT: ${{ github.sha }}
+        run: node scripts/deploy/verify-public-release.mjs --source-commit "$MGX_QA_SOURCE_COMMIT"
       - run: npm ci --legacy-peer-deps
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium webkit
+      - name: Opponent portraits on desktop and iPhone WebKit
+        env:
+          E2E_APP_URL: https://mgx-poker.com/
+        run: npx playwright test --config playwright.portraits.config.js
       - name: Core5 cash and tournament production smoke
         run: npx playwright test tests/e2e/live-core5-alpha-smoke.spec.ts --project=badugi-flow
       - name: P2P production create-to-cleanup smoke
@@ -141,6 +151,7 @@ jobs:
             playwright-report
             test-results
             reports/screenshots
+            reports/production-release
           if-no-files-found: ignore
           retention-days: 14
 

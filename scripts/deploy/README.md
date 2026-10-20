@@ -35,3 +35,27 @@ chmod +x scripts/deploy/mgx-prod-01.sh   # one-time
 `rollback_mgx_prod_01.sh` restores only a previously archived frontend `dist` tree. It does not roll back Git, Python packages, the backend process, or database migrations. Before every production deployment, operators must create and verify both frontend and database backups, record the deployed Git SHA and Alembic revision, and prepare a migration-specific downgrade or forward-fix. Never treat a frontend-only restore as a complete backend rollback.
 
 After a rollback, validate nginx, restart the backend only when its code and schema are compatible, and rerun `/api/health`, the Friend Match REST/WebSocket smoke, tournament resume, hand replay, and Badugi AI telemetry checks.
+
+## Public release verification
+
+`node scripts/deploy/verify-public-release.mjs --source-commit "$(git rev-parse HEAD)"`
+checks the actual public release metadata, HTML, entry JS/CSS, deep links, all
+local opponent PNGs and production API/database health. `--expected-commit <full SHA>`
+can additionally pin a specific deployed release. The report is always written to
+`reports/production-release/audit.json`, including failures; override with `--report`.
+
+The production nightly runs this before browser tests and uploads the report with
+its portrait screenshots. `publishedCommit` records the website actually tested;
+`sourceCommit` records the test checkout. A test/evidence/documentation-only commit
+may differ from the published SHA. Application, dependency, asset and unknown file
+changes fail the check until published. Full Git history is required: an unknown
+published SHA or a deployed commit outside the source ancestry fails closed.
+This comparison detects unshipped source changes; it does not independently attest
+the server's backend Git tree. Backend deployment identity remains part of the
+existing deployment checks.
+
+`E2E_APP_URL=https://mgx-poker.com/ npx playwright test --config playwright.portraits.config.js`
+checks five decoded, visible opponent images in NLH, 2-7 TD and Badugi on desktop
+Chromium and iPhone WebKit emulation. It uses only temporary QA accounts and removes
+them afterward. Run without `E2E_APP_URL` for the local dev server and a test backend.
+These are browser-emulation checks, not physical-device or independent human QM approval.

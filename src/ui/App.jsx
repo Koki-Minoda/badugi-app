@@ -2277,6 +2277,7 @@ export default function App() {
       }
       if (
         activeMode === "tournament-mtt" &&
+        !isDrawLowballControllerGame &&
         isTableActionPhase &&
         typeof controller.syncFromExternalState === "function"
       ) {
@@ -4554,7 +4555,7 @@ export default function App() {
         return false;
       const snap = roster.map(clonePlayerState).filter(Boolean);
       const seatBefore = snap[seat] ? { ...snap[seat] } : null;
-      if (isControllerDrivenSingleTable) {
+      if (isControllerDrivenSingleTable || isDrawLowballControllerGame) {
         const actionType = payload?.type ?? "call";
         const forcedCurrentBet = snap.reduce(
           (max, player) => Math.max(max, Number(player?.betThisRound) || 0),
@@ -4618,7 +4619,7 @@ export default function App() {
           const isForcedInstantFold =
             payload?.__forceInstant === true &&
             String(actionType).toLowerCase() === "fold";
-          if (!isForcedInstantFold) {
+          if (!isForcedInstantFold || isDrawLowballControllerGame) {
             forcedSeatActionsRef.current.delete(seat);
             return false;
           }
@@ -4626,6 +4627,7 @@ export default function App() {
             `forced instant fold fallback seat=${seat} code=${controllerOutcome.code ?? "unknown"}`,
           );
         }
+        if (isDrawLowballControllerGame) return false;
         if (isSingleTableBadugi) {
           warnLegacySingleTablePath(`forced-bet fallback seat=${seat}`);
         }
@@ -4701,6 +4703,7 @@ export default function App() {
       setLastAggressor,
       ensureGameController,
       isControllerDrivenSingleTable,
+      isDrawLowballControllerGame,
       isSingleTableBadugi,
     ],
   );
@@ -12834,6 +12837,13 @@ export default function App() {
               error,
             );
           }
+          // A watchdog or another action may have advanced while inference
+          // was pending. Never apply a decision to a different controller state.
+          if (
+            sessionControllerRef.current !== controller ||
+            sessionControllerStateRef.current !== controllerState ||
+            phaseRef.current !== "BET"
+          ) return;
           const payload =
             cpuAction?.payload ?? cpuAction ?? safePayload ?? null;
           const applyControllerPayload = (actionPayload) => {
@@ -12905,7 +12915,7 @@ export default function App() {
             );
             return;
           }
-          if (isSingleTableDrawLowball) {
+          if (isDrawLowballControllerGame) {
             lastControllerActionFailureRef.current = {
               seat: activeSeat,
               payload,
@@ -13181,6 +13191,7 @@ export default function App() {
     isSingleTableBadugi,
     isSingleTableBoardGame,
     isSingleTableDrawLowball,
+    isDrawLowballControllerGame,
     isSingleTableStudGame,
     studStreetPauseToken,
     tryControllerBetAction,

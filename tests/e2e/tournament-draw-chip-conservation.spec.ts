@@ -3,7 +3,8 @@ import {APP_URL,enterTitleIfPresent,selectGameVariantFromSelector} from './authH
 import {waitForE2EDriver} from './helpers/gameProgressHelper.js';
 
 for(const variant of (process.env.MGX_DRAW_CHIP_VARIANTS??'badacey_single_draw').split(',')) {
- test(`${variant}: completed tournament hands conserve chips across CPU draws`,async({page},testInfo)=>{
+for(const delay of process.env.MGX_CPU_DECISION_DELAY_MS?[Number(process.env.MGX_CPU_DECISION_DELAY_MS)]:[0,2000]) {
+ test(`${variant}: completed tournament hands conserve chips (${delay}ms CPU delay)`,async({page},testInfo)=>{
   test.setTimeout(180000);
   const histories=[]; page.on('console', message=>{if(message.text().startsWith('[HAND_HISTORY] ')) histories.push(JSON.parse(message.text().slice(15)));});
   const errors=[];page.on('pageerror',error=>errors.push(String(error)));
@@ -14,15 +15,15 @@ for(const variant of (process.env.MGX_DRAW_CHIP_VARIANTS??'badacey_single_draw')
   });
   await page.goto(APP_URL);await enterTitleIfPresent(page);await page.getByTestId('menu-ring').click();
   await selectGameVariantFromSelector(page,variant);await waitForE2EDriver(page);
-  if(process.env.MGX_CPU_DECISION_DELAY_MS) await page.evaluate(async delay=>{
+  if(delay) await page.evaluate(async delay=>{
    const moduleUrl=performance.getEntriesByType('resource').map(entry=>entry.name).find(url=>url.includes('/src/games/draw/DeuceToSevenTripleDrawController.js'));
    const {DeuceToSevenTripleDrawController:Controller}=await import(moduleUrl);
    const original=Controller.prototype.getCpuActionAsync;
    Controller.prototype.getCpuActionAsync=async function(...args){window.__DELAYED_CPU_CALLS__=(window.__DELAYED_CPU_CALLS__??0)+1;const result=await original.apply(this,args);await new Promise(resolve=>setTimeout(resolve,delay));return result;};
-  },Number(process.env.MGX_CPU_DECISION_DELAY_MS));
+  },delay);
   await page.evaluate(variant=>window.__BADUGI_E2E__.startTournamentMTT({id:'draw-deck-ownership',name:'Draw deck QA',practiceOnly:true,tables:2,seatsPerTable:6,totalPlayers:12,startingStack:500,gameVariant:variant,gameRotation:[variant],levels:[{levelIndex:1,smallBlind:5,bigBlind:10,ante:0,handsThisLevel:2},{levelIndex:2,smallBlind:10,bigBlind:20,ante:0,handsThisLevel:99}]}),variant);
   await expect.poll(()=>page.evaluate(()=>window.__BADUGI_E2E__.getStateSnapshot().handId)).toMatch(/^table-1-h/);
-  const targetHands=Number(process.env.MGX_DRAW_CHIP_HANDS??10);
+  const targetHands=Number(process.env.MGX_DRAW_CHIP_HANDS??(delay?3:10));
   const completed=new Set();const deadline=Date.now()+160000;
   while(completed.size<targetHands && Date.now()<deadline) {
    expect(errors,'CPU draw must not touch a second deck').toEqual([]);
@@ -47,10 +48,11 @@ for(const variant of (process.env.MGX_DRAW_CHIP_VARIANTS??'badacey_single_draw')
    }
    await page.waitForTimeout(100);
   }
-  if(process.env.MGX_CPU_DECISION_DELAY_MS) expect(await page.evaluate(()=>window.__DELAYED_CPU_CALLS__??0)).toBeGreaterThan(0);
+  if(delay) expect(await page.evaluate(()=>window.__DELAYED_CPU_CALLS__??0)).toBeGreaterThan(0);
   expect(errors).toEqual([]);expect(completed.size).toBe(targetHands);
   const chips=await page.evaluate(()=>Object.values(JSON.parse(localStorage.getItem('mgx.tournament.mtt.active')).tournamentState.players).reduce((sum,p)=>sum+p.stack,0));
   expect(chips).toBe(6000);
   await testInfo.attach('verified-hands',{body:JSON.stringify({variant,hands:[...completed],chips,errors,apiStubbed:true}),contentType:'application/json'});
  });
+}
 }

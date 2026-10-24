@@ -91,6 +91,7 @@ export default defineConfig(({ command }) => {
           "**/rl/models/**",
           "**/test-results/**",
           "**/playwright-report/**",
+          "**/reports/**",
         ],
       },
       // iPhoneから https 経由で /dev/ に来るので HMR も wss に寄せる（白画面/更新不能の回避）

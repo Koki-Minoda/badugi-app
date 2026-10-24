@@ -31,7 +31,7 @@ export default defineConfig({
     {
       name: 'tournament-pr-chromium',
       testDir: './tests/e2e',
-      testMatch: /(?:tournament-(?:reconnect-ui|stage-blind-transition|draw-deck-ownership)|core5-real-action-champion|game-progress-wait)\.spec\.ts/,
+      testMatch: /(?:tournament-(?:reconnect-ui|stage-blind-transition|draw-deck-ownership|terminal-overlay-priority)|core5-real-action-champion|game-progress-wait)\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
       },
@@ -48,7 +48,7 @@ export default defineConfig({
     {
       name: 'tournament-iphone-webkit',
       testDir: './tests/e2e',
-      testMatch: /(?:tournament-device-project-smoke|tournament-draw-deck-ownership|iphone-safari-tournament-landscape-controls|title-screen-mobile-landscape|game-progress-wait)\.spec\.ts/,
+      testMatch: /(?:tournament-device-project-smoke|tournament-draw-deck-ownership|tournament-terminal-overlay-priority|iphone-safari-tournament-landscape-controls|title-screen-mobile-landscape|game-progress-wait)\.spec\.ts/,
       use: {
         ...devices['iPhone 13 landscape'],
         browserName: 'webkit',

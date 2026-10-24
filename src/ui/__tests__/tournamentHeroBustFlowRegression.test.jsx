@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 
 import App from "../App.jsx";
+import { saveTitleSettings } from "../utils/titleSettings.js";
 import { GameEngineProvider } from "../engine/GameEngineContext.jsx";
 
 vi.mock("../state/useAuth.js", () => ({
@@ -41,6 +42,7 @@ describe("tournament hero bust flow regression", () => {
   let warnSpy;
 
   beforeEach(() => {
+    window.localStorage.clear();
     window.localStorage.setItem(
       "mgx_auth",
       JSON.stringify({
@@ -56,13 +58,17 @@ describe("tournament hero bust flow regression", () => {
   afterEach(() => {
     cleanup();
     delete window.__BADUGI_E2E__;
-    window.localStorage.removeItem("mgx_auth");
+    window.localStorage.clear();
     logSpy.mockRestore();
     warnSpy.mockRestore();
+    vi.restoreAllMocks();
   });
 
 
   it("preserves hand identity when blinds settle the whole tournament immediately", async () => {
+    // A tied random runout legitimately keeps both entrants alive. This
+    // fixture needs a decisive winner to exercise immediate tournament end.
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
     renderApp();
     fireEvent.click(screen.getByTestId("title-enter-button"));
     await waitFor(() => expect(window.__BADUGI_E2E__?.startTournamentMTT).toBeTypeOf("function"));
@@ -78,6 +84,49 @@ describe("tournament hero bust flow regression", () => {
     await waitFor(() => expect(window.__BADUGI_E2E__.getTournamentHudState().isFinished).toBe(true));
     expect(window.__BADUGI_E2E__.getStateSnapshot().handId).toMatch(/^table-1-h/);
     expect(screen.queryByTestId("hand-result-overlay")).toBeNull();
+  });
+
+  it.each([false, true])("keeps a pending deal across profile updates; replaced run=%s", async (replaceRun) => {
+    renderApp();
+    fireEvent.click(screen.getByTestId("title-enter-button"));
+    await waitFor(() => expect(window.__BADUGI_E2E__?.startTournamentMTT).toBeTypeOf("function"));
+    const pending = [];
+    let firstCallbacks;
+    const originalTimeout = window.setTimeout.bind(window);
+    const timer = vi.spyOn(window, "setTimeout").mockImplementation((callback, delay, ...args) => {
+      if (delay === 0) {
+        pending.push(() => callback(...args));
+        return 100000 + pending.length;
+      }
+      return originalTimeout(callback, delay, ...args);
+    });
+    const config = {
+      id: "profile-start", name: "Profile start", practiceOnly: true,
+      tables: 1, seatsPerTable: 6, totalPlayers: 6, startingStack: 1000,
+      gameVariant: "nlh", gameRotation: ["nlh"], rotationPolicy: "fixed",
+    };
+    try {
+      await act(async () => { window.__BADUGI_E2E__.startTournamentMTT(config); });
+      firstCallbacks = pending.splice(0);
+      if (replaceRun) {
+        await act(async () => { window.__BADUGI_E2E__.startTournamentMTT(config); });
+      }
+      // This real settings event replaces the immutable tournament state after
+      // its initial render, while its first-deal callback is still queued.
+      await act(async () => { saveTitleSettings({ playerName: "Renamed Hero" }); });
+    } finally {
+      timer.mockRestore();
+    }
+    expect(firstCallbacks.length).toBeGreaterThan(0);
+    if (replaceRun) {
+      await act(async () => { firstCallbacks.forEach(callback => callback()); });
+      expect(window.__BADUGI_E2E__.getStateSnapshot().handCount).toBe(0);
+    }
+    await act(async () => {
+      (replaceRun ? pending : [...firstCallbacks, ...pending]).forEach(callback => callback());
+    });
+    expect(window.__BADUGI_E2E__.getStateSnapshot().handCount).toBe(1);
+    expect(window.__BADUGI_E2E__.getStateSnapshot().handId).toMatch(/^table-1-h1/);
   });
 
   it("shows the bust overlay and removes the hero from actor flow immediately", async () => {

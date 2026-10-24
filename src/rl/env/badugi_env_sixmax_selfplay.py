@@ -722,8 +722,8 @@ class SixMaxBadugiEnv:
         bet_size = BIG_BET if self.draw_round >= 2 else SMALL_BET
         if to_call > 0:
             mask[FOLD] = 1.0
-            if p["stack"] >= to_call:
-                mask[CALL] = 1.0
+            if p["stack"] > 0:
+                mask[CALL] = 1.0  # A short stack may call all-in.
             if self.raise_count < MAX_BETS and p["stack"] >= to_call + bet_size:
                 mask[RAISE] = 1.0
         else:

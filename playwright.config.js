@@ -31,7 +31,7 @@ export default defineConfig({
     {
       name: 'tournament-pr-chromium',
       testDir: './tests/e2e',
-      testMatch: /(?:tournament-(?:reconnect-ui|stage-blind-transition|draw-deck-ownership|terminal-overlay-priority)|core5-real-action-champion|game-progress-wait)\.spec\.ts/,
+      testMatch: /(?:tournament-(?:reconnect-ui|stage-blind-transition|draw-deck-ownership|terminal-overlay-priority|draw-chip-conservation)|core5-real-action-champion|game-progress-wait)\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         trace: 'retain-on-failure',

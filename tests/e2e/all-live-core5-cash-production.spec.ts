@@ -53,7 +53,7 @@ const RELEASE_CANDIDATE_VARIANTS = [
     ["hidugi_single_draw", "Hidugi Single Draw", 4],
   ].map(([variant, displayName, count]) => ({
     variant: String(variant), displayName: String(displayName),
-    initialCardCount: Number(count), maxDiscard: Number(count), expectsBlindIncrease: false,
+    initialCardCount: Number(count), maxDiscard: Number(count), expectsBlindIncrease: true,
   })),
   { variant: "flh", displayName: "Fixed-Limit Holdem", initialCardCount: 2 },
   { variant: "plo", displayName: "Pot-Limit Omaha", initialCardCount: 4 },

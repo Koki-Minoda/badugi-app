@@ -25,7 +25,9 @@ test(`${variant}: natural 18-player tournament merge and elimination`,async({pag
    expect(p.reduce((n,p)=>n+p.stack,0)).toBe(9000);expect(new Set(ids).size).toBe(t.playersRemaining);
    for(const player of p)if(player.busted){expect(player.stack).toBe(0);expect(player.finishPlace).toBeGreaterThan(0);expect(ids).not.toContain(player.id);}
    expect(t.players['hero-player'].tableId).toBe('table-1');
-   rows.push({hand:s.hand,tables:tables.length,remaining:t.playersRemaining,hero:t.players['hero-player'].stack});final||=tables.length===1;
+   expect(t.levelIndex+t.tables.find(table=>table.tableId==='table-1').handsPlayedAtThisLevel,'completed hand must update tournament accounting').toBeGreaterThan(0);
+   rows.push({hand:s.hand,tables:tables.length,remaining:t.playersRemaining,level:t.levelIndex+1,hero:t.players['hero-player'].stack});final||=tables.length===1;
+   if(rows.length%10===0)console.log('[CANDIDATE_MTT]',JSON.stringify({variant,project:testInfo.project.name,...rows.at(-1)}));
    await page.getByTestId('hand-result-next-hand').click();continue;
   }
   if(!s.result){

@@ -13,13 +13,17 @@ for(const variant of ['D01','D02','S01','S02','badeucey_triple_draw','badacey_tr
   });
   await page.goto(APP_URL);await enterTitleIfPresent(page);await page.getByTestId('menu-ring').click();
   await selectGameVariantFromSelector(page,variant);await waitForE2EDriver(page);
-  await page.evaluate(variant=>window.__BADUGI_E2E__.startTournamentMTT({id:'draw-deck-ownership',name:'Draw deck QA',practiceOnly:true,tables:3,seatsPerTable:6,totalPlayers:18,startingStack:500,gameVariant:variant,gameRotation:[variant],levels:[{levelIndex:1,smallBlind:5,bigBlind:10,ante:0,handsThisLevel:99}]}),variant);
+  await page.evaluate(variant=>window.__BADUGI_E2E__.startTournamentMTT({id:'draw-deck-ownership',name:'Draw deck QA',practiceOnly:true,tables:3,seatsPerTable:6,totalPlayers:18,startingStack:500,gameVariant:variant,gameRotation:[variant],levels:[{levelIndex:1,smallBlind:5,bigBlind:10,ante:0,handsThisLevel:2},{levelIndex:2,smallBlind:10,bigBlind:20,ante:0,handsThisLevel:99}]}),variant);
   const completed=new Set();const deadline=Date.now()+75000;
   while(completed.size<3 && Date.now()<deadline) {
    expect(errors,'CPU draw must not touch a second deck').toEqual([]);
    if(await page.getByTestId('hand-result-overlay').isVisible()) {
     const id=await page.evaluate(()=>window.__BADUGI_E2E__.getStateSnapshot().handId);
     completed.add(id);
+    const tournament=await page.evaluate(()=>JSON.parse(localStorage.getItem('mgx.tournament.mtt.active')).tournamentState);
+    expect(tournament.levelIndex).toBe(completed.size>=2?1:0);
+    expect(tournament.tables.find(table=>table.tableId==='table-1').handsPlayedAtThisLevel).toBe(completed.size>=2?completed.size-2:completed.size);
+    expect(Object.values(tournament.players).reduce((sum,player)=>sum+player.stack,0)).toBe(9000);
     if(completed.size<3) await page.getByTestId('hand-result-next-hand').click();
    } else {
     const fold=page.getByTestId('action-fold');

@@ -8,6 +8,7 @@ import registry from '../src/config/ai/modelRegistry.json' with {type:'json'};
 import { GAME_VARIANTS } from '../src/games/config/variantCatalog.js';
 import { getVariantAvailability } from '../src/games/config/variantAvailability.js';
 import { listTierIds, resolveTierModelInfo } from '../src/ai/tierManager.js';
+import { selectModelForVariant } from '../src/ai/modelRouter.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const {values} = parseArgs({options:{output:{type:'string'}}});
@@ -42,6 +43,7 @@ for(const variant of GAME_VARIANTS) {
   for(const tier of tiers) {
     const selected=resolveTierModelInfo({variantId:variant.id,tierId:tier});
     const entry=registry.find(model=>model.id===selected?.modelId);
+    const adapterEntry=selectModelForVariant({variantId:variant.id,tierId:tier});
     rows.push({
       variantId:variant.id,name:variant.name,engineKey:variant.engineKey,category:variant.category,
       betting:variant.betting,drawRounds:variant.drawRounds,tier,
@@ -53,13 +55,28 @@ for(const variant of GAME_VARIANTS) {
       declaredModels:registry.filter(model=>model.variantIds?.includes(variant.id)&&model.tier===tier).map(model=>model.id),
       trainingStatus:entry?.trainingStatus??null,trainingRun:entry?.trainingRun??null,
       trainingCheckpoint:entry?.trainingCheckpoint??null,asset:await auditAsset(entry),
+      selectionSource:'src/ai/tierManager.js:resolveTierModelInfo (not proof of controller use)',
+      onnxAdapterSelection:{
+        source:'src/ai/modelRouter.js:selectModelForVariant; used by onnxPolicyAdapter when called',
+        modelId:adapterEntry?.id??null,variantMatches:adapterEntry?.variantIds?.includes(variant.id)??false,
+        tierMatches:adapterEntry?.tier===tier,trainingStatus:adapterEntry?.trainingStatus??null,
+        asset:await auditAsset(adapterEntry),
+      },
       runtimeUsage:'not-observed-by-this-inventory',supportedModes:'requires-controller-and-runtime-audit',
       strengthEvidence:'not-verified-by-this-inventory',physicalQA:'not-verified-by-this-inventory',
       promotionEvidenceVerified:false,
     });
   }
 }
-const report={generatedAt:new Date().toISOString(),sourceCommit:git(['rev-parse','HEAD']),
+const goalRows=rows.filter(row=>row.roadmapTier);
+const selectionSummary={
+  tierManagerVariantMismatches:goalRows.filter(row=>row.selectedModelId&&!row.selectedModelMatchesVariant).length,
+  adapterVariantMismatches:goalRows.filter(row=>row.onnxAdapterSelection.modelId&&!row.onnxAdapterSelection.variantMatches).length,
+  adapterSelectedMissingAssets:goalRows.filter(row=>row.onnxAdapterSelection.asset.exists===false).length,
+  adapterSelectedPendingModels:goalRows.filter(row=>row.onnxAdapterSelection.trainingStatus==='pending').length,
+  note:'Selection diagnostics only; absent assets or variant mismatches do not imply these routes are used by every controller.',
+};
+const report={selectionSummary,generatedAt:new Date().toISOString(),sourceCommit:git(['rev-parse','HEAD']),
   trackedChanges:git(['status','--porcelain','--untracked-files=no']),
   scope:'Source registry and local assets only. Model selection does not prove inference, strength, or release completion.',
   variantCount:GAME_VARIANTS.length,roadmapTiers:goalTiers,configuredTiers,rowCount:rows.length,

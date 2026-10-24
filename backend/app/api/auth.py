@@ -153,17 +153,17 @@ def _delete_account_data(payload, current_user, db):
             delete(PlayFeedbackResult).where(PlayFeedbackResult.user_id == user_id),
         )
         owned_hands = select(HandLog.id).where(
-            HandLog.metadata_json["_owner_user_id"].as_integer() == user_id,
+            HandLog.owner_user_id == user_id,
         )
         # Delete children explicitly, including on SQLite connections without
         # foreign-key enforcement. Never infer ownership for legacy records.
         db.execute(delete(HandAction).where(HandAction.hand_log_id.in_(owned_hands)))
         db.execute(delete(HandResult).where(HandResult.hand_log_id.in_(owned_hands)))
         db.execute(delete(HandLog).where(
-            HandLog.metadata_json["_owner_user_id"].as_integer() == user_id,
+            HandLog.owner_user_id == user_id,
         ))
         db.execute(delete(BadugiHandAction).where(
-            BadugiHandAction.metadata_json["_owner_user_id"].as_integer() == user_id,
+            BadugiHandAction.owner_user_id == user_id,
         ))
         db.delete(current_user)
         db.commit()

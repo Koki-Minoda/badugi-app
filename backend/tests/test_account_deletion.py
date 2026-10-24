@@ -223,12 +223,13 @@ def test_account_deletion_removes_only_owned_history_and_caches(monkeypatch, out
                 'actions':[{'hand_id':hand,'player_id':'hero','phase':'BET','round':0,'action':'Call','paid':10}],
             }).status_code == 200
         with factory() as session:
-            legacy = HandLog(hand_id='legacy-unowned',metadata_json={})
+            legacy = HandLog(hand_id='legacy-unowned',metadata_json={'_owner_user_id':owner_id})
             legacy.actions.append(HandAction(seat_index=0,action='Call',amount=10,round=0,phase='BET'))
             legacy.results.append(HandResult(seat_index=0,final_stack=100,is_winner=True,pot_share=20))
             session.add(legacy)
-            session.add(BadugiHandAction(hand_id='legacy-unowned',player_id='hero',phase='BET',round=0,action='Call',action_type='call',metadata_json={}))
+            session.add(BadugiHandAction(hand_id='legacy-unowned',player_id='hero',phase='BET',round=0,action='Call',action_type='call',metadata_json={'_owner_user_id':owner_id}))
             session.commit()
+        assert client.get('/api/badugi/hands/legacy-unowned',headers=_auth(owner)).status_code==404
         if outcome == 'commit-failure':
             def fail_commit(_):
                 raise SQLAlchemyError('injected commit failure')

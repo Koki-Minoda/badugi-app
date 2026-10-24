@@ -1,5 +1,10 @@
 const ACTION_PHASES = new Set(["BET", "DRAW"]);
 
+export function shouldPreferControllerActionActor({ singleTableController = false, drawLowball = false } = {}) {
+  // Draw controllers own the hero table in MTT as well as cash games.
+  return singleTableController || drawLowball;
+}
+
 export function resolveActorFromSnapshot(snapshot) {
   if (!snapshot || typeof snapshot !== "object") return null;
   if (typeof snapshot.currentActor === "number") return snapshot.currentActor;

@@ -1,3 +1,4 @@
+import { shouldPreferControllerActionActor, resolveCanonicalActionSeat } from "../../../ui/utils/actorSourceOfTruth.js";
 import { describe, expect, test } from "vitest";
 import {
   assertGameProgressInvariants,
@@ -22,6 +23,26 @@ function expectInvariantFailure(snapshot, match, context = {}) {
 }
 
 describe("MGX known game progress bug regressions", () => {
+  test("TURN-015 draw MTT keeps controller CPU actor when legacy turn still points to hero", () => {
+    const prefer = shouldPreferControllerActionActor({ singleTableController: false, drawLowball: true });
+    expect(prefer).toBe(true);
+    const controller = new AceToFiveTripleDrawController({ numSeats: 6, startingStack: 500 });
+    const state = controller.createNewHandState(controller.createInitialState(), { handId: "turn-015-mtt" });
+    const snapshot = controller.getUiSnapshot(state);
+    const actor = resolveCanonicalActionSeat({ phase: snapshot.phase, controllerTurn: prefer ? snapshot.currentActor : 0, legacyTurn: 0, players: snapshot.players });
+    expect(actor).toBe(3);
+    expect(controller.applyAction(state, { seatIndex: 0, type: "FOLD" }).events).toEqual([expect.objectContaining({ type: "invalidAction", error: expect.stringMatching(/out of turn/) })]);
+    const next = controller.applyAction(state, { seatIndex: actor, type: "CALL" }).state;
+    expect(next.snapshot.actingPlayerIndex).not.toBe(actor);
+
+    const players = Array.from({ length: 6 }, () => ({ stack: 500, folded: false, allIn: false }));
+    expect(resolveCanonicalActionSeat({ phase: "BET", controllerTurn: prefer ? 3 : 0, legacyTurn: 0, players })).toBe(3);
+    players[3].allIn = true;
+    expect(resolveCanonicalActionSeat({ phase: "DRAW", controllerTurn: 3, legacyTurn: 0, players })).toBe(3);
+    expect(shouldPreferControllerActionActor({ singleTableController: true, drawLowball: false })).toBe(true);
+    expect(shouldPreferControllerActionActor({ singleTableController: false, drawLowball: false })).toBe(false);
+  });
+
   test("TURN-001 SB fold should pass turn to BB or next eligible seat", () => {
     const snapshot = buildSyntheticSnapshot({
       variantId: "badugi",

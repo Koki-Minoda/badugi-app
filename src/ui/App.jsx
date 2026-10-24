@@ -61,6 +61,7 @@ import {
   resolveCanonicalActionSeat,
   resolveSessionPreferredActor,
   shouldSyncLegacyTurnToController,
+  shouldPreferControllerActionActor,
 } from "./utils/actorSourceOfTruth.js";
 import { runNpcDrawAllInAutoFastPath } from "./utils/npcAutoActionTiming.js";
 import { resolveControllerDrawHistory } from "./utils/controllerDrawHistory.js";
@@ -1287,6 +1288,10 @@ export default function App() {
     isSingleTableDrawLowball || isSingleTableDramaha;
   const isControllerDrivenSingleTable =
     isSingleTableBadugi || isSingleTableDrawLowball || isSingleTableBoardGame;
+  const preferControllerActionActor = shouldPreferControllerActionActor({
+    singleTableController: isControllerDrivenSingleTable,
+    drawLowball: isDrawLowballControllerGame,
+  });
   const safeEngineState = engineState ?? {};
   const effectiveControllerSnapshot = resolveEffectiveControllerSnapshot({
     sessionController: sessionControllerRef.current,
@@ -1346,7 +1351,7 @@ export default function App() {
               ? turn
               : null;
   const snapshotTurn =
-    isControllerDrivenSingleTable && typeof liveControllerTurn === "number"
+    preferControllerActionActor && typeof liveControllerTurn === "number"
       ? liveControllerTurn
       : typeof turnSeatSrc === "number"
         ? turnSeatSrc
@@ -12497,7 +12502,7 @@ export default function App() {
     const drawHelpers = autoDrawHelpersRef.current;
     const seatCount = activePlayers.length;
     const shouldUseControllerActorForAuto =
-      isSingleTableBadugi || isSingleTableDrawLowball;
+      isSingleTableBadugi || isDrawLowballControllerGame;
     const canonicalActionSeat = shouldUseControllerActorForAuto
       ? resolveCanonicalActionSeat({
           phase,

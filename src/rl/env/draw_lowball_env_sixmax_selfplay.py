@@ -488,8 +488,8 @@ class SixMaxDrawLowballEnv:
         bet_size = self._bet_size()
         if to_call > 0:
             mask[FOLD] = 1.0
-            if player["stack"] >= to_call:
-                mask[CALL] = 1.0
+            if player["stack"] > 0:
+                mask[CALL] = 1.0  # A short stack may call all-in.
             if self.raise_count < MAX_BETS and player["stack"] >= to_call + bet_size:
                 mask[RAISE] = 1.0
         else:

@@ -14,6 +14,8 @@ import {
   inferDrawDecisionWithOnnx,
 } from "../../ai/onnxPolicyAdapter.js";
 
+import { runTracedOnnxInferenceWithDeadline } from "../../ai/onnxInferenceDeadline.js";
+
 const DEFAULT_SEAT_CONFIG = ["HUMAN", "CPU", "CPU", "CPU", "CPU", "CPU"];
 const DEFAULT_STRUCTURE = { sb: 10, bb: 20, ante: 0 };
 
@@ -688,7 +690,6 @@ export class DeuceToSevenTripleDrawController extends GameController {
     const phase = String(engineState?.street ?? "BET").toUpperCase();
     const legalActionsRaw = deriveLegalActions(engineState ?? {}, targetSeat);
     let inferenceTrace = null;
-    const onInferenceTrace = trace => { inferenceTrace = trace; };
     const withInferenceTrace = action => action && inferenceTrace ? {
       ...action,
       metadata: {
@@ -709,18 +710,15 @@ export class DeuceToSevenTripleDrawController extends GameController {
         variantId: this.variantId,
         legalActions: drawLegalActions,
       });
-      let onnxDecision = null;
-      try {
-        onnxDecision = await inferDrawDecisionWithOnnx({
-          variantId: this.variantId,
-          tierId,
-          onInferenceTrace,
-          observation,
-          legalActions: drawLegalActions,
-        });
-      } catch {
-        // fall through to heuristic
-      }
+      const inference = await runTracedOnnxInferenceWithDeadline(inferDrawDecisionWithOnnx, {
+        variantId: this.variantId,
+        tierId,
+        phase,
+        observation,
+        legalActions: drawLegalActions,
+      });
+      const onnxDecision = inference.decision;
+      inferenceTrace = inference.inferenceTrace;
       if (typeof onnxDecision?.drawCount === "number") {
         const heuristic = this.getCpuAction(state, seatIndex, options);
         const onnxCount = Math.max(0, Math.min(5, onnxDecision.drawCount));
@@ -754,18 +752,15 @@ export class DeuceToSevenTripleDrawController extends GameController {
         variantId: this.variantId,
         legalActions: betLegalStrings.map((a) => a.toLowerCase()),
       });
-      let onnxDecision = null;
-      try {
-        onnxDecision = await inferBetActionWithOnnx({
-          variantId: this.variantId,
-          tierId,
-          onInferenceTrace,
-          observation,
-          legalActions: betLegalStrings,
-        });
-      } catch {
-        // fall through to heuristic
-      }
+      const inference = await runTracedOnnxInferenceWithDeadline(inferBetActionWithOnnx, {
+        variantId: this.variantId,
+        tierId,
+        phase,
+        observation,
+        legalActions: betLegalStrings,
+      });
+      const onnxDecision = inference.decision;
+      inferenceTrace = inference.inferenceTrace;
       if (onnxDecision?.action) {
         const actionType = onnxDecision.action.toUpperCase();
         if (betLegalStrings.includes(actionType)) {

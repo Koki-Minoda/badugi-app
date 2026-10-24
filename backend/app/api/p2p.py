@@ -428,7 +428,12 @@ class RoomSockets:
             previous = self._connections[room.code].get(user_id)
             self._connections[room.code][user_id] = websocket
         if previous and previous is not websocket:
-            await previous.close(code=4001, reason="replaced_by_reconnect")
+            try:
+                await previous.close(code=4001, reason="replaced_by_reconnect")
+            except (RuntimeError, WebSocketDisconnect):
+                # Reload may finish closing the old socket after replacement.
+                # The newly accepted connection must remain usable.
+                pass
 
     async def disconnect(self, room_code: str, user_id: str, websocket: WebSocket) -> bool:
         removed_current = False

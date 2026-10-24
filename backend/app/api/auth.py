@@ -3,7 +3,7 @@ from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
@@ -14,9 +14,13 @@ from ..core.security import (
     get_password_hash,
     verify_password,
 )
+from ..core.account_writes import account_write
 from ..core.db import get_db
 from ..dependencies.auth import get_current_user
-from ..models import PlayFeedbackResult, TournamentSnapshot, User
+from ..models import (
+    PlayFeedbackResult, TournamentSnapshot, User,
+    HandLog, HandAction, HandResult, BadugiHandAction,
+)
 from ..schemas.user import UserPublic
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -133,17 +137,36 @@ def _delete_account_data(payload, current_user, db):
 
     user_id = current_user.id
     try:
-        db.execute(
-            delete(TournamentSnapshot).where(TournamentSnapshot.user_id == user_id),
-        )
-        # Feedback payloads are removed instead of anonymized because they can
-        # contain user-provided hand context even when the top-level flag says
-        # PII was stripped.
-        db.execute(
-            delete(PlayFeedbackResult).where(PlayFeedbackResult.user_id == user_id),
-        )
-        db.delete(current_user)
-        db.commit()
+        with account_write(db, current_user):
+            db.execute(
+                delete(TournamentSnapshot).where(TournamentSnapshot.user_id == user_id),
+            )
+            # Feedback payloads are removed instead of anonymized because they can
+            # contain user-provided hand context even when the top-level flag says
+            # PII was stripped.
+            db.execute(
+                delete(PlayFeedbackResult).where(PlayFeedbackResult.user_id == user_id),
+            )
+            owned_hands = select(HandLog.id).where(
+                HandLog.owner_user_id == user_id,
+            )
+            # Delete children explicitly, including on SQLite connections without
+            # foreign-key enforcement. Never infer ownership for legacy records.
+            db.execute(delete(HandAction).where(HandAction.hand_log_id.in_(owned_hands)))
+            db.execute(delete(HandResult).where(HandResult.hand_log_id.in_(owned_hands)))
+            db.execute(delete(HandLog).where(
+                HandLog.owner_user_id == user_id,
+            ))
+            db.execute(delete(BadugiHandAction).where(
+                BadugiHandAction.owner_user_id == user_id,
+            ))
+            db.delete(current_user)
+            db.commit()
+            # Commit succeeded; keep local cache publication excluded until purge.
+            from .history import purge_owner_history
+            from .badugi_log import purge_owner_recent_logs
+            purge_owner_history(user_id)
+            purge_owner_recent_logs(user_id)
     except SQLAlchemyError as exc:
         db.rollback()
         raise HTTPException(

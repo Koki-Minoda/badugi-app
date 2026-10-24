@@ -10,6 +10,13 @@ const ORIGIN = `http://127.0.0.1:${PORT}`;
 const DATABASE_PATH = path.join(os.tmpdir(), `mgx-p2p-rest-${process.pid}-${Date.now()}.sqlite3`);
 const PASSWORD = "MgxP2P!2026";
 let backend: ChildProcessWithoutNullStreams | null = null;
+let backendLog = "";
+test.use({ trace: "retain-on-failure" });
+test.afterEach(async ({}, testInfo) => {
+  if (testInfo.status !== testInfo.expectedStatus) {
+    await testInfo.attach("p2p-backend-log", { body: backendLog, contentType: "text/plain" });
+  }
+});
 
 function pythonCommand() {
   if (process.env.P2P_E2E_PYTHON) {
@@ -132,6 +139,11 @@ test.beforeAll(async () => {
       CORS_ORIGINS: '["http://127.0.0.1:3000"]',
     },
   });
+  // Drain both pipes so verbose backend output cannot block the server.
+  backendLog = "";
+  const captureOutput = (chunk: Buffer) => { backendLog = (backendLog + String(chunk)).slice(-65_536); };
+  backend.stdout.on("data", captureOutput);
+  backend.stderr.on("data", captureOutput);
   await waitForBackend();
 });
 

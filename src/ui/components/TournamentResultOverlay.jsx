@@ -335,9 +335,10 @@ export default function TournamentResultOverlay({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
       <div
-        className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl space-y-4 overflow-y-auto rounded-3xl border border-emerald-500/20 bg-slate-900 p-4 text-white shadow-2xl sm:space-y-6 sm:p-8"
+        className="flex max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-emerald-500/20 bg-slate-900 text-white shadow-2xl"
         data-testid="mtt-result-overlay"
       >
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:space-y-6 sm:p-6" data-testid="mtt-result-scroll-content">
         <header className="text-center space-y-2">
           <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">
             Tournament Complete
@@ -477,11 +478,12 @@ export default function TournamentResultOverlay({
             ))}
           </div>
         ) : null}
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+        </div>
+        <div className="flex shrink-0 flex-col gap-3 border-t border-white/10 px-4 py-3 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={onBackToMenu}
-            className="px-5 py-3 rounded-full bg-gray-700 text-white font-semibold hover:bg-gray-600 transition"
+            className="min-h-[44px] px-5 py-3 rounded-full bg-gray-700 text-white font-semibold hover:bg-gray-600 transition"
           >
             Back to Menu
           </button>
@@ -489,7 +491,7 @@ export default function TournamentResultOverlay({
             <button
               type="button"
               onClick={onEnterNewTournament}
-              className="px-5 py-3 rounded-full bg-emerald-500 text-slate-900 font-semibold hover:bg-emerald-400 transition"
+              className="min-h-[44px] px-5 py-3 rounded-full bg-emerald-500 text-slate-900 font-semibold hover:bg-emerald-400 transition"
             >
               Enter New Tournament
             </button>

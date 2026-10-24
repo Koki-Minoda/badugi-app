@@ -55,7 +55,7 @@ function getComponentTone(source = {}) {
 }
 
 function getBasePotTitle(pot = {}, index, singlePot) {
-  const sourcePotIndex = Number.isInteger(pot.sourcePotIndex) ? pot.sourcePotIndex : index;
+  const sourcePotIndex = Number.isInteger(pot.sourcePotIndex) ? pot.sourcePotIndex : (pot.potIndex ?? index);
   if (singlePot && !getComponentLabel(pot)) return "Pot";
   if (sourcePotIndex === 0) return singlePot ? "Pot" : "Main Pot";
   if (sourcePotIndex === 1) return "Side Pot";
@@ -329,7 +329,7 @@ export default function HandResultOverlay({
         <div className="min-h-0 space-y-3 overflow-y-auto overscroll-contain" data-testid="hand-result-details">
         <div className="space-y-4 text-sm text-slate-200">
           {potSections.map((pot, idx) => (
-            <PotSection key={`pot-${pot.potIndex ?? idx}`} pot={pot} index={idx} singlePot={singlePot} />
+            <PotSection key={`pot-${pot.potIndex ?? idx}-${pot.component ?? "whole"}`} pot={pot} index={idx} singlePot={singlePot} />
           ))}
         </div>
         {mixedInfo && (

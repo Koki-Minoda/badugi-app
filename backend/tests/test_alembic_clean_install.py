@@ -31,6 +31,11 @@ def test_alembic_clean_install_creates_every_runtime_table(tmp_path: Path):
             "PRAGMA index_info(ix_badugi_action_logs_player_phase_ts)"
         ).fetchall()
         assert [row[2] for row in stats_indexes] == ["player_id", "phase", "ts"]
+        for table in ["badugi_hand_logs", "badugi_action_logs"]:
+            index = f"ix_{table}_owner_user_id"
+            assert [row[2] for row in connection.execute(f"PRAGMA index_info({index})")] == ["owner_user_id"]
+            plan = connection.execute(f"EXPLAIN QUERY PLAN SELECT id FROM {table} WHERE owner_user_id = ?", (123,)).fetchall()
+            assert any(index in row[3] and "SEARCH" in row[3] for row in plan)
         tables = {
             row[0]
             for row in connection.execute(

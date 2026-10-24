@@ -46,3 +46,8 @@ export function collectTournamentOpponentProfileIds(state, {
     .filter((player) => !heroTableOnly || (!player.busted && player.tableId === tableId))
     .map((player) => player.opponentProfileId);
 }
+
+
+export function isSettledTournamentHand({mode, handId, completedHandId, isFinished}) {
+  return mode === "tournament-mtt" && Boolean(isFinished || (handId && handId === completedHandId));
+}

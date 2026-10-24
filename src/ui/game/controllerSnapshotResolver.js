@@ -27,3 +27,25 @@ export function resolveEffectiveControllerSnapshot({
 
   return candidates.find((snapshot) => matchesVariant(snapshot, variantId)) ?? null;
 }
+
+
+// Legacy CPU actions still publish partial snapshots in Badugi MTT. Keep the
+// session used by controls and subsequent actions on that same completed step.
+export function syncTournamentBadugiSession({ controller, state, snapshot, phase, drawRound, handId }) {
+  if (!controller?.syncFromExternalState || !state) return state;
+  const actor = snapshot.metadata?.actingPlayerIndex ?? snapshot.turn ?? null;
+  return controller.syncFromExternalState({
+    snapshot: {
+      ...snapshot,
+      handId: snapshot.handId ?? handId,
+      phase: snapshot.phase ?? phase,
+      drawRound: snapshot.drawRound ?? drawRound,
+      currentBet: snapshot.metadata?.currentBet ?? snapshot.currentBet ?? 0,
+      currentActor: actor,
+      turn: actor,
+      nextTurn: actor,
+    },
+    context: state.context,
+    handIndex: state.handIndex,
+  });
+}

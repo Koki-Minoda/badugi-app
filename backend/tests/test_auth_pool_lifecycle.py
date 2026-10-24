@@ -59,6 +59,7 @@ def test_account_password_and_sql_work_do_not_block_the_event_loop(monkeypatch):
     monkeypatch.setattr(auth, "verify_password", verify_off_loop)
     monkeypatch.setattr(p2p, "terminate_user_p2p_sessions", terminate)
     session = MagicMock()
+    session.execute.return_value.rowcount = 1
     result = asyncio.run(auth.delete_account(
         auth.DeleteAccountRequest(password="test"), Response(),
         SimpleNamespace(id=7, hashed_password="hash"), session,

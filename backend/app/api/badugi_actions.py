@@ -8,6 +8,7 @@ from sqlalchemy import desc, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from ..core.account_writes import account_write
 from ..core.db import get_db
 from ..dependencies.auth import get_current_user
 from ..models import BadugiHandAction, User
@@ -82,7 +83,7 @@ router = APIRouter()
 @router.post("/badugi/actions/batch", response_model=BadugiActionBatchResponse)
 def save_action_batch(
     payload: BadugiActionBatchRequest,
-    _: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> BadugiActionBatchResponse:
     actions = payload.actions or []
@@ -112,12 +113,14 @@ def save_action_batch(
                 bet_after=action.bet_after,
                 seq=seq,
                 ts=action.ts or datetime.utcnow(),
-                metadata_json=action.metadata,
+                owner_user_id=user.id,
+                metadata_json={**(action.metadata or {}), "_owner_user_id": user.id},
             )
         )
     try:
-        db.add_all(entries)
-        db.commit()
+        with account_write(db, user):
+            db.add_all(entries)
+            db.commit()
     except SQLAlchemyError:
         db.rollback()
         raise HTTPException(status_code=503, detail="db_unreachable")
@@ -129,7 +132,7 @@ def save_action_batch(
 def list_recent_actions(
     player_id: Optional[str] = None,
     limit: int = 200,
-    _: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     if not player_id:
@@ -138,7 +141,7 @@ def list_recent_actions(
     try:
         stmt = (
             select(BadugiHandAction)
-            .where(BadugiHandAction.player_id == player_id)
+            .where(BadugiHandAction.player_id == player_id, BadugiHandAction.owner_user_id == user.id)
             .order_by(desc(BadugiHandAction.ts))
             .limit(limit)
         )

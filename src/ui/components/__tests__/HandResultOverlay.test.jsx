@@ -21,6 +21,24 @@ const baseSummary = {
 };
 
 describe("HandResultOverlay", () => {
+  test("keeps both halves of the same pot when the winner changes between hands", () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const summary = name => ({ pot: 100, potDetails: [
+        { potIndex: 0, component: "badugi", potAmount: 50, winners: [{ ...baseWinner, name, payout: 50 }] },
+        { potIndex: 0, component: "low27", potAmount: 50, winners: [{ ...baseWinner, name, payout: 50 }] },
+      ] });
+      const { rerender } = render(<HandResultOverlay visible summary={summary("Mina")} />);
+      rerender(<HandResultOverlay visible summary={summary("Jun")} />);
+      expect(screen.getAllByTestId("hand-result-pot-title").map(node => node.textContent)).toEqual([
+        "Main Pot · Badugi half", "Main Pot · 2-7 Low half",
+      ]);
+      expect(screen.getAllByTestId("hand-result-winner-name").map(node => node.textContent)).toEqual(["Jun", "Jun"]);
+      expect(errors).not.toHaveBeenCalled();
+    } finally {
+      errors.mockRestore();
+    }
+  });
   test("shows the settled Board/Stud totalPot instead of zero", () => {
     render(<HandResultOverlay visible summary={{ totalPot: 180, winners: [baseWinner], potDetails: [{ potAmount: 120, winners: [baseWinner] }, { potAmount: 60, winners: [baseWinner] }] }} />);
     expect(screen.getByTestId('hand-result-total').textContent).toBe('Pot ¥180');

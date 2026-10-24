@@ -58,6 +58,7 @@ import { normalizeCpuAction } from "../ai/normalizeCpuAction.js";
 import { getMobileQaSessionId } from "./qa/mobileQaSession.js";
 import {
   resolveActionSeatWithFallback,
+  resolveActionCurrentBet,
   resolveCanonicalActionSeat,
   resolveSessionPreferredActor,
   shouldSyncLegacyTurnToController,
@@ -122,7 +123,7 @@ import {
 } from "./game/appVariantRouting.js";
 import { buildBetSizingModel } from "./game/betSizing.js";
 import { getVariantLayoutProfile } from "./game/layoutGroups.js";
-import { resolveEffectiveControllerSnapshot } from "./game/controllerSnapshotResolver.js";
+import { resolveEffectiveControllerSnapshot, syncTournamentBadugiSession } from "./game/controllerSnapshotResolver.js";
 import { createAppGameController } from "./game/createAppGameController.js";
 import {
   createVariantRotationController,
@@ -1293,6 +1294,7 @@ export default function App() {
   const preferControllerActionActor = shouldPreferControllerActionActor({
     singleTableController: isControllerDrivenSingleTable,
     drawLowball: isDrawLowballControllerGame,
+    badugi: normalizedGameVariant === APP_VARIANT_IDS.BADUGI,
   });
   const safeEngineState = engineState ?? {};
   const effectiveControllerSnapshot = resolveEffectiveControllerSnapshot({
@@ -4087,13 +4089,13 @@ export default function App() {
       return false;
     }
     const player = roster[seat];
-    const controllerActionSeat = !isControllerDrivenSingleTable
+    const controllerActionSeat = !preferControllerActionActor
       ? null
       : resolveSessionPreferredActor({
           sessionController: sessionControllerRef.current,
           sessionState: sessionControllerStateRef.current,
           gameController: gameControllerRef.current,
-          preferSession: isSingleTableBadugi || isSingleTableDrawLowball,
+          preferSession: preferControllerActionActor,
           warn:
             process.env.NODE_ENV !== "production"
               ? (...args) => console.warn(...args)
@@ -11005,6 +11007,14 @@ export default function App() {
       gameId: merged.gameId ?? stageGameId,
       engineId: merged.engineId ?? stageGameId,
     };
+    if (modeRef.current === "tournament-mtt" &&
+        normalizeAppVariantId(gameVariantRef.current) === APP_VARIANT_IDS.BADUGI) {
+      sessionControllerStateRef.current = syncTournamentBadugiSession({
+        controller: sessionControllerRef.current, state: sessionControllerStateRef.current,
+        snapshot: normalizedSnapshot, phase: phaseRef.current,
+        drawRound: drawRoundTracker.current, handId: handIdRef.current,
+      });
+    }
     engineStateRef.current = normalizedSnapshot;
     setEngineState(normalizedSnapshot);
     setControllerUiSnapshotState(normalizedSnapshot);
@@ -12498,8 +12508,7 @@ export default function App() {
     const betHelpers = forcedBetHelpersRef.current;
     const drawHelpers = autoDrawHelpersRef.current;
     const seatCount = activePlayers.length;
-    const shouldUseControllerActorForAuto =
-      isSingleTableBadugi || isDrawLowballControllerGame;
+    const shouldUseControllerActorForAuto = preferControllerActionActor;
     const canonicalActionSeat = shouldUseControllerActorForAuto
       ? resolveCanonicalActionSeat({
           phase,
@@ -13174,6 +13183,7 @@ export default function App() {
   }, [
     turn,
     controllerTurn,
+    preferControllerActionActor,
     phase,
     deck,
     currentBet,
@@ -13758,7 +13768,11 @@ export default function App() {
 
   const controlsPhase =
     effectiveControllerSnapshot?.phase ?? controlsConfig?.phase ?? tablePhase;
-  const controlsCurrentBet = controlsConfig?.currentBet ?? currentBetSrc;
+  const controlsCurrentBet = resolveActionCurrentBet({
+    preferController: preferControllerActionActor,
+    controllerCurrentBet: effectiveControllerSnapshot?.currentBet,
+    legacyCurrentBet: controlsConfig?.currentBet ?? currentBetSrc,
+  });
   const heroBetThisRound = Math.max(
     0,
     Number(

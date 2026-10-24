@@ -1,8 +1,8 @@
 const ACTION_PHASES = new Set(["BET", "DRAW"]);
 
-export function shouldPreferControllerActionActor({ singleTableController = false, drawLowball = false } = {}) {
-  // Draw controllers own the hero table in MTT as well as cash games.
-  return singleTableController || drawLowball;
+export function shouldPreferControllerActionActor({ singleTableController = false, drawLowball = false, badugi = false } = {}) {
+  // Badugi and Draw controllers own the hero table in MTT and cash games.
+  return singleTableController || drawLowball || badugi;
 }
 
 export function resolveActorFromSnapshot(snapshot) {
@@ -134,4 +134,11 @@ export function shouldSyncLegacyTurnToController({
     isSeatActionEligibleForPhase(players, controllerTurn, phase) &&
     controllerTurn !== legacyTurn
   );
+}
+
+
+export function resolveActionCurrentBet({ preferController = false, controllerCurrentBet, legacyCurrentBet }) {
+  return preferController && Number.isFinite(controllerCurrentBet)
+    ? Math.max(0, controllerCurrentBet)
+    : legacyCurrentBet;
 }

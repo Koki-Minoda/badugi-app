@@ -16,6 +16,7 @@ import { AceToFiveTripleDrawController } from "../../draw/AceToFiveTripleDrawCon
 import { DeuceToSevenSingleDrawController } from "../../draw/DeuceToSevenSingleDrawController.js";
 import { AceToFiveSingleDrawController } from "../../draw/AceToFiveSingleDrawController.js";
 import { BadugiGameController } from "../../badugi/BadugiGameController.js";
+import { BadugiGameController as SessionBadugiController } from "../../badugi/controller/BadugiGameController.js";
 import { validateAction } from "../../badugi/engine/BadugiEngine.js";
 
 function expectInvariantFailure(snapshot, match, context = {}) {
@@ -41,6 +42,18 @@ describe("MGX known game progress bug regressions", () => {
     expect(resolveCanonicalActionSeat({ phase: "DRAW", controllerTurn: 3, legacyTurn: 0, players })).toBe(3);
     expect(shouldPreferControllerActionActor({ singleTableController: true, drawLowball: false })).toBe(true);
     expect(shouldPreferControllerActionActor({ singleTableController: false, drawLowball: false })).toBe(false);
+  });
+
+  test("TURN-016 Badugi MTT opening uses the session actor instead of the reset hero turn", () => {
+    const controller = new SessionBadugiController({ numSeats: 6, seatConfig: ["HUMAN", "CPU", "CPU", "CPU", "CPU", "CPU"], startingStack: 500, blindStructure: [{ sb: 5, bb: 10, ante: 0 }] });
+    const state = controller.createNewHandState(controller.createInitialState(), {});
+    const snapshot = controller.getUiSnapshot(state);
+    const prefer = shouldPreferControllerActionActor({ badugi: true });
+    const actor = resolveCanonicalActionSeat({ phase: "BET", controllerTurn: prefer ? snapshot.turn : 0, legacyTurn: 0, players: snapshot.players });
+    expect(actor).toBe(3);
+    const next = controller.applyAction(state, { seatIndex: actor, type: "CALL" });
+    expect(next.events.some(event => event.type === "invalidAction")).toBe(false);
+    expect(controller.getUiSnapshot(next.state).turn).not.toBe(actor);
   });
 
   test("TURN-001 SB fold should pass turn to BB or next eligible seat", () => {

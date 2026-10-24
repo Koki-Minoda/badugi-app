@@ -1,3 +1,4 @@
+import {clickHeroAction} from './helpers/clickHeroAction';
 import { visibleHeroActions } from "./helpers/visibleHeroActions";
 import fs from "node:fs";
 import path from "node:path";
@@ -283,7 +284,7 @@ async function playOneRealButtonHand(
       await expect(page.getByTestId("action-raise")).toContainText(/^(Bet|Raise) \d+$/);
       sizingActions += 1;
     }
-    await page.getByTestId(target).first().click({ timeout: 5_000 });
+    if (!await clickHeroAction(page, target)) continue;
     if (target === 'action-raise' && await page.getByTestId('bet-amount-sheet').isVisible()) {
       await page.getByTestId('bet-amount-confirm').click();
       sizingActions += 1;

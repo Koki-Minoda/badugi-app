@@ -435,7 +435,7 @@ class DualAgentBadugiEnv:
             self.hero_bet += paid
             self.pot += paid
             return 0.05 + 0.10 * max(0.0, strength - pot_odds)
-        bet_size = SMALL_BET if self.draw_round == 0 else BIG_BET
+        bet_size = SMALL_BET if self.draw_round < 2 else BIG_BET
         if action == _BET:
             paid = min(bet_size, self.hero_stack)
             self.current_bet = paid
@@ -471,7 +471,7 @@ class DualAgentBadugiEnv:
             opp_action = _CALL if to_call > 0 else _CHECK
 
         to_call = max(0, self.current_bet - self.opp_bet)
-        bet_size = SMALL_BET if self.draw_round == 0 else BIG_BET
+        bet_size = SMALL_BET if self.draw_round < 2 else BIG_BET
 
         if opp_action == _FOLD:
             return True, 0.35

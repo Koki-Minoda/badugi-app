@@ -9,6 +9,9 @@ import { GAME_VARIANTS } from '../src/games/config/variantCatalog.js';
 import { getVariantAvailability } from '../src/games/config/variantAvailability.js';
 import { listTierIds, resolveTierModelInfo } from '../src/ai/tierManager.js';
 import { selectModelForVariant } from '../src/ai/modelRouter.js';
+import { normalizeAppVariantId, isControllerBackedAppVariant } from '../src/ui/game/appVariantRouting.js';
+import { TOURNAMENT_VARIANTS } from '../src/config/tournamentUnlocks.js';
+import { DEFAULT_DEALER_CHOICE_POOL } from '../src/ui/dealersChoice/dealerChoiceManager.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const {values} = parseArgs({options:{output:{type:'string'}}});
@@ -35,6 +38,34 @@ async function auditAsset(entry) {
   return {...asset,declaredPath:entry.onnx,expectedSha256:entry.checksumSha256??null,
     checksumMatches:asset.exists && entry.checksumSha256 ? asset.sha256===entry.checksumSha256 : null};
 }
+// Source-level menu/backend declarations, separate from runtime acceptance.
+const tournamentMenuVariants=new Set(TOURNAMENT_VARIANTS.map(item=>normalizeAppVariantId(item.gameVariant,null)));
+const friendVariants=new Set(['badugi','ace_to_five_triple_draw','deuce_to_seven_triple_draw']);
+function modeDeclarations(variant) {
+  const appId=normalizeAppVariantId(variant.id,null);
+  const publicEntry=getVariantAvailability(variant.id).availability==='alpha_playable';
+  const controllerBacked=isControllerBackedAppVariant(appId);
+  const arrangement=['chinese_poker','ofc'].includes(appId);
+  return {
+    appVariantId:appId,
+    cash:{controllerBacked,publicEntry,screen:arrangement?'placement':'betting-table'},
+    mixedCash:{sourceEligible:controllerBacked&&!arrangement,publicEntry:publicEntry&&controllerBacked&&!arrangement},
+    tournament:{listedInHub:tournamentMenuVariants.has(appId),unlockRequirementsApply:tournamentMenuVariants.has(appId),otherVariants:'internal-controller QA does not establish a public menu entry'},
+    p2p:{listedInUiAndAcceptedByBackend:friendVariants.has(appId)},
+    dealersChoice:{listedInDefaultPool:DEFAULT_DEALER_CHOICE_POOL.includes(variant.id)},
+    runtimeAcceptance:'not-established-by-source-declarations',
+    sources:['src/ui/App.jsx:startRingWithVariant','src/ui/mixed/mixedAvailability.js','src/config/tournamentUnlocks.js','src/ui/screens/FriendMatchSetupScreen.jsx','backend/app/p2p/manager.py','src/ui/dealersChoice/dealerChoiceManager.js'],
+  };
+}
+function controllerPolicyDeclaration(variant) {
+  if(variant.id==='D03') return {paths:['src/ui/App.jsx','src/games/badugi/controller/BadugiGameController.js'],kind:'tier-dependent ONNX / rule policy; actual action route requires telemetry'};
+  if(['triple-draw','single-draw'].includes(variant.category)) return {paths:['src/games/draw/DeuceToSevenTripleDrawController.js','src/ai/onnxPolicyAdapter.js'],kind:'async ONNX attempt with heuristic fallback; successful inference not established by registry'};
+  if(['board','dramaha'].includes(variant.category)) return {paths:['src/games/nlh/NLHGameController.js'],kind:'controller teacher policy; registry asset does not establish ONNX connection'};
+  if(variant.category==='stud') return {paths:['src/games/stud/StudGameController.js'],kind:'controller teacher policy; registry asset does not establish ONNX connection'};
+  if(variant.id==='CP1') return {paths:['src/games/chinese/ChinesePokerController.js'],kind:'arrangement search; no learned placement policy confirmed'};
+  if(variant.id==='CP2') return {paths:['src/games/chinese/OpenFaceChineseController.js'],kind:'placement heuristic; no learned placement policy confirmed'};
+  return {paths:[],kind:'requires-source-audit'};
+}
 const goalTiers = ['beginner','standard','pro','iron','worldmaster'];
 const configuredTiers = listTierIds();
 const tiers = [...new Set([...goalTiers,...configuredTiers])];
@@ -56,13 +87,14 @@ for(const variant of GAME_VARIANTS) {
       trainingStatus:entry?.trainingStatus??null,trainingRun:entry?.trainingRun??null,
       trainingCheckpoint:entry?.trainingCheckpoint??null,asset:await auditAsset(entry),
       selectionSource:'src/ai/tierManager.js:resolveTierModelInfo (not proof of controller use)',
+      controllerPolicyDeclaration:controllerPolicyDeclaration(variant),
       onnxAdapterSelection:{
         source:'src/ai/modelRouter.js:selectModelForVariant; used by onnxPolicyAdapter when called',
         modelId:adapterEntry?.id??null,variantMatches:adapterEntry?.variantIds?.includes(variant.id)??false,
         tierMatches:adapterEntry?.tier===tier,trainingStatus:adapterEntry?.trainingStatus??null,
         asset:await auditAsset(adapterEntry),
       },
-      runtimeUsage:'not-observed-by-this-inventory',supportedModes:'requires-controller-and-runtime-audit',
+      runtimeUsage:'not-observed-by-this-inventory',modeDeclarations:modeDeclarations(variant),supportedModes:'runtime-acceptance-requires-evidence',
       strengthEvidence:'not-verified-by-this-inventory',physicalQA:'not-verified-by-this-inventory',
       promotionEvidenceVerified:false,
     });

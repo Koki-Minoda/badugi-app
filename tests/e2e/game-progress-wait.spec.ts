@@ -1,3 +1,4 @@
+import {clickHeroAction} from './helpers/clickHeroAction';
 import { visibleHeroActions } from "./helpers/visibleHeroActions";
 import { expect, test } from '@playwright/test';
 import { getProgressState, progressKey, waitForProgressChange, playOneHandProgression } from './helpers/gameProgressHelper.js';
@@ -101,4 +102,20 @@ test('action snapshot does not wait for a button removed during a phase change',
   expect(await visibleHeroActions(page)).toEqual(['action-draw-selected']);
   await page.setContent('');
   expect(await visibleHeroActions(page)).toEqual([]);
+});
+
+for (const phase of ['HAND_RESULT', 'BET']) {
+  test(`cash click only accepts a settled result overlay (${phase})`, async ({page}) => {
+    await page.setContent('<button data-testid="action-call">Call</button><div data-testid="hand-result-overlay" style="position:fixed;inset:0;z-index:10">Result</div>');
+    await page.evaluate(phase => {
+      window.__BADUGI_E2E__ = {getStateSnapshot: () => ({phase, handId:'settlement-race'})};
+    }, phase);
+    if (phase === 'HAND_RESULT') expect(await clickHeroAction(page, 'action-call', {timeout:200})).toBe(false);
+    else await expect(clickHeroAction(page, 'action-call', {timeout:200})).rejects.toThrow(/Timeout/);
+  });
+}
+test('cash action clicks remain real clicks', async ({page}) => {
+  await page.setContent(`<button data-testid="action-call" onclick="this.textContent='Called'">Call</button>`);
+  expect(await clickHeroAction(page, 'action-call')).toBe(true);
+  await expect(page.getByTestId('action-call')).toHaveText('Called');
 });

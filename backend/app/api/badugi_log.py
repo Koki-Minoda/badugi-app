@@ -63,6 +63,16 @@ def _reset_recent_logs() -> None:
     _recent_logs.clear()
 
 
+def purge_owner_recent_logs(owner_id: int) -> None:
+    """Preserve other owners when clearing a deleted account's fallback cache."""
+    for entry in list(_recent_logs):
+        if entry[0] == owner_id:
+            try:
+                _recent_logs.remove(entry)
+            except ValueError:
+                pass  # The bounded deque may already have evicted this entry.
+
+
 @router.post("/badugi/hands", response_model=BadugiHandLogResponse)
 def create_hand_log(payload: BadugiHandLogCreate, user: User = Depends(get_current_user)) -> BadugiHandLogResponse:
     try:
@@ -71,6 +81,7 @@ def create_hand_log(payload: BadugiHandLogCreate, user: User = Depends(get_curre
         raise HTTPException(status_code=503, detail="db_unreachable")
     try:
         log = HandLog(
+            owner_user_id=user.id,
             hand_id=payload.hand_id,
             table_id=payload.table_id,
             tournament_id=payload.tournament_id,
@@ -117,7 +128,7 @@ def list_recent_hand_logs(limit: int = 10, user: User = Depends(get_current_user
     try:
         stmt = (
             select(HandLog)
-            .where(HandLog.metadata_json["_owner_user_id"].as_integer() == user.id)
+            .where(HandLog.owner_user_id == user.id)
             .order_by(desc(HandLog.created_at))
             .limit(max(1, min(limit, MAX_RECENT_LOGS)))
         )
@@ -138,7 +149,7 @@ def get_hands_by_table(table_id: str, limit: int = 5, user: User = Depends(get_c
         stmt = (
             select(HandLog)
             .options(selectinload(HandLog.actions), selectinload(HandLog.results))
-            .where(HandLog.table_id == table_id, HandLog.metadata_json["_owner_user_id"].as_integer() == user.id)
+            .where(HandLog.table_id == table_id, HandLog.owner_user_id == user.id)
             .order_by(desc(HandLog.created_at))
             .limit(max(1, min(limit, 20)))
         )
@@ -157,7 +168,7 @@ def get_hand_log(hand_id: str, user: User = Depends(get_current_user)):
         stmt = (
             select(HandLog)
             .options(selectinload(HandLog.actions), selectinload(HandLog.results))
-            .where(HandLog.hand_id == hand_id, HandLog.metadata_json["_owner_user_id"].as_integer() == user.id)
+            .where(HandLog.hand_id == hand_id, HandLog.owner_user_id == user.id)
         )
         log = session.execute(stmt).scalar_one_or_none()
         if not log:

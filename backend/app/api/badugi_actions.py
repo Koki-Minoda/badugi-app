@@ -112,6 +112,7 @@ def save_action_batch(
                 bet_after=action.bet_after,
                 seq=seq,
                 ts=action.ts or datetime.utcnow(),
+                owner_user_id=user.id,
                 metadata_json={**(action.metadata or {}), "_owner_user_id": user.id},
             )
         )
@@ -138,7 +139,7 @@ def list_recent_actions(
     try:
         stmt = (
             select(BadugiHandAction)
-            .where(BadugiHandAction.player_id == player_id, BadugiHandAction.metadata_json["_owner_user_id"].as_integer() == user.id)
+            .where(BadugiHandAction.player_id == player_id, BadugiHandAction.owner_user_id == user.id)
             .order_by(desc(BadugiHandAction.ts))
             .limit(limit)
         )

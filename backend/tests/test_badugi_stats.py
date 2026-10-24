@@ -48,6 +48,7 @@ def test_badugi_stats_computation(monkeypatch):
                 BadugiHandAction(
                     hand_id="h1",
                     player_id="hero",
+                    owner_user_id=1,
                     metadata_json={"_owner_user_id": 1},
                     seat_index=0,
                     phase="BET",
@@ -61,6 +62,7 @@ def test_badugi_stats_computation(monkeypatch):
                 BadugiHandAction(
                     hand_id="h1",
                     player_id="hero",
+                    owner_user_id=1,
                     metadata_json={"_owner_user_id": 1},
                     seat_index=0,
                     phase="BET",
@@ -74,6 +76,7 @@ def test_badugi_stats_computation(monkeypatch):
                 BadugiHandAction(
                     hand_id="h1",
                     player_id="hero",
+                    owner_user_id=1,
                     metadata_json={"_owner_user_id": 1},
                     seat_index=0,
                     phase="BET",
@@ -87,6 +90,7 @@ def test_badugi_stats_computation(monkeypatch):
                 BadugiHandAction(
                     hand_id="h2",
                     player_id="hero",
+                    owner_user_id=1,
                     metadata_json={"_owner_user_id": 1},
                     seat_index=0,
                     phase="BET",

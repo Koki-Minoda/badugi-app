@@ -34,6 +34,13 @@ def _reset_generic_history() -> None:
     _history_hands.clear()
 
 
+def purge_owner_history(owner_id: int) -> None:
+    """Remove only the deleted account's process-local canonical history."""
+    for key in list(_history_hands):
+        if key[0] == owner_id:
+            _history_hands.pop(key, None)
+
+
 def _upsert_hand(record: GenericHandHistoryCreate, owner_id: int) -> Dict[str, Any]:
     item = record.model_dump()
     item["updatedAt"] = datetime.now(tz=timezone.utc).isoformat()

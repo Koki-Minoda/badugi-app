@@ -7377,11 +7377,14 @@ export default function App() {
             lastStructureIndex: handLastStructureIndex,
           })
         : null;
-      const nextDrawRingStructure = nextDrawRingBlindState
+      const nextDrawHandStructure = nextDrawRingBlindState
         ? (handBlindStructure[nextDrawRingBlindState.blindLevelIndex] ??
           handBlindStructure[handLastStructureIndex] ??
           handBlindStructure[0])
-        : null;
+        : activeHandIsTournament && activeHandIsDrawLowballController
+          ? (handBlindStructure[blindLevelSnapshot] ??
+            handBlindStructure[handLastStructureIndex])
+          : null;
 
       const legacyGameController = ensureGameController();
       let controllerHandSnapshot = null;
@@ -7486,11 +7489,11 @@ export default function App() {
                   handsInLevel: handsInLevelSnapshot,
                 },
                 lastStructureIndex: handLastStructureIndex,
-                structure: nextDrawRingStructure
+                structure: nextDrawHandStructure
                   ? {
-                      sb: nextDrawRingStructure.sb ?? 0,
-                      bb: nextDrawRingStructure.bb ?? 0,
-                      ante: nextDrawRingStructure.ante ?? 0,
+                      sb: nextDrawHandStructure.sb ?? 0,
+                      bb: nextDrawHandStructure.bb ?? 0,
+                      ante: nextDrawHandStructure.ante ?? 0,
                     }
                   : undefined,
                 drawCardsForSeat: assignInitialHands,
@@ -7540,11 +7543,11 @@ export default function App() {
                     nextDrawRingBlindState?.blindLevelIndex ?? blindLevelSnapshot,
                   handsInLevel:
                     nextDrawRingBlindState?.handsInLevel ?? handsInLevelSnapshot,
-                  blindValues: nextDrawRingStructure
+                  blindValues: nextDrawHandStructure
                     ? {
-                        sb: nextDrawRingStructure.sb ?? 0,
-                        bb: nextDrawRingStructure.bb ?? 0,
-                        ante: nextDrawRingStructure.ante ?? 0,
+                        sb: nextDrawHandStructure.sb ?? 0,
+                        bb: nextDrawHandStructure.bb ?? 0,
+                        ante: nextDrawHandStructure.ante ?? 0,
                       }
                     : { sb: SB, bb: BB, ante: currentAnte },
                   sbIdx: resolvedSbIdx,

@@ -54,8 +54,8 @@ function collectBrowserSignals() {
   const resultVisible =
     isVisible(document.querySelector('[data-testid="hand-result-pot"]')) ||
     isVisible(document.querySelector('[data-testid="hand-result-follow-up"]')) ||
-    /\bHAND_RESULT\b|Hand Result/i.test(displayedPhase);
-  const nextHandButton = [...document.querySelectorAll("button")].find((button) => /next hand/i.test(button.textContent ?? ""));
+    /\bHAND_RESULT\b|Hand Result|ハンドの結果/i.test(displayedPhase);
+  const nextHandButton = [...document.querySelectorAll("button")].find((button) => /next hand|次のハンド/i.test(button.textContent ?? ""));
   return {
     actions,
     displayedPhase,

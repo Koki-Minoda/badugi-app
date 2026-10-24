@@ -248,7 +248,7 @@ export async function evaluateResultFlow(
   });
 
   const resultOverlayVisible = await page
-    .getByText("Hand Result")
+    .getByTestId("hand-result-overlay")
     .first()
     .waitFor({ state: "visible", timeout: 10000 })
     .then(() => true)
@@ -259,7 +259,7 @@ export async function evaluateResultFlow(
     .waitFor({ state: "visible", timeout: 10000 })
     .then(() => true)
     .catch(() => false);
-  const nextHandVisible = await page.getByRole("button", { name: /next hand/i }).first().isVisible().catch(() => false);
+  const nextHandVisible = await page.getByRole("button", { name: /next hand|次のハンド/i }).first().isVisible().catch(() => false);
 
   if (!resultOverlayVisible) {
     issues.push({ priority: "P0", issue: "result overlay not visible" });

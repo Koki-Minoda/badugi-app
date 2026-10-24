@@ -463,7 +463,7 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
       totalDrawClicks += result.drawClicks;
       totalHeroButtonClicks += result.heroButtonClicks;
       totalSizingActions += result.sizingActions;
-      await expect(page.getByText("Hand Result").first()).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByTestId("hand-result-overlay").first()).toBeVisible({ timeout: 15_000 });
       await expect(page.getByTestId("hand-result-pot").first()).toBeVisible({ timeout: 15_000 });
       if (variant.variant.startsWith("dramaha_")) {
         await verifyDramahaSplitResult(page);

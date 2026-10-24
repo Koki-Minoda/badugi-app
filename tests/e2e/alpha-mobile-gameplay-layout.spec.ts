@@ -84,7 +84,7 @@ test.describe("alpha mobile gameplay layout", () => {
         requireDrawVisit: true,
       });
 
-      await expect(page.getByText("Hand Result").first()).toBeVisible({ timeout: 10000 });
+      await expect(page.getByTestId("hand-result-overlay").first()).toBeVisible({ timeout: 10000 });
       await expect(page.getByTestId("hand-result-pot").first()).toBeVisible({ timeout: 10000 });
       await expectNoHorizontalOverflow(page);
 

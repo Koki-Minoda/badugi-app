@@ -75,12 +75,12 @@ test.describe("Badugi mobile gameplay layout", () => {
 
       expect(result.status).toBe("PASS");
       expect(result.visitedPhases).toContain("DRAW");
-      await expect(page.getByText("Hand Result").first()).toBeVisible({ timeout: 10000 });
+      await expect(page.getByTestId("hand-result-overlay").first()).toBeVisible({ timeout: 10000 });
       await expect(page.getByTestId("hand-result-pot").first()).toBeVisible({ timeout: 10000 });
       await expectNoHorizontalOverflow(page);
 
-      await page.getByRole("button", { name: /next hand/i }).click();
-      await expect(page.getByText("Hand Result").first()).toBeHidden({ timeout: 10000 });
+      await page.getByRole("button", { name: /next hand|次のハンド/i }).click();
+      await expect(page.getByTestId("hand-result-overlay").first()).toBeHidden({ timeout: 10000 });
       await expect(page.getByTestId("decision-panel")).toBeVisible({ timeout: 20000 });
       await expectPotPhaseAndControls(page);
 

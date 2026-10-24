@@ -363,7 +363,7 @@ async function applyPayload(page: Page, progress: any, payload: any, telemetry: 
 
 async function advanceFromTerminal(page: Page, progress: any, telemetry: any = null) {
   const key = progressKey(progress);
-  const nextHand = page.getByRole("button", { name: /next hand/i }).first();
+  const nextHand = page.getByRole("button", { name: /next hand|次のハンド/i }).first();
   if (!(await nextHand.isVisible().catch(() => false))) {
     const waitStart = Date.now();
     await waitForProgressChange(page, key, { timeout: 6000 }).catch(() => {});
@@ -422,7 +422,7 @@ async function playHands(page: Page, context: any, telemetry: any = null) {
         handCompleted = true;
         telemetry?.completeHand(hand, progress);
         await collect(page, { ...context, label: "terminal" }, null, traceRows, telemetry);
-        const nextHand = page.getByRole("button", { name: /next hand/i }).first();
+        const nextHand = page.getByRole("button", { name: /next hand|次のハンド/i }).first();
         if (hand < handsPerCombo - 1 && await nextHand.isVisible().catch(() => false)) {
           await advanceFromTerminal(page, progress, telemetry);
         }

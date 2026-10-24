@@ -61,6 +61,25 @@ describe("tournament hero bust flow regression", () => {
     warnSpy.mockRestore();
   });
 
+
+  it("preserves hand identity when blinds settle the whole tournament immediately", async () => {
+    renderApp();
+    fireEvent.click(screen.getByTestId("title-enter-button"));
+    await waitFor(() => expect(window.__BADUGI_E2E__?.startTournamentMTT).toBeTypeOf("function"));
+    await act(async () => {
+      window.__BADUGI_E2E__.startTournamentMTT({
+        id: "instant-finish", name: "Instant finish", practiceOnly: true,
+        tables: 1, seatsPerTable: 6, totalPlayers: 2, startingStack: 5,
+        gameVariant: "nlh", gameRotation: ["nlh"], rotationPolicy: "fixed",
+        levels: [{ levelIndex: 1, smallBlind: 5, bigBlind: 10, ante: 0, handsThisLevel: 999 }],
+      });
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(window.__BADUGI_E2E__.getTournamentHudState().isFinished).toBe(true));
+    expect(window.__BADUGI_E2E__.getStateSnapshot().handId).toMatch(/^table-1-h/);
+    expect(screen.queryByTestId("hand-result-overlay")).toBeNull();
+  });
+
   it("shows the bust overlay and removes the hero from actor flow immediately", async () => {
     renderApp();
     fireEvent.click(screen.getByTestId("title-enter-button"));

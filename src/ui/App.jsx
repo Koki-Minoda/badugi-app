@@ -318,6 +318,7 @@ import {
 } from "./app/historySupport.js";
 import {
   buildTournamentPlacements,
+  isSettledTournamentHand,
   collectTournamentOpponentProfileIds as selectTournamentOpponentProfileIds,
   getBlindStructureForTournamentConfig,
 } from "./app/tournamentSupport.js";
@@ -3826,6 +3827,13 @@ export default function App() {
 
   useEffect(() => {
     if (phase !== "BET" && phase !== "DRAW") return;
+    // A blind-all-in can settle during hand creation, before this render's
+    // stale BET effect runs. The recovery refusal is not a fatal table error.
+    if (isSettledTournamentHand({
+      mode: modeRef.current, handId: handIdRef.current,
+      completedHandId: tournamentCompletedHandIdRef.current,
+      isFinished: tournamentStateRef.current?.isFinished,
+    })) return;
     if (transitioningRef.current) return;
     const roster = playersRef.current ?? players;
     const seatCount = Array.isArray(roster) ? roster.length : 0;

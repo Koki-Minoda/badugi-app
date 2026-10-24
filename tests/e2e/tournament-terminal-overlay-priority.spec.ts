@@ -13,6 +13,7 @@ for(const size of [{width:1440,height:900},{width:393,height:695},{width:852,hei
  const blindAllIn=outcome==='blind-all-in';
  test(`settled all-in displays tournament result without a competing hand dialog at ${size.width}x${size.height} (${outcome})`,async({page},testInfo)=>{
   test.setTimeout(90000);const pageErrors=[];page.on('pageerror',error=>pageErrors.push(String(error)));
+  page.on('console',message=>{if(message.text().includes('[G-10][FATAL]'))pageErrors.push(message.text());});
   await page.setViewportSize(size);
   await page.route('**/api/**',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({id:9001,username:'QA Hero',email:'qa@mgx-e2e.test'})}));
   await page.addInitScript(()=>localStorage.setItem('mgx_auth',JSON.stringify({accessToken:'test',tokenType:'Bearer',user:{id:9001,username:'QA Hero',email:'qa@mgx-e2e.test'},isAuthenticated:true})));
@@ -47,6 +48,7 @@ for(const size of [{width:1440,height:900},{width:393,height:695},{width:852,hei
   await expect(page.getByTestId('hand-result-overlay')).toHaveCount(0);
   const state=await page.evaluate(()=>window.__BADUGI_E2E__.getTournamentHudState());
   expect(state.isFinished).toBe(true);expect(state.playersRemaining).toBe(1);
+  expect(await page.evaluate(()=>window.__BADUGI_E2E__.getStateSnapshot().handId)).toMatch(/^table-1-h/);
   const back=terminal.getByRole('button',{name:/back to menu/i});
   const exit=await back.evaluate(button=>{
    const r=button.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);

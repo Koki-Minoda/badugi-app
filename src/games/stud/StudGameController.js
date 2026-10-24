@@ -1,3 +1,4 @@
+import { buildNonModelDecisionTrace } from "../../ai/qa/nonModelDecisionTrace.js";
 import { evaluateHighHand } from "../evaluators/high.js";
 import { evaluateLowHand } from "../evaluators/low.js";
 import { evaluateBadugiHand } from "../evaluators/badugi.js";
@@ -533,6 +534,7 @@ export class StudGameController {
       return null;
     }
     if (state.currentActor !== null && state.currentActor !== seatIndex) return null;
+    const startedAt = Date.now();
     const currentBet = Number(state.currentBet ?? 0) || 0;
     const playerBet = Number(player.betThisStreet ?? player.bet ?? 0) || 0;
     const toCall = Math.max(0, currentBet - playerBet);
@@ -552,6 +554,10 @@ export class StudGameController {
       ...decision,
       metadata: {
         ...(decision.metadata ?? {}),
+        inferenceTrace: buildNonModelDecisionTrace({
+          variantId: this.variant, tierId: options.tierConfig?.id ?? "standard",
+          phase: "BET", reason: "teacher-policy", startedAt,
+        }),
         strength,
         tierId: options.tierConfig?.id ?? "standard",
         variant: this.variant,

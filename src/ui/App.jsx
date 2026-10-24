@@ -1,3 +1,4 @@
+import { buildNonModelDecisionTrace } from "../ai/qa/nonModelDecisionTrace.js";
 import { PUBLIC_PLAYABLE_VARIANTS } from '../games/config/variantAvailability.js';
 import { applyCustomStructure } from './tournament/customStructure.js';
 import { useLanguageState } from './preferences/language.js';
@@ -3032,6 +3033,7 @@ export default function App() {
       if (!me) return false;
       // MTT draw tables share the controller's deck, just like hero draws.
       if (isDrawLowballControllerGame || isSingleTableDramaha) {
+        const decisionStartedAt = Date.now();
         const controller = sessionControllerRef.current;
         const controllerState = sessionControllerStateRef.current;
         const cpuAction =
@@ -3052,6 +3054,10 @@ export default function App() {
           cpuAction ?? {
             type: "DRAW",
             discardIndexes: [],
+            metadata: { inferenceTrace: buildNonModelDecisionTrace({
+              variantId: gameVariantRef.current, tierId: activeAiTierConfig?.id ?? "standard",
+              phase: "DRAW", reason: "default-stand-pat", startedAt: decisionStartedAt,
+            }) },
           };
         const controllerOutcome = tryControllerBetAction({
           actionType: "draw",
@@ -12705,6 +12711,7 @@ export default function App() {
     if (phase === "BET" && isSingleTableBoardGame) {
       const seatToActHint = autoTurn;
       const timer = setTimeout(() => {
+        const decisionStartedAt = Date.now();
         if (e2eStaticMobileFixtureRef.current) return;
         const liveControllerSnapshot =
           gameControllerRef.current &&
@@ -12752,6 +12759,10 @@ export default function App() {
           amount: toCall,
           __forceInstant: true,
           decisionSource: "board-controller-auto",
+          inferenceTrace: buildNonModelDecisionTrace({
+            variantId: gameVariantRef.current, tierId: activeAiTierConfig?.id ?? "standard",
+            phase: "BET", reason: "automatic-check-call", startedAt: decisionStartedAt,
+          }),
         });
       }, 180);
       return () => clearTimeout(timer);

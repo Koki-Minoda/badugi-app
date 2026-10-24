@@ -3,8 +3,8 @@ import {test, expect} from '@playwright/test';
 import {APP_URL, enterTitleIfPresent, selectGameVariantFromSelector} from './authHelper';
 import {clickHeroAction} from './helpers/clickHeroAction';
 
-for (const variant of ['D01', 'badacey_triple_draw']) {
- test(`${variant}: persists request-scoped BET and DRAW inference evidence`, async ({page}, testInfo) => {
+for (const [variant, phases] of [['D01', ['BET','DRAW']], ['badacey_triple_draw', ['BET','DRAW']], ['nlh', ['BET']], ['ST1', ['BET']], ['dramaha_hi', ['BET','DRAW']]]) {
+ test(`${variant}: persists request-scoped CPU decision evidence`, async ({page}, testInfo) => {
   test.setTimeout(120000);
   const rows = [], errors = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -24,7 +24,7 @@ for (const variant of ['D01', 'badacey_triple_draw']) {
   await page.goto(APP_URL); await enterTitleIfPresent(page); await page.getByTestId('menu-ring').click();
   await selectGameVariantFromSelector(page, variant);
   const deadline = Date.now() + 100000;
-  while (Date.now() < deadline && !(rows.some(row => row.phase === 'BET') && rows.some(row => row.phase === 'DRAW'))) {
+  while (Date.now() < deadline && !phases.every(phase => rows.some(row => row.phase === phase))) {
    expect(errors).toEqual([]);
    if (await page.getByTestId('hand-result-overlay').isVisible()) await page.getByTestId('hand-result-next-hand').click();
    else {
@@ -36,8 +36,8 @@ for (const variant of ['D01', 'badacey_triple_draw']) {
   const evidence = JSON.stringify({variant, rows, errors, apiStubbed:true}, null, 2);
   await writeFile(testInfo.outputPath('inference-evidence.json'), evidence);
   await testInfo.attach('inference-evidence', {body:evidence,contentType:'application/json'});
-  expect(rows.some(row => row.phase === 'BET')).toBe(true);
-  expect(rows.some(row => row.phase === 'DRAW')).toBe(true);
+  for (const phase of phases) expect(rows.some(row => row.phase === phase)).toBe(true);
+  if (['nlh','ST1','dramaha_hi'].includes(variant)) expect(rows.every(row => row.status === 'not-connected' && ['automatic-check-call','default-stand-pat'].includes(row.reason))).toBe(true);
   for (const row of rows) {
    expect(row.elapsedMs).toBeGreaterThanOrEqual(0);
    if (row.status === 'used') expect(row.usedModelId).toBe(row.selectedModelId);

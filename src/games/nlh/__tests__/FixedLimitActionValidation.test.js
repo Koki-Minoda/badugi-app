@@ -42,6 +42,67 @@ describe.each([
     expect(controller.state).toEqual(before);
   });
 
+  it("rejects an all-in larger than one fixed unit without changing state", () => {
+    const controller = start();
+    const before = structuredClone(controller.state);
+    expect(controller.applyPlayerAction({ seatIndex: controller.state.currentActor, action: "all-in" }).success).toBe(false);
+    expect(controller.state).toEqual(before);
+    expect(controller.raiseCountThisStreet).toBe(0);
+  });
+
+  it("counts a legal one-unit all-in raise toward the cap", () => {
+    const controller = start();
+    const actor = controller.state.currentActor;
+    const player = controller.state.players[actor];
+    player.stack = controller.state.currentBet - player.betThisStreet + controller.getLimitUnit();
+    expect(controller.applyPlayerAction({ seatIndex: actor, action: "all-in" }).success).toBe(true);
+    expect(controller.state.currentBet).toBe(40);
+    expect(controller.raiseCountThisStreet).toBe(1);
+    expect(player.allIn).toBe(true);
+  });
+
+  it("rejects an all-in raise when betting is capped", () => {
+    const controller = start();
+    const actor = controller.state.currentActor;
+    controller.state.players[actor].stack = 30;
+    controller.raiseCountThisStreet = controller.raiseCap;
+    const before = structuredClone(controller.state);
+    expect(controller.applyPlayerAction({ seatIndex: actor, action: "all-in" }).success).toBe(false);
+    expect(controller.state).toEqual(before);
+    expect(controller.raiseCountThisStreet).toBe(controller.raiseCap);
+  });
+
+  it("allows a short all-in raise below one full unit", () => {
+    const controller = start();
+    const actor = controller.state.currentActor;
+    controller.state.players[actor].stack = 25;
+    expect(controller.applyPlayerAction({ seatIndex: actor, action: "all-in" }).success).toBe(true);
+    expect(controller.state.currentBet).toBe(25);
+    expect(controller.state.players[actor].allIn).toBe(true);
+  });
+
+  it("does not consume the cap for an out-of-turn all-in", () => {
+    const controller = start();
+    const actor = (controller.state.currentActor + 1) % 3;
+    controller.state.players[actor].stack = 25;
+    const before = structuredClone(controller.state);
+    expect(controller.applyPlayerAction({ seatIndex: actor, action: "all-in" }).success).toBe(false);
+    expect(controller.state).toEqual(before);
+    expect(controller.raiseCountThisStreet).toBe(0);
+  });
+
+  it("allows a short all-in call even when betting is capped", () => {
+    const controller = start();
+    const actor = controller.state.currentActor;
+    const player = controller.state.players[actor];
+    player.stack = 10;
+    controller.raiseCountThisStreet = controller.raiseCap;
+    expect(controller.applyPlayerAction({ seatIndex: actor, action: "all-in" }).success).toBe(true);
+    expect(controller.state.currentBet).toBe(20);
+    expect(controller.raiseCountThisStreet).toBe(controller.raiseCap);
+    expect(player.allIn).toBe(true);
+  });
+
   it("does not consume the raise cap when rejecting a bet after betting opened", () => {
     const controller = start();
     const before = structuredClone(controller.state);

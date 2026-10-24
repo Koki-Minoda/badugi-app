@@ -23,6 +23,23 @@ export class FLO8GameController extends PLO8GameController {
 
   applyPlayerAction({ seatIndex, action, amount = 0 } = {}) {
     const actionName = String(action ?? "").toLowerCase();
+    if (actionName === "all-in") {
+      const player = this.state.players[seatIndex];
+      if (!player) return super.applyPlayerAction({ seatIndex, action, amount });
+      const toCall = Math.max(0, (this.state.currentBet ?? 0) - (player.betThisStreet ?? 0));
+      const raiseSize = (player.stack ?? 0) - toCall;
+      if (raiseSize > this.getLimitUnit()) {
+        return { success: false, reason: "All-in exceeds the fixed-limit betting unit" };
+      }
+      if (raiseSize > 0 && this.raiseCountThisStreet >= this.raiseCap) {
+        return { success: false, reason: "Fixed-limit betting is capped" };
+      }
+      const previousRaiseCount = this.raiseCountThisStreet;
+      if (raiseSize > 0) this.raiseCountThisStreet += 1;
+      const result = super.applyPlayerAction({ seatIndex, action, amount });
+      if (!result.success) this.raiseCountThisStreet = previousRaiseCount;
+      return result;
+    }
     if (actionName !== "bet" && actionName !== "raise") {
       return super.applyPlayerAction({ seatIndex, action, amount });
     }
@@ -34,9 +51,12 @@ export class FLO8GameController extends PLO8GameController {
       return { success: false, reason: "Player not found" };
     }
     const toCall = Math.max(0, (this.state.currentBet ?? 0) - (player.betThisStreet ?? 0));
-    const commit = Math.min(player.stack ?? 0, toCall + (amount > 0 ? amount : this.getLimitUnit()));
+    const commit = Math.min(player.stack ?? 0, toCall + this.getLimitUnit());
+    const previousRaiseCount = this.raiseCountThisStreet;
     this.raiseCountThisStreet += 1;
-    return super.applyPlayerAction({ seatIndex, action, amount: commit });
+    const result = super.applyPlayerAction({ seatIndex, action, amount: commit });
+    if (!result.success) this.raiseCountThisStreet = previousRaiseCount;
+    return result;
   }
 }
 

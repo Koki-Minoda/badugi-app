@@ -3,7 +3,7 @@ import {test, expect} from '@playwright/test';
 import {APP_URL, enterTitleIfPresent, selectGameVariantFromSelector} from './authHelper';
 import {clickHeroAction} from './helpers/clickHeroAction';
 
-for (const [variant, phases] of [['D01', ['BET','DRAW']], ['badacey_triple_draw', ['BET','DRAW']], ['nlh', ['BET']], ['ST1', ['BET']], ['dramaha_hi', ['BET','DRAW']]]) {
+for (const [variant, phases] of [['D03', ['BET','DRAW']], ['D01', ['BET','DRAW']], ['badacey_triple_draw', ['BET','DRAW']], ['nlh', ['BET']], ['ST1', ['BET']], ['dramaha_hi', ['BET','DRAW']]]) {
  test(`${variant}: persists request-scoped CPU decision evidence`, async ({page}, testInfo) => {
   test.setTimeout(120000);
   const rows = [], errors = [];

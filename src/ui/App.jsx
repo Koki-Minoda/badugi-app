@@ -190,7 +190,7 @@ import {
 } from "../ai/onnxPolicyAdapter.js";
 import {
   matchesPendingOnnxInference,
-  runOnnxInferenceWithDeadline,
+  runTracedOnnxInferenceWithDeadline,
 } from "../ai/onnxInferenceDeadline.js";
 import { buildBadugiObservationPayload } from "../rl/badugiObservationSchema.js";
 import { chooseProAction } from "../ai/pro/proDecisionOverlay.js";
@@ -3136,6 +3136,8 @@ export default function App() {
       });
       const onnxTier = activeAiTierConfig?.id;
       const shouldUseOnnx = onnxTier === "beginner" || onnxTier === "standard";
+      const drawDecisionStartedAt = Date.now();
+      let drawInferenceTrace = null;
       let onnxDrawDecision = null;
       let onnxDrawTimedOut = false;
       if (shouldUseOnnx) {
@@ -3173,14 +3175,15 @@ export default function App() {
           seatIndex: seatToAct,
           legalActions: drawLegalActions,
         });
-        const inferenceResult = await runOnnxInferenceWithDeadline(() =>
-          inferDrawDecisionWithOnnx({
+        const inferenceResult = await runTracedOnnxInferenceWithDeadline(
+          inferDrawDecisionWithOnnx, {
+            phase: "DRAW",
             variantId: "D03",
             tierId: onnxTier,
             characterId: me?.characterId ?? me?.cpuCharacterId ?? null,
             observation,
             legalActions: drawLegalActions,
-          }),
+          },
         );
         if (onnxInferencePendingRef.current === pendingInference) {
           onnxInferencePendingRef.current = null;
@@ -3188,6 +3191,7 @@ export default function App() {
         if (inferenceResult.error) {
           console.warn("[ONNX] draw inference failed before fallback", inferenceResult.error);
         }
+        drawInferenceTrace = inferenceResult.inferenceTrace;
         onnxDrawDecision = inferenceResult.decision;
         onnxDrawTimedOut = inferenceResult.timedOut;
         const liveSeat = playersRef.current?.[seatToAct];
@@ -3371,6 +3375,10 @@ export default function App() {
         drawIndexes: replacedCards.map((entry) => entry.index),
         drawRound,
         actionLabel: me.lastAction,
+        inferenceTrace: drawInferenceTrace ?? buildNonModelDecisionTrace({
+          variantId: "D03", tierId: onnxTier, phase: "DRAW",
+          reason: onnxTier === "pro" ? "pro-overlay" : "policy-router", startedAt: drawDecisionStartedAt,
+        }),
         decisionSource: aiDrawDecision?.source ?? "npcAutoDrawCount",
         tierId: aiDrawDecision?.tierId ?? activeAiTierConfig?.id,
         modelId: aiDrawDecision?.modelId ?? null,
@@ -12975,6 +12983,8 @@ export default function App() {
         });
         const onnxTier = activeAiTierConfig?.id;
         const shouldUseOnnx = onnxTier === "beginner" || onnxTier === "standard";
+        const betDecisionStartedAt = Date.now();
+        let betInferenceTrace = null;
         let onnxBetDecision = null;
         let onnxBetTimedOut = false;
         if (shouldUseOnnx) {
@@ -13015,15 +13025,16 @@ export default function App() {
             seatIndex: activeSeat,
             legalActions: onnxLegalActions,
           });
-          const inferenceResult = await runOnnxInferenceWithDeadline(() =>
-            inferBetActionWithOnnx({
+          const inferenceResult = await runTracedOnnxInferenceWithDeadline(
+            inferBetActionWithOnnx, {
+              phase: "BET",
               variantId: "D03",
               tierId: onnxTier,
               characterId: me?.characterId ?? me?.cpuCharacterId ?? null,
               observation,
               legalActions: onnxLegalActions,
               betSize,
-            }),
+            },
           );
           if (onnxInferencePendingRef.current === pendingInference) {
             onnxInferencePendingRef.current = null;
@@ -13031,6 +13042,7 @@ export default function App() {
           if (inferenceResult.error) {
             console.warn("[ONNX] bet inference failed before fallback", inferenceResult.error);
           }
+          betInferenceTrace = inferenceResult.inferenceTrace;
           onnxBetDecision = inferenceResult.decision;
           onnxBetTimedOut = inferenceResult.timedOut;
           const livePlayers = playersRef.current ?? [];
@@ -13134,6 +13146,10 @@ export default function App() {
           selectedAction: decisionAction,
           finalAction: decisionAction,
           __forceInstant: true,
+          inferenceTrace: betInferenceTrace ?? buildNonModelDecisionTrace({
+            variantId: "D03", tierId: onnxTier, phase: "BET",
+            reason: onnxTier === "pro" ? "pro-overlay" : "policy-router", startedAt: betDecisionStartedAt,
+          }),
           decisionSource: betDecision?.source ?? "policy-router",
           tierId: betDecision?.tierId ?? activeAiTierConfig?.id,
           modelId: betDecision?.modelId ?? null,

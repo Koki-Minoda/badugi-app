@@ -2,8 +2,9 @@ import {expect,test} from '@playwright/test';
 import {APP_URL,enterTitleIfPresent,selectGameVariantFromSelector} from './authHelper';
 import {waitForE2EDriver} from './helpers/gameProgressHelper.js';
 
-for(const size of [{width:1440,height:900},{width:393,height:695},{width:852,height:283}]) for(const blindAllIn of [false,true]){
- test(`settled all-in displays tournament result without a competing hand dialog at ${size.width}x${size.height} (blind all-in: ${blindAllIn})`,async({page})=>{
+for(const size of [{width:1440,height:900},{width:393,height:695},{width:852,height:283}]) for(const outcome of ['played','blind-all-in','hero-bust-fixture']){
+ const blindAllIn=outcome==='blind-all-in';
+ test(`settled all-in displays tournament result without a competing hand dialog at ${size.width}x${size.height} (${outcome})`,async({page},testInfo)=>{
   test.setTimeout(90000);const pageErrors=[];page.on('pageerror',error=>pageErrors.push(String(error)));
   await page.setViewportSize(size);
   await page.route('**/api/**',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({id:9001,username:'QA Hero',email:'qa@mgx-e2e.test'})}));
@@ -16,6 +17,12 @@ for(const size of [{width:1440,height:900},{width:393,height:695},{width:852,hei
    tables:1,seatsPerTable:6,totalPlayers:2,startingStack:blindAllIn?5:30,gameVariant:'nlh',gameRotation:['nlh'],rotationPolicy:'fixed',
    levels:[{levelIndex:1,smallBlind:5,bigBlind:10,ante:0,handsThisLevel:999}],payouts:[{place:1,percent:100}],
   }),blindAllIn);
+  if(outcome==='hero-bust-fixture'){
+   // Presentation coverage only; natural elimination is covered by the separate MTT gate.
+   await expect(page.getByTestId('tournament-hud')).toBeVisible();
+   await page.evaluate(()=>window.__BADUGI_E2E__.forceHeroBust());
+   await expect(page.getByTestId('mtt-hero-bust-overlay')).toBeVisible();
+  }
   // Drive legal all-ins through the controller; winners and payouts are evaluated normally.
   const terminal=page.locator('[data-testid=mtt-hero-bust-overlay],[data-testid=mtt-result-overlay]');
   for(let step=0;step<100;step++){
@@ -32,7 +39,16 @@ for(const size of [{width:1440,height:900},{width:393,height:695},{width:852,hei
   await expect(page.getByTestId('hand-result-overlay')).toHaveCount(0);
   const state=await page.evaluate(()=>window.__BADUGI_E2E__.getTournamentHudState());
   expect(state.isFinished).toBe(true);expect(state.playersRemaining).toBe(1);
-  await terminal.getByRole('button',{name:/back to menu/i}).click();
+  const back=terminal.getByRole('button',{name:/back to menu/i});
+  const exit=await back.evaluate(button=>{
+   const r=button.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
+   return {top:r.top,bottom:r.bottom,left:r.left,right:r.right,height:r.height,reachable:hit===button||button.contains(hit)};
+  });
+  expect(exit.top).toBeGreaterThanOrEqual(0);expect(exit.bottom).toBeLessThanOrEqual(size.height);
+  expect(exit.left).toBeGreaterThanOrEqual(0);expect(exit.right).toBeLessThanOrEqual(size.width);
+  expect(exit.height).toBeGreaterThanOrEqual(44);expect(exit.reachable).toBe(true);
+  await page.screenshot({path:testInfo.outputPath('terminal-before-scroll.png')});
+  await back.click();
   await expect(page.getByTestId('menu-ring')).toBeVisible();
   expect(pageErrors).toEqual([]);
  });

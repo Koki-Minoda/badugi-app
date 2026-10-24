@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from rl.env.badugi_env import evaluate_badugi
+from rl.env.badugi_env import compare_badugi_scores, evaluate_badugi
 
 
 def best_badugi_keep(hand: list) -> list:
@@ -15,9 +15,7 @@ def best_badugi_keep(hand: list) -> list:
         if not subset:
             continue
         count, ranks = evaluate_badugi(subset)
-        if count > best_count or (
-            count == best_count and sum(sorted(ranks)) < sum(sorted(best_ranks))
-        ):
+        if count == len(subset) and compare_badugi_scores((count, ranks), (best_count, best_ranks)) > 0:
             best_count, best_ranks, best_keep = count, ranks, subset
     return best_keep
 

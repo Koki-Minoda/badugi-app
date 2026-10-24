@@ -61,7 +61,7 @@ test.describe("Badugi full-round pot regression", () => {
     let minActivePot = Number.POSITIVE_INFINITY;
 
     while (Date.now() < deadline) {
-      if (await page.locator("text=Hand Result").first().isVisible().catch(() => false)) {
+      if (await page.getByTestId("hand-result-overlay").first().isVisible().catch(() => false)) {
         break;
       }
       const state = await getPhaseState(page);
@@ -102,7 +102,7 @@ test.describe("Badugi full-round pot regression", () => {
       await page.waitForTimeout(120);
     }
 
-    await expect(page.locator("text=Hand Result").first()).toBeVisible({ timeout: 1000 });
+    await expect(page.getByTestId("hand-result-overlay").first()).toBeVisible({ timeout: 1000 });
     expect(observedPostDrawBet).toBe(true);
     expect(minActivePot).toBeGreaterThan(0);
   });

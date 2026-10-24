@@ -1,3 +1,4 @@
+import { resolveDrawContributionPots } from "./drawContributionPots.js";
 import { evaluateBadugiHand } from "../evaluators/badugi.js";
 import { evaluateHighHand } from "../evaluators/high.js";
 import { evaluateLowHand, formatLowHandLabel } from "../evaluators/low.js";
@@ -319,6 +320,7 @@ export class SpecialDrawEngine extends DeuceToSevenTripleDrawEngine {
       }
     }
 
+    working.pots = resolveDrawContributionPots(working.players, working.pots);
     const components = this.specialConfig.split.components;
     const evaluations = working.players.map((player, seatIndex) => {
       if (!player || player.folded || player.sittingOut) return null;

@@ -80,7 +80,7 @@ def _best_badugi_keep(hand: list) -> list:
         if not subset:
             continue
         c, r = evaluate_badugi(subset)
-        if c > best_count or (c == best_count and sum(sorted(r)) < sum(sorted(best_ranks))):
+        if c == len(subset) and compare_badugi_scores((c, r), (best_count, best_ranks)) > 0:
             best_count, best_ranks, best_keep = c, r, subset
     return best_keep
 

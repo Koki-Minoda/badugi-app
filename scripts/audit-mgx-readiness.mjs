@@ -89,7 +89,7 @@ for(const variant of GAME_VARIANTS) {
   for(const tier of tiers) {
     const selected=resolveTierModelInfo({variantId:variant.id,tierId:tier});
     const entry=registry.find(model=>model.id===selected?.modelId);
-    const adapterEntry=selectModelForVariant({variantId:variant.id,tierId:tier});
+    const adapterEntry=selectModelForVariant({variantId:variant.id,tierId:tier,requireVariantMatch:true});
     rows.push({
       variantId:variant.id,name:variant.name,engineKey:variant.engineKey,category:variant.category,
       betting:variant.betting,drawRounds:variant.drawRounds,tier,
@@ -104,7 +104,7 @@ for(const variant of GAME_VARIANTS) {
       selectionSource:'src/ai/tierManager.js:resolveTierModelInfo (not proof of controller use)',
       controllerPolicyDeclaration:controllerPolicyDeclaration(variant),
       onnxAdapterSelection:{
-        source:'src/ai/modelRouter.js:selectModelForVariant; used by onnxPolicyAdapter when called',
+        source:'src/ai/modelRouter.js:selectModelForVariant(requireVariantMatch=true); used by onnxPolicyAdapter when called',
         modelId:adapterEntry?.id??null,variantMatches:adapterEntry?.variantIds?.includes(variant.id)??false,
         tierMatches:adapterEntry?.tier===tier,trainingStatus:adapterEntry?.trainingStatus??null,
         asset:await auditAsset(adapterEntry),

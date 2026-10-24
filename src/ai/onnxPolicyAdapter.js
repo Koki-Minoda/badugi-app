@@ -312,6 +312,7 @@ function inferenceReporter(payload, phase) {
 export async function inferBetActionWithOnnx(payload) {
   const report = inferenceReporter(payload, "BET");
   const entry = selectModelForVariant({
+    requireVariantMatch: true,
     variantId: payload.variantId,
     tierId: payload.tierId,
     characterId: payload.characterId,
@@ -348,6 +349,7 @@ export async function inferBetActionWithOnnx(payload) {
 export async function inferDrawDecisionWithOnnx(payload) {
   const report = inferenceReporter(payload, "DRAW");
   const entry = selectModelForVariant({
+    requireVariantMatch: true,
     variantId: payload.variantId,
     tierId: payload.tierId,
     characterId: payload.characterId,

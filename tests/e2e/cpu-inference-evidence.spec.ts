@@ -2,9 +2,14 @@ import {writeFile} from 'node:fs/promises';
 import {test, expect} from '@playwright/test';
 import {APP_URL, enterTitleIfPresent, selectGameVariantFromSelector} from './authHelper';
 import {clickHeroAction} from './helpers/clickHeroAction';
+import {GAME_VARIANTS} from '../../src/games/config/variantCatalog.js';
 
-for (const [variant, phases] of [['D03', ['BET','DRAW']], ['D01', ['BET','DRAW']], ['badacey_triple_draw', ['BET','DRAW']], ['nlh', ['BET']], ['ST1', ['BET']], ['dramaha_hi', ['BET','DRAW']]]) {
- test(`${variant}: persists request-scoped CPU decision evidence`, async ({page}, testInfo) => {
+const tiers = (process.env.MGX_EVIDENCE_TIERS ?? 'standard').split(',');
+const cases = process.env.MGX_EVIDENCE_ALL === '1'
+ ? GAME_VARIANTS.filter(v=>v.category!=='chinese').map(v=>[v.engineKey ?? v.id, ['triple-draw','single-draw','dramaha'].includes(v.category) ? ['BET','DRAW'] : ['BET']])
+ : [['D03', ['BET','DRAW']], ['D01', ['BET','DRAW']], ['badacey_triple_draw', ['BET','DRAW']], ['nlh', ['BET']], ['ST1', ['BET']], ['dramaha_hi', ['BET','DRAW']]];
+for (const tier of tiers) for (const [variant, phases] of cases) {
+ test(`${variant}: ${tier} persists request-scoped CPU decision evidence`, async ({page}, testInfo) => {
   test.setTimeout(120000);
   const rows = [], errors = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -17,10 +22,11 @@ for (const [variant, phases] of [['D03', ['BET','DRAW']], ['D01', ['BET','DRAW']
    } catch { /* Ignore unrelated diagnostic formatting. */ }
   });
   await page.route('**/api/**', route => route.fulfill({status:200, contentType:'application/json', body:JSON.stringify({id:9001, username:'QA Hero'})}));
-  await page.addInitScript(() => {
+  await page.addInitScript((tier) => {
    localStorage.setItem('mgx_auth', JSON.stringify({accessToken:'test', user:{id:9001,username:'QA Hero'},isAuthenticated:true}));
    localStorage.setItem('mgx.previewVariants','true');
-  });
+   localStorage.setItem('dev.aiTierOverride',tier);
+  }, tier);
   await page.goto(APP_URL); await enterTitleIfPresent(page); await page.getByTestId('menu-ring').click();
   await selectGameVariantFromSelector(page, variant);
   const deadline = Date.now() + 100000;
@@ -33,12 +39,13 @@ for (const [variant, phases] of [['D03', ['BET','DRAW']], ['D01', ['BET','DRAW']
    }
    await page.waitForTimeout(100);
   }
-  const evidence = JSON.stringify({variant, rows, errors, apiStubbed:true}, null, 2);
+  const evidence = JSON.stringify({variant, tier, rows, errors, apiStubbed:true}, null, 2);
   await writeFile(testInfo.outputPath('inference-evidence.json'), evidence);
   await testInfo.attach('inference-evidence', {body:evidence,contentType:'application/json'});
   for (const phase of phases) expect(rows.some(row => row.phase === phase)).toBe(true);
   if (['nlh','ST1','dramaha_hi'].includes(variant)) expect(rows.every(row => row.status === 'not-connected' && ['automatic-check-call','default-stand-pat'].includes(row.reason))).toBe(true);
   for (const row of rows) {
+   expect(row.tierId).toBe(tier);
    expect(row.elapsedMs).toBeGreaterThanOrEqual(0);
    if (row.status === 'used') expect(row.usedModelId).toBe(row.selectedModelId);
    else { expect(row.usedModelId).toBeNull(); expect(row.reason).toBeTruthy(); }

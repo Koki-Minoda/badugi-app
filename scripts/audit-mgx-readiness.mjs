@@ -14,8 +14,20 @@ import { TOURNAMENT_VARIANTS } from '../src/config/tournamentUnlocks.js';
 import { DEFAULT_DEALER_CHOICE_POOL } from '../src/ui/dealersChoice/dealerChoiceManager.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const {values} = parseArgs({options:{output:{type:'string'}}});
+const {values} = parseArgs({options:{output:{type:'string'},'runtime-evidence':{type:'string'}}});
 const git = args => execFileSync('git', args, {cwd:root,encoding:'utf8'}).trim();
+const runtimeReport=values['runtime-evidence'] ? JSON.parse(await readFile(values['runtime-evidence'],'utf8')) : null;
+const runtimeRows=new Map();
+if(runtimeReport) {
+  if(!/^[a-f0-9]{40}$/.test(runtimeReport.sourceCommit??'') || !Array.isArray(runtimeReport.rows)) throw Error('Invalid runtime evidence report');
+  if(git(['diff','--name-only',runtimeReport.sourceCommit,'HEAD','--','src','public','package.json','package-lock.json'])) throw Error('Runtime differs from inference evidence source');
+  if(git(['status','--porcelain','--','src','public','package.json','package-lock.json'])) throw Error('Uncommitted runtime changes prevent evidence attribution');
+  for(const row of runtimeReport.rows) {
+    const key=`${row.variantId}:${row.tier}`;
+    if(runtimeRows.has(key)) throw Error(`Duplicate runtime evidence: ${key}`);
+    runtimeRows.set(key,row);
+  }
+}
 const assetCache = new Map();
 async function auditAsset(entry) {
   if (!entry?.onnx) return {status:'not-declared'};
@@ -97,7 +109,9 @@ for(const variant of GAME_VARIANTS) {
         tierMatches:adapterEntry?.tier===tier,trainingStatus:adapterEntry?.trainingStatus??null,
         asset:await auditAsset(adapterEntry),
       },
-      runtimeUsage:'not-observed-by-this-inventory',modeDeclarations:modeDeclarations(variant),supportedModes:'runtime-acceptance-requires-evidence',
+      runtimeUsage:runtimeRows.has(`${variant.id}:${tier}`)?'local-browser-sample':variant.category==='chinese'?'no-tier-selector-placement-policy':'not-observed-by-this-inventory',
+      runtimeEvidence:runtimeRows.get(`${variant.id}:${tier}`)??null,
+      modeDeclarations:modeDeclarations(variant),supportedModes:'runtime-acceptance-requires-evidence',
       strengthEvidence:'not-verified-by-this-inventory',physicalQA:'not-verified-by-this-inventory',
       promotionEvidenceVerified:false,
     });
@@ -113,7 +127,8 @@ const selectionSummary={
 };
 const report={selectionSummary,generatedAt:new Date().toISOString(),sourceCommit:git(['rev-parse','HEAD']),
   trackedChanges:git(['status','--porcelain','--untracked-files=no']),
-  scope:'Source registry and local assets only. Model selection does not prove inference, strength, or release completion.',
+  scope:'Source registry, local assets and optional attributed browser samples. Inference does not prove semantic compatibility, strength, physical QA or release completion.',
+  runtimeEvidenceSource:runtimeReport?{file:resolve(values['runtime-evidence']),sourceCommit:runtimeReport.sourceCommit,observedGoalRows:goalRows.filter(row=>row.runtimeEvidence).length}:null,
   variantCount:GAME_VARIANTS.length,roadmapTiers:goalTiers,configuredTiers,rowCount:rows.length,
   roadmapRowCount:rows.filter(row=>row.roadmapTier).length,
   productionRequiredAssets:await Promise.all(registry.filter(model=>model.productionRequired).map(async model=>({modelId:model.id,...await auditAsset(model)}))),rows};

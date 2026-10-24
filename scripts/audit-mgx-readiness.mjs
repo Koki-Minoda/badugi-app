@@ -62,9 +62,9 @@ function modeDeclarations(variant) {
 function controllerPolicyDeclaration(variant) {
   if(variant.id==='D03') return {paths:['src/ui/App.jsx','src/games/badugi/controller/BadugiGameController.js'],kind:'tier-dependent ONNX / rule policy; actual action route requires telemetry'};
   if(['triple-draw','single-draw'].includes(variant.category)) return {paths:['src/games/draw/DeuceToSevenTripleDrawController.js','src/ai/onnxPolicyAdapter.js'],kind:'async ONNX attempt with heuristic fallback; successful inference not established by registry'};
-  if(variant.category==='dramaha') return {paths:['src/games/dramaha/DramahaGameController.js','src/games/nlh/NLHGameController.js','src/ui/App.jsx'],kind:'BET uses inherited teacher policy; DRAW falls back to stand-pat when no session CPU policy is available; learned policy not confirmed'};
-  if(variant.category==='board') return {paths:['src/games/nlh/NLHGameController.js'],kind:'controller teacher policy; registry asset does not establish ONNX connection'};
-  if(variant.category==='stud') return {paths:['src/games/stud/StudGameController.js'],kind:'controller teacher policy; registry asset does not establish ONNX connection'};
+  if(variant.category==='dramaha') return {paths:['src/games/dramaha/DramahaGameController.js','src/games/nlh/NLHGameController.js','src/ui/App.jsx'],kind:'App BET uses automatic check/call; inherited teacher method is not called by that route. DRAW falls back to stand-pat without a session policy; learned policy not confirmed'};
+  if(variant.category==='board') return {paths:['src/ui/App.jsx','src/games/nlh/NLHGameController.js'],kind:'App BET uses automatic check/call; controller teacher method exists but is not called by that route; ONNX not connected'};
+  if(variant.category==='stud') return {paths:['src/ui/App.jsx','src/games/stud/StudGameController.js'],kind:'App BET uses automatic check/call; controller teacher method exists but is not called by that route; ONNX not connected'};
   if(variant.id==='CP1') return {paths:['src/games/chinese/ChinesePokerController.js'],kind:'arrangement search; no learned placement policy confirmed'};
   if(variant.id==='CP2') return {paths:['src/games/chinese/OpenFaceChineseController.js'],kind:'placement heuristic; no learned placement policy confirmed'};
   return {paths:[],kind:'requires-source-audit'};

@@ -228,7 +228,7 @@ def discard_indexes_for_family(hand: Sequence[Card], family: DrawFamily, target_
             extras = [index for index in range(len(hand)) if index not in discards]
             extras.sort(key=lambda index: (hand[index][0] if family == "low-27" else (1 if hand[index][0] == 14 else hand[index][0])), reverse=True)
             discards.extend(extras[: target_count - len(discards)])
-    if features.category == 0 and features.highest_rank <= (7 if family == "low-27" else 5):
+    if target_count is None and features.category == 0 and features.highest_rank <= (7 if family == "low-27" else 5):
         return []
     return sorted(discards)
 

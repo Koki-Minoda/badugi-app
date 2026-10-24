@@ -32,6 +32,16 @@ describe("ShowdownResultToast", () => {
     expect(screen.getByTestId("showdown-result-toast").textContent).toContain("CPU 4");
   });
 
+  it("distinguishes two halves won by the same player in the same source pot", () => {
+    const summary = { pot: 100, potDetails: [
+      { potIndex: 0, component: "badugi", potAmount: 50, winners: [{ name: "Mina" }] },
+      { potIndex: 0, component: "low27", potAmount: 50, winners: [{ name: "Mina" }] },
+    ] };
+    const items = buildShowdownToastItems(summary);
+    expect(new Set(items.map(item => item.key)).size).toBe(2);
+    expect(items.map(item => item.label)).toEqual(["Pot · Badugi half", "Pot · 2-7 Low half"]);
+  });
+
   it("does not render without winners", () => {
     render(<ShowdownResultToast visible summary={{ pot: 0, winners: [] }} />);
     expect(screen.queryByTestId("showdown-result-toast")).toBeNull();

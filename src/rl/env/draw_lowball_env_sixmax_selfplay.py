@@ -278,7 +278,8 @@ class SixMaxDrawLowballEnv:
         self.draw_round += 1
         self.phase = "BET"
         self.raise_count = 0
-        self.current_bet = self._bet_size()
+        # No opening bet exists until an actor actually posts it.
+        self.current_bet = 0
         for player in self.players:
             player["bet"] = 0
         self.bet_round_idx = self.draw_round

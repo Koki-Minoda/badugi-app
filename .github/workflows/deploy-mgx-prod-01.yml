@@ -230,7 +230,7 @@ jobs:
       - run: npm ci --legacy-peer-deps
       - run: python -m pip install -e './backend[test]'
       - run: npx playwright install --with-deps chromium
-      - name: Real-button Badugi cash playability through blind increase
+      - name: Real-button cash playability and fixed-limit opening bets
         env:
           MGX_CASH_QA: "1"
           MGX_CASH_DESKTOP_HANDS: "16"
@@ -238,6 +238,7 @@ jobs:
         run: |
           bash scripts/ci/run-with-backend.sh npx playwright test \
             tests/e2e/production-cash-playability.spec.ts \
+            tests/e2e/fixed-limit-opening-bet.spec.ts \
             --project=badugi-flow \
             --workers=1
       - name: Upload Badugi cash playability evidence

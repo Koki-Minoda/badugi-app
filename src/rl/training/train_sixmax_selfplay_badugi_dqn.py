@@ -40,6 +40,7 @@ SRC_ROOT = PROJECT_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
+from rl.training.source_provenance import (capture_training_source, assert_training_source_unchanged, write_training_manifest, manifest_checkpoint_reference)
 from rl.agents.dqn_agent import DQNAgent, DQNHyperParams
 from rl.env.badugi_env import BadugiEnv
 from rl.env.badugi_env_sixmax_profiled import ProfiledSixMaxBadugiEnv
@@ -206,6 +207,7 @@ def _write_run_manifest(cfg: SixMaxSelfPlayConfig, output_dir: Path) -> Path:
         "schemaVersion": "badugi-sixmax-training-run-v1",
         "generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "gitCommit": _git_commit(),
+        "sourceProvenance": capture_training_source(PROJECT_ROOT),
         "platform": platform.platform(),
         "python": platform.python_version(),
         "torch": torch.__version__,
@@ -232,9 +234,7 @@ def _write_run_manifest(cfg: SixMaxSelfPlayConfig, output_dir: Path) -> Path:
             ),
         },
     }
-    path = output_dir / "badugi_sixmax_run_manifest.json"
-    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf8")
-    return path
+    return write_training_manifest(output_dir, "badugi_sixmax_run_manifest", payload)
 
 
 def _build_profile_envs(cfg: SixMaxSelfPlayConfig) -> tuple[ProfiledSixMaxBadugiEnv, ...]:
@@ -591,6 +591,8 @@ def train_sixmax_selfplay_badugi_dqn(
     output_dir = Path(cfg.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = _write_run_manifest(cfg, output_dir)
+    run_provenance = manifest_checkpoint_reference(manifest_path)
+    source_provenance = json.loads(manifest_path.read_text(encoding="utf8"))["sourceProvenance"]
 
     # pretrained があれば checkpoint の hidden_dim を自動検出してロード
     # なければ cfg.hidden_dim でフレッシュスタート
@@ -895,7 +897,9 @@ def train_sixmax_selfplay_badugi_dqn(
         if cfg.save_interval > 0 and episode % cfg.save_interval == 0:
             ts = time.strftime("%Y%m%d-%H%M%S")
             ckpt = output_dir / f"badugi_sixmax_dqn_{episode:07d}_{ts}.pt"
+            assert_training_source_unchanged(PROJECT_ROOT, source_provenance)
             checkpoint_state = {
+                "run_provenance": run_provenance,
                 "completed_episodes": completed_episodes_before + episode,
                 "global_step": global_step,
                 "opponent_updates": opponent_updates,
@@ -935,13 +939,17 @@ def train_sixmax_selfplay_badugi_dqn(
                 opponent_updates=opponent_updates,
                 latest=latest,
             )
+            summary["run_provenance"] = run_provenance
+            summary["run_manifest"] = str(manifest_path)
             (output_dir / "badugi_sixmax_dqn_latest_summary.json").write_text(
                 json.dumps(summary, indent=2) + "\n", encoding="utf8"
             )
             print(f"[6max-SelfPlay] Saved → {ckpt} | pos_avgs={pos_avg} pos_name_avgs={pos_name_avg}")
 
     latest = output_dir / "badugi_sixmax_dqn_latest.pt"
+    assert_training_source_unchanged(PROJECT_ROOT, source_provenance)
     final_training_state = {
+        "run_provenance": run_provenance,
         "completed_episodes": completed_episodes_before + cfg.total_episodes,
         "global_step": global_step,
         "opponent_updates": opponent_updates,
@@ -973,6 +981,7 @@ def train_sixmax_selfplay_badugi_dqn(
     summary["optimizer_restored"] = bool(hero.checkpoint_has_optimizer)
     summary["replay_buffers_restored"] = False
     summary["seed"] = cfg.seed
+    summary["run_provenance"] = run_provenance
     summary["run_manifest"] = str(manifest_path)
     (output_dir / "badugi_sixmax_dqn_latest_summary.json").write_text(
         json.dumps(summary, indent=2) + "\n", encoding="utf8"

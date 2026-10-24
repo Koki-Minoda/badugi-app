@@ -16,7 +16,9 @@ import random
 import sys
 import time
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
+import platform
 from pathlib import Path
 
 import numpy as np
@@ -29,6 +31,7 @@ SRC_ROOT = PROJECT_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
+from rl.training.source_provenance import (capture_training_source, assert_training_source_unchanged, write_training_manifest, manifest_checkpoint_reference)
 from rl.agents.dqn_agent import DQNHyperParams, QNetwork
 from rl.env.draw_lowball_env_sixmax_selfplay import (
     BET,
@@ -308,6 +311,7 @@ class _LazyDQNAgent:
                 "obs_dim": self.obs_dim,
                 "n_actions": self.n_actions,
                 "hidden_dim": hidden_dim,
+                "training_state": {"run_provenance": getattr(self, "run_provenance", None)},
             },
             path,
         )
@@ -343,6 +347,16 @@ def _summary_path(output_dir: Path, variant_id: str) -> Path:
     return output_dir / f"draw_lowball_sixmax_{variant_id}_dqn_latest_summary.json"
 
 
+def _write_run_manifest(cfg: DrawLowballSixMaxConfig, output_dir: Path) -> Path:
+    return write_training_manifest(output_dir, f"draw_lowball_sixmax_{cfg.variant_id}_run_manifest", {
+        "schemaVersion": "draw-lowball-sixmax-training-run-v1",
+        "generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "platform": platform.platform(), "python": platform.python_version(),
+        "torch": torch.__version__, "config": asdict(cfg),
+        "sourceProvenance": capture_training_source(PROJECT_ROOT),
+    })
+
+
 def train_draw_lowball_sixmax_dqn(
     cfg: DrawLowballSixMaxConfig | None = None,
     device: str | torch.device = "cpu",
@@ -354,6 +368,9 @@ def train_draw_lowball_sixmax_dqn(
 
     output_dir = Path(cfg.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    manifest_path = _write_run_manifest(cfg, output_dir)
+    run_provenance = manifest_checkpoint_reference(manifest_path)
+    source_provenance = json.loads(manifest_path.read_text(encoding="utf8"))["sourceProvenance"]
 
     hero = _build_agent(
         device=device,
@@ -361,6 +378,7 @@ def train_draw_lowball_sixmax_dqn(
         learning_rate=cfg.learning_rate,
         batch_size=cfg.batch_size,
     )
+    hero.run_provenance = run_provenance
     opp = _build_agent(
         device=device,
         hidden_dim=cfg.hidden_dim,
@@ -608,10 +626,12 @@ def train_draw_lowball_sixmax_dqn(
 
         if cfg.checkpoint_every > 0 and episode % cfg.checkpoint_every == 0:
             ckpt = _checkpoint_name(output_dir, cfg.variant_id, episode)
+            assert_training_source_unchanged(PROJECT_ROOT, source_provenance)
             _atomic_save_agent(hero, ckpt)
             last_checkpoint = ckpt
             print(f"[DrawLowball6max] checkpoint={ckpt}")
 
+    assert_training_source_unchanged(PROJECT_ROOT, source_provenance)
     if last_checkpoint is None:
         last_checkpoint = _checkpoint_name(output_dir, cfg.variant_id, cfg.total_episodes)
         _atomic_save_agent(hero, last_checkpoint)
@@ -620,6 +640,8 @@ def train_draw_lowball_sixmax_dqn(
     _atomic_save_agent(hero, latest)
 
     summary = {
+        "run_manifest": str(manifest_path),
+        "run_provenance": run_provenance,
         "variantId": cfg.variant_id,
         "family": family,
         "maxDraws": int(max_draws),

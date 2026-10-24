@@ -3,7 +3,7 @@ from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
@@ -16,7 +16,10 @@ from ..core.security import (
 )
 from ..core.db import get_db
 from ..dependencies.auth import get_current_user
-from ..models import PlayFeedbackResult, TournamentSnapshot, User
+from ..models import (
+    PlayFeedbackResult, TournamentSnapshot, User,
+    HandLog, HandAction, HandResult, BadugiHandAction,
+)
 from ..schemas.user import UserPublic
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -107,6 +110,13 @@ async def delete_account(
     response.headers["Pragma"] = "no-cache"
     user_id = await run_in_threadpool(_delete_account_data, payload, current_user, db)
 
+    # Only purge caches after the database transaction commits successfully.
+    from .history import purge_owner_history
+    from .badugi_log import purge_owner_recent_logs
+
+    purge_owner_history(user_id)
+    purge_owner_recent_logs(user_id)
+
     # Import lazily to avoid coupling authentication module initialization to
     # the P2P router. The database deletion remains authoritative even if no
     # process-local room exists.
@@ -142,6 +152,19 @@ def _delete_account_data(payload, current_user, db):
         db.execute(
             delete(PlayFeedbackResult).where(PlayFeedbackResult.user_id == user_id),
         )
+        owned_hands = select(HandLog.id).where(
+            HandLog.metadata_json["_owner_user_id"].as_integer() == user_id,
+        )
+        # Delete children explicitly, including on SQLite connections without
+        # foreign-key enforcement. Never infer ownership for legacy records.
+        db.execute(delete(HandAction).where(HandAction.hand_log_id.in_(owned_hands)))
+        db.execute(delete(HandResult).where(HandResult.hand_log_id.in_(owned_hands)))
+        db.execute(delete(HandLog).where(
+            HandLog.metadata_json["_owner_user_id"].as_integer() == user_id,
+        ))
+        db.execute(delete(BadugiHandAction).where(
+            BadugiHandAction.metadata_json["_owner_user_id"].as_integer() == user_id,
+        ))
         db.delete(current_user)
         db.commit()
     except SQLAlchemyError as exc:

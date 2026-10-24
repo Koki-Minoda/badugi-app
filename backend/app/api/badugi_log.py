@@ -63,6 +63,16 @@ def _reset_recent_logs() -> None:
     _recent_logs.clear()
 
 
+def purge_owner_recent_logs(owner_id: int) -> None:
+    """Preserve other owners when clearing a deleted account's fallback cache."""
+    for entry in list(_recent_logs):
+        if entry[0] == owner_id:
+            try:
+                _recent_logs.remove(entry)
+            except ValueError:
+                pass  # The bounded deque may already have evicted this entry.
+
+
 @router.post("/badugi/hands", response_model=BadugiHandLogResponse)
 def create_hand_log(payload: BadugiHandLogCreate, user: User = Depends(get_current_user)) -> BadugiHandLogResponse:
     try:

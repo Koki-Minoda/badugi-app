@@ -315,6 +315,7 @@ import {
   cloneHandHistory,
   deriveHeroOutcome,
   formatHandIdentifier,
+  resolveHandStartingStack,
 } from "./app/historySupport.js";
 import {
   buildTournamentPlacements,
@@ -7755,13 +7756,7 @@ export default function App() {
           seat,
           name: player.name,
           isHero: Boolean(player.isHero) || seat === 0,
-          startStack: Math.max(
-            Number.isFinite(handStartingStacksById?.[seat])
-              ? handStartingStacksById[seat]
-              : 0,
-            Math.max(0, Number(player.stack) || 0) +
-              Math.max(0, Number(player.totalInvested ?? player.betThisRound) || 0),
-          ),
+          startStack: resolveHandStartingStack(player, handStartingStacksById?.[seat]),
           initialHand: Array.isArray(player.hand) ? [...player.hand] : [],
         })),
         startedAt: Date.now(),
@@ -7784,13 +7779,7 @@ export default function App() {
         bbSeat: typeof bbIdx === "number" ? bbIdx : null,
         seatsSnapshot: newPlayers,
         startingStacksSnapshot: newPlayers.map((player, seat) =>
-          Math.max(
-            Number.isFinite(handStartingStacksById?.[seat])
-              ? handStartingStacksById[seat]
-              : 0,
-            Math.max(0, Number(player?.stack) || 0) +
-              Math.max(0, Number(player?.totalInvested ?? player?.betThisRound) || 0),
-          ),
+          resolveHandStartingStack(player, handStartingStacksById?.[seat]),
         ),
       });
 

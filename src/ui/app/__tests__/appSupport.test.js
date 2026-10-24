@@ -10,7 +10,7 @@ import {
   normalizeControllerLegalActionType,
   rotateSeatBlueprint,
 } from "../gameProgressSupport.js";
-import { cloneHandHistory, deriveHeroOutcome, formatHandIdentifier } from "../historySupport.js";
+import { cloneHandHistory, deriveHeroOutcome, formatHandIdentifier, resolveHandStartingStack } from "../historySupport.js";
 import {
   buildTournamentPlacements,
   isSettledTournamentHand,
@@ -107,5 +107,16 @@ describe("settled tournament recovery boundary", () => {
     expect(isSettledTournamentHand({ ...active, isFinished: true })).toBe(true);
     expect(isSettledTournamentHand({ ...active, handId: null, completedHandId: null })).toBe(false);
     expect(isSettledTournamentHand({ ...active, mode: "cash", isFinished: true })).toBe(false);
+  });
+});
+
+
+describe("hand history starting stacks", () => {
+  it("keeps known pre-hand chips even when the board settles during deal", () => {
+    expect(resolveHandStartingStack({ stack: 10, totalInvested: 5 }, 5)).toBe(5);
+    expect(resolveHandStartingStack({ stack: 0, totalInvested: 5 }, 5)).toBe(5);
+    expect(resolveHandStartingStack({ stack: 10, totalInvested: 5 }, 0)).toBe(0);
+    expect(resolveHandStartingStack({ stack: 490, totalInvested: 10 })).toBe(500);
+    expect(resolveHandStartingStack({ stack: 480, betThisRound: 20 })).toBe(500);
   });
 });

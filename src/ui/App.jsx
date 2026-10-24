@@ -3024,7 +3024,8 @@ export default function App() {
           }
         : null;
       if (!me) return false;
-      if (isSingleTableControllerDrawGame) {
+      // MTT draw tables share the controller's deck, just like hero draws.
+      if (isDrawLowballControllerGame || isSingleTableDramaha) {
         const controller = sessionControllerRef.current;
         const controllerState = sessionControllerStateRef.current;
         const cpuAction =
@@ -3102,18 +3103,16 @@ export default function App() {
           helpers.syncLegacyFromControllerSnapshot(controllerOutcome.snapshot);
           return true;
         }
-        if (
-          controllerOutcome?.rejected &&
-          process.env.NODE_ENV !== "production"
-        ) {
-          console.warn(
-            "[CTRL][DRAW] CPU controller draw rejected; using legacy draw fallback",
+        if (controllerOutcome?.rejected) {
+          if (process.env.NODE_ENV !== "production") console.warn(
+            "[CTRL][DRAW] CPU controller draw rejected",
             {
               seat: seatToAct,
               code: controllerOutcome.code ?? null,
               message: controllerOutcome.message ?? "draw rejected",
             },
           );
+          return false;
         }
       }
       const deckManager = helpers.getDeckManager();
@@ -3520,7 +3519,8 @@ export default function App() {
     lastAggressor,
     getAiDecisionContextForActor,
     activeAiTierConfig,
-    isSingleTableControllerDrawGame,
+    isDrawLowballControllerGame,
+    isSingleTableDramaha,
     controllerTurn,
     tryControllerBetAction,
   ]);

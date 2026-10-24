@@ -92,10 +92,15 @@ def _draw_toward_badugi(hand: list, draw_count: int, deck: list) -> tuple[list, 
         return hand, []
     keep = _best_badugi_keep(hand)
     # Cards not in keep are candidates for discard (worst first)
+    if len(deck) < draw_count:
+        raise ValueError("Insufficient deck for the requested Badugi draw")
     discard_cands = [c for c in hand if c not in keep]
+    # A legal action can intentionally break a made hand. Fill the requested
+    # count with the highest kept cards rather than adding extra cards.
+    discard_cands.extend(sorted(keep, reverse=True))
     discarded = discard_cands[:draw_count]
     kept = [c for c in hand if c not in discarded]
-    new_cards = [deck.pop() for _ in range(min(draw_count, len(deck)))]
+    new_cards = [deck.pop() for _ in range(draw_count)]
     return kept + new_cards, discarded
 
 

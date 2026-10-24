@@ -39,9 +39,9 @@ def test_ten_game_beginner_standard_routes_are_explicit_and_safe():
     badugi_standard = next(tier for tier in badugi["tiers"] if tier["tier"] == "standard")
 
     assert badugi_beginner["routeStatus"] == "variant-model"
-    assert badugi_beginner["modelId"] == "model-badugi-hu-beginner-dqn-100000"
+    assert badugi_beginner["modelId"] == "model-badugi-sixmax-standard-dqn-v2"
     assert badugi_beginner["fallbackAllowed"] is False
-    assert badugi_standard["modelId"] == "model-badugi-sixmax-standard-1m"
+    assert badugi_standard["modelId"] == "model-badugi-sixmax-standard-e11"
 
     for row in plan["variants"]:
         if row["variantId"] == "D03":
@@ -50,3 +50,16 @@ def test_ten_game_beginner_standard_routes_are_explicit_and_safe():
             assert tier["routeStatus"] == "variant-model"
             assert tier["assetExists"] is True
             assert tier["shapeMatchesFamily"] is True
+
+
+def test_static_assets_cannot_approve_long_training():
+    plan = build_variant_plan(short_episodes=200)
+    assert plan['summary']['routeOk'] == plan['summary']['tierRoutes']
+    assert plan['summary']['longRlReady'] is False
+    assert plan['assessmentScope'] == 'static-registry-assets-and-dimensions'
+    assert set(plan['longRlEvidenceRequired']) == {
+        'game-semantics-and-reward-parity',
+        'runtime-observation-and-action-parity',
+        'preregistered-evaluation-and-stop-conditions',
+        'approved-storage-and-single-job-budget',
+    }

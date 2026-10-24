@@ -242,9 +242,9 @@ def test_account_deletion_removes_only_owned_history_and_caches(monkeypatch, out
             for model in [HandAction, HandResult, BadugiHandAction]:
                 assert len(list(session.scalars(select(model)))) == (2 if outcome=='success' else 3)
         assert any(key[1]=='other-owned' for key in history._history_hands)
-        assert any(payload.hand_id=='other-owned' for _,payload in badugi_log._recent_logs)
+        assert any(payload.hand_id=='other-owned' for _,payload,_ in badugi_log._recent_logs)
         assert any(key[0]==owner_id for key in history._history_hands) == (outcome!='success')
-        assert any(user_id==owner_id for user_id,_ in badugi_log._recent_logs) == (outcome!='success')
+        assert any(user_id==owner_id for user_id,_,_ in badugi_log._recent_logs) == (outcome!='success')
         assert client.get('/api/badugi/hands/other-owned',headers=_auth(other)).status_code == 200
         if outcome=='success':
             fresh=_signup_and_login(client,'owner-history@example.com')

@@ -8,7 +8,7 @@ from sqlalchemy.pool import StaticPool
 from app.core import db
 from app.dependencies.auth import get_current_user
 from app.main import app
-from app.models import BadugiHandAction, Base
+from app.models import User, BadugiHandAction, Base
 
 client = TestClient(app)
 
@@ -26,6 +26,9 @@ def setup_sqlite(monkeypatch):
     )
     Base.metadata.create_all(bind=engine)
     SessionTesting = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+    with SessionTesting() as session:
+        session.add_all([User(id=i, email=f"owner-{i}@example.com", hashed_password="test-hash") for i in (1, 2)])
+        session.commit()
     monkeypatch.setattr(db, "engine", engine)
     monkeypatch.setattr(db, "SessionLocal", SessionTesting)
     return engine, SessionTesting
@@ -38,7 +41,7 @@ def teardown_sqlite(engine):
 
 def test_cpu_decision_metadata_persists_in_badugi_action_log(monkeypatch):
     engine, session_factory = setup_sqlite(monkeypatch)
-    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=1, name="demo")
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=1, hashed_password="test-hash", name="demo")
     try:
         metadata = {
             "sessionId": "qa-session-telemetry",

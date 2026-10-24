@@ -6702,7 +6702,9 @@ export default function App() {
       // otherwise that controller retains cash-mode completion callbacks and
       // only the first hand advances the MTT blind counter.
       window.setTimeout(() => {
-        if (tournamentStateRef.current !== tournamentState) return;
+        // Profile/HUD updates replace the immutable state before this callback.
+        // Only a different tournament run (or leaving it) cancels the deal.
+        if (tournamentStateRef.current?.tournamentRunId !== tournamentState.tournamentRunId) return;
         startNextHandRef.current({
           dealerOverride: 0,
           ...(initialTournamentPlayers

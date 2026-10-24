@@ -15,7 +15,7 @@ from app.core.db import get_db
 from app.dependencies.auth import get_current_user  # [tournament-feedback]
 from app.main import app
 from app.api import analysis_chatgpt
-from app.models import Base, PlayFeedbackResult
+from app.models import User, Base, PlayFeedbackResult
 
 
 client = TestClient(app)
@@ -38,6 +38,11 @@ def override_feedback_db():
 
 @pytest.fixture(autouse=True)
 def feedback_db_override():
+    with FeedbackSessionLocal() as session:
+        for i in (1, 2, 3, 4):
+            if session.get(User, i) is None:
+                session.add(User(id=i, email=f"feedback-{i}@example.com", hashed_password="test-hash"))
+        session.commit()
     app.dependency_overrides[get_db] = override_feedback_db
     try:
         yield
@@ -148,7 +153,7 @@ def test_advice_endpoint_returns_payload(monkeypatch):
 
     monkeypatch.setattr("app.api.analysis_chatgpt.get_chatgpt_advice", fake_get_chatgpt_advice)
 
-    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=1, name="demo")  # [tournament-feedback]
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=1, hashed_password="test-hash", name="demo")  # [tournament-feedback]
     try:
         response = client.post(
             "/api/analysis/advice",
@@ -183,7 +188,7 @@ def test_play_feedback_endpoint_returns_sanitized_payload(monkeypatch):
         fake_get_play_feedback_advice,
     )
     analysis_chatgpt._feedback_rate_limit.clear()
-    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=2, name="demo")
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=2, hashed_password="test-hash", name="demo")
     try:
         response = client.post(
             "/api/analysis/play-feedback",
@@ -208,7 +213,7 @@ def test_play_feedback_endpoint_returns_sanitized_payload(monkeypatch):
     assert captured["session_payload"]["summary"]["topIssues"][0]["email"] == "[redacted]"
     assert captured["session_payload"]["summary"]["topIssues"][0]["displayName"] == "[redacted]"
 
-    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=2, name="demo")
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=2, hashed_password="test-hash", name="demo")
     try:
         results_response = client.get(
             "/api/analysis/play-feedback/results?session_key=cash:cash:mixed",
@@ -230,7 +235,7 @@ def test_play_feedback_endpoint_returns_sanitized_payload(monkeypatch):
 def test_play_feedback_endpoint_requires_minimum_hands(monkeypatch):
     analysis_chatgpt._feedback_rate_limit.clear()
     clear_feedback_results()
-    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=3, name="demo")
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=3, hashed_password="test-hash", name="demo")
     try:
         response = client.post(
             "/api/analysis/play-feedback",
@@ -251,7 +256,7 @@ def test_play_feedback_endpoint_rate_limits(monkeypatch):
     )
     analysis_chatgpt._feedback_rate_limit.clear()
     clear_feedback_results()
-    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=4, name="demo")
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=4, hashed_password="test-hash", name="demo")
     try:
         statuses = [
             client.post(

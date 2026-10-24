@@ -35,9 +35,12 @@ export class FLHGameController extends NLHGameController {
     }
     const unit = this.getLimitUnit();
     const toCall = Math.max(0, (this.state.currentBet ?? 0) - (player.betThisStreet ?? 0));
-    const commit = Math.min(player.stack ?? 0, toCall + (amount > 0 ? amount : unit));
+    const commit = Math.min(player.stack ?? 0, toCall + unit);
+    const previousRaiseCount = this.raiseCountThisStreet;
     this.raiseCountThisStreet += 1;
-    return super.applyPlayerAction({ seatIndex, action, amount: commit });
+    const result = super.applyPlayerAction({ seatIndex, action, amount: commit });
+    if (!result.success) this.raiseCountThisStreet = previousRaiseCount;
+    return result;
   }
 }
 

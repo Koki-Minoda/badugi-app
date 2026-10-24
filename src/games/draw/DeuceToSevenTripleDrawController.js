@@ -93,6 +93,8 @@ function hydratePlayersFromCurrentStacks(generatedPlayers = [], sourcePlayers = 
       ...player,
       id: source.id ?? player.id,
       playerId: source.playerId ?? source.id ?? player.playerId,
+      tournamentPlayerId: source.tournamentPlayerId ?? null,
+      tournamentSeatIndex: source.tournamentSeatIndex ?? null,
       name: source.name ?? player.name,
       avatar: source.avatar ?? player.avatar,
       avatarUrl: source.avatarUrl ?? player.avatarUrl,

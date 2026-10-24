@@ -382,7 +382,7 @@ async function advanceFromTerminal(page: Page, progress: any, telemetry: any = n
     await nextHand.click({ force: true, timeout: 3000 }).catch(async () => {
       await page.evaluate(() => {
         const button = [...document.querySelectorAll("button")].find((candidate) =>
-          /next hand/i.test(candidate.textContent ?? ""),
+          /next hand|次のハンド/i.test(candidate.textContent ?? ""),
         );
         button?.click();
       });

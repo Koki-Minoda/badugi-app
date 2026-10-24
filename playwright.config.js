@@ -34,6 +34,7 @@ export default defineConfig({
       testMatch: /(?:tournament-(?:reconnect-ui|stage-blind-transition)|core5-real-action-champion|game-progress-wait)\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
+        trace: 'retain-on-failure',
       },
     },
     {

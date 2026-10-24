@@ -423,6 +423,11 @@ async function completeProductionTournament(page: Page, stageId: string) {
   const maxCompletionCycles = Math.max(1_200, config.totalPlayers * 40);
   for (let step = 0; step < maxCompletionCycles; step += 1) {
     const hud = await getHud(page);
+    if (step % 10 === 0) {
+      console.log('[MTT_PROGRESS]', JSON.stringify({stageId, step, realHeroHands,
+        backgroundCyclesAfterHeroBust, remaining: hud?.playersRemaining,
+        level: hud?.currentLevelNumber, phase: hud?.phase}));
+    }
     expect(hud).toBeTruthy();
     levelsVisited.add(hud.currentLevelNumber);
     remainingTrace.push(hud.playersRemaining);

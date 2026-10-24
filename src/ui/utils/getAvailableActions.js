@@ -19,7 +19,7 @@ export function getAvailableActions({ currentBet = 0, player, canRaise = true } 
       handler: "onCheck",
       variant: "check",
     });
-    if (canRaise) {
+    if (canRaise && playerStack > toCall) {
       actions.push({
         key: "RAISE",
         label: "Raise",
@@ -39,7 +39,7 @@ export function getAvailableActions({ currentBet = 0, player, canRaise = true } 
   if (isAllInCall) {
     actions.push({
       key: "ALLIN_CALL",
-      label: `All-in (Call ${toCall})`,
+      label: `All-in (Call ${playerStack})`,
       handler: "onCall",
       variant: "allin",
     });
@@ -52,7 +52,7 @@ export function getAvailableActions({ currentBet = 0, player, canRaise = true } 
     });
   }
 
-  if (canRaise) {
+  if (canRaise && playerStack > toCall) {
     actions.push({
       key: "RAISE",
       label: "Raise",

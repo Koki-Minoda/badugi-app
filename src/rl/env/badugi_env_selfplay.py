@@ -232,7 +232,8 @@ class DualAgentBadugiEnv:
             self.draw_round += 1
             self.phase = "BET"
             self.raise_count = 0
-            self.current_bet = BIG_BET  # big-bet rounds post-draw
+            # No opening bet exists until an actor actually posts it.
+            self.current_bet = 0
             self.hero_bet = 0
             self.opp_bet = 0
 

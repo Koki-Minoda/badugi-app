@@ -368,7 +368,8 @@ class SixMaxBadugiEnv:
         self.draw_round += 1
         self.phase = "BET"
         self.raise_count = 0
-        self.current_bet = BIG_BET if self.draw_round >= 2 else SMALL_BET
+        # No opening bet exists until an actor actually posts it.
+        self.current_bet = 0
         for p in self.players:
             p["bet"] = 0
         self.bet_round_idx = self.draw_round

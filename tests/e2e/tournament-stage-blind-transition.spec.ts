@@ -423,6 +423,11 @@ async function completeProductionTournament(page: Page, stageId: string) {
   const maxCompletionCycles = Math.max(1_200, config.totalPlayers * 40);
   for (let step = 0; step < maxCompletionCycles; step += 1) {
     const hud = await getHud(page);
+    if (step % 10 === 0) {
+      console.log('[MTT_PROGRESS]', JSON.stringify({stageId, step, realHeroHands,
+        backgroundCyclesAfterHeroBust, remaining: hud?.playersRemaining,
+        level: hud?.currentLevelNumber, phase: hud?.phase}));
+    }
     expect(hud).toBeTruthy();
     levelsVisited.add(hud.currentLevelNumber);
     remainingTrace.push(hud.playersRemaining);
@@ -724,7 +729,9 @@ test("scheduled tournament break blocks the next hand, counts down, and resumes"
 });
 
 test("Store runs from its production field to a verified champion", async ({ page }) => {
-  test.setTimeout(360_000);
+  // Natural play can keep the hero alive for 65+ hands (over six minutes on CI).
+  // Match the bounded World budget without shortening the field or forcing a winner.
+  test.setTimeout(900_000);
   const completed = await completeProductionTournament(page, "store");
   expect(completed.realHeroHands).toBeGreaterThan(0);
   expect(completed.levelsVisited.length).toBeGreaterThan(1);
@@ -741,7 +748,9 @@ test("Store runs from its production field to a verified champion", async ({ pag
 test("Local runs from its production field through ante levels to a verified champion", async ({
   page,
 }) => {
-  test.setTimeout(360_000);
+  // Natural play can keep the hero alive for 65+ hands (over six minutes on CI).
+  // Match the bounded World budget without shortening the field or forcing a winner.
+  test.setTimeout(900_000);
   const completed = await completeProductionTournament(page, "local");
   expect(completed.realHeroHands).toBeGreaterThan(0);
   expect(completed.hud.currentLevelNumber).toBeGreaterThanOrEqual(4);

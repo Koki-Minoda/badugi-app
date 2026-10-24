@@ -41,13 +41,13 @@ async function playToResultOrBudget(page: Page, variant: Core5Variant, mode: Smo
       handId: progress.handId,
     });
 
-    if (await page.getByText("Hand Result").first().isVisible().catch(() => false)) {
+    if (await page.getByTestId("hand-result-overlay").first().isVisible().catch(() => false)) {
       resultReached = true;
       await expect(page.getByTestId("hand-result-pot").first()).toBeVisible({ timeout: 10000 });
-      const nextHand = page.getByRole("button", { name: /next hand/i }).first();
+      const nextHand = page.getByRole("button", { name: /next hand|次のハンド/i }).first();
       if (mode === "cash" && await nextHand.isVisible().catch(() => false)) {
         await nextHand.click();
-        await expect(page.getByText("Hand Result").first()).toBeHidden({ timeout: 10000 });
+        await expect(page.getByTestId("hand-result-overlay").first()).toBeHidden({ timeout: 10000 });
         await waitForE2EDriver(page);
         nextHandWorked = true;
       }

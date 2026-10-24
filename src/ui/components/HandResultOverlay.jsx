@@ -1,5 +1,6 @@
 import ReviewBookmarkButton from "../review/ReviewBookmarkButton.jsx";
 import React from "react";
+import { getHandResultCopy, localizeResultHandLabel } from "./handResultCopy.js";
 
 function formatAmount(value) {
   if (value == null) return "0";
@@ -8,16 +9,6 @@ function formatAmount(value) {
   }
   return `${value}`;
 }
-
-const COMPONENT_LABELS = {
-  badugi: "Badugi half",
-  low27: "2-7 Low half",
-  lowA5: "A-5 Low half",
-  archieHigh: "High half",
-  archieLow: "A-5 Low half",
-  board: "High / Board half",
-  draw: "Draw half",
-};
 
 const COMPONENT_TONES = {
   badugi: "violet",
@@ -43,8 +34,8 @@ const COMPONENT_DETAIL_CLASSES = {
   violet: "border-violet-300/25 bg-violet-300/10 text-violet-50",
 };
 
-function getComponentLabel(source = {}) {
-  if (source.component && COMPONENT_LABELS[source.component]) return COMPONENT_LABELS[source.component];
+function getComponentLabel(source = {}, copy = getHandResultCopy("en")) {
+  if (source.component && copy.components[source.component]) return copy.components[source.component];
   if (source.componentLabel) return source.componentLabel;
   if (source.label && /\bhalf\b/i.test(source.label)) return source.label;
   return null;
@@ -54,25 +45,25 @@ function getComponentTone(source = {}) {
   return COMPONENT_TONES[source.component] ?? (getComponentLabel(source) ? "emerald" : "emerald");
 }
 
-function getBasePotTitle(pot = {}, index, singlePot) {
-  const sourcePotIndex = Number.isInteger(pot.sourcePotIndex) ? pot.sourcePotIndex : index;
-  if (singlePot && !getComponentLabel(pot)) return "Pot";
-  if (sourcePotIndex === 0) return singlePot ? "Pot" : "Main Pot";
-  if (sourcePotIndex === 1) return "Side Pot";
-  return `Side Pot ${sourcePotIndex}`;
+function getBasePotTitle(pot = {}, index, singlePot, copy) {
+  const sourcePotIndex = Number.isInteger(pot.sourcePotIndex) ? pot.sourcePotIndex : (pot.potIndex ?? index);
+  if (singlePot && !getComponentLabel(pot)) return copy.pot;
+  if (sourcePotIndex === 0) return singlePot ? copy.pot : copy.mainPot;
+  if (sourcePotIndex === 1) return copy.sidePot;
+  return `${copy.sidePot} ${sourcePotIndex}`;
 }
 
-function getPotTitle(pot = {}, index, singlePot) {
-  const baseTitle = getBasePotTitle(pot, index, singlePot);
-  const componentLabel = getComponentLabel(pot);
+function getPotTitle(pot = {}, index, singlePot, copy) {
+  const baseTitle = getBasePotTitle(pot, index, singlePot, copy);
+  const componentLabel = getComponentLabel(pot, copy);
   return componentLabel ? `${baseTitle} · ${componentLabel}` : baseTitle;
 }
 
-function getSeatListLabel(seatIndexes = []) {
+function getSeatListLabel(seatIndexes = [], copy) {
   if (!Array.isArray(seatIndexes) || seatIndexes.length === 0) return "";
   return seatIndexes
     .filter((seatIndex) => Number.isInteger(seatIndex))
-    .map((seatIndex) => `Seat ${seatIndex + 1}`)
+    .map((seatIndex) => `${copy.seat}${seatIndex + 1}`)
     .join(" / ");
 }
 
@@ -81,21 +72,21 @@ function getOddChipAmount(source = {}) {
   return Number.isFinite(Number(raw)) ? Number(raw) : 0;
 }
 
-function getOddChipLabel(pot = {}) {
+function getOddChipLabel(pot = {}, copy) {
   const oddChipAmount = getOddChipAmount(pot);
   if (oddChipAmount <= 0) return "";
-  return `Odd chip +${formatAmount(oddChipAmount)} to ${getComponentLabel(pot) ?? "this component"}`;
+  return copy.oddChip(formatAmount(oddChipAmount), getComponentLabel(pot, copy));
 }
 
-function WinnerCard({ winner, tone = "emerald" }) {
+function WinnerCard({ winner, tone = "emerald", language, copy }) {
   const cards = Array.isArray(winner.hand) ? winner.hand : [];
   const activeCards = Array.isArray(winner.activeCards) ? winner.activeCards : cards;
   const deadCards = Array.isArray(winner.deadCards) ? winner.deadCards : [];
   const winnerName =
     winner.name ??
-    (Number.isInteger(winner.seatIndex) ? `Seat ${winner.seatIndex + 1}` : "Winner");
-  const handLabel = winner.handLabel ?? winner.evaluation?.handName ?? "Winner";
-  const componentLabel = getComponentLabel(winner);
+    (Number.isInteger(winner.seatIndex) ? `${copy.seat}${winner.seatIndex + 1}` : copy.winner);
+  const handLabel = localizeResultHandLabel(winner.handLabel ?? winner.evaluation?.handName ?? copy.winner, language);
+  const componentLabel = getComponentLabel(winner, copy);
   const toneClasses = {
     emerald: "border-emerald-300/25 bg-emerald-950/20",
     amber: "border-amber-300/30 bg-amber-950/20",
@@ -150,50 +141,50 @@ function WinnerCard({ winner, tone = "emerald" }) {
           className="text-xs text-slate-500 tracking-[0.25em]"
           data-testid="hand-result-winner-dead-cards"
         >
-          Dead: {deadCards.join(" ")}
+          {copy.dead}: {deadCards.join(" ")}
         </div>
       )}
       {cards.length > 0 && activeCards.length === 0 && (
         <div className="text-base tracking-[0.25em] text-white/90">{cards.join(" ")}</div>
       )}
       {winner.stack != null && (
-        <p className="text-[11px] text-slate-400">Stack: {formatAmount(winner.stack)}</p>
+        <p className="text-[11px] text-slate-400">{copy.stack}: {copy.chips(formatAmount(winner.stack))}</p>
       )}
       {typeof winner.payout === "number" && winner.payout > 0 && (
         <p className="text-[11px] text-emerald-300 uppercase tracking-[0.3em]">
-          Collect ¥{formatAmount(winner.payout)}
+          {copy.collect} {copy.chips(formatAmount(winner.payout))}
         </p>
       )}
     </li>
   );
 }
 
-function buildWinnerGroups(pot) {
+function buildWinnerGroups(pot, copy = getHandResultCopy("en")) {
   const groups = [];
   const addGroup = (key, label, winners, tone) => {
     if (Array.isArray(winners) && winners.length > 0) {
       groups.push({ key, label, winners, tone });
     }
   };
-  const componentLabel = getComponentLabel(pot);
+  const componentLabel = getComponentLabel(pot, copy);
   if (componentLabel) {
     addGroup("component", componentLabel, pot?.winners, COMPONENT_TONES[pot?.component] ?? "emerald");
   } else {
-    addGroup("winners", "Winners", pot?.winners, "emerald");
+    addGroup("winners", copy.winners, pot?.winners, "emerald");
   }
-  addGroup("high", "High", pot?.highWinners, "amber");
-  addGroup("low", "Low", pot?.lowWinners, "cyan");
-  addGroup("badugi", "Badugi", pot?.badugiWinners, "violet");
+  addGroup("high", copy.high, pot?.highWinners, "amber");
+  addGroup("low", copy.low, pot?.lowWinners, "cyan");
+  addGroup("badugi", copy.badugi, pot?.badugiWinners, "violet");
   return groups;
 }
 
-function PotSection({ pot, index, singlePot }) {
-  const winnerGroups = buildWinnerGroups(pot);
-  const title = getPotTitle(pot, index, singlePot);
-  const componentLabel = getComponentLabel(pot);
+function PotSection({ pot, index, singlePot, language, copy }) {
+  const winnerGroups = buildWinnerGroups(pot, copy);
+  const title = getPotTitle(pot, index, singlePot, copy);
+  const componentLabel = getComponentLabel(pot, copy);
   const componentTone = getComponentTone(pot);
-  const eligibleSeatsLabel = getSeatListLabel(pot?.eligibleSeatIndexes);
-  const oddChipLabel = getOddChipLabel(pot);
+  const eligibleSeatsLabel = getSeatListLabel(pot?.eligibleSeatIndexes, copy);
+  const oddChipLabel = getOddChipLabel(pot, copy);
   return (
     <div
       className={`rounded-2xl border p-4 space-y-3 ${
@@ -204,10 +195,10 @@ function PotSection({ pot, index, singlePot }) {
       data-testid="hand-result-pot"
       data-component={pot?.component ?? ""}
     >
-      <div className="flex items-center justify-between text-xs text-slate-400 uppercase tracking-[0.4em]">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400 uppercase tracking-wide">
         <span data-testid="hand-result-pot-title">{title}</span>
         <span data-testid="hand-result-pot-amount">
-          ¥{formatAmount(pot?.potAmount ?? pot?.amount ?? 0)}
+          {copy.chips(formatAmount(pot?.potAmount ?? pot?.amount ?? 0))}
         </span>
       </div>
       {(componentLabel || eligibleSeatsLabel || oddChipLabel) && (
@@ -219,12 +210,12 @@ function PotSection({ pot, index, singlePot }) {
         >
           {componentLabel && (
             <span data-testid="hand-result-component-label">
-              <strong className="text-white">Component pot:</strong> {componentLabel}
+              <strong className="text-white">{copy.component}:</strong> {componentLabel}
             </span>
           )}
           {eligibleSeatsLabel && (
             <span data-testid="hand-result-eligible-seats">
-              <strong className="text-white">Eligible:</strong> {eligibleSeatsLabel}
+              <strong className="text-white">{copy.eligible}:</strong> {eligibleSeatsLabel}
             </span>
           )}
           {oddChipLabel && (
@@ -252,12 +243,14 @@ function PotSection({ pot, index, singlePot }) {
                 key={`${group.key}-${winner.seatIndex}-${winner.name ?? "winner"}`}
                 winner={winner}
                 tone={group.tone}
+                language={language}
+                copy={copy}
               />
             ))}
           </div>
         ))}
         {winnerGroups.length === 0 && (
-          <p className="text-xs text-slate-400 italic">No eligible winners</p>
+          <p className="text-xs text-slate-400 italic">{copy.noWinners}</p>
         )}
       </div>
     </div>
@@ -281,6 +274,7 @@ export default function HandResultOverlay({
   onCashOut,
 }) {
   if (!visible || !summary) return null;
+  const copy = getHandResultCopy(language);
   const resolveWinner = winner => ({ ...winner, name: Number.isInteger(heroSeat) && winner.seatIndex === heroSeat ? (language === 'ja' ? 'あなた' : 'You') : winner.name ?? players[winner.seatIndex]?.name });
   const winners = (summary.winners ?? []).map(resolveWinner);
   const potDetails = (summary.potDetails ?? []).map(pot => ({ ...pot, ...Object.fromEntries(['winners', 'highWinners', 'lowWinners', 'badugiWinners'].filter(key => Array.isArray(pot[key])).map(key => [key, pot[key].map(resolveWinner)])) }));
@@ -288,7 +282,7 @@ export default function HandResultOverlay({
   const topIssue = followUpSummary?.topIssue ?? null;
   const replayTarget = followUpSummary?.replayTarget ?? null;
   const handleNext = typeof onNext === "function" ? onNext : onNextHand;
-  const resolvedButtonLabel = buttonLabel ?? nextHandLabel ?? "Next hand";
+  const resolvedButtonLabel = buttonLabel ?? nextHandLabel ?? copy.next;
   // Board and Stud controllers expose totalPot; draw controllers expose pot.
   const totalPot = summary.pot ?? summary.totalPot ?? potDetails.reduce(
     (sum, pot) => sum + Number(pot.potAmount ?? pot.amount ?? 0), 0,
@@ -307,56 +301,56 @@ export default function HandResultOverlay({
       : [];
   const singlePot = potSections.length <= 1;
   const winnerNames = [...new Set(potSections.flatMap(pot => buildWinnerGroups(pot).flatMap(group => group.winners)).map(winner =>
-    winner.name ?? (Number.isInteger(winner.seatIndex) ? `Seat ${winner.seatIndex + 1}` : 'Winner'),
+    winner.name ?? (Number.isInteger(winner.seatIndex) ? `${copy.seat}${winner.seatIndex + 1}` : copy.winner),
   ))];
   return (
     <div
       className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 px-4"
       data-testid="hand-result-overlay"
     >
-      <div role="dialog" aria-modal="true" aria-label="Hand Result" className="flex max-h-[calc(100dvh-2rem)] w-full max-w-3xl flex-col gap-3 overflow-hidden rounded-3xl border border-emerald-400/40 bg-slate-900 p-3 shadow-2xl sm:p-4">
+      <div role="dialog" aria-modal="true" aria-label={copy.title} className="flex max-h-[calc(100dvh-2rem)] w-full max-w-3xl flex-col gap-3 overflow-hidden rounded-3xl border border-emerald-400/40 bg-slate-900 p-3 shadow-2xl sm:p-4">
         <div className="flex shrink-0 items-center justify-between gap-2 text-xs uppercase tracking-[0.15em] text-emerald-300">
-          <span>Hand Result</span>
+          <span>{copy.title}</span>
           {summary.handId && <span>#{summary.handId}</span>}
         </div>
         <div className="flex shrink-0 flex-wrap items-baseline justify-between gap-2">
           <h2 data-testid="hand-result-total" className="text-2xl font-bold text-white">
-            Pot ¥{formatAmount(totalPot)}
+            {copy.pot} {copy.chips(formatAmount(totalPot))}
           </h2>
-          <span className="text-sm text-slate-400">Choose your next action</span>
+          <span className="text-sm text-slate-400">{copy.prompt}</span>
         </div>
         {winnerNames.length > 0 && <p data-testid="hand-result-winner-summary" className="shrink-0 text-sm font-semibold leading-snug text-emerald-200">{language === 'ja' ? '獲得したプレイヤー' : `Winner${winnerNames.length > 1 ? 's' : ''}`}: {winnerNames.join(' / ')}</p>}
         <div className="min-h-0 space-y-3 overflow-y-auto overscroll-contain" data-testid="hand-result-details">
         <div className="space-y-4 text-sm text-slate-200">
           {potSections.map((pot, idx) => (
-            <PotSection key={`pot-${pot.potIndex ?? idx}`} pot={pot} index={idx} singlePot={singlePot} />
+            <PotSection key={`pot-${pot.potIndex ?? idx}-${pot.component ?? "whole"}`} pot={pot} index={idx} singlePot={singlePot} language={language} copy={copy} />
           ))}
         </div>
         {mixedInfo && (
           <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/5 px-4 py-3 text-xs text-slate-100 space-y-1">
             <div className="flex justify-between text-[11px] uppercase tracking-widest">
-              <span>Mixed Game</span>
+              <span>{copy.mixed}</span>
               <span className="text-emerald-300">{mixedInfo.profileName}</span>
             </div>
             <div className="flex justify-between">
-              <span>Format</span>
+              <span>{copy.format}</span>
               <strong className="text-sm text-white">{mixedInfo.formatLabel ?? "-"}</strong>
             </div>
             <div className="flex justify-between">
-              <span>Current</span>
+              <span>{copy.current}</span>
               <strong className="text-sm text-white">{mixedInfo.currentLabel}</strong>
             </div>
             <div className="flex justify-between">
-              <span>Next</span>
+              <span>{copy.nextGame}</span>
               <strong className="text-sm text-white">{mixedInfo.nextLabel}</strong>
             </div>
             <div className="flex justify-between">
-              <span>Betting</span>
+              <span>{copy.betting}</span>
               <strong className="text-sm text-white">{mixedInfo.bettingLabel ?? "-"}</strong>
             </div>
             {mixedInfo.handsRemainingText && (
               <div className="flex justify-between text-slate-300">
-                <span>Remaining</span>
+                <span>{copy.remaining}</span>
                 <span>{mixedInfo.handsRemainingText}</span>
               </div>
             )}
@@ -370,10 +364,10 @@ export default function HandResultOverlay({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-amber-200">
-                  Follow-up
+                  {copy.followUp}
                 </p>
                 <p className="mt-1 text-sm">
-                  {topIssue.type} · Seat {topIssue.seat ?? "-"} · {topIssue.street ?? "-"}
+                  {topIssue.type} · {copy.seat}{topIssue.seat ?? "-"} · {topIssue.street ?? "-"}
                 </p>
                 <p className="mt-1 text-xs text-amber-100/75">{topIssue.detail}</p>
               </div>
@@ -384,13 +378,13 @@ export default function HandResultOverlay({
                   onClick={() => onReplayTarget(replayTarget)}
                   data-testid="hand-result-follow-up-replay"
                 >
-                  Review
+                  {copy.review}
                 </button>
               )}
             </div>
           </div>
         )}
-        {(reviewHandId || summary.handId) && <ReviewBookmarkButton key={reviewHandId ?? summary.handId} handId={reviewHandId ?? summary.handId} />}
+        {(reviewHandId || summary.handId) && <ReviewBookmarkButton language={language} key={reviewHandId ?? summary.handId} handId={reviewHandId ?? summary.handId} />}
         </div>
         <div className="grid shrink-0 grid-cols-2 gap-2 border-t border-white/10 pt-3 sm:grid-cols-3" data-testid="hand-result-actions">
         {(typeof onHistory === "function" || typeof onCashOut === "function") && (
@@ -402,7 +396,7 @@ export default function HandResultOverlay({
                 data-testid="hand-result-history"
                 className="rounded-2xl border border-white/20 py-3 font-semibold text-white transition hover:bg-white/10"
               >
-                History &amp; Replay
+                {copy.history}
               </button>
             )}
             {typeof onCashOut === "function" && (
@@ -412,7 +406,7 @@ export default function HandResultOverlay({
                 data-testid="hand-result-cash-out"
                 className="rounded-2xl border border-yellow-300/40 bg-yellow-400/10 py-3 font-semibold text-yellow-100 transition hover:bg-yellow-400 hover:text-slate-950"
               >
-                Cash Out
+                {copy.leave}
               </button>
             )}
           </>

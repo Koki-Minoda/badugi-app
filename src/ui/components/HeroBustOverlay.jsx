@@ -32,14 +32,15 @@ export default function HeroBustOverlay({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
       <div
-        className="max-h-[calc(100dvh-2rem)] w-full max-w-xl space-y-6 overflow-y-auto rounded-3xl border border-rose-400/30 bg-slate-900 p-5 text-white shadow-2xl sm:p-8"
+        className="flex max-h-[calc(100dvh-2rem)] w-full max-w-xl flex-col overflow-hidden rounded-3xl border border-rose-400/30 bg-slate-900 text-white shadow-2xl"
         data-testid="mtt-hero-bust-overlay"
       >
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-6" data-testid="mtt-hero-bust-scroll-content">
         <header className="text-center space-y-2">
           <p className="text-xs uppercase tracking-[0.35em] text-rose-300">
             You are eliminated
           </p>
-          <h2 className="text-3xl font-bold">{title}</h2>
+          <h2 className="text-xl font-bold sm:text-2xl">{title}</h2>
         </header>
 
         <div
@@ -90,11 +91,12 @@ export default function HeroBustOverlay({
           />
         ) : null}
 
-        <div className="flex justify-center">
+        </div>
+        <div className="flex shrink-0 justify-center border-t border-white/10 px-4 py-3">
           <button
             type="button"
             onClick={onBackToMenu}
-            className="px-6 py-3 rounded-full bg-rose-500 text-white font-semibold hover:bg-rose-400 transition"
+            className="min-h-[44px] px-6 py-3 rounded-full bg-rose-500 text-white font-semibold hover:bg-rose-400 transition"
           >
             Back to Menu
           </button>

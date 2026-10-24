@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   resolveCanonicalActionSeat,
+  resolveActionCurrentBet,
   resolveSessionPreferredActor,
   shouldSyncLegacyTurnToController,
 } from "../actorSourceOfTruth.js";
@@ -132,4 +133,12 @@ describe("actor source of truth helpers", () => {
       }),
     ).toBe(false);
   });
+});
+
+
+it("uses the authoritative opening bet and preserves a later zero-bet street", () => {
+  expect(resolveActionCurrentBet({ preferController: true, controllerCurrentBet: 10, legacyCurrentBet: 0 })).toBe(10);
+  expect(resolveActionCurrentBet({ preferController: true, controllerCurrentBet: 0, legacyCurrentBet: 20 })).toBe(0);
+  expect(resolveActionCurrentBet({ preferController: true, legacyCurrentBet: 20 })).toBe(20);
+  expect(resolveActionCurrentBet({ controllerCurrentBet: 10, legacyCurrentBet: 20 })).toBe(20);
 });

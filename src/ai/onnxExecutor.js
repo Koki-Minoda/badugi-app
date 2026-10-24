@@ -38,16 +38,22 @@ export async function getOrCreateSession(entry) {
   if (sessionCache.has(entry.id)) {
     return sessionCache.get(entry.id);
   }
-  const ort = await getOrt();
-  if (!ort) return null;
-  try {
-    const session = await ort.InferenceSession.create(entry.onnx);
-    sessionCache.set(entry.id, session);
-    return session;
-  } catch (err) {
-    console.warn("[ONNX] Failed to create session", entry.onnx, err);
-    return null;
-  }
+  // Register the pending work before yielding: concurrent CPU decisions must
+  // not initialize several WASM sessions for the same model.
+  const pending = (async () => {
+    const ort = await getOrt();
+    if (!ort) return null;
+    try {
+      return await ort.InferenceSession.create(entry.onnx);
+    } catch (err) {
+      console.warn("[ONNX] Failed to create session", entry.onnx, err);
+      return null;
+    }
+  })();
+  sessionCache.set(entry.id, pending);
+  const session = await pending;
+  if (!session && sessionCache.get(entry.id) === pending) sessionCache.delete(entry.id);
+  return session;
 }
 
 export function clearOnnxSessions() {

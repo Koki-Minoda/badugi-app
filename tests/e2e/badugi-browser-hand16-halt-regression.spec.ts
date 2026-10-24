@@ -186,7 +186,7 @@ async function applyPayloadWithDecisionLog(page: Page, hand: number, step: numbe
 
 async function advanceFromTerminal(page: Page, progress: any, hand: number, step: number) {
   const key = progressKey(progress);
-  const nextHand = page.getByRole("button", { name: /next hand/i }).first();
+  const nextHand = page.getByRole("button", { name: /next hand|次のハンド/i }).first();
   appendJsonl(DECISION_LOG_PATH, {
     hand,
     step,
@@ -208,7 +208,7 @@ async function advanceFromTerminal(page: Page, progress: any, hand: number, step
     await nextHand.click({ force: true, timeout: 3000 }).catch(async () => {
       await page.evaluate(() => {
         const button = [...document.querySelectorAll("button")].find((candidate) =>
-          /next hand/i.test(candidate.textContent ?? ""),
+          /next hand|次のハンド/i.test(candidate.textContent ?? ""),
         );
         button?.click();
       });
@@ -239,7 +239,7 @@ test.describe("Badugi browser hand16 halt regression", () => {
         if (progress?.isTerminal) {
           handsCompleted += 1;
           await collectTrace(page, `hand-${hand}-terminal`);
-          const nextHand = page.getByRole("button", { name: /next hand/i }).first();
+          const nextHand = page.getByRole("button", { name: /next hand|次のハンド/i }).first();
           if (hand < 19 && await nextHand.isVisible().catch(() => false)) {
             await advanceFromTerminal(page, progress, hand, step);
           }

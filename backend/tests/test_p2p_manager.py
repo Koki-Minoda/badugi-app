@@ -263,6 +263,35 @@ def test_replaced_socket_cannot_mark_new_connection_disconnected():
     asyncio.run(scenario())
 
 
+@pytest.mark.parametrize("close_error", [RuntimeError("already closed"), WebSocketDisconnect(code=1006)])
+def test_reconnect_survives_old_socket_closing_during_replacement(close_error):
+    class FakeSocket:
+        def __init__(self, error=None):
+            self.error = error
+            self.accepted = False
+
+        async def accept(self, **_kwargs):
+            self.accepted = True
+
+        async def close(self, **_kwargs):
+            if self.error:
+                raise self.error
+
+    async def scenario():
+        _manager, room = _heads_up_room()
+        sockets = RoomSockets()
+        old_socket = FakeSocket(close_error)
+        new_socket = FakeSocket()
+        await sockets.connect(room, "host", old_socket)
+        await sockets.connect(room, "host", new_socket)
+        assert new_socket.accepted
+        assert sockets._connections[room.code]["host"] is new_socket
+        assert await sockets.disconnect(room.code, "host", old_socket) is False
+        assert await sockets.disconnect(room.code, "host", new_socket) is True
+
+    asyncio.run(scenario())
+
+
 @pytest.fixture(autouse=True)
 def clear_runtime(monkeypatch):
     engine = create_engine("sqlite+pysqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)

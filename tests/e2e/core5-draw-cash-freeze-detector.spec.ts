@@ -62,7 +62,7 @@ async function openVariant(page: Page, variantId: string) {
 
 async function advanceTerminal(page: Page, progress: any) {
   const beforeKey = progressKey(progress);
-  const nextHand = page.getByRole("button", { name: /next hand/i }).first();
+  const nextHand = page.getByRole("button", { name: /next hand|次のハンド/i }).first();
   if (await nextHand.isVisible().catch(() => false)) {
     await nextHand.click({ timeout: 3000 }).catch(async () => nextHand.click({ force: true, timeout: 3000 }));
   }

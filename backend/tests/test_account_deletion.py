@@ -1,3 +1,5 @@
+import pytest
+from sqlalchemy.exc import SQLAlchemyError
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import close_all_sessions, sessionmaker
@@ -192,6 +194,67 @@ def test_deleted_token_cannot_authenticate_reused_user_id_or_websocket(monkeypat
             assert ws.receive_json()['event'] == 'state'
     finally:
         p2p_room_manager.reset()
+        app.dependency_overrides.clear()
+        close_all_sessions()
+        engine.dispose()
+
+
+@pytest.mark.parametrize('outcome', ['success', 'wrong-password', 'commit-failure'])
+def test_account_deletion_removes_only_owned_history_and_caches(monkeypatch, outcome):
+    from datetime import datetime, timezone
+    from app.api import history, badugi_log
+    from app.models import HandLog, HandAction, HandResult, BadugiHandAction
+    engine, factory = _setup_database(monkeypatch)
+    history._reset_generic_history()
+    badugi_log._reset_recent_logs()
+    client = TestClient(app)
+    try:
+        other = _signup_and_login(client, 'other-history@example.com')
+        owner = _signup_and_login(client, 'owner-history@example.com')
+        owner_id = client.get('/api/auth/me', headers=_auth(owner)).json()['id']
+        for token, hand in [(other, 'other-owned'), (owner, 'delete-owned')]:
+            assert client.post('/api/history/hand', headers=_auth(token), json={'handId':hand,'data':{'private':'test'}}).status_code == 200
+            assert client.post('/api/badugi/hands', headers=_auth(token), json={
+                'hand_id':hand,'created_at':datetime.now(timezone.utc).isoformat(),
+                'actions':[{'seat_index':0,'action':'Call','amount':10,'round':0,'phase':'BET'}],
+                'results':[{'seat_index':0,'final_stack':100,'is_winner':True,'pot_share':20}],
+            }).status_code == 200
+            assert client.post('/api/badugi/actions/batch', headers=_auth(token), json={
+                'actions':[{'hand_id':hand,'player_id':'hero','phase':'BET','round':0,'action':'Call','paid':10}],
+            }).status_code == 200
+        with factory() as session:
+            legacy = HandLog(hand_id='legacy-unowned',metadata_json={'_owner_user_id':owner_id})
+            legacy.actions.append(HandAction(seat_index=0,action='Call',amount=10,round=0,phase='BET'))
+            legacy.results.append(HandResult(seat_index=0,final_stack=100,is_winner=True,pot_share=20))
+            session.add(legacy)
+            session.add(BadugiHandAction(hand_id='legacy-unowned',player_id='hero',phase='BET',round=0,action='Call',action_type='call',metadata_json={'_owner_user_id':owner_id}))
+            session.commit()
+        assert client.get('/api/badugi/hands/legacy-unowned',headers=_auth(owner)).status_code==404
+        if outcome == 'commit-failure':
+            def fail_commit(_):
+                raise SQLAlchemyError('injected commit failure')
+            monkeypatch.setattr(factory.class_, 'commit', fail_commit)
+        response=client.request('DELETE','/api/auth/account',headers=_auth(owner),json={'password':'wrong' if outcome=='wrong-password' else PASSWORD})
+        assert response.status_code == {'success':200,'wrong-password':403,'commit-failure':503}[outcome]
+        with factory() as session:
+            hands=set(session.scalars(select(HandLog.hand_id)))
+            assert hands == ({'other-owned','legacy-unowned'} if outcome=='success' else {'other-owned','delete-owned','legacy-unowned'})
+            for model in [HandAction, HandResult, BadugiHandAction]:
+                assert len(list(session.scalars(select(model)))) == (2 if outcome=='success' else 3)
+        assert any(key[1]=='other-owned' for key in history._history_hands)
+        assert any(payload.hand_id=='other-owned' for _,payload,_ in badugi_log._recent_logs)
+        assert any(key[0]==owner_id for key in history._history_hands) == (outcome!='success')
+        assert any(user_id==owner_id for user_id,_,_ in badugi_log._recent_logs) == (outcome!='success')
+        assert client.get('/api/badugi/hands/other-owned',headers=_auth(other)).status_code == 200
+        if outcome=='success':
+            fresh=_signup_and_login(client,'owner-history@example.com')
+            assert client.get('/api/auth/me',headers=_auth(fresh)).json()['id']==owner_id
+            assert client.get('/api/history/hand/delete-owned',headers=_auth(fresh)).status_code==404
+            assert client.get('/api/badugi/hands/delete-owned',headers=_auth(fresh)).status_code==404
+            assert client.get('/api/badugi/stats?player_id=hero',headers=_auth(fresh)).json()['hands']==0
+    finally:
+        history._reset_generic_history()
+        badugi_log._reset_recent_logs()
         app.dependency_overrides.clear()
         close_all_sessions()
         engine.dispose()

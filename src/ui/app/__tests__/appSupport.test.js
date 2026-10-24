@@ -10,9 +10,10 @@ import {
   normalizeControllerLegalActionType,
   rotateSeatBlueprint,
 } from "../gameProgressSupport.js";
-import { cloneHandHistory, deriveHeroOutcome, formatHandIdentifier } from "../historySupport.js";
+import { cloneHandHistory, deriveHeroOutcome, formatHandIdentifier, resolveHandStartingStack } from "../historySupport.js";
 import {
   buildTournamentPlacements,
+  isSettledTournamentHand,
   collectTournamentOpponentProfileIds,
   getBlindStructureForTournamentConfig,
   normalizeTournamentBlindLevel,
@@ -94,5 +95,28 @@ describe("extracted App support boundaries", () => {
     } };
     expect(buildTournamentPlacements(state).map((entry) => entry.id)).toEqual(["hero", "cpu"]);
     expect(collectTournamentOpponentProfileIds(state, { heroId: "hero" })).toEqual(["aggro"]);
+  });
+});
+
+
+describe("settled tournament recovery boundary", () => {
+  it("protects completed hands and finished fields, but allows new-hand recovery", () => {
+    const active = { mode: "tournament-mtt", handId: "h2", completedHandId: "h1", isFinished: false };
+    expect(isSettledTournamentHand(active)).toBe(false);
+    expect(isSettledTournamentHand({ ...active, completedHandId: "h2" })).toBe(true);
+    expect(isSettledTournamentHand({ ...active, isFinished: true })).toBe(true);
+    expect(isSettledTournamentHand({ ...active, handId: null, completedHandId: null })).toBe(false);
+    expect(isSettledTournamentHand({ ...active, mode: "cash", isFinished: true })).toBe(false);
+  });
+});
+
+
+describe("hand history starting stacks", () => {
+  it("keeps known pre-hand chips even when the board settles during deal", () => {
+    expect(resolveHandStartingStack({ stack: 10, totalInvested: 5 }, 5)).toBe(5);
+    expect(resolveHandStartingStack({ stack: 0, totalInvested: 5 }, 5)).toBe(5);
+    expect(resolveHandStartingStack({ stack: 10, totalInvested: 5 }, 0)).toBe(0);
+    expect(resolveHandStartingStack({ stack: 490, totalInvested: 10 })).toBe(500);
+    expect(resolveHandStartingStack({ stack: 480, betThisRound: 20 })).toBe(500);
   });
 });

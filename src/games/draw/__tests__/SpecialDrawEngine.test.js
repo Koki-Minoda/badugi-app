@@ -69,7 +69,7 @@ describe("special draw engines", () => {
     expect(result.state.players[0].stack + result.state.players[1].stack).toBe(100);
   });
 
-  it("scoops Badacey when no opponent beats either component", () => {
+  it("scoops Badacey and returns the winner's unmatched extra chip", () => {
     const engine = new BadaceySingleDrawEngine();
     const state = engine.initHand({
       seatConfig: ["HUMAN", "CPU"],
@@ -92,11 +92,11 @@ describe("special draw engines", () => {
 
     const result = engine.resolveShowdown(state);
 
-    expect(result.summary).toHaveLength(2);
+    expect(result.summary).toHaveLength(4);
     expect(result.summary[0]).toMatchObject({
       component: "badugi",
       componentLabel: "Badugi half",
-      oddChipAmount: 1,
+      oddChipAmount: 0,
       eligibleSeatIndexes: [0, 1],
     });
     expect(result.summary[1]).toMatchObject({
@@ -105,10 +105,13 @@ describe("special draw engines", () => {
       oddChipAmount: 0,
       eligibleSeatIndexes: [0, 1],
     });
-    expect(result.summary[0].payouts[0]).toMatchObject({ seatIndex: 0, payout: 51 });
+    expect(result.summary[0].payouts[0]).toMatchObject({ seatIndex: 0, payout: 50 });
     expect(result.summary[0].payouts[0]).toMatchObject({ componentLabel: "Badugi half" });
     expect(result.summary[1].payouts[0]).toMatchObject({ seatIndex: 0, payout: 50 });
     expect(result.summary[1].payouts[0]).toMatchObject({ componentLabel: "A-5 Low half" });
+    expect(result.summary[2]).toMatchObject({ component: "badugi", potAmount: 0, oddChipAmount: 0 });
+    expect(result.summary[3]).toMatchObject({ component: "lowA5", potAmount: 1, oddChipAmount: 1, eligibleSeatIndexes: [0] });
+    expect(result.summary[3].payouts[0]).toMatchObject({ seatIndex: 0, payout: 1 });
     expect(result.state.players[0].stack).toBe(101);
   });
 
@@ -195,8 +198,8 @@ describe("special draw engines", () => {
 
     const result = engine.resolveShowdown(state);
 
-    expect(result.summary).toHaveLength(2);
-    expect(result.summary[0].potAmount + result.summary[1].potAmount).toBe(101);
+    expect(result.summary).toHaveLength(4);
+    expect(result.summary.reduce((sum, pot) => sum + pot.potAmount, 0)).toBe(101);
     expect(result.state.players[0].stack + result.state.players[1].stack).toBe(101);
   });
 

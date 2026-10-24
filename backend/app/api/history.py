@@ -8,7 +8,14 @@ from collections import OrderedDict
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+
+from ..dependencies.auth import get_current_user
+from ..core import db
+from ..core.account_writes import account_write
+from ..core.security import account_binding
+from sqlalchemy.exc import SQLAlchemyError
+from ..models import User
 from pydantic import BaseModel, Field
 
 MAX_HISTORY_HANDS = 500
@@ -22,7 +29,7 @@ class GenericHandHistoryCreate(BaseModel):
 
 
 router = APIRouter()
-_history_hands: "OrderedDict[str, Dict[str, Any]]" = OrderedDict()
+_history_hands: "OrderedDict[tuple[int, str, str], Dict[str, Any]]" = OrderedDict()
 
 
 def _reset_generic_history() -> None:
@@ -31,33 +38,49 @@ def _reset_generic_history() -> None:
     _history_hands.clear()
 
 
-def _upsert_hand(record: GenericHandHistoryCreate) -> Dict[str, Any]:
+def purge_owner_history(owner_id: int) -> None:
+    """Remove only the deleted account's process-local canonical history."""
+    for key in list(_history_hands):
+        if key[0] == owner_id:
+            _history_hands.pop(key, None)
+
+
+def _upsert_hand(record: GenericHandHistoryCreate, user: User) -> Dict[str, Any]:
     item = record.model_dump()
     item["updatedAt"] = datetime.now(tz=timezone.utc).isoformat()
-    if record.handId in _history_hands:
-        _history_hands.pop(record.handId)
-    _history_hands[record.handId] = item
+    key = (user.id, record.handId, account_binding(user))
+    if key in _history_hands:
+        _history_hands.pop(key)
+    _history_hands[key] = item
     while len(_history_hands) > MAX_HISTORY_HANDS:
         _history_hands.popitem(last=False)
     return item
 
 
 @router.post("/history/hand")
-def post_hand_history(record: GenericHandHistoryCreate):
-    item = _upsert_hand(record)
+def post_hand_history(record: GenericHandHistoryCreate, user: User = Depends(get_current_user)):
+    try:
+        with db.SessionLocal() as session, account_write(session, user):
+            session.commit()
+            item = _upsert_hand(record, user)
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail="db_unreachable")
     return {"stored": True, "handId": item["handId"]}
 
 
 @router.get("/history/hand")
-def list_hand_history(limit: int = 50):
+def list_hand_history(limit: int = 50, user: User = Depends(get_current_user)):
     safe_limit = max(1, min(limit, 200))
-    items: List[Dict[str, Any]] = list(reversed(_history_hands.values()))[:safe_limit]
+    items: List[Dict[str, Any]] = [
+        item for (owner_id, _, binding), item in reversed(_history_hands.items())
+        if owner_id == user.id and binding == account_binding(user)
+    ][:safe_limit]
     return {"items": items}
 
 
 @router.get("/history/hand/{hand_id}")
-def get_hand_history(hand_id: str):
-    item = _history_hands.get(hand_id)
+def get_hand_history(hand_id: str, user: User = Depends(get_current_user)):
+    item = _history_hands.get((user.id, hand_id, account_binding(user)))
     if not item:
         raise HTTPException(status_code=404, detail="hand_not_found")
     return item

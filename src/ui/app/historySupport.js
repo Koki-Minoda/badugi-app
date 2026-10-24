@@ -46,3 +46,10 @@ export function deriveHeroOutcome(record = {}, heroSeat = 0) {
     value: heroWon ? (isSplit ? 0.5 : 1) : 0,
   };
 }
+
+
+export function resolveHandStartingStack(player, knownStartingStack) {
+  if (Number.isFinite(knownStartingStack)) return Math.max(0, knownStartingStack);
+  return Math.max(0, Number(player?.stack) || 0) +
+    Math.max(0, Number(player?.totalInvested ?? player?.betThisRound) || 0);
+}

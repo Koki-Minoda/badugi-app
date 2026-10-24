@@ -137,7 +137,7 @@ function failureClassificationForMessage(message: unknown) {
 }
 
 async function clickNextHandIfAvailable(page: Page) {
-  const nextHand = page.getByRole("button", { name: /next hand/i }).first();
+  const nextHand = page.getByRole("button", { name: /next hand|次のハンド/i }).first();
   if (!(await nextHand.count())) return false;
   if (!(await nextHand.isVisible().catch(() => false))) return false;
   if (!(await nextHand.isEnabled().catch(() => false))) return false;

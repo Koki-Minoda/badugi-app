@@ -15,6 +15,13 @@ const DATABASE_PATH = path.join(
 );
 
 let backendProcess: ChildProcessWithoutNullStreams | null = null;
+let backendLog = "";
+test.use({ trace: "retain-on-failure" });
+test.afterEach(async ({}, testInfo) => {
+  if (testInfo.status !== testInfo.expectedStatus) {
+    await testInfo.attach("p2p-backend-log", { body: backendLog, contentType: "text/plain" });
+  }
+});
 
 function resolvePythonCommand() {
   if (process.env.P2P_E2E_PYTHON) {
@@ -236,6 +243,11 @@ test.beforeAll(async () => {
       },
     },
   );
+  // Drain both pipes so verbose backend output cannot block the server.
+  backendLog = "";
+  const captureOutput = (chunk: Buffer) => { backendLog = (backendLog + String(chunk)).slice(-65_536); };
+  backendProcess.stdout.on("data", captureOutput);
+  backendProcess.stderr.on("data", captureOutput);
   await waitForBackend();
 });
 

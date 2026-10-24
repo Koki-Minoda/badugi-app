@@ -66,7 +66,7 @@ test.describe("Single Draw progression spec", () => {
       expect(result.visitedDrawRounds).toEqual(expect.arrayContaining([1]));
       expect(result.visitedDrawRounds).not.toContain(2);
       expect(result.visitedDrawRounds).not.toContain(3);
-      await expect(page.getByText("Hand Result").first()).toBeVisible({ timeout: 10000 });
+      await expect(page.getByTestId("hand-result-overlay").first()).toBeVisible({ timeout: 10000 });
       await expect(page.getByTestId("hand-result-pot").first()).toBeVisible({ timeout: 10000 });
     });
   }

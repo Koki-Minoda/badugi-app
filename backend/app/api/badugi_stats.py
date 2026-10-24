@@ -17,7 +17,7 @@ router = APIRouter()
 def get_badugi_stats(
     player_id: Optional[str] = None,
     limit_hands: int = 200,
-    _: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     if not player_id:
@@ -29,6 +29,7 @@ def get_badugi_stats(
             select(BadugiHandAction)
             .where(
                 BadugiHandAction.player_id == player_id,
+                BadugiHandAction.owner_user_id == user.id,
                 BadugiHandAction.phase == "BET",
             )
             .order_by(desc(BadugiHandAction.ts))

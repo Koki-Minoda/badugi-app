@@ -1,3 +1,4 @@
+import { shouldPreferControllerActionActor, resolveCanonicalActionSeat } from "../../../ui/utils/actorSourceOfTruth.js";
 import { describe, expect, test } from "vitest";
 import {
   assertGameProgressInvariants,
@@ -15,6 +16,7 @@ import { AceToFiveTripleDrawController } from "../../draw/AceToFiveTripleDrawCon
 import { DeuceToSevenSingleDrawController } from "../../draw/DeuceToSevenSingleDrawController.js";
 import { AceToFiveSingleDrawController } from "../../draw/AceToFiveSingleDrawController.js";
 import { BadugiGameController } from "../../badugi/BadugiGameController.js";
+import { BadugiGameController as SessionBadugiController } from "../../badugi/controller/BadugiGameController.js";
 import { validateAction } from "../../badugi/engine/BadugiEngine.js";
 
 function expectInvariantFailure(snapshot, match, context = {}) {
@@ -22,6 +24,38 @@ function expectInvariantFailure(snapshot, match, context = {}) {
 }
 
 describe("MGX known game progress bug regressions", () => {
+  test("TURN-015 draw MTT keeps controller CPU actor when legacy turn still points to hero", () => {
+    const prefer = shouldPreferControllerActionActor({ singleTableController: false, drawLowball: true });
+    expect(prefer).toBe(true);
+    const controller = new AceToFiveTripleDrawController({ numSeats: 6, startingStack: 500 });
+    const state = controller.createNewHandState(controller.createInitialState(), { handId: "turn-015-mtt" });
+    const snapshot = controller.getUiSnapshot(state);
+    const actor = resolveCanonicalActionSeat({ phase: snapshot.phase, controllerTurn: prefer ? snapshot.currentActor : 0, legacyTurn: 0, players: snapshot.players });
+    expect(actor).toBe(3);
+    expect(controller.applyAction(state, { seatIndex: 0, type: "FOLD" }).events).toEqual([expect.objectContaining({ type: "invalidAction", error: expect.stringMatching(/out of turn/) })]);
+    const next = controller.applyAction(state, { seatIndex: actor, type: "CALL" }).state;
+    expect(next.snapshot.actingPlayerIndex).not.toBe(actor);
+
+    const players = Array.from({ length: 6 }, () => ({ stack: 500, folded: false, allIn: false }));
+    expect(resolveCanonicalActionSeat({ phase: "BET", controllerTurn: prefer ? 3 : 0, legacyTurn: 0, players })).toBe(3);
+    players[3].allIn = true;
+    expect(resolveCanonicalActionSeat({ phase: "DRAW", controllerTurn: 3, legacyTurn: 0, players })).toBe(3);
+    expect(shouldPreferControllerActionActor({ singleTableController: true, drawLowball: false })).toBe(true);
+    expect(shouldPreferControllerActionActor({ singleTableController: false, drawLowball: false })).toBe(false);
+  });
+
+  test("TURN-016 Badugi MTT opening uses the session actor instead of the reset hero turn", () => {
+    const controller = new SessionBadugiController({ numSeats: 6, seatConfig: ["HUMAN", "CPU", "CPU", "CPU", "CPU", "CPU"], startingStack: 500, blindStructure: [{ sb: 5, bb: 10, ante: 0 }] });
+    const state = controller.createNewHandState(controller.createInitialState(), {});
+    const snapshot = controller.getUiSnapshot(state);
+    const prefer = shouldPreferControllerActionActor({ badugi: true });
+    const actor = resolveCanonicalActionSeat({ phase: "BET", controllerTurn: prefer ? snapshot.turn : 0, legacyTurn: 0, players: snapshot.players });
+    expect(actor).toBe(3);
+    const next = controller.applyAction(state, { seatIndex: actor, type: "CALL" });
+    expect(next.events.some(event => event.type === "invalidAction")).toBe(false);
+    expect(controller.getUiSnapshot(next.state).turn).not.toBe(actor);
+  });
+
   test("TURN-001 SB fold should pass turn to BB or next eligible seat", () => {
     const snapshot = buildSyntheticSnapshot({
       variantId: "badugi",

@@ -27,9 +27,9 @@ afterEach(() => {
 });
 
 describe("browser gameplay result snapshot", () => {
-  it("reports a result phase together with the terminal actor behind the overlay", () => {
+  it.each([["Hand Result", "Next hand"], ["ハンドの結果", "次のハンドへ"]])("reports a result phase with the terminal actor behind %s", (title, next) => {
     installSettledTournamentSnapshot();
-    document.body.innerHTML = '<div>Hand Result</div><button>Next hand</button>';
+    document.body.innerHTML = `<div>${title}</div><button>${next}</button>`;
     const row = collectBrowserGameplaySnapshot({ mode: "tournament" });
 
     expect(row.phase).toBe("HAND_RESULT");

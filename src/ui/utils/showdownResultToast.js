@@ -16,7 +16,7 @@ function getComponentLabel(pot = {}) {
 }
 
 function getBasePotLabel(pot = {}, index, totalPots) {
-  const sourcePotIndex = Number.isInteger(pot.sourcePotIndex) ? pot.sourcePotIndex : index;
+  const sourcePotIndex = Number.isInteger(pot.sourcePotIndex) ? pot.sourcePotIndex : (pot.potIndex ?? index);
   if (totalPots <= 1 && !getComponentLabel(pot)) return "Pot";
   if (sourcePotIndex === 0) return "Pot";
   if (sourcePotIndex === 1) return "Side";
@@ -39,7 +39,7 @@ export function buildShowdownToastItems(summary) {
         .filter(Boolean)
         .join(" / ");
       return {
-        key: `${pot?.potIndex ?? index}-${winnerNames}`,
+        key: `${pot?.potIndex ?? index}-${pot?.component ?? "whole"}-${winnerNames}`,
         label: getToastPotLabel(pot, index, potDetails.length),
         amount: pot?.potAmount ?? 0,
         winners: winnerNames || "-",

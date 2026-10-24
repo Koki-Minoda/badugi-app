@@ -42,14 +42,16 @@ async function auditAsset(entry) {
 const tournamentMenuVariants=new Set(TOURNAMENT_VARIANTS.map(item=>normalizeAppVariantId(item.gameVariant,null)));
 const friendVariants=new Set(['badugi','ace_to_five_triple_draw','deuce_to_seven_triple_draw']);
 function modeDeclarations(variant) {
-  const appId=normalizeAppVariantId(variant.id,null);
+  const appId=normalizeAppVariantId(variant.engineKey??variant.id,null);
+  const mixedAppId=normalizeAppVariantId(variant.id,null);
+  const mixedControllerBacked=isControllerBackedAppVariant(mixedAppId);
   const publicEntry=getVariantAvailability(variant.id).availability==='alpha_playable';
   const controllerBacked=isControllerBackedAppVariant(appId);
   const arrangement=['chinese_poker','ofc'].includes(appId);
   return {
     appVariantId:appId,
     cash:{controllerBacked,publicEntry,screen:arrangement?'placement':'betting-table'},
-    mixedCash:{sourceEligible:controllerBacked&&!arrangement,publicEntry:publicEntry&&controllerBacked&&!arrangement},
+    mixedCash:{catalogRoute:mixedAppId,sourceEligible:mixedControllerBacked&&!arrangement,publicEntry:publicEntry&&mixedControllerBacked&&!arrangement},
     tournament:{listedInHub:tournamentMenuVariants.has(appId),unlockRequirementsApply:tournamentMenuVariants.has(appId),otherVariants:'internal-controller QA does not establish a public menu entry'},
     p2p:{listedInUiAndAcceptedByBackend:friendVariants.has(appId)},
     dealersChoice:{listedInDefaultPool:DEFAULT_DEALER_CHOICE_POOL.includes(variant.id)},

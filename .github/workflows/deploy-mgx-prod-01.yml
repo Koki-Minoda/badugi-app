@@ -106,7 +106,8 @@ jobs:
 
   tournament-qa:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    # Three natural full-field runs allow 15 minutes each, plus the other regressions.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6

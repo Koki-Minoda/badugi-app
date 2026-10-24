@@ -650,14 +650,13 @@ class SixMaxBadugiEnv:
         self.terminal_reason = "showdown"
         active = self._active_seats_list()
         scores = {s: evaluate_badugi(self.players[s]["hand"]) for s in active}
-        # Find winner(s): highest made_count, then lowest ranks
-        best_count = max(s[0] for s in scores.values())
-        best_seats = [s for s in active if scores[s][0] == best_count]
-        if len(best_seats) > 1:
-            min_sum = min(sum(scores[s][1]) for s in best_seats)
-            winners = [s for s in best_seats if sum(scores[s][1]) == min_sum]
-        else:
-            winners = best_seats
+        winners = [active[0]]
+        for seat in active[1:]:
+            comparison = compare_badugi_scores(scores[seat], scores[winners[0]])
+            if comparison > 0:
+                winners = [seat]
+            elif comparison == 0:
+                winners.append(seat)
         if self.hero_seat in winners:
             # Normalize: same scale as _settle — caps at +3.0
             return 1.0 + min(2.0, self.pot / 40.0)

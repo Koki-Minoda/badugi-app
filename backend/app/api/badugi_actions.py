@@ -8,6 +8,7 @@ from sqlalchemy import desc, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from ..core.account_writes import account_write
 from ..core.db import get_db
 from ..dependencies.auth import get_current_user
 from ..models import BadugiHandAction, User
@@ -117,8 +118,9 @@ def save_action_batch(
             )
         )
     try:
-        db.add_all(entries)
-        db.commit()
+        with account_write(db, user):
+            db.add_all(entries)
+            db.commit()
     except SQLAlchemyError:
         db.rollback()
         raise HTTPException(status_code=503, detail="db_unreachable")

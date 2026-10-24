@@ -1,3 +1,5 @@
+import { evaluateBadugi } from "../games/badugi/utils/badugiEvaluator.js";
+
 export const BADUGI_OBSERVATION_SCHEMA_VERSION = "badugi-observation-v1";
 export const BADUGI_OBSERVATION_VECTOR_SIZE = 96;
 export const BADUGI_RL_ACTIONS = Object.freeze(["fold", "check", "call", "bet", "raise", "all_in"]);
@@ -89,19 +91,14 @@ function sumPot(state = {}) {
 
 function evaluateBadugiShape(hand = []) {
   const parsed = hand.map(parseCard).filter((card) => card.rank > 0);
-  const sorted = [...parsed].sort((a, b) => a.rank - b.rank);
-  const usedRanks = new Set();
-  const usedSuits = new Set();
-  const active = [];
-  sorted.forEach((card) => {
-    if (usedRanks.has(card.rank) || usedSuits.has(card.suit)) return;
-    usedRanks.add(card.rank);
-    usedSuits.add(card.suit);
-    active.push(card);
-  });
-  const ranks = active.map((card) => card.rank);
+  const evaluation = evaluateBadugi(parsed
+    .filter(({ rank, suit }) => Number.isInteger(rank) && rank >= 1 && rank <= 13
+      && Number.isInteger(suit) && suit >= 0 && suit < 4)
+    .map(({ rank, suit }) => ({ rank, suit: "CDHS"[suit] })));
+  // The showdown evaluator uses zero-based ranks; observation features use Ace = 1.
+  const ranks = evaluation.ranks.map(rank => rank + 1);
   return {
-    madeCards: active.length,
+    madeCards: evaluation.count,
     rankSum: ranks.reduce((sum, rank) => sum + rank, 0),
     highestRank: ranks.length ? Math.max(...ranks) : 0,
     duplicateRankCount: Math.max(0, parsed.length - new Set(parsed.map((card) => card.rank)).size),

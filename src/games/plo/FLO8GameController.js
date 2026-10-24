@@ -35,7 +35,7 @@ export class FLO8GameController extends PLO8GameController {
         return { success: false, reason: "Fixed-limit betting is capped" };
       }
       const previousRaiseCount = this.raiseCountThisStreet;
-      if (raiseSize > 0) this.raiseCountThisStreet += 1;
+      if (raiseSize >= this.getLimitUnit() / 2) this.raiseCountThisStreet += 1;
       const result = super.applyPlayerAction({ seatIndex, action, amount });
       if (!result.success) this.raiseCountThisStreet = previousRaiseCount;
       return result;
@@ -51,9 +51,10 @@ export class FLO8GameController extends PLO8GameController {
       return { success: false, reason: "Player not found" };
     }
     const toCall = Math.max(0, (this.state.currentBet ?? 0) - (player.betThisStreet ?? 0));
-    const commit = Math.min(player.stack ?? 0, toCall + this.getLimitUnit());
+    const unit = this.getLimitUnit();
+    const commit = Math.min(player.stack ?? 0, toCall + unit);
     const previousRaiseCount = this.raiseCountThisStreet;
-    this.raiseCountThisStreet += 1;
+    if (commit - toCall >= unit / 2) this.raiseCountThisStreet += 1;
     const result = super.applyPlayerAction({ seatIndex, action, amount: commit });
     if (!result.success) this.raiseCountThisStreet = previousRaiseCount;
     return result;

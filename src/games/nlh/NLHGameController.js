@@ -376,9 +376,13 @@ export class NLHGameController {
           return { success: false, reason: "Raise must increase the current bet" };
         }
         const raiseSize = Math.max(0, nextPlayerBet - currentBet);
-        const minimumRaise = currentBet === 0
-          ? Math.max(1, this.blinds.bb ?? 2)
-          : Math.max(1, this.state.lastFullRaiseSize ?? this.blinds.bb ?? 2);
+        const betting = this.config.gameDefinition?.betting;
+        const fixedLimit = (betting?.structure ?? betting) === "fixed-limit";
+        const minimumRaise = fixedLimit
+          ? this.getLimitUnit()
+          : currentBet === 0
+            ? Math.max(1, this.blinds.bb ?? 2)
+            : Math.max(1, this.state.lastFullRaiseSize ?? this.blinds.bb ?? 2);
         const isAllInCommit = actualCommit === player.stack;
         if (raiseSize > 0 && raiseSize < minimumRaise && !isAllInCommit) {
           return { success: false, reason: `Minimum raise is ${minimumRaise}` };
@@ -386,9 +390,10 @@ export class NLHGameController {
         this.commitChips(player, actualCommit);
         if ((player.betThisStreet ?? 0) > currentBet) {
           this.state.currentBet = player.betThisStreet;
-          fullRaise = raiseSize >= minimumRaise;
+          // Limit action reopens at half a unit; NL/PL still require a full raise.
+          fullRaise = raiseSize >= minimumRaise * (fixedLimit ? 0.5 : 1);
           if (fullRaise) {
-            this.state.lastFullRaiseSize = raiseSize;
+            this.state.lastFullRaiseSize = fixedLimit ? minimumRaise : raiseSize;
             this.state.raiseRestrictedSeatIndexes = [];
           } else if (raiseSize > 0) {
             this.state.raiseRestrictedSeatIndexes = this.state.players

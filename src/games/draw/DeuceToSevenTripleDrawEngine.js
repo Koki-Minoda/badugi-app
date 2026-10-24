@@ -1,4 +1,5 @@
 import { resolveDrawContributionPots } from "./drawContributionPots.js";
+import { orderDrawWinners } from "./drawWinnerOrder.js";
 import { DrawEngineBase } from "../core/drawEngineBase.js";
 import { cloneTableState, createTableState } from "../core/models.js";
 import { IllegalActionError, assertSeatIsActive } from "../core/errors.js";
@@ -911,9 +912,9 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
         if (!best) return entry.evaluation;
         return compareEvaluations(entry.evaluation, best) < 0 ? entry.evaluation : best;
       }, null);
-      const winners = contenders.filter(
+      const winners = orderDrawWinners(contenders.filter(
         (entry) => compareEvaluations(entry.evaluation, bestEvaluation) === 0,
-      );
+      ), working);
       const shares = splitAmount(amount, winners.length);
       const payouts = winners.map((winnerEntry, idx) => {
         const player = working.players[winnerEntry.seatIndex];

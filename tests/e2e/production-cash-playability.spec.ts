@@ -216,7 +216,7 @@ async function runHands(page: Page, handCount: number) {
         drawClicks: result.drawClicks,
       });
 
-      const nextHand = page.getByRole("button", { name: /next hand/i }).first();
+      const nextHand = page.getByRole("button", { name: /next hand|次のハンド/i }).first();
       await expect(nextHand).toBeVisible({ timeout: 10_000 });
       await nextHand.click({ timeout: 5_000 });
       await expect(page.getByTestId("hand-result-overlay").first()).toBeHidden({ timeout: 15_000 });

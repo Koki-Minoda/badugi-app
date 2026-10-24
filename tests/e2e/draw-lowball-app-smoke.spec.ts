@@ -32,7 +32,7 @@ async function waitForDrawAction(page: Page) {
 async function playUntilHandResult(page: Page) {
   const deadline = Date.now() + 70000;
   while (Date.now() < deadline) {
-    if (await page.getByText("Hand Result").first().isVisible().catch(() => false)) {
+    if (await page.getByTestId("hand-result-overlay").first().isVisible().catch(() => false)) {
       return;
     }
 
@@ -129,8 +129,8 @@ test.describe("draw lowball App smoke", () => {
         variantAlias === "D01" || variantAlias === "S01" ? /^2-7 Low/ : /^A-5 Low/,
       );
       expect(latestRecord?.pots?.[0]?.winners?.[0]?.finalLowRanks?.length).toBe(5);
-      await page.getByRole("button", { name: /next hand/i }).click();
-      await expect(page.getByText("Hand Result").first()).toBeHidden({ timeout: 10000 });
+      await page.getByRole("button", { name: /next hand|次のハンド/i }).click();
+      await expect(page.getByTestId("hand-result-overlay").first()).toBeHidden({ timeout: 10000 });
       await expect(page.getByTestId("player-0-card-4")).toBeVisible({ timeout: 20000 });
     });
   }

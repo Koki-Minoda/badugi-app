@@ -51,7 +51,7 @@ test("Badugi tournament can settle consecutive hands without a stale end timesta
     expect(resultSnapshot?.ui?.heroControlsVisible).toBe(false);
     previousHandId = current.handId;
     if (hand < 2) {
-      await page.getByRole("button", { name: /next hand/i }).click();
+      await page.getByRole("button", { name: /next hand|次のハンド/i }).click();
       await expect.poll(async () => (await invokeTournamentHelper(page, "getStateSnapshot")).handId)
         .not.toBe(previousHandId);
       await expect(page.getByTestId("hand-result-pot").first()).toBeHidden();

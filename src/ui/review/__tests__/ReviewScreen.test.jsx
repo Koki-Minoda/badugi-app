@@ -58,7 +58,7 @@ it('updates another mounted save button and responds to cross-tab storage change
 
 it('saves by canonical history ID when the result uses a different controller ID', () => {
   setHandHistoryAccessors({ findById: id => id === hand.handId ? hand : null });
-  render(<HandResultOverlay visible reviewHandId={hand.handId} summary={{ handId: 'controller-hand-1', pot: 40 }} />);
+  render(<HandResultOverlay visible language="ja" reviewHandId={hand.handId} summary={{ handId: 'controller-hand-1', pot: 40 }} />);
   fireEvent.click(screen.getByText('あとで復習に保存'));
   expect(readReviews().entries[0].hand.handId).toBe(hand.handId);
   setHandHistoryAccessors({ findById: () => null });

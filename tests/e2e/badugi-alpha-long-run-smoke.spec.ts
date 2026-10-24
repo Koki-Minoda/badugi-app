@@ -62,12 +62,12 @@ async function captureLongRunCheckpoint(page: Page, hand: number, checkpoint: st
   const state = await getProgressState(page);
   const pot = await visibleTotalPot(page);
   const handResultVisible = await page
-    .getByText("Hand Result")
+    .getByTestId("hand-result-overlay")
     .first()
     .isVisible()
     .catch(() => false);
   const nextHandVisible = await page
-    .getByRole("button", { name: /next hand/i })
+    .getByRole("button", { name: /next hand|次のハンド/i })
     .first()
     .isVisible()
     .catch(() => false);
@@ -159,7 +159,7 @@ test.describe("Badugi alpha long-run smoke", () => {
         expect(result.heroButtonClicks).toBeGreaterThan(0);
         expect(result.visitedPhases).toContain("DRAW");
 
-        await expect(page.getByText("Hand Result").first()).toBeVisible({ timeout: 10000 });
+        await expect(page.getByTestId("hand-result-overlay").first()).toBeVisible({ timeout: 10000 });
         await expect(page.getByTestId("hand-result-pot").first()).toBeVisible({ timeout: 10000 });
         const terminalRow = await captureLongRunCheckpoint(page, hand, "terminal-result");
         checkpoints.push(terminalRow);
@@ -172,8 +172,8 @@ test.describe("Badugi alpha long-run smoke", () => {
           visitedDrawRounds: result.visitedDrawRounds,
         });
 
-        await page.getByRole("button", { name: /next hand/i }).click();
-        await expect(page.getByText("Hand Result").first()).toBeHidden({ timeout: 10000 });
+        await page.getByRole("button", { name: /next hand|次のハンド/i }).click();
+        await expect(page.getByTestId("hand-result-overlay").first()).toBeHidden({ timeout: 10000 });
         await expect(page.getByTestId("decision-panel")).toBeVisible({ timeout: 20000 });
         await expectActiveHandPotVisible(page, hand + 1, "after-next-hand", checkpoints);
       }

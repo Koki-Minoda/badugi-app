@@ -214,6 +214,7 @@ class SixMaxBadugiEnv:
         deck = build_deck()
         self.rng.shuffle(deck)
         self.deck = deck
+        self.draw_muck = []
 
         # Dealer seat (BTN): hero_seat is always at a specific position relative to BTN
         # BTN = (hero_seat - position_offset) % NUM_PLAYERS
@@ -632,7 +633,15 @@ class SixMaxBadugiEnv:
 
     def _apply_draw(self, seat: int, draw_count: int) -> None:
         p = self.players[seat]
+        draw_count = max(0, min(3, draw_count))
+        if len(self.deck) < draw_count:
+            # Recycle previously discarded cards only. The current draw's
+            # discards are added afterwards, so they cannot be drawn straight back.
+            self.deck.extend(self.draw_muck)
+            self.draw_muck = []
+            self.rng.shuffle(self.deck)
         new_hand, discarded = _draw_toward_badugi(p["hand"], draw_count, self.deck)
+        self.draw_muck.extend(discarded)
         p["hand"] = new_hand
         p["discarded"].extend(discarded)
         p["last_draw"] = draw_count

@@ -1,4 +1,5 @@
 import { expect } from "@playwright/test";
+import { visibleHeroActions } from "./visibleHeroActions";
 
 const BET_PHASES = new Set(["BET", "PREFLOP", "FLOP", "TURN", "RIVER"]);
 const DRAW_PHASES = new Set(["DRAW"]);
@@ -266,14 +267,9 @@ function hasInvalidActor(progress) {
 }
 
 async function firstClickableAction(page, ids) {
-  for (const id of ids) {
-    const locator = page.getByTestId(id).first();
-    if (!(await locator.count())) continue;
-    if (!(await locator.isVisible().catch(() => false))) continue;
-    if (!(await locator.isEnabled().catch(() => false))) continue;
-    return { id, locator };
-  }
-  return null;
+  const visible = new Set(await visibleHeroActions(page));
+  const id = ids.find((candidate) => visible.has(candidate));
+  return id ? { id, locator: page.getByTestId(id).first() } : null;
 }
 
 function controllerActionFor(progress, { policy = "safe" } = {}) {

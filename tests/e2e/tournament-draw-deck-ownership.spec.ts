@@ -1,6 +1,8 @@
 import {test,expect} from '@playwright/test';
 import {APP_URL,enterTitleIfPresent,selectGameVariantFromSelector} from './authHelper';
 import {waitForE2EDriver} from './helpers/gameProgressHelper.js';
+import {visibleHeroActions} from './helpers/visibleHeroActions';
+import {clickHeroAction} from './helpers/clickHeroAction';
 
 for(const variant of ['D01','D02','S01','S02','badeucey_triple_draw','badacey_triple_draw','hidugi_triple_draw','archie_triple_draw','five_card_single_draw','badugi_single_draw','badeucey_single_draw','badacey_single_draw','hidugi_single_draw']) {
  test(`${variant}: CPU draws use one deck across tournament hands after hero folds`,async({page},testInfo)=>{
@@ -26,8 +28,7 @@ for(const variant of ['D01','D02','S01','S02','badeucey_triple_draw','badacey_tr
     expect(Object.values(tournament.players).reduce((sum,player)=>sum+player.stack,0)).toBe(9000);
     if(completed.size<3) await page.getByTestId('hand-result-next-hand').click();
    } else {
-    const fold=page.getByTestId('action-fold');
-    if(await fold.isVisible() && await fold.isEnabled()) await fold.click();
+    if((await visibleHeroActions(page)).includes('action-fold')) await clickHeroAction(page,'action-fold');
    }
    await page.waitForTimeout(100);
   }

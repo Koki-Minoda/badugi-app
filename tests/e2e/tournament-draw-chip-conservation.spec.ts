@@ -1,6 +1,8 @@
 import {test,expect} from '@playwright/test';
 import {APP_URL,enterTitleIfPresent,selectGameVariantFromSelector} from './authHelper';
 import {waitForE2EDriver} from './helpers/gameProgressHelper.js';
+import {visibleHeroActions} from './helpers/visibleHeroActions';
+import {clickHeroAction} from './helpers/clickHeroAction';
 
 for(const variant of (process.env.MGX_DRAW_CHIP_VARIANTS??'badacey_single_draw').split(',')) {
 for(const delay of process.env.MGX_CPU_DECISION_DELAY_MS?[Number(process.env.MGX_CPU_DECISION_DELAY_MS)]:[0,2000]) {
@@ -43,8 +45,7 @@ for(const delay of process.env.MGX_CPU_DECISION_DELAY_MS?[Number(process.env.MGX
     expect(Object.values(tournament.players).reduce((sum,player)=>sum+player.stack,0)).toBe(6000);
     if(completed.size<targetHands) {await page.getByTestId('hand-result-next-hand').click();}
    } else {
-    const fold=page.getByTestId('action-fold');
-    if(await fold.isVisible() && await fold.isEnabled()) await fold.click();
+    if((await visibleHeroActions(page)).includes('action-fold')) await clickHeroAction(page,'action-fold');
    }
    await page.waitForTimeout(100);
   }

@@ -1,3 +1,5 @@
+import { resolveDrawContributionPots } from "./drawContributionPots.js";
+import { orderDrawWinners } from "./drawWinnerOrder.js";
 import { DrawEngineBase } from "../core/drawEngineBase.js";
 import { cloneTableState, createTableState } from "../core/models.js";
 import { IllegalActionError, assertSeatIsActive } from "../core/errors.js";
@@ -880,19 +882,7 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
       }
     }
 
-    if (working.metadata?.bettingStructure === 'no-limit') {
-      const invested = working.players.map(p => Math.max(0, p.totalInvested ?? 0));
-      const potTotal = (working.pots ?? []).reduce((sum,p) => sum + p.amount, 0);
-      if (invested.reduce((sum,n) => sum+n,0) === potTotal && potTotal > 0) {
-        let previous = 0;
-        working.pots = [...new Set(invested.filter(n => n > 0))].sort((a,b) => a-b).map(threshold => {
-          const contributors = working.players.filter((p,i) => invested[i] >= threshold);
-          const eligible = contributors.filter(p => !p.folded && !p.sittingOut);
-          const amount = (threshold - previous) * contributors.length; previous = threshold;
-          return { amount, eligiblePlayerIds: (eligible.length ? eligible : getActivePlayers(working.players)).map(p => p.playerId ?? p.id) };
-        });
-      }
-    }
+    working.pots = resolveDrawContributionPots(working.players, working.pots);
     const summary = [];
     let totalPot = 0;
     const evaluations = working.players.map((player, seatIndex) => {
@@ -922,9 +912,9 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
         if (!best) return entry.evaluation;
         return compareEvaluations(entry.evaluation, best) < 0 ? entry.evaluation : best;
       }, null);
-      const winners = contenders.filter(
+      const winners = orderDrawWinners(contenders.filter(
         (entry) => compareEvaluations(entry.evaluation, bestEvaluation) === 0,
-      );
+      ), working);
       const shares = splitAmount(amount, winners.length);
       const payouts = winners.map((winnerEntry, idx) => {
         const player = working.players[winnerEntry.seatIndex];

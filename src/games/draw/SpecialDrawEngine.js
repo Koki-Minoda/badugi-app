@@ -1,11 +1,13 @@
+import { resolveDrawContributionPots } from "./drawContributionPots.js";
+import { orderDrawWinners } from "./drawWinnerOrder.js";
 import { evaluateBadugiHand } from "../evaluators/badugi.js";
 import { evaluateHighHand } from "../evaluators/high.js";
 import { evaluateLowHand, formatLowHandLabel } from "../evaluators/low.js";
 import { compareEvaluations } from "../evaluators/registry.js";
 import { DeuceToSevenTripleDrawEngine } from "./DeuceToSevenTripleDrawEngine.js";
 
-function splitAmountBySeatOrder(amount, winners = []) {
-  const normalized = [...winners].sort((a, b) => a.seatIndex - b.seatIndex);
+function splitAmountBySeatOrder(amount, winners, state) {
+  const normalized = orderDrawWinners(winners, state);
   const base = Math.floor(amount / Math.max(1, normalized.length));
   let remainder = amount % Math.max(1, normalized.length);
   return normalized.map((winner) => {
@@ -34,11 +36,15 @@ function getComponentLabel(component) {
 
 function getComponentAmountDetails(amount, components = []) {
   const componentAmounts = splitHalfAmounts(amount);
+  // Five-card low takes the outer odd chip over Badugi; Archie keeps high first.
+  const oddComponent = components.find((component) => component !== "badugi") ?? components[0];
   return components.map((component, componentIndex) => ({
     component,
     componentLabel: getComponentLabel(component),
-    amount: componentAmounts[componentIndex] ?? 0,
-    oddChipAmount: amount % 2 === 1 && componentIndex === 0 ? 1 : 0,
+    amount: components.length === 2
+      ? Math.floor(amount / 2) + (component === oddComponent ? amount % 2 : 0)
+      : componentAmounts[componentIndex] ?? 0,
+    oddChipAmount: amount % 2 === 1 && component === oddComponent ? 1 : 0,
   }));
 }
 
@@ -319,6 +325,7 @@ export class SpecialDrawEngine extends DeuceToSevenTripleDrawEngine {
       }
     }
 
+    working.pots = resolveDrawContributionPots(working.players, working.pots);
     const components = this.specialConfig.split.components;
     const evaluations = working.players.map((player, seatIndex) => {
       if (!player || player.folded || player.sittingOut) return null;
@@ -412,7 +419,7 @@ export class SpecialDrawEngine extends DeuceToSevenTripleDrawEngine {
           const evaluation = entry.components?.[component] ?? entry.evaluation;
           return compareEvaluations(evaluation, best) === 0;
         });
-        const payouts = splitAmountBySeatOrder(amount, winners).map((winner) => {
+        const payouts = splitAmountBySeatOrder(amount, winners, working).map((winner) => {
           const evaluation = winner.components?.[component] ?? winner.evaluation;
           const player = working.players[winner.seatIndex];
           const stackBefore = player.stack ?? 0;

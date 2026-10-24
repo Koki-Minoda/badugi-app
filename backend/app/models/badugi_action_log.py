@@ -33,6 +33,8 @@ class BadugiHandAction(Base):
         primary_key=True,
         autoincrement=True,
     )
+    # Assigned by authenticated endpoints; legacy records stay unowned.
+    owner_user_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
     hand_id: Mapped[str] = mapped_column(String(64), index=True)
     player_id: Mapped[str] = mapped_column(String(64), index=True)
     seat_index: Mapped[Optional[int]] = mapped_column(nullable=True)

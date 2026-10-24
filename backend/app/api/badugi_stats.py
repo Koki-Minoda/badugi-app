@@ -29,7 +29,7 @@ def get_badugi_stats(
             select(BadugiHandAction)
             .where(
                 BadugiHandAction.player_id == player_id,
-                BadugiHandAction.metadata_json["_owner_user_id"].as_integer() == user.id,
+                BadugiHandAction.owner_user_id == user.id,
                 BadugiHandAction.phase == "BET",
             )
             .order_by(desc(BadugiHandAction.ts))

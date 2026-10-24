@@ -3,14 +3,15 @@ from collections import deque
 from datetime import datetime
 from typing import Any, Deque, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import desc, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import selectinload
 
 from ..core import db
-from ..models import HandAction, HandLog, HandResult
+from ..models import HandAction, HandLog, HandResult, User
+from ..dependencies.auth import get_current_user
 
 MAX_RECENT_LOGS = 10
 
@@ -53,7 +54,7 @@ class BadugiHandLogResponse(BaseModel):
 
 router = APIRouter()
 # Temporary buffer powering GET /recent until the UI migrates to a DB-driven feed.
-_recent_logs: Deque[BadugiHandLogCreate] = deque(maxlen=MAX_RECENT_LOGS)
+_recent_logs: Deque[tuple[int, BadugiHandLogCreate]] = deque(maxlen=MAX_RECENT_LOGS)
 
 
 def _reset_recent_logs() -> None:
@@ -63,7 +64,7 @@ def _reset_recent_logs() -> None:
 
 
 @router.post("/badugi/hands", response_model=BadugiHandLogResponse)
-def create_hand_log(payload: BadugiHandLogCreate) -> BadugiHandLogResponse:
+def create_hand_log(payload: BadugiHandLogCreate, user: User = Depends(get_current_user)) -> BadugiHandLogResponse:
     try:
         session = db.SessionLocal()
     except SQLAlchemyError:
@@ -75,7 +76,7 @@ def create_hand_log(payload: BadugiHandLogCreate) -> BadugiHandLogResponse:
             tournament_id=payload.tournament_id,
             level=payload.level,
             created_at=payload.created_at,
-            metadata_json=payload.metadata,
+            metadata_json={**(payload.metadata or {}), "_owner_user_id": user.id},
         )
         for action in payload.actions:
             log.actions.append(
@@ -101,7 +102,7 @@ def create_hand_log(payload: BadugiHandLogCreate) -> BadugiHandLogResponse:
             )
         session.add(log)
         session.commit()
-        _recent_logs.append(payload)
+        _recent_logs.append((user.id, payload))
         return BadugiHandLogResponse(hand_id=payload.hand_id, accepted=True)
     except SQLAlchemyError:
         session.rollback()
@@ -111,32 +112,33 @@ def create_hand_log(payload: BadugiHandLogCreate) -> BadugiHandLogResponse:
 
 
 @router.get("/badugi/hands/recent")
-def list_recent_hand_logs(limit: int = 10):
+def list_recent_hand_logs(limit: int = 10, user: User = Depends(get_current_user)):
     session = db.SessionLocal()
     try:
         stmt = (
             select(HandLog)
+            .where(HandLog.metadata_json["_owner_user_id"].as_integer() == user.id)
             .order_by(desc(HandLog.created_at))
             .limit(max(1, min(limit, MAX_RECENT_LOGS)))
         )
         logs = session.execute(stmt).scalars().all()
         if logs:
             return {"items": [log.to_dict(include_children=True) for log in logs]}
-        return {"items": list(_recent_logs)}
+        return {"items": [payload for owner_id, payload in _recent_logs if owner_id == user.id][:max(1, min(limit, MAX_RECENT_LOGS))]}
     except SQLAlchemyError:
-        return {"items": list(_recent_logs)}
+        return {"items": [payload for owner_id, payload in _recent_logs if owner_id == user.id][:max(1, min(limit, MAX_RECENT_LOGS))]}
     finally:
         session.close()
 
 
 @router.get("/badugi/hands/by-table/{table_id}")
-def get_hands_by_table(table_id: str, limit: int = 5):
+def get_hands_by_table(table_id: str, limit: int = 5, user: User = Depends(get_current_user)):
     session = db.SessionLocal()
     try:
         stmt = (
             select(HandLog)
             .options(selectinload(HandLog.actions), selectinload(HandLog.results))
-            .where(HandLog.table_id == table_id)
+            .where(HandLog.table_id == table_id, HandLog.metadata_json["_owner_user_id"].as_integer() == user.id)
             .order_by(desc(HandLog.created_at))
             .limit(max(1, min(limit, 20)))
         )
@@ -149,13 +151,13 @@ def get_hands_by_table(table_id: str, limit: int = 5):
 
 
 @router.get("/badugi/hands/{hand_id}")
-def get_hand_log(hand_id: str):
+def get_hand_log(hand_id: str, user: User = Depends(get_current_user)):
     session = db.SessionLocal()
     try:
         stmt = (
             select(HandLog)
             .options(selectinload(HandLog.actions), selectinload(HandLog.results))
-            .where(HandLog.hand_id == hand_id)
+            .where(HandLog.hand_id == hand_id, HandLog.metadata_json["_owner_user_id"].as_integer() == user.id)
         )
         log = session.execute(stmt).scalar_one_or_none()
         if not log:

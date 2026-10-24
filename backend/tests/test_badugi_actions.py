@@ -108,3 +108,35 @@ def test_actions_batch_requires_hand_id(monkeypatch):
     finally:
         app.dependency_overrides.pop(get_current_user, None)
         teardown_sqlite(engine, SessionTesting)
+
+
+def test_actions_and_stats_are_scoped_to_server_assigned_owner(monkeypatch):
+    engine, session_factory = setup_sqlite(monkeypatch)
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=1)
+    try:
+        payload = {"actions": [{"hand_id": "private-hand", "player_id": "hero", "phase": "BET", "round": 0,
+                                "action": "Call", "paid": 10, "metadata": {"_owner_user_id": 2}}]}
+        assert client.post("/api/badugi/actions/batch", json=payload).status_code == 200
+        assert len(client.get("/api/badugi/actions/recent?player_id=hero").json()["items"]) == 1
+        assert client.get("/api/badugi/stats?player_id=hero").json()["hands"] == 1
+        app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=2)
+        assert client.get("/api/badugi/actions/recent?player_id=hero").json()["items"] == []
+        assert client.get("/api/badugi/stats?player_id=hero").json()["hands"] == 0
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+        teardown_sqlite(engine, session_factory)
+
+
+def test_legacy_actions_without_owner_are_not_returned(monkeypatch):
+    from app.models import BadugiHandAction
+    engine, session_factory = setup_sqlite(monkeypatch)
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=1)
+    try:
+        with session_factory() as session:
+            session.add(BadugiHandAction(hand_id="legacy", player_id="hero", phase="BET", round=0, action="Call", action_type="call", paid=10))
+            session.commit()
+        assert client.get("/api/badugi/actions/recent?player_id=hero").json()["items"] == []
+        assert client.get("/api/badugi/stats?player_id=hero").json()["hands"] == 0
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+        teardown_sqlite(engine, session_factory)

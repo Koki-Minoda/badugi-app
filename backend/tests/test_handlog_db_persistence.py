@@ -1,6 +1,10 @@
 from datetime import datetime, timezone
 
+from types import SimpleNamespace
+
 import pytest
+
+from app.dependencies.auth import get_current_user
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
@@ -12,6 +16,15 @@ from app.main import app
 from app.models import Base, HandAction, HandLog, HandResult
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def owner():
+    previous = app.dependency_overrides.copy()
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=1)
+    yield
+    app.dependency_overrides.clear()
+    app.dependency_overrides.update(previous)
 
 
 @pytest.fixture()

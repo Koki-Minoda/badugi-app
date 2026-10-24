@@ -82,7 +82,7 @@ router = APIRouter()
 @router.post("/badugi/actions/batch", response_model=BadugiActionBatchResponse)
 def save_action_batch(
     payload: BadugiActionBatchRequest,
-    _: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> BadugiActionBatchResponse:
     actions = payload.actions or []
@@ -112,7 +112,7 @@ def save_action_batch(
                 bet_after=action.bet_after,
                 seq=seq,
                 ts=action.ts or datetime.utcnow(),
-                metadata_json=action.metadata,
+                metadata_json={**(action.metadata or {}), "_owner_user_id": user.id},
             )
         )
     try:
@@ -129,7 +129,7 @@ def save_action_batch(
 def list_recent_actions(
     player_id: Optional[str] = None,
     limit: int = 200,
-    _: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     if not player_id:
@@ -138,7 +138,7 @@ def list_recent_actions(
     try:
         stmt = (
             select(BadugiHandAction)
-            .where(BadugiHandAction.player_id == player_id)
+            .where(BadugiHandAction.player_id == player_id, BadugiHandAction.metadata_json["_owner_user_id"].as_integer() == user.id)
             .order_by(desc(BadugiHandAction.ts))
             .limit(limit)
         )

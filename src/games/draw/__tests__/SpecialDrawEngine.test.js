@@ -109,8 +109,9 @@ describe("special draw engines", () => {
     expect(result.summary[0].payouts[0]).toMatchObject({ componentLabel: "Badugi half" });
     expect(result.summary[1].payouts[0]).toMatchObject({ seatIndex: 0, payout: 50 });
     expect(result.summary[1].payouts[0]).toMatchObject({ componentLabel: "A-5 Low half" });
-    expect(result.summary[2]).toMatchObject({ potAmount: 1, oddChipAmount: 1, eligibleSeatIndexes: [0] });
-    expect(result.summary[2].payouts[0]).toMatchObject({ seatIndex: 0, payout: 1 });
+    expect(result.summary[2]).toMatchObject({ component: "badugi", potAmount: 0, oddChipAmount: 0 });
+    expect(result.summary[3]).toMatchObject({ component: "lowA5", potAmount: 1, oddChipAmount: 1, eligibleSeatIndexes: [0] });
+    expect(result.summary[3].payouts[0]).toMatchObject({ seatIndex: 0, payout: 1 });
     expect(result.state.players[0].stack).toBe(101);
   });
 

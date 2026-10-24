@@ -561,7 +561,7 @@ describe("DeuceToSevenTripleDrawEngine", () => {
     }
   });
 
-  it("splits tied 2-7 showdown pots by seat order with odd-chip remainder", () => {
+  it("splits tied 2-7 showdown pots clockwise left of the button", () => {
     const engine = new DeuceToSevenTripleDrawEngine();
     const state = engine.initHand({
       seatConfig: ["HUMAN", "CPU"],
@@ -575,11 +575,11 @@ describe("DeuceToSevenTripleDrawEngine", () => {
     const result = engine.resolveShowdown(state);
 
     expect(result.summary[0].payouts).toEqual([
-      expect.objectContaining({ seatIndex: 0, payout: 51 }),
-      expect.objectContaining({ seatIndex: 1, payout: 50 }),
+      expect.objectContaining({ seatIndex: 1, payout: 51 }),
+      expect.objectContaining({ seatIndex: 0, payout: 50 }),
     ]);
-    expect(result.state.players[0].stack).toBe(551);
-    expect(result.state.players[1].stack).toBe(550);
+    expect(result.state.players[0].stack).toBe(550);
+    expect(result.state.players[1].stack).toBe(551);
   });
 
   it("resolves side pots with each pot restricted to eligible D01 seats", () => {

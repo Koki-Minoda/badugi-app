@@ -12005,7 +12005,7 @@ export default function App() {
     const usesVariableSizing = betSizingModel?.enabled === true;
     const actionType = usesVariableSizing
       ? betSizingModel.actionType
-      : "raise";
+      : isSingleTableBoardGame && maxNow === 0 ? "bet" : "raise";
     const raiseAmt = usesVariableSizing
       ? Math.max(
           betSizingModel.minCommit,

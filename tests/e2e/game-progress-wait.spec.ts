@@ -119,3 +119,40 @@ test('cash action clicks remain real clicks', async ({page}) => {
   expect(await clickHeroAction(page, 'action-call')).toBe(true);
   await expect(page.getByTestId('action-call')).toHaveText('Called');
 });
+
+test('shared action selection survives a phase-change locator race', async ({page}) => {
+  page.setDefaultTimeout(700);
+  await installDrawSnapshot(page, {currentActor:0,turn:0,nextTurn:0});
+  await page.evaluate(() => {
+    const snapshot = window.__BADUGI_E2E__.getStateSnapshot().controllerSnapshot;
+    snapshot.phase='BET'; snapshot.currentBet=0; snapshot.players[0].hasDrawn=false;
+    document.querySelector('[data-testid="table-phase-badge"]').textContent='BET';
+  });
+  await page.evaluate(() => {
+    const button=document.createElement('button');button.dataset.testid='action-check';button.textContent='Check';
+    button.onclick=()=>{
+      const snapshot=window.__BADUGI_E2E__.getStateSnapshot().controllerSnapshot;
+      snapshot.phase='HAND_RESULT';snapshot.currentActor=null;
+      document.querySelector('[data-testid="table-phase-badge"]').textContent='HAND_RESULT';
+    };
+    document.body.append(button);
+  });
+  const transitioningPage = new Proxy(page, {
+    get(target,key){
+      if(key==='getByTestId')return id=>{
+        const button=target.getByTestId(id).first();
+        return {first:()=>({
+          count:()=>button.count(),
+          isVisible:async()=>{const visible=await button.isVisible();if(visible)await button.evaluate(element=>element.remove());return visible;},
+          isEnabled:()=>button.isEnabled(),
+          click:options=>button.click(options),
+        })};
+      };
+      const value=Reflect.get(target,key);return typeof value==='function'?value.bind(target):value;
+    },
+  });
+  const {performSafeAction}=await import('./helpers/gameProgressHelper.js');
+  const result=await performSafeAction(transitioningPage);
+  expect(result.acted).toBe(true);
+  expect(result.clickedAction).toBe('action-check');
+});

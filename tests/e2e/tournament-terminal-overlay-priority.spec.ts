@@ -1,6 +1,8 @@
 import {expect,test} from '@playwright/test';
 import {APP_URL,enterTitleIfPresent,selectGameVariantFromSelector} from './authHelper';
 import {waitForE2EDriver} from './helpers/gameProgressHelper.js';
+import {visibleHeroActions} from './helpers/visibleHeroActions';
+import {clickHeroAction} from './helpers/clickHeroAction';
 
 async function waitForTournamentHand(page) {
  await expect.poll(()=>page.evaluate(()=>({
@@ -102,10 +104,13 @@ test('Badugi tournament remains playable through three draws and the final betti
  const draws=new Set();let actions=0;
  for(let step=0;step<200;step++){
   if(await page.getByTestId('hand-result-overlay').count())break;
-  for(const id of ['action-check','action-call','action-draw-selected']){
-   const button=page.getByTestId(id);if(await button.count()&&await button.isEnabled()){
-    if(id==='action-draw-selected')draws.add(await page.evaluate(()=>window.__BADUGI_E2E__.getStateSnapshot().drawRound));
-    await button.click();actions++;break;
+  const visible=await visibleHeroActions(page);
+  const id=['action-check','action-call','action-draw-selected'].find(candidate=>visible.includes(candidate));
+  if(id){
+   const drawRound=id==='action-draw-selected'?await page.evaluate(()=>window.__BADUGI_E2E__.getStateSnapshot().drawRound):null;
+   if(await clickHeroAction(page,id)){
+    if(drawRound!==null)draws.add(drawRound);
+    actions++;
    }
   }
   await page.waitForTimeout(150);

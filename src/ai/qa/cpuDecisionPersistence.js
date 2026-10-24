@@ -109,6 +109,14 @@ export function buildCpuDecisionTelemetry({
   if (!isCpu) return null;
 
   const nestedDecision = metadata?.cpuDecision ?? {};
+  const rawInferenceTrace = findMetadataValue(metadata, ["inferenceTrace"]);
+  const inferenceTrace = rawInferenceTrace && typeof rawInferenceTrace === "object"
+    ? {
+        ...Object.fromEntries(["variantId", "tierId", "phase", "status", "reason", "requestedModelId", "selectedModelId", "usedModelId"].map(key => [key, normalizeString(rawInferenceTrace[key])])),
+        elapsedMs: Number.isFinite(rawInferenceTrace.elapsedMs) ? Math.max(0, rawInferenceTrace.elapsedMs) : null,
+      }
+    : null;
+
   let legalActions = normalizeLegalActions(
     metadata?.legalActions ??
       nestedDecision?.legalActions ??
@@ -265,6 +273,7 @@ export function buildCpuDecisionTelemetry({
     illegalActionRejected: Boolean(metadata?.illegalActionRejected),
     forcedFold: Boolean(metadata?.forcedFold),
   });
+  row.inferenceTrace = inferenceTrace;
   row.sessionId = normalizeString(sessionId, "unknown");
   row.actorSeat = Number.isFinite(Number(actorSeat)) ? Number(actorSeat) : null;
   row.isCpu = true;
@@ -291,6 +300,7 @@ export function buildCpuDecisionTelemetry({
 
   return {
     cpuTelemetryVersion: CPU_DECISION_METADATA_VERSION,
+    inferenceTrace,
     sessionId: normalizeString(sessionId, "unknown"),
     mode: normalizeString(mode, "unknown"),
     variantId: normalizeString(variantId, "unknown"),

@@ -24,6 +24,7 @@ vi.mock("../onnxExecutor.js", () => ({
 
 vi.mock("../modelRouter.js", () => ({
   selectModelForVariant: vi.fn(({ tierId }) => {
+    if (tierId === "unconfigured") return null;
     if (tierId === "missing") {
       return {
         id: "missing-model",
@@ -158,5 +159,53 @@ describe("onnxPolicyAdapter inference fallback", () => {
         state: { players: [{ hand: ["AS", "2D", "3C", "4H"] }] },
       }),
     ).resolves.toBeNull();
+  });
+});
+
+
+describe("request-scoped inference evidence", () => {
+  it("distinguishes an unconfigured model from inference failure", async () => {
+    const onInferenceTrace = vi.fn();
+    expect(await inferBetActionWithOnnx({ variantId: "D03", tierId: "unconfigured", onInferenceTrace })).toBeNull();
+    expect(onInferenceTrace).toHaveBeenCalledWith(expect.objectContaining({ status: "not-configured", reason: "model-not-configured", selectedModelId: null, usedModelId: null }));
+  });
+
+  it("does not count deterministic fallback for unusable scores as learned action usage", async () => {
+    runMock.mockResolvedValueOnce({ output: { data: [NaN, NaN, NaN, NaN] } });
+    const onInferenceTrace = vi.fn();
+    const result = await inferBetActionWithOnnx({ variantId: "D03", tierId: "iron", legalActions: ["CALL"], onInferenceTrace });
+    expect(result.action).toBe("CALL");
+    expect(onInferenceTrace).toHaveBeenCalledWith(expect.objectContaining({ status: "fallback", reason: "no-legal-policy-score", usedModelId: null }));
+  });
+
+  it.each([
+    ["missing", "session-unavailable"],
+    ["bad-shape", "feature-build-failed"],
+  ])("records %s without claiming a model was used", async (tierId, reason) => {
+    const onInferenceTrace = vi.fn();
+    await inferBetActionWithOnnx({ variantId: "D03", tierId, legalActions: ["CALL"], onInferenceTrace });
+    expect(onInferenceTrace).toHaveBeenCalledWith(expect.objectContaining({
+      variantId: "D03", tierId, phase: "BET", status: "failed", reason, usedModelId: null,
+      selectedModelId: tierId === "missing" ? "missing-model" : "bad-shape-model",
+      elapsedMs: expect.any(Number),
+    }));
+  });
+
+  it("records successful usage without private observations", async () => {
+    runMock.mockResolvedValueOnce({ output: { data: [0.1, 0.2, 0.9, 0.3, 0.4, 0.5] } });
+    const onInferenceTrace = vi.fn();
+    const decision = await inferBetActionWithOnnx({ variantId: "D03", tierId: "iron", modelId: "requested", legalActions: ["CALL"], observation: { privateCards: ["AS"] }, onInferenceTrace });
+    expect(decision.modelId).toBe("available-model");
+    expect(onInferenceTrace).toHaveBeenCalledTimes(1);
+    expect(onInferenceTrace.mock.calls[0][0]).toMatchObject({ requestedModelId: "requested", selectedModelId: "available-model", usedModelId: "available-model", status: "used", reason: null, phase: "BET" });
+    expect(JSON.stringify(onInferenceTrace.mock.calls[0][0])).not.toContain("privateCards");
+  });
+
+  it("records inference exceptions and cannot let a diagnostic callback break fallback", async () => {
+    runMock.mockRejectedValueOnce(new Error("injected inference fault"));
+    const traces = [];
+    const result = await inferDrawDecisionWithOnnx({ variantId: "D03", tierId: "iron", legalActions: ["draw_0"], onInferenceTrace: trace => { traces.push(trace); throw new Error("diagnostic sink failed"); } });
+    expect(result).toBeNull();
+    expect(traces).toEqual([expect.objectContaining({ phase: "DRAW", reason: "inference-failed", usedModelId: null })]);
   });
 });

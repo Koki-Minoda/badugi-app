@@ -5,6 +5,13 @@ import {
 } from "../qa/cpuDecisionPersistence.js";
 
 describe("cpu decision persistence", () => {
+  it("persists inference evidence while excluding private payload fields", () => {
+    const telemetry = buildCpuDecisionTelemetry({ variantId: "D01", phase: "BET", actorSeat: 2, seatSnapshot: { isCPU: true }, metadata: { inferenceTrace: { variantId: "D01", tierId: "standard", phase: "BET", status: "failed", reason: "session-unavailable", requestedModelId: null, selectedModelId: "missing", usedModelId: null, elapsedMs: 42, observation: { hand: ["AS"] } } } });
+    expect(telemetry.inferenceTrace).toMatchObject({ status: "failed", selectedModelId: "missing", usedModelId: null, elapsedMs: 42 });
+    expect(telemetry.cpuDecision.inferenceTrace).toEqual(telemetry.inferenceTrace);
+    expect(JSON.stringify(telemetry.inferenceTrace)).not.toContain("observation");
+  });
+
   it("builds minimal CPU metadata without private cards or state vectors", () => {
     const telemetry = buildCpuDecisionTelemetry({
       sessionId: "qa-session-1",

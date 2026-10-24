@@ -687,6 +687,19 @@ export class DeuceToSevenTripleDrawController extends GameController {
     const tierId = options?.tierConfig?.id ?? "standard";
     const phase = String(engineState?.street ?? "BET").toUpperCase();
     const legalActionsRaw = deriveLegalActions(engineState ?? {}, targetSeat);
+    let inferenceTrace = null;
+    const onInferenceTrace = trace => { inferenceTrace = trace; };
+    const withInferenceTrace = action => action && inferenceTrace ? {
+      ...action,
+      metadata: {
+        ...action.metadata,
+        inferenceTrace,
+        modelId: inferenceTrace?.usedModelId ?? null,
+        decisionSource: inferenceTrace.status === "used" ? "onnx" : "fallback",
+        fallbackReason: inferenceTrace.reason,
+      },
+    } : action;
+
 
     if (phase === "DRAW") {
       const drawLegalActions = ["draw_0", "draw_1", "draw_2", "draw_3", "draw_4", "draw_5"];
@@ -701,6 +714,7 @@ export class DeuceToSevenTripleDrawController extends GameController {
         onnxDecision = await inferDrawDecisionWithOnnx({
           variantId: this.variantId,
           tierId,
+          onInferenceTrace,
           observation,
           legalActions: drawLegalActions,
         });
@@ -715,7 +729,7 @@ export class DeuceToSevenTripleDrawController extends GameController {
           onnxCount <= heuristicIndexes.length
             ? heuristicIndexes.slice(0, onnxCount)
             : pickWorstCardIndexes(player.hand ?? [], onnxCount, this.variantId === "D02");
-        return {
+        return withInferenceTrace({
           seatIndex: targetSeat,
           type: "DRAW",
           discardIndexes,
@@ -725,9 +739,9 @@ export class DeuceToSevenTripleDrawController extends GameController {
             source: "onnx",
             drawCount: onnxCount,
           },
-        };
+        });
       }
-      return this.getCpuAction(state, seatIndex, options);
+      return withInferenceTrace(this.getCpuAction(state, seatIndex, options));
     }
 
     if (phase === "BET") {
@@ -745,6 +759,7 @@ export class DeuceToSevenTripleDrawController extends GameController {
         onnxDecision = await inferBetActionWithOnnx({
           variantId: this.variantId,
           tierId,
+          onInferenceTrace,
           observation,
           legalActions: betLegalStrings,
         });
@@ -754,7 +769,7 @@ export class DeuceToSevenTripleDrawController extends GameController {
       if (onnxDecision?.action) {
         const actionType = onnxDecision.action.toUpperCase();
         if (betLegalStrings.includes(actionType)) {
-          return {
+          return withInferenceTrace({
             seatIndex: targetSeat,
             type: actionType,
             amount: engineState.metadata?.bettingStructure === "no-limit" ? undefined : onnxDecision.raiseSize,
@@ -763,13 +778,13 @@ export class DeuceToSevenTripleDrawController extends GameController {
               source: "onnx",
               decisionSource: "onnx",
             },
-          };
+          });
         }
       }
-      return this.getCpuAction(state, seatIndex, options);
+      return withInferenceTrace(this.getCpuAction(state, seatIndex, options));
     }
 
-    return this.getCpuAction(state, seatIndex, options);
+    return withInferenceTrace(this.getCpuAction(state, seatIndex, options));
   }
 
   applyAction(state = {}, action = {}) {

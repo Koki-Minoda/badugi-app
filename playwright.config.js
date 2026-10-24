@@ -53,6 +53,7 @@ export default defineConfig({
       use: {
         ...devices['iPhone 13 landscape'],
         browserName: 'webkit',
+        trace: 'retain-on-failure',
       },
     },
     {

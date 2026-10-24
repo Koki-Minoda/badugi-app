@@ -2,6 +2,13 @@ import {expect,test} from '@playwright/test';
 import {APP_URL,enterTitleIfPresent,selectGameVariantFromSelector} from './authHelper';
 import {waitForE2EDriver} from './helpers/gameProgressHelper.js';
 
+async function waitForTournamentHand(page) {
+ await expect.poll(()=>page.evaluate(()=>({
+  mode:window.__BADUGI_E2E__?.getControllerDebug?.().mode,
+  hand:window.__BADUGI_E2E__?.getStateSnapshot?.().handId?.startsWith('table-1-h'),
+ }))).toEqual({mode:'tournament-mtt',hand:true});
+}
+
 for(const size of [{width:1440,height:900},{width:393,height:695},{width:852,height:283}]) for(const outcome of ['played','blind-all-in','hero-bust-fixture']){
  const blindAllIn=outcome==='blind-all-in';
  test(`settled all-in displays tournament result without a competing hand dialog at ${size.width}x${size.height} (${outcome})`,async({page},testInfo)=>{
@@ -17,6 +24,7 @@ for(const size of [{width:1440,height:900},{width:393,height:695},{width:852,hei
    tables:1,seatsPerTable:6,totalPlayers:2,startingStack:blindAllIn?5:30,gameVariant:'nlh',gameRotation:['nlh'],rotationPolicy:'fixed',
    levels:[{levelIndex:1,smallBlind:5,bigBlind:10,ante:0,handsThisLevel:999}],payouts:[{place:1,percent:100}],
   }),blindAllIn);
+  await waitForTournamentHand(page);
   if(outcome==='hero-bust-fixture'){
    // Presentation coverage only; natural elimination is covered by the separate MTT gate.
    await expect(page.getByTestId('tournament-hud')).toBeVisible();
@@ -60,6 +68,7 @@ test('Badugi tournament can deal the next hand after a folded hero settlement',a
  await page.addInitScript(()=>localStorage.setItem('mgx_auth',JSON.stringify({accessToken:'test',tokenType:'Bearer',user:{id:9001,username:'QA Hero'},isAuthenticated:true})));
  await page.goto(APP_URL);await enterTitleIfPresent(page);await page.getByTestId('menu-ring').click();await selectGameVariantFromSelector(page,'badugi');await waitForE2EDriver(page);
  await page.evaluate(()=>window.__BADUGI_E2E__.startTournamentMTT({id:'badugi-next',name:'Badugi next',practiceOnly:true,tables:3,seatsPerTable:6,totalPlayers:18,startingStack:500,gameVariant:'badugi',gameRotation:['badugi'],levels:[{levelIndex:1,smallBlind:5,bigBlind:10,ante:0,handsThisLevel:999}]}));
+ await waitForTournamentHand(page);
  await expect(page.getByTestId('action-fold')).toBeEnabled();await page.getByTestId('action-fold').click();await expect(page.getByTestId('hand-result-overlay')).toBeVisible({timeout:40000});
  const before=await page.evaluate(()=>window.__BADUGI_E2E__.getStateSnapshot().handId);
  await page.getByTestId('hand-result-next-hand').click();
@@ -77,6 +86,7 @@ test('Badugi tournament remains playable through three draws and the final betti
  await page.addInitScript(()=>localStorage.setItem('mgx_auth',JSON.stringify({accessToken:'test',user:{id:9001,username:'QA Hero'},isAuthenticated:true})));
  await page.goto(APP_URL);await enterTitleIfPresent(page);await page.getByTestId('menu-ring').click();await selectGameVariantFromSelector(page,'badugi');await waitForE2EDriver(page);
  await page.evaluate(()=>window.__BADUGI_E2E__.startTournamentMTT({id:'badugi-draw',name:'Badugi draw',practiceOnly:true,tables:1,seatsPerTable:6,totalPlayers:6,startingStack:500,gameVariant:'badugi',gameRotation:['badugi'],levels:[{levelIndex:1,smallBlind:5,bigBlind:10,ante:0,handsThisLevel:999}]}));
+ await waitForTournamentHand(page);
  const draws=new Set();let actions=0;
  for(let step=0;step<200;step++){
   if(await page.getByTestId('hand-result-overlay').count())break;

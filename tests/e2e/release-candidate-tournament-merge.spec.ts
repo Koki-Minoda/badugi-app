@@ -17,6 +17,7 @@ test(`${variant}: natural 18-player tournament merge and elimination`,async({pag
  const rows=[];let last='',final=false;let terminal=false;let terminalKind=null;
  const end=Date.now()+540000;
  while(Date.now()<end){
+  if(errors.length)break; // Preserve evidence immediately when the game throws.
   const s=await page.evaluate(()=>{const api=window.__BADUGI_E2E__;return {hand:api.getStateSnapshot().handId,terminal:!!document.querySelector('[data-testid=mtt-hero-bust-overlay],[data-testid=mtt-result-overlay]'),result:!!document.querySelector('[data-testid=hand-result-overlay]'),state:JSON.parse(localStorage.getItem('mgx.tournament.mtt.active'))?.tournamentState};});
   if(s.terminal){terminal=true;terminalKind=await page.getByTestId('mtt-hero-bust-overlay').isVisible()?'hero-bust':'champion';break;}
   if(s.result&&s.hand!==last){

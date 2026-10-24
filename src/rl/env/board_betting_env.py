@@ -152,7 +152,7 @@ class BoardBettingEnv(gym.Env):
         return make_board_observation(scenario)
 
     def _reward_for_action(self, action: int, teacher: int):
-        if self.legal_action_mask()[action] <= 0:
+        if action < 0 or action >= len(BOARD_ACTIONS) or self.legal_action_mask()[action] <= 0:
             return -1.4
         if action == teacher:
             return 1.0
@@ -214,10 +214,10 @@ class BoardLongHorizonEnv(BoardBettingEnv):
         action = int(action)
         teacher = board_teacher_action(self.scenario)
         mask = self.legal_action_mask()
-        action_name = BOARD_ACTIONS[action] if 0 <= action < len(BOARD_ACTIONS) else "invalid"
-        reward = self._reward_for_action(action, teacher)
         if action < 0 or action >= len(BOARD_ACTIONS) or mask[action] <= 0:
             return self._observation(), -1.5, True, False, {"teacherAction": teacher, "terminal": "illegal"}
+        action_name = BOARD_ACTIONS[action]
+        reward = self._reward_for_action(action, teacher)
 
         contribution = self._contribution_for(action_name)
         self.hero_stack = max(0.0, self.hero_stack - contribution)

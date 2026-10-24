@@ -4,6 +4,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from ..core.account_writes import account_write
 from ..core.db import get_db
 from ..dependencies.auth import get_current_user
 from ..models import TournamentSnapshot, User
@@ -45,8 +46,9 @@ def save_tournament_snapshot(
     current_user: User = Depends(get_current_user),
 ):
     snapshot_data = payload.snapshot.model_dump()
-    _upsert_snapshot(db, current_user.id, snapshot_data)
-    db.commit()
+    with account_write(db, current_user):
+        _upsert_snapshot(db, current_user.id, snapshot_data)
+        db.commit()
     return {"status": "ok"}
 
 
@@ -70,13 +72,14 @@ def retire_tournament(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    entry = (
-        db.query(TournamentSnapshot)
-        .filter(TournamentSnapshot.user_id == current_user.id)
-        .one_or_none()
-    )
-    if entry:
-        db.delete(entry)
-        db.commit()
+    with account_write(db, current_user):
+        entry = (
+            db.query(TournamentSnapshot)
+            .filter(TournamentSnapshot.user_id == current_user.id)
+            .one_or_none()
+        )
+        if entry:
+            db.delete(entry)
+            db.commit()
     return {"status": "retired"}
 

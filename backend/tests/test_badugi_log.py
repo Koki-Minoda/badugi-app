@@ -13,7 +13,7 @@ from sqlalchemy.pool import StaticPool
 from app.api.badugi_log import _reset_recent_logs
 from app.core import db
 from app.main import app
-from app.models import Base
+from app.models import User, Base
 
 client = TestClient(app)
 
@@ -21,7 +21,7 @@ client = TestClient(app)
 @pytest.fixture(autouse=True)
 def owner():
     previous = app.dependency_overrides.copy()
-    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=1)
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=1, hashed_password="test-hash")
     _reset_recent_logs()
     yield
     app.dependency_overrides.clear()
@@ -39,6 +39,9 @@ def sqlite_db(monkeypatch):
     )
     Base.metadata.create_all(bind=engine)
     SessionTesting = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+    with SessionTesting() as session:
+        session.add_all([User(id=i, email=f"owner-{i}@example.com", hashed_password="test-hash") for i in (1, 2)])
+        session.commit()
     monkeypatch.setattr(db, "engine", engine)
     monkeypatch.setattr(db, "SessionLocal", SessionTesting)
     yield
@@ -114,7 +117,7 @@ def test_structured_history_owner_cannot_be_forged(sqlite_db):
     assert client.post("/api/badugi/hands", json=payload).status_code == 200
     assert len(client.get("/api/badugi/hands/recent").json()["items"]) == 1
     assert len(client.get("/api/badugi/hands/by-table/shared-table").json()["items"]) == 1
-    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=2)
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=2, hashed_password="test-hash")
     assert client.get("/api/badugi/hands/recent").json()["items"] == []
     assert client.get("/api/badugi/hands/by-table/shared-table").json()["items"] == []
     assert client.get("/api/badugi/hands/private-hand").status_code == 404
@@ -141,5 +144,5 @@ def test_recent_fallback_keeps_owner_scope(sqlite_db, monkeypatch):
             pass
     monkeypatch.setattr(db, "SessionLocal", UnavailableSession)
     assert len(client.get("/api/badugi/hands/recent").json()["items"]) == 1
-    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=2)
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=2, hashed_password="test-hash")
     assert client.get("/api/badugi/hands/recent").json()["items"] == []

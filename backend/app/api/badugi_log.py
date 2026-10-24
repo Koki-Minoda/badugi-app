@@ -10,6 +10,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import selectinload
 
 from ..core import db
+from ..core.account_writes import account_write
+from ..core.security import account_binding
 from ..models import HandAction, HandLog, HandResult, User
 from ..dependencies.auth import get_current_user
 
@@ -54,7 +56,7 @@ class BadugiHandLogResponse(BaseModel):
 
 router = APIRouter()
 # Temporary buffer powering GET /recent until the UI migrates to a DB-driven feed.
-_recent_logs: Deque[tuple[int, BadugiHandLogCreate]] = deque(maxlen=MAX_RECENT_LOGS)
+_recent_logs: Deque[tuple[int, BadugiHandLogCreate, str]] = deque(maxlen=MAX_RECENT_LOGS)
 
 
 def _reset_recent_logs() -> None:
@@ -80,41 +82,42 @@ def create_hand_log(payload: BadugiHandLogCreate, user: User = Depends(get_curre
     except SQLAlchemyError:
         raise HTTPException(status_code=503, detail="db_unreachable")
     try:
-        log = HandLog(
-            owner_user_id=user.id,
-            hand_id=payload.hand_id,
-            table_id=payload.table_id,
-            tournament_id=payload.tournament_id,
-            level=payload.level,
-            created_at=payload.created_at,
-            metadata_json={**(payload.metadata or {}), "_owner_user_id": user.id},
-        )
-        for action in payload.actions:
-            log.actions.append(
-                HandAction(
-                    seat_index=action.seat_index,
-                    player_id=action.player_id,
-                    action=action.action,
-                    amount=action.amount,
-                    round=action.round,
-                    phase=action.phase,
-                ),
+        with account_write(session, user):
+            log = HandLog(
+                owner_user_id=user.id,
+                hand_id=payload.hand_id,
+                table_id=payload.table_id,
+                tournament_id=payload.tournament_id,
+                level=payload.level,
+                created_at=payload.created_at,
+                metadata_json={**(payload.metadata or {}), "_owner_user_id": user.id},
             )
-        for result in payload.results:
-            log.results.append(
-                HandResult(
-                    seat_index=result.seat_index,
-                    player_id=result.player_id,
-                    final_stack=result.final_stack,
-                    hand_label=result.hand_label,
-                    is_winner=result.is_winner,
-                    pot_share=result.pot_share,
-                ),
-            )
-        session.add(log)
-        session.commit()
-        _recent_logs.append((user.id, payload))
-        return BadugiHandLogResponse(hand_id=payload.hand_id, accepted=True)
+            for action in payload.actions:
+                log.actions.append(
+                    HandAction(
+                        seat_index=action.seat_index,
+                        player_id=action.player_id,
+                        action=action.action,
+                        amount=action.amount,
+                        round=action.round,
+                        phase=action.phase,
+                    ),
+                )
+            for result in payload.results:
+                log.results.append(
+                    HandResult(
+                        seat_index=result.seat_index,
+                        player_id=result.player_id,
+                        final_stack=result.final_stack,
+                        hand_label=result.hand_label,
+                        is_winner=result.is_winner,
+                        pot_share=result.pot_share,
+                    ),
+                )
+            session.add(log)
+            session.commit()
+            _recent_logs.append((user.id, payload, account_binding(user)))
+            return BadugiHandLogResponse(hand_id=payload.hand_id, accepted=True)
     except SQLAlchemyError:
         session.rollback()
         raise HTTPException(status_code=503, detail="db_unreachable")
@@ -135,9 +138,9 @@ def list_recent_hand_logs(limit: int = 10, user: User = Depends(get_current_user
         logs = session.execute(stmt).scalars().all()
         if logs:
             return {"items": [log.to_dict(include_children=True) for log in logs]}
-        return {"items": [payload for owner_id, payload in _recent_logs if owner_id == user.id][:max(1, min(limit, MAX_RECENT_LOGS))]}
+        return {"items": [payload for owner_id, payload, binding in _recent_logs if owner_id == user.id and binding == account_binding(user)][:max(1, min(limit, MAX_RECENT_LOGS))]}
     except SQLAlchemyError:
-        return {"items": [payload for owner_id, payload in _recent_logs if owner_id == user.id][:max(1, min(limit, MAX_RECENT_LOGS))]}
+        return {"items": [payload for owner_id, payload, binding in _recent_logs if owner_id == user.id and binding == account_binding(user)][:max(1, min(limit, MAX_RECENT_LOGS))]}
     finally:
         session.close()
 

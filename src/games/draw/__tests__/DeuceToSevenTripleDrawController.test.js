@@ -34,6 +34,28 @@ function buildController(cards = []) {
 }
 
 describe("DeuceToSevenTripleDrawController", () => {
+  it("keeps tournament identity when players move seats between hands", () => {
+    const controller = buildController([
+      "2S", "3S", "4S", "5S", "7S", "2H", "3H", "4H", "5H", "8H",
+      "2C", "3C", "4C", "5C", "9C", "2D", "3D", "4D", "5D", "9D",
+    ]);
+    const initial = controller.createInitialState();
+    const currentPlayers = [
+      {playerId: "seat-0", stack: 650, tournamentPlayerId: "hero-player", tournamentSeatIndex: 3},
+      {playerId: "seat-1", stack: 350, tournamentPlayerId: "cpu-9", tournamentSeatIndex: 5},
+    ];
+    const first = controller.createNewHandState(initial, {currentPlayers, structure: {sb: 0, bb: 0, ante: 0}});
+    expect(controller.getUiSnapshot(first).players).toEqual(expect.arrayContaining([
+      expect.objectContaining({tournamentPlayerId: "hero-player", tournamentSeatIndex: 3, stack: 650}),
+      expect.objectContaining({tournamentPlayerId: "cpu-9", tournamentSeatIndex: 5, stack: 350}),
+    ]));
+    const next = controller.createNewHandState(first, {currentPlayers: [
+      {...currentPlayers[0], tournamentSeatIndex: 0},
+      {...currentPlayers[1], tournamentPlayerId: "cpu-12", tournamentSeatIndex: 1},
+    ], structure: {sb: 0, bb: 0, ante: 0}});
+    expect(controller.getUiSnapshot(next).players[1]).toMatchObject({tournamentPlayerId: "cpu-12", tournamentSeatIndex: 1});
+  });
+
   it.each([1, 2, 3])("preserves draw round %i in partial legacy CPU bet updates", (round) => {
     const controller = buildController();
     controller.syncFromExternalState({

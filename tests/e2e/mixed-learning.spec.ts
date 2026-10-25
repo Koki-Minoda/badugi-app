@@ -75,15 +75,23 @@ test('cash MIX crosses draw, stud and board families with chips, seats and butto
     expect(settled.players.reduce((sum, p) => sum + p.stack, 0)).toBe(3000);
     await page.evaluate(() => (window as any).__BADUGI_E2E__.dealNewHandNow());
     await expect.poll(async () => (await snapshot(page)).handCount).toBe(i + 2);
+    // The roster ref advances before React publishes the new controller's
+    // pot. Wait for both views of the same hand before checking chips.
+    await expect.poll(async () => {
+      const state = await snapshot(page);
+      const controllerPot = state.controllerSnapshot?.pot;
+      return typeof controllerPot !== 'number' || state.potTotal === controllerPot;
+    }).toBe(true);
     const next = await snapshot(page);
     expect(next.gameVariant).toBe(variants[(i + 1) % variants.length]);
     const records = await page.evaluate(() => (window as any).__BADUGI_E2E__.getHandHistory());
     const record = records.find(record => record.handId === settled.handId);
     expect(record, `history for ${settled.handId}`).toBeTruthy();
     expect([variants[i % variants.length], games[i % games.length]]).toContain(record.variantId ?? record.gameVariant ?? record.gameId);
-    // New-hand stacks plus committed chips equal each player's settled stack.
-    expect(next.players.map(p => p.stack + (p.bet ?? 0)))
-      .toEqual(settled.players.map(p => p.stack));
+    // A CPU may act before this snapshot. Its committed chips have already
+    // moved into the pot, so compare the whole table rather than seat stacks.
+    expect(next.players.reduce((sum, p) => sum + p.stack, 0) + next.potTotal)
+      .toBe(settled.players.reduce((sum, p) => sum + p.stack, 0));
   }
   expect(errors).toEqual([]);
 });

@@ -17,4 +17,12 @@ describe("VariantCardAvailability", () => {
     expect(screen.getByTestId("variant-availability-badge").textContent).toContain("検証中");
     expect(screen.getByTestId("variant-availability-reason").textContent).toMatch(/Badugi-family/);
   });
+
+  it("explains public Hidugi Triple Draw in the selected language", () => {
+    const availability = getVariantAvailability("D06");
+    const { rerender } = render(<VariantCardAvailability availability={availability} language="ja" />);
+    expect(screen.getByTestId("variant-availability-reason").textContent).toMatch(/最大3回交換/);
+    rerender(<VariantCardAvailability availability={availability} language="en" />);
+    expect(screen.getByTestId("variant-availability-reason").textContent).toMatch(/aces are high/);
+  });
 });

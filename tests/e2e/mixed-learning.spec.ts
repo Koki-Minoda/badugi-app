@@ -46,16 +46,24 @@ test('Stud MIX keeps all six desktop seats separate at 1280×720', async ({ page
     }));
   });
   expect(overlappingSeats).toEqual([]);
-  for (const width of [1280, 1440]) {
-    await page.setViewportSize({ width, height: width === 1280 ? 720 : 900 });
+  const coarseTouch = await page.evaluate(() =>
+    window.matchMedia('(pointer: coarse) and (hover: none)').matches,
+  );
+  if (coarseTouch) {
     await page.getByTestId('seat-5').hover();
-    const hud = page.getByTestId('seat-5-detail');
-    await expect(hud).toBeVisible();
-    const hudBox = (await hud.boundingBox())!;
-    const actionPanelLeft = (await page.getByTestId('decision-panel').boundingBox())!.x;
-    expect(hudBox.x + hudBox.width).toBeLessThan(actionPanelLeft);
-    await page.mouse.move(0, 0);
-    await expect(hud).toHaveCount(0);
+    await expect(page.getByTestId('seat-5-detail')).toHaveCount(0);
+  } else {
+    for (const width of [1280, 1440]) {
+      await page.setViewportSize({ width, height: width === 1280 ? 720 : 900 });
+      await page.getByTestId('seat-5').hover();
+      const hud = page.getByTestId('seat-5-detail');
+      await expect(hud).toBeVisible();
+      const hudBox = (await hud.boundingBox())!;
+      const actionPanelLeft = (await page.getByTestId('decision-panel').boundingBox())!.x;
+      expect(hudBox.x + hudBox.width).toBeLessThan(actionPanelLeft);
+      await page.mouse.move(0, 0);
+      await expect(hud).toHaveCount(0);
+    }
   }
 });
 

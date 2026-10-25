@@ -118,8 +118,11 @@ test('a duplicate Next request cannot carry into a quickly completed following h
   await finishHand(page);
   // Hold the 100ms dealing lock while a second hand settles, reproducing the
   // stale queued click that otherwise depends on WebKit scheduling speed.
-  await page.clock.install();
-  await page.clock.pauseAt(new Date());
+  const pauseAt = Date.now();
+  // Playwright starts the installed clock ticking. A fresh Date captured after
+  // install can already be behind it on a busy CI runner.
+  await page.clock.install({ time: pauseAt - 10_000 });
+  await page.clock.pauseAt(pauseAt);
   await page.evaluate(() => {
     const api = (window as any).__BADUGI_E2E__;
     api.dealNewHandNow();

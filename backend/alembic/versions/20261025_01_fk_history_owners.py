@@ -18,6 +18,13 @@ def _name(table: str) -> str:
     return f"fk_{table}_owner_user_id_users"
 
 
+def _owner_keys(table: str) -> list[dict]:
+    return [
+        key for key in sa.inspect(op.get_bind()).get_foreign_keys(table)
+        if key["constrained_columns"] == ["owner_user_id"]
+    ]
+
+
 def upgrade() -> None:
     connection = op.get_bind()
     # Preflight both tables before the first DDL statement. MySQL DDL commits
@@ -31,6 +38,17 @@ def upgrade() -> None:
         if count:
             raise RuntimeError(f"{table} has {count} orphaned owner rows; migration stopped")
     for table in TABLES:
+        existing = _owner_keys(table)
+        if existing:
+            matches_users = (
+                len(existing) == 1
+                and existing[0]["referred_table"] == "users"
+                and existing[0]["referred_columns"] == ["id"]
+                and existing[0].get("options", {}).get("ondelete", "").upper() == "CASCADE"
+            )
+            if not matches_users:
+                raise RuntimeError(f"{table} already has a conflicting owner foreign key")
+            continue
         with op.batch_alter_table(table) as batch:
             batch.create_foreign_key(
                 _name(table), "users", ["owner_user_id"], ["id"], ondelete="CASCADE",
@@ -39,5 +57,6 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     for table in reversed(TABLES):
-        with op.batch_alter_table(table) as batch:
-            batch.drop_constraint(_name(table), type_="foreignkey")
+        if any(key["name"] == _name(table) for key in _owner_keys(table)):
+            with op.batch_alter_table(table) as batch:
+                batch.drop_constraint(_name(table), type_="foreignkey")

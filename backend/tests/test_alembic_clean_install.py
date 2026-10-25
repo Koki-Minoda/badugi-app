@@ -126,6 +126,11 @@ def test_reconciliation_preserves_preexisting_user_data(tmp_path: Path):
         assert connection.execute(
             "SELECT name FROM users WHERE email = ?", ("existing@example.com",)
         ).fetchone() == ("Existing",)
+        for table in ("badugi_hand_logs", "badugi_action_logs"):
+            assert sum(
+                row[2] == "users" and row[3] == "owner_user_id"
+                for row in connection.execute(f"PRAGMA foreign_key_list({table})")
+            ) == 1
         connection.execute(
             """
             INSERT INTO badugi_action_logs

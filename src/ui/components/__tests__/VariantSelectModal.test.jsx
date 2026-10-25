@@ -101,8 +101,8 @@ describe("VariantSelectModal", () => {
     render(<VariantSelectModal isOpen onClose={() => {}} onSelectVariant={handleSelect} />);
 
     const previewButton = screen
-      .getAllByRole("button", { name: /badeucey td/i })
-      .find((button) => button.textContent?.includes("Badeucey TD"));
+      .getAllByRole("button", { name: /badacey td/i })
+      .find((button) => button.textContent?.includes("Badacey TD"));
     expect(previewButton.disabled).toBe(true);
     fireEvent.click(previewButton);
     expect(handleSelect).not.toHaveBeenCalled();

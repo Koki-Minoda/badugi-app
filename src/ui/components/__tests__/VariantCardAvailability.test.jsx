@@ -39,4 +39,12 @@ describe("VariantCardAvailability", () => {
     rerender(<VariantCardAvailability availability={availability} language="en" />);
     expect(screen.getByTestId("variant-availability-reason").textContent).toMatch(/aces are high/);
   });
+
+  it("explains public Badeucey Triple Draw in the selected language", () => {
+    const availability = getVariantAvailability("D04");
+    const { rerender } = render(<VariantCardAvailability availability={availability} language="ja" />);
+    expect(screen.getByTestId("variant-availability-reason").textContent).toMatch(/最大3回交換/);
+    rerender(<VariantCardAvailability availability={availability} language="en" />);
+    expect(screen.getByTestId("variant-availability-reason").textContent).toMatch(/aces are high/);
+  });
 });

@@ -3,7 +3,7 @@ import {APP_URL,openAuthenticatedGame,deleteAuthenticatedSession} from './authHe
 import {playOneHandProgression} from './helpers/gameProgressHelper.js';
 import {measureMobileLayout} from '../../reports/gameplay-device/mobile-layout-check.mjs';
 import {measurePhaseTone} from '../../reports/gameplay-device/phase-tone-check.mjs';
-for(const variant of ['badugi','deuce_to_seven_triple_draw','hidugi_triple_draw','deuce_to_seven_single_draw','badugi_single_draw','badeucey_single_draw','badacey_single_draw','hidugi_single_draw','dramaha_hi'])for(const viewport of [{width:393,height:695},{width:852,height:283}])test(`${variant} ${viewport.width}: bet to draw to bet restores the rail`,async({page},info)=>{
+for(const variant of ['badugi','deuce_to_seven_triple_draw','hidugi_triple_draw','badeucey_triple_draw','deuce_to_seven_single_draw','badugi_single_draw','badeucey_single_draw','badacey_single_draw','hidugi_single_draw','dramaha_hi'])for(const viewport of [{width:393,height:695},{width:852,height:283}])test(`${variant} ${viewport.width}: bet to draw to bet restores the rail`,async({page},info)=>{
  await page.setViewportSize(viewport);const session=await openAuthenticatedGame(page,`${APP_URL}?variant=${variant}`);
  try{
   const phases=[];let felt;
@@ -18,7 +18,7 @@ for(const variant of ['badugi','deuce_to_seven_triple_draw','hidugi_triple_draw'
   const draw=phases.findIndex(p=>['DRAW','DRAWING'].includes(p));expect(draw).toBeGreaterThan(0);expect(phases.slice(draw+1)).toContain('BET');
  }finally{await deleteAuthenticatedSession(page,session);}
 });
-for(const variant of ['badugi','deuce_to_seven_triple_draw','hidugi_triple_draw','badugi_single_draw','badeucey_single_draw','badacey_single_draw','hidugi_single_draw'])test(`desktop ${variant}: shared phase colors follow the controller`,async({page,isMobile},info)=>{
+for(const variant of ['badugi','deuce_to_seven_triple_draw','hidugi_triple_draw','badeucey_triple_draw','badugi_single_draw','badeucey_single_draw','badacey_single_draw','hidugi_single_draw'])test(`desktop ${variant}: shared phase colors follow the controller`,async({page,isMobile},info)=>{
  test.skip(isMobile,'Desktop layout requires a desktop browser profile');
  await page.setViewportSize({width:1440,height:900});const session=await openAuthenticatedGame(page,`${APP_URL}?variant=${variant}`);const phases=[];
  try{

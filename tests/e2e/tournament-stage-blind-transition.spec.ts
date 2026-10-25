@@ -923,7 +923,7 @@ for (const stage of [
     const overlay = page.getByTestId("mtt-result-overlay");
     await expect(overlay).toBeVisible({ timeout: 20_000 });
     await expect(page.getByRole("button", { name: /re-?entry|re-?enter/i })).toHaveCount(0);
-    await expect(page.getByTestId("mtt-champion-celebration")).toContainText("1st Place");
+    await expect(page.getByTestId("mtt-champion-celebration")).toContainText("1位");
     await expect(page.getByTestId("mtt-result-champion")).toContainText(
       "Stage Gate Hero",
     );

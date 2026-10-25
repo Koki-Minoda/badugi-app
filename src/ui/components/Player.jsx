@@ -479,16 +479,27 @@ export default function Player({
       setHudOpen(true);
       return;
     }
-    const width = Math.min(620, Math.max(320, window.innerWidth - 24));
-    const estimatedHeight = 318;
     const margin = 12;
+    const decisionPanel = document.querySelector('[data-testid="decision-panel"]');
+    const panelRect = decisionPanel?.getBoundingClientRect();
+    const panelBesideTable =
+      panelRect &&
+      panelRect.width > 0 &&
+      panelRect.height > 0 &&
+      panelRect.left > rect.right + margin &&
+      panelRect.left >= 320 + margin * 2;
+    const rightLimit = panelBesideTable
+      ? panelRect.left - margin
+      : window.innerWidth - margin;
+    const width = Math.min(620, Math.max(320, rightLimit - margin));
+    const estimatedHeight = 318;
     const preferredBelow = rect.bottom + margin;
     const preferredAbove = rect.top - estimatedHeight - margin;
     const hasRoomBelow =
       preferredBelow + estimatedHeight <= window.innerHeight - margin;
     const rawTop = hasRoomBelow ? preferredBelow : preferredAbove;
     const left = Math.min(
-      window.innerWidth - width - margin,
+      rightLimit - width,
       Math.max(margin, rect.left + rect.width / 2 - width / 2),
     );
     const top = Math.min(

@@ -30,6 +30,43 @@ async function finishHand(page: Page) {
   throw new Error(`Hand did not end: ${JSON.stringify(await snapshot(page))}`);
 }
 
+test('Stud MIX keeps all six desktop seats separate at 1280×720', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await setup(page, ['ST1']);
+  expect((await snapshot(page)).gameVariant).toBe('stud');
+  const overlappingSeats = await page.evaluate(() => {
+    const boxes = Array.from({ length: 6 }, (_, seat) => ({
+      seat,
+      rect: document.querySelector(`[data-testid="seat-${seat}"]`)!.getBoundingClientRect(),
+    }));
+    return boxes.flatMap((a, index) => boxes.slice(index + 1).flatMap(b => {
+      const width = Math.min(a.rect.right, b.rect.right) - Math.max(a.rect.left, b.rect.left);
+      const height = Math.min(a.rect.bottom, b.rect.bottom) - Math.max(a.rect.top, b.rect.top);
+      return width > 1 && height > 1 ? [[a.seat, b.seat]] : [];
+    }));
+  });
+  expect(overlappingSeats).toEqual([]);
+  const coarseTouch = await page.evaluate(() =>
+    window.matchMedia('(pointer: coarse) and (hover: none)').matches,
+  );
+  if (coarseTouch) {
+    await page.getByTestId('seat-5').hover();
+    await expect(page.getByTestId('seat-5-detail')).toHaveCount(0);
+  } else {
+    for (const width of [1280, 1440]) {
+      await page.setViewportSize({ width, height: width === 1280 ? 720 : 900 });
+      await page.getByTestId('seat-5').hover();
+      const hud = page.getByTestId('seat-5-detail');
+      await expect(hud).toBeVisible();
+      const hudBox = (await hud.boundingBox())!;
+      const actionPanelLeft = (await page.getByTestId('decision-panel').boundingBox())!.x;
+      expect(hudBox.x + hudBox.width).toBeLessThan(actionPanelLeft);
+      await page.mouse.move(0, 0);
+      await expect(hud).toHaveCount(0);
+    }
+  }
+});
+
 test('cash MIX crosses draw, stud and board families with chips, seats and button intact', async ({ page }, info) => {
   test.setTimeout(90000);
   const errors: string[] = [];

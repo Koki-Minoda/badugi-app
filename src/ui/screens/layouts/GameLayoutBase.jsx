@@ -483,6 +483,17 @@ export default function GameLayoutBase({
             "minmax(0, 0.86fr) minmax(0, 0.9fr) minmax(0, 1.14fr)",
           }
         : MOBILE_TABLE_GRID_STYLE;
+  const desktopStudSizeVars = isStudTable && !isMobileLayout
+    ? {
+        "--player-pad": "6px",
+        "--player-gap": "4px",
+        "--player-action-min-h": "14px",
+        "--card-w": "44px",
+        "--card-h": "62px",
+        "--card-font-size": "clamp(12px, 1.1vw, 16px)",
+        "--card-center-size": "30px",
+      }
+    : {};
   const rootStyle = isMobileLayout
     ? {
         ...cardScaleVars,
@@ -625,8 +636,8 @@ export default function GameLayoutBase({
         maxHeight: disableVh ? "100vh" : "var(--mgx-visual-vh, 100dvh)",
       }
     : disableVh
-      ? cardScaleVars
-      : { ...cardScaleVars, minHeight: "100dvh" };
+      ? { ...cardScaleVars, ...desktopStudSizeVars }
+      : { ...cardScaleVars, ...desktopStudSizeVars, minHeight: "100dvh" };
 
   const renderControlsContent = () => {
     if (heroCanAct && heroPlayerForControls) {

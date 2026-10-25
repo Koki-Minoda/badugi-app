@@ -143,10 +143,10 @@ test('cash MIX crosses draw, stud and board families with chips, seats and butto
 });
 
 
-test('MIX observes hand limits, skips unreleased variants and ignores repeated next-hand requests', async ({ page }) => {
+test('MIX observes hand limits and bans while ignoring repeated next-hand requests', async ({ page }) => {
   await setup(page, ['D04', 'ST1', 'D02', 'D01'], 2, 'st1 b05');
   await expect(page.getByTestId('mixed-rotation-status')).toContainText('1/2');
-  expect((await snapshot(page)).gameVariant).toBe('ace_to_five_triple_draw');
+  expect((await snapshot(page)).gameVariant).toBe('badeucey_triple_draw');
   await page.evaluate(() => (window as any).__BADUGI_E2E__.dealNewHandNow());
   expect((await snapshot(page)).handCount).toBe(1);
   for (let i = 0; i < 4; i++) {
@@ -155,7 +155,10 @@ test('MIX observes hand limits, skips unreleased variants and ignores repeated n
     await expect.poll(async () => (await snapshot(page)).handCount).toBe(i + 2);
     await page.waitForTimeout(220);
     expect((await snapshot(page)).handCount).toBe(i + 2);
-    expect((await snapshot(page)).gameVariant).toBe(i === 1 || i === 2 ? 'deuce_to_seven_triple_draw' : 'ace_to_five_triple_draw');
+    expect((await snapshot(page)).gameVariant).toBe([
+      'badeucey_triple_draw', 'ace_to_five_triple_draw',
+      'ace_to_five_triple_draw', 'deuce_to_seven_triple_draw',
+    ][i]);
   }
 });
 

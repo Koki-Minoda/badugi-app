@@ -50,24 +50,26 @@ export default function MobileQaDebugPanel({ enabled = false, onReturnToMenu }) 
   return (
     <div
       data-testid="mobile-qa-debug-panel"
-      className={`fixed right-2 top-2 z-[9999] rounded-lg border border-amber-300/50 bg-slate-950/95 p-2 text-xs text-white shadow-2xl min-[641px]:right-2 ${
-        expanded ? "w-[min(92vw,320px)]" : "w-auto"
+      className={`fixed right-2 top-2 z-[9999] text-xs text-white ${
+        expanded
+          ? "w-[min(92vw,320px)] rounded-lg border border-amber-300/50 bg-slate-950/95 p-2 shadow-2xl"
+          : "h-11 w-11"
       }`}
     >
       <button
         type="button"
-        className="flex w-full items-center justify-between gap-2 rounded border border-amber-300/30 px-2 py-1 text-left font-bold text-amber-200"
+        className={`flex items-center rounded border border-amber-300/50 bg-slate-950/95 font-bold text-amber-200 ${
+          expanded
+            ? "w-full justify-between gap-2 px-2 py-1 text-left"
+            : "h-11 w-11 justify-center shadow-lg"
+        }`}
         onClick={() => setExpanded((value) => !value)}
         aria-expanded={expanded}
+        aria-label={expanded ? "Hide QA tools" : "Open QA tools"}
       >
-        <span>MGX Mobile QA</span>
-        <span className="text-[10px] text-slate-300">{expanded ? "Hide" : "Show"}</span>
+        <span>{expanded ? "MGX Mobile QA" : "QA"}</span>
+        {expanded && <span className="text-[10px] text-slate-300">Hide</span>}
       </button>
-      {!expanded && (
-        <div className="mt-1 max-w-[170px] truncate text-[10px] text-slate-300">
-          Session: {cpuSession.sessionId}
-        </div>
-      )}
       {expanded && (
         <>
       <div className="mb-2 text-[11px] text-slate-300">

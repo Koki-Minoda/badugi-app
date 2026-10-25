@@ -69,6 +69,26 @@ test.describe("Tournament Review result overlay", () => {
     await expect(overlay.getByTestId("mtt-back-to-menu")).toHaveText("Back to Menu");
   });
 
+  test("short landscape keeps localized results scrollable and menu control reachable", async ({ page }) => {
+    for (const { language, viewport, expectedButton } of [
+      { language: "ja" as const, viewport: { width: 750, height: 342 }, expectedButton: "メニューへ戻る" },
+      { language: "en" as const, viewport: { width: 852, height: 283 }, expectedButton: "Back to Menu" },
+    ]) {
+      await openTournamentReviewFixture(page, { language, viewport });
+      const overlay = page.getByTestId("mtt-result-overlay");
+      await expect(overlay).toBeVisible();
+      await expect(overlay.getByTestId("mtt-tournament-review")).toBeVisible();
+      await expect(overlay.getByTestId("mtt-back-to-menu")).toHaveText(expectedButton);
+      await expect(overlay.getByTestId("mtt-back-to-menu")).toBeInViewport();
+      await expectNoHorizontalOverflow(page);
+      const dimensions = await page.evaluate(() => {
+        const dialog = document.querySelector('[data-testid="mtt-result-overlay"] > div');
+        return { dialogHeight: dialog?.getBoundingClientRect().height ?? 0, windowHeight: window.innerHeight };
+      });
+      expect(dimensions.dialogHeight).toBeLessThanOrEqual(dimensions.windowHeight);
+    }
+  });
+
   test("summary review shows result, key hands, replay CTA, and opens replay on mobile portrait", async ({ page }) => {
     const fixture = await openTournamentReviewFixture(page, {
       status: "summary",

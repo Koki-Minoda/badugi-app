@@ -511,6 +511,7 @@ jobs:
       MGX_PROD_HOST: ${{ secrets.MGX_PROD_HOST }}
       MGX_PROD_USER: ${{ secrets.MGX_PROD_USER }}
     steps:
+      - uses: actions/checkout@v6
       - name: Validate deploy inputs and secrets
         env:
           MGX_PROD_SSH_KEY: ${{ secrets.MGX_PROD_SSH_KEY }}

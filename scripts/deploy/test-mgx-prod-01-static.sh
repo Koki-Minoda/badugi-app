@@ -66,6 +66,7 @@ grep -q 'live browser QA must confirm' "$script"
 grep -q 'install_override 1' scripts/deploy/configure-mgx-backend-workers.sh
 grep -q "install_override \"\$TARGET_WORKERS\"" scripts/deploy/configure-mgx-backend-workers.sh
 grep -q 'rolling back worker override' scripts/deploy/configure-mgx-backend-workers.sh
+grep -q 'HEALTH_TIMEOUT_SECONDS=180' scripts/deploy/configure-mgx-backend-workers.sh
 grep -q -- '--workers 2' infra/systemd/mgx-backend.service.example
 grep -q 'NoNewPrivileges=true' infra/systemd/mgx-backend.service.example
 grep -q 'ProtectSystem=strict' infra/systemd/mgx-backend.service.example

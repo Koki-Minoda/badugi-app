@@ -5,6 +5,8 @@ APP_DIR="${APP_DIR:-$HOME/badugi-app}"
 SERVICE_NAME="${MGX_BACKEND_SERVICE:-mgx-backend.service}"
 TARGET_WORKERS="${MGX_BACKEND_WORKERS:-2}"
 HEALTH_URL="${MGX_BACKEND_LOCAL_HEALTH_URL:-http://127.0.0.1:8000/api/health}"
+# A first startup may rebuild history tables before Uvicorn opens its socket.
+HEALTH_TIMEOUT_SECONDS=180
 OVERRIDE_DIR="/etc/systemd/system/${SERVICE_NAME}.d"
 OVERRIDE_FILE="${OVERRIDE_DIR}/20-mgx-workers.conf"
 BACKUP_DIR="/var/backups/mgx-systemd"
@@ -63,13 +65,15 @@ install_override() {
 }
 
 wait_for_health() {
-  local attempt
-  for ((attempt = 1; attempt <= 20; attempt++)); do
-    if curl -fsS "$HEALTH_URL" | grep -q '"status"[[:space:]]*:[[:space:]]*"ok"'; then
+  local deadline=$((SECONDS + HEALTH_TIMEOUT_SECONDS))
+  while ((SECONDS < deadline)); do
+    if curl -fsS --connect-timeout 2 --max-time 5 "$HEALTH_URL" 2>/dev/null |
+      grep -q '"status"[[:space:]]*:[[:space:]]*"ok"'; then
       return 0
     fi
     sleep 1
   done
+  echo "[mgx-workers] backend health did not recover within ${HEALTH_TIMEOUT_SECONDS}s" >&2
   return 1
 }
 

@@ -56,7 +56,7 @@ Object.assign(outcomes, {
   dramahaA5: text('半分はOmahaのハイ、半分は手札5枚のA-5ローで争います。', 'Split between Omaha high and A-5 low in your five hole cards.'),
   dramahaZero: text('半分はOmahaのハイ、半分は手札の合計が小さい方へ。Aは1、絵札は0です。', 'Split between Omaha high and the lowest hole-card total. Ace is 1; face cards are 0.'),
   dramahaBadugi: text('半分はOmahaのハイ、半分は手札から作るBadugiで争います。', 'Split between Omaha high and Badugi made from your hole cards.'),
-  dramahaHidugi: text('半分はOmahaのハイ、半分は手札から作る高いBadugiで争います。', 'Split between Omaha high and high Badugi made from your hole cards.'),
+  dramahaHidugi: text('半分はOmahaのハイ、残り半分は手札の異なるスートで作るHidugi。A4枚が最強です。', 'Split between Omaha high and Hidugi from your hole cards. Four aces is best.'),
   chinese: text('前3枚・中5枚・後5枚を相手と比較。後の役を中以上、中の役を前以上に揃えます。', 'Compare front (3), middle (5) and back (5) rows. Back must be at least as strong as middle, and middle at least as strong as front.'),
 });
 Object.assign(structures, {

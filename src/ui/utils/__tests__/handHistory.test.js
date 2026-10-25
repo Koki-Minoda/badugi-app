@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { evaluateDramahaHand } from "../../../games/dramaha/utils/dramahaEvaluator.js";
 import {
   appendHandHistoryAction,
   finalizeHandHistoryRecord,
@@ -218,6 +219,12 @@ describe("handHistory", () => {
       hand: ["AS", "2D", "3C", "4H"],
       labelPart: "Badugi",
     },
+    {
+      variantId: "H05",
+      variantName: "Dramaha Hidugi",
+      hand: ["AS", "AH", "AD", "AC", "2S"],
+      labelPart: "Hidugi 4-card (A-A-A-A)",
+    },
   ])("records $variantId special draw hand labels", ({ variantId, variantName, hand, labelPart }) => {
     startHandHistoryRecord({
       handId: `${variantId}-history`,
@@ -241,6 +248,32 @@ describe("handHistory", () => {
     expect(record.variantName).toBe(variantName);
     expect(record.seats[0].handLabel).toContain(labelPart);
     expect(record.pots[0].winners[0].handLabel).toContain(labelPart);
+  });
+
+  it("records distinct board and Hidugi winner labels for Dramaha", () => {
+    const hand = ["AS", "AH", "AD", "AC", "2S"];
+    const evaluation = evaluateDramahaHand({
+      variant: "dramaha_hidugi",
+      holeCards: hand,
+      boardCards: ["KS", "KH", "KD", "QH", "3C"],
+    });
+    startHandHistoryRecord({
+      handId: "dramaha-hidugi-history",
+      variantId: "dramaha_hidugi",
+      seats: [{ seat: 0, name: "Hero", startStack: 500 }],
+    });
+    const record = finalizeHandHistoryRecord({
+      players: [{ stack: 600, hand }],
+      pots: [
+        { potIndex: 0, potAmount: 50, payouts: [{ seatIndex: 0, payout: 50, component: "board", evaluation }] },
+        { potIndex: 1, potAmount: 50, payouts: [{ seatIndex: 0, payout: 50, component: "draw", evaluation }] },
+      ],
+    });
+
+    expect(record.seats[0].handLabel).toBe("Hidugi 4-card (A-A-A-A)");
+    expect(record.pots[0].winners[0].handLabel).toBe("Full House");
+    expect(record.pots[1].winners[0].handLabel).toBe("Hidugi 4-card (A-A-A-A)");
+    expect(record.pots[1].winners[0].evaluation.metadata.size).toBe(4);
   });
 
   it("defines and validates the minimum D01 replay fields", () => {

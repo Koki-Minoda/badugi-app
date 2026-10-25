@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef } from "react";
 import CoachingPreviewCard from "./CoachingPreviewCard.jsx";
 import CoachingSummaryPanel from "./CoachingSummaryPanel.jsx";
 import { buildReplayReviewContract } from "../feedback/replayReviewContract.js";
+import { getTournamentReasonLabel } from "../feedback/tournamentReviewContract.js";
 import { displayTournamentTitle, getTournamentResultCopy } from "./tournamentResultCopy.js";
 
 const TOURNAMENT_REVIEW_STATUS_COPY = {
@@ -15,7 +16,7 @@ const TOURNAMENT_REVIEW_STATUS_COPY = {
   },
   complete: {
     label: "レビュー完了",
-    body: "根拠を構造化できた内容のみ採用し、ローカルレビューも保持しています。",
+    body: "ハンド履歴で確認できた内容をまとめました。",
   },
   insufficient_logs: {
     label: "簡易レビューのみ",
@@ -235,7 +236,7 @@ export function TournamentReviewSection({
               </p>
               <ReviewItemList
                 items={view.nextActions}
-                emptyText={language === "en" ? "Play another tournament with hero actions saved." : "次回はHero actionが残る状態でプレイしてください。"}
+                emptyText={language === "en" ? "Play another tournament with your decisions saved." : "次回は自分の操作を記録してプレイしてください。"}
                 language={language}
               />
             </div>
@@ -268,7 +269,7 @@ export function TournamentReviewSection({
                     ) : null}
                     {Array.isArray(hand.reasonTags) && hand.reasonTags.length ? (
                       <p className="text-[10px] text-sky-200">
-                        {language === "ja" ? "タグ" : "Tags"}: {hand.reasonTags.join(" / ")}
+                        {language === "ja" ? "注目点" : "Highlights"}: {hand.reasonTags.map((reason) => getTournamentReasonLabel(reason, language)).join(" / ")}
                       </p>
                     ) : null}
                     {Array.isArray(hand.evidence) && hand.evidence.length ? (

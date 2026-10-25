@@ -283,7 +283,7 @@ const REASON_COPY = {
   "bust-hand": { en: ["Bust hand", "The final hand that ended your tournament."], ja: ["脱落したハンド", "トーナメント終了につながった最終局面です。"] },
   "biggest-loss": { en: ["Biggest loss", "The hand with your largest recorded chip loss."], ja: ["最大の損失", "チップ減少が最も大きかったハンドです。"] },
   "biggest-win": { en: ["Biggest win", "The hand with your largest recorded chip gain."], ja: ["最大の獲得", "チップ獲得が最も大きかったハンドです。"] },
-  "hero-all-in": { en: ["Hero all-in", "A key hand where you committed all your chips."], ja: ["オールイン", "Heroが全チップを投入した重要局面です。"] },
+  "hero-all-in": { en: ["Your all-in", "A key hand where you committed all your chips."], ja: ["オールイン", "あなたが全チップを投入した局面です。"] },
   showdown: { en: ["Showdown", "A hand that reached showdown."], ja: ["ショーダウン", "ショーダウンまで進んだ判断確認用のハンドです。"] },
   "large-pot": { en: ["Large pot", "A hand with a large pot."], ja: ["大きなポット", "大きなポットになったハンドです。"] },
   "draw-decision": { en: ["Draw decision", "A hand where you can review your draw choice."], ja: ["交換の判断", "ドロー判断を振り返るためのハンドです。"] },
@@ -297,6 +297,10 @@ function getReasonCopy(reason, language) {
     title: pair[language === "ja" ? "ja" : "en"][0],
     description: pair[language === "en" ? "en" : "ja"][1],
   };
+}
+
+export function getTournamentReasonLabel(reason, language) {
+  return getReasonCopy(reason, language).title;
 }
 
 function findHeroActionForReason(hand = {}, reason, heroSeat = 0) {

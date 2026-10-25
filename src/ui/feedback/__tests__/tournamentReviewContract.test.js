@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   buildTournamentReviewContract,
+  getTournamentReasonLabel,
   isTournamentReviewContract,
   TOURNAMENT_REVIEW_CONTRACT_TYPE,
   TOURNAMENT_REVIEW_FEEDBACK_STATUS,
@@ -61,6 +62,10 @@ function makeHand(index, overrides = {}) {
 }
 
 describe("tournamentReviewContract", () => {
+  it("renders review reason labels in the selected language", () => {
+    expect(getTournamentReasonLabel("biggest-loss", "ja")).toBe("最大の損失");
+    expect(getTournamentReasonLabel("biggest-loss", "en")).toBe("Biggest loss");
+  });
   it("keeps local review text in the selected table language", () => {
     const input = {
       tournament: { tournamentId: "language-mtt" },

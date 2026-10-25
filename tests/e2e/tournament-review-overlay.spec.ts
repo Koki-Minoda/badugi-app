@@ -93,6 +93,7 @@ test.describe("Tournament Review result overlay", () => {
     await expect(review).toContainText("ハンド");
     await expect(review).toContainText("3");
     await expect(review).toContainText("badugi");
+    await expect(review).not.toContainText("biggest-loss");
     await expect(page.getByTestId("mtt-tournament-review-key-hand").first()).toBeVisible();
     const phrase = (...codes: number[]) => String.fromCharCode(...codes);
     const forbiddenClaims = new RegExp(

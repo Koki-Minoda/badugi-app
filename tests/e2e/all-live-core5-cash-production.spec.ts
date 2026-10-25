@@ -401,7 +401,7 @@ async function verifyHistoryAndReplay(
   onStage("replay-last-frame-clicked", { lastHandId, frameCount });
   await expect(page.getByText(/Awarded pot:/)).toBeVisible({ timeout: 10_000 });
   onStage("replay-settlement-verified", { lastHandId, frameCount });
-  await page.getByRole("button", { name: /Back to History/i }).click();
+  await page.getByRole("button", { name: /Back to History|履歴へ戻る/i }).click({ timeout: 5_000 });
   await expect(page.getByTestId("hand-result-overlay")).toBeVisible({ timeout: 10_000 });
   onStage("replay-ui-complete", { lastHandId });
   return { records: selected.length, replayedHandId: lastHandId };

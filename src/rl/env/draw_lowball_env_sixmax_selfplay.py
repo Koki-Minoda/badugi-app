@@ -278,7 +278,8 @@ class SixMaxDrawLowballEnv:
         self.draw_round += 1
         self.phase = "BET"
         self.raise_count = 0
-        self.current_bet = self._bet_size()
+        # No opening bet exists until an actor actually posts it.
+        self.current_bet = 0
         for player in self.players:
             player["bet"] = 0
         self.bet_round_idx = self.draw_round
@@ -488,8 +489,8 @@ class SixMaxDrawLowballEnv:
         bet_size = self._bet_size()
         if to_call > 0:
             mask[FOLD] = 1.0
-            if player["stack"] >= to_call:
-                mask[CALL] = 1.0
+            if player["stack"] > 0:
+                mask[CALL] = 1.0  # A short stack may call all-in.
             if self.raise_count < MAX_BETS and player["stack"] >= to_call + bet_size:
                 mask[RAISE] = 1.0
         else:

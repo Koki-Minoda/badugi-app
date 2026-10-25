@@ -427,6 +427,13 @@ def build_variant_plan(short_episodes: int = 2_000) -> dict[str, Any]:
         )
 
     return {
+        "assessmentScope": "static-registry-assets-and-dimensions",
+        "longRlEvidenceRequired": [
+            "game-semantics-and-reward-parity",
+            "runtime-observation-and-action-parity",
+            "preregistered-evaluation-and-stop-conditions",
+            "approved-storage-and-single-job-budget",
+        ],
         "rotation": TEN_GAME_VARIANT_IDS,
         "shortEpisodes": short_episodes,
         "variants": rows,
@@ -436,7 +443,7 @@ def build_variant_plan(short_episodes: int = 2_000) -> dict[str, Any]:
             "tierRoutes": len(TEN_GAME_VARIANT_IDS) * len(TIERS),
             "routeOk": sum(1 for row in rows for tier in row["tiers"] if tier["routeOk"]),
             "blockingIssueCount": len(blocking_issues),
-            "longRlReady": len(blocking_issues) == 0,
+            "longRlReady": False,  # Static assets cannot prove environment or training readiness.
         },
     }
 
@@ -445,9 +452,9 @@ def render_markdown(plan: dict[str, Any]) -> str:
     lines = [
         "# MGX 10-Game RL Readiness Report",
         "",
-        "Date: 2026-05-06",
+        "Scope: static registry, asset presence and dimensions only.",
         "",
-        "This report validates the Beginner/Standard RL rollout surface for the fixed 10-Game rotation. It does not claim Pro/Iron strength; long runs must still pass progression, EV, RL-safety, and human/practice gates before model promotion.",
+        "This report inventories the Beginner/Standard model registrations for the fixed 10-Game rotation. It does not verify actual game routing, game semantics, reward, model quality or training resources and cannot approve long training.",
         "",
         "## Summary",
         "",
@@ -455,9 +462,11 @@ def render_markdown(plan: dict[str, Any]) -> str:
         "|---|---:|",
         f"| Target variants | {plan['summary']['targetVariants']} |",
         f"| Tier routes | {plan['summary']['tierRoutes']} |",
-        f"| Route OK | {plan['summary']['routeOk']} |",
-        f"| Blocking issues | {plan['summary']['blockingIssueCount']} |",
+        f"| Static routes OK | {plan['summary']['routeOk']} |",
+        f"| Static route issues | {plan['summary']['blockingIssueCount']} |",
         f"| Long RL ready | {'YES' if plan['summary']['longRlReady'] else 'NO'} |",
+        "",
+        "Required before long training: " + ", ".join(plan["longRlEvidenceRequired"]),
         "",
         "## Variant Dataset / Reward / Action Mask Plan",
         "",
@@ -546,8 +555,8 @@ def main() -> None:
     else:
         print(
             "10-Game RL plan: "
-            f"{plan['summary']['routeOk']}/{plan['summary']['tierRoutes']} tier routes OK; "
-            f"blocking={plan['summary']['blockingIssueCount']}"
+            f"{plan['summary']['routeOk']}/{plan['summary']['tierRoutes']} static tier routes OK; "
+            f"staticBlocking={plan['summary']['blockingIssueCount']}; longRlReady=false"
         )
     if args.fail_on_blocking and plan["blockingIssues"]:
         raise SystemExit(1)

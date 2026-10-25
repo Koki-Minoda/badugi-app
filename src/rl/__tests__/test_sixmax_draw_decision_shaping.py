@@ -50,7 +50,7 @@ def _step_draw_reward(
     env.reset(seed=11)
     _set_draw_spot(env, hero_hand=hero_hand, hero_is_front=hero_is_front)
     monkeypatch.setattr(env, "_apply_all_opponent_draws", lambda: None)
-    monkeypatch.setattr(env, "_end_draw_round", lambda: None)
+    monkeypatch.setattr(env, "_end_draw_round", lambda: (False, 0.0, {}))
 
     _obs, reward, terminated, _truncated, info = env.step(action)
 

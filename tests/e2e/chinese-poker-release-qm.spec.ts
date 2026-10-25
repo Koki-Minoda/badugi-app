@@ -31,6 +31,7 @@ async function assertCompletedHistory(page: Page, minimumHands: number) {
       count: histories.length,
       uniqueHandIds: new Set(histories.map((entry: any) => entry?.handId)).size,
       variantId: latest?.variantId,
+      cpuDecisions: latest?.cpuDecisions,
       eventTypes: (latest?.events ?? []).map((event: any) => event?.type),
       initialCardCount: (latest?.seats ?? []).flatMap((seat: any) => seat?.initialHand ?? []).length,
       uniqueInitialCards: new Set(
@@ -48,6 +49,9 @@ async function assertCompletedHistory(page: Page, minimumHands: number) {
   expect(audit.initialCardCount).toBe(26);
   expect(audit.uniqueInitialCards).toBe(26);
   expect(audit.zeroSum).toBe(true);
+  expect(audit.cpuDecisions).toHaveLength(1);
+  expect(audit.cpuDecisions[0].inferenceTrace).toMatchObject({variantId:'chinese_poker',phase:'PLACEMENT',status:'not-connected',reason:'arrangement-search',usedModelId:null});
+  expect(audit.cpuDecisions[0].inferenceTrace.elapsedMs).toBeGreaterThanOrEqual(0);
 }
 
 test.describe("Classic Chinese Poker release QM", () => {

@@ -225,6 +225,7 @@ function decodeBetOutput(result, payload) {
       action: fallback,
       raiseSize: payload.betSize,
       source: "onnx",
+      fallbackReason: "no-legal-policy-score",
     };
   }
   const action = indexActions[maxIdx];
@@ -292,73 +293,93 @@ function decodeDrawOutput(result, payload = {}) {
   return { drawCount, source: "onnx" };
 }
 
+function inferenceReporter(payload, phase) {
+  const started = Date.now();
+  return (entry, decision, reason = null) => {
+    const used = Boolean(decision && !decision.fallbackReason);
+    const trace = {
+      variantId: payload.variantId ?? null, tierId: payload.tierId ?? null, phase,
+      requestedModelId: payload.modelId ?? null, selectedModelId: entry?.id ?? null,
+      usedModelId: used ? entry?.id ?? null : null,
+      status: used ? "used" : decision ? "fallback" : reason === "model-not-configured" ? "not-configured" : "failed",
+      reason: reason ?? decision?.fallbackReason ?? null, elapsedMs: Math.max(0, Date.now() - started),
+    };
+    try { payload.onInferenceTrace?.(trace); } catch { /* Diagnostics must not alter a decision. */ }
+    return decision;
+  };
+}
+
 export async function inferBetActionWithOnnx(payload) {
+  const report = inferenceReporter(payload, "BET");
   const entry = selectModelForVariant({
+    requireVariantMatch: true,
     variantId: payload.variantId,
     tierId: payload.tierId,
     characterId: payload.characterId,
     modelId: payload.modelId,
   });
-  if (!entry) return null;
+  if (!entry) return report(null, null, "model-not-configured");
   const session = await getOrCreateSession(entry);
-  if (!session) return null;
+  if (!session) return report(entry, null, "session-unavailable");
   const totalLength = expectedInputLength(entry);
   let tensorData;
   try {
     tensorData = buildBetFeatures(entry, payload);
   } catch (err) {
     console.warn("[ONNX] invalid bet feature shape", err);
-    return null;
+    return report(entry, null, "feature-build-failed");
   }
   const inputName = session.inputNames[0];
   const ort = await getOrt();
-  if (!ort) return null;
+  if (!ort) return report(entry, null, "runtime-unavailable");
   const tensor = new ort.Tensor("float32", tensorData, entry.inputShape ?? [totalLength]);
   try {
     const outputs = await session.run({ [inputName]: tensor });
     const outputName = session.outputNames[0];
     const decision = decodeBetOutput(outputs[outputName], payload);
-    return decision
+    return report(entry, decision
       ? { ...decision, modelId: entry.id, tierId: entry.tier }
-      : null;
+      : null, decision ? null : "no-legal-policy-decision");
   } catch (err) {
     console.warn("[ONNX] bet inference failed", err);
-    return null;
+    return report(entry, null, "inference-failed");
   }
 }
 
 export async function inferDrawDecisionWithOnnx(payload) {
+  const report = inferenceReporter(payload, "DRAW");
   const entry = selectModelForVariant({
+    requireVariantMatch: true,
     variantId: payload.variantId,
     tierId: payload.tierId,
     characterId: payload.characterId,
     modelId: payload.modelId,
   });
-  if (!entry) return null;
+  if (!entry) return report(null, null, "model-not-configured");
   const session = await getOrCreateSession(entry);
-  if (!session) return null;
+  if (!session) return report(entry, null, "session-unavailable");
   const totalLength = expectedInputLength(entry);
   let tensorData;
   try {
     tensorData = buildDrawFeatures(entry, payload);
   } catch (err) {
     console.warn("[ONNX] invalid draw feature shape", err);
-    return null;
+    return report(entry, null, "feature-build-failed");
   }
   const inputName = session.inputNames[0];
   const ort = await getOrt();
-  if (!ort) return null;
+  if (!ort) return report(entry, null, "runtime-unavailable");
   const tensor = new ort.Tensor("float32", tensorData, entry.inputShape ?? [totalLength]);
   try {
     const outputs = await session.run({ [inputName]: tensor });
     const outputName = session.outputNames[0];
     const decision = decodeDrawOutput(outputs[outputName], payload);
-    return decision
+    return report(entry, decision
       ? { ...decision, modelId: entry.id, tierId: entry.tier }
-      : null;
+      : null, decision ? null : "no-legal-policy-decision");
   } catch (err) {
     console.warn("[ONNX] draw inference failed", err);
-    return null;
+    return report(entry, null, "inference-failed");
   }
 }
 

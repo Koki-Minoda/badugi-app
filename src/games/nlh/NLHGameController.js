@@ -1,3 +1,4 @@
+import { buildNonModelDecisionTrace } from "../../ai/qa/nonModelDecisionTrace.js";
 // src/games/nlh/NLHGameController.js
 
 import NLHGameDefinition from "./NLHGameDefinition.js";
@@ -491,6 +492,7 @@ export class NLHGameController {
     if (state.currentActor !== null && state.currentActor !== seatIndex) {
       return null;
     }
+    const startedAt = Date.now();
     const currentBet = Number(state.currentBet ?? 0) || 0;
     const playerBet = Number(player.betThisStreet ?? player.bet ?? 0) || 0;
     const toCall = Math.max(0, currentBet - playerBet);
@@ -523,6 +525,10 @@ export class NLHGameController {
       ...decision,
       metadata: {
         ...(decision.metadata ?? {}),
+        inferenceTrace: buildNonModelDecisionTrace({
+          variantId: this.config.gameDefinition?.variant ?? "nlh", tierId: options.tierConfig?.id ?? "standard",
+          phase: "BET", reason: "teacher-policy", startedAt,
+        }),
         strength,
         position: this.getPositionLabel(seatIndex, state.players),
         tierId: options.tierConfig?.id ?? "standard",

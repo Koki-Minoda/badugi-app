@@ -1,3 +1,4 @@
+import { buildNonModelDecisionTrace } from "../../ai/qa/nonModelDecisionTrace.js";
 import { autoArrangeChineseHand } from './ChinesePokerController.js';
 import { OFC_ROWS, evaluateOfcRows, qualifiesForFantasyland, scoreOfcPair } from './ofcRules.js';
 const clone = value => JSON.parse(JSON.stringify(value));
@@ -18,6 +19,7 @@ export class OpenFaceChineseController {
     this.handNumber++; this.handId = `ofc-${Date.now()}-${this.handNumber}`; this.cursor = 0; this.street = 0; this.events = []; this.phase = 'placing'; this.result = null;
     this.players = [0, 1].map(seat => ({ seat, name: seat ? 'Mina' : 'You', rows: newRows(), pending: [], fantasy: this.fantasy[seat] }));
     this.initial = { fantasy: [...this.fantasy], dealer: this.dealer, scores: [...this.scores] };
+    this.cpuDecisions = [];
     this.beginStreet(); return this.snapshot();
   }
   beginStreet() {
@@ -73,7 +75,17 @@ export class OpenFaceChineseController {
     }
     return result;
   }
-  playCpuTurns() { while (this.phase === 'placing' && this.actor === 1) this.place(1, this.suggestPlacement(1)); return this.snapshot(); }
+  playCpuTurns() {
+    while (this.phase === 'placing' && this.actor === 1) {
+      const startedAt = Date.now(), street = this.street;
+      const reason = this.players[1].fantasy ? 'fantasy-arrangement-search' : 'placement-heuristic';
+      const placement = this.suggestPlacement(1);
+      const inferenceTrace = buildNonModelDecisionTrace({variantId:'ofc',tierId:null,phase:'PLACEMENT',reason,startedAt});
+      this.place(1, placement);
+      this.cpuDecisions.push({seatIndex:1,street,inferenceTrace});
+    }
+    return this.snapshot();
+  }
   finish() {
     const evaluations = this.players.map(p => evaluateOfcRows(p.rows));
     const comparison = scoreOfcPair(...evaluations);
@@ -85,7 +97,7 @@ export class OpenFaceChineseController {
   snapshot() { return clone({ handId: this.handId, handNumber: this.handNumber, phase: this.phase, street: this.street, actor: this.actor, dealer: this.dealer, players: this.players, result: this.result, scores: this.scores }); }
   history() {
     if (this.phase !== 'showdown') throw Error('Only completed hands can be exported');
-    return clone({ version: 1, variantId: 'ofc', rules: 'classic-13-fantasy-v1', handId: this.handId, handNumber: this.handNumber, initial: this.initial, deck: this.deck, events: this.events, rows: this.players.map(p => p.rows), result: this.result });
+    return clone({ version: 1, variantId: 'ofc', rules: 'classic-13-fantasy-v1', cpuDecisions: this.cpuDecisions, handId: this.handId, handNumber: this.handNumber, initial: this.initial, deck: this.deck, events: this.events, rows: this.players.map(p => p.rows), result: this.result });
   }
 }
 export function replayOfcHistory(history) {

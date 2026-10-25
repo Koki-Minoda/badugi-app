@@ -1,3 +1,8 @@
+import copy
+
+import numpy as np
+import pytest
+
 from rl.env.board_betting_env import (
     BOARD_ACTIONS,
     BoardBettingEnv,
@@ -5,6 +10,24 @@ from rl.env.board_betting_env import (
     BoardScenario,
     board_teacher_action,
 )
+
+
+@pytest.mark.parametrize("env_type", [BoardBettingEnv, BoardLongHorizonEnv])
+@pytest.mark.parametrize("action", [-100, -1, len(BOARD_ACTIONS), 100])
+def test_board_invalid_action_terminates_without_mutation(env_type, action):
+    env = env_type(family="nlh", seed=7)
+    env.reset()
+    # Make the last action legal so -1 must not alias Python's final index.
+    env.scenario.stack_ratio = 0.1
+    env.scenario.equity = 0.9
+    observation = env._observation()
+    scenario = copy.deepcopy(env.scenario)
+    next_observation, reward, terminated, truncated, _ = env.step(action)
+    assert reward == (-1.5 if env_type is BoardLongHorizonEnv else -1.4)
+    assert terminated is True
+    assert truncated is False
+    assert env.scenario == scenario
+    np.testing.assert_array_equal(next_observation, observation)
 
 
 def test_board_bootstrap_env_is_one_step_with_16_features():

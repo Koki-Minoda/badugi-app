@@ -20,13 +20,17 @@ function pickMostSpecificEntry(entries) {
     })[0]?.entry ?? null;
 }
 
-export function selectModelForVariant({ variantId, tierId, characterId, modelId }) {
+export function selectModelForVariant({ variantId, tierId, characterId, modelId, requireVariantMatch = false }) {
+  const candidates = requireVariantMatch
+    ? REGISTRY.filter(entry => entry.trainingStatus !== "pending" && variantId && entry.variantIds.includes(variantId))
+    : REGISTRY;
   if (modelId) {
-    const explicit = getModelEntry(modelId);
+    const explicit = candidates.find(entry => entry.id === modelId);
     if (explicit) return explicit;
+    if (requireVariantMatch) return null;
   }
   if (variantId && tierId && characterId) {
-    const characterTier = pickMostSpecificEntry(REGISTRY.filter(
+    const characterTier = pickMostSpecificEntry(candidates.filter(
       (entry) =>
         entry.variantIds.includes(variantId) &&
         entry.tier === tierId &&
@@ -35,7 +39,7 @@ export function selectModelForVariant({ variantId, tierId, characterId, modelId 
     if (characterTier) return characterTier;
   }
   if (variantId && tierId) {
-    const exactTier = pickMostSpecificEntry(REGISTRY.filter(
+    const exactTier = pickMostSpecificEntry(candidates.filter(
       (entry) =>
         entry.variantIds.includes(variantId) &&
         entry.tier === tierId &&
@@ -44,13 +48,13 @@ export function selectModelForVariant({ variantId, tierId, characterId, modelId 
     if (exactTier) return exactTier;
   }
   if (variantId && !tierId) {
-    const exact = REGISTRY.find(
+    const exact = candidates.find(
       (entry) => entry.variantIds.includes(variantId) && entry.characterIds.length === 0,
     );
     if (exact) return exact;
   }
   if (tierId) {
-    const tierMatch = REGISTRY.find(
+    const tierMatch = candidates.find(
       (entry) =>
         entry.tier === tierId &&
         entry.characterIds.length === 0 &&
@@ -58,5 +62,5 @@ export function selectModelForVariant({ variantId, tierId, characterId, modelId 
     );
     if (tierMatch) return tierMatch;
   }
-  return REGISTRY[REGISTRY.length - 1] ?? null;
+  return requireVariantMatch ? null : REGISTRY[REGISTRY.length - 1] ?? null;
 }

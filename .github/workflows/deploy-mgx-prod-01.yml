@@ -425,7 +425,9 @@ jobs:
 
   omaha-qa:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # Browser dependency installation can consume >30 minutes on a cold runner;
+    # keep the full desktop/Android/WebKit gameplay gate rather than truncating it.
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6

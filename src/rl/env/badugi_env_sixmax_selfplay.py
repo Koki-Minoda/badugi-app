@@ -202,7 +202,10 @@ class SixMaxBadugiEnv:
             )
             self._apply_draw(self.hero_seat, draw_count)
             self._apply_all_opponent_draws()
-            self._end_draw_round()
+            done, reward, info = self._end_draw_round()
+            cumulative_reward += reward
+            if done:
+                return self._obs_for(self.hero_seat), cumulative_reward, True, False, info
 
         return self._obs_for(self.hero_seat), cumulative_reward, False, False, {}
 
@@ -214,6 +217,7 @@ class SixMaxBadugiEnv:
         deck = build_deck()
         self.rng.shuffle(deck)
         self.deck = deck
+        self.draw_muck = []
 
         # Dealer seat (BTN): hero_seat is always at a specific position relative to BTN
         # BTN = (hero_seat - position_offset) % NUM_PLAYERS
@@ -250,7 +254,7 @@ class SixMaxBadugiEnv:
 
     def _setup_bet_queue(self, first_to_act: int) -> None:
         """Build action deque for a new BET round."""
-        active = self._active_seats()
+        active = self._actionable_seats()
         self.bet_queue = deque()
         for i in range(NUM_PLAYERS):
             s = (first_to_act + i) % NUM_PLAYERS
@@ -262,25 +266,29 @@ class SixMaxBadugiEnv:
     # Core game loop helpers
     # ------------------------------------------------------------------
 
-    def _autoplay_until_hero(self) -> None:
+    def _autoplay_until_hero(self) -> tuple[bool, float, dict]:
         """Process opponent actions until it is hero's turn (or phase ends)."""
         if self.phase != "BET":
-            return
+            return False, 0.0, {}
+        reward = 0.0
         while self.bet_queue and self.bet_queue[0] != self.hero_seat:
             seat = self.bet_queue[0]
-            if self.players[seat]["folded"]:
+            if seat not in self._actionable_seats():
                 self.bet_queue.popleft()
                 continue
             action = self._get_opp_action_bet(seat)
-            done, _, _ = self._apply_action(seat, action)
+            done, action_reward, info = self._apply_action(seat, action)
+            reward += action_reward
             if done:
                 self._game_ended = True
-                return
+                return True, reward, info
         # If queue is empty and hero isn't here, round ended before hero acted
         if not self.bet_queue and self.phase == "BET":
-            done, _, _ = self._advance_from_bet(0.0)
+            done, reward, info = self._advance_from_bet(reward)
             if done:
                 self._game_ended = True
+            return done, reward, info
+        return False, reward, {}
 
     def _complete_bet_round_and_advance(self) -> tuple[bool, float, dict]:
         """After hero acts in BET, process remaining actors and advance phase."""
@@ -288,7 +296,7 @@ class SixMaxBadugiEnv:
         # Process remaining in queue
         while self.bet_queue:
             seat = self.bet_queue[0]
-            if self.players[seat]["folded"]:
+            if seat not in self._actionable_seats():
                 self.bet_queue.popleft()
                 continue
             if seat == self.hero_seat:
@@ -362,19 +370,20 @@ class SixMaxBadugiEnv:
             draw_cnt = self._get_opp_draw_count(s)
             self._apply_draw(s, draw_cnt)
 
-    def _end_draw_round(self) -> None:
+    def _end_draw_round(self) -> tuple[bool, float, dict]:
         """Transition from DRAW back to BET."""
         self.draw_round += 1
         self.phase = "BET"
         self.raise_count = 0
-        self.current_bet = BIG_BET if self.draw_round >= 2 else SMALL_BET
+        # No opening bet exists until an actor actually posts it.
+        self.current_bet = 0
         for p in self.players:
             p["bet"] = 0
         self.bet_round_idx = self.draw_round
         # Post-draw betting: start from BTN+1 (SB position)
         first_post_draw = (self.dealer_seat + 1) % NUM_PLAYERS
         self._setup_bet_queue(first_post_draw)
-        self._autoplay_until_hero()
+        return self._autoplay_until_hero()
 
     # ------------------------------------------------------------------
     # Action application
@@ -592,6 +601,7 @@ class SixMaxBadugiEnv:
             p["bet"] += paid
             self.pot += paid
             self.current_bet = p["bet"]
+            p["all_in"] = p["stack"] == 0
             p["opened_current_round"] = True
             self._on_raise(seat)
             return False, reward, {}
@@ -603,6 +613,7 @@ class SixMaxBadugiEnv:
             p["bet"] += paid
             self.pot += paid
             self.current_bet = p["bet"]
+            p["all_in"] = p["stack"] == 0
             self.raise_count += 1
             p["opened_current_round"] = True
             self._on_raise(seat)
@@ -621,7 +632,7 @@ class SixMaxBadugiEnv:
     def _on_raise(self, aggressor: int) -> None:
         """After a bet/raise, re-queue all active players who haven't matched."""
         self.last_aggressor = aggressor
-        active = self._active_seats()
+        active = self._actionable_seats()
         new_queue: deque = deque()
         # Everyone active except aggressor needs to respond, in order after aggressor
         for i in range(1, NUM_PLAYERS):
@@ -632,7 +643,15 @@ class SixMaxBadugiEnv:
 
     def _apply_draw(self, seat: int, draw_count: int) -> None:
         p = self.players[seat]
+        draw_count = max(0, min(3, draw_count))
+        if len(self.deck) < draw_count:
+            # Recycle previously discarded cards only. The current draw's
+            # discards are added afterwards, so they cannot be drawn straight back.
+            self.deck.extend(self.draw_muck)
+            self.draw_muck = []
+            self.rng.shuffle(self.deck)
         new_hand, discarded = _draw_toward_badugi(p["hand"], draw_count, self.deck)
+        self.draw_muck.extend(discarded)
         p["hand"] = new_hand
         p["discarded"].extend(discarded)
         p["last_draw"] = draw_count
@@ -650,14 +669,13 @@ class SixMaxBadugiEnv:
         self.terminal_reason = "showdown"
         active = self._active_seats_list()
         scores = {s: evaluate_badugi(self.players[s]["hand"]) for s in active}
-        # Find winner(s): highest made_count, then lowest ranks
-        best_count = max(s[0] for s in scores.values())
-        best_seats = [s for s in active if scores[s][0] == best_count]
-        if len(best_seats) > 1:
-            min_sum = min(sum(scores[s][1]) for s in best_seats)
-            winners = [s for s in best_seats if sum(scores[s][1]) == min_sum]
-        else:
-            winners = best_seats
+        winners = [active[0]]
+        for seat in active[1:]:
+            comparison = compare_badugi_scores(scores[seat], scores[winners[0]])
+            if comparison > 0:
+                winners = [seat]
+            elif comparison == 0:
+                winners.append(seat)
         if self.hero_seat in winners:
             # Normalize: same scale as _settle — caps at +3.0
             return 1.0 + min(2.0, self.pot / 40.0)
@@ -722,8 +740,8 @@ class SixMaxBadugiEnv:
         bet_size = BIG_BET if self.draw_round >= 2 else SMALL_BET
         if to_call > 0:
             mask[FOLD] = 1.0
-            if p["stack"] >= to_call:
-                mask[CALL] = 1.0
+            if p["stack"] > 0:
+                mask[CALL] = 1.0  # A short stack may call all-in.
             if self.raise_count < MAX_BETS and p["stack"] >= to_call + bet_size:
                 mask[RAISE] = 1.0
         else:
@@ -972,6 +990,10 @@ class SixMaxBadugiEnv:
     # ------------------------------------------------------------------
     # Utility
     # ------------------------------------------------------------------
+
+    def _actionable_seats(self) -> set[int]:
+        return {s for s, p in enumerate(self.players)
+                if not p["folded"] and not p["all_in"] and p["stack"] > 0}
 
     def _active_seats(self) -> set[int]:
         return {s for s, p in enumerate(self.players) if not p["folded"]}

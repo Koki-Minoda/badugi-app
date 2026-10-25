@@ -19,6 +19,8 @@ export type AuditIssue = {
 };
 
 const CORE5_QA_METADATA = Object.freeze({
+  super_holdem: { heroCardTestId: "player-0-card-2", initialCardCount: 3, maxSteps: 120, expectsDraw: false, expectsBlindIncrease: false },
+  fl_super_holdem: { heroCardTestId: "player-0-card-2", initialCardCount: 3, maxSteps: 120, expectsDraw: false, expectsBlindIncrease: false },
   flh: { heroCardTestId: "player-0-card-1", initialCardCount: 2, maxSteps: 120, expectsDraw: false, expectsBlindIncrease: false },
   badugi: { heroCardTestId: "player-0-card-3", initialCardCount: 4, maxSteps: 120, expectsDraw: true, expectsBlindIncrease: true },
   nlh: { heroCardTestId: "player-0-card-1", initialCardCount: 2, maxSteps: 90, expectsDraw: false, expectsBlindIncrease: false },

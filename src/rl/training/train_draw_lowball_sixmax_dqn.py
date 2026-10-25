@@ -12,11 +12,12 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import platform
 import random
 import sys
 import time
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import numpy as np
@@ -40,6 +41,7 @@ from rl.env.draw_lowball_env_sixmax_selfplay import (
     SixMaxDrawLowballEnv,
 )
 from rl.training.draw_lowball_starting_ranges import position_name, sixmax_draw_teacher_action
+from rl.training.run_provenance import RunManifest, write_run_manifest
 from rl.utils.replay_buffer import ReplayBuffer
 
 
@@ -118,12 +120,12 @@ def _atomic_write_text(path: Path, content: str) -> float:
     return time.perf_counter() - start
 
 
-def _atomic_save_agent(agent: _LazyDQNAgent, path: Path) -> float:
+def _atomic_save_agent(agent: _LazyDQNAgent, path: Path, run_manifest: RunManifest) -> float:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f".{path.name}.tmp")
     start = time.perf_counter()
     try:
-        agent.save(str(tmp))
+        agent.save(str(tmp), training_provenance=run_manifest.metadata())
         os.replace(tmp, path)
     finally:
         if tmp.exists():
@@ -297,7 +299,7 @@ class _LazyDQNAgent:
 
         return float(loss.item()), float(satisfied)
 
-    def save(self, path: str) -> None:
+    def save(self, path: str, *, training_provenance: dict | None = None) -> None:
         first_layer = self.q_network.net[0]
         hidden_dim = int(first_layer.out_features) if hasattr(first_layer, "out_features") else 256
         torch.save(
@@ -308,6 +310,7 @@ class _LazyDQNAgent:
                 "obs_dim": self.obs_dim,
                 "n_actions": self.n_actions,
                 "hidden_dim": hidden_dim,
+                "training_provenance": dict(training_provenance or {}),
             },
             path,
         )
@@ -354,6 +357,20 @@ def train_draw_lowball_sixmax_dqn(
 
     output_dir = Path(cfg.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    run_manifest = write_run_manifest(
+        project_root=PROJECT_ROOT,
+        output_dir=output_dir,
+        stem=f"draw_lowball_sixmax_{cfg.variant_id}_run_manifest",
+        payload={
+            "schemaVersion": "draw-lowball-sixmax-training-run-v1",
+            "variantId": cfg.variant_id,
+            "config": asdict(cfg),
+            "device": str(device),
+            "platform": platform.platform(),
+            "python": platform.python_version(),
+            "torch": torch.__version__,
+        },
+    )
 
     hero = _build_agent(
         device=device,
@@ -608,16 +625,16 @@ def train_draw_lowball_sixmax_dqn(
 
         if cfg.checkpoint_every > 0 and episode % cfg.checkpoint_every == 0:
             ckpt = _checkpoint_name(output_dir, cfg.variant_id, episode)
-            _atomic_save_agent(hero, ckpt)
+            _atomic_save_agent(hero, ckpt, run_manifest)
             last_checkpoint = ckpt
             print(f"[DrawLowball6max] checkpoint={ckpt}")
 
     if last_checkpoint is None:
         last_checkpoint = _checkpoint_name(output_dir, cfg.variant_id, cfg.total_episodes)
-        _atomic_save_agent(hero, last_checkpoint)
+        _atomic_save_agent(hero, last_checkpoint, run_manifest)
 
     latest = output_dir / f"draw_lowball_sixmax_{cfg.variant_id}_dqn_latest.pt"
-    _atomic_save_agent(hero, latest)
+    _atomic_save_agent(hero, latest, run_manifest)
 
     summary = {
         "variantId": cfg.variant_id,
@@ -657,6 +674,7 @@ def train_draw_lowball_sixmax_dqn(
         "opponentUpdates": int(opponent_updates),
         "checkpoint": str(last_checkpoint),
         "latestCheckpoint": str(latest),
+        **run_manifest.metadata(),
         "evalEvery": int(cfg.eval_every),
         "teacherWarmupEpisodes": int(cfg.teacher_warmup_episodes),
         "teacherEpsilon": float(cfg.teacher_epsilon),

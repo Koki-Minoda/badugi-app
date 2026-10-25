@@ -232,7 +232,9 @@ async function runHands(page: Page, handCount: number) {
       if (await resultOverlay.isVisible()) {
         // A short-stacked Hero can post the blind and settle the new hand
         // before the overlay has time to disappear. It must show that new hand.
-        await expect(resultOverlay).toContainText(newHandId.toUpperCase());
+        await expect.poll(async () => (await resultOverlay.textContent())?.toLowerCase(), {
+          timeout: 5_000,
+        }).toContain(newHandId.toLowerCase());
       } else {
         await expect(page.getByTestId("decision-panel")).toBeVisible({ timeout: 20_000 });
       }

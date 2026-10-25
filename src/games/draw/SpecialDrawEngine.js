@@ -134,7 +134,7 @@ function isQualifiedComponentEvaluation(evaluation) {
 const VARIANT_CONFIGS = {
   badeucey_triple_draw: {
     gameId: "badeucey_triple_draw",
-    displayName: "Badeucey TD",
+    displayName: "Badeucey Triple Draw",
     variantId: "D04",
     evaluatorTag: "split-badugi-27",
     maxDrawRounds: 3,

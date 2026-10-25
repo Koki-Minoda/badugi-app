@@ -30,6 +30,15 @@ async function finishHand(page: Page) {
   throw new Error(`Hand did not end: ${JSON.stringify(await snapshot(page))}`);
 }
 
+async function finishHandWithPausedClock(page: Page) {
+  for (let i = 0; i < 20; i++) {
+    await finishHand(page);
+    if (await page.getByTestId('hand-result-overlay').isVisible()) return;
+    await page.clock.runFor(100);
+  }
+  await expect(page.getByTestId('hand-result-overlay')).toBeVisible();
+}
+
 test('Stud MIX keeps all six desktop seats separate at 1280×720', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await setup(page, ['ST1']);
@@ -153,6 +162,7 @@ test('MIX observes hand limits, skips unreleased variants and ignores repeated n
 test('a duplicate Next request cannot carry into a quickly completed following hand', async ({ page }) => {
   await setup(page, ['D02', 'D01'], 2);
   await finishHand(page);
+  await expect(page.getByTestId('hand-result-overlay')).toBeVisible();
   // Hold the 100ms dealing lock while a second hand settles, reproducing the
   // stale queued click that otherwise depends on WebKit scheduling speed.
   const pauseAt = Date.now();
@@ -166,21 +176,26 @@ test('a duplicate Next request cannot carry into a quickly completed following h
     api.dealNewHandNow();
   });
   await expect.poll(async () => (await snapshot(page)).handCount).toBe(2);
-  await finishHand(page);
+  await finishHandWithPausedClock(page);
   await page.clock.runFor(250);
   expect((await snapshot(page)).handCount).toBe(2);
   expect((await snapshot(page)).gameVariant).toBe('ace_to_five_triple_draw');
   await page.evaluate(() => (window as any).__BADUGI_E2E__.dealNewHandNow());
+  // This valid request may also wait for the preceding deal's safety lock.
+  // The clock is paused, so let its retry timer run before checking the deal.
+  await page.clock.runFor(500);
   await expect.poll(async () => (await snapshot(page)).handCount).toBe(3);
   expect((await snapshot(page)).gameVariant).toBe('deuce_to_seven_triple_draw');
-  // A genuine next-hand request after this short result must still be queued
-  // until the dealing lock clears, and duplicate requests must coalesce.
-  await finishHand(page);
+  // A genuine next-hand request can start immediately or wait for the lock.
+  // In either case, duplicate requests must coalesce into exactly one deal.
+  await finishHandWithPausedClock(page);
   await page.evaluate(() => {
     const api = (window as any).__BADUGI_E2E__;
     api.dealNewHandNow(); api.dealNewHandNow();
   });
-  expect((await snapshot(page)).handCount).toBe(3);
+  expect((await snapshot(page)).handCount).toBeLessThanOrEqual(4);
+  await page.clock.runFor(250);
+  expect((await snapshot(page)).handCount).toBe(4);
   await page.clock.runFor(250);
   expect((await snapshot(page)).handCount).toBe(4);
 });

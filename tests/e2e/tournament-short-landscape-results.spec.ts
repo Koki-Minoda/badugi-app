@@ -42,7 +42,7 @@ for (const viewport of [{ width: 750, height: 342 }, { width: 852, height: 283 }
         }).length;
     });
     expect(visiblePayouts).toBeGreaterThanOrEqual(viewport.height >= 340 ? 3 : 2);
-    const back = overlay.getByRole('button', { name: /back to menu/i });
+    const back = overlay.getByRole('button', { name: /back to menu|メニューへ戻る/i });
     await expect(back).toBeInViewport();
     await page.screenshot({ path: testInfo.outputPath('result-before-scroll.png') });
     const scroll = overlay.getByTestId('mtt-hero-bust-scroll-content');

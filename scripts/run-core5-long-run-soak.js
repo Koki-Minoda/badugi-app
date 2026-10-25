@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import { core5SoakGateStatus } from "./ci/core5-soak-gate.mjs";
 
 function parseArgs(argv) {
   const out = {};
@@ -95,12 +96,12 @@ if (!failurePayload) artifactIssues.push("failure-report-missing");
 if (Number(summary?.rows?.length ?? 0) !== expectedRows) artifactIssues.push("scenario-count-mismatch");
 if (completedHands < expectedCompletedHands) artifactIssues.push("completed-hands-below-target");
 if (incompleteRows.length > 0) artifactIssues.push("incomplete-scenario-rows");
-const status =
-  result.status !== 0 || blockingFailures.length > 0 || artifactIssues.length > 0
-    ? "FAIL"
-    : monitorFailures.length > 0
-      ? "PASS_WITH_MONITOR"
-      : "PASS";
+const status = core5SoakGateStatus({
+  playwrightExitCode: result.status ?? 1,
+  blockingFailureCount: blockingFailures.length,
+  monitorFailureCount: monitorFailures.length,
+  artifactIssues,
+});
 const gate = {
   generatedAt: new Date().toISOString(),
   startedAt,

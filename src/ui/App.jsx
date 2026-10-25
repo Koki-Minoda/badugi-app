@@ -34,7 +34,7 @@ import { BUILD_INFO } from "../config/buildInfo.js";
 import { exposeBrowserGameplayState } from "./qa/exposeBrowserGameplayState.js";
 import MobileQaDebugPanel from "./qa/MobileQaDebugPanel.jsx";
 import { assertNoCrossVariantStateLeak } from "./qa/assertNoCrossVariantStateLeak.js";
-import { getTablePhaseColors } from "./game/tablePhaseColors.js";
+import { getTablePhaseColors, resolveTablePresentationPhase } from "./game/tablePhaseColors.js";
 import {
   startHandHistoryRecord,
   appendHandHistoryAction,
@@ -2842,6 +2842,9 @@ export default function App() {
           turn: snapshotTurn,
           dealerIdx,
           handId: handIdRef.current,
+          resultPot: handResultVisible
+            ? handResultSummary?.pot ?? handResultSummary?.totalPot ?? null
+            : null,
           players: snapshot,
         };
       },
@@ -2869,7 +2872,7 @@ export default function App() {
       }
       e2eLogEnabledRef.current = false;
     };
-  }, [phase, drawRound, betRoundIndex, turn, dealerIdx, handResultVisible]);
+  }, [phase, drawRound, betRoundIndex, turn, dealerIdx, handResultVisible, handResultSummary]);
 
   useEffect(() => {
     consoleContextRef.current = {
@@ -13725,15 +13728,20 @@ export default function App() {
     return mode === "tournament-mtt" ? tournamentLayouts : cashLayouts;
   }, [mode]);
 
+  const presentationPhase = resolveTablePresentationPhase({
+    controllerPhase: effectiveControllerSnapshot?.phase,
+    controlsPhase: controlsConfig?.phase,
+    legacyPhase: tablePhase,
+    resultVisible: handResultVisible || Boolean(sessionSnapshot?.overlays?.handResult?.visible),
+    tableFinished: tournamentHeroBustTerminal,
+  });
   const {
     tableOuterBg,
     tableSurfaceBg,
     tableBorderColor,
     tableAccentRing,
     phaseTone,
-  } = getTablePhaseColors(
-    effectiveControllerSnapshot?.phase ?? controlsConfig?.phase ?? tablePhase,
-  );
+  } = getTablePhaseColors(presentationPhase);
 
   const tableSummaryProps = {
     phaseTag: hudInfo?.phaseTag ?? phaseTagLocal(),
@@ -13748,7 +13756,7 @@ export default function App() {
     handCount: hudInfo?.handCount ?? handsInLevelDisplay,
     handsCap: hudInfo?.handsCap ?? handsCapDisplay,
     startingStack: hudInfo?.startingStack ?? startingStack,
-    showRaiseCount: (hudInfo?.phase ?? tablePhase) === "BET",
+    showRaiseCount: presentationPhase === "BET",
     raiseCount: raiseStatsSrc?.raiseCountThisRound ?? raiseCountThisRound,
     dealerName:
       hudInfo?.dealerName ??
@@ -14434,8 +14442,8 @@ export default function App() {
     positionNameFn: positionName,
     clonePlayerStateFn: clonePlayerState,
     handleCardClick,
-    tablePhase,
-    phase: phaseSrc,
+    tablePhase: presentationPhase,
+    phase: presentationPhase,
     drawRoundValue: drawRoundSrc,
     betRoundValue: betRoundIndexSrc,
     boardCards: hudInfo?.boardCards ?? controllerSnapshot?.boardCards ?? [],

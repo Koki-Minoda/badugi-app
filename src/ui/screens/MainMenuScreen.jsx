@@ -59,7 +59,7 @@ function SimpleModal({ title, children, onClose, closeLabel = "Close", size = "m
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full border border-white/20 px-3 py-1 text-sm text-white hover:bg-white/10"
+            className="min-h-11 rounded-full border border-white/20 px-4 py-2 text-base text-white hover:bg-white/10"
           >
             {closeLabel}
           </button>
@@ -383,7 +383,7 @@ export default function MainMenuScreen({
                 type="button"
                 aria-label="Open Rules"
                 onClick={() => setShowRules(true)}
-                className="h-10 w-10 rounded-full border border-white/20 text-base text-white transition hover:border-emerald-300/60 hover:text-emerald-200"
+                className="h-11 w-11 rounded-full border border-white/20 text-base text-white transition hover:border-emerald-300/60 hover:text-emerald-200"
               >
                 ?
               </button>
@@ -391,7 +391,7 @@ export default function MainMenuScreen({
                 type="button"
                 aria-label="Open Settings"
                 onClick={() => setShowSettings(true)}
-                className="h-10 w-10 rounded-full border border-white/20 text-lg text-white transition hover:border-emerald-300/60 hover:text-emerald-200"
+                className="h-11 w-11 rounded-full border border-white/20 text-lg text-white transition hover:border-emerald-300/60 hover:text-emerald-200"
               >
                 ⚙
               </button>
@@ -573,7 +573,7 @@ export default function MainMenuScreen({
             <p>
               {modalCopy.settingsBody}
             </p>
-            <label className="flex items-center justify-between rounded-xl border border-slate-700/60 bg-slate-900/60 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-200">
+            <label className="flex min-h-14 items-center justify-between gap-3 rounded-xl border border-slate-700/60 bg-slate-900/60 px-3 py-2 text-sm font-semibold text-slate-200">
               <span>{modalCopy.language}</span>
               <select
                 value={language}
@@ -583,7 +583,7 @@ export default function MainMenuScreen({
                     onChangeLanguage?.(nextValue);
                   }
                 }}
-                className="rounded-md border border-slate-600 bg-slate-950 px-2 py-1 text-[11px] text-slate-100 focus:border-yellow-400 focus:outline-none"
+                className="min-h-11 rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-base text-slate-100 focus:border-yellow-400 focus:outline-none"
                 data-testid="language-select"
               >
                 <option value="en">English</option>

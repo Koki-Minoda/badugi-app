@@ -2842,6 +2842,9 @@ export default function App() {
           turn: snapshotTurn,
           dealerIdx,
           handId: handIdRef.current,
+          resultPot: handResultVisible
+            ? handResultSummary?.pot ?? handResultSummary?.totalPot ?? null
+            : null,
           players: snapshot,
         };
       },
@@ -2869,7 +2872,7 @@ export default function App() {
       }
       e2eLogEnabledRef.current = false;
     };
-  }, [phase, drawRound, betRoundIndex, turn, dealerIdx, handResultVisible]);
+  }, [phase, drawRound, betRoundIndex, turn, dealerIdx, handResultVisible, handResultSummary]);
 
   useEffect(() => {
     consoleContextRef.current = {

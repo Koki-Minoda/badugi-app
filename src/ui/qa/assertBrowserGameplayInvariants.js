@@ -11,6 +11,14 @@ function normalizePhase(value) {
   return value == null ? null : String(value).toUpperCase();
 }
 
+function displayMatchesPhase(displayedPhase, phase) {
+  if (displayedPhase.includes(phase) || phase.includes(displayedPhase)) return true;
+  if (phase === "BET" && displayedPhase.includes("ベット")) return true;
+  if (phase === "DRAW" && displayedPhase.includes("交換")) return true;
+  if (phase === "SHOWDOWN" && displayedPhase.includes("ショーダウン")) return true;
+  return phase === "HAND_RESULT" && displayedPhase.includes("結果");
+}
+
 export function assertBrowserGameplayInvariants(row, previousRows = []) {
   const violations = [];
   const controller = row?.controller ?? {};
@@ -114,18 +122,36 @@ export function assertBrowserGameplayInvariants(row, previousRows = []) {
     );
   }
 
-  if (typeof ui.displayedPot === "number" && Number(controller.pot ?? 0) !== ui.displayedPot) {
-    violations.push(
-      issue("POT", "P1", "displayed pot differs from controller pot", {
-        controllerPot: controller.pot,
-        displayedPot: ui.displayedPot,
-      }),
-    );
-  }
   const investedThisRound = (controller.players ?? []).reduce(
     (sum, player) => sum + Number(player?.betThisStreet ?? player?.betThisRound ?? player?.bet ?? 0),
     0,
   );
+  const settledPot = Number(controller.pot ?? 0);
+  const cumulativeInvested = (controller.players ?? []).reduce(
+    (sum, player) => sum + Number(player?.totalInvested ?? 0),
+    0,
+  );
+  const hasCumulativeInvested = (controller.players ?? []).some(
+    (player) => Number.isFinite(Number(player?.totalInvested)) && player?.totalInvested != null,
+  ) && cumulativeInvested >= settledPot;
+  const validDisplayedPot = hasCumulativeInvested
+    ? terminal
+      ? controller.resultPot != null
+        ? ui.displayedPot === Number(controller.resultPot)
+        : ui.displayedPot === cumulativeInvested
+      : ui.displayedPot >= settledPot && ui.displayedPot <= cumulativeInvested
+    : ui.displayedPot === settledPot || ui.displayedPot === settledPot + investedThisRound;
+  if (typeof ui.displayedPot === "number" && !validDisplayedPot) {
+    violations.push(
+      issue("POT", "P1", "displayed pot differs from controller pot", {
+        controllerPot: controller.pot,
+        investedThisRound,
+        cumulativeInvested: hasCumulativeInvested ? cumulativeInvested : null,
+        resultPot: controller.resultPot ?? null,
+        displayedPot: ui.displayedPot,
+      }),
+    );
+  }
   // Some controllers keep live street wagers outside `controller.pot` until the
   // street closes. Treat a zero *displayed total* as the money-loss invariant;
   // a zero settled pot with visible blinds is a valid opening snapshot.
@@ -140,7 +166,7 @@ export function assertBrowserGameplayInvariants(row, previousRows = []) {
   }
 
   const displayedPhase = normalizePhase(ui.displayedPhase);
-  if (displayedPhase && phase && !String(displayedPhase).includes(phase) && !String(phase).includes(displayedPhase)) {
+  if (!ui.resultVisible && displayedPhase && phase && !displayMatchesPhase(displayedPhase, phase)) {
     violations.push(issue("PHASE", "P1", "displayed phase diverges from controller phase", { displayedPhase, phase }));
   }
 

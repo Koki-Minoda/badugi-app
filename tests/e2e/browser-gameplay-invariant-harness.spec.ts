@@ -161,7 +161,7 @@ async function collect(page: Page, context: any, action: any, traceRows: any[], 
     if (!row) throw new Error("browser gameplay snapshot API unavailable");
     assertion = assertBrowserGameplayInvariants(row, traceRows);
     telemetry?.recordAssertion(assertion.violations);
-    if (!assertion.violations.some((violation: any) => violation?.severity === "P0")) {
+    if (assertion.violations.length === 0) {
       break;
     }
   }

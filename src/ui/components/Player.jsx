@@ -583,7 +583,7 @@ export default function Player({
         data-testid={`seat-${seatIndex}`}
         tabIndex={0}
         aria-label={playerDetailTitle}
-        onMouseEnter={openHud}
+        onMouseMove={hudOpen ? undefined : openHud}
         onMouseLeave={scheduleCloseHud}
         onFocus={openHud}
         onBlur={scheduleCloseHud}

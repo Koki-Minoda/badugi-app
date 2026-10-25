@@ -407,10 +407,10 @@ export default function MainMenuScreen({
               </div>
               <div>
                 <p className="uppercase tracking-wide text-slate-400">
-                  {language === "ja" ? "学習ログ" : "RL Capture"}
+                  {language === "ja" ? "対局の振り返り" : "Hand Review"}
                 </p>
                 <p className="font-semibold text-white">
-                  {language === "ja" ? "保存対応" : "JSONL Ready"}
+                  {language === "ja" ? "履歴から確認" : "Review your hands"}
                 </p>
               </div>
               <div>

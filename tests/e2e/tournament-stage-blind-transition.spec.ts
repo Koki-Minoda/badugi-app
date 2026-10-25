@@ -1011,7 +1011,7 @@ for (const stage of [
       ).toBe(true);
     }
 
-    await page.getByRole("button", { name: "Back to Results" }).click();
+    await page.getByRole("button", { name: "結果へ戻る" }).click();
     await expect(overlay).toBeVisible();
 
     await expect

@@ -5,6 +5,7 @@ describe("canLaunchVariant", () => {
   it("launches only alpha variants by default", () => {
     expect(canLaunchVariant("D01").canLaunch).toBe(true);
     expect(canLaunchVariant("D02").canLaunch).toBe(true);
+    expect(canLaunchVariant("D04").canLaunch).toBe(true);
     expect(canLaunchVariant("S01").canLaunch).toBe(true);
     expect(canLaunchVariant("badugi").canLaunch).toBe(true);
     expect(canLaunchVariant("flh").canLaunch).toBe(true);

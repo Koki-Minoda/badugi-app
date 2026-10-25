@@ -64,6 +64,12 @@ export const PUBLIC_RING_PLAYABLE_VARIANTS = Object.freeze([
     cashQm: Object.freeze({ expectsDraw: true, expectsBlindIncrease: true }),
   }),
   Object.freeze({
+    id: "S03",
+    availabilityKey: "five_card_single_draw",
+    displayName: "5-Card Single Draw",
+    cashQm: Object.freeze({ expectsDraw: true, expectsBlindIncrease: true }),
+  }),
+  Object.freeze({
     id: "stud",
     availabilityKey: "stud",
     displayName: "Seven Card Stud",
@@ -238,7 +244,7 @@ export const VARIANT_AVAILABILITY = Object.freeze({
   archie_triple_draw: preview("Archie TD", "Special draw evaluator exists, but natural long-run/mobile/replay coverage is not alpha-ready."),
   deuce_to_seven_single_draw: alpha("2-7 Single Draw"),
   ace_to_five_single_draw: alpha("A-5 Single Draw"),
-  five_card_single_draw: preview("5-Card Single Draw"),
+  five_card_single_draw: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "5-Card Single Draw", statusLabel: "Alpha", reason: "Five-card high draw with a rule-based CPU. Dedicated trained AI is not yet available." }),
   badugi_single_draw: preview("Badugi Single Draw", "Badugi-family UI and pot blockers must be cleared before friend alpha."),
   badeucey_single_draw: preview("Badeucey Single Draw", "Split draw flow exists, but split-result/replay/mobile coverage is not alpha-ready."),
   badacey_single_draw: preview("Badacey Single Draw", "Split draw flow exists, but split-result/replay/mobile coverage is not alpha-ready."),

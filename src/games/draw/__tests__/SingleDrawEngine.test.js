@@ -146,6 +146,20 @@ describe("Single draw lowball engines", () => {
     expect(engine.chooseCpuAction({ ...state, street: "BET" }, 0)).toMatchObject({ type: "CALL" });
   });
 
+  it("awards the high-hand pot to a flush over a straight", () => {
+    const engine = new FiveCardSingleDrawEngine();
+    const state = engine.initHand({ seatConfig: ["HUMAN", "CPU"], startingStack: 500, dealerIndex: 0 });
+    state.players[0].hand = ["5S", "6H", "7D", "8C", "9S"];
+    state.players[1].hand = ["AS", "JS", "8S", "5S", "2S"];
+    state.pots = [{ amount: 100, eligiblePlayerIds: ["seat-0", "seat-1"] }];
+
+    const result = engine.resolveShowdown(state);
+
+    expect(result.totalPot).toBe(100);
+    expect(result.summary[0].payouts).toMatchObject([{ seatIndex: 1, payout: 100, handName: "Flush" }]);
+    expect(result.state.players.map((player) => player.stack)).toEqual([500, 600]);
+  });
+
   it("registers S01/S02/S03 engines and exposes single-draw mixed metadata", () => {
     expect(listEngines()).toEqual(
       expect.arrayContaining([

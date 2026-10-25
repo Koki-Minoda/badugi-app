@@ -16,6 +16,15 @@ test("the mobile QA control stays compact until opened and remains touchable", a
     expect(bounds?.x).toBeGreaterThanOrEqual(0);
     expect(bounds?.y).toBeGreaterThanOrEqual(48);
     expect((bounds?.x ?? 0) + (bounds?.width ?? 0)).toBeLessThanOrEqual(viewport.width);
+    const blindLabel = page.getByTestId("decision-panel").getByText("10/20", { exact: true });
+    const blindBounds = await blindLabel.boundingBox();
+    expect(blindBounds).not.toBeNull();
+    const overlapsBlind = Boolean(bounds && blindBounds &&
+      bounds.x < blindBounds.x + blindBounds.width &&
+      bounds.x + bounds.width > blindBounds.x &&
+      bounds.y < blindBounds.y + blindBounds.height &&
+      bounds.y + bounds.height > blindBounds.y);
+    expect(overlapsBlind).toBe(false);
     const tableMenu = page.locator(".mgx-play-header summary");
     await tableMenu.click();
     await expect(page.locator(".mgx-play-header nav")).toBeVisible();

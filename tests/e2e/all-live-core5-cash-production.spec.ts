@@ -24,6 +24,7 @@ if (SEED !== null && (!Number.isInteger(SEED) || SEED < 0 || SEED > 0xffffffff))
   throw new Error("MGX_ALL_LIVE_CASH_SEED must be an unsigned 32-bit integer");
 }
 const SOURCE_COMMIT = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+const EXPECTED_SERVED_COMMIT = process.env.MGX_EXPECTED_SERVED_COMMIT;
 const HANDS = Math.max(10, Number(process.env.MGX_ALL_LIVE_CASH_HANDS ?? 10));
 const iphoneOrientation = process.env.MGX_ALL_LIVE_CASH_IPHONE_ORIENTATION ?? "landscape";
 if (!new Set(["portrait", "landscape"]).has(iphoneOrientation)) {
@@ -462,15 +463,25 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
   });
   let session: Awaited<ReturnType<typeof openAuthenticatedGame>> | null = null;
   const rows: unknown[] = [];
+  let servedCommit: string | null = null;
   const mark = (stage: string, details: Record<string, unknown> = {}) =>
     writeReport(`${variant.variant.toLowerCase()}-${device}-progress.json`, {
       generatedAt: new Date().toISOString(),
       seed: SEED,
+      servedCommit,
       stage,
       rows,
       ...details,
     });
   try {
+    const releaseResponse = await page.request.get(`${APP_URL.replace(/\/$/, "")}/release.json`);
+    if (releaseResponse.ok() && (releaseResponse.headers()["content-type"] ?? "").includes("application/json")) {
+      servedCommit = (await releaseResponse.json()).commit;
+      expect(servedCommit).toMatch(/^[0-9a-f]{40}$/);
+    }
+    if (EXPECTED_SERVED_COMMIT) {
+      expect(servedCommit, "browser must use the expected built release").toBe(EXPECTED_SERVED_COMMIT);
+    }
     mark("opening-game");
     if (variant.requiresPreview) {
       await page.addInitScript(() => {
@@ -608,6 +619,7 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
     expect(relevantResponses).toEqual([]);
     return {
       status: "PASS",
+      servedCommit,
       seed: SEED,
       variant: variant.variant,
       displayName: variant.displayName,

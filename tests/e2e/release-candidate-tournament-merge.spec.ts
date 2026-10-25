@@ -11,6 +11,14 @@ for (const variant of variants) {
 test(`${variant}: natural ${totalPlayers}-player tournament merge and elimination`,async({page},testInfo)=>{
  test.skip(process.env.MGX_CANDIDATE_MTT_QA !== '1', 'Explicit release-candidate tournament QA');
  test.setTimeout(600000);
+ const expectedServedCommit=process.env.MGX_EXPECTED_SERVED_COMMIT;
+ let servedCommit=null;
+ if(expectedServedCommit){
+  const response=await page.request.get(`${APP_URL.replace(/\/$/,'')}/release.json`);
+  expect(response.ok(),'the tournament must use a built release').toBe(true);
+  servedCommit=(await response.json()).commit;
+  expect(servedCommit,'the tournament must use the expected built release').toBe(expectedServedCommit);
+ }
  const errors=[];page.on('pageerror',e=>errors.push(String(e)));
  await page.route('**/api/**',r=>r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({id:9001,username:'QA Hero'})}));
  await page.addInitScript(()=>localStorage.setItem('mgx_auth',JSON.stringify({accessToken:'test',user:{id:9001,username:'QA Hero'},isAuthenticated:true})));
@@ -52,7 +60,7 @@ test(`${variant}: natural ${totalPlayers}-player tournament merge and eliminatio
   }
   await page.waitForTimeout(150);
  }
- const result={variant,initialTables:tableCount,totalPlayers,totalChips,project:testInfo.project.name,viewport:page.viewportSize(),apiStubbed:true,completionMethod:'natural-actions-until-terminal-overlay',postHeroBust:'production-auto-completion',terminalKind,blindStructure:'doubling-or-2.5x-every-10-hands',finalTablePolicy:'maximum-legal-bet',rows,terminal,errors,placements:await page.evaluate(()=>window.__BADUGI_E2E__.getTournamentPlacements())};
+ const result={variant,servedCommit,initialTables:tableCount,totalPlayers,totalChips,project:testInfo.project.name,viewport:page.viewportSize(),apiStubbed:true,completionMethod:'natural-actions-until-terminal-overlay',postHeroBust:'production-auto-completion',terminalKind,blindStructure:'doubling-or-2.5x-every-10-hands',finalTablePolicy:'maximum-legal-bet',rows,terminal,errors,placements:await page.evaluate(()=>window.__BADUGI_E2E__.getTournamentPlacements())};
  await page.screenshot({path:testInfo.outputPath(`${variant}-terminal.png`)});
  await writeFile(testInfo.outputPath(`${variant}-merge.json`),JSON.stringify(result,null,2));
  expect(terminal).toBe(true);expect(rows[0]?.tables).toBe(tableCount);expect(final).toBe(true);

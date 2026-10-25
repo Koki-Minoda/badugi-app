@@ -494,6 +494,22 @@ export default function GameLayoutBase({
         "--card-center-size": "30px",
       }
     : {};
+  const desktopDrawSizeVars = !isMobileLayout && !isTournament &&
+    (isFiveCardDrawLayout || tableLayoutGroup === LAYOUT_GROUPS.BADUGI)
+    ? {
+        "--card-w": isFiveCardDrawLayout
+          ? "clamp(29px, 2.3vw, 34px)"
+          : "clamp(32px, 2.8vw, 40px)",
+        "--card-h": isFiveCardDrawLayout
+          ? "clamp(41px, 3.22vw, 48px)"
+          : "clamp(45px, 3.92vw, 56px)",
+        "--card-font-size": "clamp(11px, 1vw, 14px)",
+        "--card-center-size": "clamp(20px, 1.9vw, 27px)",
+        "--player-pad": "7px",
+        "--player-gap": "5px",
+        "--player-card-gap": "3px",
+      }
+    : {};
   const rootStyle = isMobileLayout
     ? {
         ...cardScaleVars,
@@ -636,8 +652,8 @@ export default function GameLayoutBase({
         maxHeight: disableVh ? "100vh" : "var(--mgx-visual-vh, 100dvh)",
       }
     : disableVh
-      ? { ...cardScaleVars, ...desktopStudSizeVars }
-      : { ...cardScaleVars, ...desktopStudSizeVars, minHeight: "100dvh" };
+      ? { ...cardScaleVars, ...desktopStudSizeVars, ...desktopDrawSizeVars }
+      : { ...cardScaleVars, ...desktopStudSizeVars, ...desktopDrawSizeVars, minHeight: "100dvh" };
 
   const renderControlsContent = () => {
     if (heroCanAct && heroPlayerForControls) {

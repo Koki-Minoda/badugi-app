@@ -243,6 +243,26 @@ describe("handHistory", () => {
     expect(record.pots[0].winners[0].handLabel).toContain(labelPart);
   });
 
+  it("records the ace-high Badeucey Badugi result used by the game engine", () => {
+    const hand = ["AS", "2H", "3D", "4C", "9S"];
+    startHandHistoryRecord({
+      handId: "d04-ace-high-history",
+      variantId: "D04",
+      seats: [{ seat: 0, name: "Hero", startStack: 500 }],
+    });
+
+    const record = finalizeHandHistoryRecord({
+      players: [{ stack: 600, hand }],
+      pots: [{ potIndex: 0, potAmount: 100, payouts: [{ seatIndex: 0, payout: 100, hand }] }],
+    });
+
+    expect(record.seats[0].evaluation.metadata.high.metadata).toMatchObject({
+      aceHigh: true,
+      cards: ["2H", "3D", "4C", "9S"],
+    });
+    expect(record.pots[0].winners[0].evaluation.metadata.high.metadata.aceHigh).toBe(true);
+  });
+
   it("defines and validates the minimum D01 replay fields", () => {
     const finalHand = ["7S", "5D", "4C", "3H", "2S"];
     startHandHistoryRecord({

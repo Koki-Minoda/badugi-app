@@ -367,8 +367,19 @@ describe("Split evaluator", () => {
     });
 
     expect(result.metadata.high.handName).toMatch(/Badugi/i);
-    expect(result.metadata.low.handName).toBe("2-7 Low");
+    expect(result.metadata.low.handName).toBe("2-7 Low 7-5-4-3-2");
     expect(result.rankSecondary).toBe(result.metadata.low.rankPrimary);
+  });
+
+  it("ranks Badeucey aces high on the Badugi half", () => {
+    const ace = evaluateBadeucey({ cards: ["AS", "2H", "3D", "4C", "9S"] });
+    const five = evaluateBadeucey({ cards: ["5S", "2H", "3D", "4C", "9S"] });
+
+    expect(ace.metadata.high.metadata.aceHigh).toBe(true);
+    expect(ace.metadata.high.metadata.cards).not.toContain("AS");
+    expect(five.metadata.high.rankPrimary).toBeLessThan(ace.metadata.high.rankPrimary);
+    expect(evaluateBadacey({ cards: ["AS", "2H", "3D", "4C", "9S"] }).metadata.high.rankPrimary)
+      .toBeLessThan(evaluateBadacey({ cards: ["5S", "2H", "3D", "4C", "9S"] }).metadata.high.rankPrimary);
   });
 
   it("returns Badugi and A-5 low metadata for Badacey", () => {
@@ -377,7 +388,7 @@ describe("Split evaluator", () => {
     });
 
     expect(result.metadata.high.handName).toMatch(/Badugi/i);
-    expect(result.metadata.low.handName).toBe("A-5 Low");
+    expect(result.metadata.low.handName).toBe("A-5 Low 5-4-3-2-A");
   });
 
   it("marks hi-lo eight low qualification in split metadata", () => {

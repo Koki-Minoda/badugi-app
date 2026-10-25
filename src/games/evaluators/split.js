@@ -1,6 +1,11 @@
 import { evaluateHighHand } from "./high.js";
 import { evaluateBadugiHand } from "./badugi.js";
-import { evaluateLowHand } from "./low.js";
+import { evaluateLowHand, formatLowHandLabel } from "./low.js";
+
+function evaluateLabeledLow(cards, lowType) {
+  const evaluation = evaluateLowHand({ cards, lowType });
+  return { ...evaluation, handName: formatLowHandLabel(evaluation, { lowType }) };
+}
 
 export function evaluateSplitHand({
   cards = [],
@@ -28,8 +33,8 @@ export function evaluateSplitHand({
 export function evaluateBadeucey(params = {}) {
   return evaluateSplitHand({
     ...params,
-    highEvaluator: evaluateBadugiHand,
-    lowEvaluator: ({ cards }) => evaluateLowHand({ cards, lowType: "27" }),
+    highEvaluator: ({ cards }) => evaluateBadugiHand({ cards, aceHigh: true }),
+    lowEvaluator: ({ cards }) => evaluateLabeledLow(cards, "27"),
   });
 }
 
@@ -37,7 +42,7 @@ export function evaluateBadacey(params = {}) {
   return evaluateSplitHand({
     ...params,
     highEvaluator: evaluateBadugiHand,
-    lowEvaluator: ({ cards }) => evaluateLowHand({ cards, lowType: "A5" }),
+    lowEvaluator: ({ cards }) => evaluateLabeledLow(cards, "A5"),
   });
 }
 

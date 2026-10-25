@@ -66,6 +66,17 @@ describe("variantAvailability", () => {
     });
   });
 
+  it("publishes Badugi Single Draw with one-draw QA and honest CPU guidance", () => {
+    const availability = getVariantAvailability("S04");
+    expect(availability.availability).toBe(VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE);
+    expect(availability.reason).toMatch(/rule-based decisions/);
+    expect(availability.reasonJa).toMatch(/専用の学習AIはまだありません/);
+    expect(PUBLIC_PLAYABLE_VARIANTS.find((entry) => entry.id === "S04")?.cashQm).toEqual({
+      expectsDraw: true,
+      expectsBlindIncrease: true,
+    });
+  });
+
   it("publishes all six Stud-family games only with the completed release contract", () => {
     for (const id of ["stud", "stud8", "razz", "razzdugi", "razzducey", "razz27"]) {
       const entry = getVariantAvailability(id);

@@ -34,6 +34,7 @@ const CORE5_QA_METADATA = Object.freeze({
   S01: { heroCardTestId: "player-0-card-4", initialCardCount: 5, maxSteps: 90, expectsDraw: true, expectsBlindIncrease: true },
   S02: { heroCardTestId: "player-0-card-4", initialCardCount: 5, maxSteps: 90, expectsDraw: true, expectsBlindIncrease: true },
   S03: { heroCardTestId: "player-0-card-4", initialCardCount: 5, maxSteps: 90, expectsDraw: true, expectsBlindIncrease: true },
+  S04: { heroCardTestId: "player-0-card-3", initialCardCount: 4, maxSteps: 120, expectsDraw: true, expectsBlindIncrease: true },
   stud: { heroCardTestId: "player-0-card-2", initialCardCount: 3, maxSteps: 180, expectsDraw: false, expectsBlindIncrease: false },
   stud8: { heroCardTestId: "player-0-card-2", initialCardCount: 3, maxSteps: 180, expectsDraw: false, expectsBlindIncrease: false },
   razz: { heroCardTestId: "player-0-card-2", initialCardCount: 3, maxSteps: 180, expectsDraw: false, expectsBlindIncrease: false },

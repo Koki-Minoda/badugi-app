@@ -271,4 +271,50 @@ describe("special draw engines", () => {
     expect(getEngine("badacey_single_draw").variantId).toBe("S06");
     expect(getEngine("hidugi_single_draw").variantId).toBe("S07");
   });
+
+  it("stands pat with a four-card Badugi in the single-draw game", () => {
+    const engine = new BadugiSingleDrawEngine();
+    const state = engine.initHand({
+      seatConfig: ["HUMAN", "CPU"],
+      startingStack: 500,
+      dealerIndex: 0,
+    });
+    // The shared triple-draw heuristic discarded the last card (the ace) from
+    // this king-high Badugi, reducing a made four-card hand to a draw.
+    state.players[1].hand = ["KS", "9H", "4D", "AC"];
+    state.street = "DRAW";
+    state.actingPlayerIndex = 1;
+
+    expect(engine.chooseCpuAction(state, 1)).toMatchObject({
+      type: "DRAW",
+      discardIndexes: [],
+    });
+  });
+
+  it("settles Badugi Single Draw main and side pots by eligible hands", () => {
+    const engine = new BadugiSingleDrawEngine();
+    const state = engine.initHand({
+      seatConfig: ["HUMAN", "CPU", "CPU"],
+      startingStack: 500,
+      dealerIndex: 0,
+    });
+    state.players[0].hand = ["AS", "2D", "3C", "4H"];
+    state.players[1].hand = ["8S", "7D", "6C", "AH"];
+    state.players[2].hand = ["KS", "KH", "4D", "AC"];
+    state.pots = [
+      { amount: 90, eligiblePlayerIds: ["seat-0", "seat-1", "seat-2"] },
+      { amount: 40, eligiblePlayerIds: ["seat-1", "seat-2"] },
+    ];
+
+    const result = engine.resolveShowdown(state);
+
+    expect(result.totalPot).toBe(130);
+    expect(result.summary.map((pot) => pot.payouts.map(({ seatIndex, payout }) => ({ seatIndex, payout })))).toEqual([
+      [{ seatIndex: 0, payout: 90 }],
+      [{ seatIndex: 1, payout: 40 }],
+    ]);
+    expect(result.summary[0].payouts[0].ranksLabel).toBe("A-2-3-4");
+    expect(result.summary[1].payouts[0].ranksLabel).toBe("A-6-7-8");
+    expect(result.state.players.map(({ stack }) => stack)).toEqual([590, 540, 500]);
+  });
 });

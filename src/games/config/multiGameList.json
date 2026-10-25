@@ -393,7 +393,7 @@
     },
     {
         "id":  "D06",
-        "name":  "Hidugi TD",
+        "name":  "Hidugi Triple Draw",
         "category":  "triple-draw",
         "holeCards":  4,
         "drawRounds":  3,

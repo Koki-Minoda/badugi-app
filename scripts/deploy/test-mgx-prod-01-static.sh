@@ -43,6 +43,12 @@ grep -q 'friend-match deep link did not return the current SPA asset' "$script"
 grep -q 'npm run test:build:onnx' "$script"
 test "$(grep -c -- '-o ServerAliveInterval=30 -o ServerAliveCountMax=20' "$workflow")" -eq 3
 grep -q 'scripts/deploy/create_verified_backup.py' "$workflow"
+deploy_checkout_line="$(awk '/^  deploy:/{in_deploy=1} in_deploy && /uses: actions\/checkout@v6/{print NR;exit}' "$workflow")"
+deploy_backup_line="$(awk '/^  deploy:/{in_deploy=1} in_deploy && /name: Back up and verify the current production release/{print NR;exit}' "$workflow")"
+if [[ -z "$deploy_checkout_line" || -z "$deploy_backup_line" || "$deploy_checkout_line" -ge "$deploy_backup_line" ]]; then
+  echo "deploy must check out the tested commit before reading the backup script" >&2
+  exit 1
+fi
 grep -q 'mktemp -d /tmp/mgx-frontend-build' "$script"
 grep -q 'git archive --format=tar HEAD' "$script"
 # Match the literal guard against shared node_modules deletion.

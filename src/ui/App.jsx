@@ -8145,7 +8145,7 @@ export default function App() {
       // its Next Hand button must remain usable. dealNewHand resets the saved
       // marker before another click can start a second hand.
       const cashHandSettled = modeRef.current !== "tournament-mtt" &&
-        handResultVisible && handSavedRef.current && handIdRef.current;
+        handResultVisible && handSavedRef.current && Boolean(handIdRef.current);
       if (!canStartNextHand({
         currentPhase,
         handCount: handCountRef.current,

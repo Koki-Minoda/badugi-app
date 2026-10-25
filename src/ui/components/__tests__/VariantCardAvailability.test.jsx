@@ -55,4 +55,9 @@ describe("VariantCardAvailability", () => {
     rerender(<VariantCardAvailability availability={availability} language="en" />);
     expect(screen.getByTestId("variant-availability-reason").textContent).toMatch(/aces are low/);
   });
+
+  it("shows the Archie rule in Japanese when Japanese is selected", () => {
+    render(<VariantCardAvailability availability={getVariantAvailability("D07")} language="ja" />);
+    expect(screen.getByTestId("variant-availability-reason").textContent).toMatch(/9以上のペア/);
+  });
 });

@@ -72,6 +72,12 @@ export const PUBLIC_RING_PLAYABLE_VARIANTS = Object.freeze([
     cashQm: Object.freeze({ expectsDraw: true, expectsBlindIncrease: true }),
   }),
   Object.freeze({
+    id: "D07",
+    availabilityKey: "archie_triple_draw",
+    displayName: "Archie Triple Draw",
+    cashQm: Object.freeze({ expectsDraw: true, expectsBlindIncrease: true }),
+  }),
+  Object.freeze({
     id: "S01",
     availabilityKey: "deuce_to_seven_single_draw",
     displayName: "2-7 Single Draw",
@@ -305,7 +311,13 @@ export const VARIANT_AVAILABILITY = Object.freeze({
     reason: "Four cards and up to three draws. A complete four-suit Hidugi beats a three-card hand, and aces are high. Opponents use rule-based decisions.",
     reasonJa: "4枚で最大3回交換し、高いHidugiを競います。4枚役は3枚役より強く、Aは最も高いカードです。相手はルールベースで判断します。",
   }),
-  archie_triple_draw: preview("Archie TD", "Special draw evaluator exists, but natural long-run/mobile/replay coverage is not alpha-ready."),
+  archie_triple_draw: makeEntry({
+    availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
+    label: "Archie Triple Draw",
+    statusLabel: "Alpha",
+    reason: "Five cards, up to three draws. A pair of nines or better qualifies for high; an A-5 low of eight or better qualifies for low. If neither side qualifies, the pot is shared equally. Opponents make rule-based decisions.",
+    reasonJa: "5枚で最大3回交換。ハイは9以上のペア、ローは8以下のA-5ローが成立条件です。どちらも成立しなければポットを均等に分けます。相手はルールベースです。",
+  }),
   deuce_to_seven_single_draw: alpha("2-7 Single Draw"),
   ace_to_five_single_draw: alpha("A-5 Single Draw"),
   five_card_single_draw: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "5-Card Single Draw", statusLabel: "Alpha", reason: "Five-card high draw with a rule-based CPU. Dedicated trained AI is not yet available." }),

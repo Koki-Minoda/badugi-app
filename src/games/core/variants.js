@@ -203,7 +203,7 @@ export const GAME_VARIANTS = {
   archie_triple_draw: {
     id: "archie_triple_draw",
     variantId: "D07",
-    label: "Archie TD",
+    label: "Archie Triple Draw",
     controllerFactory: drawControllerFactory(ArchieTripleDrawController),
   },
   deuce_to_seven_single_draw: {

@@ -60,6 +60,8 @@ describe("VariantSelectModal", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /badacey triple draw/i }));
     expect(handleSelect).toHaveBeenCalledWith("D05");
+    fireEvent.click(screen.getByRole("button", { name: /archie triple draw/i }));
+    expect(handleSelect).toHaveBeenCalledWith("D07");
   });
 
   it("allows Omaha family variants to be selected", () => {
@@ -99,16 +101,19 @@ describe("VariantSelectModal", () => {
     expect(screen.queryByText(/select a variant/i)).toBeNull();
   });
 
-  it("blocks preview variants when the preview flag is off", () => {
+  it("allows published draw variants without the preview flag", () => {
     const handleSelect = vi.fn();
     render(<VariantSelectModal isOpen onClose={() => {}} onSelectVariant={handleSelect} />);
 
-    const previewButton = screen
-      .getAllByRole("button", { name: /badacey td/i })
-      .find((button) => button.textContent?.includes("Badacey TD"));
-    expect(previewButton.disabled).toBe(true);
-    fireEvent.click(previewButton);
-    expect(handleSelect).not.toHaveBeenCalled();
+    const badaceyButton = screen.getByRole("button", { name: /badacey triple draw/i });
+    expect(badaceyButton.disabled).toBe(false);
+    fireEvent.click(badaceyButton);
+    expect(handleSelect).toHaveBeenCalledWith("D05");
+
+    const archieButton = screen.getByRole("button", { name: /archie triple draw/i });
+    expect(archieButton.disabled).toBe(false);
+    fireEvent.click(archieButton);
+    expect(handleSelect).toHaveBeenCalledWith("D07");
 
     const a5Button = screen.getByRole("button", { name: /a-5 single draw/i });
     expect(a5Button.disabled).toBe(false);

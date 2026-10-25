@@ -26,7 +26,7 @@ def _fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
                     "-m", "current"], check=True)
     commit = subprocess.check_output(["git", "-C", str(app), "rev-parse", "HEAD"], text=True).strip()
     (app / "backend").mkdir()
-    (app / "backend/.env").write_text(
+    (app / ".env").write_text(
         "BACKEND_DB_DRIVER=mysql\nBACKEND_DB_NAME=mgx_prod\n"
         "BACKEND_DB_USER=mgx\nBACKEND_DB_PASSWORD=private-test-password\n",
         encoding="utf-8",
@@ -82,3 +82,14 @@ def test_failed_dump_removes_partial_backup(tmp_path, monkeypatch):
     with pytest.raises(RuntimeError, match="database dump failed"):
         backup.run_backup(app, frontend, root, "f" * 40)
     assert list(root.iterdir()) == []
+
+
+def test_backup_ignores_stale_backend_env(tmp_path, monkeypatch):
+    app, frontend, root, _, _ = _fixture(tmp_path, monkeypatch)
+    (app / ".env").unlink()
+    (app / "backend/.env").write_text(
+        "BACKEND_DB_PASSWORD=stale-backend-password\n", encoding="utf-8"
+    )
+    with pytest.raises(RuntimeError, match="missing database password"):
+        backup.run_backup(app, frontend, root, "f" * 40)
+    assert not root.exists()

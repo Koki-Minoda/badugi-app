@@ -19,7 +19,9 @@ class HandLog(Base):
         autoincrement=True,
     )
     # Assigned by authenticated endpoints; legacy records stay unowned.
-    owner_user_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    owner_user_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True,
+    )
     hand_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     table_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
     tournament_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)

@@ -3,7 +3,7 @@ import { APP_URL, deleteAuthenticatedSession, openAuthenticatedGame } from "./au
 
 test("entering a table keeps the seat HUD closed until the pointer moves over a seat", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  const session = await openAuthenticatedGame(page, `${APP_URL}?variant=D06&mode=cash&mgxQa=mobile`);
+  const session = await openAuthenticatedGame(page, `${APP_URL}?variant=D01&mode=cash&mgxQa=mobile`);
   try {
     await expect(page.getByTestId("decision-panel")).toBeVisible();
     await expect(page.locator('[data-testid^="seat-"][data-testid$="-detail"]')).toHaveCount(0);

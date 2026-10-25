@@ -14,7 +14,12 @@ test("the mobile QA control stays compact until opened and remains touchable", a
     expect(bounds?.width).toBeLessThanOrEqual(48);
     expect(bounds?.height).toBeLessThanOrEqual(48);
     expect(bounds?.x).toBeGreaterThanOrEqual(0);
+    expect(bounds?.y).toBeGreaterThanOrEqual(48);
     expect((bounds?.x ?? 0) + (bounds?.width ?? 0)).toBeLessThanOrEqual(viewport.width);
+    const tableMenu = page.locator(".mgx-play-header summary");
+    await tableMenu.click();
+    await expect(page.locator(".mgx-play-header nav")).toBeVisible();
+    await tableMenu.click();
     await open.click();
     await expect(panel.getByText(/^Session:/)).toBeVisible();
     await panel.getByRole("button", { name: "Hide QA tools" }).click();

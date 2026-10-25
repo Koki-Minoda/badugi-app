@@ -11,6 +11,15 @@ it('restores CPU portraits in both draw and board seats and preserves custom ava
  rerender(<MobileTableSeat seat={{name:'Ren',cpuCharacterId:'ren',avatarUrl:'/custom.png',stack:500}} index={1} variant="nlh"/>);
  expect(container.querySelector('.mgx-seat-avatar img').getAttribute('src')).toBe('/custom.png');
 });
+it('shows a seat silhouette until its portrait finishes loading',()=>{
+ const {container}=render(<MobileTableSeat seat={{name:'Mina',isCPU:true,stack:500}} index={1} variant="nlh"/>);
+ const avatar=container.querySelector('.mgx-seat-avatar');
+ const image=avatar.querySelector('img');
+ expect(avatar.querySelector('svg')).toBeTruthy();
+ expect(image.classList.contains('is-loaded')).toBe(false);
+ fireEvent.load(image);
+ expect(image.classList.contains('is-loaded')).toBe(true);
+});
 it('recovers from a failed portrait when the table merges and the seat occupant changes',()=>{
  const {container,rerender}=render(<MobileTableSeat seat={{name:'Akira',isCPU:true,stack:500}} index={1} variant="badugi"/>);
  fireEvent.error(container.querySelector('.mgx-seat-avatar img'));

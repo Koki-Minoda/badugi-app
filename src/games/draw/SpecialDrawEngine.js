@@ -1,6 +1,7 @@
 import { resolveDrawContributionPots } from "./drawContributionPots.js";
 import { orderDrawWinners } from "./drawWinnerOrder.js";
 import { evaluateBadugiHand } from "../evaluators/badugi.js";
+import { parseCards } from "../evaluators/core.js";
 import { evaluateHighHand } from "../evaluators/high.js";
 import { evaluateLowHand, formatLowHandLabel } from "../evaluators/low.js";
 import { compareEvaluations } from "../evaluators/registry.js";
@@ -48,20 +49,27 @@ function getComponentAmountDetails(amount, components = []) {
   }));
 }
 
-function getActiveCardsFromBadugi(cards = []) {
-  const evaluation = evaluateBadugiHand({ cards });
+function getActiveCardsFromBadugi(cards = [], mode = "low") {
+  const evaluation = evaluateBadugiHand({ cards, mode });
   return new Set(evaluation.metadata?.cards ?? []);
 }
 
-function chooseBadugiDiscardIndexes(cards = []) {
-  const keep = getActiveCardsFromBadugi(cards);
+function chooseBadugiDiscardIndexes(cards = [], mode = "low") {
+  const keep = getActiveCardsFromBadugi(cards, mode);
   const discard = cards
     .map((card, idx) => ({ card, idx }))
     .filter(({ card }) => !keep.has(card))
     .map(({ idx }) => idx);
   if (discard.length) return discard;
-  const evaluation = evaluateBadugiHand({ cards });
+  const evaluation = evaluateBadugiHand({ cards, mode });
   const ranks = evaluation.metadata?.ranks ?? [];
+  if (mode === "high") {
+    // Keep four strong suits; try to improve the lowest card when it is ten or lower.
+    if ((evaluation.metadata?.size ?? 0) !== 4 || Math.min(...ranks) > 10) return [];
+    const lowestRank = Math.min(...ranks);
+    const lowestIndex = parseCards(cards).findIndex((card) => card.value === lowestRank);
+    return lowestIndex >= 0 ? [lowestIndex] : [];
+  }
   const roughFourCard = (evaluation.metadata?.size ?? 0) === 4 && Math.max(...ranks, 0) >= 11;
   return roughFourCard ? [cards.length - 1].filter((idx) => idx >= 0) : [];
 }
@@ -284,7 +292,7 @@ export class SpecialDrawEngine extends DeuceToSevenTripleDrawEngine {
     if (state.actingPlayerIndex !== null && state.actingPlayerIndex !== seatIndex) return null;
     const discardIndexes = this.specialConfig.handCardCount === 5
       ? choosePairOrLowDiscardIndexes(player.hand ?? [], this.specialConfig.split?.lowType ?? "27")
-      : chooseBadugiDiscardIndexes(player.hand ?? []);
+      : chooseBadugiDiscardIndexes(player.hand ?? [], this.specialConfig.mode === "badugiHigh" ? "high" : "low");
     if (state.street === "DRAW") {
       return {
         seatIndex,

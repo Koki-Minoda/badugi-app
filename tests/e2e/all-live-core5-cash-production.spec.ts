@@ -25,6 +25,10 @@ if (SEED !== null && (!Number.isInteger(SEED) || SEED < 0 || SEED > 0xffffffff))
 }
 const SOURCE_COMMIT = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
 const HANDS = Math.max(10, Number(process.env.MGX_ALL_LIVE_CASH_HANDS ?? 10));
+const iphoneOrientation = process.env.MGX_ALL_LIVE_CASH_IPHONE_ORIENTATION ?? "landscape";
+if (!new Set(["portrait", "landscape"]).has(iphoneOrientation)) {
+  throw new Error("MGX_ALL_LIVE_CASH_IPHONE_ORIENTATION must be portrait or landscape");
+}
 const enabled = process.env.MGX_ALL_LIVE_CASH_QA === "1";
 const variantFilter = new Set(
   String(process.env.MGX_ALL_LIVE_CASH_VARIANTS ?? "")
@@ -411,7 +415,9 @@ async function createDevicePage(browser: Browser, device: DeviceName) {
   const context = await browser.newContext(
     device === "iphone"
       ? {
-          viewport: { width: 844, height: 390 },
+          viewport: iphoneOrientation === "portrait"
+            ? { width: 390, height: 844 }
+            : { width: 844, height: 390 },
           isMobile: true,
           hasTouch: true,
           deviceScaleFactor: 3,
@@ -477,6 +483,15 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
     );
     await waitForE2EDriver(page);
     await expect(page.getByTestId("decision-panel")).toBeVisible({ timeout: 30_000 });
+    if (variant.requiresPreview && device === "iphone") {
+      await expect.poll(async () => page.locator(".mgx-table-seat:not(.is-hero)").evaluateAll((seats) =>
+        seats.length > 0 && seats.every((seat) => {
+          const image = seat.querySelector(".mgx-seat-avatar img") as HTMLImageElement | null;
+          return image?.complete && image.naturalWidth > 0;
+        }),
+      ), { timeout: 20_000 }).toBe(true);
+      mark("seat-portraits-loaded");
+    }
     fs.mkdirSync(REPORT_DIR, { recursive: true });
     await page.screenshot({ path: path.join(REPORT_DIR, `${variant.variant.toLowerCase()}-${device}-table.png`) });
     const openingBlind = await blindSnapshot(page);
@@ -598,6 +613,7 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
       displayName: variant.displayName,
       device,
       browserEngine: browser.browserType().name(),
+      viewport: page.viewportSize(),
       handsCompleted: HANDS,
       nextHandClicks: HANDS - 1,
       openingBlind,

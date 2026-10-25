@@ -77,8 +77,10 @@ function isHidugiVariant(variantId) {
   return (
     normalized === "D06" ||
     normalized === "S07" ||
+    normalized === "H05" ||
     normalized === "hidugi_triple_draw" ||
-    normalized === "hidugi_single_draw"
+    normalized === "hidugi_single_draw" ||
+    normalized === "dramaha_hidugi"
   );
 }
 
@@ -148,6 +150,20 @@ function getEvaluationLabel(evaluation, variantId = "badugi") {
   if (evaluation.rankType) return evaluation.rankType;
   if (typeof evaluation.count === "number") return `Badugi ${evaluation.count}-card`;
   return null;
+}
+
+function getHistoryPayoutEvaluation(entry, variantId) {
+  const supplied = entry?.evaluation;
+  if (supplied?.board && supplied?.draw) {
+    if (entry.component === "draw") return supplied.draw;
+    if (entry.component === "board") {
+      const bestFive = supplied.board.best5;
+      return Array.isArray(bestFive) && bestFive.length >= 5
+        ? { ...supplied.board, handName: evaluateHighHand({ cards: bestFive }).handName }
+        : supplied.board;
+    }
+  }
+  return supplied ?? (entry?.hand ? evaluateVariantHand(entry.hand, variantId) : null);
 }
 
 export function startHandHistoryRecord({
@@ -270,8 +286,7 @@ function buildPotEntries(pots = []) {
                 : typeof entry?.seatIndex === "number"
                 ? entry.seatIndex
                 : null;
-            const evaluation =
-              entry?.evaluation ?? (entry?.hand ? evaluateVariantHand(entry.hand, variantId) : null);
+            const evaluation = getHistoryPayoutEvaluation(entry, variantId);
             return {
               seat,
               collect: Math.max(0, entry?.payout ?? 0),

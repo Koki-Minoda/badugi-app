@@ -24,6 +24,9 @@ describe("variantAvailability", () => {
     expect(getVariantAvailability("S02").availability).toBe(
       VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
     );
+    expect(getVariantAvailability("S07").availability).toBe(
+      VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
+    );
     expect(getVariantAvailability("nlh").availability).toBe(
       VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
     );

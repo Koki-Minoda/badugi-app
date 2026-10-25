@@ -17,4 +17,12 @@ describe("VariantCardAvailability", () => {
     expect(screen.getByTestId("variant-availability-badge").textContent).toContain("検証中");
     expect(screen.getByTestId("variant-availability-reason").textContent).toMatch(/Badugi-family/);
   });
+
+  it("explains public Hidugi Single Draw in the selected language", () => {
+    const availability = getVariantAvailability("S07");
+    const { rerender } = render(<VariantCardAvailability availability={availability} language="ja" />);
+    expect(screen.getByTestId("variant-availability-reason").textContent).toMatch(/4枚で1回交換/);
+    rerender(<VariantCardAvailability availability={availability} language="en" />);
+    expect(screen.getByTestId("variant-availability-reason").textContent).toMatch(/aces are high/);
+  });
 });

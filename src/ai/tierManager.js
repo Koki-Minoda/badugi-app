@@ -1,6 +1,6 @@
 import tiers from "../config/ai/tiers.json" with { type: "json" };
 import { getStageById } from "../config/tournamentStages.js";
-import { getModelEntry, selectModelForVariant } from "./modelRouter.js";
+import { selectModelForVariant } from "./modelRouter.js";
 
 const TIER_MAP = new Map(tiers.map((tier) => [tier.id, Object.freeze(tier)]));
 const TIER_ORDER = tiers.map((tier) => tier.id);
@@ -61,34 +61,15 @@ export function resolveTierForContext({
 
 export function resolveTierModelInfo({ variantId, tierId, characterId, modelId }) {
   const tierConfig = getTierById(tierId);
-  const exactVariantTier = selectModelForVariant({
+  const requestedTier = tierConfig?.id ?? tierId;
+  const entry = selectModelForVariant({
     variantId,
-    tierId: tierConfig?.id ?? tierId,
+    tierId: requestedTier,
     characterId,
     modelId,
+    requireVariantMatch: true,
   });
-  if (
-    exactVariantTier?.tier === (tierConfig?.id ?? tierId) &&
-    exactVariantTier?.variantIds?.includes(variantId)
-  ) {
-    return {
-      modelId: exactVariantTier.id,
-      tierId: exactVariantTier.tier,
-      variantIds: exactVariantTier.variantIds,
-      onnx: exactVariantTier.onnx,
-      inputShape: exactVariantTier.inputShape,
-      outputShape: exactVariantTier.outputShape,
-    };
-  }
-
-  const modelFromTier = tierConfig?.modelId ? getModelEntry(tierConfig.modelId) : null;
-  const entry =
-    modelFromTier ??
-    selectModelForVariant({
-      variantId,
-      tierId,
-    });
-  if (!entry) return null;
+  if (!entry || entry.tier !== requestedTier) return null;
   return {
     modelId: entry.id,
     tierId: entry.tier,

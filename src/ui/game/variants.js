@@ -7,7 +7,7 @@ export const GAME_VARIANTS = [
   { id: "D01", label: "2-7 Triple Draw", enabled: true },
   { id: "D02", label: "A-5 Triple Draw", enabled: true },
   { id: "D04", label: "Badeucey Triple Draw", enabled: true },
-  { id: "D05", label: "Badacey TD", enabled: true },
+  { id: "D05", label: "Badacey Triple Draw", enabled: true },
   { id: "D06", label: "Hidugi Triple Draw", enabled: true },
   { id: "D07", label: "Archie TD", enabled: true },
   { id: "S01", label: "2-7 Single Draw", enabled: true },

@@ -66,6 +66,12 @@ export const PUBLIC_RING_PLAYABLE_VARIANTS = Object.freeze([
     cashQm: Object.freeze({ expectsDraw: true, expectsBlindIncrease: true }),
   }),
   Object.freeze({
+    id: "D05",
+    availabilityKey: "badacey_triple_draw",
+    displayName: "Badacey Triple Draw",
+    cashQm: Object.freeze({ expectsDraw: true, expectsBlindIncrease: true }),
+  }),
+  Object.freeze({
     id: "S01",
     availabilityKey: "deuce_to_seven_single_draw",
     displayName: "2-7 Single Draw",
@@ -285,7 +291,13 @@ export const VARIANT_AVAILABILITY = Object.freeze({
     reason: "Five cards, up to three draws. The pot splits between 2-7 low and Badugi; aces are high on the Badugi half. Opponents make rule-based decisions.",
     reasonJa: "5枚で最大3回交換。2-7ローとバドゥーギでポットを半分ずつ争います。バドゥーギ側のAは高いカードです。相手はルールベースです。",
   }),
-  badacey_triple_draw: preview("Badacey TD", "Split draw flow exists, but split-result/replay/mobile coverage is not alpha-ready."),
+  badacey_triple_draw: makeEntry({
+    availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
+    label: "Badacey Triple Draw",
+    statusLabel: "Alpha",
+    reason: "Five cards, up to three draws. The pot splits between A-5 low and Badugi; aces are low on both halves. Opponents make rule-based decisions.",
+    reasonJa: "5枚で最大3回交換。A-5ローとバドゥーギでポットを半分ずつ争います。どちらもAを低いカードとして扱います。相手はルールベースです。",
+  }),
   hidugi_triple_draw: makeEntry({
     availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
     label: "Hidugi Triple Draw",

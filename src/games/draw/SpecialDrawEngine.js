@@ -154,7 +154,7 @@ const VARIANT_CONFIGS = {
   },
   badacey_triple_draw: {
     gameId: "badacey_triple_draw",
-    displayName: "Badacey TD",
+    displayName: "Badacey Triple Draw",
     variantId: "D05",
     evaluatorTag: "split-badugi-a5",
     maxDrawRounds: 3,

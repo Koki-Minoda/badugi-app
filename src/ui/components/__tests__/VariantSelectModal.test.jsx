@@ -57,6 +57,9 @@ describe("VariantSelectModal", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /a-5 single draw/i }));
     expect(handleSelect).toHaveBeenCalledWith("S02");
+
+    fireEvent.click(screen.getByRole("button", { name: /badacey triple draw/i }));
+    expect(handleSelect).toHaveBeenCalledWith("D05");
   });
 
   it("allows Omaha family variants to be selected", () => {

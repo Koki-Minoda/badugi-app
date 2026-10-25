@@ -11,6 +11,7 @@ describe("canLaunchVariant", () => {
     expect(canLaunchVariant("D02").canLaunch).toBe(true);
     expect(canLaunchVariant("D06").canLaunch).toBe(true);
     expect(canLaunchVariant("D04").canLaunch).toBe(true);
+    expect(canLaunchVariant("D05").canLaunch).toBe(true);
     expect(canLaunchVariant("S01").canLaunch).toBe(true);
     expect(canLaunchVariant("S03").canLaunch).toBe(true);
     expect(canLaunchVariant("five_card_single_draw").canLaunch).toBe(true);

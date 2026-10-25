@@ -41,6 +41,11 @@ type BlindExpectation = {
 };
 
 async function installLocalAuthenticatedSession(page: Page, stageId: string) {
+  const rawSeed = process.env.MGX_TOURNAMENT_QA_SEED;
+  const seedOverride = rawSeed === undefined ? null : Number(rawSeed);
+  if (seedOverride !== null && (!Number.isInteger(seedOverride) || seedOverride < 0 || seedOverride > 0xffffffff)) {
+    throw new Error("MGX_TOURNAMENT_QA_SEED must be an unsigned 32-bit integer");
+  }
   await page.route("**/api/**", async (route) => {
     const pathname = new URL(route.request().url()).pathname;
     const body = pathname.endsWith("/auth/me")
@@ -56,8 +61,8 @@ async function installLocalAuthenticatedSession(page: Page, stageId: string) {
       body: JSON.stringify(body),
     });
   });
-  await page.addInitScript(({ selectedStageId }) => {
-    let randomState = selectedStageId === "local" ? 0x10ca1 : 0x570ae;
+  await page.addInitScript(({ selectedStageId, seedOverride }) => {
+    let randomState = seedOverride ?? (selectedStageId === "local" ? 0x10ca1 : 0x570ae);
     Math.random = () => {
       randomState = (randomState + 0x6d2b79f5) | 0;
       let value = Math.imul(randomState ^ (randomState >>> 15), 1 | randomState);
@@ -117,7 +122,7 @@ async function installLocalAuthenticatedSession(page: Page, stageId: string) {
         }),
       );
     }
-  }, { selectedStageId: stageId });
+  }, { selectedStageId: stageId, seedOverride });
 }
 
 async function startProductionStage(page: Page, stageId: string) {
@@ -345,6 +350,7 @@ function verifyExactReplay(record: any) {
 async function advanceFromCompletedHand(page: Page) {
   const breakOverlay = page.getByTestId("tournament-break-overlay");
   if (await breakOverlay.isVisible().catch(() => false)) {
+    console.info("[MTT_BREAK_RESUME] visible before result check");
     await page
       .getByRole("button", { name: "休憩を終了して続ける" })
       .click();
@@ -411,6 +417,7 @@ async function advanceFromCompletedHand(page: Page) {
     // A scheduled break can start between the initial overlay check and the
     // click. In that case Next Hand must remain blocked until the player ends it.
     if (Number(diagnostic.hud?.breakState?.endsAt) > Date.now()) {
+      console.info("[MTT_BREAK_RESUME] active after Next Hand click");
       expect(diagnostic.resultVisible).toBe(true);
       await expect(breakOverlay).toBeVisible({ timeout: 5_000 });
       await page.getByRole("button", { name: "休憩を終了して続ける" }).click();

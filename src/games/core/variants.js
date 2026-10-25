@@ -191,7 +191,7 @@ export const GAME_VARIANTS = {
   badacey_triple_draw: {
     id: "badacey_triple_draw",
     variantId: "D05",
-    label: "Badacey TD",
+    label: "Badacey Triple Draw",
     controllerFactory: drawControllerFactory(BadaceyTripleDrawController),
   },
   hidugi_triple_draw: {

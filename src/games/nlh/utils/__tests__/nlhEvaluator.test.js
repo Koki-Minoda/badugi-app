@@ -117,3 +117,16 @@ describe("best 5 of 7 selection", () => {
     expect(compareNlhHands(playerA, playerB)).toBeLessThan(0);
   });
 });
+
+describe("Super Hold'em best 5 of 8 selection", () => {
+  it.each([
+    ["zero", ["AC", "KD", "QH"], ["9S", "8S", "7S", "6S", "5S"], ["9S", "8S", "7S", "6S", "5S"]],
+    ["one", ["AS", "2C", "3D"], ["KS", "QS", "JS", "10S", "9D"], ["AS", "KS", "QS", "JS", "10S"]],
+    ["two", ["AS", "KS", "2D"], ["QS", "JS", "10S", "3C", "4H"], ["AS", "KS", "QS", "JS", "10S"]],
+    ["three", ["AS", "KS", "QS"], ["JS", "10S", "2C", "3D", "4H"], ["AS", "KS", "QS", "JS", "10S"]],
+  ])("allows %s hole cards in the winning hand", (_label, hole, board, expected) => {
+    const result = hand([...hole, ...board]);
+    expect(result.category).toBe("STRAIGHT_FLUSH");
+    cardSetEquals(result.best5, expected);
+  });
+});

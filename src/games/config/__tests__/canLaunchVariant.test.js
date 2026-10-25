@@ -8,13 +8,15 @@ describe("canLaunchVariant", () => {
     expect(canLaunchVariant("S01").canLaunch).toBe(true);
     expect(canLaunchVariant("badugi").canLaunch).toBe(true);
     expect(canLaunchVariant("flh").canLaunch).toBe(true);
+    expect(canLaunchVariant("super_holdem").canLaunch).toBe(true);
+    expect(canLaunchVariant("fl_super_holdem").canLaunch).toBe(true);
     expect(canLaunchVariant("chinese_poker").canLaunch).toBe(true);
     expect(canLaunchVariant("ofc").canLaunch).toBe(true);
   });
 
   it("allows preview variants only with the explicit preview flag", () => {
-    expect(canLaunchVariant("fl_super_holdem").canLaunch).toBe(false);
-    expect(canLaunchVariant("fl_super_holdem", { previewVariants: true }).canLaunch).toBe(true);
+    expect(canLaunchVariant("badeucey_triple_draw").canLaunch).toBe(false);
+    expect(canLaunchVariant("badeucey_triple_draw", { previewVariants: true }).canLaunch).toBe(true);
     expect(canLaunchVariant("chinese_poker", { previewVariants: true }).canLaunch).toBe(true);
     expect(canLaunchVariant("ofc", { previewVariants: true }).canLaunch).toBe(true);
   });
@@ -24,7 +26,7 @@ describe("canLaunchVariant", () => {
       getItem: (key) => (key === "mgx.previewVariants" ? "true" : null),
     };
     expect(resolveVariantGateFlags({ storage }).previewVariants).toBe(true);
-    expect(canLaunchVariant("fl_super_holdem", { storage }).canLaunch).toBe(true);
-    expect(canLaunchVariant("fl_super_holdem", { storage: null }).canLaunch).toBe(false);
+    expect(canLaunchVariant("badeucey_triple_draw", { storage }).canLaunch).toBe(true);
+    expect(canLaunchVariant("badeucey_triple_draw", { storage: null }).canLaunch).toBe(false);
   });
 });

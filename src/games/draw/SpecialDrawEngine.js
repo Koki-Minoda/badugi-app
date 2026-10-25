@@ -205,7 +205,7 @@ const VARIANT_CONFIGS = {
   },
   hidugi_single_draw: {
     gameId: "hidugi_single_draw",
-    displayName: "Hidugi SD",
+    displayName: "Hidugi Single Draw",
     variantId: "S07",
     evaluatorTag: "badugi-high",
     maxDrawRounds: 1,

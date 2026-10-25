@@ -17,4 +17,10 @@ describe("VariantCardAvailability", () => {
     expect(screen.getByTestId("variant-availability-badge").textContent).toContain("Alpha");
     expect(screen.getByTestId("variant-availability-reason").textContent).toMatch(/4枚で1回だけ交換/);
   });
+
+  it("explains the published split single-draw ace rules in Japanese", () => {
+    render(<VariantCardAvailability availability={getVariantAvailability("S05")} language="ja" />);
+    expect(screen.getByTestId("variant-availability-badge").textContent).toContain("Alpha");
+    expect(screen.getByTestId("variant-availability-reason").textContent).toMatch(/Badugi側のAは高い/);
+  });
 });

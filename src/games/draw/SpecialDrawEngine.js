@@ -51,19 +51,19 @@ function getComponentAmountDetails(amount, components = []) {
   }));
 }
 
-function getActiveCardsFromBadugi(cards = [], mode = "low") {
-  const evaluation = evaluateBadugiHand({ cards, mode });
+function getActiveCardsFromBadugi(cards = [], { mode = "low", aceHigh = false } = {}) {
+  const evaluation = evaluateBadugiHand({ cards, mode, aceHigh });
   return new Set(evaluation.metadata?.cards ?? []);
 }
 
-function chooseBadugiDiscardIndexes(cards = [], mode = "low") {
-  const keep = getActiveCardsFromBadugi(cards, mode);
+function chooseBadugiDiscardIndexes(cards = [], { mode = "low", aceHigh = false } = {}) {
+  const keep = getActiveCardsFromBadugi(cards, { mode, aceHigh });
   const discard = cards
     .map((card, idx) => ({ card, idx }))
     .filter(({ card }) => !keep.has(card))
     .map(({ idx }) => idx);
   if (discard.length) return discard;
-  const evaluation = evaluateBadugiHand({ cards, mode });
+  const evaluation = evaluateBadugiHand({ cards, mode, aceHigh });
   const ranks = evaluation.metadata?.ranks ?? [];
   if (mode === "high") {
     // Keep four strong suits; try to improve the lowest card when it is ten or lower.
@@ -76,11 +76,12 @@ function chooseBadugiDiscardIndexes(cards = [], mode = "low") {
   return roughFourCard ? [cards.length - 1].filter((idx) => idx >= 0) : [];
 }
 
-function choosePairOrLowDiscardIndexes(cards = [], lowType = "27") {
-  const badugiDiscard = chooseBadugiDiscardIndexes(cards);
-  if (badugiDiscard.length) return badugiDiscard;
+function choosePairOrLowDiscardIndexes(cards = [], lowType = "27", { singleDraw = false } = {}) {
   const low = evaluateLowHand({ cards, lowType });
   const ranks = low.metadata?.ranks ?? [];
+  if (singleDraw && low.metadata?.categoryRank === 0 && ranks[0] <= 8) return [];
+  const badugiDiscard = chooseBadugiDiscardIndexes(cards, { aceHigh: lowType === "27" });
+  if (badugiDiscard.length) return badugiDiscard;
   const highest = ranks.length ? Math.max(...ranks) : 14;
   if (highest <= 8 && low.rankPrimary !== Number.POSITIVE_INFINITY) return [];
   return cards.length ? [cards.length - 1] : [];
@@ -283,8 +284,12 @@ export class SpecialDrawEngine extends DeuceToSevenTripleDrawEngine {
       this.maxDrawRounds === 1 &&
       evaluateBadugiHand({ cards: player.hand ?? [] }).metadata?.size === 4;
     const discardIndexes = this.specialConfig.handCardCount === 5
-      ? choosePairOrLowDiscardIndexes(player.hand ?? [], this.specialConfig.split?.lowType ?? "27")
-      : standPatWithSingleDrawBadugi ? [] : chooseBadugiDiscardIndexes(player.hand ?? [], this.specialConfig.mode === "badugiHigh" ? "high" : "low");
+      ? choosePairOrLowDiscardIndexes(player.hand ?? [], this.specialConfig.split?.lowType ?? "27", {
+          singleDraw: this.maxDrawRounds === 1,
+        })
+      : standPatWithSingleDrawBadugi ? [] : chooseBadugiDiscardIndexes(player.hand ?? [], {
+          mode: this.specialConfig.mode === "badugiHigh" ? "high" : "low",
+        });
     if (state.street === "DRAW") {
       return {
         seatIndex,

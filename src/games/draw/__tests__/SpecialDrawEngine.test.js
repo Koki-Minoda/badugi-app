@@ -317,4 +317,55 @@ describe("special draw engines", () => {
     expect(result.summary[1].payouts[0].ranksLabel).toBe("A-6-7-8");
     expect(result.state.players.map(({ stack }) => stack)).toEqual([590, 540, 500]);
   });
+
+  it.each([
+    [BadeuceySingleDrawEngine, ["7S", "5D", "4C", "3H", "2S"]],
+    [BadaceySingleDrawEngine, ["AS", "2D", "3C", "4H", "5S"]],
+  ])("keeps a premium five-card low in %p instead of breaking it for a draw", (Engine, hand) => {
+    const engine = new Engine();
+    const state = engine.initHand({ seatConfig: ["HUMAN", "CPU"], startingStack: 500, dealerIndex: 0 });
+    state.players[1].hand = hand;
+    state.street = "DRAW";
+    state.actingPlayerIndex = 1;
+
+    expect(engine.chooseCpuAction(state, 1)).toMatchObject({ type: "DRAW", discardIndexes: [] });
+  });
+
+  it("uses ace-high Badugi when Badeucey CPU must choose between an ace and king", () => {
+    const engine = new BadeuceySingleDrawEngine();
+    const state = engine.initHand({ seatConfig: ["HUMAN", "CPU"], startingStack: 500, dealerIndex: 0 });
+    state.players[1].hand = ["AS", "2D", "3C", "4H", "KS"];
+    state.street = "DRAW";
+    state.actingPlayerIndex = 1;
+
+    expect(engine.chooseCpuAction(state, 1)).toMatchObject({ type: "DRAW", discardIndexes: [0] });
+  });
+
+  it.each([
+    [BadeuceySingleDrawEngine, ["2S", "3D", "4C", "6H", "KS"], ["8S", "7D", "5C", "4H", "2C"]],
+    [BadaceySingleDrawEngine, ["AS", "2D", "3C", "4H", "KS"], ["8S", "5D", "4C", "3H", "2S"]],
+  ])("splits %p single-draw pots between its Badugi and five-card low winners", (Engine, badugiHand, lowHand) => {
+    const engine = new Engine();
+    const state = engine.initHand({ seatConfig: ["HUMAN", "CPU"], startingStack: 0, dealerIndex: 0 });
+    state.players[0] = { ...state.players[0], hand: badugiHand, stack: 0, totalInvested: 51 };
+    state.players[1] = { ...state.players[1], hand: lowHand, stack: 0, totalInvested: 50 };
+    state.pots = [{ amount: 101, eligiblePlayerIds: ["seat-0", "seat-1"] }];
+
+    const result = engine.resolveShowdown(state);
+
+    expect(result.totalPot).toBe(101);
+    expect(result.summary.slice(0, 2).map(({ component, potAmount, payouts }) => ({
+      component,
+      potAmount,
+      winners: payouts.map(({ seatIndex }) => seatIndex),
+    }))).toEqual([
+      { component: "badugi", potAmount: 50, winners: [0] },
+      { component: engine.specialConfig.split.components[1], potAmount: 50, winners: [1] },
+    ]);
+    expect(result.summary.slice(2).map(({ potAmount, payouts }) => ({
+      potAmount,
+      winners: payouts.map(({ seatIndex }) => seatIndex),
+    }))).toEqual([{ potAmount: 0, winners: [] }, { potAmount: 1, winners: [0] }]);
+    expect(result.state.players[0].stack + result.state.players[1].stack).toBe(101);
+  });
 });

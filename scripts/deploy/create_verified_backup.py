@@ -74,8 +74,8 @@ def run_backup(
     mysql = _mysql_binary("mysql", "mariadb")
     dump = _mysql_binary("mysqldump", "mariadb-dump")
     version = subprocess.run(
-        [mysql, *options, "--batch", "--skip-column-names", database,
-         "--execute", "SELECT version_num FROM alembic_version"],
+        [mysql, *options, "--batch", "--skip-column-names",
+         "--execute", "SELECT version_num FROM alembic_version", database],
         env=environment, capture_output=True, text=True, check=True,
     ).stdout.strip()
     if not re.fullmatch(r"[A-Za-z0-9_]+", version):

@@ -176,7 +176,12 @@ import {
   resolveAiTierForGameContext,
   resolveTournamentStageId,
 } from "./utils/aiTierContext.js";
-import { selectModelForVariant } from "../ai/modelRouter.js";
+import {
+  decisionProvenanceForHistory,
+  findCompletedHandHistory,
+  modelUsedBySeat,
+  sharedModelUsedByHand,
+} from "./utils/cpuModelAttribution.js";
 import { getCpuCharacterForIndex, getCpuDisplayName } from "../ai/cpuRoster.js";
 import { getTournamentOpponentForSeat } from "../config/tournamentOpponents.js";
 import {
@@ -4441,8 +4446,8 @@ export default function App() {
               (seatSnapshot?.allIn ?? playerState?.allIn) !== true,
           };
       const historyMetadata = normalizedDrawInfo
-        ? { drawInfo: normalizedDrawInfo }
-        : { betInfo };
+        ? { drawInfo: normalizedDrawInfo, ...decisionProvenanceForHistory(persistedMeta) }
+        : { betInfo, ...decisionProvenanceForHistory(persistedMeta) };
       canonicalActionMetadata = historyMetadata;
       historyAction = appendHandHistoryAction({
         seat: idx,
@@ -13505,11 +13510,12 @@ export default function App() {
         GAME_VARIANTS[normalizedRecordVariant] ?? null;
       const recordVariantId =
         recordVariantProfile?.variantId ?? normalizedRecordVariant;
-      const recordedSeats = currentHandHistoryRef.current?.seats ?? [];
-      const cpuModelEntry = selectModelForVariant({
-        variantId: recordVariantId,
-        tierId: activeAiTierConfig?.id ?? "standard",
+      const completedHistory = findCompletedHandHistory({
+        current: currentHandHistoryRef.current,
+        buffer: handHistoryBufferRef.current,
+        handId,
       });
+      const recordedSeats = completedHistory?.seats ?? [];
       const recordedActions = recordedSeats.flatMap((seatRecord) =>
         (Array.isArray(seatRecord?.actions) ? seatRecord.actions : []).map(
           (action) => ({
@@ -13521,6 +13527,15 @@ export default function App() {
           }),
         ),
       );
+      const cpuModelEntries = (playersSnap || []).slice(1).map((_player, index) =>
+        modelUsedBySeat({
+          actions: recordedActions,
+          seat: index + 1,
+          variantId: recordVariantId,
+          tierId: activeAiTierConfig?.id ?? "standard",
+        }),
+      );
+      const cpuModelEntry = sharedModelUsedByHand(cpuModelEntries);
       const resolveStartStack = (seatIndex, player) => {
         const historyStart = Number(recordedSeats?.[seatIndex]?.startStack);
         if (Number.isFinite(historyStart)) return historyStart;
@@ -13534,6 +13549,7 @@ export default function App() {
       };
       const recordPlayers = (playersSnap || []).map((p, i) => {
         const isCPU = i !== 0;
+        const seatModelEntry = isCPU ? cpuModelEntries[i - 1] : null;
         const startStack = resolveStartStack(i, p);
         const endStack = Number(p?.stack ?? 0);
         return {
@@ -13546,19 +13562,19 @@ export default function App() {
           folded: !!p.folded,
           isCPU,
           cpuTier: isCPU
-            ? (activeAiTierConfig?.id ?? cpuModelEntry?.tier ?? null)
+            ? (activeAiTierConfig?.id ?? seatModelEntry?.tier ?? null)
             : null,
           cpuModelId: isCPU
-            ? (cpuModelEntry?.id ?? cpuModelEntry?.modelId ?? null)
+            ? (seatModelEntry?.id ?? null)
             : null,
-          cpuModelVersion: isCPU ? (cpuModelEntry?.version ?? null) : null,
-          featureSet: isCPU ? (cpuModelEntry?.featureSet ?? null) : null,
-          trainingRun: isCPU ? (cpuModelEntry?.trainingRun ?? null) : null,
+          cpuModelVersion: isCPU ? (seatModelEntry?.version ?? null) : null,
+          featureSet: isCPU ? (seatModelEntry?.featureSet ?? null) : null,
+          trainingRun: isCPU ? (seatModelEntry?.trainingRun ?? null) : null,
           trainingCheckpoint: isCPU
-            ? (cpuModelEntry?.trainingCheckpoint ?? null)
+            ? (seatModelEntry?.trainingCheckpoint ?? null)
             : null,
           trainingStatus: isCPU
-            ? (cpuModelEntry?.trainingStatus ?? null)
+            ? (seatModelEntry?.trainingStatus ?? null)
             : null,
         };
       });
@@ -13580,7 +13596,7 @@ export default function App() {
         variantId: recordVariantId,
         variantName:
           recordVariantProfile?.label ??
-          currentHandHistoryRef.current?.variantName ??
+          completedHistory?.variantName ??
           formatVariantLabel(normalizedRecordVariant),
         tableId: fallbackTableId,
         tableSize: (playersSnap || []).length,
@@ -13646,7 +13662,7 @@ export default function App() {
           variantId: recordVariantId,
           variantName:
             recordVariantProfile?.label ??
-            currentHandHistoryRef.current?.variantName ??
+            completedHistory?.variantName ??
             formatVariantLabel(normalizedRecordVariant),
           cpuTier: activeAiTierConfig?.id ?? cpuModelEntry?.tier ?? null,
           cpuModelId: cpuModelEntry?.id ?? cpuModelEntry?.modelId ?? null,

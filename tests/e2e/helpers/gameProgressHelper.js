@@ -125,7 +125,7 @@ export async function getProgressState(page) {
     const uiTerminal =
       ui.resultVisible ||
       ui.nextHandVisible ||
-      ["HAND_RESULT", "SHOWDOWN", "WAITING_NEXT_HAND", "COMPLETE", "TERMINAL"].some((marker) =>
+      ["HAND_RESULT", "SHOWDOWN", "WAITING_NEXT_HAND", "TABLE_FINISHED", "COMPLETE", "TERMINAL"].some((marker) =>
         String(ui.displayedPhase ?? "").toUpperCase().includes(marker),
       );
     const phase = uiTerminal ? "HAND_RESULT" : rawPhase;
@@ -163,7 +163,7 @@ export async function getProgressState(page) {
         null,
       isTerminal: Boolean(
         uiTerminal ||
-        ["SHOWDOWN", "HAND_RESULT", "WAITING_NEXT_HAND", "COMPLETE", "TERMINAL"].includes(String(phase)) ||
+        ["SHOWDOWN", "HAND_RESULT", "WAITING_NEXT_HAND", "TABLE_FINISHED", "COMPLETE", "TERMINAL"].includes(String(phase)) ||
           snapshot?.lastHandResult ||
           state?.lastHandResult,
       ),
@@ -542,8 +542,8 @@ export async function waitForHandEnd(page) {
       const state = api?.getStateSnapshot?.() ?? null;
       const phaseState = api?.getPhaseState?.() ?? null;
       const snapshot = state?.controllerSnapshot ?? null;
-      const phase = phaseState?.phase ?? snapshot?.phase ?? snapshot?.street ?? state?.phase;
-      return phase === "HAND_RESULT" || phase === "SHOWDOWN" || Boolean(snapshot?.lastHandResult);
+      const phase = snapshot?.phase ?? snapshot?.street ?? phaseState?.phase ?? state?.phase;
+      return phase === "HAND_RESULT" || phase === "SHOWDOWN" || phase === "TABLE_FINISHED" || Boolean(snapshot?.lastHandResult);
     },
     undefined,
     { timeout: 30000 },

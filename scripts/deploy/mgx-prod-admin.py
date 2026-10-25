@@ -10,7 +10,7 @@ import sys
 
 ROOT = Path("/usr/local/libexec/mgx-deploy")
 SOURCES = {
-    "configure-mgx-backend-workers.sh": "74d6723150b911f9522fe3166a74ef2ea741bd181e84c28f7d5e32d55ff5e648",
+    "configure-mgx-backend-workers.sh": "221a3c2c792491c87f9cd4a740dca509cfad188c29884175c27eafde7e18a60a",
     "ensure_mgx_nginx_websocket_proxy.sh": "da8d32315df221f122d4e0d93313b16c3ae73a611348f7e65c0ce5d6e82c1cd3",
 }
 ACTIONS = {

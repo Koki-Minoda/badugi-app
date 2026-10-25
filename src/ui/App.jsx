@@ -6173,7 +6173,8 @@ export default function App() {
     return settled + onStreet;
   }, [potsSrc, playersSrc]);
   const totalPotForDisplay =
-    adapterViewProps?.potView?.total ?? fallbackTotalPot;
+    adapterViewProps?.potView?.total ??
+    (Number.isFinite(controllerSnapshot?.pot) ? controllerSnapshot.pot : fallbackTotalPot);
 
   const totalPotRef = useRef(0);
   useEffect(() => {

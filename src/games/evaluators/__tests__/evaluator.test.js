@@ -367,7 +367,7 @@ describe("Split evaluator", () => {
     });
 
     expect(result.metadata.high.handName).toMatch(/Badugi/i);
-    expect(result.metadata.low.handName).toBe("2-7 Low");
+    expect(result.metadata.low.handName).toBe("2-7 Low 7-5-4-3-2");
     expect(result.rankSecondary).toBe(result.metadata.low.rankPrimary);
   });
 
@@ -388,7 +388,7 @@ describe("Split evaluator", () => {
     });
 
     expect(result.metadata.high.handName).toMatch(/Badugi/i);
-    expect(result.metadata.low.handName).toBe("A-5 Low");
+    expect(result.metadata.low.handName).toBe("A-5 Low 5-4-3-2-A");
   });
 
   it("marks hi-lo eight low qualification in split metadata", () => {

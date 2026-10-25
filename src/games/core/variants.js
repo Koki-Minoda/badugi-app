@@ -197,7 +197,7 @@ export const GAME_VARIANTS = {
   hidugi_triple_draw: {
     id: "hidugi_triple_draw",
     variantId: "D06",
-    label: "Hidugi TD",
+    label: "Hidugi Triple Draw",
     controllerFactory: drawControllerFactory(HidugiTripleDrawController),
   },
   archie_triple_draw: {

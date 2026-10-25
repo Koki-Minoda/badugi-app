@@ -160,7 +160,7 @@ const VARIANT_CONFIGS = {
   },
   hidugi_triple_draw: {
     gameId: "hidugi_triple_draw",
-    displayName: "Hidugi TD",
+    displayName: "Hidugi Triple Draw",
     variantId: "D06",
     evaluatorTag: "badugi-high",
     maxDrawRounds: 3,

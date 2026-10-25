@@ -56,6 +56,7 @@ test(`${variant}: natural ${totalPlayers}-player tournament merge and eliminatio
  await writeFile(testInfo.outputPath(`${variant}-merge.json`),JSON.stringify(result,null,2));
  expect(terminal).toBe(true);expect(rows[0]?.tables).toBe(tableCount);expect(final).toBe(true);
  expect(result.placements).toHaveLength(totalPlayers);expect(new Set(result.placements.map(p=>p.place)).size).toBe(totalPlayers);
+ expect(new Set(result.placements.map(p=>p.name)).size).toBe(totalPlayers);
  expect(result.placements.reduce((n,p)=>n+p.stack,0)).toBe(totalChips);expect(errors).toEqual([]);
  await expect(page.getByTestId('hand-result-overlay')).toHaveCount(0);
  await page.locator('[data-testid=mtt-hero-bust-overlay],[data-testid=mtt-result-overlay]').getByRole('button',{name:/back to menu/i}).click();await expect(page.getByTestId('menu-ring')).toBeVisible();

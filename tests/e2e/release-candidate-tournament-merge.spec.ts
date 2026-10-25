@@ -26,6 +26,7 @@ test(`${variant}: natural ${totalPlayers}-player tournament merge and eliminatio
   if(s.result&&s.hand!==last){
    last=s.hand;const t=s.state,p=Object.values(t.players),tables=t.tables.filter(t=>t.isActive),ids=tables.flatMap(t=>t.seats.map(s=>s.playerId).filter(Boolean));
    expect(p.reduce((n,p)=>n+p.stack,0)).toBe(totalChips);expect(new Set(ids).size).toBe(t.playersRemaining);
+   expect(new Set(p.map(player=>player.name)).size).toBe(totalPlayers);
    for(const player of p)if(player.busted){expect(player.stack).toBe(0);expect(player.finishPlace).toBeGreaterThan(0);expect(ids).not.toContain(player.id);}
    expect(tables.length).toBe(Math.ceil(t.playersRemaining/6));
    expect(tables.length).toBeLessThanOrEqual(rows.at(-1)?.tables??tableCount);
@@ -57,6 +58,14 @@ test(`${variant}: natural ${totalPlayers}-player tournament merge and eliminatio
  expect(terminal).toBe(true);expect(rows[0]?.tables).toBe(tableCount);expect(final).toBe(true);
  expect(result.placements).toHaveLength(totalPlayers);expect(new Set(result.placements.map(p=>p.place)).size).toBe(totalPlayers);
  expect(new Set(result.placements.map(p=>p.name)).size).toBe(totalPlayers);
+ const placementNames=new Set(result.placements.map(p=>p.name));
+ const historyNames=await page.evaluate(()=>window.__BADUGI_E2E__.getHandHistory().map(hand=>(hand.seats??[]).map(seat=>seat.name)));
+ expect(historyNames.length).toBeGreaterThan(0);
+ for(const seats of historyNames){
+  const participantNames=seats.filter(name=>placementNames.has(name));
+  expect(new Set(participantNames).size).toBe(participantNames.length);
+  expect(seats.filter(name=>name&&!placementNames.has(name)&&!name.startsWith('(Empty Seat'))).toEqual([]);
+ }
  expect(result.placements.reduce((n,p)=>n+p.stack,0)).toBe(totalChips);expect(errors).toEqual([]);
  await expect(page.getByTestId('hand-result-overlay')).toHaveCount(0);
  await page.locator('[data-testid=mtt-hero-bust-overlay],[data-testid=mtt-result-overlay]').getByRole('button',{name:/back to menu/i}).click();await expect(page.getByTestId('menu-ring')).toBeVisible();

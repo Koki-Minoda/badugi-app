@@ -9,17 +9,20 @@ async function openTournamentReviewFixture(
     status = "summary",
     variantId = "badugi",
     withReplayTarget = true,
+    language = "ja",
     viewport = { width: 390, height: 844 },
   }: {
     status?: ReviewStatus;
     variantId?: string;
     withReplayTarget?: boolean;
+    language?: "ja" | "en";
     viewport?: { width: number; height: number };
   } = {},
 ) {
-  await page.addInitScript(() => {
+  await page.addInitScript((locale) => {
     window.localStorage.setItem("mgx.previewVariants", "true");
-  });
+    window.localStorage.setItem("mgx_language", locale);
+  }, language);
   await page.setViewportSize(viewport);
   await openAuthenticatedGame(page, `${APP_URL}?variant=${variantId}&mode=cash&mgxQa=mobile`);
   await page.waitForFunction(
@@ -56,6 +59,16 @@ async function expectNoHorizontalOverflow(page: Page) {
 test.describe("Tournament Review result overlay", () => {
   test.describe.configure({ timeout: 120000 });
 
+  test("English setting keeps the result and local review in English", async ({ page }) => {
+    await openTournamentReviewFixture(page, { language: "en" });
+    const overlay = page.getByTestId("mtt-result-overlay");
+    await expect(overlay.getByTestId("mtt-result-payout").first()).toContainText(/Payout \d+/);
+    await expect(overlay.getByTestId("mtt-tournament-review-status")).toContainText("Quick review");
+    await expect(overlay.getByTestId("mtt-tournament-review")).toContainText("Recorded facts");
+    await expect(overlay.getByTestId("mtt-tournament-review")).not.toContainText("保存されたハンド");
+    await expect(overlay.getByTestId("mtt-back-to-menu")).toHaveText("Back to Menu");
+  });
+
   test("summary review shows result, key hands, replay CTA, and opens replay on mobile portrait", async ({ page }) => {
     const fixture = await openTournamentReviewFixture(page, {
       status: "summary",
@@ -68,16 +81,16 @@ test.describe("Tournament Review result overlay", () => {
     await expect(overlay).toBeVisible({ timeout: 20000 });
     await expect(page.getByTestId("mtt-tournament-review")).toBeVisible();
     await expect(page.getByRole("button", { name: "AIレビューを見る" })).toHaveCount(0);
-    await expect(page.getByTestId("mtt-result-champion")).toContainText("Champion");
+    await expect(page.getByTestId("mtt-result-champion")).toContainText("優勝");
     await expect(page.getByTestId("mtt-result-row")).toHaveCount(3);
-    await expect(page.getByTestId("mtt-result-payout").first()).toContainText(/Payout \d+/);
+    await expect(page.getByTestId("mtt-result-payout").first()).toContainText(/賞金 \d+/);
 
     const review = page.getByTestId("mtt-tournament-review");
-    await expect(review).toContainText("Tournament Review");
+    await expect(review).toContainText("大会の振り返り");
     await expect(review).toContainText("簡易レビュー");
-    await expect(review).toContainText("Place");
-    await expect(review).toContainText("Payout");
-    await expect(review).toContainText("Hands");
+    await expect(review).toContainText("順位");
+    await expect(review).toContainText("賞金");
+    await expect(review).toContainText("ハンド");
     await expect(review).toContainText("3");
     await expect(review).toContainText("badugi");
     await expect(page.getByTestId("mtt-tournament-review-key-hand").first()).toBeVisible();
@@ -123,8 +136,8 @@ test.describe("Tournament Review result overlay", () => {
     await expect(page.getByTestId("mtt-result-overlay")).toBeVisible({ timeout: 20000 });
     await expect(page.getByTestId("mtt-tournament-review-status")).toContainText("簡易レビューのみ");
     await expect(page.getByTestId("mtt-tournament-review")).toContainText("ハンド履歴が少ないため");
-    await expect(page.getByTestId("mtt-result-champion")).toContainText("Champion");
-    await expect(page.getByTestId("mtt-result-payout").first()).toContainText(/Payout \d+/);
+    await expect(page.getByTestId("mtt-result-champion")).toContainText("優勝");
+    await expect(page.getByTestId("mtt-result-payout").first()).toContainText(/賞金 \d+/);
 
     await page.evaluate(() =>
       window.__BADUGI_E2E__.setupTournamentReviewOverlayFixtureForTest({
@@ -136,8 +149,8 @@ test.describe("Tournament Review result overlay", () => {
 
     await expect(page.getByTestId("mtt-tournament-review-status")).toContainText("ローカルレビュー");
     await expect(page.getByTestId("mtt-tournament-review")).toContainText("ローカルレビューは引き続き利用できます");
-    await expect(page.getByTestId("mtt-result-champion")).toContainText("Champion");
-    await expect(page.getByTestId("mtt-result-payout").first()).toContainText(/Payout \d+/);
+    await expect(page.getByTestId("mtt-result-champion")).toContainText("優勝");
+    await expect(page.getByTestId("mtt-result-payout").first()).toContainText(/賞金 \d+/);
   });
 
   test("Replay CTA is hidden when key hands have no replay target", async ({ page }) => {

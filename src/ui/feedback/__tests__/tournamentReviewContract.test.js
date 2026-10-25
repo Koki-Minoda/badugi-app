@@ -61,6 +61,21 @@ function makeHand(index, overrides = {}) {
 }
 
 describe("tournamentReviewContract", () => {
+  it("keeps local review text in the selected table language", () => {
+    const input = {
+      tournament: { tournamentId: "language-mtt" },
+      hands: [makeHand(0), makeHand(1)],
+      placements: [{ id: "hero-player", place: 2, name: "Hero", stack: 0, payout: 200 }],
+      heroPlayerId: "hero-player",
+    };
+    const japanese = buildTournamentReviewContract({ ...input, language: "ja" });
+    const english = buildTournamentReviewContract({ ...input, language: "en" });
+    expect(japanese.reviewSummary.facts[0].text).toContain("保存されたハンド");
+    expect(english.reviewSummary.facts[0].text).toContain("hands");
+    expect(japanese.keyHands[0].title).not.toBe(english.keyHands[0].title);
+    expect(english.reviewSummary.causalDisclaimer).toContain("Placement");
+  });
+
   it("treats a champion without a bust hand as complete data and computes the configured net result", () => {
     const contract = buildTournamentReviewContract({
       tournament: {

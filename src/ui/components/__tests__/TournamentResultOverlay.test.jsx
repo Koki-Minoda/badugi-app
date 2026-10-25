@@ -122,6 +122,38 @@ describe("TournamentResultOverlay", () => {
     expect(screen.queryByTestId("mtt-review-placeholder-button")).toBeNull();
   });
 
+  it("uses Japanese labels for the champion, payouts and review", () => {
+    render(
+      <TournamentResultOverlay
+        visible
+        language="ja"
+        placements={basePlacements}
+        title="Store Tournament"
+        onBackToMenu={() => {}}
+      />,
+    );
+    expect(screen.getByTestId("mtt-champion-celebration").textContent).toContain("優勝");
+    expect(screen.getByTestId("mtt-champion-celebration").textContent).toContain("店舗大会");
+    expect(screen.getAllByTestId("mtt-result-payout")[0].textContent).toBe("賞金 500");
+    expect(screen.getByTestId("mtt-tournament-review").textContent).toContain("大会の振り返り");
+    expect(screen.getByRole("button", { name: "メニューへ戻る" })).toBeTruthy();
+  });
+
+  it("uses English review status text when the table is in English", () => {
+    render(
+      <TournamentResultOverlay
+        visible
+        language="en"
+        placements={basePlacements}
+        tournamentReview={makeTournamentReview("error")}
+        onBackToMenu={() => {}}
+      />,
+    );
+    const status = screen.getByTestId("mtt-tournament-review-status").textContent;
+    expect(status).toContain("Local review");
+    expect(status).not.toContain("ローカルレビュー");
+  });
+
   it("highlights the champion row", () => {
     render(
       <TournamentResultOverlay

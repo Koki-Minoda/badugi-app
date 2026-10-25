@@ -61,7 +61,7 @@ for(const size of [{width:1440,height:900},{width:393,height:695},{width:852,hei
    expect(history.seats.reduce((sum,seat)=>sum+seat.startStack,0)).toBe(10);
    expect(history.seats.reduce((sum,seat)=>sum+seat.endStack,0)).toBe(10);
   }
-  const back=terminal.getByRole('button',{name:/back to menu/i});
+  const back=terminal.getByTestId('mtt-back-to-menu');
   const exit=await back.evaluate(button=>{
    const r=button.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
    return {top:r.top,bottom:r.bottom,left:r.left,right:r.right,height:r.height,reachable:hit===button||button.contains(hit)};

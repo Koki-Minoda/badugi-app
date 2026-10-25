@@ -5881,6 +5881,7 @@ export default function App() {
           }
         }
         const reviewContract = buildTournamentReviewContract({
+          language,
           tournament: {
             ...(nextState.config ?? {}),
             tournamentId: nextState.config?.id ?? nextState.id ?? "active-mtt",
@@ -5960,6 +5961,7 @@ export default function App() {
       setTournamentTitle,
       triggerHeroTableAnimation,
       authIsAuthenticated,
+      language,
       debugLog,
       persistTournamentSnapshot,
       retirePersistedTournament,
@@ -9552,6 +9554,7 @@ export default function App() {
           { id: "cpu-2", place: 3, name: "Mina", stack: 0, payout: 0 },
         ];
         const review = buildTournamentReviewContract({
+          language,
           tournament: {
             id: tournamentId,
             tournamentId,

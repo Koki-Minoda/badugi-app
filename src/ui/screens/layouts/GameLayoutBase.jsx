@@ -1496,6 +1496,7 @@ export default function GameLayoutBase({
       />
       <HeroBustOverlay
         visible={heroBustOverlayVisible}
+        language={language}
         title={heroBustSummary?.title}
         heroSummary={heroBustSummary?.hero}
         inMoneyPlacements={heroBustSummary?.inMoney ?? []}
@@ -1505,6 +1506,7 @@ export default function GameLayoutBase({
       />
       <TournamentResultOverlay
         visible={tournamentOverlayVisible}
+        language={language}
         placements={tournamentPlacements}
         title={tournamentTitle}
         tournamentReview={tournamentReview}

@@ -207,6 +207,18 @@ describe("handHistory", () => {
       labelPart: "A-5 Low",
     },
     {
+      variantId: "S05",
+      variantName: "Badeucey Single Draw",
+      hand: ["7S", "5D", "4C", "3H", "2S"],
+      labelPart: "2-7 Low",
+    },
+    {
+      variantId: "S06",
+      variantName: "Badacey Single Draw",
+      hand: ["AS", "2D", "3C", "4H", "5S"],
+      labelPart: "A-5 Low",
+    },
+    {
       variantId: "D06",
       variantName: "Hidugi TD",
       hand: ["KS", "QD", "JH", "10C"],

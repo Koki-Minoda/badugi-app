@@ -48,29 +48,30 @@ function getComponentAmountDetails(amount, components = []) {
   }));
 }
 
-function getActiveCardsFromBadugi(cards = []) {
-  const evaluation = evaluateBadugiHand({ cards });
+function getActiveCardsFromBadugi(cards = [], { aceHigh = false } = {}) {
+  const evaluation = evaluateBadugiHand({ cards, aceHigh });
   return new Set(evaluation.metadata?.cards ?? []);
 }
 
-function chooseBadugiDiscardIndexes(cards = []) {
-  const keep = getActiveCardsFromBadugi(cards);
+function chooseBadugiDiscardIndexes(cards = [], { aceHigh = false } = {}) {
+  const keep = getActiveCardsFromBadugi(cards, { aceHigh });
   const discard = cards
     .map((card, idx) => ({ card, idx }))
     .filter(({ card }) => !keep.has(card))
     .map(({ idx }) => idx);
   if (discard.length) return discard;
-  const evaluation = evaluateBadugiHand({ cards });
+  const evaluation = evaluateBadugiHand({ cards, aceHigh });
   const ranks = evaluation.metadata?.ranks ?? [];
   const roughFourCard = (evaluation.metadata?.size ?? 0) === 4 && Math.max(...ranks, 0) >= 11;
   return roughFourCard ? [cards.length - 1].filter((idx) => idx >= 0) : [];
 }
 
-function choosePairOrLowDiscardIndexes(cards = [], lowType = "27") {
-  const badugiDiscard = chooseBadugiDiscardIndexes(cards);
-  if (badugiDiscard.length) return badugiDiscard;
+function choosePairOrLowDiscardIndexes(cards = [], lowType = "27", { singleDraw = false } = {}) {
   const low = evaluateLowHand({ cards, lowType });
   const ranks = low.metadata?.ranks ?? [];
+  if (singleDraw && low.metadata?.categoryRank === 0 && ranks[0] <= 8) return [];
+  const badugiDiscard = chooseBadugiDiscardIndexes(cards, { aceHigh: lowType === "27" });
+  if (badugiDiscard.length) return badugiDiscard;
   const highest = ranks.length ? Math.max(...ranks) : 14;
   if (highest <= 8 && low.rankPrimary !== Number.POSITIVE_INFINITY) return [];
   return cards.length ? [cards.length - 1] : [];
@@ -283,7 +284,9 @@ export class SpecialDrawEngine extends DeuceToSevenTripleDrawEngine {
     if (!state || typeof seatIndex !== "number" || !player || player.folded || player.sittingOut) return null;
     if (state.actingPlayerIndex !== null && state.actingPlayerIndex !== seatIndex) return null;
     const discardIndexes = this.specialConfig.handCardCount === 5
-      ? choosePairOrLowDiscardIndexes(player.hand ?? [], this.specialConfig.split?.lowType ?? "27")
+      ? choosePairOrLowDiscardIndexes(player.hand ?? [], this.specialConfig.split?.lowType ?? "27", {
+          singleDraw: this.maxDrawRounds === 1,
+        })
       : chooseBadugiDiscardIndexes(player.hand ?? []);
     if (state.street === "DRAW") {
       return {

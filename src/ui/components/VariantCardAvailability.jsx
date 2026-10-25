@@ -17,6 +17,7 @@ export default function VariantCardAvailability({
     language === "ja"
       ? availability.statusLabelJa ?? availability.statusLabel
       : availability.statusLabel;
+  const reason = language === "ja" ? availability.reasonJa ?? availability.reason : availability.reason;
   return (
     <div className={compact ? "space-y-1" : "space-y-2"} data-testid="variant-availability">
       <span
@@ -27,13 +28,13 @@ export default function VariantCardAvailability({
       >
         {label}
       </span>
-      {!compact && availability.reason ? (
+      {!compact && reason ? (
         <p
           className="text-xs leading-relaxed text-slate-300"
-          title={availability.reason}
+          title={reason}
           data-testid="variant-availability-reason"
         >
-          {availability.reason}
+          {reason}
         </p>
       ) : null}
     </div>

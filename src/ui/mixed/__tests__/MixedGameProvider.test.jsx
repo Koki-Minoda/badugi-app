@@ -12,7 +12,8 @@ describe('cash MIX session', () => {
   it('rotates Big O and all released Dramaha entries by catalog ID', () => {
     const ids = ['B07', 'H01', 'H02', 'H03', 'H04', 'H05', 'H06'];
     expect(ids.every(isMixedVariantPlayable)).toBe(true);
-    expect(['CP1', 'CP2', 'B03', 'B04', 'S06'].some(isMixedVariantPlayable)).toBe(false);
+    expect(['S05', 'S06'].every(isMixedVariantPlayable)).toBe(true);
+    expect(['CP1', 'CP2', 'B03', 'B04'].some(isMixedVariantPlayable)).toBe(false);
     const { result } = renderHook(useMixedGame, { wrapper });
     act(() => result.current.activateProfile({ id: 'catalog-routing', selectedGameIds: ids, handsPerGame: 1 }));
     ids.forEach((id, index) => {

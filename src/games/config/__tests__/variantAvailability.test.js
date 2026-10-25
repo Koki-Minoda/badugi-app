@@ -66,6 +66,19 @@ describe("variantAvailability", () => {
     });
   });
 
+  it("publishes both split single-draw games with their correct ace rules", () => {
+    for (const [id, aceRule] of [["S05", "Badugi側のAは高い"], ["S06", "両方ともAは低い"]]) {
+      const availability = getVariantAvailability(id);
+      expect(availability.availability).toBe(VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE);
+      expect(availability.reason).toMatch(/rule-based decisions/);
+      expect(availability.reasonJa).toContain(aceRule);
+      expect(PUBLIC_PLAYABLE_VARIANTS.find((entry) => entry.id === id)?.cashQm).toEqual({
+        expectsDraw: true,
+        expectsBlindIncrease: true,
+      });
+    }
+  });
+
   it("publishes all six Stud-family games only with the completed release contract", () => {
     for (const id of ["stud", "stud8", "razz", "razzdugi", "razzducey", "razz27"]) {
       const entry = getVariantAvailability(id);

@@ -82,6 +82,21 @@ describe("special draw engines", () => {
     expect(result.summary[0].payouts[0]).toMatchObject({ seatIndex: 0, payout: 100 });
   });
 
+  it.each([HidugiTripleDrawEngine, HidugiSingleDrawEngine])("draws toward high Hidugi rather than low Badugi in %s", (Engine) => {
+    const engine = new Engine();
+    const state = engine.initHand({ seatConfig: ["HUMAN", "CPU"], startingStack: 500, dealerIndex: 0 });
+    state.street = "DRAW";
+    state.actingPlayerIndex = 1;
+    state.players[1].hand = ["AS", "AH", "AD", "AC"];
+    expect(engine.chooseCpuAction(state, 1).discardIndexes).toEqual([]);
+
+    state.players[1].hand = ["AS", "AH", "AD", "2C"];
+    expect(engine.chooseCpuAction(state, 1).discardIndexes).toEqual([3]);
+
+    state.players[1].hand = ["AS", "KS", "QH", "JD"];
+    expect(engine.chooseCpuAction(state, 1).discardIndexes).toEqual([1]);
+  });
+
   it("scoops Badacey and returns the winner's unmatched extra chip", () => {
     const engine = new BadaceySingleDrawEngine();
     const state = engine.initHand({

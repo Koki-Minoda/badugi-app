@@ -28,7 +28,7 @@ export function evaluateSplitHand({
 export function evaluateBadeucey(params = {}) {
   return evaluateSplitHand({
     ...params,
-    highEvaluator: evaluateBadugiHand,
+    highEvaluator: ({ cards }) => evaluateBadugiHand({ cards, aceHigh: true }),
     lowEvaluator: ({ cards }) => evaluateLowHand({ cards, lowType: "27" }),
   });
 }

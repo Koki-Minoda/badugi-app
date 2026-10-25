@@ -34,6 +34,13 @@ chmod +x scripts/deploy/mgx-prod-01.sh   # one-time
 
 `rollback_mgx_prod_01.sh` restores only a previously archived frontend `dist` tree. It does not roll back Git, Python packages, the backend process, or database migrations. Before every production deployment, operators must create and verify both frontend and database backups, record the deployed Git SHA and Alembic revision, and prepare a migration-specific downgrade or forward-fix. Never treat a frontend-only restore as a complete backend rollback.
 
+The `workflow_dispatch` deploy gate runs `create_verified_backup.py` on the server
+before checking out the target commit. It writes a verified frontend archive,
+compressed MySQL dump, and SHA/Alembic manifest under
+`/home/mgx/mgx-backups/releases/`; any incomplete backup stops deployment.
+The older `backup_mgx_prod_01.sh` is only a template with placeholder database
+credentials and must not be used for production.
+
 After a rollback, validate nginx, restart the backend only when its code and schema are compatible, and rerun `/api/health`, the Friend Match REST/WebSocket smoke, tournament resume, hand replay, and Badugi AI telemetry checks.
 
 ## Public release verification

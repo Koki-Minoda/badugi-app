@@ -4,6 +4,7 @@ import { buildBlindPostingAudit } from "./blindPostingAudit.js";
 import { assertNoCrossVariantStateLeak } from "./assertNoCrossVariantStateLeak.js";
 
 function numberOrNull(value) {
+  if (value == null || value === "") return null;
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
 }
@@ -85,22 +86,30 @@ function sumPotAmounts(pots = []) {
 }
 
 function deriveControllerPot({ snapshot, state, phaseState, terminal }) {
+  const resultPot = deriveResultPot(snapshot, phaseState);
+  if (terminal && resultPot !== null) return resultPot;
+
+  // App's live pot total includes committed street chips. A controller's
+  // settled pot may remain unchanged until the next street or even hand.
+  const statePot = state?.potTotal != null || state?.totalPot != null
+    ? numberOrNull(state?.potTotal ?? state?.totalPot)
+    : null;
+  if (statePot !== null) return statePot;
+
   const explicitPot = numberOrNull(snapshot?.pot);
   if (explicitPot && explicitPot > 0) return explicitPot;
 
   const potsTotal = sumPotAmounts(snapshot?.pots);
   if (potsTotal > 0) return potsTotal;
 
-  const statePot = numberOrNull(state?.potTotal ?? state?.totalPot);
-  if (statePot && statePot > 0) return statePot;
-
   const phasePot = numberOrNull(phaseState?.pot ?? phaseState?.potTotal ?? phaseState?.totalPot);
   if (phasePot && phasePot > 0) return phasePot;
 
-  const resultPot = numberOrNull(snapshot?.lastHandResult?.pot ?? snapshot?.lastHandResult?.totalPot);
-  if (terminal && resultPot && resultPot > 0) return resultPot;
-
   return explicitPot ?? statePot ?? phasePot ?? resultPot ?? 0;
+}
+
+function deriveResultPot(snapshot, phaseState) {
+  return numberOrNull(phaseState?.resultPot ?? snapshot?.lastHandResult?.pot ?? snapshot?.lastHandResult?.totalPot);
 }
 
 function collectControllerSnapshot() {
@@ -113,10 +122,10 @@ function collectControllerSnapshot() {
   const rawPhase = normalizePhase(snapshot?.phase ?? snapshot?.street ?? phaseState?.phase ?? state?.phase);
   const resultVisible =
     visibleTestId("hand-result-pot") ||
-    (typeof document !== "undefined" && /Hand Result/i.test(document.body?.textContent ?? ""));
+    (typeof document !== "undefined" && /Hand Result|ハンドの結果/i.test(document.body?.textContent ?? ""));
   const nextHandVisible =
     typeof document !== "undefined" &&
-    [...document.querySelectorAll("button")].some((button) => /next hand/i.test(button.textContent ?? ""));
+    [...document.querySelectorAll("button")].some((button) => /next hand|次のハンド/i.test(button.textContent ?? ""));
   // The result overlay already makes the actor terminal below. Report its
   // phase consistently too: legacy tournament seating can prepare BET behind
   // that overlay. The unmodified sources remain available in mergeSource.
@@ -161,7 +170,7 @@ function collectControllerSnapshot() {
     phaseState,
     snapshot,
     players,
-    handId: snapshot?.handId ?? phaseState?.handId ?? state?.handId ?? null,
+    handId: state?.handId ?? phaseState?.handId ?? snapshot?.handId ?? null,
     variantId,
     mode: document?.body?.dataset?.mode ?? null,
     phase,
@@ -192,12 +201,19 @@ function collectControllerSnapshot() {
     nextTurn,
     currentBet: effectiveCurrentBet,
     pot,
+    resultPot: terminal ? deriveResultPot(snapshot, phaseState) : null,
   };
 }
 
 function collectUiSnapshot(controller) {
   const visibleActions = visibleActionIds();
-  const displayedPotText = textForTestId("table-total-pot");
+  // At the result screen the table prepares the next hand and resets its
+  // background pot. The overlay is the pot the player can actually read.
+  const resultVisible = visibleTestId("hand-result-pot") ||
+    (typeof document !== "undefined" && /Hand Result|ハンドの結果/i.test(document.body?.textContent ?? ""));
+  const displayedPotText = visibleTestId("hand-result-total")
+    ? textForTestId("hand-result-total")
+    : textForTestId("table-total-pot");
   return {
     actingBadgeSeat: null,
     heroControlsVisible: visibleActions.length > 0,
@@ -208,12 +224,10 @@ function collectUiSnapshot(controller) {
     visibleActions,
     bettingControlsVisible: hasInteractableAny(["action-check", "action-call", "action-raise", "action-fold"]),
     drawControlsVisible: hasInteractableAny(["action-draw-selected"]),
-    resultVisible:
-      visibleTestId("hand-result-pot") ||
-      (typeof document !== "undefined" && /Hand Result/i.test(document.body?.textContent ?? "")),
+    resultVisible,
     nextHandVisible:
       typeof document !== "undefined" &&
-      [...document.querySelectorAll("button")].some((button) => /next hand/i.test(button.textContent ?? "")),
+      [...document.querySelectorAll("button")].some((button) => /next hand|次のハンド/i.test(button.textContent ?? "")),
   };
 }
 
@@ -254,6 +268,7 @@ export function collectBrowserGameplaySnapshot(extra = {}) {
       legacyTurn: controller.phaseState?.turn ?? controller.rawState?.turn ?? null,
       currentBet: controller.currentBet,
       pot: controller.pot,
+      resultPot: controller.resultPot,
       players: controller.players,
     },
     ui,

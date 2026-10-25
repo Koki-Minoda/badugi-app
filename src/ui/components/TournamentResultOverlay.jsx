@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef } from "react";
 import CoachingPreviewCard from "./CoachingPreviewCard.jsx";
 import CoachingSummaryPanel from "./CoachingSummaryPanel.jsx";
 import { buildReplayReviewContract } from "../feedback/replayReviewContract.js";
+import { getTournamentReasonLabel } from "../feedback/tournamentReviewContract.js";
+import { displayTournamentTitle, getTournamentResultCopy } from "./tournamentResultCopy.js";
 
 const TOURNAMENT_REVIEW_STATUS_COPY = {
   summary: {
@@ -14,7 +16,7 @@ const TOURNAMENT_REVIEW_STATUS_COPY = {
   },
   complete: {
     label: "レビュー完了",
-    body: "根拠を構造化できた内容のみ採用し、ローカルレビューも保持しています。",
+    body: "ハンド履歴で確認できた内容をまとめました。",
   },
   insufficient_logs: {
     label: "簡易レビューのみ",
@@ -30,6 +32,15 @@ const TOURNAMENT_REVIEW_STATUS_COPY = {
   },
 };
 
+const TOURNAMENT_REVIEW_STATUS_COPY_EN = {
+  summary: { label: "Quick review", body: "Review the result and key moments from saved hands." },
+  loading: { label: "Preparing review", body: "Your tournament result is ready while the review loads." },
+  complete: { label: "Review ready", body: "Only findings supported by saved hands are shown." },
+  insufficient_logs: { label: "Quick review only", body: "There are too few saved hands for a detailed review." },
+  unauthenticated: { label: "Not saved", body: "Sign in to save a detailed AI review." },
+  error: { label: "Local review", body: "The AI review could not be loaded. Your saved-hand review is still available." },
+};
+
 function formatReviewNumber(value, fallback = "--") {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return fallback;
@@ -42,12 +53,12 @@ function getReviewStatus(review, totalHands) {
   return totalHands > 0 ? "summary" : "insufficient_logs";
 }
 
-function getVariantLabel(review) {
+function getVariantLabel(review, language) {
   const variants = Array.isArray(review?.variantIds)
     ? review.variantIds.filter(Boolean)
     : [];
-  if (variants.length > 1) return `Mixed (${variants.join(" / ")})`;
-  return variants[0] ?? review?.variantId ?? "Unknown";
+  if (variants.length > 1) return `${language === "ja" ? "ミックス" : "Mixed"} (${variants.join(" / ")})`;
+  return variants[0] ?? review?.variantId ?? (language === "ja" ? "不明" : "Unknown");
 }
 
 function normalizeReviewItems(items = []) {
@@ -62,17 +73,18 @@ function normalizeReviewItems(items = []) {
   ).filter((item) => item.text);
 }
 
-function formatEvidence(entry = {}) {
+function formatEvidence(entry = {}, language) {
   const handId = entry.handId ?? "--";
   const range = entry.actionSeqRange;
-  if (!range?.start) return `Hand ${handId}`;
+  const handLabel = language === "ja" ? "ハンド" : "Hand";
+  if (!range?.start) return `${handLabel} ${handId}`;
   const seq = range.end && range.end !== range.start
     ? `${range.start}-${range.end}`
     : range.start;
-  return `Hand ${handId} · action ${seq}`;
+  return `${handLabel} ${handId} · ${language === "ja" ? "アクション" : "action"} ${seq}`;
 }
 
-function ReviewItemList({ items, emptyText }) {
+function ReviewItemList({ items, emptyText, language }) {
   if (!items.length) {
     return <p className="mt-1 text-xs text-slate-400">{emptyText}</p>;
   }
@@ -83,11 +95,11 @@ function ReviewItemList({ items, emptyText }) {
           <p>{item.text}</p>
           {item.evidence.length ? (
             <p className="mt-0.5 text-[10px] text-sky-200">
-              根拠: {item.evidence.map(formatEvidence).join(" / ")}
+              {language === "en" ? "Evidence" : "根拠"}: {item.evidence.map((entry) => formatEvidence(entry, language)).join(" / ")}
             </p>
           ) : null}
           {item.caveat ? (
-            <p className="mt-0.5 text-[10px] text-slate-400">注記: {item.caveat}</p>
+            <p className="mt-0.5 text-[10px] text-slate-400">{language === "en" ? "Note" : "注記"}: {item.caveat}</p>
           ) : null}
         </li>
       ))}
@@ -95,7 +107,7 @@ function ReviewItemList({ items, emptyText }) {
   );
 }
 
-function buildReviewView(review) {
+function buildReviewView(review, language) {
   const result = review?.result ?? {};
   const totalHands =
     review?.dataQuality?.totalHands ??
@@ -121,11 +133,11 @@ function buildReviewView(review) {
   ).slice(0, 3);
   return {
     status,
-    statusCopy: TOURNAMENT_REVIEW_STATUS_COPY[status],
+    statusCopy: (language === "en" ? TOURNAMENT_REVIEW_STATUS_COPY_EN : TOURNAMENT_REVIEW_STATUS_COPY)[status],
     placement: result.placement ?? result.finish ?? null,
     payout: result.payout ?? result.prize ?? null,
     totalHands,
-    variantLabel: getVariantLabel(review),
+    variantLabel: getVariantLabel(review, language),
     keyHands,
     improvementItems,
     facts,
@@ -138,8 +150,9 @@ function buildReviewView(review) {
 export function TournamentReviewSection({
   tournamentReview,
   onOpenReviewReplay,
+  language,
 }) {
-  const view = buildReviewView(tournamentReview);
+  const view = buildReviewView(tournamentReview, language);
   const showReviewLists = Boolean(tournamentReview);
   return (
     <section
@@ -149,7 +162,7 @@ export function TournamentReviewSection({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-200">
-            Tournament Review
+            {language === "ja" ? "大会の振り返り" : "Tournament Review"}
           </p>
           <p className="mt-1 text-xs text-slate-300" data-testid="mtt-tournament-review-status">
             {view.statusCopy.label}: {view.statusCopy.body}
@@ -157,41 +170,41 @@ export function TournamentReviewSection({
         </div>
         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-right text-xs sm:grid-cols-4">
           <span>
-            <b className="block text-slate-400">Place</b>
+            <b className="block text-slate-400">{language === "ja" ? "順位" : "Place"}</b>
             {view.placement ?? "--"}
           </span>
           <span>
-            <b className="block text-slate-400">Payout</b>
+            <b className="block text-slate-400">{language === "ja" ? "賞金" : "Payout"}</b>
             {formatReviewNumber(view.payout, "0")}
           </span>
           <span>
-            <b className="block text-slate-400">Hands</b>
+            <b className="block text-slate-400">{language === "ja" ? "ハンド" : "Hands"}</b>
             {formatReviewNumber(view.totalHands, "0")}
           </span>
           <span>
-            <b className="block text-slate-400">Variant</b>
+            <b className="block text-slate-400">{language === "ja" ? "種目" : "Variant"}</b>
             {view.variantLabel}
           </span>
         </div>
       </div>
       {view.status === "loading" ? (
         <p className="mt-3 rounded-xl bg-white/5 px-3 py-2 text-xs text-slate-200">
-          レビュー作成中です。結果表示はこのまま確認できます。
+          {language === "en" ? "Preparing the review. You can still see the result." : "レビュー作成中です。結果表示はこのまま確認できます。"}
         </p>
       ) : null}
       {view.status === "error" ? (
         <p className="mt-3 rounded-xl bg-red-500/10 px-3 py-2 text-xs text-red-100">
-          AIレビューは取得できませんでした。以下のローカルレビューは引き続き利用できます。
+          {language === "en" ? "The AI review could not be loaded. The local review below is still available." : "AIレビューは取得できませんでした。以下のローカルレビューは引き続き利用できます。"}
         </p>
       ) : null}
       {view.status === "insufficient_logs" ? (
         <p className="mt-3 rounded-xl bg-amber-400/10 px-3 py-2 text-xs text-amber-100">
-          ハンド履歴が少ないため、今回は順位・賞金・大会結果中心の簡易レビューです。
+          {language === "en" ? "There are too few saved hands for a detailed review, so this review focuses on the result and payouts." : "ハンド履歴が少ないため、今回は順位・賞金・大会結果中心の簡易レビューです。"}
         </p>
       ) : null}
       {view.status === "unauthenticated" ? (
         <p className="mt-3 rounded-xl bg-sky-400/10 px-3 py-2 text-xs text-sky-100">
-          ログインすると詳細AIレビューを保存できます。現在はこの大会の簡易レビューを表示しています。
+          {language === "en" ? "Sign in to save a detailed AI review. A quick review is shown for this tournament." : "ログインすると詳細AIレビューを保存できます。現在はこの大会の簡易レビューを表示しています。"}
         </p>
       ) : null}
       {showReviewLists ? (
@@ -199,29 +212,32 @@ export function TournamentReviewSection({
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-xl bg-white/5 px-3 py-2">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
-                確認できた事実
+                {language === "en" ? "Recorded facts" : "確認できた事実"}
               </p>
               <ReviewItemList
                 items={view.facts}
-                emptyText="記録から確認できる事実はまだありません。"
+                emptyText={language === "en" ? "No facts can be confirmed from the saved hands yet." : "記録から確認できる事実はまだありません。"}
+                language={language}
               />
             </div>
             <div className="rounded-xl bg-white/5 px-3 py-2">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200">
-                解釈
+                {language === "en" ? "Interpretation" : "解釈"}
               </p>
               <ReviewItemList
                 items={view.interpretations}
-                emptyText="結果だけから判断の良否は解釈しません。"
+                emptyText={language === "en" ? "The result alone cannot show whether a decision was good." : "結果だけから判断の良否は解釈しません。"}
+                language={language}
               />
             </div>
             <div className="rounded-xl bg-white/5 px-3 py-2">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-200">
-                次の一手
+                {language === "en" ? "Next step" : "次の一手"}
               </p>
               <ReviewItemList
                 items={view.nextActions}
-                emptyText="次回はHero actionが残る状態でプレイしてください。"
+                emptyText={language === "en" ? "Play another tournament with your decisions saved." : "次回は自分の操作を記録してプレイしてください。"}
+                language={language}
               />
             </div>
           </div>
@@ -232,7 +248,7 @@ export function TournamentReviewSection({
           ) : null}
           <div className="rounded-xl bg-white/5 px-3 py-2">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-200">
-              Key Hands
+              {language === "ja" ? "注目ハンド" : "Key Hands"}
             </p>
             {view.keyHands.length ? (
               <ul className="mt-1 space-y-1 text-xs text-slate-200">
@@ -244,7 +260,7 @@ export function TournamentReviewSection({
                   >
                     <div>
                       <span className="font-semibold text-slate-100">
-                        {hand.title ?? hand.label ?? "Key hand"}
+                        {hand.title ?? hand.label ?? (language === "ja" ? "注目ハンド" : "Key hand")}
                       </span>
                       <span className="text-slate-400">: {hand.handId}</span>
                     </div>
@@ -253,12 +269,12 @@ export function TournamentReviewSection({
                     ) : null}
                     {Array.isArray(hand.reasonTags) && hand.reasonTags.length ? (
                       <p className="text-[10px] text-sky-200">
-                        Tags: {hand.reasonTags.join(" / ")}
+                        {language === "ja" ? "注目点" : "Highlights"}: {hand.reasonTags.map((reason) => getTournamentReasonLabel(reason, language)).join(" / ")}
                       </p>
                     ) : null}
                     {Array.isArray(hand.evidence) && hand.evidence.length ? (
                       <p className="text-[10px] text-slate-400">
-                        根拠: {hand.evidence.map(formatEvidence).join(" / ")}
+                        {language === "en" ? "Evidence" : "根拠"}: {hand.evidence.map((entry) => formatEvidence(entry, language)).join(" / ")}
                       </p>
                     ) : null}
                     {typeof onOpenReviewReplay === "function" && hand.replayRef?.target ? (
@@ -273,19 +289,20 @@ export function TournamentReviewSection({
                               keyHand: hand,
                               replayRef: hand.replayRef,
                               variantId: hand.variantId,
+                            locale: language,
                             }),
                           })
                         }
                         data-testid="mtt-tournament-review-replay"
                       >
-                        Replay
+                        {language === "ja" ? "リプレイ" : "Replay"}
                       </button>
                     ) : null}
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="mt-1 text-xs text-slate-400">重要ハンドはまだ抽出されていません。</p>
+              <p className="mt-1 text-xs text-slate-400">{language === "en" ? "No key hands have been identified yet." : "重要ハンドはまだ抽出されていません。"}</p>
             )}
           </div>
         </div>
@@ -297,11 +314,12 @@ export function TournamentReviewSection({
 export default function TournamentResultOverlay({
   visible,
   placements = [],
-  title = "Tournament Results",
+  title,
+  language,
   tournamentReview = null,
   onOpenReviewReplay,
   coachingPreview = null,
-  coachingLocale = "jp",
+  coachingLocale = language === "en" ? "en" : "jp",
   onCoachingReplay,
   onCoachingTelemetry,
   onBackToMenu,
@@ -323,6 +341,8 @@ export default function TournamentResultOverlay({
     });
   }, [visible, visibleLessons, onCoachingTelemetry]);
   if (!visible) return null;
+  const copy = getTournamentResultCopy(language);
+  const displayTitle = displayTournamentTitle(title, language, copy.tournamentResults);
   const sortedPlacements = [...placements].sort((a, b) => a.place - b.place);
   const champion = sortedPlacements.find((entry) => entry.place === 1) ?? null;
   const showPayoutColumn = sortedPlacements.length > 0;
@@ -341,7 +361,7 @@ export default function TournamentResultOverlay({
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:space-y-6 sm:p-6" data-testid="mtt-result-scroll-content">
         <header className="text-center space-y-2">
           <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">
-            Tournament Complete
+            {copy.tournamentComplete}
           </p>
           {champion ? (
             <div
@@ -349,39 +369,39 @@ export default function TournamentResultOverlay({
               data-testid="mtt-champion-celebration"
             >
               <p className="text-3xl font-black uppercase tracking-[0.16em] text-yellow-200">
-                🏆 Champion
+                🏆 {copy.champion}
               </p>
               <h2 className="mt-2 text-2xl font-black uppercase text-white">
-                {String(title).toUpperCase()}
+                {displayTitle.toUpperCase()}
               </h2>
               <p className="mt-1 text-lg font-black text-emerald-200">
-                1st Place
+                {copy.firstPlace}
               </p>
               <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
                 <div className="rounded-lg border border-white/10 bg-black/25 px-2 py-2">
-                  <p className="uppercase tracking-wide text-slate-400">Prize</p>
+                  <p className="uppercase tracking-wide text-slate-400">{copy.prize}</p>
                   <p className="font-black text-yellow-200">{championPrize}</p>
                 </div>
                 <div className="rounded-lg border border-white/10 bg-black/25 px-2 py-2">
-                  <p className="uppercase tracking-wide text-slate-400">Entrants</p>
+                  <p className="uppercase tracking-wide text-slate-400">{copy.entrants}</p>
                   <p className="font-black text-white">{sortedPlacements.length || "--"}</p>
                 </div>
                 <div className="rounded-lg border border-white/10 bg-black/25 px-2 py-2">
-                  <p className="uppercase tracking-wide text-slate-400">Final Stack</p>
+                  <p className="uppercase tracking-wide text-slate-400">{copy.finalStack}</p>
                   <p className="font-black text-white">{championStack ?? "--"}</p>
                 </div>
                 <div className="rounded-lg border border-white/10 bg-black/25 px-2 py-2">
-                  <p className="uppercase tracking-wide text-slate-400">Knockouts</p>
+                  <p className="uppercase tracking-wide text-slate-400">{copy.knockouts}</p>
                   <p className="font-black text-white">{championKnockouts ?? "--"}</p>
                 </div>
               </div>
             </div>
           ) : (
-            <h2 className="text-3xl font-bold">{title}</h2>
+            <h2 className="text-3xl font-bold">{displayTitle}</h2>
           )}
           {champion ? (
             <p className="text-sm text-emerald-200" data-testid="mtt-result-champion">
-              Champion: <strong>{champion.name}</strong>
+              {copy.championPrefix} <strong>{champion.name}</strong>
             </p>
           ) : null}
         </header>
@@ -409,7 +429,7 @@ export default function TournamentResultOverlay({
                       className="text-[10px] uppercase tracking-[0.3em] text-emerald-200"
                       data-testid="mtt-result-champion-badge"
                     >
-                      Champion
+                      {copy.champion}
                     </span>
                   ) : null}
                 </div>
@@ -424,7 +444,7 @@ export default function TournamentResultOverlay({
                     className="text-sm text-slate-300"
                     data-testid="mtt-result-stack"
                   >
-                    Stack: {entry.stack}
+                    {copy.stack(entry.stack)}
                   </span>
                 </div>
               </div>
@@ -433,7 +453,7 @@ export default function TournamentResultOverlay({
                   className="text-right text-sm font-semibold text-yellow-300"
                   data-testid="mtt-result-payout"
                 >
-                  {typeof entry.payout === "number" ? `Payout ${entry.payout}` : "Payout 0"}
+                  {copy.payoutRow(typeof entry.payout === "number" ? entry.payout : 0)}
                 </div>
               ) : null}
             </div>
@@ -442,6 +462,7 @@ export default function TournamentResultOverlay({
         <TournamentReviewSection
           tournamentReview={tournamentReview}
           onOpenReviewReplay={onOpenReviewReplay}
+          language={language}
         />
         {useSummaryPanel ? (
           <div className="space-y-2" data-testid="mtt-coaching-preview">
@@ -482,18 +503,20 @@ export default function TournamentResultOverlay({
         <div className="flex shrink-0 flex-col gap-3 border-t border-white/10 px-4 py-3 sm:flex-row sm:justify-end">
           <button
             type="button"
+            data-testid="mtt-back-to-menu"
             onClick={onBackToMenu}
             className="min-h-[44px] px-5 py-3 rounded-full bg-gray-700 text-white font-semibold hover:bg-gray-600 transition"
           >
-            Back to Menu
+            {copy.backToMenu}
           </button>
           {typeof onEnterNewTournament === "function" ? (
             <button
               type="button"
+              data-testid="mtt-enter-new-tournament"
               onClick={onEnterNewTournament}
               className="min-h-[44px] px-5 py-3 rounded-full bg-emerald-500 text-slate-900 font-semibold hover:bg-emerald-400 transition"
             >
-              Enter New Tournament
+              {copy.enterTournament}
             </button>
           ) : null}
         </div>

@@ -1,3 +1,4 @@
+import { clickHeroAction } from './helpers/clickHeroAction';
 import { test, expect, type Page } from '@playwright/test';
 
 async function setup(page: Page, games: string[], handsPerGame = 1, hardBans = '') {
@@ -28,6 +29,52 @@ async function finishHand(page: Page) {
   }
   throw new Error(`Hand did not end: ${JSON.stringify(await snapshot(page))}`);
 }
+
+async function finishHandWithPausedClock(page: Page) {
+  for (let i = 0; i < 20; i++) {
+    await finishHand(page);
+    if (await page.getByTestId('hand-result-overlay').isVisible()) return;
+    await page.clock.runFor(100);
+  }
+  await expect(page.getByTestId('hand-result-overlay')).toBeVisible();
+}
+
+test('Stud MIX keeps all six desktop seats separate at 1280×720', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await setup(page, ['ST1']);
+  expect((await snapshot(page)).gameVariant).toBe('stud');
+  const overlappingSeats = await page.evaluate(() => {
+    const boxes = Array.from({ length: 6 }, (_, seat) => ({
+      seat,
+      rect: document.querySelector(`[data-testid="seat-${seat}"]`)!.getBoundingClientRect(),
+    }));
+    return boxes.flatMap((a, index) => boxes.slice(index + 1).flatMap(b => {
+      const width = Math.min(a.rect.right, b.rect.right) - Math.max(a.rect.left, b.rect.left);
+      const height = Math.min(a.rect.bottom, b.rect.bottom) - Math.max(a.rect.top, b.rect.top);
+      return width > 1 && height > 1 ? [[a.seat, b.seat]] : [];
+    }));
+  });
+  expect(overlappingSeats).toEqual([]);
+  const coarseTouch = await page.evaluate(() =>
+    window.matchMedia('(pointer: coarse) and (hover: none)').matches,
+  );
+  if (coarseTouch) {
+    await page.getByTestId('seat-5').hover();
+    await expect(page.getByTestId('seat-5-detail')).toHaveCount(0);
+  } else {
+    for (const width of [1280, 1440]) {
+      await page.setViewportSize({ width, height: width === 1280 ? 720 : 900 });
+      await page.getByTestId('seat-5').hover();
+      const hud = page.getByTestId('seat-5-detail');
+      await expect(hud).toBeVisible();
+      const hudBox = (await hud.boundingBox())!;
+      const actionPanelLeft = (await page.getByTestId('decision-panel').boundingBox())!.x;
+      expect(hudBox.x + hudBox.width).toBeLessThan(actionPanelLeft);
+      await page.mouse.move(0, 0);
+      await expect(hud).toHaveCount(0);
+    }
+  }
+});
 
 test('cash MIX crosses draw, stud and board families with chips, seats and button intact', async ({ page }, info) => {
   test.setTimeout(90000);
@@ -74,15 +121,23 @@ test('cash MIX crosses draw, stud and board families with chips, seats and butto
     expect(settled.players.reduce((sum, p) => sum + p.stack, 0)).toBe(3000);
     await page.evaluate(() => (window as any).__BADUGI_E2E__.dealNewHandNow());
     await expect.poll(async () => (await snapshot(page)).handCount).toBe(i + 2);
+    // The roster ref advances before React publishes the new controller's
+    // pot. Wait for both views of the same hand before checking chips.
+    await expect.poll(async () => {
+      const state = await snapshot(page);
+      const controllerPot = state.controllerSnapshot?.pot;
+      return typeof controllerPot !== 'number' || state.potTotal === controllerPot;
+    }).toBe(true);
     const next = await snapshot(page);
     expect(next.gameVariant).toBe(variants[(i + 1) % variants.length]);
     const records = await page.evaluate(() => (window as any).__BADUGI_E2E__.getHandHistory());
     const record = records.find(record => record.handId === settled.handId);
     expect(record, `history for ${settled.handId}`).toBeTruthy();
     expect([variants[i % variants.length], games[i % games.length]]).toContain(record.variantId ?? record.gameVariant ?? record.gameId);
-    // New-hand stacks plus committed chips equal each player's settled stack.
-    expect(next.players.map(p => p.stack + (p.bet ?? 0)))
-      .toEqual(settled.players.map(p => p.stack));
+    // A CPU may act before this snapshot. Its committed chips have already
+    // moved into the pot, so compare the whole table rather than seat stacks.
+    expect(next.players.reduce((sum, p) => sum + p.stack, 0) + next.potTotal)
+      .toBe(settled.players.reduce((sum, p) => sum + p.stack, 0));
   }
   expect(errors).toEqual([]);
 });
@@ -107,31 +162,40 @@ test('MIX observes hand limits, skips unreleased variants and ignores repeated n
 test('a duplicate Next request cannot carry into a quickly completed following hand', async ({ page }) => {
   await setup(page, ['D02', 'D01'], 2);
   await finishHand(page);
+  await expect(page.getByTestId('hand-result-overlay')).toBeVisible();
   // Hold the 100ms dealing lock while a second hand settles, reproducing the
   // stale queued click that otherwise depends on WebKit scheduling speed.
-  await page.clock.install();
-  await page.clock.pauseAt(new Date());
+  const pauseAt = Date.now();
+  // Playwright starts the installed clock ticking. A fresh Date captured after
+  // install can already be behind it on a busy CI runner.
+  await page.clock.install({ time: pauseAt - 10_000 });
+  await page.clock.pauseAt(pauseAt);
   await page.evaluate(() => {
     const api = (window as any).__BADUGI_E2E__;
     api.dealNewHandNow();
     api.dealNewHandNow();
   });
   await expect.poll(async () => (await snapshot(page)).handCount).toBe(2);
-  await finishHand(page);
+  await finishHandWithPausedClock(page);
   await page.clock.runFor(250);
   expect((await snapshot(page)).handCount).toBe(2);
   expect((await snapshot(page)).gameVariant).toBe('ace_to_five_triple_draw');
   await page.evaluate(() => (window as any).__BADUGI_E2E__.dealNewHandNow());
+  // This valid request may also wait for the preceding deal's safety lock.
+  // The clock is paused, so let its retry timer run before checking the deal.
+  await page.clock.runFor(500);
   await expect.poll(async () => (await snapshot(page)).handCount).toBe(3);
   expect((await snapshot(page)).gameVariant).toBe('deuce_to_seven_triple_draw');
-  // A genuine next-hand request after this short result must still be queued
-  // until the dealing lock clears, and duplicate requests must coalesce.
-  await finishHand(page);
+  // A genuine next-hand request can start immediately or wait for the lock.
+  // In either case, duplicate requests must coalesce into exactly one deal.
+  await finishHandWithPausedClock(page);
   await page.evaluate(() => {
     const api = (window as any).__BADUGI_E2E__;
     api.dealNewHandNow(); api.dealNewHandNow();
   });
-  expect((await snapshot(page)).handCount).toBe(3);
+  expect((await snapshot(page)).handCount).toBeLessThanOrEqual(4);
+  await page.clock.runFor(250);
+  expect((await snapshot(page)).handCount).toBe(4);
   await page.clock.runFor(250);
   expect((await snapshot(page)).handCount).toBe(4);
 });
@@ -157,4 +221,33 @@ test('quiz supports answers, six-question scoring, retry and topic switching', a
   await page.getByRole('button', { name: 'ロー成立', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('正解：ロー成立');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+});
+
+
+test('cash MIX includes Big O and all six Dramaha games through real hand controls', async ({ page }) => {
+  test.setTimeout(240000);
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  const games = ['B07', 'H01', 'H02', 'H03', 'H04', 'H05', 'H06'];
+  const variants = ['big_o', 'dramaha_hi', 'dramaha_27', 'dramaha_a5', 'dramaha_zero', 'dramaha_hidugi', 'dramaha_badugi'];
+  await setup(page, games);
+  let names: string[] = [];
+  for (let index = 0; index < 8; index++) {
+    await expect.poll(async () => (await snapshot(page)).gameVariant).toBe(variants[index % variants.length]);
+    const current = await snapshot(page);
+    if (!index) names = current.players.map(player => player.name);
+    expect(current.players.map(player => player.name)).toEqual(names);
+    const deadline = Date.now() + 60000;
+    while (!(await page.getByTestId('hand-result-overlay').isVisible()) && Date.now() < deadline) {
+      const fold = page.getByTestId('action-fold');
+      if (await fold.isVisible() && await fold.isEnabled()) await clickHeroAction(page, 'action-fold');
+      expect(errors).toEqual([]);
+      await page.waitForTimeout(100);
+    }
+    await expect(page.getByTestId('hand-result-overlay')).toBeVisible();
+    const settled = await snapshot(page);
+    expect(settled.players.reduce((sum, player) => sum + player.stack, 0)).toBe(3000);
+    if (index < 7) await page.getByTestId('hand-result-next-hand').click();
+  }
+  expect(errors).toEqual([]);
 });

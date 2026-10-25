@@ -8,7 +8,7 @@ from sqlalchemy.pool import StaticPool
 from app.core import db
 from app.dependencies.auth import get_current_user
 from app.main import app
-from app.models import Base
+from app.models import User, Base
 
 client = TestClient(app)
 
@@ -71,6 +71,9 @@ def setup_sqlite(monkeypatch):
     )
     Base.metadata.create_all(bind=engine)
     SessionTesting = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+    with SessionTesting() as session:
+        session.add_all([User(id=i, email=f"owner-{i}@example.com", hashed_password="test-hash") for i in (1, 2, 3, 4)])
+        session.commit()
     monkeypatch.setattr(db, "engine", engine)
     monkeypatch.setattr(db, "SessionLocal", SessionTesting)
     return engine, SessionTesting
@@ -83,7 +86,7 @@ def teardown_sqlite(engine, session_factory):
 
 def test_resume_without_snapshot_returns_false(monkeypatch):
     engine, SessionTesting = setup_sqlite(monkeypatch)
-    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=1, name="demo")
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=1, hashed_password="test-hash", name="demo")
     try:
         response = client.post("/api/tournament/resume", headers=auth_headers())
         assert response.status_code == 200
@@ -96,7 +99,7 @@ def test_resume_without_snapshot_returns_false(monkeypatch):
 
 def test_save_resume_and_retire_flow(monkeypatch):
     engine, SessionTesting = setup_sqlite(monkeypatch)
-    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=1, name="demo")
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=1, hashed_password="test-hash", name="demo")
     try:
         response = client.post(
             "/api/tournament/save",
@@ -128,7 +131,7 @@ def test_save_resume_and_retire_flow(monkeypatch):
 
 def test_save_and_resume_lossless_product_client_snapshot(monkeypatch):
     engine, SessionTesting = setup_sqlite(monkeypatch)
-    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=2, name="player")
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=2, hashed_password="test-hash", name="player")
     try:
         snapshot = sample_client_snapshot()
         saved = client.post(
@@ -148,7 +151,7 @@ def test_save_and_resume_lossless_product_client_snapshot(monkeypatch):
 
 def test_rejects_oversized_product_client_snapshot(monkeypatch):
     engine, SessionTesting = setup_sqlite(monkeypatch)
-    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=3, name="player")
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=3, hashed_password="test-hash", name="player")
     try:
         snapshot = sample_client_snapshot()
         snapshot["tournamentState"]["padding"] = "x" * 2_000_000

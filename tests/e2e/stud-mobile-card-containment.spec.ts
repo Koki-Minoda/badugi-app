@@ -347,7 +347,7 @@ async function verifyStudHistoryAndReplay(page: Page, expectedHandIds: string[])
   expect(frameCount).toBeGreaterThan(1);
   await page.getByTestId("replay-last-frame").click({ timeout: 5_000 });
   await expect(page.getByText(/Awarded pot:/)).toBeVisible({ timeout: 10_000 });
-  await page.getByRole("button", { name: /Back to History/i }).click();
+  await page.getByRole("button", { name: /Back to History|履歴へ戻る/i }).click({ timeout: 5_000 });
   await expect(page.getByTestId("hand-result-overlay")).toBeVisible({ timeout: 10_000 });
 }
 

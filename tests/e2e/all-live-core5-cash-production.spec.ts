@@ -1,6 +1,7 @@
 import {clickHeroAction} from './helpers/clickHeroAction';
 import { visibleHeroActions } from "./helpers/visibleHeroActions";
 import fs from "node:fs";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { auditHandReplayFidelity } from "../../src/games/badugi/flow/handReplay.js";
@@ -17,7 +18,12 @@ import {
   waitForE2EDriver,
 } from "./helpers/gameProgressHelper.js";
 
-const REPORT_DIR = path.resolve("reports/all-live-cash");
+const REPORT_DIR = path.resolve(process.env.MGX_ALL_LIVE_CASH_REPORT_DIR ?? "reports/all-live-cash");
+const SEED = process.env.MGX_ALL_LIVE_CASH_SEED == null ? null : Number(process.env.MGX_ALL_LIVE_CASH_SEED);
+if (SEED !== null && (!Number.isInteger(SEED) || SEED < 0 || SEED > 0xffffffff)) {
+  throw new Error("MGX_ALL_LIVE_CASH_SEED must be an unsigned 32-bit integer");
+}
+const SOURCE_COMMIT = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
 const HANDS = Math.max(10, Number(process.env.MGX_ALL_LIVE_CASH_HANDS ?? 10));
 const enabled = process.env.MGX_ALL_LIVE_CASH_QA === "1";
 const variantFilter = new Set(
@@ -33,6 +39,22 @@ const deviceFilter = new Set(
     .filter(Boolean),
 );
 const RELEASE_CANDIDATE_VARIANTS = [
+  { variant: "super_holdem", displayName: "NL Super Hold'em", initialCardCount: 3 },
+  { variant: "fl_super_holdem", displayName: "FL Super Hold'em", initialCardCount: 3 },
+  ...[
+    ["badeucey_triple_draw", "Badeucey TD", 5],
+    ["badacey_triple_draw", "Badacey TD", 5],
+    ["hidugi_triple_draw", "Hidugi TD", 4],
+    ["archie_triple_draw", "Archie TD", 5],
+    ["five_card_single_draw", "5-Card Single Draw", 5],
+    ["badugi_single_draw", "Badugi Single Draw", 4],
+    ["badeucey_single_draw", "Badeucey Single Draw", 5],
+    ["badacey_single_draw", "Badacey Single Draw", 5],
+    ["hidugi_single_draw", "Hidugi Single Draw", 4],
+  ].map(([variant, displayName, count]) => ({
+    variant: String(variant), displayName: String(displayName),
+    initialCardCount: Number(count), maxDiscard: Number(count), expectsBlindIncrease: true,
+  })),
   { variant: "flh", displayName: "Fixed-Limit Holdem", initialCardCount: 2 },
   { variant: "plo", displayName: "Pot-Limit Omaha", initialCardCount: 4 },
   { variant: "plo8", displayName: "PLO8", initialCardCount: 4 },
@@ -52,7 +74,7 @@ const RELEASE_CANDIDATE_VARIANTS = [
   initialCardCount: variant.initialCardCount ?? 5,
   maxSteps: variant.maxDiscard == null ? 120 : 160,
   expectsDraw: variant.maxDiscard != null,
-  expectsBlindIncrease: false,
+  expectsBlindIncrease: variant.expectsBlindIncrease ?? false,
   requiresPreview: true,
 }));
 const publicVariants = CORE5_VARIANTS.filter(
@@ -67,6 +89,11 @@ const requestedReleaseCandidates = variantFilter.size === 0
         !publicIds.has(variant.variant.toLowerCase()),
     );
 const selectedVariants = [...publicVariants, ...requestedReleaseCandidates];
+if (enabled && variantFilter.size > 0) {
+  const selectedIds = new Set(selectedVariants.map((variant) => variant.variant.toLowerCase()));
+  const unknownIds = [...variantFilter].filter((id) => !selectedIds.has(id));
+  if (unknownIds.length) throw new Error(`No cash QA coverage configured for: ${unknownIds.join(", ")}`);
+}
 const VARIABLE_BETTING_VARIANTS = new Set([
   "S01",
   "deuce_to_seven_single_draw",
@@ -82,7 +109,7 @@ type DeviceName = "desktop" | "android" | "iphone";
 
 function writeReport(fileName: string, value: unknown) {
   fs.mkdirSync(REPORT_DIR, { recursive: true });
-  fs.writeFileSync(path.join(REPORT_DIR, fileName), `${JSON.stringify(value, null, 2)}\n`);
+  fs.writeFileSync(path.join(REPORT_DIR, fileName), `${JSON.stringify({ sourceCommit: SOURCE_COMMIT, ...value }, null, 2)}\n`);
 }
 
 async function visibleLayoutIssues(page: Page) {
@@ -374,7 +401,7 @@ async function verifyHistoryAndReplay(
   onStage("replay-last-frame-clicked", { lastHandId, frameCount });
   await expect(page.getByText(/Awarded pot:/)).toBeVisible({ timeout: 10_000 });
   onStage("replay-settlement-verified", { lastHandId, frameCount });
-  await page.getByRole("button", { name: /Back to History/i }).click();
+  await page.getByRole("button", { name: /Back to History|履歴へ戻る/i }).click({ timeout: 5_000 });
   await expect(page.getByTestId("hand-result-overlay")).toBeVisible({ timeout: 10_000 });
   onStage("replay-ui-complete", { lastHandId });
   return { records: selected.length, replayedHandId: lastHandId };
@@ -407,6 +434,15 @@ async function createDevicePage(browser: Browser, device: DeviceName) {
 
 async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[number], device: DeviceName) {
   const { context, page } = await createDevicePage(browser, device);
+  if (SEED !== null) {
+    await page.addInitScript((seed) => {
+      let state = seed >>> 0;
+      Math.random = () => {
+        state = (Math.imul(1664525, state) + 1013904223) >>> 0;
+        return state / 0x100000000;
+      };
+    }, SEED);
+  }
   const browserErrors: string[] = [];
   const failedResponses: string[] = [];
   page.on("pageerror", (error) => browserErrors.push(`pageerror:${error.message}`));
@@ -423,6 +459,7 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
   const mark = (stage: string, details: Record<string, unknown> = {}) =>
     writeReport(`${variant.variant.toLowerCase()}-${device}-progress.json`, {
       generatedAt: new Date().toISOString(),
+      seed: SEED,
       stage,
       rows,
       ...details,
@@ -440,6 +477,8 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
     );
     await waitForE2EDriver(page);
     await expect(page.getByTestId("decision-panel")).toBeVisible({ timeout: 30_000 });
+    fs.mkdirSync(REPORT_DIR, { recursive: true });
+    await page.screenshot({ path: path.join(REPORT_DIR, `${variant.variant.toLowerCase()}-${device}-table.png`) });
     const openingBlind = await blindSnapshot(page);
     const openingHistory = await historyRecords(page);
     const openingHistoryCount = openingHistory.length;
@@ -463,7 +502,7 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
       totalDrawClicks += result.drawClicks;
       totalHeroButtonClicks += result.heroButtonClicks;
       totalSizingActions += result.sizingActions;
-      await expect(page.getByText("Hand Result").first()).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByTestId("hand-result-overlay").first()).toBeVisible({ timeout: 15_000 });
       await expect(page.getByTestId("hand-result-pot").first()).toBeVisible({ timeout: 15_000 });
       if (variant.variant.startsWith("dramaha_")) {
         await verifyDramahaSplitResult(page);
@@ -554,9 +593,11 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
     expect(relevantResponses).toEqual([]);
     return {
       status: "PASS",
+      seed: SEED,
       variant: variant.variant,
       displayName: variant.displayName,
       device,
+      browserEngine: browser.browserType().name(),
       handsCompleted: HANDS,
       nextHandClicks: HANDS - 1,
       openingBlind,

@@ -212,7 +212,9 @@ export function useGameSessionState() {
 
   const resetForNewHandFromSnapshot = useCallback((snapshot = {}) => {
     setSession((prev) => {
-      const mapped = mapSnapshotToSession(prev, snapshot);
+      // An empty pot in a new hand is authoritative. Action snapshots may
+      // omit pots, but a deal must never carry the previous hand's pot over.
+      const mapped = mapSnapshotToSession(prev ? { ...prev, pots: [] } : prev, snapshot);
       const normalizedPhase = snapshot?.phase ?? snapshot?.metadata?.phase ?? "BET";
       const normalizedDrawRound =
         snapshot?.drawRound ?? snapshot?.drawRoundIndex ?? snapshot?.metadata?.drawRound ?? 0;

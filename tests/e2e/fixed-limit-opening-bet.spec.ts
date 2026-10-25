@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { APP_URL, openAuthenticatedGame, deleteAuthenticatedSession } from './authHelper';
 import { getProgressState, waitForE2EDriver } from './helpers/gameProgressHelper.js';
+import {visibleHeroActions} from './helpers/visibleHeroActions';
+import {clickHeroAction} from './helpers/clickHeroAction';
 for (const variant of ['flh', 'fl_super_holdem', 'flo8']) {
   test(`${variant}: opening bet advances the hand from the visible button`, async ({page}) => {
     test.setTimeout(90000);
@@ -19,10 +21,9 @@ for (const variant of ['flh', 'fl_super_holdem', 'flo8']) {
             await expect.poll(async () => (await getProgressState(page)).players[0].totalInvested, { timeout: 4000 }).toBeGreaterThan(invested);
             tested = true; break;
           }
-          for (const id of ['action-check','action-call']) {
-            const button = page.getByTestId(id).first();
-            if (await button.isVisible() && await button.isEnabled()) { await button.click(); break; }
-          }
+          const visible = await visibleHeroActions(page);
+          const id = ['action-check','action-call'].find(candidate => visible.includes(candidate));
+          if (id) await clickHeroAction(page, id);
         }
         await page.waitForTimeout(100);
       }

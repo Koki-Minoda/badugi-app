@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from ..core.account_writes import account_write
 from ..core.db import get_db
 from ..core.openai_client import get_chatgpt_advice, get_play_feedback_advice  # [tournament-feedback]
 from ..dependencies.auth import get_current_user
@@ -174,8 +175,9 @@ def request_play_feedback(
         response=response_payload.model_dump(exclude_none=True),
     )
     try:
-        db.add(result)
-        db.commit()
+        with account_write(db, current_user):
+            db.add(result)
+            db.commit()
         db.refresh(result)
         response_payload.feedbackId = result.id
         response_payload.sessionKey = session_key

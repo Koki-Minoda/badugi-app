@@ -530,7 +530,7 @@ async function completeProductionTournament(page: Page, stageId: string) {
 
     expect(
       await page
-        .getByRole("button", { name: "Enter New Tournament" })
+        .getByTestId("mtt-enter-new-tournament")
         .count(),
     ).toBe(0);
 
@@ -729,7 +729,9 @@ test("scheduled tournament break blocks the next hand, counts down, and resumes"
 });
 
 test("Store runs from its production field to a verified champion", async ({ page }) => {
-  test.setTimeout(360_000);
+  // Natural play can keep the hero alive for 65+ hands (over six minutes on CI).
+  // Match the bounded World budget without shortening the field or forcing a winner.
+  test.setTimeout(900_000);
   const completed = await completeProductionTournament(page, "store");
   expect(completed.realHeroHands).toBeGreaterThan(0);
   expect(completed.levelsVisited.length).toBeGreaterThan(1);
@@ -746,7 +748,9 @@ test("Store runs from its production field to a verified champion", async ({ pag
 test("Local runs from its production field through ante levels to a verified champion", async ({
   page,
 }) => {
-  test.setTimeout(360_000);
+  // Natural play can keep the hero alive for 65+ hands (over six minutes on CI).
+  // Match the bounded World budget without shortening the field or forcing a winner.
+  test.setTimeout(900_000);
   const completed = await completeProductionTournament(page, "local");
   expect(completed.realHeroHands).toBeGreaterThan(0);
   expect(completed.hud.currentLevelNumber).toBeGreaterThanOrEqual(4);
@@ -802,7 +806,7 @@ test("World never offers re-entry after an FT bust and only offers a new event a
   }, config);
   await expect(page.getByTestId("tournament-hud")).toBeVisible();
   await expect(page.getByRole("button", { name: /re-?entry|re-?enter/i })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Enter New Tournament" })).toHaveCount(0);
+  await expect(page.getByTestId("mtt-enter-new-tournament")).toHaveCount(0);
 
   const state = await page.evaluate(() =>
     window.__BADUGI_E2E__.simulateTournamentBackground(1),
@@ -815,14 +819,14 @@ test("World never offers re-entry after an FT bust and only offers a new event a
   expect(busted.players["hero-player"]).toMatchObject({ busted: true });
   expect(busted.isFinished).toBe(false);
   await expect(page.getByRole("button", { name: /re-?entry|re-?enter/i })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Enter New Tournament" })).toHaveCount(0);
+  await expect(page.getByTestId("mtt-enter-new-tournament")).toHaveCount(0);
 
   const completed = await page.evaluate(() =>
     window.__BADUGI_E2E__.fastForwardMTTComplete(),
   );
   expect(completed).toMatchObject({ isFinished: true, playersRemaining: 1 });
   await expect(page.getByRole("button", { name: /re-?entry|re-?enter/i })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Enter New Tournament" })).toBeVisible();
+  await expect(page.getByTestId("mtt-enter-new-tournament")).toBeVisible();
 });
 
 for (const stage of [
@@ -919,7 +923,7 @@ for (const stage of [
     const overlay = page.getByTestId("mtt-result-overlay");
     await expect(overlay).toBeVisible({ timeout: 20_000 });
     await expect(page.getByRole("button", { name: /re-?entry|re-?enter/i })).toHaveCount(0);
-    await expect(page.getByTestId("mtt-champion-celebration")).toContainText("1st Place");
+    await expect(page.getByTestId("mtt-champion-celebration")).toContainText("1位");
     await expect(page.getByTestId("mtt-result-champion")).toContainText(
       "Stage Gate Hero",
     );
@@ -1007,7 +1011,7 @@ for (const stage of [
       ).toBe(true);
     }
 
-    await page.getByRole("button", { name: "Back to Results" }).click();
+    await page.getByRole("button", { name: "結果へ戻る" }).click();
     await expect(overlay).toBeVisible();
 
     await expect
@@ -1022,7 +1026,7 @@ for (const stage of [
       .toBe(stage.payout);
 
     await page
-      .getByRole("button", { name: "Enter New Tournament" })
+      .getByTestId("mtt-enter-new-tournament")
       .click();
     await expect(page.getByTestId("tournament-hud")).toBeVisible();
     await expect

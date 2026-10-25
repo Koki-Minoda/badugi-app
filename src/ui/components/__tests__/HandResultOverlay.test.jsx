@@ -41,7 +41,30 @@ describe("HandResultOverlay", () => {
   });
   test("shows the settled Board/Stud totalPot instead of zero", () => {
     render(<HandResultOverlay visible summary={{ totalPot: 180, winners: [baseWinner], potDetails: [{ potAmount: 120, winners: [baseWinner] }, { potAmount: 60, winners: [baseWinner] }] }} />);
-    expect(screen.getByTestId('hand-result-total').textContent).toBe('Pot ¥180');
+    expect(screen.getByTestId('hand-result-total').textContent).toBe('Pot 180 chips');
+  });
+  test("uses Japanese labels and chips throughout split results", () => {
+    render(<HandResultOverlay visible language="ja" heroSeat={0} onHistory={() => {}} onCashOut={() => {}} summary={{ pot: 101, potDetails: [
+      { potIndex: 0, component: "archieHigh", potAmount: 101, eligibleSeatIndexes: [0, 1], oddChipAmount: 1, winners: [{ ...baseWinner, handLabel: "Three of a Kind", stack: 601, payout: 101 }] },
+      { potIndex: 0, component: "archieLow", potAmount: 0, winners: [] },
+    ] }} />);
+    expect(screen.getByRole("dialog", { name: "ハンドの結果" })).toBeTruthy();
+    expect(screen.getByTestId("hand-result-total").textContent).toBe("ポット 101 チップ");
+    expect(screen.getByTestId("hand-result-next-hand").textContent).toBe("次のハンドへ");
+    expect(screen.getByTestId("hand-result-history").textContent).toBe("履歴・リプレイ");
+    expect(screen.getByTestId("hand-result-cash-out").textContent).toBe("テーブルを離れる");
+    expect(screen.getByTestId("hand-result-winner-hand-label").textContent).toBe("スリーカード");
+    expect(screen.getByText("該当する勝者なし")).toBeTruthy();
+    const text = screen.getByRole("dialog").textContent;
+    expect(text).toContain("対象席: 席1 / 席2");
+    expect(text).toContain("獲得 101 チップ");
+    expect(text).toContain("持ち点: 601 チップ");
+    expect(text).not.toMatch(/¥|Choose your next action|Component pot|Eligible|No eligible winners/);
+  });
+  test("keeps explicit continuation labels and English chip amounts", () => {
+    render(<HandResultOverlay visible language="en" buttonLabel="Finish trial / choose a game" summary={baseSummary} />);
+    expect(screen.getByTestId("hand-result-total").textContent).toBe("Pot 100 chips");
+    expect(screen.getByTestId("hand-result-next-hand").textContent).toBe("Finish trial / choose a game");
   });
   afterEach(() => {
     cleanup();
@@ -200,7 +223,7 @@ describe("HandResultOverlay", () => {
       />
     );
 
-    expect(screen.getByTestId("hand-result-pot-amount").textContent).toBe("¥101");
+    expect(screen.getByTestId("hand-result-pot-amount").textContent).toBe("101 chips");
     expect(screen.getAllByTestId("hand-result-winner-group-label").map((node) => node.textContent)).toEqual([
       "High",
       "Low",

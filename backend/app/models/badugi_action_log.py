@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from sqlalchemy import BigInteger, Index, Integer, Boolean, DateTime, Float, JSON, String, func
+from sqlalchemy import BigInteger, Index, Integer, ForeignKey, Boolean, DateTime, Float, JSON, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from . import Base
@@ -32,6 +32,10 @@ class BadugiHandAction(Base):
         BigInteger().with_variant(Integer, "sqlite"),
         primary_key=True,
         autoincrement=True,
+    )
+    # Assigned by authenticated endpoints; legacy records stay unowned.
+    owner_user_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True,
     )
     hand_id: Mapped[str] = mapped_column(String(64), index=True)
     player_id: Mapped[str] = mapped_column(String(64), index=True)

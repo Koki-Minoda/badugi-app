@@ -35,7 +35,7 @@ import { BUILD_INFO } from "../config/buildInfo.js";
 import { exposeBrowserGameplayState } from "./qa/exposeBrowserGameplayState.js";
 import MobileQaDebugPanel from "./qa/MobileQaDebugPanel.jsx";
 import { assertNoCrossVariantStateLeak } from "./qa/assertNoCrossVariantStateLeak.js";
-import { getTablePhaseColors } from "./game/tablePhaseColors.js";
+import { getTablePhaseColors, resolveTablePresentationPhase } from "./game/tablePhaseColors.js";
 import {
   startHandHistoryRecord,
   appendHandHistoryAction,
@@ -59,6 +59,7 @@ import { normalizeCpuAction } from "../ai/normalizeCpuAction.js";
 import { getMobileQaSessionId } from "./qa/mobileQaSession.js";
 import {
   resolveActionSeatWithFallback,
+  resolveActionCurrentBet,
   resolveCanonicalActionSeat,
   resolveSessionPreferredActor,
   shouldSyncLegacyTurnToController,
@@ -122,8 +123,8 @@ import {
   normalizeAppVariantId,
 } from "./game/appVariantRouting.js";
 import { buildBetSizingModel } from "./game/betSizing.js";
-import { getVariantLayoutProfile } from "./game/layoutGroups.js";
-import { resolveEffectiveControllerSnapshot } from "./game/controllerSnapshotResolver.js";
+import { getVariantLayoutProfile, LAYOUT_GROUPS } from "./game/layoutGroups.js";
+import { resolveEffectiveControllerSnapshot, syncTournamentBadugiSession } from "./game/controllerSnapshotResolver.js";
 import { createAppGameController } from "./game/createAppGameController.js";
 import {
   createVariantRotationController,
@@ -176,7 +177,12 @@ import {
   resolveAiTierForGameContext,
   resolveTournamentStageId,
 } from "./utils/aiTierContext.js";
-import { selectModelForVariant } from "../ai/modelRouter.js";
+import {
+  decisionProvenanceForHistory,
+  findCompletedHandHistory,
+  modelUsedBySeat,
+  sharedModelUsedByHand,
+} from "./utils/cpuModelAttribution.js";
 import { getCpuCharacterForIndex, getCpuDisplayName } from "../ai/cpuRoster.js";
 import { getTournamentOpponentForSeat } from "../config/tournamentOpponents.js";
 import {
@@ -316,9 +322,11 @@ import {
   cloneHandHistory,
   deriveHeroOutcome,
   formatHandIdentifier,
+  resolveHandStartingStack,
 } from "./app/historySupport.js";
 import {
   buildTournamentPlacements,
+  isSettledTournamentHand,
   collectTournamentOpponentProfileIds as selectTournamentOpponentProfileIds,
   getBlindStructureForTournamentConfig,
 } from "./app/tournamentSupport.js";
@@ -1292,6 +1300,7 @@ export default function App() {
   const preferControllerActionActor = shouldPreferControllerActionActor({
     singleTableController: isControllerDrivenSingleTable,
     drawLowball: isDrawLowballControllerGame,
+    badugi: normalizedGameVariant === APP_VARIANT_IDS.BADUGI,
   });
   const safeEngineState = engineState ?? {};
   const effectiveControllerSnapshot = resolveEffectiveControllerSnapshot({
@@ -2839,6 +2848,9 @@ export default function App() {
           turn: snapshotTurn,
           dealerIdx,
           handId: handIdRef.current,
+          resultPot: handResultVisible
+            ? handResultSummary?.pot ?? handResultSummary?.totalPot ?? null
+            : null,
           players: snapshot,
         };
       },
@@ -2866,7 +2878,7 @@ export default function App() {
       }
       e2eLogEnabledRef.current = false;
     };
-  }, [phase, drawRound, betRoundIndex, turn, dealerIdx, handResultVisible]);
+  }, [phase, drawRound, betRoundIndex, turn, dealerIdx, handResultVisible, handResultSummary]);
 
   useEffect(() => {
     consoleContextRef.current = {
@@ -3840,6 +3852,13 @@ export default function App() {
 
   useEffect(() => {
     if (phase !== "BET" && phase !== "DRAW") return;
+    // A blind-all-in can settle during hand creation, before this render's
+    // stale BET effect runs. The recovery refusal is not a fatal table error.
+    if (isSettledTournamentHand({
+      mode: modeRef.current, handId: handIdRef.current,
+      completedHandId: tournamentCompletedHandIdRef.current,
+      isFinished: tournamentStateRef.current?.isFinished,
+    })) return;
     if (transitioningRef.current) return;
     const roster = playersRef.current ?? players;
     const seatCount = Array.isArray(roster) ? roster.length : 0;
@@ -4092,13 +4111,13 @@ export default function App() {
       return false;
     }
     const player = roster[seat];
-    const controllerActionSeat = !isControllerDrivenSingleTable
+    const controllerActionSeat = !preferControllerActionActor
       ? null
       : resolveSessionPreferredActor({
           sessionController: sessionControllerRef.current,
           sessionState: sessionControllerStateRef.current,
           gameController: gameControllerRef.current,
-          preferSession: isSingleTableBadugi || isSingleTableDrawLowball,
+          preferSession: preferControllerActionActor,
           warn:
             process.env.NODE_ENV !== "production"
               ? (...args) => console.warn(...args)
@@ -4441,8 +4460,8 @@ export default function App() {
               (seatSnapshot?.allIn ?? playerState?.allIn) !== true,
           };
       const historyMetadata = normalizedDrawInfo
-        ? { drawInfo: normalizedDrawInfo }
-        : { betInfo };
+        ? { drawInfo: normalizedDrawInfo, ...decisionProvenanceForHistory(persistedMeta) }
+        : { betInfo, ...decisionProvenanceForHistory(persistedMeta) };
       canonicalActionMetadata = historyMetadata;
       historyAction = appendHandHistoryAction({
         seat: idx,
@@ -5418,7 +5437,7 @@ export default function App() {
           opponent?.personality?.label ?? opponent?.personalityId ?? "Balanced";
         return {
           id: `cpu-${idx}`,
-          name: opponent?.name ?? cpuCharacter.name,
+          name: opponent?.displayName ?? opponent?.name ?? cpuCharacter.name,
           cpuCharacterId: cpuCharacter.id,
           cpuStyle: opponent?.personalityId ?? cpuCharacter.style,
           avatarUrl: cpuCharacter.avatarUrl,
@@ -5884,6 +5903,7 @@ export default function App() {
           }
         }
         const reviewContract = buildTournamentReviewContract({
+          language,
           tournament: {
             ...(nextState.config ?? {}),
             tournamentId: nextState.config?.id ?? nextState.id ?? "active-mtt",
@@ -5963,6 +5983,7 @@ export default function App() {
       setTournamentTitle,
       triggerHeroTableAnimation,
       authIsAuthenticated,
+      language,
       debugLog,
       persistTournamentSnapshot,
       retirePersistedTournament,
@@ -6176,7 +6197,8 @@ export default function App() {
     return settled + onStreet;
   }, [potsSrc, playersSrc]);
   const totalPotForDisplay =
-    adapterViewProps?.potView?.total ?? fallbackTotalPot;
+    adapterViewProps?.potView?.total ??
+    (Number.isFinite(controllerSnapshot?.pot) ? controllerSnapshot.pot : fallbackTotalPot);
 
   const totalPotRef = useRef(0);
   useEffect(() => {
@@ -6705,7 +6727,9 @@ export default function App() {
       // otherwise that controller retains cash-mode completion callbacks and
       // only the first hand advances the MTT blind counter.
       window.setTimeout(() => {
-        if (tournamentStateRef.current !== tournamentState) return;
+        // Profile/HUD updates replace the immutable state before this callback.
+        // Only a different tournament run (or leaving it) cancels the deal.
+        if (tournamentStateRef.current?.tournamentRunId !== tournamentState.tournamentRunId) return;
         startNextHandRef.current({
           dealerOverride: 0,
           ...(initialTournamentPlayers
@@ -7761,13 +7785,7 @@ export default function App() {
           seat,
           name: player.name,
           isHero: Boolean(player.isHero) || seat === 0,
-          startStack: Math.max(
-            Number.isFinite(handStartingStacksById?.[seat])
-              ? handStartingStacksById[seat]
-              : 0,
-            Math.max(0, Number(player.stack) || 0) +
-              Math.max(0, Number(player.totalInvested ?? player.betThisRound) || 0),
-          ),
+          startStack: resolveHandStartingStack(player, handStartingStacksById?.[seat]),
           initialHand: Array.isArray(player.hand) ? [...player.hand] : [],
         })),
         startedAt: Date.now(),
@@ -7790,13 +7808,7 @@ export default function App() {
         bbSeat: typeof bbIdx === "number" ? bbIdx : null,
         seatsSnapshot: newPlayers,
         startingStacksSnapshot: newPlayers.map((player, seat) =>
-          Math.max(
-            Number.isFinite(handStartingStacksById?.[seat])
-              ? handStartingStacksById[seat]
-              : 0,
-            Math.max(0, Number(player?.stack) || 0) +
-              Math.max(0, Number(player?.totalInvested ?? player?.betThisRound) || 0),
-          ),
+          resolveHandStartingStack(player, handStartingStacksById?.[seat]),
         ),
       });
 
@@ -9564,6 +9576,7 @@ export default function App() {
           { id: "cpu-2", place: 3, name: "Mina", stack: 0, payout: 0 },
         ];
         const review = buildTournamentReviewContract({
+          language,
           tournament: {
             id: tournamentId,
             tournamentId,
@@ -11022,6 +11035,14 @@ export default function App() {
       gameId: merged.gameId ?? stageGameId,
       engineId: merged.engineId ?? stageGameId,
     };
+    if (modeRef.current === "tournament-mtt" &&
+        normalizeAppVariantId(gameVariantRef.current) === APP_VARIANT_IDS.BADUGI) {
+      sessionControllerStateRef.current = syncTournamentBadugiSession({
+        controller: sessionControllerRef.current, state: sessionControllerStateRef.current,
+        snapshot: normalizedSnapshot, phase: phaseRef.current,
+        drawRound: drawRoundTracker.current, handId: handIdRef.current,
+      });
+    }
     engineStateRef.current = normalizedSnapshot;
     setEngineState(normalizedSnapshot);
     setControllerUiSnapshotState(normalizedSnapshot);
@@ -12515,8 +12536,7 @@ export default function App() {
     const betHelpers = forcedBetHelpersRef.current;
     const drawHelpers = autoDrawHelpersRef.current;
     const seatCount = activePlayers.length;
-    const shouldUseControllerActorForAuto =
-      isSingleTableBadugi || isDrawLowballControllerGame;
+    const shouldUseControllerActorForAuto = preferControllerActionActor;
     const canonicalActionSeat = shouldUseControllerActorForAuto
       ? resolveCanonicalActionSeat({
           phase,
@@ -13204,6 +13224,7 @@ export default function App() {
   }, [
     turn,
     controllerTurn,
+    preferControllerActionActor,
     phase,
     deck,
     currentBet,
@@ -13519,11 +13540,12 @@ export default function App() {
         GAME_VARIANTS[normalizedRecordVariant] ?? null;
       const recordVariantId =
         recordVariantProfile?.variantId ?? normalizedRecordVariant;
-      const recordedSeats = currentHandHistoryRef.current?.seats ?? [];
-      const cpuModelEntry = selectModelForVariant({
-        variantId: recordVariantId,
-        tierId: activeAiTierConfig?.id ?? "standard",
+      const completedHistory = findCompletedHandHistory({
+        current: currentHandHistoryRef.current,
+        buffer: handHistoryBufferRef.current,
+        handId,
       });
+      const recordedSeats = completedHistory?.seats ?? [];
       const recordedActions = recordedSeats.flatMap((seatRecord) =>
         (Array.isArray(seatRecord?.actions) ? seatRecord.actions : []).map(
           (action) => ({
@@ -13535,6 +13557,15 @@ export default function App() {
           }),
         ),
       );
+      const cpuModelEntries = (playersSnap || []).slice(1).map((_player, index) =>
+        modelUsedBySeat({
+          actions: recordedActions,
+          seat: index + 1,
+          variantId: recordVariantId,
+          tierId: activeAiTierConfig?.id ?? "standard",
+        }),
+      );
+      const cpuModelEntry = sharedModelUsedByHand(cpuModelEntries);
       const resolveStartStack = (seatIndex, player) => {
         const historyStart = Number(recordedSeats?.[seatIndex]?.startStack);
         if (Number.isFinite(historyStart)) return historyStart;
@@ -13548,6 +13579,7 @@ export default function App() {
       };
       const recordPlayers = (playersSnap || []).map((p, i) => {
         const isCPU = i !== 0;
+        const seatModelEntry = isCPU ? cpuModelEntries[i - 1] : null;
         const startStack = resolveStartStack(i, p);
         const endStack = Number(p?.stack ?? 0);
         return {
@@ -13560,19 +13592,19 @@ export default function App() {
           folded: !!p.folded,
           isCPU,
           cpuTier: isCPU
-            ? (activeAiTierConfig?.id ?? cpuModelEntry?.tier ?? null)
+            ? (activeAiTierConfig?.id ?? seatModelEntry?.tier ?? null)
             : null,
           cpuModelId: isCPU
-            ? (cpuModelEntry?.id ?? cpuModelEntry?.modelId ?? null)
+            ? (seatModelEntry?.id ?? null)
             : null,
-          cpuModelVersion: isCPU ? (cpuModelEntry?.version ?? null) : null,
-          featureSet: isCPU ? (cpuModelEntry?.featureSet ?? null) : null,
-          trainingRun: isCPU ? (cpuModelEntry?.trainingRun ?? null) : null,
+          cpuModelVersion: isCPU ? (seatModelEntry?.version ?? null) : null,
+          featureSet: isCPU ? (seatModelEntry?.featureSet ?? null) : null,
+          trainingRun: isCPU ? (seatModelEntry?.trainingRun ?? null) : null,
           trainingCheckpoint: isCPU
-            ? (cpuModelEntry?.trainingCheckpoint ?? null)
+            ? (seatModelEntry?.trainingCheckpoint ?? null)
             : null,
           trainingStatus: isCPU
-            ? (cpuModelEntry?.trainingStatus ?? null)
+            ? (seatModelEntry?.trainingStatus ?? null)
             : null,
         };
       });
@@ -13594,7 +13626,7 @@ export default function App() {
         variantId: recordVariantId,
         variantName:
           recordVariantProfile?.label ??
-          currentHandHistoryRef.current?.variantName ??
+          completedHistory?.variantName ??
           formatVariantLabel(normalizedRecordVariant),
         tableId: fallbackTableId,
         tableSize: (playersSnap || []).length,
@@ -13660,7 +13692,7 @@ export default function App() {
           variantId: recordVariantId,
           variantName:
             recordVariantProfile?.label ??
-            currentHandHistoryRef.current?.variantName ??
+            completedHistory?.variantName ??
             formatVariantLabel(normalizedRecordVariant),
           cpuTier: activeAiTierConfig?.id ?? cpuModelEntry?.tier ?? null,
           cpuModelId: cpuModelEntry?.id ?? cpuModelEntry?.modelId ?? null,
@@ -13722,6 +13754,14 @@ export default function App() {
       )
     : 0;
   const seatLayouts = useMemo(() => {
+    const drawCashLayouts = [
+      "absolute bottom-[-2%] left-1/2 -translate-x-1/2 w-[min(31%,240px)]", // Hero (BTN)
+      "absolute bottom-[27%] left-0 w-[min(30%,220px)]", // SB
+      "absolute top-[7%] left-0 w-[min(30%,220px)]", // BB
+      "absolute top-0 left-1/2 -translate-x-1/2 w-[min(31%,240px)]", // UTG
+      "absolute top-[7%] right-0 w-[min(30%,220px)]", // MP
+      "absolute bottom-[27%] right-0 w-[min(30%,220px)]", // CO
+    ];
     const cashLayouts = [
       "absolute bottom-[-2%] left-1/2 -translate-x-1/2 w-[clamp(190px,24vw,270px)]", // Hero (BTN)
       "absolute bottom-[27%] left-[1.5%] w-[clamp(160px,20vw,240px)]", // SB
@@ -13739,18 +13779,30 @@ export default function App() {
       "absolute top-[17%] left-[86%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // MP
       "absolute bottom-[10%] left-[86%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // CO
     ];
-    return mode === "tournament-mtt" ? tournamentLayouts : cashLayouts;
-  }, [mode]);
+    const isDrawCashLayout =
+      layoutProfile?.layoutGroup === LAYOUT_GROUPS.BADUGI ||
+      layoutProfile?.layoutGroup === LAYOUT_GROUPS.DRAW_LOWBALL_5CARD;
+    return mode === "tournament-mtt"
+      ? tournamentLayouts
+      : isDrawCashLayout
+        ? drawCashLayouts
+        : cashLayouts;
+  }, [layoutProfile, mode]);
 
+  const presentationPhase = resolveTablePresentationPhase({
+    controllerPhase: effectiveControllerSnapshot?.phase,
+    controlsPhase: controlsConfig?.phase,
+    legacyPhase: tablePhase,
+    resultVisible: handResultVisible || Boolean(sessionSnapshot?.overlays?.handResult?.visible),
+    tableFinished: tournamentHeroBustTerminal,
+  });
   const {
     tableOuterBg,
     tableSurfaceBg,
     tableBorderColor,
     tableAccentRing,
     phaseTone,
-  } = getTablePhaseColors(
-    effectiveControllerSnapshot?.phase ?? controlsConfig?.phase ?? tablePhase,
-  );
+  } = getTablePhaseColors(presentationPhase);
 
   const tableSummaryProps = {
     phaseTag: hudInfo?.phaseTag ?? phaseTagLocal(),
@@ -13765,7 +13817,7 @@ export default function App() {
     handCount: hudInfo?.handCount ?? handsInLevelDisplay,
     handsCap: hudInfo?.handsCap ?? handsCapDisplay,
     startingStack: hudInfo?.startingStack ?? startingStack,
-    showRaiseCount: (hudInfo?.phase ?? tablePhase) === "BET",
+    showRaiseCount: presentationPhase === "BET",
     raiseCount: raiseStatsSrc?.raiseCountThisRound ?? raiseCountThisRound,
     dealerName:
       hudInfo?.dealerName ??
@@ -13788,7 +13840,11 @@ export default function App() {
 
   const controlsPhase =
     effectiveControllerSnapshot?.phase ?? controlsConfig?.phase ?? tablePhase;
-  const controlsCurrentBet = controlsConfig?.currentBet ?? currentBetSrc;
+  const controlsCurrentBet = resolveActionCurrentBet({
+    preferController: preferControllerActionActor,
+    controllerCurrentBet: effectiveControllerSnapshot?.currentBet,
+    legacyCurrentBet: controlsConfig?.currentBet ?? currentBetSrc,
+  });
   const heroBetThisRound = Math.max(
     0,
     Number(
@@ -14086,7 +14142,7 @@ export default function App() {
   const nextHandLabel = formatComment(
     cashRebuyRequired ? "rebuyNextHandButton" : "nextHandButton",
     {},
-    locale,
+    language,
   );
   function handleAuthSuccess() {
     setCurrentScreen("menu");
@@ -14310,14 +14366,15 @@ export default function App() {
     return (
       <>
         <ReplayScreen
+          language={language}
           handId={replayHandId}
           target={replayTarget}
           onBack={handleBackFromReplayToHistory}
           onClose={handleExitReplayToMenu}
           backLabel={
             replayTarget?.replayReview?.reviewMode === "tournament"
-              ? "Back to Results"
-              : "Back to History"
+              ? (language === "ja" ? "結果へ戻る" : "Back to Results")
+              : (language === "ja" ? "履歴へ戻る" : "Back to History")
           }
         />
         <SaveFailureNotice language={language} />
@@ -14447,8 +14504,8 @@ export default function App() {
     positionNameFn: positionName,
     clonePlayerStateFn: clonePlayerState,
     handleCardClick,
-    tablePhase,
-    phase: phaseSrc,
+    tablePhase: presentationPhase,
+    phase: presentationPhase,
     drawRoundValue: drawRoundSrc,
     betRoundValue: betRoundIndexSrc,
     boardCards: hudInfo?.boardCards ?? controllerSnapshot?.boardCards ?? [],

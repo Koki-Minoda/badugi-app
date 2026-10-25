@@ -264,6 +264,8 @@ describe("Player", () => {
     );
 
     fireEvent.mouseEnter(screen.getByTestId("seat-1"));
+    expect(screen.queryByTestId("seat-1-detail")).toBeNull();
+    fireEvent.mouseMove(screen.getByTestId("seat-1"));
     const detail = screen.getByTestId("seat-1-detail");
     const scope = within(detail).getByRole("combobox", { name: /hud game scope/i });
     expect(within(scope).getByRole("option", { name: "Stud" })).toBeTruthy();

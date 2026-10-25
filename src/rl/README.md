@@ -165,8 +165,15 @@ state. Legacy checkpoints remain loadable but do not contain those fields.
 Replay, expert, fold, and call buffers plus rolling telemetry histories are
 intentionally not stored yet because the current 300k replay design needs a
 separate size/compatibility decision.
-Every run writes `badugi_sixmax_run_manifest.json` with the exact configuration,
-runtime versions, Git commit, input hashes, and this resume-capability boundary.
+Every Badugi or Draw six-max run writes a uniquely named, immutable manifest
+before training begins. It records the exact configuration, runtime versions,
+Git head and source status (`clean`, `dirty`, or `unknown`), per-file SHA-256 for
+the local RL Python sources, and an aggregate source fingerprint. Badugi also
+records input checkpoint hashes and the resume-capability boundary. The
+fixed-name `*_run_manifest.json` remains a latest-run copy for older tooling;
+the unique file is never overwritten. Checkpoints and summaries contain its
+run ID, file SHA-256, path, and source fingerprint so a saved model can be
+matched to the exact manifest even after the next run updates the latest copy.
 
 ## Resumable six-max checkpoint inventory
 

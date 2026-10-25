@@ -15,8 +15,10 @@ export default function SeatPortrait({seat}) {
 
 function PortraitImage({src}) {
  const [failed, setFailed] = useState(false);
+ const [loaded, setLoaded] = useState(false);
+ const placeholder = <svg viewBox="0 0 32 32"><circle cx="16" cy="11" r="6"/><path d="M4 31v-3a12 12 0 0 1 24 0v3"/></svg>;
  if (src && !failed && /^(\/|https?:|data:image\/|blob:)/.test(src)) {
-  return <img src={src} alt="" draggable={false} onError={() => setFailed(true)}/>;
+  return <>{placeholder}<img src={src} alt="" draggable={false} loading="eager" decoding="async" className={loaded ? 'is-loaded' : ''} onLoad={() => setLoaded(true)} onError={() => setFailed(true)}/></>;
  }
- return <svg viewBox="0 0 32 32"><circle cx="16" cy="11" r="6"/><path d="M4 31v-3a12 12 0 0 1 24 0v3"/></svg>;
+ return placeholder;
 }

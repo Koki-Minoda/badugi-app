@@ -1,6 +1,8 @@
 import {expect,test} from '@playwright/test';
 import {APP_URL,enterTitleIfPresent,selectGameVariantFromSelector} from './authHelper';
 import {waitForE2EDriver} from './helpers/gameProgressHelper.js';
+import {visibleHeroActions} from './helpers/visibleHeroActions';
+import {clickHeroAction} from './helpers/clickHeroAction';
 
 async function waitForTournamentHand(page) {
  await expect.poll(()=>page.evaluate(()=>({
@@ -13,6 +15,11 @@ for(const size of [{width:1440,height:900},{width:393,height:695},{width:852,hei
  const blindAllIn=outcome==='blind-all-in';
  test(`settled all-in displays tournament result without a competing hand dialog at ${size.width}x${size.height} (${outcome})`,async({page},testInfo)=>{
   test.setTimeout(90000);const pageErrors=[];page.on('pageerror',error=>pageErrors.push(String(error)));
+  page.on('console',message=>{if(message.text().includes('[G-10][FATAL]'))pageErrors.push(message.text());});
+  const histories=[];
+  page.on('console',message=>{
+   if(message.text().startsWith('[HAND_HISTORY] ')) histories.push(JSON.parse(message.text().slice(15)));
+  });
   await page.setViewportSize(size);
   await page.route('**/api/**',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({id:9001,username:'QA Hero',email:'qa@mgx-e2e.test'})}));
   await page.addInitScript(()=>localStorage.setItem('mgx_auth',JSON.stringify({accessToken:'test',tokenType:'Bearer',user:{id:9001,username:'QA Hero',email:'qa@mgx-e2e.test'},isAuthenticated:true})));
@@ -45,9 +52,19 @@ for(const size of [{width:1440,height:900},{width:393,height:695},{width:852,hei
   }
   await expect(terminal).toBeVisible();
   await expect(page.getByTestId('hand-result-overlay')).toHaveCount(0);
+  if (outcome === 'hero-bust-fixture' && size.height <= 500) {
+   await expect(terminal.getByTestId('mtt-hero-bust-itm-row').first()).toBeInViewport({ratio:0.75});
+  }
   const state=await page.evaluate(()=>window.__BADUGI_E2E__.getTournamentHudState());
   expect(state.isFinished).toBe(true);expect(state.playersRemaining).toBe(1);
-  const back=terminal.getByRole('button',{name:/back to menu/i});
+  expect(await page.evaluate(()=>window.__BADUGI_E2E__.getStateSnapshot().handId)).toMatch(/^table-1-h/);
+  if(blindAllIn){
+   const history=histories.filter(hand=>hand.handId.startsWith('table-1-h')).at(-1);
+   expect(history).toBeTruthy();
+   expect(history.seats.reduce((sum,seat)=>sum+seat.startStack,0)).toBe(10);
+   expect(history.seats.reduce((sum,seat)=>sum+seat.endStack,0)).toBe(10);
+  }
+  const back=terminal.getByTestId('mtt-back-to-menu');
   const exit=await back.evaluate(button=>{
    const r=button.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
    return {top:r.top,bottom:r.bottom,left:r.left,right:r.right,height:r.height,reachable:hit===button||button.contains(hit)};
@@ -90,10 +107,13 @@ test('Badugi tournament remains playable through three draws and the final betti
  const draws=new Set();let actions=0;
  for(let step=0;step<200;step++){
   if(await page.getByTestId('hand-result-overlay').count())break;
-  for(const id of ['action-check','action-call','action-draw-selected']){
-   const button=page.getByTestId(id);if(await button.count()&&await button.isEnabled()){
-    if(id==='action-draw-selected')draws.add(await page.evaluate(()=>window.__BADUGI_E2E__.getStateSnapshot().drawRound));
-    await button.click();actions++;break;
+  const visible=await visibleHeroActions(page);
+  const id=['action-check','action-call','action-draw-selected'].find(candidate=>visible.includes(candidate));
+  if(id){
+   const drawRound=id==='action-draw-selected'?await page.evaluate(()=>window.__BADUGI_E2E__.getStateSnapshot().drawRound):null;
+   if(await clickHeroAction(page,id)){
+    if(drawRound!==null)draws.add(drawRound);
+    actions++;
    }
   }
   await page.waitForTimeout(150);

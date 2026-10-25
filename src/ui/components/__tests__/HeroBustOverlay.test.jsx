@@ -46,6 +46,22 @@ describe("HeroBustOverlay", () => {
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
+  it("uses Japanese result and payout labels when the table is in Japanese", () => {
+    render(
+      <HeroBustOverlay
+        visible
+        language="ja"
+        heroSummary={{ place: 5, payout: 0 }}
+        inMoneyPlacements={[{ id: "cpu-1", place: 1, name: "サトル", stack: 9000, payout: 1000 }]}
+        onBackToMenu={() => {}}
+      />,
+    );
+    expect(screen.getByTestId("mtt-hero-bust-hero-summary").textContent).toContain("5位で終了");
+    expect(screen.getByTestId("mtt-hero-bust-itm-row").textContent).toContain("賞金 1000");
+    expect(screen.getByRole("button", { name: "メニューへ戻る" })).toBeTruthy();
+    expect(screen.queryByText("In the Money")).toBeNull();
+  });
+
   it("keeps the grounded tournament review available after elimination", () => {
     render(
       <HeroBustOverlay

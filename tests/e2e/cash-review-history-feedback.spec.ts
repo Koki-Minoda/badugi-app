@@ -90,7 +90,7 @@ async function openHistoryWithCashHands(page: Page, handCount: number) {
     );
   }, hands);
   await gotoWithRetry(page, `${APP_URL}dev/history`);
-  await expect(page.getByRole("heading", { name: /トーナメント & ハンド履歴/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /トーナメント & ハンド履歴|Tournament & hand history/i })).toBeVisible();
   return hands;
 }
 
@@ -101,8 +101,8 @@ test.describe("Cash Review history feedback", () => {
     await expect(page.getByText(/対象:\s*Cash game/i)).toBeVisible();
     await expect(page.getByText(/Hands:\s*29/i)).toBeVisible();
     await expect(page.getByText(/Minimum:\s*30/i)).toBeVisible();
-    await expect(page.getByText("まだフィードバック対象外です。30ハンド以上プレイしてください。")).toBeVisible();
-    await expect(page.getByRole("button", { name: "AIフィードバック作成" })).toBeDisabled();
+    await expect(page.getByText("30ハンド以上プレイすると利用できます。")).toBeVisible();
+    await expect(page.getByRole("button", { name: "フィードバックを作成" })).toBeDisabled();
     await expect(page.getByTestId("mtt-result-overlay")).toHaveCount(0);
     await expect(page.getByText("Tournament Review")).toHaveCount(0);
   });
@@ -129,7 +129,7 @@ test.describe("Cash Review history feedback", () => {
 
     await openHistoryWithCashHands(page, 30);
 
-    const createButton = page.getByRole("button", { name: "AIフィードバック作成" });
+    const createButton = page.getByRole("button", { name: "フィードバックを作成" });
     await expect(createButton).toBeEnabled();
     await createButton.click();
 
@@ -153,9 +153,26 @@ test.describe("Cash Review history feedback", () => {
     await expect(page.getByTestId("hand-replay-screen")).toBeVisible({ timeout: 20000 });
     const replayReview = page.getByTestId("replay-review-panel");
     await expect(replayReview).toBeVisible();
-    await expect(replayReview).toContainText("Replay Review");
-    await expect(replayReview).toContainText("cash");
+    await expect(replayReview).toContainText("リプレイの振り返り");
+    await expect(replayReview).toContainText("キャッシュ");
     await expect(replayReview).not.toContainText(/Tournament Review|Place|Payout/i);
     await expect(page.getByTestId("replay-review-timeline-marker")).toBeVisible();
+  });
+
+  test("English setting keeps the cash replay review in English", async ({ page }) => {
+    await page.addInitScript(() => window.localStorage.setItem("mgx_language", "en"));
+    await page.route("**/api/analysis/play-feedback", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ source: "playwright-mock", adviceEn: "Review the saved hands." }),
+    }));
+    await openHistoryWithCashHands(page, 30);
+    await page.getByRole("button", { name: "Create feedback" }).click();
+    await page.getByTestId("cash-review-replay").first().click();
+    const replayReview = page.getByTestId("replay-review-panel");
+    await expect(replayReview).toContainText("Replay Review");
+    await expect(replayReview).toContainText("Review points");
+    await expect(replayReview).toContainText("Questions to revisit");
+    await expect(replayReview).not.toContainText(/[ぁ-んァ-ン一-龯]/);
   });
 });

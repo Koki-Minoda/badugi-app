@@ -14,8 +14,8 @@ done
 (
   cd "$stage"
   sha256sum -c <<'HASHES'
-7791ac5fc52fa4779de61ee920c0711361580dacf1cc7e2485f0973ca741cd7d  mgx-prod-admin.py
-74d6723150b911f9522fe3166a74ef2ea741bd181e84c28f7d5e32d55ff5e648  configure-mgx-backend-workers.sh
+636fce7a946bbdc1a8d8d7cb484ac66afc3b6544565ff1aab85a4d8a712734e9  mgx-prod-admin.py
+221a3c2c792491c87f9cd4a740dca509cfad188c29884175c27eafde7e18a60a  configure-mgx-backend-workers.sh
 da8d32315df221f122d4e0d93313b16c3ae73a611348f7e65c0ce5d6e82c1cd3  ensure_mgx_nginx_websocket_proxy.sh
 HASHES
 )

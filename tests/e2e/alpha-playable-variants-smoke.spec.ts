@@ -70,11 +70,11 @@ test.describe("friend alpha playable variants smoke", () => {
       expect(result.status).toBe("PASS");
       expect(result.heroButtonClicks).toBeGreaterThan(0);
 
-      await expect(page.getByText("Hand Result").first()).toBeVisible({ timeout: 10000 });
+      await expect(page.getByTestId("hand-result-overlay").first()).toBeVisible({ timeout: 10000 });
       await expect(page.getByTestId("hand-result-pot").first()).toBeVisible({ timeout: 10000 });
 
-      await page.getByRole("button", { name: /next hand/i }).click();
-      await expect(page.getByText("Hand Result").first()).toBeHidden({ timeout: 10000 });
+      await page.getByRole("button", { name: /next hand|次のハンド/i }).click();
+      await expect(page.getByTestId("hand-result-overlay").first()).toBeHidden({ timeout: 10000 });
       await expect(page.getByTestId("decision-panel")).toBeVisible({ timeout: 20000 });
 
       expect(browserErrors).toEqual([]);

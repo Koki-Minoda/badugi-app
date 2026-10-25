@@ -40,5 +40,5 @@ test('Badugi plays an 18-player tournament through three tables, final table and
  expect(result.placements).toHaveLength(18);expect(new Set(result.placements.map(p=>p.place)).size).toBe(18);
  expect(result.placements.reduce((n,p)=>n+p.stack,0)).toBe(9000);expect(errors).toEqual([]);
  await expect(page.getByTestId('hand-result-overlay')).toHaveCount(0);
- await page.locator('[data-testid=mtt-hero-bust-overlay],[data-testid=mtt-result-overlay]').getByRole('button',{name:/back to menu/i}).click();await expect(page.getByTestId('menu-ring')).toBeVisible();
+ await page.locator('[data-testid=mtt-hero-bust-overlay],[data-testid=mtt-result-overlay]').getByTestId('mtt-back-to-menu').click();await expect(page.getByTestId('menu-ring')).toBeVisible();
 });

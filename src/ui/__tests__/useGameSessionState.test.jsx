@@ -28,6 +28,28 @@ afterEach(() => {
 });
 
 describe("useGameSessionState snapshot sync", () => {
+  it("clears the previous hand's pot when the next hand starts empty", () => {
+    render(<SessionStateHarness />);
+
+    act(() => {
+      harnessApi.resetForNewHandFromSnapshot({
+        handId: "old-hand",
+        players: [{ name: "You", stack: 490 }],
+        pots: [{ amount: 30 }],
+      });
+    });
+    expect(harnessApi.session.pots).toEqual([{ amount: 30 }]);
+
+    act(() => {
+      harnessApi.resetForNewHandFromSnapshot({
+        handId: "new-hand",
+        players: [{ name: "You", stack: 480, bet: 20 }],
+        pots: [],
+      });
+    });
+    expect(harnessApi.session.pots).toEqual([]);
+  });
+
   it("uses controller currentActor when mirroring a controller snapshot", () => {
     render(<SessionStateHarness />);
 

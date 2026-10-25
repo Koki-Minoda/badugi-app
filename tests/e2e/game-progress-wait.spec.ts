@@ -72,6 +72,20 @@ test('hand completion between the progress read and action selection is terminal
   expect(result.visitedPhases).toContain('HAND_RESULT');
 });
 
+test('tournament table finished after hero bust ends hand progression', async ({ page }) => {
+  await installDrawSnapshot(page, { currentActor: null, turn: null, nextTurn: null });
+  await page.evaluate(() => {
+    const snapshot = window.__BADUGI_E2E__.getStateSnapshot().controllerSnapshot;
+    snapshot.phase = 'TABLE_FINISHED';
+    snapshot.players[0] = { stack: 0, seatOut: true, folded: true, allIn: true };
+    // The badge may lag behind the terminal controller snapshot during bust settlement.
+    document.querySelector('[data-testid="table-phase-badge"]').textContent = 'BET | R1';
+  });
+  const progress = await getProgressState(page);
+  expect(progress.isTerminal).toBe(true);
+  expect((await playOneHandProgression(page, { maxSteps: 2 })).status).toBe('PASS');
+});
+
 
 test('action snapshot does not wait for a button removed during a phase change', async ({ page }) => {
   page.setDefaultTimeout(700);
@@ -118,4 +132,41 @@ test('cash action clicks remain real clicks', async ({page}) => {
   await page.setContent(`<button data-testid="action-call" onclick="this.textContent='Called'">Call</button>`);
   expect(await clickHeroAction(page, 'action-call')).toBe(true);
   await expect(page.getByTestId('action-call')).toHaveText('Called');
+});
+
+test('shared action selection survives a phase-change locator race', async ({page}) => {
+  page.setDefaultTimeout(700);
+  await installDrawSnapshot(page, {currentActor:0,turn:0,nextTurn:0});
+  await page.evaluate(() => {
+    const snapshot = window.__BADUGI_E2E__.getStateSnapshot().controllerSnapshot;
+    snapshot.phase='BET'; snapshot.currentBet=0; snapshot.players[0].hasDrawn=false;
+    document.querySelector('[data-testid="table-phase-badge"]').textContent='BET';
+  });
+  await page.evaluate(() => {
+    const button=document.createElement('button');button.dataset.testid='action-check';button.textContent='Check';
+    button.onclick=()=>{
+      const snapshot=window.__BADUGI_E2E__.getStateSnapshot().controllerSnapshot;
+      snapshot.phase='HAND_RESULT';snapshot.currentActor=null;
+      document.querySelector('[data-testid="table-phase-badge"]').textContent='HAND_RESULT';
+    };
+    document.body.append(button);
+  });
+  const transitioningPage = new Proxy(page, {
+    get(target,key){
+      if(key==='getByTestId')return id=>{
+        const button=target.getByTestId(id).first();
+        return {first:()=>({
+          count:()=>button.count(),
+          isVisible:async()=>{const visible=await button.isVisible();if(visible)await button.evaluate(element=>element.remove());return visible;},
+          isEnabled:()=>button.isEnabled(),
+          click:options=>button.click(options),
+        })};
+      };
+      const value=Reflect.get(target,key);return typeof value==='function'?value.bind(target):value;
+    },
+  });
+  const {performSafeAction}=await import('./helpers/gameProgressHelper.js');
+  const result=await performSafeAction(transitioningPage);
+  expect(result.acted).toBe(true);
+  expect(result.clickedAction).toBe('action-check');
 });

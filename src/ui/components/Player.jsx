@@ -479,16 +479,27 @@ export default function Player({
       setHudOpen(true);
       return;
     }
-    const width = Math.min(620, Math.max(320, window.innerWidth - 24));
-    const estimatedHeight = 318;
     const margin = 12;
+    const decisionPanel = document.querySelector('[data-testid="decision-panel"]');
+    const panelRect = decisionPanel?.getBoundingClientRect();
+    const panelBesideTable =
+      panelRect &&
+      panelRect.width > 0 &&
+      panelRect.height > 0 &&
+      panelRect.left > rect.right + margin &&
+      panelRect.left >= 320 + margin * 2;
+    const rightLimit = panelBesideTable
+      ? panelRect.left - margin
+      : window.innerWidth - margin;
+    const width = Math.min(620, Math.max(320, rightLimit - margin));
+    const estimatedHeight = 318;
     const preferredBelow = rect.bottom + margin;
     const preferredAbove = rect.top - estimatedHeight - margin;
     const hasRoomBelow =
       preferredBelow + estimatedHeight <= window.innerHeight - margin;
     const rawTop = hasRoomBelow ? preferredBelow : preferredAbove;
     const left = Math.min(
-      window.innerWidth - width - margin,
+      rightLimit - width,
       Math.max(margin, rect.left + rect.width / 2 - width / 2),
     );
     const top = Math.min(
@@ -572,7 +583,7 @@ export default function Player({
         data-testid={`seat-${seatIndex}`}
         tabIndex={0}
         aria-label={playerDetailTitle}
-        onMouseEnter={openHud}
+        onMouseMove={hudOpen ? undefined : openHud}
         onMouseLeave={scheduleCloseHud}
         onFocus={openHud}
         onBlur={scheduleCloseHud}
@@ -594,8 +605,17 @@ export default function Player({
         style={{
           padding: "var(--player-pad, 10px)",
           gap: "var(--player-gap, 8px)",
-          ...(layoutProfile?.layoutGroup === "stud" && !compact
+          ...((layoutProfile?.layoutGroup === "stud" ||
+            layoutProfile?.layoutGroup === "draw-lowball-5card" ||
+            layoutProfile?.layoutGroup === "badugi") && !compact
             ? { width: "100%", minWidth: 0, "--player-card-gap": "3px" }
+            : {}),
+          ...(isHero && !compact && layoutProfile?.layoutGroup === "draw-lowball-5card"
+            ? {
+                "--card-w": "clamp(34px, 2.8vw, 38px)",
+                "--card-h": "clamp(48px, 3.92vw, 53px)",
+                "--card-font-size": "clamp(12px, 1.1vw, 15px)",
+              }
             : {}),
           ...(compact
             ? {

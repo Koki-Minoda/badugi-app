@@ -1,6 +1,10 @@
 from datetime import datetime, timezone
 
+from types import SimpleNamespace
+
 import pytest
+
+from app.dependencies.auth import get_current_user
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
@@ -9,9 +13,18 @@ from sqlalchemy.pool import StaticPool
 
 from app.core import db
 from app.main import app
-from app.models import Base, HandAction, HandLog, HandResult
+from app.models import User, Base, HandAction, HandLog, HandResult
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def owner():
+    previous = app.dependency_overrides.copy()
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=1, hashed_password="test-hash")
+    yield
+    app.dependency_overrides.clear()
+    app.dependency_overrides.update(previous)
 
 
 @pytest.fixture()
@@ -24,6 +37,9 @@ def sqlite_db(monkeypatch):
     )
     Base.metadata.create_all(bind=engine)
     SessionTesting = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+    with SessionTesting() as session:
+        session.add_all([User(id=i, email=f"owner-{i}@example.com", hashed_password="test-hash") for i in (1, 2)])
+        session.commit()
     monkeypatch.setattr(db, "engine", engine)
     monkeypatch.setattr(db, "SessionLocal", SessionTesting)
     yield engine

@@ -106,7 +106,8 @@ jobs:
 
   tournament-qa:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    # Three natural full-field runs allow 15 minutes each, plus the other regressions.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -252,6 +253,8 @@ jobs:
           bash scripts/ci/run-with-backend.sh npx playwright test \
             tests/e2e/production-cash-playability.spec.ts \
             tests/e2e/fixed-limit-opening-bet.spec.ts \
+            tests/e2e/seat-hud-navigation.spec.ts \
+            tests/e2e/draw-seat-spacing.spec.ts \
             --project=badugi-flow \
             --workers=1
       - name: Upload Badugi cash playability evidence
@@ -466,6 +469,7 @@ jobs:
       MGX_PROD_HOST: ${{ secrets.MGX_PROD_HOST }}
       MGX_PROD_USER: ${{ secrets.MGX_PROD_USER }}
     steps:
+      - uses: actions/checkout@v6
       - name: Validate deploy inputs and secrets
         env:
           MGX_PROD_SSH_KEY: ${{ secrets.MGX_PROD_SSH_KEY }}
@@ -507,6 +511,15 @@ jobs:
           test "$(git rev-parse --verify "origin/$branch")" = "$tested_commit"
           sudo -n /usr/sbin/nginx -t
           REMOTE
+
+      - name: Back up and verify the current production release
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes \
+            -o ServerAliveInterval=30 -o ServerAliveCountMax=20 \
+            "${MGX_PROD_USER}@${MGX_PROD_HOST}" \
+            "cd /home/mgx/badugi-app && backend/.venv/bin/python - '$DEPLOY_COMMIT'" \
+            < scripts/deploy/create_verified_backup.py
 
       - name: Deploy selected production branch
         run: |

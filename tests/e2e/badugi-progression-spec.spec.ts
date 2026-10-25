@@ -44,7 +44,7 @@ test.describe("Badugi progression release spec", () => {
     expect(result.visitedPhases).toContain("BET");
     expect(result.visitedPhases).toContain("DRAW");
     expect(result.visitedDrawRounds.length).toBeGreaterThanOrEqual(1);
-    await expect(page.getByText("Hand Result").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId("hand-result-overlay").first()).toBeVisible({ timeout: 10000 });
     await expect(page.getByTestId("hand-result-pot").first()).toBeVisible({ timeout: 10000 });
 
     const state = await getProgressState(page);

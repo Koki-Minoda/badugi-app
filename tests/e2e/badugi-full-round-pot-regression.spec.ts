@@ -1,11 +1,11 @@
 import { test, expect, Page } from "@playwright/test";
-import { openAuthenticatedGame } from "./authHelper";
+import { openAuthenticatedGame, deleteAuthenticatedSession } from "./authHelper";
 
 async function openBadugiPreview(page: Page) {
   await page.addInitScript(() => {
     window.localStorage.setItem("mgx.previewVariants", "true");
   });
-  await openAuthenticatedGame(page);
+  return openAuthenticatedGame(page);
 }
 
 async function getPhaseState(page: Page) {
@@ -40,16 +40,16 @@ async function forceContinueAction(page: Page, seat: number) {
 }
 
 async function visibleTotalPot(page: Page) {
-  return page.evaluate(() => {
-    const text = document.body?.innerText ?? "";
-    const match = text.match(/Total Pot\s+(\d+)/i);
-    return match ? Number(match[1]) : null;
-  });
+  const pot = page.getByTestId("table-total-pot");
+  await expect(pot).toBeVisible();
+  const match = (await pot.innerText()).match(/[\d,]+/);
+  return match ? Number(match[0].replaceAll(",", "")) : null;
 }
 
 test.describe("Badugi full-round pot regression", () => {
   test("keeps pot visible and reaches hand result through natural 3-draw browser flow", async ({ page }) => {
-    await openBadugiPreview(page);
+    const session = await openBadugiPreview(page);
+    try {
     await page.waitForFunction(() => typeof window.__BADUGI_E2E__?.getPhaseState === "function");
 
     const initialPot = await visibleTotalPot(page);
@@ -61,7 +61,7 @@ test.describe("Badugi full-round pot regression", () => {
     let minActivePot = Number.POSITIVE_INFINITY;
 
     while (Date.now() < deadline) {
-      if (await page.locator("text=Hand Result").first().isVisible().catch(() => false)) {
+      if (await page.getByTestId("hand-result-overlay").first().isVisible().catch(() => false)) {
         break;
       }
       const state = await getPhaseState(page);
@@ -102,8 +102,9 @@ test.describe("Badugi full-round pot regression", () => {
       await page.waitForTimeout(120);
     }
 
-    await expect(page.locator("text=Hand Result").first()).toBeVisible({ timeout: 1000 });
+    await expect(page.getByTestId("hand-result-overlay").first()).toBeVisible({ timeout: 1000 });
     expect(observedPostDrawBet).toBe(true);
     expect(minActivePot).toBeGreaterThan(0);
+    } finally { await deleteAuthenticatedSession(page, session); }
   });
 });

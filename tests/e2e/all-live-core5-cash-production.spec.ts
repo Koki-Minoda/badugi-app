@@ -451,10 +451,14 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
     }, SEED);
   }
   const browserErrors: string[] = [];
+  const nextHandWarnings: string[] = [];
   const failedResponses: string[] = [];
   page.on("pageerror", (error) => browserErrors.push(`pageerror:${error.message}`));
   page.on("console", (message) => {
     if (message.type() === "error") browserErrors.push(`console:${message.text()}`);
+    if (message.type() === "warning" && /next.hand|dealNewHand|Unable to continue/i.test(message.text())) {
+      nextHandWarnings.push(message.text());
+    }
   });
   page.on("response", (response) => {
     if (response.status() >= 400) {
@@ -558,7 +562,28 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
         const next = page.getByTestId("hand-result-next-hand");
         await expect(next).toBeVisible({ timeout: 10_000 });
         await next.click({ timeout: 5_000 });
-        await expect(page.getByTestId("hand-result-overlay")).toBeHidden({ timeout: 15_000 });
+        try {
+          await expect(page.getByTestId("hand-result-overlay")).toBeHidden({ timeout: 15_000 });
+        } catch (error) {
+          const nextHandDebug = await page.evaluate(() =>
+            (window as any).__BADUGI_E2E__?.getNextHandDebug?.() ?? null
+          ).catch(() => null);
+          const after = await getProgressState(page)
+            .then(summarizeProgressState)
+            .catch(() => null);
+          writeReport(`${variant.variant.toLowerCase()}-${device}-next-hand-stall.json`, {
+            generatedAt: new Date().toISOString(),
+            variant: variant.variant,
+            device,
+            hand,
+            before: summarizeProgressState(before),
+            after,
+            nextHandDebug,
+            nextHandWarnings: nextHandWarnings.slice(-20),
+            browserErrors: browserErrors.slice(-20),
+          });
+          throw error;
+        }
         await expect(page.getByTestId("decision-panel")).toBeVisible({ timeout: 20_000 });
       }
     }

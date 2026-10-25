@@ -35,6 +35,7 @@ import { exposeBrowserGameplayState } from "./qa/exposeBrowserGameplayState.js";
 import MobileQaDebugPanel from "./qa/MobileQaDebugPanel.jsx";
 import { assertNoCrossVariantStateLeak } from "./qa/assertNoCrossVariantStateLeak.js";
 import { getTablePhaseColors, resolveTablePresentationPhase } from "./game/tablePhaseColors.js";
+import { canStartNextHand } from "./game/nextHandStartGate.js";
 import {
   startHandHistoryRecord,
   appendHandHistoryAction,
@@ -8135,21 +8136,23 @@ export default function App() {
   const startNextHand = useCallback(
     ({ dealerOverride = null, prevPlayers = null } = {}) => {
       const currentPhase = phaseRef.current ?? phase;
-      const allowedStartPhases = new Set([
-        SAFE_RESET_PHASE,
-        "INIT",
-        "HAND_RESULT",
-        "SHOWDOWN",
-        "WAITING_NEXT_HAND",
-        "TABLE_FINISHED",
-        "TOURNAMENT_END",
-        "TOURNAMENT_FINAL",
-      ]);
       // Legacy draw callbacks can publish BET after the result. The recorded
       // settlement for this exact hand is authoritative, and resets on deal.
       const tournamentHandSettled = modeRef.current === "tournament-mtt" &&
         handIdRef.current && tournamentCompletedHandIdRef.current === handIdRef.current;
-      if (handCountRef.current > 0 && !allowedStartPhases.has(currentPhase) && !tournamentHandSettled) {
+      // A late draw-controller callback can publish BET after a cash result is
+      // saved. The visible, saved result still belongs to the current hand, so
+      // its Next Hand button must remain usable. dealNewHand resets the saved
+      // marker before another click can start a second hand.
+      const cashHandSettled = modeRef.current !== "tournament-mtt" &&
+        handResultVisible && handSavedRef.current && Boolean(handIdRef.current);
+      if (!canStartNextHand({
+        currentPhase,
+        handCount: handCountRef.current,
+        resetPhase: SAFE_RESET_PHASE,
+        tournamentHandSettled,
+        cashHandSettled,
+      })) {
         console.warn("[HAND] stale next-hand trigger ignored", {
           phase: currentPhase,
           handId: handIdRef.current,
@@ -8320,6 +8323,7 @@ export default function App() {
       buildCashNextHandSnapshot,
       dealerIdx,
       gameVariant,
+      handResultVisible,
       isCashCpuLifecycleEnabled,
       mode,
       phase,

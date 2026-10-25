@@ -51,14 +51,14 @@ export default function HeroBustOverlay({
           <p className="text-sm text-rose-200">{heroPayoutText}</p>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-3" data-testid="mtt-hero-bust-itm">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">In the Money</h3>
             <span className="text-sm text-slate-300">
               {inMoneyPlacements.length ? `${inMoneyPlacements.length} players` : "No payouts"}
             </span>
           </div>
-          <div className="space-y-2 max-h-64 overflow-y-auto">
+          <div className="space-y-2 max-h-64 overflow-y-auto" data-testid="mtt-hero-bust-itm-list">
             {inMoneyPlacements.length === 0 ? (
               <p className="text-sm text-slate-400">No players reached the payout positions.</p>
             ) : (
@@ -92,7 +92,7 @@ export default function HeroBustOverlay({
         ) : null}
 
         </div>
-        <div className="flex shrink-0 justify-center border-t border-white/10 px-4 py-3">
+        <div className="flex shrink-0 justify-center border-t border-white/10 px-4 py-3" data-testid="mtt-hero-bust-footer">
           <button
             type="button"
             onClick={onBackToMenu}

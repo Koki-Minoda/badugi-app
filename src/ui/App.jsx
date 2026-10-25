@@ -5415,7 +5415,7 @@ export default function App() {
           opponent?.personality?.label ?? opponent?.personalityId ?? "Balanced";
         return {
           id: `cpu-${idx}`,
-          name: opponent?.name ?? cpuCharacter.name,
+          name: opponent?.displayName ?? opponent?.name ?? cpuCharacter.name,
           cpuCharacterId: cpuCharacter.id,
           cpuStyle: opponent?.personalityId ?? cpuCharacter.style,
           avatarUrl: cpuCharacter.avatarUrl,

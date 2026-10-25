@@ -17,4 +17,9 @@ describe("VariantCardAvailability", () => {
     expect(screen.getByTestId("variant-availability-badge").textContent).toContain("検証中");
     expect(screen.getByTestId("variant-availability-reason").textContent).toMatch(/Badugi-family/);
   });
+
+  it("shows the Archie rule in Japanese when Japanese is selected", () => {
+    render(<VariantCardAvailability availability={getVariantAvailability("D07")} language="ja" />);
+    expect(screen.getByTestId("variant-availability-reason").textContent).toMatch(/9以上のペア/);
+  });
 });

@@ -60,8 +60,8 @@
     "description": "高いBadugiを目指す特殊なトリプルドローです。通常のBadugiとは逆方向の評価になります。"
   },
   "D07": {
-    "name": "Archie TD",
-    "description": "ペアやホイール条件を含むArchie系のトリプルドローです。"
+    "name": "Archie Triple Draw",
+    "description": "5枚で最大3回交換。9以上のペアでハイ、8以下のA-5ローでローが成立します。両方不成立ならポットを均等に分けます。"
   },
   "S01": {
     "name": "2-7 Single Draw",

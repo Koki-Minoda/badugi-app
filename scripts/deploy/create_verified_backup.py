@@ -27,7 +27,8 @@ def _digest(path: Path) -> str:
 
 
 def _database_settings(app_dir: Path) -> tuple[list[str], dict[str, str], str]:
-    values = {**dotenv_values(app_dir / "backend" / ".env"), **os.environ}
+    # Match backend/app/core/config.py: the running service loads the repository-root .env.
+    values = {**dotenv_values(app_dir / ".env"), **os.environ}
     if values.get("BACKEND_DB_DRIVER", "mysql").lower() not in {"mysql", "mariadb"}:
         raise RuntimeError("production backup requires a MySQL database")
     name = values.get("BACKEND_DB_NAME") or "mgx_prod"

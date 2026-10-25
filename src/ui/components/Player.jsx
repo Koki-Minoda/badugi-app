@@ -605,8 +605,17 @@ export default function Player({
         style={{
           padding: "var(--player-pad, 10px)",
           gap: "var(--player-gap, 8px)",
-          ...(layoutProfile?.layoutGroup === "stud" && !compact
+          ...((layoutProfile?.layoutGroup === "stud" ||
+            layoutProfile?.layoutGroup === "draw-lowball-5card" ||
+            layoutProfile?.layoutGroup === "badugi") && !compact
             ? { width: "100%", minWidth: 0, "--player-card-gap": "3px" }
+            : {}),
+          ...(isHero && !compact && layoutProfile?.layoutGroup === "draw-lowball-5card"
+            ? {
+                "--card-w": "clamp(34px, 2.8vw, 38px)",
+                "--card-h": "clamp(48px, 3.92vw, 53px)",
+                "--card-font-size": "clamp(12px, 1.1vw, 15px)",
+              }
             : {}),
           ...(compact
             ? {

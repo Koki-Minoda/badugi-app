@@ -122,7 +122,7 @@ import {
   normalizeAppVariantId,
 } from "./game/appVariantRouting.js";
 import { buildBetSizingModel } from "./game/betSizing.js";
-import { getVariantLayoutProfile } from "./game/layoutGroups.js";
+import { getVariantLayoutProfile, LAYOUT_GROUPS } from "./game/layoutGroups.js";
 import { resolveEffectiveControllerSnapshot, syncTournamentBadugiSession } from "./game/controllerSnapshotResolver.js";
 import { createAppGameController } from "./game/createAppGameController.js";
 import {
@@ -13705,6 +13705,14 @@ export default function App() {
       )
     : 0;
   const seatLayouts = useMemo(() => {
+    const drawCashLayouts = [
+      "absolute bottom-[-2%] left-1/2 -translate-x-1/2 w-[min(31%,240px)]", // Hero (BTN)
+      "absolute bottom-[27%] left-0 w-[min(30%,220px)]", // SB
+      "absolute top-[7%] left-0 w-[min(30%,220px)]", // BB
+      "absolute top-0 left-1/2 -translate-x-1/2 w-[min(31%,240px)]", // UTG
+      "absolute top-[7%] right-0 w-[min(30%,220px)]", // MP
+      "absolute bottom-[27%] right-0 w-[min(30%,220px)]", // CO
+    ];
     const cashLayouts = [
       "absolute bottom-[-2%] left-1/2 -translate-x-1/2 w-[clamp(190px,24vw,270px)]", // Hero (BTN)
       "absolute bottom-[27%] left-[1.5%] w-[clamp(160px,20vw,240px)]", // SB
@@ -13722,8 +13730,15 @@ export default function App() {
       "absolute top-[17%] left-[86%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // MP
       "absolute bottom-[10%] left-[86%] -translate-x-1/2 w-[clamp(136px,16vw,198px)]", // CO
     ];
-    return mode === "tournament-mtt" ? tournamentLayouts : cashLayouts;
-  }, [mode]);
+    const isDrawCashLayout =
+      layoutProfile?.layoutGroup === LAYOUT_GROUPS.BADUGI ||
+      layoutProfile?.layoutGroup === LAYOUT_GROUPS.DRAW_LOWBALL_5CARD;
+    return mode === "tournament-mtt"
+      ? tournamentLayouts
+      : isDrawCashLayout
+        ? drawCashLayouts
+        : cashLayouts;
+  }, [layoutProfile, mode]);
 
   const {
     tableOuterBg,

@@ -282,9 +282,12 @@ export class SpecialDrawEngine extends DeuceToSevenTripleDrawEngine {
     const player = state?.players?.[seatIndex];
     if (!state || typeof seatIndex !== "number" || !player || player.folded || player.sittingOut) return null;
     if (state.actingPlayerIndex !== null && state.actingPlayerIndex !== seatIndex) return null;
+    const standPatWithSingleDrawBadugi = this.specialConfig.mode === "badugiLow" &&
+      this.maxDrawRounds === 1 &&
+      evaluateBadugiHand({ cards: player.hand ?? [] }).metadata?.size === 4;
     const discardIndexes = this.specialConfig.handCardCount === 5
       ? choosePairOrLowDiscardIndexes(player.hand ?? [], this.specialConfig.split?.lowType ?? "27")
-      : chooseBadugiDiscardIndexes(player.hand ?? []);
+      : standPatWithSingleDrawBadugi ? [] : chooseBadugiDiscardIndexes(player.hand ?? []);
     if (state.street === "DRAW") {
       return {
         seatIndex,

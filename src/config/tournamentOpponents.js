@@ -397,5 +397,10 @@ export function getTournamentOpponentForSeat(stageId = "store", index = 0) {
   const numericIndex = Number.isFinite(Number(index))
     ? Math.trunc(Number(index))
     : 0;
-  return roster[((numericIndex % roster.length) + roster.length) % roster.length];
+  const profile = roster[((numericIndex % roster.length) + roster.length) % roster.length];
+  const appearance = Math.floor(Math.max(0, numericIndex) / roster.length) + 1;
+  return {
+    ...profile,
+    displayName: appearance === 1 ? profile.name : `${profile.name} ${appearance}`,
+  };
 }

@@ -216,11 +216,26 @@ async function runHands(page: Page, handCount: number) {
         drawClicks: result.drawClicks,
       });
 
+      const settledHand = await page.evaluate(() => {
+        const state = window.__BADUGI_E2E__?.getStateSnapshot();
+        return { handCount: state?.handCount, handId: state?.handId };
+      });
       const nextHand = page.getByRole("button", { name: /next hand|次のハンド/i }).first();
       await expect(nextHand).toBeVisible({ timeout: 10_000 });
       await nextHand.click({ timeout: 5_000 });
-      await expect(page.getByTestId("hand-result-overlay").first()).toBeHidden({ timeout: 15_000 });
-      await expect(page.getByTestId("decision-panel")).toBeVisible({ timeout: 20_000 });
+      await expect.poll(async () => page.evaluate(() =>
+        window.__BADUGI_E2E__?.getStateSnapshot()?.handCount,
+      ), { timeout: 15_000 }).toBe(settledHand.handCount + 1);
+      const newHandId = await page.evaluate(() => window.__BADUGI_E2E__?.getStateSnapshot()?.handId);
+      expect(newHandId).not.toBe(settledHand.handId);
+      const resultOverlay = page.getByTestId("hand-result-overlay").first();
+      if (await resultOverlay.isVisible()) {
+        // A short-stacked Hero can post the blind and settle the new hand
+        // before the overlay has time to disappear. It must show that new hand.
+        await expect(resultOverlay).toContainText(newHandId.toUpperCase());
+      } else {
+        await expect(page.getByTestId("decision-panel")).toBeVisible({ timeout: 20_000 });
+      }
     }
 
     const unexpectedResponses = failedResponses.filter(

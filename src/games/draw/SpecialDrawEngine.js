@@ -163,7 +163,7 @@ const VARIANT_CONFIGS = {
   },
   archie_triple_draw: {
     gameId: "archie_triple_draw",
-    displayName: "Archie TD",
+    displayName: "Archie Triple Draw",
     variantId: "D07",
     evaluatorTag: "archie",
     maxDrawRounds: 3,

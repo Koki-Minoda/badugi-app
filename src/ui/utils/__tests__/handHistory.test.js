@@ -214,6 +214,12 @@ describe("handHistory", () => {
       labelPart: "Hidugi",
     },
     {
+      variantId: "D07",
+      variantName: "Archie TD",
+      hand: ["AS", "2D", "3C", "4H", "8S"],
+      labelPart: "A-5 Low",
+    },
+    {
       variantId: "S04",
       variantName: "Badugi Single Draw",
       hand: ["AS", "2D", "3C", "4H"],
@@ -257,7 +263,6 @@ describe("handHistory", () => {
       variantId: "D04",
       seats: [{ seat: 0, name: "Hero", startStack: 500 }],
     });
-
     const record = finalizeHandHistoryRecord({
       players: [{ stack: 600, hand }],
       pots: [{ potIndex: 0, potAmount: 100, payouts: [{ seatIndex: 0, payout: 100, hand }] }],
@@ -294,6 +299,26 @@ describe("handHistory", () => {
     expect(record.pots[0].winners[0].handLabel).toBe("Full House");
     expect(record.pots[1].winners[0].handLabel).toBe("Hidugi 4-card (A-A-A-A)");
     expect(record.pots[1].winners[0].evaluation.metadata.size).toBe(4);
+  });
+
+  it.each([
+    { variantId: "D07", hand: ["9S", "9H", "2D", "3C", "4H"], high: true, low: false },
+    { variantId: "archie_triple_draw", hand: ["AS", "2D", "3C", "4H", "8S"], high: false, low: true },
+  ])("records Archie component qualifications for $variantId", ({ variantId, hand, high, low }) => {
+    startHandHistoryRecord({
+      handId: `${variantId}-qualification`,
+      variantId,
+      seats: [{ seat: 0, name: "Hero", startStack: 500 }],
+    });
+    const record = finalizeHandHistoryRecord({
+      players: [{ stack: 600, hand }],
+      pots: [{ potIndex: 0, potAmount: 100, payouts: [{ seatIndex: 0, payout: 100, hand }] }],
+    });
+    const evaluation = record.seats[0].evaluation;
+    expect(evaluation.metadata.splitMode).toBe("component");
+    expect(evaluation.metadata.components.archieHigh.qualifies).toBe(high);
+    expect(evaluation.metadata.components.archieLow.metadata.qualifies).toBe(low);
+    expect(record.pots[0].winners[0].evaluation).toEqual(evaluation);
   });
 
   it("defines and validates the minimum D01 replay fields", () => {

@@ -2,7 +2,7 @@ import { evaluateBadugi } from "../../games/badugi/utils/badugiEvaluator.js";
 import { evaluateBadugiHand } from "../../games/evaluators/badugi.js";
 import { evaluateHighHand } from "../../games/evaluators/high.js";
 import { evaluateLowHand, formatLowHandLabel } from "../../games/evaluators/low.js";
-import { evaluateBadeucey, evaluateBadacey } from "../../games/evaluators/split.js";
+import { evaluateBadeucey, evaluateBadacey, evaluateArchie } from "../../games/evaluators/split.js";
 
 let currentRecord = null;
 let seqCounter = 0;
@@ -104,6 +104,11 @@ function isBadaceyVariant(variantId) {
   );
 }
 
+function isArchieVariant(variantId) {
+  const normalized = normalizeVariantId(variantId);
+  return normalized === "D07" || normalized === "archie_triple_draw";
+}
+
 function evaluateVariantHand(hand = [], variantId = "badugi") {
   if (isDeuceToSevenVariant(variantId)) {
     const evaluation = evaluateLowHand({ cards: hand, lowType: "27" });
@@ -133,6 +138,9 @@ function evaluateVariantHand(hand = [], variantId = "badugi") {
   }
   if (isBadaceyVariant(variantId)) {
     return evaluateBadacey({ cards: hand });
+  }
+  if (isArchieVariant(variantId)) {
+    return evaluateArchie({ cards: hand });
   }
   return evaluateBadugi(hand);
 }

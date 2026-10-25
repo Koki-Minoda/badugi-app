@@ -16,6 +16,7 @@ const COMPONENT_TONES = {
   lowA5: "cyan",
   archieHigh: "amber",
   archieLow: "cyan",
+  archieChop: "emerald",
   board: "amber",
   draw: "cyan",
 };

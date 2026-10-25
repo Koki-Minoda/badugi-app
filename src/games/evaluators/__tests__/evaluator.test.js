@@ -7,7 +7,9 @@ import {
   evaluateBadacey,
   evaluateBadeucey,
   evaluateHiLoEight,
+  evaluateArchie,
 } from "../../evaluators/split.js";
+import { ArchieTripleDrawEngine } from "../../draw/SpecialDrawEngine.js";
 
 describe("High-hand evaluator", () => {
   it("detects straight flush beating four of a kind", () => {
@@ -361,6 +363,23 @@ describe("A-5 lowball evaluator regression", () => {
 });
 
 describe("Split evaluator", () => {
+  it("uses the same Archie high and low qualification as showdown", () => {
+    const engine = new ArchieTripleDrawEngine();
+    const hands = [
+      { cards: ["9S", "9H", "2D", "3C", "4H"], high: true, low: false },
+      { cards: ["8S", "8H", "2D", "3C", "4H"], high: false, low: false },
+      { cards: ["AS", "2D", "3C", "4H", "8S"], high: false, low: true },
+      { cards: ["AS", "2D", "3C", "4H", "9S"], high: false, low: false },
+    ];
+    for (const { cards, high, low } of hands) {
+      const evaluation = evaluateArchie({ cards });
+      expect(evaluation).toEqual(engine.evaluateShowdownHand(cards));
+      expect(evaluation.metadata.components.archieHigh.qualifies).toBe(high);
+      expect(evaluation.metadata.components.archieLow.metadata.qualifies).toBe(low);
+      expect(evaluateHand({ cards, gameType: "D07" })).toEqual(evaluation);
+    }
+  });
+
   it("returns Badugi and 2-7 low metadata for Badeucey", () => {
     const result = evaluateBadeucey({
       cards: ["7S", "5D", "4C", "3H", "2S"],

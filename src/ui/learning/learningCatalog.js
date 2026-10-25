@@ -50,7 +50,7 @@ Object.assign(outcomes, {
   splitA5: text('ポットの半分ずつをBadugiとA-5ローで争います。それぞれ別のカードを使えます。', 'Half the pot goes to Badugi, half to A-5 low. Each half can use different cards.'),
   split27: text('ポットの半分ずつをBadugi（Aは高い）と2-7ローで争います。2-7側はAが高く、ストレートとフラッシュは不利です。', 'Split between Ace-high Badugi and 2-7 low. Aces are high and straights/flushes count against the 2-7 half.'),
   hidugi: text('スートの異なるカードを多く揃え、同枚数なら高いランクで勝負します。同じランクも使え、4枚のAが最強です。', 'Use as many distinct suits as possible. Repeated ranks play; four aces is best.'),
-  archie: text('ハイは9のペア以上、ローは8以下の異なる5ランクが条件。片側だけ成立なら総取り。両側とも不成立なら、最も強いハイが総取りします。', 'High needs a pair of nines or better; low needs five distinct ranks eight or lower. A lone qualifying half scoops. If neither qualifies, best high takes all.'),
+  archie: text('ハイは9のペア以上、ローは8以下の異なる5ランクが条件。片側だけ成立なら総取り。両側とも不成立なら、残ったプレイヤーでポットを均等に分けます。', 'High needs a pair of nines or better; low needs five distinct ranks eight or lower. A lone qualifying half scoops. If neither qualifies, remaining players split the pot equally.'),
   dramahaHigh: text('半分はOmahaのハイ、半分は手札5枚のハイで争います。', 'Half for Omaha high, half for the high hand in your five hole cards.'),
   dramaha27: text('半分はOmahaのハイ、半分は手札5枚の2-7ローで争います。', 'Split between Omaha high and 2-7 low in your five hole cards.'),
   dramahaA5: text('半分はOmahaのハイ、半分は手札5枚のA-5ローで争います。', 'Split between Omaha high and A-5 low in your five hole cards.'),

@@ -333,7 +333,11 @@ jobs:
           MGX_CANDIDATE_MIX_QA: "1"
           MGX_EXPECTED_SERVED_COMMIT: ${{ github.sha }}
           MGX_CANDIDATE_MIX_REPORT_DIR: reports/release-candidate-mix
-        run: bash scripts/ci/run-with-backend.sh npx playwright test --config playwright.release-candidate.config.js
+        run: |
+          bash scripts/ci/run-with-backend.sh bash -c '
+            npx playwright test --config playwright.release-candidate.config.js &&
+            npx playwright test --config playwright.release-candidate-phase.config.js
+          '
       - name: Upload candidate browser evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -341,6 +345,7 @@ jobs:
           name: release-candidate-browser-qa
           path: |
             test-results/release-candidate/
+            test-results/release-candidate-phase/
             reports/release-candidate-mix/
           if-no-files-found: ignore
           retention-days: 30

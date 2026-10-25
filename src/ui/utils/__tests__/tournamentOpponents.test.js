@@ -28,13 +28,17 @@ describe("tournament opponent profiles", () => {
     expect(worldOpponent.tierId).toBe("worldmaster");
   });
 
-  it("gives all 17 CPU entrants in an 18-player tournament distinct visible names", () => {
-    const names = Array.from({ length: 17 }, (_, seat) =>
-      getTournamentOpponentForSeat("store", seat).displayName,
-    );
-    expect(new Set(names).size).toBe(names.length);
-    expect(names[0]).toBe(getTournamentOpponentForSeat("store", 0).name);
-    expect(names[5]).toBe(`${names[0]} 2`);
+  it("gives every CPU entrant in the production fields a distinct visible name", () => {
+    for (const [stageId, cpuCount] of [["store", 17], ["local", 44], ["world", 274]]) {
+      const names = Array.from({ length: cpuCount }, (_, seat) =>
+        getTournamentOpponentForSeat(stageId, seat).displayName,
+      );
+      expect(new Set(names).size).toBe(names.length);
+      if (stageId === "store") {
+        expect(names[0]).toBe(getTournamentOpponentForSeat(stageId, 0).name);
+        expect(names[5]).toBe(`${names[0]} 2`);
+      }
+    }
   });
 
   it("falls back safely for unknown profile ids and stages", () => {

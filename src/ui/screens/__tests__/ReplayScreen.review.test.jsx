@@ -80,12 +80,12 @@ describe("ReplayScreen review integration", () => {
     );
 
     const panel = await screen.findByTestId("replay-review-panel");
-    expect(panel.textContent).toContain("Replay Review");
+    expect(panel.textContent).toContain("リプレイの振り返り");
     expect(panel.textContent).toContain("Final call review");
-    expect(panel.textContent).toContain("良かった点");
-    expect(panel.textContent).toContain("改善点");
-    expect(screen.getByTestId("replay-review-reason").textContent).toContain("Bust hand");
-    expect(screen.getByTestId("replay-review-timeline-marker").textContent).toContain("Bust hand");
+    expect(panel.textContent).toContain("確認できること");
+    expect(panel.textContent).toContain("見直す点");
+    expect(screen.getByTestId("replay-review-reason").textContent).toContain("脱落したハンド");
+    expect(screen.getByTestId("replay-review-timeline-marker").textContent).toContain("脱落したハンド");
 
     const targetRow = screen.getByTestId("replay-event-row-1");
     await waitFor(() => expect(targetRow.getAttribute("data-review-highlight")).toBe("true"));

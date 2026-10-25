@@ -68,7 +68,7 @@ describe("replayReviewContract", () => {
     expect(isReplayReviewContract(contract)).toBe(true);
     expect(contract.reviewMode).toBe("cash");
     expect(contract.tags).toEqual(expect.arrayContaining(["cash", "showdown", "2-7"]));
-    expect(contract.improvements.join(" ")).toContain("straight trap");
+    expect(contract.improvements.join(" ")).toContain("ショーダウン");
     expect(contract).not.toHaveProperty("placement");
     expect(contract).not.toHaveProperty("payout");
     expect(contract).not.toHaveProperty("bustHand");
@@ -87,6 +87,18 @@ describe("replayReviewContract", () => {
     });
 
     expect(contract.tags).toEqual(expect.arrayContaining(["a-5", "wheel-pressure", "smooth-low"]));
-    expect(contract.positives.join(" ")).toContain("wheel pressure");
+    expect(contract.positives.join(" ")).toContain("交換とベットの順序");
+  });
+
+  it("keeps English replay guidance in English and tied to recorded actions", () => {
+    const contract = buildReplayReviewContract({
+      reviewMode: "tournament",
+      locale: "en",
+      keyHand: { handId: "en-hand", reason: "draw-decision", variantId: "badugi", heroAction: "draw" },
+    });
+    expect(contract.title).toBe("Draw decision review");
+    expect(contract.summary).toContain("cards you kept");
+    expect(contract.positives.join(" ")).toContain("cards drawn");
+    expect(JSON.stringify(contract)).not.toMatch(/[ぁ-んァ-ン一-龯]/);
   });
 });

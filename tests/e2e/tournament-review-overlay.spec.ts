@@ -67,6 +67,14 @@ test.describe("Tournament Review result overlay", () => {
     await expect(overlay.getByTestId("mtt-tournament-review")).toContainText("Recorded facts");
     await expect(overlay.getByTestId("mtt-tournament-review")).not.toContainText("保存されたハンド");
     await expect(overlay.getByTestId("mtt-back-to-menu")).toHaveText("Back to Menu");
+    await overlay.getByTestId("mtt-tournament-review-replay").first().click();
+    const replayReview = page.getByTestId("replay-review-panel");
+    await expect(replayReview).toContainText("Replay Review");
+    await expect(replayReview).toContainText("Review points");
+    await expect(replayReview).toContainText("Questions to revisit");
+    await expect(replayReview).not.toContainText(/[ぁ-んァ-ン一-龯]/);
+    await page.getByRole("button", { name: "Back to Results" }).click();
+    await expect(overlay).toBeVisible();
   });
 
   test("short landscape keeps localized results scrollable and menu control reachable", async ({ page }) => {
@@ -86,6 +94,14 @@ test.describe("Tournament Review result overlay", () => {
         return { dialogHeight: dialog?.getBoundingClientRect().height ?? 0, windowHeight: window.innerHeight };
       });
       expect(dimensions.dialogHeight).toBeLessThanOrEqual(dimensions.windowHeight);
+      await overlay.getByTestId("mtt-tournament-review-replay").first().click();
+      const replayReview = page.getByTestId("replay-review-panel");
+      await expect(replayReview).toBeVisible();
+      await expect(replayReview).toContainText(language === "ja" ? "リプレイの振り返り" : "Replay Review");
+      const back = page.getByRole("button", { name: language === "ja" ? "結果へ戻る" : "Back to Results" });
+      await expect(back).toBeInViewport();
+      await back.click();
+      await expect(overlay).toBeVisible();
     }
   });
 
@@ -138,7 +154,8 @@ test.describe("Tournament Review result overlay", () => {
     await replayCta.click();
     await expect(page.getByTestId("hand-replay-screen")).toBeVisible({ timeout: 20000 });
     await expect(page.getByTestId("replay-review-panel")).toBeVisible();
-    await expect(page.getByTestId("replay-review-panel")).toContainText("Replay Review");
+    await expect(page.getByTestId("replay-review-panel")).toContainText("リプレイの振り返り");
+    await expect(page.getByRole("button", { name: "結果へ戻る" })).toBeVisible();
     await expect(page.getByTestId("replay-review-reason")).toBeVisible();
     await expect(page.getByTestId("replay-review-timeline-marker")).toBeVisible();
     const replayState = await page.evaluate(() => window.__BADUGI_E2E__?.getReplayState?.() ?? null);

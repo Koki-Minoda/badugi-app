@@ -289,6 +289,7 @@ export function TournamentReviewSection({
                               keyHand: hand,
                               replayRef: hand.replayRef,
                               variantId: hand.variantId,
+                            locale: language,
                             }),
                           })
                         }

@@ -14300,14 +14300,15 @@ export default function App() {
     return (
       <>
         <ReplayScreen
+          language={language}
           handId={replayHandId}
           target={replayTarget}
           onBack={handleBackFromReplayToHistory}
           onClose={handleExitReplayToMenu}
           backLabel={
             replayTarget?.replayReview?.reviewMode === "tournament"
-              ? "Back to Results"
-              : "Back to History"
+              ? (language === "ja" ? "結果へ戻る" : "Back to Results")
+              : (language === "ja" ? "履歴へ戻る" : "Back to History")
           }
         />
         <SaveFailureNotice language={language} />

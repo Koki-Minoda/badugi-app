@@ -383,30 +383,42 @@ async function advanceFromCompletedHand(page: Page) {
     .getByRole("button", { name: /Next Hand|次のハンド/i })
     .last();
   await expect(nextHand).toBeVisible({ timeout: 10_000 });
+  const waitForAdvance = () => page.waitForFunction(
+    (previousHandId) => {
+      const api = window.__BADUGI_E2E__;
+      const state = api?.getStateSnapshot?.() ?? null;
+      const snapshot = state?.controllerSnapshot ?? null;
+      const handId = snapshot?.handId ?? state?.handId ?? null;
+      const hud = api?.getTournamentHudState?.() ?? null;
+      const resultVisible = Boolean(
+        document.querySelector('[data-testid="hand-result-pot"]'),
+      );
+      if (hud?.isFinished || hud?.heroBusted) return true;
+      return !resultVisible && Boolean(handId) && handId !== previousHandId;
+    },
+    previous.handId,
+    { timeout: 10_000 },
+  );
   await nextHand.click({ timeout: 5_000 }).catch(() => {});
   try {
-    await page.waitForFunction(
-      (previousHandId) => {
-        const api = window.__BADUGI_E2E__;
-        const state = api?.getStateSnapshot?.() ?? null;
-        const snapshot = state?.controllerSnapshot ?? null;
-        const handId = snapshot?.handId ?? state?.handId ?? null;
-        const hud = api?.getTournamentHudState?.() ?? null;
-        const resultVisible = Boolean(
-          document.querySelector('[data-testid="hand-result-pot"]'),
-        );
-        if (hud?.isFinished || hud?.heroBusted) return true;
-        return !resultVisible && Boolean(handId) && handId !== previousHandId;
-      },
-      previous.handId,
-      { timeout: 10_000 },
-    );
+    await waitForAdvance();
   } catch (error) {
     const diagnostic = await page.evaluate(() => ({
       nextHand: window.__BADUGI_E2E__?.getNextHandDebug?.() ?? null,
       hud: window.__BADUGI_E2E__?.getTournamentHudState?.() ?? null,
       resultVisible: Boolean(document.querySelector('[data-testid="hand-result-pot"]')),
     }));
+    // A scheduled break can start between the initial overlay check and the
+    // click. In that case Next Hand must remain blocked until the player ends it.
+    if (Number(diagnostic.hud?.breakState?.endsAt) > Date.now()) {
+      expect(diagnostic.resultVisible).toBe(true);
+      await expect(breakOverlay).toBeVisible({ timeout: 5_000 });
+      await page.getByRole("button", { name: "休憩を終了して続ける" }).click();
+      await expect(breakOverlay).toBeHidden();
+      await nextHand.click({ timeout: 5_000 });
+      await waitForAdvance();
+      return;
+    }
     throw new Error(`Next hand did not start: ${JSON.stringify(diagnostic)}`, {
       cause: error,
     });

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { APP_URL, deleteAuthenticatedSession, openAuthenticatedGame } from "./authHelper";
 
-for (const variant of ["D01", "D04", "D06", "S03", "S04", "badugi"]) {
+for (const variant of ["D01", "D02", "D04", "D06", "S01", "S02", "S03", "S04", "badugi"]) {
   test(`${variant} keeps six seat boxes separate on desktop tables`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     const session = await openAuthenticatedGame(page, `${APP_URL}?variant=${variant}&mode=cash&mgxQa=mobile`);
@@ -27,6 +27,8 @@ for (const variant of ["D01", "D04", "D06", "S03", "S04", "badugi"]) {
         expect(overlaps, `${viewport.width}×${viewport.height}: ${JSON.stringify(seats)}`).toEqual([]);
         if (variant === "D04") {
           await page.screenshot({ path: testInfo.outputPath(`badeucey-${viewport.width}x${viewport.height}.png`) });
+        } else if (variant === "D01") {
+          await page.screenshot({ path: testInfo.outputPath(`two-seven-draw-${viewport.width}x${viewport.height}.png`) });
         }
       }
     } finally {

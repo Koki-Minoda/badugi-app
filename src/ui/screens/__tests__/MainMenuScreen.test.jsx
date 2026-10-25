@@ -122,7 +122,7 @@ describe("MainMenuScreen", () => {
     expect(screen.getByRole("button", { name: "ゲームを選択" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "ハンド履歴" })).toBeTruthy();
     expect(screen.getByText("キャッシュ・トナメ")).toBeTruthy();
-    expect(screen.getByText("保存対応")).toBeTruthy();
+    expect(screen.getByText("履歴から確認")).toBeTruthy();
 
     fireEvent.click(screen.getByTestId("menu-variant-select"));
     expect(screen.getByText("ゲームを選択")).toBeTruthy();

@@ -16,12 +16,13 @@ function resume(guest = false) {
       const c = new OpenFaceChineseController({ deck: saved.deck, ...saved.initial, handNumber: saved.handNumber - 1 }); c.startNewHand();
       for (const e of saved.events.filter(e => e.type === 'PLACE')) c.place(e.seat, e.placement);
       c.handId = saved.handId; c.sourceDeck = null;
+      c.cpuDecisions = Array.isArray(saved.cpuDecisions) ? saved.cpuDecisions : [];
       return c;
     }
   } catch { /* An incomplete/corrupt local save does not prevent a new table. */ }
   const c = new OpenFaceChineseController(); c.startNewHand(); return c;
 }
-function save(c) { localStorage.setItem(SESSION, JSON.stringify({ version: 1, handId: c.handId, handNumber: c.handNumber, deck: c.deck, initial: c.initial, events: c.events })); }
+function save(c) { localStorage.setItem(SESSION, JSON.stringify({ version: 1, handId: c.handId, handNumber: c.handNumber, deck: c.deck, initial: c.initial, events: c.events, cpuDecisions: c.cpuDecisions })); }
 function Card({ card, onClick, selected, testId }) {
   return <TableCard card={card} onClick={onClick} selected={selected} testId={testId} />;
 }

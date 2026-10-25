@@ -52,7 +52,8 @@ def compare_badugi_scores(player_score: Tuple[int, List[int]], opp_score: Tuple[
   opp_count, opp_ranks = opp_score
   if player_count != opp_count:
     return 1 if player_count > opp_count else -1
-  for player_rank, opp_rank in zip(player_ranks, opp_ranks):
+  # Compare the highest active card first, then the next highest on a tie.
+  for player_rank, opp_rank in zip(sorted(player_ranks, reverse=True), sorted(opp_ranks, reverse=True)):
     if player_rank != opp_rank:
       return 1 if player_rank < opp_rank else -1
   return 0
@@ -60,7 +61,7 @@ def compare_badugi_scores(player_score: Tuple[int, List[int]], opp_score: Tuple[
 
 def _score_key(score: Tuple[int, Sequence[int]]) -> tuple[int, int, int, int, int]:
   count, ranks_raw = score
-  ranks = tuple(ranks_raw)
+  ranks = tuple(sorted(ranks_raw, reverse=True))
   padded = ranks + (13,) * (4 - len(ranks))
   return (count, *(13 - rank for rank in padded))
 

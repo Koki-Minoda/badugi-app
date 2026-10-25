@@ -32,7 +32,7 @@ class StartingHandRange:
 
 def _score_key(score: tuple[int, list[int]] | tuple[int, tuple[int, ...]]) -> tuple[int, int, int, int, int]:
     count, ranks_raw = score
-    ranks = tuple(ranks_raw)
+    ranks = tuple(sorted(ranks_raw, reverse=True))
     padded = ranks + (13,) * (4 - len(ranks))
     # Higher tuple is better: more made cards, then lower high card, etc.
     return (count, *(13 - rank for rank in padded))

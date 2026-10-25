@@ -80,7 +80,7 @@ def _best_badugi_keep(hand: list) -> list:
         if not subset:
             continue
         c, r = evaluate_badugi(subset)
-        if c > best_count or (c == best_count and sum(sorted(r)) < sum(sorted(best_ranks))):
+        if c == len(subset) and compare_badugi_scores((c, r), (best_count, best_ranks)) > 0:
             best_count, best_ranks, best_keep = c, r, subset
     return best_keep
 
@@ -92,10 +92,15 @@ def _draw_toward_badugi(hand: list, draw_count: int, deck: list) -> tuple[list, 
         return hand, []
     keep = _best_badugi_keep(hand)
     # Cards not in keep are candidates for discard (worst first)
+    if len(deck) < draw_count:
+        raise ValueError("Insufficient deck for the requested Badugi draw")
     discard_cands = [c for c in hand if c not in keep]
+    # A legal action can intentionally break a made hand. Fill the requested
+    # count with the highest kept cards rather than adding extra cards.
+    discard_cands.extend(sorted(keep, reverse=True))
     discarded = discard_cands[:draw_count]
     kept = [c for c in hand if c not in discarded]
-    new_cards = [deck.pop() for _ in range(min(draw_count, len(deck)))]
+    new_cards = [deck.pop() for _ in range(draw_count)]
     return kept + new_cards, discarded
 
 
@@ -227,7 +232,8 @@ class DualAgentBadugiEnv:
             self.draw_round += 1
             self.phase = "BET"
             self.raise_count = 0
-            self.current_bet = BIG_BET  # big-bet rounds post-draw
+            # No opening bet exists until an actor actually posts it.
+            self.current_bet = 0
             self.hero_bet = 0
             self.opp_bet = 0
 
@@ -429,7 +435,7 @@ class DualAgentBadugiEnv:
             self.hero_bet += paid
             self.pot += paid
             return 0.05 + 0.10 * max(0.0, strength - pot_odds)
-        bet_size = SMALL_BET if self.draw_round == 0 else BIG_BET
+        bet_size = SMALL_BET if self.draw_round < 2 else BIG_BET
         if action == _BET:
             paid = min(bet_size, self.hero_stack)
             self.current_bet = paid
@@ -465,7 +471,7 @@ class DualAgentBadugiEnv:
             opp_action = _CALL if to_call > 0 else _CHECK
 
         to_call = max(0, self.current_bet - self.opp_bet)
-        bet_size = SMALL_BET if self.draw_round == 0 else BIG_BET
+        bet_size = SMALL_BET if self.draw_round < 2 else BIG_BET
 
         if opp_action == _FOLD:
             return True, 0.35

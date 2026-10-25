@@ -1,3 +1,4 @@
+import { buildNonModelDecisionTrace } from "../../ai/qa/nonModelDecisionTrace.js";
 import { combinations } from "../evaluators/core.js";
 import {
   compareChineseScore,
@@ -160,9 +161,14 @@ export class ChinesePokerController {
     this.handId += 1;
     this.phase = "set";
     this.results = null;
+    const cpuDecisions = [];
     this.players = activeSeats.map((seat, index) => {
       const hand = deck.slice(index * 13, index * 13 + 13);
+      const startedAt = Date.now();
       const arrangement = autoArrangeChineseHand(hand);
+      if (!seat.isHero) cpuDecisions.push({ seatIndex: index, inferenceTrace: buildNonModelDecisionTrace({
+        variantId: "chinese_poker", tierId: null, phase: "PLACEMENT", reason: "arrangement-search", startedAt,
+      }) });
       return {
         ...seat,
         hand,
@@ -188,6 +194,7 @@ export class ChinesePokerController {
         initialHand: [...player.hand],
       })),
       events: [{ type: "HAND_START", sequence: 0 }],
+      cpuDecisions,
       results: null,
       endedAt: null,
     };

@@ -133,11 +133,18 @@ def evaluate_lowball(hand: Sequence[Card], family: DrawFamily) -> LowballFeature
     )
 
 
+def _comparison_ranks(hand: Sequence[Card], family: DrawFamily) -> tuple[int, ...]:
+    counts = Counter(1 if family == "low-a5" and rank == 14 else rank for rank, _suit in hand)
+    # Within a category compare the made group first, then the kickers.
+    # For two pair, the higher pair precedes the lower pair.
+    return tuple(rank for rank, _count in sorted(counts.items(), key=lambda item: (-item[1], -item[0])))
+
+
 def compare_lowball(left: Sequence[Card], right: Sequence[Card], family: DrawFamily) -> int:
     left_eval = evaluate_lowball(left, family)
     right_eval = evaluate_lowball(right, family)
-    left_key = (left_eval.category, left_eval.ranks_desc)
-    right_key = (right_eval.category, right_eval.ranks_desc)
+    left_key = (left_eval.category, _comparison_ranks(left, family))
+    right_key = (right_eval.category, _comparison_ranks(right, family))
     if left_key < right_key:
         return 1
     if left_key > right_key:
@@ -221,7 +228,7 @@ def discard_indexes_for_family(hand: Sequence[Card], family: DrawFamily, target_
             extras = [index for index in range(len(hand)) if index not in discards]
             extras.sort(key=lambda index: (hand[index][0] if family == "low-27" else (1 if hand[index][0] == 14 else hand[index][0])), reverse=True)
             discards.extend(extras[: target_count - len(discards)])
-    if features.category == 0 and features.highest_rank <= (7 if family == "low-27" else 5):
+    if target_count is None and features.category == 0 and features.highest_rank <= (7 if family == "low-27" else 5):
         return []
     return sorted(discards)
 

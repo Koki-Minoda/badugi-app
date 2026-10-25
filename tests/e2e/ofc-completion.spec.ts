@@ -35,6 +35,11 @@ test('OFC: ten hands, immutable streets, reload, scores and exact replay',async(
       const records=await page.evaluate(()=>JSON.parse(localStorage.getItem('mgx.ofc.history.v1')!));
       expect(records.length).toBe(hand);expect(records[0].result.points.reduce((a:number,b:number)=>a+b,0)).toBe(0);
       expect(replayOfcHistory(records[0]).valid).toBe(true);
+      expect(records[0].cpuDecisions.length).toBe(records[0].events.filter((e:any)=>e.type==='PLACE'&&e.seat===1).length);
+      for (const row of records[0].cpuDecisions) {
+        expect(row.inferenceTrace).toMatchObject({variantId:'ofc',phase:'PLACEMENT',status:'not-connected',usedModelId:null});
+        expect(row.inferenceTrace.elapsedMs).toBeGreaterThanOrEqual(0);
+      }
       if(hand===1)await page.screenshot({path:info.outputPath('ofc-result.png'),fullPage:true});
       if(hand<10)await next.click();
     }

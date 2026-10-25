@@ -253,6 +253,8 @@ jobs:
           bash scripts/ci/run-with-backend.sh npx playwright test \
             tests/e2e/production-cash-playability.spec.ts \
             tests/e2e/fixed-limit-opening-bet.spec.ts \
+            tests/e2e/seat-hud-navigation.spec.ts \
+            tests/e2e/draw-seat-spacing.spec.ts \
             --project=badugi-flow \
             --workers=1
       - name: Upload Badugi cash playability evidence

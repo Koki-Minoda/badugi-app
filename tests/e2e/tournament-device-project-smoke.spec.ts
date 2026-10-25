@@ -204,7 +204,7 @@ test("portrait and landscape keep tournament result and replay controls usable",
     await expectUsable(page, "mtt-tournament-review-replay");
     await page.getByTestId("mtt-tournament-review-replay").first().click();
     await expect(page.getByTestId("hand-replay-screen")).toBeVisible();
-    const back = page.getByRole("button", { name: "Back to Results" });
+    const back = page.getByRole("button", { name: /^(Back to Results|結果へ戻る)$/ });
     await back.scrollIntoViewIfNeeded();
     await expect(back).toBeVisible();
     await back.click();

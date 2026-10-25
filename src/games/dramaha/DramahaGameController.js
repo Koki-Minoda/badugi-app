@@ -1,4 +1,5 @@
 import NLHGameController from "../nlh/NLHGameController.js";
+import { evaluateBadugiHand } from "../evaluators/badugi.js";
 import { createDramahaGameDefinition } from "./DramahaGameDefinition.js";
 import {
   compareDramahaBoard,
@@ -26,6 +27,18 @@ function normalizeDiscardIndexes(indexes = [], handLength = 5, maxDiscard = hand
   return [...new Set(indexes)]
     .filter((idx) => Number.isInteger(idx) && idx >= 0 && idx < handLength)
     .slice(0, Math.min(handLength, Math.max(0, maxDiscard)));
+}
+
+function chooseHidugiDrawIndexes(cards = [], maxDiscard = 3) {
+  const evaluation = evaluateBadugiHand({ cards, mode: "high" });
+  // A four-suit hand already qualifies. Without four suits, replace cards that
+  // cannot play in the best high Badugi subset and draw toward missing suits.
+  if ((evaluation.metadata?.size ?? 0) >= 4) return [];
+  const activeCards = new Set(evaluation.metadata?.cards ?? []);
+  return cards
+    .map((card, index) => activeCards.has(card) ? null : index)
+    .filter((index) => index !== null)
+    .slice(0, maxDiscard);
 }
 
 export class DramahaGameController extends NLHGameController {
@@ -73,6 +86,24 @@ export class DramahaGameController extends NLHGameController {
       variant: this.variant,
       variantLabel: variantConfig.label,
       maxDiscard: variantConfig.maxDiscard,
+    };
+  }
+
+  getCpuAction(state = this.getSnapshot(), seatIndex = state?.currentActor, options = {}) {
+    if (this.variant !== "dramaha_hidugi" || state?.street !== "DRAW") {
+      return super.getCpuAction(state, seatIndex, options);
+    }
+    const player = state?.players?.[seatIndex];
+    if (!player || player.folded || player.seatOut || player.hasDrawn || state.currentActor !== seatIndex) {
+      return null;
+    }
+    const cards = player.holeCards ?? player.hand ?? [];
+    const discardIndexes = chooseHidugiDrawIndexes(cards, getDramahaVariantConfig(this.variant).maxDiscard);
+    return {
+      seatIndex,
+      type: "DRAW",
+      discardIndexes,
+      metadata: { strategy: "hidugi-high-suits", drawCount: discardIndexes.length },
     };
   }
 

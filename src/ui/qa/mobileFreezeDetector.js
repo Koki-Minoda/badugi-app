@@ -156,7 +156,7 @@ export function buildMobileFreezeReport({
     actorSeat: controller.actorSeat,
   });
   const heroControlsVisible = Boolean(snapshot?.ui?.heroControlsVisible);
-  const nextHandVisible = Boolean(snapshot?.ui?.nextHandVisible) || visibleButtonText(/next hand/i);
+  const nextHandVisible = Boolean(snapshot?.ui?.nextHandVisible) || visibleButtonText(/next hand|次のハンド/i);
   const resultVisible = Boolean(snapshot?.ui?.resultVisible);
   const waitingForOtherPlayers = hasVisibleWaitingText() && !resultVisible && !nextHandVisible;
   const handDisplay =

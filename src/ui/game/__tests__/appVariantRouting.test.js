@@ -1,3 +1,4 @@
+import { GAME_VARIANTS } from '../../../games/config/variantCatalog.js';
 import { describe, expect, it } from "vitest";
 import {
   APP_VARIANT_IDS,
@@ -7,6 +8,11 @@ import {
 } from "../appVariantRouting.js";
 
 describe("appVariantRouting", () => {
+  it.each(GAME_VARIANTS)("routes catalog $id to its registered controller", (variant) => {
+    expect(normalizeAppVariantId(variant.id, null)).toBe(variant.engineKey);
+    expect(isControllerBackedAppVariant(variant.id)).toBe(true);
+  });
+
   it("normalizes App variant aliases to canonical ids", () => {
     expect(normalizeAppVariantId("badugi")).toBe(APP_VARIANT_IDS.BADUGI);
     expect(normalizeAppVariantId("D01")).toBe(APP_VARIANT_IDS.D01);

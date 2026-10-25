@@ -163,7 +163,7 @@ async function playStudHandWithVisibleHeroButtons(page: Page, variant: string, h
 }
 
 async function advanceToNextHandWithButton(page: Page, previousHandId: string | null) {
-  const nextButton = page.getByRole("button", { name: /next hand/i }).first();
+  const nextButton = page.getByRole("button", { name: /next hand|次のハンド/i }).first();
   await expect(nextButton).toBeVisible({ timeout: 15000 });
   await expect(nextButton).toBeEnabled({ timeout: 15000 });
   await nextButton.click();

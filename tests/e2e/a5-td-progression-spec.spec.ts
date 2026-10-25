@@ -53,7 +53,7 @@ test.describe("A-5 Triple Draw progression spec", () => {
     expect(result.status).toBe("PASS");
     expect(result.visitedDrawRounds).toEqual(expect.arrayContaining([1, 2, 3]));
     expect(result.visitedDrawRounds).not.toContain(4);
-    await expect(page.getByText("Hand Result").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId("hand-result-overlay").first()).toBeVisible({ timeout: 10000 });
     await expect(page.getByTestId("hand-result-pot").first()).toBeVisible({ timeout: 10000 });
   });
 });

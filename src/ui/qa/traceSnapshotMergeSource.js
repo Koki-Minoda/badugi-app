@@ -103,7 +103,7 @@ export function buildSnapshotMergeSourceTrace(extra = {}) {
       displayedPhase: document.querySelector('[data-testid="table-phase-badge"]')?.textContent?.trim() ?? null,
       resultVisible: visibleTestId("hand-result-pot"),
       nextHandVisible: [...document.querySelectorAll("button")].some((button) =>
-        /next hand/i.test(button.textContent ?? ""),
+        /next hand|次のハンド/i.test(button.textContent ?? ""),
       ),
     },
   };

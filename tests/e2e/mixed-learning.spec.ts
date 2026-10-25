@@ -1,3 +1,4 @@
+import { clickHeroAction } from './helpers/clickHeroAction';
 import { test, expect, type Page } from '@playwright/test';
 
 async function setup(page: Page, games: string[], handsPerGame = 1, hardBans = '') {
@@ -157,4 +158,33 @@ test('quiz supports answers, six-question scoring, retry and topic switching', a
   await page.getByRole('button', { name: 'ロー成立', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('正解：ロー成立');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+});
+
+
+test('cash MIX includes Big O and all six Dramaha games through real hand controls', async ({ page }) => {
+  test.setTimeout(240000);
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  const games = ['B07', 'H01', 'H02', 'H03', 'H04', 'H05', 'H06'];
+  const variants = ['big_o', 'dramaha_hi', 'dramaha_27', 'dramaha_a5', 'dramaha_zero', 'dramaha_hidugi', 'dramaha_badugi'];
+  await setup(page, games);
+  let names: string[] = [];
+  for (let index = 0; index < 8; index++) {
+    await expect.poll(async () => (await snapshot(page)).gameVariant).toBe(variants[index % variants.length]);
+    const current = await snapshot(page);
+    if (!index) names = current.players.map(player => player.name);
+    expect(current.players.map(player => player.name)).toEqual(names);
+    const deadline = Date.now() + 60000;
+    while (!(await page.getByTestId('hand-result-overlay').isVisible()) && Date.now() < deadline) {
+      const fold = page.getByTestId('action-fold');
+      if (await fold.isVisible() && await fold.isEnabled()) await clickHeroAction(page, 'action-fold');
+      expect(errors).toEqual([]);
+      await page.waitForTimeout(100);
+    }
+    await expect(page.getByTestId('hand-result-overlay')).toBeVisible();
+    const settled = await snapshot(page);
+    expect(settled.players.reduce((sum, player) => sum + player.stack, 0)).toBe(3000);
+    if (index < 7) await page.getByTestId('hand-result-next-hand').click();
+  }
+  expect(errors).toEqual([]);
 });

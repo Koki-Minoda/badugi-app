@@ -115,7 +115,7 @@ async function playHandWithoutFolding(page: Page) {
       await page.waitForTimeout(120);
       continue;
     }
-    if (await page.locator("text=Hand Result").first().isVisible().catch(() => false)) {
+    if (await page.getByTestId("hand-result-overlay").first().isVisible().catch(() => false)) {
       break;
     }
     await page.waitForTimeout(120);
@@ -124,7 +124,7 @@ async function playHandWithoutFolding(page: Page) {
   if (
     finalState?.phase !== "SHOWDOWN" &&
     finalState?.phase !== "HAND_RESULT" &&
-    !(await page.locator("text=Hand Result").first().isVisible().catch(() => false))
+    !(await page.getByTestId("hand-result-overlay").first().isVisible().catch(() => false))
   ) {
     throw new Error(`playHandWithoutFolding timed out: ${JSON.stringify(finalState)}`);
   }
@@ -154,7 +154,7 @@ const waitForShowdownLogs = (logs: string[], timeout = 60000, startIndex = 0) =>
   waitForCondition(() => logs.slice(startIndex).some((line) => hasStreet(line, "showdown")), timeout);
 
 const waitForHandEndUI = (page: Page, timeout = 60000) =>
-  page.waitForSelector("text=Hand Result", { timeout });
+  page.waitForSelector('[data-testid="hand-result-overlay"]', { timeout });
 
 async function waitForHandResolution(
   page: Page,
@@ -163,7 +163,7 @@ async function waitForHandResolution(
   timeout = 60000,
 ) {
   const deadline = Date.now() + timeout;
-  const handResultLocator = page.locator("text=Hand Result").first();
+  const handResultLocator = page.getByTestId("hand-result-overlay").first();
   while (Date.now() < deadline) {
     if (logs.slice(startIndex).some((line) => hasStreet(line, "showdown"))) {
       return;

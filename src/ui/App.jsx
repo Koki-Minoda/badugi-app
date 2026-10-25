@@ -14072,7 +14072,7 @@ export default function App() {
   const nextHandLabel = formatComment(
     cashRebuyRequired ? "rebuyNextHandButton" : "nextHandButton",
     {},
-    locale,
+    language,
   );
   function handleAuthSuccess() {
     setCurrentScreen("menu");

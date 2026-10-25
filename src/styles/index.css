@@ -79,3 +79,95 @@ select:not([multiple]):not([size]) {
   background-size: 12px 8px;
   background-repeat: no-repeat;
 }
+
+@media (max-height: 500px) and (orientation: landscape) {
+  [data-testid="mtt-hero-bust-overlay"] {
+    max-height: calc(100dvh - 0.5rem);
+    border-radius: 1rem;
+  }
+
+  [data-testid="mtt-hero-bust-scroll-content"] {
+    padding: 0.4rem 0.75rem;
+  }
+
+  [data-testid="mtt-hero-bust-scroll-content"] > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.35rem;
+    margin-bottom: 0;
+  }
+
+  [data-testid="mtt-hero-bust-scroll-content"] > header p {
+    display: none;
+  }
+
+  [data-testid="mtt-hero-bust-scroll-content"] > header > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  [data-testid="mtt-hero-bust-scroll-content"] > header h2 {
+    font-size: 0.875rem;
+    line-height: 1.2rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-top: 0;
+  }
+
+  [data-testid="mtt-hero-bust-hero-summary"] {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.3rem 0.6rem;
+  }
+
+  [data-testid="mtt-hero-bust-hero-summary"] > p {
+    font-size: 0.75rem;
+    line-height: 1.15rem;
+  }
+
+  [data-testid="mtt-hero-bust-hero-summary"] > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  [data-testid="mtt-hero-bust-itm"] > :not([hidden]) ~ :not([hidden]),
+  [data-testid="mtt-hero-bust-itm-list"] > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.2rem;
+    margin-bottom: 0;
+  }
+
+  [data-testid="mtt-hero-bust-itm"] h3 {
+    font-size: 0.875rem;
+    line-height: 1.2rem;
+  }
+
+  [data-testid="mtt-hero-bust-itm-list"] {
+    max-height: none;
+  }
+
+  [data-testid="mtt-hero-bust-itm-row"] {
+    border-radius: 0.6rem;
+    padding: 0.15rem 0.5rem;
+  }
+
+  [data-testid="mtt-hero-bust-itm-row"] .text-lg,
+  [data-testid="mtt-hero-bust-itm-row"] .text-base {
+    font-size: 0.8rem;
+    line-height: 1rem;
+  }
+
+  [data-testid="mtt-hero-bust-itm-row"] .text-sm {
+    font-size: 0.7rem;
+  }
+
+  [data-testid="mtt-hero-bust-footer"] {
+    padding: 0.25rem 0.5rem;
+  }
+
+  [data-testid="mtt-hero-bust-footer"] button {
+    min-height: 44px;
+    padding: 0.3rem 1rem;
+    font-size: 0.875rem;
+  }
+}

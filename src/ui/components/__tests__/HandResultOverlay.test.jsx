@@ -61,6 +61,19 @@ describe("HandResultOverlay", () => {
     expect(text).toContain("持ち点: 601 チップ");
     expect(text).not.toMatch(/¥|Choose your next action|Component pot|Eligible|No eligible winners/);
   });
+  test("explains an Archie pot shared by players without qualifying hands", () => {
+    render(<HandResultOverlay visible language="ja" summary={{ pot: 101, potDetails: [
+      { potIndex: 0, component: "archieChop", potAmount: 101, winners: [
+        { ...baseWinner, handLabel: "No qualifying hand", payout: 51 },
+        { ...baseWinner, seatIndex: 1, name: "Jun", handLabel: "No qualifying hand", payout: 50 },
+      ] },
+    ] }} />);
+    expect(screen.getByTestId("hand-result-pot-title").textContent).toContain("成立役なし・均等分配");
+    expect(screen.getAllByTestId("hand-result-winner-hand-label").map(node => node.textContent)).toEqual([
+      "成立役なし", "成立役なし",
+    ]);
+    expect(screen.getAllByTestId("hand-result-winner-name").map(node => node.textContent)).toEqual(["You", "Jun"]);
+  });
   test("keeps explicit continuation labels and English chip amounts", () => {
     render(<HandResultOverlay visible language="en" buttonLabel="Finish trial / choose a game" summary={baseSummary} />);
     expect(screen.getByTestId("hand-result-total").textContent).toBe("Pot 100 chips");

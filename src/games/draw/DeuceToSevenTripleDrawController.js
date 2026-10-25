@@ -244,6 +244,7 @@ const COMPONENT_LABELS = {
   lowA5: "A-5 Low half",
   archieHigh: "High half",
   archieLow: "A-5 Low half",
+  archieChop: "No qualifying hand · split pot",
 };
 
 function getComponentLabel(component) {

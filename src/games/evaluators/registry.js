@@ -6,6 +6,7 @@ import {
   evaluateBadeucey,
   evaluateBadacey,
   evaluateHiLoEight,
+  evaluateArchie,
 } from "./split.js";
 
 const tagHandlers = new Map();
@@ -18,6 +19,7 @@ registerEvaluatorTag("badugi-low", (params) => evaluateBadugiHand(params));
 registerEvaluatorTag("badugi-high", (params) => evaluateBadugiHand({ ...params, mode: "high" }));
 registerEvaluatorTag("split-badugi-27", (params) => evaluateBadeucey(params));
 registerEvaluatorTag("split-badugi-a5", (params) => evaluateBadacey(params));
+registerEvaluatorTag("archie", (params) => evaluateArchie(params));
 registerEvaluatorTag("hi-lo-8-split", (params) => evaluateHiLoEight(params));
 
 registerGameEvaluator("badugi", ["badugi-low"]);

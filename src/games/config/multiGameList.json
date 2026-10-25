@@ -433,7 +433,7 @@
         "priorityPhase":  1,
         "status":  "live",
         "engineKey":  "archie_triple_draw",
-        "description":  "Triple-draw split pot: nines-or-better high and eight-or-better A-5 low. If neither qualifies, best high wins."
+        "description":  "Triple-draw split pot: nines-or-better high and eight-or-better A-5 low. If neither qualifies, remaining players split the pot equally."
     },
     {
         "id":  "S01",

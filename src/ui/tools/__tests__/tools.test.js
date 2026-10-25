@@ -57,7 +57,7 @@ it('Badeucey uses ace-high Badugi while Badacey keeps ace low',()=>{
  expect(compareHands('badeucey',hands).parts[0].winners).toEqual([1]);
  expect(compareHands('badacey',hands).parts[0].winners).toEqual([0]);
 });
-it('Archie awards the whole pot to best high when neither side qualifies',()=>{
+it('Archie splits the pot when neither side qualifies',()=>{
  const result=compareHands('archie',[['8S','8H','KD','QC','10S'],['7S','7H','AD','JC','9S']]);
- expect(result.fallbackHigh).toBe(true);expect(result.shares).toEqual([1,0]);
+ expect(result.unqualifiedChop).toBe(true);expect(result.shares).toEqual([.5,.5]);
 });

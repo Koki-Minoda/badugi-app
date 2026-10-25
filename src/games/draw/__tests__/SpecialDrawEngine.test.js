@@ -175,7 +175,7 @@ describe("special draw engines", () => {
     expect(result.state.players[0].stack + result.state.players[1].stack).toBe(100);
   });
 
-  it("keeps Archie accounting stable when no component qualifies", () => {
+  it("splits Archie pots among remaining players when no component qualifies", () => {
     const engine = new ArchieTripleDrawEngine();
     const state = engine.initHand({
       seatConfig: ["HUMAN", "CPU"],
@@ -198,9 +198,39 @@ describe("special draw engines", () => {
 
     const result = engine.resolveShowdown(state);
 
-    expect(result.summary).toHaveLength(4);
+    expect(result.summary).toHaveLength(2);
+    expect(result.summary.every((pot) => pot.component === "archieChop")).toBe(true);
     expect(result.summary.reduce((sum, pot) => sum + pot.potAmount, 0)).toBe(101);
-    expect(result.state.players[0].stack + result.state.players[1].stack).toBe(101);
+    expect(result.summary[0].payouts.map((payout) => payout.payout)).toEqual([50, 50]);
+    expect(result.summary[1].payouts.map((payout) => payout.payout)).toEqual([1]);
+    expect(result.state.players.map((player) => player.stack)).toEqual([51, 50]);
+  });
+
+  it("awards an odd unqualified Archie chip clockwise from the button", () => {
+    const engine = new ArchieTripleDrawEngine();
+    const state = engine.initHand({
+      seatConfig: ["HUMAN", "CPU", "CPU"],
+      startingStack: 0,
+      dealerIndex: 0,
+    });
+    const hands = [
+      ["AS", "KH", "QD", "JC", "9S"],
+      ["KS", "QH", "JD", "9C", "8S"],
+      ["QS", "JH", "9D", "8C", "7S"],
+    ];
+    state.players = state.players.map((player, index) => ({
+      ...player, hand: hands[index], stack: 0, totalInvested: 0,
+    }));
+    state.pots = [{ amount: 101, eligiblePlayerIds: state.players.map((player) => player.playerId) }];
+
+    const result = engine.resolveShowdown(state);
+
+    expect(result.summary).toHaveLength(1);
+    expect(result.summary[0].component).toBe("archieChop");
+    expect(result.summary[0].payouts.map(({ seatIndex, payout }) => [seatIndex, payout])).toEqual([
+      [1, 34], [2, 34], [0, 33],
+    ]);
+    expect(result.state.players.map((player) => player.stack)).toEqual([33, 34, 34]);
   });
 
   it("registers all special draw engines", () => {

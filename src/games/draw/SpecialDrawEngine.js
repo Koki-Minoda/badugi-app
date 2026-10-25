@@ -3,6 +3,7 @@ import { orderDrawWinners } from "./drawWinnerOrder.js";
 import { evaluateBadugiHand } from "../evaluators/badugi.js";
 import { evaluateHighHand } from "../evaluators/high.js";
 import { evaluateLowHand, formatLowHandLabel } from "../evaluators/low.js";
+import { evaluateArchieHigh, evaluateArchieLow } from "../evaluators/split.js";
 import { compareEvaluations } from "../evaluators/registry.js";
 import { DeuceToSevenTripleDrawEngine } from "./DeuceToSevenTripleDrawEngine.js";
 
@@ -28,6 +29,7 @@ const COMPONENT_LABELS = {
   lowA5: "A-5 Low half",
   archieHigh: "High half",
   archieLow: "A-5 Low half",
+  archieChop: "No qualifying hand · split pot",
 };
 
 function getComponentLabel(component) {
@@ -236,23 +238,10 @@ export class SpecialDrawEngine extends DeuceToSevenTripleDrawEngine {
       return { ...evaluation, handName: formatLowHandLabel(evaluation, { lowType: "A5" }) };
     }
     if (component === "archieHigh") {
-      const evaluation = evaluateHighHand({ cards });
-      const qualifies = [
-        "one-pair",
-        "two-pair",
-        "three-of-a-kind",
-        "straight",
-        "flush",
-        "full-house",
-        "four-of-a-kind",
-        "straight-flush",
-      ].includes(evaluation.metadata?.category) &&
-        (evaluation.metadata?.category !== "one-pair" || (evaluation.metadata?.ranks?.[0] ?? 0) >= 9);
-      return { ...evaluation, qualifies, rankPrimary: qualifies ? evaluation.rankPrimary : Number.POSITIVE_INFINITY };
+      return evaluateArchieHigh({ cards });
     }
     if (component === "archieLow") {
-      const evaluation = evaluateLowHand({ cards, lowType: "A5", requireQualifier: 8 });
-      return { ...evaluation, handName: formatLowHandLabel(evaluation, { lowType: "A5" }) };
+      return evaluateArchieLow({ cards });
     }
     throw new Error(`Unknown special draw component: ${component}`);
   }
@@ -366,6 +355,45 @@ export class SpecialDrawEngine extends DeuceToSevenTripleDrawEngine {
       );
       const qualifyingComponents = components.filter((component) => contendersByComponent[component]?.length);
 
+      if (this.specialConfig.variantId === "D07" && !qualifyingComponents.length) {
+        const contenders = eligibleSeats.map((seatIndex) => evaluations[seatIndex]).filter(Boolean);
+        const component = "archieChop";
+        const componentLabel = getComponentLabel(component);
+        const payouts = splitAmountBySeatOrder(potAmount, contenders, working).map((winner) => {
+          const player = working.players[winner.seatIndex];
+          const stackBefore = player.stack ?? 0;
+          player.stack = stackBefore + winner.payout;
+          player.lastAction = `Collect ${winner.payout}`;
+          return {
+            seatIndex: winner.seatIndex,
+            name: player.name,
+            payout: winner.payout,
+            stackBefore,
+            stackAfter: player.stack,
+            handName: "No qualifying hand",
+            handLabel: "No qualifying hand",
+            hand: Array.isArray(player.hand) ? [...player.hand] : [],
+            evaluation: winner.evaluation,
+            component,
+            componentLabel,
+          };
+        });
+        summary.push({
+          potIndex,
+          sourcePotIndex: pot.potIndex ?? potIndex,
+          component,
+          componentLabel,
+          label: componentLabel,
+          oddChipAmount: 0,
+          oddChip: null,
+          eligibleSeatIndexes: [...eligibleSeats],
+          potAmount,
+          payouts,
+          evaluations: contenders,
+        });
+        return;
+      }
+
       if (qualifyingComponents.length) {
         components.forEach((component) => {
           if (contendersByComponent[component]?.length) return;
@@ -374,7 +402,7 @@ export class SpecialDrawEngine extends DeuceToSevenTripleDrawEngine {
           awardedAmounts[qualifyingComponents[0]] += amount;
         });
       } else if (components.length) {
-        // If neither side qualifies, the best unqualified high scoops.
+        // Non-Archie split games retain their existing unqualified fallback.
         const fallbackComponent = components[0];
         contendersByComponent[fallbackComponent] = eligibleSeats
           .map((seatIndex) => evaluations[seatIndex])

@@ -125,7 +125,8 @@ function getFeedbackKeyHands(entry) {
 }
 
 export default function HistoryScreen() {
-  const ja = useLanguage() === 'ja';
+  const language = useLanguage();
+  const ja = language === 'ja';
   const fmt = new Intl.DateTimeFormat(ja ? 'ja-JP' : 'en-US', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
   const navigate = useNavigate();
   const cashHands = useMemo(() => getHands({ limit: 100 }), []);
@@ -216,6 +217,7 @@ export default function HistoryScreen() {
           keyHand: spot,
           replayRef,
           variantId: spot.variantId ?? hand.variantId ?? hand.gameId,
+          locale: language,
         }),
       },
     };
@@ -255,6 +257,7 @@ export default function HistoryScreen() {
         handId={activeFeedbackReplay.handId}
         target={activeFeedbackReplay.target}
         initialHandSnapshot={activeFeedbackReplay.hand}
+        language={language}
         onBack={() => setActiveFeedbackReplay(null)}
         onClose={() => setActiveFeedbackReplay(null)}
       />

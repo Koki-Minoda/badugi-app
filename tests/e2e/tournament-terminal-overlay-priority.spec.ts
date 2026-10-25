@@ -52,6 +52,9 @@ for(const size of [{width:1440,height:900},{width:393,height:695},{width:852,hei
   }
   await expect(terminal).toBeVisible();
   await expect(page.getByTestId('hand-result-overlay')).toHaveCount(0);
+  if (outcome === 'hero-bust-fixture' && size.height <= 500) {
+   await expect(terminal.getByTestId('mtt-hero-bust-itm-row').first()).toBeInViewport({ratio:0.75});
+  }
   const state=await page.evaluate(()=>window.__BADUGI_E2E__.getTournamentHudState());
   expect(state.isFinished).toBe(true);expect(state.playersRemaining).toBe(1);
   expect(await page.evaluate(()=>window.__BADUGI_E2E__.getStateSnapshot().handId)).toMatch(/^table-1-h/);
@@ -61,7 +64,7 @@ for(const size of [{width:1440,height:900},{width:393,height:695},{width:852,hei
    expect(history.seats.reduce((sum,seat)=>sum+seat.startStack,0)).toBe(10);
    expect(history.seats.reduce((sum,seat)=>sum+seat.endStack,0)).toBe(10);
   }
-  const back=terminal.getByRole('button',{name:/back to menu/i});
+  const back=terminal.getByTestId('mtt-back-to-menu');
   const exit=await back.evaluate(button=>{
    const r=button.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
    return {top:r.top,bottom:r.bottom,left:r.left,right:r.right,height:r.height,reachable:hit===button||button.contains(hit)};

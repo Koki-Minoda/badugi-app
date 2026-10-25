@@ -41,7 +41,8 @@ if grep -q 'bWd4LXByb2Qtd3Mtc21va2U=' "$script"; then
 fi
 grep -q 'friend-match deep link did not return the current SPA asset' "$script"
 grep -q 'npm run test:build:onnx' "$script"
-test "$(grep -c -- '-o ServerAliveInterval=30 -o ServerAliveCountMax=20' "$workflow")" -eq 2
+test "$(grep -c -- '-o ServerAliveInterval=30 -o ServerAliveCountMax=20' "$workflow")" -eq 3
+grep -q 'scripts/deploy/create_verified_backup.py' "$workflow"
 grep -q 'mktemp -d /tmp/mgx-frontend-build' "$script"
 grep -q 'git archive --format=tar HEAD' "$script"
 # Match the literal guard against shared node_modules deletion.

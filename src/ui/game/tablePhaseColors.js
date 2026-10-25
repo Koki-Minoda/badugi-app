@@ -1,3 +1,15 @@
+export function resolveTablePresentationPhase({
+  controllerPhase,
+  controlsPhase,
+  legacyPhase,
+  resultVisible = false,
+  tableFinished = false,
+}) {
+  if (tableFinished) return "TABLE_FINISHED";
+  if (resultVisible) return "HAND_RESULT";
+  return controllerPhase || controlsPhase || legacyPhase || "BET";
+}
+
 export function getTablePhaseColors(phase = "BET") {
   const normalized = String(phase ?? "").toUpperCase();
   const isDraw = normalized === "DRAW" || normalized === "DRAWING";

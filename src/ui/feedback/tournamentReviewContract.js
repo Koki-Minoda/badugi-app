@@ -279,54 +279,28 @@ function hasShowdownEvidence(hand = {}) {
   );
 }
 
-function getReasonCopy(reason) {
-  switch (reason) {
-    case "bust-hand":
-      return {
-        title: "Bust hand",
-        description: "トーナメント終了につながった最終局面です。",
-      };
-    case "biggest-loss":
-      return {
-        title: "Biggest loss",
-        description: "チップ減少が最も大きかったハンドです。",
-      };
-    case "biggest-win":
-      return {
-        title: "Biggest win",
-        description: "チップ獲得が最も大きかったハンドです。",
-      };
-    case "hero-all-in":
-      return {
-        title: "Hero all-in",
-        description: "Heroが全チップを投入した重要局面です。",
-      };
-    case "showdown":
-      return {
-        title: "Showdown",
-        description: "ショーダウンまで進んだ判断確認用のハンドです。",
-      };
-    case "large-pot":
-      return {
-        title: "Large pot",
-        description: "大きなポットになったハンドです。",
-      };
-    case "draw-decision":
-      return {
-        title: "Draw decision",
-        description: "ドロー判断を振り返るためのハンドです。",
-      };
-    case "final-hand":
-      return {
-        title: "Final hand",
-        description: "大会の最後に記録されたハンドです。",
-      };
-    default:
-      return {
-        title: "Key hand",
-        description: "振り返り対象のハンドです。",
-      };
-  }
+const REASON_COPY = {
+  "bust-hand": { en: ["Bust hand", "The final hand that ended your tournament."], ja: ["脱落したハンド", "トーナメント終了につながった最終局面です。"] },
+  "biggest-loss": { en: ["Biggest loss", "The hand with your largest recorded chip loss."], ja: ["最大の損失", "チップ減少が最も大きかったハンドです。"] },
+  "biggest-win": { en: ["Biggest win", "The hand with your largest recorded chip gain."], ja: ["最大の獲得", "チップ獲得が最も大きかったハンドです。"] },
+  "hero-all-in": { en: ["Your all-in", "A key hand where you committed all your chips."], ja: ["オールイン", "あなたが全チップを投入した局面です。"] },
+  showdown: { en: ["Showdown", "A hand that reached showdown."], ja: ["ショーダウン", "ショーダウンまで進んだ判断確認用のハンドです。"] },
+  "large-pot": { en: ["Large pot", "A hand with a large pot."], ja: ["大きなポット", "大きなポットになったハンドです。"] },
+  "draw-decision": { en: ["Draw decision", "A hand where you can review your draw choice."], ja: ["交換の判断", "ドロー判断を振り返るためのハンドです。"] },
+  "final-hand": { en: ["Final hand", "The last hand saved for this tournament."], ja: ["最後のハンド", "大会の最後に記録されたハンドです。"] },
+  default: { en: ["Key hand", "A hand selected for review."], ja: ["注目ハンド", "振り返り対象のハンドです。"] },
+};
+
+function getReasonCopy(reason, language) {
+  const pair = (REASON_COPY[reason] ?? REASON_COPY.default);
+  return {
+    title: pair[language === "ja" ? "ja" : "en"][0],
+    description: pair[language === "en" ? "en" : "ja"][1],
+  };
+}
+
+export function getTournamentReasonLabel(reason, language) {
+  return getReasonCopy(reason, language).title;
 }
 
 function findHeroActionForReason(hand = {}, reason, heroSeat = 0) {
@@ -341,7 +315,7 @@ function findHeroActionForReason(hand = {}, reason, heroSeat = 0) {
   return heroActions[0];
 }
 
-function buildKeyHand({ hand, reason, label, title, description, heroSeat = 0 }) {
+function buildKeyHand({ hand, reason, label, title, description, heroSeat = 0, language }) {
   if (!getHandId(hand)) return null;
   const normalized = normalizeHand(hand, heroSeat);
   const selectedAction = findHeroActionForReason(hand, reason, heroSeat);
@@ -355,7 +329,7 @@ function buildKeyHand({ hand, reason, label, title, description, heroSeat = 0 })
     variantId: normalized.variantId,
     actionSeqRange: selectedRange,
   });
-  const copy = getReasonCopy(reason);
+  const copy = getReasonCopy(reason, language);
   const phase = normalizePhase(
     selectedAction?.phase ?? selectedAction?.street ?? hand.phase ?? hand.street,
   );
@@ -425,7 +399,7 @@ function mergeKeyHands(entries = []) {
   return [...merged.values()];
 }
 
-function buildTournamentKeyHands(hands = [], heroSeat = 0) {
+function buildTournamentKeyHands(hands = [], heroSeat = 0, language) {
   const safeHands = Array.isArray(hands) ? hands : [];
   const biggestWinHand = [...safeHands]
     .filter((hand) => getHandHeroNet(hand) > 0)
@@ -451,30 +425,30 @@ function buildTournamentKeyHands(hands = [], heroSeat = 0) {
   const biggestWin = buildKeyHand({
     hand: biggestWinHand,
     reason: "biggest-win",
-    label: "Biggest win",
     heroSeat,
+    language,
   });
   const biggestLoss = buildKeyHand({
     hand: biggestLossHand,
     reason: "biggest-loss",
-    label: "Biggest loss",
     heroSeat,
+    language,
   });
   const bust = buildKeyHand({
     hand: bustHand,
     reason: "bust-hand",
-    label: "Bust hand",
     heroSeat,
+    language,
   });
   const keyHands = mergeKeyHands([
     bust,
     biggestLoss,
     biggestWin,
-    buildKeyHand({ hand: heroAllInHand, reason: "hero-all-in", heroSeat }),
-    buildKeyHand({ hand: showdownHand, reason: "showdown", heroSeat }),
-    buildKeyHand({ hand: largePotHand, reason: "large-pot", heroSeat }),
-    buildKeyHand({ hand: drawDecisionHand, reason: "draw-decision", heroSeat }),
-    buildKeyHand({ hand: finalHand, reason: "final-hand", heroSeat }),
+    buildKeyHand({ hand: heroAllInHand, reason: "hero-all-in", heroSeat, language }),
+    buildKeyHand({ hand: showdownHand, reason: "showdown", heroSeat, language }),
+    buildKeyHand({ hand: largePotHand, reason: "large-pot", heroSeat, language }),
+    buildKeyHand({ hand: drawDecisionHand, reason: "draw-decision", heroSeat, language }),
+    buildKeyHand({ hand: finalHand, reason: "final-hand", heroSeat, language }),
   ]).slice(0, 8);
 
   return {
@@ -596,12 +570,17 @@ function findKeyHand(keyHands = [], reason) {
   ) ?? null;
 }
 
+function reviewText(language, japanese, english) {
+  return language === "en" ? english : japanese;
+}
+
 function buildLocalReviewSummary({
   feedbackStatus = {},
   handCount = 0,
   heroActionCount = 0,
   result = {},
   keyHands = [],
+  language,
 } = {}) {
   const biggestWin = findKeyHand(keyHands, "biggest-win");
   const biggestLoss = findKeyHand(keyHands, "biggest-loss");
@@ -610,14 +589,18 @@ function buildLocalReviewSummary({
   const facts = [
     reviewItem({
       kind: "fact",
-      text: `記録されたハンドは${handCount}件、Heroのアクションは${heroActionCount}件です。`,
+      text: reviewText(language,
+          `保存されたハンドは${handCount}件、あなたの操作は${heroActionCount}件です。`,
+        `${handCount} hands and ${heroActionCount} hero actions were saved.`),
     }),
   ];
   if (result.placement != null || Number.isFinite(result.payout)) {
     facts.push(
       reviewItem({
         kind: "fact",
-        text: `大会結果は${result.placement ?? "--"}位、獲得賞金は${toNumber(result.payout, 0)}です。`,
+        text: reviewText(language,
+          `大会結果は${result.placement ?? "--"}位、獲得賞金は${toNumber(result.payout, 0)}です。`,
+          `You finished in place ${result.placement ?? "--"} and won ${toNumber(result.payout, 0)}.`),
       }),
     );
   }
@@ -625,7 +608,9 @@ function buildLocalReviewSummary({
     facts.push(
       reviewItem({
         kind: "fact",
-        text: `Hand ${biggestWin.handId}で記録上最大のチップ増加（${biggestWin.heroNet >= 0 ? "+" : ""}${biggestWin.heroNet}）がありました。`,
+        text: reviewText(language,
+          `ハンド ${biggestWin.handId}で最も多くチップを獲得しました（${biggestWin.heroNet >= 0 ? "+" : ""}${biggestWin.heroNet}）。`,
+          `Hand ${biggestWin.handId} had your largest recorded chip gain (${biggestWin.heroNet >= 0 ? "+" : ""}${biggestWin.heroNet}).`),
         keyHand: biggestWin,
       }),
     );
@@ -634,7 +619,9 @@ function buildLocalReviewSummary({
     facts.push(
       reviewItem({
         kind: "fact",
-        text: `Hand ${biggestLoss.handId}で記録上最大のチップ減少（${biggestLoss.heroNet}）がありました。`,
+        text: reviewText(language,
+          `ハンド ${biggestLoss.handId}で最も多くチップを失いました（${biggestLoss.heroNet}）。`,
+          `Hand ${biggestLoss.handId} had your largest recorded chip loss (${biggestLoss.heroNet}).`),
         keyHand: biggestLoss,
       }),
     );
@@ -645,18 +632,22 @@ function buildLocalReviewSummary({
     goodPoints.push(
       reviewItem({
         kind: "interpretation",
-        text: `Hand ${biggestWin.handId}は獲得局面の判断過程を確認する候補です。`,
+        text: reviewText(language,
+          `ハンド ${biggestWin.handId}で、チップを獲得した時の判断を振り返れます。`,
+          `Review your decisions in hand ${biggestWin.handId}, where you gained the most chips.`),
         keyHand: biggestWin,
-        caveat: "チップ増加だけでは、その判断が最善だったとは断定できません。",
+        caveat: reviewText(language, "チップ増加だけでは、その判断が最善だったとは断定できません。", "A chip gain alone does not prove the decision was best."),
       }),
     );
   } else if (firstEvidenceHand) {
     goodPoints.push(
       reviewItem({
         kind: "interpretation",
-        text: `Hand ${firstEvidenceHand.handId}には具体的なアクション記録があり、判断過程を振り返れます。`,
+        text: reviewText(language,
+          `ハンド ${firstEvidenceHand.handId}には操作の記録があり、判断を振り返れます。`,
+          `Hand ${firstEvidenceHand.handId} has saved actions you can review.`),
         keyHand: firstEvidenceHand,
-        caveat: "大会順位や収支だけから判断の質は評価しません。",
+        caveat: reviewText(language, "大会順位や収支だけから判断の質は評価しません。", "Placement and winnings alone cannot measure decision quality."),
       }),
     );
   }
@@ -666,9 +657,11 @@ function buildLocalReviewSummary({
     improvementPoints.push(
       reviewItem({
         kind: "interpretation",
-        text: `Hand ${biggestLoss.handId}は損失局面の選択肢を比較する候補です。`,
+        text: reviewText(language,
+          `ハンド ${biggestLoss.handId}で、チップを失った時の選択肢を比べられます。`,
+          `Review the options you had in hand ${biggestLoss.handId}, where you lost the most chips.`),
         keyHand: biggestLoss,
-        caveat: "損失した事実だけでは、ミスだったとは断定できません。",
+        caveat: reviewText(language, "損失した事実だけでは、ミスだったとは断定できません。", "A loss alone does not prove a mistake."),
       }),
     );
   }
@@ -676,9 +669,11 @@ function buildLocalReviewSummary({
     improvementPoints.push(
       reviewItem({
         kind: "interpretation",
-        text: `Hand ${drawDecision.handId}のドロー枚数と、その時点の選択肢を再確認できます。`,
+        text: reviewText(language,
+          `ハンド ${drawDecision.handId}で交換した枚数と、その時に選べた操作を確認できます。`,
+          `Review how many cards you drew in hand ${drawDecision.handId} and what options you had.`),
         keyHand: drawDecision,
-        caveat: "最終結果だけではドロー判断の良否は決まりません。",
+        caveat: reviewText(language, "最終結果だけではドロー判断の良否は決まりません。", "The final result alone cannot judge a draw decision."),
       }),
     );
   }
@@ -688,14 +683,16 @@ function buildLocalReviewSummary({
     ? [
         reviewItem({
           kind: "next-action",
-          text: `Hand ${actionTarget.handId}をリプレイし、表示されたHero actionと当時のlegal actionsを比較してください。`,
+          text: reviewText(language,
+            `ハンド ${actionTarget.handId}をリプレイして、あなたの操作と、その時に選べた操作を比べてください。`,
+            `Replay hand ${actionTarget.handId} and compare your action with the legal options at that point.`),
           keyHand: actionTarget,
         }),
       ]
     : [
         reviewItem({
           kind: "next-action",
-          text: "次回はハンド履歴とHero actionが残る状態でプレイしてください。",
+          text: reviewText(language, "次回はハンド履歴と操作が保存される状態でプレイしてください。", "Play another tournament with hand history and your actions saved."),
         }),
       ];
 
@@ -710,8 +707,9 @@ function buildLocalReviewSummary({
     improvementPoints,
     interpretations: [...goodPoints, ...improvementPoints],
     nextActions,
-    causalDisclaimer:
+    causalDisclaimer: reviewText(language,
       "順位・ROI・単一ハンドの結果だけから、意思決定の良否や結果との因果関係は断定しません。",
+      "Placement, ROI and one hand's outcome alone cannot establish decision quality or causation."),
   };
 }
 
@@ -738,7 +736,7 @@ function normalizeAiEvidence(evidence, knownHands, heroActions) {
   return normalized.every(Boolean) ? normalized : null;
 }
 
-function normalizeAiItems(items, kind, knownHands, heroActions) {
+function normalizeAiItems(items, kind, knownHands, heroActions, language) {
   if (!Array.isArray(items)) return null;
   const normalized = items.slice(0, 4).map((item) => {
     if (!item || typeof item !== "object") return null;
@@ -752,37 +750,42 @@ function normalizeAiItems(items, kind, knownHands, heroActions) {
       caveat:
         kind === "interpretation"
           ? nullableString(item.caveat) ??
-            "結果だけから意思決定の良否や因果関係は断定できません。"
+            reviewText(language,
+              "結果だけから意思決定の良否や因果関係は断定できません。",
+              "The result alone cannot establish decision quality or causation.")
           : null,
     };
   });
   return normalized.every(Boolean) ? normalized : null;
 }
 
-function normalizeStructuredAiReview(response, keyHands, heroActions) {
+function normalizeStructuredAiReview(response, keyHands, heroActions, language) {
   const payload = response?.reviewV2 ?? response?.structuredReview ?? null;
   if (!payload || typeof payload !== "object" || Number(payload.schemaVersion) !== 2) {
     return { accepted: false, reason: "structured-review-v2-missing", summary: null };
   }
   const knownHands = new Set(keyHands.map((hand) => hand.handId));
-  const facts = normalizeAiItems(payload.facts, "fact", knownHands, heroActions);
+  const facts = normalizeAiItems(payload.facts, "fact", knownHands, heroActions, language);
   const goodPoints = normalizeAiItems(
     payload.goodPoints,
     "interpretation",
     knownHands,
     heroActions,
+    language,
   );
   const improvementPoints = normalizeAiItems(
     payload.improvementPoints,
     "interpretation",
     knownHands,
     heroActions,
+    language,
   );
   const nextActions = normalizeAiItems(
     payload.nextActions,
     "next-action",
     knownHands,
     heroActions,
+    language,
   );
   if (
     !facts ||
@@ -803,8 +806,9 @@ function normalizeStructuredAiReview(response, keyHands, heroActions) {
       improvementPoints,
       interpretations: [...goodPoints, ...improvementPoints],
       nextActions,
-      causalDisclaimer:
+      causalDisclaimer: reviewText(language,
         "AIの解釈は参考情報です。順位・ROI・結果だけから因果関係を断定しません。",
+        "AI interpretations are suggestions. Placement, ROI and results alone do not prove causation."),
     },
   };
 }
@@ -842,6 +846,7 @@ export function buildTournamentReviewContract({
   requestState = {},
   savedFeedback = null,
   hasAuth = false,
+  language,
 } = {}) {
   const safeHands = dedupeHandsById(hands, heroSeat);
   const tournamentId = getTournamentId(tournament);
@@ -853,7 +858,7 @@ export function buildTournamentReviewContract({
     collectHeroActions(hand, heroSeat).map((action) => normalizeAction(action, hand, heroSeat)),
   );
   const { bustHand, biggestWin, biggestLoss, keyHands, replayRefs } =
-    buildTournamentKeyHands(safeHands, heroSeat);
+    buildTournamentKeyHands(safeHands, heroSeat, language);
   const handCount = normalizedHands.length;
   const heroActionCount = heroActions.length;
   const aggregateHeroNet = normalizedHands.reduce((sum, hand) => sum + toNumber(hand.heroNet, 0), 0);
@@ -874,12 +879,14 @@ export function buildTournamentReviewContract({
     heroActionCount,
     result,
     keyHands,
+    language,
   });
   const rawAiResponse = requestState.response ?? savedFeedback?.response ?? null;
   const structuredAiReview = normalizeStructuredAiReview(
     rawAiResponse,
     keyHands,
     heroActions,
+    language,
   );
   const reviewSummary = structuredAiReview.accepted
     ? {

@@ -17,6 +17,7 @@ import {
   buildReplayReviewContract,
   isReplayReviewContract,
 } from "../feedback/replayReviewContract.js";
+import { getTournamentReasonLabel } from "../feedback/tournamentReviewContract.js";
 
 function formatTimestamp(ts) {
   if (!Number.isFinite(ts)) return "–";
@@ -150,28 +151,12 @@ function ReplayHighlightLegend() {
   );
 }
 
-function formatReviewReason(reason) {
-  switch (reason) {
-    case "bust-hand":
-      return "Bust hand";
-    case "biggest-loss":
-      return "Biggest loss";
-    case "biggest-win":
-      return "Biggest win";
-    case "hero-all-in":
-      return "All-in";
-    case "showdown":
-      return "Showdown";
-    case "draw-decision":
-      return "Draw decision";
-    case "large-pot":
-      return "Large pot";
-    default:
-      return "Key hand";
+function reviewMarkerLabel(reason, language) {
+  if (language === "ja") {
+    if (reason === "bust-hand") return "脱落したハンド";
+    if (reason === "draw-decision") return "交換の判断";
+    return "注目の操作";
   }
-}
-
-function reviewMarkerLabel(reason) {
   switch (reason) {
     case "bust-hand":
       return "Bust hand";
@@ -185,7 +170,7 @@ function reviewMarkerLabel(reason) {
   }
 }
 
-function ReplayReviewPanel({ review, onJumpToTarget }) {
+function ReplayReviewPanel({ review, onJumpToTarget, language }) {
   if (!review) return null;
   return (
     <details
@@ -197,7 +182,7 @@ function ReplayReviewPanel({ review, onJumpToTarget }) {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-sky-200">
-              Replay Review
+              {language === "ja" ? "リプレイの振り返り" : "Replay Review"}
             </p>
             <h2 className="mt-1 text-lg font-semibold text-white">{review.title}</h2>
           </div>
@@ -206,13 +191,13 @@ function ReplayReviewPanel({ review, onJumpToTarget }) {
               className="rounded-full border border-sky-200/40 bg-sky-200/15 px-2 py-1 font-semibold text-sky-50"
               data-testid="replay-review-reason"
             >
-              {formatReviewReason(review.reason)}
+              {getTournamentReasonLabel(review.reason, language)}
             </span>
             <span className="rounded-full border border-white/10 bg-black/20 px-2 py-1 text-slate-200">
-              {review.reviewMode}
+              {language === "ja" ? (review.reviewMode === "tournament" ? "大会" : "キャッシュ") : review.reviewMode}
             </span>
             <span className="rounded-full border border-white/10 bg-black/20 px-2 py-1 text-slate-200">
-              {review.severity}
+              {language === "ja" ? ({ high: "重要", medium: "確認", low: "参考" }[review.severity] ?? "参考") : review.severity}
             </span>
           </div>
         </div>
@@ -223,7 +208,7 @@ function ReplayReviewPanel({ review, onJumpToTarget }) {
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         <div className="rounded-xl bg-black/20 px-3 py-2">
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">
-            良かった点
+            {language === "ja" ? "確認できること" : "Review points"}
           </p>
           <ul className="mt-2 space-y-1 text-xs text-slate-200">
             {(review.positives ?? []).map((item) => (
@@ -233,7 +218,7 @@ function ReplayReviewPanel({ review, onJumpToTarget }) {
         </div>
         <div className="rounded-xl bg-black/20 px-3 py-2">
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-200">
-            改善点
+            {language === "ja" ? "見直す点" : "Questions to revisit"}
           </p>
           <ul className="mt-2 space-y-1 text-xs text-slate-200">
             {(review.improvements ?? []).map((item) => (
@@ -243,14 +228,6 @@ function ReplayReviewPanel({ review, onJumpToTarget }) {
         </div>
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        {(review.tags ?? []).slice(0, 6).map((tag) => (
-          <span
-            key={tag}
-            className="rounded-full border border-white/10 bg-black/20 px-2 py-1 text-[11px] text-slate-200"
-          >
-            {tag}
-          </span>
-        ))}
         {typeof onJumpToTarget === "function" ? (
           <button
             type="button"
@@ -258,7 +235,7 @@ function ReplayReviewPanel({ review, onJumpToTarget }) {
             onClick={onJumpToTarget}
             data-testid="replay-review-jump"
           >
-            Jump to review point
+            {language === "ja" ? "該当操作へ" : "Jump to review point"}
           </button>
         ) : null}
       </div>
@@ -395,6 +372,7 @@ function ReplayTableView({ frame, flashSeat = null, hoverSeat = null }) {
 }
 
 export default function ReplayScreen({
+  language = "ja",
   handId = null,
   target = null,
   replayReview = null,
@@ -474,8 +452,9 @@ export default function ReplayScreen({
       variantId: source.variantId,
       title: source.title,
       summary: source.summary,
+      locale: language,
     });
-  }, [replayReview, target]);
+  }, [language, replayReview, target]);
   const replayReviewTarget =
     effectiveReplayReview?.replayRef?.target ??
     effectiveReplayReview?.replayRef?.replayTarget ??
@@ -804,6 +783,7 @@ export default function ReplayScreen({
           {effectiveReplayReview ? (
             <ReplayReviewPanel
               review={effectiveReplayReview}
+              language={language}
               onJumpToTarget={
                 replayReviewFrameIndex >= 0
                   ? () => {
@@ -1079,7 +1059,7 @@ export default function ReplayScreen({
                         className="rounded-full border border-sky-200/50 bg-sky-300/15 px-2 py-0.5 text-[10px] text-sky-100"
                         data-testid="replay-review-timeline-marker"
                       >
-                        {reviewMarkerLabel(effectiveReplayReview.reason)}
+                        {reviewMarkerLabel(effectiveReplayReview.reason, language)}
                       </span>
                     ) : null}
                     {frame?.event?.type ?? "—"}

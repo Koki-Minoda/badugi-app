@@ -72,6 +72,20 @@ test('hand completion between the progress read and action selection is terminal
   expect(result.visitedPhases).toContain('HAND_RESULT');
 });
 
+test('tournament table finished after hero bust ends hand progression', async ({ page }) => {
+  await installDrawSnapshot(page, { currentActor: null, turn: null, nextTurn: null });
+  await page.evaluate(() => {
+    const snapshot = window.__BADUGI_E2E__.getStateSnapshot().controllerSnapshot;
+    snapshot.phase = 'TABLE_FINISHED';
+    snapshot.players[0] = { stack: 0, seatOut: true, folded: true, allIn: true };
+    // The badge may lag behind the terminal controller snapshot during bust settlement.
+    document.querySelector('[data-testid="table-phase-badge"]').textContent = 'BET | R1';
+  });
+  const progress = await getProgressState(page);
+  expect(progress.isTerminal).toBe(true);
+  expect((await playOneHandProgression(page, { maxSteps: 2 })).status).toBe('PASS');
+});
+
 
 test('action snapshot does not wait for a button removed during a phase change', async ({ page }) => {
   page.setDefaultTimeout(700);

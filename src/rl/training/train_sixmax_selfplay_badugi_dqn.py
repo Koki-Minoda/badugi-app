@@ -28,9 +28,7 @@ import sys
 import time
 from collections import deque
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
-import subprocess
 
 import numpy as np
 import torch
@@ -46,6 +44,7 @@ from rl.env.badugi_env_sixmax_profiled import ProfiledSixMaxBadugiEnv
 from rl.env.badugi_env_sixmax_selfplay import CALL, FOLD, RAISE, SixMaxBadugiEnv
 from rl.env.badugi_env_selfplay import _best_badugi_keep
 from rl.training.onnx_opponent_agent import OnnxOpponentAgent
+from rl.training.run_provenance import RunManifest, write_run_manifest
 from rl.training.sixmax_action_telemetry import (
     SixMaxActionTelemetry,
     betting_round_name,
@@ -190,22 +189,11 @@ def _sha256(path: Path) -> str | None:
     return digest.hexdigest()
 
 
-def _git_commit() -> str | None:
-    try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=PROJECT_ROOT, text=True, stderr=subprocess.DEVNULL
-        ).strip()
-    except (OSError, subprocess.CalledProcessError):
-        return None
-
-
-def _write_run_manifest(cfg: SixMaxSelfPlayConfig, output_dir: Path) -> Path:
+def _write_run_manifest(cfg: SixMaxSelfPlayConfig, output_dir: Path) -> RunManifest:
     pretrained = _resolve_checkpoint_path(cfg.pretrained) if cfg.pretrained else None
     opponent = _resolve_checkpoint_path(cfg.pretrained_opponent) if cfg.pretrained_opponent else None
     payload = {
         "schemaVersion": "badugi-sixmax-training-run-v1",
-        "generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "gitCommit": _git_commit(),
         "platform": platform.platform(),
         "python": platform.python_version(),
         "torch": torch.__version__,
@@ -232,9 +220,12 @@ def _write_run_manifest(cfg: SixMaxSelfPlayConfig, output_dir: Path) -> Path:
             ),
         },
     }
-    path = output_dir / "badugi_sixmax_run_manifest.json"
-    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf8")
-    return path
+    return write_run_manifest(
+        project_root=PROJECT_ROOT,
+        output_dir=output_dir,
+        stem="badugi_sixmax_run_manifest",
+        payload=payload,
+    )
 
 
 def _build_profile_envs(cfg: SixMaxSelfPlayConfig) -> tuple[ProfiledSixMaxBadugiEnv, ...]:
@@ -411,6 +402,7 @@ def _build_summary(
     action_telemetry: SixMaxActionTelemetry,
     opponent_updates: int,
     latest: Path,
+    run_manifest: RunManifest,
 ) -> dict:
     return {
         "episodes": int(cfg.total_episodes),
@@ -439,6 +431,7 @@ def _build_summary(
         "profile_mix_rate": float(cfg.profile_mix_rate),
         "training_profiles": list(cfg.training_profiles),
         "checkpoint": str(latest),
+        **run_manifest.metadata(),
         "obs_dim": 96,
         "n_actions": 6,
         "hidden_dim": cfg.hidden_dim,
@@ -590,7 +583,7 @@ def train_sixmax_selfplay_badugi_dqn(
     _seed_everything(cfg.seed)
     output_dir = Path(cfg.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    manifest_path = _write_run_manifest(cfg, output_dir)
+    run_manifest = _write_run_manifest(cfg, output_dir)
 
     # pretrained があれば checkpoint の hidden_dim を自動検出してロード
     # なければ cfg.hidden_dim でフレッシュスタート
@@ -909,6 +902,7 @@ def train_sixmax_selfplay_badugi_dqn(
                 ],
                 "training_profiles": list(cfg.training_profiles),
                 "replay_buffers_restored": False,
+                "training_provenance": run_manifest.metadata(),
             }
             hero.save(str(ckpt), training_state=checkpoint_state)
             hero.save(
@@ -934,6 +928,7 @@ def train_sixmax_selfplay_badugi_dqn(
                 action_telemetry=total_actions,
                 opponent_updates=opponent_updates,
                 latest=latest,
+                run_manifest=run_manifest,
             )
             (output_dir / "badugi_sixmax_dqn_latest_summary.json").write_text(
                 json.dumps(summary, indent=2) + "\n", encoding="utf8"
@@ -955,6 +950,7 @@ def train_sixmax_selfplay_badugi_dqn(
         ],
         "training_profiles": list(cfg.training_profiles),
         "replay_buffers_restored": False,
+        "training_provenance": run_manifest.metadata(),
     }
     hero.save(str(latest), training_state=final_training_state)
 
@@ -967,13 +963,14 @@ def train_sixmax_selfplay_badugi_dqn(
         action_telemetry=total_actions,
         opponent_updates=opponent_updates,
         latest=latest,
+        run_manifest=run_manifest,
     )
     summary["completed_episodes_before"] = completed_episodes_before
     summary["completed_episodes_total"] = completed_episodes_before + cfg.total_episodes
     summary["optimizer_restored"] = bool(hero.checkpoint_has_optimizer)
     summary["replay_buffers_restored"] = False
     summary["seed"] = cfg.seed
-    summary["run_manifest"] = str(manifest_path)
+    summary["run_manifest"] = str(run_manifest.path)
     (output_dir / "badugi_sixmax_dqn_latest_summary.json").write_text(
         json.dumps(summary, indent=2) + "\n", encoding="utf8"
     )

@@ -370,7 +370,7 @@
     },
     {
         "id":  "D05",
-        "name":  "Badacey TD",
+        "name":  "Badacey Triple Draw",
         "category":  "triple-draw",
         "holeCards":  5,
         "drawRounds":  3,

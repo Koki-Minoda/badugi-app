@@ -52,8 +52,8 @@
     "description": "Badugiと2-7ローの両方でポットを分け合うスプリットポットのトリプルドローです。"
   },
   "D05": {
-    "name": "Badacey TD",
-    "description": "BadugiとA-5ローの両方でポットを分け合うスプリットポットのトリプルドローです。"
+    "name": "Badacey Triple Draw",
+    "description": "5枚手札で最大3回交換し、A-5ローとBadugiでポットを分け合います。どちらもAを低いカードとして扱います。"
   },
   "D06": {
     "name": "Hidugi TD",

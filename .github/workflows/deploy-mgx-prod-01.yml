@@ -309,6 +309,42 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  release-candidate-browser-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - run: npm ci --legacy-peer-deps
+      - run: python -m pip install -e './backend[test]'
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run build
+      - name: Candidate MIX rotation and BET/DRAW mobile layout
+        env:
+          E2E_APP_URL: http://127.0.0.1:3000/
+          MGX_CANDIDATE_MIX_QA: "1"
+          MGX_EXPECTED_SERVED_COMMIT: ${{ github.sha }}
+          MGX_CANDIDATE_MIX_REPORT_DIR: reports/release-candidate-mix
+        run: bash scripts/ci/run-with-backend.sh npx playwright test --config playwright.release-candidate.config.js
+      - name: Upload candidate browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-candidate-browser-qa
+          path: |
+            test-results/release-candidate/
+            reports/release-candidate-mix/
+          if-no-files-found: ignore
+          retention-days: 30
+
   stud-razz-qa:
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -455,6 +491,7 @@ jobs:
       - core5-qa
       - cash-playability-qa
       - mobile-webkit-qa
+      - release-candidate-browser-qa
       - stud-razz-qa
       - nlh-qa
       - dramaha-qa

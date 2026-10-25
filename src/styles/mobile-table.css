@@ -93,6 +93,9 @@
 .mgx-game-context{min-width:0;align-items:center;height:20px;white-space:nowrap;overflow:hidden}
 .mgx-game-context>span:first-child{overflow:hidden;text-overflow:ellipsis}
 .mgx-game-context>span:last-child{flex-shrink:0}
+.mgx-game-context.has-mix{gap:4px}
+.mgx-game-context.has-mix>span:first-child,.mgx-game-context.has-mix>span:nth-child(2){flex:0 0 auto;overflow:visible}
+.mgx-game-context.has-mix>span:last-child{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .mgx-turn-message,.mgx-play.is-landscape .mgx-turn-message{height:34px;min-height:0;overflow:hidden}
 .mgx-action-space{display:grid;grid-template-rows:46px 48px;gap:6px;min-height:0}
 .mgx-action-setting,.mgx-action-setting>.mgx-amount-launch{width:100%;height:46px;min-height:0}

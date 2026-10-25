@@ -6,13 +6,13 @@
     "adapterSelectedPendingModels": 0,
     "note": "Selection diagnostics only; absent assets or variant mismatches do not imply these routes are used by every controller."
   },
-  "generatedAt": "2026-10-25T18:25:15.165Z",
-  "sourceCommit": "8d622fc91b7d5b89fdaf1bd486a415756d34b2bb",
+  "generatedAt": "2026-10-25T19:39:54.125Z",
+  "sourceCommit": "e2d94e22a45847df824664a2fc78ca4811dcef55",
   "trackedChanges": "",
   "scope": "Source registry, local assets and optional attributed browser samples. Inference does not prove semantic compatibility, strength, physical QA or release completion.",
   "runtimeEvidenceSource": {
     "file": "reports/readiness/all-five-tiers-175-runtime-20261026.json",
-    "sourceCommit": "b6e559d6bc94661a1fa8677c516b230a8d10229c",
+    "sourceCommit": "82cd9dee3da49395d7e37b433ed8d00d4c45a16f",
     "observedGoalRows": 175
   },
   "variantCount": 37,
@@ -507,7 +507,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 1
+            "elapsedMs": 0
           }
         ],
         "statusCounts": {
@@ -520,7 +520,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-nlh-fd95a-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "d33527f1f88ce0ed2675adddff04ecd84db63fffbe867fe14cc84d1efd95b8b8"
+        "evidenceSha256": "ddfb0814a1d963fc5ed0206f1b957888c70b435370d9cd1590bb740693cd3c5f"
       },
       "modeDeclarations": {
         "appVariantId": "nlh",
@@ -1446,7 +1446,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           }
         ],
         "statusCounts": {
@@ -1459,7 +1459,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-flh-9a5e0-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "76719b4097ca35522f80722110db3edfd8653bafacbad8ad22420d491a93fdad"
+        "evidenceSha256": "e20c3dc4c0d4974cccc95140b6d984650947f842a6f588dbd5ac9faa37f3b8cd"
       },
       "modeDeclarations": {
         "appVariantId": "flh",
@@ -3134,7 +3134,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 1
+            "elapsedMs": 0
           }
         ],
         "statusCounts": {
@@ -3147,7 +3147,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-plo-2e253-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "ef5441019f1785c4248c47ce5a3b42e4e89a4f14cccc181f7347f1fa017bb800"
+        "evidenceSha256": "01cbe899062ae04f87ba59fbd0b631626f1cd67b6bcaa85630c8fe484de6d131"
       },
       "modeDeclarations": {
         "appVariantId": "plo",
@@ -3261,7 +3261,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 1
+            "elapsedMs": 0
           }
         ],
         "statusCounts": {
@@ -3274,7 +3274,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-plo-ee397-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "28bdd35cf9d13b0f3a925336c26c58304142fb3e6fae2659ea269ebba5217fb1"
+        "evidenceSha256": "b12e04b2836954641f6e0367532525cc25bfab2d5a1afff97ecc6b1b2984e40d"
       },
       "modeDeclarations": {
         "appVariantId": "plo",
@@ -4635,7 +4635,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 1
+            "elapsedMs": 0
           }
         ],
         "statusCounts": {
@@ -4648,7 +4648,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-big-a1ba8-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "cd2cd85b968cc8fbb3921fd1b8b32fbe28e097e7922c6285798bb29e642be49d"
+        "evidenceSha256": "745c83934c3c0500da3dab27e9919a68e443e76b88ae16373d7b31ce0a5277e0"
       },
       "modeDeclarations": {
         "appVariantId": "big_o",
@@ -4755,7 +4755,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 1
+            "elapsedMs": 0
           }
         ],
         "statusCounts": {
@@ -4768,7 +4768,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-big-a1678-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "a742d627a5f42f0db151240cc5020209501aad00daed39400aa01f13df4127fa"
+        "evidenceSha256": "2db27dc0d683955d9b2c4183d5f25f31b6dccafffb3b1127f5f8c2671b6a1b69"
       },
       "modeDeclarations": {
         "appVariantId": "big_o",
@@ -4875,7 +4875,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 1
+            "elapsedMs": 0
           }
         ],
         "statusCounts": {
@@ -4888,7 +4888,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-big-c2bd8-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "c65fff601e30c2df4e42c866596b6b88fa936beb1e8f5417ac4507475df4b002"
+        "evidenceSha256": "89491cd97adcd670c1e61a3035e6895f5e7a4e6e4fc69b0980c264aec71358f1"
       },
       "modeDeclarations": {
         "appVariantId": "big_o",
@@ -5991,7 +5991,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 1
+            "elapsedMs": 0
           }
         ],
         "statusCounts": {
@@ -6004,7 +6004,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-flo-8ab31-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "0012f644dca489a9536f267fe986d2afd6ce2e52d48b77c2c780fa28f27a278d"
+        "evidenceSha256": "fd1766a64f871e8a7ef62308d0128cc392a56ba244617f3ee62a1ced0a3192a0"
       },
       "modeDeclarations": {
         "appVariantId": "flo8",
@@ -6351,7 +6351,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 1
+            "elapsedMs": 0
           }
         ],
         "statusCounts": {
@@ -6364,7 +6364,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-flo-47bcf-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "375ced2be30988ea3f57eddf04042ddc29e8b469e64e0289d76d2981cbc5f8b3"
+        "evidenceSha256": "e9d8b895b53deefa1889a59eda8e99aadab46368501b86e069c7d489a8da98b3"
       },
       "modeDeclarations": {
         "appVariantId": "flo8",
@@ -6562,7 +6562,7 @@
             "requestedModelId": null,
             "selectedModelId": "model-27draw-beginner-dqn-v1",
             "usedModelId": "model-27draw-beginner-dqn-v1",
-            "elapsedMs": 191
+            "elapsedMs": 241
           },
           {
             "variantId": "D01",
@@ -6606,7 +6606,7 @@
             "requestedModelId": null,
             "selectedModelId": "model-27draw-beginner-dqn-v1",
             "usedModelId": "model-27draw-beginner-dqn-v1",
-            "elapsedMs": 1
+            "elapsedMs": 0
           },
           {
             "variantId": "D01",
@@ -6617,7 +6617,7 @@
             "requestedModelId": null,
             "selectedModelId": "model-27draw-beginner-dqn-v1",
             "usedModelId": "model-27draw-beginner-dqn-v1",
-            "elapsedMs": 0
+            "elapsedMs": 1
           }
         ],
         "statusCounts": {
@@ -6630,7 +6630,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-deu-b02dc-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "8e2cb364274841d43bc9f5fac5340000e3b6dc9aba998eb71423b68d676d68ca"
+        "evidenceSha256": "9559378997cecac0f6d6270eaccf85266d856bbf6a135c266bfac0826da5700f"
       },
       "modeDeclarations": {
         "appVariantId": "deuce_to_seven_triple_draw",
@@ -6735,7 +6735,7 @@
           "DRAW"
         ],
         "phaseCoverage": true,
-        "decisionCount": 6,
+        "decisionCount": 10,
         "decisions": [
           {
             "variantId": "D01",
@@ -6746,7 +6746,7 @@
             "requestedModelId": null,
             "selectedModelId": "model-27draw-standard-dqn-v1",
             "usedModelId": "model-27draw-standard-dqn-v1",
-            "elapsedMs": 197
+            "elapsedMs": 199
           },
           {
             "variantId": "D01",
@@ -6758,6 +6758,50 @@
             "selectedModelId": "model-27draw-standard-dqn-v1",
             "usedModelId": "model-27draw-standard-dqn-v1",
             "elapsedMs": 0
+          },
+          {
+            "variantId": "D01",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-27draw-standard-dqn-v1",
+            "usedModelId": "model-27draw-standard-dqn-v1",
+            "elapsedMs": 1
+          },
+          {
+            "variantId": "D01",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-27draw-standard-dqn-v1",
+            "usedModelId": "model-27draw-standard-dqn-v1",
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "D01",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-27draw-standard-dqn-v1",
+            "usedModelId": "model-27draw-standard-dqn-v1",
+            "elapsedMs": 1
+          },
+          {
+            "variantId": "D01",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-27draw-standard-dqn-v1",
+            "usedModelId": "model-27draw-standard-dqn-v1",
+            "elapsedMs": 1
           },
           {
             "variantId": "D01",
@@ -6805,7 +6849,7 @@
           }
         ],
         "statusCounts": {
-          "used": 6
+          "used": 10
         },
         "usedModels": [
           "model-27draw-standard-dqn-v1"
@@ -6814,7 +6858,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-deu-1b4e2-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "3b4827f9cae34c0f50c3bab7d55fd8b829df3e8a36a5194ce26bab9783e4f69d"
+        "evidenceSha256": "7d7b16db3b57de1838bd63c6de1bc8780652fb64975ceb4f9ad62e02765d55ee"
       },
       "modeDeclarations": {
         "appVariantId": "deuce_to_seven_triple_draw",
@@ -6920,7 +6964,7 @@
           "DRAW"
         ],
         "phaseCoverage": true,
-        "decisionCount": 6,
+        "decisionCount": 10,
         "decisions": [
           {
             "variantId": "D01",
@@ -6931,7 +6975,84 @@
             "requestedModelId": null,
             "selectedModelId": "model-d01-td-pro-dqn-025000",
             "usedModelId": "model-d01-td-pro-dqn-025000",
-            "elapsedMs": 186
+            "elapsedMs": 189
+          },
+          {
+            "variantId": "D01",
+            "tierId": "pro",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-d01-td-pro-dqn-025000",
+            "usedModelId": "model-d01-td-pro-dqn-025000",
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "D01",
+            "tierId": "pro",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-d01-td-pro-dqn-025000",
+            "usedModelId": "model-d01-td-pro-dqn-025000",
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "D01",
+            "tierId": "pro",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-d01-td-pro-dqn-025000",
+            "usedModelId": "model-d01-td-pro-dqn-025000",
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "D01",
+            "tierId": "pro",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-d01-td-pro-dqn-025000",
+            "usedModelId": "model-d01-td-pro-dqn-025000",
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "D01",
+            "tierId": "pro",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-d01-td-pro-dqn-025000",
+            "usedModelId": "model-d01-td-pro-dqn-025000",
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "D01",
+            "tierId": "pro",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-d01-td-pro-dqn-025000",
+            "usedModelId": "model-d01-td-pro-dqn-025000",
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "D01",
+            "tierId": "pro",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-d01-td-pro-dqn-025000",
+            "usedModelId": "model-d01-td-pro-dqn-025000",
+            "elapsedMs": 0
           },
           {
             "variantId": "D01",
@@ -6947,39 +7068,6 @@
           {
             "variantId": "D01",
             "tierId": "pro",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-d01-td-pro-dqn-025000",
-            "usedModelId": "model-d01-td-pro-dqn-025000",
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D01",
-            "tierId": "pro",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-d01-td-pro-dqn-025000",
-            "usedModelId": "model-d01-td-pro-dqn-025000",
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D01",
-            "tierId": "pro",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-d01-td-pro-dqn-025000",
-            "usedModelId": "model-d01-td-pro-dqn-025000",
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D01",
-            "tierId": "pro",
             "phase": "DRAW",
             "status": "used",
             "reason": null,
@@ -6990,7 +7078,7 @@
           }
         ],
         "statusCounts": {
-          "used": 6
+          "used": 10
         },
         "usedModels": [
           "model-d01-td-pro-dqn-025000"
@@ -6999,7 +7087,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-deu-2b01e-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "b8800472d94822835b05259ddd1aaed42808a334076603c941c02e6075d1d832"
+        "evidenceSha256": "da543bd7cd4a937a0b0e34ab24fae8c8bdc645ed9ba07f3e0c66d6ef967bc7c9"
       },
       "modeDeclarations": {
         "appVariantId": "deuce_to_seven_triple_draw",
@@ -7115,7 +7203,7 @@
             "requestedModelId": null,
             "selectedModelId": "model-27draw-iron-v1",
             "usedModelId": "model-27draw-iron-v1",
-            "elapsedMs": 196
+            "elapsedMs": 174
           },
           {
             "variantId": "D01",
@@ -7170,7 +7258,7 @@
             "requestedModelId": null,
             "selectedModelId": "model-27draw-iron-v1",
             "usedModelId": "model-27draw-iron-v1",
-            "elapsedMs": 0
+            "elapsedMs": 1
           }
         ],
         "statusCounts": {
@@ -7183,7 +7271,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-deu-ad248-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "b447fbe0f8c2244d56ed0071e1c7eb8a1e5b3a186a59b9d0ab4a469ad3034f51"
+        "evidenceSha256": "da61e1330f3880d3b0d6a18642a7f25d48d11fb2a10f4d5a7458f5f068448e40"
       },
       "modeDeclarations": {
         "appVariantId": "deuce_to_seven_triple_draw",
@@ -7558,18 +7646,7 @@
             "requestedModelId": null,
             "selectedModelId": "model-a5draw-beginner-dqn-v1",
             "usedModelId": "model-a5draw-beginner-dqn-v1",
-            "elapsedMs": 197
-          },
-          {
-            "variantId": "D02",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-a5draw-beginner-dqn-v1",
-            "usedModelId": "model-a5draw-beginner-dqn-v1",
-            "elapsedMs": 1
+            "elapsedMs": 190
           },
           {
             "variantId": "D02",
@@ -7591,18 +7668,7 @@
             "requestedModelId": null,
             "selectedModelId": "model-a5draw-beginner-dqn-v1",
             "usedModelId": "model-a5draw-beginner-dqn-v1",
-            "elapsedMs": 1
-          },
-          {
-            "variantId": "D02",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-a5draw-beginner-dqn-v1",
-            "usedModelId": "model-a5draw-beginner-dqn-v1",
-            "elapsedMs": 1
+            "elapsedMs": 0
           },
           {
             "variantId": "D02",
@@ -7647,6 +7713,28 @@
             "selectedModelId": "model-a5draw-beginner-dqn-v1",
             "usedModelId": "model-a5draw-beginner-dqn-v1",
             "elapsedMs": 0
+          },
+          {
+            "variantId": "D02",
+            "tierId": "beginner",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-a5draw-beginner-dqn-v1",
+            "usedModelId": "model-a5draw-beginner-dqn-v1",
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "D02",
+            "tierId": "beginner",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-a5draw-beginner-dqn-v1",
+            "usedModelId": "model-a5draw-beginner-dqn-v1",
+            "elapsedMs": 1
           },
           {
             "variantId": "D02",
@@ -7670,7 +7758,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-ace-c0d60-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "134bd30d5248d5052ec9d416f8f57ed604685a12809066613adfe715b3462060"
+        "evidenceSha256": "9d81807f5c4910775c46de7f8954011931922ce83aa31bbff05e41ace4b3b7bd"
       },
       "modeDeclarations": {
         "appVariantId": "ace_to_five_triple_draw",
@@ -7775,7 +7863,7 @@
           "DRAW"
         ],
         "phaseCoverage": true,
-        "decisionCount": 10,
+        "decisionCount": 6,
         "decisions": [
           {
             "variantId": "D02",
@@ -7786,7 +7874,7 @@
             "requestedModelId": null,
             "selectedModelId": "model-a5draw-standard-dqn-v1",
             "usedModelId": "model-a5draw-standard-dqn-v1",
-            "elapsedMs": 201
+            "elapsedMs": 203
           },
           {
             "variantId": "D02",
@@ -7820,50 +7908,6 @@
             "selectedModelId": "model-a5draw-standard-dqn-v1",
             "usedModelId": "model-a5draw-standard-dqn-v1",
             "elapsedMs": 1
-          },
-          {
-            "variantId": "D02",
-            "tierId": "standard",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-a5draw-standard-dqn-v1",
-            "usedModelId": "model-a5draw-standard-dqn-v1",
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D02",
-            "tierId": "standard",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-a5draw-standard-dqn-v1",
-            "usedModelId": "model-a5draw-standard-dqn-v1",
-            "elapsedMs": 1
-          },
-          {
-            "variantId": "D02",
-            "tierId": "standard",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-a5draw-standard-dqn-v1",
-            "usedModelId": "model-a5draw-standard-dqn-v1",
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D02",
-            "tierId": "standard",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-a5draw-standard-dqn-v1",
-            "usedModelId": "model-a5draw-standard-dqn-v1",
-            "elapsedMs": 0
           },
           {
             "variantId": "D02",
@@ -7885,11 +7929,11 @@
             "requestedModelId": null,
             "selectedModelId": "model-a5draw-standard-dqn-v1",
             "usedModelId": "model-a5draw-standard-dqn-v1",
-            "elapsedMs": 1
+            "elapsedMs": 0
           }
         ],
         "statusCounts": {
-          "used": 10
+          "used": 6
         },
         "usedModels": [
           "model-a5draw-standard-dqn-v1"
@@ -7898,7 +7942,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-ace-4a9ce-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "238acd543404e476b1f3e720ec4f1d0da3519288d6b4afba7c6b8723c5d1220a"
+        "evidenceSha256": "8d09b8d0b6132ab20ad2808d043e88cbfc1357c1a3a69533e8071bc1978e87e7"
       },
       "modeDeclarations": {
         "appVariantId": "ace_to_five_triple_draw",
@@ -8014,7 +8058,40 @@
             "requestedModelId": null,
             "selectedModelId": "model-a5draw-pro-dqn-v1",
             "usedModelId": "model-a5draw-pro-dqn-v1",
-            "elapsedMs": 197
+            "elapsedMs": 204
+          },
+          {
+            "variantId": "D02",
+            "tierId": "pro",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-a5draw-pro-dqn-v1",
+            "usedModelId": "model-a5draw-pro-dqn-v1",
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "D02",
+            "tierId": "pro",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-a5draw-pro-dqn-v1",
+            "usedModelId": "model-a5draw-pro-dqn-v1",
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "D02",
+            "tierId": "pro",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-a5draw-pro-dqn-v1",
+            "usedModelId": "model-a5draw-pro-dqn-v1",
+            "elapsedMs": 0
           },
           {
             "variantId": "D02",
@@ -8026,39 +8103,6 @@
             "selectedModelId": "model-a5draw-pro-dqn-v1",
             "usedModelId": "model-a5draw-pro-dqn-v1",
             "elapsedMs": 1
-          },
-          {
-            "variantId": "D02",
-            "tierId": "pro",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-a5draw-pro-dqn-v1",
-            "usedModelId": "model-a5draw-pro-dqn-v1",
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D02",
-            "tierId": "pro",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-a5draw-pro-dqn-v1",
-            "usedModelId": "model-a5draw-pro-dqn-v1",
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D02",
-            "tierId": "pro",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-a5draw-pro-dqn-v1",
-            "usedModelId": "model-a5draw-pro-dqn-v1",
-            "elapsedMs": 0
           },
           {
             "variantId": "D02",
@@ -8082,7 +8126,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-ace-de416-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "6f492a044f973b2a0cd6fb1e55195661621383ceb68b356c48f182d9447e41fb"
+        "evidenceSha256": "9f18732ef5a060b10714acbfcce88702b26a9b7f546c9960e21587727f35ed26"
       },
       "modeDeclarations": {
         "appVariantId": "ace_to_five_triple_draw",
@@ -8198,7 +8242,7 @@
             "requestedModelId": null,
             "selectedModelId": "model-a5draw-iron-v1",
             "usedModelId": "model-a5draw-iron-v1",
-            "elapsedMs": 196
+            "elapsedMs": 194
           },
           {
             "variantId": "D02",
@@ -8220,7 +8264,7 @@
             "requestedModelId": null,
             "selectedModelId": "model-a5draw-iron-v1",
             "usedModelId": "model-a5draw-iron-v1",
-            "elapsedMs": 1
+            "elapsedMs": 0
           },
           {
             "variantId": "D02",
@@ -8231,7 +8275,7 @@
             "requestedModelId": null,
             "selectedModelId": "model-a5draw-iron-v1",
             "usedModelId": "model-a5draw-iron-v1",
-            "elapsedMs": 1
+            "elapsedMs": 0
           },
           {
             "variantId": "D02",
@@ -8253,7 +8297,7 @@
             "requestedModelId": null,
             "selectedModelId": "model-a5draw-iron-v1",
             "usedModelId": "model-a5draw-iron-v1",
-            "elapsedMs": 1
+            "elapsedMs": 0
           }
         ],
         "statusCounts": {
@@ -8266,7 +8310,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-ace-851ee-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "826836c03ed37ddd1191bfe2456b22ef77123c4b16f505794627be4de9bf304e"
+        "evidenceSha256": "52cb53aa86c85c2245e46aa55c6345e7ecd3ac8629092cf8b180dbf2a47dc329"
       },
       "modeDeclarations": {
         "appVariantId": "ace_to_five_triple_draw",
@@ -8375,7 +8419,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 1
+            "elapsedMs": 0
           },
           {
             "variantId": "D02",
@@ -8443,7 +8487,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-ace-65e00-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "8ae666b8be48d7d0d13dc92e2c41ffdd5670a6630a1d9885522bcb243eb2d9cb"
+        "evidenceSha256": "dae1499d4911b54ee1e2985c8f7405a861acdc9aefb9e5a484b86fd12959b5b1"
       },
       "modeDeclarations": {
         "appVariantId": "ace_to_five_triple_draw",
@@ -8632,7 +8676,7 @@
           "DRAW"
         ],
         "phaseCoverage": true,
-        "decisionCount": 21,
+        "decisionCount": 6,
         "decisions": [
           {
             "variantId": "D03",
@@ -8643,172 +8687,7 @@
             "requestedModelId": null,
             "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
             "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "elapsedMs": 197
-          },
-          {
-            "variantId": "D03",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D03",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "elapsedMs": 1
-          },
-          {
-            "variantId": "D03",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "elapsedMs": 1
-          },
-          {
-            "variantId": "D03",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "elapsedMs": 1
-          },
-          {
-            "variantId": "D03",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D03",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D03",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D03",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "elapsedMs": 1
-          },
-          {
-            "variantId": "D03",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "elapsedMs": 1
-          },
-          {
-            "variantId": "D03",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D03",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D03",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D03",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D03",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D03",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
-            "elapsedMs": 0
+            "elapsedMs": 189
           },
           {
             "variantId": "D03",
@@ -8867,7 +8746,7 @@
           }
         ],
         "statusCounts": {
-          "used": 21
+          "used": 6
         },
         "usedModels": [
           "model-badugi-sixmax-standard-dqn-v2"
@@ -8876,7 +8755,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-bad-bc73d-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "72bdc44943249639c341bcc8a1f5d12a920d4e27df646ac92ad0ad30b44e96b5"
+        "evidenceSha256": "2221ad5bbf6c216a33fa26732163668ba1267c7723d01aa78c2b542dda6f0c80"
       },
       "modeDeclarations": {
         "appVariantId": "badugi",
@@ -8985,7 +8864,7 @@
           "DRAW"
         ],
         "phaseCoverage": true,
-        "decisionCount": 9,
+        "decisionCount": 16,
         "decisions": [
           {
             "variantId": "D03",
@@ -8996,7 +8875,7 @@
             "requestedModelId": null,
             "selectedModelId": "model-badugi-sixmax-standard-e11",
             "usedModelId": "model-badugi-sixmax-standard-e11",
-            "elapsedMs": 194
+            "elapsedMs": 202
           },
           {
             "variantId": "D03",
@@ -9008,6 +8887,39 @@
             "selectedModelId": "model-badugi-sixmax-standard-e11",
             "usedModelId": "model-badugi-sixmax-standard-e11",
             "elapsedMs": 1
+          },
+          {
+            "variantId": "D03",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-badugi-sixmax-standard-e11",
+            "usedModelId": "model-badugi-sixmax-standard-e11",
+            "elapsedMs": 1
+          },
+          {
+            "variantId": "D03",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-badugi-sixmax-standard-e11",
+            "usedModelId": "model-badugi-sixmax-standard-e11",
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "D03",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-badugi-sixmax-standard-e11",
+            "usedModelId": "model-badugi-sixmax-standard-e11",
+            "elapsedMs": 0
           },
           {
             "variantId": "D03",
@@ -9051,6 +8963,28 @@
             "requestedModelId": null,
             "selectedModelId": "model-badugi-sixmax-standard-e11",
             "usedModelId": "model-badugi-sixmax-standard-e11",
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "D03",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-badugi-sixmax-standard-e11",
+            "usedModelId": "model-badugi-sixmax-standard-e11",
+            "elapsedMs": 1
+          },
+          {
+            "variantId": "D03",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-badugi-sixmax-standard-e11",
+            "usedModelId": "model-badugi-sixmax-standard-e11",
             "elapsedMs": 1
           },
           {
@@ -9073,7 +9007,29 @@
             "requestedModelId": null,
             "selectedModelId": "model-badugi-sixmax-standard-e11",
             "usedModelId": "model-badugi-sixmax-standard-e11",
-            "elapsedMs": 1
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "D03",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-badugi-sixmax-standard-e11",
+            "usedModelId": "model-badugi-sixmax-standard-e11",
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "D03",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-badugi-sixmax-standard-e11",
+            "usedModelId": "model-badugi-sixmax-standard-e11",
+            "elapsedMs": 0
           },
           {
             "variantId": "D03",
@@ -9084,11 +9040,11 @@
             "requestedModelId": null,
             "selectedModelId": "model-badugi-sixmax-standard-e11",
             "usedModelId": "model-badugi-sixmax-standard-e11",
-            "elapsedMs": 0
+            "elapsedMs": 1
           }
         ],
         "statusCounts": {
-          "used": 9
+          "used": 16
         },
         "usedModels": [
           "model-badugi-sixmax-standard-e11"
@@ -9097,7 +9053,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-bad-830af-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "87dbb7438820585446b00f0654ae460d5251a89638c1791cf6ed50e9f8e2331f"
+        "evidenceSha256": "6216265ba77431593f998d698a38041474356b6ee336d2101ef3aa942cbf6b96"
       },
       "modeDeclarations": {
         "appVariantId": "badugi",
@@ -9202,8 +9158,19 @@
           "DRAW"
         ],
         "phaseCoverage": true,
-        "decisionCount": 10,
+        "decisionCount": 6,
         "decisions": [
+          {
+            "variantId": "D03",
+            "tierId": "pro",
+            "phase": "BET",
+            "status": "not-connected",
+            "reason": "pro-overlay",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 1
+          },
           {
             "variantId": "D03",
             "tierId": "pro",
@@ -9246,62 +9213,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D03",
-            "tierId": "pro",
-            "phase": "BET",
-            "status": "not-connected",
-            "reason": "pro-overlay",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D03",
-            "tierId": "pro",
-            "phase": "BET",
-            "status": "not-connected",
-            "reason": "pro-overlay",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D03",
-            "tierId": "pro",
-            "phase": "BET",
-            "status": "not-connected",
-            "reason": "pro-overlay",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D03",
-            "tierId": "pro",
-            "phase": "BET",
-            "status": "not-connected",
-            "reason": "pro-overlay",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D03",
-            "tierId": "pro",
-            "phase": "BET",
-            "status": "not-connected",
-            "reason": "pro-overlay",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "D03",
@@ -9312,11 +9224,11 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           }
         ],
         "statusCounts": {
-          "not-connected": 10
+          "not-connected": 6
         },
         "usedModels": [],
         "reasons": [
@@ -9325,7 +9237,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-bad-986b5-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "84e6d1ea715ad2a2297a41dc29b9db254e2fdcb673d024dc5b0f4e3569ee2983"
+        "evidenceSha256": "12a2b1482c3914f9deef9c045c667501df426801923209ccc952f42aadcf06de"
       },
       "modeDeclarations": {
         "appVariantId": "badugi",
@@ -9441,29 +9353,29 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "D03",
+            "tierId": "iron",
+            "phase": "BET",
+            "status": "not-connected",
+            "reason": "policy-router",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "D03",
+            "tierId": "iron",
+            "phase": "BET",
+            "status": "not-connected",
+            "reason": "policy-router",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
             "elapsedMs": 1
-          },
-          {
-            "variantId": "D03",
-            "tierId": "iron",
-            "phase": "BET",
-            "status": "not-connected",
-            "reason": "policy-router",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D03",
-            "tierId": "iron",
-            "phase": "BET",
-            "status": "not-connected",
-            "reason": "policy-router",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
           },
           {
             "variantId": "D03",
@@ -9496,7 +9408,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           }
         ],
         "statusCounts": {
@@ -9509,7 +9421,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-bad-fd6f1-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "731e34dcdebdcca1e688e8cb61e2fcfef7ba9f2441b42ec78a9c66cedf2ec791"
+        "evidenceSha256": "178d8df136a103810e8f37a010daf968f9575e4b750b4c44ed98e91a8b37ff43"
       },
       "modeDeclarations": {
         "appVariantId": "badugi",
@@ -9614,7 +9526,7 @@
           "DRAW"
         ],
         "phaseCoverage": true,
-        "decisionCount": 11,
+        "decisionCount": 7,
         "decisions": [
           {
             "variantId": "D03",
@@ -9648,50 +9560,6 @@
             "selectedModelId": null,
             "usedModelId": null,
             "elapsedMs": 0
-          },
-          {
-            "variantId": "D03",
-            "tierId": "worldmaster",
-            "phase": "BET",
-            "status": "not-connected",
-            "reason": "policy-router",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 1
-          },
-          {
-            "variantId": "D03",
-            "tierId": "worldmaster",
-            "phase": "BET",
-            "status": "not-connected",
-            "reason": "policy-router",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D03",
-            "tierId": "worldmaster",
-            "phase": "BET",
-            "status": "not-connected",
-            "reason": "policy-router",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D03",
-            "tierId": "worldmaster",
-            "phase": "BET",
-            "status": "not-connected",
-            "reason": "policy-router",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 1
           },
           {
             "variantId": "D03",
@@ -9739,7 +9607,7 @@
           }
         ],
         "statusCounts": {
-          "not-connected": 11
+          "not-connected": 7
         },
         "usedModels": [],
         "reasons": [
@@ -9748,7 +9616,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-bad-46046-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "94de173acf5bfa84fede0b666ff7223f4c8abae318011922ef2756de7f1fa30d"
+        "evidenceSha256": "8d3f67d191a62e35be05859a77701de0fd504ac326b52aefd5a7c037497dc7ec"
       },
       "modeDeclarations": {
         "appVariantId": "badugi",
@@ -10455,8 +10323,52 @@
           "DRAW"
         ],
         "phaseCoverage": true,
-        "decisionCount": 6,
+        "decisionCount": 10,
         "decisions": [
+          {
+            "variantId": "D04",
+            "tierId": "iron",
+            "phase": "BET",
+            "status": "not-configured",
+            "reason": "model-not-configured",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 1
+          },
+          {
+            "variantId": "D04",
+            "tierId": "iron",
+            "phase": "BET",
+            "status": "not-configured",
+            "reason": "model-not-configured",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "D04",
+            "tierId": "iron",
+            "phase": "BET",
+            "status": "not-configured",
+            "reason": "model-not-configured",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "D04",
+            "tierId": "iron",
+            "phase": "BET",
+            "status": "not-configured",
+            "reason": "model-not-configured",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
           {
             "variantId": "D04",
             "tierId": "iron",
@@ -10525,7 +10437,7 @@
           }
         ],
         "statusCounts": {
-          "not-configured": 6
+          "not-configured": 10
         },
         "usedModels": [],
         "reasons": [
@@ -10534,7 +10446,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-bad-1eda2-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "79903c2bb93a694d6520c8f23289dca7589982e59a194d4baf4d5638b8f7ac89"
+        "evidenceSha256": "d981260c07f485d31d12cb39b2a64458deb2fa98170f4022453cee491de1586d"
       },
       "modeDeclarations": {
         "appVariantId": "badeucey_triple_draw",
@@ -10632,8 +10544,52 @@
           "DRAW"
         ],
         "phaseCoverage": true,
-        "decisionCount": 6,
+        "decisionCount": 10,
         "decisions": [
+          {
+            "variantId": "D04",
+            "tierId": "worldmaster",
+            "phase": "BET",
+            "status": "not-configured",
+            "reason": "model-not-configured",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "D04",
+            "tierId": "worldmaster",
+            "phase": "BET",
+            "status": "not-configured",
+            "reason": "model-not-configured",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "D04",
+            "tierId": "worldmaster",
+            "phase": "BET",
+            "status": "not-configured",
+            "reason": "model-not-configured",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "D04",
+            "tierId": "worldmaster",
+            "phase": "BET",
+            "status": "not-configured",
+            "reason": "model-not-configured",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
           {
             "variantId": "D04",
             "tierId": "worldmaster",
@@ -10702,7 +10658,7 @@
           }
         ],
         "statusCounts": {
-          "not-configured": 6
+          "not-configured": 10
         },
         "usedModels": [],
         "reasons": [
@@ -10711,7 +10667,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-bad-f8857-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "a65250ebd97cf3d75489bcac69b5bef043e2587c17988e898d2eaff58ce5a1ef"
+        "evidenceSha256": "b29bd822317229d0c4fbdadc617840f80009e5b6aa55c9155a6cbd216ad1ae3a"
       },
       "modeDeclarations": {
         "appVariantId": "badeucey_triple_draw",
@@ -11097,7 +11053,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 1
+            "elapsedMs": 0
           },
           {
             "variantId": "D05",
@@ -11143,7 +11099,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-bad-b7a02-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "8f7439c479f429794954d17d51db3608ff2bf17387ec6adcb596852f487d558b"
+        "evidenceSha256": "334a3a2709f60ba7f56677f59b5508d0be874e9b12057112c43cbec98723de63"
       },
       "modeDeclarations": {
         "appVariantId": "badacey_triple_draw",
@@ -11606,7 +11562,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 1
+            "elapsedMs": 0
           },
           {
             "variantId": "D05",
@@ -11674,7 +11630,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-bad-75f91-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "0c515f8217966d5493037e7ee68f30a697ffdd84a07288a1d2232e733d7cbd81"
+        "evidenceSha256": "560451405fbab265bbaaed9ea8f28fc207d98ac6dd317611545a3a9865bb5a26"
       },
       "modeDeclarations": {
         "appVariantId": "badacey_triple_draw",
@@ -11863,7 +11819,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 1
+            "elapsedMs": 0
           },
           {
             "variantId": "D06",
@@ -11975,7 +11931,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-hid-f0abd-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "93edce5bb16ee9a665bb1760f054204e9a4b04b80f9507b1bea2574e483536c3"
+        "evidenceSha256": "b3d625205b328c8953b6714d9e31506e8ff38562190a9377433e347a3b7a9d84"
       },
       "modeDeclarations": {
         "appVariantId": "hidugi_triple_draw",
@@ -12071,7 +12027,7 @@
           "DRAW"
         ],
         "phaseCoverage": true,
-        "decisionCount": 6,
+        "decisionCount": 10,
         "decisions": [
           {
             "variantId": "D06",
@@ -12131,6 +12087,50 @@
           {
             "variantId": "D06",
             "tierId": "standard",
+            "phase": "BET",
+            "status": "not-configured",
+            "reason": "model-not-configured",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "D06",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "not-configured",
+            "reason": "model-not-configured",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "D06",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "not-configured",
+            "reason": "model-not-configured",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "D06",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "not-configured",
+            "reason": "model-not-configured",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 1
+          },
+          {
+            "variantId": "D06",
+            "tierId": "standard",
             "phase": "DRAW",
             "status": "not-configured",
             "reason": "model-not-configured",
@@ -12141,7 +12141,7 @@
           }
         ],
         "statusCounts": {
-          "not-configured": 6
+          "not-configured": 10
         },
         "usedModels": [],
         "reasons": [
@@ -12150,7 +12150,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-hid-b2e94-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "135d79535720fb9baab2fe01dc296c67026b06c8dbeb0c638d7e3e97a8be1401"
+        "evidenceSha256": "a24a4e4a641736757fa34c531371962d2c0f8db7507ab5d66b6a572675ae876b"
       },
       "modeDeclarations": {
         "appVariantId": "hidugi_triple_draw",
@@ -12425,7 +12425,7 @@
           "DRAW"
         ],
         "phaseCoverage": true,
-        "decisionCount": 6,
+        "decisionCount": 10,
         "decisions": [
           {
             "variantId": "D06",
@@ -12485,6 +12485,50 @@
           {
             "variantId": "D06",
             "tierId": "iron",
+            "phase": "BET",
+            "status": "not-configured",
+            "reason": "model-not-configured",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 1
+          },
+          {
+            "variantId": "D06",
+            "tierId": "iron",
+            "phase": "BET",
+            "status": "not-configured",
+            "reason": "model-not-configured",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "D06",
+            "tierId": "iron",
+            "phase": "BET",
+            "status": "not-configured",
+            "reason": "model-not-configured",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "D06",
+            "tierId": "iron",
+            "phase": "BET",
+            "status": "not-configured",
+            "reason": "model-not-configured",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "D06",
+            "tierId": "iron",
             "phase": "DRAW",
             "status": "not-configured",
             "reason": "model-not-configured",
@@ -12495,7 +12539,7 @@
           }
         ],
         "statusCounts": {
-          "not-configured": 6
+          "not-configured": 10
         },
         "usedModels": [],
         "reasons": [
@@ -12504,7 +12548,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-hid-08094-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "7249ddb01cb5ea28c8ae658b93525c97fa49e163986f1cdb683f862fe63bfc00"
+        "evidenceSha256": "83dc0a7e8abfd55a424cbc5eefc481c9832ff9a7671b92c3e89083fe7e9e3125"
       },
       "modeDeclarations": {
         "appVariantId": "hidugi_triple_draw",
@@ -12602,52 +12646,8 @@
           "DRAW"
         ],
         "phaseCoverage": true,
-        "decisionCount": 10,
+        "decisionCount": 6,
         "decisions": [
-          {
-            "variantId": "D06",
-            "tierId": "worldmaster",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D06",
-            "tierId": "worldmaster",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D06",
-            "tierId": "worldmaster",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D06",
-            "tierId": "worldmaster",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
           {
             "variantId": "D06",
             "tierId": "worldmaster",
@@ -12716,7 +12716,7 @@
           }
         ],
         "statusCounts": {
-          "not-configured": 10
+          "not-configured": 6
         },
         "usedModels": [],
         "reasons": [
@@ -12725,7 +12725,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-hid-f718b-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "e69c286cad52029a283c3202d90b38cebf408c181c8b5a33bd2ef0a12cffe708"
+        "evidenceSha256": "cdbd7fec3c18e960021e5c2f10ba8c96900d10c80514d1ec5ce4068723a46a1f"
       },
       "modeDeclarations": {
         "appVariantId": "hidugi_triple_draw",
@@ -13476,7 +13476,7 @@
           "DRAW"
         ],
         "phaseCoverage": true,
-        "decisionCount": 10,
+        "decisionCount": 6,
         "decisions": [
           {
             "variantId": "D07",
@@ -13536,50 +13536,6 @@
           {
             "variantId": "D07",
             "tierId": "iron",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D07",
-            "tierId": "iron",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 1
-          },
-          {
-            "variantId": "D07",
-            "tierId": "iron",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D07",
-            "tierId": "iron",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "D07",
-            "tierId": "iron",
             "phase": "DRAW",
             "status": "not-configured",
             "reason": "model-not-configured",
@@ -13590,7 +13546,7 @@
           }
         ],
         "statusCounts": {
-          "not-configured": 10
+          "not-configured": 6
         },
         "usedModels": [],
         "reasons": [
@@ -13599,7 +13555,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-arc-72940-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "3c3ad58280728897cc6e06c337eea162a702357323139cfa43b7a33f4c772088"
+        "evidenceSha256": "8fa48f21a811dbde4fa9f2047eb2be619a5ce3c4307710487c266dd0fbf6ae2e"
       },
       "modeDeclarations": {
         "appVariantId": "archie_triple_draw",
@@ -13708,7 +13664,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "D07",
@@ -13776,7 +13732,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-arc-0c8d1-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "8162a40528286bd3b59806f45301e9261e3417924c2b093357e17bc97d5b8d6e"
+        "evidenceSha256": "23f9dbef4904e09909a3ec1885fdcab74f074c3d0054b8b0fb97e5bb70fcc1e9"
       },
       "modeDeclarations": {
         "appVariantId": "archie_triple_draw",
@@ -13974,7 +13930,18 @@
             "requestedModelId": null,
             "selectedModelId": "model-27draw-beginner-dqn-v1",
             "usedModelId": "model-27draw-beginner-dqn-v1",
-            "elapsedMs": 190
+            "elapsedMs": 184
+          },
+          {
+            "variantId": "S01",
+            "tierId": "beginner",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-27draw-beginner-dqn-v1",
+            "usedModelId": "model-27draw-beginner-dqn-v1",
+            "elapsedMs": 1
           },
           {
             "variantId": "S01",
@@ -14018,18 +13985,7 @@
             "requestedModelId": null,
             "selectedModelId": "model-27draw-beginner-dqn-v1",
             "usedModelId": "model-27draw-beginner-dqn-v1",
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S01",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-27draw-beginner-dqn-v1",
-            "usedModelId": "model-27draw-beginner-dqn-v1",
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "S01",
@@ -14086,7 +14042,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-deu-42702-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "325c1f08120f36620288a224b3dbfaa17891e659f67bc293e61d0cc022518d52"
+        "evidenceSha256": "0c0b9478fb89682f905f4c59e3061935211dd339d73da870b5647ce99b4d5acd"
       },
       "modeDeclarations": {
         "appVariantId": "deuce_to_seven_single_draw",
@@ -14191,7 +14147,7 @@
           "DRAW"
         ],
         "phaseCoverage": true,
-        "decisionCount": 6,
+        "decisionCount": 10,
         "decisions": [
           {
             "variantId": "S01",
@@ -14202,7 +14158,18 @@
             "requestedModelId": null,
             "selectedModelId": "model-27draw-standard-dqn-v1",
             "usedModelId": "model-27draw-standard-dqn-v1",
-            "elapsedMs": 197
+            "elapsedMs": 190
+          },
+          {
+            "variantId": "S01",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-27draw-standard-dqn-v1",
+            "usedModelId": "model-27draw-standard-dqn-v1",
+            "elapsedMs": 1
           },
           {
             "variantId": "S01",
@@ -14235,7 +14202,18 @@
             "requestedModelId": null,
             "selectedModelId": "model-27draw-standard-dqn-v1",
             "usedModelId": "model-27draw-standard-dqn-v1",
-            "elapsedMs": 1
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "S01",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-27draw-standard-dqn-v1",
+            "usedModelId": "model-27draw-standard-dqn-v1",
+            "elapsedMs": 0
           },
           {
             "variantId": "S01",
@@ -14251,17 +14229,39 @@
           {
             "variantId": "S01",
             "tierId": "standard",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-27draw-standard-dqn-v1",
+            "usedModelId": "model-27draw-standard-dqn-v1",
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "S01",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-27draw-standard-dqn-v1",
+            "usedModelId": "model-27draw-standard-dqn-v1",
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "S01",
+            "tierId": "standard",
             "phase": "DRAW",
             "status": "used",
             "reason": null,
             "requestedModelId": null,
             "selectedModelId": "model-27draw-standard-dqn-v1",
             "usedModelId": "model-27draw-standard-dqn-v1",
-            "elapsedMs": 1
+            "elapsedMs": 0
           }
         ],
         "statusCounts": {
-          "used": 6
+          "used": 10
         },
         "usedModels": [
           "model-27draw-standard-dqn-v1"
@@ -14270,7 +14270,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-deu-388d1-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "9a65e244221a302b95ecbb75569fca9de0801e8a29e241e011edd0d4a4ba6be9"
+        "evidenceSha256": "e0ab4c97648638d2e871b04bb4fe40fc568406d178cb3739c83c4a8e4d519277"
       },
       "modeDeclarations": {
         "appVariantId": "deuce_to_seven_single_draw",
@@ -14375,7 +14375,7 @@
           "DRAW"
         ],
         "phaseCoverage": true,
-        "decisionCount": 9,
+        "decisionCount": 10,
         "decisions": [
           {
             "variantId": "S01",
@@ -14397,7 +14397,18 @@
             "requestedModelId": null,
             "selectedModelId": "model-27draw-pro-dqn-v1",
             "usedModelId": "model-27draw-pro-dqn-v1",
-            "elapsedMs": 1
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "S01",
+            "tierId": "pro",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-27draw-pro-dqn-v1",
+            "usedModelId": "model-27draw-pro-dqn-v1",
+            "elapsedMs": 0
           },
           {
             "variantId": "S01",
@@ -14430,17 +14441,6 @@
             "requestedModelId": null,
             "selectedModelId": "model-27draw-pro-dqn-v1",
             "usedModelId": "model-27draw-pro-dqn-v1",
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S01",
-            "tierId": "pro",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-27draw-pro-dqn-v1",
-            "usedModelId": "model-27draw-pro-dqn-v1",
             "elapsedMs": 1
           },
           {
@@ -14453,6 +14453,17 @@
             "selectedModelId": "model-27draw-pro-dqn-v1",
             "usedModelId": "model-27draw-pro-dqn-v1",
             "elapsedMs": 0
+          },
+          {
+            "variantId": "S01",
+            "tierId": "pro",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-27draw-pro-dqn-v1",
+            "usedModelId": "model-27draw-pro-dqn-v1",
+            "elapsedMs": 1
           },
           {
             "variantId": "S01",
@@ -14474,11 +14485,11 @@
             "requestedModelId": null,
             "selectedModelId": "model-27draw-pro-dqn-v1",
             "usedModelId": "model-27draw-pro-dqn-v1",
-            "elapsedMs": 1
+            "elapsedMs": 0
           }
         ],
         "statusCounts": {
-          "used": 9
+          "used": 10
         },
         "usedModels": [
           "model-27draw-pro-dqn-v1"
@@ -14487,7 +14498,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-deu-f11d0-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "4bc1014dbc70e329b4baa29547564ca55761ca1eafc1fb0a8e7a0ec05e26dc2f"
+        "evidenceSha256": "7bda325ea7cd16cc67d5626fa8e102a15e3bf8edfa2f2fbfd0f447d371b33267"
       },
       "modeDeclarations": {
         "appVariantId": "deuce_to_seven_single_draw",
@@ -14603,18 +14614,7 @@
             "requestedModelId": null,
             "selectedModelId": "model-27draw-iron-v1",
             "usedModelId": "model-27draw-iron-v1",
-            "elapsedMs": 185
-          },
-          {
-            "variantId": "S01",
-            "tierId": "iron",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-27draw-iron-v1",
-            "usedModelId": "model-27draw-iron-v1",
-            "elapsedMs": 0
+            "elapsedMs": 183
           },
           {
             "variantId": "S01",
@@ -14647,7 +14647,18 @@
             "requestedModelId": null,
             "selectedModelId": "model-27draw-iron-v1",
             "usedModelId": "model-27draw-iron-v1",
-            "elapsedMs": 1
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "S01",
+            "tierId": "iron",
+            "phase": "BET",
+            "status": "used",
+            "reason": null,
+            "requestedModelId": null,
+            "selectedModelId": "model-27draw-iron-v1",
+            "usedModelId": "model-27draw-iron-v1",
+            "elapsedMs": 0
           },
           {
             "variantId": "S01",
@@ -14658,7 +14669,7 @@
             "requestedModelId": null,
             "selectedModelId": "model-27draw-iron-v1",
             "usedModelId": "model-27draw-iron-v1",
-            "elapsedMs": 1
+            "elapsedMs": 0
           }
         ],
         "statusCounts": {
@@ -14671,7 +14682,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-deu-2a9f7-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "2d15f529499dbeee2cc89bb9262d7269636715e8cbeff7effca57d2699c89831"
+        "evidenceSha256": "185a2e7eebdcd9ec459b2981871737c7b9b0ddbd5771a454c40819adaf629745"
       },
       "modeDeclarations": {
         "appVariantId": "deuce_to_seven_single_draw",
@@ -14835,7 +14846,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 1
+            "elapsedMs": 0
           }
         ],
         "statusCounts": {
@@ -14848,7 +14859,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-deu-d61e0-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "fb04e6732243f7c079b2fb66e343807430980c09e87d3c18a371b242f7f1c185"
+        "evidenceSha256": "776c5e2ecce4d6f9f5ae7a435307600db3e64ec8bb3c967a3a73fcfe6a12a6e4"
       },
       "modeDeclarations": {
         "appVariantId": "deuce_to_seven_single_draw",
@@ -15035,7 +15046,7 @@
           "DRAW"
         ],
         "phaseCoverage": true,
-        "decisionCount": 10,
+        "decisionCount": 6,
         "decisions": [
           {
             "variantId": "S02",
@@ -15046,29 +15057,7 @@
             "requestedModelId": null,
             "selectedModelId": "model-a5draw-beginner-dqn-v1",
             "usedModelId": "model-a5draw-beginner-dqn-v1",
-            "elapsedMs": 195
-          },
-          {
-            "variantId": "S02",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-a5draw-beginner-dqn-v1",
-            "usedModelId": "model-a5draw-beginner-dqn-v1",
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S02",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-a5draw-beginner-dqn-v1",
-            "usedModelId": "model-a5draw-beginner-dqn-v1",
-            "elapsedMs": 0
+            "elapsedMs": 193
           },
           {
             "variantId": "S02",
@@ -15091,28 +15080,6 @@
             "selectedModelId": "model-a5draw-beginner-dqn-v1",
             "usedModelId": "model-a5draw-beginner-dqn-v1",
             "elapsedMs": 1
-          },
-          {
-            "variantId": "S02",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-a5draw-beginner-dqn-v1",
-            "usedModelId": "model-a5draw-beginner-dqn-v1",
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S02",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-a5draw-beginner-dqn-v1",
-            "usedModelId": "model-a5draw-beginner-dqn-v1",
-            "elapsedMs": 0
           },
           {
             "variantId": "S02",
@@ -15145,11 +15112,11 @@
             "requestedModelId": null,
             "selectedModelId": "model-a5draw-beginner-dqn-v1",
             "usedModelId": "model-a5draw-beginner-dqn-v1",
-            "elapsedMs": 1
+            "elapsedMs": 0
           }
         ],
         "statusCounts": {
-          "used": 10
+          "used": 6
         },
         "usedModels": [
           "model-a5draw-beginner-dqn-v1"
@@ -15158,7 +15125,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-ace-ec1eb-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "1d6ff4f0f217de21e13876f3f8fa66b57ce2350927871c12418a7cd4f87fac16"
+        "evidenceSha256": "7cea8b8e32fe955530d5779d26788fc181c9b6bd6a786820ad3133be6498634e"
       },
       "modeDeclarations": {
         "appVariantId": "ace_to_five_single_draw",
@@ -15439,7 +15406,7 @@
           "DRAW"
         ],
         "phaseCoverage": true,
-        "decisionCount": 10,
+        "decisionCount": 6,
         "decisions": [
           {
             "variantId": "S02",
@@ -15450,7 +15417,7 @@
             "requestedModelId": null,
             "selectedModelId": "model-s02-sd-pro-dqn-v2-025000",
             "usedModelId": "model-s02-sd-pro-dqn-v2-025000",
-            "elapsedMs": 183
+            "elapsedMs": 204
           },
           {
             "variantId": "S02",
@@ -15472,28 +15439,6 @@
             "requestedModelId": null,
             "selectedModelId": "model-s02-sd-pro-dqn-v2-025000",
             "usedModelId": "model-s02-sd-pro-dqn-v2-025000",
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S02",
-            "tierId": "pro",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-s02-sd-pro-dqn-v2-025000",
-            "usedModelId": "model-s02-sd-pro-dqn-v2-025000",
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S02",
-            "tierId": "pro",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-s02-sd-pro-dqn-v2-025000",
-            "usedModelId": "model-s02-sd-pro-dqn-v2-025000",
             "elapsedMs": 1
           },
           {
@@ -15505,29 +15450,7 @@
             "requestedModelId": null,
             "selectedModelId": "model-s02-sd-pro-dqn-v2-025000",
             "usedModelId": "model-s02-sd-pro-dqn-v2-025000",
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S02",
-            "tierId": "pro",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-s02-sd-pro-dqn-v2-025000",
-            "usedModelId": "model-s02-sd-pro-dqn-v2-025000",
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S02",
-            "tierId": "pro",
-            "phase": "BET",
-            "status": "used",
-            "reason": null,
-            "requestedModelId": null,
-            "selectedModelId": "model-s02-sd-pro-dqn-v2-025000",
-            "usedModelId": "model-s02-sd-pro-dqn-v2-025000",
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "S02",
@@ -15553,7 +15476,7 @@
           }
         ],
         "statusCounts": {
-          "used": 10
+          "used": 6
         },
         "usedModels": [
           "model-s02-sd-pro-dqn-v2-025000"
@@ -15562,7 +15485,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-ace-f35c6-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "9df854131f6e96d1c441769042eba1116cd29c2a8f8449fa0df580bf2f0f4755"
+        "evidenceSha256": "d0448efc81d9fffd9dfe67119692db86b4bd4399a97289196b5a1f7444e85ce1"
       },
       "modeDeclarations": {
         "appVariantId": "ace_to_five_single_draw",
@@ -15678,7 +15601,7 @@
             "requestedModelId": null,
             "selectedModelId": "model-a5draw-iron-v1",
             "usedModelId": "model-a5draw-iron-v1",
-            "elapsedMs": 194
+            "elapsedMs": 188
           },
           {
             "variantId": "S02",
@@ -15689,7 +15612,7 @@
             "requestedModelId": null,
             "selectedModelId": "model-a5draw-iron-v1",
             "usedModelId": "model-a5draw-iron-v1",
-            "elapsedMs": 1
+            "elapsedMs": 0
           },
           {
             "variantId": "S02",
@@ -15733,7 +15656,7 @@
             "requestedModelId": null,
             "selectedModelId": "model-a5draw-iron-v1",
             "usedModelId": "model-a5draw-iron-v1",
-            "elapsedMs": 0
+            "elapsedMs": 1
           }
         ],
         "statusCounts": {
@@ -15746,7 +15669,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-ace-d2bb0-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "83472275bbdfd9ccf9fa817577b36f761e30ba81c2834607300f6edf03dffa80"
+        "evidenceSha256": "fa1ae00f00a25a08c30d2aad0551c50b32ca92c9542e0bcc2714aacaca359baa"
       },
       "modeDeclarations": {
         "appVariantId": "ace_to_five_single_draw",
@@ -15899,7 +15822,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 1
+            "elapsedMs": 0
           },
           {
             "variantId": "S02",
@@ -15923,7 +15846,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-ace-72853-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "b80d16559a17f4c0c6203923f4c2bcfdb1aecfa920039018881f52b78393d630"
+        "evidenceSha256": "445e1008e4b0dfd04081b35a586eff4a3ba65e3ad2459923096c46ffae79c572"
       },
       "modeDeclarations": {
         "appVariantId": "ace_to_five_single_draw",
@@ -16211,7 +16134,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           }
         ],
         "statusCounts": {
@@ -16224,7 +16147,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-fiv-53459-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "c97db3451c5be9b3af04710353a96296770878f42a692c67f111c2eb861e6522"
+        "evidenceSha256": "4e65752a7d04646e4b7ba35cb06c99c7830c6e73351823b9ce1cb40fab408aa9"
       },
       "modeDeclarations": {
         "appVariantId": "five_card_single_draw",
@@ -16331,7 +16254,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "S03",
@@ -16443,7 +16366,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-fiv-e5693-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "cb77f198b81806bdfea33364e6ee4d0c5a8e5de943822b82b6ddcc76fb21c156"
+        "evidenceSha256": "6f703b55640bc24363335bda0d3c0971f995138a8e703eeceee373b8981fbb9c"
       },
       "modeDeclarations": {
         "appVariantId": "five_card_single_draw",
@@ -16972,7 +16895,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 1
+            "elapsedMs": 0
           },
           {
             "variantId": "S03",
@@ -16983,7 +16906,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "S03",
@@ -17018,7 +16941,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-fiv-e415d-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "259ebe50b8a93ebd0f90a01b8fb0b869c3cf2802c7554b6f199ceca90885ad36"
+        "evidenceSha256": "8f8b2625d201e2c2fe07252a904401e7ccfcef9f463d24112157db836ac35d07"
       },
       "modeDeclarations": {
         "appVariantId": "five_card_single_draw",
@@ -17415,8 +17338,52 @@
           "DRAW"
         ],
         "phaseCoverage": true,
-        "decisionCount": 6,
+        "decisionCount": 10,
         "decisions": [
+          {
+            "variantId": "S04",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "not-configured",
+            "reason": "model-not-configured",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "S04",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "not-configured",
+            "reason": "model-not-configured",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "S04",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "not-configured",
+            "reason": "model-not-configured",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "S04",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "not-configured",
+            "reason": "model-not-configured",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
           {
             "variantId": "S04",
             "tierId": "standard",
@@ -17485,7 +17452,7 @@
           }
         ],
         "statusCounts": {
-          "not-configured": 6
+          "not-configured": 10
         },
         "usedModels": [],
         "reasons": [
@@ -17494,7 +17461,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-bad-0d9f9-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "ac21733ce706632c470769adffbf71d3c0e1ed3b84c866ed7d49b4fc60d0f8eb"
+        "evidenceSha256": "512e7cd32823a089a998887ec1de3fb435b934a9b316ad7a38bc25d87ee34475"
       },
       "modeDeclarations": {
         "appVariantId": "badugi_single_draw",
@@ -17769,52 +17736,8 @@
           "DRAW"
         ],
         "phaseCoverage": true,
-        "decisionCount": 10,
+        "decisionCount": 6,
         "decisions": [
-          {
-            "variantId": "S04",
-            "tierId": "iron",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S04",
-            "tierId": "iron",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S04",
-            "tierId": "iron",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S04",
-            "tierId": "iron",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
           {
             "variantId": "S04",
             "tierId": "iron",
@@ -17883,7 +17806,7 @@
           }
         ],
         "statusCounts": {
-          "not-configured": 10
+          "not-configured": 6
         },
         "usedModels": [],
         "reasons": [
@@ -17892,7 +17815,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-bad-a30cc-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "9c3e4cafcd149465ed1ff8c20ebbfc59e188758988c926063e33c33f37605653"
+        "evidenceSha256": "7920d329f43b3e9852def3718f292b189e05c092fe3a0d7a61b73367e0c32cf7"
       },
       "modeDeclarations": {
         "appVariantId": "badugi_single_draw",
@@ -17990,8 +17913,52 @@
           "DRAW"
         ],
         "phaseCoverage": true,
-        "decisionCount": 6,
+        "decisionCount": 10,
         "decisions": [
+          {
+            "variantId": "S04",
+            "tierId": "worldmaster",
+            "phase": "BET",
+            "status": "not-configured",
+            "reason": "model-not-configured",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "S04",
+            "tierId": "worldmaster",
+            "phase": "BET",
+            "status": "not-configured",
+            "reason": "model-not-configured",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "S04",
+            "tierId": "worldmaster",
+            "phase": "BET",
+            "status": "not-configured",
+            "reason": "model-not-configured",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "S04",
+            "tierId": "worldmaster",
+            "phase": "BET",
+            "status": "not-configured",
+            "reason": "model-not-configured",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
           {
             "variantId": "S04",
             "tierId": "worldmaster",
@@ -18060,7 +18027,7 @@
           }
         ],
         "statusCounts": {
-          "not-configured": 6
+          "not-configured": 10
         },
         "usedModels": [],
         "reasons": [
@@ -18069,7 +18036,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-bad-19a1d-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "f2e3af39b14eb2a554dfde869481793fd71c32455f5f5ecc3bdd500c795d5c42"
+        "evidenceSha256": "9a88f69c0e6b81dd86f27c253538ba991b9e5b0e7d57266d78da1711dc14d8f0"
       },
       "modeDeclarations": {
         "appVariantId": "badugi_single_draw",
@@ -18302,7 +18269,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "S05",
@@ -18326,7 +18293,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-bad-072ff-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "5b5929a627ea5de308e03624c38773e59d62ff604074000bc0c6223ff2dafdff"
+        "evidenceSha256": "a19055df862380888f46126e05d767eae8721645f733e82d6761e95b43a2aed8"
       },
       "modeDeclarations": {
         "appVariantId": "badeucey_single_draw",
@@ -18776,7 +18743,7 @@
           "DRAW"
         ],
         "phaseCoverage": true,
-        "decisionCount": 10,
+        "decisionCount": 6,
         "decisions": [
           {
             "variantId": "S05",
@@ -18787,51 +18754,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S05",
-            "tierId": "iron",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S05",
-            "tierId": "iron",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S05",
-            "tierId": "iron",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S05",
-            "tierId": "iron",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "S05",
@@ -18890,7 +18813,7 @@
           }
         ],
         "statusCounts": {
-          "not-configured": 10
+          "not-configured": 6
         },
         "usedModels": [],
         "reasons": [
@@ -18899,7 +18822,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-bad-a330b-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "250c01827377db1b47a781db09a8ba67226f034be70bbc6c31c3404e46fca12b"
+        "evidenceSha256": "3bc3b60006293fbc5897e236968884fbddd4cbde8e61a6676269e6378d90afb0"
       },
       "modeDeclarations": {
         "appVariantId": "badeucey_single_draw",
@@ -18997,52 +18920,8 @@
           "DRAW"
         ],
         "phaseCoverage": true,
-        "decisionCount": 10,
+        "decisionCount": 6,
         "decisions": [
-          {
-            "variantId": "S05",
-            "tierId": "worldmaster",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S05",
-            "tierId": "worldmaster",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 1
-          },
-          {
-            "variantId": "S05",
-            "tierId": "worldmaster",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S05",
-            "tierId": "worldmaster",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
           {
             "variantId": "S05",
             "tierId": "worldmaster",
@@ -19111,7 +18990,7 @@
           }
         ],
         "statusCounts": {
-          "not-configured": 10
+          "not-configured": 6
         },
         "usedModels": [],
         "reasons": [
@@ -19120,7 +18999,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-bad-208a8-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "97f57ac3e464a00b215775bae14e9dbed6fbb9615cf20db88e09efb5ddff70e4"
+        "evidenceSha256": "333a0a5262bd849b9f0e8ec1943271f7976e1649c539d6e4bdd790f4c72d8214"
       },
       "modeDeclarations": {
         "appVariantId": "badeucey_single_draw",
@@ -19298,7 +19177,7 @@
           "DRAW"
         ],
         "phaseCoverage": true,
-        "decisionCount": 10,
+        "decisionCount": 6,
         "decisions": [
           {
             "variantId": "S06",
@@ -19309,51 +19188,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S06",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S06",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S06",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S06",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "S06",
@@ -19412,7 +19247,7 @@
           }
         ],
         "statusCounts": {
-          "not-configured": 10
+          "not-configured": 6
         },
         "usedModels": [],
         "reasons": [
@@ -19421,7 +19256,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-bad-14c3e-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "66136ebea3813d9007d033d2418706a6597cd012b24f3ef3d1f7d2d920964de2"
+        "evidenceSha256": "fa24ac5b81ad0b421476930bff8e41034bc24f885b04fa3e173d54e49bee053f"
       },
       "modeDeclarations": {
         "appVariantId": "badacey_single_draw",
@@ -19517,52 +19352,8 @@
           "DRAW"
         ],
         "phaseCoverage": true,
-        "decisionCount": 10,
+        "decisionCount": 6,
         "decisions": [
-          {
-            "variantId": "S06",
-            "tierId": "standard",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S06",
-            "tierId": "standard",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S06",
-            "tierId": "standard",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S06",
-            "tierId": "standard",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
           {
             "variantId": "S06",
             "tierId": "standard",
@@ -19631,7 +19422,7 @@
           }
         ],
         "statusCounts": {
-          "not-configured": 10
+          "not-configured": 6
         },
         "usedModels": [],
         "reasons": [
@@ -19640,7 +19431,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-bad-27088-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "006294ed2c589d08ac4ba0d81e6e8983e2dd467f9d11f191e6e2c0ee43b30d15"
+        "evidenceSha256": "967eb8d0ba16b34aa33f9b20deed418f30035c731809a96c375ff59f2d44a826"
       },
       "modeDeclarations": {
         "appVariantId": "badacey_single_draw",
@@ -20393,7 +20184,7 @@
           "DRAW"
         ],
         "phaseCoverage": true,
-        "decisionCount": 10,
+        "decisionCount": 6,
         "decisions": [
           {
             "variantId": "S07",
@@ -20404,51 +20195,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S07",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S07",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S07",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S07",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "S07",
@@ -20507,7 +20254,7 @@
           }
         ],
         "statusCounts": {
-          "not-configured": 10
+          "not-configured": 6
         },
         "usedModels": [],
         "reasons": [
@@ -20516,7 +20263,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-hid-648f2-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "1bed6dccca8653316a2010f66126c97e59363c6c27edea18e1fe27d8d85b2d4f"
+        "evidenceSha256": "b408f9b2e80c7fcb830b7ed2d2e88383077dc537489930a987526266cd36dd4f"
       },
       "modeDeclarations": {
         "appVariantId": "hidugi_single_draw",
@@ -20612,52 +20359,8 @@
           "DRAW"
         ],
         "phaseCoverage": true,
-        "decisionCount": 10,
+        "decisionCount": 6,
         "decisions": [
-          {
-            "variantId": "S07",
-            "tierId": "standard",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S07",
-            "tierId": "standard",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S07",
-            "tierId": "standard",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S07",
-            "tierId": "standard",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
           {
             "variantId": "S07",
             "tierId": "standard",
@@ -20722,11 +20425,11 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 1
+            "elapsedMs": 0
           }
         ],
         "statusCounts": {
-          "not-configured": 10
+          "not-configured": 6
         },
         "usedModels": [],
         "reasons": [
@@ -20735,7 +20438,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-hid-e9aaf-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "0ea0090e5b968eb05be18177c778a22e903a40ebef7d4b4ee90af05e01a96724"
+        "evidenceSha256": "a72f32781576cb2dd0cc71e397729a9cbac0c98faad7c8d72a60c9e1f63b17f7"
       },
       "modeDeclarations": {
         "appVariantId": "hidugi_single_draw",
@@ -21010,8 +20713,52 @@
           "DRAW"
         ],
         "phaseCoverage": true,
-        "decisionCount": 6,
+        "decisionCount": 10,
         "decisions": [
+          {
+            "variantId": "S07",
+            "tierId": "iron",
+            "phase": "BET",
+            "status": "not-configured",
+            "reason": "model-not-configured",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "S07",
+            "tierId": "iron",
+            "phase": "BET",
+            "status": "not-configured",
+            "reason": "model-not-configured",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "S07",
+            "tierId": "iron",
+            "phase": "BET",
+            "status": "not-configured",
+            "reason": "model-not-configured",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "S07",
+            "tierId": "iron",
+            "phase": "BET",
+            "status": "not-configured",
+            "reason": "model-not-configured",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
           {
             "variantId": "S07",
             "tierId": "iron",
@@ -21080,7 +20827,7 @@
           }
         ],
         "statusCounts": {
-          "not-configured": 6
+          "not-configured": 10
         },
         "usedModels": [],
         "reasons": [
@@ -21089,7 +20836,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-hid-66f90-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "a4ad1ed107097fb035142cc6e08c709bc32600b3f92b8aae60bba8c24974e5e6"
+        "evidenceSha256": "4236a37dc3b027ab268dbc09b430dbd0859556abaca80e29e63b63b0dfb59a12"
       },
       "modeDeclarations": {
         "appVariantId": "hidugi_single_draw",
@@ -21187,52 +20934,8 @@
           "DRAW"
         ],
         "phaseCoverage": true,
-        "decisionCount": 10,
+        "decisionCount": 6,
         "decisions": [
-          {
-            "variantId": "S07",
-            "tierId": "worldmaster",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 1
-          },
-          {
-            "variantId": "S07",
-            "tierId": "worldmaster",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S07",
-            "tierId": "worldmaster",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "S07",
-            "tierId": "worldmaster",
-            "phase": "BET",
-            "status": "not-configured",
-            "reason": "model-not-configured",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
           {
             "variantId": "S07",
             "tierId": "worldmaster",
@@ -21301,7 +21004,7 @@
           }
         ],
         "statusCounts": {
-          "not-configured": 10
+          "not-configured": 6
         },
         "usedModels": [],
         "reasons": [
@@ -21310,7 +21013,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-hid-75d8e-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "b337058f7bba839e9d6e04359a9d44b1cfd6fff278f397d977462e6df35dd3c4"
+        "evidenceSha256": "f1ad0e7fde2edd3f1f0edba86e3ed12a3c7f4c22162f6f37c19b7033172d2613"
       },
       "modeDeclarations": {
         "appVariantId": "hidugi_single_draw",
@@ -21500,7 +21203,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "dramaha_hi",
@@ -21511,7 +21214,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "dramaha_hi",
@@ -21613,7 +21316,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-dra-128b4-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "ef3a5c89a741ee784942122712f42fbb8e6e9ce67273662a83b48bedc5e8f658"
+        "evidenceSha256": "7ae6f9d80a1aa46be7acf029deed5d5138c9878d4672c0d2b8010705cf365fd8"
       },
       "modeDeclarations": {
         "appVariantId": "dramaha_hi",
@@ -21988,7 +21691,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "dramaha_hi",
@@ -22043,7 +21746,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 1
+            "elapsedMs": 0
           }
         ],
         "statusCounts": {
@@ -22057,7 +21760,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-dra-e6429-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "f13c30cb2eb486d2045b97967fd6de7622562a3f6ead4a3cf962885359e58f5b"
+        "evidenceSha256": "ea46af68b35c7299f6e47a5d0896e7010e818404e1c48d2237d77ce5cb5f85e0"
       },
       "modeDeclarations": {
         "appVariantId": "dramaha_hi",
@@ -22167,7 +21870,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "dramaha_hi",
@@ -22189,7 +21892,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "dramaha_hi",
@@ -22280,7 +21983,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-dra-df463-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "5e8f97e30abcb85a5c94a6e44263d8221863a5b15c1a99bec7e01e974e960a4d"
+        "evidenceSha256": "2758e86966fd8383dca4f284504ad50fae4f35814f4ef2df76c257a0e67ceee4"
       },
       "modeDeclarations": {
         "appVariantId": "dramaha_hi",
@@ -22412,7 +22115,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "dramaha_hi",
@@ -22423,7 +22126,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "dramaha_hi",
@@ -22503,7 +22206,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-dra-31e41-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "498a3dec0647d21e5b74c739a261aa1cef5cc94d3f07cd330b170122a7aabf28"
+        "evidenceSha256": "a2ff121d90719eb8a94f038ac203463a0a1a3877e8add5fa1cfa6c32855ecb14"
       },
       "modeDeclarations": {
         "appVariantId": "dramaha_hi",
@@ -22716,7 +22419,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "dramaha_27",
@@ -22793,7 +22496,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           }
         ],
         "statusCounts": {
@@ -22807,7 +22510,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-dra-df6a3-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "372000ab2d02079954040e60edbeed5b6570e5cd29e891149111186d5c8cac1e"
+        "evidenceSha256": "ed5b6f2d2d0a21b461d2fb424f0d564e90d23200ba13f2d85bc83c99fa3844c3"
       },
       "modeDeclarations": {
         "appVariantId": "dramaha_27",
@@ -22915,7 +22618,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "dramaha_27",
@@ -22992,7 +22695,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "dramaha_27",
@@ -23003,7 +22706,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "dramaha_27",
@@ -23028,7 +22731,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-dra-401f5-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "f2b3ee6cba80d11e774a97123b227ac9d82523ee7a3e9cf96c1e6f4a13f1fc00"
+        "evidenceSha256": "03562d71599033e9748b7ceea479171032d69a3b923f49e0898db021e0d452a1"
       },
       "modeDeclarations": {
         "appVariantId": "dramaha_27",
@@ -23182,7 +22885,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "dramaha_27",
@@ -23193,7 +22896,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 1
+            "elapsedMs": 0
           },
           {
             "variantId": "dramaha_27",
@@ -23251,7 +22954,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-dra-d8353-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "ac482499f72bd8e97feff3ea2f79edf386ada0f47ab8409f890f4abdcb48c567"
+        "evidenceSha256": "c05b9be543a1c1b173a59c118407ea0f7e6091ba48baf06ad0570b6e9ecd2001"
       },
       "modeDeclarations": {
         "appVariantId": "dramaha_27",
@@ -23394,7 +23097,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "dramaha_27",
@@ -23405,7 +23108,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "dramaha_27",
@@ -23474,7 +23177,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-dra-3fa37-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "41391dc722603f61d04e3811ebe0026e2cfd8a9369f7fd4377d76566ea29f98f"
+        "evidenceSha256": "31b940ef1389fa419b46c2678af8a8ac41650ac57b0f03b84dbc171dad3dec0b"
       },
       "modeDeclarations": {
         "appVariantId": "dramaha_27",
@@ -23584,7 +23287,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "dramaha_27",
@@ -23697,7 +23400,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-dra-e3843-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "445fe091af085bf0037f7822d05277b67b47db2c57cbad261bb44e978970889e"
+        "evidenceSha256": "5c43ea1c44b03316ce19df382540e314f2f84b9076ead1087ca2b949b763eb2e"
       },
       "modeDeclarations": {
         "appVariantId": "dramaha_27",
@@ -23888,7 +23591,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "dramaha_a5",
@@ -24001,7 +23704,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-dra-be103-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "7f6281391fd69340b83cc6cd5a359dad4a62f961eebf4cabd5518312c5a9fbbe"
+        "evidenceSha256": "f28d8d735e731503407995bee69628deac30339d743abc064b7b2bc155b3f459"
       },
       "modeDeclarations": {
         "appVariantId": "dramaha_a5",
@@ -24621,7 +24324,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 1
+            "elapsedMs": 0
           },
           {
             "variantId": "dramaha_a5",
@@ -24668,7 +24371,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-dra-ae3b8-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "c8e4ff5512dfcab4d6e4ffdb421ad396f5e606002cebdc100c8bf9ef6031609c"
+        "evidenceSha256": "7d537f3e035be901ae4d73c6746fcd438b8d22031a5bec850bcb93fd58aee293"
       },
       "modeDeclarations": {
         "appVariantId": "dramaha_a5",
@@ -24811,7 +24514,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 1
+            "elapsedMs": 0
           },
           {
             "variantId": "dramaha_a5",
@@ -24891,7 +24594,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-dra-e0275-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "31214c6f1338b9f35c35e65e49250428676f2aafecc8963e7228431e39aabc64"
+        "evidenceSha256": "6a6bb1f17c24eacd0d9537b147c707f46c454c8aae4c07580fed21490c285a66"
       },
       "modeDeclarations": {
         "appVariantId": "dramaha_a5",
@@ -25082,50 +24785,6 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 1
-          },
-          {
-            "variantId": "dramaha_zero",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "not-connected",
-            "reason": "automatic-check-call",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "dramaha_zero",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "not-connected",
-            "reason": "automatic-check-call",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "dramaha_zero",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "not-connected",
-            "reason": "automatic-check-call",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "dramaha_zero",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "not-connected",
-            "reason": "automatic-check-call",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
             "elapsedMs": 0
           },
           {
@@ -25170,7 +24829,51 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 1
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "dramaha_zero",
+            "tierId": "beginner",
+            "phase": "BET",
+            "status": "not-connected",
+            "reason": "automatic-check-call",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "dramaha_zero",
+            "tierId": "beginner",
+            "phase": "BET",
+            "status": "not-connected",
+            "reason": "automatic-check-call",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "dramaha_zero",
+            "tierId": "beginner",
+            "phase": "BET",
+            "status": "not-connected",
+            "reason": "automatic-check-call",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "dramaha_zero",
+            "tierId": "beginner",
+            "phase": "BET",
+            "status": "not-connected",
+            "reason": "automatic-check-call",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
           },
           {
             "variantId": "dramaha_zero",
@@ -25195,7 +24898,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-dra-fe375-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "129ea2eed6fc335a648e399430df011677f58122fbca6ea5983577fcc575e9a3"
+        "evidenceSha256": "22f61f7722f864855160471ec5f64d50145363f1dfdfa41b7fc1ba212ab49a85"
       },
       "modeDeclarations": {
         "appVariantId": "dramaha_zero",
@@ -25314,62 +25017,62 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "dramaha_zero",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "not-connected",
+            "reason": "automatic-check-call",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "dramaha_zero",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "not-connected",
+            "reason": "automatic-check-call",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "dramaha_zero",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "not-connected",
+            "reason": "automatic-check-call",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "dramaha_zero",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "not-connected",
+            "reason": "automatic-check-call",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "dramaha_zero",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "not-connected",
+            "reason": "automatic-check-call",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
             "elapsedMs": 1
-          },
-          {
-            "variantId": "dramaha_zero",
-            "tierId": "standard",
-            "phase": "BET",
-            "status": "not-connected",
-            "reason": "automatic-check-call",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "dramaha_zero",
-            "tierId": "standard",
-            "phase": "BET",
-            "status": "not-connected",
-            "reason": "automatic-check-call",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "dramaha_zero",
-            "tierId": "standard",
-            "phase": "BET",
-            "status": "not-connected",
-            "reason": "automatic-check-call",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "dramaha_zero",
-            "tierId": "standard",
-            "phase": "BET",
-            "status": "not-connected",
-            "reason": "automatic-check-call",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "dramaha_zero",
-            "tierId": "standard",
-            "phase": "BET",
-            "status": "not-connected",
-            "reason": "automatic-check-call",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
           },
           {
             "variantId": "dramaha_zero",
@@ -25416,7 +25119,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-dra-9766e-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "84e02b9cc46edb1ce16dfad153329c33f4dcbf8bbae9305628e90498d3b0f475"
+        "evidenceSha256": "f0d9dc7475e59c51094a0e2f0d650dd16f9022a5d1af294705a99eb16faba475"
       },
       "modeDeclarations": {
         "appVariantId": "dramaha_zero",
@@ -25771,7 +25474,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "dramaha_zero",
@@ -25815,7 +25518,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "dramaha_zero",
@@ -25862,7 +25565,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-dra-d9d89-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "d3a98a4c4837e865269ba1369ea1d0ea9126feecede9f3eff889b6ccd7ecd726"
+        "evidenceSha256": "8c1a3225df0c51bfcb9154efa04c242e91a1d1c3ce62ab70c6aba4760fe4214f"
       },
       "modeDeclarations": {
         "appVariantId": "dramaha_zero",
@@ -26016,7 +25719,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 1
+            "elapsedMs": 0
           },
           {
             "variantId": "dramaha_zero",
@@ -26027,7 +25730,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "dramaha_zero",
@@ -26085,7 +25788,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-dra-3b95b-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "c2c4d71e6a45bd60d11b8e1b90f5e49273711c6a63b15b03053e50c8d9c8d70e"
+        "evidenceSha256": "bb35d09616c309b4cc59e6eab9aad79c59f05122fee63cb06cc3cfd7d47bc7bc"
       },
       "modeDeclarations": {
         "appVariantId": "dramaha_zero",
@@ -26287,17 +25990,6 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 1
-          },
-          {
-            "variantId": "dramaha_hidugi",
-            "tierId": "beginner",
-            "phase": "BET",
-            "status": "not-connected",
-            "reason": "automatic-check-call",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
             "elapsedMs": 0
           },
           {
@@ -26320,7 +26012,18 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 1
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "dramaha_hidugi",
+            "tierId": "beginner",
+            "phase": "BET",
+            "status": "not-connected",
+            "reason": "automatic-check-call",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
           },
           {
             "variantId": "dramaha_hidugi",
@@ -26389,7 +26092,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-dra-937bf-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "428388c886d863782f91f202136f2514b851ad5d75c83f3fb7434dedbf607f4f"
+        "evidenceSha256": "f5e8ea4cb29c87ad4096373ea78971c6ca58bb2aabb1cf30cb84f538fa967cc7"
       },
       "modeDeclarations": {
         "appVariantId": "dramaha_hidugi",
@@ -26574,7 +26277,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "dramaha_hidugi",
@@ -26610,7 +26313,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-dra-ae782-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "2af5a27181b1255593513608dcc62019ec2ffa485ed0ac2496c9d63b729f62d8"
+        "evidenceSha256": "bdd1eace2d065703185151b2ee3c3776116e2600d1f3e613844ad17d445bb706"
       },
       "modeDeclarations": {
         "appVariantId": "dramaha_hidugi",
@@ -26753,40 +26456,40 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "dramaha_hidugi",
+            "tierId": "pro",
+            "phase": "BET",
+            "status": "not-connected",
+            "reason": "automatic-check-call",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "dramaha_hidugi",
+            "tierId": "pro",
+            "phase": "BET",
+            "status": "not-connected",
+            "reason": "automatic-check-call",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "dramaha_hidugi",
+            "tierId": "pro",
+            "phase": "BET",
+            "status": "not-connected",
+            "reason": "automatic-check-call",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
             "elapsedMs": 1
-          },
-          {
-            "variantId": "dramaha_hidugi",
-            "tierId": "pro",
-            "phase": "BET",
-            "status": "not-connected",
-            "reason": "automatic-check-call",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "dramaha_hidugi",
-            "tierId": "pro",
-            "phase": "BET",
-            "status": "not-connected",
-            "reason": "automatic-check-call",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "dramaha_hidugi",
-            "tierId": "pro",
-            "phase": "BET",
-            "status": "not-connected",
-            "reason": "automatic-check-call",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
           },
           {
             "variantId": "dramaha_hidugi",
@@ -26833,7 +26536,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-dra-76967-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "23f0a42ddd865896da4b2658ecc2059f573c47ae7433d4239cb9cded5eaf1366"
+        "evidenceSha256": "d67caeb284e463db6155ef2ff54bf801ddb2629f9428e490b43d834c7a88fbbf"
       },
       "modeDeclarations": {
         "appVariantId": "dramaha_hidugi",
@@ -27558,7 +27261,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "dramaha_badugi",
@@ -27583,7 +27286,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-dra-e4278-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "5fcf874d42a6b2016f11fec42de7636174d1f68d971f058bde25a68e34802e8d"
+        "evidenceSha256": "ce97d20c45745d5a92662beeee8e020a3771b3c0331b75d15dd65616239da553"
       },
       "modeDeclarations": {
         "appVariantId": "dramaha_badugi",
@@ -27702,51 +27405,51 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "dramaha_badugi",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "not-connected",
+            "reason": "automatic-check-call",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "dramaha_badugi",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "not-connected",
+            "reason": "automatic-check-call",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "dramaha_badugi",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "not-connected",
+            "reason": "automatic-check-call",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
+            "elapsedMs": 0
+          },
+          {
+            "variantId": "dramaha_badugi",
+            "tierId": "standard",
+            "phase": "BET",
+            "status": "not-connected",
+            "reason": "automatic-check-call",
+            "requestedModelId": null,
+            "selectedModelId": null,
+            "usedModelId": null,
             "elapsedMs": 1
-          },
-          {
-            "variantId": "dramaha_badugi",
-            "tierId": "standard",
-            "phase": "BET",
-            "status": "not-connected",
-            "reason": "automatic-check-call",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "dramaha_badugi",
-            "tierId": "standard",
-            "phase": "BET",
-            "status": "not-connected",
-            "reason": "automatic-check-call",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "dramaha_badugi",
-            "tierId": "standard",
-            "phase": "BET",
-            "status": "not-connected",
-            "reason": "automatic-check-call",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
-          },
-          {
-            "variantId": "dramaha_badugi",
-            "tierId": "standard",
-            "phase": "BET",
-            "status": "not-connected",
-            "reason": "automatic-check-call",
-            "requestedModelId": null,
-            "selectedModelId": null,
-            "usedModelId": null,
-            "elapsedMs": 0
           },
           {
             "variantId": "dramaha_badugi",
@@ -27804,7 +27507,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-dra-12dca-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "6e14cce61ce333611a94febc4ec6588ad6a6dc61f322da880c0f3fad5f5b2c28"
+        "evidenceSha256": "6db093587dfec90e2f88bda3c0cd84da500e5077dc23239f60cb19222a17f2be"
       },
       "modeDeclarations": {
         "appVariantId": "dramaha_badugi",
@@ -27947,7 +27650,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "dramaha_badugi",
@@ -28027,7 +27730,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-dra-3233f-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "9f143e8dd5b8456faa9600240f2fb15c1e6ee80ef417e55655fb177c5698777e"
+        "evidenceSha256": "617cad1940dda5ba52cda4289e3e168d4e6b8c22c8ad89851288c9eadd99686a"
       },
       "modeDeclarations": {
         "appVariantId": "dramaha_badugi",
@@ -28404,7 +28107,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           },
           {
             "variantId": "dramaha_badugi",
@@ -28473,7 +28176,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-dra-3f269-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "4a0ab4d671a0a7cd205d81da80c43f293b26205f77120ac699f749dc02309b52"
+        "evidenceSha256": "2f3f29df098db574dd8d9021f2eaa396e6c4dd0f5972238a1ed1ac973b16df15"
       },
       "modeDeclarations": {
         "appVariantId": "dramaha_badugi",
@@ -29493,7 +29196,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           }
         ],
         "statusCounts": {
@@ -29506,7 +29209,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-stu-7e7ad-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "e92853e64f47bb809649a55394a073e567fd7e3e35053b5117e229bbca857c5f"
+        "evidenceSha256": "05354c1003ea646a1839005c8e7798e50be9c37351f8218bc86fc8f44ef62b25"
       },
       "modeDeclarations": {
         "appVariantId": "stud8",
@@ -30309,7 +30012,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 1
+            "elapsedMs": 0
           }
         ],
         "statusCounts": {
@@ -30322,7 +30025,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-raz-bca56-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "61e4c2f6c95879af25d58939c5f5cb84e064180f5d4b6621e11dff3fdc459fd9"
+        "evidenceSha256": "d13ede6e4f48583388383646c2131b99dff4583612c1f3ef53c81d5d5433e1f9"
       },
       "modeDeclarations": {
         "appVariantId": "razz",
@@ -30429,7 +30132,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 1
+            "elapsedMs": 0
           }
         ],
         "statusCounts": {
@@ -30442,7 +30145,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-raz-09b2c-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "8dca9f3dc17e380807df9f02125f4a868b71247a8d94f45219ad66ecc0b391b7"
+        "evidenceSha256": "e6b66e7fc30d507a261671a91e0f0c199c3e6b8cbd0d7748b84108778be5023a"
       },
       "modeDeclarations": {
         "appVariantId": "razz",
@@ -31227,7 +30930,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 0
+            "elapsedMs": 1
           }
         ],
         "statusCounts": {
@@ -31240,7 +30943,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-raz-d305f-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "73aa56848e30c120c51a971a8e02cfa37db232e588683e5448e3831548db9b7e"
+        "evidenceSha256": "804e84d37040fa17b6af52d440948c84aeb25fb9525a3ab0f9fc8e2aa2eed4c1"
       },
       "modeDeclarations": {
         "appVariantId": "razzdugi",
@@ -31665,7 +31368,7 @@
             "requestedModelId": null,
             "selectedModelId": null,
             "usedModelId": null,
-            "elapsedMs": 1
+            "elapsedMs": 0
           }
         ],
         "statusCounts": {
@@ -31678,7 +31381,7 @@
         "errors": [],
         "apiStubbed": true,
         "evidenceFile": "test-results/cpu-inference-evidence-raz-c3597-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
-        "evidenceSha256": "d7c5b4537da8a9cb5c92bab2a79f43aac9e17973b3e0b1a96dd4425f82d68d5e"
+        "evidenceSha256": "45078cdc8132be78b7559bee3bd6ba64cf8f21cc80f79fbec7b0ad3e7dd46a7e"
       },
       "modeDeclarations": {
         "appVariantId": "razzducey",

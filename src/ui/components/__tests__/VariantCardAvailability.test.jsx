@@ -12,9 +12,9 @@ describe("VariantCardAvailability", () => {
     expect(screen.getByTestId("variant-availability-badge").textContent).toContain("Alpha");
   });
 
-  it("renders Japanese preview labels and reason", () => {
+  it("renders the published Badugi Single Draw status and Japanese guidance", () => {
     render(<VariantCardAvailability availability={getVariantAvailability("S04")} language="ja" />);
-    expect(screen.getByTestId("variant-availability-badge").textContent).toContain("検証中");
-    expect(screen.getByTestId("variant-availability-reason").textContent).toMatch(/Badugi-family/);
+    expect(screen.getByTestId("variant-availability-badge").textContent).toContain("Alpha");
+    expect(screen.getByTestId("variant-availability-reason").textContent).toMatch(/4枚で1回だけ交換/);
   });
 });

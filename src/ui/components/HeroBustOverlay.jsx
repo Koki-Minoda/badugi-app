@@ -1,9 +1,11 @@
 import React from "react";
 import { TournamentReviewSection } from "./TournamentResultOverlay.jsx";
+import { displayTournamentTitle, getTournamentResultCopy } from "./tournamentResultCopy.js";
 
 export default function HeroBustOverlay({
   visible,
-  title = "In-the-money Results",
+  title,
+  language,
   heroSummary,
   inMoneyPlacements = [],
   tournamentReview = null,
@@ -11,6 +13,7 @@ export default function HeroBustOverlay({
   onBackToMenu,
 }) {
   if (!visible) return null;
+  const copy = getTournamentResultCopy(language);
   const heroPlaceValue = heroSummary?.place ?? "?";
   const heroPlaceSuffix =
     typeof heroPlaceValue === "number"
@@ -23,12 +26,12 @@ export default function HeroBustOverlay({
         : "th"
       : "";
   const heroPlaceText = heroSummary
-    ? `You finished in ${heroPlaceValue}${heroPlaceSuffix} place`
-    : "You have been eliminated";
+    ? copy.finishedPlace(heroPlaceValue, heroPlaceSuffix)
+    : copy.eliminatedSummary;
   const heroPayoutText =
     typeof heroSummary?.payout === "number"
-      ? `Payout: ${heroSummary.payout}`
-      : "Payout: 0";
+      ? copy.payout(heroSummary.payout)
+      : copy.payout(0);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
       <div
@@ -38,9 +41,9 @@ export default function HeroBustOverlay({
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-6" data-testid="mtt-hero-bust-scroll-content">
         <header className="text-center space-y-2">
           <p className="text-xs uppercase tracking-[0.35em] text-rose-300">
-            You are eliminated
+            {copy.eliminated}
           </p>
-          <h2 className="text-xl font-bold sm:text-2xl">{title}</h2>
+          <h2 className="text-xl font-bold sm:text-2xl">{displayTournamentTitle(title, language, copy.inTheMoneyResults)}</h2>
         </header>
 
         <div
@@ -53,14 +56,14 @@ export default function HeroBustOverlay({
 
         <div className="space-y-3" data-testid="mtt-hero-bust-itm">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">In the Money</h3>
+            <h3 className="text-lg font-semibold">{copy.inTheMoney}</h3>
             <span className="text-sm text-slate-300">
-              {inMoneyPlacements.length ? `${inMoneyPlacements.length} players` : "No payouts"}
+              {inMoneyPlacements.length ? copy.players(inMoneyPlacements.length) : copy.noPayouts}
             </span>
           </div>
           <div className="space-y-2 max-h-64 overflow-y-auto" data-testid="mtt-hero-bust-itm-list">
             {inMoneyPlacements.length === 0 ? (
-              <p className="text-sm text-slate-400">No players reached the payout positions.</p>
+              <p className="text-sm text-slate-400">{copy.noPaidPlayers}</p>
             ) : (
               inMoneyPlacements.map((entry) => (
                 <div
@@ -72,11 +75,11 @@ export default function HeroBustOverlay({
                     <span className="text-lg font-bold text-emerald-300">{entry.place}</span>
                     <div className="flex flex-col">
                       <span className="text-base font-semibold">{entry.name}</span>
-                      <span className="text-xs text-slate-300">Stack: {entry.stack}</span>
+                      <span className="text-xs text-slate-300">{copy.stack(entry.stack)}</span>
                     </div>
                   </div>
                   <div className="text-sm font-semibold text-yellow-300">
-                    {typeof entry.payout === "number" ? `Payout ${entry.payout}` : "Payout 0"}
+                    {copy.payoutRow(typeof entry.payout === "number" ? entry.payout : 0)}
                   </div>
                 </div>
               ))
@@ -88,6 +91,7 @@ export default function HeroBustOverlay({
           <TournamentReviewSection
             tournamentReview={tournamentReview}
             onOpenReviewReplay={onOpenReviewReplay}
+            language={language}
           />
         ) : null}
 
@@ -95,10 +99,11 @@ export default function HeroBustOverlay({
         <div className="flex shrink-0 justify-center border-t border-white/10 px-4 py-3" data-testid="mtt-hero-bust-footer">
           <button
             type="button"
+            data-testid="mtt-back-to-menu"
             onClick={onBackToMenu}
             className="min-h-[44px] px-6 py-3 rounded-full bg-rose-500 text-white font-semibold hover:bg-rose-400 transition"
           >
-            Back to Menu
+            {copy.backToMenu}
           </button>
         </div>
       </div>

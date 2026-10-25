@@ -77,7 +77,7 @@ export default function MobileGameLayout({headerProps:h,sidePanelProps:s,tablePr
   </main>
   {amountOpen&&c.heroCanAct&&<BetAmountSheet key={`${t.gameVariant}:${c.controlsCurrentBet}`} model={c.betSizingModel} language={h.language} onClose={()=>setAmountOpen(false)} onConfirm={amount=>{setAmountOpen(false);c.playerRaise(amount);}}/>}
   <HandResultOverlay players={s.seatViews} heroSeat={s.heroIndex} language={h.language} reviewHandId={o.reviewHandId} visible={o.handResultVisible} summary={o.handResultSummary} onNext={o.onNextHand} buttonLabel={o.nextHandLabel} onReplayTarget={o.onReplayTarget} onHistory={h.onNavigateHistory} onCashOut={c.isCashGame?c.onCashOut:null}/>
-  <HeroBustOverlay visible={o.heroBustOverlayVisible} title={o.heroBustSummary?.title} heroSummary={o.heroBustSummary?.hero} inMoneyPlacements={o.heroBustSummary?.inMoney??[]} tournamentReview={o.tournamentReview} onOpenReviewReplay={o.onOpenTournamentReviewReplay} onBackToMenu={o.onTournamentBackToMenu}/>
-  <TournamentResultOverlay visible={o.tournamentOverlayVisible} placements={o.tournamentPlacements} title={o.tournamentTitle} tournamentReview={o.tournamentReview} onOpenReviewReplay={o.onOpenTournamentReviewReplay} onBackToMenu={o.onTournamentBackToMenu} onEnterNewTournament={o.onEnterNewTournament}/>
+  <HeroBustOverlay visible={o.heroBustOverlayVisible} language={h.language} title={o.heroBustSummary?.title} heroSummary={o.heroBustSummary?.hero} inMoneyPlacements={o.heroBustSummary?.inMoney??[]} tournamentReview={o.tournamentReview} onOpenReviewReplay={o.onOpenTournamentReviewReplay} onBackToMenu={o.onTournamentBackToMenu}/>
+  <TournamentResultOverlay visible={o.tournamentOverlayVisible} language={h.language} placements={o.tournamentPlacements} title={o.tournamentTitle} tournamentReview={o.tournamentReview} onOpenReviewReplay={o.onOpenTournamentReviewReplay} onBackToMenu={o.onTournamentBackToMenu} onEnterNewTournament={o.onEnterNewTournament}/>
  </div>;
 }

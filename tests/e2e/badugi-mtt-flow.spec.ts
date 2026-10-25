@@ -113,8 +113,8 @@ test.describe("Badugi MTT flow", () => {
       const heroSummary = await heroOverlay
         .locator('[data-testid="mtt-hero-bust-hero-summary"]')
         .textContent();
-      expect(heroSummary).toMatch(/You finished in \d+(st|nd|rd|th) place/);
-      await heroOverlay.getByRole("button", { name: /back to menu/i }).click();
+      expect(heroSummary).toMatch(/\d+位で終了/);
+      await heroOverlay.getByTestId("mtt-back-to-menu").click();
       await expect(page.getByTestId("menu-ring")).toBeVisible({ timeout: 20000 });
     } else {
       const overlay = await waitForTournamentOverlay(page);
@@ -141,7 +141,7 @@ test.describe("Badugi MTT flow", () => {
       await expect(
         champion.locator('[data-testid="mtt-result-place"]'),
       ).toHaveText("1");
-      await overlay.getByRole("button", { name: /back to menu/i }).click();
+      await overlay.getByTestId("mtt-back-to-menu").click();
       await expect(page.getByTestId("menu-ring")).toBeVisible({ timeout: 20000 });
     }
   });
@@ -156,8 +156,8 @@ test.describe("Badugi MTT flow", () => {
     const heroText = await overlay
       .locator('[data-testid="mtt-hero-bust-hero-summary"]')
       .textContent();
-    expect(heroText).toMatch(/You finished in \d+(st|nd|rd|th) place/);
-    await overlay.getByRole("button", { name: /back to menu/i }).click();
+    expect(heroText).toMatch(/\d+位で終了/);
+    await overlay.getByTestId("mtt-back-to-menu").click();
     await expect(page.getByTestId("menu-ring")).toBeVisible({ timeout: 20000 });
   });
 

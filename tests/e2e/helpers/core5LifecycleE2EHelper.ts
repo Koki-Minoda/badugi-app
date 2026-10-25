@@ -104,7 +104,7 @@ export async function fastForwardTournamentComplete(page: Page) {
 export async function returnTournamentOverlayToMenu(page: Page) {
   const overlay = page.getByTestId("mtt-hero-bust-overlay").or(page.getByTestId("mtt-result-overlay"));
   await expect(overlay).toBeVisible({ timeout: 20000 });
-  await overlay.getByRole("button", { name: /back to menu/i }).click();
+  await overlay.getByTestId("mtt-back-to-menu").click();
   await expect(page.getByTestId("menu-ring")).toBeVisible({ timeout: 20000 });
 }
 

@@ -1,7 +1,7 @@
 import {readFile, readdir, writeFile, mkdir} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
-import {resolve, dirname} from 'node:path';
+import {resolve, dirname, relative} from 'node:path';
 import {parseArgs} from 'node:util';
 import {GAME_VARIANTS} from '../src/games/config/variantCatalog.js';
 import {normalizeAppVariantId} from '../src/ui/game/appVariantRouting.js';
@@ -41,9 +41,9 @@ for (const file of (await files(resolve(values.input))).sort()) {
   rows.push({variantId:variant.id,appVariantId:appId,tier,phases,
     observedPhases:[...new Set(evidence.rows.map(row=>row.phase))],
     phaseCoverage:phases.every(phase=>evidence.rows.some(row=>row.phase===phase)),
-    decisionCount:evidence.rows.length,statusCounts:counts,usedModels:[...models],reasons:[...reasons],
+    decisionCount:evidence.rows.length,decisions:evidence.rows,statusCounts:counts,usedModels:[...models],reasons:[...reasons],
     errors:evidence.errors??[],apiStubbed:evidence.apiStubbed===true,
-    evidenceFile:file,evidenceSha256:createHash('sha256').update(bytes).digest('hex')});
+    evidenceFile:relative(process.cwd(),file),evidenceSha256:createHash('sha256').update(bytes).digest('hex')});
 }
 const keys=rows.map(row=>`${row.variantId}:${row.tier}`);
 if(new Set(keys).size!==keys.length) throw Error('Duplicate variant/tier evidence; choose one run directory');

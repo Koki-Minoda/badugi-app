@@ -128,7 +128,7 @@ const selectionSummary={
 const report={selectionSummary,generatedAt:new Date().toISOString(),sourceCommit:git(['rev-parse','HEAD']),
   trackedChanges:git(['status','--porcelain','--untracked-files=no']),
   scope:'Source registry, local assets and optional attributed browser samples. Inference does not prove semantic compatibility, strength, physical QA or release completion.',
-  runtimeEvidenceSource:runtimeReport?{file:resolve(values['runtime-evidence']),sourceCommit:runtimeReport.sourceCommit,observedGoalRows:goalRows.filter(row=>row.runtimeEvidence).length}:null,
+  runtimeEvidenceSource:runtimeReport?{file:relative(root,resolve(values['runtime-evidence'])),sourceCommit:runtimeReport.sourceCommit,observedGoalRows:goalRows.filter(row=>row.runtimeEvidence).length}:null,
   variantCount:GAME_VARIANTS.length,roadmapTiers:goalTiers,configuredTiers,rowCount:rows.length,
   roadmapRowCount:rows.filter(row=>row.roadmapTier).length,
   productionRequiredAssets:await Promise.all(registry.filter(model=>model.productionRequired).map(async model=>({modelId:model.id,...await auditAsset(model)}))),rows};

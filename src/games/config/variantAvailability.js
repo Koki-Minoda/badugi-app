@@ -90,6 +90,12 @@ export const PUBLIC_RING_PLAYABLE_VARIANTS = Object.freeze([
     cashQm: Object.freeze({ expectsDraw: true, expectsBlindIncrease: true }),
   }),
   Object.freeze({
+    id: "S07",
+    availabilityKey: "hidugi_single_draw",
+    displayName: "Hidugi Single Draw",
+    cashQm: Object.freeze({ expectsDraw: true, expectsBlindIncrease: true }),
+  }),
+  Object.freeze({
     id: "stud",
     availabilityKey: "stud",
     displayName: "Seven Card Stud",
@@ -288,7 +294,13 @@ export const VARIANT_AVAILABILITY = Object.freeze({
     reason: "Five cards, one draw. The pot splits between A-5 low and Badugi; aces play low in both. Opponents use rule-based decisions; dedicated trained AI is not yet available.",
     reasonJa: "5枚で1回交換。ポットはA-5ローとBadugiで分けます。両方ともAは低いカードです。相手はルールベースで、専用学習AIはまだありません。",
   }),
-  hidugi_single_draw: preview("Hidugi Single Draw", "Special draw evaluator exists, but natural long-run/mobile/replay coverage is not alpha-ready."),
+  hidugi_single_draw: makeEntry({
+    availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
+    label: "Hidugi Single Draw",
+    statusLabel: "Alpha",
+    reason: "Four cards and one draw. A complete four-suit Hidugi beats a three-card hand, and aces are high. Opponents use rule-based decisions.",
+    reasonJa: "4枚で1回交換し、高いHidugiを競います。4枚役は3枚役より強く、Aは最も高いカードです。相手はルールベースで判断します。",
+  }),
   dramaha_hi: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "Dramaha Hi", statusLabel: "Alpha", reason: DRAMAHA_ALPHA_REASON }),
   dramaha_27: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "Dramaha 2-7", statusLabel: "Alpha", reason: DRAMAHA_ALPHA_REASON }),
   dramaha_a5: makeEntry({ availability: VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE, label: "Dramaha A-5", statusLabel: "Alpha", reason: DRAMAHA_ALPHA_REASON }),

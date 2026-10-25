@@ -91,10 +91,22 @@ describe("special draw engines", () => {
     expect(engine.chooseCpuAction(state, 1).discardIndexes).toEqual([]);
 
     state.players[1].hand = ["AS", "AH", "AD", "2C"];
-    expect(engine.chooseCpuAction(state, 1).discardIndexes).toEqual([3]);
+    expect(engine.chooseCpuAction(state, 1).discardIndexes)
+      .toEqual(Engine === HidugiSingleDrawEngine ? [] : [3]);
 
     state.players[1].hand = ["AS", "KS", "QH", "JD"];
     expect(engine.chooseCpuAction(state, 1).discardIndexes).toEqual([1]);
+  });
+
+  it("stands pat with a complete four-card Hidugi when there is only one draw", () => {
+    const engine = new HidugiSingleDrawEngine();
+    const state = engine.initHand({ seatConfig: ["HUMAN", "CPU"], startingStack: 500, dealerIndex: 0 });
+    state.street = "DRAW";
+    state.actingPlayerIndex = 1;
+    state.players[1].hand = ["AS", "KH", "QD", "2C"];
+
+    expect(engine.chooseCpuAction(state, 1).discardIndexes).toEqual([]);
+    expect(new HidugiTripleDrawEngine().chooseCpuAction(state, 1).discardIndexes).toEqual([3]);
   });
 
   it("scoops Badacey and returns the winner's unmatched extra chip", () => {

@@ -30,6 +30,7 @@ describe('cash MIX session', () => {
     expect(isMixedVariantPlayable('B02')).toBe(true);
     expect(isMixedVariantPlayable('B03')).toBe(true);
     expect(isMixedVariantPlayable('B04')).toBe(true);
+    expect(isMixedVariantPlayable('S07')).toBe(true);
     expect(isMixedVariantPlayable('unknown')).toBe(false);
   });
   it('activates a freshly saved object and counts each completed hand once without stale renders', () => {

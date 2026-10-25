@@ -208,7 +208,7 @@ const VARIANT_CONFIGS = {
   },
   hidugi_single_draw: {
     gameId: "hidugi_single_draw",
-    displayName: "Hidugi SD",
+    displayName: "Hidugi Single Draw",
     variantId: "S07",
     evaluatorTag: "badugi-high",
     maxDrawRounds: 1,
@@ -283,11 +283,13 @@ export class SpecialDrawEngine extends DeuceToSevenTripleDrawEngine {
     const standPatWithSingleDrawBadugi = this.specialConfig.mode === "badugiLow" &&
       this.maxDrawRounds === 1 &&
       evaluateBadugiHand({ cards: player.hand ?? [] }).metadata?.size === 4;
+    const madeSingleDrawHidugi = this.variantId === "S07" &&
+      evaluateBadugiHand({ cards: player.hand ?? [], mode: "high" }).metadata?.size === 4;
     const discardIndexes = this.specialConfig.handCardCount === 5
       ? choosePairOrLowDiscardIndexes(player.hand ?? [], this.specialConfig.split?.lowType ?? "27", {
           singleDraw: this.maxDrawRounds === 1,
         })
-      : standPatWithSingleDrawBadugi ? [] : chooseBadugiDiscardIndexes(player.hand ?? [], {
+      : standPatWithSingleDrawBadugi || madeSingleDrawHidugi ? [] : chooseBadugiDiscardIndexes(player.hand ?? [], {
           mode: this.specialConfig.mode === "badugiHigh" ? "high" : "low",
         });
     if (state.street === "DRAW") {

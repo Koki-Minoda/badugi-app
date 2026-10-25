@@ -575,7 +575,7 @@
     },
     {
         "id":  "S07",
-        "name":  "Hidugi SD",
+        "name":  "Hidugi Single Draw",
         "category":  "single-draw",
         "holeCards":  4,
         "drawRounds":  1,

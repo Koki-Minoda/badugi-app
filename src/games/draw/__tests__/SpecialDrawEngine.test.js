@@ -255,6 +255,8 @@ describe("special draw engines", () => {
       [{ seatIndex: 0, payout: 90 }],
       [{ seatIndex: 1, payout: 40 }],
     ]);
+    expect(result.summary[0].payouts[0].ranksLabel).toBe("A-2-3-4");
+    expect(result.summary[1].payouts[0].ranksLabel).toBe("A-6-7-8");
     expect(result.state.players.map(({ stack }) => stack)).toEqual([590, 540, 500]);
   });
 });

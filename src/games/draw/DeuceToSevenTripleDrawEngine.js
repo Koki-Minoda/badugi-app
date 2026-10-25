@@ -5,6 +5,7 @@ import { cloneTableState, createTableState } from "../core/models.js";
 import { IllegalActionError, assertSeatIsActive } from "../core/errors.js";
 import { applyChips } from "../core/applyChips.js";
 import { DeckManager } from "../badugi/utils/deck.js";
+import { formatBadugiRanksLabel } from "../badugi/flow/handResultUtils.js";
 import { evaluateLowHand, formatLowHandLabel } from "../evaluators/low.js";
 import { compareEvaluations } from "../evaluators/registry.js";
 import { normalizeDrawAction as normalizeCoreDrawAction } from "../core/draw/normalizeDrawAction.js";
@@ -293,6 +294,9 @@ function splitAmount(amount, winnerCount) {
 
 function formatLowRanksLabel(evaluation) {
   const ranks = evaluation?.metadata?.ranks;
+  if (evaluation?.metadata?.mode === "low" && evaluation?.metadata?.size) {
+    return formatBadugiRanksLabel({ ranks });
+  }
   return Array.isArray(ranks) && ranks.length ? ranks.join("-") : "";
 }
 

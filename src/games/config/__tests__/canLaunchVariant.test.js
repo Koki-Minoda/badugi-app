@@ -6,6 +6,8 @@ describe("canLaunchVariant", () => {
     expect(canLaunchVariant("D01").canLaunch).toBe(true);
     expect(canLaunchVariant("D02").canLaunch).toBe(true);
     expect(canLaunchVariant("S01").canLaunch).toBe(true);
+    expect(canLaunchVariant("S03").canLaunch).toBe(true);
+    expect(canLaunchVariant("five_card_single_draw").canLaunch).toBe(true);
     expect(canLaunchVariant("badugi").canLaunch).toBe(true);
     expect(canLaunchVariant("flh").canLaunch).toBe(true);
     expect(canLaunchVariant("super_holdem").canLaunch).toBe(true);

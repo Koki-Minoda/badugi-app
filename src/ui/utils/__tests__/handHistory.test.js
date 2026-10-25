@@ -210,7 +210,7 @@ describe("handHistory", () => {
       variantId: "D06",
       variantName: "Hidugi TD",
       hand: ["KS", "QD", "JH", "10C"],
-      labelPart: "Badugi",
+      labelPart: "Hidugi",
     },
     {
       variantId: "S04",

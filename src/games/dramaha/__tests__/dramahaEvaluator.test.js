@@ -36,6 +36,14 @@ describe("dramahaEvaluator", () => {
     expect(compareDramahaDraw(sevenLow, eightLow)).toBeLessThan(0);
   });
 
+  it("awards Dramaha Hidugi draw half to four aces from five hole cards", () => {
+    const boardCards = ["2S", "3D", "4H", "5C", "7S"];
+    const aces = evaluateDramahaHand({ variant: "dramaha_hidugi", holeCards: ["AS", "AH", "AD", "AC", "9S"], boardCards });
+    const kings = evaluateDramahaHand({ variant: "dramaha_hidugi", holeCards: ["KS", "KH", "KD", "KC", "9H"], boardCards });
+    expect(aces.draw.metadata.cards).toEqual(["AS", "AH", "AD", "AC"]);
+    expect(compareDramahaDraw(aces, kings)).toBeLessThan(0);
+  });
+
   it("keeps board and draw winners independently comparable", () => {
     const boardWinner = evaluateDramahaHand({
       variant: "dramaha_hi",

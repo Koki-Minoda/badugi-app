@@ -425,3 +425,32 @@ describe("Registry evaluateHand", () => {
     expect(result.metadata.size).toBe(4);
   });
 });
+
+describe("Hidugi high Badugi", () => {
+  const high = (cards) => evaluateBadugiHand({ cards, mode: "high" });
+
+  it("ranks four aces above any other four-suit hand", () => {
+    const aces = high(["AS", "AH", "AD", "AC"]);
+    const kings = high(["KS", "KH", "KD", "KC"]);
+    const mixed = high(["AS", "KH", "QD", "JC"]);
+    expect(aces).toMatchObject({
+      handName: "Hidugi 4-card (A-A-A-A)",
+      metadata: { size: 4, ranks: [14, 14, 14, 14] },
+    });
+    expect(compareEvaluations(aces, kings)).toBeLessThan(0);
+    expect(compareEvaluations(mixed, kings)).toBeLessThan(0);
+  });
+
+  it("values four suits before rank and picks the best subset from five cards", () => {
+    const fourSuits = high(["KS", "QH", "JD", "10C"]);
+    const threeAces = high(["AS", "AH", "AD", "KC"]);
+    const fiveCards = high(["AS", "AH", "AD", "AC", "KS"]);
+    expect(threeAces.metadata.size).toBe(4);
+    expect(compareEvaluations(threeAces, fourSuits)).toBeLessThan(0);
+    expect(fiveCards.metadata.cards).toEqual(["AS", "AH", "AD", "AC"]);
+
+    const duplicateSuit = high(["AS", "KS", "QH", "JD"]);
+    expect(duplicateSuit.metadata.size).toBe(3);
+    expect(compareEvaluations(fourSuits, duplicateSuit)).toBeLessThan(0);
+  });
+});

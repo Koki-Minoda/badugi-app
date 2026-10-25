@@ -1,5 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { getTablePhaseColors } from "../tablePhaseColors.js";
+import { getTablePhaseColors, resolveTablePresentationPhase } from "../tablePhaseColors.js";
+
+describe("table presentation phase", () => {
+  it("uses the active controller phase for the badge and color", () => {
+    const phase = resolveTablePresentationPhase({
+      controllerPhase: "DRAW",
+      controlsPhase: "DRAW",
+      legacyPhase: "BET",
+    });
+    expect(phase).toBe("DRAW");
+    expect(getTablePhaseColors(phase).phaseTone).toBe("draw");
+  });
+
+  it("keeps result and bust overlays authoritative over a reset controller", () => {
+    expect(resolveTablePresentationPhase({ controllerPhase: "BET", resultVisible: true }))
+      .toBe("HAND_RESULT");
+    expect(resolveTablePresentationPhase({ controllerPhase: "BET", tableFinished: true }))
+      .toBe("TABLE_FINISHED");
+  });
+});
 
 describe("table phase colors", () => {
   it.each(["DRAW", "draw", "DRAWING"])(

@@ -81,17 +81,37 @@ def cases_for_audit():
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", required=True)
+    parser.add_argument("--variant", choices=[row[0] for row in VARIANTS])
+    parser.add_argument("--model", help="Optional ONNX model for legal-action comparison; requires --variant")
     args = parser.parse_args()
+    if args.model and not args.variant:
+        parser.error("--model requires --variant")
     cases = cases_for_audit()
+    if args.variant:
+        cases = [case for case in cases if case["variantId"] == args.variant]
     script = """
 import { buildDrawTrainingObservationV1 } from './src/rl/drawTrainingObservationV1.js';
+import { buildDrawObservationVector } from './src/rl/drawObservationSchema.js';
 let input = ''; for await (const chunk of process.stdin) input += chunk;
-process.stdout.write(JSON.stringify(JSON.parse(input).map(row => buildDrawTrainingObservationV1(row.payload))));
+const ranks = {11: 'J', 12: 'Q', 13: 'K', 14: 'A'};
+const suits = 'CDHS';
+process.stdout.write(JSON.stringify(JSON.parse(input).map(row => {
+  const state = row.payload.state;
+  const liveState = {...state, players: state.players.map(player => ({
+    ...player, hand: player.hand.map(([rank, suit]) => `${ranks[rank] ?? rank}${suits[suit]}`),
+  }))};
+  return {
+    training: buildDrawTrainingObservationV1(row.payload),
+    live: buildDrawObservationVector({...row.payload, state: liveState, variantId: row.variantId}),
+  };
+})));
 """
     result = subprocess.run(["node", "--input-type=module", "-e", script], input=json.dumps(cases),
                             cwd=ROOT, capture_output=True, text=True, check=True)
     rows = []
-    for case, actual in zip(cases, json.loads(result.stdout)):
+    encoded = json.loads(result.stdout)
+    for case, vectors in zip(cases, encoded):
+        actual = vectors["training"]
         expected = case["python"]
         differences = [{"slot": index, "javascript": js, "python": py}
                        for index, (js, py) in enumerate(zip(actual, expected)) if abs(js - py) > 1e-6]
@@ -103,11 +123,45 @@ process.stdout.write(JSON.stringify(JSON.parse(input).map(row => buildDrawTraini
     report = {"status": "PASS" if passed else "MISMATCH", "caseCount": len(rows),
               "scope": "Offline training observation only; not live inference or strength evaluation",
               "rows": rows}
+    if args.model:
+        import numpy as np
+        import onnxruntime as ort
+
+        model = Path(args.model)
+        if not model.is_absolute():
+            model = ROOT / model
+        session = ort.InferenceSession(str(model), providers=["CPUExecutionProvider"])
+        input_name = session.get_inputs()[0].name
+        decisions = []
+        for case, vectors in zip(cases, encoded):
+            legal = [index for index, name in enumerate(DRAW_ACTIONS)
+                     if name in case["payload"]["legalActions"]]
+            choices = {}
+            for path in ("live", "training"):
+                values = session.run(None, {input_name: np.asarray(vectors[path], dtype=np.float32)})[0].reshape(-1)
+                choices[path] = int(max(legal, key=lambda index: values[index]))
+            decisions.append({key: case[key] for key in ("variantId", "seed", "phase", "scenario", "seat")} |
+                             choices)
+        report["decisionComparison"] = {
+            "model": str(model.relative_to(ROOT)) if model.is_relative_to(ROOT) else str(model),
+            "scope": "Same-state legal argmax only; not played-hand or strength evaluation",
+            "caseCount": len(decisions),
+            "differentCount": sum(row["live"] != row["training"] for row in decisions),
+            "byPhase": {phase: {
+                "caseCount": sum(row["phase"] == phase for row in decisions),
+                "differentCount": sum(row["phase"] == phase and row["live"] != row["training"]
+                                      for row in decisions),
+            } for phase in ("BET", "DRAW")},
+            "rows": decisions,
+        }
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps({"status": report["status"], "caseCount": len(rows),
-                      "mismatches": sum(bool(row["differences"]) for row in rows)}))
+                      "mismatches": sum(bool(row["differences"]) for row in rows),
+                      "decisionComparison": {key: value for key, value in
+                                             report.get("decisionComparison", {}).items()
+                                             if key in ("caseCount", "differentCount", "byPhase")}}))
     return 0 if passed else 1
 
 

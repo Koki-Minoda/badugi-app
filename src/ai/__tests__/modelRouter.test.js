@@ -19,6 +19,14 @@ describe("modelRouter", () => {
     expect(entry?.id).toBe("model-generic-v1");
   });
 
+  it("does not select the unpublished NLH WorldMaster placeholder for inference", () => {
+    expect(getModelEntry("model-nlh-v1")?.trainingStatus).toBe("pending");
+    for (const variantId of ["B01", "B02"]) {
+      expect(selectModelForVariant({ variantId, tierId: "worldmaster", requireVariantMatch: true })).toBeNull();
+      expect(resolveTierModelInfo({ variantId, tierId: "worldmaster" })).toBeNull();
+    }
+  });
+
   it("uses exact variant-tier model before a generic tier model", () => {
     const entry = resolveTierModelInfo({ variantId: "D03", tierId: "beginner" });
     expect(entry?.modelId).toBe("model-badugi-sixmax-standard-dqn-v2");

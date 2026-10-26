@@ -148,7 +148,7 @@ export function buildCpuDecisionTelemetry({
     nestedDecision?.decisionSource ??
     findMetadataValue(metadata, ["decisionSource", "decision_source", "source", "strategy"]);
   const decisionSource = normalizeSource(
-    rawSource ? classifyDecisionSource({ decisionSource: rawSource }, tier) : "unknown",
+    rawSource ? classifyDecisionSource({ decisionSource: rawSource }) : "unknown",
   );
   const fallbackReason =
     metadata?.fallbackReason ??

@@ -30,8 +30,10 @@ const COPY = {
     clear: "配置をクリア",
     submit: "配置を確定して採点",
     next: "次のハンド",
+    finishTrial: "体験を終了",
     unassigned: "未配置カード",
     selectHint: "カードを選び、配置先の行ボタンを押してください。",
+    scoredHint: "配置と採点が確定しました。各行の役と結果を確認できます。",
     fullRow: "この行は上限枚数です。",
     results: "結果",
     matchup: "対戦別スコア",
@@ -59,8 +61,10 @@ const COPY = {
     clear: "Clear Rows",
     submit: "Score Hand",
     next: "Next Hand",
+    finishTrial: "Finish trial",
     unassigned: "Unassigned Cards",
     selectHint: "Select a card, then choose a row.",
+    scoredHint: "The rows and score are final. Review each row and the result.",
     fullRow: "That row is already full.",
     results: "Results",
     matchup: "Matchup Scores",
@@ -287,6 +291,11 @@ export default function ChinesePokerGameScreen({ language = "ja", onBack = null,
       </header>
 
       <main className="mx-auto mt-5 grid max-w-7xl gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+        {snapshot.phase === "showdown" && (
+          <div className="xl:col-span-2">
+            <ResultPanel snapshot={snapshot} copy={copy} completedHistory={completedHistory} replayAudit={replayAudit} />
+          </div>
+        )}
         <section className="rounded-3xl border border-emerald-400/20 bg-emerald-950/20 p-4">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -297,16 +306,14 @@ export default function ChinesePokerGameScreen({ language = "ja", onBack = null,
                 {snapshot.phase === "showdown" ? copy.showdown : copy.setting}
               </h2>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={handleAutoArrange} className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-bold text-slate-950">
-                {copy.auto}
-              </button>
-              <button type="button" onClick={handleClear} className="rounded-xl bg-slate-800 px-4 py-2 text-sm font-bold text-white">
-                {copy.clear}
-              </button>
-              {snapshot.phase === "showdown" ? (
-                <span className="px-4 py-2 text-sm font-bold text-emerald-200">{copy.results}</span>
-              ) : (
+            {snapshot.phase !== "showdown" && (
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={handleAutoArrange} className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-bold text-slate-950">
+                  {copy.auto}
+                </button>
+                <button type="button" onClick={handleClear} className="rounded-xl bg-slate-800 px-4 py-2 text-sm font-bold text-white">
+                  {copy.clear}
+                </button>
                 <button
                   type="button"
                   onClick={handleSubmit}
@@ -316,8 +323,8 @@ export default function ChinesePokerGameScreen({ language = "ja", onBack = null,
                 >
                   {copy.submit}
                 </button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
@@ -325,7 +332,7 @@ export default function ChinesePokerGameScreen({ language = "ja", onBack = null,
               <div className="mb-3 flex items-center justify-between gap-2">
                 <div>
                   <h2 className="text-lg font-bold">{hero?.name ?? "You"}</h2>
-                  <p className="text-xs text-slate-400">{copy.selectHint}</p>
+                  <p className="text-xs text-slate-400">{snapshot.phase === "showdown" ? copy.scoredHint : copy.selectHint}</p>
                 </div>
                 {hero?.evaluation?.foul && (
                   <span className="rounded-full bg-red-500/20 px-2 py-1 text-xs font-bold text-red-200">
@@ -338,13 +345,15 @@ export default function ChinesePokerGameScreen({ language = "ja", onBack = null,
                   <div key={row.key}>
                     <div className="mb-1 flex items-center justify-between text-xs text-slate-400">
                       <span>{copy.rowLabels[row.key]}</span>
-                      <button
-                        type="button"
-                        onClick={() => moveSelectedToRow(row.key)}
-                        className="rounded-full border border-white/15 px-3 py-1 font-semibold text-slate-100 hover:border-emerald-300"
-                      >
-                        + {copy.rowLabels[row.key]}
-                      </button>
+                      {snapshot.phase !== "showdown" && (
+                        <button
+                          type="button"
+                          onClick={() => moveSelectedToRow(row.key)}
+                          className="rounded-full border border-white/15 px-3 py-1 font-semibold text-slate-100 hover:border-emerald-300"
+                        >
+                          + {copy.rowLabels[row.key]}
+                        </button>
+                      )}
                     </div>
                     <div className="flex min-h-20 flex-wrap gap-2 rounded-2xl border border-white/10 bg-slate-900/75 p-2">
                       {rows[row.key].map((card) => (
@@ -352,14 +361,14 @@ export default function ChinesePokerGameScreen({ language = "ja", onBack = null,
                           key={card}
                           card={card}
                           selected={selectedCard === card}
-                          onClick={() => setSelectedCard((current) => (current === card ? null : card))}
+                          onClick={snapshot.phase === "showdown" ? null : () => setSelectedCard((current) => (current === card ? null : card))}
                         />
                       ))}
                     </div>
                   </div>
                 ))}
               </div>
-              <div className="mt-4">
+              {snapshot.phase !== "showdown" && <div className="mt-4">
                 <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">{copy.unassigned}</p>
                 <div className="flex min-h-20 flex-wrap gap-2 rounded-2xl border border-dashed border-white/15 bg-slate-900/50 p-2">
                   {unassignedCards.map((card) => (
@@ -371,7 +380,7 @@ export default function ChinesePokerGameScreen({ language = "ja", onBack = null,
                     />
                   ))}
                 </div>
-              </div>
+              </div>}
               {rowError && <p className="mt-3 rounded-xl bg-red-500/15 px-3 py-2 text-sm text-red-200">{rowError}</p>}
             </div>
 
@@ -386,8 +395,7 @@ export default function ChinesePokerGameScreen({ language = "ja", onBack = null,
         </section>
 
         <aside className="space-y-4">
-          <PlayerRows player={{ ...hero, rows, evaluation: hero?.evaluation }} copy={copy} phase="showdown" />
-          <ResultPanel snapshot={snapshot} copy={copy} completedHistory={completedHistory} replayAudit={replayAudit} />
+          {snapshot.phase !== "showdown" && <PlayerRows player={{ ...hero, rows, evaluation: hero?.evaluation }} copy={copy} phase="showdown" />}
           {snapshot.phase !== "showdown" && (
             <div className="rounded-3xl border border-white/10 bg-slate-950/75 p-4 text-sm text-slate-300">
               {copy.hidden}
@@ -397,7 +405,7 @@ export default function ChinesePokerGameScreen({ language = "ja", onBack = null,
       </main>
       {snapshot.phase === "showdown" && <footer className="fixed inset-x-0 bottom-0 z-20 flex flex-wrap items-center justify-center gap-3 border-t border-emerald-300/30 bg-slate-950/95 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-2 backdrop-blur">
         <p role="status" data-testid="chinese-result-summary" className="font-bold text-emerald-100">{hero?.name ?? "You"}: {snapshot.results.totals[hero?.id] > 0 ? '+' : ''}{snapshot.results.totals[hero?.id]} · {hero?.evaluation?.foul ? copy.foul : copy.results}</p>
-        <button type="button" onClick={handleNextHand} className="min-h-11 rounded-xl bg-amber-400 px-6 py-2 text-sm font-bold text-slate-950" data-testid="chinese-next-hand">{copy.next}</button>
+        <button type="button" onClick={handleNextHand} className="min-h-11 rounded-xl bg-amber-400 px-6 py-2 text-sm font-bold text-slate-950" data-testid="chinese-next-hand">{guest ? copy.finishTrial : copy.next}</button>
       </footer>}
     </div>
   );

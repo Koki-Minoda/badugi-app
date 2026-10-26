@@ -20,15 +20,27 @@ describe("ChinesePokerGameScreen", () => {
   it("can score a hand and advance to the next hand", () => {
     render(<ChinesePokerGameScreen language="en" />);
 
+    expect(screen.getByText("Select a card, then choose a row.")).toBeTruthy();
     fireEvent.click(screen.getByTestId("chinese-submit"));
     expect(screen.getByTestId("chinese-results")).toBeTruthy();
+    const resultPosition = screen.getByTestId("chinese-results")
+      .compareDocumentPosition(screen.getByTestId("chinese-hero-arrange"));
+    expect(resultPosition & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByTestId("chinese-replay-integrity").textContent).toContain("verified");
     expect(screen.getByTestId("chinese-history-replay").textContent).toContain("ROWS_SET");
     expect(screen.getByText("Next Hand")).toBeTruthy();
+    expect(screen.getByText("The rows and score are final. Review each row and the result.")).toBeTruthy();
+    expect(screen.queryByText("Select a card, then choose a row.")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Auto Arrange" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Clear Rows" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "+ Front 3" })).toBeNull();
+    expect(screen.queryByText("Unassigned Cards")).toBeNull();
 
     fireEvent.click(screen.getByTestId("chinese-next-hand"));
     expect(screen.getByText(/Hand #2/)).toBeTruthy();
     expect(screen.queryByTestId("chinese-results")).toBeNull();
+    expect(screen.getByRole("button", { name: "Auto Arrange" })).toBeTruthy();
+    expect(screen.getByText("Select a card, then choose a row.")).toBeTruthy();
   }, 10000);
 
   it("does not duplicate the row-set history event after auto arrange", () => {
@@ -40,6 +52,16 @@ describe("ChinesePokerGameScreen", () => {
     const history = screen.getByTestId("chinese-history-replay").textContent;
     expect(history.match(/ROWS_SET/g)).toHaveLength(1);
     expect(screen.getByTestId("chinese-replay-integrity").textContent).toContain("verified");
+  }, 10000);
+
+  it("labels the trial exit by its actual action after scoring", () => {
+    const onBack = vi.fn();
+    render(<ChinesePokerGameScreen language="ja" guest onBack={onBack} />);
+
+    fireEvent.click(screen.getByTestId("chinese-submit"));
+    expect(screen.getByRole("button", { name: "体験を終了" })).toBeTruthy();
+    fireEvent.click(screen.getByTestId("chinese-next-hand"));
+    expect(onBack).toHaveBeenCalledTimes(1);
   }, 10000);
 
   it("returns to game selector through the back action", () => {

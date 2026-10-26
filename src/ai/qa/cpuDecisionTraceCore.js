@@ -10,11 +10,11 @@ export function normalizeCpuActionType(action) {
   return lower;
 }
 
-export function classifyDecisionSource(metadata = {}, requestedTier = null) {
+export function classifyDecisionSource(metadata = {}) {
   const rawSource = metadata?.decisionSource ?? metadata?.source ?? metadata?.strategy ?? null;
   const source = rawSource ? String(rawSource) : "heuristic";
   if (source.includes("fallback")) return "fallback";
-  if (source.includes("pro") || source.includes("overlay") || requestedTier === "pro") {
+  if (source.includes("pro") || source.includes("overlay")) {
     return source.includes("ruleBased") ? "heuristic" : "pro-overlay";
   }
   if (source.includes("ruleBased") || source.includes("heuristic")) return "heuristic";

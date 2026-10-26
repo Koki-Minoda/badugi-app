@@ -76,7 +76,7 @@ describe("cpu decision trace", () => {
   it("classifies pro overlay separately from rule-based heuristic", () => {
     expect(classifyDecisionSource({ strategy: "ruleBasedD01" })).toBe("heuristic");
     expect(
-      classifyDecisionSource({ strategy: "pro-d01", decisionSource: "pro-overlay" }, "pro"),
+      classifyDecisionSource({ strategy: "pro-d01", decisionSource: "pro-overlay" }),
     ).toBe("pro-overlay");
   });
 });

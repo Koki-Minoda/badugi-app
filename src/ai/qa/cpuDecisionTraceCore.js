@@ -12,7 +12,7 @@ export function normalizeCpuActionType(action) {
 
 export function classifyDecisionSource(metadata = {}) {
   const rawSource = metadata?.decisionSource ?? metadata?.source ?? metadata?.strategy ?? null;
-  const source = rawSource ? String(rawSource) : "heuristic";
+  const source = rawSource ? String(rawSource) : "unknown";
   if (source.includes("fallback")) return "fallback";
   if (source.includes("pro") || source.includes("overlay")) {
     return source.includes("ruleBased") ? "heuristic" : "pro-overlay";

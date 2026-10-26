@@ -39,7 +39,9 @@ jobs:
 
   learning-qa:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # A cold chromium+webkit system-dependency install exceeded 20 minutes in
+    # the 2026-10-26 production dispatch before the actual QA could start.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6

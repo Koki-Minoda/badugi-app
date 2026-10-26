@@ -8,6 +8,8 @@
     ],
     "tier": "worldmaster",
     "onnx": "models/nlh_worldmaster.onnx",
+    "trainingStatus": "pending",
+    "trainingNotes": "Placeholder only: the ONNX asset has not been produced or validated for B01/B02.",
     "checksumSha256": null,
     "productionRequired": false,
     "inputShape": [

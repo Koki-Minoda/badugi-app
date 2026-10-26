@@ -42,7 +42,10 @@ export default function MobileGameLayout({headerProps:h,sidePanelProps:s,tablePr
  const draw=c.controlsPhase==='DRAW';
  const phaseTone=getTablePhaseColors(c.controlsPhase??t.tablePhase??t.phase).phaseTone;
  const info=c.actionPanelInfo??{};
- const hint=c.heroCanAct?(draw?(ja?'交換するカードをタップ':'Select cards to exchange'):(info.toCall>0?(ja?`あなたの番 · コール ${info.toCall}`:`Your turn · Call ${info.toCall}`):(ja?'あなたの番 · チェックできます':'Your turn · Check available'))):(ja?(info.currentActorName?`${info.currentActorName} の番`:'次の操作を待っています'):(info.waitingLabel||'Waiting'));
+ const shortCall=!next&&!draw&&call?.variant==='allin';
+ const payableCall=shortCall?Math.max(0,Number(c.heroPlayerForControls?.stack)||0):Math.max(0,Number(info.toCall)||0);
+ useEffect(()=>{if(shortCall)setAmountOpen(false);},[shortCall]);
+ const hint=c.heroCanAct?(draw?(ja?'交換するカードをタップ':'Select cards to exchange'):(info.toCall>0?(ja?`あなたの番 · コール ${payableCall}`:`Your turn · Call ${payableCall}`):(ja?'あなたの番 · チェックできます':'Your turn · Check available'))):(ja?(info.currentActorName?`${info.currentActorName} の番`:'次の操作を待っています'):(info.waitingLabel||'Waiting'));
  const street=ja?({Preflop:'プリフロップ',Flop:'フロップ',Turn:'ターン',River:'リバー','3rd Street':'3番街','4th Street':'4番街','5th Street':'5番街','6th Street':'6番街','7th Street':'7番街'}[t.streetLabel]||t.streetLabel):t.streetLabel;
  const phase=draw?(ja?`交換 ${Math.max(1,Number(t.drawRoundValue)||1)}/${t.tableSummaryProps?.maxDraws??3}`:'Draw'):(street || (ja?`ベット ${Number(t.betRoundValue||0)+1}`:'Betting'));
  const invoke=a=>{if(!a)return;const fn={onFold:c.playerFold,onCall:c.playerCall,onCheck:c.playerCheck,onRaise:c.playerRaise}[a.handler];fn?.();};
@@ -61,15 +64,15 @@ export default function MobileGameLayout({headerProps:h,sidePanelProps:s,tablePr
     <p className={`mgx-turn-message ${c.heroCanAct?'is-your-turn':''}`} role="status" aria-live="polite" data-testid="player-action-hint">{hint}</p>
     <div className="mgx-action-space">
      <div className="mgx-action-setting" data-testid="action-setting-slot">
-      {!draw&&!next&&variableBet?<button className="mgx-amount-launch" data-testid="bet-size-input" disabled={!raise} onClick={()=>setAmountOpen(true)}><span>{ja?'ベット金額を指定':'Choose bet amount'}</span><strong>{c.betSizingModel.minCommit}–{c.betSizingModel.maxCommit}<span aria-hidden="true"> ›</span></strong></button>:<div className="mgx-amount-launch mgx-setting-value">
-       <span>{next?(ja?'ハンド終了':'Hand finished'):draw?(ja?'カード交換':'Draw cards'):(ja?'固定ベット':'Fixed limit')}</span>
-       <strong>{next?(ja?'次のハンドへ':'Next hand'):draw?(ja?`${t.heroDrawSelection.length}枚を選択`:`${t.heroDrawSelection.length} selected`):(ja?`${info.raiseUnit??0} チップ`:`${info.raiseUnit??0} chips`)}</strong>
+      {!draw&&!next&&variableBet&&!shortCall?<button className="mgx-amount-launch" data-testid="bet-size-input" disabled={!raise} onClick={()=>setAmountOpen(true)}><span>{ja?'ベット金額を指定':'Choose bet amount'}</span><strong>{c.betSizingModel.minCommit}–{c.betSizingModel.maxCommit}<span aria-hidden="true"> ›</span></strong></button>:<div className="mgx-amount-launch mgx-setting-value">
+       <span>{next?(ja?'ハンド終了':'Hand finished'):draw?(ja?'カード交換':'Draw cards'):shortCall?(ja?'残り全額でコール':'Call with remaining chips'):(ja?'固定ベット':'Fixed limit')}</span>
+       <strong>{next?(ja?'次のハンドへ':'Next hand'):draw?(ja?`${t.heroDrawSelection.length}枚を選択`:`${t.heroDrawSelection.length} selected`):shortCall?(ja?`${payableCall} チップ`:`${payableCall} chips`):(ja?`${info.raiseUnit??0} チップ`:`${info.raiseUnit??0} chips`)}</strong>
       </div>}
      </div>
      <div className="mgx-bet-actions" data-testid="action-buttons-slot">
       <button data-testid="action-fold" disabled={draw||next||!fold} onClick={()=>invoke(fold)}>{ja?'フォールド':'Fold'}</button>
-      {next?<button className="mgx-primary" data-testid="action-next-hand" onClick={c.onNextHand}>{c.nextHandLabel}</button>:draw?<button className="mgx-primary" data-testid="action-draw-selected" disabled={!c.heroCanAct||!c.heroCanDraw} onClick={c.drawSelected}>{t.heroDrawSelection.length?(ja?`${t.heroDrawSelection.length}枚交換`:`Draw ${t.heroDrawSelection.length}`):(ja?'交換しない':'Stand pat')}</button>:<button className="mgx-primary" data-testid={call?.variant==='check'||!call&&!(info.toCall>0)?'action-check':'action-call'} disabled={!call} onClick={()=>invoke(call)}>{call?.variant==='check'||!call&&!(info.toCall>0)?(ja?'チェック':'Check'):call?.variant==='allin'?(ja?'オールイン':'All in'):(ja?`コール ${info.toCall??0}`:`Call ${info.toCall??0}`)}</button>}
-      <button className="mgx-raise" data-testid="action-raise" disabled={draw||next||!raise} onClick={()=>variableBet?setAmountOpen(true):invoke(raise)}>{ja?(info.toCall>0?'レイズ':'ベット'):(info.toCall>0?'Raise':'Bet')}</button>
+      {next?<button className="mgx-primary" data-testid="action-next-hand" onClick={c.onNextHand}>{c.nextHandLabel}</button>:draw?<button className="mgx-primary" data-testid="action-draw-selected" disabled={!c.heroCanAct||!c.heroCanDraw} onClick={c.drawSelected}>{t.heroDrawSelection.length?(ja?`${t.heroDrawSelection.length}枚交換`:`Draw ${t.heroDrawSelection.length}`):(ja?'交換しない':'Stand pat')}</button>:<button className={`mgx-primary${shortCall?' mgx-primary--wide':''}`} data-testid={call?.variant==='check'||!call&&!(info.toCall>0)?'action-check':'action-call'} disabled={!call} onClick={()=>invoke(call)}>{call?.variant==='check'||!call&&!(info.toCall>0)?(ja?'チェック':'Check'):shortCall?(ja?`オールイン ${payableCall}`:`All in ${payableCall}`):(ja?`コール ${payableCall}`:`Call ${payableCall}`)}</button>}
+      {!shortCall&&<button className="mgx-raise" data-testid="action-raise" disabled={draw||next||!raise} onClick={()=>variableBet?setAmountOpen(true):invoke(raise)}>{ja?(info.toCall>0?'レイズ':'ベット'):(info.toCall>0?'Raise':'Bet')}</button>}
      </div>
     </div>
     <p className="mgx-action-note">{draw?(ja?'0枚なら交換しません（パット）':'Select zero cards to stand pat'):(ja?'持ち点とポットはチップ単位です':'Stacks and pot are shown in chips')}</p>

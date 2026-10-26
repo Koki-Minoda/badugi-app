@@ -30,6 +30,7 @@ const COPY = {
     clear: "配置をクリア",
     submit: "配置を確定して採点",
     next: "次のハンド",
+    finishTrial: "体験を終了",
     unassigned: "未配置カード",
     selectHint: "カードを選び、配置先の行ボタンを押してください。",
     scoredHint: "配置と採点が確定しました。各行の役と結果を確認できます。",
@@ -60,6 +61,7 @@ const COPY = {
     clear: "Clear Rows",
     submit: "Score Hand",
     next: "Next Hand",
+    finishTrial: "Finish trial",
     unassigned: "Unassigned Cards",
     selectHint: "Select a card, then choose a row.",
     scoredHint: "The rows and score are final. Review each row and the result.",
@@ -403,7 +405,7 @@ export default function ChinesePokerGameScreen({ language = "ja", onBack = null,
       </main>
       {snapshot.phase === "showdown" && <footer className="fixed inset-x-0 bottom-0 z-20 flex flex-wrap items-center justify-center gap-3 border-t border-emerald-300/30 bg-slate-950/95 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-2 backdrop-blur">
         <p role="status" data-testid="chinese-result-summary" className="font-bold text-emerald-100">{hero?.name ?? "You"}: {snapshot.results.totals[hero?.id] > 0 ? '+' : ''}{snapshot.results.totals[hero?.id]} · {hero?.evaluation?.foul ? copy.foul : copy.results}</p>
-        <button type="button" onClick={handleNextHand} className="min-h-11 rounded-xl bg-amber-400 px-6 py-2 text-sm font-bold text-slate-950" data-testid="chinese-next-hand">{copy.next}</button>
+        <button type="button" onClick={handleNextHand} className="min-h-11 rounded-xl bg-amber-400 px-6 py-2 text-sm font-bold text-slate-950" data-testid="chinese-next-hand">{guest ? copy.finishTrial : copy.next}</button>
       </footer>}
     </div>
   );

@@ -54,6 +54,16 @@ describe("ChinesePokerGameScreen", () => {
     expect(screen.getByTestId("chinese-replay-integrity").textContent).toContain("verified");
   }, 10000);
 
+  it("labels the trial exit by its actual action after scoring", () => {
+    const onBack = vi.fn();
+    render(<ChinesePokerGameScreen language="ja" guest onBack={onBack} />);
+
+    fireEvent.click(screen.getByTestId("chinese-submit"));
+    expect(screen.getByRole("button", { name: "体験を終了" })).toBeTruthy();
+    fireEvent.click(screen.getByTestId("chinese-next-hand"));
+    expect(onBack).toHaveBeenCalledTimes(1);
+  }, 10000);
+
   it("returns to game selector through the back action", () => {
     const onBack = vi.fn();
     render(<ChinesePokerGameScreen language="ja" onBack={onBack} />);

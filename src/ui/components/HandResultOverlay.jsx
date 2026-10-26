@@ -193,7 +193,7 @@ function PotSection({ pot, index, singlePot, language, copy, players, heroSeat }
     && new Set(pot.eligibleSeatIndexes).size === players.length
     && pot.eligibleSeatIndexes.every((seatIndex) => Number.isInteger(seatIndex) && seatIndex >= 0 && seatIndex < players.length);
   const eligibleSeatsLabel = allSeatsEligible
-    ? ""
+    ? (language === "ja" ? "全員" : "All players")
     : getSeatListLabel(pot?.eligibleSeatIndexes, copy, players, heroSeat, language);
   const oddChipLabel = getOddChipLabel(pot, copy);
   return (

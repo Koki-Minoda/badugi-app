@@ -52,7 +52,7 @@ describe("HandResultOverlay", () => {
     }} />);
     expect(screen.getByRole("dialog").textContent).not.toContain("BOARD-HAND-1");
     expect(screen.getAllByTestId("hand-result-eligible-seats").map(node => node.textContent))
-      .toEqual(["対象席: あなた / Ren"]);
+      .toEqual(["対象席: 全員", "対象席: あなた / Ren"]);
   });
   test("uses Japanese labels and chips throughout split results", () => {
     render(<HandResultOverlay visible language="ja" heroSeat={0} onHistory={() => {}} onCashOut={() => {}} summary={{ pot: 101, potDetails: [

@@ -5,6 +5,22 @@ import {
 } from "../qa/cpuDecisionPersistence.js";
 
 describe("cpu decision persistence", () => {
+  it("keeps actual ONNX use distinct from a Pro overlay", () => {
+    const telemetry = buildCpuDecisionTelemetry({
+      variantId: "D01",
+      phase: "BET",
+      aiTier: "pro",
+      seatSnapshot: { isCPU: true },
+      metadata: {
+        decisionSource: "onnx",
+        modelId: "draw-pro-model",
+        inferenceTrace: { status: "used", usedModelId: "draw-pro-model", elapsedMs: 12 },
+      },
+    });
+    expect(telemetry.decisionSource).toBe("onnx");
+    expect(telemetry.inferenceTrace.usedModelId).toBe("draw-pro-model");
+  });
+
   it("persists inference evidence while excluding private payload fields", () => {
     const telemetry = buildCpuDecisionTelemetry({ variantId: "D01", phase: "BET", actorSeat: 2, seatSnapshot: { isCPU: true }, metadata: { inferenceTrace: { variantId: "D01", tierId: "standard", phase: "BET", status: "failed", reason: "session-unavailable", requestedModelId: null, selectedModelId: "missing", usedModelId: null, elapsedMs: 42, observation: { hand: ["AS"] } } } });
     expect(telemetry.inferenceTrace).toMatchObject({ status: "failed", selectedModelId: "missing", usedModelId: null, elapsedMs: 42 });

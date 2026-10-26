@@ -19,6 +19,14 @@ describe("modelRouter", () => {
     expect(entry?.id).toBe("model-generic-v1");
   });
 
+  it("does not select the unpublished NLH WorldMaster placeholder for inference", () => {
+    expect(getModelEntry("model-nlh-v1")?.trainingStatus).toBe("pending");
+    for (const variantId of ["B01", "B02"]) {
+      expect(selectModelForVariant({ variantId, tierId: "worldmaster", requireVariantMatch: true })).toBeNull();
+      expect(resolveTierModelInfo({ variantId, tierId: "worldmaster" })).toBeNull();
+    }
+  });
+
   it("uses exact variant-tier model before a generic tier model", () => {
     const entry = resolveTierModelInfo({ variantId: "D03", tierId: "beginner" });
     expect(entry?.modelId).toBe("model-badugi-sixmax-standard-dqn-v2");
@@ -26,8 +34,13 @@ describe("modelRouter", () => {
     const standard = resolveTierModelInfo({ variantId: "D03", tierId: "standard" });
     expect(standard?.modelId).toBe("model-badugi-sixmax-standard-e11");
 
-    const generic = resolveTierModelInfo({ variantId: "UNKNOWN", tierId: "beginner" });
-    expect(generic?.modelId).toBe("model-generic-v1");
+    expect(resolveTierModelInfo({ variantId: "UNKNOWN", tierId: "beginner" })).toBeNull();
+    expect(resolveTierModelInfo({ variantId: "H01", tierId: "beginner" })).toBeNull();
+    expect(resolveTierModelInfo({
+      variantId: "D03",
+      tierId: "standard",
+      modelId: "model-razz-standard-dqn-v1",
+    })).toBeNull();
   });
 
   it("supports character-specific standard Badugi model overrides", () => {

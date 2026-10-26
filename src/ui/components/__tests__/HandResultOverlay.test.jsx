@@ -43,6 +43,17 @@ describe("HandResultOverlay", () => {
     render(<HandResultOverlay visible summary={{ totalPot: 180, winners: [baseWinner], potDetails: [{ potAmount: 120, winners: [baseWinner] }, { potAmount: 60, winners: [baseWinner] }] }} />);
     expect(screen.getByTestId('hand-result-total').textContent).toBe('Pot 180 chips');
   });
+  test("keeps internal hand IDs and redundant seat lists out of the result", () => {
+    render(<HandResultOverlay visible language="ja" heroSeat={0} players={[{ name: "You" }, { name: "Sora" }, { name: "Ren" }]} summary={{
+      handId: "BOARD-HAND-1", pot: 120, potDetails: [
+        { potIndex: 0, potAmount: 90, eligibleSeatIndexes: [0, 1, 2], winners: [baseWinner] },
+        { potIndex: 1, potAmount: 30, eligibleSeatIndexes: [0, 2], winners: [baseWinner] },
+      ],
+    }} />);
+    expect(screen.getByRole("dialog").textContent).not.toContain("BOARD-HAND-1");
+    expect(screen.getAllByTestId("hand-result-eligible-seats").map(node => node.textContent))
+      .toEqual(["対象席: あなた / Ren"]);
+  });
   test("uses Japanese labels and chips throughout split results", () => {
     render(<HandResultOverlay visible language="ja" heroSeat={0} onHistory={() => {}} onCashOut={() => {}} summary={{ pot: 101, potDetails: [
       { potIndex: 0, component: "archieHigh", potAmount: 101, eligibleSeatIndexes: [0, 1], oddChipAmount: 1, winners: [{ ...baseWinner, handLabel: "Three of a Kind", stack: 601, payout: 101 }] },
@@ -56,7 +67,7 @@ describe("HandResultOverlay", () => {
     expect(screen.getByTestId("hand-result-winner-hand-label").textContent).toBe("スリーカード");
     expect(screen.getByText("該当する勝者なし")).toBeTruthy();
     const text = screen.getByRole("dialog").textContent;
-    expect(text).toContain("対象席: 席1 / 席2");
+    expect(text).toContain("対象席: あなた / 席2");
     expect(text).toContain("獲得 101 チップ");
     expect(text).toContain("持ち点: 601 チップ");
     expect(text).not.toMatch(/¥|Choose your next action|Component pot|Eligible|No eligible winners/);

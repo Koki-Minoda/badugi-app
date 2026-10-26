@@ -36,6 +36,7 @@
 .mgx-bet-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
 .mgx-bet-actions>button{min-height:46px;padding:8px 3px;border-radius:9px;font-size:12px;font-weight:650;background:#1a3026;border:1px solid #385545}
 .mgx-bet-actions>button.mgx-primary{background:#88e5b2;color:#072a18;border-color:#9cedc2}
+.mgx-bet-actions>button.mgx-primary--wide{grid-column:span 2}
 .mgx-bet-actions>button.mgx-raise{background:#244f3b;border-color:#598a6b;color:#d8f3e1}
 .mgx-amount-launch{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:46px;border:1px solid #456a53;border-radius:8px;background:#102a1d;padding:8px 10px;font-size:12px;text-align:left}
 .mgx-amount-launch strong{font-size:13px;white-space:nowrap;color:#e4eddc}

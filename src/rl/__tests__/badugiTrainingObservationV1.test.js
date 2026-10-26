@@ -12,4 +12,14 @@ describe("six-max Badugi training observation contract", () => {
       }
     });
   }
+
+  it("rejects browser card strings until a verified state adapter is provided", () => {
+    const fixture = fixtures.cases[0];
+    const players = fixture.input.state.players.map((player) => ({ ...player }));
+    players[fixture.input.seatIndex].hand = ["AS", "2D", "3C", "4H"];
+    expect(() => buildBadugiTrainingObservationV1({
+      ...fixture.input,
+      state: { ...fixture.input.state, players },
+    })).toThrow(/zero-based rank\/suit cards/);
+  });
 });

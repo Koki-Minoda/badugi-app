@@ -57,10 +57,20 @@ function rangeEquity(features) {
 }
 
 export function buildBadugiTrainingObservationV1({ state, seatIndex, legalActions = [] }) {
+  if (!Array.isArray(state?.players) || state.players.length !== NUM_PLAYERS ||
+      !Number.isInteger(seatIndex) || seatIndex < 0 || seatIndex >= NUM_PLAYERS) {
+    throw new TypeError("Six-max training observation requires six players and a valid seat index");
+  }
   const vector = new Array(SIZE).fill(0);
   const players = state.players;
   const hero = players[seatIndex];
   const hand = hero.hand;
+  if (!Array.isArray(hand) || hand.length !== 4 ||
+      !hand.every((card) => Array.isArray(card) && card.length === 2 &&
+        Number.isInteger(card[0]) && card[0] >= 0 && card[0] <= 12 &&
+        Number.isInteger(card[1]) && card[1] >= 0 && card[1] <= 3)) {
+    throw new TypeError("Six-max training observation requires four zero-based rank/suit cards");
+  }
   const phase = state.phase;
   const drawRound = state.drawRoundIndex ?? 0;
   const dealer = state.dealerIndex;

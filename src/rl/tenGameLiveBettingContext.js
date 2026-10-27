@@ -4,6 +4,9 @@ const BOARD_STREETS = ["PREFLOP", "FLOP", "TURN", "RIVER"];
 const STUD_STREETS = ["THIRD", "FOURTH", "FIFTH", "SIXTH", "SEVENTH"];
 const BOARD_VARIANTS = new Set(["B01", "B02", "B05", "B06"]);
 const STUD_VARIANTS = new Set(["ST1", "ST2", "ST3"]);
+// Midpoints of the board trainer's _position_bucket intervals. This preserves
+// its categorical teacher semantics; it is not a claim of positional equity.
+const BOARD_POSITION_MIDPOINTS = { UTG: 0.07, MP: 0.23, CO: 0.42, BTN: 0.63, SB: 0.81, BB: 0.94 };
 const validChips = value => typeof value === "number" && Number.isFinite(value) && value >= 0;
 
 function boardActionLimits(controller, variantId, seatIndex, toCall) {
@@ -86,6 +89,9 @@ export function buildTenGameLiveBettingContext({ variantId, controller, seatInde
   };
   if (isBoard && typeof controller.getPositionLabel === "function") {
     observation.positionLabel = controller.getPositionLabel(actorIndex, state.players);
+    if (Object.hasOwn(BOARD_POSITION_MIDPOINTS, observation.positionLabel)) {
+      observation.position = BOARD_POSITION_MIDPOINTS[observation.positionLabel];
+    }
   }
   const limits = isBoard ? boardActionLimits(controller, variantId, actorIndex, toCall) : {
     legalActions: null,
@@ -94,7 +100,7 @@ export function buildTenGameLiveBettingContext({ variantId, controller, seatInde
   if (!validChips(observation.betSize) ||
       (limits.amountBounds && !validChips(limits.amountBounds.callCommit))) return null;
   const missingModelInputs = isBoard
-    ? ["strength", "equity", "drawPotential", "position", ...(observation.raiseCount == null ? ["raiseCount"] : [])]
+    ? ["strength", "equity", "drawPotential", ...(observation.position == null ? ["position"] : []), ...(observation.raiseCount == null ? ["raiseCount"] : [])]
     : ["strength", "drawPotential", "visiblePressure", "position", "lowPotential", "highPotential", "legalActions", "amountBounds"];
   return {
     observation,

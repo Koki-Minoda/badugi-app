@@ -12,9 +12,9 @@ const variants = [
   ["ST1", StudGameController], ["ST2", Stud8GameController], ["ST3", RazzGameController],
 ];
 
-function start(Controller, isStud) {
+function start(Controller, isStud, seatCount = 3) {
   const controller = new Controller({ tableConfig: {
-    seats: Array.from({ length: 3 }, (_, seatIndex) => ({ name: `Seat ${seatIndex}`, stack: 1000 })),
+    seats: Array.from({ length: seatCount }, (_, seatIndex) => ({ name: `Seat ${seatIndex}`, stack: 1000 })),
     blinds: { sb: isStud ? 5 : 10, bb: isStud ? 10 : 20, ante: 0 },
   } });
   controller.startNewHand();
@@ -71,6 +71,34 @@ describe.each(variants)("%s live F03 betting context", (variantId, Controller) =
       ? ["THIRD", "FOURTH", "FIFTH", "SIXTH", "SEVENTH"]
       : ["PREFLOP", "FLOP", "TURN", "RIVER"]);
   });
+});
+
+it("maps all six live board positions into the trainer's exact position buckets", () => {
+  const positionMidpoints = { UTG: 0.07, MP: 0.23, CO: 0.42, BTN: 0.63, SB: 0.81, BB: 0.94 };
+  for (const [variantId, Controller] of variants.filter(([id]) => id.startsWith("B"))) {
+    const controller = start(Controller, false, 6);
+    const visited = [];
+    while (controller.state.street === "PREFLOP") {
+      const context = buildTenGameLiveBettingContext({ variantId, controller });
+      const label = context.observation.positionLabel;
+      visited.push(label);
+      expect(context.observation.position).toBe(positionMidpoints[label]);
+      expect(context.missingModelInputs).not.toContain("position");
+      const actor = controller.state.currentActor;
+      const action = context.observation.toCall > 0 ? "call" : "check";
+      expect(controller.applyPlayerAction({ seatIndex: actor, action }).success).toBe(true);
+    }
+    expect(visited).toEqual(["UTG", "MP", "CO", "BTN", "SB", "BB"]);
+  }
+});
+
+it("leaves numeric board position missing if a controller returns an unknown label", () => {
+  const controller = start(NLHGameController, false);
+  controller.getPositionLabel = () => "UNKNOWN";
+  const context = buildTenGameLiveBettingContext({ variantId: "B01", controller });
+  expect(context.observation.position).toBeUndefined();
+  expect(context.missingModelInputs).toContain("position");
+  expect(context.readyForModel).toBe(false);
 });
 
 it("uses each board controller's full-raise unit, pot maximum, and all-in limit", () => {

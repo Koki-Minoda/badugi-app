@@ -5,6 +5,7 @@ import {
   buildBadugiOnnxFeatures,
   buildDrawOnnxFeatures,
   buildStudBetOnnxFeatures,
+  missingBoardStudInferenceInputs,
   buildDeterministicSafeDecision,
   getRlDecisionFallbackPriority,
 } from "../onnxPolicyAdapter.js";
@@ -173,6 +174,7 @@ describe("onnxPolicyAdapter Badugi schema", () => {
       toCall: 40,
       betSize: 40,
       potSize: 180,
+      chipUnit: 500,
       strength: 0.68,
       equity: 0.58,
       drawPotential: 0.35,
@@ -180,13 +182,17 @@ describe("onnxPolicyAdapter Badugi schema", () => {
       tableSize: 6,
       streetIndex: 2,
       activeOpponents: 3,
-      actor: { stack: 500 },
+      actor: { stack: 250 },
     });
 
     expect(tensor).toBeInstanceOf(Float32Array);
     expect(tensor).toHaveLength(16);
     expect(tensor[10]).toBe(1);
     expect(tensor[11]).toBe(1);
+    expect(tensor[2]).toBeCloseTo(180 / 500);
+    expect(tensor[0]).toBeCloseTo(40 / 500);
+    expect(tensor[6]).toBeCloseTo(4 / 6);
+    expect(tensor[7]).toBeCloseTo(2 / 3);
   });
 
   it("builds exact-shape Stud-family betting tensors and selects bootstrap DQN models", () => {
@@ -218,6 +224,7 @@ describe("onnxPolicyAdapter Badugi schema", () => {
       toCall: 20,
       betSize: 20,
       potSize: 120,
+      chipUnit: 500,
       strength: 0.71,
       drawPotential: 0.22,
       visiblePressure: 0.44,
@@ -226,11 +233,25 @@ describe("onnxPolicyAdapter Badugi schema", () => {
       streetIndex: 2,
       highPotential: 0.71,
       lowPotential: 0.12,
-      actor: { stack: 500 },
+      actor: { stack: 250 },
     });
     expect(stud).toBeInstanceOf(Float32Array);
     expect(stud).toHaveLength(16);
     expect(stud[12]).toBe(1);
+    expect(stud[2]).toBeCloseTo(120 / 500);
+    expect(stud[0]).toBeCloseTo(20 / 500);
+    expect(stud[6]).toBeCloseTo(3 / 6);
+    expect(stud[7]).toBeCloseTo(2 / 4);
+
+    expect(missingBoardStudInferenceInputs(entry, { variantId: "ST1", observation: {
+      actor: { stack: 500 }, toCall: 10, potSize: 10, activeOpponents: 5, streetIndex: 0,
+    } })).toEqual(expect.arrayContaining([
+      "betSize", "chipUnit", "strength", "drawPotential", "raiseCount", "stackRatio",
+      "visiblePressure", "lowPotential", "highPotential", "position", "legalActions",
+    ]));
+    expect(missingBoardStudInferenceInputs(entry, { variantId: "ST1", observation: {
+      actor: { stack: 500 }, toCall: 10, potSize: 10, chipUnit: 0,
+    } })).toContain("chipUnit");
 
     const razz = buildStudBetOnnxFeatures(entry, {
       variantId: "ST3",

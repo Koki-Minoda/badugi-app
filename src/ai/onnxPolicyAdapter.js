@@ -77,6 +77,7 @@ export function buildDrawOnnxFeatures(entry, payload = {}) {
 export function buildBoardBetOnnxFeatures(entry, payload = {}) {
   const observation = payload.observation ?? payload;
   const maxStack = Math.max(1, observation.actor?.stack ?? observation.stack ?? 500);
+  const chipUnit = Math.max(1, Number(observation.chipUnit ?? 500));
   const variantId = observation.variantId ?? payload.variantId;
   const familyFlags = {
     hiLo: variantId === "B06" ? 1 : 0,
@@ -93,16 +94,18 @@ export function buildBoardBetOnnxFeatures(entry, payload = {}) {
   const strength = Number(observation.strength ?? observation.handStrength ?? madeCardsStrength);
   const equity = Number(observation.equity ?? strength);
   const drawPotential = Number(observation.drawPotential ?? observation.draw ?? 0);
-  const position = Number(observation.position ?? observation.positionIndex ?? 0) / (
-    Number(observation.tableSize ?? 6) || 6
-  );
-  const streetProgress = Number(observation.streetProgress ?? observation.streetIndex ?? 0) / 3;
+  const position = observation.position != null
+    ? Number(observation.position)
+    : Number(observation.positionIndex ?? 0) / (Number(observation.tableSize ?? 6) || 6);
+  const streetProgress = observation.streetProgress != null
+    ? Number(observation.streetProgress)
+    : Number(observation.streetIndex ?? 0) / 3;
   const raiseCount = Number(observation.raiseCount ?? 0);
   const activeOpponents = Number(observation.activeOpponents ?? observation.opponents ?? 1);
   const vector = new Float32Array([
-    toCall / maxStack,
-    betSize / maxStack,
-    potSize / (maxStack * 6),
+    toCall / chipUnit,
+    betSize / chipUnit,
+    potSize / chipUnit,
     Math.max(0, Math.min(1, strength)),
     Math.max(0, Math.min(1, equity)),
     Math.max(0, Math.min(1, drawPotential)),
@@ -127,13 +130,16 @@ export function buildBoardBetOnnxFeatures(entry, payload = {}) {
 export function buildStudBetOnnxFeatures(entry, payload = {}) {
   const observation = payload.observation ?? payload;
   const maxStack = Math.max(1, observation.actor?.stack ?? observation.stack ?? 500);
+  const chipUnit = Math.max(1, Number(observation.chipUnit ?? 500));
   const variantId = observation.variantId ?? payload.variantId;
   const toCall = Number(observation.toCall ?? 0);
   const betSize = Number(observation.betSize ?? observation.currentBet ?? 0);
   const potSize = Number(observation.potSize ?? observation.pot ?? 0);
   const streetIndex = Number(observation.streetIndex ?? observation.streetProgress ?? 0);
   const tableSize = Number(observation.tableSize ?? 6) || 6;
-  const position = Number(observation.position ?? observation.positionIndex ?? 0) / tableSize;
+  const position = observation.position != null
+    ? Number(observation.position)
+    : Number(observation.positionIndex ?? 0) / tableSize;
   const visiblePressure = Number(observation.visiblePressure ?? observation.boardPressure ?? 0);
   const lowPotential = Number(observation.lowPotential ?? observation.lowEquity ?? 0);
   const highPotential = Number(observation.highPotential ?? observation.highEquity ?? observation.handStrength ?? 0);
@@ -143,14 +149,14 @@ export function buildStudBetOnnxFeatures(entry, payload = {}) {
   const activeOpponents = Number(observation.activeOpponents ?? observation.opponents ?? 1);
   const rawStackRatio = Number(observation.stackRatio ?? maxStack / 500);
   const vector = new Float32Array([
-    toCall / maxStack,
-    betSize / maxStack,
-    potSize / (maxStack * 6),
+    toCall / chipUnit,
+    betSize / chipUnit,
+    potSize / chipUnit,
     Math.max(0, Math.min(1, strength)),
     Math.max(0, Math.min(1, drawPotential)),
     Math.max(0, Math.min(1, visiblePressure)),
     Math.max(0, Math.min(1, position)),
-    Math.max(0, Math.min(1, streetIndex > 1 ? streetIndex / 4 : streetIndex)),
+    Math.max(0, Math.min(1, observation.streetProgress != null ? streetIndex : streetIndex / 4)),
     toCall > 0 ? toCall / Math.max(1, potSize + toCall) : 0,
     Math.max(0, Math.min(1, raiseCount / 4)),
     variantId === "ST3" ? 1 : 0,
@@ -167,6 +173,22 @@ export function buildStudBetOnnxFeatures(entry, payload = {}) {
   return vector;
 }
 
+export function missingBoardStudInferenceInputs(entry, payload = {}) {
+  const featureSet = entry?.featureSet;
+  if (featureSet !== "board-betting-observation-v1" && featureSet !== "stud-betting-observation-v1") return [];
+  const observation = payload.observation ?? payload;
+  const finite = value => value != null && Number.isFinite(Number(value));
+  const required = ["toCall", "betSize", "potSize", "chipUnit", "strength", "drawPotential", "raiseCount", "activeOpponents", "stackRatio"];
+  if (featureSet === "board-betting-observation-v1") required.push("equity");
+  else required.push("visiblePressure", "lowPotential", "highPotential");
+  const missing = required.filter(field => !finite(observation[field]) || (field === "chipUnit" && Number(observation[field]) <= 0));
+  if (!finite(observation.actor?.stack) && !finite(observation.stack)) missing.push("actor.stack");
+  if (!finite(observation.position) && !(finite(observation.positionIndex) && finite(observation.tableSize))) missing.push("position");
+  if (!finite(observation.streetProgress) && !finite(observation.streetIndex)) missing.push("streetProgress");
+  if (!getLegalActions(payload).length) missing.push("legalActions");
+  return missing;
+}
+
 function buildBetFeatures(entry, payload) {
   const variantId = payload.variantId ?? payload.observation?.variantId;
   if (variantId === "D03") {
@@ -176,9 +198,13 @@ function buildBetFeatures(entry, payload) {
     return buildDrawOnnxFeatures(entry, payload);
   }
   if (entry?.featureSet === "board-betting-observation-v1") {
+    const missing = missingBoardStudInferenceInputs(entry, payload);
+    if (missing.length) throw new Error(`Board ONNX live input incomplete: ${missing.join(", ")}`);
     return buildBoardBetOnnxFeatures(entry, payload);
   }
   if (entry?.featureSet === "stud-betting-observation-v1") {
+    const missing = missingBoardStudInferenceInputs(entry, payload);
+    if (missing.length) throw new Error(`Stud ONNX live input incomplete: ${missing.join(", ")}`);
     return buildStudBetOnnxFeatures(entry, payload);
   }
   const length = expectedInputLength(entry) || 16;

@@ -1,12 +1,13 @@
 import React from 'react';
 import {getDisplayCards} from '../../utils/cardDisplayOrder.js';
+import {formatCardLabel} from '../../utils/cardLabel.js';
 import SeatPortrait from './SeatPortrait.jsx';
 
 const suits={S:['♠','spade'],H:['♥','heart'],D:['♦','diamond'],C:['♣','club']};
 export function TableCard({card,hidden=false,selected=false,onClick,testId,down=false}){
  const value=String(card||'');const [symbol,color]=suits[value.slice(-1).toUpperCase()]||['?','spade'];
  const Tag=onClick?'button':'span';
- return <Tag type={onClick?'button':undefined} className={`mgx-table-card ${hidden?'is-hidden':color} ${selected?'is-selected':''} ${down?'is-down':''}`} onClick={onClick} data-testid={testId} aria-label={hidden?'伏せ札':`${value.slice(0,-1)}${symbol}${down?'・伏せ札':''}`} aria-pressed={onClick?selected:undefined}>
+ return <Tag type={onClick?'button':undefined} className={`mgx-table-card ${hidden?'is-hidden':color} ${selected?'is-selected':''} ${down?'is-down':''}`} onClick={onClick} data-testid={testId} aria-label={hidden?'伏せ札':`${formatCardLabel(card)}${down?'・伏せ札':''}`} aria-pressed={onClick?selected:undefined}>
   {hidden?<span aria-hidden="true">◇</span>:<><b>{value.slice(0,-1)}</b><span>{symbol}</span></>}
  </Tag>;
 }

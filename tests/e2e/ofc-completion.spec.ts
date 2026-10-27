@@ -1,6 +1,18 @@
 import {test,expect} from '@playwright/test';
 import {APP_URL,openAuthenticatedGame,deleteAuthenticatedSession,selectGameVariantFromSelector} from './authHelper';
 import {replayOfcHistory} from '../../src/games/chinese/OpenFaceChineseController.js';
+test('OFC: all three placement buttons stay above the action bar on an iPhone portrait screen',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto(`${APP_URL}game?trial=1&variant=ofc`);
+  await expect(page.getByTestId('ofc-place-back')).toBeVisible();
+  const layout=await page.evaluate(()=>{
+    const footer=document.querySelector('[data-testid="ofc-actions"]')!.getBoundingClientRect();
+    const buttons=['front','middle','back'].map(row=>document.querySelector(`[data-testid="ofc-place-${row}"]`)!.getBoundingClientRect());
+    return {footerTop:footer.top,buttonBottoms:buttons.map(button=>button.bottom),overflow:document.documentElement.scrollWidth-innerWidth};
+  });
+  expect(layout.overflow).toBeLessThanOrEqual(1);
+  for(const bottom of layout.buttonBottoms)expect(bottom).toBeLessThanOrEqual(layout.footerTop-8);
+});
 test('OFC: ten hands, immutable streets, reload, scores and exact replay',async({page},info)=>{
   test.setTimeout(180000);
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));

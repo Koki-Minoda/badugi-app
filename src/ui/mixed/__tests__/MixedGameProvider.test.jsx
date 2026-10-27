@@ -12,7 +12,8 @@ describe('cash MIX session', () => {
   it('rotates Big O and all released Dramaha entries by catalog ID', () => {
     const ids = ['B07', 'H01', 'H02', 'H03', 'H04', 'H05', 'H06'];
     expect(ids.every(isMixedVariantPlayable)).toBe(true);
-    expect(['CP1', 'CP2', 'B03', 'B04', 'S06'].some(isMixedVariantPlayable)).toBe(false);
+    expect(['S05', 'S06'].every(isMixedVariantPlayable)).toBe(true);
+    expect(['CP1', 'CP2'].some(isMixedVariantPlayable)).toBe(false);
     const { result } = renderHook(useMixedGame, { wrapper });
     act(() => result.current.activateProfile({ id: 'catalog-routing', selectedGameIds: ids, handsPerGame: 1 }));
     ids.forEach((id, index) => {
@@ -27,6 +28,13 @@ describe('cash MIX session', () => {
     expect(isMixedVariantPlayable('B01')).toBe(true);
     expect(isMixedVariantPlayable('ST1')).toBe(true);
     expect(isMixedVariantPlayable('B02')).toBe(true);
+    expect(isMixedVariantPlayable('B03')).toBe(true);
+    expect(isMixedVariantPlayable('B04')).toBe(true);
+    expect(isMixedVariantPlayable('S07')).toBe(true);
+    expect(isMixedVariantPlayable('D06')).toBe(true);
+    expect(isMixedVariantPlayable('D04')).toBe(true);
+    expect(isMixedVariantPlayable('D05')).toBe(true);
+    expect(isMixedVariantPlayable('D07')).toBe(true);
     expect(isMixedVariantPlayable('unknown')).toBe(false);
   });
   it('activates a freshly saved object and counts each completed hand once without stale renders', () => {
@@ -61,7 +69,8 @@ describe('cash MIX session', () => {
   });
   it('selects a playable category and respects weighted exclusions', () => {
     const profile = buildProfileFromPreset({ selectedGameIds: ['D01', 'D02'], selectionMode: 'CATEGORY', categoryRules: { weights: { board: 100, 'triple-draw': 1 }, pools: { board: ['B04'], 'triple-draw': ['D02'] } } });
-    expect(resolveInitialGame(profile, null, isMixedVariantPlayable).gameId).toBe('D02');
+    // Simulate an unavailable category without tying this case to release timing.
+    expect(resolveInitialGame(profile, null, id => id !== 'B04' && isMixedVariantPlayable(id)).gameId).toBe('D02');
     const weighted = buildProfileFromPreset({ selectedGameIds: ['D01', 'D02'], selectionMode: 'WEIGHTED', weightedTable: { D01: 1000, D02: 1 }, hardBans: ['D01'] });
     expect(resolveInitialGame(weighted, null, isMixedVariantPlayable).gameId).toBe('D02');
     expect(resolveInitialGame({ ...weighted, hardBans: ['D01', 'D02'] }, null, isMixedVariantPlayable)).toBeNull();

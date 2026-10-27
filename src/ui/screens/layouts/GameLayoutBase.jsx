@@ -1,4 +1,5 @@
 import VariantRuleReminder from "../../learning/VariantRuleReminder.jsx";
+import { getWinningHandCue } from "../../learning/learningCatalog.js";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Player from "../../components/Player";
 import Card from "../../components/Card";
@@ -250,6 +251,7 @@ export default function GameLayoutBase({
   } = tableProps;
 
   const {
+    guestTrial,
     reviewHandId,
     handResultVisible,
     handResultSummary,
@@ -388,7 +390,7 @@ export default function GameLayoutBase({
     ? "border-red-300/55 bg-red-600/90 text-white shadow-[0_0_18px_rgba(248,113,113,0.36)]"
     : "border-white/10 bg-black/45 text-slate-200";
   const desktopSectionClass = showDesktopSidePanel
-    ? "pl-[270px] pr-4 pt-[4.75rem] pb-8 gap-4 min-[1360px]:pl-[290px] min-[1360px]:pr-5 min-[1360px]:pt-[5.5rem] min-[1360px]:pb-[4.5rem] min-[1360px]:gap-6"
+    ? "px-4 pt-[4.75rem] pb-8 gap-4 min-[1200px]:pl-[270px] min-[1360px]:pl-[290px] min-[1360px]:pr-5 min-[1360px]:pt-[5.5rem] min-[1360px]:pb-[4.5rem] min-[1360px]:gap-6"
     : isTournament
       ? "px-4 pt-[4.75rem] pb-8 gap-4 min-[1360px]:pt-[5.25rem] min-[1360px]:pb-[3.5rem]"
       : "px-4 pt-[4.75rem] pb-8 gap-4 min-[1360px]:px-5 min-[1360px]:pt-[5.5rem] min-[1360px]:pb-[4.5rem] min-[1360px]:gap-6";
@@ -508,6 +510,17 @@ export default function GameLayoutBase({
         "--player-pad": "7px",
         "--player-gap": "5px",
         "--player-card-gap": "3px",
+      }
+    : {};
+  const desktopBoardSizeVars = !isMobileLayout && tableLayoutGroup === LAYOUT_GROUPS.DEFAULT
+    ? {
+        "--card-w": "clamp(27px, 2.35vw, 37px)",
+        "--card-h": "clamp(39px, 3.35vw, 54px)",
+        "--card-font-size": "clamp(11px, 1vw, 14px)",
+        "--card-center-size": "clamp(20px, 1.8vw, 26px)",
+        "--player-pad": "6px",
+        "--player-gap": "4px",
+        "--player-card-gap": "2px",
       }
     : {};
   const rootStyle = isMobileLayout
@@ -652,8 +665,8 @@ export default function GameLayoutBase({
         maxHeight: disableVh ? "100vh" : "var(--mgx-visual-vh, 100dvh)",
       }
     : disableVh
-      ? { ...cardScaleVars, ...desktopStudSizeVars, ...desktopDrawSizeVars }
-      : { ...cardScaleVars, ...desktopStudSizeVars, ...desktopDrawSizeVars, minHeight: "100dvh" };
+      ? { ...cardScaleVars, ...desktopStudSizeVars, ...desktopDrawSizeVars, ...desktopBoardSizeVars }
+      : { ...cardScaleVars, ...desktopStudSizeVars, ...desktopDrawSizeVars, ...desktopBoardSizeVars, minHeight: "100dvh" };
 
   const renderControlsContent = () => {
     if (heroCanAct && heroPlayerForControls) {
@@ -669,6 +682,7 @@ export default function GameLayoutBase({
             onRaise={playerRaise}
             canRaise={!actionPanelInfo?.capReached}
             betSizing={betSizingModel}
+            language={language}
             layoutMode={mobileLayoutMode}
             className={isMobileLayout ? "w-full" : undefined}
           />
@@ -692,7 +706,7 @@ export default function GameLayoutBase({
     if (isMobileLayout) return null;
     return (
       <p className="text-sm text-slate-400 text-center w-full">
-        {actionPanelInfo?.waitingLabel ?? "Waiting for other players…"}
+        {actionPanelInfo?.waitingLabel ?? (language === "ja" ? "他のプレイヤーの操作を待っています" : "Waiting for other players…")}
       </p>
     );
   };
@@ -813,16 +827,16 @@ export default function GameLayoutBase({
 
       <main className={`flex-1 ${mainLayoutClass} relative ${tableOuterBg}`}>
         {showDesktopSidePanel && (
-          <div className="absolute top-5 left-5 z-40 flex w-[250px] flex-col gap-3 pointer-events-none">
+          <div className="absolute top-5 left-5 z-40 hidden w-[250px] flex-col gap-3 pointer-events-none min-[1200px]:flex">
             <div className="pointer-events-auto rounded-2xl border border-white/10 bg-black/70 p-3 text-xs text-white shadow-xl backdrop-blur space-y-3">
               <div className="flex items-center justify-between text-sm font-semibold">
-                <span>Table Status</span>
+                <span>{language === "ja" ? "テーブル状況" : "Table Status"}</span>
                 <button
                   type="button"
                   onClick={onToggleStatusBoard}
                   className="text-[11px] font-semibold text-yellow-300 hover:text-yellow-200 transition"
                 >
-                  {statusBoardOpen ? "Hide" : "Show"}
+                  {statusBoardOpen ? (language === "ja" ? "閉じる" : "Hide") : (language === "ja" ? "開く" : "Show")}
                 </button>
               </div>
               {statusBoardOpen && (
@@ -833,14 +847,15 @@ export default function GameLayoutBase({
                   turn={statusTurn}
                   totalPot={totalPot}
                   positionLabels={seatLabels}
+                  language={language}
                 />
               )}
             </div>
-            <TableSummaryPanel {...tableSummaryProps} />
+            <TableSummaryPanel {...tableSummaryProps} language={language} />
             {aiDecisionSummary?.total > 0 && (
               <div className="pointer-events-auto bg-black/70 rounded-lg p-3 text-xs space-y-3 shadow-lg">
                 <div className="flex items-center justify-between text-[11px] uppercase tracking-wide text-slate-400">
-                  <span>CPU Decisions</span>
+                  <span>{language === "ja" ? "CPUの判断" : "CPU Decisions"}</span>
                   <strong className="text-emerald-300">
                     {aiDecisionSummary.total}
                   </strong>
@@ -1155,7 +1170,7 @@ export default function GameLayoutBase({
                     <>
                       <div>
                         <p className="text-[10px] uppercase tracking-wider text-slate-400">
-                          Phase
+                          {language === "ja" ? "進行" : "Phase"}
                         </p>
                         <p
                           className={`${isMobileLayout ? "text-base" : "text-xl"} font-bold text-white`}
@@ -1164,24 +1179,24 @@ export default function GameLayoutBase({
                         </p>
                         {isDrawDisplayPhase && (
                           <p className="mt-1 text-[9px] font-black uppercase tracking-[0.22em] text-red-200">
-                            Draw Rusher
+                            {language === "ja" ? "交換中" : "Draw Rusher"}
                           </p>
                         )}
                       </div>
                       {usesStreetProgress ? (
                         <div className="text-right">
-                          <p className="text-[10px] uppercase tracking-wider text-slate-400">Street</p>
+                          <p className="text-[10px] uppercase tracking-wider text-slate-400">{language === "ja" ? "ストリート" : "Street"}</p>
                           <p className="text-base font-semibold text-white">{streetLabel}</p>
                         </div>
                       ) : <div className="text-right">
                         <p className="text-[10px] uppercase tracking-wider text-slate-400">
-                          Draw
+                          {language === "ja" ? "交換" : "Draw"}
                         </p>
                         <p className="text-base font-semibold text-white">
                           D{drawNumberForDisplay}
                         </p>
                         <p className="mt-1 text-[10px] uppercase tracking-wider text-slate-400">
-                          Bet Round
+                          {language === "ja" ? "ベット回" : "Bet Round"}
                         </p>
                         <p className="text-base font-semibold text-white">
                           R{betRoundNumberForDisplay}
@@ -1194,7 +1209,7 @@ export default function GameLayoutBase({
                   className={`${isMobileLayout ? "hidden" : "hidden min-[1360px]:flex"} flex-col gap-2 rounded-2xl border border-white/10 bg-slate-900/85 p-3 shadow-lg`}
                 >
                   <h2 className="text-xs font-semibold text-white uppercase tracking-wider">
-                    Hero Hand
+                    {language === "ja" ? "自分の手札" : "Hero Hand"}
                   </h2>
                   <div className="flex flex-wrap gap-2 text-slate-200 text-sm">
                     {heroDrawSelection.map((card, idx) => (
@@ -1207,7 +1222,7 @@ export default function GameLayoutBase({
                     ))}
                   </div>
                   <div className="text-[11px] text-slate-400">
-                    Draw allowed: {tableHeroCanDraw ? "Yes" : "No"}
+                    {language === "ja" ? `交換可能: ${tableHeroCanDraw ? "はい" : "いいえ"}` : `Draw allowed: ${tableHeroCanDraw ? "Yes" : "No"}`}
                   </div>
                 </div>
                 <div
@@ -1216,7 +1231,7 @@ export default function GameLayoutBase({
                   <h2
                     className={`${useDenseActionPanel ? "sr-only" : "text-xs"} font-semibold text-white uppercase tracking-wider`}
                   >
-                    Hero Controls
+                    {language === "ja" ? "自分の操作" : "Hero Controls"}
                   </h2>
                   <p role="status" aria-live="polite" data-testid="player-action-hint" className={`rounded-lg px-2 py-1 text-xs font-semibold leading-snug ${heroCanAct ? 'bg-emerald-400/15 text-emerald-100' : 'text-slate-300'}`}>
                     {heroCanAct
@@ -1225,6 +1240,11 @@ export default function GameLayoutBase({
                         : (controlsPhase === 'DRAW' ? 'Your turn: select cards, then confirm' : `Your turn · ${actionPanelInfo?.toCall > 0 ? `Call ${Math.min(actionPanelInfo.toCall, heroPlayerForControls?.stack ?? 0)}` : 'Check available'}`))
                       : (language === 'ja' ? `${actionPanelInfo?.currentActorName ?? '他のプレイヤー'}の操作を待っています` : `Waiting for ${actionPanelInfo?.currentActorName ?? 'other players'}`)}
                   </p>
+                  {!isMobileLayout && getWinningHandCue(gameVariant, language) && (
+                    <p data-testid="winning-hand-cue" className="rounded-lg border border-emerald-300/20 bg-emerald-300/5 px-2 py-1 text-xs font-semibold text-emerald-100">
+                      {getWinningHandCue(gameVariant, language)}
+                    </p>
+                  )}
                   <div
                     data-testid="actor-readability-strip"
                     className={`${useDenseActionPanel || (isPortraitDrawTable && heroCanAct) ? "hidden" : "grid"} grid-cols-3 gap-2 text-[11px] text-slate-200`}
@@ -1235,7 +1255,7 @@ export default function GameLayoutBase({
                       <p
                         className={`uppercase tracking-wide ${isDrawDisplayPhase ? "text-red-100/80" : "text-emerald-200/80"}`}
                       >
-                        Hero
+                        {language === "ja" ? "あなた" : "Hero"}
                       </p>
                       <p className="truncate font-black text-white">
                         {actionPanelInfo?.heroPosition ?? "Seat"}
@@ -1245,21 +1265,21 @@ export default function GameLayoutBase({
                       className={`rounded-xl border border-yellow-300/20 bg-yellow-300/10 ${useDenseActionPanel ? "rounded-lg px-1 py-0.5" : "px-2 py-1.5"}`}
                     >
                       <p className="uppercase tracking-wide text-yellow-100/80">
-                        Actor
+                        {language === "ja" ? "操作中" : "Actor"}
                       </p>
                       <p className="truncate font-black text-white">
                         {actionPanelInfo?.currentActorName
                           ? `${actionPanelInfo.currentActorName}${actionPanelInfo?.currentActorPosition ? ` / ${actionPanelInfo.currentActorPosition}` : ""}`
-                          : "Resolving"}
+                          : (language === "ja" ? "処理中" : "Resolving")}
                       </p>
                     </div>
                     {!useDenseActionPanel && (
                       <div className="rounded-xl border border-white/10 bg-black/30 px-2 py-1.5">
                         <p className="uppercase tracking-wide text-slate-500">
-                          State
+                          {language === "ja" ? "状態" : "State"}
                         </p>
                         <p className="truncate font-black text-white">
-                          {actionPanelInfo?.waitingLabel ?? "Ready"}
+                          {actionPanelInfo?.waitingLabel ?? (language === "ja" ? "準備完了" : "Ready")}
                         </p>
                       </div>
                     )}
@@ -1272,7 +1292,7 @@ export default function GameLayoutBase({
                       className={`rounded-xl border border-white/10 bg-black/30 ${useDenseActionPanel ? "rounded-lg px-1 py-0.5" : "px-2 py-1.5"}`}
                     >
                       <p className="uppercase tracking-wide text-slate-500">
-                        {useDenseActionPanel ? "Bet" : "Current Bet"}
+                        {language === "ja" ? "現在のベット" : useDenseActionPanel ? "Bet" : "Current Bet"}
                       </p>
                       <p className="font-black text-white">
                         {actionPanelInfo?.currentBet ?? 0}
@@ -1282,7 +1302,7 @@ export default function GameLayoutBase({
                       className={`rounded-xl border border-white/10 bg-black/30 ${useDenseActionPanel ? "rounded-lg px-1 py-0.5" : "px-2 py-1.5"}`}
                     >
                       <p className="uppercase tracking-wide text-slate-500">
-                        {useDenseActionPanel ? "Call" : "To Call"}
+                        {language === "ja" ? "コール額" : useDenseActionPanel ? "Call" : "To Call"}
                       </p>
                       <p className="font-black text-yellow-200">
                         {actionPanelInfo?.toCall ?? 0}
@@ -1292,7 +1312,7 @@ export default function GameLayoutBase({
                       className={`rounded-xl border border-white/10 bg-black/30 ${useDenseActionPanel ? "rounded-lg px-1 py-0.5" : "px-2 py-1.5"}`}
                     >
                       <p className="uppercase tracking-wide text-slate-500">
-                        {useDenseActionPanel ? "Raise" : "Raise Unit"}
+                        {language === "ja" ? "レイズ単位" : useDenseActionPanel ? "Raise" : "Raise Unit"}
                       </p>
                       <p className="font-black text-white">
                         {actionPanelInfo?.raiseUnit ?? 0}
@@ -1306,7 +1326,7 @@ export default function GameLayoutBase({
                       }`}
                     >
                       <p className="uppercase tracking-wide text-slate-500">
-                        {useDenseActionPanel ? "Cap" : "Raise Cap"}
+                        {language === "ja" ? "レイズ上限" : useDenseActionPanel ? "Cap" : "Raise Cap"}
                       </p>
                       <p className="font-black text-white">
                         {actionPanelInfo?.raiseCount ?? 0}/
@@ -1322,7 +1342,7 @@ export default function GameLayoutBase({
                       <p
                         className={`${useDenseActionPanel ? "text-[9px]" : "text-[10px]"} uppercase tracking-wide text-slate-500`}
                       >
-                        Last Actions
+                        {language === "ja" ? "直前の操作" : "Last Actions"}
                       </p>
                       <div className="mt-1 flex flex-wrap gap-1">
                         {actionPanelInfo.recentActions
@@ -1352,7 +1372,7 @@ export default function GameLayoutBase({
                       onClick={onCashOut}
                       className="w-full rounded-xl border border-yellow-300/30 bg-yellow-400/10 px-3 py-2 text-sm font-black text-yellow-100 transition hover:bg-yellow-400 hover:text-slate-950"
                     >
-                      Cash Out
+                      {language === "ja" ? "精算して退出" : "Cash Out"}
                     </button>
                   )}
                   {!isCashGame && isPortraitDrawTable && (
@@ -1361,7 +1381,7 @@ export default function GameLayoutBase({
                       disabled
                       className="w-full rounded-xl border border-purple-300/25 bg-purple-500/20 px-3 py-2 text-sm font-black text-purple-100 opacity-80"
                     >
-                      Sit Out
+                      {language === "ja" ? "休憩" : "Sit Out"}
                     </button>
                   )}
                   </div>
@@ -1494,6 +1514,7 @@ export default function GameLayoutBase({
       </Modal>
 
       <HandResultOverlay
+        guestTrial={guestTrial}
         players={statusSeatViews}
         heroSeat={statusHeroIndex}
         language={language}

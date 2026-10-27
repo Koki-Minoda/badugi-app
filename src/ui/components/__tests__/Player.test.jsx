@@ -307,6 +307,28 @@ describe("Player", () => {
     expect(screen.getByTestId("seat-0-stud-summary").textContent).toContain("Down 2");
   });
 
+  test("does not show Stud visibility badges on five-card board games", () => {
+    render(
+      <Player
+        player={{
+          ...basePlayer,
+          hand: ["AS", "KD", "2C", "7H", "8S"],
+          cardVisibility: ["down", "down", "down", "down", "down"],
+        }}
+        index={1}
+        selfIndex={0}
+        turn={0}
+        dealerIdx={0}
+        phase="BET"
+        displayVariant="five_card_plo"
+      />,
+    );
+
+    expect(screen.queryByTestId("seat-1-stud-summary")).toBeNull();
+    expect(screen.queryByTestId("player-1-card-0-visibility")).toBeNull();
+    expect(screen.getByTestId("player-1-card-row").children).toHaveLength(5);
+  });
+
   test("renders every Stud hero card fully face-up without a back overlay", () => {
     render(
       <Player

@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     # A cold chromium+webkit system-dependency install exceeded 20 minutes in
     # the 2026-10-26 production dispatch before the actual QA could start.
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -109,7 +109,7 @@ jobs:
   tournament-qa:
     runs-on: ubuntu-latest
     # Three natural full-field runs allow 15 minutes each, plus the other regressions.
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -137,7 +137,7 @@ jobs:
 
   p2p-qa:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -164,7 +164,7 @@ jobs:
 
   history-qa:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -189,7 +189,9 @@ jobs:
 
   core5-qa:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    # The complete 10-hand public-game gate took 88m37s on 2026-10-27.
+    # Keep every case while allowing normal runner-speed variation at deploy time.
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -272,7 +274,7 @@ jobs:
 
   mobile-webkit-qa:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -311,9 +313,51 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  release-candidate-browser-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - run: npm ci --legacy-peer-deps
+      - run: python -m pip install -e './backend[test]'
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run build
+      - name: Candidate MIX rotation and BET/DRAW mobile layout
+        env:
+          E2E_APP_URL: http://127.0.0.1:3000/
+          MGX_CANDIDATE_MIX_QA: "1"
+          MGX_EXPECTED_SERVED_COMMIT: ${{ github.sha }}
+          MGX_CANDIDATE_MIX_REPORT_DIR: reports/release-candidate-mix
+        run: |
+          bash scripts/ci/run-with-backend.sh bash -c '
+            npx playwright test --config playwright.release-candidate.config.js &&
+            npx playwright test --config playwright.release-candidate-phase.config.js
+          '
+      - name: Upload candidate browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-candidate-browser-qa
+          path: |
+            test-results/release-candidate/
+            test-results/release-candidate-phase/
+            reports/release-candidate-mix/
+          if-no-files-found: ignore
+          retention-days: 30
+
   stud-razz-qa:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    # A cold browser install left too little time for the device matrix on 2026-10-27.
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -326,7 +370,7 @@ jobs:
 
   nlh-qa:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -355,9 +399,9 @@ jobs:
 
   dramaha-qa:
     runs-on: ubuntu-latest
-    # The three-engine, six-variant real-play matrix takes about 27 minutes
-    # after dependencies are ready. Leave room for a cold npm/Playwright setup.
-    timeout-minutes: 60
+    # The three-engine, six-variant matrix needs about 27 minutes after setup.
+    # A cold browser install consumed the 60-minute job limit on 2026-10-27.
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -420,7 +464,7 @@ jobs:
 
   chinese-qa:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -459,6 +503,7 @@ jobs:
       - core5-qa
       - cash-playability-qa
       - mobile-webkit-qa
+      - release-candidate-browser-qa
       - stud-razz-qa
       - nlh-qa
       - dramaha-qa

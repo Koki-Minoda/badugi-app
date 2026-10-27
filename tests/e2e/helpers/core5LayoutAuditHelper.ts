@@ -19,6 +19,8 @@ export type AuditIssue = {
 };
 
 const CORE5_QA_METADATA = Object.freeze({
+  super_holdem: { heroCardTestId: "player-0-card-2", initialCardCount: 3, maxSteps: 120, expectsDraw: false, expectsBlindIncrease: false },
+  fl_super_holdem: { heroCardTestId: "player-0-card-2", initialCardCount: 3, maxSteps: 120, expectsDraw: false, expectsBlindIncrease: false },
   flh: { heroCardTestId: "player-0-card-1", initialCardCount: 2, maxSteps: 120, expectsDraw: false, expectsBlindIncrease: false },
   badugi: { heroCardTestId: "player-0-card-3", initialCardCount: 4, maxSteps: 120, expectsDraw: true, expectsBlindIncrease: true },
   nlh: { heroCardTestId: "player-0-card-1", initialCardCount: 2, maxSteps: 90, expectsDraw: false, expectsBlindIncrease: false },
@@ -29,8 +31,17 @@ const CORE5_QA_METADATA = Object.freeze({
   five_card_plo: { heroCardTestId: "player-0-card-4", initialCardCount: 5, maxSteps: 120, expectsDraw: false, expectsBlindIncrease: false },
   D01: { heroCardTestId: "player-0-card-4", initialCardCount: 5, maxSteps: 110, expectsDraw: true, expectsBlindIncrease: true },
   D02: { heroCardTestId: "player-0-card-4", initialCardCount: 5, maxSteps: 110, expectsDraw: true, expectsBlindIncrease: true },
+  D06: { heroCardTestId: "player-0-card-3", initialCardCount: 4, maxSteps: 180, expectsDraw: true, expectsBlindIncrease: true },
+  D04: { heroCardTestId: "player-0-card-4", initialCardCount: 5, maxSteps: 180, expectsDraw: true, expectsBlindIncrease: true },
+  D05: { heroCardTestId: "player-0-card-4", initialCardCount: 5, maxSteps: 180, expectsDraw: true, expectsBlindIncrease: true },
+  D07: { heroCardTestId: "player-0-card-4", initialCardCount: 5, maxSteps: 180, expectsDraw: true, expectsBlindIncrease: true },
   S01: { heroCardTestId: "player-0-card-4", initialCardCount: 5, maxSteps: 90, expectsDraw: true, expectsBlindIncrease: true },
   S02: { heroCardTestId: "player-0-card-4", initialCardCount: 5, maxSteps: 90, expectsDraw: true, expectsBlindIncrease: true },
+  S03: { heroCardTestId: "player-0-card-4", initialCardCount: 5, maxSteps: 90, expectsDraw: true, expectsBlindIncrease: true },
+  S04: { heroCardTestId: "player-0-card-3", initialCardCount: 4, maxSteps: 120, expectsDraw: true, expectsBlindIncrease: true },
+  S05: { heroCardTestId: "player-0-card-4", initialCardCount: 5, maxSteps: 120, expectsDraw: true, expectsBlindIncrease: true },
+  S06: { heroCardTestId: "player-0-card-4", initialCardCount: 5, maxSteps: 120, expectsDraw: true, expectsBlindIncrease: true },
+  S07: { heroCardTestId: "player-0-card-3", initialCardCount: 4, maxSteps: 120, expectsDraw: true, expectsBlindIncrease: true },
   stud: { heroCardTestId: "player-0-card-2", initialCardCount: 3, maxSteps: 180, expectsDraw: false, expectsBlindIncrease: false },
   stud8: { heroCardTestId: "player-0-card-2", initialCardCount: 3, maxSteps: 180, expectsDraw: false, expectsBlindIncrease: false },
   razz: { heroCardTestId: "player-0-card-2", initialCardCount: 3, maxSteps: 180, expectsDraw: false, expectsBlindIncrease: false },

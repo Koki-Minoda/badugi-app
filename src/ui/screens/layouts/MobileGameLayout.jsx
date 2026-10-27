@@ -5,6 +5,7 @@ import MobileTableSeat,{TableCard} from './MobileTableSeat.jsx';
 import BetAmountSheet from '../../components/BetAmountSheet.jsx';
 import getAvailableActions from '../../utils/getAvailableActions.js';
 import VariantRuleReminder from '../../learning/VariantRuleReminder.jsx';
+import {getWinningHandCue} from '../../learning/learningCatalog.js';
 import HandResultOverlay from '../../components/HandResultOverlay.jsx';
 import HeroBustOverlay from '../../components/HeroBustOverlay.jsx';
 import TournamentResultOverlay from '../../components/TournamentResultOverlay.jsx';
@@ -57,7 +58,7 @@ export default function MobileGameLayout({headerProps:h,sidePanelProps:s,tablePr
     <div className="mgx-community" data-testid="table-community"><div data-testid="table-total-pot"><span>POT</span><strong>{Number(s.totalPot||0).toLocaleString()}</strong></div><div className="mgx-board-cards">{t.boardCards.map((card,i)=><TableCard key={i} card={card} testId={`board-card-${i}`}/>)}</div><span className="mgx-community-phase" data-testid="table-phase-badge">{phase}</span></div>
    </OvalTableScene>
    <aside className="mgx-play-actions" data-testid="decision-panel">
-    <div className="mgx-game-context">
+    <div className={`mgx-game-context${t.mixedRotation?' has-mix':''}`}>
      {t.isTournament?<div className="mgx-tournament-info">{t.tournamentHud}</div>:<><span>{phase}</span><span>{t.tableSummaryProps?.sbValue}/{t.tableSummaryProps?.bbValue}</span></>}
      {t.mixedRotation&&<span data-testid="mixed-rotation-status">MIX {t.mixedRotation.handsPlayedInCurrentGame+1}/{t.mixedRotation.handsPerGame}{t.mixedRotation.nextName ? ` · ${ja?'次':'Next'} ${t.mixedRotation.nextName}` : ''}</span>}
     </div>
@@ -75,11 +76,11 @@ export default function MobileGameLayout({headerProps:h,sidePanelProps:s,tablePr
       {!shortCall&&<button className="mgx-raise" data-testid="action-raise" disabled={draw||next||!raise} onClick={()=>variableBet?setAmountOpen(true):invoke(raise)}>{ja?(info.toCall>0?'レイズ':'ベット'):(info.toCall>0?'Raise':'Bet')}</button>}
      </div>
     </div>
-    <p className="mgx-action-note">{draw?(ja?'0枚なら交換しません（パット）':'Select zero cards to stand pat'):(ja?'持ち点とポットはチップ単位です':'Stacks and pot are shown in chips')}</p>
+    <p className="mgx-action-note" data-testid="winning-hand-cue">{getWinningHandCue(t.gameVariant,h.language)??(ja?'持ち点とポットはチップ単位です':'Stacks and pot are shown in chips')}</p>
    </aside>
   </main>
   {amountOpen&&c.heroCanAct&&<BetAmountSheet key={`${t.gameVariant}:${c.controlsCurrentBet}`} model={c.betSizingModel} language={h.language} onClose={()=>setAmountOpen(false)} onConfirm={amount=>{setAmountOpen(false);c.playerRaise(amount);}}/>}
-  <HandResultOverlay players={s.seatViews} heroSeat={s.heroIndex} language={h.language} reviewHandId={o.reviewHandId} visible={o.handResultVisible} summary={o.handResultSummary} onNext={o.onNextHand} buttonLabel={o.nextHandLabel} onReplayTarget={o.onReplayTarget} onHistory={h.onNavigateHistory} onCashOut={c.isCashGame?c.onCashOut:null}/>
+  <HandResultOverlay players={s.seatViews} heroSeat={s.heroIndex} language={h.language} guestTrial={o.guestTrial} reviewHandId={o.reviewHandId} visible={o.handResultVisible} summary={o.handResultSummary} onNext={o.onNextHand} buttonLabel={o.nextHandLabel} onReplayTarget={o.onReplayTarget} onHistory={h.onNavigateHistory} onCashOut={c.isCashGame?c.onCashOut:null}/>
   <HeroBustOverlay visible={o.heroBustOverlayVisible} language={h.language} title={o.heroBustSummary?.title} heroSummary={o.heroBustSummary?.hero} inMoneyPlacements={o.heroBustSummary?.inMoney??[]} tournamentReview={o.tournamentReview} onOpenReviewReplay={o.onOpenTournamentReviewReplay} onBackToMenu={o.onTournamentBackToMenu}/>
   <TournamentResultOverlay visible={o.tournamentOverlayVisible} language={h.language} placements={o.tournamentPlacements} title={o.tournamentTitle} tournamentReview={o.tournamentReview} onOpenReviewReplay={o.onOpenTournamentReviewReplay} onBackToMenu={o.onTournamentBackToMenu} onEnterNewTournament={o.onEnterNewTournament}/>
  </div>;

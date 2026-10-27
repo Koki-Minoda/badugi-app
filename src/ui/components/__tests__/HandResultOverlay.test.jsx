@@ -43,6 +43,17 @@ describe("HandResultOverlay", () => {
     render(<HandResultOverlay visible summary={{ totalPot: 180, winners: [baseWinner], potDetails: [{ potAmount: 120, winners: [baseWinner] }, { potAmount: 60, winners: [baseWinner] }] }} />);
     expect(screen.getByTestId('hand-result-total').textContent).toBe('Pot 180 chips');
   });
+  test("keeps internal hand IDs and redundant seat lists out of the result", () => {
+    render(<HandResultOverlay visible language="ja" heroSeat={0} players={[{ name: "You" }, { name: "Sora" }, { name: "Ren" }]} summary={{
+      handId: "BOARD-HAND-1", pot: 120, potDetails: [
+        { potIndex: 0, potAmount: 90, eligibleSeatIndexes: [0, 1, 2], winners: [baseWinner] },
+        { potIndex: 1, potAmount: 30, eligibleSeatIndexes: [0, 2], winners: [baseWinner] },
+      ],
+    }} />);
+    expect(screen.getByRole("dialog").textContent).not.toContain("BOARD-HAND-1");
+    expect(screen.getAllByTestId("hand-result-eligible-seats").map(node => node.textContent))
+      .toEqual(["対象席: 全員", "対象席: あなた / Ren"]);
+  });
   test("uses Japanese labels and chips throughout split results", () => {
     render(<HandResultOverlay visible language="ja" heroSeat={0} onHistory={() => {}} onCashOut={() => {}} summary={{ pot: 101, potDetails: [
       { potIndex: 0, component: "archieHigh", potAmount: 101, eligibleSeatIndexes: [0, 1], oddChipAmount: 1, winners: [{ ...baseWinner, handLabel: "Three of a Kind", stack: 601, payout: 101 }] },
@@ -56,10 +67,23 @@ describe("HandResultOverlay", () => {
     expect(screen.getByTestId("hand-result-winner-hand-label").textContent).toBe("スリーカード");
     expect(screen.getByText("該当する勝者なし")).toBeTruthy();
     const text = screen.getByRole("dialog").textContent;
-    expect(text).toContain("対象席: 席1 / 席2");
+    expect(text).toContain("対象席: あなた / 席2");
     expect(text).toContain("獲得 101 チップ");
     expect(text).toContain("持ち点: 601 チップ");
     expect(text).not.toMatch(/¥|Choose your next action|Component pot|Eligible|No eligible winners/);
+  });
+  test("explains an Archie pot shared by players without qualifying hands", () => {
+    render(<HandResultOverlay visible language="ja" summary={{ pot: 101, potDetails: [
+      { potIndex: 0, component: "archieChop", potAmount: 101, winners: [
+        { ...baseWinner, handLabel: "No qualifying hand", payout: 51 },
+        { ...baseWinner, seatIndex: 1, name: "Jun", handLabel: "No qualifying hand", payout: 50 },
+      ] },
+    ] }} />);
+    expect(screen.getByTestId("hand-result-pot-title").textContent).toContain("成立役なし・均等分配");
+    expect(screen.getAllByTestId("hand-result-winner-hand-label").map(node => node.textContent)).toEqual([
+      "成立役なし", "成立役なし",
+    ]);
+    expect(screen.getAllByTestId("hand-result-winner-name").map(node => node.textContent)).toEqual(["You", "Jun"]);
   });
   test("keeps explicit continuation labels and English chip amounts", () => {
     render(<HandResultOverlay visible language="en" buttonLabel="Finish trial / choose a game" summary={baseSummary} />);
@@ -188,6 +212,26 @@ describe("HandResultOverlay", () => {
     expect(screen.getByTestId("hand-result-winner-hand-label").textContent).toBe(
       "2-7 Low 7-5-4-3-2",
     );
+  });
+
+  test("localizes A-5 and 2-7 low result labels without losing card ranks", () => {
+    const { rerender } = render(<HandResultOverlay visible language="ja" summary={{
+      pot: 60, winners: [{ seatIndex: 1, name: "Hana", handLabel: "A-5 Low 6-4-3-2-A", payout: 60 }],
+    }} />);
+    expect(screen.getByTestId("hand-result-winner-hand-label").textContent).toBe("A-5ロー 6-4-3-2-A");
+    rerender(<HandResultOverlay visible language="ja" summary={{
+      pot: 60, winners: [{ seatIndex: 1, name: "Hana", handLabel: "2-7 Low 7-5-4-3-2", payout: 60 }],
+    }} />);
+    expect(screen.getByTestId("hand-result-winner-hand-label").textContent).toBe("2-7ロー 7-5-4-3-2");
+  });
+
+  test("offers one clear exit from a guest trial result", () => {
+    render(<HandResultOverlay visible guestTrial language="ja" onHistory={() => {}} onCashOut={() => {}}
+      onNext={() => {}} buttonLabel="体験を終了・種目を選ぶ" summary={{ handId: "razz-1", pot: 60, winners: [baseWinner] }} />);
+    expect(screen.getByTestId("hand-result-next-hand").textContent).toBe("体験を終了・種目を選ぶ");
+    expect(screen.queryByTestId("hand-result-history")).toBeNull();
+    expect(screen.queryByTestId("hand-result-cash-out")).toBeNull();
+    expect(screen.queryByRole("button", { name: "あとで復習に保存" })).toBeNull();
   });
 
   test("renders hi/lo split winners as separate result groups", () => {

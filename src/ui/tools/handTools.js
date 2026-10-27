@@ -36,16 +36,12 @@ export function compareHands(gameId, hands) {
     const best = Math.min(...scores);
     return { id, evaluations, winners: Number.isFinite(best) ? scores.flatMap((score, seat) => score === best ? [seat] : []) : [] };
   });
-  const fallbackHigh = gameId === 'archie' && parts.every(part => !part.winners.length);
-  if (fallbackHigh) {
-    const evaluations = hands.map(cards => evaluateHighHand({cards}));
-    const best = Math.min(...evaluations.map(e => e.rankPrimary));
-    parts[0] = { id:'archieHigh', evaluations, winners:evaluations.flatMap((e,i) => e.rankPrimary === best ? [i] : []), fallback:true };
-  }
+  const unqualifiedChop = gameId === 'archie' && parts.every(part => !part.winners.length);
+  if (unqualifiedChop) return { parts, shares: [.5, .5], unqualifiedChop, noQualifier: true };
   const qualified = parts.filter(part => part.winners.length);
   const shares = [0, 0];
   for (const part of qualified) for (const seat of part.winners) shares[seat] += 1 / qualified.length / part.winners.length;
-  return { parts, shares, fallbackHigh, noQualifier: !qualified.length };
+  return { parts, shares, unqualifiedChop: false, noQualifier: !qualified.length };
 }
 // Reasons describe visible hand features. They do not estimate EV or optimal play.
 export function recommendGames(cards) {

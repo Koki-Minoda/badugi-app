@@ -4,6 +4,7 @@ import Card from "./Card";
 import { formatStatAf, formatStatPercent } from "../utils/stats.js";
 import { getDisplayCards } from "../utils/cardDisplayOrder.js";
 import { getCpuCharacterByName } from "../../ai/cpuRoster.js";
+import { getVariantLayoutProfile, LAYOUT_GROUPS } from "../game/layoutGroups.js";
 
 function BetStatus({
   amount,
@@ -543,7 +544,10 @@ export default function Player({
   };
   const displayCards = getDisplayCards(handCards, { displayVariant });
   const hasStudVisibility =
-    Array.isArray(player.cardVisibility) && player.cardVisibility.length > 0;
+    (layoutProfile?.layoutGroup ?? getVariantLayoutProfile(displayVariant).layoutGroup) ===
+      LAYOUT_GROUPS.STUD &&
+    Array.isArray(player.cardVisibility) &&
+    player.cardVisibility.length > 0;
   const studVisibleCount = hasStudVisibility
     ? player.cardVisibility.filter((visibility) => visibility === "up").length
     : 0;
@@ -605,7 +609,8 @@ export default function Player({
         style={{
           padding: "var(--player-pad, 10px)",
           gap: "var(--player-gap, 8px)",
-          ...((layoutProfile?.layoutGroup === "stud" ||
+          ...((layoutProfile?.layoutGroup === "default" ||
+            layoutProfile?.layoutGroup === "stud" ||
             layoutProfile?.layoutGroup === "draw-lowball-5card" ||
             layoutProfile?.layoutGroup === "badugi") && !compact
             ? { width: "100%", minWidth: 0, "--player-card-gap": "3px" }

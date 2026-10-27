@@ -7,7 +7,9 @@ import {
   evaluateBadacey,
   evaluateBadeucey,
   evaluateHiLoEight,
+  evaluateArchie,
 } from "../../evaluators/split.js";
+import { ArchieTripleDrawEngine } from "../../draw/SpecialDrawEngine.js";
 
 describe("High-hand evaluator", () => {
   it("detects straight flush beating four of a kind", () => {
@@ -361,14 +363,42 @@ describe("A-5 lowball evaluator regression", () => {
 });
 
 describe("Split evaluator", () => {
+  it("uses the same Archie high and low qualification as showdown", () => {
+    const engine = new ArchieTripleDrawEngine();
+    const hands = [
+      { cards: ["9S", "9H", "2D", "3C", "4H"], high: true, low: false },
+      { cards: ["8S", "8H", "2D", "3C", "4H"], high: false, low: false },
+      { cards: ["AS", "2D", "3C", "4H", "8S"], high: false, low: true },
+      { cards: ["AS", "2D", "3C", "4H", "9S"], high: false, low: false },
+    ];
+    for (const { cards, high, low } of hands) {
+      const evaluation = evaluateArchie({ cards });
+      expect(evaluation).toEqual(engine.evaluateShowdownHand(cards));
+      expect(evaluation.metadata.components.archieHigh.qualifies).toBe(high);
+      expect(evaluation.metadata.components.archieLow.metadata.qualifies).toBe(low);
+      expect(evaluateHand({ cards, gameType: "D07" })).toEqual(evaluation);
+    }
+  });
+
   it("returns Badugi and 2-7 low metadata for Badeucey", () => {
     const result = evaluateBadeucey({
       cards: ["7S", "5D", "4C", "3H", "2S"],
     });
 
     expect(result.metadata.high.handName).toMatch(/Badugi/i);
-    expect(result.metadata.low.handName).toBe("2-7 Low");
+    expect(result.metadata.low.handName).toBe("2-7 Low 7-5-4-3-2");
     expect(result.rankSecondary).toBe(result.metadata.low.rankPrimary);
+  });
+
+  it("ranks Badeucey aces high on the Badugi half", () => {
+    const ace = evaluateBadeucey({ cards: ["AS", "2H", "3D", "4C", "9S"] });
+    const five = evaluateBadeucey({ cards: ["5S", "2H", "3D", "4C", "9S"] });
+
+    expect(ace.metadata.high.metadata.aceHigh).toBe(true);
+    expect(ace.metadata.high.metadata.cards).not.toContain("AS");
+    expect(five.metadata.high.rankPrimary).toBeLessThan(ace.metadata.high.rankPrimary);
+    expect(evaluateBadacey({ cards: ["AS", "2H", "3D", "4C", "9S"] }).metadata.high.rankPrimary)
+      .toBeLessThan(evaluateBadacey({ cards: ["5S", "2H", "3D", "4C", "9S"] }).metadata.high.rankPrimary);
   });
 
   it("returns Badugi and A-5 low metadata for Badacey", () => {
@@ -377,7 +407,7 @@ describe("Split evaluator", () => {
     });
 
     expect(result.metadata.high.handName).toMatch(/Badugi/i);
-    expect(result.metadata.low.handName).toBe("A-5 Low");
+    expect(result.metadata.low.handName).toBe("A-5 Low 5-4-3-2-A");
   });
 
   it("marks hi-lo eight low qualification in split metadata", () => {
@@ -423,5 +453,34 @@ describe("Registry evaluateHand", () => {
   it("evaluates Badugi via registry tag", () => {
     const result = evaluateHand({ cards: ["AS", "2D", "3C", "4H"], gameType: "badugi" });
     expect(result.metadata.size).toBe(4);
+  });
+});
+
+describe("Hidugi high Badugi", () => {
+  const high = (cards) => evaluateBadugiHand({ cards, mode: "high" });
+
+  it("ranks four aces above any other four-suit hand", () => {
+    const aces = high(["AS", "AH", "AD", "AC"]);
+    const kings = high(["KS", "KH", "KD", "KC"]);
+    const mixed = high(["AS", "KH", "QD", "JC"]);
+    expect(aces).toMatchObject({
+      handName: "Hidugi 4-card (A-A-A-A)",
+      metadata: { size: 4, ranks: [14, 14, 14, 14] },
+    });
+    expect(compareEvaluations(aces, kings)).toBeLessThan(0);
+    expect(compareEvaluations(mixed, kings)).toBeLessThan(0);
+  });
+
+  it("values four suits before rank and picks the best subset from five cards", () => {
+    const fourSuits = high(["KS", "QH", "JD", "10C"]);
+    const threeAces = high(["AS", "AH", "AD", "KC"]);
+    const fiveCards = high(["AS", "AH", "AD", "AC", "KS"]);
+    expect(threeAces.metadata.size).toBe(4);
+    expect(compareEvaluations(threeAces, fourSuits)).toBeLessThan(0);
+    expect(fiveCards.metadata.cards).toEqual(["AS", "AH", "AD", "AC"]);
+
+    const duplicateSuit = high(["AS", "KS", "QH", "JD"]);
+    expect(duplicateSuit.metadata.size).toBe(3);
+    expect(compareEvaluations(fourSuits, duplicateSuit)).toBeLessThan(0);
   });
 });

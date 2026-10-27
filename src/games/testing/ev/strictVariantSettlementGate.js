@@ -425,7 +425,23 @@ function verifyDrawPotWinners(variantId, afterState, result) {
       ? pot.eligibleSeatIndexes
       : null;
     const eligible = new Set(explicitEligible ?? liveSeats);
-    if (variantId === 'D07' && component === 'archieHigh' && !evaluations.some(e => eligible.has(e.seatIndex) && e.archieHigh) && !evaluations.some(e => eligible.has(e.seatIndex) && e.lowA5?.qualifies)) evaluationKey = 'high';
+    if (component === "archieChop") {
+      const remaining = evaluations.filter((entry) => eligible.has(entry.seatIndex) && !entry.folded);
+      const expected = remaining.map((entry) => entry.seatIndex).sort((left, right) => left - right);
+      const shares = payouts.filter((payout) => payout.potIndex === resultPotIndex && Number(payout.amount) > 0);
+      const actual = shares.map((payout) => payout.seatIndex).sort((left, right) => left - right);
+      const amounts = shares.map((payout) => Number(payout.amount));
+      const hasQualifier = remaining.some((entry) => entry.archieHigh || entry.lowA5?.qualifies);
+      if (
+        variantId !== "D07" || hasQualifier || !expected.length ||
+        JSON.stringify(actual) !== JSON.stringify(expected) ||
+        amounts.reduce((sum, value) => sum + value, 0) !== amount ||
+        Math.max(...amounts) - Math.min(...amounts) > 1
+      ) {
+        errors.push({ code: "strict_archie_chop_mismatch", variantId, resultPotIndex, amount, expected, actual, amounts, hasQualifier });
+      }
+      continue;
+    }
     const candidates = evaluations.filter((entry) => {
       if (!eligible.has(entry.seatIndex)) return false;
       const evaluation = entry[evaluationKey];

@@ -48,20 +48,20 @@
     "description": "4枚の異なるスート・ランクで低い役を作るトリプルドローゲームです。"
   },
   "D04": {
-    "name": "Badeucey TD",
+    "name": "Badeucey Triple Draw",
     "description": "Badugiと2-7ローの両方でポットを分け合うスプリットポットのトリプルドローです。"
   },
   "D05": {
-    "name": "Badacey TD",
-    "description": "BadugiとA-5ローの両方でポットを分け合うスプリットポットのトリプルドローです。"
+    "name": "Badacey Triple Draw",
+    "description": "5枚手札で最大3回交換し、A-5ローとBadugiでポットを分け合います。どちらもAを低いカードとして扱います。"
   },
   "D06": {
-    "name": "Hidugi TD",
-    "description": "高いBadugiを目指す特殊なトリプルドローです。通常のBadugiとは逆方向の評価になります。"
+    "name": "Hidugi Triple Draw",
+    "description": "4枚で最大3回交換し、4つのスートをそろえて高い数字を競います。Aが最高で、4枚役は3枚役より強くなります。"
   },
   "D07": {
-    "name": "Archie TD",
-    "description": "ペアやホイール条件を含むArchie系のトリプルドローです。"
+    "name": "Archie Triple Draw",
+    "description": "5枚で最大3回交換。9以上のペアでハイ、8以下のA-5ローでローが成立します。両方不成立ならポットを均等に分けます。"
   },
   "S01": {
     "name": "2-7 Single Draw",
@@ -88,8 +88,8 @@
     "description": "BadugiとA-5ローでポットを分けるシングルドロー形式です。"
   },
   "S07": {
-    "name": "Hidugi SD",
-    "description": "高いBadugiを目指すシングルドロー形式です。"
+    "name": "Hidugi Single Draw",
+    "description": "4枚で1回だけ交換し、4つのスートをそろえて高い数字を競います。Aが最高で、4枚役は3枚役より強くなります。"
   },
   "H01": {
     "name": "Dramaha Hi",

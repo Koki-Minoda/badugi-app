@@ -72,7 +72,7 @@ const SPECIAL_DRAW_CONTRACTS = Object.freeze({
     oddChipPolicy: ODD_CHIP_POLICIES.SEAT_ORDER,
     display: Object.freeze({
       handLabel: "High Badugi",
-      description: "Reverse Badugi: valid Badugi card count is primary, then higher ranks win.",
+      description: "Distinct suits determine the card count; repeated ranks play, and higher ranks win. Four aces is best.",
     }),
     components: Object.freeze([COMPONENTS.BADUGI_HIGH]),
   }),

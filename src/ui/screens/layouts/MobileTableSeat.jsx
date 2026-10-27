@@ -1,12 +1,13 @@
 import React from 'react';
 import {getDisplayCards} from '../../utils/cardDisplayOrder.js';
+import {formatCardLabel} from '../../utils/cardLabel.js';
 import SeatPortrait from './SeatPortrait.jsx';
 
 const suits={S:['♠','spade'],H:['♥','heart'],D:['♦','diamond'],C:['♣','club']};
 export function TableCard({card,hidden=false,selected=false,onClick,testId,down=false}){
  const value=String(card||'');const [symbol,color]=suits[value.slice(-1).toUpperCase()]||['?','spade'];
  const Tag=onClick?'button':'span';
- return <Tag type={onClick?'button':undefined} className={`mgx-table-card ${hidden?'is-hidden':color} ${selected?'is-selected':''} ${down?'is-down':''}`} onClick={onClick} data-testid={testId} aria-label={hidden?'伏せ札':`${value.slice(0,-1)}${symbol}${down?'・伏せ札':''}`} aria-pressed={onClick?selected:undefined}>
+ return <Tag type={onClick?'button':undefined} className={`mgx-table-card ${hidden?'is-hidden':color} ${selected?'is-selected':''} ${down?'is-down':''}`} onClick={onClick} data-testid={testId} aria-label={hidden?'伏せ札':`${formatCardLabel(card)}${down?'・伏せ札':''}`} aria-pressed={onClick?selected:undefined}>
   {hidden?<span aria-hidden="true">◇</span>:<><b>{value.slice(0,-1)}</b><span>{symbol}</span></>}
  </Tag>;
 }
@@ -15,10 +16,11 @@ export default function MobileTableSeat({seat,index,hero=false,active=false,deal
  const out=seat.busted||seat.isBusted||seat.seatOut;
  const folded=seat.folded||out;
  const cards=out?[]:getDisplayCards(hand,{displayVariant:variant});
+ const displayName=hero&&ja&&seat.name==='You'?'あなた':(seat.name||(hero?(ja?'あなた':'You'):''));
  const action=out?(ja?'離席':'OUT'):folded?(ja?'フォールド':'Folded'):seat.allIn?'ALL IN':!stud&&seat.lastDrawCount!=null?(seat.lastDrawCount===0?'PAT':`D${seat.lastDrawCount}`):'';
- return <section data-testid={seatTestId??`seat-${index}`} className={`mgx-table-seat ${hero?'is-hero':''} ${cards.length>5?'is-long-hand':''} ${active?'is-active':''} ${folded?'is-folded':''}`} aria-label={`${seat.name||(hero?(ja?'あなた':'You'):'')} ${seat.stack??0}`}>
+ return <section data-testid={seatTestId??`seat-${index}`} className={`mgx-table-seat ${hero?'is-hero':''} ${cards.length>5?'is-long-hand':''} ${active?'is-active':''} ${folded?'is-folded':''}`} aria-label={`${displayName} ${seat.stack??0}`}>
   <div className="mgx-seat-avatar" aria-hidden="true" style={{'--seat-hue':`${[150,205,32,275,350,175][index%6]}deg`}}><SeatPortrait seat={seat}/></div>
-  <div className="mgx-seat-heading"><span className="mgx-seat-name" data-testid={`seat-${index}-name`}>{seat.name||(hero?(ja?'あなた':'You'):'')}</span><span className="mgx-seat-position">{!/^(stud|razz)/i.test(String(variant)) && <>{dealer?'D · ':''}{position}</>}</span><strong data-testid={`seat-${index}-stack`}>{Number(seat.stack??0).toLocaleString()}</strong></div>
+  <div className="mgx-seat-heading"><span className="mgx-seat-name" data-testid={`seat-${index}-name`}>{displayName}</span><span className="mgx-seat-position">{!/^(stud|razz)/i.test(String(variant)) && <>{dealer?'D · ':''}{position}</>}</span><strong data-testid={`seat-${index}-stack`}>{Number(seat.stack??0).toLocaleString()}</strong></div>
   <div className="mgx-seat-cards" data-testid={`player-${index}-card-row`} style={{'--hand-count':Math.max(cards.length,1)}}>
    {cards.map(({card,sourceIndex})=>{
     const up=stud&&seat.cardVisibility[sourceIndex]==='up';

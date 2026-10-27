@@ -18,10 +18,25 @@ describe("variantAvailability", () => {
     expect(getVariantAvailability("D02").availability).toBe(
       VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
     );
+    expect(getVariantAvailability("D06").availability).toBe(
+      VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
+    );
+    expect(getVariantAvailability("D04").availability).toBe(
+      VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
+    );
+    expect(getVariantAvailability("D05").availability).toBe(
+      VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
+    );
+    expect(getVariantAvailability("D07").availability).toBe(
+      VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
+    );
     expect(getVariantAvailability("S01").availability).toBe(
       VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
     );
     expect(getVariantAvailability("S02").availability).toBe(
+      VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
+    );
+    expect(getVariantAvailability("S07").availability).toBe(
       VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE,
     );
     expect(getVariantAvailability("nlh").availability).toBe(
@@ -64,6 +79,30 @@ describe("variantAvailability", () => {
       expectsDraw: false,
       expectsBlindIncrease: false,
     });
+  });
+
+  it("publishes Badugi Single Draw with one-draw QA and honest CPU guidance", () => {
+    const availability = getVariantAvailability("S04");
+    expect(availability.availability).toBe(VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE);
+    expect(availability.reason).toMatch(/rule-based decisions/);
+    expect(availability.reasonJa).toMatch(/専用の学習AIはまだありません/);
+    expect(PUBLIC_PLAYABLE_VARIANTS.find((entry) => entry.id === "S04")?.cashQm).toEqual({
+      expectsDraw: true,
+      expectsBlindIncrease: true,
+    });
+  });
+
+  it("publishes both split single-draw games with their correct ace rules", () => {
+    for (const [id, aceRule] of [["S05", "Badugi側のAは高い"], ["S06", "両方ともAは低い"]]) {
+      const availability = getVariantAvailability(id);
+      expect(availability.availability).toBe(VARIANT_AVAILABILITY_STATES.ALPHA_PLAYABLE);
+      expect(availability.reason).toMatch(/rule-based decisions/);
+      expect(availability.reasonJa).toContain(aceRule);
+      expect(PUBLIC_PLAYABLE_VARIANTS.find((entry) => entry.id === id)?.cashQm).toEqual({
+        expectsDraw: true,
+        expectsBlindIncrease: true,
+      });
+    }
   });
 
   it("publishes all six Stud-family games only with the completed release contract", () => {

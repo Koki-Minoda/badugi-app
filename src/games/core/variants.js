@@ -185,25 +185,25 @@ export const GAME_VARIANTS = {
   badeucey_triple_draw: {
     id: "badeucey_triple_draw",
     variantId: "D04",
-    label: "Badeucey TD",
+    label: "Badeucey Triple Draw",
     controllerFactory: drawControllerFactory(BadeuceyTripleDrawController),
   },
   badacey_triple_draw: {
     id: "badacey_triple_draw",
     variantId: "D05",
-    label: "Badacey TD",
+    label: "Badacey Triple Draw",
     controllerFactory: drawControllerFactory(BadaceyTripleDrawController),
   },
   hidugi_triple_draw: {
     id: "hidugi_triple_draw",
     variantId: "D06",
-    label: "Hidugi TD",
+    label: "Hidugi Triple Draw",
     controllerFactory: drawControllerFactory(HidugiTripleDrawController),
   },
   archie_triple_draw: {
     id: "archie_triple_draw",
     variantId: "D07",
-    label: "Archie TD",
+    label: "Archie Triple Draw",
     controllerFactory: drawControllerFactory(ArchieTripleDrawController),
   },
   deuce_to_seven_single_draw: {

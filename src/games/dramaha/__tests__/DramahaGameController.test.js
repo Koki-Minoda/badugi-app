@@ -41,6 +41,22 @@ const STARTING_DECK = [
 ];
 
 describe("DramahaGameController", () => {
+  it("draws toward four suits in Hidugi instead of always standing pat", () => {
+    const controller = createController({ variant: "dramaha_hidugi", deckCards: [...STARTING_DECK] });
+    controller.startNewHand();
+    controller.state.street = "DRAW";
+    controller.state.currentActor = 1;
+    controller.state.players[1].holeCards = ["AS", "KS", "QH", "JD", "10D"];
+    const action = controller.getCpuAction(controller.getSnapshot(), 1);
+    expect(action).toMatchObject({ type: "DRAW", discardIndexes: [1, 4] });
+
+    controller.state.players[1].holeCards = ["AS", "KH", "QD", "JC", "2S"];
+    expect(controller.getCpuAction(controller.getSnapshot(), 1)).toMatchObject({
+      type: "DRAW",
+      discardIndexes: [],
+    });
+  });
+
   it("deals five hole cards and posts blinds", () => {
     const controller = createController({ deckCards: STARTING_DECK });
     const snapshot = controller.startNewHand();

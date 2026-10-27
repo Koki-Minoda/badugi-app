@@ -4,6 +4,8 @@ import { DeuceToSevenTripleDrawEngine } from "./DeuceToSevenTripleDrawEngine.js"
 
 function classifyHighDraw(cards = []) {
   const parsed = parseCards(cards);
+  const madeCategory = evaluateHighHand({ cards }).metadata?.category;
+  const patMade = ["straight-flush", "full-house", "flush", "straight"].includes(madeCategory);
   const counts = new Map();
   parsed.forEach((card, idx) => {
     const bucket = counts.get(card.value) ?? [];
@@ -18,7 +20,9 @@ function classifyHighDraw(cards = []) {
   });
   const madeGroupSize = groups[0]?.length ?? 1;
   const keep = new Set();
-  if (madeGroupSize >= 2) {
+  if (patMade) {
+    parsed.forEach((_, idx) => keep.add(idx));
+  } else if (madeGroupSize >= 2) {
     groups
       .filter((group) => group.length >= 2)
       .flat()
@@ -32,6 +36,7 @@ function classifyHighDraw(cards = []) {
   }
   return {
     madeGroupSize,
+    patMade,
     discardIndexes: parsed.map((_, idx) => idx).filter((idx) => !keep.has(idx)),
   };
 }
@@ -81,7 +86,7 @@ export class FiveCardSingleDrawEngine extends DeuceToSevenTripleDrawEngine {
     const currentBet = Number(state.metadata?.currentBet ?? state.currentBet ?? 0) || 0;
     const playerBet = Number(player.bet ?? 0) || 0;
     const facingBet = currentBet > playerBet;
-    const strongMade = drawPlan.madeGroupSize >= 2;
+    const strongMade = drawPlan.patMade || drawPlan.madeGroupSize >= 2;
     if (!facingBet && strongMade) {
       return { seatIndex, type: "BET", metadata: { strategy: this.cpuStrategy } };
     }

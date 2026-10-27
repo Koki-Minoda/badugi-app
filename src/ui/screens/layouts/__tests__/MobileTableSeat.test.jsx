@@ -65,6 +65,14 @@ it('keeps the configured hero name visible on the shared table',()=>{
  expect(screen.getByTestId('seat-0-name').textContent).toBe('Device Hero');
 });
 
+it.each(['nlh','razz','deuce_to_seven_triple_draw'])('labels the trial hero consistently in Japanese for %s',(variant)=>{
+ const {rerender}=render(<MobileTableSeat seat={{name:'You',stack:500,hand:['AS','KH']}} index={0} hero language="ja" variant={variant}/>);
+ expect(screen.getByTestId('seat-0-name').textContent).toBe('あなた');
+ expect(screen.getByTestId('seat-0').getAttribute('aria-label')).toBe('あなた 500');
+ rerender(<MobileTableSeat seat={{name:'You',stack:500,hand:['AS','KH']}} index={0} hero language="en" variant={variant}/>);
+ expect(screen.getByTestId('seat-0-name').textContent).toBe('You');
+});
+
 it('loads saved root-relative character portraits under a mounted development base',()=>{
  vi.stubEnv('BASE_URL','/dev/');
  const {container}=render(<MobileTableSeat seat={{name:'Hero',avatar:'/characters/hero.png',stack:500}} index={0} hero variant="nlh"/>);

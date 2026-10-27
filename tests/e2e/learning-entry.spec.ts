@@ -42,14 +42,14 @@ test('compare rules, save once, reload and review an unchanged template', async 
   await expect(page.getByRole('button', { name: /Mixed Game 開始/ })).toBeDisabled();
 });
 
-test('English persists and unpublished games remain study-only', async ({ page }) => {
+test('English persists and a newly public game can launch from learning', async ({ page }) => {
   await page.goto('/learn?variant=badeucey_triple_draw');
-  await expect(page.getByTestId('learn-play')).toHaveCount(0);
-  await expect(page.getByText('この種目は現在、ルールの確認のみ利用できます。')).toBeVisible();
+  await expect(page.getByTestId('learn-play')).toHaveAttribute('href', '/game?variant=badeucey_triple_draw');
   await page.getByRole('combobox', { name: 'Language' }).selectOption('en');
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Learn a game. Play a hand.' })).toBeVisible();
-  await expect(page.getByText('This game is currently available for rules study only.')).toBeVisible();
+  await expect(page.getByTestId('learn-play')).toHaveAttribute('href', '/game?variant=badeucey_triple_draw');
+  await expect(page.getByTestId('learn-play')).toContainText('Play Badeucey Triple Draw');
   await noOverflow(page);
 });
 

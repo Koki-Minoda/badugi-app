@@ -21,7 +21,8 @@ const DEFAULT_SEATS = [
 const COPY = {
   ja: {
     title: "Chinese Poker",
-    subtitle: "13枚をフロント3枚、ミドル5枚、バック5枚に並べます。バック >= ミドル >= フロントの強さでなければファウルです。",
+    you: "あなた",
+    subtitle: "13枚をフロント3枚、ミドル5枚、バック5枚に並べます。バックはミドル以上、ミドルはフロント以上の強さでないとファウルです。",
     back: "ゲーム選択へ戻る",
     hand: "ハンド",
     setting: "配置",
@@ -44,6 +45,7 @@ const COPY = {
     hidden: "相手の手はショーダウンまで非表示です。",
     history: "ハンド履歴",
     replayVerified: "同じ配置・採点を再現済み",
+    historyEvents: { HAND_START: "開始", ROWS_SET: "配置を確定", SHOWDOWN: "採点" },
     rowLabels: {
       front: "フロント 3枚",
       middle: "ミドル 5枚",
@@ -52,6 +54,7 @@ const COPY = {
   },
   en: {
     title: "Chinese Poker",
+    you: "You",
     subtitle: "Arrange 13 cards into Front 3, Middle 5, and Back 5. Back must be at least as strong as Middle, and Middle at least as strong as Front.",
     back: "Back to Game Select",
     hand: "Hand",
@@ -75,6 +78,7 @@ const COPY = {
     hidden: "Opponent hands are hidden until showdown.",
     history: "Hand History",
     replayVerified: "Exact rows and scoring replay verified",
+    historyEvents: { HAND_START: "Hand started", ROWS_SET: "Rows set", SHOWDOWN: "Scored" },
     rowLabels: {
       front: "Front 3",
       middle: "Middle 5",
@@ -102,7 +106,7 @@ function PlayerRows({ player, copy, phase }) {
     <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-3">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <h3 className="font-bold text-white">{player.name}</h3>
+          <h3 className="font-bold text-white">{player.isHero ? copy.you : player.name}</h3>
           <p className="text-xs text-slate-400">
             {player.ready ? copy.ready : copy.setting}
             {player.evaluation?.foul ? ` / ${copy.foul}` : ""}
@@ -136,7 +140,7 @@ function PlayerRows({ player, copy, phase }) {
 function ResultPanel({ snapshot, copy, completedHistory, replayAudit }) {
   if (snapshot.phase !== "showdown" || !snapshot.results) return null;
   const totals = snapshot.results.totals ?? {};
-  const nameById = Object.fromEntries(snapshot.players.map((player) => [player.id, player.name]));
+  const nameById = Object.fromEntries(snapshot.players.map((player) => [player.id, player.isHero ? copy.you : player.name]));
   return (
     <section className="rounded-3xl border border-emerald-400/25 bg-slate-950/85 p-4" data-testid="chinese-results">
       <h2 className="text-lg font-bold text-white">{copy.results}</h2>
@@ -171,14 +175,14 @@ function ResultPanel({ snapshot, copy, completedHistory, replayAudit }) {
       {completedHistory ? (
         <div className="mt-4 rounded-2xl border border-sky-300/25 bg-sky-400/10 p-3" data-testid="chinese-history-replay">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="font-bold text-sky-100">{copy.history} · {completedHistory.handId}</span>
+            <span className="font-bold text-sky-100">{copy.history} · {copy.hand} #{snapshot.handId}</span>
             <span className={replayAudit?.valid ? "text-emerald-300" : "text-red-300"} data-testid="chinese-replay-integrity">
               {replayAudit?.valid ? copy.replayVerified : replayAudit?.errors?.join(", ")}
             </span>
           </div>
           <ol className="mt-2 space-y-1 text-xs text-slate-300">
             {(completedHistory.events ?? []).map((event) => (
-              <li key={`${event.sequence}-${event.type}`}>#{event.sequence} · {event.type}{event.playerId ? ` · ${event.playerId}` : ""}</li>
+              <li key={`${event.sequence}-${event.type}`}>#{event.sequence} · {copy.historyEvents[event.type] ?? event.type}{event.playerId ? ` · ${nameById[event.playerId] ?? event.playerId}` : ""}</li>
             ))}
           </ol>
         </div>
@@ -331,7 +335,7 @@ export default function ChinesePokerGameScreen({ language = "ja", onBack = null,
             <div className="rounded-2xl border border-emerald-400/25 bg-slate-950/70 p-4" data-testid="chinese-hero-arrange">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <div>
-                  <h2 className="text-lg font-bold">{hero?.name ?? "You"}</h2>
+                  <h2 className="text-lg font-bold">{copy.you}</h2>
                   <p className="text-xs text-slate-400">{snapshot.phase === "showdown" ? copy.scoredHint : copy.selectHint}</p>
                 </div>
                 {hero?.evaluation?.foul && (
@@ -404,7 +408,7 @@ export default function ChinesePokerGameScreen({ language = "ja", onBack = null,
         </aside>
       </main>
       {snapshot.phase === "showdown" && <footer className="fixed inset-x-0 bottom-0 z-20 flex flex-wrap items-center justify-center gap-3 border-t border-emerald-300/30 bg-slate-950/95 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-2 backdrop-blur">
-        <p role="status" data-testid="chinese-result-summary" className="font-bold text-emerald-100">{hero?.name ?? "You"}: {snapshot.results.totals[hero?.id] > 0 ? '+' : ''}{snapshot.results.totals[hero?.id]} · {hero?.evaluation?.foul ? copy.foul : copy.results}</p>
+        <p role="status" data-testid="chinese-result-summary" className="font-bold text-emerald-100">{copy.you}: {snapshot.results.totals[hero?.id] > 0 ? '+' : ''}{snapshot.results.totals[hero?.id]} · {hero?.evaluation?.foul ? copy.foul : copy.results}</p>
         <button type="button" onClick={handleNextHand} className="min-h-11 rounded-xl bg-amber-400 px-6 py-2 text-sm font-bold text-slate-950" data-testid="chinese-next-hand">{guest ? copy.finishTrial : copy.next}</button>
       </footer>}
     </div>

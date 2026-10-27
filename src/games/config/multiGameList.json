@@ -347,7 +347,7 @@
     },
     {
         "id":  "D04",
-        "name":  "Badeucey TD",
+        "name":  "Badeucey Triple Draw",
         "category":  "triple-draw",
         "holeCards":  5,
         "drawRounds":  3,
@@ -370,7 +370,7 @@
     },
     {
         "id":  "D05",
-        "name":  "Badacey TD",
+        "name":  "Badacey Triple Draw",
         "category":  "triple-draw",
         "holeCards":  5,
         "drawRounds":  3,
@@ -393,7 +393,7 @@
     },
     {
         "id":  "D06",
-        "name":  "Hidugi TD",
+        "name":  "Hidugi Triple Draw",
         "category":  "triple-draw",
         "holeCards":  4,
         "drawRounds":  3,
@@ -415,7 +415,7 @@
     },
     {
         "id":  "D07",
-        "name":  "Archie TD",
+        "name":  "Archie Triple Draw",
         "category":  "triple-draw",
         "holeCards":  5,
         "drawRounds":  3,
@@ -433,7 +433,7 @@
         "priorityPhase":  1,
         "status":  "live",
         "engineKey":  "archie_triple_draw",
-        "description":  "Triple-draw split pot: nines-or-better high and eight-or-better A-5 low. If neither qualifies, best high wins."
+        "description":  "Triple-draw split pot: nines-or-better high and eight-or-better A-5 low. If neither qualifies, remaining players split the pot equally."
     },
     {
         "id":  "S01",
@@ -575,7 +575,7 @@
     },
     {
         "id":  "S07",
-        "name":  "Hidugi SD",
+        "name":  "Hidugi Single Draw",
         "category":  "single-draw",
         "holeCards":  4,
         "drawRounds":  1,

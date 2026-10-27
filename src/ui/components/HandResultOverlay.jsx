@@ -16,6 +16,7 @@ const COMPONENT_TONES = {
   lowA5: "cyan",
   archieHigh: "amber",
   archieLow: "cyan",
+  archieChop: "emerald",
   board: "amber",
   draw: "cyan",
 };
@@ -59,11 +60,15 @@ function getPotTitle(pot = {}, index, singlePot, copy) {
   return componentLabel ? `${baseTitle} · ${componentLabel}` : baseTitle;
 }
 
-function getSeatListLabel(seatIndexes = [], copy) {
+function getSeatListLabel(seatIndexes = [], copy, players = [], heroSeat = null, language = "en") {
   if (!Array.isArray(seatIndexes) || seatIndexes.length === 0) return "";
   return seatIndexes
     .filter((seatIndex) => Number.isInteger(seatIndex))
-    .map((seatIndex) => `${copy.seat}${seatIndex + 1}`)
+    .map((seatIndex) => (
+      seatIndex === heroSeat
+        ? (language === "ja" ? "あなた" : "You")
+        : players[seatIndex]?.name ?? `${copy.seat}${seatIndex + 1}`
+    ))
     .join(" / ");
 }
 
@@ -178,12 +183,18 @@ function buildWinnerGroups(pot, copy = getHandResultCopy("en")) {
   return groups;
 }
 
-function PotSection({ pot, index, singlePot, language, copy }) {
+function PotSection({ pot, index, singlePot, language, copy, players, heroSeat }) {
   const winnerGroups = buildWinnerGroups(pot, copy);
   const title = getPotTitle(pot, index, singlePot, copy);
   const componentLabel = getComponentLabel(pot, copy);
   const componentTone = getComponentTone(pot);
-  const eligibleSeatsLabel = getSeatListLabel(pot?.eligibleSeatIndexes, copy);
+  const allSeatsEligible = players.length > 0
+    && pot?.eligibleSeatIndexes?.length === players.length
+    && new Set(pot.eligibleSeatIndexes).size === players.length
+    && pot.eligibleSeatIndexes.every((seatIndex) => Number.isInteger(seatIndex) && seatIndex >= 0 && seatIndex < players.length);
+  const eligibleSeatsLabel = allSeatsEligible
+    ? (language === "ja" ? "全員" : "All players")
+    : getSeatListLabel(pot?.eligibleSeatIndexes, copy, players, heroSeat, language);
   const oddChipLabel = getOddChipLabel(pot, copy);
   return (
     <div
@@ -258,6 +269,7 @@ function PotSection({ pot, index, singlePot, language, copy }) {
 }
 
 export default function HandResultOverlay({
+  guestTrial = false,
   reviewHandId,
   players = [],
   heroSeat = null,
@@ -311,7 +323,6 @@ export default function HandResultOverlay({
       <div role="dialog" aria-modal="true" aria-label={copy.title} className="flex max-h-[calc(100dvh-2rem)] w-full max-w-3xl flex-col gap-3 overflow-hidden rounded-3xl border border-emerald-400/40 bg-slate-900 p-3 shadow-2xl sm:p-4">
         <div className="flex shrink-0 items-center justify-between gap-2 text-xs uppercase tracking-[0.15em] text-emerald-300">
           <span>{copy.title}</span>
-          {summary.handId && <span>#{summary.handId}</span>}
         </div>
         <div className="flex shrink-0 flex-wrap items-baseline justify-between gap-2">
           <h2 data-testid="hand-result-total" className="text-2xl font-bold text-white">
@@ -323,7 +334,7 @@ export default function HandResultOverlay({
         <div className="min-h-0 space-y-3 overflow-y-auto overscroll-contain" data-testid="hand-result-details">
         <div className="space-y-4 text-sm text-slate-200">
           {potSections.map((pot, idx) => (
-            <PotSection key={`pot-${pot.potIndex ?? idx}-${pot.component ?? "whole"}`} pot={pot} index={idx} singlePot={singlePot} language={language} copy={copy} />
+            <PotSection key={`pot-${pot.potIndex ?? idx}-${pot.component ?? "whole"}`} pot={pot} index={idx} singlePot={singlePot} language={language} copy={copy} players={players} heroSeat={heroSeat} />
           ))}
         </div>
         {mixedInfo && (
@@ -384,10 +395,10 @@ export default function HandResultOverlay({
             </div>
           </div>
         )}
-        {(reviewHandId || summary.handId) && <ReviewBookmarkButton language={language} key={reviewHandId ?? summary.handId} handId={reviewHandId ?? summary.handId} />}
+        {!guestTrial && (reviewHandId || summary.handId) && <ReviewBookmarkButton language={language} key={reviewHandId ?? summary.handId} handId={reviewHandId ?? summary.handId} />}
         </div>
         <div className="grid shrink-0 grid-cols-2 gap-2 border-t border-white/10 pt-3 sm:grid-cols-3" data-testid="hand-result-actions">
-        {(typeof onHistory === "function" || typeof onCashOut === "function") && (
+        {!guestTrial && (typeof onHistory === "function" || typeof onCashOut === "function") && (
           <>
             {typeof onHistory === "function" && (
               <button

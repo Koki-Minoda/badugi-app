@@ -1,5 +1,5 @@
 import React from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import ChinesePokerGameScreen from "../ChinesePokerGameScreen.jsx";
 
@@ -17,6 +17,13 @@ describe("ChinesePokerGameScreen", () => {
     expect(screen.getAllByTestId(/^chinese-card-/).length).toBeGreaterThanOrEqual(13);
   });
 
+  it("uses the selected language for the hero name in the placement panel", () => {
+    const { rerender } = render(<ChinesePokerGameScreen language="ja" />);
+    expect(within(screen.getByTestId("chinese-hero-arrange")).getByRole("heading", { name: "あなた" })).toBeTruthy();
+    rerender(<ChinesePokerGameScreen language="en" />);
+    expect(within(screen.getByTestId("chinese-hero-arrange")).getByRole("heading", { name: "You" })).toBeTruthy();
+  });
+
   it("can score a hand and advance to the next hand", () => {
     render(<ChinesePokerGameScreen language="en" />);
 
@@ -27,7 +34,7 @@ describe("ChinesePokerGameScreen", () => {
       .compareDocumentPosition(screen.getByTestId("chinese-hero-arrange"));
     expect(resultPosition & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByTestId("chinese-replay-integrity").textContent).toContain("verified");
-    expect(screen.getByTestId("chinese-history-replay").textContent).toContain("ROWS_SET");
+    expect(screen.getByTestId("chinese-history-replay").textContent).toContain("Rows set");
     expect(screen.getByText("Next Hand")).toBeTruthy();
     expect(screen.getByText("The rows and score are final. Review each row and the result.")).toBeTruthy();
     expect(screen.queryByText("Select a card, then choose a row.")).toBeNull();
@@ -50,7 +57,7 @@ describe("ChinesePokerGameScreen", () => {
     fireEvent.click(screen.getByTestId("chinese-submit"));
 
     const history = screen.getByTestId("chinese-history-replay").textContent;
-    expect(history.match(/ROWS_SET/g)).toHaveLength(1);
+    expect(history.match(/Rows set/g)).toHaveLength(1);
     expect(screen.getByTestId("chinese-replay-integrity").textContent).toContain("verified");
   }, 10000);
 
@@ -59,6 +66,10 @@ describe("ChinesePokerGameScreen", () => {
     render(<ChinesePokerGameScreen language="ja" guest onBack={onBack} />);
 
     fireEvent.click(screen.getByTestId("chinese-submit"));
+    const history = screen.getByTestId("chinese-history-replay").textContent;
+    expect(history).toContain("ハンド履歴 · ハンド #1");
+    expect(history).toContain("配置を確定 · あなた");
+    expect(history).not.toMatch(/chinese-1|HAND_START|ROWS_SET|SHOWDOWN/);
     expect(screen.getByRole("button", { name: "体験を終了" })).toBeTruthy();
     fireEvent.click(screen.getByTestId("chinese-next-hand"));
     expect(onBack).toHaveBeenCalledTimes(1);

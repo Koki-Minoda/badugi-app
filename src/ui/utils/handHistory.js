@@ -2,7 +2,7 @@ import { evaluateBadugi } from "../../games/badugi/utils/badugiEvaluator.js";
 import { evaluateBadugiHand } from "../../games/evaluators/badugi.js";
 import { evaluateHighHand } from "../../games/evaluators/high.js";
 import { evaluateLowHand, formatLowHandLabel } from "../../games/evaluators/low.js";
-import { evaluateBadeucey, evaluateBadacey } from "../../games/evaluators/split.js";
+import { evaluateBadeucey, evaluateBadacey, evaluateArchie } from "../../games/evaluators/split.js";
 
 let currentRecord = null;
 let seqCounter = 0;
@@ -77,8 +77,10 @@ function isHidugiVariant(variantId) {
   return (
     normalized === "D06" ||
     normalized === "S07" ||
+    normalized === "H05" ||
     normalized === "hidugi_triple_draw" ||
-    normalized === "hidugi_single_draw"
+    normalized === "hidugi_single_draw" ||
+    normalized === "dramaha_hidugi"
   );
 }
 
@@ -100,6 +102,11 @@ function isBadaceyVariant(variantId) {
     normalized === "badacey_triple_draw" ||
     normalized === "badacey_single_draw"
   );
+}
+
+function isArchieVariant(variantId) {
+  const normalized = normalizeVariantId(variantId);
+  return normalized === "D07" || normalized === "archie_triple_draw";
 }
 
 function evaluateVariantHand(hand = [], variantId = "badugi") {
@@ -132,6 +139,9 @@ function evaluateVariantHand(hand = [], variantId = "badugi") {
   if (isBadaceyVariant(variantId)) {
     return evaluateBadacey({ cards: hand });
   }
+  if (isArchieVariant(variantId)) {
+    return evaluateArchie({ cards: hand });
+  }
   return evaluateBadugi(hand);
 }
 
@@ -148,6 +158,20 @@ function getEvaluationLabel(evaluation, variantId = "badugi") {
   if (evaluation.rankType) return evaluation.rankType;
   if (typeof evaluation.count === "number") return `Badugi ${evaluation.count}-card`;
   return null;
+}
+
+function getHistoryPayoutEvaluation(entry, variantId) {
+  const supplied = entry?.evaluation;
+  if (supplied?.board && supplied?.draw) {
+    if (entry.component === "draw") return supplied.draw;
+    if (entry.component === "board") {
+      const bestFive = supplied.board.best5;
+      return Array.isArray(bestFive) && bestFive.length >= 5
+        ? { ...supplied.board, handName: evaluateHighHand({ cards: bestFive }).handName }
+        : supplied.board;
+    }
+  }
+  return supplied ?? (entry?.hand ? evaluateVariantHand(entry.hand, variantId) : null);
 }
 
 export function startHandHistoryRecord({
@@ -270,8 +294,7 @@ function buildPotEntries(pots = []) {
                 : typeof entry?.seatIndex === "number"
                 ? entry.seatIndex
                 : null;
-            const evaluation =
-              entry?.evaluation ?? (entry?.hand ? evaluateVariantHand(entry.hand, variantId) : null);
+            const evaluation = getHistoryPayoutEvaluation(entry, variantId);
             return {
               seat,
               collect: Math.max(0, entry?.payout ?? 0),

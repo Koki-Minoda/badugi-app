@@ -13767,12 +13767,12 @@ export default function App() {
       "absolute bottom-[27%] right-0 w-[min(30%,220px)]", // CO
     ];
     const cashLayouts = [
-      "absolute bottom-[-2%] left-1/2 -translate-x-1/2 w-[clamp(190px,24vw,270px)]", // Hero (BTN)
-      "absolute bottom-[27%] left-[1.5%] w-[clamp(160px,20vw,240px)]", // SB
-      "absolute top-[14%] left-[2%] w-[clamp(160px,21vw,250px)]", // BB
-      "absolute top-[0%] left-1/2 -translate-x-1/2 w-[clamp(170px,23vw,270px)]", // UTG
-      "absolute top-[14%] right-[2%] w-[clamp(160px,21vw,250px)]", // MP
-      "absolute bottom-[27%] right-[1.5%] w-[clamp(160px,20vw,240px)]", // CO
+      "absolute bottom-0 left-1/2 -translate-x-1/2 w-[min(30%,240px)]", // Hero (BTN)
+      "absolute bottom-0 left-[1%] w-[min(28%,220px)]", // SB
+      "absolute top-0 left-[1%] w-[min(28%,220px)]", // BB
+      "absolute top-0 left-1/2 -translate-x-1/2 w-[min(30%,240px)]", // UTG
+      "absolute top-0 right-[1%] w-[min(28%,220px)]", // MP
+      "absolute bottom-0 right-[1%] w-[min(28%,220px)]", // CO
     ];
     // Tournament tables follow a fixed 6-max oval layout (BTN bottom-center, clockwise SB→CO).
     const tournamentLayouts = [
@@ -13986,10 +13986,10 @@ export default function App() {
     currentActorPosition,
     waitingLabel:
       currentActorSeat === null
-        ? "Resolving round"
+        ? (language === "ja" ? "ラウンドを処理中" : "Resolving round")
         : currentActorSeat === heroSeatIndex
-          ? `Your action / ${heroPositionLabel}`
-          : `Waiting for ${currentActorView?.name ?? `Seat ${currentActorSeat + 1}`}${
+          ? (language === "ja" ? `あなたの番 / ${heroPositionLabel}` : `Your action / ${heroPositionLabel}`)
+          : `${language === "ja" ? "操作待ち: " : "Waiting for "}${currentActorView?.name ?? `${language === "ja" ? "席" : "Seat"} ${currentActorSeat + 1}`}${
               currentActorPosition ? ` / ${currentActorPosition}` : ""
             }`,
     recentActions: recentTableActions,
@@ -14519,6 +14519,7 @@ export default function App() {
   };
 
   const overlaysProps = {
+    guestTrial,
     reviewHandId: guestTrial ? null : handIdRef.current,
     handResultVisible:
       !heroBustOverlayVisible && !tournamentOverlayVisible &&

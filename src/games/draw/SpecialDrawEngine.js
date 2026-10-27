@@ -1,8 +1,10 @@
 import { resolveDrawContributionPots } from "./drawContributionPots.js";
 import { orderDrawWinners } from "./drawWinnerOrder.js";
 import { evaluateBadugiHand } from "../evaluators/badugi.js";
+import { parseCards } from "../evaluators/core.js";
 import { evaluateHighHand } from "../evaluators/high.js";
 import { evaluateLowHand, formatLowHandLabel } from "../evaluators/low.js";
+import { evaluateArchieHigh, evaluateArchieLow } from "../evaluators/split.js";
 import { compareEvaluations } from "../evaluators/registry.js";
 import { DeuceToSevenTripleDrawEngine } from "./DeuceToSevenTripleDrawEngine.js";
 
@@ -28,6 +30,7 @@ const COMPONENT_LABELS = {
   lowA5: "A-5 Low half",
   archieHigh: "High half",
   archieLow: "A-5 Low half",
+  archieChop: "No qualifying hand · split pot",
 };
 
 function getComponentLabel(component) {
@@ -48,29 +51,37 @@ function getComponentAmountDetails(amount, components = []) {
   }));
 }
 
-function getActiveCardsFromBadugi(cards = []) {
-  const evaluation = evaluateBadugiHand({ cards });
+function getActiveCardsFromBadugi(cards = [], { mode = "low", aceHigh = false } = {}) {
+  const evaluation = evaluateBadugiHand({ cards, mode, aceHigh });
   return new Set(evaluation.metadata?.cards ?? []);
 }
 
-function chooseBadugiDiscardIndexes(cards = []) {
-  const keep = getActiveCardsFromBadugi(cards);
+function chooseBadugiDiscardIndexes(cards = [], { mode = "low", aceHigh = false } = {}) {
+  const keep = getActiveCardsFromBadugi(cards, { mode, aceHigh });
   const discard = cards
     .map((card, idx) => ({ card, idx }))
     .filter(({ card }) => !keep.has(card))
     .map(({ idx }) => idx);
   if (discard.length) return discard;
-  const evaluation = evaluateBadugiHand({ cards });
+  const evaluation = evaluateBadugiHand({ cards, mode, aceHigh });
   const ranks = evaluation.metadata?.ranks ?? [];
+  if (mode === "high") {
+    // Keep four strong suits; try to improve the lowest card when it is ten or lower.
+    if ((evaluation.metadata?.size ?? 0) !== 4 || Math.min(...ranks) > 10) return [];
+    const lowestRank = Math.min(...ranks);
+    const lowestIndex = parseCards(cards).findIndex((card) => card.value === lowestRank);
+    return lowestIndex >= 0 ? [lowestIndex] : [];
+  }
   const roughFourCard = (evaluation.metadata?.size ?? 0) === 4 && Math.max(...ranks, 0) >= 11;
   return roughFourCard ? [cards.length - 1].filter((idx) => idx >= 0) : [];
 }
 
-function choosePairOrLowDiscardIndexes(cards = [], lowType = "27") {
-  const badugiDiscard = chooseBadugiDiscardIndexes(cards);
-  if (badugiDiscard.length) return badugiDiscard;
+function choosePairOrLowDiscardIndexes(cards = [], lowType = "27", { singleDraw = false } = {}) {
   const low = evaluateLowHand({ cards, lowType });
   const ranks = low.metadata?.ranks ?? [];
+  if (singleDraw && low.metadata?.categoryRank === 0 && ranks[0] <= 8) return [];
+  const badugiDiscard = chooseBadugiDiscardIndexes(cards, { aceHigh: lowType === "27" });
+  if (badugiDiscard.length) return badugiDiscard;
   const highest = ranks.length ? Math.max(...ranks) : 14;
   if (highest <= 8 && low.rankPrimary !== Number.POSITIVE_INFINITY) return [];
   return cards.length ? [cards.length - 1] : [];
@@ -134,7 +145,7 @@ function isQualifiedComponentEvaluation(evaluation) {
 const VARIANT_CONFIGS = {
   badeucey_triple_draw: {
     gameId: "badeucey_triple_draw",
-    displayName: "Badeucey TD",
+    displayName: "Badeucey Triple Draw",
     variantId: "D04",
     evaluatorTag: "split-badugi-27",
     maxDrawRounds: 3,
@@ -143,7 +154,7 @@ const VARIANT_CONFIGS = {
   },
   badacey_triple_draw: {
     gameId: "badacey_triple_draw",
-    displayName: "Badacey TD",
+    displayName: "Badacey Triple Draw",
     variantId: "D05",
     evaluatorTag: "split-badugi-a5",
     maxDrawRounds: 3,
@@ -152,7 +163,7 @@ const VARIANT_CONFIGS = {
   },
   hidugi_triple_draw: {
     gameId: "hidugi_triple_draw",
-    displayName: "Hidugi TD",
+    displayName: "Hidugi Triple Draw",
     variantId: "D06",
     evaluatorTag: "badugi-high",
     maxDrawRounds: 3,
@@ -161,7 +172,7 @@ const VARIANT_CONFIGS = {
   },
   archie_triple_draw: {
     gameId: "archie_triple_draw",
-    displayName: "Archie TD",
+    displayName: "Archie Triple Draw",
     variantId: "D07",
     evaluatorTag: "archie",
     maxDrawRounds: 3,
@@ -197,7 +208,7 @@ const VARIANT_CONFIGS = {
   },
   hidugi_single_draw: {
     gameId: "hidugi_single_draw",
-    displayName: "Hidugi SD",
+    displayName: "Hidugi Single Draw",
     variantId: "S07",
     evaluatorTag: "badugi-high",
     maxDrawRounds: 1,
@@ -236,23 +247,10 @@ export class SpecialDrawEngine extends DeuceToSevenTripleDrawEngine {
       return { ...evaluation, handName: formatLowHandLabel(evaluation, { lowType: "A5" }) };
     }
     if (component === "archieHigh") {
-      const evaluation = evaluateHighHand({ cards });
-      const qualifies = [
-        "one-pair",
-        "two-pair",
-        "three-of-a-kind",
-        "straight",
-        "flush",
-        "full-house",
-        "four-of-a-kind",
-        "straight-flush",
-      ].includes(evaluation.metadata?.category) &&
-        (evaluation.metadata?.category !== "one-pair" || (evaluation.metadata?.ranks?.[0] ?? 0) >= 9);
-      return { ...evaluation, qualifies, rankPrimary: qualifies ? evaluation.rankPrimary : Number.POSITIVE_INFINITY };
+      return evaluateArchieHigh({ cards });
     }
     if (component === "archieLow") {
-      const evaluation = evaluateLowHand({ cards, lowType: "A5", requireQualifier: 8 });
-      return { ...evaluation, handName: formatLowHandLabel(evaluation, { lowType: "A5" }) };
+      return evaluateArchieLow({ cards });
     }
     throw new Error(`Unknown special draw component: ${component}`);
   }
@@ -282,9 +280,18 @@ export class SpecialDrawEngine extends DeuceToSevenTripleDrawEngine {
     const player = state?.players?.[seatIndex];
     if (!state || typeof seatIndex !== "number" || !player || player.folded || player.sittingOut) return null;
     if (state.actingPlayerIndex !== null && state.actingPlayerIndex !== seatIndex) return null;
+    const standPatWithSingleDrawBadugi = this.specialConfig.mode === "badugiLow" &&
+      this.maxDrawRounds === 1 &&
+      evaluateBadugiHand({ cards: player.hand ?? [] }).metadata?.size === 4;
+    const madeSingleDrawHidugi = this.variantId === "S07" &&
+      evaluateBadugiHand({ cards: player.hand ?? [], mode: "high" }).metadata?.size === 4;
     const discardIndexes = this.specialConfig.handCardCount === 5
-      ? choosePairOrLowDiscardIndexes(player.hand ?? [], this.specialConfig.split?.lowType ?? "27")
-      : chooseBadugiDiscardIndexes(player.hand ?? []);
+      ? choosePairOrLowDiscardIndexes(player.hand ?? [], this.specialConfig.split?.lowType ?? "27", {
+          singleDraw: this.maxDrawRounds === 1,
+        })
+      : standPatWithSingleDrawBadugi || madeSingleDrawHidugi ? [] : chooseBadugiDiscardIndexes(player.hand ?? [], {
+          mode: this.specialConfig.mode === "badugiHigh" ? "high" : "low",
+        });
     if (state.street === "DRAW") {
       return {
         seatIndex,
@@ -366,6 +373,45 @@ export class SpecialDrawEngine extends DeuceToSevenTripleDrawEngine {
       );
       const qualifyingComponents = components.filter((component) => contendersByComponent[component]?.length);
 
+      if (this.specialConfig.variantId === "D07" && !qualifyingComponents.length) {
+        const contenders = eligibleSeats.map((seatIndex) => evaluations[seatIndex]).filter(Boolean);
+        const component = "archieChop";
+        const componentLabel = getComponentLabel(component);
+        const payouts = splitAmountBySeatOrder(potAmount, contenders, working).map((winner) => {
+          const player = working.players[winner.seatIndex];
+          const stackBefore = player.stack ?? 0;
+          player.stack = stackBefore + winner.payout;
+          player.lastAction = `Collect ${winner.payout}`;
+          return {
+            seatIndex: winner.seatIndex,
+            name: player.name,
+            payout: winner.payout,
+            stackBefore,
+            stackAfter: player.stack,
+            handName: "No qualifying hand",
+            handLabel: "No qualifying hand",
+            hand: Array.isArray(player.hand) ? [...player.hand] : [],
+            evaluation: winner.evaluation,
+            component,
+            componentLabel,
+          };
+        });
+        summary.push({
+          potIndex,
+          sourcePotIndex: pot.potIndex ?? potIndex,
+          component,
+          componentLabel,
+          label: componentLabel,
+          oddChipAmount: 0,
+          oddChip: null,
+          eligibleSeatIndexes: [...eligibleSeats],
+          potAmount,
+          payouts,
+          evaluations: contenders,
+        });
+        return;
+      }
+
       if (qualifyingComponents.length) {
         components.forEach((component) => {
           if (contendersByComponent[component]?.length) return;
@@ -374,7 +420,7 @@ export class SpecialDrawEngine extends DeuceToSevenTripleDrawEngine {
           awardedAmounts[qualifyingComponents[0]] += amount;
         });
       } else if (components.length) {
-        // If neither side qualifies, the best unqualified high scoops.
+        // Non-Archie split games retain their existing unqualified fallback.
         const fallbackComponent = components[0];
         contendersByComponent[fallbackComponent] = eligibleSeats
           .map((seatIndex) => evaluations[seatIndex])

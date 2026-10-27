@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { evaluateDramahaHand } from "../../../games/dramaha/utils/dramahaEvaluator.js";
 import {
   appendHandHistoryAction,
   finalizeHandHistoryRecord,
@@ -207,16 +208,40 @@ describe("handHistory", () => {
       labelPart: "A-5 Low",
     },
     {
+      variantId: "S05",
+      variantName: "Badeucey Single Draw",
+      hand: ["7S", "5D", "4C", "3H", "2S"],
+      labelPart: "2-7 Low",
+    },
+    {
+      variantId: "S06",
+      variantName: "Badacey Single Draw",
+      hand: ["AS", "2D", "3C", "4H", "5S"],
+      labelPart: "A-5 Low",
+    },
+    {
       variantId: "D06",
       variantName: "Hidugi TD",
       hand: ["KS", "QD", "JH", "10C"],
-      labelPart: "Badugi",
+      labelPart: "Hidugi",
+    },
+    {
+      variantId: "D07",
+      variantName: "Archie TD",
+      hand: ["AS", "2D", "3C", "4H", "8S"],
+      labelPart: "A-5 Low",
     },
     {
       variantId: "S04",
       variantName: "Badugi Single Draw",
       hand: ["AS", "2D", "3C", "4H"],
       labelPart: "Badugi",
+    },
+    {
+      variantId: "H05",
+      variantName: "Dramaha Hidugi",
+      hand: ["AS", "AH", "AD", "AC", "2S"],
+      labelPart: "Hidugi 4-card (A-A-A-A)",
     },
   ])("records $variantId special draw hand labels", ({ variantId, variantName, hand, labelPart }) => {
     startHandHistoryRecord({
@@ -241,6 +266,71 @@ describe("handHistory", () => {
     expect(record.variantName).toBe(variantName);
     expect(record.seats[0].handLabel).toContain(labelPart);
     expect(record.pots[0].winners[0].handLabel).toContain(labelPart);
+  });
+
+  it("records the ace-high Badeucey Badugi result used by the game engine", () => {
+    const hand = ["AS", "2H", "3D", "4C", "9S"];
+    startHandHistoryRecord({
+      handId: "d04-ace-high-history",
+      variantId: "D04",
+      seats: [{ seat: 0, name: "Hero", startStack: 500 }],
+    });
+    const record = finalizeHandHistoryRecord({
+      players: [{ stack: 600, hand }],
+      pots: [{ potIndex: 0, potAmount: 100, payouts: [{ seatIndex: 0, payout: 100, hand }] }],
+    });
+
+    expect(record.seats[0].evaluation.metadata.high.metadata).toMatchObject({
+      aceHigh: true,
+      cards: ["2H", "3D", "4C", "9S"],
+    });
+    expect(record.pots[0].winners[0].evaluation.metadata.high.metadata.aceHigh).toBe(true);
+  });
+
+  it("records distinct board and Hidugi winner labels for Dramaha", () => {
+    const hand = ["AS", "AH", "AD", "AC", "2S"];
+    const evaluation = evaluateDramahaHand({
+      variant: "dramaha_hidugi",
+      holeCards: hand,
+      boardCards: ["KS", "KH", "KD", "QH", "3C"],
+    });
+    startHandHistoryRecord({
+      handId: "dramaha-hidugi-history",
+      variantId: "dramaha_hidugi",
+      seats: [{ seat: 0, name: "Hero", startStack: 500 }],
+    });
+    const record = finalizeHandHistoryRecord({
+      players: [{ stack: 600, hand }],
+      pots: [
+        { potIndex: 0, potAmount: 50, payouts: [{ seatIndex: 0, payout: 50, component: "board", evaluation }] },
+        { potIndex: 1, potAmount: 50, payouts: [{ seatIndex: 0, payout: 50, component: "draw", evaluation }] },
+      ],
+    });
+
+    expect(record.seats[0].handLabel).toBe("Hidugi 4-card (A-A-A-A)");
+    expect(record.pots[0].winners[0].handLabel).toBe("Full House");
+    expect(record.pots[1].winners[0].handLabel).toBe("Hidugi 4-card (A-A-A-A)");
+    expect(record.pots[1].winners[0].evaluation.metadata.size).toBe(4);
+  });
+
+  it.each([
+    { variantId: "D07", hand: ["9S", "9H", "2D", "3C", "4H"], high: true, low: false },
+    { variantId: "archie_triple_draw", hand: ["AS", "2D", "3C", "4H", "8S"], high: false, low: true },
+  ])("records Archie component qualifications for $variantId", ({ variantId, hand, high, low }) => {
+    startHandHistoryRecord({
+      handId: `${variantId}-qualification`,
+      variantId,
+      seats: [{ seat: 0, name: "Hero", startStack: 500 }],
+    });
+    const record = finalizeHandHistoryRecord({
+      players: [{ stack: 600, hand }],
+      pots: [{ potIndex: 0, potAmount: 100, payouts: [{ seatIndex: 0, payout: 100, hand }] }],
+    });
+    const evaluation = record.seats[0].evaluation;
+    expect(evaluation.metadata.splitMode).toBe("component");
+    expect(evaluation.metadata.components.archieHigh.qualifies).toBe(high);
+    expect(evaluation.metadata.components.archieLow.metadata.qualifies).toBe(low);
+    expect(record.pots[0].winners[0].evaluation).toEqual(evaluation);
   });
 
   it("defines and validates the minimum D01 replay fields", () => {

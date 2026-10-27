@@ -1,0 +1,74 @@
+{
+  "variant": "deuce_to_seven_triple_draw",
+  "tier": "standard",
+  "rows": [
+    {
+      "variantId": "D01",
+      "tierId": "standard",
+      "phase": "BET",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-27draw-standard-dqn-v1",
+      "usedModelId": "model-27draw-standard-dqn-v1",
+      "elapsedMs": 200
+    },
+    {
+      "variantId": "D01",
+      "tierId": "standard",
+      "phase": "BET",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-27draw-standard-dqn-v1",
+      "usedModelId": "model-27draw-standard-dqn-v1",
+      "elapsedMs": 0
+    },
+    {
+      "variantId": "D01",
+      "tierId": "standard",
+      "phase": "BET",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-27draw-standard-dqn-v1",
+      "usedModelId": "model-27draw-standard-dqn-v1",
+      "elapsedMs": 0
+    },
+    {
+      "variantId": "D01",
+      "tierId": "standard",
+      "phase": "BET",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-27draw-standard-dqn-v1",
+      "usedModelId": "model-27draw-standard-dqn-v1",
+      "elapsedMs": 0
+    },
+    {
+      "variantId": "D01",
+      "tierId": "standard",
+      "phase": "BET",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-27draw-standard-dqn-v1",
+      "usedModelId": "model-27draw-standard-dqn-v1",
+      "elapsedMs": 0
+    },
+    {
+      "variantId": "D01",
+      "tierId": "standard",
+      "phase": "DRAW",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-27draw-standard-dqn-v1",
+      "usedModelId": "model-27draw-standard-dqn-v1",
+      "elapsedMs": 1
+    }
+  ],
+  "errors": [],
+  "apiStubbed": true
+}

@@ -6,7 +6,7 @@ import {parseArgs} from 'node:util';
 import {GAME_VARIANTS} from '../src/games/config/variantCatalog.js';
 import {normalizeAppVariantId} from '../src/ui/game/appVariantRouting.js';
 
-const {values} = parseArgs({options:{input:{type:'string'},output:{type:'string'},'source-commit':{type:'string'}}});
+const {values} = parseArgs({options:{input:{type:'string'},output:{type:'string'},'source-commit':{type:'string'},'expected-variants':{type:'string'},'expected-tiers':{type:'string'}}});
 if (!values.input || !values.output || !/^[a-f0-9]{40}$/.test(values['source-commit'] ?? '')) throw Error('input, output and full tested source-commit are required');
 const git = args => execFileSync('git',args,{encoding:'utf8'}).trim();
 git(['cat-file','-e',`${values['source-commit']}^{commit}`]);
@@ -47,6 +47,16 @@ for (const file of (await files(resolve(values.input))).sort()) {
 }
 const keys=rows.map(row=>`${row.variantId}:${row.tier}`);
 if(new Set(keys).size!==keys.length) throw Error('Duplicate variant/tier evidence; choose one run directory');
+const expectedVariants=values['expected-variants']?.split(',').filter(Boolean)??[];
+const expectedTiers=values['expected-tiers']?.split(',').filter(Boolean)??[];
+if(Boolean(expectedVariants.length)!==Boolean(expectedTiers.length)) throw Error('Expected variants and tiers must be supplied together');
+if(expectedVariants.length) {
+  if(new Set(expectedVariants).size!==expectedVariants.length || new Set(expectedTiers).size!==expectedTiers.length) throw Error('Duplicate expected variant or tier');
+  const expected=new Set(expectedVariants.flatMap(variantId=>expectedTiers.map(tier=>`${variantId}:${tier}`)));
+  const missing=[...expected].filter(key=>!keys.includes(key));
+  const unexpected=keys.filter(key=>!expected.has(key));
+  if(missing.length || unexpected.length) throw Error(`Incomplete inference evidence: missing=${missing.join(',')||'-'} unexpected=${unexpected.join(',')||'-'}`);
+}
 const report={generatedAt:new Date().toISOString(),sourceCommit:values['source-commit'],
   scope:'Local browser inference samples. This is not proof of model strength, physical QA, production use, or complete-hand quality.',
   rowCount:rows.length,phaseCoveredRows:rows.filter(row=>row.phaseCoverage).length,

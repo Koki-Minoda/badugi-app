@@ -24,6 +24,10 @@ vi.mock("../onnxExecutor.js", () => ({
 
 vi.mock("../modelRouter.js", () => ({
   selectModelForVariant: vi.fn(({ tierId }) => {
+    if (tierId === "board") return {
+      id: "board-model", featureSet: "board-betting-observation-v1",
+      inputShape: [16], outputShape: [6], onnx: "models/board.onnx",
+    };
     if (tierId === "unconfigured") return null;
     if (tierId === "missing") {
       return {
@@ -76,6 +80,32 @@ describe("onnxPolicyAdapter inference fallback", () => {
       source: "onnx",
       modelId: "available-model",
     });
+  });
+
+  it("does not run a board model with invented live feature defaults", async () => {
+    const traces = [];
+    const decision = await inferBetActionWithOnnx({
+      variantId: "B01", tierId: "board", legalActions: ["CALL"],
+      observation: { actor: { stack: 500 }, toCall: 20, potSize: 30 },
+      onInferenceTrace: trace => traces.push(trace),
+    });
+    expect(decision).toBeNull();
+    expect(runMock).not.toHaveBeenCalled();
+    expect(traces).toEqual([expect.objectContaining({status: "failed", reason: "feature-build-failed", usedModelId: null})]);
+  });
+
+  it("uses a board model when every feature and a legal action mask are supplied", async () => {
+    runMock.mockResolvedValueOnce({output: {data: [0.1, 0.2, 0.3, 0.9, 0.4, 0.1]}});
+    const decision = await inferBetActionWithOnnx({
+      variantId: "B01", tierId: "board", legalActions: ["CHECK", "BET"],
+      observation: {
+        actor: {stack: 500}, toCall: 0, betSize: 20, potSize: 30, chipUnit: 500,
+        strength: 0.8, equity: 0.7, drawPotential: 0.1, position: 0.5,
+        streetProgress: 0, raiseCount: 0, activeOpponents: 2, stackRatio: 1,
+      },
+    });
+    expect(decision).toMatchObject({action: "BET", modelId: "board-model"});
+    expect(runMock).toHaveBeenCalledOnce();
   });
 
   it("masks illegal ONNX bet outputs instead of remapping by modulo", async () => {

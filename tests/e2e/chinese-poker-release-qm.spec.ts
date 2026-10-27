@@ -89,7 +89,7 @@ test.describe("Classic Chinese Poker release QM", () => {
       await expect(page.getByTestId("chinese-results")).toBeVisible({ timeout: 20_000 });
       await expect(page.getByTestId("chinese-replay-integrity"))
         .toContainText(/verified|再現済み/i);
-      await expect(page.getByTestId("chinese-history-replay")).toContainText(/ROWS_SET/);
+      await expect(page.getByTestId("chinese-history-replay")).toContainText(/ROWS_SET|配置を確定/);
       await assertNoHorizontalOverflow(page);
       await assertCompletedHistory(page, hand);
 

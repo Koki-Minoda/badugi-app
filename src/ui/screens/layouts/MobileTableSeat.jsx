@@ -15,10 +15,11 @@ export default function MobileTableSeat({seat,index,hero=false,active=false,deal
  const out=seat.busted||seat.isBusted||seat.seatOut;
  const folded=seat.folded||out;
  const cards=out?[]:getDisplayCards(hand,{displayVariant:variant});
+ const displayName=hero&&ja&&seat.name==='You'?'あなた':(seat.name||(hero?(ja?'あなた':'You'):''));
  const action=out?(ja?'離席':'OUT'):folded?(ja?'フォールド':'Folded'):seat.allIn?'ALL IN':!stud&&seat.lastDrawCount!=null?(seat.lastDrawCount===0?'PAT':`D${seat.lastDrawCount}`):'';
- return <section data-testid={seatTestId??`seat-${index}`} className={`mgx-table-seat ${hero?'is-hero':''} ${cards.length>5?'is-long-hand':''} ${active?'is-active':''} ${folded?'is-folded':''}`} aria-label={`${seat.name||(hero?(ja?'あなた':'You'):'')} ${seat.stack??0}`}>
+ return <section data-testid={seatTestId??`seat-${index}`} className={`mgx-table-seat ${hero?'is-hero':''} ${cards.length>5?'is-long-hand':''} ${active?'is-active':''} ${folded?'is-folded':''}`} aria-label={`${displayName} ${seat.stack??0}`}>
   <div className="mgx-seat-avatar" aria-hidden="true" style={{'--seat-hue':`${[150,205,32,275,350,175][index%6]}deg`}}><SeatPortrait seat={seat}/></div>
-  <div className="mgx-seat-heading"><span className="mgx-seat-name" data-testid={`seat-${index}-name`}>{seat.name||(hero?(ja?'あなた':'You'):'')}</span><span className="mgx-seat-position">{!/^(stud|razz)/i.test(String(variant)) && <>{dealer?'D · ':''}{position}</>}</span><strong data-testid={`seat-${index}-stack`}>{Number(seat.stack??0).toLocaleString()}</strong></div>
+  <div className="mgx-seat-heading"><span className="mgx-seat-name" data-testid={`seat-${index}-name`}>{displayName}</span><span className="mgx-seat-position">{!/^(stud|razz)/i.test(String(variant)) && <>{dealer?'D · ':''}{position}</>}</span><strong data-testid={`seat-${index}-stack`}>{Number(seat.stack??0).toLocaleString()}</strong></div>
   <div className="mgx-seat-cards" data-testid={`player-${index}-card-row`} style={{'--hand-count':Math.max(cards.length,1)}}>
    {cards.map(({card,sourceIndex})=>{
     const up=stud&&seat.cardVisibility[sourceIndex]==='up';

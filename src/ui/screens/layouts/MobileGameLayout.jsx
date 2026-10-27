@@ -5,6 +5,7 @@ import MobileTableSeat,{TableCard} from './MobileTableSeat.jsx';
 import BetAmountSheet from '../../components/BetAmountSheet.jsx';
 import getAvailableActions from '../../utils/getAvailableActions.js';
 import VariantRuleReminder from '../../learning/VariantRuleReminder.jsx';
+import {getWinningHandCue} from '../../learning/learningCatalog.js';
 import HandResultOverlay from '../../components/HandResultOverlay.jsx';
 import HeroBustOverlay from '../../components/HeroBustOverlay.jsx';
 import TournamentResultOverlay from '../../components/TournamentResultOverlay.jsx';
@@ -75,7 +76,7 @@ export default function MobileGameLayout({headerProps:h,sidePanelProps:s,tablePr
       {!shortCall&&<button className="mgx-raise" data-testid="action-raise" disabled={draw||next||!raise} onClick={()=>variableBet?setAmountOpen(true):invoke(raise)}>{ja?(info.toCall>0?'レイズ':'ベット'):(info.toCall>0?'Raise':'Bet')}</button>}
      </div>
     </div>
-    <p className="mgx-action-note">{draw?(ja?'0枚なら交換しません（パット）':'Select zero cards to stand pat'):(ja?'持ち点とポットはチップ単位です':'Stacks and pot are shown in chips')}</p>
+    <p className="mgx-action-note" data-testid="winning-hand-cue">{draw?(ja?'0枚なら交換しません（パット）':'Select zero cards to stand pat'):(getWinningHandCue(t.gameVariant,h.language)??(ja?'持ち点とポットはチップ単位です':'Stacks and pot are shown in chips'))}</p>
    </aside>
   </main>
   {amountOpen&&c.heroCanAct&&<BetAmountSheet key={`${t.gameVariant}:${c.controlsCurrentBet}`} model={c.betSizingModel} language={h.language} onClose={()=>setAmountOpen(false)} onConfirm={amount=>{setAmountOpen(false);c.playerRaise(amount);}}/>}

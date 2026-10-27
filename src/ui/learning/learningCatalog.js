@@ -93,6 +93,29 @@ export function getLearningGame(id) {
   const normalized = normalizeAppVariantId(id, null);
   return LEARNING_GAMES.find(game => game.id === normalized) ?? null;
 }
+const winningHandCues = {
+  high: text('高い役が勝ち', 'High hand wins'),
+  low27: text('2-7ロー · Aは高い', '2-7 low · Aces high'),
+  lowA5: text('A-5ロー · Aは低い', 'A-5 low · Aces low'),
+  split8: text('ハイと8以下のローで分配', 'High / 8-low split'),
+  badugi: text('Badugi · 枚数と低さで勝負', 'Badugi · more cards, then lower'),
+  razzducey: text('Badugi / 2-7ローで分配', 'Badugi / 2-7 low split'),
+  splitA5: text('Badugi / A-5ローで分配', 'Badugi / A-5 low split'),
+  split27: text('Badugi / 2-7ローで分配', 'Badugi / 2-7 low split'),
+  hidugi: text('Hidugi · 異なるスートが優先', 'Hidugi · distinct suits first'),
+  archie: text('Archie · 9ペア以上 / 8ロー', 'Archie · 9-pair+ / 8-low'),
+  dramahaHigh: text('Omaha / 手札ハイで分配', 'Omaha / hole-card high split'),
+  dramaha27: text('Omaha / 2-7ローで分配', 'Omaha / 2-7 low split'),
+  dramahaA5: text('Omaha / A-5ローで分配', 'Omaha / A-5 low split'),
+  dramahaZero: text('Omaha / 手札の最小合計で分配', 'Omaha / lowest hole total split'),
+  dramahaBadugi: text('Omaha / Badugiで分配', 'Omaha / Badugi split'),
+  dramahaHidugi: text('Omaha / Hidugiで分配', 'Omaha / Hidugi split'),
+  chinese: text('前・中・後の列で得点を競う', 'Score the front, middle and back rows'),
+};
+export function getWinningHandCue(id, language = 'ja') {
+  const outcome = getLearningGame(id)?.outcome;
+  return winningHandCues[outcome]?.[language === 'ja' ? 'ja' : 'en'] ?? null;
+}
 export function getRuleRows(id, language = 'ja', previousId = null) {
   const game = getLearningGame(id);
   if (!game) return [];

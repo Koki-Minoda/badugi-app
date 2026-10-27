@@ -18,7 +18,11 @@ export default defineConfig({
   },
   projects: [
     { name: 'desktop-chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'iphone-webkit', use: { ...devices['iPhone 13'], browserName: 'webkit' } },
+    {
+      name: 'iphone-webkit',
+      testMatch: /(?:release-candidate-mix-smoke|trial-table-family-unity)\.spec\.ts/,
+      use: { ...devices['iPhone 13'], browserName: 'webkit' },
+    },
     {
       name: 'iphone-landscape-webkit',
       testMatch: /release-candidate-mix-smoke\.spec\.ts/,

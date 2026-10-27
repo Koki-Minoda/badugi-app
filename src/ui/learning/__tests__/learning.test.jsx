@@ -7,7 +7,7 @@ import LearningHubScreen from '../LearningHubScreen.jsx';
 import VariantRuleReminder from '../VariantRuleReminder.jsx';
 import LearningGameLaunch from '../LearningGameLaunch.jsx';
 import MixedGameScreen from '../../screens/MixedGameScreen.jsx';
-import { getLearningGame, getRuleRows, LEARNING_PRESETS } from '../learningCatalog.js';
+import { getLearningGame, getRuleRows, getWinningHandCue, LEARNING_GAMES, LEARNING_PRESETS } from '../learningCatalog.js';
 import { LANGUAGE_STORAGE_KEY } from '../../../config/mgxLocaleConfig.js';
 import { DeuceToSevenSingleDrawController } from '../../../games/draw/DeuceToSevenSingleDrawController.js';
 
@@ -18,6 +18,15 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 const renderHub = (url = '/learn') => render(<MemoryRouter initialEntries={[url]}><MixedGameProvider><Routes><Route path="/learn" element={<LearningHubScreen />} /><Route path="/mixed" element={<MixedGameScreen language="ja" />} /></Routes></MixedGameProvider></MemoryRouter>);
 
 describe('learning rules and template contracts', () => {
+  it('gives every table game a concise winning-hand cue in both languages', () => {
+    for (const game of LEARNING_GAMES) {
+      expect(getWinningHandCue(game.id, 'ja'), game.id).toBeTruthy();
+      expect(getWinningHandCue(game.id, 'en'), game.id).toBeTruthy();
+    }
+    expect(getWinningHandCue('nlh')).toBe('高い役が勝ち');
+    expect(getWinningHandCue('razz')).toBe('A-5ロー · Aは低い');
+    expect(getWinningHandCue('D01')).toBe('2-7ロー · Aは高い');
+  });
   it('compares A-5 and 2-7 only on changed rules and resolves catalog aliases', () => {
     expect(getLearningGame('D01').id).toBe('deuce_to_seven_triple_draw');
     expect(getRuleRows('D01', 'en', 'D02').filter(r => r.changed).map(r => r.key)).toEqual(['outcome']);

@@ -112,9 +112,17 @@ const winningHandCues = {
   dramahaHidugi: text('Omaha / Hidugiで分配', 'Omaha / Hidugi split'),
   chinese: text('前・中・後の列で得点を競う', 'Score the front, middle and back rows'),
 };
+const variantWinningHandCues = {
+  plo: text('手札2枚＋場3枚 · 高い役', 'Exactly 2 hole + 3 board · high'),
+  five_card_plo: text('手札2枚＋場3枚 · 高い役', 'Exactly 2 hole + 3 board · high'),
+  plo8: text('手札2枚＋場3枚 · ハイ/8ロー', 'Exactly 2 hole + 3 board · high/8-low'),
+  flo8: text('手札2枚＋場3枚 · ハイ/8ロー', 'Exactly 2 hole + 3 board · high/8-low'),
+  big_o: text('手札2枚＋場3枚 · ハイ/8ロー', 'Exactly 2 hole + 3 board · high/8-low'),
+};
 export function getWinningHandCue(id, language = 'ja') {
-  const outcome = getLearningGame(id)?.outcome;
-  return winningHandCues[outcome]?.[language === 'ja' ? 'ja' : 'en'] ?? null;
+  const game = getLearningGame(id);
+  const cue = variantWinningHandCues[game?.id] ?? winningHandCues[game?.outcome];
+  return cue?.[language === 'ja' ? 'ja' : 'en'] ?? null;
 }
 export function getRuleRows(id, language = 'ja', previousId = null) {
   const game = getLearningGame(id);

@@ -26,6 +26,9 @@ describe('learning rules and template contracts', () => {
     expect(getWinningHandCue('nlh')).toBe('高い役が勝ち');
     expect(getWinningHandCue('razz')).toBe('A-5ロー · Aは低い');
     expect(getWinningHandCue('D01')).toBe('2-7ロー · Aは高い');
+    expect(getWinningHandCue('plo')).toBe('手札2枚＋場3枚 · 高い役');
+    expect(getWinningHandCue('B08')).toBe('手札2枚＋場3枚 · 高い役');
+    expect(getWinningHandCue('plo8')).toBe('手札2枚＋場3枚 · ハイ/8ロー');
   });
   it('compares A-5 and 2-7 only on changed rules and resolves catalog aliases', () => {
     expect(getLearningGame('D01').id).toBe('deuce_to_seven_triple_draw');

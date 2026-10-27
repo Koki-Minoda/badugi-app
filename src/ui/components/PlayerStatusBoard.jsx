@@ -19,8 +19,10 @@ export default function PlayerStatusBoard({
   positionLabels = [],
   aiTierLabel = null,
   aiTierDescriptor = null,
+  language = "en",
 }) {
   if (!players || players.length === 0) return null;
+  const ja = language === "ja";
 
   return (
     <div
@@ -28,13 +30,13 @@ export default function PlayerStatusBoard({
       className="w-full rounded-2xl bg-black/60 p-3 text-xs text-white shadow-xl backdrop-blur"
     >
       <div className="flex items-center justify-between gap-2 text-[10px] uppercase tracking-wide text-yellow-300">
-        <span>Table Status</span>
-        <span className="truncate">Dealer: {players[dealerIdx]?.name ?? "-"}</span>
+        <span>{ja ? "テーブル状況" : "Table Status"}</span>
+        <span className="truncate">{ja ? "ディーラー" : "Dealer"}: {players[dealerIdx]?.name ?? "-"}</span>
       </div>
 
       <div className="mt-2 rounded-xl bg-gray-900/85 px-3 py-2 text-xs text-slate-200">
         <div className="flex items-center justify-between">
-          <span className="font-medium uppercase tracking-wide text-slate-400">Total Pot</span>
+          <span className="font-medium uppercase tracking-wide text-slate-400">{ja ? "ポット合計" : "Total Pot"}</span>
           <span className="font-semibold text-white">{totalPot}</span>
         </div>
       </div>

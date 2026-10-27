@@ -1,4 +1,10 @@
 import { expect, test } from '@playwright/test';
+import { APP_URL } from './authHelper';
+
+const trialGameUrl = (variant: string) => new URL(
+  `${process.env.E2E_APP_URL ? '' : 'dev/'}game?trial=1&variant=${variant}`,
+  APP_URL,
+).href;
 
 const variants = ['nlh', 'razz', 'deuce_to_seven_triple_draw'];
 const cues = ['高い役が勝ち', 'A-5ロー · Aは低い', '2-7ロー · Aは高い'];
@@ -14,7 +20,7 @@ test('NLH, Razz and 2-7 share one readable iPhone table in both orientations', a
     await page.setViewportSize(viewport);
     const geometries: Record<string, Record<string, number>>[] = [];
     for (const [index, variant] of variants.entries()) {
-      await page.goto(`/game?trial=1&variant=${variant}`, { waitUntil: 'domcontentloaded' });
+      await page.goto(trialGameUrl(variant), { waitUntil: 'domcontentloaded' });
       await expect(page.getByTestId('mobile-play-layout')).toBeVisible({ timeout: 20_000 });
       await expect(page.getByTestId('seat-0-name')).toHaveText('あなた');
       await expect(page.getByTestId('decision-panel')).toBeVisible();
@@ -45,9 +51,52 @@ test('NLH, Razz and 2-7 share one readable iPhone table in both orientations', a
   }
 });
 
+test('desktop table keeps winning rules and Japanese controls visible across families', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  for (const [variant, cue] of [
+    ['nlh', '高い役が勝ち'],
+    ['plo', '手札2枚＋場3枚 · 高い役'],
+    ['razz', 'A-5ロー · Aは低い'],
+    ['deuce_to_seven_triple_draw', '2-7ロー · Aは高い'],
+  ]) {
+    await page.goto(trialGameUrl(variant), { waitUntil: 'domcontentloaded' });
+    await expect(page.getByTestId('decision-panel')).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId('winning-hand-cue')).toHaveText(cue);
+    await expect(page.getByTestId('decision-panel')).toContainText('自分の操作');
+    await expect(page.getByTestId('decision-panel')).toContainText('現在のベット');
+    await expect(page.getByTestId('decision-panel')).not.toContainText('Waiting for');
+  }
+});
+
+test('draw phase keeps the winning-hand cue visible beside the stand-pat action', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(trialGameUrl('deuce_to_seven_triple_draw'), { waitUntil: 'domcontentloaded' });
+  const cue = page.getByTestId('winning-hand-cue');
+  await expect(cue).toHaveText('2-7ロー · Aは高い');
+  const drawButton = page.getByTestId('action-draw-selected');
+  const deadline = Date.now() + 40_000;
+  while (!(await drawButton.isVisible()) && Date.now() < deadline) {
+    let clicked = false;
+    for (const id of ['action-check', 'action-call']) {
+      const button = page.getByTestId(id);
+      if (await button.isVisible() && await button.isEnabled()) {
+        await button.click();
+        clicked = true;
+        break;
+      }
+    }
+    if (!clicked) await page.waitForTimeout(100);
+  }
+  await expect(drawButton).toBeVisible();
+  await expect(cue).toHaveText('2-7ロー · Aは高い');
+  await expect(drawButton).toContainText('交換しない');
+});
+
 test('guest Razz advances naturally to one clear Japanese result action', async ({ page }) => {
   test.setTimeout(90_000);
-  await page.goto('/game?trial=1&variant=razz', { waitUntil: 'domcontentloaded' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(trialGameUrl('razz'), { waitUntil: 'domcontentloaded' });
   await expect(page.getByTestId('mobile-play-layout')).toBeVisible({ timeout: 20_000 });
   const result = page.getByTestId('hand-result-overlay');
   let heroActions = 0;

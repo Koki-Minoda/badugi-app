@@ -42,6 +42,20 @@ export class PLOGameController extends NLHGameController {
 
   applyPlayerAction({ seatIndex, action, amount = 0 } = {}) {
     const actionName = String(action ?? "").toLowerCase();
+    if (actionName === "all-in") {
+      const player = this.state.players[seatIndex];
+      if (
+        player &&
+        !player.folded &&
+        !player.seatOut &&
+        !player.allIn &&
+        (this.state.currentActor == null || this.state.currentActor === seatIndex) &&
+        (player.stack ?? 0) > this.getPotLimitMaxCommit(seatIndex)
+      ) {
+        return { success: false, reason: "All-in exceeds the pot-limit maximum" };
+      }
+      return super.applyPlayerAction({ seatIndex, action, amount });
+    }
     if (actionName !== "bet" && actionName !== "raise") {
       return super.applyPlayerAction({ seatIndex, action, amount });
     }

@@ -390,7 +390,7 @@ export default function GameLayoutBase({
     ? "border-red-300/55 bg-red-600/90 text-white shadow-[0_0_18px_rgba(248,113,113,0.36)]"
     : "border-white/10 bg-black/45 text-slate-200";
   const desktopSectionClass = showDesktopSidePanel
-    ? "pl-[270px] pr-4 pt-[4.75rem] pb-8 gap-4 min-[1360px]:pl-[290px] min-[1360px]:pr-5 min-[1360px]:pt-[5.5rem] min-[1360px]:pb-[4.5rem] min-[1360px]:gap-6"
+    ? "px-4 pt-[4.75rem] pb-8 gap-4 min-[1200px]:pl-[270px] min-[1360px]:pl-[290px] min-[1360px]:pr-5 min-[1360px]:pt-[5.5rem] min-[1360px]:pb-[4.5rem] min-[1360px]:gap-6"
     : isTournament
       ? "px-4 pt-[4.75rem] pb-8 gap-4 min-[1360px]:pt-[5.25rem] min-[1360px]:pb-[3.5rem]"
       : "px-4 pt-[4.75rem] pb-8 gap-4 min-[1360px]:px-5 min-[1360px]:pt-[5.5rem] min-[1360px]:pb-[4.5rem] min-[1360px]:gap-6";
@@ -682,6 +682,7 @@ export default function GameLayoutBase({
             onRaise={playerRaise}
             canRaise={!actionPanelInfo?.capReached}
             betSizing={betSizingModel}
+            language={language}
             layoutMode={mobileLayoutMode}
             className={isMobileLayout ? "w-full" : undefined}
           />
@@ -826,7 +827,7 @@ export default function GameLayoutBase({
 
       <main className={`flex-1 ${mainLayoutClass} relative ${tableOuterBg}`}>
         {showDesktopSidePanel && (
-          <div className="absolute top-5 left-5 z-40 flex w-[250px] flex-col gap-3 pointer-events-none">
+          <div className="absolute top-5 left-5 z-40 hidden w-[250px] flex-col gap-3 pointer-events-none min-[1200px]:flex">
             <div className="pointer-events-auto rounded-2xl border border-white/10 bg-black/70 p-3 text-xs text-white shadow-xl backdrop-blur space-y-3">
               <div className="flex items-center justify-between text-sm font-semibold">
                 <span>{language === "ja" ? "テーブル状況" : "Table Status"}</span>

@@ -41,6 +41,17 @@ export default function Controls({
   }, [phase, currentBet, player, canRaise]);
 
   if (!player) return null;
+  const toCall = Math.max(0, Number(currentBet || 0) - Number(player.betThisRound || 0));
+  const japaneseActionLabel = (action) => {
+    switch (action?.variant) {
+      case "fold": return "フォールド";
+      case "check": return "チェック";
+      case "call": return `コール ${toCall}`;
+      case "allin": return `オールイン ${Math.min(Number(player.stack) || 0, toCall)}`;
+      case "raise": return `${toCall > 0 ? "レイズ" : "ベット"}${betSizing?.enabled ? ` ${selectedCommit}` : ""}`;
+      default: return action?.label;
+    }
+  };
 
   if (phase === "BET" && betActions.length === 0) {
     return null;
@@ -54,7 +65,7 @@ export default function Controls({
       : "flex flex-col gap-2 bg-gray-800/90 p-2 rounded shadow-lg");
   const buttonBase = isMobile
     ? "min-h-[46px] max-h-[52px] w-full min-w-0 flex-1 px-1.5 py-2 rounded-xl text-[clamp(11px,3.4vw,14px)] font-semibold leading-tight tracking-normal touch-manipulation"
-    : "px-3 py-2 rounded text-sm font-medium";
+    : "min-w-0 w-full whitespace-nowrap rounded px-1 py-2 text-[10px] font-medium min-[1200px]:px-1.5 min-[1200px]:text-[11px] min-[1360px]:px-2 min-[1360px]:text-xs";
   const disabledButtonClass =
     "border border-white/10 bg-slate-700/55 text-slate-400 cursor-not-allowed opacity-65";
 
@@ -100,7 +111,7 @@ export default function Controls({
         disabled={disabled}
         className={`${buttonBase} ${disabled ? disabledButtonClass : resolveVariantClass(action)}`}
       >
-        {label ?? action?.label}
+        {language === "ja" ? japaneseActionLabel(action) : !isMobile && action?.variant === "allin" ? `All-in ${Math.min(Number(player.stack) || 0, toCall)}` : (label ?? action?.label)}
       </button>
     );
   };
@@ -172,12 +183,12 @@ export default function Controls({
                     : "border-white/15 bg-white/5 text-white"
                 }`}
               >
-                {preset.label} {preset.amount}
+                {language === "ja" ? ({ min: "最小", "half-pot": "半ポット", pot: "ポット", "all-in": "全額" }[preset.key] ?? preset.label) : preset.label} {preset.amount}
               </button>
             ))}
           </div>
           <label className={`${isMobile ? "flex flex-col items-end gap-1" : ""} shrink-0 text-[9px] uppercase tracking-wide text-slate-300`}>
-            Chips
+            {language === "ja" ? "チップ" : "Chips"}
             <input
               type="number"
               inputMode="numeric"
@@ -194,7 +205,7 @@ export default function Controls({
         {!isMobile && betSizing.maxCommit > betSizing.minCommit && (
           <input
             type="range"
-            aria-label="Bet size"
+            aria-label={language === "ja" ? "ベット金額" : "Bet size"}
             min={betSizing.minCommit}
             max={betSizing.maxCommit}
             value={selectedCommit}
@@ -213,7 +224,7 @@ export default function Controls({
         isMobile ? (
           renderMobileBetActions()
         ) : (
-          <div className="flex gap-2">
+          <div className="grid grid-cols-3 gap-1">
             {betActions.map((action) =>
               renderBetButton(action, {
                 label:

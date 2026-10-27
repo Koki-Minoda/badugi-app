@@ -93,6 +93,28 @@ test('draw phase keeps the winning-hand cue visible beside the stand-pat action'
   await expect(drawButton).toContainText('交換しない');
 });
 
+test('1024px desktop keeps the actual betting buttons and amount input on screen', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await page.goto(trialGameUrl('nlh'), { waitUntil: 'domcontentloaded' });
+  const primary = page.locator('[data-testid="action-call"], [data-testid="action-check"]').first();
+  await expect(primary).toBeVisible({ timeout: 20_000 });
+  const panel = await page.getByTestId('decision-panel').boundingBox();
+  expect(panel).not.toBeNull();
+  for (const id of ['action-fold', 'action-raise', 'bet-size-input']) {
+    const control = page.getByTestId(id);
+    await expect(control).toBeVisible();
+    const box = await control.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.x + box!.width, `${id} clipped by 1024px viewport`).toBeLessThanOrEqual(1026);
+    expect(box!.x + box!.width, `${id} spills beyond decision panel`).toBeLessThanOrEqual(panel!.x + panel!.width + 2);
+  }
+  for (const control of [primary, page.getByTestId('action-fold'), page.getByTestId('action-raise')]) {
+    expect(await control.evaluate(element => element.scrollWidth - element.clientWidth), 'bet action label clipped').toBeLessThanOrEqual(1);
+  }
+  await expect(page.getByTestId('action-fold')).toHaveText('フォールド');
+  await expect(page.getByTestId('action-raise')).toContainText('レイズ');
+});
+
 test('guest Razz advances naturally to one clear Japanese result action', async ({ page }) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 390, height: 844 });

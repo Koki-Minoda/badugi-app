@@ -13,6 +13,10 @@ for (const variant of ["nlh", "plo", "five_card_plo", "dramaha_hi", "D01", "D02"
         { width: 1920, height: 1080 },
       ]) {
         await page.setViewportSize(viewport);
+        const decision = await page.getByTestId("decision-panel").boundingBox();
+        expect(decision).not.toBeNull();
+        expect(decision!.x + decision!.width, `${variant} controls clipped at ${viewport.width}×${viewport.height}`).toBeLessThanOrEqual(viewport.width + 2);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth), `${variant} horizontal scroll at ${viewport.width}×${viewport.height}`).toBeLessThanOrEqual(viewport.width + 2);
         const seats = await Promise.all(
           Array.from({ length: 6 }, (_, index) => page.getByTestId(`seat-${index}`).boundingBox()),
         );

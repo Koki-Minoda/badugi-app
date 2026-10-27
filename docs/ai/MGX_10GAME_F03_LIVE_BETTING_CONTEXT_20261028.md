@@ -1,0 +1,19 @@
+# 10-Game F03 live betting context — 2026-10-28
+
+This branch adds a **read-only, partial** producer for the seven 10-Game board/Stud variants with registered Beginner/Standard models: B01, B02, B05, B06, ST1, ST2, and ST3. It does not call ONNX, alter a CPU decision, train a model, or make any route model-ready. The separate D01/D03/S01 paths are unchanged.
+
+`buildTenGameLiveBettingContext` reads the active controller only during a live betting turn. For all seven variants it derives the amount to call, the variant's betting unit, the actual invested pot, the actor's hand-start chip unit (`current stack + total invested`), non-all-in opponents, remaining-stack ratio, and street progress. Fixed-limit board and Stud controllers provide the current raise count. Other board controllers do not track a street raise count, so the producer leaves it null. The hand-start denominator stayed at 1,000 across each tested passive hand despite blinds, bring-in, calls, and street transitions; this is evidence for a stable live normalization convention, not yet proof that the synthetic training distribution is equivalent.
+
+For board games it also supplies an action mask and new-chip commitment bounds from the controller's current bet, last full raise, fixed-limit cap, no-limit reopening restriction, and PLO pot maximum. The first-turn bounds were verified by executing the maximum legal raise in each of B01/B02/B05/B06. The producer excludes a PLO all-in above the pot maximum; [PR #264](https://github.com/Koki-Minoda/badugi-app/pull/264) fixes the controller's matching enforcement and must land before this mask is considered runtime-aligned. All-in calls short of the bet remain available.
+
+Stud legal actions and amount bounds stay **null**. Its controller currently accepts some action labels without checking the turn or whether a bet is faced, and third-street bring-in completion has distinct sizing. An apparent six-action mask would therefore hide a live-engine mismatch. The F03 work for Stud includes making those controller rules authoritative and testing bring-in, completion, caps, and all-ins before an action bridge can be trusted.
+
+| Family | Now derived from live controller | Still missing for registered model inputs |
+| --- | --- | --- |
+| B01/B05/B06 | Public betting amounts, hand-start denominator, active opponents, stack ratio, street progress, position **label**, legal actions and commit bounds | Hand strength, equity, draw potential, normalized position, raise count |
+| B02 | Same, plus fixed-limit raise count | Hand strength, equity, draw potential, normalized position |
+| ST1/ST2/ST3 | Public betting amounts, hand-start denominator, active opponents, stack ratio, street progress, raise count | Hand strength, draw potential, visible pressure, normalized position, low/high potential, legal actions and amount bounds |
+
+The board/Stud ONNX six outputs are action values, not predicted bet sizes. A later bridge must choose a legal chip amount from the bounds instead of interpreting an action score as a raise amount. It must compare live JS observations to Python training fixtures on the same hand states, especially split-pot equity and Stud exposed-card pressure. No model connection or strength claim is made here. F04 Windows artifact destination, checkpoint restore, memory budget, and bounded trial also remain incomplete; long training remains blocked.
+
+The regression test drives real controllers through all four board streets and all five Stud streets (seven variant runs), checks the producer is read-only and fails closed on incomplete chip fields, exercises first-turn board raise bounds, and checks cap/reopen restrictions. Local result: 19/19 tests passed. This is controller-level evidence, not browser or physical-device QA.

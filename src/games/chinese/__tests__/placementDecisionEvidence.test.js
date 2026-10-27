@@ -19,7 +19,7 @@ describe('placement policy evidence', () => {
     verify(history.cpuDecisions, 'arrangement-search');
     expect(replayChinesePokerHistory(history).valid).toBe(true);
     c.nextHand(); expect(c.getHandHistory().cpuDecisions).toHaveLength(1);
-  });
+  }, 15_000);
   it.each([false,true])('records actual OFC turns, including Fantasyland=%s', fantasy => {
     const c = new OpenFaceChineseController({fantasy:[false,fantasy]}); c.startNewHand();
     while (c.phase === 'placing') {

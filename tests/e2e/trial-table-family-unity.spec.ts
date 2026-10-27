@@ -51,7 +51,8 @@ test('NLH, Razz and 2-7 share one readable iPhone table in both orientations', a
   }
 });
 
-test('desktop table keeps winning rules and Japanese controls visible across families', async ({ page }) => {
+test('desktop table keeps winning rules and Japanese controls visible across families', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name.includes('iphone'), 'Desktop layout is verified in desktop browser projects');
   await page.setViewportSize({ width: 1440, height: 900 });
   for (const [variant, cue] of [
     ['nlh', '高い役が勝ち'],
@@ -93,7 +94,8 @@ test('draw phase keeps the winning-hand cue visible beside the stand-pat action'
   await expect(drawButton).toContainText('交換しない');
 });
 
-test('1024px desktop keeps the actual betting buttons and amount input on screen', async ({ page }) => {
+test('1024px desktop keeps the actual betting buttons and amount input on screen', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name.includes('iphone'), 'Desktop layout is verified in desktop browser projects');
   await page.setViewportSize({ width: 1024, height: 768 });
   await page.goto(trialGameUrl('nlh'), { waitUntil: 'domcontentloaded' });
   const primary = page.locator('[data-testid="action-call"], [data-testid="action-check"]').first();

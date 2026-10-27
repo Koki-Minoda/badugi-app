@@ -313,7 +313,9 @@ async function playOneRealButtonHand(
       const max = Number(await page.getByTestId("bet-size-input").getAttribute("max"));
       expect(chosen).toBeGreaterThanOrEqual(min);
       expect(chosen).toBeLessThanOrEqual(max);
-      await expect(page.getByTestId("action-raise")).toContainText(/^(Bet|Raise) \d+$/);
+      await expect(page.getByTestId("action-raise")).toHaveText(
+        new RegExp(`^(?:Bet|Raise|ベット|レイズ) ${chosen}$`),
+      );
       sizingActions += 1;
     }
     if (!await clickHeroAction(page, target)) continue;

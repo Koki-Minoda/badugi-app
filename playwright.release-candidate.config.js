@@ -4,7 +4,7 @@ const port = process.env.MGX_CANDIDATE_QA_PORT ?? '3000';
 
 export default defineConfig({
   testDir: './tests/e2e',
-  testMatch: /release-candidate-mix-smoke\.spec\.ts/,
+  testMatch: /(?:release-candidate-mix-smoke|trial-table-family-unity)\.spec\.ts/,
   timeout: 120_000,
   workers: 1,
   outputDir: 'test-results/release-candidate',

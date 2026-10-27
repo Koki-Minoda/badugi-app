@@ -467,6 +467,8 @@ jobs:
 
   chinese-qa:
     runs-on: ubuntu-latest
+    # Cold Playwright installation exceeded the old 20-minute budget in
+    # run 40535311705 before the Chinese Poker release matrix could start.
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6

@@ -1,6 +1,6 @@
 import { beforeEach, afterEach, expect, it, vi } from 'vitest';
 const { create } = vi.hoisted(() => ({ create: vi.fn() }));
-vi.mock('onnxruntime-web', () => ({ default: { env: { wasm: {} }, InferenceSession: { create } } }));
+vi.mock('onnxruntime-web/wasm', () => ({ default: { env: { wasm: {} }, InferenceSession: { create } } }));
 let getOrCreateSession;
 beforeEach(async () => {
   vi.resetModules();

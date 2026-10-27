@@ -1,4 +1,5 @@
-import ortWasmJsepUrl from "../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.wasm?url";
+// Active models use CPU inference only; avoid the memory-heavy JSEP build in WebKit.
+import ortWasmUrl from "../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.wasm?url";
 
 let ortPromise = null;
 const sessionCache = new Map();
@@ -6,8 +7,8 @@ const sessionCache = new Map();
 export async function getOrt() {
   if (!ortPromise) {
     ortPromise = Promise.all([
-      import("onnxruntime-web"),
-      fetch(ortWasmJsepUrl).then(async (response) => {
+      import("onnxruntime-web/wasm"),
+      fetch(ortWasmUrl).then(async (response) => {
         if (!response.ok) {
           throw new Error(`ONNX WASM request failed (${response.status})`);
         }
@@ -21,7 +22,7 @@ export async function getOrt() {
         // derived URL can resolve to the SPA HTML fallback. Supplying the binary
         // directly also prevents compileStreaming from failing when an existing
         // production proxy serves .wasm as application/octet-stream.
-        ort.env.wasm.wasmPaths = { wasm: ortWasmJsepUrl };
+        ort.env.wasm.wasmPaths = { wasm: ortWasmUrl };
         ort.env.wasm.wasmBinary = wasmBinary;
         return ort;
       })

@@ -44,3 +44,31 @@ test('NLH, Razz and 2-7 share one readable iPhone table in both orientations', a
     }
   }
 });
+
+test('guest Razz advances naturally to one clear Japanese result action', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto('/game?trial=1&variant=razz', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('mobile-play-layout')).toBeVisible({ timeout: 20_000 });
+  const result = page.getByTestId('hand-result-overlay');
+  let heroActions = 0;
+  const deadline = Date.now() + 60_000;
+  while (!(await result.isVisible()) && Date.now() < deadline) {
+    for (const action of ['action-call', 'action-check']) {
+      const button = page.getByTestId(action);
+      if (await button.isVisible() && await button.isEnabled()) {
+        await button.click();
+        heroActions += 1;
+        break;
+      }
+    }
+    await page.waitForTimeout(150);
+  }
+  await expect(result).toBeVisible();
+  expect(heroActions).toBeGreaterThan(0);
+  await expect(page.getByTestId('hand-result-next-hand')).toHaveText('体験を終了・種目を選ぶ');
+  await expect(page.getByTestId('hand-result-history')).toHaveCount(0);
+  await expect(page.getByTestId('hand-result-cash-out')).toHaveCount(0);
+  await expect(result.getByRole('button', { name: 'あとで復習に保存' })).toHaveCount(0);
+  const resultText = await result.innerText();
+  expect(resultText).not.toMatch(/A-5 LOW|2-7 LOW/);
+});

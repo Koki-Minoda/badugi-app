@@ -34,5 +34,7 @@ export function localizeResultHandLabel(label, language) {
   const text = String(label);
   const badugi = text.match(/^Badugi ([1-4])-card$/i);
   if (badugi) return `${badugi[1]}枚バドゥーギ`;
+  const low = text.match(/^(A-5|2-7)\s+Low\b(.*)$/i);
+  if (low) return `${low[1]}ロー${low[2]}`;
   return HAND_NAMES_JA[text.toLowerCase()] ?? label;
 }

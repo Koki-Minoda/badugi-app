@@ -14519,6 +14519,7 @@ export default function App() {
   };
 
   const overlaysProps = {
+    guestTrial,
     reviewHandId: guestTrial ? null : handIdRef.current,
     handResultVisible:
       !heroBustOverlayVisible && !tournamentOverlayVisible &&

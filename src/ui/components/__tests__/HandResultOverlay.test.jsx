@@ -214,6 +214,26 @@ describe("HandResultOverlay", () => {
     );
   });
 
+  test("localizes A-5 and 2-7 low result labels without losing card ranks", () => {
+    const { rerender } = render(<HandResultOverlay visible language="ja" summary={{
+      pot: 60, winners: [{ seatIndex: 1, name: "Hana", handLabel: "A-5 Low 6-4-3-2-A", payout: 60 }],
+    }} />);
+    expect(screen.getByTestId("hand-result-winner-hand-label").textContent).toBe("A-5ロー 6-4-3-2-A");
+    rerender(<HandResultOverlay visible language="ja" summary={{
+      pot: 60, winners: [{ seatIndex: 1, name: "Hana", handLabel: "2-7 Low 7-5-4-3-2", payout: 60 }],
+    }} />);
+    expect(screen.getByTestId("hand-result-winner-hand-label").textContent).toBe("2-7ロー 7-5-4-3-2");
+  });
+
+  test("offers one clear exit from a guest trial result", () => {
+    render(<HandResultOverlay visible guestTrial language="ja" onHistory={() => {}} onCashOut={() => {}}
+      onNext={() => {}} buttonLabel="体験を終了・種目を選ぶ" summary={{ handId: "razz-1", pot: 60, winners: [baseWinner] }} />);
+    expect(screen.getByTestId("hand-result-next-hand").textContent).toBe("体験を終了・種目を選ぶ");
+    expect(screen.queryByTestId("hand-result-history")).toBeNull();
+    expect(screen.queryByTestId("hand-result-cash-out")).toBeNull();
+    expect(screen.queryByRole("button", { name: "あとで復習に保存" })).toBeNull();
+  });
+
   test("renders hi/lo split winners as separate result groups", () => {
     render(
       <HandResultOverlay

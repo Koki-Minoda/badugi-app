@@ -250,6 +250,7 @@ export default function GameLayoutBase({
   } = tableProps;
 
   const {
+    guestTrial,
     reviewHandId,
     handResultVisible,
     handResultSummary,
@@ -1494,6 +1495,7 @@ export default function GameLayoutBase({
       </Modal>
 
       <HandResultOverlay
+        guestTrial={guestTrial}
         players={statusSeatViews}
         heroSeat={statusHeroIndex}
         language={language}

@@ -269,6 +269,7 @@ function PotSection({ pot, index, singlePot, language, copy, players, heroSeat }
 }
 
 export default function HandResultOverlay({
+  guestTrial = false,
   reviewHandId,
   players = [],
   heroSeat = null,
@@ -394,10 +395,10 @@ export default function HandResultOverlay({
             </div>
           </div>
         )}
-        {(reviewHandId || summary.handId) && <ReviewBookmarkButton language={language} key={reviewHandId ?? summary.handId} handId={reviewHandId ?? summary.handId} />}
+        {!guestTrial && (reviewHandId || summary.handId) && <ReviewBookmarkButton language={language} key={reviewHandId ?? summary.handId} handId={reviewHandId ?? summary.handId} />}
         </div>
         <div className="grid shrink-0 grid-cols-2 gap-2 border-t border-white/10 pt-3 sm:grid-cols-3" data-testid="hand-result-actions">
-        {(typeof onHistory === "function" || typeof onCashOut === "function") && (
+        {!guestTrial && (typeof onHistory === "function" || typeof onCashOut === "function") && (
           <>
             {typeof onHistory === "function" && (
               <button

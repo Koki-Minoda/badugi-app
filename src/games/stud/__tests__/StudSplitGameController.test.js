@@ -69,6 +69,24 @@ function prepareStudStreet(controller, street, upCardsBySeat) {
 }
 
 describe("Stud split controllers", () => {
+  it.each([["Stud", StudGameController], ["Stud8", Stud8GameController], ["Razz", RazzGameController]])(
+    "%s rejects out-of-turn and invalid check/bet actions without changing the hand",
+    (_variant, Controller) => {
+      const controller = createController(Controller, 3);
+      controller.startNewHand();
+      const actor = controller.state.currentActor;
+      const otherSeat = controller.state.players.findIndex((player, index) => index !== actor && !player.folded);
+      const before = structuredClone(controller.state);
+      const raisesBefore = controller.raiseCountThisStreet;
+
+      expect(controller.applyPlayerAction({ seatIndex: otherSeat, action: "fold" }).success).toBe(false);
+      expect(controller.applyPlayerAction({ seatIndex: actor, action: "check" }).success).toBe(false);
+      expect(controller.applyPlayerAction({ seatIndex: actor, action: "bet" }).success).toBe(false);
+      expect(controller.state).toEqual(before);
+      expect(controller.raiseCountThisStreet).toBe(raisesBefore);
+    },
+  );
+
   it("deals Stud streets incrementally instead of pre-dealing seven cards", () => {
     const controller = createController(StudGameController, 3);
     let snapshot = controller.startNewHand();
@@ -148,6 +166,7 @@ describe("Stud split controllers", () => {
     controller.state.bringInAmount = 5;
     controller.state.completeAmount = 10;
     controller.raiseCountThisStreet = 0;
+    controller.state.currentActor = 1;
     controller.state.players[1] = {
       ...controller.state.players[1],
       folded: false,

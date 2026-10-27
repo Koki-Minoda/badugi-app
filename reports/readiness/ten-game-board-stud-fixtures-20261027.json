@@ -1,0 +1,531 @@
+{
+  "sourceCommit": "8ed49e76fea6e0209e6aafeec64341a68982cece",
+  "scope": "Existing synthetic board advanced-gate and Stud ONNX fixtures only; no table use, parity, human benchmark, or strength evidence.",
+  "evaluationScripts": [
+    "src/rl/training/evaluate_board_onnx.py",
+    "src/rl/training/evaluate_stud_onnx.py"
+  ],
+  "modelCount": 14,
+  "fixtureCount": 94,
+  "passCount": 94,
+  "rows": [
+    {
+      "variantId": "B01",
+      "tier": "beginner",
+      "modelId": "model-nlh-beginner-dqn-v1",
+      "model": "public/models/nlh_beginner_dqn_v1.onnx",
+      "summary": {
+        "fixtureCount": 8,
+        "passCount": 8,
+        "avgEVDelta": -0.01249999999999999,
+        "worstEVDelta": -0.06,
+        "categories": {
+          "valueBet": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "continue": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": -0.039999999999999925
+          },
+          "foldDiscipline": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "thinValue": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "badBluff": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "multiwayIsolation": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "sidePotEV": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": -0.06
+          },
+          "highOnlyControl": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          }
+        }
+      },
+      "failures": []
+    },
+    {
+      "variantId": "B01",
+      "tier": "standard",
+      "modelId": "model-nlh-standard-dqn-v1",
+      "model": "public/models/nlh_standard_dqn_v1.onnx",
+      "summary": {
+        "fixtureCount": 8,
+        "passCount": 8,
+        "avgEVDelta": -0.01249999999999999,
+        "worstEVDelta": -0.06,
+        "categories": {
+          "valueBet": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "continue": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": -0.039999999999999925
+          },
+          "foldDiscipline": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "thinValue": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "badBluff": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "multiwayIsolation": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "sidePotEV": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": -0.06
+          },
+          "highOnlyControl": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          }
+        }
+      },
+      "failures": []
+    },
+    {
+      "variantId": "B02",
+      "tier": "beginner",
+      "modelId": "model-flh-beginner-dqn-v1",
+      "model": "public/models/flh_beginner_dqn_v1.onnx",
+      "summary": {
+        "fixtureCount": 8,
+        "passCount": 8,
+        "avgEVDelta": -0.01999999999999999,
+        "worstEVDelta": -0.06,
+        "categories": {
+          "valueBet": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "continue": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": -0.039999999999999925
+          },
+          "foldDiscipline": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "thinValue": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "badBluff": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "multiwayIsolation": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": -0.06
+          },
+          "sidePotEV": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": -0.06
+          },
+          "highOnlyControl": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          }
+        }
+      },
+      "failures": []
+    },
+    {
+      "variantId": "B02",
+      "tier": "standard",
+      "modelId": "model-flh-standard-dqn-v1",
+      "model": "public/models/flh_standard_dqn_v1.onnx",
+      "summary": {
+        "fixtureCount": 8,
+        "passCount": 8,
+        "avgEVDelta": -0.01999999999999999,
+        "worstEVDelta": -0.06,
+        "categories": {
+          "valueBet": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "continue": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": -0.039999999999999925
+          },
+          "foldDiscipline": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "thinValue": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "badBluff": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "multiwayIsolation": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": -0.06
+          },
+          "sidePotEV": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": -0.06
+          },
+          "highOnlyControl": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          }
+        }
+      },
+      "failures": []
+    },
+    {
+      "variantId": "B06",
+      "tier": "beginner",
+      "modelId": "model-plo8-beginner-dqn-v1",
+      "model": "public/models/plo8_beginner_dqn_v1.onnx",
+      "summary": {
+        "fixtureCount": 8,
+        "passCount": 8,
+        "avgEVDelta": -0.01249999999999999,
+        "worstEVDelta": -0.06,
+        "categories": {
+          "valueBet": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "continue": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": -0.039999999999999925
+          },
+          "foldDiscipline": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "thinValue": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "badBluff": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "multiwayIsolation": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "sidePotEV": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": -0.06
+          },
+          "scoopNoLow": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          }
+        }
+      },
+      "failures": []
+    },
+    {
+      "variantId": "B06",
+      "tier": "standard",
+      "modelId": "model-plo8-standard-dqn-v1",
+      "model": "public/models/plo8_standard_dqn_v1.onnx",
+      "summary": {
+        "fixtureCount": 8,
+        "passCount": 8,
+        "avgEVDelta": -0.01249999999999999,
+        "worstEVDelta": -0.06,
+        "categories": {
+          "valueBet": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "continue": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": -0.039999999999999925
+          },
+          "foldDiscipline": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "thinValue": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "badBluff": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "multiwayIsolation": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "sidePotEV": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": -0.06
+          },
+          "scoopNoLow": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          }
+        }
+      },
+      "failures": []
+    },
+    {
+      "variantId": "ST3",
+      "tier": "beginner",
+      "modelId": "model-razz-beginner-dqn-v1",
+      "model": "public/models/razz_beginner_dqn_v1.onnx",
+      "summary": {
+        "fixtureCount": 5,
+        "passCount": 5,
+        "avgEVDelta": -0.010000000000000009,
+        "worstEVDelta": -0.050000000000000044
+      },
+      "failures": []
+    },
+    {
+      "variantId": "ST3",
+      "tier": "standard",
+      "modelId": "model-razz-standard-dqn-v1",
+      "model": "public/models/razz_standard_dqn_v1.onnx",
+      "summary": {
+        "fixtureCount": 5,
+        "passCount": 5,
+        "avgEVDelta": -0.010000000000000009,
+        "worstEVDelta": -0.050000000000000044
+      },
+      "failures": []
+    },
+    {
+      "variantId": "ST1",
+      "tier": "beginner",
+      "modelId": "model-stud-beginner-dqn-v1",
+      "model": "public/models/stud_beginner_dqn_v1.onnx",
+      "summary": {
+        "fixtureCount": 5,
+        "passCount": 5,
+        "avgEVDelta": -0.010000000000000009,
+        "worstEVDelta": -0.050000000000000044
+      },
+      "failures": []
+    },
+    {
+      "variantId": "ST1",
+      "tier": "standard",
+      "modelId": "model-stud-standard-dqn-v1",
+      "model": "public/models/stud_standard_dqn_v1.onnx",
+      "summary": {
+        "fixtureCount": 5,
+        "passCount": 5,
+        "avgEVDelta": -0.010000000000000009,
+        "worstEVDelta": -0.050000000000000044
+      },
+      "failures": []
+    },
+    {
+      "variantId": "ST2",
+      "tier": "beginner",
+      "modelId": "model-stud8-beginner-dqn-v1",
+      "model": "public/models/stud8_beginner_dqn_v1.onnx",
+      "summary": {
+        "fixtureCount": 5,
+        "passCount": 5,
+        "avgEVDelta": -0.010000000000000009,
+        "worstEVDelta": -0.050000000000000044
+      },
+      "failures": []
+    },
+    {
+      "variantId": "ST2",
+      "tier": "standard",
+      "modelId": "model-stud8-standard-dqn-v1",
+      "model": "public/models/stud8_standard_dqn_v1.onnx",
+      "summary": {
+        "fixtureCount": 5,
+        "passCount": 5,
+        "avgEVDelta": -0.010000000000000009,
+        "worstEVDelta": -0.050000000000000044
+      },
+      "failures": []
+    },
+    {
+      "variantId": "B05",
+      "tier": "beginner",
+      "modelId": "model-plo-beginner-dqn-v1",
+      "model": "public/models/plo_beginner_dqn_v1.onnx",
+      "summary": {
+        "fixtureCount": 8,
+        "passCount": 8,
+        "avgEVDelta": -0.01249999999999999,
+        "worstEVDelta": -0.06,
+        "categories": {
+          "valueBet": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "continue": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": -0.039999999999999925
+          },
+          "foldDiscipline": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "thinValue": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "badBluff": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "multiwayIsolation": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "sidePotEV": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": -0.06
+          },
+          "highOnlyControl": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          }
+        }
+      },
+      "failures": []
+    },
+    {
+      "variantId": "B05",
+      "tier": "standard",
+      "modelId": "model-plo-standard-dqn-v1",
+      "model": "public/models/plo_standard_dqn_v1.onnx",
+      "summary": {
+        "fixtureCount": 8,
+        "passCount": 8,
+        "avgEVDelta": -0.01249999999999999,
+        "worstEVDelta": -0.06,
+        "categories": {
+          "valueBet": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "continue": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": -0.039999999999999925
+          },
+          "foldDiscipline": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "thinValue": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "badBluff": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "multiwayIsolation": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          },
+          "sidePotEV": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": -0.06
+          },
+          "highOnlyControl": {
+            "count": 1,
+            "passCount": 1,
+            "avgEVDelta": 0.0
+          }
+        }
+      },
+      "failures": []
+    }
+  ]
+}

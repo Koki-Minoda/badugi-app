@@ -189,7 +189,9 @@ jobs:
 
   core5-qa:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    # The complete 10-hand public-game gate took 88m37s on 2026-10-27.
+    # Keep every case while allowing normal runner-speed variation at deploy time.
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6

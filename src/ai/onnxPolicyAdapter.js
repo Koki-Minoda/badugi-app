@@ -135,7 +135,9 @@ export function buildStudBetOnnxFeatures(entry, payload = {}) {
   const toCall = Number(observation.toCall ?? 0);
   const betSize = Number(observation.betSize ?? observation.currentBet ?? 0);
   const potSize = Number(observation.potSize ?? observation.pot ?? 0);
-  const streetIndex = Number(observation.streetIndex ?? observation.streetProgress ?? 0);
+  const streetProgress = observation.streetProgress != null
+    ? Number(observation.streetProgress)
+    : Number(observation.streetIndex ?? 0) / 4;
   const tableSize = Number(observation.tableSize ?? 6) || 6;
   const position = observation.position != null
     ? Number(observation.position)
@@ -156,7 +158,7 @@ export function buildStudBetOnnxFeatures(entry, payload = {}) {
     Math.max(0, Math.min(1, drawPotential)),
     Math.max(0, Math.min(1, visiblePressure)),
     Math.max(0, Math.min(1, position)),
-    Math.max(0, Math.min(1, observation.streetProgress != null ? streetIndex : streetIndex / 4)),
+    Math.max(0, Math.min(1, streetProgress)),
     toCall > 0 ? toCall / Math.max(1, potSize + toCall) : 0,
     Math.max(0, Math.min(1, raiseCount / 4)),
     variantId === "ST3" ? 1 : 0,

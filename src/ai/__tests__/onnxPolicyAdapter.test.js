@@ -243,6 +243,11 @@ describe("onnxPolicyAdapter Badugi schema", () => {
     expect(stud[6]).toBeCloseTo(3 / 6);
     expect(stud[7]).toBeCloseTo(2 / 4);
 
+    const normalizedStud = buildStudBetOnnxFeatures(entry, {
+      variantId: "ST1", streetIndex: 2, streetProgress: 0.25,
+    });
+    expect(normalizedStud[7]).toBeCloseTo(0.25);
+
     expect(missingBoardStudInferenceInputs(entry, { variantId: "ST1", observation: {
       actor: { stack: 500 }, toCall: 10, potSize: 10, activeOpponents: 5, streetIndex: 0,
     } })).toEqual(expect.arrayContaining([

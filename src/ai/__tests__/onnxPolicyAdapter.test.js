@@ -270,6 +270,29 @@ describe("onnxPolicyAdapter Badugi schema", () => {
     expect(razz[15]).toBeCloseTo(0.82);
   });
 
+  it("accepts explicit live chip normalization without a redundant actor stack", () => {
+    const shared = {
+      toCall: 20, betSize: 40, potSize: 120, chipUnit: 1000,
+      strength: 0.7, drawPotential: 0.2, position: 0.63,
+      streetProgress: 0.5, raiseCount: 1, activeOpponents: 2, stackRatio: 0.8,
+    };
+    const board = { ...shared, variantId: "B01", equity: 0.6 };
+    const stud = {
+      ...shared, variantId: "ST1", visiblePressure: 0.3,
+      lowPotential: 0.1, highPotential: 0.7,
+    };
+    expect(missingBoardStudInferenceInputs(
+      { featureSet: "board-betting-observation-v1" },
+      { observation: board, legalActions: ["call"] },
+    )).toEqual([]);
+    expect(missingBoardStudInferenceInputs(
+      { featureSet: "stud-betting-observation-v1" },
+      { observation: stud, legalActions: ["call"] },
+    )).toEqual([]);
+    expect(buildBoardBetOnnxFeatures({ inputShape: [16] }, board)[0]).toBeCloseTo(0.02);
+    expect(buildStudBetOnnxFeatures({ inputShape: [16] }, stud)[14]).toBeCloseTo(0.8);
+  });
+
   it("fails fast on invalid ONNX shape and exposes fallback priority", () => {
     expect(() =>
       buildBadugiOnnxFeatures({ inputShape: [95] }, { variantId: "D03", state: {} }),

@@ -184,7 +184,6 @@ export function missingBoardStudInferenceInputs(entry, payload = {}) {
   if (featureSet === "board-betting-observation-v1") required.push("equity");
   else required.push("visiblePressure", "lowPotential", "highPotential");
   const missing = required.filter(field => !finite(observation[field]) || (field === "chipUnit" && Number(observation[field]) <= 0));
-  if (!finite(observation.actor?.stack) && !finite(observation.stack)) missing.push("actor.stack");
   if (!finite(observation.position) && !(finite(observation.positionIndex) && finite(observation.tableSize))) missing.push("position");
   if (!finite(observation.streetProgress) && !finite(observation.streetIndex)) missing.push("streetProgress");
   if (!getLegalActions(payload).length) missing.push("legalActions");

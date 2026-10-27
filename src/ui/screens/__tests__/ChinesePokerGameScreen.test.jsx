@@ -1,5 +1,5 @@
 import React from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import ChinesePokerGameScreen from "../ChinesePokerGameScreen.jsx";
 
@@ -15,6 +15,13 @@ describe("ChinesePokerGameScreen", () => {
     expect(screen.getByText("Chinese Poker")).toBeTruthy();
     expect(screen.getByText(/Hand #1/)).toBeTruthy();
     expect(screen.getAllByTestId(/^chinese-card-/).length).toBeGreaterThanOrEqual(13);
+  });
+
+  it("uses the selected language for the hero name in the placement panel", () => {
+    const { rerender } = render(<ChinesePokerGameScreen language="ja" />);
+    expect(within(screen.getByTestId("chinese-hero-arrange")).getByRole("heading", { name: "あなた" })).toBeTruthy();
+    rerender(<ChinesePokerGameScreen language="en" />);
+    expect(within(screen.getByTestId("chinese-hero-arrange")).getByRole("heading", { name: "You" })).toBeTruthy();
   });
 
   it("can score a hand and advance to the next hand", () => {

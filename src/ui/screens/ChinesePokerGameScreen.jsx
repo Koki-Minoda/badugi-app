@@ -22,7 +22,7 @@ const COPY = {
   ja: {
     title: "Chinese Poker",
     you: "あなた",
-    subtitle: "13枚をフロント3枚、ミドル5枚、バック5枚に並べます。バック >= ミドル >= フロントの強さでなければファウルです。",
+    subtitle: "13枚をフロント3枚、ミドル5枚、バック5枚に並べます。バックはミドル以上、ミドルはフロント以上の強さでないとファウルです。",
     back: "ゲーム選択へ戻る",
     hand: "ハンド",
     setting: "配置",
@@ -335,7 +335,7 @@ export default function ChinesePokerGameScreen({ language = "ja", onBack = null,
             <div className="rounded-2xl border border-emerald-400/25 bg-slate-950/70 p-4" data-testid="chinese-hero-arrange">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <div>
-                  <h2 className="text-lg font-bold">{hero?.name ?? "You"}</h2>
+                  <h2 className="text-lg font-bold">{copy.you}</h2>
                   <p className="text-xs text-slate-400">{snapshot.phase === "showdown" ? copy.scoredHint : copy.selectHint}</p>
                 </div>
                 {hero?.evaluation?.foul && (

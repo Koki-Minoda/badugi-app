@@ -1,0 +1,1268 @@
+{
+  "generatedAt": "2026-10-27T14:30:41.059Z",
+  "sourceCommit": "8ed49e76fea6e0209e6aafeec64341a68982cece",
+  "scope": "Local browser inference samples. This is not proof of model strength, physical QA, production use, or complete-hand quality.",
+  "rowCount": 20,
+  "phaseCoveredRows": 20,
+  "allRecordedDecisionsUsedModelRows": 6,
+  "rows": [
+    {
+      "variantId": "D03",
+      "appVariantId": "badugi",
+      "tier": "standard",
+      "phases": [
+        "BET",
+        "DRAW"
+      ],
+      "observedPhases": [
+        "BET",
+        "DRAW"
+      ],
+      "phaseCoverage": true,
+      "decisionCount": 7,
+      "decisions": [
+        {
+          "variantId": "D03",
+          "tierId": "standard",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-badugi-sixmax-standard-e11",
+          "usedModelId": "model-badugi-sixmax-standard-e11",
+          "elapsedMs": 190
+        },
+        {
+          "variantId": "D03",
+          "tierId": "standard",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-badugi-sixmax-standard-e11",
+          "usedModelId": "model-badugi-sixmax-standard-e11",
+          "elapsedMs": 1
+        },
+        {
+          "variantId": "D03",
+          "tierId": "standard",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-badugi-sixmax-standard-e11",
+          "usedModelId": "model-badugi-sixmax-standard-e11",
+          "elapsedMs": 0
+        },
+        {
+          "variantId": "D03",
+          "tierId": "standard",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-badugi-sixmax-standard-e11",
+          "usedModelId": "model-badugi-sixmax-standard-e11",
+          "elapsedMs": 0
+        },
+        {
+          "variantId": "D03",
+          "tierId": "standard",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-badugi-sixmax-standard-e11",
+          "usedModelId": "model-badugi-sixmax-standard-e11",
+          "elapsedMs": 0
+        },
+        {
+          "variantId": "D03",
+          "tierId": "standard",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-badugi-sixmax-standard-e11",
+          "usedModelId": "model-badugi-sixmax-standard-e11",
+          "elapsedMs": 0
+        },
+        {
+          "variantId": "D03",
+          "tierId": "standard",
+          "phase": "DRAW",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-badugi-sixmax-standard-e11",
+          "usedModelId": "model-badugi-sixmax-standard-e11",
+          "elapsedMs": 1
+        }
+      ],
+      "statusCounts": {
+        "used": 7
+      },
+      "usedModels": [
+        "model-badugi-sixmax-standard-e11"
+      ],
+      "reasons": [],
+      "errors": [],
+      "apiStubbed": true,
+      "evidenceFile": "reports/10game-runtime-20261027/raw/cpu-inference-evidence-bad-830af-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
+      "evidenceSha256": "256e98738e5f67213dd04219646f8485d27cd40a0af66369b4e34e838249b118"
+    },
+    {
+      "variantId": "D03",
+      "appVariantId": "badugi",
+      "tier": "beginner",
+      "phases": [
+        "BET",
+        "DRAW"
+      ],
+      "observedPhases": [
+        "BET",
+        "DRAW"
+      ],
+      "phaseCoverage": true,
+      "decisionCount": 9,
+      "decisions": [
+        {
+          "variantId": "D03",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
+          "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
+          "elapsedMs": 204
+        },
+        {
+          "variantId": "D03",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
+          "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
+          "elapsedMs": 1
+        },
+        {
+          "variantId": "D03",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
+          "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
+          "elapsedMs": 0
+        },
+        {
+          "variantId": "D03",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
+          "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
+          "elapsedMs": 1
+        },
+        {
+          "variantId": "D03",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
+          "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
+          "elapsedMs": 0
+        },
+        {
+          "variantId": "D03",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
+          "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
+          "elapsedMs": 0
+        },
+        {
+          "variantId": "D03",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
+          "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
+          "elapsedMs": 0
+        },
+        {
+          "variantId": "D03",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
+          "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
+          "elapsedMs": 1
+        },
+        {
+          "variantId": "D03",
+          "tierId": "beginner",
+          "phase": "DRAW",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
+          "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
+          "elapsedMs": 1
+        }
+      ],
+      "statusCounts": {
+        "used": 9
+      },
+      "usedModels": [
+        "model-badugi-sixmax-standard-dqn-v2"
+      ],
+      "reasons": [],
+      "errors": [],
+      "apiStubbed": true,
+      "evidenceFile": "reports/10game-runtime-20261027/raw/cpu-inference-evidence-bad-bc73d-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
+      "evidenceSha256": "06d42c8770db2a69367831b816ae278ca29188a857e2552cf2ef30cb03801909"
+    },
+    {
+      "variantId": "D01",
+      "appVariantId": "deuce_to_seven_triple_draw",
+      "tier": "standard",
+      "phases": [
+        "BET",
+        "DRAW"
+      ],
+      "observedPhases": [
+        "BET",
+        "DRAW"
+      ],
+      "phaseCoverage": true,
+      "decisionCount": 6,
+      "decisions": [
+        {
+          "variantId": "D01",
+          "tierId": "standard",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-standard-dqn-v1",
+          "usedModelId": "model-27draw-standard-dqn-v1",
+          "elapsedMs": 200
+        },
+        {
+          "variantId": "D01",
+          "tierId": "standard",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-standard-dqn-v1",
+          "usedModelId": "model-27draw-standard-dqn-v1",
+          "elapsedMs": 0
+        },
+        {
+          "variantId": "D01",
+          "tierId": "standard",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-standard-dqn-v1",
+          "usedModelId": "model-27draw-standard-dqn-v1",
+          "elapsedMs": 0
+        },
+        {
+          "variantId": "D01",
+          "tierId": "standard",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-standard-dqn-v1",
+          "usedModelId": "model-27draw-standard-dqn-v1",
+          "elapsedMs": 0
+        },
+        {
+          "variantId": "D01",
+          "tierId": "standard",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-standard-dqn-v1",
+          "usedModelId": "model-27draw-standard-dqn-v1",
+          "elapsedMs": 0
+        },
+        {
+          "variantId": "D01",
+          "tierId": "standard",
+          "phase": "DRAW",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-standard-dqn-v1",
+          "usedModelId": "model-27draw-standard-dqn-v1",
+          "elapsedMs": 1
+        }
+      ],
+      "statusCounts": {
+        "used": 6
+      },
+      "usedModels": [
+        "model-27draw-standard-dqn-v1"
+      ],
+      "reasons": [],
+      "errors": [],
+      "apiStubbed": true,
+      "evidenceFile": "reports/10game-runtime-20261027/raw/cpu-inference-evidence-deu-1b4e2-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
+      "evidenceSha256": "585790b8a2d449bb3baad66aebdca2dd6c170a59004c8fe5825071ba2e7ed188"
+    },
+    {
+      "variantId": "S01",
+      "appVariantId": "deuce_to_seven_single_draw",
+      "tier": "standard",
+      "phases": [
+        "BET",
+        "DRAW"
+      ],
+      "observedPhases": [
+        "BET",
+        "DRAW"
+      ],
+      "phaseCoverage": true,
+      "decisionCount": 10,
+      "decisions": [
+        {
+          "variantId": "S01",
+          "tierId": "standard",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-standard-dqn-v1",
+          "usedModelId": "model-27draw-standard-dqn-v1",
+          "elapsedMs": 206
+        },
+        {
+          "variantId": "S01",
+          "tierId": "standard",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-standard-dqn-v1",
+          "usedModelId": "model-27draw-standard-dqn-v1",
+          "elapsedMs": 0
+        },
+        {
+          "variantId": "S01",
+          "tierId": "standard",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-standard-dqn-v1",
+          "usedModelId": "model-27draw-standard-dqn-v1",
+          "elapsedMs": 1
+        },
+        {
+          "variantId": "S01",
+          "tierId": "standard",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-standard-dqn-v1",
+          "usedModelId": "model-27draw-standard-dqn-v1",
+          "elapsedMs": 0
+        },
+        {
+          "variantId": "S01",
+          "tierId": "standard",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-standard-dqn-v1",
+          "usedModelId": "model-27draw-standard-dqn-v1",
+          "elapsedMs": 1
+        },
+        {
+          "variantId": "S01",
+          "tierId": "standard",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-standard-dqn-v1",
+          "usedModelId": "model-27draw-standard-dqn-v1",
+          "elapsedMs": 1
+        },
+        {
+          "variantId": "S01",
+          "tierId": "standard",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-standard-dqn-v1",
+          "usedModelId": "model-27draw-standard-dqn-v1",
+          "elapsedMs": 0
+        },
+        {
+          "variantId": "S01",
+          "tierId": "standard",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-standard-dqn-v1",
+          "usedModelId": "model-27draw-standard-dqn-v1",
+          "elapsedMs": 0
+        },
+        {
+          "variantId": "S01",
+          "tierId": "standard",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-standard-dqn-v1",
+          "usedModelId": "model-27draw-standard-dqn-v1",
+          "elapsedMs": 1
+        },
+        {
+          "variantId": "S01",
+          "tierId": "standard",
+          "phase": "DRAW",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-standard-dqn-v1",
+          "usedModelId": "model-27draw-standard-dqn-v1",
+          "elapsedMs": 0
+        }
+      ],
+      "statusCounts": {
+        "used": 10
+      },
+      "usedModels": [
+        "model-27draw-standard-dqn-v1"
+      ],
+      "reasons": [],
+      "errors": [],
+      "apiStubbed": true,
+      "evidenceFile": "reports/10game-runtime-20261027/raw/cpu-inference-evidence-deu-388d1-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
+      "evidenceSha256": "70852a4142598db062570cadf17403469f815a472199d4cd9d26c1b55ded2494"
+    },
+    {
+      "variantId": "S01",
+      "appVariantId": "deuce_to_seven_single_draw",
+      "tier": "beginner",
+      "phases": [
+        "BET",
+        "DRAW"
+      ],
+      "observedPhases": [
+        "BET",
+        "DRAW"
+      ],
+      "phaseCoverage": true,
+      "decisionCount": 10,
+      "decisions": [
+        {
+          "variantId": "S01",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-beginner-dqn-v1",
+          "usedModelId": "model-27draw-beginner-dqn-v1",
+          "elapsedMs": 205
+        },
+        {
+          "variantId": "S01",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-beginner-dqn-v1",
+          "usedModelId": "model-27draw-beginner-dqn-v1",
+          "elapsedMs": 0
+        },
+        {
+          "variantId": "S01",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-beginner-dqn-v1",
+          "usedModelId": "model-27draw-beginner-dqn-v1",
+          "elapsedMs": 0
+        },
+        {
+          "variantId": "S01",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-beginner-dqn-v1",
+          "usedModelId": "model-27draw-beginner-dqn-v1",
+          "elapsedMs": 1
+        },
+        {
+          "variantId": "S01",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-beginner-dqn-v1",
+          "usedModelId": "model-27draw-beginner-dqn-v1",
+          "elapsedMs": 0
+        },
+        {
+          "variantId": "S01",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-beginner-dqn-v1",
+          "usedModelId": "model-27draw-beginner-dqn-v1",
+          "elapsedMs": 0
+        },
+        {
+          "variantId": "S01",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-beginner-dqn-v1",
+          "usedModelId": "model-27draw-beginner-dqn-v1",
+          "elapsedMs": 0
+        },
+        {
+          "variantId": "S01",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-beginner-dqn-v1",
+          "usedModelId": "model-27draw-beginner-dqn-v1",
+          "elapsedMs": 0
+        },
+        {
+          "variantId": "S01",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-beginner-dqn-v1",
+          "usedModelId": "model-27draw-beginner-dqn-v1",
+          "elapsedMs": 1
+        },
+        {
+          "variantId": "S01",
+          "tierId": "beginner",
+          "phase": "DRAW",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-beginner-dqn-v1",
+          "usedModelId": "model-27draw-beginner-dqn-v1",
+          "elapsedMs": 1
+        }
+      ],
+      "statusCounts": {
+        "used": 10
+      },
+      "usedModels": [
+        "model-27draw-beginner-dqn-v1"
+      ],
+      "reasons": [],
+      "errors": [],
+      "apiStubbed": true,
+      "evidenceFile": "reports/10game-runtime-20261027/raw/cpu-inference-evidence-deu-42702-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
+      "evidenceSha256": "32d64960e0475a7ad12e2dceb7ab55301464f784a5b173131b3369623079da01"
+    },
+    {
+      "variantId": "D01",
+      "appVariantId": "deuce_to_seven_triple_draw",
+      "tier": "beginner",
+      "phases": [
+        "BET",
+        "DRAW"
+      ],
+      "observedPhases": [
+        "BET",
+        "DRAW"
+      ],
+      "phaseCoverage": true,
+      "decisionCount": 10,
+      "decisions": [
+        {
+          "variantId": "D01",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-beginner-dqn-v1",
+          "usedModelId": "model-27draw-beginner-dqn-v1",
+          "elapsedMs": 270
+        },
+        {
+          "variantId": "D01",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-beginner-dqn-v1",
+          "usedModelId": "model-27draw-beginner-dqn-v1",
+          "elapsedMs": 1
+        },
+        {
+          "variantId": "D01",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-beginner-dqn-v1",
+          "usedModelId": "model-27draw-beginner-dqn-v1",
+          "elapsedMs": 0
+        },
+        {
+          "variantId": "D01",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-beginner-dqn-v1",
+          "usedModelId": "model-27draw-beginner-dqn-v1",
+          "elapsedMs": 0
+        },
+        {
+          "variantId": "D01",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-beginner-dqn-v1",
+          "usedModelId": "model-27draw-beginner-dqn-v1",
+          "elapsedMs": 1
+        },
+        {
+          "variantId": "D01",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-beginner-dqn-v1",
+          "usedModelId": "model-27draw-beginner-dqn-v1",
+          "elapsedMs": 1
+        },
+        {
+          "variantId": "D01",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-beginner-dqn-v1",
+          "usedModelId": "model-27draw-beginner-dqn-v1",
+          "elapsedMs": 0
+        },
+        {
+          "variantId": "D01",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-beginner-dqn-v1",
+          "usedModelId": "model-27draw-beginner-dqn-v1",
+          "elapsedMs": 1
+        },
+        {
+          "variantId": "D01",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-beginner-dqn-v1",
+          "usedModelId": "model-27draw-beginner-dqn-v1",
+          "elapsedMs": 1
+        },
+        {
+          "variantId": "D01",
+          "tierId": "beginner",
+          "phase": "DRAW",
+          "status": "used",
+          "reason": null,
+          "requestedModelId": null,
+          "selectedModelId": "model-27draw-beginner-dqn-v1",
+          "usedModelId": "model-27draw-beginner-dqn-v1",
+          "elapsedMs": 1
+        }
+      ],
+      "statusCounts": {
+        "used": 10
+      },
+      "usedModels": [
+        "model-27draw-beginner-dqn-v1"
+      ],
+      "reasons": [],
+      "errors": [],
+      "apiStubbed": true,
+      "evidenceFile": "reports/10game-runtime-20261027/raw/cpu-inference-evidence-deu-b02dc-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
+      "evidenceSha256": "54505a01ff739889af270ac25f02042890dc80ed3886818559da93dc7ebc4cfb"
+    },
+    {
+      "variantId": "B02",
+      "appVariantId": "flh",
+      "tier": "beginner",
+      "phases": [
+        "BET"
+      ],
+      "observedPhases": [
+        "BET"
+      ],
+      "phaseCoverage": true,
+      "decisionCount": 1,
+      "decisions": [
+        {
+          "variantId": "flh",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "not-connected",
+          "reason": "automatic-check-call",
+          "requestedModelId": null,
+          "selectedModelId": null,
+          "usedModelId": null,
+          "elapsedMs": 0
+        }
+      ],
+      "statusCounts": {
+        "not-connected": 1
+      },
+      "usedModels": [],
+      "reasons": [
+        "automatic-check-call"
+      ],
+      "errors": [],
+      "apiStubbed": true,
+      "evidenceFile": "reports/10game-runtime-20261027/raw/cpu-inference-evidence-flh-4fc05-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
+      "evidenceSha256": "fad7de05988bc79a10c8274cf0d490f6848c02faddea3335eefee36b5b592ad6"
+    },
+    {
+      "variantId": "B02",
+      "appVariantId": "flh",
+      "tier": "standard",
+      "phases": [
+        "BET"
+      ],
+      "observedPhases": [
+        "BET"
+      ],
+      "phaseCoverage": true,
+      "decisionCount": 1,
+      "decisions": [
+        {
+          "variantId": "flh",
+          "tierId": "standard",
+          "phase": "BET",
+          "status": "not-connected",
+          "reason": "automatic-check-call",
+          "requestedModelId": null,
+          "selectedModelId": null,
+          "usedModelId": null,
+          "elapsedMs": 1
+        }
+      ],
+      "statusCounts": {
+        "not-connected": 1
+      },
+      "usedModels": [],
+      "reasons": [
+        "automatic-check-call"
+      ],
+      "errors": [],
+      "apiStubbed": true,
+      "evidenceFile": "reports/10game-runtime-20261027/raw/cpu-inference-evidence-flh-ce20a-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
+      "evidenceSha256": "10c339397d3b3cab5bf5846553c791d8b9efaacc096e32f3ac240fc60e1e9cf2"
+    },
+    {
+      "variantId": "B01",
+      "appVariantId": "nlh",
+      "tier": "beginner",
+      "phases": [
+        "BET"
+      ],
+      "observedPhases": [
+        "BET"
+      ],
+      "phaseCoverage": true,
+      "decisionCount": 1,
+      "decisions": [
+        {
+          "variantId": "nlh",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "not-connected",
+          "reason": "automatic-check-call",
+          "requestedModelId": null,
+          "selectedModelId": null,
+          "usedModelId": null,
+          "elapsedMs": 1
+        }
+      ],
+      "statusCounts": {
+        "not-connected": 1
+      },
+      "usedModels": [],
+      "reasons": [
+        "automatic-check-call"
+      ],
+      "errors": [],
+      "apiStubbed": true,
+      "evidenceFile": "reports/10game-runtime-20261027/raw/cpu-inference-evidence-nlh-ec425-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
+      "evidenceSha256": "042518591dd5591810cda2bf4ad0feaaee2bc040a323f7562f0aca74bf0015f3"
+    },
+    {
+      "variantId": "B01",
+      "appVariantId": "nlh",
+      "tier": "standard",
+      "phases": [
+        "BET"
+      ],
+      "observedPhases": [
+        "BET"
+      ],
+      "phaseCoverage": true,
+      "decisionCount": 1,
+      "decisions": [
+        {
+          "variantId": "nlh",
+          "tierId": "standard",
+          "phase": "BET",
+          "status": "not-connected",
+          "reason": "automatic-check-call",
+          "requestedModelId": null,
+          "selectedModelId": null,
+          "usedModelId": null,
+          "elapsedMs": 0
+        }
+      ],
+      "statusCounts": {
+        "not-connected": 1
+      },
+      "usedModels": [],
+      "reasons": [
+        "automatic-check-call"
+      ],
+      "errors": [],
+      "apiStubbed": true,
+      "evidenceFile": "reports/10game-runtime-20261027/raw/cpu-inference-evidence-nlh-fd95a-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
+      "evidenceSha256": "ddfb0814a1d963fc5ed0206f1b957888c70b435370d9cd1590bb740693cd3c5f"
+    },
+    {
+      "variantId": "B06",
+      "appVariantId": "plo8",
+      "tier": "beginner",
+      "phases": [
+        "BET"
+      ],
+      "observedPhases": [
+        "BET"
+      ],
+      "phaseCoverage": true,
+      "decisionCount": 1,
+      "decisions": [
+        {
+          "variantId": "plo8",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "not-connected",
+          "reason": "automatic-check-call",
+          "requestedModelId": null,
+          "selectedModelId": null,
+          "usedModelId": null,
+          "elapsedMs": 0
+        }
+      ],
+      "statusCounts": {
+        "not-connected": 1
+      },
+      "usedModels": [],
+      "reasons": [
+        "automatic-check-call"
+      ],
+      "errors": [],
+      "apiStubbed": true,
+      "evidenceFile": "reports/10game-runtime-20261027/raw/cpu-inference-evidence-plo-27094-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
+      "evidenceSha256": "1dd0c7e1baeadab21830d9e95cdb2c2271293f450b7f027a210b554bd2b94e06"
+    },
+    {
+      "variantId": "B05",
+      "appVariantId": "plo",
+      "tier": "beginner",
+      "phases": [
+        "BET"
+      ],
+      "observedPhases": [
+        "BET"
+      ],
+      "phaseCoverage": true,
+      "decisionCount": 1,
+      "decisions": [
+        {
+          "variantId": "plo",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "not-connected",
+          "reason": "automatic-check-call",
+          "requestedModelId": null,
+          "selectedModelId": null,
+          "usedModelId": null,
+          "elapsedMs": 0
+        }
+      ],
+      "statusCounts": {
+        "not-connected": 1
+      },
+      "usedModels": [],
+      "reasons": [
+        "automatic-check-call"
+      ],
+      "errors": [],
+      "apiStubbed": true,
+      "evidenceFile": "reports/10game-runtime-20261027/raw/cpu-inference-evidence-plo-2e253-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
+      "evidenceSha256": "01cbe899062ae04f87ba59fbd0b631626f1cd67b6bcaa85630c8fe484de6d131"
+    },
+    {
+      "variantId": "B06",
+      "appVariantId": "plo8",
+      "tier": "standard",
+      "phases": [
+        "BET"
+      ],
+      "observedPhases": [
+        "BET"
+      ],
+      "phaseCoverage": true,
+      "decisionCount": 1,
+      "decisions": [
+        {
+          "variantId": "plo8",
+          "tierId": "standard",
+          "phase": "BET",
+          "status": "not-connected",
+          "reason": "automatic-check-call",
+          "requestedModelId": null,
+          "selectedModelId": null,
+          "usedModelId": null,
+          "elapsedMs": 0
+        }
+      ],
+      "statusCounts": {
+        "not-connected": 1
+      },
+      "usedModels": [],
+      "reasons": [
+        "automatic-check-call"
+      ],
+      "errors": [],
+      "apiStubbed": true,
+      "evidenceFile": "reports/10game-runtime-20261027/raw/cpu-inference-evidence-plo-79f66-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
+      "evidenceSha256": "6831aaf5d8ae5e78bc7db5541adede54f8eb59a9ad213987d578dff851cb6b56"
+    },
+    {
+      "variantId": "B05",
+      "appVariantId": "plo",
+      "tier": "standard",
+      "phases": [
+        "BET"
+      ],
+      "observedPhases": [
+        "BET"
+      ],
+      "phaseCoverage": true,
+      "decisionCount": 1,
+      "decisions": [
+        {
+          "variantId": "plo",
+          "tierId": "standard",
+          "phase": "BET",
+          "status": "not-connected",
+          "reason": "automatic-check-call",
+          "requestedModelId": null,
+          "selectedModelId": null,
+          "usedModelId": null,
+          "elapsedMs": 0
+        }
+      ],
+      "statusCounts": {
+        "not-connected": 1
+      },
+      "usedModels": [],
+      "reasons": [
+        "automatic-check-call"
+      ],
+      "errors": [],
+      "apiStubbed": true,
+      "evidenceFile": "reports/10game-runtime-20261027/raw/cpu-inference-evidence-plo-ee397-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
+      "evidenceSha256": "b12e04b2836954641f6e0367532525cc25bfab2d5a1afff97ecc6b1b2984e40d"
+    },
+    {
+      "variantId": "ST3",
+      "appVariantId": "razz",
+      "tier": "beginner",
+      "phases": [
+        "BET"
+      ],
+      "observedPhases": [
+        "BET"
+      ],
+      "phaseCoverage": true,
+      "decisionCount": 1,
+      "decisions": [
+        {
+          "variantId": "razz",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "not-connected",
+          "reason": "automatic-check-call",
+          "requestedModelId": null,
+          "selectedModelId": null,
+          "usedModelId": null,
+          "elapsedMs": 1
+        }
+      ],
+      "statusCounts": {
+        "not-connected": 1
+      },
+      "usedModels": [],
+      "reasons": [
+        "automatic-check-call"
+      ],
+      "errors": [],
+      "apiStubbed": true,
+      "evidenceFile": "reports/10game-runtime-20261027/raw/cpu-inference-evidence-raz-84c0f-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
+      "evidenceSha256": "6defd909c513b3a6bcd3429549efa6724c98ed62782ac17bb9789a193eefec0d"
+    },
+    {
+      "variantId": "ST3",
+      "appVariantId": "razz",
+      "tier": "standard",
+      "phases": [
+        "BET"
+      ],
+      "observedPhases": [
+        "BET"
+      ],
+      "phaseCoverage": true,
+      "decisionCount": 1,
+      "decisions": [
+        {
+          "variantId": "razz",
+          "tierId": "standard",
+          "phase": "BET",
+          "status": "not-connected",
+          "reason": "automatic-check-call",
+          "requestedModelId": null,
+          "selectedModelId": null,
+          "usedModelId": null,
+          "elapsedMs": 0
+        }
+      ],
+      "statusCounts": {
+        "not-connected": 1
+      },
+      "usedModels": [],
+      "reasons": [
+        "automatic-check-call"
+      ],
+      "errors": [],
+      "apiStubbed": true,
+      "evidenceFile": "reports/10game-runtime-20261027/raw/cpu-inference-evidence-raz-f8408-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
+      "evidenceSha256": "596e75c897a72b57f53c47da6b3346d6440bc70640d6afc7466ad7953613a77e"
+    },
+    {
+      "variantId": "ST1",
+      "appVariantId": "stud",
+      "tier": "standard",
+      "phases": [
+        "BET"
+      ],
+      "observedPhases": [
+        "BET"
+      ],
+      "phaseCoverage": true,
+      "decisionCount": 1,
+      "decisions": [
+        {
+          "variantId": "stud",
+          "tierId": "standard",
+          "phase": "BET",
+          "status": "not-connected",
+          "reason": "automatic-check-call",
+          "requestedModelId": null,
+          "selectedModelId": null,
+          "usedModelId": null,
+          "elapsedMs": 0
+        }
+      ],
+      "statusCounts": {
+        "not-connected": 1
+      },
+      "usedModels": [],
+      "reasons": [
+        "automatic-check-call"
+      ],
+      "errors": [],
+      "apiStubbed": true,
+      "evidenceFile": "reports/10game-runtime-20261027/raw/cpu-inference-evidence-stu-00842-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
+      "evidenceSha256": "2a62fb018716324fc8652d75a7aaf587c4b32d6ec05b6f6730b4540ca584da70"
+    },
+    {
+      "variantId": "ST2",
+      "appVariantId": "stud8",
+      "tier": "standard",
+      "phases": [
+        "BET"
+      ],
+      "observedPhases": [
+        "BET"
+      ],
+      "phaseCoverage": true,
+      "decisionCount": 1,
+      "decisions": [
+        {
+          "variantId": "stud8",
+          "tierId": "standard",
+          "phase": "BET",
+          "status": "not-connected",
+          "reason": "automatic-check-call",
+          "requestedModelId": null,
+          "selectedModelId": null,
+          "usedModelId": null,
+          "elapsedMs": 0
+        }
+      ],
+      "statusCounts": {
+        "not-connected": 1
+      },
+      "usedModels": [],
+      "reasons": [
+        "automatic-check-call"
+      ],
+      "errors": [],
+      "apiStubbed": true,
+      "evidenceFile": "reports/10game-runtime-20261027/raw/cpu-inference-evidence-stu-7e7ad-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
+      "evidenceSha256": "e92853e64f47bb809649a55394a073e567fd7e3e35053b5117e229bbca857c5f"
+    },
+    {
+      "variantId": "ST1",
+      "appVariantId": "stud",
+      "tier": "beginner",
+      "phases": [
+        "BET"
+      ],
+      "observedPhases": [
+        "BET"
+      ],
+      "phaseCoverage": true,
+      "decisionCount": 1,
+      "decisions": [
+        {
+          "variantId": "stud",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "not-connected",
+          "reason": "automatic-check-call",
+          "requestedModelId": null,
+          "selectedModelId": null,
+          "usedModelId": null,
+          "elapsedMs": 0
+        }
+      ],
+      "statusCounts": {
+        "not-connected": 1
+      },
+      "usedModels": [],
+      "reasons": [
+        "automatic-check-call"
+      ],
+      "errors": [],
+      "apiStubbed": true,
+      "evidenceFile": "reports/10game-runtime-20261027/raw/cpu-inference-evidence-stu-ab6c4-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
+      "evidenceSha256": "a21e369b855b82f46d63b153f5ee5d9c82ee5447e7b95427c3166894afa16257"
+    },
+    {
+      "variantId": "ST2",
+      "appVariantId": "stud8",
+      "tier": "beginner",
+      "phases": [
+        "BET"
+      ],
+      "observedPhases": [
+        "BET"
+      ],
+      "phaseCoverage": true,
+      "decisionCount": 1,
+      "decisions": [
+        {
+          "variantId": "stud8",
+          "tierId": "beginner",
+          "phase": "BET",
+          "status": "not-connected",
+          "reason": "automatic-check-call",
+          "requestedModelId": null,
+          "selectedModelId": null,
+          "usedModelId": null,
+          "elapsedMs": 0
+        }
+      ],
+      "statusCounts": {
+        "not-connected": 1
+      },
+      "usedModels": [],
+      "reasons": [
+        "automatic-check-call"
+      ],
+      "errors": [],
+      "apiStubbed": true,
+      "evidenceFile": "reports/10game-runtime-20261027/raw/cpu-inference-evidence-stu-f6ccb-coped-CPU-decision-evidence-badugi-flow/inference-evidence.json",
+      "evidenceSha256": "4782ce822fa51ef5accad11b9d53e1f877e5dd139579822765431068c555df2b"
+    }
+  ]
+}

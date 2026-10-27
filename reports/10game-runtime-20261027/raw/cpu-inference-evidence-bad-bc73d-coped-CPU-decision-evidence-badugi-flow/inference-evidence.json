@@ -1,0 +1,107 @@
+{
+  "variant": "badugi",
+  "tier": "beginner",
+  "rows": [
+    {
+      "variantId": "D03",
+      "tierId": "beginner",
+      "phase": "BET",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
+      "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
+      "elapsedMs": 204
+    },
+    {
+      "variantId": "D03",
+      "tierId": "beginner",
+      "phase": "BET",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
+      "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
+      "elapsedMs": 1
+    },
+    {
+      "variantId": "D03",
+      "tierId": "beginner",
+      "phase": "BET",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
+      "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
+      "elapsedMs": 0
+    },
+    {
+      "variantId": "D03",
+      "tierId": "beginner",
+      "phase": "BET",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
+      "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
+      "elapsedMs": 1
+    },
+    {
+      "variantId": "D03",
+      "tierId": "beginner",
+      "phase": "BET",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
+      "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
+      "elapsedMs": 0
+    },
+    {
+      "variantId": "D03",
+      "tierId": "beginner",
+      "phase": "BET",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
+      "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
+      "elapsedMs": 0
+    },
+    {
+      "variantId": "D03",
+      "tierId": "beginner",
+      "phase": "BET",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
+      "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
+      "elapsedMs": 0
+    },
+    {
+      "variantId": "D03",
+      "tierId": "beginner",
+      "phase": "BET",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
+      "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
+      "elapsedMs": 1
+    },
+    {
+      "variantId": "D03",
+      "tierId": "beginner",
+      "phase": "DRAW",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-badugi-sixmax-standard-dqn-v2",
+      "usedModelId": "model-badugi-sixmax-standard-dqn-v2",
+      "elapsedMs": 1
+    }
+  ],
+  "errors": [],
+  "apiStubbed": true
+}

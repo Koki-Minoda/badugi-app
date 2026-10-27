@@ -1,0 +1,19 @@
+{
+  "variant": "razz",
+  "tier": "beginner",
+  "rows": [
+    {
+      "variantId": "razz",
+      "tierId": "beginner",
+      "phase": "BET",
+      "status": "not-connected",
+      "reason": "automatic-check-call",
+      "requestedModelId": null,
+      "selectedModelId": null,
+      "usedModelId": null,
+      "elapsedMs": 1
+    }
+  ],
+  "errors": [],
+  "apiStubbed": true
+}

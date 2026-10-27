@@ -12,6 +12,7 @@ from rl.training.ten_game_f04_preflight import GIB, evaluate_probe_readiness
 class TenGameF04PreflightTests(unittest.TestCase):
     def evaluate(self, **overrides):
         values = {
+            "variant_id": "D03",
             "artifact_root": r"D:\MGX-RL\ten-game",
             "system_drive": "C:\\",
             "root_exists": True,
@@ -45,6 +46,14 @@ class TenGameF04PreflightTests(unittest.TestCase):
         self.assertIn("artifact marker .mgx-rl-artifacts is missing", result["reasons"])
         self.assertIn("another RL trainer is running", result["reasons"])
 
+    def test_board_stud_and_draw_trainers_cannot_pass_on_host_resources_alone(self):
+        for variant_id in ("B01", "B02", "B05", "B06", "ST1", "ST2", "ST3", "D01", "S01"):
+            with self.subTest(variant_id=variant_id):
+                result = self.evaluate(variant_id=variant_id)
+                self.assertFalse(result["probeReady"])
+                self.assertFalse(result["longRunReady"])
+                self.assertIn("trainer checkpoint continuation is not ready for this variant", result["reasons"])
+
     def test_relative_or_drive_root_is_not_a_dedicated_directory(self):
         self.assertFalse(self.evaluate(artifact_root=r"D:MGX-RL")["probeReady"])
         self.assertFalse(self.evaluate(artifact_root="D:\\")["probeReady"])
@@ -52,7 +61,7 @@ class TenGameF04PreflightTests(unittest.TestCase):
     def test_cli_returns_a_blocking_exit_code_for_an_unsafe_host(self):
         script = Path(__file__).resolve().parents[1] / "training" / "ten_game_f04_preflight.py"
         completed = subprocess.run(
-            [sys.executable, str(script), "--artifact-root", r"C:\MGX-RL", "--system-drive", "C:\\",
+            [sys.executable, str(script), "--variant-id", "D03", "--artifact-root", r"C:\MGX-RL", "--system-drive", "C:\\",
              "--root-exists", "0", "--marker-exists", "0", "--free-bytes", str(30 * GIB),
              "--available-memory-bytes", str(GIB), "--running-trainers", "0"],
             capture_output=True, text=True, check=False,

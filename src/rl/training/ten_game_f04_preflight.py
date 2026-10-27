@@ -11,10 +11,13 @@ import json
 from pathlib import PureWindowsPath
 
 GIB = 1024**3
+TEN_GAME_VARIANTS = ("B01", "B02", "B06", "ST3", "ST1", "ST2", "D01", "B05", "D03", "S01")
+BOUNDED_PROBE_CANDIDATES = {"D03"}
 
 
 def evaluate_probe_readiness(
     *,
+    variant_id: str,
     artifact_root: str,
     system_drive: str,
     root_exists: bool,
@@ -28,6 +31,10 @@ def evaluate_probe_readiness(
     root = PureWindowsPath(artifact_root)
     system = PureWindowsPath(system_drive)
     reasons: list[str] = []
+    if variant_id not in TEN_GAME_VARIANTS:
+        reasons.append("variant is not in the fixed 10-Game rotation")
+    elif variant_id not in BOUNDED_PROBE_CANDIDATES:
+        reasons.append("trainer checkpoint continuation is not ready for this variant")
     if not root.is_absolute() or root.parent == root or len(root.drive) != 2 or not root.drive.endswith(":"):
         reasons.append("artifact root must be an absolute directory below a drive root")
     if not system.drive:
@@ -48,6 +55,7 @@ def evaluate_probe_readiness(
         "probeReady": not reasons,
         "longRunReady": False,
         "reasons": reasons,
+        "variantId": variant_id,
         "artifactRoot": str(root),
         "freeGiB": round(free_bytes / GIB, 2),
         "availableMemoryGiB": round(available_memory_bytes / GIB, 2),
@@ -63,6 +71,7 @@ def evaluate_probe_readiness(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Read-only 10-Game F04 probe preflight")
+    parser.add_argument("--variant-id", required=True, choices=TEN_GAME_VARIANTS)
     parser.add_argument("--artifact-root", required=True)
     parser.add_argument("--system-drive", required=True)
     parser.add_argument("--root-exists", type=int, choices=(0, 1), required=True)
@@ -78,6 +87,7 @@ def main() -> int:
     if args.minimum_free_gb <= 0 or args.minimum_available_memory_gb <= 0:
         parser.error("resource thresholds must be positive")
     result = evaluate_probe_readiness(
+        variant_id=args.variant_id,
         artifact_root=args.artifact_root,
         system_drive=args.system_drive,
         root_exists=bool(args.root_exists),

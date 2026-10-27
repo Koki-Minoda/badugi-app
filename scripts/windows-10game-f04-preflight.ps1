@@ -1,5 +1,8 @@
 [CmdletBinding()]
 param(
+    [Parameter(Mandatory = $true)]
+    [ValidateSet("B01", "B02", "B06", "ST3", "ST1", "ST2", "D01", "B05", "D03", "S01")]
+    [string]$VariantId,
     [string]$ArtifactRoot = $env:MGX_RL_ARTIFACT_ROOT,
     [ValidateRange(1.0, 1000.0)]
     [double]$MinimumFreeGB = 20.0,
@@ -44,6 +47,7 @@ $trainers = @($pythonProcesses | Where-Object {
 })
 
 & $venvPython $preflight `
+    --variant-id $VariantId `
     --artifact-root $resolvedRoot `
     --system-drive $systemDrive `
     --root-exists $rootExists `

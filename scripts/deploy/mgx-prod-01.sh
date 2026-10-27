@@ -170,7 +170,7 @@ configure_nginx_wasm_mime() {
 verify_live_onnx_wasm() {
   local headers
   local content_type
-  local wasm_url="${LIVE_ORIGIN}/assets/ort-wasm-simd-threaded.jsep.wasm"
+  local wasm_url="${LIVE_ORIGIN}/assets/ort-wasm-simd-threaded.wasm"
 
   echo "[mgx-deploy] verifying live ONNX WASM response"
   headers="$(curl -fsSIL "$wasm_url" | tr -d '\r')"

@@ -2,7 +2,7 @@ import { open, stat } from "node:fs/promises";
 import path from "node:path";
 
 const expectedPath = path.resolve(
-  "dist/assets/ort-wasm-simd-threaded.jsep.wasm",
+  "dist/assets/ort-wasm-simd-threaded.wasm",
 );
 const minimumBytes = 1_000_000;
 

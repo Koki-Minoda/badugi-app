@@ -49,7 +49,7 @@ export default defineConfig({
     {
       name: 'tournament-iphone-webkit',
       testDir: './tests/e2e',
-      testMatch: /(?:tournament-device-project-smoke|tournament-draw-deck-ownership|tournament-terminal-overlay-priority|tournament-short-landscape-results|iphone-safari-tournament-landscape-controls|title-screen-mobile-landscape|game-progress-wait|mobile-qa-toggle)\.spec\.ts/,
+      testMatch: /(?:tournament-device-project-smoke|tournament-draw-deck-ownership|tournament-terminal-overlay-priority|tournament-short-landscape-results|iphone-safari-tournament-landscape-controls|title-screen-mobile-landscape|game-progress-wait|mobile-qa-toggle|onnx-wasm-runtime)\.spec\.ts/,
       use: {
         ...devices['iPhone 13 landscape'],
         browserName: 'webkit',

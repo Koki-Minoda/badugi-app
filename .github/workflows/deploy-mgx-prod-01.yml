@@ -356,7 +356,8 @@ jobs:
 
   stud-razz-qa:
     runs-on: ubuntu-latest
-    # A cold browser install left too little time for the device matrix on 2026-10-27.
+    # Cold Playwright installation used about 26 minutes in run 40528851643;
+    # leave time for the 36-case desktop/Android/WebKit gameplay matrix.
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v6
@@ -370,6 +371,8 @@ jobs:
 
   nlh-qa:
     runs-on: ubuntu-latest
+    # Cold Playwright installation can use the previous 35-minute job budget
+    # before the NLH release matrix has started.
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v6

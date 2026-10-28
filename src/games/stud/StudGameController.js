@@ -425,6 +425,15 @@ export class StudGameController {
     const toCall = Math.max(0, (this.state.currentBet ?? 0) - (player.betThisStreet ?? 0));
     if (actionName === "check" && toCall > 0) return { success: false, reason: "Cannot check facing a bet" };
     if (actionName === "bet" && this.state.currentBet > 0) return { success: false, reason: "Cannot bet facing a bet" };
+    if (actionName === "all-in" && player.stack > toCall) {
+      const completeAmount = this.state.street === "THIRD" ? this.state.completeAmount ?? 0 : 0;
+      const maximumIncrease = this.state.currentBet < completeAmount
+        ? completeAmount - this.state.currentBet
+        : this.getLimitUnit();
+      if (this.raiseCountThisStreet >= this.raiseCap || player.stack > toCall + maximumIncrease) {
+        return { success: false, reason: "All-in exceeds the fixed-limit betting cap" };
+      }
+    }
     const previousCurrentBet = this.state.currentBet ?? 0;
     switch (actionName) {
       case "fold":
@@ -463,8 +472,11 @@ export class StudGameController {
           : Math.max(0, targetStreetBet - (player.betThisStreet ?? 0));
         this.commitChips(player, Math.min(player.stack, chipsToCommit));
         this.state.currentBet = Math.max(this.state.currentBet, player.betThisStreet ?? 0);
-        const isFullRaise = (player.betThisStreet ?? 0) > previousCurrentBet;
-        if (actionName !== "all-in" && isFullRaise) {
+        const minimumIncrease = previousCurrentBet < completeAmount
+          ? completeAmount - previousCurrentBet
+          : this.getLimitUnit();
+        const isFullRaise = (player.betThisStreet ?? 0) - previousCurrentBet >= minimumIncrease;
+        if (isFullRaise) {
           this.raiseCountThisStreet += 1;
           this.state.players = this.state.players.map((entry, idx) => {
             if (

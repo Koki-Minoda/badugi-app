@@ -87,6 +87,53 @@ describe("Stud split controllers", () => {
     },
   );
 
+  it.each([["Stud", StudGameController], ["Stud8", Stud8GameController], ["Razz", RazzGameController]])(
+    "%s rejects an all-in above the fixed-limit completion or raise cap",
+    (_variant, Controller) => {
+      const controller = createController(Controller, 3);
+      controller.startNewHand();
+      const actor = controller.state.currentActor;
+      const before = structuredClone(controller.state);
+
+      expect(controller.applyPlayerAction({ seatIndex: actor, action: "all-in" }).success).toBe(false);
+      expect(controller.state).toEqual(before);
+
+      controller.raiseCountThisStreet = controller.raiseCap;
+      controller.state.players[actor].stack = 6;
+      const capped = structuredClone(controller.state);
+      expect(controller.applyPlayerAction({ seatIndex: actor, action: "all-in" }).success).toBe(false);
+      expect(controller.state).toEqual(capped);
+
+      controller.state.players[actor].stack = 3;
+      expect(controller.applyPlayerAction({ seatIndex: actor, action: "all-in" }).success).toBe(true);
+      expect(controller.state.players[actor].allIn).toBe(true);
+      expect(controller.state.players[actor].betThisStreet).toBe(3);
+    },
+  );
+
+  it.each([["Stud", StudGameController], ["Stud8", Stud8GameController], ["Razz", RazzGameController]])(
+    "%s counts a full all-in completion but does not reopen on a short one",
+    (_variant, Controller) => {
+      const full = createController(Controller, 3);
+      full.startNewHand();
+      const actor = full.state.currentActor;
+      const bringIn = full.state.bringInIndex;
+      full.state.players[actor].stack = 10;
+      expect(full.applyPlayerAction({ seatIndex: actor, action: "all-in" }).success).toBe(true);
+      expect(full.state.currentBet).toBe(10);
+      expect(full.raiseCountThisStreet).toBe(1);
+      expect(full.state.players[bringIn].hasActedThisStreet).toBe(false);
+
+      const short = createController(Controller, 3);
+      short.startNewHand();
+      short.state.players[short.state.currentActor].stack = 6;
+      expect(short.applyPlayerAction({ seatIndex: short.state.currentActor, action: "all-in" }).success).toBe(true);
+      expect(short.state.currentBet).toBe(6);
+      expect(short.raiseCountThisStreet).toBe(0);
+      expect(short.state.players[short.state.bringInIndex].hasActedThisStreet).toBe(true);
+    },
+  );
+
   it("deals Stud streets incrementally instead of pre-dealing seven cards", () => {
     const controller = createController(StudGameController, 3);
     let snapshot = controller.startNewHand();

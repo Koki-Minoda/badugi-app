@@ -92,6 +92,37 @@ it("maps all six live board positions into the trainer's exact position buckets"
   }
 });
 
+it("tracks full board raises on no-limit and pot-limit streets without carrying them forward", () => {
+  for (const [variantId, Controller] of [
+    ["B01", NLHGameController], ["B05", PLOGameController], ["B06", PLO8GameController],
+  ]) {
+    const controller = start(Controller, false);
+    expect(buildTenGameLiveBettingContext({ variantId, controller }).observation.raiseCount).toBe(0);
+    const firstActor = controller.state.currentActor;
+    expect(controller.applyPlayerAction({ seatIndex: firstActor, action: "raise", amount: 40 }).success).toBe(true);
+    const afterRaise = buildTenGameLiveBettingContext({ variantId, controller });
+    expect(afterRaise.observation.raiseCount).toBe(1);
+    expect(afterRaise.missingModelInputs).not.toContain("raiseCount");
+
+    while (controller.state.street === "PREFLOP") {
+      const context = buildTenGameLiveBettingContext({ variantId, controller });
+      const action = context.observation.toCall > 0 ? "call" : "check";
+      expect(controller.applyPlayerAction({ seatIndex: controller.state.currentActor, action }).success).toBe(true);
+    }
+    expect(controller.state.street).toBe("FLOP");
+    expect(buildTenGameLiveBettingContext({ variantId, controller }).observation.raiseCount).toBe(0);
+  }
+});
+
+it("does not count a short board all-in as a full raise", () => {
+  const controller = start(NLHGameController, false);
+  controller.state.players[controller.state.currentActor].stack = 25;
+  expect(controller.applyPlayerAction({ seatIndex: controller.state.currentActor, action: "all-in" }).success).toBe(true);
+  expect(controller.state.currentBet).toBe(25);
+  expect(controller.fullRaiseCountThisStreet).toBe(0);
+  expect(buildTenGameLiveBettingContext({ variantId: "B01", controller }).observation.raiseCount).toBe(0);
+});
+
 it("leaves numeric board position missing if a controller returns an unknown label", () => {
   const controller = start(NLHGameController, false);
   controller.getPositionLabel = () => "UNKNOWN";

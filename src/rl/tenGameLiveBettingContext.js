@@ -85,7 +85,11 @@ export function buildTenGameLiveBettingContext({ variantId, controller, seatInde
     ).length,
     stackRatio: actor.stack / chipUnit,
     streetProgress: streetIndex / (streets.length - 1),
-    raiseCount: isStud || variantId === "B02" ? controller.raiseCountThisStreet : null,
+    raiseCount: isStud || variantId === "B02"
+      ? controller.raiseCountThisStreet
+      : Number.isInteger(controller.fullRaiseCountThisStreet) && controller.fullRaiseCountThisStreet >= 0
+        ? controller.fullRaiseCountThisStreet
+        : null,
   };
   if (isBoard && typeof controller.getPositionLabel === "function") {
     observation.positionLabel = controller.getPositionLabel(actorIndex, state.players);

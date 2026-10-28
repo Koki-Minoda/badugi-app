@@ -126,6 +126,7 @@ export class StudGameController {
       bringInIndex: null,
       bringInAmount: 0,
       completeAmount: 0,
+      raiseRestrictedSeatIndexes: [],
     };
   }
 
@@ -251,6 +252,7 @@ export class StudGameController {
     this.state.bringInIndex = bringInIndex;
     this.state.bringInAmount = bringInAmount;
     this.state.completeAmount = this.getLimitUnit();
+    this.state.raiseRestrictedSeatIndexes = [];
     this.state.currentActor = this.nextActiveSeat(bringInIndex ?? this.state.dealerIndex, players);
     this.state.lastHandResult = null;
     this.state.pot = this.calculatePot(players);
@@ -415,7 +417,7 @@ export class StudGameController {
       : bb;
   }
 
-  applyPlayerAction({ seatIndex, action, amount = 0 } = {}) {
+  applyPlayerAction({ seatIndex, action } = {}) {
     this.ensureThirdStreetBringIn();
     const player = this.state.players[seatIndex];
     if (!player) return { success: false, reason: "Player not found" };
@@ -425,6 +427,11 @@ export class StudGameController {
     const toCall = Math.max(0, (this.state.currentBet ?? 0) - (player.betThisStreet ?? 0));
     if (actionName === "check" && toCall > 0) return { success: false, reason: "Cannot check facing a bet" };
     if (actionName === "bet" && this.state.currentBet > 0) return { success: false, reason: "Cannot bet facing a bet" };
+    const raiseRestricted = (this.state.raiseRestrictedSeatIndexes ?? []).includes(seatIndex);
+    if (raiseRestricted && (actionName === "raise" || actionName === "complete" ||
+        (actionName === "all-in" && player.stack > toCall))) {
+      return { success: false, reason: "Short all-in did not reopen the raise" };
+    }
     if (actionName === "all-in" && player.stack > toCall) {
       const completeAmount = this.state.street === "THIRD" ? this.state.completeAmount ?? 0 : 0;
       const maximumIncrease = this.state.currentBet < completeAmount
@@ -464,9 +471,11 @@ export class StudGameController {
         const isBringInCompletion =
           actionName === "complete" ||
           (actionName === "raise" && this.state.currentBet > 0 && this.state.currentBet < completeAmount);
+          // Fixed-limit sizing belongs to the live controller. A stale UI amount
+          // must not create an illegal raise or prevent the visible action.
         const targetStreetBet = isBringInCompletion
           ? completeAmount
-          : (player.betThisStreet ?? 0) + toCall + (actionName === "all-in" ? player.stack : (amount > 0 ? amount : this.getLimitUnit()));
+          : (player.betThisStreet ?? 0) + toCall + (actionName === "all-in" ? player.stack : this.getLimitUnit());
         const chipsToCommit = actionName === "all-in"
           ? player.stack
           : Math.max(0, targetStreetBet - (player.betThisStreet ?? 0));
@@ -478,6 +487,7 @@ export class StudGameController {
         const isFullRaise = (player.betThisStreet ?? 0) - previousCurrentBet >= minimumIncrease;
         if (isFullRaise) {
           this.raiseCountThisStreet += 1;
+          this.state.raiseRestrictedSeatIndexes = [];
           this.state.players = this.state.players.map((entry, idx) => {
             if (
               idx === seatIndex ||
@@ -491,6 +501,14 @@ export class StudGameController {
             }
             return { ...entry, hasActedThisStreet: false };
           });
+        } else if (this.state.currentBet > previousCurrentBet) {
+          const restricted = new Set(this.state.raiseRestrictedSeatIndexes ?? []);
+          this.state.players.forEach((entry, idx) => {
+            if (idx !== seatIndex && entry?.hasActedThisStreet && !entry.folded && !entry.seatOut) {
+              restricted.add(idx);
+            }
+          });
+          this.state.raiseRestrictedSeatIndexes = [...restricted];
         }
         player.lastAction = actionName === "all-in"
           ? "All-in"
@@ -617,6 +635,7 @@ export class StudGameController {
     this.state.bringInIndex = null;
     this.state.bringInAmount = 0;
     this.state.completeAmount = 0;
+    this.state.raiseRestrictedSeatIndexes = [];
   }
 
   advanceStreet() {

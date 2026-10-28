@@ -112,6 +112,22 @@ describe("Stud split controllers", () => {
   );
 
   it.each([["Stud", StudGameController], ["Stud8", Stud8GameController], ["Razz", RazzGameController]])(
+    "%s uses the fixed-limit unit even when the UI supplies an outdated bet or raise amount",
+    (_variant, Controller) => {
+      const controller = createController(Controller, 3);
+      prepareStudStreet(controller, "FOURTH", [["9C", "2H"], ["8C", "3H"], ["7C", "4H"]]);
+      const actor = controller.state.currentActor;
+      expect(controller.applyPlayerAction({ seatIndex: actor, action: "bet", amount: 30 }).success).toBe(true);
+      expect(controller.state.currentBet).toBe(10);
+      expect(controller.raiseCountThisStreet).toBe(1);
+      const raiser = controller.state.currentActor;
+      expect(controller.applyPlayerAction({ seatIndex: raiser, action: "raise", amount: 1 }).success).toBe(true);
+      expect(controller.state.currentBet).toBe(20);
+      expect(controller.raiseCountThisStreet).toBe(2);
+    },
+  );
+
+  it.each([["Stud", StudGameController], ["Stud8", Stud8GameController], ["Razz", RazzGameController]])(
     "%s counts a full all-in completion but does not reopen on a short one",
     (_variant, Controller) => {
       const full = createController(Controller, 3);
@@ -131,6 +147,32 @@ describe("Stud split controllers", () => {
       expect(short.state.currentBet).toBe(6);
       expect(short.raiseCountThisStreet).toBe(0);
       expect(short.state.players[short.state.bringInIndex].hasActedThisStreet).toBe(true);
+    },
+  );
+
+  it.each([["Stud", StudGameController], ["Stud8", Stud8GameController], ["Razz", RazzGameController]])(
+    "%s lets prior actors call a short all-in without reopening their raise",
+    (_variant, Controller) => {
+      const controller = createController(Controller, 3);
+      prepareStudStreet(controller, "FOURTH", [["9C", "2H"], ["8C", "3H"], ["7C", "4H"]]);
+      const opener = controller.state.currentActor;
+      expect(controller.applyPlayerAction({ seatIndex: opener, action: "bet" }).success).toBe(true);
+      const caller = controller.state.currentActor;
+      expect(controller.applyPlayerAction({ seatIndex: caller, action: "call" }).success).toBe(true);
+      const shortRaiser = controller.state.currentActor;
+      controller.state.players[shortRaiser].stack = 15;
+      expect(controller.applyPlayerAction({ seatIndex: shortRaiser, action: "all-in" }).success).toBe(true);
+      expect(controller.state.currentBet).toBe(15);
+      expect(controller.raiseCountThisStreet).toBe(1);
+      expect(controller.state.currentActor).toBe(opener);
+
+      const before = structuredClone(controller.state);
+      expect(controller.applyPlayerAction({ seatIndex: opener, action: "raise" }).success).toBe(false);
+      expect(controller.state).toEqual(before);
+      expect(controller.applyPlayerAction({ seatIndex: opener, action: "call" }).success).toBe(true);
+      expect(controller.state.currentActor).toBe(caller);
+      expect(controller.applyPlayerAction({ seatIndex: caller, action: "call" }).success).toBe(true);
+      expect(controller.state.street).toBe("FIFTH");
     },
   );
 

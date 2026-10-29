@@ -69,6 +69,133 @@ function prepareStudStreet(controller, street, upCardsBySeat) {
 }
 
 describe("Stud split controllers", () => {
+  it.each([["Stud", StudGameController], ["Stud8", Stud8GameController], ["Razz", RazzGameController]])(
+    "%s rejects completion outside an open third-street bring-in without changing the hand",
+    (_variant, Controller) => {
+      const controller = createController(Controller, 3);
+      prepareStudStreet(controller, "FOURTH", [["9C", "2H"], ["8C", "3H"], ["7C", "4H"]]);
+      const fourthActor = controller.state.currentActor;
+      const fourthBefore = structuredClone(controller.state);
+      expect(controller.applyPlayerAction({ seatIndex: fourthActor, action: "complete" }).success).toBe(false);
+      expect(controller.state).toEqual(fourthBefore);
+
+      controller.startNewHand();
+      const thirdActor = controller.state.currentActor;
+      expect(controller.applyPlayerAction({ seatIndex: thirdActor, action: "complete" }).success).toBe(true);
+      const nextActor = controller.state.currentActor;
+      const thirdBefore = structuredClone(controller.state);
+      expect(controller.applyPlayerAction({ seatIndex: nextActor, action: "complete" }).success).toBe(false);
+      expect(controller.state).toEqual(thirdBefore);
+    },
+  );
+
+  it.each([["Stud", StudGameController], ["Stud8", Stud8GameController], ["Razz", RazzGameController]])(
+    "%s rejects out-of-turn and invalid check/bet actions without changing the hand",
+    (_variant, Controller) => {
+      const controller = createController(Controller, 3);
+      controller.startNewHand();
+      const actor = controller.state.currentActor;
+      const otherSeat = controller.state.players.findIndex((player, index) => index !== actor && !player.folded);
+      const before = structuredClone(controller.state);
+      const raisesBefore = controller.raiseCountThisStreet;
+
+      expect(controller.applyPlayerAction({ seatIndex: otherSeat, action: "fold" }).success).toBe(false);
+      expect(controller.applyPlayerAction({ seatIndex: actor, action: "check" }).success).toBe(false);
+      expect(controller.applyPlayerAction({ seatIndex: actor, action: "bet" }).success).toBe(false);
+      expect(controller.state).toEqual(before);
+      expect(controller.raiseCountThisStreet).toBe(raisesBefore);
+    },
+  );
+
+  it.each([["Stud", StudGameController], ["Stud8", Stud8GameController], ["Razz", RazzGameController]])(
+    "%s rejects an all-in above the fixed-limit completion or raise cap",
+    (_variant, Controller) => {
+      const controller = createController(Controller, 3);
+      controller.startNewHand();
+      const actor = controller.state.currentActor;
+      const before = structuredClone(controller.state);
+
+      expect(controller.applyPlayerAction({ seatIndex: actor, action: "all-in" }).success).toBe(false);
+      expect(controller.state).toEqual(before);
+
+      controller.raiseCountThisStreet = controller.raiseCap;
+      controller.state.players[actor].stack = 6;
+      const capped = structuredClone(controller.state);
+      expect(controller.applyPlayerAction({ seatIndex: actor, action: "all-in" }).success).toBe(false);
+      expect(controller.state).toEqual(capped);
+
+      controller.state.players[actor].stack = 3;
+      expect(controller.applyPlayerAction({ seatIndex: actor, action: "all-in" }).success).toBe(true);
+      expect(controller.state.players[actor].allIn).toBe(true);
+      expect(controller.state.players[actor].betThisStreet).toBe(3);
+    },
+  );
+
+  it.each([["Stud", StudGameController], ["Stud8", Stud8GameController], ["Razz", RazzGameController]])(
+    "%s uses the fixed-limit unit even when the UI supplies an outdated bet or raise amount",
+    (_variant, Controller) => {
+      const controller = createController(Controller, 3);
+      prepareStudStreet(controller, "FOURTH", [["9C", "2H"], ["8C", "3H"], ["7C", "4H"]]);
+      const actor = controller.state.currentActor;
+      expect(controller.applyPlayerAction({ seatIndex: actor, action: "bet", amount: 30 }).success).toBe(true);
+      expect(controller.state.currentBet).toBe(10);
+      expect(controller.raiseCountThisStreet).toBe(1);
+      const raiser = controller.state.currentActor;
+      expect(controller.applyPlayerAction({ seatIndex: raiser, action: "raise", amount: 1 }).success).toBe(true);
+      expect(controller.state.currentBet).toBe(20);
+      expect(controller.raiseCountThisStreet).toBe(2);
+    },
+  );
+
+  it.each([["Stud", StudGameController], ["Stud8", Stud8GameController], ["Razz", RazzGameController]])(
+    "%s counts a full all-in completion but does not reopen on a short one",
+    (_variant, Controller) => {
+      const full = createController(Controller, 3);
+      full.startNewHand();
+      const actor = full.state.currentActor;
+      const bringIn = full.state.bringInIndex;
+      full.state.players[actor].stack = 10;
+      expect(full.applyPlayerAction({ seatIndex: actor, action: "all-in" }).success).toBe(true);
+      expect(full.state.currentBet).toBe(10);
+      expect(full.raiseCountThisStreet).toBe(1);
+      expect(full.state.players[bringIn].hasActedThisStreet).toBe(false);
+
+      const short = createController(Controller, 3);
+      short.startNewHand();
+      short.state.players[short.state.currentActor].stack = 6;
+      expect(short.applyPlayerAction({ seatIndex: short.state.currentActor, action: "all-in" }).success).toBe(true);
+      expect(short.state.currentBet).toBe(6);
+      expect(short.raiseCountThisStreet).toBe(0);
+      expect(short.state.players[short.state.bringInIndex].hasActedThisStreet).toBe(true);
+    },
+  );
+
+  it.each([["Stud", StudGameController], ["Stud8", Stud8GameController], ["Razz", RazzGameController]])(
+    "%s lets prior actors call a short all-in without reopening their raise",
+    (_variant, Controller) => {
+      const controller = createController(Controller, 3);
+      prepareStudStreet(controller, "FOURTH", [["9C", "2H"], ["8C", "3H"], ["7C", "4H"]]);
+      const opener = controller.state.currentActor;
+      expect(controller.applyPlayerAction({ seatIndex: opener, action: "bet" }).success).toBe(true);
+      const caller = controller.state.currentActor;
+      expect(controller.applyPlayerAction({ seatIndex: caller, action: "call" }).success).toBe(true);
+      const shortRaiser = controller.state.currentActor;
+      controller.state.players[shortRaiser].stack = 15;
+      expect(controller.applyPlayerAction({ seatIndex: shortRaiser, action: "all-in" }).success).toBe(true);
+      expect(controller.state.currentBet).toBe(15);
+      expect(controller.raiseCountThisStreet).toBe(1);
+      expect(controller.state.currentActor).toBe(opener);
+
+      const before = structuredClone(controller.state);
+      expect(controller.applyPlayerAction({ seatIndex: opener, action: "raise" }).success).toBe(false);
+      expect(controller.state).toEqual(before);
+      expect(controller.applyPlayerAction({ seatIndex: opener, action: "call" }).success).toBe(true);
+      expect(controller.state.currentActor).toBe(caller);
+      expect(controller.applyPlayerAction({ seatIndex: caller, action: "call" }).success).toBe(true);
+      expect(controller.state.street).toBe("FIFTH");
+    },
+  );
+
   it("deals Stud streets incrementally instead of pre-dealing seven cards", () => {
     const controller = createController(StudGameController, 3);
     let snapshot = controller.startNewHand();
@@ -148,6 +275,7 @@ describe("Stud split controllers", () => {
     controller.state.bringInAmount = 5;
     controller.state.completeAmount = 10;
     controller.raiseCountThisStreet = 0;
+    controller.state.currentActor = 1;
     controller.state.players[1] = {
       ...controller.state.players[1],
       folded: false,

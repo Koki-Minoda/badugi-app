@@ -112,6 +112,9 @@ test('1024px desktop keeps the actual betting buttons and amount input on screen
   }
   for (const control of [primary, page.getByTestId('action-fold'), page.getByTestId('action-raise')]) {
     expect(await control.evaluate(element => element.scrollWidth - element.clientWidth), 'bet action label clipped').toBeLessThanOrEqual(1);
+    const box = await control.boundingBox();
+    expect(box?.height, 'desktop betting control should be easy to click').toBeGreaterThanOrEqual(44);
+    expect(box!.y + box!.height, 'desktop betting control should stay on screen').toBeLessThanOrEqual(768);
   }
   await expect(page.getByTestId('action-fold')).toHaveText('フォールド');
   await expect(page.getByTestId('action-raise')).toContainText('レイズ');

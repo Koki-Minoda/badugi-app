@@ -65,7 +65,7 @@ export default function Controls({
       : "flex flex-col gap-2 bg-gray-800/90 p-2 rounded shadow-lg");
   const buttonBase = isMobile
     ? "min-h-[46px] max-h-[52px] w-full min-w-0 flex-1 px-1.5 py-2 rounded-xl text-[clamp(11px,3.4vw,14px)] font-semibold leading-tight tracking-normal touch-manipulation"
-    : "min-w-0 w-full whitespace-nowrap rounded px-1 py-2 text-[10px] font-medium min-[1200px]:px-1.5 min-[1200px]:text-[11px] min-[1360px]:px-2 min-[1360px]:text-xs";
+    : "min-h-11 min-w-0 w-full whitespace-nowrap rounded px-1 py-2 text-[10px] font-medium min-[1200px]:px-1.5 min-[1200px]:text-[11px] min-[1360px]:px-2 min-[1360px]:text-xs";
   const disabledButtonClass =
     "border border-white/10 bg-slate-700/55 text-slate-400 cursor-not-allowed opacity-65";
 
@@ -244,7 +244,7 @@ export default function Controls({
           className={`${
             isMobile
               ? "min-h-[44px] w-full py-[clamp(8px,2dvw,12px)] rounded-2xl font-semibold text-[clamp(12px,2.1dvw,16px)] touch-manipulation"
-              : "px-4 py-2 rounded-lg font-bold whitespace-nowrap"
+              : "min-h-11 px-4 py-2 rounded-lg font-bold whitespace-nowrap"
           } ${
             canDraw
               ? "bg-green-600 hover:bg-green-500 text-white"

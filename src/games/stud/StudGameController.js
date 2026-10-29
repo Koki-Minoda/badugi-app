@@ -427,6 +427,10 @@ export class StudGameController {
     const toCall = Math.max(0, (this.state.currentBet ?? 0) - (player.betThisStreet ?? 0));
     if (actionName === "check" && toCall > 0) return { success: false, reason: "Cannot check facing a bet" };
     if (actionName === "bet" && this.state.currentBet > 0) return { success: false, reason: "Cannot bet facing a bet" };
+    if (actionName === "complete" && (this.state.street !== "THIRD" ||
+        this.state.currentBet <= 0 || this.state.currentBet >= this.state.completeAmount)) {
+      return { success: false, reason: "No open bring-in to complete" };
+    }
     const raiseRestricted = (this.state.raiseRestrictedSeatIndexes ?? []).includes(seatIndex);
     if (raiseRestricted && (actionName === "raise" || actionName === "complete" ||
         (actionName === "all-in" && player.stack > toCall))) {

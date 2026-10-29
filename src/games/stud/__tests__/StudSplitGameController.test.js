@@ -70,6 +70,26 @@ function prepareStudStreet(controller, street, upCardsBySeat) {
 
 describe("Stud split controllers", () => {
   it.each([["Stud", StudGameController], ["Stud8", Stud8GameController], ["Razz", RazzGameController]])(
+    "%s rejects completion outside an open third-street bring-in without changing the hand",
+    (_variant, Controller) => {
+      const controller = createController(Controller, 3);
+      prepareStudStreet(controller, "FOURTH", [["9C", "2H"], ["8C", "3H"], ["7C", "4H"]]);
+      const fourthActor = controller.state.currentActor;
+      const fourthBefore = structuredClone(controller.state);
+      expect(controller.applyPlayerAction({ seatIndex: fourthActor, action: "complete" }).success).toBe(false);
+      expect(controller.state).toEqual(fourthBefore);
+
+      controller.startNewHand();
+      const thirdActor = controller.state.currentActor;
+      expect(controller.applyPlayerAction({ seatIndex: thirdActor, action: "complete" }).success).toBe(true);
+      const nextActor = controller.state.currentActor;
+      const thirdBefore = structuredClone(controller.state);
+      expect(controller.applyPlayerAction({ seatIndex: nextActor, action: "complete" }).success).toBe(false);
+      expect(controller.state).toEqual(thirdBefore);
+    },
+  );
+
+  it.each([["Stud", StudGameController], ["Stud8", Stud8GameController], ["Razz", RazzGameController]])(
     "%s rejects out-of-turn and invalid check/bet actions without changing the hand",
     (_variant, Controller) => {
       const controller = createController(Controller, 3);

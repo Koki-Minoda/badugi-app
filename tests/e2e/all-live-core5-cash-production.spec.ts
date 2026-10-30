@@ -566,8 +566,11 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
         try {
           const readNextHandState = async () => {
             const progress = await getProgressState(page);
-            if (!progress.handId || progress.handId === before.handId) return "previous";
             if (!(await page.getByTestId("hand-result-overlay").isVisible())) return "active";
+            // The legacy Badugi snapshot can retain the previous hand ID
+            // after the overlay has closed, so only require a new ID while
+            // deciding whether a still-visible result belongs to a new hand.
+            if (!progress.handId || progress.handId === before.handId) return "previous";
             // A blind all-in or walk can settle the new hand before the old
             // result overlay disappears. Require its own history record so a
             // stale overlay cannot be mistaken for the next hand's result.

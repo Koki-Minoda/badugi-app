@@ -11,8 +11,11 @@ const cases = process.env.MGX_EVIDENCE_ALL === '1'
 for (const tier of tiers) for (const [variant, phases] of cases) {
  test(`${variant}: ${tier} persists request-scoped CPU decision evidence`, async ({page}, testInfo) => {
   test.setTimeout(120000);
-  const rows = [], errors = [];
+  const rows = [], errors = [], wasmRequests = [];
   page.on('pageerror', error => errors.push(error.message));
+  page.on('request', request => {
+   if (request.url().includes('ort-wasm')) wasmRequests.push(request.url());
+  });
   page.on('console', message => {
    const text = message.text();
    if (!text.startsWith('[E2E-ACTION]') || !text.includes('metadata=')) return;
@@ -42,7 +45,14 @@ for (const tier of tiers) for (const [variant, phases] of cases) {
   const evidence = JSON.stringify({variant, tier, rows, errors, apiStubbed:true}, null, 2);
   await writeFile(testInfo.outputPath('inference-evidence.json'), evidence);
   await testInfo.attach('inference-evidence', {body:evidence,contentType:'application/json'});
+  expect(errors).toEqual([]);
   for (const phase of phases) expect(rows.some(row => row.phase === phase)).toBe(true);
+  if (variant === 'D03' && tier === 'standard') {
+   for (const phase of phases) expect(rows.some(row => row.phase === phase && row.status === 'used')).toBe(true);
+   expect(rows.every(row => row.status === 'used')).toBe(true);
+   expect(wasmRequests.some(url => url.includes('ort-wasm-simd-threaded.wasm'))).toBe(true);
+   expect(wasmRequests.some(url => url.includes('.jsep.wasm'))).toBe(false);
+  }
   if (['nlh','ST1','dramaha_hi'].includes(variant)) expect(rows.every(row => row.status === 'not-connected' && ['automatic-check-call','default-stand-pat'].includes(row.reason))).toBe(true);
   for (const row of rows) {
    expect(row.tierId).toBe(tier);

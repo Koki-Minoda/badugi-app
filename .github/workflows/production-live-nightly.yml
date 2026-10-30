@@ -73,6 +73,14 @@ jobs:
         run: >-
           npx playwright test tests/e2e/all-live-core5-cash-production.spec.ts
           --project=release-candidate-cash-iphone-webkit --workers=1
+      - name: Verify three cold WebKit sessions use the published CPU model
+        env:
+          E2E_APP_URL: https://mgx-poker.com/
+        run: >-
+          npx playwright test tests/e2e/cpu-inference-evidence.spec.ts
+          --project=cpu-inference-iphone-webkit
+          --grep 'D03: standard persists'
+          --repeat-each=3 --workers=1
       - uses: actions/upload-artifact@v4
         if: always()
         with:

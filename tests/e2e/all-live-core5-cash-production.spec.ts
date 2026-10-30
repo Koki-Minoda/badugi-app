@@ -521,7 +521,6 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
     let totalSizingActions = 0;
     for (let hand = 1; hand <= HANDS; hand += 1) {
       mark("hand-start", { hand });
-      await expect(page.getByTestId("hand-result-overlay")).toBeHidden({ timeout: 15_000 });
       const before = await getProgressState(page);
       expect(before.handId).toEqual(expect.any(String));
       const result = await playOneRealButtonHand(
@@ -565,7 +564,24 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
         await expect(next).toBeVisible({ timeout: 10_000 });
         await next.click({ timeout: 5_000 });
         try {
-          await expect(page.getByTestId("hand-result-overlay")).toBeHidden({ timeout: 15_000 });
+          const readNextHandState = async () => {
+            const progress = await getProgressState(page);
+            if (!(await page.getByTestId("hand-result-overlay").isVisible())) return "active";
+            // The legacy Badugi snapshot can retain the previous hand ID
+            // after the overlay has closed, so only require a new ID while
+            // deciding whether a still-visible result belongs to a new hand.
+            if (!progress.handId || progress.handId === before.handId) return "previous";
+            // A blind all-in or walk can settle the new hand before the old
+            // result overlay disappears. Require its own history record so a
+            // stale overlay cannot be mistaken for the next hand's result.
+            return (await historyRecords(page)).some((record: any) => record.handId === progress.handId)
+              ? "settled"
+              : "transitioning";
+          };
+          await expect.poll(readNextHandState, { timeout: 15_000 }).toMatch(/^(active|settled)$/);
+          if ((await readNextHandState()) === "active") {
+            await expect(page.getByTestId("decision-panel")).toBeVisible({ timeout: 20_000 });
+          }
         } catch (error) {
           const nextHandDebug = await page.evaluate(() =>
             (window as any).__BADUGI_E2E__?.getNextHandDebug?.() ?? null
@@ -586,7 +602,6 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
           });
           throw error;
         }
-        await expect(page.getByTestId("decision-panel")).toBeVisible({ timeout: 20_000 });
       }
     }
     expect(

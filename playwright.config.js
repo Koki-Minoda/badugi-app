@@ -139,7 +139,7 @@ export default defineConfig({
     {
       name: 'chinese-desktop-chromium',
       testDir: './tests/e2e',
-      testMatch: /chinese-poker-release-qm\.spec\.ts/,
+      testMatch: /(?:chinese-poker-release-qm|ofc-completion)\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
       },
@@ -147,7 +147,7 @@ export default defineConfig({
     {
       name: 'chinese-android-chromium',
       testDir: './tests/e2e',
-      testMatch: /chinese-poker-release-qm\.spec\.ts/,
+      testMatch: /(?:chinese-poker-release-qm|ofc-completion)\.spec\.ts/,
       use: {
         ...devices['Pixel 7'],
         browserName: 'chromium',
@@ -156,7 +156,7 @@ export default defineConfig({
     {
       name: 'chinese-iphone-webkit',
       testDir: './tests/e2e',
-      testMatch: /chinese-poker-release-qm\.spec\.ts/,
+      testMatch: /(?:chinese-poker-release-qm|ofc-completion)\.spec\.ts/,
       use: {
         ...devices['iPhone 13'],
         browserName: 'webkit',

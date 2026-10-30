@@ -1,17 +1,40 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import {test,expect} from '@playwright/test';
 import {APP_URL,openAuthenticatedGame,deleteAuthenticatedSession,selectGameVariantFromSelector} from './authHelper';
 import {replayOfcHistory} from '../../src/games/chinese/OpenFaceChineseController.js';
 test('OFC: all three placement buttons stay above the action bar on an iPhone portrait screen',async({page})=>{
   await page.setViewportSize({width:390,height:844});
-  await page.goto(`${APP_URL}game?trial=1&variant=ofc`);
-  await expect(page.getByTestId('ofc-place-back')).toBeVisible();
-  const layout=await page.evaluate(()=>{
-    const footer=document.querySelector('[data-testid="ofc-actions"]')!.getBoundingClientRect();
-    const buttons=['front','middle','back'].map(row=>document.querySelector(`[data-testid="ofc-place-${row}"]`)!.getBoundingClientRect());
-    return {footerTop:footer.top,buttonBottoms:buttons.map(button=>button.bottom),overflow:document.documentElement.scrollWidth-innerWidth};
-  });
-  expect(layout.overflow).toBeLessThanOrEqual(1);
-  for(const bottom of layout.buttonBottoms)expect(bottom).toBeLessThanOrEqual(layout.footerTop-8);
+  const session=await openAuthenticatedGame(page,`${APP_URL}?variant=ofc`);
+  try {
+    await expect(page.getByTestId('ofc-place-back')).toBeVisible();
+    const layout=await page.evaluate(()=>{
+      const footer=document.querySelector('[data-testid="ofc-actions"]')!.getBoundingClientRect();
+      const buttons=['front','middle','back'].map(row=>document.querySelector(`[data-testid="ofc-place-${row}"]`)!.getBoundingClientRect());
+      return {footerTop:footer.top,buttonBottoms:buttons.map(button=>button.bottom),overflow:document.documentElement.scrollWidth-innerWidth};
+    });
+    expect(layout.overflow).toBeLessThanOrEqual(1);
+    for(const bottom of layout.buttonBottoms)expect(bottom).toBeLessThanOrEqual(layout.footerTop-8);
+  } finally {await deleteAuthenticatedSession(page,session);}
+});
+test('OFC: all three placement buttons remain reachable above the action bar in landscape',async({page})=>{
+  await page.setViewportSize({width:844,height:390});
+  const session=await openAuthenticatedGame(page,`${APP_URL}?variant=ofc`);
+  try {
+    for(const row of ['front','middle','back']){
+      const button=page.getByTestId(`ofc-place-${row}`);
+      await button.evaluate(element=>element.scrollIntoView({block:'center',behavior:'instant'}));
+      const layout=await page.evaluate(row=>{
+        const button=document.querySelector(`[data-testid="ofc-place-${row}"]`)!.getBoundingClientRect();
+        const footer=document.querySelector('[data-testid="ofc-actions"]')!.getBoundingClientRect();
+        return {buttonTop:button.top,buttonBottom:button.bottom,footerTop:footer.top,overflow:document.documentElement.scrollWidth-innerWidth};
+      },row);
+      expect(layout.overflow).toBeLessThanOrEqual(1);
+      expect(layout.buttonTop).toBeGreaterThanOrEqual(0);
+      expect(layout.buttonBottom).toBeLessThanOrEqual(layout.footerTop-8);
+      await button.click({trial:true});
+    }
+  } finally {await deleteAuthenticatedSession(page,session);}
 });
 test('OFC: ten hands, immutable streets, reload, scores and exact replay',async({page},info)=>{
   test.setTimeout(180000);
@@ -59,5 +82,14 @@ test('OFC: ten hands, immutable streets, reload, scores and exact replay',async(
     await page.getByRole('button',{name:/#10 ·/}).click();
     await expect(page.getByTestId('ofc-replay')).toContainText('検証済み');
     expect(errors).toEqual([]);
+    const device=info.project.name.includes('android')?'android':info.project.name.includes('iphone')?'iphone':'desktop';
+    const reportDir=path.resolve('reports/all-live-cash');
+    fs.mkdirSync(reportDir,{recursive:true});
+    fs.writeFileSync(path.join(reportDir,`ofc-${device}-10-hands.json`),`${JSON.stringify({
+      schemaVersion:1,status:'PASS',target:APP_URL,variant:'ofc',device,
+      browserEngine:info.project.name.includes('webkit')?'webkit':'chromium',
+      handsCompleted:10,historyRecords:10,exactReplayVerified:10,
+      zeroSumPointsVerified:10,horizontalOverflowIssues:0,fatalErrors:errors,
+    },null,2)}\n`);
   } finally {await deleteAuthenticatedSession(page,session);}
 });

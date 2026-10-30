@@ -271,20 +271,49 @@ export async function deleteAuthenticatedSession(
   const token = session?.authState?.accessToken;
   const scheme = session?.authState?.tokenType ?? "Bearer";
   if (!token) throw new Error("Cannot delete E2E account without an access token");
-  const deletion = await page.request.delete(`${API_URL}/auth/account`, {
-    headers: { Authorization: `${scheme} ${token}` },
-    data: { password: session.password },
-  });
-  if (!deletion.ok()) {
-    throw new Error(`E2E account deletion failed: ${deletion.status()} ${await deletion.text()}`);
+  const safeTransportReason = (error: unknown) =>
+    (error instanceof Error ? error.message : String(error))
+      .split("\n")[0]
+      .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [REDACTED]");
+  const headers = { Authorization: `${scheme} ${token}` };
+  let uncertainPriorDelete = false;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    let deletion;
+    try {
+      deletion = await page.request.delete(`${API_URL}/auth/account`, {
+        headers,
+        data: { password: session.password },
+      });
+    } catch (error) {
+      uncertainPriorDelete = true;
+      if (attempt === 3) {
+        throw new Error(`E2E account deletion transport failed after 3 attempts: ${safeTransportReason(error)}`);
+      }
+      await page.waitForTimeout(attempt * 300);
+      continue;
+    }
+    if (deletion.status() === 401 && uncertainPriorDelete) break;
+    if (!deletion.ok()) {
+      throw new Error(`E2E account deletion failed: ${deletion.status()} ${await deletion.text()}`);
+    }
+    const payload = await deletion.json();
+    if (payload?.deleted !== true) throw new Error("E2E account deletion was not confirmed");
+    break;
   }
-  const payload = await deletion.json();
-  if (payload?.deleted !== true) throw new Error("E2E account deletion was not confirmed");
-  const staleAuth = await page.request.get(`${API_URL}/auth/me`, {
-    headers: { Authorization: `${scheme} ${token}` },
-  });
-  if (staleAuth.status() !== 401) {
-    throw new Error(`Deleted E2E account remained accessible: ${staleAuth.status()}`);
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const staleAuth = await page.request.get(`${API_URL}/auth/me`, { headers });
+      if (staleAuth.status() !== 401) {
+        throw new Error(`Deleted E2E account remained accessible: ${staleAuth.status()}`);
+      }
+      return;
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("Deleted E2E account")) throw error;
+      if (attempt === 3) {
+        throw new Error(`E2E account deletion confirmation failed after 3 attempts: ${safeTransportReason(error)}`);
+      }
+      await page.waitForTimeout(attempt * 300);
+    }
   }
 }
 

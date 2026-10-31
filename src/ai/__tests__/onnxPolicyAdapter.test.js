@@ -189,6 +189,24 @@ describe("onnxPolicyAdapter Badugi schema", () => {
     expect(tensor[11]).toBe(1);
   });
 
+  it("encodes FLO8 as high/low fixed limit for a future B09 model", () => {
+    expect(selectModelForVariant({ variantId: "B09", tierId: "standard", requireVariantMatch: true })).toBeNull();
+    const entry = { inputShape: [16], featureSet: "board-betting-observation-v1" };
+    const tensor = buildBoardBetOnnxFeatures(entry, {
+      variantId: "B09",
+      toCall: 20,
+      betSize: 20,
+      potSize: 120,
+      strength: 0.7,
+      equity: 0.6,
+      drawPotential: 0.4,
+      actor: { stack: 500 },
+    });
+    expect(tensor).toHaveLength(16);
+    expect(Array.from(tensor.slice(10, 13))).toEqual([1, 0, 1]);
+    expect(tensor[15]).toBe(0);
+  });
+
   it("builds exact-shape Stud-family betting tensors and selects bootstrap DQN models", () => {
     expect(selectModelForVariant({ variantId: "ST1", tierId: "beginner" })?.id).toBe(
       "model-stud-beginner-dqn-v1",

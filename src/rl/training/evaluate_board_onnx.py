@@ -20,10 +20,15 @@ BOARD_ACTIONS = ["fold", "check", "call", "bet", "raise", "all_in"]
 
 
 def make_vector(*, family: str, strength: float, equity: float, draw: float, to_call: float, position: float):
+    # These fixtures represent a flop decision. FLO8's fixed-limit unit is one
+    # small bet, unlike the larger pot-limit amounts used by PLO8.
+    if family == "flo8":
+        to_call = 0.04 if to_call > 0 else 0.0
+    bet_size = 0.04 if family == "flo8" else 0.12
     return np.array(
         [
             to_call,
-            0.12,
+            bet_size,
             0.28,
             strength,
             equity,
@@ -32,9 +37,9 @@ def make_vector(*, family: str, strength: float, equity: float, draw: float, to_
             0.33,
             to_call / max(0.01, 0.28 + to_call),
             0.0,
-            1.0 if family == "plo8" else 0.0,
+            1.0 if family in {"plo8", "flo8"} else 0.0,
             1.0 if family in {"plo", "plo8"} else 0.0,
-            1.0 if family == "flh" else 0.0,
+            1.0 if family in {"flh", "flo8"} else 0.0,
             0.4,
             0.8,
             1.0 if family == "nlh" else 0.0,
@@ -61,16 +66,16 @@ def run_model(model_path: Path, vector: np.ndarray, legal_actions: set[str]):
 
 
 def family_from_variant(variant_id: str):
-    mapping = {"B01": "nlh", "B02": "flh", "B05": "plo", "B06": "plo8"}
+    mapping = {"B01": "nlh", "B02": "flh", "B05": "plo", "B06": "plo8", "B09": "flo8"}
     if variant_id not in mapping:
         raise ValueError(f"Unsupported board variant id: {variant_id}")
     return mapping[variant_id]
 
 
 def fixtures_for_family(family: str, advanced_gate: bool = False):
-    hi_lo = family == "plo8"
+    hi_lo = family in {"plo8", "flo8"}
     pot_limit = family in {"plo", "plo8"}
-    fixed_limit = family == "flh"
+    fixed_limit = family in {"flh", "flo8"}
     base_fixtures = [
         {
             "name": "strong-open-value-bets",
@@ -90,7 +95,7 @@ def fixtures_for_family(family: str, advanced_gate: bool = False):
         },
         {
             "name": "weak-facing-bet-folds",
-            "vector": make_vector(family=family, strength=0.18, equity=0.16, draw=0.08, to_call=0.25, position=0.2),
+            "vector": make_vector(family=family, strength=0.10 if family == "flo8" else 0.18, equity=0.06 if family == "flo8" else 0.16, draw=0.08, to_call=0.25, position=0.2),
             "legal": {"fold", "call", "raise"},
             "expectedAny": {"fold"},
             "category": "foldDiscipline",
@@ -140,7 +145,7 @@ def fixtures_for_family(family: str, advanced_gate: bool = False):
             "ev": {"fold": 0.0, "call": -0.06, "raise": -0.38, "all_in": -0.62},
         },
         {
-            "name": "plo8-scoop-or-no-low-awareness" if hi_lo else "high-only-no-scoop-control",
+            "name": f"{family}-scoop-or-no-low-awareness" if hi_lo else "high-only-no-scoop-control",
             "vector": make_vector(
                 family=family,
                 strength=0.64 if hi_lo else 0.58,

@@ -30,6 +30,7 @@ VARIANT_BY_FAMILY = {
     "flh": ["B02"],
     "plo": ["B05"],
     "plo8": ["B06"],
+    "flo8": ["B09"],
 }
 
 
@@ -102,6 +103,10 @@ def export_board_checkpoint(
 ):
     if family not in VARIANT_BY_FAMILY:
         raise ValueError(f"Unsupported family: {family}")
+    if family == "flo8" and update_registry_file:
+        raise ValueError("FLO8 candidate export must not update the production registry before live routing and strength gates pass")
+    if family == "flo8" and output.resolve().is_relative_to(PROJECT_ROOT / "public"):
+        raise ValueError("FLO8 candidate export must use an output outside public before live routing and strength gates pass")
     if not checkpoint.exists():
         raise FileNotFoundError(f"Checkpoint not found: {checkpoint}")
     agent = DQNAgent.load(str(checkpoint), device=device)

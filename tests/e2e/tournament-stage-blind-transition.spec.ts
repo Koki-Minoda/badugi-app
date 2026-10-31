@@ -747,6 +747,37 @@ test("scheduled tournament break blocks the next hand, counts down, and resumes"
   await expect.poll(async () => (await getHud(page))?.currentLevelNumber).toBe(2);
 });
 
+test("Next Hand uses the settled tournament roster after a stale table snapshot", async ({ page }) => {
+  test.setTimeout(120_000);
+  await startProductionStage(page, "store");
+  const hand = await playOneHandProgression(page, {
+    maxSteps: 110,
+    policy: "safe",
+    requireHeroButtonClick: false,
+  });
+  expect(hand.status).toBe("PASS");
+  await expect(page.getByTestId("hand-result-pot")).toBeVisible();
+  const previousHandId = await page.evaluate(() =>
+    window.__BADUGI_E2E__.getStateSnapshot().handId,
+  );
+  const fixture = await page.evaluate(() =>
+    window.__BADUGI_E2E__.forceStaleTournamentRosterForTest(),
+  );
+  expect(fixture).toEqual({ authorityCanContinue: true, localCanContinue: false });
+  expect((await page.evaluate(() => window.__BADUGI_E2E__.getNextHandDebug()))?.canContinue)
+    .toBe(false);
+
+  await page.getByRole("button", { name: /Next Hand|次のハンド/i }).last().click();
+  await expect.poll(() => page.evaluate((oldHandId) => {
+    const state = window.__BADUGI_E2E__.getStateSnapshot();
+    return {
+      handAdvanced: state.handId !== null && state.handId !== oldHandId,
+      canContinue: window.__BADUGI_E2E__.getNextHandDebug().canContinue,
+      resultVisible: Boolean(document.querySelector('[data-testid="hand-result-pot"]')),
+    };
+  }, previousHandId)).toEqual({ handAdvanced: true, canContinue: true, resultVisible: false });
+});
+
 test("Store runs from its production field to a verified champion", async ({ page }) => {
   // Natural play can keep the hero alive for 65+ hands (over six minutes on CI).
   // Match the bounded World budget without shortening the field or forcing a winner.

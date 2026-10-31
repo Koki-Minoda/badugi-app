@@ -8239,6 +8239,19 @@ export default function App() {
         Array.isArray(prevPlayers) && prevPlayers.length
           ? prevPlayers
           : (playersRef.current ?? players);
+      if (mode === "tournament-mtt") {
+        // A late controller snapshot can restore a pre-showdown, stack-zero
+        // seat after the MTT authority has settled that hand. The next deal
+        // must start from the settled field, not that transient table render.
+        const heroTable = hydrateHeroTableFromTournamentState(
+          tournamentStateRef.current,
+        );
+        if (heroTable) {
+          snapshot = heroTable.tablePlayers;
+          heroSeatMapRef.current = heroTable.seatMapping;
+          heroTableIdRef.current = heroTable.tableId;
+        }
+      }
       snapshot = sanitizePlayerSnapshotForVariant(
         snapshot,
         gameVariantRef.current ?? gameVariant,
@@ -8316,7 +8329,10 @@ export default function App() {
         }
       }
       const nextHandNumber = handCountRef.current + 1;
-      if (mode !== "tournament-mtt") {
+      if (mode === "tournament-mtt") {
+        playersRef.current = snapshot;
+        setPlayers(snapshot);
+      } else {
         // Make the rebuy/reseat roster authoritative before the controller
         // and any pending actor work observe the next hand. This is placed
         // after the previous-hand persistence fallback above on purpose.
@@ -8338,6 +8354,7 @@ export default function App() {
       dealerIdx,
       gameVariant,
       handResultVisible,
+      hydrateHeroTableFromTournamentState,
       isCashCpuLifecycleEnabled,
       mode,
       phase,
@@ -9691,6 +9708,25 @@ export default function App() {
       },
       resolveHandNow: resolveHandImmediately,
       dealNewHandNow: startNextHand,
+      forceStaleTournamentRosterForTest: () => {
+        const authority = tournamentStateRef.current;
+        if (modeRef.current !== "tournament-mtt" || !authority || !handResultVisible) {
+          return null;
+        }
+        const settled = hydrateHeroTableFromTournamentState(authority);
+        if (!settled || !canContinueGame(settled.tablePlayers)) return null;
+        const stale = settled.tablePlayers.map((player, seat) =>
+          seat === 0 || player?.seatOut
+            ? player
+            : { ...player, stack: 0, allIn: true },
+        );
+        playersRef.current = stale;
+        setPlayers(stale);
+        return {
+          authorityCanContinue: canContinueGame(settled.tablePlayers),
+          localCanContinue: canContinueGame(stale),
+        };
+      },
       getNextHandDebug: () => {
         const roster = playersRef.current ?? players ?? [];
         return {

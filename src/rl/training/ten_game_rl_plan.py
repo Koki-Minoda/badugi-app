@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -19,7 +20,7 @@ MODEL_REGISTRY_PATH = PROJECT_ROOT / "src/config/ai/modelRegistry.json"
 VARIANT_CATALOG_PATH = PROJECT_ROOT / "src/games/config/multiGameList.json"
 PRO_PRESETS_PATH = PROJECT_ROOT / "src/config/mixed/proPresets.js"
 
-TEN_GAME_VARIANT_IDS = ["B01", "B02", "B06", "ST3", "ST1", "ST2", "D01", "B05", "D03", "S01"]
+TEN_GAME_VARIANT_IDS = ["B01", "B02", "B09", "ST3", "ST1", "ST2", "D01", "B05", "D03", "S01"]
 TIERS = ["beginner", "standard"]
 
 
@@ -139,6 +140,20 @@ FAMILY_PLANS: dict[str, RlFamilyPlan] = {
             "--imitation-pretrain-steps 1000 --fixture-replay-copies 300"
         ),
         notes="PLO8 must preserve scoop/no-low and quartering reward gates.",
+    ),
+    "board:flo8": RlFamilyPlan(
+        family="board:flo8",
+        feature_set="not-yet-defined",
+        input_shape=0,
+        output_shape=0,
+        reward_source="not-yet-validated: fixed-limit Omaha Hi-Lo split/quartering",
+        action_mask_source="not-yet-validated: fixed-limit cap and raise mask",
+        dataset_source="not-yet-defined: FLO8 hand-history and split-pot fixtures",
+        short_eval_gate="not-yet-implemented: FLO8-specific ONNX and game-path evaluation",
+        train_command_template=None,
+        eval_command_template=None,
+        long_run_command_template=None,
+        notes="Actual fixed 10-Game preset uses B09 FLO8, not B06 PLO8; no validated FLO8 trainer or model route.",
     ),
     "draw:low-27:triple": RlFamilyPlan(
         family="draw:low-27:triple",
@@ -288,6 +303,7 @@ VARIANT_FAMILIES = {
     "B02": "board:flh",
     "B05": "board:plo",
     "B06": "board:plo8",
+    "B09": "board:flo8",
     "D01": "draw:low-27:triple",
     "D03": "badugi",
     "S01": "draw:low-27:single",
@@ -307,6 +323,14 @@ def load_model_registry() -> list[dict[str, Any]]:
 
 def load_variants() -> dict[str, dict[str, Any]]:
     return {item["id"]: item for item in load_json(VARIANT_CATALOG_PATH)}
+
+
+def load_fixed_ten_game_preset_ids() -> list[str]:
+    source = PRO_PRESETS_PATH.read_text(encoding="utf-8")
+    match = re.search(r'id:\s*"mix-10game-pro"[^}]*?selectedGameIds:\s*(\[[^\]]+\])', source)
+    if not match:
+        raise ValueError("Could not read the fixed 10-Game preset rotation")
+    return json.loads(match.group(1))
 
 
 def model_asset_exists(entry: dict[str, Any]) -> bool:
@@ -354,6 +378,9 @@ def shape_matches(entry: dict[str, Any] | None, plan: RlFamilyPlan) -> bool:
 
 
 def build_variant_plan(short_episodes: int = 2_000) -> dict[str, Any]:
+    preset_ids = load_fixed_ten_game_preset_ids()
+    if preset_ids != TEN_GAME_VARIANT_IDS:
+        raise ValueError(f"RL plan rotation differs from the fixed 10-Game preset: {preset_ids}")
     registry = load_model_registry()
     variants = load_variants()
     rows = []

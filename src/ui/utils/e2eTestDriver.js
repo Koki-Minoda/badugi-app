@@ -53,6 +53,9 @@ export function installE2eTestDriver(apiRef) {
       apiRef.current?.forceBadugiBetToDrawTransitionForTest?.(...args),
     resolveHandNow: (...args) => apiRef.current?.resolveHandNow?.(...args),
     dealNewHandNow: (...args) => apiRef.current?.dealNewHandNow?.(...args),
+    forceStaleTournamentRosterForTest: (...args) =>
+      apiRef.current?.forceStaleTournamentRosterForTest?.(...args),
+    getNextHandDebug: (...args) => apiRef.current?.getNextHandDebug?.(...args),
     forceDealNewHandNow: (...args) =>
       apiRef.current?.forceDealNewHandNow?.(...args),
     getStateSnapshot: (...args) => apiRef.current?.getStateSnapshot?.(...args),

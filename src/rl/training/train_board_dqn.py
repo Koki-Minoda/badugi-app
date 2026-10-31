@@ -161,7 +161,7 @@ def train_board_dqn(cfg: BoardTrainConfig | None = None, device: str | torch.dev
             obs = next_obs
             total_reward += float(reward)
             if episode >= cfg.warmup_steps and len(replay) >= cfg.batch_size and episode % cfg.train_every_steps == 0:
-                loss, mean_q = agent.update(replay.sample(cfg.batch_size))
+                loss, mean_q, _td_errors = agent.update(replay.sample(cfg.batch_size))
                 expert_batch_size = int(round(cfg.batch_size * cfg.expert_replay_ratio))
                 if expert_batch_size > 0:
                     imitation_loss, imitation_accuracy = agent.imitation_update(

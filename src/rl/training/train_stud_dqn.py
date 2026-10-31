@@ -151,7 +151,7 @@ def train_stud_dqn(cfg: StudTrainConfig | None = None, device: str | torch.devic
         replay.add(obs, action, reward, next_obs, done, next_action_mask=env.legal_action_mask())
         rewards.append(float(reward))
         if episode >= cfg.warmup_steps and len(replay) >= cfg.batch_size and episode % cfg.train_every_steps == 0:
-            loss, mean_q = agent.update(replay.sample(cfg.batch_size))
+            loss, mean_q, _td_errors = agent.update(replay.sample(cfg.batch_size))
             expert_batch_size = int(round(cfg.batch_size * cfg.expert_replay_ratio))
             if expert_batch_size > 0:
                 imitation_loss, imitation_accuracy = agent.imitation_update(

@@ -270,7 +270,6 @@ export function chooseTeacherBetAction({
   tierConfig = {},
   betAmount = 0,
   currentBet = 0,
-  playerBet = 0,
   street = "",
   variantId = "B01",
   position = "MP",

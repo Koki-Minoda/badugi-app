@@ -470,4 +470,17 @@ describe("NLHGameController", () => {
     expect(action.type).toBe("RAISE");
     expect(controller.applyPlayerAction({ seatIndex: 2, action: "raise", amount: action.amount }).success).toBe(true);
   });
+
+  it("calls rather than attempting a full raise with only the call amount left", () => {
+    const controller = createController({ seats, deckCards, blinds });
+    controller.startNewHand();
+    const players = controller.getSnapshot().players;
+    players[0] = {
+      ...players[0], holeCards: ["AS", "AH"], stack: 10, betThisStreet: 490,
+    };
+    controller.syncExternalState({ players, currentActor: 0, currentBet: 500, lastFullRaiseSize: 20 });
+    const action = controller.getCpuAction(controller.getSnapshot(), 0, { tierConfig: { id: "standard" } });
+    expect(action.type).toBe("CALL");
+    expect(controller.applyPlayerAction({ seatIndex: 0, action: "call" }).success).toBe(true);
+  });
 });

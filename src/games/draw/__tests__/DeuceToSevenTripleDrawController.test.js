@@ -50,6 +50,22 @@ describe("DeuceToSevenTripleDrawController", () => {
     });
   });
 
+  it.each([
+    ["seat-out", { stack: 0, seatOut: true, isBusted: true }],
+    ["zero-stack", { stack: 0, seatOut: false, isBusted: false }],
+  ])("does not deal or consume cards for a %s CPU", (_label, inactiveCpu) => {
+    const nextCards = ["2H", "3H", "4H", "5H", "8H"];
+    const controller = buildController(["2S", "3S", "4S", "5S", "7S", ...nextCards]);
+    const state = controller.createNewHandState(controller.createInitialState(), {
+      currentPlayers: [{ playerId: "hero", stack: 500 }, { playerId: "cpu-1", ...inactiveCpu }],
+      structure: { sb: 0, bb: 0, ante: 0 },
+    });
+
+    expect(state.engineState.players[0].hand).toEqual(["2S", "3S", "4S", "5S", "7S"]);
+    expect(state.engineState.players[1].hand).toEqual([]);
+    expect(controller.engine.getDeckManager().cards).toEqual(nextCards);
+  });
+
   it("keeps tournament identity when players move seats between hands", () => {
     const controller = buildController([
       "2S", "3S", "4S", "5S", "7S", "2H", "3H", "4H", "5H", "8H",

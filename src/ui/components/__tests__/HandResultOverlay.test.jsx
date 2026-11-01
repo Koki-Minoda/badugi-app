@@ -24,12 +24,14 @@ describe("HandResultOverlay", () => {
   test("keeps both halves of the same pot when the winner changes between hands", () => {
     const errors = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
-      const summary = name => ({ pot: 100, potDetails: [
+      const summary = (name, handId) => ({ handId, pot: 100, potDetails: [
         { potIndex: 0, component: "badugi", potAmount: 50, winners: [{ ...baseWinner, name, payout: 50 }] },
         { potIndex: 0, component: "low27", potAmount: 50, winners: [{ ...baseWinner, name, payout: 50 }] },
       ] });
-      const { rerender } = render(<HandResultOverlay visible summary={summary("Mina")} />);
-      rerender(<HandResultOverlay visible summary={summary("Jun")} />);
+      const { rerender } = render(<HandResultOverlay visible summary={summary("Mina", "hand-1")} />);
+      expect(screen.getByTestId("hand-result-overlay").getAttribute("data-hand-id")).toBe("hand-1");
+      rerender(<HandResultOverlay visible summary={summary("Jun", "hand-2")} />);
+      expect(screen.getByTestId("hand-result-overlay").getAttribute("data-hand-id")).toBe("hand-2");
       expect(screen.getAllByTestId("hand-result-pot-title").map(node => node.textContent)).toEqual([
         "Main Pot · Badugi half", "Main Pot · 2-7 Low half",
       ]);
@@ -51,6 +53,7 @@ describe("HandResultOverlay", () => {
       ],
     }} />);
     expect(screen.getByRole("dialog").textContent).not.toContain("BOARD-HAND-1");
+    expect(screen.getByTestId("hand-result-overlay").getAttribute("data-hand-id")).toBe("BOARD-HAND-1");
     expect(screen.getAllByTestId("hand-result-eligible-seats").map(node => node.textContent))
       .toEqual(["対象席: 全員", "対象席: あなた / Ren"]);
   });

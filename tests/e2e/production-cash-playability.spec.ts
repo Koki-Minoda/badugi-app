@@ -231,10 +231,12 @@ async function runHands(page: Page, handCount: number) {
       const resultOverlay = page.getByTestId("hand-result-overlay").first();
       if (await resultOverlay.isVisible()) {
         // A short-stacked Hero can post the blind and settle the new hand
-        // before the overlay has time to disappear. It must show that new hand.
-        await expect.poll(async () => (await resultOverlay.textContent())?.toLowerCase(), {
-          timeout: 5_000,
-        }).toContain(newHandId.toLowerCase());
+        // before the overlay has time to disappear. Its visible text intentionally
+        // omits internal IDs, so verify the overlay's ID and the settled history.
+        await expect(resultOverlay).toHaveAttribute("data-hand-id", newHandId, { timeout: 5_000 });
+        await expect.poll(async () => page.evaluate((handId) =>
+          window.__BADUGI_E2E__?.getHandHistory()?.some((entry) => entry.handId === handId),
+        newHandId), { timeout: 5_000 }).toBe(true);
       } else {
         await expect(page.getByTestId("decision-panel")).toBeVisible({ timeout: 20_000 });
       }

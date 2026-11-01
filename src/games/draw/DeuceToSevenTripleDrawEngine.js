@@ -237,8 +237,10 @@ function getDrawIndexesForLowball(hand = [], evaluation = null, options = {}) {
 
 function hasBettingRoundCompleted(state) {
   const bettingPlayers = getBettingPlayers(state.players);
-  if (bettingPlayers.length <= 1) return true;
+  if (bettingPlayers.length === 0) return true;
   const currentBet = getCurrentBet(state);
+  // A lone player has no one to bet against, but must still answer an unmatched all-in.
+  if (bettingPlayers.length === 1) return (bettingPlayers[0].bet ?? 0) >= currentBet;
   return bettingPlayers.every(
     (player) => player.hasActedThisRound && (player.allIn || (player.bet ?? 0) === currentBet),
   );

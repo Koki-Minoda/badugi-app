@@ -771,7 +771,10 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     const playerBet = player.bet ?? 0;
     const facingBet = currentBet > playerBet;
     const raiseCount = Number(state.metadata?.raiseCountThisRound) || 0;
-    const canRaise = (player.stack ?? 0) > 0 && raiseCount < getRaiseCap(state);
+    const toCall = Math.max(0, currentBet - playerBet);
+    const noLimitRaiseAvailable = state.metadata?.bettingStructure !== "no-limit" ||
+      ((player.stack ?? 0) > toCall && !player.hasActedThisRound);
+    const canRaise = (player.stack ?? 0) > 0 && raiseCount < getRaiseCap(state) && noLimitRaiseAvailable;
     const strongPat = cleanLow && highestRank <= this.drawHeuristic.raiseHighRank;
     const strongOneDraw = drawCount <= 1 && highestRank <= this.drawHeuristic.patHighRank;
     const weakLateDraw =

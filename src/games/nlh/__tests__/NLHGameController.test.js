@@ -447,9 +447,27 @@ describe("NLHGameController", () => {
 
     expect(action).toMatchObject({
       seatIndex: 0,
-      type: "BET",
+      type: "RAISE",
       metadata: expect.objectContaining({ strategy: "teacher-supervised" }),
     });
     expect(action.metadata.strength).toBeGreaterThan(0.8);
+    expect(controller.applyPlayerAction({
+      seatIndex: 0, action: action.type.toLowerCase(), amount: action.amount,
+    }).success).toBe(true);
+  });
+
+  it("raises legally when action returns to an unchallenged big blind", () => {
+    const controller = createController({ seats, deckCards, blinds });
+    controller.startNewHand();
+    expect(controller.applyPlayerAction({ seatIndex: 0, action: "call" }).success).toBe(true);
+    expect(controller.applyPlayerAction({ seatIndex: 1, action: "call" }).success).toBe(true);
+    const state = controller.getSnapshot();
+    expect(state.currentActor).toBe(2);
+    const players = state.players;
+    players[2].holeCards = ["AS", "AD"];
+    controller.syncExternalState({ players });
+    const action = controller.getCpuAction(controller.getSnapshot(), 2, { tierConfig: { id: "standard" } });
+    expect(action.type).toBe("RAISE");
+    expect(controller.applyPlayerAction({ seatIndex: 2, action: "raise", amount: action.amount }).success).toBe(true);
   });
 });

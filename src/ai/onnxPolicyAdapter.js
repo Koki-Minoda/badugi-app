@@ -79,9 +79,9 @@ export function buildBoardBetOnnxFeatures(entry, payload = {}) {
   const maxStack = Math.max(1, observation.actor?.stack ?? observation.stack ?? 500);
   const variantId = observation.variantId ?? payload.variantId;
   const familyFlags = {
-    hiLo: variantId === "B06" ? 1 : 0,
+    hiLo: ["B06", "B09"].includes(variantId) ? 1 : 0,
     potLimit: ["B05", "B06"].includes(variantId) ? 1 : 0,
-    fixedLimit: variantId === "B02" ? 1 : 0,
+    fixedLimit: ["B02", "B09"].includes(variantId) ? 1 : 0,
     noLimit: variantId === "B01" ? 1 : 0,
   };
   const toCall = Number(observation.toCall ?? 0);

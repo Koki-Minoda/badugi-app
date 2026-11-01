@@ -118,3 +118,81 @@ def test_board_teacher_folds_poor_plo8_no_low_start_but_raises_scoop_start():
 
     assert BOARD_ACTIONS[board_teacher_action(poor_no_low)] == "fold"
     assert BOARD_ACTIONS[board_teacher_action(scoop_candidate)] == "raise"
+
+
+def test_flo8_observation_combines_hilo_with_fixed_limit():
+    env = BoardBettingEnv(family="flo8", tier="standard", seed=19)
+    observation, _ = env.reset()
+    assert observation.shape == (16,)
+    assert observation[10] == 1.0  # high/low split
+    assert observation[11] == 0.0  # not pot limit
+    assert observation[12] == 1.0  # fixed limit
+    assert observation[15] == 0.0  # not no limit
+
+
+def test_flo8_long_horizon_uses_small_and_big_fixed_bets():
+    env = BoardLongHorizonEnv(family="flo8", tier="standard", seed=19)
+    env.reset()
+    env.hero_stack = 1.0
+    env.scenario.to_call = 0.04
+    assert env._sample_to_call() in {0.0, 0.04}
+    assert env._contribution_for("raise") == pytest.approx(0.08)
+    env.street_index = 2
+    env.scenario.to_call = 0.08
+    assert env._sample_to_call() in {0.0, 0.08}
+    assert env._contribution_for("raise") == pytest.approx(0.16)
+
+
+def test_flo8_disallows_oversized_all_in_but_allows_short_stack():
+    env = BoardBettingEnv(family="flo8", tier="standard", seed=19)
+    env.reset()
+    env.scenario.to_call = 0.04
+    env.scenario.bet_size = 0.04
+    env.scenario.stack_ratio = 0.7
+    env.scenario.equity = 0.95
+    assert env.legal_action_mask()[BOARD_ACTIONS.index("all_in")] == 0
+    env.scenario.stack_ratio = 0.07
+    assert env.legal_action_mask()[BOARD_ACTIONS.index("all_in")] == 1
+
+
+def test_flo8_teacher_values_scoop_and_folds_weak_no_low():
+    poor = make_scenario(
+        family="flo8", strength=0.48, equity=0.42, draw_potential=0.12,
+        position=0.2, to_call=0.04, pot_size=0.25, active_opponents=3,
+        range_score=0.35,
+    )
+    scoop = make_scenario(
+        family="flo8", strength=0.72, equity=0.74, draw_potential=0.62,
+        position=0.7, to_call=0.04, pot_size=0.25, active_opponents=2,
+        range_score=0.84,
+    )
+    assert BOARD_ACTIONS[board_teacher_action(poor)] == "fold"
+    assert BOARD_ACTIONS[board_teacher_action(scoop)] == "raise"
+
+
+def test_flo8_candidate_evaluation_flags_and_registry_gate(tmp_path):
+    from rl.training.evaluate_board_onnx import family_from_variant, fixtures_for_family, make_vector
+    from rl.training.export_board_dqn_onnx import PROJECT_ROOT, VARIANT_BY_FAMILY, export_board_checkpoint
+
+    assert family_from_variant("B09") == "flo8"
+    assert VARIANT_BY_FAMILY["flo8"] == ["B09"]
+    vector = make_vector(family="flo8", strength=0.7, equity=0.7, draw=0.5, to_call=0.04, position=0.7)
+    assert (vector[10], vector[11], vector[12], vector[15]) == (1.0, 0.0, 1.0, 0.0)
+    assert vector[0] == pytest.approx(0.04)
+    assert vector[1] == pytest.approx(0.04)
+    fixtures = fixtures_for_family("flo8", advanced_gate=True)
+    assert len(fixtures) == 8
+    assert all(fixture["vector"][0] in {0.0, vector[0]} for fixture in fixtures)
+    assert any(fixture["category"] == "scoopNoLow" for fixture in fixtures)
+    with pytest.raises(ValueError, match="production registry"):
+        export_board_checkpoint(
+            family="flo8", tier="standard", checkpoint=tmp_path / "candidate.pt",
+            output=tmp_path / "candidate.onnx", registry=tmp_path / "registry.json",
+            update_registry_file=True, device="cpu",
+        )
+    with pytest.raises(ValueError, match="outside public"):
+        export_board_checkpoint(
+            family="flo8", tier="standard", checkpoint=tmp_path / "candidate.pt",
+            output=PROJECT_ROOT / "public/models/flo8_candidate.onnx",
+            registry=tmp_path / "registry.json", update_registry_file=False, device="cpu",
+        )

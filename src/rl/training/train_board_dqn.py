@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import sys
 import time
 from dataclasses import dataclass
@@ -53,6 +54,7 @@ class BoardTrainConfig:
     log_interval: int = 500
     fixture_replay_copies: int = 120
     resume_checkpoint: str | None = None
+    seed: int | None = None
 
 
 def linear_epsilon_decay(episode: int, start_eps: float, end_eps: float, decay_episodes: int) -> float:
@@ -73,15 +75,18 @@ def add_board_fixture_examples(env: BoardBettingEnv, replay: ReplayBuffer, exper
             # Advanced gate: thin value, bluff discipline, isolation, side-pot control.
             {"strength": 0.66, "equity": 0.61, "draw": 0.05, "to_call": 0.0, "position": 0.9, "expected": 3},
             {"strength": 0.22, "equity": 0.24, "draw": 0.1, "to_call": 0.0, "position": 0.35, "expected": 1},
-            {"strength": 0.72, "equity": 0.68, "draw": 0.28 if env.family in {"plo", "plo8"} else 0.12, "to_call": 0.08, "position": 0.72, "expected": 4 if env.family != "flh" else 2, "active_opponents": 3},
+            {"strength": 0.72, "equity": 0.68, "draw": 0.28 if env.family in {"plo", "plo8", "flo8"} else 0.12, "to_call": 0.08, "position": 0.72, "expected": 2 if env.family in {"flh", "flo8"} else 4, "active_opponents": 3},
             {"strength": 0.34, "equity": 0.31, "draw": 0.16, "to_call": 0.2, "position": 0.5, "expected": 2},
-            {"strength": 0.64 if env.family == "plo8" else 0.58, "equity": 0.72 if env.family == "plo8" else 0.52, "draw": 0.62 if env.family == "plo8" else 0.22, "to_call": 0.1, "position": 0.7, "expected": 4 if env.family == "plo8" else 2},
+            {"strength": 0.64 if env.family in {"plo8", "flo8"} else 0.58, "equity": 0.72 if env.family in {"plo8", "flo8"} else 0.52, "draw": 0.62 if env.family in {"plo8", "flo8"} else 0.22, "to_call": 0.1, "position": 0.7, "expected": 4 if env.family in {"plo8", "flo8"} else 2},
         ]:
             env.reset()
             env.scenario.strength = fixture["strength"]
             env.scenario.equity = fixture["equity"]
             env.scenario.draw_potential = fixture["draw"]
-            env.scenario.to_call = fixture["to_call"]
+            env.scenario.to_call = (0.04 if fixture["to_call"] > 0 else 0.0) if env.family == "flo8" else fixture["to_call"]
+            if env.family == "flo8":
+                env.scenario.street_progress = 0.33
+                env.scenario.bet_size = 0.04
             env.scenario.position = fixture["position"]
             env.scenario.active_opponents = fixture.get("active_opponents", env.scenario.active_opponents)
             env.scenario.raise_count = 0
@@ -95,11 +100,15 @@ def add_board_fixture_examples(env: BoardBettingEnv, replay: ReplayBuffer, exper
 
 def train_board_dqn(cfg: BoardTrainConfig | None = None, device: str | torch.device = "cpu"):
     cfg = cfg or BoardTrainConfig()
+    if cfg.seed is not None:
+        random.seed(cfg.seed)
+        np.random.seed(cfg.seed)
+        torch.manual_seed(cfg.seed)
     output_dir = Path(cfg.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     env_class = BoardLongHorizonEnv if cfg.long_horizon else BoardBettingEnv
-    env = env_class(family=cfg.family, tier=cfg.tier, max_steps_per_episode=cfg.max_steps_per_episode) if cfg.long_horizon else env_class(family=cfg.family, tier=cfg.tier)
+    env = env_class(family=cfg.family, tier=cfg.tier, seed=cfg.seed, max_steps_per_episode=cfg.max_steps_per_episode) if cfg.long_horizon else env_class(family=cfg.family, tier=cfg.tier, seed=cfg.seed)
     obs, _ = env.reset()
     obs_dim = int(np.prod(env.observation_space.shape))
     n_actions = env.action_space.n
@@ -195,6 +204,7 @@ def train_board_dqn(cfg: BoardTrainConfig | None = None, device: str | torch.dev
         "checkpoint": str(latest),
         "obs_dim": int(obs_dim),
         "n_actions": int(n_actions),
+        "seed": cfg.seed,
     }
     summary_path = output_dir / f"{cfg.family}_{cfg.tier}_board_dqn_latest_summary.json"
     summary_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf8")
@@ -220,6 +230,7 @@ def parse_args():
     parser.add_argument("--save-interval", type=int, default=BoardTrainConfig.save_interval)
     parser.add_argument("--log-interval", type=int, default=BoardTrainConfig.log_interval)
     parser.add_argument("--resume-checkpoint", default=None)
+    parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--device", default=None)
     return parser.parse_args()
 
@@ -243,6 +254,7 @@ if __name__ == "__main__":
         save_interval=args.save_interval,
         log_interval=args.log_interval,
         resume_checkpoint=args.resume_checkpoint,
+        seed=args.seed,
     )
     print(f"Using device: {device}")
     train_board_dqn(cfg=cfg, device=device)

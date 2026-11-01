@@ -1,4 +1,4 @@
-"""Synthetic board-game betting environment for NLH/FLH/PLO/PLO8 bootstrap DQNs."""
+"""Synthetic board-game betting environment for board-variant bootstrap DQNs."""
 
 from __future__ import annotations
 
@@ -11,7 +11,10 @@ from gymnasium import spaces
 
 
 BOARD_ACTIONS = ["fold", "check", "call", "bet", "raise", "all_in"]
-BOARD_VARIANTS = ("nlh", "flh", "plo", "plo8")
+BOARD_VARIANTS = ("nlh", "flh", "plo", "plo8", "flo8")
+HI_LO_FAMILIES = {"plo8", "flo8"}
+FIXED_LIMIT_FAMILIES = {"flh", "flo8"}
+OMAHA_FAMILIES = {"plo", "plo8", "flo8"}
 BOARD_TIERS = ("beginner", "standard")
 POSITION_BUCKETS = ("UTG", "MP", "CO", "BTN", "SB", "BB")
 POSITION_OPEN_FLOORS = {
@@ -19,6 +22,7 @@ POSITION_OPEN_FLOORS = {
     "flh": {"UTG": 0.68, "MP": 0.62, "CO": 0.55, "BTN": 0.48, "SB": 0.52, "BB": 0.28},
     "plo": {"UTG": 0.80, "MP": 0.73, "CO": 0.66, "BTN": 0.58, "SB": 0.64, "BB": 0.36},
     "plo8": {"UTG": 0.78, "MP": 0.70, "CO": 0.62, "BTN": 0.54, "SB": 0.60, "BB": 0.34},
+    "flo8": {"UTG": 0.78, "MP": 0.70, "CO": 0.62, "BTN": 0.54, "SB": 0.60, "BB": 0.34},
 }
 
 
@@ -92,14 +96,20 @@ class BoardBettingEnv(gym.Env):
             mask[2] = 1
             if self.scenario.raise_count < 4 and self.scenario.stack_ratio > 0.08:
                 mask[4] = 1
-            if self.scenario.stack_ratio < 0.18 or self.scenario.equity > 0.8:
+            if self.family == "flo8":
+                if self.scenario.stack_ratio <= self.scenario.to_call + self.scenario.bet_size:
+                    mask[5] = 1
+            elif self.scenario.stack_ratio < 0.18 or self.scenario.equity > 0.8:
                 mask[5] = 1
         else:
             mask[1] = 1
             mask[3] = 1
             if self.scenario.raise_count < 4 and self.scenario.stack_ratio > 0.08:
                 mask[4] = 1
-            if self.scenario.stack_ratio < 0.16 and self.scenario.equity > 0.55:
+            if self.family == "flo8":
+                if self.scenario.stack_ratio <= self.scenario.bet_size:
+                    mask[5] = 1
+            elif self.scenario.stack_ratio < 0.16 and self.scenario.equity > 0.55:
                 mask[5] = 1
         return mask
 
@@ -111,10 +121,13 @@ class BoardBettingEnv(gym.Env):
         active_opponents = self.random.choice([1, 1, 2, 3, 4])
         to_call = self.random.choice([0.0, 0.05, 0.1, 0.2, 0.35])
         bet_size = self.random.choice([0.04, 0.08, 0.16, 0.25])
+        if self.family == "flo8":
+            bet_size = 0.04 if street_progress < 0.66 else 0.08
+            to_call = self.random.choice([0.0, bet_size])
         pot_size = self.random.uniform(0.05, 0.6)
         raise_count = self.random.choice([0, 0, 1, 2, 3])
         stack_ratio = self.random.uniform(0.08, 1.0)
-        hi_lo = 1.0 if self.family == "plo8" else 0.0
+        hi_lo = 1.0 if self.family in HI_LO_FAMILIES else 0.0
         equity = _estimate_equity(
             strength=strength,
             draw_potential=draw_potential,
@@ -169,7 +182,7 @@ class BoardBettingEnv(gym.Env):
             reward -= 0.55
         if action_name in {"raise", "all_in"} and equity < 0.38:
             reward -= 0.55
-        if self.family in {"flh"} and action_name == "all_in":
+        if self.family in FIXED_LIMIT_FAMILIES and action_name == "all_in":
             reward -= 0.4
         return reward
 
@@ -249,7 +262,7 @@ class BoardLongHorizonEnv(BoardBettingEnv):
             draw_potential=scenario.draw_potential,
             street_progress=scenario.street_progress,
             active_opponents=scenario.active_opponents,
-            hi_lo=1.0 if self.family == "plo8" else 0.0,
+            hi_lo=1.0 if self.family in HI_LO_FAMILIES else 0.0,
         )
         scenario.range_score = _estimate_position_range_score(
             family=self.family,
@@ -264,7 +277,7 @@ class BoardLongHorizonEnv(BoardBettingEnv):
         pressure = self.random.random()
         if pressure < 0.45:
             return 0.0
-        if self.family == "flh":
+        if self.family in FIXED_LIMIT_FAMILIES:
             return 0.04 if self.street_index < 2 else 0.08
         return self.random.choice([0.04, 0.08, 0.14, 0.22])
 
@@ -275,7 +288,7 @@ class BoardLongHorizonEnv(BoardBettingEnv):
             return min(self.hero_stack, self.scenario.to_call)
         if action_name == "all_in":
             return self.hero_stack
-        unit = 0.04 if self.family == "flh" and self.street_index < 2 else 0.08
+        unit = 0.04 if self.family in FIXED_LIMIT_FAMILIES and self.street_index < 2 else 0.08
         if self.family in {"plo", "plo8"}:
             unit = min(max(0.05, self.pot), 0.35)
         if self.family == "nlh":
@@ -312,6 +325,8 @@ class BoardLongHorizonEnv(BoardBettingEnv):
         self.scenario.street_progress = self.street_index / 3.0
         self.scenario.pot_size = self.pot
         self.scenario.stack_ratio = self.hero_stack
+        if self.family == "flo8":
+            self.scenario.bet_size = 0.04 if self.street_index < 2 else 0.08
         self.scenario.to_call = self._sample_to_call()
         self.scenario.raise_count = 0 if self.scenario.to_call == 0 else self.random.choice([0, 1, 2])
         self.scenario.last_aggression = 1.0 if action_name in {"bet", "raise"} else self.random.random()
@@ -320,7 +335,7 @@ class BoardLongHorizonEnv(BoardBettingEnv):
             draw_potential=self.scenario.draw_potential,
             street_progress=self.scenario.street_progress,
             active_opponents=self.scenario.active_opponents,
-            hi_lo=1.0 if self.family == "plo8" else 0.0,
+            hi_lo=1.0 if self.family in HI_LO_FAMILIES else 0.0,
         )
         self.scenario.range_score = _estimate_position_range_score(
             family=self.family,
@@ -376,11 +391,11 @@ def _estimate_position_range_score(
 
     bucket = _position_bucket(position)
     late_credit = {"UTG": -0.05, "MP": -0.02, "CO": 0.03, "BTN": 0.09, "SB": -0.01, "BB": 0.04}[bucket]
-    multiway_penalty = max(0, active_opponents - 1) * (0.035 if family in {"plo", "plo8"} else 0.02)
-    if family in {"plo", "plo8"}:
+    multiway_penalty = max(0, active_opponents - 1) * (0.035 if family in OMAHA_FAMILIES else 0.02)
+    if family in OMAHA_FAMILIES:
         nut_potential = draw_potential * (0.62 if family == "plo" else 0.5)
         made_component = strength * (0.42 if family == "plo" else 0.34)
-        scoop_bonus = 0.12 if family == "plo8" and draw_potential >= 0.48 and strength >= 0.42 else 0.0
+        scoop_bonus = 0.12 if family in HI_LO_FAMILIES and draw_potential >= 0.48 and strength >= 0.42 else 0.0
         return float(np.clip(made_component + nut_potential + scoop_bonus + late_credit - multiway_penalty, 0.0, 1.0))
     suited_connector_proxy = draw_potential * 0.22
     made_component = strength * (0.66 if family == "nlh" else 0.58)
@@ -388,9 +403,9 @@ def _estimate_position_range_score(
 
 
 def make_board_observation(scenario: BoardScenario):
-    hi_lo = 1.0 if scenario.family == "plo8" else 0.0
+    hi_lo = 1.0 if scenario.family in HI_LO_FAMILIES else 0.0
     pot_limit = 1.0 if scenario.family in {"plo", "plo8"} else 0.0
-    fixed_limit = 1.0 if scenario.family == "flh" else 0.0
+    fixed_limit = 1.0 if scenario.family in FIXED_LIMIT_FAMILIES else 0.0
     no_limit = 1.0 if scenario.family == "nlh" else 0.0
     return np.array(
         [
@@ -421,7 +436,7 @@ def board_teacher_action(scenario: BoardScenario):
     late_position = scenario.position > 0.62
     multiway = scenario.active_opponents >= 3
     pot_limit = scenario.family in {"plo", "plo8"}
-    hi_lo = scenario.family == "plo8"
+    hi_lo = scenario.family in HI_LO_FAMILIES
     standard = scenario.tier == "standard"
     preflop = scenario.street_progress <= 0.01
     position_bucket = _position_bucket(scenario.position)
@@ -438,7 +453,7 @@ def board_teacher_action(scenario: BoardScenario):
     if preflop:
         floor = POSITION_OPEN_FLOORS[scenario.family][position_bucket] + (0.04 if not standard else 0.0)
         continue_threshold = max(0.18, floor - (0.18 if position_bucket == "BB" else 0.08))
-        value_threshold = max(value_threshold, floor + (0.14 if scenario.family in {"plo", "plo8"} else 0.1))
+        value_threshold = max(value_threshold, floor + (0.14 if scenario.family in OMAHA_FAMILIES else 0.1))
     thin_value_spot = late_position and scenario.strength >= 0.62 and equity >= (0.58 if standard else 0.66)
     isolation_spot = (
         multiway

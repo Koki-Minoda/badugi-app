@@ -1,0 +1,85 @@
+{
+  "variant": "badugi",
+  "tier": "standard",
+  "rows": [
+    {
+      "variantId": "D03",
+      "tierId": "standard",
+      "phase": "BET",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-badugi-sixmax-standard-e11",
+      "usedModelId": "model-badugi-sixmax-standard-e11",
+      "elapsedMs": 190
+    },
+    {
+      "variantId": "D03",
+      "tierId": "standard",
+      "phase": "BET",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-badugi-sixmax-standard-e11",
+      "usedModelId": "model-badugi-sixmax-standard-e11",
+      "elapsedMs": 1
+    },
+    {
+      "variantId": "D03",
+      "tierId": "standard",
+      "phase": "BET",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-badugi-sixmax-standard-e11",
+      "usedModelId": "model-badugi-sixmax-standard-e11",
+      "elapsedMs": 0
+    },
+    {
+      "variantId": "D03",
+      "tierId": "standard",
+      "phase": "BET",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-badugi-sixmax-standard-e11",
+      "usedModelId": "model-badugi-sixmax-standard-e11",
+      "elapsedMs": 0
+    },
+    {
+      "variantId": "D03",
+      "tierId": "standard",
+      "phase": "BET",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-badugi-sixmax-standard-e11",
+      "usedModelId": "model-badugi-sixmax-standard-e11",
+      "elapsedMs": 0
+    },
+    {
+      "variantId": "D03",
+      "tierId": "standard",
+      "phase": "BET",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-badugi-sixmax-standard-e11",
+      "usedModelId": "model-badugi-sixmax-standard-e11",
+      "elapsedMs": 0
+    },
+    {
+      "variantId": "D03",
+      "tierId": "standard",
+      "phase": "DRAW",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-badugi-sixmax-standard-e11",
+      "usedModelId": "model-badugi-sixmax-standard-e11",
+      "elapsedMs": 1
+    }
+  ],
+  "errors": [],
+  "apiStubbed": true
+}

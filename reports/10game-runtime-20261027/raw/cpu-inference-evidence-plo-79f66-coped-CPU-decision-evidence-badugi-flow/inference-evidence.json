@@ -1,0 +1,19 @@
+{
+  "variant": "plo8",
+  "tier": "standard",
+  "rows": [
+    {
+      "variantId": "plo8",
+      "tierId": "standard",
+      "phase": "BET",
+      "status": "not-connected",
+      "reason": "automatic-check-call",
+      "requestedModelId": null,
+      "selectedModelId": null,
+      "usedModelId": null,
+      "elapsedMs": 0
+    }
+  ],
+  "errors": [],
+  "apiStubbed": true
+}

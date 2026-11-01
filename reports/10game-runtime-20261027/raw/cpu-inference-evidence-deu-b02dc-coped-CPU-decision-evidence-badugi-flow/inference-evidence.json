@@ -1,0 +1,118 @@
+{
+  "variant": "deuce_to_seven_triple_draw",
+  "tier": "beginner",
+  "rows": [
+    {
+      "variantId": "D01",
+      "tierId": "beginner",
+      "phase": "BET",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-27draw-beginner-dqn-v1",
+      "usedModelId": "model-27draw-beginner-dqn-v1",
+      "elapsedMs": 270
+    },
+    {
+      "variantId": "D01",
+      "tierId": "beginner",
+      "phase": "BET",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-27draw-beginner-dqn-v1",
+      "usedModelId": "model-27draw-beginner-dqn-v1",
+      "elapsedMs": 1
+    },
+    {
+      "variantId": "D01",
+      "tierId": "beginner",
+      "phase": "BET",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-27draw-beginner-dqn-v1",
+      "usedModelId": "model-27draw-beginner-dqn-v1",
+      "elapsedMs": 0
+    },
+    {
+      "variantId": "D01",
+      "tierId": "beginner",
+      "phase": "BET",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-27draw-beginner-dqn-v1",
+      "usedModelId": "model-27draw-beginner-dqn-v1",
+      "elapsedMs": 0
+    },
+    {
+      "variantId": "D01",
+      "tierId": "beginner",
+      "phase": "BET",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-27draw-beginner-dqn-v1",
+      "usedModelId": "model-27draw-beginner-dqn-v1",
+      "elapsedMs": 1
+    },
+    {
+      "variantId": "D01",
+      "tierId": "beginner",
+      "phase": "BET",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-27draw-beginner-dqn-v1",
+      "usedModelId": "model-27draw-beginner-dqn-v1",
+      "elapsedMs": 1
+    },
+    {
+      "variantId": "D01",
+      "tierId": "beginner",
+      "phase": "BET",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-27draw-beginner-dqn-v1",
+      "usedModelId": "model-27draw-beginner-dqn-v1",
+      "elapsedMs": 0
+    },
+    {
+      "variantId": "D01",
+      "tierId": "beginner",
+      "phase": "BET",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-27draw-beginner-dqn-v1",
+      "usedModelId": "model-27draw-beginner-dqn-v1",
+      "elapsedMs": 1
+    },
+    {
+      "variantId": "D01",
+      "tierId": "beginner",
+      "phase": "BET",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-27draw-beginner-dqn-v1",
+      "usedModelId": "model-27draw-beginner-dqn-v1",
+      "elapsedMs": 1
+    },
+    {
+      "variantId": "D01",
+      "tierId": "beginner",
+      "phase": "DRAW",
+      "status": "used",
+      "reason": null,
+      "requestedModelId": null,
+      "selectedModelId": "model-27draw-beginner-dqn-v1",
+      "usedModelId": "model-27draw-beginner-dqn-v1",
+      "elapsedMs": 1
+    }
+  ],
+  "errors": [],
+  "apiStubbed": true
+}

@@ -39,8 +39,7 @@ jobs:
 
   learning-qa:
     runs-on: ubuntu-latest
-    # A cold chromium+webkit system-dependency install exceeded 20 minutes in
-    # the 2026-10-26 production dispatch before the actual QA could start.
+    # Cold chromium+webkit setup can approach 50 minutes before browser QA starts.
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v6
@@ -108,8 +107,8 @@ jobs:
 
   tournament-qa:
     runs-on: ubuntu-latest
-    # Three natural full-field runs allow 15 minutes each, plus the other regressions.
-    timeout-minutes: 90
+    # Cold browser setup plus three natural full-field runs and regressions.
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -137,7 +136,7 @@ jobs:
 
   p2p-qa:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -164,7 +163,7 @@ jobs:
 
   history-qa:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -190,8 +189,8 @@ jobs:
   core5-qa:
     runs-on: ubuntu-latest
     # The complete 10-hand public-game gate took 88m37s on 2026-10-27.
-    # Keep every case while allowing normal runner-speed variation at deploy time.
-    timeout-minutes: 120
+    # Two full browser suites include desktop and Android; allow runner variation.
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -233,7 +232,7 @@ jobs:
 
   cash-playability-qa:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -356,7 +355,8 @@ jobs:
 
   stud-razz-qa:
     runs-on: ubuntu-latest
-    # A cold browser install left too little time for the device matrix on 2026-10-27.
+    # Cold Playwright installation used about 26 minutes in run 40528851643;
+    # leave time for the 36-case desktop/Android/WebKit gameplay matrix.
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v6
@@ -370,6 +370,8 @@ jobs:
 
   nlh-qa:
     runs-on: ubuntu-latest
+    # Cold Playwright installation can use the previous 35-minute job budget
+    # before the NLH release matrix has started.
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v6
@@ -399,8 +401,8 @@ jobs:
 
   dramaha-qa:
     runs-on: ubuntu-latest
-    # The three-engine, six-variant matrix needs about 27 minutes after setup.
-    # A cold browser install consumed the 60-minute job limit on 2026-10-27.
+    # The three-engine, six-variant real-play matrix takes about 27 minutes
+    # after dependencies are ready, plus potentially 50 minutes of cold setup.
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v6
@@ -464,7 +466,9 @@ jobs:
 
   chinese-qa:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # Cold Playwright installation exceeded the old 20-minute budget in
+    # run 40535311705 before the Chinese Poker release matrix could start.
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6

@@ -5,8 +5,13 @@ import {clickHeroAction} from './helpers/clickHeroAction';
 import {GAME_VARIANTS} from '../../src/games/config/variantCatalog.js';
 
 const tiers = (process.env.MGX_EVIDENCE_TIERS ?? 'standard').split(',');
-const cases = process.env.MGX_EVIDENCE_ALL === '1'
- ? GAME_VARIANTS.filter(v=>v.category!=='chinese').map(v=>[v.engineKey ?? v.id, ['triple-draw','single-draw','dramaha'].includes(v.category) ? ['BET','DRAW'] : ['BET']])
+const selectedVariantIds = process.env.MGX_EVIDENCE_VARIANTS?.split(',').filter(Boolean);
+const catalogCases = GAME_VARIANTS.filter(v=>v.category!=='chinese' && (!selectedVariantIds || selectedVariantIds.includes(v.id)));
+if (selectedVariantIds && catalogCases.length !== new Set(selectedVariantIds).size) {
+ throw new Error(`Unknown or unsupported evidence variant: ${selectedVariantIds.join(',')}`);
+}
+const cases = (process.env.MGX_EVIDENCE_ALL === '1' || selectedVariantIds)
+ ? catalogCases.map(v=>[v.engineKey ?? v.id, ['triple-draw','single-draw','dramaha'].includes(v.category) ? ['BET','DRAW'] : ['BET']])
  : [['D03', ['BET','DRAW']], ['D01', ['BET','DRAW']], ['badacey_triple_draw', ['BET','DRAW']], ['nlh', ['BET']], ['ST1', ['BET']], ['dramaha_hi', ['BET','DRAW']]];
 for (const tier of tiers) for (const [variant, phases] of cases) {
  test(`${variant}: ${tier} persists request-scoped CPU decision evidence`, async ({page}, testInfo) => {

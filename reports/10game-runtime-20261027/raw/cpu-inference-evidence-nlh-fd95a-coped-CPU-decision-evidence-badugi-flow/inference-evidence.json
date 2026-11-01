@@ -1,0 +1,19 @@
+{
+  "variant": "nlh",
+  "tier": "standard",
+  "rows": [
+    {
+      "variantId": "nlh",
+      "tierId": "standard",
+      "phase": "BET",
+      "status": "not-connected",
+      "reason": "automatic-check-call",
+      "requestedModelId": null,
+      "selectedModelId": null,
+      "usedModelId": null,
+      "elapsedMs": 0
+    }
+  ],
+  "errors": [],
+  "apiStubbed": true
+}

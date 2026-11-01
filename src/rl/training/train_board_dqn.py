@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import sys
 import time
 from dataclasses import dataclass
@@ -23,6 +24,7 @@ from rl.env.board_betting_env import (
     BOARD_VARIANTS,
     BoardBettingEnv,
     BoardLongHorizonEnv,
+    _estimate_position_range_score,
     board_teacher_action,
 )
 from rl.utils.replay_buffer import ReplayBuffer
@@ -52,6 +54,8 @@ class BoardTrainConfig:
     save_interval: int = 0
     log_interval: int = 500
     fixture_replay_copies: int = 120
+    seed: int | None = None
+    discount: float | None = None
     resume_checkpoint: str | None = None
 
 
@@ -62,7 +66,13 @@ def linear_epsilon_decay(episode: int, start_eps: float, end_eps: float, decay_e
 
 
 def add_board_fixture_examples(env: BoardBettingEnv, replay: ReplayBuffer, expert: ReplayBuffer, copies: int):
-    for _ in range(max(0, copies)):
+    street_contexts = (
+        (0.0, 0.04, 0.12, 0.95),
+        (0.33, 0.12, 0.28, 0.8),
+        (0.66, 0.16, 0.45, 0.65),
+        (1.0, 0.25, 0.6, 0.5),
+    )
+    for copy_index in range(max(0, copies)):
         for fixture in [
             # Base gate: value open / strong continue / weak fold.
             {"strength": 0.85, "equity": 0.82, "draw": 0.15, "to_call": 0.0, "position": 0.7, "expected": 3},
@@ -83,10 +93,26 @@ def add_board_fixture_examples(env: BoardBettingEnv, replay: ReplayBuffer, exper
             env.scenario.draw_potential = fixture["draw"]
             env.scenario.to_call = fixture["to_call"]
             env.scenario.position = fixture["position"]
-            env.scenario.active_opponents = fixture.get("active_opponents", env.scenario.active_opponents)
+            # Preserve the advanced fixture labels on the flop, where they
+            # were authored. Use the teacher for other streets instead of
+            # attaching a flop action to an unrelated observation.
+            street, bet_size, pot_size, stack_ratio = street_contexts[copy_index % len(street_contexts)]
+            env.scenario.street_progress = street
+            env.scenario.bet_size = bet_size
+            env.scenario.pot_size = pot_size
+            env.scenario.stack_ratio = stack_ratio
+            env.scenario.last_aggression = 0.4
+            env.scenario.active_opponents = fixture.get("active_opponents", 2)
             env.scenario.raise_count = 0
+            env.scenario.range_score = _estimate_position_range_score(
+                family=env.family,
+                strength=env.scenario.strength,
+                draw_potential=env.scenario.draw_potential,
+                position=env.scenario.position,
+                active_opponents=env.scenario.active_opponents,
+            )
             obs = env._observation()
-            action = fixture["expected"]
+            action = fixture["expected"] if street == 0.33 else board_teacher_action(env.scenario)
             if env.legal_action_mask()[action] <= 0:
                 action = board_teacher_action(env.scenario)
             replay.add(obs, action, 0.35, obs, False, next_action_mask=env.legal_action_mask())
@@ -95,16 +121,28 @@ def add_board_fixture_examples(env: BoardBettingEnv, replay: ReplayBuffer, exper
 
 def train_board_dqn(cfg: BoardTrainConfig | None = None, device: str | torch.device = "cpu"):
     cfg = cfg or BoardTrainConfig()
+    discount = cfg.discount if cfg.discount is not None else (0.985 if cfg.long_horizon else 0.95)
+    if not 0.0 <= discount <= 1.0:
+        raise ValueError(f"discount must be between 0 and 1, got {discount}")
+    if cfg.seed is not None:
+        random.seed(cfg.seed)
+        np.random.seed(cfg.seed)
+        torch.manual_seed(cfg.seed)
     output_dir = Path(cfg.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     env_class = BoardLongHorizonEnv if cfg.long_horizon else BoardBettingEnv
-    env = env_class(family=cfg.family, tier=cfg.tier, max_steps_per_episode=cfg.max_steps_per_episode) if cfg.long_horizon else env_class(family=cfg.family, tier=cfg.tier)
+    env = env_class(family=cfg.family, tier=cfg.tier, seed=cfg.seed, max_steps_per_episode=cfg.max_steps_per_episode) if cfg.long_horizon else env_class(family=cfg.family, tier=cfg.tier, seed=cfg.seed)
     obs, _ = env.reset()
     obs_dim = int(np.prod(env.observation_space.shape))
     n_actions = env.action_space.n
     if cfg.resume_checkpoint:
         agent = DQNAgent.load(cfg.resume_checkpoint, device=device)
+        if cfg.discount is not None and not np.isclose(agent.hyper.gamma, discount):
+            raise ValueError(
+                f"Resume checkpoint discount mismatch: checkpoint={agent.hyper.gamma} requested={discount}"
+            )
+        discount = agent.hyper.gamma
         if agent.obs_dim != obs_dim or agent.n_actions != n_actions:
             raise ValueError(
                 f"Resume checkpoint shape mismatch: checkpoint=({agent.obs_dim},{agent.n_actions}) "
@@ -116,7 +154,7 @@ def train_board_dqn(cfg: BoardTrainConfig | None = None, device: str | torch.dev
             n_actions=n_actions,
             device=device,
             hidden_dim=cfg.hidden_dim,
-            hyperparams=DQNHyperParams(gamma=0.95 if not cfg.long_horizon else 0.985, lr=cfg.learning_rate, batch_size=cfg.batch_size, tau=8e-3),
+            hyperparams=DQNHyperParams(gamma=discount, lr=cfg.learning_rate, batch_size=cfg.batch_size, tau=8e-3),
         )
     replay = ReplayBuffer(capacity=cfg.buffer_capacity)
     expert = ReplayBuffer(capacity=cfg.buffer_capacity)
@@ -132,7 +170,10 @@ def train_board_dqn(cfg: BoardTrainConfig | None = None, device: str | torch.dev
             obs = next_obs
             if done:
                 break
-    add_board_fixture_examples(env, replay, expert, cfg.fixture_replay_copies)
+    # Fixture rows are supplemental examples, not a replacement for the
+    # sampled teacher distribution (especially preflop fold decisions).
+    fixture_copies = max(0, min(cfg.fixture_replay_copies, len(expert) // 40))
+    add_board_fixture_examples(env, replay, expert, fixture_copies)
 
     imitation_loss = 0.0
     imitation_accuracy = 0.0
@@ -189,6 +230,9 @@ def train_board_dqn(cfg: BoardTrainConfig | None = None, device: str | torch.dev
         "family": cfg.family,
         "tier": cfg.tier,
         "episodes": int(cfg.total_episodes),
+        "seed": cfg.seed,
+        "discount": discount,
+        "fixture_replay_copies": fixture_copies,
         "long_horizon": bool(cfg.long_horizon),
         "max_steps_per_episode": int(cfg.max_steps_per_episode),
         "avg_reward_last_100": float(sum(rewards[-100:]) / max(1, len(rewards[-100:]))),
@@ -216,6 +260,8 @@ def parse_args():
     parser.add_argument("--imitation-pretrain-steps", type=int, default=BoardTrainConfig.imitation_pretrain_steps)
     parser.add_argument("--expert-replay-ratio", type=float, default=BoardTrainConfig.expert_replay_ratio)
     parser.add_argument("--fixture-replay-copies", type=int, default=BoardTrainConfig.fixture_replay_copies)
+    parser.add_argument("--seed", type=int, default=None)
+    parser.add_argument("--discount", type=float, default=None)
     parser.add_argument("--output-dir", default=BoardTrainConfig.output_dir)
     parser.add_argument("--save-interval", type=int, default=BoardTrainConfig.save_interval)
     parser.add_argument("--log-interval", type=int, default=BoardTrainConfig.log_interval)
@@ -239,6 +285,8 @@ if __name__ == "__main__":
         imitation_pretrain_steps=args.imitation_pretrain_steps,
         expert_replay_ratio=args.expert_replay_ratio,
         fixture_replay_copies=args.fixture_replay_copies,
+        seed=args.seed,
+        discount=args.discount,
         output_dir=args.output_dir,
         save_interval=args.save_interval,
         log_interval=args.log_interval,

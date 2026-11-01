@@ -244,12 +244,16 @@ class DrawLowballEnv(gym.Env):
         opponent_profile: str = "standard",
         max_draws: int = 3,
         seed: int | None = None,
+        observation_schema: str = "legacy",
     ):
         super().__init__()
         if family not in {"low-27", "low-a5"}:
             raise ValueError(f"Unsupported draw family: {family}")
         self.family = family
         self.max_draws = max(1, min(3, int(max_draws)))
+        if observation_schema not in {"legacy", "browser-v1"}:
+            raise ValueError(f"Unsupported draw observation schema: {observation_schema}")
+        self.observation_schema = observation_schema
         self.random = random.Random(seed)
         self.profile = DRAW_OPPONENT_PROFILES.get(opponent_profile, DRAW_OPPONENT_PROFILES["standard"])
         self.observation_space = spaces.Box(
@@ -481,6 +485,8 @@ class DrawLowballEnv(gym.Env):
         return self.phase == "BET" and self.draw_round >= self.max_draws
 
     def _observation(self):
+        if self.observation_schema == "browser-v1":
+            return self._browser_observation()
         vector = np.zeros(DRAW_OBSERVATION_VECTOR_SIZE, dtype=np.float32)
         features = evaluate_lowball(self.hero_hand, self.family)
 
@@ -607,6 +613,46 @@ class DrawLowballEnv(gym.Env):
 
         mask = self.legal_action_mask()
         vector[48 : 48 + len(mask)] = mask
+        return vector
+
+    def _browser_observation(self):
+        """Mirror drawObservationSchema.js using only live-visible state.
+
+        This is an opt-in training contract. Existing checkpoints keep their
+        legacy observation semantics and must not be silently reinterpreted.
+        """
+        vector = np.zeros(DRAW_OBSERVATION_VECTOR_SIZE, dtype=np.float32)
+        ranks = [1 if self.family == "low-a5" and rank == 14 else rank
+                 for rank, _suit in self.hero_hand]
+        suits = [suit for _rank, suit in self.hero_hand]
+        for index, (rank, suit) in enumerate(self.hero_hand[:5]):
+            vector[index * 2] = (1 if self.family == "low-a5" and rank == 14 else rank) / 14.0
+            vector[index * 2 + 1] = suit / 3.0
+        duplicate_ranks = len(ranks) - len(set(ranks))
+        duplicate_suits = len(suits) - len(set(suits))
+        straight = len(set(ranks)) == 5 and max(ranks) - min(ranks) == 4
+        flush = len(suits) >= 5 and len(set(suits)) == 1
+        made_cards = max(0, min(5, len(ranks) - duplicate_ranks -
+                               int(self.family == "low-27" and (straight or flush))))
+        max_stack = max(1, self.hero_stack, self.opp_stack)
+        vector[12] = self.draw_round / self.max_draws
+        vector[13] = max(0, self.max_draws - self.draw_round) / self.max_draws
+        vector[14] = {"BET": 0.0, "DRAW": 0.5, "SHOWDOWN": 1.0}[self.phase]
+        vector[15] = made_cards / 5.0
+        vector[16] = max(ranks) / 14.0
+        vector[17] = min(1.0, sum(ranks) / 60.0)
+        vector[18] = duplicate_ranks / 4.0
+        vector[19] = duplicate_suits / 4.0
+        vector[20] = float(straight)
+        vector[21] = float(flush)
+        vector[22] = min(1.0, self.hero_stack / max_stack)
+        vector[23] = min(1.0, self.hero_bet / max_stack)
+        vector[24] = min(1.0, self.pot / (max_stack * 6))
+        vector[25] = min(1.0, self.current_bet / max_stack)
+        vector[26] = min(1.0, self.raise_count / 4.0)
+        vector[41] = float(self.family == "low-27")
+        vector[42] = float(self.family == "low-a5")
+        vector[48:59] = self.legal_action_mask()
         return vector
 
 

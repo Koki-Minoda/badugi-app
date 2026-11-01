@@ -28,6 +28,7 @@ from rl.utils.replay_buffer import ReplayBuffer
 class DrawTrainConfig:
     family: str = "low-27"
     seed: int | None = None
+    observation_schema: str = "legacy"
     total_episodes: int = 10_000
     max_steps_per_episode: int = 80
     buffer_capacity: int = 120_000
@@ -94,21 +95,22 @@ def add_draw_fixture_examples(env: DrawLowballEnv, replay: ReplayBuffer, expert:
             next_obs = obs.copy()
             replay.add(obs, action, 0.2, next_obs, False, next_action_mask=env.legal_action_mask())
             expert.add(obs, action, 0.2, next_obs, False, next_action_mask=env.legal_action_mask())
-        for obs, action in _bet_phase_ace_hand_fixtures(env.family):
-            # BET phase: teach that ace-holding hands in 2-7 (or high-card hands in A-5)
-            # should CALL when facing a raise, not fold.
-            mask = np.zeros(11, dtype=np.float32)
-            mask[0] = 1.0  # fold legal
-            mask[2] = 1.0  # call legal
-            mask[4] = 1.0  # raise legal
-            replay.add(obs, action, 0.3, obs, False, next_action_mask=mask)
-            expert.add(obs, action, 0.3, obs, False, next_action_mask=mask)
+        if env.observation_schema == "legacy":
+            for obs, action in _bet_phase_ace_hand_fixtures(env.family):
+                # These hand-built vectors use legacy slot semantics.
+                mask = np.zeros(11, dtype=np.float32)
+                mask[0] = 1.0
+                mask[2] = 1.0
+                mask[4] = 1.0
+                replay.add(obs, action, 0.3, obs, False, next_action_mask=mask)
+                expert.add(obs, action, 0.3, obs, False, next_action_mask=mask)
         _add_fold_fixture_examples(env, replay, expert)
-        for obs, action in _synthetic_gate_vectors(env.family):
-            mask = np.zeros(11, dtype=np.float32)
-            mask[5:] = 1.0
-            replay.add(obs, action, 0.25, obs, False, next_action_mask=mask)
-            expert.add(obs, action, 0.25, obs, False, next_action_mask=mask)
+        if env.observation_schema == "legacy":
+            for obs, action in _synthetic_gate_vectors(env.family):
+                mask = np.zeros(11, dtype=np.float32)
+                mask[5:] = 1.0
+                replay.add(obs, action, 0.25, obs, False, next_action_mask=mask)
+                expert.add(obs, action, 0.25, obs, False, next_action_mask=mask)
 
 
 def _add_fold_fixture_examples(env: DrawLowballEnv, replay: ReplayBuffer, expert: ReplayBuffer):
@@ -317,7 +319,8 @@ def train_draw_dqn(cfg: DrawTrainConfig | None = None, device: str | torch.devic
     output_dir.mkdir(parents=True, exist_ok=True)
 
     env = DrawLowballEnv(family=cfg.family, opponent_profile=cfg.opponent_profiles[0],
-                         max_draws=cfg.max_draws, seed=cfg.seed)
+                         max_draws=cfg.max_draws, seed=cfg.seed,
+                         observation_schema=cfg.observation_schema)
     obs, _ = env.reset()
     obs_dim = int(np.prod(env.observation_space.shape))
     n_actions = env.action_space.n
@@ -448,11 +451,21 @@ def train_draw_dqn(cfg: DrawTrainConfig | None = None, device: str | torch.devic
         if cfg.save_interval > 0 and episode % cfg.save_interval == 0:
             timestamp = time.strftime("%Y%m%d-%H%M%S")
             checkpoint = output_dir / f"{cfg.family}_draw_dqn_{episode:06d}_{timestamp}.pt"
-            agent.save(str(checkpoint))
+            agent.save(str(checkpoint), training_state={
+                "observation_schema": cfg.observation_schema,
+                "family": cfg.family,
+                "max_draws": cfg.max_draws,
+                "episode": episode,
+            })
             print(f"Saved model to {checkpoint}")
 
     latest = output_dir / f"{cfg.family}_draw_dqn_latest.pt"
-    agent.save(str(latest))
+    agent.save(str(latest), training_state={
+        "observation_schema": cfg.observation_schema,
+        "family": cfg.family,
+        "max_draws": cfg.max_draws,
+        "episode": cfg.total_episodes,
+    })
     summary = {
         "family": cfg.family,
         "seed": cfg.seed,
@@ -466,6 +479,7 @@ def train_draw_dqn(cfg: DrawTrainConfig | None = None, device: str | torch.devic
         "obs_dim": int(obs_dim),
         "n_actions": int(n_actions),
         "max_draws": int(cfg.max_draws),
+        "observation_schema": cfg.observation_schema,
     }
     summary_path = output_dir / f"{cfg.family}_draw_dqn_latest_summary.json"
     summary_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf8")
@@ -497,6 +511,8 @@ def parse_args():
     parser.add_argument("--save-interval", type=int, default=DrawTrainConfig.save_interval)
     parser.add_argument("--log-interval", type=int, default=DrawTrainConfig.log_interval)
     parser.add_argument("--max-draws", type=int, default=DrawTrainConfig.max_draws)
+    parser.add_argument("--observation-schema", choices=["legacy", "browser-v1"],
+                        default=DrawTrainConfig.observation_schema)
     parser.add_argument("--fixture-replay-copies", type=int, default=DrawTrainConfig.fixture_replay_copies)
     parser.add_argument("--opponent-profiles", default=",".join(DrawTrainConfig.opponent_profiles))
     parser.add_argument("--device", default=None)
@@ -528,6 +544,7 @@ if __name__ == "__main__":
         save_interval=args.save_interval,
         log_interval=args.log_interval,
         max_draws=args.max_draws,
+        observation_schema=args.observation_schema,
         fixture_replay_copies=args.fixture_replay_copies,
         opponent_profiles=tuple(item.strip() for item in args.opponent_profiles.split(",") if item.strip()),
     )

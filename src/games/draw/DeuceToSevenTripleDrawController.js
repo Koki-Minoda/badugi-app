@@ -114,6 +114,7 @@ function hydratePlayersFromCurrentStacks(generatedPlayers = [], sourcePlayers = 
       sittingOut: seatOut,
       seatOut,
       isBusted: source.isBusted ?? player.isBusted,
+      bustHandIndex: source.bustHandIndex ?? null,
       hasActedThisRound: false,
       hasDrawn: false,
       lastDrawCount: null,

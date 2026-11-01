@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import random
 import sys
 import time
 from dataclasses import dataclass
@@ -26,6 +27,7 @@ from rl.utils.replay_buffer import ReplayBuffer
 @dataclass
 class DrawTrainConfig:
     family: str = "low-27"
+    seed: int | None = None
     total_episodes: int = 10_000
     max_steps_per_episode: int = 80
     buffer_capacity: int = 120_000
@@ -307,10 +309,15 @@ def linear_epsilon_decay(episode: int, start_eps: float, end_eps: float, decay_e
 
 def train_draw_dqn(cfg: DrawTrainConfig | None = None, device: str | torch.device = "cpu"):
     cfg = cfg or DrawTrainConfig()
+    if cfg.seed is not None:
+        random.seed(cfg.seed)
+        np.random.seed(cfg.seed)
+        torch.manual_seed(cfg.seed)
     output_dir = Path(cfg.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    env = DrawLowballEnv(family=cfg.family, opponent_profile=cfg.opponent_profiles[0], max_draws=cfg.max_draws)
+    env = DrawLowballEnv(family=cfg.family, opponent_profile=cfg.opponent_profiles[0],
+                         max_draws=cfg.max_draws, seed=cfg.seed)
     obs, _ = env.reset()
     obs_dim = int(np.prod(env.observation_space.shape))
     n_actions = env.action_space.n
@@ -448,6 +455,7 @@ def train_draw_dqn(cfg: DrawTrainConfig | None = None, device: str | torch.devic
     agent.save(str(latest))
     summary = {
         "family": cfg.family,
+        "seed": cfg.seed,
         "episodes": int(cfg.total_episodes),
         "global_steps": int(global_step),
         "avg_reward_last_100": float(sum(rewards[-100:]) / max(1, len(rewards[-100:]))),
@@ -469,6 +477,7 @@ def train_draw_dqn(cfg: DrawTrainConfig | None = None, device: str | torch.devic
 def parse_args():
     parser = argparse.ArgumentParser(description="Train a 2-7/A-5 draw DQN checkpoint.")
     parser.add_argument("--family", choices=["low-27", "low-a5"], default=DrawTrainConfig.family)
+    parser.add_argument("--seed", type=int, default=DrawTrainConfig.seed)
     parser.add_argument("--episodes", type=int, default=DrawTrainConfig.total_episodes)
     parser.add_argument("--max-steps", type=int, default=DrawTrainConfig.max_steps_per_episode)
     parser.add_argument("--buffer-capacity", type=int, default=DrawTrainConfig.buffer_capacity)
@@ -499,6 +508,7 @@ if __name__ == "__main__":
     device = args.device or ("cuda" if torch.cuda.is_available() else "cpu")
     cfg = DrawTrainConfig(
         family=args.family,
+        seed=args.seed,
         total_episodes=args.episodes,
         max_steps_per_episode=args.max_steps,
         buffer_capacity=args.buffer_capacity,

@@ -244,7 +244,8 @@ describe("PLOGameController", () => {
 
     expect(action).toMatchObject({
       seatIndex: 0,
-      type: "BET",
+      // The blind is already posted; a further wager is a raise.
+      type: "RAISE",
       metadata: expect.objectContaining({ strategy: "teacher-supervised" }),
     });
     expect(action.metadata.strength).toBeGreaterThan(0.65);

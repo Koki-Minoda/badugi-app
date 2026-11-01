@@ -509,7 +509,7 @@ export class NLHGameController {
       toCall,
       canRaise:
         !player.allIn &&
-        (player.stack ?? 0) > 0 &&
+        (player.stack ?? 0) >= betAmount &&
         !(this.state.raiseRestrictedSeatIndexes ?? []).includes(seatIndex),
       tierConfig: options.tierConfig,
       betAmount,

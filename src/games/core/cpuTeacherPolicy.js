@@ -270,7 +270,6 @@ export function chooseTeacherBetAction({
   tierConfig = {},
   betAmount = 0,
   currentBet = 0,
-  playerBet = 0,
   street = "",
   variantId = "B01",
   position = "MP",
@@ -306,7 +305,7 @@ export function chooseTeacherBetAction({
   }
 
   if (canRaise && normalizedStrength >= openThreshold) {
-    const actionType = currentBet > playerBet ? "RAISE" : "BET";
+    const actionType = currentBet > 0 ? "RAISE" : "BET";
     return { type: actionType, amount, metadata: { strategy: "teacher-supervised", reason: "first-in-value" } };
   }
   return { type: "CHECK", metadata: { strategy: "teacher-supervised", reason: "pot-control" } };

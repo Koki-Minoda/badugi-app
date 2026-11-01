@@ -344,8 +344,9 @@ export class DeuceToSevenTripleDrawEngine extends DrawEngineBase {
     const deckManager = this.getDeckManager();
     deckManager.reset?.();
     const dealtCards = [];
-    const players = createPlayers(ctx).map((player) => {
-      if (player.sittingOut) return player;
+    const skipDealSeats = new Set(ctx.skipDealSeatIndexes ?? []);
+    const players = createPlayers(ctx).map((player, seatIndex) => {
+      if (player.sittingOut || skipDealSeats.has(seatIndex)) return player;
       const hand = deckManager.draw(this.handCardCount, { activeCards: dealtCards });
       dealtCards.push(...hand);
       return {

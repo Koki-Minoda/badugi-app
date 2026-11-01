@@ -454,8 +454,16 @@ export class DeuceToSevenTripleDrawController extends GameController {
     this.config = config;
     this._handCounter += 1;
     const handId = options.handId ?? `${String(this.variantId).toLowerCase()}-hand-${this._handCounter}`;
+    const currentPlayers = options.currentPlayers ?? options.prevPlayers ?? prevState?.snapshot?.players ?? [];
+    const skipDealSeatIndexes = Array.isArray(currentPlayers)
+      ? currentPlayers.flatMap((player, seatIndex) =>
+        player && (normalizeSeatOut(player) || (player.stack != null && Number.isFinite(Number(player.stack)) && Number(player.stack) <= 0))
+          ? [seatIndex]
+          : [])
+      : [];
     const raw = this.engine.initHand({
       handId,
+      skipDealSeatIndexes,
       seatConfig: config.seatConfig,
       startingStack: config.startingStack,
       heroProfile: config.heroProfile,
@@ -471,7 +479,7 @@ export class DeuceToSevenTripleDrawController extends GameController {
     });
     raw.players = hydratePlayersFromCurrentStacks(
       raw.players,
-      options.currentPlayers ?? options.prevPlayers ?? prevState?.snapshot?.players ?? [],
+      currentPlayers,
     );
     const engineState = this.engine.applyForcedBets(raw);
     const state = {

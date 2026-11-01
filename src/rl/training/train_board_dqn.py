@@ -83,7 +83,15 @@ def add_board_fixture_examples(env: BoardBettingEnv, replay: ReplayBuffer, exper
             env.scenario.draw_potential = fixture["draw"]
             env.scenario.to_call = fixture["to_call"]
             env.scenario.position = fixture["position"]
-            env.scenario.active_opponents = fixture.get("active_opponents", env.scenario.active_opponents)
+            # Fixture labels describe a flop decision. Do not pair the same
+            # label with a random preflop/river, pot, or stale range context.
+            env.scenario.street_progress = 0.33
+            env.scenario.bet_size = 0.12
+            env.scenario.pot_size = 0.28
+            env.scenario.stack_ratio = 0.8
+            env.scenario.last_aggression = 0.4
+            env.scenario.range_score = 0.0
+            env.scenario.active_opponents = fixture.get("active_opponents", 2)
             env.scenario.raise_count = 0
             obs = env._observation()
             action = fixture["expected"]

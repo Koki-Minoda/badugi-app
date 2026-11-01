@@ -319,6 +319,7 @@ export default function HandResultOverlay({
     <div
       className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 px-4"
       data-testid="hand-result-overlay"
+      data-hand-id={reviewHandId ?? summary.handId ?? undefined}
     >
       <div role="dialog" aria-modal="true" aria-label={copy.title} className="flex max-h-[calc(100dvh-2rem)] w-full max-w-3xl flex-col gap-3 overflow-hidden rounded-3xl border border-emerald-400/40 bg-slate-900 p-3 shadow-2xl sm:p-4">
         <div className="flex shrink-0 items-center justify-between gap-2 text-xs uppercase tracking-[0.15em] text-emerald-300">

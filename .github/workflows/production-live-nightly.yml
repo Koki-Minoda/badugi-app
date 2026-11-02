@@ -11,8 +11,9 @@ permissions:
   issues: write
 
 concurrency:
-  group: production-live-nightly
-  cancel-in-progress: true
+  group: mgx-production-live
+  cancel-in-progress: false
+  queue: max
 
 jobs:
   public-cash-qm:

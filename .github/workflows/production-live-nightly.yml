@@ -13,6 +13,7 @@ permissions:
 concurrency:
   group: mgx-production-live
   cancel-in-progress: false
+  queue: max
 
 jobs:
   public-cash-qm:

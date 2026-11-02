@@ -8,7 +8,7 @@ test('production dispatch and nightly hold one shared non-canceling lock',()=>{
   const group=nightly.match(/^  group: (\S+)$/m)?.[1];
   assert.equal(group,'mgx-production-live');
   assert.ok(deploy.includes(`github.event_name == 'workflow_dispatch' && '${group}'`));
-  for(const workflow of [deploy,nightly])assert.match(workflow,/concurrency:\n  group: [^\n]+\n  cancel-in-progress: false/);
+  for(const workflow of [deploy,nightly])assert.match(workflow,/concurrency:\n  group: [^\n]+\n  cancel-in-progress: false\n  queue: max/);
 });
 test('PR and push checks retain their own lock and cannot deploy',()=>{
   assert.match(deploy,/\|\| format\('mgx-prod-01-\{0\}', github.event.pull_request.number \|\| github.ref\)/);

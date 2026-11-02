@@ -15,6 +15,7 @@ permissions:
 concurrency:
   group: ${{ github.event_name == 'workflow_dispatch' && 'mgx-production-live' || format('mgx-prod-01-{0}', github.event.pull_request.number || github.ref) }}
   cancel-in-progress: false
+  queue: max
 
 jobs:
   quality:

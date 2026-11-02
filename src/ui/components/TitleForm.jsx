@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { getDefaultTitleSettings } from "../utils/titleSettings";
+import { getDefaultTitleSettings, isEmailPlayerName } from "../utils/titleSettings";
 
 const avatarChoices = [
   { value: "/characters/hero.png", label: "主人公" },
@@ -30,6 +30,10 @@ export default function TitleForm({ initialValues, onSave, onReset }) {
 
   function handleSubmit(e) {
     e.preventDefault();
+    if (isEmailPlayerName(formState.playerName)) {
+      setStatus("メールアドレスではなく、対局で使う名前を入力してください。");
+      return;
+    }
     onSave?.(formState);
     setStatus("保存しました");
     setTimeout(() => setStatus(""), 2000);
@@ -52,12 +56,16 @@ export default function TitleForm({ initialValues, onSave, onReset }) {
         <input
           id="title-player-name"
           name="playerName"
+          aria-describedby="player-name-help"
           value={formState.playerName}
           onChange={handleChange}
           maxLength={16}
           className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           placeholder="例: ミッドナイト・バドゥーギ"
         />
+        <p id="player-name-help" className="mt-2 text-sm text-slate-600">
+          対局中と優勝・順位画面に表示する名前です。16文字まで。このブラウザに保存されます。未設定時はYouと表示します。
+        </p>
       </div>
 
       <div>

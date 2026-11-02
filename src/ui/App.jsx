@@ -66,7 +66,7 @@ import {
   shouldSyncLegacyTurnToController,
   shouldPreferControllerActionActor,
 } from "./utils/actorSourceOfTruth.js";
-import { runNpcDrawAllInAutoFastPath } from "./utils/npcAutoActionTiming.js";
+import { BOARD_NPC_AUTO_ACTION_DELAY_MS, NPC_AUTO_ACTION_DELAY_MS, runNpcDrawAllInAutoFastPath } from "./utils/npcAutoActionTiming.js";
 import { resolveControllerDrawHistory } from "./utils/controllerDrawHistory.js";
 
 import {
@@ -12832,7 +12832,7 @@ export default function App() {
             phase: "BET", reason: "automatic-check-call", startedAt: decisionStartedAt,
           }),
         });
-      }, 180);
+      }, BOARD_NPC_AUTO_ACTION_DELAY_MS);
       return () => clearTimeout(timer);
     }
 
@@ -13258,7 +13258,7 @@ export default function App() {
         autoResolveCpuDrawIfNeeded();
         return;
       }
-    }, 250);
+    }, NPC_AUTO_ACTION_DELAY_MS);
 
     return () => clearTimeout(timer);
   }, [

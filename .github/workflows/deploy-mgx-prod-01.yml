@@ -36,6 +36,7 @@ jobs:
       - run: npm run test:qm:public-games
       - run: npm run test:deploy:static
       - run: node --test scripts/deploy/public-release-audit.test.mjs
+      - run: node --test scripts/deploy/public-cash-gate.test.mjs
 
   learning-qa:
     runs-on: ubuntu-latest
@@ -187,11 +188,16 @@ jobs:
             tests/e2e/cross-variant-history-replay-smoke.spec.ts \
             --project=badugi-flow
 
-  core5-qa:
+  core5-device-qa:
     runs-on: ubuntu-latest
-    # The complete 10-hand public-game gate took 88m37s on 2026-10-27.
-    # Keep every case while allowing normal runner-speed variation at deploy time.
-    timeout-minutes: 120
+    # The added readable CPU pause exhausted the old serial 120-minute budget
+    # after 60/70 cases. Each device retains all games and ten hands, on its own
+    # backend/runner. The protected gate below still requires the full evidence.
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [desktop, android]
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -207,27 +213,62 @@ jobs:
       - run: python -m pip install -e './backend[test]'
       - run: npx playwright install --with-deps chromium
       - run: bash scripts/ci/run-with-backend.sh npm run test:core5:pr-e2e
-      - name: All public cash games - 10 hands on desktop and Android
+      - name: All public cash games - 10 hands on ${{ matrix.device }}
         env:
           MGX_ALL_LIVE_CASH_QA: "1"
           MGX_ALL_LIVE_CASH_HANDS: "10"
+          MGX_ALL_LIVE_CASH_DEVICES: ${{ matrix.device }}
         run: |
           bash scripts/ci/run-with-backend.sh npx playwright test \
             tests/e2e/all-live-core5-cash-production.spec.ts \
             --project=badugi-flow \
             --workers=1
-      - name: Enforce complete public-game QM evidence
-        env:
-          MGX_ALL_LIVE_CASH_HANDS: "10"
-        run: npm run qm:cash:summary
       - name: Upload public cash QM evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: public-cash-qm
-          path: |
-            test-results/
-            reports/all-live-cash/
+          name: public-cash-qm-${{ github.run_attempt }}-${{ matrix.device }}
+          path: reports/all-live-cash/
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Upload lifecycle and browser debug evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: core5-debug-${{ github.run_attempt }}-${{ matrix.device }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 30
+
+  core5-qa:
+    needs: core5-device-qa
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Require every device shard
+        env:
+          SHARD_RESULT: ${{ needs.core5-device-qa.result }}
+        run: test "$SHARD_RESULT" = success
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: public-cash-qm-${{ github.run_attempt }}-*
+          path: reports/core5-cash-shards
+          merge-multiple: true
+      - name: Enforce complete public-game QM evidence
+        env:
+          MGX_ALL_LIVE_CASH_HANDS: "10"
+        run: node scripts/quality/summarize-core5-cash-qm.mjs reports/core5-cash-shards
+      - name: Upload aggregate public cash QM evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-cash-qm-summary-${{ github.run_attempt }}
+          path: reports/core5-cash-shards/qm-summary.json
           if-no-files-found: ignore
           retention-days: 30
 
